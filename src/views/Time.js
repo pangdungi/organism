@@ -397,6 +397,66 @@ function parseTimeToHours(str) {
   return h + m / 60;
 }
 
+/** 날짜·시간 문자열(YYYY-MM-DDThh:mm 등)을 시간(소수)으로 변환 */
+function parseDateTimeToHours(str) {
+  if (!str || typeof str !== "string") return null;
+  const m = str.match(/[T\s](\d{1,2}):?(\d{2})?/);
+  if (!m) return null;
+  const h = parseInt(m[1], 10) || 0;
+  const min = parseInt(m[2], 10) || 0;
+  return h + min / 60;
+}
+
+/** 성취능력 문자열을 -50~+50 숫자로 파싱 */
+function parseEnergyToNumber(val) {
+  const s = String(val || "").trim().replace(/%/g, "");
+  if (!s) return null;
+  const n = parseInt(s.replace(/^\+/, ""), 10);
+  if (!isNaN(n) && n >= -50 && n <= 50) return n;
+  return null;
+}
+
+/** 성취능력 곡선용: 시간대별(0~23시) 성취능력 평균 집계 */
+function aggregateEnergyByHour(rows) {
+  const byHour = {};
+  for (let h = 0; h <= 23; h++) byHour[h] = { sum: 0, count: 0 };
+  rows.forEach((r) => {
+    const energy = parseEnergyToNumber(r.energy);
+    if (energy == null) return;
+    const startH = parseDateTimeToHours(r.startTime);
+    const endH = parseDateTimeToHours(r.endTime);
+    if (startH == null || endH == null) return;
+    for (let h = 0; h <= 23; h++) {
+      if (startH < h + 1 && endH > h) {
+        byHour[h].sum += energy;
+        byHour[h].count += 1;
+      }
+    }
+  });
+  const result = {};
+  for (let h = 0; h <= 23; h++) {
+    result[h] = byHour[h].count > 0 ? byHour[h].sum / byHour[h].count : null;
+  }
+  return result;
+}
+
+/** 방해 빈도 곡선용: 시간대별(0~23시) 방해횟수 집계 */
+function aggregateFocusByHour(rows) {
+  const byHour = {};
+  for (let h = 0; h <= 23; h++) byHour[h] = 0;
+  rows.forEach((r) => {
+    const focus = parseInt(String(r.focus || "0").replace(/\D/g, ""), 10) || 0;
+    if (focus <= 0) return;
+    const startH = parseDateTimeToHours(r.startTime);
+    const endH = parseDateTimeToHours(r.endTime);
+    if (startH == null || endH == null) return;
+    for (let h = 0; h <= 23; h++) {
+      if (startH < h + 1 && endH > h) byHour[h] += focus;
+    }
+  });
+  return byHour;
+}
+
 /** 시간(소수)을 "Xh Ym" 형식으로 표시 */
 function formatHoursDisplay(hours) {
   if (hours < 0 || !isFinite(hours)) return "0h 0m";
@@ -424,13 +484,15 @@ function formatHoursToReadable(hours) {
   return `${h}시간 ${m}분`;
 }
 
-/** 에너지 값(1-5 또는 0-100)을 표시용 퍼센트 문자열로 변환 */
+/** 성취능력 값(-50~+50)을 표시용 퍼센트 문자열로 변환 */
 function formatEnergyForDisplay(val) {
   const s = String(val || "").trim().replace(/%/g, "");
   if (!s) return "";
-  const map = { "1": 20, "2": 40, "3": 60, "4": 80, "5": 100 };
-  const pct = map[s] ?? (parseInt(s, 10));
-  return !isNaN(pct) && pct >= 0 && pct <= 100 ? pct + "%" : s;
+  const n = parseInt(s.replace(/^\+/, ""), 10);
+  if (!isNaN(n) && n >= -50 && n <= 50) {
+    return n > 0 ? `+${n}%` : n + "%";
+  }
+  return s;
 }
 
 function toDateStr(d) {
@@ -535,6 +597,18 @@ function normalizeDateForCompare(str) {
   return "";
 }
 
+/** 날짜·시작시간 기준 시간 흐름 순 정렬 (00:00→23:59) */
+function sortRowsByDateTime(rows) {
+  return [...rows].sort((a, b) => {
+    const dateA = normalizeDateForCompare(a.date || "") || (a.date || "");
+    const dateB = normalizeDateForCompare(b.date || "") || (b.date || "");
+    if (dateA !== dateB) return dateA.localeCompare(dateB);
+    const startA = parseDateTimeToHours(a.startTime) ?? 0;
+    const startB = parseDateTimeToHours(b.startTime) ?? 0;
+    return startA - startB;
+  });
+}
+
 /** 필터 타입에 따른 행 필터링 (기록날짜 기준) */
 function filterRowsByFilterType(rows, type, year, month, start, end) {
   const { start: s, end: e } = getDateRangeForFilterType(
@@ -546,12 +620,13 @@ function filterRowsByFilterType(rows, type, year, month, start, end) {
   );
   const normStart = normalizeDateForCompare(s) || s;
   const normEnd = normalizeDateForCompare(e) || e;
-  return rows.filter((r) => {
+  const filtered = rows.filter((r) => {
     const d = normalizeDateForCompare(r.date || "");
     if (!d) return false;
     if (!normStart || !normEnd) return true;
     return d >= normStart && d <= normEnd;
   });
+  return sortRowsByDateTime(filtered);
 }
 
 /** 과제명별 시간 집계 { taskName: hours } */
@@ -1212,7 +1287,7 @@ function createTableHTML() {
         <th class="time-th-date">기록 날짜</th>
         <th class="time-th-price">행동의 가치</th>
         <th class="time-th-focus">방해 횟수(회)</th>
-        <th class="time-th-energy">성취능력(%)</th>
+        <th class="time-th-energy">성취능력</th>
         <th class="time-th-feedback">과제 메모</th>
         <th class="time-th-actions"></th>
       </tr>
@@ -1384,6 +1459,7 @@ export function render() {
   viewTabs.className = "time-view-tabs";
   viewTabs.innerHTML = `
     <button type="button" class="time-view-tab active" data-view="all">시간 기록</button>
+    <button type="button" class="time-view-tab" data-view="blank">새 탭</button>
     <button type="button" class="time-view-tab" data-view="productivity">생산성별</button>
     <button type="button" class="time-view-tab" data-view="dashboard">대시보드</button>
     <button type="button" class="time-view-tab" data-view="newtab">일간시간예산</button>
@@ -1569,6 +1645,8 @@ export function render() {
     const filtered = filterRowsByFilterType(rows, type, y, m, start, end);
     if (view === "all") {
       renderAll(filtered);
+    } else if (view === "blank") {
+      contentWrap.innerHTML = "";
     } else if (view === "productivity") {
       renderByProductivity(filtered);
     } else if (view === "dashboard") {
@@ -1650,6 +1728,7 @@ export function render() {
   taskLogModal.innerHTML = `
     <div class="time-task-setup-backdrop"></div>
     <div class="time-task-setup-panel time-task-log-panel">
+      <div class="time-datetime-picker-backdrop" hidden></div>
       <div class="time-task-setup-header time-task-log-header">
         <button type="button" class="time-task-setup-close" aria-label="닫기">&times;</button>
         <h3 class="time-task-setup-title">과제 기록하기</h3>
@@ -1675,31 +1754,6 @@ export function render() {
             <input type="hidden" class="time-task-log-end" />
           </div>
         </div>
-        <div class="time-datetime-picker-wrap" hidden>
-          <div class="time-datetime-picker-header">
-            <span class="time-datetime-picker-title"></span>
-            <button type="button" class="time-datetime-picker-confirm">확인</button>
-          </div>
-          <div class="time-datetime-picker-buttons time-datetime-picker-offset-btns">
-            <button type="button" class="time-datetime-picker-btn" data-offset="-30">-30</button>
-            <button type="button" class="time-datetime-picker-btn" data-offset="-15">-15</button>
-            <button type="button" class="time-datetime-picker-btn" data-offset="-5">-5</button>
-            <button type="button" class="time-datetime-picker-btn" data-offset="5">+5</button>
-            <button type="button" class="time-datetime-picker-btn" data-offset="15">+15</button>
-            <button type="button" class="time-datetime-picker-btn" data-offset="30">+30</button>
-          </div>
-          <div class="time-datetime-picker-buttons time-datetime-picker-action-btns">
-            <button type="button" class="time-datetime-picker-btn" data-action="last">마지막</button>
-            <button type="button" class="time-datetime-picker-btn" data-action="now">지금</button>
-            <button type="button" class="time-datetime-picker-btn" data-action="eod">하루의 끝</button>
-          </div>
-          <div class="time-datetime-picker-wheels">
-            <div class="time-datetime-picker-column" data-col="date"></div>
-            <div class="time-datetime-picker-column" data-col="ampm"></div>
-            <div class="time-datetime-picker-column" data-col="hour"></div>
-            <div class="time-datetime-picker-column" data-col="minute"></div>
-          </div>
-        </div>
         <div class="time-task-log-field">
           <label>과제 메모</label>
           <textarea class="time-task-log-feedback" placeholder="과제 메모 입력" rows="3"></textarea>
@@ -1716,9 +1770,9 @@ export function render() {
             <div class="time-task-log-energy-slider-wrap">
               <div class="time-task-log-energy-track">
                 <div class="time-task-log-energy-fill" style="width:50%"></div>
-                <input type="range" class="time-task-log-energy-slider" min="0" max="100" value="50" />
+                <input type="range" class="time-task-log-energy-slider" min="-50" max="50" value="0" />
               </div>
-              <span class="time-task-log-energy-value">50%</span>
+              <span class="time-task-log-energy-value">0%</span>
             </div>
           </div>
         </div>
@@ -1794,10 +1848,47 @@ export function render() {
           </div>
         </div>
       </div>
+      <div class="time-datetime-picker-wrap time-datetime-picker-bottom" hidden>
+        <div class="time-datetime-picker-buttons-wrap">
+          <div class="time-datetime-picker-header">
+            <span class="time-datetime-picker-title"></span>
+            <button type="button" class="time-datetime-picker-confirm">확인</button>
+          </div>
+          <div class="time-datetime-picker-buttons time-datetime-picker-offset-btns">
+            <button type="button" class="time-datetime-picker-btn" data-offset="-30">-30</button>
+            <button type="button" class="time-datetime-picker-btn" data-offset="-15">-15</button>
+            <button type="button" class="time-datetime-picker-btn" data-offset="-5">-5</button>
+            <button type="button" class="time-datetime-picker-btn" data-offset="5">+5</button>
+            <button type="button" class="time-datetime-picker-btn" data-offset="15">+15</button>
+            <button type="button" class="time-datetime-picker-btn" data-offset="30">+30</button>
+          </div>
+          <div class="time-datetime-picker-buttons time-datetime-picker-action-btns">
+            <button type="button" class="time-datetime-picker-btn" data-action="last">마지막</button>
+            <button type="button" class="time-datetime-picker-btn" data-action="now">지금</button>
+            <button type="button" class="time-datetime-picker-btn" data-action="eod">하루의 끝</button>
+          </div>
+        </div>
+        <div class="time-datetime-picker-wheels">
+          <div class="time-datetime-picker-column" data-col="date"></div>
+          <div class="time-datetime-picker-column" data-col="ampm"></div>
+          <div class="time-datetime-picker-column" data-col="hour"></div>
+          <div class="time-datetime-picker-column" data-col="minute"></div>
+        </div>
+      </div>
     </div>
   `;
   taskLogModal.hidden = true;
   el.appendChild(taskLogModal);
+
+  const taskLogPickerWrap = taskLogModal.querySelector(".time-datetime-picker-wrap");
+  const taskLogPickerBackdrop = taskLogModal.querySelector(".time-datetime-picker-backdrop");
+
+  function closeDateTimePicker() {
+    taskLogPickerWrap.hidden = true;
+    taskLogPickerBackdrop.hidden = true;
+  }
+
+  taskLogPickerBackdrop?.addEventListener("click", closeDateTimePicker);
 
   const taskLogTitleEl = taskLogModal.querySelector(".time-task-setup-title");
   const taskLogTaskWrap = taskLogModal.querySelector(".time-task-log-task-wrap");
@@ -1888,7 +1979,6 @@ export function render() {
     return wrap;
   }
 
-  const taskLogPickerWrap = taskLogModal.querySelector(".time-datetime-picker-wrap");
   const taskLogPickerTitle = taskLogPickerWrap.querySelector(".time-datetime-picker-title");
 
   function createDateTimePickerModal(getOtherValue, onConfirm) {
@@ -2154,6 +2244,8 @@ export function render() {
     confirmBtn.addEventListener("click", () => {
       onConfirm?.(toValue(currentD));
       wrap.hidden = true;
+      const backdrop = wrap.closest(".time-task-log-panel")?.querySelector(".time-datetime-picker-backdrop");
+      if (backdrop) backdrop.hidden = true;
     });
 
     return {
@@ -2184,10 +2276,8 @@ export function render() {
         skipScrollSync = true;
         renderWheels();
         wrap.hidden = false;
-        const body = wrap.closest(".time-task-setup-body");
-        if (body) {
-          requestAnimationFrame(() => { body.scrollTop = 0; });
-        }
+        const backdrop = wrap.closest(".time-task-log-panel")?.querySelector(".time-datetime-picker-backdrop");
+        if (backdrop) backdrop.hidden = false;
         setTimeout(() => { skipScrollSync = false; }, 150);
       },
     };
@@ -2453,34 +2543,29 @@ export function render() {
       b.classList.toggle("selected", b.dataset.value === value);
     });
   }
-  function parseEnergyToPercent(val) {
+  function parseEnergyToValue(val) {
     const s = String(val || "").trim().replace(/%/g, "");
     if (!s) return null;
-    const n = parseInt(s, 10);
-    if (s === "1") return 20;
-    if (s === "2") return 40;
-    if (s === "3") return 60;
-    if (s === "4") return 80;
-    if (s === "5") return 100;
-    if (!isNaN(n) && n >= 0 && n <= 100) return n;
+    const n = parseInt(s.replace(/^\+/, ""), 10);
+    if (!isNaN(n) && n >= -50 && n <= 50) return n;
     return null;
   }
   function updateEnergySlider(value) {
-    const pct = parseEnergyToPercent(value);
+    const v = parseEnergyToValue(value);
     if (taskLogEnergySlider && taskLogEnergyValueEl) {
-      const v = pct != null ? pct : 50;
-      taskLogEnergySlider.value = v;
-      taskLogEnergyValueEl.textContent = v + "%";
-      taskLogEnergyValue = String(v);
-      if (taskLogEnergyFill) taskLogEnergyFill.style.width = v + "%";
+      const val = v != null ? v : 0;
+      taskLogEnergySlider.value = val;
+      taskLogEnergyValueEl.textContent = val > 0 ? `+${val}%` : val + "%";
+      taskLogEnergyValue = String(val);
+      if (taskLogEnergyFill) taskLogEnergyFill.style.width = (val + 50) + "%";
     }
   }
   if (taskLogEnergySlider && taskLogEnergyValueEl) {
     taskLogEnergySlider.addEventListener("input", () => {
       const v = parseInt(taskLogEnergySlider.value, 10);
-      taskLogEnergyValueEl.textContent = v + "%";
+      taskLogEnergyValueEl.textContent = v > 0 ? `+${v}%` : v + "%";
       taskLogEnergyValue = String(v);
-      if (taskLogEnergyFill) taskLogEnergyFill.style.width = v + "%";
+      if (taskLogEnergyFill) taskLogEnergyFill.style.width = (v + 50) + "%";
     });
   }
 
@@ -2546,7 +2631,7 @@ export function render() {
     taskLogModal.hidden = false;
     taskLogModal.style.zIndex = "1002";
     document.body.style.overflow = "hidden";
-    taskLogPickerWrap.hidden = true;
+    closeDateTimePicker();
     const bodyEl = taskLogModal.querySelector(".time-task-setup-body");
     if (bodyEl) bodyEl.scrollTop = 0;
     if (!taskLogTaskDropdown) {
@@ -2618,7 +2703,7 @@ export function render() {
     taskLogModal.hidden = false;
     taskLogModal.style.zIndex = "1002";
     document.body.style.overflow = "hidden";
-    taskLogPickerWrap.hidden = true;
+    closeDateTimePicker();
     const bodyEl = taskLogModal.querySelector(".time-task-setup-body");
     if (bodyEl) bodyEl.scrollTop = 0;
     if (!taskLogTaskDropdown) {
@@ -2658,13 +2743,13 @@ export function render() {
       taskLogFocusToggleInput.checked = (String(data.focus || "").trim()) !== "";
       if (taskLogFocusFields) taskLogFocusFields.hidden = !taskLogFocusToggleInput.checked;
     }
-    updateEnergySlider(taskLogEnergyValue || "50");
+    updateEnergySlider(taskLogEnergyValue || "0");
     updateFocusStepper(taskLogFocusValue || "0");
   }
 
   function closeTaskLogModal() {
     taskLogModal.hidden = true;
-    taskLogPickerWrap.hidden = true;
+    closeDateTimePicker();
     taskLogModal.style.zIndex = "";
     document.body.style.overflow = "";
     taskLogAddContext = null;
@@ -3083,8 +3168,11 @@ export function render() {
   closeBtn?.addEventListener("click", closeTaskSetupModal);
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      if (!taskLogModal.hidden) closeTaskLogModal();
-      else if (!addTaskModal.hidden) closeAddTaskModal();
+      if (!taskLogPickerWrap.hidden) {
+        closeDateTimePicker();
+      } else if (!taskLogModal.hidden) {
+        closeTaskLogModal();
+      } else if (!addTaskModal.hidden) closeAddTaskModal();
       else if (!taskSetupModal.hidden) closeTaskSetupModal();
     }
   });
@@ -3724,84 +3812,110 @@ export function render() {
     `;
     dash.appendChild(widgetProductivity);
 
-    // 5. 전일 비생산적 시간 사용 현황 (가로 막대, 시간만)
+    // 5. 전일 비생산적 시간 사용 현황 (도넛 - 활동명/태스크별)
     const nonProdRows = filtered.filter((r) => {
       const p = r.productivity || getProductivityFromCategory(r.category);
       return p === "nonproductive";
     });
-    const nonProdByCat = aggregateHoursByCategory(nonProdRows);
-    const nonProdEntries = Object.entries(nonProdByCat)
+    const nonProdByTask = aggregateHoursByTask(nonProdRows);
+    const nonProdEntries = Object.entries(nonProdByTask)
       .filter(([, v]) => v > 0)
-      .map(([c, v]) => ({
-        cat: c,
-        label: getCategoryLabel(c),
-        hrs: v,
-        color: CATEGORY_OPTIONS.find((o) => o.value === c)?.color || "",
+      .map(([task, hrs], i) => ({
+        label: task,
+        hrs,
+        stroke: TASK_BAR_COLORS[i % TASK_BAR_COLORS.length],
       }))
       .sort((a, b) => b.hrs - a.hrs);
     const nonProdTotal = nonProdEntries.reduce((s, x) => s + x.hrs, 0);
-    const maxNonProd = Math.max(...nonProdEntries.map((x) => x.hrs), 0.01);
+    const nonProdCirc = 2 * Math.PI * 40;
+    const nonProdOffset = nonProdCirc / 4;
+    let nonProdCum = 0;
+    const nonProdSegs = nonProdEntries.map((x) => {
+      const len = nonProdTotal > 0 ? (x.hrs / nonProdTotal) * nonProdCirc : 0;
+      const seg = { ...x, len, dashOffset: -nonProdOffset - nonProdCum };
+      nonProdCum += len;
+      return seg;
+    });
 
     const widgetNonProd = document.createElement("div");
     widgetNonProd.className =
-      "time-dashboard-widget time-dashboard-widget-time-bar";
-    const nonProdBarHtml = nonProdEntries
-      .map(
-        (x) => `
-      <div class="time-dash-bar-row">
-        <span class="time-dash-bar-label">${x.label}</span>
-        <div class="time-dash-bar-track">
-          <div class="time-dash-bar-fill ${x.color}" style="width:${(x.hrs / maxNonProd) * 100}%"></div>
-        </div>
-        <span class="time-dash-bar-value">${formatHoursDisplay(x.hrs)}</span>
-      </div>
-    `,
-      )
-      .join("");
-    widgetNonProd.innerHTML = `
+      "time-dashboard-widget time-dashboard-widget-time-bar time-dashboard-widget-donut";
+    widgetNonProd.innerHTML = nonProdEntries.length
+      ? `
       <div class="time-dashboard-widget-title">${periodLabel} 비생산적 시간 사용 현황</div>
-      <div class="time-dash-bar-total">총 ${formatHoursDisplay(nonProdTotal)}</div>
-      <div class="time-dash-bar-list">${nonProdEntries.length ? nonProdBarHtml : '<div class="time-dash-empty">기록이 없습니다</div>'}</div>
+      <div class="time-dash-donut-wrap">
+        <svg class="time-dash-donut" viewBox="0 0 100 100">
+          <circle class="time-dash-donut-bg" cx="50" cy="50" r="40"/>
+          ${nonProdSegs.map((s) => `<circle class="time-dash-donut-seg" cx="50" cy="50" r="40" stroke="${s.stroke}" stroke-dasharray="${s.len} ${nonProdCirc - s.len}" stroke-dashoffset="${s.dashOffset}"/>`).join("")}
+        </svg>
+        <div class="time-dash-donut-center">
+          <span class="time-dash-donut-total">${formatHoursDisplay(nonProdTotal)}</span>
+          <span class="time-dash-donut-label">Total</span>
+        </div>
+      </div>
+      <div class="time-dash-legend">
+        ${nonProdEntries.map((x) => {
+          const pct = nonProdTotal > 0 ? ((x.hrs / nonProdTotal) * 100).toFixed(1) : 0;
+          return `<span class="time-dash-legend-item"><i style="background:${x.stroke}"></i>${x.label} ${formatHoursDisplay(x.hrs)} (${pct}%)</span>`;
+        }).join("")}
+      </div>
+    `
+      : `
+      <div class="time-dashboard-widget-title">${periodLabel} 비생산적 시간 사용 현황</div>
+      <div class="time-dash-empty">기록이 없습니다</div>
     `;
 
-    // 6. 전일 생산적 시간 사용 현황 (가로 막대, 시간만)
+    // 6. 전일 생산적 시간 사용 현황 (도넛 - 활동명/태스크별)
     const prodRows = filtered.filter((r) => {
       const p = r.productivity || getProductivityFromCategory(r.category);
       return p === "productive";
     });
-    const prodByCat = aggregateHoursByCategory(prodRows);
-    const prodEntries = Object.entries(prodByCat)
+    const prodByTask = aggregateHoursByTask(prodRows);
+    const prodEntries = Object.entries(prodByTask)
       .filter(([, v]) => v > 0)
-      .map(([c, v]) => ({
-        cat: c,
-        label: getCategoryLabel(c),
-        hrs: v,
-        color: CATEGORY_OPTIONS.find((o) => o.value === c)?.color || "",
+      .map(([task, hrs], i) => ({
+        label: task,
+        hrs,
+        stroke: TASK_BAR_COLORS[i % TASK_BAR_COLORS.length],
       }))
       .sort((a, b) => b.hrs - a.hrs);
     const prodTotal = prodEntries.reduce((s, x) => s + x.hrs, 0);
-    const maxProd = Math.max(...prodEntries.map((x) => x.hrs), 0.01);
+    const prodCirc = 2 * Math.PI * 40;
+    const prodOffset = prodCirc / 4;
+    let prodCum = 0;
+    const prodSegs = prodEntries.map((x) => {
+      const len = prodTotal > 0 ? (x.hrs / prodTotal) * prodCirc : 0;
+      const seg = { ...x, len, dashOffset: -prodOffset - prodCum };
+      prodCum += len;
+      return seg;
+    });
 
     const widgetProd = document.createElement("div");
     widgetProd.className =
-      "time-dashboard-widget time-dashboard-widget-time-bar";
-    const prodBarHtml = prodEntries
-      .map(
-        (x) => `
-      <div class="time-dash-bar-row">
-        <span class="time-dash-bar-label">${x.label}</span>
-        <div class="time-dash-bar-track">
-          <div class="time-dash-bar-fill ${x.color}" style="width:${(x.hrs / maxProd) * 100}%"></div>
-        </div>
-        <span class="time-dash-bar-value">${formatHoursDisplay(x.hrs)}</span>
-      </div>
-    `,
-      )
-      .join("");
-    widgetProd.innerHTML = `
+      "time-dashboard-widget time-dashboard-widget-time-bar time-dashboard-widget-donut";
+    widgetProd.innerHTML = prodEntries.length
+      ? `
       <div class="time-dashboard-widget-title">${periodLabel} 생산적 시간 사용 현황</div>
-      <div class="time-dash-bar-total">총 ${formatHoursDisplay(prodTotal)}</div>
-      <div class="time-dash-bar-list">${prodEntries.length ? prodBarHtml : '<div class="time-dash-empty">기록이 없습니다</div>'}</div>
+      <div class="time-dash-donut-wrap">
+        <svg class="time-dash-donut" viewBox="0 0 100 100">
+          <circle class="time-dash-donut-bg" cx="50" cy="50" r="40"/>
+          ${prodSegs.map((s) => `<circle class="time-dash-donut-seg" cx="50" cy="50" r="40" stroke="${s.stroke}" stroke-dasharray="${s.len} ${prodCirc - s.len}" stroke-dashoffset="${s.dashOffset}"/>`).join("")}
+        </svg>
+        <div class="time-dash-donut-center">
+          <span class="time-dash-donut-total">${formatHoursDisplay(prodTotal)}</span>
+          <span class="time-dash-donut-label">Total</span>
+        </div>
+      </div>
+      <div class="time-dash-legend">
+        ${prodEntries.map((x) => {
+          const pct = prodTotal > 0 ? ((x.hrs / prodTotal) * 100).toFixed(1) : 0;
+          return `<span class="time-dash-legend-item"><i style="background:${x.stroke}"></i>${x.label} ${formatHoursDisplay(x.hrs)} (${pct}%)</span>`;
+        }).join("")}
+      </div>
+    `
+      : `
+      <div class="time-dashboard-widget-title">${periodLabel} 생산적 시간 사용 현황</div>
+      <div class="time-dash-empty">기록이 없습니다</div>
     `;
 
     dash.appendChild(widgetProd);
@@ -3842,6 +3956,141 @@ export function render() {
       <div class="time-dash-bar-list time-dash-task-bar-list">${taskEntries.length ? taskBarHtml : '<div class="time-dash-empty">기록이 없습니다</div>'}</div>
     `;
     dash.appendChild(widgetTaskBar);
+
+    // 방해 빈도 곡선 (0~24시, 부드러운 곡선, Y축 눈금)
+    const focusByHour = aggregateFocusByHour(filtered);
+    const focusData = [];
+    for (let h = 0; h <= 23; h++) focusData.push({ hour: h, value: focusByHour[h] || 0 });
+    const totalFocus = focusData.reduce((s, x) => s + x.value, 0);
+    const maxFocus = Math.max(...focusData.map((x) => x.value), 1);
+    const chartH = 220;
+    const chartW = 900;
+    const padLeft = 48;
+    const padRight = 16;
+    const padTop = 32;
+    const padBottom = 56;
+    const plotH = chartH - padTop - padBottom;
+    const plotW = chartW - padLeft - padRight;
+    const hours = focusData.map((x) => x.hour);
+    const values = focusData.map((x) => x.value);
+    const linePoints = values.map((v, i) => {
+      const x = padLeft + (i / Math.max(1, hours.length - 1)) * plotW;
+      const y = padTop + plotH - (v / maxFocus) * plotH;
+      return { x, y };
+    });
+    /** Catmull-Rom 스플라인 → 부드러운 베지어 곡선 path 생성 */
+    function pointsToSmoothCurve(pts, tension = 1) {
+      if (pts.length < 2) return "";
+      const t = tension;
+      let d = `M ${pts[0].x} ${pts[0].y}`;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[Math.max(0, i - 1)];
+        const p1 = pts[i];
+        const p2 = pts[i + 1];
+        const p3 = pts[Math.min(pts.length - 1, i + 2)];
+        const cp1x = p1.x + (p2.x - p0.x) / 6 * t;
+        const cp1y = p1.y + (p2.y - p0.y) / 6 * t;
+        const cp2x = p2.x - (p3.x - p1.x) / 6 * t;
+        const cp2y = p2.y - (p3.y - p1.y) / 6 * t;
+        d += ` C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${p2.x} ${p2.y}`;
+      }
+      return d;
+    }
+    const linePathD = linePoints.length >= 2 ? pointsToSmoothCurve(linePoints) : (linePoints.length === 1 ? `M ${linePoints[0].x} ${linePoints[0].y}` : "");
+    const widgetFocusCurve = document.createElement("div");
+    widgetFocusCurve.className = "time-dashboard-widget time-dashboard-widget-focus-curve";
+    const gridIndices = hours.map((_, i) => i).filter((i) => i % 3 === 0 || i === hours.length - 1);
+    const gridLines = gridIndices.map((i) => {
+      const x = padLeft + (i / Math.max(1, hours.length - 1)) * plotW;
+      return `<line x1="${x}" y1="${padTop}" x2="${x}" y2="${padTop + plotH}" stroke="#e5e7eb" stroke-width="0.5" stroke-dasharray="2,2"/>`;
+    }).join("");
+    const hGridLines = [0.25, 0.5, 0.75, 1].map((rat) => {
+      const y = padTop + plotH - rat * plotH;
+      return `<line x1="${padLeft}" y1="${y}" x2="${padLeft + plotW}" y2="${y}" stroke="#e5e7eb" stroke-width="0.5" stroke-dasharray="2,2"/>`;
+    }).join("");
+    const yTickCount = 5;
+    const yTicks = [];
+    for (let i = 0; i <= yTickCount; i++) {
+      const rat = i / yTickCount;
+      const val = Math.round(rat * maxFocus);
+      if (i > 0 && val === yTicks[yTicks.length - 1]?.val) continue;
+      yTicks.push({ val, y: padTop + plotH - rat * plotH });
+    }
+    const yLabels = yTicks.map((t) => `<text x="${padLeft - 8}" y="${t.y + 4}" text-anchor="end" font-size="10" fill="#6b7280">${t.val}</text>`).join("");
+    const xNumY = chartH - 24;
+    const xTitleY = chartH - 4;
+    const xLabels = gridIndices.map((i) => {
+      const x = padLeft + (i / Math.max(1, hours.length - 1)) * plotW;
+      return `<text x="${x}" y="${xNumY}" text-anchor="middle" font-size="10" fill="#6b7280">${hours[i]}</text>`;
+    }).join("");
+    widgetFocusCurve.innerHTML = totalFocus > 0 ? `
+      <div class="time-dashboard-widget-title">방해 빈도 곡선</div>
+      <div class="time-dash-focus-curve-desc">${periodLabel} · 시각별 방해횟수</div>
+      <div class="time-dash-focus-curve-svg-wrap">
+        <svg class="time-dash-focus-curve-svg" viewBox="0 0 ${chartW} ${chartH}" preserveAspectRatio="xMidYMid meet">
+          <text x="${padLeft - 4}" y="14" text-anchor="end" font-size="9" fill="#9ca3af">방해 빈도</text>
+          ${yLabels}
+          ${gridLines}
+          ${hGridLines}
+          <path d="${linePathD}" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          ${xLabels}
+          <text x="${padLeft + plotW / 2}" y="${xTitleY}" text-anchor="middle" font-size="9" fill="#9ca3af">시각</text>
+        </svg>
+      </div>
+    ` : `
+      <div class="time-dashboard-widget-title">방해 빈도 곡선</div>
+      <div class="time-dash-focus-curve-desc">${periodLabel} · 시각별 방해횟수</div>
+      <div class="time-dash-empty">방해 기록이 없습니다</div>
+    `;
+    dash.appendChild(widgetFocusCurve);
+
+    // 성취능력 곡선 (방해 빈도와 동일한 방식, Y축 -50~+50%)
+    const energyByHour = aggregateEnergyByHour(filtered);
+    const energyData = [];
+    for (let h = 0; h <= 23; h++) {
+      const v = energyByHour[h];
+      energyData.push({ hour: h, value: v != null ? v : 0 });
+    }
+    const hasEnergyData = filtered.some((r) => parseEnergyToNumber(r.energy) != null);
+    const energyLinePoints = energyData.map((v, i) => {
+      const x = padLeft + (i / Math.max(1, energyData.length - 1)) * plotW;
+      const yVal = Math.max(-50, Math.min(50, v.value));
+      const y = padTop + plotH - ((yVal + 50) / 100) * plotH;
+      return { x, y };
+    });
+    const energyPathD = energyLinePoints.length >= 2 ? pointsToSmoothCurve(energyLinePoints) : (energyLinePoints.length === 1 ? `M ${energyLinePoints[0].x} ${energyLinePoints[0].y}` : "");
+    const energyYTicks = [-50, -25, 0, 25, 50].map((val) => ({
+      val: val > 0 ? `+${val}` : String(val),
+      y: padTop + plotH - ((val + 50) / 100) * plotH
+    }));
+    const energyYLabels = energyYTicks.map((t) => `<text x="${padLeft - 8}" y="${t.y + 4}" text-anchor="end" font-size="10" fill="#6b7280">${t.val}%</text>`).join("");
+    const energyHGridLines = energyYTicks.map((t) => {
+      const y = t.y;
+      return `<line x1="${padLeft}" y1="${y}" x2="${padLeft + plotW}" y2="${y}" stroke="#e5e7eb" stroke-width="0.5" stroke-dasharray="2,2"/>`;
+    }).join("");
+    const widgetEnergyCurve = document.createElement("div");
+    widgetEnergyCurve.className = "time-dashboard-widget time-dashboard-widget-focus-curve time-dashboard-widget-energy-curve";
+    widgetEnergyCurve.innerHTML = hasEnergyData ? `
+      <div class="time-dashboard-widget-title">성취능력 곡선</div>
+      <div class="time-dash-focus-curve-desc">${periodLabel} · 시각별 성취능력 평균</div>
+      <div class="time-dash-focus-curve-svg-wrap">
+        <svg class="time-dash-focus-curve-svg" viewBox="0 0 ${chartW} ${chartH}" preserveAspectRatio="xMidYMid meet">
+          <text x="${padLeft - 4}" y="14" text-anchor="end" font-size="9" fill="#9ca3af">성취능력</text>
+          ${energyYLabels}
+          ${gridLines}
+          ${energyHGridLines}
+          <line x1="${padLeft}" y1="${padTop + plotH / 2}" x2="${padLeft + plotW}" y2="${padTop + plotH / 2}" stroke="#d1d5db" stroke-width="0.5" stroke-dasharray="4,2"/>
+          <path d="${energyPathD}" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          ${xLabels}
+          <text x="${padLeft + plotW / 2}" y="${xTitleY}" text-anchor="middle" font-size="9" fill="#9ca3af">시각</text>
+        </svg>
+      </div>
+    ` : `
+      <div class="time-dashboard-widget-title">성취능력 곡선</div>
+      <div class="time-dash-focus-curve-desc">${periodLabel} · 시각별 성취능력 평균</div>
+      <div class="time-dash-empty">성취능력 기록이 없습니다</div>
+    `;
+    dash.appendChild(widgetEnergyCurve);
 
     if (widgetDailyRev) dash.appendChild(widgetDailyRev);
 
@@ -4301,7 +4550,14 @@ export function render() {
   }
 
   function updateFilterBarVisibility(view) {
-    if (view === "newtab") {
+    if (view === "blank") {
+      filterTabs.style.display = "none";
+      if (taskSetupBtn) taskSetupBtn.style.display = "none";
+      dayWrap.style.display = "none";
+      monthWrap.style.display = "none";
+      rangeWrap.style.display = "none";
+      budgetDateWrap.style.display = "none";
+    } else if (view === "newtab") {
       filterTabs.style.display = "none";
       if (taskSetupBtn) taskSetupBtn.style.display = "none";
       dayWrap.style.display = "none";
@@ -4336,7 +4592,7 @@ export function render() {
       cachedRows = getFullRowsForFilter(true);
     }
     const rowsToUse =
-      view === "dashboard" || view === "newtab"
+      view === "dashboard" || view === "newtab" || view === "blank"
         ? cachedRows
         : getFilteredRows(cachedRows);
     viewTabs.querySelectorAll(".time-view-tab").forEach((btn) => {
@@ -4345,6 +4601,8 @@ export function render() {
     updateFilterBarVisibility(view);
     if (view === "all") {
       renderAll(rowsToUse);
+    } else if (view === "blank") {
+      contentWrap.innerHTML = "";
     } else if (view === "productivity") {
       renderByProductivity(rowsToUse);
     } else if (view === "dashboard") {
@@ -4358,7 +4616,7 @@ export function render() {
       );
     }
     totalFooter.style.display =
-      view === "dashboard" || view === "newtab" ? "none" : "";
+      view === "dashboard" || view === "newtab" || view === "blank" ? "none" : "";
     updateTotal();
   }
 
