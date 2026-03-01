@@ -17,7 +17,7 @@ const TABS = [
   { id: "calendar", label: "캘린더" },
   { id: "kpi", label: "인생 KPI" },
   { id: "time", label: "시간가계부" },
-  { id: "routine", label: "데일리 루틴 트랙" },
+  { id: "routine", label: "루틴/해빗트랙커" },
   { id: "workschedule", label: "근무표" },
   { id: "asset", label: "자산관리" },
   { id: "dream", label: "꿈" },

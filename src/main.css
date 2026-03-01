@@ -10707,7 +10707,7 @@ body.kpi-resizing {
   background: #eee;
 }
 
-/* ----- 데일리 루틴 트랙 ----- */
+/* ----- 루틴/해빗트랙커 ----- */
 .routine-view {
   padding: 1rem;
 }
@@ -10992,6 +10992,12 @@ body.kpi-resizing {
   border-radius: 0.35rem;
   cursor: pointer;
   transition: border-color 0.15s, transform 0.1s;
+  opacity: 0.55;
+}
+
+.routine-color-swatch:hover,
+.routine-color-swatch.selected {
+  opacity: 1;
 }
 
 .routine-color-swatch:hover {
@@ -11018,6 +11024,29 @@ body.kpi-resizing {
 .routine-add-end:focus {
   outline: none;
   border-color: #9ca3af;
+}
+
+.routine-add-actions-delete {
+  margin-top: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.routine-add-btn-delete {
+  width: 100%;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #9b2c2c;
+  background: #fecaca;
+  border: 1px solid #fca5a5;
+  border-radius: 0.35rem;
+  cursor: pointer;
+}
+
+.routine-add-btn-delete:hover {
+  background: #fca5a5;
+  border-color: #f87171;
 }
 
 .routine-add-actions {
@@ -11121,6 +11150,14 @@ body.kpi-resizing {
   min-width: 36px;
   width: 40px;
   font-size: 0.75rem;
+}
+
+.routine-track-day-toggle {
+  cursor: pointer;
+}
+
+.routine-track-day-toggle:hover {
+  color: #374151;
 }
 
 .routine-track-cell {

@@ -1,5 +1,5 @@
 /**
- * 데일리 루틴 트랙
+ * 루틴/해빗트랙커
  * 큰 루틴(아코디언) → 세부 루틴(테이블 행) 구조
  * 루틴추가 → 팝업(큰 루틴 이름, 시작일, 종료일) → 아코디언+테이블
  * 테이블 내 +추가 → 루틴 1-1, 1-2, 1-3... 세부 행 추가
@@ -116,7 +116,7 @@ function createAddRoutineModal(onAdd) {
       </div>
       <div class="routine-add-body">
         <div class="routine-add-field">
-          <label>루틴 이름 (큰 루틴)</label>
+          <label>루틴 이름</label>
           <input type="text" class="routine-add-name" placeholder="예: 모닝루틴" />
         </div>
         <div class="routine-add-field">
@@ -128,7 +128,7 @@ function createAddRoutineModal(onAdd) {
           <input type="date" class="routine-add-end" />
         </div>
         <div class="routine-add-field">
-          <label>색상 (프로그레스바·체크박스)</label>
+          <label>색상</label>
           <div class="routine-add-color-picker"></div>
         </div>
       </div>
@@ -218,7 +218,7 @@ function createAddRoutineModal(onAdd) {
   return { modal, open };
 }
 
-function createEditRoutineModal(onSave) {
+function createEditRoutineModal(onSave, onDelete) {
   const modal = document.createElement("div");
   modal.className = "routine-add-modal";
   modal.hidden = true;
@@ -243,8 +243,11 @@ function createEditRoutineModal(onSave) {
           <input type="date" class="routine-add-end" />
         </div>
         <div class="routine-add-field">
-          <label>색상 (프로그레스바·체크박스)</label>
+          <label>색상</label>
           <div class="routine-add-color-picker"></div>
+        </div>
+        <div class="routine-add-field routine-add-actions-delete">
+          <button type="button" class="routine-add-btn-delete">이 루틴 삭제 (복구불가)</button>
         </div>
       </div>
       <div class="routine-add-actions">
@@ -258,6 +261,7 @@ function createEditRoutineModal(onSave) {
   const closeBtn = modal.querySelector(".routine-add-close");
   const cancelBtn = modal.querySelector(".routine-add-btn-cancel");
   const confirmBtn = modal.querySelector(".routine-add-btn-confirm");
+  const deleteBtn = modal.querySelector(".routine-add-btn-delete");
   const nameInput = modal.querySelector(".routine-add-name");
   const startInput = modal.querySelector(".routine-add-start");
   const endInput = modal.querySelector(".routine-add-end");
@@ -325,6 +329,14 @@ function createEditRoutineModal(onSave) {
     onSave(routine, { name, start, end, days, color: selectedColor });
   }
 
+  deleteBtn.addEventListener("click", () => {
+    const routine = modal._editingRoutine;
+    if (routine && onDelete) {
+      close();
+      onDelete(routine);
+    }
+  });
+
   backdrop.addEventListener("click", close);
   closeBtn.addEventListener("click", close);
   cancelBtn.addEventListener("click", close);
@@ -381,7 +393,7 @@ function createRoutineAccordion(routine, onItemChange, onRoutineEdit, openEditMo
     const fill = progressWrap.querySelector(".routine-accordion-progress-fill");
     const pctEl = progressWrap.querySelector(".routine-accordion-progress-pct");
     if (fill) fill.style.width = pct + "%";
-    if (pctEl) pctEl.textContent = pct + "%";
+    if (pctEl) pctEl.textContent = pct === 100 ? "완료" : pct + "%";
   }
   header.appendChild(toggleBtn);
   header.appendChild(titleWrap);
@@ -407,8 +419,29 @@ function createRoutineAccordion(routine, onItemChange, onRoutineEdit, openEditMo
   headerRow.appendChild(nameTh);
   for (let i = 1; i <= routine.days; i++) {
     const th = document.createElement("th");
-    th.className = "routine-track-th routine-track-th-day";
+    th.className = "routine-track-th routine-track-th-day routine-track-day-toggle";
     th.textContent = `D${i}`;
+    th.title = "클릭 시 해당 날짜 전체 선택/해제";
+    const dayIndex = i - 1;
+    th.addEventListener("click", () => {
+      const rows = tbody.querySelectorAll(".routine-track-row");
+      const allChecked = items.every((it) => loadCheckState(routine.id, it.id, dayIndex));
+      const newState = !allChecked;
+      for (const tr of rows) {
+        const itemId = tr.dataset.itemId;
+        const item = items.find((x) => x.id === itemId);
+        if (!item) continue;
+        const checkCells = tr.querySelectorAll(".routine-track-cell.routine-track-check");
+        const td = checkCells[dayIndex];
+        const input = td?.querySelector('input[type="checkbox"]');
+        if (input) {
+          input.checked = newState;
+          saveCheckState(routine.id, item.id, dayIndex, newState);
+          td.classList.toggle("is-checked", newState);
+        }
+      }
+      updateProgressBar();
+    });
     headerRow.appendChild(th);
   }
   const actionsTh = document.createElement("th");
@@ -543,7 +576,7 @@ export function render() {
   const headerRow = document.createElement("div");
   headerRow.className = "routine-view-header";
   const h = document.createElement("h2");
-  h.textContent = "데일리 루틴 트랙";
+  h.textContent = "루틴/해빗트랙커";
   headerRow.appendChild(h);
   const addBtn = document.createElement("button");
   addBtn.type = "button";
@@ -555,7 +588,7 @@ export function render() {
   const viewTabs = document.createElement("div");
   viewTabs.className = "routine-view-tabs";
   viewTabs.innerHTML = `
-    <button type="button" class="routine-view-tab active" data-view="track">루틴 트랙</button>
+    <button type="button" class="routine-view-tab active" data-view="track">트랙커</button>
     <button type="button" class="routine-view-tab" data-view="dashboard">대시보드</button>
   `;
   el.appendChild(viewTabs);
@@ -584,27 +617,34 @@ export function render() {
   contentWrap.appendChild(dashboardPanel);
   el.appendChild(contentWrap);
 
-  const { modal: editModal, open: openEdit } = createEditRoutineModal((routine, data) => {
-    const prevDays = routine.days;
-    routine.name = data.name;
-    routine.start = data.start;
-    routine.end = data.end;
-    routine.days = data.days;
-    routine.color = data.color || ROUTINE_PASTEL_COLORS[0];
-    saveRoutines(routines);
+  const { modal: editModal, open: openEdit } = createEditRoutineModal(
+    (routine, data) => {
+      routine.name = data.name;
+      routine.start = data.start;
+      routine.end = data.end;
+      routine.days = data.days;
+      routine.color = data.color || ROUTINE_PASTEL_COLORS[0];
+      saveRoutines(routines);
 
-    const accordion = accordionMap[routine.id];
-    const wasCollapsed = accordion?.classList.contains("is-collapsed");
-    const nextSibling = accordion?.nextElementSibling;
-    if (accordion) {
-      accordion.remove();
+      const accordion = accordionMap[routine.id];
+      const wasCollapsed = accordion?.classList.contains("is-collapsed");
+      const nextSibling = accordion?.nextElementSibling;
+      if (accordion) accordion.remove();
+      const newAccordion = createAccordionForRoutine(routine);
+      accordionMap[routine.id] = newAccordion;
+      accordionListEl.insertBefore(newAccordion, nextSibling || null);
+      if (wasCollapsed) newAccordion.classList.add("is-collapsed");
+      newAccordion._updateTitle(routine.name);
+    },
+    (routine) => {
+      routines = routines.filter((r) => r.id !== routine.id);
+      saveRoutines(routines);
+      const accordion = accordionMap[routine.id];
+      if (accordion) accordion.remove();
+      delete accordionMap[routine.id];
+      updateEmptyState();
     }
-    const newAccordion = createAccordionForRoutine(routine);
-    accordionMap[routine.id] = newAccordion;
-    accordionListEl.insertBefore(newAccordion, nextSibling || null);
-    if (wasCollapsed) newAccordion.classList.add("is-collapsed");
-    newAccordion._updateTitle(routine.name);
-  });
+  );
 
   function createAccordionForRoutine(routine) {
     return createRoutineAccordion(
