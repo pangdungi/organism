@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>인생 KPI 테이블 구조</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+        color: #333;
+        background: #f8f9fa;
+      }
+      h1 {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+        color: #1a1a1a;
+      }
+      .subtitle {
+        color: #666;
+        font-size: 0.9rem;
+        margin-bottom: 2rem;
+      }
+      h2 {
+        font-size: 1.1rem;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        color: #333;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      }
+      th,
+      td {
+        padding: 0.75rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+      }
+      th {
+        background: #f1f3f5;
+        font-weight: 600;
+        font-size: 0.85rem;
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      tr:hover td {
+        background: #fafafa;
+      }
+      .type {
+        font-family: monospace;
+        font-size: 0.85em;
+        color: #555;
+      }
+      .required {
+        color: #c92a2a;
+        font-weight: 600;
+      }
+      .optional {
+        color: #868e96;
+      }
+      .note {
+        margin-top: 1.5rem;
+        padding: 1rem;
+        background: #e7f5ff;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        color: #1971c2;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>인생 KPI 테이블 구조</h1>
+    <p class="subtitle">
+      Kpi.js 기준 · 백엔드에 사용자 아이디별로 KPI 데이터가 저장되는 방식
+    </p>
+
+    <h2>1. Kpi.js에서 사용하는 데이터 구조 (프론트엔드)</h2>
+    <p style="font-size: 0.9rem; color: #666; margin-bottom: 0.75rem">
+      collectTasksFromDOM()이 반환하는 task 객체
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>필드명</th>
+          <th>한글명</th>
+          <th>타입</th>
+          <th>설명</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>categoryId</code></td>
+          <td>카테고리ID</td>
+          <td class="type">string</td>
+          <td>dream | sideincome | happiness | health</td>
+        </tr>
+        <tr>
+          <td><code>status</code></td>
+          <td>상태</td>
+          <td class="type">string</td>
+          <td>진행중 | 시작안함 | 하기로결정함 | 달성완료 | 달성실패</td>
+        </tr>
+        <tr>
+          <td><code>name</code></td>
+          <td>목표명</td>
+          <td class="type">string</td>
+          <td>목표 설명</td>
+        </tr>
+        <tr>
+          <td><code>startDate</code></td>
+          <td>시작일</td>
+          <td class="type">string</td>
+          <td>YYYY-MM-DD</td>
+        </tr>
+        <tr>
+          <td><code>dueDate</code></td>
+          <td>마감일</td>
+          <td class="type">string</td>
+          <td>YYYY-MM-DD</td>
+        </tr>
+        <tr>
+          <td><code>kpi</code></td>
+          <td>KPI 설명</td>
+          <td class="type">string</td>
+          <td>KPI 설명</td>
+        </tr>
+        <tr>
+          <td><code>actual</code></td>
+          <td>실제값</td>
+          <td class="type">string</td>
+          <td>현재 달성값</td>
+        </tr>
+        <tr>
+          <td><code>target</code></td>
+          <td>목표값</td>
+          <td class="type">string</td>
+          <td>목표값</td>
+        </tr>
+        <tr>
+          <td><code>memo</code></td>
+          <td>메모</td>
+          <td class="type">string</td>
+          <td>사이드 패널 메모</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>2. Kpi.js 카테고리/상태 값</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>구분</th>
+          <th>id / value</th>
+          <th>label (표시)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td rowspan="4">카테고리 (CATEGORIES)</td>
+          <td>dream</td>
+          <td>꿈(원하는 삶)</td>
+        </tr>
+        <tr>
+          <td>sideincome</td>
+          <td>부수입(시급을 올리는 것)</td>
+        </tr>
+        <tr>
+          <td>happiness</td>
+          <td>행복(진짜 만족)</td>
+        </tr>
+        <tr>
+          <td>health</td>
+          <td>건강</td>
+        </tr>
+        <tr>
+          <td rowspan="5">상태 (STATUS_OPTIONS)</td>
+          <td>진행중</td>
+          <td>진행 중</td>
+        </tr>
+        <tr>
+          <td>시작안함</td>
+          <td>시작 안함</td>
+        </tr>
+        <tr>
+          <td>하기로결정함</td>
+          <td>하기로 결정함</td>
+        </tr>
+        <tr>
+          <td>달성완료</td>
+          <td>달성완료</td>
+        </tr>
+        <tr>
+          <td>달성실패</td>
+          <td>달성실패</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>3. 백엔드 컬럼 정의 (life_kpis 테이블)</h2>
+    <p style="font-size: 0.9rem; color: #666; margin-bottom: 0.75rem">
+      Kpi.js 필드 → DB 컬럼 매핑
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>컬럼명</th>
+          <th>한글명</th>
+          <th>타입</th>
+          <th>필수</th>
+          <th>Kpi.js 매핑</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>id</code></td>
+          <td>ID</td>
+          <td class="type">UUID</td>
+          <td class="required">O</td>
+          <td>고유키 (자동생성)</td>
+        </tr>
+        <tr>
+          <td><code>user_id</code></td>
+          <td>사용자ID</td>
+          <td class="type">UUID</td>
+          <td class="required">O</td>
+          <td>로그인 사용자 (auth.users.id)</td>
+        </tr>
+        <tr>
+          <td><code>category</code></td>
+          <td>카테고리</td>
+          <td class="type">string</td>
+          <td class="required">O</td>
+          <td>← task.categoryId (dream/sideincome/happiness/health)</td>
+        </tr>
+        <tr>
+          <td><code>goal_name</code></td>
+          <td>목표이름</td>
+          <td class="type">텍스트</td>
+          <td class="required">O</td>
+          <td>← task.name</td>
+        </tr>
+        <tr>
+          <td><code>start_date</code></td>
+          <td>시작일</td>
+          <td class="type">날짜</td>
+          <td class="optional">X</td>
+          <td>← task.startDate</td>
+        </tr>
+        <tr>
+          <td><code>due_date</code></td>
+          <td>마감일</td>
+          <td class="type">날짜</td>
+          <td class="optional">X</td>
+          <td>← task.dueDate</td>
+        </tr>
+        <tr>
+          <td><code>status</code></td>
+          <td>현재상태</td>
+          <td class="type">string</td>
+          <td class="required">O</td>
+          <td>
+            ← task.status (진행중/시작안함/하기로결정함/달성완료/달성실패)
+          </td>
+        </tr>
+        <tr>
+          <td><code>kpi_name</code></td>
+          <td>KPI이름</td>
+          <td class="type">텍스트</td>
+          <td class="optional">X</td>
+          <td>← task.kpi</td>
+        </tr>
+        <tr>
+          <td><code>actual_value</code></td>
+          <td>실제값</td>
+          <td class="type">텍스트</td>
+          <td class="optional">X</td>
+          <td>← task.actual</td>
+        </tr>
+        <tr>
+          <td><code>target_value</code></td>
+          <td>목표값</td>
+          <td class="type">텍스트</td>
+          <td class="optional">X</td>
+          <td>← task.target</td>
+        </tr>
+        <tr>
+          <td><code>memo</code></td>
+          <td>메모</td>
+          <td class="type">텍스트</td>
+          <td class="optional">X</td>
+          <td>← task.memo (사이드 패널 메모)</td>
+        </tr>
+        <tr>
+          <td><code>parent_goal_id</code></td>
+          <td>상위목표ID</td>
+          <td class="type">UUID</td>
+          <td class="optional">X</td>
+          <td>하위 목표일 때 상위 id (+ 하위 버튼)</td>
+        </tr>
+        <tr>
+          <td><code>created_at</code></td>
+          <td>등록일시</td>
+          <td class="type">날짜시간</td>
+          <td class="required">O</td>
+          <td>자동 생성</td>
+        </tr>
+        <tr>
+          <td><code>updated_at</code></td>
+          <td>수정일시</td>
+          <td class="type">날짜시간</td>
+          <td class="required">O</td>
+          <td>자동 수정</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>4. 저장 예시 (Kpi.js 입력 → DB 저장)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>user_id</th>
+          <th>category</th>
+          <th>goal_name</th>
+          <th>start_date</th>
+          <th>due_date</th>
+          <th>status</th>
+          <th>kpi_name</th>
+          <th>actual_value</th>
+          <th>target_value</th>
+          <th>parent_goal_id</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>user_abc123</td>
+          <td>dream</td>
+          <td>
+            누구나 따라할 수 있는 "시스템형 시간관리법" 프레임워크를 완성한다
+          </td>
+          <td>2026-01-01</td>
+          <td>2026-02-15</td>
+          <td>진행중</td>
+          <td>프레임워크 진척률(%): 0→100</td>
+          <td>10%</td>
+          <td>100%</td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>user_abc123</td>
+          <td>dream</td>
+          <td>타겟 독자 정의(페르소나 2-3개)+문제/해결 메시지 한 문장으로</td>
+          <td>—</td>
+          <td>—</td>
+          <td>시작안함</td>
+          <td>최종 파일 품질 체크리스트 통과율: 목표 95%+</td>
+          <td>0</td>
+          <td>95%</td>
+          <td>위 행의 id</td>
+        </tr>
+        <tr>
+          <td>user_abc123</td>
+          <td>dream</td>
+          <td>타겟 3개 포트폴리오 만들기</td>
+          <td>—</td>
+          <td>—</td>
+          <td>시작안함</td>
+          <td>(세부계획 참조)</td>
+          <td>0</td>
+          <td>3</td>
+          <td>위 행의 id</td>
+        </tr>
+        <tr>
+          <td>user_abc123</td>
+          <td>sideincome</td>
+          <td>2026년 안에 대출 상환 완료한다</td>
+          <td>2026-02-28</td>
+          <td>2026-03-17</td>
+          <td>하기로결정함</td>
+          <td>대출잔액 0원</td>
+          <td>0원</td>
+          <td>0원</td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>user_abc123</td>
+          <td>sideincome</td>
+          <td>신용카드를 사용하지 않는다</td>
+          <td>2026-02-18</td>
+          <td>—</td>
+          <td>진행중</td>
+          <td>신용카드 사용 안 한 날 30일</td>
+          <td>1</td>
+          <td>30일</td>
+          <td>—</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      → 같은 user_id로 여러 행이 쌓이고,
+      category(dream/sideincome/happiness/health)와 parent_goal_id로 상위·하위
+      목표를 구분합니다. (Kpi.js CATEGORIES, STATUS_OPTIONS 기준)
+    </div>
+
+    <hr style="margin: 3rem 0; border: none; border-top: 1px solid #dee2e6" />
+
+    <h1>시간가계부 테이블 구조</h1>
+    <p class="subtitle">
+      Time.js 기준 · 백엔드에 사용자 아이디별로 시간가계부 데이터가 저장되는
+      방식
+    </p>
+
+    <h2>1. Time.js에서 사용하는 데이터 구조 (프론트엔드)</h2>
+    <p style="font-size: 0.9rem; color: #666; margin-bottom: 0.75rem">
+      collectRowsFromDOM()이 반환하는 row 객체
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>필드명</th>
+          <th>한글명</th>
+          <th>타입</th>
+          <th>설명</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>taskName</code></td>
+          <td>과제명</td>
+          <td class="type">string</td>
+          <td>과제/업무 이름</td>
+        </tr>
+        <tr>
+          <td><code>timeTracked</code></td>
+          <td>사용시간</td>
+          <td class="type">string</td>
+          <td>hh:mm 형식 (예: 01:30)</td>
+        </tr>
+        <tr>
+          <td><code>category</code></td>
+          <td>카테고리</td>
+          <td class="type">string</td>
+          <td>
+            dream | sideincome | happiness | health | pleasure | dreamblocking |
+            unhappiness | unhealthy | moneylosing | work | sleep
+          </td>
+        </tr>
+        <tr>
+          <td><code>productivity</code></td>
+          <td>생산성</td>
+          <td class="type">string</td>
+          <td>
+            productive | nonproductive | other (카테고리 선택 시 자동 매핑)
+          </td>
+        </tr>
+        <tr>
+          <td><code>date</code></td>
+          <td>날짜</td>
+          <td class="type">string</td>
+          <td>YYYY-MM-DD</td>
+        </tr>
+        <tr>
+          <td><code>feedback</code></td>
+          <td>피드백</td>
+          <td class="type">string</td>
+          <td>자유 메모</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-size: 0.85rem; color: #666; margin-top: 0.5rem">
+      ※ 가격(price)은 시급 × 사용시간 × 생산성 계수로 클라이언트에서 계산. 저장
+      시 계산된 값을 함께 저장하거나, 시급을 사용자별 설정으로 두고 조회 시 계산
+      가능.
+    </p>
+
+    <h2>2. Time.js 카테고리/생산성 값</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>구분</th>
+          <th>value</th>
+          <th>label (표시)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td rowspan="11">카테고리 (CATEGORY_OPTIONS)</td>
+          <td>dream</td>
+          <td>꿈</td>
+        </tr>
+        <tr>
+          <td>sideincome</td>
+          <td>부수입</td>
+        </tr>
+        <tr>
+          <td>happiness</td>
+          <td>행복</td>
+        </tr>
+        <tr>
+          <td>health</td>
+          <td>건강</td>
+        </tr>
+        <tr>
+          <td>pleasure</td>
+          <td>쾌락충족</td>
+        </tr>
+        <tr>
+          <td>dreamblocking</td>
+          <td>꿈을 방해하는 일</td>
+        </tr>
+        <tr>
+          <td>unhappiness</td>
+          <td>불행</td>
+        </tr>
+        <tr>
+          <td>unhealthy</td>
+          <td>비건강</td>
+        </tr>
+        <tr>
+          <td>moneylosing</td>
+          <td>돈을 잃는 일</td>
+        </tr>
+        <tr>
+          <td>work</td>
+          <td>근무</td>
+        </tr>
+        <tr>
+          <td>sleep</td>
+          <td>수면</td>
+        </tr>
+        <tr>
+          <td rowspan="3">생산성 (PRODUCTIVITY_OPTIONS)</td>
+          <td>productive</td>
+          <td>생산적</td>
+        </tr>
+        <tr>
+          <td>nonproductive</td>
+          <td>비생산적</td>
+        </tr>
+        <tr>
+          <td>other</td>
+          <td>그외</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>3. 카테고리 → 생산성 자동 매핑</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>생산적 (productive)</th>
+          <th>비생산적 (nonproductive)</th>
+          <th>그외 (other)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>dream, sideincome, happiness, health</td>
+          <td>unhappiness, unhealthy, moneylosing, dreamblocking, pleasure</td>
+          <td>work, sleep</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>4. 백엔드 컬럼 정의 (time_entries 테이블)</h2>
+    <p style="font-size: 0.9rem; color: #666; margin-bottom: 0.75rem">
+      Time.js 필드 → DB 컬럼 매핑 · 사용자(user_id)별로 저장
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>컬럼명</th>
+          <th>한글명</th>
+          <th>타입</th>
+          <th>필수</th>
+          <th>Time.js 매핑</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>id</code></td>
+          <td>ID</td>
+          <td class="type">UUID</td>
+          <td class="required">O</td>
+          <td>고유키 (자동생성)</td>
+        </tr>
+        <tr>
+          <td><code>user_id</code></td>
+          <td>사용자ID</td>
+          <td class="type">UUID</td>
+          <td class="required">O</td>
+          <td>로그인 사용자 (auth.users.id)</td>
+        </tr>
+        <tr>
+          <td><code>task_name</code></td>
+          <td>과제명</td>
+          <td class="type">텍스트</td>
+          <td class="required">O</td>
+          <td>← row.taskName</td>
+        </tr>
+        <tr>
+          <td><code>time_tracked</code></td>
+          <td>사용시간</td>
+          <td class="type">string</td>
+          <td class="required">O</td>
+          <td>← row.timeTracked (hh:mm)</td>
+        </tr>
+        <tr>
+          <td><code>category</code></td>
+          <td>카테고리</td>
+          <td class="type">string</td>
+          <td class="required">O</td>
+          <td>← row.category</td>
+        </tr>
+        <tr>
+          <td><code>productivity</code></td>
+          <td>생산성</td>
+          <td class="type">string</td>
+          <td class="required">O</td>
+          <td>← row.productivity (productive/nonproductive/other)</td>
+        </tr>
+        <tr>
+          <td><code>entry_date</code></td>
+          <td>날짜</td>
+          <td class="type">날짜</td>
+          <td class="required">O</td>
+          <td>← row.date (YYYY-MM-DD)</td>
+        </tr>
+        <tr>
+          <td><code>feedback</code></td>
+          <td>피드백</td>
+          <td class="type">텍스트</td>
+          <td class="optional">X</td>
+          <td>← row.feedback</td>
+        </tr>
+        <tr>
+          <td><code>created_at</code></td>
+          <td>등록일시</td>
+          <td class="type">날짜시간</td>
+          <td class="required">O</td>
+          <td>자동 생성</td>
+        </tr>
+        <tr>
+          <td><code>updated_at</code></td>
+          <td>수정일시</td>
+          <td class="type">날짜시간</td>
+          <td class="required">O</td>
+          <td>자동 수정</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>5. 시급 설정 (user_settings 또는 별도 테이블)</h2>
+    <p style="font-size: 0.9rem; color: #666; margin-bottom: 0.75rem">
+      시간가계부 상단 "시급입력" 값은 사용자별로 저장. 가격 계산 시 사용.
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>컬럼명</th>
+          <th>한글명</th>
+          <th>타입</th>
+          <th>설명</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>user_id</code></td>
+          <td>사용자ID</td>
+          <td class="type">UUID</td>
+          <td>로그인 사용자</td>
+        </tr>
+        <tr>
+          <td><code>hourly_rate</code></td>
+          <td>시급</td>
+          <td class="type">integer</td>
+          <td>원 단위 (예: 45000)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>6. 저장 예시 (Time.js 입력 → DB 저장)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>user_id</th>
+          <th>task_name</th>
+          <th>time_tracked</th>
+          <th>category</th>
+          <th>productivity</th>
+          <th>entry_date</th>
+          <th>feedback</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>user_abc123</td>
+          <td>건강한 식사 준비</td>
+          <td>00:30</td>
+          <td>health</td>
+          <td>productive</td>
+          <td>2026-02-21</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>user_abc123</td>
+          <td>아이디어 작업</td>
+          <td>02:00</td>
+          <td>sideincome</td>
+          <td>productive</td>
+          <td>2026-02-21</td>
+          <td>집중 잘됨</td>
+        </tr>
+        <tr>
+          <td>user_abc123</td>
+          <td>근무</td>
+          <td>08:00</td>
+          <td>work</td>
+          <td>other</td>
+          <td>2026-02-21</td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      → 같은 user_id로 여러 행이 쌓입니다. entry_date로 날짜별 조회,
+      category/productivity로 필터링 가능. 시급(hourly_rate)은 user_settings에
+      사용자별 1건 저장.
+    </div>
+
+    <hr style="margin: 3rem 0; border: none; border-top: 1px solid #dee2e6" />
+
+    <h1>근무표 테이블 구조</h1>
+    <p class="subtitle">
+      WorkSchedule.js 기준 · 백엔드에 사용자별로 근무표 데이터가 저장되는 방식 ·
+      불러오기/저장 시 충돌 최소화
+    </p>
+
+    <h2>1. WorkSchedule.js에서 사용하는 데이터 구조 (프론트엔드)</h2>
+    <p style="font-size: 0.9rem; color: #666; margin-bottom: 0.75rem">
+      collectRowsFromDOM()이 반환하는 row 객체
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>필드명</th>
+          <th>한글명</th>
+          <th>타입</th>
+          <th>설명</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>name</code></td>
+          <td>근무시간</td>
+          <td class="type">string</td>
+          <td>예: 08:00-17:00 (시간대 표기)</td>
+        </tr>
+        <tr>
+          <td><code>workType</code></td>
+          <td>근무유형</td>
+          <td class="type">string</td>
+          <td>초과근무 | 조기퇴근 | 지급예정초과근무 | 온콜 | 온콜초과근무 등 (사용자 추가 가능)</td>
+        </tr>
+        <tr>
+          <td><code>hoursWorked</code></td>
+          <td>Hours</td>
+          <td class="type">string</td>
+          <td>실제 근무 시간 수 (예: 2, -1, 0.5)</td>
+        </tr>
+        <tr>
+          <td><code>workDate</code></td>
+          <td>근무일</td>
+          <td class="type">string</td>
+          <td>YYYY-MM-DD</td>
+        </tr>
+        <tr>
+          <td><code>hours</code></td>
+          <td>시간적립</td>
+          <td class="type">string</td>
+          <td>초과근무→+hoursWorked, 조기퇴근→-hoursWorked, 그 외→빈값 (자동계산)</td>
+        </tr>
+        <tr>
+          <td><code>memo</code></td>
+          <td>메모</td>
+          <td class="type">string</td>
+          <td>자유 메모</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>2. 근무유형 (work_type) 규칙</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>근무유형</th>
+          <th>시간적립 계산</th>
+          <th>삭제 가능</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>초과근무</td>
+          <td>hours = hoursWorked × 1</td>
+          <td>X (보호됨)</td>
+        </tr>
+        <tr>
+          <td>조기퇴근</td>
+          <td>hours = hoursWorked × -1</td>
+          <td>X (보호됨)</td>
+        </tr>
+        <tr>
+          <td>그 외 (지급예정초과근무, 온콜 등)</td>
+          <td>hours = 빈값 (총합에 미포함)</td>
+          <td>O</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>3. 백엔드 테이블 정의 (work_schedule_entries)</h2>
+    <p style="font-size: 0.9rem; color: #666; margin-bottom: 0.75rem">
+      사용자(user_id)별로 저장 · id로 행 식별하여 upsert 시 충돌 방지
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>컬럼명</th>
+          <th>한글명</th>
+          <th>타입</th>
+          <th>필수</th>
+          <th>WorkSchedule.js 매핑</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>id</code></td>
+          <td>ID</td>
+          <td class="type">UUID</td>
+          <td class="required">O</td>
+          <td>고유키 (클라이언트 생성 또는 서버 자동생성)</td>
+        </tr>
+        <tr>
+          <td><code>user_id</code></td>
+          <td>사용자ID</td>
+          <td class="type">UUID</td>
+          <td class="required">O</td>
+          <td>로그인 사용자 (auth.users.id)</td>
+        </tr>
+        <tr>
+          <td><code>work_time</code></td>
+          <td>근무시간</td>
+          <td class="type">텍스트</td>
+          <td class="optional">X</td>
+          <td>← row.name</td>
+        </tr>
+        <tr>
+          <td><code>work_type</code></td>
+          <td>근무유형</td>
+          <td class="type">string</td>
+          <td class="required">O</td>
+          <td>← row.workType</td>
+        </tr>
+        <tr>
+          <td><code>hours_worked</code></td>
+          <td>Hours</td>
+          <td class="type">numeric</td>
+          <td class="optional">X</td>
+          <td>← row.hoursWorked</td>
+        </tr>
+        <tr>
+          <td><code>work_date</code></td>
+          <td>근무일</td>
+          <td class="type">날짜</td>
+          <td class="required">O</td>
+          <td>← row.workDate (YYYY-MM-DD)</td>
+        </tr>
+        <tr>
+          <td><code>hours_accrued</code></td>
+          <td>시간적립</td>
+          <td class="type">numeric</td>
+          <td class="optional">X</td>
+          <td>← row.hours (초과/조기만 저장, 그 외 null)</td>
+        </tr>
+        <tr>
+          <td><code>memo</code></td>
+          <td>메모</td>
+          <td class="type">텍스트</td>
+          <td class="optional">X</td>
+          <td>← row.memo</td>
+        </tr>
+        <tr>
+          <td><code>sort_order</code></td>
+          <td>정렬순서</td>
+          <td class="type">integer</td>
+          <td class="optional">X</td>
+          <td>행 순서 유지 (0, 1, 2...)</td>
+        </tr>
+        <tr>
+          <td><code>created_at</code></td>
+          <td>등록일시</td>
+          <td class="type">날짜시간</td>
+          <td class="required">O</td>
+          <td>자동 생성</td>
+        </tr>
+        <tr>
+          <td><code>updated_at</code></td>
+          <td>수정일시</td>
+          <td class="type">날짜시간</td>
+          <td class="required">O</td>
+          <td>자동 수정</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>4. 근무유형 옵션 테이블 (work_schedule_type_options)</h2>
+    <p style="font-size: 0.9rem; color: #666; margin-bottom: 0.75rem">
+      사용자별 커스텀 근무유형 저장 · 초과근무/조기퇴근은 기본 포함, 삭제 불가
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>컬럼명</th>
+          <th>한글명</th>
+          <th>타입</th>
+          <th>설명</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>user_id</code></td>
+          <td>사용자ID</td>
+          <td class="type">UUID</td>
+          <td>로그인 사용자</td>
+        </tr>
+        <tr>
+          <td><code>type_name</code></td>
+          <td>근무유형명</td>
+          <td class="type">string</td>
+          <td>초과근무, 조기퇴근, 지급예정초과근무 등</td>
+        </tr>
+        <tr>
+          <td><code>sort_order</code></td>
+          <td>정렬순서</td>
+          <td class="type">integer</td>
+          <td>드롭다운 표시 순서</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-size: 0.85rem; color: #666; margin-top: 0.5rem">
+      ※ 또는 JSON 배열로 user_settings에 저장: work_type_options: ["초과근무", "조기퇴근", "지급예정초과근무", ...]
+    </p>
+
+    <h2>5. 저장/불러오기 전략 (충돌 방지)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>항목</th>
+          <th>권장 방식</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>행 식별</td>
+          <td>각 행에 UUID(id) 부여. 클라이언트에서 crypto.randomUUID()로 생성 후 저장</td>
+        </tr>
+        <tr>
+          <td>저장</td>
+          <td>upsert: id 있으면 UPDATE, 없으면 INSERT. user_id로 RLS 적용</td>
+        </tr>
+        <tr>
+          <td>불러오기</td>
+          <td>WHERE user_id = :current_user ORDER BY work_date, sort_order</td>
+        </tr>
+        <tr>
+          <td>동시 편집</td>
+          <td>행 단위 upsert이므로 다른 행 수정과 충돌 없음. 같은 행 동시 수정 시 updated_at 비교 후 최신 우선</td>
+        </tr>
+        <tr>
+          <td>삭제</td>
+          <td>DELETE WHERE id = :row_id AND user_id = :current_user</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>6. 저장 예시 (WorkSchedule.js 입력 → DB 저장)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>id</th>
+          <th>user_id</th>
+          <th>work_time</th>
+          <th>work_type</th>
+          <th>hours_worked</th>
+          <th>work_date</th>
+          <th>hours_accrued</th>
+          <th>memo</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>uuid-1</td>
+          <td>user_abc123</td>
+          <td>08:00-17:00</td>
+          <td>초과근무</td>
+          <td>2</td>
+          <td>2026-02-22</td>
+          <td>2</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>uuid-2</td>
+          <td>user_abc123</td>
+          <td>08:00-15:00</td>
+          <td>조기퇴근</td>
+          <td>1</td>
+          <td>2026-02-22</td>
+          <td>-1</td>
+          <td>병원</td>
+        </tr>
+        <tr>
+          <td>uuid-3</td>
+          <td>user_abc123</td>
+          <td>08:00-17:00</td>
+          <td>지급예정초과근무</td>
+          <td>2</td>
+          <td>2026-02-23</td>
+          <td>null</td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      → user_id로 사용자별 데이터 격리. id로 행 단위 upsert하여 불러오기/저장 시 충돌 최소화.
+      work_date + sort_order로 정렬. hours_accrued는 초과근무/조기퇴근만 저장하며, 총 "적립된 총 시간"은 이 값들의 합으로 계산.
+    </div>
+  </body>
+</html>
