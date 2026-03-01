@@ -6,10 +6,16 @@
 import {
   loadExpenseRows,
   saveExpenseRows,
-  EXPENSE_CATEGORY_OPTIONS,
-  EXPENSE_CLASSIFICATION_BY_CATEGORY,
+  getExpenseCategoryOptions,
   getExpenseClassificationOptions,
 } from "./Asset.js";
+import {
+  loadDiaryEntries,
+  saveDiaryEntries,
+  getEmotionList,
+  addEmotionEntry,
+  TAB3_EMOTION_TEMPLATE,
+} from "../diaryData.js";
 
 const PRODUCTIVITY_OPTIONS = [
   { value: "productive", label: "생산적", color: "prod-pink" },
@@ -20,10 +26,20 @@ const PRODUCTIVITY_OPTIONS = [
 const TASK_OPTIONS_KEY = "time_task_options";
 const BUDGET_GOALS_KEY = "time_daily_budget_goals";
 const USER_HOURLY_RATE_KEY = "user_hourly_rate";
+const TIME_ROWS_KEY = "time_task_log_rows";
 const FIXED_OTHER_TASKS = [
   { name: "수면하기", category: "sleep", productivity: "other" },
   { name: "근무하기", category: "work", productivity: "other" },
 ];
+/** 수정/삭제 불가 과제 (특수 로직 적용) */
+const TASKS_LOCKED_FOR_EDIT = ["낮잠"];
+
+function getLockedTaskNames() {
+  return new Set([
+    ...FIXED_OTHER_TASKS.map((t) => t.name),
+    ...TASKS_LOCKED_FOR_EDIT,
+  ]);
+}
 
 const DEFAULT_TASK_OPTIONS = [
   ...FIXED_OTHER_TASKS,
@@ -110,8 +126,7 @@ function addTaskOptionFull(task) {
 }
 
 function updateTaskOption(oldName, task) {
-  const fixedNames = new Set(FIXED_OTHER_TASKS.map((t) => t.name));
-  if (fixedNames.has(oldName)) return getFullTaskOptions();
+  if (getLockedTaskNames().has(oldName)) return getFullTaskOptions();
   const opts = getFullTaskOptions();
   const idx = opts.findIndex((o) => o.name === oldName);
   if (idx < 0) return opts;
@@ -133,8 +148,7 @@ function updateTaskOption(oldName, task) {
 }
 
 function removeTaskOption(name) {
-  const fixedNames = new Set(FIXED_OTHER_TASKS.map((t) => t.name));
-  if (fixedNames.has(name)) return getFullTaskOptions();
+  if (getLockedTaskNames().has(name)) return getFullTaskOptions();
   const opts = getFullTaskOptions().filter((o) => o.name !== name);
   try {
     localStorage.setItem(TASK_OPTIONS_KEY, JSON.stringify(opts));
@@ -171,6 +185,25 @@ function saveBudgetGoal(dateStr, taskName, goalTime, isInvest) {
       delete all[dateStr][key];
     }
     localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
+  } catch (_) {}
+}
+
+/** 과제 기록 로컬 저장 (백엔드 개발 전 임시) */
+function loadTimeRows() {
+  try {
+    const raw = localStorage.getItem(TIME_ROWS_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    }
+  } catch (_) {}
+  return [];
+}
+
+function saveTimeRows(rows) {
+  try {
+    const arr = Array.isArray(rows) ? rows : [];
+    localStorage.setItem(TIME_ROWS_KEY, JSON.stringify(arr));
   } catch (_) {}
 }
 
@@ -232,6 +265,14 @@ function getProductivityFromCategory(categoryValue) {
   if (nonproductive.includes(categoryValue)) return "nonproductive";
   if (other.includes(categoryValue)) return "other";
   return "";
+}
+
+/** 낮잠 과제: 사용시간 30분 초과 시 쾌락충족/비생산적, 30분 이하 시 건강/생산적 */
+function getNapCategoryProductivity(timeTracked) {
+  const hours = parseTimeToHours(timeTracked);
+  const minutes = hours * 60;
+  if (minutes > 30) return { category: "pleasure", productivity: "nonproductive" };
+  return { category: "health", productivity: "productive" };
 }
 
 function formatDateDisplay(val) {
@@ -381,6 +422,15 @@ function formatHoursToReadable(hours) {
   if (h === 0) return `${m}분`;
   if (m === 0) return `${h}시간`;
   return `${h}시간 ${m}분`;
+}
+
+/** 에너지 값(1-5 또는 0-100)을 표시용 퍼센트 문자열로 변환 */
+function formatEnergyForDisplay(val) {
+  const s = String(val || "").trim().replace(/%/g, "");
+  if (!s) return "";
+  const map = { "1": 20, "2": 40, "3": 60, "4": 80, "5": 100 };
+  const pct = map[s] ?? (parseInt(s, 10));
+  return !isNaN(pct) && pct >= 0 && pct <= 100 ? pct + "%" : s;
 }
 
 function toDateStr(d) {
@@ -555,11 +605,7 @@ function aggregateDailyRevenueFromFiltered(filtered, hourlyRate) {
     const d = (r.date || "").trim();
     if (!d) return;
     const hrs = parseTimeToHours(r.timeTracked);
-    const pv = (
-      r.productivity ||
-      getProductivityFromCategory(r.category) ||
-      ""
-    ).trim();
+    const pv = (r.productivity || getProductivityFromCategory(r.category) || "").trim();
     let price = hrs * hourlyRate;
     if (pv === "nonproductive") price *= -1;
     else if (pv === "other" || pv === "그 외" || !pv) price = 0;
@@ -578,11 +624,7 @@ function calcPeriodValueFromFiltered(filtered, hourlyRate) {
   let sum = 0;
   filtered.forEach((r) => {
     const hrs = parseTimeToHours(r.timeTracked);
-    const pv = (
-      r.productivity ||
-      getProductivityFromCategory(r.category) ||
-      ""
-    ).trim();
+    const pv = (r.productivity || getProductivityFromCategory(r.category) || "").trim();
     let price = hrs * hourlyRate;
     if (pv === "nonproductive") price *= -1;
     else if (pv === "other" || pv === "그 외" || !pv) price = 0;
@@ -763,9 +805,12 @@ function createTaskNameInput(initialValue, onTaskSelect) {
     const q = (query || "").trim().toLowerCase();
     const all = getTaskOptions();
     const getName = (o) => (typeof o === "string" ? o : o.name);
-    const matches = q
+    let matches = q
       ? all.filter((o) => getName(o).toLowerCase().includes(q))
       : all;
+    matches = [...matches].sort((a, b) =>
+      getName(a).localeCompare(getName(b), "ko"),
+    );
     const exactMatch = q && matches.some((o) => getName(o).toLowerCase() === q);
     const showCreate = q && !exactMatch;
 
@@ -782,13 +827,13 @@ function createTaskNameInput(initialValue, onTaskSelect) {
     sep.textContent = "—";
     panel.appendChild(sep);
 
-    const fixedNames = new Set(FIXED_OTHER_TASKS.map((t) => t.name));
+    const lockedNames = getLockedTaskNames();
     matches.forEach((opt) => {
       const name = getName(opt);
-      const isFixed = fixedNames.has(name);
+      const isLocked = lockedNames.has(name);
       const row = document.createElement("div");
       row.className = "time-task-name-option";
-      row.innerHTML = `<span class="time-task-tag">${name}</span>${isFixed ? "" : `<button type="button" class="time-task-delete-btn" title="삭제">${DELETE_ICON}</button>`}`;
+      row.innerHTML = `<span class="time-task-tag">${name}</span>${isLocked ? "" : `<button type="button" class="time-task-delete-btn" title="삭제">${DELETE_ICON}</button>`}`;
       row.dataset.value = name;
       const delBtn = row.querySelector(".time-task-delete-btn");
       row.addEventListener("click", (e) => {
@@ -936,30 +981,23 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
 
   const prodDisplay = document.createElement("span");
   prodDisplay.className = "time-tag-pill prod";
-  const prodOpt = PRODUCTIVITY_OPTIONS.find(
-    (o) => o.value === rowData.productivity,
-  );
+  const prodOpt = PRODUCTIVITY_OPTIONS.find((o) => o.value === rowData.productivity);
   prodDisplay.textContent = prodOpt ? prodOpt.label : "";
-  prodDisplay.className =
-    "time-tag-pill prod " + (prodOpt ? prodOpt.color : "");
+  prodDisplay.className = "time-tag-pill prod " + (prodOpt ? prodOpt.color : "");
   prodTd.appendChild(prodDisplay);
 
   const startTimeTd = document.createElement("td");
   startTimeTd.className = "time-cell time-cell-start";
   const startTimeSpan = document.createElement("span");
   startTimeSpan.className = "time-display-start";
-  startTimeSpan.textContent = rowData.startTime
-    ? toDisplayTimeOnly(rowData.startTime) || rowData.startTime
-    : "";
+  startTimeSpan.textContent = rowData.startTime ? toDisplayTimeOnly(rowData.startTime) || rowData.startTime : "";
   startTimeTd.appendChild(startTimeSpan);
 
   const endTimeTd = document.createElement("td");
   endTimeTd.className = "time-cell time-cell-end";
   const endTimeSpan = document.createElement("span");
   endTimeSpan.className = "time-display-end";
-  endTimeSpan.textContent = rowData.endTime
-    ? toDisplayTimeOnly(rowData.endTime) || rowData.endTime
-    : "";
+  endTimeSpan.textContent = rowData.endTime ? toDisplayTimeOnly(rowData.endTime) || rowData.endTime : "";
   endTimeTd.appendChild(endTimeSpan);
 
   const timeTd = document.createElement("td");
@@ -991,8 +1029,7 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   catDisplay.className = "time-tag-pill cat cat-empty";
   const catOpt = CATEGORY_OPTIONS.find((o) => o.value === rowData.category);
   catDisplay.textContent = catOpt ? catOpt.label : "—";
-  catDisplay.className =
-    "time-tag-pill cat " + (catOpt ? catOpt.color : "cat-empty");
+  catDisplay.className = "time-tag-pill cat " + (catOpt ? catOpt.color : "cat-empty");
   catTd.appendChild(catDisplay);
 
   const taskTd = document.createElement("td");
@@ -1032,7 +1069,7 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   energyTd.className = "time-cell time-cell-energy";
   const energySpan = document.createElement("span");
   energySpan.className = "time-display-energy";
-  energySpan.textContent = rowData.energy || "";
+  energySpan.textContent = formatEnergyForDisplay(rowData.energy);
   energyTd.appendChild(energySpan);
   tr.appendChild(energyTd);
 
@@ -1060,7 +1097,7 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   delBtn.addEventListener("click", (e) => {
     e.stopPropagation();
     if (onRowDelete) {
-      onRowDelete(tr, rowData);
+      onRowDelete(tr, tr._rowData || rowData);
     } else {
       tr.remove();
       onUpdate?.();
@@ -1121,9 +1158,7 @@ function collectRowFromTR(tr) {
     date: dateInput?.value || "",
     feedback: feedbackInput?.value || "",
     focus: (tr.querySelector(".time-display-focus")?.textContent || "").trim(),
-    energy: (
-      tr.querySelector(".time-display-energy")?.textContent || ""
-    ).trim(),
+    energy: (tr.querySelector(".time-display-energy")?.textContent || "").trim(),
   };
 }
 
@@ -1134,6 +1169,20 @@ function collectRowsFromDOM(container) {
     if (!isEmptyTimeRow(row)) rows.push(row);
   });
   return rows;
+}
+
+/** 과제명 열 너비 변경 시 sticky left 위치 동기화 */
+function updateStickyLefts(table) {
+  if (!table) return;
+  const taskEl = table.querySelector(".time-th-task");
+  if (!taskEl) return;
+  const taskW = taskEl.getBoundingClientRect().width;
+  const startW = 90;
+  const endW = 90;
+  const trackedW = 90;
+  table.style.setProperty("--sticky-left-start", `${taskW}px`);
+  table.style.setProperty("--sticky-left-end", `${taskW + startW}px`);
+  table.style.setProperty("--sticky-left-tracked", `${taskW + startW + endW}px`);
 }
 
 function createTableHTML() {
@@ -1162,8 +1211,8 @@ function createTableHTML() {
         <th class="time-th-productivity">생산성</th>
         <th class="time-th-date">기록 날짜</th>
         <th class="time-th-price">행동의 가치</th>
-        <th class="time-th-focus">집중도</th>
-        <th class="time-th-energy">에너지</th>
+        <th class="time-th-focus">방해 횟수(회)</th>
+        <th class="time-th-energy">성취능력(%)</th>
         <th class="time-th-feedback">과제 메모</th>
         <th class="time-th-actions"></th>
       </tr>
@@ -1172,15 +1221,7 @@ function createTableHTML() {
   `;
 }
 
-function createProductivitySection(
-  prod,
-  rows,
-  viewEl,
-  updateTotal,
-  onRowDelete,
-  openTaskLogModal,
-  openTaskLogModalForEdit,
-) {
+function createProductivitySection(prod, rows, viewEl, updateTotal, onRowDelete, openTaskLogModal, openTaskLogModalForEdit) {
   const section = document.createElement("section");
   section.className = "time-section";
   section.dataset.productivity = prod.value;
@@ -1203,19 +1244,6 @@ function createProductivitySection(
   table.className = "time-ledger-table";
   table.innerHTML = createTableHTML();
   const tbody = table.querySelector("tbody");
-
-  const addRow = document.createElement("tr");
-  addRow.className = "time-row-add";
-  const addCell = document.createElement("td");
-  addCell.colSpan = 12;
-  addCell.className = "time-cell-add";
-  const addBtn = document.createElement("button");
-  addBtn.type = "button";
-  addBtn.className = "time-btn-add";
-  addBtn.innerHTML = '<span class="time-add-icon">+</span> 과제 기록하기';
-  addCell.appendChild(addBtn);
-  addRow.appendChild(addCell);
-  tbody.appendChild(addRow);
 
   function updateCount() {
     const n = tbody.querySelectorAll(".time-row").length;
@@ -1244,37 +1272,9 @@ function createProductivitySection(
       onRowDelete ?? handleRowDelete,
       openTaskLogModalForEdit ?? handleRowEdit,
     );
-    tbody.insertBefore(tr, addRow);
+    tbody.appendChild(tr);
   });
   updateCount();
-
-  addBtn.addEventListener("click", () => {
-    if (openTaskLogModal) {
-      openTaskLogModal({
-        productivity: prod.value,
-        tbody,
-        addRow,
-        onRowUpdate,
-        viewEl,
-        createRow,
-        handleRowDelete,
-        handleRowEdit,
-      });
-    } else {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().slice(0, 10);
-      const tr = createRow(
-        { date: yesterdayStr, productivity: prod.value },
-        onRowUpdate,
-        viewEl,
-        handleRowDelete,
-        handleRowEdit,
-      );
-      tbody.insertBefore(tr, addRow);
-      onRowUpdate();
-    }
-  });
 
   const taskTh = table.querySelector(".time-th-task");
   const taskCol = table.querySelector(".time-col-task");
@@ -1292,18 +1292,21 @@ function createProductivitySection(
         const newWidth = Math.max(80, Math.min(500, startWidth + dx));
         taskCol.style.width = `${newWidth}px`;
         taskCol.style.minWidth = `${newWidth}px`;
+        updateStickyLefts(table);
       };
       const onUp = () => {
         document.removeEventListener("mousemove", onMove);
         document.removeEventListener("mouseup", onUp);
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
+        updateStickyLefts(table);
       };
       document.addEventListener("mousemove", onMove);
       document.addEventListener("mouseup", onUp);
       document.body.style.cursor = "col-resize";
       document.body.style.userSelect = "none";
     });
+    requestAnimationFrame(() => updateStickyLefts(table));
   }
 
   tableWrap.appendChild(table);
@@ -1589,14 +1592,16 @@ export function render() {
         <button type="button" class="time-task-add-btn">+ 과제 추가하기</button>
         <div class="time-task-setup-tabs">
           <button type="button" class="time-task-setup-tab active" data-tab="all">전체</button>
-          <button type="button" class="time-task-setup-tab" data-tab="productive">생산적 과제</button>
-          <button type="button" class="time-task-setup-tab" data-tab="nonproductive">비생산적 과제</button>
-          <button type="button" class="time-task-setup-tab" data-tab="other">그 외 과제</button>
+          <button type="button" class="time-task-setup-tab" data-tab="productive">생산적</button>
+          <button type="button" class="time-task-setup-tab" data-tab="nonproductive">비생산적</button>
+          <button type="button" class="time-task-setup-tab" data-tab="other">그외</button>
         </div>
-        <div class="time-task-setup-list" data-tab-content="all"></div>
-        <div class="time-task-setup-list" data-tab-content="productive" style="display:none"></div>
-        <div class="time-task-setup-list" data-tab-content="nonproductive" style="display:none"></div>
-        <div class="time-task-setup-list" data-tab-content="other" style="display:none"></div>
+        <div class="time-task-setup-list-scroll">
+          <div class="time-task-setup-list" data-tab-content="all"></div>
+          <div class="time-task-setup-list" data-tab-content="productive" style="display:none"></div>
+          <div class="time-task-setup-list" data-tab-content="nonproductive" style="display:none"></div>
+          <div class="time-task-setup-list" data-tab-content="other" style="display:none"></div>
+        </div>
       </div>
     </div>
   `;
@@ -1645,27 +1650,30 @@ export function render() {
   taskLogModal.innerHTML = `
     <div class="time-task-setup-backdrop"></div>
     <div class="time-task-setup-panel time-task-log-panel">
-      <div class="time-task-setup-header">
-        <h3 class="time-task-setup-title">과제 기록하기</h3>
+      <div class="time-task-setup-header time-task-log-header">
         <button type="button" class="time-task-setup-close" aria-label="닫기">&times;</button>
+        <h3 class="time-task-setup-title">과제 기록하기</h3>
+        <button type="button" class="time-task-log-submit">기록</button>
       </div>
       <div class="time-task-setup-body">
-        <div class="time-task-log-field">
-          <label>과제 선택</label>
-          <div class="time-task-log-task-wrap"></div>
-        </div>
-        <div class="time-task-log-field">
-          <label>시작시간</label>
-          <button type="button" class="time-task-log-datetime-trigger" data-for="start">날짜·시간 선택</button>
-          <input type="hidden" class="time-task-log-start" />
-        </div>
-        <div class="time-task-log-field">
-          <label>마감시간</label>
-          <div class="time-task-log-datetime-wrap time-task-log-datetime-wrap-end">
-            <button type="button" class="time-task-log-datetime-trigger" data-for="end">날짜·시간 선택</button>
-            <button type="button" class="time-task-log-datetime-clear" data-for="end" title="마감시간 지우기" aria-label="마감시간 지우기">×</button>
+        <div class="time-task-log-datetime-fields-wrap">
+          <div class="time-task-log-field">
+            <label>과제 선택</label>
+            <div class="time-task-log-task-wrap"></div>
           </div>
-          <input type="hidden" class="time-task-log-end" />
+          <div class="time-task-log-field">
+            <label>시작시간</label>
+            <button type="button" class="time-task-log-datetime-trigger" data-for="start">날짜·시간 선택</button>
+            <input type="hidden" class="time-task-log-start" />
+          </div>
+          <div class="time-task-log-field">
+            <label>마감시간</label>
+            <div class="time-task-log-datetime-wrap time-task-log-datetime-wrap-end">
+              <button type="button" class="time-task-log-datetime-trigger" data-for="end">날짜·시간 선택</button>
+              <button type="button" class="time-task-log-datetime-clear" data-for="end" title="마감시간 지우기" aria-label="마감시간 지우기">×</button>
+            </div>
+            <input type="hidden" class="time-task-log-end" />
+          </div>
         </div>
         <div class="time-datetime-picker-wrap" hidden>
           <div class="time-datetime-picker-header">
@@ -1698,37 +1706,35 @@ export function render() {
         </div>
         <div class="time-task-log-energy-section">
           <div class="time-task-log-energy-header">
-            <h4 class="time-task-log-energy-title">에너지</h4>
+            <h4 class="time-task-log-energy-title">성취능력</h4>
             <label class="time-task-log-energy-toggle">
               <input type="checkbox" class="time-task-log-energy-toggle-input" />
               <span class="time-task-log-energy-toggle-slider"></span>
             </label>
           </div>
           <div class="time-task-log-energy-fields" hidden>
-            <div class="time-task-log-score-btns" data-for="energy">
-              <button type="button" class="time-task-log-score-btn" data-value="1">1</button>
-              <button type="button" class="time-task-log-score-btn" data-value="2">2</button>
-              <button type="button" class="time-task-log-score-btn" data-value="3">3</button>
-              <button type="button" class="time-task-log-score-btn" data-value="4">4</button>
-              <button type="button" class="time-task-log-score-btn" data-value="5">5</button>
+            <div class="time-task-log-energy-slider-wrap">
+              <div class="time-task-log-energy-track">
+                <div class="time-task-log-energy-fill" style="width:50%"></div>
+                <input type="range" class="time-task-log-energy-slider" min="0" max="100" value="50" />
+              </div>
+              <span class="time-task-log-energy-value">50%</span>
             </div>
           </div>
         </div>
         <div class="time-task-log-focus-section">
           <div class="time-task-log-focus-header">
-            <h4 class="time-task-log-focus-title">집중도</h4>
+            <h4 class="time-task-log-focus-title">방해 횟수(회)</h4>
             <label class="time-task-log-focus-toggle">
               <input type="checkbox" class="time-task-log-focus-toggle-input" />
               <span class="time-task-log-focus-toggle-slider"></span>
             </label>
           </div>
           <div class="time-task-log-focus-fields" hidden>
-            <div class="time-task-log-score-btns" data-for="focus">
-              <button type="button" class="time-task-log-score-btn" data-value="1">1</button>
-              <button type="button" class="time-task-log-score-btn" data-value="2">2</button>
-              <button type="button" class="time-task-log-score-btn" data-value="3">3</button>
-              <button type="button" class="time-task-log-score-btn" data-value="4">4</button>
-              <button type="button" class="time-task-log-score-btn" data-value="5">5</button>
+            <div class="time-task-log-stepper">
+              <button type="button" class="time-task-log-stepper-btn" data-action="minus" aria-label="감소">−</button>
+              <span class="time-task-log-stepper-value">0</span>
+              <button type="button" class="time-task-log-stepper-btn" data-action="plus" aria-label="증가">+</button>
             </div>
           </div>
         </div>
@@ -1760,7 +1766,33 @@ export function render() {
             <div class="time-task-log-expense-error" hidden></div>
           </div>
         </div>
-        <button type="button" class="time-task-log-submit">기록하기</button>
+        <div class="time-task-log-emotion-section">
+          <div class="time-task-log-emotion-header">
+            <h4 class="time-task-log-emotion-title">감정 기록</h4>
+            <label class="time-task-log-emotion-toggle">
+              <input type="checkbox" class="time-task-log-emotion-toggle-input" />
+              <span class="time-task-log-emotion-toggle-slider"></span>
+            </label>
+          </div>
+          <div class="time-task-log-emotion-fields" hidden>
+            <div class="time-task-log-field">
+              <label>감정</label>
+              <div class="time-task-log-emotion-dropdown-wrap"></div>
+            </div>
+            <div class="time-task-log-field">
+              <label>${TAB3_EMOTION_TEMPLATE[0]}</label>
+              <textarea class="time-task-log-emotion-q1" placeholder="상황을 적어주세요" rows="2"></textarea>
+            </div>
+            <div class="time-task-log-field">
+              <label>${TAB3_EMOTION_TEMPLATE[1]}</label>
+              <textarea class="time-task-log-emotion-q2" placeholder="생각을 적어주세요" rows="2"></textarea>
+            </div>
+            <div class="time-task-log-field">
+              <label>${TAB3_EMOTION_TEMPLATE[2]}</label>
+              <textarea class="time-task-log-emotion-q3" placeholder="메모" rows="2"></textarea>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   `;
@@ -1768,80 +1800,43 @@ export function render() {
   el.appendChild(taskLogModal);
 
   const taskLogTitleEl = taskLogModal.querySelector(".time-task-setup-title");
-  const taskLogTaskWrap = taskLogModal.querySelector(
-    ".time-task-log-task-wrap",
-  );
+  const taskLogTaskWrap = taskLogModal.querySelector(".time-task-log-task-wrap");
   const taskLogStartInput = taskLogModal.querySelector(".time-task-log-start");
   const taskLogEndInput = taskLogModal.querySelector(".time-task-log-end");
-  const taskLogStartTrigger = taskLogModal.querySelector(
-    '.time-task-log-datetime-trigger[data-for="start"]',
-  );
-  const taskLogEndTrigger = taskLogModal.querySelector(
-    '.time-task-log-datetime-trigger[data-for="end"]',
-  );
-  const taskLogEndWrap = taskLogModal.querySelector(
-    ".time-task-log-datetime-wrap-end",
-  );
-  const taskLogEndClearBtn = taskLogModal.querySelector(
-    '.time-task-log-datetime-clear[data-for="end"]',
-  );
-  const taskLogFeedbackInput = taskLogModal.querySelector(
-    ".time-task-log-feedback",
-  );
+  const taskLogStartTrigger = taskLogModal.querySelector('.time-task-log-datetime-trigger[data-for="start"]');
+  const taskLogEndTrigger = taskLogModal.querySelector('.time-task-log-datetime-trigger[data-for="end"]');
+  const taskLogEndWrap = taskLogModal.querySelector(".time-task-log-datetime-wrap-end");
+  const taskLogEndClearBtn = taskLogModal.querySelector('.time-task-log-datetime-clear[data-for="end"]');
+  const taskLogFeedbackInput = taskLogModal.querySelector(".time-task-log-feedback");
 
   function updateEndTimeClearVisibility() {
     const hasValue = (taskLogEndInput.value || "").trim().length > 0;
     taskLogEndWrap?.classList.toggle("has-value", hasValue);
   }
-  const taskLogEnergySection = taskLogModal.querySelector(
-    ".time-task-log-energy-section",
-  );
-  const taskLogEnergyToggleInput = taskLogModal.querySelector(
-    ".time-task-log-energy-toggle-input",
-  );
-  const taskLogEnergyFields = taskLogModal.querySelector(
-    ".time-task-log-energy-fields",
-  );
-  const taskLogFocusSection = taskLogModal.querySelector(
-    ".time-task-log-focus-section",
-  );
-  const taskLogFocusToggleInput = taskLogModal.querySelector(
-    ".time-task-log-focus-toggle-input",
-  );
-  const taskLogFocusFields = taskLogModal.querySelector(
-    ".time-task-log-focus-fields",
-  );
-  const taskLogExpenseSection = taskLogModal.querySelector(
-    ".time-task-log-expense-section",
-  );
-  const taskLogExpenseToggleInput = taskLogModal.querySelector(
-    ".time-task-log-expense-toggle-input",
-  );
-  const taskLogExpenseFields = taskLogModal.querySelector(
-    ".time-task-log-expense-fields",
-  );
-  const taskLogExpenseNameInput = taskLogModal.querySelector(
-    ".time-task-log-expense-name",
-  );
-  const taskLogExpenseCategoryWrap = taskLogModal.querySelector(
-    ".time-task-log-expense-category-wrap",
-  );
-  const taskLogExpenseClassificationWrap = taskLogModal.querySelector(
-    ".time-task-log-expense-classification-wrap",
-  );
-  const taskLogExpenseAmountInput = taskLogModal.querySelector(
-    ".time-task-log-expense-amount",
-  );
-  const taskLogExpenseErrorEl = taskLogModal.querySelector(
-    ".time-task-log-expense-error",
-  );
+  const taskLogEnergySection = taskLogModal.querySelector(".time-task-log-energy-section");
+  const taskLogEnergyToggleInput = taskLogModal.querySelector(".time-task-log-energy-toggle-input");
+  const taskLogEnergyFields = taskLogModal.querySelector(".time-task-log-energy-fields");
+  const taskLogFocusSection = taskLogModal.querySelector(".time-task-log-focus-section");
+  const taskLogFocusToggleInput = taskLogModal.querySelector(".time-task-log-focus-toggle-input");
+  const taskLogFocusFields = taskLogModal.querySelector(".time-task-log-focus-fields");
+  const taskLogExpenseSection = taskLogModal.querySelector(".time-task-log-expense-section");
+  const taskLogExpenseToggleInput = taskLogModal.querySelector(".time-task-log-expense-toggle-input");
+  const taskLogExpenseFields = taskLogModal.querySelector(".time-task-log-expense-fields");
+  const taskLogExpenseNameInput = taskLogModal.querySelector(".time-task-log-expense-name");
+  const taskLogExpenseCategoryWrap = taskLogModal.querySelector(".time-task-log-expense-category-wrap");
+  const taskLogExpenseClassificationWrap = taskLogModal.querySelector(".time-task-log-expense-classification-wrap");
+  const taskLogExpenseAmountInput = taskLogModal.querySelector(".time-task-log-expense-amount");
+  const taskLogExpenseErrorEl = taskLogModal.querySelector(".time-task-log-expense-error");
+  const taskLogEmotionSection = taskLogModal.querySelector(".time-task-log-emotion-section");
+  const taskLogEmotionToggleInput = taskLogModal.querySelector(".time-task-log-emotion-toggle-input");
+  const taskLogEmotionFields = taskLogModal.querySelector(".time-task-log-emotion-fields");
+  const taskLogEmotionDropdownWrap = taskLogModal.querySelector(".time-task-log-emotion-dropdown-wrap");
+  const taskLogEmotionQ1 = taskLogModal.querySelector(".time-task-log-emotion-q1");
+  const taskLogEmotionQ2 = taskLogModal.querySelector(".time-task-log-emotion-q2");
+  const taskLogEmotionQ3 = taskLogModal.querySelector(".time-task-log-emotion-q3");
   const taskLogSubmitBtn = taskLogModal.querySelector(".time-task-log-submit");
-  const taskLogBackdrop = taskLogModal.querySelector(
-    ".time-task-setup-backdrop",
-  );
-  const taskLogCloseBtn = taskLogModal.querySelector(
-    ".time-task-setup-panel .time-task-setup-close",
-  );
+  const taskLogBackdrop = taskLogModal.querySelector(".time-task-setup-backdrop");
+  const taskLogCloseBtn = taskLogModal.querySelector(".time-task-setup-panel .time-task-setup-close");
 
   let taskLogTaskDropdown = null;
   let taskLogAddContext = null;
@@ -1861,7 +1856,9 @@ export function render() {
     let value = "";
     function renderPanel() {
       panel.innerHTML = "";
-      const tasks = getFullTaskOptions();
+      const tasks = [...getFullTaskOptions()].sort((a, b) =>
+        (a.name || "").localeCompare(b.name || "", "ko"),
+      );
       tasks.forEach((t) => {
         const row = document.createElement("div");
         row.className = "time-task-log-task-dropdown-option";
@@ -1891,12 +1888,8 @@ export function render() {
     return wrap;
   }
 
-  const taskLogPickerWrap = taskLogModal.querySelector(
-    ".time-datetime-picker-wrap",
-  );
-  const taskLogPickerTitle = taskLogPickerWrap.querySelector(
-    ".time-datetime-picker-title",
-  );
+  const taskLogPickerWrap = taskLogModal.querySelector(".time-datetime-picker-wrap");
+  const taskLogPickerTitle = taskLogPickerWrap.querySelector(".time-datetime-picker-title");
 
   function createDateTimePickerModal(getOtherValue, onConfirm) {
     const wrap = taskLogPickerWrap;
@@ -1929,20 +1922,10 @@ export function render() {
 
     function parseValue(str) {
       if (!str || typeof str !== "string") return null;
-      const m = str.match(
-        /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})[T\s]+(\d{1,2}):(\d{2})/,
-      );
+      const m = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})[T\s]+(\d{1,2}):(\d{2})/);
       if (m) {
         const [, y, mo, d, h, min] = m;
-        return new Date(
-          parseInt(y),
-          parseInt(mo) - 1,
-          parseInt(d),
-          parseInt(h),
-          parseInt(min),
-          0,
-          0,
-        );
+        return new Date(parseInt(y), parseInt(mo) - 1, parseInt(d), parseInt(h), parseInt(min), 0, 0);
       }
       const m2 = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
       if (m2) {
@@ -1957,11 +1940,7 @@ export function render() {
       const ld = new Date(lockedDate);
       ld.setHours(0, 0, 0, 0);
       const cd = new Date(currentD);
-      const currentDayStart = new Date(
-        cd.getFullYear(),
-        cd.getMonth(),
-        cd.getDate(),
-      );
+      const currentDayStart = new Date(cd.getFullYear(), cd.getMonth(), cd.getDate());
       if (currentDayStart.getTime() !== ld.getTime()) {
         if (cd > ld) {
           currentD.setFullYear(ld.getFullYear(), ld.getMonth(), ld.getDate());
@@ -1988,14 +1967,8 @@ export function render() {
       const min = currentD.getMinutes();
 
       function scrollOptionToCenter(container, element) {
-        const targetY =
-          element.offsetTop +
-          element.offsetHeight / 2 -
-          container.clientHeight / 2;
-        container.scrollTop = Math.max(
-          0,
-          Math.min(targetY, container.scrollHeight - container.clientHeight),
-        );
+        const targetY = element.offsetTop + element.offsetHeight / 2 - container.clientHeight / 2;
+        container.scrollTop = Math.max(0, Math.min(targetY, container.scrollHeight - container.clientHeight));
       }
 
       function renderColumn(container, items, selectedVal, format, addSpacers) {
@@ -2009,27 +1982,14 @@ export function render() {
           const div = document.createElement("div");
           div.className = "time-datetime-picker-option";
           div.textContent = typeof format === "function" ? format(item) : item;
-          div.dataset.value = String(
-            typeof item === "object"
-              ? item instanceof Date
-                ? item.getTime()
-                : item
-              : item,
-          );
-          if (String(selectedVal) === div.dataset.value)
-            div.classList.add("selected");
+          div.dataset.value = String(typeof item === "object" ? (item instanceof Date ? item.getTime() : item) : item);
+          if (String(selectedVal) === div.dataset.value) div.classList.add("selected");
           div.addEventListener("click", () => {
-            container
-              .querySelectorAll(".time-datetime-picker-option")
-              .forEach((o) => o.classList.remove("selected"));
+            container.querySelectorAll(".time-datetime-picker-option").forEach((o) => o.classList.remove("selected"));
             div.classList.add("selected");
             const needsScroll = container !== colAmpm;
             if (item instanceof Date) {
-              currentD.setFullYear(
-                item.getFullYear(),
-                item.getMonth(),
-                item.getDate(),
-              );
+              currentD.setFullYear(item.getFullYear(), item.getMonth(), item.getDate());
             } else if (container === colAmpm) {
               const h = currentD.getHours();
               if (item === "오후" && h < 12) currentD.setHours(h + 12);
@@ -2041,8 +2001,7 @@ export function render() {
               currentD.setMinutes(item);
             }
             updateDisplay();
-            if (needsScroll)
-              requestAnimationFrame(() => scrollOptionToCenter(container, div));
+            if (needsScroll) requestAnimationFrame(() => scrollOptionToCenter(container, div));
           });
           container.appendChild(div);
         });
@@ -2055,11 +2014,7 @@ export function render() {
 
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
-      const selDate = new Date(
-        currentD.getFullYear(),
-        currentD.getMonth(),
-        currentD.getDate(),
-      );
+      const selDate = new Date(currentD.getFullYear(), currentD.getMonth(), currentD.getDate());
       function formatDateItem(d) {
         const dStart = new Date(d);
         dStart.setHours(0, 0, 0, 0);
@@ -2074,32 +2029,14 @@ export function render() {
         renderColumn(colDate, dates, selDate.getTime(), formatDateItem, true);
       }
       renderColumn(colAmpm, AMPM, AMPM[ampmIdx], null, true);
-      renderColumn(
-        colHour,
-        hoursArr,
-        hour24,
-        (h) => String(h).padStart(2, "0"),
-        true,
-      );
-      renderColumn(
-        colMinute,
-        MINUTES,
-        min,
-        (m) => String(m).padStart(2, "0"),
-        true,
-      );
+      renderColumn(colHour, hoursArr, hour24, (h) => String(h).padStart(2, "0"), true);
+      renderColumn(colMinute, MINUTES, min, (m) => String(m).padStart(2, "0"), true);
 
       const scrollToSelected = () => {
         [colDate, colAmpm, colHour, colMinute].forEach((col) => {
-          const sel = col.querySelector(
-            ".time-datetime-picker-option.selected",
-          );
+          const sel = col.querySelector(".time-datetime-picker-option.selected");
           if (sel) {
-            sel.scrollIntoView({
-              block: "center",
-              inline: "nearest",
-              behavior: "auto",
-            });
+            sel.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
           }
         });
       };
@@ -2157,9 +2094,7 @@ export function render() {
       if (skipScrollSync) return;
       const centered = getCenteredOption(col);
       if (!centered) return;
-      col
-        .querySelectorAll(".time-datetime-picker-option")
-        .forEach((o) => o.classList.remove("selected"));
+      col.querySelectorAll(".time-datetime-picker-option").forEach((o) => o.classList.remove("selected"));
       centered.classList.add("selected");
       const prevAmpm = currentD.getHours() < 12 ? "오전" : "오후";
       applyValueFromCenteredOption(col, centered);
@@ -2199,11 +2134,7 @@ export function render() {
           updateDisplay();
         } else if (action === "eod") {
           if (fieldType === "end" && lockedDate) {
-            currentD.setFullYear(
-              lockedDate.getFullYear(),
-              lockedDate.getMonth(),
-              lockedDate.getDate(),
-            );
+            currentD.setFullYear(lockedDate.getFullYear(), lockedDate.getMonth(), lockedDate.getDate());
           }
           currentD.setHours(23, 59, 0, 0);
           enforceLockedDate();
@@ -2230,25 +2161,15 @@ export function render() {
         fieldType = field || "start";
         lastEndTime = lastEnd || null;
         lockedDate = null;
-        taskLogPickerTitle.textContent =
-          fieldType === "start" ? "시작 시간" : "마감 시간";
+        taskLogPickerTitle.textContent = fieldType === "start" ? "시작 시간" : "마감 시간";
         if (fieldType === "end" && refDate) {
           const startParsed = parseValue(refDate);
           if (startParsed) {
-            lockedDate = new Date(
-              startParsed.getFullYear(),
-              startParsed.getMonth(),
-              startParsed.getDate(),
-            );
+            lockedDate = new Date(startParsed.getFullYear(), startParsed.getMonth(), startParsed.getDate());
             const endParsed = parseValue(initialValue);
             if (endParsed) {
               currentD = new Date(lockedDate);
-              currentD.setHours(
-                endParsed.getHours(),
-                endParsed.getMinutes(),
-                0,
-                0,
-              );
+              currentD.setHours(endParsed.getHours(), endParsed.getMinutes(), 0, 0);
             } else {
               currentD = new Date(startParsed);
               currentD.setMinutes(currentD.getMinutes() + 30);
@@ -2263,34 +2184,27 @@ export function render() {
         skipScrollSync = true;
         renderWheels();
         wrap.hidden = false;
-        setTimeout(() => {
-          skipScrollSync = false;
-        }, 150);
+        const body = wrap.closest(".time-task-setup-body");
+        if (body) {
+          requestAnimationFrame(() => { body.scrollTop = 0; });
+        }
+        setTimeout(() => { skipScrollSync = false; }, 150);
       },
     };
   }
 
   const datetimePicker = createDateTimePickerModal(
-    () =>
-      datetimePicker._currentField === "start"
-        ? taskLogEndInput.value
-        : taskLogStartInput.value,
+    () => (datetimePicker._currentField === "start" ? taskLogEndInput.value : taskLogStartInput.value),
     (val) => {
-      const displayVal = val
-        ? toDisplayDateTime(val) || val.replace("T", " ")
-        : "";
+      const displayVal = val ? toDisplayDateTime(val) || val.replace("T", " ") : "";
       if (datetimePicker._currentField === "start") {
         taskLogStartInput.value = val;
         taskLogStartTrigger.textContent = displayVal || "날짜·시간 선택";
         if (val && taskLogEndInput.value) {
-          const mergedEnd = mergeEndTimeWithStartDate(
-            val,
-            taskLogEndInput.value,
-          );
+          const mergedEnd = mergeEndTimeWithStartDate(val, taskLogEndInput.value);
           if (mergedEnd) {
             taskLogEndInput.value = mergedEnd;
-            taskLogEndTrigger.textContent =
-              toDisplayDateTime(mergedEnd) || mergedEnd.replace("T", " ");
+            taskLogEndTrigger.textContent = toDisplayDateTime(mergedEnd) || mergedEnd.replace("T", " ");
             updateEndTimeClearVisibility();
           }
         }
@@ -2303,21 +2217,19 @@ export function render() {
   );
 
   taskLogStartTrigger.addEventListener("click", () => {
-    const tbody =
-      taskLogAddContext?.tbody ||
-      (taskLogEditTr ? taskLogEditTr.closest("tbody") : null);
+    const tbody = taskLogAddContext?.tbody || (taskLogEditTr ? taskLogEditTr.closest("tbody") : null);
     let lastEnd = null;
     if (tbody) {
-      const rows = Array.from(tbody.querySelectorAll("tr.time-row")).filter(
-        (r) => r !== taskLogEditTr,
-      );
+      const rows = Array.from(tbody.querySelectorAll("tr.time-row")).filter((r) => r !== taskLogEditTr);
       const lastRow = rows[rows.length - 1];
-      if (lastRow?._rowData?.endTime) lastEnd = lastRow._rowData.endTime;
+      // 마지막 기록 = 마감시간 있으면 마감시간, 없으면 시작시간(마지막으로 기록된 시간)
+      lastEnd = lastRow?._rowData?.endTime || lastRow?._rowData?.startTime || null;
     }
-    const startVal =
+    const startVal = (
       (pendingEditStartTime || "").trim() ||
       (taskLogEditTr?._rowData?.startTime || "").trim() ||
-      (taskLogStartInput.value || "").trim();
+      (taskLogStartInput.value || "").trim()
+    );
     datetimePicker._currentField = "start";
     datetimePicker.show(startVal, null, "start", lastEnd);
   });
@@ -2327,8 +2239,15 @@ export function render() {
       alert("시작시간을 먼저 입력해주세요.");
       return;
     }
+    let lastEnd = null;
+    const tbody = taskLogAddContext?.tbody || (taskLogEditTr ? taskLogEditTr.closest("tbody") : null);
+    if (tbody) {
+      const rows = Array.from(tbody.querySelectorAll("tr.time-row")).filter((r) => r !== taskLogEditTr);
+      const lastRow = rows[rows.length - 1];
+      lastEnd = lastRow?._rowData?.endTime || lastRow?._rowData?.startTime || null;
+    }
     datetimePicker._currentField = "end";
-    datetimePicker.show(taskLogEndInput.value, startVal, "end", null);
+    datetimePicker.show(taskLogEndInput.value, startVal, "end", lastEnd);
   });
 
   taskLogEndClearBtn?.addEventListener("click", (e) => {
@@ -2348,7 +2267,7 @@ export function render() {
     panel.className = "time-task-log-expense-dropdown-panel";
     panel.hidden = true;
     let value = initialValue || "";
-    EXPENSE_CATEGORY_OPTIONS.forEach((opt) => {
+    getExpenseCategoryOptions().forEach((opt) => {
       const row = document.createElement("div");
       row.className = "time-task-log-expense-dropdown-option";
       row.textContent = opt.label;
@@ -2377,11 +2296,7 @@ export function render() {
     return wrap;
   }
 
-  function buildExpenseClassificationDropdown(
-    initialCategory,
-    initialValue,
-    onUpdate,
-  ) {
+  function buildExpenseClassificationDropdown(initialCategory, initialValue, onUpdate) {
     const wrap = document.createElement("div");
     wrap.className = "time-task-log-expense-classification-dropdown";
     const display = document.createElement("span");
@@ -2433,11 +2348,7 @@ export function render() {
     return wrap;
   }
 
-  const expenseClassificationDropdown = buildExpenseClassificationDropdown(
-    "",
-    "",
-    () => {},
-  );
+  const expenseClassificationDropdown = buildExpenseClassificationDropdown("", "", () => {});
   const expenseCategoryDropdown = buildExpenseCategoryDropdown("", (cat) => {
     expenseClassificationDropdown._setCategory?.(cat);
     expenseClassificationDropdown._setValue?.("");
@@ -2445,13 +2356,59 @@ export function render() {
   taskLogExpenseCategoryWrap.appendChild(expenseCategoryDropdown);
   taskLogExpenseClassificationWrap.appendChild(expenseClassificationDropdown);
 
+  function buildEmotionDropdown() {
+    const wrap = document.createElement("div");
+    wrap.className = "time-task-log-emotion-dropdown";
+    const display = document.createElement("span");
+    display.className = "time-task-log-expense-dropdown-display";
+    display.textContent = "선택";
+    display.setAttribute("role", "button");
+    display.setAttribute("tabindex", "0");
+    const panel = document.createElement("div");
+    panel.className = "time-task-log-expense-dropdown-panel";
+    panel.hidden = true;
+    let value = "";
+    function refresh() {
+      const entries = loadDiaryEntries();
+      const emotions = getEmotionList(entries);
+      panel.innerHTML = "";
+      emotions.forEach((em) => {
+        const row = document.createElement("div");
+        row.className = "time-task-log-expense-dropdown-option";
+        row.textContent = em;
+        row.addEventListener("click", () => {
+          value = em;
+          display.textContent = value || "선택";
+          panel.hidden = true;
+        });
+        panel.appendChild(row);
+      });
+    }
+    display.addEventListener("click", (e) => {
+      e.stopPropagation();
+      refresh();
+      panel.hidden = !panel.hidden;
+    });
+    document.addEventListener("click", (e) => {
+      if (!wrap.contains(e.target)) panel.hidden = true;
+    });
+    wrap.appendChild(display);
+    wrap.appendChild(panel);
+    wrap._getValue = () => value;
+    wrap._setValue = (v) => {
+      value = v || "";
+      display.textContent = value || "선택";
+    };
+    return wrap;
+  }
+  const emotionDropdown = buildEmotionDropdown();
+  taskLogEmotionDropdownWrap?.appendChild(emotionDropdown);
+
   taskLogEnergyToggleInput?.addEventListener("change", () => {
-    if (taskLogEnergyFields)
-      taskLogEnergyFields.hidden = !taskLogEnergyToggleInput.checked;
+    if (taskLogEnergyFields) taskLogEnergyFields.hidden = !taskLogEnergyToggleInput.checked;
   });
   taskLogFocusToggleInput?.addEventListener("change", () => {
-    if (taskLogFocusFields)
-      taskLogFocusFields.hidden = !taskLogFocusToggleInput.checked;
+    if (taskLogFocusFields) taskLogFocusFields.hidden = !taskLogFocusToggleInput.checked;
   });
 
   function setupScoreButtons(container, getValue, setValue) {
@@ -2459,9 +2416,7 @@ export function render() {
     container.querySelectorAll(".time-task-log-score-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         const val = btn.dataset.value || "";
-        container
-          .querySelectorAll(".time-task-log-score-btn")
-          .forEach((b) => b.classList.remove("selected"));
+        container.querySelectorAll(".time-task-log-score-btn").forEach((b) => b.classList.remove("selected"));
         if (getValue() === val) {
           setValue("");
         } else {
@@ -2472,39 +2427,69 @@ export function render() {
     });
   }
   let taskLogEnergyValue = "";
-  let taskLogFocusValue = "";
-  const energyBtns = taskLogModal.querySelector(
-    '.time-task-log-score-btns[data-for="energy"]',
-  );
-  const focusBtns = taskLogModal.querySelector(
-    '.time-task-log-score-btns[data-for="focus"]',
-  );
-  setupScoreButtons(
-    energyBtns,
-    () => taskLogEnergyValue,
-    (v) => {
-      taskLogEnergyValue = v;
-      updateScoreBtnStates(energyBtns, v);
-    },
-  );
-  setupScoreButtons(
-    focusBtns,
-    () => taskLogFocusValue,
-    (v) => {
-      taskLogFocusValue = v;
-      updateScoreBtnStates(focusBtns, v);
-    },
-  );
+  let taskLogFocusValue = "0";
+  const taskLogEnergySlider = taskLogModal.querySelector(".time-task-log-energy-slider");
+  const taskLogEnergyValueEl = taskLogModal.querySelector(".time-task-log-energy-value");
+  const taskLogEnergyFill = taskLogModal.querySelector(".time-task-log-energy-fill");
+  const focusStepperValueEl = taskLogModal.querySelector(".time-task-log-stepper-value");
+  const focusStepperMinus = taskLogModal.querySelector('.time-task-log-stepper-btn[data-action="minus"]');
+  const focusStepperPlus = taskLogModal.querySelector('.time-task-log-stepper-btn[data-action="plus"]');
+  function updateFocusStepper(value) {
+    const n = Math.max(0, parseInt(String(value || "0"), 10) || 0);
+    taskLogFocusValue = String(n);
+    if (focusStepperValueEl) focusStepperValueEl.textContent = n;
+  }
+  focusStepperMinus?.addEventListener("click", () => {
+    const n = Math.max(0, (parseInt(taskLogFocusValue, 10) || 0) - 1);
+    updateFocusStepper(n);
+  });
+  focusStepperPlus?.addEventListener("click", () => {
+    const n = (parseInt(taskLogFocusValue, 10) || 0) + 1;
+    updateFocusStepper(n);
+  });
   function updateScoreBtnStates(container, value) {
     if (!container) return;
     container.querySelectorAll(".time-task-log-score-btn").forEach((b) => {
       b.classList.toggle("selected", b.dataset.value === value);
     });
   }
+  function parseEnergyToPercent(val) {
+    const s = String(val || "").trim().replace(/%/g, "");
+    if (!s) return null;
+    const n = parseInt(s, 10);
+    if (s === "1") return 20;
+    if (s === "2") return 40;
+    if (s === "3") return 60;
+    if (s === "4") return 80;
+    if (s === "5") return 100;
+    if (!isNaN(n) && n >= 0 && n <= 100) return n;
+    return null;
+  }
+  function updateEnergySlider(value) {
+    const pct = parseEnergyToPercent(value);
+    if (taskLogEnergySlider && taskLogEnergyValueEl) {
+      const v = pct != null ? pct : 50;
+      taskLogEnergySlider.value = v;
+      taskLogEnergyValueEl.textContent = v + "%";
+      taskLogEnergyValue = String(v);
+      if (taskLogEnergyFill) taskLogEnergyFill.style.width = v + "%";
+    }
+  }
+  if (taskLogEnergySlider && taskLogEnergyValueEl) {
+    taskLogEnergySlider.addEventListener("input", () => {
+      const v = parseInt(taskLogEnergySlider.value, 10);
+      taskLogEnergyValueEl.textContent = v + "%";
+      taskLogEnergyValue = String(v);
+      if (taskLogEnergyFill) taskLogEnergyFill.style.width = v + "%";
+    });
+  }
 
   taskLogExpenseToggleInput?.addEventListener("change", () => {
-    if (taskLogExpenseFields)
-      taskLogExpenseFields.hidden = !taskLogExpenseToggleInput.checked;
+    if (taskLogExpenseFields) taskLogExpenseFields.hidden = !taskLogExpenseToggleInput.checked;
+  });
+
+  taskLogEmotionToggleInput?.addEventListener("change", () => {
+    if (taskLogEmotionFields) taskLogEmotionFields.hidden = !taskLogEmotionToggleInput.checked;
   });
 
   taskLogExpenseAmountInput?.addEventListener("input", () => {
@@ -2514,14 +2499,11 @@ export function render() {
   });
 
   function getDefaultStartTime(addContext) {
-    const dateStr =
-      filterType === "day"
-        ? filterStartDate
-        : (() => {
-            const y = new Date();
-            y.setDate(y.getDate() - 1);
-            return y.toISOString().slice(0, 10);
-          })();
+    const dateStr = filterType === "day" ? filterStartDate : (() => {
+      const y = new Date();
+      y.setDate(y.getDate() - 1);
+      return y.toISOString().slice(0, 10);
+    })();
     let allRows = [];
     if (addContext?.viewEl) {
       allRows = Array.from(addContext.viewEl.querySelectorAll("tr.time-row"));
@@ -2531,10 +2513,7 @@ export function render() {
     const rowsForDate = allRows.filter((r) => {
       const rd = r._rowData;
       if (!rd) return false;
-      const rowDate = (rd.date || "")
-        .toString()
-        .replace(/\//g, "-")
-        .slice(0, 10);
+      const rowDate = (rd.date || "").toString().replace(/\//g, "-").slice(0, 10);
       return rowDate === dateStr;
     });
     if (rowsForDate.length === 0) {
@@ -2563,10 +2542,13 @@ export function render() {
     taskLogEditTr = null;
     pendingEditStartTime = "";
     taskLogTitleEl.textContent = "과제 기록하기";
-    taskLogSubmitBtn.textContent = "기록하기";
+    taskLogSubmitBtn.textContent = "기록";
     taskLogModal.hidden = false;
     taskLogModal.style.zIndex = "1002";
     document.body.style.overflow = "hidden";
+    taskLogPickerWrap.hidden = true;
+    const bodyEl = taskLogModal.querySelector(".time-task-setup-body");
+    if (bodyEl) bodyEl.scrollTop = 0;
     if (!taskLogTaskDropdown) {
       taskLogTaskDropdown = buildTaskDropdown();
       taskLogTaskWrap.innerHTML = "";
@@ -2577,9 +2559,7 @@ export function render() {
     const defaultStart = getDefaultStartTime(addContext);
     taskLogStartInput.value = defaultStart;
     taskLogEndInput.value = "";
-    taskLogStartTrigger.textContent = defaultStart
-      ? toDisplayDateTime(defaultStart) || defaultStart.replace("T", " ")
-      : "날짜·시간 선택";
+    taskLogStartTrigger.textContent = defaultStart ? (toDisplayDateTime(defaultStart) || defaultStart.replace("T", " ")) : "날짜·시간 선택";
     taskLogEndTrigger.textContent = "날짜·시간 선택";
     updateEndTimeClearVisibility();
     taskLogFeedbackInput.value = "";
@@ -2594,26 +2574,29 @@ export function render() {
       taskLogExpenseErrorEl.textContent = "";
       taskLogExpenseErrorEl.hidden = true;
     }
-    taskLogEnergyValue = "";
-    taskLogFocusValue = "";
+    emotionDropdown._setValue?.("");
+    if (taskLogEmotionQ1) taskLogEmotionQ1.value = "";
+    if (taskLogEmotionQ2) taskLogEmotionQ2.value = "";
+    if (taskLogEmotionQ3) taskLogEmotionQ3.value = "";
+    if (taskLogEmotionToggleInput) taskLogEmotionToggleInput.checked = false;
+    if (taskLogEmotionFields) taskLogEmotionFields.hidden = true;
+    taskLogEnergyValue = "50";
+    taskLogFocusValue = "0";
     if (taskLogEnergyToggleInput) taskLogEnergyToggleInput.checked = false;
     if (taskLogEnergyFields) taskLogEnergyFields.hidden = true;
     if (taskLogFocusToggleInput) taskLogFocusToggleInput.checked = false;
     if (taskLogFocusFields) taskLogFocusFields.hidden = true;
-    updateScoreBtnStates(energyBtns, "");
-    updateScoreBtnStates(focusBtns, "");
+    updateEnergySlider("50");
+    updateFocusStepper("0");
   }
 
   function openTaskLogModalForEdit(tr, rowData) {
-    const data =
-      tr?._rowData && typeof tr._rowData === "object" ? tr._rowData : rowData;
+    const data = (tr?._rowData && typeof tr._rowData === "object") ? tr._rowData : rowData;
     let startTime = data.startTime || "";
     let endTime = data.endTime || "";
     const rowDateEl = tr?.querySelector(".time-display-date");
     const displayDateStr = (rowDateEl?.textContent || "").trim();
-    const recordDate =
-      normalizeDateForCompare(displayDateStr) ||
-      normalizeDateForCompare(data.date || "");
+    const recordDate = normalizeDateForCompare(displayDateStr) || normalizeDateForCompare(data.date || "");
 
     if (recordDate) {
       if (endTime) {
@@ -2631,20 +2614,21 @@ export function render() {
     taskLogEditTr = tr;
     pendingEditStartTime = startTime || "";
     taskLogTitleEl.textContent = "과제 수정";
-    taskLogSubmitBtn.textContent = "수정하기";
+    taskLogSubmitBtn.textContent = "수정";
     taskLogModal.hidden = false;
     taskLogModal.style.zIndex = "1002";
     document.body.style.overflow = "hidden";
+    taskLogPickerWrap.hidden = true;
+    const bodyEl = taskLogModal.querySelector(".time-task-setup-body");
+    if (bodyEl) bodyEl.scrollTop = 0;
     if (!taskLogTaskDropdown) {
       taskLogTaskDropdown = buildTaskDropdown();
       taskLogTaskWrap.innerHTML = "";
       taskLogTaskWrap.appendChild(taskLogTaskDropdown);
     }
     taskLogTaskDropdown._setValue?.(data.taskName || "");
-    const startDisplay = startTime
-      ? toDisplayDateTime(startTime) || startTime
-      : "";
-    const endDisplay = endTime ? toDisplayDateTime(endTime) || endTime : "";
+    const startDisplay = startTime ? (toDisplayDateTime(startTime) || startTime) : "";
+    const endDisplay = endTime ? (toDisplayDateTime(endTime) || endTime) : "";
     taskLogStartInput.value = startTime;
     taskLogEndInput.value = endTime;
     taskLogStartTrigger.textContent = startDisplay || "날짜·시간 선택";
@@ -2658,18 +2642,24 @@ export function render() {
     taskLogExpenseAmountInput.value = "";
     if (taskLogExpenseToggleInput) taskLogExpenseToggleInput.checked = false;
     if (taskLogExpenseFields) taskLogExpenseFields.hidden = true;
+    emotionDropdown._setValue?.("");
+    if (taskLogEmotionQ1) taskLogEmotionQ1.value = "";
+    if (taskLogEmotionQ2) taskLogEmotionQ2.value = "";
+    if (taskLogEmotionQ3) taskLogEmotionQ3.value = "";
+    if (taskLogEmotionToggleInput) taskLogEmotionToggleInput.checked = false;
+    if (taskLogEmotionFields) taskLogEmotionFields.hidden = true;
     taskLogEnergyValue = String(data.energy || "").trim();
-    taskLogFocusValue = String(data.focus || "").trim();
+    taskLogFocusValue = String(data.focus || "0").trim() || "0";
     if (taskLogEnergyToggleInput) {
       taskLogEnergyToggleInput.checked = !!taskLogEnergyValue;
-      if (taskLogEnergyFields) taskLogEnergyFields.hidden = !taskLogEnergyValue;
+      if (taskLogEnergyFields) taskLogEnergyFields.hidden = !taskLogEnergyToggleInput.checked;
     }
     if (taskLogFocusToggleInput) {
-      taskLogFocusToggleInput.checked = !!taskLogFocusValue;
-      if (taskLogFocusFields) taskLogFocusFields.hidden = !taskLogFocusValue;
+      taskLogFocusToggleInput.checked = (String(data.focus || "").trim()) !== "";
+      if (taskLogFocusFields) taskLogFocusFields.hidden = !taskLogFocusToggleInput.checked;
     }
-    updateScoreBtnStates(energyBtns, taskLogEnergyValue);
-    updateScoreBtnStates(focusBtns, taskLogFocusValue);
+    updateEnergySlider(taskLogEnergyValue || "50");
+    updateFocusStepper(taskLogFocusValue || "0");
   }
 
   function closeTaskLogModal() {
@@ -2703,11 +2693,8 @@ export function render() {
     const timeTracked = (() => {
       if (startTime && endTime) {
         const toIso = (str) => {
-          const m = str.match(
-            /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})[T\s]+(\d{1,2}):(\d{2})/,
-          );
-          if (m)
-            return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}T${m[4].padStart(2, "0")}:${m[5]}:00`;
+          const m = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})[T\s]+(\d{1,2}):(\d{2})/);
+          if (m) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}T${m[4].padStart(2, "0")}:${m[5]}:00`;
           return str.replace(" ", "T") + ":00";
         };
         const s = new Date(toIso(startTime));
@@ -2718,17 +2705,18 @@ export function render() {
       return "";
     })();
     const opt = taskName ? getTaskOptionByName(taskName) : null;
-    const productivity =
-      opt?.productivity || (addCtx?.productivity ?? "productive");
-    const category = opt?.category || "";
+    let productivity = opt?.productivity || (addCtx?.productivity ?? "productive");
+    let category = opt?.category || "";
+    if ((taskName || "").trim() === "낮잠" && timeTracked) {
+      const nap = getNapCategoryProductivity(timeTracked);
+      category = nap.category;
+      productivity = nap.productivity;
+    }
     const dateStr = parseDateFromDateTime(startTime) || toDateStr(new Date());
     const expenseName = (taskLogExpenseNameInput.value || "").trim();
-    const expenseAmount = (taskLogExpenseAmountInput.value || "")
-      .trim()
-      .replace(/,/g, "");
+    const expenseAmount = (taskLogExpenseAmountInput.value || "").trim().replace(/,/g, "");
     const expenseCategory = expenseCategoryDropdown._getValue?.() || "";
-    const expenseClassification =
-      expenseClassificationDropdown._getValue?.() || "";
+    const expenseClassification = expenseClassificationDropdown._getValue?.() || "";
 
     const energyToggleOn = taskLogEnergyToggleInput?.checked;
     const focusToggleOn = taskLogFocusToggleInput?.checked;
@@ -2744,8 +2732,7 @@ export function render() {
       if (!expenseAmount || !parseFloat(expenseAmount)) missing.push("금액");
       if (missing.length > 0) {
         if (taskLogExpenseErrorEl) {
-          taskLogExpenseErrorEl.textContent =
-            "입력 필요: " + missing.join(", ");
+          taskLogExpenseErrorEl.textContent = "입력 필요: " + missing.join(", ");
           taskLogExpenseErrorEl.hidden = false;
         }
         return;
@@ -2772,38 +2759,21 @@ export function render() {
       };
       editTr._rowData = newRowData;
       editTr.querySelector(".time-display-task").textContent = taskName;
-      editTr.querySelector(".time-display-start").textContent = startTime
-        ? toDisplayTimeOnly(startTime) || startTime
-        : "";
-      editTr.querySelector(".time-display-end").textContent = endTime
-        ? toDisplayTimeOnly(endTime) || endTime
-        : "";
+      editTr.querySelector(".time-display-start").textContent = startTime ? (toDisplayTimeOnly(startTime) || startTime) : "";
+      editTr.querySelector(".time-display-end").textContent = endTime ? (toDisplayTimeOnly(endTime) || endTime) : "";
       editTr.querySelector(".time-display-tracked").textContent = timeTracked;
       editTr.querySelector(".time-display-feedback").textContent = feedback;
       const catOpt = CATEGORY_OPTIONS.find((o) => o.value === category);
-      editTr.querySelector(".time-cell-category .time-tag-pill").textContent =
-        catOpt ? catOpt.label : "—";
-      editTr.querySelector(".time-cell-category .time-tag-pill").className =
-        "time-tag-pill cat " + (catOpt ? catOpt.color : "cat-empty");
-      const prodOpt = PRODUCTIVITY_OPTIONS.find(
-        (o) => o.value === productivity,
-      );
-      editTr.querySelector(
-        ".time-cell-productivity .time-tag-pill",
-      ).textContent = prodOpt ? prodOpt.label : "";
-      editTr.querySelector(".time-cell-productivity .time-tag-pill").className =
-        "time-tag-pill prod " + (prodOpt ? prodOpt.color : "");
-      editTr.querySelector(".time-display-date").textContent = dateStr
-        ? formatDateDisplay(dateStr)
-        : "";
-      const focusDisplay = editTr.querySelector(
-        ".time-cell-focus .time-display-focus",
-      );
-      const energyDisplay = editTr.querySelector(
-        ".time-cell-energy .time-display-energy",
-      );
+      editTr.querySelector(".time-cell-category .time-tag-pill").textContent = catOpt ? catOpt.label : "—";
+      editTr.querySelector(".time-cell-category .time-tag-pill").className = "time-tag-pill cat " + (catOpt ? catOpt.color : "cat-empty");
+      const prodOpt = PRODUCTIVITY_OPTIONS.find((o) => o.value === productivity);
+      editTr.querySelector(".time-cell-productivity .time-tag-pill").textContent = prodOpt ? prodOpt.label : "";
+      editTr.querySelector(".time-cell-productivity .time-tag-pill").className = "time-tag-pill prod " + (prodOpt ? prodOpt.color : "");
+      editTr.querySelector(".time-display-date").textContent = dateStr ? formatDateDisplay(dateStr) : "";
+      const focusDisplay = editTr.querySelector(".time-cell-focus .time-display-focus");
+      const energyDisplay = editTr.querySelector(".time-cell-energy .time-display-energy");
       if (focusDisplay) focusDisplay.textContent = focusValue || "";
-      if (energyDisplay) energyDisplay.textContent = energyValue || "";
+      if (energyDisplay) energyDisplay.textContent = formatEnergyForDisplay(energyValue);
       editTr._updatePrice?.();
     } else if (addCtx) {
       const ctx = addCtx;
@@ -2830,22 +2800,12 @@ export function render() {
       ctx.onRowUpdate?.();
     }
 
-    if (
-      expenseToggleOn &&
-      expenseName &&
-      expenseCategory &&
-      expenseClassification &&
-      expenseAmount &&
-      parseFloat(expenseAmount)
-    ) {
+    if (expenseToggleOn && expenseName && expenseCategory && expenseClassification && expenseAmount && parseFloat(expenseAmount)) {
       const raw = parseFloat(String(expenseAmount).replace(/,/g, "")) || 0;
-      const signed =
-        expenseCategory === "수입" ? Math.abs(raw) : -Math.abs(raw);
+      const signed = expenseCategory === "수입" ? Math.abs(raw) : -Math.abs(raw);
       const amountFormatted = signed.toLocaleString("ko-KR");
       const existingRows = loadExpenseRows();
-      const dateForExpense = (
-        dateStr || new Date().toISOString().slice(0, 10)
-      ).replace(/\//g, "-");
+      const dateForExpense = (dateStr || new Date().toISOString().slice(0, 10)).replace(/\//g, "-");
       existingRows.push({
         name: expenseName,
         date: dateForExpense,
@@ -2858,19 +2818,27 @@ export function render() {
       saveExpenseRows(existingRows);
     }
 
+    const emotionToggleOn = taskLogEmotionToggleInput?.checked;
+    const emotionValue = emotionDropdown._getValue?.() || "";
+    const emotionQ1 = (taskLogEmotionQ1?.value || "").trim();
+    const emotionQ2 = (taskLogEmotionQ2?.value || "").trim();
+    const emotionQ3 = (taskLogEmotionQ3?.value || "").trim();
+    const hasEmotionContent = emotionQ1 || emotionQ2 || emotionQ3;
+    if (emotionToggleOn && emotionValue && hasEmotionContent) {
+      const entries = loadDiaryEntries();
+      addEmotionEntry(entries, emotionValue, dateStr, emotionQ1, emotionQ2, emotionQ3);
+      saveDiaryEntries(entries);
+    }
+
     if (editTr || addCtx) {
-      if (
-        editTr &&
-        oldRowDataToRemove &&
-        (oldRowDataToRemove.date !== dateStr ||
-          oldRowDataToRemove.startTime !== startTime)
-      ) {
+      if (editTr && oldRowDataToRemove) {
         const oldKey = `${oldRowDataToRemove.date}|${oldRowDataToRemove.taskName}|${oldRowDataToRemove.startTime}`;
         allRowsCache = allRowsCache.filter(
           (c) => `${c.date}|${c.taskName}|${c.startTime}` !== oldKey,
         );
       }
       onFilterChange();
+      saveTimeRows(getFullRowsForFilter(true));
     }
     closeTaskLogModal();
     el._updateTotal?.();
@@ -2883,7 +2851,9 @@ export function render() {
   const closeBtn = taskSetupModal.querySelector(".time-task-setup-close");
   const addTaskBtn = taskSetupModal.querySelector(".time-task-add-btn");
   const setupTabs = taskSetupModal.querySelectorAll(".time-task-setup-tab");
-  const setupListAll = taskSetupModal.querySelector('[data-tab-content="all"]');
+  const setupListAll = taskSetupModal.querySelector(
+    '[data-tab-content="all"]',
+  );
   const setupListProd = taskSetupModal.querySelector(
     '[data-tab-content="productive"]',
   );
@@ -2947,21 +2917,21 @@ export function render() {
       CATEGORY_OPTIONS.find((c) => c.value === v)?.label ||
       v ||
       "—";
-    const fixedNames = new Set(FIXED_OTHER_TASKS.map((x) => x.name));
+    const lockedNames = getLockedTaskNames();
     function renderList(container, list) {
       container.innerHTML = "";
       list.forEach((t) => {
-        const isFixed = fixedNames.has(t.name);
+        const isLocked = lockedNames.has(t.name);
         const row = document.createElement("div");
         row.className = "time-task-setup-item";
         row.innerHTML = `
           <span class="time-task-setup-item-name">${(t.name || "").replace(/</g, "&lt;")}</span>
           <span class="time-task-setup-item-cat">${getCatLabel(t.category)}</span>
           <div class="time-task-setup-item-actions">
-            ${isFixed ? "" : '<button type="button" class="time-task-setup-edit" title="수정">수정</button><button type="button" class="time-task-setup-del" title="삭제">삭제</button>'}
+            ${isLocked ? "" : '<button type="button" class="time-task-setup-edit" title="수정">수정</button><button type="button" class="time-task-setup-del" title="삭제">삭제</button>'}
           </div>
         `;
-        if (!isFixed) {
+        if (!isLocked) {
           row
             .querySelector(".time-task-setup-del")
             .addEventListener("click", () => {
@@ -3123,7 +3093,7 @@ export function render() {
   contentWrap.className = "time-view-content-wrap";
   el.appendChild(contentWrap);
 
-  let allRowsCache = [];
+  let allRowsCache = loadTimeRows();
   let cachedRows = [];
 
   function mergeRowsIntoCache() {
@@ -3199,18 +3169,21 @@ export function render() {
         const newWidth = Math.max(80, Math.min(500, startWidth + dx));
         taskCol.style.width = `${newWidth}px`;
         taskCol.style.minWidth = `${newWidth}px`;
+        updateStickyLefts(table);
       };
       const onUp = () => {
         document.removeEventListener("mousemove", onMove);
         document.removeEventListener("mouseup", onUp);
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
+        updateStickyLefts(table);
       };
       document.addEventListener("mousemove", onMove);
       document.addEventListener("mouseup", onUp);
       document.body.style.cursor = "col-resize";
       document.body.style.userSelect = "none";
     });
+    requestAnimationFrame(() => updateStickyLefts(table));
   }
 
   const addRow = document.createElement("tr");
@@ -3227,7 +3200,14 @@ export function render() {
 
   tbody.appendChild(addRow);
 
-  const initialHandleRowDelete = (tr) => {
+  const initialHandleRowDelete = (tr, rowData) => {
+    if (rowData) {
+      const k = `${rowData.date}|${rowData.taskName}|${rowData.startTime}`;
+      allRowsCache = allRowsCache.filter(
+        (c) => `${c.date}|${c.taskName}|${c.startTime}` !== k,
+      );
+      saveTimeRows(allRowsCache);
+    }
     tr.remove();
     updateTotal();
   };
@@ -3251,13 +3231,7 @@ export function render() {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayStr = yesterday.toISOString().slice(0, 10);
-      const tr = createRow(
-        { date: yesterdayStr },
-        updateTotal,
-        el,
-        initialHandleRowDelete,
-        initialHandleRowEdit,
-      );
+      const tr = createRow({ date: yesterdayStr }, updateTotal, el, initialHandleRowDelete, initialHandleRowEdit);
       tbody.insertBefore(tr, addRow);
       updateTotal();
     }
@@ -3286,7 +3260,14 @@ export function render() {
     addRowEl.appendChild(addCellEl);
     tbodyEl.appendChild(addRowEl);
 
-    const handleRowDelete = (tr) => {
+    const handleRowDelete = (tr, rowData) => {
+      if (rowData) {
+        const k = `${rowData.date}|${rowData.taskName}|${rowData.startTime}`;
+        allRowsCache = allRowsCache.filter(
+          (c) => `${c.date}|${c.taskName}|${c.startTime}` !== k,
+        );
+        saveTimeRows(allRowsCache);
+      }
       tr.remove();
       updateTotal();
     };
@@ -3320,13 +3301,7 @@ export function render() {
                 yesterday.setDate(yesterday.getDate() - 1);
                 return yesterday.toISOString().slice(0, 10);
               })();
-        const tr = createRow(
-          { date: dateStr },
-          updateTotal,
-          el,
-          handleRowDelete,
-          handleRowEdit,
-        );
+        const tr = createRow({ date: dateStr }, updateTotal, el, handleRowDelete, handleRowEdit);
         tbodyEl.insertBefore(tr, addRowEl);
         updateTotal();
       }
@@ -3348,18 +3323,21 @@ export function render() {
           const newWidth = Math.max(80, Math.min(500, startWidth + dx));
           taskColEl.style.width = `${newWidth}px`;
           taskColEl.style.minWidth = `${newWidth}px`;
+          updateStickyLefts(tbl);
         };
         const onUp = () => {
           document.removeEventListener("mousemove", onMove);
           document.removeEventListener("mouseup", onUp);
           document.body.style.cursor = "";
           document.body.style.userSelect = "";
+          updateStickyLefts(tbl);
         };
         document.addEventListener("mousemove", onMove);
         document.addEventListener("mouseup", onUp);
         document.body.style.cursor = "col-resize";
         document.body.style.userSelect = "none";
       });
+      requestAnimationFrame(() => updateStickyLefts(tbl));
     }
 
     wrap.appendChild(tbl);
@@ -3368,6 +3346,17 @@ export function render() {
 
   function renderByProductivity(rows = []) {
     contentWrap.innerHTML = "";
+    const handleRowDelete = (tr, rowData) => {
+      if (rowData) {
+        const k = `${rowData.date}|${rowData.taskName}|${rowData.startTime}`;
+        allRowsCache = allRowsCache.filter(
+          (c) => `${c.date}|${c.taskName}|${c.startTime}` !== k,
+        );
+        saveTimeRows(allRowsCache);
+      }
+      tr.remove();
+      updateTotal();
+    };
     PRODUCTIVITY_VIEW_ORDER.forEach((prod) => {
       const sectionRows =
         prod.value === "other"
@@ -3379,7 +3368,7 @@ export function render() {
           sectionRows,
           el,
           updateTotal,
-          undefined,
+          handleRowDelete,
           openTaskLogModal,
           openTaskLogModalForEdit,
         ),
@@ -3431,7 +3420,10 @@ export function render() {
 
     let widgetTop7;
     try {
-      const byTask = aggregateHoursByTask(filtered);
+      const filteredExcludingWorkSleep = filtered.filter(
+        (r) => (r.category || "").trim() !== "work" && (r.category || "").trim() !== "sleep",
+      );
+      const byTask = aggregateHoursByTask(filteredExcludingWorkSleep);
       const top7Tasks = Object.entries(byTask)
         .map(([task, hrs]) => ({ task: String(task || ""), hrs }))
         .sort((a, b) => b.hrs - a.hrs)
@@ -3472,13 +3464,13 @@ export function render() {
               )
               .join("")
           : '<div class="time-dash-empty">기록이 없습니다</div>';
-      widgetTop7.innerHTML = `<div class="time-dashboard-widget-title">시간 TOP 3 활동</div><div class="time-dash-top7-list">${top7Html}</div>`;
+      widgetTop7.innerHTML = `<div class="time-dashboard-widget-title">시간 TOP 3 활동</div><div class="time-dash-top7-exclude">근무/수면 제외</div><div class="time-dash-top7-list">${top7Html}</div>`;
     } catch (e) {
       console.error("TOP 7 위젯 오류:", e);
       widgetTop7 = document.createElement("div");
       widgetTop7.className = "time-dashboard-widget time-dashboard-widget-top7";
       widgetTop7.innerHTML =
-        '<div class="time-dashboard-widget-title">시간 TOP 3 활동</div><div class="time-dash-empty">표시할 수 없습니다</div>';
+        '<div class="time-dashboard-widget-title">시간 TOP 3 활동</div><div class="time-dash-top7-exclude">근무/수면 제외</div><div class="time-dash-empty">표시할 수 없습니다</div>';
     }
 
     const rowTop = document.createElement("div");
@@ -3523,7 +3515,7 @@ export function render() {
     `;
     dash.appendChild(widgetCategoryBar);
 
-    // 일별 수익 차트 (이번달/지난달/최근 7일일 때 표시)
+    // 일별 수익 차트 (이번달/지난달/최근 7일일 때 표시, 하루 필터일 때는 미표시)
     let widgetDailyRev = null;
     const { start: rangeStart, end: rangeEnd } = getDateRangeForFilterType(
       type,
@@ -3532,7 +3524,7 @@ export function render() {
       start,
       end,
     );
-    if (rangeStart && rangeEnd) {
+    if (type !== "day" && rangeStart && rangeEnd) {
       const dailyRev = aggregateDailyRevenueFromFiltered(filtered, hourlyRate);
       const dailyData = [];
       {
@@ -3825,6 +3817,7 @@ export function render() {
       }))
       .sort((a, b) => b.hrs - a.hrs);
     const maxTaskHrs = Math.max(...taskEntries.map((x) => x.hrs), 0.01);
+    const totalTaskHrs = taskEntries.reduce((s, x) => s + x.hrs, 0);
 
     const widgetTaskBar = document.createElement("div");
     widgetTaskBar.className =
@@ -3844,6 +3837,7 @@ export function render() {
       .join("");
     widgetTaskBar.innerHTML = `
       <div class="time-dashboard-widget-title">${periodLabel} 과제별 시간 사용 현황</div>
+      <div class="time-dash-bar-total">총 ${formatHoursDisplay(totalTaskHrs)}</div>
       <div class="time-dash-bar-subtitle">Time Tracked</div>
       <div class="time-dash-bar-list time-dash-task-bar-list">${taskEntries.length ? taskBarHtml : '<div class="time-dash-empty">기록이 없습니다</div>'}</div>
     `;
@@ -4141,8 +4135,7 @@ export function render() {
     const investAddBtn = document.createElement("button");
     investAddBtn.type = "button";
     investAddBtn.className = "time-btn-add";
-    investAddBtn.innerHTML =
-      '<span class="time-add-icon">+</span> 과제 기록하기';
+    investAddBtn.innerHTML = '<span class="time-add-icon">+</span> 과제 기록하기';
     investAddCell.appendChild(investAddBtn);
     investAddRow.appendChild(investAddCell);
 
@@ -4170,8 +4163,7 @@ export function render() {
     const consumeAddBtn = document.createElement("button");
     consumeAddBtn.type = "button";
     consumeAddBtn.className = "time-btn-add";
-    consumeAddBtn.innerHTML =
-      '<span class="time-add-icon">+</span> 과제 기록하기';
+    consumeAddBtn.innerHTML = '<span class="time-add-icon">+</span> 과제 기록하기';
     consumeAddCell.appendChild(consumeAddBtn);
     consumeAddRow.appendChild(consumeAddCell);
 
@@ -4390,6 +4382,8 @@ export function render() {
 
   tableWrap.appendChild(table);
   contentWrap.appendChild(tableWrap);
+
+  onFilterChange(true);
 
   return el;
 }

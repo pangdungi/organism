@@ -185,16 +185,18 @@ function getAssetGroup(assetType) {
   return "예금";
 }
 
-const EXPENSE_CATEGORY_OPTIONS = [
+const EXPENSE_CATEGORY_OPTIONS_KEY = "asset_expense_category_options";
+const EXPENSE_CLASSIFICATION_KEY = "asset_expense_classification_by_category";
+
+const DEFAULT_EXPENSE_CATEGORY_OPTIONS = [
   { label: "고정비", color: "expense-cat-teal" },
   { label: "변동비", color: "expense-cat-blue" },
   { label: "저축", color: "expense-cat-green" },
   { label: "투자", color: "expense-cat-purple" },
   { label: "수입", color: "expense-cat-indigo" },
-  { label: "기타", color: "expense-cat-orange" },
 ];
 
-const EXPENSE_CLASSIFICATION_BY_CATEGORY = {
+const DEFAULT_EXPENSE_CLASSIFICATION_BY_CATEGORY = {
   고정비: [
     { label: "주거비", color: "expense-cls-teal" },
     { label: "보험료", color: "expense-cls-blue" },
@@ -203,13 +205,25 @@ const EXPENSE_CLASSIFICATION_BY_CATEGORY = {
     { label: "구독료", color: "expense-cls-orange" },
     { label: "교통비", color: "expense-cls-pink" },
     { label: "대출상환", color: "expense-cls-indigo" },
+    { label: "교육비", color: "expense-cls-blue" },
+    { label: "건강 관련", color: "expense-cls-green" },
   ],
   변동비: [
     { label: "식비", color: "expense-cls-teal" },
     { label: "교통비", color: "expense-cls-blue" },
-    { label: "쇼핑", color: "expense-cls-green" },
-    { label: "취미/여가", color: "expense-cls-purple" },
-    { label: "의료비", color: "expense-cls-orange" },
+    { label: "여가/취미", color: "expense-cls-green" },
+    { label: "생활용품", color: "expense-cls-purple" },
+    { label: "쇼핑", color: "expense-cls-orange" },
+    { label: "미용", color: "expense-cls-pink" },
+    { label: "의료/건강", color: "expense-cls-indigo" },
+    { label: "교육", color: "expense-cls-teal" },
+    { label: "카드대금", color: "expense-cls-blue" },
+    { label: "세금", color: "expense-cls-green" },
+    { label: "경조사", color: "expense-cls-purple" },
+    { label: "반려동물", color: "expense-cls-orange" },
+    { label: "여행비", color: "expense-cls-pink" },
+    { label: "선물비", color: "expense-cls-indigo" },
+    { label: "기부/후원", color: "expense-cls-teal" },
   ],
   저축: [
     { label: "예/적금", color: "expense-cls-teal" },
@@ -231,27 +245,68 @@ const EXPENSE_CLASSIFICATION_BY_CATEGORY = {
     { label: "용돈", color: "expense-cls-green" },
     { label: "임대소득", color: "expense-cls-purple" },
     { label: "투자소득", color: "expense-cls-orange" },
+    { label: "자산인출", color: "expense-cls-pink" },
+    { label: "이월", color: "expense-cls-indigo" },
     { label: "기타", color: "expense-cls-gray" },
   ],
-  기타: [
-    { label: "경조사비", color: "expense-cls-teal" },
-    { label: "선물비", color: "expense-cls-blue" },
-    { label: "기부/후원금", color: "expense-cls-green" },
-    { label: "세금/벌금", color: "expense-cls-purple" },
-    { label: "반려동물", color: "expense-cls-orange" },
-    { label: "교육비", color: "expense-cls-pink" },
-    { label: "여행비", color: "expense-cls-indigo" },
-  ],
 };
+
+function getExpenseCategoryOptions() {
+  try {
+    const raw = localStorage.getItem(EXPENSE_CATEGORY_OPTIONS_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr) && arr.length > 0) return arr;
+    }
+  } catch (_) {}
+  return DEFAULT_EXPENSE_CATEGORY_OPTIONS.map((o) => ({ ...o }));
+}
+
+function saveExpenseCategoryOptions(arr) {
+  try {
+    localStorage.setItem(EXPENSE_CATEGORY_OPTIONS_KEY, JSON.stringify(arr));
+  } catch (_) {}
+}
+
+function getExpenseClassificationByCategory() {
+  const out = {};
+  try {
+    const raw = localStorage.getItem(EXPENSE_CLASSIFICATION_KEY);
+    const saved = raw ? JSON.parse(raw) : null;
+    const allCats = new Set([
+      ...Object.keys(DEFAULT_EXPENSE_CLASSIFICATION_BY_CATEGORY),
+      ...(saved && typeof saved === "object" ? Object.keys(saved) : []),
+    ]);
+    allCats.forEach((cat) => {
+      const savedList = (saved && saved[cat]) ? saved[cat].map((o) => ({ ...o })) : [];
+      const defaults = DEFAULT_EXPENSE_CLASSIFICATION_BY_CATEGORY[cat] || [];
+      if (defaults.length === 0) {
+        out[cat] = savedList;
+        return;
+      }
+      const existingLabels = new Set(savedList.map((x) => x.label));
+      const missingDefaults = defaults.filter((d) => !existingLabels.has(d.label)).map((o) => ({ ...o }));
+      out[cat] = [...savedList, ...missingDefaults];
+    });
+  } catch (_) {
+    Object.keys(DEFAULT_EXPENSE_CLASSIFICATION_BY_CATEGORY).forEach((k) => {
+      out[k] = DEFAULT_EXPENSE_CLASSIFICATION_BY_CATEGORY[k].map((o) => ({ ...o }));
+    });
+  }
+  return out;
+}
+
+function saveExpenseClassificationByCategory(obj) {
+  try {
+    localStorage.setItem(EXPENSE_CLASSIFICATION_KEY, JSON.stringify(obj));
+  } catch (_) {}
+}
 
 const SAVINGS_GOAL_OPTIONS_KEY = "asset_savings_goal_options";
 const DEFAULT_SAVINGS_GOAL_OPTIONS = ["전세자금", "여행자금", "결혼자금", "목돈마련", "통장잔고", "현금보관", "생활비", "예비자금", "비상금", "그외"];
 
 const EXPENSE_PAYMENT_OPTIONS_KEY = "asset_expense_payment_options";
 const DEFAULT_PAYMENT_OPTIONS = ["신용카드", "체크카드", "현금"];
-const PAYMENT_DELETE_ICON =
-  '<svg class="asset-expense-payment-delete-icon" viewBox="0 0 16 16" width="12" height="12"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
-
 function getSavingsGoalOptions() {
   try {
     const raw = localStorage.getItem(SAVINGS_GOAL_OPTIONS_KEY);
@@ -319,9 +374,22 @@ function removePaymentOption(name) {
   return opts;
 }
 
+function savePaymentOptions(opts) {
+  const arr = Array.isArray(opts) ? opts.filter((o) => (o || "").trim()) : [];
+  try {
+    localStorage.setItem(EXPENSE_PAYMENT_OPTIONS_KEY, JSON.stringify(arr));
+  } catch (_) {}
+  return arr;
+}
+
+function isDefaultPaymentOption(name) {
+  return DEFAULT_PAYMENT_OPTIONS.includes(name || "");
+}
+
 function getExpenseClassificationOptions(category) {
   if (!category) return [];
-  return EXPENSE_CLASSIFICATION_BY_CATEGORY[category] || EXPENSE_CLASSIFICATION_BY_CATEGORY.기타;
+  const byCat = getExpenseClassificationByCategory();
+  return byCat[category] || byCat.기타 || [];
 }
 
 function loadDebtRows() {
@@ -1318,7 +1386,7 @@ function createExpenseCategoryDropdown(initialValue, onUpdate) {
   display.className = "asset-expense-category-display";
 
   function getColorClass(val) {
-    const opt = EXPENSE_CATEGORY_OPTIONS.find((o) => o.label === val);
+    const opt = getExpenseCategoryOptions().find((o) => o.label === val);
     return opt ? opt.color : "";
   }
 
@@ -1358,7 +1426,7 @@ function createExpenseCategoryDropdown(initialValue, onUpdate) {
     }
   });
 
-  EXPENSE_CATEGORY_OPTIONS.forEach((opt) => {
+  getExpenseCategoryOptions().forEach((opt) => {
     const row = document.createElement("div");
     row.className = "asset-expense-category-option";
     row.innerHTML = `<span class="asset-expense-category-tag ${opt.color}">${opt.label}</span>`;
@@ -1470,22 +1538,18 @@ function createExpenseClassificationDropdown(category, initialValue, onUpdate) {
   return { wrap, input, refresh };
 }
 
-/** 지출입력장 결제수단 입력 - 기본(신용카드/체크카드/현금) + Create/삭제 가능 */
+/** 지출입력장 결제수단 드롭다운 - 가계부 설정에서 등록한 결제수단만 선택 (타이핑/추가/삭제 없음) */
 function createExpensePaymentInput(initialValue, onUpdate) {
   const wrap = document.createElement("div");
   wrap.className = "asset-expense-payment-wrap";
 
-  const inputWrap = document.createElement("div");
-  inputWrap.className = "asset-expense-payment-input-wrap";
+  const input = document.createElement("input");
+  input.type = "hidden";
+  input.className = "asset-expense-input-payment";
+  input.value = initialValue || "";
 
   const display = document.createElement("span");
   display.className = "asset-expense-payment-display";
-
-  const input = document.createElement("input");
-  input.type = "text";
-  input.className = "asset-expense-input-payment";
-  input.placeholder = "";
-  if (initialValue) input.value = initialValue;
 
   function updateDisplay() {
     const val = (input.value || "").trim();
@@ -1493,198 +1557,59 @@ function createExpensePaymentInput(initialValue, onUpdate) {
     display.className = "asset-expense-payment-display" + (val ? " has-value" : "");
   }
 
-  function showInput() {
-    wrap.classList.add("is-editing");
-    wrap.classList.remove("has-value");
-  }
-
-  function showDisplay() {
-    updateDisplay();
-    if ((input.value || "").trim()) {
-      wrap.classList.remove("is-editing");
-      wrap.classList.add("has-value");
-    } else {
-      wrap.classList.add("is-editing");
-      wrap.classList.remove("has-value");
-    }
-  }
-
-  display.addEventListener("click", () => {
-    showInput();
-    input.focus();
-    renderPanel(input.value);
-  });
-
-  input.addEventListener("focus", () => {
-    showInput();
-    renderPanel(input.value);
-  });
-  input.addEventListener("blur", () => {
-    showDisplay();
-    onUpdate?.();
-    setTimeout(closePanel, 150);
-  });
-  input.addEventListener("input", () => {
-    if (wrap.classList.contains("is-editing")) renderPanel(input.value);
-  });
-
-  inputWrap.appendChild(display);
-  inputWrap.appendChild(input);
-  if (initialValue) {
-    showDisplay();
-  } else {
-    wrap.classList.add("is-editing");
-  }
-
   const panel = document.createElement("div");
   panel.className = "asset-expense-payment-panel";
   panel.hidden = true;
 
-  let highlightedIndex = -1;
-
   function updatePanelPosition() {
-    const rect = input.getBoundingClientRect();
+    const rect = display.getBoundingClientRect();
     panel.style.top = `${rect.bottom + 2}px`;
     panel.style.left = `${rect.left}px`;
-    panel.style.width = "max-content";
-    panel.style.minWidth = `${rect.width}px`;
+    panel.style.minWidth = `${Math.max(rect.width, 160)}px`;
   }
 
-  function renderPanel(query) {
-    const q = (query || "").trim().toLowerCase();
-    const all = getPaymentOptions();
-    const matches = q ? all.filter((o) => o.toLowerCase().includes(q)) : all;
-    const exactMatch = q && matches.some((o) => o.toLowerCase() === q);
-    const showCreate = q && !exactMatch;
-
+  function openPanel() {
     panel.innerHTML = "";
-    highlightedIndex = -1;
-
-    if (matches.length === 0 && !showCreate) {
-      panel.hidden = true;
-      return;
-    }
-
-    const sep = document.createElement("div");
-    sep.className = "asset-expense-payment-separator";
-    sep.textContent = "—";
-    panel.appendChild(sep);
-
-    matches.forEach((opt) => {
+    const all = getPaymentOptions();
+    all.forEach((opt) => {
       const row = document.createElement("div");
       row.className = "asset-expense-payment-option";
-      row.innerHTML =
-        `<span class="asset-expense-payment-tag">${opt}</span>` +
-        `<button type="button" class="asset-expense-payment-delete-btn" title="삭제">${PAYMENT_DELETE_ICON}</button>`;
+      row.innerHTML = `<span class="asset-expense-payment-tag">${opt}</span>`;
       row.dataset.value = opt;
-      const delBtn = row.querySelector(".asset-expense-payment-delete-btn");
-      row.addEventListener("click", (e) => {
-        if (e.target.closest(".asset-expense-payment-delete-btn")) return;
+      row.addEventListener("click", () => {
         input.value = opt;
-        showDisplay();
+        updateDisplay();
         panel.hidden = true;
-        input.blur();
         onUpdate?.();
       });
-      if (delBtn) {
-        delBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          removePaymentOption(opt);
-          renderPanel(input.value);
-        });
-      }
       panel.appendChild(row);
     });
-
-    if (showCreate) {
-      const createRow = document.createElement("div");
-      createRow.className = "asset-expense-payment-option asset-expense-payment-create";
-      createRow.innerHTML = `<span class="asset-expense-payment-create-label">Create</span><span class="asset-expense-payment-tag">${(query || "").trim()}</span>`;
-      createRow.dataset.value = (query || "").trim();
-      createRow.dataset.isCreate = "true";
-      createRow.addEventListener("click", () => {
-        const val = (query || "").trim();
-        addPaymentOption(val);
-        input.value = val;
-        showDisplay();
-        panel.hidden = true;
-        input.blur();
-        onUpdate?.();
-      });
-      panel.appendChild(createRow);
-    }
-
-    highlightedIndex = 0;
-    const opts = panel.querySelectorAll(".asset-expense-payment-option");
-    if (opts[0]) opts[0].classList.add("is-highlighted");
-    updatePanelPosition();
     closeAllDebtDropdownPanels(panel);
+    updatePanelPosition();
     document.body.appendChild(panel);
     panel.hidden = false;
   }
 
-  function closePanel() {
-    panel.hidden = true;
-    highlightedIndex = -1;
-  }
-
-  input.addEventListener("keydown", (e) => {
+  display.addEventListener("click", (e) => {
+    e.stopPropagation();
     if (panel.hidden) {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        input.blur();
-      }
-      return;
-    }
-    const opts = panel.querySelectorAll(".asset-expense-payment-option");
-    if (opts.length === 0) return;
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      highlightedIndex = Math.min(highlightedIndex + 1, opts.length - 1);
-      opts[highlightedIndex]?.scrollIntoView({ block: "nearest" });
-      opts.forEach((o, i) => o.classList.toggle("is-highlighted", i === highlightedIndex));
-      return;
-    }
-    if (e.key === "ArrowUp") {
-      e.preventDefault();
-      highlightedIndex = Math.max(highlightedIndex - 1, 0);
-      opts[highlightedIndex]?.scrollIntoView({ block: "nearest" });
-      opts.forEach((o, i) => o.classList.toggle("is-highlighted", i === highlightedIndex));
-      return;
-    }
-    if (e.key === "Enter") {
-      e.preventDefault();
-      const sel = opts[highlightedIndex >= 0 ? highlightedIndex : 0];
-      if (sel) {
-        const val = sel.dataset.value;
-        if (sel.dataset.isCreate === "true") addPaymentOption(val);
-        input.value = val;
-        showDisplay();
-        closePanel();
-        input.blur();
-        onUpdate?.();
-      }
-      return;
-    }
-    if (e.key === "Escape") {
-      e.preventDefault();
-      closePanel();
+      openPanel();
+      const handler = (ev) => {
+        document.removeEventListener("click", handler);
+        if (!wrap.contains(ev.target) && !panel.contains(ev.target)) {
+          panel.hidden = true;
+        }
+      };
+      setTimeout(() => document.addEventListener("click", handler), 0);
+    } else {
+      panel.hidden = true;
     }
   });
 
-  document.addEventListener("click", (e) => {
-    if (!wrap.contains(e.target) && !panel.contains(e.target)) closePanel();
-  });
-
-  wrap.appendChild(inputWrap);
+  updateDisplay();
+  wrap.appendChild(input);
+  wrap.appendChild(display);
   wrap.appendChild(panel);
-
-  const scrollResizeHandler = () => {
-    if (!panel.hidden) updatePanelPosition();
-    if (!panel.hidden) updatePanelPosition();
-  };
-  window.addEventListener("scroll", scrollResizeHandler, true);
-  window.addEventListener("resize", scrollResizeHandler);
 
   return { wrap, input };
 }
@@ -3868,7 +3793,7 @@ function renderNetworthView() {
   return wrap;
 }
 
-function renderExpenseView() {
+function renderExpenseView(options = {}) {
   const wrap = document.createElement("div");
   wrap.className = "asset-expense-view";
 
@@ -3884,49 +3809,133 @@ function renderExpenseView() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   }
 
+  function formatDateForDayFilter(dateStr) {
+    if (!dateStr || dateStr.length < 10) return "";
+    const d = new Date(dateStr + "T12:00:00");
+    if (isNaN(d.getTime())) return "";
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+    const weekday = d.toLocaleDateString("ko-KR", { weekday: "short" });
+    return `${month}월 ${day}일 (${weekday})`;
+  }
+
   const filterBar = document.createElement("div");
   filterBar.className = "asset-expense-filter-bar";
   filterBar.innerHTML = `
-    <div class="asset-expense-filter-tabs">
-      <button type="button" class="asset-expense-filter-btn active" data-filter="month">월별</button>
-      <button type="button" class="asset-expense-filter-btn" data-filter="week">일주일</button>
-      <button type="button" class="asset-expense-filter-btn" data-filter="day">하루</button>
-      <button type="button" class="asset-expense-filter-btn" data-filter="range">날짜선택</button>
+    <div class="time-filter-tabs">
+      <button type="button" class="time-filter-btn active" data-filter="month">월별</button>
+      <button type="button" class="time-filter-btn" data-filter="week">일주일</button>
+      <button type="button" class="time-filter-btn" data-filter="day">하루</button>
+      <button type="button" class="time-filter-btn" data-filter="range">날짜 선택</button>
     </div>
-    <div class="asset-expense-filter-month-wrap" data-filter-wrap="month">
-      <select class="asset-expense-filter-year"></select>
-      <span>년</span>
-      <select class="asset-expense-filter-month"></select>
-      <span>월</span>
+    <div class="time-filter-day-wrap" data-filter-wrap="day" style="display:none">
+      <span class="time-filter-day-display">${formatDateForDayFilter(filterStartDate)}</span>
+      <div class="time-filter-day-nav">
+        <button type="button" class="time-filter-day-prev" aria-label="이전 날짜">&lt;</button>
+        <button type="button" class="time-filter-day-next" aria-label="다음 날짜">&gt;</button>
+      </div>
     </div>
-    <div class="asset-expense-filter-range-wrap" data-filter-wrap="range" style="display:none">
-      <input type="date" class="asset-expense-filter-start-date" />
+    <div class="time-filter-month-wrap" data-filter-wrap="month">
+      <div class="asset-cashflow-dropdown-wrap">
+        <button type="button" class="time-period-trigger asset-cashflow-trigger" id="asset-expense-month-trigger">${filterMonth}월</button>
+        <div class="time-period-panel asset-cashflow-panel" id="asset-expense-month-panel">
+          ${Array.from({ length: 12 }, (_, i) => {
+            const m = i + 1;
+            return `<div class="time-period-option" data-value="${m}">${m}월</div>`;
+          }).join("")}
+        </div>
+      </div>
+      <div class="asset-cashflow-year-nav">
+        <button type="button" class="asset-cashflow-year-btn" aria-label="이전 연도">&lt;</button>
+        <span class="asset-cashflow-year-display">${filterYear}</span>
+        <button type="button" class="asset-cashflow-year-btn" aria-label="다음 연도">&gt;</button>
+      </div>
+    </div>
+    <div class="time-filter-range-wrap" data-filter-wrap="range" style="display:none">
+      <input type="date" class="time-filter-start-date" />
       <span>~</span>
-      <input type="date" class="asset-expense-filter-end-date" />
+      <input type="date" class="time-filter-end-date" />
     </div>
   `;
 
-  const yearSelect = filterBar.querySelector(".asset-expense-filter-year");
-  const monthSelect = filterBar.querySelector(".asset-expense-filter-month");
-  const startDateInput = filterBar.querySelector(".asset-expense-filter-start-date");
-  const endDateInput = filterBar.querySelector(".asset-expense-filter-end-date");
+  const dayWrap = filterBar.querySelector("[data-filter-wrap='day']");
   const monthWrap = filterBar.querySelector("[data-filter-wrap='month']");
   const rangeWrap = filterBar.querySelector("[data-filter-wrap='range']");
+  const dayDisplay = filterBar.querySelector(".time-filter-day-display");
+  const dayPrevBtn = filterBar.querySelector(".time-filter-day-prev");
+  const dayNextBtn = filterBar.querySelector(".time-filter-day-next");
+  const startDateInput = filterBar.querySelector(".time-filter-start-date");
+  const endDateInput = filterBar.querySelector(".time-filter-end-date");
+  const monthTrigger = filterBar.querySelector("#asset-expense-month-trigger");
+  const monthPanel = filterBar.querySelector("#asset-expense-month-panel");
+  const monthDropdownWrap = filterBar.querySelector(".time-filter-month-wrap .asset-cashflow-dropdown-wrap");
+  const yearDisplay = filterBar.querySelector(".asset-cashflow-year-display");
+  const yearPrevBtn = filterBar.querySelector(".time-filter-month-wrap .asset-cashflow-year-btn:first-child");
+  const yearNextBtn = filterBar.querySelector(".time-filter-month-wrap .asset-cashflow-year-btn:last-child");
 
-  for (let y = now.getFullYear(); y >= now.getFullYear() - 5; y--) {
-    const opt = document.createElement("option");
-    opt.value = y;
-    opt.textContent = y + "년";
-    if (y === filterYear) opt.selected = true;
-    yearSelect.appendChild(opt);
+  monthPanel.querySelectorAll(".time-period-option").forEach((o) => {
+    o.classList.toggle("is-selected", o.dataset.value === String(filterMonth));
+  });
+
+  monthTrigger.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    monthPanel.classList.toggle("is-open");
+    monthDropdownWrap.classList.toggle("is-open");
+  });
+  monthPanel.querySelectorAll(".time-period-option").forEach((o) => {
+    o.addEventListener("click", (e) => {
+      e.stopPropagation();
+      filterMonth = parseInt(o.dataset.value, 10);
+      monthTrigger.textContent = `${filterMonth}월`;
+      monthPanel.classList.remove("is-open");
+      monthDropdownWrap.classList.remove("is-open");
+      monthPanel.querySelectorAll(".time-period-option").forEach((opt) => {
+        opt.classList.toggle("is-selected", opt.dataset.value === String(filterMonth));
+      });
+      applyExpenseFilter();
+    });
+  });
+  yearPrevBtn.addEventListener("click", () => {
+    filterYear -= 1;
+    yearDisplay.textContent = filterYear;
+    applyExpenseFilter();
+  });
+  yearNextBtn.addEventListener("click", () => {
+    filterYear += 1;
+    yearDisplay.textContent = filterYear;
+    applyExpenseFilter();
+  });
+  document.addEventListener("click", (e) => {
+    if (!monthDropdownWrap?.contains(e.target)) {
+      monthPanel?.classList.remove("is-open");
+      monthDropdownWrap?.classList.remove("is-open");
+    }
+  });
+
+  function updateDayDisplay() {
+    if (dayDisplay) dayDisplay.textContent = formatDateForDayFilter(filterStartDate);
   }
-  for (let m = 1; m <= 12; m++) {
-    const opt = document.createElement("option");
-    opt.value = m;
-    opt.textContent = m + "월";
-    if (m === filterMonth) opt.selected = true;
-    monthSelect.appendChild(opt);
-  }
+
+  dayPrevBtn?.addEventListener("click", () => {
+    const d = new Date(filterStartDate + "T12:00:00");
+    d.setDate(d.getDate() - 1);
+    filterStartDate = filterEndDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    startDateInput.value = filterStartDate;
+    endDateInput.value = filterEndDate;
+    updateDayDisplay();
+    applyExpenseFilter();
+  });
+  dayNextBtn?.addEventListener("click", () => {
+    const d = new Date(filterStartDate + "T12:00:00");
+    d.setDate(d.getDate() + 1);
+    filterStartDate = filterEndDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    startDateInput.value = filterStartDate;
+    endDateInput.value = filterEndDate;
+    updateDayDisplay();
+    applyExpenseFilter();
+  });
+
   startDateInput.value = filterStartDate;
   endDateInput.value = filterEndDate;
 
@@ -3973,9 +3982,9 @@ function renderExpenseView() {
     if (!dateStr) return false;
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return false;
-    if (type === "day") {
-      const today = new Date();
-      return d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
+    if (type === "day" && start) {
+      const sel = new Date(start + "T12:00:00");
+      return d.getFullYear() === sel.getFullYear() && d.getMonth() === sel.getMonth() && d.getDate() === sel.getDate();
     }
     if (type === "week") {
       const today = new Date();
@@ -4001,8 +4010,8 @@ function renderExpenseView() {
 
   function applyExpenseFilter() {
     const type = filterType;
-    const y = parseInt(yearSelect.value, 10) || filterYear;
-    const m = parseInt(monthSelect.value, 10) || filterMonth;
+    const y = filterYear;
+    const m = filterMonth;
     const start = startDateInput.value || filterStartDate;
     const end = endDateInput.value || filterEndDate;
     tbody.querySelectorAll(".asset-expense-row").forEach((tr) => {
@@ -4182,18 +4191,18 @@ function renderExpenseView() {
     saveExpense();
   });
 
-  filterBar.querySelectorAll(".asset-expense-filter-btn").forEach((btn) => {
+  filterBar.querySelectorAll(".time-filter-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       filterType = btn.dataset.filter;
-      filterBar.querySelectorAll(".asset-expense-filter-btn").forEach((b) => b.classList.remove("active"));
+      filterBar.querySelectorAll(".time-filter-btn").forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
+      dayWrap.style.display = filterType === "day" ? "" : "none";
       monthWrap.style.display = filterType === "month" ? "" : "none";
       rangeWrap.style.display = filterType === "range" ? "" : "none";
+      if (filterType === "day") updateDayDisplay();
       applyExpenseFilter();
     });
   });
-  yearSelect.addEventListener("change", applyExpenseFilter);
-  monthSelect.addEventListener("change", applyExpenseFilter);
   startDateInput.addEventListener("change", applyExpenseFilter);
   endDateInput.addEventListener("change", applyExpenseFilter);
 
@@ -4212,9 +4221,323 @@ function renderExpenseView() {
   applyExpenseFilter();
 
   tableWrap.appendChild(table);
+
+  const settingsBtn = document.createElement("button");
+  settingsBtn.type = "button";
+  settingsBtn.className = "asset-expense-settings-btn";
+  settingsBtn.textContent = "가계부 설정";
+  if (options?.onOpenSettings) {
+    settingsBtn.addEventListener("click", options.onOpenSettings);
+  }
+  filterBar.appendChild(settingsBtn);
+
   wrap.appendChild(filterBar);
   wrap.appendChild(tableWrap);
   return wrap;
+}
+
+const DEFAULT_CAT_COLOR = "expense-cat-teal";
+const DEFAULT_CLS_COLOR = "expense-cls-teal";
+const DEFAULT_CATEGORY_LABELS = ["고정비", "변동비", "저축", "투자", "수입"];
+
+function createAssetSettingsModal(onSave) {
+  const modal = document.createElement("div");
+  modal.className = "asset-settings-modal";
+  modal.innerHTML = `
+    <div class="asset-settings-backdrop"></div>
+    <div class="asset-settings-panel">
+      <div class="asset-settings-header">
+        <h3 class="asset-settings-title">가계부 설정</h3>
+        <button type="button" class="asset-settings-close" aria-label="닫기">×</button>
+      </div>
+      <div class="asset-settings-tabs">
+        <button type="button" class="asset-settings-tab-btn active" data-tab="classification">분류설정</button>
+        <button type="button" class="asset-settings-tab-btn" data-tab="payment">결제수단 설정</button>
+      </div>
+      <div class="asset-settings-body">
+        <div class="asset-settings-tab-panel asset-settings-tab-classification" data-tab="classification">
+          <div class="asset-settings-two-col">
+            <div class="asset-settings-col asset-settings-col-left">
+              <h4 class="asset-settings-col-title">카테고리</h4>
+              <div class="asset-settings-category-list"></div>
+              <button type="button" class="asset-settings-add-cat">+ 추가</button>
+            </div>
+            <div class="asset-settings-col asset-settings-col-right">
+              <h4 class="asset-settings-col-title">소비/수입 분류 <span class="asset-settings-selected-cat"></span></h4>
+              <div class="asset-settings-classification-list"></div>
+              <button type="button" class="asset-settings-add-cls">+ 추가</button>
+            </div>
+          </div>
+        </div>
+        <div class="asset-settings-tab-panel asset-settings-tab-payment" data-tab="payment" hidden>
+          <h4 class="asset-settings-col-title">결제수단</h4>
+          <div class="asset-settings-payment-list"></div>
+          <button type="button" class="asset-settings-add-payment">+ 추가</button>
+        </div>
+      </div>
+      <div class="asset-settings-footer">
+        <button type="button" class="asset-settings-save">저장</button>
+      </div>
+    </div>
+  `;
+  modal.hidden = true;
+
+  const categoryList = modal.querySelector(".asset-settings-category-list");
+  const classificationList = modal.querySelector(".asset-settings-classification-list");
+  const selectedCatSpan = modal.querySelector(".asset-settings-selected-cat");
+  const addCatBtn = modal.querySelector(".asset-settings-add-cat");
+  const addClsBtn = modal.querySelector(".asset-settings-add-cls");
+  const paymentList = modal.querySelector(".asset-settings-payment-list");
+  const addPaymentBtn = modal.querySelector(".asset-settings-add-payment");
+  const saveBtn = modal.querySelector(".asset-settings-save");
+  const closeBtn = modal.querySelector(".asset-settings-close");
+  const backdrop = modal.querySelector(".asset-settings-backdrop");
+  const tabBtns = modal.querySelectorAll(".asset-settings-tab-btn");
+  const tabPanels = modal.querySelectorAll(".asset-settings-tab-panel");
+
+  tabBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tab = btn.dataset.tab;
+      tabBtns.forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
+      tabPanels.forEach((p) => {
+        p.hidden = p.dataset.tab !== tab;
+      });
+      if (tab === "payment") renderPaymentList();
+    });
+  });
+
+  function renderCategories(cats) {
+    categoryList.innerHTML = "";
+    cats.forEach((c, i) => {
+      const isDefault = DEFAULT_CATEGORY_LABELS.includes(c.label || "");
+      const row = document.createElement("div");
+      row.className = "asset-settings-row asset-settings-cat-row" + (modal._selectedIdx === i ? " active" : "") + (isDefault ? "" : " asset-settings-cat-row--with-remove");
+      row.dataset.catIdx = String(i);
+      row.innerHTML = `
+        <input type="text" class="asset-settings-input" placeholder="카테고리명" value="${(c.label || "").replace(/"/g, "&quot;")}" />
+        ${isDefault ? "" : '<button type="button" class="asset-settings-remove" title="삭제">×</button>'}
+      `;
+      const input = row.querySelector(".asset-settings-input");
+      input.addEventListener("input", () => { cats[i].label = input.value.trim(); });
+      input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); input.blur(); } });
+      input.addEventListener("focus", (e) => {
+        e.stopPropagation();
+        modal._selectedIdx = i;
+        renderCategories(cats);
+        renderClassifications(cats, modal._byCat);
+      });
+      if (!isDefault) {
+        row.querySelector(".asset-settings-remove").addEventListener("click", (e) => {
+          e.stopPropagation();
+          cats.splice(i, 1);
+          const byCat = modal._byCat || {};
+          const labels = cats.map((x) => x.label);
+          Object.keys(byCat).forEach((k) => { if (!labels.includes(k)) delete byCat[k]; });
+          modal._selectedIdx = Math.min(modal._selectedIdx ?? 0, Math.max(0, cats.length - 1));
+          if (cats.length === 0) modal._selectedIdx = null;
+          renderCategories(cats);
+          renderClassifications(cats, byCat);
+          performSave();
+        });
+      }
+      row.addEventListener("click", (e) => {
+        if (!e.target.matches(".asset-settings-remove") && !e.target.matches("input")) {
+          modal._selectedIdx = i;
+          renderCategories(cats);
+          renderClassifications(cats, modal._byCat);
+        }
+      });
+      categoryList.appendChild(row);
+    });
+  }
+
+  function renderClassifications(cats, byCat) {
+    classificationList.innerHTML = "";
+    const idx = modal._selectedIdx;
+    if (idx == null || !cats[idx]) {
+      selectedCatSpan.textContent = "";
+      const empty = document.createElement("div");
+      empty.className = "asset-settings-empty";
+      empty.textContent = "왼쪽에서 카테고리를 클릭하면 해당 카테고리의 소비/수입 분류를 설정할 수 있습니다.";
+      classificationList.appendChild(empty);
+      return;
+    }
+    const c = cats[idx];
+    selectedCatSpan.textContent = c.label ? `(${c.label})` : "";
+    const defaultLabels = (DEFAULT_EXPENSE_CLASSIFICATION_BY_CATEGORY[c.label] || []).map((x) => x.label);
+    const list = byCat[c.label] || [];
+    list.forEach((cls, clsIdx) => {
+      const isDefault = defaultLabels.includes(cls.label || "");
+      const row = document.createElement("div");
+      row.className = "asset-settings-row" + (isDefault ? "" : " asset-settings-row--with-remove");
+      row.innerHTML = `
+        <input type="text" class="asset-settings-input" placeholder="분류명" value="${(cls.label || "").replace(/"/g, "&quot;")}" />
+        ${isDefault ? "" : '<button type="button" class="asset-settings-remove" title="삭제">×</button>'}
+      `;
+      const clsInput = row.querySelector(".asset-settings-input");
+      clsInput.addEventListener("input", (e) => {
+        if (!byCat[c.label]) byCat[c.label] = [];
+        byCat[c.label][clsIdx].label = e.target.value.trim();
+      });
+      clsInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); clsInput.blur(); } });
+      if (!isDefault) {
+        row.querySelector(".asset-settings-remove").addEventListener("click", () => {
+          byCat[c.label].splice(clsIdx, 1);
+          renderClassifications(cats, byCat);
+          modal._byCat = byCat;
+          performSave();
+        });
+      }
+      classificationList.appendChild(row);
+    });
+  }
+
+  function renderPaymentList() {
+    const opts = modal._payments || getPaymentOptions();
+    modal._payments = [...opts];
+    paymentList.innerHTML = "";
+    opts.forEach((name, i) => {
+      const isDefault = isDefaultPaymentOption(name);
+      const row = document.createElement("div");
+      row.className = "asset-settings-row" + (isDefault ? "" : " asset-settings-row--with-remove");
+      row.innerHTML = `
+        <input type="text" class="asset-settings-input" placeholder="결제수단" value="${(name || "").replace(/"/g, "&quot;")}" />
+        ${isDefault ? "" : '<button type="button" class="asset-settings-remove" title="삭제">×</button>'}
+      `;
+      const input = row.querySelector(".asset-settings-input");
+      input.addEventListener("input", () => { modal._payments[i] = input.value.trim(); });
+      input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); input.blur(); } });
+      if (!isDefault) {
+        row.querySelector(".asset-settings-remove").addEventListener("click", () => {
+          modal._payments.splice(i, 1);
+          renderPaymentList();
+        });
+      }
+      paymentList.appendChild(row);
+    });
+  }
+
+  function loadAndRender() {
+    const cats = getExpenseCategoryOptions().map((o) => ({ ...o }));
+    const byCat = {};
+    const saved = getExpenseClassificationByCategory();
+    cats.forEach((c) => {
+      byCat[c.label] = (saved[c.label] || []).map((o) => ({ ...o }));
+    });
+    modal._cats = cats;
+    modal._byCat = byCat;
+    modal._selectedIdx = cats.length > 0 ? 0 : null;
+    modal._payments = [...getPaymentOptions()];
+    renderCategories(cats);
+    renderClassifications(cats, byCat);
+    renderPaymentList();
+  }
+
+  function collectFromDOM() {
+    const cats = modal._cats || [];
+    const byCat = JSON.parse(JSON.stringify(modal._byCat || {}));
+    const newCats = [];
+    categoryList.querySelectorAll(".asset-settings-row").forEach((row, i) => {
+      const input = row.querySelector(".asset-settings-input");
+      const label = (input?.value || "").trim();
+      const orig = cats[i];
+      newCats.push({ label, color: orig?.color || DEFAULT_CAT_COLOR });
+    });
+    const idx = modal._selectedIdx;
+    if (idx != null && newCats[idx] && cats[idx]) {
+      const catLabel = newCats[idx].label;
+      const oldLabel = cats[idx].label;
+      if (catLabel) {
+        const rows = [];
+        classificationList.querySelectorAll(".asset-settings-row").forEach((r) => {
+          const inp = r.querySelector(".asset-settings-input");
+          if (inp) rows.push((inp.value || "").trim());
+        });
+        const origList = byCat[catLabel] || byCat[oldLabel] || [];
+        byCat[catLabel] = rows.filter((l) => l).map((label) => {
+          const orig = origList.find((o) => o.label === label);
+          return { label, color: orig?.color || DEFAULT_CLS_COLOR };
+        });
+        if (oldLabel && oldLabel !== catLabel) delete byCat[oldLabel];
+      }
+    }
+    Object.keys(byCat).forEach((k) => {
+      if (!newCats.some((c) => c.label === k)) delete byCat[k];
+    });
+    newCats.forEach((c) => {
+      if (c.label && !byCat[c.label]) byCat[c.label] = [];
+    });
+    return { cats: newCats, byCat };
+  }
+
+  addCatBtn.addEventListener("click", () => {
+    const cats = modal._cats || [];
+    const byCat = modal._byCat || {};
+    cats.push({ label: "", color: DEFAULT_CAT_COLOR });
+    byCat[""] = [];
+    modal._selectedIdx = cats.length - 1;
+    renderCategories(cats);
+    renderClassifications(cats, byCat);
+  });
+
+  addClsBtn.addEventListener("click", () => {
+    const cats = modal._cats || [];
+    const byCat = modal._byCat || {};
+    const idx = modal._selectedIdx;
+    if (idx == null || !cats[idx]) return;
+    const c = cats[idx];
+    if (!byCat[c.label]) byCat[c.label] = [];
+    byCat[c.label].push({ label: "", color: DEFAULT_CLS_COLOR });
+    renderClassifications(cats, byCat);
+  });
+
+  addPaymentBtn.addEventListener("click", () => {
+    if (!modal._payments) modal._payments = [...getPaymentOptions()];
+    modal._payments.push("");
+    renderPaymentList();
+  });
+
+  function performSave() {
+    const { cats, byCat } = collectFromDOM();
+    const validCats = cats.filter((c) => c.label.trim());
+    if (validCats.length === 0) return;
+    const finalByCat = {};
+    validCats.forEach((c) => {
+      const label = c.label.trim();
+      const orig = getExpenseClassificationByCategory()[label];
+      finalByCat[label] = (byCat[label] || []).filter((cl) => cl.label.trim()).map((cl) => ({
+        label: cl.label,
+        color: (orig?.find((o) => o.label === cl.label))?.color || DEFAULT_CLS_COLOR,
+      }));
+    });
+    saveExpenseCategoryOptions(validCats.map((c) => ({ label: c.label.trim(), color: c.color })));
+    saveExpenseClassificationByCategory(finalByCat);
+    if (paymentList) {
+      const payments = [];
+      paymentList.querySelectorAll(".asset-settings-input").forEach((inp) => {
+        const v = (inp.value || "").trim();
+        if (v) payments.push(v);
+      });
+      savePaymentOptions(payments.length > 0 ? payments : DEFAULT_PAYMENT_OPTIONS);
+    }
+  }
+
+  saveBtn.addEventListener("click", () => {
+    performSave();
+    onSave?.();
+    modal.hidden = true;
+  });
+
+  closeBtn.addEventListener("click", () => { modal.hidden = true; });
+  backdrop.addEventListener("click", () => { modal.hidden = true; });
+
+  return {
+    modal,
+    open() {
+      loadAndRender();
+      modal.hidden = false;
+    },
+  };
 }
 
 /** 가계부에서 수입 카테고리+분류별 이번달 합계 */
@@ -4279,7 +4602,8 @@ function getExpenseSumByExpenseClassification(category, classification) {
 
 /** 가계부 데이터에서 사용된 수입 분류 수집 (기본 옵션 + 실제 사용된 분류) */
 function getPlanIncomeClassificationOptions() {
-  const base = EXPENSE_CLASSIFICATION_BY_CATEGORY.수입 || [];
+  const byCat = getExpenseClassificationByCategory();
+  const base = byCat.수입 || [];
   const used = new Set(base.map((o) => o.label));
   const rows = loadExpenseRows();
   rows.forEach((r) => {
@@ -4344,8 +4668,9 @@ function createPlanIncomeCategoryDropdown(initialValue, onSelect) {
 /** 가계부 데이터에서 사용된 투자/저축 분류 수집 (기본 옵션 + 실제 사용된 분류) */
 function getPlanInvestSavingsClassificationOptions() {
   const base = [];
-  (EXPENSE_CLASSIFICATION_BY_CATEGORY.저축 || []).forEach((o) => base.push({ ...o, category: "저축" }));
-  (EXPENSE_CLASSIFICATION_BY_CATEGORY.투자 || []).forEach((o) => base.push({ ...o, category: "투자" }));
+  const byCat = getExpenseClassificationByCategory();
+  (byCat.저축 || []).forEach((o) => base.push({ ...o, category: "저축" }));
+  (byCat.투자 || []).forEach((o) => base.push({ ...o, category: "투자" }));
   const used = new Map();
   base.forEach((o) => used.set(`${o.category}:${o.label}`, o));
   const rows = loadExpenseRows();
@@ -4408,7 +4733,8 @@ function createPlanInvestSavingsCategoryDropdown(initialValue, onSelect) {
 function getPlanExpenseClassificationOptions() {
   const base = [];
   ["변동비", "고정비", "기타"].forEach((cat) => {
-    (EXPENSE_CLASSIFICATION_BY_CATEGORY[cat] || []).forEach((o) => base.push({ ...o, category: cat }));
+    const byCat = getExpenseClassificationByCategory();
+    (byCat[cat] || []).forEach((o) => base.push({ ...o, category: cat }));
   });
   const used = new Map();
   base.forEach((o) => used.set(`${o.category}:${o.label}`, o));
@@ -4782,7 +5108,8 @@ function renderCashflowView() {
   /** 카테고리별 지출분류(세부분류) 집계 - 옆 공간 breakdown용 */
   function aggregateByClassification(categoryKeys, rows, year, month) {
     const keys = Array.isArray(categoryKeys) ? categoryKeys : [categoryKeys];
-    const classifications = keys.flatMap((k) => EXPENSE_CLASSIFICATION_BY_CATEGORY[k] || []);
+    const byCat = getExpenseClassificationByCategory();
+    const classifications = keys.flatMap((k) => byCat[k] || []);
     const seen = new Set();
     const unique = classifications.filter((c) => {
       if (seen.has(c.label)) return false;
@@ -4824,7 +5151,8 @@ function renderCashflowView() {
   }
 
   function aggregateFixedExpenseByClassification(rows, year, month) {
-    const classifications = EXPENSE_CLASSIFICATION_BY_CATEGORY.고정비 || [];
+    const byCat = getExpenseClassificationByCategory();
+    const classifications = byCat.고정비 || [];
     const map = Object.fromEntries(classifications.map((c) => [c.label, { ...c, value: 0 }]));
     let 기타합계 = 0;
 
@@ -5147,10 +5475,11 @@ function renderCashflowView() {
 export {
   loadExpenseRows,
   saveExpenseRows,
-  EXPENSE_CATEGORY_OPTIONS,
-  EXPENSE_CLASSIFICATION_BY_CATEGORY,
+  getExpenseCategoryOptions,
+  getExpenseClassificationByCategory,
   getExpenseClassificationOptions,
 };
+
 export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content asset-view";
@@ -5166,9 +5495,9 @@ export function render() {
   const viewTabs = document.createElement("div");
   viewTabs.className = "asset-view-tabs";
   viewTabs.innerHTML = `
-    <button type="button" class="asset-view-tab active" data-view="networth">순자산</button>
-    <button type="button" class="asset-view-tab" data-view="expense">가계부</button>
+    <button type="button" class="asset-view-tab active" data-view="expense">가계부</button>
     <button type="button" class="asset-view-tab" data-view="cashflow">현금흐름</button>
+    <button type="button" class="asset-view-tab" data-view="networth">순자산</button>
     <button type="button" class="asset-view-tab" data-view="plan">자산관리계획</button>
   `;
   el.appendChild(viewTabs);
@@ -5176,6 +5505,14 @@ export function render() {
   const contentWrap = document.createElement("div");
   contentWrap.className = "asset-content-wrap";
   el.appendChild(contentWrap);
+
+  const assetSettings = createAssetSettingsModal(() => {
+    const activeTab = viewTabs.querySelector(".asset-view-tab.active");
+    if (activeTab?.dataset?.view === "expense") {
+      renderView("expense");
+    }
+  });
+  el.appendChild(assetSettings.modal);
 
   function renderView(view) {
     if (view !== "expense") {
@@ -5189,7 +5526,7 @@ export function render() {
     if (view === "networth") {
       contentWrap.appendChild(renderNetworthView());
     } else if (view === "expense") {
-      contentWrap.appendChild(renderExpenseView());
+      contentWrap.appendChild(renderExpenseView({ onOpenSettings: () => assetSettings.open() }));
     } else if (view === "cashflow") {
       contentWrap.appendChild(renderCashflowView());
     } else if (view === "plan") {
@@ -5213,7 +5550,7 @@ export function render() {
     btn.addEventListener("click", () => switchView(btn.dataset.view));
   });
 
-  renderView("networth");
+  renderView("expense");
 
   setupScrollClosePanels();
 

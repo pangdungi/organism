@@ -6,129 +6,109 @@
  * - 같은 날이어도 제목이 다르면 별도 데이터
  */
 
-const DIARY_ENTRIES_KEY = "diary_entries";
-
-/** 탭 3 감정일기 기본 감정 목록 */
-const TAB3_DEFAULT_EMOTIONS = [
-  "공포",
-  "불안",
-  "근심",
-  "걱정",
-  "기쁨",
-  "황홀감",
-  "행복",
-  "즐거움",
-  "고마움",
-  "그리움",
-  "기특함",
-  "감동",
-  "사랑",
-  "신뢰감",
-  "자부심",
-  "자신감",
-  "자존심",
-  "자격지심",
-  "열등감",
-  "슬픔",
-  "우울",
-  "분노",
-  "억울함",
-  "괘씸함",
-  "서운함",
-  "섭섭함",
-  "미움",
-  "얄미움",
-  "시샘",
-  "부러움",
-  "혐오",
-  "괴로움",
-  "부담감",
-  "따분함",
-  "지겨움",
-  "안도감",
-  "편안감",
-  "외로움",
-  "난처함",
-  "후련함",
-  "부끄러움",
-  "죄책감",
-  "아쉬움",
-  "수치심",
-  "짜증",
-  "원망",
-];
-
-/** 탭 3 감정일기 템플릿 질문 */
-const TAB3_EMOTION_TEMPLATE = [
-  "1. 있는 그대로의 상황(사실만 적기)",
-  "2. 그 상황에 대한 내 생각",
-  "3. 메모",
-];
+import {
+  loadDiaryEntries,
+  saveDiaryEntries,
+  getEmotionList,
+  ensureEmotionTabData,
+  TAB3_DEFAULT_EMOTIONS,
+  TAB3_EMOTION_TEMPLATE,
+} from "../diaryData.js";
 
 /** 탭 3 감정일기 - 감정별 설명 (사용자가 이해하기 쉽도록) */
 const TAB3_EMOTION_DESCRIPTIONS = {
-  공포: "공포는 어떤 위험에 대한 반응이에요. 공포를 느끼기 시작하면 위험 대상에 주의와 지각이 집중되면서, 그 상황을 빨리 벗어나려고 투쟁-도피 반응이 일어나요.",
-  불안: "불안은 뭔가 나쁜 일이 일어날 것이라는 일반적 기대에서 비롯되는 감정이에요. 뚜렷한 이유 없이 생겨나거나 위협 요소가 특별히 발견되지 않아도 생겨나요. 주로 주관적 심리적 요인이 크고, 강한 스트레스를 지속적으로 경험하게 됩니다.",
-  근심: "근심은 해결되지 않은 문제거리를 두고 계속 속을 태우는 것이에요.",
-  걱정: "걱정은 어떤 일이 잘못될까 봐 계속 불안해하는 것이에요.",
-  기쁨: "기쁨은 무형이든 유형이든 자신이 원하는 것을 얻어 강렬하게 유쾌한 상태예요.",
-  황홀감: "황홀감은 긍정적 감정의 극치예요.",
-  행복: "행복은 특정한 이유가 없이 삶에 대한 전반적인 만족이에요. 오래 지속된다는 점에서 기쁨과 달라요.",
+  공포:
+    "공포는 어떤 위험에 대한 반응이에요. 공포를 느끼기 시작하면 위험 대상에 주의와 지각이 집중되면서, 그 상황을 빨리 벗어나려고 투쟁-도피 반응이 일어나요.",
+  불안:
+    "불안은 뭔가 나쁜 일이 일어날 것이라는 일반적 기대에서 비롯되는 감정이에요. 뚜렷한 이유 없이 생겨나거나 위협 요소가 특별히 발견되지 않아도 생겨나요. 주로 주관적 심리적 요인이 크고, 강한 스트레스를 지속적으로 경험하게 됩니다.",
+  근심:
+    "근심은 해결되지 않은 문제거리를 두고 계속 속을 태우는 것이에요.",
+  걱정:
+    "걱정은 어떤 일이 잘못될까 봐 계속 불안해하는 것이에요.",
+  기쁨:
+    "기쁨은 무형이든 유형이든 자신이 원하는 것을 얻어 강렬하게 유쾌한 상태예요.",
+  황홀감:
+    "황홀감은 긍정적 감정의 극치예요.",
+  행복:
+    "행복은 특정한 이유가 없이 삶에 대한 전반적인 만족이에요. 오래 지속된다는 점에서 기쁨과 달라요.",
   즐거움:
     "즐거움은 어떤 것이 너무 마음에 들거나 경험하는 과정에서 얻게 되는, 특히 만족으로 인한 기쁨이에요.",
   고마움:
     "고마움은 자신에게 일어난 일이 다른 사람 덕분이라 느낄 때 생기는 감정이에요.",
-  그리움: "그리움은 만나고 싶거나 보고 싶은 마음이 애틋하고 간절한 상태예요.",
-  기특함: "기특함은 대상의 뛰어남 또는 특별함에 대한 기쁨이에요.",
-  감동: "감동은 타인의 감정이나 의도에 마음이 움직여 생겨나는 감정이에요.",
-  사랑: "사랑은 누군가를 애틋하게 그리워하고 열렬히 좋아하는 마음이에요.",
-  신뢰감: "신뢰감은 타인을 믿을 수 있다고 생각하고 의지하는 마음이에요.",
+  그리움:
+    "그리움은 만나고 싶거나 보고 싶은 마음이 애틋하고 간절한 상태예요.",
+  기특함:
+    "기특함은 대상의 뛰어남 또는 특별함에 대한 기쁨이에요.",
+  감동:
+    "감동은 타인의 감정이나 의도에 마음이 움직여 생겨나는 감정이에요.",
+  사랑:
+    "사랑은 누군가를 애틋하게 그리워하고 열렬히 좋아하는 마음이에요.",
+  신뢰감:
+    "신뢰감은 타인을 믿을 수 있다고 생각하고 의지하는 마음이에요.",
   자부심:
     "자부심은 자신의 긍정적 측면을 지지하는 긍정적 결과가 인정받았을 때 느끼는 감정이에요.",
   자신감:
     "자신감은 내가 어떤 일을 잘 해낼 수 있다는 내 능력에 대한 믿음이에요.",
-  자존심: "자존심은 자신의 가치나 품위를 지키려는 마음이에요.",
+  자존심:
+    "자존심은 자신의 가치나 품위를 지키려는 마음이에요.",
   자격지심:
     "자격지심은 나는 부족하다는 느낌이 남들 눈에 들킬까 봐 두려운 것, 즉 내 부족함이 들킬까 생기는 두려움이에요.",
   열등감:
     "열등감은 타인과의 비교에서 자신을 남보다 늘 못하다고 평가하는 마음이에요.",
-  슬픔: "슬픔은 상실에 대한 반응이에요. 결과를 바꿀 수 없는 상실에 대한 무력감이에요.",
-  우울: "우울은 분명한 이유가 없음에도 오랜 기간에 걸쳐 지속되는, 즐거움이 없고 무력하고 의욕이 없는 상태예요.",
-  분노: "분노는 나를 위협하거나 피해를 유발한 상대에 대한 공격성을 수반하는 감정이에요. 주로 나와 내 것에 대한 비하적 공격에 의해 생겨나요.",
+  슬픔:
+    "슬픔은 상실에 대한 반응이에요. 결과를 바꿀 수 없는 상실에 대한 무력감이에요.",
+  우울:
+    "우울은 분명한 이유가 없음에도 오랜 기간에 걸쳐 지속되는, 즐거움이 없고 무력하고 의욕이 없는 상태예요.",
+  분노:
+    "분노는 나를 위협하거나 피해를 유발한 상대에 대한 공격성을 수반하는 감정이에요. 주로 나와 내 것에 대한 비하적 공격에 의해 생겨나요.",
   억울함:
     "억울함은 자신이 경험한 일이 공정하지 못하거나 부당하다는 생각이 들어 분노하거나 답답해하는 감정이에요.",
-  괘씸함: "괘씸함은 상대로부터 모욕을 당했을 때 느끼는 화난 감정이에요.",
+  괘씸함:
+    "괘씸함은 상대로부터 모욕을 당했을 때 느끼는 화난 감정이에요.",
   서운함:
     "서운함은 어떤 사람이 자신의 기대에 미치지 못할 때 느끼는 감정이에요. 화를 내고 따지기엔 명분이 없거나 그러고 싶지 않을 때 생겨나요.",
   섭섭함:
     "섭섭함은 상대방에 대한 기대가 충족되지 못한 데서 오는 불만이나 못마땅함이에요.",
-  미움: "미움은 상대방이 하는 짓이 마음에 들지 않고 싫은 감정이에요.",
-  얄미움: "얄미움은 누군가 매우 얄궂고 영리해서 마음에 안 드는 감정이에요.",
-  시샘: "시샘은 남을 부러워한 나머지 그 사람이 미워지기까지 하는 감정이에요.",
-  부러움: "부러움은 내가 갖지 못한 것을 가진 그 사람처럼 되고 싶은 바람이에요.",
-  혐오: "혐오는 기분 나쁜 대상이 내 영역이나 신체 안에 들어올 수 있다는 인지에서 경험되는 극도의 불쾌감이에요.",
-  괴로움: "괴로움은 견디기 어렵고 스트레스를 받는 상태예요.",
-  부담감: "부담감은 무언가 짐처럼 느껴져 힘든 상태예요.",
+  미움:
+    "미움은 상대방이 하는 짓이 마음에 들지 않고 싫은 감정이에요.",
+  얄미움:
+    "얄미움은 누군가 매우 얄궂고 영리해서 마음에 안 드는 감정이에요.",
+  시샘:
+    "시샘은 남을 부러워한 나머지 그 사람이 미워지기까지 하는 감정이에요.",
+  부러움:
+    "부러움은 내가 갖지 못한 것을 가진 그 사람처럼 되고 싶은 바람이에요.",
+  혐오:
+    "혐오는 기분 나쁜 대상이 내 영역이나 신체 안에 들어올 수 있다는 인지에서 경험되는 극도의 불쾌감이에요.",
+  괴로움:
+    "괴로움은 견디기 어렵고 스트레스를 받는 상태예요.",
+  부담감:
+    "부담감은 무언가 짐처럼 느껴져 힘든 상태예요.",
   따분함:
     "따분함은 일정 기간 별다른 일이 없어 평온하다 못해 자극과 각성이 필요한 지경에 이른 상태예요.",
   지겨움:
     "지겨움은 같은 상태가 오래 지속되어 진저리가 날 정도로 싫증이 나는 상태예요.",
-  안도감: "안도감은 불안한 마음이 사라진 다음에 느끼는 감정이에요.",
+  안도감:
+    "안도감은 불안한 마음이 사라진 다음에 느끼는 감정이에요.",
   편안감:
     "편안감은 일정 기간 동안 근심, 걱정 없이 평화가 지속되는 감정 상태예요.",
-  외로움: "외로움은 혼자가 돼서 적적하고 쓸쓸한 상태예요.",
+  외로움:
+    "외로움은 혼자가 돼서 적적하고 쓸쓸한 상태예요.",
   난처함:
     "난처함은 사회적 기대에 어긋나거나 상황에 맞지 않게 행동해서 이러지도 저러지도 못하는 상태예요.",
-  후련함: "후련함은 맺혀던 일이나 답답하던 것이 풀려서 시원한 상태예요.",
+  후련함:
+    "후련함은 맺혀던 일이나 답답하던 것이 풀려서 시원한 상태예요.",
   부끄러움:
     "부끄러움은 보여주고 싶지 않은 내 모습이 노출됐을 때 오는 감정이에요.",
   죄책감:
     "죄책감은 주로 내가 한 행동이 누군가에게 피해를 줬거나 내 기준에 어긋났을 때, 내가 틀렸다는 걸 내가 아는 느낌이에요.",
-  아쉬움: "아쉬움은 어떤 기대가 충족이 안 됐을 때 느끼는 감정이에요.",
+  아쉬움:
+    "아쉬움은 어떤 기대가 충족이 안 됐을 때 느끼는 감정이에요.",
   수치심:
     "수치심은 내 존재 자체가 결함이라는 느낌이에요. 내가 한 행동보다 나 자체를 잘못된 것으로 봐요.",
-  짜증: "짜증은 마음에 들지 않다 못해 화가 나는 감정이에요.",
-  원망: "원망은 상대에 대한 기대가 충족이 안 됐을 때의 화남의 원인을 상대방에게 돌릴 때 느끼는 감정이에요.",
+  짜증:
+    "짜증은 마음에 들지 않다 못해 화가 나는 감정이에요.",
+  원망:
+    "원망은 상대에 대한 기대가 충족이 안 됐을 때의 화남의 원인을 상대방에게 돌릴 때 느끼는 감정이에요.",
 };
 
 /** 탭 2 통제일기 Q&A 템플릿 */
@@ -157,23 +137,6 @@ function formatDateDisplay(dateStr) {
   return `${y}/${m}/${d}`;
 }
 
-function loadDiaryEntries() {
-  try {
-    const raw = localStorage.getItem(DIARY_ENTRIES_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === "object") return parsed;
-    }
-  } catch (_) {}
-  return {};
-}
-
-function saveDiaryEntries(data) {
-  try {
-    localStorage.setItem(DIARY_ENTRIES_KEY, JSON.stringify(data));
-  } catch (_) {}
-}
-
 /** 기존 날짜 기반 데이터를 entry 배열로 마이그레이션 */
 function migrateToEntries(tabData) {
   if (Array.isArray(tabData)) return tabData;
@@ -199,15 +162,6 @@ function getTabEntriesList(tabId, all) {
   });
 }
 
-/** 탭 3 감정일기: 감정 목록 반환 */
-function getEmotionList(all) {
-  const tab = all["3"];
-  if (!tab || !tab.emotionList || !Array.isArray(tab.emotionList)) {
-    return [...TAB3_DEFAULT_EMOTIONS];
-  }
-  return tab.emotionList;
-}
-
 /** 탭 3 감정일기: 해당 감정의 일기 목록 반환 */
 function getEmotionEntries(emotionId, all) {
   const tab = all["3"];
@@ -216,37 +170,8 @@ function getEmotionEntries(emotionId, all) {
   }
   const list = tab.emotions[emotionId] || [];
   return Array.isArray(list)
-    ? [...list].sort((a, b) =>
-        (b.updatedAt || b.date || "").localeCompare(
-          a.updatedAt || a.date || "",
-        ),
-      )
+    ? [...list].sort((a, b) => (b.updatedAt || b.date || "").localeCompare(a.updatedAt || a.date || ""))
     : [];
-}
-
-/** 탭 3 감정일기: 데이터 구조 초기화 */
-function ensureEmotionTabData(all) {
-  if (!all["3"]) all["3"] = {};
-  const tab = all["3"];
-  if (!tab.emotions || typeof tab.emotions !== "object") {
-    tab.emotions = Object.fromEntries(
-      TAB3_DEFAULT_EMOTIONS.map((e) => [e, []]),
-    );
-  }
-  if (!tab.emotionList || !Array.isArray(tab.emotionList)) {
-    tab.emotionList = [...TAB3_DEFAULT_EMOTIONS];
-  } else {
-    TAB3_DEFAULT_EMOTIONS.forEach((emotion) => {
-      if (!tab.emotionList.includes(emotion)) {
-        const insertIdx = TAB3_DEFAULT_EMOTIONS.indexOf(emotion);
-        const before = TAB3_DEFAULT_EMOTIONS[insertIdx - 1];
-        const beforeIdx = tab.emotionList.indexOf(before);
-        tab.emotionList.splice(beforeIdx >= 0 ? beforeIdx + 1 : 0, 0, emotion);
-        if (!tab.emotions[emotion]) tab.emotions[emotion] = [];
-      }
-    });
-  }
-  return tab;
 }
 
 export function render() {
@@ -291,18 +216,10 @@ export function render() {
   `;
   el.appendChild(addEmotionModal);
 
-  const addEmotionInput = addEmotionModal.querySelector(
-    ".diary-add-emotion-input",
-  );
-  const addEmotionBackdrop = addEmotionModal.querySelector(
-    ".diary-add-emotion-backdrop",
-  );
-  const addEmotionCancelBtn = addEmotionModal.querySelector(
-    ".diary-add-emotion-btn-cancel",
-  );
-  const addEmotionConfirmBtn = addEmotionModal.querySelector(
-    ".diary-add-emotion-btn-confirm",
-  );
+  const addEmotionInput = addEmotionModal.querySelector(".diary-add-emotion-input");
+  const addEmotionBackdrop = addEmotionModal.querySelector(".diary-add-emotion-backdrop");
+  const addEmotionCancelBtn = addEmotionModal.querySelector(".diary-add-emotion-btn-cancel");
+  const addEmotionConfirmBtn = addEmotionModal.querySelector(".diary-add-emotion-btn-confirm");
 
   function openAddEmotionModal(onConfirm) {
     addEmotionInput.value = "";
@@ -350,7 +267,7 @@ export function render() {
 
   function ensureTabEntries(tabId) {
     const tab = entries[tabId];
-    const needsMigration = !tab || (!Array.isArray(tab) && !tab.entries);
+    const needsMigration = !tab || !Array.isArray(tab) && !tab.entries;
     const list = getTabEntriesList(tabId, entries);
     if (!entries[tabId] || !entries[tabId].entries) {
       entries[tabId] = { entries: list };
@@ -366,46 +283,142 @@ export function render() {
 
   function getDisplayLabel(entry) {
     if (!entry) return "";
-    return (entry.title || "").trim() === "제목없음" ||
-      !(entry.title || "").trim()
+    return (entry.title || "").trim() === "제목없음" || !(entry.title || "").trim()
       ? formatDateDisplay(entry.date)
       : entry.title.trim();
+  }
+
+  function filterEmotionListInPlace(query) {
+    const emotionListEl = layoutWrap.querySelector(".diary-emotion-list");
+    if (!emotionListEl) return;
+    const q = (query || "").trim().toLowerCase();
+    const wraps = emotionListEl.querySelectorAll(".diary-emotion-item-wrap");
+    let visibleCount = 0;
+    wraps.forEach((wrap) => {
+      const btn = wrap.querySelector(".diary-emotion-item");
+      const emotion = (btn?.textContent || "").trim();
+      const matches = !q || emotion.toLowerCase().includes(q);
+      wrap.style.display = matches ? "" : "none";
+      if (matches) visibleCount++;
+    });
+    let noResult = emotionListEl.querySelector(".diary-search-no-result");
+    if (visibleCount === 0 && q) {
+      if (!noResult) {
+        noResult = document.createElement("div");
+        noResult.className = "diary-search-no-result";
+        noResult.textContent = "검색 결과가 없습니다.";
+        emotionListEl.appendChild(noResult);
+      }
+      noResult.style.display = "";
+    } else if (noResult) {
+      noResult.style.display = "none";
+    }
+  }
+
+  function filterPageListInPlace(query) {
+    const pageList = layoutWrap.querySelector(".diary-page-list");
+    if (!pageList) return;
+    const q = (query || "").trim().toLowerCase();
+    const items = pageList.querySelectorAll(".diary-page-item");
+    let visibleCount = 0;
+    items.forEach((btn) => {
+      const searchText = (btn.dataset.searchText || "").toLowerCase();
+      const matches = !q || searchText.includes(q);
+      btn.style.display = matches ? "" : "none";
+      if (matches) visibleCount++;
+    });
+    let noResult = pageList.querySelector(".diary-search-no-result");
+    if (visibleCount === 0 && q) {
+      if (!noResult) {
+        noResult = document.createElement("div");
+        noResult.className = "diary-search-no-result";
+        noResult.textContent = "검색 결과가 없습니다.";
+        pageList.appendChild(noResult);
+      }
+      noResult.style.display = "";
+    } else if (noResult) {
+      noResult.style.display = "none";
+    }
   }
 
   function renderLayout() {
     layoutWrap.innerHTML = "";
     const layout = document.createElement("div");
-    layout.className =
-      "diary-layout" + (sidebarCollapsed ? " sidebar-collapsed" : "");
+    layout.className = "diary-layout" + (sidebarCollapsed ? " sidebar-collapsed" : "");
 
     const sidebar = document.createElement("aside");
     sidebar.className = "diary-sidebar";
 
     if (currentTabId === "3") {
       ensureEmotionTabData(entries);
-      const emotionList = getEmotionList(entries);
+      const fullEmotionList = getEmotionList(entries);
+      const q = (searchQuery || "").trim().toLowerCase();
 
       const sidebarHeader = document.createElement("div");
       sidebarHeader.className = "diary-sidebar-header";
-      sidebarHeader.innerHTML = `<span class="diary-sidebar-title">감정</span>`;
+      sidebarHeader.innerHTML = `
+        <span class="diary-sidebar-title">감정</span>
+        <div class="diary-sidebar-actions">
+          <button type="button" class="diary-search-btn" title="검색">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          </button>
+          <button type="button" class="diary-sidebar-collapse-btn" title="${sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기"}">${sidebarCollapsed ? "»" : "«"}</button>
+        </div>
+      `;
+      const searchBtn = sidebarHeader.querySelector(".diary-search-btn");
+      searchBtn.addEventListener("click", () => {
+        searchOpen = !searchOpen;
+        renderLayout();
+      });
+      sidebarHeader.querySelector(".diary-sidebar-collapse-btn").addEventListener("click", () => {
+        sidebarCollapsed = !sidebarCollapsed;
+        renderLayout();
+      });
       sidebar.appendChild(sidebarHeader);
+
+      if (searchOpen) {
+        const searchRow = document.createElement("div");
+        searchRow.className = "diary-search-row";
+        const searchInput = document.createElement("input");
+        searchInput.type = "text";
+        searchInput.className = "diary-search-input";
+        searchInput.placeholder = "감정 검색...";
+        searchInput.value = searchQuery;
+        searchInput.addEventListener("compositionstart", () => {
+          isComposing = true;
+        });
+        searchInput.addEventListener("compositionend", (e) => {
+          isComposing = false;
+          searchQuery = e.target.value;
+          filterEmotionListInPlace(searchQuery);
+        });
+        searchInput.addEventListener("input", () => {
+          searchQuery = searchInput.value;
+          if (!isComposing) filterEmotionListInPlace(searchQuery);
+        });
+        searchInput.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") {
+            searchOpen = false;
+            renderLayout();
+          }
+        });
+        searchRow.appendChild(searchInput);
+        sidebar.appendChild(searchRow);
+        requestAnimationFrame(() => searchInput.focus());
+      }
 
       const emotionListWrap = document.createElement("div");
       emotionListWrap.className = "diary-emotion-list-wrap";
       const emotionListEl = document.createElement("div");
       emotionListEl.className = "diary-page-list diary-emotion-list";
-      emotionList.forEach((emotion) => {
+      fullEmotionList.forEach((emotion) => {
         const isUserAdded = !TAB3_DEFAULT_EMOTIONS.includes(emotion);
         const wrap = document.createElement("div");
-        wrap.className =
-          "diary-emotion-item-wrap" +
-          (isUserAdded ? " diary-emotion-item-user" : "");
+        wrap.className = "diary-emotion-item-wrap" + (isUserAdded ? " diary-emotion-item-user" : "");
 
         const btn = document.createElement("button");
         btn.type = "button";
-        btn.className =
-          "diary-page-item diary-emotion-item" +
-          (emotion === currentEmotionId ? " active" : "");
+        btn.className = "diary-page-item diary-emotion-item" + (emotion === currentEmotionId ? " active" : "");
         btn.textContent = emotion;
         btn.dataset.emotionId = emotion;
         btn.addEventListener("click", () => {
@@ -444,11 +457,10 @@ export function render() {
       const addEmotionBtn = document.createElement("button");
       addEmotionBtn.type = "button";
       addEmotionBtn.className = "diary-add-page diary-add-emotion";
-      addEmotionBtn.innerHTML =
-        '<span class="diary-add-page-icon">+</span> 감정추가하기';
+      addEmotionBtn.innerHTML = '<span class="diary-add-page-icon">+</span> 감정추가하기';
       addEmotionBtn.addEventListener("click", () => {
         openAddEmotionModal((name) => {
-          if (name && !emotionList.includes(name)) {
+          if (name && !fullEmotionList.includes(name)) {
             ensureEmotionTabData(entries);
             entries["3"].emotionList.push(name);
             entries["3"].emotions[name] = [];
@@ -484,11 +496,16 @@ export function render() {
           <button type="button" class="diary-search-btn" title="검색">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           </button>
+          <button type="button" class="diary-sidebar-collapse-btn" title="${sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기"}">${sidebarCollapsed ? "»" : "«"}</button>
         </div>
       `;
       const searchBtn = sidebarHeader.querySelector(".diary-search-btn");
       searchBtn.addEventListener("click", () => {
         searchOpen = !searchOpen;
+        renderLayout();
+      });
+      sidebarHeader.querySelector(".diary-sidebar-collapse-btn").addEventListener("click", () => {
+        sidebarCollapsed = !sidebarCollapsed;
         renderLayout();
       });
       sidebar.appendChild(sidebarHeader);
@@ -504,14 +521,14 @@ export function render() {
         searchInput.addEventListener("compositionstart", () => {
           isComposing = true;
         });
-        searchInput.addEventListener("compositionend", () => {
+        searchInput.addEventListener("compositionend", (e) => {
           isComposing = false;
-          searchQuery = searchInput.value;
-          renderLayout();
+          searchQuery = e.target.value;
+          filterPageListInPlace(searchQuery);
         });
         searchInput.addEventListener("input", () => {
           searchQuery = searchInput.value;
-          if (!isComposing) renderLayout();
+          if (!isComposing) filterPageListInPlace(searchQuery);
         });
         searchInput.addEventListener("keydown", (e) => {
           if (e.key === "Escape") {
@@ -538,12 +555,7 @@ export function render() {
           date: today,
           title: "제목없음",
           content: "",
-          qa:
-            currentTabId === "2"
-              ? Object.fromEntries(
-                  TAB2_QA_TEMPLATE.map((_, i) => [String(i), ""]),
-                )
-              : undefined,
+          qa: currentTabId === "2" ? Object.fromEntries(TAB2_QA_TEMPLATE.map((_, i) => [String(i), ""])) : undefined,
           updatedAt: new Date().toISOString(),
         };
         ensureTabEntries(currentTabId);
@@ -565,20 +577,13 @@ export function render() {
       const pageList = document.createElement("div");
       pageList.className = "diary-page-list";
 
-      if (q && entryList.length === 0) {
-        const noResult = document.createElement("div");
-        noResult.className = "diary-search-no-result";
-        noResult.textContent = "검색 결과가 없습니다.";
-        pageList.appendChild(noResult);
-      }
-
-      entryList.forEach((entry) => {
+      fullEntryList.forEach((entry) => {
         const btn = document.createElement("button");
         btn.type = "button";
-        btn.className =
-          "diary-page-item" + (entry.id === currentEntryId ? " active" : "");
+        btn.className = "diary-page-item" + (entry.id === currentEntryId ? " active" : "");
         btn.textContent = getDisplayLabel(entry);
         btn.dataset.entryId = entry.id;
+        btn.dataset.searchText = getEntrySearchText(entry);
         btn.addEventListener("click", () => {
           currentEntryId = entry.id;
           renderLayout();
@@ -667,13 +672,10 @@ export function render() {
             updatedAt: new Date().toISOString(),
           };
           ensureEmotionTabData(entries);
-          if (!entries["3"].emotions[currentEmotionId])
-            entries["3"].emotions[currentEmotionId] = [];
+          if (!entries["3"].emotions[currentEmotionId]) entries["3"].emotions[currentEmotionId] = [];
           entries["3"].emotions[currentEmotionId].unshift(newEntry);
           saveDiaryEntries(entries);
-          templateInputs.forEach((inp) => {
-            inp.value = "";
-          });
+          templateInputs.forEach((inp) => { inp.value = ""; });
           renderLayout();
         }
       });
@@ -687,21 +689,10 @@ export function render() {
         card.className = "diary-emotion-card";
         const meta = document.createElement("div");
         meta.className = "diary-emotion-card-date";
-        meta.textContent =
-          formatDateDisplay(entry.date || "") +
-          (entry.updatedAt
-            ? " " +
-              new Date(entry.updatedAt).toLocaleTimeString("ko-KR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : "");
+        meta.textContent = formatDateDisplay(entry.date || "") + (entry.updatedAt ? " " + new Date(entry.updatedAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }) : "");
         const contentWrap = document.createElement("div");
         contentWrap.className = "diary-emotion-card-content-wrap";
-        const hasTemplate =
-          entry.q1 !== undefined ||
-          entry.q2 !== undefined ||
-          entry.q3 !== undefined;
+        const hasTemplate = entry.q1 !== undefined || entry.q2 !== undefined || entry.q3 !== undefined;
         if (hasTemplate) {
           TAB3_EMOTION_TEMPLATE.forEach((label, i) => {
             const val = entry["q" + (i + 1)] || "";
@@ -767,12 +758,7 @@ export function render() {
           textarea.className = "diary-emotion-edit-input";
           textarea.rows = 2;
           const val = entry["q" + (i + 1)];
-          textarea.value =
-            val !== undefined
-              ? val
-              : i === 0 && entry.content
-                ? entry.content
-                : "";
+          textarea.value = val !== undefined ? val : (i === 0 && entry.content ? entry.content : "");
           editInputs.push(textarea);
           editWrap.appendChild(labelEl);
           editWrap.appendChild(textarea);
@@ -817,234 +803,202 @@ export function render() {
       if (emotionEntries.length === 0) {
         const empty = document.createElement("div");
         empty.className = "diary-emotion-feed-empty";
-        empty.textContent =
-          "아직 일기가 없습니다. 위 템플릿을 작성하고 추가해보세요.";
+        empty.textContent = "아직 일기가 없습니다. 위 템플릿을 작성하고 추가해보세요.";
         feedWrap.appendChild(empty);
       }
       paper.appendChild(feedWrap);
     } else {
-      const currentEntry = currentEntryId
-        ? getEntryById(currentTabId, currentEntryId)
-        : null;
+      const currentEntry = currentEntryId ? getEntryById(currentTabId, currentEntryId) : null;
 
       if (currentEntry) {
-        if (currentTabId === "2") {
-          if (!currentEntry.qa || typeof currentEntry.qa !== "object") {
-            currentEntry.qa = Object.fromEntries(
-              TAB2_QA_TEMPLATE.map((_, i) => [String(i), ""]),
-            );
+      if (currentTabId === "2") {
+        if (!currentEntry.qa || typeof currentEntry.qa !== "object") {
+          currentEntry.qa = Object.fromEntries(TAB2_QA_TEMPLATE.map((_, i) => [String(i), ""]));
+          saveDiaryEntries(entries);
+        }
+        paper.className = "diary-paper diary-paper-qa";
+        const titleRow = document.createElement("div");
+        titleRow.className = "diary-paper-title-row diary-paper-qa-title-row";
+        const titleInput = document.createElement("input");
+        titleInput.type = "text";
+        titleInput.className = "diary-paper-title-input diary-paper-qa-title-input";
+        const displayTitle =
+          (currentEntry.title || "").trim() === "제목없음" || !(currentEntry.title || "").trim()
+            ? formatDateDisplay(currentEntry.date || toDateStr(new Date()))
+            : currentEntry.title.trim();
+        titleInput.value = displayTitle;
+        titleInput.placeholder = formatDateDisplay(currentEntry.date || toDateStr(new Date()));
+        const applyQaTitle = () => {
+          const t = getEntryById(currentTabId, currentEntryId);
+          if (t) {
+            const v = (titleInput.value || "").trim();
+            t.title = v || "제목없음";
+            t.updatedAt = new Date().toISOString();
+            saveDiaryEntries(entries);
+            renderLayout();
+          }
+        };
+        titleInput.addEventListener("input", () => {
+          const t = getEntryById(currentTabId, currentEntryId);
+          if (t) {
+            const v = (titleInput.value || "").trim();
+            t.title = v || "제목없음";
+            t.updatedAt = new Date().toISOString();
             saveDiaryEntries(entries);
           }
-          paper.className = "diary-paper diary-paper-qa";
-          const titleRow = document.createElement("div");
-          titleRow.className = "diary-paper-title-row diary-paper-qa-title-row";
-          const titleInput = document.createElement("input");
-          titleInput.type = "text";
-          titleInput.className =
-            "diary-paper-title-input diary-paper-qa-title-input";
-          const displayTitle =
-            (currentEntry.title || "").trim() === "제목없음" ||
-            !(currentEntry.title || "").trim()
-              ? formatDateDisplay(currentEntry.date || toDateStr(new Date()))
-              : currentEntry.title.trim();
-          titleInput.value = displayTitle;
-          titleInput.placeholder = formatDateDisplay(
-            currentEntry.date || toDateStr(new Date()),
-          );
-          const applyQaTitle = () => {
-            const t = getEntryById(currentTabId, currentEntryId);
-            if (t) {
-              const v = (titleInput.value || "").trim();
-              t.title = v || "제목없음";
-              t.updatedAt = new Date().toISOString();
-              saveDiaryEntries(entries);
-              renderLayout();
-            }
-          };
-          titleInput.addEventListener("input", () => {
-            const t = getEntryById(currentTabId, currentEntryId);
-            if (t) {
-              const v = (titleInput.value || "").trim();
-              t.title = v || "제목없음";
-              t.updatedAt = new Date().toISOString();
-              saveDiaryEntries(entries);
-            }
-          });
-          titleInput.addEventListener("blur", applyQaTitle);
-          titleInput.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              titleInput.blur();
-            }
-          });
-          titleRow.appendChild(titleInput);
-          paper.appendChild(titleRow);
-
-          const qaHeader = document.createElement("div");
-          qaHeader.className = "diary-paper-qa-header";
-          const meta = document.createElement("div");
-          meta.className = "diary-paper-meta";
-          if (currentEntry.updatedAt) {
-            const d = new Date(currentEntry.updatedAt);
-            const today = new Date();
-            const isToday = d.toDateString() === today.toDateString();
-            const timeStr = d.toLocaleTimeString("ko-KR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            });
-            meta.textContent = isToday
-              ? `마지막 수정: 오늘 ${timeStr}`
-              : `마지막 수정: ${d.toLocaleDateString("ko-KR")} ${timeStr}`;
-          } else {
-            meta.textContent = "새 일기";
+        });
+        titleInput.addEventListener("blur", applyQaTitle);
+        titleInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            titleInput.blur();
           }
-          qaHeader.appendChild(meta);
-          const deleteBtn = document.createElement("button");
-          deleteBtn.type = "button";
-          deleteBtn.className =
-            "diary-paper-delete-btn diary-paper-delete-btn-qa";
-          deleteBtn.title = "페이지 삭제";
-          deleteBtn.innerHTML =
-            '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
-          deleteBtn.addEventListener("click", () => {
-            const list = ensureTabEntries(currentTabId);
-            const idx = list.findIndex((x) => x.id === currentEntry.id);
-            if (idx >= 0) {
-              list.splice(idx, 1);
-              saveDiaryEntries(entries);
-              currentEntryId =
-                list.length > 0
-                  ? (list[Math.max(0, idx - 1)] || list[0]).id
-                  : null;
-              renderLayout();
-            }
-          });
-          qaHeader.appendChild(deleteBtn);
-          paper.appendChild(qaHeader);
-          TAB2_QA_TEMPLATE.forEach((question, i) => {
-            const block = document.createElement("div");
-            block.className = "diary-qa-block";
-            const qHead = document.createElement("div");
-            qHead.className = "diary-qa-question";
-            qHead.textContent = question;
-            block.appendChild(qHead);
-            const ansArea = document.createElement("textarea");
-            ansArea.className = "diary-qa-answer";
-            ansArea.placeholder = "";
-            ansArea.value =
-              (currentEntry.qa && currentEntry.qa[String(i)]) || "";
-            const adjustHeight = () => {
-              ansArea.style.height = "auto";
-              ansArea.style.height = Math.max(60, ansArea.scrollHeight) + "px";
-            };
-            ansArea.addEventListener("input", () => {
-              const t = getEntryById(currentTabId, currentEntryId);
-              if (t) {
-                if (!t.qa) t.qa = {};
-                t.qa[String(i)] = ansArea.value;
-                t.updatedAt = new Date().toISOString();
-                saveDiaryEntries(entries);
-              }
-              adjustHeight();
-            });
-            adjustHeight();
-            block.appendChild(ansArea);
-            paper.appendChild(block);
-          });
+        });
+        titleRow.appendChild(titleInput);
+        paper.appendChild(titleRow);
+
+        const qaHeader = document.createElement("div");
+        qaHeader.className = "diary-paper-qa-header";
+        const meta = document.createElement("div");
+        meta.className = "diary-paper-meta";
+        if (currentEntry.updatedAt) {
+          const d = new Date(currentEntry.updatedAt);
+          const today = new Date();
+          const isToday = d.toDateString() === today.toDateString();
+          const timeStr = d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+          meta.textContent = isToday ? `마지막 수정: 오늘 ${timeStr}` : `마지막 수정: ${d.toLocaleDateString("ko-KR")} ${timeStr}`;
         } else {
-          const titleRow = document.createElement("div");
-          titleRow.className = "diary-paper-title-row";
-          const titleInput = document.createElement("input");
-          titleInput.type = "text";
-          titleInput.className = "diary-paper-title-input";
-          const displayTitleFree =
-            (currentEntry.title || "").trim() === "제목없음" ||
-            !(currentEntry.title || "").trim()
-              ? formatDateDisplay(currentEntry.date || toDateStr(new Date()))
-              : currentEntry.title.trim();
-          titleInput.value = displayTitleFree;
-          titleInput.placeholder = formatDateDisplay(
-            currentEntry.date || toDateStr(new Date()),
-          );
-          titleInput.addEventListener("input", () => {
-            const t = getEntryById(currentTabId, currentEntryId);
-            if (t) {
-              t.title = titleInput.value.trim() || "제목없음";
-              t.updatedAt = new Date().toISOString();
-              saveDiaryEntries(entries);
-            }
-          });
-          const applyTitle = () => {
-            const t = getEntryById(currentTabId, currentEntryId);
-            if (t) {
-              t.title = (titleInput.value || "").trim() || "제목없음";
-              t.updatedAt = new Date().toISOString();
-              saveDiaryEntries(entries);
-              renderLayout();
-            }
-          };
-          titleInput.addEventListener("blur", applyTitle);
-          titleInput.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              titleInput.blur();
-            }
-          });
-          titleRow.appendChild(titleInput);
-          const deleteBtn = document.createElement("button");
-          deleteBtn.type = "button";
-          deleteBtn.className = "diary-paper-delete-btn";
-          deleteBtn.title = "페이지 삭제";
-          deleteBtn.innerHTML =
-            '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
-          deleteBtn.addEventListener("click", () => {
-            const list = ensureTabEntries(currentTabId);
-            const idx = list.findIndex((x) => x.id === currentEntry.id);
-            if (idx >= 0) {
-              list.splice(idx, 1);
-              saveDiaryEntries(entries);
-              currentEntryId =
-                list.length > 0
-                  ? (list[Math.max(0, idx - 1)] || list[0]).id
-                  : null;
-              renderLayout();
-            }
-          });
-          titleRow.appendChild(deleteBtn);
-          paper.appendChild(titleRow);
-
-          const meta = document.createElement("div");
-          meta.className = "diary-paper-meta";
-          if (currentEntry.updatedAt) {
-            const d = new Date(currentEntry.updatedAt);
-            const today = new Date();
-            const isToday = d.toDateString() === today.toDateString();
-            const timeStr = d.toLocaleTimeString("ko-KR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            });
-            meta.textContent = isToday
-              ? `마지막 수정: 오늘 ${timeStr}`
-              : `마지막 수정: ${d.toLocaleDateString("ko-KR")} ${timeStr}`;
-          } else {
-            meta.textContent = "새 일기";
-          }
-          paper.appendChild(meta);
-
-          const textarea = document.createElement("textarea");
-          textarea.className = "diary-paper-text";
-          textarea.placeholder = "start writing";
-          textarea.value = currentEntry.content || "";
-          textarea.addEventListener("input", () => {
-            const t = getEntryById(currentTabId, currentEntryId);
-            if (t) {
-              t.content = textarea.value;
-              t.updatedAt = new Date().toISOString();
-              saveDiaryEntries(entries);
-            }
-          });
-          paper.appendChild(textarea);
+          meta.textContent = "새 일기";
         }
+        qaHeader.appendChild(meta);
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "diary-paper-delete-btn diary-paper-delete-btn-qa";
+        deleteBtn.title = "페이지 삭제";
+        deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
+        deleteBtn.addEventListener("click", () => {
+          const list = ensureTabEntries(currentTabId);
+          const idx = list.findIndex((x) => x.id === currentEntry.id);
+          if (idx >= 0) {
+            list.splice(idx, 1);
+            saveDiaryEntries(entries);
+            currentEntryId = list.length > 0 ? (list[Math.max(0, idx - 1)] || list[0]).id : null;
+            renderLayout();
+          }
+        });
+        qaHeader.appendChild(deleteBtn);
+        paper.appendChild(qaHeader);
+        TAB2_QA_TEMPLATE.forEach((question, i) => {
+          const block = document.createElement("div");
+          block.className = "diary-qa-block";
+          const qHead = document.createElement("div");
+          qHead.className = "diary-qa-question";
+          qHead.textContent = question;
+          block.appendChild(qHead);
+          const ansArea = document.createElement("textarea");
+          ansArea.className = "diary-qa-answer";
+          ansArea.placeholder = "";
+          ansArea.value = (currentEntry.qa && currentEntry.qa[String(i)]) || "";
+          const adjustHeight = () => {
+            ansArea.style.height = "auto";
+            ansArea.style.height = Math.max(60, ansArea.scrollHeight) + "px";
+          };
+          ansArea.addEventListener("input", () => {
+            const t = getEntryById(currentTabId, currentEntryId);
+            if (t) {
+              if (!t.qa) t.qa = {};
+              t.qa[String(i)] = ansArea.value;
+              t.updatedAt = new Date().toISOString();
+              saveDiaryEntries(entries);
+            }
+            adjustHeight();
+          });
+          adjustHeight();
+          block.appendChild(ansArea);
+          paper.appendChild(block);
+        });
+      } else {
+        const titleRow = document.createElement("div");
+        titleRow.className = "diary-paper-title-row";
+        const titleInput = document.createElement("input");
+        titleInput.type = "text";
+        titleInput.className = "diary-paper-title-input";
+        const displayTitleFree =
+          (currentEntry.title || "").trim() === "제목없음" || !(currentEntry.title || "").trim()
+            ? formatDateDisplay(currentEntry.date || toDateStr(new Date()))
+            : currentEntry.title.trim();
+        titleInput.value = displayTitleFree;
+        titleInput.placeholder = formatDateDisplay(currentEntry.date || toDateStr(new Date()));
+        titleInput.addEventListener("input", () => {
+          const t = getEntryById(currentTabId, currentEntryId);
+          if (t) {
+            t.title = titleInput.value.trim() || "제목없음";
+            t.updatedAt = new Date().toISOString();
+            saveDiaryEntries(entries);
+          }
+        });
+        const applyTitle = () => {
+          const t = getEntryById(currentTabId, currentEntryId);
+          if (t) {
+            t.title = (titleInput.value || "").trim() || "제목없음";
+            t.updatedAt = new Date().toISOString();
+            saveDiaryEntries(entries);
+            renderLayout();
+          }
+        };
+        titleInput.addEventListener("blur", applyTitle);
+        titleInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            titleInput.blur();
+          }
+        });
+        titleRow.appendChild(titleInput);
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "diary-paper-delete-btn";
+        deleteBtn.title = "페이지 삭제";
+        deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
+        deleteBtn.addEventListener("click", () => {
+          const list = ensureTabEntries(currentTabId);
+          const idx = list.findIndex((x) => x.id === currentEntry.id);
+          if (idx >= 0) {
+            list.splice(idx, 1);
+            saveDiaryEntries(entries);
+            currentEntryId = list.length > 0 ? (list[Math.max(0, idx - 1)] || list[0]).id : null;
+            renderLayout();
+          }
+        });
+        titleRow.appendChild(deleteBtn);
+        paper.appendChild(titleRow);
+
+        const meta = document.createElement("div");
+        meta.className = "diary-paper-meta";
+        if (currentEntry.updatedAt) {
+          const d = new Date(currentEntry.updatedAt);
+          const today = new Date();
+          const isToday = d.toDateString() === today.toDateString();
+          const timeStr = d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+          meta.textContent = isToday ? `마지막 수정: 오늘 ${timeStr}` : `마지막 수정: ${d.toLocaleDateString("ko-KR")} ${timeStr}`;
+        } else {
+          meta.textContent = "새 일기";
+        }
+        paper.appendChild(meta);
+
+        const textarea = document.createElement("textarea");
+        textarea.className = "diary-paper-text";
+        textarea.placeholder = "start writing";
+        textarea.value = currentEntry.content || "";
+        textarea.addEventListener("input", () => {
+          const t = getEntryById(currentTabId, currentEntryId);
+          if (t) {
+            t.content = textarea.value;
+            t.updatedAt = new Date().toISOString();
+            saveDiaryEntries(entries);
+          }
+        });
+        paper.appendChild(textarea);
+      }
       } else {
         const empty = document.createElement("div");
         empty.className = "diary-paper-empty";
@@ -1057,13 +1011,19 @@ export function render() {
     contentArea.appendChild(scrollWrap);
     layout.appendChild(contentArea);
     layoutWrap.appendChild(layout);
+
+    if (searchOpen) {
+      if (currentTabId === "3") {
+        filterEmotionListInPlace(searchQuery);
+      } else {
+        filterPageListInPlace(searchQuery);
+      }
+    }
   }
 
   tabs.querySelectorAll(".time-view-tab").forEach((btn) => {
     btn.addEventListener("click", () => {
-      tabs
-        .querySelectorAll(".time-view-tab")
-        .forEach((b) => b.classList.remove("active"));
+      tabs.querySelectorAll(".time-view-tab").forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
       currentTabId = btn.dataset.tab;
       if (currentTabId === "3") {

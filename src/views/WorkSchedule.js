@@ -6,13 +6,7 @@ import { renderMonthlyContent } from "./WorkScheduleMonthly.js";
 
 const WORK_SCHEDULE_KEY = "work_schedule_rows";
 const WORK_TYPE_OPTIONS_KEY = "work_schedule_type_options";
-const DEFAULT_WORK_TYPE_OPTIONS = [
-  "초과근무",
-  "조기퇴근",
-  "지급예정초과근무",
-  "온콜",
-  "온콜초과근무",
-];
+const DEFAULT_WORK_TYPE_OPTIONS = ["초과근무", "조기퇴근", "지급예정초과근무", "온콜", "온콜초과근무"];
 const PROTECTED_WORK_TYPES = ["초과근무", "조기퇴근"];
 
 const DELETE_ICON =
@@ -83,9 +77,7 @@ function collectRowsFromDOM(tableEl) {
   const rows = [];
   tableEl?.querySelectorAll(".work-schedule-row").forEach((tr) => {
     const hoursInput = tr.querySelector(".work-schedule-input-hours");
-    const hoursWorkedInput = tr.querySelector(
-      ".work-schedule-input-hours-worked",
-    );
+    const hoursWorkedInput = tr.querySelector(".work-schedule-input-hours-worked");
     const typeInput = tr.querySelector(".work-schedule-input-type");
     const dateInput = tr.querySelector(".work-schedule-input-date");
     const memoInput = tr.querySelector(".work-schedule-input-memo");
@@ -104,13 +96,7 @@ function collectRowsFromDOM(tableEl) {
 
 function getRowsToSave(tableEl) {
   return collectRowsFromDOM(tableEl).filter((r) => {
-    const hasAny =
-      (r.name || "").trim() ||
-      (r.workType || "").trim() ||
-      (r.hoursWorked || "").trim() ||
-      (r.workDate || "").trim() ||
-      (r.hours || "").trim() ||
-      (r.memo || "").trim();
+    const hasAny = (r.name || "").trim() || (r.workType || "").trim() || (r.hoursWorked || "").trim() || (r.workDate || "").trim() || (r.hours || "").trim() || (r.memo || "").trim();
     return !!hasAny;
   });
 }
@@ -220,21 +206,12 @@ function createWorkTypeInput(initialValue, onUpdate) {
 
     matches.forEach((opt) => {
       const isProtected = PROTECTED_WORK_TYPES.includes(opt);
-      const tagClass =
-        opt === "초과근무"
-          ? "work-schedule-tag-overtime"
-          : opt === "조기퇴근"
-            ? "work-schedule-tag-early"
-            : "";
+      const tagClass = opt === "초과근무" ? "work-schedule-tag-overtime" : opt === "조기퇴근" ? "work-schedule-tag-early" : "";
       const row = document.createElement("div");
-      row.className =
-        "time-task-name-option" +
-        (isProtected ? " work-schedule-type-protected" : "");
+      row.className = "time-task-name-option" + (isProtected ? " work-schedule-type-protected" : "");
       row.innerHTML =
         `<span class="time-task-tag ${tagClass}">${opt}</span>` +
-        (isProtected
-          ? ""
-          : `<button type="button" class="time-task-delete-btn" title="삭제">${DELETE_ICON}</button>`);
+        (isProtected ? "" : `<button type="button" class="time-task-delete-btn" title="삭제">${DELETE_ICON}</button>`);
       row.dataset.value = opt;
       const delBtn = row.querySelector(".time-task-delete-btn");
       row.addEventListener("click", (e) => {
@@ -299,18 +276,14 @@ function createWorkTypeInput(initialValue, onUpdate) {
       e.preventDefault();
       highlightedIndex = Math.min(highlightedIndex + 1, opts.length - 1);
       opts[highlightedIndex]?.scrollIntoView({ block: "nearest" });
-      opts.forEach((o, i) =>
-        o.classList.toggle("is-highlighted", i === highlightedIndex),
-      );
+      opts.forEach((o, i) => o.classList.toggle("is-highlighted", i === highlightedIndex));
       return;
     }
     if (e.key === "ArrowUp") {
       e.preventDefault();
       highlightedIndex = Math.max(highlightedIndex - 1, 0);
       opts[highlightedIndex]?.scrollIntoView({ block: "nearest" });
-      opts.forEach((o, i) =>
-        o.classList.toggle("is-highlighted", i === highlightedIndex),
-      );
+      opts.forEach((o, i) => o.classList.toggle("is-highlighted", i === highlightedIndex));
       return;
     }
     if (e.key === "Enter") {
@@ -360,10 +333,7 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply) {
   nameInput.className = "work-schedule-input-name";
   nameInput.placeholder = "";
   nameInput.value = initialData.name || "";
-  nameInput.addEventListener(
-    "keydown",
-    (e) => e.key === "Enter" && nameInput.blur(),
-  );
+  nameInput.addEventListener("keydown", (e) => e.key === "Enter" && nameInput.blur());
   nameTd.appendChild(nameInput);
   tr.appendChild(nameTd);
 
@@ -410,13 +380,9 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply) {
   tr.appendChild(typeTd);
 
   const hoursWorkedTd = document.createElement("td");
-  hoursWorkedTd.className =
-    "work-schedule-cell work-schedule-cell-hours-worked";
+  hoursWorkedTd.className = "work-schedule-cell work-schedule-cell-hours-worked";
   hoursWorkedInput.addEventListener("input", rowOnUpdate);
-  hoursWorkedInput.addEventListener(
-    "keydown",
-    (e) => e.key === "Enter" && hoursWorkedInput.blur(),
-  );
+  hoursWorkedInput.addEventListener("keydown", (e) => e.key === "Enter" && hoursWorkedInput.blur());
   hoursWorkedTd.appendChild(hoursWorkedInput);
   tr.appendChild(hoursWorkedTd);
 
@@ -456,10 +422,7 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply) {
 
   const hoursTd = document.createElement("td");
   hoursTd.className = "work-schedule-cell work-schedule-cell-hours";
-  hoursInput.addEventListener(
-    "keydown",
-    (e) => e.key === "Enter" && hoursInput.blur(),
-  );
+  hoursInput.addEventListener("keydown", (e) => e.key === "Enter" && hoursInput.blur());
   hoursTd.appendChild(hoursInput);
   tr.appendChild(hoursTd);
 
@@ -472,10 +435,7 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply) {
   memoInput.className = "work-schedule-input-memo";
   memoInput.placeholder = "";
   memoInput.value = initialData.memo || "";
-  memoInput.addEventListener(
-    "keydown",
-    (e) => e.key === "Enter" && memoInput.blur(),
-  );
+  memoInput.addEventListener("keydown", (e) => e.key === "Enter" && memoInput.blur());
   memoTd.appendChild(memoInput);
   tr.appendChild(memoTd);
 
@@ -533,53 +493,133 @@ export function render() {
     let filterStartDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     let filterEndDate = filterStartDate;
 
+    function formatDateForDayFilter(dateStr) {
+      if (!dateStr || dateStr.length < 10) return "";
+      const d = new Date(dateStr + "T12:00:00");
+      if (isNaN(d.getTime())) return "";
+      const month = d.getMonth() + 1;
+      const day = d.getDate();
+      const weekday = d.toLocaleDateString("ko-KR", { weekday: "short" });
+      return `${month}월 ${day}일 (${weekday})`;
+    }
+
     const filterBar = document.createElement("div");
     filterBar.className = "work-schedule-filter-bar";
     filterBar.innerHTML = `
-      <div class="work-schedule-filter-tabs">
-        <button type="button" class="work-schedule-filter-btn active" data-filter="month">월별</button>
-        <button type="button" class="work-schedule-filter-btn" data-filter="week">일주일</button>
-        <button type="button" class="work-schedule-filter-btn" data-filter="day">하루</button>
-        <button type="button" class="work-schedule-filter-btn" data-filter="range">날짜선택</button>
+      <div class="time-filter-tabs">
+        <button type="button" class="time-filter-btn active" data-filter="month">월별</button>
+        <button type="button" class="time-filter-btn" data-filter="week">일주일</button>
+        <button type="button" class="time-filter-btn" data-filter="day">하루</button>
+        <button type="button" class="time-filter-btn" data-filter="range">날짜 선택</button>
       </div>
-      <div class="work-schedule-filter-month-wrap" data-filter-wrap="month">
-        <select class="work-schedule-filter-year"></select>
-        <span>년</span>
-        <select class="work-schedule-filter-month"></select>
-        <span>월</span>
+      <div class="time-filter-day-wrap" data-filter-wrap="day" style="display:none">
+        <span class="time-filter-day-display">${formatDateForDayFilter(filterStartDate)}</span>
+        <div class="time-filter-day-nav">
+          <button type="button" class="time-filter-day-prev" aria-label="이전 날짜">&lt;</button>
+          <button type="button" class="time-filter-day-next" aria-label="다음 날짜">&gt;</button>
+        </div>
       </div>
-      <div class="work-schedule-filter-range-wrap" data-filter-wrap="range" style="display:none">
-        <input type="date" class="work-schedule-filter-start-date" />
+      <div class="time-filter-month-wrap" data-filter-wrap="month">
+        <div class="asset-cashflow-dropdown-wrap">
+          <button type="button" class="time-period-trigger asset-cashflow-trigger" id="work-schedule-month-trigger">${filterMonth}월</button>
+          <div class="time-period-panel asset-cashflow-panel" id="work-schedule-month-panel">
+            ${Array.from({ length: 12 }, (_, i) => {
+              const m = i + 1;
+              return `<div class="time-period-option" data-value="${m}">${m}월</div>`;
+            }).join("")}
+          </div>
+        </div>
+        <div class="asset-cashflow-year-nav">
+          <button type="button" class="asset-cashflow-year-btn" aria-label="이전 연도">&lt;</button>
+          <span class="asset-cashflow-year-display">${filterYear}</span>
+          <button type="button" class="asset-cashflow-year-btn" aria-label="다음 연도">&gt;</button>
+        </div>
+      </div>
+      <div class="time-filter-range-wrap" data-filter-wrap="range" style="display:none">
+        <input type="date" class="time-filter-start-date" />
         <span>~</span>
-        <input type="date" class="work-schedule-filter-end-date" />
+        <input type="date" class="time-filter-end-date" />
       </div>
     `;
 
-    const yearSelect = filterBar.querySelector(".work-schedule-filter-year");
-    const monthSelect = filterBar.querySelector(".work-schedule-filter-month");
-    const startDateInput = filterBar.querySelector(
-      ".work-schedule-filter-start-date",
-    );
-    const endDateInput = filterBar.querySelector(
-      ".work-schedule-filter-end-date",
-    );
+    const dayWrap = filterBar.querySelector("[data-filter-wrap='day']");
     const monthWrap = filterBar.querySelector("[data-filter-wrap='month']");
     const rangeWrap = filterBar.querySelector("[data-filter-wrap='range']");
+    const dayDisplay = filterBar.querySelector(".time-filter-day-display");
+    const dayPrevBtn = filterBar.querySelector(".time-filter-day-prev");
+    const dayNextBtn = filterBar.querySelector(".time-filter-day-next");
+    const startDateInput = filterBar.querySelector(".time-filter-start-date");
+    const endDateInput = filterBar.querySelector(".time-filter-end-date");
+    const monthTrigger = filterBar.querySelector("#work-schedule-month-trigger");
+    const monthPanel = filterBar.querySelector("#work-schedule-month-panel");
+    const monthDropdownWrap = filterBar.querySelector(".time-filter-month-wrap .asset-cashflow-dropdown-wrap");
+    const yearDisplay = filterBar.querySelector(".asset-cashflow-year-display");
+    const yearPrevBtn = filterBar.querySelector(".time-filter-month-wrap .asset-cashflow-year-btn:first-child");
+    const yearNextBtn = filterBar.querySelector(".time-filter-month-wrap .asset-cashflow-year-btn:last-child");
 
-    for (let y = now.getFullYear(); y >= now.getFullYear() - 5; y--) {
-      const opt = document.createElement("option");
-      opt.value = y;
-      opt.textContent = y + "년";
-      if (y === filterYear) opt.selected = true;
-      yearSelect.appendChild(opt);
+    monthPanel.querySelectorAll(".time-period-option").forEach((o) => {
+      o.classList.toggle("is-selected", o.dataset.value === String(filterMonth));
+    });
+
+    monthTrigger.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      monthPanel.classList.toggle("is-open");
+      monthDropdownWrap.classList.toggle("is-open");
+    });
+    monthPanel.querySelectorAll(".time-period-option").forEach((o) => {
+      o.addEventListener("click", (e) => {
+        e.stopPropagation();
+        filterMonth = parseInt(o.dataset.value, 10);
+        monthTrigger.textContent = `${filterMonth}월`;
+        monthPanel.classList.remove("is-open");
+        monthDropdownWrap.classList.remove("is-open");
+        monthPanel.querySelectorAll(".time-period-option").forEach((opt) => {
+          opt.classList.toggle("is-selected", opt.dataset.value === String(filterMonth));
+        });
+        applyFilter();
+      });
+    });
+    yearPrevBtn.addEventListener("click", () => {
+      filterYear -= 1;
+      yearDisplay.textContent = filterYear;
+      applyFilter();
+    });
+    yearNextBtn.addEventListener("click", () => {
+      filterYear += 1;
+      yearDisplay.textContent = filterYear;
+      applyFilter();
+    });
+    document.addEventListener("click", (e) => {
+      if (!monthDropdownWrap?.contains(e.target)) {
+        monthPanel?.classList.remove("is-open");
+        monthDropdownWrap?.classList.remove("is-open");
+      }
+    });
+
+    function updateDayDisplay() {
+      if (dayDisplay) dayDisplay.textContent = formatDateForDayFilter(filterStartDate);
     }
-    for (let m = 1; m <= 12; m++) {
-      const opt = document.createElement("option");
-      opt.value = m;
-      opt.textContent = m + "월";
-      if (m === filterMonth) opt.selected = true;
-      monthSelect.appendChild(opt);
-    }
+
+    dayPrevBtn?.addEventListener("click", () => {
+      const d = new Date(filterStartDate + "T12:00:00");
+      d.setDate(d.getDate() - 1);
+      filterStartDate = filterEndDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      startDateInput.value = filterStartDate;
+      endDateInput.value = filterEndDate;
+      updateDayDisplay();
+      applyFilter();
+    });
+    dayNextBtn?.addEventListener("click", () => {
+      const d = new Date(filterStartDate + "T12:00:00");
+      d.setDate(d.getDate() + 1);
+      filterStartDate = filterEndDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      startDateInput.value = filterStartDate;
+      endDateInput.value = filterEndDate;
+      updateDayDisplay();
+      applyFilter();
+    });
+
     startDateInput.value = filterStartDate;
     endDateInput.value = filterEndDate;
 
@@ -587,13 +627,9 @@ export function render() {
       if (!dateStr) return true;
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return false;
-      if (type === "day") {
-        const today = new Date();
-        return (
-          d.getFullYear() === today.getFullYear() &&
-          d.getMonth() === today.getMonth() &&
-          d.getDate() === today.getDate()
-        );
+      if (type === "day" && start) {
+        const sel = new Date(start + "T12:00:00");
+        return d.getFullYear() === sel.getFullYear() && d.getMonth() === sel.getMonth() && d.getDate() === sel.getDate();
       }
       if (type === "week") {
         const today = new Date();
@@ -619,8 +655,8 @@ export function render() {
 
     function applyFilter() {
       const type = filterType;
-      const y = parseInt(yearSelect.value, 10) || filterYear;
-      const m = parseInt(monthSelect.value, 10) || filterMonth;
+      const y = filterYear;
+      const m = filterMonth;
       const start = startDateInput.value || filterStartDate;
       const end = endDateInput.value || filterEndDate;
       tableWrap.querySelectorAll(".work-schedule-row").forEach((tr) => {
@@ -632,20 +668,18 @@ export function render() {
       updateSum();
     }
 
-    filterBar.querySelectorAll(".work-schedule-filter-btn").forEach((btn) => {
+    filterBar.querySelectorAll(".time-filter-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         filterType = btn.dataset.filter;
-        filterBar
-          .querySelectorAll(".work-schedule-filter-btn")
-          .forEach((b) => b.classList.remove("active"));
+        filterBar.querySelectorAll(".time-filter-btn").forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
+        dayWrap.style.display = filterType === "day" ? "" : "none";
         monthWrap.style.display = filterType === "month" ? "" : "none";
         rangeWrap.style.display = filterType === "range" ? "" : "none";
+        if (filterType === "day") updateDayDisplay();
         applyFilter();
       });
     });
-    yearSelect.addEventListener("change", applyFilter);
-    monthSelect.addEventListener("change", applyFilter);
     startDateInput.addEventListener("change", applyFilter);
     endDateInput.addEventListener("change", applyFilter);
 
