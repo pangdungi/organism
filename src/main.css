@@ -5733,30 +5733,332 @@ body {
 
 .kpi-view-tabs {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
 }
 
 .kpi-view-tab {
-  padding: 0.4rem 0.75rem;
-  font-size: 0.9rem;
-  color: #888;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
+  flex: 1;
+  min-width: 100px;
+  padding: 1rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #e5e7eb;
+  background: #374151;
+  border: 2px solid transparent;
+  border-radius: 0.75rem;
   cursor: pointer;
-  transition:
-    color 0.15s,
-    border-color 0.15s;
+  transition: border-color 0.2s, background 0.2s;
 }
 
 .kpi-view-tab:hover {
-  color: #555;
+  background: #4b5563;
 }
 
 .kpi-view-tab.active {
-  color: #333;
-  border-bottom-color: #999;
+  color: #fff;
+  background: #4c1d95;
+  border-color: #a78bfa;
+}
+
+/* 꿈 여정 */
+.kpi-dream-wrap {
+  max-width: 640px;
+  font-family: "Noto Sans KR", -apple-system, sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.kpi-dream-header {
+  margin-bottom: 1.5rem;
+}
+
+.kpi-dream-title-row,
+.kpi-dream-subtitle-row {
+  margin-bottom: 0.75rem;
+}
+
+.kpi-dream-title-input,
+.kpi-dream-subtitle-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.5;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.kpi-dream-title-input {
+  font-weight: 600;
+  font-size: 1.0625rem;
+}
+
+.kpi-dream-subtitle-input {
+  color: #6b7280;
+}
+
+.kpi-dream-title-input:focus,
+.kpi-dream-subtitle-input:focus {
+  outline: none;
+  border-color: #9ca3af;
+}
+
+.kpi-dream-hint {
+  font-size: 0.875rem;
+  color: #6b7280;
+  line-height: 1.5;
+  margin: 0 0 1.5rem;
+}
+
+.kpi-dream-timeline {
+  position: relative;
+  padding-left: 1.5rem;
+  border-left: 2px solid #e5e7eb;
+  margin-left: 0.5rem;
+}
+
+.kpi-dream-empty {
+  padding: 2rem;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.9rem;
+}
+
+.kpi-dream-phase {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.kpi-dream-phase-node {
+  position: absolute;
+  left: calc(-1.5rem - 1px);
+  top: 0.75rem;
+  width: 12px;
+  height: 12px;
+  transform: translateX(-50%);
+  background: #a78bfa;
+  border-radius: 50% !important;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #e5e7eb;
+}
+
+.kpi-dream-phase-body {
+  padding: 1.25rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.kpi-dream-phase-edit-wrap {
+  font-family: "Noto Sans KR", -apple-system, sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.kpi-dream-phase-field {
+  margin-bottom: 1rem;
+}
+
+.kpi-dream-phase-field:last-of-type {
+  margin-bottom: 0;
+}
+
+.kpi-dream-phase-field-row {
+  display: flex;
+  gap: 1rem;
+}
+
+.kpi-dream-phase-field-item {
+  flex-shrink: 0;
+}
+
+.kpi-dream-phase-field-item-flex {
+  flex: 1;
+  min-width: 0;
+}
+
+.kpi-dream-phase-label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #6b7280;
+  margin-bottom: 0.375rem;
+}
+
+.kpi-dream-phase-period,
+.kpi-dream-phase-title,
+.kpi-dream-phase-desc,
+.kpi-dream-phase-goals {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.5;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.kpi-dream-phase-period {
+  width: 5rem;
+}
+
+.kpi-dream-phase-title {
+  font-weight: 500;
+}
+
+.kpi-dream-phase-desc {
+  resize: vertical;
+  min-height: 4.5rem;
+}
+
+.kpi-dream-phase-period:focus,
+.kpi-dream-phase-title:focus,
+.kpi-dream-phase-desc:focus,
+.kpi-dream-phase-goals:focus {
+  outline: none;
+  border-color: #9ca3af;
+}
+
+.kpi-dream-phase-num {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.kpi-dream-phase-delete {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  color: #9ca3af;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.kpi-dream-phase-delete:hover {
+  color: #ef4444;
+}
+
+/* 단계 완료 표시 모드 */
+.kpi-dream-phase-display {
+  padding: 0;
+  font-family: "Noto Sans KR", -apple-system, sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.kpi-dream-phase-display-header {
+  margin-bottom: 0.375rem;
+}
+
+.kpi-dream-phase-display-period {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.kpi-dream-phase-display-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+  line-height: 1.5;
+  margin: 0 0 0.5rem;
+}
+
+.kpi-dream-phase-display-desc {
+  font-size: 0.9375rem;
+  color: #4b5563;
+  line-height: 1.5;
+  margin: 0 0 0.75rem;
+  white-space: pre-wrap;
+}
+
+.kpi-dream-phase-display-goals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-bottom: 0.75rem;
+}
+
+.kpi-dream-phase-goal-tag {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #4b5563;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+}
+
+.kpi-dream-phase-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 1rem;
+  margin-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.kpi-dream-phase-edit,
+.kpi-dream-phase-delete,
+.kpi-dream-phase-done {
+  padding: 0.375rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.kpi-dream-phase-edit {
+  color: #6b7280;
+  background: none;
+  border: none;
+}
+
+.kpi-dream-phase-edit:hover {
+  color: #374151;
+}
+
+.kpi-dream-phase-done {
+  color: #374151;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+}
+
+.kpi-dream-phase-done:hover {
+  background: #e5e7eb;
+}
+
+.kpi-dream-phase-delete {
+  color: #9ca3af;
+  background: none;
+  border: none;
+}
+
+.kpi-dream-phase-delete:hover {
+  color: #ef4444;
+}
+
+.kpi-dream-add-phase {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: #6b7280;
+  background: #fff;
+  border: 1px dashed #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.kpi-dream-add-phase:hover {
+  border-color: #9ca3af;
+  color: #374151;
 }
 
 .kpi-section {
