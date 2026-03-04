@@ -3,7 +3,11 @@
  * 인생 KPI와 동일한 dream 데이터 사용 (kpi-dream-map)
  */
 
+import { showGanttModal, toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay } from "../utils/ganttModal.js";
+
 const DREAM_MAP_STORAGE_KEY = "kpi-dream-map";
+const TIME_TASK_OPTIONS_KEY = "time_task_options";
+const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
 
 function loadDreamMap() {
   try {
@@ -18,10 +22,70 @@ function loadDreamMap() {
         kpiLogs: parsed.kpiLogs || [],
         kpiTodos: parsed.kpiTodos || [],
         kpiOrder: parsed.kpiOrder || {},
+        kpiTaskSync: parsed.kpiTaskSync || {},
       };
     }
   } catch (_) {}
-  return { dreams: [], goals: [], tasks: [], kpis: [], kpiLogs: [], kpiTodos: [], kpiOrder: {} };
+  return { dreams: [], goals: [], tasks: [], kpis: [], kpiLogs: [], kpiTodos: [], kpiOrder: {}, kpiTaskSync: {} };
+}
+
+function getTimeTaskOptionsRaw() {
+  try {
+    const raw = localStorage.getItem(TIME_TASK_OPTIONS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (_) {}
+  return null;
+}
+
+function getTaskName(o) {
+  return typeof o === "string" ? o : (o?.name || "");
+}
+
+function syncKpiToTimeTask(kpi, action, oldName) {
+  const data = loadDreamMap();
+  data.kpiTaskSync = data.kpiTaskSync || {};
+  let opts = getTimeTaskOptionsRaw();
+  if (opts === null) opts = [];
+
+  if (action === "add") {
+    const name = (kpi.name || "").trim();
+    if (!name || opts.some((o) => getTaskName(o) === name)) return;
+    data.kpiTaskSync[kpi.id] = name;
+    opts.unshift({ name, category: "dream", productivity: "productive", memo: "" });
+    try {
+      localStorage.setItem(TIME_TASK_OPTIONS_KEY, JSON.stringify(opts));
+    } catch (_) {}
+    saveDreamMap(data);
+  } else if (action === "remove") {
+    const name = data.kpiTaskSync[kpi.id];
+    if (name) {
+      opts = opts.filter((o) => getTaskName(o) !== name);
+      delete data.kpiTaskSync[kpi.id];
+      try {
+        localStorage.setItem(TIME_TASK_OPTIONS_KEY, JSON.stringify(opts));
+      } catch (_) {}
+      saveDreamMap(data);
+    }
+  } else if (action === "update" && oldName) {
+    const newName = (kpi.name || "").trim();
+    const prevName = data.kpiTaskSync[kpi.id];
+    if (prevName && newName && prevName !== newName) {
+      opts = opts.map((o) => {
+        if (getTaskName(o) === prevName) {
+          return typeof o === "string" ? newName : { ...o, name: newName };
+        }
+        return o;
+      });
+      data.kpiTaskSync[kpi.id] = newName;
+      try {
+        localStorage.setItem(TIME_TASK_OPTIONS_KEY, JSON.stringify(opts));
+      } catch (_) {}
+      saveDreamMap(data);
+    }
+  }
 }
 
 function saveDreamMap(data) {
@@ -32,6 +96,40 @@ function saveDreamMap(data) {
 
 function nextId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+function sanitizeNumericInput(val) {
+  return String(val || "").replace(/[^\d.-]/g, "");
+}
+
+function setupNumericOnlyInput(inp) {
+  inp.addEventListener("input", () => {
+    const pos = inp.selectionStart;
+    const sanitized = sanitizeNumericInput(inp.value);
+    if (inp.value !== sanitized) {
+      inp.value = sanitized;
+      inp.setSelectionRange(Math.min(pos, sanitized.length), Math.min(pos, sanitized.length));
+    }
+  });
+}
+
+function setupDeadlineQuickButtons(modal) {
+  const startInput = modal.querySelector('input[name="targetStartDate"]');
+  const deadlineInput = modal.querySelector('input[name="targetDeadline"]');
+  modal.querySelectorAll(".dream-kpi-deadline-quick-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const days = parseInt(btn.dataset.days, 10);
+      const startVal = startInput?.value?.trim();
+      const baseDate = startVal ? new Date(startVal + "T12:00:00") : new Date();
+      if (isNaN(baseDate.getTime())) return;
+      const result = new Date(baseDate);
+      result.setDate(result.getDate() + days - 1);
+      const y = result.getFullYear();
+      const m = String(result.getMonth() + 1).padStart(2, "0");
+      const d = String(result.getDate()).padStart(2, "0");
+      if (deadlineInput) deadlineInput.value = `${y}-${m}-${d}`;
+    });
+  });
 }
 
 export function render() {
@@ -50,6 +148,12 @@ export function render() {
   addBtn.className = "dream-add-btn";
   addBtn.textContent = "+ 꿈 추가하기";
   btnRow.appendChild(addBtn);
+  const ganttBtn = document.createElement("button");
+  ganttBtn.type = "button";
+  ganttBtn.className = "dream-gantt-btn";
+  ganttBtn.textContent = "간트 보기";
+  ganttBtn.addEventListener("click", () => showGanttModal());
+  btnRow.appendChild(ganttBtn);
   el.appendChild(btnRow);
 
   const tabsWrap = document.createElement("div");
@@ -99,13 +203,22 @@ export function render() {
           </div>
           <div class="dream-kpi-row">
             <div class="dream-kpi-field">
-              <label>목표 달성 기한</label>
-              <input type="text" name="targetDeadline" placeholder="예) 2026년 6월, 출시 6개월 후 등 자유 입력" />
+              <label>시작기한</label>
+              <input type="date" name="targetStartDate" />
             </div>
             <div class="dream-kpi-field">
-              <label>목표 달성까지 필요한 시간</label>
-              <input type="text" name="targetTimeRequired" placeholder="예) 02:30" />
+              <label>달성기한</label>
+              <input type="date" name="targetDeadline" />
+              <div class="dream-kpi-deadline-quick">
+                <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
+                <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
+                <button type="button" class="dream-kpi-deadline-quick-btn" data-days="60">+60일</button>
+              </div>
             </div>
+          </div>
+          <div class="dream-kpi-field">
+            <label>목표달성예측 소요시간</label>
+            <input type="text" name="targetTimeRequired" placeholder="예) 02:30" />
           </div>
           <button type="submit" class="dream-kpi-submit">KPI 등록하기</button>
         </form>
@@ -122,7 +235,8 @@ export function render() {
         dreamId: activeDreamId,
         name: (form.name.value || "").trim() || "지표",
         unit: (form.unit.value || "").trim() || "",
-        targetValue: (form.targetValue.value || "").trim() || "",
+        targetValue: sanitizeNumericInput(form.targetValue.value) || "",
+        targetStartDate: (form.targetStartDate?.value || "").trim() || "",
         targetDeadline: (form.targetDeadline.value || "").trim() || "",
         targetTimeRequired: (form.targetTimeRequired?.value || "").trim() || "",
       };
@@ -133,10 +247,13 @@ export function render() {
       data.kpiOrder = data.kpiOrder || {};
       data.kpiOrder[activeDreamId] = [...existingOrder, kpi.id];
       saveDreamMap(data);
+      syncKpiToTimeTask(kpi, "add");
       close();
       renderKpiList();
     });
     document.body.appendChild(modal);
+    setupNumericOnlyInput(modal.querySelector('input[name="targetValue"]'));
+    setupDeadlineQuickButtons(modal);
   }
 
   function showKpiEditModal(kpi) {
@@ -157,7 +274,7 @@ export function render() {
           <div class="dream-kpi-row">
             <div class="dream-kpi-field">
               <label>목표값</label>
-              <input type="text" name="targetValue" value="${escapeHtml(kpi.targetValue || "")}" placeholder="예) 1000" inputmode="numeric" />
+              <input type="text" name="targetValue" value="${escapeHtml(sanitizeNumericInput(kpi.targetValue))}" placeholder="예) 1000" inputmode="numeric" />
             </div>
             <div class="dream-kpi-field">
               <label>단위</label>
@@ -166,13 +283,22 @@ export function render() {
           </div>
           <div class="dream-kpi-row">
             <div class="dream-kpi-field">
-              <label>목표 달성 기한</label>
-              <input type="text" name="targetDeadline" value="${escapeHtml(kpi.targetDeadline || "")}" placeholder="예) 2026년 6월, 출시 6개월 후 등 자유 입력" />
+              <label>시작기한</label>
+              <input type="date" name="targetStartDate" value="${escapeHtml(toDateInputValue(kpi.targetStartDate))}" />
             </div>
             <div class="dream-kpi-field">
-              <label>목표 달성까지 필요한 시간</label>
-              <input type="text" name="targetTimeRequired" value="${escapeHtml(kpi.targetTimeRequired || "")}" placeholder="예) 02:30" />
+              <label>달성기한</label>
+              <input type="date" name="targetDeadline" value="${escapeHtml(toDateInputValue(kpi.targetDeadline))}" />
+              <div class="dream-kpi-deadline-quick">
+                <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
+                <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
+                <button type="button" class="dream-kpi-deadline-quick-btn" data-days="60">+60일</button>
+              </div>
             </div>
+          </div>
+          <div class="dream-kpi-field">
+            <label>목표달성예측 소요시간</label>
+            <input type="text" name="targetTimeRequired" value="${escapeHtml(kpi.targetTimeRequired || "")}" placeholder="예) 02:30" />
           </div>
           <button type="submit" class="dream-kpi-submit">수정</button>
           <div class="dream-kpi-delete-wrap">
@@ -186,6 +312,7 @@ export function render() {
     modal.querySelector(".dream-kpi-backdrop").addEventListener("click", close);
     modal.querySelector(".dream-kpi-modal-close").addEventListener("click", close);
     modal.querySelector(".dream-kpi-delete-btn").addEventListener("click", () => {
+      syncKpiToTimeTask(kpi, "remove");
       const data = loadDreamMap();
       data.kpis = (data.kpis || []).filter((k) => k.id !== kpi.id);
       data.kpiLogs = (data.kpiLogs || []).filter((l) => l.kpiId !== kpi.id);
@@ -204,18 +331,23 @@ export function render() {
       const data = loadDreamMap();
       const target = data.kpis.find((k) => k.id === kpi.id);
       if (target) {
+        const oldName = target.name;
         target.name = (form.name.value || "").trim() || "지표";
         target.unit = (form.unit.value || "").trim() || "";
-        target.targetValue = (form.targetValue.value || "").trim() || "";
+        target.targetValue = sanitizeNumericInput(form.targetValue.value) || "";
+        target.targetStartDate = (form.targetStartDate?.value || "").trim() || "";
         target.targetDeadline = (form.targetDeadline.value || "").trim() || "";
         target.targetTimeRequired = (form.targetTimeRequired?.value || "").trim() || "";
         saveDreamMap(data);
+        if (oldName !== target.name) syncKpiToTimeTask(target, "update", oldName);
       }
       close();
       renderKpiList();
       renderKpiHistory();
     });
     document.body.appendChild(modal);
+    setupNumericOnlyInput(modal.querySelector('input[name="targetValue"]'));
+    setupDeadlineQuickButtons(modal);
   }
 
   function toDateStr(d) {
@@ -241,7 +373,7 @@ export function render() {
         const m = editLog.date.match(/(\d{4})\.?\s*(\d{1,2})\.?\s*(\d{1,2})/);
         if (m) dateVal = `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
       }
-      valueVal = editLog.value || "";
+      valueVal = sanitizeNumericInput(editLog.value) || "";
       statusVal = editLog.status || "순항";
       memoVal = editLog.memo || "";
     }
@@ -304,7 +436,7 @@ export function render() {
             ...data.kpiLogs[idx],
             date: dateStr,
             dateRaw: dateVal,
-            value: (form.value.value || "").trim(),
+            value: sanitizeNumericInput(form.value.value) || "",
             status: form.status.value || "순항",
             memo: (form.memo.value || "").trim(),
           };
@@ -316,7 +448,7 @@ export function render() {
           dreamId: kpi.dreamId,
           date: dateStr,
           dateRaw: dateVal,
-          value: (form.value.value || "").trim(),
+          value: sanitizeNumericInput(form.value.value) || "",
           status: form.status.value || "순항",
           memo: (form.memo.value || "").trim(),
         };
@@ -329,6 +461,7 @@ export function render() {
       renderKpiHistory();
     });
     document.body.appendChild(modal);
+    setupNumericOnlyInput(modal.querySelector('input[name="value"]'));
   }
 
   function getLatestKpiLog(kpiId) {
@@ -388,6 +521,10 @@ export function render() {
         const targetVal = parseNum(kpi.targetValue);
         const progress = targetVal > 0 ? Math.min(100, (currentVal / targetVal) * 100) : 0;
         const unitSuffix = kpi.unit ? " " + kpi.unit : "";
+        const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
+        const currentStr = formatNum(currentVal);
+        const targetStr = kpi.targetValue ? escapeHtml(String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) : "—";
+        const progressText = `${currentStr} / ${targetStr}${unitSuffix}`;
         const card = document.createElement("div");
         card.className = "dream-kpi-card" + (selectedKpiId === kpi.id ? " is-selected" : "");
         card.dataset.kpiId = kpi.id;
@@ -396,14 +533,12 @@ export function render() {
           <div class="dream-kpi-card-inner">
             <button type="button" class="dream-kpi-card-edit" title="KPI 수정">수정</button>
             <div class="dream-kpi-card-name">${escapeHtml(kpi.name)}</div>
-            <div class="dream-kpi-card-current">현재 ${latestLog?.value ? escapeHtml(latestLog.value) + unitSuffix : "0" + unitSuffix}</div>
-            <div class="dream-kpi-card-target-num">${kpi.targetValue ? escapeHtml(String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) : "—"}</div>
-            <div class="dream-kpi-card-target-desc">${kpi.unit ? escapeHtml(kpi.unit) : ""}</div>
-            ${kpi.targetDeadline ? `<div class="dream-kpi-card-deadline">목표기한 ${escapeHtml(kpi.targetDeadline)}</div>` : ""}
+            <div class="dream-kpi-card-target-num">${kpi.targetValue ? escapeHtml(String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) + (kpi.unit ? '<span class="dream-kpi-card-unit"> ' + escapeHtml(kpi.unit) + "</span>" : "") : "—"}</div>
+            ${(kpi.targetStartDate || kpi.targetDeadline) ? `<div class="dream-kpi-card-deadline">목표기한 ${escapeHtml(formatDeadlineRangeForDisplay(kpi.targetStartDate, kpi.targetDeadline))}</div>` : ""}
             ${kpi.targetTimeRequired ? `<div class="dream-kpi-card-time">필요시간 ${escapeHtml(kpi.targetTimeRequired)}</div>` : ""}
             <div class="dream-kpi-card-progress">
               <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${progress}%"></div></div>
-              <div class="dream-kpi-card-progress-text">${latestLog?.value || "0"} / ${kpi.targetValue || "0"}${unitSuffix}</div>
+              <div class="dream-kpi-card-progress-text">${escapeHtml(progressText)}</div>
             </div>
           </div>
         `;
@@ -510,12 +645,14 @@ export function render() {
         item.className = "dream-kpi-history-item";
         const unitSuffix = kpi.unit ? " " + kpi.unit : "";
         item.innerHTML = `
-          <div class="dream-kpi-history-item-main">
-            <span class="dream-kpi-history-date">${escapeHtml(log.date)}</span>
-            <span class="dream-kpi-history-value">${escapeHtml(log.value || "—")}${unitSuffix}</span>
-            <span class="dream-kpi-history-status dream-kpi-history-status--${log.status === "순항" ? "good" : log.status === "보통" ? "normal" : "poor"}">${escapeHtml(log.status)}</span>
+          <div class="dream-kpi-history-item-body">
+            <div class="dream-kpi-history-item-main">
+              <span class="dream-kpi-history-date">${escapeHtml(log.date)}</span>
+              <span class="dream-kpi-history-value">${escapeHtml(log.value || "—")}${unitSuffix}</span>
+              <span class="dream-kpi-history-status dream-kpi-history-status--${log.status === "순항" ? "good" : log.status === "보통" ? "normal" : "poor"}">${escapeHtml(log.status)}</span>
+            </div>
+            ${log.memo ? `<div class="dream-kpi-history-memo">${escapeHtml(log.memo)}</div>` : ""}
           </div>
-          ${log.memo ? `<div class="dream-kpi-history-memo">${escapeHtml(log.memo)}</div>` : ""}
           <div class="dream-kpi-history-actions">
             <button type="button" class="dream-kpi-history-edit">수정</button>
             <button type="button" class="dream-kpi-history-delete">삭제</button>
@@ -669,12 +806,16 @@ export function render() {
     modal.querySelector(".dream-delete-confirm-submit").addEventListener("click", () => {
       close();
       const d = loadDreamMap();
-      const kpiIds = (d.kpis || []).filter((k) => k.dreamId === dreamId).map((k) => k.id);
+      const dreamKpis = (d.kpis || []).filter((k) => k.dreamId === dreamId);
+      const kpiIds = dreamKpis.map((k) => k.id);
+      dreamKpis.forEach((k) => syncKpiToTimeTask(k, "remove"));
       d.dreams = (d.dreams || []).filter((x) => x.id !== dreamId);
       d.kpis = (d.kpis || []).filter((k) => k.dreamId !== dreamId);
       d.kpiLogs = (d.kpiLogs || []).filter((l) => !kpiIds.includes(l.kpiId));
       d.kpiTodos = (d.kpiTodos || []).filter((t) => !kpiIds.includes(t.kpiId));
       delete d.kpiOrder?.[dreamId];
+      d.kpiTaskSync = (d.kpiTaskSync || {});
+      kpiIds.forEach((id) => delete d.kpiTaskSync[id]);
       saveDreamMap(d);
       if (activeDreamId === dreamId) {
         activeDreamId = d.dreams[0]?.id || null;

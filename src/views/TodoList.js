@@ -1,6 +1,9 @@
 /**
  * 할일목록 - 토글 헤더 + Name, Due date + Add Task + 분류 드롭다운
+ * KPI 할일(꿈/부수입/행복/건강) 연동: 마감일 없음, 꿈이름 자동, 분류=KPI이름
  */
+
+import { getKpiTodosAsTasks, syncKpiTodoCompleted } from "../utils/kpiTodoSync.js";
 
 export function saveTodoListBeforeUnmount() {}
 
@@ -306,12 +309,27 @@ const SECTIONS = [
 ];
 
 function createTaskRow(taskData = {}, options = {}) {
-  const { name = "", dueDate = "", classification = "", sectionLabel = "", done = false } = taskData;
+  const {
+    name = "",
+    dueDate = "",
+    classification = "",
+    sectionLabel = "",
+    done = false,
+    isKpiTodo = false,
+    kpiTodoId = "",
+    storageKey = "",
+  } = taskData;
   const { showCategoryCol = false } = options;
 
   const tr = document.createElement("tr");
   tr.className = "todo-task-row";
   tr.dataset.sectionId = taskData.sectionId || "";
+  if (isKpiTodo) {
+    tr.classList.add("todo-task-row--kpi");
+    tr.dataset.isKpiTodo = "true";
+    tr.dataset.kpiTodoId = kpiTodoId;
+    tr.dataset.kpiStorageKey = storageKey;
+  }
 
   const doneTd = document.createElement("td");
   doneTd.className = "todo-cell-done";
@@ -319,6 +337,11 @@ function createTaskRow(taskData = {}, options = {}) {
   doneCheck.type = "checkbox";
   doneCheck.className = "todo-done-check";
   doneCheck.checked = done;
+  doneCheck.addEventListener("change", () => {
+    if (isKpiTodo && kpiTodoId && storageKey) {
+      syncKpiTodoCompleted(kpiTodoId, storageKey, doneCheck.checked);
+    }
+  });
   doneTd.appendChild(doneCheck);
 
   const nameTd = document.createElement("td");
@@ -326,6 +349,7 @@ function createTaskRow(taskData = {}, options = {}) {
   const nameInput = document.createElement("input");
   nameInput.type = "text";
   nameInput.value = name;
+  if (isKpiTodo) nameInput.readOnly = true;
   nameTd.appendChild(nameInput);
 
   const dueTd = document.createElement("td");
@@ -345,21 +369,25 @@ function createTaskRow(taskData = {}, options = {}) {
   dueInput.type = "date";
   dueInput.className = "todo-due-input-hidden";
   dueInput.value = dueDate;
-  dueInput.addEventListener("change", () => {
-    const val = dueInput.value;
-    if (val) {
-      const [y, m, d] = val.split("-");
-      dueDisplay.innerHTML = `<span class="todo-due-date-text">${y}/${m}/${d}</span>`;
-    } else {
-      dueDisplay.innerHTML =
-        '<span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
-    }
-  });
-  dueWrap.addEventListener("click", () => {
-    dueInput.focus();
-    if (typeof dueInput.showPicker === "function") dueInput.showPicker();
-    else dueInput.click();
-  });
+  if (!isKpiTodo) {
+    dueInput.addEventListener("change", () => {
+      const val = dueInput.value;
+      if (val) {
+        const [y, m, d] = val.split("-");
+        dueDisplay.innerHTML = `<span class="todo-due-date-text">${y}/${m}/${d}</span>`;
+      } else {
+        dueDisplay.innerHTML =
+          '<span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
+      }
+    });
+    dueWrap.addEventListener("click", () => {
+      dueInput.focus();
+      if (typeof dueInput.showPicker === "function") dueInput.showPicker();
+      else dueInput.click();
+    });
+  } else {
+    dueWrap.style.cursor = "default";
+  }
   dueWrap.appendChild(dueDisplay);
   dueWrap.appendChild(dueInput);
   dueTd.appendChild(dueWrap);
@@ -368,6 +396,9 @@ function createTaskRow(taskData = {}, options = {}) {
   lastColTd.className = "todo-cell-category";
   if (showCategoryCol) {
     lastColTd.textContent = sectionLabel;
+    lastColTd.classList.add("todo-cell-category-readonly");
+  } else if (isKpiTodo) {
+    lastColTd.textContent = classification;
     lastColTd.classList.add("todo-cell-category-readonly");
   } else {
     const categoryDropdown = createCategoryDropdown(classification, () => {});
@@ -472,90 +503,45 @@ function collectTasksFromDOM(sectionsEl) {
     sec.querySelectorAll(".todo-task-row").forEach((row) => {
       const nameInput = row.querySelector(".todo-cell-name input");
       const dueInput = row.querySelector(".todo-due-input-hidden");
-      const catInput = row.querySelector(".todo-cell-category .todo-category-input");
+      const catCell = row.querySelector(".todo-cell-category");
+      const catInput = catCell?.querySelector(".todo-category-input");
       const doneCheck = row.querySelector(".todo-done-check");
       const rowSectionId = row.dataset.sectionId || secId;
       const sectionLabel = SECTIONS.find((s) => s.id === rowSectionId)?.label || "";
-      tasks.push({
+      const classification = isCategoryView
+        ? (catInput ? catInput.value : catCell?.textContent || "").trim()
+        : secId;
+      const task = {
         name: nameInput?.value || "",
         dueDate: dueInput?.value || "",
-        classification: isCategoryView ? (catInput?.value || "").trim() : secId,
+        classification,
         sectionId: rowSectionId,
         sectionLabel,
         done: doneCheck?.checked || false,
-      });
+      };
+      if (row.dataset.isKpiTodo === "true") {
+        task.isKpiTodo = true;
+        task.kpiTodoId = row.dataset.kpiTodoId || "";
+        task.storageKey = row.dataset.kpiStorageKey || "";
+      }
+      tasks.push(task);
     });
   });
   return tasks;
 }
 
-function createFilterBar(sectionsWrap, onViewChange) {
-  const bar = document.createElement("div");
-  bar.className = "todo-filter-bar";
-
-  const catBtn = document.createElement("button");
-  catBtn.type = "button";
-  catBtn.className = "todo-filter-btn active";
-  catBtn.textContent = "카테고리별";
-  catBtn.dataset.view = "category";
-  bar.appendChild(catBtn);
-
-  const classBtn = document.createElement("button");
-  classBtn.type = "button";
-  classBtn.className = "todo-filter-btn";
-  classBtn.textContent = "분류별";
-  classBtn.dataset.view = "classification";
-  bar.appendChild(classBtn);
-
-  [catBtn, classBtn].forEach((btn) => {
-    btn.addEventListener("click", () => {
-      if (btn.classList.contains("active")) return;
-      bar.querySelectorAll(".todo-filter-btn").forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      onViewChange(btn.dataset.view);
-    });
-  });
-
-  return bar;
-}
-
-function renderSections(container, viewMode, tasksData = []) {
+function renderSections(container, tasksData = []) {
   container.innerHTML = "";
-
-  if (viewMode === "category") {
-    SECTIONS.forEach((section) => {
-      const sectionTasks = tasksData.filter((t) => t.sectionId === section.id);
-      const sec = createSection(section, {
-        lastColHeader: "분류",
-        initialTasks: sectionTasks,
-        showCategoryCol: false,
-        sectionIdForAdd: section.id,
-      });
-      container.appendChild(sec);
+  SECTIONS.forEach((section) => {
+    const sectionTasks = tasksData.filter((t) => t.sectionId === section.id);
+    const sec = createSection(section, {
+      lastColHeader: "분류",
+      initialTasks: sectionTasks,
+      showCategoryCol: false,
+      sectionIdForAdd: section.id,
     });
-  } else {
-    const byClassification = {};
-    tasksData.forEach((t) => {
-      const key = (t.classification || "").trim() || "(미분류)";
-      if (!byClassification[key]) byClassification[key] = [];
-      byClassification[key].push(t);
-    });
-    const classOpts = getCategoryOptions().map((o) => o.name);
-    const keys = [...classOpts, "(미분류)"];
-    keys.forEach((key) => {
-      const sectionTasks = byClassification[key] || [];
-      const sec = createSection(
-        { id: key, label: key },
-        {
-          lastColHeader: "카테고리",
-          initialTasks: sectionTasks,
-          showCategoryCol: true,
-          sectionIdForAdd: key,
-        }
-      );
-      container.appendChild(sec);
-    });
-  }
+    container.appendChild(sec);
+  });
 }
 
 export function render() {
@@ -565,13 +551,8 @@ export function render() {
   const sectionsWrap = document.createElement("div");
   sectionsWrap.className = "todo-sections-wrap";
 
-  const filterBar = createFilterBar(sectionsWrap, (viewMode) => {
-    const tasks = collectTasksFromDOM(sectionsWrap);
-    renderSections(sectionsWrap, viewMode, tasks);
-  });
-
-  el.appendChild(filterBar);
-  renderSections(sectionsWrap, "category", []);
+  const kpiTasks = getKpiTodosAsTasks();
+  renderSections(sectionsWrap, kpiTasks);
   el.appendChild(sectionsWrap);
 
   return el;

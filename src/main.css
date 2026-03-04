@@ -11043,6 +11043,9 @@ body.kpi-resizing {
 }
 
 .dream-btn-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin-bottom: 1rem;
 }
 
@@ -11057,9 +11060,32 @@ body.kpi-resizing {
   cursor: pointer;
 }
 
-.dream-add-btn:hover {
+.dream-gantt-btn {
+  padding: 0.5rem 1rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #374151;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  cursor: pointer;
+}
+
+.dream-add-btn:hover,
+.dream-gantt-btn:hover {
   background: #f9fafb;
   border-color: #9ca3af;
+}
+
+.dream-gantt-btn {
+  padding: 0.5rem 1rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #374151;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  cursor: pointer;
 }
 
 .dream-tabs-wrap {
@@ -11234,13 +11260,9 @@ body.kpi-resizing {
   font-size: 0.9rem;
   font-weight: 600;
   color: #1a1a2e;
-  margin-bottom: 0.25rem;
   padding-right: 3rem;
-  min-height: 2.4em;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  margin-bottom: auto;
+  flex-shrink: 0;
 }
 
 .dream-kpi-card-current {
@@ -11255,6 +11277,13 @@ body.kpi-resizing {
   color: #1a1a2e;
   line-height: 1.2;
   margin-bottom: 0.25rem;
+}
+
+.dream-kpi-card-target-num .dream-kpi-card-unit {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #6b7280;
+  margin-left: 0.15em;
 }
 
 .dream-kpi-card-target-desc {
@@ -11347,9 +11376,18 @@ body.kpi-resizing {
 }
 
 .dream-kpi-history-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
   padding: 0.75rem 1rem;
   background: #f9fafb;
   border: 1px solid #e5e7eb;
+}
+
+.dream-kpi-history-item-body {
+  flex: 1;
+  min-width: 0;
 }
 
 .dream-kpi-history-item-main {
@@ -11402,6 +11440,13 @@ body.kpi-resizing {
 .dream-kpi-history-actions {
   display: flex;
   gap: 0.5rem;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.dream-kpi-history-item:hover .dream-kpi-history-actions {
+  opacity: 1;
 }
 
 .dream-kpi-history-edit,
@@ -11563,6 +11608,200 @@ body.kpi-resizing {
   pointer-events: none;
 }
 
+/* 간트/타임라인 모달 */
+.gantt-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.gantt-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.gantt-panel {
+  position: relative;
+  width: 100%;
+  max-width: 900px;
+  height: 85vh;
+  max-height: 85vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.gantt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+}
+
+.gantt-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.gantt-close {
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+  font-family: inherit;
+  color: #9ca3af;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.gantt-close:hover {
+  color: #374151;
+}
+
+.gantt-timeline-header {
+  display: grid;
+  grid-template-columns: 1fr 120px 1fr 70px;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.5rem 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.gantt-col-label {
+  min-width: 0;
+}
+
+.gantt-col-progress {
+  text-align: center;
+}
+
+.gantt-timeline-months {
+  display: flex;
+  gap: 0;
+}
+
+.gantt-month-col {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-size: 0.7rem;
+}
+
+.gantt-col-days {
+  text-align: right;
+}
+
+.gantt-body {
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.gantt-row {
+  display: grid;
+  grid-template-columns: 1fr 120px 1fr 70px;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.6rem 0;
+  font-size: 0.85rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.gantt-row:last-child {
+  border-bottom: none;
+}
+
+.gantt-row-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.gantt-cat-icon {
+  flex-shrink: 0;
+}
+
+.gantt-row-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #1a1a2e;
+}
+
+.gantt-row-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.gantt-progress-pct {
+  flex-shrink: 0;
+  width: 2.5rem;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.gantt-progress-bar {
+  flex: 1;
+  height: 6px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.gantt-progress-fill {
+  height: 100%;
+  background: #374151;
+  transition: width 0.3s;
+}
+
+.gantt-row-timeline {
+  position: relative;
+  height: 20px;
+  background: #f9fafb;
+}
+
+.gantt-timeline-bar {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  background: #3b82f6;
+  min-width: 4px;
+}
+
+.gantt-row-days {
+  text-align: right;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.gantt-empty {
+  margin: 2rem 0;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #9ca3af;
+}
+
 /* KPI 입력 모달 - 화이트/회색/검정 미니멀 */
 .dream-kpi-modal {
   position: fixed;
@@ -11678,6 +11917,27 @@ body.kpi-resizing {
 
 .dream-kpi-form textarea::-webkit-scrollbar {
   display: none;
+}
+
+.dream-kpi-deadline-quick {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+.dream-kpi-deadline-quick-btn {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  font-family: inherit;
+  color: #6b7280;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
+}
+
+.dream-kpi-deadline-quick-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
 }
 
 /* 측정 주기 커스텀 드롭다운 - 화이트/회색/검정 */

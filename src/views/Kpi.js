@@ -24,10 +24,11 @@ function loadDreamMap() {
         kpiLogs: parsed.kpiLogs || [],
         kpiTodos: parsed.kpiTodos || [],
         kpiOrder: parsed.kpiOrder || {},
+        kpiTaskSync: parsed.kpiTaskSync || {},
       };
     }
   } catch (_) {}
-  return { dreams: [], goals: [], tasks: [], kpis: [], kpiLogs: [], kpiTodos: [], kpiOrder: {} };
+  return { dreams: [], goals: [], tasks: [], kpis: [], kpiLogs: [], kpiTodos: [], kpiOrder: {}, kpiTaskSync: {} };
 }
 
 function saveDreamMap(data) {
