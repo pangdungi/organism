@@ -10126,18 +10126,22 @@ body.kpi-resizing {
 }
 
 .time-hourly-setup-link {
-  padding: 0;
-  font-size: 12px;
-  color: #6366f1;
-  background: none;
-  border: none;
+  padding: 0.4rem 0.75rem;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
   cursor: pointer;
-  text-decoration: underline;
   font-family: inherit;
+  transition: all 0.2s;
 }
 
 .time-hourly-setup-link:hover {
-  color: #4f46e5;
+  background: #f9fafb;
+  border-color: #9ca3af;
+  color: #1f2937;
 }
 
 .time-hourly-hint {
@@ -10945,8 +10949,8 @@ body.kpi-resizing {
 
 .idea-form-input:focus {
   outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+  border-color: #374151;
+  box-shadow: 0 0 0 2px rgba(55, 65, 81, 0.1);
 }
 
 .idea-btn-calc {
@@ -10954,8 +10958,8 @@ body.kpi-resizing {
   font-size: 0.9rem;
   font-weight: 500;
   color: #fff;
-  background: #6366f1;
-  border: none;
+  background: #1a1a2e;
+  border: 1px solid #1a1a2e;
   border-radius: 8px;
   cursor: pointer;
   font-family: inherit;
@@ -10963,7 +10967,8 @@ body.kpi-resizing {
 }
 
 .idea-btn-calc:hover {
-  background: #4f46e5;
+  background: #111827;
+  border-color: #111827;
 }
 
 .idea-hourly-result-wrap {
@@ -11010,7 +11015,7 @@ body.kpi-resizing {
 }
 
 .idea-hourly-tab.active {
-  background: #6366f1;
+  background: #1a1a2e;
   color: #fff;
 }
 
@@ -11023,6 +11028,1032 @@ body.kpi-resizing {
 .idea-form-hint {
   font-size: 0.8rem;
   color: #9ca3af;
+}
+
+/* ----- 꿈 페이지 ----- */
+.dream-view {
+  padding: 1rem;
+}
+
+.dream-view-title {
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.dream-btn-row {
+  margin-bottom: 1rem;
+}
+
+.dream-add-btn {
+  padding: 0.5rem 1rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #374151;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  cursor: pointer;
+}
+
+.dream-add-btn:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.dream-tabs-wrap {
+  margin-bottom: 1rem;
+}
+
+.dream-tabs {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.dream-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.9rem;
+  color: #888;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-family: inherit;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.dream-tab-text {
+  cursor: pointer;
+}
+
+.dream-tab:hover .dream-tab-text {
+  color: #555;
+}
+
+.dream-tab.active .dream-tab-text {
+  color: #333;
+  font-weight: 500;
+}
+
+.dream-tab.active {
+  border-bottom-color: #999;
+}
+
+.dream-tab-edit,
+.dream-tab-del {
+  width: 1.1rem;
+  height: 1.1rem;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1;
+  font-family: inherit;
+  color: #9ca3af;
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.dream-tab:hover .dream-tab-edit,
+.dream-tab:hover .dream-tab-del {
+  opacity: 1;
+}
+
+.dream-tab-edit:hover,
+.dream-tab-del:hover {
+  color: #374151;
+}
+
+.dream-current-title-wrap {
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.dream-current-title-input {
+  width: 100%;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1a1a2e;
+  background: none;
+  border: none;
+  padding: 0.25rem 0;
+  font-family: inherit;
+}
+
+.dream-current-title-input::placeholder {
+  color: #9ca3af;
+}
+
+.dream-current-title-input:focus {
+  outline: none;
+}
+
+.dream-content-wrap {
+  min-height: 120px;
+}
+
+.dream-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.dream-kpi-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  cursor: grab;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.dream-kpi-card:active {
+  cursor: grabbing;
+}
+
+.dream-kpi-card:hover {
+  border-color: #d1d5db;
+}
+
+.dream-kpi-card.is-selected {
+  border-color: #374151;
+  box-shadow: 0 0 0 2px rgba(55, 65, 81, 0.15);
+}
+
+.dream-kpi-card-dragging {
+  opacity: 0.5;
+}
+
+.dream-kpi-card-drag-over {
+  border-color: #9ca3af;
+  background: #f9fafb;
+}
+
+.dream-kpi-card-inner {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dream-kpi-card-edit {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 0.15rem 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 400;
+  font-family: inherit;
+  color: #9ca3af;
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, color 0.15s;
+}
+
+.dream-kpi-card:hover .dream-kpi-card-edit {
+  opacity: 1;
+}
+
+.dream-kpi-card-edit:hover {
+  color: #374151;
+}
+
+.dream-kpi-card-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin-bottom: 0.25rem;
+  padding-right: 3rem;
+  min-height: 2.4em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.dream-kpi-card-current {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+.dream-kpi-card-target-num {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  line-height: 1.2;
+  margin-bottom: 0.25rem;
+}
+
+.dream-kpi-card-target-desc {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-bottom: 0.25rem;
+}
+
+.dream-kpi-card-deadline,
+.dream-kpi-card-time {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-bottom: 0.75rem;
+}
+
+.dream-kpi-card-progress {
+  margin-bottom: 0.75rem;
+}
+
+.dream-kpi-card-progress-bar {
+  height: 6px;
+  background: #e5e7eb;
+  overflow: hidden;
+  margin-bottom: 0.35rem;
+}
+
+.dream-kpi-card-progress-fill {
+  height: 100%;
+  background: #374151;
+  transition: width 0.3s;
+}
+
+.dream-kpi-card-progress-text {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.dream-kpi-history-wrap {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.dream-kpi-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.dream-kpi-history-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.dream-kpi-history-log-btn {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  font-weight: 500;
+  color: #374151;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  cursor: pointer;
+}
+
+.dream-kpi-history-log-btn:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.dream-kpi-history-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 1rem 0;
+}
+
+.dream-kpi-history-empty {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #9ca3af;
+}
+
+.dream-kpi-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dream-kpi-history-item {
+  padding: 0.75rem 1rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+.dream-kpi-history-item-main {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.35rem;
+}
+
+.dream-kpi-history-date {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.dream-kpi-history-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.dream-kpi-history-status {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  font-weight: 500;
+}
+
+.dream-kpi-history-status--good {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.dream-kpi-history-status--normal {
+  background: #e5e7eb;
+  color: #6b7280;
+}
+
+.dream-kpi-history-status--poor {
+  background: #d1d5db;
+  color: #4b5563;
+}
+
+.dream-kpi-history-memo {
+  font-size: 0.85rem;
+  color: #6b7280;
+  line-height: 1.4;
+  margin-bottom: 0.5rem;
+}
+
+.dream-kpi-history-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.dream-kpi-history-edit,
+.dream-kpi-history-delete {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  color: #374151;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  cursor: pointer;
+}
+
+.dream-kpi-history-edit:hover,
+.dream-kpi-history-delete:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.dream-kpi-history-delete {
+  color: #6b7280;
+}
+
+.dream-kpi-history-delete:hover {
+  color: #374151;
+}
+
+.dream-kpi-todo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.dream-kpi-todo-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.dream-kpi-todo-add-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.dream-kpi-todo-add-spacer {
+  width: 1rem;
+  flex-shrink: 0;
+}
+
+.dream-kpi-todo-add-input {
+  flex: 1;
+  padding: 0.4rem 0;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: #1a1a2e;
+  background: #fff;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.dream-kpi-todo-add-input::placeholder {
+  color: #9ca3af;
+}
+
+.dream-kpi-todo-add-input:focus {
+  outline: none;
+  border-bottom-color: #9ca3af;
+}
+
+.dream-kpi-todo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.75rem;
+}
+
+.dream-kpi-todo-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dream-kpi-todo-check-wrap {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.dream-kpi-todo-check {
+  width: 1rem;
+  height: 1rem;
+  accent-color: #374151;
+  cursor: pointer;
+}
+
+.dream-kpi-todo-text {
+  flex: 1;
+  font-size: 0.9rem;
+  color: #1a1a2e;
+}
+
+.dream-kpi-todo-item.is-completed .dream-kpi-todo-text {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+.dream-kpi-todo-del {
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1;
+  font-family: inherit;
+  color: #9ca3af;
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.dream-kpi-todo-item:hover .dream-kpi-todo-del {
+  opacity: 1;
+}
+
+.dream-kpi-todo-del:hover {
+  color: #374151;
+}
+
+.dream-kpi-add-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  padding: 1rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #9ca3af;
+  background: #fafafa;
+  border: 2px dashed #d1d5db;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+
+.dream-kpi-add-card:hover {
+  color: #374151;
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.dream-kpi-add-card-text {
+  pointer-events: none;
+}
+
+/* KPI 입력 모달 - 화이트/회색/검정 미니멀 */
+.dream-kpi-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.dream-kpi-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.dream-kpi-panel {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  padding: 1.5rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.dream-kpi-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.dream-kpi-modal-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.dream-kpi-modal-close {
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+  font-family: inherit;
+  color: #9ca3af;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.dream-kpi-modal-close:hover {
+  color: #374151;
+}
+
+.dream-kpi-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.dream-kpi-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.dream-kpi-field label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.dream-kpi-form input,
+.dream-kpi-form textarea,
+.dream-kpi-form select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: #1a1a2e;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  box-sizing: border-box;
+}
+
+.dream-kpi-form input::placeholder,
+.dream-kpi-form textarea::placeholder {
+  color: #9ca3af;
+}
+
+.dream-kpi-form input:focus,
+.dream-kpi-form textarea:focus,
+.dream-kpi-form select:focus {
+  outline: none;
+  border-color: #9ca3af;
+}
+
+.dream-kpi-form textarea {
+  resize: none;
+  height: 72px;
+  min-height: 72px;
+  max-height: 72px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.dream-kpi-form textarea::-webkit-scrollbar {
+  display: none;
+}
+
+/* 측정 주기 커스텀 드롭다운 - 화이트/회색/검정 */
+.dream-kpi-period-dropdown {
+  position: relative;
+  width: 100%;
+}
+
+.dream-kpi-period-trigger {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: #1a1a2e;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.dream-kpi-period-trigger:hover {
+  border-color: #9ca3af;
+}
+
+.dream-kpi-period-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 2px;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 10;
+  display: none;
+}
+
+.dream-kpi-period-panel.is-open {
+  display: block;
+}
+
+.dream-kpi-period-option {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: #1a1a2e;
+  background: #fff;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dream-kpi-period-option:hover {
+  background: #f9fafb;
+}
+
+.dream-kpi-period-option:not(:last-child) {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.dream-kpi-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.dream-kpi-form input[name="targetTimeRequired"] {
+  min-width: 0;
+  max-width: 8rem;
+}
+
+.dream-kpi-submit {
+  margin-top: 0.5rem;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: #fff;
+  background: #1a1a2e;
+  border: 1px solid #1a1a2e;
+  cursor: pointer;
+}
+
+.dream-kpi-submit:hover {
+  background: #374151;
+  border-color: #374151;
+}
+
+.dream-kpi-delete-wrap {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.dream-kpi-delete-note {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.dream-kpi-delete-btn {
+  display: inline-block;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  font-weight: 500;
+  color: #6b7280;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.dream-kpi-delete-btn:hover {
+  color: #374151;
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+/* 꿈 삭제 확인 모달 */
+.dream-delete-confirm-panel {
+  max-width: 360px;
+}
+
+.dream-delete-confirm-title {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.dream-delete-confirm-msg {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.dream-delete-confirm-warn {
+  margin: 0 0 1.25rem;
+  font-size: 0.85rem;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.dream-delete-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.dream-delete-confirm-cancel {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  font-weight: 500;
+  color: #6b7280;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  cursor: pointer;
+}
+
+.dream-delete-confirm-cancel:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.dream-delete-confirm-submit {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  font-weight: 500;
+  color: #fff;
+  background: #1a1a2e;
+  border: 1px solid #1a1a2e;
+  cursor: pointer;
+}
+
+.dream-delete-confirm-submit:hover {
+  background: #374151;
+  border-color: #374151;
+}
+
+/* KPI 카드 - 꿈 제목 하단 표시 */
+.dream-kpi-empty {
+  margin: 0;
+  padding: 2rem;
+  font-size: 0.9rem;
+  color: #9ca3af;
+  text-align: center;
+}
+
+/* KPI 로그 입력 모달 - 오늘의 수치 기록 */
+.dream-kpi-log-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.dream-kpi-log-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.dream-kpi-log-panel {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  padding: 1.5rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.dream-kpi-log-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.dream-kpi-log-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.dream-kpi-log-close {
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+  font-family: inherit;
+  color: #9ca3af;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.dream-kpi-log-close:hover {
+  color: #374151;
+}
+
+.dream-kpi-log-subtitle {
+  margin: 0 0 1.25rem;
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.dream-kpi-log-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.dream-kpi-log-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.dream-kpi-log-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.dream-kpi-log-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.dream-kpi-log-field label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.dream-kpi-log-form input,
+.dream-kpi-log-form textarea {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: #1a1a2e;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  box-sizing: border-box;
+}
+
+.dream-kpi-log-readonly {
+  background: #f9fafb;
+  color: #6b7280;
+}
+
+.dream-kpi-log-form input::placeholder,
+.dream-kpi-log-form textarea::placeholder {
+  color: #9ca3af;
+}
+
+.dream-kpi-log-form input:focus,
+.dream-kpi-log-form textarea:focus {
+  outline: none;
+  border-color: #9ca3af;
+}
+
+.dream-kpi-log-form textarea {
+  resize: none;
+  height: 72px;
+  min-height: 72px;
+  max-height: 72px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.dream-kpi-log-form textarea::-webkit-scrollbar {
+  display: none;
+}
+
+.dream-kpi-log-status {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.dream-kpi-log-status-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: #374151;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  cursor: pointer;
+}
+
+.dream-kpi-log-status-btn input {
+  display: none;
+}
+
+.dream-kpi-log-status-btn:has(input:checked) {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+  font-weight: 500;
+}
+
+.dream-kpi-log-submit {
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: #fff;
+  background: #1a1a2e;
+  border: 1px solid #1a1a2e;
+  cursor: pointer;
+}
+
+.dream-kpi-log-submit:hover {
+  background: #374151;
+  border-color: #374151;
 }
 
 /* ----- 감정일기 ----- */

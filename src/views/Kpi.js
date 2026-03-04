@@ -20,10 +20,14 @@ function loadDreamMap() {
         dreams: parsed.dreams || [],
         goals: parsed.goals || [],
         tasks: parsed.tasks || [],
+        kpis: parsed.kpis || [],
+        kpiLogs: parsed.kpiLogs || [],
+        kpiTodos: parsed.kpiTodos || [],
+        kpiOrder: parsed.kpiOrder || {},
       };
     }
   } catch (_) {}
-  return { dreams: [], goals: [], tasks: [] };
+  return { dreams: [], goals: [], tasks: [], kpis: [], kpiLogs: [], kpiTodos: [], kpiOrder: {} };
 }
 
 function saveDreamMap(data) {
@@ -257,6 +261,23 @@ function renderDreamPanel(panel) {
     input.addEventListener("blur", () => {
       const val = input.value.trim();
       const data = loadDreamMap();
+      if (val === "") {
+        // 빈 항목은 저장하지 않고 제거
+        if (type === "dream") {
+          const goalIds = data.goals.filter((g) => g.dreamId === id).map((g) => g.id);
+          data.dreams = data.dreams.filter((d) => d.id !== id);
+          data.goals = data.goals.filter((g) => g.dreamId !== id);
+          data.tasks = data.tasks.filter((t) => !goalIds.includes(t.goalId));
+        } else if (type === "goal") {
+          data.goals = data.goals.filter((g) => g.id !== id);
+          data.tasks = data.tasks.filter((t) => t.goalId !== id);
+        } else if (type === "task") {
+          data.tasks = data.tasks.filter((t) => t.id !== id);
+        }
+        saveDreamMap(data);
+        renderDreamPanel(panel);
+        return;
+      }
       if (type === "dream") {
         const d = data.dreams.find((x) => x.id === id);
         if (d) d.name = val;
@@ -532,6 +553,23 @@ function renderSideincomePanel(panel) {
     input.addEventListener("blur", () => {
       const val = input.value.trim();
       const data = loadSideincomeMap();
+      if (val === "") {
+        // 빈 항목은 저장하지 않고 제거
+        if (type === "goal") {
+          const methodIds = data.methods.filter((m) => m.goalId === id).map((m) => m.id);
+          data.goals = data.goals.filter((g) => g.id !== id);
+          data.methods = data.methods.filter((m) => m.goalId !== id);
+          data.tasks = data.tasks.filter((t) => !methodIds.includes(t.methodId));
+        } else if (type === "method") {
+          data.methods = data.methods.filter((m) => m.id !== id);
+          data.tasks = data.tasks.filter((t) => t.methodId !== id);
+        } else if (type === "task") {
+          data.tasks = data.tasks.filter((t) => t.id !== id);
+        }
+        saveSideincomeMap(data);
+        renderSideincomePanel(panel);
+        return;
+      }
       if (type === "goal") {
         const g = data.goals.find((x) => x.id === id);
         if (g) g.name = val;
