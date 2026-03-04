@@ -2881,7 +2881,8 @@ export function render() {
         ctx.handleRowDelete,
         ctx.handleRowEdit,
       );
-      ctx.tbody.insertBefore(tr, ctx.addRow);
+      if (ctx.addRow) ctx.tbody.insertBefore(tr, ctx.addRow);
+    else ctx.tbody.appendChild(tr);
       ctx.onRowUpdate?.();
     }
 
@@ -3274,19 +3275,10 @@ export function render() {
     requestAnimationFrame(() => updateStickyLefts(table));
   }
 
-  const addRow = document.createElement("tr");
-  addRow.className = "time-row-add";
-  const addCell = document.createElement("td");
-  addCell.colSpan = 12;
-  addCell.className = "time-cell-add";
   const addBtn = document.createElement("button");
   addBtn.type = "button";
   addBtn.className = "time-btn-add";
   addBtn.innerHTML = '<span class="time-add-icon">+</span> 과제 기록하기';
-  addCell.appendChild(addBtn);
-  addRow.appendChild(addCell);
-
-  tbody.appendChild(addRow);
 
   const initialHandleRowDelete = (tr, rowData) => {
     if (rowData) {
@@ -3308,7 +3300,7 @@ export function render() {
       openTaskLogModal({
         productivity: null,
         tbody,
-        addRow,
+        addRow: null,
         onRowUpdate: updateTotal,
         viewEl: el,
         createRow,
@@ -3320,7 +3312,7 @@ export function render() {
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayStr = yesterday.toISOString().slice(0, 10);
       const tr = createRow({ date: yesterdayStr }, updateTotal, el, initialHandleRowDelete, initialHandleRowEdit);
-      tbody.insertBefore(tr, addRow);
+      tbody.appendChild(tr);
       updateTotal();
     }
   });
@@ -3335,18 +3327,10 @@ export function render() {
     tbl.className = "time-ledger-table";
     tbl.innerHTML = createTableHTML();
     const tbodyEl = tbl.querySelector("tbody");
-    const addRowEl = document.createElement("tr");
-    addRowEl.className = "time-row-add";
-    const addCellEl = document.createElement("td");
-    addCellEl.colSpan = 12;
-    addCellEl.className = "time-cell-add";
     const addBtnEl = document.createElement("button");
     addBtnEl.type = "button";
     addBtnEl.className = "time-btn-add";
     addBtnEl.innerHTML = '<span class="time-add-icon">+</span> 과제 기록하기';
-    addCellEl.appendChild(addBtnEl);
-    addRowEl.appendChild(addCellEl);
-    tbodyEl.appendChild(addRowEl);
 
     const handleRowDelete = (tr, rowData) => {
       if (rowData) {
@@ -3365,7 +3349,7 @@ export function render() {
 
     rows.forEach((d) => {
       const tr = createRow(d, updateTotal, el, handleRowDelete, handleRowEdit);
-      tbodyEl.insertBefore(tr, addRowEl);
+      tbodyEl.appendChild(tr);
     });
 
     addBtnEl.addEventListener("click", () => {
@@ -3373,7 +3357,7 @@ export function render() {
         openTaskLogModal({
           productivity: null,
           tbody: tbodyEl,
-          addRow: addRowEl,
+          addRow: null,
           onRowUpdate: updateTotal,
           viewEl: el,
           createRow,
@@ -3390,7 +3374,7 @@ export function render() {
                 return yesterday.toISOString().slice(0, 10);
               })();
         const tr = createRow({ date: dateStr }, updateTotal, el, handleRowDelete, handleRowEdit);
-        tbodyEl.insertBefore(tr, addRowEl);
+        tbodyEl.appendChild(tr);
         updateTotal();
       }
     });
@@ -3429,7 +3413,14 @@ export function render() {
     }
 
     wrap.appendChild(tbl);
-    contentWrap.appendChild(wrap);
+    const ledgerContainer = document.createElement("div");
+    ledgerContainer.className = "time-ledger-container";
+    ledgerContainer.appendChild(wrap);
+    const addButtonWrap = document.createElement("div");
+    addButtonWrap.className = "time-add-button-wrap";
+    addButtonWrap.appendChild(addBtnEl);
+    ledgerContainer.appendChild(addButtonWrap);
+    contentWrap.appendChild(ledgerContainer);
   }
 
   function renderByProductivity(rows = []) {
@@ -4639,7 +4630,14 @@ export function render() {
   });
 
   tableWrap.appendChild(table);
-  contentWrap.appendChild(tableWrap);
+  const ledgerContainer = document.createElement("div");
+  ledgerContainer.className = "time-ledger-container";
+  ledgerContainer.appendChild(tableWrap);
+  const addButtonWrap = document.createElement("div");
+  addButtonWrap.className = "time-add-button-wrap";
+  addButtonWrap.appendChild(addBtn);
+  ledgerContainer.appendChild(addButtonWrap);
+  contentWrap.appendChild(ledgerContainer);
 
   onFilterChange(true);
 

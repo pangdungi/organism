@@ -406,6 +406,8 @@ function loadDebtRows() {
         interestRate: r.interestRate ?? "",
         startDate: r.startDate ?? "",
         endDate: r.endDate ?? "",
+        paid: r.paid ?? "",
+        extraPaid: r.extraPaid ?? "",
       }));
       }
     }
@@ -420,6 +422,7 @@ function loadDebtRows() {
     startDate: "",
     endDate: "",
     paid: "",
+    extraPaid: "",
   }));
 }
 
@@ -441,6 +444,7 @@ function collectDebtRowsFromDOM(tableEl) {
     const startDateInput = tr.querySelector(".asset-debt-input-start-date");
     const endDateInput = tr.querySelector(".asset-debt-input-end-date");
     const paidInput = tr.querySelector(".asset-debt-input-paid");
+    const extraPaidInput = tr.querySelector(".asset-debt-input-extra-paid");
     rows.push({
       name: nameInput?.value || "",
       debtType: debtTypeInput?.value || "",
@@ -451,6 +455,7 @@ function collectDebtRowsFromDOM(tableEl) {
       startDate: startDateInput?.value || "",
       endDate: endDateInput?.value || "",
       paid: paidInput?.value || "",
+      extraPaid: extraPaidInput?.value || "",
     });
   });
   return rows;
@@ -1984,12 +1989,13 @@ function renderNetworthView() {
       <col class="asset-debt-col-start-date">
       <col class="asset-debt-col-end-date">
       <col class="asset-debt-col-paid">
+      <col class="asset-debt-col-extra-paid">
       <col class="asset-debt-col-balance">
       <col class="asset-debt-col-actions">
     </colgroup>
     <thead>
       <tr>
-        <th class="asset-debt-th-name">이름</th>
+        <th class="asset-debt-th-name">대출 이름</th>
         <th class="asset-debt-th-type">부채유형</th>
         <th class="asset-debt-th-repayment">상환방식</th>
         <th class="asset-debt-th-period">대출개월</th>
@@ -2001,6 +2007,7 @@ function renderNetworthView() {
         <th class="asset-debt-th-start-date">시작일</th>
         <th class="asset-debt-th-end-date">마무리일</th>
         <th class="asset-debt-th-paid">상환금액</th>
+        <th class="asset-debt-th-extra-paid">중도상환(수수료제외)</th>
         <th class="asset-debt-th-balance">잔액</th>
         <th class="asset-debt-th-actions"></th>
       </tr>
@@ -2012,7 +2019,11 @@ function renderNetworthView() {
   const totalsRow = document.createElement("tr");
   totalsRow.className = "asset-debt-row-totals";
   totalsRow.innerHTML = `
-    <td class="asset-debt-cell-totals-label" colspan="5">합계</td>
+    <td class="asset-debt-cell-totals-label asset-debt-cell-name">합계</td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
     <td class="asset-debt-cell-totals-principal">-</td>
     <td class="asset-debt-cell-totals-interest">-</td>
     <td></td>
@@ -2020,22 +2031,15 @@ function renderNetworthView() {
     <td></td>
     <td></td>
     <td class="asset-debt-cell-totals-paid">-</td>
+    <td class="asset-debt-cell-totals-extra-paid">-</td>
     <td class="asset-debt-cell-totals-balance">-</td>
     <td class="asset-debt-cell-actions"></td>
   `;
-  const addRow = document.createElement("tr");
-  addRow.className = "asset-debt-row-add";
-  const addCell = document.createElement("td");
-  addCell.colSpan = 14;
-  addCell.className = "asset-debt-cell-add";
   const addTaskBtn = document.createElement("button");
   addTaskBtn.type = "button";
   addTaskBtn.className = "asset-debt-add-task";
   addTaskBtn.innerHTML = '<span class="asset-debt-add-icon">+</span>';
-  addCell.appendChild(addTaskBtn);
-  addRow.appendChild(addCell);
   tbody.appendChild(totalsRow);
-  tbody.appendChild(addRow);
 
   function createDebtRow(data = {}, onUpdate) {
     const tr = document.createElement("tr");
@@ -2291,6 +2295,24 @@ function renderNetworthView() {
     paidTd.appendChild(paidInput);
     tr.appendChild(paidTd);
 
+    const extraPaidTd = document.createElement("td");
+    extraPaidTd.className = "asset-debt-cell-extra-paid";
+    const extraPaidInput = document.createElement("input");
+    extraPaidInput.type = "text";
+    extraPaidInput.className = "asset-debt-input-extra-paid";
+    extraPaidInput.value = data.extraPaid ? (formatNum(data.extraPaid) || data.extraPaid) : "";
+    extraPaidInput.placeholder = "-";
+    extraPaidInput.title = "중도상환 금액 (수수료 제외)";
+    extraPaidInput.addEventListener("input", onUpdate);
+    extraPaidInput.addEventListener("blur", () => {
+      const formatted = formatNum(extraPaidInput.value);
+      if (formatted !== "") extraPaidInput.value = formatted;
+      updateBalance();
+    });
+    extraPaidInput.addEventListener("keydown", (e) => e.key === "Enter" && extraPaidInput.blur());
+    extraPaidTd.appendChild(extraPaidInput);
+    tr.appendChild(extraPaidTd);
+
     const balanceTd = document.createElement("td");
     balanceTd.className = "asset-debt-cell-balance";
     const balanceSpan = document.createElement("span");
@@ -2300,6 +2322,7 @@ function renderNetworthView() {
       const p = parseNum(principalInput.value);
       const repaymentInput = repaymentTd.querySelector(".asset-debt-input-repayment");
       const method = repaymentInput?.value?.trim() || "";
+      const extraPaid = parseNum(extraPaidInput.value) ?? 0;
 
       const calcBalance = calcRemainingBalance(
         principalInput.value,
@@ -2311,12 +2334,13 @@ function renderNetworthView() {
       );
 
       if (calcBalance !== null) {
-        balanceSpan.textContent = formatNum(calcBalance) || "-";
+        const balance = Math.max(0, calcBalance - extraPaid);
+        balanceSpan.textContent = formatNum(balance) || "-";
       } else {
         const paid = parseNum(paidInput.value);
         if (p === null && paid === null) balanceSpan.textContent = "-";
         else {
-          const balance = (p ?? 0) - (paid ?? 0);
+          const balance = Math.max(0, (p ?? 0) - (paid ?? 0) - extraPaid);
           balanceSpan.textContent = formatNum(balance) || "-";
         }
       }
@@ -2324,6 +2348,7 @@ function renderNetworthView() {
 
     principalInput.addEventListener("input", updateBalance);
     paidInput.addEventListener("input", updateBalance);
+    extraPaidInput.addEventListener("input", updateBalance);
     rateInput.addEventListener("input", updateBalance);
     periodInput.addEventListener("input", updateBalance);
     updateBalanceRef = updateBalance;
@@ -2370,32 +2395,38 @@ function renderNetworthView() {
   function updateTotals() {
     let sumPrincipal = 0;
     let sumPaid = 0;
+    let sumExtraPaid = 0;
     let sumBalance = 0;
     let sumInterest = 0;
     table.querySelectorAll(".asset-debt-row").forEach((tr) => {
       const p = parseNum(tr.querySelector(".asset-debt-input-principal")?.value);
       const paid = parseNum(tr.querySelector(".asset-debt-input-paid")?.value);
+      const extraPaid = parseNum(tr.querySelector(".asset-debt-input-extra-paid")?.value);
       const balanceEl = tr.querySelector(".asset-debt-balance-display");
       const balance = parseNum(balanceEl?.textContent);
       const interestEl = tr.querySelector(".asset-debt-interest-display");
       const interest = parseNum(interestEl?.textContent);
       if (p !== null) sumPrincipal += p;
       if (paid !== null) sumPaid += paid;
+      if (extraPaid !== null) sumExtraPaid += extraPaid;
       if (balance !== null) sumBalance += balance;
       if (interest !== null) sumInterest += interest;
     });
     const principalCell = totalsRow.querySelector(".asset-debt-cell-totals-principal");
     const interestCell = totalsRow.querySelector(".asset-debt-cell-totals-interest");
     const paidCell = totalsRow.querySelector(".asset-debt-cell-totals-paid");
+    const extraPaidCell = totalsRow.querySelector(".asset-debt-cell-totals-extra-paid");
     const balanceCell = totalsRow.querySelector(".asset-debt-cell-totals-balance");
     principalCell.textContent = sumPrincipal > 0 ? formatNum(sumPrincipal) : "-";
     interestCell.textContent = sumInterest > 0 ? formatNum(sumInterest) : "-";
     paidCell.textContent = sumPaid > 0 ? formatNum(sumPaid) : "-";
+    if (extraPaidCell) extraPaidCell.textContent = sumExtraPaid > 0 ? formatNum(sumExtraPaid) : "-";
     balanceCell.textContent = sumBalance !== 0 ? formatNum(sumBalance) : "-";
 
-    /* 프로그레스 바 업데이트: 상환금액 / (총원금 + 총 대출 이자) × 100 */
+    /* 프로그레스 바 업데이트: (상환금액 + 중도상환) / (총원금 + 총 대출 이자) × 100 */
     const totalToRepay = sumPrincipal + (sumInterest || 0);
-    const percent = totalToRepay > 0 ? Math.min(100, (sumPaid / totalToRepay) * 100) : 0;
+    const totalPaid = sumPaid + sumExtraPaid;
+    const percent = totalToRepay > 0 ? Math.min(100, (totalPaid / totalToRepay) * 100) : 0;
     progressFill.style.width = `${percent}%`;
     progressPercent.textContent = `${Math.round(percent)}%`;
     progressRemainingValue.textContent = sumBalance !== 0 ? formatNum(sumBalance) : "-";
@@ -2423,9 +2454,16 @@ function renderNetworthView() {
   updateCount();
   updateTotals();
   tableWrap.appendChild(table);
+  const debtTableContainer = document.createElement("div");
+  debtTableContainer.className = "asset-debt-table-container";
+  debtTableContainer.appendChild(tableWrap);
+  const debtAddButtonWrap = document.createElement("div");
+  debtAddButtonWrap.className = "asset-debt-add-button-wrap";
+  debtAddButtonWrap.appendChild(addTaskBtn);
+  debtTableContainer.appendChild(debtAddButtonWrap);
   debtSection.appendChild(debtHeader);
   debtSection.appendChild(debtProgressWrap);
-  debtSection.appendChild(tableWrap);
+  debtSection.appendChild(debtTableContainer);
   wrap.appendChild(netWorthDashboard);
   wrap.appendChild(debtSection);
 
@@ -3697,19 +3735,11 @@ function renderNetworthView() {
       `;
       subTotalsCell = subTotalsRow.querySelector(".asset-asset-cell-totals-principal");
     }
-    const subAddRow = document.createElement("tr");
-    subAddRow.className = "asset-asset-row-add";
-    const subAddCell = document.createElement("td");
-    subAddCell.colSpan = isStock ? 9 : isRealEstate ? 5 : isInsurance ? 9 : isAnnuity ? 10 : isDeposit ? 10 : isSavings ? 12 : 13;
-    subAddCell.className = "asset-asset-cell-add";
     const subAddBtn = document.createElement("button");
     subAddBtn.type = "button";
     subAddBtn.className = "asset-asset-add-task";
     subAddBtn.innerHTML = '<span class="asset-asset-add-icon">+</span>';
-    subAddCell.appendChild(subAddBtn);
-    subAddRow.appendChild(subAddCell);
     subTbody.appendChild(subTotalsRow);
-    subTbody.appendChild(subAddRow);
 
     subAddBtn.addEventListener("click", () => {
       if (isStock) {
@@ -3740,10 +3770,17 @@ function renderNetworthView() {
     subsectionElements[g.key] = { tbody: subTbody, totalsRow: subTotalsRow, totalsCell: subTotalsCell, isRealEstate, isStock, isInsurance, isAnnuity };
 
     subTableWrap.appendChild(subTable);
+    const assetTableContainer = document.createElement("div");
+    assetTableContainer.className = "asset-asset-table-container";
+    assetTableContainer.appendChild(subTableWrap);
+    const assetAddButtonWrap = document.createElement("div");
+    assetAddButtonWrap.className = "asset-asset-add-button-wrap";
+    assetAddButtonWrap.appendChild(subAddBtn);
+    assetTableContainer.appendChild(assetAddButtonWrap);
     subSection.appendChild(subHeader);
     if (tabsEl) subSection.appendChild(tabsEl);
     if (maturityHintEl) subSection.appendChild(maturityHintEl);
-    subSection.appendChild(subTableWrap);
+    subSection.appendChild(assetTableContainer);
     assetTableWrap.appendChild(subSection);
   });
 
@@ -3946,10 +3983,10 @@ function renderExpenseView(options = {}) {
   table.innerHTML = `
     <colgroup>
       <col class="asset-expense-col-name">
+      <col class="asset-expense-col-amount">
       <col class="asset-expense-col-date">
       <col class="asset-expense-col-category">
       <col class="asset-expense-col-classification">
-      <col class="asset-expense-col-amount">
       <col class="asset-expense-col-payment">
       <col class="asset-expense-col-memo">
       <col class="asset-expense-col-delete">
@@ -3957,10 +3994,10 @@ function renderExpenseView(options = {}) {
     <thead>
       <tr>
         <th class="asset-expense-th-name">소비/수입 명</th>
+        <th class="asset-expense-th-amount">금액</th>
         <th class="asset-expense-th-date">거래일</th>
         <th class="asset-expense-th-category">카테고리</th>
         <th class="asset-expense-th-classification">소비/수입 분류</th>
-        <th class="asset-expense-th-amount">금액</th>
         <th class="asset-expense-th-payment">결제수단</th>
         <th class="asset-expense-th-memo">메모</th>
         <th class="asset-expense-th-delete"></th>
@@ -3969,8 +4006,9 @@ function renderExpenseView(options = {}) {
     <tbody></tbody>
     <tfoot class="asset-expense-tfoot">
       <tr class="asset-expense-summary-row">
-        <td colspan="4" class="asset-expense-summary-label">합계</td>
-        <td class="asset-expense-summary-total" colspan="4">-</td>
+        <td class="asset-expense-summary-label">합계</td>
+        <td class="asset-expense-summary-total">-</td>
+        <td colspan="6"></td>
       </tr>
     </tfoot>
   `;
@@ -4037,18 +4075,10 @@ function renderExpenseView(options = {}) {
     totalEl.textContent = total !== 0 ? formatNum(total) : "-";
   }
 
-  const addRow = document.createElement("tr");
-  addRow.className = "asset-expense-row-add";
-  const addCell = document.createElement("td");
-  addCell.colSpan = 8;
-  addCell.className = "asset-expense-cell-add";
   const addBtn = document.createElement("button");
   addBtn.type = "button";
   addBtn.className = "asset-expense-add-task";
   addBtn.innerHTML = '<span class="asset-expense-add-icon">+</span>';
-  addCell.appendChild(addBtn);
-  addRow.appendChild(addCell);
-  tbody.appendChild(addRow);
 
   function getTodayDateValue() {
     const d = new Date();
@@ -4087,13 +4117,13 @@ function renderExpenseView(options = {}) {
     });
     tr.innerHTML = `
       <td class="asset-expense-cell-name"><input type="text" class="asset-expense-input-name" placeholder="" value="${(data.name || "").replace(/"/g, "&quot;")}" /></td>
+      <td class="asset-expense-cell-amount"><input type="text" class="asset-expense-input-amount" placeholder="0" value="${(data.amount || "").replace(/"/g, "&quot;")}" /></td>
       <td class="asset-expense-cell-date">
         <span class="asset-expense-date-display">${dateDisplayVal}</span>
         <input type="date" class="asset-expense-input-date" value="${dateValue}" tabindex="-1" />
       </td>
       <td class="asset-expense-cell-category"></td>
       <td class="asset-expense-cell-classification"></td>
-      <td class="asset-expense-cell-amount"><input type="text" class="asset-expense-input-amount" placeholder="0" value="${(data.amount || "").replace(/"/g, "&quot;")}" /></td>
       <td class="asset-expense-cell-payment"></td>
       <td class="asset-expense-cell-memo"><input type="text" class="asset-expense-input-memo" placeholder="" value="${(data.memo || "").replace(/"/g, "&quot;")}" /></td>
       <td class="asset-expense-cell-delete"><div class="asset-expense-delete-wrap"></div></td>
@@ -4186,7 +4216,7 @@ function renderExpenseView(options = {}) {
 
   addBtn.addEventListener("click", () => {
     const tr = createExpenseRow({}, updateExpenseTotals, applyExpenseFilter);
-    tbody.insertBefore(tr, addRow);
+    tbody.appendChild(tr);
     applyExpenseFilter();
     saveExpense();
   });
@@ -4210,17 +4240,25 @@ function renderExpenseView(options = {}) {
   if (initialRows.length > 0) {
     initialRows.forEach((data) => {
       const tr = createExpenseRow(data, updateExpenseTotals, applyExpenseFilter);
-      tbody.insertBefore(tr, addRow);
+      tbody.appendChild(tr);
     });
   } else {
     [1, 2, 3].forEach(() => {
       const tr = createExpenseRow({}, updateExpenseTotals, applyExpenseFilter);
-      tbody.insertBefore(tr, addRow);
+      tbody.appendChild(tr);
     });
   }
   applyExpenseFilter();
 
   tableWrap.appendChild(table);
+
+  const expenseTableContainer = document.createElement("div");
+  expenseTableContainer.className = "asset-expense-table-container";
+  expenseTableContainer.appendChild(tableWrap);
+  const expenseAddButtonWrap = document.createElement("div");
+  expenseAddButtonWrap.className = "asset-expense-add-button-wrap";
+  expenseAddButtonWrap.appendChild(addBtn);
+  expenseTableContainer.appendChild(expenseAddButtonWrap);
 
   const settingsBtn = document.createElement("button");
   settingsBtn.type = "button";
@@ -4232,7 +4270,7 @@ function renderExpenseView(options = {}) {
   filterBar.appendChild(settingsBtn);
 
   wrap.appendChild(filterBar);
-  wrap.appendChild(tableWrap);
+  wrap.appendChild(expenseTableContainer);
   return wrap;
 }
 
@@ -4816,18 +4854,10 @@ function renderPlanView() {
     thead.innerHTML = `<tr><th>${col1Label}</th><th>월목표 금액</th><th>이번달 합계</th><th>${col4Label}</th><th>목표달성</th><th></th></tr>`;
     const tbody = document.createElement("tbody");
 
-    const addRow = document.createElement("tr");
-    addRow.className = "asset-plan-row-add";
-    const addCell = document.createElement("td");
-    addCell.colSpan = 6;
-    addCell.className = "asset-plan-cell-add";
     const addBtn = document.createElement("button");
     addBtn.type = "button";
     addBtn.className = "asset-plan-btn-add";
     addBtn.innerHTML = '<span class="asset-plan-add-icon">+</span>';
-    addCell.appendChild(addBtn);
-    addRow.appendChild(addCell);
-    tbody.appendChild(addRow);
 
     function updateCol4AndGoal(tr) {
       const goalInput = tr.querySelector("td:nth-child(2) input");
@@ -4928,13 +4958,20 @@ function renderPlanView() {
       } else if (totalDisplay && (tableType === "income" || tableType === "investSavings" || tableType === "expense")) {
         goalInput.addEventListener("input", () => updateCol4AndGoal(tr));
       }
-      tbody.insertBefore(tr, addRow);
+      tbody.appendChild(tr);
     });
 
     table.appendChild(thead);
     table.appendChild(tbody);
     tableWrap.appendChild(table);
-    section.appendChild(tableWrap);
+    const planTableContainer = document.createElement("div");
+    planTableContainer.className = "asset-plan-table-container";
+    planTableContainer.appendChild(tableWrap);
+    const planAddButtonWrap = document.createElement("div");
+    planAddButtonWrap.className = "asset-plan-add-button-wrap";
+    planAddButtonWrap.appendChild(addBtn);
+    planTableContainer.appendChild(planAddButtonWrap);
+    section.appendChild(planTableContainer);
     return section;
   };
 
