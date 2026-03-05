@@ -16,6 +16,7 @@ import {
   addEmotionEntry,
   TAB3_EMOTION_TEMPLATE,
 } from "../diaryData.js";
+import { getKpiSyncedTaskNames } from "../utils/timeKpiSync.js";
 
 const PRODUCTIVITY_OPTIONS = [
   { value: "productive", label: "생산적", color: "prod-pink" },
@@ -38,6 +39,7 @@ function getLockedTaskNames() {
   return new Set([
     ...FIXED_OTHER_TASKS.map((t) => t.name),
     ...TASKS_LOCKED_FOR_EDIT,
+    ...getKpiSyncedTaskNames(),
   ]);
 }
 

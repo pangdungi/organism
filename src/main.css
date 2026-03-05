@@ -11697,6 +11697,69 @@ body.kpi-resizing {
   color: #374151;
 }
 
+/* KPI 필터 바 */
+.dream-kpi-filter-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.dream-kpi-filter-btn {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #6b7280;
+}
+.dream-kpi-filter-btn:hover {
+  border-color: #9ca3af;
+  color: #374151;
+}
+.dream-kpi-filter-btn.active {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+/* 달성 완료 접기 섹션 */
+.dream-kpi-completed-section {
+  margin-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 1rem;
+}
+.dream-kpi-completed-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+  color: #6b7280;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+.dream-kpi-completed-toggle:hover {
+  color: #374151;
+}
+.dream-kpi-completed-arrow {
+  font-size: 0.75rem;
+}
+.dream-kpi-completed-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.dream-kpi-completed-section.is-collapsed .dream-kpi-completed-grid {
+  display: none;
+}
+.dream-kpi-card-completed .dream-kpi-card-progress-fill {
+  background: #10b981;
+}
+
 .dream-kpi-add-card {
   display: flex;
   align-items: center;

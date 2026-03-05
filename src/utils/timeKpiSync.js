@@ -67,3 +67,31 @@ export function hhMmToMinutes(str) {
   const m = parseInt(parts[1], 10) || 0;
   return h * 60 + m;
 }
+
+const KPI_STORAGE_KEYS = [
+  "kpi-dream-map",
+  "kpi-sideincome-paths",
+  "kpi-happiness-map",
+  "kpi-health-map",
+];
+
+/**
+ * KPI에서 추가된 과제명 집합 (꿈/부수입/행복/건강)
+ * 과제설정창에서 수정·삭제 불가
+ * @returns {Set<string>}
+ */
+export function getKpiSyncedTaskNames() {
+  const names = new Set();
+  KPI_STORAGE_KEYS.forEach((key) => {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const sync = parsed?.kpiTaskSync || {};
+      Object.values(sync).forEach((name) => {
+        if (name && typeof name === "string") names.add(String(name).trim());
+      });
+    } catch (_) {}
+  });
+  return names;
+}

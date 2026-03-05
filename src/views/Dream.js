@@ -210,6 +210,8 @@ export function render() {
 
   let activeDreamId = null;
   let selectedKpiId = null;
+  let kpiFilter = "active"; // "active" | "all" | "completed"
+  let completedSectionCollapsed = true;
 
   function showKpiModal() {
     if (!activeDreamId) return;
@@ -252,13 +254,15 @@ export function render() {
               </div>
             </div>
           </div>
-          <div class="dream-kpi-field">
-            <label>행동 단위시간 (분단위)</label>
-            <input type="text" name="actionUnitMinutes" placeholder="예) 30" inputmode="numeric" />
-          </div>
-          <div class="dream-kpi-field">
-            <label>목표달성을 위한 총 시간</label>
-            <input type="text" name="targetTimeRequired" placeholder="예) 02:30 (자동계산 또는 직접입력)" />
+          <div class="dream-kpi-row">
+            <div class="dream-kpi-field">
+              <label>행동 단위시간 (분단위)</label>
+              <input type="text" name="actionUnitMinutes" placeholder="예) 30" inputmode="numeric" />
+            </div>
+            <div class="dream-kpi-field">
+              <label>목표달성을 위한 총 시간</label>
+              <input type="text" name="targetTimeRequired" placeholder="예) 02:30 (자동계산 또는 직접입력)" />
+            </div>
           </div>
           <button type="submit" class="dream-kpi-submit">KPI 등록하기</button>
         </form>
@@ -339,13 +343,15 @@ export function render() {
               </div>
             </div>
           </div>
-          <div class="dream-kpi-field">
-            <label>행동 단위시간 (분단위)</label>
-            <input type="text" name="actionUnitMinutes" value="${escapeHtml(kpi.actionUnitMinutes != null ? String(kpi.actionUnitMinutes) : "")}" placeholder="예) 30" inputmode="numeric" />
-          </div>
-          <div class="dream-kpi-field">
-            <label>목표달성을 위한 총 시간</label>
-            <input type="text" name="targetTimeRequired" value="${escapeHtml(kpi.targetTimeRequired || "")}" placeholder="예) 02:30 (자동계산 또는 직접입력)" />
+          <div class="dream-kpi-row">
+            <div class="dream-kpi-field">
+              <label>행동 단위시간 (분단위)</label>
+              <input type="text" name="actionUnitMinutes" value="${escapeHtml(kpi.actionUnitMinutes != null ? String(kpi.actionUnitMinutes) : "")}" placeholder="예) 30" inputmode="numeric" />
+            </div>
+            <div class="dream-kpi-field">
+              <label>목표달성을 위한 총 시간</label>
+              <input type="text" name="targetTimeRequired" value="${escapeHtml(kpi.targetTimeRequired || "")}" placeholder="예) 02:30 (자동계산 또는 직접입력)" />
+            </div>
           </div>
           <button type="submit" class="dream-kpi-submit">수정</button>
           <div class="dream-kpi-delete-wrap">
@@ -550,6 +556,18 @@ export function render() {
     saveDreamMap(data);
   }
 
+  function getKpiProgress(kpi) {
+    const latestLog = getLatestKpiLog(kpi.id);
+    const currentVal = latestLog?.value ? parseNum(latestLog.value) : 0;
+    const targetVal = parseNum(kpi.targetValue);
+    const progress = targetVal > 0 ? Math.min(100, (currentVal / targetVal) * 100) : 0;
+    const targetMins = kpi.targetTimeRequired ? hhMmToMinutes(kpi.targetTimeRequired) : 0;
+    const accumulatedMins = targetMins > 0 ? getAccumulatedMinutes(kpi.name) : 0;
+    const timeProgress = targetMins > 0 ? Math.min(100, (accumulatedMins / targetMins) * 100) : 0;
+    const isCompleted = progress >= 100 || (targetMins > 0 && timeProgress >= 100);
+    return { progress, timeProgress, currentVal, targetVal, targetMins, accumulatedMins, isCompleted };
+  }
+
   function renderKpiList() {
     contentWrap.innerHTML = "";
     if (!activeDreamId) return;
@@ -564,29 +582,48 @@ export function render() {
         return ia - ib;
       });
     }
+    dreamKpis.forEach((kpi) => {
+      const { isCompleted } = getKpiProgress(kpi);
+      if (isCompleted && data.kpiTaskSync?.[kpi.id]) {
+        syncKpiToTimeTask(kpi, "remove");
+      }
+    });
+    const activeKpis = dreamKpis.filter((k) => !getKpiProgress(k).isCompleted);
+    const completedKpis = dreamKpis.filter((k) => getKpiProgress(k).isCompleted);
+
+    const filterBar = document.createElement("div");
+    filterBar.className = "dream-kpi-filter-bar";
+    filterBar.innerHTML = `
+      <button type="button" class="dream-kpi-filter-btn ${kpiFilter === "active" ? "active" : ""}" data-filter="active">진행중만</button>
+      <button type="button" class="dream-kpi-filter-btn ${kpiFilter === "all" ? "active" : ""}" data-filter="all">전체</button>
+      <button type="button" class="dream-kpi-filter-btn ${kpiFilter === "completed" ? "active" : ""}" data-filter="completed">완료만</button>
+    `;
+    filterBar.querySelectorAll(".dream-kpi-filter-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        kpiFilter = btn.dataset.filter;
+        renderKpiList();
+      });
+    });
+    contentWrap.appendChild(filterBar);
+
     const grid = document.createElement("div");
     grid.className = "dream-kpi-grid";
-    dreamKpis.forEach((kpi) => {
-        const latestLog = getLatestKpiLog(kpi.id);
-        const currentVal = latestLog?.value ? parseNum(latestLog.value) : 0;
-        const targetVal = parseNum(kpi.targetValue);
-        const progress = targetVal > 0 ? Math.min(100, (currentVal / targetVal) * 100) : 0;
-        const unitSuffix = kpi.unit ? " " + kpi.unit : "";
-        const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
-        const currentStr = formatNum(currentVal);
-        const targetStr = kpi.targetValue ? escapeHtml(String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) : "—";
-        const progressText = `${currentStr} / ${targetStr}${unitSuffix}`;
-        const targetMins = kpi.targetTimeRequired ? hhMmToMinutes(kpi.targetTimeRequired) : 0;
-        const accumulatedMins = targetMins > 0 ? getAccumulatedMinutes(kpi.name) : 0;
-        const timeProgress = targetMins > 0 ? Math.min(100, (accumulatedMins / targetMins) * 100) : 0;
-        const remainingMins = Math.max(0, targetMins - accumulatedMins);
-        const card = document.createElement("div");
-        card.className = "dream-kpi-card" + (selectedKpiId === kpi.id ? " is-selected" : "");
-        card.dataset.kpiId = kpi.id;
-        card.draggable = true;
-        const timeCircleHtml =
-          targetMins > 0
-            ? `
+    const listToShow = kpiFilter === "active" ? activeKpis : kpiFilter === "completed" ? completedKpis : dreamKpis;
+    listToShow.forEach((kpi) => {
+      const { progress, timeProgress, currentVal, targetVal, targetMins, accumulatedMins } = getKpiProgress(kpi);
+      const unitSuffix = kpi.unit ? " " + kpi.unit : "";
+      const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
+      const currentStr = formatNum(currentVal);
+      const targetStr = kpi.targetValue ? escapeHtml(String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) : "—";
+      const progressText = `${currentStr} / ${targetStr}${unitSuffix}`;
+      const remainingMins = Math.max(0, targetMins - accumulatedMins);
+      const card = document.createElement("div");
+      card.className = "dream-kpi-card" + (selectedKpiId === kpi.id ? " is-selected" : "");
+      card.dataset.kpiId = kpi.id;
+      card.draggable = true;
+      const timeCircleHtml =
+        targetMins > 0
+          ? `
           <div class="dream-kpi-time-circle-wrap">
             <div class="dream-kpi-time-circle" role="progressbar" aria-valuenow="${timeProgress}" aria-valuemin="0" aria-valuemax="100">
               <svg viewBox="0 0 36 36">
@@ -602,6 +639,126 @@ export function render() {
             <div class="dream-kpi-time-remaining">남은 ${minutesToHhMm(remainingMins)}</div>
           </div>
         `
+          : "";
+      card.innerHTML = `
+        <div class="dream-kpi-card-inner">
+          <button type="button" class="dream-kpi-card-edit" title="KPI 수정">수정</button>
+          <div class="dream-kpi-card-name">${escapeHtml(kpi.name)}</div>
+          <div class="dream-kpi-card-target-num">${kpi.targetValue ? escapeHtml(String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) + (kpi.unit ? '<span class="dream-kpi-card-unit"> ' + escapeHtml(kpi.unit) + "</span>" : "") : "—"}</div>
+          ${(kpi.targetStartDate || kpi.targetDeadline) ? `<div class="dream-kpi-card-deadline">목표기한 ${escapeHtml(formatDeadlineRangeForDisplay(kpi.targetStartDate, kpi.targetDeadline))}</div>` : ""}
+          ${kpi.targetTimeRequired ? `<div class="dream-kpi-card-time">목표시간 ${escapeHtml(kpi.targetTimeRequired)}</div>` : ""}
+          <div class="dream-kpi-card-progress">
+            <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${progress}%"></div></div>
+            <div class="dream-kpi-card-progress-text">${escapeHtml(progressText)}</div>
+          </div>
+          ${timeCircleHtml}
+        </div>
+      `;
+      card.querySelector(".dream-kpi-card-edit").addEventListener("click", (e) => {
+        e.stopPropagation();
+        showKpiEditModal(kpi);
+      });
+      card.addEventListener("click", (e) => {
+        if (e.target.closest(".dream-kpi-card-edit")) return;
+        selectedKpiId = selectedKpiId === kpi.id ? null : kpi.id;
+        renderKpiList();
+        renderKpiHistory();
+      });
+      card.addEventListener("dragstart", (e) => {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", kpi.id);
+        card.classList.add("dream-kpi-card-dragging");
+      });
+      card.addEventListener("dragend", () => {
+        card.classList.remove("dream-kpi-card-dragging");
+      });
+      card.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        if (card.dataset.kpiId !== e.dataTransfer.getData("text/plain")) {
+          card.classList.add("dream-kpi-card-drag-over");
+        }
+      });
+      card.addEventListener("dragleave", (e) => {
+        e.currentTarget.classList.remove("dream-kpi-card-drag-over");
+      });
+      card.addEventListener("drop", (e) => {
+        e.preventDefault();
+        e.currentTarget.classList.remove("dream-kpi-card-drag-over");
+        const draggedId = e.dataTransfer.getData("text/plain");
+        if (draggedId === kpi.id) return;
+        const newOrder = dreamKpis.map((k) => k.id);
+        const fromIdx = newOrder.indexOf(draggedId);
+        const toIdx = newOrder.indexOf(kpi.id);
+        if (fromIdx >= 0 && toIdx >= 0) {
+          newOrder.splice(fromIdx, 1);
+          newOrder.splice(toIdx, 0, draggedId);
+          reorderKpis(activeDreamId, newOrder);
+          renderKpiList();
+          renderKpiHistory();
+        }
+      });
+      grid.appendChild(card);
+    });
+    grid.addEventListener("dragend", () => {
+      grid.querySelectorAll(".dream-kpi-card-drag-over").forEach((c) => c.classList.remove("dream-kpi-card-drag-over"));
+    });
+    const addCard = document.createElement("button");
+    addCard.type = "button";
+    addCard.className = "dream-kpi-add-card";
+    addCard.innerHTML = '<span class="dream-kpi-add-card-text">+ KPI 추가하기</span>';
+    addCard.addEventListener("click", () => {
+      if (!activeDreamId) return;
+      showKpiModal();
+    });
+    grid.appendChild(addCard);
+    contentWrap.appendChild(grid);
+
+    if (completedKpis.length > 0 && kpiFilter !== "completed") {
+      const completedSection = document.createElement("div");
+      completedSection.className = "dream-kpi-completed-section" + (completedSectionCollapsed ? " is-collapsed" : "");
+      completedSection.innerHTML = `
+        <button type="button" class="dream-kpi-completed-toggle">
+          <span class="dream-kpi-completed-arrow">${completedSectionCollapsed ? "▶" : "▼"}</span>
+          <span class="dream-kpi-completed-label">달성 완료 (${completedKpis.length})</span>
+        </button>
+        <div class="dream-kpi-completed-grid"></div>
+      `;
+      const toggleBtn = completedSection.querySelector(".dream-kpi-completed-toggle");
+      const completedGrid = completedSection.querySelector(".dream-kpi-completed-grid");
+      toggleBtn.addEventListener("click", () => {
+        completedSectionCollapsed = !completedSectionCollapsed;
+        completedSection.classList.toggle("is-collapsed", completedSectionCollapsed);
+        toggleBtn.querySelector(".dream-kpi-completed-arrow").textContent = completedSectionCollapsed ? "▶" : "▼";
+      });
+      completedKpis.forEach((kpi) => {
+        const { progress, timeProgress, currentVal, targetVal, targetMins, accumulatedMins } = getKpiProgress(kpi);
+        const unitSuffix = kpi.unit ? " " + kpi.unit : "";
+        const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
+        const currentStr = formatNum(currentVal);
+        const targetStr = kpi.targetValue ? escapeHtml(String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) : "—";
+        const progressText = `${currentStr} / ${targetStr}${unitSuffix}`;
+        const remainingMins = Math.max(0, targetMins - accumulatedMins);
+        const card = document.createElement("div");
+        card.className = "dream-kpi-card dream-kpi-card-completed" + (selectedKpiId === kpi.id ? " is-selected" : "");
+        card.dataset.kpiId = kpi.id;
+        const timeCircleHtml =
+          targetMins > 0
+            ? `
+          <div class="dream-kpi-time-circle-wrap">
+            <div class="dream-kpi-time-circle" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
+              <svg viewBox="0 0 36 36">
+                <path class="dream-kpi-time-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <path class="dream-kpi-time-circle-fill" stroke-dasharray="100, 0" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              </svg>
+              <div class="dream-kpi-time-circle-label">
+                <span class="dream-kpi-time-accumulated">${minutesToHhMm(accumulatedMins)}</span>
+                <span class="dream-kpi-time-sep">/</span>
+                <span class="dream-kpi-time-target">${escapeHtml(kpi.targetTimeRequired)}</span>
+              </div>
+            </div>
+          </div>
+        `
             : "";
         card.innerHTML = `
           <div class="dream-kpi-card-inner">
@@ -611,8 +768,8 @@ export function render() {
             ${(kpi.targetStartDate || kpi.targetDeadline) ? `<div class="dream-kpi-card-deadline">목표기한 ${escapeHtml(formatDeadlineRangeForDisplay(kpi.targetStartDate, kpi.targetDeadline))}</div>` : ""}
             ${kpi.targetTimeRequired ? `<div class="dream-kpi-card-time">목표시간 ${escapeHtml(kpi.targetTimeRequired)}</div>` : ""}
             <div class="dream-kpi-card-progress">
-              <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${progress}%"></div></div>
-              <div class="dream-kpi-card-progress-text">${escapeHtml(progressText)}</div>
+              <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:100%"></div></div>
+              <div class="dream-kpi-card-progress-text">${escapeHtml(progressText)} ✓</div>
             </div>
             ${timeCircleHtml}
           </div>
@@ -627,55 +784,10 @@ export function render() {
           renderKpiList();
           renderKpiHistory();
         });
-        card.addEventListener("dragstart", (e) => {
-          e.dataTransfer.effectAllowed = "move";
-          e.dataTransfer.setData("text/plain", kpi.id);
-          card.classList.add("dream-kpi-card-dragging");
-        });
-        card.addEventListener("dragend", () => {
-          card.classList.remove("dream-kpi-card-dragging");
-        });
-        card.addEventListener("dragover", (e) => {
-          e.preventDefault();
-          e.dataTransfer.dropEffect = "move";
-          if (card.dataset.kpiId !== e.dataTransfer.getData("text/plain")) {
-            card.classList.add("dream-kpi-card-drag-over");
-          }
-        });
-        card.addEventListener("dragleave", (e) => {
-          e.currentTarget.classList.remove("dream-kpi-card-drag-over");
-        });
-        card.addEventListener("drop", (e) => {
-          e.preventDefault();
-          e.currentTarget.classList.remove("dream-kpi-card-drag-over");
-          const draggedId = e.dataTransfer.getData("text/plain");
-          if (draggedId === kpi.id) return;
-          const newOrder = dreamKpis.map((k) => k.id);
-          const fromIdx = newOrder.indexOf(draggedId);
-          const toIdx = newOrder.indexOf(kpi.id);
-          if (fromIdx >= 0 && toIdx >= 0) {
-            newOrder.splice(fromIdx, 1);
-            newOrder.splice(toIdx, 0, draggedId);
-            reorderKpis(activeDreamId, newOrder);
-            renderKpiList();
-            renderKpiHistory();
-          }
-        });
-        grid.appendChild(card);
+        completedGrid.appendChild(card);
       });
-    grid.addEventListener("dragend", () => {
-      grid.querySelectorAll(".dream-kpi-card-drag-over").forEach((c) => c.classList.remove("dream-kpi-card-drag-over"));
-    });
-    const addCard = document.createElement("button");
-    addCard.type = "button";
-    addCard.className = "dream-kpi-add-card";
-    addCard.innerHTML = '<span class="dream-kpi-add-card-text">+ KPI 추가하기</span>';
-    addCard.addEventListener("click", () => {
-      if (!activeDreamId) return;
-      showKpiModal();
-    });
-    grid.appendChild(addCard);
-    contentWrap.appendChild(grid);
+      contentWrap.appendChild(completedSection);
+    }
   }
 
   function renderKpiHistory() {
