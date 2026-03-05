@@ -5,6 +5,7 @@
  */
 
 import { render as renderTodoList, saveTodoListBeforeUnmount } from "./TodoList.js";
+import { showKpiViewModal } from "../utils/kpiViewModal.js";
 
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
 const MONTH_NAMES = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"];
@@ -170,9 +171,18 @@ export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content calendar-view";
 
+  const headerRow = document.createElement("div");
+  headerRow.className = "calendar-header-row";
   const h = document.createElement("h2");
   h.textContent = "캘린더";
-  el.appendChild(h);
+  headerRow.appendChild(h);
+  const kpiViewBtn = document.createElement("button");
+  kpiViewBtn.type = "button";
+  kpiViewBtn.className = "calendar-kpi-view-btn";
+  kpiViewBtn.textContent = "KPI 보기";
+  kpiViewBtn.addEventListener("click", () => showKpiViewModal());
+  headerRow.appendChild(kpiViewBtn);
+  el.appendChild(headerRow);
 
   const tabs = document.createElement("div");
   tabs.className = "time-view-tabs calendar-tabs";

@@ -1674,6 +1674,9 @@ export function render() {
           <button type="button" class="time-task-setup-tab" data-tab="nonproductive">비생산적</button>
           <button type="button" class="time-task-setup-tab" data-tab="other">그외</button>
         </div>
+        <div class="time-task-setup-subcats" data-subcat-bar style="display:none">
+          <button type="button" class="time-task-setup-subcat-btn active" data-subcat="">전체</button>
+        </div>
         <div class="time-task-setup-list-scroll">
           <div class="time-task-setup-list" data-tab-content="all"></div>
           <div class="time-task-setup-list" data-tab-content="productive" style="display:none"></div>
@@ -2949,6 +2952,9 @@ export function render() {
   const setupListOther = taskSetupModal.querySelector(
     '[data-tab-content="other"]',
   );
+  const setupSubcatBar = taskSetupModal.querySelector(
+    '[data-subcat-bar]',
+  );
 
   const addTaskBackdrop = addTaskModal.querySelector(
     ".time-task-setup-backdrop",
@@ -2987,10 +2993,49 @@ export function render() {
     { value: "work", label: "근무", color: "cat-work" },
     { value: "sleep", label: "수면", color: "cat-sleep" },
   ];
+
+  let selectedSubcat = "";
+  let activeSetupTab = "all";
+
+  function renderSubcatButtons(prodType) {
+    if (!setupSubcatBar) return;
+    if (prodType !== "productive" && prodType !== "nonproductive") {
+      setupSubcatBar.style.display = "none";
+      selectedSubcat = "";
+      return;
+    }
+    selectedSubcat = "";
+    const categories =
+      prodType === "productive"
+        ? [{ value: "", label: "전체" }, ...PRODUCTIVE_CATEGORIES]
+        : [{ value: "", label: "전체" }, ...NONPRODUCTIVE_CATEGORIES];
+    setupSubcatBar.innerHTML = "";
+    categories.forEach((c) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className =
+        "time-task-setup-subcat-btn" +
+        (c.value === selectedSubcat ? " active" : "");
+      btn.textContent = c.label;
+      btn.dataset.subcat = c.value;
+      if (c.color) btn.classList.add(c.color);
+      btn.addEventListener("click", () => {
+        selectedSubcat = c.value;
+        setupSubcatBar
+          .querySelectorAll(".time-task-setup-subcat-btn")
+          .forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        renderTaskSetupList();
+      });
+      setupSubcatBar.appendChild(btn);
+    });
+    setupSubcatBar.style.display = "flex";
+  }
+
   function renderTaskSetupList() {
     const tasks = getFullTaskOptions();
-    const prodTasks = tasks.filter((t) => t.productivity === "productive");
-    const nonProdTasks = tasks.filter(
+    let prodTasks = tasks.filter((t) => t.productivity === "productive");
+    let nonProdTasks = tasks.filter(
       (t) => t.productivity === "nonproductive",
     );
     const otherTasks = tasks.filter(
@@ -2998,6 +3043,12 @@ export function render() {
         t.productivity === "other" ||
         !["productive", "nonproductive"].includes(t.productivity),
     );
+    if (activeSetupTab === "productive" && selectedSubcat) {
+      prodTasks = prodTasks.filter((t) => t.category === selectedSubcat);
+    }
+    if (activeSetupTab === "nonproductive" && selectedSubcat) {
+      nonProdTasks = nonProdTasks.filter((t) => t.category === selectedSubcat);
+    }
     const getCatLabel = (v) =>
       ALL_CATEGORIES.find((c) => c.value === v)?.label ||
       CATEGORY_OPTIONS.find((c) => c.value === v)?.label ||
@@ -3148,16 +3199,24 @@ export function render() {
       setupTabs.forEach((t) => t.classList.remove("active"));
       tab.classList.add("active");
       const which = tab.dataset.tab;
+      activeSetupTab = which;
       setupListAll.style.display = which === "all" ? "" : "none";
       setupListProd.style.display = which === "productive" ? "" : "none";
       setupListNonProd.style.display = which === "nonproductive" ? "" : "none";
       setupListOther.style.display = which === "other" ? "" : "none";
+      renderSubcatButtons(which);
+      renderTaskSetupList();
     });
   });
 
   taskSetupBtn?.addEventListener("click", () => {
     taskSetupModal.hidden = false;
     document.body.style.overflow = "hidden";
+    activeSetupTab =
+      taskSetupModal.querySelector(".time-task-setup-tab.active")?.dataset
+        ?.tab || "all";
+    selectedSubcat = "";
+    renderSubcatButtons(activeSetupTab);
     renderTaskSetupList();
   });
   function closeTaskSetupModal() {

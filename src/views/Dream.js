@@ -4,6 +4,7 @@
  */
 
 import { showGanttModal, toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay } from "../utils/ganttModal.js";
+import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes } from "../utils/timeKpiSync.js";
 
 const DREAM_MAP_STORAGE_KEY = "kpi-dream-map";
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
@@ -113,6 +114,38 @@ function setupNumericOnlyInput(inp) {
   });
 }
 
+function calcDaysBetween(startYmd, endYmd) {
+  if (!startYmd || !endYmd || typeof startYmd !== "string" || typeof endYmd !== "string") return 0;
+  const start = new Date(startYmd + "T12:00:00");
+  const end = new Date(endYmd + "T12:00:00");
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
+  const diffMs = end.getTime() - start.getTime();
+  const days = Math.floor(diffMs / (24 * 60 * 60 * 1000)) + 1;
+  return Math.max(0, days);
+}
+
+function setupActionUnitTimeCalc(modal) {
+  const unitInput = modal.querySelector('input[name="actionUnitMinutes"]');
+  const startInput = modal.querySelector('input[name="targetStartDate"]');
+  const deadlineInput = modal.querySelector('input[name="targetDeadline"]');
+  const totalInput = modal.querySelector('input[name="targetTimeRequired"]');
+  const updateTotal = () => {
+    const unitStr = (unitInput?.value || "").trim();
+    const startVal = (startInput?.value || "").trim();
+    const endVal = (deadlineInput?.value || "").trim();
+    const unit = parseInt(unitStr, 10);
+    if (!unit || unit <= 0 || !startVal || !endVal) return;
+    const days = calcDaysBetween(startVal, endVal);
+    if (days <= 0) return;
+    const totalMins = unit * days;
+    if (totalInput) totalInput.value = minutesToHhMm(totalMins);
+  };
+  [unitInput, startInput, deadlineInput].forEach((inp) => {
+    inp?.addEventListener("input", updateTotal);
+    inp?.addEventListener("change", updateTotal);
+  });
+}
+
 function setupDeadlineQuickButtons(modal) {
   const startInput = modal.querySelector('input[name="targetStartDate"]');
   const deadlineInput = modal.querySelector('input[name="targetDeadline"]');
@@ -127,7 +160,10 @@ function setupDeadlineQuickButtons(modal) {
       const y = result.getFullYear();
       const m = String(result.getMonth() + 1).padStart(2, "0");
       const d = String(result.getDate()).padStart(2, "0");
-      if (deadlineInput) deadlineInput.value = `${y}-${m}-${d}`;
+      if (deadlineInput) {
+        deadlineInput.value = `${y}-${m}-${d}`;
+        deadlineInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
     });
   });
 }
@@ -217,8 +253,12 @@ export function render() {
             </div>
           </div>
           <div class="dream-kpi-field">
-            <label>목표달성예측 소요시간</label>
-            <input type="text" name="targetTimeRequired" placeholder="예) 02:30" />
+            <label>행동 단위시간 (분단위)</label>
+            <input type="text" name="actionUnitMinutes" placeholder="예) 30" inputmode="numeric" />
+          </div>
+          <div class="dream-kpi-field">
+            <label>목표달성을 위한 총 시간</label>
+            <input type="text" name="targetTimeRequired" placeholder="예) 02:30 (자동계산 또는 직접입력)" />
           </div>
           <button type="submit" class="dream-kpi-submit">KPI 등록하기</button>
         </form>
@@ -239,6 +279,7 @@ export function render() {
         targetStartDate: (form.targetStartDate?.value || "").trim() || "",
         targetDeadline: (form.targetDeadline.value || "").trim() || "",
         targetTimeRequired: (form.targetTimeRequired?.value || "").trim() || "",
+        actionUnitMinutes: parseInt((form.actionUnitMinutes?.value || "").trim(), 10) || null,
       };
       const data = loadDreamMap();
       data.kpis = data.kpis || [];
@@ -253,7 +294,9 @@ export function render() {
     });
     document.body.appendChild(modal);
     setupNumericOnlyInput(modal.querySelector('input[name="targetValue"]'));
+    setupNumericOnlyInput(modal.querySelector('input[name="actionUnitMinutes"]'));
     setupDeadlineQuickButtons(modal);
+    setupActionUnitTimeCalc(modal);
   }
 
   function showKpiEditModal(kpi) {
@@ -297,8 +340,12 @@ export function render() {
             </div>
           </div>
           <div class="dream-kpi-field">
-            <label>목표달성예측 소요시간</label>
-            <input type="text" name="targetTimeRequired" value="${escapeHtml(kpi.targetTimeRequired || "")}" placeholder="예) 02:30" />
+            <label>행동 단위시간 (분단위)</label>
+            <input type="text" name="actionUnitMinutes" value="${escapeHtml(kpi.actionUnitMinutes != null ? String(kpi.actionUnitMinutes) : "")}" placeholder="예) 30" inputmode="numeric" />
+          </div>
+          <div class="dream-kpi-field">
+            <label>목표달성을 위한 총 시간</label>
+            <input type="text" name="targetTimeRequired" value="${escapeHtml(kpi.targetTimeRequired || "")}" placeholder="예) 02:30 (자동계산 또는 직접입력)" />
           </div>
           <button type="submit" class="dream-kpi-submit">수정</button>
           <div class="dream-kpi-delete-wrap">
@@ -338,6 +385,8 @@ export function render() {
         target.targetStartDate = (form.targetStartDate?.value || "").trim() || "";
         target.targetDeadline = (form.targetDeadline.value || "").trim() || "";
         target.targetTimeRequired = (form.targetTimeRequired?.value || "").trim() || "";
+        const unitVal = parseInt((form.actionUnitMinutes?.value || "").trim(), 10);
+        target.actionUnitMinutes = unitVal > 0 ? unitVal : null;
         saveDreamMap(data);
         if (oldName !== target.name) syncKpiToTimeTask(target, "update", oldName);
       }
@@ -347,7 +396,9 @@ export function render() {
     });
     document.body.appendChild(modal);
     setupNumericOnlyInput(modal.querySelector('input[name="targetValue"]'));
+    setupNumericOnlyInput(modal.querySelector('input[name="actionUnitMinutes"]'));
     setupDeadlineQuickButtons(modal);
+    setupActionUnitTimeCalc(modal);
   }
 
   function toDateStr(d) {
@@ -525,21 +576,45 @@ export function render() {
         const currentStr = formatNum(currentVal);
         const targetStr = kpi.targetValue ? escapeHtml(String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) : "—";
         const progressText = `${currentStr} / ${targetStr}${unitSuffix}`;
+        const targetMins = kpi.targetTimeRequired ? hhMmToMinutes(kpi.targetTimeRequired) : 0;
+        const accumulatedMins = targetMins > 0 ? getAccumulatedMinutes(kpi.name) : 0;
+        const timeProgress = targetMins > 0 ? Math.min(100, (accumulatedMins / targetMins) * 100) : 0;
+        const remainingMins = Math.max(0, targetMins - accumulatedMins);
         const card = document.createElement("div");
         card.className = "dream-kpi-card" + (selectedKpiId === kpi.id ? " is-selected" : "");
         card.dataset.kpiId = kpi.id;
         card.draggable = true;
+        const timeCircleHtml =
+          targetMins > 0
+            ? `
+          <div class="dream-kpi-time-circle-wrap">
+            <div class="dream-kpi-time-circle" role="progressbar" aria-valuenow="${timeProgress}" aria-valuemin="0" aria-valuemax="100">
+              <svg viewBox="0 0 36 36">
+                <path class="dream-kpi-time-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <path class="dream-kpi-time-circle-fill" stroke-dasharray="${timeProgress}, ${100 - timeProgress}" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              </svg>
+              <div class="dream-kpi-time-circle-label">
+                <span class="dream-kpi-time-accumulated">${minutesToHhMm(accumulatedMins)}</span>
+                <span class="dream-kpi-time-sep">/</span>
+                <span class="dream-kpi-time-target">${escapeHtml(kpi.targetTimeRequired)}</span>
+              </div>
+            </div>
+            <div class="dream-kpi-time-remaining">남은 ${minutesToHhMm(remainingMins)}</div>
+          </div>
+        `
+            : "";
         card.innerHTML = `
           <div class="dream-kpi-card-inner">
             <button type="button" class="dream-kpi-card-edit" title="KPI 수정">수정</button>
             <div class="dream-kpi-card-name">${escapeHtml(kpi.name)}</div>
             <div class="dream-kpi-card-target-num">${kpi.targetValue ? escapeHtml(String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) + (kpi.unit ? '<span class="dream-kpi-card-unit"> ' + escapeHtml(kpi.unit) + "</span>" : "") : "—"}</div>
             ${(kpi.targetStartDate || kpi.targetDeadline) ? `<div class="dream-kpi-card-deadline">목표기한 ${escapeHtml(formatDeadlineRangeForDisplay(kpi.targetStartDate, kpi.targetDeadline))}</div>` : ""}
-            ${kpi.targetTimeRequired ? `<div class="dream-kpi-card-time">필요시간 ${escapeHtml(kpi.targetTimeRequired)}</div>` : ""}
+            ${kpi.targetTimeRequired ? `<div class="dream-kpi-card-time">목표시간 ${escapeHtml(kpi.targetTimeRequired)}</div>` : ""}
             <div class="dream-kpi-card-progress">
               <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${progress}%"></div></div>
               <div class="dream-kpi-card-progress-text">${escapeHtml(progressText)}</div>
             </div>
+            ${timeCircleHtml}
           </div>
         `;
         card.querySelector(".dream-kpi-card-edit").addEventListener("click", (e) => {

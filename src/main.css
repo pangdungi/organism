@@ -8031,6 +8031,61 @@ body.kpi-resizing {
   border-color: #4ade80;
 }
 
+.time-task-setup-subcats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.time-task-setup-subcat-btn {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  color: #6b7280;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.time-task-setup-subcat-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.time-task-setup-subcat-btn.active {
+  background: #e5e7eb;
+  color: #1f2937;
+  border-color: #d1d5db;
+}
+
+.time-task-setup-subcat-btn.cat-dream.active {
+  background: rgba(59, 130, 246, 0.2);
+  color: #1d4ed8;
+  border-color: #93c5fd;
+}
+
+.time-task-setup-subcat-btn.cat-sideincome.active {
+  background: rgba(16, 185, 129, 0.2);
+  color: #047857;
+  border-color: #6ee7b7;
+}
+
+.time-task-setup-subcat-btn.cat-happiness.active {
+  background: rgba(245, 158, 11, 0.2);
+  color: #b45309;
+  border-color: #fcd34d;
+}
+
+.time-task-setup-subcat-btn.cat-health.active {
+  background: rgba(34, 197, 94, 0.2);
+  color: #15803d;
+  border-color: #86efac;
+}
+
 .time-task-setup-list {
   display: flex;
   flex-direction: column;
@@ -11321,6 +11376,66 @@ body.kpi-resizing {
   color: #6b7280;
 }
 
+.dream-kpi-time-circle-wrap {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.dream-kpi-time-circle {
+  position: relative;
+  width: 64px;
+  height: 64px;
+}
+
+.dream-kpi-time-circle svg {
+  transform: rotate(-90deg);
+  width: 100%;
+  height: 100%;
+}
+
+.dream-kpi-time-circle-bg {
+  fill: none;
+  stroke: #e5e7eb;
+  stroke-width: 3;
+}
+
+.dream-kpi-time-circle-fill {
+  fill: none;
+  stroke: #3b82f6;
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.3s;
+}
+
+.dream-kpi-time-circle-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  font-size: 0.65rem;
+  color: #6b7280;
+  gap: 0;
+}
+
+.dream-kpi-time-accumulated {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.dream-kpi-time-sep {
+  opacity: 0.6;
+}
+
+.dream-kpi-time-remaining {
+  font-size: 0.7rem;
+  color: #9ca3af;
+}
+
 .dream-kpi-history-wrap {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
@@ -11799,6 +11914,157 @@ body.kpi-resizing {
   margin: 2rem 0;
   text-align: center;
   font-size: 0.9rem;
+  color: #9ca3af;
+}
+
+/* KPI 보기 모달 (캘린더) */
+.kpi-view-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.kpi-view-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.kpi-view-panel {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  max-height: 55vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+}
+
+.kpi-view-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.kpi-view-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.kpi-view-close {
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+  font-family: inherit;
+  color: #9ca3af;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.kpi-view-close:hover {
+  color: #374151;
+}
+
+.kpi-view-body {
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+  flex: 1;
+  min-height: 0;
+}
+
+.kpi-view-accordion-item {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.kpi-view-accordion-item:last-child {
+  border-bottom: none;
+}
+
+.kpi-view-accordion-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.75rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #374151;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+
+.kpi-view-accordion-trigger:hover {
+  color: #1f2937;
+}
+
+.kpi-view-accordion-arrow {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  transition: transform 0.2s;
+}
+
+.kpi-view-accordion-item.is-collapsed .kpi-view-accordion-arrow {
+  transform: rotate(-90deg);
+}
+
+.kpi-view-accordion-content {
+  padding-bottom: 0.75rem;
+}
+
+.kpi-view-accordion-item.is-collapsed .kpi-view-accordion-content {
+  display: none;
+}
+
+.kpi-view-section-icon {
+  flex-shrink: 0;
+}
+
+.kpi-view-section-count {
+  margin-left: auto;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #9ca3af;
+}
+
+.kpi-view-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.kpi-view-card {
+  cursor: default;
+}
+
+.kpi-view-card.dream-kpi-card {
+  cursor: default;
+}
+
+.kpi-view-card:active {
+  cursor: default;
+}
+
+.kpi-view-empty {
+  padding: 0.75rem 0;
+  font-size: 0.85rem;
   color: #9ca3af;
 }
 
@@ -13214,6 +13480,34 @@ body.kpi-resizing {
 }
 
 /* ----- 캘린더 ----- */
+.calendar-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.calendar-header-row h2 {
+  margin: 0;
+}
+
+.calendar-kpi-view-btn {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #374151;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.calendar-kpi-view-btn:hover {
+  background: #e5e7eb;
+  color: #1f2937;
+}
+
 .calendar-view .calendar-tabs {
   flex-shrink: 0;
 }
