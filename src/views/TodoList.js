@@ -392,27 +392,29 @@ function createTaskRow(taskData = {}, options = {}) {
   dueWrap.appendChild(dueInput);
   dueTd.appendChild(dueWrap);
 
-  const lastColTd = document.createElement("td");
-  lastColTd.className = "todo-cell-category";
-  if (showCategoryCol) {
-    lastColTd.textContent = sectionLabel;
-    lastColTd.classList.add("todo-cell-category-readonly");
-  } else if (isKpiTodo) {
-    lastColTd.textContent = classification;
-    lastColTd.classList.add("todo-cell-category-readonly");
-  } else {
-    const categoryDropdown = createCategoryDropdown(classification, () => {});
-    lastColTd.appendChild(categoryDropdown.wrap);
-  }
   tr.appendChild(doneTd);
   tr.appendChild(nameTd);
   tr.appendChild(dueTd);
-  tr.appendChild(lastColTd);
+  if (!options.hideCategoryCol) {
+    const lastColTd = document.createElement("td");
+    lastColTd.className = "todo-cell-category";
+    if (showCategoryCol) {
+      lastColTd.textContent = sectionLabel;
+      lastColTd.classList.add("todo-cell-category-readonly");
+    } else if (isKpiTodo) {
+      lastColTd.textContent = classification;
+      lastColTd.classList.add("todo-cell-category-readonly");
+    } else {
+      const categoryDropdown = createCategoryDropdown(classification, () => {});
+      lastColTd.appendChild(categoryDropdown.wrap);
+    }
+    tr.appendChild(lastColTd);
+  }
   return tr;
 }
 
 function createSection(section, options = {}) {
-  const { lastColHeader = "분류", initialTasks = [], showCategoryCol = false, sectionIdForAdd = null } = options;
+  const { lastColHeader = "분류", initialTasks = [], showCategoryCol = false, sectionIdForAdd = null, hideCategoryCol = true } = options;
   const sectionId = sectionIdForAdd ?? section.id;
 
   const wrap = document.createElement("div");
@@ -431,19 +433,27 @@ function createSection(section, options = {}) {
   tableWrap.className = "todo-table-wrap";
   const table = document.createElement("table");
   table.className = "todo-table";
-  table.innerHTML = `
-    <colgroup>
+  const colgroupHtml = hideCategoryCol
+    ? `<colgroup>
+      <col class="todo-col-done" style="width: 1rem">
+      <col class="todo-col-name" style="width: 208px">
+      <col class="todo-col-due" style="width: 2.7rem">
+    </colgroup>`
+    : `<colgroup>
       <col class="todo-col-done" style="width: 1rem">
       <col class="todo-col-name" style="width: 208px">
       <col class="todo-col-due" style="width: 2.7rem">
       <col class="todo-col-category" style="width: 5rem">
-    </colgroup>
+    </colgroup>`;
+  const theadCategoryTh = hideCategoryCol ? "" : `<th class="todo-th-category">${lastColHeader}</th>`;
+  table.innerHTML = `
+    ${colgroupHtml}
     <thead>
       <tr>
         <th class="todo-th-done"></th>
         <th class="todo-th-name">Name</th>
         <th class="todo-th-due">마감일</th>
-        <th class="todo-th-category">${lastColHeader}</th>
+        ${theadCategoryTh}
       </tr>
     </thead>
     <tbody></tbody>
@@ -451,7 +461,7 @@ function createSection(section, options = {}) {
   const tbody = table.querySelector("tbody");
 
   initialTasks.forEach((t) => {
-    const tr = createTaskRow(t, { showCategoryCol });
+    const tr = createTaskRow(t, { showCategoryCol, hideCategoryCol });
     tr.dataset.sectionId = t.sectionId || "";
     tbody.appendChild(tr);
   });
@@ -459,7 +469,7 @@ function createSection(section, options = {}) {
   const addRow = document.createElement("tr");
   addRow.className = "todo-add-row";
   addRow.innerHTML = `
-    <td colspan="4" class="todo-add-cell">
+    <td colspan="${hideCategoryCol ? 3 : 4}" class="todo-add-cell">
       <button type="button" class="todo-add-btn">+ Add Task</button>
     </td>
   `;
@@ -478,7 +488,7 @@ function createSection(section, options = {}) {
           classification: section.id,
         }
       : { sectionId };
-    const tr = createTaskRow(taskData, { showCategoryCol });
+    const tr = createTaskRow(taskData, { showCategoryCol, hideCategoryCol });
     tbody.insertBefore(tr, addRow);
     updateCount();
   });
@@ -508,8 +518,8 @@ function collectTasksFromDOM(sectionsEl) {
       const doneCheck = row.querySelector(".todo-done-check");
       const rowSectionId = row.dataset.sectionId || secId;
       const sectionLabel = SECTIONS.find((s) => s.id === rowSectionId)?.label || "";
-      const classification = isCategoryView
-        ? (catInput ? catInput.value : catCell?.textContent || "").trim()
+      const classification = catCell
+        ? (isCategoryView ? (catInput ? catInput.value : catCell?.textContent || "").trim() : secId)
         : secId;
       const task = {
         name: nameInput?.value || "",
@@ -539,6 +549,7 @@ function renderSections(container, tasksData = []) {
       initialTasks: sectionTasks,
       showCategoryCol: false,
       sectionIdForAdd: section.id,
+      hideCategoryCol: true,
     });
     container.appendChild(sec);
   });

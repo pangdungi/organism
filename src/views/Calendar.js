@@ -140,28 +140,31 @@ function renderMonthlyView() {
   calendarSection.appendChild(calendarGrid);
   wrap.appendChild(calendarSection);
 
-  let tasksCollapsed = false;
+  let sidebarCollapsed = false;
 
-  const tasksSidebar = document.createElement("aside");
-  tasksSidebar.className = "calendar-tasks-sidebar";
-  tasksSidebar.innerHTML = `
-    <div class="calendar-tasks-header">
-      <span class="calendar-tasks-title">Tasks</span>
-      <div class="calendar-tasks-actions">
-        <button type="button" class="calendar-tasks-search" title="검색">🔍</button>
-        <button type="button" class="calendar-tasks-collapse" title="접기">‹</button>
-      </div>
+  const todoSidebar = document.createElement("aside");
+  todoSidebar.className = "calendar-todo-sidebar";
+  todoSidebar.innerHTML = `
+    <div class="calendar-todo-sidebar-header">
+      <span class="calendar-todo-sidebar-title">할일목록</span>
+      <button type="button" class="calendar-todo-sidebar-collapse" title="접기/펼치기">‹</button>
     </div>
+    <div class="calendar-todo-sidebar-body"></div>
   `;
 
-  const collapseBtn = tasksSidebar.querySelector(".calendar-tasks-collapse");
+  const sidebarBody = todoSidebar.querySelector(".calendar-todo-sidebar-body");
+  const todoListEl = renderTodoList();
+  todoListEl.classList.add("todo-list-in-sidebar");
+  sidebarBody.appendChild(todoListEl);
+
+  const collapseBtn = todoSidebar.querySelector(".calendar-todo-sidebar-collapse");
   collapseBtn.addEventListener("click", () => {
-    tasksCollapsed = !tasksCollapsed;
-    tasksSidebar.classList.toggle("collapsed", tasksCollapsed);
-    collapseBtn.textContent = tasksCollapsed ? "›" : "‹";
+    sidebarCollapsed = !sidebarCollapsed;
+    todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
+    collapseBtn.textContent = sidebarCollapsed ? "›" : "‹";
   });
 
-  wrap.appendChild(tasksSidebar);
+  wrap.appendChild(todoSidebar);
   renderCalendar();
 
   return wrap;
@@ -201,7 +204,7 @@ export function render() {
   let currentView = "todo";
 
   function renderContent(view) {
-    if (currentView === "todo" && view !== "todo") {
+    if (currentView === "todo" || currentView === "monthly") {
       saveTodoListBeforeUnmount(contentWrap);
     }
     currentView = view;

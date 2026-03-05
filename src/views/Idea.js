@@ -3,6 +3,20 @@
  */
 
 export const USER_HOURLY_RATE_KEY = "user_hourly_rate";
+export const APP_FONT_KEY = "app_font_family";
+
+export const FONT_OPTIONS = [{ value: "scdream3", label: "에스코어 드림 3" }];
+
+export function applyAppFont() {
+  try {
+    const saved = localStorage.getItem(APP_FONT_KEY) || "scdream3";
+    const fontFamily =
+      saved === "scdream3" || saved === "scdream2"
+        ? '"S-Core Dream 3", -apple-system, sans-serif'
+        : '"Noto Sans KR", -apple-system, sans-serif';
+    document.documentElement.style.setProperty("--app-font-family", fontFamily);
+  } catch (_) {}
+}
 
 function formatPrice(amount) {
   if (amount == null || Number.isNaN(amount)) return "—";
@@ -24,11 +38,34 @@ export function render() {
   // ----- 기본정보 위젯 -----
   const basicInfoWidget = document.createElement("div");
   basicInfoWidget.className = "time-dashboard-widget idea-widget idea-widget-basic";
+  const savedFont = (() => {
+    try {
+      const v = localStorage.getItem(APP_FONT_KEY);
+      return v === "scdream2" ? "scdream3" : (v || "scdream3");
+    } catch (_) {
+      return "scdream3";
+    }
+  })();
   basicInfoWidget.innerHTML = `
     <div class="time-dashboard-widget-title">기본정보</div>
+    <div class="idea-font-row">
+      <label class="idea-form-label">웹사이트 폰트</label>
+      <select class="idea-form-select idea-font-select">
+        ${FONT_OPTIONS.map((o) => `<option value="${o.value}" ${savedFont === o.value ? "selected" : ""}>${o.label}</option>`).join("")}
+      </select>
+    </div>
     <div class="idea-basic-placeholder">기본정보를 입력할 수 있습니다.</div>
   `;
   grid.appendChild(basicInfoWidget);
+
+  const fontSelect = basicInfoWidget.querySelector(".idea-font-select");
+  fontSelect?.addEventListener("change", () => {
+    const val = fontSelect.value;
+    try {
+      localStorage.setItem(APP_FONT_KEY, val);
+      applyAppFont();
+    } catch (_) {}
+  });
 
   // ----- 나의 시급계산하기 위젯 -----
   const hourlyWidget = document.createElement("div");
