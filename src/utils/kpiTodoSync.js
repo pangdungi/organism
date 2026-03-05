@@ -132,3 +132,27 @@ export function syncKpiTodoCompleted(kpiTodoId, storageKey, completed) {
     }
   } catch (_) {}
 }
+
+const STORAGE_KEYS = [DREAM_MAP_KEY, SIDEINCOME_KEY, HAPPINESS_KEY, HEALTH_KEY];
+
+/**
+ * 완료된 KPI 할일 모두 제거
+ * @returns {number} 제거된 항목 수
+ */
+export function removeAllCompletedKpiTodos() {
+  let removed = 0;
+  STORAGE_KEYS.forEach((key) => {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      data.kpiTodos = data.kpiTodos || [];
+      const before = data.kpiTodos.length;
+      data.kpiTodos = data.kpiTodos.filter((t) => !t.completed);
+      const after = data.kpiTodos.length;
+      removed += before - after;
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch (_) {}
+  });
+  return removed;
+}

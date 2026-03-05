@@ -403,14 +403,61 @@ body {
   display: flex;
   flex-direction: column;
   font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  transition: width 0.2s, min-width 0.2s;
+}
+
+.app-sidebar.is-collapsed {
+  width: 56px;
+  min-width: 56px;
+}
+
+.app-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.app-sidebar.is-collapsed .app-sidebar-header {
+  justify-content: center;
+  padding: 0.75rem;
 }
 
 .app-sidebar-title {
-  padding: 1rem;
   font-size: 1.1rem;
   font-weight: 700;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   font-family: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.app-sidebar.is-collapsed .app-sidebar-title {
+  display: none;
+}
+
+.app-sidebar-collapse-btn {
+  flex-shrink: 0;
+  padding: 0.35rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.9);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-sidebar-collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.app-sidebar-collapse-btn img {
+  display: block;
+  filter: brightness(0) invert(1);
 }
 
 .app-sidebar-nav {
@@ -431,6 +478,37 @@ body {
   cursor: pointer;
   transition: background 0.15s;
   font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.app-sidebar.is-collapsed .app-sidebar-item {
+  justify-content: center;
+  padding: 0.6rem;
+}
+
+.app-sidebar-item-icon {
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.app-sidebar-item-icon img,
+.app-sidebar-item-icon {
+  display: block;
+}
+
+.app-sidebar-item .app-sidebar-item-icon {
+  filter: brightness(0) invert(1);
+}
+
+.app-sidebar-item-label {
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.app-sidebar.is-collapsed .app-sidebar-item-label {
+  display: none;
 }
 
 .app-sidebar-item:hover {
@@ -447,6 +525,10 @@ body {
   color: rgba(255, 255, 255, 0.7);
   font-size: 0.9rem;
   font-family: inherit;
+}
+
+.app-sidebar-logout .app-sidebar-item-icon {
+  opacity: 0.7;
 }
 
 .app-main {
@@ -495,9 +577,26 @@ body {
     z-index: 100;
     transform: translateX(-100%);
     transition: transform 0.2s;
+    width: 240px;
+    min-width: 200px;
   }
   .app-sidebar.is-open {
     transform: translateX(0);
+  }
+  .app-sidebar.is-open.is-collapsed {
+    width: 240px;
+    min-width: 200px;
+  }
+  .app-sidebar.is-open .app-sidebar-title,
+  .app-sidebar.is-open .app-sidebar-item-label {
+    display: block;
+  }
+  .app-sidebar.is-open .app-sidebar-item {
+    justify-content: flex-start;
+    padding: 0.6rem 1rem;
+  }
+  .app-sidebar.is-open .app-sidebar-header {
+    justify-content: space-between;
   }
   .app-main {
     padding: 1rem;
@@ -5325,6 +5424,39 @@ body {
   box-sizing: border-box;
 }
 
+.todo-list-view.hide-completed .todo-task-row:has(.todo-done-check:checked) {
+  display: none;
+}
+
+.todo-list-toolbar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.todo-list-toolbar-btn {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+  color: #555;
+  background: #f5f5f5;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+}
+
+.todo-list-toolbar-btn:hover {
+  color: #333;
+  background: #eee;
+  border-color: #d1d5db;
+}
+
+.todo-list-clear-completed-btn:hover {
+  color: #b91c1c;
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
 .todo-filter-bar {
   display: flex;
   align-items: center;
@@ -5466,6 +5598,12 @@ body {
 
 .todo-done-check {
   cursor: pointer;
+}
+
+/* 체크 시 취소선 */
+.todo-task-row:has(.todo-done-check:checked) .todo-cell-name input {
+  text-decoration: line-through;
+  color: #9ca3af;
 }
 
 .todo-th-name {
@@ -8142,6 +8280,11 @@ body.kpi-resizing {
   font-size: 0.9rem;
 }
 
+.time-task-setup-item-sub {
+  padding-left: 2rem;
+  background: #f5f5f5;
+}
+
 .time-task-setup-item-name {
   flex: 1;
   font-weight: 500;
@@ -8342,14 +8485,25 @@ body.kpi-resizing {
   display: none;
 }
 
-.time-task-log-datetime-fields-wrap {
+.time-task-log-sticky-wrap {
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 10;
   background: #fff;
-  padding-bottom: 0.75rem;
-  margin-bottom: 0;
+  padding-bottom: 1rem;
+  margin-left: -1.25rem;
+  margin-right: -1.25rem;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
   border-bottom: 1px solid #e5e7eb;
+}
+
+.time-task-log-datetime-fields-wrap {
+  margin-bottom: 0;
+}
+
+.time-task-log-sticky-wrap + .time-task-log-field {
+  margin-top: 1rem;
 }
 
 .time-task-log-field {
@@ -8430,6 +8584,26 @@ body.kpi-resizing {
 
 .time-task-log-datetime-clear:hover {
   color: #374151;
+}
+
+.time-task-log-routine-subs-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.time-task-log-routine-sub-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: #374151;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.time-task-log-routine-sub-check input {
+  font-family: inherit;
 }
 
 .time-task-log-feedback {
@@ -13879,6 +14053,16 @@ body.kpi-resizing {
   width: 100%;
 }
 
+.calendar-todo-sidebar-body .todo-list-toolbar {
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.calendar-todo-sidebar-body .todo-list-toolbar-btn {
+  padding: 0.25rem 0.45rem;
+  font-size: 0.8rem;
+}
+
 /* 사이드바에서는 마감일 열 숨김, 남은 공간은 이름 열에 */
 .todo-list-in-sidebar .todo-th-due,
 .todo-list-in-sidebar .todo-cell-due {
@@ -14046,7 +14230,6 @@ body.kpi-resizing {
 
 .routine-accordion {
   background: transparent;
-  border-bottom: 1px solid #e5e7eb;
 }
 
 .routine-accordion-header {
@@ -14079,24 +14262,44 @@ body.kpi-resizing {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0;
 }
 
 .routine-accordion-title {
-  flex: 0 1 auto;
-  min-width: 0;
+  flex: 0 0 auto;
   font-size: 1rem;
   font-weight: 500;
   color: #333;
+  line-height: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+}
+
+.routine-accordion-period {
+  flex: 0 0 auto;
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
+  font-size: 0.85rem;
+  color: #6b7280;
+  line-height: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
 }
 
 .routine-accordion-progress-wrap {
   flex: 1;
   min-width: 150px;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+  margin-left: 0.5rem;
 }
 
 .routine-accordion-progress-bar {
   position: relative;
+  width: 100%;
   height: 1.25rem;
   background: #e5e7eb;
   border-radius: 0.25rem;
@@ -14129,6 +14332,7 @@ body.kpi-resizing {
 
 .routine-accordion-edit-btn {
   flex-shrink: 0;
+  margin-left: 0.75rem;
   padding: 0.2rem 0.5rem;
   font-size: 0.8rem;
   color: #6b7280;
@@ -14150,7 +14354,6 @@ body.kpi-resizing {
 
 .routine-accordion-body {
   padding: 1rem;
-  border-top: 1px solid #e5e7eb;
 }
 
 .routine-accordion.is-collapsed .routine-accordion-body {
@@ -14396,7 +14599,6 @@ body.kpi-resizing {
   left: 0;
   z-index: 2;
   background: #fff;
-  border-right: 1px solid #e5e7eb;
 }
 
 .routine-track-th.routine-track-sticky {
@@ -14422,24 +14624,36 @@ body.kpi-resizing {
   border-bottom: none !important;
 }
 
+
 .routine-track-th {
   background: transparent;
   font-weight: 500;
   text-align: center;
 }
 
-.routine-track-th-name {
-  min-width: 24px;
+.routine-track-th-name,
+.routine-track-cell.routine-track-name {
   width: 120px;
+  min-width: 120px;
+  max-width: 120px;
+}
+
+.routine-track-th-name {
   text-align: left;
   padding-left: 0.5rem;
 }
 
-.routine-track-th-day {
-  min-width: 36px;
+.routine-track-th-day,
+.routine-track-cell.routine-track-check {
   width: 40px;
+  min-width: 40px;
+  max-width: 40px;
+}
+
+.routine-track-th-day {
   font-size: 0.75rem;
 }
+
 
 .routine-track-day-toggle {
   cursor: pointer;
@@ -14511,9 +14725,11 @@ body.kpi-resizing {
   background: color-mix(in srgb, var(--routine-color, #e07a5f) 22%, transparent);
 }
 
-.routine-track-th-actions {
+.routine-track-th-actions,
+.routine-track-cell.routine-track-actions {
   width: 50px;
   min-width: 50px;
+  max-width: 50px;
 }
 
 .routine-track-actions {
@@ -14540,18 +14756,10 @@ body.kpi-resizing {
   color: #6b7280;
 }
 
-.routine-track-add-row {
-  border: none;
-}
-
-.routine-track-add-row td {
-  border: none !important;
-}
-
-.routine-track-add-cell {
-  padding: 0.5rem;
-  border: none;
+.routine-track-add-row .routine-track-add-cell {
+  padding: 0.4rem 0.5rem;
   background: transparent;
+  vertical-align: middle;
 }
 
 

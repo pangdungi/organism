@@ -3,7 +3,7 @@
  * KPI 할일(꿈/부수입/행복/건강) 연동: 마감일 없음, 꿈이름 자동, 분류=KPI이름
  */
 
-import { getKpiTodosAsTasks, syncKpiTodoCompleted } from "../utils/kpiTodoSync.js";
+import { getKpiTodosAsTasks, syncKpiTodoCompleted, removeAllCompletedKpiTodos } from "../utils/kpiTodoSync.js";
 
 export function saveTodoListBeforeUnmount() {}
 
@@ -558,6 +558,45 @@ function renderSections(container, tasksData = []) {
 export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content todo-list-view";
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "todo-list-toolbar";
+  const hideCompletedBtn = document.createElement("button");
+  hideCompletedBtn.type = "button";
+  hideCompletedBtn.className = "todo-list-toolbar-btn todo-list-hide-completed-btn";
+  hideCompletedBtn.textContent = "완료항목 숨기기";
+  hideCompletedBtn.title = "완료된 항목 표시/숨기기";
+  const clearCompletedBtn = document.createElement("button");
+  clearCompletedBtn.type = "button";
+  clearCompletedBtn.className = "todo-list-toolbar-btn todo-list-clear-completed-btn";
+  clearCompletedBtn.textContent = "완료항목 모두 제거";
+  clearCompletedBtn.title = "완료된 항목을 목록에서 삭제합니다";
+
+  let hideCompleted = false;
+  hideCompletedBtn.addEventListener("click", () => {
+    hideCompleted = !hideCompleted;
+    el.classList.toggle("hide-completed", hideCompleted);
+    hideCompletedBtn.textContent = hideCompleted ? "완료항목 보기" : "완료항목 숨기기";
+  });
+
+  clearCompletedBtn.addEventListener("click", () => {
+    const removed = removeAllCompletedKpiTodos();
+    if (removed > 0) {
+      el.querySelectorAll(".todo-task-row").forEach((row) => {
+        const check = row.querySelector(".todo-done-check");
+        if (check?.checked) row.remove();
+      });
+      el.querySelectorAll(".todo-section").forEach((sec) => {
+        const count = sec.querySelectorAll(".todo-task-row").length;
+        const countEl = sec.querySelector(".todo-section-count");
+        if (countEl) countEl.textContent = count;
+      });
+    }
+  });
+
+  toolbar.appendChild(hideCompletedBtn);
+  toolbar.appendChild(clearCompletedBtn);
+  el.appendChild(toolbar);
 
   const sectionsWrap = document.createElement("div");
   sectionsWrap.className = "todo-sections-wrap";

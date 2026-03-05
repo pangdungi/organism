@@ -12,19 +12,21 @@ import { render as renderArchive } from "./views/Archive.js";
 import { render as renderDiary } from "./views/Diary.js";
 import { render as renderIdea } from "./views/Idea.js";
 
+const SIDEBAR_COLLAPSED_KEY = "app-sidebar-collapsed";
+
 const TABS = [
-  { id: "calendar", label: "캘린더" },
-  { id: "time", label: "시간가계부" },
-  { id: "routine", label: "루틴/해빗트랙커" },
-  { id: "workschedule", label: "근무표" },
-  { id: "asset", label: "자산관리" },
-  { id: "dream", label: "꿈" },
-  { id: "sideincome", label: "부수입" },
-  { id: "happiness", label: "행복" },
-  { id: "health", label: "건강" },
-  { id: "archive", label: "아카이브" },
-  { id: "diary", label: "감정관리" },
-  { id: "idea", label: "My account" },
+  { id: "calendar", label: "캘린더", icon: "/toolbaricons/checkbox-active.svg" },
+  { id: "time", label: "시간가계부", icon: "/toolbaricons/timer.svg" },
+  { id: "routine", label: "루틴/해빗트랙커", icon: "/toolbaricons/goback.svg" },
+  { id: "workschedule", label: "근무표", icon: "/toolbaricons/calendar-heart1.svg" },
+  { id: "asset", label: "자산관리", icon: "/toolbaricons/wallet.svg" },
+  { id: "dream", label: "꿈", icon: "/toolbaricons/star.svg" },
+  { id: "sideincome", label: "부수입", icon: "/toolbaricons/money-circle.svg" },
+  { id: "happiness", label: "행복", icon: "/toolbaricons/plug-electric.svg" },
+  { id: "health", label: "건강", icon: "/toolbaricons/heart-rate.svg" },
+  { id: "archive", label: "아카이브", icon: "/toolbaricons/harddrive.svg" },
+  { id: "diary", label: "감정관리", icon: "/toolbaricons/chat-bubbles.svg" },
+  { id: "idea", label: "My account", icon: "/toolbaricons/user-square.svg" },
 ];
 
 const RENDERERS = {
@@ -56,11 +58,28 @@ export function mountApp(container) {
 
   const sidebar = document.createElement("aside");
   sidebar.className = "app-sidebar";
+  const isCollapsed = localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
+  if (isCollapsed) sidebar.classList.add("is-collapsed");
 
+  const sidebarHeader = document.createElement("div");
+  sidebarHeader.className = "app-sidebar-header";
   const sidebarTitle = document.createElement("div");
   sidebarTitle.className = "app-sidebar-title";
   sidebarTitle.textContent = "라이프 플래너";
-  sidebar.appendChild(sidebarTitle);
+  const collapseBtn = document.createElement("button");
+  collapseBtn.type = "button";
+  collapseBtn.className = "app-sidebar-collapse-btn";
+  collapseBtn.title = isCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+  collapseBtn.innerHTML = '<img src="/toolbaricons/menu.svg" alt="" width="20" height="20" />';
+  collapseBtn.addEventListener("click", () => {
+    sidebar.classList.toggle("is-collapsed");
+    const collapsed = sidebar.classList.contains("is-collapsed");
+    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "1" : "0");
+    collapseBtn.title = collapsed ? "사이드바 펼치기" : "사이드바 접기";
+  });
+  sidebarHeader.appendChild(sidebarTitle);
+  sidebarHeader.appendChild(collapseBtn);
+  sidebar.appendChild(sidebarHeader);
 
   const nav = document.createElement("nav");
   nav.className = "app-sidebar-nav";
@@ -69,7 +88,18 @@ export function mountApp(container) {
     const btn = document.createElement("button");
     btn.className = "app-sidebar-item" + (tab.id === currentTabId ? " active" : "");
     btn.dataset.tabId = tab.id;
-    btn.textContent = tab.label;
+    btn.title = tab.label;
+    const icon = document.createElement("img");
+    icon.className = "app-sidebar-item-icon";
+    icon.src = tab.icon;
+    icon.alt = "";
+    icon.width = 20;
+    icon.height = 20;
+    const label = document.createElement("span");
+    label.className = "app-sidebar-item-label";
+    label.textContent = tab.label;
+    btn.appendChild(icon);
+    btn.appendChild(label);
     btn.addEventListener("click", () => {
       currentTabId = tab.id;
       nav.querySelectorAll(".app-sidebar-item").forEach((b) => b.classList.remove("active"));
@@ -96,7 +126,18 @@ export function mountApp(container) {
 
   const logoutBtn = document.createElement("button");
   logoutBtn.className = "app-sidebar-item app-sidebar-logout";
-  logoutBtn.textContent = "로그아웃";
+  logoutBtn.title = "로그아웃";
+  const logoutIcon = document.createElement("img");
+  logoutIcon.className = "app-sidebar-item-icon";
+  logoutIcon.src = "/toolbaricons/user-square.svg";
+  logoutIcon.alt = "";
+  logoutIcon.width = 20;
+  logoutIcon.height = 20;
+  const logoutLabel = document.createElement("span");
+  logoutLabel.className = "app-sidebar-item-label";
+  logoutLabel.textContent = "로그아웃";
+  logoutBtn.appendChild(logoutIcon);
+  logoutBtn.appendChild(logoutLabel);
   logoutBtn.addEventListener("click", () => signOut());
   sidebar.appendChild(logoutBtn);
   appScreen.appendChild(sidebar);

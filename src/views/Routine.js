@@ -3,7 +3,14 @@
  * 큰 루틴(아코디언) → 세부 루틴(테이블 행) 구조
  * 루틴추가 → 팝업(큰 루틴 이름, 시작일, 종료일) → 아코디언+테이블
  * 테이블 내 +추가 → 루틴 1-1, 1-2, 1-3... 세부 행 추가
+ * 추가된 루틴은 시간가계부 과제(생산적>행복)에 자동 연동
  */
+
+import {
+  syncRoutineToTimeTasks,
+  removeRoutineFromTimeTasks,
+  syncRoutineRenameToTimeTasks,
+} from "../utils/routineTimeSync.js";
 
 const STORAGE_KEY = "routine-track-list";
 
@@ -69,6 +76,16 @@ function getDaysBetween(startStr, endStr) {
   const end = new Date(endStr);
   const diffMs = end.getTime() - start.getTime();
   return Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1);
+}
+
+function formatRoutinePeriod(startStr, endStr) {
+  if (!startStr || !endStr) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  const start = new Date(startStr);
+  const end = new Date(endStr);
+  const s = `${pad(start.getMonth() + 1)}/${pad(start.getDate())}`;
+  const e = `${pad(end.getMonth() + 1)}/${pad(end.getDate())}`;
+  return `${s} ~ ${e}`;
 }
 
 function getCheckKey(routineId, itemId, dayIndex) {
@@ -369,6 +386,12 @@ function createRoutineAccordion(routine, onItemChange, onRoutineEdit, openEditMo
   titleSpan.className = "routine-accordion-title";
   titleSpan.textContent = routine.name || "루틴";
 
+  const periodStr = formatRoutinePeriod(routine.start, routine.end);
+  const periodSpan = document.createElement("span");
+  periodSpan.className = "routine-accordion-period";
+  periodSpan.textContent = periodStr;
+  if (!periodStr) periodSpan.style.display = "none";
+
   const progressWrap = document.createElement("div");
   progressWrap.className = "routine-accordion-progress-wrap";
   progressWrap.innerHTML = `
@@ -385,6 +408,7 @@ function createRoutineAccordion(routine, onItemChange, onRoutineEdit, openEditMo
   editBtn.title = "루틴 수정";
 
   titleWrap.appendChild(titleSpan);
+  titleWrap.appendChild(periodSpan);
   titleWrap.appendChild(progressWrap);
   titleWrap.appendChild(editBtn);
 
@@ -411,6 +435,23 @@ function createRoutineAccordion(routine, onItemChange, onRoutineEdit, openEditMo
   const table = document.createElement("table");
   table.className = "routine-track-table";
 
+  const colgroup = document.createElement("colgroup");
+  const colName = document.createElement("col");
+  colName.className = "routine-track-col-name";
+  colName.style.width = "120px";
+  colgroup.appendChild(colName);
+  for (let i = 0; i < routine.days; i++) {
+    const col = document.createElement("col");
+    col.className = "routine-track-col-day";
+    col.style.width = "40px";
+    colgroup.appendChild(col);
+  }
+  const colActions = document.createElement("col");
+  colActions.className = "routine-track-col-actions";
+  colActions.style.width = "50px";
+  colgroup.appendChild(colActions);
+  table.appendChild(colgroup);
+
   const thead = document.createElement("thead");
   const headerRow = document.createElement("tr");
   const nameTh = document.createElement("th");
@@ -419,7 +460,7 @@ function createRoutineAccordion(routine, onItemChange, onRoutineEdit, openEditMo
   headerRow.appendChild(nameTh);
   for (let i = 1; i <= routine.days; i++) {
     const th = document.createElement("th");
-    th.className = "routine-track-th routine-track-th-day routine-track-day-toggle";
+    th.className = "routine-track-th routine-track-th-day routine-track-day-toggle" + (i === 1 ? " routine-track-first-day" : "");
     th.textContent = `D${i}`;
     th.title = "클릭 시 해당 날짜 전체 선택/해제";
     const dayIndex = i - 1;
@@ -472,7 +513,7 @@ function createRoutineAccordion(routine, onItemChange, onRoutineEdit, openEditMo
 
     for (let i = 0; i < routine.days; i++) {
       const td = document.createElement("td");
-      td.className = "routine-track-cell routine-track-check";
+      td.className = "routine-track-cell routine-track-check" + (i === 0 ? " routine-track-first-day" : "");
       const label = document.createElement("label");
       label.className = "routine-track-check-wrap";
       const input = document.createElement("input");
@@ -511,9 +552,8 @@ function createRoutineAccordion(routine, onItemChange, onRoutineEdit, openEditMo
 
   const addRow = document.createElement("tr");
   addRow.className = "routine-track-add-row";
-  const addCell = document.createElement("td");
-  addCell.colSpan = routine.days + 2;
-  addCell.className = "routine-track-add-cell";
+  const addNameCell = document.createElement("td");
+  addNameCell.className = "routine-track-add-cell routine-track-cell routine-track-name";
   const addBtn = document.createElement("button");
   addBtn.type = "button";
   addBtn.className = "routine-track-add-row-btn";
@@ -527,8 +567,16 @@ function createRoutineAccordion(routine, onItemChange, onRoutineEdit, openEditMo
     tbody.insertBefore(tr, addRow);
     updateProgressBar();
   });
-  addCell.appendChild(addBtn);
-  addRow.appendChild(addCell);
+  addNameCell.appendChild(addBtn);
+  addRow.appendChild(addNameCell);
+  for (let i = 0; i < routine.days; i++) {
+    const td = document.createElement("td");
+    td.className = "routine-track-add-cell routine-track-cell routine-track-check" + (i === 0 ? " routine-track-first-day" : "");
+    addRow.appendChild(td);
+  }
+  const addActionsCell = document.createElement("td");
+  addActionsCell.className = "routine-track-add-cell routine-track-cell routine-track-actions";
+  addRow.appendChild(addActionsCell);
 
   items.forEach((item, index) => {
     tbody.appendChild(addItemRow(item, index));
@@ -619,11 +667,15 @@ export function render() {
 
   const { modal: editModal, open: openEdit } = createEditRoutineModal(
     (routine, data) => {
+      const oldRoutine = { ...routine, name: routine.name };
       routine.name = data.name;
       routine.start = data.start;
       routine.end = data.end;
       routine.days = data.days;
       routine.color = data.color || ROUTINE_PASTEL_COLORS[0];
+      if (oldRoutine.name !== data.name) {
+        syncRoutineRenameToTimeTasks(oldRoutine, routine);
+      }
       saveRoutines(routines);
 
       const accordion = accordionMap[routine.id];
@@ -637,6 +689,7 @@ export function render() {
       newAccordion._updateTitle(routine.name);
     },
     (routine) => {
+      removeRoutineFromTimeTasks(routine);
       routines = routines.filter((r) => r.id !== routine.id);
       saveRoutines(routines);
       const accordion = accordionMap[routine.id];
@@ -650,12 +703,13 @@ export function render() {
     return createRoutineAccordion(
       routine,
       (rid, itemId, name) => {
-        if (itemId && name !== null) {
-          const r = routines.find((x) => x.id === rid);
+        const r = routines.find((x) => x.id === rid);
+        if (itemId != null && name !== null) {
           const it = r?.items?.find((x) => x.id === itemId);
           if (it) it.name = name;
         }
         saveRoutines(routines);
+        if (r) syncRoutineToTimeTasks(r);
       },
       null,
       openEdit
@@ -675,6 +729,7 @@ export function render() {
     };
     routines.push(routine);
     saveRoutines(routines);
+    syncRoutineToTimeTasks(routine);
     updateEmptyState();
 
     const accordion = createAccordionForRoutine(routine);
@@ -706,12 +761,13 @@ export function render() {
     return createRoutineAccordion(
       routine,
       (rid, itemId, name) => {
-        if (itemId && name !== null) {
-          const r = routines.find((x) => x.id === rid);
+        const r = routines.find((x) => x.id === rid);
+        if (itemId != null && name !== null) {
           const it = r?.items?.find((x) => x.id === itemId);
           if (it) it.name = name;
         }
         saveRoutines(routines);
+        if (r) syncRoutineToTimeTasks(r);
       },
       null,
       openEdit

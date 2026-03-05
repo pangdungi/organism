@@ -17,6 +17,13 @@ import {
   TAB3_EMOTION_TEMPLATE,
 } from "../diaryData.js";
 import { getKpiSyncedTaskNames } from "../utils/timeKpiSync.js";
+import {
+  getRoutineSyncedTaskNames,
+  getRoutineByTaskName,
+  getDayIndexForRoutine,
+  loadRoutineCheckState,
+  saveRoutineCheckState,
+} from "../utils/routineTimeSync.js";
 
 const PRODUCTIVITY_OPTIONS = [
   { value: "productive", label: "생산적", color: "prod-pink" },
@@ -40,6 +47,7 @@ function getLockedTaskNames() {
     ...FIXED_OTHER_TASKS.map((t) => t.name),
     ...TASKS_LOCKED_FOR_EDIT,
     ...getKpiSyncedTaskNames(),
+    ...getRoutineSyncedTaskNames(),
   ]);
 }
 
@@ -1740,23 +1748,29 @@ export function render() {
         <button type="button" class="time-task-log-submit">기록</button>
       </div>
       <div class="time-task-setup-body">
-        <div class="time-task-log-datetime-fields-wrap">
-          <div class="time-task-log-field">
-            <label>과제 선택</label>
-            <div class="time-task-log-task-wrap"></div>
-          </div>
-          <div class="time-task-log-field">
-            <label>시작시간</label>
-            <button type="button" class="time-task-log-datetime-trigger" data-for="start">날짜·시간 선택</button>
-            <input type="hidden" class="time-task-log-start" />
-          </div>
-          <div class="time-task-log-field">
-            <label>마감시간</label>
-            <div class="time-task-log-datetime-wrap time-task-log-datetime-wrap-end">
-              <button type="button" class="time-task-log-datetime-trigger" data-for="end">날짜·시간 선택</button>
-              <button type="button" class="time-task-log-datetime-clear" data-for="end" title="마감시간 지우기" aria-label="마감시간 지우기">×</button>
+        <div class="time-task-log-sticky-wrap">
+          <div class="time-task-log-datetime-fields-wrap">
+            <div class="time-task-log-field">
+              <label>과제 선택</label>
+              <div class="time-task-log-task-wrap"></div>
             </div>
-            <input type="hidden" class="time-task-log-end" />
+            <div class="time-task-log-field">
+              <label>시작시간</label>
+              <button type="button" class="time-task-log-datetime-trigger" data-for="start">날짜·시간 선택</button>
+              <input type="hidden" class="time-task-log-start" />
+            </div>
+            <div class="time-task-log-field">
+              <label>마감시간</label>
+              <div class="time-task-log-datetime-wrap time-task-log-datetime-wrap-end">
+                <button type="button" class="time-task-log-datetime-trigger" data-for="end">날짜·시간 선택</button>
+                <button type="button" class="time-task-log-datetime-clear" data-for="end" title="마감시간 지우기" aria-label="마감시간 지우기">×</button>
+              </div>
+              <input type="hidden" class="time-task-log-end" />
+            </div>
+          </div>
+          <div class="time-task-log-field time-task-log-routine-subs" hidden>
+            <label>세부 루틴 체크</label>
+            <div class="time-task-log-routine-subs-wrap"></div>
           </div>
         </div>
         <div class="time-task-log-field">
@@ -1904,6 +1918,48 @@ export function render() {
   const taskLogEndWrap = taskLogModal.querySelector(".time-task-log-datetime-wrap-end");
   const taskLogEndClearBtn = taskLogModal.querySelector('.time-task-log-datetime-clear[data-for="end"]');
   const taskLogFeedbackInput = taskLogModal.querySelector(".time-task-log-feedback");
+  const taskLogRoutineSubsField = taskLogModal.querySelector(".time-task-log-routine-subs");
+  const taskLogRoutineSubsWrap = taskLogModal.querySelector(".time-task-log-routine-subs-wrap");
+
+  function updateRoutineSubTasksSection() {
+    const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
+    const startVal = (taskLogStartInput?.value || "").trim();
+    const info = getRoutineByTaskName(taskName);
+    if (!taskLogRoutineSubsField || !taskLogRoutineSubsWrap) return;
+    if (!info) {
+      taskLogRoutineSubsField.hidden = true;
+      return;
+    }
+    const { routine } = info;
+    const items = routine.items || [];
+    if (items.length === 0) {
+      taskLogRoutineSubsField.hidden = true;
+      return;
+    }
+    const dayIndex = getDayIndexForRoutine(routine, startVal);
+    if (dayIndex == null) {
+      taskLogRoutineSubsField.hidden = true;
+      return;
+    }
+    taskLogRoutineSubsField.hidden = false;
+    taskLogRoutineSubsWrap.innerHTML = "";
+    items.forEach((item) => {
+      const label = document.createElement("label");
+      label.className = "time-task-log-routine-sub-check";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.dataset.itemId = item.id;
+      input.checked = loadRoutineCheckState(routine.id, item.id, dayIndex);
+      input.addEventListener("change", () => {
+        saveRoutineCheckState(routine.id, item.id, dayIndex, input.checked);
+      });
+      const span = document.createElement("span");
+      span.textContent = item.name || "";
+      label.appendChild(input);
+      label.appendChild(span);
+      taskLogRoutineSubsWrap.appendChild(label);
+    });
+  }
 
   function updateEndTimeClearVisibility() {
     const hasValue = (taskLogEndInput.value || "").trim().length > 0;
@@ -1952,9 +2008,10 @@ export function render() {
     let value = "";
     function renderPanel() {
       panel.innerHTML = "";
-      const tasks = [...getFullTaskOptions()].sort((a, b) =>
-        (a.name || "").localeCompare(b.name || "", "ko"),
-      );
+      const allTasks = getFullTaskOptions();
+      const tasks = allTasks
+        .filter((t) => !(t.name || "").includes(" > "))
+        .sort((a, b) => (a.name || "").localeCompare(b.name || "", "ko"));
       tasks.forEach((t) => {
         const row = document.createElement("div");
         row.className = "time-task-log-task-dropdown-option";
@@ -1963,6 +2020,7 @@ export function render() {
           value = t.name || "";
           trigger.textContent = value || "과제를 선택하세요";
           panel.hidden = true;
+          updateRoutineSubTasksSection();
         });
         panel.appendChild(row);
       });
@@ -1980,6 +2038,7 @@ export function render() {
     wrap._setValue = (v) => {
       value = v || "";
       trigger.textContent = value || "과제를 선택하세요";
+      updateRoutineSubTasksSection();
     };
     return wrap;
   }
@@ -2295,6 +2354,7 @@ export function render() {
       if (datetimePicker._currentField === "start") {
         taskLogStartInput.value = val;
         taskLogStartTrigger.textContent = displayVal || "날짜·시간 선택";
+        updateRoutineSubTasksSection();
         if (val && taskLogEndInput.value) {
           const mergedEnd = mergeEndTimeWithStartDate(val, taskLogEndInput.value);
           if (mergedEnd) {
@@ -2644,7 +2704,8 @@ export function render() {
       taskLogTaskWrap.innerHTML = "";
       taskLogTaskWrap.appendChild(taskLogTaskDropdown);
     }
-    const firstTask = getFullTaskOptions()[0]?.name || "";
+    const mainTasks = getFullTaskOptions().filter((t) => !(t.name || "").includes(" > "));
+    const firstTask = mainTasks[0]?.name || "";
     taskLogTaskDropdown._setValue?.(firstTask);
     const defaultStart = getDefaultStartTime(addContext);
     taskLogStartInput.value = defaultStart;
@@ -2678,6 +2739,7 @@ export function render() {
     if (taskLogFocusFields) taskLogFocusFields.hidden = true;
     updateEnergySlider("50");
     updateFocusStepper("0");
+    updateRoutineSubTasksSection();
   }
 
   function openTaskLogModalForEdit(tr, rowData) {
@@ -2750,6 +2812,7 @@ export function render() {
     }
     updateEnergySlider(taskLogEnergyValue || "0");
     updateFocusStepper(taskLogFocusValue || "0");
+    updateRoutineSubTasksSection();
   }
 
   function closeTaskLogModal() {
@@ -3035,12 +3098,13 @@ export function render() {
   }
 
   function renderTaskSetupList() {
-    const tasks = getFullTaskOptions();
-    let prodTasks = tasks.filter((t) => t.productivity === "productive");
-    let nonProdTasks = tasks.filter(
+    const allTasks = getFullTaskOptions();
+    const mainTasksOnly = allTasks.filter((t) => !(t.name || "").includes(" > "));
+    let prodTasks = mainTasksOnly.filter((t) => t.productivity === "productive");
+    let nonProdTasks = mainTasksOnly.filter(
       (t) => t.productivity === "nonproductive",
     );
-    const otherTasks = tasks.filter(
+    const otherTasks = mainTasksOnly.filter(
       (t) =>
         t.productivity === "other" ||
         !["productive", "nonproductive"].includes(t.productivity),
@@ -3061,11 +3125,14 @@ export function render() {
       container.innerHTML = "";
       list.forEach((t) => {
         const isLocked = lockedNames.has(t.name);
+        const info = getRoutineByTaskName(t.name);
+        const hasSubRoutines = info?.routine?.items?.length > 0;
+        const catLabel = hasSubRoutines ? "하부루틴 있음" : getCatLabel(t.category);
         const row = document.createElement("div");
         row.className = "time-task-setup-item";
         row.innerHTML = `
           <span class="time-task-setup-item-name">${(t.name || "").replace(/</g, "&lt;")}</span>
-          <span class="time-task-setup-item-cat">${getCatLabel(t.category)}</span>
+          <span class="time-task-setup-item-cat">${catLabel}</span>
           <div class="time-task-setup-item-actions">
             ${isLocked ? "" : '<button type="button" class="time-task-setup-edit" title="수정">수정</button><button type="button" class="time-task-setup-del" title="삭제">삭제</button>'}
           </div>
@@ -3092,7 +3159,7 @@ export function render() {
         container.appendChild(empty);
       }
     }
-    renderList(setupListAll, tasks);
+    renderList(setupListAll, mainTasksOnly);
     renderList(setupListProd, prodTasks);
     renderList(setupListNonProd, nonProdTasks);
     renderList(setupListOther, otherTasks);
