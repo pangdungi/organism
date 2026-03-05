@@ -1,6 +1,5 @@
 import { signOut } from "./auth.js";
 import { render as renderCalendar } from "./views/Calendar.js";
-import { render as renderKpi } from "./views/Kpi.js";
 import { render as renderTime } from "./views/Time.js";
 import { render as renderRoutine } from "./views/Routine.js";
 import { render as renderWorkSchedule } from "./views/WorkSchedule.js";
@@ -15,7 +14,6 @@ import { render as renderIdea } from "./views/Idea.js";
 
 const TABS = [
   { id: "calendar", label: "캘린더" },
-  { id: "kpi", label: "인생 KPI" },
   { id: "time", label: "시간가계부" },
   { id: "routine", label: "루틴/해빗트랙커" },
   { id: "workschedule", label: "근무표" },
@@ -31,7 +29,6 @@ const TABS = [
 
 const RENDERERS = {
   calendar: renderCalendar,
-  kpi: renderKpi,
   time: renderTime,
   routine: renderRoutine,
   workschedule: renderWorkSchedule,

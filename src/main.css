@@ -46,6 +46,12 @@ body {
   font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
 }
 
+#app input,
+#app select,
+#app textarea {
+  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+}
+
 /* ----- 랜딩 페이지 (ClickUp 스타일) ----- */
 .landing-page {
   display: flex;
@@ -13873,10 +13879,18 @@ body.kpi-resizing {
   width: 100%;
 }
 
-/* 사이드바에서는 마감일 열 숨김 */
+/* 사이드바에서는 마감일 열 숨김, 남은 공간은 이름 열에 */
 .todo-list-in-sidebar .todo-th-due,
 .todo-list-in-sidebar .todo-cell-due {
   display: none;
+}
+
+.todo-list-in-sidebar .todo-table col.todo-col-due {
+  width: 0 !important;
+}
+
+.todo-list-in-sidebar .todo-table col.todo-col-name {
+  width: auto !important;
 }
 
 .calendar-todo-sidebar-body .todo-sections-wrap {
