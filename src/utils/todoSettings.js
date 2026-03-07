@@ -4,7 +4,7 @@
 const TODO_SETTINGS_KEY = "todo-settings";
 
 export const DEFAULT_SECTION_COLORS = {
-  braindump: "rgba(196, 181, 253, 0.5)",
+  braindump: "rgba(148, 163, 184, 0.5)",
   happy: "rgba(253, 186, 116, 0.5)",
   dream: "rgba(147, 197, 253, 0.5)",
   sideincome: "rgba(190, 242, 100, 0.5)",

@@ -14,7 +14,8 @@ function loadAll() {
 
 export function getSubtasks(taskId) {
   const all = loadAll();
-  return Array.isArray(all[taskId]) ? all[taskId] : [];
+  const items = Array.isArray(all[taskId]) ? all[taskId] : [];
+  return items.filter((it) => (it.name || "").trim() !== "");
 }
 
 export function setSubtasks(taskId, items) {
@@ -38,7 +39,9 @@ export function addSubtask(taskId, item = { name: "", done: false }) {
   const items = getSubtasks(taskId);
   const newItem = { id: genId(), name: item.name ?? "", done: !!item.done };
   items.push(newItem);
-  setSubtasks(taskId, items);
+  if ((newItem.name || "").trim() !== "") {
+    setSubtasks(taskId, items);
+  }
   return items;
 }
 

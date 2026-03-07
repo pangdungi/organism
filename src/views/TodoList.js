@@ -6,8 +6,9 @@
 import { getKpiTodosAsTasks, syncKpiTodoCompleted, removeAllCompletedKpiTodos, removeKpiTodo, updateKpiTodo, moveKpiTodoToSection, addBraindumpTodoToSection } from "../utils/kpiTodoSync.js";
 import { createTodoSettingsModal } from "../utils/todoSettingsModal.js";
 import { getTodoSettings } from "../utils/todoSettings.js";
-import { getSubtasks, addSubtask, updateSubtask, removeSubtask, clearSubtasks } from "../utils/todoSubtasks.js";
+import { getSubtasks, addSubtask, updateSubtask, removeSubtask, clearSubtasks, setSubtasks } from "../utils/todoSubtasks.js";
 import { createBraindumpContextMenu } from "../utils/braindumpContextMenu.js";
+import { createTodoCheckboxTypeMenu } from "../utils/todoCheckboxTypeMenu.js";
 
 const BRAINDUMP_STORAGE_KEY = "todo-braindump-tasks";
 
@@ -23,6 +24,7 @@ function loadBraindumpTasks() {
             ...t,
             sectionId: "braindump",
             sectionLabel: "브레인덤프",
+            itemType: t.itemType || "todo",
           }));
       }
     }
@@ -33,11 +35,15 @@ function loadBraindumpTasks() {
 function saveBraindumpTasks(tasks) {
   try {
     const toSave = tasks
-      .map(({ taskId, name, dueDate, done }) => ({
+      .map(({ taskId, name, startDate, dueDate, startTime, endTime, done, itemType }) => ({
         taskId,
         name: (name || "").trim(),
+        startDate: startDate || "",
         dueDate: dueDate || "",
+        startTime: startTime || "",
+        endTime: endTime || "",
         done: !!done,
+        itemType: itemType || "todo",
       }))
       .filter((t) => t.name !== "");
     localStorage.setItem(BRAINDUMP_STORAGE_KEY, JSON.stringify(toSave));
@@ -49,22 +55,68 @@ function collectBraindumpFromDOM(sectionsEl) {
   const braindumpSec = sectionsEl?.querySelector('.todo-section[data-section="braindump"]');
   braindumpSec?.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").forEach((row) => {
     const nameInput = row.querySelector(".todo-cell-name input");
+    const startInput = row.querySelector(".todo-start-input-hidden");
     const dueInput = row.querySelector(".todo-due-input-hidden");
+    const startTimeInput = row.querySelector(".todo-start-time-input");
+    const endTimeInput = row.querySelector(".todo-end-time-input");
     const doneCheck = row.querySelector(".todo-done-check");
+    const itemType = row.dataset.itemType || "todo";
     tasks.push({
       taskId: row.dataset.taskId || "",
       name: (nameInput?.value || "").trim(),
+      startDate: startInput?.value || "",
       dueDate: dueInput?.value || "",
-      done: doneCheck?.checked || false,
+      startTime: startTimeInput?.value || "",
+      endTime: endTimeInput?.value || "",
+      done: itemType === "todo" ? (doneCheck?.checked || false) : false,
+      itemType,
     });
   });
   return tasks;
+}
+
+const KPI_SECTION_IDS = ["dream", "sideincome", "happy", "health"];
+
+function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
+  if (!sectionsWrap) return;
+  KPI_SECTION_IDS.forEach((sectionId) => {
+    const sec = sectionsWrap.querySelector(`.todo-section[data-section="${sectionId}"]`);
+    if (!sec) return;
+    sec.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").forEach((row) => {
+      const nameInput = row.querySelector(".todo-cell-name input");
+      const startInput = row.querySelector(".todo-start-input-hidden");
+      const dueInput = row.querySelector(".todo-due-input-hidden");
+      const startTimeInput = row.querySelector(".todo-start-time-input");
+      const endTimeInput = row.querySelector(".todo-end-time-input");
+      const doneCheck = row.querySelector(".todo-done-check");
+      const name = (nameInput?.value || "").trim();
+      const startDate = startInput?.value || "";
+      const dueDate = dueInput?.value || "";
+      const startTime = startTimeInput?.value || "";
+      const endTime = endTimeInput?.value || "";
+      const done = doneCheck?.checked || false;
+      const itemType = row.dataset.itemType || "todo";
+      const kpiTodoId = row.dataset.kpiTodoId;
+      const storageKey = row.dataset.kpiStorageKey;
+
+      if (kpiTodoId && storageKey) {
+        if (name === "") {
+          removeKpiTodo(kpiTodoId, storageKey);
+        } else {
+          updateKpiTodo(kpiTodoId, storageKey, { text: name, startDate, dueDate, startTime, endTime, completed: done, itemType });
+        }
+      } else if (name !== "") {
+        addBraindumpTodoToSection(sectionId, { text: name, startDate, dueDate, startTime, endTime, completed: done, itemType });
+      }
+    });
+  });
 }
 
 export function saveTodoListBeforeUnmount(container) {
   const sectionsWrap = container?.querySelector(".todo-sections-wrap");
   if (sectionsWrap) {
     saveBraindumpTasks(collectBraindumpFromDOM(sectionsWrap));
+    collectAndSaveKpiTasksFromDOM(sectionsWrap);
   }
 }
 
@@ -411,7 +463,13 @@ function createSubtaskItem(parentTaskId, subtaskData, onRemove) {
   nameInput.placeholder = "세부 할일 입력";
   nameInput.addEventListener("blur", () => {
     const val = (nameInput.value || "").trim();
-    updateSubtask(parentTaskId, subtaskId, { name: val });
+    if (val === "") {
+      removeSubtask(parentTaskId, subtaskId);
+      wrap.remove();
+      onRemove?.();
+    } else {
+      updateSubtask(parentTaskId, subtaskId, { name: val });
+    }
   });
   nameInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.isComposing) {
@@ -441,15 +499,19 @@ function createSubtaskItem(parentTaskId, subtaskData, onRemove) {
 function createTaskRow(taskData = {}, options = {}) {
   const {
     name = "",
+    startDate = "",
     dueDate = "",
+    startTime = "",
+    endTime = "",
     classification = "",
     sectionLabel = "",
     done = false,
+    itemType = "todo",
     isKpiTodo = false,
     kpiTodoId = "",
     storageKey = "",
   } = taskData;
-  const { showCategoryCol = false, isSubtask = false, taskId: optTaskId, onBraindumpMutate = null } = options;
+  const { showCategoryCol = false, isSubtask = false, taskId: optTaskId, onBraindumpMutate = null, showCheckboxTypeMenu = null } = options;
   const taskId = optTaskId || getTaskId(taskData);
   const isBraindump = !taskData.isKpiTodo && (taskData.sectionId || "") === "braindump";
 
@@ -466,6 +528,9 @@ function createTaskRow(taskData = {}, options = {}) {
 
   const doneTd = document.createElement("td");
   doneTd.className = "todo-cell-done";
+  doneTd.dataset.itemType = itemType;
+  tr.dataset.itemType = itemType;
+
   const doneCheck = document.createElement("input");
   doneCheck.type = "checkbox";
   doneCheck.className = "todo-done-check";
@@ -475,7 +540,49 @@ function createTaskRow(taskData = {}, options = {}) {
       syncKpiTodoCompleted(kpiTodoId, storageKey, doneCheck.checked);
     } else if (isBraindump) onBraindumpMutate?.();
   });
-  doneTd.appendChild(doneCheck);
+
+  const scheduleIcon = document.createElement("img");
+  scheduleIcon.src = "/toolbaricons/radio-button.svg";
+  scheduleIcon.alt = "";
+  scheduleIcon.className = "todo-schedule-icon";
+  scheduleIcon.width = 18;
+  scheduleIcon.height = 18;
+
+  const doneWrap = document.createElement("div");
+  doneWrap.className = "todo-done-wrap";
+  if (itemType === "schedule") {
+    doneWrap.classList.add("todo-done-wrap--schedule");
+    doneCheck.hidden = true;
+    doneWrap.appendChild(scheduleIcon);
+  } else {
+    doneWrap.appendChild(doneCheck);
+  }
+  doneTd.appendChild(doneWrap);
+
+  const setItemType = (type) => {
+    tr.dataset.itemType = type;
+    doneTd.dataset.itemType = type;
+    doneWrap.classList.toggle("todo-done-wrap--schedule", type === "schedule");
+    if (type === "schedule") {
+      doneCheck.hidden = true;
+      doneCheck.checked = false;
+      if (!doneWrap.contains(scheduleIcon)) doneWrap.appendChild(scheduleIcon);
+      if (doneWrap.contains(doneCheck)) doneWrap.removeChild(doneCheck);
+    } else {
+      doneCheck.hidden = false;
+      if (doneWrap.contains(scheduleIcon)) doneWrap.removeChild(scheduleIcon);
+      if (!doneWrap.contains(doneCheck)) doneWrap.insertBefore(doneCheck, doneWrap.firstChild);
+    }
+    if (isBraindump) onBraindumpMutate?.();
+  };
+
+  if (showCheckboxTypeMenu && isBraindump) {
+    doneTd.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      showCheckboxTypeMenu(e.clientX, e.clientY, setItemType);
+    });
+  }
 
   const nameTd = document.createElement("td");
   nameTd.className = "todo-cell-name" + (isSubtask ? " todo-cell-name-subtask" : "");
@@ -487,10 +594,46 @@ function createTaskRow(taskData = {}, options = {}) {
   if (isKpiTodo && kpiTodoId && storageKey) {
     nameInput.addEventListener("blur", () => {
       const val = (nameInput.value || "").trim();
-      if (val !== name) updateKpiTodo(kpiTodoId, storageKey, { text: val });
+      if (val === "") {
+        if (removeKpiTodo(kpiTodoId, storageKey)) {
+          clearSubtasks(taskId);
+          tr.remove();
+          const section = tr.closest(".todo-section");
+          const tbody = tr.parentElement;
+          const countEl = section?.querySelector(".todo-section-count");
+          if (countEl && tbody) countEl.textContent = String(tbody.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").length);
+        }
+      } else if (val !== name) {
+        updateKpiTodo(kpiTodoId, storageKey, { text: val });
+      }
     });
   } else if (isBraindump) {
-    nameInput.addEventListener("blur", () => onBraindumpMutate?.());
+    nameInput.addEventListener("blur", () => {
+      const val = (nameInput.value || "").trim();
+      if (val === "") {
+        clearSubtasks(taskId);
+        tr.remove();
+        const section = tr.closest(".todo-section");
+        const tbody = tr.parentElement;
+        const countEl = section?.querySelector(".todo-section-count");
+        if (countEl && tbody) countEl.textContent = String(tbody.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").length);
+        onBraindumpMutate?.();
+      } else {
+        onBraindumpMutate?.();
+      }
+    });
+  } else {
+    nameInput.addEventListener("blur", () => {
+      const val = (nameInput.value || "").trim();
+      if (val === "") {
+        clearSubtasks(taskId);
+        tr.remove();
+        const section = tr.closest(".todo-section");
+        const tbody = tr.parentElement;
+        const countEl = section?.querySelector(".todo-section-count");
+        if (countEl && tbody) countEl.textContent = String(tbody.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").length);
+      }
+    });
   }
   nameInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.isComposing) {
@@ -512,12 +655,13 @@ function createTaskRow(taskData = {}, options = {}) {
         const countEl = section?.querySelector(".todo-section-count");
         if (countEl) countEl.textContent = String(tr.closest("tbody")?.querySelectorAll(".todo-task-row").length || 0);
       };
-      addSubtask(taskId, { name: "", done: false });
-      const subs = getSubtasks(taskId);
+      const subs = addSubtask(taskId, { name: "", done: false });
       const newItem = createSubtaskItem(taskId, subs[subs.length - 1], updateCount);
       const container = nameTd.querySelector(".todo-subtasks-container");
       if (container) container.appendChild(newItem);
       updateCount();
+      const subInput = newItem.querySelector(".todo-subtask-input");
+      if (subInput) subInput.focus();
     });
     nameWrap.appendChild(listBtn);
   }
@@ -527,6 +671,50 @@ function createTaskRow(taskData = {}, options = {}) {
     subtasksContainer.className = "todo-subtasks-container";
     nameTd.appendChild(subtasksContainer);
   }
+
+  const startTd = document.createElement("td");
+  startTd.className = "todo-cell-start";
+  const startWrap = document.createElement("div");
+  startWrap.className = "todo-due-wrap";
+  const startDisplay = document.createElement("span");
+  startDisplay.className = "todo-due-display";
+  if (startDate && startDate.includes("-")) {
+    const [y, m, d] = startDate.split("-");
+    startDisplay.innerHTML = y && m && d ? `<span class="todo-due-date-text">${m}/${d}</span>` : '<span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
+  } else {
+    startDisplay.innerHTML =
+      '<span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
+  }
+  const startInput = document.createElement("input");
+  startInput.type = "date";
+  startInput.className = "todo-start-input-hidden";
+  startInput.value = startDate;
+  const syncStartDisplay = () => {
+    const val = startInput.value;
+    if (val && val.includes("-")) {
+      const [y, m, d] = val.split("-");
+      startDisplay.innerHTML = y && m && d ? `<span class="todo-due-date-text">${m}/${d}</span>` : '<span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
+    } else {
+      startDisplay.innerHTML =
+        '<span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
+    }
+  };
+  startInput.addEventListener("change", () => {
+    syncStartDisplay();
+    if (isKpiTodo && kpiTodoId && storageKey) {
+      updateKpiTodo(kpiTodoId, storageKey, { startDate: startInput.value });
+    } else if (isBraindump) onBraindumpMutate?.();
+  });
+  startWrap.addEventListener("click", () => {
+    startInput.focus();
+    if (startInput._flatpickr) startInput._flatpickr.open();
+    else if (typeof startInput.showPicker === "function") startInput.showPicker();
+    else startInput.click();
+  });
+  startWrap.style.cursor = "pointer";
+  startWrap.appendChild(startDisplay);
+  startWrap.appendChild(startInput);
+  startTd.appendChild(startWrap);
 
   const dueTd = document.createElement("td");
   dueTd.className = "todo-cell-due";
@@ -555,6 +743,15 @@ function createTaskRow(taskData = {}, options = {}) {
         '<span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
     }
   };
+  const syncDateMinMax = () => {
+    const s = startInput.value || "";
+    const d = dueInput.value || "";
+    startInput.max = d || "";
+    dueInput.min = s || "";
+  };
+  syncDateMinMax();
+  startInput.addEventListener("change", syncDateMinMax);
+  dueInput.addEventListener("change", syncDateMinMax);
   dueInput.addEventListener("change", () => {
     syncDueDisplay();
     if (isKpiTodo && kpiTodoId && storageKey) {
@@ -573,6 +770,72 @@ function createTaskRow(taskData = {}, options = {}) {
   dueWrap.appendChild(dueDisplay);
   dueWrap.appendChild(dueInput);
   dueTd.appendChild(dueWrap);
+
+  const formatTimeDisplay = (val) => {
+    if (!val || typeof val !== "string") return "-";
+    const m = val.match(/^(\d{1,2}):(\d{2})/);
+    return m ? `${m[1].padStart(2, "0")}:${m[2]}` : "-";
+  };
+
+  const startTimeTd = document.createElement("td");
+  startTimeTd.className = "todo-cell-start-time";
+  const startTimeWrap = document.createElement("div");
+  startTimeWrap.className = "todo-time-wrap";
+  const startTimeDisplay = document.createElement("span");
+  startTimeDisplay.className = "todo-time-display";
+  startTimeDisplay.textContent = formatTimeDisplay(startTime);
+  const startTimeInput = document.createElement("input");
+  startTimeInput.type = "time";
+  startTimeInput.className = "todo-start-time-input";
+  startTimeInput.value = startTime;
+  const syncStartTimeDisplay = () => {
+    startTimeDisplay.textContent = formatTimeDisplay(startTimeInput.value);
+  };
+  startTimeInput.addEventListener("change", () => {
+    syncStartTimeDisplay();
+    if (isKpiTodo && kpiTodoId && storageKey) {
+      updateKpiTodo(kpiTodoId, storageKey, { startTime: startTimeInput.value });
+    } else if (isBraindump) onBraindumpMutate?.();
+  });
+  startTimeWrap.addEventListener("click", () => {
+    startTimeInput.focus();
+    if (typeof startTimeInput.showPicker === "function") startTimeInput.showPicker();
+    else startTimeInput.click();
+  });
+  startTimeWrap.style.cursor = "pointer";
+  startTimeWrap.appendChild(startTimeDisplay);
+  startTimeWrap.appendChild(startTimeInput);
+  startTimeTd.appendChild(startTimeWrap);
+
+  const endTimeTd = document.createElement("td");
+  endTimeTd.className = "todo-cell-end-time";
+  const endTimeWrap = document.createElement("div");
+  endTimeWrap.className = "todo-time-wrap";
+  const endTimeDisplay = document.createElement("span");
+  endTimeDisplay.className = "todo-time-display";
+  endTimeDisplay.textContent = formatTimeDisplay(endTime);
+  const endTimeInput = document.createElement("input");
+  endTimeInput.type = "time";
+  endTimeInput.className = "todo-end-time-input";
+  endTimeInput.value = endTime;
+  const syncEndTimeDisplay = () => {
+    endTimeDisplay.textContent = formatTimeDisplay(endTimeInput.value);
+  };
+  endTimeInput.addEventListener("change", () => {
+    syncEndTimeDisplay();
+    if (isKpiTodo && kpiTodoId && storageKey) {
+      updateKpiTodo(kpiTodoId, storageKey, { endTime: endTimeInput.value });
+    } else if (isBraindump) onBraindumpMutate?.();
+  });
+  endTimeWrap.addEventListener("click", () => {
+    endTimeInput.focus();
+    if (typeof endTimeInput.showPicker === "function") endTimeInput.showPicker();
+    else endTimeInput.click();
+  });
+  endTimeWrap.style.cursor = "pointer";
+  endTimeWrap.appendChild(endTimeDisplay);
+  endTimeWrap.appendChild(endTimeInput);
+  endTimeTd.appendChild(endTimeWrap);
 
   const delTd = document.createElement("td");
   delTd.className = "todo-cell-delete";
@@ -598,7 +861,10 @@ function createTaskRow(taskData = {}, options = {}) {
 
   tr.appendChild(doneTd);
   tr.appendChild(nameTd);
+  tr.appendChild(startTd);
   tr.appendChild(dueTd);
+  tr.appendChild(startTimeTd);
+  tr.appendChild(endTimeTd);
   if (!options.hideCategoryCol) {
     const lastColTd = document.createElement("td");
     lastColTd.className = "todo-cell-category";
@@ -619,7 +885,7 @@ function createTaskRow(taskData = {}, options = {}) {
 }
 
 function createSection(section, options = {}) {
-  const { lastColHeader = "분류", initialTasks = [], showCategoryCol = false, sectionIdForAdd = null, hideCategoryCol = true, tabMode = false, onBraindumpMutate = null } = options;
+  const { lastColHeader = "분류", initialTasks = [], showCategoryCol = false, sectionIdForAdd = null, hideCategoryCol = true, tabMode = false, onBraindumpMutate = null, showCheckboxTypeMenu = null } = options;
   const sectionId = sectionIdForAdd ?? section.id;
 
   const wrap = document.createElement("div");
@@ -651,15 +917,21 @@ function createSection(section, options = {}) {
     ? `<colgroup>
       <col class="todo-col-done" style="width: 2rem">
       <col class="todo-col-name">
-      <col class="todo-col-due" style="width: 5rem">
-      <col class="todo-col-delete" style="width: 0">
+      <col class="todo-col-start" style="width: 4.5rem">
+      <col class="todo-col-due" style="width: 4.5rem">
+      <col class="todo-col-start-time" style="width: 5.5rem">
+      <col class="todo-col-end-time" style="width: 5.5rem">
+      <col class="todo-col-delete" style="width: 2.5rem">
     </colgroup>`
     : `<colgroup>
       <col class="todo-col-done" style="width: 2rem">
       <col class="todo-col-name">
-      <col class="todo-col-due" style="width: 5rem">
+      <col class="todo-col-start" style="width: 4.5rem">
+      <col class="todo-col-due" style="width: 4.5rem">
+      <col class="todo-col-start-time" style="width: 5.5rem">
+      <col class="todo-col-end-time" style="width: 5.5rem">
       <col class="todo-col-category" style="width: 5rem">
-      <col class="todo-col-delete" style="width: 0">
+      <col class="todo-col-delete" style="width: 2.5rem">
     </colgroup>`;
   const theadCategoryTh = hideCategoryCol ? "" : `<th class="todo-th-category">${lastColHeader}</th>`;
   table.innerHTML = `
@@ -668,7 +940,10 @@ function createSection(section, options = {}) {
       <tr>
         <th class="todo-th-done"></th>
         <th class="todo-th-name">Name</th>
+        <th class="todo-th-start">시작일</th>
         <th class="todo-th-due">마감일</th>
+        <th class="todo-th-start-time">시작시간</th>
+        <th class="todo-th-end-time">종료시간</th>
         ${theadCategoryTh}
         <th class="todo-th-delete"></th>
       </tr>
@@ -680,7 +955,7 @@ function createSection(section, options = {}) {
   initialTasks.forEach((t) => {
     const taskId = t.taskId || getTaskId(t);
     t.taskId = taskId;
-    const tr = createTaskRow(t, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, onBraindumpMutate });
+    const tr = createTaskRow(t, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, onBraindumpMutate, showCheckboxTypeMenu });
     tr.dataset.sectionId = t.sectionId || "";
     tbody.appendChild(tr);
     const container = tr.querySelector(".todo-subtasks-container");
@@ -695,7 +970,7 @@ function createSection(section, options = {}) {
   const addRow = document.createElement("tr");
   addRow.className = "todo-add-row";
   addRow.innerHTML = `
-    <td colspan="${hideCategoryCol ? 4 : 5}" class="todo-add-cell">
+    <td colspan="${hideCategoryCol ? 7 : 8}" class="todo-add-cell">
       <button type="button" class="todo-add-btn" title="할 일 추가">${ADD_TASK_ICON}</button>
     </td>
   `;
@@ -718,10 +993,13 @@ function createSection(section, options = {}) {
       : { sectionId };
     const taskId = getTaskId(taskData);
     taskData.taskId = taskId;
-    const tr = createTaskRow(taskData, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, onBraindumpMutate });
+    const tr = createTaskRow(taskData, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, onBraindumpMutate, showCheckboxTypeMenu });
     tbody.insertBefore(tr, addRow);
     updateCount();
-    if (sectionId === "braindump") onBraindumpMutate?.();
+    const nameInput = tr.querySelector(".todo-cell-name input");
+    if (nameInput) {
+      nameInput.focus();
+    }
   });
 
   if (header) {
@@ -745,7 +1023,10 @@ function collectTasksFromDOM(sectionsEl) {
     const isCategoryView = sectionIds.has(secId);
     sec.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").forEach((row) => {
       const nameInput = row.querySelector(".todo-cell-name input");
+      const startInput = row.querySelector(".todo-start-input-hidden");
       const dueInput = row.querySelector(".todo-due-input-hidden");
+      const startTimeInput = row.querySelector(".todo-start-time-input");
+      const endTimeInput = row.querySelector(".todo-end-time-input");
       const catCell = row.querySelector(".todo-cell-category");
       const catInput = catCell?.querySelector(".todo-category-input");
       const doneCheck = row.querySelector(".todo-done-check");
@@ -756,7 +1037,10 @@ function collectTasksFromDOM(sectionsEl) {
         : secId;
       const task = {
         name: nameInput?.value || "",
+        startDate: startInput?.value || "",
         dueDate: dueInput?.value || "",
+        startTime: startTimeInput?.value || "",
+        endTime: endTimeInput?.value || "",
         classification,
         sectionId: rowSectionId,
         sectionLabel,
@@ -774,7 +1058,7 @@ function collectTasksFromDOM(sectionsEl) {
 }
 
 function renderSections(container, tasksData = [], options = {}) {
-  const { tabMode = false } = options;
+  const { tabMode = false, showCheckboxTypeMenu = null } = options;
   const onBraindumpMutate = () => saveBraindumpTasks(collectBraindumpFromDOM(container));
   container.innerHTML = "";
   const results = [];
@@ -788,6 +1072,7 @@ function renderSections(container, tasksData = [], options = {}) {
       hideCategoryCol: true,
       tabMode,
       onBraindumpMutate: section.id === "braindump" ? onBraindumpMutate : null,
+      showCheckboxTypeMenu,
     });
     container.appendChild(wrap);
     results.push({ section, wrap, updateCount });
@@ -907,10 +1192,14 @@ export function render(options = {}) {
   const sectionsWrap = document.createElement("div");
   sectionsWrap.className = "todo-sections-wrap todo-tab-panels";
 
+  const { menu: checkboxTypeMenu, show: showCheckboxTypeMenu } = createTodoCheckboxTypeMenu();
+  checkboxTypeMenu.hidden = true;
+  el.appendChild(checkboxTypeMenu);
+
   const kpiTasks = getKpiTodosAsTasks();
   const braindumpTasks = loadBraindumpTasks();
   const allTasks = [...braindumpTasks, ...kpiTasks];
-  const sectionResults = renderSections(sectionsWrap, allTasks, { tabMode: true });
+  const sectionResults = renderSections(sectionsWrap, allTasks, { tabMode: true, showCheckboxTypeMenu });
 
   function updateTabLabels() {
     tabButtons.forEach((btn, i) => {
@@ -956,23 +1245,31 @@ export function render(options = {}) {
     const fromSectionId = section?.dataset.section || row.dataset.sectionId || "";
     if (fromSectionId === targetSectionId) return;
 
+    const oldTaskId = row.dataset.taskId || "";
+    const subtasksToMove = getSubtasks(oldTaskId);
+
     const nameInput = row.querySelector(".todo-cell-name input");
+    const startInput = row.querySelector(".todo-start-input-hidden");
     const dueInput = row.querySelector(".todo-due-input-hidden");
+    const startTimeInput = row.querySelector(".todo-start-time-input");
+    const endTimeInput = row.querySelector(".todo-end-time-input");
     const doneCheck = row.querySelector(".todo-done-check");
     const name = (nameInput?.value || "").trim();
+    const startDate = startInput?.value || "";
     const dueDate = dueInput?.value || "";
+    const startTime = startTimeInput?.value || "";
+    const endTime = endTimeInput?.value || "";
     const done = doneCheck?.checked || false;
+    const itemType = row.dataset.itemType || "todo";
 
     let result = { success: false };
     if (fromSectionId === "braindump") {
-      result = addBraindumpTodoToSection(targetSectionId, { text: name, dueDate, completed: done });
-      if (result.success) clearSubtasks(row.dataset.taskId || "");
+      result = addBraindumpTodoToSection(targetSectionId, { text: name, startDate, dueDate, startTime, endTime, completed: done, itemType });
     } else if (targetSectionId === "braindump") {
       const kpiTodoId = row.dataset.kpiTodoId;
       const storageKey = row.dataset.kpiStorageKey;
       if (kpiTodoId && storageKey && removeKpiTodo(kpiTodoId, storageKey)) {
-        clearSubtasks(row.dataset.taskId || "");
-        result = { success: true, task: { name, dueDate, done, sectionId: "braindump", sectionLabel: "브레인덤프" } };
+        result = { success: true, task: { name, startDate, dueDate, startTime, endTime, done, itemType, sectionId: "braindump", sectionLabel: "브레인덤프" } };
       }
     } else {
       const kpiTodoId = row.dataset.kpiTodoId;
@@ -988,7 +1285,7 @@ export function render(options = {}) {
         const targetTbody = targetResult.wrap.querySelector("tbody");
         const addRow = targetTbody?.querySelector(".todo-add-row");
         const taskData = result.task.sectionId === "braindump"
-          ? { name, dueDate, done, sectionId: "braindump", sectionLabel: "브레인덤프" }
+          ? { name, startDate, dueDate, startTime, endTime, done, itemType, sectionId: "braindump", sectionLabel: "브레인덤프" }
           : result.task;
         const taskId = getTaskId(taskData);
         taskData.taskId = taskId;
@@ -998,9 +1295,23 @@ export function render(options = {}) {
           isSubtask: false,
           taskId,
           onBraindumpMutate: targetSectionId === "braindump" ? onBraindumpMutate : null,
+          showCheckboxTypeMenu,
         });
         newTr.dataset.sectionId = targetSectionId;
         if (addRow) targetTbody.insertBefore(newTr, addRow);
+
+        setSubtasks(taskId, subtasksToMove);
+        const container = newTr.querySelector(".todo-subtasks-container");
+        const updateCount = () => {
+          const countEl = targetResult.wrap?.querySelector(".todo-section-count");
+          if (countEl) countEl.textContent = String(targetTbody?.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").length || 0);
+        };
+        subtasksToMove.forEach((st) => {
+          const item = createSubtaskItem(taskId, st, updateCount);
+          if (container) container.appendChild(item);
+        });
+
+        clearSubtasks(oldTaskId);
         targetResult.updateCount();
       }
       row.remove();

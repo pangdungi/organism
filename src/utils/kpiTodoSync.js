@@ -37,7 +37,10 @@ export function getKpiTodosAsTasks() {
     const kpiName = kpi.name || "(KPI)";
     tasks.push({
       name: todo.text || "",
+      startDate: todo.startDate || "",
       dueDate: todo.dueDate || "",
+      startTime: todo.startTime || "",
+      endTime: todo.endTime || "",
       classification: kpiName,
       sectionId: "dream",
       sectionLabel: "꿈",
@@ -47,6 +50,7 @@ export function getKpiTodosAsTasks() {
       domain: "dream",
       kpiId: kpi.id,
       storageKey: DREAM_MAP_KEY,
+      itemType: todo.itemType || "todo",
     });
   });
 
@@ -58,7 +62,10 @@ export function getKpiTodosAsTasks() {
     const kpiName = kpi.name || "(KPI)";
     tasks.push({
       name: todo.text || "",
+      startDate: todo.startDate || "",
       dueDate: todo.dueDate || "",
+      startTime: todo.startTime || "",
+      endTime: todo.endTime || "",
       classification: kpiName,
       sectionId: "sideincome",
       sectionLabel: "부수입",
@@ -68,6 +75,7 @@ export function getKpiTodosAsTasks() {
       domain: "sideincome",
       kpiId: kpi.id,
       storageKey: SIDEINCOME_KEY,
+      itemType: todo.itemType || "todo",
     });
   });
 
@@ -79,7 +87,10 @@ export function getKpiTodosAsTasks() {
     const kpiName = kpi.name || "(KPI)";
     tasks.push({
       name: todo.text || "",
+      startDate: todo.startDate || "",
       dueDate: todo.dueDate || "",
+      startTime: todo.startTime || "",
+      endTime: todo.endTime || "",
       classification: kpiName,
       sectionId: "happy",
       sectionLabel: "행복",
@@ -89,6 +100,7 @@ export function getKpiTodosAsTasks() {
       domain: "happy",
       kpiId: kpi.id,
       storageKey: HAPPINESS_KEY,
+      itemType: todo.itemType || "todo",
     });
   });
 
@@ -100,7 +112,10 @@ export function getKpiTodosAsTasks() {
     const kpiName = kpi.name || "(KPI)";
     tasks.push({
       name: todo.text || "",
+      startDate: todo.startDate || "",
       dueDate: todo.dueDate || "",
+      startTime: todo.startTime || "",
+      endTime: todo.endTime || "",
       classification: kpiName,
       sectionId: "health",
       sectionLabel: "건강",
@@ -110,6 +125,7 @@ export function getKpiTodosAsTasks() {
       domain: "health",
       kpiId: kpi.id,
       storageKey: HEALTH_KEY,
+      itemType: todo.itemType || "todo",
     });
   });
 
@@ -132,7 +148,12 @@ export function updateKpiTodo(kpiTodoId, storageKey, updates) {
     const todo = data.kpiTodos.find((t) => t.id === kpiTodoId);
     if (!todo) return false;
     if (updates.text !== undefined) todo.text = String(updates.text).trim();
+    if (updates.startDate !== undefined) todo.startDate = updates.startDate ? String(updates.startDate).trim() : "";
     if (updates.dueDate !== undefined) todo.dueDate = updates.dueDate ? String(updates.dueDate).trim() : "";
+    if (updates.startTime !== undefined) todo.startTime = updates.startTime ? String(updates.startTime).trim() : "";
+    if (updates.endTime !== undefined) todo.endTime = updates.endTime ? String(updates.endTime).trim() : "";
+    if (updates.itemType !== undefined) todo.itemType = updates.itemType === "schedule" ? "schedule" : "todo";
+    if (updates.completed !== undefined) todo.completed = !!updates.completed;
     localStorage.setItem(storageKey, JSON.stringify(data));
     return true;
   } catch (_) {}
@@ -263,18 +284,26 @@ export function moveKpiTodoToSection(kpiTodoId, fromStorageKey, toSectionId) {
 
     const newId = nextId();
     toData.kpiTodos = toData.kpiTodos || [];
+    const itemType = todo.itemType === "schedule" ? "schedule" : "todo";
     toData.kpiTodos.push({
       id: newId,
       kpiId: toKpiId,
       text: (todo.text || "").trim(),
+      startDate: todo.startDate || "",
       dueDate: todo.dueDate || "",
+      startTime: todo.startTime || "",
+      endTime: todo.endTime || "",
       completed: !!todo.completed,
+      itemType,
     });
     localStorage.setItem(toStorageKey, JSON.stringify(toData));
 
     const task = {
       name: (todo.text || "").trim(),
+      startDate: todo.startDate || "",
       dueDate: todo.dueDate || "",
+      startTime: todo.startTime || "",
+      endTime: todo.endTime || "",
       classification: kpiName,
       sectionId: sectionMeta.sectionId,
       sectionLabel: sectionMeta.sectionLabel,
@@ -284,6 +313,7 @@ export function moveKpiTodoToSection(kpiTodoId, fromStorageKey, toSectionId) {
       domain: toSectionId,
       kpiId: toKpiId,
       storageKey: toStorageKey,
+      itemType,
     };
     return { success: true, task };
   } catch (_) {}
@@ -293,7 +323,7 @@ export function moveKpiTodoToSection(kpiTodoId, fromStorageKey, toSectionId) {
 /**
  * 브레인덤프 할일을 KPI 섹션에 추가
  * @param {string} toSectionId - dream | sideincome | health | happy
- * @param {{ text: string, dueDate?: string, completed?: boolean }} todoData
+ * @param {{ text: string, startDate?: string, dueDate?: string, completed?: boolean, itemType?: "todo"|"schedule" }} todoData
  * @returns {{ success: boolean, task?: object }}
  */
 export function addBraindumpTodoToSection(toSectionId, todoData) {
@@ -319,18 +349,26 @@ export function addBraindumpTodoToSection(toSectionId, todoData) {
 
     data.kpiTodos = data.kpiTodos || [];
     const newId = nextId();
+    const itemType = todoData.itemType === "schedule" ? "schedule" : "todo";
     data.kpiTodos.push({
       id: newId,
       kpiId: toKpiId,
       text: (todoData.text || "").trim(),
+      startDate: todoData.startDate || "",
       dueDate: todoData.dueDate || "",
+      startTime: todoData.startTime || "",
+      endTime: todoData.endTime || "",
       completed: !!todoData.completed,
+      itemType,
     });
     localStorage.setItem(toStorageKey, JSON.stringify(data));
 
     const task = {
       name: (todoData.text || "").trim(),
+      startDate: todoData.startDate || "",
       dueDate: todoData.dueDate || "",
+      startTime: todoData.startTime || "",
+      endTime: todoData.endTime || "",
       classification: kpiName,
       sectionId: sectionMeta.sectionId,
       sectionLabel: sectionMeta.sectionLabel,
@@ -340,6 +378,106 @@ export function addBraindumpTodoToSection(toSectionId, todoData) {
       domain: toSectionId,
       kpiId: toKpiId,
       storageKey: toStorageKey,
+      itemType,
+    };
+    return { success: true, task };
+  } catch (_) {}
+  return { success: false };
+}
+
+/**
+ * 캘린더에서 날짜셀 클릭 시 할일/일정 추가
+ * @param {string} toSectionId - dream | sideincome | health | happy
+ * @param {{ text: string, dueDate: string, itemType: "todo"|"schedule" }} todoData
+ * @returns {{ success: boolean, task?: object }}
+ */
+export function addCalendarTodoToSection(toSectionId, todoData) {
+  const toStorageKey = SECTION_TO_STORAGE[toSectionId];
+  if (!toStorageKey) return { success: false };
+  if (!(todoData.text || "").trim()) return { success: false };
+  if (!(todoData.dueDate || "").trim()) return { success: false };
+
+  const toKpiId = getFirstKpiId(toStorageKey);
+  if (!toKpiId) return { success: false };
+
+  try {
+    const raw = localStorage.getItem(toStorageKey);
+    const data = raw ? JSON.parse(raw) : { kpis: [], kpiTodos: [] };
+    const kpi = (data.kpis || []).find((k) => k.id === toKpiId);
+    const kpiName = kpi?.name || "(KPI)";
+
+    const sectionMeta = {
+      dream: { sectionId: "dream", sectionLabel: "꿈" },
+      sideincome: { sectionId: "sideincome", sectionLabel: "부수입" },
+      happy: { sectionId: "happy", sectionLabel: "행복" },
+      health: { sectionId: "health", sectionLabel: "건강" },
+    }[toSectionId];
+
+    data.kpiTodos = data.kpiTodos || [];
+    const newId = nextId();
+    const itemType = todoData.itemType === "schedule" ? "schedule" : "todo";
+    data.kpiTodos.push({
+      id: newId,
+      kpiId: toKpiId,
+      text: (todoData.text || "").trim(),
+      dueDate: (todoData.dueDate || "").trim(),
+      completed: false,
+      itemType,
+    });
+    localStorage.setItem(toStorageKey, JSON.stringify(data));
+
+    const task = {
+      name: (todoData.text || "").trim(),
+      dueDate: (todoData.dueDate || "").trim(),
+      classification: kpiName,
+      sectionId: sectionMeta.sectionId,
+      sectionLabel: sectionMeta.sectionLabel,
+      done: false,
+      isKpiTodo: true,
+      kpiTodoId: newId,
+      domain: toSectionId,
+      kpiId: toKpiId,
+      storageKey: toStorageKey,
+      itemType,
+    };
+    return { success: true, task };
+  } catch (_) {}
+  return { success: false };
+}
+
+const BRAINDUMP_STORAGE_KEY = "todo-braindump-tasks";
+
+/**
+ * 캘린더에서 브레인덤프 할일/일정 추가
+ * @param {{ text: string, dueDate: string, itemType: "todo"|"schedule" }} todoData
+ * @returns {{ success: boolean, task?: object }}
+ */
+export function addCalendarTodoToBraindump(todoData) {
+  if (!(todoData.text || "").trim()) return { success: false };
+  if (!(todoData.dueDate || "").trim()) return { success: false };
+
+  try {
+    const raw = localStorage.getItem(BRAINDUMP_STORAGE_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    const list = Array.isArray(arr) ? [...arr] : [];
+    const taskId = `task-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const itemType = todoData.itemType === "schedule" ? "schedule" : "todo";
+    list.push({
+      taskId,
+      name: (todoData.text || "").trim(),
+      dueDate: (todoData.dueDate || "").trim(),
+      done: false,
+      itemType,
+    });
+    localStorage.setItem(BRAINDUMP_STORAGE_KEY, JSON.stringify(list));
+
+    const task = {
+      name: (todoData.text || "").trim(),
+      dueDate: (todoData.dueDate || "").trim(),
+      sectionId: "braindump",
+      sectionLabel: "브레인덤프",
+      done: false,
+      itemType,
     };
     return { success: true, task };
   } catch (_) {}

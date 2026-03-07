@@ -1,6 +1,7 @@
 import { signOut } from "./auth.js";
 import { observeDatePickerInit } from "./utils/datePickerInit.js";
 import { render as renderCalendar } from "./views/Calendar.js";
+import { saveTodoListBeforeUnmount } from "./views/TodoList.js";
 import { render as renderTime } from "./views/Time.js";
 import { render as renderRoutine } from "./views/Routine.js";
 import { render as renderWorkSchedule } from "./views/WorkSchedule.js";
@@ -173,6 +174,7 @@ export function mountApp(container) {
   function renderMain(mainEl) {
     const p = mainEl?.querySelector(".app-tab-panel");
     if (!p) return;
+    saveTodoListBeforeUnmount(p);
     p.innerHTML = "";
     const render = RENDERERS[currentTabId];
     if (render) {

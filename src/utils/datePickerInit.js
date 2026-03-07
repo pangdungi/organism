@@ -9,7 +9,7 @@ import "flatpickr/dist/flatpickr.min.css";
 const inited = new WeakSet();
 
 const defaultOptions = {
-  locale: Korean,
+  locale: { ...Korean, firstDayOfWeek: 1 },
   allowInput: true,
   disableMobile: false,
 };
@@ -25,7 +25,7 @@ export function initDatePicker(inputEl, options = {}) {
 
 export function initDatePickersIn(container) {
   if (!container) return;
-  container.querySelectorAll('input[type="date"]').forEach((el) => initDatePicker(el));
+  container.querySelectorAll('input[type="date"]:not(.todo-due-input-hidden):not(.todo-start-input-hidden)').forEach((el) => initDatePicker(el));
 }
 
 export function observeDatePickerInit(container) {
