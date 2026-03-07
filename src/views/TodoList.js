@@ -3,12 +3,70 @@
  * KPI 할일(꿈/부수입/행복/건강) 연동: 마감일 없음, 꿈이름 자동, 분류=KPI이름
  */
 
-import { getKpiTodosAsTasks, syncKpiTodoCompleted, removeAllCompletedKpiTodos, removeKpiTodo, updateKpiTodo } from "../utils/kpiTodoSync.js";
+import { getKpiTodosAsTasks, syncKpiTodoCompleted, removeAllCompletedKpiTodos, removeKpiTodo, updateKpiTodo, moveKpiTodoToSection, addBraindumpTodoToSection } from "../utils/kpiTodoSync.js";
 import { createTodoSettingsModal } from "../utils/todoSettingsModal.js";
 import { getTodoSettings } from "../utils/todoSettings.js";
 import { getSubtasks, addSubtask, updateSubtask, removeSubtask, clearSubtasks } from "../utils/todoSubtasks.js";
+import { createBraindumpContextMenu } from "../utils/braindumpContextMenu.js";
 
-export function saveTodoListBeforeUnmount() {}
+const BRAINDUMP_STORAGE_KEY = "todo-braindump-tasks";
+
+function loadBraindumpTasks() {
+  try {
+    const raw = localStorage.getItem(BRAINDUMP_STORAGE_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) {
+        return arr
+          .filter((t) => (t.name || "").trim() !== "")
+          .map((t) => ({
+            ...t,
+            sectionId: "braindump",
+            sectionLabel: "브레인덤프",
+          }));
+      }
+    }
+  } catch (_) {}
+  return [];
+}
+
+function saveBraindumpTasks(tasks) {
+  try {
+    const toSave = tasks
+      .map(({ taskId, name, dueDate, done }) => ({
+        taskId,
+        name: (name || "").trim(),
+        dueDate: dueDate || "",
+        done: !!done,
+      }))
+      .filter((t) => t.name !== "");
+    localStorage.setItem(BRAINDUMP_STORAGE_KEY, JSON.stringify(toSave));
+  } catch (_) {}
+}
+
+function collectBraindumpFromDOM(sectionsEl) {
+  const tasks = [];
+  const braindumpSec = sectionsEl?.querySelector('.todo-section[data-section="braindump"]');
+  braindumpSec?.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").forEach((row) => {
+    const nameInput = row.querySelector(".todo-cell-name input");
+    const dueInput = row.querySelector(".todo-due-input-hidden");
+    const doneCheck = row.querySelector(".todo-done-check");
+    tasks.push({
+      taskId: row.dataset.taskId || "",
+      name: (nameInput?.value || "").trim(),
+      dueDate: dueInput?.value || "",
+      done: doneCheck?.checked || false,
+    });
+  });
+  return tasks;
+}
+
+export function saveTodoListBeforeUnmount(container) {
+  const sectionsWrap = container?.querySelector(".todo-sections-wrap");
+  if (sectionsWrap) {
+    saveBraindumpTasks(collectBraindumpFromDOM(sectionsWrap));
+  }
+}
 
 const TODO_CATEGORY_OPTIONS_KEY = "todo_category_options";
 const DEFAULT_CATEGORIES = ["학업", "잡무", "사이드프로젝트", "회사"];
@@ -356,13 +414,11 @@ function createSubtaskItem(parentTaskId, subtaskData, onRemove) {
     updateSubtask(parentTaskId, subtaskId, { name: val });
   });
   nameInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.isComposing) {
       e.preventDefault();
       nameInput.blur();
     }
   });
-  inputGroup.appendChild(doneCheck);
-  inputGroup.appendChild(nameInput);
   const delBtn = document.createElement("button");
   delBtn.type = "button";
   delBtn.className = "todo-task-delete-btn todo-subtask-delete-btn";
@@ -374,9 +430,11 @@ function createSubtaskItem(parentTaskId, subtaskData, onRemove) {
     wrap.remove();
     onRemove?.();
   });
-  nameWrap.appendChild(inputGroup);
-  nameWrap.appendChild(delBtn);
+  inputGroup.appendChild(doneCheck);
+  inputGroup.appendChild(nameInput);
+  inputGroup.appendChild(delBtn);
   wrap.appendChild(nameWrap);
+  nameWrap.appendChild(inputGroup);
   return wrap;
 }
 
@@ -391,8 +449,9 @@ function createTaskRow(taskData = {}, options = {}) {
     kpiTodoId = "",
     storageKey = "",
   } = taskData;
-  const { showCategoryCol = false, isSubtask = false, taskId: optTaskId } = options;
+  const { showCategoryCol = false, isSubtask = false, taskId: optTaskId, onBraindumpMutate = null } = options;
   const taskId = optTaskId || getTaskId(taskData);
+  const isBraindump = !taskData.isKpiTodo && (taskData.sectionId || "") === "braindump";
 
   const tr = document.createElement("tr");
   tr.className = "todo-task-row" + (isSubtask ? " todo-subtask-row" : "");
@@ -414,7 +473,7 @@ function createTaskRow(taskData = {}, options = {}) {
   doneCheck.addEventListener("change", () => {
     if (isKpiTodo && kpiTodoId && storageKey) {
       syncKpiTodoCompleted(kpiTodoId, storageKey, doneCheck.checked);
-    }
+    } else if (isBraindump) onBraindumpMutate?.();
   });
   doneTd.appendChild(doneCheck);
 
@@ -430,9 +489,11 @@ function createTaskRow(taskData = {}, options = {}) {
       const val = (nameInput.value || "").trim();
       if (val !== name) updateKpiTodo(kpiTodoId, storageKey, { text: val });
     });
+  } else if (isBraindump) {
+    nameInput.addEventListener("blur", () => onBraindumpMutate?.());
   }
   nameInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.isComposing) {
       e.preventDefault();
       nameInput.blur();
     }
@@ -498,7 +559,7 @@ function createTaskRow(taskData = {}, options = {}) {
     syncDueDisplay();
     if (isKpiTodo && kpiTodoId && storageKey) {
       updateKpiTodo(kpiTodoId, storageKey, { dueDate: dueInput.value });
-    }
+    } else if (isBraindump) onBraindumpMutate?.();
   });
   dueWrap.addEventListener("click", () => {
     dueInput.focus();
@@ -528,6 +589,7 @@ function createTaskRow(taskData = {}, options = {}) {
       if (removeKpiTodo(kpiTodoId, storageKey)) tr.remove();
     } else {
       tr.remove();
+      if (isBraindump) onBraindumpMutate?.();
     }
     section?.querySelector(".todo-section-count") &&
       (section.querySelector(".todo-section-count").textContent = tbody.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").length);
@@ -557,7 +619,7 @@ function createTaskRow(taskData = {}, options = {}) {
 }
 
 function createSection(section, options = {}) {
-  const { lastColHeader = "분류", initialTasks = [], showCategoryCol = false, sectionIdForAdd = null, hideCategoryCol = true, tabMode = false } = options;
+  const { lastColHeader = "분류", initialTasks = [], showCategoryCol = false, sectionIdForAdd = null, hideCategoryCol = true, tabMode = false, onBraindumpMutate = null } = options;
   const sectionId = sectionIdForAdd ?? section.id;
 
   const wrap = document.createElement("div");
@@ -616,9 +678,9 @@ function createSection(section, options = {}) {
   const tbody = table.querySelector("tbody");
 
   initialTasks.forEach((t) => {
-    const taskId = getTaskId(t);
+    const taskId = t.taskId || getTaskId(t);
     t.taskId = taskId;
-    const tr = createTaskRow(t, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId });
+    const tr = createTaskRow(t, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, onBraindumpMutate });
     tr.dataset.sectionId = t.sectionId || "";
     tbody.appendChild(tr);
     const container = tr.querySelector(".todo-subtasks-container");
@@ -656,9 +718,10 @@ function createSection(section, options = {}) {
       : { sectionId };
     const taskId = getTaskId(taskData);
     taskData.taskId = taskId;
-    const tr = createTaskRow(taskData, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId });
+    const tr = createTaskRow(taskData, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, onBraindumpMutate });
     tbody.insertBefore(tr, addRow);
     updateCount();
+    if (sectionId === "braindump") onBraindumpMutate?.();
   });
 
   if (header) {
@@ -712,6 +775,7 @@ function collectTasksFromDOM(sectionsEl) {
 
 function renderSections(container, tasksData = [], options = {}) {
   const { tabMode = false } = options;
+  const onBraindumpMutate = () => saveBraindumpTasks(collectBraindumpFromDOM(container));
   container.innerHTML = "";
   const results = [];
   SECTIONS.forEach((section) => {
@@ -723,6 +787,7 @@ function renderSections(container, tasksData = [], options = {}) {
       sectionIdForAdd: section.id,
       hideCategoryCol: true,
       tabMode,
+      onBraindumpMutate: section.id === "braindump" ? onBraindumpMutate : null,
     });
     container.appendChild(wrap);
     results.push({ section, wrap, updateCount });
@@ -730,12 +795,14 @@ function renderSections(container, tasksData = [], options = {}) {
   return results;
 }
 
-export function render() {
+export function render(options = {}) {
+  const { hideToolbar = false } = options;
   const el = document.createElement("div");
   el.className = "app-tab-panel-content todo-list-view";
 
   const toolbar = document.createElement("div");
   toolbar.className = "todo-list-toolbar";
+  toolbar.hidden = hideToolbar;
   const settingsBtn = document.createElement("button");
   settingsBtn.type = "button";
   settingsBtn.className = "todo-list-toolbar-btn todo-list-settings-btn";
@@ -776,6 +843,8 @@ export function render() {
       });
       sectionResults.forEach(({ updateCount }) => updateCount());
       updateTabLabels();
+      const sw = el.querySelector(".todo-sections-wrap");
+      if (sw) saveBraindumpTasks(collectBraindumpFromDOM(sw));
     }
   }
 
@@ -839,7 +908,9 @@ export function render() {
   sectionsWrap.className = "todo-sections-wrap todo-tab-panels";
 
   const kpiTasks = getKpiTodosAsTasks();
-  const sectionResults = renderSections(sectionsWrap, kpiTasks, { tabMode: true });
+  const braindumpTasks = loadBraindumpTasks();
+  const allTasks = [...braindumpTasks, ...kpiTasks];
+  const sectionResults = renderSections(sectionsWrap, allTasks, { tabMode: true });
 
   function updateTabLabels() {
     tabButtons.forEach((btn, i) => {
@@ -874,6 +945,82 @@ export function render() {
   });
   sectionResults.forEach(({ wrap }) => {
     observer.observe(wrap.querySelector("tbody"), { childList: true });
+  });
+
+  // 우클릭 컨텍스트 메뉴: 태스크를 다른 리스트로 이동
+  let contextMenuTargetRow = null;
+  const { menu, show: showContextMenu, hide: hideContextMenu } = createBraindumpContextMenu((targetSectionId) => {
+    const row = contextMenuTargetRow;
+    if (!row) return;
+    const section = row.closest(".todo-section");
+    const fromSectionId = section?.dataset.section || row.dataset.sectionId || "";
+    if (fromSectionId === targetSectionId) return;
+
+    const nameInput = row.querySelector(".todo-cell-name input");
+    const dueInput = row.querySelector(".todo-due-input-hidden");
+    const doneCheck = row.querySelector(".todo-done-check");
+    const name = (nameInput?.value || "").trim();
+    const dueDate = dueInput?.value || "";
+    const done = doneCheck?.checked || false;
+
+    let result = { success: false };
+    if (fromSectionId === "braindump") {
+      result = addBraindumpTodoToSection(targetSectionId, { text: name, dueDate, completed: done });
+      if (result.success) clearSubtasks(row.dataset.taskId || "");
+    } else if (targetSectionId === "braindump") {
+      const kpiTodoId = row.dataset.kpiTodoId;
+      const storageKey = row.dataset.kpiStorageKey;
+      if (kpiTodoId && storageKey && removeKpiTodo(kpiTodoId, storageKey)) {
+        clearSubtasks(row.dataset.taskId || "");
+        result = { success: true, task: { name, dueDate, done, sectionId: "braindump", sectionLabel: "브레인덤프" } };
+      }
+    } else {
+      const kpiTodoId = row.dataset.kpiTodoId;
+      const storageKey = row.dataset.kpiStorageKey;
+      if (kpiTodoId && storageKey) {
+        result = moveKpiTodoToSection(kpiTodoId, storageKey, targetSectionId);
+      }
+    }
+
+    if (result.success && result.task) {
+      const targetResult = sectionResults.find((r) => r.wrap.dataset.section === targetSectionId);
+      if (targetResult) {
+        const targetTbody = targetResult.wrap.querySelector("tbody");
+        const addRow = targetTbody?.querySelector(".todo-add-row");
+        const taskData = result.task.sectionId === "braindump"
+          ? { name, dueDate, done, sectionId: "braindump", sectionLabel: "브레인덤프" }
+          : result.task;
+        const taskId = getTaskId(taskData);
+        taskData.taskId = taskId;
+        const onBraindumpMutate = () => saveBraindumpTasks(collectBraindumpFromDOM(sectionsWrap));
+        const newTr = createTaskRow(taskData, {
+          hideCategoryCol: true,
+          isSubtask: false,
+          taskId,
+          onBraindumpMutate: targetSectionId === "braindump" ? onBraindumpMutate : null,
+        });
+        newTr.dataset.sectionId = targetSectionId;
+        if (addRow) targetTbody.insertBefore(newTr, addRow);
+        targetResult.updateCount();
+      }
+      row.remove();
+      sectionResults.find((r) => r.wrap === section)?.updateCount();
+      updateTabLabels();
+      if (fromSectionId === "braindump") saveBraindumpTasks(collectBraindumpFromDOM(sectionsWrap));
+    }
+  });
+  document.body.appendChild(menu);
+
+  sectionsWrap.addEventListener("contextmenu", (e) => {
+    const row = e.target.closest(".todo-task-row:not(.todo-subtask-row)");
+    if (!row) return;
+    e.preventDefault();
+    e.stopPropagation();
+    contextMenuTargetRow = row;
+    const section = row.closest(".todo-section");
+    const sectionId = section?.dataset.section || "";
+    const excludeSectionId = ["dream", "sideincome", "health", "happy"].includes(sectionId) ? sectionId : null;
+    showContextMenu(e.clientX, e.clientY, excludeSectionId);
   });
 
   return el;

@@ -5485,7 +5485,7 @@ body {
 }
 
 .todo-list-view {
-  padding: 1rem;
+  padding: 0.5rem;
   width: 100%;
   max-width: 100%;
   font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
@@ -5504,7 +5504,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 
 .todo-list-settings-btn {
@@ -5564,7 +5564,7 @@ body {
   display: flex;
   gap: 0.25rem;
   flex-wrap: nowrap;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   border-bottom: 1px solid #e5e7eb;
   font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
   overflow-x: auto;
@@ -5608,6 +5608,37 @@ body {
 
 .todo-category-tab.active .todo-category-tab-count {
   color: #333;
+}
+
+/* 할일 우클릭 컨텍스트 메뉴 - 리스트 이동 */
+.todo-braindump-context-menu {
+  position: fixed;
+  z-index: 1100;
+  min-width: 8rem;
+  padding: 0.25rem 0;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+}
+
+.todo-braindump-context-menu-item {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  text-align: left;
+  color: #374151;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.todo-braindump-context-menu-item:hover {
+  background: #f3f4f6;
+  color: #111;
 }
 
 /* ----- 할일 환경설정 모달 ----- */
@@ -6019,6 +6050,20 @@ body {
   height: 1rem;
   margin: 0;
   flex-shrink: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 3px;
+  background: #fff;
+}
+
+.todo-done-check:checked {
+  background: #e5e7eb url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-6' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E") center/70% no-repeat;
+  border-color: #d1d5db;
+}
+
+.todo-done-check:hover {
+  border-color: #d1d5db;
 }
 
 /* 체크 시 취소선 */
@@ -6216,12 +6261,12 @@ body {
 .todo-list-btn .todo-list-icon,
 .todo-list-btn img.todo-list-icon {
   display: block;
-  filter: brightness(0) saturate(100%) invert(45%);
+  filter: brightness(0) saturate(100%) invert(65%);
 }
 
 .todo-list-btn:hover .todo-list-icon,
 .todo-list-btn:hover img.todo-list-icon {
-  filter: brightness(0) saturate(100%) invert(25%);
+  filter: brightness(0) saturate(100%) invert(45%);
 }
 
 /* 서브태스크: 상위 태스크 Name 셀 내부에 배치 */
@@ -6243,8 +6288,18 @@ body {
 }
 
 .todo-subtask-item .todo-subtask-delete-btn {
-  margin-left: auto;
+  position: static;
+  right: auto;
+  top: auto;
+  transform: none;
   flex-shrink: 0;
+  margin-left: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.todo-subtask-item:hover .todo-subtask-delete-btn {
+  opacity: 1;
 }
 
 .todo-subtask-name-wrap {
@@ -6272,7 +6327,16 @@ body {
   height: 0.75rem;
   margin: 0;
   cursor: pointer;
-  accent-color: #64748b;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid #d1d5db;
+  border-radius: 2px;
+  background: #fff;
+}
+
+.todo-subtask-input-group .todo-done-check:checked {
+  background: #e5e7eb url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-6' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E") center/65% no-repeat;
+  border-color: #9ca3af;
 }
 
 .todo-subtask-input-group .todo-subtask-input {
@@ -6291,9 +6355,9 @@ body {
   display: block;
 }
 
-.todo-subtask-item .todo-subtask-name-wrap input,
+.todo-subtask-item .todo-subtask-name-wrap input:not(.todo-done-check),
 .todo-subtask-item .todo-subtask-input,
-.todo-subtask-item .todo-subtask-input-group input {
+.todo-subtask-item .todo-subtask-input-group input:not(.todo-done-check) {
   font-size: 0.85rem;
   color: #64748b !important;
   border: none;
@@ -6304,11 +6368,11 @@ body {
 
 .todo-subtask-item .todo-subtask-name-wrap input::placeholder,
 .todo-subtask-item .todo-subtask-input::placeholder,
-.todo-subtask-item .todo-subtask-input-group input::placeholder {
+.todo-subtask-item .todo-subtask-input-group input:not(.todo-done-check)::placeholder {
   color: #94a3b8;
 }
 
-.todo-cell-name input {
+.todo-cell-name input:not(.todo-done-check) {
   width: 100%;
   min-width: 0;
   border: none;
@@ -6319,11 +6383,11 @@ body {
   color: #4b5563 !important;
 }
 
-.todo-cell-name input:focus {
+.todo-cell-name input:not(.todo-done-check):focus {
   outline: none;
 }
 
-.todo-cell-name input::placeholder {
+.todo-cell-name input:not(.todo-done-check)::placeholder {
   color: #bbb;
 }
 
@@ -14555,7 +14619,7 @@ body.kpi-resizing {
   flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
-  padding: 1rem;
+  padding: 0.5rem;
 }
 
 .calendar-monthly-nav {
@@ -14590,8 +14654,6 @@ body.kpi-resizing {
   align-items: center;
   gap: 0.25rem;
   padding: 0.2rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
   font-size: 0.875rem;
 }
 
@@ -14678,9 +14740,13 @@ body.kpi-resizing {
   color: #d1d5db;
 }
 
+.calendar-monthly-day.today {
+  background: rgba(59, 130, 246, 0.06);
+}
+
 .calendar-monthly-day.today .calendar-monthly-day-num {
-  font-weight: 700;
-  color: #333;
+  font-weight: 600;
+  color: #2563eb;
 }
 
 .calendar-monthly-day.sun,

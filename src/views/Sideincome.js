@@ -89,7 +89,11 @@ function syncKpiToTimeTask(kpi, action, oldName) {
 
 function saveSideincomeMap(data) {
   try {
-    localStorage.setItem(SIDEINCOME_STORAGE_KEY, JSON.stringify(data));
+    const toSave = { ...data };
+    if (toSave.kpiTodos && Array.isArray(toSave.kpiTodos)) {
+      toSave.kpiTodos = toSave.kpiTodos.filter((t) => (t.text || "").trim() !== "");
+    }
+    localStorage.setItem(SIDEINCOME_STORAGE_KEY, JSON.stringify(toSave));
   } catch (_) {}
 }
 
@@ -804,7 +808,7 @@ export function render() {
       return;
     }
     const logs = getKpiLogs(selectedKpiId);
-    const todos = (data.kpiTodos || []).filter((t) => t.kpiId === selectedKpiId);
+    const todos = (data.kpiTodos || []).filter((t) => t.kpiId === selectedKpiId && (t.text || "").trim() !== "");
     historyWrap.hidden = false;
 
     const headerRow = document.createElement("div");

@@ -172,7 +172,7 @@ function renderMonthlyView(tabsElement) {
     </div>
     <div class="calendar-todo-sidebar-body"></div>
   `;
-  const todoListEl = renderTodoList();
+  const todoListEl = renderTodoList({ hideToolbar: true });
   todoListEl.classList.add("todo-list-in-sidebar");
   todoSidebar.querySelector(".calendar-todo-sidebar-body").appendChild(todoListEl);
   todoSidebar.querySelector(".calendar-todo-sidebar-collapse").addEventListener("click", () => {

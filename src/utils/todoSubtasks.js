@@ -19,10 +19,11 @@ export function getSubtasks(taskId) {
 
 export function setSubtasks(taskId, items) {
   const all = loadAll();
-  if (!items || items.length === 0) {
+  const valid = (items || []).filter((it) => (it.name || "").trim() !== "");
+  if (valid.length === 0) {
     delete all[taskId];
   } else {
-    all[taskId] = items;
+    all[taskId] = valid;
   }
   try {
     localStorage.setItem(TODO_SUBTASKS_KEY, JSON.stringify(all));
@@ -42,9 +43,22 @@ export function addSubtask(taskId, item = { name: "", done: false }) {
 }
 
 export function updateSubtask(taskId, subtaskId, updates) {
-  const items = getSubtasks(taskId).map((it) =>
-    it.id === subtaskId ? { ...it, ...updates } : it
-  );
+  let items = getSubtasks(taskId);
+  const idx = items.findIndex((it) => it.id === subtaskId);
+  if (idx >= 0) {
+    items = items.map((it) =>
+      it.id === subtaskId ? { ...it, ...updates } : it
+    );
+  } else if ((updates.name || "").trim()) {
+    items = [
+      ...items,
+      {
+        id: subtaskId,
+        name: (updates.name || "").trim(),
+        done: !!updates.done,
+      },
+    ];
+  }
   setSubtasks(taskId, items);
   return items;
 }

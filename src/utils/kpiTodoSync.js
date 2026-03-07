@@ -31,7 +31,7 @@ export function getKpiTodosAsTasks() {
 
   // 꿈
   const dreamData = loadJson(DREAM_MAP_KEY, { dreams: [], kpis: [], kpiTodos: [] });
-  (dreamData.kpiTodos || []).forEach((todo) => {
+  (dreamData.kpiTodos || []).filter((todo) => (todo.text || "").trim() !== "").forEach((todo) => {
     const kpi = (dreamData.kpis || []).find((k) => k.id === todo.kpiId);
     if (!kpi) return;
     const kpiName = kpi.name || "(KPI)";
@@ -52,7 +52,7 @@ export function getKpiTodosAsTasks() {
 
   // 부수입
   const sideData = loadJson(SIDEINCOME_KEY, { paths: [], kpis: [], kpiTodos: [] });
-  (sideData.kpiTodos || []).forEach((todo) => {
+  (sideData.kpiTodos || []).filter((todo) => (todo.text || "").trim() !== "").forEach((todo) => {
     const kpi = (sideData.kpis || []).find((k) => k.id === todo.kpiId);
     if (!kpi) return;
     const kpiName = kpi.name || "(KPI)";
@@ -73,7 +73,7 @@ export function getKpiTodosAsTasks() {
 
   // 행복
   const happyData = loadJson(HAPPINESS_KEY, { happinesses: [], kpis: [], kpiTodos: [] });
-  (happyData.kpiTodos || []).forEach((todo) => {
+  (happyData.kpiTodos || []).filter((todo) => (todo.text || "").trim() !== "").forEach((todo) => {
     const kpi = (happyData.kpis || []).find((k) => k.id === todo.kpiId);
     if (!kpi) return;
     const kpiName = kpi.name || "(KPI)";
@@ -94,7 +94,7 @@ export function getKpiTodosAsTasks() {
 
   // 건강
   const healthData = loadJson(HEALTH_KEY, { healths: [], kpis: [], kpiTodos: [] });
-  (healthData.kpiTodos || []).forEach((todo) => {
+  (healthData.kpiTodos || []).filter((todo) => (todo.text || "").trim() !== "").forEach((todo) => {
     const kpi = (healthData.kpis || []).find((k) => k.id === todo.kpiId);
     if (!kpi) return;
     const kpiName = kpi.name || "(KPI)";
@@ -200,4 +200,148 @@ export function removeAllCompletedKpiTodos() {
     } catch (_) {}
   });
   return removed;
+}
+
+const SECTION_TO_STORAGE = {
+  dream: DREAM_MAP_KEY,
+  sideincome: SIDEINCOME_KEY,
+  happy: HAPPINESS_KEY,
+  health: HEALTH_KEY,
+};
+
+function getFirstKpiId(storageKey) {
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    const kpis = data.kpis || [];
+    return kpis[0]?.id || null;
+  } catch (_) {}
+  return null;
+}
+
+function nextId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+/**
+ * KPI 할일을 다른 섹션으로 이동
+ * @param {string} kpiTodoId
+ * @param {string} fromStorageKey
+ * @param {string} toSectionId - dream | sideincome | health | happy
+ * @returns {{ success: boolean, task?: object }} 이동된 태스크 정보 (getKpiTodosAsTasks 형식)
+ */
+export function moveKpiTodoToSection(kpiTodoId, fromStorageKey, toSectionId) {
+  const toStorageKey = SECTION_TO_STORAGE[toSectionId];
+  if (!toStorageKey || toStorageKey === fromStorageKey) return { success: false };
+
+  try {
+    const fromRaw = localStorage.getItem(fromStorageKey);
+    if (!fromRaw) return { success: false };
+    const fromData = JSON.parse(fromRaw);
+    const todo = (fromData.kpiTodos || []).find((t) => t.id === kpiTodoId);
+    if (!todo) return { success: false };
+    if (!(todo.text || "").trim()) return { success: false };
+
+    const toKpiId = getFirstKpiId(toStorageKey);
+    if (!toKpiId) return { success: false };
+
+    const toRaw = localStorage.getItem(toStorageKey);
+    const toData = toRaw ? JSON.parse(toRaw) : { kpis: [], kpiTodos: [] };
+    const kpi = (toData.kpis || []).find((k) => k.id === toKpiId);
+    const kpiName = kpi?.name || "(KPI)";
+
+    const sectionMeta = {
+      dream: { sectionId: "dream", sectionLabel: "꿈" },
+      sideincome: { sectionId: "sideincome", sectionLabel: "부수입" },
+      happy: { sectionId: "happy", sectionLabel: "행복" },
+      health: { sectionId: "health", sectionLabel: "건강" },
+    }[toSectionId];
+
+    fromData.kpiTodos = (fromData.kpiTodos || []).filter((t) => t.id !== kpiTodoId);
+    localStorage.setItem(fromStorageKey, JSON.stringify(fromData));
+
+    const newId = nextId();
+    toData.kpiTodos = toData.kpiTodos || [];
+    toData.kpiTodos.push({
+      id: newId,
+      kpiId: toKpiId,
+      text: (todo.text || "").trim(),
+      dueDate: todo.dueDate || "",
+      completed: !!todo.completed,
+    });
+    localStorage.setItem(toStorageKey, JSON.stringify(toData));
+
+    const task = {
+      name: (todo.text || "").trim(),
+      dueDate: todo.dueDate || "",
+      classification: kpiName,
+      sectionId: sectionMeta.sectionId,
+      sectionLabel: sectionMeta.sectionLabel,
+      done: !!todo.completed,
+      isKpiTodo: true,
+      kpiTodoId: newId,
+      domain: toSectionId,
+      kpiId: toKpiId,
+      storageKey: toStorageKey,
+    };
+    return { success: true, task };
+  } catch (_) {}
+  return { success: false };
+}
+
+/**
+ * 브레인덤프 할일을 KPI 섹션에 추가
+ * @param {string} toSectionId - dream | sideincome | health | happy
+ * @param {{ text: string, dueDate?: string, completed?: boolean }} todoData
+ * @returns {{ success: boolean, task?: object }}
+ */
+export function addBraindumpTodoToSection(toSectionId, todoData) {
+  const toStorageKey = SECTION_TO_STORAGE[toSectionId];
+  if (!toStorageKey) return { success: false };
+  if (!(todoData.text || "").trim()) return { success: false };
+
+  const toKpiId = getFirstKpiId(toStorageKey);
+  if (!toKpiId) return { success: false };
+
+  try {
+    const raw = localStorage.getItem(toStorageKey);
+    const data = raw ? JSON.parse(raw) : { kpis: [], kpiTodos: [] };
+    const kpi = (data.kpis || []).find((k) => k.id === toKpiId);
+    const kpiName = kpi?.name || "(KPI)";
+
+    const sectionMeta = {
+      dream: { sectionId: "dream", sectionLabel: "꿈" },
+      sideincome: { sectionId: "sideincome", sectionLabel: "부수입" },
+      happy: { sectionId: "happy", sectionLabel: "행복" },
+      health: { sectionId: "health", sectionLabel: "건강" },
+    }[toSectionId];
+
+    data.kpiTodos = data.kpiTodos || [];
+    const newId = nextId();
+    data.kpiTodos.push({
+      id: newId,
+      kpiId: toKpiId,
+      text: (todoData.text || "").trim(),
+      dueDate: todoData.dueDate || "",
+      completed: !!todoData.completed,
+    });
+    localStorage.setItem(toStorageKey, JSON.stringify(data));
+
+    const task = {
+      name: (todoData.text || "").trim(),
+      dueDate: todoData.dueDate || "",
+      classification: kpiName,
+      sectionId: sectionMeta.sectionId,
+      sectionLabel: sectionMeta.sectionLabel,
+      done: !!todoData.completed,
+      isKpiTodo: true,
+      kpiTodoId: newId,
+      domain: toSectionId,
+      kpiId: toKpiId,
+      storageKey: toStorageKey,
+    };
+    return { success: true, task };
+  } catch (_) {}
+  return { success: false };
 }
