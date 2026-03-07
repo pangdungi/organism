@@ -640,8 +640,15 @@ export function render() {
     }
   });
 
+  const settingsBtn = document.createElement("button");
+  settingsBtn.type = "button";
+  settingsBtn.className = "todo-list-toolbar-btn todo-list-settings-btn";
+  settingsBtn.title = "할일 설정";
+  settingsBtn.innerHTML = '<img src="/toolbaricons/settings.svg" alt="" class="todo-list-settings-icon" width="18" height="18">';
+
   toolbar.appendChild(hideCompletedBtn);
   toolbar.appendChild(clearCompletedBtn);
+  toolbar.appendChild(settingsBtn);
   el.appendChild(toolbar);
 
   const sectionsWrap = document.createElement("div");
