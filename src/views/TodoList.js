@@ -3,7 +3,7 @@
  * KPI 할일(꿈/부수입/행복/건강) 연동: 마감일 없음, 꿈이름 자동, 분류=KPI이름
  */
 
-import { getKpiTodosAsTasks, syncKpiTodoCompleted, removeAllCompletedKpiTodos } from "../utils/kpiTodoSync.js";
+import { getKpiTodosAsTasks, syncKpiTodoCompleted, removeAllCompletedKpiTodos, removeKpiTodo, updateKpiTodo } from "../utils/kpiTodoSync.js";
 
 export function saveTodoListBeforeUnmount() {}
 
@@ -65,6 +65,12 @@ function removeCategoryOption(name) {
 
 const DELETE_ICON =
   '<svg class="todo-category-delete-icon" viewBox="0 0 16 16" width="12" height="12"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+
+const TASK_DELETE_ICON =
+  '<svg viewBox="0 0 16 16" width="12" height="12"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+
+const ADD_TASK_ICON =
+  '<svg viewBox="0 0 24 24" width="20" height="20"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>';
 
 function createCategoryDropdown(initialValue, onUpdate) {
   const wrap = document.createElement("div");
@@ -349,7 +355,17 @@ function createTaskRow(taskData = {}, options = {}) {
   const nameInput = document.createElement("input");
   nameInput.type = "text";
   nameInput.value = name;
-  if (isKpiTodo) nameInput.readOnly = true;
+  if (isKpiTodo && kpiTodoId && storageKey) {
+    nameInput.addEventListener("blur", () => {
+      const val = (nameInput.value || "").trim();
+      if (val !== name) updateKpiTodo(kpiTodoId, storageKey, { text: val });
+    });
+    nameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        nameInput.blur();
+      }
+    });
+  }
   nameTd.appendChild(nameInput);
 
   const dueTd = document.createElement("td");
@@ -360,7 +376,7 @@ function createTaskRow(taskData = {}, options = {}) {
   dueDisplay.className = "todo-due-display";
   if (dueDate && dueDate.includes("-")) {
     const [y, m, d] = dueDate.split("-");
-    dueDisplay.innerHTML = y && m && d ? `<span class="todo-due-date-text">${y}/${m}/${d}</span>` : '<span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
+    dueDisplay.innerHTML = y && m && d ? `<span class="todo-due-date-text">${m}/${d}</span>` : '<span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
   } else {
     dueDisplay.innerHTML =
       '<span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
@@ -369,28 +385,54 @@ function createTaskRow(taskData = {}, options = {}) {
   dueInput.type = "date";
   dueInput.className = "todo-due-input-hidden";
   dueInput.value = dueDate;
-  if (!isKpiTodo) {
-    dueInput.addEventListener("change", () => {
-      const val = dueInput.value;
-      if (val) {
-        const [y, m, d] = val.split("-");
-        dueDisplay.innerHTML = `<span class="todo-due-date-text">${y}/${m}/${d}</span>`;
-      } else {
-        dueDisplay.innerHTML =
-          '<span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
-      }
-    });
-    dueWrap.addEventListener("click", () => {
-      dueInput.focus();
-      if (typeof dueInput.showPicker === "function") dueInput.showPicker();
-      else dueInput.click();
-    });
-  } else {
-    dueWrap.style.cursor = "default";
+  const syncDueDisplay = () => {
+    const val = dueInput.value;
+    if (val && val.includes("-")) {
+      const [y, m, d] = val.split("-");
+      dueDisplay.innerHTML = y && m && d ? `<span class="todo-due-date-text">${m}/${d}</span>` : '<span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
+    } else {
+      dueDisplay.innerHTML =
+        '<span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
+    }
+  };
+  dueInput.addEventListener("change", () => {
+    syncDueDisplay();
+    if (isKpiTodo && kpiTodoId && storageKey) {
+      updateKpiTodo(kpiTodoId, storageKey, { dueDate: dueInput.value });
+    }
+  });
+  dueWrap.addEventListener("click", () => {
+    dueInput.focus();
+    if (typeof dueInput.showPicker === "function") dueInput.showPicker();
+    else dueInput.click();
+  });
+  if (isKpiTodo) {
+    dueWrap.style.cursor = "pointer";
   }
   dueWrap.appendChild(dueDisplay);
   dueWrap.appendChild(dueInput);
   dueTd.appendChild(dueWrap);
+
+  const delTd = document.createElement("td");
+  delTd.className = "todo-cell-delete";
+  const delBtn = document.createElement("button");
+  delBtn.type = "button";
+  delBtn.className = "todo-task-delete-btn";
+  delBtn.title = "삭제";
+  delBtn.innerHTML = TASK_DELETE_ICON;
+  delBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const section = tr.closest(".todo-section");
+    const tbody = tr.parentElement;
+    if (isKpiTodo && kpiTodoId && storageKey) {
+      if (removeKpiTodo(kpiTodoId, storageKey)) tr.remove();
+    } else {
+      tr.remove();
+    }
+    section?.querySelector(".todo-section-count") &&
+      (section.querySelector(".todo-section-count").textContent = tbody.querySelectorAll(".todo-task-row").length);
+  });
+  delTd.appendChild(delBtn);
 
   tr.appendChild(doneTd);
   tr.appendChild(nameTd);
@@ -410,6 +452,7 @@ function createTaskRow(taskData = {}, options = {}) {
     }
     tr.appendChild(lastColTd);
   }
+  tr.appendChild(delTd);
   return tr;
 }
 
@@ -435,15 +478,17 @@ function createSection(section, options = {}) {
   table.className = "todo-table";
   const colgroupHtml = hideCategoryCol
     ? `<colgroup>
-      <col class="todo-col-done" style="width: 1rem">
-      <col class="todo-col-name" style="width: 208px">
-      <col class="todo-col-due" style="width: 2.7rem">
+      <col class="todo-col-done" style="width: 2rem">
+      <col class="todo-col-name">
+      <col class="todo-col-due" style="width: 5rem">
+      <col class="todo-col-delete" style="width: 0">
     </colgroup>`
     : `<colgroup>
-      <col class="todo-col-done" style="width: 1rem">
-      <col class="todo-col-name" style="width: 208px">
-      <col class="todo-col-due" style="width: 2.7rem">
+      <col class="todo-col-done" style="width: 2rem">
+      <col class="todo-col-name">
+      <col class="todo-col-due" style="width: 5rem">
       <col class="todo-col-category" style="width: 5rem">
+      <col class="todo-col-delete" style="width: 0">
     </colgroup>`;
   const theadCategoryTh = hideCategoryCol ? "" : `<th class="todo-th-category">${lastColHeader}</th>`;
   table.innerHTML = `
@@ -454,6 +499,7 @@ function createSection(section, options = {}) {
         <th class="todo-th-name">Name</th>
         <th class="todo-th-due">마감일</th>
         ${theadCategoryTh}
+        <th class="todo-th-delete"></th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -469,8 +515,8 @@ function createSection(section, options = {}) {
   const addRow = document.createElement("tr");
   addRow.className = "todo-add-row";
   addRow.innerHTML = `
-    <td colspan="${hideCategoryCol ? 3 : 4}" class="todo-add-cell">
-      <button type="button" class="todo-add-btn">+ Add Task</button>
+    <td colspan="${hideCategoryCol ? 4 : 5}" class="todo-add-cell">
+      <button type="button" class="todo-add-btn" title="할 일 추가">${ADD_TASK_ICON}</button>
     </td>
   `;
   tbody.appendChild(addRow);

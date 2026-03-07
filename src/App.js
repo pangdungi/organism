@@ -129,7 +129,7 @@ export function mountApp(container) {
   logoutBtn.title = "로그아웃";
   const logoutIcon = document.createElement("img");
   logoutIcon.className = "app-sidebar-item-icon";
-  logoutIcon.src = "/toolbaricons/user-square.svg";
+  logoutIcon.src = "/toolbaricons/send-out.svg";
   logoutIcon.alt = "";
   logoutIcon.width = 20;
   logoutIcon.height = 20;

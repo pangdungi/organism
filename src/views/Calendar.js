@@ -7,13 +7,18 @@
 import { render as renderTodoList, saveTodoListBeforeUnmount } from "./TodoList.js";
 import { showKpiViewModal } from "../utils/kpiViewModal.js";
 
-const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
+const DAY_NAMES = ["월", "화", "수", "목", "금", "토", "일"];
 const MONTH_NAMES = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"];
+
+/** 월요일 시작 (0=월, 6=일) */
+function getMondayBasedDow(date) {
+  return (date.getDay() + 6) % 7;
+}
 
 function getCalendarGrid(year, month) {
   const first = new Date(year, month, 1);
   const last = new Date(year, month + 1, 0);
-  const startDow = first.getDay();
+  const startDow = getMondayBasedDow(first);
   const totalDays = last.getDate();
 
   const grid = [];
@@ -146,8 +151,8 @@ function renderMonthlyView() {
   todoSidebar.className = "calendar-todo-sidebar";
   todoSidebar.innerHTML = `
     <div class="calendar-todo-sidebar-header">
-      <span class="calendar-todo-sidebar-title">할일목록</span>
-      <button type="button" class="calendar-todo-sidebar-collapse" title="접기/펼치기">‹</button>
+      <button type="button" class="calendar-todo-sidebar-collapse" title="접기/펼치기"><img src="/toolbaricons/caret-left-double.svg" alt="" class="calendar-todo-sidebar-collapse-icon" width="18" height="18"></button>
+      <span class="calendar-todo-sidebar-title">할 일</span>
     </div>
     <div class="calendar-todo-sidebar-body"></div>
   `;
@@ -161,7 +166,6 @@ function renderMonthlyView() {
   collapseBtn.addEventListener("click", () => {
     sidebarCollapsed = !sidebarCollapsed;
     todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
-    collapseBtn.textContent = sidebarCollapsed ? "›" : "‹";
   });
 
   wrap.appendChild(todoSidebar);
@@ -190,11 +194,11 @@ export function render() {
   const tabs = document.createElement("div");
   tabs.className = "time-view-tabs calendar-tabs";
   tabs.innerHTML = `
-    <button type="button" class="time-view-tab active" data-view="todo">할일목록</button>
-    <button type="button" class="time-view-tab" data-view="monthly">월별캘린더</button>
-    <button type="button" class="time-view-tab" data-view="2week">2주캘린더</button>
-    <button type="button" class="time-view-tab" data-view="1week">1주캘린더</button>
-    <button type="button" class="time-view-tab" data-view="1day">1일캘린더</button>
+    <button type="button" class="time-view-tab active" data-view="todo">할 일</button>
+    <button type="button" class="time-view-tab" data-view="monthly">월별</button>
+    <button type="button" class="time-view-tab" data-view="2week">2주</button>
+    <button type="button" class="time-view-tab" data-view="1week">1주</button>
+    <button type="button" class="time-view-tab" data-view="1day">1일</button>
   `;
   el.appendChild(tabs);
 
@@ -210,11 +214,12 @@ export function render() {
     currentView = view;
     contentWrap.innerHTML = "";
     if (view === "todo") {
-      contentWrap.appendChild(renderTodoList());
+      const todoEl = renderTodoList();
+      contentWrap.appendChild(todoEl);
     } else if (view === "monthly") {
       contentWrap.appendChild(renderMonthlyView());
     } else {
-      const labels = { "2week": "2주캘린더", "1week": "1주캘린더", "1day": "1일캘린더" };
+      const labels = { "2week": "2주", "1week": "1주", "1day": "1일" };
       contentWrap.innerHTML = `<p class="calendar-placeholder">${labels[view]} (준비 중)</p>`;
     }
   }

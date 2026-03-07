@@ -6,11 +6,10 @@ const DIARY_ENTRIES_KEY = "diary_entries";
 
 /** 탭 3 감정일기 기본 감정 목록 */
 export const TAB3_DEFAULT_EMOTIONS = [
-  "공포", "불안", "근심", "걱정", "기쁨", "황홀감", "행복", "즐거움", "고마움", "그리움",
+  "공포", "불안", "걱정", "기쁨", "행복", "즐거움", "고마움",
   "기특함", "감동", "사랑", "신뢰감", "자부심", "자신감", "자존심", "자격지심", "열등감",
-  "슬픔", "우울", "분노", "억울함", "괘씸함", "서운함", "섭섭함", "미움", "얄미움", "시샘",
-  "부러움", "혐오", "괴로움", "부담감", "따분함", "지겨움", "안도감", "편안감", "외로움",
-  "난처함", "후련함", "부끄러움", "죄책감", "아쉬움", "수치심", "짜증", "원망",
+  "슬픔", "우울", "분노", "억울함", "괘씸함", "서운함", "미움", "부러움", "혐오", "괴로움", "부담감",
+  "편안감", "후련함", "부끄러움", "죄책감", "아쉬움", "수치심", "짜증", "원망",
 ];
 
 /** 탭 3 감정일기 템플릿 질문 */
@@ -46,6 +45,12 @@ export function getEmotionList(all) {
   return tab.emotionList;
 }
 
+/** 제거된 감정 (기본 목록에서 삭제됨) - 기존 데이터에서도 제거 */
+const REMOVED_EMOTIONS = [
+  "근심", "황홀감", "따분함", "시샘", "얄미움", "섭섭함",
+  "외로움", "난처함", "지겨움", "안도감", "그리움",
+];
+
 /** 탭 3 감정일기: 데이터 구조 초기화 */
 export function ensureEmotionTabData(all) {
   if (!all["3"]) all["3"] = {};
@@ -56,6 +61,8 @@ export function ensureEmotionTabData(all) {
   if (!tab.emotionList || !Array.isArray(tab.emotionList)) {
     tab.emotionList = [...TAB3_DEFAULT_EMOTIONS];
   } else {
+    tab.emotionList = tab.emotionList.filter((e) => !REMOVED_EMOTIONS.includes(e));
+    REMOVED_EMOTIONS.forEach((e) => delete tab.emotions[e]);
     TAB3_DEFAULT_EMOTIONS.forEach((emotion) => {
       if (!tab.emotionList.includes(emotion)) {
         const insertIdx = TAB3_DEFAULT_EMOTIONS.indexOf(emotion);

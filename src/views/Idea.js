@@ -5,16 +5,33 @@
 export const USER_HOURLY_RATE_KEY = "user_hourly_rate";
 export const APP_FONT_KEY = "app_font_family";
 
-export const FONT_OPTIONS = [{ value: "scdream3", label: "에스코어 드림 3" }];
+export const FONT_OPTIONS = [
+  { value: "scdream3", label: "에스코어 드림 3" },
+  { value: "leeseoyun", label: "이서윤체" },
+  { value: "pretendard", label: "Pretendard" },
+];
 
 export function applyAppFont() {
   try {
     const saved = localStorage.getItem(APP_FONT_KEY) || "scdream3";
-    const fontFamily =
-      saved === "scdream3" || saved === "scdream2"
-        ? '"S-Core Dream 3", -apple-system, sans-serif'
-        : '"Noto Sans KR", -apple-system, sans-serif';
+    let fontFamily = '"S-Core Dream 3", -apple-system, sans-serif';
+    if (saved === "scdream2" || saved === "scdream3") {
+      fontFamily = '"S-Core Dream 3", -apple-system, sans-serif';
+    } else if (saved === "leeseoyun") {
+      fontFamily = '"이서윤체", -apple-system, sans-serif';
+    } else if (saved === "pretendard") {
+      fontFamily = '"Pretendard", -apple-system, sans-serif';
+    } else {
+      fontFamily = '"Noto Sans KR", -apple-system, sans-serif';
+    }
     document.documentElement.style.setProperty("--app-font-family", fontFamily);
+    if (saved === "leeseoyun") {
+      document.documentElement.dataset.appFont = "leeseoyun";
+    } else if (saved === "pretendard") {
+      document.documentElement.dataset.appFont = "pretendard";
+    } else {
+      delete document.documentElement.dataset.appFont;
+    }
   } catch (_) {}
 }
 
@@ -41,6 +58,8 @@ export function render() {
   const savedFont = (() => {
     try {
       const v = localStorage.getItem(APP_FONT_KEY);
+      if (v === "leeseoyun") return "leeseoyun";
+      if (v === "pretendard") return "pretendard";
       return v === "scdream2" ? "scdream3" : (v || "scdream3");
     } catch (_) {
       return "scdream3";

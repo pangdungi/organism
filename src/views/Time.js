@@ -39,12 +39,35 @@ const FIXED_OTHER_TASKS = [
   { name: "수면하기", category: "sleep", productivity: "other" },
   { name: "근무하기", category: "work", productivity: "other" },
 ];
+/** 생산적 > 행복 고정 과제 (과제설정에서 수정·삭제 불가) */
+const FIXED_PRODUCTIVE_TASKS = [
+  { name: "감정적이기(긍정적)", category: "happiness", productivity: "productive" },
+];
+/** 비생산적 > 불행 고정 과제 (과제설정에서 수정·삭제 불가) */
+const FIXED_NONPRODUCTIVE_TASKS = [
+  { name: "감정적이기(부정적)", category: "unhappiness", productivity: "nonproductive" },
+];
+/** 구버전 과제명 (목록에서 제거 후 신규 고정 과제로 대체) */
+const REPLACED_TASK_NAMES = ["감정적이기"];
 /** 수정/삭제 불가 과제 (특수 로직 적용) */
 const TASKS_LOCKED_FOR_EDIT = ["낮잠"];
+
+/** 감정적이기 과제 선택 시 감정 드롭다운 필터 */
+const EMOTION_TASK_POSITIVE = "감정적이기(긍정적)";
+const EMOTION_TASK_NEGATIVE = "감정적이기(부정적)";
+const EMOTION_LIST_POSITIVE = [
+  "기쁨", "행복", "즐거움", "고마움", "기특함", "감동", "사랑", "신뢰감", "자신감", "자부심", "편안감",
+];
+const EMOTION_LIST_NEGATIVE = [
+  "공포", "불안", "걱정", "자존심", "자격지심", "열등감", "분노", "억울함", "괘씸함", "서운함",
+  "미움", "혐오", "괴로움", "부담감", "죄책감", "수치심", "짜증", "원망",
+];
 
 function getLockedTaskNames() {
   return new Set([
     ...FIXED_OTHER_TASKS.map((t) => t.name),
+    ...FIXED_PRODUCTIVE_TASKS.map((t) => t.name),
+    ...FIXED_NONPRODUCTIVE_TASKS.map((t) => t.name),
     ...TASKS_LOCKED_FOR_EDIT,
     ...getKpiSyncedTaskNames(),
     ...getRoutineSyncedTaskNames(),
@@ -53,6 +76,8 @@ function getLockedTaskNames() {
 
 const DEFAULT_TASK_OPTIONS = [
   ...FIXED_OTHER_TASKS,
+  ...FIXED_PRODUCTIVE_TASKS,
+  ...FIXED_NONPRODUCTIVE_TASKS,
   { name: "전화통화", category: "dream", productivity: "productive" },
   { name: "영상편집", category: "sideincome", productivity: "productive" },
   { name: "시간기록 점검", category: "dream", productivity: "productive" },
@@ -99,9 +124,23 @@ function getFullTaskOptions() {
     }
   } catch (_) {}
   if (arr.length === 0) return [...DEFAULT_TASK_OPTIONS];
-  const fixedNames = new Set(FIXED_OTHER_TASKS.map((t) => t.name));
-  const others = arr.filter((o) => !fixedNames.has(o.name));
-  return [...FIXED_OTHER_TASKS, ...others];
+  const fixedOtherNames = new Set(FIXED_OTHER_TASKS.map((t) => t.name));
+  const fixedProdNames = new Set(FIXED_PRODUCTIVE_TASKS.map((t) => t.name));
+  const fixedNonProdNames = new Set(FIXED_NONPRODUCTIVE_TASKS.map((t) => t.name));
+  const replacedNames = new Set(REPLACED_TASK_NAMES);
+  const others = arr.filter(
+    (o) =>
+      !fixedOtherNames.has(o.name) &&
+      !fixedProdNames.has(o.name) &&
+      !fixedNonProdNames.has(o.name) &&
+      !replacedNames.has(o.name)
+  );
+  return [
+    ...FIXED_OTHER_TASKS,
+    ...FIXED_PRODUCTIVE_TASKS,
+    ...FIXED_NONPRODUCTIVE_TASKS,
+    ...others,
+  ];
 }
 
 function getTaskOptions() {
@@ -1485,7 +1524,7 @@ export function render() {
   const filterBar = document.createElement("div");
   filterBar.className = "time-filter-bar";
   filterBar.innerHTML = `
-    <button type="button" class="time-task-setup-btn" data-filter-for="all" title="과제명, 생산성, 카테고리를 한 번에 설정">과제 설정하기</button>
+    <button type="button" class="time-task-setup-btn" data-filter-for="all" title="과제명, 생산성, 카테고리를 한 번에 설정"><img src="/toolbaricons/settings.svg" alt="" class="time-btn-icon" width="18" height="18"> 과제 설정</button>
     <div class="time-filter-tabs" data-filter-for="all">
       <button type="button" class="time-filter-btn" data-filter="month">월별</button>
       <button type="button" class="time-filter-btn" data-filter="week">일주일</button>
@@ -1744,11 +1783,11 @@ export function render() {
       <div class="time-datetime-picker-backdrop" hidden></div>
       <div class="time-task-setup-header time-task-log-header">
         <button type="button" class="time-task-setup-close" aria-label="닫기">&times;</button>
-        <h3 class="time-task-setup-title">과제 기록하기</h3>
+        <h3 class="time-task-setup-title">과제 기록</h3>
         <button type="button" class="time-task-log-submit">기록</button>
       </div>
-      <div class="time-task-setup-body">
-        <div class="time-task-log-sticky-wrap">
+      <div class="time-task-setup-body time-task-log-body">
+        <div class="time-task-log-fixed-top">
           <div class="time-task-log-datetime-fields-wrap">
             <div class="time-task-log-field">
               <label>과제 선택</label>
@@ -1773,6 +1812,7 @@ export function render() {
             <div class="time-task-log-routine-subs-wrap"></div>
           </div>
         </div>
+        <div class="time-task-log-scroll-area">
         <div class="time-task-log-field">
           <label>과제 메모</label>
           <textarea class="time-task-log-feedback" placeholder="과제 메모 입력" rows="3"></textarea>
@@ -1865,6 +1905,7 @@ export function render() {
               <textarea class="time-task-log-emotion-q3" placeholder="메모" rows="2"></textarea>
             </div>
           </div>
+        </div>
         </div>
       </div>
       <div class="time-datetime-picker-wrap time-datetime-picker-bottom" hidden>
@@ -2021,6 +2062,7 @@ export function render() {
           trigger.textContent = value || "과제를 선택하세요";
           panel.hidden = true;
           updateRoutineSubTasksSection();
+          onEmotionTaskSelected(value);
         });
         panel.appendChild(row);
       });
@@ -2039,6 +2081,7 @@ export function render() {
       value = v || "";
       trigger.textContent = value || "과제를 선택하세요";
       updateRoutineSubTasksSection();
+      onEmotionTaskSelected(value);
     };
     return wrap;
   }
@@ -2523,9 +2566,15 @@ export function render() {
     panel.className = "time-task-log-expense-dropdown-panel";
     panel.hidden = true;
     let value = "";
-    function refresh() {
+    let currentTaskName = "";
+    function getEmotionsForTask(taskName) {
+      if (taskName === EMOTION_TASK_POSITIVE) return EMOTION_LIST_POSITIVE;
+      if (taskName === EMOTION_TASK_NEGATIVE) return EMOTION_LIST_NEGATIVE;
       const entries = loadDiaryEntries();
-      const emotions = getEmotionList(entries);
+      return getEmotionList(entries);
+    }
+    function refresh() {
+      const emotions = getEmotionsForTask(currentTaskName);
       panel.innerHTML = "";
       emotions.forEach((em) => {
         const row = document.createElement("div");
@@ -2554,10 +2603,31 @@ export function render() {
       value = v || "";
       display.textContent = value || "선택";
     };
+    wrap._setTaskName = (taskName) => {
+      currentTaskName = (taskName || "").trim();
+    };
     return wrap;
   }
   const emotionDropdown = buildEmotionDropdown();
   taskLogEmotionDropdownWrap?.appendChild(emotionDropdown);
+
+  function onEmotionTaskSelected(taskName) {
+    const isEmotionTask =
+      taskName === EMOTION_TASK_POSITIVE || taskName === EMOTION_TASK_NEGATIVE;
+    if (isEmotionTask) {
+      emotionDropdown._setTaskName?.(taskName);
+      emotionDropdown._setValue?.("");
+      if (taskLogEmotionToggleInput) {
+        taskLogEmotionToggleInput.checked = true;
+        if (taskLogEmotionFields) taskLogEmotionFields.hidden = false;
+      }
+      requestAnimationFrame(() => {
+        taskLogEmotionSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    } else {
+      emotionDropdown._setTaskName?.("");
+    }
+  }
 
   taskLogEnergyToggleInput?.addEventListener("change", () => {
     if (taskLogEnergyFields) taskLogEnergyFields.hidden = !taskLogEnergyToggleInput.checked;
@@ -2691,7 +2761,7 @@ export function render() {
     taskLogAddContext = addContext;
     taskLogEditTr = null;
     pendingEditStartTime = "";
-    taskLogTitleEl.textContent = "과제 기록하기";
+    taskLogTitleEl.textContent = "과제 기록";
     taskLogSubmitBtn.textContent = "기록";
     taskLogModal.hidden = false;
     taskLogModal.style.zIndex = "1002";
@@ -3406,7 +3476,7 @@ export function render() {
   const addBtn = document.createElement("button");
   addBtn.type = "button";
   addBtn.className = "time-btn-add";
-  addBtn.innerHTML = '<span class="time-add-icon">+</span> 과제 기록하기';
+  addBtn.innerHTML = '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 과제 기록';
 
   const initialHandleRowDelete = (tr, rowData) => {
     if (rowData) {
@@ -3458,7 +3528,7 @@ export function render() {
     const addBtnEl = document.createElement("button");
     addBtnEl.type = "button";
     addBtnEl.className = "time-btn-add";
-    addBtnEl.innerHTML = '<span class="time-add-icon">+</span> 과제 기록하기';
+    addBtnEl.innerHTML = '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 과제 기록';
 
     const handleRowDelete = (tr, rowData) => {
       if (rowData) {
@@ -4503,7 +4573,7 @@ export function render() {
     const investAddBtn = document.createElement("button");
     investAddBtn.type = "button";
     investAddBtn.className = "time-btn-add";
-    investAddBtn.innerHTML = '<span class="time-add-icon">+</span> 과제 기록하기';
+    investAddBtn.innerHTML = '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 과제 기록';
     investAddCell.appendChild(investAddBtn);
     investAddRow.appendChild(investAddCell);
 
@@ -4531,7 +4601,7 @@ export function render() {
     const consumeAddBtn = document.createElement("button");
     consumeAddBtn.type = "button";
     consumeAddBtn.className = "time-btn-add";
-    consumeAddBtn.innerHTML = '<span class="time-add-icon">+</span> 과제 기록하기';
+    consumeAddBtn.innerHTML = '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 과제 기록';
     consumeAddCell.appendChild(consumeAddBtn);
     consumeAddRow.appendChild(consumeAddCell);
 
