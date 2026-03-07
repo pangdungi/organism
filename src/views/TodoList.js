@@ -4,6 +4,9 @@
  */
 
 import { getKpiTodosAsTasks, syncKpiTodoCompleted, removeAllCompletedKpiTodos, removeKpiTodo, updateKpiTodo } from "../utils/kpiTodoSync.js";
+import { createTodoSettingsModal } from "../utils/todoSettingsModal.js";
+import { getTodoSettings } from "../utils/todoSettings.js";
+import { getSubtasks, addSubtask, updateSubtask, removeSubtask, clearSubtasks } from "../utils/todoSubtasks.js";
 
 export function saveTodoListBeforeUnmount() {}
 
@@ -71,6 +74,9 @@ const TASK_DELETE_ICON =
 
 const ADD_TASK_ICON =
   '<svg viewBox="0 0 24 24" width="20" height="20"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>';
+
+const LIST_ICON =
+  '<img src="/toolbaricons/list.svg" alt="세부 할일" class="todo-list-icon" width="18" height="18">';
 
 function createCategoryDropdown(initialValue, onUpdate) {
   const wrap = document.createElement("div");
@@ -308,11 +314,71 @@ function createCategoryDropdown(initialValue, onUpdate) {
 }
 
 const SECTIONS = [
-  { id: "happy", label: "하면 행복한 일" },
+  { id: "braindump", label: "브레인덤프" },
   { id: "dream", label: "꿈" },
   { id: "sideincome", label: "부수입" },
   { id: "health", label: "건강" },
+  { id: "happy", label: "행복" },
 ];
+
+function getTaskId(taskData) {
+  if (taskData.isKpiTodo && taskData.kpiTodoId && taskData.storageKey) {
+    return `kpi-${taskData.kpiTodoId}-${taskData.storageKey}`;
+  }
+  return taskData.taskId || `task-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function createSubtaskItem(parentTaskId, subtaskData, onRemove) {
+  const { id: subtaskId, name = "", done = false } = subtaskData;
+  const wrap = document.createElement("div");
+  wrap.className = "todo-subtask-item";
+  wrap.dataset.parentTaskId = parentTaskId;
+  wrap.dataset.subtaskId = subtaskId;
+
+  const nameWrap = document.createElement("div");
+  nameWrap.className = "todo-subtask-name-wrap";
+  const inputGroup = document.createElement("div");
+  inputGroup.className = "todo-subtask-input-group";
+  const doneCheck = document.createElement("input");
+  doneCheck.type = "checkbox";
+  doneCheck.className = "todo-done-check";
+  doneCheck.checked = done;
+  doneCheck.addEventListener("change", () => {
+    updateSubtask(parentTaskId, subtaskId, { done: doneCheck.checked });
+  });
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.className = "todo-subtask-input";
+  nameInput.value = name;
+  nameInput.placeholder = "세부 할일 입력";
+  nameInput.addEventListener("blur", () => {
+    const val = (nameInput.value || "").trim();
+    updateSubtask(parentTaskId, subtaskId, { name: val });
+  });
+  nameInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      nameInput.blur();
+    }
+  });
+  inputGroup.appendChild(doneCheck);
+  inputGroup.appendChild(nameInput);
+  const delBtn = document.createElement("button");
+  delBtn.type = "button";
+  delBtn.className = "todo-task-delete-btn todo-subtask-delete-btn";
+  delBtn.title = "삭제";
+  delBtn.innerHTML = TASK_DELETE_ICON;
+  delBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    removeSubtask(parentTaskId, subtaskId);
+    wrap.remove();
+    onRemove?.();
+  });
+  nameWrap.appendChild(inputGroup);
+  nameWrap.appendChild(delBtn);
+  wrap.appendChild(nameWrap);
+  return wrap;
+}
 
 function createTaskRow(taskData = {}, options = {}) {
   const {
@@ -325,11 +391,13 @@ function createTaskRow(taskData = {}, options = {}) {
     kpiTodoId = "",
     storageKey = "",
   } = taskData;
-  const { showCategoryCol = false } = options;
+  const { showCategoryCol = false, isSubtask = false, taskId: optTaskId } = options;
+  const taskId = optTaskId || getTaskId(taskData);
 
   const tr = document.createElement("tr");
-  tr.className = "todo-task-row";
+  tr.className = "todo-task-row" + (isSubtask ? " todo-subtask-row" : "");
   tr.dataset.sectionId = taskData.sectionId || "";
+  if (!isSubtask) tr.dataset.taskId = taskId;
   if (isKpiTodo) {
     tr.classList.add("todo-task-row--kpi");
     tr.dataset.isKpiTodo = "true";
@@ -351,7 +419,9 @@ function createTaskRow(taskData = {}, options = {}) {
   doneTd.appendChild(doneCheck);
 
   const nameTd = document.createElement("td");
-  nameTd.className = "todo-cell-name";
+  nameTd.className = "todo-cell-name" + (isSubtask ? " todo-cell-name-subtask" : "");
+  const nameWrap = document.createElement("div");
+  nameWrap.className = "todo-cell-name-wrap";
   const nameInput = document.createElement("input");
   nameInput.type = "text";
   nameInput.value = name;
@@ -360,13 +430,42 @@ function createTaskRow(taskData = {}, options = {}) {
       const val = (nameInput.value || "").trim();
       if (val !== name) updateKpiTodo(kpiTodoId, storageKey, { text: val });
     });
-    nameInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        nameInput.blur();
-      }
-    });
   }
-  nameTd.appendChild(nameInput);
+  nameInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      nameInput.blur();
+    }
+  });
+  nameWrap.appendChild(nameInput);
+  if (!isSubtask) {
+    const listBtn = document.createElement("button");
+    listBtn.type = "button";
+    listBtn.className = "todo-list-btn";
+    listBtn.title = "세부 할일 추가";
+    listBtn.innerHTML = LIST_ICON;
+    listBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const section = tr.closest(".todo-section");
+      const updateCount = () => {
+        const countEl = section?.querySelector(".todo-section-count");
+        if (countEl) countEl.textContent = String(tr.closest("tbody")?.querySelectorAll(".todo-task-row").length || 0);
+      };
+      addSubtask(taskId, { name: "", done: false });
+      const subs = getSubtasks(taskId);
+      const newItem = createSubtaskItem(taskId, subs[subs.length - 1], updateCount);
+      const container = nameTd.querySelector(".todo-subtasks-container");
+      if (container) container.appendChild(newItem);
+      updateCount();
+    });
+    nameWrap.appendChild(listBtn);
+  }
+  nameTd.appendChild(nameWrap);
+  if (!isSubtask) {
+    const subtasksContainer = document.createElement("div");
+    subtasksContainer.className = "todo-subtasks-container";
+    nameTd.appendChild(subtasksContainer);
+  }
 
   const dueTd = document.createElement("td");
   dueTd.className = "todo-cell-due";
@@ -403,7 +502,8 @@ function createTaskRow(taskData = {}, options = {}) {
   });
   dueWrap.addEventListener("click", () => {
     dueInput.focus();
-    if (typeof dueInput.showPicker === "function") dueInput.showPicker();
+    if (dueInput._flatpickr) dueInput._flatpickr.open();
+    else if (typeof dueInput.showPicker === "function") dueInput.showPicker();
     else dueInput.click();
   });
   if (isKpiTodo) {
@@ -430,7 +530,7 @@ function createTaskRow(taskData = {}, options = {}) {
       tr.remove();
     }
     section?.querySelector(".todo-section-count") &&
-      (section.querySelector(".todo-section-count").textContent = tbody.querySelectorAll(".todo-task-row").length);
+      (section.querySelector(".todo-section-count").textContent = tbody.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").length);
   });
   delTd.appendChild(delBtn);
 
@@ -457,20 +557,29 @@ function createTaskRow(taskData = {}, options = {}) {
 }
 
 function createSection(section, options = {}) {
-  const { lastColHeader = "분류", initialTasks = [], showCategoryCol = false, sectionIdForAdd = null, hideCategoryCol = true } = options;
+  const { lastColHeader = "분류", initialTasks = [], showCategoryCol = false, sectionIdForAdd = null, hideCategoryCol = true, tabMode = false } = options;
   const sectionId = sectionIdForAdd ?? section.id;
 
   const wrap = document.createElement("div");
-  wrap.className = "todo-section";
+  wrap.className = "todo-section" + (tabMode ? " todo-section-tab-panel" : "");
   wrap.dataset.section = section.id;
 
-  const header = document.createElement("div");
-  header.className = "todo-section-header";
-  header.innerHTML = `
-    <span class="todo-section-arrow">▼</span>
-    <span class="todo-section-label">${section.label}</span>
-    <span class="todo-section-count">0</span>
-  `;
+  let header = null;
+  if (!tabMode) {
+    header = document.createElement("div");
+    header.className = "todo-section-header";
+    header.innerHTML = `
+      <span class="todo-section-arrow">▼</span>
+      <span class="todo-section-label">${section.label}</span>
+      <span class="todo-section-count">0</span>
+    `;
+  } else {
+    const countSpan = document.createElement("span");
+    countSpan.className = "todo-section-count";
+    countSpan.textContent = "0";
+    countSpan.style.display = "none";
+    wrap.appendChild(countSpan);
+  }
 
   const tableWrap = document.createElement("div");
   tableWrap.className = "todo-table-wrap";
@@ -507,9 +616,18 @@ function createSection(section, options = {}) {
   const tbody = table.querySelector("tbody");
 
   initialTasks.forEach((t) => {
-    const tr = createTaskRow(t, { showCategoryCol, hideCategoryCol });
+    const taskId = getTaskId(t);
+    t.taskId = taskId;
+    const tr = createTaskRow(t, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId });
     tr.dataset.sectionId = t.sectionId || "";
     tbody.appendChild(tr);
+    const container = tr.querySelector(".todo-subtasks-container");
+    if (container) {
+      getSubtasks(taskId).forEach((st) => {
+        const item = createSubtaskItem(taskId, st, updateCount);
+        container.appendChild(item);
+      });
+    }
   });
 
   const addRow = document.createElement("tr");
@@ -521,9 +639,11 @@ function createSection(section, options = {}) {
   `;
   tbody.appendChild(addRow);
 
+  const countEl = () => (tabMode ? wrap.querySelector(".todo-section-count") : header?.querySelector(".todo-section-count"));
+
   function updateCount() {
-    header.querySelector(".todo-section-count").textContent =
-      tbody.querySelectorAll(".todo-task-row").length;
+    const el = countEl();
+    if (el) el.textContent = String(tbody.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").length);
   }
 
   addRow.querySelector(".todo-add-btn").addEventListener("click", () => {
@@ -534,20 +654,24 @@ function createSection(section, options = {}) {
           classification: section.id,
         }
       : { sectionId };
-    const tr = createTaskRow(taskData, { showCategoryCol, hideCategoryCol });
+    const taskId = getTaskId(taskData);
+    taskData.taskId = taskId;
+    const tr = createTaskRow(taskData, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId });
     tbody.insertBefore(tr, addRow);
     updateCount();
   });
 
-  header.querySelector(".todo-section-arrow").addEventListener("click", () => {
-    wrap.classList.toggle("is-collapsed");
-  });
+  if (header) {
+    header.querySelector(".todo-section-arrow").addEventListener("click", () => {
+      wrap.classList.toggle("is-collapsed");
+    });
+  }
 
   tableWrap.appendChild(table);
-  wrap.appendChild(header);
+  if (header) wrap.appendChild(header);
   wrap.appendChild(tableWrap);
   updateCount();
-  return wrap;
+  return { wrap, updateCount };
 }
 
 function collectTasksFromDOM(sectionsEl) {
@@ -556,7 +680,7 @@ function collectTasksFromDOM(sectionsEl) {
   sectionsEl?.querySelectorAll(".todo-section").forEach((sec) => {
     const secId = sec.dataset.section;
     const isCategoryView = sectionIds.has(secId);
-    sec.querySelectorAll(".todo-task-row").forEach((row) => {
+    sec.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").forEach((row) => {
       const nameInput = row.querySelector(".todo-cell-name input");
       const dueInput = row.querySelector(".todo-due-input-hidden");
       const catCell = row.querySelector(".todo-cell-category");
@@ -586,19 +710,24 @@ function collectTasksFromDOM(sectionsEl) {
   return tasks;
 }
 
-function renderSections(container, tasksData = []) {
+function renderSections(container, tasksData = [], options = {}) {
+  const { tabMode = false } = options;
   container.innerHTML = "";
+  const results = [];
   SECTIONS.forEach((section) => {
     const sectionTasks = tasksData.filter((t) => t.sectionId === section.id);
-    const sec = createSection(section, {
+    const { wrap, updateCount } = createSection(section, {
       lastColHeader: "분류",
       initialTasks: sectionTasks,
       showCategoryCol: false,
       sectionIdForAdd: section.id,
       hideCategoryCol: true,
+      tabMode,
     });
-    container.appendChild(sec);
+    container.appendChild(wrap);
+    results.push({ section, wrap, updateCount });
   });
+  return results;
 }
 
 export function render() {
@@ -607,56 +736,145 @@ export function render() {
 
   const toolbar = document.createElement("div");
   toolbar.className = "todo-list-toolbar";
-  const hideCompletedBtn = document.createElement("button");
-  hideCompletedBtn.type = "button";
-  hideCompletedBtn.className = "todo-list-toolbar-btn todo-list-hide-completed-btn";
-  hideCompletedBtn.textContent = "완료항목 숨기기";
-  hideCompletedBtn.title = "완료된 항목 표시/숨기기";
-  const clearCompletedBtn = document.createElement("button");
-  clearCompletedBtn.type = "button";
-  clearCompletedBtn.className = "todo-list-toolbar-btn todo-list-clear-completed-btn";
-  clearCompletedBtn.textContent = "완료항목 모두 제거";
-  clearCompletedBtn.title = "완료된 항목을 목록에서 삭제합니다";
+  const settingsBtn = document.createElement("button");
+  settingsBtn.type = "button";
+  settingsBtn.className = "todo-list-toolbar-btn todo-list-settings-btn";
+  settingsBtn.title = "할일 환경설정";
+  settingsBtn.innerHTML = '<img src="/toolbaricons/settings.svg" alt="" class="todo-list-settings-icon" width="18" height="18">';
 
-  let hideCompleted = false;
-  hideCompletedBtn.addEventListener("click", () => {
-    hideCompleted = !hideCompleted;
-    el.classList.toggle("hide-completed", hideCompleted);
-    hideCompletedBtn.textContent = hideCompleted ? "완료항목 보기" : "완료항목 숨기기";
-  });
+  const initialSettings = getTodoSettings();
+  let hideCompleted = initialSettings.hideCompleted;
+  el.classList.toggle("hide-completed", hideCompleted);
 
-  clearCompletedBtn.addEventListener("click", () => {
+  function doClearCompleted() {
     const removed = removeAllCompletedKpiTodos();
-    if (removed > 0) {
-      el.querySelectorAll(".todo-task-row").forEach((row) => {
-        const check = row.querySelector(".todo-done-check");
-        if (check?.checked) row.remove();
-      });
+    const rowsToRemove = [];
+    el.querySelectorAll(".todo-task-row").forEach((row) => {
+      const check = row.querySelector(".todo-done-check");
+      if (check?.checked && row.dataset.taskId) {
+        rowsToRemove.push(row);
+      }
+    });
+    rowsToRemove.forEach((r) => {
+      clearSubtasks(r.dataset.taskId);
+      r.remove();
+    });
+    el.querySelectorAll(".todo-subtask-item").forEach((item) => {
+      const check = item.querySelector(".todo-done-check");
+      if (check?.checked) {
+        const parentTaskId = item.dataset.parentTaskId;
+        const subtaskId = item.dataset.subtaskId;
+        if (parentTaskId && subtaskId) removeSubtask(parentTaskId, subtaskId);
+        item.remove();
+      }
+    });
+    if (removed > 0 || rowsToRemove.length > 0) {
       el.querySelectorAll(".todo-section").forEach((sec) => {
         const count = sec.querySelectorAll(".todo-task-row").length;
         const countEl = sec.querySelector(".todo-section-count");
         if (countEl) countEl.textContent = count;
       });
+      sectionResults.forEach(({ updateCount }) => updateCount());
+      updateTabLabels();
     }
+  }
+
+  settingsBtn.addEventListener("click", () => {
+    createTodoSettingsModal({
+      onHideCompletedChange: (v) => {
+        hideCompleted = v;
+        el.classList.toggle("hide-completed", hideCompleted);
+      },
+      onClearCompleted: doClearCompleted,
+      onColorsChange: (colors) => {
+        applyTabColors(colors);
+      },
+    });
   });
 
-  const settingsBtn = document.createElement("button");
-  settingsBtn.type = "button";
-  settingsBtn.className = "todo-list-toolbar-btn todo-list-settings-btn";
-  settingsBtn.title = "할일 설정";
-  settingsBtn.innerHTML = '<img src="/toolbaricons/settings.svg" alt="" class="todo-list-settings-icon" width="18" height="18">';
-
-  toolbar.appendChild(hideCompletedBtn);
-  toolbar.appendChild(clearCompletedBtn);
   toolbar.appendChild(settingsBtn);
   el.appendChild(toolbar);
 
+  const categoryTabs = document.createElement("div");
+  categoryTabs.className = "todo-category-tabs";
+  const tabButtons = [];
+  const colors = getTodoSettings().sectionColors;
+
+  function applyTabColors(sectionColors) {
+    tabButtons.forEach((btn) => {
+      const secId = btn.dataset.section;
+      if (secId === "braindump") {
+        btn.style.borderLeft = "";
+        btn.style.paddingLeft = "";
+        return;
+      }
+      const c = sectionColors?.[secId];
+      if (c) {
+        btn.style.borderLeft = `3px solid ${c}`;
+        btn.style.paddingLeft = "calc(1rem - 3px)";
+      } else {
+        btn.style.borderLeft = "";
+        btn.style.paddingLeft = "";
+      }
+    });
+  }
+
+  SECTIONS.forEach((section) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "todo-category-tab";
+    btn.dataset.section = section.id;
+    btn.innerHTML = `<span class="todo-category-tab-label">${section.label}</span> <span class="todo-category-tab-count">0</span>`;
+    const c = section.id !== "braindump" ? colors[section.id] : null;
+    if (c) {
+      btn.style.borderLeft = `3px solid ${c}`;
+      btn.style.paddingLeft = "calc(1rem - 3px)";
+    }
+    tabButtons.push(btn);
+    categoryTabs.appendChild(btn);
+  });
+  el.appendChild(categoryTabs);
+
   const sectionsWrap = document.createElement("div");
-  sectionsWrap.className = "todo-sections-wrap";
+  sectionsWrap.className = "todo-sections-wrap todo-tab-panels";
 
   const kpiTasks = getKpiTodosAsTasks();
-  renderSections(sectionsWrap, kpiTasks);
+  const sectionResults = renderSections(sectionsWrap, kpiTasks, { tabMode: true });
+
+  function updateTabLabels() {
+    tabButtons.forEach((btn, i) => {
+      const sec = sectionResults[i]?.wrap;
+      const count = sec ? sec.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").length : 0;
+      btn.querySelector(".todo-category-tab-count").textContent = String(count);
+    });
+  }
+  updateTabLabels();
+
+  let activeSectionIndex = 0;
+  sectionResults.forEach((r, i) => {
+    r.wrap.classList.toggle("is-active", i === 0);
+  });
+
+  tabButtons.forEach((btn, i) => {
+    btn.addEventListener("click", () => {
+      activeSectionIndex = i;
+      tabButtons.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      sectionResults.forEach((r, idx) => {
+        r.wrap.classList.toggle("is-active", idx === i);
+      });
+    });
+  });
+  tabButtons[0]?.classList.add("active");
+
   el.appendChild(sectionsWrap);
+
+  const observer = new MutationObserver(() => {
+    updateTabLabels();
+  });
+  sectionResults.forEach(({ wrap }) => {
+    observer.observe(wrap.querySelector("tbody"), { childList: true });
+  });
 
   return el;
 }

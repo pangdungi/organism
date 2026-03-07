@@ -24,15 +24,9 @@ function parseNum(str) {
   return Number.isNaN(n) ? 0 : n;
 }
 
-function getLatestLog(kpiId, logs) {
+function getAccumulatedLogValue(kpiId, logs) {
   const filtered = (logs || []).filter((l) => l.kpiId === kpiId);
-  if (filtered.length === 0) return null;
-  filtered.sort((a, b) => {
-    const da = a.dateRaw || a.date || "";
-    const db = b.dateRaw || b.date || "";
-    return db.localeCompare(da);
-  });
-  return filtered[0];
+  return filtered.reduce((sum, log) => sum + parseNum(log.value), 0);
 }
 
 function escapeHtml(str) {
@@ -58,8 +52,7 @@ function getKpisByCategory() {
   const result = { 꿈: [], 부수입: [], 행복: [], 건강: [] };
 
   function addKpi(kpi, logs, parentName, category) {
-    const latest = getLatestLog(kpi.id, logs);
-    const currentVal = latest?.value ? parseNum(latest.value) : 0;
+    const currentVal = getAccumulatedLogValue(kpi.id, logs);
     const targetVal = parseNum(kpi.targetValue);
     const progress = targetVal > 0 ? Math.min(100, (currentVal / targetVal) * 100) : 0;
     const unitSuffix = kpi.unit ? " " + kpi.unit : "";
@@ -98,7 +91,7 @@ function getKpisByCategory() {
   return result;
 }
 
-const CATEGORY_LABELS = { 꿈: "꿈", 부수입: "부수입", 행복: "하면 행복한 일", 건강: "건강" };
+const CATEGORY_LABELS = { 꿈: "꿈", 부수입: "부수입", 행복: "행복", 건강: "건강" };
 const CATEGORY_ICONS = { 꿈: "✨", 부수입: "💰", 행복: "😊", 건강: "💪" };
 
 export function showKpiViewModal() {

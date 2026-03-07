@@ -1,4 +1,5 @@
 import { signOut } from "./auth.js";
+import { observeDatePickerInit } from "./utils/datePickerInit.js";
 import { render as renderCalendar } from "./views/Calendar.js";
 import { render as renderTime } from "./views/Time.js";
 import { render as renderRoutine } from "./views/Routine.js";
@@ -15,7 +16,7 @@ import { render as renderIdea } from "./views/Idea.js";
 const SIDEBAR_COLLAPSED_KEY = "app-sidebar-collapsed";
 
 const TABS = [
-  { id: "calendar", label: "캘린더", icon: "/toolbaricons/checkbox-active.svg" },
+  { id: "calendar", label: "캘린더", icon: "/toolbaricons/calendar-alt.svg" },
   { id: "time", label: "시간가계부", icon: "/toolbaricons/timer.svg" },
   { id: "routine", label: "루틴/해빗트랙커", icon: "/toolbaricons/goback.svg" },
   { id: "workschedule", label: "근무표", icon: "/toolbaricons/calendar-heart1.svg" },
@@ -187,4 +188,5 @@ export function mountApp(container) {
   appScreen.appendChild(main);
   appPage.appendChild(appScreen);
   container.appendChild(appPage);
+  observeDatePickerInit(container);
 }

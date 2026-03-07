@@ -82,7 +82,7 @@ export function getKpiTodosAsTasks() {
       dueDate: todo.dueDate || "",
       classification: kpiName,
       sectionId: "happy",
-      sectionLabel: "하면 행복한 일",
+      sectionLabel: "행복",
       done: !!todo.completed,
       isKpiTodo: true,
       kpiTodoId: todo.id,

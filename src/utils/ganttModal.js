@@ -88,15 +88,9 @@ function parseNum(str) {
   return Number.isNaN(n) ? 0 : n;
 }
 
-function getLatestLog(kpiId, logs) {
+function getAccumulatedLogValue(kpiId, logs) {
   const filtered = (logs || []).filter((l) => l.kpiId === kpiId);
-  if (filtered.length === 0) return null;
-  filtered.sort((a, b) => {
-    const da = a.dateRaw || a.date || "";
-    const db = b.dateRaw || b.date || "";
-    return db.localeCompare(da);
-  });
-  return filtered[0];
+  return filtered.reduce((sum, log) => sum + parseNum(log.value), 0);
 }
 
 function collectAllKpis() {
@@ -117,8 +111,7 @@ function collectAllKpis() {
     const startDate = parseTargetDeadline(k.targetStartDate);
     const targetDate = parseTargetDeadline(k.targetDeadline);
     const logs = dreamData.kpiLogs || [];
-    const latest = getLatestLog(k.id, logs);
-    const currentVal = latest?.value ? parseNum(latest.value) : 0;
+    const currentVal = getAccumulatedLogValue(k.id, logs);
     const targetVal = parseNum(k.targetValue);
     const progress = targetVal > 0 ? Math.min(100, (currentVal / targetVal) * 100) : 0;
     const today = new Date();
@@ -142,8 +135,7 @@ function collectAllKpis() {
     const startDate = parseTargetDeadline(k.targetStartDate);
     const targetDate = parseTargetDeadline(k.targetDeadline);
     const logs = sideData.kpiLogs || [];
-    const latest = getLatestLog(k.id, logs);
-    const currentVal = latest?.value ? parseNum(latest.value) : 0;
+    const currentVal = getAccumulatedLogValue(k.id, logs);
     const targetVal = parseNum(k.targetValue);
     const progress = targetVal > 0 ? Math.min(100, (currentVal / targetVal) * 100) : 0;
     const today = new Date();
@@ -167,8 +159,7 @@ function collectAllKpis() {
     const startDate = parseTargetDeadline(k.targetStartDate);
     const targetDate = parseTargetDeadline(k.targetDeadline);
     const logs = happyData.kpiLogs || [];
-    const latest = getLatestLog(k.id, logs);
-    const currentVal = latest?.value ? parseNum(latest.value) : 0;
+    const currentVal = getAccumulatedLogValue(k.id, logs);
     const targetVal = parseNum(k.targetValue);
     const progress = targetVal > 0 ? Math.min(100, (currentVal / targetVal) * 100) : 0;
     const today = new Date();
@@ -192,8 +183,7 @@ function collectAllKpis() {
     const startDate = parseTargetDeadline(k.targetStartDate);
     const targetDate = parseTargetDeadline(k.targetDeadline);
     const logs = healthData.kpiLogs || [];
-    const latest = getLatestLog(k.id, logs);
-    const currentVal = latest?.value ? parseNum(latest.value) : 0;
+    const currentVal = getAccumulatedLogValue(k.id, logs);
     const targetVal = parseNum(k.targetValue);
     const progress = targetVal > 0 ? Math.min(100, (currentVal / targetVal) * 100) : 0;
     const today = new Date();

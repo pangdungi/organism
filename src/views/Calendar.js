@@ -160,31 +160,81 @@ function renderMonthlyView(tabsElement) {
   calendarSection.appendChild(calendarGrid);
   wrap.appendChild(calendarSection);
 
-  let sidebarCollapsed = false;
-
   const todoSidebar = document.createElement("aside");
   todoSidebar.className = "calendar-todo-sidebar";
+  let sidebarCollapsed = false;
   todoSidebar.innerHTML = `
     <div class="calendar-todo-sidebar-header">
-      <button type="button" class="calendar-todo-sidebar-collapse" title="접기/펼치기"><img src="/toolbaricons/caret-left-double.svg" alt="" class="calendar-todo-sidebar-collapse-icon" width="18" height="18"></button>
       <span class="calendar-todo-sidebar-title">할 일</span>
+      <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
+        <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
+      </button>
     </div>
     <div class="calendar-todo-sidebar-body"></div>
   `;
-
-  const sidebarBody = todoSidebar.querySelector(".calendar-todo-sidebar-body");
   const todoListEl = renderTodoList();
   todoListEl.classList.add("todo-list-in-sidebar");
-  sidebarBody.appendChild(todoListEl);
-
-  const collapseBtn = todoSidebar.querySelector(".calendar-todo-sidebar-collapse");
-  collapseBtn.addEventListener("click", () => {
+  todoSidebar.querySelector(".calendar-todo-sidebar-body").appendChild(todoListEl);
+  todoSidebar.querySelector(".calendar-todo-sidebar-collapse").addEventListener("click", () => {
     sidebarCollapsed = !sidebarCollapsed;
     todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
+    todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
   });
-
   wrap.appendChild(todoSidebar);
+
   renderCalendar();
+
+  return wrap;
+}
+
+function renderTodoView(tabsElement) {
+  const wrap = document.createElement("div");
+  wrap.className = "calendar-monthly-layout";
+
+  const todoMain = document.createElement("div");
+  todoMain.className = "calendar-monthly-main calendar-todo-main";
+
+  if (tabsElement) {
+    const tabsWrapper = document.createElement("div");
+    tabsWrapper.className = "calendar-monthly-tabs-wrap";
+    tabsWrapper.appendChild(tabsElement);
+    todoMain.appendChild(tabsWrapper);
+  }
+
+  const todoContent = document.createElement("div");
+  todoContent.className = "calendar-todo-content";
+  const todoListEl = renderTodoList();
+  todoContent.appendChild(todoListEl);
+  todoMain.appendChild(todoContent);
+
+  wrap.appendChild(todoMain);
+
+  return wrap;
+}
+
+function renderPlaceholderView(tabsElement, label) {
+  const wrap = document.createElement("div");
+  wrap.className = "calendar-monthly-layout";
+
+  const main = document.createElement("div");
+  main.className = "calendar-monthly-main";
+
+  if (tabsElement) {
+    const tabsWrapper = document.createElement("div");
+    tabsWrapper.className = "calendar-monthly-tabs-wrap";
+    tabsWrapper.appendChild(tabsElement);
+    main.appendChild(tabsWrapper);
+  }
+
+  const placeholderWrap = document.createElement("div");
+  placeholderWrap.className = "calendar-placeholder-wrap";
+  const placeholder = document.createElement("p");
+  placeholder.className = "calendar-placeholder";
+  placeholder.textContent = `${label} (준비 중)`;
+  placeholderWrap.appendChild(placeholder);
+  main.appendChild(placeholderWrap);
+
+  wrap.appendChild(main);
 
   return wrap;
 }
@@ -219,13 +269,12 @@ export function render() {
     }
     contentWrap.innerHTML = "";
     if (view === "todo") {
-      const todoEl = renderTodoList();
-      contentWrap.appendChild(todoEl);
+      contentWrap.appendChild(renderTodoView(tabs));
     } else if (view === "monthly") {
       contentWrap.appendChild(renderMonthlyView(tabs));
     } else {
       const labels = { "2week": "2주", "1week": "1주", "1day": "1일" };
-      contentWrap.innerHTML = `<p class="calendar-placeholder">${labels[view]} (준비 중)</p>`;
+      contentWrap.appendChild(renderPlaceholderView(tabs, labels[view]));
     }
   }
 

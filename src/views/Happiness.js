@@ -554,9 +554,13 @@ export function render() {
     saveHappinessMap(data);
   }
 
+  function getAccumulatedKpiValue(kpiId) {
+    const logs = getKpiLogs(kpiId);
+    return logs.reduce((sum, log) => sum + parseNum(log.value), 0);
+  }
+
   function getKpiProgress(kpi) {
-    const latestLog = getLatestKpiLog(kpi.id);
-    const currentVal = latestLog?.value ? parseNum(latestLog.value) : 0;
+    const currentVal = getAccumulatedKpiValue(kpi.id);
     const targetVal = parseNum(kpi.targetValue);
     const progress = targetVal > 0 ? Math.min(100, (currentVal / targetVal) * 100) : 0;
     const targetMins = kpi.targetTimeRequired ? hhMmToMinutes(kpi.targetTimeRequired) : 0;

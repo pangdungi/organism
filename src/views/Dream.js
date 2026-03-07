@@ -556,9 +556,13 @@ export function render() {
     saveDreamMap(data);
   }
 
+  function getAccumulatedKpiValue(kpiId) {
+    const logs = getKpiLogs(kpiId);
+    return logs.reduce((sum, log) => sum + parseNum(log.value), 0);
+  }
+
   function getKpiProgress(kpi) {
-    const latestLog = getLatestKpiLog(kpi.id);
-    const currentVal = latestLog?.value ? parseNum(latestLog.value) : 0;
+    const currentVal = getAccumulatedKpiValue(kpi.id);
     const targetVal = parseNum(kpi.targetValue);
     const progress = targetVal > 0 ? Math.min(100, (currentVal / targetVal) * 100) : 0;
     const targetMins = kpi.targetTimeRequired ? hhMmToMinutes(kpi.targetTimeRequired) : 0;
@@ -1014,6 +1018,22 @@ export function render() {
     document.body.appendChild(modal);
   }
 
+  function updateMoreIndicator() {
+    let indicator = tabsWrap.querySelector(".dream-tabs-more-indicator");
+    const hasOverflow = tabsWrap.scrollWidth > tabsWrap.clientWidth;
+    if (hasOverflow) {
+      if (!indicator) {
+        indicator = document.createElement("span");
+        indicator.className = "dream-tabs-more-indicator";
+        indicator.textContent = "더 많은 꿈이 있어요";
+        tabsWrap.appendChild(indicator);
+      }
+      indicator.hidden = false;
+    } else if (indicator) {
+      indicator.hidden = true;
+    }
+  }
+
   function renderTabs() {
     const data = loadDreamMap();
     tabs.innerHTML = "";
@@ -1041,6 +1061,7 @@ export function render() {
       });
       tabs.appendChild(tab);
     });
+    requestAnimationFrame(() => updateMoreIndicator());
   }
 
   function updateTitleAndContent() {
@@ -1067,6 +1088,8 @@ export function render() {
   });
 
   renderTabs();
+  const resizeObserver = new ResizeObserver(() => updateMoreIndicator());
+  resizeObserver.observe(tabsWrap);
   if (activeDreamId) {
     updateTitleAndContent();
   } else {
