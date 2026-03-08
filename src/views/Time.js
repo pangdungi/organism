@@ -5007,6 +5007,29 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
     endTimeTd.appendChild(endInput);
     tr.appendChild(endTimeTd);
 
+    const deleteTd = document.createElement("td");
+    deleteTd.className = "time-budget-cell-delete";
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "time-budget-btn-delete";
+    deleteBtn.title = "예상 시간 삭제";
+    deleteBtn.textContent = "×";
+    deleteBtn.addEventListener("click", () => {
+      startInput.value = "";
+      endInput.value = "";
+      const name = taskDropdown.getValue();
+      if (name) {
+        saveBudgetScheduledTime(targetDateStr, name, "", isInvest);
+        document.dispatchEvent(
+          new CustomEvent("calendar-budget-scheduled-updated", {
+            detail: { dateStr: targetDateStr },
+          }),
+        );
+      }
+    });
+    deleteTd.appendChild(deleteBtn);
+    tr.appendChild(deleteTd);
+
     return tr;
   }
 
@@ -5052,6 +5075,7 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
         <th class="time-budget-col-goal">목표 시간</th>
         <th>예상 시작 시간</th>
         <th>예상 마감 시간</th>
+        <th class="time-budget-col-delete"></th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -5059,7 +5083,7 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
   const investAddRow = document.createElement("tr");
   investAddRow.className = "time-row-add";
   const investAddCell = document.createElement("td");
-  investAddCell.colSpan = 4;
+  investAddCell.colSpan = 5;
   investAddCell.className = "time-cell-add";
   const investAddBtn = document.createElement("button");
   investAddBtn.type = "button";
@@ -5109,6 +5133,7 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
         <th class="time-budget-col-goal">목표 시간</th>
         <th>예상 시작 시간</th>
         <th>예상 마감 시간</th>
+        <th class="time-budget-col-delete"></th>
       </tr>
     </thead>
     <tbody></tbody>

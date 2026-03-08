@@ -15418,6 +15418,35 @@ body.kpi-resizing {
   border-bottom: none;
 }
 
+.calendar-1day-budget-column .time-budget-col-delete {
+  width: 1.5rem;
+  padding: 0.2rem;
+  vertical-align: middle;
+}
+
+.calendar-1day-budget-column .time-budget-btn-delete {
+  width: 1.1rem;
+  height: 1.1rem;
+  padding: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  line-height: 1;
+  color: #9ca3af;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.calendar-1day-budget-column .time-daily-budget-table tbody tr:hover .time-budget-btn-delete {
+  display: flex;
+}
+
+.calendar-1day-budget-column .time-budget-btn-delete:hover {
+  color: #374151;
+}
+
 .calendar-1day-budget-column .time-daily-budget-table .time-row-add .time-cell-add {
   border-top: 1px solid #e5e7eb;
   border-right: none;
@@ -15569,6 +15598,68 @@ body.kpi-resizing {
 .calendar-1day-view .calendar-1day-time-table--compare {
   grid-template-columns: 4rem 1fr 1fr;
   grid-template-rows: 2.5rem repeat(48, minmax(1.25rem, 1fr));
+}
+
+/* 1주 뷰 - 7일 예상 타임라인 */
+.calendar-1week-view .calendar-1week-time-grid {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-1week-view .calendar-1day-time-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.calendar-1week-view .calendar-1week-time-table {
+  display: grid;
+  grid-template-columns: 4rem repeat(7, 1fr);
+  grid-template-rows: 2.5rem repeat(48, minmax(1.25rem, 1fr));
+  min-height: min-content;
+}
+
+.calendar-1week-view .calendar-1week-day-overlay {
+  top: 0;
+  bottom: 0;
+  position: absolute;
+  display: grid;
+  grid-template-rows: 2.5rem repeat(48, minmax(1.25rem, 1fr));
+  pointer-events: none;
+}
+
+.calendar-1week-view .calendar-1week-day-header {
+  font-size: 0.75rem;
+  padding: 0.3rem 0.25rem;
+  font-weight: 600;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.calendar-1week-view .calendar-1week-header-expect {
+  font-size: 0.65rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+
+.calendar-1week-view .calendar-1week-slot-not-first {
+  border-left: 1px solid #e5e7eb;
+}
+
+.calendar-1week-view .calendar-1week-day-header-not-first {
+  border-left: 1px solid #e5e7eb;
+}
+
+.calendar-1week-view .calendar-1day-view .calendar-1day-time-slot {
+  background: #fff;
+  overflow: hidden;
+}
+
+.calendar-1week-view .calendar-1week-day-overlay {
+  overflow: hidden;
 }
 
 .calendar-1day-view .calendar-1day-time-header {

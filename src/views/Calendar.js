@@ -203,6 +203,21 @@ function getCalendarGridFor1Day(dayOffset = 0) {
   return [[targetDate]];
 }
 
+/** 1주 (월~일 7일) - weekOffset: 0=이번 주, 1=다음 주, -1=지난 주 */
+function getCalendarGridFor1Week(weekOffset = 0) {
+  const today = new Date();
+  const mondayDow = getMondayBasedDow(today);
+  const firstMonday = new Date(today);
+  firstMonday.setDate(today.getDate() - mondayDow + weekOffset * 7);
+  const week = [];
+  for (let d = 0; d < 7; d++) {
+    const date = new Date(firstMonday);
+    date.setDate(firstMonday.getDate() + d);
+    week.push(date);
+  }
+  return week;
+}
+
 function formatDateKey(date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -2344,6 +2359,256 @@ function renderTodoView(tabsElement) {
   return wrap;
 }
 
+function render1WeekView(tabsElement) {
+  const wrap = document.createElement("div");
+  wrap.className = "calendar-monthly-layout calendar-1week-view";
+
+  let weekOffset = 0;
+
+  const calendarSection = document.createElement("div");
+  calendarSection.className = "calendar-monthly-main";
+
+  if (tabsElement) {
+    const tabsWrapper = document.createElement("div");
+    tabsWrapper.className = "calendar-monthly-tabs-wrap";
+    tabsWrapper.appendChild(tabsElement);
+    calendarSection.appendChild(tabsWrapper);
+  }
+
+  const nav = document.createElement("div");
+  nav.className = "calendar-nav calendar-monthly-nav";
+  nav.innerHTML = `
+    <span class="calendar-nav-date">
+      <span class="calendar-nav-month"></span>
+      <span class="calendar-nav-year"></span>
+    </span>
+    <div class="calendar-nav-controls">
+      <button type="button" class="calendar-nav-prev" title="이전 주">‹</button>
+      <button type="button" class="calendar-nav-today" title="이번 주">오늘</button>
+      <button type="button" class="calendar-nav-next" title="다음 주">›</button>
+    </div>
+  `;
+
+  const calendarGrid = document.createElement("div");
+  calendarGrid.className = "calendar-monthly-grid calendar-1week-time-grid";
+
+  const parseHhMmToMinutes = (s) => {
+    if (!s || !s.trim()) return null;
+    const m = String(s).trim().match(/^(\d{1,2}):?(\d{0,2})$/);
+    if (!m) return null;
+    return (parseInt(m[1], 10) || 0) * 60 + (parseInt(m[2], 10) || 0);
+  };
+  const tryOverlap = (slotStartMin, slotEndMin, startMin, endMin, prod, taskName) => {
+    if (startMin == null || endMin == null) return null;
+    const overlapStart = Math.max(slotStartMin, startMin);
+    const overlapEnd = Math.min(slotEndMin, endMin);
+    if (overlapStart < overlapEnd) {
+      return { prod, taskName: taskName || "", overlapStartMin: overlapStart, overlapEndMin: overlapEnd };
+    }
+    return null;
+  };
+  const SLOTS_PER_DAY = 48;
+  const MIN_PER_SLOT = 30;
+  const prodColorsExpected = {
+    productive: { bg: "rgba(239, 68, 68, 0.06)", border: "rgba(239, 68, 68, 0.5)" },
+    nonproductive: { bg: "rgba(59, 130, 246, 0.06)", border: "rgba(59, 130, 246, 0.5)" },
+    other: { bg: "rgba(34, 197, 94, 0.06)", border: "rgba(34, 197, 94, 0.5)" },
+  };
+
+  function buildExpectedSpans(budgetGoals) {
+    const getSlot = (slotIndex) => {
+      const slotStartMin = slotIndex * MIN_PER_SLOT;
+      const slotEndMin = (slotIndex + 1) * MIN_PER_SLOT;
+      for (const [taskName, data] of Object.entries(budgetGoals)) {
+        const st = data?.scheduledTime || "";
+        if (!st.trim()) continue;
+        const parts = st.trim().split("-");
+        const startMin = parseHhMmToMinutes(parts[0]);
+        const endMin = parts[1] ? parseHhMmToMinutes(parts[1]) : null;
+        if (startMin == null) continue;
+        const end = endMin != null ? endMin : startMin + 60;
+        const opt = getTaskOptionByName(taskName);
+        const prod = opt?.productivity || "other";
+        const res = tryOverlap(slotStartMin, slotEndMin, startMin, end, prod, taskName);
+        if (res) return res;
+      }
+      return null;
+    };
+    const slotInfos = [];
+    for (let i = 0; i < SLOTS_PER_DAY; i++) slotInfos.push(getSlot(i));
+    const spans = [];
+    for (let i = 0; i < SLOTS_PER_DAY; ) {
+      const cur = slotInfos[i];
+      if (!cur || !cur.taskName) {
+        i++;
+        continue;
+      }
+      let endSlot = i;
+      const startMin = cur.overlapStartMin ?? i * MIN_PER_SLOT;
+      while (endSlot + 1 < SLOTS_PER_DAY) {
+        const next = slotInfos[endSlot + 1];
+        if (!next || !next.taskName || next.taskName !== cur.taskName) break;
+        endSlot++;
+      }
+      const last = slotInfos[endSlot];
+      const endMin = last?.overlapEndMin ?? (endSlot + 1) * MIN_PER_SLOT;
+      const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+      spans.push({
+        startSlot: i,
+        endSlot,
+        startMin,
+        endMin,
+        taskName: cur.taskName,
+        prod: cur.prod,
+        startDisplay: fmt(startMin),
+        endDisplay: fmt(endMin),
+      });
+      i = endSlot + 1;
+    }
+    return spans;
+  }
+
+  function createDayOverlay(spans, colIndex) {
+    const overlay = document.createElement("div");
+    overlay.className = "calendar-1week-day-overlay calendar-1day-time-fill-overlay calendar-1day-time-fill-overlay--expected";
+    overlay.style.left = `calc(4rem + ${colIndex} * ((100% - 4rem) / 7))`;
+    overlay.style.width = "calc((100% - 4rem) / 7)";
+    for (const sp of spans) {
+      const fill = document.createElement("div");
+      fill.className = "calendar-1day-time-slot-fill calendar-1day-time-slot-fill--span";
+      const c = prodColorsExpected[sp.prod];
+      if (!c) continue;
+      fill.style.gridRow = `${sp.startSlot + 2} / ${sp.endSlot + 3}`;
+      const startMinVal = sp.startMin ?? sp.startSlot * MIN_PER_SLOT;
+      const endMinVal = sp.endMin ?? (sp.endSlot + 1) * MIN_PER_SLOT;
+      const durationMin = endMinVal - startMinVal;
+      const rowSpan = sp.endSlot - sp.startSlot + 1;
+      const rowHeightMin = rowSpan * MIN_PER_SLOT;
+      if (rowHeightMin > 0) {
+        const startOffset = startMinVal - sp.startSlot * MIN_PER_SLOT;
+        if (startOffset > 0) {
+          fill.style.position = "relative";
+          fill.style.top = `${(startOffset / rowHeightMin) * 100}%`;
+        }
+        if (durationMin < rowHeightMin) {
+          fill.style.height = `${(durationMin / rowHeightMin) * 100}%`;
+        }
+      }
+      fill.style.backgroundColor = c.bg;
+      fill.style.boxSizing = "border-box";
+      fill.style.borderRadius = "2px";
+      fill.style.border = `1px dotted ${c.border}`;
+      const label = document.createElement("span");
+      label.className = "calendar-1day-time-slot-label";
+      label.textContent = `${sp.taskName} ${sp.startDisplay}~${sp.endDisplay}`;
+      fill.appendChild(label);
+      overlay.appendChild(fill);
+    }
+    return overlay;
+  }
+
+  function format1WeekNavRange(week) {
+    if (!week[0] || !week[6]) return "";
+    const d1 = week[0];
+    const d2 = week[6];
+    const sameYear = d1.getFullYear() === d2.getFullYear();
+    const s1 = `${d1.getMonth() + 1}.${d1.getDate()}`;
+    const s2 = sameYear ? `${d2.getMonth() + 1}.${d2.getDate()}` : `${d2.getFullYear()}.${d2.getMonth() + 1}.${d2.getDate()}`;
+    return `${s1} ~ ${s2}`;
+  }
+
+  function renderCalendar() {
+    const week = getCalendarGridFor1Week(weekOffset);
+    nav.querySelector(".calendar-nav-month").textContent = format1WeekNavRange(week);
+    nav.querySelector(".calendar-nav-year").textContent = week[0] ? String(week[0].getFullYear()) : "";
+
+    calendarGrid.innerHTML = "";
+    calendarGrid.className = "calendar-monthly-grid calendar-1week-time-grid";
+
+    const timeTable = document.createElement("div");
+    timeTable.className = "calendar-1day-time-table calendar-1week-time-table";
+
+    const headerRow = document.createElement("div");
+    headerRow.className = "calendar-1day-time-header";
+    headerRow.style.gridColumn = "1";
+    headerRow.style.gridRow = "1";
+    const headerLabel = document.createElement("div");
+    headerLabel.className = "calendar-1day-time-header-label";
+    headerLabel.textContent = "";
+    headerRow.appendChild(headerLabel);
+    timeTable.appendChild(headerRow);
+
+    week.forEach((date, colIdx) => {
+      const dow = DAY_NAMES[getMondayBasedDow(date)];
+      const headerCell = document.createElement("div");
+      headerCell.className = "calendar-1day-time-header-cell calendar-1week-day-header" + (colIdx > 0 ? " calendar-1week-day-header-not-first" : "");
+      headerCell.innerHTML = `<span>${date.getMonth() + 1}/${date.getDate()} ${dow}</span><span class="calendar-1week-header-expect">예상</span>`;
+      headerCell.style.gridColumn = String(colIdx + 2);
+      headerCell.style.gridRow = "1";
+      timeTable.appendChild(headerCell);
+    });
+
+    for (let i = 0; i < SLOTS_PER_DAY; i++) {
+      const hour = Math.floor(i / 2);
+      const min = (i % 2) * 30;
+      const row = document.createElement("div");
+      row.className = "calendar-1day-time-row";
+      row.style.gridColumn = "1";
+      row.style.gridRow = `${i + 2}`;
+      const timeLabel = document.createElement("div");
+      timeLabel.className = "calendar-1day-time-label";
+      timeLabel.textContent = `${String(hour).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+      row.appendChild(timeLabel);
+      timeTable.appendChild(row);
+
+      week.forEach((date, colIdx) => {
+        const slot = document.createElement("div");
+        slot.className = "calendar-1day-time-slot calendar-1day-time-slot--expected" + (colIdx > 0 ? " calendar-1week-slot-not-first" : "");
+        slot.style.gridColumn = String(colIdx + 2);
+        slot.style.gridRow = `${i + 2}`;
+        timeTable.appendChild(slot);
+      });
+    }
+
+    const timeTableWrap = document.createElement("div");
+    timeTableWrap.className = "calendar-1day-time-table-wrap calendar-1day-view";
+    const timeTableInner = document.createElement("div");
+    timeTableInner.className = "calendar-1day-time-table-inner";
+    timeTableInner.appendChild(timeTable);
+
+    week.forEach((date, colIdx) => {
+      const key = formatDateKey(date);
+      const budgetGoals = getBudgetGoals(key);
+      const spans = buildExpectedSpans(budgetGoals);
+      const overlay = createDayOverlay(spans, colIdx);
+      timeTableInner.appendChild(overlay);
+    });
+
+    timeTableWrap.appendChild(timeTableInner);
+    calendarGrid.appendChild(timeTableWrap);
+  }
+
+  renderCalendar();
+
+  nav.querySelector(".calendar-nav-today").addEventListener("click", () => {
+    weekOffset = 0;
+    renderCalendar();
+  });
+  nav.querySelector(".calendar-nav-prev").addEventListener("click", () => {
+    weekOffset--;
+    renderCalendar();
+  });
+  nav.querySelector(".calendar-nav-next").addEventListener("click", () => {
+    weekOffset++;
+    renderCalendar();
+  });
+
+  calendarSection.appendChild(nav);
+  calendarSection.appendChild(calendarGrid);
+  wrap.appendChild(calendarSection);
+  return wrap;
+}
+
 function renderPlaceholderView(tabsElement, label) {
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout";
@@ -2381,8 +2646,8 @@ export function render() {
     <button type="button" class="time-view-tab active" data-view="todo">할 일</button>
     <button type="button" class="time-view-tab" data-view="monthly">월별</button>
     <button type="button" class="time-view-tab" data-view="2week">2주</button>
-    <button type="button" class="time-view-tab" data-view="1week">1주</button>
     <button type="button" class="time-view-tab" data-view="1day">1일</button>
+    <button type="button" class="time-view-tab" data-view="1week">1주</button>
   `;
   el.appendChild(tabs);
 
@@ -2408,9 +2673,11 @@ export function render() {
       contentWrap.appendChild(render2WeekView(tabs));
     } else if (view === "1day") {
       contentWrap.appendChild(render1DayView(tabs));
+    } else if (view === "1week") {
+      contentWrap.appendChild(render1WeekView(tabs));
     } else {
-      const labels = { "1week": "1주" };
-      contentWrap.appendChild(renderPlaceholderView(tabs, labels[view]));
+      const labels = {};
+      contentWrap.appendChild(renderPlaceholderView(tabs, labels[view] || ""));
     }
   }
 
