@@ -111,10 +111,19 @@ input[type="time"] {
   border-radius: 0 !important;
 }
 
+/* 스크롤바 전역 숨기기 */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}
+
 html,
 body {
   overflow-x: hidden;
-  overscroll-behavior-x: none;
+  overscroll-behavior: none;
 }
 
 body {
@@ -127,7 +136,7 @@ body {
 #app {
   min-height: 100vh;
   overflow-x: hidden;
-  overscroll-behavior-x: none;
+  overscroll-behavior: none;
   max-width: 100%;
   font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
 }
@@ -15334,14 +15343,62 @@ body.kpi-resizing {
   min-height: 0;
 }
 
-.calendar-1day-budget-column .time-daily-budget-tables-wrap--calendar {
-  flex-direction: column;
-  margin-top: 0;
-  gap: 1rem;
+/* 1일뷰 예산 컬럼 - 행고정(스크롤 시 상단 고정) */
+.calendar-1day-budget-column .calendar-1day-budget-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #f9fafb;
+  flex-shrink: 0;
+}
+
+.calendar-1day-budget-column .time-daily-budget-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.calendar-1day-budget-column .time-daily-budget-tab {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+
+.calendar-1day-budget-column .time-daily-budget-tab:hover {
+  color: #374151;
+}
+
+.calendar-1day-budget-column .time-daily-budget-tab.active {
+  color: var(--gray-800, #1f2937);
+  border-bottom-color: var(--gray-800, #1f2937);
+}
+
+.calendar-1day-budget-column .time-daily-budget-tab-panels {
+  flex: 1;
+  min-height: 0;
 }
 
 .calendar-1day-budget-column .time-daily-budget-table-block {
   min-width: 0;
+}
+
+/* 테이블 헤더 행고정 - 스크롤 시 sticky header 아래에 고정 */
+.calendar-1day-budget-column .time-daily-budget-table thead th {
+  position: sticky;
+  top: 9rem;
+  z-index: 5;
+  background: #fafafa;
+  box-shadow: 0 1px 0 #e5e7eb;
+}
+
+.calendar-1day-budget-column .time-daily-budget-table thead th:last-child {
+  box-shadow: 0 1px 0 #e5e7eb, -1px 0 0 #e5e7eb;
 }
 
 /* 캘린더 1일뷰 시간투자/소비 내역 - 가로·세로 선 표시 */
@@ -15505,19 +15562,22 @@ body.kpi-resizing {
 .calendar-1day-view .calendar-1day-time-table {
   display: grid;
   grid-template-columns: 4rem 1fr;
-  grid-template-rows: repeat(24, minmax(2.5rem, 1fr));
+  grid-template-rows: repeat(48, minmax(1.25rem, 1fr));
   min-height: min-content;
 }
 
 .calendar-1day-view .calendar-1day-time-table--compare {
   grid-template-columns: 4rem 1fr 1fr;
-  grid-template-rows: 2.5rem repeat(24, minmax(2.5rem, 1fr));
+  grid-template-rows: 2.5rem repeat(48, minmax(1.25rem, 1fr));
 }
 
 .calendar-1day-view .calendar-1day-time-header {
   display: grid;
   grid-template-columns: 4rem 1fr 1fr;
   background: #f9fafb;
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 .calendar-1day-view .calendar-1day-time-header-cell {
@@ -15549,7 +15609,7 @@ body.kpi-resizing {
   top: 0;
   bottom: 0;
   display: grid;
-  grid-template-rows: 2.5rem repeat(24, minmax(2.5rem, 1fr));
+  grid-template-rows: 2.5rem repeat(48, minmax(1.25rem, 1fr));
   pointer-events: none;
 }
 
@@ -15566,16 +15626,20 @@ body.kpi-resizing {
 .calendar-1day-view .calendar-1day-time-row {
   display: flex;
   align-items: stretch;
-  min-height: 2.5rem;
+  min-height: 1.25rem;
   border-bottom: 1px solid #e5e7eb;
 }
 
 .calendar-1day-view .calendar-1day-time-label {
   flex-shrink: 0;
   width: 4rem;
-  padding: 0.35rem 0.5rem;
-  font-size: 0.8rem;
-  color: #6b7280;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.7rem;
+  color: var(--gray-400, #9ca3af);
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #fff;
   text-align: right;
 }
 
@@ -15607,7 +15671,7 @@ body.kpi-resizing {
 }
 
 .calendar-1day-view .calendar-1day-time-slot-label {
-  font-size: 0.6rem;
+  font-size: 0.8rem;
   line-height: 1.2;
   color: #374151;
   white-space: nowrap;

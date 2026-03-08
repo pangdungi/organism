@@ -5041,12 +5041,8 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
     <div class="time-budget-calendar-remaining-value">24:00</div>
   `;
 
-  const tablesWrap = document.createElement("div");
-  tablesWrap.className = "time-daily-budget-tables-wrap time-daily-budget-tables-wrap--calendar";
-
   const investBlock = document.createElement("div");
-  investBlock.className = "time-daily-budget-table-block";
-  investBlock.innerHTML = `<div class="time-daily-budget-table-title">시간 투자 내역</div>`;
+  investBlock.className = "time-daily-budget-table-block time-daily-budget-table-block--invest";
   const investTable = document.createElement("table");
   investTable.className = "time-daily-budget-table";
   investTable.innerHTML = `
@@ -5088,7 +5084,6 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
     investTbody.insertBefore(tr, investAddRow);
   });
   investBlock.appendChild(investTable);
-  tablesWrap.appendChild(investBlock);
 
   const consumeAddRow = document.createElement("tr");
   consumeAddRow.className = "time-row-add";
@@ -5104,8 +5099,7 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
   consumeAddRow.appendChild(consumeAddCell);
 
   const consumeBlock = document.createElement("div");
-  consumeBlock.className = "time-daily-budget-table-block";
-  consumeBlock.innerHTML = `<div class="time-daily-budget-table-title">시간 소비 내역</div>`;
+  consumeBlock.className = "time-daily-budget-table-block time-daily-budget-table-block--consume";
   const consumeTable = document.createElement("table");
   consumeTable.className = "time-daily-budget-table";
   consumeTable.innerHTML = `
@@ -5134,7 +5128,29 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
     consumeTbody.insertBefore(tr, consumeAddRow);
   });
   consumeBlock.appendChild(consumeTable);
-  tablesWrap.appendChild(consumeBlock);
+
+  const tabsBar = document.createElement("div");
+  tabsBar.className = "time-daily-budget-tabs";
+  tabsBar.innerHTML = `
+    <button type="button" class="time-daily-budget-tab active" data-tab="invest">투자내역</button>
+    <button type="button" class="time-daily-budget-tab" data-tab="consume">소비내역</button>
+  `;
+  const tabPanels = document.createElement("div");
+  tabPanels.className = "time-daily-budget-tab-panels";
+  investBlock.style.display = "";
+  consumeBlock.style.display = "none";
+  tabPanels.appendChild(investBlock);
+  tabPanels.appendChild(consumeBlock);
+
+  tabsBar.querySelectorAll(".time-daily-budget-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tab = btn.dataset.tab;
+      tabsBar.querySelectorAll(".time-daily-budget-tab").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      investBlock.style.display = tab === "invest" ? "" : "none";
+      consumeBlock.style.display = tab === "consume" ? "" : "none";
+    });
+  });
 
   const remainingValueEl = remainingHeader.querySelector(".time-budget-calendar-remaining-value");
 
@@ -5207,7 +5223,12 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
   topRow.appendChild(remainingHeader);
   topRow.appendChild(achievementCard);
 
+  const stickyHeader = document.createElement("div");
+  stickyHeader.className = "calendar-1day-budget-sticky-header";
+  stickyHeader.appendChild(topRow);
+  stickyHeader.appendChild(tabsBar);
+
   container.innerHTML = "";
-  container.appendChild(topRow);
-  container.appendChild(tablesWrap);
+  container.appendChild(stickyHeader);
+  container.appendChild(tabPanels);
 }

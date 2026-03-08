@@ -2099,9 +2099,11 @@ function render1DayView(tabsElement) {
       }
       return null;
     };
-    const getSlotExpected = (hour) => {
-      const slotStartMin = hour * 60;
-      const slotEndMin = (hour + 1) * 60;
+    const SLOTS_PER_DAY = 48;
+    const MIN_PER_SLOT = 30;
+    const getSlotExpected = (slotIndex) => {
+      const slotStartMin = slotIndex * MIN_PER_SLOT;
+      const slotEndMin = (slotIndex + 1) * MIN_PER_SLOT;
       for (const [taskName, data] of Object.entries(budgetGoals)) {
         const st = data?.scheduledTime || "";
         if (!st.trim()) continue;
@@ -2117,9 +2119,9 @@ function render1DayView(tabsElement) {
       }
       return null;
     };
-    const getSlotActual = (hour) => {
-      const slotStartMin = hour * 60;
-      const slotEndMin = (hour + 1) * 60;
+    const getSlotActual = (slotIndex) => {
+      const slotStartMin = slotIndex * MIN_PER_SLOT;
+      const slotEndMin = (slotIndex + 1) * MIN_PER_SLOT;
       for (const r of actualRows) {
         const startMin = parseDateTimeToMinutes(r.startTime);
         let endMin = parseDateTimeToMinutes(r.endTime);
@@ -2142,34 +2144,36 @@ function render1DayView(tabsElement) {
     };
     const buildSpans = (getSlot) => {
       const slotInfos = [];
-      for (let h = 0; h < 24; h++) slotInfos.push(getSlot(h));
+      for (let i = 0; i < SLOTS_PER_DAY; i++) slotInfos.push(getSlot(i));
       const spans = [];
-      for (let h = 0; h < 24; ) {
-        const cur = slotInfos[h];
+      for (let i = 0; i < SLOTS_PER_DAY; ) {
+        const cur = slotInfos[i];
         if (!cur || !cur.taskName) {
-          h++;
+          i++;
           continue;
         }
-        let endH = h;
-        const startMin = cur.overlapStartMin ?? h * 60;
+        let endSlot = i;
+        const startMin = cur.overlapStartMin ?? i * MIN_PER_SLOT;
         const key = cur.taskName;
-        while (endH + 1 < 24) {
-          const next = slotInfos[endH + 1];
+        while (endSlot + 1 < SLOTS_PER_DAY) {
+          const next = slotInfos[endSlot + 1];
           if (!next || !next.taskName || next.taskName !== key) break;
-          endH++;
+          endSlot++;
         }
-        const last = slotInfos[endH];
-        const endMin = last?.overlapEndMin ?? (endH + 1) * 60;
+        const last = slotInfos[endSlot];
+        const endMin = last?.overlapEndMin ?? (endSlot + 1) * MIN_PER_SLOT;
         const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
         spans.push({
-          startHour: h,
-          endHour: endH,
+          startSlot: i,
+          endSlot,
+          startMin,
+          endMin,
           taskName: cur.taskName,
           prod: cur.prod,
           startDisplay: fmt(startMin),
           endDisplay: fmt(endMin),
         });
-        h = endH + 1;
+        i = endSlot + 1;
       }
       return spans;
     };
@@ -2193,25 +2197,27 @@ function render1DayView(tabsElement) {
     headerRow.appendChild(headerExpected);
     headerRow.appendChild(headerActual);
     timeTable.appendChild(headerRow);
-    for (let h = 0; h < 24; h++) {
+    for (let i = 0; i < SLOTS_PER_DAY; i++) {
+      const hour = Math.floor(i / 2);
+      const min = (i % 2) * 30;
       const row = document.createElement("div");
       row.className = "calendar-1day-time-row";
       row.style.gridColumn = "1";
-      row.style.gridRow = `${h + 2}`;
+      row.style.gridRow = `${i + 2}`;
       const timeLabel = document.createElement("div");
       timeLabel.className = "calendar-1day-time-label";
-      timeLabel.textContent = `${String(h).padStart(2, "0")}:00`;
+      timeLabel.textContent = `${String(hour).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
       row.appendChild(timeLabel);
       timeTable.appendChild(row);
       const slotExpected = document.createElement("div");
       slotExpected.className = "calendar-1day-time-slot calendar-1day-time-slot--expected";
       slotExpected.style.gridColumn = "2";
-      slotExpected.style.gridRow = `${h + 2}`;
+      slotExpected.style.gridRow = `${i + 2}`;
       timeTable.appendChild(slotExpected);
       const slotActual = document.createElement("div");
       slotActual.className = "calendar-1day-time-slot calendar-1day-time-slot--actual";
       slotActual.style.gridColumn = "3";
-      slotActual.style.gridRow = `${h + 2}`;
+      slotActual.style.gridRow = `${i + 2}`;
       timeTable.appendChild(slotActual);
     }
     const createOverlay = (spans, colors, isActual) => {
@@ -2222,7 +2228,22 @@ function render1DayView(tabsElement) {
         fill.className = "calendar-1day-time-slot-fill calendar-1day-time-slot-fill--span";
         const c = colors[sp.prod];
         if (!c) continue;
-        fill.style.gridRow = `${sp.startHour + 2} / ${sp.endHour + 3}`;
+        fill.style.gridRow = `${sp.startSlot + 2} / ${sp.endSlot + 3}`;
+        const startMinVal = sp.startMin ?? sp.startSlot * MIN_PER_SLOT;
+        const endMinVal = sp.endMin ?? (sp.endSlot + 1) * MIN_PER_SLOT;
+        const durationMin = endMinVal - startMinVal;
+        const rowSpan = sp.endSlot - sp.startSlot + 1;
+        const rowHeightMin = rowSpan * MIN_PER_SLOT;
+        if (rowHeightMin > 0) {
+          const startOffset = startMinVal - sp.startSlot * MIN_PER_SLOT;
+          if (startOffset > 0) {
+            fill.style.position = "relative";
+            fill.style.top = `${(startOffset / rowHeightMin) * 100}%`;
+          }
+          if (durationMin < rowHeightMin) {
+            fill.style.height = `${(durationMin / rowHeightMin) * 100}%`;
+          }
+        }
         fill.style.backgroundColor = c.bg;
         fill.style.boxSizing = "border-box";
         fill.style.borderRadius = "2px";
