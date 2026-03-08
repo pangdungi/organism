@@ -1916,9 +1916,7 @@ function render1DayView(tabsElement) {
     budgetColumn.className = "calendar-1day-budget-column";
     const timeColumn = document.createElement("div");
     timeColumn.className = "calendar-1day-time-column";
-    const achievementContainer = document.createElement("div");
-    achievementContainer.className = "calendar-1day-achievement-container";
-    renderTimeBudgetTablesForCalendar(budgetColumn, targetKey, { achievementContainer });
+    renderTimeBudgetTablesForCalendar(budgetColumn, targetKey);
     calendarGrid.appendChild(budgetColumn);
     calendarGrid.appendChild(timeColumn);
 
@@ -2055,7 +2053,6 @@ function render1DayView(tabsElement) {
     });
 
     timeColumn.appendChild(dateCell);
-    timeColumn.appendChild(achievementContainer);
 
     /* 구분선 */
     const divider = document.createElement("div");
@@ -2229,11 +2226,7 @@ function render1DayView(tabsElement) {
         fill.style.backgroundColor = c.bg;
         fill.style.boxSizing = "border-box";
         fill.style.borderRadius = "2px";
-        if (isActual) {
-          fill.style.border = `2px dotted ${c.border}`;
-        } else {
-          fill.style.border = `1px dotted ${c.border}`;
-        }
+        fill.style.border = `1px dotted ${c.border}`;
         const label = document.createElement("span");
         label.className = "calendar-1day-time-slot-label";
         label.textContent = `${sp.taskName} ${sp.startDisplay}~${sp.endDisplay}`;

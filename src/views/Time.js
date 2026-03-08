@@ -4848,11 +4848,8 @@ export function render() {
   return el;
 }
 
-/** 캘린더 1일뷰용: 시간 투자/소비 내역 테이블만 렌더 (일간시간예산에서 사용)
- * @param {HTMLElement} [options.achievementContainer] - 있으면 목표달성률 카드를 여기에 렌더 (오른쪽 타임라인 상단)
- */
-export function renderTimeBudgetTablesForCalendar(container, dateStr, options = {}) {
-  const { achievementContainer } = options;
+/** 캘린더 1일뷰용: 시간 투자/소비 내역 테이블만 렌더 (일간시간예산에서 사용) */
+export function renderTimeBudgetTablesForCalendar(container, dateStr) {
   const rows = loadTimeRows();
   const targetDateStr = dateStr || toDateStr(new Date());
   const todayRows = rows.filter(
@@ -5205,13 +5202,12 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr, options = 
   });
   updateAchievementCard();
 
+  const topRow = document.createElement("div");
+  topRow.className = "calendar-1day-budget-top-row";
+  topRow.appendChild(remainingHeader);
+  topRow.appendChild(achievementCard);
+
   container.innerHTML = "";
-  container.appendChild(remainingHeader);
-  if (achievementContainer) {
-    achievementContainer.innerHTML = "";
-    achievementContainer.appendChild(achievementCard);
-  } else {
-    container.appendChild(achievementCard);
-  }
+  container.appendChild(topRow);
   container.appendChild(tablesWrap);
 }

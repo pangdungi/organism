@@ -15391,12 +15391,18 @@ body.kpi-resizing {
   border-color: transparent;
 }
 
-/* 1일뷰 시간투자내역 상단 - 남은 시간 */
+/* 1일뷰 시간투자내역 상단 - 남은 시간 + 목표달성률 한 줄 */
+.calendar-1day-budget-top-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
 .time-budget-calendar-remaining {
   background: #fff;
   border-radius: 8px;
   padding: 1rem 1.25rem;
-  margin-bottom: 1rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -15411,23 +15417,23 @@ body.kpi-resizing {
   margin-bottom: 0.35rem;
 }
 
+.calendar-1day-budget-top-row .calendar-1day-budget-achievement-card {
+  margin-bottom: 0;
+}
+
 .calendar-1day-budget-achievement-card {
   background: #fff;
   border-radius: 8px;
   padding: 1rem;
   margin-bottom: 1rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
-.calendar-1day-view .calendar-1day-achievement-container {
-  flex-shrink: 0;
-  margin-bottom: 0.5rem;
-}
-
-.calendar-1day-view .calendar-1day-achievement-container .calendar-1day-budget-achievement-card {
-  margin-bottom: 0;
-  box-shadow: none;
-}
 
 .calendar-1day-budget-summary-title {
   font-size: 0.8rem;
