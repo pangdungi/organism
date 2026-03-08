@@ -1354,7 +1354,7 @@ function renderSections(container, tasksData = [], options = {}) {
 }
 
 export function render(options = {}) {
-  const { hideToolbar = false, enableDragToCalendar = false } = options;
+  const { hideToolbar = false, enableDragToCalendar = false, initialActiveTabIndex = 0 } = options;
   const el = document.createElement("div");
   el.className = "app-tab-panel-content todo-list-view";
 
@@ -1623,9 +1623,10 @@ export function render(options = {}) {
   }
   updateTabLabels();
 
-  let activeSectionIndex = 0;
+  const safeIndex = Math.max(0, Math.min(initialActiveTabIndex, tabButtons.length - 1));
+  let activeSectionIndex = safeIndex;
   sectionResults.forEach((r, i) => {
-    r.wrap.classList.toggle("is-active", i === 0);
+    r.wrap.classList.toggle("is-active", i === safeIndex);
   });
 
   tabButtons.forEach((btn, i) => {
@@ -1638,7 +1639,7 @@ export function render(options = {}) {
       });
     });
   });
-  tabButtons[0]?.classList.add("active");
+  tabButtons.forEach((b, i) => b.classList.toggle("active", i === safeIndex));
 
   el.appendChild(sectionsWrap);
 
