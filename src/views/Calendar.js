@@ -74,6 +74,14 @@ function getCalendarGridFor2Weeks(weekOffset = 0) {
   return grid;
 }
 
+/** 선택일 1일만 (1행 x 1열) - dayOffset: 0=오늘, 1=내일, -1=어제 */
+function getCalendarGridFor1Day(dayOffset = 0) {
+  const today = new Date();
+  const targetDate = new Date(today);
+  targetDate.setDate(today.getDate() + dayOffset);
+  return [[targetDate]];
+}
+
 function formatDateKey(date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -1651,6 +1659,292 @@ function render2WeekView(tabsElement) {
   return wrap;
 }
 
+function render1DayView(tabsElement) {
+  const wrap = document.createElement("div");
+  wrap.className = "calendar-monthly-layout calendar-1day-view";
+
+  let dayOffset = 0;
+
+  const calendarSection = document.createElement("div");
+  calendarSection.className = "calendar-monthly-main";
+
+  if (tabsElement) {
+    const tabsWrapper = document.createElement("div");
+    tabsWrapper.className = "calendar-monthly-tabs-wrap";
+    tabsWrapper.appendChild(tabsElement);
+    calendarSection.appendChild(tabsWrapper);
+  }
+
+  const nav = document.createElement("div");
+  nav.className = "calendar-nav";
+  nav.innerHTML = `
+    <span class="calendar-nav-date">
+      <span class="calendar-nav-month"></span>
+      <span class="calendar-nav-year"></span>
+    </span>
+    <div class="calendar-nav-controls">
+      <button type="button" class="calendar-nav-prev" title="이전 날">‹</button>
+      <button type="button" class="calendar-nav-today" title="오늘">오늘</button>
+      <button type="button" class="calendar-nav-next" title="다음 날">›</button>
+    </div>
+  `;
+  nav.classList.add("calendar-monthly-nav");
+
+  const calendarGrid = document.createElement("div");
+  calendarGrid.className = "calendar-monthly-grid";
+
+  function refreshTodoList() {
+    const body = wrap.querySelector(".calendar-todo-sidebar-body");
+    if (body) {
+      const oldList = body.querySelector(".todo-list-in-sidebar");
+      let activeIndex = 0;
+      if (oldList) {
+        const activeTab = oldList.querySelector(".todo-category-tab:not(.todo-category-tab-add).active");
+        const tabs = oldList.querySelectorAll(".todo-category-tab:not(.todo-category-tab-add)");
+        if (activeTab && tabs.length) {
+          const idx = Array.from(tabs).indexOf(activeTab);
+          if (idx >= 0) activeIndex = idx;
+        }
+        oldList.remove();
+      }
+      const newList = renderTodoList({ hideToolbar: true, enableDragToCalendar: true, initialActiveTabIndex: activeIndex });
+      newList.classList.add("todo-list-in-sidebar");
+      body.appendChild(newList);
+    }
+  }
+
+  function format1DayNavDate(dayOffset) {
+    const d = new Date();
+    d.setDate(d.getDate() + dayOffset);
+    return `${d.getMonth() + 1}월 ${d.getDate()}일`;
+  }
+
+  function renderCalendar() {
+    const grid = getCalendarGridFor1Day(dayOffset);
+    const targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() + dayOffset);
+    nav.querySelector(".calendar-nav-month").textContent = format1DayNavDate(dayOffset);
+    nav.querySelector(".calendar-nav-year").textContent = String(targetDate.getFullYear());
+
+    calendarGrid.innerHTML = "";
+    calendarGrid.className = "calendar-monthly-grid calendar-1day-time-grid";
+
+    const targetKey = formatDateKey(targetDate);
+    const tasks = getAllTasksForDateDisplay(targetKey);
+
+    /* 날짜 셀 - 상단 고정 (날짜 + 할일 목록 영역) */
+    const dateCell = document.createElement("div");
+    dateCell.className = "calendar-1day-date-cell";
+    dateCell.dataset.date = targetKey;
+    dateCell.style.cursor = "pointer";
+    const dateNum = document.createElement("div");
+    dateNum.className = "calendar-1day-date-num";
+    dateNum.textContent = `${targetDate.getMonth() + 1}월 ${targetDate.getDate()}일 ${targetDate.getFullYear()}`;
+    const entriesEl = document.createElement("div");
+    entriesEl.className = "calendar-1day-date-entries";
+    dateCell.appendChild(dateNum);
+    dateCell.appendChild(entriesEl);
+
+    /* 할일 바 렌더링 */
+    tasks.forEach((t) => {
+      const isTodo = (t.itemType || "todo").toLowerCase() === "todo";
+      const baseColor = t.sectionId === "braindump" ? "rgba(148, 163, 184, 0.6)" : getSectionColor(t.sectionId);
+      const color = withMoreTransparency(baseColor);
+      const bar = document.createElement("div");
+      bar.className =
+        "calendar-monthly-span-bar calendar-monthly-span-bar--todo" +
+        (isTodo ? " calendar-monthly-span-bar--has-checkbox" : "");
+      bar.title = t.name;
+      bar.style.cssText = `--bar-bg:${color}`;
+      if (isTodo) {
+        bar.innerHTML = `<span class="calendar-monthly-span-bar-checkbox" style="border-color:${color}"><span class="calendar-monthly-span-bar-checkbox-inner"></span></span><span class="calendar-monthly-span-bar-text">${escapeHtml(t.name || "")}</span>`;
+      } else {
+        bar.style.setProperty("--schedule-icon-color", color);
+        bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" style="border-color:${color}"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(t.name || "")}</span>`;
+      }
+      if (isTodo && t.done) {
+        bar.classList.add("is-completed");
+        bar.querySelector(".calendar-monthly-span-bar-checkbox-inner")?.classList.add("checked");
+      }
+      if (isTodo) {
+        bar.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const newDone = !t.done;
+          if (t.kpiTodoId && t.storageKey) {
+            syncKpiTodoCompleted(t.kpiTodoId, t.storageKey, newDone);
+          } else if (t.sectionId === "braindump" && t.taskId) {
+            updateBraindumpTaskDone(t.taskId, newDone);
+          } else if (t.sectionId === "braindump") {
+            updateBraindumpTaskDoneByName(t.name, t.startDate, t.dueDate, newDone);
+          } else if (t.sectionId?.startsWith("custom-") && t.taskId) {
+            updateCustomSectionTaskDone(t.sectionId, t.taskId, newDone);
+          }
+          t.done = newDone;
+          renderCalendar();
+          refreshTodoList();
+        });
+      }
+      if (t.dueDate) {
+        bar.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          createCalendarBarRevertBubble(e.clientX, e.clientY, t, () => {
+            renderCalendar();
+            refreshTodoList();
+          }, () => {});
+        });
+      }
+      entriesEl.appendChild(bar);
+    });
+
+    dateCell.addEventListener("click", (e) => {
+      if (e.target.closest(".calendar-monthly-span-bar") || e.target.closest(".calendar-event-bubble")) return;
+      e.stopPropagation();
+      const rect = dateCell.getBoundingClientRect();
+      createCalendarEventBubble(rect, targetKey, () => {
+        renderCalendar();
+        refreshTodoList();
+      }, () => {});
+    });
+    dateCell.addEventListener("dragover", (e) => {
+      if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR)) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        dateCell.classList.add("calendar-day-drag-over");
+      }
+    });
+    dateCell.addEventListener("dragleave", () => {
+      dateCell.classList.remove("calendar-day-drag-over");
+    });
+    dateCell.addEventListener("drop", (e) => {
+      dateCell.classList.remove("calendar-day-drag-over");
+      const json = e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR);
+      if (!json) return;
+      e.preventDefault();
+      e.stopPropagation();
+      let payload;
+      try {
+        payload = JSON.parse(json);
+      } catch (_) {
+        return;
+      }
+      const oldStart = (payload.startDate || "").slice(0, 10);
+      const oldDue = (payload.dueDate || "").slice(0, 10);
+      let newStart = "";
+      let newDue = targetKey;
+      if (oldStart && oldDue && oldStart !== oldDue) {
+        const startD = new Date(oldStart + "T12:00:00");
+        const dueD = new Date(oldDue + "T12:00:00");
+        const daysDiff = Math.round((dueD - startD) / 86400000);
+        newStart = targetKey;
+        newDue = addDaysToDateKey(targetKey, daysDiff);
+      } else if (oldStart && oldDue) {
+        newStart = targetKey;
+      }
+      let ok = false;
+      if (payload.kpiTodoId && payload.storageKey) {
+        ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
+      } else if (payload.sectionId === "braindump") {
+        if (payload.taskId) {
+          ok = updateBraindumpTaskDates(payload.taskId, newStart, newDue);
+        } else {
+          ok = updateBraindumpTaskDatesByName(payload.name, oldStart, oldDue, newStart, newDue);
+        }
+      } else if (payload.sectionId?.startsWith("custom-")) {
+        ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
+        if (!ok && (payload.name || "").trim()) {
+          ok = addCalendarTodoToCustomSection(payload.sectionId, {
+            taskId: payload.taskId,
+            name: payload.name,
+            startDate: newStart,
+            dueDate: newDue,
+            done: !!payload.done,
+            itemType: payload.itemType || "todo",
+          });
+        }
+      } else if (["dream", "sideincome", "health", "happy"].includes(payload.sectionId) && (payload.name || "").trim()) {
+        const result = addCalendarTodoToSection(payload.sectionId, { text: (payload.name || "").trim(), dueDate: newDue, itemType: payload.itemType || "todo" });
+        ok = !!result.success;
+      }
+      if (ok) {
+        renderCalendar();
+        refreshTodoList();
+      }
+    });
+
+    calendarGrid.appendChild(dateCell);
+
+    /* 구분선 */
+    const divider = document.createElement("div");
+    divider.className = "calendar-1day-divider";
+    calendarGrid.appendChild(divider);
+
+    /* 시간 테이블 */
+    const timeTable = document.createElement("div");
+    timeTable.className = "calendar-1day-time-table";
+    for (let h = 0; h < 24; h++) {
+      const row = document.createElement("div");
+      row.className = "calendar-1day-time-row";
+      const timeLabel = document.createElement("div");
+      timeLabel.className = "calendar-1day-time-label";
+      timeLabel.textContent = `${String(h).padStart(2, "0")}:00`;
+      const slot = document.createElement("div");
+      slot.className = "calendar-1day-time-slot";
+      row.appendChild(timeLabel);
+      row.appendChild(slot);
+      timeTable.appendChild(row);
+    }
+    calendarGrid.appendChild(timeTable);
+  }
+
+  nav.querySelector(".calendar-nav-today").addEventListener("click", () => {
+    dayOffset = 0;
+    renderCalendar();
+  });
+  nav.querySelector(".calendar-nav-prev").addEventListener("click", () => {
+    dayOffset--;
+    renderCalendar();
+  });
+  nav.querySelector(".calendar-nav-next").addEventListener("click", () => {
+    dayOffset++;
+    renderCalendar();
+  });
+
+  calendarSection.appendChild(nav);
+  calendarSection.appendChild(calendarGrid);
+  wrap.appendChild(calendarSection);
+
+  const todoSidebar = document.createElement("aside");
+  todoSidebar.className = "calendar-todo-sidebar";
+  let sidebarCollapsed = false;
+  todoSidebar.innerHTML = `
+    <div class="calendar-todo-sidebar-header">
+      <span class="calendar-todo-sidebar-title">할 일</span>
+      <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
+        <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>
+    <div class="calendar-todo-sidebar-body"></div>
+  `;
+  const todoListEl = renderTodoList({ hideToolbar: true, enableDragToCalendar: true });
+  todoListEl.classList.add("todo-list-in-sidebar");
+  todoSidebar.querySelector(".calendar-todo-sidebar-body").appendChild(todoListEl);
+  todoSidebar.querySelector(".calendar-todo-sidebar-collapse").addEventListener("click", () => {
+    sidebarCollapsed = !sidebarCollapsed;
+    todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
+    todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+  });
+  wrap.appendChild(todoSidebar);
+
+  wrap.addEventListener("dragend", () => {
+    wrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+  });
+
+  renderCalendar();
+
+  return wrap;
+}
+
 function renderTodoView(tabsElement) {
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout";
@@ -1724,7 +2018,7 @@ export function render() {
   let currentView = "todo";
 
   function renderContent(view) {
-    if (currentView === "todo" || currentView === "monthly" || currentView === "2week") {
+    if (currentView === "todo" || currentView === "monthly" || currentView === "2week" || currentView === "1day") {
       saveTodoListBeforeUnmount(contentWrap);
     }
     currentView = view;
@@ -1738,8 +2032,10 @@ export function render() {
       contentWrap.appendChild(renderMonthlyView(tabs));
     } else if (view === "2week") {
       contentWrap.appendChild(render2WeekView(tabs));
+    } else if (view === "1day") {
+      contentWrap.appendChild(render1DayView(tabs));
     } else {
-      const labels = { "1week": "1주", "1day": "1일" };
+      const labels = { "1week": "1주" };
       contentWrap.appendChild(renderPlaceholderView(tabs, labels[view]));
     }
   }

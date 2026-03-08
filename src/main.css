@@ -15236,6 +15236,84 @@ body.kpi-resizing {
   text-align: right;
 }
 
+/* 1일 뷰 - 단일 열 */
+.calendar-1day-view .calendar-monthly-weekdays,
+.calendar-1day-view .calendar-monthly-week {
+  grid-template-columns: 1fr;
+}
+
+/* 1일 뷰 - 날짜 셀 상단 + 시간 테이블 */
+.calendar-1day-view .calendar-1day-time-grid {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.calendar-1day-view .calendar-1day-date-cell {
+  flex-shrink: 0;
+  padding: 0.75rem 1rem;
+  min-height: 4rem;
+  background: #fff;
+}
+
+.calendar-1day-view .calendar-1day-date-num {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.calendar-1day-view .calendar-1day-date-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-height: 2rem;
+}
+
+.calendar-1day-view .calendar-1day-date-entries .calendar-monthly-span-bar {
+  position: relative;
+  width: 100%;
+  min-height: 1.6rem;
+}
+
+.calendar-1day-view .calendar-1day-divider {
+  flex-shrink: 0;
+  height: 0;
+  border-top: 1px dashed #d1d5db;
+  margin: 0;
+}
+
+.calendar-1day-view .calendar-1day-time-table {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-1day-view .calendar-1day-time-row {
+  display: flex;
+  align-items: stretch;
+  min-height: 2.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.calendar-1day-view .calendar-1day-time-label {
+  flex-shrink: 0;
+  width: 4rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8rem;
+  color: #6b7280;
+  text-align: right;
+}
+
+.calendar-1day-view .calendar-1day-time-slot {
+  flex: 1;
+  min-width: 0;
+  background: #fff;
+}
+
 .calendar-monthly-week-wrap {
   position: relative;
   flex: 1;
@@ -15463,6 +15541,15 @@ body.kpi-resizing {
 .calendar-monthly-day.today .calendar-monthly-day-num {
   font-weight: 700;
   color: #111827;
+}
+
+.calendar-monthly-day.calendar-day-focused {
+  background: rgba(0, 0, 0, 0.06);
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.15);
+}
+
+.calendar-monthly-day.calendar-day-focused .calendar-monthly-day-num {
+  font-weight: 600;
 }
 
 .calendar-monthly-day.calendar-day-drag-over {
@@ -15958,7 +16045,7 @@ body.kpi-resizing {
   transform: translateY(-2px);
 }
 
-/* 사이드바에서는 시작일·마감일·KPI 열 숨김, 남은 공간은 이름 열에 */
+/* 사이드바에서는 시작일·마감일 열 숨김, 이름·KPI는 가로드래그로 확인 */
 .todo-list-in-sidebar .todo-th-start,
 .todo-list-in-sidebar .todo-cell-start,
 .todo-list-in-sidebar .todo-th-due,
@@ -15966,22 +16053,25 @@ body.kpi-resizing {
 .todo-list-in-sidebar .todo-th-start-time,
 .todo-list-in-sidebar .todo-cell-start-time,
 .todo-list-in-sidebar .todo-th-end-time,
-.todo-list-in-sidebar .todo-cell-end-time,
-.todo-list-in-sidebar .todo-th-kpi,
-.todo-list-in-sidebar .todo-cell-kpi {
+.todo-list-in-sidebar .todo-cell-end-time {
   display: none;
 }
 
 .todo-list-in-sidebar .todo-table col.todo-col-start,
 .todo-list-in-sidebar .todo-table col.todo-col-due,
 .todo-list-in-sidebar .todo-table col.todo-col-start-time,
-.todo-list-in-sidebar .todo-table col.todo-col-end-time,
-.todo-list-in-sidebar .todo-table col.todo-col-kpi {
+.todo-list-in-sidebar .todo-table col.todo-col-end-time {
   width: 0 !important;
 }
 
 .todo-list-in-sidebar .todo-table col.todo-col-name {
-  width: 100% !important;
+  min-width: 12rem !important;
+  width: auto !important;
+}
+
+.todo-list-in-sidebar .todo-table col.todo-col-kpi {
+  min-width: 6rem !important;
+  width: 6rem !important;
 }
 
 .calendar-todo-sidebar-body .todo-sections-wrap {
@@ -16011,12 +16101,20 @@ body.kpi-resizing {
   width: 100%;
   min-width: 0;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.calendar-todo-sidebar-body .todo-table-wrap::-webkit-scrollbar {
+  display: none;
 }
 
 .calendar-todo-sidebar-body .todo-table {
   font-size: 0.85rem;
-  width: 100%;
-  table-layout: fixed;
+  min-width: 100%;
+  width: max-content;
+  table-layout: auto;
 }
 
 .calendar-todo-sidebar-body .todo-table col.todo-col-done {
@@ -16024,15 +16122,20 @@ body.kpi-resizing {
 }
 
 .calendar-todo-sidebar-body .todo-table col.todo-col-name {
-  width: 100% !important;
+  min-width: 12rem !important;
+  width: auto !important;
 }
 
 .calendar-todo-sidebar-body .todo-table col.todo-col-start,
 .calendar-todo-sidebar-body .todo-table col.todo-col-due,
 .calendar-todo-sidebar-body .todo-table col.todo-col-start-time,
-.calendar-todo-sidebar-body .todo-table col.todo-col-end-time,
-.calendar-todo-sidebar-body .todo-table col.todo-col-kpi {
+.calendar-todo-sidebar-body .todo-table col.todo-col-end-time {
   width: 0 !important;
+}
+
+.calendar-todo-sidebar-body .todo-table col.todo-col-kpi {
+  min-width: 6rem !important;
+  width: 6rem !important;
 }
 
 .calendar-todo-sidebar-body .todo-table thead th,
@@ -16056,9 +16159,15 @@ body.kpi-resizing {
 }
 
 .calendar-todo-sidebar-body .todo-table .todo-cell-name {
-  min-width: 0;
+  min-width: 12rem;
   overflow: hidden;
   padding-right: 0.6rem;
+}
+
+.calendar-todo-sidebar-body .todo-table .todo-cell-kpi {
+  min-width: 6rem;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .calendar-todo-sidebar-body .todo-table .todo-cell-name input {
