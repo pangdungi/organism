@@ -42,10 +42,14 @@ const FIXED_OTHER_TASKS = [
 /** 생산적 > 행복 고정 과제 (과제설정에서 수정·삭제 불가) */
 const FIXED_PRODUCTIVE_TASKS = [
   { name: "감정적이기(긍정적)", category: "happiness", productivity: "productive" },
+  { name: "생산적 소비", category: "productive_consumption", productivity: "productive" },
+  { name: "생산적", category: "dream", productivity: "productive" },
+  { name: "부수입 카테고리", category: "sideincome", productivity: "productive" },
 ];
-/** 비생산적 > 불행 고정 과제 (과제설정에서 수정·삭제 불가) */
+/** 비생산적 > 불행 고정 과제 (과제설정에서 수정·삭제 불가) - 비생산적 소비: 돈을 잃는 일 */
 const FIXED_NONPRODUCTIVE_TASKS = [
   { name: "감정적이기(부정적)", category: "unhappiness", productivity: "nonproductive" },
+  { name: "비생산적 소비", category: "moneylosing", productivity: "nonproductive" },
 ];
 /** 구버전 과제명 (목록에서 제거 후 신규 고정 과제로 대체) */
 const REPLACED_TASK_NAMES = ["감정적이기"];
@@ -89,6 +93,7 @@ const PRODUCTIVE_CATEGORIES = [
   { value: "sideincome", label: "부수입", color: "cat-sideincome" },
   { value: "happiness", label: "행복", color: "cat-happiness" },
   { value: "health", label: "건강", color: "cat-health" },
+  { value: "productive_consumption", label: "생산적 소비", color: "cat-prod-cons" },
 ];
 
 const NONPRODUCTIVE_CATEGORIES = [
@@ -285,6 +290,7 @@ const CATEGORY_OPTIONS = [
   { value: "sideincome", label: "부수입", color: "cat-sideincome" },
   { value: "happiness", label: "행복", color: "cat-happiness" },
   { value: "health", label: "건강", color: "cat-health" },
+  { value: "productive_consumption", label: "생산적 소비", color: "cat-prod-cons" },
   { value: "pleasure", label: "쾌락충족", color: "cat-pleasure" },
   {
     value: "dreamblocking",
@@ -301,7 +307,7 @@ const CATEGORY_OPTIONS = [
 /** 카테고리에 따른 생산성 자동 매핑 */
 function getProductivityFromCategory(categoryValue) {
   if (!categoryValue) return "";
-  const productive = ["dream", "sideincome", "happiness", "health"];
+  const productive = ["dream", "sideincome", "happiness", "health", "productive_consumption"];
   const nonproductive = [
     "unhappiness",
     "unhealthy",

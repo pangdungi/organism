@@ -9315,6 +9315,11 @@ body.kpi-resizing {
   border-color: #86efac;
 }
 
+.time-task-setup-subcat-btn.cat-prod-cons.active {
+  background: rgba(20, 184, 166, 0.2);
+  color: #0f766e;
+}
+
 .time-task-setup-list {
   display: flex;
   flex-direction: column;
@@ -9483,6 +9488,10 @@ body.kpi-resizing {
 }
 .time-add-task-cat-btn.cat-health {
   --cat-bg: #d1fae5;
+}
+
+.time-add-task-cat-btn.cat-prod-cons {
+  --cat-bg: #ccfbf1;
 }
 .time-add-task-cat-btn.cat-pleasure {
   --cat-bg: #fce7f3;
@@ -11226,6 +11235,9 @@ body.kpi-resizing {
 .time-dash-bar-fill.cat-health {
   background: rgba(144, 238, 144, 0.85);
 }
+.time-dash-bar-fill.cat-prod-cons {
+  background: rgba(94, 234, 212, 0.85);
+}
 .time-dash-bar-fill.cat-pleasure {
   background: rgba(173, 216, 230, 0.9);
 }
@@ -12031,6 +12043,11 @@ body.kpi-resizing {
 .time-tag-pill.cat-health {
   background: rgba(144, 238, 144, 0.65);
   color: #2d5a2d;
+}
+
+.time-tag-pill.cat-prod-cons {
+  background: rgba(94, 234, 212, 0.65);
+  color: #0f766e;
 }
 
 .time-tag-pill.cat-pleasure {
