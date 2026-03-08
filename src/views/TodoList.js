@@ -3,30 +3,33 @@
  * KPI 할일(꿈/부수입/행복/건강) 연동: 마감일 없음, 꿈이름 자동, 분류=KPI이름
  */
 
-import { getKpiTodosAsTasks, syncKpiTodoCompleted, removeAllCompletedKpiTodos, removeKpiTodo, updateKpiTodo, moveKpiTodoToSection, addBraindumpTodoToSection } from "../utils/kpiTodoSync.js";
+import { getKpiTodosAsTasks, syncKpiTodoCompleted, removeAllCompletedKpiTodos, removeKpiTodo, updateKpiTodo, moveKpiTodoToSection } from "../utils/kpiTodoSync.js";
 import { createTodoSettingsModal } from "../utils/todoSettingsModal.js";
 import { getTodoSettings, getCustomSections, addCustomSection, removeCustomSection, updateCustomSectionLabel, getSectionColor } from "../utils/todoSettings.js";
 import { getSubtasks, addSubtask, updateSubtask, removeSubtask, clearSubtasks, setSubtasks } from "../utils/todoSubtasks.js";
 import { createBraindumpContextMenu } from "../utils/braindumpContextMenu.js";
 import { createTodoCheckboxTypeMenu } from "../utils/todoCheckboxTypeMenu.js";
 
-const BRAINDUMP_STORAGE_KEY = "todo-braindump-tasks";
 const CUSTOM_SECTION_TASKS_KEY = "todo-custom-section-tasks";
+const SECTION_TASKS_KEY = "todo-section-tasks";
 export const DRAG_TYPE_TODO_TO_CALENDAR = "todo-task-to-calendar";
 
-function loadBraindumpTasks() {
+function loadSectionTasks(sectionId) {
   try {
-    const raw = localStorage.getItem(BRAINDUMP_STORAGE_KEY);
+    const raw = localStorage.getItem(SECTION_TASKS_KEY);
     if (raw) {
-      const arr = JSON.parse(raw);
+      const obj = JSON.parse(raw);
+      const arr = obj[sectionId];
       if (Array.isArray(arr)) {
+        const sectionLabel = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복" }[sectionId] || sectionId;
         return arr
           .filter((t) => (t.name || "").trim() !== "")
           .map((t) => ({
             ...t,
-            sectionId: "braindump",
-            sectionLabel: "브레인덤프",
+            sectionId,
+            sectionLabel,
             itemType: t.itemType || "todo",
+            isKpiTodo: false,
           }));
       }
     }
@@ -34,8 +37,27 @@ function loadBraindumpTasks() {
   return [];
 }
 
-function saveBraindumpTasks(tasks) {
+function updateSectionTaskDone(sectionId, taskId, done) {
   try {
+    const raw = localStorage.getItem(SECTION_TASKS_KEY);
+    if (!raw) return false;
+    const obj = JSON.parse(raw);
+    const arr = obj[sectionId];
+    if (!Array.isArray(arr)) return false;
+    const t = arr.find((x) => (x.taskId || "") === taskId);
+    if (t) {
+      t.done = !!done;
+      localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
+
+function saveSectionTasks(sectionId, tasks) {
+  try {
+    const raw = localStorage.getItem(SECTION_TASKS_KEY);
+    const obj = raw ? JSON.parse(raw) : {};
     const toSave = tasks
       .map(({ taskId, name, startDate, dueDate, startTime, endTime, done, itemType }) => ({
         taskId,
@@ -48,33 +70,36 @@ function saveBraindumpTasks(tasks) {
         itemType: itemType || "todo",
       }))
       .filter((t) => t.name !== "");
-    localStorage.setItem(BRAINDUMP_STORAGE_KEY, JSON.stringify(toSave));
+    obj[sectionId] = toSave;
+    localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
   } catch (_) {}
 }
 
-function collectBraindumpFromDOM(sectionsEl) {
-  const tasks = [];
-  const braindumpSec = sectionsEl?.querySelector('.todo-section[data-section="braindump"]');
-  braindumpSec?.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").forEach((row) => {
-    const nameInput = row.querySelector(".todo-cell-name input");
-    const startInput = row.querySelector(".todo-start-input-hidden");
-    const dueInput = row.querySelector(".todo-due-input-hidden");
-    const startTimeInput = row.querySelector(".todo-start-time-input");
-    const endTimeInput = row.querySelector(".todo-end-time-input");
-    const doneCheck = row.querySelector(".todo-done-check");
-    const itemType = row.dataset.itemType || "todo";
-    tasks.push({
-      taskId: row.dataset.taskId || "",
-      name: (nameInput?.value || "").trim(),
-      startDate: startInput?.value || "",
-      dueDate: dueInput?.value || "",
-      startTime: startTimeInput?.value || "",
-      endTime: endTimeInput?.value || "",
-      done: itemType === "todo" ? (doneCheck?.checked || false) : false,
-      itemType,
+function moveSectionTaskToSection(fromSectionId, taskId, targetSectionId, taskData) {
+  try {
+    const raw = localStorage.getItem(SECTION_TASKS_KEY);
+    if (!raw) return false;
+    const obj = JSON.parse(raw);
+    const fromArr = obj[fromSectionId];
+    if (!Array.isArray(fromArr)) return false;
+    const idx = fromArr.findIndex((x) => (x.taskId || "") === taskId);
+    if (idx < 0) return false;
+    fromArr.splice(idx, 1);
+    if (!obj[targetSectionId]) obj[targetSectionId] = [];
+    obj[targetSectionId].push({
+      taskId: taskData.taskId || taskId,
+      name: (taskData.name || "").trim(),
+      startDate: taskData.startDate || "",
+      dueDate: taskData.dueDate || "",
+      startTime: taskData.startTime || "",
+      endTime: taskData.endTime || "",
+      done: !!taskData.done,
+      itemType: taskData.itemType || "todo",
     });
-  });
-  return tasks;
+    localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+    return true;
+  } catch (_) {}
+  return false;
 }
 
 function loadCustomSectionTasks(sectionId) {
@@ -161,6 +186,7 @@ function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
   KPI_SECTION_IDS.forEach((sectionId) => {
     const sec = sectionsWrap.querySelector(`.todo-section[data-section="${sectionId}"]`);
     if (!sec) return;
+    const sectionTasks = [];
     sec.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").forEach((row) => {
       const nameInput = row.querySelector(".todo-cell-name input");
       const startInput = row.querySelector(".todo-start-input-hidden");
@@ -185,16 +211,25 @@ function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
           updateKpiTodo(kpiTodoId, storageKey, { text: name, startDate, dueDate, startTime, endTime, completed: done, itemType });
         }
       } else if (name !== "") {
-        addBraindumpTodoToSection(sectionId, { text: name, startDate, dueDate, startTime, endTime, completed: done, itemType });
+        sectionTasks.push({
+          taskId: row.dataset.taskId || "",
+          name,
+          startDate,
+          dueDate,
+          startTime,
+          endTime,
+          done,
+          itemType,
+        });
       }
     });
+    saveSectionTasks(sectionId, sectionTasks);
   });
 }
 
 export function saveTodoListBeforeUnmount(container) {
   const sectionsWrap = container?.querySelector(".todo-sections-wrap");
   if (sectionsWrap) {
-    saveBraindumpTasks(collectBraindumpFromDOM(sectionsWrap));
     collectAndSaveKpiTasksFromDOM(sectionsWrap);
     getCustomSections().forEach((s) => {
       saveCustomSectionTasks(s.id, collectCustomSectionFromDOM(sectionsWrap, s.id));
@@ -506,7 +541,6 @@ function createCategoryDropdown(initialValue, onUpdate) {
 }
 
 const FIXED_SECTIONS = [
-  { id: "braindump", label: "브레인덤프" },
   { id: "dream", label: "꿈" },
   { id: "sideincome", label: "부수입" },
   { id: "health", label: "건강" },
@@ -735,9 +769,8 @@ function createTaskRow(taskData = {}, options = {}) {
     kpiTodoId = "",
     storageKey = "",
   } = taskData;
-  const { showCategoryCol = false, isSubtask = false, taskId: optTaskId, onBraindumpMutate = null, showCheckboxTypeMenu = null, enableDragToCalendar = false } = options;
+  const { showCategoryCol = false, isSubtask = false, taskId: optTaskId, showCheckboxTypeMenu = null, enableDragToCalendar = false } = options;
   const taskId = optTaskId || getTaskId(taskData);
-  const isBraindump = !taskData.isKpiTodo && (taskData.sectionId || "") === "braindump";
 
   const tr = document.createElement("tr");
   tr.className = "todo-task-row" + (isSubtask ? " todo-subtask-row" : "");
@@ -745,8 +778,7 @@ function createTaskRow(taskData = {}, options = {}) {
   const hasDates = !!((startDate || "").trim() || (dueDate || "").trim());
   tr.dataset.hasDates = hasDates ? "true" : "false";
   if (!hasDates && (taskData.sectionId || "")) {
-    const sectionColor = (taskData.sectionId || "") === "braindump" ? "#9ca3af" : getSectionColor(taskData.sectionId);
-    tr.style.setProperty("--row-section-color", sectionColor);
+    tr.style.setProperty("--row-section-color", getSectionColor(taskData.sectionId));
   }
   if (!isSubtask) tr.dataset.taskId = taskId;
   if (isKpiTodo) {
@@ -768,7 +800,12 @@ function createTaskRow(taskData = {}, options = {}) {
   doneCheck.addEventListener("change", () => {
     if (isKpiTodo && kpiTodoId && storageKey) {
       syncKpiTodoCompleted(kpiTodoId, storageKey, doneCheck.checked);
-    } else if (isBraindump) onBraindumpMutate?.();
+    } else if (!isKpiTodo && (taskData.sectionId || "")) {
+      const secId = taskData.sectionId || tr.closest(".todo-section")?.dataset?.section || "";
+      if (KPI_SECTION_IDS.includes(secId)) {
+        updateSectionTaskDone(secId, taskId, doneCheck.checked);
+      }
+    }
   });
 
   const scheduleIcon = document.createElement("img");
@@ -803,16 +840,7 @@ function createTaskRow(taskData = {}, options = {}) {
       if (doneWrap.contains(scheduleIcon)) doneWrap.removeChild(scheduleIcon);
       if (!doneWrap.contains(doneCheck)) doneWrap.insertBefore(doneCheck, doneWrap.firstChild);
     }
-    if (isBraindump) onBraindumpMutate?.();
   };
-
-  if (showCheckboxTypeMenu && isBraindump) {
-    doneTd.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      showCheckboxTypeMenu(e.clientX, e.clientY, setItemType);
-    });
-  }
 
   const nameTd = document.createElement("td");
   nameTd.className = "todo-cell-name" + (isSubtask ? " todo-cell-name-subtask" : "");
@@ -835,21 +863,6 @@ function createTaskRow(taskData = {}, options = {}) {
         }
       } else if (val !== name) {
         updateKpiTodo(kpiTodoId, storageKey, { text: val });
-      }
-    });
-  } else if (isBraindump) {
-    nameInput.addEventListener("blur", () => {
-      const val = (nameInput.value || "").trim();
-      if (val === "") {
-        clearSubtasks(taskId);
-        tr.remove();
-        const section = tr.closest(".todo-section");
-        const tbody = tr.parentElement;
-        const countEl = section?.querySelector(".todo-section-count");
-        if (countEl && tbody) countEl.textContent = String(tbody.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").length);
-        onBraindumpMutate?.();
-      } else {
-        onBraindumpMutate?.();
       }
     });
   } else {
@@ -933,8 +946,7 @@ function createTaskRow(taskData = {}, options = {}) {
     const hasDates = !!((startInput.value || "").trim() || (dueInput.value || "").trim());
     tr.dataset.hasDates = hasDates ? "true" : "false";
     if (!hasDates && (taskData.sectionId || "")) {
-      const sectionColor = (taskData.sectionId || "") === "braindump" ? "#9ca3af" : getSectionColor(taskData.sectionId);
-      tr.style.setProperty("--row-section-color", sectionColor);
+      tr.style.setProperty("--row-section-color", getSectionColor(taskData.sectionId));
     } else {
       tr.style.removeProperty("--row-section-color");
     }
@@ -944,7 +956,7 @@ function createTaskRow(taskData = {}, options = {}) {
     syncHasDates();
     if (isKpiTodo && kpiTodoId && storageKey) {
       updateKpiTodo(kpiTodoId, storageKey, { startDate: startInput.value });
-    } else if (isBraindump) onBraindumpMutate?.();
+    }
   });
   startWrap.addEventListener("click", () => {
     startInput.focus();
@@ -998,7 +1010,7 @@ function createTaskRow(taskData = {}, options = {}) {
     syncHasDates();
     if (isKpiTodo && kpiTodoId && storageKey) {
       updateKpiTodo(kpiTodoId, storageKey, { dueDate: dueInput.value });
-    } else if (isBraindump) onBraindumpMutate?.();
+    }
   });
   dueWrap.addEventListener("click", () => {
     dueInput.focus();
@@ -1037,7 +1049,7 @@ function createTaskRow(taskData = {}, options = {}) {
     syncStartTimeDisplay();
     if (isKpiTodo && kpiTodoId && storageKey) {
       updateKpiTodo(kpiTodoId, storageKey, { startTime: startTimeInput.value });
-    } else if (isBraindump) onBraindumpMutate?.();
+    }
   });
   startTimeWrap.addEventListener("click", () => {
     startTimeInput.focus();
@@ -1067,7 +1079,7 @@ function createTaskRow(taskData = {}, options = {}) {
     syncEndTimeDisplay();
     if (isKpiTodo && kpiTodoId && storageKey) {
       updateKpiTodo(kpiTodoId, storageKey, { endTime: endTimeInput.value });
-    } else if (isBraindump) onBraindumpMutate?.();
+    }
   });
   endTimeWrap.addEventListener("click", () => {
     endTimeInput.focus();
@@ -1094,7 +1106,6 @@ function createTaskRow(taskData = {}, options = {}) {
       if (removeKpiTodo(kpiTodoId, storageKey)) tr.remove();
     } else {
       tr.remove();
-      if (isBraindump) onBraindumpMutate?.();
     }
     section?.querySelector(".todo-section-count") &&
       (section.querySelector(".todo-section-count").textContent = tbody.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").length);
@@ -1162,7 +1173,7 @@ function createTaskRow(taskData = {}, options = {}) {
 }
 
 function createSection(section, options = {}) {
-  const { lastColHeader = "분류", initialTasks = [], showCategoryCol = false, sectionIdForAdd = null, hideCategoryCol = true, tabMode = false, onBraindumpMutate = null, showCheckboxTypeMenu = null, enableDragToCalendar = false } = options;
+  const { lastColHeader = "분류", initialTasks = [], showCategoryCol = false, sectionIdForAdd = null, hideCategoryCol = true, tabMode = false, showCheckboxTypeMenu = null, enableDragToCalendar = false } = options;
   const sectionId = sectionIdForAdd ?? section.id;
 
   const wrap = document.createElement("div");
@@ -1235,7 +1246,7 @@ function createSection(section, options = {}) {
   initialTasks.forEach((t) => {
     const taskId = t.taskId || getTaskId(t);
     t.taskId = taskId;
-    const tr = createTaskRow(t, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, onBraindumpMutate, showCheckboxTypeMenu, enableDragToCalendar });
+    const tr = createTaskRow(t, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, showCheckboxTypeMenu, enableDragToCalendar });
     tr.dataset.sectionId = t.sectionId || "";
     tbody.appendChild(tr);
     const container = tr.querySelector(".todo-subtasks-container");
@@ -1273,7 +1284,7 @@ function createSection(section, options = {}) {
       : { sectionId };
     const taskId = getTaskId(taskData);
     taskData.taskId = taskId;
-    const tr = createTaskRow(taskData, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, onBraindumpMutate, showCheckboxTypeMenu, enableDragToCalendar });
+    const tr = createTaskRow(taskData, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, showCheckboxTypeMenu, enableDragToCalendar });
     tbody.insertBefore(tr, addRow);
     updateCount();
     const nameInput = tr.querySelector(".todo-cell-name input");
@@ -1339,7 +1350,6 @@ function collectTasksFromDOM(sectionsEl) {
 
 function renderSections(container, tasksData = [], options = {}) {
   const { tabMode = false, showCheckboxTypeMenu = null, enableDragToCalendar = false } = options;
-  const onBraindumpMutate = () => saveBraindumpTasks(collectBraindumpFromDOM(container));
   container.innerHTML = "";
   const results = [];
   getSections().forEach((section) => {
@@ -1351,7 +1361,6 @@ function renderSections(container, tasksData = [], options = {}) {
       sectionIdForAdd: section.id,
       hideCategoryCol: true,
       tabMode,
-      onBraindumpMutate: section.id === "braindump" ? onBraindumpMutate : null,
       showCheckboxTypeMenu,
       enableDragToCalendar,
     });
@@ -1409,8 +1418,6 @@ export function render(options = {}) {
       });
       sectionResults.forEach(({ updateCount }) => updateCount());
       updateTabLabels();
-      const sw = el.querySelector(".todo-sections-wrap");
-      if (sw) saveBraindumpTasks(collectBraindumpFromDOM(sw));
     }
   }
 
@@ -1435,11 +1442,10 @@ export function render(options = {}) {
   const tabButtons = [];
   const colors = getTodoSettings().sectionColors;
 
-  const BRAINDUMP_TAB_COLOR = "#9ca3af";
   function applyTabColors(sectionColors) {
     tabButtons.forEach((btn) => {
       const secId = btn.dataset.section;
-      const c = secId === "braindump" ? BRAINDUMP_TAB_COLOR : sectionColors?.[secId];
+      const c = sectionColors?.[secId];
       if (c) {
         btn.style.borderLeft = `3px solid ${c}`;
         btn.style.paddingLeft = "calc(1rem - 3px)";
@@ -1456,7 +1462,7 @@ export function render(options = {}) {
     btn.className = "todo-category-tab";
     btn.dataset.section = section.id;
     btn.innerHTML = `<span class="todo-category-tab-label">${section.label}</span> <span class="todo-category-tab-count">0</span>`;
-    const c = section.id === "braindump" ? BRAINDUMP_TAB_COLOR : colors[section.id];
+    const c = colors[section.id];
     if (c) {
       btn.style.borderLeft = `3px solid ${c}`;
       btn.style.paddingLeft = "calc(1rem - 3px)";
@@ -1501,7 +1507,6 @@ export function render(options = {}) {
           sectionIdForAdd: newSection.id,
           hideCategoryCol: true,
           tabMode: true,
-          onBraindumpMutate: null,
           showCheckboxTypeMenu,
           enableDragToCalendar,
         });
@@ -1617,9 +1622,9 @@ export function render(options = {}) {
   el.appendChild(checkboxTypeMenu);
 
   const kpiTasks = getKpiTodosAsTasks();
-  const braindumpTasks = loadBraindumpTasks();
+  const sectionTasks = KPI_SECTION_IDS.flatMap((sid) => loadSectionTasks(sid));
   const customTasks = getCustomSections().flatMap((s) => loadCustomSectionTasks(s.id));
-  const allTasks = [...braindumpTasks, ...kpiTasks, ...customTasks];
+  const allTasks = [...kpiTasks, ...sectionTasks, ...customTasks];
   const sectionResults = renderSections(sectionsWrap, allTasks, { tabMode: true, showCheckboxTypeMenu, enableDragToCalendar });
 
   function updateTabLabels() {
@@ -1685,19 +1690,24 @@ export function render(options = {}) {
     const itemType = row.dataset.itemType || "todo";
 
     let result = { success: false };
-    if (fromSectionId === "braindump") {
-      result = addBraindumpTodoToSection(targetSectionId, { text: name, startDate, dueDate, startTime, endTime, completed: done, itemType });
-    } else if (targetSectionId === "braindump") {
-      const kpiTodoId = row.dataset.kpiTodoId;
-      const storageKey = row.dataset.kpiStorageKey;
-      if (kpiTodoId && storageKey && removeKpiTodo(kpiTodoId, storageKey)) {
-        result = { success: true, task: { name, startDate, dueDate, startTime, endTime, done, itemType, sectionId: "braindump", sectionLabel: "브레인덤프" } };
-      }
-    } else {
-      const kpiTodoId = row.dataset.kpiTodoId;
-      const storageKey = row.dataset.kpiStorageKey;
-      if (kpiTodoId && storageKey) {
-        result = moveKpiTodoToSection(kpiTodoId, storageKey, targetSectionId);
+    const kpiTodoId = row.dataset.kpiTodoId;
+    const storageKey = row.dataset.kpiStorageKey;
+    if (kpiTodoId && storageKey) {
+      result = moveKpiTodoToSection(kpiTodoId, storageKey, targetSectionId);
+    } else if (KPI_SECTION_IDS.includes(fromSectionId) && KPI_SECTION_IDS.includes(targetSectionId) && name) {
+      const moved = moveSectionTaskToSection(fromSectionId, oldTaskId, targetSectionId, {
+        taskId: oldTaskId,
+        name,
+        startDate,
+        dueDate,
+        startTime,
+        endTime,
+        done,
+        itemType,
+      });
+      if (moved) {
+        const sectionLabel = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복" }[targetSectionId] || targetSectionId;
+        result = { success: true, task: { name, startDate, dueDate, startTime, endTime, done, sectionId: targetSectionId, sectionLabel, itemType, isKpiTodo: false, taskId: oldTaskId } };
       }
     }
 
@@ -1706,17 +1716,13 @@ export function render(options = {}) {
       if (targetResult) {
         const targetTbody = targetResult.wrap.querySelector("tbody");
         const addRow = targetTbody?.querySelector(".todo-add-row");
-        const taskData = result.task.sectionId === "braindump"
-          ? { name, startDate, dueDate, startTime, endTime, done, itemType, sectionId: "braindump", sectionLabel: "브레인덤프" }
-          : result.task;
+        const taskData = result.task;
         const taskId = getTaskId(taskData);
         taskData.taskId = taskId;
-        const onBraindumpMutate = () => saveBraindumpTasks(collectBraindumpFromDOM(sectionsWrap));
         const newTr = createTaskRow(taskData, {
           hideCategoryCol: true,
           isSubtask: false,
           taskId,
-          onBraindumpMutate: targetSectionId === "braindump" ? onBraindumpMutate : null,
           showCheckboxTypeMenu,
         });
         newTr.dataset.sectionId = targetSectionId;
@@ -1739,7 +1745,6 @@ export function render(options = {}) {
       row.remove();
       sectionResults.find((r) => r.wrap === section)?.updateCount();
       updateTabLabels();
-      if (fromSectionId === "braindump") saveBraindumpTasks(collectBraindumpFromDOM(sectionsWrap));
     }
   });
   document.body.appendChild(menu);

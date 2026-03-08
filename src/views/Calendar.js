@@ -5,15 +5,132 @@
  */
 
 import { render as renderTodoList, saveTodoListBeforeUnmount, DRAG_TYPE_TODO_TO_CALENDAR } from "./TodoList.js";
-import { getKpiTodosAsTasks, addCalendarTodoToSection, addCalendarTodoToBraindump, syncKpiTodoCompleted, updateKpiTodo, removeKpiTodo } from "../utils/kpiTodoSync.js";
+import { getKpiTodosAsTasks, addCalendarTodoToSection, syncKpiTodoCompleted, updateKpiTodo, removeKpiTodo } from "../utils/kpiTodoSync.js";
 import { getSectionColor, getCustomSections } from "../utils/todoSettings.js";
 import { getKpisByCategory } from "../utils/kpiViewModal.js";
 import { formatDeadlineRangeForDisplay } from "../utils/ganttModal.js";
 import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes } from "../utils/timeKpiSync.js";
 import { renderTimeBudgetTablesForCalendar } from "./Time.js";
 
-const BRAINDUMP_STORAGE_KEY = "todo-braindump-tasks";
 const CUSTOM_SECTION_TASKS_KEY = "todo-custom-section-tasks";
+const SECTION_TASKS_KEY = "todo-section-tasks";
+const KPI_SECTION_IDS = ["dream", "sideincome", "health", "happy"];
+
+function getSectionTasksForDate(dateKey) {
+  const out = [];
+  try {
+    const raw = localStorage.getItem(SECTION_TASKS_KEY);
+    if (!raw) return out;
+    const obj = JSON.parse(raw);
+    KPI_SECTION_IDS.forEach((sectionId) => {
+      const arr = obj[sectionId];
+      if (!Array.isArray(arr)) return;
+      const sectionLabel = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복" }[sectionId] || sectionId;
+      arr
+        .filter((t) => (t.name || "").trim() !== "" && (t.dueDate || "").slice(0, 10) === dateKey)
+        .forEach((t) =>
+          out.push({
+            name: t.name,
+            startDate: (t.startDate || "").slice(0, 10),
+            dueDate: (t.dueDate || "").slice(0, 10),
+            sectionId,
+            sectionLabel,
+            itemType: t.itemType || "todo",
+            done: !!t.done,
+            taskId: t.taskId || "",
+          })
+        );
+    });
+  } catch (_) {}
+  return out;
+}
+
+function getSectionTasksWithDateRange() {
+  const out = [];
+  try {
+    const raw = localStorage.getItem(SECTION_TASKS_KEY);
+    if (!raw) return out;
+    const obj = JSON.parse(raw);
+    KPI_SECTION_IDS.forEach((sectionId) => {
+      const arr = obj[sectionId];
+      if (!Array.isArray(arr)) return;
+      const sectionLabel = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복" }[sectionId] || sectionId;
+      arr
+        .filter((t) => (t.name || "").trim() !== "" && (t.startDate || "").slice(0, 10) && (t.dueDate || "").slice(0, 10))
+        .forEach((t) =>
+          out.push({
+            name: t.name,
+            startDate: (t.startDate || "").slice(0, 10),
+            dueDate: (t.dueDate || "").slice(0, 10),
+            sectionId,
+            sectionLabel,
+            itemType: t.itemType || "todo",
+            done: !!t.done,
+            taskId: t.taskId || "",
+          })
+        );
+    });
+  } catch (_) {}
+  return out;
+}
+
+function updateSectionTaskDates(sectionId, taskId, startDate, dueDate) {
+  try {
+    const raw = localStorage.getItem(SECTION_TASKS_KEY);
+    if (!raw) return false;
+    const obj = JSON.parse(raw);
+    const arr = obj[sectionId];
+    if (!Array.isArray(arr)) return false;
+    const t = arr.find((x) => (x.taskId || "") === taskId);
+    if (t) {
+      t.startDate = (startDate || "").slice(0, 10) || "";
+      t.dueDate = (dueDate || "").slice(0, 10) || "";
+      localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
+
+function updateSectionTaskDone(sectionId, taskId, done) {
+  try {
+    const raw = localStorage.getItem(SECTION_TASKS_KEY);
+    if (!raw) return false;
+    const obj = JSON.parse(raw);
+    const arr = obj[sectionId];
+    if (!Array.isArray(arr)) return false;
+    const t = arr.find((x) => (x.taskId || "") === taskId);
+    if (t) {
+      t.done = !!done;
+      localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
+
+function addSectionTaskToCalendar(sectionId, taskData) {
+  try {
+    const raw = localStorage.getItem(SECTION_TASKS_KEY);
+    const obj = raw ? JSON.parse(raw) : {};
+    if (!obj[sectionId]) obj[sectionId] = [];
+    const arr = obj[sectionId];
+    const taskId = taskData.taskId || `task-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    arr.push({
+      taskId,
+      name: (taskData.name || "").trim(),
+      startDate: (taskData.startDate || "").slice(0, 10) || "",
+      dueDate: (taskData.dueDate || "").slice(0, 10),
+      startTime: taskData.startTime || "",
+      endTime: taskData.endTime || "",
+      done: !!taskData.done,
+      itemType: taskData.itemType || "todo",
+    });
+    localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+    return true;
+  } catch (_) {}
+  return false;
+}
 
 /** rgba 색상의 투명도를 높임 (alpha 낮춤) */
 function withMoreTransparency(color, alpha = 0.35) {
@@ -100,74 +217,11 @@ function escapeHtml(s) {
 }
 
 const CALENDAR_CATEGORIES = [
-  { id: "braindump", label: "브레인덤프" },
   { id: "dream", label: "꿈" },
   { id: "sideincome", label: "부수입" },
   { id: "health", label: "건강" },
   { id: "happy", label: "행복" },
 ];
-
-function updateBraindumpTaskDone(taskId, done) {
-  try {
-    const raw = localStorage.getItem(BRAINDUMP_STORAGE_KEY);
-    if (!raw) return;
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) return;
-    const t = arr.find((x) => (x.taskId || "") === taskId);
-    if (t) {
-      t.done = !!done;
-      localStorage.setItem(BRAINDUMP_STORAGE_KEY, JSON.stringify(arr));
-    }
-  } catch (_) {}
-}
-
-function updateBraindumpTaskDoneByName(name, startDate, dueDate, done) {
-  try {
-    const raw = localStorage.getItem(BRAINDUMP_STORAGE_KEY);
-    if (!raw) return;
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) return;
-    const t = arr.find((x) => (x.name || "").trim() === (name || "").trim() && (x.startDate || "").slice(0, 10) === (startDate || "").slice(0, 10) && (x.dueDate || "").slice(0, 10) === (dueDate || "").slice(0, 10));
-    if (t) {
-      t.done = !!done;
-      localStorage.setItem(BRAINDUMP_STORAGE_KEY, JSON.stringify(arr));
-    }
-  } catch (_) {}
-}
-
-function updateBraindumpTaskDates(taskId, startDate, dueDate) {
-  try {
-    const raw = localStorage.getItem(BRAINDUMP_STORAGE_KEY);
-    if (!raw) return false;
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) return false;
-    const t = arr.find((x) => (x.taskId || "") === taskId);
-    if (t) {
-      t.startDate = (startDate || "").slice(0, 10) || "";
-      t.dueDate = (dueDate || "").slice(0, 10) || "";
-      localStorage.setItem(BRAINDUMP_STORAGE_KEY, JSON.stringify(arr));
-      return true;
-    }
-  } catch (_) {}
-  return false;
-}
-
-function updateBraindumpTaskDatesByName(name, oldStart, oldDue, startDate, dueDate) {
-  try {
-    const raw = localStorage.getItem(BRAINDUMP_STORAGE_KEY);
-    if (!raw) return false;
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) return false;
-    const t = arr.find((x) => (x.name || "").trim() === (name || "").trim() && (x.startDate || "").slice(0, 10) === (oldStart || "").slice(0, 10) && (x.dueDate || "").slice(0, 10) === (oldDue || "").slice(0, 10));
-    if (t) {
-      t.startDate = (startDate || "").slice(0, 10) || "";
-      t.dueDate = (dueDate || "").slice(0, 10) || "";
-      localStorage.setItem(BRAINDUMP_STORAGE_KEY, JSON.stringify(arr));
-      return true;
-    }
-  } catch (_) {}
-  return false;
-}
 
 function updateCustomSectionTaskDone(sectionId, taskId, done) {
   try {
@@ -236,37 +290,12 @@ function revertTaskToTodoList(barData) {
   let ok = false;
   if (barData.kpiTodoId && barData.storageKey) {
     ok = updateKpiTodo(barData.kpiTodoId, barData.storageKey, { startDate: "", dueDate: "" });
-  } else if (barData.sectionId === "braindump") {
-    if (barData.taskId) {
-      ok = updateBraindumpTaskDates(barData.taskId, "", "");
-    } else {
-      ok = updateBraindumpTaskDatesByName(barData.name, barData.startDate, barData.dueDate, "", "");
-    }
+  } else if (KPI_SECTION_IDS.includes(barData.sectionId) && !barData.kpiTodoId) {
+    ok = updateSectionTaskDates(barData.sectionId, barData.taskId, "", "");
   } else if (barData.sectionId?.startsWith("custom-")) {
     ok = updateCustomSectionTaskDates(barData.sectionId, barData.taskId, "", "");
   }
   return ok;
-}
-
-function getBraindumpTasksForDate(dateKey) {
-  try {
-    const raw = localStorage.getItem(BRAINDUMP_STORAGE_KEY);
-    if (!raw) return [];
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) return [];
-    return arr
-      .filter((t) => (t.name || "").trim() !== "" && (t.dueDate || "").slice(0, 10) === dateKey)
-      .map((t) => ({
-        name: t.name,
-        startDate: t.startDate || "",
-        dueDate: t.dueDate,
-        sectionId: "braindump",
-        itemType: t.itemType || "todo",
-        done: !!t.done,
-        taskId: t.taskId || "",
-      }));
-  } catch (_) {}
-  return [];
 }
 
 function getCustomSectionTasksForDate(dateKey) {
@@ -298,9 +327,9 @@ function getCustomSectionTasksForDate(dateKey) {
 
 function getTasksForDate(dateKey, excludeSpanningTasks = false) {
   const kpiTasks = getKpiTodosAsTasks().filter((t) => (t.dueDate || "").slice(0, 10) === dateKey);
-  const braindumpTasks = getBraindumpTasksForDate(dateKey);
+  const sectionTasks = getSectionTasksForDate(dateKey);
   const customTasks = getCustomSectionTasksForDate(dateKey);
-  let tasks = [...braindumpTasks, ...kpiTasks, ...customTasks];
+  let tasks = [...kpiTasks, ...sectionTasks, ...customTasks];
   if (excludeSpanningTasks) {
     tasks = tasks.filter((t) => !((t.startDate || "").slice(0, 10) && (t.dueDate || "").slice(0, 10)));
   }
@@ -325,28 +354,7 @@ function getAllTasksForDateDisplay(dateKey) {
 
 function getAllTasksWithDateRange() {
   const kpi = getKpiTodosAsTasks();
-  const braindump = [];
-  try {
-    const raw = localStorage.getItem(BRAINDUMP_STORAGE_KEY);
-    if (raw) {
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) {
-        arr
-          .filter((t) => (t.name || "").trim() !== "" && (t.startDate || "").slice(0, 10) && (t.dueDate || "").slice(0, 10))
-          .forEach((t) =>
-            braindump.push({
-              name: t.name,
-              startDate: (t.startDate || "").slice(0, 10),
-              dueDate: (t.dueDate || "").slice(0, 10),
-              sectionId: "braindump",
-              itemType: t.itemType || "todo",
-              done: !!t.done,
-              taskId: t.taskId || "",
-            })
-          );
-      }
-    }
-  } catch (_) {}
+  const sectionRange = getSectionTasksWithDateRange();
   const customRange = [];
   try {
     const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
@@ -372,7 +380,7 @@ function getAllTasksWithDateRange() {
     }
   } catch (_) {}
   const kpiWithRange = kpi.filter((t) => (t.startDate || "").slice(0, 10) && (t.dueDate || "").slice(0, 10)).map((t) => ({ ...t, startDate: (t.startDate || "").slice(0, 10), dueDate: (t.dueDate || "").slice(0, 10) }));
-  return [...braindump, ...kpiWithRange, ...customRange];
+  return [...kpiWithRange, ...sectionRange, ...customRange];
 }
 
 function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
@@ -418,10 +426,7 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
     const name = (bubble.querySelector(".calendar-event-bubble-input").value || "").trim();
     const categoryId = bubble.querySelector(".calendar-event-bubble-select").value;
     if (!name) return;
-    const result =
-      categoryId === "braindump"
-        ? addCalendarTodoToBraindump({ text: name, dueDate: dateKey, itemType: "todo" })
-        : addCalendarTodoToSection(categoryId, { text: name, dueDate: dateKey, itemType: "todo" });
+    const result = addCalendarTodoToSection(categoryId, { text: name, dueDate: dateKey, itemType: "todo" });
     if (result.success) {
       onSave?.(result.task);
       close();
@@ -623,10 +628,8 @@ function createCalendarBarDateEditBubble(clientX, clientY, barData, onSave, onCl
     let ok = false;
     if (barData.kpiTodoId && barData.storageKey) {
       ok = updateKpiTodo(barData.kpiTodoId, barData.storageKey, { startDate: newStart, dueDate: newDue });
-    } else if (barData.sectionId === "braindump" && barData.taskId) {
-      ok = updateBraindumpTaskDates(barData.taskId, newStart, newDue);
-    } else if (barData.sectionId === "braindump") {
-      ok = updateBraindumpTaskDatesByName(barData.name, barData.startDate, barData.dueDate, newStart, newDue);
+    } else if (KPI_SECTION_IDS.includes(barData.sectionId) && barData.taskId) {
+      ok = updateSectionTaskDates(barData.sectionId, barData.taskId, newStart, newDue);
     } else if (barData.sectionId?.startsWith("custom-")) {
       ok = updateCustomSectionTaskDates(barData.sectionId, barData.taskId, newStart, newDue);
       if (!ok && (barData.name || "").trim()) {
@@ -825,9 +828,6 @@ function renderMonthlyView(tabsElement) {
           let ok = false;
           if (payload.kpiTodoId && payload.storageKey) {
             ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
-          } else if (payload.sectionId === "braindump") {
-            ok = (payload.taskId && updateBraindumpTaskDates(payload.taskId, newStart, newDue)) ||
-              updateBraindumpTaskDatesByName(payload.name, oldStart, oldDue, newStart, newDue);
           } else if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
             ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
             if (!ok && (payload.name || "").trim()) {
@@ -840,9 +840,13 @@ function renderMonthlyView(tabsElement) {
                 itemType: payload.itemType || "todo",
               });
             }
-          } else if (["dream", "sideincome", "health", "happy"].includes(payload.sectionId) && (payload.name || "").trim()) {
-            const result = addCalendarTodoToSection(payload.sectionId, { text: (payload.name || "").trim(), dueDate: newDue, itemType: payload.itemType || "todo" });
-            ok = !!result.success;
+          } else if (KPI_SECTION_IDS.includes(payload.sectionId) && (payload.name || "").trim()) {
+            if (payload.kpiTodoId && payload.storageKey) {
+              ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
+            } else {
+              ok = updateSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue) ||
+                addSectionTaskToCalendar(payload.sectionId, { taskId: payload.taskId, name: payload.name, startDate: newStart, dueDate: newDue, done: !!payload.done, itemType: payload.itemType || "todo" });
+            }
           }
           if (ok) {
             renderCalendar();
@@ -867,7 +871,7 @@ function renderMonthlyView(tabsElement) {
         if (startIdx < 0 || endIdx < 0) return;
         const left = (startIdx / 7) * 100 + CELL_GAP / 7;
         const width = ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
-        const baseColor = t.sectionId === "braindump" ? "rgba(148, 163, 184, 0.6)" : getSectionColor(t.sectionId);
+        const baseColor = getSectionColor(t.sectionId);
         const color = withMoreTransparency(baseColor);
         allBars.push({ left, width, name: t.name, color, isSingleDay: false, itemType: t.itemType || "todo", done: !!t.done, kpiTodoId: t.kpiTodoId, storageKey: t.storageKey, taskId: t.taskId, sectionId: t.sectionId, startDate: t.startDate, dueDate: t.dueDate });
       });
@@ -875,7 +879,7 @@ function renderMonthlyView(tabsElement) {
         getTasksForDate(dateKey, true).forEach((t) => {
           const left = (dayIdx / 7) * 100 + CELL_GAP / 7;
           const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
-          const baseColor = t.sectionId === "braindump" ? "rgba(148, 163, 184, 0.6)" : getSectionColor(t.sectionId);
+          const baseColor = getSectionColor(t.sectionId);
           const color = withMoreTransparency(baseColor);
           allBars.push({ left, width, name: t.name, color, isSingleDay: true, dayIdx, dateKey, itemType: t.itemType || "todo", done: !!t.done, kpiTodoId: t.kpiTodoId, storageKey: t.storageKey, taskId: t.taskId, sectionId: t.sectionId, startDate: t.startDate || "", dueDate: t.dueDate || dateKey });
         });
@@ -934,10 +938,8 @@ function renderMonthlyView(tabsElement) {
             const newDone = !b.done;
               if (b.kpiTodoId && b.storageKey) {
                 syncKpiTodoCompleted(b.kpiTodoId, b.storageKey, newDone);
-              } else if (b.sectionId === "braindump" && b.taskId) {
-                updateBraindumpTaskDone(b.taskId, newDone);
-              } else if (b.sectionId === "braindump") {
-                updateBraindumpTaskDoneByName(b.name, b.startDate, b.dueDate, newDone);
+              } else if (KPI_SECTION_IDS.includes(b.sectionId) && b.taskId) {
+                updateSectionTaskDone(b.sectionId, b.taskId, newDone);
               } else if (b.sectionId?.startsWith("custom-") && b.taskId) {
                 updateCustomSectionTaskDone(b.sectionId, b.taskId, newDone);
               }
@@ -963,7 +965,7 @@ function renderMonthlyView(tabsElement) {
           bar.classList.add("calendar-monthly-span-bar--draggable");
           bar.addEventListener("dragstart", (e) => {
             e.dataTransfer.effectAllowed = "move";
-            e.dataTransfer.setData("application/json", JSON.stringify({ name: b.name, dueDate: b.dueDate, startDate: b.startDate || "", kpiTodoId: b.kpiTodoId, storageKey: b.storageKey, taskId: b.taskId, sectionId: b.sectionId }));
+            e.dataTransfer.setData("application/json", JSON.stringify({ name: b.name, dueDate: b.dueDate, startDate: b.startDate || "", kpiTodoId: b.kpiTodoId, storageKey: b.storageKey, taskId: b.taskId, sectionId: b.sectionId, done: !!b.done, itemType: b.itemType || "todo" }));
             e.dataTransfer.setData("text/plain", b.name || "");
             bar.classList.add("calendar-monthly-span-bar--dragging");
           });
@@ -1071,9 +1073,6 @@ function renderMonthlyView(tabsElement) {
         let ok = false;
         if (payload.kpiTodoId && payload.storageKey) {
           ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
-        } else if (payload.sectionId === "braindump") {
-          ok = (payload.taskId && updateBraindumpTaskDates(payload.taskId, newStart, newDue)) ||
-            updateBraindumpTaskDatesByName(payload.name, oldStart, oldDue, newStart, newDue);
         } else if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
           ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
           if (!ok && (payload.name || "").trim()) {
@@ -1086,9 +1085,13 @@ function renderMonthlyView(tabsElement) {
               itemType: payload.itemType || "todo",
             });
           }
-        } else if (["dream", "sideincome", "health", "happy"].includes(payload.sectionId) && (payload.name || "").trim()) {
-          const result = addCalendarTodoToSection(payload.sectionId, { text: (payload.name || "").trim(), dueDate: newDue, itemType: payload.itemType || "todo" });
-          ok = !!result.success;
+        } else if (KPI_SECTION_IDS.includes(payload.sectionId) && (payload.name || "").trim()) {
+          if (payload.kpiTodoId && payload.storageKey) {
+            ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
+          } else {
+            ok = updateSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue) ||
+              addSectionTaskToCalendar(payload.sectionId, { taskId: payload.taskId, name: payload.name, startDate: newStart, dueDate: newDue, done: !!payload.done, itemType: payload.itemType || "todo" });
+          }
         }
         if (ok) {
           renderCalendar();
@@ -1327,9 +1330,6 @@ function render2WeekView(tabsElement) {
           let ok = false;
           if (payload.kpiTodoId && payload.storageKey) {
             ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
-          } else if (payload.sectionId === "braindump") {
-            ok = (payload.taskId && updateBraindumpTaskDates(payload.taskId, newStart, newDue)) ||
-              updateBraindumpTaskDatesByName(payload.name, oldStart, oldDue, newStart, newDue);
           } else if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
             ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
             if (!ok && (payload.name || "").trim()) {
@@ -1342,9 +1342,13 @@ function render2WeekView(tabsElement) {
                 itemType: payload.itemType || "todo",
               });
             }
-          } else if (["dream", "sideincome", "health", "happy"].includes(payload.sectionId) && (payload.name || "").trim()) {
-            const result = addCalendarTodoToSection(payload.sectionId, { text: (payload.name || "").trim(), dueDate: newDue, itemType: payload.itemType || "todo" });
-            ok = !!result.success;
+          } else if (KPI_SECTION_IDS.includes(payload.sectionId) && (payload.name || "").trim()) {
+            if (payload.kpiTodoId && payload.storageKey) {
+              ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
+            } else {
+              ok = updateSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue) ||
+                addSectionTaskToCalendar(payload.sectionId, { taskId: payload.taskId, name: payload.name, startDate: newStart, dueDate: newDue, done: !!payload.done, itemType: payload.itemType || "todo" });
+            }
           }
           if (ok) {
             renderCalendar();
@@ -1369,7 +1373,7 @@ function render2WeekView(tabsElement) {
         if (startIdx < 0 || endIdx < 0) return;
         const left = (startIdx / 7) * 100 + CELL_GAP / 7;
         const width = ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
-        const baseColor = t.sectionId === "braindump" ? "rgba(148, 163, 184, 0.6)" : getSectionColor(t.sectionId);
+        const baseColor = getSectionColor(t.sectionId);
         const color = withMoreTransparency(baseColor);
         allBars.push({ left, width, name: t.name, color, isSingleDay: false, itemType: t.itemType || "todo", done: !!t.done, kpiTodoId: t.kpiTodoId, storageKey: t.storageKey, taskId: t.taskId, sectionId: t.sectionId, startDate: t.startDate, dueDate: t.dueDate });
       });
@@ -1377,7 +1381,7 @@ function render2WeekView(tabsElement) {
         getTasksForDate(dateKey, true).forEach((t) => {
           const left = (dayIdx / 7) * 100 + CELL_GAP / 7;
           const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
-          const baseColor = t.sectionId === "braindump" ? "rgba(148, 163, 184, 0.6)" : getSectionColor(t.sectionId);
+          const baseColor = getSectionColor(t.sectionId);
           const color = withMoreTransparency(baseColor);
           allBars.push({ left, width, name: t.name, color, isSingleDay: true, dayIdx, dateKey, itemType: t.itemType || "todo", done: !!t.done, kpiTodoId: t.kpiTodoId, storageKey: t.storageKey, taskId: t.taskId, sectionId: t.sectionId, startDate: t.startDate || "", dueDate: t.dueDate || dateKey });
         });
@@ -1436,10 +1440,6 @@ function render2WeekView(tabsElement) {
             const newDone = !b.done;
             if (b.kpiTodoId && b.storageKey) {
               syncKpiTodoCompleted(b.kpiTodoId, b.storageKey, newDone);
-            } else if (b.sectionId === "braindump" && b.taskId) {
-              updateBraindumpTaskDone(b.taskId, newDone);
-            } else if (b.sectionId === "braindump") {
-              updateBraindumpTaskDoneByName(b.name, b.startDate, b.dueDate, newDone);
             } else if (b.sectionId?.startsWith("custom-") && b.taskId) {
               updateCustomSectionTaskDone(b.sectionId, b.taskId, newDone);
             }
@@ -1465,7 +1465,7 @@ function render2WeekView(tabsElement) {
           bar.classList.add("calendar-monthly-span-bar--draggable");
           bar.addEventListener("dragstart", (e) => {
             e.dataTransfer.effectAllowed = "move";
-            e.dataTransfer.setData("application/json", JSON.stringify({ name: b.name, dueDate: b.dueDate, startDate: b.startDate || "", kpiTodoId: b.kpiTodoId, storageKey: b.storageKey, taskId: b.taskId, sectionId: b.sectionId }));
+            e.dataTransfer.setData("application/json", JSON.stringify({ name: b.name, dueDate: b.dueDate, startDate: b.startDate || "", kpiTodoId: b.kpiTodoId, storageKey: b.storageKey, taskId: b.taskId, sectionId: b.sectionId, done: !!b.done, itemType: b.itemType || "todo" }));
             e.dataTransfer.setData("text/plain", b.name || "");
             bar.classList.add("calendar-monthly-span-bar--dragging");
           });
@@ -1573,9 +1573,6 @@ function render2WeekView(tabsElement) {
         let ok = false;
         if (payload.kpiTodoId && payload.storageKey) {
           ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
-        } else if (payload.sectionId === "braindump") {
-          ok = (payload.taskId && updateBraindumpTaskDates(payload.taskId, newStart, newDue)) ||
-            updateBraindumpTaskDatesByName(payload.name, oldStart, oldDue, newStart, newDue);
         } else if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
           ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
           if (!ok && (payload.name || "").trim()) {
@@ -1588,9 +1585,13 @@ function render2WeekView(tabsElement) {
               itemType: payload.itemType || "todo",
             });
           }
-        } else if (["dream", "sideincome", "health", "happy"].includes(payload.sectionId) && (payload.name || "").trim()) {
-          const result = addCalendarTodoToSection(payload.sectionId, { text: (payload.name || "").trim(), dueDate: newDue, itemType: payload.itemType || "todo" });
-          ok = !!result.success;
+        } else if (KPI_SECTION_IDS.includes(payload.sectionId) && (payload.name || "").trim()) {
+          if (payload.kpiTodoId && payload.storageKey) {
+            ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
+          } else {
+            ok = updateSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue) ||
+              addSectionTaskToCalendar(payload.sectionId, { taskId: payload.taskId, name: payload.name, startDate: newStart, dueDate: newDue, done: !!payload.done, itemType: payload.itemType || "todo" });
+          }
         }
         if (ok) {
           renderCalendar();
@@ -1936,7 +1937,7 @@ function render1DayView(tabsElement) {
     /* 할일 바 렌더링 */
     tasks.forEach((t) => {
       const isTodo = (t.itemType || "todo").toLowerCase() === "todo";
-      const baseColor = t.sectionId === "braindump" ? "rgba(148, 163, 184, 0.6)" : getSectionColor(t.sectionId);
+      const baseColor = getSectionColor(t.sectionId);
       const color = withMoreTransparency(baseColor);
       const bar = document.createElement("div");
       bar.className =
@@ -1960,10 +1961,6 @@ function render1DayView(tabsElement) {
           const newDone = !t.done;
           if (t.kpiTodoId && t.storageKey) {
             syncKpiTodoCompleted(t.kpiTodoId, t.storageKey, newDone);
-          } else if (t.sectionId === "braindump" && t.taskId) {
-            updateBraindumpTaskDone(t.taskId, newDone);
-          } else if (t.sectionId === "braindump") {
-            updateBraindumpTaskDoneByName(t.name, t.startDate, t.dueDate, newDone);
           } else if (t.sectionId?.startsWith("custom-") && t.taskId) {
             updateCustomSectionTaskDone(t.sectionId, t.taskId, newDone);
           }
@@ -2032,10 +2029,7 @@ function render1DayView(tabsElement) {
       let ok = false;
       if (payload.kpiTodoId && payload.storageKey) {
         ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
-      } else if (payload.sectionId === "braindump") {
-        ok = (payload.taskId && updateBraindumpTaskDates(payload.taskId, newStart, newDue)) ||
-          updateBraindumpTaskDatesByName(payload.name, oldStart, oldDue, newStart, newDue);
-      } else if (payload.sectionId?.startsWith("custom-")) {
+        } else if (payload.sectionId?.startsWith("custom-")) {
         ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
         if (!ok && (payload.name || "").trim()) {
           ok = addCalendarTodoToCustomSection(payload.sectionId, {
@@ -2047,9 +2041,13 @@ function render1DayView(tabsElement) {
             itemType: payload.itemType || "todo",
           });
         }
-      } else if (["dream", "sideincome", "health", "happy"].includes(payload.sectionId) && (payload.name || "").trim()) {
-        const result = addCalendarTodoToSection(payload.sectionId, { text: (payload.name || "").trim(), dueDate: newDue, itemType: payload.itemType || "todo" });
-        ok = !!result.success;
+      } else if (KPI_SECTION_IDS.includes(payload.sectionId) && (payload.name || "").trim()) {
+        if (payload.kpiTodoId && payload.storageKey) {
+          ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
+        } else {
+          ok = updateSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue) ||
+            addSectionTaskToCalendar(payload.sectionId, { taskId: payload.taskId, name: payload.name, startDate: newStart, dueDate: newDue, done: !!payload.done, itemType: payload.itemType || "todo" });
+        }
       }
       if (ok) {
         renderCalendar();

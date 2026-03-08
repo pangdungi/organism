@@ -7,7 +7,6 @@
 import { getTodoSettings, saveTodoSettings, PASTEL_PRESETS, DEFAULT_SECTION_COLORS, getCustomSections, getCustomSectionColor } from "./todoSettings.js";
 
 const FIXED_SECTIONS = [
-  { id: "braindump", label: "브레인덤프" },
   { id: "dream", label: "꿈" },
   { id: "sideincome", label: "부수입" },
   { id: "health", label: "건강" },
@@ -15,7 +14,7 @@ const FIXED_SECTIONS = [
 ];
 
 function getSections() {
-  return [...FIXED_SECTIONS.filter((s) => s.id !== "braindump"), ...getCustomSections()];
+  return [...FIXED_SECTIONS, ...getCustomSections()];
 }
 
 function hexToRgba(hex, alpha = 0.6) {

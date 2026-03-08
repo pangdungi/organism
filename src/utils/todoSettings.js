@@ -6,7 +6,6 @@ const CUSTOM_SECTIONS_KEY = "todo-custom-sections";
 
 /** 리스트 기본 색상 (파스텔 톤) */
 export const DEFAULT_SECTION_COLORS = {
-  braindump: "rgba(245, 239, 239, 0.6)",
   dream: "rgba(224, 238, 245, 0.6)",
   sideincome: "rgba(231, 242, 207, 0.6)",
   health: "rgba(245, 224, 233, 0.6)",

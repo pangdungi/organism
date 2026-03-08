@@ -1,10 +1,8 @@
 /**
  * 할일목록 태스크 우클릭 컨텍스트 메뉴
- * - 브레인덤프: 꿈, 부수입, 건강, 행복으로 이동
- * - 꿈/부수입/건강/행복: 브레인덤프 + (현재 리스트 제외한 다른 리스트)로 이동
+ * - 꿈/부수입/건강/행복: 현재 리스트 제외한 다른 KPI 리스트로 이동
  */
 
-const BRAINDUMP_OPTION = { id: "braindump", label: "브레인덤프" };
 const KPI_OPTIONS = [
   { id: "dream", label: "꿈" },
   { id: "sideincome", label: "부수입" },
@@ -22,10 +20,7 @@ export function createBraindumpContextMenu(onSelect) {
 
   function renderItems(excludeSectionId) {
     menu.innerHTML = "";
-    const options =
-      excludeSectionId === null
-        ? KPI_OPTIONS
-        : [BRAINDUMP_OPTION, ...KPI_OPTIONS.filter((opt) => opt.id !== excludeSectionId)];
+    const options = excludeSectionId ? KPI_OPTIONS.filter((opt) => opt.id !== excludeSectionId) : KPI_OPTIONS;
 
     options.forEach((opt) => {
       const item = document.createElement("button");
