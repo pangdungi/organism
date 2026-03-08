@@ -4847,3 +4847,284 @@ export function render() {
 
   return el;
 }
+
+/** 캘린더 1일뷰용: 시간 투자/소비 내역 테이블만 렌더 (일간시간예산에서 사용) */
+export function renderTimeBudgetTablesForCalendar(container, dateStr) {
+  const rows = loadTimeRows();
+  const targetDateStr = dateStr || toDateStr(new Date());
+  const todayRows = rows.filter(
+    (r) => (r.date || "").trim() === targetDateStr,
+  );
+
+  function getActualTimeForTask(taskName) {
+    if (!(taskName || "").trim()) return 0;
+    const name = String(taskName).trim();
+    return todayRows
+      .filter((r) => (r.taskName || "").trim() === name)
+      .reduce((sum, r) => sum + parseTimeToHours(r.timeTracked), 0);
+  }
+
+  function getTasksFromTodayRows() {
+    const byTask = {};
+    todayRows.forEach((r) => {
+      const task = (r.taskName || "").trim();
+      if (!task) return;
+      const p = r.productivity || getProductivityFromCategory(r.category);
+      const hrs = parseTimeToHours(r.timeTracked);
+      if (hrs <= 0) return;
+      if (!byTask[task])
+        byTask[task] = { task, hrs: 0, isNonproductive: false };
+      byTask[task].hrs += hrs;
+      if (p === "nonproductive") byTask[task].isNonproductive = true;
+    });
+    return Object.values(byTask);
+  }
+
+  const taskOptions = getTaskOptions();
+  const taskDropdownOptions = [
+    { value: "", label: "—", color: "cat-empty" },
+    ...taskOptions.map((name) => ({
+      value: name,
+      label: name,
+      color: "cat-empty",
+    })),
+  ];
+
+  function createBudgetTimeInput() {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "time-budget-time-input";
+    input.placeholder = "hh:mm";
+    input.maxLength = 5;
+    input.addEventListener("keydown", (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const key = e.key;
+      if (
+        key === "Backspace" ||
+        key === "Delete" ||
+        key === "Tab" ||
+        key === "Enter" ||
+        key === "Escape"
+      )
+        return;
+      if (key.startsWith("Arrow") || key === "Home" || key === "End") return;
+      if (key.length === 1 && !/\d/.test(key)) e.preventDefault();
+    });
+    input.addEventListener("input", () => {
+      const digits = input.value.replace(/\D/g, "");
+      const limited = digits.slice(0, 4);
+      if (limited.length === 4) {
+        input.value = limited.slice(0, 2) + ":" + limited.slice(2);
+      } else {
+        input.value = limited;
+      }
+    });
+    input.addEventListener("blur", () => {
+      const digits = input.value.replace(/\D/g, "");
+      if (digits.length === 4) {
+        input.value = digits.slice(0, 2) + ":" + digits.slice(2);
+      }
+    });
+    return input;
+  }
+
+  const storedGoals = getBudgetGoals(targetDateStr);
+
+  function createBudgetTableRow(taskName, actualHours, initialGoalTime, isInvest) {
+    const tr = document.createElement("tr");
+    const taskTd = document.createElement("td");
+    const actualTimeSpan = document.createElement("span");
+    actualTimeSpan.className = "time-budget-actual-display";
+
+    const goalInput = createBudgetTimeInput();
+    if (initialGoalTime) goalInput.value = initialGoalTime;
+
+    function updateActualTimeDisplay() {
+      const name = taskDropdown.getValue();
+      const hrs = getActualTimeForTask(name);
+      actualTimeSpan.textContent = hrs > 0 ? formatHoursToHHMM(hrs) : "";
+    }
+    function saveCurrentGoal() {
+      const name = taskDropdown.getValue();
+      if (name)
+        saveBudgetGoal(targetDateStr, name, goalInput.value, isInvest);
+    }
+
+    goalInput.addEventListener("input", () => {
+      saveCurrentGoal();
+    });
+    goalInput.addEventListener("blur", saveCurrentGoal);
+
+    const taskDropdown = createTagDropdown(
+      taskDropdownOptions,
+      taskName || "",
+      "cat",
+      () => {
+        updateActualTimeDisplay();
+        saveCurrentGoal();
+      },
+    );
+    taskTd.appendChild(taskDropdown.wrap);
+    tr.appendChild(taskTd);
+
+    const goalTimeTd = document.createElement("td");
+    goalTimeTd.appendChild(goalInput);
+    tr.appendChild(goalTimeTd);
+    const actualTimeTd = document.createElement("td");
+    actualTimeSpan.textContent =
+      actualHours > 0 ? formatHoursToHHMM(actualHours) : "";
+    actualTimeTd.appendChild(actualTimeSpan);
+    tr.appendChild(actualTimeTd);
+
+    return tr;
+  }
+
+  const tasksFromToday = getTasksFromTodayRows();
+  const investTasks = [];
+  const consumeTasks = [];
+  const seenInvest = new Set();
+  const seenConsume = new Set();
+  tasksFromToday.forEach((t) => {
+    if (t.isNonproductive) {
+      consumeTasks.push(t);
+      seenConsume.add(t.task);
+    } else {
+      investTasks.push(t);
+      seenInvest.add(t.task);
+    }
+  });
+  Object.entries(storedGoals).forEach(([task, data]) => {
+    if (data.isInvest && !seenInvest.has(task)) {
+      investTasks.push({ task, hrs: 0, isNonproductive: false });
+      seenInvest.add(task);
+    } else if (!data.isInvest && !seenConsume.has(task)) {
+      consumeTasks.push({ task, hrs: 0, isNonproductive: true });
+      seenConsume.add(task);
+    }
+  });
+
+  const remainingHeader = document.createElement("div");
+  remainingHeader.className = "time-budget-calendar-remaining";
+  remainingHeader.innerHTML = `
+    <div class="time-budget-calendar-remaining-title">남은 시간</div>
+    <div class="time-budget-calendar-remaining-value">24:00</div>
+  `;
+
+  const tablesWrap = document.createElement("div");
+  tablesWrap.className = "time-daily-budget-tables-wrap time-daily-budget-tables-wrap--calendar";
+
+  const investBlock = document.createElement("div");
+  investBlock.className = "time-daily-budget-table-block";
+  investBlock.innerHTML = `<div class="time-daily-budget-table-title">시간 투자 내역</div>`;
+  const investTable = document.createElement("table");
+  investTable.className = "time-daily-budget-table";
+  investTable.innerHTML = `
+    <thead>
+      <tr>
+        <th>과제명</th>
+        <th class="time-budget-col-goal">목표 시간</th>
+        <th>실제 보낸 시간</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  `;
+  const investAddRow = document.createElement("tr");
+  investAddRow.className = "time-row-add";
+  const investAddCell = document.createElement("td");
+  investAddCell.colSpan = 3;
+  investAddCell.className = "time-cell-add";
+  const investAddBtn = document.createElement("button");
+  investAddBtn.type = "button";
+  investAddBtn.className = "time-btn-add";
+  investAddBtn.innerHTML =
+    '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 과제 기록';
+  investAddCell.appendChild(investAddBtn);
+  investAddRow.appendChild(investAddCell);
+
+  const investTbody = investTable.querySelector("tbody");
+  investTasks.forEach((t) => {
+    const goal = storedGoals[t.task];
+    const goalTime = goal?.goalTime || "";
+    investTbody.appendChild(
+      createBudgetTableRow(t.task, t.hrs, goalTime, true),
+    );
+  });
+  investTbody.appendChild(investAddRow);
+  investAddBtn.addEventListener("click", () => {
+    const tr = createBudgetTableRow("", 0, "", true);
+    investTbody.insertBefore(tr, investAddRow);
+  });
+  investBlock.appendChild(investTable);
+  tablesWrap.appendChild(investBlock);
+
+  const consumeAddRow = document.createElement("tr");
+  consumeAddRow.className = "time-row-add";
+  const consumeAddCell = document.createElement("td");
+  consumeAddCell.colSpan = 3;
+  consumeAddCell.className = "time-cell-add";
+  const consumeAddBtn = document.createElement("button");
+  consumeAddBtn.type = "button";
+  consumeAddBtn.className = "time-btn-add";
+  consumeAddBtn.innerHTML =
+    '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 과제 기록';
+  consumeAddCell.appendChild(consumeAddBtn);
+  consumeAddRow.appendChild(consumeAddCell);
+
+  const consumeBlock = document.createElement("div");
+  consumeBlock.className = "time-daily-budget-table-block";
+  consumeBlock.innerHTML = `<div class="time-daily-budget-table-title">시간 소비 내역</div>`;
+  const consumeTable = document.createElement("table");
+  consumeTable.className = "time-daily-budget-table";
+  consumeTable.innerHTML = `
+    <thead>
+      <tr>
+        <th>과제명</th>
+        <th class="time-budget-col-goal">목표 시간</th>
+        <th>실제 보낸 시간</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  `;
+  const consumeTbody = consumeTable.querySelector("tbody");
+  consumeTasks.forEach((t) => {
+    const goal = storedGoals[t.task];
+    const goalTime = goal?.goalTime || "";
+    consumeTbody.appendChild(
+      createBudgetTableRow(t.task, t.hrs, goalTime, false),
+    );
+  });
+  consumeTbody.appendChild(consumeAddRow);
+  consumeAddBtn.addEventListener("click", () => {
+    const tr = createBudgetTableRow("", 0, "", false);
+    consumeTbody.insertBefore(tr, consumeAddRow);
+  });
+  consumeBlock.appendChild(consumeTable);
+  tablesWrap.appendChild(consumeBlock);
+
+  const remainingValueEl = remainingHeader.querySelector(".time-budget-calendar-remaining-value");
+
+  function updateRemaining() {
+    let goalSum = 0;
+    [investBlock, consumeBlock].forEach((block) => {
+      block.querySelectorAll(".time-budget-time-input").forEach((inp) => {
+        goalSum += parseTimeToHours(inp.value);
+      });
+    });
+    const remaining = Math.max(0, 24 - goalSum);
+    if (remainingValueEl) remainingValueEl.textContent = formatHoursToHHMM(remaining);
+  }
+
+  [investBlock, consumeBlock].forEach((block) => {
+    block.addEventListener("input", (e) => {
+      if (e.target.classList.contains("time-budget-time-input")) updateRemaining();
+    });
+    block.addEventListener("blur", (e) => {
+      if (e.target.classList.contains("time-budget-time-input")) updateRemaining();
+    });
+  });
+  updateRemaining();
+
+  container.innerHTML = "";
+  container.appendChild(remainingHeader);
+  container.appendChild(tablesWrap);
+}

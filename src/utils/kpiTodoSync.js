@@ -202,6 +202,37 @@ export function removeKpiTodo(kpiTodoId, storageKey) {
 }
 
 /**
+ * 특정 KPI에 할일 추가
+ * @param {string} kpiId
+ * @param {string} storageKey
+ * @param {string} text
+ * @returns {{ success: boolean, kpiTodoId?: string }}
+ */
+export function addKpiTodo(kpiId, storageKey, text) {
+  const val = (text || "").trim();
+  if (!val) return { success: false };
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return { success: false };
+    const data = JSON.parse(raw);
+    const kpi = (data.kpis || []).find((k) => k.id === kpiId);
+    if (!kpi) return { success: false };
+    data.kpiTodos = data.kpiTodos || [];
+    const newId = nextId();
+    data.kpiTodos.push({
+      id: newId,
+      kpiId,
+      text: val,
+      completed: false,
+      itemType: "todo",
+    });
+    localStorage.setItem(storageKey, JSON.stringify(data));
+    return { success: true, kpiTodoId: newId };
+  } catch (_) {}
+  return { success: false };
+}
+
+/**
  * 완료된 KPI 할일 모두 제거
  * @returns {number} 제거된 항목 수
  */

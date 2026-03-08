@@ -38,7 +38,7 @@ function escapeHtml(str) {
 /**
  * 카테고리별 KPI 카드 데이터 수집 (진행률, 목표값 등 포함)
  */
-function getKpisByCategory() {
+export function getKpisByCategory() {
   const dreamData = loadJson(DREAM_MAP_KEY, { dreams: [], kpis: [], kpiLogs: [] });
   const sideData = loadJson(SIDEINCOME_KEY, { paths: [], kpis: [], kpiLogs: [] });
   const happyData = loadJson(HAPPINESS_KEY, { happinesses: [], kpis: [], kpiLogs: [] });
@@ -50,6 +50,7 @@ function getKpisByCategory() {
   const healthNames = new Map((healthData.healths || []).map((h) => [h.id, h.name || "건강"]));
 
   const result = { 꿈: [], 부수입: [], 행복: [], 건강: [] };
+  const STORAGE_BY_CATEGORY = { 꿈: DREAM_MAP_KEY, 부수입: SIDEINCOME_KEY, 행복: HAPPINESS_KEY, 건강: HEALTH_KEY };
 
   function addKpi(kpi, logs, parentName, category) {
     const currentVal = getAccumulatedLogValue(kpi.id, logs);
@@ -59,6 +60,8 @@ function getKpisByCategory() {
     const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
     const progressText = `${formatNum(currentVal)} / ${kpi.targetValue ? String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",") : "—"}${unitSuffix}`;
     result[category].push({
+      kpiId: kpi.id,
+      storageKey: STORAGE_BY_CATEGORY[category],
       name: kpi.name || "지표",
       parentName,
       targetValue: kpi.targetValue,

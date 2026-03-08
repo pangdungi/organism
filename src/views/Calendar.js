@@ -5,8 +5,12 @@
  */
 
 import { render as renderTodoList, saveTodoListBeforeUnmount, DRAG_TYPE_TODO_TO_CALENDAR } from "./TodoList.js";
-import { getKpiTodosAsTasks, addCalendarTodoToSection, addCalendarTodoToBraindump, syncKpiTodoCompleted, updateKpiTodo } from "../utils/kpiTodoSync.js";
+import { getKpiTodosAsTasks, addCalendarTodoToSection, addCalendarTodoToBraindump, syncKpiTodoCompleted, updateKpiTodo, removeKpiTodo } from "../utils/kpiTodoSync.js";
 import { getSectionColor, getCustomSections } from "../utils/todoSettings.js";
+import { getKpisByCategory } from "../utils/kpiViewModal.js";
+import { formatDeadlineRangeForDisplay } from "../utils/ganttModal.js";
+import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes } from "../utils/timeKpiSync.js";
+import { renderTimeBudgetTablesForCalendar } from "./Time.js";
 
 const BRAINDUMP_STORAGE_KEY = "todo-braindump-tasks";
 const CUSTOM_SECTION_TASKS_KEY = "todo-custom-section-tasks";
@@ -822,11 +826,8 @@ function renderMonthlyView(tabsElement) {
           if (payload.kpiTodoId && payload.storageKey) {
             ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
           } else if (payload.sectionId === "braindump") {
-            if (payload.taskId) {
-              ok = updateBraindumpTaskDates(payload.taskId, newStart, newDue);
-            } else {
-              ok = updateBraindumpTaskDatesByName(payload.name, oldStart, oldDue, newStart, newDue);
-            }
+            ok = (payload.taskId && updateBraindumpTaskDates(payload.taskId, newStart, newDue)) ||
+              updateBraindumpTaskDatesByName(payload.name, oldStart, oldDue, newStart, newDue);
           } else if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
             ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
             if (!ok && (payload.name || "").trim()) {
@@ -1071,11 +1072,8 @@ function renderMonthlyView(tabsElement) {
         if (payload.kpiTodoId && payload.storageKey) {
           ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
         } else if (payload.sectionId === "braindump") {
-          if (payload.taskId) {
-            ok = updateBraindumpTaskDates(payload.taskId, newStart, newDue);
-          } else {
-            ok = updateBraindumpTaskDatesByName(payload.name, oldStart, oldDue, newStart, newDue);
-          }
+          ok = (payload.taskId && updateBraindumpTaskDates(payload.taskId, newStart, newDue)) ||
+            updateBraindumpTaskDatesByName(payload.name, oldStart, oldDue, newStart, newDue);
         } else if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
           ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
           if (!ok && (payload.name || "").trim()) {
@@ -1330,11 +1328,8 @@ function render2WeekView(tabsElement) {
           if (payload.kpiTodoId && payload.storageKey) {
             ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
           } else if (payload.sectionId === "braindump") {
-            if (payload.taskId) {
-              ok = updateBraindumpTaskDates(payload.taskId, newStart, newDue);
-            } else {
-              ok = updateBraindumpTaskDatesByName(payload.name, oldStart, oldDue, newStart, newDue);
-            }
+            ok = (payload.taskId && updateBraindumpTaskDates(payload.taskId, newStart, newDue)) ||
+              updateBraindumpTaskDatesByName(payload.name, oldStart, oldDue, newStart, newDue);
           } else if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
             ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
             if (!ok && (payload.name || "").trim()) {
@@ -1579,11 +1574,8 @@ function render2WeekView(tabsElement) {
         if (payload.kpiTodoId && payload.storageKey) {
           ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
         } else if (payload.sectionId === "braindump") {
-          if (payload.taskId) {
-            ok = updateBraindumpTaskDates(payload.taskId, newStart, newDue);
-          } else {
-            ok = updateBraindumpTaskDatesByName(payload.name, oldStart, oldDue, newStart, newDue);
-          }
+          ok = (payload.taskId && updateBraindumpTaskDates(payload.taskId, newStart, newDue)) ||
+            updateBraindumpTaskDatesByName(payload.name, oldStart, oldDue, newStart, newDue);
         } else if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
           ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
           if (!ok && (payload.name || "").trim()) {
@@ -1694,23 +1686,210 @@ function render1DayView(tabsElement) {
   calendarGrid.className = "calendar-monthly-grid";
 
   function refreshTodoList() {
-    const body = wrap.querySelector(".calendar-todo-sidebar-body");
-    if (body) {
-      const oldList = body.querySelector(".todo-list-in-sidebar");
-      let activeIndex = 0;
-      if (oldList) {
-        const activeTab = oldList.querySelector(".todo-category-tab:not(.todo-category-tab-add).active");
-        const tabs = oldList.querySelectorAll(".todo-category-tab:not(.todo-category-tab-add)");
-        if (activeTab && tabs.length) {
-          const idx = Array.from(tabs).indexOf(activeTab);
-          if (idx >= 0) activeIndex = idx;
-        }
-        oldList.remove();
-      }
-      const newList = renderTodoList({ hideToolbar: true, enableDragToCalendar: true, initialActiveTabIndex: activeIndex });
-      newList.classList.add("todo-list-in-sidebar");
-      body.appendChild(newList);
+    /* 1일 뷰는 KPI 사이드바 사용, 할일 목록 없음 */
+  }
+
+  function getKpiTodosForKpi(kpiId) {
+    return getKpiTodosAsTasks().filter((t) => t.kpiId === kpiId);
+  }
+
+  function renderKpiTodoListHtml(kpiId, storageKey) {
+    const todos = getKpiTodosForKpi(kpiId);
+    const itemsHtml = todos
+      .map(
+        (t) => `
+      <div class="calendar-kpi-todo-item ${t.done ? "is-completed" : ""}" data-kpi-todo-id="${escapeHtml(t.kpiTodoId)}" data-storage-key="${escapeHtml(storageKey)}">
+        <label class="calendar-kpi-todo-check-wrap">
+          <input type="checkbox" class="calendar-kpi-todo-check" ${t.done ? "checked" : ""} />
+        </label>
+        <span class="calendar-kpi-todo-text">${escapeHtml(t.name)}</span>
+        <button type="button" class="calendar-kpi-todo-del" title="삭제">×</button>
+      </div>
+    `
+      )
+      .join("");
+    return `
+      <div class="calendar-kpi-todo-list">${itemsHtml || '<p class="calendar-kpi-todo-empty">할일 없음</p>'}</div>
+    `;
+  }
+
+  function renderKpiSidebarContent(list, onRefresh) {
+    if (!list || list.length === 0) {
+      return '<p class="calendar-kpi-sidebar-empty">KPI가 없습니다.</p>';
     }
+    return list
+      .map((k) => {
+        const kpiId = k.kpiId || "";
+        const storageKey = k.storageKey || "";
+        const todoCount = getKpiTodosForKpi(kpiId).length;
+        const targetMins = k.targetTimeRequired ? hhMmToMinutes(k.targetTimeRequired) : 0;
+        const accumulatedMins = targetMins > 0 ? getAccumulatedMinutes(k.name) : 0;
+        const timeProgress = targetMins > 0 ? Math.min(100, (accumulatedMins / targetMins) * 100) : 0;
+        const remainingMins = Math.max(0, targetMins - accumulatedMins);
+        const timeCircleHtml =
+          targetMins > 0
+            ? `
+          <div class="dream-kpi-time-circle-wrap">
+            <div class="dream-kpi-time-circle" role="progressbar" aria-valuenow="${timeProgress}" aria-valuemin="0" aria-valuemax="100">
+              <svg viewBox="0 0 36 36">
+                <path class="dream-kpi-time-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <path class="dream-kpi-time-circle-fill" stroke-dasharray="${timeProgress}, ${100 - timeProgress}" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              </svg>
+              <div class="dream-kpi-time-circle-label">
+                <span class="dream-kpi-time-accumulated">${minutesToHhMm(accumulatedMins)}</span>
+                <span class="dream-kpi-time-sep">/</span>
+                <span class="dream-kpi-time-target">${escapeHtml(k.targetTimeRequired)}</span>
+              </div>
+            </div>
+            <div class="dream-kpi-time-remaining">남은 ${minutesToHhMm(remainingMins)}</div>
+          </div>
+        `
+            : "";
+        const hasTimeTarget = targetMins > 0;
+        return `
+        <div class="kpi-view-card dream-kpi-card calendar-kpi-card ${!hasTimeTarget ? "calendar-kpi-card-no-time" : ""}" data-kpi-id="${escapeHtml(kpiId)}" data-storage-key="${escapeHtml(storageKey)}">
+          <div class="dream-kpi-card-inner calendar-kpi-card-inner">
+            <div class="dream-kpi-card-name">${escapeHtml(k.name)}</div>
+            <div class="dream-kpi-card-target-num">${k.targetValue ? escapeHtml(String(k.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) + (k.unit ? '<span class="dream-kpi-card-unit"> ' + escapeHtml(k.unit) + "</span>" : "") : "—"}</div>
+            ${(k.targetStartDate || k.targetDeadline) ? `<div class="dream-kpi-card-deadline">목표기한 ${escapeHtml(formatDeadlineRangeForDisplay(k.targetStartDate, k.targetDeadline))}</div>` : ""}
+            ${k.targetTimeRequired ? `<div class="dream-kpi-card-time">목표시간 ${escapeHtml(k.targetTimeRequired)}</div>` : ""}
+            <div class="dream-kpi-card-progress">
+              <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${k.progress}%"></div></div>
+              <div class="dream-kpi-card-progress-text">${escapeHtml(k.progressText)}</div>
+            </div>
+            ${timeCircleHtml}
+          </div>
+          <button type="button" class="calendar-kpi-card-todos-toggle">할일 (${todoCount}개)</button>
+          <div class="calendar-kpi-card-todos"></div>
+        </div>
+      `;
+      })
+      .join("");
+  }
+
+  let expandedKpiId = null;
+
+  function refreshKpiSidebar() {
+    const body = wrap.querySelector(".calendar-kpi-sidebar-body");
+    if (!body) return;
+    const { tabsHtml, panelsHtml, totalCount } = buildKpiSidebarHtml();
+    const emptyHint =
+      totalCount === 0
+        ? '<p class="calendar-kpi-sidebar-hint">꿈, 건강, 부수입, 행복 페이지에서 KPI를 등록해주세요.</p>'
+        : "";
+    body.innerHTML = `
+      ${emptyHint}
+      <div class="calendar-kpi-tabs">${tabsHtml}</div>
+      <div class="calendar-kpi-panels">${panelsHtml}</div>
+    `;
+    attachKpiSidebarListeners(body);
+    if (expandedKpiId) {
+      const card = body.querySelector(`.calendar-kpi-card[data-kpi-id="${expandedKpiId}"]`);
+      if (card) {
+        card.classList.add("is-expanded");
+        const todosEl = card.querySelector(".calendar-kpi-card-todos");
+        const storageKey = card.dataset.storageKey;
+        if (todosEl && storageKey) {
+          todosEl.innerHTML = renderKpiTodoListHtml(expandedKpiId, storageKey);
+          attachKpiTodoListeners(todosEl, expandedKpiId, storageKey);
+        }
+      }
+    }
+  }
+
+  function attachKpiTodoListeners(todosEl, kpiId, storageKey) {
+    if (!todosEl) return;
+    todosEl.querySelectorAll(".calendar-kpi-todo-check").forEach((check) => {
+      check.addEventListener("change", (e) => {
+        e.stopPropagation();
+        const item = check.closest(".calendar-kpi-todo-item");
+        const kpiTodoId = item?.dataset?.kpiTodoId;
+        if (kpiTodoId) {
+          syncKpiTodoCompleted(kpiTodoId, storageKey, !!check.checked);
+          refreshKpiSidebar();
+          renderCalendar();
+        }
+      });
+    });
+    todosEl.querySelectorAll(".calendar-kpi-todo-del").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const item = btn.closest(".calendar-kpi-todo-item");
+        const kpiTodoId = item?.dataset?.kpiTodoId;
+        if (kpiTodoId && removeKpiTodo(kpiTodoId, storageKey)) {
+          refreshKpiSidebar();
+          renderCalendar();
+        }
+      });
+    });
+  }
+
+  function attachKpiSidebarListeners(body) {
+    body.querySelectorAll(".calendar-kpi-tab").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        const cat = tab.dataset.category;
+        body.querySelectorAll(".calendar-kpi-tab").forEach((t) => t.classList.remove("active"));
+        body.querySelectorAll(".calendar-kpi-panel").forEach((p) => p.classList.remove("active"));
+        tab.classList.add("active");
+        const panel = body.querySelector(`.calendar-kpi-panel[data-category="${cat}"]`);
+        if (panel) panel.classList.add("active");
+      });
+    });
+    body.querySelectorAll(".calendar-kpi-card").forEach((card) => {
+      const toggleBtn = card.querySelector(".calendar-kpi-card-todos-toggle");
+      if (toggleBtn) {
+        toggleBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const kpiId = card.dataset.kpiId;
+          const storageKey = card.dataset.storageKey;
+          if (!kpiId || !storageKey) return;
+          const wasExpanded = card.classList.contains("is-expanded");
+          body.querySelectorAll(".calendar-kpi-card").forEach((c) => {
+            c.classList.remove("is-expanded");
+            c.querySelector(".calendar-kpi-card-todos")?.replaceChildren();
+          });
+          if (!wasExpanded) {
+            expandedKpiId = kpiId;
+            card.classList.add("is-expanded");
+            const todosEl = card.querySelector(".calendar-kpi-card-todos");
+            if (todosEl) {
+              todosEl.innerHTML = renderKpiTodoListHtml(kpiId, storageKey);
+              attachKpiTodoListeners(todosEl, kpiId, storageKey);
+            }
+          } else {
+            expandedKpiId = null;
+          }
+        });
+      }
+    });
+  }
+
+  function buildKpiSidebarHtml() {
+    const byCategory = getKpisByCategory();
+    const categoryOrder = ["꿈", "건강", "부수입", "행복"];
+    const CATEGORY_ICONS = { 꿈: "✨", 부수입: "💰", 행복: "😊", 건강: "💪" };
+    let tabsHtml = "";
+    let panelsHtml = "";
+    let totalCount = 0;
+    categoryOrder.forEach((cat, i) => {
+      const list = byCategory[cat] || [];
+      totalCount += list.length;
+      const icon = CATEGORY_ICONS[cat] || "";
+      const isActive = i === 0;
+      tabsHtml += `
+        <button type="button" class="calendar-kpi-tab ${isActive ? "active" : ""}" data-category="${escapeHtml(cat)}">
+          <span class="calendar-kpi-tab-icon">${icon}</span>
+          ${escapeHtml(cat)}
+          <span class="calendar-kpi-tab-count">${list.length}</span>
+        </button>
+      `;
+      panelsHtml += `
+        <div class="calendar-kpi-panel ${isActive ? "active" : ""}" data-category="${escapeHtml(cat)}">
+          <div class="kpi-view-cards">${renderKpiSidebarContent(list)}</div>
+        </div>
+      `;
+    });
+    return { tabsHtml, panelsHtml, totalCount };
   }
 
   function format1DayNavDate(dayOffset) {
@@ -1727,9 +1906,18 @@ function render1DayView(tabsElement) {
     nav.querySelector(".calendar-nav-year").textContent = String(targetDate.getFullYear());
 
     calendarGrid.innerHTML = "";
-    calendarGrid.className = "calendar-monthly-grid calendar-1day-time-grid";
+    calendarGrid.className = "calendar-monthly-grid calendar-1day-time-grid calendar-1day-split-layout";
 
     const targetKey = formatDateKey(targetDate);
+
+    const budgetColumn = document.createElement("div");
+    budgetColumn.className = "calendar-1day-budget-column";
+    const timeColumn = document.createElement("div");
+    timeColumn.className = "calendar-1day-time-column";
+    renderTimeBudgetTablesForCalendar(budgetColumn, targetKey);
+    calendarGrid.appendChild(budgetColumn);
+    calendarGrid.appendChild(timeColumn);
+
     const tasks = getAllTasksForDateDisplay(targetKey);
 
     /* 날짜 셀 - 상단 고정 (날짜 + 할일 목록 영역) */
@@ -1845,11 +2033,8 @@ function render1DayView(tabsElement) {
       if (payload.kpiTodoId && payload.storageKey) {
         ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
       } else if (payload.sectionId === "braindump") {
-        if (payload.taskId) {
-          ok = updateBraindumpTaskDates(payload.taskId, newStart, newDue);
-        } else {
-          ok = updateBraindumpTaskDatesByName(payload.name, oldStart, oldDue, newStart, newDue);
-        }
+        ok = (payload.taskId && updateBraindumpTaskDates(payload.taskId, newStart, newDue)) ||
+          updateBraindumpTaskDatesByName(payload.name, oldStart, oldDue, newStart, newDue);
       } else if (payload.sectionId?.startsWith("custom-")) {
         ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
         if (!ok && (payload.name || "").trim()) {
@@ -1872,12 +2057,12 @@ function render1DayView(tabsElement) {
       }
     });
 
-    calendarGrid.appendChild(dateCell);
+    timeColumn.appendChild(dateCell);
 
     /* 구분선 */
     const divider = document.createElement("div");
     divider.className = "calendar-1day-divider";
-    calendarGrid.appendChild(divider);
+    timeColumn.appendChild(divider);
 
     /* 시간 테이블 */
     const timeTable = document.createElement("div");
@@ -1894,7 +2079,7 @@ function render1DayView(tabsElement) {
       row.appendChild(slot);
       timeTable.appendChild(row);
     }
-    calendarGrid.appendChild(timeTable);
+    timeColumn.appendChild(timeTable);
   }
 
   nav.querySelector(".calendar-nav-today").addEventListener("click", () => {
@@ -1914,27 +2099,25 @@ function render1DayView(tabsElement) {
   calendarSection.appendChild(calendarGrid);
   wrap.appendChild(calendarSection);
 
-  const todoSidebar = document.createElement("aside");
-  todoSidebar.className = "calendar-todo-sidebar";
+  const kpiSidebar = document.createElement("aside");
+  kpiSidebar.className = "calendar-todo-sidebar calendar-kpi-sidebar";
   let sidebarCollapsed = false;
-  todoSidebar.innerHTML = `
+  kpiSidebar.innerHTML = `
     <div class="calendar-todo-sidebar-header">
-      <span class="calendar-todo-sidebar-title">할 일</span>
+      <span class="calendar-todo-sidebar-title">KPI</span>
       <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
         <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
       </button>
     </div>
-    <div class="calendar-todo-sidebar-body"></div>
+    <div class="calendar-kpi-sidebar-body"></div>
   `;
-  const todoListEl = renderTodoList({ hideToolbar: true, enableDragToCalendar: true });
-  todoListEl.classList.add("todo-list-in-sidebar");
-  todoSidebar.querySelector(".calendar-todo-sidebar-body").appendChild(todoListEl);
-  todoSidebar.querySelector(".calendar-todo-sidebar-collapse").addEventListener("click", () => {
+  kpiSidebar.querySelector(".calendar-todo-sidebar-collapse").addEventListener("click", () => {
     sidebarCollapsed = !sidebarCollapsed;
-    todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
-    todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+    kpiSidebar.classList.toggle("collapsed", sidebarCollapsed);
+    kpiSidebar.querySelector(".calendar-todo-sidebar-collapse").title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
   });
-  wrap.appendChild(todoSidebar);
+  wrap.appendChild(kpiSidebar);
+  refreshKpiSidebar();
 
   wrap.addEventListener("dragend", () => {
     wrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
