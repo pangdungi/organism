@@ -219,6 +219,23 @@ function addDaysToDateKey(dateKey, days) {
   return formatDateKey(d);
 }
 
+/** 캘린더 할일의 시작일/마감일을 비워 할일목록으로 되돌리기 */
+function revertTaskToTodoList(barData) {
+  let ok = false;
+  if (barData.kpiTodoId && barData.storageKey) {
+    ok = updateKpiTodo(barData.kpiTodoId, barData.storageKey, { startDate: "", dueDate: "" });
+  } else if (barData.sectionId === "braindump") {
+    if (barData.taskId) {
+      ok = updateBraindumpTaskDates(barData.taskId, "", "");
+    } else {
+      ok = updateBraindumpTaskDatesByName(barData.name, barData.startDate, barData.dueDate, "", "");
+    }
+  } else if (barData.sectionId?.startsWith("custom-")) {
+    ok = updateCustomSectionTaskDates(barData.sectionId, barData.taskId, "", "");
+  }
+  return ok;
+}
+
 function getBraindumpTasksForDate(dateKey) {
   try {
     const raw = localStorage.getItem(BRAINDUMP_STORAGE_KEY);
@@ -421,7 +438,7 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
 const MAX_VISIBLE_BARS_PER_DAY = 3;
 
 function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose) {
-  document.querySelectorAll(".calendar-day-expand-bubble").forEach((el) => el.remove());
+  document.querySelectorAll(".calendar-event-bubble").forEach((el) => el.remove());
   const bubble = document.createElement("div");
   bubble.className = "calendar-event-bubble calendar-day-expand-bubble";
   const taskItems = tasks
@@ -471,12 +488,61 @@ function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose) {
   return bubble;
 }
 
+function createCalendarBarRevertBubble(clientX, clientY, barData, onSave, onClose) {
+  document.querySelectorAll(".calendar-event-bubble").forEach((el) => el.remove());
+  const bubble = document.createElement("div");
+  bubble.className = "calendar-event-bubble calendar-bar-date-edit-bubble calendar-bar-revert-bubble";
+  bubble.innerHTML = `
+    <div class="calendar-event-bubble-body">
+      <div class="calendar-event-bubble-header">
+        <span class="calendar-event-bubble-date">${escapeHtml(barData.name || "")}</span>
+        <button type="button" class="calendar-event-bubble-close" title="닫기">×</button>
+      </div>
+      <p class="calendar-bar-revert-desc">시작일·마감일을 비우고 할일목록으로 되돌립니다.</p>
+      <button type="button" class="calendar-event-bubble-revert calendar-bar-revert-btn">되돌려놓기</button>
+    </div>
+  `;
+
+  const close = () => {
+    bubble.remove();
+    onClose?.();
+  };
+
+  bubble.querySelector(".calendar-event-bubble-close").addEventListener("click", close);
+  setTimeout(() => {
+    document.addEventListener("click", function outside(e) {
+      if (!bubble.contains(e.target)) {
+        document.removeEventListener("click", outside);
+        close();
+      }
+    });
+  }, 0);
+
+  bubble.querySelector(".calendar-bar-revert-btn").addEventListener("click", () => {
+    if (revertTaskToTodoList(barData)) {
+      onSave?.();
+      close();
+    }
+  });
+
+  Object.assign(bubble.style, {
+    position: "fixed",
+    left: `${Math.min(clientX, window.innerWidth - 260)}px`,
+    top: `${Math.min(clientY, window.innerHeight - 180)}px`,
+    zIndex: 1001,
+  });
+
+  document.body.appendChild(bubble);
+  return bubble;
+}
+
 function createCalendarBarDateEditBubble(clientX, clientY, barData, onSave, onClose) {
-  document.querySelectorAll(".calendar-bar-date-edit-bubble").forEach((el) => el.remove());
+  document.querySelectorAll(".calendar-event-bubble").forEach((el) => el.remove());
   const bubble = document.createElement("div");
   bubble.className = "calendar-event-bubble calendar-bar-date-edit-bubble";
   const startVal = (barData.startDate || "").slice(0, 10);
   const dueVal = (barData.dueDate || "").slice(0, 10);
+  const hasRange = startVal && dueVal && startVal !== dueVal;
   bubble.innerHTML = `
     <div class="calendar-event-bubble-body">
       <div class="calendar-event-bubble-header">
@@ -495,6 +561,7 @@ function createCalendarBarDateEditBubble(clientX, clientY, barData, onSave, onCl
         <input type="date" class="calendar-bar-date-edit-input" data-field="due" value="${dueVal}" />
       </div>
       <button type="button" class="calendar-event-bubble-save">저장</button>
+      ${hasRange ? '<button type="button" class="calendar-event-bubble-revert calendar-bar-revert-btn">되돌려놓기</button>' : ""}
     </div>
   `;
 
@@ -566,6 +633,16 @@ function createCalendarBarDateEditBubble(clientX, clientY, barData, onSave, onCl
       close();
     }
   });
+
+  const revertBtn = bubble.querySelector(".calendar-bar-revert-btn");
+  if (revertBtn) {
+    revertBtn.addEventListener("click", () => {
+      if (revertTaskToTodoList(barData)) {
+        onSave?.();
+        close();
+      }
+    });
+  }
 
   Object.assign(bubble.style, {
     position: "fixed",
@@ -883,6 +960,14 @@ function renderMonthlyView(tabsElement) {
           });
           bar.addEventListener("dragend", () => {
             bar.classList.remove("calendar-monthly-span-bar--dragging");
+          });
+          bar.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            createCalendarBarRevertBubble(e.clientX, e.clientY, b, () => {
+              renderCalendar();
+              refreshTodoList();
+            }, () => {});
           });
         }
         barsEl.appendChild(bar);
@@ -1383,6 +1468,14 @@ function render2WeekView(tabsElement) {
           });
           bar.addEventListener("dragend", () => {
             bar.classList.remove("calendar-monthly-span-bar--dragging");
+          });
+          bar.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            createCalendarBarRevertBubble(e.clientX, e.clientY, b, () => {
+              renderCalendar();
+              refreshTodoList();
+            }, () => {});
           });
         }
         barsEl.appendChild(bar);

@@ -70,16 +70,16 @@ export function formatDeadlineForDisplay(str) {
   const s = str.trim();
   if (!s) return "";
   const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (m) return `${m[1]}년 ${parseInt(m[2], 10)}월 ${parseInt(m[3], 10)}일까지`;
-  return s.endsWith("까지") ? s : s + "까지";
+  if (m) return `${m[1]}년 ${parseInt(m[2], 10)}월 ${parseInt(m[3], 10)}일`;
+  return s.replace(/까지$/, "");
 }
 
 export function formatDeadlineRangeForDisplay(startStr, endStr) {
-  const start = formatDeadlineForDisplay(startStr).replace(/까지$/, "");
+  const start = formatDeadlineForDisplay(startStr);
   const end = formatDeadlineForDisplay(endStr);
   if (!start && !end) return "";
   if (!start) return end;
-  if (!end) return start + "까지";
+  if (!end) return start;
   return `${start} ~ ${end}`;
 }
 

@@ -1,10 +1,12 @@
 /**
  * 부수입 페이지 - 꿈 페이지와 동일 구조
- * 부수입 경로 추가 시 탭 형성, KPI 카드, 로그, 할일
+ * 부수입 목표 추가 모달 → 확인 시 탭 형성, KPI 카드, 로그, 할일
+ * 탭 우클릭 시 이름 수정/삭제 모달
  */
 
 import { showGanttModal, toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay } from "../utils/ganttModal.js";
 import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes } from "../utils/timeKpiSync.js";
+import { getSubtasks, addSubtask, updateSubtask, removeSubtask } from "../utils/todoSubtasks.js";
 
 const SIDEINCOME_STORAGE_KEY = "kpi-sideincome-paths";
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
@@ -116,6 +118,22 @@ function setupNumericOnlyInput(inp) {
   });
 }
 
+function sanitizeTimeInput(val) {
+  return String(val || "").replace(/[^\d:]/g, "");
+}
+
+function setupTimeOnlyInput(inp) {
+  if (!inp) return;
+  inp.addEventListener("input", () => {
+    const pos = inp.selectionStart;
+    const sanitized = sanitizeTimeInput(inp.value);
+    if (inp.value !== sanitized) {
+      inp.value = sanitized;
+      inp.setSelectionRange(Math.min(pos, sanitized.length), Math.min(pos, sanitized.length));
+    }
+  });
+}
+
 function calcDaysBetween(startYmd, endYmd) {
   if (!startYmd || !endYmd || typeof startYmd !== "string" || typeof endYmd !== "string") return 0;
   const start = new Date(startYmd + "T12:00:00");
@@ -184,7 +202,7 @@ export function render() {
   const addBtn = document.createElement("button");
   addBtn.type = "button";
   addBtn.className = "dream-add-btn";
-  addBtn.textContent = "+ 부수입 경로 추가하기";
+  addBtn.textContent = "부수입 목표 추가";
   btnRow.appendChild(addBtn);
   const ganttBtn = document.createElement("button");
   ganttBtn.type = "button";
@@ -212,7 +230,7 @@ export function render() {
 
   let activePathId = null;
   let selectedKpiId = null;
-  let kpiFilter = "active";
+  let kpiFilter = "all";
   let completedSectionCollapsed = true;
 
   function showKpiModal() {
@@ -301,6 +319,7 @@ export function render() {
     document.body.appendChild(modal);
     setupNumericOnlyInput(modal.querySelector('input[name="targetValue"]'));
     setupNumericOnlyInput(modal.querySelector('input[name="actionUnitMinutes"]'));
+    setupTimeOnlyInput(modal.querySelector('input[name="targetTimeRequired"]'));
     setupDeadlineQuickButtons(modal);
     setupActionUnitTimeCalc(modal);
   }
@@ -405,6 +424,7 @@ export function render() {
     document.body.appendChild(modal);
     setupNumericOnlyInput(modal.querySelector('input[name="targetValue"]'));
     setupNumericOnlyInput(modal.querySelector('input[name="actionUnitMinutes"]'));
+    setupTimeOnlyInput(modal.querySelector('input[name="targetTimeRequired"]'));
     setupDeadlineQuickButtons(modal);
     setupActionUnitTimeCalc(modal);
   }
@@ -414,6 +434,13 @@ export function render() {
     const m = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
     return `${y}. ${m}. ${day}.`;
+  }
+
+  function toDateKey(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
   }
 
   function showKpiLogModal(kpi, editLog) {
@@ -571,7 +598,13 @@ export function render() {
     const accumulatedMins = targetMins > 0 ? getAccumulatedMinutes(kpi.name) : 0;
     const timeProgress = targetMins > 0 ? Math.min(100, (accumulatedMins / targetMins) * 100) : 0;
     const isCompleted = progress >= 100 || (targetMins > 0 && timeProgress >= 100);
-    return { progress, timeProgress, currentVal, targetVal, targetMins, accumulatedMins, isCompleted };
+    const todayKey = toDateKey(new Date());
+    const startKey = (kpi.targetStartDate || "").slice(0, 10);
+    const endKey = (kpi.targetDeadline || "").slice(0, 10);
+    const hasStart = startKey.length >= 10;
+    const isInProgress =
+      hasStart && startKey <= todayKey && (!endKey || endKey >= todayKey) && !isCompleted;
+    return { progress, timeProgress, currentVal, targetVal, targetMins, accumulatedMins, isCompleted, isInProgress };
   }
 
   function renderKpiList() {
@@ -594,15 +627,15 @@ export function render() {
         syncKpiToTimeTask(kpi, "remove");
       }
     });
-    const activeKpis = pathKpis.filter((k) => !getKpiProgress(k).isCompleted);
+    const activeKpis = pathKpis.filter((k) => getKpiProgress(k).isInProgress);
     const completedKpis = pathKpis.filter((k) => getKpiProgress(k).isCompleted);
 
     const filterBar = document.createElement("div");
     filterBar.className = "dream-kpi-filter-bar";
     filterBar.innerHTML = `
-      <button type="button" class="dream-kpi-filter-btn ${kpiFilter === "active" ? "active" : ""}" data-filter="active">진행중만</button>
       <button type="button" class="dream-kpi-filter-btn ${kpiFilter === "all" ? "active" : ""}" data-filter="all">전체</button>
-      <button type="button" class="dream-kpi-filter-btn ${kpiFilter === "completed" ? "active" : ""}" data-filter="completed">완료만</button>
+      <button type="button" class="dream-kpi-filter-btn ${kpiFilter === "active" ? "active" : ""}" data-filter="active">진행중</button>
+      <button type="button" class="dream-kpi-filter-btn ${kpiFilter === "completed" ? "active" : ""}" data-filter="completed">완료</button>
     `;
     filterBar.querySelectorAll(".dream-kpi-filter-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -871,6 +904,9 @@ export function render() {
     const todoList = document.createElement("div");
     todoList.className = "dream-kpi-todo-list";
     todos.forEach((todo) => {
+      const taskId = `kpi-${todo.id}-${SIDEINCOME_STORAGE_KEY}`;
+      const subtasks = getSubtasks(taskId);
+
       const item = document.createElement("div");
       const completed = !!todo.completed;
       item.className = "dream-kpi-todo-item" + (completed ? " is-completed" : "");
@@ -880,6 +916,7 @@ export function render() {
           <input type="checkbox" class="dream-kpi-todo-check" ${completed ? "checked" : ""} />
         </label>
         <span class="dream-kpi-todo-text">${escapeHtml(todo.text)}</span>
+        <button type="button" class="dream-kpi-todo-sub-add" title="세부 할일 추가">+</button>
         <button type="button" class="dream-kpi-todo-del" title="삭제">×</button>
       `;
       const check = item.querySelector(".dream-kpi-todo-check");
@@ -898,7 +935,84 @@ export function render() {
         saveSideincomeMap(d);
         renderKpiHistory();
       });
+      item.querySelector(".dream-kpi-todo-sub-add").addEventListener("click", () => {
+        const subs = addSubtask(taskId, { name: "", done: false });
+        const newSt = subs[subs.length - 1];
+        const subItem = document.createElement("div");
+        subItem.className = "dream-kpi-todo-subitem";
+        subItem.dataset.subtaskId = newSt.id;
+        subItem.innerHTML = `
+          <span class="dream-kpi-todo-subitem-spacer"></span>
+          <label class="dream-kpi-todo-check-wrap">
+            <input type="checkbox" class="dream-kpi-todo-check" />
+          </label>
+          <input type="text" class="dream-kpi-todo-subitem-input" placeholder="세부 할일 입력" value="" />
+          <button type="button" class="dream-kpi-todo-del" title="삭제">×</button>
+        `;
+        const subInput = subItem.querySelector(".dream-kpi-todo-subitem-input");
+        subInput.focus();
+        subInput.addEventListener("blur", () => {
+          const val = (subInput.value || "").trim();
+          if (val === "") {
+            removeSubtask(taskId, newSt.id);
+            subItem.remove();
+          } else {
+            updateSubtask(taskId, newSt.id, { name: val });
+            const span = document.createElement("span");
+            span.className = "dream-kpi-todo-text dream-kpi-todo-subitem-text";
+            span.textContent = val;
+            subInput.replaceWith(span);
+          }
+        });
+        subInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" && !e.isComposing) {
+            e.preventDefault();
+            subInput.blur();
+          }
+        });
+        subItem.querySelector(".dream-kpi-todo-check").addEventListener("change", (e) => {
+          updateSubtask(taskId, newSt.id, { done: e.target.checked });
+          subItem.classList.toggle("is-completed", e.target.checked);
+        });
+        subItem.querySelector(".dream-kpi-todo-del").addEventListener("click", () => {
+          removeSubtask(taskId, newSt.id);
+          subItem.remove();
+        });
+        let insertBefore = item.nextElementSibling;
+        while (insertBefore && insertBefore.classList.contains("dream-kpi-todo-subitem")) {
+          insertBefore = insertBefore.nextElementSibling;
+        }
+        if (insertBefore) {
+          todoList.insertBefore(subItem, insertBefore);
+        } else {
+          todoList.appendChild(subItem);
+        }
+      });
       todoList.appendChild(item);
+
+      subtasks.forEach((st) => {
+        const subItem = document.createElement("div");
+        subItem.className = "dream-kpi-todo-subitem" + (st.done ? " is-completed" : "");
+        subItem.dataset.subtaskId = st.id;
+        subItem.innerHTML = `
+          <span class="dream-kpi-todo-subitem-spacer"></span>
+          <label class="dream-kpi-todo-check-wrap">
+            <input type="checkbox" class="dream-kpi-todo-check" ${st.done ? "checked" : ""} />
+          </label>
+          <span class="dream-kpi-todo-text dream-kpi-todo-subitem-text">${escapeHtml(st.name)}</span>
+          <button type="button" class="dream-kpi-todo-del" title="삭제">×</button>
+        `;
+        const subCheck = subItem.querySelector(".dream-kpi-todo-check");
+        subCheck.addEventListener("change", () => {
+          updateSubtask(taskId, st.id, { done: subCheck.checked });
+          subItem.classList.toggle("is-completed", subCheck.checked);
+        });
+        subItem.querySelector(".dream-kpi-todo-del").addEventListener("click", () => {
+          removeSubtask(taskId, st.id);
+          subItem.remove();
+        });
+        todoList.appendChild(subItem);
+      });
     });
 
     const addRow = document.createElement("div");
@@ -934,43 +1048,6 @@ export function render() {
     const div = document.createElement("div");
     div.textContent = str;
     return div.innerHTML;
-  }
-
-  function showPathEditModal(path) {
-    const modal = document.createElement("div");
-    modal.className = "dream-kpi-modal";
-    modal.innerHTML = `
-      <div class="dream-kpi-backdrop"></div>
-      <div class="dream-kpi-panel">
-        <div class="dream-kpi-modal-header">
-          <h3 class="dream-kpi-modal-title">부수입 경로 이름 수정</h3>
-          <button type="button" class="dream-kpi-modal-close" title="닫기">×</button>
-        </div>
-        <form class="dream-kpi-form">
-          <div class="dream-kpi-field">
-            <label>경로 이름</label>
-            <input type="text" name="name" value="${escapeHtml(path.name || "")}" placeholder="부수입 경로 이름" />
-          </div>
-          <button type="submit" class="dream-kpi-submit">수정</button>
-        </form>
-      </div>
-    `;
-    const close = () => modal.remove();
-    modal.querySelector(".dream-kpi-backdrop").addEventListener("click", close);
-    modal.querySelector(".dream-kpi-modal-close").addEventListener("click", close);
-    modal.querySelector("form").addEventListener("submit", (e) => {
-      e.preventDefault();
-      const val = (e.target.name.value || "").trim() || "새 경로";
-      const d = loadSideincomeMap();
-      const target = d.paths.find((x) => x.id === path.id);
-      if (target) {
-        target.name = val;
-        saveSideincomeMap(d);
-        renderTabs();
-      }
-      close();
-    });
-    document.body.appendChild(modal);
   }
 
   function showPathDeleteConfirmModal(pathId) {
@@ -1018,6 +1095,52 @@ export function render() {
     document.body.appendChild(modal);
   }
 
+  function showPathContextModal(path, tabEl) {
+    const modal = document.createElement("div");
+    modal.className = "dream-kpi-modal";
+    modal.innerHTML = `
+      <div class="dream-kpi-backdrop"></div>
+      <div class="dream-kpi-panel dream-path-context-panel">
+        <div class="dream-kpi-modal-header">
+          <h3 class="dream-kpi-modal-title">부수입 경로 수정</h3>
+          <button type="button" class="dream-kpi-modal-close" title="닫기">×</button>
+        </div>
+        <form class="dream-kpi-form dream-path-edit-form">
+          <div class="dream-kpi-field">
+            <label>경로 이름</label>
+            <input type="text" name="name" value="${escapeHtml(path.name || "")}" placeholder="부수입 경로 이름" />
+          </div>
+          <button type="submit" class="dream-kpi-submit">수정</button>
+        </form>
+        <div class="dream-path-context-divider"></div>
+        <div class="dream-path-context-actions">
+          <button type="button" class="dream-path-context-btn dream-path-context-delete" data-action="delete">삭제</button>
+        </div>
+        <p class="dream-path-context-warn">삭제 시 복구할 수 없습니다.</p>
+      </div>
+    `;
+    const close = () => modal.remove();
+    modal.querySelector(".dream-kpi-backdrop").addEventListener("click", close);
+    modal.querySelector(".dream-kpi-modal-close").addEventListener("click", close);
+    modal.querySelector("form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const val = (e.target.name.value || "").trim() || "새 경로";
+      const d = loadSideincomeMap();
+      const target = d.paths.find((x) => x.id === path.id);
+      if (target) {
+        target.name = val;
+        saveSideincomeMap(d);
+        renderTabs();
+      }
+      close();
+    });
+    modal.querySelector('[data-action="delete"]').addEventListener("click", () => {
+      close();
+      showPathDeleteConfirmModal(path.id);
+    });
+    document.body.appendChild(modal);
+  }
+
   function renderTabs() {
     const data = loadSideincomeMap();
     tabs.innerHTML = "";
@@ -1025,23 +1148,15 @@ export function render() {
       const tab = document.createElement("div");
       tab.className = "dream-tab" + (path.id === activePathId ? " active" : "");
       tab.dataset.pathId = path.id;
-      tab.innerHTML = `
-        <span class="dream-tab-text">${escapeHtml(path.name || "새 경로")}</span>
-        <button type="button" class="dream-tab-edit" title="경로 이름 수정">✎</button>
-        <button type="button" class="dream-tab-del" title="경로 삭제 (내부 KPI·로그·할일 모두 삭제)">×</button>
-      `;
+      tab.innerHTML = `<span class="dream-tab-text">${escapeHtml(path.name || "새 경로")}</span>`;
       tab.querySelector(".dream-tab-text").addEventListener("click", () => {
         activePathId = path.id;
         renderTabs();
         updateTitleAndContent();
       });
-      tab.querySelector(".dream-tab-edit").addEventListener("click", (e) => {
-        e.stopPropagation();
-        showPathEditModal(path);
-      });
-      tab.querySelector(".dream-tab-del").addEventListener("click", (e) => {
-        e.stopPropagation();
-        showPathDeleteConfirmModal(path.id);
+      tab.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        showPathContextModal(path, tab);
       });
       tabs.appendChild(tab);
     });
@@ -1060,15 +1175,44 @@ export function render() {
     }
   }
 
-  addBtn.addEventListener("click", () => {
-    const data = loadSideincomeMap();
-    const path = { id: nextId(), name: "새 경로" };
-    data.paths.push(path);
-    saveSideincomeMap(data);
-    activePathId = path.id;
-    renderTabs();
-    updateTitleAndContent();
-  });
+  addBtn.addEventListener("click", () => showPathAddModal());
+
+  function showPathAddModal() {
+    const modal = document.createElement("div");
+    modal.className = "dream-kpi-modal";
+    modal.innerHTML = `
+      <div class="dream-kpi-backdrop"></div>
+      <div class="dream-kpi-panel">
+        <div class="dream-kpi-modal-header">
+          <h3 class="dream-kpi-modal-title">부수입 목표 추가</h3>
+          <button type="button" class="dream-kpi-modal-close" title="닫기">×</button>
+        </div>
+        <form class="dream-kpi-form">
+          <div class="dream-kpi-field">
+            <label>부수입 경로 이름</label>
+            <input type="text" name="name" placeholder="예) ADHD 인생관리 웹서비스 판매" />
+          </div>
+          <button type="submit" class="dream-kpi-submit">확인</button>
+        </form>
+      </div>
+    `;
+    const close = () => modal.remove();
+    modal.querySelector(".dream-kpi-backdrop").addEventListener("click", close);
+    modal.querySelector(".dream-kpi-modal-close").addEventListener("click", close);
+    modal.querySelector("form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const val = (e.target.name.value || "").trim() || "새 경로";
+      const data = loadSideincomeMap();
+      const path = { id: nextId(), name: val };
+      data.paths.push(path);
+      saveSideincomeMap(data);
+      activePathId = path.id;
+      close();
+      renderTabs();
+      updateTitleAndContent();
+    });
+    document.body.appendChild(modal);
+  }
 
   renderTabs();
   if (activePathId) {

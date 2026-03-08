@@ -1101,8 +1101,13 @@ function createTaskRow(taskData = {}, options = {}) {
   });
   delTd.appendChild(delBtn);
 
+  const kpiTd = document.createElement("td");
+  kpiTd.className = "todo-cell-kpi";
+  kpiTd.textContent = isKpiTodo && classification ? classification : "";
+
   tr.appendChild(doneTd);
   tr.appendChild(nameTd);
+  tr.appendChild(kpiTd);
   tr.appendChild(startTd);
   tr.appendChild(dueTd);
   tr.appendChild(startTimeTd);
@@ -1189,6 +1194,7 @@ function createSection(section, options = {}) {
     ? `<colgroup>
       <col class="todo-col-done" style="width: 2rem">
       <col class="todo-col-name">
+      <col class="todo-col-kpi" style="min-width: 8rem; width: 10rem">
       <col class="todo-col-start" style="width: 4.5rem">
       <col class="todo-col-due" style="width: 4.5rem">
       <col class="todo-col-start-time" style="width: 5.5rem">
@@ -1198,6 +1204,7 @@ function createSection(section, options = {}) {
     : `<colgroup>
       <col class="todo-col-done" style="width: 2rem">
       <col class="todo-col-name">
+      <col class="todo-col-kpi" style="min-width: 8rem; width: 10rem">
       <col class="todo-col-start" style="width: 4.5rem">
       <col class="todo-col-due" style="width: 4.5rem">
       <col class="todo-col-start-time" style="width: 5.5rem">
@@ -1212,6 +1219,7 @@ function createSection(section, options = {}) {
       <tr>
         <th class="todo-th-done"></th>
         <th class="todo-th-name">Name</th>
+        <th class="todo-th-kpi">KPI</th>
         <th class="todo-th-start">시작일</th>
         <th class="todo-th-due">마감일</th>
         <th class="todo-th-start-time">시작시간</th>
@@ -1242,7 +1250,7 @@ function createSection(section, options = {}) {
   const addRow = document.createElement("tr");
   addRow.className = "todo-add-row";
   addRow.innerHTML = `
-    <td colspan="${hideCategoryCol ? 7 : 8}" class="todo-add-cell">
+    <td colspan="${hideCategoryCol ? 8 : 9}" class="todo-add-cell">
       <button type="button" class="todo-add-btn" title="할 일 추가">${ADD_TASK_ICON}</button>
     </td>
   `;

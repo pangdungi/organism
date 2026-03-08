@@ -6408,6 +6408,18 @@ body {
   padding-right: 0.5rem !important;
 }
 
+.todo-th-kpi,
+.todo-cell-kpi {
+  min-width: 8rem;
+  max-width: 14rem;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  color: #666;
+  font-size: 0.9rem;
+  vertical-align: top;
+}
+
 .todo-th-category {
   width: 5rem;
 }
@@ -12427,10 +12439,16 @@ body.kpi-resizing {
   font-family: inherit;
   font-size: 0.9rem;
   font-weight: 500;
-  color: #374151;
-  background: #fff;
-  border: 1px solid #d1d5db;
+  color: #fff;
+  background: #1a1a2e;
+  border: 1px solid #1a1a2e;
+  border-radius: 6px;
   cursor: pointer;
+}
+
+.dream-add-btn:hover {
+  background: #374151;
+  border-color: #374151;
 }
 
 .dream-gantt-btn {
@@ -12441,24 +12459,13 @@ body.kpi-resizing {
   color: #374151;
   background: #fff;
   border: 1px solid #d1d5db;
+  border-radius: 6px;
   cursor: pointer;
 }
 
-.dream-add-btn:hover,
 .dream-gantt-btn:hover {
   background: #f9fafb;
   border-color: #9ca3af;
-}
-
-.dream-gantt-btn {
-  padding: 0.5rem 1rem;
-  font-family: inherit;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: #374151;
-  background: #fff;
-  border: 1px solid #d1d5db;
-  cursor: pointer;
 }
 
 .dream-tabs-wrap {
@@ -12472,6 +12479,8 @@ body.kpi-resizing {
   scrollbar-width: none;
   -ms-overflow-style: none;
   position: relative;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .dream-tabs-wrap::-webkit-scrollbar {
@@ -12480,7 +12489,7 @@ body.kpi-resizing {
 
 .dream-tabs {
   display: flex;
-  gap: 0.25rem;
+  gap: 0.35rem;
   flex-wrap: nowrap;
   flex-shrink: 0;
 }
@@ -12490,14 +12499,21 @@ body.kpi-resizing {
   align-items: center;
   gap: 0.35rem;
   flex-shrink: 0;
-  padding: 0.4rem 0.75rem;
+  padding: 0.5rem 1rem;
   font-size: 0.9rem;
-  color: #888;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
+  color: #6b7280;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
   font-family: inherit;
-  transition: color 0.15s, border-color 0.15s;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.dream-tab:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+  color: #374151;
 }
 
 .dream-tabs-more-indicator {
@@ -12520,16 +12536,20 @@ body.kpi-resizing {
 }
 
 .dream-tab:hover .dream-tab-text {
-  color: #555;
-}
-
-.dream-tab.active .dream-tab-text {
-  color: #333;
-  font-weight: 500;
+  color: inherit;
 }
 
 .dream-tab.active {
-  border-bottom-color: #999;
+  background: #fff;
+  border-color: #d1d5db;
+  color: #1a1a2e;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.dream-tab.active .dream-tab-text {
+  color: inherit;
+  font-weight: 500;
 }
 
 .dream-tab-edit,
@@ -13037,6 +13057,28 @@ body.kpi-resizing {
   color: #9ca3af;
 }
 
+.dream-kpi-todo-sub-add {
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1;
+  font-family: inherit;
+  color: #9ca3af;
+  background: none;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.dream-kpi-todo-item:hover .dream-kpi-todo-sub-add {
+  opacity: 1;
+}
+.dream-kpi-todo-sub-add:hover {
+  color: #374151;
+}
+
 .dream-kpi-todo-del {
   width: 1.25rem;
   height: 1.25rem;
@@ -13052,12 +13094,56 @@ body.kpi-resizing {
   transition: opacity 0.15s;
 }
 
-.dream-kpi-todo-item:hover .dream-kpi-todo-del {
+.dream-kpi-todo-item:hover .dream-kpi-todo-del,
+.dream-kpi-todo-subitem:hover .dream-kpi-todo-del {
   opacity: 1;
 }
 
 .dream-kpi-todo-del:hover {
   color: #374151;
+}
+
+.dream-kpi-todo-subitem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: 1.5rem;
+  background: #f8fafc;
+  border-radius: 4px;
+  min-height: 2rem;
+}
+.dream-kpi-todo-subitem-spacer {
+  width: 0;
+  flex-shrink: 0;
+}
+.dream-kpi-todo-subitem .dream-kpi-todo-check {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+.dream-kpi-todo-subitem-text {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+.dream-kpi-todo-subitem-input {
+  flex: 1;
+  min-width: 80px;
+  font-size: 0.85rem;
+  color: #64748b;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0.2rem 0;
+}
+.dream-kpi-todo-subitem-input:focus {
+  outline: none;
+  border-bottom-color: #9ca3af;
+}
+.dream-kpi-todo-subitem-input::placeholder {
+  color: #94a3b8;
+}
+.dream-kpi-todo-subitem.is-completed .dream-kpi-todo-subitem-text {
+  text-decoration: line-through;
+  color: #9ca3af;
 }
 
 /* KPI 필터 바 */
@@ -13080,9 +13166,9 @@ body.kpi-resizing {
   color: #374151;
 }
 .dream-kpi-filter-btn.active {
-  border-color: #3b82f6;
-  background: #eff6ff;
-  color: #2563eb;
+  border-color: #9ca3af;
+  background: #f3f4f6;
+  color: #374151;
 }
 
 /* 달성 완료 접기 섹션 */
@@ -13816,6 +13902,62 @@ body.kpi-resizing {
 .dream-delete-confirm-submit:hover {
   background: #374151;
   border-color: #374151;
+}
+
+/* 부수입 경로 우클릭 컨텍스트 모달 */
+.dream-path-context-panel {
+  max-width: 320px;
+}
+
+.dream-path-context-panel .dream-path-edit-form {
+  margin-bottom: 0;
+}
+
+.dream-path-context-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 1rem 0;
+}
+
+.dream-path-context-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.dream-path-context-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  font-weight: 500;
+  color: #374151;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  cursor: pointer;
+  text-align: left;
+}
+
+.dream-path-context-btn:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.dream-path-context-delete {
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.dream-path-context-delete:hover {
+  background: #fef2f2;
+  border-color: #f87171;
+}
+
+.dream-path-context-warn {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #9ca3af;
+  line-height: 1.4;
 }
 
 /* KPI 카드 - 꿈 제목 하단 표시 */
@@ -15473,19 +15615,24 @@ body.kpi-resizing {
 
 .calendar-event-bubble-select {
   width: 100%;
-  padding: 0.35rem 0.5rem;
-  font-size: 0.85rem;
+  padding: 0.5rem 2rem 0.5rem 0.75rem;
+  font-size: 0.9rem;
   font-family: inherit;
-  color: var(--gray-700, #374151);
-  border: 1px solid var(--gray-200, #e5e7eb);
+  font-weight: 500;
+  color: #374151;
+  border: 1px solid #d1d5db;
   border-radius: 4px;
   background: #fff;
   appearance: none;
   -webkit-appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 0.5rem center;
-  padding-right: 1.75rem;
+  background-position: right 0.75rem center;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.calendar-event-bubble-select:hover {
+  border-color: #9ca3af;
 }
 .calendar-event-bubble-select:focus {
   outline: none;
@@ -15494,6 +15641,7 @@ body.kpi-resizing {
 .calendar-event-bubble-select option {
   background: #fff;
   color: #374151;
+  padding: 0.5rem;
 }
 
 .calendar-event-bubble-name {
@@ -15502,18 +15650,17 @@ body.kpi-resizing {
 
 .calendar-event-bubble-input {
   width: 100%;
-  padding: 0.5rem;
+  padding: 0.5rem 0.75rem;
   font-size: 0.9rem;
   font-family: inherit;
-  color: var(--gray-700, #374151);
-  border: 1px solid var(--gray-200, #e5e7eb);
+  color: #374151;
+  border: 1px solid #d1d5db;
   border-radius: 4px;
   box-sizing: border-box;
 }
-
 .calendar-event-bubble-input:focus {
   outline: none;
-  border-color: var(--gray-400, #9ca3af);
+  border-color: #9ca3af;
 }
 
 .calendar-event-bubble-save {
@@ -15582,6 +15729,32 @@ body.kpi-resizing {
 }
 .calendar-bar-date-edit-bubble .calendar-event-bubble-save {
   font-family: inherit;
+}
+
+.calendar-bar-revert-desc {
+  font-size: 0.8rem;
+  color: var(--gray-500, #6b7280);
+  margin: 0 0 0.75rem;
+  line-height: 1.4;
+}
+
+.calendar-bar-date-edit-bubble .calendar-event-bubble-revert {
+  margin-top: 0.5rem;
+  width: 100%;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: #374151;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.calendar-bar-date-edit-bubble .calendar-event-bubble-revert:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
 }
 
 /* 캘린더 날짜 +n 클릭 시 확대 보기 */
@@ -15785,7 +15958,7 @@ body.kpi-resizing {
   transform: translateY(-2px);
 }
 
-/* 사이드바에서는 시작일·마감일 열 숨김, 남은 공간은 이름 열에 */
+/* 사이드바에서는 시작일·마감일·KPI 열 숨김, 남은 공간은 이름 열에 */
 .todo-list-in-sidebar .todo-th-start,
 .todo-list-in-sidebar .todo-cell-start,
 .todo-list-in-sidebar .todo-th-due,
@@ -15793,14 +15966,17 @@ body.kpi-resizing {
 .todo-list-in-sidebar .todo-th-start-time,
 .todo-list-in-sidebar .todo-cell-start-time,
 .todo-list-in-sidebar .todo-th-end-time,
-.todo-list-in-sidebar .todo-cell-end-time {
+.todo-list-in-sidebar .todo-cell-end-time,
+.todo-list-in-sidebar .todo-th-kpi,
+.todo-list-in-sidebar .todo-cell-kpi {
   display: none;
 }
 
 .todo-list-in-sidebar .todo-table col.todo-col-start,
 .todo-list-in-sidebar .todo-table col.todo-col-due,
 .todo-list-in-sidebar .todo-table col.todo-col-start-time,
-.todo-list-in-sidebar .todo-table col.todo-col-end-time {
+.todo-list-in-sidebar .todo-table col.todo-col-end-time,
+.todo-list-in-sidebar .todo-table col.todo-col-kpi {
   width: 0 !important;
 }
 
@@ -15854,7 +16030,8 @@ body.kpi-resizing {
 .calendar-todo-sidebar-body .todo-table col.todo-col-start,
 .calendar-todo-sidebar-body .todo-table col.todo-col-due,
 .calendar-todo-sidebar-body .todo-table col.todo-col-start-time,
-.calendar-todo-sidebar-body .todo-table col.todo-col-end-time {
+.calendar-todo-sidebar-body .todo-table col.todo-col-end-time,
+.calendar-todo-sidebar-body .todo-table col.todo-col-kpi {
   width: 0 !important;
 }
 

@@ -17,17 +17,17 @@ import { render as renderIdea } from "./views/Idea.js";
 const SIDEBAR_COLLAPSED_KEY = "app-sidebar-collapsed";
 
 const TABS = [
-  { id: "calendar", label: "캘린더", icon: "/toolbaricons/calendar-alt.svg" },
-  { id: "time", label: "시간가계부", icon: "/toolbaricons/timer.svg" },
-  { id: "routine", label: "루틴/해빗트랙커", icon: "/toolbaricons/goback.svg" },
-  { id: "workschedule", label: "근무표", icon: "/toolbaricons/calendar-heart1.svg" },
-  { id: "asset", label: "자산관리", icon: "/toolbaricons/wallet.svg" },
   { id: "dream", label: "꿈", icon: "/toolbaricons/star.svg" },
   { id: "sideincome", label: "부수입", icon: "/toolbaricons/money-circle.svg" },
   { id: "happiness", label: "행복", icon: "/toolbaricons/plug-electric.svg" },
   { id: "health", label: "건강", icon: "/toolbaricons/heart-rate.svg" },
-  { id: "archive", label: "아카이브", icon: "/toolbaricons/harddrive.svg" },
+  { id: "calendar", label: "캘린더", icon: "/toolbaricons/calendar-alt.svg" },
+  { id: "time", label: "시간가계부", icon: "/toolbaricons/timer.svg" },
+  { id: "routine", label: "루틴/해빗트랙커", icon: "/toolbaricons/goback.svg" },
   { id: "diary", label: "감정관리", icon: "/toolbaricons/chat-bubbles.svg" },
+  { id: "asset", label: "자산관리", icon: "/toolbaricons/wallet.svg" },
+  { id: "workschedule", label: "근무표", icon: "/toolbaricons/calendar-heart1.svg" },
+  { id: "archive", label: "아카이브", icon: "/toolbaricons/harddrive.svg" },
   { id: "idea", label: "My account", icon: "/toolbaricons/user-square.svg" },
 ];
 
@@ -46,7 +46,7 @@ const RENDERERS = {
   idea: renderIdea,
 };
 
-let currentTabId = "calendar";
+let currentTabId = "dream";
 
 export function mountApp(container) {
   if (!container) return;
