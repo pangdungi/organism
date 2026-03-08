@@ -10,11 +10,11 @@ import { getSectionColor, getCustomSections } from "../utils/todoSettings.js";
 import { getKpisByCategory } from "../utils/kpiViewModal.js";
 import { formatDeadlineRangeForDisplay } from "../utils/ganttModal.js";
 import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes } from "../utils/timeKpiSync.js";
-import { renderTimeBudgetTablesForCalendar } from "./Time.js";
+import { renderTimeBudgetTablesForCalendar, getBudgetGoals, getTaskOptionByName, loadTimeRows } from "./Time.js";
 
 const CUSTOM_SECTION_TASKS_KEY = "todo-custom-section-tasks";
 const SECTION_TASKS_KEY = "todo-section-tasks";
-const KPI_SECTION_IDS = ["dream", "sideincome", "health", "happy"];
+const KPI_SECTION_IDS = ["dream", "sideincome", "health", "happy", "111"];
 
 function getSectionTasksForDate(dateKey) {
   const out = [];
@@ -25,7 +25,7 @@ function getSectionTasksForDate(dateKey) {
     KPI_SECTION_IDS.forEach((sectionId) => {
       const arr = obj[sectionId];
       if (!Array.isArray(arr)) return;
-      const sectionLabel = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복" }[sectionId] || sectionId;
+      const sectionLabel = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복", "111": "브레인덤프" }[sectionId] || sectionId;
       arr
         .filter((t) => (t.name || "").trim() !== "" && (t.dueDate || "").slice(0, 10) === dateKey)
         .forEach((t) =>
@@ -54,7 +54,7 @@ function getSectionTasksWithDateRange() {
     KPI_SECTION_IDS.forEach((sectionId) => {
       const arr = obj[sectionId];
       if (!Array.isArray(arr)) return;
-      const sectionLabel = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복" }[sectionId] || sectionId;
+      const sectionLabel = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복", "111": "브레인덤프" }[sectionId] || sectionId;
       arr
         .filter((t) => (t.name || "").trim() !== "" && (t.startDate || "").slice(0, 10) && (t.dueDate || "").slice(0, 10))
         .forEach((t) =>
@@ -217,6 +217,7 @@ function escapeHtml(s) {
 }
 
 const CALENDAR_CATEGORIES = [
+  { id: "111", label: "브레인덤프" },
   { id: "dream", label: "꿈" },
   { id: "sideincome", label: "부수입" },
   { id: "health", label: "건강" },
@@ -1915,23 +1916,21 @@ function render1DayView(tabsElement) {
     budgetColumn.className = "calendar-1day-budget-column";
     const timeColumn = document.createElement("div");
     timeColumn.className = "calendar-1day-time-column";
-    renderTimeBudgetTablesForCalendar(budgetColumn, targetKey);
+    const achievementContainer = document.createElement("div");
+    achievementContainer.className = "calendar-1day-achievement-container";
+    renderTimeBudgetTablesForCalendar(budgetColumn, targetKey, { achievementContainer });
     calendarGrid.appendChild(budgetColumn);
     calendarGrid.appendChild(timeColumn);
 
     const tasks = getAllTasksForDateDisplay(targetKey);
 
-    /* 날짜 셀 - 상단 고정 (날짜 + 할일 목록 영역) */
+    /* 날짜 셀 - 상단 고정 (할일 목록 영역) */
     const dateCell = document.createElement("div");
     dateCell.className = "calendar-1day-date-cell";
     dateCell.dataset.date = targetKey;
     dateCell.style.cursor = "pointer";
-    const dateNum = document.createElement("div");
-    dateNum.className = "calendar-1day-date-num";
-    dateNum.textContent = `${targetDate.getMonth() + 1}월 ${targetDate.getDate()}일 ${targetDate.getFullYear()}`;
     const entriesEl = document.createElement("div");
     entriesEl.className = "calendar-1day-date-entries";
-    dateCell.appendChild(dateNum);
     dateCell.appendChild(entriesEl);
 
     /* 할일 바 렌더링 */
@@ -2056,28 +2055,204 @@ function render1DayView(tabsElement) {
     });
 
     timeColumn.appendChild(dateCell);
+    timeColumn.appendChild(achievementContainer);
 
     /* 구분선 */
     const divider = document.createElement("div");
     divider.className = "calendar-1day-divider";
     timeColumn.appendChild(divider);
 
-    /* 시간 테이블 */
+    /* 시간 테이블 - 예상 시간 + 실제 시간기록 모두 표시, 생산성별 색상 */
     const timeTable = document.createElement("div");
     timeTable.className = "calendar-1day-time-table";
+    const budgetGoals = getBudgetGoals(targetKey);
+    const allTimeRows = loadTimeRows();
+    function parseDateFromTimeStr(str) {
+      if (!str || typeof str !== "string") return "";
+      const m = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+      return m ? `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}` : "";
+    }
+    const normDate = (s) => (s || "").replace(/\//g, "-").trim().slice(0, 10);
+    const actualRows = allTimeRows.filter(
+      (r) => normDate(r.date || parseDateFromTimeStr(r.startTime)) === targetKey,
+    );
+    const parseHhMmToMinutes = (s) => {
+      if (!s || !s.trim()) return null;
+      const m = String(s).trim().match(/^(\d{1,2}):?(\d{0,2})$/);
+      if (!m) return null;
+      return (parseInt(m[1], 10) || 0) * 60 + (parseInt(m[2], 10) || 0);
+    };
+    const parseDateTimeToMinutes = (str) => {
+      if (!str || typeof str !== "string") return null;
+      const m = str.match(/[T\s](\d{1,2}):?(\d{2})?/);
+      if (!m) return null;
+      return (parseInt(m[1], 10) || 0) * 60 + (parseInt(m[2], 10) || 0);
+    };
+    const tryOverlap = (slotStartMin, slotEndMin, startMin, endMin, prod, taskName) => {
+      if (startMin == null || endMin == null) return null;
+      const overlapStart = Math.max(slotStartMin, startMin);
+      const overlapEnd = Math.min(slotEndMin, endMin);
+      if (overlapStart < overlapEnd) {
+        return {
+          prod,
+          taskName: taskName || "",
+          overlapStartMin: overlapStart,
+          overlapEndMin: overlapEnd,
+        };
+      }
+      return null;
+    };
+    const getSlotExpected = (hour) => {
+      const slotStartMin = hour * 60;
+      const slotEndMin = (hour + 1) * 60;
+      for (const [taskName, data] of Object.entries(budgetGoals)) {
+        const st = data?.scheduledTime || "";
+        if (!st.trim()) continue;
+        const parts = st.trim().split("-");
+        const startMin = parseHhMmToMinutes(parts[0]);
+        const endMin = parts[1] ? parseHhMmToMinutes(parts[1]) : null;
+        if (startMin == null) continue;
+        const end = endMin != null ? endMin : startMin + 60;
+        const opt = getTaskOptionByName(taskName);
+        const prod = opt?.productivity || "other";
+        const res = tryOverlap(slotStartMin, slotEndMin, startMin, end, prod, taskName);
+        if (res) return res;
+      }
+      return null;
+    };
+    const getSlotActual = (hour) => {
+      const slotStartMin = hour * 60;
+      const slotEndMin = (hour + 1) * 60;
+      for (const r of actualRows) {
+        const startMin = parseDateTimeToMinutes(r.startTime);
+        let endMin = parseDateTimeToMinutes(r.endTime);
+        if (startMin != null && endMin == null) endMin = startMin + 60;
+        const prod = r.productivity || getTaskOptionByName(r.taskName)?.productivity || "other";
+        const res = tryOverlap(slotStartMin, slotEndMin, startMin, endMin, prod, r.taskName);
+        if (res) return res;
+      }
+      return null;
+    };
+    const prodColorsActual = {
+      productive: { bg: "rgba(239, 68, 68, 0.28)", border: "rgb(239, 68, 68)" },
+      nonproductive: { bg: "rgba(59, 130, 246, 0.28)", border: "rgb(59, 130, 246)" },
+      other: { bg: "rgba(34, 197, 94, 0.28)", border: "rgb(34, 197, 94)" },
+    };
+    const prodColorsExpected = {
+      productive: { bg: "rgba(239, 68, 68, 0.06)", border: "rgba(239, 68, 68, 0.5)" },
+      nonproductive: { bg: "rgba(59, 130, 246, 0.06)", border: "rgba(59, 130, 246, 0.5)" },
+      other: { bg: "rgba(34, 197, 94, 0.06)", border: "rgba(34, 197, 94, 0.5)" },
+    };
+    const buildSpans = (getSlot) => {
+      const slotInfos = [];
+      for (let h = 0; h < 24; h++) slotInfos.push(getSlot(h));
+      const spans = [];
+      for (let h = 0; h < 24; ) {
+        const cur = slotInfos[h];
+        if (!cur || !cur.taskName) {
+          h++;
+          continue;
+        }
+        let endH = h;
+        const startMin = cur.overlapStartMin ?? h * 60;
+        const key = cur.taskName;
+        while (endH + 1 < 24) {
+          const next = slotInfos[endH + 1];
+          if (!next || !next.taskName || next.taskName !== key) break;
+          endH++;
+        }
+        const last = slotInfos[endH];
+        const endMin = last?.overlapEndMin ?? (endH + 1) * 60;
+        const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+        spans.push({
+          startHour: h,
+          endHour: endH,
+          taskName: cur.taskName,
+          prod: cur.prod,
+          startDisplay: fmt(startMin),
+          endDisplay: fmt(endMin),
+        });
+        h = endH + 1;
+      }
+      return spans;
+    };
+    const expectedSpans = buildSpans(getSlotExpected);
+    const actualSpans = buildSpans(getSlotActual);
+    timeTable.className = "calendar-1day-time-table calendar-1day-time-table--compare";
+    const headerRow = document.createElement("div");
+    headerRow.className = "calendar-1day-time-header";
+    headerRow.style.gridColumn = "1 / -1";
+    headerRow.style.gridRow = "1";
+    const headerLabel = document.createElement("div");
+    headerLabel.className = "calendar-1day-time-header-label";
+    headerLabel.textContent = "";
+    const headerExpected = document.createElement("div");
+    headerExpected.className = "calendar-1day-time-header-cell";
+    headerExpected.textContent = "예상";
+    const headerActual = document.createElement("div");
+    headerActual.className = "calendar-1day-time-header-cell";
+    headerActual.textContent = "실제";
+    headerRow.appendChild(headerLabel);
+    headerRow.appendChild(headerExpected);
+    headerRow.appendChild(headerActual);
+    timeTable.appendChild(headerRow);
     for (let h = 0; h < 24; h++) {
       const row = document.createElement("div");
       row.className = "calendar-1day-time-row";
+      row.style.gridColumn = "1";
+      row.style.gridRow = `${h + 2}`;
       const timeLabel = document.createElement("div");
       timeLabel.className = "calendar-1day-time-label";
       timeLabel.textContent = `${String(h).padStart(2, "0")}:00`;
-      const slot = document.createElement("div");
-      slot.className = "calendar-1day-time-slot";
       row.appendChild(timeLabel);
-      row.appendChild(slot);
       timeTable.appendChild(row);
+      const slotExpected = document.createElement("div");
+      slotExpected.className = "calendar-1day-time-slot calendar-1day-time-slot--expected";
+      slotExpected.style.gridColumn = "2";
+      slotExpected.style.gridRow = `${h + 2}`;
+      timeTable.appendChild(slotExpected);
+      const slotActual = document.createElement("div");
+      slotActual.className = "calendar-1day-time-slot calendar-1day-time-slot--actual";
+      slotActual.style.gridColumn = "3";
+      slotActual.style.gridRow = `${h + 2}`;
+      timeTable.appendChild(slotActual);
     }
-    timeColumn.appendChild(timeTable);
+    const createOverlay = (spans, colors, isActual) => {
+      const overlay = document.createElement("div");
+      overlay.className = `calendar-1day-time-fill-overlay calendar-1day-time-fill-overlay--${isActual ? "actual" : "expected"}`;
+      for (const sp of spans) {
+        const fill = document.createElement("div");
+        fill.className = "calendar-1day-time-slot-fill calendar-1day-time-slot-fill--span";
+        const c = colors[sp.prod];
+        if (!c) continue;
+        fill.style.gridRow = `${sp.startHour + 2} / ${sp.endHour + 3}`;
+        fill.style.backgroundColor = c.bg;
+        fill.style.boxSizing = "border-box";
+        fill.style.borderRadius = "2px";
+        if (isActual) {
+          fill.style.border = `2px dotted ${c.border}`;
+        } else {
+          fill.style.border = `1px dotted ${c.border}`;
+        }
+        const label = document.createElement("span");
+        label.className = "calendar-1day-time-slot-label";
+        label.textContent = `${sp.taskName} ${sp.startDisplay}~${sp.endDisplay}`;
+        fill.appendChild(label);
+        overlay.appendChild(fill);
+      }
+      return overlay;
+    };
+    const fillOverlayExpected = createOverlay(expectedSpans, prodColorsExpected, false);
+    const fillOverlayActual = createOverlay(actualSpans, prodColorsActual, true);
+    const timeTableWrap = document.createElement("div");
+    timeTableWrap.className = "calendar-1day-time-table-wrap";
+    const timeTableInner = document.createElement("div");
+    timeTableInner.className = "calendar-1day-time-table-inner";
+    timeTableInner.appendChild(timeTable);
+    timeTableInner.appendChild(fillOverlayExpected);
+    timeTableInner.appendChild(fillOverlayActual);
+    timeTableWrap.appendChild(timeTableInner);
+    timeColumn.appendChild(timeTableWrap);
   }
 
   nav.querySelector(".calendar-nav-today").addEventListener("click", () => {
@@ -2119,6 +2294,10 @@ function render1DayView(tabsElement) {
 
   wrap.addEventListener("dragend", () => {
     wrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+  });
+
+  document.addEventListener("calendar-budget-scheduled-updated", function onBudgetScheduledUpdated() {
+    if (document.contains(wrap)) renderCalendar();
   });
 
   renderCalendar();

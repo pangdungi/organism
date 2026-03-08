@@ -9369,6 +9369,11 @@ body.kpi-resizing {
 .time-task-setup-item-actions {
   display: flex;
   gap: 0.35rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.time-task-setup-item:hover .time-task-setup-item-actions {
+  opacity: 1;
 }
 
 .time-task-setup-edit,
@@ -10865,6 +10870,23 @@ body.kpi-resizing {
   outline: none;
 }
 
+.time-budget-scheduled-input {
+  width: 4.5rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 14px;
+  border: none;
+  background: #fff;
+  color: #374151;
+}
+
+.time-budget-scheduled-input::placeholder {
+  color: #999;
+}
+
+.time-budget-scheduled-input:focus {
+  outline: none;
+}
+
 .time-budget-actual-display {
   font-size: 14px;
   color: #374151;
@@ -11546,6 +11568,7 @@ body.kpi-resizing {
   min-width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+  table-layout: fixed;
 }
 
 .time-ledger-table th,
@@ -11586,20 +11609,61 @@ body.kpi-resizing {
   left: 0;
   z-index: 1;
   background: #fff;
-  box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.08);
+}
+
+.time-ledger-table .time-cell-task {
+  padding: 0.2rem 0.3rem;
+  vertical-align: middle;
+}
+
+.time-ledger-table .time-cell-task-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.time-ledger-table .time-row .time-cell-task:focus,
+.time-ledger-table .time-row .time-cell-task:focus-visible,
+.time-ledger-table .time-row-clickable:focus,
+.time-ledger-table .time-row-clickable:focus-visible {
+  outline: none;
 }
 
 .time-ledger-table .time-cell-task .time-display-task {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 100%;
-  display: block;
+  flex: 1;
+  min-width: 0;
+}
+
+/* 데일리 시간기록 - 과제명 앞 생산성별 색상 바 */
+.time-task-prod-bar {
+  flex-shrink: 0;
+  width: 4px;
+  min-height: 1.2rem;
+  border-radius: 2px;
+}
+
+.time-task-prod-bar--productive {
+  background: rgba(232, 164, 184, 0.5);
+}
+
+.time-task-prod-bar--nonproductive {
+  background: rgba(126, 184, 218, 0.5);
+}
+
+.time-task-prod-bar--other {
+  background: rgba(124, 184, 124, 0.5);
 }
 
 .time-ledger-table thead .time-th-task {
   z-index: 2;
   background: #fafafa;
+  padding: 0.2rem 0.3rem;
 }
 
 .time-ledger-table tbody tr:hover .time-cell-task {
@@ -11647,7 +11711,6 @@ body.kpi-resizing {
   left: var(--sticky-left-start, 160px);
   z-index: 1;
   background: #fff;
-  box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.08);
 }
 
 .time-ledger-table thead .time-th-start {
@@ -11668,7 +11731,6 @@ body.kpi-resizing {
   left: var(--sticky-left-end, 250px);
   z-index: 1;
   background: #fff;
-  box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.08);
 }
 
 .time-ledger-table thead .time-th-end {
@@ -11689,7 +11751,6 @@ body.kpi-resizing {
   left: var(--sticky-left-tracked, 340px);
   z-index: 1;
   background: #fff;
-  box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.08);
 }
 
 .time-ledger-table thead .time-th-tracked {
@@ -12109,7 +12170,7 @@ body.kpi-resizing {
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
+  z-index: 10000;
 }
 
 .time-tag-option {
@@ -15283,6 +15344,53 @@ body.kpi-resizing {
   min-width: 0;
 }
 
+/* 캘린더 1일뷰 시간투자/소비 내역 - 가로·세로 선 표시 */
+.calendar-1day-budget-column .time-daily-budget-table th,
+.calendar-1day-budget-column .time-daily-budget-table td {
+  border: none;
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.calendar-1day-budget-column .time-daily-budget-table th:last-child,
+.calendar-1day-budget-column .time-daily-budget-table td:last-child {
+  border-right: none;
+}
+
+.calendar-1day-budget-column .time-daily-budget-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.calendar-1day-budget-column .time-daily-budget-table .time-row-add .time-cell-add {
+  border-top: 1px solid #e5e7eb;
+  border-right: none;
+  border-bottom: none;
+}
+
+.calendar-1day-budget-column .time-daily-budget-table .time-tag-pill.cat-empty {
+  background: transparent;
+  color: #374151;
+}
+
+.calendar-1day-budget-column .time-budget-time-input,
+.calendar-1day-budget-column .time-budget-scheduled-input {
+  border: none;
+  background: transparent;
+}
+
+.calendar-1day-budget-column .time-budget-time-input:focus,
+.calendar-1day-budget-column .time-budget-scheduled-input:focus {
+  outline: none;
+}
+
+.calendar-1day-budget-column .time-btn-add {
+  border: none;
+}
+
+.calendar-1day-budget-column .time-btn-add:hover {
+  border-color: transparent;
+}
+
 /* 1일뷰 시간투자내역 상단 - 남은 시간 */
 .time-budget-calendar-remaining {
   background: #fff;
@@ -15303,6 +15411,44 @@ body.kpi-resizing {
   margin-bottom: 0.35rem;
 }
 
+.calendar-1day-budget-achievement-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.calendar-1day-view .calendar-1day-achievement-container {
+  flex-shrink: 0;
+  margin-bottom: 0.5rem;
+}
+
+.calendar-1day-view .calendar-1day-achievement-container .calendar-1day-budget-achievement-card {
+  margin-bottom: 0;
+  box-shadow: none;
+}
+
+.calendar-1day-budget-summary-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.calendar-budget-achievement-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.2;
+}
+
+.calendar-budget-achievement-desc {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+}
+
 .time-budget-calendar-remaining-value {
   font-size: 2.25rem;
   font-weight: 700;
@@ -15312,8 +15458,8 @@ body.kpi-resizing {
 
 .calendar-1day-view .calendar-1day-date-cell {
   flex-shrink: 0;
-  padding: 0.75rem 1rem;
-  min-height: 4rem;
+  padding: 0.35rem 0.5rem;
+  min-height: 0;
   background: #fff;
 }
 
@@ -15328,7 +15474,7 @@ body.kpi-resizing {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  min-height: 2rem;
+  min-height: 0;
 }
 
 .calendar-1day-view .calendar-1day-date-entries .calendar-monthly-span-bar {
@@ -15340,16 +15486,75 @@ body.kpi-resizing {
 .calendar-1day-view .calendar-1day-divider {
   flex-shrink: 0;
   height: 0;
-  border-top: 1px dashed #d1d5db;
   margin: 0;
 }
 
-.calendar-1day-view .calendar-1day-time-table {
+.calendar-1day-view .calendar-1day-time-table-wrap {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  position: relative;
+}
+
+.calendar-1day-view .calendar-1day-time-table {
+  display: grid;
+  grid-template-columns: 4rem 1fr;
+  grid-template-rows: repeat(24, minmax(2.5rem, 1fr));
+  min-height: min-content;
+}
+
+.calendar-1day-view .calendar-1day-time-table--compare {
+  grid-template-columns: 4rem 1fr 1fr;
+  grid-template-rows: 2.5rem repeat(24, minmax(2.5rem, 1fr));
+}
+
+.calendar-1day-view .calendar-1day-time-header {
+  display: grid;
+  grid-template-columns: 4rem 1fr 1fr;
+  background: #f9fafb;
+}
+
+.calendar-1day-view .calendar-1day-time-header-cell {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-align: center;
+}
+
+.calendar-1day-view .calendar-1day-time-header-cell:not(:first-child) {
+  border-left: 1px solid #e5e7eb;
+}
+
+.calendar-1day-view .calendar-1day-time-slot--actual {
+  border-left: 1px solid #e5e7eb;
+}
+
+.calendar-1day-view .calendar-1day-time-table-inner {
+  position: relative;
+  min-height: min-content;
+}
+
+.calendar-1day-view .calendar-1day-time-fill-overlay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-rows: 2.5rem repeat(24, minmax(2.5rem, 1fr));
+  pointer-events: none;
+}
+
+.calendar-1day-view .calendar-1day-time-fill-overlay--expected {
+  left: 4rem;
+  width: calc((100% - 4rem) / 2);
+}
+
+.calendar-1day-view .calendar-1day-time-fill-overlay--actual {
+  left: calc(4rem + (100% - 4rem) / 2);
+  width: calc((100% - 4rem) / 2);
 }
 
 .calendar-1day-view .calendar-1day-time-row {
@@ -15372,6 +15577,37 @@ body.kpi-resizing {
   flex: 1;
   min-width: 0;
   background: #fff;
+  position: relative;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.calendar-1day-view .calendar-1day-time-slot-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  min-height: 2px;
+  display: flex;
+  align-items: flex-start;
+  padding: 1px 4px;
+  overflow: hidden;
+}
+
+.calendar-1day-view .calendar-1day-time-slot-fill--span {
+  position: relative;
+  min-height: 0;
+  align-items: flex-start;
+  padding: 2px 6px;
+}
+
+.calendar-1day-view .calendar-1day-time-slot-label {
+  font-size: 0.6rem;
+  line-height: 1.2;
+  color: #374151;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .calendar-monthly-week-wrap {

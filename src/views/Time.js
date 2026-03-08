@@ -17,13 +17,6 @@ import {
   TAB3_EMOTION_TEMPLATE,
 } from "../diaryData.js";
 import { getKpiSyncedTaskNames } from "../utils/timeKpiSync.js";
-import {
-  getRoutineSyncedTaskNames,
-  getRoutineByTaskName,
-  getDayIndexForRoutine,
-  loadRoutineCheckState,
-  saveRoutineCheckState,
-} from "../utils/routineTimeSync.js";
 
 const PRODUCTIVITY_OPTIONS = [
   { value: "productive", label: "생산적", color: "prod-pink" },
@@ -74,7 +67,17 @@ function getLockedTaskNames() {
     ...FIXED_NONPRODUCTIVE_TASKS.map((t) => t.name),
     ...TASKS_LOCKED_FOR_EDIT,
     ...getKpiSyncedTaskNames(),
-    ...getRoutineSyncedTaskNames(),
+  ]);
+}
+
+/** 과제 설정 모달에서 수정/삭제 버튼 숨김 대상 (고정 과제 + KPI 연동) */
+function getLockedForSetupDisplay() {
+  return new Set([
+    ...FIXED_OTHER_TASKS.map((t) => t.name),
+    ...FIXED_PRODUCTIVE_TASKS.map((t) => t.name),
+    ...FIXED_NONPRODUCTIVE_TASKS.map((t) => t.name),
+    ...TASKS_LOCKED_FOR_EDIT,
+    ...getKpiSyncedTaskNames(),
   ]);
 }
 
@@ -210,12 +213,12 @@ function removeTaskOption(name) {
   return opts;
 }
 
-function getTaskOptionByName(name) {
+export function getTaskOptionByName(name) {
   return getFullTaskOptions().find((o) => o.name === name) || null;
 }
 
-/** 일간시간예산 목표 시간 저장/불러오기 - { "YYYY-MM-DD": { "과제명": { goalTime: "08:00", isInvest: true } } } */
-function getBudgetGoals(dateStr) {
+/** 일간시간예산 목표 시간 저장/불러오기 - { "YYYY-MM-DD": { "과제명": { goalTime: "08:00", scheduledTime: "hh:mm-hh:mm", isInvest: true } } } */
+export function getBudgetGoals(dateStr) {
   try {
     const raw = localStorage.getItem(BUDGET_GOALS_KEY);
     if (raw) {
@@ -233,17 +236,40 @@ function saveBudgetGoal(dateStr, taskName, goalTime, isInvest) {
     const all = raw ? JSON.parse(raw) : {};
     if (!all[dateStr]) all[dateStr] = {};
     const key = String(taskName).trim();
+    const existing = all[dateStr][key] || {};
     if (goalTime && goalTime.trim()) {
-      all[dateStr][key] = { goalTime: goalTime.trim(), isInvest };
+      all[dateStr][key] = { ...existing, goalTime: goalTime.trim(), isInvest };
     } else {
-      delete all[dateStr][key];
+      const { goalTime: _, ...rest } = existing;
+      if (Object.keys(rest).length) all[dateStr][key] = rest;
+      else delete all[dateStr][key];
+    }
+    localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
+  } catch (_) {}
+}
+
+/** 캘린더 1일뷰 예정 시간 저장 (hh:mm-hh:mm) */
+function saveBudgetScheduledTime(dateStr, taskName, scheduledTime, isInvest) {
+  if (!(taskName || "").trim()) return;
+  try {
+    const raw = localStorage.getItem(BUDGET_GOALS_KEY);
+    const all = raw ? JSON.parse(raw) : {};
+    if (!all[dateStr]) all[dateStr] = {};
+    const key = String(taskName).trim();
+    const existing = all[dateStr][key] || {};
+    if (scheduledTime && scheduledTime.trim()) {
+      all[dateStr][key] = { ...existing, scheduledTime: scheduledTime.trim(), isInvest };
+    } else {
+      const { scheduledTime: _, ...rest } = existing;
+      all[dateStr][key] = Object.keys(rest).length ? rest : undefined;
+      if (!all[dateStr][key]) delete all[dateStr][key];
     }
     localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
   } catch (_) {}
 }
 
 /** 과제 기록 로컬 저장 (백엔드 개발 전 임시) */
-function loadTimeRows() {
+export function loadTimeRows() {
   try {
     const raw = localStorage.getItem(TIME_ROWS_KEY);
     if (raw) {
@@ -888,6 +914,13 @@ function createTagDropdown(options, initialValue, optionClass, onSelect) {
 
   trigger.addEventListener("click", () => {
     panel.hidden = !panel.hidden;
+    if (!panel.hidden) {
+      const rect = trigger.getBoundingClientRect();
+      panel.style.position = "fixed";
+      panel.style.top = `${rect.bottom + 4}px`;
+      panel.style.left = `${rect.left}px`;
+      panel.style.minWidth = `${Math.max(rect.width, 140)}px`;
+    }
   });
   document.addEventListener("click", (e) => {
     if (!wrap.contains(e.target)) panel.hidden = true;
@@ -1164,10 +1197,23 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
 
   const taskTd = document.createElement("td");
   taskTd.className = "time-cell time-cell-task";
+  const taskInner = document.createElement("div");
+  taskInner.className = "time-cell-task-inner";
+  const prodBar = document.createElement("span");
+  prodBar.className = "time-task-prod-bar";
+  const prodBarMod =
+    rowData.productivity === "productive"
+      ? "time-task-prod-bar--productive"
+      : rowData.productivity === "nonproductive"
+        ? "time-task-prod-bar--nonproductive"
+        : "time-task-prod-bar--other";
+  prodBar.classList.add(prodBarMod);
   const taskSpan = document.createElement("span");
   taskSpan.className = "time-display-task";
   taskSpan.textContent = rowData.taskName || "";
-  taskTd.appendChild(taskSpan);
+  taskInner.appendChild(prodBar);
+  taskInner.appendChild(taskSpan);
+  taskTd.appendChild(taskInner);
 
   tr.appendChild(taskTd);
   tr.appendChild(startTimeTd);
@@ -1813,10 +1859,6 @@ export function render() {
               <input type="hidden" class="time-task-log-end" />
             </div>
           </div>
-          <div class="time-task-log-field time-task-log-routine-subs" hidden>
-            <label>세부 루틴 체크</label>
-            <div class="time-task-log-routine-subs-wrap"></div>
-          </div>
         </div>
         <div class="time-task-log-scroll-area">
         <div class="time-task-log-field">
@@ -1965,49 +2007,6 @@ export function render() {
   const taskLogEndWrap = taskLogModal.querySelector(".time-task-log-datetime-wrap-end");
   const taskLogEndClearBtn = taskLogModal.querySelector('.time-task-log-datetime-clear[data-for="end"]');
   const taskLogFeedbackInput = taskLogModal.querySelector(".time-task-log-feedback");
-  const taskLogRoutineSubsField = taskLogModal.querySelector(".time-task-log-routine-subs");
-  const taskLogRoutineSubsWrap = taskLogModal.querySelector(".time-task-log-routine-subs-wrap");
-
-  function updateRoutineSubTasksSection() {
-    const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
-    const startVal = (taskLogStartInput?.value || "").trim();
-    const info = getRoutineByTaskName(taskName);
-    if (!taskLogRoutineSubsField || !taskLogRoutineSubsWrap) return;
-    if (!info) {
-      taskLogRoutineSubsField.hidden = true;
-      return;
-    }
-    const { routine } = info;
-    const items = routine.items || [];
-    if (items.length === 0) {
-      taskLogRoutineSubsField.hidden = true;
-      return;
-    }
-    const dayIndex = getDayIndexForRoutine(routine, startVal);
-    if (dayIndex == null) {
-      taskLogRoutineSubsField.hidden = true;
-      return;
-    }
-    taskLogRoutineSubsField.hidden = false;
-    taskLogRoutineSubsWrap.innerHTML = "";
-    items.forEach((item) => {
-      const label = document.createElement("label");
-      label.className = "time-task-log-routine-sub-check";
-      const input = document.createElement("input");
-      input.type = "checkbox";
-      input.dataset.itemId = item.id;
-      input.checked = loadRoutineCheckState(routine.id, item.id, dayIndex);
-      input.addEventListener("change", () => {
-        saveRoutineCheckState(routine.id, item.id, dayIndex, input.checked);
-      });
-      const span = document.createElement("span");
-      span.textContent = item.name || "";
-      label.appendChild(input);
-      label.appendChild(span);
-      taskLogRoutineSubsWrap.appendChild(label);
-    });
-  }
-
   function updateEndTimeClearVisibility() {
     const hasValue = (taskLogEndInput.value || "").trim().length > 0;
     taskLogEndWrap?.classList.toggle("has-value", hasValue);
@@ -2067,7 +2066,6 @@ export function render() {
           value = t.name || "";
           trigger.textContent = value || "과제를 선택하세요";
           panel.hidden = true;
-          updateRoutineSubTasksSection();
           onEmotionTaskSelected(value);
         });
         panel.appendChild(row);
@@ -2086,7 +2084,6 @@ export function render() {
     wrap._setValue = (v) => {
       value = v || "";
       trigger.textContent = value || "과제를 선택하세요";
-      updateRoutineSubTasksSection();
       onEmotionTaskSelected(value);
     };
     return wrap;
@@ -2403,7 +2400,6 @@ export function render() {
       if (datetimePicker._currentField === "start") {
         taskLogStartInput.value = val;
         taskLogStartTrigger.textContent = displayVal || "날짜·시간 선택";
-        updateRoutineSubTasksSection();
         if (val && taskLogEndInput.value) {
           const mergedEnd = mergeEndTimeWithStartDate(val, taskLogEndInput.value);
           if (mergedEnd) {
@@ -2815,7 +2811,6 @@ export function render() {
     if (taskLogFocusFields) taskLogFocusFields.hidden = true;
     updateEnergySlider("50");
     updateFocusStepper("0");
-    updateRoutineSubTasksSection();
   }
 
   function openTaskLogModalForEdit(tr, rowData) {
@@ -2888,7 +2883,6 @@ export function render() {
     }
     updateEnergySlider(taskLogEnergyValue || "0");
     updateFocusStepper(taskLogFocusValue || "0");
-    updateRoutineSubTasksSection();
   }
 
   function closeTaskLogModal() {
@@ -2988,6 +2982,17 @@ export function render() {
       };
       editTr._rowData = newRowData;
       editTr.querySelector(".time-display-task").textContent = taskName;
+      const prodBarEl = editTr.querySelector(".time-task-prod-bar");
+      if (prodBarEl) {
+        prodBarEl.classList.remove("time-task-prod-bar--productive", "time-task-prod-bar--nonproductive", "time-task-prod-bar--other");
+        prodBarEl.classList.add(
+          productivity === "productive"
+            ? "time-task-prod-bar--productive"
+            : productivity === "nonproductive"
+              ? "time-task-prod-bar--nonproductive"
+              : "time-task-prod-bar--other",
+        );
+      }
       editTr.querySelector(".time-display-start").textContent = startTime ? (toDisplayTimeOnly(startTime) || startTime) : "";
       editTr.querySelector(".time-display-end").textContent = endTime ? (toDisplayTimeOnly(endTime) || endTime) : "";
       editTr.querySelector(".time-display-tracked").textContent = timeTracked;
@@ -3196,35 +3201,38 @@ export function render() {
       CATEGORY_OPTIONS.find((c) => c.value === v)?.label ||
       v ||
       "—";
-    const lockedNames = getLockedTaskNames();
+    const lockedForDisplay = getLockedForSetupDisplay();
     function renderList(container, list) {
       container.innerHTML = "";
       list.forEach((t) => {
-        const isLocked = lockedNames.has(t.name);
-        const info = getRoutineByTaskName(t.name);
-        const hasSubRoutines = info?.routine?.items?.length > 0;
-        const catLabel = hasSubRoutines ? "하부루틴 있음" : getCatLabel(t.category);
+        const isLocked = lockedForDisplay.has(t.name);
+        const catLabel = getCatLabel(t.category);
         const row = document.createElement("div");
         row.className = "time-task-setup-item";
         row.innerHTML = `
           <span class="time-task-setup-item-name">${(t.name || "").replace(/</g, "&lt;")}</span>
           <span class="time-task-setup-item-cat">${catLabel}</span>
-          <div class="time-task-setup-item-actions">
-            ${isLocked ? "" : '<button type="button" class="time-task-setup-edit" title="수정">수정</button><button type="button" class="time-task-setup-del" title="삭제">삭제</button>'}
-          </div>
+          ${isLocked ? "" : `<div class="time-task-setup-item-actions">
+            <button type="button" class="time-task-setup-edit" title="수정">수정</button>
+            <button type="button" class="time-task-setup-del" title="삭제">삭제</button>
+          </div>`}
         `;
         if (!isLocked) {
-          row
-            .querySelector(".time-task-setup-del")
-            .addEventListener("click", () => {
-              removeTaskOption(t.name);
-              renderTaskSetupList();
-            });
-          row
-            .querySelector(".time-task-setup-edit")
-            .addEventListener("click", () => {
-              openAddTaskModal(t);
-            });
+          row.querySelector(".time-task-setup-edit").addEventListener("click", () => {
+            if (getLockedTaskNames().has(t.name)) {
+              alert("이 과제는 KPI와 연동되어 있어 과제 설정에서 수정할 수 없습니다.");
+              return;
+            }
+            openAddTaskModal(t);
+          });
+          row.querySelector(".time-task-setup-del").addEventListener("click", () => {
+            if (getLockedTaskNames().has(t.name)) {
+              alert("이 과제는 KPI와 연동되어 있어 과제 설정에서 삭제할 수 없습니다. 해당 메뉴에서 수정해주세요.");
+              return;
+            }
+            removeTaskOption(t.name);
+            renderTaskSetupList();
+          });
         }
         container.appendChild(row);
       });
@@ -4395,33 +4403,25 @@ export function render() {
       input.placeholder = "hh:mm";
       input.maxLength = 5;
       input.addEventListener("keydown", (e) => {
-        if (e.ctrlKey || e.metaKey || e.altKey) return;
-        const key = e.key;
-        if (
-          key === "Backspace" ||
-          key === "Delete" ||
-          key === "Tab" ||
-          key === "Enter" ||
-          key === "Escape"
-        )
+        if (e.key === "Enter") {
+          input.blur();
           return;
-        if (key.startsWith("Arrow") || key === "Home" || key === "End") return;
-        if (key.length === 1 && !/\d/.test(key)) e.preventDefault();
+        }
+        if (e.key.length === 1 && !/\d/.test(e.key)) e.preventDefault();
       });
       input.addEventListener("input", () => {
-        const digits = input.value.replace(/\D/g, "");
-        const limited = digits.slice(0, 4);
-        if (limited.length === 4) {
-          input.value = limited.slice(0, 2) + ":" + limited.slice(2);
-        } else {
-          input.value = limited;
-        }
+        input.value = input.value.replace(/\D/g, "");
       });
       input.addEventListener("blur", () => {
         const digits = input.value.replace(/\D/g, "");
-        if (digits.length === 4) {
-          input.value = digits.slice(0, 2) + ":" + digits.slice(2);
+        if (digits.length === 0 || digits.length <= 2) {
+          input.value = "";
+          return;
         }
+        const pad = (s) => String(s || "").padStart(2, "0");
+        const h = Math.min(23, parseInt(digits.slice(0, 2), 10) || 0);
+        const m = Math.min(59, parseInt(digits.slice(2, 4), 10) || 0);
+        input.value = `${pad(h)}:${pad(m)}`;
       });
       return input;
     }
@@ -4848,21 +4848,16 @@ export function render() {
   return el;
 }
 
-/** 캘린더 1일뷰용: 시간 투자/소비 내역 테이블만 렌더 (일간시간예산에서 사용) */
-export function renderTimeBudgetTablesForCalendar(container, dateStr) {
+/** 캘린더 1일뷰용: 시간 투자/소비 내역 테이블만 렌더 (일간시간예산에서 사용)
+ * @param {HTMLElement} [options.achievementContainer] - 있으면 목표달성률 카드를 여기에 렌더 (오른쪽 타임라인 상단)
+ */
+export function renderTimeBudgetTablesForCalendar(container, dateStr, options = {}) {
+  const { achievementContainer } = options;
   const rows = loadTimeRows();
   const targetDateStr = dateStr || toDateStr(new Date());
   const todayRows = rows.filter(
     (r) => (r.date || "").trim() === targetDateStr,
   );
-
-  function getActualTimeForTask(taskName) {
-    if (!(taskName || "").trim()) return 0;
-    const name = String(taskName).trim();
-    return todayRows
-      .filter((r) => (r.taskName || "").trim() === name)
-      .reduce((sum, r) => sum + parseTimeToHours(r.timeTracked), 0);
-  }
 
   function getTasksFromTodayRows() {
     const byTask = {};
@@ -4890,6 +4885,7 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
     })),
   ];
 
+  /** 목표 시간 - 문자만 막고, 숫자+백스페이스 자유, Enter로 입력완료 */
   function createBudgetTimeInput() {
     const input = document.createElement("input");
     input.type = "text";
@@ -4897,72 +4893,109 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
     input.placeholder = "hh:mm";
     input.maxLength = 5;
     input.addEventListener("keydown", (e) => {
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-      const key = e.key;
-      if (
-        key === "Backspace" ||
-        key === "Delete" ||
-        key === "Tab" ||
-        key === "Enter" ||
-        key === "Escape"
-      )
+      if (e.key === "Enter") {
+        input.blur();
         return;
-      if (key.startsWith("Arrow") || key === "Home" || key === "End") return;
-      if (key.length === 1 && !/\d/.test(key)) e.preventDefault();
+      }
+      if (e.key.length === 1 && !/\d/.test(e.key)) e.preventDefault();
     });
     input.addEventListener("input", () => {
-      const digits = input.value.replace(/\D/g, "");
-      const limited = digits.slice(0, 4);
-      if (limited.length === 4) {
-        input.value = limited.slice(0, 2) + ":" + limited.slice(2);
-      } else {
-        input.value = limited;
-      }
+      input.value = input.value.replace(/\D/g, "");
     });
     input.addEventListener("blur", () => {
       const digits = input.value.replace(/\D/g, "");
-      if (digits.length === 4) {
-        input.value = digits.slice(0, 2) + ":" + digits.slice(2);
+      if (digits.length === 0 || digits.length <= 2) {
+        input.value = "";
+        return;
       }
+      const pad = (s) => String(s || "").padStart(2, "0");
+      const h = Math.min(23, parseInt(digits.slice(0, 2), 10) || 0);
+      const m = Math.min(59, parseInt(digits.slice(2, 4), 10) || 0);
+      input.value = `${pad(h)}:${pad(m)}`;
+    });
+    return input;
+  }
+
+  /** 예상 시작/마감 시간 - 문자만 막고, 숫자+백스페이스 자유, Enter로 입력완료 */
+  function createBudgetTimeRangeInput(placeholder) {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "time-budget-scheduled-input";
+    input.placeholder = placeholder || "hh:mm";
+    input.maxLength = 5;
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        input.blur();
+        return;
+      }
+      if (e.key.length === 1 && !/\d/.test(e.key)) e.preventDefault();
+    });
+    input.addEventListener("input", () => {
+      input.value = input.value.replace(/\D/g, "");
+    });
+    input.addEventListener("blur", () => {
+      const digits = input.value.replace(/\D/g, "");
+      if (digits.length === 0 || digits.length <= 2) {
+        input.value = "";
+        return;
+      }
+      const pad = (s) => String(s || "").padStart(2, "0");
+      const h = Math.min(23, parseInt(digits.slice(0, 2), 10) || 0);
+      const m = Math.min(59, parseInt(digits.slice(2, 4), 10) || 0);
+      input.value = `${pad(h)}:${pad(m)}`;
     });
     return input;
   }
 
   const storedGoals = getBudgetGoals(targetDateStr);
 
-  function createBudgetTableRow(taskName, actualHours, initialGoalTime, isInvest) {
+  function parseScheduledTime(scheduledTime) {
+    if (!scheduledTime || !scheduledTime.trim()) return { start: "", end: "" };
+    const s = String(scheduledTime).trim();
+    const m = s.match(/^(\d{1,2}:\d{0,2})-(\d{1,2}:\d{0,2})$/);
+    if (m) return { start: m[1], end: m[2] };
+    const single = s.match(/^(\d{1,2}:\d{0,2})$/);
+    if (single) return { start: single[1], end: "" };
+    return { start: "", end: "" };
+  }
+
+  function createBudgetTableRow(taskName, initialGoalTime, initialScheduledTime, isInvest) {
     const tr = document.createElement("tr");
     const taskTd = document.createElement("td");
-    const actualTimeSpan = document.createElement("span");
-    actualTimeSpan.className = "time-budget-actual-display";
-
     const goalInput = createBudgetTimeInput();
     if (initialGoalTime) goalInput.value = initialGoalTime;
 
-    function updateActualTimeDisplay() {
-      const name = taskDropdown.getValue();
-      const hrs = getActualTimeForTask(name);
-      actualTimeSpan.textContent = hrs > 0 ? formatHoursToHHMM(hrs) : "";
-    }
+    const { start: initialStart, end: initialEnd } = parseScheduledTime(initialScheduledTime);
+    const startInput = createBudgetTimeRangeInput("hh:mm");
+    const endInput = createBudgetTimeRangeInput("hh:mm");
+    if (initialStart) startInput.value = initialStart;
+    if (initialEnd) endInput.value = initialEnd;
+
     function saveCurrentGoal() {
       const name = taskDropdown.getValue();
-      if (name)
+      if (name) {
         saveBudgetGoal(targetDateStr, name, goalInput.value, isInvest);
+        const start = startInput.value.trim();
+        const end = endInput.value.trim();
+        const scheduledTime = start && end ? `${start}-${end}` : start || end || "";
+        saveBudgetScheduledTime(targetDateStr, name, scheduledTime, isInvest);
+        document.dispatchEvent(
+          new CustomEvent("calendar-budget-scheduled-updated", {
+            detail: { dateStr: targetDateStr },
+          }),
+        );
+      }
     }
 
-    goalInput.addEventListener("input", () => {
-      saveCurrentGoal();
-    });
     goalInput.addEventListener("blur", saveCurrentGoal);
+    startInput.addEventListener("blur", saveCurrentGoal);
+    endInput.addEventListener("blur", saveCurrentGoal);
 
     const taskDropdown = createTagDropdown(
       taskDropdownOptions,
       taskName || "",
       "cat",
-      () => {
-        updateActualTimeDisplay();
-        saveCurrentGoal();
-      },
+      saveCurrentGoal,
     );
     taskTd.appendChild(taskDropdown.wrap);
     tr.appendChild(taskTd);
@@ -4970,11 +5003,12 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
     const goalTimeTd = document.createElement("td");
     goalTimeTd.appendChild(goalInput);
     tr.appendChild(goalTimeTd);
-    const actualTimeTd = document.createElement("td");
-    actualTimeSpan.textContent =
-      actualHours > 0 ? formatHoursToHHMM(actualHours) : "";
-    actualTimeTd.appendChild(actualTimeSpan);
-    tr.appendChild(actualTimeTd);
+    const startTimeTd = document.createElement("td");
+    startTimeTd.appendChild(startInput);
+    tr.appendChild(startTimeTd);
+    const endTimeTd = document.createElement("td");
+    endTimeTd.appendChild(endInput);
+    tr.appendChild(endTimeTd);
 
     return tr;
   }
@@ -5023,7 +5057,8 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
       <tr>
         <th>과제명</th>
         <th class="time-budget-col-goal">목표 시간</th>
-        <th>실제 보낸 시간</th>
+        <th>예상 시작 시간</th>
+        <th>예상 마감 시간</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -5031,7 +5066,7 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
   const investAddRow = document.createElement("tr");
   investAddRow.className = "time-row-add";
   const investAddCell = document.createElement("td");
-  investAddCell.colSpan = 3;
+  investAddCell.colSpan = 4;
   investAddCell.className = "time-cell-add";
   const investAddBtn = document.createElement("button");
   investAddBtn.type = "button";
@@ -5045,13 +5080,14 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
   investTasks.forEach((t) => {
     const goal = storedGoals[t.task];
     const goalTime = goal?.goalTime || "";
+    const scheduledTime = goal?.scheduledTime || "";
     investTbody.appendChild(
-      createBudgetTableRow(t.task, t.hrs, goalTime, true),
+      createBudgetTableRow(t.task, goalTime, scheduledTime, true),
     );
   });
   investTbody.appendChild(investAddRow);
   investAddBtn.addEventListener("click", () => {
-    const tr = createBudgetTableRow("", 0, "", true);
+    const tr = createBudgetTableRow("", "", "", true);
     investTbody.insertBefore(tr, investAddRow);
   });
   investBlock.appendChild(investTable);
@@ -5060,7 +5096,7 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
   const consumeAddRow = document.createElement("tr");
   consumeAddRow.className = "time-row-add";
   const consumeAddCell = document.createElement("td");
-  consumeAddCell.colSpan = 3;
+  consumeAddCell.colSpan = 4;
   consumeAddCell.className = "time-cell-add";
   const consumeAddBtn = document.createElement("button");
   consumeAddBtn.type = "button";
@@ -5080,7 +5116,8 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
       <tr>
         <th>과제명</th>
         <th class="time-budget-col-goal">목표 시간</th>
-        <th>실제 보낸 시간</th>
+        <th>예상 시작 시간</th>
+        <th>예상 마감 시간</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -5089,13 +5126,14 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
   consumeTasks.forEach((t) => {
     const goal = storedGoals[t.task];
     const goalTime = goal?.goalTime || "";
+    const scheduledTime = goal?.scheduledTime || "";
     consumeTbody.appendChild(
-      createBudgetTableRow(t.task, t.hrs, goalTime, false),
+      createBudgetTableRow(t.task, goalTime, scheduledTime, false),
     );
   });
   consumeTbody.appendChild(consumeAddRow);
   consumeAddBtn.addEventListener("click", () => {
-    const tr = createBudgetTableRow("", 0, "", false);
+    const tr = createBudgetTableRow("", "", "", false);
     consumeTbody.insertBefore(tr, consumeAddRow);
   });
   consumeBlock.appendChild(consumeTable);
@@ -5124,7 +5162,56 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
   });
   updateRemaining();
 
+  const achievementCard = document.createElement("div");
+  achievementCard.className = "calendar-1day-budget-achievement-card";
+  achievementCard.innerHTML = `
+    <div class="calendar-1day-budget-summary-title">오늘의 목표달성률</div>
+    <div class="calendar-budget-achievement-value">—</div>
+    <div class="calendar-budget-achievement-desc">목표 시간 대비 실제 사용</div>
+  `;
+  function getActualTimeForTaskFromRows(taskName) {
+    if (!(taskName || "").trim()) return 0;
+    const name = String(taskName).trim();
+    return todayRows
+      .filter((r) => (r.taskName || "").trim() === name)
+      .reduce((sum, r) => sum + parseTimeToHours(r.timeTracked), 0);
+  }
+  function updateAchievementCard() {
+    let totalGoalWeight = 0;
+    let totalAchievement = 0;
+    [investBlock, consumeBlock].forEach((block) => {
+      block.querySelectorAll("tbody tr:not(.time-row-add)").forEach((tr) => {
+        const dropdownWrap = tr.querySelector(".time-tag-dropdown-wrap");
+        const goalInput = tr.querySelector(".time-budget-time-input");
+        if (!dropdownWrap?._getValue || !goalInput) return;
+        const task = String(dropdownWrap._getValue() || "").trim();
+        const goal = parseTimeToHours(goalInput.value);
+        if (!task || goal <= 0) return;
+        const actual = getActualTimeForTaskFromRows(task);
+        const rate = actual <= goal ? actual / goal : goal / actual;
+        totalAchievement += rate * goal;
+        totalGoalWeight += goal;
+      });
+    });
+    const achievementEl = achievementCard.querySelector(".calendar-budget-achievement-value");
+    if (achievementEl) {
+      achievementEl.textContent =
+        totalGoalWeight > 0 ? Math.round((totalAchievement / totalGoalWeight) * 100) + "%" : "—";
+    }
+  }
+  [investBlock, consumeBlock].forEach((block) => {
+    block.addEventListener("input", () => updateAchievementCard());
+    block.addEventListener("blur", () => updateAchievementCard());
+  });
+  updateAchievementCard();
+
   container.innerHTML = "";
   container.appendChild(remainingHeader);
+  if (achievementContainer) {
+    achievementContainer.innerHTML = "";
+    achievementContainer.appendChild(achievementCard);
+  } else {
+    container.appendChild(achievementCard);
+  }
   container.appendChild(tablesWrap);
 }

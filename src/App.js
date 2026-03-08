@@ -1,9 +1,9 @@
 import { signOut } from "./auth.js";
 import { observeDatePickerInit } from "./utils/datePickerInit.js";
+import { getRoutineSyncedTaskNames } from "./utils/routineTimeSync.js";
 import { render as renderCalendar } from "./views/Calendar.js";
 import { saveTodoListBeforeUnmount } from "./views/TodoList.js";
 import { render as renderTime } from "./views/Time.js";
-import { render as renderRoutine } from "./views/Routine.js";
 import { render as renderWorkSchedule } from "./views/WorkSchedule.js";
 import { render as renderAsset } from "./views/Asset.js";
 import { render as renderDream } from "./views/Dream.js";
@@ -23,7 +23,6 @@ const TABS = [
   { id: "health", label: "건강", icon: "/toolbaricons/heart-rate.svg" },
   { id: "calendar", label: "캘린더", icon: "/toolbaricons/calendar-alt.svg" },
   { id: "time", label: "시간가계부", icon: "/toolbaricons/timer.svg" },
-  { id: "routine", label: "루틴/해빗트랙커", icon: "/toolbaricons/goback.svg" },
   { id: "diary", label: "감정관리", icon: "/toolbaricons/chat-bubbles.svg" },
   { id: "asset", label: "자산관리", icon: "/toolbaricons/wallet.svg" },
   { id: "workschedule", label: "근무표", icon: "/toolbaricons/calendar-heart1.svg" },
@@ -34,7 +33,6 @@ const TABS = [
 const RENDERERS = {
   calendar: renderCalendar,
   time: renderTime,
-  routine: renderRoutine,
   workschedule: renderWorkSchedule,
   asset: renderAsset,
   dream: renderDream,
@@ -48,8 +46,36 @@ const RENDERERS = {
 
 let currentTabId = "dream";
 
+const ROUTINE_REMOVED_KEY = "app-routine-removed-v1";
+
+function migrateRemoveRoutineTasks() {
+  if (localStorage.getItem(ROUTINE_REMOVED_KEY) === "1") return;
+  try {
+    const routineNames = getRoutineSyncedTaskNames();
+    if (routineNames.size === 0) {
+      localStorage.removeItem("routine-track-list");
+      localStorage.setItem(ROUTINE_REMOVED_KEY, "1");
+      return;
+    }
+    const raw = localStorage.getItem("time_task_options");
+    if (raw) {
+      const opts = JSON.parse(raw);
+      if (Array.isArray(opts)) {
+        const filtered = opts.filter((o) => {
+          const name = (typeof o === "string" ? o : o?.name || "").trim();
+          return !routineNames.has(name);
+        });
+        localStorage.setItem("time_task_options", JSON.stringify(filtered));
+      }
+    }
+    localStorage.removeItem("routine-track-list");
+    localStorage.setItem(ROUTINE_REMOVED_KEY, "1");
+  } catch (_) {}
+}
+
 export function mountApp(container) {
   if (!container) return;
+  migrateRemoveRoutineTasks();
   container.innerHTML = "";
 
   const appPage = document.createElement("div");
