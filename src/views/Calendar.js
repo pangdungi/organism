@@ -4,11 +4,19 @@
  * 할일목록: 인생 KPI와 동일한 구조
  */
 
-import { render as renderTodoList, saveTodoListBeforeUnmount } from "./TodoList.js";
+import { render as renderTodoList, saveTodoListBeforeUnmount, DRAG_TYPE_TODO_TO_CALENDAR } from "./TodoList.js";
 import { getKpiTodosAsTasks, addCalendarTodoToSection, addCalendarTodoToBraindump, syncKpiTodoCompleted, updateKpiTodo } from "../utils/kpiTodoSync.js";
 import { getSectionColor } from "../utils/todoSettings.js";
 
 const BRAINDUMP_STORAGE_KEY = "todo-braindump-tasks";
+const CUSTOM_SECTION_TASKS_KEY = "todo-custom-section-tasks";
+
+/** rgba 색상의 투명도를 높임 (alpha 낮춤) */
+function withMoreTransparency(color, alpha = 0.35) {
+  const m = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (m) return `rgba(${m[1]}, ${m[2]}, ${m[3]}, ${alpha})`;
+  return color;
+}
 const DAY_NAMES = ["월", "화", "수", "목", "금", "토", "일"];
 const MONTH_NAMES = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"];
 const MONTH_NAMES_EN = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -129,6 +137,30 @@ function updateBraindumpTaskDatesByName(name, oldStart, oldDue, startDate, dueDa
   return false;
 }
 
+function updateCustomSectionTaskDates(sectionId, taskId, startDate, dueDate) {
+  try {
+    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
+    if (!raw) return false;
+    const obj = JSON.parse(raw);
+    const arr = obj[sectionId];
+    if (!Array.isArray(arr)) return false;
+    const t = arr.find((x) => (x.taskId || "") === taskId);
+    if (t) {
+      t.startDate = (startDate || "").slice(0, 10) || "";
+      t.dueDate = (dueDate || "").slice(0, 10) || "";
+      localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(obj));
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
+
+function addDaysToDateKey(dateKey, days) {
+  const d = new Date(dateKey + "T12:00:00");
+  d.setDate(d.getDate() + days);
+  return formatDateKey(d);
+}
+
 function getBraindumpTasksForDate(dateKey) {
   try {
     const raw = localStorage.getItem(BRAINDUMP_STORAGE_KEY);
@@ -158,6 +190,22 @@ function getTasksForDate(dateKey, excludeSpanningTasks = false) {
     tasks = tasks.filter((t) => !((t.startDate || "").slice(0, 10) && (t.dueDate || "").slice(0, 10)));
   }
   return tasks;
+}
+
+function getAllTasksForDateDisplay(dateKey) {
+  const singleDay = getTasksForDate(dateKey, false);
+  const rangeTasks = getAllTasksWithDateRange().filter((t) => {
+    const s = (t.startDate || "").slice(0, 10);
+    const d = (t.dueDate || "").slice(0, 10);
+    return s && d && s <= dateKey && dateKey <= d;
+  });
+  const seen = new Set();
+  return [...singleDay, ...rangeTasks].filter((t) => {
+    const id = (t.taskId || t.name || "") + (t.startDate || "") + (t.dueDate || "");
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
 }
 
 function getAllTasksWithDateRange() {
@@ -257,6 +305,59 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
 
   document.body.appendChild(bubble);
   bubble.querySelector(".calendar-event-bubble-input").focus();
+  return bubble;
+}
+
+const MAX_VISIBLE_BARS_PER_DAY = 3;
+
+function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose) {
+  document.querySelectorAll(".calendar-day-expand-bubble").forEach((el) => el.remove());
+  const bubble = document.createElement("div");
+  bubble.className = "calendar-event-bubble calendar-day-expand-bubble";
+  const taskItems = tasks
+    .map(
+      (t) => `
+    <div class="calendar-day-expand-item" data-done="${!!t.done}">
+      <span class="calendar-day-expand-checkbox ${t.done ? "checked" : ""}"></span>
+      <span class="calendar-day-expand-text">${escapeHtml(t.name || "")}</span>
+      ${t.startTime || t.endTime ? `<span class="calendar-day-expand-time">${[t.startTime, t.endTime].filter(Boolean).join(" ~ ")}</span>` : ""}
+    </div>
+  `
+    )
+    .join("");
+  bubble.innerHTML = `
+    <div class="calendar-event-bubble-body">
+      <div class="calendar-event-bubble-header">
+        <span class="calendar-event-bubble-date">${dateKey.replace(/-/g, ". ")}</span>
+        <button type="button" class="calendar-event-bubble-close" title="닫기">×</button>
+      </div>
+      <div class="calendar-day-expand-list">${taskItems || "<div class='calendar-day-expand-empty'>할일 없음</div>"}</div>
+    </div>
+  `;
+
+  const close = () => {
+    bubble.remove();
+    onClose?.();
+  };
+
+  bubble.querySelector(".calendar-event-bubble-close").addEventListener("click", close);
+  setTimeout(() => {
+    document.addEventListener("click", function outside(e) {
+      if (!bubble.contains(e.target)) {
+        document.removeEventListener("click", outside);
+        close();
+      }
+    });
+  }, 0);
+
+  Object.assign(bubble.style, {
+    position: "fixed",
+    left: `${Math.min(cellRect.left, window.innerWidth - 280)}px`,
+    top: `${Math.min(cellRect.top, window.innerHeight - 320)}px`,
+    zIndex: 1002,
+  });
+
+  document.body.appendChild(bubble);
   return bubble;
 }
 
@@ -386,7 +487,7 @@ function renderMonthlyView(tabsElement) {
     if (body) {
       const oldList = body.querySelector(".todo-list-in-sidebar");
       if (oldList) oldList.remove();
-      const newList = renderTodoList({ hideToolbar: true });
+      const newList = renderTodoList({ hideToolbar: true, enableDragToCalendar: true });
       newList.classList.add("todo-list-in-sidebar");
       body.appendChild(newList);
     }
@@ -456,6 +557,62 @@ function renderMonthlyView(tabsElement) {
             refreshTodoList();
           }, () => {});
         });
+        cell.addEventListener("dragover", (e) => {
+          if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR)) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            cell.classList.add("calendar-day-drag-over");
+          }
+        });
+        cell.addEventListener("dragleave", () => {
+          cell.classList.remove("calendar-day-drag-over");
+        });
+        cell.addEventListener("drop", (e) => {
+          cell.classList.remove("calendar-day-drag-over");
+          const json = e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR);
+          if (!json) return;
+          e.preventDefault();
+          e.stopPropagation();
+          let payload;
+          try {
+            payload = JSON.parse(json);
+          } catch (_) {
+            return;
+          }
+          const targetDate = key;
+          const oldStart = (payload.startDate || "").slice(0, 10);
+          const oldDue = (payload.dueDate || "").slice(0, 10);
+          let newStart = "";
+          let newDue = targetDate;
+          if (oldStart && oldDue && oldStart !== oldDue) {
+            const startD = new Date(oldStart + "T12:00:00");
+            const dueD = new Date(oldDue + "T12:00:00");
+            const daysDiff = Math.round((dueD - startD) / 86400000);
+            newStart = targetDate;
+            newDue = addDaysToDateKey(targetDate, daysDiff);
+          } else if (oldStart && oldDue) {
+            newStart = targetDate;
+          }
+          let ok = false;
+          if (payload.kpiTodoId && payload.storageKey) {
+            ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
+          } else if (payload.sectionId === "braindump") {
+            if (payload.taskId) {
+              ok = updateBraindumpTaskDates(payload.taskId, newStart, newDue);
+            } else {
+              ok = updateBraindumpTaskDatesByName(payload.name, oldStart, oldDue, newStart, newDue);
+            }
+          } else if (payload.sectionId && payload.sectionId.startsWith("custom-") && payload.taskId) {
+            ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
+          } else if (["dream", "sideincome", "health", "happy"].includes(payload.sectionId) && (payload.name || "").trim()) {
+            const result = addCalendarTodoToSection(payload.sectionId, { text: (payload.name || "").trim(), dueDate: newDue, itemType: payload.itemType || "todo" });
+            ok = !!result.success;
+          }
+          if (ok) {
+            renderCalendar();
+            refreshTodoList();
+          }
+        });
         weekRow.appendChild(cell);
       });
 
@@ -474,15 +631,17 @@ function renderMonthlyView(tabsElement) {
         if (startIdx < 0 || endIdx < 0) return;
         const left = (startIdx / 7) * 100 + CELL_GAP / 7;
         const width = ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
-        const color = t.sectionId === "braindump" ? "rgba(148, 163, 184, 0.6)" : getSectionColor(t.sectionId);
+        const baseColor = t.sectionId === "braindump" ? "rgba(148, 163, 184, 0.6)" : getSectionColor(t.sectionId);
+        const color = withMoreTransparency(baseColor);
         allBars.push({ left, width, name: t.name, color, isSingleDay: false, itemType: t.itemType || "todo", done: !!t.done, kpiTodoId: t.kpiTodoId, storageKey: t.storageKey, taskId: t.taskId, sectionId: t.sectionId, startDate: t.startDate, dueDate: t.dueDate });
       });
       weekDateKeys.forEach((dateKey, dayIdx) => {
         getTasksForDate(dateKey, true).forEach((t) => {
           const left = (dayIdx / 7) * 100 + CELL_GAP / 7;
           const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
-          const color = t.sectionId === "braindump" ? "rgba(148, 163, 184, 0.6)" : getSectionColor(t.sectionId);
-          allBars.push({ left, width, name: t.name, color, isSingleDay: true, itemType: t.itemType || "todo", done: !!t.done, kpiTodoId: t.kpiTodoId, storageKey: t.storageKey, taskId: t.taskId, sectionId: t.sectionId, startDate: t.startDate || "", dueDate: t.dueDate || dateKey });
+          const baseColor = t.sectionId === "braindump" ? "rgba(148, 163, 184, 0.6)" : getSectionColor(t.sectionId);
+          const color = withMoreTransparency(baseColor);
+          allBars.push({ left, width, name: t.name, color, isSingleDay: true, dayIdx, dateKey, itemType: t.itemType || "todo", done: !!t.done, kpiTodoId: t.kpiTodoId, storageKey: t.storageKey, taskId: t.taskId, sectionId: t.sectionId, startDate: t.startDate || "", dueDate: t.dueDate || dateKey });
         });
       });
       const rowBars = [];
@@ -493,14 +652,27 @@ function renderMonthlyView(tabsElement) {
         rowBars[row].push(b);
         b.row = row;
       });
+      const barsPerDay = weekDateKeys.map((_, dayIdx) =>
+        allBars.filter((b) => b.isSingleDay && b.dayIdx === dayIdx).sort((a, b) => a.row - b.row)
+      );
+      allBars.forEach((b) => {
+        if (b.isSingleDay && b.dayIdx != null) {
+          const dayBars = barsPerDay[b.dayIdx];
+          const idx = dayBars.indexOf(b);
+          b.isOverflow = idx >= MAX_VISIBLE_BARS_PER_DAY;
+        }
+      });
       const barsWithRow = allBars;
       barsWithRow.forEach((b) => {
         const isTodo = (b.itemType || "todo").toLowerCase() === "todo";
         const bar = document.createElement("div");
-        bar.className = "calendar-monthly-span-bar" + (b.isSingleDay ? " calendar-monthly-span-bar--todo" : " calendar-monthly-span-bar--range") + (isTodo ? " calendar-monthly-span-bar--has-checkbox" : "");
+        bar.className =
+          "calendar-monthly-span-bar" +
+          (b.isSingleDay ? " calendar-monthly-span-bar--todo" : " calendar-monthly-span-bar--range") +
+          (isTodo ? " calendar-monthly-span-bar--has-checkbox" : "") +
+          (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "");
         bar.title = b.name;
-        const bg = b.isSingleDay ? "transparent" : b.color;
-        bar.style.cssText = `left:${b.left}%;width:${b.width}%;background:${bg};top:${0.15 + b.row * BAR_HEIGHT}rem`;
+        bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.15 + b.row * BAR_HEIGHT}rem`;
         if (b.isSingleDay) {
           if (isTodo) {
             bar.innerHTML = `<span class="calendar-monthly-span-bar-checkbox" style="border-color:${b.color}"><span class="calendar-monthly-span-bar-checkbox-inner"></span></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
@@ -563,13 +735,60 @@ function renderMonthlyView(tabsElement) {
         }
         barsEl.appendChild(bar);
       });
+      const moreEl = document.createElement("div");
+      moreEl.className = "calendar-day-more-overlay";
+      moreEl.style.cssText = "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
+      weekDateKeys.forEach((dateKey, dayIdx) => {
+        const overflowCount = barsPerDay[dayIdx]?.length - MAX_VISIBLE_BARS_PER_DAY;
+        const cell = weekRow.querySelector(`.calendar-monthly-day[data-date="${dateKey}"]`);
+        const slot = document.createElement("div");
+        slot.style.cssText = "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
+        if (overflowCount > 0 && cell) {
+          slot.style.pointerEvents = "auto";
+          const moreBtn = document.createElement("button");
+          moreBtn.type = "button";
+          moreBtn.className = "calendar-day-more-btn";
+          moreBtn.textContent = `+${overflowCount}`;
+          moreBtn.title = "더보기";
+          moreBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const rect = cell.getBoundingClientRect();
+            const tasks = getAllTasksForDateDisplay(dateKey);
+            createCalendarDayExpandBubble(rect, dateKey, tasks, () => {});
+          });
+          slot.appendChild(moreBtn);
+        }
+        moreEl.appendChild(slot);
+      });
+      weekWrap.appendChild(moreEl);
       weekWrap.addEventListener("dragover", (e) => {
         e.preventDefault();
-        e.dataTransfer.dropEffect = "move";
+        if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR) || e.dataTransfer.types.includes("application/json")) {
+          e.dataTransfer.dropEffect = "move";
+          let cell = document.elementFromPoint(e.clientX, e.clientY)?.closest(".calendar-monthly-day:not(.empty)");
+          if (!cell) {
+            const cells = weekRow.querySelectorAll(".calendar-monthly-day:not(.empty)");
+            for (const c of cells) {
+              const r = c.getBoundingClientRect();
+              if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+                cell = c;
+                break;
+              }
+            }
+          }
+          weekWrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+          if (cell) cell.classList.add("calendar-day-drag-over");
+        }
+      });
+      weekWrap.addEventListener("dragleave", (e) => {
+        if (!weekWrap.contains(e.relatedTarget)) {
+          weekWrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+        }
       });
       weekWrap.addEventListener("drop", (e) => {
+        weekWrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
         e.preventDefault();
-        const json = e.dataTransfer.getData("application/json");
+        let json = e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR) || e.dataTransfer.getData("application/json");
         if (!json) return;
         let payload;
         try {
@@ -590,14 +809,33 @@ function renderMonthlyView(tabsElement) {
         }
         if (!cell?.dataset?.date) return;
         const targetDate = cell.dataset.date;
-        if (targetDate === payload.dueDate) return;
+        const oldStart = (payload.startDate || "").slice(0, 10);
+        const oldDue = (payload.dueDate || "").slice(0, 10);
+        let newStart = "";
+        let newDue = targetDate;
+        if (oldStart && oldDue && oldStart !== oldDue) {
+          const startD = new Date(oldStart + "T12:00:00");
+          const dueD = new Date(oldDue + "T12:00:00");
+          const daysDiff = Math.round((dueD - startD) / 86400000);
+          newStart = targetDate;
+          newDue = addDaysToDateKey(targetDate, daysDiff);
+        } else if (oldStart && oldDue) {
+          newStart = targetDate;
+        }
         let ok = false;
         if (payload.kpiTodoId && payload.storageKey) {
-          ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { dueDate: targetDate });
-        } else if (payload.sectionId === "braindump" && payload.taskId) {
-          ok = updateBraindumpTaskDates(payload.taskId, payload.startDate || targetDate, targetDate);
+          ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
         } else if (payload.sectionId === "braindump") {
-          ok = updateBraindumpTaskDatesByName(payload.name, payload.startDate, payload.dueDate, payload.startDate || targetDate, targetDate);
+          if (payload.taskId) {
+            ok = updateBraindumpTaskDates(payload.taskId, newStart, newDue);
+          } else {
+            ok = updateBraindumpTaskDatesByName(payload.name, oldStart, oldDue, newStart, newDue);
+          }
+        } else if (payload.sectionId && payload.sectionId.startsWith("custom-") && payload.taskId) {
+          ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
+        } else if (["dream", "sideincome", "health", "happy"].includes(payload.sectionId) && (payload.name || "").trim()) {
+          const result = addCalendarTodoToSection(payload.sectionId, { text: (payload.name || "").trim(), dueDate: newDue, itemType: payload.itemType || "todo" });
+          ok = !!result.success;
         }
         if (ok) {
           renderCalendar();
@@ -649,7 +887,7 @@ function renderMonthlyView(tabsElement) {
     </div>
     <div class="calendar-todo-sidebar-body"></div>
   `;
-  const todoListEl = renderTodoList({ hideToolbar: true });
+  const todoListEl = renderTodoList({ hideToolbar: true, enableDragToCalendar: true });
   todoListEl.classList.add("todo-list-in-sidebar");
   todoSidebar.querySelector(".calendar-todo-sidebar-body").appendChild(todoListEl);
   todoSidebar.querySelector(".calendar-todo-sidebar-collapse").addEventListener("click", () => {
@@ -658,6 +896,10 @@ function renderMonthlyView(tabsElement) {
     todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
   });
   wrap.appendChild(todoSidebar);
+
+  wrap.addEventListener("dragend", () => {
+    wrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+  });
 
   renderCalendar();
 

@@ -5,12 +5,14 @@
 
 import { getKpiTodosAsTasks, syncKpiTodoCompleted, removeAllCompletedKpiTodos, removeKpiTodo, updateKpiTodo, moveKpiTodoToSection, addBraindumpTodoToSection } from "../utils/kpiTodoSync.js";
 import { createTodoSettingsModal } from "../utils/todoSettingsModal.js";
-import { getTodoSettings } from "../utils/todoSettings.js";
+import { getTodoSettings, getCustomSections, addCustomSection, removeCustomSection, updateCustomSectionLabel, getSectionColor } from "../utils/todoSettings.js";
 import { getSubtasks, addSubtask, updateSubtask, removeSubtask, clearSubtasks, setSubtasks } from "../utils/todoSubtasks.js";
 import { createBraindumpContextMenu } from "../utils/braindumpContextMenu.js";
 import { createTodoCheckboxTypeMenu } from "../utils/todoCheckboxTypeMenu.js";
 
 const BRAINDUMP_STORAGE_KEY = "todo-braindump-tasks";
+const CUSTOM_SECTION_TASKS_KEY = "todo-custom-section-tasks";
+export const DRAG_TYPE_TODO_TO_CALENDAR = "todo-task-to-calendar";
 
 function loadBraindumpTasks() {
   try {
@@ -75,6 +77,83 @@ function collectBraindumpFromDOM(sectionsEl) {
   return tasks;
 }
 
+function loadCustomSectionTasks(sectionId) {
+  try {
+    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
+    if (raw) {
+      const obj = JSON.parse(raw);
+      const arr = obj[sectionId];
+      if (Array.isArray(arr)) {
+        return arr
+          .filter((t) => (t.name || "").trim() !== "")
+          .map((t) => ({
+            ...t,
+            sectionId,
+            sectionLabel: getCustomSections().find((s) => s.id === sectionId)?.label || sectionId,
+            itemType: t.itemType || "todo",
+          }));
+      }
+    }
+  } catch (_) {}
+  return [];
+}
+
+function saveCustomSectionTasks(sectionId, tasks) {
+  try {
+    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
+    const obj = raw ? JSON.parse(raw) : {};
+    const toSave = tasks
+      .map(({ taskId, name, startDate, dueDate, startTime, endTime, done, itemType }) => ({
+        taskId,
+        name: (name || "").trim(),
+        startDate: startDate || "",
+        dueDate: dueDate || "",
+        startTime: startTime || "",
+        endTime: endTime || "",
+        done: !!done,
+        itemType: itemType || "todo",
+      }))
+      .filter((t) => t.name !== "");
+    obj[sectionId] = toSave;
+    localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(obj));
+  } catch (_) {}
+}
+
+function removeCustomSectionTasks(sectionId) {
+  try {
+    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
+    if (!raw) return;
+    const obj = JSON.parse(raw);
+    delete obj[sectionId];
+    localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(obj));
+  } catch (_) {}
+}
+
+function collectCustomSectionFromDOM(sectionsEl, sectionId) {
+  const tasks = [];
+  const sec = sectionsEl?.querySelector(`.todo-section[data-section="${sectionId}"]`);
+  sec?.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").forEach((row) => {
+    const nameInput = row.querySelector(".todo-cell-name input");
+    const startInput = row.querySelector(".todo-start-input-hidden");
+    const dueInput = row.querySelector(".todo-due-input-hidden");
+    const startTimeInput = row.querySelector(".todo-start-time-input");
+    const endTimeInput = row.querySelector(".todo-end-time-input");
+    const doneCheck = row.querySelector(".todo-done-check");
+    const itemType = row.dataset.itemType || "todo";
+    tasks.push({
+      taskId: row.dataset.taskId || "",
+      name: (nameInput?.value || "").trim(),
+      startDate: startInput?.value || "",
+      dueDate: dueInput?.value || "",
+      startTime: startTimeInput?.value || "",
+      endTime: endTimeInput?.value || "",
+      done: itemType === "todo" ? (doneCheck?.checked || false) : false,
+      itemType,
+    });
+  });
+  return tasks;
+}
+
 const KPI_SECTION_IDS = ["dream", "sideincome", "happy", "health"];
 
 function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
@@ -117,6 +196,9 @@ export function saveTodoListBeforeUnmount(container) {
   if (sectionsWrap) {
     saveBraindumpTasks(collectBraindumpFromDOM(sectionsWrap));
     collectAndSaveKpiTasksFromDOM(sectionsWrap);
+    getCustomSections().forEach((s) => {
+      saveCustomSectionTasks(s.id, collectCustomSectionFromDOM(sectionsWrap, s.id));
+    });
   }
 }
 
@@ -423,13 +505,155 @@ function createCategoryDropdown(initialValue, onUpdate) {
   return { wrap, input };
 }
 
-const SECTIONS = [
+const FIXED_SECTIONS = [
   { id: "braindump", label: "브레인덤프" },
   { id: "dream", label: "꿈" },
   { id: "sideincome", label: "부수입" },
   { id: "health", label: "건강" },
   { id: "happy", label: "행복" },
 ];
+
+function showAddListModal(options = {}) {
+  const { validate, onSuccess, title = "새 리스트 추가", label = "새 리스트 이름을 입력하세요", initialValue = "" } = options;
+  const modal = document.createElement("div");
+  modal.className = "todo-list-modal";
+  modal.innerHTML = `
+    <div class="todo-list-modal-backdrop"></div>
+    <div class="todo-list-modal-panel">
+      <div class="todo-list-modal-header">
+        <h3 class="todo-list-modal-title">${title}</h3>
+        <button type="button" class="todo-list-modal-close" aria-label="닫기">×</button>
+      </div>
+      <div class="todo-list-modal-body">
+        <p class="todo-list-modal-label">${label}</p>
+        <input type="text" class="todo-list-modal-input" placeholder="리스트 이름" maxlength="50" />
+        <p class="todo-list-modal-error" role="alert"></p>
+      </div>
+      <div class="todo-list-modal-footer">
+        <button type="button" class="todo-list-modal-cancel">취소</button>
+        <button type="button" class="todo-list-modal-confirm">확인</button>
+      </div>
+    </div>
+  `;
+
+  const backdrop = modal.querySelector(".todo-list-modal-backdrop");
+  const closeBtn = modal.querySelector(".todo-list-modal-close");
+  const input = modal.querySelector(".todo-list-modal-input");
+  const errorEl = modal.querySelector(".todo-list-modal-error");
+  const cancelBtn = modal.querySelector(".todo-list-modal-cancel");
+  const confirmBtn = modal.querySelector(".todo-list-modal-confirm");
+
+  function close() {
+    modal.remove();
+    document.body.style.overflow = "";
+  }
+
+  function showError(msg) {
+    errorEl.textContent = msg || "";
+  }
+
+  function doConfirm() {
+    const val = (input.value || "").trim();
+    const err = validate ? validate(val) : null;
+    if (err) {
+      showError(err);
+      return;
+    }
+    showError("");
+    close();
+    onSuccess?.(val);
+  }
+
+  confirmBtn.addEventListener("click", doConfirm);
+  cancelBtn.addEventListener("click", close);
+  closeBtn.addEventListener("click", close);
+  backdrop.addEventListener("click", close);
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      doConfirm();
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      close();
+    }
+  });
+
+  document.body.appendChild(modal);
+  document.body.style.overflow = "hidden";
+  if (initialValue) input.value = initialValue;
+  input.focus();
+}
+
+function showEditListModal(options = {}) {
+  const { sectionId, currentLabel, onSuccess } = options;
+  showAddListModal({
+    title: "리스트 이름 편집",
+    label: "리스트 이름을 입력하세요",
+    initialValue: currentLabel || "",
+    validate: (name) => {
+      if (!name || !name.trim()) return "리스트 이름을 입력하세요.";
+      if (getCustomSections().some((s) => s.label === name.trim() && s.id !== sectionId)) return "같은 이름의 리스트가 이미 있습니다.";
+      return null;
+    },
+    onSuccess: (name) => {
+      const updated = updateCustomSectionLabel(sectionId, name.trim());
+      if (updated) onSuccess?.(updated);
+    },
+  });
+}
+
+function showConfirmModal(options = {}) {
+  const { title = "확인", message, confirmText = "확인", cancelText = "취소", onConfirm } = options;
+  const modal = document.createElement("div");
+  modal.className = "todo-list-modal todo-list-confirm-modal";
+  modal.innerHTML = `
+    <div class="todo-list-modal-backdrop"></div>
+    <div class="todo-list-modal-panel">
+      <div class="todo-list-modal-header">
+        <h3 class="todo-list-modal-title">${title}</h3>
+        <button type="button" class="todo-list-modal-close" aria-label="닫기">×</button>
+      </div>
+      <div class="todo-list-modal-body todo-list-confirm-body">
+        <p class="todo-list-confirm-message">${(message || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")}</p>
+      </div>
+      <div class="todo-list-modal-footer">
+        <button type="button" class="todo-list-modal-cancel">${cancelText}</button>
+        <button type="button" class="todo-list-modal-confirm todo-list-confirm-delete">${confirmText}</button>
+      </div>
+    </div>
+  `;
+
+  const backdrop = modal.querySelector(".todo-list-modal-backdrop");
+  const closeBtn = modal.querySelector(".todo-list-modal-close");
+  const cancelBtn = modal.querySelector(".todo-list-modal-cancel");
+  const confirmBtn = modal.querySelector(".todo-list-modal-confirm");
+
+  function close() {
+    modal.remove();
+    document.body.style.overflow = "";
+  }
+
+  confirmBtn.addEventListener("click", () => {
+    close();
+    onConfirm?.();
+  });
+  cancelBtn.addEventListener("click", close);
+  closeBtn.addEventListener("click", close);
+  backdrop.addEventListener("click", close);
+
+  modal.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") close();
+  });
+
+  document.body.appendChild(modal);
+  document.body.style.overflow = "hidden";
+}
+
+function getSections() {
+  return [...FIXED_SECTIONS, ...getCustomSections()];
+}
 
 function getTaskId(taskData) {
   if (taskData.isKpiTodo && taskData.kpiTodoId && taskData.storageKey) {
@@ -511,13 +735,19 @@ function createTaskRow(taskData = {}, options = {}) {
     kpiTodoId = "",
     storageKey = "",
   } = taskData;
-  const { showCategoryCol = false, isSubtask = false, taskId: optTaskId, onBraindumpMutate = null, showCheckboxTypeMenu = null } = options;
+  const { showCategoryCol = false, isSubtask = false, taskId: optTaskId, onBraindumpMutate = null, showCheckboxTypeMenu = null, enableDragToCalendar = false } = options;
   const taskId = optTaskId || getTaskId(taskData);
   const isBraindump = !taskData.isKpiTodo && (taskData.sectionId || "") === "braindump";
 
   const tr = document.createElement("tr");
   tr.className = "todo-task-row" + (isSubtask ? " todo-subtask-row" : "");
   tr.dataset.sectionId = taskData.sectionId || "";
+  const hasDates = !!((startDate || "").trim() || (dueDate || "").trim());
+  tr.dataset.hasDates = hasDates ? "true" : "false";
+  if (!hasDates && (taskData.sectionId || "")) {
+    const sectionColor = (taskData.sectionId || "") === "braindump" ? "#9ca3af" : getSectionColor(taskData.sectionId);
+    tr.style.setProperty("--row-section-color", sectionColor);
+  }
   if (!isSubtask) tr.dataset.taskId = taskId;
   if (isKpiTodo) {
     tr.classList.add("todo-task-row--kpi");
@@ -699,8 +929,19 @@ function createTaskRow(taskData = {}, options = {}) {
         '<span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
     }
   };
+  const syncHasDates = () => {
+    const hasDates = !!((startInput.value || "").trim() || (dueInput.value || "").trim());
+    tr.dataset.hasDates = hasDates ? "true" : "false";
+    if (!hasDates && (taskData.sectionId || "")) {
+      const sectionColor = (taskData.sectionId || "") === "braindump" ? "#9ca3af" : getSectionColor(taskData.sectionId);
+      tr.style.setProperty("--row-section-color", sectionColor);
+    } else {
+      tr.style.removeProperty("--row-section-color");
+    }
+  };
   startInput.addEventListener("change", () => {
     syncStartDisplay();
+    syncHasDates();
     if (isKpiTodo && kpiTodoId && storageKey) {
       updateKpiTodo(kpiTodoId, storageKey, { startDate: startInput.value });
     } else if (isBraindump) onBraindumpMutate?.();
@@ -754,6 +995,7 @@ function createTaskRow(taskData = {}, options = {}) {
   dueInput.addEventListener("change", syncDateMinMax);
   dueInput.addEventListener("change", () => {
     syncDueDisplay();
+    syncHasDates();
     if (isKpiTodo && kpiTodoId && storageKey) {
       updateKpiTodo(kpiTodoId, storageKey, { dueDate: dueInput.value });
     } else if (isBraindump) onBraindumpMutate?.();
@@ -881,11 +1123,40 @@ function createTaskRow(taskData = {}, options = {}) {
     tr.appendChild(lastColTd);
   }
   tr.appendChild(delTd);
+
+  if (enableDragToCalendar && !isSubtask && !hasDates) {
+    tr.draggable = true;
+    tr.addEventListener("dragstart", (e) => {
+      const nameInput = tr.querySelector(".todo-cell-name input");
+      const startInput = tr.querySelector(".todo-start-input-hidden");
+      const dueInput = tr.querySelector(".todo-due-input-hidden");
+      const startTimeInput = tr.querySelector(".todo-start-time-input");
+      const endTimeInput = tr.querySelector(".todo-end-time-input");
+      const doneCheck = tr.querySelector(".todo-done-check");
+      const payload = {
+        taskId,
+        sectionId: taskData.sectionId || "",
+        name: (nameInput?.value || "").trim(),
+        startDate: startInput?.value || "",
+        dueDate: dueInput?.value || "",
+        startTime: startTimeInput?.value || "",
+        endTime: endTimeInput?.value || "",
+        done: doneCheck?.checked || false,
+        itemType: tr.dataset.itemType || "todo",
+        isKpiTodo: !!isKpiTodo,
+        kpiTodoId: kpiTodoId || "",
+        storageKey: storageKey || "",
+      };
+      e.dataTransfer.setData(DRAG_TYPE_TODO_TO_CALENDAR, JSON.stringify(payload));
+      e.dataTransfer.effectAllowed = "move";
+    });
+  }
+
   return tr;
 }
 
 function createSection(section, options = {}) {
-  const { lastColHeader = "분류", initialTasks = [], showCategoryCol = false, sectionIdForAdd = null, hideCategoryCol = true, tabMode = false, onBraindumpMutate = null, showCheckboxTypeMenu = null } = options;
+  const { lastColHeader = "분류", initialTasks = [], showCategoryCol = false, sectionIdForAdd = null, hideCategoryCol = true, tabMode = false, onBraindumpMutate = null, showCheckboxTypeMenu = null, enableDragToCalendar = false } = options;
   const sectionId = sectionIdForAdd ?? section.id;
 
   const wrap = document.createElement("div");
@@ -955,7 +1226,7 @@ function createSection(section, options = {}) {
   initialTasks.forEach((t) => {
     const taskId = t.taskId || getTaskId(t);
     t.taskId = taskId;
-    const tr = createTaskRow(t, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, onBraindumpMutate, showCheckboxTypeMenu });
+    const tr = createTaskRow(t, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, onBraindumpMutate, showCheckboxTypeMenu, enableDragToCalendar });
     tr.dataset.sectionId = t.sectionId || "";
     tbody.appendChild(tr);
     const container = tr.querySelector(".todo-subtasks-container");
@@ -986,14 +1257,14 @@ function createSection(section, options = {}) {
   addRow.querySelector(".todo-add-btn").addEventListener("click", () => {
     const taskData = showCategoryCol
       ? {
-          sectionId: SECTIONS[0]?.id || "",
-          sectionLabel: SECTIONS[0]?.label || "",
+          sectionId: getSections()[0]?.id || "",
+          sectionLabel: getSections()[0]?.label || "",
           classification: section.id,
         }
       : { sectionId };
     const taskId = getTaskId(taskData);
     taskData.taskId = taskId;
-    const tr = createTaskRow(taskData, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, onBraindumpMutate, showCheckboxTypeMenu });
+    const tr = createTaskRow(taskData, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, onBraindumpMutate, showCheckboxTypeMenu, enableDragToCalendar });
     tbody.insertBefore(tr, addRow);
     updateCount();
     const nameInput = tr.querySelector(".todo-cell-name input");
@@ -1017,7 +1288,7 @@ function createSection(section, options = {}) {
 
 function collectTasksFromDOM(sectionsEl) {
   const tasks = [];
-  const sectionIds = new Set(SECTIONS.map((s) => s.id));
+  const sectionIds = new Set(getSections().map((s) => s.id));
   sectionsEl?.querySelectorAll(".todo-section").forEach((sec) => {
     const secId = sec.dataset.section;
     const isCategoryView = sectionIds.has(secId);
@@ -1031,7 +1302,7 @@ function collectTasksFromDOM(sectionsEl) {
       const catInput = catCell?.querySelector(".todo-category-input");
       const doneCheck = row.querySelector(".todo-done-check");
       const rowSectionId = row.dataset.sectionId || secId;
-      const sectionLabel = SECTIONS.find((s) => s.id === rowSectionId)?.label || "";
+      const sectionLabel = getSections().find((s) => s.id === rowSectionId)?.label || "";
       const classification = catCell
         ? (isCategoryView ? (catInput ? catInput.value : catCell?.textContent || "").trim() : secId)
         : secId;
@@ -1058,11 +1329,11 @@ function collectTasksFromDOM(sectionsEl) {
 }
 
 function renderSections(container, tasksData = [], options = {}) {
-  const { tabMode = false, showCheckboxTypeMenu = null } = options;
+  const { tabMode = false, showCheckboxTypeMenu = null, enableDragToCalendar = false } = options;
   const onBraindumpMutate = () => saveBraindumpTasks(collectBraindumpFromDOM(container));
   container.innerHTML = "";
   const results = [];
-  SECTIONS.forEach((section) => {
+  getSections().forEach((section) => {
     const sectionTasks = tasksData.filter((t) => t.sectionId === section.id);
     const { wrap, updateCount } = createSection(section, {
       lastColHeader: "분류",
@@ -1073,6 +1344,7 @@ function renderSections(container, tasksData = [], options = {}) {
       tabMode,
       onBraindumpMutate: section.id === "braindump" ? onBraindumpMutate : null,
       showCheckboxTypeMenu,
+      enableDragToCalendar,
     });
     container.appendChild(wrap);
     results.push({ section, wrap, updateCount });
@@ -1081,7 +1353,7 @@ function renderSections(container, tasksData = [], options = {}) {
 }
 
 export function render(options = {}) {
-  const { hideToolbar = false } = options;
+  const { hideToolbar = false, enableDragToCalendar = false } = options;
   const el = document.createElement("div");
   el.className = "app-tab-panel-content todo-list-view";
 
@@ -1154,15 +1426,11 @@ export function render(options = {}) {
   const tabButtons = [];
   const colors = getTodoSettings().sectionColors;
 
+  const BRAINDUMP_TAB_COLOR = "#9ca3af";
   function applyTabColors(sectionColors) {
     tabButtons.forEach((btn) => {
       const secId = btn.dataset.section;
-      if (secId === "braindump") {
-        btn.style.borderLeft = "";
-        btn.style.paddingLeft = "";
-        return;
-      }
-      const c = sectionColors?.[secId];
+      const c = secId === "braindump" ? BRAINDUMP_TAB_COLOR : sectionColors?.[secId];
       if (c) {
         btn.style.borderLeft = `3px solid ${c}`;
         btn.style.paddingLeft = "calc(1rem - 3px)";
@@ -1173,13 +1441,13 @@ export function render(options = {}) {
     });
   }
 
-  SECTIONS.forEach((section) => {
+  getSections().forEach((section) => {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "todo-category-tab";
     btn.dataset.section = section.id;
     btn.innerHTML = `<span class="todo-category-tab-label">${section.label}</span> <span class="todo-category-tab-count">0</span>`;
-    const c = section.id !== "braindump" ? colors[section.id] : null;
+    const c = section.id === "braindump" ? BRAINDUMP_TAB_COLOR : colors[section.id];
     if (c) {
       btn.style.borderLeft = `3px solid ${c}`;
       btn.style.paddingLeft = "calc(1rem - 3px)";
@@ -1187,7 +1455,150 @@ export function render(options = {}) {
     tabButtons.push(btn);
     categoryTabs.appendChild(btn);
   });
+
+  const addTabBtn = document.createElement("button");
+  addTabBtn.type = "button";
+  addTabBtn.className = "todo-category-tab todo-category-tab-add";
+  addTabBtn.title = "리스트 추가";
+  addTabBtn.innerHTML = '<span class="todo-category-tab-add-icon">+</span>';
+  addTabBtn.addEventListener("click", () => {
+    showAddListModal({
+      validate: (name) => {
+        if (!name || !name.trim()) return "리스트 이름을 입력하세요.";
+        if (getCustomSections().some((s) => s.label === name.trim())) return "같은 이름의 리스트가 이미 있습니다.";
+        return null;
+      },
+      onSuccess: (name) => {
+        const newSection = addCustomSection(name.trim());
+        if (!newSection) return;
+        const colors = getTodoSettings().sectionColors;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "todo-category-tab";
+        btn.dataset.section = newSection.id;
+        btn.innerHTML = `<span class="todo-category-tab-label">${newSection.label}</span> <span class="todo-category-tab-count">0</span>`;
+        const c = colors[newSection.id];
+        if (c) {
+          btn.style.borderLeft = `3px solid ${c}`;
+          btn.style.paddingLeft = "calc(1rem - 3px)";
+        }
+        tabButtons.push(btn);
+        categoryTabs.insertBefore(btn, addTabBtn);
+
+        const { wrap, updateCount } = createSection(newSection, {
+          lastColHeader: "분류",
+          initialTasks: [],
+          showCategoryCol: false,
+          sectionIdForAdd: newSection.id,
+          hideCategoryCol: true,
+          tabMode: true,
+          onBraindumpMutate: null,
+          showCheckboxTypeMenu,
+          enableDragToCalendar,
+        });
+        wrap.classList.remove("is-active");
+        sectionResults.push({ section: newSection, wrap, updateCount });
+        sectionsWrap.appendChild(wrap);
+
+        observer.observe(wrap.querySelector("tbody"), { childList: true });
+
+        const newIndex = tabButtons.length - 2;
+        btn.addEventListener("click", () => {
+          activeSectionIndex = newIndex;
+          tabButtons.forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          sectionResults.forEach((r, idx) => {
+            r.wrap.classList.toggle("is-active", idx === newIndex);
+          });
+        });
+
+        activeSectionIndex = newIndex;
+        tabButtons.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        sectionResults.forEach((r, idx) => {
+          r.wrap.classList.toggle("is-active", idx === newIndex);
+        });
+        updateTabLabels();
+      },
+    });
+  });
+  categoryTabs.appendChild(addTabBtn);
   el.appendChild(categoryTabs);
+
+  const listTabContextMenu = document.createElement("div");
+  listTabContextMenu.className = "todo-list-tab-context-menu";
+  listTabContextMenu.hidden = true;
+  listTabContextMenu.innerHTML = `
+    <button type="button" class="todo-list-tab-context-menu-item" data-action="edit">편집</button>
+    <button type="button" class="todo-list-tab-context-menu-item" data-action="delete">삭제</button>
+  `;
+  document.body.appendChild(listTabContextMenu);
+
+  let listTabContextTarget = null;
+  const hideListTabMenu = () => {
+    listTabContextMenu.hidden = true;
+    listTabContextTarget = null;
+  };
+  listTabContextMenu.querySelector('[data-action="edit"]').addEventListener("click", () => {
+    if (!listTabContextTarget) return;
+    const sectionId = listTabContextTarget.dataset.section;
+    const section = getCustomSections().find((s) => s.id === sectionId);
+    if (!section) return;
+    hideListTabMenu();
+    showEditListModal({
+      sectionId,
+      currentLabel: section.label,
+      onSuccess: (updated) => {
+        listTabContextTarget.querySelector(".todo-category-tab-label").textContent = updated.label;
+      },
+    });
+  });
+  listTabContextMenu.querySelector('[data-action="delete"]').addEventListener("click", () => {
+    if (!listTabContextTarget) return;
+    const tabToRemove = listTabContextTarget;
+    const sectionId = tabToRemove.dataset.section;
+    const section = getCustomSections().find((s) => s.id === sectionId);
+    if (!section) return;
+    hideListTabMenu();
+    showConfirmModal({
+      title: "리스트 삭제",
+      message: `"${section.label}" 리스트를 삭제하시겠습니까?`,
+      confirmText: "삭제",
+      cancelText: "취소",
+      onConfirm: () => {
+        const tabIndex = tabButtons.indexOf(tabToRemove);
+        removeCustomSection(sectionId);
+        removeCustomSectionTasks(sectionId);
+        const panelResult = sectionResults.find((r) => r.wrap.dataset.section === sectionId);
+        if (panelResult) {
+          panelResult.wrap.remove();
+          sectionResults.splice(sectionResults.indexOf(panelResult), 1);
+        }
+        tabToRemove.remove();
+        tabButtons.splice(tabIndex, 1);
+        if (activeSectionIndex >= tabIndex) activeSectionIndex = Math.max(0, activeSectionIndex - 1);
+        if (activeSectionIndex >= tabButtons.length) activeSectionIndex = tabButtons.length - 1;
+        tabButtons.forEach((b, i) => b.classList.toggle("active", i === activeSectionIndex));
+        sectionResults.forEach((r, i) => r.wrap.classList.toggle("is-active", i === activeSectionIndex));
+        updateTabLabels();
+      },
+    });
+  });
+  document.addEventListener("click", hideListTabMenu);
+  document.addEventListener("contextmenu", hideListTabMenu);
+
+  categoryTabs.addEventListener("contextmenu", (e) => {
+    const tab = e.target.closest(".todo-category-tab:not(.todo-category-tab-add)");
+    if (!tab) return;
+    const sectionId = tab.dataset.section;
+    if (!sectionId || !sectionId.startsWith("custom-")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    listTabContextTarget = tab;
+    listTabContextMenu.hidden = false;
+    listTabContextMenu.style.left = `${e.clientX}px`;
+    listTabContextMenu.style.top = `${e.clientY}px`;
+  });
 
   const sectionsWrap = document.createElement("div");
   sectionsWrap.className = "todo-sections-wrap todo-tab-panels";
@@ -1198,8 +1609,9 @@ export function render(options = {}) {
 
   const kpiTasks = getKpiTodosAsTasks();
   const braindumpTasks = loadBraindumpTasks();
-  const allTasks = [...braindumpTasks, ...kpiTasks];
-  const sectionResults = renderSections(sectionsWrap, allTasks, { tabMode: true, showCheckboxTypeMenu });
+  const customTasks = getCustomSections().flatMap((s) => loadCustomSectionTasks(s.id));
+  const allTasks = [...braindumpTasks, ...kpiTasks, ...customTasks];
+  const sectionResults = renderSections(sectionsWrap, allTasks, { tabMode: true, showCheckboxTypeMenu, enableDragToCalendar });
 
   function updateTabLabels() {
     tabButtons.forEach((btn, i) => {

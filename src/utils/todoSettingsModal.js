@@ -4,15 +4,19 @@
  * - 리스트별 색상 설정 (파스텔 프리셋 + HEX 입력)
  */
 
-import { getTodoSettings, saveTodoSettings, PASTEL_PRESETS, DEFAULT_SECTION_COLORS } from "./todoSettings.js";
+import { getTodoSettings, saveTodoSettings, PASTEL_PRESETS, DEFAULT_SECTION_COLORS, getCustomSections, getCustomSectionColor } from "./todoSettings.js";
 
-const SECTIONS = [
+const FIXED_SECTIONS = [
   { id: "braindump", label: "브레인덤프" },
   { id: "dream", label: "꿈" },
   { id: "sideincome", label: "부수입" },
   { id: "health", label: "건강" },
   { id: "happy", label: "행복" },
 ];
+
+function getSections() {
+  return [...FIXED_SECTIONS.filter((s) => s.id !== "braindump"), ...getCustomSections()];
+}
 
 function hexToRgba(hex, alpha = 0.6) {
   const m = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i) || hex.match(/^#?([a-f\d])([a-f\d])([a-f\d])$/i);
@@ -46,7 +50,8 @@ function createColorPickerRow(sectionId, label, currentColor, onChange) {
   const swatchesEl = row.querySelector(".todo-settings-color-swatches");
   const hexInput = row.querySelector(".todo-settings-color-hex");
 
-  let selectedColor = currentColor || DEFAULT_SECTION_COLORS[sectionId];
+  const defaultColor = DEFAULT_SECTION_COLORS[sectionId] || getCustomSectionColor(sectionId);
+  let selectedColor = currentColor || defaultColor;
 
   PASTEL_PRESETS.forEach((preset) => {
     const btn = document.createElement("button");
@@ -181,7 +186,7 @@ export function createTodoSettingsModal(options = {}) {
   });
   togglesEl.appendChild(clearBtnRow);
 
-  SECTIONS.filter((sec) => sec.id !== "braindump").forEach((sec) => {
+  getSections().forEach((sec) => {
     const row = createColorPickerRow(sec.id, sec.label, sectionColors[sec.id], (color) => {
       sectionColors[sec.id] = color;
     });

@@ -2,29 +2,102 @@
  * 할일목록 환경설정 - localStorage
  */
 const TODO_SETTINGS_KEY = "todo-settings";
+const CUSTOM_SECTIONS_KEY = "todo-custom-sections";
 
+/** 리스트 기본 색상 (파스텔 톤) */
 export const DEFAULT_SECTION_COLORS = {
-  braindump: "rgba(148, 163, 184, 0.5)",
-  happy: "rgba(253, 186, 116, 0.5)",
-  dream: "rgba(147, 197, 253, 0.5)",
-  sideincome: "rgba(190, 242, 100, 0.5)",
-  health: "rgba(253, 164, 175, 0.5)",
+  braindump: "rgba(245, 239, 239, 0.6)",
+  dream: "rgba(224, 238, 245, 0.6)",
+  sideincome: "rgba(231, 242, 207, 0.6)",
+  health: "rgba(245, 224, 233, 0.6)",
+  happy: "rgba(244, 227, 201, 0.6)",
 };
 
-/** 파스텔톤 고투명도 프리셋 */
+/** 커스텀 리스트용 기본 색상 풀 */
+const CUSTOM_SECTION_COLOR_POOL = [
+  "rgba(245, 239, 239, 0.6)",
+  "rgba(245, 224, 233, 0.6)",
+  "rgba(244, 217, 206, 0.6)",
+  "rgba(244, 227, 201, 0.6)",
+  "rgba(224, 238, 245, 0.6)",
+  "rgba(231, 242, 207, 0.6)",
+  "rgba(238, 237, 255, 0.6)",
+];
+
+export function getCustomSections() {
+  try {
+    const raw = localStorage.getItem(CUSTOM_SECTIONS_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return arr;
+    }
+  } catch (_) {}
+  return [];
+}
+
+export function addCustomSection(label) {
+  const trimmed = (label || "").trim();
+  if (!trimmed) return null;
+  const existing = getCustomSections();
+  if (existing.some((s) => s.label === trimmed)) return null;
+  const id = `custom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const newSection = { id, label: trimmed };
+  existing.push(newSection);
+  try {
+    localStorage.setItem(CUSTOM_SECTIONS_KEY, JSON.stringify(existing));
+    const settings = getTodoSettings();
+    const color = CUSTOM_SECTION_COLOR_POOL[existing.length % CUSTOM_SECTION_COLOR_POOL.length];
+    saveTodoSettings({ ...settings, sectionColors: { ...settings.sectionColors, [id]: color } });
+  } catch (_) {
+    return null;
+  }
+  return newSection;
+}
+
+export function removeCustomSection(sectionId) {
+  const existing = getCustomSections().filter((s) => s.id !== sectionId);
+  try {
+    localStorage.setItem(CUSTOM_SECTIONS_KEY, JSON.stringify(existing));
+  } catch (_) {}
+  return existing;
+}
+
+export function updateCustomSectionLabel(sectionId, newLabel) {
+  const trimmed = (newLabel || "").trim();
+  if (!trimmed) return null;
+  const existing = getCustomSections();
+  const idx = existing.findIndex((s) => s.id === sectionId);
+  if (idx < 0) return null;
+  if (existing.some((s) => s.label === trimmed && s.id !== sectionId)) return null;
+  existing[idx] = { ...existing[idx], label: trimmed };
+  try {
+    localStorage.setItem(CUSTOM_SECTIONS_KEY, JSON.stringify(existing));
+  } catch (_) {
+    return null;
+  }
+  return existing[idx];
+}
+
+export function getCustomSectionColor(sectionId) {
+  const settings = getTodoSettings();
+  return settings.sectionColors[sectionId] || CUSTOM_SECTION_COLOR_POOL[Math.abs(hashCode(sectionId)) % CUSTOM_SECTION_COLOR_POOL.length];
+}
+
+function hashCode(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h << 5) - h + str.charCodeAt(i);
+  return h;
+}
+
+/** 파스텔톤 색상 프리셋 (#F5EFEF, #F5E0E9, #F4D9CE, #F4E3C9, #E0EEF5, #E7F2CF, #EEEDFF) */
 export const PASTEL_PRESETS = [
-  "rgba(255, 182, 193, 0.6)",
-  "rgba(255, 218, 185, 0.6)",
-  "rgba(255, 239, 213, 0.6)",
-  "rgba(255, 228, 196, 0.6)",
-  "rgba(221, 160, 221, 0.6)",
-  "rgba(176, 224, 230, 0.6)",
-  "rgba(173, 216, 230, 0.6)",
-  "rgba(144, 238, 144, 0.6)",
-  "rgba(152, 251, 152, 0.6)",
-  "rgba(255, 255, 224, 0.6)",
-  "rgba(255, 228, 181, 0.6)",
-  "rgba(230, 230, 250, 0.6)",
+  "rgba(245, 239, 239, 0.6)",
+  "rgba(245, 224, 233, 0.6)",
+  "rgba(244, 217, 206, 0.6)",
+  "rgba(244, 227, 201, 0.6)",
+  "rgba(224, 238, 245, 0.6)",
+  "rgba(231, 242, 207, 0.6)",
+  "rgba(238, 237, 255, 0.6)",
 ];
 
 export function getTodoSettings() {

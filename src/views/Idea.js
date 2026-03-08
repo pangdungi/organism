@@ -7,7 +7,7 @@ export const APP_FONT_KEY = "app_font_family";
 
 export const FONT_OPTIONS = [
   { value: "scdream3", label: "에스코어 드림 3" },
-  { value: "leeseoyun", label: "이서윤체" },
+  { value: "nexonlv2", label: "NEXON Lv2 Gothic" },
   { value: "pretendard", label: "Pretendard" },
 ];
 
@@ -17,16 +17,16 @@ export function applyAppFont() {
     let fontFamily = '"S-Core Dream 3", -apple-system, sans-serif';
     if (saved === "scdream2" || saved === "scdream3") {
       fontFamily = '"S-Core Dream 3", -apple-system, sans-serif';
-    } else if (saved === "leeseoyun") {
-      fontFamily = '"이서윤체", -apple-system, sans-serif';
+    } else if (saved === "nexonlv2" || saved === "leeseoyun") {
+      fontFamily = '"NEXON Lv2 Gothic", -apple-system, sans-serif';
     } else if (saved === "pretendard") {
       fontFamily = '"Pretendard", -apple-system, sans-serif';
     } else {
       fontFamily = '"Noto Sans KR", -apple-system, sans-serif';
     }
     document.documentElement.style.setProperty("--app-font-family", fontFamily);
-    if (saved === "leeseoyun") {
-      document.documentElement.dataset.appFont = "leeseoyun";
+    if (saved === "nexonlv2" || saved === "leeseoyun") {
+      document.documentElement.dataset.appFont = "nexonlv2";
     } else if (saved === "pretendard") {
       document.documentElement.dataset.appFont = "pretendard";
     } else {
@@ -54,13 +54,14 @@ export function render() {
 
   // ----- 기본정보 위젯 -----
   const basicInfoWidget = document.createElement("div");
-  basicInfoWidget.className = "time-dashboard-widget idea-widget idea-widget-basic";
+  basicInfoWidget.className =
+    "time-dashboard-widget idea-widget idea-widget-basic";
   const savedFont = (() => {
     try {
       const v = localStorage.getItem(APP_FONT_KEY);
-      if (v === "leeseoyun") return "leeseoyun";
+      if (v === "nexonlv2" || v === "leeseoyun") return "nexonlv2";
       if (v === "pretendard") return "pretendard";
-      return v === "scdream2" ? "scdream3" : (v || "scdream3");
+      return v === "scdream2" ? "scdream3" : v || "scdream3";
     } catch (_) {
       return "scdream3";
     }
@@ -88,7 +89,8 @@ export function render() {
 
   // ----- 나의 시급계산하기 위젯 -----
   const hourlyWidget = document.createElement("div");
-  hourlyWidget.className = "time-dashboard-widget idea-widget idea-widget-hourly";
+  hourlyWidget.className =
+    "time-dashboard-widget idea-widget idea-widget-hourly";
   hourlyWidget.innerHTML = `
     <div class="time-dashboard-widget-title">나의 시급계산하기</div>
     <div class="idea-hourly-tabs">
@@ -141,7 +143,9 @@ export function render() {
   const amountInput = hourlyWidget.querySelector(".idea-input-amount");
   const hoursInput = hourlyWidget.querySelector(".idea-input-hours");
   const monthlyInput = hourlyWidget.querySelector(".idea-input-monthly");
-  const freelanceHoursInput = hourlyWidget.querySelector(".idea-input-freelance-hours");
+  const freelanceHoursInput = hourlyWidget.querySelector(
+    ".idea-input-freelance-hours",
+  );
   const projectInput = hourlyWidget.querySelector(".idea-input-project-fee");
   const durationInput = hourlyWidget.querySelector(".idea-input-duration");
   const resultValue = hourlyWidget.querySelector(".idea-hourly-result-value");
@@ -150,7 +154,9 @@ export function render() {
   let mode = "salary"; // salary | freelance
 
   function parseNumber(str) {
-    const cleaned = String(str || "").replace(/,/g, "").replace(/\s/g, "");
+    const cleaned = String(str || "")
+      .replace(/,/g, "")
+      .replace(/\s/g, "");
     const n = parseFloat(cleaned);
     return Number.isNaN(n) ? 0 : n;
   }
@@ -169,7 +175,9 @@ export function render() {
     mode = m;
     tabs.forEach((t) => t.classList.toggle("active", t.dataset.mode === m));
     salaryRows.forEach((r) => (r.style.display = m === "salary" ? "" : "none"));
-    freelanceRows.forEach((r) => (r.style.display = m === "freelance" ? "" : "none"));
+    freelanceRows.forEach(
+      (r) => (r.style.display = m === "freelance" ? "" : "none"),
+    );
     resultValue.textContent = "—";
   }
 
@@ -231,7 +239,14 @@ export function render() {
   } catch (_) {}
 
   calcBtn.addEventListener("click", calculateHourly);
-  [hoursInput, amountInput, monthlyInput, freelanceHoursInput, projectInput, durationInput].forEach((inp) => {
+  [
+    hoursInput,
+    amountInput,
+    monthlyInput,
+    freelanceHoursInput,
+    projectInput,
+    durationInput,
+  ].forEach((inp) => {
     if (inp) {
       inp.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
