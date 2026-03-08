@@ -6,7 +6,7 @@
 
 import { render as renderTodoList, saveTodoListBeforeUnmount, DRAG_TYPE_TODO_TO_CALENDAR } from "./TodoList.js";
 import { getKpiTodosAsTasks, addCalendarTodoToSection, addCalendarTodoToBraindump, syncKpiTodoCompleted, updateKpiTodo } from "../utils/kpiTodoSync.js";
-import { getSectionColor } from "../utils/todoSettings.js";
+import { getSectionColor, getCustomSections } from "../utils/todoSettings.js";
 
 const BRAINDUMP_STORAGE_KEY = "todo-braindump-tasks";
 const CUSTOM_SECTION_TASKS_KEY = "todo-custom-section-tasks";
@@ -155,6 +155,29 @@ function updateCustomSectionTaskDates(sectionId, taskId, startDate, dueDate) {
   return false;
 }
 
+function addCalendarTodoToCustomSection(sectionId, taskData) {
+  try {
+    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
+    const obj = raw ? JSON.parse(raw) : {};
+    if (!obj[sectionId]) obj[sectionId] = [];
+    const arr = obj[sectionId];
+    const taskId = taskData.taskId || `task-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    arr.push({
+      taskId,
+      name: (taskData.name || "").trim(),
+      startDate: (taskData.startDate || "").slice(0, 10) || "",
+      dueDate: (taskData.dueDate || "").slice(0, 10) || "",
+      startTime: taskData.startTime || "",
+      endTime: taskData.endTime || "",
+      done: !!taskData.done,
+      itemType: taskData.itemType || "todo",
+    });
+    localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(obj));
+    return true;
+  } catch (_) {}
+  return false;
+}
+
 function addDaysToDateKey(dateKey, days) {
   const d = new Date(dateKey + "T12:00:00");
   d.setDate(d.getDate() + days);
@@ -182,10 +205,38 @@ function getBraindumpTasksForDate(dateKey) {
   return [];
 }
 
+function getCustomSectionTasksForDate(dateKey) {
+  const out = [];
+  try {
+    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
+    if (!raw) return out;
+    const obj = JSON.parse(raw);
+    getCustomSections().forEach((sec) => {
+      const arr = obj[sec.id];
+      if (!Array.isArray(arr)) return;
+      arr
+        .filter((t) => (t.name || "").trim() !== "" && (t.dueDate || "").slice(0, 10) === dateKey)
+        .forEach((t) =>
+          out.push({
+            name: t.name,
+            startDate: (t.startDate || "").slice(0, 10),
+            dueDate: (t.dueDate || "").slice(0, 10),
+            sectionId: sec.id,
+            itemType: t.itemType || "todo",
+            done: !!t.done,
+            taskId: t.taskId || "",
+          })
+        );
+    });
+  } catch (_) {}
+  return out;
+}
+
 function getTasksForDate(dateKey, excludeSpanningTasks = false) {
   const kpiTasks = getKpiTodosAsTasks().filter((t) => (t.dueDate || "").slice(0, 10) === dateKey);
   const braindumpTasks = getBraindumpTasksForDate(dateKey);
-  let tasks = [...braindumpTasks, ...kpiTasks];
+  const customTasks = getCustomSectionTasksForDate(dateKey);
+  let tasks = [...braindumpTasks, ...kpiTasks, ...customTasks];
   if (excludeSpanningTasks) {
     tasks = tasks.filter((t) => !((t.startDate || "").slice(0, 10) && (t.dueDate || "").slice(0, 10)));
   }
@@ -232,8 +283,32 @@ function getAllTasksWithDateRange() {
       }
     }
   } catch (_) {}
+  const customRange = [];
+  try {
+    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
+    if (raw) {
+      const obj = JSON.parse(raw);
+      getCustomSections().forEach((sec) => {
+        const arr = obj[sec.id];
+        if (!Array.isArray(arr)) return;
+        arr
+          .filter((t) => (t.name || "").trim() !== "" && (t.startDate || "").slice(0, 10) && (t.dueDate || "").slice(0, 10))
+          .forEach((t) =>
+            customRange.push({
+              name: t.name,
+              startDate: (t.startDate || "").slice(0, 10),
+              dueDate: (t.dueDate || "").slice(0, 10),
+              sectionId: sec.id,
+              itemType: t.itemType || "todo",
+              done: !!t.done,
+              taskId: t.taskId || "",
+            })
+          );
+      });
+    }
+  } catch (_) {}
   const kpiWithRange = kpi.filter((t) => (t.startDate || "").slice(0, 10) && (t.dueDate || "").slice(0, 10)).map((t) => ({ ...t, startDate: (t.startDate || "").slice(0, 10), dueDate: (t.dueDate || "").slice(0, 10) }));
-  return [...braindump, ...kpiWithRange];
+  return [...braindump, ...kpiWithRange, ...customRange];
 }
 
 function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
@@ -375,7 +450,10 @@ function createCalendarBarDateEditBubble(clientX, clientY, barData, onSave, onCl
       </div>
       <div class="calendar-bar-date-edit-row">
         <label class="calendar-event-bubble-label">시작일</label>
-        <input type="date" class="calendar-bar-date-edit-input" data-field="start" value="${startVal}" />
+        <div class="calendar-bar-date-edit-input-wrap">
+          <input type="date" class="calendar-bar-date-edit-input" data-field="start" value="${startVal}" />
+          <button type="button" class="calendar-bar-date-edit-clear" title="시작일 제거 (단일일로 변경)">×</button>
+        </div>
       </div>
       <div class="calendar-bar-date-edit-row">
         <label class="calendar-event-bubble-label">마감일</label>
@@ -402,6 +480,12 @@ function createCalendarBarDateEditBubble(clientX, clientY, barData, onSave, onCl
 
   const startInput = bubble.querySelector('input[data-field="start"]');
   const dueInput = bubble.querySelector('input[data-field="due"]');
+  bubble.querySelector(".calendar-bar-date-edit-clear")?.addEventListener("click", () => {
+    if (startInput) {
+      startInput.value = "";
+      if (dueInput) dueInput.min = "";
+    }
+  });
   startInput?.addEventListener("change", () => {
     if (dueInput && startInput.value) dueInput.min = startInput.value;
   });
@@ -414,11 +498,11 @@ function createCalendarBarDateEditBubble(clientX, clientY, barData, onSave, onCl
   bubble.querySelector(".calendar-event-bubble-save").addEventListener("click", () => {
     const newStart = (startInput?.value || "").trim().slice(0, 10);
     const newDue = (dueInput?.value || "").trim().slice(0, 10);
-    if (!newStart || !newDue) {
-      alert("시작일과 마감일을 모두 입력해 주세요.");
+    if (!newDue) {
+      alert("마감일을 입력해 주세요.");
       return;
     }
-    if (newStart > newDue) {
+    if (newStart && newStart > newDue) {
       alert("시작일은 마감일보다 이전이어야 합니다.");
       return;
     }
@@ -429,6 +513,18 @@ function createCalendarBarDateEditBubble(clientX, clientY, barData, onSave, onCl
       ok = updateBraindumpTaskDates(barData.taskId, newStart, newDue);
     } else if (barData.sectionId === "braindump") {
       ok = updateBraindumpTaskDatesByName(barData.name, barData.startDate, barData.dueDate, newStart, newDue);
+    } else if (barData.sectionId?.startsWith("custom-")) {
+      ok = updateCustomSectionTaskDates(barData.sectionId, barData.taskId, newStart, newDue);
+      if (!ok && (barData.name || "").trim()) {
+        ok = addCalendarTodoToCustomSection(barData.sectionId, {
+          taskId: barData.taskId,
+          name: barData.name,
+          startDate: newStart,
+          dueDate: newDue,
+          done: !!barData.done,
+          itemType: barData.itemType || "todo",
+        });
+      }
     }
     if (ok) {
       onSave?.();
@@ -602,8 +698,18 @@ function renderMonthlyView(tabsElement) {
             } else {
               ok = updateBraindumpTaskDatesByName(payload.name, oldStart, oldDue, newStart, newDue);
             }
-          } else if (payload.sectionId && payload.sectionId.startsWith("custom-") && payload.taskId) {
+          } else if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
             ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
+            if (!ok && (payload.name || "").trim()) {
+              ok = addCalendarTodoToCustomSection(payload.sectionId, {
+                taskId: payload.taskId,
+                name: payload.name,
+                startDate: newStart,
+                dueDate: newDue,
+                done: !!payload.done,
+                itemType: payload.itemType || "todo",
+              });
+            }
           } else if (["dream", "sideincome", "health", "happy"].includes(payload.sectionId) && (payload.name || "").trim()) {
             const result = addCalendarTodoToSection(payload.sectionId, { text: (payload.name || "").trim(), dueDate: newDue, itemType: payload.itemType || "todo" });
             ok = !!result.success;
@@ -831,8 +937,18 @@ function renderMonthlyView(tabsElement) {
           } else {
             ok = updateBraindumpTaskDatesByName(payload.name, oldStart, oldDue, newStart, newDue);
           }
-        } else if (payload.sectionId && payload.sectionId.startsWith("custom-") && payload.taskId) {
+        } else if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
           ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
+          if (!ok && (payload.name || "").trim()) {
+            ok = addCalendarTodoToCustomSection(payload.sectionId, {
+              taskId: payload.taskId,
+              name: payload.name,
+              startDate: newStart,
+              dueDate: newDue,
+              done: !!payload.done,
+              itemType: payload.itemType || "todo",
+            });
+          }
         } else if (["dream", "sideincome", "health", "happy"].includes(payload.sectionId) && (payload.name || "").trim()) {
           const result = addCalendarTodoToSection(payload.sectionId, { text: (payload.name || "").trim(), dueDate: newDue, itemType: payload.itemType || "todo" });
           ok = !!result.success;

@@ -1133,9 +1133,10 @@ function createTaskRow(taskData = {}, options = {}) {
       const startTimeInput = tr.querySelector(".todo-start-time-input");
       const endTimeInput = tr.querySelector(".todo-end-time-input");
       const doneCheck = tr.querySelector(".todo-done-check");
+      const rowSectionId = taskData.sectionId || tr.dataset.sectionId || tr.closest(".todo-section")?.dataset?.section || "";
       const payload = {
         taskId,
-        sectionId: taskData.sectionId || "",
+        sectionId: rowSectionId,
         name: (nameInput?.value || "").trim(),
         startDate: startInput?.value || "",
         dueDate: dueInput?.value || "",
