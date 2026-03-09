@@ -12550,7 +12550,7 @@ body.kpi-resizing {
   -ms-overflow-style: none;
   position: relative;
   padding-bottom: 0.25rem;
-  border-bottom: 1px solid #e5e7eb;
+  /* border-bottom 제거 - 더 아래 선 제거 */
 }
 
 .dream-tabs-wrap::-webkit-scrollbar {
@@ -12574,7 +12574,7 @@ body.kpi-resizing {
   color: #6b7280;
   background: #f9fafb;
   border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  border-radius: 6px 6px 0 0 !important; /* 윗부분 모서리만 둥글게 (전역 reset 덮어쓰기) */
   font-family: inherit;
   cursor: pointer;
   transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
@@ -12612,6 +12612,8 @@ body.kpi-resizing {
 .dream-tab.active {
   background: #fff;
   border-color: #d1d5db;
+  border-bottom: 1px solid #fff; /* 밑선 제거 - 유지 */
+  border-radius: 6px 6px 0 0 !important; /* 윗부분 모서리만 둥글게 (전역 reset 덮어쓰기) */
   color: #1a1a2e;
   font-weight: 500;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
