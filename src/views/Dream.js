@@ -4,7 +4,7 @@
  */
 
 import { toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay } from "../utils/ganttModal.js";
-import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes } from "../utils/timeKpiSync.js";
+import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
 import { getSubtasks, addSubtask, updateSubtask, removeSubtask } from "../utils/todoSubtasks.js";
 
 const DREAM_MAP_STORAGE_KEY = "kpi-dream-map";
@@ -328,6 +328,7 @@ export function render() {
         targetValue: sanitizeNumericInput(form.targetValue.value) || "",
         targetStartDate: (form.targetStartDate?.value || "").trim() || "",
         targetDeadline: (form.targetDeadline.value || "").trim() || "",
+        needHabitTracker: !!form.needHabitTracker?.checked,
       };
       const data = loadDreamMap();
       data.kpis = data.kpis || [];
@@ -431,6 +432,7 @@ export function render() {
         target.targetValue = sanitizeNumericInput(form.targetValue.value) || "";
         target.targetStartDate = (form.targetStartDate?.value || "").trim() || "";
         target.targetDeadline = (form.targetDeadline.value || "").trim() || "";
+        target.needHabitTracker = !!form.needHabitTracker?.checked;
         saveDreamMap(data);
         if (oldName !== target.name) syncKpiToTimeTask(target, "update", oldName);
       }
@@ -622,6 +624,7 @@ export function render() {
   }
 
   function renderKpiList() {
+    syncHabitTrackerLogs();
     contentWrap.innerHTML = "";
     if (!activeDreamId) return;
     const data = loadDreamMap();

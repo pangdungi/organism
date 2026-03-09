@@ -95,3 +95,89 @@ export function getKpiSyncedTaskNames() {
   });
   return names;
 }
+
+/** YYYY-MM-DD → "YYYY. MM. DD." */
+function toDisplayDate(dateRaw) {
+  if (!dateRaw || dateRaw.length < 10) return "";
+  const parts = String(dateRaw).replace(/\//g, "-").split("-");
+  if (parts.length < 3) return dateRaw;
+  return `${parts[0]}. ${parts[1]}. ${parts[2]}.`;
+}
+
+/** 로그 날짜를 YYYY-MM-DD로 정규화 */
+function normalizeLogDate(val) {
+  if (!val || typeof val !== "string") return "";
+  const s = val.trim().replace(/\//g, "-");
+  const m = s.match(/(\d{4})[.\-\s]*(\d{1,2})[.\-\s]*(\d{1,2})/);
+  if (m) return `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`;
+  return s.slice(0, 10);
+}
+
+function nextLogId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+/**
+ * 매일 반복(needHabitTracker) KPI: 시간가계부 과제 기록이 있으면 해당 날짜 KPI 로그에 자동 연동
+ * saveTimeRows 호출 후 실행
+ */
+export function syncHabitTrackerLogs() {
+  const rows = loadTimeRows();
+  const taskByDate = new Map();
+  rows.forEach((r) => {
+    const name = (r.taskName || "").trim();
+    const dateRaw = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    if (!name || !dateRaw || dateRaw.length < 10) return;
+    if (!(r.timeTracked || "").trim()) return;
+    const key = `${name}|${dateRaw}`;
+    if (!taskByDate.has(key)) taskByDate.set(key, { taskName: name, dateRaw });
+  });
+
+  const STORAGE_CONFIG = [
+    { key: "kpi-dream-map", kpiKey: "dreamId", idKey: "dreamId" },
+    { key: "kpi-sideincome-paths", kpiKey: "pathId", idKey: "pathId" },
+    { key: "kpi-happiness-map", kpiKey: "happinessId", idKey: "happinessId" },
+    { key: "kpi-health-map", kpiKey: "healthId", idKey: "healthId" },
+  ];
+
+  STORAGE_CONFIG.forEach(({ key, kpiKey, idKey }) => {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      const kpis = data.kpis || [];
+      const logs = data.kpiLogs || [];
+      const existingLogKeys = new Set(
+        logs.map((l) => `${l.kpiId}|${normalizeLogDate(l.dateRaw || l.date || "")}`),
+      );
+
+      let changed = false;
+      taskByDate.forEach(({ taskName, dateRaw }) => {
+        const matchingKpis = kpis.filter((k) => (k.name || "").trim() === taskName);
+        matchingKpis.forEach((kpi) => {
+        const logKey = `${kpi.id}|${dateRaw}`;
+        if (existingLogKeys.has(logKey)) return;
+
+        const dateDisplay = toDisplayDate(dateRaw);
+        logs.push({
+          id: nextLogId(),
+          kpiId: kpi.id,
+          [idKey]: kpi[kpiKey],
+          date: dateDisplay,
+          dateRaw,
+          value: "1",
+          status: "순항",
+          memo: "",
+        });
+        existingLogKeys.add(logKey);
+        changed = true;
+        });
+      });
+
+      if (changed) {
+        data.kpiLogs = logs;
+        localStorage.setItem(key, JSON.stringify(data));
+      }
+    } catch (_) {}
+  });
+}

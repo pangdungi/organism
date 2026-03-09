@@ -16,7 +16,7 @@ import {
   addEmotionEntry,
   TAB3_EMOTION_TEMPLATE,
 } from "../diaryData.js";
-import { getKpiSyncedTaskNames } from "../utils/timeKpiSync.js";
+import { getKpiSyncedTaskNames, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
 
 const PRODUCTIVITY_OPTIONS = [
   { value: "productive", label: "생산적", color: "prod-pink" },
@@ -284,6 +284,7 @@ function saveTimeRows(rows) {
   try {
     const arr = Array.isArray(rows) ? rows : [];
     localStorage.setItem(TIME_ROWS_KEY, JSON.stringify(arr));
+    syncHabitTrackerLogs();
   } catch (_) {}
 }
 

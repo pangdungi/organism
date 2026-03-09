@@ -13364,8 +13364,13 @@ body.kpi-resizing {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  max-height: 180px;
+  max-height: 6.5rem;
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.dream-kpi-path-summary-logs::-webkit-scrollbar {
+  display: none;
 }
 .dream-kpi-path-log-item {
   display: flex;
