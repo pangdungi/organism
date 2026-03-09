@@ -3,7 +3,7 @@
  * 인생 KPI와 동일한 dream 데이터 사용 (kpi-dream-map)
  */
 
-import { showGanttModal, toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay } from "../utils/ganttModal.js";
+import { toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay } from "../utils/ganttModal.js";
 import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes } from "../utils/timeKpiSync.js";
 import { getSubtasks, addSubtask, updateSubtask, removeSubtask } from "../utils/todoSubtasks.js";
 
@@ -25,10 +25,11 @@ function loadDreamMap() {
         kpiTodos: parsed.kpiTodos || [],
         kpiOrder: parsed.kpiOrder || {},
         kpiTaskSync: parsed.kpiTaskSync || {},
+        desiredLife: parsed.desiredLife || "",
       };
     }
   } catch (_) {}
-  return { dreams: [], goals: [], tasks: [], kpis: [], kpiLogs: [], kpiTodos: [], kpiOrder: {}, kpiTaskSync: {} };
+  return { dreams: [], goals: [], tasks: [], kpis: [], kpiLogs: [], kpiTodos: [], kpiOrder: {}, kpiTaskSync: {}, desiredLife: "" };
 }
 
 function getTimeTaskOptionsRaw() {
@@ -214,23 +215,29 @@ export function render() {
 
   const btnRow = document.createElement("div");
   btnRow.className = "dream-btn-row";
-  const addBtn = document.createElement("button");
-  addBtn.type = "button";
-  addBtn.className = "dream-add-btn";
-  addBtn.textContent = "꿈 목표 추가";
-  btnRow.appendChild(addBtn);
-  const ganttBtn = document.createElement("button");
-  ganttBtn.type = "button";
-  ganttBtn.className = "dream-gantt-btn";
-  ganttBtn.textContent = "간트 보기";
-  ganttBtn.addEventListener("click", () => showGanttModal());
-  btnRow.appendChild(ganttBtn);
+  const settingBtn = document.createElement("button");
+  settingBtn.type = "button";
+  settingBtn.className = "dream-setting-btn";
+  settingBtn.textContent = "꿈 설정하기";
+  settingBtn.addEventListener("click", () => showDesiredLifeModal());
+  btnRow.appendChild(settingBtn);
   el.appendChild(btnRow);
+
+  const desiredLifeWrap = document.createElement("div");
+  desiredLifeWrap.className = "dream-desired-life-wrap";
+  desiredLifeWrap.hidden = true;
+  el.appendChild(desiredLifeWrap);
 
   const tabsWrap = document.createElement("div");
   tabsWrap.className = "dream-tabs-wrap";
   const tabs = document.createElement("div");
   tabs.className = "dream-tabs";
+  const addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.className = "dream-add-icon-btn";
+  addBtn.title = "꿈 목표 추가";
+  addBtn.innerHTML = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="dream-add-icon" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>`;
+  addBtn.addEventListener("click", () => showDreamAddModal());
   tabsWrap.appendChild(tabs);
   el.appendChild(tabsWrap);
 
@@ -1203,6 +1210,72 @@ export function render() {
     document.body.appendChild(modal);
   }
 
+  function showDesiredLifeModal() {
+    const data = loadDreamMap();
+    const currentText = data.desiredLife || "";
+    const modal = document.createElement("div");
+    modal.className = "dream-kpi-modal";
+    modal.innerHTML = `
+      <div class="dream-kpi-backdrop"></div>
+      <div class="dream-kpi-panel">
+        <div class="dream-kpi-modal-header">
+          <h3 class="dream-kpi-modal-title">내가 원하는 삶</h3>
+          <button type="button" class="dream-kpi-modal-close" title="닫기">×</button>
+        </div>
+        <form class="dream-kpi-form">
+          <div class="dream-kpi-field">
+            <label>원하는 삶을 자유롭게 적어보세요</label>
+            <textarea name="desiredLife" rows="6" placeholder="예) 건강하게 오래 살고, 가족과 행복한 시간을 보내며, 하고 싶은 일을 하며 살고 싶습니다.">${escapeHtml(currentText)}</textarea>
+          </div>
+          <div class="dream-desired-life-modal-actions">
+            <button type="submit" class="dream-kpi-submit">저장</button>
+            ${currentText ? '<button type="button" class="dream-desired-life-delete-btn">삭제</button>' : ""}
+          </div>
+        </form>
+      </div>
+    `;
+    const close = () => modal.remove();
+    modal.querySelector(".dream-kpi-backdrop").addEventListener("click", close);
+    modal.querySelector(".dream-kpi-modal-close").addEventListener("click", close);
+    modal.querySelector("form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const val = (e.target.desiredLife.value || "").trim();
+      const d = loadDreamMap();
+      d.desiredLife = val;
+      saveDreamMap(d);
+      close();
+      updateDesiredLifeDisplay();
+    });
+    const deleteBtn = modal.querySelector(".dream-desired-life-delete-btn");
+    if (deleteBtn) {
+      deleteBtn.addEventListener("click", () => {
+        const d = loadDreamMap();
+        d.desiredLife = "";
+        saveDreamMap(d);
+        close();
+        updateDesiredLifeDisplay();
+      });
+    }
+    document.body.appendChild(modal);
+  }
+
+  function updateDesiredLifeDisplay() {
+    const data = loadDreamMap();
+    const text = (data.desiredLife || "").trim();
+    if (text) {
+      btnRow.hidden = true;
+      desiredLifeWrap.hidden = false;
+      desiredLifeWrap.innerHTML = `
+        <p class="dream-desired-life-text">${escapeHtml(text).replace(/\n/g, "<br>")}</p>
+        <button type="button" class="dream-desired-life-edit-btn" title="수정"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="dream-edit-icon" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m13.75 5.25 5 5"/><path d="m16.714 2.286-13.5 13.5-1.964 6.964 6.964-1.964 13.5-13.5c1.381-1.381 1.381-3.619 0-5-1.38-1.381-3.619-1.381-5 0z"/></g></svg></button>`;
+      desiredLifeWrap.querySelector(".dream-desired-life-edit-btn").addEventListener("click", () => showDesiredLifeModal());
+    } else {
+      btnRow.hidden = false;
+      desiredLifeWrap.hidden = true;
+      desiredLifeWrap.innerHTML = "";
+    }
+  }
+
   function renderTabs() {
     const data = loadDreamMap();
     tabs.innerHTML = "";
@@ -1222,6 +1295,7 @@ export function render() {
       });
       tabs.appendChild(tab);
     });
+    tabs.appendChild(addBtn);
   }
 
   function updateTitleAndContent() {
@@ -1240,6 +1314,7 @@ export function render() {
   addBtn.addEventListener("click", () => showDreamAddModal());
 
   renderTabs();
+  updateDesiredLifeDisplay();
   if (activeDreamId) {
     updateTitleAndContent();
   } else {
