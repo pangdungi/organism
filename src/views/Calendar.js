@@ -1739,8 +1739,9 @@ function render1DayView(tabsElement) {
         const kpiId = k.kpiId || "";
         const storageKey = k.storageKey || "";
         const todoCount = getKpiTodosForKpi(kpiId).length;
+        const investedMins = getAccumulatedMinutes(k.name);
         const targetMins = k.targetTimeRequired ? hhMmToMinutes(k.targetTimeRequired) : 0;
-        const accumulatedMins = targetMins > 0 ? getAccumulatedMinutes(k.name) : 0;
+        const accumulatedMins = targetMins > 0 ? investedMins : 0;
         const timeProgress = targetMins > 0 ? Math.min(100, (accumulatedMins / targetMins) * 100) : 0;
         const remainingMins = Math.max(0, targetMins - accumulatedMins);
         const timeCircleHtml =
@@ -1769,11 +1770,11 @@ function render1DayView(tabsElement) {
             <div class="dream-kpi-card-name">${escapeHtml(k.name)}</div>
             <div class="dream-kpi-card-target-num">${k.targetValue ? escapeHtml(String(k.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) + (k.unit ? '<span class="dream-kpi-card-unit"> ' + escapeHtml(k.unit) + "</span>" : "") : "—"}</div>
             ${(k.targetStartDate || k.targetDeadline) ? `<div class="dream-kpi-card-deadline">목표기한 ${escapeHtml(formatDeadlineRangeForDisplay(k.targetStartDate, k.targetDeadline))}</div>` : ""}
-            ${k.targetTimeRequired ? `<div class="dream-kpi-card-time">목표시간 ${escapeHtml(k.targetTimeRequired)}</div>` : ""}
             <div class="dream-kpi-card-progress">
               <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${k.progress}%"></div></div>
               <div class="dream-kpi-card-progress-text">${escapeHtml(k.progressText)}</div>
             </div>
+            <div class="dream-kpi-card-invested">지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span></div>
             ${timeCircleHtml}
           </div>
           <button type="button" class="calendar-kpi-card-todos-toggle">할일 (${todoCount}개)</button>

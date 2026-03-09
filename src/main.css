@@ -12878,6 +12878,18 @@ body.kpi-resizing {
   margin-bottom: 0.75rem;
 }
 
+.dream-kpi-card-invested {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 0.5rem;
+}
+
+.dream-kpi-card-invested-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #374151;
+}
+
 .dream-kpi-card-progress {
   margin-bottom: 0.75rem;
 }
@@ -13921,6 +13933,26 @@ body.kpi-resizing {
   color: #6b7280;
 }
 
+.dream-kpi-field-checkbox {
+  margin-top: 0.25rem;
+}
+
+.dream-kpi-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.dream-kpi-checkbox-label input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  cursor: pointer;
+}
+
 .dream-kpi-form input,
 .dream-kpi-form textarea,
 .dream-kpi-form select {
@@ -14064,10 +14096,6 @@ body.kpi-resizing {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
-}
-
-.dream-kpi-form input[name="targetTimeRequired"] {
-  min-width: 0;
 }
 
 .dream-desired-life-modal-actions {

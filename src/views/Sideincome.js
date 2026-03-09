@@ -288,15 +288,11 @@ export function render() {
               </div>
             </div>
           </div>
-          <div class="dream-kpi-row">
-            <div class="dream-kpi-field">
-              <label>행동 단위시간 (분단위)</label>
-              <input type="text" name="actionUnitMinutes" placeholder="예) 30" inputmode="numeric" />
-            </div>
-            <div class="dream-kpi-field">
-              <label>목표달성을 위한 총 시간</label>
-              <input type="text" name="targetTimeRequired" placeholder="예) 02:30 (자동계산 또는 직접입력)" />
-            </div>
+          <div class="dream-kpi-field dream-kpi-field-checkbox">
+            <label class="dream-kpi-checkbox-label">
+              매일 반복
+              <input type="checkbox" name="needHabitTracker" />
+            </label>
           </div>
           <button type="submit" class="dream-kpi-submit">KPI 등록하기</button>
         </form>
@@ -316,8 +312,6 @@ export function render() {
         targetValue: sanitizeNumericInput(form.targetValue.value) || "",
         targetStartDate: (form.targetStartDate?.value || "").trim() || "",
         targetDeadline: (form.targetDeadline.value || "").trim() || "",
-        targetTimeRequired: (form.targetTimeRequired?.value || "").trim() || "",
-        actionUnitMinutes: parseInt((form.actionUnitMinutes?.value || "").trim(), 10) || null,
       };
       const data = loadSideincomeMap();
       data.kpis = data.kpis || [];
@@ -332,10 +326,7 @@ export function render() {
     });
     document.body.appendChild(modal);
     setupNumericOnlyInput(modal.querySelector('input[name="targetValue"]'));
-    setupNumericOnlyInput(modal.querySelector('input[name="actionUnitMinutes"]'));
-    setupTimeOnlyInput(modal.querySelector('input[name="targetTimeRequired"]'));
     setupDeadlineQuickButtons(modal);
-    setupActionUnitTimeCalc(modal);
   }
 
   function showKpiEditModal(kpi) {
@@ -381,15 +372,11 @@ export function render() {
               </div>
             </div>
           </div>
-          <div class="dream-kpi-row">
-            <div class="dream-kpi-field">
-              <label>행동 단위시간 (분단위)</label>
-              <input type="text" name="actionUnitMinutes" value="${escapeHtml(kpi.actionUnitMinutes != null ? String(kpi.actionUnitMinutes) : "")}" placeholder="예) 30" inputmode="numeric" />
-            </div>
-            <div class="dream-kpi-field">
-              <label>목표달성을 위한 총 시간</label>
-              <input type="text" name="targetTimeRequired" value="${escapeHtml(kpi.targetTimeRequired || "")}" placeholder="예) 02:30 (자동계산 또는 직접입력)" />
-            </div>
+          <div class="dream-kpi-field dream-kpi-field-checkbox">
+            <label class="dream-kpi-checkbox-label">
+              매일 반복
+              <input type="checkbox" name="needHabitTracker" ${kpi.needHabitTracker ? "checked" : ""} />
+            </label>
           </div>
           <button type="submit" class="dream-kpi-submit">수정</button>
           <div class="dream-kpi-delete-wrap">
@@ -428,9 +415,6 @@ export function render() {
         target.targetValue = sanitizeNumericInput(form.targetValue.value) || "";
         target.targetStartDate = (form.targetStartDate?.value || "").trim() || "";
         target.targetDeadline = (form.targetDeadline.value || "").trim() || "";
-        target.targetTimeRequired = (form.targetTimeRequired?.value || "").trim() || "";
-        const unitVal = parseInt((form.actionUnitMinutes?.value || "").trim(), 10);
-        target.actionUnitMinutes = unitVal > 0 ? unitVal : null;
         saveSideincomeMap(data);
         if (oldName !== target.name) syncKpiToTimeTask(target, "update", oldName);
       }
@@ -440,10 +424,7 @@ export function render() {
     });
     document.body.appendChild(modal);
     setupNumericOnlyInput(modal.querySelector('input[name="targetValue"]'));
-    setupNumericOnlyInput(modal.querySelector('input[name="actionUnitMinutes"]'));
-    setupTimeOnlyInput(modal.querySelector('input[name="targetTimeRequired"]'));
     setupDeadlineQuickButtons(modal);
-    setupActionUnitTimeCalc(modal);
   }
 
   function toDateStr(d) {
@@ -824,6 +805,7 @@ export function render() {
     const listToShow = kpiFilter === "active" ? activeKpis : kpiFilter === "completed" ? completedKpis : pathKpis;
     listToShow.forEach((kpi) => {
       const { progress, timeProgress, currentVal, targetVal, targetMins, accumulatedMins } = getKpiProgress(kpi);
+      const investedMins = getAccumulatedMinutes(kpi.name);
       const unitSuffix = kpi.unit ? " " + kpi.unit : "";
       const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
       const currentStr = formatNum(currentVal);
@@ -859,11 +841,11 @@ export function render() {
           <div class="dream-kpi-card-name">${escapeHtml(kpi.name)}</div>
           <div class="dream-kpi-card-target-num">${kpi.targetValue ? escapeHtml(String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) + (kpi.unit ? '<span class="dream-kpi-card-unit"> ' + escapeHtml(kpi.unit) + "</span>" : "") : "—"}</div>
           ${(kpi.targetStartDate || kpi.targetDeadline) ? `<div class="dream-kpi-card-deadline">목표기한 ${escapeHtml(formatDeadlineRangeForDisplay(kpi.targetStartDate, kpi.targetDeadline))}</div>` : ""}
-          ${kpi.targetTimeRequired ? `<div class="dream-kpi-card-time">목표시간 ${escapeHtml(kpi.targetTimeRequired)}</div>` : ""}
           <div class="dream-kpi-card-progress">
             <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${progress}%"></div></div>
             <div class="dream-kpi-card-progress-text">${escapeHtml(progressText)}</div>
           </div>
+          <div class="dream-kpi-card-invested">지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span></div>
           ${timeCircleHtml}
         </div>
       `;
@@ -946,6 +928,7 @@ export function render() {
       });
       completedKpis.forEach((kpi) => {
         const { currentVal, targetVal, targetMins, accumulatedMins } = getKpiProgress(kpi);
+        const investedMins = getAccumulatedMinutes(kpi.name);
         const unitSuffix = kpi.unit ? " " + kpi.unit : "";
         const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
         const currentStr = formatNum(currentVal);
@@ -978,11 +961,11 @@ export function render() {
             <div class="dream-kpi-card-name">${escapeHtml(kpi.name)}</div>
             <div class="dream-kpi-card-target-num">${kpi.targetValue ? escapeHtml(String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) + (kpi.unit ? '<span class="dream-kpi-card-unit"> ' + escapeHtml(kpi.unit) + "</span>" : "") : "—"}</div>
             ${(kpi.targetStartDate || kpi.targetDeadline) ? `<div class="dream-kpi-card-deadline">목표기한 ${escapeHtml(formatDeadlineRangeForDisplay(kpi.targetStartDate, kpi.targetDeadline))}</div>` : ""}
-            ${kpi.targetTimeRequired ? `<div class="dream-kpi-card-time">목표시간 ${escapeHtml(kpi.targetTimeRequired)}</div>` : ""}
             <div class="dream-kpi-card-progress">
               <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:100%"></div></div>
               <div class="dream-kpi-card-progress-text">${escapeHtml(progressText)} ✓</div>
             </div>
+            <div class="dream-kpi-card-invested">지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span></div>
             ${timeCircleHtml}
           </div>
         `;
