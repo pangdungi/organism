@@ -1561,7 +1561,6 @@ export function render() {
   viewTabs.className = "time-view-tabs";
   viewTabs.innerHTML = `
     <button type="button" class="time-view-tab active" data-view="all">시간 기록</button>
-    <button type="button" class="time-view-tab" data-view="blank">새 탭</button>
     <button type="button" class="time-view-tab" data-view="productivity">생산성별</button>
     <button type="button" class="time-view-tab" data-view="dashboard">대시보드</button>
     <button type="button" class="time-view-tab" data-view="newtab">일간시간예산</button>

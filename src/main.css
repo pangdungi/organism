@@ -5596,7 +5596,6 @@ body {
   gap: 0.25rem;
   flex-wrap: nowrap;
   margin-bottom: 0.5rem;
-  border-bottom: 1px solid #e5e7eb;
   font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
   overflow-x: auto;
   overflow-y: hidden;
@@ -5615,10 +5614,9 @@ body {
   color: #888;
   background: none;
   border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
   cursor: pointer;
   font-family: inherit;
+  border-radius: 8px 8px 0 0 !important;
 }
 
 .todo-category-tab:hover {
@@ -5629,13 +5627,12 @@ body {
   color: #111;
   font-weight: 600;
   font-size: 1rem;
-  border-bottom-color: transparent;
-  background: #f9fafb;
-  border-radius: 8px 8px 0 0;
+  border-bottom: 1px solid #fff !important;
+  background: none;
+  border-radius: 8px 8px 0 0 !important;
   box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.04);
   position: relative;
   z-index: 1;
-  transform: translateY(-2px);
 }
 
 .todo-category-tab-count {
@@ -5654,15 +5651,18 @@ body {
 }
 
 .todo-category-tab-add:hover {
-  color: #111;
   background: rgba(0, 0, 0, 0.05);
   border-radius: 6px;
 }
 
+.todo-category-tab-add:hover .todo-category-tab-add-icon {
+  filter: brightness(0) saturate(100%) invert(35%);
+}
+
 .todo-category-tab-add-icon {
-  font-size: 1.2rem;
-  font-weight: 300;
-  line-height: 1;
+  display: block;
+  flex-shrink: 0;
+  filter: brightness(0) saturate(100%) invert(53%);
 }
 
 /* 할일 우클릭 컨텍스트 메뉴 - 리스트 이동 */
@@ -15907,13 +15907,6 @@ body.kpi-resizing {
   gap: 0.1rem;
 }
 
-.calendar-1week-view .calendar-1week-header-expect {
-  font-size: 0.65rem;
-  color: #6b7280;
-  font-weight: 500;
-}
-
-
 .calendar-1week-view .calendar-1week-slot-not-first {
   border-left: 1px solid #e5e7eb;
 }
@@ -17023,7 +17016,6 @@ body.kpi-resizing {
 
 .todo-list-in-sidebar .todo-category-tab.active {
   font-size: 0.9rem;
-  transform: translateY(-2px);
 }
 
 /* 사이드바에서는 시작일·마감일 열 숨김, 이름·KPI는 가로드래그로 확인 */

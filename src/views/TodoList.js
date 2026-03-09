@@ -1447,11 +1447,16 @@ export function render(options = {}) {
       const secId = btn.dataset.section;
       const c = sectionColors?.[secId];
       if (c) {
-        btn.style.borderLeft = `3px solid ${c}`;
-        btn.style.paddingLeft = "calc(1rem - 3px)";
+        btn.style.borderLeft = `1px solid ${c}`;
+        btn.style.borderTop = `1px solid ${c}`;
+        btn.style.borderRight = `1px solid ${c}`;
+        btn.style.borderBottom = `1px solid ${c}`;
+        btn.style.backgroundColor = "";
       } else {
         btn.style.borderLeft = "";
-        btn.style.paddingLeft = "";
+        btn.style.borderTop = "";
+        btn.style.borderRight = "";
+        btn.style.borderBottom = "";
       }
     });
   }
@@ -1464,8 +1469,10 @@ export function render(options = {}) {
     btn.innerHTML = `<span class="todo-category-tab-label">${section.label}</span> <span class="todo-category-tab-count">0</span>`;
     const c = colors[section.id];
     if (c) {
-      btn.style.borderLeft = `3px solid ${c}`;
-      btn.style.paddingLeft = "calc(1rem - 3px)";
+      btn.style.borderLeft = `1px solid ${c}`;
+      btn.style.borderTop = `1px solid ${c}`;
+      btn.style.borderRight = `1px solid ${c}`;
+      btn.style.borderBottom = `1px solid ${c}`;
     }
     tabButtons.push(btn);
     categoryTabs.appendChild(btn);
@@ -1475,7 +1482,7 @@ export function render(options = {}) {
   addTabBtn.type = "button";
   addTabBtn.className = "todo-category-tab todo-category-tab-add";
   addTabBtn.title = "리스트 추가";
-  addTabBtn.innerHTML = '<span class="todo-category-tab-add-icon">+</span>';
+  addTabBtn.innerHTML = '<img src="/toolbaricons/add-square.svg" alt="" class="todo-category-tab-add-icon" width="16" height="16">';
   addTabBtn.addEventListener("click", () => {
     showAddListModal({
       validate: (name) => {
@@ -1494,8 +1501,10 @@ export function render(options = {}) {
         btn.innerHTML = `<span class="todo-category-tab-label">${newSection.label}</span> <span class="todo-category-tab-count">0</span>`;
         const c = colors[newSection.id];
         if (c) {
-          btn.style.borderLeft = `3px solid ${c}`;
-          btn.style.paddingLeft = "calc(1rem - 3px)";
+          btn.style.borderLeft = `1px solid ${c}`;
+          btn.style.borderTop = `1px solid ${c}`;
+          btn.style.borderRight = `1px solid ${c}`;
+          btn.style.borderBottom = `1px solid ${c}`;
         }
         tabButtons.push(btn);
         categoryTabs.insertBefore(btn, addTabBtn);

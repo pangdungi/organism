@@ -2543,7 +2543,7 @@ function render1WeekView(tabsElement) {
       const dow = DAY_NAMES[getMondayBasedDow(date)];
       const headerCell = document.createElement("div");
       headerCell.className = "calendar-1day-time-header-cell calendar-1week-day-header" + (colIdx > 0 ? " calendar-1week-day-header-not-first" : "");
-      headerCell.innerHTML = `<span>${date.getMonth() + 1}/${date.getDate()} ${dow}</span><span class="calendar-1week-header-expect">예상</span>`;
+      headerCell.innerHTML = `<span>${date.getMonth() + 1}/${date.getDate()} ${dow}</span>`;
       headerCell.style.gridColumn = String(colIdx + 2);
       headerCell.style.gridRow = "1";
       timeTable.appendChild(headerCell);
