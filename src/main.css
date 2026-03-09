@@ -12591,6 +12591,7 @@ body.kpi-resizing {
 .dream-tab {
   display: flex;
   align-items: center;
+  cursor: pointer;
   gap: 0.35rem;
   flex-shrink: 0;
   padding: 0.5rem 1rem;
@@ -13961,8 +13962,15 @@ body.kpi-resizing {
 
 .dream-kpi-deadline-quick {
   display: flex;
+  flex-wrap: nowrap;
   gap: 0.35rem;
   margin-top: 0.35rem;
+}
+
+.dream-kpi-deadline-quick .dream-kpi-deadline-quick-btn,
+.dream-kpi-deadline-quick .dream-kpi-today-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .dream-kpi-deadline-quick-btn {

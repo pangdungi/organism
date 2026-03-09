@@ -3,7 +3,7 @@
  * 건강 추가 시 탭 형성, KPI 카드, 로그, 할일
  */
 
-import { showGanttModal, toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay } from "../utils/ganttModal.js";
+import { toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay } from "../utils/ganttModal.js";
 import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes } from "../utils/timeKpiSync.js";
 import { getSubtasks, addSubtask, updateSubtask, removeSubtask } from "../utils/todoSubtasks.js";
 
@@ -185,11 +185,12 @@ function setupDeadlineQuickButtons(modal) {
   modal.querySelectorAll(".dream-kpi-deadline-quick-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const days = parseInt(btn.dataset.days, 10);
+      const deadlineVal = deadlineInput?.value?.trim();
       const startVal = startInput?.value?.trim();
-      const baseDate = startVal ? new Date(startVal + "T12:00:00") : new Date();
+      const baseDate = deadlineVal ? new Date(deadlineVal + "T12:00:00") : (startVal ? new Date(startVal + "T12:00:00") : new Date());
       if (isNaN(baseDate.getTime())) return;
       const result = new Date(baseDate);
-      result.setDate(result.getDate() + days - 1);
+      result.setDate(result.getDate() + days);
       const y = result.getFullYear();
       const m = String(result.getMonth() + 1).padStart(2, "0");
       const d = String(result.getDate()).padStart(2, "0");
@@ -210,25 +211,19 @@ export function render() {
   title.textContent = "건강";
   el.appendChild(title);
 
-  const btnRow = document.createElement("div");
-  btnRow.className = "dream-btn-row";
-  const addBtn = document.createElement("button");
-  addBtn.type = "button";
-  addBtn.className = "dream-add-btn";
-  addBtn.textContent = "건강 목표 추가";
-  btnRow.appendChild(addBtn);
-  const ganttBtn = document.createElement("button");
-  ganttBtn.type = "button";
-  ganttBtn.className = "dream-gantt-btn";
-  ganttBtn.textContent = "간트 보기";
-  ganttBtn.addEventListener("click", () => showGanttModal());
-  btnRow.appendChild(ganttBtn);
-  el.appendChild(btnRow);
-
   const tabsWrap = document.createElement("div");
   tabsWrap.className = "dream-tabs-wrap";
   const tabs = document.createElement("div");
   tabs.className = "dream-tabs";
+  const addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.className = "dream-add-icon-btn";
+  addBtn.title = "건강 목표 추가";
+  addBtn.innerHTML = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="dream-add-icon" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>`;
+  addBtn.addEventListener("click", () => {
+    if (healthAddModalJustClosed) return;
+    showHealthAddModal();
+  });
   tabsWrap.appendChild(tabs);
   el.appendChild(tabsWrap);
 
@@ -245,6 +240,7 @@ export function render() {
   let selectedKpiId = null;
   let kpiFilter = "all";
   let completedSectionCollapsed = true;
+  let healthAddModalJustClosed = false;
 
   function showKpiModal() {
     if (!activeHealthId) return;
@@ -284,7 +280,6 @@ export function render() {
               <label>달성기한</label>
               <input type="date" name="targetDeadline" />
               <div class="dream-kpi-deadline-quick">
-                <button type="button" class="dream-kpi-today-btn" data-target="deadline">오늘</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="60">+60일</button>
@@ -378,7 +373,6 @@ export function render() {
               <label>달성기한</label>
               <input type="date" name="targetDeadline" value="${escapeHtml(toDateInputValue(kpi.targetDeadline))}" />
               <div class="dream-kpi-deadline-quick">
-                <button type="button" class="dream-kpi-today-btn" data-target="deadline">오늘</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="60">+60일</button>
@@ -1086,24 +1080,32 @@ export function render() {
             <label>건강 이름</label>
             <input type="text" name="name" placeholder="예) ADHD 인생관리 웹서비스 판매" />
           </div>
-          <button type="submit" class="dream-kpi-submit">확인</button>
+          <button type="button" class="dream-kpi-submit dream-add-confirm-btn">확인</button>
         </form>
       </div>
     `;
     const close = () => modal.remove();
     modal.querySelector(".dream-kpi-backdrop").addEventListener("click", close);
     modal.querySelector(".dream-kpi-modal-close").addEventListener("click", close);
-    modal.querySelector("form").addEventListener("submit", (e) => {
-      e.preventDefault();
-      const val = (e.target.name.value || "").trim() || "새 건강";
+    const form = modal.querySelector("form");
+    const confirmBtn = modal.querySelector(".dream-add-confirm-btn");
+    const doSubmit = () => {
+      const val = (form.name.value || "").trim() || "새 건강";
       const data = loadHealthMap();
       const health = { id: nextId(), name: val };
       data.healths.push(health);
       saveHealthMap(data);
       activeHealthId = health.id;
+      healthAddModalJustClosed = true;
       close();
       renderTabs();
       updateTitleAndContent();
+      setTimeout(() => { healthAddModalJustClosed = false; }, 300);
+    };
+    confirmBtn.addEventListener("click", doSubmit);
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      doSubmit();
     });
     document.body.appendChild(modal);
   }
@@ -1207,7 +1209,7 @@ export function render() {
       tab.className = "dream-tab" + (health.id === activeHealthId ? " active" : "");
       tab.dataset.healthId = health.id;
       tab.innerHTML = `<span class="dream-tab-text">${escapeHtml(health.name || "건강 이름")}</span>`;
-      tab.querySelector(".dream-tab-text").addEventListener("click", () => {
+      tab.addEventListener("click", () => {
         activeHealthId = health.id;
         renderTabs();
         updateTitleAndContent();
@@ -1218,6 +1220,7 @@ export function render() {
       });
       tabs.appendChild(tab);
     });
+    tabs.appendChild(addBtn);
   }
 
   function updateTitleAndContent() {
@@ -1232,8 +1235,6 @@ export function render() {
       contentWrap.hidden = true;
     }
   }
-
-  addBtn.addEventListener("click", () => showHealthAddModal());
 
   renderTabs();
   if (activeHealthId) {

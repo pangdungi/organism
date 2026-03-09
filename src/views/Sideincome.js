@@ -4,7 +4,7 @@
  * 탭 우클릭 시 이름 수정/삭제 모달
  */
 
-import { showGanttModal, toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay } from "../utils/ganttModal.js";
+import { toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay } from "../utils/ganttModal.js";
 import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes } from "../utils/timeKpiSync.js";
 import { getSubtasks, addSubtask, updateSubtask, removeSubtask } from "../utils/todoSubtasks.js";
 
@@ -187,11 +187,12 @@ function setupDeadlineQuickButtons(modal) {
   modal.querySelectorAll(".dream-kpi-deadline-quick-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const days = parseInt(btn.dataset.days, 10);
+      const deadlineVal = deadlineInput?.value?.trim();
       const startVal = startInput?.value?.trim();
-      const baseDate = startVal ? new Date(startVal + "T12:00:00") : new Date();
+      const baseDate = deadlineVal ? new Date(deadlineVal + "T12:00:00") : (startVal ? new Date(startVal + "T12:00:00") : new Date());
       if (isNaN(baseDate.getTime())) return;
       const result = new Date(baseDate);
-      result.setDate(result.getDate() + days - 1);
+      result.setDate(result.getDate() + days);
       const y = result.getFullYear();
       const m = String(result.getMonth() + 1).padStart(2, "0");
       const d = String(result.getDate()).padStart(2, "0");
@@ -212,25 +213,19 @@ export function render() {
   title.textContent = "부수입";
   el.appendChild(title);
 
-  const btnRow = document.createElement("div");
-  btnRow.className = "dream-btn-row";
-  const addBtn = document.createElement("button");
-  addBtn.type = "button";
-  addBtn.className = "dream-add-btn";
-  addBtn.textContent = "부수입 목표 추가";
-  btnRow.appendChild(addBtn);
-  const ganttBtn = document.createElement("button");
-  ganttBtn.type = "button";
-  ganttBtn.className = "dream-gantt-btn";
-  ganttBtn.textContent = "간트 보기";
-  ganttBtn.addEventListener("click", () => showGanttModal());
-  btnRow.appendChild(ganttBtn);
-  el.appendChild(btnRow);
-
   const tabsWrap = document.createElement("div");
   tabsWrap.className = "dream-tabs-wrap";
   const tabs = document.createElement("div");
   tabs.className = "dream-tabs";
+  const addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.className = "dream-add-icon-btn";
+  addBtn.title = "부수입 목표 추가";
+  addBtn.innerHTML = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="dream-add-icon" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>`;
+  addBtn.addEventListener("click", () => {
+    if (pathAddModalJustClosed) return;
+    showPathAddModal();
+  });
   tabsWrap.appendChild(tabs);
   el.appendChild(tabsWrap);
 
@@ -247,6 +242,7 @@ export function render() {
   let selectedKpiId = null;
   let kpiFilter = "all";
   let completedSectionCollapsed = true;
+  let pathAddModalJustClosed = false;
 
   function showKpiModal() {
     if (!activePathId) return;
@@ -286,7 +282,6 @@ export function render() {
               <label>달성기한</label>
               <input type="date" name="targetDeadline" />
               <div class="dream-kpi-deadline-quick">
-                <button type="button" class="dream-kpi-today-btn" data-target="deadline">오늘</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="60">+60일</button>
@@ -380,7 +375,6 @@ export function render() {
               <label>달성기한</label>
               <input type="date" name="targetDeadline" value="${escapeHtml(toDateInputValue(kpi.targetDeadline))}" />
               <div class="dream-kpi-deadline-quick">
-                <button type="button" class="dream-kpi-today-btn" data-target="deadline">오늘</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="60">+60일</button>
@@ -1346,7 +1340,7 @@ export function render() {
       tab.className = "dream-tab" + (path.id === activePathId ? " active" : "");
       tab.dataset.pathId = path.id;
       tab.innerHTML = `<span class="dream-tab-text">${escapeHtml(path.name || "새 경로")}</span>`;
-      tab.querySelector(".dream-tab-text").addEventListener("click", () => {
+      tab.addEventListener("click", () => {
         activePathId = path.id;
         renderTabs();
         updateTitleAndContent();
@@ -1357,6 +1351,7 @@ export function render() {
       });
       tabs.appendChild(tab);
     });
+    tabs.appendChild(addBtn);
   }
 
   function updateTitleAndContent() {
@@ -1371,8 +1366,6 @@ export function render() {
       contentWrap.hidden = true;
     }
   }
-
-  addBtn.addEventListener("click", () => showPathAddModal());
 
   function showPathAddModal() {
     const modal = document.createElement("div");
@@ -1416,9 +1409,11 @@ export function render() {
       data.paths.push(path);
       saveSideincomeMap(data);
       activePathId = path.id;
+      pathAddModalJustClosed = true;
       close();
       renderTabs();
       updateTitleAndContent();
+      setTimeout(() => { pathAddModalJustClosed = false; }, 300);
     });
     document.body.appendChild(modal);
     setupNumericOnlyInput(modal.querySelector('input[name="targetAmount"]'));
