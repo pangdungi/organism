@@ -24,10 +24,11 @@ function loadSideincomeMap() {
         kpiTodos: parsed.kpiTodos || [],
         kpiOrder: parsed.kpiOrder || {},
         kpiTaskSync: parsed.kpiTaskSync || {},
+        pathLogs: parsed.pathLogs || [],
       };
     }
   } catch (_) {}
-  return { paths: [], kpis: [], kpiLogs: [], kpiTodos: [], kpiOrder: {}, kpiTaskSync: {} };
+  return { paths: [], kpis: [], kpiLogs: [], kpiTodos: [], kpiOrder: {}, kpiTaskSync: {}, pathLogs: [] };
 }
 
 function getTimeTaskOptionsRaw() {
@@ -169,6 +170,20 @@ function setupActionUnitTimeCalc(modal) {
 function setupDeadlineQuickButtons(modal) {
   const startInput = modal.querySelector('input[name="targetStartDate"]');
   const deadlineInput = modal.querySelector('input[name="targetDeadline"]');
+  const todayStr = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  modal.querySelectorAll(".dream-kpi-today-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const target = btn.dataset.target;
+      const inp = target === "start" ? startInput : deadlineInput;
+      if (inp) {
+        inp.value = todayStr();
+        inp.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
+  });
   modal.querySelectorAll(".dream-kpi-deadline-quick-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const days = parseInt(btn.dataset.days, 10);
@@ -263,11 +278,15 @@ export function render() {
             <div class="dream-kpi-field">
               <label>시작기한</label>
               <input type="date" name="targetStartDate" />
+              <div class="dream-kpi-deadline-quick">
+                <button type="button" class="dream-kpi-today-btn" data-target="start">오늘</button>
+              </div>
             </div>
             <div class="dream-kpi-field">
               <label>달성기한</label>
               <input type="date" name="targetDeadline" />
               <div class="dream-kpi-deadline-quick">
+                <button type="button" class="dream-kpi-today-btn" data-target="deadline">오늘</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="60">+60일</button>
@@ -353,11 +372,15 @@ export function render() {
             <div class="dream-kpi-field">
               <label>시작기한</label>
               <input type="date" name="targetStartDate" value="${escapeHtml(toDateInputValue(kpi.targetStartDate))}" />
+              <div class="dream-kpi-deadline-quick">
+                <button type="button" class="dream-kpi-today-btn" data-target="start">오늘</button>
+              </div>
             </div>
             <div class="dream-kpi-field">
               <label>달성기한</label>
               <input type="date" name="targetDeadline" value="${escapeHtml(toDateInputValue(kpi.targetDeadline))}" />
               <div class="dream-kpi-deadline-quick">
+                <button type="button" class="dream-kpi-today-btn" data-target="deadline">오늘</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="60">+60일</button>
@@ -550,6 +573,112 @@ export function render() {
     setupNumericOnlyInput(modal.querySelector('input[name="value"]'));
   }
 
+  function showPathLogModal(path, editLog) {
+    const isEdit = !!editLog;
+    const modal = document.createElement("div");
+    modal.className = "dream-kpi-log-modal";
+    const today = new Date();
+    let dateVal = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
+    let valueVal = "";
+    let statusVal = "순항";
+    let memoVal = "";
+    if (editLog) {
+      if (editLog.dateRaw) {
+        dateVal = editLog.dateRaw;
+      } else if (editLog.date) {
+        const m = editLog.date.match(/(\d{4})\.?\s*(\d{1,2})\.?\s*(\d{1,2})/);
+        if (m) dateVal = `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+      }
+      valueVal = sanitizeNumericInput(editLog.value) || "";
+      statusVal = editLog.status || "순항";
+      memoVal = editLog.memo || "";
+    }
+    modal.innerHTML = `
+      <div class="dream-kpi-log-backdrop"></div>
+      <div class="dream-kpi-log-panel">
+        <div class="dream-kpi-log-header">
+          <h3 class="dream-kpi-log-title">${isEdit ? "부수입 로그 수정" : "부수입 로그 추가"}</h3>
+          <button type="button" class="dream-kpi-log-close" title="닫기">×</button>
+        </div>
+        <p class="dream-kpi-log-subtitle">${isEdit ? "기록을 수정합니다." : "부수입 경로에 수입 기록을 추가하세요."}</p>
+        <form class="dream-kpi-log-form">
+          <div class="dream-kpi-log-section">
+            <div class="dream-kpi-log-row">
+              <div class="dream-kpi-log-field">
+                <label>날짜</label>
+                <input type="date" name="date" value="${dateVal}" />
+              </div>
+              <div class="dream-kpi-log-field">
+                <label>경로</label>
+                <input type="text" value="${escapeHtml(path.name || "")}${path.unit ? " (" + escapeHtml(path.unit) + ")" : ""}" readonly class="dream-kpi-log-readonly" />
+              </div>
+            </div>
+            <div class="dream-kpi-log-row">
+              <div class="dream-kpi-log-field">
+                <label>금액</label>
+                <input type="text" name="value" placeholder="숫자 입력" value="${escapeHtml(valueVal)}" inputmode="numeric" />
+              </div>
+              <div class="dream-kpi-log-field">
+                <label>목표 대비 상태</label>
+                <div class="dream-kpi-log-status">
+                  <label class="dream-kpi-log-status-btn"><input type="radio" name="status" value="순항" ${statusVal === "순항" ? "checked" : ""} /><span>순항</span></label>
+                  <label class="dream-kpi-log-status-btn"><input type="radio" name="status" value="보통" ${statusVal === "보통" ? "checked" : ""} /><span>보통</span></label>
+                  <label class="dream-kpi-log-status-btn"><input type="radio" name="status" value="부진" ${statusVal === "부진" ? "checked" : ""} /><span>부진</span></label>
+                </div>
+              </div>
+            </div>
+            <div class="dream-kpi-log-field">
+              <label>메모 (선택)</label>
+              <textarea name="memo" placeholder="메모 등..." rows="3">${escapeHtml(memoVal)}</textarea>
+            </div>
+          </div>
+          <button type="submit" class="dream-kpi-log-submit">${isEdit ? "수정 저장" : "+ 로그 저장"}</button>
+        </form>
+      </div>
+    `;
+    const close = () => modal.remove();
+    modal.querySelector(".dream-kpi-log-backdrop").addEventListener("click", close);
+    modal.querySelector(".dream-kpi-log-close").addEventListener("click", close);
+    modal.querySelector(".dream-kpi-log-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const dateVal = form.date.value;
+      const dateStr = dateVal ? `${dateVal.split("-")[0]}. ${dateVal.split("-")[1]}. ${dateVal.split("-")[2]}.` : toDateStr(new Date());
+      const data = loadSideincomeMap();
+      if (isEdit) {
+        const idx = (data.pathLogs || []).findIndex((l) => l.id === editLog.id);
+        if (idx >= 0) {
+          data.pathLogs = data.pathLogs || [];
+          data.pathLogs[idx] = {
+            ...data.pathLogs[idx],
+            date: dateStr,
+            dateRaw: dateVal,
+            value: sanitizeNumericInput(form.value.value) || "",
+            status: form.status.value || "순항",
+            memo: (form.memo.value || "").trim(),
+          };
+        }
+      } else {
+        const log = {
+          id: nextId(),
+          pathId: path.id,
+          date: dateStr,
+          dateRaw: dateVal,
+          value: sanitizeNumericInput(form.value.value) || "",
+          status: form.status.value || "순항",
+          memo: (form.memo.value || "").trim(),
+        };
+        data.pathLogs = data.pathLogs || [];
+        data.pathLogs.push(log);
+      }
+      saveSideincomeMap(data);
+      close();
+      renderKpiList();
+    });
+    document.body.appendChild(modal);
+    setupNumericOnlyInput(modal.querySelector('input[name="value"]'));
+  }
+
   function getLatestKpiLog(kpiId) {
     const data = loadSideincomeMap();
     const logs = (data.kpiLogs || []).filter((l) => l.kpiId === kpiId);
@@ -629,6 +758,57 @@ export function render() {
     });
     const activeKpis = pathKpis.filter((k) => getKpiProgress(k).isInProgress);
     const completedKpis = pathKpis.filter((k) => getKpiProgress(k).isCompleted);
+
+    const path = data.paths.find((p) => p.id === activePathId);
+    const pathLogs = (data.pathLogs || []).filter((l) => l.pathId === activePathId);
+    const pathCurrentVal = pathLogs.reduce((sum, l) => sum + parseNum(l.value), 0);
+    const pathTargetVal = parseNum(path?.targetAmount);
+    const pathProgress = pathTargetVal > 0 ? Math.min(100, (pathCurrentVal / pathTargetVal) * 100) : 0;
+    const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
+    const pathUnit = path?.unit ? " " + path.unit : "";
+
+    if (path) {
+      const pathSummary = document.createElement("div");
+      pathSummary.className = "dream-kpi-path-summary";
+      pathSummary.innerHTML = `
+        <div class="dream-kpi-path-summary-header">
+          <span class="dream-kpi-path-summary-target">목표 ${path.targetAmount ? escapeHtml(String(path.targetAmount).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) : "—"}${pathUnit}</span>
+          <button type="button" class="dream-kpi-path-summary-log-btn">+ 로그</button>
+        </div>
+        <div class="dream-kpi-path-summary-progress">
+          <div class="dream-kpi-path-summary-bar"><div class="dream-kpi-path-summary-fill" style="width:${pathProgress}%"></div></div>
+          <div class="dream-kpi-path-summary-text">${formatNum(pathCurrentVal)} / ${path.targetAmount ? escapeHtml(String(path.targetAmount).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) : "—"}${pathUnit}</div>
+        </div>
+        <div class="dream-kpi-path-summary-logs"></div>
+      `;
+      pathSummary.querySelector(".dream-kpi-path-summary-log-btn").addEventListener("click", () => showPathLogModal(path));
+      const logsContainer = pathSummary.querySelector(".dream-kpi-path-summary-logs");
+      pathLogs.sort((a, b) => (b.dateRaw || b.date || "").localeCompare(a.dateRaw || a.date || ""));
+      pathLogs.forEach((log) => {
+        const item = document.createElement("div");
+        item.className = "dream-kpi-path-log-item";
+        item.innerHTML = `
+          <div class="dream-kpi-path-log-body">
+            <span class="dream-kpi-path-log-date">${escapeHtml(log.date)}</span>
+            <span class="dream-kpi-path-log-value">${escapeHtml(log.value || "—")}${pathUnit}</span>
+            ${log.memo ? `<div class="dream-kpi-path-log-memo">${escapeHtml(log.memo)}</div>` : ""}
+          </div>
+          <div class="dream-kpi-path-log-actions">
+            <button type="button" class="dream-kpi-path-log-edit">수정</button>
+            <button type="button" class="dream-kpi-path-log-del">삭제</button>
+          </div>
+        `;
+        item.querySelector(".dream-kpi-path-log-edit").addEventListener("click", () => showPathLogModal(path, log));
+        item.querySelector(".dream-kpi-path-log-del").addEventListener("click", () => {
+          const d = loadSideincomeMap();
+          d.pathLogs = (d.pathLogs || []).filter((l) => l.id !== log.id);
+          saveSideincomeMap(d);
+          renderKpiList();
+        });
+        logsContainer.appendChild(item);
+      });
+      contentWrap.appendChild(pathSummary);
+    }
 
     const filterBar = document.createElement("div");
     filterBar.className = "dream-kpi-filter-bar";
@@ -1081,6 +1261,7 @@ export function render() {
       d.kpis = (d.kpis || []).filter((k) => k.pathId !== pathId);
       d.kpiLogs = (d.kpiLogs || []).filter((l) => !kpiIds.includes(l.kpiId));
       d.kpiTodos = (d.kpiTodos || []).filter((t) => !kpiIds.includes(t.kpiId));
+      d.pathLogs = (d.pathLogs || []).filter((l) => l.pathId !== pathId);
       delete d.kpiOrder?.[pathId];
       d.kpiTaskSync = (d.kpiTaskSync || {});
       kpiIds.forEach((id) => delete d.kpiTaskSync[id]);
@@ -1110,6 +1291,16 @@ export function render() {
             <label>경로 이름</label>
             <input type="text" name="name" value="${escapeHtml(path.name || "")}" placeholder="부수입 경로 이름" />
           </div>
+          <div class="dream-kpi-row">
+            <div class="dream-kpi-field">
+              <label>목표 부수입</label>
+              <input type="text" name="targetAmount" value="${escapeHtml(path.targetAmount || "")}" placeholder="예) 1000000" inputmode="numeric" />
+            </div>
+            <div class="dream-kpi-field">
+              <label>단위</label>
+              <input type="text" name="unit" value="${escapeHtml(path.unit || "")}" placeholder="예) 원, 만원" />
+            </div>
+          </div>
           <button type="submit" class="dream-kpi-submit">수정</button>
         </form>
         <div class="dream-path-context-divider"></div>
@@ -1125,15 +1316,21 @@ export function render() {
     modal.querySelector("form").addEventListener("submit", (e) => {
       e.preventDefault();
       const val = (e.target.name.value || "").trim() || "새 경로";
+      const targetAmount = sanitizeNumericInput(e.target.targetAmount?.value) || "";
+      const unit = (e.target.unit?.value || "").trim() || "";
       const d = loadSideincomeMap();
       const target = d.paths.find((x) => x.id === path.id);
       if (target) {
         target.name = val;
+        target.targetAmount = targetAmount;
+        target.unit = unit;
         saveSideincomeMap(d);
         renderTabs();
+        renderKpiList();
       }
       close();
     });
+    setupNumericOnlyInput(modal.querySelector('input[name="targetAmount"]'));
     modal.querySelector('[data-action="delete"]').addEventListener("click", () => {
       close();
       showPathDeleteConfirmModal(path.id);
@@ -1192,6 +1389,16 @@ export function render() {
             <label>부수입 경로 이름</label>
             <input type="text" name="name" placeholder="예) ADHD 인생관리 웹서비스 판매" />
           </div>
+          <div class="dream-kpi-row">
+            <div class="dream-kpi-field">
+              <label>목표 부수입</label>
+              <input type="text" name="targetAmount" placeholder="예) 1000000" inputmode="numeric" />
+            </div>
+            <div class="dream-kpi-field">
+              <label>단위</label>
+              <input type="text" name="unit" placeholder="예) 원, 만원" />
+            </div>
+          </div>
           <button type="submit" class="dream-kpi-submit">확인</button>
         </form>
       </div>
@@ -1202,8 +1409,10 @@ export function render() {
     modal.querySelector("form").addEventListener("submit", (e) => {
       e.preventDefault();
       const val = (e.target.name.value || "").trim() || "새 경로";
+      const targetAmount = sanitizeNumericInput(e.target.targetAmount?.value) || "";
+      const unit = (e.target.unit?.value || "").trim() || "";
       const data = loadSideincomeMap();
-      const path = { id: nextId(), name: val };
+      const path = { id: nextId(), name: val, targetAmount, unit };
       data.paths.push(path);
       saveSideincomeMap(data);
       activePathId = path.id;
@@ -1212,6 +1421,7 @@ export function render() {
       updateTitleAndContent();
     });
     document.body.appendChild(modal);
+    setupNumericOnlyInput(modal.querySelector('input[name="targetAmount"]'));
   }
 
   renderTabs();

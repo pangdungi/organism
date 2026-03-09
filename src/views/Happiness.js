@@ -168,6 +168,20 @@ function setupActionUnitTimeCalc(modal) {
 function setupDeadlineQuickButtons(modal) {
   const startInput = modal.querySelector('input[name="targetStartDate"]');
   const deadlineInput = modal.querySelector('input[name="targetDeadline"]');
+  const todayStr = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  modal.querySelectorAll(".dream-kpi-today-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const target = btn.dataset.target;
+      const inp = target === "start" ? startInput : deadlineInput;
+      if (inp) {
+        inp.value = todayStr();
+        inp.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
+  });
   modal.querySelectorAll(".dream-kpi-deadline-quick-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const days = parseInt(btn.dataset.days, 10);
@@ -262,11 +276,15 @@ export function render() {
             <div class="dream-kpi-field">
               <label>시작기한</label>
               <input type="date" name="targetStartDate" />
+              <div class="dream-kpi-deadline-quick">
+                <button type="button" class="dream-kpi-today-btn" data-target="start">오늘</button>
+              </div>
             </div>
             <div class="dream-kpi-field">
               <label>달성기한</label>
               <input type="date" name="targetDeadline" />
               <div class="dream-kpi-deadline-quick">
+                <button type="button" class="dream-kpi-today-btn" data-target="deadline">오늘</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="60">+60일</button>
@@ -352,11 +370,15 @@ export function render() {
             <div class="dream-kpi-field">
               <label>시작기한</label>
               <input type="date" name="targetStartDate" value="${escapeHtml(toDateInputValue(kpi.targetStartDate))}" />
+              <div class="dream-kpi-deadline-quick">
+                <button type="button" class="dream-kpi-today-btn" data-target="start">오늘</button>
+              </div>
             </div>
             <div class="dream-kpi-field">
               <label>달성기한</label>
               <input type="date" name="targetDeadline" value="${escapeHtml(toDateInputValue(kpi.targetDeadline))}" />
               <div class="dream-kpi-deadline-quick">
+                <button type="button" class="dream-kpi-today-btn" data-target="deadline">오늘</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="60">+60일</button>

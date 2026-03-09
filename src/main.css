@@ -13216,6 +13216,117 @@ body.kpi-resizing {
   color: #9ca3af;
 }
 
+/* 부수입 Path 목표/프로그레스/로그 */
+.dream-kpi-path-summary {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+.dream-kpi-path-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+.dream-kpi-path-summary-target {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+.dream-kpi-path-summary-log-btn {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #374151;
+}
+.dream-kpi-path-summary-log-btn:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+.dream-kpi-path-summary-progress {
+  margin-bottom: 0.75rem;
+}
+.dream-kpi-path-summary-bar {
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.25rem;
+}
+.dream-kpi-path-summary-fill {
+  height: 100%;
+  background: #1a1a2e;
+  border-radius: 4px;
+  transition: width 0.2s ease;
+}
+.dream-kpi-path-summary-text {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+.dream-kpi-path-summary-logs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.dream-kpi-path-log-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+.dream-kpi-path-log-body {
+  flex: 1;
+  min-width: 0;
+}
+.dream-kpi-path-log-date {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin-right: 0.5rem;
+}
+.dream-kpi-path-log-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+.dream-kpi-path-log-memo {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+}
+.dream-kpi-path-log-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+.dream-kpi-path-log-edit,
+.dream-kpi-path-log-del {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-family: inherit;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #6b7280;
+}
+.dream-kpi-path-log-edit:hover,
+.dream-kpi-path-log-del:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  color: #374151;
+}
+
 /* KPI 필터 바 */
 .dream-kpi-filter-bar {
   display: flex;
@@ -13786,9 +13897,20 @@ body.kpi-resizing {
   cursor: pointer;
 }
 
-.dream-kpi-deadline-quick-btn:hover {
+.dream-kpi-deadline-quick-btn:hover,
+.dream-kpi-today-btn:hover {
   background: #e5e7eb;
   color: #374151;
+}
+
+.dream-kpi-today-btn {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  font-family: inherit;
+  color: #6b7280;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
 }
 
 /* 측정 주기 커스텀 드롭다운 - 화이트/회색/검정 */
