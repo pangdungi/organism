@@ -251,6 +251,26 @@ function getCalendarGridFor2Weeks(weekOffset = 0) {
   return grid;
 }
 
+/** 오늘을 포함한 3주 (월요일 시작, 3행 x 7열) */
+function getCalendarGridFor3Weeks(weekOffset = 0) {
+  const today = new Date();
+  const mondayDow = getMondayBasedDow(today);
+  const firstMonday = new Date(today);
+  firstMonday.setDate(today.getDate() - mondayDow + weekOffset * 21);
+
+  const grid = [];
+  for (let w = 0; w < 3; w++) {
+    const week = [];
+    for (let d = 0; d < 7; d++) {
+      const date = new Date(firstMonday);
+      date.setDate(firstMonday.getDate() + w * 7 + d);
+      week.push(date);
+    }
+    grid.push(week);
+  }
+  return grid;
+}
+
 /** 선택일 1일만 (1행 x 1열) - dayOffset: 0=오늘, 1=내일, -1=어제 */
 function getCalendarGridFor1Day(dayOffset = 0) {
   const today = new Date();
@@ -1310,7 +1330,7 @@ function render2WeekView(tabsElement) {
         }
         oldList.remove();
       }
-      const newList = renderTodoList({ hideToolbar: true, enableDragToCalendar: true, initialActiveTabIndex: activeIndex });
+      const newList = renderTodoList({ hideToolbar: true, enableDragToCalendar: true, initialActiveTabIndex: activeIndex, eisenhowerFilter: "important-not-urgent" });
       newList.classList.add("todo-list-in-sidebar");
       body.appendChild(newList);
     }
@@ -1726,14 +1746,502 @@ function render2WeekView(tabsElement) {
   let sidebarCollapsed = false;
   todoSidebar.innerHTML = `
     <div class="calendar-todo-sidebar-header">
-      <span class="calendar-todo-sidebar-title">할 일</span>
+      <span class="calendar-todo-sidebar-title">날짜 잡아서 해야 할일</span>
       <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
         <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
       </button>
     </div>
     <div class="calendar-todo-sidebar-body"></div>
   `;
-  const todoListEl = renderTodoList({ hideToolbar: true, enableDragToCalendar: true });
+  const todoListEl = renderTodoList({ hideToolbar: true, enableDragToCalendar: true, eisenhowerFilter: "important-not-urgent" });
+  todoListEl.classList.add("todo-list-in-sidebar");
+  todoSidebar.querySelector(".calendar-todo-sidebar-body").appendChild(todoListEl);
+  todoSidebar.querySelector(".calendar-todo-sidebar-collapse").addEventListener("click", () => {
+    sidebarCollapsed = !sidebarCollapsed;
+    todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
+    todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+  });
+  wrap.appendChild(todoSidebar);
+
+  wrap.addEventListener("dragend", () => {
+    wrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+  });
+
+  renderCalendar();
+
+  return wrap;
+}
+
+function render3WeekView(tabsElement) {
+  const wrap = document.createElement("div");
+  wrap.className = "calendar-monthly-layout";
+
+  let weekOffset = 0;
+
+  const calendarSection = document.createElement("div");
+  calendarSection.className = "calendar-monthly-main";
+
+  if (tabsElement) {
+    const tabsWrapper = document.createElement("div");
+    tabsWrapper.className = "calendar-monthly-tabs-wrap";
+    tabsWrapper.appendChild(tabsElement);
+    calendarSection.appendChild(tabsWrapper);
+  }
+
+  const nav = document.createElement("div");
+  nav.className = "calendar-nav";
+  nav.innerHTML = `
+    <span class="calendar-nav-date">
+      <span class="calendar-nav-month"></span>
+      <span class="calendar-nav-year"></span>
+    </span>
+    <div class="calendar-nav-controls">
+      <button type="button" class="calendar-nav-prev" title="이전 3주">‹</button>
+      <button type="button" class="calendar-nav-today" title="오늘">오늘</button>
+      <button type="button" class="calendar-nav-next" title="다음 3주">›</button>
+    </div>
+  `;
+  nav.classList.add("calendar-monthly-nav");
+
+  const calendarGrid = document.createElement("div");
+  calendarGrid.className = "calendar-monthly-grid";
+
+  function refreshTodoList() {
+    const body = wrap.querySelector(".calendar-todo-sidebar-body");
+    if (body) {
+      const oldList = body.querySelector(".todo-list-in-sidebar");
+      let activeIndex = 0;
+      if (oldList) {
+        const activeTab = oldList.querySelector(".todo-category-tab:not(.todo-category-tab-add).active");
+        const tabs = oldList.querySelectorAll(".todo-category-tab:not(.todo-category-tab-add)");
+        if (activeTab && tabs.length) {
+          const idx = Array.from(tabs).indexOf(activeTab);
+          if (idx >= 0) activeIndex = idx;
+        }
+        oldList.remove();
+      }
+      const newList = renderTodoList({ hideToolbar: true, enableDragToCalendar: true, initialActiveTabIndex: activeIndex, eisenhowerFilter: "important-not-urgent" });
+      newList.classList.add("todo-list-in-sidebar");
+      body.appendChild(newList);
+    }
+  }
+
+  function format3WeekNavRange(grid) {
+    if (!grid[0]?.[0] || !grid[2]?.[6]) return "";
+    const d1 = grid[0][0];
+    const d2 = grid[2][6];
+    const sameYear = d1.getFullYear() === d2.getFullYear();
+    const s1 = `${d1.getMonth() + 1}.${d1.getDate()}`;
+    const s2 = sameYear ? `${d2.getMonth() + 1}.${d2.getDate()}` : `${d2.getFullYear()}.${d2.getMonth() + 1}.${d2.getDate()}`;
+    return `${s1} ~ ${s2}`;
+  }
+
+  function renderCalendar() {
+    const grid = getCalendarGridFor3Weeks(weekOffset);
+    nav.querySelector(".calendar-nav-month").textContent = format3WeekNavRange(grid);
+    nav.querySelector(".calendar-nav-year").textContent = grid[0]?.[0] ? String(grid[0][0].getFullYear()) : "";
+
+    calendarGrid.innerHTML = "";
+
+    const dayHeader = document.createElement("div");
+    dayHeader.className = "calendar-monthly-weekdays";
+    DAY_NAMES.forEach((name) => {
+      const cell = document.createElement("div");
+      cell.className = "calendar-monthly-weekday";
+      cell.textContent = name;
+      dayHeader.appendChild(cell);
+    });
+    calendarGrid.appendChild(dayHeader);
+
+    const todayKey = formatDateKey(new Date());
+    const primaryMonth = grid[0]?.[0]?.getMonth() ?? new Date().getMonth();
+    const rangeTasks = getAllTasksWithDateRange();
+
+    grid.forEach((week) => {
+      const weekWrap = document.createElement("div");
+      weekWrap.className = "calendar-monthly-week-wrap";
+      const weekRow = document.createElement("div");
+      weekRow.className = "calendar-monthly-week";
+      const weekDateKeys = week.map((d) => (d ? formatDateKey(d) : "")).filter(Boolean);
+      const firstDayKey = weekDateKeys[0] || "";
+      const lastDayKey = weekDateKeys[weekDateKeys.length - 1] || "";
+
+      week.forEach((date) => {
+        const cell = document.createElement("div");
+        cell.className = "calendar-monthly-day";
+        if (!date) {
+          cell.classList.add("empty");
+          weekRow.appendChild(cell);
+          return;
+        }
+        const key = formatDateKey(date);
+        cell.dataset.date = key;
+        const dayNum = document.createElement("div");
+        dayNum.className = "calendar-monthly-day-num";
+        dayNum.textContent = date.getDate();
+
+        const isCurrentMonth = date.getMonth() === primaryMonth;
+        if (!isCurrentMonth) cell.classList.add("other-month");
+        if (key === todayKey) cell.classList.add("today");
+        if (date.getDay() === 0) cell.classList.add("sun");
+        if (date.getDay() === 6) cell.classList.add("sat");
+
+        cell.appendChild(dayNum);
+        const entriesEl = document.createElement("div");
+        entriesEl.className = "calendar-monthly-day-entries";
+        cell.appendChild(entriesEl);
+
+        cell.style.cursor = "pointer";
+        cell.addEventListener("click", (e) => {
+          if (e.target.closest(".calendar-event-bubble")) return;
+          e.stopPropagation();
+          const rect = cell.getBoundingClientRect();
+          createCalendarEventBubble(rect, key, () => {
+            renderCalendar();
+            refreshTodoList();
+          }, () => {});
+        });
+        cell.addEventListener("dragover", (e) => {
+          if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR)) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            cell.classList.add("calendar-day-drag-over");
+          }
+        });
+        cell.addEventListener("dragleave", () => {
+          cell.classList.remove("calendar-day-drag-over");
+        });
+        cell.addEventListener("drop", (e) => {
+          cell.classList.remove("calendar-day-drag-over");
+          const json = e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR);
+          if (!json) return;
+          e.preventDefault();
+          e.stopPropagation();
+          let payload;
+          try {
+            payload = JSON.parse(json);
+          } catch (_) {
+            return;
+          }
+          const targetDate = key;
+          const oldStart = (payload.startDate || "").slice(0, 10);
+          const oldDue = (payload.dueDate || "").slice(0, 10);
+          let newStart = "";
+          let newDue = targetDate;
+          if (oldStart && oldDue && oldStart !== oldDue) {
+            const startD = new Date(oldStart + "T12:00:00");
+            const dueD = new Date(oldDue + "T12:00:00");
+            const daysDiff = Math.round((dueD - startD) / 86400000);
+            newStart = targetDate;
+            newDue = addDaysToDateKey(targetDate, daysDiff);
+          } else if (oldStart && oldDue) {
+            newStart = targetDate;
+          }
+          let ok = false;
+          if (payload.kpiTodoId && payload.storageKey) {
+            ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
+          } else if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
+            ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
+            if (!ok && (payload.name || "").trim()) {
+              ok = addCalendarTodoToCustomSection(payload.sectionId, {
+                taskId: payload.taskId,
+                name: payload.name,
+                startDate: newStart,
+                dueDate: newDue,
+                done: !!payload.done,
+                itemType: payload.itemType || "todo",
+              });
+            }
+          } else if (KPI_SECTION_IDS.includes(payload.sectionId) && (payload.name || "").trim()) {
+            if (payload.kpiTodoId && payload.storageKey) {
+              ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
+            } else {
+              ok = updateSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue) ||
+                addSectionTaskToCalendar(payload.sectionId, { taskId: payload.taskId, name: payload.name, startDate: newStart, dueDate: newDue, done: !!payload.done, itemType: payload.itemType || "todo" });
+            }
+          }
+          if (ok) {
+            renderCalendar();
+            refreshTodoList();
+          }
+        });
+        weekRow.appendChild(cell);
+      });
+
+      const barsEl = document.createElement("div");
+      barsEl.className = "calendar-monthly-bars";
+      const BAR_HEIGHT = 1.5;
+      const overlaps = (a, b) => a.left < b.left + b.width && b.left < a.left + a.width;
+      const allBars = [];
+      const CELL_GAP = 3.5;
+      rangeTasks.forEach((t) => {
+        const barStart = t.startDate > firstDayKey ? t.startDate : firstDayKey;
+        const barEnd = t.dueDate < lastDayKey ? t.dueDate : lastDayKey;
+        if (barStart > barEnd) return;
+        const startIdx = weekDateKeys.indexOf(barStart);
+        const endIdx = weekDateKeys.indexOf(barEnd);
+        if (startIdx < 0 || endIdx < 0) return;
+        const left = (startIdx / 7) * 100 + CELL_GAP / 7;
+        const width = ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
+        const baseColor = getSectionColor(t.sectionId);
+        const color = withMoreTransparency(baseColor);
+        allBars.push({ left, width, name: t.name, color, isSingleDay: false, itemType: t.itemType || "todo", done: !!t.done, kpiTodoId: t.kpiTodoId, storageKey: t.storageKey, taskId: t.taskId, sectionId: t.sectionId, startDate: t.startDate, dueDate: t.dueDate });
+      });
+      weekDateKeys.forEach((dateKey, dayIdx) => {
+        getTasksForDate(dateKey, true).forEach((t) => {
+          const left = (dayIdx / 7) * 100 + CELL_GAP / 7;
+          const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
+          const baseColor = getSectionColor(t.sectionId);
+          const color = withMoreTransparency(baseColor);
+          allBars.push({ left, width, name: t.name, color, isSingleDay: true, dayIdx, dateKey, itemType: t.itemType || "todo", done: !!t.done, kpiTodoId: t.kpiTodoId, storageKey: t.storageKey, taskId: t.taskId, sectionId: t.sectionId, startDate: t.startDate || "", dueDate: t.dueDate || dateKey });
+        });
+      });
+      const rowBars = [];
+      allBars.forEach((b) => {
+        let row = 0;
+        while (rowBars[row] && rowBars[row].some((r) => overlaps(r, b))) row++;
+        if (!rowBars[row]) rowBars[row] = [];
+        rowBars[row].push(b);
+        b.row = row;
+      });
+      const barsPerDay = weekDateKeys.map((_, dayIdx) =>
+        allBars.filter((b) => b.isSingleDay && b.dayIdx === dayIdx).sort((a, b) => a.row - b.row)
+      );
+      allBars.forEach((b) => {
+        if (b.isSingleDay && b.dayIdx != null) {
+          const dayBars = barsPerDay[b.dayIdx];
+          const idx = dayBars.indexOf(b);
+          b.isOverflow = idx >= MAX_VISIBLE_BARS_PER_DAY;
+        }
+      });
+      const barsWithRow = allBars;
+      barsWithRow.forEach((b) => {
+        const isTodo = (b.itemType || "todo").toLowerCase() === "todo";
+        const bar = document.createElement("div");
+        bar.className =
+          "calendar-monthly-span-bar" +
+          (b.isSingleDay ? " calendar-monthly-span-bar--todo" : " calendar-monthly-span-bar--range") +
+          (isTodo ? " calendar-monthly-span-bar--has-checkbox" : "") +
+          (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "");
+        bar.title = b.name;
+        bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.15 + b.row * BAR_HEIGHT}rem`;
+        if (b.isSingleDay) {
+          if (isTodo) {
+            bar.innerHTML = `<span class="calendar-monthly-span-bar-checkbox" style="border-color:${b.color}"><span class="calendar-monthly-span-bar-checkbox-inner"></span></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+          } else {
+            bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+          }
+          bar.dataset.date = b.dateKey || "";
+          bar.dataset.sectionId = b.sectionId || "";
+          bar.dataset.taskId = b.taskId || "";
+          bar.dataset.kpiTodoId = b.kpiTodoId || "";
+          bar.dataset.storageKey = b.storageKey || "";
+          bar.dataset.done = b.done ? "true" : "false";
+          bar.dataset.itemType = b.itemType || "todo";
+          const toggleDone = () => {
+            let newDone = !bar.dataset.done;
+            if (b.kpiTodoId && b.storageKey) {
+              syncKpiTodoCompleted(b.kpiTodoId, b.storageKey, newDone);
+            } else if (b.sectionId && b.taskId) {
+              if ((b.sectionId || "").startsWith("custom-")) {
+                updateCustomSectionTaskDone(b.sectionId, b.taskId, newDone);
+              } else {
+                updateSectionTaskDone(b.sectionId, b.taskId, newDone);
+              }
+            }
+            bar.dataset.done = newDone ? "true" : "false";
+            bar.classList.toggle("is-completed", newDone);
+            bar.querySelector(".calendar-monthly-span-bar-checkbox-inner")?.classList.toggle("checked", newDone);
+            renderCalendar();
+            refreshTodoList();
+          };
+          bar.addEventListener("click", toggleDone);
+        }
+        if (!b.isSingleDay && b.startDate && b.dueDate) {
+          bar.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            createCalendarBarDateEditBubble(e.clientX, e.clientY, b, () => {
+              renderCalendar();
+              refreshTodoList();
+            }, () => {});
+          });
+        }
+        if (b.isSingleDay && b.dueDate) {
+          bar.draggable = true;
+          bar.classList.add("calendar-monthly-span-bar--draggable");
+          bar.addEventListener("dragstart", (e) => {
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("application/json", JSON.stringify({ name: b.name, dueDate: b.dueDate, startDate: b.startDate || "", kpiTodoId: b.kpiTodoId, storageKey: b.storageKey, taskId: b.taskId, sectionId: b.sectionId, done: !!b.done, itemType: b.itemType || "todo" }));
+            e.dataTransfer.setData("text/plain", b.name || "");
+            bar.classList.add("calendar-monthly-span-bar--dragging");
+          });
+          bar.addEventListener("dragend", () => {
+            bar.classList.remove("calendar-monthly-span-bar--dragging");
+          });
+          bar.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            createCalendarBarRevertBubble(e.clientX, e.clientY, b, () => {
+              renderCalendar();
+              refreshTodoList();
+            }, () => {});
+          });
+        }
+        barsEl.appendChild(bar);
+      });
+      const moreEl = document.createElement("div");
+      moreEl.className = "calendar-day-more-overlay";
+      moreEl.style.cssText = "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
+      weekDateKeys.forEach((dateKey, dayIdx) => {
+        const overflowCount = barsPerDay[dayIdx]?.length - MAX_VISIBLE_BARS_PER_DAY;
+        const cell = weekRow.querySelector(`.calendar-monthly-day[data-date="${dateKey}"]`);
+        const slot = document.createElement("div");
+        slot.style.cssText = "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
+        if (overflowCount > 0 && cell) {
+          slot.style.pointerEvents = "auto";
+          const moreBtn = document.createElement("button");
+          moreBtn.type = "button";
+          moreBtn.className = "calendar-day-more-btn";
+          moreBtn.textContent = `+${overflowCount}`;
+          moreBtn.title = "더보기";
+          moreBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const rect = cell.getBoundingClientRect();
+            const tasks = getAllTasksForDateDisplay(dateKey);
+            createCalendarDayExpandBubble(rect, dateKey, tasks, () => {});
+          });
+          slot.appendChild(moreBtn);
+        }
+        moreEl.appendChild(slot);
+      });
+      weekWrap.appendChild(moreEl);
+      weekWrap.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR) || e.dataTransfer.types.includes("application/json")) {
+          e.dataTransfer.dropEffect = "move";
+          let cell = document.elementFromPoint(e.clientX, e.clientY)?.closest(".calendar-monthly-day:not(.empty)");
+          if (!cell) {
+            const cells = weekRow.querySelectorAll(".calendar-monthly-day:not(.empty)");
+            for (const c of cells) {
+              const r = c.getBoundingClientRect();
+              if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+                cell = c;
+                break;
+              }
+            }
+          }
+          weekWrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+          if (cell) cell.classList.add("calendar-day-drag-over");
+        }
+      });
+      weekWrap.addEventListener("dragleave", (e) => {
+        if (!weekWrap.contains(e.relatedTarget)) {
+          weekWrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+        }
+      });
+      weekWrap.addEventListener("drop", (e) => {
+        weekWrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+        e.preventDefault();
+        let json = e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR) || e.dataTransfer.getData("application/json");
+        if (!json) return;
+        let payload;
+        try {
+          payload = JSON.parse(json);
+        } catch (_) {
+          return;
+        }
+        let cell = document.elementFromPoint(e.clientX, e.clientY)?.closest(".calendar-monthly-day:not(.empty)");
+        if (!cell) {
+          const cells = weekRow.querySelectorAll(".calendar-monthly-day:not(.empty)");
+          for (const c of cells) {
+            const r = c.getBoundingClientRect();
+            if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+              cell = c;
+              break;
+            }
+          }
+        }
+        if (!cell) return;
+        const targetDate = cell.dataset.date || "";
+        if (!targetDate) return;
+        const oldStart = (payload.startDate || "").slice(0, 10);
+        const oldDue = (payload.dueDate || "").slice(0, 10);
+        let newStart = "";
+        let newDue = targetDate;
+        if (oldStart && oldDue && oldStart !== oldDue) {
+          const startD = new Date(oldStart + "T12:00:00");
+          const dueD = new Date(oldDue + "T12:00:00");
+          const daysDiff = Math.round((dueD - startD) / 86400000);
+          newStart = targetDate;
+          newDue = addDaysToDateKey(targetDate, daysDiff);
+        } else if (oldStart && oldDue) {
+          newStart = targetDate;
+        }
+        let ok = false;
+        if (payload.kpiTodoId && payload.storageKey) {
+          ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
+        } else if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
+          ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
+          if (!ok && (payload.name || "").trim()) {
+            ok = addCalendarTodoToCustomSection(payload.sectionId, {
+              taskId: payload.taskId,
+              name: payload.name,
+              startDate: newStart,
+              dueDate: newDue,
+              done: !!payload.done,
+              itemType: payload.itemType || "todo",
+            });
+          }
+        } else if (KPI_SECTION_IDS.includes(payload.sectionId) && (payload.name || "").trim()) {
+          if (payload.kpiTodoId && payload.storageKey) {
+            ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
+          } else {
+            ok = updateSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue) ||
+              addSectionTaskToCalendar(payload.sectionId, { taskId: payload.taskId, name: payload.name, startDate: newStart, dueDate: newDue, done: !!payload.done, itemType: payload.itemType || "todo" });
+          }
+        }
+        if (ok) {
+          renderCalendar();
+          refreshTodoList();
+        }
+      });
+      weekWrap.appendChild(weekRow);
+      weekWrap.appendChild(barsEl);
+      calendarGrid.appendChild(weekWrap);
+    });
+  }
+
+  nav.querySelector(".calendar-nav-today").addEventListener("click", () => {
+    weekOffset = 0;
+    renderCalendar();
+  });
+  nav.querySelector(".calendar-nav-prev").addEventListener("click", () => {
+    weekOffset--;
+    renderCalendar();
+  });
+  nav.querySelector(".calendar-nav-next").addEventListener("click", () => {
+    weekOffset++;
+    renderCalendar();
+  });
+
+  calendarSection.appendChild(nav);
+  calendarSection.appendChild(calendarGrid);
+  wrap.appendChild(calendarSection);
+
+  const todoSidebar = document.createElement("aside");
+  todoSidebar.className = "calendar-todo-sidebar";
+  let sidebarCollapsed = false;
+  todoSidebar.innerHTML = `
+    <div class="calendar-todo-sidebar-header">
+      <span class="calendar-todo-sidebar-title">날짜 잡아서 해야 할일</span>
+      <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
+        <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>
+    <div class="calendar-todo-sidebar-body"></div>
+  `;
+  const todoListEl = renderTodoList({ hideToolbar: true, enableDragToCalendar: true, eisenhowerFilter: "important-not-urgent" });
   todoListEl.classList.add("todo-list-in-sidebar");
   todoSidebar.querySelector(".calendar-todo-sidebar-body").appendChild(todoListEl);
   todoSidebar.querySelector(".calendar-todo-sidebar-collapse").addEventListener("click", () => {
@@ -2488,7 +2996,7 @@ function render1WeekView(tabsElement) {
   }
 
   const nav = document.createElement("div");
-  nav.className = "calendar-nav calendar-monthly-nav";
+  nav.className = "calendar-nav";
   nav.innerHTML = `
     <span class="calendar-nav-date">
       <span class="calendar-nav-month"></span>
@@ -2500,123 +3008,29 @@ function render1WeekView(tabsElement) {
       <button type="button" class="calendar-nav-next" title="다음 주">›</button>
     </div>
   `;
+  nav.classList.add("calendar-monthly-nav");
 
   const calendarGrid = document.createElement("div");
-  calendarGrid.className = "calendar-monthly-grid calendar-1week-time-grid";
+  calendarGrid.className = "calendar-monthly-grid";
 
-  const parseHhMmToMinutes = (s) => {
-    if (!s || !s.trim()) return null;
-    const m = String(s).trim().match(/^(\d{1,2}):?(\d{0,2})$/);
-    if (!m) return null;
-    return (parseInt(m[1], 10) || 0) * 60 + (parseInt(m[2], 10) || 0);
-  };
-  const tryOverlap = (slotStartMin, slotEndMin, startMin, endMin, prod, taskName) => {
-    if (startMin == null || endMin == null) return null;
-    const overlapStart = Math.max(slotStartMin, startMin);
-    const overlapEnd = Math.min(slotEndMin, endMin);
-    if (overlapStart < overlapEnd) {
-      return { prod, taskName: taskName || "", overlapStartMin: overlapStart, overlapEndMin: overlapEnd };
-    }
-    return null;
-  };
-  const SLOTS_PER_DAY = 48;
-  const MIN_PER_SLOT = 30;
-  const prodColorsExpected = {
-    productive: { bg: "rgba(239, 68, 68, 0.06)", border: "rgba(239, 68, 68, 0.5)" },
-    nonproductive: { bg: "rgba(59, 130, 246, 0.06)", border: "rgba(59, 130, 246, 0.5)" },
-    other: { bg: "rgba(34, 197, 94, 0.06)", border: "rgba(34, 197, 94, 0.5)" },
-  };
-
-  function buildExpectedSpans(budgetGoals) {
-    const getSlot = (slotIndex) => {
-      const slotStartMin = slotIndex * MIN_PER_SLOT;
-      const slotEndMin = (slotIndex + 1) * MIN_PER_SLOT;
-      for (const [taskName, data] of Object.entries(budgetGoals)) {
-        const st = data?.scheduledTime || "";
-        if (!st.trim()) continue;
-        const parts = st.trim().split("-");
-        const startMin = parseHhMmToMinutes(parts[0]);
-        const endMin = parts[1] ? parseHhMmToMinutes(parts[1]) : null;
-        if (startMin == null) continue;
-        const end = endMin != null ? endMin : startMin + 60;
-        const opt = getTaskOptionByName(taskName);
-        const prod = opt?.productivity || "other";
-        const res = tryOverlap(slotStartMin, slotEndMin, startMin, end, prod, taskName);
-        if (res) return res;
-      }
-      return null;
-    };
-    const slotInfos = [];
-    for (let i = 0; i < SLOTS_PER_DAY; i++) slotInfos.push(getSlot(i));
-    const spans = [];
-    for (let i = 0; i < SLOTS_PER_DAY; ) {
-      const cur = slotInfos[i];
-      if (!cur || !cur.taskName) {
-        i++;
-        continue;
-      }
-      let endSlot = i;
-      const startMin = cur.overlapStartMin ?? i * MIN_PER_SLOT;
-      while (endSlot + 1 < SLOTS_PER_DAY) {
-        const next = slotInfos[endSlot + 1];
-        if (!next || !next.taskName || next.taskName !== cur.taskName) break;
-        endSlot++;
-      }
-      const last = slotInfos[endSlot];
-      const endMin = last?.overlapEndMin ?? (endSlot + 1) * MIN_PER_SLOT;
-      const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-      spans.push({
-        startSlot: i,
-        endSlot,
-        startMin,
-        endMin,
-        taskName: cur.taskName,
-        prod: cur.prod,
-        startDisplay: fmt(startMin),
-        endDisplay: fmt(endMin),
-      });
-      i = endSlot + 1;
-    }
-    return spans;
-  }
-
-  function createDayOverlay(spans, colIndex) {
-    const overlay = document.createElement("div");
-    overlay.className = "calendar-1week-day-overlay calendar-1day-time-fill-overlay calendar-1day-time-fill-overlay--expected";
-    overlay.style.left = `calc(4rem + ${colIndex} * ((100% - 4rem) / 7))`;
-    overlay.style.width = "calc((100% - 4rem) / 7)";
-    for (const sp of spans) {
-      const fill = document.createElement("div");
-      fill.className = "calendar-1day-time-slot-fill calendar-1day-time-slot-fill--span";
-      const c = prodColorsExpected[sp.prod];
-      if (!c) continue;
-      fill.style.gridRow = `${sp.startSlot + 2} / ${sp.endSlot + 3}`;
-      const startMinVal = sp.startMin ?? sp.startSlot * MIN_PER_SLOT;
-      const endMinVal = sp.endMin ?? (sp.endSlot + 1) * MIN_PER_SLOT;
-      const durationMin = endMinVal - startMinVal;
-      const rowSpan = sp.endSlot - sp.startSlot + 1;
-      const rowHeightMin = rowSpan * MIN_PER_SLOT;
-      if (rowHeightMin > 0) {
-        const startOffset = startMinVal - sp.startSlot * MIN_PER_SLOT;
-        if (startOffset > 0) {
-          fill.style.position = "relative";
-          fill.style.top = `${(startOffset / rowHeightMin) * 100}%`;
+  function refreshTodoList() {
+    const body = wrap.querySelector(".calendar-todo-sidebar-body");
+    if (body) {
+      const oldList = body.querySelector(".todo-list-in-sidebar");
+      let activeIndex = 0;
+      if (oldList) {
+        const activeTab = oldList.querySelector(".todo-category-tab:not(.todo-category-tab-add).active");
+        const tabs = oldList.querySelectorAll(".todo-category-tab:not(.todo-category-tab-add)");
+        if (activeTab && tabs.length) {
+          const idx = Array.from(tabs).indexOf(activeTab);
+          if (idx >= 0) activeIndex = idx;
         }
-        if (durationMin < rowHeightMin) {
-          fill.style.height = `${(durationMin / rowHeightMin) * 100}%`;
-        }
+        oldList.remove();
       }
-      fill.style.backgroundColor = c.bg;
-      fill.style.boxSizing = "border-box";
-      fill.style.borderRadius = "2px";
-      fill.style.border = `1px dotted ${c.border}`;
-      const label = document.createElement("span");
-      label.className = "calendar-1day-time-slot-label";
-      label.textContent = `${sp.taskName} ${sp.startDisplay}~${sp.endDisplay}`;
-      fill.appendChild(label);
-      overlay.appendChild(fill);
+      const newList = renderTodoList({ hideToolbar: true, enableDragToCalendar: true, initialActiveTabIndex: activeIndex });
+      newList.classList.add("todo-list-in-sidebar");
+      body.appendChild(newList);
     }
-    return overlay;
   }
 
   function format1WeekNavRange(week) {
@@ -2631,76 +3045,380 @@ function render1WeekView(tabsElement) {
 
   function renderCalendar() {
     const week = getCalendarGridFor1Week(weekOffset);
+    const grid = [week];
     nav.querySelector(".calendar-nav-month").textContent = format1WeekNavRange(week);
     nav.querySelector(".calendar-nav-year").textContent = week[0] ? String(week[0].getFullYear()) : "";
 
     calendarGrid.innerHTML = "";
-    calendarGrid.className = "calendar-monthly-grid calendar-1week-time-grid";
 
-    const timeTable = document.createElement("div");
-    timeTable.className = "calendar-1day-time-table calendar-1week-time-table";
-
-    const headerRow = document.createElement("div");
-    headerRow.className = "calendar-1day-time-header";
-    headerRow.style.gridColumn = "1";
-    headerRow.style.gridRow = "1";
-    const headerLabel = document.createElement("div");
-    headerLabel.className = "calendar-1day-time-header-label";
-    headerLabel.textContent = "";
-    headerRow.appendChild(headerLabel);
-    timeTable.appendChild(headerRow);
-
-    week.forEach((date, colIdx) => {
-      const dow = DAY_NAMES[getMondayBasedDow(date)];
-      const headerCell = document.createElement("div");
-      headerCell.className = "calendar-1day-time-header-cell calendar-1week-day-header" + (colIdx > 0 ? " calendar-1week-day-header-not-first" : "");
-      headerCell.innerHTML = `<span>${date.getMonth() + 1}/${date.getDate()} ${dow}</span>`;
-      headerCell.style.gridColumn = String(colIdx + 2);
-      headerCell.style.gridRow = "1";
-      timeTable.appendChild(headerCell);
+    const dayHeader = document.createElement("div");
+    dayHeader.className = "calendar-monthly-weekdays";
+    DAY_NAMES.forEach((name) => {
+      const cell = document.createElement("div");
+      cell.className = "calendar-monthly-weekday";
+      cell.textContent = name;
+      dayHeader.appendChild(cell);
     });
+    calendarGrid.appendChild(dayHeader);
 
-    for (let i = 0; i < SLOTS_PER_DAY; i++) {
-      const hour = Math.floor(i / 2);
-      const min = (i % 2) * 30;
-      const row = document.createElement("div");
-      row.className = "calendar-1day-time-row";
-      row.style.gridColumn = "1";
-      row.style.gridRow = `${i + 2}`;
-      const timeLabel = document.createElement("div");
-      timeLabel.className = "calendar-1day-time-label";
-      timeLabel.textContent = `${String(hour).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
-      row.appendChild(timeLabel);
-      timeTable.appendChild(row);
+    const todayKey = formatDateKey(new Date());
+    const primaryMonth = week[0]?.getMonth() ?? new Date().getMonth();
+    const rangeTasks = getAllTasksWithDateRange();
 
-      week.forEach((date, colIdx) => {
-        const slot = document.createElement("div");
-        slot.className = "calendar-1day-time-slot calendar-1day-time-slot--expected" + (colIdx > 0 ? " calendar-1week-slot-not-first" : "");
-        slot.style.gridColumn = String(colIdx + 2);
-        slot.style.gridRow = `${i + 2}`;
-        timeTable.appendChild(slot);
+    grid.forEach((weekRow) => {
+      const weekWrap = document.createElement("div");
+      weekWrap.className = "calendar-monthly-week-wrap";
+      const weekRowEl = document.createElement("div");
+      weekRowEl.className = "calendar-monthly-week";
+      const weekDateKeys = weekRow.map((d) => (d ? formatDateKey(d) : "")).filter(Boolean);
+      const firstDayKey = weekDateKeys[0] || "";
+      const lastDayKey = weekDateKeys[weekDateKeys.length - 1] || "";
+
+      weekRow.forEach((date) => {
+        const cell = document.createElement("div");
+        cell.className = "calendar-monthly-day";
+        if (!date) {
+          cell.classList.add("empty");
+          weekRowEl.appendChild(cell);
+          return;
+        }
+        const key = formatDateKey(date);
+        cell.dataset.date = key;
+        const dayNum = document.createElement("div");
+        dayNum.className = "calendar-monthly-day-num";
+        dayNum.textContent = date.getDate();
+
+        const isCurrentMonth = date.getMonth() === primaryMonth;
+        if (!isCurrentMonth) cell.classList.add("other-month");
+        if (key === todayKey) cell.classList.add("today");
+        if (date.getDay() === 0) cell.classList.add("sun");
+        if (date.getDay() === 6) cell.classList.add("sat");
+
+        cell.appendChild(dayNum);
+        const entriesEl = document.createElement("div");
+        entriesEl.className = "calendar-monthly-day-entries";
+        cell.appendChild(entriesEl);
+
+        cell.style.cursor = "pointer";
+        cell.addEventListener("click", (e) => {
+          if (e.target.closest(".calendar-event-bubble")) return;
+          e.stopPropagation();
+          const rect = cell.getBoundingClientRect();
+          createCalendarEventBubble(rect, key, () => {
+            renderCalendar();
+            refreshTodoList();
+          }, () => {});
+        });
+        cell.addEventListener("dragover", (e) => {
+          if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR)) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            cell.classList.add("calendar-day-drag-over");
+          }
+        });
+        cell.addEventListener("dragleave", () => {
+          cell.classList.remove("calendar-day-drag-over");
+        });
+        cell.addEventListener("drop", (e) => {
+          cell.classList.remove("calendar-day-drag-over");
+          const json = e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR);
+          if (!json) return;
+          e.preventDefault();
+          e.stopPropagation();
+          let payload;
+          try {
+            payload = JSON.parse(json);
+          } catch (_) {
+            return;
+          }
+          const targetDate = key;
+          const oldStart = (payload.startDate || "").slice(0, 10);
+          const oldDue = (payload.dueDate || "").slice(0, 10);
+          let newStart = "";
+          let newDue = targetDate;
+          if (oldStart && oldDue && oldStart !== oldDue) {
+            const startD = new Date(oldStart + "T12:00:00");
+            const dueD = new Date(oldDue + "T12:00:00");
+            const daysDiff = Math.round((dueD - startD) / 86400000);
+            newStart = targetDate;
+            newDue = addDaysToDateKey(targetDate, daysDiff);
+          } else if (oldStart && oldDue) {
+            newStart = targetDate;
+          }
+          let ok = false;
+          if (payload.kpiTodoId && payload.storageKey) {
+            ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
+          } else if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
+            ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
+            if (!ok && (payload.name || "").trim()) {
+              ok = addCalendarTodoToCustomSection(payload.sectionId, {
+                taskId: payload.taskId,
+                name: payload.name,
+                startDate: newStart,
+                dueDate: newDue,
+                done: !!payload.done,
+                itemType: payload.itemType || "todo",
+              });
+            }
+          } else if (KPI_SECTION_IDS.includes(payload.sectionId) && (payload.name || "").trim()) {
+            if (payload.kpiTodoId && payload.storageKey) {
+              ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
+            } else {
+              ok = updateSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue) ||
+                addSectionTaskToCalendar(payload.sectionId, { taskId: payload.taskId, name: payload.name, startDate: newStart, dueDate: newDue, done: !!payload.done, itemType: payload.itemType || "todo" });
+            }
+          }
+          if (ok) {
+            renderCalendar();
+            refreshTodoList();
+          }
+        });
+        weekRowEl.appendChild(cell);
       });
-    }
 
-    const timeTableWrap = document.createElement("div");
-    timeTableWrap.className = "calendar-1day-time-table-wrap calendar-1day-view";
-    const timeTableInner = document.createElement("div");
-    timeTableInner.className = "calendar-1day-time-table-inner";
-    timeTableInner.appendChild(timeTable);
-
-    week.forEach((date, colIdx) => {
-      const key = formatDateKey(date);
-      const budgetGoals = getBudgetGoals(key);
-      const spans = buildExpectedSpans(budgetGoals);
-      const overlay = createDayOverlay(spans, colIdx);
-      timeTableInner.appendChild(overlay);
+      const barsEl = document.createElement("div");
+      barsEl.className = "calendar-monthly-bars";
+      const BAR_HEIGHT = 1.5;
+      const overlaps = (a, b) => a.left < b.left + b.width && b.left < a.left + a.width;
+      const allBars = [];
+      const CELL_GAP = 3.5;
+      rangeTasks.forEach((t) => {
+        const barStart = t.startDate > firstDayKey ? t.startDate : firstDayKey;
+        const barEnd = t.dueDate < lastDayKey ? t.dueDate : lastDayKey;
+        if (barStart > barEnd) return;
+        const startIdx = weekDateKeys.indexOf(barStart);
+        const endIdx = weekDateKeys.indexOf(barEnd);
+        if (startIdx < 0 || endIdx < 0) return;
+        const left = (startIdx / 7) * 100 + CELL_GAP / 7;
+        const width = ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
+        const baseColor = getSectionColor(t.sectionId);
+        const color = withMoreTransparency(baseColor);
+        allBars.push({ left, width, name: t.name, color, isSingleDay: false, itemType: t.itemType || "todo", done: !!t.done, kpiTodoId: t.kpiTodoId, storageKey: t.storageKey, taskId: t.taskId, sectionId: t.sectionId, startDate: t.startDate, dueDate: t.dueDate });
+      });
+      weekDateKeys.forEach((dateKey, dayIdx) => {
+        getTasksForDate(dateKey, true).forEach((t) => {
+          const left = (dayIdx / 7) * 100 + CELL_GAP / 7;
+          const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
+          const baseColor = getSectionColor(t.sectionId);
+          const color = withMoreTransparency(baseColor);
+          allBars.push({ left, width, name: t.name, color, isSingleDay: true, dayIdx, dateKey, itemType: t.itemType || "todo", done: !!t.done, kpiTodoId: t.kpiTodoId, storageKey: t.storageKey, taskId: t.taskId, sectionId: t.sectionId, startDate: t.startDate || "", dueDate: t.dueDate || dateKey });
+        });
+      });
+      const rowBars = [];
+      allBars.forEach((b) => {
+        let row = 0;
+        while (rowBars[row] && rowBars[row].some((r) => overlaps(r, b))) row++;
+        if (!rowBars[row]) rowBars[row] = [];
+        rowBars[row].push(b);
+        b.row = row;
+      });
+      const barsPerDay = weekDateKeys.map((_, dayIdx) =>
+        allBars.filter((b) => b.isSingleDay && b.dayIdx === dayIdx).sort((a, b) => a.row - b.row)
+      );
+      allBars.forEach((b) => {
+        if (b.isSingleDay && b.dayIdx != null) {
+          const dayBars = barsPerDay[b.dayIdx];
+          const idx = dayBars.indexOf(b);
+          b.isOverflow = idx >= MAX_VISIBLE_BARS_PER_DAY;
+        }
+      });
+      const barsWithRow = allBars;
+      barsWithRow.forEach((b) => {
+        const isTodo = (b.itemType || "todo").toLowerCase() === "todo";
+        const bar = document.createElement("div");
+        bar.className =
+          "calendar-monthly-span-bar" +
+          (b.isSingleDay ? " calendar-monthly-span-bar--todo" : " calendar-monthly-span-bar--range") +
+          (isTodo ? " calendar-monthly-span-bar--has-checkbox" : "") +
+          (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "");
+        bar.title = b.name;
+        bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.15 + b.row * BAR_HEIGHT}rem`;
+        if (b.isSingleDay) {
+          if (isTodo) {
+            bar.innerHTML = `<span class="calendar-monthly-span-bar-checkbox" style="border-color:${b.color}"><span class="calendar-monthly-span-bar-checkbox-inner"></span></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+          } else {
+            bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+          }
+          bar.dataset.date = b.dateKey || "";
+          bar.dataset.sectionId = b.sectionId || "";
+          bar.dataset.taskId = b.taskId || "";
+          bar.dataset.kpiTodoId = b.kpiTodoId || "";
+          bar.dataset.storageKey = b.storageKey || "";
+          bar.dataset.done = b.done ? "true" : "false";
+          bar.dataset.itemType = b.itemType || "todo";
+          const toggleDone = () => {
+            let newDone = !bar.dataset.done;
+            if (b.kpiTodoId && b.storageKey) {
+              syncKpiTodoCompleted(b.kpiTodoId, b.storageKey, newDone);
+            } else if (b.sectionId && b.taskId) {
+              if ((b.sectionId || "").startsWith("custom-")) {
+                updateCustomSectionTaskDone(b.sectionId, b.taskId, newDone);
+              } else {
+                updateSectionTaskDone(b.sectionId, b.taskId, newDone);
+              }
+            }
+            bar.dataset.done = newDone ? "true" : "false";
+            bar.classList.toggle("is-completed", newDone);
+            bar.querySelector(".calendar-monthly-span-bar-checkbox-inner")?.classList.toggle("checked", newDone);
+            renderCalendar();
+            refreshTodoList();
+          };
+          bar.addEventListener("click", toggleDone);
+        }
+        if (!b.isSingleDay && b.startDate && b.dueDate) {
+          bar.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            createCalendarBarDateEditBubble(e.clientX, e.clientY, b, () => {
+              renderCalendar();
+              refreshTodoList();
+            }, () => {});
+          });
+        }
+        if (b.isSingleDay && b.dueDate) {
+          bar.draggable = true;
+          bar.classList.add("calendar-monthly-span-bar--draggable");
+          bar.addEventListener("dragstart", (e) => {
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("application/json", JSON.stringify({ name: b.name, dueDate: b.dueDate, startDate: b.startDate || "", kpiTodoId: b.kpiTodoId, storageKey: b.storageKey, taskId: b.taskId, sectionId: b.sectionId, done: !!b.done, itemType: b.itemType || "todo" }));
+            e.dataTransfer.setData("text/plain", b.name || "");
+            bar.classList.add("calendar-monthly-span-bar--dragging");
+          });
+          bar.addEventListener("dragend", () => {
+            bar.classList.remove("calendar-monthly-span-bar--dragging");
+          });
+          bar.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            createCalendarBarRevertBubble(e.clientX, e.clientY, b, () => {
+              renderCalendar();
+              refreshTodoList();
+            }, () => {});
+          });
+        }
+        barsEl.appendChild(bar);
+      });
+      const moreEl = document.createElement("div");
+      moreEl.className = "calendar-day-more-overlay";
+      moreEl.style.cssText = "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
+      weekDateKeys.forEach((dateKey, dayIdx) => {
+        const overflowCount = barsPerDay[dayIdx]?.length - MAX_VISIBLE_BARS_PER_DAY;
+        const cell = weekRowEl.querySelector(`.calendar-monthly-day[data-date="${dateKey}"]`);
+        const slot = document.createElement("div");
+        slot.style.cssText = "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
+        if (overflowCount > 0 && cell) {
+          slot.style.pointerEvents = "auto";
+          const moreBtn = document.createElement("button");
+          moreBtn.type = "button";
+          moreBtn.className = "calendar-day-more-btn";
+          moreBtn.textContent = `+${overflowCount}`;
+          moreBtn.title = "더보기";
+          moreBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const rect = cell.getBoundingClientRect();
+            const tasks = getAllTasksForDateDisplay(dateKey);
+            createCalendarDayExpandBubble(rect, dateKey, tasks, () => {});
+          });
+          slot.appendChild(moreBtn);
+        }
+        moreEl.appendChild(slot);
+      });
+      weekWrap.appendChild(moreEl);
+      weekWrap.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR) || e.dataTransfer.types.includes("application/json")) {
+          e.dataTransfer.dropEffect = "move";
+          let cell = document.elementFromPoint(e.clientX, e.clientY)?.closest(".calendar-monthly-day:not(.empty)");
+          if (!cell) {
+            const cells = weekRowEl.querySelectorAll(".calendar-monthly-day:not(.empty)");
+            for (const c of cells) {
+              const r = c.getBoundingClientRect();
+              if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+                cell = c;
+                break;
+              }
+            }
+          }
+          weekWrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+          if (cell) cell.classList.add("calendar-day-drag-over");
+        }
+      });
+      weekWrap.addEventListener("dragleave", (e) => {
+        if (!weekWrap.contains(e.relatedTarget)) {
+          weekWrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+        }
+      });
+      weekWrap.addEventListener("drop", (e) => {
+        weekWrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+        e.preventDefault();
+        let json = e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR) || e.dataTransfer.getData("application/json");
+        if (!json) return;
+        let payload;
+        try {
+          payload = JSON.parse(json);
+        } catch (_) {
+          return;
+        }
+        let cell = document.elementFromPoint(e.clientX, e.clientY)?.closest(".calendar-monthly-day:not(.empty)");
+        if (!cell) {
+          const cells = weekRowEl.querySelectorAll(".calendar-monthly-day:not(.empty)");
+          for (const c of cells) {
+            const r = c.getBoundingClientRect();
+            if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+              cell = c;
+              break;
+            }
+          }
+        }
+        if (!cell) return;
+        const targetDate = cell.dataset.date || "";
+        if (!targetDate) return;
+        const oldStart = (payload.startDate || "").slice(0, 10);
+        const oldDue = (payload.dueDate || "").slice(0, 10);
+        let newStart = "";
+        let newDue = targetDate;
+        if (oldStart && oldDue && oldStart !== oldDue) {
+          const startD = new Date(oldStart + "T12:00:00");
+          const dueD = new Date(oldDue + "T12:00:00");
+          const daysDiff = Math.round((dueD - startD) / 86400000);
+          newStart = targetDate;
+          newDue = addDaysToDateKey(targetDate, daysDiff);
+        } else if (oldStart && oldDue) {
+          newStart = targetDate;
+        }
+        let ok = false;
+        if (payload.kpiTodoId && payload.storageKey) {
+          ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
+        } else if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
+          ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
+          if (!ok && (payload.name || "").trim()) {
+            ok = addCalendarTodoToCustomSection(payload.sectionId, {
+              taskId: payload.taskId,
+              name: payload.name,
+              startDate: newStart,
+              dueDate: newDue,
+              done: !!payload.done,
+              itemType: payload.itemType || "todo",
+            });
+          }
+        } else if (KPI_SECTION_IDS.includes(payload.sectionId) && (payload.name || "").trim()) {
+          if (payload.kpiTodoId && payload.storageKey) {
+            ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
+          } else {
+            ok = updateSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue) ||
+              addSectionTaskToCalendar(payload.sectionId, { taskId: payload.taskId, name: payload.name, startDate: newStart, dueDate: newDue, done: !!payload.done, itemType: payload.itemType || "todo" });
+          }
+        }
+        if (ok) {
+          renderCalendar();
+          refreshTodoList();
+        }
+      });
+      weekWrap.appendChild(weekRowEl);
+      weekWrap.appendChild(barsEl);
+      calendarGrid.appendChild(weekWrap);
     });
-
-    timeTableWrap.appendChild(timeTableInner);
-    calendarGrid.appendChild(timeTableWrap);
   }
-
-  renderCalendar();
 
   nav.querySelector(".calendar-nav-today").addEventListener("click", () => {
     weekOffset = 0;
@@ -2718,6 +3436,109 @@ function render1WeekView(tabsElement) {
   calendarSection.appendChild(nav);
   calendarSection.appendChild(calendarGrid);
   wrap.appendChild(calendarSection);
+
+  const todoSidebar = document.createElement("aside");
+  todoSidebar.className = "calendar-todo-sidebar";
+  let sidebarCollapsed = false;
+  todoSidebar.innerHTML = `
+    <div class="calendar-todo-sidebar-header">
+      <span class="calendar-todo-sidebar-title">날짜 잡아서 해야 할일</span>
+      <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
+        <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>
+    <div class="calendar-todo-sidebar-body"></div>
+  `;
+  const todoListEl = renderTodoList({ hideToolbar: true, enableDragToCalendar: true, eisenhowerFilter: "important-not-urgent" });
+  todoListEl.classList.add("todo-list-in-sidebar");
+  todoSidebar.querySelector(".calendar-todo-sidebar-body").appendChild(todoListEl);
+  todoSidebar.querySelector(".calendar-todo-sidebar-collapse").addEventListener("click", () => {
+    sidebarCollapsed = !sidebarCollapsed;
+    todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
+    todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+  });
+  wrap.appendChild(todoSidebar);
+
+  wrap.addEventListener("dragend", () => {
+    wrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+  });
+
+  renderCalendar();
+
+  return wrap;
+}
+
+const CALENDAR_SUB_VIEWS = [
+  { id: "monthly", label: "월별" },
+  { id: "2week", label: "2주" },
+  { id: "3week", label: "3주" },
+  { id: "1week", label: "1주" },
+];
+
+function renderCalendarView(tabsElement) {
+  const wrap = document.createElement("div");
+  wrap.className = "calendar-monthly-layout calendar-view-with-subtabs";
+
+  const topRow = document.createElement("div");
+  topRow.className = "calendar-view-top-row";
+  if (tabsElement) {
+    const tabsWrapper = document.createElement("div");
+    tabsWrapper.className = "calendar-monthly-tabs-wrap";
+    tabsWrapper.appendChild(tabsElement);
+    topRow.appendChild(tabsWrapper);
+  }
+
+  const subTabs = document.createElement("div");
+  subTabs.className = "calendar-sub-tabs";
+  CALENDAR_SUB_VIEWS.forEach((v, i) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "time-view-tab calendar-sub-tab" + (i === 0 ? " active" : "");
+    btn.dataset.subView = v.id;
+    btn.textContent = v.label;
+    subTabs.appendChild(btn);
+  });
+  topRow.appendChild(subTabs);
+  wrap.appendChild(topRow);
+
+  const contentArea = document.createElement("div");
+  contentArea.className = "calendar-view-content-area";
+  wrap.appendChild(contentArea);
+
+  const CALENDAR_VIEW_KEY = "calendar-sub-view";
+  const savedSubView = localStorage.getItem(CALENDAR_VIEW_KEY) || "monthly";
+  const initialSubView = CALENDAR_SUB_VIEWS.some((v) => v.id === savedSubView) ? savedSubView : "monthly";
+
+  function renderSubView(subViewId) {
+    contentArea.innerHTML = "";
+    saveTodoListBeforeUnmount(contentArea);
+    if (subViewId === "monthly") {
+      contentArea.appendChild(renderMonthlyView(null));
+    } else if (subViewId === "2week") {
+      contentArea.appendChild(render2WeekView(null));
+    } else if (subViewId === "3week") {
+      contentArea.appendChild(render3WeekView(null));
+    } else if (subViewId === "1week") {
+      contentArea.appendChild(render1WeekView(null));
+    }
+    localStorage.setItem(CALENDAR_VIEW_KEY, subViewId);
+  }
+
+  subTabs.querySelectorAll(".calendar-sub-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      subTabs.querySelectorAll(".calendar-sub-tab").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      renderSubView(btn.dataset.subView);
+    });
+  });
+
+  const activeBtn = subTabs.querySelector(`[data-sub-view="${initialSubView}"]`);
+  if (activeBtn) {
+    subTabs.querySelectorAll(".calendar-sub-tab").forEach((b) => b.classList.remove("active"));
+    activeBtn.classList.add("active");
+  }
+  renderSubView(initialSubView);
+
   return wrap;
 }
 
@@ -3092,9 +3913,8 @@ export function render() {
   tabs.innerHTML = `
     <button type="button" class="time-view-tab active" data-view="todo">할 일</button>
     <button type="button" class="time-view-tab" data-view="eisenhower">아이젠하워</button>
-    <button type="button" class="time-view-tab" data-view="monthly">월별</button>
-    <button type="button" class="time-view-tab" data-view="2week">2주</button>
-    <button type="button" class="time-view-tab" data-view="1day">1일</button>
+    <button type="button" class="time-view-tab" data-view="calendar">달력보기</button>
+    <button type="button" class="time-view-tab" data-view="1day">오늘</button>
     <button type="button" class="time-view-tab" data-view="1week">1주</button>
   `;
   el.appendChild(tabs);
@@ -3105,7 +3925,7 @@ export function render() {
   let currentView = "todo";
 
   function renderContent(view) {
-    if (currentView === "todo" || currentView === "monthly" || currentView === "2week" || currentView === "1day" || currentView === "eisenhower") {
+    if (currentView === "todo" || currentView === "calendar" || currentView === "1day" || currentView === "eisenhower") {
       saveTodoListBeforeUnmount(contentWrap);
     }
     currentView = view;
@@ -3115,10 +3935,8 @@ export function render() {
     contentWrap.innerHTML = "";
     if (view === "todo") {
       contentWrap.appendChild(renderTodoView(tabs));
-    } else if (view === "monthly") {
-      contentWrap.appendChild(renderMonthlyView(tabs));
-    } else if (view === "2week") {
-      contentWrap.appendChild(render2WeekView(tabs));
+    } else if (view === "calendar") {
+      contentWrap.appendChild(renderCalendarView(tabs));
     } else if (view === "1day") {
       contentWrap.appendChild(render1DayView(tabs));
     } else if (view === "1week") {

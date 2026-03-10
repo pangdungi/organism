@@ -21,7 +21,7 @@ const TABS = [
   { id: "sideincome", label: "부수입", icon: "/toolbaricons/money-circle.svg" },
   { id: "happiness", label: "행복", icon: "/toolbaricons/plug-electric.svg" },
   { id: "health", label: "건강", icon: "/toolbaricons/heart-rate.svg" },
-  { id: "calendar", label: "캘린더", icon: "/toolbaricons/calendar-alt.svg" },
+  { id: "calendar", label: "할일/일정", icon: "/toolbaricons/calendar-alt.svg" },
   { id: "time", label: "시간가계부", icon: "/toolbaricons/timer.svg" },
   { id: "diary", label: "감정관리", icon: "/toolbaricons/chat-bubbles.svg" },
   { id: "asset", label: "자산관리", icon: "/toolbaricons/wallet.svg" },
