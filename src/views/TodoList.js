@@ -13,6 +13,7 @@ import { createTodoCheckboxTypeMenu } from "../utils/todoCheckboxTypeMenu.js";
 const CUSTOM_SECTION_TASKS_KEY = "todo-custom-section-tasks";
 const SECTION_TASKS_KEY = "todo-section-tasks";
 export const DRAG_TYPE_TODO_TO_CALENDAR = "todo-task-to-calendar";
+export const DRAG_TYPE_TODO_TO_EISENHOWER = "todo-task-to-eisenhower";
 
 function loadSectionTasks(sectionId) {
   try {
@@ -804,7 +805,7 @@ function createTaskRow(taskData = {}, options = {}) {
     kpiTodoId = "",
     storageKey = "",
   } = taskData;
-  const { showCategoryCol = false, isSubtask = false, taskId: optTaskId, showCheckboxTypeMenu = null, enableDragToCalendar = false } = options;
+  const { showCategoryCol = false, isSubtask = false, taskId: optTaskId, showCheckboxTypeMenu = null, enableDragToCalendar = false, enableDragToEisenhower = false } = options;
   const taskId = optTaskId || getTaskId(taskData);
 
   const tr = document.createElement("tr");
@@ -1062,9 +1063,19 @@ function createTaskRow(taskData = {}, options = {}) {
   dueWrap.appendChild(dueInput);
   dueTd.appendChild(dueWrap);
 
+  const EISENHOWER_LABELS = {
+    "urgent-important": "긴급+중요",
+    "important-not-urgent": "중요+여유",
+    "urgent-not-important": "긴급+덜중요",
+    "not-urgent-not-important": "둘다아님",
+  };
   const eisenhowerTd = document.createElement("td");
   eisenhowerTd.className = "todo-cell-eisenhower";
   tr.dataset.eisenhower = eisenhower || "";
+  const eisenhowerSpan = document.createElement("span");
+  eisenhowerSpan.className = "todo-eisenhower-display";
+  eisenhowerSpan.textContent = eisenhower ? (EISENHOWER_LABELS[eisenhower] || eisenhower) : "";
+  eisenhowerTd.appendChild(eisenhowerSpan);
 
   const delTd = document.createElement("td");
   delTd.className = "todo-cell-delete";
@@ -1114,48 +1125,57 @@ function createTaskRow(taskData = {}, options = {}) {
   }
   tr.appendChild(delTd);
 
-  if (enableDragToCalendar && !isSubtask && !hasDates) {
-    tr.draggable = true;
-    tr.addEventListener("dragstart", (e) => {
-      const nameInput = tr.querySelector(".todo-cell-name input");
-      const startInput = tr.querySelector(".todo-start-input-hidden");
-      const dueInput = tr.querySelector(".todo-due-input-hidden");
-      const doneCheck = tr.querySelector(".todo-done-check");
-      const rowSectionId = taskData.sectionId || tr.dataset.sectionId || tr.closest(".todo-section")?.dataset?.section || "";
-      const startTime = tr.dataset.startTime || "";
-      const endTime = tr.dataset.endTime || "";
-      let durationMin = 30;
-      if (startTime && endTime) {
-        const [sh, sm] = startTime.split(":").map(Number);
-        const [eh, em] = endTime.split(":").map(Number);
-        durationMin = Math.max(30, (eh * 60 + em) - (sh * 60 + sm));
-      }
-      const payload = {
-        taskId,
-        sectionId: rowSectionId,
-        name: (nameInput?.value || "").trim(),
-        startDate: startInput?.value || "",
-        dueDate: dueInput?.value || "",
-        startTime,
-        endTime,
-        done: doneCheck?.checked || false,
-        itemType: tr.dataset.itemType || "todo",
-        isKpiTodo: !!isKpiTodo,
-        kpiTodoId: kpiTodoId || "",
-        storageKey: storageKey || "",
-        _durationMin: durationMin,
-      };
-      window.__calendarDragDuration = durationMin;
-      e.dataTransfer.setData(DRAG_TYPE_TODO_TO_CALENDAR, JSON.stringify(payload));
-      e.dataTransfer.effectAllowed = "move";
-    });
+  if ((enableDragToCalendar && !hasDates) || enableDragToEisenhower) {
+    if (!isSubtask) {
+      tr.draggable = true;
+      tr.addEventListener("dragstart", (e) => {
+        const nameInput = tr.querySelector(".todo-cell-name input");
+        const startInput = tr.querySelector(".todo-start-input-hidden");
+        const dueInput = tr.querySelector(".todo-due-input-hidden");
+        const doneCheck = tr.querySelector(".todo-done-check");
+        const rowSectionId = taskData.sectionId || tr.dataset.sectionId || tr.closest(".todo-section")?.dataset?.section || "";
+        const startTime = tr.dataset.startTime || "";
+        const endTime = tr.dataset.endTime || "";
+        const eisenhowerVal = tr.dataset.eisenhower || "";
+        let durationMin = 30;
+        if (startTime && endTime) {
+          const [sh, sm] = startTime.split(":").map(Number);
+          const [eh, em] = endTime.split(":").map(Number);
+          durationMin = Math.max(30, (eh * 60 + em) - (sh * 60 + sm));
+        }
+        const payload = {
+          taskId,
+          sectionId: rowSectionId,
+          name: (nameInput?.value || "").trim(),
+          startDate: startInput?.value || "",
+          dueDate: dueInput?.value || "",
+          startTime,
+          endTime,
+          eisenhower: eisenhowerVal,
+          done: doneCheck?.checked || false,
+          itemType: tr.dataset.itemType || "todo",
+          isKpiTodo: !!isKpiTodo,
+          kpiTodoId: kpiTodoId || "",
+          storageKey: storageKey || "",
+          _durationMin: durationMin,
+        };
+        if (enableDragToEisenhower) {
+          e.dataTransfer.setData(DRAG_TYPE_TODO_TO_EISENHOWER, JSON.stringify(payload));
+        }
+        if (enableDragToCalendar && !hasDates) {
+          window.__calendarDragDuration = durationMin;
+          e.dataTransfer.setData(DRAG_TYPE_TODO_TO_CALENDAR, JSON.stringify(payload));
+        }
+        e.dataTransfer.effectAllowed = "move";
+      });
+    }
   }
 
   return tr;
 }
 
 function createSection(section, options = {}) {
-  const { lastColHeader = "분류", initialTasks = [], showCategoryCol = false, sectionIdForAdd = null, hideCategoryCol = true, tabMode = false, showCheckboxTypeMenu = null, enableDragToCalendar = false } = options;
+  const { lastColHeader = "분류", initialTasks = [], showCategoryCol = false, sectionIdForAdd = null, hideCategoryCol = true, tabMode = false, showCheckboxTypeMenu = null, enableDragToCalendar = false, enableDragToEisenhower = false } = options;
   const sectionId = sectionIdForAdd ?? section.id;
 
   const wrap = document.createElement("div");
@@ -1225,7 +1245,7 @@ function createSection(section, options = {}) {
   initialTasks.forEach((t) => {
     const taskId = t.taskId || getTaskId(t);
     t.taskId = taskId;
-    const tr = createTaskRow(t, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, showCheckboxTypeMenu, enableDragToCalendar });
+    const tr = createTaskRow(t, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower });
     tr.dataset.sectionId = t.sectionId || "";
     tbody.appendChild(tr);
     const container = tr.querySelector(".todo-subtasks-container");
@@ -1263,7 +1283,7 @@ function createSection(section, options = {}) {
       : { sectionId };
     const taskId = getTaskId(taskData);
     taskData.taskId = taskId;
-    const tr = createTaskRow(taskData, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, showCheckboxTypeMenu, enableDragToCalendar });
+    const tr = createTaskRow(taskData, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower });
     tbody.insertBefore(tr, addRow);
     updateCount();
     const nameInput = tr.querySelector(".todo-cell-name input");
@@ -1328,7 +1348,7 @@ function collectTasksFromDOM(sectionsEl) {
 }
 
 function renderSections(container, tasksData = [], options = {}) {
-  const { tabMode = false, showCheckboxTypeMenu = null, enableDragToCalendar = false } = options;
+  const { tabMode = false, showCheckboxTypeMenu = null, enableDragToCalendar = false, enableDragToEisenhower = false } = options;
   container.innerHTML = "";
   const results = [];
   getSections().forEach((section) => {
@@ -1342,6 +1362,7 @@ function renderSections(container, tasksData = [], options = {}) {
       tabMode,
       showCheckboxTypeMenu,
       enableDragToCalendar,
+      enableDragToEisenhower,
     });
     container.appendChild(wrap);
     results.push({ section, wrap, updateCount });
@@ -1350,7 +1371,7 @@ function renderSections(container, tasksData = [], options = {}) {
 }
 
 export function render(options = {}) {
-  const { hideToolbar = false, enableDragToCalendar = false, initialActiveTabIndex = 0 } = options;
+  const { hideToolbar = false, enableDragToCalendar = false, enableDragToEisenhower = false, initialActiveTabIndex = 0 } = options;
   const el = document.createElement("div");
   el.className = "app-tab-panel-content todo-list-view";
 
@@ -1497,6 +1518,7 @@ export function render(options = {}) {
           tabMode: true,
           showCheckboxTypeMenu,
           enableDragToCalendar,
+          enableDragToEisenhower,
         });
         wrap.classList.remove("is-active");
         sectionResults.push({ section: newSection, wrap, updateCount });
@@ -1613,7 +1635,7 @@ export function render(options = {}) {
   const sectionTasks = FIXED_SECTION_IDS_FOR_STORAGE.flatMap((sid) => loadSectionTasks(sid));
   const customTasks = getCustomSections().flatMap((s) => loadCustomSectionTasks(s.id));
   const allTasks = [...kpiTasks, ...sectionTasks, ...customTasks];
-  const sectionResults = renderSections(sectionsWrap, allTasks, { tabMode: true, showCheckboxTypeMenu, enableDragToCalendar });
+  const sectionResults = renderSections(sectionsWrap, allTasks, { tabMode: true, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower });
 
   function updateTabLabels() {
     tabButtons.forEach((btn, i) => {

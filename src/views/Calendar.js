@@ -4,7 +4,7 @@
  * 할일목록: 인생 KPI와 동일한 구조
  */
 
-import { render as renderTodoList, saveTodoListBeforeUnmount, DRAG_TYPE_TODO_TO_CALENDAR } from "./TodoList.js";
+import { render as renderTodoList, saveTodoListBeforeUnmount, DRAG_TYPE_TODO_TO_CALENDAR, DRAG_TYPE_TODO_TO_EISENHOWER } from "./TodoList.js";
 import { getKpiTodosAsTasks, addCalendarTodoToSection, syncKpiTodoCompleted, updateKpiTodo, removeKpiTodo } from "../utils/kpiTodoSync.js";
 import { getSectionColor, getCustomSections } from "../utils/todoSettings.js";
 import { getKpisByCategory } from "../utils/kpiViewModal.js";
@@ -125,6 +125,40 @@ function updateSectionTaskDone(sectionId, taskId, done) {
     if (t) {
       t.done = !!done;
       localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
+
+function updateSectionTaskEisenhower(sectionId, taskId, eisenhower) {
+  try {
+    const raw = localStorage.getItem(SECTION_TASKS_KEY);
+    if (!raw) return false;
+    const obj = JSON.parse(raw);
+    const arr = obj[sectionId];
+    if (!Array.isArray(arr)) return false;
+    const t = arr.find((x) => (x.taskId || "") === taskId);
+    if (t) {
+      t.eisenhower = (eisenhower || "").trim() || "";
+      localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
+
+function updateCustomSectionTaskEisenhower(sectionId, taskId, eisenhower) {
+  try {
+    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
+    if (!raw) return false;
+    const obj = JSON.parse(raw);
+    const arr = obj[sectionId];
+    if (!Array.isArray(arr)) return false;
+    const t = arr.find((x) => (x.taskId || "") === taskId);
+    if (t) {
+      t.eisenhower = (eisenhower || "").trim() || "";
+      localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(obj));
       return true;
     }
   } catch (_) {}
@@ -2758,7 +2792,7 @@ function renderEisenhowerView(tabsElement) {
     </div>
     <div class="calendar-todo-sidebar-body"></div>
   `;
-  const todoListEl = renderTodoList({ hideToolbar: true, enableDragToCalendar: false });
+  const todoListEl = renderTodoList({ hideToolbar: true, enableDragToCalendar: false, enableDragToEisenhower: true });
   todoListEl.classList.add("todo-list-in-sidebar");
   todoSidebar.querySelector(".calendar-todo-sidebar-body").appendChild(todoListEl);
   todoSidebar.querySelector(".calendar-todo-sidebar-collapse").addEventListener("click", () => {
@@ -2767,6 +2801,214 @@ function renderEisenhowerView(tabsElement) {
     todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
   });
   wrap.appendChild(todoSidebar);
+
+  function getAllTasksForEisenhower() {
+    const tasks = [];
+    getKpiTodosAsTasks().forEach((t) => tasks.push({ ...t, taskId: t.kpiTodoId || t.taskId || "" }));
+    try {
+      const sectionRaw = localStorage.getItem(SECTION_TASKS_KEY);
+      if (sectionRaw) {
+        const obj = JSON.parse(sectionRaw);
+        KPI_SECTION_IDS.forEach((sectionId) => {
+          const arr = obj[sectionId];
+          if (!Array.isArray(arr)) return;
+          const sectionLabel = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복", braindump: "브레인 덤프" }[sectionId] || sectionId;
+          arr.filter((t) => (t.name || "").trim() !== "").forEach((t) =>
+            tasks.push({
+              ...t,
+              sectionId,
+              sectionLabel,
+              taskId: t.taskId || "",
+              isKpiTodo: false,
+            }),
+          );
+        });
+      }
+      const customRaw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
+      if (customRaw) {
+        const obj = JSON.parse(customRaw);
+        getCustomSections().forEach((s) => {
+          const arr = obj[s.id];
+          if (!Array.isArray(arr)) return;
+          arr.filter((t) => (t.name || "").trim() !== "").forEach((t) =>
+            tasks.push({
+              ...t,
+              sectionId: s.id,
+              sectionLabel: s.label || s.id,
+              taskId: t.taskId || "",
+              isKpiTodo: false,
+            }),
+          );
+        });
+      }
+    } catch (_) {}
+    return tasks;
+  }
+
+  const EISENHOWER_LABELS = {
+    "urgent-important": "긴급+중요",
+    "important-not-urgent": "중요+여유",
+    "urgent-not-important": "긴급+덜중요",
+    "not-urgent-not-important": "둘다아님",
+  };
+
+  function updateQuadrants() {
+    const allTasks = getAllTasksForEisenhower();
+    const byQuadrant = {
+      "urgent-important": [],
+      "important-not-urgent": [],
+      "urgent-not-important": [],
+      "not-urgent-not-important": [],
+    };
+    allTasks.forEach((t) => {
+      const q = (t.eisenhower || "").trim();
+      if (byQuadrant[q]) byQuadrant[q].push(t);
+    });
+    eisenhowerWrap.querySelectorAll(".calendar-eisenhower-quadrant").forEach((quad) => {
+      const q = quad.dataset.quadrant;
+      const list = byQuadrant[q] || [];
+      const ul = quad.querySelector(".calendar-eisenhower-quadrant-tasks");
+      const badge = quad.querySelector(".calendar-eisenhower-quadrant-badge");
+      if (ul) {
+        ul.innerHTML = "";
+        list.forEach((t) => {
+          const li = document.createElement("li");
+          li.className = "calendar-eisenhower-task-item";
+          li.draggable = true;
+          li.dataset.taskId = t.taskId || "";
+          li.dataset.sectionId = t.sectionId || "";
+          li.dataset.isKpiTodo = t.isKpiTodo ? "true" : "false";
+          li.dataset.kpiTodoId = t.kpiTodoId || "";
+          li.dataset.kpiStorageKey = t.storageKey || "";
+          const cb = document.createElement("span");
+          cb.className = "calendar-eisenhower-task-checkbox";
+          if (t.done) {
+            cb.textContent = "✓";
+            cb.classList.add("checked");
+          }
+          const nameSpan = document.createElement("span");
+          nameSpan.className = "calendar-eisenhower-task-name";
+          nameSpan.textContent = (t.name || "").trim() || "—";
+          li.appendChild(cb);
+          li.appendChild(nameSpan);
+          li.addEventListener("dragstart", (e) => {
+            e.stopPropagation();
+            const rowTaskId = t.isKpiTodo && t.kpiTodoId && t.storageKey
+              ? `kpi-${t.kpiTodoId}-${t.storageKey}`
+              : (t.taskId || "");
+            const payload = {
+              taskId: rowTaskId,
+              sectionId: t.sectionId || "",
+              name: (t.name || "").trim(),
+              startDate: (t.startDate || "").slice(0, 10) || "",
+              isKpiTodo: !!t.isKpiTodo,
+              kpiTodoId: t.kpiTodoId || "",
+              storageKey: t.storageKey || "",
+            };
+            e.dataTransfer.setData(DRAG_TYPE_TODO_TO_EISENHOWER, JSON.stringify(payload));
+            e.dataTransfer.effectAllowed = "move";
+            li.classList.add("calendar-eisenhower-task-dragging");
+          });
+          li.addEventListener("dragend", () => {
+            li.classList.remove("calendar-eisenhower-task-dragging");
+          });
+          ul.appendChild(li);
+        });
+      }
+      if (badge) badge.textContent = String(list.length);
+    });
+    const total = allTasks.filter((t) => (t.eisenhower || "").trim()).length;
+    const countEl = eisenhowerWrap.querySelector(".calendar-eisenhower-count");
+    if (countEl) countEl.textContent = `${total}개`;
+  }
+
+  function handleQuadrantDrop(quad, e) {
+    quad.classList.remove("calendar-eisenhower-quadrant-drag-over");
+    if (!e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_EISENHOWER)) return;
+    e.preventDefault();
+    const raw = e.dataTransfer.getData(DRAG_TYPE_TODO_TO_EISENHOWER);
+    if (!raw) return;
+    let payload;
+    try {
+      payload = JSON.parse(raw);
+    } catch (_) {
+      return;
+    }
+    const quadrant = quad.dataset.quadrant;
+    const { taskId, sectionId, name, startDate, isKpiTodo, kpiTodoId, storageKey } = payload;
+    if (!name) return;
+    saveTodoListBeforeUnmount(wrap);
+    const todayKey = formatDateKey(new Date());
+    const isUrgentImportant = quadrant === "urgent-important";
+    let ok = false;
+    if (isKpiTodo && kpiTodoId && storageKey) {
+      const updates = { eisenhower: quadrant };
+      if (isUrgentImportant) updates.dueDate = todayKey;
+      ok = updateKpiTodo(kpiTodoId, storageKey, updates);
+    } else if ((sectionId || "").startsWith("custom-")) {
+      ok = updateCustomSectionTaskEisenhower(sectionId, taskId, quadrant);
+      if (ok && isUrgentImportant) {
+        updateCustomSectionTaskDates(sectionId, taskId, startDate || "", todayKey);
+      }
+    } else {
+      ok = updateSectionTaskEisenhower(sectionId, taskId, quadrant);
+      if (ok && isUrgentImportant) {
+        updateSectionTaskDates(sectionId, taskId, startDate || "", todayKey);
+      }
+    }
+    if (ok) {
+      updateQuadrants();
+      const row = todoListEl.querySelector(`tr[data-task-id="${taskId}"]`);
+      if (row) {
+        row.dataset.eisenhower = quadrant;
+        const displaySpan = row.querySelector(".todo-eisenhower-display");
+        if (displaySpan) displaySpan.textContent = EISENHOWER_LABELS[quadrant] || quadrant;
+        if (isUrgentImportant) {
+          const dueInput = row.querySelector(".todo-due-input-hidden");
+          const dueDisplay = row.querySelector(".todo-due-display");
+          if (dueInput) dueInput.value = todayKey;
+          if (dueDisplay && todayKey) {
+            const [y, m, d] = todayKey.split("-");
+            dueDisplay.innerHTML = y && m && d ? `<span class="todo-due-date-text">${m}/${d}</span>` : dueDisplay.innerHTML;
+          }
+        }
+      }
+    }
+  }
+
+  eisenhowerWrap.querySelectorAll(".calendar-eisenhower-quadrant").forEach((quad) => {
+    quad.addEventListener("dragover", (e) => {
+      if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_EISENHOWER)) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        quad.classList.add("calendar-eisenhower-quadrant-drag-over");
+      }
+    });
+    quad.addEventListener("dragleave", (e) => {
+      if (!quad.contains(e.relatedTarget)) {
+        quad.classList.remove("calendar-eisenhower-quadrant-drag-over");
+      }
+    });
+    quad.addEventListener("drop", (e) => handleQuadrantDrop(quad, e));
+    const ul = quad.querySelector(".calendar-eisenhower-quadrant-tasks");
+    if (ul) {
+      ul.addEventListener("dragover", (e) => {
+        if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_EISENHOWER)) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          quad.classList.add("calendar-eisenhower-quadrant-drag-over");
+        }
+      });
+      ul.addEventListener("dragleave", (e) => {
+        if (!ul.contains(e.relatedTarget)) {
+          quad.classList.remove("calendar-eisenhower-quadrant-drag-over");
+        }
+      });
+      ul.addEventListener("drop", (e) => handleQuadrantDrop(quad, e));
+    }
+  });
+
+  updateQuadrants();
 
   return wrap;
 }
