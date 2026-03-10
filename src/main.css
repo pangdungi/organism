@@ -16201,6 +16201,94 @@ body.kpi-resizing {
   border-left: 1px solid #e5e7eb;
 }
 
+.calendar-1day-view .calendar-1day-time-slot--expected.calendar-1day-slot-drag-over {
+  background: rgba(59, 130, 246, 0.12);
+  box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.5);
+  z-index: 1;
+}
+
+.calendar-1day-view .calendar-1day-time-fill-overlay--expected.calendar-1day-overlay-drag-over {
+  box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
+.calendar-1day-drag-preview {
+  position: fixed;
+  z-index: 10001;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1e40af;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.calendar-1day-drag-drop-line {
+  position: fixed;
+  z-index: 100000;
+  pointer-events: none;
+  height: 0;
+  border-top: 3px solid #3b82f6;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+.calendar-1day-drag-drop-line--inner {
+  position: absolute;
+  z-index: 9999;
+}
+
+.calendar-1day-resize-preview-line {
+  position: absolute;
+  z-index: 9999;
+  pointer-events: none;
+  height: 0;
+  border-top: 3px solid #3b82f6;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+.calendar-1day-resize-preview-line .calendar-1day-drag-drop-line-time {
+  top: -1.4em;
+}
+
+.calendar-1day-drag-drop-line-time {
+  position: absolute;
+  left: 0;
+  top: -1.4em;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #3b82f6;
+  background: #fff;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+.calendar-1day-time-slot-fill-resize-handle {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  cursor: ns-resize;
+  z-index: 2;
+}
+
+.calendar-1day-time-slot-fill-resize-handle::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 2px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 1px;
+}
+
 .calendar-1day-view .calendar-1day-time-table-inner {
   position: relative;
   min-height: min-content;
@@ -16218,6 +16306,12 @@ body.kpi-resizing {
 .calendar-1day-view .calendar-1day-time-fill-overlay--expected {
   left: 4rem;
   width: calc((100% - 4rem) / 2);
+  pointer-events: auto;
+  z-index: 0;
+}
+
+.calendar-1day-view .calendar-1day-time-fill-overlay--expected .calendar-1day-time-slot-fill {
+  z-index: 0;
 }
 
 .calendar-1day-view .calendar-1day-time-fill-overlay--actual {
@@ -16270,6 +16364,7 @@ body.kpi-resizing {
   min-height: 0;
   align-items: flex-start;
   padding: 2px 6px;
+  pointer-events: auto;
 }
 
 .calendar-1day-view .calendar-1day-time-slot-label {

@@ -1224,20 +1224,30 @@ function createTaskRow(taskData = {}, options = {}) {
       const endTimeInput = tr.querySelector(".todo-end-time-input");
       const doneCheck = tr.querySelector(".todo-done-check");
       const rowSectionId = taskData.sectionId || tr.dataset.sectionId || tr.closest(".todo-section")?.dataset?.section || "";
+      const startTime = startTimeInput?.value || "";
+      const endTime = endTimeInput?.value || "";
+      let durationMin = 30;
+      if (startTime && endTime) {
+        const [sh, sm] = startTime.split(":").map(Number);
+        const [eh, em] = endTime.split(":").map(Number);
+        durationMin = Math.max(30, (eh * 60 + em) - (sh * 60 + sm));
+      }
       const payload = {
         taskId,
         sectionId: rowSectionId,
         name: (nameInput?.value || "").trim(),
         startDate: startInput?.value || "",
         dueDate: dueInput?.value || "",
-        startTime: startTimeInput?.value || "",
-        endTime: endTimeInput?.value || "",
+        startTime,
+        endTime,
         done: doneCheck?.checked || false,
         itemType: tr.dataset.itemType || "todo",
         isKpiTodo: !!isKpiTodo,
         kpiTodoId: kpiTodoId || "",
         storageKey: storageKey || "",
+        _durationMin: durationMin,
       };
+      window.__calendarDragDuration = durationMin;
       e.dataTransfer.setData(DRAG_TYPE_TODO_TO_CALENDAR, JSON.stringify(payload));
       e.dataTransfer.effectAllowed = "move";
     });
