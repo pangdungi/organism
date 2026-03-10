@@ -6512,33 +6512,16 @@ body {
   width: 4.5rem !important;
 }
 
-.todo-th-start-time,
-.todo-cell-start-time,
-.todo-th-end-time,
-.todo-cell-end-time {
-  width: 5.5rem !important;
-  min-width: 5.5rem !important;
-  max-width: 5.5rem !important;
+.todo-th-eisenhower,
+.todo-cell-eisenhower {
+  width: 6rem !important;
+  min-width: 5rem;
+  max-width: 8rem;
   text-align: left;
-  white-space: nowrap;
-  overflow: visible;
 }
 
-.todo-table col.todo-col-start-time,
-.todo-table col.todo-col-end-time {
-  width: 5.5rem !important;
-}
-
-.todo-th-start-time,
-.todo-th-end-time {
-  padding-left: 0.5rem !important;
-  padding-right: 0.5rem !important;
-}
-
-.todo-cell-start-time,
-.todo-cell-end-time {
-  padding-left: 0.5rem !important;
-  padding-right: 0.5rem !important;
+.todo-table col.todo-col-eisenhower {
+  width: 6rem !important;
 }
 
 .todo-th-kpi,
@@ -15690,6 +15673,118 @@ body.kpi-resizing {
   padding: 2rem;
   color: #9ca3af;
   font-size: 0.95rem;
+}
+
+/* 아이젠하워 우선순위 정리판 - 2x2 사분면 */
+.calendar-eisenhower-wrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.calendar-eisenhower-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+}
+
+.calendar-eisenhower-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+.calendar-eisenhower-count {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.calendar-eisenhower-matrix {
+  flex: 1 1 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 1rem;
+  position: relative;
+}
+
+.calendar-eisenhower-quadrant {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.calendar-eisenhower-quadrant-badge {
+  position: absolute;
+  top: 0.75rem;
+  right: 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  background: #e5e7eb;
+  padding: 0.15rem 0.45rem;
+  border-radius: 9999px;
+}
+
+.calendar-eisenhower-quadrant-tag {
+  display: inline-block;
+  align-self: flex-start;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #fff;
+  background: #4b5563;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.calendar-eisenhower-quadrant-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 0.35rem 0;
+}
+
+.calendar-eisenhower-quadrant-desc {
+  font-size: 0.8rem;
+  color: #6b7280;
+  line-height: 1.4;
+  margin: 0 0 0.75rem 0;
+}
+
+.calendar-eisenhower-quadrant-tasks {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.calendar-eisenhower-quadrant-tasks li {
+  padding: 0.25rem 0;
+  padding-left: 1rem;
+  position: relative;
+}
+
+.calendar-eisenhower-quadrant-tasks li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #9ca3af;
 }
 
 /* 월별 캘린더 레이아웃 - 화면 높이에 맞춤, 캘린더·사이드바 동일 높이 */

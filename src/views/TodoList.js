@@ -59,13 +59,14 @@ function saveSectionTasks(sectionId, tasks) {
     const raw = localStorage.getItem(SECTION_TASKS_KEY);
     const obj = raw ? JSON.parse(raw) : {};
     const toSave = tasks
-      .map(({ taskId, name, startDate, dueDate, startTime, endTime, done, itemType }) => ({
+      .map(({ taskId, name, startDate, dueDate, startTime, endTime, eisenhower, done, itemType }) => ({
         taskId,
         name: (name || "").trim(),
         startDate: startDate || "",
         dueDate: dueDate || "",
         startTime: startTime || "",
         endTime: endTime || "",
+        eisenhower: eisenhower || "",
         done: !!done,
         itemType: itemType || "todo",
       }))
@@ -93,6 +94,7 @@ function moveSectionTaskToSection(fromSectionId, taskId, targetSectionId, taskDa
       dueDate: taskData.dueDate || "",
       startTime: taskData.startTime || "",
       endTime: taskData.endTime || "",
+      eisenhower: taskData.eisenhower || "",
       done: !!taskData.done,
       itemType: taskData.itemType || "todo",
     });
@@ -120,6 +122,7 @@ function moveCustomSectionTaskToSection(fromSectionId, taskId, targetSectionId, 
       dueDate: taskData.dueDate || "",
       startTime: taskData.startTime || "",
       endTime: taskData.endTime || "",
+      eisenhower: taskData.eisenhower || "",
       done: !!taskData.done,
       itemType: taskData.itemType || "todo",
     });
@@ -155,13 +158,14 @@ function saveCustomSectionTasks(sectionId, tasks) {
     const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
     const obj = raw ? JSON.parse(raw) : {};
     const toSave = tasks
-      .map(({ taskId, name, startDate, dueDate, startTime, endTime, done, itemType }) => ({
+      .map(({ taskId, name, startDate, dueDate, startTime, endTime, eisenhower, done, itemType }) => ({
         taskId,
         name: (name || "").trim(),
         startDate: startDate || "",
         dueDate: dueDate || "",
         startTime: startTime || "",
         endTime: endTime || "",
+        eisenhower: eisenhower || "",
         done: !!done,
         itemType: itemType || "todo",
       }))
@@ -188,8 +192,7 @@ function collectCustomSectionFromDOM(sectionsEl, sectionId) {
     const nameInput = row.querySelector(".todo-cell-name input");
     const startInput = row.querySelector(".todo-start-input-hidden");
     const dueInput = row.querySelector(".todo-due-input-hidden");
-    const startTimeInput = row.querySelector(".todo-start-time-input");
-    const endTimeInput = row.querySelector(".todo-end-time-input");
+    const eisenhowerSelect = row.querySelector(".todo-eisenhower-select");
     const doneCheck = row.querySelector(".todo-done-check");
     const itemType = row.dataset.itemType || "todo";
     tasks.push({
@@ -197,8 +200,9 @@ function collectCustomSectionFromDOM(sectionsEl, sectionId) {
       name: (nameInput?.value || "").trim(),
       startDate: startInput?.value || "",
       dueDate: dueInput?.value || "",
-      startTime: startTimeInput?.value || "",
-      endTime: endTimeInput?.value || "",
+      startTime: row.dataset.startTime || "",
+      endTime: row.dataset.endTime || "",
+      eisenhower: eisenhowerSelect?.value || row.dataset.eisenhower || "",
       done: itemType === "todo" ? (doneCheck?.checked || false) : false,
       itemType,
     });
@@ -219,14 +223,14 @@ function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
       const nameInput = row.querySelector(".todo-cell-name input");
       const startInput = row.querySelector(".todo-start-input-hidden");
       const dueInput = row.querySelector(".todo-due-input-hidden");
-      const startTimeInput = row.querySelector(".todo-start-time-input");
-      const endTimeInput = row.querySelector(".todo-end-time-input");
+      const eisenhowerSelect = row.querySelector(".todo-eisenhower-select");
       const doneCheck = row.querySelector(".todo-done-check");
       const name = (nameInput?.value || "").trim();
       const startDate = startInput?.value || "";
       const dueDate = dueInput?.value || "";
-      const startTime = startTimeInput?.value || "";
-      const endTime = endTimeInput?.value || "";
+      const startTime = row.dataset.startTime || "";
+      const endTime = row.dataset.endTime || "";
+      const eisenhower = eisenhowerSelect?.value || row.dataset.eisenhower || "";
       const done = doneCheck?.checked || false;
       const itemType = row.dataset.itemType || "todo";
       const kpiTodoId = row.dataset.kpiTodoId;
@@ -236,7 +240,7 @@ function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
         if (name === "") {
           removeKpiTodo(kpiTodoId, storageKey);
         } else {
-          updateKpiTodo(kpiTodoId, storageKey, { text: name, startDate, dueDate, startTime, endTime, completed: done, itemType });
+          updateKpiTodo(kpiTodoId, storageKey, { text: name, startDate, dueDate, startTime, endTime, eisenhower, completed: done, itemType });
         }
       } else if (name !== "") {
         sectionTasks.push({
@@ -246,6 +250,7 @@ function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
           dueDate,
           startTime,
           endTime,
+          eisenhower,
           done,
           itemType,
         });
@@ -790,6 +795,7 @@ function createTaskRow(taskData = {}, options = {}) {
     dueDate = "",
     startTime = "",
     endTime = "",
+    eisenhower = "",
     classification = "",
     sectionLabel = "",
     done = false,
@@ -810,6 +816,8 @@ function createTaskRow(taskData = {}, options = {}) {
     tr.style.setProperty("--row-section-color", getSectionColor(taskData.sectionId));
   }
   if (!isSubtask) tr.dataset.taskId = taskId;
+  tr.dataset.startTime = startTime || "";
+  tr.dataset.endTime = endTime || "";
   if (isKpiTodo) {
     tr.classList.add("todo-task-row--kpi");
     tr.dataset.isKpiTodo = "true";
@@ -1054,116 +1062,9 @@ function createTaskRow(taskData = {}, options = {}) {
   dueWrap.appendChild(dueInput);
   dueTd.appendChild(dueWrap);
 
-  const formatTimeDisplay = (val) => {
-    if (!val || typeof val !== "string") return "-";
-    const m = val.match(/^(\d{1,2}):(\d{2})/);
-    return m ? `${m[1].padStart(2, "0")}:${m[2]}` : "-";
-  };
-
-  const normalizeHhMm = (val) => {
-    if (!val || typeof val !== "string") return "";
-    const m = val.trim().match(/^(\d{1,2}):(\d{2})$/);
-    if (!m) return val.trim();
-    const h = Math.min(23, Math.max(0, parseInt(m[1], 10)));
-    const min = Math.min(59, Math.max(0, parseInt(m[2], 10)));
-    return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
-  };
-
-  const autoFormatDigitsToHhMm = (val) => {
-    const digits = (val || "").trim().replace(/\D/g, "");
-    if (digits.length >= 4) {
-      const h = Math.min(23, Math.max(0, parseInt(digits.slice(0, 2), 10)));
-      const min = Math.min(59, Math.max(0, parseInt(digits.slice(2, 4), 10)));
-      return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
-    }
-    if (digits.length === 3) {
-      const h = Math.min(9, Math.max(0, parseInt(digits[0], 10)));
-      const min = Math.min(59, Math.max(0, parseInt(digits.slice(1), 10)));
-      return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
-    }
-    if (digits.length === 2) {
-      const min = Math.min(59, Math.max(0, parseInt(digits, 10)));
-      return `00:${String(min).padStart(2, "0")}`;
-    }
-    if (digits.length === 1) {
-      return `00:0${digits}`;
-    }
-    return val.trim();
-  };
-
-  const restrictToTimeChars = (e) => {
-    if (["Backspace", "Delete", "Tab", "Escape", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(e.key)) return;
-    if (e.ctrlKey || e.metaKey) return;
-    if (e.key === "Enter") {
-      e.preventDefault();
-      const input = e.target;
-      const formatted = autoFormatDigitsToHhMm(input.value) || normalizeHhMm(input.value);
-      input.value = formatted;
-      input.blur();
-      return;
-    }
-    if (e.key === ":" && e.target.value.includes(":")) {
-      e.preventDefault();
-      return;
-    }
-    if (!/^[\d:]$/.test(e.key)) e.preventDefault();
-  };
-
-  const filterPastedTime = (e) => {
-    e.preventDefault();
-    const pasted = (e.clipboardData?.getData("text") || "").replace(/[^\d:]/g, "");
-    const input = e.target;
-    const start = input.selectionStart;
-    const end = input.selectionEnd;
-    const current = input.value;
-    const newVal = current.slice(0, start) + pasted + current.slice(end);
-    input.value = newVal;
-    input.setSelectionRange(start + pasted.length, start + pasted.length);
-  };
-
-  const startTimeTd = document.createElement("td");
-  startTimeTd.className = "todo-cell-start-time";
-  const startTimeWrap = document.createElement("div");
-  startTimeWrap.className = "todo-time-wrap";
-  const startTimeInput = document.createElement("input");
-  startTimeInput.type = "text";
-  startTimeInput.className = "todo-start-time-input";
-  startTimeInput.placeholder = "hh:mm";
-  startTimeInput.value = formatTimeDisplay(startTime) === "-" ? "" : formatTimeDisplay(startTime);
-  startTimeInput.addEventListener("keydown", restrictToTimeChars);
-  startTimeInput.addEventListener("paste", filterPastedTime);
-  startTimeInput.addEventListener("blur", () => {
-    const preformatted = autoFormatDigitsToHhMm(startTimeInput.value) || startTimeInput.value;
-    const normalized = normalizeHhMm(preformatted) || preformatted;
-    startTimeInput.value = normalized;
-    if (isKpiTodo && kpiTodoId && storageKey && normalized) {
-      updateKpiTodo(kpiTodoId, storageKey, { startTime: normalized });
-    }
-  });
-  startTimeWrap.appendChild(startTimeInput);
-  startTimeTd.appendChild(startTimeWrap);
-
-  const endTimeTd = document.createElement("td");
-  endTimeTd.className = "todo-cell-end-time";
-  const endTimeWrap = document.createElement("div");
-  endTimeWrap.className = "todo-time-wrap";
-  const endTimeInput = document.createElement("input");
-  endTimeInput.type = "text";
-  endTimeInput.className = "todo-end-time-input";
-  endTimeInput.placeholder = "hh:mm";
-  endTimeInput.value = formatTimeDisplay(endTime) === "-" ? "" : formatTimeDisplay(endTime);
-  endTimeInput.addEventListener("keydown", restrictToTimeChars);
-  endTimeInput.addEventListener("paste", filterPastedTime);
-  endTimeInput.addEventListener("blur", () => {
-    const preformatted = autoFormatDigitsToHhMm(endTimeInput.value) || endTimeInput.value;
-    const normalized = normalizeHhMm(preformatted) || preformatted;
-    endTimeInput.value = normalized;
-    if (isKpiTodo && kpiTodoId && storageKey && normalized) {
-      updateKpiTodo(kpiTodoId, storageKey, { endTime: normalized });
-    }
-  });
-  endTimeWrap.appendChild(endTimeInput);
-  endTimeTd.appendChild(endTimeWrap);
+  const eisenhowerTd = document.createElement("td");
+  eisenhowerTd.className = "todo-cell-eisenhower";
+  tr.dataset.eisenhower = eisenhower || "";
 
   const delTd = document.createElement("td");
   delTd.className = "todo-cell-delete";
@@ -1195,8 +1096,7 @@ function createTaskRow(taskData = {}, options = {}) {
   tr.appendChild(kpiTd);
   tr.appendChild(startTd);
   tr.appendChild(dueTd);
-  tr.appendChild(startTimeTd);
-  tr.appendChild(endTimeTd);
+  tr.appendChild(eisenhowerTd);
   if (!options.hideCategoryCol) {
     const lastColTd = document.createElement("td");
     lastColTd.className = "todo-cell-category";
@@ -1220,12 +1120,10 @@ function createTaskRow(taskData = {}, options = {}) {
       const nameInput = tr.querySelector(".todo-cell-name input");
       const startInput = tr.querySelector(".todo-start-input-hidden");
       const dueInput = tr.querySelector(".todo-due-input-hidden");
-      const startTimeInput = tr.querySelector(".todo-start-time-input");
-      const endTimeInput = tr.querySelector(".todo-end-time-input");
       const doneCheck = tr.querySelector(".todo-done-check");
       const rowSectionId = taskData.sectionId || tr.dataset.sectionId || tr.closest(".todo-section")?.dataset?.section || "";
-      const startTime = startTimeInput?.value || "";
-      const endTime = endTimeInput?.value || "";
+      const startTime = tr.dataset.startTime || "";
+      const endTime = tr.dataset.endTime || "";
       let durationMin = 30;
       if (startTime && endTime) {
         const [sh, sm] = startTime.split(":").map(Number);
@@ -1292,8 +1190,7 @@ function createSection(section, options = {}) {
       <col class="todo-col-kpi" style="min-width: 8rem; width: 10rem">
       <col class="todo-col-start" style="width: 4.5rem">
       <col class="todo-col-due" style="width: 4.5rem">
-      <col class="todo-col-start-time" style="width: 5.5rem">
-      <col class="todo-col-end-time" style="width: 5.5rem">
+      <col class="todo-col-eisenhower" style="width: 6rem">
       <col class="todo-col-delete" style="width: 2.5rem">
     </colgroup>`
     : `<colgroup>
@@ -1302,8 +1199,7 @@ function createSection(section, options = {}) {
       <col class="todo-col-kpi" style="min-width: 8rem; width: 10rem">
       <col class="todo-col-start" style="width: 4.5rem">
       <col class="todo-col-due" style="width: 4.5rem">
-      <col class="todo-col-start-time" style="width: 5.5rem">
-      <col class="todo-col-end-time" style="width: 5.5rem">
+      <col class="todo-col-eisenhower" style="width: 6rem">
       <col class="todo-col-category" style="width: 5rem">
       <col class="todo-col-delete" style="width: 2.5rem">
     </colgroup>`;
@@ -1317,8 +1213,7 @@ function createSection(section, options = {}) {
         <th class="todo-th-kpi">KPI</th>
         <th class="todo-th-start">시작일</th>
         <th class="todo-th-due">마감일</th>
-        <th class="todo-th-start-time">시작시간</th>
-        <th class="todo-th-end-time">종료시간</th>
+        <th class="todo-th-eisenhower">아이젠하워</th>
         ${theadCategoryTh}
         <th class="todo-th-delete"></th>
       </tr>
@@ -1345,7 +1240,7 @@ function createSection(section, options = {}) {
   const addRow = document.createElement("tr");
   addRow.className = "todo-add-row";
   addRow.innerHTML = `
-    <td colspan="${hideCategoryCol ? 8 : 9}" class="todo-add-cell">
+    <td colspan="${hideCategoryCol ? 7 : 8}" class="todo-add-cell">
       <button type="button" class="todo-add-btn" title="할 일 추가">${ADD_TASK_ICON}</button>
     </td>
   `;
@@ -1400,8 +1295,7 @@ function collectTasksFromDOM(sectionsEl) {
       const nameInput = row.querySelector(".todo-cell-name input");
       const startInput = row.querySelector(".todo-start-input-hidden");
       const dueInput = row.querySelector(".todo-due-input-hidden");
-      const startTimeInput = row.querySelector(".todo-start-time-input");
-      const endTimeInput = row.querySelector(".todo-end-time-input");
+      const eisenhowerSelect = row.querySelector(".todo-eisenhower-select");
       const catCell = row.querySelector(".todo-cell-category");
       const catInput = catCell?.querySelector(".todo-category-input");
       const doneCheck = row.querySelector(".todo-done-check");
@@ -1414,8 +1308,9 @@ function collectTasksFromDOM(sectionsEl) {
         name: nameInput?.value || "",
         startDate: startInput?.value || "",
         dueDate: dueInput?.value || "",
-        startTime: startTimeInput?.value || "",
-        endTime: endTimeInput?.value || "",
+        startTime: row.dataset.startTime || "",
+        endTime: row.dataset.endTime || "",
+        eisenhower: eisenhowerSelect?.value || row.dataset.eisenhower || "",
         classification,
         sectionId: rowSectionId,
         sectionLabel,
@@ -1771,21 +1666,21 @@ export function render(options = {}) {
     const nameInput = row.querySelector(".todo-cell-name input");
     const startInput = row.querySelector(".todo-start-input-hidden");
     const dueInput = row.querySelector(".todo-due-input-hidden");
-    const startTimeInput = row.querySelector(".todo-start-time-input");
-    const endTimeInput = row.querySelector(".todo-end-time-input");
     const doneCheck = row.querySelector(".todo-done-check");
+    const eisenhowerSelect = row.querySelector(".todo-eisenhower-select");
     const name = (nameInput?.value || "").trim();
     const startDate = startInput?.value || "";
     const dueDate = dueInput?.value || "";
-    const startTime = startTimeInput?.value || "";
-    const endTime = endTimeInput?.value || "";
+    const startTime = row.dataset.startTime || "";
+    const endTime = row.dataset.endTime || "";
+    const eisenhower = eisenhowerSelect?.value || row.dataset.eisenhower || "";
     const done = doneCheck?.checked || false;
     const itemType = row.dataset.itemType || "todo";
 
     let result = { success: false };
     const kpiTodoId = row.dataset.kpiTodoId;
     const storageKey = row.dataset.kpiStorageKey;
-    const taskPayload = { taskId: oldTaskId, name, startDate, dueDate, startTime, endTime, done, itemType };
+    const taskPayload = { taskId: oldTaskId, name, startDate, dueDate, startTime, endTime, eisenhower, done, itemType };
     const sectionLabelMap = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복", braindump: "브레인 덤프" };
     const getTargetLabel = (id) => sectionLabelMap[id] || getCustomSections().find((s) => s.id === id)?.label || id;
 
@@ -1799,7 +1694,7 @@ export function render(options = {}) {
             if (!customObj[targetSectionId]) customObj[targetSectionId] = [];
             customObj[targetSectionId].push({ ...taskPayload, taskId: oldTaskId });
             localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(customObj));
-            result = { success: true, task: { name, startDate, dueDate, startTime, endTime, done, sectionId: targetSectionId, sectionLabel: getTargetLabel(targetSectionId), itemType, isKpiTodo: false, taskId: oldTaskId } };
+            result = { success: true, task: { name, startDate, dueDate, startTime, endTime, eisenhower, done, sectionId: targetSectionId, sectionLabel: getTargetLabel(targetSectionId), itemType, isKpiTodo: false, taskId: oldTaskId } };
           } catch (_) {}
         }
       } else {
@@ -1863,7 +1758,7 @@ export function render(options = {}) {
       }
 
       if (moved) {
-        result = { success: true, task: { name, startDate, dueDate, startTime, endTime, done, sectionId: targetSectionId, sectionLabel: getTargetLabel(targetSectionId), itemType, isKpiTodo: false, taskId: oldTaskId } };
+        result = { success: true, task: { name, startDate, dueDate, startTime, endTime, eisenhower, done, sectionId: targetSectionId, sectionLabel: getTargetLabel(targetSectionId), itemType, isKpiTodo: false, taskId: oldTaskId } };
       }
     }
 

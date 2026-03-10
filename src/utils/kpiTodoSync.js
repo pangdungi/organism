@@ -47,6 +47,7 @@ export function getKpiTodosAsTasks() {
         dueDate: todo.dueDate || "",
         startTime: todo.startTime || "",
         endTime: todo.endTime || "",
+        eisenhower: todo.eisenhower || "",
         classification: kpiName,
         sectionId: "dream",
         sectionLabel: "꿈",
@@ -78,6 +79,7 @@ export function getKpiTodosAsTasks() {
         dueDate: todo.dueDate || "",
         startTime: todo.startTime || "",
         endTime: todo.endTime || "",
+        eisenhower: todo.eisenhower || "",
         classification: kpiName,
         sectionId: "sideincome",
         sectionLabel: "부수입",
@@ -109,6 +111,7 @@ export function getKpiTodosAsTasks() {
         dueDate: todo.dueDate || "",
         startTime: todo.startTime || "",
         endTime: todo.endTime || "",
+        eisenhower: todo.eisenhower || "",
         classification: kpiName,
         sectionId: "happy",
         sectionLabel: "행복",
@@ -140,6 +143,7 @@ export function getKpiTodosAsTasks() {
         dueDate: todo.dueDate || "",
         startTime: todo.startTime || "",
         endTime: todo.endTime || "",
+        eisenhower: todo.eisenhower || "",
         classification: kpiName,
         sectionId: "health",
         sectionLabel: "건강",
@@ -184,6 +188,8 @@ export function updateKpiTodo(kpiTodoId, storageKey, updates) {
         : "";
     if (updates.endTime !== undefined)
       todo.endTime = updates.endTime ? String(updates.endTime).trim() : "";
+    if (updates.eisenhower !== undefined)
+      todo.eisenhower = updates.eisenhower ? String(updates.eisenhower).trim() : "";
     if (updates.itemType !== undefined)
       todo.itemType = updates.itemType === "schedule" ? "schedule" : "todo";
     if (updates.completed !== undefined) todo.completed = !!updates.completed;

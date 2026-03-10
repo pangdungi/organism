@@ -2701,12 +2701,48 @@ function renderEisenhowerView(tabsElement) {
     calendarSection.appendChild(tabsWrapper);
   }
 
-  const calendarPlaceholder = document.createElement("div");
-  calendarPlaceholder.className = "calendar-eisenhower-placeholder";
-  calendarPlaceholder.style.flex = "1 1 0";
-  calendarPlaceholder.style.minWidth = "0";
-  calendarPlaceholder.style.minHeight = "0";
-  calendarSection.appendChild(calendarPlaceholder);
+  const eisenhowerWrap = document.createElement("div");
+  eisenhowerWrap.className = "calendar-eisenhower-wrap";
+  eisenhowerWrap.innerHTML = `
+    <div class="calendar-eisenhower-header">
+      <h2 class="calendar-eisenhower-title">우선순위 정리판</h2>
+      <span class="calendar-eisenhower-count">0개</span>
+    </div>
+    <div class="calendar-eisenhower-matrix">
+      <div class="calendar-eisenhower-quadrant calendar-eisenhower-q1" data-quadrant="urgent-important">
+        <span class="calendar-eisenhower-quadrant-badge">0</span>
+        <span class="calendar-eisenhower-quadrant-tag">긴급 + 중요</span>
+        <h3 class="calendar-eisenhower-quadrant-title">지금 당장 해야 해</h3>
+        <p class="calendar-eisenhower-quadrant-desc">오늘 안에 반드시 처리해야 하는 일. 미루면 큰일 나는 것들.</p>
+        <ul class="calendar-eisenhower-quadrant-tasks"></ul>
+      </div>
+      <div class="calendar-eisenhower-quadrant calendar-eisenhower-q2" data-quadrant="important-not-urgent">
+        <span class="calendar-eisenhower-quadrant-badge">0</span>
+        <span class="calendar-eisenhower-quadrant-tag">중요 + 여유 있음</span>
+        <h3 class="calendar-eisenhower-quadrant-title">날짜 잡아서 해</h3>
+        <p class="calendar-eisenhower-quadrant-desc">중요하지만 급하지 않은 일. 미래의 나를 위해 시간 내서 하는 것들.</p>
+        <ul class="calendar-eisenhower-quadrant-tasks"></ul>
+      </div>
+      <div class="calendar-eisenhower-quadrant calendar-eisenhower-q3" data-quadrant="urgent-not-important">
+        <span class="calendar-eisenhower-quadrant-badge">0</span>
+        <span class="calendar-eisenhower-quadrant-tag">긴급 + 별로 안 중요</span>
+        <h3 class="calendar-eisenhower-quadrant-title">다른 사람한테 맡겨</h3>
+        <p class="calendar-eisenhower-quadrant-desc">빨리 처리해야 하지만 내가 꼭 할 필요는 없는 일. 가능하면 넘기는 게 낫다.</p>
+        <ul class="calendar-eisenhower-quadrant-tasks"></ul>
+      </div>
+      <div class="calendar-eisenhower-quadrant calendar-eisenhower-q4" data-quadrant="not-urgent-not-important">
+        <span class="calendar-eisenhower-quadrant-badge">0</span>
+        <span class="calendar-eisenhower-quadrant-tag">별로 안 중요 + 여유 있음</span>
+        <h3 class="calendar-eisenhower-quadrant-title">그냥 하지 마</h3>
+        <p class="calendar-eisenhower-quadrant-desc">솔직히 안 해도 되는 일. 시간 낭비인 것들.</p>
+        <ul class="calendar-eisenhower-quadrant-tasks"></ul>
+      </div>
+    </div>
+  `;
+  eisenhowerWrap.style.flex = "1 1 0";
+  eisenhowerWrap.style.minWidth = "0";
+  eisenhowerWrap.style.minHeight = "0";
+  calendarSection.appendChild(eisenhowerWrap);
 
   wrap.appendChild(calendarSection);
 
