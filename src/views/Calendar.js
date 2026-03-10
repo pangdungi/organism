@@ -14,7 +14,7 @@ import { renderTimeBudgetTablesForCalendar, getBudgetGoals, getTaskOptionByName,
 
 const CUSTOM_SECTION_TASKS_KEY = "todo-custom-section-tasks";
 const SECTION_TASKS_KEY = "todo-section-tasks";
-const KPI_SECTION_IDS = ["dream", "sideincome", "health", "happy", "111"];
+const KPI_SECTION_IDS = ["braindump", "dream", "sideincome", "health", "happy"];
 
 function getSectionTasksForDate(dateKey) {
   const out = [];
@@ -25,7 +25,7 @@ function getSectionTasksForDate(dateKey) {
     KPI_SECTION_IDS.forEach((sectionId) => {
       const arr = obj[sectionId];
       if (!Array.isArray(arr)) return;
-      const sectionLabel = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복", "111": "브레인덤프" }[sectionId] || sectionId;
+      const sectionLabel = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복", braindump: "브레인 덤프" }[sectionId] || sectionId;
       arr
         .filter((t) => (t.name || "").trim() !== "" && (t.dueDate || "").slice(0, 10) === dateKey)
         .forEach((t) =>
@@ -54,7 +54,7 @@ function getSectionTasksWithDateRange() {
     KPI_SECTION_IDS.forEach((sectionId) => {
       const arr = obj[sectionId];
       if (!Array.isArray(arr)) return;
-      const sectionLabel = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복", "111": "브레인덤프" }[sectionId] || sectionId;
+      const sectionLabel = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복", braindump: "브레인 덤프" }[sectionId] || sectionId;
       arr
         .filter((t) => (t.name || "").trim() !== "" && (t.startDate || "").slice(0, 10) && (t.dueDate || "").slice(0, 10))
         .forEach((t) =>
@@ -232,7 +232,7 @@ function escapeHtml(s) {
 }
 
 const CALENDAR_CATEGORIES = [
-  { id: "111", label: "브레인덤프" },
+  { id: "braindump", label: "브레인 덤프" },
   { id: "dream", label: "꿈" },
   { id: "sideincome", label: "부수입" },
   { id: "health", label: "건강" },

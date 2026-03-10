@@ -6,6 +6,7 @@
 import { getCustomSections } from "./todoSettings.js";
 
 const KPI_OPTIONS = [
+  { id: "braindump", label: "브레인 덤프" },
   { id: "dream", label: "꿈" },
   { id: "sideincome", label: "부수입" },
   { id: "health", label: "건강" },

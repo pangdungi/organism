@@ -7,6 +7,7 @@
 import { getTodoSettings, saveTodoSettings, PASTEL_PRESETS, DEFAULT_SECTION_COLORS, getCustomSections, getCustomSectionColor } from "./todoSettings.js";
 
 const FIXED_SECTIONS = [
+  { id: "braindump", label: "브레인 덤프" },
   { id: "dream", label: "꿈" },
   { id: "sideincome", label: "부수입" },
   { id: "health", label: "건강" },

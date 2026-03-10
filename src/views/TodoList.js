@@ -21,7 +21,7 @@ function loadSectionTasks(sectionId) {
       const obj = JSON.parse(raw);
       const arr = obj[sectionId];
       if (Array.isArray(arr)) {
-        const sectionLabel = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복" }[sectionId] || sectionId;
+        const sectionLabel = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복", braindump: "브레인 덤프" }[sectionId] || sectionId;
         return arr
           .filter((t) => (t.name || "").trim() !== "")
           .map((t) => ({
@@ -207,10 +207,11 @@ function collectCustomSectionFromDOM(sectionsEl, sectionId) {
 }
 
 const KPI_SECTION_IDS = ["dream", "sideincome", "happy", "health"];
+const FIXED_SECTION_IDS_FOR_STORAGE = ["braindump", ...KPI_SECTION_IDS];
 
 function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
   if (!sectionsWrap) return;
-  KPI_SECTION_IDS.forEach((sectionId) => {
+  FIXED_SECTION_IDS_FOR_STORAGE.forEach((sectionId) => {
     const sec = sectionsWrap.querySelector(`.todo-section[data-section="${sectionId}"]`);
     if (!sec) return;
     const sectionTasks = [];
@@ -568,6 +569,7 @@ function createCategoryDropdown(initialValue, onUpdate) {
 }
 
 const FIXED_SECTIONS = [
+  { id: "braindump", label: "브레인 덤프" },
   { id: "dream", label: "꿈" },
   { id: "sideincome", label: "부수입" },
   { id: "health", label: "건강" },
@@ -829,7 +831,7 @@ function createTaskRow(taskData = {}, options = {}) {
       syncKpiTodoCompleted(kpiTodoId, storageKey, doneCheck.checked);
     } else if (!isKpiTodo && (taskData.sectionId || "")) {
       const secId = taskData.sectionId || tr.closest(".todo-section")?.dataset?.section || "";
-      if (KPI_SECTION_IDS.includes(secId)) {
+      if (FIXED_SECTION_IDS_FOR_STORAGE.includes(secId)) {
         updateSectionTaskDone(secId, taskId, doneCheck.checked);
       }
     }
@@ -1058,33 +1060,86 @@ function createTaskRow(taskData = {}, options = {}) {
     return m ? `${m[1].padStart(2, "0")}:${m[2]}` : "-";
   };
 
+  const normalizeHhMm = (val) => {
+    if (!val || typeof val !== "string") return "";
+    const m = val.trim().match(/^(\d{1,2}):(\d{2})$/);
+    if (!m) return val.trim();
+    const h = Math.min(23, Math.max(0, parseInt(m[1], 10)));
+    const min = Math.min(59, Math.max(0, parseInt(m[2], 10)));
+    return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+  };
+
+  const autoFormatDigitsToHhMm = (val) => {
+    const digits = (val || "").trim().replace(/\D/g, "");
+    if (digits.length >= 4) {
+      const h = Math.min(23, Math.max(0, parseInt(digits.slice(0, 2), 10)));
+      const min = Math.min(59, Math.max(0, parseInt(digits.slice(2, 4), 10)));
+      return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+    }
+    if (digits.length === 3) {
+      const h = Math.min(9, Math.max(0, parseInt(digits[0], 10)));
+      const min = Math.min(59, Math.max(0, parseInt(digits.slice(1), 10)));
+      return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+    }
+    if (digits.length === 2) {
+      const min = Math.min(59, Math.max(0, parseInt(digits, 10)));
+      return `00:${String(min).padStart(2, "0")}`;
+    }
+    if (digits.length === 1) {
+      return `00:0${digits}`;
+    }
+    return val.trim();
+  };
+
+  const restrictToTimeChars = (e) => {
+    if (["Backspace", "Delete", "Tab", "Escape", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(e.key)) return;
+    if (e.ctrlKey || e.metaKey) return;
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const input = e.target;
+      const formatted = autoFormatDigitsToHhMm(input.value) || normalizeHhMm(input.value);
+      input.value = formatted;
+      input.blur();
+      return;
+    }
+    if (e.key === ":" && e.target.value.includes(":")) {
+      e.preventDefault();
+      return;
+    }
+    if (!/^[\d:]$/.test(e.key)) e.preventDefault();
+  };
+
+  const filterPastedTime = (e) => {
+    e.preventDefault();
+    const pasted = (e.clipboardData?.getData("text") || "").replace(/[^\d:]/g, "");
+    const input = e.target;
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    const current = input.value;
+    const newVal = current.slice(0, start) + pasted + current.slice(end);
+    input.value = newVal;
+    input.setSelectionRange(start + pasted.length, start + pasted.length);
+  };
+
   const startTimeTd = document.createElement("td");
   startTimeTd.className = "todo-cell-start-time";
   const startTimeWrap = document.createElement("div");
   startTimeWrap.className = "todo-time-wrap";
-  const startTimeDisplay = document.createElement("span");
-  startTimeDisplay.className = "todo-time-display";
-  startTimeDisplay.textContent = formatTimeDisplay(startTime);
   const startTimeInput = document.createElement("input");
-  startTimeInput.type = "time";
+  startTimeInput.type = "text";
   startTimeInput.className = "todo-start-time-input";
-  startTimeInput.value = startTime;
-  const syncStartTimeDisplay = () => {
-    startTimeDisplay.textContent = formatTimeDisplay(startTimeInput.value);
-  };
-  startTimeInput.addEventListener("change", () => {
-    syncStartTimeDisplay();
-    if (isKpiTodo && kpiTodoId && storageKey) {
-      updateKpiTodo(kpiTodoId, storageKey, { startTime: startTimeInput.value });
+  startTimeInput.placeholder = "hh:mm";
+  startTimeInput.value = formatTimeDisplay(startTime) === "-" ? "" : formatTimeDisplay(startTime);
+  startTimeInput.addEventListener("keydown", restrictToTimeChars);
+  startTimeInput.addEventListener("paste", filterPastedTime);
+  startTimeInput.addEventListener("blur", () => {
+    const preformatted = autoFormatDigitsToHhMm(startTimeInput.value) || startTimeInput.value;
+    const normalized = normalizeHhMm(preformatted) || preformatted;
+    startTimeInput.value = normalized;
+    if (isKpiTodo && kpiTodoId && storageKey && normalized) {
+      updateKpiTodo(kpiTodoId, storageKey, { startTime: normalized });
     }
   });
-  startTimeWrap.addEventListener("click", () => {
-    startTimeInput.focus();
-    if (typeof startTimeInput.showPicker === "function") startTimeInput.showPicker();
-    else startTimeInput.click();
-  });
-  startTimeWrap.style.cursor = "pointer";
-  startTimeWrap.appendChild(startTimeDisplay);
   startTimeWrap.appendChild(startTimeInput);
   startTimeTd.appendChild(startTimeWrap);
 
@@ -1092,29 +1147,21 @@ function createTaskRow(taskData = {}, options = {}) {
   endTimeTd.className = "todo-cell-end-time";
   const endTimeWrap = document.createElement("div");
   endTimeWrap.className = "todo-time-wrap";
-  const endTimeDisplay = document.createElement("span");
-  endTimeDisplay.className = "todo-time-display";
-  endTimeDisplay.textContent = formatTimeDisplay(endTime);
   const endTimeInput = document.createElement("input");
-  endTimeInput.type = "time";
+  endTimeInput.type = "text";
   endTimeInput.className = "todo-end-time-input";
-  endTimeInput.value = endTime;
-  const syncEndTimeDisplay = () => {
-    endTimeDisplay.textContent = formatTimeDisplay(endTimeInput.value);
-  };
-  endTimeInput.addEventListener("change", () => {
-    syncEndTimeDisplay();
-    if (isKpiTodo && kpiTodoId && storageKey) {
-      updateKpiTodo(kpiTodoId, storageKey, { endTime: endTimeInput.value });
+  endTimeInput.placeholder = "hh:mm";
+  endTimeInput.value = formatTimeDisplay(endTime) === "-" ? "" : formatTimeDisplay(endTime);
+  endTimeInput.addEventListener("keydown", restrictToTimeChars);
+  endTimeInput.addEventListener("paste", filterPastedTime);
+  endTimeInput.addEventListener("blur", () => {
+    const preformatted = autoFormatDigitsToHhMm(endTimeInput.value) || endTimeInput.value;
+    const normalized = normalizeHhMm(preformatted) || preformatted;
+    endTimeInput.value = normalized;
+    if (isKpiTodo && kpiTodoId && storageKey && normalized) {
+      updateKpiTodo(kpiTodoId, storageKey, { endTime: normalized });
     }
   });
-  endTimeWrap.addEventListener("click", () => {
-    endTimeInput.focus();
-    if (typeof endTimeInput.showPicker === "function") endTimeInput.showPicker();
-    else endTimeInput.click();
-  });
-  endTimeWrap.style.cursor = "pointer";
-  endTimeWrap.appendChild(endTimeDisplay);
   endTimeWrap.appendChild(endTimeInput);
   endTimeTd.appendChild(endTimeWrap);
 
@@ -1658,7 +1705,7 @@ export function render(options = {}) {
   el.appendChild(checkboxTypeMenu);
 
   const kpiTasks = getKpiTodosAsTasks();
-  const sectionTasks = KPI_SECTION_IDS.flatMap((sid) => loadSectionTasks(sid));
+  const sectionTasks = FIXED_SECTION_IDS_FOR_STORAGE.flatMap((sid) => loadSectionTasks(sid));
   const customTasks = getCustomSections().flatMap((s) => loadCustomSectionTasks(s.id));
   const allTasks = [...kpiTasks, ...sectionTasks, ...customTasks];
   const sectionResults = renderSections(sectionsWrap, allTasks, { tabMode: true, showCheckboxTypeMenu, enableDragToCalendar });
@@ -1729,7 +1776,7 @@ export function render(options = {}) {
     const kpiTodoId = row.dataset.kpiTodoId;
     const storageKey = row.dataset.kpiStorageKey;
     const taskPayload = { taskId: oldTaskId, name, startDate, dueDate, startTime, endTime, done, itemType };
-    const sectionLabelMap = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복" };
+    const sectionLabelMap = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복", braindump: "브레인 덤프" };
     const getTargetLabel = (id) => sectionLabelMap[id] || getCustomSections().find((s) => s.id === id)?.label || id;
 
     if (kpiTodoId && storageKey) {
@@ -1752,14 +1799,16 @@ export function render(options = {}) {
       let moved = false;
       const fromIsKpi = KPI_SECTION_IDS.includes(fromSectionId);
       const targetIsKpi = KPI_SECTION_IDS.includes(targetSectionId);
+      const fromUsesSectionStorage = fromIsKpi || fromSectionId === "braindump";
+      const targetUsesSectionStorage = targetIsKpi || targetSectionId === "braindump";
       const fromIsCustom = fromSectionId.startsWith("custom-");
       const targetIsCustom = targetSectionId.startsWith("custom-");
 
-      if (fromIsKpi && targetIsKpi) {
+      if (fromUsesSectionStorage && targetUsesSectionStorage) {
         moved = moveSectionTaskToSection(fromSectionId, oldTaskId, targetSectionId, taskPayload);
       } else if (fromIsCustom && targetIsCustom) {
         moved = moveCustomSectionTaskToSection(fromSectionId, oldTaskId, targetSectionId, taskPayload);
-      } else if (fromIsKpi && targetIsCustom) {
+      } else if (fromUsesSectionStorage && targetIsCustom) {
         moved = (() => {
           try {
             const raw = localStorage.getItem(SECTION_TASKS_KEY);
@@ -1780,7 +1829,7 @@ export function render(options = {}) {
           } catch (_) {}
           return false;
         })();
-      } else if (fromIsCustom && targetIsKpi) {
+      } else if (fromIsCustom && targetUsesSectionStorage) {
         moved = (() => {
           try {
             const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);

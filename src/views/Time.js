@@ -1847,13 +1847,19 @@ export function render() {
             </div>
             <div class="time-task-log-field">
               <label>시작시간</label>
-              <button type="button" class="time-task-log-datetime-trigger" data-for="start">날짜·시간 선택</button>
+              <div class="time-task-log-datetime-input-wrap">
+                <input type="date" class="time-task-log-date-start" />
+                <input type="text" class="time-task-log-time-start" placeholder="hh:mm" maxlength="5" />
+              </div>
               <input type="hidden" class="time-task-log-start" />
             </div>
             <div class="time-task-log-field">
               <label>마감시간</label>
               <div class="time-task-log-datetime-wrap time-task-log-datetime-wrap-end">
-                <button type="button" class="time-task-log-datetime-trigger" data-for="end">날짜·시간 선택</button>
+                <div class="time-task-log-datetime-input-wrap">
+                  <input type="date" class="time-task-log-date-end" />
+                  <input type="text" class="time-task-log-time-end" placeholder="hh:mm" maxlength="5" />
+                </div>
                 <button type="button" class="time-task-log-datetime-clear" data-for="end" title="마감시간 지우기" aria-label="마감시간 지우기">×</button>
               </div>
               <input type="hidden" class="time-task-log-end" />
@@ -2002,15 +2008,176 @@ export function render() {
   const taskLogTaskWrap = taskLogModal.querySelector(".time-task-log-task-wrap");
   const taskLogStartInput = taskLogModal.querySelector(".time-task-log-start");
   const taskLogEndInput = taskLogModal.querySelector(".time-task-log-end");
-  const taskLogStartTrigger = taskLogModal.querySelector('.time-task-log-datetime-trigger[data-for="start"]');
-  const taskLogEndTrigger = taskLogModal.querySelector('.time-task-log-datetime-trigger[data-for="end"]');
+  const taskLogDateStart = taskLogModal.querySelector(".time-task-log-date-start");
+  const taskLogTimeStart = taskLogModal.querySelector(".time-task-log-time-start");
+  const taskLogDateEnd = taskLogModal.querySelector(".time-task-log-date-end");
+  const taskLogTimeEnd = taskLogModal.querySelector(".time-task-log-time-end");
   const taskLogEndWrap = taskLogModal.querySelector(".time-task-log-datetime-wrap-end");
   const taskLogEndClearBtn = taskLogModal.querySelector('.time-task-log-datetime-clear[data-for="end"]');
   const taskLogFeedbackInput = taskLogModal.querySelector(".time-task-log-feedback");
+
+  const normalizeHhMm = (val) => {
+    if (!val || typeof val !== "string") return "";
+    const m = val.trim().match(/^(\d{1,2}):(\d{2})$/);
+    if (!m) return val.trim();
+    const h = Math.min(23, Math.max(0, parseInt(m[1], 10)));
+    const min = Math.min(59, Math.max(0, parseInt(m[2], 10)));
+    return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+  };
+
+  const autoFormatDigitsToHhMm = (val) => {
+    const digits = (val || "").trim().replace(/\D/g, "");
+    if (digits.length >= 4) {
+      const h = Math.min(23, Math.max(0, parseInt(digits.slice(0, 2), 10)));
+      const min = Math.min(59, Math.max(0, parseInt(digits.slice(2, 4), 10)));
+      return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+    }
+    if (digits.length === 3) {
+      const h = Math.min(9, Math.max(0, parseInt(digits[0], 10)));
+      const min = Math.min(59, Math.max(0, parseInt(digits.slice(1), 10)));
+      return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+    }
+    if (digits.length === 2) {
+      const min = Math.min(59, Math.max(0, parseInt(digits, 10)));
+      return `00:${String(min).padStart(2, "0")}`;
+    }
+    if (digits.length === 1) {
+      return `00:0${digits}`;
+    }
+    return val.trim();
+  };
+
+  function syncStartToHidden() {
+    const date = (taskLogDateStart?.value || "").trim();
+    const time = normalizeHhMm(taskLogTimeStart?.value || "");
+    if (date && time) {
+      taskLogStartInput.value = `${date}T${time}`;
+    } else if (date) {
+      taskLogStartInput.value = `${date}T00:00`;
+    } else {
+      taskLogStartInput.value = "";
+    }
+  }
+
+  function syncEndToHidden() {
+    const date = (taskLogDateEnd?.value || "").trim();
+    const time = normalizeHhMm(taskLogTimeEnd?.value || "");
+    if (date && time) {
+      taskLogEndInput.value = `${date}T${time}`;
+    } else if (date) {
+      taskLogEndInput.value = `${date}T23:59`;
+    } else {
+      taskLogEndInput.value = "";
+    }
+    updateEndTimeClearVisibility();
+  }
+
+  function setStartFromDatetime(dtStr) {
+    if (!dtStr || typeof dtStr !== "string") {
+      taskLogDateStart.value = "";
+      taskLogTimeStart.value = "";
+      return;
+    }
+    const m = dtStr.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{1,2}):(\d{2})/);
+    if (m) {
+      taskLogDateStart.value = `${m[1]}-${m[2]}-${m[3]}`;
+      taskLogTimeStart.value = `${String(parseInt(m[4], 10)).padStart(2, "0")}:${m[5]}`;
+    } else {
+      const m2 = dtStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m2) {
+        taskLogDateStart.value = `${m2[1]}-${m2[2]}-${m2[3]}`;
+        taskLogTimeStart.value = "";
+      } else {
+        taskLogDateStart.value = "";
+        taskLogTimeStart.value = "";
+      }
+    }
+    syncStartToHidden();
+  }
+
+  function setEndFromDatetime(dtStr) {
+    if (!dtStr || typeof dtStr !== "string") {
+      taskLogDateEnd.value = "";
+      taskLogTimeEnd.value = "";
+      return;
+    }
+    const m = dtStr.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{1,2}):(\d{2})/);
+    if (m) {
+      taskLogDateEnd.value = `${m[1]}-${m[2]}-${m[3]}`;
+      taskLogTimeEnd.value = `${String(parseInt(m[4], 10)).padStart(2, "0")}:${m[5]}`;
+    } else {
+      const m2 = dtStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m2) {
+        taskLogDateEnd.value = `${m2[1]}-${m2[2]}-${m2[3]}`;
+        taskLogTimeEnd.value = "";
+      } else {
+        taskLogDateEnd.value = "";
+        taskLogTimeEnd.value = "";
+      }
+    }
+    syncEndToHidden();
+  }
+
   function updateEndTimeClearVisibility() {
     const hasValue = (taskLogEndInput.value || "").trim().length > 0;
     taskLogEndWrap?.classList.toggle("has-value", hasValue);
   }
+
+  const restrictToTimeChars = (e) => {
+    if (["Backspace", "Delete", "Tab", "Escape", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(e.key)) return;
+    if (e.ctrlKey || e.metaKey) return;
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const input = e.target;
+      const formatted = autoFormatDigitsToHhMm(input.value) || normalizeHhMm(input.value);
+      input.value = formatted;
+      input.blur();
+      return;
+    }
+    if (e.key === ":" && e.target.value.includes(":")) {
+      e.preventDefault();
+      return;
+    }
+    if (!/^[\d:]$/.test(e.key)) e.preventDefault();
+  };
+
+  const filterPastedTime = (e) => {
+    e.preventDefault();
+    const pasted = (e.clipboardData?.getData("text") || "").replace(/[^\d:]/g, "");
+    const input = e.target;
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    const current = input.value;
+    const newVal = current.slice(0, start) + pasted + current.slice(end);
+    input.value = newVal;
+    input.setSelectionRange(start + pasted.length, start + pasted.length);
+  };
+
+  [taskLogDateStart, taskLogTimeStart].forEach((el) => {
+    el?.addEventListener("change", syncStartToHidden);
+    el?.addEventListener("blur", () => {
+      if (el === taskLogTimeStart) {
+        const preformatted = autoFormatDigitsToHhMm(taskLogTimeStart.value) || taskLogTimeStart.value;
+        taskLogTimeStart.value = normalizeHhMm(preformatted) || preformatted;
+      }
+      syncStartToHidden();
+    });
+  });
+  taskLogTimeStart?.addEventListener("keydown", restrictToTimeChars);
+  taskLogTimeStart?.addEventListener("paste", filterPastedTime);
+
+  [taskLogDateEnd, taskLogTimeEnd].forEach((el) => {
+    el?.addEventListener("change", syncEndToHidden);
+    el?.addEventListener("blur", () => {
+      if (el === taskLogTimeEnd) {
+        const preformatted = autoFormatDigitsToHhMm(taskLogTimeEnd.value) || taskLogTimeEnd.value;
+        taskLogTimeEnd.value = normalizeHhMm(preformatted) || preformatted;
+      }
+      syncEndToHidden();
+    });
+  });
+  taskLogTimeEnd?.addEventListener("keydown", restrictToTimeChars);
+  taskLogTimeEnd?.addEventListener("paste", filterPastedTime);
   const taskLogEnergySection = taskLogModal.querySelector(".time-task-log-energy-section");
   const taskLogEnergyToggleInput = taskLogModal.querySelector(".time-task-log-energy-toggle-input");
   const taskLogEnergyFields = taskLogModal.querySelector(".time-task-log-energy-fields");
@@ -2393,67 +2560,12 @@ export function render() {
     };
   }
 
-  const datetimePicker = createDateTimePickerModal(
-    () => (datetimePicker._currentField === "start" ? taskLogEndInput.value : taskLogStartInput.value),
-    (val) => {
-      const displayVal = val ? toDisplayDateTime(val) || val.replace("T", " ") : "";
-      if (datetimePicker._currentField === "start") {
-        taskLogStartInput.value = val;
-        taskLogStartTrigger.textContent = displayVal || "날짜·시간 선택";
-        if (val && taskLogEndInput.value) {
-          const mergedEnd = mergeEndTimeWithStartDate(val, taskLogEndInput.value);
-          if (mergedEnd) {
-            taskLogEndInput.value = mergedEnd;
-            taskLogEndTrigger.textContent = toDisplayDateTime(mergedEnd) || mergedEnd.replace("T", " ");
-            updateEndTimeClearVisibility();
-          }
-        }
-      } else {
-        taskLogEndInput.value = val;
-        taskLogEndTrigger.textContent = displayVal || "날짜·시간 선택";
-        updateEndTimeClearVisibility();
-      }
-    },
-  );
-
-  taskLogStartTrigger.addEventListener("click", () => {
-    const tbody = taskLogAddContext?.tbody || (taskLogEditTr ? taskLogEditTr.closest("tbody") : null);
-    let lastEnd = null;
-    if (tbody) {
-      const rows = Array.from(tbody.querySelectorAll("tr.time-row")).filter((r) => r !== taskLogEditTr);
-      const lastRow = rows[rows.length - 1];
-      // 마지막 기록 = 마감시간 있으면 마감시간, 없으면 시작시간(마지막으로 기록된 시간)
-      lastEnd = lastRow?._rowData?.endTime || lastRow?._rowData?.startTime || null;
-    }
-    const startVal = (
-      (pendingEditStartTime || "").trim() ||
-      (taskLogEditTr?._rowData?.startTime || "").trim() ||
-      (taskLogStartInput.value || "").trim()
-    );
-    datetimePicker._currentField = "start";
-    datetimePicker.show(startVal, null, "start", lastEnd);
-  });
-  taskLogEndTrigger.addEventListener("click", () => {
-    const startVal = (taskLogStartInput.value || "").trim();
-    if (!startVal) {
-      alert("시작시간을 먼저 입력해주세요.");
-      return;
-    }
-    let lastEnd = null;
-    const tbody = taskLogAddContext?.tbody || (taskLogEditTr ? taskLogEditTr.closest("tbody") : null);
-    if (tbody) {
-      const rows = Array.from(tbody.querySelectorAll("tr.time-row")).filter((r) => r !== taskLogEditTr);
-      const lastRow = rows[rows.length - 1];
-      lastEnd = lastRow?._rowData?.endTime || lastRow?._rowData?.startTime || null;
-    }
-    datetimePicker._currentField = "end";
-    datetimePicker.show(taskLogEndInput.value, startVal, "end", lastEnd);
-  });
-
   taskLogEndClearBtn?.addEventListener("click", (e) => {
     e.stopPropagation();
+    taskLogDateEnd.value = "";
+    taskLogTimeEnd.value = "";
     taskLogEndInput.value = "";
-    taskLogEndTrigger.textContent = "날짜·시간 선택";
+    syncEndToHidden();
     updateEndTimeClearVisibility();
   });
 
@@ -2780,10 +2892,8 @@ export function render() {
     const firstTask = mainTasks[0]?.name || "";
     taskLogTaskDropdown._setValue?.(firstTask);
     const defaultStart = getDefaultStartTime(addContext);
-    taskLogStartInput.value = defaultStart;
-    taskLogEndInput.value = "";
-    taskLogStartTrigger.textContent = defaultStart ? (toDisplayDateTime(defaultStart) || defaultStart.replace("T", " ")) : "날짜·시간 선택";
-    taskLogEndTrigger.textContent = "날짜·시간 선택";
+    setStartFromDatetime(defaultStart || "");
+    setEndFromDatetime("");
     updateEndTimeClearVisibility();
     taskLogFeedbackInput.value = "";
     taskLogExpenseNameInput.value = "";
@@ -2850,12 +2960,8 @@ export function render() {
       taskLogTaskWrap.appendChild(taskLogTaskDropdown);
     }
     taskLogTaskDropdown._setValue?.(data.taskName || "");
-    const startDisplay = startTime ? (toDisplayDateTime(startTime) || startTime) : "";
-    const endDisplay = endTime ? (toDisplayDateTime(endTime) || endTime) : "";
-    taskLogStartInput.value = startTime;
-    taskLogEndInput.value = endTime;
-    taskLogStartTrigger.textContent = startDisplay || "날짜·시간 선택";
-    taskLogEndTrigger.textContent = endDisplay || "날짜·시간 선택";
+    setStartFromDatetime(startTime || "");
+    setEndFromDatetime(endTime || "");
     updateEndTimeClearVisibility();
     taskLogFeedbackInput.value = data.feedback || "";
     taskLogExpenseNameInput.value = "";
@@ -2896,6 +3002,9 @@ export function render() {
   }
 
   taskLogSubmitBtn.addEventListener("click", () => {
+    syncStartToHidden();
+    syncEndToHidden();
+
     const editTr = taskLogEditTr;
     const addCtx = taskLogAddContext;
     let oldRowDataToRemove = null;

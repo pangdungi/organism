@@ -10,6 +10,7 @@ export const DEFAULT_SECTION_COLORS = {
   sideincome: "rgba(231, 242, 207, 0.6)",
   health: "rgba(245, 224, 233, 0.6)",
   happy: "rgba(244, 227, 201, 0.6)",
+  braindump: "rgba(238, 237, 255, 0.6)",
 };
 
 /** 커스텀 리스트용 기본 색상 풀 */
