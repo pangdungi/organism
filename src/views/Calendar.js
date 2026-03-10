@@ -1974,13 +1974,10 @@ function render1DayView(tabsElement) {
     budgetColumn.className = "calendar-1day-budget-column";
     const timeColumn = document.createElement("div");
     timeColumn.className = "calendar-1day-time-column";
-    renderTimeBudgetTablesForCalendar(budgetColumn, targetKey);
-    calendarGrid.appendChild(budgetColumn);
-    calendarGrid.appendChild(timeColumn);
 
     const tasks = getAllTasksForDateDisplay(targetKey);
 
-    /* 날짜 셀 - 상단 고정 (할일 목록 영역) */
+    /* 날짜 셀 - 할일 목록 (투자/소비내역 아래 배치) */
     const dateCell = document.createElement("div");
     dateCell.className = "calendar-1day-date-cell";
     dateCell.dataset.date = targetKey;
@@ -2066,6 +2063,22 @@ function render1DayView(tabsElement) {
       entriesEl.appendChild(bar);
     });
 
+    /* 오늘의 할일 섹션 - 투자/소비내역 아래 배치 */
+    const todoSection = document.createElement("div");
+    todoSection.className = "calendar-1day-todo-section";
+    const todoSectionHeader = document.createElement("div");
+    todoSectionHeader.className = "calendar-1day-todo-section-header";
+    todoSectionHeader.textContent = "오늘의 할일";
+    const todoSectionBody = document.createElement("div");
+    todoSectionBody.className = "calendar-1day-todo-section-body";
+    todoSectionBody.appendChild(dateCell);
+    todoSection.appendChild(todoSectionHeader);
+    todoSection.appendChild(todoSectionBody);
+
+    renderTimeBudgetTablesForCalendar(budgetColumn, targetKey, todoSection);
+    calendarGrid.appendChild(budgetColumn);
+    calendarGrid.appendChild(timeColumn);
+
     dateCell.addEventListener("click", (e) => {
       if (e.target.closest(".calendar-monthly-span-bar") || e.target.closest(".calendar-event-bubble")) return;
       e.stopPropagation();
@@ -2138,8 +2151,6 @@ function render1DayView(tabsElement) {
         refreshTodoList();
       }
     });
-
-    timeColumn.appendChild(dateCell);
 
     /* 구분선 */
     const divider = document.createElement("div");

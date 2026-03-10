@@ -26,6 +26,7 @@ const PRODUCTIVITY_OPTIONS = [
 
 const TASK_OPTIONS_KEY = "time_task_options";
 const BUDGET_GOALS_KEY = "time_daily_budget_goals";
+const BUDGET_EXCLUDED_KEY = "time_budget_excluded";
 const USER_HOURLY_RATE_KEY = "user_hourly_rate";
 const TIME_ROWS_KEY = "time_task_log_rows";
 const FIXED_OTHER_TASKS = [
@@ -244,6 +245,34 @@ function saveBudgetGoal(dateStr, taskName, goalTime, isInvest) {
     }
     localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
   } catch (_) {}
+}
+
+/** 캘린더 1일뷰 - 과제 행 전체 삭제 (목표+예상시간 제거, 해당 날짜에서 제외) */
+function deleteBudgetGoalEntry(dateStr, taskName) {
+  const key = (taskName || "").trim();
+  if (!key) return;
+  try {
+    const raw = localStorage.getItem(BUDGET_GOALS_KEY);
+    const all = raw ? JSON.parse(raw) : {};
+    if (all[dateStr]) {
+      delete all[dateStr][key];
+      localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
+    }
+    const exclRaw = localStorage.getItem(BUDGET_EXCLUDED_KEY);
+    const excl = exclRaw ? JSON.parse(exclRaw) : {};
+    if (!excl[dateStr]) excl[dateStr] = [];
+    if (!excl[dateStr].includes(key)) excl[dateStr].push(key);
+    localStorage.setItem(BUDGET_EXCLUDED_KEY, JSON.stringify(excl));
+  } catch (_) {}
+}
+
+function getBudgetExcluded(dateStr) {
+  try {
+    const raw = localStorage.getItem(BUDGET_EXCLUDED_KEY);
+    const excl = raw ? JSON.parse(raw) : {};
+    return new Set(excl[dateStr] || []);
+  } catch (_) {}
+  return new Set();
 }
 
 /** 캘린더 1일뷰 예정 시간 저장 (hh:mm-hh:mm) */
@@ -4956,7 +4985,7 @@ export function render() {
 }
 
 /** 캘린더 1일뷰용: 시간 투자/소비 내역 테이블만 렌더 (일간시간예산에서 사용) */
-export function renderTimeBudgetTablesForCalendar(container, dateStr) {
+export function renderTimeBudgetTablesForCalendar(container, dateStr, todoSectionEl) {
   const rows = loadTimeRows();
   const targetDateStr = dateStr || toDateStr(new Date());
   const todayRows = rows.filter(
@@ -5120,20 +5149,17 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
     const deleteBtn = document.createElement("button");
     deleteBtn.type = "button";
     deleteBtn.className = "time-budget-btn-delete";
-    deleteBtn.title = "예상 시간 삭제";
+    deleteBtn.title = "행 삭제";
     deleteBtn.textContent = "×";
     deleteBtn.addEventListener("click", () => {
-      startInput.value = "";
-      endInput.value = "";
-      const name = taskDropdown.getValue();
-      if (name) {
-        saveBudgetScheduledTime(targetDateStr, name, "", isInvest);
-        document.dispatchEvent(
-          new CustomEvent("calendar-budget-scheduled-updated", {
-            detail: { dateStr: targetDateStr },
-          }),
-        );
-      }
+      const name = (taskDropdown.getValue() || "").trim();
+      if (name) deleteBudgetGoalEntry(targetDateStr, name);
+      tr.remove();
+      document.dispatchEvent(
+        new CustomEvent("calendar-budget-scheduled-updated", {
+          detail: { dateStr: targetDateStr },
+        }),
+      );
     });
     deleteTd.appendChild(deleteBtn);
     tr.appendChild(deleteTd);
@@ -5142,11 +5168,13 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
   }
 
   const tasksFromToday = getTasksFromTodayRows();
+  const excluded = getBudgetExcluded(targetDateStr);
   const investTasks = [];
   const consumeTasks = [];
   const seenInvest = new Set();
   const seenConsume = new Set();
   tasksFromToday.forEach((t) => {
+    if (excluded.has(t.task)) return;
     if (t.isNonproductive) {
       consumeTasks.push(t);
       seenConsume.add(t.task);
@@ -5156,6 +5184,7 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
     }
   });
   Object.entries(storedGoals).forEach(([task, data]) => {
+    if (excluded.has(task)) return;
     if (data.isInvest && !seenInvest.has(task)) {
       investTasks.push({ task, hrs: 0, isNonproductive: false });
       seenInvest.add(task);
@@ -5365,5 +5394,11 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
 
   container.innerHTML = "";
   container.appendChild(stickyHeader);
-  container.appendChild(tabPanels);
+  const budgetTablesScroll = document.createElement("div");
+  budgetTablesScroll.className = "calendar-1day-budget-tables-scroll";
+  budgetTablesScroll.appendChild(tabPanels);
+  container.appendChild(budgetTablesScroll);
+  if (todoSectionEl) {
+    container.appendChild(todoSectionEl);
+  }
 }
