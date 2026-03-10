@@ -6310,6 +6310,7 @@ body {
   color: #888;
   border-bottom: 1px solid #eee;
   border-right: 1px solid #eee;
+  vertical-align: middle;
 }
 
 .todo-table thead th:last-child {
@@ -6319,6 +6320,7 @@ body {
 .todo-table tbody td {
   border-bottom: 1px solid #eee;
   border-right: 1px solid #eee;
+  vertical-align: middle;
 }
 
 .todo-table tbody td:last-child {
@@ -6568,7 +6570,9 @@ body {
 
 .todo-cell-name {
   min-width: 120px;
-  vertical-align: top;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .todo-cell-name-wrap {
@@ -6625,6 +6629,12 @@ body {
   gap: 0.25rem;
   margin-top: 0.25rem;
   max-width: 100%;
+}
+
+/* 비어있을 때 공간 차지 안 함 → name-wrap이 세로 가운데 정렬되도록 */
+.todo-subtasks-container:empty {
+  display: none;
+  margin-top: 0;
 }
 
 .todo-subtask-item {

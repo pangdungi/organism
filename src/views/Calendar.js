@@ -2610,6 +2610,24 @@ function render1WeekView(tabsElement) {
   return wrap;
 }
 
+function renderEmptyTabView(tabsElement) {
+  const wrap = document.createElement("div");
+  wrap.className = "calendar-monthly-layout";
+
+  const main = document.createElement("div");
+  main.className = "calendar-monthly-main";
+
+  if (tabsElement) {
+    const tabsWrapper = document.createElement("div");
+    tabsWrapper.className = "calendar-monthly-tabs-wrap";
+    tabsWrapper.appendChild(tabsElement);
+    main.appendChild(tabsWrapper);
+  }
+
+  wrap.appendChild(main);
+  return wrap;
+}
+
 function renderPlaceholderView(tabsElement, label) {
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout";
@@ -2645,6 +2663,7 @@ export function render() {
   tabs.className = "time-view-tabs calendar-tabs";
   tabs.innerHTML = `
     <button type="button" class="time-view-tab active" data-view="todo">할 일</button>
+    <button type="button" class="time-view-tab" data-view="new">새 탭</button>
     <button type="button" class="time-view-tab" data-view="monthly">월별</button>
     <button type="button" class="time-view-tab" data-view="2week">2주</button>
     <button type="button" class="time-view-tab" data-view="1day">1일</button>
@@ -2676,6 +2695,8 @@ export function render() {
       contentWrap.appendChild(render1DayView(tabs));
     } else if (view === "1week") {
       contentWrap.appendChild(render1WeekView(tabs));
+    } else if (view === "new") {
+      contentWrap.appendChild(renderEmptyTabView(tabs));
     } else {
       const labels = {};
       contentWrap.appendChild(renderPlaceholderView(tabs, labels[view] || ""));
