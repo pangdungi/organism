@@ -17235,6 +17235,11 @@ body.kpi-resizing {
     min-width 0.2s;
 }
 
+/* 아이젠하워 뷰에서만 사이드바 살짝 넓게 */
+.calendar-view-eisenhower .calendar-todo-sidebar {
+  width: 420px;
+}
+
 .calendar-todo-sidebar.collapsed {
   width: 48px;
   min-width: 48px;
@@ -17706,6 +17711,32 @@ body.kpi-resizing {
 .calendar-todo-sidebar-body .todo-table tbody td {
   vertical-align: middle;
   padding: 0.5rem 0.6rem;
+}
+
+.calendar-todo-sidebar-body .todo-table .todo-th-done,
+.calendar-todo-sidebar-body .todo-table .todo-cell-done {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #fff;
+  box-shadow: 1px 0 0 #e5e7eb;
+}
+
+.calendar-todo-sidebar-body .todo-table .todo-th-done {
+  background: #fafafa;
+}
+
+.calendar-todo-sidebar-body .todo-table .todo-th-name,
+.calendar-todo-sidebar-body .todo-table .todo-cell-name {
+  position: sticky;
+  left: 2rem;
+  z-index: 2;
+  background: #fff;
+  box-shadow: 1px 0 0 #e5e7eb;
+}
+
+.calendar-todo-sidebar-body .todo-table .todo-th-name {
+  background: #fafafa;
 }
 
 .calendar-todo-sidebar-body .todo-table .todo-cell-done {

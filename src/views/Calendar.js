@@ -2689,7 +2689,7 @@ function render1WeekView(tabsElement) {
 
 function renderEisenhowerView(tabsElement) {
   const wrap = document.createElement("div");
-  wrap.className = "calendar-monthly-layout";
+  wrap.className = "calendar-monthly-layout calendar-view-eisenhower";
 
   const calendarSection = document.createElement("div");
   calendarSection.className = "calendar-monthly-main";
