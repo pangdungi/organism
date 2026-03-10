@@ -2281,6 +2281,7 @@ function render1DayView(tabsElement) {
           endMin,
           taskName: cur.taskName,
           prod: cur.prod,
+          sectionId: cur._task?.sectionId,
           startDisplay: fmt(startMin),
           endDisplay: fmt(endMin),
           _task: cur._task,
@@ -2376,13 +2377,20 @@ function render1DayView(tabsElement) {
       slotActual.style.gridRow = `${i + 2}`;
       timeTable.appendChild(slotActual);
     }
+    const SECTION_IDS_FOR_LIST_COLOR = ["dream", "sideincome", "health", "happy"];
     const createOverlay = (spans, colors, isActual) => {
       const overlay = document.createElement("div");
       overlay.className = `calendar-1day-time-fill-overlay calendar-1day-time-fill-overlay--${isActual ? "actual" : "expected"}`;
       for (const sp of spans) {
         const fill = document.createElement("div");
         fill.className = "calendar-1day-time-slot-fill calendar-1day-time-slot-fill--span";
-        const c = colors[sp.prod];
+        let c;
+        if (!isActual && sp.sectionId && (SECTION_IDS_FOR_LIST_COLOR.includes(sp.sectionId) || (sp.sectionId || "").startsWith("custom-"))) {
+          const baseColor = getSectionColor(sp.sectionId);
+          c = { bg: withMoreTransparency(baseColor, 0.06), border: withMoreTransparency(baseColor, 0.5) };
+        } else {
+          c = colors[sp.prod];
+        }
         if (!c) continue;
         fill.style.gridRow = `${sp.startSlot + 2} / ${sp.endSlot + 3}`;
         const startMinVal = sp.startMin ?? sp.startSlot * MIN_PER_SLOT;

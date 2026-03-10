@@ -15882,11 +15882,14 @@ body.kpi-resizing {
   -ms-overflow-style: none;
 }
 
-.calendar-1day-budget-column .calendar-1day-todo-section-body::-webkit-scrollbar {
+.calendar-1day-budget-column
+  .calendar-1day-todo-section-body::-webkit-scrollbar {
   display: none;
 }
 
-.calendar-1day-budget-column .calendar-1day-todo-section .calendar-1day-date-cell {
+.calendar-1day-budget-column
+  .calendar-1day-todo-section
+  .calendar-1day-date-cell {
   min-height: 2.5rem;
 }
 
@@ -16266,13 +16269,15 @@ body.kpi-resizing {
   border-left: 1px solid #e5e7eb;
 }
 
-.calendar-1day-view .calendar-1day-time-slot--expected.calendar-1day-slot-drag-over {
+.calendar-1day-view
+  .calendar-1day-time-slot--expected.calendar-1day-slot-drag-over {
   background: rgba(156, 163, 175, 0.12);
   box-shadow: inset 0 0 0 2px rgba(156, 163, 175, 0.5);
   z-index: 1;
 }
 
-.calendar-1day-view .calendar-1day-time-fill-overlay--expected.calendar-1day-overlay-drag-over {
+.calendar-1day-view
+  .calendar-1day-time-fill-overlay--expected.calendar-1day-overlay-drag-over {
   box-shadow: inset 0 0 0 2px rgba(156, 163, 175, 0.25);
 }
 
@@ -16375,7 +16380,9 @@ body.kpi-resizing {
   z-index: 0;
 }
 
-.calendar-1day-view .calendar-1day-time-fill-overlay--expected .calendar-1day-time-slot-fill {
+.calendar-1day-view
+  .calendar-1day-time-fill-overlay--expected
+  .calendar-1day-time-slot-fill {
   z-index: 0;
 }
 

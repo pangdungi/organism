@@ -16,7 +16,10 @@ import {
   addEmotionEntry,
   TAB3_EMOTION_TEMPLATE,
 } from "../diaryData.js";
-import { getKpiSyncedTaskNames, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
+import {
+  getKpiSyncedTaskNames,
+  syncHabitTrackerLogs,
+} from "../utils/timeKpiSync.js";
 
 const PRODUCTIVITY_OPTIONS = [
   { value: "productive", label: "생산적", color: "prod-pink" },
@@ -35,13 +38,29 @@ const FIXED_OTHER_TASKS = [
 ];
 /** 생산적 > 행복 고정 과제 (과제설정에서 수정·삭제 불가) */
 const FIXED_PRODUCTIVE_TASKS = [
-  { name: "감정적이기(긍정적)", category: "happiness", productivity: "productive" },
-  { name: "생산적 소비", category: "productive_consumption", productivity: "productive" },
+  {
+    name: "감정적이기(긍정적)",
+    category: "happiness",
+    productivity: "productive",
+  },
+  {
+    name: "생산적 소비",
+    category: "productive_consumption",
+    productivity: "productive",
+  },
 ];
 /** 비생산적 > 불행 고정 과제 (과제설정에서 수정·삭제 불가) - 비생산적 소비: 돈을 잃는 일 */
 const FIXED_NONPRODUCTIVE_TASKS = [
-  { name: "감정적이기(부정적)", category: "unhappiness", productivity: "nonproductive" },
-  { name: "비생산적 소비", category: "moneylosing", productivity: "nonproductive" },
+  {
+    name: "감정적이기(부정적)",
+    category: "unhappiness",
+    productivity: "nonproductive",
+  },
+  {
+    name: "비생산적 소비",
+    category: "moneylosing",
+    productivity: "nonproductive",
+  },
 ];
 /** 구버전 과제명 (목록에서 제거 후 신규 고정 과제로 대체) */
 const REPLACED_TASK_NAMES = ["감정적이기"];
@@ -52,11 +71,37 @@ const TASKS_LOCKED_FOR_EDIT = ["낮잠"];
 const EMOTION_TASK_POSITIVE = "감정적이기(긍정적)";
 const EMOTION_TASK_NEGATIVE = "감정적이기(부정적)";
 const EMOTION_LIST_POSITIVE = [
-  "기쁨", "행복", "즐거움", "고마움", "기특함", "감동", "사랑", "신뢰감", "자신감", "자부심", "편안감",
+  "기쁨",
+  "행복",
+  "즐거움",
+  "고마움",
+  "기특함",
+  "감동",
+  "사랑",
+  "신뢰감",
+  "자신감",
+  "자부심",
+  "편안감",
 ];
 const EMOTION_LIST_NEGATIVE = [
-  "공포", "불안", "걱정", "자존심", "자격지심", "열등감", "분노", "억울함", "괘씸함", "서운함",
-  "미움", "혐오", "괴로움", "부담감", "죄책감", "수치심", "짜증", "원망",
+  "공포",
+  "불안",
+  "걱정",
+  "자존심",
+  "자격지심",
+  "열등감",
+  "분노",
+  "억울함",
+  "괘씸함",
+  "서운함",
+  "미움",
+  "혐오",
+  "괴로움",
+  "부담감",
+  "죄책감",
+  "수치심",
+  "짜증",
+  "원망",
 ];
 
 function getLockedTaskNames() {
@@ -95,7 +140,11 @@ const PRODUCTIVE_CATEGORIES = [
   { value: "sideincome", label: "부수입", color: "cat-sideincome" },
   { value: "happiness", label: "행복", color: "cat-happiness" },
   { value: "health", label: "건강", color: "cat-health" },
-  { value: "productive_consumption", label: "생산적 소비", color: "cat-prod-cons" },
+  {
+    value: "productive_consumption",
+    label: "생산적 소비",
+    color: "cat-prod-cons",
+  },
 ];
 
 const NONPRODUCTIVE_CATEGORIES = [
@@ -133,14 +182,16 @@ function getFullTaskOptions() {
   if (arr.length === 0) return [...DEFAULT_TASK_OPTIONS];
   const fixedOtherNames = new Set(FIXED_OTHER_TASKS.map((t) => t.name));
   const fixedProdNames = new Set(FIXED_PRODUCTIVE_TASKS.map((t) => t.name));
-  const fixedNonProdNames = new Set(FIXED_NONPRODUCTIVE_TASKS.map((t) => t.name));
+  const fixedNonProdNames = new Set(
+    FIXED_NONPRODUCTIVE_TASKS.map((t) => t.name),
+  );
   const replacedNames = new Set(REPLACED_TASK_NAMES);
   const others = arr.filter(
     (o) =>
       !fixedOtherNames.has(o.name) &&
       !fixedProdNames.has(o.name) &&
       !fixedNonProdNames.has(o.name) &&
-      !replacedNames.has(o.name)
+      !replacedNames.has(o.name),
   );
   return [
     ...FIXED_OTHER_TASKS,
@@ -231,6 +282,7 @@ export function getBudgetGoals(dateStr) {
 function saveBudgetGoal(dateStr, taskName, goalTime, isInvest) {
   if (!(taskName || "").trim()) return;
   try {
+    removeFromBudgetExcluded(dateStr, taskName);
     const raw = localStorage.getItem(BUDGET_GOALS_KEY);
     const all = raw ? JSON.parse(raw) : {};
     if (!all[dateStr]) all[dateStr] = {};
@@ -241,7 +293,9 @@ function saveBudgetGoal(dateStr, taskName, goalTime, isInvest) {
     } else {
       const { goalTime: _, ...rest } = existing;
       // 과제만 선택했을 때(목표 시간 없음)에도 행 유지
-      all[dateStr][key] = Object.keys(rest).length ? { ...rest, isInvest } : { isInvest };
+      all[dateStr][key] = Object.keys(rest).length
+        ? { ...rest, isInvest }
+        : { isInvest };
     }
     localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
   } catch (_) {}
@@ -275,17 +329,37 @@ function getBudgetExcluded(dateStr) {
   return new Set();
 }
 
+/** 제외 목록에서 과제 제거 (다시 추가 시 행이 표시되도록) */
+function removeFromBudgetExcluded(dateStr, taskName) {
+  const key = (taskName || "").trim();
+  if (!key) return;
+  try {
+    const raw = localStorage.getItem(BUDGET_EXCLUDED_KEY);
+    const excl = raw ? JSON.parse(raw) : {};
+    if (excl[dateStr]) {
+      excl[dateStr] = excl[dateStr].filter((n) => n !== key);
+      if (excl[dateStr].length === 0) delete excl[dateStr];
+      localStorage.setItem(BUDGET_EXCLUDED_KEY, JSON.stringify(excl));
+    }
+  } catch (_) {}
+}
+
 /** 캘린더 1일뷰 예정 시간 저장 (hh:mm-hh:mm) */
 function saveBudgetScheduledTime(dateStr, taskName, scheduledTime, isInvest) {
   if (!(taskName || "").trim()) return;
   try {
+    removeFromBudgetExcluded(dateStr, taskName);
     const raw = localStorage.getItem(BUDGET_GOALS_KEY);
     const all = raw ? JSON.parse(raw) : {};
     if (!all[dateStr]) all[dateStr] = {};
     const key = String(taskName).trim();
     const existing = all[dateStr][key] || {};
     if (scheduledTime && scheduledTime.trim()) {
-      all[dateStr][key] = { ...existing, scheduledTime: scheduledTime.trim(), isInvest };
+      all[dateStr][key] = {
+        ...existing,
+        scheduledTime: scheduledTime.trim(),
+        isInvest,
+      };
     } else {
       const { scheduledTime: _, ...rest } = existing;
       all[dateStr][key] = Object.keys(rest).length ? rest : undefined;
@@ -344,7 +418,11 @@ const CATEGORY_OPTIONS = [
   { value: "sideincome", label: "부수입", color: "cat-sideincome" },
   { value: "happiness", label: "행복", color: "cat-happiness" },
   { value: "health", label: "건강", color: "cat-health" },
-  { value: "productive_consumption", label: "생산적 소비", color: "cat-prod-cons" },
+  {
+    value: "productive_consumption",
+    label: "생산적 소비",
+    color: "cat-prod-cons",
+  },
   { value: "pleasure", label: "쾌락충족", color: "cat-pleasure" },
   {
     value: "dreamblocking",
@@ -361,7 +439,13 @@ const CATEGORY_OPTIONS = [
 /** 카테고리에 따른 생산성 자동 매핑 */
 function getProductivityFromCategory(categoryValue) {
   if (!categoryValue) return "";
-  const productive = ["dream", "sideincome", "happiness", "health", "productive_consumption"];
+  const productive = [
+    "dream",
+    "sideincome",
+    "happiness",
+    "health",
+    "productive_consumption",
+  ];
   const nonproductive = [
     "unhappiness",
     "unhealthy",
@@ -380,7 +464,8 @@ function getProductivityFromCategory(categoryValue) {
 function getNapCategoryProductivity(timeTracked) {
   const hours = parseTimeToHours(timeTracked);
   const minutes = hours * 60;
-  if (minutes > 30) return { category: "pleasure", productivity: "nonproductive" };
+  if (minutes > 30)
+    return { category: "pleasure", productivity: "nonproductive" };
   return { category: "health", productivity: "productive" };
 }
 
@@ -518,7 +603,9 @@ function parseDateTimeToHours(str) {
 
 /** 성취능력 문자열을 -50~+50 숫자로 파싱 */
 function parseEnergyToNumber(val) {
-  const s = String(val || "").trim().replace(/%/g, "");
+  const s = String(val || "")
+    .trim()
+    .replace(/%/g, "");
   if (!s) return null;
   const n = parseInt(s.replace(/^\+/, ""), 10);
   if (!isNaN(n) && n >= -50 && n <= 50) return n;
@@ -595,7 +682,9 @@ function formatHoursToReadable(hours) {
 
 /** 성취능력 값(-50~+50)을 표시용 퍼센트 문자열로 변환 */
 function formatEnergyForDisplay(val) {
-  const s = String(val || "").trim().replace(/%/g, "");
+  const s = String(val || "")
+    .trim()
+    .replace(/%/g, "");
   if (!s) return "";
   const n = parseInt(s.replace(/^\+/, ""), 10);
   if (!isNaN(n) && n >= -50 && n <= 50) {
@@ -709,8 +798,8 @@ function normalizeDateForCompare(str) {
 /** 날짜·시작시간 기준 시간 흐름 순 정렬 (00:00→23:59) */
 function sortRowsByDateTime(rows) {
   return [...rows].sort((a, b) => {
-    const dateA = normalizeDateForCompare(a.date || "") || (a.date || "");
-    const dateB = normalizeDateForCompare(b.date || "") || (b.date || "");
+    const dateA = normalizeDateForCompare(a.date || "") || a.date || "";
+    const dateB = normalizeDateForCompare(b.date || "") || b.date || "";
     if (dateA !== dateB) return dateA.localeCompare(dateB);
     const startA = parseDateTimeToHours(a.startTime) ?? 0;
     const startB = parseDateTimeToHours(b.startTime) ?? 0;
@@ -789,7 +878,11 @@ function aggregateDailyRevenueFromFiltered(filtered, hourlyRate) {
     const d = (r.date || "").trim();
     if (!d) return;
     const hrs = parseTimeToHours(r.timeTracked);
-    const pv = (r.productivity || getProductivityFromCategory(r.category) || "").trim();
+    const pv = (
+      r.productivity ||
+      getProductivityFromCategory(r.category) ||
+      ""
+    ).trim();
     let price = hrs * hourlyRate;
     if (pv === "nonproductive") price *= -1;
     else if (pv === "other" || pv === "그 외" || !pv) price = 0;
@@ -808,7 +901,11 @@ function calcPeriodValueFromFiltered(filtered, hourlyRate) {
   let sum = 0;
   filtered.forEach((r) => {
     const hrs = parseTimeToHours(r.timeTracked);
-    const pv = (r.productivity || getProductivityFromCategory(r.category) || "").trim();
+    const pv = (
+      r.productivity ||
+      getProductivityFromCategory(r.category) ||
+      ""
+    ).trim();
     let price = hrs * hourlyRate;
     if (pv === "nonproductive") price *= -1;
     else if (pv === "other" || pv === "그 외" || !pv) price = 0;
@@ -1172,23 +1269,30 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
 
   const prodDisplay = document.createElement("span");
   prodDisplay.className = "time-tag-pill prod";
-  const prodOpt = PRODUCTIVITY_OPTIONS.find((o) => o.value === rowData.productivity);
+  const prodOpt = PRODUCTIVITY_OPTIONS.find(
+    (o) => o.value === rowData.productivity,
+  );
   prodDisplay.textContent = prodOpt ? prodOpt.label : "";
-  prodDisplay.className = "time-tag-pill prod " + (prodOpt ? prodOpt.color : "");
+  prodDisplay.className =
+    "time-tag-pill prod " + (prodOpt ? prodOpt.color : "");
   prodTd.appendChild(prodDisplay);
 
   const startTimeTd = document.createElement("td");
   startTimeTd.className = "time-cell time-cell-start";
   const startTimeSpan = document.createElement("span");
   startTimeSpan.className = "time-display-start";
-  startTimeSpan.textContent = rowData.startTime ? toDisplayTimeOnly(rowData.startTime) || rowData.startTime : "";
+  startTimeSpan.textContent = rowData.startTime
+    ? toDisplayTimeOnly(rowData.startTime) || rowData.startTime
+    : "";
   startTimeTd.appendChild(startTimeSpan);
 
   const endTimeTd = document.createElement("td");
   endTimeTd.className = "time-cell time-cell-end";
   const endTimeSpan = document.createElement("span");
   endTimeSpan.className = "time-display-end";
-  endTimeSpan.textContent = rowData.endTime ? toDisplayTimeOnly(rowData.endTime) || rowData.endTime : "";
+  endTimeSpan.textContent = rowData.endTime
+    ? toDisplayTimeOnly(rowData.endTime) || rowData.endTime
+    : "";
   endTimeTd.appendChild(endTimeSpan);
 
   const timeTd = document.createElement("td");
@@ -1220,7 +1324,8 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   catDisplay.className = "time-tag-pill cat cat-empty";
   const catOpt = CATEGORY_OPTIONS.find((o) => o.value === rowData.category);
   catDisplay.textContent = catOpt ? catOpt.label : "—";
-  catDisplay.className = "time-tag-pill cat " + (catOpt ? catOpt.color : "cat-empty");
+  catDisplay.className =
+    "time-tag-pill cat " + (catOpt ? catOpt.color : "cat-empty");
   catTd.appendChild(catDisplay);
 
   const taskTd = document.createElement("td");
@@ -1362,7 +1467,9 @@ function collectRowFromTR(tr) {
     date: dateInput?.value || "",
     feedback: feedbackInput?.value || "",
     focus: (tr.querySelector(".time-display-focus")?.textContent || "").trim(),
-    energy: (tr.querySelector(".time-display-energy")?.textContent || "").trim(),
+    energy: (
+      tr.querySelector(".time-display-energy")?.textContent || ""
+    ).trim(),
   };
 }
 
@@ -1386,7 +1493,10 @@ function updateStickyLefts(table) {
   const trackedW = 90;
   table.style.setProperty("--sticky-left-start", `${taskW}px`);
   table.style.setProperty("--sticky-left-end", `${taskW + startW}px`);
-  table.style.setProperty("--sticky-left-tracked", `${taskW + startW + endW}px`);
+  table.style.setProperty(
+    "--sticky-left-tracked",
+    `${taskW + startW + endW}px`,
+  );
 }
 
 function createTableHTML() {
@@ -1425,7 +1535,15 @@ function createTableHTML() {
   `;
 }
 
-function createProductivitySection(prod, rows, viewEl, updateTotal, onRowDelete, openTaskLogModal, openTaskLogModalForEdit) {
+function createProductivitySection(
+  prod,
+  rows,
+  viewEl,
+  updateTotal,
+  onRowDelete,
+  openTaskLogModal,
+  openTaskLogModalForEdit,
+) {
   const section = document.createElement("section");
   section.className = "time-section";
   section.dataset.productivity = prod.value;
@@ -2021,8 +2139,12 @@ export function render() {
   taskLogModal.hidden = true;
   el.appendChild(taskLogModal);
 
-  const taskLogPickerWrap = taskLogModal.querySelector(".time-datetime-picker-wrap");
-  const taskLogPickerBackdrop = taskLogModal.querySelector(".time-datetime-picker-backdrop");
+  const taskLogPickerWrap = taskLogModal.querySelector(
+    ".time-datetime-picker-wrap",
+  );
+  const taskLogPickerBackdrop = taskLogModal.querySelector(
+    ".time-datetime-picker-backdrop",
+  );
 
   function closeDateTimePicker() {
     taskLogPickerWrap.hidden = true;
@@ -2032,16 +2154,28 @@ export function render() {
   taskLogPickerBackdrop?.addEventListener("click", closeDateTimePicker);
 
   const taskLogTitleEl = taskLogModal.querySelector(".time-task-setup-title");
-  const taskLogTaskWrap = taskLogModal.querySelector(".time-task-log-task-wrap");
+  const taskLogTaskWrap = taskLogModal.querySelector(
+    ".time-task-log-task-wrap",
+  );
   const taskLogStartInput = taskLogModal.querySelector(".time-task-log-start");
   const taskLogEndInput = taskLogModal.querySelector(".time-task-log-end");
-  const taskLogDateStart = taskLogModal.querySelector(".time-task-log-date-start");
-  const taskLogTimeStart = taskLogModal.querySelector(".time-task-log-time-start");
+  const taskLogDateStart = taskLogModal.querySelector(
+    ".time-task-log-date-start",
+  );
+  const taskLogTimeStart = taskLogModal.querySelector(
+    ".time-task-log-time-start",
+  );
   const taskLogDateEnd = taskLogModal.querySelector(".time-task-log-date-end");
   const taskLogTimeEnd = taskLogModal.querySelector(".time-task-log-time-end");
-  const taskLogEndWrap = taskLogModal.querySelector(".time-task-log-datetime-wrap-end");
-  const taskLogEndClearBtn = taskLogModal.querySelector('.time-task-log-datetime-clear[data-for="end"]');
-  const taskLogFeedbackInput = taskLogModal.querySelector(".time-task-log-feedback");
+  const taskLogEndWrap = taskLogModal.querySelector(
+    ".time-task-log-datetime-wrap-end",
+  );
+  const taskLogEndClearBtn = taskLogModal.querySelector(
+    '.time-task-log-datetime-clear[data-for="end"]',
+  );
+  const taskLogFeedbackInput = taskLogModal.querySelector(
+    ".time-task-log-feedback",
+  );
 
   const normalizeHhMm = (val) => {
     if (!val || typeof val !== "string") return "";
@@ -2151,12 +2285,27 @@ export function render() {
   }
 
   const restrictToTimeChars = (e) => {
-    if (["Backspace", "Delete", "Tab", "Escape", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(e.key)) return;
+    if (
+      [
+        "Backspace",
+        "Delete",
+        "Tab",
+        "Escape",
+        "ArrowLeft",
+        "ArrowRight",
+        "ArrowUp",
+        "ArrowDown",
+        "Home",
+        "End",
+      ].includes(e.key)
+    )
+      return;
     if (e.ctrlKey || e.metaKey) return;
     if (e.key === "Enter") {
       e.preventDefault();
       const input = e.target;
-      const formatted = autoFormatDigitsToHhMm(input.value) || normalizeHhMm(input.value);
+      const formatted =
+        autoFormatDigitsToHhMm(input.value) || normalizeHhMm(input.value);
       input.value = formatted;
       input.blur();
       return;
@@ -2170,7 +2319,10 @@ export function render() {
 
   const filterPastedTime = (e) => {
     e.preventDefault();
-    const pasted = (e.clipboardData?.getData("text") || "").replace(/[^\d:]/g, "");
+    const pasted = (e.clipboardData?.getData("text") || "").replace(
+      /[^\d:]/g,
+      "",
+    );
     const input = e.target;
     const start = input.selectionStart;
     const end = input.selectionEnd;
@@ -2184,7 +2336,9 @@ export function render() {
     el?.addEventListener("change", syncStartToHidden);
     el?.addEventListener("blur", () => {
       if (el === taskLogTimeStart) {
-        const preformatted = autoFormatDigitsToHhMm(taskLogTimeStart.value) || taskLogTimeStart.value;
+        const preformatted =
+          autoFormatDigitsToHhMm(taskLogTimeStart.value) ||
+          taskLogTimeStart.value;
         taskLogTimeStart.value = normalizeHhMm(preformatted) || preformatted;
       }
       syncStartToHidden();
@@ -2197,7 +2351,8 @@ export function render() {
     el?.addEventListener("change", syncEndToHidden);
     el?.addEventListener("blur", () => {
       if (el === taskLogTimeEnd) {
-        const preformatted = autoFormatDigitsToHhMm(taskLogTimeEnd.value) || taskLogTimeEnd.value;
+        const preformatted =
+          autoFormatDigitsToHhMm(taskLogTimeEnd.value) || taskLogTimeEnd.value;
         taskLogTimeEnd.value = normalizeHhMm(preformatted) || preformatted;
       }
       syncEndToHidden();
@@ -2205,30 +2360,76 @@ export function render() {
   });
   taskLogTimeEnd?.addEventListener("keydown", restrictToTimeChars);
   taskLogTimeEnd?.addEventListener("paste", filterPastedTime);
-  const taskLogEnergySection = taskLogModal.querySelector(".time-task-log-energy-section");
-  const taskLogEnergyToggleInput = taskLogModal.querySelector(".time-task-log-energy-toggle-input");
-  const taskLogEnergyFields = taskLogModal.querySelector(".time-task-log-energy-fields");
-  const taskLogFocusSection = taskLogModal.querySelector(".time-task-log-focus-section");
-  const taskLogFocusToggleInput = taskLogModal.querySelector(".time-task-log-focus-toggle-input");
-  const taskLogFocusFields = taskLogModal.querySelector(".time-task-log-focus-fields");
-  const taskLogExpenseSection = taskLogModal.querySelector(".time-task-log-expense-section");
-  const taskLogExpenseToggleInput = taskLogModal.querySelector(".time-task-log-expense-toggle-input");
-  const taskLogExpenseFields = taskLogModal.querySelector(".time-task-log-expense-fields");
-  const taskLogExpenseNameInput = taskLogModal.querySelector(".time-task-log-expense-name");
-  const taskLogExpenseCategoryWrap = taskLogModal.querySelector(".time-task-log-expense-category-wrap");
-  const taskLogExpenseClassificationWrap = taskLogModal.querySelector(".time-task-log-expense-classification-wrap");
-  const taskLogExpenseAmountInput = taskLogModal.querySelector(".time-task-log-expense-amount");
-  const taskLogExpenseErrorEl = taskLogModal.querySelector(".time-task-log-expense-error");
-  const taskLogEmotionSection = taskLogModal.querySelector(".time-task-log-emotion-section");
-  const taskLogEmotionToggleInput = taskLogModal.querySelector(".time-task-log-emotion-toggle-input");
-  const taskLogEmotionFields = taskLogModal.querySelector(".time-task-log-emotion-fields");
-  const taskLogEmotionDropdownWrap = taskLogModal.querySelector(".time-task-log-emotion-dropdown-wrap");
-  const taskLogEmotionQ1 = taskLogModal.querySelector(".time-task-log-emotion-q1");
-  const taskLogEmotionQ2 = taskLogModal.querySelector(".time-task-log-emotion-q2");
-  const taskLogEmotionQ3 = taskLogModal.querySelector(".time-task-log-emotion-q3");
+  const taskLogEnergySection = taskLogModal.querySelector(
+    ".time-task-log-energy-section",
+  );
+  const taskLogEnergyToggleInput = taskLogModal.querySelector(
+    ".time-task-log-energy-toggle-input",
+  );
+  const taskLogEnergyFields = taskLogModal.querySelector(
+    ".time-task-log-energy-fields",
+  );
+  const taskLogFocusSection = taskLogModal.querySelector(
+    ".time-task-log-focus-section",
+  );
+  const taskLogFocusToggleInput = taskLogModal.querySelector(
+    ".time-task-log-focus-toggle-input",
+  );
+  const taskLogFocusFields = taskLogModal.querySelector(
+    ".time-task-log-focus-fields",
+  );
+  const taskLogExpenseSection = taskLogModal.querySelector(
+    ".time-task-log-expense-section",
+  );
+  const taskLogExpenseToggleInput = taskLogModal.querySelector(
+    ".time-task-log-expense-toggle-input",
+  );
+  const taskLogExpenseFields = taskLogModal.querySelector(
+    ".time-task-log-expense-fields",
+  );
+  const taskLogExpenseNameInput = taskLogModal.querySelector(
+    ".time-task-log-expense-name",
+  );
+  const taskLogExpenseCategoryWrap = taskLogModal.querySelector(
+    ".time-task-log-expense-category-wrap",
+  );
+  const taskLogExpenseClassificationWrap = taskLogModal.querySelector(
+    ".time-task-log-expense-classification-wrap",
+  );
+  const taskLogExpenseAmountInput = taskLogModal.querySelector(
+    ".time-task-log-expense-amount",
+  );
+  const taskLogExpenseErrorEl = taskLogModal.querySelector(
+    ".time-task-log-expense-error",
+  );
+  const taskLogEmotionSection = taskLogModal.querySelector(
+    ".time-task-log-emotion-section",
+  );
+  const taskLogEmotionToggleInput = taskLogModal.querySelector(
+    ".time-task-log-emotion-toggle-input",
+  );
+  const taskLogEmotionFields = taskLogModal.querySelector(
+    ".time-task-log-emotion-fields",
+  );
+  const taskLogEmotionDropdownWrap = taskLogModal.querySelector(
+    ".time-task-log-emotion-dropdown-wrap",
+  );
+  const taskLogEmotionQ1 = taskLogModal.querySelector(
+    ".time-task-log-emotion-q1",
+  );
+  const taskLogEmotionQ2 = taskLogModal.querySelector(
+    ".time-task-log-emotion-q2",
+  );
+  const taskLogEmotionQ3 = taskLogModal.querySelector(
+    ".time-task-log-emotion-q3",
+  );
   const taskLogSubmitBtn = taskLogModal.querySelector(".time-task-log-submit");
-  const taskLogBackdrop = taskLogModal.querySelector(".time-task-setup-backdrop");
-  const taskLogCloseBtn = taskLogModal.querySelector(".time-task-setup-panel .time-task-setup-close");
+  const taskLogBackdrop = taskLogModal.querySelector(
+    ".time-task-setup-backdrop",
+  );
+  const taskLogCloseBtn = taskLogModal.querySelector(
+    ".time-task-setup-panel .time-task-setup-close",
+  );
 
   let taskLogTaskDropdown = null;
   let taskLogAddContext = null;
@@ -2283,7 +2484,9 @@ export function render() {
     return wrap;
   }
 
-  const taskLogPickerTitle = taskLogPickerWrap.querySelector(".time-datetime-picker-title");
+  const taskLogPickerTitle = taskLogPickerWrap.querySelector(
+    ".time-datetime-picker-title",
+  );
 
   function createDateTimePickerModal(getOtherValue, onConfirm) {
     const wrap = taskLogPickerWrap;
@@ -2316,10 +2519,20 @@ export function render() {
 
     function parseValue(str) {
       if (!str || typeof str !== "string") return null;
-      const m = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})[T\s]+(\d{1,2}):(\d{2})/);
+      const m = str.match(
+        /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})[T\s]+(\d{1,2}):(\d{2})/,
+      );
       if (m) {
         const [, y, mo, d, h, min] = m;
-        return new Date(parseInt(y), parseInt(mo) - 1, parseInt(d), parseInt(h), parseInt(min), 0, 0);
+        return new Date(
+          parseInt(y),
+          parseInt(mo) - 1,
+          parseInt(d),
+          parseInt(h),
+          parseInt(min),
+          0,
+          0,
+        );
       }
       const m2 = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
       if (m2) {
@@ -2334,7 +2547,11 @@ export function render() {
       const ld = new Date(lockedDate);
       ld.setHours(0, 0, 0, 0);
       const cd = new Date(currentD);
-      const currentDayStart = new Date(cd.getFullYear(), cd.getMonth(), cd.getDate());
+      const currentDayStart = new Date(
+        cd.getFullYear(),
+        cd.getMonth(),
+        cd.getDate(),
+      );
       if (currentDayStart.getTime() !== ld.getTime()) {
         if (cd > ld) {
           currentD.setFullYear(ld.getFullYear(), ld.getMonth(), ld.getDate());
@@ -2361,8 +2578,14 @@ export function render() {
       const min = currentD.getMinutes();
 
       function scrollOptionToCenter(container, element) {
-        const targetY = element.offsetTop + element.offsetHeight / 2 - container.clientHeight / 2;
-        container.scrollTop = Math.max(0, Math.min(targetY, container.scrollHeight - container.clientHeight));
+        const targetY =
+          element.offsetTop +
+          element.offsetHeight / 2 -
+          container.clientHeight / 2;
+        container.scrollTop = Math.max(
+          0,
+          Math.min(targetY, container.scrollHeight - container.clientHeight),
+        );
       }
 
       function renderColumn(container, items, selectedVal, format, addSpacers) {
@@ -2376,14 +2599,27 @@ export function render() {
           const div = document.createElement("div");
           div.className = "time-datetime-picker-option";
           div.textContent = typeof format === "function" ? format(item) : item;
-          div.dataset.value = String(typeof item === "object" ? (item instanceof Date ? item.getTime() : item) : item);
-          if (String(selectedVal) === div.dataset.value) div.classList.add("selected");
+          div.dataset.value = String(
+            typeof item === "object"
+              ? item instanceof Date
+                ? item.getTime()
+                : item
+              : item,
+          );
+          if (String(selectedVal) === div.dataset.value)
+            div.classList.add("selected");
           div.addEventListener("click", () => {
-            container.querySelectorAll(".time-datetime-picker-option").forEach((o) => o.classList.remove("selected"));
+            container
+              .querySelectorAll(".time-datetime-picker-option")
+              .forEach((o) => o.classList.remove("selected"));
             div.classList.add("selected");
             const needsScroll = container !== colAmpm;
             if (item instanceof Date) {
-              currentD.setFullYear(item.getFullYear(), item.getMonth(), item.getDate());
+              currentD.setFullYear(
+                item.getFullYear(),
+                item.getMonth(),
+                item.getDate(),
+              );
             } else if (container === colAmpm) {
               const h = currentD.getHours();
               if (item === "오후" && h < 12) currentD.setHours(h + 12);
@@ -2395,7 +2631,8 @@ export function render() {
               currentD.setMinutes(item);
             }
             updateDisplay();
-            if (needsScroll) requestAnimationFrame(() => scrollOptionToCenter(container, div));
+            if (needsScroll)
+              requestAnimationFrame(() => scrollOptionToCenter(container, div));
           });
           container.appendChild(div);
         });
@@ -2408,7 +2645,11 @@ export function render() {
 
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
-      const selDate = new Date(currentD.getFullYear(), currentD.getMonth(), currentD.getDate());
+      const selDate = new Date(
+        currentD.getFullYear(),
+        currentD.getMonth(),
+        currentD.getDate(),
+      );
       function formatDateItem(d) {
         const dStart = new Date(d);
         dStart.setHours(0, 0, 0, 0);
@@ -2423,14 +2664,32 @@ export function render() {
         renderColumn(colDate, dates, selDate.getTime(), formatDateItem, true);
       }
       renderColumn(colAmpm, AMPM, AMPM[ampmIdx], null, true);
-      renderColumn(colHour, hoursArr, hour24, (h) => String(h).padStart(2, "0"), true);
-      renderColumn(colMinute, MINUTES, min, (m) => String(m).padStart(2, "0"), true);
+      renderColumn(
+        colHour,
+        hoursArr,
+        hour24,
+        (h) => String(h).padStart(2, "0"),
+        true,
+      );
+      renderColumn(
+        colMinute,
+        MINUTES,
+        min,
+        (m) => String(m).padStart(2, "0"),
+        true,
+      );
 
       const scrollToSelected = () => {
         [colDate, colAmpm, colHour, colMinute].forEach((col) => {
-          const sel = col.querySelector(".time-datetime-picker-option.selected");
+          const sel = col.querySelector(
+            ".time-datetime-picker-option.selected",
+          );
           if (sel) {
-            sel.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
+            sel.scrollIntoView({
+              block: "center",
+              inline: "nearest",
+              behavior: "auto",
+            });
           }
         });
       };
@@ -2488,7 +2747,9 @@ export function render() {
       if (skipScrollSync) return;
       const centered = getCenteredOption(col);
       if (!centered) return;
-      col.querySelectorAll(".time-datetime-picker-option").forEach((o) => o.classList.remove("selected"));
+      col
+        .querySelectorAll(".time-datetime-picker-option")
+        .forEach((o) => o.classList.remove("selected"));
       centered.classList.add("selected");
       const prevAmpm = currentD.getHours() < 12 ? "오전" : "오후";
       applyValueFromCenteredOption(col, centered);
@@ -2528,7 +2789,11 @@ export function render() {
           updateDisplay();
         } else if (action === "eod") {
           if (fieldType === "end" && lockedDate) {
-            currentD.setFullYear(lockedDate.getFullYear(), lockedDate.getMonth(), lockedDate.getDate());
+            currentD.setFullYear(
+              lockedDate.getFullYear(),
+              lockedDate.getMonth(),
+              lockedDate.getDate(),
+            );
           }
           currentD.setHours(23, 59, 0, 0);
           enforceLockedDate();
@@ -2548,7 +2813,9 @@ export function render() {
     confirmBtn.addEventListener("click", () => {
       onConfirm?.(toValue(currentD));
       wrap.hidden = true;
-      const backdrop = wrap.closest(".time-task-log-panel")?.querySelector(".time-datetime-picker-backdrop");
+      const backdrop = wrap
+        .closest(".time-task-log-panel")
+        ?.querySelector(".time-datetime-picker-backdrop");
       if (backdrop) backdrop.hidden = true;
     });
 
@@ -2557,15 +2824,25 @@ export function render() {
         fieldType = field || "start";
         lastEndTime = lastEnd || null;
         lockedDate = null;
-        taskLogPickerTitle.textContent = fieldType === "start" ? "시작 시간" : "마감 시간";
+        taskLogPickerTitle.textContent =
+          fieldType === "start" ? "시작 시간" : "마감 시간";
         if (fieldType === "end" && refDate) {
           const startParsed = parseValue(refDate);
           if (startParsed) {
-            lockedDate = new Date(startParsed.getFullYear(), startParsed.getMonth(), startParsed.getDate());
+            lockedDate = new Date(
+              startParsed.getFullYear(),
+              startParsed.getMonth(),
+              startParsed.getDate(),
+            );
             const endParsed = parseValue(initialValue);
             if (endParsed) {
               currentD = new Date(lockedDate);
-              currentD.setHours(endParsed.getHours(), endParsed.getMinutes(), 0, 0);
+              currentD.setHours(
+                endParsed.getHours(),
+                endParsed.getMinutes(),
+                0,
+                0,
+              );
             } else {
               currentD = new Date(startParsed);
               currentD.setMinutes(currentD.getMinutes() + 30);
@@ -2580,9 +2857,13 @@ export function render() {
         skipScrollSync = true;
         renderWheels();
         wrap.hidden = false;
-        const backdrop = wrap.closest(".time-task-log-panel")?.querySelector(".time-datetime-picker-backdrop");
+        const backdrop = wrap
+          .closest(".time-task-log-panel")
+          ?.querySelector(".time-datetime-picker-backdrop");
         if (backdrop) backdrop.hidden = false;
-        setTimeout(() => { skipScrollSync = false; }, 150);
+        setTimeout(() => {
+          skipScrollSync = false;
+        }, 150);
       },
     };
   }
@@ -2635,7 +2916,11 @@ export function render() {
     return wrap;
   }
 
-  function buildExpenseClassificationDropdown(initialCategory, initialValue, onUpdate) {
+  function buildExpenseClassificationDropdown(
+    initialCategory,
+    initialValue,
+    onUpdate,
+  ) {
     const wrap = document.createElement("div");
     wrap.className = "time-task-log-expense-classification-dropdown";
     const display = document.createElement("span");
@@ -2687,7 +2972,11 @@ export function render() {
     return wrap;
   }
 
-  const expenseClassificationDropdown = buildExpenseClassificationDropdown("", "", () => {});
+  const expenseClassificationDropdown = buildExpenseClassificationDropdown(
+    "",
+    "",
+    () => {},
+  );
   const expenseCategoryDropdown = buildExpenseCategoryDropdown("", (cat) => {
     expenseClassificationDropdown._setCategory?.(cat);
     expenseClassificationDropdown._setValue?.("");
@@ -2763,7 +3052,10 @@ export function render() {
         if (taskLogEmotionFields) taskLogEmotionFields.hidden = false;
       }
       requestAnimationFrame(() => {
-        taskLogEmotionSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+        taskLogEmotionSection?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
       });
     } else {
       emotionDropdown._setTaskName?.("");
@@ -2771,10 +3063,12 @@ export function render() {
   }
 
   taskLogEnergyToggleInput?.addEventListener("change", () => {
-    if (taskLogEnergyFields) taskLogEnergyFields.hidden = !taskLogEnergyToggleInput.checked;
+    if (taskLogEnergyFields)
+      taskLogEnergyFields.hidden = !taskLogEnergyToggleInput.checked;
   });
   taskLogFocusToggleInput?.addEventListener("change", () => {
-    if (taskLogFocusFields) taskLogFocusFields.hidden = !taskLogFocusToggleInput.checked;
+    if (taskLogFocusFields)
+      taskLogFocusFields.hidden = !taskLogFocusToggleInput.checked;
   });
 
   function setupScoreButtons(container, getValue, setValue) {
@@ -2782,7 +3076,9 @@ export function render() {
     container.querySelectorAll(".time-task-log-score-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         const val = btn.dataset.value || "";
-        container.querySelectorAll(".time-task-log-score-btn").forEach((b) => b.classList.remove("selected"));
+        container
+          .querySelectorAll(".time-task-log-score-btn")
+          .forEach((b) => b.classList.remove("selected"));
         if (getValue() === val) {
           setValue("");
         } else {
@@ -2794,12 +3090,24 @@ export function render() {
   }
   let taskLogEnergyValue = "";
   let taskLogFocusValue = "0";
-  const taskLogEnergySlider = taskLogModal.querySelector(".time-task-log-energy-slider");
-  const taskLogEnergyValueEl = taskLogModal.querySelector(".time-task-log-energy-value");
-  const taskLogEnergyFill = taskLogModal.querySelector(".time-task-log-energy-fill");
-  const focusStepperValueEl = taskLogModal.querySelector(".time-task-log-stepper-value");
-  const focusStepperMinus = taskLogModal.querySelector('.time-task-log-stepper-btn[data-action="minus"]');
-  const focusStepperPlus = taskLogModal.querySelector('.time-task-log-stepper-btn[data-action="plus"]');
+  const taskLogEnergySlider = taskLogModal.querySelector(
+    ".time-task-log-energy-slider",
+  );
+  const taskLogEnergyValueEl = taskLogModal.querySelector(
+    ".time-task-log-energy-value",
+  );
+  const taskLogEnergyFill = taskLogModal.querySelector(
+    ".time-task-log-energy-fill",
+  );
+  const focusStepperValueEl = taskLogModal.querySelector(
+    ".time-task-log-stepper-value",
+  );
+  const focusStepperMinus = taskLogModal.querySelector(
+    '.time-task-log-stepper-btn[data-action="minus"]',
+  );
+  const focusStepperPlus = taskLogModal.querySelector(
+    '.time-task-log-stepper-btn[data-action="plus"]',
+  );
   function updateFocusStepper(value) {
     const n = Math.max(0, parseInt(String(value || "0"), 10) || 0);
     taskLogFocusValue = String(n);
@@ -2820,7 +3128,9 @@ export function render() {
     });
   }
   function parseEnergyToValue(val) {
-    const s = String(val || "").trim().replace(/%/g, "");
+    const s = String(val || "")
+      .trim()
+      .replace(/%/g, "");
     if (!s) return null;
     const n = parseInt(s.replace(/^\+/, ""), 10);
     if (!isNaN(n) && n >= -50 && n <= 50) return n;
@@ -2833,7 +3143,7 @@ export function render() {
       taskLogEnergySlider.value = val;
       taskLogEnergyValueEl.textContent = val > 0 ? `+${val}%` : val + "%";
       taskLogEnergyValue = String(val);
-      if (taskLogEnergyFill) taskLogEnergyFill.style.width = (val + 50) + "%";
+      if (taskLogEnergyFill) taskLogEnergyFill.style.width = val + 50 + "%";
     }
   }
   if (taskLogEnergySlider && taskLogEnergyValueEl) {
@@ -2841,16 +3151,18 @@ export function render() {
       const v = parseInt(taskLogEnergySlider.value, 10);
       taskLogEnergyValueEl.textContent = v > 0 ? `+${v}%` : v + "%";
       taskLogEnergyValue = String(v);
-      if (taskLogEnergyFill) taskLogEnergyFill.style.width = (v + 50) + "%";
+      if (taskLogEnergyFill) taskLogEnergyFill.style.width = v + 50 + "%";
     });
   }
 
   taskLogExpenseToggleInput?.addEventListener("change", () => {
-    if (taskLogExpenseFields) taskLogExpenseFields.hidden = !taskLogExpenseToggleInput.checked;
+    if (taskLogExpenseFields)
+      taskLogExpenseFields.hidden = !taskLogExpenseToggleInput.checked;
   });
 
   taskLogEmotionToggleInput?.addEventListener("change", () => {
-    if (taskLogEmotionFields) taskLogEmotionFields.hidden = !taskLogEmotionToggleInput.checked;
+    if (taskLogEmotionFields)
+      taskLogEmotionFields.hidden = !taskLogEmotionToggleInput.checked;
   });
 
   taskLogExpenseAmountInput?.addEventListener("input", () => {
@@ -2860,11 +3172,14 @@ export function render() {
   });
 
   function getDefaultStartTime(addContext) {
-    const dateStr = filterType === "day" ? filterStartDate : (() => {
-      const y = new Date();
-      y.setDate(y.getDate() - 1);
-      return y.toISOString().slice(0, 10);
-    })();
+    const dateStr =
+      filterType === "day"
+        ? filterStartDate
+        : (() => {
+            const y = new Date();
+            y.setDate(y.getDate() - 1);
+            return y.toISOString().slice(0, 10);
+          })();
     let allRows = [];
     if (addContext?.viewEl) {
       allRows = Array.from(addContext.viewEl.querySelectorAll("tr.time-row"));
@@ -2874,7 +3189,10 @@ export function render() {
     const rowsForDate = allRows.filter((r) => {
       const rd = r._rowData;
       if (!rd) return false;
-      const rowDate = (rd.date || "").toString().replace(/\//g, "-").slice(0, 10);
+      const rowDate = (rd.date || "")
+        .toString()
+        .replace(/\//g, "-")
+        .slice(0, 10);
       return rowDate === dateStr;
     });
     if (rowsForDate.length === 0) {
@@ -2915,7 +3233,9 @@ export function render() {
       taskLogTaskWrap.innerHTML = "";
       taskLogTaskWrap.appendChild(taskLogTaskDropdown);
     }
-    const mainTasks = getFullTaskOptions().filter((t) => !(t.name || "").includes(" > "));
+    const mainTasks = getFullTaskOptions().filter(
+      (t) => !(t.name || "").includes(" > "),
+    );
     const firstTask = mainTasks[0]?.name || "";
     taskLogTaskDropdown._setValue?.(firstTask);
     const defaultStart = getDefaultStartTime(addContext);
@@ -2951,12 +3271,15 @@ export function render() {
   }
 
   function openTaskLogModalForEdit(tr, rowData) {
-    const data = (tr?._rowData && typeof tr._rowData === "object") ? tr._rowData : rowData;
+    const data =
+      tr?._rowData && typeof tr._rowData === "object" ? tr._rowData : rowData;
     let startTime = data.startTime || "";
     let endTime = data.endTime || "";
     const rowDateEl = tr?.querySelector(".time-display-date");
     const displayDateStr = (rowDateEl?.textContent || "").trim();
-    const recordDate = normalizeDateForCompare(displayDateStr) || normalizeDateForCompare(data.date || "");
+    const recordDate =
+      normalizeDateForCompare(displayDateStr) ||
+      normalizeDateForCompare(data.date || "");
 
     if (recordDate) {
       if (endTime) {
@@ -3008,11 +3331,13 @@ export function render() {
     taskLogFocusValue = String(data.focus || "0").trim() || "0";
     if (taskLogEnergyToggleInput) {
       taskLogEnergyToggleInput.checked = !!taskLogEnergyValue;
-      if (taskLogEnergyFields) taskLogEnergyFields.hidden = !taskLogEnergyToggleInput.checked;
+      if (taskLogEnergyFields)
+        taskLogEnergyFields.hidden = !taskLogEnergyToggleInput.checked;
     }
     if (taskLogFocusToggleInput) {
-      taskLogFocusToggleInput.checked = (String(data.focus || "").trim()) !== "";
-      if (taskLogFocusFields) taskLogFocusFields.hidden = !taskLogFocusToggleInput.checked;
+      taskLogFocusToggleInput.checked = String(data.focus || "").trim() !== "";
+      if (taskLogFocusFields)
+        taskLogFocusFields.hidden = !taskLogFocusToggleInput.checked;
     }
     updateEnergySlider(taskLogEnergyValue || "0");
     updateFocusStepper(taskLogFocusValue || "0");
@@ -3052,8 +3377,11 @@ export function render() {
     const timeTracked = (() => {
       if (startTime && endTime) {
         const toIso = (str) => {
-          const m = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})[T\s]+(\d{1,2}):(\d{2})/);
-          if (m) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}T${m[4].padStart(2, "0")}:${m[5]}:00`;
+          const m = str.match(
+            /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})[T\s]+(\d{1,2}):(\d{2})/,
+          );
+          if (m)
+            return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}T${m[4].padStart(2, "0")}:${m[5]}:00`;
           return str.replace(" ", "T") + ":00";
         };
         const s = new Date(toIso(startTime));
@@ -3064,7 +3392,8 @@ export function render() {
       return "";
     })();
     const opt = taskName ? getTaskOptionByName(taskName) : null;
-    let productivity = opt?.productivity || (addCtx?.productivity ?? "productive");
+    let productivity =
+      opt?.productivity || (addCtx?.productivity ?? "productive");
     let category = opt?.category || "";
     if ((taskName || "").trim() === "낮잠" && timeTracked) {
       const nap = getNapCategoryProductivity(timeTracked);
@@ -3073,9 +3402,12 @@ export function render() {
     }
     const dateStr = parseDateFromDateTime(startTime) || toDateStr(new Date());
     const expenseName = (taskLogExpenseNameInput.value || "").trim();
-    const expenseAmount = (taskLogExpenseAmountInput.value || "").trim().replace(/,/g, "");
+    const expenseAmount = (taskLogExpenseAmountInput.value || "")
+      .trim()
+      .replace(/,/g, "");
     const expenseCategory = expenseCategoryDropdown._getValue?.() || "";
-    const expenseClassification = expenseClassificationDropdown._getValue?.() || "";
+    const expenseClassification =
+      expenseClassificationDropdown._getValue?.() || "";
 
     const energyToggleOn = taskLogEnergyToggleInput?.checked;
     const focusToggleOn = taskLogFocusToggleInput?.checked;
@@ -3091,7 +3423,8 @@ export function render() {
       if (!expenseAmount || !parseFloat(expenseAmount)) missing.push("금액");
       if (missing.length > 0) {
         if (taskLogExpenseErrorEl) {
-          taskLogExpenseErrorEl.textContent = "입력 필요: " + missing.join(", ");
+          taskLogExpenseErrorEl.textContent =
+            "입력 필요: " + missing.join(", ");
           taskLogExpenseErrorEl.hidden = false;
         }
         return;
@@ -3120,7 +3453,11 @@ export function render() {
       editTr.querySelector(".time-display-task").textContent = taskName;
       const prodBarEl = editTr.querySelector(".time-task-prod-bar");
       if (prodBarEl) {
-        prodBarEl.classList.remove("time-task-prod-bar--productive", "time-task-prod-bar--nonproductive", "time-task-prod-bar--other");
+        prodBarEl.classList.remove(
+          "time-task-prod-bar--productive",
+          "time-task-prod-bar--nonproductive",
+          "time-task-prod-bar--other",
+        );
         prodBarEl.classList.add(
           productivity === "productive"
             ? "time-task-prod-bar--productive"
@@ -3129,21 +3466,39 @@ export function render() {
               : "time-task-prod-bar--other",
         );
       }
-      editTr.querySelector(".time-display-start").textContent = startTime ? (toDisplayTimeOnly(startTime) || startTime) : "";
-      editTr.querySelector(".time-display-end").textContent = endTime ? (toDisplayTimeOnly(endTime) || endTime) : "";
+      editTr.querySelector(".time-display-start").textContent = startTime
+        ? toDisplayTimeOnly(startTime) || startTime
+        : "";
+      editTr.querySelector(".time-display-end").textContent = endTime
+        ? toDisplayTimeOnly(endTime) || endTime
+        : "";
       editTr.querySelector(".time-display-tracked").textContent = timeTracked;
       editTr.querySelector(".time-display-feedback").textContent = feedback;
       const catOpt = CATEGORY_OPTIONS.find((o) => o.value === category);
-      editTr.querySelector(".time-cell-category .time-tag-pill").textContent = catOpt ? catOpt.label : "—";
-      editTr.querySelector(".time-cell-category .time-tag-pill").className = "time-tag-pill cat " + (catOpt ? catOpt.color : "cat-empty");
-      const prodOpt = PRODUCTIVITY_OPTIONS.find((o) => o.value === productivity);
-      editTr.querySelector(".time-cell-productivity .time-tag-pill").textContent = prodOpt ? prodOpt.label : "";
-      editTr.querySelector(".time-cell-productivity .time-tag-pill").className = "time-tag-pill prod " + (prodOpt ? prodOpt.color : "");
-      editTr.querySelector(".time-display-date").textContent = dateStr ? formatDateDisplay(dateStr) : "";
-      const focusDisplay = editTr.querySelector(".time-cell-focus .time-display-focus");
-      const energyDisplay = editTr.querySelector(".time-cell-energy .time-display-energy");
+      editTr.querySelector(".time-cell-category .time-tag-pill").textContent =
+        catOpt ? catOpt.label : "—";
+      editTr.querySelector(".time-cell-category .time-tag-pill").className =
+        "time-tag-pill cat " + (catOpt ? catOpt.color : "cat-empty");
+      const prodOpt = PRODUCTIVITY_OPTIONS.find(
+        (o) => o.value === productivity,
+      );
+      editTr.querySelector(
+        ".time-cell-productivity .time-tag-pill",
+      ).textContent = prodOpt ? prodOpt.label : "";
+      editTr.querySelector(".time-cell-productivity .time-tag-pill").className =
+        "time-tag-pill prod " + (prodOpt ? prodOpt.color : "");
+      editTr.querySelector(".time-display-date").textContent = dateStr
+        ? formatDateDisplay(dateStr)
+        : "";
+      const focusDisplay = editTr.querySelector(
+        ".time-cell-focus .time-display-focus",
+      );
+      const energyDisplay = editTr.querySelector(
+        ".time-cell-energy .time-display-energy",
+      );
       if (focusDisplay) focusDisplay.textContent = focusValue || "";
-      if (energyDisplay) energyDisplay.textContent = formatEnergyForDisplay(energyValue);
+      if (energyDisplay)
+        energyDisplay.textContent = formatEnergyForDisplay(energyValue);
       editTr._updatePrice?.();
     } else if (addCtx) {
       const ctx = addCtx;
@@ -3167,16 +3522,26 @@ export function render() {
         ctx.handleRowEdit,
       );
       if (ctx.addRow) ctx.tbody.insertBefore(tr, ctx.addRow);
-    else ctx.tbody.appendChild(tr);
+      else ctx.tbody.appendChild(tr);
       ctx.onRowUpdate?.();
     }
 
-    if (expenseToggleOn && expenseName && expenseCategory && expenseClassification && expenseAmount && parseFloat(expenseAmount)) {
+    if (
+      expenseToggleOn &&
+      expenseName &&
+      expenseCategory &&
+      expenseClassification &&
+      expenseAmount &&
+      parseFloat(expenseAmount)
+    ) {
       const raw = parseFloat(String(expenseAmount).replace(/,/g, "")) || 0;
-      const signed = expenseCategory === "수입" ? Math.abs(raw) : -Math.abs(raw);
+      const signed =
+        expenseCategory === "수입" ? Math.abs(raw) : -Math.abs(raw);
       const amountFormatted = signed.toLocaleString("ko-KR");
       const existingRows = loadExpenseRows();
-      const dateForExpense = (dateStr || new Date().toISOString().slice(0, 10)).replace(/\//g, "-");
+      const dateForExpense = (
+        dateStr || new Date().toISOString().slice(0, 10)
+      ).replace(/\//g, "-");
       existingRows.push({
         name: expenseName,
         date: dateForExpense,
@@ -3197,7 +3562,14 @@ export function render() {
     const hasEmotionContent = emotionQ1 || emotionQ2 || emotionQ3;
     if (emotionToggleOn && emotionValue && hasEmotionContent) {
       const entries = loadDiaryEntries();
-      addEmotionEntry(entries, emotionValue, dateStr, emotionQ1, emotionQ2, emotionQ3);
+      addEmotionEntry(
+        entries,
+        emotionValue,
+        dateStr,
+        emotionQ1,
+        emotionQ2,
+        emotionQ3,
+      );
       saveDiaryEntries(entries);
     }
 
@@ -3222,9 +3594,7 @@ export function render() {
   const closeBtn = taskSetupModal.querySelector(".time-task-setup-close");
   const addTaskBtn = taskSetupModal.querySelector(".time-task-add-btn");
   const setupTabs = taskSetupModal.querySelectorAll(".time-task-setup-tab");
-  const setupListAll = taskSetupModal.querySelector(
-    '[data-tab-content="all"]',
-  );
+  const setupListAll = taskSetupModal.querySelector('[data-tab-content="all"]');
   const setupListProd = taskSetupModal.querySelector(
     '[data-tab-content="productive"]',
   );
@@ -3234,9 +3604,7 @@ export function render() {
   const setupListOther = taskSetupModal.querySelector(
     '[data-tab-content="other"]',
   );
-  const setupSubcatBar = taskSetupModal.querySelector(
-    '[data-subcat-bar]',
-  );
+  const setupSubcatBar = taskSetupModal.querySelector("[data-subcat-bar]");
 
   const addTaskBackdrop = addTaskModal.querySelector(
     ".time-task-setup-backdrop",
@@ -3316,8 +3684,12 @@ export function render() {
 
   function renderTaskSetupList() {
     const allTasks = getFullTaskOptions();
-    const mainTasksOnly = allTasks.filter((t) => !(t.name || "").includes(" > "));
-    let prodTasks = mainTasksOnly.filter((t) => t.productivity === "productive");
+    const mainTasksOnly = allTasks.filter(
+      (t) => !(t.name || "").includes(" > "),
+    );
+    let prodTasks = mainTasksOnly.filter(
+      (t) => t.productivity === "productive",
+    );
     let nonProdTasks = mainTasksOnly.filter(
       (t) => t.productivity === "nonproductive",
     );
@@ -3348,27 +3720,39 @@ export function render() {
         row.innerHTML = `
           <span class="time-task-setup-item-name">${(t.name || "").replace(/</g, "&lt;")}</span>
           <span class="time-task-setup-item-cat">${catLabel}</span>
-          ${isLocked ? "" : `<div class="time-task-setup-item-actions">
+          ${
+            isLocked
+              ? ""
+              : `<div class="time-task-setup-item-actions">
             <button type="button" class="time-task-setup-edit" title="수정">수정</button>
             <button type="button" class="time-task-setup-del" title="삭제">삭제</button>
-          </div>`}
+          </div>`
+          }
         `;
         if (!isLocked) {
-          row.querySelector(".time-task-setup-edit").addEventListener("click", () => {
-            if (getLockedTaskNames().has(t.name)) {
-              alert("이 과제는 KPI와 연동되어 있어 과제 설정에서 수정할 수 없습니다.");
-              return;
-            }
-            openAddTaskModal(t);
-          });
-          row.querySelector(".time-task-setup-del").addEventListener("click", () => {
-            if (getLockedTaskNames().has(t.name)) {
-              alert("이 과제는 KPI와 연동되어 있어 과제 설정에서 삭제할 수 없습니다. 해당 메뉴에서 수정해주세요.");
-              return;
-            }
-            removeTaskOption(t.name);
-            renderTaskSetupList();
-          });
+          row
+            .querySelector(".time-task-setup-edit")
+            .addEventListener("click", () => {
+              if (getLockedTaskNames().has(t.name)) {
+                alert(
+                  "이 과제는 KPI와 연동되어 있어 과제 설정에서 수정할 수 없습니다.",
+                );
+                return;
+              }
+              openAddTaskModal(t);
+            });
+          row
+            .querySelector(".time-task-setup-del")
+            .addEventListener("click", () => {
+              if (getLockedTaskNames().has(t.name)) {
+                alert(
+                  "이 과제는 KPI와 연동되어 있어 과제 설정에서 삭제할 수 없습니다. 해당 메뉴에서 수정해주세요.",
+                );
+                return;
+              }
+              removeTaskOption(t.name);
+              renderTaskSetupList();
+            });
         }
         container.appendChild(row);
       });
@@ -3626,7 +4010,8 @@ export function render() {
   const addBtn = document.createElement("button");
   addBtn.type = "button";
   addBtn.className = "time-btn-add";
-  addBtn.innerHTML = '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 과제 기록';
+  addBtn.innerHTML =
+    '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 과제 기록';
 
   const initialHandleRowDelete = (tr, rowData) => {
     if (rowData) {
@@ -3659,7 +4044,13 @@ export function render() {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayStr = yesterday.toISOString().slice(0, 10);
-      const tr = createRow({ date: yesterdayStr }, updateTotal, el, initialHandleRowDelete, initialHandleRowEdit);
+      const tr = createRow(
+        { date: yesterdayStr },
+        updateTotal,
+        el,
+        initialHandleRowDelete,
+        initialHandleRowEdit,
+      );
       tbody.appendChild(tr);
       updateTotal();
     }
@@ -3678,7 +4069,8 @@ export function render() {
     const addBtnEl = document.createElement("button");
     addBtnEl.type = "button";
     addBtnEl.className = "time-btn-add";
-    addBtnEl.innerHTML = '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 과제 기록';
+    addBtnEl.innerHTML =
+      '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 과제 기록';
 
     const handleRowDelete = (tr, rowData) => {
       if (rowData) {
@@ -3721,7 +4113,13 @@ export function render() {
                 yesterday.setDate(yesterday.getDate() - 1);
                 return yesterday.toISOString().slice(0, 10);
               })();
-        const tr = createRow({ date: dateStr }, updateTotal, el, handleRowDelete, handleRowEdit);
+        const tr = createRow(
+          { date: dateStr },
+          updateTotal,
+          el,
+          handleRowDelete,
+          handleRowEdit,
+        );
         tbodyEl.appendChild(tr);
         updateTotal();
       }
@@ -3848,7 +4246,9 @@ export function render() {
     let widgetTop7;
     try {
       const filteredExcludingWorkSleep = filtered.filter(
-        (r) => (r.category || "").trim() !== "work" && (r.category || "").trim() !== "sleep",
+        (r) =>
+          (r.category || "").trim() !== "work" &&
+          (r.category || "").trim() !== "sleep",
       );
       const byTask = aggregateHoursByTask(filteredExcludingWorkSleep);
       const top7Tasks = Object.entries(byTask)
@@ -4193,10 +4593,13 @@ export function render() {
         </div>
       </div>
       <div class="time-dash-legend">
-        ${nonProdEntries.map((x) => {
-          const pct = nonProdTotal > 0 ? ((x.hrs / nonProdTotal) * 100).toFixed(1) : 0;
-          return `<span class="time-dash-legend-item"><i style="background:${x.stroke}"></i>${x.label} ${formatHoursDisplay(x.hrs)} (${pct}%)</span>`;
-        }).join("")}
+        ${nonProdEntries
+          .map((x) => {
+            const pct =
+              nonProdTotal > 0 ? ((x.hrs / nonProdTotal) * 100).toFixed(1) : 0;
+            return `<span class="time-dash-legend-item"><i style="background:${x.stroke}"></i>${x.label} ${formatHoursDisplay(x.hrs)} (${pct}%)</span>`;
+          })
+          .join("")}
       </div>
     `
       : `
@@ -4246,10 +4649,13 @@ export function render() {
         </div>
       </div>
       <div class="time-dash-legend">
-        ${prodEntries.map((x) => {
-          const pct = prodTotal > 0 ? ((x.hrs / prodTotal) * 100).toFixed(1) : 0;
-          return `<span class="time-dash-legend-item"><i style="background:${x.stroke}"></i>${x.label} ${formatHoursDisplay(x.hrs)} (${pct}%)</span>`;
-        }).join("")}
+        ${prodEntries
+          .map((x) => {
+            const pct =
+              prodTotal > 0 ? ((x.hrs / prodTotal) * 100).toFixed(1) : 0;
+            return `<span class="time-dash-legend-item"><i style="background:${x.stroke}"></i>${x.label} ${formatHoursDisplay(x.hrs)} (${pct}%)</span>`;
+          })
+          .join("")}
       </div>
     `
       : `
@@ -4299,7 +4705,8 @@ export function render() {
     // 방해 빈도 곡선 (0~24시, 부드러운 곡선, Y축 눈금)
     const focusByHour = aggregateFocusByHour(filtered);
     const focusData = [];
-    for (let h = 0; h <= 23; h++) focusData.push({ hour: h, value: focusByHour[h] || 0 });
+    for (let h = 0; h <= 23; h++)
+      focusData.push({ hour: h, value: focusByHour[h] || 0 });
     const totalFocus = focusData.reduce((s, x) => s + x.value, 0);
     const maxFocus = Math.max(...focusData.map((x) => x.value), 1);
     const chartH = 220;
@@ -4327,26 +4734,38 @@ export function render() {
         const p1 = pts[i];
         const p2 = pts[i + 1];
         const p3 = pts[Math.min(pts.length - 1, i + 2)];
-        const cp1x = p1.x + (p2.x - p0.x) / 6 * t;
-        const cp1y = p1.y + (p2.y - p0.y) / 6 * t;
-        const cp2x = p2.x - (p3.x - p1.x) / 6 * t;
-        const cp2y = p2.y - (p3.y - p1.y) / 6 * t;
+        const cp1x = p1.x + ((p2.x - p0.x) / 6) * t;
+        const cp1y = p1.y + ((p2.y - p0.y) / 6) * t;
+        const cp2x = p2.x - ((p3.x - p1.x) / 6) * t;
+        const cp2y = p2.y - ((p3.y - p1.y) / 6) * t;
         d += ` C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${p2.x} ${p2.y}`;
       }
       return d;
     }
-    const linePathD = linePoints.length >= 2 ? pointsToSmoothCurve(linePoints) : (linePoints.length === 1 ? `M ${linePoints[0].x} ${linePoints[0].y}` : "");
+    const linePathD =
+      linePoints.length >= 2
+        ? pointsToSmoothCurve(linePoints)
+        : linePoints.length === 1
+          ? `M ${linePoints[0].x} ${linePoints[0].y}`
+          : "";
     const widgetFocusCurve = document.createElement("div");
-    widgetFocusCurve.className = "time-dashboard-widget time-dashboard-widget-focus-curve";
-    const gridIndices = hours.map((_, i) => i).filter((i) => i % 3 === 0 || i === hours.length - 1);
-    const gridLines = gridIndices.map((i) => {
-      const x = padLeft + (i / Math.max(1, hours.length - 1)) * plotW;
-      return `<line x1="${x}" y1="${padTop}" x2="${x}" y2="${padTop + plotH}" stroke="#e5e7eb" stroke-width="0.5" stroke-dasharray="2,2"/>`;
-    }).join("");
-    const hGridLines = [0.25, 0.5, 0.75, 1].map((rat) => {
-      const y = padTop + plotH - rat * plotH;
-      return `<line x1="${padLeft}" y1="${y}" x2="${padLeft + plotW}" y2="${y}" stroke="#e5e7eb" stroke-width="0.5" stroke-dasharray="2,2"/>`;
-    }).join("");
+    widgetFocusCurve.className =
+      "time-dashboard-widget time-dashboard-widget-focus-curve";
+    const gridIndices = hours
+      .map((_, i) => i)
+      .filter((i) => i % 3 === 0 || i === hours.length - 1);
+    const gridLines = gridIndices
+      .map((i) => {
+        const x = padLeft + (i / Math.max(1, hours.length - 1)) * plotW;
+        return `<line x1="${x}" y1="${padTop}" x2="${x}" y2="${padTop + plotH}" stroke="#e5e7eb" stroke-width="0.5" stroke-dasharray="2,2"/>`;
+      })
+      .join("");
+    const hGridLines = [0.25, 0.5, 0.75, 1]
+      .map((rat) => {
+        const y = padTop + plotH - rat * plotH;
+        return `<line x1="${padLeft}" y1="${y}" x2="${padLeft + plotW}" y2="${y}" stroke="#e5e7eb" stroke-width="0.5" stroke-dasharray="2,2"/>`;
+      })
+      .join("");
     const yTickCount = 5;
     const yTicks = [];
     for (let i = 0; i <= yTickCount; i++) {
@@ -4355,14 +4774,23 @@ export function render() {
       if (i > 0 && val === yTicks[yTicks.length - 1]?.val) continue;
       yTicks.push({ val, y: padTop + plotH - rat * plotH });
     }
-    const yLabels = yTicks.map((t) => `<text x="${padLeft - 8}" y="${t.y + 4}" text-anchor="end" font-size="10" fill="#6b7280">${t.val}</text>`).join("");
+    const yLabels = yTicks
+      .map(
+        (t) =>
+          `<text x="${padLeft - 8}" y="${t.y + 4}" text-anchor="end" font-size="10" fill="#6b7280">${t.val}</text>`,
+      )
+      .join("");
     const xNumY = chartH - 24;
     const xTitleY = chartH - 4;
-    const xLabels = gridIndices.map((i) => {
-      const x = padLeft + (i / Math.max(1, hours.length - 1)) * plotW;
-      return `<text x="${x}" y="${xNumY}" text-anchor="middle" font-size="10" fill="#6b7280">${hours[i]}</text>`;
-    }).join("");
-    widgetFocusCurve.innerHTML = totalFocus > 0 ? `
+    const xLabels = gridIndices
+      .map((i) => {
+        const x = padLeft + (i / Math.max(1, hours.length - 1)) * plotW;
+        return `<text x="${x}" y="${xNumY}" text-anchor="middle" font-size="10" fill="#6b7280">${hours[i]}</text>`;
+      })
+      .join("");
+    widgetFocusCurve.innerHTML =
+      totalFocus > 0
+        ? `
       <div class="time-dashboard-widget-title">방해 빈도 곡선</div>
       <div class="time-dash-focus-curve-desc">${periodLabel} · 시각별 방해횟수</div>
       <div class="time-dash-focus-curve-svg-wrap">
@@ -4376,7 +4804,8 @@ export function render() {
           <text x="${padLeft + plotW / 2}" y="${xTitleY}" text-anchor="middle" font-size="9" fill="#9ca3af">시각</text>
         </svg>
       </div>
-    ` : `
+    `
+        : `
       <div class="time-dashboard-widget-title">방해 빈도 곡선</div>
       <div class="time-dash-focus-curve-desc">${periodLabel} · 시각별 방해횟수</div>
       <div class="time-dash-empty">방해 기록이 없습니다</div>
@@ -4390,26 +4819,42 @@ export function render() {
       const v = energyByHour[h];
       energyData.push({ hour: h, value: v != null ? v : 0 });
     }
-    const hasEnergyData = filtered.some((r) => parseEnergyToNumber(r.energy) != null);
+    const hasEnergyData = filtered.some(
+      (r) => parseEnergyToNumber(r.energy) != null,
+    );
     const energyLinePoints = energyData.map((v, i) => {
       const x = padLeft + (i / Math.max(1, energyData.length - 1)) * plotW;
       const yVal = Math.max(-50, Math.min(50, v.value));
       const y = padTop + plotH - ((yVal + 50) / 100) * plotH;
       return { x, y };
     });
-    const energyPathD = energyLinePoints.length >= 2 ? pointsToSmoothCurve(energyLinePoints) : (energyLinePoints.length === 1 ? `M ${energyLinePoints[0].x} ${energyLinePoints[0].y}` : "");
+    const energyPathD =
+      energyLinePoints.length >= 2
+        ? pointsToSmoothCurve(energyLinePoints)
+        : energyLinePoints.length === 1
+          ? `M ${energyLinePoints[0].x} ${energyLinePoints[0].y}`
+          : "";
     const energyYTicks = [-50, -25, 0, 25, 50].map((val) => ({
       val: val > 0 ? `+${val}` : String(val),
-      y: padTop + plotH - ((val + 50) / 100) * plotH
+      y: padTop + plotH - ((val + 50) / 100) * plotH,
     }));
-    const energyYLabels = energyYTicks.map((t) => `<text x="${padLeft - 8}" y="${t.y + 4}" text-anchor="end" font-size="10" fill="#6b7280">${t.val}%</text>`).join("");
-    const energyHGridLines = energyYTicks.map((t) => {
-      const y = t.y;
-      return `<line x1="${padLeft}" y1="${y}" x2="${padLeft + plotW}" y2="${y}" stroke="#e5e7eb" stroke-width="0.5" stroke-dasharray="2,2"/>`;
-    }).join("");
+    const energyYLabels = energyYTicks
+      .map(
+        (t) =>
+          `<text x="${padLeft - 8}" y="${t.y + 4}" text-anchor="end" font-size="10" fill="#6b7280">${t.val}%</text>`,
+      )
+      .join("");
+    const energyHGridLines = energyYTicks
+      .map((t) => {
+        const y = t.y;
+        return `<line x1="${padLeft}" y1="${y}" x2="${padLeft + plotW}" y2="${y}" stroke="#e5e7eb" stroke-width="0.5" stroke-dasharray="2,2"/>`;
+      })
+      .join("");
     const widgetEnergyCurve = document.createElement("div");
-    widgetEnergyCurve.className = "time-dashboard-widget time-dashboard-widget-focus-curve time-dashboard-widget-energy-curve";
-    widgetEnergyCurve.innerHTML = hasEnergyData ? `
+    widgetEnergyCurve.className =
+      "time-dashboard-widget time-dashboard-widget-focus-curve time-dashboard-widget-energy-curve";
+    widgetEnergyCurve.innerHTML = hasEnergyData
+      ? `
       <div class="time-dashboard-widget-title">성취능력 곡선</div>
       <div class="time-dash-focus-curve-desc">${periodLabel} · 시각별 성취능력 평균</div>
       <div class="time-dash-focus-curve-svg-wrap">
@@ -4424,7 +4869,8 @@ export function render() {
           <text x="${padLeft + plotW / 2}" y="${xTitleY}" text-anchor="middle" font-size="9" fill="#9ca3af">시각</text>
         </svg>
       </div>
-    ` : `
+    `
+      : `
       <div class="time-dashboard-widget-title">성취능력 곡선</div>
       <div class="time-dash-focus-curve-desc">${periodLabel} · 시각별 성취능력 평균</div>
       <div class="time-dash-empty">성취능력 기록이 없습니다</div>
@@ -4715,7 +5161,8 @@ export function render() {
     const investAddBtn = document.createElement("button");
     investAddBtn.type = "button";
     investAddBtn.className = "time-btn-add";
-    investAddBtn.innerHTML = '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 과제 기록';
+    investAddBtn.innerHTML =
+      '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 과제 기록';
     investAddCell.appendChild(investAddBtn);
     investAddRow.appendChild(investAddCell);
 
@@ -4743,7 +5190,8 @@ export function render() {
     const consumeAddBtn = document.createElement("button");
     consumeAddBtn.type = "button";
     consumeAddBtn.className = "time-btn-add";
-    consumeAddBtn.innerHTML = '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 과제 기록';
+    consumeAddBtn.innerHTML =
+      '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 과제 기록';
     consumeAddCell.appendChild(consumeAddBtn);
     consumeAddRow.appendChild(consumeAddCell);
 
@@ -4947,7 +5395,9 @@ export function render() {
       );
     }
     totalFooter.style.display =
-      view === "dashboard" || view === "newtab" || view === "blank" ? "none" : "";
+      view === "dashboard" || view === "newtab" || view === "blank"
+        ? "none"
+        : "";
     updateTotal();
   }
 
@@ -4985,12 +5435,14 @@ export function render() {
 }
 
 /** 캘린더 1일뷰용: 시간 투자/소비 내역 테이블만 렌더 (일간시간예산에서 사용) */
-export function renderTimeBudgetTablesForCalendar(container, dateStr, todoSectionEl) {
+export function renderTimeBudgetTablesForCalendar(
+  container,
+  dateStr,
+  todoSectionEl,
+) {
   const rows = loadTimeRows();
   const targetDateStr = dateStr || toDateStr(new Date());
-  const todayRows = rows.filter(
-    (r) => (r.date || "").trim() === targetDateStr,
-  );
+  const todayRows = rows.filter((r) => (r.date || "").trim() === targetDateStr);
 
   function getTasksFromTodayRows() {
     const byTask = {};
@@ -5092,13 +5544,19 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr, todoSectio
     return { start: "", end: "" };
   }
 
-  function createBudgetTableRow(taskName, initialGoalTime, initialScheduledTime, isInvest) {
+  function createBudgetTableRow(
+    taskName,
+    initialGoalTime,
+    initialScheduledTime,
+    isInvest,
+  ) {
     const tr = document.createElement("tr");
     const taskTd = document.createElement("td");
     const goalInput = createBudgetTimeInput();
     if (initialGoalTime) goalInput.value = initialGoalTime;
 
-    const { start: initialStart, end: initialEnd } = parseScheduledTime(initialScheduledTime);
+    const { start: initialStart, end: initialEnd } =
+      parseScheduledTime(initialScheduledTime);
     const startInput = createBudgetTimeRangeInput("hh:mm");
     const endInput = createBudgetTimeRangeInput("hh:mm");
     if (initialStart) startInput.value = initialStart;
@@ -5110,7 +5568,8 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr, todoSectio
         saveBudgetGoal(targetDateStr, name, goalInput.value, isInvest);
         const start = startInput.value.trim();
         const end = endInput.value.trim();
-        const scheduledTime = start && end ? `${start}-${end}` : start || end || "";
+        const scheduledTime =
+          start && end ? `${start}-${end}` : start || end || "";
         saveBudgetScheduledTime(targetDateStr, name, scheduledTime, isInvest);
         document.dispatchEvent(
           new CustomEvent("calendar-budget-scheduled-updated", {
@@ -5202,7 +5661,8 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr, todoSectio
   `;
 
   const investBlock = document.createElement("div");
-  investBlock.className = "time-daily-budget-table-block time-daily-budget-table-block--invest";
+  investBlock.className =
+    "time-daily-budget-table-block time-daily-budget-table-block--invest";
   const investTable = document.createElement("table");
   investTable.className = "time-daily-budget-table";
   investTable.innerHTML = `
@@ -5261,7 +5721,8 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr, todoSectio
   consumeAddRow.appendChild(consumeAddCell);
 
   const consumeBlock = document.createElement("div");
-  consumeBlock.className = "time-daily-budget-table-block time-daily-budget-table-block--consume";
+  consumeBlock.className =
+    "time-daily-budget-table-block time-daily-budget-table-block--consume";
   const consumeTable = document.createElement("table");
   consumeTable.className = "time-daily-budget-table";
   consumeTable.innerHTML = `
@@ -5309,14 +5770,18 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr, todoSectio
   tabsBar.querySelectorAll(".time-daily-budget-tab").forEach((btn) => {
     btn.addEventListener("click", () => {
       const tab = btn.dataset.tab;
-      tabsBar.querySelectorAll(".time-daily-budget-tab").forEach((b) => b.classList.remove("active"));
+      tabsBar
+        .querySelectorAll(".time-daily-budget-tab")
+        .forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
       investBlock.style.display = tab === "invest" ? "" : "none";
       consumeBlock.style.display = tab === "consume" ? "" : "none";
     });
   });
 
-  const remainingValueEl = remainingHeader.querySelector(".time-budget-calendar-remaining-value");
+  const remainingValueEl = remainingHeader.querySelector(
+    ".time-budget-calendar-remaining-value",
+  );
 
   function updateRemaining() {
     let goalSum = 0;
@@ -5326,15 +5791,18 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr, todoSectio
       });
     });
     const remaining = Math.max(0, 24 - goalSum);
-    if (remainingValueEl) remainingValueEl.textContent = formatHoursToHHMM(remaining);
+    if (remainingValueEl)
+      remainingValueEl.textContent = formatHoursToHHMM(remaining);
   }
 
   [investBlock, consumeBlock].forEach((block) => {
     block.addEventListener("input", (e) => {
-      if (e.target.classList.contains("time-budget-time-input")) updateRemaining();
+      if (e.target.classList.contains("time-budget-time-input"))
+        updateRemaining();
     });
     block.addEventListener("blur", (e) => {
-      if (e.target.classList.contains("time-budget-time-input")) updateRemaining();
+      if (e.target.classList.contains("time-budget-time-input"))
+        updateRemaining();
     });
   });
   updateRemaining();
@@ -5370,10 +5838,14 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr, todoSectio
         totalGoalWeight += goal;
       });
     });
-    const achievementEl = achievementCard.querySelector(".calendar-budget-achievement-value");
+    const achievementEl = achievementCard.querySelector(
+      ".calendar-budget-achievement-value",
+    );
     if (achievementEl) {
       achievementEl.textContent =
-        totalGoalWeight > 0 ? Math.round((totalAchievement / totalGoalWeight) * 100) + "%" : "—";
+        totalGoalWeight > 0
+          ? Math.round((totalAchievement / totalGoalWeight) * 100) + "%"
+          : "—";
     }
   }
   [investBlock, consumeBlock].forEach((block) => {
