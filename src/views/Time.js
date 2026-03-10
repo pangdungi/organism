@@ -36,8 +36,6 @@ const FIXED_OTHER_TASKS = [
 const FIXED_PRODUCTIVE_TASKS = [
   { name: "감정적이기(긍정적)", category: "happiness", productivity: "productive" },
   { name: "생산적 소비", category: "productive_consumption", productivity: "productive" },
-  { name: "생산적", category: "dream", productivity: "productive" },
-  { name: "부수입 카테고리", category: "sideincome", productivity: "productive" },
 ];
 /** 비생산적 > 불행 고정 과제 (과제설정에서 수정·삭제 불가) - 비생산적 소비: 돈을 잃는 일 */
 const FIXED_NONPRODUCTIVE_TASKS = [
@@ -241,8 +239,8 @@ function saveBudgetGoal(dateStr, taskName, goalTime, isInvest) {
       all[dateStr][key] = { ...existing, goalTime: goalTime.trim(), isInvest };
     } else {
       const { goalTime: _, ...rest } = existing;
-      if (Object.keys(rest).length) all[dateStr][key] = rest;
-      else delete all[dateStr][key];
+      // 과제만 선택했을 때(목표 시간 없음)에도 행 유지
+      all[dateStr][key] = Object.keys(rest).length ? { ...rest, isInvest } : { isInvest };
     }
     localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
   } catch (_) {}
@@ -5103,6 +5101,7 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
       "cat",
       saveCurrentGoal,
     );
+    taskDropdown.wrap._getValue = taskDropdown.getValue;
     taskTd.appendChild(taskDropdown.wrap);
     tr.appendChild(taskTd);
 
@@ -5212,7 +5211,8 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
     );
   });
   investTbody.appendChild(investAddRow);
-  investAddBtn.addEventListener("click", () => {
+  investAddBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
     const tr = createBudgetTableRow("", "", "", true);
     investTbody.insertBefore(tr, investAddRow);
   });
@@ -5257,7 +5257,8 @@ export function renderTimeBudgetTablesForCalendar(container, dateStr) {
     );
   });
   consumeTbody.appendChild(consumeAddRow);
-  consumeAddBtn.addEventListener("click", () => {
+  consumeAddBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
     const tr = createBudgetTableRow("", "", "", false);
     consumeTbody.insertBefore(tr, consumeAddRow);
   });

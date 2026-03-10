@@ -16115,7 +16115,7 @@ body.kpi-resizing {
 
 .calendar-1day-view .calendar-1day-time-table--compare {
   grid-template-columns: 4rem 1fr 1fr;
-  grid-template-rows: 2.5rem repeat(48, minmax(1.25rem, 1fr));
+  grid-template-rows: 2.5rem repeat(48, minmax(2rem, 1fr));
 }
 
 /* 1주 뷰 - 7일 예상 타임라인 */
@@ -16135,7 +16135,7 @@ body.kpi-resizing {
 .calendar-1week-view .calendar-1week-time-table {
   display: grid;
   grid-template-columns: 4rem repeat(7, 1fr);
-  grid-template-rows: 2.5rem repeat(48, minmax(1.25rem, 1fr));
+  grid-template-rows: 2.5rem repeat(48, minmax(2rem, 1fr));
   min-height: min-content;
 }
 
@@ -16144,7 +16144,7 @@ body.kpi-resizing {
   bottom: 0;
   position: absolute;
   display: grid;
-  grid-template-rows: 2.5rem repeat(48, minmax(1.25rem, 1fr));
+  grid-template-rows: 2.5rem repeat(48, minmax(2rem, 1fr));
   pointer-events: none;
 }
 
@@ -16202,13 +16202,13 @@ body.kpi-resizing {
 }
 
 .calendar-1day-view .calendar-1day-time-slot--expected.calendar-1day-slot-drag-over {
-  background: rgba(59, 130, 246, 0.12);
-  box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.5);
+  background: rgba(156, 163, 175, 0.12);
+  box-shadow: inset 0 0 0 2px rgba(156, 163, 175, 0.5);
   z-index: 1;
 }
 
 .calendar-1day-view .calendar-1day-time-fill-overlay--expected.calendar-1day-overlay-drag-over {
-  box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.25);
+  box-shadow: inset 0 0 0 2px rgba(156, 163, 175, 0.25);
 }
 
 .calendar-1day-drag-preview {
@@ -16217,9 +16217,9 @@ body.kpi-resizing {
   padding: 4px 10px;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #1e40af;
+  color: #6b7280;
   background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(59, 130, 246, 0.5);
+  border: 1px solid rgba(156, 163, 175, 0.5);
   border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   pointer-events: none;
@@ -16231,7 +16231,7 @@ body.kpi-resizing {
   z-index: 100000;
   pointer-events: none;
   height: 0;
-  border-top: 3px solid #3b82f6;
+  border-top: 3px solid #9ca3af;
   box-sizing: border-box;
   overflow: visible;
 }
@@ -16246,7 +16246,7 @@ body.kpi-resizing {
   z-index: 9999;
   pointer-events: none;
   height: 0;
-  border-top: 3px solid #3b82f6;
+  border-top: 3px solid #9ca3af;
   box-sizing: border-box;
   overflow: visible;
 }
@@ -16261,7 +16261,7 @@ body.kpi-resizing {
   top: -1.4em;
   font-size: 0.7rem;
   font-weight: 600;
-  color: #3b82f6;
+  color: #9ca3af;
   background: #fff;
   padding: 0 4px;
   white-space: nowrap;
@@ -16299,7 +16299,7 @@ body.kpi-resizing {
   top: 0;
   bottom: 0;
   display: grid;
-  grid-template-rows: 2.5rem repeat(48, minmax(1.25rem, 1fr));
+  grid-template-rows: 2.5rem repeat(48, minmax(2rem, 1fr));
   pointer-events: none;
 }
 
@@ -16322,7 +16322,7 @@ body.kpi-resizing {
 .calendar-1day-view .calendar-1day-time-row {
   display: flex;
   align-items: stretch;
-  min-height: 1.25rem;
+  min-height: 2rem;
   border-bottom: 1px solid #e5e7eb;
 }
 
@@ -16337,6 +16337,7 @@ body.kpi-resizing {
   z-index: 1;
   background: #fff;
   text-align: right;
+  align-self: flex-start;
 }
 
 .calendar-1day-view .calendar-1day-time-slot {
