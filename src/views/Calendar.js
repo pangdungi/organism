@@ -3921,7 +3921,6 @@ export function render() {
     <button type="button" class="time-view-tab" data-view="eisenhower">아이젠하워</button>
     <button type="button" class="time-view-tab" data-view="calendar">달력보기</button>
     <button type="button" class="time-view-tab" data-view="1day">오늘</button>
-    <button type="button" class="time-view-tab" data-view="1week">1주</button>
   `;
   el.appendChild(tabs);
 
@@ -3945,8 +3944,6 @@ export function render() {
       contentWrap.appendChild(renderCalendarView(tabs));
     } else if (view === "1day") {
       contentWrap.appendChild(render1DayView(tabs));
-    } else if (view === "1week") {
-      contentWrap.appendChild(render1WeekView(tabs));
     } else if (view === "eisenhower") {
       contentWrap.appendChild(renderEisenhowerView(tabs));
     } else {
