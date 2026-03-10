@@ -819,7 +819,7 @@ function renderMonthlyView(tabsElement) {
         }
         oldList.remove();
       }
-      const newList = renderTodoList({ hideToolbar: true, enableDragToCalendar: true, initialActiveTabIndex: activeIndex });
+      const newList = renderTodoList({ hideToolbar: true, enableDragToCalendar: true, initialActiveTabIndex: activeIndex, eisenhowerFilter: "important-not-urgent" });
       newList.classList.add("todo-list-in-sidebar");
       body.appendChild(newList);
     }
@@ -1236,14 +1236,14 @@ function renderMonthlyView(tabsElement) {
   let sidebarCollapsed = false;
   todoSidebar.innerHTML = `
     <div class="calendar-todo-sidebar-header">
-      <span class="calendar-todo-sidebar-title">할 일</span>
+      <span class="calendar-todo-sidebar-title">날짜 잡아서 해야 할일</span>
       <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
         <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
       </button>
     </div>
     <div class="calendar-todo-sidebar-body"></div>
   `;
-  const todoListEl = renderTodoList({ hideToolbar: true, enableDragToCalendar: true });
+  const todoListEl = renderTodoList({ hideToolbar: true, enableDragToCalendar: true, eisenhowerFilter: "important-not-urgent" });
   todoListEl.classList.add("todo-list-in-sidebar");
   todoSidebar.querySelector(".calendar-todo-sidebar-body").appendChild(todoListEl);
   todoSidebar.querySelector(".calendar-todo-sidebar-collapse").addEventListener("click", () => {

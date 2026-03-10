@@ -1371,7 +1371,7 @@ function renderSections(container, tasksData = [], options = {}) {
 }
 
 export function render(options = {}) {
-  const { hideToolbar = false, enableDragToCalendar = false, enableDragToEisenhower = false, initialActiveTabIndex = 0 } = options;
+  const { hideToolbar = false, enableDragToCalendar = false, enableDragToEisenhower = false, initialActiveTabIndex = 0, eisenhowerFilter = "" } = options;
   const el = document.createElement("div");
   el.className = "app-tab-panel-content todo-list-view";
 
@@ -1634,7 +1634,11 @@ export function render(options = {}) {
   const kpiTasks = getKpiTodosAsTasks();
   const sectionTasks = FIXED_SECTION_IDS_FOR_STORAGE.flatMap((sid) => loadSectionTasks(sid));
   const customTasks = getCustomSections().flatMap((s) => loadCustomSectionTasks(s.id));
-  const allTasks = [...kpiTasks, ...sectionTasks, ...customTasks];
+  let allTasks = [...kpiTasks, ...sectionTasks, ...customTasks];
+  if ((eisenhowerFilter || "").trim()) {
+    const q = (eisenhowerFilter || "").trim();
+    allTasks = allTasks.filter((t) => (t.eisenhower || "").trim() === q);
+  }
   const sectionResults = renderSections(sectionsWrap, allTasks, { tabMode: true, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower });
 
   function updateTabLabels() {
