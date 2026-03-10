@@ -15893,6 +15893,33 @@ body.kpi-resizing {
   min-height: 2.5rem;
 }
 
+/* 오늘의 할일 테이블 - 헤더/데이터셀 디자인 */
+.calendar-1day-budget-column .calendar-1day-todo-table thead th {
+  background: #f5f5f5;
+  text-align: center;
+}
+
+.calendar-1day-budget-column .calendar-1day-todo-table tbody td {
+  background: #fff;
+}
+
+.calendar-1day-budget-column .calendar-1day-todo-table tbody td:first-child {
+  text-align: left;
+  vertical-align: middle;
+  padding: 0.35rem 0.5rem;
+}
+
+.calendar-1day-budget-column .calendar-1day-todo-table tbody td:not(:first-child) {
+  text-align: center;
+}
+
+.calendar-1day-budget-column .calendar-1day-todo-table .calendar-monthly-span-bar {
+  position: relative;
+  width: 100%;
+  min-height: 1.6rem;
+  top: auto;
+}
+
 .calendar-1day-view .calendar-1day-time-column {
   flex: 1 1 0;
   min-width: 0;

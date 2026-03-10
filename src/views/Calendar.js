@@ -482,7 +482,13 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
     const name = (bubble.querySelector(".calendar-event-bubble-input").value || "").trim();
     const categoryId = bubble.querySelector(".calendar-event-bubble-select").value;
     if (!name) return;
-    const result = addCalendarTodoToSection(categoryId, { text: name, dueDate: dateKey, itemType: "todo" });
+    let result = addCalendarTodoToSection(categoryId, { text: name, dueDate: dateKey, itemType: "todo" });
+    if (!result.success && KPI_SECTION_IDS.includes(categoryId)) {
+      const ok = addSectionTaskToCalendar(categoryId, { name, dueDate: dateKey, itemType: "todo" });
+      if (ok) {
+        result = { success: true, task: { name, dueDate: dateKey, sectionId: categoryId, itemType: "todo" } };
+      }
+    }
     if (result.success) {
       onSave?.(result.task);
       close();
@@ -1977,16 +1983,32 @@ function render1DayView(tabsElement) {
 
     const tasks = getAllTasksForDateDisplay(targetKey);
 
-    /* 날짜 셀 - 할일 목록 (투자/소비내역 아래 배치) */
-    const dateCell = document.createElement("div");
-    dateCell.className = "calendar-1day-date-cell";
-    dateCell.dataset.date = targetKey;
-    dateCell.style.cursor = "pointer";
-    const entriesEl = document.createElement("div");
-    entriesEl.className = "calendar-1day-date-entries";
-    dateCell.appendChild(entriesEl);
+    const createHhMmInput = () => {
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "time-budget-time-input";
+      input.placeholder = "hh:mm";
+      input.maxLength = 5;
+      input.addEventListener("input", () => { input.value = input.value.replace(/\D/g, ""); });
+      input.addEventListener("blur", () => {
+        const digits = input.value.replace(/\D/g, "");
+        if (digits.length === 0 || digits.length <= 2) { input.value = ""; return; }
+        const pad = (s) => String(s || "").padStart(2, "0");
+        const h = Math.min(23, parseInt(digits.slice(0, 2), 10) || 0);
+        const m = Math.min(59, parseInt(digits.slice(2, 4), 10) || 0);
+        input.value = `${pad(h)}:${pad(m)}`;
+      });
+      return input;
+    };
 
-    /* 할일 바 렌더링 */
+    const todoTable = document.createElement("table");
+    todoTable.className = "calendar-1day-todo-table time-daily-budget-table";
+    todoTable.innerHTML = `
+      <thead><tr><th>오늘의 할일</th><th>목표 시간</th><th>예상 시작 시간</th><th>예상 마감 시간</th></tr></thead>
+      <tbody></tbody>
+    `;
+    const todoTbody = todoTable.querySelector("tbody");
+
     tasks.forEach((t) => {
       const isTodo = (t.itemType || "todo").toLowerCase() === "todo";
       const baseColor = getSectionColor(t.sectionId);
@@ -1997,35 +2019,6 @@ function render1DayView(tabsElement) {
         (isTodo ? " calendar-monthly-span-bar--has-checkbox" : "");
       bar.title = t.name;
       bar.style.cssText = `--bar-bg:${color}`;
-      bar.draggable = true;
-      bar.addEventListener("dragstart", (e) => {
-        const st = (t.startTime || "").trim();
-        const et = (t.endTime || "").trim();
-        let durationMin = 30;
-        if (st && et) {
-          const [sh, sm] = st.split(":").map(Number);
-          const [eh, em] = et.split(":").map(Number);
-          durationMin = Math.max(30, (eh * 60 + em) - (sh * 60 + sm));
-        }
-        const payload = {
-          taskId: t.taskId || "",
-          sectionId: t.sectionId || "",
-          name: (t.name || "").trim(),
-          startDate: (t.startDate || "").slice(0, 10),
-          dueDate: (t.dueDate || "").slice(0, 10),
-          startTime: st,
-          endTime: et,
-          done: !!t.done,
-          itemType: t.itemType || "todo",
-          isKpiTodo: !!t.kpiTodoId,
-          kpiTodoId: t.kpiTodoId || "",
-          storageKey: t.storageKey || "",
-          _durationMin: durationMin,
-        };
-        window.__calendarDragDuration = durationMin;
-        e.dataTransfer.setData(DRAG_TYPE_TODO_TO_CALENDAR, JSON.stringify(payload));
-        e.dataTransfer.effectAllowed = "move";
-      });
       if (isTodo) {
         bar.innerHTML = `<span class="calendar-monthly-span-bar-checkbox" style="border-color:${color}"><span class="calendar-monthly-span-bar-checkbox-inner"></span></span><span class="calendar-monthly-span-bar-text">${escapeHtml(t.name || "")}</span>`;
       } else {
@@ -2042,10 +2035,14 @@ function render1DayView(tabsElement) {
           const newDone = !t.done;
           if (t.kpiTodoId && t.storageKey) {
             syncKpiTodoCompleted(t.kpiTodoId, t.storageKey, newDone);
+          } else if (KPI_SECTION_IDS.includes(t.sectionId) && t.taskId) {
+            updateSectionTaskDone(t.sectionId, t.taskId, newDone);
           } else if (t.sectionId?.startsWith("custom-") && t.taskId) {
             updateCustomSectionTaskDone(t.sectionId, t.taskId, newDone);
           }
           t.done = newDone;
+          bar.classList.toggle("is-completed", newDone);
+          bar.querySelector(".calendar-monthly-span-bar-checkbox-inner")?.classList.toggle("checked", newDone);
           renderCalendar();
           refreshTodoList();
         });
@@ -2060,10 +2057,23 @@ function render1DayView(tabsElement) {
           }, () => {});
         });
       }
-      entriesEl.appendChild(bar);
+
+      const tr = document.createElement("tr");
+      const nameTd = document.createElement("td");
+      nameTd.appendChild(bar);
+      tr.appendChild(nameTd);
+      const goalTd = document.createElement("td");
+      goalTd.appendChild(createHhMmInput());
+      tr.appendChild(goalTd);
+      const startTd = document.createElement("td");
+      startTd.appendChild(createHhMmInput());
+      tr.appendChild(startTd);
+      const endTd = document.createElement("td");
+      endTd.appendChild(createHhMmInput());
+      tr.appendChild(endTd);
+      todoTbody.appendChild(tr);
     });
 
-    /* 오늘의 할일 섹션 - 투자/소비내역 아래 배치 */
     const todoSection = document.createElement("div");
     todoSection.className = "calendar-1day-todo-section";
     const todoSectionHeader = document.createElement("div");
@@ -2071,86 +2081,14 @@ function render1DayView(tabsElement) {
     todoSectionHeader.textContent = "오늘의 할일";
     const todoSectionBody = document.createElement("div");
     todoSectionBody.className = "calendar-1day-todo-section-body";
-    todoSectionBody.appendChild(dateCell);
+    todoSectionBody.appendChild(todoTable);
+
     todoSection.appendChild(todoSectionHeader);
     todoSection.appendChild(todoSectionBody);
 
     renderTimeBudgetTablesForCalendar(budgetColumn, targetKey, todoSection);
     calendarGrid.appendChild(budgetColumn);
     calendarGrid.appendChild(timeColumn);
-
-    dateCell.addEventListener("click", (e) => {
-      if (e.target.closest(".calendar-monthly-span-bar") || e.target.closest(".calendar-event-bubble")) return;
-      e.stopPropagation();
-      const rect = dateCell.getBoundingClientRect();
-      createCalendarEventBubble(rect, targetKey, () => {
-        renderCalendar();
-        refreshTodoList();
-      }, () => {});
-    });
-    dateCell.addEventListener("dragover", (e) => {
-      if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR)) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "move";
-        dateCell.classList.add("calendar-day-drag-over");
-      }
-    });
-    dateCell.addEventListener("dragleave", () => {
-      dateCell.classList.remove("calendar-day-drag-over");
-    });
-    dateCell.addEventListener("drop", (e) => {
-      dateCell.classList.remove("calendar-day-drag-over");
-      const json = e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR);
-      if (!json) return;
-      e.preventDefault();
-      e.stopPropagation();
-      let payload;
-      try {
-        payload = JSON.parse(json);
-      } catch (_) {
-        return;
-      }
-      const oldStart = (payload.startDate || "").slice(0, 10);
-      const oldDue = (payload.dueDate || "").slice(0, 10);
-      let newStart = "";
-      let newDue = targetKey;
-      if (oldStart && oldDue && oldStart !== oldDue) {
-        const startD = new Date(oldStart + "T12:00:00");
-        const dueD = new Date(oldDue + "T12:00:00");
-        const daysDiff = Math.round((dueD - startD) / 86400000);
-        newStart = targetKey;
-        newDue = addDaysToDateKey(targetKey, daysDiff);
-      } else if (oldStart && oldDue) {
-        newStart = targetKey;
-      }
-      let ok = false;
-      if (payload.kpiTodoId && payload.storageKey) {
-        ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
-        } else if (payload.sectionId?.startsWith("custom-")) {
-        ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
-        if (!ok && (payload.name || "").trim()) {
-          ok = addCalendarTodoToCustomSection(payload.sectionId, {
-            taskId: payload.taskId,
-            name: payload.name,
-            startDate: newStart,
-            dueDate: newDue,
-            done: !!payload.done,
-            itemType: payload.itemType || "todo",
-          });
-        }
-      } else if (KPI_SECTION_IDS.includes(payload.sectionId) && (payload.name || "").trim()) {
-        if (payload.kpiTodoId && payload.storageKey) {
-          ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
-        } else {
-          ok = updateSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue) ||
-            addSectionTaskToCalendar(payload.sectionId, { taskId: payload.taskId, name: payload.name, startDate: newStart, dueDate: newDue, done: !!payload.done, itemType: payload.itemType || "todo" });
-        }
-      }
-      if (ok) {
-        renderCalendar();
-        refreshTodoList();
-      }
-    });
 
     /* 구분선 */
     const divider = document.createElement("div");
@@ -2327,49 +2265,6 @@ function render1DayView(tabsElement) {
       slotExpected.style.gridColumn = "2";
       slotExpected.style.gridRow = `${i + 2}`;
       slotExpected.dataset.slotIndex = String(i);
-      slotExpected.addEventListener("dragover", (e) => {
-        if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR)) {
-          e.preventDefault();
-          e.dataTransfer.dropEffect = "move";
-          slotExpected.classList.add("calendar-1day-slot-drag-over");
-        }
-      });
-      slotExpected.addEventListener("dragleave", () => {
-        slotExpected.classList.remove("calendar-1day-slot-drag-over");
-      });
-      slotExpected.addEventListener("drop", (e) => {
-        slotExpected.classList.remove("calendar-1day-slot-drag-over");
-        document.querySelectorAll(".calendar-1day-drag-drop-line").forEach((el) => el.remove());
-        const json = e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR);
-        if (!json) return;
-        e.preventDefault();
-        e.stopPropagation();
-        let payload;
-        try {
-          payload = JSON.parse(json);
-        } catch (_) {
-          return;
-        }
-        const slotIdx = parseInt(slotExpected.dataset.slotIndex || "0", 10);
-        const startMin = slotIdx * MIN_PER_SLOT;
-        const durationMin = payload._durationMin && payload._durationMin > 0 ? payload._durationMin : 30;
-        const endMin = Math.min(24 * 60, startMin + durationMin);
-        const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-        const startTime = fmt(startMin);
-        const endTime = fmt(endMin);
-        let ok = false;
-        if (payload.kpiTodoId && payload.storageKey) {
-          ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startTime, endTime });
-        } else if (payload.sectionId?.startsWith("custom-")) {
-          ok = updateCustomSectionTaskTimes(payload.sectionId, payload.taskId, startTime, endTime);
-        } else if (KPI_SECTION_IDS.includes(payload.sectionId)) {
-          ok = updateSectionTaskTimes(payload.sectionId, payload.taskId, startTime, endTime);
-        }
-        if (ok) {
-          renderCalendar();
-          refreshTodoList();
-        }
-      });
       timeTable.appendChild(slotExpected);
       const slotActual = document.createElement("div");
       slotActual.className = "calendar-1day-time-slot calendar-1day-time-slot--actual";
@@ -2426,7 +2321,6 @@ function render1DayView(tabsElement) {
           resizeHandle.addEventListener("mousedown", (e) => {
             e.preventDefault();
             e.stopPropagation();
-            fill.draggable = false;
             resizeStartY = e.clientY;
             resizeStartEndSlot = sp.endSlot;
             const t = sp._task;
@@ -2461,7 +2355,6 @@ function render1DayView(tabsElement) {
               document.removeEventListener("mousemove", onMove);
               document.removeEventListener("mouseup", onUp);
               document.querySelectorAll(".calendar-1day-resize-preview-line").forEach((el) => el.remove());
-              fill.draggable = true;
               const deltaY = ev.clientY - resizeStartY;
               const slotDelta = Math.round(deltaY / slotHeight);
               let newEndSlot = Math.max(sp.startSlot, Math.min(SLOTS_PER_DAY - 1, resizeStartEndSlot + slotDelta));
@@ -2488,95 +2381,12 @@ function render1DayView(tabsElement) {
             document.addEventListener("mousemove", onMove);
             document.addEventListener("mouseup", onUp);
           });
-          fill.draggable = true;
-          fill.style.cursor = "grab";
-          fill.addEventListener("dragstart", (e) => {
-            if (e.target.closest(".calendar-1day-time-slot-fill-resize-handle")) {
-              e.preventDefault();
-              return;
-            }
-            const t = sp._task;
-            window.__calendarDragDuration = durationMin;
-            const payload = {
-              taskId: t.taskId || "",
-              sectionId: t.sectionId || "",
-              name: (t.name || "").trim(),
-              startDate: (t.startDate || "").slice(0, 10),
-              dueDate: (t.dueDate || "").slice(0, 10),
-              startTime: sp.startDisplay,
-              endTime: sp.endDisplay,
-              done: !!t.done,
-              itemType: t.itemType || "todo",
-              isKpiTodo: !!t.kpiTodoId,
-              kpiTodoId: t.kpiTodoId || "",
-              storageKey: t.storageKey || "",
-              _durationMin: durationMin,
-            };
-            e.dataTransfer.setData(DRAG_TYPE_TODO_TO_CALENDAR, JSON.stringify(payload));
-            e.dataTransfer.effectAllowed = "move";
-          });
         }
         overlay.appendChild(fill);
       }
       return overlay;
     };
-    const getSlotIndexFromClientY = (clientY) => {
-      const slots = timeTable.querySelectorAll(".calendar-1day-time-slot--expected");
-      for (let i = 0; i < slots.length; i++) {
-        const r = slots[i].getBoundingClientRect();
-        if (clientY >= r.top && clientY < r.bottom) return i;
-      }
-      if (slots.length > 0) {
-        const last = slots[slots.length - 1].getBoundingClientRect();
-        if (clientY >= last.bottom) return slots.length - 1;
-      }
-      return 0;
-    };
-
-    const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-    let dragGhostEl = null;
-    let lastDragSlotIdx = -1;
-
-    const removeAllDropIndicators = () => {
-      document.querySelectorAll(".calendar-1day-drag-drop-line").forEach((el) => el.remove());
-    };
-
     const fillOverlayExpected = createOverlay(expectedSpans, prodColorsExpected, false);
-
-    const handleDrop = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const slotIdx = lastDragSlotIdx >= 0 ? lastDragSlotIdx : getSlotIndexFromClientY(e.clientY);
-      lastDragSlotIdx = -1;
-      fillOverlayExpected.classList.remove("calendar-1day-overlay-drag-over");
-      removeAllDropIndicators();
-      timeTable.querySelectorAll(".calendar-1day-time-slot--expected").forEach((s) => s.classList.remove("calendar-1day-slot-drag-over"));
-      const json = e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR);
-      if (!json) return;
-      let payload;
-      try {
-        payload = JSON.parse(json);
-      } catch (_) {
-        return;
-      }
-      const startMin = slotIdx * MIN_PER_SLOT;
-      const durationMin = payload._durationMin && payload._durationMin > 0 ? payload._durationMin : 30;
-      const endMin = Math.min(24 * 60, startMin + durationMin);
-      const startTime = fmt(startMin);
-      const endTime = fmt(endMin);
-      let ok = false;
-      if (payload.kpiTodoId && payload.storageKey) {
-        ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startTime, endTime });
-      } else if (payload.sectionId?.startsWith("custom-")) {
-        ok = updateCustomSectionTaskTimes(payload.sectionId, payload.taskId, startTime, endTime);
-      } else if (KPI_SECTION_IDS.includes(payload.sectionId)) {
-        ok = updateSectionTaskTimes(payload.sectionId, payload.taskId, startTime, endTime);
-      }
-      if (ok) {
-        renderCalendar();
-        refreshTodoList();
-      }
-    };
 
     const fillOverlayActual = createOverlay(actualSpans, prodColorsActual, true);
     const timeTableWrap = document.createElement("div");
@@ -2588,45 +2398,6 @@ function render1DayView(tabsElement) {
     timeTableInner.appendChild(fillOverlayActual);
     timeTableWrap.appendChild(timeTableInner);
     timeColumn.appendChild(timeTableWrap);
-
-    timeTableInner.addEventListener("dragenter", (e) => {
-      if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR)) e.preventDefault();
-    });
-    timeTableInner.addEventListener("dragover", (e) => {
-      if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR)) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "move";
-        fillOverlayExpected.classList.add("calendar-1day-overlay-drag-over");
-        const slotIdx = getSlotIndexFromClientY(e.clientY);
-        const startMin = slotIdx * MIN_PER_SLOT;
-        if (slotIdx !== lastDragSlotIdx) {
-          lastDragSlotIdx = slotIdx;
-          removeAllDropIndicators();
-          dragGhostEl = null;
-          const slots = timeTable.querySelectorAll(".calendar-1day-time-slot--expected");
-          if (slots.length > 0 && slotIdx < slots.length) {
-            const startRect = slots[slotIdx].getBoundingClientRect();
-            const innerRect = timeTableInner.getBoundingClientRect();
-            dragGhostEl = document.createElement("div");
-            dragGhostEl.className = "calendar-1day-drag-drop-line calendar-1day-drag-drop-line--inner";
-            dragGhostEl.style.cssText = `left:${startRect.left - innerRect.left}px;top:${startRect.top - innerRect.top}px;width:${startRect.width}px`;
-            dragGhostEl.innerHTML = `<span class="calendar-1day-drag-drop-line-time">${fmt(startMin)}</span>`;
-            timeTableInner.appendChild(dragGhostEl);
-          }
-          timeTable.querySelectorAll(".calendar-1day-time-slot--expected").forEach((s, i) => {
-            s.classList.toggle("calendar-1day-slot-drag-over", i === slotIdx);
-          });
-        }
-      }
-    });
-    timeTableInner.addEventListener("dragleave", (e) => {
-      if (!timeTableInner.contains(e.relatedTarget)) {
-        fillOverlayExpected.classList.remove("calendar-1day-overlay-drag-over");
-        removeAllDropIndicators();
-        timeTable.querySelectorAll(".calendar-1day-time-slot--expected").forEach((s) => s.classList.remove("calendar-1day-slot-drag-over"));
-      }
-    });
-    timeTableInner.addEventListener("drop", handleDrop);
   }
 
   nav.querySelector(".calendar-nav-today").addEventListener("click", () => {
