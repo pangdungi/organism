@@ -2340,77 +2340,6 @@ function render1DayView(tabsElement) {
         label.className = "calendar-1day-time-slot-label";
         label.textContent = `${sp.taskName} ${sp.startDisplay}~${sp.endDisplay}`;
         fill.appendChild(label);
-        if (!isActual && sp._task) {
-          const resizeHandle = document.createElement("div");
-          resizeHandle.className = "calendar-1day-time-slot-fill-resize-handle";
-          resizeHandle.title = "드래그하여 시간 범위 조정";
-          fill.appendChild(resizeHandle);
-          let resizeStartY = 0;
-          let resizeStartEndSlot = sp.endSlot;
-          resizeHandle.addEventListener("mousedown", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            resizeStartY = e.clientY;
-            resizeStartEndSlot = sp.endSlot;
-            const t = sp._task;
-            const timeTableInnerEl = overlay.closest(".calendar-1day-time-table-inner");
-            const slots = timeTableInnerEl?.querySelectorAll(".calendar-1day-time-slot--expected");
-            const slotHeight = slots?.[0]?.getBoundingClientRect().height ?? 24;
-            let resizePreviewEl = null;
-            const updateResizePreview = (newEndSlot) => {
-              document.querySelectorAll(".calendar-1day-resize-preview-line").forEach((el) => el.remove());
-              if (!slots?.length || newEndSlot < 0 || newEndSlot >= slots.length) return;
-              const targetSlot = slots[newEndSlot];
-              const targetRect = targetSlot.getBoundingClientRect();
-              const innerRect = timeTableInnerEl.getBoundingClientRect();
-              resizePreviewEl = document.createElement("div");
-              resizePreviewEl.className = "calendar-1day-resize-preview-line";
-              resizePreviewEl.style.cssText = `left:${targetRect.left - innerRect.left}px;top:${targetRect.bottom - innerRect.top}px;width:${targetRect.width}px`;
-              const endMin = (newEndSlot + 1) * MIN_PER_SLOT;
-              const fmtResize = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-              resizePreviewEl.innerHTML = `<span class="calendar-1day-drag-drop-line-time">${fmtResize(endMin)}</span>`;
-              timeTableInnerEl.appendChild(resizePreviewEl);
-            };
-            const onMove = (ev) => {
-              const deltaY = ev.clientY - resizeStartY;
-              const slotDelta = Math.round(deltaY / slotHeight);
-              let newEndSlot = Math.max(sp.startSlot, Math.min(SLOTS_PER_DAY - 1, resizeStartEndSlot + slotDelta));
-              if (newEndSlot <= sp.startSlot) newEndSlot = sp.startSlot;
-              const newEndMin = (newEndSlot + 1) * MIN_PER_SLOT;
-              const newDuration = newEndMin - (sp.startSlot * MIN_PER_SLOT);
-              if (newDuration >= MIN_PER_SLOT) updateResizePreview(newEndSlot);
-            };
-            const onUp = (ev) => {
-              document.removeEventListener("mousemove", onMove);
-              document.removeEventListener("mouseup", onUp);
-              document.querySelectorAll(".calendar-1day-resize-preview-line").forEach((el) => el.remove());
-              const deltaY = ev.clientY - resizeStartY;
-              const slotDelta = Math.round(deltaY / slotHeight);
-              let newEndSlot = Math.max(sp.startSlot, Math.min(SLOTS_PER_DAY - 1, resizeStartEndSlot + slotDelta));
-              if (newEndSlot <= sp.startSlot) newEndSlot = sp.startSlot;
-              const newEndMin = (newEndSlot + 1) * MIN_PER_SLOT;
-              const newDuration = newEndMin - (sp.startSlot * MIN_PER_SLOT);
-              if (newDuration < MIN_PER_SLOT) return;
-              const fmtResize = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-              const startTime = fmtResize(sp.startSlot * MIN_PER_SLOT);
-              const endTime = fmtResize(newEndMin);
-              let ok = false;
-              if (t.kpiTodoId && t.storageKey) {
-                ok = updateKpiTodo(t.kpiTodoId, t.storageKey, { startTime, endTime });
-              } else if (t.sectionId?.startsWith("custom-")) {
-                ok = updateCustomSectionTaskTimes(t.sectionId, t.taskId, startTime, endTime);
-              } else if (KPI_SECTION_IDS.includes(t.sectionId)) {
-                ok = updateSectionTaskTimes(t.sectionId, t.taskId, startTime, endTime);
-              }
-              if (ok) {
-                renderCalendar();
-                refreshTodoList();
-              }
-            };
-            document.addEventListener("mousemove", onMove);
-            document.addEventListener("mouseup", onUp);
-          });
-        }
         overlay.appendChild(fill);
       }
       return overlay;
@@ -2758,21 +2687,51 @@ function render1WeekView(tabsElement) {
   return wrap;
 }
 
-function renderEmptyTabView(tabsElement) {
+function renderEisenhowerView(tabsElement) {
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout";
 
-  const main = document.createElement("div");
-  main.className = "calendar-monthly-main";
+  const calendarSection = document.createElement("div");
+  calendarSection.className = "calendar-monthly-main";
 
   if (tabsElement) {
     const tabsWrapper = document.createElement("div");
     tabsWrapper.className = "calendar-monthly-tabs-wrap";
     tabsWrapper.appendChild(tabsElement);
-    main.appendChild(tabsWrapper);
+    calendarSection.appendChild(tabsWrapper);
   }
 
-  wrap.appendChild(main);
+  const calendarPlaceholder = document.createElement("div");
+  calendarPlaceholder.className = "calendar-eisenhower-placeholder";
+  calendarPlaceholder.style.flex = "1 1 0";
+  calendarPlaceholder.style.minWidth = "0";
+  calendarPlaceholder.style.minHeight = "0";
+  calendarSection.appendChild(calendarPlaceholder);
+
+  wrap.appendChild(calendarSection);
+
+  const todoSidebar = document.createElement("aside");
+  todoSidebar.className = "calendar-todo-sidebar";
+  let sidebarCollapsed = false;
+  todoSidebar.innerHTML = `
+    <div class="calendar-todo-sidebar-header">
+      <span class="calendar-todo-sidebar-title">할 일</span>
+      <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
+        <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>
+    <div class="calendar-todo-sidebar-body"></div>
+  `;
+  const todoListEl = renderTodoList({ hideToolbar: true, enableDragToCalendar: false });
+  todoListEl.classList.add("todo-list-in-sidebar");
+  todoSidebar.querySelector(".calendar-todo-sidebar-body").appendChild(todoListEl);
+  todoSidebar.querySelector(".calendar-todo-sidebar-collapse").addEventListener("click", () => {
+    sidebarCollapsed = !sidebarCollapsed;
+    todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
+    todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+  });
+  wrap.appendChild(todoSidebar);
+
   return wrap;
 }
 
@@ -2811,7 +2770,7 @@ export function render() {
   tabs.className = "time-view-tabs calendar-tabs";
   tabs.innerHTML = `
     <button type="button" class="time-view-tab active" data-view="todo">할 일</button>
-    <button type="button" class="time-view-tab" data-view="new">새 탭</button>
+    <button type="button" class="time-view-tab" data-view="eisenhower">아이젠하워</button>
     <button type="button" class="time-view-tab" data-view="monthly">월별</button>
     <button type="button" class="time-view-tab" data-view="2week">2주</button>
     <button type="button" class="time-view-tab" data-view="1day">1일</button>
@@ -2825,7 +2784,7 @@ export function render() {
   let currentView = "todo";
 
   function renderContent(view) {
-    if (currentView === "todo" || currentView === "monthly" || currentView === "2week" || currentView === "1day") {
+    if (currentView === "todo" || currentView === "monthly" || currentView === "2week" || currentView === "1day" || currentView === "eisenhower") {
       saveTodoListBeforeUnmount(contentWrap);
     }
     currentView = view;
@@ -2843,8 +2802,8 @@ export function render() {
       contentWrap.appendChild(render1DayView(tabs));
     } else if (view === "1week") {
       contentWrap.appendChild(render1WeekView(tabs));
-    } else if (view === "new") {
-      contentWrap.appendChild(renderEmptyTabView(tabs));
+    } else if (view === "eisenhower") {
+      contentWrap.appendChild(renderEisenhowerView(tabs));
     } else {
       const labels = {};
       contentWrap.appendChild(renderPlaceholderView(tabs, labels[view] || ""));

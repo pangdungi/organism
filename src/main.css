@@ -15847,17 +15847,23 @@ body.kpi-resizing {
   border-right: 1px solid #e5e7eb;
 }
 
-/* 투자/소비내역 - 세로 스크롤 */
+/* 투자/소비내역 - 열 높이의 절반, 세로 스크롤, 스크롤바 숨김 */
 .calendar-1day-budget-column .calendar-1day-budget-tables-scroll {
-  flex: 0 1 auto;
+  flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
-/* 오늘의 할일 - 투자/소비내역 아래, 세로 스크롤, 스크롤바 숨김 */
+.calendar-1day-budget-column .calendar-1day-budget-tables-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* 오늘의 할일 - 열 높이의 절반, 세로 스크롤, 스크롤바 숨김 */
 .calendar-1day-budget-column .calendar-1day-todo-section {
   flex: 1 1 0;
-  min-height: 120px;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -15894,6 +15900,10 @@ body.kpi-resizing {
 }
 
 /* 오늘의 할일 테이블 - 헤더/데이터셀 디자인 */
+.calendar-1day-budget-column .calendar-1day-todo-table {
+  border: 1px solid #e5e7eb;
+}
+
 .calendar-1day-budget-column .calendar-1day-todo-table thead th {
   background: #f5f5f5;
   text-align: center;
@@ -15939,8 +15949,24 @@ body.kpi-resizing {
 
 .calendar-1day-budget-column .time-daily-budget-tabs {
   display: flex;
-  gap: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
   border-bottom: 1px solid #e5e7eb;
+}
+
+.calendar-1day-budget-column .time-daily-budget-tabs-left {
+  display: flex;
+  gap: 0;
+}
+
+.calendar-1day-budget-column .time-daily-budget-add-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.calendar-1day-budget-column .time-row-add--placeholder {
+  display: none;
 }
 
 .calendar-1day-budget-column .time-daily-budget-tab {
@@ -16080,10 +16106,12 @@ body.kpi-resizing {
 
 .calendar-1day-budget-column .time-btn-add {
   border: none;
+  background: transparent;
 }
 
 .calendar-1day-budget-column .time-btn-add:hover {
   border-color: transparent;
+  background: transparent;
 }
 
 /* 1일뷰 시간투자내역 상단 - 남은 시간 + 목표달성률 한 줄 */

@@ -5678,17 +5678,8 @@ export function renderTimeBudgetTablesForCalendar(
     <tbody></tbody>
   `;
   const investAddRow = document.createElement("tr");
-  investAddRow.className = "time-row-add";
-  const investAddCell = document.createElement("td");
-  investAddCell.colSpan = 5;
-  investAddCell.className = "time-cell-add";
-  const investAddBtn = document.createElement("button");
-  investAddBtn.type = "button";
-  investAddBtn.className = "time-btn-add";
-  investAddBtn.innerHTML =
-    '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 과제 기록';
-  investAddCell.appendChild(investAddBtn);
-  investAddRow.appendChild(investAddCell);
+  investAddRow.className = "time-row-add time-row-add--placeholder";
+  investAddRow.innerHTML = "<td colspan=\"5\"></td>";
 
   const investTbody = investTable.querySelector("tbody");
   investTasks.forEach((t) => {
@@ -5700,25 +5691,11 @@ export function renderTimeBudgetTablesForCalendar(
     );
   });
   investTbody.appendChild(investAddRow);
-  investAddBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const tr = createBudgetTableRow("", "", "", true);
-    investTbody.insertBefore(tr, investAddRow);
-  });
   investBlock.appendChild(investTable);
 
   const consumeAddRow = document.createElement("tr");
-  consumeAddRow.className = "time-row-add";
-  const consumeAddCell = document.createElement("td");
-  consumeAddCell.colSpan = 4;
-  consumeAddCell.className = "time-cell-add";
-  const consumeAddBtn = document.createElement("button");
-  consumeAddBtn.type = "button";
-  consumeAddBtn.className = "time-btn-add";
-  consumeAddBtn.innerHTML =
-    '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 과제 기록';
-  consumeAddCell.appendChild(consumeAddBtn);
-  consumeAddRow.appendChild(consumeAddCell);
+  consumeAddRow.className = "time-row-add time-row-add--placeholder";
+  consumeAddRow.innerHTML = "<td colspan=\"5\"></td>";
 
   const consumeBlock = document.createElement("div");
   consumeBlock.className =
@@ -5747,19 +5724,34 @@ export function renderTimeBudgetTablesForCalendar(
     );
   });
   consumeTbody.appendChild(consumeAddRow);
-  consumeAddBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const tr = createBudgetTableRow("", "", "", false);
-    consumeTbody.insertBefore(tr, consumeAddRow);
-  });
   consumeBlock.appendChild(consumeTable);
 
   const tabsBar = document.createElement("div");
   tabsBar.className = "time-daily-budget-tabs";
   tabsBar.innerHTML = `
-    <button type="button" class="time-daily-budget-tab active" data-tab="invest">투자내역</button>
-    <button type="button" class="time-daily-budget-tab" data-tab="consume">소비내역</button>
+    <div class="time-daily-budget-tabs-left">
+      <button type="button" class="time-daily-budget-tab active" data-tab="invest">투자내역</button>
+      <button type="button" class="time-daily-budget-tab" data-tab="consume">소비내역</button>
+    </div>
+    <button type="button" class="time-daily-budget-add-btn time-btn-add" title="과제 기록">
+      <img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 과제 기록
+    </button>
   `;
+  const addBtnEl = tabsBar.querySelector(".time-daily-budget-add-btn");
+  addBtnEl.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const activeTab = tabsBar.querySelector(".time-daily-budget-tab.active")?.dataset?.tab;
+    if (activeTab === "consume") {
+      const tr = createBudgetTableRow("", "", "", false);
+      consumeTbody.insertBefore(tr, consumeAddRow);
+    } else {
+      const tr = createBudgetTableRow("", "", "", true);
+      investTbody.insertBefore(tr, investAddRow);
+    }
+    updateRemaining();
+    updateAchievementCard();
+    /* 빈 행 추가만으로는 저장 데이터 변경 없음 → 이벤트 미발송 (발송 시 renderCalendar가 전체 재렌더하여 추가 행이 사라짐) */
+  });
   const tabPanels = document.createElement("div");
   tabPanels.className = "time-daily-budget-tab-panels";
   investBlock.style.display = "";
