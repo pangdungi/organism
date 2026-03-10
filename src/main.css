@@ -18051,12 +18051,12 @@ body.kpi-resizing {
   flex-direction: column;
 }
 
-.calendar-todo-sidebar-body:has(.todo-list-eisenhower-sidebar) .todo-list-in-sidebar {
+.calendar-todo-sidebar-body:has(.todo-list-eisenhower-sidebar) .todo-list-eisenhower-sidebar {
   flex: 1;
   min-height: 0;
 }
 
-/* 아이젠하워 사이드바: 할일 + 기한 초과 2섹션 분할 */
+/* 아이젠하워 사이드바: 할일 페이지와 동일한 탭 구조 */
 .todo-list-eisenhower-sidebar {
   display: flex;
   flex-direction: column;
@@ -18064,32 +18064,46 @@ body.kpi-resizing {
   min-height: 0;
 }
 
-.todo-list-eisenhower-sidebar .todo-eisenhower-sidebar-panels {
-  display: flex;
-  flex-direction: column;
+.todo-list-eisenhower-sidebar .todo-category-tabs {
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  margin-bottom: 0.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.todo-list-eisenhower-sidebar .todo-category-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.todo-list-eisenhower-sidebar .todo-category-tab {
+  flex-shrink: 0;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.todo-list-eisenhower-sidebar .todo-sections-wrap {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  gap: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.todo-list-eisenhower-sidebar .todo-eisenhower-sidebar-panel {
+.todo-list-eisenhower-sidebar .todo-section-tab-panel {
   flex: 1;
   min-height: 0;
-  display: flex;
+  display: none;
   flex-direction: column;
   overflow: hidden;
 }
 
-.todo-list-eisenhower-sidebar .todo-eisenhower-sidebar-panel .todo-section {
-  flex: 1;
-  min-height: 0;
+.todo-list-eisenhower-sidebar .todo-section-tab-panel.is-active {
   display: flex;
-  flex-direction: column;
-  overflow: hidden;
 }
 
-.todo-list-eisenhower-sidebar .todo-eisenhower-sidebar-panel .todo-table-wrap {
+.todo-list-eisenhower-sidebar .todo-section-tab-panel .todo-table-wrap {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -18098,11 +18112,11 @@ body.kpi-resizing {
   -ms-overflow-style: none;
 }
 
-.todo-list-eisenhower-sidebar .todo-eisenhower-sidebar-panel .todo-table-wrap::-webkit-scrollbar {
+.todo-list-eisenhower-sidebar .todo-section-tab-panel .todo-table-wrap::-webkit-scrollbar {
   display: none;
 }
 
-.todo-list-eisenhower-sidebar .todo-eisenhower-sidebar-panel .todo-table thead {
+.todo-list-eisenhower-sidebar .todo-section-tab-panel .todo-table thead {
   position: sticky;
   top: 0;
   z-index: 10;
@@ -18110,7 +18124,7 @@ body.kpi-resizing {
   box-shadow: 0 1px 0 #e5e7eb;
 }
 
-.todo-list-eisenhower-sidebar .todo-eisenhower-sidebar-panel .todo-table thead th {
+.todo-list-eisenhower-sidebar .todo-section-tab-panel .todo-table thead th {
   background: #fafafa;
 }
 
@@ -18128,10 +18142,6 @@ body.kpi-resizing {
 .todo-list-eisenhower-sidebar .todo-table col.todo-col-due,
 .todo-list-eisenhower-sidebar .todo-table col.todo-col-overdue {
   width: auto !important;
-}
-
-.todo-list-eisenhower-sidebar .todo-eisenhower-sidebar-panel .todo-section-header {
-  flex-shrink: 0;
 }
 
 /* 아이젠하워 사이드바: 할일 이름 열 넓게 (제목행 고정되어 뒷열은 가로스크롤로 확인) */
