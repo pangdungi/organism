@@ -2550,7 +2550,7 @@ function render1DayView(tabsElement) {
     const todoTable = document.createElement("table");
     todoTable.className = "calendar-1day-todo-table time-daily-budget-table";
     todoTable.innerHTML = `
-      <thead><tr><th>오늘의 할일</th><th>목표 시간</th><th>예상 시작 시간</th><th>예상 마감 시간</th></tr></thead>
+      <thead><tr><th>오늘의 할일</th><th>KPI</th><th>목표 시간</th><th>예상 시작 시간</th><th>예상 마감 시간</th></tr></thead>
       <tbody></tbody>
     `;
     const todoTbody = todoTable.querySelector("tbody");
@@ -2633,6 +2633,12 @@ function render1DayView(tabsElement) {
       const nameTd = document.createElement("td");
       nameTd.appendChild(bar);
       tr.appendChild(nameTd);
+      const kpiTd = document.createElement("td");
+      kpiTd.className = "calendar-1day-todo-kpi-cell";
+      if (t.classification) {
+        kpiTd.textContent = t.classification;
+      }
+      tr.appendChild(kpiTd);
       const goalTd = document.createElement("td");
       goalTd.appendChild(createHhMmInput());
       tr.appendChild(goalTd);

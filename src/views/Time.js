@@ -4921,11 +4921,6 @@ export function render() {
               </tbody>
             </table>
           </div>
-          <div class="time-dashboard-widget time-daily-budget-widget-chart">
-            <div class="time-dashboard-widget-title">오늘의 목표달성률</div>
-            <div class="time-daily-budget-achievement-value">—</div>
-            <div class="time-daily-budget-achievement-desc">목표 시간 대비 실제 사용</div>
-          </div>
         </div>
       </div>
     `;
@@ -5231,9 +5226,6 @@ export function render() {
       ".time-daily-budget-remaining-scheduled",
     );
     const prodPlannedEl = wrap.querySelector(".time-daily-budget-prod-planned");
-    const achievementEl = wrap.querySelector(
-      ".time-daily-budget-achievement-value",
-    );
     const nonprodPlannedEl = wrap.querySelector(
       ".time-daily-budget-nonprod-planned",
     );
@@ -5288,32 +5280,6 @@ export function render() {
       if (nonprodActualEl)
         nonprodActualEl.textContent =
           consumeActualSum > 0 ? formatHoursToHHMM(consumeActualSum) : "—";
-
-      /** 목표달성률: 목표 대비 실제 - 부족하면 낮고, 초과(휴대폰 등)해도 낮아짐 */
-      let totalGoalWeight = 0;
-      let totalAchievement = 0;
-      [investBlock, consumeBlock].forEach((block) => {
-        block.querySelectorAll("tbody tr:not(.time-row-add)").forEach((tr) => {
-          const dropdownWrap = tr.querySelector(".time-tag-dropdown-wrap");
-          const goalInput = tr.querySelector(".time-budget-time-input");
-          if (!dropdownWrap?._getValue || !goalInput) return;
-          const task = String(dropdownWrap._getValue() || "").trim();
-          const goal = parseTimeToHours(goalInput.value);
-          if (!task || goal <= 0) return;
-          const actual = getActualTimeForTask(task);
-          const rate = actual <= goal ? actual / goal : goal / actual;
-          totalAchievement += rate * goal;
-          totalGoalWeight += goal;
-        });
-      });
-      if (achievementEl) {
-        if (totalGoalWeight > 0) {
-          const pct = Math.round((totalAchievement / totalGoalWeight) * 100);
-          achievementEl.textContent = pct + "%";
-        } else {
-          achievementEl.textContent = "—";
-        }
-      }
     }
 
     onHeaderUpdateRef.current = updateRemainingScheduled;
@@ -5749,7 +5715,6 @@ export function renderTimeBudgetTablesForCalendar(
       investTbody.insertBefore(tr, investAddRow);
     }
     updateRemaining();
-    updateAchievementCard();
     /* 빈 행 추가만으로는 저장 데이터 변경 없음 → 이벤트 미발송 (발송 시 renderCalendar가 전체 재렌더하여 추가 행이 사라짐) */
   });
   const tabPanels = document.createElement("div");
@@ -5799,57 +5764,9 @@ export function renderTimeBudgetTablesForCalendar(
   });
   updateRemaining();
 
-  const achievementCard = document.createElement("div");
-  achievementCard.className = "calendar-1day-budget-achievement-card";
-  achievementCard.innerHTML = `
-    <div class="calendar-1day-budget-summary-title">오늘의 목표달성률</div>
-    <div class="calendar-budget-achievement-value">—</div>
-    <div class="calendar-budget-achievement-desc">목표 시간 대비 실제 사용</div>
-  `;
-  function getActualTimeForTaskFromRows(taskName) {
-    if (!(taskName || "").trim()) return 0;
-    const name = String(taskName).trim();
-    return todayRows
-      .filter((r) => (r.taskName || "").trim() === name)
-      .reduce((sum, r) => sum + parseTimeToHours(r.timeTracked), 0);
-  }
-  function updateAchievementCard() {
-    let totalGoalWeight = 0;
-    let totalAchievement = 0;
-    [investBlock, consumeBlock].forEach((block) => {
-      block.querySelectorAll("tbody tr:not(.time-row-add)").forEach((tr) => {
-        const dropdownWrap = tr.querySelector(".time-tag-dropdown-wrap");
-        const goalInput = tr.querySelector(".time-budget-time-input");
-        if (!dropdownWrap?._getValue || !goalInput) return;
-        const task = String(dropdownWrap._getValue() || "").trim();
-        const goal = parseTimeToHours(goalInput.value);
-        if (!task || goal <= 0) return;
-        const actual = getActualTimeForTaskFromRows(task);
-        const rate = actual <= goal ? actual / goal : goal / actual;
-        totalAchievement += rate * goal;
-        totalGoalWeight += goal;
-      });
-    });
-    const achievementEl = achievementCard.querySelector(
-      ".calendar-budget-achievement-value",
-    );
-    if (achievementEl) {
-      achievementEl.textContent =
-        totalGoalWeight > 0
-          ? Math.round((totalAchievement / totalGoalWeight) * 100) + "%"
-          : "—";
-    }
-  }
-  [investBlock, consumeBlock].forEach((block) => {
-    block.addEventListener("input", () => updateAchievementCard());
-    block.addEventListener("blur", () => updateAchievementCard());
-  });
-  updateAchievementCard();
-
   const topRow = document.createElement("div");
   topRow.className = "calendar-1day-budget-top-row";
   topRow.appendChild(remainingHeader);
-  topRow.appendChild(achievementCard);
 
   const stickyHeader = document.createElement("div");
   stickyHeader.className = "calendar-1day-budget-sticky-header";
