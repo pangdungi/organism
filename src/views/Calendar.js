@@ -4,7 +4,7 @@
  * 할일목록: 인생 KPI와 동일한 구조
  */
 
-import { render as renderTodoList, saveTodoListBeforeUnmount, DRAG_TYPE_TODO_TO_CALENDAR, DRAG_TYPE_TODO_TO_EISENHOWER } from "./TodoList.js";
+import { render as renderTodoList, renderTodoListForEisenhowerSidebar, saveTodoListBeforeUnmount, DRAG_TYPE_TODO_TO_CALENDAR, DRAG_TYPE_TODO_TO_EISENHOWER } from "./TodoList.js";
 import { getKpiTodosAsTasks, addCalendarTodoToSection, syncKpiTodoCompleted, updateKpiTodo, removeKpiTodo } from "../utils/kpiTodoSync.js";
 import { getSectionColor, getCustomSections } from "../utils/todoSettings.js";
 import { getKpisByCategory } from "../utils/kpiViewModal.js";
@@ -3639,8 +3639,7 @@ function renderEisenhowerView(tabsElement) {
     </div>
     <div class="calendar-todo-sidebar-body"></div>
   `;
-  const todoListEl = renderTodoList({ hideToolbar: true, enableDragToEisenhower: true });
-  todoListEl.classList.add("todo-list-eisenhower-sidebar");
+  const todoListEl = renderTodoListForEisenhowerSidebar({ enableDragToEisenhower: true });
   todoSidebar.querySelector(".calendar-todo-sidebar-body").appendChild(todoListEl);
   todoSidebar.querySelector(".calendar-todo-sidebar-collapse").addEventListener("click", () => {
     sidebarCollapsed = !sidebarCollapsed;

@@ -1935,44 +1935,28 @@ export function render(options = {}) {
   return el;
 }
 
-/** 아이젠하워 사이드바용: 할일 + 기한 초과 2섹션 분할 */
+/** 아이젠하워 사이드바용: 할일(탭) + 기한 초과 섹션 */
 export function renderTodoListForEisenhowerSidebar(options = {}) {
   const { enableDragToEisenhower = true } = options;
+  const mainList = render({ hideToolbar: true, enableDragToEisenhower });
+  mainList.classList.add("todo-list-eisenhower-sidebar");
+
   const kpiTasks = getKpiTodosAsTasks();
   const sectionTasks = FIXED_SECTION_IDS_FOR_STORAGE.flatMap((sid) => loadSectionTasks(sid));
   const customTasks = getCustomSections().flatMap((s) => loadCustomSectionTasks(s.id));
   const allTasks = [...kpiTasks, ...sectionTasks, ...customTasks];
-
-  const regularTasks = allTasks.filter((t) => !isOverdue(t.dueDate)).map((t) => ({ ...t, sectionId: "tasks" }));
   const overdueTasks = allTasks.filter((t) => isOverdue(t.dueDate)).map((t) => ({ ...t, sectionId: "overdue" }));
 
-  const sections = [
-    { id: "tasks", label: "할일" },
-    { id: "overdue", label: "기한 초과" },
-  ];
-
-  const el = document.createElement("div");
-  el.className = "todo-list-view todo-list-eisenhower-sidebar";
-  const sectionsWrap = document.createElement("div");
-  sectionsWrap.className = "todo-sections-wrap todo-eisenhower-sidebar-panels";
-
-  const { menu: checkboxTypeMenu } = createTodoCheckboxTypeMenu();
-  checkboxTypeMenu.hidden = true;
-  el.appendChild(checkboxTypeMenu);
-
-  const sectionResults = renderSections(sectionsWrap, [...regularTasks, ...overdueTasks], {
+  const overdueWrap = document.createElement("div");
+  overdueWrap.className = "todo-eisenhower-overdue-section";
+  renderSections(overdueWrap, overdueTasks, {
     tabMode: false,
     showCheckboxTypeMenu: null,
     enableDragToCalendar: false,
     enableDragToEisenhower,
-    sectionsOverride: sections,
+    sectionsOverride: [{ id: "overdue", label: "기한 초과" }],
   });
 
-  sectionResults.forEach(({ wrap }) => {
-    wrap.classList.add("todo-eisenhower-sidebar-panel");
-    wrap.querySelector(".todo-section")?.classList.add("todo-eisenhower-panel-section");
-  });
-
-  el.appendChild(sectionsWrap);
-  return el;
+  mainList.appendChild(overdueWrap);
+  return mainList;
 }

@@ -18091,6 +18091,29 @@ body.kpi-resizing {
   flex-direction: column;
 }
 
+/* 아이젠하워 사이드바: 기한 초과 섹션 (할일 목록 아래 별도 표시) */
+.todo-list-eisenhower-sidebar .todo-eisenhower-overdue-section {
+  flex-shrink: 0;
+  border-top: 1px solid #e5e7eb;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  max-height: 40%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.todo-list-eisenhower-sidebar .todo-eisenhower-overdue-section::-webkit-scrollbar {
+  display: none;
+}
+
+.todo-list-eisenhower-sidebar .todo-eisenhower-overdue-section .todo-table-wrap {
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
 .todo-list-eisenhower-sidebar .todo-section-tab-panel {
   flex: 1;
   min-height: 0;
