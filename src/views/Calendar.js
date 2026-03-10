@@ -64,6 +64,8 @@ function getSectionTasksWithDateRange() {
             name: t.name,
             startDate: (t.startDate || "").slice(0, 10),
             dueDate: (t.dueDate || "").slice(0, 10),
+            startTime: t.startTime || "",
+            endTime: t.endTime || "",
             sectionId,
             sectionLabel,
             itemType: t.itemType || "todo",
@@ -426,6 +428,8 @@ function getAllTasksWithDateRange() {
               name: t.name,
               startDate: (t.startDate || "").slice(0, 10),
               dueDate: (t.dueDate || "").slice(0, 10),
+              startTime: t.startTime || "",
+              endTime: t.endTime || "",
               sectionId: sec.id,
               itemType: t.itemType || "todo",
               done: !!t.done,
@@ -2058,6 +2062,31 @@ function render1DayView(tabsElement) {
         });
       }
 
+      const startInput = createHhMmInput();
+      startInput.value = (t.startTime || "").trim();
+      const endInput = createHhMmInput();
+      endInput.value = (t.endTime || "").trim();
+      const saveScheduled = () => {
+        const start = startInput.value.trim();
+        const end = endInput.value.trim();
+        let ok = false;
+        if (t.kpiTodoId && t.storageKey) {
+          ok = updateKpiTodo(t.kpiTodoId, t.storageKey, { startTime: start, endTime: end });
+        } else if (t.sectionId?.startsWith("custom-") && t.taskId) {
+          ok = updateCustomSectionTaskTimes(t.sectionId, t.taskId, start, end);
+        } else if (KPI_SECTION_IDS.includes(t.sectionId) && t.taskId) {
+          ok = updateSectionTaskTimes(t.sectionId, t.taskId, start, end);
+        }
+        if (ok) {
+          t.startTime = start;
+          t.endTime = end;
+          renderCalendar();
+          refreshTodoList();
+        }
+      };
+      startInput.addEventListener("blur", saveScheduled);
+      endInput.addEventListener("blur", saveScheduled);
+
       const tr = document.createElement("tr");
       const nameTd = document.createElement("td");
       nameTd.appendChild(bar);
@@ -2066,10 +2095,10 @@ function render1DayView(tabsElement) {
       goalTd.appendChild(createHhMmInput());
       tr.appendChild(goalTd);
       const startTd = document.createElement("td");
-      startTd.appendChild(createHhMmInput());
+      startTd.appendChild(startInput);
       tr.appendChild(startTd);
       const endTd = document.createElement("td");
-      endTd.appendChild(createHhMmInput());
+      endTd.appendChild(endInput);
       tr.appendChild(endTd);
       todoTbody.appendChild(tr);
     });
@@ -2272,7 +2301,7 @@ function render1DayView(tabsElement) {
       slotActual.style.gridRow = `${i + 2}`;
       timeTable.appendChild(slotActual);
     }
-    const SECTION_IDS_FOR_LIST_COLOR = ["dream", "sideincome", "health", "happy"];
+    const SECTION_IDS_FOR_LIST_COLOR = ["braindump", "dream", "sideincome", "health", "happy"];
     const createOverlay = (spans, colors, isActual) => {
       const overlay = document.createElement("div");
       overlay.className = `calendar-1day-time-fill-overlay calendar-1day-time-fill-overlay--${isActual ? "actual" : "expected"}`;
