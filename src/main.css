@@ -6512,6 +6512,15 @@ body {
   width: 4.5rem !important;
 }
 
+.todo-th-overdue,
+.todo-cell-overdue {
+  width: 5rem !important;
+  min-width: 4.5rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
 .todo-th-eisenhower,
 .todo-cell-eisenhower {
   width: 6rem !important;
@@ -16319,12 +16328,54 @@ body.kpi-resizing {
   background: transparent;
 }
 
-/* 1일뷰 시간투자내역 상단 - 남은 시간 + 목표달성률 한 줄 */
+/* 1일뷰 시간투자내역 상단 - 남은 시간 */
 .calendar-1day-budget-top-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 0.75rem;
   margin-bottom: 1rem;
+}
+
+/* 오늘 사이드바 - 오늘의 진행률 */
+.calendar-sidebar-progress-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.calendar-sidebar-progress-label {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+.calendar-sidebar-progress-bar-wrap {
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.calendar-sidebar-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6 0%, #22c55e 100%);
+  border-radius: 3px;
+  transition: width 0.2s ease;
+}
+
+.calendar-sidebar-progress-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.calendar-sidebar-progress-by-category {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 0.35rem;
 }
 
 .time-budget-calendar-remaining {
@@ -17991,6 +18042,108 @@ body.kpi-resizing {
 .calendar-todo-sidebar-body .todo-filter-bar {
   padding: 0.5rem 0;
   margin-bottom: 0.5rem;
+}
+
+/* 아이젠하워 사이드바 body: 내부 패널이 각자 스크롤하므로 body 스크롤 비활성화 */
+.calendar-todo-sidebar-body:has(.todo-list-eisenhower-sidebar) {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-todo-sidebar-body:has(.todo-list-eisenhower-sidebar) .todo-list-in-sidebar {
+  flex: 1;
+  min-height: 0;
+}
+
+/* 아이젠하워 사이드바: 할일 + 기한 초과 2섹션 분할 */
+.todo-list-eisenhower-sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.todo-list-eisenhower-sidebar .todo-eisenhower-sidebar-panels {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  gap: 0;
+}
+
+.todo-list-eisenhower-sidebar .todo-eisenhower-sidebar-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.todo-list-eisenhower-sidebar .todo-eisenhower-sidebar-panel .todo-section {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.todo-list-eisenhower-sidebar .todo-eisenhower-sidebar-panel .todo-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.todo-list-eisenhower-sidebar .todo-eisenhower-sidebar-panel .todo-table-wrap::-webkit-scrollbar {
+  display: none;
+}
+
+.todo-list-eisenhower-sidebar .todo-eisenhower-sidebar-panel .todo-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #fafafa;
+  box-shadow: 0 1px 0 #e5e7eb;
+}
+
+.todo-list-eisenhower-sidebar .todo-eisenhower-sidebar-panel .todo-table thead th {
+  background: #fafafa;
+}
+
+/* 아이젠하워 사이드바: 시작일·마감일·기한초과 열 표시 (todo-list-in-sidebar에서 숨김 해제) */
+.todo-list-eisenhower-sidebar .todo-th-start,
+.todo-list-eisenhower-sidebar .todo-cell-start,
+.todo-list-eisenhower-sidebar .todo-th-due,
+.todo-list-eisenhower-sidebar .todo-cell-due,
+.todo-list-eisenhower-sidebar .todo-th-overdue,
+.todo-list-eisenhower-sidebar .todo-cell-overdue {
+  display: table-cell !important;
+}
+
+.todo-list-eisenhower-sidebar .todo-table col.todo-col-start,
+.todo-list-eisenhower-sidebar .todo-table col.todo-col-due,
+.todo-list-eisenhower-sidebar .todo-table col.todo-col-overdue {
+  width: auto !important;
+}
+
+.todo-list-eisenhower-sidebar .todo-eisenhower-sidebar-panel .todo-section-header {
+  flex-shrink: 0;
+}
+
+/* 아이젠하워 사이드바: 할일 이름 열 넓게 (제목행 고정되어 뒷열은 가로스크롤로 확인) */
+.todo-list-eisenhower-sidebar .todo-table col.todo-col-name {
+  min-width: 20rem !important;
+  width: 20rem !important;
+}
+
+.todo-list-eisenhower-sidebar .todo-table .todo-th-name,
+.todo-list-eisenhower-sidebar .todo-table .todo-cell-name {
+  min-width: 20rem !important;
+  width: 20rem !important;
 }
 
 /* ----- 루틴/해빗트랙커 ----- */

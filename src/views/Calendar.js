@@ -4,7 +4,7 @@
  * 할일목록: 인생 KPI와 동일한 구조
  */
 
-import { render as renderTodoList, saveTodoListBeforeUnmount, DRAG_TYPE_TODO_TO_CALENDAR, DRAG_TYPE_TODO_TO_EISENHOWER } from "./TodoList.js";
+import { render as renderTodoList, renderTodoListForEisenhowerSidebar, saveTodoListBeforeUnmount, DRAG_TYPE_TODO_TO_CALENDAR, DRAG_TYPE_TODO_TO_EISENHOWER } from "./TodoList.js";
 import { getKpiTodosAsTasks, addCalendarTodoToSection, syncKpiTodoCompleted, updateKpiTodo, removeKpiTodo } from "../utils/kpiTodoSync.js";
 import { getSectionColor, getCustomSections } from "../utils/todoSettings.js";
 import { getKpisByCategory } from "../utils/kpiViewModal.js";
@@ -2379,32 +2379,30 @@ function render1DayView(tabsElement) {
 
   let expandedKpiId = null;
 
-  function refreshKpiSidebar() {
+  function refreshKpiSidebar(taskStats = {}) {
     const body = wrap.querySelector(".calendar-kpi-sidebar-body");
     if (!body) return;
-    const { tabsHtml, panelsHtml, totalCount } = buildKpiSidebarHtml();
-    const emptyHint =
-      totalCount === 0
-        ? '<p class="calendar-kpi-sidebar-hint">꿈, 건강, 부수입, 행복 페이지에서 KPI를 등록해주세요.</p>'
-        : "";
-    body.innerHTML = `
-      ${emptyHint}
-      <div class="calendar-kpi-tabs">${tabsHtml}</div>
-      <div class="calendar-kpi-panels">${panelsHtml}</div>
+    const totalDone = Object.values(taskStats).reduce((s, x) => s + (x.done || 0), 0);
+    const totalAll = Object.values(taskStats).reduce((s, x) => s + (x.total || 0), 0);
+    const progressPct = totalAll > 0 ? Math.round((totalDone / totalAll) * 100) : 0;
+    const SECTION_LABELS = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복" };
+    const byCategory = ["dream", "sideincome", "health", "happy"]
+      .filter((sid) => taskStats[sid]?.total > 0)
+      .map((sid) => {
+        const s = taskStats[sid];
+        return `${s.label} ${s.done}/${s.total}`;
+      });
+    let html = `
+      <div class="calendar-sidebar-progress-card">
+        <div class="calendar-sidebar-progress-label">오늘의 진행률</div>
+        <div class="calendar-sidebar-progress-bar-wrap">
+          <div class="calendar-sidebar-progress-bar" style="width:${progressPct}%"></div>
+        </div>
+        <div class="calendar-sidebar-progress-value">${totalDone} / ${totalAll}</div>
+        ${byCategory.length > 0 ? `<div class="calendar-sidebar-progress-by-category">${byCategory.join(" · ")}</div>` : ""}
+      </div>
     `;
-    attachKpiSidebarListeners(body);
-    if (expandedKpiId) {
-      const card = body.querySelector(`.calendar-kpi-card[data-kpi-id="${expandedKpiId}"]`);
-      if (card) {
-        card.classList.add("is-expanded");
-        const todosEl = card.querySelector(".calendar-kpi-card-todos");
-        const storageKey = card.dataset.storageKey;
-        if (todosEl && storageKey) {
-          todosEl.innerHTML = renderKpiTodoListHtml(expandedKpiId, storageKey);
-          attachKpiTodoListeners(todosEl, expandedKpiId, storageKey);
-        }
-      }
-    }
+    body.innerHTML = html;
   }
 
   function attachKpiTodoListeners(todosEl, kpiId, storageKey) {
@@ -2663,8 +2661,18 @@ function render1DayView(tabsElement) {
     todoSection.appendChild(todoSectionHeader);
     todoSection.appendChild(todoSectionBody);
 
+    const SECTION_LABELS = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복", braindump: "브레인 덤프" };
+    const taskStats = {};
+    ["dream", "sideincome", "health", "happy"].forEach((sid) => {
+      const sectionTasks = tasks.filter((t) => t.sectionId === sid);
+      const total = sectionTasks.length;
+      const done = sectionTasks.filter((t) => t.done).length;
+      taskStats[sid] = { done, total, label: SECTION_LABELS[sid] || sid };
+    });
+
     renderTimeBudgetTablesForCalendar(budgetColumn, targetKey, todoSection);
     calendarGrid.appendChild(budgetColumn);
+    refreshKpiSidebar(taskStats);
     calendarGrid.appendChild(timeColumn);
 
     /* 구분선 */
@@ -2928,7 +2936,7 @@ function render1DayView(tabsElement) {
   let sidebarCollapsed = false;
   kpiSidebar.innerHTML = `
     <div class="calendar-todo-sidebar-header">
-      <span class="calendar-todo-sidebar-title">KPI</span>
+      <span class="calendar-todo-sidebar-title">오늘</span>
       <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
         <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
       </button>
@@ -2941,7 +2949,6 @@ function render1DayView(tabsElement) {
     kpiSidebar.querySelector(".calendar-todo-sidebar-collapse").title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
   });
   wrap.appendChild(kpiSidebar);
-  refreshKpiSidebar();
 
   wrap.addEventListener("dragend", () => {
     window.__calendarDragDuration = 30;
@@ -3632,7 +3639,7 @@ function renderEisenhowerView(tabsElement) {
     </div>
     <div class="calendar-todo-sidebar-body"></div>
   `;
-  const todoListEl = renderTodoList({ hideToolbar: true, enableDragToCalendar: false, enableDragToEisenhower: true });
+  const todoListEl = renderTodoListForEisenhowerSidebar({ enableDragToEisenhower: true });
   todoListEl.classList.add("todo-list-in-sidebar");
   todoSidebar.querySelector(".calendar-todo-sidebar-body").appendChild(todoListEl);
   todoSidebar.querySelector(".calendar-todo-sidebar-collapse").addEventListener("click", () => {
