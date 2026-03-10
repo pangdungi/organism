@@ -25,7 +25,11 @@ export function initDatePicker(inputEl, options = {}) {
 
 export function initDatePickersIn(container) {
   if (!container) return;
-  container.querySelectorAll('input[type="date"]:not(.todo-due-input-hidden):not(.todo-start-input-hidden)').forEach((el) => initDatePicker(el));
+  container
+    .querySelectorAll(
+      'input[type="date"]:not(.todo-due-input-hidden):not(.todo-start-input-hidden)',
+    )
+    .forEach((el) => initDatePicker(el));
 }
 
 export function observeDatePickerInit(container) {

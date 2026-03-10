@@ -1,7 +1,9 @@
 /**
  * 할일목록 태스크 우클릭 컨텍스트 메뉴
- * - 꿈/부수입/건강/행복: 현재 리스트 제외한 다른 KPI 리스트로 이동
+ * - 현재 리스트 제외한 전체 리스트(꿈/부수입/건강/행복 + 커스텀)로 이동
  */
+
+import { getCustomSections } from "./todoSettings.js";
 
 const KPI_OPTIONS = [
   { id: "dream", label: "꿈" },
@@ -9,6 +11,11 @@ const KPI_OPTIONS = [
   { id: "health", label: "건강" },
   { id: "happy", label: "행복" },
 ];
+
+function getAllSectionOptions() {
+  const custom = getCustomSections().map((s) => ({ id: s.id, label: s.label }));
+  return [...KPI_OPTIONS, ...custom];
+}
 
 /**
  * @param {Function} onSelect - (targetSectionId) => void
@@ -20,7 +27,8 @@ export function createBraindumpContextMenu(onSelect) {
 
   function renderItems(excludeSectionId) {
     menu.innerHTML = "";
-    const options = excludeSectionId ? KPI_OPTIONS.filter((opt) => opt.id !== excludeSectionId) : KPI_OPTIONS;
+    const allOptions = getAllSectionOptions();
+    const options = excludeSectionId ? allOptions.filter((opt) => opt.id !== excludeSectionId) : allOptions;
 
     options.forEach((opt) => {
       const item = document.createElement("button");

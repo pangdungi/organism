@@ -25,7 +25,11 @@ const TABS = [
   { id: "time", label: "시간가계부", icon: "/toolbaricons/timer.svg" },
   { id: "diary", label: "감정관리", icon: "/toolbaricons/chat-bubbles.svg" },
   { id: "asset", label: "자산관리", icon: "/toolbaricons/wallet.svg" },
-  { id: "workschedule", label: "근무표", icon: "/toolbaricons/calendar-heart1.svg" },
+  {
+    id: "workschedule",
+    label: "근무표",
+    icon: "/toolbaricons/calendar-heart1.svg",
+  },
   { id: "archive", label: "아카이브", icon: "/toolbaricons/harddrive.svg" },
   { id: "idea", label: "My account", icon: "/toolbaricons/user-square.svg" },
 ];
@@ -98,7 +102,8 @@ export function mountApp(container) {
   collapseBtn.type = "button";
   collapseBtn.className = "app-sidebar-collapse-btn";
   collapseBtn.title = isCollapsed ? "사이드바 펼치기" : "사이드바 접기";
-  collapseBtn.innerHTML = '<img src="/toolbaricons/menu.svg" alt="" width="20" height="20" />';
+  collapseBtn.innerHTML =
+    '<img src="/toolbaricons/menu.svg" alt="" width="20" height="20" />';
   collapseBtn.addEventListener("click", () => {
     sidebar.classList.toggle("is-collapsed");
     const collapsed = sidebar.classList.contains("is-collapsed");
@@ -114,7 +119,8 @@ export function mountApp(container) {
 
   TABS.forEach((tab) => {
     const btn = document.createElement("button");
-    btn.className = "app-sidebar-item" + (tab.id === currentTabId ? " active" : "");
+    btn.className =
+      "app-sidebar-item" + (tab.id === currentTabId ? " active" : "");
     btn.dataset.tabId = tab.id;
     btn.title = tab.label;
     const icon = document.createElement("img");
@@ -130,7 +136,9 @@ export function mountApp(container) {
     btn.appendChild(label);
     btn.addEventListener("click", () => {
       currentTabId = tab.id;
-      nav.querySelectorAll(".app-sidebar-item").forEach((b) => b.classList.remove("active"));
+      nav
+        .querySelectorAll(".app-sidebar-item")
+        .forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
       renderMain(main);
       sidebar.classList.remove("is-open");
@@ -207,7 +215,8 @@ export function mountApp(container) {
       p.appendChild(render());
     } else {
       const div = document.createElement("p");
-      div.textContent = TABS.find((t) => t.id === currentTabId)?.label || "준비 중";
+      div.textContent =
+        TABS.find((t) => t.id === currentTabId)?.label || "준비 중";
       p.appendChild(div);
     }
   }

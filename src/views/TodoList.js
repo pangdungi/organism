@@ -102,6 +102,33 @@ function moveSectionTaskToSection(fromSectionId, taskId, targetSectionId, taskDa
   return false;
 }
 
+function moveCustomSectionTaskToSection(fromSectionId, taskId, targetSectionId, taskData) {
+  try {
+    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
+    if (!raw) return false;
+    const obj = JSON.parse(raw);
+    const fromArr = obj[fromSectionId];
+    if (!Array.isArray(fromArr)) return false;
+    const idx = fromArr.findIndex((x) => (x.taskId || "") === taskId);
+    if (idx < 0) return false;
+    fromArr.splice(idx, 1);
+    if (!obj[targetSectionId]) obj[targetSectionId] = [];
+    obj[targetSectionId].push({
+      taskId: taskData.taskId || taskId,
+      name: (taskData.name || "").trim(),
+      startDate: taskData.startDate || "",
+      dueDate: taskData.dueDate || "",
+      startTime: taskData.startTime || "",
+      endTime: taskData.endTime || "",
+      done: !!taskData.done,
+      itemType: taskData.itemType || "todo",
+    });
+    localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(obj));
+    return true;
+  } catch (_) {}
+  return false;
+}
+
 function loadCustomSectionTasks(sectionId) {
   try {
     const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
@@ -1701,22 +1728,83 @@ export function render(options = {}) {
     let result = { success: false };
     const kpiTodoId = row.dataset.kpiTodoId;
     const storageKey = row.dataset.kpiStorageKey;
+    const taskPayload = { taskId: oldTaskId, name, startDate, dueDate, startTime, endTime, done, itemType };
+    const sectionLabelMap = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복" };
+    const getTargetLabel = (id) => sectionLabelMap[id] || getCustomSections().find((s) => s.id === id)?.label || id;
+
     if (kpiTodoId && storageKey) {
-      result = moveKpiTodoToSection(kpiTodoId, storageKey, targetSectionId);
-    } else if (KPI_SECTION_IDS.includes(fromSectionId) && KPI_SECTION_IDS.includes(targetSectionId) && name) {
-      const moved = moveSectionTaskToSection(fromSectionId, oldTaskId, targetSectionId, {
-        taskId: oldTaskId,
-        name,
-        startDate,
-        dueDate,
-        startTime,
-        endTime,
-        done,
-        itemType,
-      });
+      if (targetSectionId.startsWith("custom-")) {
+        const moved = removeKpiTodo(kpiTodoId, storageKey);
+        if (moved) {
+          try {
+            const customRaw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
+            const customObj = customRaw ? JSON.parse(customRaw) : {};
+            if (!customObj[targetSectionId]) customObj[targetSectionId] = [];
+            customObj[targetSectionId].push({ ...taskPayload, taskId: oldTaskId });
+            localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(customObj));
+            result = { success: true, task: { name, startDate, dueDate, startTime, endTime, done, sectionId: targetSectionId, sectionLabel: getTargetLabel(targetSectionId), itemType, isKpiTodo: false, taskId: oldTaskId } };
+          } catch (_) {}
+        }
+      } else {
+        result = moveKpiTodoToSection(kpiTodoId, storageKey, targetSectionId);
+      }
+    } else if (name) {
+      let moved = false;
+      const fromIsKpi = KPI_SECTION_IDS.includes(fromSectionId);
+      const targetIsKpi = KPI_SECTION_IDS.includes(targetSectionId);
+      const fromIsCustom = fromSectionId.startsWith("custom-");
+      const targetIsCustom = targetSectionId.startsWith("custom-");
+
+      if (fromIsKpi && targetIsKpi) {
+        moved = moveSectionTaskToSection(fromSectionId, oldTaskId, targetSectionId, taskPayload);
+      } else if (fromIsCustom && targetIsCustom) {
+        moved = moveCustomSectionTaskToSection(fromSectionId, oldTaskId, targetSectionId, taskPayload);
+      } else if (fromIsKpi && targetIsCustom) {
+        moved = (() => {
+          try {
+            const raw = localStorage.getItem(SECTION_TASKS_KEY);
+            if (!raw) return false;
+            const obj = JSON.parse(raw);
+            const fromArr = obj[fromSectionId];
+            if (!Array.isArray(fromArr)) return false;
+            const idx = fromArr.findIndex((x) => (x.taskId || "") === oldTaskId);
+            if (idx < 0) return false;
+            fromArr.splice(idx, 1);
+            localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+            const customRaw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
+            const customObj = customRaw ? JSON.parse(customRaw) : {};
+            if (!customObj[targetSectionId]) customObj[targetSectionId] = [];
+            customObj[targetSectionId].push({ ...taskPayload, taskId: oldTaskId });
+            localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(customObj));
+            return true;
+          } catch (_) {}
+          return false;
+        })();
+      } else if (fromIsCustom && targetIsKpi) {
+        moved = (() => {
+          try {
+            const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
+            if (!raw) return false;
+            const obj = JSON.parse(raw);
+            const fromArr = obj[fromSectionId];
+            if (!Array.isArray(fromArr)) return false;
+            const idx = fromArr.findIndex((x) => (x.taskId || "") === oldTaskId);
+            if (idx < 0) return false;
+            fromArr.splice(idx, 1);
+            localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(obj));
+            const sectionRaw = localStorage.getItem(SECTION_TASKS_KEY);
+            const sectionObj = sectionRaw ? JSON.parse(sectionRaw) : {};
+            if (!sectionObj[targetSectionId]) sectionObj[targetSectionId] = [];
+            sectionObj[targetSectionId].push({ ...taskPayload, taskId: oldTaskId });
+            localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(sectionObj));
+            return true;
+          } catch (_) {}
+          return false;
+        })();
+      }
+
       if (moved) {
-        const sectionLabel = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복" }[targetSectionId] || targetSectionId;
-        result = { success: true, task: { name, startDate, dueDate, startTime, endTime, done, sectionId: targetSectionId, sectionLabel, itemType, isKpiTodo: false, taskId: oldTaskId } };
+        result = { success: true, task: { name, startDate, dueDate, startTime, endTime, done, sectionId: targetSectionId, sectionLabel: getTargetLabel(targetSectionId), itemType, isKpiTodo: false, taskId: oldTaskId } };
       }
     }
 
@@ -1761,13 +1849,13 @@ export function render(options = {}) {
   sectionsWrap.addEventListener("contextmenu", (e) => {
     const row = e.target.closest(".todo-task-row:not(.todo-subtask-row)");
     if (!row) return;
+    if (!e.target.closest(".todo-cell-name")) return;
     e.preventDefault();
     e.stopPropagation();
     contextMenuTargetRow = row;
     const section = row.closest(".todo-section");
     const sectionId = section?.dataset.section || "";
-    const excludeSectionId = ["dream", "sideincome", "health", "happy"].includes(sectionId) ? sectionId : null;
-    showContextMenu(e.clientX, e.clientY, excludeSectionId);
+    showContextMenu(e.clientX, e.clientY, sectionId || null);
   });
 
   return el;

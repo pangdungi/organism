@@ -30,104 +30,128 @@ export function getKpiTodosAsTasks() {
   const tasks = [];
 
   // 꿈
-  const dreamData = loadJson(DREAM_MAP_KEY, { dreams: [], kpis: [], kpiTodos: [] });
-  (dreamData.kpiTodos || []).filter((todo) => (todo.text || "").trim() !== "").forEach((todo) => {
-    const kpi = (dreamData.kpis || []).find((k) => k.id === todo.kpiId);
-    if (!kpi) return;
-    const kpiName = kpi.name || "(KPI)";
-    tasks.push({
-      name: todo.text || "",
-      startDate: todo.startDate || "",
-      dueDate: todo.dueDate || "",
-      startTime: todo.startTime || "",
-      endTime: todo.endTime || "",
-      classification: kpiName,
-      sectionId: "dream",
-      sectionLabel: "꿈",
-      done: !!todo.completed,
-      isKpiTodo: true,
-      kpiTodoId: todo.id,
-      domain: "dream",
-      kpiId: kpi.id,
-      storageKey: DREAM_MAP_KEY,
-      itemType: todo.itemType || "todo",
-    });
+  const dreamData = loadJson(DREAM_MAP_KEY, {
+    dreams: [],
+    kpis: [],
+    kpiTodos: [],
   });
+  (dreamData.kpiTodos || [])
+    .filter((todo) => (todo.text || "").trim() !== "")
+    .forEach((todo) => {
+      const kpi = (dreamData.kpis || []).find((k) => k.id === todo.kpiId);
+      if (!kpi) return;
+      const kpiName = kpi.name || "(KPI)";
+      tasks.push({
+        name: todo.text || "",
+        startDate: todo.startDate || "",
+        dueDate: todo.dueDate || "",
+        startTime: todo.startTime || "",
+        endTime: todo.endTime || "",
+        classification: kpiName,
+        sectionId: "dream",
+        sectionLabel: "꿈",
+        done: !!todo.completed,
+        isKpiTodo: true,
+        kpiTodoId: todo.id,
+        domain: "dream",
+        kpiId: kpi.id,
+        storageKey: DREAM_MAP_KEY,
+        itemType: todo.itemType || "todo",
+      });
+    });
 
   // 부수입
-  const sideData = loadJson(SIDEINCOME_KEY, { paths: [], kpis: [], kpiTodos: [] });
-  (sideData.kpiTodos || []).filter((todo) => (todo.text || "").trim() !== "").forEach((todo) => {
-    const kpi = (sideData.kpis || []).find((k) => k.id === todo.kpiId);
-    if (!kpi) return;
-    const kpiName = kpi.name || "(KPI)";
-    tasks.push({
-      name: todo.text || "",
-      startDate: todo.startDate || "",
-      dueDate: todo.dueDate || "",
-      startTime: todo.startTime || "",
-      endTime: todo.endTime || "",
-      classification: kpiName,
-      sectionId: "sideincome",
-      sectionLabel: "부수입",
-      done: !!todo.completed,
-      isKpiTodo: true,
-      kpiTodoId: todo.id,
-      domain: "sideincome",
-      kpiId: kpi.id,
-      storageKey: SIDEINCOME_KEY,
-      itemType: todo.itemType || "todo",
-    });
+  const sideData = loadJson(SIDEINCOME_KEY, {
+    paths: [],
+    kpis: [],
+    kpiTodos: [],
   });
+  (sideData.kpiTodos || [])
+    .filter((todo) => (todo.text || "").trim() !== "")
+    .forEach((todo) => {
+      const kpi = (sideData.kpis || []).find((k) => k.id === todo.kpiId);
+      if (!kpi) return;
+      const kpiName = kpi.name || "(KPI)";
+      tasks.push({
+        name: todo.text || "",
+        startDate: todo.startDate || "",
+        dueDate: todo.dueDate || "",
+        startTime: todo.startTime || "",
+        endTime: todo.endTime || "",
+        classification: kpiName,
+        sectionId: "sideincome",
+        sectionLabel: "부수입",
+        done: !!todo.completed,
+        isKpiTodo: true,
+        kpiTodoId: todo.id,
+        domain: "sideincome",
+        kpiId: kpi.id,
+        storageKey: SIDEINCOME_KEY,
+        itemType: todo.itemType || "todo",
+      });
+    });
 
   // 행복
-  const happyData = loadJson(HAPPINESS_KEY, { happinesses: [], kpis: [], kpiTodos: [] });
-  (happyData.kpiTodos || []).filter((todo) => (todo.text || "").trim() !== "").forEach((todo) => {
-    const kpi = (happyData.kpis || []).find((k) => k.id === todo.kpiId);
-    if (!kpi) return;
-    const kpiName = kpi.name || "(KPI)";
-    tasks.push({
-      name: todo.text || "",
-      startDate: todo.startDate || "",
-      dueDate: todo.dueDate || "",
-      startTime: todo.startTime || "",
-      endTime: todo.endTime || "",
-      classification: kpiName,
-      sectionId: "happy",
-      sectionLabel: "행복",
-      done: !!todo.completed,
-      isKpiTodo: true,
-      kpiTodoId: todo.id,
-      domain: "happy",
-      kpiId: kpi.id,
-      storageKey: HAPPINESS_KEY,
-      itemType: todo.itemType || "todo",
-    });
+  const happyData = loadJson(HAPPINESS_KEY, {
+    happinesses: [],
+    kpis: [],
+    kpiTodos: [],
   });
+  (happyData.kpiTodos || [])
+    .filter((todo) => (todo.text || "").trim() !== "")
+    .forEach((todo) => {
+      const kpi = (happyData.kpis || []).find((k) => k.id === todo.kpiId);
+      if (!kpi) return;
+      const kpiName = kpi.name || "(KPI)";
+      tasks.push({
+        name: todo.text || "",
+        startDate: todo.startDate || "",
+        dueDate: todo.dueDate || "",
+        startTime: todo.startTime || "",
+        endTime: todo.endTime || "",
+        classification: kpiName,
+        sectionId: "happy",
+        sectionLabel: "행복",
+        done: !!todo.completed,
+        isKpiTodo: true,
+        kpiTodoId: todo.id,
+        domain: "happy",
+        kpiId: kpi.id,
+        storageKey: HAPPINESS_KEY,
+        itemType: todo.itemType || "todo",
+      });
+    });
 
   // 건강
-  const healthData = loadJson(HEALTH_KEY, { healths: [], kpis: [], kpiTodos: [] });
-  (healthData.kpiTodos || []).filter((todo) => (todo.text || "").trim() !== "").forEach((todo) => {
-    const kpi = (healthData.kpis || []).find((k) => k.id === todo.kpiId);
-    if (!kpi) return;
-    const kpiName = kpi.name || "(KPI)";
-    tasks.push({
-      name: todo.text || "",
-      startDate: todo.startDate || "",
-      dueDate: todo.dueDate || "",
-      startTime: todo.startTime || "",
-      endTime: todo.endTime || "",
-      classification: kpiName,
-      sectionId: "health",
-      sectionLabel: "건강",
-      done: !!todo.completed,
-      isKpiTodo: true,
-      kpiTodoId: todo.id,
-      domain: "health",
-      kpiId: kpi.id,
-      storageKey: HEALTH_KEY,
-      itemType: todo.itemType || "todo",
-    });
+  const healthData = loadJson(HEALTH_KEY, {
+    healths: [],
+    kpis: [],
+    kpiTodos: [],
   });
+  (healthData.kpiTodos || [])
+    .filter((todo) => (todo.text || "").trim() !== "")
+    .forEach((todo) => {
+      const kpi = (healthData.kpis || []).find((k) => k.id === todo.kpiId);
+      if (!kpi) return;
+      const kpiName = kpi.name || "(KPI)";
+      tasks.push({
+        name: todo.text || "",
+        startDate: todo.startDate || "",
+        dueDate: todo.dueDate || "",
+        startTime: todo.startTime || "",
+        endTime: todo.endTime || "",
+        classification: kpiName,
+        sectionId: "health",
+        sectionLabel: "건강",
+        done: !!todo.completed,
+        isKpiTodo: true,
+        kpiTodoId: todo.id,
+        domain: "health",
+        kpiId: kpi.id,
+        storageKey: HEALTH_KEY,
+        itemType: todo.itemType || "todo",
+      });
+    });
 
   return tasks;
 }
@@ -148,11 +172,20 @@ export function updateKpiTodo(kpiTodoId, storageKey, updates) {
     const todo = data.kpiTodos.find((t) => t.id === kpiTodoId);
     if (!todo) return false;
     if (updates.text !== undefined) todo.text = String(updates.text).trim();
-    if (updates.startDate !== undefined) todo.startDate = updates.startDate ? String(updates.startDate).trim() : "";
-    if (updates.dueDate !== undefined) todo.dueDate = updates.dueDate ? String(updates.dueDate).trim() : "";
-    if (updates.startTime !== undefined) todo.startTime = updates.startTime ? String(updates.startTime).trim() : "";
-    if (updates.endTime !== undefined) todo.endTime = updates.endTime ? String(updates.endTime).trim() : "";
-    if (updates.itemType !== undefined) todo.itemType = updates.itemType === "schedule" ? "schedule" : "todo";
+    if (updates.startDate !== undefined)
+      todo.startDate = updates.startDate
+        ? String(updates.startDate).trim()
+        : "";
+    if (updates.dueDate !== undefined)
+      todo.dueDate = updates.dueDate ? String(updates.dueDate).trim() : "";
+    if (updates.startTime !== undefined)
+      todo.startTime = updates.startTime
+        ? String(updates.startTime).trim()
+        : "";
+    if (updates.endTime !== undefined)
+      todo.endTime = updates.endTime ? String(updates.endTime).trim() : "";
+    if (updates.itemType !== undefined)
+      todo.itemType = updates.itemType === "schedule" ? "schedule" : "todo";
     if (updates.completed !== undefined) todo.completed = !!updates.completed;
     localStorage.setItem(storageKey, JSON.stringify(data));
     return true;
@@ -285,7 +318,8 @@ function nextId() {
  */
 export function moveKpiTodoToSection(kpiTodoId, fromStorageKey, toSectionId) {
   const toStorageKey = SECTION_TO_STORAGE[toSectionId];
-  if (!toStorageKey || toStorageKey === fromStorageKey) return { success: false };
+  if (!toStorageKey || toStorageKey === fromStorageKey)
+    return { success: false };
 
   try {
     const fromRaw = localStorage.getItem(fromStorageKey);
@@ -310,7 +344,9 @@ export function moveKpiTodoToSection(kpiTodoId, fromStorageKey, toSectionId) {
       health: { sectionId: "health", sectionLabel: "건강" },
     }[toSectionId];
 
-    fromData.kpiTodos = (fromData.kpiTodos || []).filter((t) => t.id !== kpiTodoId);
+    fromData.kpiTodos = (fromData.kpiTodos || []).filter(
+      (t) => t.id !== kpiTodoId,
+    );
     localStorage.setItem(fromStorageKey, JSON.stringify(fromData));
 
     const newId = nextId();
@@ -475,4 +511,3 @@ export function addCalendarTodoToSection(toSectionId, todoData) {
   } catch (_) {}
   return { success: false };
 }
-

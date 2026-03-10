@@ -61,14 +61,16 @@
   border-color: var(--gray-500, #6b7280) !important;
 }
 
-.flatpickr-day.selected.startRange + .endRange:not(:nth-child(7n+1)),
-.flatpickr-day.startRange.startRange + .endRange:not(:nth-child(7n+1)),
-.flatpickr-day.endRange.startRange + .endRange:not(:nth-child(7n+1)) {
+.flatpickr-day.selected.startRange + .endRange:not(:nth-child(7n + 1)),
+.flatpickr-day.startRange.startRange + .endRange:not(:nth-child(7n + 1)),
+.flatpickr-day.endRange.startRange + .endRange:not(:nth-child(7n + 1)) {
   box-shadow: -10px 0 0 var(--gray-500, #6b7280) !important;
 }
 
 .flatpickr-day.week.selected {
-  box-shadow: -5px 0 0 var(--gray-500, #6b7280), 5px 0 0 var(--gray-500, #6b7280) !important;
+  box-shadow:
+    -5px 0 0 var(--gray-500, #6b7280),
+    5px 0 0 var(--gray-500, #6b7280) !important;
 }
 
 .flatpickr-day.today {
@@ -97,7 +99,12 @@ input[type="datetime-local"]:not([data-fp-initialized]),
 input[type="time"] {
   accent-color: var(--gray-500, #6b7280);
   color-scheme: light;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
   color: var(--gray-700, #374151);
 }
 
@@ -128,7 +135,12 @@ body {
 
 body {
   margin: 0;
-  font-family: var(--app-font-family, "Noto Sans KR", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "Noto Sans KR",
+    -apple-system,
+    sans-serif
+  );
   background: #fff;
   color: var(--gray-800, #1f2937);
 }
@@ -138,17 +150,32 @@ body {
   overflow-x: hidden;
   overscroll-behavior: none;
   max-width: 100%;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
 }
 
 #app button {
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
 }
 
 #app input,
 #app select,
 #app textarea {
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
 }
 
 /* ----- 랜딩 페이지 (ClickUp 스타일) ----- */
@@ -501,8 +528,15 @@ body {
   color: #fff;
   display: flex;
   flex-direction: column;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
-  transition: width 0.2s, min-width 0.2s;
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
+  transition:
+    width 0.2s,
+    min-width 0.2s;
 }
 
 .app-sidebar.is-collapsed {
@@ -5519,7 +5553,12 @@ body {
   padding: 0.5rem;
   width: 100%;
   max-width: 100%;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
   box-sizing: border-box;
 }
 
@@ -5527,7 +5566,8 @@ body {
   display: none;
 }
 
-.todo-list-view.hide-completed .todo-subtask-item:has(.todo-done-check:checked) {
+.todo-list-view.hide-completed
+  .todo-subtask-item:has(.todo-done-check:checked) {
   display: none;
 }
 
@@ -5566,7 +5606,12 @@ body {
   border: 1px solid #e5e7eb;
   border-radius: 6px;
   cursor: pointer;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
 }
 
 .todo-list-toolbar-btn:hover {
@@ -5596,7 +5641,12 @@ body {
   gap: 0.25rem;
   flex-wrap: nowrap;
   margin-bottom: 0.5rem;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
@@ -5675,7 +5725,12 @@ body {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
 }
 
 .todo-braindump-context-menu-item {
@@ -5683,7 +5738,12 @@ body {
   width: 100%;
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
   text-align: left;
   color: #374151;
   background: none;
@@ -5706,7 +5766,12 @@ body {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
 }
 
 .todo-checkbox-type-menu-item {
@@ -5714,7 +5779,12 @@ body {
   width: 100%;
   padding: 0.4rem 0.75rem;
   font-size: 0.875rem;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
   text-align: left;
   color: #374151;
   background: none;
@@ -6079,7 +6149,12 @@ body {
   width: 100%;
   padding: 0.6rem 0.75rem;
   font-size: 0.95rem;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
   color: #1f2937;
   background: #fff;
   border: 1px solid #e5e7eb;
@@ -6115,7 +6190,12 @@ body {
   flex: 1;
   padding: 0.6rem 1rem;
   font-size: 0.95rem;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
   color: #4b5563;
   background: #fff;
   border: 1px solid #e5e7eb;
@@ -6133,7 +6213,12 @@ body {
   padding: 0.6rem 1rem;
   font-size: 0.95rem;
   font-weight: 500;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
   color: #fff;
   background: #4b5563;
   border: none;
@@ -6174,7 +6259,12 @@ body {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
 }
 
 .todo-list-tab-context-menu-item {
@@ -6218,7 +6308,12 @@ body {
   background: #f5f5f5;
   border: 1px solid #e5e5e5;
   cursor: pointer;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
 }
 
 .todo-filter-btn:hover {
@@ -6256,7 +6351,12 @@ body {
   background: #fafafa;
   cursor: pointer;
   font-size: 0.95rem;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
 }
 
 .todo-section-header:hover {
@@ -6281,13 +6381,23 @@ body {
   flex: 1;
   text-align: left;
   color: #333;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
 }
 
 .todo-section-count {
   color: #999;
   font-size: 0.85rem;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
 }
 
 .todo-table-wrap {
@@ -6299,14 +6409,24 @@ body {
   table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.9rem;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
 }
 
 .todo-table thead th {
   padding: 0.5rem 0.5rem;
   text-align: left;
   font-weight: 500;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
   color: #888;
   border-bottom: 1px solid #eee;
   border-right: 1px solid #eee;
@@ -6355,7 +6475,9 @@ body {
 }
 
 .todo-done-check:checked {
-  background: #e5e7eb url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-6' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E") center/70% no-repeat;
+  background: #e5e7eb
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-6' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E")
+    center/70% no-repeat;
   border-color: #d1d5db;
 }
 
@@ -6507,7 +6629,9 @@ body {
   cursor: pointer;
   font-size: 0.75rem;
   opacity: 0;
-  transition: opacity 0.15s, color 0.15s;
+  transition:
+    opacity 0.15s,
+    color 0.15s;
 }
 
 .todo-task-row:hover .todo-task-delete-btn {
@@ -6694,7 +6818,9 @@ body {
 }
 
 .todo-subtask-input-group .todo-done-check:checked {
-  background: #e5e7eb url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-6' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E") center/65% no-repeat;
+  background: #e5e7eb
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-6' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E")
+    center/65% no-repeat;
   border-color: #9ca3af;
 }
 
@@ -6722,12 +6848,19 @@ body {
   border: none;
   background: transparent;
   padding: 0.15rem 0;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
 }
 
 .todo-subtask-item .todo-subtask-name-wrap input::placeholder,
 .todo-subtask-item .todo-subtask-input::placeholder,
-.todo-subtask-item .todo-subtask-input-group input:not(.todo-done-check)::placeholder {
+.todo-subtask-item
+  .todo-subtask-input-group
+  input:not(.todo-done-check)::placeholder {
   color: #94a3b8;
 }
 
@@ -6738,7 +6871,12 @@ body {
   font-size: 0.9rem;
   background: transparent;
   padding: 0.15rem 0;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
   color: #4b5563 !important;
 }
 
@@ -6766,7 +6904,12 @@ body {
   font-variant-numeric: tabular-nums;
   color: #333;
   white-space: nowrap;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
 }
 
 .todo-due-icon {
@@ -6813,7 +6956,12 @@ body {
   font-variant-numeric: tabular-nums;
   color: var(--gray-700, #374151);
   white-space: nowrap;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
 }
 
 .todo-cell-start-time .todo-start-time-input,
@@ -6844,7 +6992,12 @@ body {
   color: #9ca3af;
   cursor: pointer;
   padding: 0.25rem;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
 }
 
 .todo-add-btn svg {
@@ -7247,7 +7400,9 @@ body {
   border: none;
   border-bottom: 2px solid transparent;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
 }
 
 .kpi-view-tab:hover {
@@ -7393,7 +7548,6 @@ body {
   margin-left: 0.5rem;
   border-left: 1px solid #e5e7eb;
 }
-
 
 .kpi-mindmap-node {
   display: inline-flex;
@@ -7616,7 +7770,12 @@ body {
 }
 
 .kpi-dream-declare-wrap {
-  font-family: var(--app-font-family, "Noto Sans KR", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "Noto Sans KR",
+    -apple-system,
+    sans-serif
+  );
   font-size: 0.9375rem;
   line-height: 1.5;
 }
@@ -8116,7 +8275,12 @@ body {
 /* 꿈 여정 */
 .kpi-dream-wrap {
   max-width: 640px;
-  font-family: var(--app-font-family, "Noto Sans KR", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "Noto Sans KR",
+    -apple-system,
+    sans-serif
+  );
   font-size: 0.9375rem;
   line-height: 1.5;
 }
@@ -8230,7 +8394,12 @@ body {
 }
 
 .kpi-dream-phase-edit-wrap {
-  font-family: var(--app-font-family, "Noto Sans KR", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "Noto Sans KR",
+    -apple-system,
+    sans-serif
+  );
   font-size: 0.9375rem;
   line-height: 1.5;
 }
@@ -8322,7 +8491,12 @@ body {
 /* 단계 완료 표시 모드 */
 .kpi-dream-phase-display {
   padding: 0;
-  font-family: var(--app-font-family, "Noto Sans KR", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "Noto Sans KR",
+    -apple-system,
+    sans-serif
+  );
   font-size: 0.9375rem;
   line-height: 1.5;
 }
@@ -9032,7 +9206,12 @@ body.kpi-resizing {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1rem;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
 }
 
 .time-view-tab {
@@ -12533,7 +12712,10 @@ body.kpi-resizing {
   border-radius: 6px 6px 0 0 !important;
   cursor: pointer;
   color: #6b7280;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
 }
 
 .dream-add-icon-btn:hover {
@@ -12612,7 +12794,11 @@ body.kpi-resizing {
   border-radius: 6px 6px 0 0 !important; /* 윗부분 모서리만 둥글게 (전역 reset 덮어쓰기) */
   font-family: inherit;
   cursor: pointer;
-  transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 
 .dream-tab:hover {
@@ -12736,7 +12922,9 @@ body.kpi-resizing {
   cursor: pointer;
   color: #9ca3af;
   opacity: 0;
-  transition: opacity 0.15s, color 0.15s;
+  transition:
+    opacity 0.15s,
+    color 0.15s;
 }
 
 .dream-desired-life-wrap:hover .dream-desired-life-edit-btn {
@@ -12787,7 +12975,9 @@ body.kpi-resizing {
   background: #fff;
   border: 1px solid #e5e7eb;
   cursor: grab;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .dream-kpi-card:active {
@@ -12833,7 +13023,9 @@ body.kpi-resizing {
   border: none;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.2s, color 0.15s;
+  transition:
+    opacity 0.2s,
+    color 0.15s;
 }
 
 .dream-kpi-card:hover .dream-kpi-card-edit {
@@ -13512,7 +13704,10 @@ body.kpi-resizing {
   background: #fafafa;
   border: 2px dashed #d1d5db;
   cursor: pointer;
-  transition: border-color 0.2s, color 0.2s, background 0.2s;
+  transition:
+    border-color 0.2s,
+    color 0.2s,
+    background 0.2s;
 }
 
 .dream-kpi-add-card:hover {
@@ -15425,9 +15620,13 @@ body.kpi-resizing {
   flex-direction: column;
 }
 
-
 .calendar-view {
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
 }
 
 .calendar-view .calendar-tabs {
@@ -15458,7 +15657,6 @@ body.kpi-resizing {
   color: #9ca3af;
   font-size: 0.95rem;
 }
-
 
 /* 월별 캘린더 레이아웃 - 화면 높이에 맞춤, 캘린더·사이드바 동일 높이 */
 .calendar-monthly-layout {
@@ -15559,7 +15757,6 @@ body.kpi-resizing {
   cursor: pointer;
   font-family: inherit;
 }
-
 
 .calendar-monthly-grid {
   flex: 1 1 0;
@@ -15677,7 +15874,9 @@ body.kpi-resizing {
 }
 
 .calendar-1day-budget-column .time-daily-budget-table thead th:last-child {
-  box-shadow: 0 1px 0 #e5e7eb, -1px 0 0 #e5e7eb;
+  box-shadow:
+    0 1px 0 #e5e7eb,
+    -1px 0 0 #e5e7eb;
 }
 
 /* 캘린더 1일뷰 시간투자/소비 내역 - 가로·세로 선 표시 */
@@ -15718,7 +15917,11 @@ body.kpi-resizing {
   cursor: pointer;
 }
 
-.calendar-1day-budget-column .time-daily-budget-table tbody tr:hover .time-budget-btn-delete {
+.calendar-1day-budget-column
+  .time-daily-budget-table
+  tbody
+  tr:hover
+  .time-budget-btn-delete {
   display: flex;
 }
 
@@ -15726,7 +15929,10 @@ body.kpi-resizing {
   color: #374151;
 }
 
-.calendar-1day-budget-column .time-daily-budget-table .time-row-add .time-cell-add {
+.calendar-1day-budget-column
+  .time-daily-budget-table
+  .time-row-add
+  .time-cell-add {
   border-top: 1px solid #e5e7eb;
   border-right: none;
   border-bottom: none;
@@ -15798,7 +16004,6 @@ body.kpi-resizing {
   justify-content: center;
   text-align: center;
 }
-
 
 .calendar-1day-budget-summary-title {
   font-size: 0.8rem;
@@ -16351,7 +16556,12 @@ body.kpi-resizing {
 
 /* 캘린더 날짜셀 클릭 시 말풍선 팝업 */
 .calendar-event-bubble {
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   border-radius: 8px;
   background: #fff;
@@ -16498,7 +16708,12 @@ body.kpi-resizing {
 
 /* 컬러바 우클릭: 시작일/마감일 수정 팝업 */
 .calendar-bar-date-edit-bubble {
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
 }
 .calendar-bar-date-edit-bubble .calendar-bar-date-edit-row {
   margin-bottom: 0.5rem;
@@ -16508,7 +16723,9 @@ body.kpi-resizing {
   align-items: center;
   gap: 0.35rem;
 }
-.calendar-bar-date-edit-bubble .calendar-bar-date-edit-input-wrap .calendar-bar-date-edit-input {
+.calendar-bar-date-edit-bubble
+  .calendar-bar-date-edit-input-wrap
+  .calendar-bar-date-edit-input {
   flex: 1;
   min-width: 0;
 }
@@ -16655,7 +16872,12 @@ body.kpi-resizing {
   flex-direction: column;
   border-left: 1px solid #e5e5e5;
   background: #fff;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
   transition:
     width 0.2s,
     min-width 0.2s;
@@ -16694,7 +16916,12 @@ body.kpi-resizing {
   font-size: 0.95rem;
   font-weight: 600;
   color: #333;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
 }
 
 .calendar-todo-sidebar-collapse {
@@ -16941,7 +17168,9 @@ body.kpi-resizing {
   cursor: pointer;
   font-family: inherit;
   opacity: 0;
-  transition: opacity 0.15s, color 0.15s;
+  transition:
+    opacity 0.15s,
+    color 0.15s;
 }
 
 .calendar-kpi-todo-item:hover .calendar-kpi-todo-del {
@@ -17155,24 +17384,40 @@ body.kpi-resizing {
 
 .calendar-todo-sidebar-body .todo-table .todo-cell-name input {
   font-size: 0.8rem;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
   color: var(--gray-600, #4b5563);
   padding: 0.2rem 0.35rem 0.2rem 0;
   line-height: 1.5;
 }
 
 /* 날짜 배정된 태스크: 옅은 회색 */
-.todo-list-in-sidebar .todo-task-row[data-has-dates="true"] .todo-cell-name input,
-.calendar-todo-sidebar-body .todo-task-row[data-has-dates="true"] .todo-cell-name input {
+.todo-list-in-sidebar
+  .todo-task-row[data-has-dates="true"]
+  .todo-cell-name
+  input,
+.calendar-todo-sidebar-body
+  .todo-task-row[data-has-dates="true"]
+  .todo-cell-name
+  input {
   color: #9ca3af !important;
 }
 
 /* 날짜 미배정 태스크: 검은색 + 리스트 컬러 */
-.calendar-todo-sidebar-body .todo-task-row[data-has-dates="false"] .todo-cell-name input {
+.calendar-todo-sidebar-body
+  .todo-task-row[data-has-dates="false"]
+  .todo-cell-name
+  input {
   color: #1f2937;
 }
 
-.calendar-todo-sidebar-body .todo-task-row[data-has-dates="false"] .todo-cell-done {
+.calendar-todo-sidebar-body
+  .todo-task-row[data-has-dates="false"]
+  .todo-cell-done {
   border-left: 3px solid var(--row-section-color, #e5e7eb);
   padding-left: calc(0.35rem - 3px);
 }
@@ -17181,7 +17426,10 @@ body.kpi-resizing {
   color: var(--gray-400, #9ca3af);
 }
 
-.calendar-todo-sidebar-body .todo-task-row:has(.todo-done-check:checked) .todo-cell-name input {
+.calendar-todo-sidebar-body
+  .todo-task-row:has(.todo-done-check:checked)
+  .todo-cell-name
+  input {
   color: #9ca3af;
 }
 
@@ -17255,7 +17503,9 @@ body.kpi-resizing {
   border-bottom: 2px solid transparent;
   cursor: pointer;
   font-family: inherit;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
 }
 
 .routine-view-tab:hover {
@@ -17524,7 +17774,9 @@ body.kpi-resizing {
   border: 2px solid transparent;
   border-radius: 0.35rem;
   cursor: pointer;
-  transition: border-color 0.15s, transform 0.1s;
+  transition:
+    border-color 0.15s,
+    transform 0.1s;
   opacity: 0.55;
 }
 
@@ -17667,7 +17919,6 @@ body.kpi-resizing {
   border-bottom: none !important;
 }
 
-
 .routine-track-th {
   background: transparent;
   font-weight: 500;
@@ -17696,7 +17947,6 @@ body.kpi-resizing {
 .routine-track-th-day {
   font-size: 0.75rem;
 }
-
 
 .routine-track-day-toggle {
   cursor: pointer;
@@ -17765,7 +18015,11 @@ body.kpi-resizing {
 }
 
 .routine-track-cell.is-checked {
-  background: color-mix(in srgb, var(--routine-color, #e07a5f) 22%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--routine-color, #e07a5f) 22%,
+    transparent
+  );
 }
 
 .routine-track-th-actions,
@@ -17804,7 +18058,6 @@ body.kpi-resizing {
   background: transparent;
   vertical-align: middle;
 }
-
 
 .routine-track-add-row-btn {
   padding: 0.35rem 0.75rem;
