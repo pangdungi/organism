@@ -17293,7 +17293,38 @@ body.kpi-resizing {
     min-width 0.2s;
 }
 
-/* 아이젠하워 뷰에서만 사이드바 살짝 넓게 */
+/* 아이젠하워 뷰: 리사이즈 핸들 */
+.calendar-eisenhower-resize-handle {
+  width: 6px;
+  min-width: 6px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: transparent;
+  position: relative;
+}
+.calendar-eisenhower-resize-handle::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--gray-200, #e5e7eb);
+  transition: background 0.15s;
+}
+.calendar-eisenhower-resize-handle:hover::before,
+.calendar-eisenhower-resize-handle.resizing::before {
+  background: var(--gray-400, #9ca3af);
+}
+.calendar-eisenhower-resize-handle.resizing {
+  cursor: col-resize;
+}
+.calendar-eisenhower-resize-handle.resizing ~ .calendar-todo-sidebar {
+  transition: none;
+}
+
+/* 아이젠하워 뷰에서만 사이드바 기본 너비 (리사이즈 시 인라인으로 덮어씀) */
 .calendar-view-eisenhower .calendar-todo-sidebar {
   width: 420px;
 }

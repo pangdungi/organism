@@ -2780,9 +2780,22 @@ function renderEisenhowerView(tabsElement) {
 
   wrap.appendChild(calendarSection);
 
+  const EISENHOWER_SIDEBAR_WIDTH_KEY = "calendar-eisenhower-sidebar-width";
+  const DEFAULT_SIDEBAR_WIDTH = 420;
+  const MIN_SIDEBAR_WIDTH = 200;
+  const MAX_SIDEBAR_WIDTH = 600;
+
+  const resizeHandle = document.createElement("div");
+  resizeHandle.className = "calendar-eisenhower-resize-handle";
+  resizeHandle.title = "드래그하여 너비 조절";
+  wrap.appendChild(resizeHandle);
+
   const todoSidebar = document.createElement("aside");
   todoSidebar.className = "calendar-todo-sidebar";
   let sidebarCollapsed = false;
+  const savedWidth = parseInt(localStorage.getItem(EISENHOWER_SIDEBAR_WIDTH_KEY), 10);
+  const sidebarWidth = Number.isFinite(savedWidth) ? Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, savedWidth)) : DEFAULT_SIDEBAR_WIDTH;
+  todoSidebar.style.width = `${sidebarWidth}px`;
   todoSidebar.innerHTML = `
     <div class="calendar-todo-sidebar-header">
       <span class="calendar-todo-sidebar-title">할 일</span>
@@ -2798,9 +2811,39 @@ function renderEisenhowerView(tabsElement) {
   todoSidebar.querySelector(".calendar-todo-sidebar-collapse").addEventListener("click", () => {
     sidebarCollapsed = !sidebarCollapsed;
     todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
+    if (sidebarCollapsed) {
+      todoSidebar.style.width = "";
+    } else {
+      const w = parseInt(localStorage.getItem(EISENHOWER_SIDEBAR_WIDTH_KEY), 10);
+      todoSidebar.style.width = Number.isFinite(w) ? `${Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, w))}px` : `${sidebarWidth}px`;
+    }
     todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
   });
   wrap.appendChild(todoSidebar);
+
+  let resizeStartX = 0;
+  let resizeStartWidth = 0;
+  resizeHandle.addEventListener("mousedown", (e) => {
+    if (sidebarCollapsed) return;
+    e.preventDefault();
+    resizeStartX = e.clientX;
+    resizeStartWidth = todoSidebar.offsetWidth;
+    resizeHandle.classList.add("resizing");
+    const onMove = (ev) => {
+      const delta = ev.clientX - resizeStartX;
+      const newWidth = Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, resizeStartWidth - delta));
+      todoSidebar.style.width = `${newWidth}px`;
+    };
+    const onUp = () => {
+      resizeHandle.classList.remove("resizing");
+      const w = todoSidebar.offsetWidth;
+      localStorage.setItem(EISENHOWER_SIDEBAR_WIDTH_KEY, String(w));
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  });
 
   function getAllTasksForEisenhower() {
     const tasks = [];
