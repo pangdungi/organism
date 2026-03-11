@@ -5555,6 +5555,37 @@ export function renderTimeBudgetTablesForCalendar(
     return byTask;
   }
 
+  /** 같은 과제명 중 첫 행만 목표시간 편집 가능, 2번째부터 비활성화+빈값 */
+  function isFirstRowForTask(taskName, currentRow, tbodyEl) {
+    if (!taskName || !tbodyEl) return true;
+    const rows = tbodyEl.querySelectorAll("tr:not(.time-row-add)");
+    for (const row of rows) {
+      const n = (row.dataset.taskName || "").trim();
+      if (n === taskName) {
+        return row === currentRow;
+      }
+    }
+    return true;
+  }
+
+  function applyGoalInputState(goalInp, taskName, currentRow, tbodyEl) {
+    const disable = !isFirstRowForTask(taskName, currentRow, tbodyEl);
+    goalInp.disabled = disable;
+    goalInp.title = disable ? "이미 같은 과제의 목표 시간이 설정되어 있습니다." : "";
+    if (disable) {
+      goalInp.value = "";
+    }
+  }
+
+  function refreshAllGoalInputStates(tbodyEl) {
+    if (!tbodyEl) return;
+    tbodyEl.querySelectorAll("tr:not(.time-row-add)").forEach((row) => {
+      const inp = row.querySelector(".time-budget-time-input");
+      const task = (row.dataset.taskName || "").trim();
+      if (inp && task) applyGoalInputState(inp, task, row, tbodyEl);
+    });
+  }
+
   function createBudgetTableRow(
     taskName,
     initialGoalTime,
@@ -5658,7 +5689,10 @@ export function renderTimeBudgetTablesForCalendar(
       taskDropdownOptions,
       taskName || "",
       "cat",
-      () => saveCurrentGoal(true),
+      () => {
+        saveCurrentGoal(true);
+        if (tbody) refreshAllGoalInputStates(tbody);
+      },
     );
     taskDropdown.wrap._getValue = taskDropdown.getValue;
     taskTd.appendChild(taskDropdown.wrap);
@@ -5666,6 +5700,8 @@ export function renderTimeBudgetTablesForCalendar(
     tr.dataset.taskName = (taskName || "").trim();
     tr.dataset.scheduledStart = initialStart || "";
     tr.dataset.scheduledEnd = initialEnd || "";
+
+    applyGoalInputState(goalInput, (taskName || "").trim(), tr, tbody);
 
     const goalTimeTd = document.createElement("td");
     goalTimeTd.appendChild(goalInput);
@@ -5695,6 +5731,11 @@ export function renderTimeBudgetTablesForCalendar(
         if (name && isBudgetPlaceholder(name)) {
           deleteBudgetGoalEntry(targetDateStr, name);
         }
+        tbody.querySelectorAll("tr:not(.time-row-add)").forEach((row) => {
+          const inp = row.querySelector(".time-budget-time-input");
+          const task = (row.dataset.taskName || "").trim();
+          if (inp && task) applyGoalInputState(inp, task, row, tbody);
+        });
       } else if (name) {
         deleteBudgetGoalEntry(targetDateStr, name);
       }
