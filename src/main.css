@@ -16981,14 +16981,18 @@ body.kpi-resizing {
 .calendar-1day-view .calendar-1day-time-slot-fill--span {
   position: relative;
   min-height: 0;
+  width: 100%;
   align-items: flex-start;
   padding: 2px 6px;
   pointer-events: auto;
+  box-sizing: border-box;
 }
 
 .calendar-1day-view .calendar-1day-time-slot-fill--block {
   position: relative;
   min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .calendar-1day-view .calendar-1day-time-slot-fill-seg {

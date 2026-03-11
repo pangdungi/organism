@@ -3452,6 +3452,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn) {
       blockFill.style.borderRadius = "2px";
       blockFill.style.border = "1px dotted rgba(0,0,0,0.12)";
       blockFill.style.position = "relative";
+      blockFill.style.width = "100%";
+      blockFill.style.boxSizing = "border-box";
       for (const sp of group) {
         let c;
         if (
@@ -3475,6 +3477,7 @@ function build1DayTimetableOverlays(targetKey, budgetColumn) {
         seg.className = "calendar-1day-time-slot-fill-seg";
         seg.style.flex = `0 0 ${segHeightPct}%`;
         seg.style.minHeight = "1.25rem";
+        seg.style.width = "100%";
         seg.style.display = "flex";
         seg.style.alignItems = "flex-start";
         seg.style.padding = "2px 6px";
@@ -4369,21 +4372,7 @@ function render1DayView(tabsElement) {
         }
         if (!c) continue;
         fill.style.gridRow = `${sp.startSlot + 2} / ${sp.endSlot + 3}`;
-        const startMinVal = sp.startMin ?? sp.startSlot * MIN_PER_SLOT;
-        const endMinVal = sp.endMin ?? (sp.endSlot + 1) * MIN_PER_SLOT;
-        const durationMin = endMinVal - startMinVal;
-        const rowSpan = sp.endSlot - sp.startSlot + 1;
-        const rowHeightMin = rowSpan * MIN_PER_SLOT;
-        if (rowHeightMin > 0) {
-          const startOffset = startMinVal - sp.startSlot * MIN_PER_SLOT;
-          if (startOffset > 0) {
-            fill.style.position = "relative";
-            fill.style.top = `${(startOffset / rowHeightMin) * 100}%`;
-          }
-          if (durationMin < rowHeightMin) {
-            fill.style.height = `${(durationMin / rowHeightMin) * 100}%`;
-          }
-        }
+        /* 타임 셀 전부 색칠 - 비례 높이/오프셋 제거 */
         fill.style.backgroundColor = c.bg;
         fill.style.boxSizing = "border-box";
         fill.style.borderRadius = "2px";
