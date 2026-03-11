@@ -1006,9 +1006,9 @@ function renderMonthlyView(tabsElement) {
       <span class="calendar-nav-year"></span>
     </span>
     <div class="calendar-nav-controls">
-      <button type="button" class="calendar-nav-prev" title="이전 달">‹</button>
+      <button type="button" class="calendar-nav-prev" title="이전 달">&lt;</button>
       <button type="button" class="calendar-nav-today" title="오늘">오늘</button>
-      <button type="button" class="calendar-nav-next" title="다음 달">›</button>
+      <button type="button" class="calendar-nav-next" title="다음 달">&gt;</button>
     </div>
   `;
 
@@ -1682,9 +1682,9 @@ function render2WeekView(tabsElement) {
       <span class="calendar-nav-year"></span>
     </span>
     <div class="calendar-nav-controls">
-      <button type="button" class="calendar-nav-prev" title="이전 2주">‹</button>
+      <button type="button" class="calendar-nav-prev" title="이전 2주">&lt;</button>
       <button type="button" class="calendar-nav-today" title="오늘">오늘</button>
-      <button type="button" class="calendar-nav-next" title="다음 2주">›</button>
+      <button type="button" class="calendar-nav-next" title="다음 2주">&gt;</button>
     </div>
   `;
   nav.classList.add("calendar-monthly-nav");
@@ -2362,9 +2362,9 @@ function render3WeekView(tabsElement) {
       <span class="calendar-nav-year"></span>
     </span>
     <div class="calendar-nav-controls">
-      <button type="button" class="calendar-nav-prev" title="이전 3주">‹</button>
+      <button type="button" class="calendar-nav-prev" title="이전 3주">&lt;</button>
       <button type="button" class="calendar-nav-today" title="오늘">오늘</button>
-      <button type="button" class="calendar-nav-next" title="다음 3주">›</button>
+      <button type="button" class="calendar-nav-next" title="다음 3주">&gt;</button>
     </div>
   `;
   nav.classList.add("calendar-monthly-nav");
@@ -3590,9 +3590,9 @@ function render1DayView(tabsElement) {
       <span class="calendar-nav-year"></span>
     </span>
     <div class="calendar-nav-controls">
-      <button type="button" class="calendar-nav-prev" title="이전 날">‹</button>
+      <button type="button" class="calendar-nav-prev" title="이전 날">&lt;</button>
       <button type="button" class="calendar-nav-today" title="오늘">오늘</button>
-      <button type="button" class="calendar-nav-next" title="다음 날">›</button>
+      <button type="button" class="calendar-nav-next" title="다음 날">&gt;</button>
     </div>
   `;
   nav.classList.add("calendar-monthly-nav");
@@ -4372,7 +4372,7 @@ function render1DayView(tabsElement) {
     headerActual.title = "클릭하여 오늘/어제 실제 데이터 전환";
     const updateActualHeaderLabel = () => {
       const showYesterday = wrap.dataset.actualShowsYesterday === "true";
-      headerActual.innerHTML = `${showYesterday ? "어제 실제" : "오늘 실제"} <span class="calendar-1day-actual-toggle-icon" aria-hidden="true">⇄</span>`;
+      headerActual.innerHTML = `<span class="calendar-1day-actual-toggle-date">${showYesterday ? "어제" : "오늘"}</span> 실제 <span class="calendar-1day-actual-toggle-icon" aria-hidden="true">⇄</span>`;
     };
     updateActualHeaderLabel();
     headerActual.addEventListener("click", () => {
@@ -4563,9 +4563,9 @@ function render1WeekView(tabsElement) {
       <span class="calendar-nav-year"></span>
     </span>
     <div class="calendar-nav-controls">
-      <button type="button" class="calendar-nav-prev" title="이전 주">‹</button>
+      <button type="button" class="calendar-nav-prev" title="이전 주">&lt;</button>
       <button type="button" class="calendar-nav-today" title="이번 주">오늘</button>
-      <button type="button" class="calendar-nav-next" title="다음 주">›</button>
+      <button type="button" class="calendar-nav-next" title="다음 주">&gt;</button>
     </div>
   `;
   nav.classList.add("calendar-monthly-nav");

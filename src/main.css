@@ -16358,13 +16358,16 @@ body.kpi-resizing {
 .calendar-nav-prev,
 .calendar-nav-next {
   padding: 0.3rem 0.45rem;
-  font-size: 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
   line-height: 1;
   color: #374151;
   background: none;
   border: none;
   cursor: pointer;
   font-family: inherit;
+  min-width: 1.75rem;
+  text-align: center;
 }
 
 .calendar-nav-prev:hover,
@@ -17092,6 +17095,10 @@ body.kpi-resizing {
   text-decoration: underline;
   text-decoration-style: dotted;
   text-underline-offset: 3px;
+}
+
+.calendar-1day-view .calendar-1day-time-header-cell--actual-toggle .calendar-1day-actual-toggle-date {
+  font-weight: 700;
 }
 
 .calendar-1day-view .calendar-1day-time-header-cell--actual-toggle .calendar-1day-actual-toggle-icon {
