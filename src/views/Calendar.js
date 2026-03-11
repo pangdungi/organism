@@ -2266,15 +2266,22 @@ function render1DayView(tabsElement) {
 
   let dayOffset = 0;
 
-  const calendarSection = document.createElement("div");
-  calendarSection.className = "calendar-monthly-main";
-
+  /* 1번 레이아웃: 탭을 최상단 전체 영역에 배치 */
+  const topRow = document.createElement("div");
+  topRow.className = "calendar-view-top-row calendar-view-top-row--1day";
   if (tabsElement) {
     const tabsWrapper = document.createElement("div");
     tabsWrapper.className = "calendar-monthly-tabs-wrap";
     tabsWrapper.appendChild(tabsElement);
-    calendarSection.appendChild(tabsWrapper);
+    topRow.appendChild(tabsWrapper);
   }
+  wrap.appendChild(topRow);
+
+  const contentRow = document.createElement("div");
+  contentRow.className = "calendar-view-1day-content-row";
+
+  const calendarSection = document.createElement("div");
+  calendarSection.className = "calendar-monthly-main";
 
   const nav = document.createElement("div");
   nav.className = "calendar-nav";
@@ -2621,6 +2628,7 @@ function render1DayView(tabsElement) {
         const end = endInput.value.trim();
         const prevStart = (t.startTime || "").trim();
         const prevEnd = (t.endTime || "").trim();
+        /* 값 변경 없으면 renderCalendar 호출 안 함 → 투자/소비 내역 행 사라짐 방지 */
         if (start === prevStart && end === prevEnd) return;
         let ok = false;
         if (t.kpiTodoId && t.storageKey) {
@@ -2942,7 +2950,7 @@ function render1DayView(tabsElement) {
 
   calendarSection.appendChild(nav);
   calendarSection.appendChild(calendarGrid);
-  wrap.appendChild(calendarSection);
+  contentRow.appendChild(calendarSection);
 
   const kpiSidebar = document.createElement("aside");
   kpiSidebar.className = "calendar-todo-sidebar calendar-kpi-sidebar";
@@ -2961,7 +2969,8 @@ function render1DayView(tabsElement) {
     kpiSidebar.classList.toggle("collapsed", sidebarCollapsed);
     kpiSidebar.querySelector(".calendar-todo-sidebar-collapse").title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
   });
-  wrap.appendChild(kpiSidebar);
+  contentRow.appendChild(kpiSidebar);
+  wrap.appendChild(contentRow);
 
   wrap.addEventListener("dragend", () => {
     window.__calendarDragDuration = 30;
@@ -2982,17 +2991,21 @@ function render1DayView(tabsElement) {
 
 function renderTodoView(tabsElement) {
   const wrap = document.createElement("div");
-  wrap.className = "calendar-monthly-layout";
+  wrap.className = "calendar-monthly-layout calendar-view-todo";
 
-  const todoMain = document.createElement("div");
-  todoMain.className = "calendar-monthly-main calendar-todo-main";
-
+  /* 1번 레이아웃: 탭을 최상단 전체 영역에 배치 */
+  const topRow = document.createElement("div");
+  topRow.className = "calendar-view-top-row calendar-view-top-row--todo";
   if (tabsElement) {
     const tabsWrapper = document.createElement("div");
     tabsWrapper.className = "calendar-monthly-tabs-wrap";
     tabsWrapper.appendChild(tabsElement);
-    todoMain.appendChild(tabsWrapper);
+    topRow.appendChild(tabsWrapper);
   }
+  wrap.appendChild(topRow);
+
+  const todoMain = document.createElement("div");
+  todoMain.className = "calendar-monthly-main calendar-todo-main";
 
   const todoContent = document.createElement("div");
   todoContent.className = "calendar-todo-content";
@@ -3572,15 +3585,22 @@ function renderEisenhowerView(tabsElement) {
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout calendar-view-eisenhower";
 
-  const calendarSection = document.createElement("div");
-  calendarSection.className = "calendar-monthly-main";
-
+  /* 1번 레이아웃: 탭을 최상단 전체 영역에 배치 */
+  const topRow = document.createElement("div");
+  topRow.className = "calendar-view-top-row calendar-view-top-row--eisenhower";
   if (tabsElement) {
     const tabsWrapper = document.createElement("div");
     tabsWrapper.className = "calendar-monthly-tabs-wrap";
     tabsWrapper.appendChild(tabsElement);
-    calendarSection.appendChild(tabsWrapper);
+    topRow.appendChild(tabsWrapper);
   }
+  wrap.appendChild(topRow);
+
+  const contentRow = document.createElement("div");
+  contentRow.className = "calendar-view-eisenhower-content-row";
+
+  const calendarSection = document.createElement("div");
+  calendarSection.className = "calendar-monthly-main";
 
   const eisenhowerWrap = document.createElement("div");
   eisenhowerWrap.className = "calendar-eisenhower-wrap";
@@ -3625,7 +3645,7 @@ function renderEisenhowerView(tabsElement) {
   eisenhowerWrap.style.minHeight = "0";
   calendarSection.appendChild(eisenhowerWrap);
 
-  wrap.appendChild(calendarSection);
+  contentRow.appendChild(calendarSection);
 
   const EISENHOWER_SIDEBAR_WIDTH_KEY = "calendar-eisenhower-sidebar-width";
   const DEFAULT_SIDEBAR_WIDTH = 420;
@@ -3635,7 +3655,7 @@ function renderEisenhowerView(tabsElement) {
   const resizeHandle = document.createElement("div");
   resizeHandle.className = "calendar-eisenhower-resize-handle";
   resizeHandle.title = "드래그하여 너비 조절";
-  wrap.appendChild(resizeHandle);
+  contentRow.appendChild(resizeHandle);
 
   const todoSidebar = document.createElement("aside");
   todoSidebar.className = "calendar-todo-sidebar";
@@ -3665,7 +3685,8 @@ function renderEisenhowerView(tabsElement) {
     }
     todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
   });
-  wrap.appendChild(todoSidebar);
+  contentRow.appendChild(todoSidebar);
+  wrap.appendChild(contentRow);
 
   let resizeStartX = 0;
   let resizeStartWidth = 0;

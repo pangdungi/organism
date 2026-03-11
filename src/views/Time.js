@@ -5540,7 +5540,7 @@ export function renderTimeBudgetTablesForCalendar(
     if (initialEnd) endInput.value = initialEnd;
 
     let previousKey = (taskName || "").trim();
-    function saveCurrentGoal(skipReRender) {
+    function saveCurrentGoal(skipReRender, shouldDispatchForTimetable = false) {
       const name = (taskDropdown.getValue() || "").trim();
       if (name) {
         if (previousKey && previousKey !== name && isBudgetPlaceholder(previousKey)) {
@@ -5553,21 +5553,23 @@ export function renderTimeBudgetTablesForCalendar(
         const scheduledTime =
           start && end ? `${start}-${end}` : start || end || "";
         saveBudgetScheduledTime(targetDateStr, name, scheduledTime, isInvest);
-        if (!skipReRender) {
+        /* 예상 시간 변경 시에만 이벤트 전달 (과제 선택만 할 때는 전체 재렌더 방지 → 행 사라짐 방지) */
+        if (shouldDispatchForTimetable) {
           document.dispatchEvent(
             new CustomEvent("calendar-budget-scheduled-updated", {
               detail: { dateStr: targetDateStr },
             }),
           );
-        } else if (typeof updateRemaining === "function") {
+        }
+        if (skipReRender && typeof updateRemaining === "function") {
           updateRemaining();
         }
       }
     }
 
-    goalInput.addEventListener("blur", () => saveCurrentGoal(true));
-    startInput.addEventListener("blur", () => saveCurrentGoal(true));
-    endInput.addEventListener("blur", () => saveCurrentGoal(true));
+    goalInput.addEventListener("blur", () => saveCurrentGoal(true, false));
+    startInput.addEventListener("blur", () => saveCurrentGoal(true, true));
+    endInput.addEventListener("blur", () => saveCurrentGoal(true, true));
 
     const taskDropdown = createTagDropdown(
       taskDropdownOptions,

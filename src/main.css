@@ -15933,6 +15933,10 @@ body.kpi-resizing {
   min-height: 0;
 }
 
+.calendar-view-todo .calendar-todo-main {
+  flex: 1 1 0;
+  min-height: 0;
+}
 .calendar-todo-main .calendar-todo-content {
   flex: 1 1 0;
   min-height: 0;
@@ -17425,6 +17429,27 @@ body.kpi-resizing {
 }
 .calendar-eisenhower-resize-handle.resizing ~ .calendar-todo-sidebar {
   transition: none;
+}
+
+/* 1번 레이아웃: 탭 최상단 전체 영역 */
+.calendar-view-top-row--eisenhower,
+.calendar-view-top-row--1day,
+.calendar-view-top-row--todo {
+  flex-shrink: 0;
+  padding: 0 1rem 0.5rem;
+}
+.calendar-view-eisenhower.calendar-monthly-layout,
+.calendar-1day-view.calendar-monthly-layout,
+.calendar-view-todo.calendar-monthly-layout {
+  flex-direction: column;
+}
+.calendar-view-eisenhower-content-row,
+.calendar-view-1day-content-row {
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
 }
 
 /* 아이젠하워 뷰에서만 사이드바 기본 너비 (리사이즈 시 인라인으로 덮어씀) */
