@@ -5964,7 +5964,8 @@ export function renderTimeBudgetTablesForCalendar(
       taskName || "",
       "cat",
       () => {
-        saveCurrentGoal(true);
+        /* 과제명 선택 시 예상 시간이 이미 있으면 타임테이블 갱신 필요 */
+        saveCurrentGoal(true, true);
         if (tbody) refreshAllGoalInputStates(tbody);
         const block = tr.closest(".time-daily-budget-table-block");
         if (block) updateGoalDiffDisplays(block);
