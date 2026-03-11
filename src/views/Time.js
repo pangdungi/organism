@@ -2190,7 +2190,6 @@ export function render() {
               <label>마감시간</label>
               <div class="time-task-log-datetime-wrap time-task-log-datetime-wrap-end">
                 <div class="time-task-log-datetime-input-wrap">
-                  <input type="date" class="time-task-log-date-end" />
                   <input type="text" class="time-task-log-time-end" placeholder="hh:mm" maxlength="5" />
                 </div>
                 <button type="button" class="time-task-log-datetime-clear" data-for="end" title="마감시간 지우기" aria-label="마감시간 지우기">×</button>
@@ -2353,7 +2352,6 @@ export function render() {
   const taskLogTimeStart = taskLogModal.querySelector(
     ".time-task-log-time-start",
   );
-  const taskLogDateEnd = taskLogModal.querySelector(".time-task-log-date-end");
   const taskLogTimeEnd = taskLogModal.querySelector(".time-task-log-time-end");
   const taskLogEndWrap = taskLogModal.querySelector(
     ".time-task-log-datetime-wrap-end",
@@ -2409,7 +2407,7 @@ export function render() {
   }
 
   function syncEndToHidden() {
-    const date = (taskLogDateEnd?.value || "").trim();
+    const date = (taskLogDateStart?.value || "").trim();
     const time = normalizeHhMm(taskLogTimeEnd?.value || "");
     if (date && time) {
       taskLogEndInput.value = `${date}T${time}`;
@@ -2427,42 +2425,36 @@ export function render() {
       taskLogTimeStart.value = "";
       return;
     }
-    const m = dtStr.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{1,2}):(\d{2})/);
+    const s = dtStr.trim();
+    const m = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})[T\s](\d{1,2}):(\d{2})/);
+    const m2 = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    const timeMatch = s.match(/[T\s](\d{1,2}):(\d{2})/);
     if (m) {
-      taskLogDateStart.value = `${m[1]}-${m[2]}-${m[3]}`;
+      taskLogDateStart.value = `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`;
       taskLogTimeStart.value = `${String(parseInt(m[4], 10)).padStart(2, "0")}:${m[5]}`;
+    } else if (m2 && timeMatch) {
+      taskLogDateStart.value = `${m2[1]}-${String(m2[2]).padStart(2, "0")}-${String(m2[3]).padStart(2, "0")}`;
+      taskLogTimeStart.value = `${String(parseInt(timeMatch[1], 10)).padStart(2, "0")}:${timeMatch[2]}`;
+    } else if (m2) {
+      taskLogDateStart.value = `${m2[1]}-${String(m2[2]).padStart(2, "0")}-${String(m2[3]).padStart(2, "0")}`;
+      taskLogTimeStart.value = "";
     } else {
-      const m2 = dtStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
-      if (m2) {
-        taskLogDateStart.value = `${m2[1]}-${m2[2]}-${m2[3]}`;
-        taskLogTimeStart.value = "";
-      } else {
-        taskLogDateStart.value = "";
-        taskLogTimeStart.value = "";
-      }
+      taskLogDateStart.value = "";
+      taskLogTimeStart.value = "";
     }
     syncStartToHidden();
   }
 
   function setEndFromDatetime(dtStr) {
     if (!dtStr || typeof dtStr !== "string") {
-      taskLogDateEnd.value = "";
       taskLogTimeEnd.value = "";
       return;
     }
-    const m = dtStr.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{1,2}):(\d{2})/);
+    const m = dtStr.match(/[T\s](\d{1,2}):(\d{2})/);
     if (m) {
-      taskLogDateEnd.value = `${m[1]}-${m[2]}-${m[3]}`;
-      taskLogTimeEnd.value = `${String(parseInt(m[4], 10)).padStart(2, "0")}:${m[5]}`;
+      taskLogTimeEnd.value = `${String(parseInt(m[1], 10)).padStart(2, "0")}:${m[2]}`;
     } else {
-      const m2 = dtStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
-      if (m2) {
-        taskLogDateEnd.value = `${m2[1]}-${m2[2]}-${m2[3]}`;
-        taskLogTimeEnd.value = "";
-      } else {
-        taskLogDateEnd.value = "";
-        taskLogTimeEnd.value = "";
-      }
+      taskLogTimeEnd.value = "";
     }
     syncEndToHidden();
   }
@@ -2521,7 +2513,10 @@ export function render() {
   };
 
   [taskLogDateStart, taskLogTimeStart].forEach((el) => {
-    el?.addEventListener("change", syncStartToHidden);
+    el?.addEventListener("change", () => {
+      syncStartToHidden();
+      syncEndToHidden();
+    });
     el?.addEventListener("blur", () => {
       if (el === taskLogTimeStart) {
         const preformatted =
@@ -2530,21 +2525,18 @@ export function render() {
         taskLogTimeStart.value = normalizeHhMm(preformatted) || preformatted;
       }
       syncStartToHidden();
+      syncEndToHidden();
     });
   });
   taskLogTimeStart?.addEventListener("keydown", restrictToTimeChars);
   taskLogTimeStart?.addEventListener("paste", filterPastedTime);
 
-  [taskLogDateEnd, taskLogTimeEnd].forEach((el) => {
-    el?.addEventListener("change", syncEndToHidden);
-    el?.addEventListener("blur", () => {
-      if (el === taskLogTimeEnd) {
-        const preformatted =
-          autoFormatDigitsToHhMm(taskLogTimeEnd.value) || taskLogTimeEnd.value;
-        taskLogTimeEnd.value = normalizeHhMm(preformatted) || preformatted;
-      }
-      syncEndToHidden();
-    });
+  taskLogTimeEnd?.addEventListener("change", syncEndToHidden);
+  taskLogTimeEnd?.addEventListener("blur", () => {
+    const preformatted =
+      autoFormatDigitsToHhMm(taskLogTimeEnd.value) || taskLogTimeEnd.value;
+    taskLogTimeEnd.value = normalizeHhMm(preformatted) || preformatted;
+    syncEndToHidden();
   });
   taskLogTimeEnd?.addEventListener("keydown", restrictToTimeChars);
   taskLogTimeEnd?.addEventListener("paste", filterPastedTime);
@@ -3058,7 +3050,6 @@ export function render() {
 
   taskLogEndClearBtn?.addEventListener("click", (e) => {
     e.stopPropagation();
-    taskLogDateEnd.value = "";
     taskLogTimeEnd.value = "";
     taskLogEndInput.value = "";
     syncEndToHidden();
@@ -3470,6 +3461,16 @@ export function render() {
       normalizeDateForCompare(data.date || "");
 
     if (recordDate) {
+      if (startTime) {
+        const startDate = parseDateFromDateTime(startTime);
+        if (!startDate || normalizeDateForCompare(startDate) !== recordDate) {
+          const m = startTime.match(/[T\s](\d{1,2}):(\d{2})/);
+          const [, h = "00", min = "00"] = m || [];
+          startTime = `${recordDate}T${String(h).padStart(2, "0")}:${min}`;
+        }
+      } else {
+        startTime = `${recordDate}T00:00`;
+      }
       if (endTime) {
         const endDate = parseDateFromDateTime(endTime);
         const normEnd = normalizeDateForCompare(endDate);
@@ -5345,7 +5346,7 @@ export function render() {
     investAddBtn.type = "button";
     investAddBtn.className = "time-btn-add";
     investAddBtn.innerHTML =
-      '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 과제 기록';
+      '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 계획하기';
     investAddCell.appendChild(investAddBtn);
     investAddRow.appendChild(investAddCell);
 
@@ -5374,7 +5375,7 @@ export function render() {
     consumeAddBtn.type = "button";
     consumeAddBtn.className = "time-btn-add";
     consumeAddBtn.innerHTML =
-      '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 과제 기록';
+      '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 계획하기';
     consumeAddCell.appendChild(consumeAddBtn);
     consumeAddRow.appendChild(consumeAddCell);
 
@@ -6250,8 +6251,8 @@ export function renderTimeBudgetTablesForCalendar(
       <button type="button" class="time-daily-budget-tab active" data-tab="invest">투자내역</button>
       <button type="button" class="time-daily-budget-tab" data-tab="consume">소비내역</button>
     </div>
-    <button type="button" class="time-daily-budget-add-btn time-btn-add" title="과제 기록">
-      <img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 과제 기록
+    <button type="button" class="time-daily-budget-add-btn time-btn-add" title="계획하기">
+      <img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 계획하기
     </button>
   `;
   const addBtnEl = tabsBar.querySelector(".time-daily-budget-add-btn");

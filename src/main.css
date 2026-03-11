@@ -9888,7 +9888,6 @@ body.kpi-resizing {
 
 .time-task-log-datetime-input-wrap input[type="date"],
 .time-task-log-datetime-input-wrap .time-task-log-date-start,
-.time-task-log-datetime-input-wrap .time-task-log-date-end,
 .time-task-log-datetime-input-wrap input.flatpickr-input {
   flex: 0 0 auto !important;
   min-width: 11rem !important;
@@ -9902,7 +9901,6 @@ body.kpi-resizing {
 }
 .time-task-log-datetime-input-wrap input[type="date"]:focus,
 .time-task-log-datetime-input-wrap .time-task-log-date-start:focus,
-.time-task-log-datetime-input-wrap .time-task-log-date-end:focus,
 .time-task-log-datetime-input-wrap input.flatpickr-input:focus,
 .time-task-log-datetime-input-wrap input.flatpickr-input:focus-visible,
 .time-task-log-datetime-input-wrap input.flatpickr-input.active {
