@@ -2297,21 +2297,29 @@ function build1DayTimetableOverlays(targetKey) {
   };
   const SLOTS_PER_DAY = 48;
   const MIN_PER_SLOT = 30;
+  const getScheduledTimesForTask = (data) => {
+    if (!data) return [];
+    if (Array.isArray(data.scheduledTimes)) return data.scheduledTimes.filter((s) => s && String(s).trim());
+    if (data.scheduledTime && String(data.scheduledTime).trim()) return [String(data.scheduledTime).trim()];
+    return [];
+  };
   const getSlotExpected = (slotIndex) => {
     const slotStartMin = slotIndex * MIN_PER_SLOT;
     const slotEndMin = (slotIndex + 1) * MIN_PER_SLOT;
     for (const [taskName, data] of Object.entries(budgetGoals)) {
-      const st = data?.scheduledTime || "";
-      if (!st.trim()) continue;
-      const parts = st.trim().split("-");
-      const startMin = parseHhMmToMinutes(parts[0]);
-      const endMin = parts[1] ? parseHhMmToMinutes(parts[1]) : null;
-      if (startMin == null) continue;
-      const end = endMin != null ? endMin : startMin + 60;
-      const opt = getTaskOptionByName(taskName);
-      const prod = opt?.productivity || "other";
-      const res = tryOverlap(slotStartMin, slotEndMin, startMin, end, prod, taskName);
-      if (res) return res;
+      const times = getScheduledTimesForTask(data);
+      for (const st of times) {
+        if (!st.trim()) continue;
+        const parts = st.trim().split("-");
+        const startMin = parseHhMmToMinutes(parts[0]);
+        const endMin = parts[1] ? parseHhMmToMinutes(parts[1]) : null;
+        if (startMin == null) continue;
+        const end = endMin != null ? endMin : startMin + 60;
+        const opt = getTaskOptionByName(taskName);
+        const prod = opt?.productivity || "other";
+        const res = tryOverlap(slotStartMin, slotEndMin, startMin, end, prod, taskName);
+        if (res) return res;
+      }
     }
     for (const t of tasks) {
       const st = (t.startTime || "").trim();
@@ -2928,21 +2936,29 @@ function render1DayView(tabsElement) {
     };
     const SLOTS_PER_DAY = 48;
     const MIN_PER_SLOT = 30;
+    const getScheduledTimesForTaskLocal = (data) => {
+      if (!data) return [];
+      if (Array.isArray(data.scheduledTimes)) return data.scheduledTimes.filter((s) => s && String(s).trim());
+      if (data.scheduledTime && String(data.scheduledTime).trim()) return [String(data.scheduledTime).trim()];
+      return [];
+    };
     const getSlotExpected = (slotIndex) => {
       const slotStartMin = slotIndex * MIN_PER_SLOT;
       const slotEndMin = (slotIndex + 1) * MIN_PER_SLOT;
       for (const [taskName, data] of Object.entries(budgetGoals)) {
-        const st = data?.scheduledTime || "";
-        if (!st.trim()) continue;
-        const parts = st.trim().split("-");
-        const startMin = parseHhMmToMinutes(parts[0]);
-        const endMin = parts[1] ? parseHhMmToMinutes(parts[1]) : null;
-        if (startMin == null) continue;
-        const end = endMin != null ? endMin : startMin + 60;
-        const opt = getTaskOptionByName(taskName);
-        const prod = opt?.productivity || "other";
-        const res = tryOverlap(slotStartMin, slotEndMin, startMin, end, prod, taskName);
-        if (res) return res;
+        const times = getScheduledTimesForTaskLocal(data);
+        for (const st of times) {
+          if (!st.trim()) continue;
+          const parts = st.trim().split("-");
+          const startMin = parseHhMmToMinutes(parts[0]);
+          const endMin = parts[1] ? parseHhMmToMinutes(parts[1]) : null;
+          if (startMin == null) continue;
+          const end = endMin != null ? endMin : startMin + 60;
+          const opt = getTaskOptionByName(taskName);
+          const prod = opt?.productivity || "other";
+          const res = tryOverlap(slotStartMin, slotEndMin, startMin, end, prod, taskName);
+          if (res) return res;
+        }
       }
       for (const t of tasks) {
         const st = (t.startTime || "").trim();
@@ -3805,8 +3821,7 @@ function renderEisenhowerView(tabsElement) {
   eisenhowerWrap.className = "calendar-eisenhower-wrap";
   eisenhowerWrap.innerHTML = `
     <div class="calendar-eisenhower-header">
-      <h2 class="calendar-eisenhower-title">우선순위 정리판</h2>
-      <span class="calendar-eisenhower-count">0개</span>
+      <h2 class="calendar-eisenhower-title">아이젠하워</h2>
     </div>
     <div class="calendar-eisenhower-matrix">
       <div class="calendar-eisenhower-quadrant calendar-eisenhower-q1" data-quadrant="urgent-important">
@@ -4026,9 +4041,6 @@ function renderEisenhowerView(tabsElement) {
       }
       if (badge) badge.textContent = String(list.length);
     });
-    const total = allTasks.filter((t) => (t.eisenhower || "").trim()).length;
-    const countEl = eisenhowerWrap.querySelector(".calendar-eisenhower-count");
-    if (countEl) countEl.textContent = `${total}개`;
   }
 
   function handleQuadrantDrop(quad, e) {

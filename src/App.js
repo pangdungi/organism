@@ -226,4 +226,5 @@ export function mountApp(container) {
   appPage.appendChild(appScreen);
   container.appendChild(appPage);
   observeDatePickerInit(container);
+  observeDatePickerInit(document.body);
 }

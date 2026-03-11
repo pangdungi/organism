@@ -355,8 +355,16 @@ function removeFromBudgetExcluded(dateStr, taskName) {
   } catch (_) {}
 }
 
-/** 캘린더 1일뷰 예정 시간 저장 (hh:mm-hh:mm) */
-function saveBudgetScheduledTime(dateStr, taskName, scheduledTime, isInvest) {
+/** scheduledTimes 배열 반환 (하위 호환: scheduledTime 문자열 → 배열) */
+function getScheduledTimesArray(data) {
+  if (!data) return [];
+  if (Array.isArray(data.scheduledTimes)) return data.scheduledTimes.filter((s) => s && String(s).trim());
+  if (data.scheduledTime && String(data.scheduledTime).trim()) return [String(data.scheduledTime).trim()];
+  return [];
+}
+
+/** 캘린더 1일뷰 예정 시간 저장 - scheduledTimes 배열 지원 (같은 과제 여러 구간) */
+function saveBudgetScheduledTimes(dateStr, taskName, scheduledTimes, isInvest) {
   if (!(taskName || "").trim()) return;
   try {
     removeFromBudgetExcluded(dateStr, taskName);
@@ -366,19 +374,23 @@ function saveBudgetScheduledTime(dateStr, taskName, scheduledTime, isInvest) {
     if (!dateData || typeof dateData !== "object" || Array.isArray(dateData)) all[dateStr] = {};
     const key = String(taskName).trim();
     const existing = all[dateStr][key] || {};
-    if (scheduledTime && scheduledTime.trim()) {
-      all[dateStr][key] = {
-        ...existing,
-        scheduledTime: scheduledTime.trim(),
-        isInvest,
-      };
+    const arr = Array.isArray(scheduledTimes)
+      ? scheduledTimes.map((s) => String(s || "").trim()).filter(Boolean)
+      : [];
+    if (arr.length > 0) {
+      all[dateStr][key] = { ...existing, scheduledTimes: arr, isInvest };
     } else {
-      const { scheduledTime: _, ...rest } = existing;
+      const { scheduledTime: _st, scheduledTimes: _sts, ...rest } = existing;
       all[dateStr][key] = Object.keys(rest).length ? rest : undefined;
       if (!all[dateStr][key]) delete all[dateStr][key];
     }
     localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
   } catch (_) {}
+}
+
+/** @deprecated 단일 구간 저장 - saveBudgetScheduledTimes 사용 권장 */
+function saveBudgetScheduledTime(dateStr, taskName, scheduledTime, isInvest) {
+  saveBudgetScheduledTimes(dateStr, taskName, scheduledTime ? [scheduledTime] : [], isInvest);
 }
 
 /** 과제 기록 로컬 저장 (백엔드 개발 전 임시) */
@@ -2005,7 +2017,7 @@ export function render() {
             <div class="time-task-log-field">
               <label>시작시간</label>
               <div class="time-task-log-datetime-input-wrap">
-                <input type="date" class="time-task-log-date-start" />
+                <input type="date" class="time-task-log-date-start" data-hide-delete-btn="true" />
                 <input type="text" class="time-task-log-time-start" placeholder="hh:mm" maxlength="5" />
               </div>
               <input type="hidden" class="time-task-log-start" />
@@ -5525,13 +5537,33 @@ export function renderTimeBudgetTablesForCalendar(
     return { start: "", end: "" };
   }
 
+  /** tbody에서 과제별 scheduledTimes 수집 (addRow 제외, tr.dataset 사용) */
+  function collectScheduledTimesByTask(tbody, addRow) {
+    const byTask = {};
+    tbody.querySelectorAll("tr").forEach((row) => {
+      if (row === addRow) return;
+      const name = (row.dataset.taskName || "").trim();
+      if (!name || isBudgetPlaceholder(name)) return;
+      const start = (row.dataset.scheduledStart || "").trim();
+      const end = (row.dataset.scheduledEnd || "").trim();
+      const st = start && end ? `${start}-${end}` : start || end || "";
+      if (st) {
+        if (!byTask[name]) byTask[name] = [];
+        byTask[name].push(st);
+      }
+    });
+    return byTask;
+  }
+
   function createBudgetTableRow(
     taskName,
     initialGoalTime,
     initialScheduledTime,
     isInvest,
+    tbodyAndAddRow,
   ) {
     const tr = document.createElement("tr");
+    const { tbody, addRow } = tbodyAndAddRow || {};
     const taskTd = document.createElement("td");
     const goalInput = createBudgetTimeInput();
     if (initialGoalTime) goalInput.value = initialGoalTime;
@@ -5542,6 +5574,22 @@ export function renderTimeBudgetTablesForCalendar(
     const endInput = createBudgetTimeRangeInput("hh:mm");
     if (initialStart) startInput.value = initialStart;
     if (initialEnd) endInput.value = initialEnd;
+
+    function updateRowDataset() {
+      const name = (taskDropdown.getValue() || "").trim();
+      const start = startInput.value.trim();
+      const end = endInput.value.trim();
+      tr.dataset.taskName = name;
+      tr.dataset.scheduledStart = start;
+      tr.dataset.scheduledEnd = end;
+    }
+    function saveAllScheduledTimesForTimetable() {
+      if (!tbody || !addRow) return;
+      const byTask = collectScheduledTimesByTask(tbody, addRow);
+      Object.entries(byTask).forEach(([task, times]) => {
+        saveBudgetScheduledTimes(targetDateStr, task, times, isInvest);
+      });
+    }
 
     let previousKey = (taskName || "").trim();
     let lastSavedScheduledTime =
@@ -5554,11 +5602,16 @@ export function renderTimeBudgetTablesForCalendar(
         }
         previousKey = name;
         saveBudgetGoal(targetDateStr, name, goalInput.value, isInvest);
+        updateRowDataset();
         const start = startInput.value.trim();
         const end = endInput.value.trim();
         const scheduledTime =
           start && end ? `${start}-${end}` : start || end || "";
-        saveBudgetScheduledTime(targetDateStr, name, scheduledTime, isInvest);
+        if (tbody && addRow) {
+          saveAllScheduledTimesForTimetable();
+        } else {
+          saveBudgetScheduledTimes(targetDateStr, name, scheduledTime ? [scheduledTime] : [], isInvest);
+        }
         const scheduledChanged = scheduledTime !== lastSavedScheduledTime;
         lastSavedScheduledTime = scheduledTime;
         /* 예상 시간 변경 시 timetable 오버레이 직접 갱신 (콜백으로 확실히 전달) */
@@ -5585,13 +5638,18 @@ export function renderTimeBudgetTablesForCalendar(
     const scheduleTimetableUpdate = () => {
       const name = (taskDropdown.getValue() || "").trim();
       if (!name) return;
-      const start = startInput.value.trim();
-      const end = endInput.value.trim();
-      const scheduledTime = start && end ? `${start}-${end}` : start || end || "";
-      if (scheduledTime) {
-        saveBudgetScheduledTime(targetDateStr, name, scheduledTime, isInvest);
-        if (typeof onScheduledUpdate === "function") onScheduledUpdate(targetDateStr);
+      updateRowDataset();
+      if (tbody && addRow) {
+        saveAllScheduledTimesForTimetable();
+      } else {
+        const start = startInput.value.trim();
+        const end = endInput.value.trim();
+        const scheduledTime = start && end ? `${start}-${end}` : start || end || "";
+        if (scheduledTime) {
+          saveBudgetScheduledTimes(targetDateStr, name, [scheduledTime], isInvest);
+        }
       }
+      if (typeof onScheduledUpdate === "function") onScheduledUpdate(targetDateStr);
     };
     startInput.addEventListener("input", scheduleTimetableUpdate);
     endInput.addEventListener("input", scheduleTimetableUpdate);
@@ -5605,6 +5663,9 @@ export function renderTimeBudgetTablesForCalendar(
     taskDropdown.wrap._getValue = taskDropdown.getValue;
     taskTd.appendChild(taskDropdown.wrap);
     tr.appendChild(taskTd);
+    tr.dataset.taskName = (taskName || "").trim();
+    tr.dataset.scheduledStart = initialStart || "";
+    tr.dataset.scheduledEnd = initialEnd || "";
 
     const goalTimeTd = document.createElement("td");
     goalTimeTd.appendChild(goalInput);
@@ -5625,8 +5686,18 @@ export function renderTimeBudgetTablesForCalendar(
     deleteBtn.textContent = "×";
     deleteBtn.addEventListener("click", () => {
       const name = (taskDropdown.getValue() || "").trim();
-      if (name) deleteBudgetGoalEntry(targetDateStr, name);
       tr.remove();
+      if (tbody && addRow) {
+        const byTask = collectScheduledTimesByTask(tbody, addRow);
+        Object.entries(byTask).forEach(([task, times]) => {
+          saveBudgetScheduledTimes(targetDateStr, task, times, isInvest);
+        });
+        if (name && isBudgetPlaceholder(name)) {
+          deleteBudgetGoalEntry(targetDateStr, name);
+        }
+      } else if (name) {
+        deleteBudgetGoalEntry(targetDateStr, name);
+      }
       if (typeof onScheduledUpdate === "function") {
         onScheduledUpdate(targetDateStr);
       } else {
@@ -5649,23 +5720,34 @@ export function renderTimeBudgetTablesForCalendar(
   const consumeTasks = [];
   const seenInvest = new Set();
   const seenConsume = new Set();
+  function expandByScheduledTimes(task, data, isInvest, hrs = 0) {
+    const times = getScheduledTimesArray(data);
+    const entries = times.length > 0 ? times : [""];
+    return entries.map((scheduledTime) => ({
+      task,
+      hrs,
+      isNonproductive: !isInvest,
+      scheduledTime,
+    }));
+  }
   tasksFromToday.forEach((t) => {
     if (excluded.has(t.task)) return;
-    if (t.isNonproductive) {
-      consumeTasks.push(t);
-      seenConsume.add(t.task);
-    } else {
-      investTasks.push(t);
-      seenInvest.add(t.task);
-    }
+    const data = storedGoals[t.task];
+    const entries = expandByScheduledTimes(t.task, data, !t.isNonproductive, t.hrs);
+    const target = t.isNonproductive ? consumeTasks : investTasks;
+    const seen = t.isNonproductive ? seenConsume : seenInvest;
+    entries.forEach((e) => {
+      target.push(e);
+      seen.add(t.task);
+    });
   });
   Object.entries(storedGoals).forEach(([task, data]) => {
     if (excluded.has(task)) return;
     if (data.isInvest && !seenInvest.has(task)) {
-      investTasks.push({ task, hrs: 0, isNonproductive: false });
+      expandByScheduledTimes(task, data, true).forEach((e) => investTasks.push(e));
       seenInvest.add(task);
     } else if (!data.isInvest && !seenConsume.has(task)) {
-      consumeTasks.push({ task, hrs: 0, isNonproductive: true });
+      expandByScheduledTimes(task, data, false).forEach((e) => consumeTasks.push(e));
       seenConsume.add(task);
     }
   });
@@ -5699,12 +5781,13 @@ export function renderTimeBudgetTablesForCalendar(
   investAddRow.innerHTML = "<td colspan=\"5\"></td>";
 
   const investTbody = investTable.querySelector("tbody");
+  const investCtx = { tbody: investTbody, addRow: investAddRow };
   investTasks.forEach((t) => {
     const goal = storedGoals[t.task];
     const goalTime = goal?.goalTime || "";
-    const scheduledTime = goal?.scheduledTime || "";
+    const scheduledTime = t.scheduledTime ?? goal?.scheduledTime ?? "";
     investTbody.appendChild(
-      createBudgetTableRow(t.task, goalTime, scheduledTime, true),
+      createBudgetTableRow(t.task, goalTime, scheduledTime, true, investCtx),
     );
   });
   investTbody.appendChild(investAddRow);
@@ -5732,12 +5815,13 @@ export function renderTimeBudgetTablesForCalendar(
     <tbody></tbody>
   `;
   const consumeTbody = consumeTable.querySelector("tbody");
+  const consumeCtx = { tbody: consumeTbody, addRow: consumeAddRow };
   consumeTasks.forEach((t) => {
     const goal = storedGoals[t.task];
     const goalTime = goal?.goalTime || "";
-    const scheduledTime = goal?.scheduledTime || "";
+    const scheduledTime = t.scheduledTime ?? goal?.scheduledTime ?? "";
     consumeTbody.appendChild(
-      createBudgetTableRow(t.task, goalTime, scheduledTime, false),
+      createBudgetTableRow(t.task, goalTime, scheduledTime, false, consumeCtx),
     );
   });
   consumeTbody.appendChild(consumeAddRow);
@@ -5768,10 +5852,10 @@ export function renderTimeBudgetTablesForCalendar(
     saveBudgetGoal(targetDateStr, placeholder, "", isInvest);
     saveBudgetScheduledTime(targetDateStr, placeholder, "", isInvest);
     if (activeTab === "consume") {
-      const tr = createBudgetTableRow(placeholder, "", "", false);
+      const tr = createBudgetTableRow(placeholder, "", "", false, consumeCtx);
       consumeTbody.insertBefore(tr, consumeAddRow);
     } else {
-      const tr = createBudgetTableRow(placeholder, "", "", true);
+      const tr = createBudgetTableRow(placeholder, "", "", true, investCtx);
       investTbody.insertBefore(tr, investAddRow);
     }
     updateRemaining();

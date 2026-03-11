@@ -805,7 +805,7 @@ function createTaskRow(taskData = {}, options = {}) {
     kpiTodoId = "",
     storageKey = "",
   } = taskData;
-  const { showCategoryCol = false, isSubtask = false, taskId: optTaskId, showCheckboxTypeMenu = null, enableDragToCalendar = false, enableDragToEisenhower = false, overdueColumnOrder = false } = options;
+  const { showCategoryCol = false, isSubtask = false, taskId: optTaskId, showCheckboxTypeMenu = null, enableDragToCalendar = false, enableDragToEisenhower = false, overdueColumnOrder = false, eisenhowerSidebarFirst = false } = options;
   const taskId = optTaskId || getTaskId(taskData);
 
   const tr = document.createElement("tr");
@@ -887,11 +887,66 @@ function createTaskRow(taskData = {}, options = {}) {
   const nameInput = document.createElement("input");
   nameInput.type = "text";
   nameInput.value = name;
+  let dateAreaClicked = false;
   if (isKpiTodo && kpiTodoId && storageKey) {
-    nameInput.addEventListener("blur", () => {
+    nameInput.addEventListener("blur", (e) => {
       const val = (nameInput.value || "").trim();
-      if (val === "") {
-        if (removeKpiTodo(kpiTodoId, storageKey)) {
+      const relatedTarget = e.relatedTarget;
+      const focusStaysInRowSync = relatedTarget && tr.contains(relatedTarget);
+      console.log("[DEBUG todo-row] nameInput blur (KPI)", {
+        val,
+        relatedTarget: relatedTarget?.className || relatedTarget?.tagName,
+      });
+      setTimeout(() => {
+        const activeEl = document.activeElement;
+        const hadDateAreaClick = dateAreaClicked;
+        if (dateAreaClicked) dateAreaClicked = false;
+        const focusStaysInRow = tr.contains(activeEl) || focusStaysInRowSync || hadDateAreaClick;
+        console.log("[DEBUG todo-row] nameInput blur (KPI deferred)", {
+          val,
+          focusStaysInRow,
+          hadDateAreaClick,
+          activeEl: activeEl?.className || activeEl?.tagName,
+          willRemove: val === "" && !focusStaysInRow,
+        });
+        if (val === "" && !focusStaysInRow) {
+          if (removeKpiTodo(kpiTodoId, storageKey)) {
+            console.log("[DEBUG todo-row] REMOVING KPI row (name empty, focus left row)");
+            clearSubtasks(taskId);
+            tr.remove();
+            const section = tr.closest(".todo-section");
+            const tbody = tr.parentElement;
+            const countEl = section?.querySelector(".todo-section-count");
+            if (countEl && tbody) countEl.textContent = String(tbody.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").length);
+          }
+        } else if (val !== name) {
+          updateKpiTodo(kpiTodoId, storageKey, { text: val });
+        }
+      }, 0);
+    });
+  } else {
+    nameInput.addEventListener("blur", (e) => {
+      const val = (nameInput.value || "").trim();
+      const relatedTarget = e.relatedTarget;
+      const focusStaysInRowSync = relatedTarget && tr.contains(relatedTarget);
+      console.log("[DEBUG todo-row] nameInput blur", {
+        val,
+        relatedTarget: relatedTarget?.className || relatedTarget?.tagName,
+      });
+      setTimeout(() => {
+        const activeEl = document.activeElement;
+        const hadDateAreaClick = dateAreaClicked;
+        if (dateAreaClicked) dateAreaClicked = false;
+        const focusStaysInRow = tr.contains(activeEl) || focusStaysInRowSync || hadDateAreaClick;
+        console.log("[DEBUG todo-row] nameInput blur (deferred)", {
+          val,
+          focusStaysInRow,
+          hadDateAreaClick,
+          activeEl: activeEl?.className || activeEl?.tagName,
+          willRemove: val === "" && !focusStaysInRow,
+        });
+        if (val === "" && !focusStaysInRow) {
+          console.log("[DEBUG todo-row] REMOVING row (name empty, focus left row)");
           clearSubtasks(taskId);
           tr.remove();
           const section = tr.closest(".todo-section");
@@ -899,21 +954,7 @@ function createTaskRow(taskData = {}, options = {}) {
           const countEl = section?.querySelector(".todo-section-count");
           if (countEl && tbody) countEl.textContent = String(tbody.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").length);
         }
-      } else if (val !== name) {
-        updateKpiTodo(kpiTodoId, storageKey, { text: val });
-      }
-    });
-  } else {
-    nameInput.addEventListener("blur", () => {
-      const val = (nameInput.value || "").trim();
-      if (val === "") {
-        clearSubtasks(taskId);
-        tr.remove();
-        const section = tr.closest(".todo-section");
-        const tbody = tr.parentElement;
-        const countEl = section?.querySelector(".todo-section-count");
-        if (countEl && tbody) countEl.textContent = String(tbody.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").length);
-      }
+      }, 0);
     });
   }
   nameInput.addEventListener("keydown", (e) => {
@@ -996,7 +1037,12 @@ function createTaskRow(taskData = {}, options = {}) {
       updateKpiTodo(kpiTodoId, storageKey, { startDate: startInput.value });
     }
   });
+  startWrap.addEventListener("mousedown", () => {
+    dateAreaClicked = true;
+    console.log("[DEBUG todo-row] startWrap mousedown, dateAreaClicked=true");
+  });
   startWrap.addEventListener("click", () => {
+    console.log("[DEBUG todo-row] startWrap click, focusing startInput");
     startInput.focus();
     if (startInput._flatpickr) startInput._flatpickr.open();
     else if (typeof startInput.showPicker === "function") startInput.showPicker();
@@ -1050,6 +1096,10 @@ function createTaskRow(taskData = {}, options = {}) {
     if (isKpiTodo && kpiTodoId && storageKey) {
       updateKpiTodo(kpiTodoId, storageKey, { dueDate: dueInput.value });
     }
+  });
+  dueWrap.addEventListener("mousedown", () => {
+    dateAreaClicked = true;
+    console.log("[DEBUG todo-row] dueWrap mousedown, dateAreaClicked=true");
   });
   dueWrap.addEventListener("click", () => {
     dueInput.focus();
@@ -1134,16 +1184,24 @@ function createTaskRow(taskData = {}, options = {}) {
 
   tr.appendChild(doneTd);
   tr.appendChild(nameTd);
-  if (overdueColumnOrder) {
+  if (eisenhowerSidebarFirst) {
+    tr.appendChild(eisenhowerTd);
+    tr.appendChild(kpiTd);
+    tr.appendChild(startTd);
+    tr.appendChild(dueTd);
     tr.appendChild(overdueTd);
+  } else {
+    if (overdueColumnOrder) {
+      tr.appendChild(overdueTd);
+    }
+    tr.appendChild(kpiTd);
+    tr.appendChild(startTd);
+    tr.appendChild(dueTd);
+    if (!overdueColumnOrder) {
+      tr.appendChild(overdueTd);
+    }
+    tr.appendChild(eisenhowerTd);
   }
-  tr.appendChild(kpiTd);
-  tr.appendChild(startTd);
-  tr.appendChild(dueTd);
-  if (!overdueColumnOrder) {
-    tr.appendChild(overdueTd);
-  }
-  tr.appendChild(eisenhowerTd);
   if (!options.hideCategoryCol) {
     const lastColTd = document.createElement("td");
     lastColTd.className = "todo-cell-category";
@@ -1211,7 +1269,7 @@ function createTaskRow(taskData = {}, options = {}) {
 }
 
 function createSection(section, options = {}) {
-  const { lastColHeader = "분류", initialTasks = [], showCategoryCol = false, sectionIdForAdd = null, hideCategoryCol = true, tabMode = false, showCheckboxTypeMenu = null, enableDragToCalendar = false, enableDragToEisenhower = false, hideAddRow = false, overdueColumnOrder = false } = options;
+  const { lastColHeader = "분류", initialTasks = [], showCategoryCol = false, sectionIdForAdd = null, hideCategoryCol = true, tabMode = false, showCheckboxTypeMenu = null, enableDragToCalendar = false, enableDragToEisenhower = false, hideAddRow = false, overdueColumnOrder = false, eisenhowerSidebarFirst = false } = options;
   const sectionId = sectionIdForAdd ?? section.id;
 
   const wrap = document.createElement("div");
@@ -1263,6 +1321,30 @@ function createSection(section, options = {}) {
       <col class="todo-col-delete" style="width: 2.5rem">
     </colgroup>`)
     : null;
+  const colgroupEisenhowerSidebarFirst = eisenhowerSidebarFirst
+    ? (hideCategoryCol
+        ? `<colgroup>
+      <col class="todo-col-done" style="width: 2rem">
+      <col class="todo-col-name">
+      <col class="todo-col-eisenhower" style="width: 6rem">
+      <col class="todo-col-kpi" style="min-width: 8rem; width: 10rem">
+      <col class="todo-col-start" style="width: 4.5rem">
+      <col class="todo-col-due" style="width: 4.5rem">
+      <col class="todo-col-overdue" style="width: 5rem">
+      <col class="todo-col-delete" style="width: 2.5rem">
+    </colgroup>`
+        : `<colgroup>
+      <col class="todo-col-done" style="width: 2rem">
+      <col class="todo-col-name">
+      <col class="todo-col-eisenhower" style="width: 6rem">
+      <col class="todo-col-kpi" style="min-width: 8rem; width: 10rem">
+      <col class="todo-col-start" style="width: 4.5rem">
+      <col class="todo-col-due" style="width: 4.5rem">
+      <col class="todo-col-overdue" style="width: 5rem">
+      <col class="todo-col-category" style="width: 5rem">
+      <col class="todo-col-delete" style="width: 2.5rem">
+    </colgroup>`)
+    : null;
   const colgroupDefault = hideCategoryCol
     ? `<colgroup>
       <col class="todo-col-done" style="width: 2rem">
@@ -1285,8 +1367,21 @@ function createSection(section, options = {}) {
       <col class="todo-col-category" style="width: 5rem">
       <col class="todo-col-delete" style="width: 2.5rem">
     </colgroup>`;
-  const colgroupHtml = colgroupOverdue || colgroupDefault;
+  const colgroupHtml = colgroupOverdue || colgroupEisenhowerSidebarFirst || colgroupDefault;
   const theadCategoryTh = hideCategoryCol ? "" : `<th class="todo-th-category">${lastColHeader}</th>`;
+  const theadEisenhowerSidebarFirst = eisenhowerSidebarFirst
+    ? `<tr>
+        <th class="todo-th-done"></th>
+        <th class="todo-th-name">Name</th>
+        <th class="todo-th-eisenhower">아이젠하워</th>
+        <th class="todo-th-kpi">KPI</th>
+        <th class="todo-th-start">시작일</th>
+        <th class="todo-th-due">마감일</th>
+        <th class="todo-th-overdue">기한 초과</th>
+        ${theadCategoryTh}
+        <th class="todo-th-delete"></th>
+      </tr>`
+    : null;
   const theadOverdue = overdueColumnOrder
     ? `<tr>
         <th class="todo-th-done"></th>
@@ -1310,10 +1405,11 @@ function createSection(section, options = {}) {
         ${theadCategoryTh}
         <th class="todo-th-delete"></th>
       </tr>`;
+  const theadHtml = theadEisenhowerSidebarFirst || theadOverdue;
   table.innerHTML = `
     ${colgroupHtml}
     <thead>
-      ${theadOverdue}
+      ${theadHtml}
     </thead>
     <tbody></tbody>
   `;
@@ -1322,7 +1418,7 @@ function createSection(section, options = {}) {
   initialTasks.forEach((t) => {
     const taskId = t.taskId || getTaskId(t);
     t.taskId = taskId;
-    const tr = createTaskRow(t, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, overdueColumnOrder });
+    const tr = createTaskRow(t, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, overdueColumnOrder, eisenhowerSidebarFirst });
     tr.dataset.sectionId = t.sectionId || "";
     tbody.appendChild(tr);
     const container = tr.querySelector(".todo-subtasks-container");
@@ -1361,9 +1457,10 @@ function createSection(section, options = {}) {
         : { sectionId };
       const taskId = getTaskId(taskData);
       taskData.taskId = taskId;
-      const tr = createTaskRow(taskData, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, overdueColumnOrder });
+      const tr = createTaskRow(taskData, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, overdueColumnOrder, eisenhowerSidebarFirst });
       tbody.insertBefore(tr, addRow);
       updateCount();
+      console.log("[DEBUG todo-row] + clicked, new row created", { taskId, sectionId: section.id });
       const nameInput = tr.querySelector(".todo-cell-name input");
       if (nameInput) {
         nameInput.focus();
@@ -1427,7 +1524,7 @@ function collectTasksFromDOM(sectionsEl) {
 }
 
 function renderSections(container, tasksData = [], options = {}) {
-  const { tabMode = false, showCheckboxTypeMenu = null, enableDragToCalendar = false, enableDragToEisenhower = false, sectionsOverride = null } = options;
+  const { tabMode = false, showCheckboxTypeMenu = null, enableDragToCalendar = false, enableDragToEisenhower = false, sectionsOverride = null, eisenhowerSidebarFirst = false } = options;
   container.innerHTML = "";
   const results = [];
   const sections = sectionsOverride || getSections();
@@ -1445,6 +1542,7 @@ function renderSections(container, tasksData = [], options = {}) {
       enableDragToEisenhower,
       hideAddRow: section.id === "overdue",
       overdueColumnOrder: section.id === "overdue",
+      eisenhowerSidebarFirst: eisenhowerSidebarFirst && section.id !== "overdue",
     };
     const { wrap, updateCount } = createSection(section, sectionOpts);
     container.appendChild(wrap);
@@ -1465,7 +1563,7 @@ function isOverdue(dueStr) {
 }
 
 export function render(options = {}) {
-  const { hideToolbar = false, enableDragToCalendar = false, enableDragToEisenhower = false, initialActiveTabIndex = 0, eisenhowerFilter = "" } = options;
+  const { hideToolbar = false, enableDragToCalendar = false, enableDragToEisenhower = false, initialActiveTabIndex = 0, eisenhowerFilter = "", eisenhowerSidebarFirst = false } = options;
   const el = document.createElement("div");
   el.className = "app-tab-panel-content todo-list-view";
 
@@ -1733,7 +1831,7 @@ export function render(options = {}) {
     const q = (eisenhowerFilter || "").trim();
     allTasks = allTasks.filter((t) => (t.eisenhower || "").trim() === q);
   }
-  const sectionResults = renderSections(sectionsWrap, allTasks, { tabMode: true, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower });
+  const sectionResults = renderSections(sectionsWrap, allTasks, { tabMode: true, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, eisenhowerSidebarFirst });
 
   function updateTabLabels() {
     tabButtons.forEach((btn, i) => {
@@ -1938,7 +2036,7 @@ export function render(options = {}) {
 /** 아이젠하워 사이드바용: 할일(탭) + 기한 초과 섹션 */
 export function renderTodoListForEisenhowerSidebar(options = {}) {
   const { enableDragToEisenhower = true } = options;
-  const mainList = render({ hideToolbar: true, enableDragToEisenhower });
+  const mainList = render({ hideToolbar: true, enableDragToEisenhower, eisenhowerSidebarFirst: true });
   mainList.classList.add("todo-list-eisenhower-sidebar");
 
   const kpiTasks = getKpiTodosAsTasks();

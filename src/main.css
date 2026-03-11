@@ -38,7 +38,7 @@
   --gray-900: #111827;
 }
 
-/* 날짜 픽커: Flatpickr 회색 미니멀 (파란색 제거) */
+/* 날짜 픽커: Flatpickr 회색 미니멀 */
 .flatpickr-day.selected,
 .flatpickr-day.startRange,
 .flatpickr-day.endRange,
@@ -91,6 +91,29 @@
 .flatpickr-current-month .numInputWrapper span.arrowUp:hover,
 .flatpickr-current-month .numInputWrapper span.arrowDown:hover {
   background: var(--gray-200, #e5e7eb) !important;
+}
+
+/* Flatpickr 하단 삭제/오늘 버튼 (네이티브 픽커와 동일) */
+.flatpickr-custom-buttons {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-top: 1px solid var(--gray-200, #e5e7eb);
+  background: var(--gray-50, #f9fafb);
+}
+.flatpickr-custom-btn {
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  font-size: 14px;
+  color: #000;
+  cursor: pointer;
+}
+.flatpickr-custom-btn:hover {
+  text-decoration: underline;
+}
+.flatpickr-custom-buttons--no-delete {
+  justify-content: flex-end;
 }
 
 /* 네이티브 date/time input (폰트·회색 톤 통일) */
