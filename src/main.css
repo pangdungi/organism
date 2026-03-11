@@ -11740,15 +11740,18 @@ body.kpi-resizing {
   margin-bottom: 1.5rem;
   border: 1px solid #e5e7eb;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .time-productivity-mini-title {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #374151;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #111827;
   margin-bottom: 1.25rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid #e5e7eb;
+  text-align: center;
 }
 
 .time-productivity-mini-row {
@@ -11756,6 +11759,7 @@ body.kpi-resizing {
   grid-template-columns: 1fr 1fr 1fr;
   gap: 0;
   align-items: stretch;
+  min-width: 0;
 }
 
 .time-productivity-mini-chart {
@@ -11764,6 +11768,8 @@ body.kpi-resizing {
   align-items: center;
   padding: 0.75rem 1rem;
   border-right: 1px solid #e5e7eb;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .time-productivity-mini-chart:last-of-type {
@@ -11773,13 +11779,15 @@ body.kpi-resizing {
 .time-productivity-mini-pct {
   border-right: none;
   border-left: 1px solid #e5e7eb;
+  min-width: 0;
+  overflow: visible;
 }
 
 .time-productivity-mini-chart-label {
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   font-weight: 500;
   color: #6b7280;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
   text-align: center;
 }
 
@@ -11814,57 +11822,110 @@ body.kpi-resizing {
 
 .time-productivity-mini-donut-wrap .time-dash-donut-total {
   display: block;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: #111827;
 }
 
 .time-productivity-mini-donut-wrap .time-dash-donut-label {
-  font-size: 0.6rem;
+  font-size: 0.7rem;
   color: #9ca3af;
 }
 
 .time-productivity-mini-legend {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.4rem 0.6rem;
   justify-content: center;
-  margin-top: 0.6rem;
-  font-size: 0.72rem;
+  margin-top: 0.5rem;
+  font-size: 0.82rem;
   color: #6b7280;
+  overflow: hidden;
+  min-width: 0;
 }
 
-.time-productivity-mini-pct {
+.time-productivity-mini-legend .time-dash-legend-item {
+  font-size: 0.82rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+/* 비생산적 과제 TOP 3 - 대시보드 시간 TOP 3와 동일 구조 (막대 정렬) */
+.time-productivity-top3-widget {
+  min-width: 0;
+  align-items: flex-start;
+}
+
+.time-productivity-top3-widget .time-productivity-mini-chart-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #6b7280;
+  text-align: center;
+  width: 100%;
+}
+
+.time-productivity-top3-widget .time-dash-top7-list {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.time-productivity-top3-widget .time-dash-top7-row {
+  font-size: 0.88rem;
+}
+
+.time-productivity-top3-widget .time-dash-top7-task {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 9rem;
+}
+
+.time-productivity-top3-widget .time-dash-top7-value {
+  font-size: 0.85rem;
+}
+
+.time-productivity-top3-empty {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  padding: 0.5rem 0;
+}
+
+.time-productivity-mini-dashboard .time-productivity-mini-pct {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   padding: 1rem;
-  background: rgba(255, 255, 255, 0.6);
-  border-radius: 8px;
   margin: 0 0.5rem;
   border-left: 1px solid #e5e7eb;
+  min-height: 110px;
+  min-width: 5rem;
+  align-self: stretch;
 }
 
 .time-productivity-mini-pct .time-productivity-mini-chart-label {
   margin-bottom: 0.5rem;
 }
 
-.time-productivity-mini-pct-value {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #111827;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+.time-productivity-mini-pct-value-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  align-self: stretch;
+  width: 100%;
 }
 
-.time-productivity-mini-pct-desc {
-  font-size: 0.6rem;
-  color: #9ca3af;
-  margin-top: 0.35rem;
+.time-productivity-mini-dashboard .time-productivity-mini-pct-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1;
+  letter-spacing: -0.02em;
   text-align: center;
-  max-width: 140px;
-  line-height: 1.3;
 }
 
 @media (max-width: 640px) {
@@ -11886,7 +11947,6 @@ body.kpi-resizing {
     border-left: none;
     border-top: 1px solid #e5e7eb;
     margin: 0;
-    border-radius: 0 0 8px 8px;
   }
 }
 
@@ -11957,6 +12017,29 @@ body.kpi-resizing {
   font-weight: 400;
   color: #888;
   text-align: center;
+}
+
+/* 생산성별 섹션 - 표 하단 합계 행 */
+.time-section-summary-row {
+  font-weight: 600;
+}
+
+.time-section-summary-row .time-cell-task {
+  color: #374151;
+}
+
+.time-section-summary-tracked,
+.time-section-summary-price {
+  font-weight: 600;
+}
+
+/* 생산적: 합계 양수 → 빨간색 / 비생산적: 합계 음수 → 파란색 */
+.time-section-summary-price.is-negative {
+  color: #2563eb;
+}
+
+.time-section-summary-price.is-positive {
+  color: #dc2626;
 }
 
 /* 생산성별 섹션 - 표제목에 형광펜처럼 배경 컬러 적용 */
@@ -12278,7 +12361,17 @@ body.kpi-resizing {
 .time-ledger-table .time-cell-category {
   width: 100px;
   min-width: 100px;
-  overflow: visible;
+  overflow: hidden;
+  max-width: 100px;
+}
+
+.time-ledger-table .time-cell-category .time-tag-pill {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  box-sizing: border-box;
 }
 
 .time-ledger-table .time-col-date,

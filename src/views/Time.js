@@ -1644,7 +1644,6 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
 const PRODUCTIVITY_VIEW_ORDER = [
   { value: "productive", label: "생산적" },
   { value: "nonproductive", label: "비생산적" },
-  { value: "other", label: "그 외" },
 ];
 
 /** 과제명, 사용시간, 피드백이 전부 비어있으면 빈 행 (저장 제외) */
@@ -1782,10 +1781,47 @@ function createProductivitySection(
   table.className = "time-ledger-table";
   table.innerHTML = createTableHTML();
   const tbody = table.querySelector("tbody");
+  const tfoot = document.createElement("tfoot");
+  tfoot.innerHTML = `
+    <tr class="time-section-summary-row">
+      <td class="time-cell time-cell-task" colspan="3">합계</td>
+      <td class="time-cell time-cell-tracked time-section-summary-tracked"></td>
+      <td class="time-cell time-cell-category" colspan="3"></td>
+      <td class="time-cell time-cell-price"><span class="time-section-summary-price"></span></td>
+      <td class="time-cell time-cell-focus" colspan="4"></td>
+    </tr>
+  `;
+  table.appendChild(tfoot);
+  const summaryTrackedEl = tfoot.querySelector(".time-section-summary-tracked");
+  const summaryPriceEl = tfoot.querySelector(".time-section-summary-price");
 
   function updateCount() {
-    const n = tbody.querySelectorAll(".time-row").length;
+    const rows = tbody.querySelectorAll(".time-row");
+    const n = rows.length;
     countSpan.textContent = n;
+    let totalHrs = 0;
+    let totalPrice = 0;
+    const hourlyRate =
+      parseFloat(
+        String(viewEl?.querySelector(".time-hourly-input")?.value || "0").replace(
+          /,/g,
+          "",
+        ),
+      ) || 0;
+    rows.forEach((tr) => {
+      const timeEl = tr.querySelector(".time-input-tracked") || tr.querySelector(".time-display-tracked");
+      const val = (timeEl?.value ?? timeEl?.textContent ?? "").trim();
+      const hrs = parseTimeToHours(val) || 0;
+      totalHrs += hrs;
+      const pv = (tr._rowData?.productivity || prod.value || "").trim();
+      let price = hrs * hourlyRate;
+      if (pv === "nonproductive") price *= -1;
+      else if (pv === "other" || pv === "그 외" || !pv) price = 0;
+      totalPrice += price;
+    });
+    summaryTrackedEl.textContent = totalHrs > 0 ? formatHoursDisplay(totalHrs) : "";
+    summaryPriceEl.textContent = formatPrice(totalPrice);
+    summaryPriceEl.className = "time-section-summary-price" + (totalPrice < 0 ? " is-negative" : totalPrice > 0 ? " is-positive" : "");
   }
 
   const onRowUpdate = () => {
@@ -4202,6 +4238,37 @@ export function render() {
     totalDisplay.classList.toggle("is-negative", sum < 0);
     totalDisplay.classList.toggle("is-positive", sum > 0);
     updateHourlyHint();
+    contentWrap.querySelectorAll(".time-section").forEach((section) => {
+      const tbody = section.querySelector("tbody");
+      const tfoot = section.querySelector("tfoot");
+      const summaryTracked = tfoot?.querySelector(".time-section-summary-tracked");
+      const summaryPrice = tfoot?.querySelector(".time-section-summary-price");
+      if (!tbody || !summaryTracked || !summaryPrice) return;
+      const prod = section.dataset.productivity || "";
+      const hourlyRate =
+        parseFloat(
+          String(el.querySelector(".time-hourly-input")?.value || "0").replace(
+            /,/g,
+            "",
+          ),
+        ) || 0;
+      let totalHrs = 0;
+      let totalPrice = 0;
+      tbody.querySelectorAll(".time-row").forEach((tr) => {
+        const timeEl = tr.querySelector(".time-input-tracked") || tr.querySelector(".time-display-tracked");
+        const val = (timeEl?.value ?? timeEl?.textContent ?? "").trim();
+        const hrs = parseTimeToHours(val) || 0;
+        totalHrs += hrs;
+        const pv = (tr._rowData?.productivity || prod || "").trim();
+        let price = hrs * hourlyRate;
+        if (pv === "nonproductive") price *= -1;
+        else if (pv === "other" || pv === "그 외" || !pv) price = 0;
+        totalPrice += price;
+      });
+      summaryTracked.textContent = totalHrs > 0 ? formatHoursDisplay(totalHrs) : "";
+      summaryPrice.textContent = formatPrice(totalPrice);
+      summaryPrice.className = "time-section-summary-price" + (totalPrice < 0 ? " is-negative" : totalPrice > 0 ? " is-positive" : "");
+    });
   }
   el._updateTotal = updateTotal;
 
@@ -4422,46 +4489,59 @@ export function render() {
     const start = startDateInput.value || filterStartDate;
     const end = endDateInput.value || filterEndDate;
     const periodLabel = getFilterPeriodLabel(type, y, m, start, end);
-    const { productive, nonproductive, other } =
-      aggregateHoursByProductivityAllThree(rows);
-    const totalAll = productive + nonproductive + other || 1;
+    const { productive, nonproductive } =
+      aggregateHoursByProductivity(rows);
     const totalProdNonProd = productive + nonproductive || 1;
-    const prodPctAll = totalAll > 0 ? (productive / totalAll) * 100 : 0;
-    const nonProdPctAll = totalAll > 0 ? (nonproductive / totalAll) * 100 : 0;
-    const otherPctAll = totalAll > 0 ? (other / totalAll) * 100 : 0;
     const prodPct = totalProdNonProd > 0 ? (productive / totalProdNonProd) * 100 : 0;
     const nonProdPct = totalProdNonProd > 0 ? (nonproductive / totalProdNonProd) * 100 : 0;
     const circ = 2 * Math.PI * 40;
     const offset = circ / 4;
-    const prodLenAll = (prodPctAll / 100) * circ;
-    const nonProdLenAll = (nonProdPctAll / 100) * circ;
-    const otherLenAll = (otherPctAll / 100) * circ;
     const prodLen = (prodPct / 100) * circ;
     const nonProdLen = (nonProdPct / 100) * circ;
+    const nonProdRows = rows.filter((r) => {
+      const p = r.productivity || getProductivityFromCategory(r.category);
+      return p === "nonproductive";
+    });
+    const nonProdByTask = aggregateHoursByTask(nonProdRows);
+    const top3NonProd = Object.entries(nonProdByTask)
+      .filter(([, hrs]) => hrs > 0)
+      .map(([task, hrs]) => ({ task: String(task || ""), hrs }))
+      .sort((a, b) => b.hrs - a.hrs)
+      .slice(0, 3);
+    const maxNonProdHrs = top3NonProd.length
+      ? Math.max(...top3NonProd.map((x) => x.hrs))
+      : 1;
+    const TOP3_COLORS = ["#3b82f6", "#2563eb", "#1d4ed8"];
+    const esc = (s) =>
+      String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    const top3Html =
+      top3NonProd.length > 0
+        ? top3NonProd
+            .map(
+              (x, i) =>
+                `<div class="time-dash-top7-row">
+  <span class="time-dash-top7-num">${String(i + 1).padStart(2, "0")}</span>
+  <span class="time-dash-top7-task" title="${esc(x.task)}">${esc(x.task)}</span>
+  <div class="time-dash-top7-track">
+    <div class="time-dash-top7-fill" style="width:${(x.hrs / maxNonProdHrs) * 100}%;background:${TOP3_COLORS[i % 3]}"></div>
+  </div>
+  <span class="time-dash-top7-value">${formatHoursDisplay(x.hrs)}</span>
+</div>`,
+            )
+            .join("")
+        : '<div class="time-productivity-top3-empty">비생산적 기록이 없습니다</div>';
     const miniDash = document.createElement("div");
     miniDash.className = "time-productivity-mini-dashboard";
     miniDash.innerHTML = `
       <div class="time-productivity-mini-title">${periodLabel} 생산성 요약</div>
       <div class="time-productivity-mini-row">
-        <div class="time-productivity-mini-chart">
-          <div class="time-productivity-mini-chart-label">생산적·비생산적·그 외</div>
-          <div class="time-productivity-mini-donut-wrap">
-            <svg class="time-dash-donut" viewBox="0 0 100 100">
-              <circle class="time-dash-donut-bg" cx="50" cy="50" r="40"/>
-              <circle class="time-dash-donut-seg prod-pink" cx="50" cy="50" r="40" stroke-dasharray="${prodLenAll} ${circ - prodLenAll}" stroke-dashoffset="${-offset}"/>
-              <circle class="time-dash-donut-seg prod-blue" cx="50" cy="50" r="40" stroke-dasharray="${nonProdLenAll} ${circ - nonProdLenAll}" stroke-dashoffset="${-offset - prodLenAll}"/>
-              <circle class="time-dash-donut-seg prod-green" cx="50" cy="50" r="40" stroke-dasharray="${otherLenAll} ${circ - otherLenAll}" stroke-dashoffset="${-offset - prodLenAll - nonProdLenAll}"/>
-            </svg>
-            <div class="time-dash-donut-center">
-              <span class="time-dash-donut-total">${formatHoursDisplay(totalAll === 1 && productive === 0 && nonproductive === 0 && other === 0 ? 0 : totalAll)}</span>
-              <span class="time-dash-donut-label">Total</span>
-            </div>
-          </div>
-          <div class="time-productivity-mini-legend">
-            <span class="time-dash-legend-item"><i class="prod-pink"></i>생산적 ${prodPctAll.toFixed(1)}%</span>
-            <span class="time-dash-legend-item"><i class="prod-blue"></i>비생산적 ${nonProdPctAll.toFixed(1)}%</span>
-            <span class="time-dash-legend-item"><i class="prod-green"></i>그 외 ${otherPctAll.toFixed(1)}%</span>
-          </div>
+        <div class="time-productivity-mini-chart time-productivity-top3-widget">
+          <div class="time-productivity-mini-chart-label">비생산적 과제 TOP 3</div>
+          <div class="time-dash-top7-list">${top3Html}</div>
         </div>
         <div class="time-productivity-mini-chart">
           <div class="time-productivity-mini-chart-label">생산적 vs 비생산적</div>
@@ -4477,14 +4557,15 @@ export function render() {
             </div>
           </div>
           <div class="time-productivity-mini-legend">
-            <span class="time-dash-legend-item"><i class="prod-pink"></i>생산적 ${prodPct.toFixed(1)}%</span>
-            <span class="time-dash-legend-item"><i class="prod-blue"></i>비생산적 ${nonProdPct.toFixed(1)}%</span>
+            <span class="time-dash-legend-item"><i class="prod-pink"></i>생산적 ${formatHoursDisplay(productive)} (${prodPct.toFixed(1)}%)</span>
+            <span class="time-dash-legend-item"><i class="prod-blue"></i>비생산적 ${formatHoursDisplay(nonproductive)} (${nonProdPct.toFixed(1)}%)</span>
           </div>
         </div>
         <div class="time-productivity-mini-pct">
           <div class="time-productivity-mini-chart-label">생산성</div>
-          <div class="time-productivity-mini-pct-value">${totalProdNonProd > 0 ? prodPct.toFixed(1) : "—"}%</div>
-          <div class="time-productivity-mini-pct-desc">생산적 / (생산적+비생산적)</div>
+          <div class="time-productivity-mini-pct-value-wrap">
+            <span class="time-productivity-mini-pct-value">${totalProdNonProd > 0 ? prodPct.toFixed(1) : "—"}%</span>
+          </div>
         </div>
       </div>
     `;
@@ -4501,10 +4582,7 @@ export function render() {
       updateTotal();
     };
     PRODUCTIVITY_VIEW_ORDER.forEach((prod) => {
-      const sectionRows =
-        prod.value === "other"
-          ? rows.filter((r) => !r.productivity || r.productivity === "other")
-          : rows.filter((r) => r.productivity === prod.value);
+      const sectionRows = rows.filter((r) => r.productivity === prod.value);
       contentWrap.appendChild(
         createProductivitySection(
           prod,
