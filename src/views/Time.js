@@ -1055,24 +1055,45 @@ function createTagDropdown(options, initialValue, optionClass, onSelect) {
     opt.addEventListener("click", () => {
       value = o.value;
       updateTrigger();
-      panel.hidden = true;
+      closePanel();
       onSelect?.(value);
     });
     panel.appendChild(opt);
   });
 
+  function closePanel() {
+    panel.hidden = true;
+    if (panel.parentElement === document.body) {
+      document.body.removeChild(panel);
+      wrap.appendChild(panel);
+    }
+  }
+
+  function openPanel() {
+    const rect = trigger.getBoundingClientRect();
+    panel.style.position = "fixed";
+    panel.style.top = `${rect.bottom + 4}px`;
+    panel.style.left = `${rect.left}px`;
+    panel.style.minWidth = `${Math.max(rect.width, 140)}px`;
+    panel.style.zIndex = "999999";
+    if (panel.parentElement !== document.body) {
+      wrap.removeChild(panel);
+      document.body.appendChild(panel);
+    }
+    panel.hidden = false;
+  }
+
   trigger.addEventListener("click", () => {
-    panel.hidden = !panel.hidden;
-    if (!panel.hidden) {
-      const rect = trigger.getBoundingClientRect();
-      panel.style.position = "fixed";
-      panel.style.top = `${rect.bottom + 4}px`;
-      panel.style.left = `${rect.left}px`;
-      panel.style.minWidth = `${Math.max(rect.width, 140)}px`;
+    if (panel.hidden) {
+      openPanel();
+    } else {
+      closePanel();
     }
   });
   document.addEventListener("click", (e) => {
-    if (!wrap.contains(e.target)) panel.hidden = true;
+    if (!wrap.contains(e.target) && !panel.contains(e.target)) {
+      closePanel();
+    }
   });
 
   wrap.appendChild(trigger);
@@ -5453,6 +5474,7 @@ export function renderTimeBudgetTablesForCalendar(
 
   const taskOptions = getTaskOptions();
   const storedGoals = getBudgetGoals(targetDateStr);
+  /* 캘린더 1일뷰: 과제설정 목록만 표시, 여기서 추가 불가 */
   const taskDropdownOptions = [
     { value: "", label: "—", color: "cat-empty" },
     ...taskOptions.map((name) => ({
@@ -5460,9 +5482,6 @@ export function renderTimeBudgetTablesForCalendar(
       label: name,
       color: "cat-empty",
     })),
-    ...Object.keys(storedGoals || {})
-      .filter(isBudgetPlaceholder)
-      .map((k) => ({ value: k, label: "(과제 선택)", color: "cat-empty" })),
   ];
 
   /** 목표 시간 - 문자만 막고, 숫자+백스페이스 자유, Enter로 입력완료 */
@@ -5845,6 +5864,7 @@ export function renderTimeBudgetTablesForCalendar(
   }
   tasksFromToday.forEach((t) => {
     if (excluded.has(t.task)) return;
+    if (isBudgetPlaceholder(t.task)) return;
     const data = storedGoals[t.task];
     const entries = expandByScheduledTimes(t.task, data, !t.isNonproductive, t.hrs);
     const target = t.isNonproductive ? consumeTasks : investTasks;
@@ -5856,6 +5876,7 @@ export function renderTimeBudgetTablesForCalendar(
   });
   Object.entries(storedGoals).forEach(([task, data]) => {
     if (excluded.has(task)) return;
+    if (isBudgetPlaceholder(task)) return;
     if (data.isInvest && !seenInvest.has(task)) {
       expandByScheduledTimes(task, data, true).forEach((e) => investTasks.push(e));
       seenInvest.add(task);
@@ -5978,25 +5999,17 @@ export function renderTimeBudgetTablesForCalendar(
     e.stopPropagation();
     const activeTab = tabsBar.querySelector(".time-daily-budget-tab.active")?.dataset?.tab;
     const isInvest = activeTab !== "consume";
-    const placeholder = createBudgetPlaceholder();
-    taskDropdownOptions.push({
-      value: placeholder,
-      label: "(과제 선택)",
-      color: "cat-empty",
-    });
-    saveBudgetGoal(targetDateStr, placeholder, "", isInvest);
-    saveBudgetScheduledTime(targetDateStr, placeholder, "", isInvest);
+    /* 과제설정 목록에서만 선택, 여기서 새 과제 추가 불가 */
     if (activeTab === "consume") {
-      const tr = createBudgetTableRow(placeholder, "", "", false, consumeCtx);
+      const tr = createBudgetTableRow("", "", "", false, consumeCtx);
       consumeTbody.insertBefore(tr, consumeAddRow);
       updateGoalDiffDisplays(consumeBlock);
     } else {
-      const tr = createBudgetTableRow(placeholder, "", "", true, investCtx);
+      const tr = createBudgetTableRow("", "", "", true, investCtx);
       investTbody.insertBefore(tr, investAddRow);
       updateGoalDiffDisplays(investBlock);
     }
     updateRemaining();
-    /* 플레이스홀더로 즉시 저장하여 다른 행 blur 시 재렌더되어도 새 행 유지 */
   });
   const tabPanels = document.createElement("div");
   tabPanels.className = "time-daily-budget-tab-panels";

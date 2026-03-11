@@ -16122,6 +16122,8 @@ body.kpi-resizing {
   overflow-y: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  position: relative;
+  z-index: 1000;
 }
 
 .calendar-1day-budget-column .calendar-1day-budget-tables-scroll > .time-daily-budget-tab-panels {
@@ -16147,6 +16149,8 @@ body.kpi-resizing {
   margin-top: 0.75rem;
   border-top: 1px solid #e5e7eb;
   padding-top: 0.75rem;
+  position: relative;
+  z-index: 1;
 }
 
 .calendar-1day-budget-column .calendar-1day-todo-section-header {
@@ -16442,6 +16446,11 @@ body.kpi-resizing {
   border-top: 1px solid #e5e7eb;
   border-right: none;
   border-bottom: none;
+}
+
+/* 과제 선택 드롭다운 - 테이블 헤더/다른 요소 위에 표시 */
+.calendar-1day-budget-column .time-tag-panel {
+  z-index: 99999;
 }
 
 .calendar-1day-budget-column .time-daily-budget-table .time-tag-pill.cat-empty {
