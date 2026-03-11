@@ -16181,8 +16181,14 @@ body.kpi-resizing {
 .calendar-1day-budget-column .calendar-1day-todo-table {
   border: 1px solid #e5e7eb;
   width: 100%;
-  min-width: max-content;
+  table-layout: fixed;
 }
+
+.calendar-1day-budget-column .calendar-1day-todo-table thead th:nth-child(1) { width: 22%; }
+.calendar-1day-budget-column .calendar-1day-todo-table thead th:nth-child(2) { width: 18%; }
+.calendar-1day-budget-column .calendar-1day-todo-table thead th:nth-child(3),
+.calendar-1day-budget-column .calendar-1day-todo-table thead th:nth-child(4),
+.calendar-1day-budget-column .calendar-1day-todo-table thead th:nth-child(5) { width: 20%; }
 
 .calendar-1day-budget-column .calendar-1day-todo-table thead th,
 .calendar-1day-budget-column .calendar-1day-todo-table tbody td {
@@ -16315,16 +16321,20 @@ body.kpi-resizing {
   -ms-overflow-style: none;
 }
 
-.calendar-1day-budget-column .time-daily-budget-table-scroll-wrap::-webkit-scrollbar {
-  display: none;
+/* 투자/소비 테이블 가로 스크롤 - 5열 모두 보이도록 스크롤바 표시 */
+.calendar-1day-budget-column .time-daily-budget-table-block .time-daily-budget-table-scroll-wrap::-webkit-scrollbar {
+  height: 6px;
+}
+
+.calendar-1day-budget-column .time-daily-budget-table-block .time-daily-budget-table-scroll-wrap {
+  scrollbar-width: thin;
 }
 
 .calendar-1day-budget-column .time-daily-budget-table {
   display: table;
   width: 100%;
-  min-width: max-content;
-  table-layout: fixed;
 }
+
 
 /* 투자/소비 테이블 - 줄바꿈 방지, 과제명 열 고정 */
 .calendar-1day-budget-column .time-daily-budget-table thead th,
@@ -16387,30 +16397,14 @@ body.kpi-resizing {
   border-bottom: none;
 }
 
-/* 열 너비: 과제명·목표·시작·마감은 유연, 삭제열은 고정 최소 */
-.calendar-1day-budget-column .time-daily-budget-table col.time-budget-col-task {
-  width: 25%;
-}
-
-.calendar-1day-budget-column .time-daily-budget-table col.time-budget-col-goal {
-  width: 18%;
-}
-
-.calendar-1day-budget-column .time-daily-budget-table col.time-budget-col-start,
-.calendar-1day-budget-column .time-daily-budget-table col.time-budget-col-end {
-  width: 18%;
-}
-
-.calendar-1day-budget-column .time-daily-budget-table col.time-budget-col-delete {
+/* 투자/소비 테이블만 - 삭제열 최소 1.5rem, 셀 패딩만 축소 (전체 열 너비 고정 X → 5열 모두 보이도록) */
+.calendar-1day-budget-column .time-daily-budget-table-block .time-daily-budget-table th:last-child,
+.calendar-1day-budget-column .time-daily-budget-table-block .time-daily-budget-table td:last-child {
+  min-width: 1.5rem;
   width: 1.5rem;
-}
-
-.calendar-1day-budget-column .time-budget-col-delete {
-  width: 1.5rem !important;
-  min-width: 1.5rem !important;
-  max-width: 1.5rem !important;
   padding: 0.2rem;
   vertical-align: middle;
+  box-sizing: border-box;
 }
 
 .calendar-1day-budget-column .time-budget-btn-delete {
