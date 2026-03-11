@@ -301,6 +301,15 @@ function saveBudgetGoal(dateStr, taskName, goalTime, isInvest) {
   } catch (_) {}
 }
 
+/** 새 행 플레이스홀더 (재렌더 시 행 유지용) */
+const BUDGET_PLACEHOLDER_PREFIX = "(과제 선택)·";
+function isBudgetPlaceholder(key) {
+  return (key || "").startsWith(BUDGET_PLACEHOLDER_PREFIX);
+}
+function createBudgetPlaceholder() {
+  return BUDGET_PLACEHOLDER_PREFIX + Date.now();
+}
+
 /** 캘린더 1일뷰 - 과제 행 전체 삭제 (목표+예상시간 제거, 해당 날짜에서 제외) */
 function deleteBudgetGoalEntry(dateStr, taskName) {
   const key = (taskName || "").trim();
@@ -5427,6 +5436,7 @@ export function renderTimeBudgetTablesForCalendar(
   }
 
   const taskOptions = getTaskOptions();
+  const storedGoals = getBudgetGoals(targetDateStr);
   const taskDropdownOptions = [
     { value: "", label: "—", color: "cat-empty" },
     ...taskOptions.map((name) => ({
@@ -5434,6 +5444,9 @@ export function renderTimeBudgetTablesForCalendar(
       label: name,
       color: "cat-empty",
     })),
+    ...Object.keys(storedGoals || {})
+      .filter(isBudgetPlaceholder)
+      .map((k) => ({ value: k, label: "(과제 선택)", color: "cat-empty" })),
   ];
 
   /** 목표 시간 - 문자만 막고, 숫자+백스페이스 자유, Enter로 입력완료 */
@@ -5498,8 +5511,6 @@ export function renderTimeBudgetTablesForCalendar(
     return input;
   }
 
-  const storedGoals = getBudgetGoals(targetDateStr);
-
   function parseScheduledTime(scheduledTime) {
     if (!scheduledTime || !scheduledTime.trim()) return { start: "", end: "" };
     const s = String(scheduledTime).trim();
@@ -5528,32 +5539,41 @@ export function renderTimeBudgetTablesForCalendar(
     if (initialStart) startInput.value = initialStart;
     if (initialEnd) endInput.value = initialEnd;
 
-    function saveCurrentGoal() {
-      const name = taskDropdown.getValue();
+    let previousKey = (taskName || "").trim();
+    function saveCurrentGoal(skipReRender) {
+      const name = (taskDropdown.getValue() || "").trim();
       if (name) {
+        if (previousKey && previousKey !== name && isBudgetPlaceholder(previousKey)) {
+          deleteBudgetGoalEntry(targetDateStr, previousKey);
+        }
+        previousKey = name;
         saveBudgetGoal(targetDateStr, name, goalInput.value, isInvest);
         const start = startInput.value.trim();
         const end = endInput.value.trim();
         const scheduledTime =
           start && end ? `${start}-${end}` : start || end || "";
         saveBudgetScheduledTime(targetDateStr, name, scheduledTime, isInvest);
-        document.dispatchEvent(
-          new CustomEvent("calendar-budget-scheduled-updated", {
-            detail: { dateStr: targetDateStr },
-          }),
-        );
+        if (!skipReRender) {
+          document.dispatchEvent(
+            new CustomEvent("calendar-budget-scheduled-updated", {
+              detail: { dateStr: targetDateStr },
+            }),
+          );
+        } else if (typeof updateRemaining === "function") {
+          updateRemaining();
+        }
       }
     }
 
-    goalInput.addEventListener("blur", saveCurrentGoal);
-    startInput.addEventListener("blur", saveCurrentGoal);
-    endInput.addEventListener("blur", saveCurrentGoal);
+    goalInput.addEventListener("blur", () => saveCurrentGoal(true));
+    startInput.addEventListener("blur", () => saveCurrentGoal(true));
+    endInput.addEventListener("blur", () => saveCurrentGoal(true));
 
     const taskDropdown = createTagDropdown(
       taskDropdownOptions,
       taskName || "",
       "cat",
-      saveCurrentGoal,
+      () => saveCurrentGoal(true),
     );
     taskDropdown.wrap._getValue = taskDropdown.getValue;
     taskTd.appendChild(taskDropdown.wrap);
@@ -5707,15 +5727,24 @@ export function renderTimeBudgetTablesForCalendar(
   addBtnEl.addEventListener("click", (e) => {
     e.stopPropagation();
     const activeTab = tabsBar.querySelector(".time-daily-budget-tab.active")?.dataset?.tab;
+    const isInvest = activeTab !== "consume";
+    const placeholder = createBudgetPlaceholder();
+    taskDropdownOptions.push({
+      value: placeholder,
+      label: "(과제 선택)",
+      color: "cat-empty",
+    });
+    saveBudgetGoal(targetDateStr, placeholder, "", isInvest);
+    saveBudgetScheduledTime(targetDateStr, placeholder, "", isInvest);
     if (activeTab === "consume") {
-      const tr = createBudgetTableRow("", "", "", false);
+      const tr = createBudgetTableRow(placeholder, "", "", false);
       consumeTbody.insertBefore(tr, consumeAddRow);
     } else {
-      const tr = createBudgetTableRow("", "", "", true);
+      const tr = createBudgetTableRow(placeholder, "", "", true);
       investTbody.insertBefore(tr, investAddRow);
     }
     updateRemaining();
-    /* 빈 행 추가만으로는 저장 데이터 변경 없음 → 이벤트 미발송 (발송 시 renderCalendar가 전체 재렌더하여 추가 행이 사라짐) */
+    /* 플레이스홀더로 즉시 저장하여 다른 행 blur 시 재렌더되어도 새 행 유지 */
   });
   const tabPanels = document.createElement("div");
   tabPanels.className = "time-daily-budget-tab-panels";

@@ -2587,7 +2587,17 @@ function render1DayView(tabsElement) {
           t.done = newDone;
           bar.classList.toggle("is-completed", newDone);
           bar.querySelector(".calendar-monthly-span-bar-checkbox-inner")?.classList.toggle("checked", newDone);
-          renderCalendar();
+          const SECTION_LABELS_LOCAL = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복" };
+          const updatedStats = {};
+          ["dream", "sideincome", "health", "happy"].forEach((sid) => {
+            const sectionTasks = tasks.filter((task) => task.sectionId === sid);
+            updatedStats[sid] = {
+              done: sectionTasks.filter((task) => task.done).length,
+              total: sectionTasks.length,
+              label: SECTION_LABELS_LOCAL[sid] || sid,
+            };
+          });
+          refreshKpiSidebar(updatedStats);
           refreshTodoList();
         });
       }
@@ -2609,6 +2619,9 @@ function render1DayView(tabsElement) {
       const saveScheduled = () => {
         const start = startInput.value.trim();
         const end = endInput.value.trim();
+        const prevStart = (t.startTime || "").trim();
+        const prevEnd = (t.endTime || "").trim();
+        if (start === prevStart && end === prevEnd) return;
         let ok = false;
         if (t.kpiTodoId && t.storageKey) {
           ok = updateKpiTodo(t.kpiTodoId, t.storageKey, { startTime: start, endTime: end });
