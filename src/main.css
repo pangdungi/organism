@@ -9990,6 +9990,28 @@ body.kpi-resizing {
   color: #374151;
 }
 
+.time-task-log-time-adjust-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+}
+
+.time-task-log-time-adjust-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+}
+
+.time-task-log-time-adjust-btn:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
 .time-task-log-routine-subs-wrap {
   display: flex;
   flex-direction: column;

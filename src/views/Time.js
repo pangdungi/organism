@@ -2194,6 +2194,15 @@ export function render() {
                 </div>
                 <button type="button" class="time-task-log-datetime-clear" data-for="end" title="마감시간 지우기" aria-label="마감시간 지우기">×</button>
               </div>
+              <div class="time-task-log-time-adjust-btns">
+                <button type="button" class="time-task-log-time-adjust-btn time-task-log-time-adjust-now" data-now="true">지금</button>
+                <button type="button" class="time-task-log-time-adjust-btn" data-delta="-30">−30</button>
+                <button type="button" class="time-task-log-time-adjust-btn" data-delta="-15">−15</button>
+                <button type="button" class="time-task-log-time-adjust-btn" data-delta="-5">−5</button>
+                <button type="button" class="time-task-log-time-adjust-btn" data-delta="5">+5</button>
+                <button type="button" class="time-task-log-time-adjust-btn" data-delta="15">+15</button>
+                <button type="button" class="time-task-log-time-adjust-btn" data-delta="30">+30</button>
+              </div>
               <input type="hidden" class="time-task-log-end" />
             </div>
           </div>
@@ -2540,6 +2549,33 @@ export function render() {
   });
   taskLogTimeEnd?.addEventListener("keydown", restrictToTimeChars);
   taskLogTimeEnd?.addEventListener("paste", filterPastedTime);
+
+  taskLogModal.querySelectorAll(".time-task-log-time-adjust-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (btn.dataset.now === "true") {
+        const now = new Date();
+        const newTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+        if (taskLogTimeEnd) taskLogTimeEnd.value = newTime;
+      } else {
+        const delta = parseInt(btn.dataset.delta || "0", 10);
+        let baseTime = (taskLogTimeEnd?.value || "").trim();
+        if (!baseTime || !baseTime.match(/\d{1,2}:\d{2}/)) {
+          const now = new Date();
+          baseTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+        }
+        baseTime = normalizeHhMm(baseTime) || baseTime;
+        const [h, min] = baseTime.split(":").map((n) => parseInt(n, 10) || 0);
+        let totalMin = h * 60 + min + delta;
+        totalMin = ((totalMin % 1440) + 1440) % 1440;
+        const nh = Math.floor(totalMin / 60) % 24;
+        const nmin = totalMin % 60;
+        const newTime = `${String(nh).padStart(2, "0")}:${String(nmin).padStart(2, "0")}`;
+        if (taskLogTimeEnd) taskLogTimeEnd.value = newTime;
+      }
+      syncEndToHidden();
+    });
+  });
+
   const taskLogEnergySection = taskLogModal.querySelector(
     ".time-task-log-energy-section",
   );
