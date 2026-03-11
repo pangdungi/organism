@@ -428,6 +428,20 @@ function removeOverlapFromSlots(existingSlots, overlapStartMin, overlapEndMin) {
   return result;
 }
 
+/** 같은 과제 내 겹치는 슬롯 정리 - 배열 뒤쪽(최신) 슬롯이 우선, 앞쪽 겹침 구간 제거 */
+function resolveOverlapsWithinSlots(slots) {
+  if (!Array.isArray(slots) || slots.length <= 1) return slots;
+  let result = [];
+  for (const slot of slots) {
+    const parsed = parseScheduledSlotToMinutes(slot);
+    if (!parsed) continue;
+    const { startMin, endMin } = parsed;
+    result = removeOverlapFromSlots(result, startMin, endMin);
+    result.push(slot);
+  }
+  return result;
+}
+
 /** 새 과제의 예상 시간 저장 시, 겹치는 다른 과제들의 예상 시간 비우기 (새 입력이 우선). 수정 여부 반환 */
 function clearOverlappingScheduledTimes(all, dateStr, taskName, newSlots) {
   const key = String(taskName).trim();
@@ -444,12 +458,15 @@ function clearOverlappingScheduledTimes(all, dateStr, taskName, newSlots) {
       const otherSlots = getScheduledTimesArray(other);
       if (otherSlots.length === 0) continue;
       const remaining = removeOverlapFromSlots(otherSlots, startMin, endMin);
+      const sameContent =
+        remaining.length === otherSlots.length &&
+        remaining.every((s, i) => (otherSlots[i] || "").trim() === (s || "").trim());
       if (remaining.length === 0) {
         const { scheduledTime: _st, scheduledTimes: _sts, ...rest } = other;
         dateData[otherKey] = Object.keys(rest).length ? rest : undefined;
         if (!dateData[otherKey]) delete dateData[otherKey];
         modified = true;
-      } else if (remaining.length !== otherSlots.length) {
+      } else if (!sameContent) {
         dateData[otherKey] = { ...other, scheduledTimes: remaining };
         modified = true;
       }
@@ -470,9 +487,10 @@ function saveBudgetScheduledTimes(dateStr, taskName, scheduledTimes, isInvest) {
       all[dateStr] = {};
     const key = String(taskName).trim();
     const existing = all[dateStr][key] || {};
-    const arr = Array.isArray(scheduledTimes)
+    let arr = Array.isArray(scheduledTimes)
       ? scheduledTimes.map((s) => String(s || "").trim()).filter(Boolean)
       : [];
+    arr = resolveOverlapsWithinSlots(arr);
     let overlapCleared = false;
     if (arr.length > 0) {
       overlapCleared = clearOverlappingScheduledTimes(
@@ -5793,7 +5811,7 @@ export function renderTimeBudgetTablesForCalendar(
     tbodyAndAddRow,
   ) {
     const tr = document.createElement("tr");
-    const { tbody, addRow, onOverlapCleared, allTbodies } =
+    const { tbody, addRow, onOverlapCleared, onScheduledUpdate, allTbodies } =
       tbodyAndAddRow || {};
     const taskTd = document.createElement("td");
     const goalInput = createBudgetTimeInput();
@@ -5845,8 +5863,12 @@ export function renderTimeBudgetTablesForCalendar(
         if (saveBudgetScheduledTimes(targetDateStr, task, times, inv))
           overlapCleared = true;
       });
-      if (overlapCleared && typeof onOverlapCleared === "function")
-        onOverlapCleared(targetDateStr);
+      if (overlapCleared) {
+        if (typeof onOverlapCleared === "function")
+          onOverlapCleared(targetDateStr);
+        if (typeof onScheduledUpdate === "function")
+          onScheduledUpdate(targetDateStr);
+      }
     }
 
     let previousKey = (taskName || "").trim();
@@ -5925,6 +5947,15 @@ export function renderTimeBudgetTablesForCalendar(
       const name = (taskDropdown.getValue() || "").trim();
       if (!name) return;
       updateRowDataset();
+      if (typeof window !== "undefined" && window.TT_SYNC_DEBUG) {
+        console.log("[TT-SYNC] scheduleTimetableUpdate", {
+          name: (taskDropdown.getValue() || "").trim(),
+          start: startInput.value,
+          end: endInput.value,
+          datasetStart: tr.dataset.scheduledStart,
+          datasetEnd: tr.dataset.scheduledEnd,
+        });
+      }
       if (tbody && addRow) {
         saveAllScheduledTimesForTimetable();
         const block = tr.closest(".time-daily-budget-table-block");
@@ -5953,8 +5984,12 @@ export function renderTimeBudgetTablesForCalendar(
           }
         }
       }
-      if (typeof onScheduledUpdate === "function")
+      if (typeof onScheduledUpdate === "function") {
+        if (typeof window !== "undefined" && window.TT_SYNC_DEBUG) {
+          console.log("[TT-SYNC] calling onScheduledUpdate", targetDateStr);
+        }
         onScheduledUpdate(targetDateStr);
+      }
     };
     startInput.addEventListener("input", scheduleTimetableUpdate);
     endInput.addEventListener("input", scheduleTimetableUpdate);
@@ -6129,6 +6164,7 @@ export function renderTimeBudgetTablesForCalendar(
     tbody: investTbody,
     addRow: investAddRow,
     onOverlapCleared,
+    onScheduledUpdate,
   };
   const sortByStartTime = (list) =>
     [...list].sort((a, b) => {
@@ -6191,6 +6227,7 @@ export function renderTimeBudgetTablesForCalendar(
     tbody: consumeTbody,
     addRow: consumeAddRow,
     onOverlapCleared,
+    onScheduledUpdate,
     allTbodies,
   };
   sortByStartTime(consumeTasks).forEach((t) => {

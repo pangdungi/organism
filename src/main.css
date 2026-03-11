@@ -16986,6 +16986,16 @@ body.kpi-resizing {
   pointer-events: auto;
 }
 
+.calendar-1day-view .calendar-1day-time-slot-fill--block {
+  position: relative;
+  min-height: 0;
+}
+
+.calendar-1day-view .calendar-1day-time-slot-fill-seg {
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
 .calendar-1day-view .calendar-1day-time-slot-label {
   font-size: 0.8rem;
   line-height: 1.2;
