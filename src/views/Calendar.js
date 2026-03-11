@@ -3440,10 +3440,46 @@ function build1DayTimetableOverlays(targetKey, budgetColumn) {
         Math.floor((blockEndMin - 1) / MIN_PER_SLOT),
       );
       const blockHeightMin = (blockEndSlot - blockStartSlot + 1) * MIN_PER_SLOT;
+      const actualBlockMin = blockEndMin - blockStartMin;
+      const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+      if (TT_SYNC_DEBUG && !isActual) {
+        console.log("[TT-SYNC] blockFill", {
+          tasks: group.map((s) => `${s.taskName} ${s.startDisplay}~${s.endDisplay}`),
+          blockStartMin,
+          blockEndMin,
+          blockStartMinFmt: fmt(blockStartMin),
+          blockEndMinFmt: fmt(blockEndMin),
+          blockStartSlot,
+          blockEndSlot,
+          blockHeightMin,
+          actualBlockMin,
+          heightPct: blockHeightMin > 0 && actualBlockMin < blockHeightMin
+            ? ((actualBlockMin / blockHeightMin) * 100).toFixed(1) + "%"
+            : "100%",
+          slotStartMin: blockStartSlot * MIN_PER_SLOT,
+          startOffset: blockStartMin - blockStartSlot * MIN_PER_SLOT,
+        });
+      }
       const blockFill = document.createElement("div");
       blockFill.className =
         "calendar-1day-time-slot-fill calendar-1day-time-slot-fill--block calendar-1day-time-slot-fill--span";
       blockFill.style.gridRow = `${blockStartSlot + 2} / ${blockEndSlot + 3}`;
+      const heightPct =
+        blockHeightMin > 0 && actualBlockMin < blockHeightMin
+          ? ((actualBlockMin / blockHeightMin) * 100).toFixed(1)
+          : "100";
+      blockFill.dataset.debugBlock = `${fmt(blockStartMin)}~${fmt(blockEndMin)} slot${blockStartSlot}-${blockEndSlot} h=${blockHeightMin}m actual=${actualBlockMin}m height=${heightPct}%`;
+      /* 실제 시작/종료 시간에 맞춰 색칠 (04:50 종료면 05:00까지 넘치지 않도록) */
+      if (blockHeightMin > 0) {
+        const slotStartMin = blockStartSlot * MIN_PER_SLOT;
+        const startOffset = blockStartMin - slotStartMin;
+        if (startOffset > 0) {
+          blockFill.style.top = `${(startOffset / blockHeightMin) * 100}%`;
+        }
+        if (actualBlockMin < blockHeightMin) {
+          blockFill.style.height = `${(actualBlockMin / blockHeightMin) * 100}%`;
+        }
+      }
       blockFill.style.display = "flex";
       blockFill.style.flexDirection = "column";
       blockFill.style.gap = "0";
@@ -3471,8 +3507,9 @@ function build1DayTimetableOverlays(targetKey, budgetColumn) {
           c = colors[sp.prod];
         }
         if (!c) continue;
+        /* actualBlockMin 기준으로 세그먼트 비율 계산 - 블록 높이 축소 시에도 세그먼트가 블록 전체를 채우도록 */
         const segHeightPct =
-          blockHeightMin > 0 ? ((sp.endMin - sp.startMin) / blockHeightMin) * 100 : 0;
+          actualBlockMin > 0 ? ((sp.endMin - sp.startMin) / actualBlockMin) * 100 : 0;
         const seg = document.createElement("div");
         seg.className = "calendar-1day-time-slot-fill-seg";
         seg.style.flex = `0 0 ${segHeightPct}%`;
