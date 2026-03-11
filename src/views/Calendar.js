@@ -4372,7 +4372,7 @@ function render1DayView(tabsElement) {
     headerActual.title = "클릭하여 오늘/어제 실제 데이터 전환";
     const updateActualHeaderLabel = () => {
       const showYesterday = wrap.dataset.actualShowsYesterday === "true";
-      headerActual.textContent = showYesterday ? "어제 실제" : "오늘 실제";
+      headerActual.innerHTML = `${showYesterday ? "어제 실제" : "오늘 실제"} <span class="calendar-1day-actual-toggle-icon" aria-hidden="true">⇄</span>`;
     };
     updateActualHeaderLabel();
     headerActual.addEventListener("click", () => {

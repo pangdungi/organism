@@ -16831,9 +16831,22 @@ body.kpi-resizing {
   border-left: 1px solid #e5e7eb;
 }
 
+.calendar-1day-view .calendar-1day-time-header-cell--actual-toggle {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+.calendar-1day-view .calendar-1day-time-header-cell--actual-toggle .calendar-1day-actual-toggle-icon {
+  font-size: 0.7em;
+  opacity: 0.8;
+  margin-left: 0.15em;
+}
+
 .calendar-1day-view .calendar-1day-time-header-cell--actual-toggle:hover {
   background: rgba(59, 130, 246, 0.08);
   color: #2563eb;
+  text-decoration-style: solid;
 }
 
 .calendar-1day-view .calendar-1day-time-slot--actual {
