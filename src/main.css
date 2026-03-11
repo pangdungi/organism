@@ -9809,13 +9809,29 @@ body.kpi-resizing {
   align-items: center;
 }
 
-.time-task-log-datetime-input-wrap input[type="date"] {
-  flex: 1;
-  min-width: 11.5rem;
+.time-task-log-datetime-input-wrap input[type="date"],
+.time-task-log-datetime-input-wrap .time-task-log-date-start,
+.time-task-log-datetime-input-wrap .time-task-log-date-end,
+.time-task-log-datetime-input-wrap input.flatpickr-input {
+  flex: 0 0 auto !important;
+  min-width: 11rem !important;
+  width: 11rem !important;
+  max-width: none !important;
   padding: 0.5rem 0.75rem;
   font-size: 0.9rem;
   border: 1px solid #d1d5db;
   border-radius: 6px;
+  box-sizing: border-box;
+}
+.time-task-log-datetime-input-wrap input[type="date"]:focus,
+.time-task-log-datetime-input-wrap .time-task-log-date-start:focus,
+.time-task-log-datetime-input-wrap .time-task-log-date-end:focus,
+.time-task-log-datetime-input-wrap input.flatpickr-input:focus,
+.time-task-log-datetime-input-wrap input.flatpickr-input:focus-visible,
+.time-task-log-datetime-input-wrap input.flatpickr-input.active {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: #d1d5db !important;
 }
 
 .time-task-log-datetime-input-wrap input[type="text"] {
@@ -9824,6 +9840,12 @@ body.kpi-resizing {
   font-size: 0.9rem;
   border: 1px solid #d1d5db;
   border-radius: 6px;
+}
+.time-task-log-datetime-input-wrap input[type="text"]:focus,
+.time-task-log-datetime-input-wrap input[type="text"]:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: #d1d5db !important;
 }
 
 .time-task-log-datetime-input-wrap input::placeholder {
