@@ -16367,6 +16367,25 @@ body.kpi-resizing {
   outline: none;
 }
 
+.calendar-1day-budget-column .time-budget-goal-wrap {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+
+.calendar-1day-budget-column .time-budget-goal-diff {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.calendar-1day-budget-column .time-budget-goal-diff--short {
+  color: #d97706;
+}
+
+.calendar-1day-budget-column .time-budget-goal-diff--over {
+  color: #dc2626;
+}
+
 .calendar-1day-budget-column .time-btn-add {
   border: none;
   background: transparent;
