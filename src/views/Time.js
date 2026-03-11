@@ -5875,9 +5875,18 @@ export function renderTimeBudgetTablesForCalendar(
   const investBlock = document.createElement("div");
   investBlock.className =
     "time-daily-budget-table-block time-daily-budget-table-block--invest";
+  const investTableWrap = document.createElement("div");
+  investTableWrap.className = "time-daily-budget-table-scroll-wrap";
   const investTable = document.createElement("table");
   investTable.className = "time-daily-budget-table";
   investTable.innerHTML = `
+    <colgroup>
+      <col class="time-budget-col-task">
+      <col class="time-budget-col-goal">
+      <col class="time-budget-col-start">
+      <col class="time-budget-col-end">
+      <col class="time-budget-col-delete">
+    </colgroup>
     <thead>
       <tr>
         <th>과제명</th>
@@ -5904,7 +5913,8 @@ export function renderTimeBudgetTablesForCalendar(
     );
   });
   investTbody.appendChild(investAddRow);
-  investBlock.appendChild(investTable);
+  investTableWrap.appendChild(investTable);
+  investBlock.appendChild(investTableWrap);
   updateGoalDiffDisplays(investBlock);
 
   const consumeAddRow = document.createElement("tr");
@@ -5914,9 +5924,18 @@ export function renderTimeBudgetTablesForCalendar(
   const consumeBlock = document.createElement("div");
   consumeBlock.className =
     "time-daily-budget-table-block time-daily-budget-table-block--consume";
+  const consumeTableWrap = document.createElement("div");
+  consumeTableWrap.className = "time-daily-budget-table-scroll-wrap";
   const consumeTable = document.createElement("table");
   consumeTable.className = "time-daily-budget-table";
   consumeTable.innerHTML = `
+    <colgroup>
+      <col class="time-budget-col-task">
+      <col class="time-budget-col-goal">
+      <col class="time-budget-col-start">
+      <col class="time-budget-col-end">
+      <col class="time-budget-col-delete">
+    </colgroup>
     <thead>
       <tr>
         <th>과제명</th>
@@ -5939,7 +5958,8 @@ export function renderTimeBudgetTablesForCalendar(
     );
   });
   consumeTbody.appendChild(consumeAddRow);
-  consumeBlock.appendChild(consumeTable);
+  consumeTableWrap.appendChild(consumeTable);
+  consumeBlock.appendChild(consumeTableWrap);
   updateGoalDiffDisplays(consumeBlock);
 
   const tabsBar = document.createElement("div");
