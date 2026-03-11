@@ -7791,6 +7791,60 @@ body {
   border-color: #374151;
 }
 
+/* 앱 알림 토스트 - 화이트 계열 */
+.app-toast-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.app-toast-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.app-toast-panel {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  padding: 1.5rem;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.app-toast-message {
+  margin: 0 0 1.25rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #374151;
+}
+
+.app-toast-btn {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #fff;
+  background: #1f2937;
+  border: 1px solid #1f2937;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.app-toast-btn:hover {
+  background: #374151;
+  border-color: #374151;
+}
+
 .kpi-dream-declare-wrap {
   font-family: var(
     --app-font-family,

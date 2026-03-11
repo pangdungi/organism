@@ -11,6 +11,7 @@ import { getKpisByCategory } from "../utils/kpiViewModal.js";
 import { formatDeadlineRangeForDisplay } from "../utils/ganttModal.js";
 import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes } from "../utils/timeKpiSync.js";
 import { renderTimeBudgetTablesForCalendar, getBudgetGoals, getTaskOptionByName, loadTimeRows } from "./Time.js";
+import { showToast } from "../utils/showToast.js";
 
 const CUSTOM_SECTION_TASKS_KEY = "todo-custom-section-tasks";
 const SECTION_TASKS_KEY = "todo-section-tasks";
@@ -2794,12 +2795,19 @@ function render1DayView(tabsElement) {
       }
 
       const startInput = createHhMmInput();
-      startInput.value = (t.startTime || "").trim();
+      const initialStart = (t.startTime || "").trim();
+      const initialEnd = (t.endTime || "").trim();
+      startInput.value = initialStart;
       const endInput = createHhMmInput();
-      endInput.value = (t.endTime || "").trim();
+      endInput.value = initialStart && initialEnd && hhMmToMinutes(initialEnd) > hhMmToMinutes(initialStart) ? initialEnd : "";
       const saveScheduled = () => {
-        const start = startInput.value.trim();
-        const end = endInput.value.trim();
+        let start = startInput.value.trim();
+        let end = endInput.value.trim();
+        if (start && end && hhMmToMinutes(end) <= hhMmToMinutes(start)) {
+          endInput.value = "";
+          end = "";
+          showToast("마감 시간은 시작 시간보다 뒤여야 합니다.");
+        }
         const prevStart = (t.startTime || "").trim();
         const prevEnd = (t.endTime || "").trim();
         /* 값 변경 없으면 renderCalendar 호출 안 함 → 투자/소비 내역 행 사라짐 방지 */

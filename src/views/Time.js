@@ -20,6 +20,7 @@ import {
   getKpiSyncedTaskNames,
   syncHabitTrackerLogs,
 } from "../utils/timeKpiSync.js";
+import { showToast } from "../utils/showToast.js";
 
 const PRODUCTIVITY_OPTIONS = [
   { value: "productive", label: "생산적", color: "prod-pink" },
@@ -5640,6 +5641,10 @@ export function renderTimeBudgetTablesForCalendar(
     if (single) return { start: single[1], end: "" };
     return { start: "", end: "" };
   }
+  function isValidStartEnd(start, end) {
+    if (!start || !end) return true;
+    return parseTimeToHours(end) > parseTimeToHours(start);
+  }
 
   /** scheduled "start-end" 배열을 합산 시간(시간 단위)으로 변환 */
   function sumScheduledHours(times) {
@@ -5705,6 +5710,7 @@ export function renderTimeBudgetTablesForCalendar(
       if (!name || isBudgetPlaceholder(name)) return;
       const start = (row.dataset.scheduledStart || "").trim();
       const end = (row.dataset.scheduledEnd || "").trim();
+      if (start && end && !isValidStartEnd(start, end)) return;
       const st = start && end ? `${start}-${end}` : start || end || "";
       if (st) {
         if (!byTask[name]) byTask[name] = [];
@@ -5764,7 +5770,7 @@ export function renderTimeBudgetTablesForCalendar(
     const startInput = createBudgetTimeRangeInput("hh:mm");
     const endInput = createBudgetTimeRangeInput("hh:mm");
     if (initialStart) startInput.value = initialStart;
-    if (initialEnd) endInput.value = initialEnd;
+    if (initialEnd && isValidStartEnd(initialStart, initialEnd)) endInput.value = initialEnd;
 
     function updateRowDataset() {
       const name = (taskDropdown.getValue() || "").trim();
@@ -5796,8 +5802,13 @@ export function renderTimeBudgetTablesForCalendar(
         previousKey = name;
         saveBudgetGoal(targetDateStr, name, goalInput.value, isInvest);
         updateRowDataset();
-        const start = startInput.value.trim();
-        const end = endInput.value.trim();
+        let start = startInput.value.trim();
+        let end = endInput.value.trim();
+        if (start && end && !isValidStartEnd(start, end)) {
+          endInput.value = "";
+          end = "";
+          showToast("마감 시간은 시작 시간보다 뒤여야 합니다.");
+        }
         const scheduledTime =
           start && end ? `${start}-${end}` : start || end || "";
         if (tbody && addRow) {
@@ -5844,7 +5855,12 @@ export function renderTimeBudgetTablesForCalendar(
         if (block) updateGoalDiffDisplays(block);
       } else {
         const start = startInput.value.trim();
-        const end = endInput.value.trim();
+        let end = endInput.value.trim();
+        if (start && end && !isValidStartEnd(start, end)) {
+          endInput.value = "";
+          end = "";
+          showToast("마감 시간은 시작 시간보다 뒤여야 합니다.");
+        }
         const scheduledTime = start && end ? `${start}-${end}` : start || end || "";
         if (scheduledTime) {
           if (saveBudgetScheduledTimes(targetDateStr, name, [scheduledTime], isInvest) && typeof onOverlapCleared === "function") {
