@@ -1908,7 +1908,6 @@ export function render() {
     <button type="button" class="time-view-tab active" data-view="all">시간 기록</button>
     <button type="button" class="time-view-tab" data-view="productivity">생산성별</button>
     <button type="button" class="time-view-tab" data-view="dashboard">대시보드</button>
-    <button type="button" class="time-view-tab" data-view="newtab">일간시간예산</button>
   `;
 
   const now = new Date();
@@ -1956,10 +1955,6 @@ export function render() {
       <span>~</span>
       <input type="date" class="time-filter-end-date" />
     </div>
-    <div class="time-filter-budget-date-wrap" data-filter-for="newtab" style="display:none">
-      <label class="time-filter-budget-date-label">날짜</label>
-      <input type="date" class="time-filter-budget-date" />
-    </div>
   `;
 
   const startDateInput = filterBar.querySelector(".time-filter-start-date");
@@ -1972,9 +1967,6 @@ export function render() {
   const dayNextBtn = filterBar.querySelector(".time-filter-day-next");
   const filterTabs = filterBar.querySelector(".time-filter-tabs");
   const taskSetupBtn = filterBar.querySelector(".time-task-setup-btn");
-  const budgetDateWrap = filterBar.querySelector("[data-filter-for='newtab']");
-  const budgetDateInput = filterBar.querySelector(".time-filter-budget-date");
-  budgetDateInput.value = filterStartDate;
 
   const monthTrigger = filterBar.querySelector("#time-month-trigger");
   const monthPanel = filterBar.querySelector("#time-month-panel");
@@ -5538,19 +5530,10 @@ export function render() {
       dayWrap.style.display = "none";
       monthWrap.style.display = "none";
       rangeWrap.style.display = "none";
-      budgetDateWrap.style.display = "none";
-    } else if (view === "newtab") {
-      filterTabs.style.display = "none";
-      if (taskSetupBtn) taskSetupBtn.style.display = "none";
-      dayWrap.style.display = "none";
-      monthWrap.style.display = "none";
-      rangeWrap.style.display = "none";
-      budgetDateWrap.style.display = "";
     } else {
       filterTabs.style.display = "";
       if (taskSetupBtn)
         taskSetupBtn.style.display = view === "all" ? "" : "none";
-      budgetDateWrap.style.display = "none";
       dayWrap.style.display = filterType === "day" ? "" : "none";
       monthWrap.style.display = filterType === "month" ? "" : "none";
       rangeWrap.style.display = filterType === "range" ? "" : "none";
@@ -5574,7 +5557,7 @@ export function render() {
       cachedRows = getFullRowsForFilter(true);
     }
     const rowsToUse =
-      view === "dashboard" || view === "newtab" || view === "blank"
+      view === "dashboard" || view === "blank"
         ? cachedRows
         : getFilteredRows(cachedRows);
     viewTabs.querySelectorAll(".time-view-tab").forEach((btn) => {
@@ -5589,34 +5572,13 @@ export function render() {
       renderByProductivity(rowsToUse);
     } else if (view === "dashboard") {
       renderDashboard(cachedRows);
-    } else if (view === "newtab") {
-      renderDailyTimeBudget(
-        contentWrap,
-        rowsToUse,
-        el,
-        budgetDateInput.value || toDateStr(new Date()),
-      );
     }
     totalFooter.style.display =
-      view === "dashboard" || view === "newtab" || view === "blank"
+      view === "dashboard" || view === "blank"
         ? "none"
         : "";
     updateTotal();
   }
-
-  budgetDateInput.addEventListener("change", () => {
-    if (
-      viewTabs.querySelector(".time-view-tab.active")?.dataset?.view ===
-      "newtab"
-    ) {
-      renderDailyTimeBudget(
-        contentWrap,
-        cachedRows,
-        el,
-        budgetDateInput.value || toDateStr(new Date()),
-      );
-    }
-  });
 
   viewTabs.querySelectorAll(".time-view-tab").forEach((btn) => {
     btn.addEventListener("click", () => switchView(btn.dataset.view));
