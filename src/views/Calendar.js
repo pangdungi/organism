@@ -2260,6 +2260,174 @@ function render3WeekView(tabsElement) {
   return wrap;
 }
 
+/** 1일 뷰 시간표(예상/실제) 오버레이만 생성 - budget 테이블 재구성 없이 시간표만 갱신용 */
+function build1DayTimetableOverlays(targetKey) {
+  const budgetGoals = getBudgetGoals(targetKey);
+  const allTimeRows = loadTimeRows();
+  const tasks = getAllTasksForDateDisplay(targetKey);
+  const parseDateFromTimeStr = (str) => {
+    if (!str || typeof str !== "string") return "";
+    const m = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    return m ? `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}` : "";
+  };
+  const normDate = (s) => (s || "").replace(/\//g, "-").trim().slice(0, 10);
+  const actualRows = allTimeRows.filter(
+    (r) => normDate(r.date || parseDateFromTimeStr(r.startTime)) === targetKey,
+  );
+  const parseHhMmToMinutes = (s) => {
+    if (!s || !s.trim()) return null;
+    const m = String(s).trim().match(/^(\d{1,2}):?(\d{0,2})$/);
+    if (!m) return null;
+    return (parseInt(m[1], 10) || 0) * 60 + (parseInt(m[2], 10) || 0);
+  };
+  const parseDateTimeToMinutes = (str) => {
+    if (!str || typeof str !== "string") return null;
+    const m = str.match(/[T\s](\d{1,2}):?(\d{2})?/);
+    if (!m) return null;
+    return (parseInt(m[1], 10) || 0) * 60 + (parseInt(m[2], 10) || 0);
+  };
+  const tryOverlap = (slotStartMin, slotEndMin, startMin, endMin, prod, taskName) => {
+    if (startMin == null || endMin == null) return null;
+    const overlapStart = Math.max(slotStartMin, startMin);
+    const overlapEnd = Math.min(slotEndMin, endMin);
+    if (overlapStart < overlapEnd) {
+      return { prod, taskName: taskName || "", overlapStartMin: overlapStart, overlapEndMin: overlapEnd };
+    }
+    return null;
+  };
+  const SLOTS_PER_DAY = 48;
+  const MIN_PER_SLOT = 30;
+  const getSlotExpected = (slotIndex) => {
+    const slotStartMin = slotIndex * MIN_PER_SLOT;
+    const slotEndMin = (slotIndex + 1) * MIN_PER_SLOT;
+    for (const [taskName, data] of Object.entries(budgetGoals)) {
+      const st = data?.scheduledTime || "";
+      if (!st.trim()) continue;
+      const parts = st.trim().split("-");
+      const startMin = parseHhMmToMinutes(parts[0]);
+      const endMin = parts[1] ? parseHhMmToMinutes(parts[1]) : null;
+      if (startMin == null) continue;
+      const end = endMin != null ? endMin : startMin + 60;
+      const opt = getTaskOptionByName(taskName);
+      const prod = opt?.productivity || "other";
+      const res = tryOverlap(slotStartMin, slotEndMin, startMin, end, prod, taskName);
+      if (res) return res;
+    }
+    for (const t of tasks) {
+      const st = (t.startTime || "").trim();
+      const et = (t.endTime || "").trim();
+      if (!st || !et) continue;
+      const startMin = parseHhMmToMinutes(st);
+      const endMin = et ? parseHhMmToMinutes(et) : startMin + 30;
+      if (startMin == null) continue;
+      const end = endMin != null ? endMin : startMin + 30;
+      const prod = getTaskOptionByName(t.name)?.productivity || "other";
+      const res = tryOverlap(slotStartMin, slotEndMin, startMin, end, prod, t.name);
+      if (res) return { ...res, _task: t, _taskKey: t.kpiTodoId || t.taskId || t.name };
+    }
+    return null;
+  };
+  const getSlotActual = (slotIndex) => {
+    const slotStartMin = slotIndex * MIN_PER_SLOT;
+    const slotEndMin = (slotIndex + 1) * MIN_PER_SLOT;
+    for (const r of actualRows) {
+      const startMin = parseDateTimeToMinutes(r.startTime);
+      let endMin = parseDateTimeToMinutes(r.endTime);
+      if (startMin != null && endMin == null) endMin = startMin + 60;
+      const prod = r.productivity || getTaskOptionByName(r.taskName)?.productivity || "other";
+      const res = tryOverlap(slotStartMin, slotEndMin, startMin, endMin, prod, r.taskName);
+      if (res) return res;
+    }
+    return null;
+  };
+  const prodColorsActual = {
+    productive: { bg: "rgba(239, 68, 68, 0.28)", border: "rgb(239, 68, 68)" },
+    nonproductive: { bg: "rgba(59, 130, 246, 0.28)", border: "rgb(59, 130, 246)" },
+    other: { bg: "rgba(34, 197, 94, 0.28)", border: "rgb(34, 197, 94)" },
+  };
+  const prodColorsExpected = {
+    productive: { bg: "rgba(239, 68, 68, 0.06)", border: "rgba(239, 68, 68, 0.5)" },
+    nonproductive: { bg: "rgba(59, 130, 246, 0.06)", border: "rgba(59, 130, 246, 0.5)" },
+    other: { bg: "rgba(34, 197, 94, 0.06)", border: "rgba(34, 197, 94, 0.5)" },
+  };
+  const buildSpans = (getSlot) => {
+    const slotInfos = [];
+    for (let i = 0; i < SLOTS_PER_DAY; i++) slotInfos.push(getSlot(i));
+    const spans = [];
+    for (let i = 0; i < SLOTS_PER_DAY; ) {
+      const cur = slotInfos[i];
+      if (!cur || !cur.taskName) { i++; continue; }
+      let endSlot = i;
+      const startMin = cur.overlapStartMin ?? i * MIN_PER_SLOT;
+      const key = cur._taskKey || cur.taskName;
+      while (endSlot + 1 < SLOTS_PER_DAY) {
+        const next = slotInfos[endSlot + 1];
+        const nextKey = next?._taskKey || next?.taskName;
+        if (!next || !next.taskName || nextKey !== key) break;
+        endSlot++;
+      }
+      const last = slotInfos[endSlot];
+      const endMin = last?.overlapEndMin ?? (endSlot + 1) * MIN_PER_SLOT;
+      const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+      spans.push({
+        startSlot: i, endSlot, startMin, endMin, taskName: cur.taskName, prod: cur.prod,
+        sectionId: cur._task?.sectionId, startDisplay: fmt(startMin), endDisplay: fmt(endMin), _task: cur._task,
+      });
+      i = endSlot + 1;
+    }
+    return spans;
+  };
+  const expectedSpans = buildSpans(getSlotExpected);
+  const actualSpans = buildSpans(getSlotActual);
+  const SECTION_IDS_FOR_LIST_COLOR = ["braindump", "dream", "sideincome", "health", "happy"];
+  const createOverlay = (spans, colors, isActual) => {
+    const overlay = document.createElement("div");
+    overlay.className = `calendar-1day-time-fill-overlay calendar-1day-time-fill-overlay--${isActual ? "actual" : "expected"}`;
+    for (const sp of spans) {
+      const fill = document.createElement("div");
+      fill.className = "calendar-1day-time-slot-fill calendar-1day-time-slot-fill--span";
+      let c;
+      if (!isActual && sp.sectionId && (SECTION_IDS_FOR_LIST_COLOR.includes(sp.sectionId) || (sp.sectionId || "").startsWith("custom-"))) {
+        const baseColor = getSectionColor(sp.sectionId);
+        c = { bg: withMoreTransparency(baseColor, 0.06), border: withMoreTransparency(baseColor, 0.5) };
+      } else {
+        c = colors[sp.prod];
+      }
+      if (!c) continue;
+      fill.style.gridRow = `${sp.startSlot + 2} / ${sp.endSlot + 3}`;
+      const startMinVal = sp.startMin ?? sp.startSlot * MIN_PER_SLOT;
+      const endMinVal = sp.endMin ?? (sp.endSlot + 1) * MIN_PER_SLOT;
+      const durationMin = endMinVal - startMinVal;
+      const rowSpan = sp.endSlot - sp.startSlot + 1;
+      const rowHeightMin = rowSpan * MIN_PER_SLOT;
+      if (rowHeightMin > 0) {
+        const startOffset = startMinVal - sp.startSlot * MIN_PER_SLOT;
+        if (startOffset > 0) {
+          fill.style.position = "relative";
+          fill.style.top = `${(startOffset / rowHeightMin) * 100}%`;
+        }
+        if (durationMin < rowHeightMin) {
+          fill.style.height = `${(durationMin / rowHeightMin) * 100}%`;
+        }
+      }
+      fill.style.backgroundColor = c.bg;
+      fill.style.boxSizing = "border-box";
+      fill.style.borderRadius = "2px";
+      fill.style.border = `1px dotted ${c.border}`;
+      const label = document.createElement("span");
+      label.className = "calendar-1day-time-slot-label";
+      label.textContent = `${sp.taskName} ${sp.startDisplay}~${sp.endDisplay}`;
+      fill.appendChild(label);
+      overlay.appendChild(fill);
+    }
+    return overlay;
+  };
+  return {
+    expected: createOverlay(expectedSpans, prodColorsExpected, false),
+    actual: createOverlay(actualSpans, prodColorsActual, true),
+  };
+}
+
 function render1DayView(tabsElement) {
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout calendar-1day-view";
@@ -2641,8 +2809,12 @@ function render1DayView(tabsElement) {
         if (ok) {
           t.startTime = start;
           t.endTime = end;
-          renderCalendar();
-          refreshTodoList();
+          /* 포커스가 budget 영역(투자/소비 내역)으로 이동했으면 재렌더 방지 → 입력 중 행 사라짐 방지 */
+          requestAnimationFrame(() => {
+            if (budgetColumn.contains(document.activeElement)) return;
+            renderCalendar();
+            refreshTodoList();
+          });
         }
       };
       startInput.addEventListener("blur", saveScheduled);
@@ -2691,7 +2863,20 @@ function render1DayView(tabsElement) {
       taskStats[sid] = { done, total, label: SECTION_LABELS[sid] || sid };
     });
 
-    renderTimeBudgetTablesForCalendar(budgetColumn, targetKey, todoSection);
+    const onScheduledUpdate = (dateStr) => {
+      requestAnimationFrame(() => {
+        const inner = wrap.querySelector(".calendar-1day-time-table-inner");
+        if (!inner || !dateStr) return;
+        const { expected, actual } = build1DayTimetableOverlays(dateStr);
+        const oldExp = inner.querySelector(".calendar-1day-time-fill-overlay--expected");
+        const oldAct = inner.querySelector(".calendar-1day-time-fill-overlay--actual");
+        if (oldExp) oldExp.replaceWith(expected);
+        else inner.appendChild(expected);
+        if (oldAct) oldAct.replaceWith(actual);
+        else inner.appendChild(actual);
+      });
+    };
+    renderTimeBudgetTablesForCalendar(budgetColumn, targetKey, todoSection, onScheduledUpdate);
     calendarGrid.appendChild(budgetColumn);
     refreshKpiSidebar(taskStats);
     calendarGrid.appendChild(timeColumn);
@@ -2933,6 +3118,7 @@ function render1DayView(tabsElement) {
     timeTableInner.appendChild(fillOverlayActual);
     timeTableWrap.appendChild(timeTableInner);
     timeColumn.appendChild(timeTableWrap);
+    wrap.dataset.dateStr = targetKey;
   }
 
   nav.querySelector(".calendar-nav-today").addEventListener("click", () => {
@@ -2980,8 +3166,21 @@ function render1DayView(tabsElement) {
     document.querySelectorAll(".calendar-1day-drag-drop-line").forEach((el) => el.remove());
   });
 
-  document.addEventListener("calendar-budget-scheduled-updated", function onBudgetScheduledUpdated() {
-    if (document.contains(wrap)) renderCalendar();
+  document.addEventListener("calendar-budget-scheduled-updated", function onBudgetScheduledUpdated(e) {
+    if (!document.contains(wrap)) return;
+    const dateStr = e?.detail?.dateStr || wrap.dataset?.dateStr;
+    const timeTableInner = wrap.querySelector(".calendar-1day-time-table-inner");
+    if (timeTableInner && dateStr) {
+      const { expected, actual } = build1DayTimetableOverlays(dateStr);
+      const oldExpected = timeTableInner.querySelector(".calendar-1day-time-fill-overlay--expected");
+      const oldActual = timeTableInner.querySelector(".calendar-1day-time-fill-overlay--actual");
+      if (oldExpected) oldExpected.replaceWith(expected);
+      else timeTableInner.appendChild(expected);
+      if (oldActual) oldActual.replaceWith(actual);
+      else timeTableInner.appendChild(actual);
+    } else if (!timeTableInner || !dateStr) {
+      renderCalendar();
+    }
   });
 
   renderCalendar();

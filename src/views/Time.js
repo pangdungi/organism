@@ -273,7 +273,9 @@ export function getBudgetGoals(dateStr) {
     const raw = localStorage.getItem(BUDGET_GOALS_KEY);
     if (raw) {
       const all = JSON.parse(raw);
-      return all[dateStr] || {};
+      const result = all[dateStr] || {};
+      if (typeof result !== "object" || result === null || Array.isArray(result)) return {};
+      return result;
     }
   } catch (_) {}
   return {};
@@ -360,7 +362,8 @@ function saveBudgetScheduledTime(dateStr, taskName, scheduledTime, isInvest) {
     removeFromBudgetExcluded(dateStr, taskName);
     const raw = localStorage.getItem(BUDGET_GOALS_KEY);
     const all = raw ? JSON.parse(raw) : {};
-    if (!all[dateStr]) all[dateStr] = {};
+    const dateData = all[dateStr];
+    if (!dateData || typeof dateData !== "object" || Array.isArray(dateData)) all[dateStr] = {};
     const key = String(taskName).trim();
     const existing = all[dateStr][key] || {};
     if (scheduledTime && scheduledTime.trim()) {
@@ -5414,6 +5417,7 @@ export function renderTimeBudgetTablesForCalendar(
   container,
   dateStr,
   todoSectionEl,
+  onScheduledUpdate,
 ) {
   const rows = loadTimeRows();
   const targetDateStr = dateStr || toDateStr(new Date());
@@ -5540,6 +5544,8 @@ export function renderTimeBudgetTablesForCalendar(
     if (initialEnd) endInput.value = initialEnd;
 
     let previousKey = (taskName || "").trim();
+    let lastSavedScheduledTime =
+      initialStart && initialEnd ? `${initialStart}-${initialEnd}` : (initialStart || initialEnd || "");
     function saveCurrentGoal(skipReRender, shouldDispatchForTimetable = false) {
       const name = (taskDropdown.getValue() || "").trim();
       if (name) {
@@ -5553,13 +5559,19 @@ export function renderTimeBudgetTablesForCalendar(
         const scheduledTime =
           start && end ? `${start}-${end}` : start || end || "";
         saveBudgetScheduledTime(targetDateStr, name, scheduledTime, isInvest);
-        /* 예상 시간 변경 시에만 이벤트 전달 (과제 선택만 할 때는 전체 재렌더 방지 → 행 사라짐 방지) */
-        if (shouldDispatchForTimetable) {
-          document.dispatchEvent(
-            new CustomEvent("calendar-budget-scheduled-updated", {
-              detail: { dateStr: targetDateStr },
-            }),
-          );
+        const scheduledChanged = scheduledTime !== lastSavedScheduledTime;
+        lastSavedScheduledTime = scheduledTime;
+        /* 예상 시간 변경 시 timetable 오버레이 직접 갱신 (콜백으로 확실히 전달) */
+        if (shouldDispatchForTimetable && (scheduledChanged || (start && end))) {
+          if (typeof onScheduledUpdate === "function") {
+            onScheduledUpdate(targetDateStr);
+          } else {
+            document.dispatchEvent(
+              new CustomEvent("calendar-budget-scheduled-updated", {
+                detail: { dateStr: targetDateStr },
+              }),
+            );
+          }
         }
         if (skipReRender && typeof updateRemaining === "function") {
           updateRemaining();
@@ -5570,6 +5582,19 @@ export function renderTimeBudgetTablesForCalendar(
     goalInput.addEventListener("blur", () => saveCurrentGoal(true, false));
     startInput.addEventListener("blur", () => saveCurrentGoal(true, true));
     endInput.addEventListener("blur", () => saveCurrentGoal(true, true));
+    const scheduleTimetableUpdate = () => {
+      const name = (taskDropdown.getValue() || "").trim();
+      if (!name) return;
+      const start = startInput.value.trim();
+      const end = endInput.value.trim();
+      const scheduledTime = start && end ? `${start}-${end}` : start || end || "";
+      if (scheduledTime) {
+        saveBudgetScheduledTime(targetDateStr, name, scheduledTime, isInvest);
+        if (typeof onScheduledUpdate === "function") onScheduledUpdate(targetDateStr);
+      }
+    };
+    startInput.addEventListener("input", scheduleTimetableUpdate);
+    endInput.addEventListener("input", scheduleTimetableUpdate);
 
     const taskDropdown = createTagDropdown(
       taskDropdownOptions,
@@ -5602,11 +5627,15 @@ export function renderTimeBudgetTablesForCalendar(
       const name = (taskDropdown.getValue() || "").trim();
       if (name) deleteBudgetGoalEntry(targetDateStr, name);
       tr.remove();
-      document.dispatchEvent(
-        new CustomEvent("calendar-budget-scheduled-updated", {
-          detail: { dateStr: targetDateStr },
-        }),
-      );
+      if (typeof onScheduledUpdate === "function") {
+        onScheduledUpdate(targetDateStr);
+      } else {
+        document.dispatchEvent(
+          new CustomEvent("calendar-budget-scheduled-updated", {
+            detail: { dateStr: targetDateStr },
+          }),
+        );
+      }
     });
     deleteTd.appendChild(deleteBtn);
     tr.appendChild(deleteTd);

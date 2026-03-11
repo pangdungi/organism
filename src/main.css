@@ -9811,7 +9811,7 @@ body.kpi-resizing {
 
 .time-task-log-datetime-input-wrap input[type="date"] {
   flex: 1;
-  min-width: 0;
+  min-width: 11.5rem;
   padding: 0.5rem 0.75rem;
   font-size: 0.9rem;
   border: 1px solid #d1d5db;
