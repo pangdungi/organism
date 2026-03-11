@@ -16164,12 +16164,11 @@ body.kpi-resizing {
   border-right: 1px solid #e5e7eb;
 }
 
-/* 투자/소비내역 - 오늘의 할일과 동일한 flex 구조로 너비 확보 */
+/* 투자/소비내역 - 남은 공간 절반 차지, 내부 스크롤 */
 .calendar-1day-budget-column .calendar-1day-budget-tables-scroll {
-  flex: 0 1 auto;
+  flex: 1 1 0;
   min-height: 0;
   min-width: 100%;
-  max-height: 45%;
   display: flex;
   flex-direction: column;
   overflow-x: auto;
@@ -16192,11 +16191,10 @@ body.kpi-resizing {
   display: none;
 }
 
-/* 오늘의 할일 - 콘텐츠 높이만 차지(최대 55%), 세로 스크롤, 스크롤바 숨김 */
+/* 오늘의 할일 - 남은 공간 절반 차지, 내부 스크롤 (항상 화면에 보임) */
 .calendar-1day-budget-column .calendar-1day-todo-section {
-  flex: 0 1 auto;
+  flex: 1 1 0;
   min-height: 0;
-  max-height: 55%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
