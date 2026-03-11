@@ -16831,6 +16831,11 @@ body.kpi-resizing {
   border-left: 1px solid #e5e7eb;
 }
 
+.calendar-1day-view .calendar-1day-time-header-cell--actual-toggle:hover {
+  background: rgba(59, 130, 246, 0.08);
+  color: #2563eb;
+}
+
 .calendar-1day-view .calendar-1day-time-slot--actual {
   border-left: 1px solid #e5e7eb;
 }

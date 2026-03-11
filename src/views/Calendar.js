@@ -3046,8 +3046,18 @@ function collectLiveScheduledFromBudgetColumn(budgetColumn) {
   return byTask;
 }
 
+/** dateStr(YYYY-MM-DD) 기준 전날 키 반환 */
+function getYesterdayKey(dateStr) {
+  if (!dateStr || typeof dateStr !== "string") return "";
+  const parts = dateStr.trim().split(/[\/\-]/).map(Number);
+  if (parts.length < 3) return "";
+  const dt = new Date(parts[0], parts[1] - 1, parts[2]);
+  dt.setDate(dt.getDate() - 1);
+  return formatDateKey(dt);
+}
+
 /** 1일 뷰 시간표(예상/실제) 오버레이만 생성 - budget 테이블 재구성 없이 시간표만 갱신용 */
-function build1DayTimetableOverlays(targetKey, budgetColumn) {
+function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   const storedGoals = getBudgetGoals(targetKey);
   const liveFromDom = collectLiveScheduledFromBudgetColumn(budgetColumn);
   const budgetGoals = { ...storedGoals };
@@ -3073,12 +3083,14 @@ function build1DayTimetableOverlays(targetKey, budgetColumn) {
       : "";
   };
   const normDate = (s) => (s || "").replace(/\//g, "-").trim().slice(0, 10);
+  const actualFilterKey = actualDateKey || targetKey;
   const actualRows = allTimeRows.filter(
-    (r) => normDate(r.date || parseDateFromTimeStr(r.startTime)) === targetKey,
+    (r) => normDate(r.date || parseDateFromTimeStr(r.startTime)) === actualFilterKey,
   );
   if (TT_SYNC_DEBUG) {
     console.log("[시간가계부→캘린더] build1DayTimetableOverlays actualRows", {
       targetKey,
+      actualFilterKey,
       totalFromStorage: allTimeRows.length,
       filteredForDate: actualRows.length,
       rows: actualRows.map((r) => ({ task: r.taskName, start: r.startTime, end: r.endTime })),
@@ -4107,7 +4119,8 @@ function render1DayView(tabsElement) {
           return;
         }
         if (TT_SYNC_DEBUG) console.log("[TT-SYNC] building overlays from live DOM");
-        const { expected, actual } = build1DayTimetableOverlays(dateStr, budgetCol);
+        const actualDateKey = wrap.dataset.actualShowsYesterday === "true" ? getYesterdayKey(dateStr) : undefined;
+        const { expected, actual } = build1DayTimetableOverlays(dateStr, budgetCol, actualDateKey);
         const oldExp = inner.querySelector(
           ".calendar-1day-time-fill-overlay--expected",
         );
@@ -4354,8 +4367,20 @@ function render1DayView(tabsElement) {
     headerExpected.className = "calendar-1day-time-header-cell";
     headerExpected.textContent = "예상";
     const headerActual = document.createElement("div");
-    headerActual.className = "calendar-1day-time-header-cell";
-    headerActual.textContent = "실제";
+    headerActual.className = "calendar-1day-time-header-cell calendar-1day-time-header-cell--actual-toggle";
+    headerActual.style.cursor = "pointer";
+    headerActual.title = "클릭하여 오늘/어제 실제 데이터 전환";
+    const updateActualHeaderLabel = () => {
+      const showYesterday = wrap.dataset.actualShowsYesterday === "true";
+      headerActual.textContent = showYesterday ? "어제 실제" : "오늘 실제";
+    };
+    updateActualHeaderLabel();
+    headerActual.addEventListener("click", () => {
+      const cur = wrap.dataset.actualShowsYesterday === "true";
+      wrap.dataset.actualShowsYesterday = cur ? "false" : "true";
+      updateActualHeaderLabel();
+      refreshTimetableOverlays({ detail: { dateStr: targetKey } });
+    });
     headerRow.appendChild(headerLabel);
     headerRow.appendChild(headerExpected);
     headerRow.appendChild(headerActual);
@@ -4386,8 +4411,9 @@ function render1DayView(tabsElement) {
       slotActual.style.gridRow = `${i + 2}`;
       timeTable.appendChild(slotActual);
     }
+    const actualDateKeyForInit = wrap.dataset.actualShowsYesterday === "true" ? getYesterdayKey(targetKey) : undefined;
     const { expected: fillOverlayExpected, actual: fillOverlayActual } =
-      build1DayTimetableOverlays(targetKey, budgetColumn);
+      build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKeyForInit);
     const timeTableWrap = document.createElement("div");
     timeTableWrap.className = "calendar-1day-time-table-wrap";
     const timeTableInner = document.createElement("div");
@@ -4453,7 +4479,8 @@ function render1DayView(tabsElement) {
     if (!wrapInDoc) return;
     if (timeTableInner && dateStr) {
       const budgetCol = wrap.querySelector(".calendar-1day-budget-column");
-      const { expected, actual } = build1DayTimetableOverlays(dateStr, budgetCol);
+      const actualDateKey = wrap.dataset.actualShowsYesterday === "true" ? getYesterdayKey(dateStr) : undefined;
+      const { expected, actual } = build1DayTimetableOverlays(dateStr, budgetCol, actualDateKey);
       const oldExpected = timeTableInner.querySelector(
         ".calendar-1day-time-fill-overlay--expected",
       );
