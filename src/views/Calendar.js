@@ -3153,25 +3153,6 @@ function render1DayView(tabsElement) {
   calendarSection.appendChild(nav);
   calendarSection.appendChild(calendarGrid);
   contentRow.appendChild(calendarSection);
-
-  const kpiSidebar = document.createElement("aside");
-  kpiSidebar.className = "calendar-todo-sidebar calendar-kpi-sidebar";
-  let sidebarCollapsed = false;
-  kpiSidebar.innerHTML = `
-    <div class="calendar-todo-sidebar-header">
-      <span class="calendar-todo-sidebar-title">오늘</span>
-      <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
-        <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
-      </button>
-    </div>
-    <div class="calendar-kpi-sidebar-body"></div>
-  `;
-  kpiSidebar.querySelector(".calendar-todo-sidebar-collapse").addEventListener("click", () => {
-    sidebarCollapsed = !sidebarCollapsed;
-    kpiSidebar.classList.toggle("collapsed", sidebarCollapsed);
-    kpiSidebar.querySelector(".calendar-todo-sidebar-collapse").title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
-  });
-  contentRow.appendChild(kpiSidebar);
   wrap.appendChild(contentRow);
 
   wrap.addEventListener("dragend", () => {
