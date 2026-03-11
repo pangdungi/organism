@@ -17430,6 +17430,16 @@ body.kpi-resizing {
 /* 아이젠하워 뷰에서만 사이드바 기본 너비 (리사이즈 시 인라인으로 덮어씀) */
 .calendar-view-eisenhower .calendar-todo-sidebar {
   width: 420px;
+  border-left-color: transparent;
+}
+
+/* 아이젠하워 뷰: 리사이즈 핸들 선 숨김 */
+.calendar-view-eisenhower .calendar-eisenhower-resize-handle::before {
+  background: transparent;
+}
+.calendar-view-eisenhower .calendar-eisenhower-resize-handle:hover::before,
+.calendar-view-eisenhower .calendar-eisenhower-resize-handle.resizing::before {
+  background: transparent;
 }
 
 .calendar-todo-sidebar.collapsed {

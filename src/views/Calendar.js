@@ -3637,7 +3637,7 @@ function renderEisenhowerView(tabsElement) {
         <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
       </button>
     </div>
-    <div class="calendar-todo-sidebar-body"></div>
+    <div class="calendar-todo-sidebar-body" title="우선순위 취소: 사분면 항목을 여기로 드래그"></div>
   `;
   const todoListEl = renderTodoListForEisenhowerSidebar({ enableDragToEisenhower: true });
   todoSidebar.querySelector(".calendar-todo-sidebar-body").appendChild(todoListEl);
@@ -3852,6 +3852,42 @@ function renderEisenhowerView(tabsElement) {
     }
   }
 
+  /** 사분면 → 할일 사이드바 드롭 시 우선순위 취소 */
+  function handleSidebarDropClearEisenhower(e) {
+    const sidebarBody = e.currentTarget;
+    sidebarBody.classList.remove("calendar-todo-sidebar-drag-over");
+    if (!e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_EISENHOWER)) return;
+    e.preventDefault();
+    const raw = e.dataTransfer.getData(DRAG_TYPE_TODO_TO_EISENHOWER);
+    if (!raw) return;
+    let payload;
+    try {
+      payload = JSON.parse(raw);
+    } catch (_) {
+      return;
+    }
+    const { taskId, sectionId, name, isKpiTodo, kpiTodoId, storageKey } = payload;
+    if (!name) return;
+    saveTodoListBeforeUnmount(wrap);
+    let ok = false;
+    if (isKpiTodo && kpiTodoId && storageKey) {
+      ok = updateKpiTodo(kpiTodoId, storageKey, { eisenhower: "" });
+    } else if ((sectionId || "").startsWith("custom-")) {
+      ok = updateCustomSectionTaskEisenhower(sectionId, taskId, "");
+    } else {
+      ok = updateSectionTaskEisenhower(sectionId, taskId, "");
+    }
+    if (ok) {
+      updateQuadrants();
+      const row = todoListEl.querySelector(`tr[data-task-id="${taskId}"]`);
+      if (row) {
+        row.dataset.eisenhower = "";
+        const displaySpan = row.querySelector(".todo-eisenhower-display");
+        if (displaySpan) displaySpan.textContent = "";
+      }
+    }
+  }
+
   eisenhowerWrap.querySelectorAll(".calendar-eisenhower-quadrant").forEach((quad) => {
     quad.addEventListener("dragover", (e) => {
       if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_EISENHOWER)) {
@@ -3883,6 +3919,23 @@ function renderEisenhowerView(tabsElement) {
       ul.addEventListener("drop", (e) => handleQuadrantDrop(quad, e));
     }
   });
+
+  const sidebarBody = todoSidebar.querySelector(".calendar-todo-sidebar-body");
+  if (sidebarBody) {
+    sidebarBody.addEventListener("dragover", (e) => {
+      if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_EISENHOWER)) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        sidebarBody.classList.add("calendar-todo-sidebar-drag-over");
+      }
+    });
+    sidebarBody.addEventListener("dragleave", (e) => {
+      if (!sidebarBody.contains(e.relatedTarget)) {
+        sidebarBody.classList.remove("calendar-todo-sidebar-drag-over");
+      }
+    });
+    sidebarBody.addEventListener("drop", handleSidebarDropClearEisenhower);
+  }
 
   updateQuadrants();
 
@@ -3923,10 +3976,10 @@ export function render() {
   const tabs = document.createElement("div");
   tabs.className = "time-view-tabs calendar-tabs";
   tabs.innerHTML = `
-    <button type="button" class="time-view-tab active" data-view="todo">할 일</button>
-    <button type="button" class="time-view-tab" data-view="eisenhower">아이젠하워</button>
-    <button type="button" class="time-view-tab" data-view="calendar">달력보기</button>
-    <button type="button" class="time-view-tab" data-view="1day">오늘</button>
+    <button type="button" class="time-view-tab active" data-view="todo">할일 쏟아내기</button>
+    <button type="button" class="time-view-tab" data-view="eisenhower">우선순위 정렬</button>
+    <button type="button" class="time-view-tab" data-view="calendar">날짜정하기</button>
+    <button type="button" class="time-view-tab" data-view="1day">오늘 해치우기</button>
   `;
   el.appendChild(tabs);
 
