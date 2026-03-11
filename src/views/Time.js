@@ -5627,6 +5627,7 @@ export function renderTimeBudgetTablesForCalendar(
     const disable = !isFirstRowForTask(taskName, currentRow, tbodyEl);
     goalInp.disabled = disable;
     goalInp.title = disable ? "이미 같은 과제의 목표 시간이 설정되어 있습니다." : "";
+    goalInp.placeholder = disable ? "" : "hh:mm";
     if (disable) {
       goalInp.value = "";
     }
