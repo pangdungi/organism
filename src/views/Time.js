@@ -1045,6 +1045,22 @@ function aggregateHoursByProductivity(rows) {
   return { productive, nonproductive };
 }
 
+/** 생산성별 시간 집계 (3분류) { productive, nonproductive, other } */
+function aggregateHoursByProductivityAllThree(rows) {
+  let productive = 0;
+  let nonproductive = 0;
+  let other = 0;
+  rows.forEach((r) => {
+    const hrs = parseTimeToHours(r.timeTracked);
+    if (hrs <= 0) return;
+    const p = r.productivity || getProductivityFromCategory(r.category);
+    if (p === "productive") productive += hrs;
+    else if (p === "nonproductive") nonproductive += hrs;
+    else other += hrs;
+  });
+  return { productive, nonproductive, other };
+}
+
 /** 일별 수익 집계 (날짜별 가치 합계) */
 function aggregateDailyRevenue(rows, period, hourlyRate) {
   const filtered = filterRowsByPeriod(rows, period);
@@ -4400,6 +4416,79 @@ export function render() {
 
   function renderByProductivity(rows = []) {
     contentWrap.innerHTML = "";
+    const type = filterType;
+    const y = filterYear;
+    const m = filterMonth;
+    const start = startDateInput.value || filterStartDate;
+    const end = endDateInput.value || filterEndDate;
+    const periodLabel = getFilterPeriodLabel(type, y, m, start, end);
+    const { productive, nonproductive, other } =
+      aggregateHoursByProductivityAllThree(rows);
+    const totalAll = productive + nonproductive + other || 1;
+    const totalProdNonProd = productive + nonproductive || 1;
+    const prodPctAll = totalAll > 0 ? (productive / totalAll) * 100 : 0;
+    const nonProdPctAll = totalAll > 0 ? (nonproductive / totalAll) * 100 : 0;
+    const otherPctAll = totalAll > 0 ? (other / totalAll) * 100 : 0;
+    const prodPct = totalProdNonProd > 0 ? (productive / totalProdNonProd) * 100 : 0;
+    const nonProdPct = totalProdNonProd > 0 ? (nonproductive / totalProdNonProd) * 100 : 0;
+    const circ = 2 * Math.PI * 40;
+    const offset = circ / 4;
+    const prodLenAll = (prodPctAll / 100) * circ;
+    const nonProdLenAll = (nonProdPctAll / 100) * circ;
+    const otherLenAll = (otherPctAll / 100) * circ;
+    const prodLen = (prodPct / 100) * circ;
+    const nonProdLen = (nonProdPct / 100) * circ;
+    const miniDash = document.createElement("div");
+    miniDash.className = "time-productivity-mini-dashboard";
+    miniDash.innerHTML = `
+      <div class="time-productivity-mini-title">${periodLabel} 생산성 요약</div>
+      <div class="time-productivity-mini-row">
+        <div class="time-productivity-mini-chart">
+          <div class="time-productivity-mini-chart-label">생산적·비생산적·그 외</div>
+          <div class="time-productivity-mini-donut-wrap">
+            <svg class="time-dash-donut" viewBox="0 0 100 100">
+              <circle class="time-dash-donut-bg" cx="50" cy="50" r="40"/>
+              <circle class="time-dash-donut-seg prod-pink" cx="50" cy="50" r="40" stroke-dasharray="${prodLenAll} ${circ - prodLenAll}" stroke-dashoffset="${-offset}"/>
+              <circle class="time-dash-donut-seg prod-blue" cx="50" cy="50" r="40" stroke-dasharray="${nonProdLenAll} ${circ - nonProdLenAll}" stroke-dashoffset="${-offset - prodLenAll}"/>
+              <circle class="time-dash-donut-seg prod-green" cx="50" cy="50" r="40" stroke-dasharray="${otherLenAll} ${circ - otherLenAll}" stroke-dashoffset="${-offset - prodLenAll - nonProdLenAll}"/>
+            </svg>
+            <div class="time-dash-donut-center">
+              <span class="time-dash-donut-total">${formatHoursDisplay(totalAll === 1 && productive === 0 && nonproductive === 0 && other === 0 ? 0 : totalAll)}</span>
+              <span class="time-dash-donut-label">Total</span>
+            </div>
+          </div>
+          <div class="time-productivity-mini-legend">
+            <span class="time-dash-legend-item"><i class="prod-pink"></i>생산적 ${prodPctAll.toFixed(1)}%</span>
+            <span class="time-dash-legend-item"><i class="prod-blue"></i>비생산적 ${nonProdPctAll.toFixed(1)}%</span>
+            <span class="time-dash-legend-item"><i class="prod-green"></i>그 외 ${otherPctAll.toFixed(1)}%</span>
+          </div>
+        </div>
+        <div class="time-productivity-mini-chart">
+          <div class="time-productivity-mini-chart-label">생산적 vs 비생산적</div>
+          <div class="time-productivity-mini-donut-wrap">
+            <svg class="time-dash-donut" viewBox="0 0 100 100">
+              <circle class="time-dash-donut-bg" cx="50" cy="50" r="40"/>
+              <circle class="time-dash-donut-seg prod-pink" cx="50" cy="50" r="40" stroke-dasharray="${prodLen} ${circ - prodLen}" stroke-dashoffset="${-offset}"/>
+              <circle class="time-dash-donut-seg prod-blue" cx="50" cy="50" r="40" stroke-dasharray="${nonProdLen} ${circ - nonProdLen}" stroke-dashoffset="${-offset - prodLen}"/>
+            </svg>
+            <div class="time-dash-donut-center">
+              <span class="time-dash-donut-total">${formatHoursDisplay(totalProdNonProd === 1 && productive === 0 && nonproductive === 0 ? 0 : totalProdNonProd)}</span>
+              <span class="time-dash-donut-label">Total</span>
+            </div>
+          </div>
+          <div class="time-productivity-mini-legend">
+            <span class="time-dash-legend-item"><i class="prod-pink"></i>생산적 ${prodPct.toFixed(1)}%</span>
+            <span class="time-dash-legend-item"><i class="prod-blue"></i>비생산적 ${nonProdPct.toFixed(1)}%</span>
+          </div>
+        </div>
+        <div class="time-productivity-mini-pct">
+          <div class="time-productivity-mini-chart-label">생산성</div>
+          <div class="time-productivity-mini-pct-value">${totalProdNonProd > 0 ? prodPct.toFixed(1) : "—"}%</div>
+          <div class="time-productivity-mini-pct-desc">생산적 / (생산적+비생산적)</div>
+        </div>
+      </div>
+    `;
+    contentWrap.appendChild(miniDash);
     const handleRowDelete = (tr, rowData) => {
       if (rowData) {
         const k = `${rowData.date}|${rowData.taskName}|${rowData.startTime}`;

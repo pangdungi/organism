@@ -11679,6 +11679,9 @@ body.kpi-resizing {
 .time-dash-donut-seg.prod-blue {
   stroke: #7eb8da;
 }
+.time-dash-donut-seg.prod-green {
+  stroke: #7cb87c;
+}
 
 .time-dash-donut-center {
   position: absolute;
@@ -11724,6 +11727,167 @@ body.kpi-resizing {
 }
 .time-dash-legend-item i.prod-blue {
   background: #7eb8da;
+}
+.time-dash-legend-item i.prod-green {
+  background: #7cb87c;
+}
+
+/* 생산성별 탭 미니 대시보드 */
+.time-productivity-mini-dashboard {
+  background: linear-gradient(180deg, #fafbfc 0%, #f3f4f6 100%);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.time-productivity-mini-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.time-productivity-mini-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0;
+  align-items: stretch;
+}
+
+.time-productivity-mini-chart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-right: 1px solid #e5e7eb;
+}
+
+.time-productivity-mini-chart:last-of-type {
+  border-right: none;
+}
+
+.time-productivity-mini-pct {
+  border-right: none;
+  border-left: 1px solid #e5e7eb;
+}
+
+.time-productivity-mini-chart-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #6b7280;
+  margin-bottom: 0.75rem;
+  text-align: center;
+}
+
+.time-productivity-mini-donut-wrap {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  margin: 0 auto;
+  flex-shrink: 0;
+}
+
+.time-productivity-mini-donut-wrap .time-dash-donut {
+  width: 100%;
+  height: 100%;
+}
+
+.time-productivity-mini-donut-wrap .time-dash-donut-bg {
+  stroke-width: 10;
+}
+
+.time-productivity-mini-donut-wrap .time-dash-donut-seg {
+  stroke-width: 10;
+}
+
+.time-productivity-mini-donut-wrap .time-dash-donut-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.time-productivity-mini-donut-wrap .time-dash-donut-total {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.time-productivity-mini-donut-wrap .time-dash-donut-label {
+  font-size: 0.6rem;
+  color: #9ca3af;
+}
+
+.time-productivity-mini-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.6rem;
+  justify-content: center;
+  margin-top: 0.6rem;
+  font-size: 0.72rem;
+  color: #6b7280;
+}
+
+.time-productivity-mini-pct {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  margin: 0 0.5rem;
+  border-left: 1px solid #e5e7eb;
+}
+
+.time-productivity-mini-pct .time-productivity-mini-chart-label {
+  margin-bottom: 0.5rem;
+}
+
+.time-productivity-mini-pct-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.time-productivity-mini-pct-desc {
+  font-size: 0.6rem;
+  color: #9ca3af;
+  margin-top: 0.35rem;
+  text-align: center;
+  max-width: 140px;
+  line-height: 1.3;
+}
+
+@media (max-width: 640px) {
+  .time-productivity-mini-row {
+    grid-template-columns: 1fr;
+  }
+
+  .time-productivity-mini-chart {
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 1rem;
+  }
+
+  .time-productivity-mini-chart:last-of-type {
+    border-bottom: none;
+  }
+
+  .time-productivity-mini-pct {
+    border-left: none;
+    border-top: 1px solid #e5e7eb;
+    margin: 0;
+    border-radius: 0 0 8px 8px;
+  }
 }
 
 .time-dashboard-widget-donut .time-dash-legend {
