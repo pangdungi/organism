@@ -4,13 +4,37 @@
  * 할일목록: 인생 KPI와 동일한 구조
  */
 
-import { render as renderTodoList, renderTodoListForEisenhowerSidebar, saveTodoListBeforeUnmount, DRAG_TYPE_TODO_TO_CALENDAR, DRAG_TYPE_TODO_TO_EISENHOWER } from "./TodoList.js";
-import { getKpiTodosAsTasks, addCalendarTodoToSection, syncKpiTodoCompleted, updateKpiTodo, removeKpiTodo } from "../utils/kpiTodoSync.js";
+import {
+  render as renderTodoList,
+  renderTodoListForEisenhowerSidebar,
+  saveTodoListBeforeUnmount,
+  DRAG_TYPE_TODO_TO_CALENDAR,
+  DRAG_TYPE_TODO_TO_EISENHOWER,
+} from "./TodoList.js";
+import {
+  getKpiTodosAsTasks,
+  addCalendarTodoToSection,
+  syncKpiTodoCompleted,
+  updateKpiTodo,
+  removeKpiTodo,
+} from "../utils/kpiTodoSync.js";
 import { getSectionColor, getCustomSections } from "../utils/todoSettings.js";
 import { getKpisByCategory } from "../utils/kpiViewModal.js";
 import { formatDeadlineRangeForDisplay } from "../utils/ganttModal.js";
-import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes } from "../utils/timeKpiSync.js";
-import { renderTimeBudgetTablesForCalendar, getBudgetGoals, getTaskOptionByName, loadTimeRows } from "./Time.js";
+import {
+  getAccumulatedMinutes,
+  minutesToHhMm,
+  hhMmToMinutes,
+} from "../utils/timeKpiSync.js";
+import {
+  renderTimeBudgetTablesForCalendar,
+  getBudgetGoals,
+  getTaskOptionByName,
+  loadTimeRows,
+  saveBudgetGoal,
+  formatGoalDiff,
+  parseTimeToHours,
+} from "./Time.js";
 import { showToast } from "../utils/showToast.js";
 
 const CUSTOM_SECTION_TASKS_KEY = "todo-custom-section-tasks";
@@ -26,9 +50,20 @@ function getSectionTasksForDate(dateKey) {
     KPI_SECTION_IDS.forEach((sectionId) => {
       const arr = obj[sectionId];
       if (!Array.isArray(arr)) return;
-      const sectionLabel = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복", braindump: "브레인 덤프" }[sectionId] || sectionId;
+      const sectionLabel =
+        {
+          dream: "꿈",
+          sideincome: "부수입",
+          health: "건강",
+          happy: "행복",
+          braindump: "브레인 덤프",
+        }[sectionId] || sectionId;
       arr
-        .filter((t) => (t.name || "").trim() !== "" && (t.dueDate || "").slice(0, 10) === dateKey)
+        .filter(
+          (t) =>
+            (t.name || "").trim() !== "" &&
+            (t.dueDate || "").slice(0, 10) === dateKey,
+        )
         .forEach((t) =>
           out.push({
             name: t.name,
@@ -41,7 +76,7 @@ function getSectionTasksForDate(dateKey) {
             itemType: t.itemType || "todo",
             done: !!t.done,
             taskId: t.taskId || "",
-          })
+          }),
         );
     });
   } catch (_) {}
@@ -57,9 +92,21 @@ function getSectionTasksWithDateRange() {
     KPI_SECTION_IDS.forEach((sectionId) => {
       const arr = obj[sectionId];
       if (!Array.isArray(arr)) return;
-      const sectionLabel = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복", braindump: "브레인 덤프" }[sectionId] || sectionId;
+      const sectionLabel =
+        {
+          dream: "꿈",
+          sideincome: "부수입",
+          health: "건강",
+          happy: "행복",
+          braindump: "브레인 덤프",
+        }[sectionId] || sectionId;
       arr
-        .filter((t) => (t.name || "").trim() !== "" && (t.startDate || "").slice(0, 10) && (t.dueDate || "").slice(0, 10))
+        .filter(
+          (t) =>
+            (t.name || "").trim() !== "" &&
+            (t.startDate || "").slice(0, 10) &&
+            (t.dueDate || "").slice(0, 10),
+        )
         .forEach((t) =>
           out.push({
             name: t.name,
@@ -72,7 +119,7 @@ function getSectionTasksWithDateRange() {
             itemType: t.itemType || "todo",
             done: !!t.done,
             taskId: t.taskId || "",
-          })
+          }),
         );
     });
   } catch (_) {}
@@ -172,7 +219,9 @@ function addSectionTaskToCalendar(sectionId, taskData) {
     const obj = raw ? JSON.parse(raw) : {};
     if (!obj[sectionId]) obj[sectionId] = [];
     const arr = obj[sectionId];
-    const taskId = taskData.taskId || `task-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const taskId =
+      taskData.taskId ||
+      `task-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     arr.push({
       taskId,
       name: (taskData.name || "").trim(),
@@ -196,8 +245,34 @@ function withMoreTransparency(color, alpha = 0.35) {
   return color;
 }
 const DAY_NAMES = ["월", "화", "수", "목", "금", "토", "일"];
-const MONTH_NAMES = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"];
-const MONTH_NAMES_EN = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MONTH_NAMES = [
+  "1월",
+  "2월",
+  "3월",
+  "4월",
+  "5월",
+  "6월",
+  "7월",
+  "8월",
+  "9월",
+  "10월",
+  "11월",
+  "12월",
+];
+const MONTH_NAMES_EN = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
 /** 월요일 시작 (0=월, 6=일) */
 function getMondayBasedDow(date) {
@@ -373,7 +448,9 @@ function addCalendarTodoToCustomSection(sectionId, taskData) {
     const obj = raw ? JSON.parse(raw) : {};
     if (!obj[sectionId]) obj[sectionId] = [];
     const arr = obj[sectionId];
-    const taskId = taskData.taskId || `task-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const taskId =
+      taskData.taskId ||
+      `task-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     arr.push({
       taskId,
       name: (taskData.name || "").trim(),
@@ -400,11 +477,22 @@ function addDaysToDateKey(dateKey, days) {
 function revertTaskToTodoList(barData) {
   let ok = false;
   if (barData.kpiTodoId && barData.storageKey) {
-    ok = updateKpiTodo(barData.kpiTodoId, barData.storageKey, { startDate: "", dueDate: "" });
-  } else if (KPI_SECTION_IDS.includes(barData.sectionId) && !barData.kpiTodoId) {
+    ok = updateKpiTodo(barData.kpiTodoId, barData.storageKey, {
+      startDate: "",
+      dueDate: "",
+    });
+  } else if (
+    KPI_SECTION_IDS.includes(barData.sectionId) &&
+    !barData.kpiTodoId
+  ) {
     ok = updateSectionTaskDates(barData.sectionId, barData.taskId, "", "");
   } else if (barData.sectionId?.startsWith("custom-")) {
-    ok = updateCustomSectionTaskDates(barData.sectionId, barData.taskId, "", "");
+    ok = updateCustomSectionTaskDates(
+      barData.sectionId,
+      barData.taskId,
+      "",
+      "",
+    );
   }
   return ok;
 }
@@ -419,7 +507,11 @@ function getCustomSectionTasksForDate(dateKey) {
       const arr = obj[sec.id];
       if (!Array.isArray(arr)) return;
       arr
-        .filter((t) => (t.name || "").trim() !== "" && (t.dueDate || "").slice(0, 10) === dateKey)
+        .filter(
+          (t) =>
+            (t.name || "").trim() !== "" &&
+            (t.dueDate || "").slice(0, 10) === dateKey,
+        )
         .forEach((t) =>
           out.push({
             name: t.name,
@@ -431,7 +523,7 @@ function getCustomSectionTasksForDate(dateKey) {
             itemType: t.itemType || "todo",
             done: !!t.done,
             taskId: t.taskId || "",
-          })
+          }),
         );
     });
   } catch (_) {}
@@ -439,12 +531,17 @@ function getCustomSectionTasksForDate(dateKey) {
 }
 
 function getTasksForDate(dateKey, excludeSpanningTasks = false) {
-  const kpiTasks = getKpiTodosAsTasks().filter((t) => (t.dueDate || "").slice(0, 10) === dateKey);
+  const kpiTasks = getKpiTodosAsTasks().filter(
+    (t) => (t.dueDate || "").slice(0, 10) === dateKey,
+  );
   const sectionTasks = getSectionTasksForDate(dateKey);
   const customTasks = getCustomSectionTasksForDate(dateKey);
   let tasks = [...kpiTasks, ...sectionTasks, ...customTasks];
   if (excludeSpanningTasks) {
-    tasks = tasks.filter((t) => !((t.startDate || "").slice(0, 10) && (t.dueDate || "").slice(0, 10)));
+    tasks = tasks.filter(
+      (t) =>
+        !((t.startDate || "").slice(0, 10) && (t.dueDate || "").slice(0, 10)),
+    );
   }
   return tasks;
 }
@@ -458,7 +555,8 @@ function getAllTasksForDateDisplay(dateKey) {
   });
   const seen = new Set();
   return [...singleDay, ...rangeTasks].filter((t) => {
-    const id = (t.taskId || t.name || "") + (t.startDate || "") + (t.dueDate || "");
+    const id =
+      (t.taskId || t.name || "") + (t.startDate || "") + (t.dueDate || "");
     if (seen.has(id)) return false;
     seen.add(id);
     return true;
@@ -477,7 +575,12 @@ function getAllTasksWithDateRange() {
         const arr = obj[sec.id];
         if (!Array.isArray(arr)) return;
         arr
-          .filter((t) => (t.name || "").trim() !== "" && (t.startDate || "").slice(0, 10) && (t.dueDate || "").slice(0, 10))
+          .filter(
+            (t) =>
+              (t.name || "").trim() !== "" &&
+              (t.startDate || "").slice(0, 10) &&
+              (t.dueDate || "").slice(0, 10),
+          )
           .forEach((t) =>
             customRange.push({
               name: t.name,
@@ -489,17 +592,27 @@ function getAllTasksWithDateRange() {
               itemType: t.itemType || "todo",
               done: !!t.done,
               taskId: t.taskId || "",
-            })
+            }),
           );
       });
     }
   } catch (_) {}
-  const kpiWithRange = kpi.filter((t) => (t.startDate || "").slice(0, 10) && (t.dueDate || "").slice(0, 10)).map((t) => ({ ...t, startDate: (t.startDate || "").slice(0, 10), dueDate: (t.dueDate || "").slice(0, 10) }));
+  const kpiWithRange = kpi
+    .filter(
+      (t) => (t.startDate || "").slice(0, 10) && (t.dueDate || "").slice(0, 10),
+    )
+    .map((t) => ({
+      ...t,
+      startDate: (t.startDate || "").slice(0, 10),
+      dueDate: (t.dueDate || "").slice(0, 10),
+    }));
   return [...kpiWithRange, ...sectionRange, ...customRange];
 }
 
 function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
-  document.querySelectorAll(".calendar-event-bubble").forEach((el) => el.remove());
+  document
+    .querySelectorAll(".calendar-event-bubble")
+    .forEach((el) => el.remove());
   const bubble = document.createElement("div");
   bubble.className = "calendar-event-bubble";
   bubble.innerHTML = `
@@ -527,7 +640,9 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
     onClose?.();
   };
 
-  bubble.querySelector(".calendar-event-bubble-close").addEventListener("click", close);
+  bubble
+    .querySelector(".calendar-event-bubble-close")
+    .addEventListener("click", close);
   setTimeout(() => {
     document.addEventListener("click", function outside(e) {
       if (!bubble.contains(e.target)) {
@@ -537,29 +652,56 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
     });
   }, 0);
 
-  bubble.querySelector(".calendar-event-bubble-save").addEventListener("click", () => {
-    const name = (bubble.querySelector(".calendar-event-bubble-input").value || "").trim();
-    const categoryId = bubble.querySelector(".calendar-event-bubble-select").value;
-    if (!name) return;
-    let result = addCalendarTodoToSection(categoryId, { text: name, dueDate: dateKey, itemType: "todo" });
-    if (!result.success && KPI_SECTION_IDS.includes(categoryId)) {
-      const ok = addSectionTaskToCalendar(categoryId, { name, dueDate: dateKey, itemType: "todo" });
-      if (ok) {
-        result = { success: true, task: { name, dueDate: dateKey, sectionId: categoryId, itemType: "todo" } };
+  bubble
+    .querySelector(".calendar-event-bubble-save")
+    .addEventListener("click", () => {
+      const name = (
+        bubble.querySelector(".calendar-event-bubble-input").value || ""
+      ).trim();
+      const categoryId = bubble.querySelector(
+        ".calendar-event-bubble-select",
+      ).value;
+      if (!name) return;
+      let result = addCalendarTodoToSection(categoryId, {
+        text: name,
+        dueDate: dateKey,
+        itemType: "todo",
+      });
+      if (!result.success && KPI_SECTION_IDS.includes(categoryId)) {
+        const ok = addSectionTaskToCalendar(categoryId, {
+          name,
+          dueDate: dateKey,
+          itemType: "todo",
+        });
+        if (ok) {
+          result = {
+            success: true,
+            task: {
+              name,
+              dueDate: dateKey,
+              sectionId: categoryId,
+              itemType: "todo",
+            },
+          };
+        }
       }
-    }
-    if (result.success) {
-      onSave?.(result.task);
-      close();
-    } else {
-      const label = CALENDAR_CATEGORIES.find((c) => c.id === categoryId)?.label || categoryId;
-      alert(`${label} 카테고리에 KPI를 먼저 추가해주세요.`);
-    }
-  });
+      if (result.success) {
+        onSave?.(result.task);
+        close();
+      } else {
+        const label =
+          CALENDAR_CATEGORIES.find((c) => c.id === categoryId)?.label ||
+          categoryId;
+        alert(`${label} 카테고리에 KPI를 먼저 추가해주세요.`);
+      }
+    });
 
-  bubble.querySelector(".calendar-event-bubble-input").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") bubble.querySelector(".calendar-event-bubble-save").click();
-  });
+  bubble
+    .querySelector(".calendar-event-bubble-input")
+    .addEventListener("keydown", (e) => {
+      if (e.key === "Enter")
+        bubble.querySelector(".calendar-event-bubble-save").click();
+    });
 
   Object.assign(bubble.style, {
     position: "fixed",
@@ -576,7 +718,9 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
 const MAX_VISIBLE_BARS_PER_DAY = 3;
 
 function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose) {
-  document.querySelectorAll(".calendar-event-bubble").forEach((el) => el.remove());
+  document
+    .querySelectorAll(".calendar-event-bubble")
+    .forEach((el) => el.remove());
   const bubble = document.createElement("div");
   bubble.className = "calendar-event-bubble calendar-day-expand-bubble";
   const taskItems = tasks
@@ -587,7 +731,7 @@ function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose) {
       <span class="calendar-day-expand-text">${escapeHtml(t.name || "")}</span>
       ${t.startTime || t.endTime ? `<span class="calendar-day-expand-time">${[t.startTime, t.endTime].filter(Boolean).join(" ~ ")}</span>` : ""}
     </div>
-  `
+  `,
     )
     .join("");
   bubble.innerHTML = `
@@ -605,7 +749,9 @@ function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose) {
     onClose?.();
   };
 
-  bubble.querySelector(".calendar-event-bubble-close").addEventListener("click", close);
+  bubble
+    .querySelector(".calendar-event-bubble-close")
+    .addEventListener("click", close);
   setTimeout(() => {
     document.addEventListener("click", function outside(e) {
       if (!bubble.contains(e.target)) {
@@ -626,10 +772,19 @@ function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose) {
   return bubble;
 }
 
-function createCalendarBarRevertBubble(clientX, clientY, barData, onSave, onClose) {
-  document.querySelectorAll(".calendar-event-bubble").forEach((el) => el.remove());
+function createCalendarBarRevertBubble(
+  clientX,
+  clientY,
+  barData,
+  onSave,
+  onClose,
+) {
+  document
+    .querySelectorAll(".calendar-event-bubble")
+    .forEach((el) => el.remove());
   const bubble = document.createElement("div");
-  bubble.className = "calendar-event-bubble calendar-bar-date-edit-bubble calendar-bar-revert-bubble";
+  bubble.className =
+    "calendar-event-bubble calendar-bar-date-edit-bubble calendar-bar-revert-bubble";
   bubble.innerHTML = `
     <div class="calendar-event-bubble-body">
       <div class="calendar-event-bubble-header">
@@ -646,7 +801,9 @@ function createCalendarBarRevertBubble(clientX, clientY, barData, onSave, onClos
     onClose?.();
   };
 
-  bubble.querySelector(".calendar-event-bubble-close").addEventListener("click", close);
+  bubble
+    .querySelector(".calendar-event-bubble-close")
+    .addEventListener("click", close);
   setTimeout(() => {
     document.addEventListener("click", function outside(e) {
       if (!bubble.contains(e.target)) {
@@ -656,12 +813,14 @@ function createCalendarBarRevertBubble(clientX, clientY, barData, onSave, onClos
     });
   }, 0);
 
-  bubble.querySelector(".calendar-bar-revert-btn").addEventListener("click", () => {
-    if (revertTaskToTodoList(barData)) {
-      onSave?.();
-      close();
-    }
-  });
+  bubble
+    .querySelector(".calendar-bar-revert-btn")
+    .addEventListener("click", () => {
+      if (revertTaskToTodoList(barData)) {
+        onSave?.();
+        close();
+      }
+    });
 
   Object.assign(bubble.style, {
     position: "fixed",
@@ -674,8 +833,16 @@ function createCalendarBarRevertBubble(clientX, clientY, barData, onSave, onClos
   return bubble;
 }
 
-function createCalendarBarDateEditBubble(clientX, clientY, barData, onSave, onClose) {
-  document.querySelectorAll(".calendar-event-bubble").forEach((el) => el.remove());
+function createCalendarBarDateEditBubble(
+  clientX,
+  clientY,
+  barData,
+  onSave,
+  onClose,
+) {
+  document
+    .querySelectorAll(".calendar-event-bubble")
+    .forEach((el) => el.remove());
   const bubble = document.createElement("div");
   bubble.className = "calendar-event-bubble calendar-bar-date-edit-bubble";
   const startVal = (barData.startDate || "").slice(0, 10);
@@ -708,7 +875,9 @@ function createCalendarBarDateEditBubble(clientX, clientY, barData, onSave, onCl
     onClose?.();
   };
 
-  bubble.querySelector(".calendar-event-bubble-close").addEventListener("click", close);
+  bubble
+    .querySelector(".calendar-event-bubble-close")
+    .addEventListener("click", close);
   setTimeout(() => {
     document.addEventListener("click", function outside(e) {
       if (!bubble.contains(e.target)) {
@@ -720,12 +889,14 @@ function createCalendarBarDateEditBubble(clientX, clientY, barData, onSave, onCl
 
   const startInput = bubble.querySelector('input[data-field="start"]');
   const dueInput = bubble.querySelector('input[data-field="due"]');
-  bubble.querySelector(".calendar-bar-date-edit-clear")?.addEventListener("click", () => {
-    if (startInput) {
-      startInput.value = "";
-      if (dueInput) dueInput.min = "";
-    }
-  });
+  bubble
+    .querySelector(".calendar-bar-date-edit-clear")
+    ?.addEventListener("click", () => {
+      if (startInput) {
+        startInput.value = "";
+        if (dueInput) dueInput.min = "";
+      }
+    });
   startInput?.addEventListener("change", () => {
     if (dueInput && startInput.value) dueInput.min = startInput.value;
   });
@@ -735,40 +906,58 @@ function createCalendarBarDateEditBubble(clientX, clientY, barData, onSave, onCl
   if (startVal && dueInput) dueInput.min = startVal;
   if (dueVal && startInput) startInput.max = dueVal;
 
-  bubble.querySelector(".calendar-event-bubble-save").addEventListener("click", () => {
-    const newStart = (startInput?.value || "").trim().slice(0, 10);
-    const newDue = (dueInput?.value || "").trim().slice(0, 10);
-    if (!newDue) {
-      alert("마감일을 입력해 주세요.");
-      return;
-    }
-    if (newStart && newStart > newDue) {
-      alert("시작일은 마감일보다 이전이어야 합니다.");
-      return;
-    }
-    let ok = false;
-    if (barData.kpiTodoId && barData.storageKey) {
-      ok = updateKpiTodo(barData.kpiTodoId, barData.storageKey, { startDate: newStart, dueDate: newDue });
-    } else if (KPI_SECTION_IDS.includes(barData.sectionId) && barData.taskId) {
-      ok = updateSectionTaskDates(barData.sectionId, barData.taskId, newStart, newDue);
-    } else if (barData.sectionId?.startsWith("custom-")) {
-      ok = updateCustomSectionTaskDates(barData.sectionId, barData.taskId, newStart, newDue);
-      if (!ok && (barData.name || "").trim()) {
-        ok = addCalendarTodoToCustomSection(barData.sectionId, {
-          taskId: barData.taskId,
-          name: barData.name,
+  bubble
+    .querySelector(".calendar-event-bubble-save")
+    .addEventListener("click", () => {
+      const newStart = (startInput?.value || "").trim().slice(0, 10);
+      const newDue = (dueInput?.value || "").trim().slice(0, 10);
+      if (!newDue) {
+        alert("마감일을 입력해 주세요.");
+        return;
+      }
+      if (newStart && newStart > newDue) {
+        alert("시작일은 마감일보다 이전이어야 합니다.");
+        return;
+      }
+      let ok = false;
+      if (barData.kpiTodoId && barData.storageKey) {
+        ok = updateKpiTodo(barData.kpiTodoId, barData.storageKey, {
           startDate: newStart,
           dueDate: newDue,
-          done: !!barData.done,
-          itemType: barData.itemType || "todo",
         });
+      } else if (
+        KPI_SECTION_IDS.includes(barData.sectionId) &&
+        barData.taskId
+      ) {
+        ok = updateSectionTaskDates(
+          barData.sectionId,
+          barData.taskId,
+          newStart,
+          newDue,
+        );
+      } else if (barData.sectionId?.startsWith("custom-")) {
+        ok = updateCustomSectionTaskDates(
+          barData.sectionId,
+          barData.taskId,
+          newStart,
+          newDue,
+        );
+        if (!ok && (barData.name || "").trim()) {
+          ok = addCalendarTodoToCustomSection(barData.sectionId, {
+            taskId: barData.taskId,
+            name: barData.name,
+            startDate: newStart,
+            dueDate: newDue,
+            done: !!barData.done,
+            itemType: barData.itemType || "todo",
+          });
+        }
       }
-    }
-    if (ok) {
-      onSave?.();
-      close();
-    }
-  });
+      if (ok) {
+        onSave?.();
+        close();
+      }
+    });
 
   const revertBtn = bubble.querySelector(".calendar-bar-revert-btn");
   if (revertBtn) {
@@ -832,15 +1021,24 @@ function renderMonthlyView(tabsElement) {
       const oldList = body.querySelector(".todo-list-in-sidebar");
       let activeIndex = 0;
       if (oldList) {
-        const activeTab = oldList.querySelector(".todo-category-tab:not(.todo-category-tab-add).active");
-        const tabs = oldList.querySelectorAll(".todo-category-tab:not(.todo-category-tab-add)");
+        const activeTab = oldList.querySelector(
+          ".todo-category-tab:not(.todo-category-tab-add).active",
+        );
+        const tabs = oldList.querySelectorAll(
+          ".todo-category-tab:not(.todo-category-tab-add)",
+        );
         if (activeTab && tabs.length) {
           const idx = Array.from(tabs).indexOf(activeTab);
           if (idx >= 0) activeIndex = idx;
         }
         oldList.remove();
       }
-      const newList = renderTodoList({ hideToolbar: true, enableDragToCalendar: true, initialActiveTabIndex: activeIndex, eisenhowerFilter: "important-not-urgent" });
+      const newList = renderTodoList({
+        hideToolbar: true,
+        enableDragToCalendar: true,
+        initialActiveTabIndex: activeIndex,
+        eisenhowerFilter: "important-not-urgent",
+      });
       newList.classList.add("todo-list-in-sidebar");
       body.appendChild(newList);
     }
@@ -848,7 +1046,8 @@ function renderMonthlyView(tabsElement) {
 
   function renderCalendar() {
     const grid = getCalendarGrid(currentYear, currentMonth);
-    nav.querySelector(".calendar-nav-month").textContent = MONTH_NAMES_EN[currentMonth];
+    nav.querySelector(".calendar-nav-month").textContent =
+      MONTH_NAMES_EN[currentMonth];
     nav.querySelector(".calendar-nav-year").textContent = String(currentYear);
 
     calendarGrid.innerHTML = "";
@@ -871,7 +1070,9 @@ function renderMonthlyView(tabsElement) {
       weekWrap.className = "calendar-monthly-week-wrap";
       const weekRow = document.createElement("div");
       weekRow.className = "calendar-monthly-week";
-      const weekDateKeys = week.map((d) => (d ? formatDateKey(d) : "")).filter(Boolean);
+      const weekDateKeys = week
+        .map((d) => (d ? formatDateKey(d) : ""))
+        .filter(Boolean);
       const firstDayKey = weekDateKeys[0] || "";
       const lastDayKey = weekDateKeys[weekDateKeys.length - 1] || "";
 
@@ -905,10 +1106,15 @@ function renderMonthlyView(tabsElement) {
           if (e.target.closest(".calendar-event-bubble")) return;
           e.stopPropagation();
           const rect = cell.getBoundingClientRect();
-          createCalendarEventBubble(rect, key, () => {
-            renderCalendar();
-            refreshTodoList();
-          }, () => {});
+          createCalendarEventBubble(
+            rect,
+            key,
+            () => {
+              renderCalendar();
+              refreshTodoList();
+            },
+            () => {},
+          );
         });
         cell.addEventListener("dragover", (e) => {
           if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR)) {
@@ -948,9 +1154,20 @@ function renderMonthlyView(tabsElement) {
           }
           let ok = false;
           if (payload.kpiTodoId && payload.storageKey) {
-            ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
-          } else if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
-            ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
+            ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
+              startDate: newStart,
+              dueDate: newDue,
+            });
+          } else if (
+            payload.sectionId &&
+            payload.sectionId.startsWith("custom-")
+          ) {
+            ok = updateCustomSectionTaskDates(
+              payload.sectionId,
+              payload.taskId,
+              newStart,
+              newDue,
+            );
             if (!ok && (payload.name || "").trim()) {
               ok = addCalendarTodoToCustomSection(payload.sectionId, {
                 taskId: payload.taskId,
@@ -961,12 +1178,31 @@ function renderMonthlyView(tabsElement) {
                 itemType: payload.itemType || "todo",
               });
             }
-          } else if (KPI_SECTION_IDS.includes(payload.sectionId) && (payload.name || "").trim()) {
+          } else if (
+            KPI_SECTION_IDS.includes(payload.sectionId) &&
+            (payload.name || "").trim()
+          ) {
             if (payload.kpiTodoId && payload.storageKey) {
-              ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
+              ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
+                startDate: newStart,
+                dueDate: newDue,
+              });
             } else {
-              ok = updateSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue) ||
-                addSectionTaskToCalendar(payload.sectionId, { taskId: payload.taskId, name: payload.name, startDate: newStart, dueDate: newDue, done: !!payload.done, itemType: payload.itemType || "todo" });
+              ok =
+                updateSectionTaskDates(
+                  payload.sectionId,
+                  payload.taskId,
+                  newStart,
+                  newDue,
+                ) ||
+                addSectionTaskToCalendar(payload.sectionId, {
+                  taskId: payload.taskId,
+                  name: payload.name,
+                  startDate: newStart,
+                  dueDate: newDue,
+                  done: !!payload.done,
+                  itemType: payload.itemType || "todo",
+                });
             }
           }
           if (ok) {
@@ -980,7 +1216,8 @@ function renderMonthlyView(tabsElement) {
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
       const BAR_HEIGHT = 1.5;
-      const overlaps = (a, b) => a.left < b.left + b.width && b.left < a.left + a.width;
+      const overlaps = (a, b) =>
+        a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
       const CELL_GAP = 3.5;
       rangeTasks.forEach((t) => {
@@ -994,7 +1231,21 @@ function renderMonthlyView(tabsElement) {
         const width = ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
         const baseColor = getSectionColor(t.sectionId);
         const color = withMoreTransparency(baseColor);
-        allBars.push({ left, width, name: t.name, color, isSingleDay: false, itemType: t.itemType || "todo", done: !!t.done, kpiTodoId: t.kpiTodoId, storageKey: t.storageKey, taskId: t.taskId, sectionId: t.sectionId, startDate: t.startDate, dueDate: t.dueDate });
+        allBars.push({
+          left,
+          width,
+          name: t.name,
+          color,
+          isSingleDay: false,
+          itemType: t.itemType || "todo",
+          done: !!t.done,
+          kpiTodoId: t.kpiTodoId,
+          storageKey: t.storageKey,
+          taskId: t.taskId,
+          sectionId: t.sectionId,
+          startDate: t.startDate,
+          dueDate: t.dueDate,
+        });
       });
       weekDateKeys.forEach((dateKey, dayIdx) => {
         getTasksForDate(dateKey, true).forEach((t) => {
@@ -1002,7 +1253,23 @@ function renderMonthlyView(tabsElement) {
           const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
           const baseColor = getSectionColor(t.sectionId);
           const color = withMoreTransparency(baseColor);
-          allBars.push({ left, width, name: t.name, color, isSingleDay: true, dayIdx, dateKey, itemType: t.itemType || "todo", done: !!t.done, kpiTodoId: t.kpiTodoId, storageKey: t.storageKey, taskId: t.taskId, sectionId: t.sectionId, startDate: t.startDate || "", dueDate: t.dueDate || dateKey });
+          allBars.push({
+            left,
+            width,
+            name: t.name,
+            color,
+            isSingleDay: true,
+            dayIdx,
+            dateKey,
+            itemType: t.itemType || "todo",
+            done: !!t.done,
+            kpiTodoId: t.kpiTodoId,
+            storageKey: t.storageKey,
+            taskId: t.taskId,
+            sectionId: t.sectionId,
+            startDate: t.startDate || "",
+            dueDate: t.dueDate || dateKey,
+          });
         });
       });
       const rowBars = [];
@@ -1014,7 +1281,9 @@ function renderMonthlyView(tabsElement) {
         b.row = row;
       });
       const barsPerDay = weekDateKeys.map((_, dayIdx) =>
-        allBars.filter((b) => b.isSingleDay && b.dayIdx === dayIdx).sort((a, b) => a.row - b.row)
+        allBars
+          .filter((b) => b.isSingleDay && b.dayIdx === dayIdx)
+          .sort((a, b) => a.row - b.row),
       );
       allBars.forEach((b) => {
         if (b.isSingleDay && b.dayIdx != null) {
@@ -1029,7 +1298,9 @@ function renderMonthlyView(tabsElement) {
         const bar = document.createElement("div");
         bar.className =
           "calendar-monthly-span-bar" +
-          (b.isSingleDay ? " calendar-monthly-span-bar--todo" : " calendar-monthly-span-bar--range") +
+          (b.isSingleDay
+            ? " calendar-monthly-span-bar--todo"
+            : " calendar-monthly-span-bar--range") +
           (isTodo ? " calendar-monthly-span-bar--has-checkbox" : "") +
           (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "");
         bar.title = b.name;
@@ -1051,34 +1322,44 @@ function renderMonthlyView(tabsElement) {
         }
         if (isTodo && b.done) {
           bar.classList.add("is-completed");
-          bar.querySelector(".calendar-monthly-span-bar-checkbox-inner")?.classList.add("checked");
+          bar
+            .querySelector(".calendar-monthly-span-bar-checkbox-inner")
+            ?.classList.add("checked");
         }
         if (isTodo) {
           const toggleDone = (e) => {
             e.stopPropagation();
             const newDone = !b.done;
-              if (b.kpiTodoId && b.storageKey) {
-                syncKpiTodoCompleted(b.kpiTodoId, b.storageKey, newDone);
-              } else if (KPI_SECTION_IDS.includes(b.sectionId) && b.taskId) {
-                updateSectionTaskDone(b.sectionId, b.taskId, newDone);
-              } else if (b.sectionId?.startsWith("custom-") && b.taskId) {
-                updateCustomSectionTaskDone(b.sectionId, b.taskId, newDone);
-              }
-              b.done = newDone;
-              bar.classList.toggle("is-completed", newDone);
-              bar.querySelector(".calendar-monthly-span-bar-checkbox-inner")?.classList.toggle("checked", newDone);
-              refreshTodoList();
-            };
+            if (b.kpiTodoId && b.storageKey) {
+              syncKpiTodoCompleted(b.kpiTodoId, b.storageKey, newDone);
+            } else if (KPI_SECTION_IDS.includes(b.sectionId) && b.taskId) {
+              updateSectionTaskDone(b.sectionId, b.taskId, newDone);
+            } else if (b.sectionId?.startsWith("custom-") && b.taskId) {
+              updateCustomSectionTaskDone(b.sectionId, b.taskId, newDone);
+            }
+            b.done = newDone;
+            bar.classList.toggle("is-completed", newDone);
+            bar
+              .querySelector(".calendar-monthly-span-bar-checkbox-inner")
+              ?.classList.toggle("checked", newDone);
+            refreshTodoList();
+          };
           bar.addEventListener("click", toggleDone);
         }
         if (!b.isSingleDay && b.startDate && b.dueDate) {
           bar.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             e.stopPropagation();
-            createCalendarBarDateEditBubble(e.clientX, e.clientY, b, () => {
-              renderCalendar();
-              refreshTodoList();
-            }, () => {});
+            createCalendarBarDateEditBubble(
+              e.clientX,
+              e.clientY,
+              b,
+              () => {
+                renderCalendar();
+                refreshTodoList();
+              },
+              () => {},
+            );
           });
         }
         if (b.isSingleDay && b.dueDate) {
@@ -1086,7 +1367,20 @@ function renderMonthlyView(tabsElement) {
           bar.classList.add("calendar-monthly-span-bar--draggable");
           bar.addEventListener("dragstart", (e) => {
             e.dataTransfer.effectAllowed = "move";
-            e.dataTransfer.setData("application/json", JSON.stringify({ name: b.name, dueDate: b.dueDate, startDate: b.startDate || "", kpiTodoId: b.kpiTodoId, storageKey: b.storageKey, taskId: b.taskId, sectionId: b.sectionId, done: !!b.done, itemType: b.itemType || "todo" }));
+            e.dataTransfer.setData(
+              "application/json",
+              JSON.stringify({
+                name: b.name,
+                dueDate: b.dueDate,
+                startDate: b.startDate || "",
+                kpiTodoId: b.kpiTodoId,
+                storageKey: b.storageKey,
+                taskId: b.taskId,
+                sectionId: b.sectionId,
+                done: !!b.done,
+                itemType: b.itemType || "todo",
+              }),
+            );
             e.dataTransfer.setData("text/plain", b.name || "");
             bar.classList.add("calendar-monthly-span-bar--dragging");
           });
@@ -1096,22 +1390,33 @@ function renderMonthlyView(tabsElement) {
           bar.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             e.stopPropagation();
-            createCalendarBarRevertBubble(e.clientX, e.clientY, b, () => {
-              renderCalendar();
-              refreshTodoList();
-            }, () => {});
+            createCalendarBarRevertBubble(
+              e.clientX,
+              e.clientY,
+              b,
+              () => {
+                renderCalendar();
+                refreshTodoList();
+              },
+              () => {},
+            );
           });
         }
         barsEl.appendChild(bar);
       });
       const moreEl = document.createElement("div");
       moreEl.className = "calendar-day-more-overlay";
-      moreEl.style.cssText = "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
+      moreEl.style.cssText =
+        "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
       weekDateKeys.forEach((dateKey, dayIdx) => {
-        const overflowCount = barsPerDay[dayIdx]?.length - MAX_VISIBLE_BARS_PER_DAY;
-        const cell = weekRow.querySelector(`.calendar-monthly-day[data-date="${dateKey}"]`);
+        const overflowCount =
+          barsPerDay[dayIdx]?.length - MAX_VISIBLE_BARS_PER_DAY;
+        const cell = weekRow.querySelector(
+          `.calendar-monthly-day[data-date="${dateKey}"]`,
+        );
         const slot = document.createElement("div");
-        slot.style.cssText = "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
+        slot.style.cssText =
+          "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
         if (overflowCount > 0 && cell) {
           slot.style.pointerEvents = "auto";
           const moreBtn = document.createElement("button");
@@ -1132,32 +1437,52 @@ function renderMonthlyView(tabsElement) {
       weekWrap.appendChild(moreEl);
       weekWrap.addEventListener("dragover", (e) => {
         e.preventDefault();
-        if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR) || e.dataTransfer.types.includes("application/json")) {
+        if (
+          e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR) ||
+          e.dataTransfer.types.includes("application/json")
+        ) {
           e.dataTransfer.dropEffect = "move";
-          let cell = document.elementFromPoint(e.clientX, e.clientY)?.closest(".calendar-monthly-day:not(.empty)");
+          let cell = document
+            .elementFromPoint(e.clientX, e.clientY)
+            ?.closest(".calendar-monthly-day:not(.empty)");
           if (!cell) {
-            const cells = weekRow.querySelectorAll(".calendar-monthly-day:not(.empty)");
+            const cells = weekRow.querySelectorAll(
+              ".calendar-monthly-day:not(.empty)",
+            );
             for (const c of cells) {
               const r = c.getBoundingClientRect();
-              if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+              if (
+                e.clientX >= r.left &&
+                e.clientX <= r.right &&
+                e.clientY >= r.top &&
+                e.clientY <= r.bottom
+              ) {
                 cell = c;
                 break;
               }
             }
           }
-          weekWrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+          weekWrap
+            .querySelectorAll(".calendar-day-drag-over")
+            .forEach((el) => el.classList.remove("calendar-day-drag-over"));
           if (cell) cell.classList.add("calendar-day-drag-over");
         }
       });
       weekWrap.addEventListener("dragleave", (e) => {
         if (!weekWrap.contains(e.relatedTarget)) {
-          weekWrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+          weekWrap
+            .querySelectorAll(".calendar-day-drag-over")
+            .forEach((el) => el.classList.remove("calendar-day-drag-over"));
         }
       });
       weekWrap.addEventListener("drop", (e) => {
-        weekWrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+        weekWrap
+          .querySelectorAll(".calendar-day-drag-over")
+          .forEach((el) => el.classList.remove("calendar-day-drag-over"));
         e.preventDefault();
-        let json = e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR) || e.dataTransfer.getData("application/json");
+        let json =
+          e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR) ||
+          e.dataTransfer.getData("application/json");
         if (!json) return;
         let payload;
         try {
@@ -1165,12 +1490,21 @@ function renderMonthlyView(tabsElement) {
         } catch (_) {
           return;
         }
-        let cell = document.elementFromPoint(e.clientX, e.clientY)?.closest(".calendar-monthly-day:not(.empty)");
+        let cell = document
+          .elementFromPoint(e.clientX, e.clientY)
+          ?.closest(".calendar-monthly-day:not(.empty)");
         if (!cell) {
-          const cells = weekRow.querySelectorAll(".calendar-monthly-day:not(.empty)");
+          const cells = weekRow.querySelectorAll(
+            ".calendar-monthly-day:not(.empty)",
+          );
           for (const c of cells) {
             const r = c.getBoundingClientRect();
-            if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+            if (
+              e.clientX >= r.left &&
+              e.clientX <= r.right &&
+              e.clientY >= r.top &&
+              e.clientY <= r.bottom
+            ) {
               cell = c;
               break;
             }
@@ -1193,9 +1527,20 @@ function renderMonthlyView(tabsElement) {
         }
         let ok = false;
         if (payload.kpiTodoId && payload.storageKey) {
-          ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
-        } else if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
-          ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
+          ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
+            startDate: newStart,
+            dueDate: newDue,
+          });
+        } else if (
+          payload.sectionId &&
+          payload.sectionId.startsWith("custom-")
+        ) {
+          ok = updateCustomSectionTaskDates(
+            payload.sectionId,
+            payload.taskId,
+            newStart,
+            newDue,
+          );
           if (!ok && (payload.name || "").trim()) {
             ok = addCalendarTodoToCustomSection(payload.sectionId, {
               taskId: payload.taskId,
@@ -1206,12 +1551,31 @@ function renderMonthlyView(tabsElement) {
               itemType: payload.itemType || "todo",
             });
           }
-        } else if (KPI_SECTION_IDS.includes(payload.sectionId) && (payload.name || "").trim()) {
+        } else if (
+          KPI_SECTION_IDS.includes(payload.sectionId) &&
+          (payload.name || "").trim()
+        ) {
           if (payload.kpiTodoId && payload.storageKey) {
-            ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
+            ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
+              startDate: newStart,
+              dueDate: newDue,
+            });
           } else {
-            ok = updateSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue) ||
-              addSectionTaskToCalendar(payload.sectionId, { taskId: payload.taskId, name: payload.name, startDate: newStart, dueDate: newDue, done: !!payload.done, itemType: payload.itemType || "todo" });
+            ok =
+              updateSectionTaskDates(
+                payload.sectionId,
+                payload.taskId,
+                newStart,
+                newDue,
+              ) ||
+              addSectionTaskToCalendar(payload.sectionId, {
+                taskId: payload.taskId,
+                name: payload.name,
+                startDate: newStart,
+                dueDate: newDue,
+                done: !!payload.done,
+                itemType: payload.itemType || "todo",
+              });
           }
         }
         if (ok) {
@@ -1264,18 +1628,29 @@ function renderMonthlyView(tabsElement) {
     </div>
     <div class="calendar-todo-sidebar-body"></div>
   `;
-  const todoListEl = renderTodoList({ hideToolbar: true, enableDragToCalendar: true, eisenhowerFilter: "important-not-urgent" });
-  todoListEl.classList.add("todo-list-in-sidebar");
-  todoSidebar.querySelector(".calendar-todo-sidebar-body").appendChild(todoListEl);
-  todoSidebar.querySelector(".calendar-todo-sidebar-collapse").addEventListener("click", () => {
-    sidebarCollapsed = !sidebarCollapsed;
-    todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
-    todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+  const todoListEl = renderTodoList({
+    hideToolbar: true,
+    enableDragToCalendar: true,
+    eisenhowerFilter: "important-not-urgent",
   });
+  todoListEl.classList.add("todo-list-in-sidebar");
+  todoSidebar
+    .querySelector(".calendar-todo-sidebar-body")
+    .appendChild(todoListEl);
+  todoSidebar
+    .querySelector(".calendar-todo-sidebar-collapse")
+    .addEventListener("click", () => {
+      sidebarCollapsed = !sidebarCollapsed;
+      todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
+      todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title =
+        sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+    });
   wrap.appendChild(todoSidebar);
 
   wrap.addEventListener("dragend", () => {
-    wrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+    wrap
+      .querySelectorAll(".calendar-day-drag-over")
+      .forEach((el) => el.classList.remove("calendar-day-drag-over"));
   });
 
   renderCalendar();
@@ -1323,15 +1698,24 @@ function render2WeekView(tabsElement) {
       const oldList = body.querySelector(".todo-list-in-sidebar");
       let activeIndex = 0;
       if (oldList) {
-        const activeTab = oldList.querySelector(".todo-category-tab:not(.todo-category-tab-add).active");
-        const tabs = oldList.querySelectorAll(".todo-category-tab:not(.todo-category-tab-add)");
+        const activeTab = oldList.querySelector(
+          ".todo-category-tab:not(.todo-category-tab-add).active",
+        );
+        const tabs = oldList.querySelectorAll(
+          ".todo-category-tab:not(.todo-category-tab-add)",
+        );
         if (activeTab && tabs.length) {
           const idx = Array.from(tabs).indexOf(activeTab);
           if (idx >= 0) activeIndex = idx;
         }
         oldList.remove();
       }
-      const newList = renderTodoList({ hideToolbar: true, enableDragToCalendar: true, initialActiveTabIndex: activeIndex, eisenhowerFilter: "important-not-urgent" });
+      const newList = renderTodoList({
+        hideToolbar: true,
+        enableDragToCalendar: true,
+        initialActiveTabIndex: activeIndex,
+        eisenhowerFilter: "important-not-urgent",
+      });
       newList.classList.add("todo-list-in-sidebar");
       body.appendChild(newList);
     }
@@ -1343,14 +1727,19 @@ function render2WeekView(tabsElement) {
     const d2 = grid[1][6];
     const sameYear = d1.getFullYear() === d2.getFullYear();
     const s1 = `${d1.getMonth() + 1}.${d1.getDate()}`;
-    const s2 = sameYear ? `${d2.getMonth() + 1}.${d2.getDate()}` : `${d2.getFullYear()}.${d2.getMonth() + 1}.${d2.getDate()}`;
+    const s2 = sameYear
+      ? `${d2.getMonth() + 1}.${d2.getDate()}`
+      : `${d2.getFullYear()}.${d2.getMonth() + 1}.${d2.getDate()}`;
     return `${s1} ~ ${s2}`;
   }
 
   function renderCalendar() {
     const grid = getCalendarGridFor2Weeks(weekOffset);
-    nav.querySelector(".calendar-nav-month").textContent = format2WeekNavRange(grid);
-    nav.querySelector(".calendar-nav-year").textContent = grid[0]?.[0] ? String(grid[0][0].getFullYear()) : "";
+    nav.querySelector(".calendar-nav-month").textContent =
+      format2WeekNavRange(grid);
+    nav.querySelector(".calendar-nav-year").textContent = grid[0]?.[0]
+      ? String(grid[0][0].getFullYear())
+      : "";
 
     calendarGrid.innerHTML = "";
 
@@ -1373,7 +1762,9 @@ function render2WeekView(tabsElement) {
       weekWrap.className = "calendar-monthly-week-wrap";
       const weekRow = document.createElement("div");
       weekRow.className = "calendar-monthly-week";
-      const weekDateKeys = week.map((d) => (d ? formatDateKey(d) : "")).filter(Boolean);
+      const weekDateKeys = week
+        .map((d) => (d ? formatDateKey(d) : ""))
+        .filter(Boolean);
       const firstDayKey = weekDateKeys[0] || "";
       const lastDayKey = weekDateKeys[weekDateKeys.length - 1] || "";
 
@@ -1407,10 +1798,15 @@ function render2WeekView(tabsElement) {
           if (e.target.closest(".calendar-event-bubble")) return;
           e.stopPropagation();
           const rect = cell.getBoundingClientRect();
-          createCalendarEventBubble(rect, key, () => {
-            renderCalendar();
-            refreshTodoList();
-          }, () => {});
+          createCalendarEventBubble(
+            rect,
+            key,
+            () => {
+              renderCalendar();
+              refreshTodoList();
+            },
+            () => {},
+          );
         });
         cell.addEventListener("dragover", (e) => {
           if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR)) {
@@ -1450,9 +1846,20 @@ function render2WeekView(tabsElement) {
           }
           let ok = false;
           if (payload.kpiTodoId && payload.storageKey) {
-            ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
-          } else if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
-            ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
+            ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
+              startDate: newStart,
+              dueDate: newDue,
+            });
+          } else if (
+            payload.sectionId &&
+            payload.sectionId.startsWith("custom-")
+          ) {
+            ok = updateCustomSectionTaskDates(
+              payload.sectionId,
+              payload.taskId,
+              newStart,
+              newDue,
+            );
             if (!ok && (payload.name || "").trim()) {
               ok = addCalendarTodoToCustomSection(payload.sectionId, {
                 taskId: payload.taskId,
@@ -1463,12 +1870,31 @@ function render2WeekView(tabsElement) {
                 itemType: payload.itemType || "todo",
               });
             }
-          } else if (KPI_SECTION_IDS.includes(payload.sectionId) && (payload.name || "").trim()) {
+          } else if (
+            KPI_SECTION_IDS.includes(payload.sectionId) &&
+            (payload.name || "").trim()
+          ) {
             if (payload.kpiTodoId && payload.storageKey) {
-              ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
+              ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
+                startDate: newStart,
+                dueDate: newDue,
+              });
             } else {
-              ok = updateSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue) ||
-                addSectionTaskToCalendar(payload.sectionId, { taskId: payload.taskId, name: payload.name, startDate: newStart, dueDate: newDue, done: !!payload.done, itemType: payload.itemType || "todo" });
+              ok =
+                updateSectionTaskDates(
+                  payload.sectionId,
+                  payload.taskId,
+                  newStart,
+                  newDue,
+                ) ||
+                addSectionTaskToCalendar(payload.sectionId, {
+                  taskId: payload.taskId,
+                  name: payload.name,
+                  startDate: newStart,
+                  dueDate: newDue,
+                  done: !!payload.done,
+                  itemType: payload.itemType || "todo",
+                });
             }
           }
           if (ok) {
@@ -1482,7 +1908,8 @@ function render2WeekView(tabsElement) {
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
       const BAR_HEIGHT = 1.5;
-      const overlaps = (a, b) => a.left < b.left + b.width && b.left < a.left + a.width;
+      const overlaps = (a, b) =>
+        a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
       const CELL_GAP = 3.5;
       rangeTasks.forEach((t) => {
@@ -1496,7 +1923,21 @@ function render2WeekView(tabsElement) {
         const width = ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
         const baseColor = getSectionColor(t.sectionId);
         const color = withMoreTransparency(baseColor);
-        allBars.push({ left, width, name: t.name, color, isSingleDay: false, itemType: t.itemType || "todo", done: !!t.done, kpiTodoId: t.kpiTodoId, storageKey: t.storageKey, taskId: t.taskId, sectionId: t.sectionId, startDate: t.startDate, dueDate: t.dueDate });
+        allBars.push({
+          left,
+          width,
+          name: t.name,
+          color,
+          isSingleDay: false,
+          itemType: t.itemType || "todo",
+          done: !!t.done,
+          kpiTodoId: t.kpiTodoId,
+          storageKey: t.storageKey,
+          taskId: t.taskId,
+          sectionId: t.sectionId,
+          startDate: t.startDate,
+          dueDate: t.dueDate,
+        });
       });
       weekDateKeys.forEach((dateKey, dayIdx) => {
         getTasksForDate(dateKey, true).forEach((t) => {
@@ -1504,7 +1945,23 @@ function render2WeekView(tabsElement) {
           const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
           const baseColor = getSectionColor(t.sectionId);
           const color = withMoreTransparency(baseColor);
-          allBars.push({ left, width, name: t.name, color, isSingleDay: true, dayIdx, dateKey, itemType: t.itemType || "todo", done: !!t.done, kpiTodoId: t.kpiTodoId, storageKey: t.storageKey, taskId: t.taskId, sectionId: t.sectionId, startDate: t.startDate || "", dueDate: t.dueDate || dateKey });
+          allBars.push({
+            left,
+            width,
+            name: t.name,
+            color,
+            isSingleDay: true,
+            dayIdx,
+            dateKey,
+            itemType: t.itemType || "todo",
+            done: !!t.done,
+            kpiTodoId: t.kpiTodoId,
+            storageKey: t.storageKey,
+            taskId: t.taskId,
+            sectionId: t.sectionId,
+            startDate: t.startDate || "",
+            dueDate: t.dueDate || dateKey,
+          });
         });
       });
       const rowBars = [];
@@ -1516,7 +1973,9 @@ function render2WeekView(tabsElement) {
         b.row = row;
       });
       const barsPerDay = weekDateKeys.map((_, dayIdx) =>
-        allBars.filter((b) => b.isSingleDay && b.dayIdx === dayIdx).sort((a, b) => a.row - b.row)
+        allBars
+          .filter((b) => b.isSingleDay && b.dayIdx === dayIdx)
+          .sort((a, b) => a.row - b.row),
       );
       allBars.forEach((b) => {
         if (b.isSingleDay && b.dayIdx != null) {
@@ -1531,7 +1990,9 @@ function render2WeekView(tabsElement) {
         const bar = document.createElement("div");
         bar.className =
           "calendar-monthly-span-bar" +
-          (b.isSingleDay ? " calendar-monthly-span-bar--todo" : " calendar-monthly-span-bar--range") +
+          (b.isSingleDay
+            ? " calendar-monthly-span-bar--todo"
+            : " calendar-monthly-span-bar--range") +
           (isTodo ? " calendar-monthly-span-bar--has-checkbox" : "") +
           (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "");
         bar.title = b.name;
@@ -1553,7 +2014,9 @@ function render2WeekView(tabsElement) {
         }
         if (isTodo && b.done) {
           bar.classList.add("is-completed");
-          bar.querySelector(".calendar-monthly-span-bar-checkbox-inner")?.classList.add("checked");
+          bar
+            .querySelector(".calendar-monthly-span-bar-checkbox-inner")
+            ?.classList.add("checked");
         }
         if (isTodo) {
           const toggleDone = (e) => {
@@ -1566,7 +2029,9 @@ function render2WeekView(tabsElement) {
             }
             b.done = newDone;
             bar.classList.toggle("is-completed", newDone);
-            bar.querySelector(".calendar-monthly-span-bar-checkbox-inner")?.classList.toggle("checked", newDone);
+            bar
+              .querySelector(".calendar-monthly-span-bar-checkbox-inner")
+              ?.classList.toggle("checked", newDone);
             refreshTodoList();
           };
           bar.addEventListener("click", toggleDone);
@@ -1575,10 +2040,16 @@ function render2WeekView(tabsElement) {
           bar.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             e.stopPropagation();
-            createCalendarBarDateEditBubble(e.clientX, e.clientY, b, () => {
-              renderCalendar();
-              refreshTodoList();
-            }, () => {});
+            createCalendarBarDateEditBubble(
+              e.clientX,
+              e.clientY,
+              b,
+              () => {
+                renderCalendar();
+                refreshTodoList();
+              },
+              () => {},
+            );
           });
         }
         if (b.isSingleDay && b.dueDate) {
@@ -1586,7 +2057,20 @@ function render2WeekView(tabsElement) {
           bar.classList.add("calendar-monthly-span-bar--draggable");
           bar.addEventListener("dragstart", (e) => {
             e.dataTransfer.effectAllowed = "move";
-            e.dataTransfer.setData("application/json", JSON.stringify({ name: b.name, dueDate: b.dueDate, startDate: b.startDate || "", kpiTodoId: b.kpiTodoId, storageKey: b.storageKey, taskId: b.taskId, sectionId: b.sectionId, done: !!b.done, itemType: b.itemType || "todo" }));
+            e.dataTransfer.setData(
+              "application/json",
+              JSON.stringify({
+                name: b.name,
+                dueDate: b.dueDate,
+                startDate: b.startDate || "",
+                kpiTodoId: b.kpiTodoId,
+                storageKey: b.storageKey,
+                taskId: b.taskId,
+                sectionId: b.sectionId,
+                done: !!b.done,
+                itemType: b.itemType || "todo",
+              }),
+            );
             e.dataTransfer.setData("text/plain", b.name || "");
             bar.classList.add("calendar-monthly-span-bar--dragging");
           });
@@ -1596,22 +2080,33 @@ function render2WeekView(tabsElement) {
           bar.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             e.stopPropagation();
-            createCalendarBarRevertBubble(e.clientX, e.clientY, b, () => {
-              renderCalendar();
-              refreshTodoList();
-            }, () => {});
+            createCalendarBarRevertBubble(
+              e.clientX,
+              e.clientY,
+              b,
+              () => {
+                renderCalendar();
+                refreshTodoList();
+              },
+              () => {},
+            );
           });
         }
         barsEl.appendChild(bar);
       });
       const moreEl = document.createElement("div");
       moreEl.className = "calendar-day-more-overlay";
-      moreEl.style.cssText = "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
+      moreEl.style.cssText =
+        "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
       weekDateKeys.forEach((dateKey, dayIdx) => {
-        const overflowCount = barsPerDay[dayIdx]?.length - MAX_VISIBLE_BARS_PER_DAY;
-        const cell = weekRow.querySelector(`.calendar-monthly-day[data-date="${dateKey}"]`);
+        const overflowCount =
+          barsPerDay[dayIdx]?.length - MAX_VISIBLE_BARS_PER_DAY;
+        const cell = weekRow.querySelector(
+          `.calendar-monthly-day[data-date="${dateKey}"]`,
+        );
         const slot = document.createElement("div");
-        slot.style.cssText = "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
+        slot.style.cssText =
+          "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
         if (overflowCount > 0 && cell) {
           slot.style.pointerEvents = "auto";
           const moreBtn = document.createElement("button");
@@ -1632,32 +2127,52 @@ function render2WeekView(tabsElement) {
       weekWrap.appendChild(moreEl);
       weekWrap.addEventListener("dragover", (e) => {
         e.preventDefault();
-        if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR) || e.dataTransfer.types.includes("application/json")) {
+        if (
+          e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR) ||
+          e.dataTransfer.types.includes("application/json")
+        ) {
           e.dataTransfer.dropEffect = "move";
-          let cell = document.elementFromPoint(e.clientX, e.clientY)?.closest(".calendar-monthly-day:not(.empty)");
+          let cell = document
+            .elementFromPoint(e.clientX, e.clientY)
+            ?.closest(".calendar-monthly-day:not(.empty)");
           if (!cell) {
-            const cells = weekRow.querySelectorAll(".calendar-monthly-day:not(.empty)");
+            const cells = weekRow.querySelectorAll(
+              ".calendar-monthly-day:not(.empty)",
+            );
             for (const c of cells) {
               const r = c.getBoundingClientRect();
-              if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+              if (
+                e.clientX >= r.left &&
+                e.clientX <= r.right &&
+                e.clientY >= r.top &&
+                e.clientY <= r.bottom
+              ) {
                 cell = c;
                 break;
               }
             }
           }
-          weekWrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+          weekWrap
+            .querySelectorAll(".calendar-day-drag-over")
+            .forEach((el) => el.classList.remove("calendar-day-drag-over"));
           if (cell) cell.classList.add("calendar-day-drag-over");
         }
       });
       weekWrap.addEventListener("dragleave", (e) => {
         if (!weekWrap.contains(e.relatedTarget)) {
-          weekWrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+          weekWrap
+            .querySelectorAll(".calendar-day-drag-over")
+            .forEach((el) => el.classList.remove("calendar-day-drag-over"));
         }
       });
       weekWrap.addEventListener("drop", (e) => {
-        weekWrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+        weekWrap
+          .querySelectorAll(".calendar-day-drag-over")
+          .forEach((el) => el.classList.remove("calendar-day-drag-over"));
         e.preventDefault();
-        let json = e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR) || e.dataTransfer.getData("application/json");
+        let json =
+          e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR) ||
+          e.dataTransfer.getData("application/json");
         if (!json) return;
         let payload;
         try {
@@ -1665,12 +2180,21 @@ function render2WeekView(tabsElement) {
         } catch (_) {
           return;
         }
-        let cell = document.elementFromPoint(e.clientX, e.clientY)?.closest(".calendar-monthly-day:not(.empty)");
+        let cell = document
+          .elementFromPoint(e.clientX, e.clientY)
+          ?.closest(".calendar-monthly-day:not(.empty)");
         if (!cell) {
-          const cells = weekRow.querySelectorAll(".calendar-monthly-day:not(.empty)");
+          const cells = weekRow.querySelectorAll(
+            ".calendar-monthly-day:not(.empty)",
+          );
           for (const c of cells) {
             const r = c.getBoundingClientRect();
-            if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+            if (
+              e.clientX >= r.left &&
+              e.clientX <= r.right &&
+              e.clientY >= r.top &&
+              e.clientY <= r.bottom
+            ) {
               cell = c;
               break;
             }
@@ -1693,9 +2217,20 @@ function render2WeekView(tabsElement) {
         }
         let ok = false;
         if (payload.kpiTodoId && payload.storageKey) {
-          ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
-        } else if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
-          ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
+          ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
+            startDate: newStart,
+            dueDate: newDue,
+          });
+        } else if (
+          payload.sectionId &&
+          payload.sectionId.startsWith("custom-")
+        ) {
+          ok = updateCustomSectionTaskDates(
+            payload.sectionId,
+            payload.taskId,
+            newStart,
+            newDue,
+          );
           if (!ok && (payload.name || "").trim()) {
             ok = addCalendarTodoToCustomSection(payload.sectionId, {
               taskId: payload.taskId,
@@ -1706,12 +2241,31 @@ function render2WeekView(tabsElement) {
               itemType: payload.itemType || "todo",
             });
           }
-        } else if (KPI_SECTION_IDS.includes(payload.sectionId) && (payload.name || "").trim()) {
+        } else if (
+          KPI_SECTION_IDS.includes(payload.sectionId) &&
+          (payload.name || "").trim()
+        ) {
           if (payload.kpiTodoId && payload.storageKey) {
-            ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
+            ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
+              startDate: newStart,
+              dueDate: newDue,
+            });
           } else {
-            ok = updateSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue) ||
-              addSectionTaskToCalendar(payload.sectionId, { taskId: payload.taskId, name: payload.name, startDate: newStart, dueDate: newDue, done: !!payload.done, itemType: payload.itemType || "todo" });
+            ok =
+              updateSectionTaskDates(
+                payload.sectionId,
+                payload.taskId,
+                newStart,
+                newDue,
+              ) ||
+              addSectionTaskToCalendar(payload.sectionId, {
+                taskId: payload.taskId,
+                name: payload.name,
+                startDate: newStart,
+                dueDate: newDue,
+                done: !!payload.done,
+                itemType: payload.itemType || "todo",
+              });
           }
         }
         if (ok) {
@@ -1754,18 +2308,29 @@ function render2WeekView(tabsElement) {
     </div>
     <div class="calendar-todo-sidebar-body"></div>
   `;
-  const todoListEl = renderTodoList({ hideToolbar: true, enableDragToCalendar: true, eisenhowerFilter: "important-not-urgent" });
-  todoListEl.classList.add("todo-list-in-sidebar");
-  todoSidebar.querySelector(".calendar-todo-sidebar-body").appendChild(todoListEl);
-  todoSidebar.querySelector(".calendar-todo-sidebar-collapse").addEventListener("click", () => {
-    sidebarCollapsed = !sidebarCollapsed;
-    todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
-    todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+  const todoListEl = renderTodoList({
+    hideToolbar: true,
+    enableDragToCalendar: true,
+    eisenhowerFilter: "important-not-urgent",
   });
+  todoListEl.classList.add("todo-list-in-sidebar");
+  todoSidebar
+    .querySelector(".calendar-todo-sidebar-body")
+    .appendChild(todoListEl);
+  todoSidebar
+    .querySelector(".calendar-todo-sidebar-collapse")
+    .addEventListener("click", () => {
+      sidebarCollapsed = !sidebarCollapsed;
+      todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
+      todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title =
+        sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+    });
   wrap.appendChild(todoSidebar);
 
   wrap.addEventListener("dragend", () => {
-    wrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+    wrap
+      .querySelectorAll(".calendar-day-drag-over")
+      .forEach((el) => el.classList.remove("calendar-day-drag-over"));
   });
 
   renderCalendar();
@@ -1813,15 +2378,24 @@ function render3WeekView(tabsElement) {
       const oldList = body.querySelector(".todo-list-in-sidebar");
       let activeIndex = 0;
       if (oldList) {
-        const activeTab = oldList.querySelector(".todo-category-tab:not(.todo-category-tab-add).active");
-        const tabs = oldList.querySelectorAll(".todo-category-tab:not(.todo-category-tab-add)");
+        const activeTab = oldList.querySelector(
+          ".todo-category-tab:not(.todo-category-tab-add).active",
+        );
+        const tabs = oldList.querySelectorAll(
+          ".todo-category-tab:not(.todo-category-tab-add)",
+        );
         if (activeTab && tabs.length) {
           const idx = Array.from(tabs).indexOf(activeTab);
           if (idx >= 0) activeIndex = idx;
         }
         oldList.remove();
       }
-      const newList = renderTodoList({ hideToolbar: true, enableDragToCalendar: true, initialActiveTabIndex: activeIndex, eisenhowerFilter: "important-not-urgent" });
+      const newList = renderTodoList({
+        hideToolbar: true,
+        enableDragToCalendar: true,
+        initialActiveTabIndex: activeIndex,
+        eisenhowerFilter: "important-not-urgent",
+      });
       newList.classList.add("todo-list-in-sidebar");
       body.appendChild(newList);
     }
@@ -1833,14 +2407,19 @@ function render3WeekView(tabsElement) {
     const d2 = grid[2][6];
     const sameYear = d1.getFullYear() === d2.getFullYear();
     const s1 = `${d1.getMonth() + 1}.${d1.getDate()}`;
-    const s2 = sameYear ? `${d2.getMonth() + 1}.${d2.getDate()}` : `${d2.getFullYear()}.${d2.getMonth() + 1}.${d2.getDate()}`;
+    const s2 = sameYear
+      ? `${d2.getMonth() + 1}.${d2.getDate()}`
+      : `${d2.getFullYear()}.${d2.getMonth() + 1}.${d2.getDate()}`;
     return `${s1} ~ ${s2}`;
   }
 
   function renderCalendar() {
     const grid = getCalendarGridFor3Weeks(weekOffset);
-    nav.querySelector(".calendar-nav-month").textContent = format3WeekNavRange(grid);
-    nav.querySelector(".calendar-nav-year").textContent = grid[0]?.[0] ? String(grid[0][0].getFullYear()) : "";
+    nav.querySelector(".calendar-nav-month").textContent =
+      format3WeekNavRange(grid);
+    nav.querySelector(".calendar-nav-year").textContent = grid[0]?.[0]
+      ? String(grid[0][0].getFullYear())
+      : "";
 
     calendarGrid.innerHTML = "";
 
@@ -1863,7 +2442,9 @@ function render3WeekView(tabsElement) {
       weekWrap.className = "calendar-monthly-week-wrap";
       const weekRow = document.createElement("div");
       weekRow.className = "calendar-monthly-week";
-      const weekDateKeys = week.map((d) => (d ? formatDateKey(d) : "")).filter(Boolean);
+      const weekDateKeys = week
+        .map((d) => (d ? formatDateKey(d) : ""))
+        .filter(Boolean);
       const firstDayKey = weekDateKeys[0] || "";
       const lastDayKey = weekDateKeys[weekDateKeys.length - 1] || "";
 
@@ -1897,10 +2478,15 @@ function render3WeekView(tabsElement) {
           if (e.target.closest(".calendar-event-bubble")) return;
           e.stopPropagation();
           const rect = cell.getBoundingClientRect();
-          createCalendarEventBubble(rect, key, () => {
-            renderCalendar();
-            refreshTodoList();
-          }, () => {});
+          createCalendarEventBubble(
+            rect,
+            key,
+            () => {
+              renderCalendar();
+              refreshTodoList();
+            },
+            () => {},
+          );
         });
         cell.addEventListener("dragover", (e) => {
           if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR)) {
@@ -1940,9 +2526,20 @@ function render3WeekView(tabsElement) {
           }
           let ok = false;
           if (payload.kpiTodoId && payload.storageKey) {
-            ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
-          } else if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
-            ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
+            ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
+              startDate: newStart,
+              dueDate: newDue,
+            });
+          } else if (
+            payload.sectionId &&
+            payload.sectionId.startsWith("custom-")
+          ) {
+            ok = updateCustomSectionTaskDates(
+              payload.sectionId,
+              payload.taskId,
+              newStart,
+              newDue,
+            );
             if (!ok && (payload.name || "").trim()) {
               ok = addCalendarTodoToCustomSection(payload.sectionId, {
                 taskId: payload.taskId,
@@ -1953,12 +2550,31 @@ function render3WeekView(tabsElement) {
                 itemType: payload.itemType || "todo",
               });
             }
-          } else if (KPI_SECTION_IDS.includes(payload.sectionId) && (payload.name || "").trim()) {
+          } else if (
+            KPI_SECTION_IDS.includes(payload.sectionId) &&
+            (payload.name || "").trim()
+          ) {
             if (payload.kpiTodoId && payload.storageKey) {
-              ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
+              ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
+                startDate: newStart,
+                dueDate: newDue,
+              });
             } else {
-              ok = updateSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue) ||
-                addSectionTaskToCalendar(payload.sectionId, { taskId: payload.taskId, name: payload.name, startDate: newStart, dueDate: newDue, done: !!payload.done, itemType: payload.itemType || "todo" });
+              ok =
+                updateSectionTaskDates(
+                  payload.sectionId,
+                  payload.taskId,
+                  newStart,
+                  newDue,
+                ) ||
+                addSectionTaskToCalendar(payload.sectionId, {
+                  taskId: payload.taskId,
+                  name: payload.name,
+                  startDate: newStart,
+                  dueDate: newDue,
+                  done: !!payload.done,
+                  itemType: payload.itemType || "todo",
+                });
             }
           }
           if (ok) {
@@ -1972,7 +2588,8 @@ function render3WeekView(tabsElement) {
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
       const BAR_HEIGHT = 1.5;
-      const overlaps = (a, b) => a.left < b.left + b.width && b.left < a.left + a.width;
+      const overlaps = (a, b) =>
+        a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
       const CELL_GAP = 3.5;
       rangeTasks.forEach((t) => {
@@ -1986,7 +2603,21 @@ function render3WeekView(tabsElement) {
         const width = ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
         const baseColor = getSectionColor(t.sectionId);
         const color = withMoreTransparency(baseColor);
-        allBars.push({ left, width, name: t.name, color, isSingleDay: false, itemType: t.itemType || "todo", done: !!t.done, kpiTodoId: t.kpiTodoId, storageKey: t.storageKey, taskId: t.taskId, sectionId: t.sectionId, startDate: t.startDate, dueDate: t.dueDate });
+        allBars.push({
+          left,
+          width,
+          name: t.name,
+          color,
+          isSingleDay: false,
+          itemType: t.itemType || "todo",
+          done: !!t.done,
+          kpiTodoId: t.kpiTodoId,
+          storageKey: t.storageKey,
+          taskId: t.taskId,
+          sectionId: t.sectionId,
+          startDate: t.startDate,
+          dueDate: t.dueDate,
+        });
       });
       weekDateKeys.forEach((dateKey, dayIdx) => {
         getTasksForDate(dateKey, true).forEach((t) => {
@@ -1994,7 +2625,23 @@ function render3WeekView(tabsElement) {
           const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
           const baseColor = getSectionColor(t.sectionId);
           const color = withMoreTransparency(baseColor);
-          allBars.push({ left, width, name: t.name, color, isSingleDay: true, dayIdx, dateKey, itemType: t.itemType || "todo", done: !!t.done, kpiTodoId: t.kpiTodoId, storageKey: t.storageKey, taskId: t.taskId, sectionId: t.sectionId, startDate: t.startDate || "", dueDate: t.dueDate || dateKey });
+          allBars.push({
+            left,
+            width,
+            name: t.name,
+            color,
+            isSingleDay: true,
+            dayIdx,
+            dateKey,
+            itemType: t.itemType || "todo",
+            done: !!t.done,
+            kpiTodoId: t.kpiTodoId,
+            storageKey: t.storageKey,
+            taskId: t.taskId,
+            sectionId: t.sectionId,
+            startDate: t.startDate || "",
+            dueDate: t.dueDate || dateKey,
+          });
         });
       });
       const rowBars = [];
@@ -2006,7 +2653,9 @@ function render3WeekView(tabsElement) {
         b.row = row;
       });
       const barsPerDay = weekDateKeys.map((_, dayIdx) =>
-        allBars.filter((b) => b.isSingleDay && b.dayIdx === dayIdx).sort((a, b) => a.row - b.row)
+        allBars
+          .filter((b) => b.isSingleDay && b.dayIdx === dayIdx)
+          .sort((a, b) => a.row - b.row),
       );
       allBars.forEach((b) => {
         if (b.isSingleDay && b.dayIdx != null) {
@@ -2021,7 +2670,9 @@ function render3WeekView(tabsElement) {
         const bar = document.createElement("div");
         bar.className =
           "calendar-monthly-span-bar" +
-          (b.isSingleDay ? " calendar-monthly-span-bar--todo" : " calendar-monthly-span-bar--range") +
+          (b.isSingleDay
+            ? " calendar-monthly-span-bar--todo"
+            : " calendar-monthly-span-bar--range") +
           (isTodo ? " calendar-monthly-span-bar--has-checkbox" : "") +
           (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "");
         bar.title = b.name;
@@ -2052,7 +2703,9 @@ function render3WeekView(tabsElement) {
             }
             bar.dataset.done = newDone ? "true" : "false";
             bar.classList.toggle("is-completed", newDone);
-            bar.querySelector(".calendar-monthly-span-bar-checkbox-inner")?.classList.toggle("checked", newDone);
+            bar
+              .querySelector(".calendar-monthly-span-bar-checkbox-inner")
+              ?.classList.toggle("checked", newDone);
             renderCalendar();
             refreshTodoList();
           };
@@ -2062,10 +2715,16 @@ function render3WeekView(tabsElement) {
           bar.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             e.stopPropagation();
-            createCalendarBarDateEditBubble(e.clientX, e.clientY, b, () => {
-              renderCalendar();
-              refreshTodoList();
-            }, () => {});
+            createCalendarBarDateEditBubble(
+              e.clientX,
+              e.clientY,
+              b,
+              () => {
+                renderCalendar();
+                refreshTodoList();
+              },
+              () => {},
+            );
           });
         }
         if (b.isSingleDay && b.dueDate) {
@@ -2073,7 +2732,20 @@ function render3WeekView(tabsElement) {
           bar.classList.add("calendar-monthly-span-bar--draggable");
           bar.addEventListener("dragstart", (e) => {
             e.dataTransfer.effectAllowed = "move";
-            e.dataTransfer.setData("application/json", JSON.stringify({ name: b.name, dueDate: b.dueDate, startDate: b.startDate || "", kpiTodoId: b.kpiTodoId, storageKey: b.storageKey, taskId: b.taskId, sectionId: b.sectionId, done: !!b.done, itemType: b.itemType || "todo" }));
+            e.dataTransfer.setData(
+              "application/json",
+              JSON.stringify({
+                name: b.name,
+                dueDate: b.dueDate,
+                startDate: b.startDate || "",
+                kpiTodoId: b.kpiTodoId,
+                storageKey: b.storageKey,
+                taskId: b.taskId,
+                sectionId: b.sectionId,
+                done: !!b.done,
+                itemType: b.itemType || "todo",
+              }),
+            );
             e.dataTransfer.setData("text/plain", b.name || "");
             bar.classList.add("calendar-monthly-span-bar--dragging");
           });
@@ -2083,22 +2755,33 @@ function render3WeekView(tabsElement) {
           bar.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             e.stopPropagation();
-            createCalendarBarRevertBubble(e.clientX, e.clientY, b, () => {
-              renderCalendar();
-              refreshTodoList();
-            }, () => {});
+            createCalendarBarRevertBubble(
+              e.clientX,
+              e.clientY,
+              b,
+              () => {
+                renderCalendar();
+                refreshTodoList();
+              },
+              () => {},
+            );
           });
         }
         barsEl.appendChild(bar);
       });
       const moreEl = document.createElement("div");
       moreEl.className = "calendar-day-more-overlay";
-      moreEl.style.cssText = "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
+      moreEl.style.cssText =
+        "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
       weekDateKeys.forEach((dateKey, dayIdx) => {
-        const overflowCount = barsPerDay[dayIdx]?.length - MAX_VISIBLE_BARS_PER_DAY;
-        const cell = weekRow.querySelector(`.calendar-monthly-day[data-date="${dateKey}"]`);
+        const overflowCount =
+          barsPerDay[dayIdx]?.length - MAX_VISIBLE_BARS_PER_DAY;
+        const cell = weekRow.querySelector(
+          `.calendar-monthly-day[data-date="${dateKey}"]`,
+        );
         const slot = document.createElement("div");
-        slot.style.cssText = "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
+        slot.style.cssText =
+          "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
         if (overflowCount > 0 && cell) {
           slot.style.pointerEvents = "auto";
           const moreBtn = document.createElement("button");
@@ -2119,32 +2802,52 @@ function render3WeekView(tabsElement) {
       weekWrap.appendChild(moreEl);
       weekWrap.addEventListener("dragover", (e) => {
         e.preventDefault();
-        if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR) || e.dataTransfer.types.includes("application/json")) {
+        if (
+          e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR) ||
+          e.dataTransfer.types.includes("application/json")
+        ) {
           e.dataTransfer.dropEffect = "move";
-          let cell = document.elementFromPoint(e.clientX, e.clientY)?.closest(".calendar-monthly-day:not(.empty)");
+          let cell = document
+            .elementFromPoint(e.clientX, e.clientY)
+            ?.closest(".calendar-monthly-day:not(.empty)");
           if (!cell) {
-            const cells = weekRow.querySelectorAll(".calendar-monthly-day:not(.empty)");
+            const cells = weekRow.querySelectorAll(
+              ".calendar-monthly-day:not(.empty)",
+            );
             for (const c of cells) {
               const r = c.getBoundingClientRect();
-              if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+              if (
+                e.clientX >= r.left &&
+                e.clientX <= r.right &&
+                e.clientY >= r.top &&
+                e.clientY <= r.bottom
+              ) {
                 cell = c;
                 break;
               }
             }
           }
-          weekWrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+          weekWrap
+            .querySelectorAll(".calendar-day-drag-over")
+            .forEach((el) => el.classList.remove("calendar-day-drag-over"));
           if (cell) cell.classList.add("calendar-day-drag-over");
         }
       });
       weekWrap.addEventListener("dragleave", (e) => {
         if (!weekWrap.contains(e.relatedTarget)) {
-          weekWrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+          weekWrap
+            .querySelectorAll(".calendar-day-drag-over")
+            .forEach((el) => el.classList.remove("calendar-day-drag-over"));
         }
       });
       weekWrap.addEventListener("drop", (e) => {
-        weekWrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+        weekWrap
+          .querySelectorAll(".calendar-day-drag-over")
+          .forEach((el) => el.classList.remove("calendar-day-drag-over"));
         e.preventDefault();
-        let json = e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR) || e.dataTransfer.getData("application/json");
+        let json =
+          e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR) ||
+          e.dataTransfer.getData("application/json");
         if (!json) return;
         let payload;
         try {
@@ -2152,12 +2855,21 @@ function render3WeekView(tabsElement) {
         } catch (_) {
           return;
         }
-        let cell = document.elementFromPoint(e.clientX, e.clientY)?.closest(".calendar-monthly-day:not(.empty)");
+        let cell = document
+          .elementFromPoint(e.clientX, e.clientY)
+          ?.closest(".calendar-monthly-day:not(.empty)");
         if (!cell) {
-          const cells = weekRow.querySelectorAll(".calendar-monthly-day:not(.empty)");
+          const cells = weekRow.querySelectorAll(
+            ".calendar-monthly-day:not(.empty)",
+          );
           for (const c of cells) {
             const r = c.getBoundingClientRect();
-            if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+            if (
+              e.clientX >= r.left &&
+              e.clientX <= r.right &&
+              e.clientY >= r.top &&
+              e.clientY <= r.bottom
+            ) {
               cell = c;
               break;
             }
@@ -2181,9 +2893,20 @@ function render3WeekView(tabsElement) {
         }
         let ok = false;
         if (payload.kpiTodoId && payload.storageKey) {
-          ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
-        } else if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
-          ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
+          ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
+            startDate: newStart,
+            dueDate: newDue,
+          });
+        } else if (
+          payload.sectionId &&
+          payload.sectionId.startsWith("custom-")
+        ) {
+          ok = updateCustomSectionTaskDates(
+            payload.sectionId,
+            payload.taskId,
+            newStart,
+            newDue,
+          );
           if (!ok && (payload.name || "").trim()) {
             ok = addCalendarTodoToCustomSection(payload.sectionId, {
               taskId: payload.taskId,
@@ -2194,12 +2917,31 @@ function render3WeekView(tabsElement) {
               itemType: payload.itemType || "todo",
             });
           }
-        } else if (KPI_SECTION_IDS.includes(payload.sectionId) && (payload.name || "").trim()) {
+        } else if (
+          KPI_SECTION_IDS.includes(payload.sectionId) &&
+          (payload.name || "").trim()
+        ) {
           if (payload.kpiTodoId && payload.storageKey) {
-            ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
+            ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
+              startDate: newStart,
+              dueDate: newDue,
+            });
           } else {
-            ok = updateSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue) ||
-              addSectionTaskToCalendar(payload.sectionId, { taskId: payload.taskId, name: payload.name, startDate: newStart, dueDate: newDue, done: !!payload.done, itemType: payload.itemType || "todo" });
+            ok =
+              updateSectionTaskDates(
+                payload.sectionId,
+                payload.taskId,
+                newStart,
+                newDue,
+              ) ||
+              addSectionTaskToCalendar(payload.sectionId, {
+                taskId: payload.taskId,
+                name: payload.name,
+                startDate: newStart,
+                dueDate: newDue,
+                done: !!payload.done,
+                itemType: payload.itemType || "todo",
+              });
           }
         }
         if (ok) {
@@ -2242,18 +2984,29 @@ function render3WeekView(tabsElement) {
     </div>
     <div class="calendar-todo-sidebar-body"></div>
   `;
-  const todoListEl = renderTodoList({ hideToolbar: true, enableDragToCalendar: true, eisenhowerFilter: "important-not-urgent" });
-  todoListEl.classList.add("todo-list-in-sidebar");
-  todoSidebar.querySelector(".calendar-todo-sidebar-body").appendChild(todoListEl);
-  todoSidebar.querySelector(".calendar-todo-sidebar-collapse").addEventListener("click", () => {
-    sidebarCollapsed = !sidebarCollapsed;
-    todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
-    todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+  const todoListEl = renderTodoList({
+    hideToolbar: true,
+    enableDragToCalendar: true,
+    eisenhowerFilter: "important-not-urgent",
   });
+  todoListEl.classList.add("todo-list-in-sidebar");
+  todoSidebar
+    .querySelector(".calendar-todo-sidebar-body")
+    .appendChild(todoListEl);
+  todoSidebar
+    .querySelector(".calendar-todo-sidebar-collapse")
+    .addEventListener("click", () => {
+      sidebarCollapsed = !sidebarCollapsed;
+      todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
+      todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title =
+        sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+    });
   wrap.appendChild(todoSidebar);
 
   wrap.addEventListener("dragend", () => {
-    wrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+    wrap
+      .querySelectorAll(".calendar-day-drag-over")
+      .forEach((el) => el.classList.remove("calendar-day-drag-over"));
   });
 
   renderCalendar();
@@ -2269,7 +3022,9 @@ function build1DayTimetableOverlays(targetKey) {
   const parseDateFromTimeStr = (str) => {
     if (!str || typeof str !== "string") return "";
     const m = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
-    return m ? `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}` : "";
+    return m
+      ? `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`
+      : "";
   };
   const normDate = (s) => (s || "").replace(/\//g, "-").trim().slice(0, 10);
   const actualRows = allTimeRows.filter(
@@ -2277,7 +3032,9 @@ function build1DayTimetableOverlays(targetKey) {
   );
   const parseHhMmToMinutes = (s) => {
     if (!s || !s.trim()) return null;
-    const m = String(s).trim().match(/^(\d{1,2}):?(\d{0,2})$/);
+    const m = String(s)
+      .trim()
+      .match(/^(\d{1,2}):?(\d{0,2})$/);
     if (!m) return null;
     return (parseInt(m[1], 10) || 0) * 60 + (parseInt(m[2], 10) || 0);
   };
@@ -2287,12 +3044,24 @@ function build1DayTimetableOverlays(targetKey) {
     if (!m) return null;
     return (parseInt(m[1], 10) || 0) * 60 + (parseInt(m[2], 10) || 0);
   };
-  const tryOverlap = (slotStartMin, slotEndMin, startMin, endMin, prod, taskName) => {
+  const tryOverlap = (
+    slotStartMin,
+    slotEndMin,
+    startMin,
+    endMin,
+    prod,
+    taskName,
+  ) => {
     if (startMin == null || endMin == null) return null;
     const overlapStart = Math.max(slotStartMin, startMin);
     const overlapEnd = Math.min(slotEndMin, endMin);
     if (overlapStart < overlapEnd) {
-      return { prod, taskName: taskName || "", overlapStartMin: overlapStart, overlapEndMin: overlapEnd };
+      return {
+        prod,
+        taskName: taskName || "",
+        overlapStartMin: overlapStart,
+        overlapEndMin: overlapEnd,
+      };
     }
     return null;
   };
@@ -2300,8 +3069,10 @@ function build1DayTimetableOverlays(targetKey) {
   const MIN_PER_SLOT = 30;
   const getScheduledTimesForTask = (data) => {
     if (!data) return [];
-    if (Array.isArray(data.scheduledTimes)) return data.scheduledTimes.filter((s) => s && String(s).trim());
-    if (data.scheduledTime && String(data.scheduledTime).trim()) return [String(data.scheduledTime).trim()];
+    if (Array.isArray(data.scheduledTimes))
+      return data.scheduledTimes.filter((s) => s && String(s).trim());
+    if (data.scheduledTime && String(data.scheduledTime).trim())
+      return [String(data.scheduledTime).trim()];
     return [];
   };
   const getSlotExpected = (slotIndex) => {
@@ -2317,7 +3088,14 @@ function build1DayTimetableOverlays(targetKey) {
         if (startMin == null || endMin == null) continue;
         const opt = getTaskOptionByName(taskName);
         const prod = opt?.productivity || "other";
-        const res = tryOverlap(slotStartMin, slotEndMin, startMin, endMin, prod, taskName);
+        const res = tryOverlap(
+          slotStartMin,
+          slotEndMin,
+          startMin,
+          endMin,
+          prod,
+          taskName,
+        );
         if (res) return res;
       }
     }
@@ -2329,8 +3107,20 @@ function build1DayTimetableOverlays(targetKey) {
       const endMin = parseHhMmToMinutes(et);
       if (startMin == null || endMin == null) continue;
       const prod = getTaskOptionByName(t.name)?.productivity || "other";
-      const res = tryOverlap(slotStartMin, slotEndMin, startMin, endMin, prod, t.name);
-      if (res) return { ...res, _task: t, _taskKey: t.kpiTodoId || t.taskId || t.name };
+      const res = tryOverlap(
+        slotStartMin,
+        slotEndMin,
+        startMin,
+        endMin,
+        prod,
+        t.name,
+      );
+      if (res)
+        return {
+          ...res,
+          _task: t,
+          _taskKey: t.kpiTodoId || t.taskId || t.name,
+        };
     }
     return null;
   };
@@ -2341,20 +3131,39 @@ function build1DayTimetableOverlays(targetKey) {
       const startMin = parseDateTimeToMinutes(r.startTime);
       const endMin = parseDateTimeToMinutes(r.endTime);
       if (startMin == null || endMin == null) continue;
-      const prod = r.productivity || getTaskOptionByName(r.taskName)?.productivity || "other";
-      const res = tryOverlap(slotStartMin, slotEndMin, startMin, endMin, prod, r.taskName);
+      const prod =
+        r.productivity ||
+        getTaskOptionByName(r.taskName)?.productivity ||
+        "other";
+      const res = tryOverlap(
+        slotStartMin,
+        slotEndMin,
+        startMin,
+        endMin,
+        prod,
+        r.taskName,
+      );
       if (res) return res;
     }
     return null;
   };
   const prodColorsActual = {
     productive: { bg: "rgba(239, 68, 68, 0.28)", border: "rgb(239, 68, 68)" },
-    nonproductive: { bg: "rgba(59, 130, 246, 0.28)", border: "rgb(59, 130, 246)" },
+    nonproductive: {
+      bg: "rgba(59, 130, 246, 0.28)",
+      border: "rgb(59, 130, 246)",
+    },
     other: { bg: "rgba(34, 197, 94, 0.28)", border: "rgb(34, 197, 94)" },
   };
   const prodColorsExpected = {
-    productive: { bg: "rgba(239, 68, 68, 0.06)", border: "rgba(239, 68, 68, 0.5)" },
-    nonproductive: { bg: "rgba(59, 130, 246, 0.06)", border: "rgba(59, 130, 246, 0.5)" },
+    productive: {
+      bg: "rgba(239, 68, 68, 0.06)",
+      border: "rgba(239, 68, 68, 0.5)",
+    },
+    nonproductive: {
+      bg: "rgba(59, 130, 246, 0.06)",
+      border: "rgba(59, 130, 246, 0.5)",
+    },
     other: { bg: "rgba(34, 197, 94, 0.06)", border: "rgba(34, 197, 94, 0.5)" },
   };
   const buildSpans = (getSlot) => {
@@ -2363,7 +3172,10 @@ function build1DayTimetableOverlays(targetKey) {
     const spans = [];
     for (let i = 0; i < SLOTS_PER_DAY; ) {
       const cur = slotInfos[i];
-      if (!cur || !cur.taskName) { i++; continue; }
+      if (!cur || !cur.taskName) {
+        i++;
+        continue;
+      }
       let endSlot = i;
       const startMin = cur.overlapStartMin ?? i * MIN_PER_SLOT;
       const key = cur._taskKey || cur.taskName;
@@ -2375,10 +3187,19 @@ function build1DayTimetableOverlays(targetKey) {
       }
       const last = slotInfos[endSlot];
       const endMin = last?.overlapEndMin ?? (endSlot + 1) * MIN_PER_SLOT;
-      const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+      const fmt = (m) =>
+        `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
       spans.push({
-        startSlot: i, endSlot, startMin, endMin, taskName: cur.taskName, prod: cur.prod,
-        sectionId: cur._task?.sectionId, startDisplay: fmt(startMin), endDisplay: fmt(endMin), _task: cur._task,
+        startSlot: i,
+        endSlot,
+        startMin,
+        endMin,
+        taskName: cur.taskName,
+        prod: cur.prod,
+        sectionId: cur._task?.sectionId,
+        startDisplay: fmt(startMin),
+        endDisplay: fmt(endMin),
+        _task: cur._task,
       });
       i = endSlot + 1;
     }
@@ -2386,17 +3207,32 @@ function build1DayTimetableOverlays(targetKey) {
   };
   const expectedSpans = buildSpans(getSlotExpected);
   const actualSpans = buildSpans(getSlotActual);
-  const SECTION_IDS_FOR_LIST_COLOR = ["braindump", "dream", "sideincome", "health", "happy"];
+  const SECTION_IDS_FOR_LIST_COLOR = [
+    "braindump",
+    "dream",
+    "sideincome",
+    "health",
+    "happy",
+  ];
   const createOverlay = (spans, colors, isActual) => {
     const overlay = document.createElement("div");
     overlay.className = `calendar-1day-time-fill-overlay calendar-1day-time-fill-overlay--${isActual ? "actual" : "expected"}`;
     for (const sp of spans) {
       const fill = document.createElement("div");
-      fill.className = "calendar-1day-time-slot-fill calendar-1day-time-slot-fill--span";
+      fill.className =
+        "calendar-1day-time-slot-fill calendar-1day-time-slot-fill--span";
       let c;
-      if (!isActual && sp.sectionId && (SECTION_IDS_FOR_LIST_COLOR.includes(sp.sectionId) || (sp.sectionId || "").startsWith("custom-"))) {
+      if (
+        !isActual &&
+        sp.sectionId &&
+        (SECTION_IDS_FOR_LIST_COLOR.includes(sp.sectionId) ||
+          (sp.sectionId || "").startsWith("custom-"))
+      ) {
         const baseColor = getSectionColor(sp.sectionId);
-        c = { bg: withMoreTransparency(baseColor, 0.06), border: withMoreTransparency(baseColor, 0.5) };
+        c = {
+          bg: withMoreTransparency(baseColor, 0.06),
+          border: withMoreTransparency(baseColor, 0.5),
+        };
       } else {
         c = colors[sp.prod];
       }
@@ -2496,7 +3332,7 @@ function render1DayView(tabsElement) {
         <span class="calendar-kpi-todo-text">${escapeHtml(t.name)}</span>
         <button type="button" class="calendar-kpi-todo-del" title="삭제">×</button>
       </div>
-    `
+    `,
       )
       .join("");
     return `
@@ -2514,9 +3350,14 @@ function render1DayView(tabsElement) {
         const storageKey = k.storageKey || "";
         const todoCount = getKpiTodosForKpi(kpiId).length;
         const investedMins = getAccumulatedMinutes(k.name);
-        const targetMins = k.targetTimeRequired ? hhMmToMinutes(k.targetTimeRequired) : 0;
+        const targetMins = k.targetTimeRequired
+          ? hhMmToMinutes(k.targetTimeRequired)
+          : 0;
         const accumulatedMins = targetMins > 0 ? investedMins : 0;
-        const timeProgress = targetMins > 0 ? Math.min(100, (accumulatedMins / targetMins) * 100) : 0;
+        const timeProgress =
+          targetMins > 0
+            ? Math.min(100, (accumulatedMins / targetMins) * 100)
+            : 0;
         const remainingMins = Math.max(0, targetMins - accumulatedMins);
         const timeCircleHtml =
           targetMins > 0
@@ -2543,7 +3384,7 @@ function render1DayView(tabsElement) {
           <div class="dream-kpi-card-inner calendar-kpi-card-inner">
             <div class="dream-kpi-card-name">${escapeHtml(k.name)}</div>
             <div class="dream-kpi-card-target-num">${k.targetValue ? escapeHtml(String(k.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) + (k.unit ? '<span class="dream-kpi-card-unit"> ' + escapeHtml(k.unit) + "</span>" : "") : "—"}</div>
-            ${(k.targetStartDate || k.targetDeadline) ? `<div class="dream-kpi-card-deadline">목표기한 ${escapeHtml(formatDeadlineRangeForDisplay(k.targetStartDate, k.targetDeadline))}</div>` : ""}
+            ${k.targetStartDate || k.targetDeadline ? `<div class="dream-kpi-card-deadline">목표기한 ${escapeHtml(formatDeadlineRangeForDisplay(k.targetStartDate, k.targetDeadline))}</div>` : ""}
             <div class="dream-kpi-card-progress">
               <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${k.progress}%"></div></div>
               <div class="dream-kpi-card-progress-text">${escapeHtml(k.progressText)}</div>
@@ -2564,10 +3405,22 @@ function render1DayView(tabsElement) {
   function refreshKpiSidebar(taskStats = {}) {
     const body = wrap.querySelector(".calendar-kpi-sidebar-body");
     if (!body) return;
-    const totalDone = Object.values(taskStats).reduce((s, x) => s + (x.done || 0), 0);
-    const totalAll = Object.values(taskStats).reduce((s, x) => s + (x.total || 0), 0);
-    const progressPct = totalAll > 0 ? Math.round((totalDone / totalAll) * 100) : 0;
-    const SECTION_LABELS = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복" };
+    const totalDone = Object.values(taskStats).reduce(
+      (s, x) => s + (x.done || 0),
+      0,
+    );
+    const totalAll = Object.values(taskStats).reduce(
+      (s, x) => s + (x.total || 0),
+      0,
+    );
+    const progressPct =
+      totalAll > 0 ? Math.round((totalDone / totalAll) * 100) : 0;
+    const SECTION_LABELS = {
+      dream: "꿈",
+      sideincome: "부수입",
+      health: "건강",
+      happy: "행복",
+    };
     const byCategory = ["dream", "sideincome", "health", "happy"]
       .filter((sid) => taskStats[sid]?.total > 0)
       .map((sid) => {
@@ -2618,10 +3471,16 @@ function render1DayView(tabsElement) {
     body.querySelectorAll(".calendar-kpi-tab").forEach((tab) => {
       tab.addEventListener("click", () => {
         const cat = tab.dataset.category;
-        body.querySelectorAll(".calendar-kpi-tab").forEach((t) => t.classList.remove("active"));
-        body.querySelectorAll(".calendar-kpi-panel").forEach((p) => p.classList.remove("active"));
+        body
+          .querySelectorAll(".calendar-kpi-tab")
+          .forEach((t) => t.classList.remove("active"));
+        body
+          .querySelectorAll(".calendar-kpi-panel")
+          .forEach((p) => p.classList.remove("active"));
         tab.classList.add("active");
-        const panel = body.querySelector(`.calendar-kpi-panel[data-category="${cat}"]`);
+        const panel = body.querySelector(
+          `.calendar-kpi-panel[data-category="${cat}"]`,
+        );
         if (panel) panel.classList.add("active");
       });
     });
@@ -2689,16 +3548,24 @@ function render1DayView(tabsElement) {
   }
 
   function renderCalendar() {
-    document.querySelectorAll(".calendar-1day-drag-drop-line").forEach((el) => el.remove());
-    document.querySelectorAll(".calendar-1day-resize-preview-line").forEach((el) => el.remove());
+    document
+      .querySelectorAll(".calendar-1day-drag-drop-line")
+      .forEach((el) => el.remove());
+    document
+      .querySelectorAll(".calendar-1day-resize-preview-line")
+      .forEach((el) => el.remove());
     const grid = getCalendarGridFor1Day(dayOffset);
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + dayOffset);
-    nav.querySelector(".calendar-nav-month").textContent = format1DayNavDate(dayOffset);
-    nav.querySelector(".calendar-nav-year").textContent = String(targetDate.getFullYear());
+    nav.querySelector(".calendar-nav-month").textContent =
+      format1DayNavDate(dayOffset);
+    nav.querySelector(".calendar-nav-year").textContent = String(
+      targetDate.getFullYear(),
+    );
 
     calendarGrid.innerHTML = "";
-    calendarGrid.className = "calendar-monthly-grid calendar-1day-time-grid calendar-1day-split-layout";
+    calendarGrid.className =
+      "calendar-monthly-grid calendar-1day-time-grid calendar-1day-split-layout";
 
     const targetKey = formatDateKey(targetDate);
 
@@ -2708,6 +3575,7 @@ function render1DayView(tabsElement) {
     timeColumn.className = "calendar-1day-time-column";
 
     const tasks = getAllTasksForDateDisplay(targetKey);
+    const budgetGoals = getBudgetGoals(targetKey);
 
     const createHhMmInput = () => {
       const input = document.createElement("input");
@@ -2715,10 +3583,15 @@ function render1DayView(tabsElement) {
       input.className = "time-budget-time-input";
       input.placeholder = "hh:mm";
       input.maxLength = 5;
-      input.addEventListener("input", () => { input.value = input.value.replace(/\D/g, ""); });
+      input.addEventListener("input", () => {
+        input.value = input.value.replace(/\D/g, "");
+      });
       input.addEventListener("blur", () => {
         const digits = input.value.replace(/\D/g, "");
-        if (digits.length === 0 || digits.length <= 2) { input.value = ""; return; }
+        if (digits.length === 0 || digits.length === 1) {
+          input.value = "";
+          return;
+        }
         const pad = (s) => String(s || "").padStart(2, "0");
         const h = Math.min(23, parseInt(digits.slice(0, 2), 10) || 0);
         const m = Math.min(59, parseInt(digits.slice(2, 4), 10) || 0);
@@ -2753,7 +3626,9 @@ function render1DayView(tabsElement) {
       }
       if (isTodo && t.done) {
         bar.classList.add("is-completed");
-        bar.querySelector(".calendar-monthly-span-bar-checkbox-inner")?.classList.add("checked");
+        bar
+          .querySelector(".calendar-monthly-span-bar-checkbox-inner")
+          ?.classList.add("checked");
       }
       if (isTodo) {
         bar.addEventListener("click", (e) => {
@@ -2768,8 +3643,15 @@ function render1DayView(tabsElement) {
           }
           t.done = newDone;
           bar.classList.toggle("is-completed", newDone);
-          bar.querySelector(".calendar-monthly-span-bar-checkbox-inner")?.classList.toggle("checked", newDone);
-          const SECTION_LABELS_LOCAL = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복" };
+          bar
+            .querySelector(".calendar-monthly-span-bar-checkbox-inner")
+            ?.classList.toggle("checked", newDone);
+          const SECTION_LABELS_LOCAL = {
+            dream: "꿈",
+            sideincome: "부수입",
+            health: "건강",
+            happy: "행복",
+          };
           const updatedStats = {};
           ["dream", "sideincome", "health", "happy"].forEach((sid) => {
             const sectionTasks = tasks.filter((task) => task.sectionId === sid);
@@ -2787,10 +3669,16 @@ function render1DayView(tabsElement) {
         bar.addEventListener("contextmenu", (e) => {
           e.preventDefault();
           e.stopPropagation();
-          createCalendarBarRevertBubble(e.clientX, e.clientY, t, () => {
-            renderCalendar();
-            refreshTodoList();
-          }, () => {});
+          createCalendarBarRevertBubble(
+            e.clientX,
+            e.clientY,
+            t,
+            () => {
+              renderCalendar();
+              refreshTodoList();
+            },
+            () => {},
+          );
         });
       }
 
@@ -2799,7 +3687,12 @@ function render1DayView(tabsElement) {
       const initialEnd = (t.endTime || "").trim();
       startInput.value = initialStart;
       const endInput = createHhMmInput();
-      endInput.value = initialStart && initialEnd && hhMmToMinutes(initialEnd) > hhMmToMinutes(initialStart) ? initialEnd : "";
+      endInput.value =
+        initialStart &&
+        initialEnd &&
+        hhMmToMinutes(initialEnd) > hhMmToMinutes(initialStart)
+          ? initialEnd
+          : "";
       const saveScheduled = () => {
         let start = startInput.value.trim();
         let end = endInput.value.trim();
@@ -2814,7 +3707,10 @@ function render1DayView(tabsElement) {
         if (start === prevStart && end === prevEnd) return;
         let ok = false;
         if (t.kpiTodoId && t.storageKey) {
-          ok = updateKpiTodo(t.kpiTodoId, t.storageKey, { startTime: start, endTime: end });
+          ok = updateKpiTodo(t.kpiTodoId, t.storageKey, {
+            startTime: start,
+            endTime: end,
+          });
         } else if (t.sectionId?.startsWith("custom-") && t.taskId) {
           ok = updateCustomSectionTaskTimes(t.sectionId, t.taskId, start, end);
         } else if (KPI_SECTION_IDS.includes(t.sectionId) && t.taskId) {
@@ -2834,6 +3730,43 @@ function render1DayView(tabsElement) {
       startInput.addEventListener("blur", saveScheduled);
       endInput.addEventListener("blur", saveScheduled);
 
+      const goalInput = createHhMmInput();
+      const initialGoal = (budgetGoals[t.name]?.goalTime || "").trim();
+      if (initialGoal) goalInput.value = initialGoal;
+
+      const diffSpan = document.createElement("span");
+      diffSpan.className = "time-budget-goal-diff";
+
+      function updateTodoRowDiff() {
+        const start = startInput.value.trim();
+        const end = endInput.value.trim();
+        const goalHrs = parseTimeToHours(goalInput.value);
+        let scheduledHrs = 0;
+        if (start && end && hhMmToMinutes(end) > hhMmToMinutes(start)) {
+          scheduledHrs = (hhMmToMinutes(end) - hhMmToMinutes(start)) / 60;
+        }
+        const diff = scheduledHrs - goalHrs;
+        diffSpan.textContent = formatGoalDiff(diff);
+        diffSpan.className = "time-budget-goal-diff";
+        if (diff > 0) diffSpan.classList.add("time-budget-goal-diff--over");
+        else if (diff < 0) diffSpan.classList.add("time-budget-goal-diff--short");
+      }
+
+      goalInput.addEventListener("blur", () => {
+        const goal = goalInput.value.trim();
+        const isInvest = budgetGoals[t.name]?.isInvest !== false;
+        saveBudgetGoal(targetKey, t.name, goal, isInvest);
+        updateTodoRowDiff();
+      });
+      goalInput.addEventListener("input", updateTodoRowDiff);
+      startInput.addEventListener("input", updateTodoRowDiff);
+      endInput.addEventListener("input", updateTodoRowDiff);
+
+      const goalWrap = document.createElement("span");
+      goalWrap.className = "time-budget-goal-wrap";
+      goalWrap.appendChild(goalInput);
+      goalWrap.appendChild(diffSpan);
+
       const tr = document.createElement("tr");
       const nameTd = document.createElement("td");
       nameTd.appendChild(bar);
@@ -2845,7 +3778,7 @@ function render1DayView(tabsElement) {
       }
       tr.appendChild(kpiTd);
       const goalTd = document.createElement("td");
-      goalTd.appendChild(createHhMmInput());
+      goalTd.appendChild(goalWrap);
       tr.appendChild(goalTd);
       const startTd = document.createElement("td");
       startTd.appendChild(startInput);
@@ -2854,6 +3787,7 @@ function render1DayView(tabsElement) {
       endTd.appendChild(endInput);
       tr.appendChild(endTd);
       todoTbody.appendChild(tr);
+      updateTodoRowDiff();
     });
 
     const todoSection = document.createElement("div");
@@ -2868,7 +3802,13 @@ function render1DayView(tabsElement) {
     todoSection.appendChild(todoSectionHeader);
     todoSection.appendChild(todoSectionBody);
 
-    const SECTION_LABELS = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복", braindump: "브레인 덤프" };
+    const SECTION_LABELS = {
+      dream: "꿈",
+      sideincome: "부수입",
+      health: "건강",
+      happy: "행복",
+      braindump: "브레인 덤프",
+    };
     const taskStats = {};
     ["dream", "sideincome", "health", "happy"].forEach((sid) => {
       const sectionTasks = tasks.filter((t) => t.sectionId === sid);
@@ -2882,8 +3822,12 @@ function render1DayView(tabsElement) {
         const inner = wrap.querySelector(".calendar-1day-time-table-inner");
         if (!inner || !dateStr) return;
         const { expected, actual } = build1DayTimetableOverlays(dateStr);
-        const oldExp = inner.querySelector(".calendar-1day-time-fill-overlay--expected");
-        const oldAct = inner.querySelector(".calendar-1day-time-fill-overlay--actual");
+        const oldExp = inner.querySelector(
+          ".calendar-1day-time-fill-overlay--expected",
+        );
+        const oldAct = inner.querySelector(
+          ".calendar-1day-time-fill-overlay--actual",
+        );
         if (oldExp) oldExp.replaceWith(expected);
         else inner.appendChild(expected);
         if (oldAct) oldAct.replaceWith(actual);
@@ -2891,9 +3835,19 @@ function render1DayView(tabsElement) {
       });
     };
     const onOverlapCleared = () => {
-      requestAnimationFrame(() => renderCalendar());
+      requestAnimationFrame(() => {
+        /* 입력 중일 때 재렌더하면 입력 필드가 사라져 '01' 등 입력이 안 되는 문제 방지 */
+        if (budgetColumn.contains(document.activeElement)) return;
+        renderCalendar();
+      });
     };
-    renderTimeBudgetTablesForCalendar(budgetColumn, targetKey, todoSection, onScheduledUpdate, onOverlapCleared);
+    renderTimeBudgetTablesForCalendar(
+      budgetColumn,
+      targetKey,
+      todoSection,
+      onScheduledUpdate,
+      onOverlapCleared,
+    );
     calendarGrid.appendChild(budgetColumn);
     refreshKpiSidebar(taskStats);
     calendarGrid.appendChild(timeColumn);
@@ -2906,20 +3860,24 @@ function render1DayView(tabsElement) {
     /* 시간 테이블 - 예상 시간 + 실제 시간기록 모두 표시, 생산성별 색상 */
     const timeTable = document.createElement("div");
     timeTable.className = "calendar-1day-time-table";
-    const budgetGoals = getBudgetGoals(targetKey);
     const allTimeRows = loadTimeRows();
     function parseDateFromTimeStr(str) {
       if (!str || typeof str !== "string") return "";
       const m = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
-      return m ? `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}` : "";
+      return m
+        ? `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`
+        : "";
     }
     const normDate = (s) => (s || "").replace(/\//g, "-").trim().slice(0, 10);
     const actualRows = allTimeRows.filter(
-      (r) => normDate(r.date || parseDateFromTimeStr(r.startTime)) === targetKey,
+      (r) =>
+        normDate(r.date || parseDateFromTimeStr(r.startTime)) === targetKey,
     );
     const parseHhMmToMinutes = (s) => {
       if (!s || !s.trim()) return null;
-      const m = String(s).trim().match(/^(\d{1,2}):?(\d{0,2})$/);
+      const m = String(s)
+        .trim()
+        .match(/^(\d{1,2}):?(\d{0,2})$/);
       if (!m) return null;
       return (parseInt(m[1], 10) || 0) * 60 + (parseInt(m[2], 10) || 0);
     };
@@ -2929,7 +3887,14 @@ function render1DayView(tabsElement) {
       if (!m) return null;
       return (parseInt(m[1], 10) || 0) * 60 + (parseInt(m[2], 10) || 0);
     };
-    const tryOverlap = (slotStartMin, slotEndMin, startMin, endMin, prod, taskName) => {
+    const tryOverlap = (
+      slotStartMin,
+      slotEndMin,
+      startMin,
+      endMin,
+      prod,
+      taskName,
+    ) => {
       if (startMin == null || endMin == null) return null;
       const overlapStart = Math.max(slotStartMin, startMin);
       const overlapEnd = Math.min(slotEndMin, endMin);
@@ -2947,8 +3912,10 @@ function render1DayView(tabsElement) {
     const MIN_PER_SLOT = 30;
     const getScheduledTimesForTaskLocal = (data) => {
       if (!data) return [];
-      if (Array.isArray(data.scheduledTimes)) return data.scheduledTimes.filter((s) => s && String(s).trim());
-      if (data.scheduledTime && String(data.scheduledTime).trim()) return [String(data.scheduledTime).trim()];
+      if (Array.isArray(data.scheduledTimes))
+        return data.scheduledTimes.filter((s) => s && String(s).trim());
+      if (data.scheduledTime && String(data.scheduledTime).trim())
+        return [String(data.scheduledTime).trim()];
       return [];
     };
     const getSlotExpected = (slotIndex) => {
@@ -2964,7 +3931,14 @@ function render1DayView(tabsElement) {
           if (startMin == null || endMin == null) continue;
           const opt = getTaskOptionByName(taskName);
           const prod = opt?.productivity || "other";
-          const res = tryOverlap(slotStartMin, slotEndMin, startMin, endMin, prod, taskName);
+          const res = tryOverlap(
+            slotStartMin,
+            slotEndMin,
+            startMin,
+            endMin,
+            prod,
+            taskName,
+          );
           if (res) return res;
         }
       }
@@ -2976,8 +3950,20 @@ function render1DayView(tabsElement) {
         const endMin = parseHhMmToMinutes(et);
         if (startMin == null || endMin == null) continue;
         const prod = getTaskOptionByName(t.name)?.productivity || "other";
-        const res = tryOverlap(slotStartMin, slotEndMin, startMin, endMin, prod, t.name);
-        if (res) return { ...res, _task: t, _taskKey: t.kpiTodoId || t.taskId || t.name };
+        const res = tryOverlap(
+          slotStartMin,
+          slotEndMin,
+          startMin,
+          endMin,
+          prod,
+          t.name,
+        );
+        if (res)
+          return {
+            ...res,
+            _task: t,
+            _taskKey: t.kpiTodoId || t.taskId || t.name,
+          };
       }
       return null;
     };
@@ -2988,21 +3974,43 @@ function render1DayView(tabsElement) {
         const startMin = parseDateTimeToMinutes(r.startTime);
         const endMin = parseDateTimeToMinutes(r.endTime);
         if (startMin == null || endMin == null) continue;
-        const prod = r.productivity || getTaskOptionByName(r.taskName)?.productivity || "other";
-        const res = tryOverlap(slotStartMin, slotEndMin, startMin, endMin, prod, r.taskName);
+        const prod =
+          r.productivity ||
+          getTaskOptionByName(r.taskName)?.productivity ||
+          "other";
+        const res = tryOverlap(
+          slotStartMin,
+          slotEndMin,
+          startMin,
+          endMin,
+          prod,
+          r.taskName,
+        );
         if (res) return res;
       }
       return null;
     };
     const prodColorsActual = {
       productive: { bg: "rgba(239, 68, 68, 0.28)", border: "rgb(239, 68, 68)" },
-      nonproductive: { bg: "rgba(59, 130, 246, 0.28)", border: "rgb(59, 130, 246)" },
+      nonproductive: {
+        bg: "rgba(59, 130, 246, 0.28)",
+        border: "rgb(59, 130, 246)",
+      },
       other: { bg: "rgba(34, 197, 94, 0.28)", border: "rgb(34, 197, 94)" },
     };
     const prodColorsExpected = {
-      productive: { bg: "rgba(239, 68, 68, 0.06)", border: "rgba(239, 68, 68, 0.5)" },
-      nonproductive: { bg: "rgba(59, 130, 246, 0.06)", border: "rgba(59, 130, 246, 0.5)" },
-      other: { bg: "rgba(34, 197, 94, 0.06)", border: "rgba(34, 197, 94, 0.5)" },
+      productive: {
+        bg: "rgba(239, 68, 68, 0.06)",
+        border: "rgba(239, 68, 68, 0.5)",
+      },
+      nonproductive: {
+        bg: "rgba(59, 130, 246, 0.06)",
+        border: "rgba(59, 130, 246, 0.5)",
+      },
+      other: {
+        bg: "rgba(34, 197, 94, 0.06)",
+        border: "rgba(34, 197, 94, 0.5)",
+      },
     };
     const buildSpans = (getSlot) => {
       const slotInfos = [];
@@ -3025,7 +4033,8 @@ function render1DayView(tabsElement) {
         }
         const last = slotInfos[endSlot];
         const endMin = last?.overlapEndMin ?? (endSlot + 1) * MIN_PER_SLOT;
-        const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+        const fmt = (m) =>
+          `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
         spans.push({
           startSlot: i,
           endSlot,
@@ -3044,7 +4053,8 @@ function render1DayView(tabsElement) {
     };
     const expectedSpans = buildSpans(getSlotExpected);
     const actualSpans = buildSpans(getSlotActual);
-    timeTable.className = "calendar-1day-time-table calendar-1day-time-table--compare";
+    timeTable.className =
+      "calendar-1day-time-table calendar-1day-time-table--compare";
     const headerRow = document.createElement("div");
     headerRow.className = "calendar-1day-time-header";
     headerRow.style.gridColumn = "1 / -1";
@@ -3075,28 +4085,45 @@ function render1DayView(tabsElement) {
       row.appendChild(timeLabel);
       timeTable.appendChild(row);
       const slotExpected = document.createElement("div");
-      slotExpected.className = "calendar-1day-time-slot calendar-1day-time-slot--expected";
+      slotExpected.className =
+        "calendar-1day-time-slot calendar-1day-time-slot--expected";
       slotExpected.style.gridColumn = "2";
       slotExpected.style.gridRow = `${i + 2}`;
       slotExpected.dataset.slotIndex = String(i);
       timeTable.appendChild(slotExpected);
       const slotActual = document.createElement("div");
-      slotActual.className = "calendar-1day-time-slot calendar-1day-time-slot--actual";
+      slotActual.className =
+        "calendar-1day-time-slot calendar-1day-time-slot--actual";
       slotActual.style.gridColumn = "3";
       slotActual.style.gridRow = `${i + 2}`;
       timeTable.appendChild(slotActual);
     }
-    const SECTION_IDS_FOR_LIST_COLOR = ["braindump", "dream", "sideincome", "health", "happy"];
+    const SECTION_IDS_FOR_LIST_COLOR = [
+      "braindump",
+      "dream",
+      "sideincome",
+      "health",
+      "happy",
+    ];
     const createOverlay = (spans, colors, isActual) => {
       const overlay = document.createElement("div");
       overlay.className = `calendar-1day-time-fill-overlay calendar-1day-time-fill-overlay--${isActual ? "actual" : "expected"}`;
       for (const sp of spans) {
         const fill = document.createElement("div");
-        fill.className = "calendar-1day-time-slot-fill calendar-1day-time-slot-fill--span";
+        fill.className =
+          "calendar-1day-time-slot-fill calendar-1day-time-slot-fill--span";
         let c;
-        if (!isActual && sp.sectionId && (SECTION_IDS_FOR_LIST_COLOR.includes(sp.sectionId) || (sp.sectionId || "").startsWith("custom-"))) {
+        if (
+          !isActual &&
+          sp.sectionId &&
+          (SECTION_IDS_FOR_LIST_COLOR.includes(sp.sectionId) ||
+            (sp.sectionId || "").startsWith("custom-"))
+        ) {
           const baseColor = getSectionColor(sp.sectionId);
-          c = { bg: withMoreTransparency(baseColor, 0.06), border: withMoreTransparency(baseColor, 0.5) };
+          c = {
+            bg: withMoreTransparency(baseColor, 0.06),
+            border: withMoreTransparency(baseColor, 0.5),
+          };
         } else {
           c = colors[sp.prod];
         }
@@ -3129,9 +4156,17 @@ function render1DayView(tabsElement) {
       }
       return overlay;
     };
-    const fillOverlayExpected = createOverlay(expectedSpans, prodColorsExpected, false);
+    const fillOverlayExpected = createOverlay(
+      expectedSpans,
+      prodColorsExpected,
+      false,
+    );
 
-    const fillOverlayActual = createOverlay(actualSpans, prodColorsActual, true);
+    const fillOverlayActual = createOverlay(
+      actualSpans,
+      prodColorsActual,
+      true,
+    );
     const timeTableWrap = document.createElement("div");
     timeTableWrap.className = "calendar-1day-time-table-wrap";
     const timeTableInner = document.createElement("div");
@@ -3164,28 +4199,45 @@ function render1DayView(tabsElement) {
 
   wrap.addEventListener("dragend", () => {
     window.__calendarDragDuration = 30;
-    wrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
-    wrap.querySelectorAll(".calendar-1day-slot-drag-over").forEach((el) => el.classList.remove("calendar-1day-slot-drag-over"));
-    wrap.querySelector(".calendar-1day-time-fill-overlay--expected")?.classList.remove("calendar-1day-overlay-drag-over");
-    document.querySelectorAll(".calendar-1day-drag-drop-line").forEach((el) => el.remove());
+    wrap
+      .querySelectorAll(".calendar-day-drag-over")
+      .forEach((el) => el.classList.remove("calendar-day-drag-over"));
+    wrap
+      .querySelectorAll(".calendar-1day-slot-drag-over")
+      .forEach((el) => el.classList.remove("calendar-1day-slot-drag-over"));
+    wrap
+      .querySelector(".calendar-1day-time-fill-overlay--expected")
+      ?.classList.remove("calendar-1day-overlay-drag-over");
+    document
+      .querySelectorAll(".calendar-1day-drag-drop-line")
+      .forEach((el) => el.remove());
   });
 
-  document.addEventListener("calendar-budget-scheduled-updated", function onBudgetScheduledUpdated(e) {
-    if (!document.contains(wrap)) return;
-    const dateStr = e?.detail?.dateStr || wrap.dataset?.dateStr;
-    const timeTableInner = wrap.querySelector(".calendar-1day-time-table-inner");
-    if (timeTableInner && dateStr) {
-      const { expected, actual } = build1DayTimetableOverlays(dateStr);
-      const oldExpected = timeTableInner.querySelector(".calendar-1day-time-fill-overlay--expected");
-      const oldActual = timeTableInner.querySelector(".calendar-1day-time-fill-overlay--actual");
-      if (oldExpected) oldExpected.replaceWith(expected);
-      else timeTableInner.appendChild(expected);
-      if (oldActual) oldActual.replaceWith(actual);
-      else timeTableInner.appendChild(actual);
-    } else if (!timeTableInner || !dateStr) {
-      renderCalendar();
-    }
-  });
+  document.addEventListener(
+    "calendar-budget-scheduled-updated",
+    function onBudgetScheduledUpdated(e) {
+      if (!document.contains(wrap)) return;
+      const dateStr = e?.detail?.dateStr || wrap.dataset?.dateStr;
+      const timeTableInner = wrap.querySelector(
+        ".calendar-1day-time-table-inner",
+      );
+      if (timeTableInner && dateStr) {
+        const { expected, actual } = build1DayTimetableOverlays(dateStr);
+        const oldExpected = timeTableInner.querySelector(
+          ".calendar-1day-time-fill-overlay--expected",
+        );
+        const oldActual = timeTableInner.querySelector(
+          ".calendar-1day-time-fill-overlay--actual",
+        );
+        if (oldExpected) oldExpected.replaceWith(expected);
+        else timeTableInner.appendChild(expected);
+        if (oldActual) oldActual.replaceWith(actual);
+        else timeTableInner.appendChild(actual);
+      } else if (!timeTableInner || !dateStr) {
+        renderCalendar();
+      }
+    },
+  );
 
   renderCalendar();
 
@@ -3261,15 +4313,23 @@ function render1WeekView(tabsElement) {
       const oldList = body.querySelector(".todo-list-in-sidebar");
       let activeIndex = 0;
       if (oldList) {
-        const activeTab = oldList.querySelector(".todo-category-tab:not(.todo-category-tab-add).active");
-        const tabs = oldList.querySelectorAll(".todo-category-tab:not(.todo-category-tab-add)");
+        const activeTab = oldList.querySelector(
+          ".todo-category-tab:not(.todo-category-tab-add).active",
+        );
+        const tabs = oldList.querySelectorAll(
+          ".todo-category-tab:not(.todo-category-tab-add)",
+        );
         if (activeTab && tabs.length) {
           const idx = Array.from(tabs).indexOf(activeTab);
           if (idx >= 0) activeIndex = idx;
         }
         oldList.remove();
       }
-      const newList = renderTodoList({ hideToolbar: true, enableDragToCalendar: true, initialActiveTabIndex: activeIndex });
+      const newList = renderTodoList({
+        hideToolbar: true,
+        enableDragToCalendar: true,
+        initialActiveTabIndex: activeIndex,
+      });
       newList.classList.add("todo-list-in-sidebar");
       body.appendChild(newList);
     }
@@ -3281,15 +4341,20 @@ function render1WeekView(tabsElement) {
     const d2 = week[6];
     const sameYear = d1.getFullYear() === d2.getFullYear();
     const s1 = `${d1.getMonth() + 1}.${d1.getDate()}`;
-    const s2 = sameYear ? `${d2.getMonth() + 1}.${d2.getDate()}` : `${d2.getFullYear()}.${d2.getMonth() + 1}.${d2.getDate()}`;
+    const s2 = sameYear
+      ? `${d2.getMonth() + 1}.${d2.getDate()}`
+      : `${d2.getFullYear()}.${d2.getMonth() + 1}.${d2.getDate()}`;
     return `${s1} ~ ${s2}`;
   }
 
   function renderCalendar() {
     const week = getCalendarGridFor1Week(weekOffset);
     const grid = [week];
-    nav.querySelector(".calendar-nav-month").textContent = format1WeekNavRange(week);
-    nav.querySelector(".calendar-nav-year").textContent = week[0] ? String(week[0].getFullYear()) : "";
+    nav.querySelector(".calendar-nav-month").textContent =
+      format1WeekNavRange(week);
+    nav.querySelector(".calendar-nav-year").textContent = week[0]
+      ? String(week[0].getFullYear())
+      : "";
 
     calendarGrid.innerHTML = "";
 
@@ -3312,7 +4377,9 @@ function render1WeekView(tabsElement) {
       weekWrap.className = "calendar-monthly-week-wrap";
       const weekRowEl = document.createElement("div");
       weekRowEl.className = "calendar-monthly-week";
-      const weekDateKeys = weekRow.map((d) => (d ? formatDateKey(d) : "")).filter(Boolean);
+      const weekDateKeys = weekRow
+        .map((d) => (d ? formatDateKey(d) : ""))
+        .filter(Boolean);
       const firstDayKey = weekDateKeys[0] || "";
       const lastDayKey = weekDateKeys[weekDateKeys.length - 1] || "";
 
@@ -3346,10 +4413,15 @@ function render1WeekView(tabsElement) {
           if (e.target.closest(".calendar-event-bubble")) return;
           e.stopPropagation();
           const rect = cell.getBoundingClientRect();
-          createCalendarEventBubble(rect, key, () => {
-            renderCalendar();
-            refreshTodoList();
-          }, () => {});
+          createCalendarEventBubble(
+            rect,
+            key,
+            () => {
+              renderCalendar();
+              refreshTodoList();
+            },
+            () => {},
+          );
         });
         cell.addEventListener("dragover", (e) => {
           if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR)) {
@@ -3389,9 +4461,20 @@ function render1WeekView(tabsElement) {
           }
           let ok = false;
           if (payload.kpiTodoId && payload.storageKey) {
-            ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
-          } else if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
-            ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
+            ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
+              startDate: newStart,
+              dueDate: newDue,
+            });
+          } else if (
+            payload.sectionId &&
+            payload.sectionId.startsWith("custom-")
+          ) {
+            ok = updateCustomSectionTaskDates(
+              payload.sectionId,
+              payload.taskId,
+              newStart,
+              newDue,
+            );
             if (!ok && (payload.name || "").trim()) {
               ok = addCalendarTodoToCustomSection(payload.sectionId, {
                 taskId: payload.taskId,
@@ -3402,12 +4485,31 @@ function render1WeekView(tabsElement) {
                 itemType: payload.itemType || "todo",
               });
             }
-          } else if (KPI_SECTION_IDS.includes(payload.sectionId) && (payload.name || "").trim()) {
+          } else if (
+            KPI_SECTION_IDS.includes(payload.sectionId) &&
+            (payload.name || "").trim()
+          ) {
             if (payload.kpiTodoId && payload.storageKey) {
-              ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
+              ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
+                startDate: newStart,
+                dueDate: newDue,
+              });
             } else {
-              ok = updateSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue) ||
-                addSectionTaskToCalendar(payload.sectionId, { taskId: payload.taskId, name: payload.name, startDate: newStart, dueDate: newDue, done: !!payload.done, itemType: payload.itemType || "todo" });
+              ok =
+                updateSectionTaskDates(
+                  payload.sectionId,
+                  payload.taskId,
+                  newStart,
+                  newDue,
+                ) ||
+                addSectionTaskToCalendar(payload.sectionId, {
+                  taskId: payload.taskId,
+                  name: payload.name,
+                  startDate: newStart,
+                  dueDate: newDue,
+                  done: !!payload.done,
+                  itemType: payload.itemType || "todo",
+                });
             }
           }
           if (ok) {
@@ -3421,7 +4523,8 @@ function render1WeekView(tabsElement) {
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
       const BAR_HEIGHT = 1.5;
-      const overlaps = (a, b) => a.left < b.left + b.width && b.left < a.left + a.width;
+      const overlaps = (a, b) =>
+        a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
       const CELL_GAP = 3.5;
       rangeTasks.forEach((t) => {
@@ -3435,7 +4538,21 @@ function render1WeekView(tabsElement) {
         const width = ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
         const baseColor = getSectionColor(t.sectionId);
         const color = withMoreTransparency(baseColor);
-        allBars.push({ left, width, name: t.name, color, isSingleDay: false, itemType: t.itemType || "todo", done: !!t.done, kpiTodoId: t.kpiTodoId, storageKey: t.storageKey, taskId: t.taskId, sectionId: t.sectionId, startDate: t.startDate, dueDate: t.dueDate });
+        allBars.push({
+          left,
+          width,
+          name: t.name,
+          color,
+          isSingleDay: false,
+          itemType: t.itemType || "todo",
+          done: !!t.done,
+          kpiTodoId: t.kpiTodoId,
+          storageKey: t.storageKey,
+          taskId: t.taskId,
+          sectionId: t.sectionId,
+          startDate: t.startDate,
+          dueDate: t.dueDate,
+        });
       });
       weekDateKeys.forEach((dateKey, dayIdx) => {
         getTasksForDate(dateKey, true).forEach((t) => {
@@ -3443,7 +4560,23 @@ function render1WeekView(tabsElement) {
           const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
           const baseColor = getSectionColor(t.sectionId);
           const color = withMoreTransparency(baseColor);
-          allBars.push({ left, width, name: t.name, color, isSingleDay: true, dayIdx, dateKey, itemType: t.itemType || "todo", done: !!t.done, kpiTodoId: t.kpiTodoId, storageKey: t.storageKey, taskId: t.taskId, sectionId: t.sectionId, startDate: t.startDate || "", dueDate: t.dueDate || dateKey });
+          allBars.push({
+            left,
+            width,
+            name: t.name,
+            color,
+            isSingleDay: true,
+            dayIdx,
+            dateKey,
+            itemType: t.itemType || "todo",
+            done: !!t.done,
+            kpiTodoId: t.kpiTodoId,
+            storageKey: t.storageKey,
+            taskId: t.taskId,
+            sectionId: t.sectionId,
+            startDate: t.startDate || "",
+            dueDate: t.dueDate || dateKey,
+          });
         });
       });
       const rowBars = [];
@@ -3455,7 +4588,9 @@ function render1WeekView(tabsElement) {
         b.row = row;
       });
       const barsPerDay = weekDateKeys.map((_, dayIdx) =>
-        allBars.filter((b) => b.isSingleDay && b.dayIdx === dayIdx).sort((a, b) => a.row - b.row)
+        allBars
+          .filter((b) => b.isSingleDay && b.dayIdx === dayIdx)
+          .sort((a, b) => a.row - b.row),
       );
       allBars.forEach((b) => {
         if (b.isSingleDay && b.dayIdx != null) {
@@ -3470,7 +4605,9 @@ function render1WeekView(tabsElement) {
         const bar = document.createElement("div");
         bar.className =
           "calendar-monthly-span-bar" +
-          (b.isSingleDay ? " calendar-monthly-span-bar--todo" : " calendar-monthly-span-bar--range") +
+          (b.isSingleDay
+            ? " calendar-monthly-span-bar--todo"
+            : " calendar-monthly-span-bar--range") +
           (isTodo ? " calendar-monthly-span-bar--has-checkbox" : "") +
           (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "");
         bar.title = b.name;
@@ -3501,7 +4638,9 @@ function render1WeekView(tabsElement) {
             }
             bar.dataset.done = newDone ? "true" : "false";
             bar.classList.toggle("is-completed", newDone);
-            bar.querySelector(".calendar-monthly-span-bar-checkbox-inner")?.classList.toggle("checked", newDone);
+            bar
+              .querySelector(".calendar-monthly-span-bar-checkbox-inner")
+              ?.classList.toggle("checked", newDone);
             renderCalendar();
             refreshTodoList();
           };
@@ -3511,10 +4650,16 @@ function render1WeekView(tabsElement) {
           bar.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             e.stopPropagation();
-            createCalendarBarDateEditBubble(e.clientX, e.clientY, b, () => {
-              renderCalendar();
-              refreshTodoList();
-            }, () => {});
+            createCalendarBarDateEditBubble(
+              e.clientX,
+              e.clientY,
+              b,
+              () => {
+                renderCalendar();
+                refreshTodoList();
+              },
+              () => {},
+            );
           });
         }
         if (b.isSingleDay && b.dueDate) {
@@ -3522,7 +4667,20 @@ function render1WeekView(tabsElement) {
           bar.classList.add("calendar-monthly-span-bar--draggable");
           bar.addEventListener("dragstart", (e) => {
             e.dataTransfer.effectAllowed = "move";
-            e.dataTransfer.setData("application/json", JSON.stringify({ name: b.name, dueDate: b.dueDate, startDate: b.startDate || "", kpiTodoId: b.kpiTodoId, storageKey: b.storageKey, taskId: b.taskId, sectionId: b.sectionId, done: !!b.done, itemType: b.itemType || "todo" }));
+            e.dataTransfer.setData(
+              "application/json",
+              JSON.stringify({
+                name: b.name,
+                dueDate: b.dueDate,
+                startDate: b.startDate || "",
+                kpiTodoId: b.kpiTodoId,
+                storageKey: b.storageKey,
+                taskId: b.taskId,
+                sectionId: b.sectionId,
+                done: !!b.done,
+                itemType: b.itemType || "todo",
+              }),
+            );
             e.dataTransfer.setData("text/plain", b.name || "");
             bar.classList.add("calendar-monthly-span-bar--dragging");
           });
@@ -3532,22 +4690,33 @@ function render1WeekView(tabsElement) {
           bar.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             e.stopPropagation();
-            createCalendarBarRevertBubble(e.clientX, e.clientY, b, () => {
-              renderCalendar();
-              refreshTodoList();
-            }, () => {});
+            createCalendarBarRevertBubble(
+              e.clientX,
+              e.clientY,
+              b,
+              () => {
+                renderCalendar();
+                refreshTodoList();
+              },
+              () => {},
+            );
           });
         }
         barsEl.appendChild(bar);
       });
       const moreEl = document.createElement("div");
       moreEl.className = "calendar-day-more-overlay";
-      moreEl.style.cssText = "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
+      moreEl.style.cssText =
+        "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
       weekDateKeys.forEach((dateKey, dayIdx) => {
-        const overflowCount = barsPerDay[dayIdx]?.length - MAX_VISIBLE_BARS_PER_DAY;
-        const cell = weekRowEl.querySelector(`.calendar-monthly-day[data-date="${dateKey}"]`);
+        const overflowCount =
+          barsPerDay[dayIdx]?.length - MAX_VISIBLE_BARS_PER_DAY;
+        const cell = weekRowEl.querySelector(
+          `.calendar-monthly-day[data-date="${dateKey}"]`,
+        );
         const slot = document.createElement("div");
-        slot.style.cssText = "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
+        slot.style.cssText =
+          "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
         if (overflowCount > 0 && cell) {
           slot.style.pointerEvents = "auto";
           const moreBtn = document.createElement("button");
@@ -3568,32 +4737,52 @@ function render1WeekView(tabsElement) {
       weekWrap.appendChild(moreEl);
       weekWrap.addEventListener("dragover", (e) => {
         e.preventDefault();
-        if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR) || e.dataTransfer.types.includes("application/json")) {
+        if (
+          e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR) ||
+          e.dataTransfer.types.includes("application/json")
+        ) {
           e.dataTransfer.dropEffect = "move";
-          let cell = document.elementFromPoint(e.clientX, e.clientY)?.closest(".calendar-monthly-day:not(.empty)");
+          let cell = document
+            .elementFromPoint(e.clientX, e.clientY)
+            ?.closest(".calendar-monthly-day:not(.empty)");
           if (!cell) {
-            const cells = weekRowEl.querySelectorAll(".calendar-monthly-day:not(.empty)");
+            const cells = weekRowEl.querySelectorAll(
+              ".calendar-monthly-day:not(.empty)",
+            );
             for (const c of cells) {
               const r = c.getBoundingClientRect();
-              if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+              if (
+                e.clientX >= r.left &&
+                e.clientX <= r.right &&
+                e.clientY >= r.top &&
+                e.clientY <= r.bottom
+              ) {
                 cell = c;
                 break;
               }
             }
           }
-          weekWrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+          weekWrap
+            .querySelectorAll(".calendar-day-drag-over")
+            .forEach((el) => el.classList.remove("calendar-day-drag-over"));
           if (cell) cell.classList.add("calendar-day-drag-over");
         }
       });
       weekWrap.addEventListener("dragleave", (e) => {
         if (!weekWrap.contains(e.relatedTarget)) {
-          weekWrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+          weekWrap
+            .querySelectorAll(".calendar-day-drag-over")
+            .forEach((el) => el.classList.remove("calendar-day-drag-over"));
         }
       });
       weekWrap.addEventListener("drop", (e) => {
-        weekWrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+        weekWrap
+          .querySelectorAll(".calendar-day-drag-over")
+          .forEach((el) => el.classList.remove("calendar-day-drag-over"));
         e.preventDefault();
-        let json = e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR) || e.dataTransfer.getData("application/json");
+        let json =
+          e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR) ||
+          e.dataTransfer.getData("application/json");
         if (!json) return;
         let payload;
         try {
@@ -3601,12 +4790,21 @@ function render1WeekView(tabsElement) {
         } catch (_) {
           return;
         }
-        let cell = document.elementFromPoint(e.clientX, e.clientY)?.closest(".calendar-monthly-day:not(.empty)");
+        let cell = document
+          .elementFromPoint(e.clientX, e.clientY)
+          ?.closest(".calendar-monthly-day:not(.empty)");
         if (!cell) {
-          const cells = weekRowEl.querySelectorAll(".calendar-monthly-day:not(.empty)");
+          const cells = weekRowEl.querySelectorAll(
+            ".calendar-monthly-day:not(.empty)",
+          );
           for (const c of cells) {
             const r = c.getBoundingClientRect();
-            if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+            if (
+              e.clientX >= r.left &&
+              e.clientX <= r.right &&
+              e.clientY >= r.top &&
+              e.clientY <= r.bottom
+            ) {
               cell = c;
               break;
             }
@@ -3630,9 +4828,20 @@ function render1WeekView(tabsElement) {
         }
         let ok = false;
         if (payload.kpiTodoId && payload.storageKey) {
-          ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
-        } else if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
-          ok = updateCustomSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue);
+          ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
+            startDate: newStart,
+            dueDate: newDue,
+          });
+        } else if (
+          payload.sectionId &&
+          payload.sectionId.startsWith("custom-")
+        ) {
+          ok = updateCustomSectionTaskDates(
+            payload.sectionId,
+            payload.taskId,
+            newStart,
+            newDue,
+          );
           if (!ok && (payload.name || "").trim()) {
             ok = addCalendarTodoToCustomSection(payload.sectionId, {
               taskId: payload.taskId,
@@ -3643,12 +4852,31 @@ function render1WeekView(tabsElement) {
               itemType: payload.itemType || "todo",
             });
           }
-        } else if (KPI_SECTION_IDS.includes(payload.sectionId) && (payload.name || "").trim()) {
+        } else if (
+          KPI_SECTION_IDS.includes(payload.sectionId) &&
+          (payload.name || "").trim()
+        ) {
           if (payload.kpiTodoId && payload.storageKey) {
-            ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, { startDate: newStart, dueDate: newDue });
+            ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
+              startDate: newStart,
+              dueDate: newDue,
+            });
           } else {
-            ok = updateSectionTaskDates(payload.sectionId, payload.taskId, newStart, newDue) ||
-              addSectionTaskToCalendar(payload.sectionId, { taskId: payload.taskId, name: payload.name, startDate: newStart, dueDate: newDue, done: !!payload.done, itemType: payload.itemType || "todo" });
+            ok =
+              updateSectionTaskDates(
+                payload.sectionId,
+                payload.taskId,
+                newStart,
+                newDue,
+              ) ||
+              addSectionTaskToCalendar(payload.sectionId, {
+                taskId: payload.taskId,
+                name: payload.name,
+                startDate: newStart,
+                dueDate: newDue,
+                done: !!payload.done,
+                itemType: payload.itemType || "todo",
+              });
           }
         }
         if (ok) {
@@ -3691,18 +4919,29 @@ function render1WeekView(tabsElement) {
     </div>
     <div class="calendar-todo-sidebar-body"></div>
   `;
-  const todoListEl = renderTodoList({ hideToolbar: true, enableDragToCalendar: true, eisenhowerFilter: "important-not-urgent" });
-  todoListEl.classList.add("todo-list-in-sidebar");
-  todoSidebar.querySelector(".calendar-todo-sidebar-body").appendChild(todoListEl);
-  todoSidebar.querySelector(".calendar-todo-sidebar-collapse").addEventListener("click", () => {
-    sidebarCollapsed = !sidebarCollapsed;
-    todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
-    todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+  const todoListEl = renderTodoList({
+    hideToolbar: true,
+    enableDragToCalendar: true,
+    eisenhowerFilter: "important-not-urgent",
   });
+  todoListEl.classList.add("todo-list-in-sidebar");
+  todoSidebar
+    .querySelector(".calendar-todo-sidebar-body")
+    .appendChild(todoListEl);
+  todoSidebar
+    .querySelector(".calendar-todo-sidebar-collapse")
+    .addEventListener("click", () => {
+      sidebarCollapsed = !sidebarCollapsed;
+      todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
+      todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title =
+        sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+    });
   wrap.appendChild(todoSidebar);
 
   wrap.addEventListener("dragend", () => {
-    wrap.querySelectorAll(".calendar-day-drag-over").forEach((el) => el.classList.remove("calendar-day-drag-over"));
+    wrap
+      .querySelectorAll(".calendar-day-drag-over")
+      .forEach((el) => el.classList.remove("calendar-day-drag-over"));
   });
 
   renderCalendar();
@@ -3735,7 +4974,8 @@ function renderCalendarView(tabsElement) {
   CALENDAR_SUB_VIEWS.forEach((v, i) => {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "time-view-tab calendar-sub-tab" + (i === 0 ? " active" : "");
+    btn.className =
+      "time-view-tab calendar-sub-tab" + (i === 0 ? " active" : "");
     btn.dataset.subView = v.id;
     btn.textContent = v.label;
     subTabs.appendChild(btn);
@@ -3749,7 +4989,9 @@ function renderCalendarView(tabsElement) {
 
   const CALENDAR_VIEW_KEY = "calendar-sub-view";
   const savedSubView = localStorage.getItem(CALENDAR_VIEW_KEY) || "monthly";
-  const initialSubView = CALENDAR_SUB_VIEWS.some((v) => v.id === savedSubView) ? savedSubView : "monthly";
+  const initialSubView = CALENDAR_SUB_VIEWS.some((v) => v.id === savedSubView)
+    ? savedSubView
+    : "monthly";
 
   function renderSubView(subViewId) {
     contentArea.innerHTML = "";
@@ -3768,15 +5010,21 @@ function renderCalendarView(tabsElement) {
 
   subTabs.querySelectorAll(".calendar-sub-tab").forEach((btn) => {
     btn.addEventListener("click", () => {
-      subTabs.querySelectorAll(".calendar-sub-tab").forEach((b) => b.classList.remove("active"));
+      subTabs
+        .querySelectorAll(".calendar-sub-tab")
+        .forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
       renderSubView(btn.dataset.subView);
     });
   });
 
-  const activeBtn = subTabs.querySelector(`[data-sub-view="${initialSubView}"]`);
+  const activeBtn = subTabs.querySelector(
+    `[data-sub-view="${initialSubView}"]`,
+  );
   if (activeBtn) {
-    subTabs.querySelectorAll(".calendar-sub-tab").forEach((b) => b.classList.remove("active"));
+    subTabs
+      .querySelectorAll(".calendar-sub-tab")
+      .forEach((b) => b.classList.remove("active"));
     activeBtn.classList.add("active");
   }
   renderSubView(initialSubView);
@@ -3862,8 +5110,13 @@ function renderEisenhowerView(tabsElement) {
   const todoSidebar = document.createElement("aside");
   todoSidebar.className = "calendar-todo-sidebar";
   let sidebarCollapsed = false;
-  const savedWidth = parseInt(localStorage.getItem(EISENHOWER_SIDEBAR_WIDTH_KEY), 10);
-  const sidebarWidth = Number.isFinite(savedWidth) ? Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, savedWidth)) : DEFAULT_SIDEBAR_WIDTH;
+  const savedWidth = parseInt(
+    localStorage.getItem(EISENHOWER_SIDEBAR_WIDTH_KEY),
+    10,
+  );
+  const sidebarWidth = Number.isFinite(savedWidth)
+    ? Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, savedWidth))
+    : DEFAULT_SIDEBAR_WIDTH;
   todoSidebar.style.width = `${sidebarWidth}px`;
   todoSidebar.innerHTML = `
     <div class="calendar-todo-sidebar-header">
@@ -3874,19 +5127,31 @@ function renderEisenhowerView(tabsElement) {
     </div>
     <div class="calendar-todo-sidebar-body" title="우선순위 취소: 사분면 항목을 여기로 드래그"></div>
   `;
-  const todoListEl = renderTodoListForEisenhowerSidebar({ enableDragToEisenhower: true });
-  todoSidebar.querySelector(".calendar-todo-sidebar-body").appendChild(todoListEl);
-  todoSidebar.querySelector(".calendar-todo-sidebar-collapse").addEventListener("click", () => {
-    sidebarCollapsed = !sidebarCollapsed;
-    todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
-    if (sidebarCollapsed) {
-      todoSidebar.style.width = "";
-    } else {
-      const w = parseInt(localStorage.getItem(EISENHOWER_SIDEBAR_WIDTH_KEY), 10);
-      todoSidebar.style.width = Number.isFinite(w) ? `${Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, w))}px` : `${sidebarWidth}px`;
-    }
-    todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+  const todoListEl = renderTodoListForEisenhowerSidebar({
+    enableDragToEisenhower: true,
   });
+  todoSidebar
+    .querySelector(".calendar-todo-sidebar-body")
+    .appendChild(todoListEl);
+  todoSidebar
+    .querySelector(".calendar-todo-sidebar-collapse")
+    .addEventListener("click", () => {
+      sidebarCollapsed = !sidebarCollapsed;
+      todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
+      if (sidebarCollapsed) {
+        todoSidebar.style.width = "";
+      } else {
+        const w = parseInt(
+          localStorage.getItem(EISENHOWER_SIDEBAR_WIDTH_KEY),
+          10,
+        );
+        todoSidebar.style.width = Number.isFinite(w)
+          ? `${Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, w))}px`
+          : `${sidebarWidth}px`;
+      }
+      todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title =
+        sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+    });
   contentRow.appendChild(todoSidebar);
   wrap.appendChild(contentRow);
 
@@ -3900,7 +5165,10 @@ function renderEisenhowerView(tabsElement) {
     resizeHandle.classList.add("resizing");
     const onMove = (ev) => {
       const delta = ev.clientX - resizeStartX;
-      const newWidth = Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, resizeStartWidth - delta));
+      const newWidth = Math.min(
+        MAX_SIDEBAR_WIDTH,
+        Math.max(MIN_SIDEBAR_WIDTH, resizeStartWidth - delta),
+      );
       todoSidebar.style.width = `${newWidth}px`;
     };
     const onUp = () => {
@@ -3916,7 +5184,9 @@ function renderEisenhowerView(tabsElement) {
 
   function getAllTasksForEisenhower() {
     const tasks = [];
-    getKpiTodosAsTasks().forEach((t) => tasks.push({ ...t, taskId: t.kpiTodoId || t.taskId || "" }));
+    getKpiTodosAsTasks().forEach((t) =>
+      tasks.push({ ...t, taskId: t.kpiTodoId || t.taskId || "" }),
+    );
     try {
       const sectionRaw = localStorage.getItem(SECTION_TASKS_KEY);
       if (sectionRaw) {
@@ -3924,16 +5194,25 @@ function renderEisenhowerView(tabsElement) {
         KPI_SECTION_IDS.forEach((sectionId) => {
           const arr = obj[sectionId];
           if (!Array.isArray(arr)) return;
-          const sectionLabel = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복", braindump: "브레인 덤프" }[sectionId] || sectionId;
-          arr.filter((t) => (t.name || "").trim() !== "").forEach((t) =>
-            tasks.push({
-              ...t,
-              sectionId,
-              sectionLabel,
-              taskId: t.taskId || "",
-              isKpiTodo: false,
-            }),
-          );
+          const sectionLabel =
+            {
+              dream: "꿈",
+              sideincome: "부수입",
+              health: "건강",
+              happy: "행복",
+              braindump: "브레인 덤프",
+            }[sectionId] || sectionId;
+          arr
+            .filter((t) => (t.name || "").trim() !== "")
+            .forEach((t) =>
+              tasks.push({
+                ...t,
+                sectionId,
+                sectionLabel,
+                taskId: t.taskId || "",
+                isKpiTodo: false,
+              }),
+            );
         });
       }
       const customRaw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
@@ -3942,15 +5221,17 @@ function renderEisenhowerView(tabsElement) {
         getCustomSections().forEach((s) => {
           const arr = obj[s.id];
           if (!Array.isArray(arr)) return;
-          arr.filter((t) => (t.name || "").trim() !== "").forEach((t) =>
-            tasks.push({
-              ...t,
-              sectionId: s.id,
-              sectionLabel: s.label || s.id,
-              taskId: t.taskId || "",
-              isKpiTodo: false,
-            }),
-          );
+          arr
+            .filter((t) => (t.name || "").trim() !== "")
+            .forEach((t) =>
+              tasks.push({
+                ...t,
+                sectionId: s.id,
+                sectionLabel: s.label || s.id,
+                taskId: t.taskId || "",
+                isKpiTodo: false,
+              }),
+            );
         });
       }
     } catch (_) {}
@@ -3976,59 +5257,65 @@ function renderEisenhowerView(tabsElement) {
       const q = (t.eisenhower || "").trim();
       if (byQuadrant[q]) byQuadrant[q].push(t);
     });
-    eisenhowerWrap.querySelectorAll(".calendar-eisenhower-quadrant").forEach((quad) => {
-      const q = quad.dataset.quadrant;
-      const list = byQuadrant[q] || [];
-      const ul = quad.querySelector(".calendar-eisenhower-quadrant-tasks");
-      const badge = quad.querySelector(".calendar-eisenhower-quadrant-badge");
-      if (ul) {
-        ul.innerHTML = "";
-        list.forEach((t) => {
-          const li = document.createElement("li");
-          li.className = "calendar-eisenhower-task-item";
-          li.draggable = true;
-          li.dataset.taskId = t.taskId || "";
-          li.dataset.sectionId = t.sectionId || "";
-          li.dataset.isKpiTodo = t.isKpiTodo ? "true" : "false";
-          li.dataset.kpiTodoId = t.kpiTodoId || "";
-          li.dataset.kpiStorageKey = t.storageKey || "";
-          const cb = document.createElement("span");
-          cb.className = "calendar-eisenhower-task-checkbox";
-          if (t.done) {
-            cb.textContent = "✓";
-            cb.classList.add("checked");
-          }
-          const nameSpan = document.createElement("span");
-          nameSpan.className = "calendar-eisenhower-task-name";
-          nameSpan.textContent = (t.name || "").trim() || "—";
-          li.appendChild(cb);
-          li.appendChild(nameSpan);
-          li.addEventListener("dragstart", (e) => {
-            e.stopPropagation();
-            const rowTaskId = t.isKpiTodo && t.kpiTodoId && t.storageKey
-              ? `kpi-${t.kpiTodoId}-${t.storageKey}`
-              : (t.taskId || "");
-            const payload = {
-              taskId: rowTaskId,
-              sectionId: t.sectionId || "",
-              name: (t.name || "").trim(),
-              startDate: (t.startDate || "").slice(0, 10) || "",
-              isKpiTodo: !!t.isKpiTodo,
-              kpiTodoId: t.kpiTodoId || "",
-              storageKey: t.storageKey || "",
-            };
-            e.dataTransfer.setData(DRAG_TYPE_TODO_TO_EISENHOWER, JSON.stringify(payload));
-            e.dataTransfer.effectAllowed = "move";
-            li.classList.add("calendar-eisenhower-task-dragging");
+    eisenhowerWrap
+      .querySelectorAll(".calendar-eisenhower-quadrant")
+      .forEach((quad) => {
+        const q = quad.dataset.quadrant;
+        const list = byQuadrant[q] || [];
+        const ul = quad.querySelector(".calendar-eisenhower-quadrant-tasks");
+        const badge = quad.querySelector(".calendar-eisenhower-quadrant-badge");
+        if (ul) {
+          ul.innerHTML = "";
+          list.forEach((t) => {
+            const li = document.createElement("li");
+            li.className = "calendar-eisenhower-task-item";
+            li.draggable = true;
+            li.dataset.taskId = t.taskId || "";
+            li.dataset.sectionId = t.sectionId || "";
+            li.dataset.isKpiTodo = t.isKpiTodo ? "true" : "false";
+            li.dataset.kpiTodoId = t.kpiTodoId || "";
+            li.dataset.kpiStorageKey = t.storageKey || "";
+            const cb = document.createElement("span");
+            cb.className = "calendar-eisenhower-task-checkbox";
+            if (t.done) {
+              cb.textContent = "✓";
+              cb.classList.add("checked");
+            }
+            const nameSpan = document.createElement("span");
+            nameSpan.className = "calendar-eisenhower-task-name";
+            nameSpan.textContent = (t.name || "").trim() || "—";
+            li.appendChild(cb);
+            li.appendChild(nameSpan);
+            li.addEventListener("dragstart", (e) => {
+              e.stopPropagation();
+              const rowTaskId =
+                t.isKpiTodo && t.kpiTodoId && t.storageKey
+                  ? `kpi-${t.kpiTodoId}-${t.storageKey}`
+                  : t.taskId || "";
+              const payload = {
+                taskId: rowTaskId,
+                sectionId: t.sectionId || "",
+                name: (t.name || "").trim(),
+                startDate: (t.startDate || "").slice(0, 10) || "",
+                isKpiTodo: !!t.isKpiTodo,
+                kpiTodoId: t.kpiTodoId || "",
+                storageKey: t.storageKey || "",
+              };
+              e.dataTransfer.setData(
+                DRAG_TYPE_TODO_TO_EISENHOWER,
+                JSON.stringify(payload),
+              );
+              e.dataTransfer.effectAllowed = "move";
+              li.classList.add("calendar-eisenhower-task-dragging");
+            });
+            li.addEventListener("dragend", () => {
+              li.classList.remove("calendar-eisenhower-task-dragging");
+            });
+            ul.appendChild(li);
           });
-          li.addEventListener("dragend", () => {
-            li.classList.remove("calendar-eisenhower-task-dragging");
-          });
-          ul.appendChild(li);
-        });
-      }
-      if (badge) badge.textContent = String(list.length);
-    });
+        }
+        if (badge) badge.textContent = String(list.length);
+      });
   }
 
   function handleQuadrantDrop(quad, e) {
@@ -4044,7 +5331,15 @@ function renderEisenhowerView(tabsElement) {
       return;
     }
     const quadrant = quad.dataset.quadrant;
-    const { taskId, sectionId, name, startDate, isKpiTodo, kpiTodoId, storageKey } = payload;
+    const {
+      taskId,
+      sectionId,
+      name,
+      startDate,
+      isKpiTodo,
+      kpiTodoId,
+      storageKey,
+    } = payload;
     if (!name) return;
     saveTodoListBeforeUnmount(wrap);
     const todayKey = formatDateKey(new Date());
@@ -4057,7 +5352,12 @@ function renderEisenhowerView(tabsElement) {
     } else if ((sectionId || "").startsWith("custom-")) {
       ok = updateCustomSectionTaskEisenhower(sectionId, taskId, quadrant);
       if (ok && isUrgentImportant) {
-        updateCustomSectionTaskDates(sectionId, taskId, startDate || "", todayKey);
+        updateCustomSectionTaskDates(
+          sectionId,
+          taskId,
+          startDate || "",
+          todayKey,
+        );
       }
     } else {
       ok = updateSectionTaskEisenhower(sectionId, taskId, quadrant);
@@ -4071,14 +5371,18 @@ function renderEisenhowerView(tabsElement) {
       if (row) {
         row.dataset.eisenhower = quadrant;
         const displaySpan = row.querySelector(".todo-eisenhower-display");
-        if (displaySpan) displaySpan.textContent = EISENHOWER_LABELS[quadrant] || quadrant;
+        if (displaySpan)
+          displaySpan.textContent = EISENHOWER_LABELS[quadrant] || quadrant;
         if (isUrgentImportant) {
           const dueInput = row.querySelector(".todo-due-input-hidden");
           const dueDisplay = row.querySelector(".todo-due-display");
           if (dueInput) dueInput.value = todayKey;
           if (dueDisplay && todayKey) {
             const [y, m, d] = todayKey.split("-");
-            dueDisplay.innerHTML = y && m && d ? `<span class="todo-due-date-text">${m}/${d}</span>` : dueDisplay.innerHTML;
+            dueDisplay.innerHTML =
+              y && m && d
+                ? `<span class="todo-due-date-text">${m}/${d}</span>`
+                : dueDisplay.innerHTML;
           }
         }
       }
@@ -4099,7 +5403,8 @@ function renderEisenhowerView(tabsElement) {
     } catch (_) {
       return;
     }
-    const { taskId, sectionId, name, isKpiTodo, kpiTodoId, storageKey } = payload;
+    const { taskId, sectionId, name, isKpiTodo, kpiTodoId, storageKey } =
+      payload;
     if (!name) return;
     saveTodoListBeforeUnmount(wrap);
     let ok = false;
@@ -4121,37 +5426,39 @@ function renderEisenhowerView(tabsElement) {
     }
   }
 
-  eisenhowerWrap.querySelectorAll(".calendar-eisenhower-quadrant").forEach((quad) => {
-    quad.addEventListener("dragover", (e) => {
-      if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_EISENHOWER)) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "move";
-        quad.classList.add("calendar-eisenhower-quadrant-drag-over");
-      }
-    });
-    quad.addEventListener("dragleave", (e) => {
-      if (!quad.contains(e.relatedTarget)) {
-        quad.classList.remove("calendar-eisenhower-quadrant-drag-over");
-      }
-    });
-    quad.addEventListener("drop", (e) => handleQuadrantDrop(quad, e));
-    const ul = quad.querySelector(".calendar-eisenhower-quadrant-tasks");
-    if (ul) {
-      ul.addEventListener("dragover", (e) => {
+  eisenhowerWrap
+    .querySelectorAll(".calendar-eisenhower-quadrant")
+    .forEach((quad) => {
+      quad.addEventListener("dragover", (e) => {
         if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_EISENHOWER)) {
           e.preventDefault();
           e.dataTransfer.dropEffect = "move";
           quad.classList.add("calendar-eisenhower-quadrant-drag-over");
         }
       });
-      ul.addEventListener("dragleave", (e) => {
-        if (!ul.contains(e.relatedTarget)) {
+      quad.addEventListener("dragleave", (e) => {
+        if (!quad.contains(e.relatedTarget)) {
           quad.classList.remove("calendar-eisenhower-quadrant-drag-over");
         }
       });
-      ul.addEventListener("drop", (e) => handleQuadrantDrop(quad, e));
-    }
-  });
+      quad.addEventListener("drop", (e) => handleQuadrantDrop(quad, e));
+      const ul = quad.querySelector(".calendar-eisenhower-quadrant-tasks");
+      if (ul) {
+        ul.addEventListener("dragover", (e) => {
+          if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_EISENHOWER)) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            quad.classList.add("calendar-eisenhower-quadrant-drag-over");
+          }
+        });
+        ul.addEventListener("dragleave", (e) => {
+          if (!ul.contains(e.relatedTarget)) {
+            quad.classList.remove("calendar-eisenhower-quadrant-drag-over");
+          }
+        });
+        ul.addEventListener("drop", (e) => handleQuadrantDrop(quad, e));
+      }
+    });
 
   const sidebarBody = todoSidebar.querySelector(".calendar-todo-sidebar-body");
   if (sidebarBody) {
@@ -4222,7 +5529,12 @@ export function render() {
   let currentView = "todo";
 
   function renderContent(view) {
-    if (currentView === "todo" || currentView === "calendar" || currentView === "1day" || currentView === "eisenhower") {
+    if (
+      currentView === "todo" ||
+      currentView === "calendar" ||
+      currentView === "1day" ||
+      currentView === "eisenhower"
+    ) {
       saveTodoListBeforeUnmount(contentWrap);
     }
     currentView = view;
@@ -4246,7 +5558,9 @@ export function render() {
 
   tabs.querySelectorAll(".time-view-tab").forEach((btn) => {
     btn.addEventListener("click", () => {
-      tabs.querySelectorAll(".time-view-tab").forEach((b) => b.classList.remove("active"));
+      tabs
+        .querySelectorAll(".time-view-tab")
+        .forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
       renderContent(btn.dataset.view);
     });

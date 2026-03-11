@@ -275,14 +275,19 @@ export function getBudgetGoals(dateStr) {
     if (raw) {
       const all = JSON.parse(raw);
       const result = all[dateStr] || {};
-      if (typeof result !== "object" || result === null || Array.isArray(result)) return {};
+      if (
+        typeof result !== "object" ||
+        result === null ||
+        Array.isArray(result)
+      )
+        return {};
       return result;
     }
   } catch (_) {}
   return {};
 }
 
-function saveBudgetGoal(dateStr, taskName, goalTime, isInvest) {
+export function saveBudgetGoal(dateStr, taskName, goalTime, isInvest) {
   if (!(taskName || "").trim()) return;
   try {
     removeFromBudgetExcluded(dateStr, taskName);
@@ -359,15 +364,19 @@ function removeFromBudgetExcluded(dateStr, taskName) {
 /** scheduledTimes 배열 반환 (하위 호환: scheduledTime 문자열 → 배열) */
 function getScheduledTimesArray(data) {
   if (!data) return [];
-  if (Array.isArray(data.scheduledTimes)) return data.scheduledTimes.filter((s) => s && String(s).trim());
-  if (data.scheduledTime && String(data.scheduledTime).trim()) return [String(data.scheduledTime).trim()];
+  if (Array.isArray(data.scheduledTimes))
+    return data.scheduledTimes.filter((s) => s && String(s).trim());
+  if (data.scheduledTime && String(data.scheduledTime).trim())
+    return [String(data.scheduledTime).trim()];
   return [];
 }
 
 /** hh:mm -> 분으로 변환 */
 function parseHhMmToMinutes(s) {
   if (!s || !s.trim()) return null;
-  const m = String(s).trim().match(/^(\d{1,2}):?(\d{0,2})$/);
+  const m = String(s)
+    .trim()
+    .match(/^(\d{1,2}):?(\d{0,2})$/);
   if (!m) return null;
   return (parseInt(m[1], 10) || 0) * 60 + (parseInt(m[2], 10) || 0);
 }
@@ -404,8 +413,14 @@ function removeOverlapFromSlots(existingSlots, overlapStartMin, overlapEndMin) {
     if (!rangesOverlap(overlapStartMin, overlapEndMin, startMin, endMin)) {
       result.push(slot);
     } else {
-      const before = startMin < overlapStartMin ? `${minutesToHhMm(startMin)}-${minutesToHhMm(overlapStartMin)}` : null;
-      const after = endMin > overlapEndMin ? `${minutesToHhMm(overlapEndMin)}-${minutesToHhMm(endMin)}` : null;
+      const before =
+        startMin < overlapStartMin
+          ? `${minutesToHhMm(startMin)}-${minutesToHhMm(overlapStartMin)}`
+          : null;
+      const after =
+        endMin > overlapEndMin
+          ? `${minutesToHhMm(overlapEndMin)}-${minutesToHhMm(endMin)}`
+          : null;
       if (before) result.push(before);
       if (after) result.push(after);
     }
@@ -451,7 +466,8 @@ function saveBudgetScheduledTimes(dateStr, taskName, scheduledTimes, isInvest) {
     const raw = localStorage.getItem(BUDGET_GOALS_KEY);
     const all = raw ? JSON.parse(raw) : {};
     const dateData = all[dateStr];
-    if (!dateData || typeof dateData !== "object" || Array.isArray(dateData)) all[dateStr] = {};
+    if (!dateData || typeof dateData !== "object" || Array.isArray(dateData))
+      all[dateStr] = {};
     const key = String(taskName).trim();
     const existing = all[dateStr][key] || {};
     const arr = Array.isArray(scheduledTimes)
@@ -459,7 +475,12 @@ function saveBudgetScheduledTimes(dateStr, taskName, scheduledTimes, isInvest) {
       : [];
     let overlapCleared = false;
     if (arr.length > 0) {
-      overlapCleared = clearOverlappingScheduledTimes(all, dateStr, taskName, arr);
+      overlapCleared = clearOverlappingScheduledTimes(
+        all,
+        dateStr,
+        taskName,
+        arr,
+      );
       all[dateStr][key] = { ...existing, scheduledTimes: arr, isInvest };
     } else {
       const { scheduledTime: _st, scheduledTimes: _sts, ...rest } = existing;
@@ -475,7 +496,12 @@ function saveBudgetScheduledTimes(dateStr, taskName, scheduledTimes, isInvest) {
 
 /** @deprecated 단일 구간 저장 - saveBudgetScheduledTimes 사용 권장 */
 function saveBudgetScheduledTime(dateStr, taskName, scheduledTime, isInvest) {
-  saveBudgetScheduledTimes(dateStr, taskName, scheduledTime ? [scheduledTime] : [], isInvest);
+  saveBudgetScheduledTimes(
+    dateStr,
+    taskName,
+    scheduledTime ? [scheduledTime] : [],
+    isInvest,
+  );
 }
 
 /** 과제 기록 로컬 저장 (백엔드 개발 전 임시) */
@@ -690,7 +716,7 @@ function formatTimeInput(val) {
 }
 
 /** hh:mm 형식을 시간(소수)으로 변환 */
-function parseTimeToHours(str) {
+export function parseTimeToHours(str) {
   if (!str || typeof str !== "string") return 0;
   const trimmed = str.trim();
   if (!trimmed) return 0;
@@ -698,6 +724,20 @@ function parseTimeToHours(str) {
   const h = parseInt(parts[0], 10) || 0;
   const m = parseInt(parts[1], 10) || 0;
   return h + m / 60;
+}
+
+/** 목표 대비 배치 차이 포맷: (-1h) / (+1h25m) / (-30m) / "" */
+export function formatGoalDiff(diffHours) {
+  if (diffHours === 0 || !isFinite(diffHours) || Math.abs(diffHours) < 1 / 60)
+    return "";
+  const sign = diffHours > 0 ? "+" : "";
+  const absH = Math.abs(diffHours);
+  const h = Math.floor(absH);
+  const m = Math.round((absH - h) * 60);
+  if (h === 0 && m === 0) return "";
+  if (h === 0) return `(${sign}${m}m)`;
+  if (m === 0) return `(${sign}${h}h)`;
+  return `(${sign}${h}h${m}m)`;
 }
 
 /** 날짜·시간 문자열(YYYY-MM-DDThh:mm 등)을 시간(소수)으로 변환 */
@@ -5121,7 +5161,7 @@ export function render() {
       });
       input.addEventListener("blur", () => {
         const digits = input.value.replace(/\D/g, "");
-        if (digits.length === 0 || digits.length <= 2) {
+        if (digits.length === 0 || digits.length === 1) {
           input.value = "";
           return;
         }
@@ -5589,7 +5629,7 @@ export function renderTimeBudgetTablesForCalendar(
     });
     input.addEventListener("blur", () => {
       const digits = input.value.replace(/\D/g, "");
-      if (digits.length === 0 || digits.length <= 2) {
+      if (digits.length === 0 || digits.length === 1) {
         input.value = "";
         return;
       }
@@ -5620,7 +5660,7 @@ export function renderTimeBudgetTablesForCalendar(
     });
     input.addEventListener("blur", () => {
       const digits = input.value.replace(/\D/g, "");
-      if (digits.length === 0 || digits.length <= 2) {
+      if (digits.length === 0 || digits.length === 1) {
         input.value = "";
         return;
       }
@@ -5661,19 +5701,6 @@ export function renderTimeBudgetTablesForCalendar(
     return total;
   }
 
-  /** 목표 대비 배치 차이 포맷: (-1h) / (+1h25m) / (-30m) / "" */
-  function formatGoalDiff(diffHours) {
-    if (diffHours === 0 || !isFinite(diffHours) || Math.abs(diffHours) < 1 / 60) return "";
-    const sign = diffHours > 0 ? "+" : "";
-    const absH = Math.abs(diffHours);
-    const h = Math.floor(absH);
-    const m = Math.round((absH - h) * 60);
-    if (h === 0 && m === 0) return "";
-    if (h === 0) return `(${sign}${m}m)`;
-    if (m === 0) return `(${sign}${h}h)`;
-    return `(${sign}${h}h${m}m)`;
-  }
-
   function updateGoalDiffDisplays(block) {
     if (!block) return;
     const tbody = block.querySelector("tbody");
@@ -5697,7 +5724,11 @@ export function renderTimeBudgetTablesForCalendar(
       diffSpan.className = "time-budget-goal-diff";
       if (diff > 0) diffSpan.classList.add("time-budget-goal-diff--over");
       else if (diff < 0) diffSpan.classList.add("time-budget-goal-diff--short");
-      else diffSpan.classList.remove("time-budget-goal-diff--over", "time-budget-goal-diff--short");
+      else
+        diffSpan.classList.remove(
+          "time-budget-goal-diff--over",
+          "time-budget-goal-diff--short",
+        );
     });
   }
 
@@ -5736,7 +5767,9 @@ export function renderTimeBudgetTablesForCalendar(
   function applyGoalInputState(goalInp, taskName, currentRow, tbodyEl) {
     const disable = !isFirstRowForTask(taskName, currentRow, tbodyEl);
     goalInp.disabled = disable;
-    goalInp.title = disable ? "이미 같은 과제의 목표 시간이 설정되어 있습니다." : "";
+    goalInp.title = disable
+      ? "이미 같은 과제의 목표 시간이 설정되어 있습니다."
+      : "";
     goalInp.placeholder = disable ? "" : "hh:mm";
     if (disable) {
       goalInp.value = "";
@@ -5760,7 +5793,8 @@ export function renderTimeBudgetTablesForCalendar(
     tbodyAndAddRow,
   ) {
     const tr = document.createElement("tr");
-    const { tbody, addRow, onOverlapCleared } = tbodyAndAddRow || {};
+    const { tbody, addRow, onOverlapCleared, allTbodies } =
+      tbodyAndAddRow || {};
     const taskTd = document.createElement("td");
     const goalInput = createBudgetTimeInput();
     if (initialGoalTime) goalInput.value = initialGoalTime;
@@ -5770,7 +5804,8 @@ export function renderTimeBudgetTablesForCalendar(
     const startInput = createBudgetTimeRangeInput("hh:mm");
     const endInput = createBudgetTimeRangeInput("hh:mm");
     if (initialStart) startInput.value = initialStart;
-    if (initialEnd && isValidStartEnd(initialStart, initialEnd)) endInput.value = initialEnd;
+    if (initialEnd && isValidStartEnd(initialStart, initialEnd))
+      endInput.value = initialEnd;
 
     function updateRowDataset() {
       const name = (taskDropdown.getValue() || "").trim();
@@ -5782,21 +5817,51 @@ export function renderTimeBudgetTablesForCalendar(
     }
     function saveAllScheduledTimesForTimetable() {
       if (!tbody || !addRow) return;
-      const byTask = collectScheduledTimesByTask(tbody, addRow);
+      const byTaskWithInvest = {};
+      if (Array.isArray(allTbodies)) {
+        allTbodies.forEach(([tb, ar, isInv]) => {
+          const collected = collectScheduledTimesByTask(tb, ar);
+          Object.entries(collected).forEach(([task, times]) => {
+            byTaskWithInvest[task] = { times, isInvest: isInv };
+          });
+        });
+      } else {
+        const collected = collectScheduledTimesByTask(tbody, addRow);
+        Object.entries(collected).forEach(([task, times]) => {
+          byTaskWithInvest[task] = { times, isInvest };
+        });
+      }
       let overlapCleared = false;
-      Object.entries(byTask).forEach(([task, times]) => {
-        if (saveBudgetScheduledTimes(targetDateStr, task, times, isInvest)) overlapCleared = true;
+      const investTasks = [];
+      const consumeTasks = [];
+      Object.entries(byTaskWithInvest).forEach(
+        ([task, { times, isInvest: inv }]) => {
+          if (inv) investTasks.push([task, times]);
+          else consumeTasks.push([task, times]);
+        },
+      );
+      [...investTasks, ...consumeTasks].forEach(([task, times]) => {
+        const inv = byTaskWithInvest[task].isInvest;
+        if (saveBudgetScheduledTimes(targetDateStr, task, times, inv))
+          overlapCleared = true;
       });
-      if (overlapCleared && typeof onOverlapCleared === "function") onOverlapCleared(targetDateStr);
+      if (overlapCleared && typeof onOverlapCleared === "function")
+        onOverlapCleared(targetDateStr);
     }
 
     let previousKey = (taskName || "").trim();
     let lastSavedScheduledTime =
-      initialStart && initialEnd ? `${initialStart}-${initialEnd}` : (initialStart || initialEnd || "");
+      initialStart && initialEnd
+        ? `${initialStart}-${initialEnd}`
+        : initialStart || initialEnd || "";
     function saveCurrentGoal(skipReRender, shouldDispatchForTimetable = false) {
       const name = (taskDropdown.getValue() || "").trim();
       if (name) {
-        if (previousKey && previousKey !== name && isBudgetPlaceholder(previousKey)) {
+        if (
+          previousKey &&
+          previousKey !== name &&
+          isBudgetPlaceholder(previousKey)
+        ) {
           deleteBudgetGoalEntry(targetDateStr, previousKey);
         }
         previousKey = name;
@@ -5814,14 +5879,25 @@ export function renderTimeBudgetTablesForCalendar(
         if (tbody && addRow) {
           saveAllScheduledTimesForTimetable();
         } else {
-          if (saveBudgetScheduledTimes(targetDateStr, name, scheduledTime ? [scheduledTime] : [], isInvest) && typeof onOverlapCleared === "function") {
+          if (
+            saveBudgetScheduledTimes(
+              targetDateStr,
+              name,
+              scheduledTime ? [scheduledTime] : [],
+              isInvest,
+            ) &&
+            typeof onOverlapCleared === "function"
+          ) {
             onOverlapCleared(targetDateStr);
           }
         }
         const scheduledChanged = scheduledTime !== lastSavedScheduledTime;
         lastSavedScheduledTime = scheduledTime;
         /* 예상 시간 변경 시 timetable 오버레이 직접 갱신 (콜백으로 확실히 전달) */
-        if (shouldDispatchForTimetable && (scheduledChanged || (start && end))) {
+        if (
+          shouldDispatchForTimetable &&
+          (scheduledChanged || (start && end))
+        ) {
           if (typeof onScheduledUpdate === "function") {
             onScheduledUpdate(targetDateStr);
           } else {
@@ -5861,14 +5937,24 @@ export function renderTimeBudgetTablesForCalendar(
           end = "";
           showToast("마감 시간은 시작 시간보다 뒤여야 합니다.");
         }
-        const scheduledTime = start && end ? `${start}-${end}` : start || end || "";
+        const scheduledTime =
+          start && end ? `${start}-${end}` : start || end || "";
         if (scheduledTime) {
-          if (saveBudgetScheduledTimes(targetDateStr, name, [scheduledTime], isInvest) && typeof onOverlapCleared === "function") {
+          if (
+            saveBudgetScheduledTimes(
+              targetDateStr,
+              name,
+              [scheduledTime],
+              isInvest,
+            ) &&
+            typeof onOverlapCleared === "function"
+          ) {
             onOverlapCleared(targetDateStr);
           }
         }
       }
-      if (typeof onScheduledUpdate === "function") onScheduledUpdate(targetDateStr);
+      if (typeof onScheduledUpdate === "function")
+        onScheduledUpdate(targetDateStr);
     };
     startInput.addEventListener("input", scheduleTimetableUpdate);
     endInput.addEventListener("input", scheduleTimetableUpdate);
@@ -5971,7 +6057,12 @@ export function renderTimeBudgetTablesForCalendar(
     if (excluded.has(t.task)) return;
     if (isBudgetPlaceholder(t.task)) return;
     const data = storedGoals[t.task];
-    const entries = expandByScheduledTimes(t.task, data, !t.isNonproductive, t.hrs);
+    const entries = expandByScheduledTimes(
+      t.task,
+      data,
+      !t.isNonproductive,
+      t.hrs,
+    );
     const target = t.isNonproductive ? consumeTasks : investTasks;
     const seen = t.isNonproductive ? seenConsume : seenInvest;
     entries.forEach((e) => {
@@ -5983,10 +6074,14 @@ export function renderTimeBudgetTablesForCalendar(
     if (excluded.has(task)) return;
     if (isBudgetPlaceholder(task)) return;
     if (data.isInvest && !seenInvest.has(task)) {
-      expandByScheduledTimes(task, data, true).forEach((e) => investTasks.push(e));
+      expandByScheduledTimes(task, data, true).forEach((e) =>
+        investTasks.push(e),
+      );
       seenInvest.add(task);
     } else if (!data.isInvest && !seenConsume.has(task)) {
-      expandByScheduledTimes(task, data, false).forEach((e) => consumeTasks.push(e));
+      expandByScheduledTimes(task, data, false).forEach((e) =>
+        consumeTasks.push(e),
+      );
       seenConsume.add(task);
     }
   });
@@ -6026,11 +6121,23 @@ export function renderTimeBudgetTablesForCalendar(
   `;
   const investAddRow = document.createElement("tr");
   investAddRow.className = "time-row-add time-row-add--placeholder";
-  investAddRow.innerHTML = "<td colspan=\"5\"></td>";
+  investAddRow.innerHTML = '<td colspan="5"></td>';
 
   const investTbody = investTable.querySelector("tbody");
-  const investCtx = { tbody: investTbody, addRow: investAddRow, onOverlapCleared };
-  investTasks.forEach((t) => {
+  const investCtx = {
+    tbody: investTbody,
+    addRow: investAddRow,
+    onOverlapCleared,
+  };
+  const sortByStartTime = (list) =>
+    [...list].sort((a, b) => {
+      const { start: aStart } = parseScheduledTime(a.scheduledTime ?? "");
+      const { start: bStart } = parseScheduledTime(b.scheduledTime ?? "");
+      const aH = aStart ? parseTimeToHours(aStart) : Infinity;
+      const bH = bStart ? parseTimeToHours(bStart) : Infinity;
+      return aH - bH;
+    });
+  sortByStartTime(investTasks).forEach((t) => {
     const goal = storedGoals[t.task];
     const goalTime = goal?.goalTime || "";
     const scheduledTime = t.scheduledTime ?? goal?.scheduledTime ?? "";
@@ -6045,7 +6152,7 @@ export function renderTimeBudgetTablesForCalendar(
 
   const consumeAddRow = document.createElement("tr");
   consumeAddRow.className = "time-row-add time-row-add--placeholder";
-  consumeAddRow.innerHTML = "<td colspan=\"5\"></td>";
+  consumeAddRow.innerHTML = '<td colspan="5"></td>';
 
   const consumeBlock = document.createElement("div");
   consumeBlock.className =
@@ -6074,8 +6181,18 @@ export function renderTimeBudgetTablesForCalendar(
     <tbody></tbody>
   `;
   const consumeTbody = consumeTable.querySelector("tbody");
-  const consumeCtx = { tbody: consumeTbody, addRow: consumeAddRow, onOverlapCleared };
-  consumeTasks.forEach((t) => {
+  const allTbodies = [
+    [investTbody, investAddRow, true],
+    [consumeTbody, consumeAddRow, false],
+  ];
+  investCtx.allTbodies = allTbodies;
+  const consumeCtx = {
+    tbody: consumeTbody,
+    addRow: consumeAddRow,
+    onOverlapCleared,
+    allTbodies,
+  };
+  sortByStartTime(consumeTasks).forEach((t) => {
     const goal = storedGoals[t.task];
     const goalTime = goal?.goalTime || "";
     const scheduledTime = t.scheduledTime ?? goal?.scheduledTime ?? "";
@@ -6102,7 +6219,8 @@ export function renderTimeBudgetTablesForCalendar(
   const addBtnEl = tabsBar.querySelector(".time-daily-budget-add-btn");
   addBtnEl.addEventListener("click", (e) => {
     e.stopPropagation();
-    const activeTab = tabsBar.querySelector(".time-daily-budget-tab.active")?.dataset?.tab;
+    const activeTab = tabsBar.querySelector(".time-daily-budget-tab.active")
+      ?.dataset?.tab;
     const isInvest = activeTab !== "consume";
     /* 과제설정 목록에서만 선택, 여기서 새 과제 추가 불가 */
     if (activeTab === "consume") {
