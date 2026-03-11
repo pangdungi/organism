@@ -363,9 +363,88 @@ function getScheduledTimesArray(data) {
   return [];
 }
 
-/** 캘린더 1일뷰 예정 시간 저장 - scheduledTimes 배열 지원 (같은 과제 여러 구간) */
+/** hh:mm -> 분으로 변환 */
+function parseHhMmToMinutes(s) {
+  if (!s || !s.trim()) return null;
+  const m = String(s).trim().match(/^(\d{1,2}):?(\d{0,2})$/);
+  if (!m) return null;
+  return (parseInt(m[1], 10) || 0) * 60 + (parseInt(m[2], 10) || 0);
+}
+
+/** 분 -> hh:mm */
+function minutesToHhMm(min) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+/** scheduled "start-end"를 {startMin, endMin}으로 파싱 */
+function parseScheduledSlotToMinutes(str) {
+  if (!str || !str.trim()) return null;
+  const parts = str.trim().split("-");
+  const startMin = parseHhMmToMinutes(parts[0]);
+  if (startMin == null) return null;
+  const endMin = parts[1] ? parseHhMmToMinutes(parts[1]) : null;
+  return { startMin, endMin: endMin != null ? endMin : startMin + 60 };
+}
+
+/** 두 구간이 겹치는지 */
+function rangesOverlap(aStart, aEnd, bStart, bEnd) {
+  return aStart < bEnd && bStart < aEnd;
+}
+
+/** 기존 슬롯 배열에서 overlap 구간을 제거한 새 배열 반환 (새 과제가 해당 시간을 차지하면 기존 과제 비움) */
+function removeOverlapFromSlots(existingSlots, overlapStartMin, overlapEndMin) {
+  const result = [];
+  for (const slot of existingSlots) {
+    const parsed = parseScheduledSlotToMinutes(slot);
+    if (!parsed) continue;
+    const { startMin, endMin } = parsed;
+    if (!rangesOverlap(overlapStartMin, overlapEndMin, startMin, endMin)) {
+      result.push(slot);
+    } else {
+      const before = startMin < overlapStartMin ? `${minutesToHhMm(startMin)}-${minutesToHhMm(overlapStartMin)}` : null;
+      const after = endMin > overlapEndMin ? `${minutesToHhMm(overlapEndMin)}-${minutesToHhMm(endMin)}` : null;
+      if (before) result.push(before);
+      if (after) result.push(after);
+    }
+  }
+  return result;
+}
+
+/** 새 과제의 예상 시간 저장 시, 겹치는 다른 과제들의 예상 시간 비우기 (새 입력이 우선). 수정 여부 반환 */
+function clearOverlappingScheduledTimes(all, dateStr, taskName, newSlots) {
+  const key = String(taskName).trim();
+  if (!key || !all[dateStr]) return false;
+  const dateData = all[dateStr];
+  let modified = false;
+  for (const slot of newSlots) {
+    const parsed = parseScheduledSlotToMinutes(slot);
+    if (!parsed) continue;
+    const { startMin, endMin } = parsed;
+    for (const otherKey of Object.keys(dateData)) {
+      if (otherKey === key) continue;
+      const other = dateData[otherKey];
+      const otherSlots = getScheduledTimesArray(other);
+      if (otherSlots.length === 0) continue;
+      const remaining = removeOverlapFromSlots(otherSlots, startMin, endMin);
+      if (remaining.length === 0) {
+        const { scheduledTime: _st, scheduledTimes: _sts, ...rest } = other;
+        dateData[otherKey] = Object.keys(rest).length ? rest : undefined;
+        if (!dateData[otherKey]) delete dateData[otherKey];
+        modified = true;
+      } else if (remaining.length !== otherSlots.length) {
+        dateData[otherKey] = { ...other, scheduledTimes: remaining };
+        modified = true;
+      }
+    }
+  }
+  return modified;
+}
+
+/** 캘린더 1일뷰 예정 시간 저장 - scheduledTimes 배열 지원 (같은 과제 여러 구간). 겹침 해결 시 true 반환 */
 function saveBudgetScheduledTimes(dateStr, taskName, scheduledTimes, isInvest) {
-  if (!(taskName || "").trim()) return;
+  if (!(taskName || "").trim()) return false;
   try {
     removeFromBudgetExcluded(dateStr, taskName);
     const raw = localStorage.getItem(BUDGET_GOALS_KEY);
@@ -377,7 +456,9 @@ function saveBudgetScheduledTimes(dateStr, taskName, scheduledTimes, isInvest) {
     const arr = Array.isArray(scheduledTimes)
       ? scheduledTimes.map((s) => String(s || "").trim()).filter(Boolean)
       : [];
+    let overlapCleared = false;
     if (arr.length > 0) {
+      overlapCleared = clearOverlappingScheduledTimes(all, dateStr, taskName, arr);
       all[dateStr][key] = { ...existing, scheduledTimes: arr, isInvest };
     } else {
       const { scheduledTime: _st, scheduledTimes: _sts, ...rest } = existing;
@@ -385,7 +466,10 @@ function saveBudgetScheduledTimes(dateStr, taskName, scheduledTimes, isInvest) {
       if (!all[dateStr][key]) delete all[dateStr][key];
     }
     localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
-  } catch (_) {}
+    return overlapCleared;
+  } catch (_) {
+    return false;
+  }
 }
 
 /** @deprecated 단일 구간 저장 - saveBudgetScheduledTimes 사용 권장 */
@@ -5451,6 +5535,7 @@ export function renderTimeBudgetTablesForCalendar(
   dateStr,
   todoSectionEl,
   onScheduledUpdate,
+  onOverlapCleared,
 ) {
   const rows = loadTimeRows();
   const targetDateStr = dateStr || toDateStr(new Date());
@@ -5669,7 +5754,7 @@ export function renderTimeBudgetTablesForCalendar(
     tbodyAndAddRow,
   ) {
     const tr = document.createElement("tr");
-    const { tbody, addRow } = tbodyAndAddRow || {};
+    const { tbody, addRow, onOverlapCleared } = tbodyAndAddRow || {};
     const taskTd = document.createElement("td");
     const goalInput = createBudgetTimeInput();
     if (initialGoalTime) goalInput.value = initialGoalTime;
@@ -5692,9 +5777,11 @@ export function renderTimeBudgetTablesForCalendar(
     function saveAllScheduledTimesForTimetable() {
       if (!tbody || !addRow) return;
       const byTask = collectScheduledTimesByTask(tbody, addRow);
+      let overlapCleared = false;
       Object.entries(byTask).forEach(([task, times]) => {
-        saveBudgetScheduledTimes(targetDateStr, task, times, isInvest);
+        if (saveBudgetScheduledTimes(targetDateStr, task, times, isInvest)) overlapCleared = true;
       });
+      if (overlapCleared && typeof onOverlapCleared === "function") onOverlapCleared(targetDateStr);
     }
 
     let previousKey = (taskName || "").trim();
@@ -5716,7 +5803,9 @@ export function renderTimeBudgetTablesForCalendar(
         if (tbody && addRow) {
           saveAllScheduledTimesForTimetable();
         } else {
-          saveBudgetScheduledTimes(targetDateStr, name, scheduledTime ? [scheduledTime] : [], isInvest);
+          if (saveBudgetScheduledTimes(targetDateStr, name, scheduledTime ? [scheduledTime] : [], isInvest) && typeof onOverlapCleared === "function") {
+            onOverlapCleared(targetDateStr);
+          }
         }
         const scheduledChanged = scheduledTime !== lastSavedScheduledTime;
         lastSavedScheduledTime = scheduledTime;
@@ -5758,7 +5847,9 @@ export function renderTimeBudgetTablesForCalendar(
         const end = endInput.value.trim();
         const scheduledTime = start && end ? `${start}-${end}` : start || end || "";
         if (scheduledTime) {
-          saveBudgetScheduledTimes(targetDateStr, name, [scheduledTime], isInvest);
+          if (saveBudgetScheduledTimes(targetDateStr, name, [scheduledTime], isInvest) && typeof onOverlapCleared === "function") {
+            onOverlapCleared(targetDateStr);
+          }
         }
       }
       if (typeof onScheduledUpdate === "function") onScheduledUpdate(targetDateStr);
@@ -5922,7 +6013,7 @@ export function renderTimeBudgetTablesForCalendar(
   investAddRow.innerHTML = "<td colspan=\"5\"></td>";
 
   const investTbody = investTable.querySelector("tbody");
-  const investCtx = { tbody: investTbody, addRow: investAddRow };
+  const investCtx = { tbody: investTbody, addRow: investAddRow, onOverlapCleared };
   investTasks.forEach((t) => {
     const goal = storedGoals[t.task];
     const goalTime = goal?.goalTime || "";
@@ -5967,7 +6058,7 @@ export function renderTimeBudgetTablesForCalendar(
     <tbody></tbody>
   `;
   const consumeTbody = consumeTable.querySelector("tbody");
-  const consumeCtx = { tbody: consumeTbody, addRow: consumeAddRow };
+  const consumeCtx = { tbody: consumeTbody, addRow: consumeAddRow, onOverlapCleared };
   consumeTasks.forEach((t) => {
     const goal = storedGoals[t.task];
     const goalTime = goal?.goalTime || "";

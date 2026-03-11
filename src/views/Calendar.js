@@ -2313,11 +2313,10 @@ function build1DayTimetableOverlays(targetKey) {
         const parts = st.trim().split("-");
         const startMin = parseHhMmToMinutes(parts[0]);
         const endMin = parts[1] ? parseHhMmToMinutes(parts[1]) : null;
-        if (startMin == null) continue;
-        const end = endMin != null ? endMin : startMin + 60;
+        if (startMin == null || endMin == null) continue;
         const opt = getTaskOptionByName(taskName);
         const prod = opt?.productivity || "other";
-        const res = tryOverlap(slotStartMin, slotEndMin, startMin, end, prod, taskName);
+        const res = tryOverlap(slotStartMin, slotEndMin, startMin, endMin, prod, taskName);
         if (res) return res;
       }
     }
@@ -2326,11 +2325,10 @@ function build1DayTimetableOverlays(targetKey) {
       const et = (t.endTime || "").trim();
       if (!st || !et) continue;
       const startMin = parseHhMmToMinutes(st);
-      const endMin = et ? parseHhMmToMinutes(et) : startMin + 30;
-      if (startMin == null) continue;
-      const end = endMin != null ? endMin : startMin + 30;
+      const endMin = parseHhMmToMinutes(et);
+      if (startMin == null || endMin == null) continue;
       const prod = getTaskOptionByName(t.name)?.productivity || "other";
-      const res = tryOverlap(slotStartMin, slotEndMin, startMin, end, prod, t.name);
+      const res = tryOverlap(slotStartMin, slotEndMin, startMin, endMin, prod, t.name);
       if (res) return { ...res, _task: t, _taskKey: t.kpiTodoId || t.taskId || t.name };
     }
     return null;
@@ -2340,8 +2338,8 @@ function build1DayTimetableOverlays(targetKey) {
     const slotEndMin = (slotIndex + 1) * MIN_PER_SLOT;
     for (const r of actualRows) {
       const startMin = parseDateTimeToMinutes(r.startTime);
-      let endMin = parseDateTimeToMinutes(r.endTime);
-      if (startMin != null && endMin == null) endMin = startMin + 60;
+      const endMin = parseDateTimeToMinutes(r.endTime);
+      if (startMin == null || endMin == null) continue;
       const prod = r.productivity || getTaskOptionByName(r.taskName)?.productivity || "other";
       const res = tryOverlap(slotStartMin, slotEndMin, startMin, endMin, prod, r.taskName);
       if (res) return res;
@@ -2884,7 +2882,10 @@ function render1DayView(tabsElement) {
         else inner.appendChild(actual);
       });
     };
-    renderTimeBudgetTablesForCalendar(budgetColumn, targetKey, todoSection, onScheduledUpdate);
+    const onOverlapCleared = () => {
+      requestAnimationFrame(() => renderCalendar());
+    };
+    renderTimeBudgetTablesForCalendar(budgetColumn, targetKey, todoSection, onScheduledUpdate, onOverlapCleared);
     calendarGrid.appendChild(budgetColumn);
     refreshKpiSidebar(taskStats);
     calendarGrid.appendChild(timeColumn);
@@ -2952,11 +2953,10 @@ function render1DayView(tabsElement) {
           const parts = st.trim().split("-");
           const startMin = parseHhMmToMinutes(parts[0]);
           const endMin = parts[1] ? parseHhMmToMinutes(parts[1]) : null;
-          if (startMin == null) continue;
-          const end = endMin != null ? endMin : startMin + 60;
+          if (startMin == null || endMin == null) continue;
           const opt = getTaskOptionByName(taskName);
           const prod = opt?.productivity || "other";
-          const res = tryOverlap(slotStartMin, slotEndMin, startMin, end, prod, taskName);
+          const res = tryOverlap(slotStartMin, slotEndMin, startMin, endMin, prod, taskName);
           if (res) return res;
         }
       }
@@ -2965,11 +2965,10 @@ function render1DayView(tabsElement) {
         const et = (t.endTime || "").trim();
         if (!st || !et) continue;
         const startMin = parseHhMmToMinutes(st);
-        const endMin = et ? parseHhMmToMinutes(et) : startMin + 30;
-        if (startMin == null) continue;
-        const end = endMin != null ? endMin : startMin + 30;
+        const endMin = parseHhMmToMinutes(et);
+        if (startMin == null || endMin == null) continue;
         const prod = getTaskOptionByName(t.name)?.productivity || "other";
-        const res = tryOverlap(slotStartMin, slotEndMin, startMin, end, prod, t.name);
+        const res = tryOverlap(slotStartMin, slotEndMin, startMin, endMin, prod, t.name);
         if (res) return { ...res, _task: t, _taskKey: t.kpiTodoId || t.taskId || t.name };
       }
       return null;
@@ -2979,8 +2978,8 @@ function render1DayView(tabsElement) {
       const slotEndMin = (slotIndex + 1) * MIN_PER_SLOT;
       for (const r of actualRows) {
         const startMin = parseDateTimeToMinutes(r.startTime);
-        let endMin = parseDateTimeToMinutes(r.endTime);
-        if (startMin != null && endMin == null) endMin = startMin + 60;
+        const endMin = parseDateTimeToMinutes(r.endTime);
+        if (startMin == null || endMin == null) continue;
         const prod = r.productivity || getTaskOptionByName(r.taskName)?.productivity || "other";
         const res = tryOverlap(slotStartMin, slotEndMin, startMin, endMin, prod, r.taskName);
         if (res) return res;
