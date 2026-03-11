@@ -16162,13 +16162,13 @@ body.kpi-resizing {
   min-height: 0;
   overflow-x: auto;
   overflow-y: auto;
-  scrollbar-width: none;
+  scrollbar-width: thin;
   -ms-overflow-style: none;
 }
 
 .calendar-1day-budget-column
   .calendar-1day-todo-section-body::-webkit-scrollbar {
-  display: none;
+  height: 6px;
 }
 
 .calendar-1day-budget-column
@@ -16177,18 +16177,18 @@ body.kpi-resizing {
   min-height: 2.5rem;
 }
 
-/* 오늘의 할일 테이블 - 헤더/데이터셀 디자인, 줄바꿈 방지, 첫 열 고정 */
+/* 오늘의 할일 테이블 - 콘텐츠에 맞게 확장, 넘치면 가로스크롤 */
 .calendar-1day-budget-column .calendar-1day-todo-table {
   border: 1px solid #e5e7eb;
-  width: 100%;
-  table-layout: fixed;
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
 }
 
-.calendar-1day-budget-column .calendar-1day-todo-table thead th:nth-child(1) { width: 22%; }
-.calendar-1day-budget-column .calendar-1day-todo-table thead th:nth-child(2) { width: 18%; }
-.calendar-1day-budget-column .calendar-1day-todo-table thead th:nth-child(3),
-.calendar-1day-budget-column .calendar-1day-todo-table thead th:nth-child(4),
-.calendar-1day-budget-column .calendar-1day-todo-table thead th:nth-child(5) { width: 20%; }
+.calendar-1day-budget-column .calendar-1day-todo-table thead th:nth-child(2),
+.calendar-1day-budget-column .calendar-1day-todo-table tbody td:nth-child(2) {
+  min-width: 5rem;
+}
 
 .calendar-1day-budget-column .calendar-1day-todo-table thead th,
 .calendar-1day-budget-column .calendar-1day-todo-table tbody td {
