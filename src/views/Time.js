@@ -534,11 +534,23 @@ export function loadTimeRows() {
   return [];
 }
 
+const TIME_ROWS_SYNC_DEBUG = true;
 function saveTimeRows(rows) {
   try {
     const arr = Array.isArray(rows) ? rows : [];
     localStorage.setItem(TIME_ROWS_KEY, JSON.stringify(arr));
     syncHabitTrackerLogs();
+    if (TIME_ROWS_SYNC_DEBUG) {
+      console.log("[시간가계부→캘린더] saveTimeRows 완료, calendar-time-rows-updated dispatch 직전", {
+        totalRows: arr.length,
+        sample: arr.slice(0, 2).map((r) => ({ task: r.taskName, start: r.startTime, end: r.endTime })),
+      });
+    }
+    if (typeof document !== "undefined") {
+      document.dispatchEvent(
+        new CustomEvent("calendar-time-rows-updated", { detail: {} }),
+      );
+    }
   } catch (_) {}
 }
 

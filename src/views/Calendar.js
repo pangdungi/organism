@@ -3076,6 +3076,14 @@ function build1DayTimetableOverlays(targetKey, budgetColumn) {
   const actualRows = allTimeRows.filter(
     (r) => normDate(r.date || parseDateFromTimeStr(r.startTime)) === targetKey,
   );
+  if (TT_SYNC_DEBUG) {
+    console.log("[시간가계부→캘린더] build1DayTimetableOverlays actualRows", {
+      targetKey,
+      totalFromStorage: allTimeRows.length,
+      filteredForDate: actualRows.length,
+      rows: actualRows.map((r) => ({ task: r.taskName, start: r.startTime, end: r.endTime })),
+    });
+  }
   const parseHhMmToMinutes = (s) => {
     if (!s || !s.trim()) return null;
     const str = String(s).trim();
@@ -4378,61 +4386,8 @@ function render1DayView(tabsElement) {
       slotActual.style.gridRow = `${i + 2}`;
       timeTable.appendChild(slotActual);
     }
-    const SECTION_IDS_FOR_LIST_COLOR = [
-      "braindump",
-      "dream",
-      "sideincome",
-      "health",
-      "happy",
-    ];
-    const createOverlay = (spans, colors, isActual) => {
-      const overlay = document.createElement("div");
-      overlay.className = `calendar-1day-time-fill-overlay calendar-1day-time-fill-overlay--${isActual ? "actual" : "expected"}`;
-      for (const sp of spans) {
-        const fill = document.createElement("div");
-        fill.className =
-          "calendar-1day-time-slot-fill calendar-1day-time-slot-fill--span";
-        let c;
-        if (
-          !isActual &&
-          sp.sectionId &&
-          (SECTION_IDS_FOR_LIST_COLOR.includes(sp.sectionId) ||
-            (sp.sectionId || "").startsWith("custom-"))
-        ) {
-          const baseColor = getSectionColor(sp.sectionId);
-          c = {
-            bg: withMoreTransparency(baseColor, 0.06),
-            border: withMoreTransparency(baseColor, 0.5),
-          };
-        } else {
-          c = colors[sp.prod];
-        }
-        if (!c) continue;
-        fill.style.gridRow = `${sp.startSlot + 2} / ${sp.endSlot + 3}`;
-        /* 타임 셀 전부 색칠 - 비례 높이/오프셋 제거 */
-        fill.style.backgroundColor = c.bg;
-        fill.style.boxSizing = "border-box";
-        fill.style.borderRadius = "2px";
-        fill.style.border = `1px dotted ${c.border}`;
-        const label = document.createElement("span");
-        label.className = "calendar-1day-time-slot-label";
-        label.textContent = `${sp.taskName} ${sp.startDisplay}~${sp.endDisplay}`;
-        fill.appendChild(label);
-        overlay.appendChild(fill);
-      }
-      return overlay;
-    };
-    const fillOverlayExpected = createOverlay(
-      expectedSpans,
-      prodColorsExpected,
-      false,
-    );
-
-    const fillOverlayActual = createOverlay(
-      actualSpans,
-      prodColorsActual,
-      true,
-    );
+    const { expected: fillOverlayExpected, actual: fillOverlayActual } =
+      build1DayTimetableOverlays(targetKey, budgetColumn);
     const timeTableWrap = document.createElement("div");
     timeTableWrap.className = "calendar-1day-time-table-wrap";
     const timeTableInner = document.createElement("div");
@@ -4479,31 +4434,48 @@ function render1DayView(tabsElement) {
       .forEach((el) => el.remove());
   });
 
+  const refreshTimetableOverlays = (e) => {
+    const source = e?.type || "unknown";
+    const wrapInDoc = document.contains(wrap);
+    const dateStr = e?.detail?.dateStr || wrap.dataset?.dateStr;
+    const timeTableInner = wrap.querySelector(
+      ".calendar-1day-time-table-inner",
+    );
+    if (TT_SYNC_DEBUG) {
+      console.log("[시간가계부→캘린더] refreshTimetableOverlays", {
+        source,
+        wrapInDoc,
+        dateStr,
+        hasTimeTableInner: !!timeTableInner,
+        willRefresh: wrapInDoc && timeTableInner && dateStr,
+      });
+    }
+    if (!wrapInDoc) return;
+    if (timeTableInner && dateStr) {
+      const budgetCol = wrap.querySelector(".calendar-1day-budget-column");
+      const { expected, actual } = build1DayTimetableOverlays(dateStr, budgetCol);
+      const oldExpected = timeTableInner.querySelector(
+        ".calendar-1day-time-fill-overlay--expected",
+      );
+      const oldActual = timeTableInner.querySelector(
+        ".calendar-1day-time-fill-overlay--actual",
+      );
+      if (oldExpected) oldExpected.replaceWith(expected);
+      else timeTableInner.appendChild(expected);
+      if (oldActual) oldActual.replaceWith(actual);
+      else timeTableInner.appendChild(actual);
+    } else if (!timeTableInner || !dateStr) {
+      renderCalendar();
+    }
+  };
+
   document.addEventListener(
     "calendar-budget-scheduled-updated",
-    function onBudgetScheduledUpdated(e) {
-      if (!document.contains(wrap)) return;
-      const dateStr = e?.detail?.dateStr || wrap.dataset?.dateStr;
-      const timeTableInner = wrap.querySelector(
-        ".calendar-1day-time-table-inner",
-      );
-      if (timeTableInner && dateStr) {
-        const budgetCol = wrap.querySelector(".calendar-1day-budget-column");
-        const { expected, actual } = build1DayTimetableOverlays(dateStr, budgetCol);
-        const oldExpected = timeTableInner.querySelector(
-          ".calendar-1day-time-fill-overlay--expected",
-        );
-        const oldActual = timeTableInner.querySelector(
-          ".calendar-1day-time-fill-overlay--actual",
-        );
-        if (oldExpected) oldExpected.replaceWith(expected);
-        else timeTableInner.appendChild(expected);
-        if (oldActual) oldActual.replaceWith(actual);
-        else timeTableInner.appendChild(actual);
-      } else if (!timeTableInner || !dateStr) {
-        renderCalendar();
-      }
-    },
+    (e) => refreshTimetableOverlays(e),
+  );
+  document.addEventListener(
+    "calendar-time-rows-updated",
+    (e) => refreshTimetableOverlays(e),
   );
 
   renderCalendar();
