@@ -5812,14 +5812,14 @@ export function renderTimeBudgetTablesForCalendar(
     deleteBtn.addEventListener("click", () => {
       const name = (taskDropdown.getValue() || "").trim();
       tr.remove();
+      if (name) {
+        deleteBudgetGoalEntry(targetDateStr, name);
+      }
       if (tbody && addRow) {
         const byTask = collectScheduledTimesByTask(tbody, addRow);
         Object.entries(byTask).forEach(([task, times]) => {
           saveBudgetScheduledTimes(targetDateStr, task, times, isInvest);
         });
-        if (name && isBudgetPlaceholder(name)) {
-          deleteBudgetGoalEntry(targetDateStr, name);
-        }
         tbody.querySelectorAll("tr:not(.time-row-add)").forEach((row) => {
           const inp = row.querySelector(".time-budget-time-input");
           const task = (row.dataset.taskName || "").trim();
@@ -5827,8 +5827,6 @@ export function renderTimeBudgetTablesForCalendar(
         });
         const block = tbody.closest(".time-daily-budget-table-block");
         if (block) updateGoalDiffDisplays(block);
-      } else if (name) {
-        deleteBudgetGoalEntry(targetDateStr, name);
       }
       if (typeof onScheduledUpdate === "function") {
         onScheduledUpdate(targetDateStr);
