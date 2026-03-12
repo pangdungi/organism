@@ -32,6 +32,7 @@ import {
   getTaskOptionByName,
   loadTimeRows,
   saveBudgetGoal,
+  saveBudgetScheduledTimes,
   formatGoalDiff,
   parseTimeToHours,
 } from "./Time.js";
@@ -3023,7 +3024,9 @@ function collectLiveScheduledFromBudgetColumn(budgetColumn) {
     return {};
   }
   const byTask = {};
-  const rows = budgetColumn.querySelectorAll(".time-daily-budget-table-block tbody tr");
+  const rows = budgetColumn.querySelectorAll(
+    ".time-daily-budget-table-block tbody tr, .calendar-1day-todo-table tbody tr",
+  );
   if (TT_SYNC_DEBUG) console.log("[TT-SYNC] collectLiveScheduled: rows found", rows.length);
   rows.forEach((row, idx) => {
     if (row.classList.contains("time-row-add")) return;
@@ -3971,10 +3974,12 @@ function render1DayView(tabsElement) {
       }
 
       const startInput = createHhMmInput();
+      startInput.classList.add("time-budget-scheduled-input");
       const initialStart = (t.startTime || "").trim();
       const initialEnd = (t.endTime || "").trim();
       startInput.value = initialStart;
       const endInput = createHhMmInput();
+      endInput.classList.add("time-budget-scheduled-input");
       endInput.value =
         initialStart &&
         initialEnd &&
@@ -4007,6 +4012,18 @@ function render1DayView(tabsElement) {
         if (ok) {
           t.startTime = start;
           t.endTime = end;
+          const scheduledTime = start && end ? `${start}-${end}` : "";
+          const overlapCleared = saveBudgetScheduledTimes(
+            targetKey,
+            t.name,
+            scheduledTime ? [scheduledTime] : [],
+            budgetGoals[t.name]?.isInvest !== false,
+          );
+          if (overlapCleared && typeof onOverlapCleared === "function") {
+            onOverlapCleared(targetKey);
+          } else if (typeof onScheduledUpdate === "function") {
+            onScheduledUpdate(targetKey);
+          }
           /* 포커스가 budget 영역(투자/소비 내역)으로 이동했으면 재렌더 방지 → 입력 중 행 사라짐 방지 */
           requestAnimationFrame(() => {
             if (budgetColumn.contains(document.activeElement)) return;
@@ -4017,6 +4034,17 @@ function render1DayView(tabsElement) {
       };
       startInput.addEventListener("blur", saveScheduled);
       endInput.addEventListener("blur", saveScheduled);
+      const scheduleTimetableUpdate = () => {
+        const start = startInput.value.trim();
+        const end = endInput.value.trim();
+        if (start && end && hhMmToMinutes(end) > hhMmToMinutes(start)) {
+          if (typeof onScheduledUpdate === "function") {
+            onScheduledUpdate(targetKey);
+          }
+        }
+      };
+      startInput.addEventListener("input", scheduleTimetableUpdate);
+      endInput.addEventListener("input", scheduleTimetableUpdate);
 
       const goalInput = createHhMmInput();
       const initialGoal = (budgetGoals[t.name]?.goalTime || "").trim();
@@ -4056,6 +4084,7 @@ function render1DayView(tabsElement) {
       goalWrap.appendChild(diffSpan);
 
       const tr = document.createElement("tr");
+      tr.dataset.taskName = (t.name || "").trim();
       const nameTd = document.createElement("td");
       nameTd.appendChild(bar);
       tr.appendChild(nameTd);

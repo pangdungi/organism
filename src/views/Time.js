@@ -476,7 +476,7 @@ function clearOverlappingScheduledTimes(all, dateStr, taskName, newSlots) {
 }
 
 /** 캘린더 1일뷰 예정 시간 저장 - scheduledTimes 배열 지원 (같은 과제 여러 구간). 겹침 해결 시 true 반환 */
-function saveBudgetScheduledTimes(dateStr, taskName, scheduledTimes, isInvest) {
+export function saveBudgetScheduledTimes(dateStr, taskName, scheduledTimes, isInvest) {
   if (!(taskName || "").trim()) return false;
   try {
     removeFromBudgetExcluded(dateStr, taskName);
