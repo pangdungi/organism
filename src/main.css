@@ -11744,6 +11744,10 @@ body.kpi-resizing {
   overflow: hidden;
 }
 
+.time-productivity-daily-revenue-wrap {
+  margin-bottom: 1.5rem;
+}
+
 .time-productivity-mini-title {
   font-size: 1.35rem;
   font-weight: 700;

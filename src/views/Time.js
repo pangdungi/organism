@@ -1086,6 +1086,156 @@ function aggregateDailyRevenueFromFiltered(filtered, hourlyRate) {
   return byDate;
 }
 
+/** 일별 수익 차트 위젯 생성 (rangeStart, rangeEnd 있을 때만) */
+function createDailyRevenueWidget(periodLabel, filtered, hourlyRate, rangeStart, rangeEnd) {
+  if (!rangeStart || !rangeEnd) return null;
+  const dailyRev = aggregateDailyRevenueFromFiltered(filtered, hourlyRate);
+  const dailyData = [];
+  const cur = new Date(rangeStart + "T00:00:00");
+  const endDate = new Date(rangeEnd + "T00:00:00");
+  while (cur <= endDate) {
+    const dateStr = toDateStr(cur);
+    const day = cur.getDate();
+    const month = cur.getMonth();
+    dailyData.push({
+      date: dateStr,
+      day,
+      month,
+      price: dailyRev[dateStr] || 0,
+    });
+    cur.setDate(cur.getDate() + 1);
+  }
+  const daysCount = dailyData.length;
+  if (daysCount === 0) return null;
+  const allPrices = dailyData.map((x) => x.price).filter((v) => v !== 0);
+  const dataMin = allPrices.length ? Math.min(...allPrices) : 0;
+  const dataMax = allPrices.length ? Math.max(...allPrices) : 0;
+  const pad = 0.12;
+  let yMin = 0;
+  let yMax = 100000;
+  if (dataMin < 0 && dataMax > 0) {
+    yMin = dataMin * (1 + pad);
+    yMax = dataMax * (1 + pad);
+  } else if (dataMin < 0) {
+    yMin = dataMin * (1 + pad);
+    yMax = 0;
+  } else if (dataMax > 0) {
+    yMin = 0;
+    yMax = dataMax * (1 + pad);
+  }
+  if (yMax - yMin < 50000) {
+    const mid = (yMin + yMax) / 2;
+    yMin = mid - 25000;
+    yMax = mid + 25000;
+  }
+  const yRange = yMax - yMin;
+  const chartH = 200;
+  const chartW = 700;
+  const padLeft = 40;
+  const padRight = 14;
+  const padTop = 22;
+  const padBottom = 34;
+  const plotH = chartH - padTop - padBottom;
+  const plotW = chartW - padLeft - padRight;
+  const barGap = 10;
+  const barTotalW = plotW / daysCount;
+  const barW = Math.max(4, barTotalW - barGap);
+  const zeroY = padTop + plotH - ((0 - yMin) / yRange) * plotH;
+  const monthNames = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  ];
+  const yTicks = [];
+  const step =
+    yRange <= 0 ? 100000 : Math.ceil(yRange / 7 / 10000) * 10000 || 10000;
+  for (let v = Math.ceil(yMin / step) * step; v <= yMax; v += step) {
+    yTicks.push(v);
+  }
+  if (yTicks.length === 0) yTicks.push(0);
+  const barsSvg = dailyData
+    .map((item, i) => {
+      if (item.price === 0) return "";
+      const x = padLeft + i * barTotalW + (barTotalW - barW) / 2;
+      const barH =
+        yRange > 0
+          ? Math.max(1, (Math.abs(item.price) / yRange) * plotH)
+          : 0;
+      const isNeg = item.price < 0;
+      const y = isNeg ? zeroY : zeroY - barH;
+      const fill = isNeg
+        ? "#8b7355"
+        : [
+            "#4a5568",
+            "#718096",
+            "#a0aec0",
+            "#2b6cb0",
+            "#3182ce",
+            "#63b3ed",
+          ][i % 6];
+      const rx = 3;
+      return `<rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="${rx}" ry="${rx}" fill="${fill}" class="time-dash-vbar"/>`;
+    })
+    .filter(Boolean)
+    .join("");
+  const priceLabel = `<text x="${padLeft - 5}" y="14" text-anchor="end" font-size="6" fill="#9ca3af">Price</text>`;
+  const yLabels = yTicks
+    .map((v) => {
+      const y = padTop + plotH - ((v - yMin) / yRange) * plotH;
+      return `<text x="${padLeft - 5}" y="${y + 4}" text-anchor="end" font-size="6" fill="#6b7280">${formatPriceK(v)}</text>`;
+    })
+    .join("");
+  const xLabels = dailyData
+    .map((item, idx) => {
+      const x = padLeft + (idx + 0.5) * barTotalW;
+      const y = chartH - 6;
+      return `<text x="${x}" y="${y}" text-anchor="middle" font-size="6" fill="#6b7280" transform="rotate(-45, ${x}, ${y})">${String(item.day).padStart(2, "0")} ${monthNames[item.month]}</text>`;
+    })
+    .join("");
+  const hGridLines = yTicks
+    .map((v) => {
+      const y = padTop + plotH - ((v - yMin) / yRange) * plotH;
+      return `<line x1="${padLeft}" y1="${y}" x2="${padLeft + plotW}" y2="${y}" stroke="#e8eaed" stroke-width="0.5"/>`;
+    })
+    .join("");
+  const vGridLines = Array.from({ length: daysCount + 1 }, (_, i) => {
+    const x = padLeft + i * barTotalW;
+    return `<line x1="${x}" y1="${padTop}" x2="${x}" y2="${padTop + plotH}" stroke="#e8eaed" stroke-width="0.5"/>`;
+  }).join("");
+  const gridLines = vGridLines + hGridLines;
+  const valueLabels = dailyData
+    .map((item, i) => {
+      if (item.price === 0) return "";
+      const x = padLeft + (i + 0.5) * barTotalW;
+      const isNeg = item.price < 0;
+      const barH =
+        yRange > 0 ? (Math.abs(item.price) / yRange) * plotH : 0;
+      const barTop = isNeg ? zeroY : zeroY - barH;
+      const barBottom = isNeg ? zeroY + barH : zeroY;
+      const labelGap = 8;
+      const y = isNeg ? barBottom + labelGap + 6 : barTop - labelGap;
+      return `<text x="${x}" y="${y}" text-anchor="middle" font-size="7" fill="#374151" font-weight="500">${formatPrice(item.price)}</text>`;
+    })
+    .filter(Boolean)
+    .join("");
+  const widget = document.createElement("div");
+  widget.className =
+    "time-dashboard-widget time-dashboard-widget-daily-revenue";
+  widget.innerHTML = `
+    <div class="time-dashboard-widget-title">${periodLabel} 일별 수익</div>
+    <div class="time-dash-daily-chart-wrap">
+      <svg class="time-dash-daily-chart" viewBox="0 0 ${chartW} ${chartH}" preserveAspectRatio="xMidYMid meet" style="overflow:visible">
+        ${priceLabel}
+        ${gridLines}
+        ${barsSvg}
+        ${yLabels}
+        ${xLabels}
+        ${valueLabels}
+      </svg>
+    </div>
+  `;
+  return widget;
+}
+
 /** 기간 내 하루 가치 합계 (시급 * 시간, 생산성 반영) */
 function calcPeriodValue(rows, period, hourlyRate) {
   const filtered = filterRowsByPeriod(rows, period);
@@ -4571,6 +4721,36 @@ export function render() {
       </div>
     `;
     contentWrap.appendChild(miniDash);
+    const hourlyRate =
+      parseFloat(
+        String(el.querySelector(".time-hourly-input")?.value || "0").replace(
+          /,/g,
+          "",
+        ),
+      ) || 0;
+    const { start: rangeStart, end: rangeEnd } = getDateRangeForFilterType(
+      type,
+      y,
+      m,
+      start,
+      end,
+    );
+    if (type !== "day" && rangeStart && rangeEnd) {
+      const filteredForChart = filterRowsByFilterType(rows, type, y, m, start, end);
+      const widgetDailyRev = createDailyRevenueWidget(
+        periodLabel,
+        filteredForChart,
+        hourlyRate,
+        rangeStart,
+        rangeEnd,
+      );
+      if (widgetDailyRev) {
+        const revWrap = document.createElement("div");
+        revWrap.className = "time-productivity-daily-revenue-wrap";
+        revWrap.appendChild(widgetDailyRev);
+        contentWrap.appendChild(revWrap);
+      }
+    }
     const handleRowDelete = (tr, rowData) => {
       if (rowData) {
         const k = `${rowData.date}|${rowData.taskName}|${rowData.startTime}`;
@@ -4738,181 +4918,6 @@ export function render() {
       <div class="time-dash-bar-list">${catEntries.length ? catBarHtml : '<div class="time-dash-empty">기록이 없습니다</div>'}</div>
     `;
     dash.appendChild(widgetCategoryBar);
-
-    // 일별 수익 차트 (이번달/지난달/최근 7일일 때 표시, 하루 필터일 때는 미표시)
-    let widgetDailyRev = null;
-    const { start: rangeStart, end: rangeEnd } = getDateRangeForFilterType(
-      type,
-      y,
-      m,
-      start,
-      end,
-    );
-    if (type !== "day" && rangeStart && rangeEnd) {
-      const dailyRev = aggregateDailyRevenueFromFiltered(filtered, hourlyRate);
-      const dailyData = [];
-      {
-        const cur = new Date(rangeStart + "T00:00:00");
-        const endDate = new Date(rangeEnd + "T00:00:00");
-        while (cur <= endDate) {
-          const dateStr = toDateStr(cur);
-          const day = cur.getDate();
-          const month = cur.getMonth();
-          dailyData.push({
-            date: dateStr,
-            day,
-            month,
-            price: dailyRev[dateStr] || 0,
-          });
-          cur.setDate(cur.getDate() + 1);
-        }
-      }
-      const daysCount = dailyData.length;
-      if (daysCount === 0) {
-        widgetDailyRev = null;
-      } else {
-        const allPrices = dailyData.map((x) => x.price).filter((v) => v !== 0);
-        const dataMin = allPrices.length ? Math.min(...allPrices) : 0;
-        const dataMax = allPrices.length ? Math.max(...allPrices) : 0;
-        const pad = 0.12;
-        let yMin = 0;
-        let yMax = 100000;
-        if (dataMin < 0 && dataMax > 0) {
-          yMin = dataMin * (1 + pad);
-          yMax = dataMax * (1 + pad);
-        } else if (dataMin < 0) {
-          yMin = dataMin * (1 + pad);
-          yMax = 0;
-        } else if (dataMax > 0) {
-          yMin = 0;
-          yMax = dataMax * (1 + pad);
-        }
-        if (yMax - yMin < 50000) {
-          const mid = (yMin + yMax) / 2;
-          yMin = mid - 25000;
-          yMax = mid + 25000;
-        }
-        const yRange = yMax - yMin;
-        const chartH = 200;
-        const chartW = 700;
-        const padLeft = 40;
-        const padRight = 14;
-        const padTop = 22;
-        const padBottom = 34;
-        const plotH = chartH - padTop - padBottom;
-        const plotW = chartW - padLeft - padRight;
-        const barGap = 10;
-        const barTotalW = plotW / daysCount;
-        const barW = Math.max(4, barTotalW - barGap);
-        const zeroY = padTop + plotH - ((0 - yMin) / yRange) * plotH;
-        const monthNames = [
-          "Jan",
-          "Feb",
-          "Mar",
-          "Apr",
-          "May",
-          "Jun",
-          "Jul",
-          "Aug",
-          "Sep",
-          "Oct",
-          "Nov",
-          "Dec",
-        ];
-
-        const yTicks = [];
-        const step =
-          yRange <= 0 ? 100000 : Math.ceil(yRange / 7 / 10000) * 10000 || 10000;
-        for (let v = Math.ceil(yMin / step) * step; v <= yMax; v += step) {
-          yTicks.push(v);
-        }
-        if (yTicks.length === 0) yTicks.push(0);
-
-        widgetDailyRev = document.createElement("div");
-        widgetDailyRev.className =
-          "time-dashboard-widget time-dashboard-widget-daily-revenue";
-        const barsSvg = dailyData
-          .map((item, i) => {
-            if (item.price === 0) return "";
-            const x = padLeft + i * barTotalW + (barTotalW - barW) / 2;
-            const barH =
-              yRange > 0
-                ? Math.max(1, (Math.abs(item.price) / yRange) * plotH)
-                : 0;
-            const isNeg = item.price < 0;
-            const y = isNeg ? zeroY : zeroY - barH;
-            const fill = isNeg
-              ? "#8b7355"
-              : [
-                  "#4a5568",
-                  "#718096",
-                  "#a0aec0",
-                  "#2b6cb0",
-                  "#3182ce",
-                  "#63b3ed",
-                ][i % 6];
-            const rx = 3;
-            return `<rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="${rx}" ry="${rx}" fill="${fill}" class="time-dash-vbar"/>`;
-          })
-          .filter(Boolean)
-          .join("");
-        const priceLabel = `<text x="${padLeft - 5}" y="14" text-anchor="end" font-size="6" fill="#9ca3af">Price</text>`;
-        const yLabels = yTicks
-          .map((v) => {
-            const y = padTop + plotH - ((v - yMin) / yRange) * plotH;
-            return `<text x="${padLeft - 5}" y="${y + 4}" text-anchor="end" font-size="6" fill="#6b7280">${formatPriceK(v)}</text>`;
-          })
-          .join("");
-        const xLabels = dailyData
-          .map((item, idx) => {
-            const x = padLeft + (idx + 0.5) * barTotalW;
-            const y = chartH - 6;
-            return `<text x="${x}" y="${y}" text-anchor="middle" font-size="6" fill="#6b7280" transform="rotate(-45, ${x}, ${y})">${String(item.day).padStart(2, "0")} ${monthNames[item.month]}</text>`;
-          })
-          .join("");
-        const hGridLines = yTicks
-          .map((v) => {
-            const y = padTop + plotH - ((v - yMin) / yRange) * plotH;
-            return `<line x1="${padLeft}" y1="${y}" x2="${padLeft + plotW}" y2="${y}" stroke="#e8eaed" stroke-width="0.5"/>`;
-          })
-          .join("");
-        const vGridLines = Array.from({ length: daysCount + 1 }, (_, i) => {
-          const x = padLeft + i * barTotalW;
-          return `<line x1="${x}" y1="${padTop}" x2="${x}" y2="${padTop + plotH}" stroke="#e8eaed" stroke-width="0.5"/>`;
-        }).join("");
-        const gridLines = vGridLines + hGridLines;
-
-        const valueLabels = dailyData
-          .map((item, i) => {
-            if (item.price === 0) return "";
-            const x = padLeft + (i + 0.5) * barTotalW;
-            const isNeg = item.price < 0;
-            const barH =
-              yRange > 0 ? (Math.abs(item.price) / yRange) * plotH : 0;
-            const barTop = isNeg ? zeroY : zeroY - barH;
-            const barBottom = isNeg ? zeroY + barH : zeroY;
-            const labelGap = 8;
-            const y = isNeg ? barBottom + labelGap + 6 : barTop - labelGap;
-            return `<text x="${x}" y="${y}" text-anchor="middle" font-size="7" fill="#374151" font-weight="500">${formatPrice(item.price)}</text>`;
-          })
-          .filter(Boolean)
-          .join("");
-
-        widgetDailyRev.innerHTML = `
-        <div class="time-dashboard-widget-title">${periodLabel} 일별 수익</div>
-        <div class="time-dash-daily-chart-wrap">
-          <svg class="time-dash-daily-chart" viewBox="0 0 ${chartW} ${chartH}" preserveAspectRatio="xMidYMid meet" style="overflow:visible">
-            ${priceLabel}
-            ${gridLines}
-            ${barsSvg}
-            ${yLabels}
-            ${xLabels}
-            ${valueLabels}
-          </svg>
-        </div>
-      `;
-      }
-    }
 
     // 3. 생산성 (도넛)
     const { productive, nonproductive } =
@@ -5274,7 +5279,6 @@ export function render() {
     `;
     dash.appendChild(widgetEnergyCurve);
 
-    if (widgetDailyRev) dash.appendChild(widgetDailyRev);
 
     contentWrap.appendChild(dash);
   }
