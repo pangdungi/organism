@@ -442,22 +442,38 @@ function resolveOverlapsWithinSlots(slots) {
   return result;
 }
 
-/** 새 과제의 예상 시간 저장 시, 겹치는 다른 과제들의 예상 시간 비우기 (새 입력이 우선). 수정 여부 반환 */
+/** 새 과제의 예상 시간 저장 시, 겹치는 다른 과제들의 예상 시간 비우기 (새 입력이 우선). 수정된 다른 과제명 Set 반환 */
 function clearOverlappingScheduledTimes(all, dateStr, taskName, newSlots) {
   const key = String(taskName).trim();
-  if (!key || !all[dateStr]) return false;
+  const modifiedKeys = new Set();
+  if (!key || !all[dateStr]) return modifiedKeys;
   const dateData = all[dateStr];
-  let modified = false;
   for (const slot of newSlots) {
     const parsed = parseScheduledSlotToMinutes(slot);
     if (!parsed) continue;
     const { startMin, endMin } = parsed;
+    if (typeof window !== "undefined" && BUDGET_OVERLAP_DEBUG) {
+      console.log("[BUDGET-OVERLAP] clearOverlappingScheduledTimes slot", {
+        taskName: key,
+        slot,
+        startMin,
+        endMin,
+        slotDisplay: `${minutesToHhMm(startMin)}-${minutesToHhMm(endMin)}`,
+      });
+    }
     for (const otherKey of Object.keys(dateData)) {
       if (otherKey === key) continue;
       const other = dateData[otherKey];
       const otherSlots = getScheduledTimesArray(other);
       if (otherSlots.length === 0) continue;
       const remaining = removeOverlapFromSlots(otherSlots, startMin, endMin);
+      if (typeof window !== "undefined" && BUDGET_OVERLAP_DEBUG) {
+        console.log("[BUDGET-OVERLAP] clearOverlap other", {
+          otherKey,
+          otherSlots: [...otherSlots],
+          remaining: [...remaining],
+        });
+      }
       const sameContent =
         remaining.length === otherSlots.length &&
         remaining.every((s, i) => (otherSlots[i] || "").trim() === (s || "").trim());
@@ -465,14 +481,14 @@ function clearOverlappingScheduledTimes(all, dateStr, taskName, newSlots) {
         const { scheduledTime: _st, scheduledTimes: _sts, ...rest } = other;
         dateData[otherKey] = Object.keys(rest).length ? rest : undefined;
         if (!dateData[otherKey]) delete dateData[otherKey];
-        modified = true;
+        modifiedKeys.add(otherKey);
       } else if (!sameContent) {
         dateData[otherKey] = { ...other, scheduledTimes: remaining };
-        modified = true;
+        modifiedKeys.add(otherKey);
       }
     }
   }
-  return modified;
+  return modifiedKeys;
 }
 
 /** 오늘의 할일 등 예산 블록 외부 과제: 겹침만 해결 (BUDGET_GOALS_KEY에 추가하지 않음). 투자/소비 테이블에 표시되지 않음 */
@@ -487,9 +503,9 @@ export function clearOverlapFromBudgetGoalsOnly(dateStr, scheduledTimes) {
       .filter(Boolean)
       .filter((s) => s.includes("-"));
     if (arr.length === 0) return false;
-    const modified = clearOverlappingScheduledTimes(all, dateStr, "__TODAY_ONLY__", arr);
-    if (modified) localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
-    return modified;
+    const modifiedKeys = clearOverlappingScheduledTimes(all, dateStr, "__TODAY_ONLY__", arr);
+    if (modifiedKeys.size > 0) localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
+    return modifiedKeys.size > 0;
   } catch (_) {
     return false;
   }
@@ -518,7 +534,7 @@ export function saveBudgetScheduledTimes(dateStr, taskName, scheduledTimes, isIn
         dateStr,
         taskName,
         arr,
-      );
+      ).size > 0;
       all[dateStr][key] = { ...existing, scheduledTimes: arr, isInvest };
     } else {
       const { scheduledTime: _st, scheduledTimes: _sts, ...rest } = existing;
@@ -542,6 +558,95 @@ function saveBudgetScheduledTime(dateStr, taskName, scheduledTime, isInvest) {
   );
 }
 
+/**
+ * 기본/투자/소비 전체를 한 번에 저장. 최근 편집한 과제(lastEditedTask)가 우선.
+ * lastEditedTask를 먼저 처리 → 다른 과제의 겹치는 구간 제거. 이미 수정된 과제는 DOM 값으로 덮어쓰지 않음.
+ */
+function saveBudgetScheduledTimesBatch(dateStr, tasksInOrder, lastEditedTask) {
+  if (!(dateStr || "").trim()) return { overlapCleared: false, modifiedKeys: new Set() };
+  try {
+    const raw = localStorage.getItem(BUDGET_GOALS_KEY);
+    const all = raw ? JSON.parse(raw) : {};
+    if (!all[dateStr] || typeof all[dateStr] !== "object" || Array.isArray(all[dateStr]))
+      all[dateStr] = {};
+    const dateData = all[dateStr];
+    const modifiedByOthers = new Set();
+    const modifiedByClearOverlap = new Set();
+    let overlapCleared = false;
+    const lastKey = (lastEditedTask || "").trim();
+    const ordered = lastKey
+      ? [
+          ...tasksInOrder.filter((t) => (t.task || "").trim() === lastKey),
+          ...tasksInOrder.filter((t) => (t.task || "").trim() !== lastKey),
+        ]
+      : tasksInOrder;
+    /* lastEditedTask가 있으면 해당 과제만 처리. 다른 과제는 clearOverlap으로만 수정되며 DOM으로 덮어쓰지 않음. */
+    const toProcess = lastKey
+      ? ordered.filter((t) => (t.task || "").trim() === lastKey)
+      : ordered;
+    if (BUDGET_OVERLAP_DEBUG) {
+      console.log("[BUDGET-OVERLAP] saveBudgetScheduledTimesBatch", {
+        lastEditedTask,
+        lastKey,
+        toProcess: toProcess.map((t) => ({ task: t.task, times: [...(t.times || [])] })),
+      });
+    }
+    for (const { task, times, isInvest } of toProcess) {
+      const key = (task || "").trim();
+      if (!key) continue;
+      if (modifiedByOthers.has(key)) {
+        if (BUDGET_OVERLAP_DEBUG) {
+          console.log("[BUDGET-OVERLAP] skip entire (modifiedByOthers)", key);
+        }
+        continue;
+      }
+      removeFromBudgetExcluded(dateStr, key);
+      const existing = dateData[key] || {};
+      let arr = Array.isArray(times)
+        ? times.map((s) => String(s || "").trim()).filter(Boolean)
+        : [];
+      const arrBefore = [...arr];
+      arr = resolveOverlapsWithinSlots(arr);
+      if (BUDGET_OVERLAP_DEBUG && arrBefore.length > 0) {
+        console.log("[BUDGET-OVERLAP] processing", {
+          key,
+          arrBefore,
+          arrAfterResolve: [...arr],
+        });
+      }
+      const modifiedKeys = clearOverlappingScheduledTimes(all, dateStr, key, arr);
+      if (BUDGET_OVERLAP_DEBUG && modifiedKeys.size > 0) {
+        console.log("[BUDGET-OVERLAP] clearOverlappingScheduledTimes modified", {
+          key,
+          arr,
+          modifiedKeys: [...modifiedKeys],
+        });
+      }
+      if (modifiedKeys.size > 0) {
+        overlapCleared = true;
+        modifiedKeys.forEach((k) => {
+          modifiedByOthers.add(k);
+          modifiedByClearOverlap.add(k);
+        });
+      }
+      if (arr.length > 0) {
+        dateData[key] = { ...existing, scheduledTimes: arr, isInvest };
+        if (BUDGET_OVERLAP_DEBUG) {
+          console.log("[BUDGET-OVERLAP] saved", { key, scheduledTimes: arr });
+        }
+      } else {
+        const { scheduledTime: _st, scheduledTimes: _sts, ...rest } = existing;
+        dateData[key] = Object.keys(rest).length ? rest : undefined;
+        if (!dateData[key]) delete dateData[key];
+      }
+    }
+    localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
+    return { overlapCleared, modifiedKeys: modifiedByClearOverlap };
+  } catch (_) {
+    return { overlapCleared: false, modifiedKeys: new Set() };
+  }
+}
+
 /** 과제 기록 로컬 저장 (백엔드 개발 전 임시) */
 export function loadTimeRows() {
   try {
@@ -555,6 +660,7 @@ export function loadTimeRows() {
 }
 
 const TIME_ROWS_SYNC_DEBUG = true;
+const BUDGET_OVERLAP_DEBUG = true; /* 수면/요가 겹침 해결 디버그 */
 function saveTimeRows(rows) {
   try {
     const arr = Array.isArray(rows) ? rows : [];
@@ -6032,6 +6138,15 @@ export function renderTimeBudgetTablesForCalendar(
       if (!name || isBudgetPlaceholder(name)) return;
       const start = (row.dataset.scheduledStart || "").trim();
       const end = (row.dataset.scheduledEnd || "").trim();
+      if (BUDGET_OVERLAP_DEBUG) {
+        const inputs = row.querySelectorAll(".time-budget-scheduled-input");
+        console.log("[BUDGET-OVERLAP] collect row", {
+          name,
+          datasetStart: start,
+          datasetEnd: end,
+          inputValues: [...inputs].map((i) => i.value),
+        });
+      }
       if (start && end && !isValidStartEnd(start, end)) return;
       const st = start && end ? `${start}-${end}` : start || end || "";
       if (st) {
@@ -6113,38 +6228,81 @@ export function renderTimeBudgetTablesForCalendar(
       tr.dataset.scheduledStart = start;
       tr.dataset.scheduledEnd = end;
     }
-    function saveAllScheduledTimesForTimetable() {
+    function saveAllScheduledTimesForTimetable(lastEditedTask) {
       if (!tbody || !addRow) return;
-      const byTaskWithInvest = {};
+      const tasksInOrder = [];
       if (Array.isArray(allTbodies)) {
         allTbodies.forEach(([tb, ar, isInv]) => {
           const collected = collectScheduledTimesByTask(tb, ar);
+          if (BUDGET_OVERLAP_DEBUG) {
+            console.log("[BUDGET-OVERLAP] collect from tbody", {
+              isInvest: isInv,
+              collected: Object.fromEntries(
+                Object.entries(collected).map(([k, v]) => [k, [...v]]),
+              ),
+            });
+          }
           Object.entries(collected).forEach(([task, times]) => {
-            byTaskWithInvest[task] = { times, isInvest: isInv };
+            tasksInOrder.push({ task, times, isInvest: isInv });
           });
         });
       } else {
         const collected = collectScheduledTimesByTask(tbody, addRow);
         Object.entries(collected).forEach(([task, times]) => {
-          byTaskWithInvest[task] = { times, isInvest };
+          tasksInOrder.push({ task, times, isInvest });
         });
       }
-      let overlapCleared = false;
-      const investTasks = [];
-      const consumeTasks = [];
-      Object.entries(byTaskWithInvest).forEach(
-        ([task, { times, isInvest: inv }]) => {
-          if (inv) investTasks.push([task, times]);
-          else consumeTasks.push([task, times]);
-        },
+      if (BUDGET_OVERLAP_DEBUG) {
+        console.log("[BUDGET-OVERLAP] saveAllScheduledTimesForTimetable", {
+          lastEditedTask,
+          targetDateStr,
+          tasksInOrder: tasksInOrder.map((t) => ({
+            task: t.task,
+            times: [...(t.times || [])],
+          })),
+        });
+      }
+      const result = saveBudgetScheduledTimesBatch(
+        targetDateStr,
+        tasksInOrder,
+        lastEditedTask,
       );
-      [...investTasks, ...consumeTasks].forEach(([task, times]) => {
-        const inv = byTaskWithInvest[task].isInvest;
-        if (saveBudgetScheduledTimes(targetDateStr, task, times, inv))
-          overlapCleared = true;
-      });
+      const overlapCleared = result?.overlapCleared ?? false;
+      const modifiedKeys = result?.modifiedKeys;
       if (overlapCleared && typeof onOverlapCleared === "function") {
         onOverlapCleared(targetDateStr);
+      }
+      /* clearOverlap으로 수정된 과제의 DOM을 storage 값으로 동기화 (기본/투자/소비 모든 섹션에서 해당 행 찾기) */
+      if (modifiedKeys?.size > 0) {
+        try {
+          const raw = localStorage.getItem(BUDGET_GOALS_KEY);
+          const all = raw ? JSON.parse(raw) : {};
+          const dateData = all[targetDateStr] || {};
+          const blocks = document.querySelectorAll(".time-daily-budget-table-block");
+          for (const taskName of modifiedKeys) {
+            const times = dateData[taskName]?.scheduledTimes;
+            if (!Array.isArray(times) || times.length === 0) continue;
+            const first = String(times[0] || "").trim();
+            const parts = first.split("-");
+            let start = (parts[0] || "").trim();
+            let end = (parts[1] || "").trim();
+            if (!start || !end) continue;
+            if (start.length === 4 && !start.includes(":")) start = `${start.slice(0, 2)}:${start.slice(2)}`;
+            if (end.length === 4 && !end.includes(":")) end = `${end.slice(0, 2)}:${end.slice(2)}`;
+            blocks.forEach((block) => {
+              const tb = block.querySelector("tbody");
+              if (!tb) return;
+              tb.querySelectorAll("tr").forEach((row) => {
+                if ((row.dataset.taskName || "").trim() !== taskName) return;
+                const inputs = row.querySelectorAll(".time-budget-scheduled-input");
+                if (inputs[0]) inputs[0].value = start;
+                if (inputs[1]) inputs[1].value = end;
+                row.dataset.scheduledStart = start;
+                row.dataset.scheduledEnd = end;
+              });
+            });
+          }
+        } catch (_) {}
       }
       /* 예상 시간 저장 시 항상 타임테이블 갱신 (기본/투자/소비 탭 통일) */
       if (typeof onScheduledUpdate === "function") {
@@ -6180,7 +6338,19 @@ export function renderTimeBudgetTablesForCalendar(
         const scheduledTime =
           start && end ? `${start}-${end}` : start || end || "";
         if (tbody && addRow) {
-          saveAllScheduledTimesForTimetable();
+          if (BUDGET_OVERLAP_DEBUG) {
+            console.log("[BUDGET-OVERLAP] saveCurrentGoal before save", {
+              name,
+              startInputValue: startInput.value,
+              endInputValue: endInput.value,
+              datasetAfterUpdate: {
+                taskName: tr.dataset.taskName,
+                scheduledStart: tr.dataset.scheduledStart,
+                scheduledEnd: tr.dataset.scheduledEnd,
+              },
+            });
+          }
+          saveAllScheduledTimesForTimetable(name);
         } else {
           if (
             saveBudgetScheduledTimes(
@@ -6222,8 +6392,20 @@ export function renderTimeBudgetTablesForCalendar(
     }
 
     goalInput.addEventListener("blur", () => saveCurrentGoal(true, false));
-    startInput.addEventListener("blur", () => saveCurrentGoal(true, true));
-    endInput.addEventListener("blur", () => saveCurrentGoal(true, true));
+    startInput.addEventListener("blur", () => {
+      if (scheduleTimetableUpdateDebounce) {
+        clearTimeout(scheduleTimetableUpdateDebounce);
+        scheduleTimetableUpdateDebounce = null;
+      }
+      saveCurrentGoal(true, true);
+    });
+    endInput.addEventListener("blur", () => {
+      if (scheduleTimetableUpdateDebounce) {
+        clearTimeout(scheduleTimetableUpdateDebounce);
+        scheduleTimetableUpdateDebounce = null;
+      }
+      saveCurrentGoal(true, true);
+    });
     const scheduleTimetableUpdate = () => {
       const name = (taskDropdown.getValue() || "").trim();
       if (!name) return;
@@ -6238,7 +6420,7 @@ export function renderTimeBudgetTablesForCalendar(
         });
       }
       if (tbody && addRow) {
-        saveAllScheduledTimesForTimetable();
+        saveAllScheduledTimesForTimetable(name);
         const block = tr.closest(".time-daily-budget-table-block");
         if (block) updateGoalDiffDisplays(block);
       } else {
@@ -6272,8 +6454,17 @@ export function renderTimeBudgetTablesForCalendar(
         onScheduledUpdate(targetDateStr);
       }
     };
-    startInput.addEventListener("input", scheduleTimetableUpdate);
-    endInput.addEventListener("input", scheduleTimetableUpdate);
+    /* 입력 중간(예: "03"만 입력)에 저장되면 03:00으로 잘리는 문제 방지 - 디바운스 400ms */
+    let scheduleTimetableUpdateDebounce = null;
+    const scheduleTimetableUpdateDebounced = () => {
+      if (scheduleTimetableUpdateDebounce) clearTimeout(scheduleTimetableUpdateDebounce);
+      scheduleTimetableUpdateDebounce = setTimeout(() => {
+        scheduleTimetableUpdateDebounce = null;
+        scheduleTimetableUpdate();
+      }, 400);
+    };
+    startInput.addEventListener("input", scheduleTimetableUpdateDebounced);
+    endInput.addEventListener("input", scheduleTimetableUpdateDebounced);
 
     const opts = dropdownOptionsOverride || investTaskDropdownOptions;
     const taskDropdown = createTagDropdown(
@@ -6371,9 +6562,13 @@ export function renderTimeBudgetTablesForCalendar(
       scheduledTime,
     }));
   }
+  const BASIC_TASKS = ["수면하기", "근무하기"];
+  const isBasicTask = (task) => BASIC_TASKS.includes((task || "").trim());
+
   tasksFromToday.forEach((t) => {
     if (excluded.has(t.task)) return;
     if (isBudgetPlaceholder(t.task)) return;
+    if (isBasicTask(t.task)) return; /* 수면/근무는 기본에만 */
     const data = storedGoals[t.task];
     const entries = expandByScheduledTimes(
       t.task,
@@ -6391,6 +6586,7 @@ export function renderTimeBudgetTablesForCalendar(
   Object.entries(storedGoals).forEach(([task, data]) => {
     if (excluded.has(task)) return;
     if (isBudgetPlaceholder(task)) return;
+    if (isBasicTask(task)) return; /* 수면/근무는 기본에만 */
     if (data.isInvest && !seenInvest.has(task)) {
       expandByScheduledTimes(task, data, true).forEach((e) =>
         investTasks.push(e),
@@ -6403,8 +6599,6 @@ export function renderTimeBudgetTablesForCalendar(
       seenConsume.add(task);
     }
   });
-
-  const BASIC_TASKS = ["수면하기", "근무하기"];
   const basicTasks = [];
   const seenBasic = new Set();
   tasksFromToday.forEach((t) => {
