@@ -621,6 +621,11 @@ const CATEGORY_OPTIONS = [
   { value: "sleep", label: "수면", color: "cat-sleep" },
 ];
 
+/** 투자=생산적(prod-pink), 소비=비생산적(prod-blue) 컬러 */
+function getTaskColorForDropdown(taskOpt, isProductive) {
+  return isProductive ? "prod-pink" : "prod-blue";
+}
+
 /** 카테고리에 따른 생산성 자동 매핑 */
 function getProductivityFromCategory(categoryValue) {
   if (!categoryValue) return "";
@@ -5347,26 +5352,39 @@ export function render() {
     `;
     container.appendChild(wrap);
 
-    const taskOptions = getTaskOptions();
+    const fullTaskOpts = getFullTaskOptions();
     const tasksFromToday = getTasksFromTodayRows();
-    const taskOptionsSet = new Set(taskOptions);
-    const taskDropdownOptions = [
-      { value: "", label: "—", color: "cat-empty" },
-      ...taskOptions.map((name) => ({
-        value: name,
-        label: name,
-        color: "cat-empty",
-      })),
+    const emptyOpt = { value: "", label: "—", color: "cat-empty" };
+    /** 투자내역: 생산적 태그 과제만 + 카테고리 컬러 */
+    const investTaskDropdownOptions = [
+      emptyOpt,
+      ...fullTaskOpts
+        .filter((o) => (o.productivity || "").toLowerCase() === "productive")
+        .map((o) => ({
+          value: o.name,
+          label: o.name,
+          color: getTaskColorForDropdown(o, true),
+        })),
     ];
-    tasksFromToday.forEach((t) => {
-      if (!taskOptionsSet.has(t.task)) {
-        taskDropdownOptions.push({
-          value: t.task,
-          label: t.task,
-          color: "cat-empty",
-        });
-      }
-    });
+    /** 소비내역: 비생산적 태그 과제만 + 카테고리 컬러 */
+    const consumeTaskDropdownOptions = [
+      emptyOpt,
+      ...fullTaskOpts
+        .filter((o) => (o.productivity || "").toLowerCase() === "nonproductive")
+        .map((o) => ({
+          value: o.name,
+          label: o.name,
+          color: getTaskColorForDropdown(o, false),
+        })),
+    ];
+    function ensureTaskInOptions(opts, taskName, isInvest) {
+      if (!(taskName || "").trim()) return opts;
+      const name = String(taskName).trim();
+      if (opts.some((o) => o.value === name)) return opts;
+      const taskOpt = getTaskOptionByName(name);
+      const color = getTaskColorForDropdown(taskOpt, isInvest);
+      return [...opts, { value: name, label: name, color }];
+    }
 
     /** 해당 날짜·과제명에 해당하는 전체 탭 실제 사용시간 합계 */
     function getActualTimeForTask(taskName) {
@@ -5496,8 +5514,13 @@ export function render() {
       });
       goalInput.addEventListener("blur", saveCurrentGoal);
 
+      const opts = ensureTaskInOptions(
+        isInvest ? investTaskDropdownOptions : consumeTaskDropdownOptions,
+        taskName,
+        isInvest,
+      );
       const taskDropdown = createTagDropdown(
-        taskDropdownOptions,
+        opts,
         taskName || "",
         "cat",
         () => {
@@ -5842,17 +5865,41 @@ export function renderTimeBudgetTablesForCalendar(
     return Object.values(byTask);
   }
 
-  const taskOptions = getTaskOptions();
+  const fullTaskOpts = getFullTaskOptions();
   const storedGoals = getBudgetGoals(targetDateStr);
   /* 캘린더 1일뷰: 과제설정 목록만 표시, 여기서 추가 불가 */
-  const taskDropdownOptions = [
-    { value: "", label: "—", color: "cat-empty" },
-    ...taskOptions.map((name) => ({
-      value: name,
-      label: name,
-      color: "cat-empty",
-    })),
+  const emptyOpt = { value: "", label: "—", color: "cat-empty" };
+  /** 투자내역: 생산적 태그 과제만 + 카테고리 컬러 */
+  const investTaskDropdownOptions = [
+    emptyOpt,
+    ...fullTaskOpts
+      .filter((o) => (o.productivity || "").toLowerCase() === "productive")
+      .map((o) => ({
+        value: o.name,
+        label: o.name,
+        color: getTaskColorForDropdown(o, true),
+      })),
   ];
+  /** 소비내역: 비생산적 태그 과제만 + 카테고리 컬러 */
+  const consumeTaskDropdownOptions = [
+    emptyOpt,
+    ...fullTaskOpts
+      .filter((o) => (o.productivity || "").toLowerCase() === "nonproductive")
+      .map((o) => ({
+        value: o.name,
+        label: o.name,
+        color: getTaskColorForDropdown(o, false),
+      })),
+  ];
+  /** 현재 행의 과제가 필터 목록에 없으면 추가 (기존 데이터 편집용) */
+  function ensureTaskInOptions(opts, taskName, isInvest) {
+    if (!(taskName || "").trim()) return opts;
+    const name = String(taskName).trim();
+    if (opts.some((o) => o.value === name)) return opts;
+    const taskOpt = getTaskOptionByName(name);
+    const color = getTaskColorForDropdown(taskOpt, isInvest);
+    return [...opts, { value: name, label: name, color }];
+  }
 
   /** 목표 시간 - 문자만 막고, 숫자+백스페이스 자유, Enter로 입력완료 */
   function createBudgetTimeInput() {
@@ -6228,7 +6275,7 @@ export function renderTimeBudgetTablesForCalendar(
     startInput.addEventListener("input", scheduleTimetableUpdate);
     endInput.addEventListener("input", scheduleTimetableUpdate);
 
-    const opts = dropdownOptionsOverride || taskDropdownOptions;
+    const opts = dropdownOptionsOverride || investTaskDropdownOptions;
     const taskDropdown = createTagDropdown(
       opts,
       taskName || "",
@@ -6495,8 +6542,9 @@ export function renderTimeBudgetTablesForCalendar(
     const goal = storedGoals[t.task];
     const goalTime = goal?.goalTime || "";
     const scheduledTime = t.scheduledTime ?? goal?.scheduledTime ?? "";
+    const opts = ensureTaskInOptions(investTaskDropdownOptions, t.task, true);
     investTbody.appendChild(
-      createBudgetTableRow(t.task, goalTime, scheduledTime, true, investCtx),
+      createBudgetTableRow(t.task, goalTime, scheduledTime, true, investCtx, opts),
     );
   });
   investTbody.appendChild(investAddRow);
@@ -6553,8 +6601,9 @@ export function renderTimeBudgetTablesForCalendar(
     const goal = storedGoals[t.task];
     const goalTime = goal?.goalTime || "";
     const scheduledTime = t.scheduledTime ?? goal?.scheduledTime ?? "";
+    const opts = ensureTaskInOptions(consumeTaskDropdownOptions, t.task, false);
     consumeTbody.appendChild(
-      createBudgetTableRow(t.task, goalTime, scheduledTime, false, consumeCtx),
+      createBudgetTableRow(t.task, goalTime, scheduledTime, false, consumeCtx, opts),
     );
   });
   consumeTbody.appendChild(consumeAddRow);
@@ -6605,13 +6654,13 @@ export function renderTimeBudgetTablesForCalendar(
     updateRemaining();
   });
   const investSection = wrapBlockAsSection(investBlock, "투자내역", () => {
-    const tr = createBudgetTableRow("", "", "", true, investCtx);
+    const tr = createBudgetTableRow("", "", "", true, investCtx, investTaskDropdownOptions);
     investTbody.insertBefore(tr, investAddRow);
     updateGoalDiffDisplays(investBlock);
     updateRemaining();
   });
   const consumeSection = wrapBlockAsSection(consumeBlock, "소비내역", () => {
-    const tr = createBudgetTableRow("", "", "", false, consumeCtx);
+    const tr = createBudgetTableRow("", "", "", false, consumeCtx, consumeTaskDropdownOptions);
     consumeTbody.insertBefore(tr, consumeAddRow);
     updateGoalDiffDisplays(consumeBlock);
     updateRemaining();

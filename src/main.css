@@ -16533,6 +16533,20 @@ body.kpi-resizing {
   min-height: 0;
 }
 
+/* 오늘의 할일 제목: 기본/투자/소비 헤더와 동일한 줄에 맞춤 + 위아래 여백 */
+.calendar-1day-budget-column .time-daily-budget-section--todo .calendar-1day-todo-section-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0.6rem 0.6rem;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gray-800, #1f2937);
+  margin-bottom: 0;
+}
+
 .calendar-1day-budget-column .calendar-1day-budget-tables-scroll > .time-daily-budget-tab-panels {
   flex: 1;
   min-height: 0;
