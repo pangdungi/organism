@@ -475,6 +475,26 @@ function clearOverlappingScheduledTimes(all, dateStr, taskName, newSlots) {
   return modified;
 }
 
+/** 오늘의 할일 등 예산 블록 외부 과제: 겹침만 해결 (BUDGET_GOALS_KEY에 추가하지 않음). 투자/소비 테이블에 표시되지 않음 */
+export function clearOverlapFromBudgetGoalsOnly(dateStr, scheduledTimes) {
+  if (!Array.isArray(scheduledTimes) || scheduledTimes.length === 0) return false;
+  try {
+    const raw = localStorage.getItem(BUDGET_GOALS_KEY);
+    const all = raw ? JSON.parse(raw) : {};
+    if (!all[dateStr]) return false;
+    const arr = scheduledTimes
+      .map((s) => String(s || "").trim())
+      .filter(Boolean)
+      .filter((s) => s.includes("-"));
+    if (arr.length === 0) return false;
+    const modified = clearOverlappingScheduledTimes(all, dateStr, "__TODAY_ONLY__", arr);
+    if (modified) localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
+    return modified;
+  } catch (_) {
+    return false;
+  }
+}
+
 /** 캘린더 1일뷰 예정 시간 저장 - scheduledTimes 배열 지원 (같은 과제 여러 구간). 겹침 해결 시 true 반환 */
 export function saveBudgetScheduledTimes(dateStr, taskName, scheduledTimes, isInvest) {
   if (!(taskName || "").trim()) return false;
@@ -5771,6 +5791,28 @@ export function render() {
   return el;
 }
 
+/** 오늘의 할일 과제를 BUDGET_GOALS_KEY에서 제거 (투자/소비 테이블에 표시되지 않도록) */
+function removeTodayTasksFromBudgetGoals(dateStr, todoSectionEl) {
+  if (!todoSectionEl || !dateStr) return;
+  const names = [...todoSectionEl.querySelectorAll(".calendar-1day-todo-table tbody tr")]
+    .map((r) => (r.dataset.taskName || "").trim())
+    .filter(Boolean);
+  if (names.length === 0) return;
+  try {
+    const raw = localStorage.getItem(BUDGET_GOALS_KEY);
+    const all = raw ? JSON.parse(raw) : {};
+    if (!all[dateStr]) return;
+    let modified = false;
+    names.forEach((name) => {
+      if (all[dateStr][name]) {
+        delete all[dateStr][name];
+        modified = true;
+      }
+    });
+    if (modified) localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
+  } catch (_) {}
+}
+
 /** 캘린더 1일뷰용: 시간 투자/소비 내역 테이블만 렌더 (일간시간예산에서 사용) */
 export function renderTimeBudgetTablesForCalendar(
   container,
@@ -5779,8 +5821,9 @@ export function renderTimeBudgetTablesForCalendar(
   onScheduledUpdate,
   onOverlapCleared,
 ) {
-  const rows = loadTimeRows();
   const targetDateStr = dateStr || toDateStr(new Date());
+  removeTodayTasksFromBudgetGoals(targetDateStr, todoSectionEl);
+  const rows = loadTimeRows();
   const todayRows = rows.filter((r) => (r.date || "").trim() === targetDateStr);
 
   function getTasksFromTodayRows() {
@@ -6519,65 +6562,59 @@ export function renderTimeBudgetTablesForCalendar(
   consumeBlock.appendChild(consumeTableWrap);
   updateGoalDiffDisplays(consumeBlock);
 
-  const tabsBar = document.createElement("div");
-  tabsBar.className = "time-daily-budget-tabs";
-  tabsBar.innerHTML = `
-    <div class="time-daily-budget-tabs-left">
-      <button type="button" class="time-daily-budget-tab active" data-tab="basic">기본</button>
-      <button type="button" class="time-daily-budget-tab" data-tab="invest">투자내역</button>
-      <button type="button" class="time-daily-budget-tab" data-tab="consume">소비내역</button>
-    </div>
-    <button type="button" class="time-daily-budget-add-btn time-btn-add" title="계획하기">
-      <img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 계획하기
-    </button>
-  `;
-  const addBtnEl = tabsBar.querySelector(".time-daily-budget-add-btn");
-  addBtnEl.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const activeTab = tabsBar.querySelector(".time-daily-budget-tab.active")
-      ?.dataset?.tab;
-    if (activeTab === "basic") {
-      const tr = createBudgetTableRow(
-        "수면하기",
-        "",
-        "",
-        true,
-        basicCtx,
-        basicTaskDropdownOptions,
-      );
-      basicTbody.insertBefore(tr, basicAddRow);
-      updateGoalDiffDisplays(basicBlock);
-    } else if (activeTab === "consume") {
-      const tr = createBudgetTableRow("", "", "", false, consumeCtx);
-      consumeTbody.insertBefore(tr, consumeAddRow);
-      updateGoalDiffDisplays(consumeBlock);
-    } else {
-      const tr = createBudgetTableRow("", "", "", true, investCtx);
-      investTbody.insertBefore(tr, investAddRow);
-      updateGoalDiffDisplays(investBlock);
+  function createSectionHeader(title, onAdd) {
+    const header = document.createElement("div");
+    header.className = "time-daily-budget-section-header";
+    const titleEl = document.createElement("span");
+    titleEl.className = "time-daily-budget-section-title";
+    titleEl.textContent = title;
+    header.appendChild(titleEl);
+    if (onAdd) {
+      const addBtn = document.createElement("button");
+      addBtn.type = "button";
+      addBtn.className = "time-daily-budget-add-btn time-btn-add";
+      addBtn.title = "계획하기";
+      addBtn.innerHTML = '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 계획하기';
+      addBtn.addEventListener("click", onAdd);
+      header.appendChild(addBtn);
     }
+    return header;
+  }
+  function wrapBlockAsSection(block, title, onAdd) {
+    const section = document.createElement("div");
+    section.className = "time-daily-budget-section";
+    section.appendChild(createSectionHeader(title, onAdd));
+    const scrollWrap = document.createElement("div");
+    scrollWrap.className = "time-daily-budget-section-scroll";
+    scrollWrap.appendChild(block);
+    section.appendChild(scrollWrap);
+    return section;
+  }
+
+  const basicSection = wrapBlockAsSection(basicBlock, "기본", () => {
+    const tr = createBudgetTableRow(
+      "수면하기",
+      "",
+      "",
+      true,
+      basicCtx,
+      basicTaskDropdownOptions,
+    );
+    basicTbody.insertBefore(tr, basicAddRow);
+    updateGoalDiffDisplays(basicBlock);
     updateRemaining();
   });
-  const tabPanels = document.createElement("div");
-  tabPanels.className = "time-daily-budget-tab-panels";
-  basicBlock.style.display = "";
-  investBlock.style.display = "none";
-  consumeBlock.style.display = "none";
-  tabPanels.appendChild(basicBlock);
-  tabPanels.appendChild(investBlock);
-  tabPanels.appendChild(consumeBlock);
-
-  tabsBar.querySelectorAll(".time-daily-budget-tab").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const tab = btn.dataset.tab;
-      tabsBar
-        .querySelectorAll(".time-daily-budget-tab")
-        .forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      basicBlock.style.display = tab === "basic" ? "" : "none";
-      investBlock.style.display = tab === "invest" ? "" : "none";
-      consumeBlock.style.display = tab === "consume" ? "" : "none";
-    });
+  const investSection = wrapBlockAsSection(investBlock, "투자내역", () => {
+    const tr = createBudgetTableRow("", "", "", true, investCtx);
+    investTbody.insertBefore(tr, investAddRow);
+    updateGoalDiffDisplays(investBlock);
+    updateRemaining();
+  });
+  const consumeSection = wrapBlockAsSection(consumeBlock, "소비내역", () => {
+    const tr = createBudgetTableRow("", "", "", false, consumeCtx);
+    consumeTbody.insertBefore(tr, consumeAddRow);
+    updateGoalDiffDisplays(consumeBlock);
+    updateRemaining();
   });
 
   const remainingValueEl = remainingHeader.querySelector(
@@ -6586,11 +6623,20 @@ export function renderTimeBudgetTablesForCalendar(
 
   function updateRemaining() {
     let goalSum = 0;
+    const seenTasks = new Set();
+    const addGoalFromInput = (inp) => {
+      const row = inp.closest("tr");
+      const taskName = row ? (row.dataset.taskName || "").trim() : "";
+      if (taskName && seenTasks.has(taskName)) return;
+      if (taskName) seenTasks.add(taskName);
+      goalSum += parseTimeToHours(inp.value);
+    };
     [basicBlock, investBlock, consumeBlock].forEach((block) => {
-      block.querySelectorAll(".time-budget-time-input").forEach((inp) => {
-        goalSum += parseTimeToHours(inp.value);
-      });
+      block.querySelectorAll(".time-budget-goal-wrap .time-budget-time-input").forEach(addGoalFromInput);
     });
+    if (todoSectionEl) {
+      todoSectionEl.querySelectorAll(".time-budget-goal-wrap .time-budget-time-input").forEach(addGoalFromInput);
+    }
     const remaining = Math.max(0, 24 - goalSum);
     if (remainingValueEl)
       remainingValueEl.textContent = formatHoursToHHMM(remaining);
@@ -6606,6 +6652,16 @@ export function renderTimeBudgetTablesForCalendar(
         updateRemaining();
     });
   });
+  if (todoSectionEl) {
+    todoSectionEl.addEventListener("input", (e) => {
+      if (e.target.classList.contains("time-budget-time-input"))
+        updateRemaining();
+    });
+    todoSectionEl.addEventListener("blur", (e) => {
+      if (e.target.classList.contains("time-budget-time-input"))
+        updateRemaining();
+    });
+  }
   updateRemaining();
 
   const topRow = document.createElement("div");
@@ -6615,15 +6671,20 @@ export function renderTimeBudgetTablesForCalendar(
   const stickyHeader = document.createElement("div");
   stickyHeader.className = "calendar-1day-budget-sticky-header";
   stickyHeader.appendChild(topRow);
-  stickyHeader.appendChild(tabsBar);
+
+  const fourPanels = document.createElement("div");
+  fourPanels.className = "time-daily-budget-four-panels";
+  fourPanels.appendChild(basicSection);
+  fourPanels.appendChild(investSection);
+  fourPanels.appendChild(consumeSection);
+  if (todoSectionEl) {
+    const todoWrap = document.createElement("div");
+    todoWrap.className = "time-daily-budget-section time-daily-budget-section--todo";
+    todoWrap.appendChild(todoSectionEl);
+    fourPanels.appendChild(todoWrap);
+  }
 
   container.innerHTML = "";
   container.appendChild(stickyHeader);
-  const budgetTablesScroll = document.createElement("div");
-  budgetTablesScroll.className = "calendar-1day-budget-tables-scroll";
-  budgetTablesScroll.appendChild(tabPanels);
-  container.appendChild(budgetTablesScroll);
-  if (todoSectionEl) {
-    container.appendChild(todoSectionEl);
-  }
+  container.appendChild(fourPanels);
 }

@@ -16463,6 +16463,76 @@ body.kpi-resizing {
   z-index: 1000;
 }
 
+/* 4구획 세로 배치: 기본 | 투자내역 | 소비내역 | 오늘의 할일 */
+.calendar-1day-budget-column .time-daily-budget-four-panels {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow: hidden;
+}
+
+.calendar-1day-budget-column .time-daily-budget-section {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+}
+
+.calendar-1day-budget-column .time-daily-budget-section-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.6rem;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.calendar-1day-budget-column .time-daily-budget-section-title {
+  color: var(--gray-800, #1f2937);
+}
+
+.calendar-1day-budget-column .time-daily-budget-section-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-1day-budget-column .time-daily-budget-section-scroll > .time-daily-budget-table-block {
+  flex: 1;
+  min-height: 8rem;
+}
+
+.calendar-1day-budget-column .time-daily-budget-section--todo {
+  border: 1px solid #e5e7eb;
+}
+
+.calendar-1day-budget-column .time-daily-budget-section--todo .calendar-1day-todo-section {
+  margin-top: 0;
+  border-top: none;
+  padding-top: 0;
+}
+
+.calendar-1day-budget-column .time-daily-budget-section--todo .calendar-1day-todo-section {
+  flex: 1;
+  min-height: 0;
+}
+
+.calendar-1day-budget-column .time-daily-budget-section--todo .calendar-1day-todo-section-body {
+  flex: 1;
+  min-height: 0;
+}
+
 .calendar-1day-budget-column .calendar-1day-budget-tables-scroll > .time-daily-budget-tab-panels {
   flex: 1;
   min-height: 0;
@@ -16608,6 +16678,11 @@ body.kpi-resizing {
 .calendar-1day-budget-column .time-daily-budget-add-btn {
   margin-left: auto;
   flex-shrink: 0;
+}
+
+.calendar-1day-budget-column .time-daily-budget-section-header .time-daily-budget-add-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
 }
 
 .calendar-1day-budget-column .time-row-add--placeholder {

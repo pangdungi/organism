@@ -32,7 +32,7 @@ import {
   getTaskOptionByName,
   loadTimeRows,
   saveBudgetGoal,
-  saveBudgetScheduledTimes,
+  clearOverlapFromBudgetGoalsOnly,
   formatGoalDiff,
   parseTimeToHours,
 } from "./Time.js";
@@ -3881,6 +3881,13 @@ function render1DayView(tabsElement) {
       input.className = "time-budget-time-input";
       input.placeholder = "hh:mm";
       input.maxLength = 5;
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          input.blur();
+          return;
+        }
+        if (e.key.length === 1 && !/\d/.test(e.key)) e.preventDefault();
+      });
       input.addEventListener("input", () => {
         input.value = input.value.replace(/\D/g, "");
       });
@@ -4020,12 +4027,9 @@ function render1DayView(tabsElement) {
           t.startTime = start;
           t.endTime = end;
           const scheduledTime = start && end ? `${start}-${end}` : "";
-          const overlapCleared = saveBudgetScheduledTimes(
-            targetKey,
-            t.name,
-            scheduledTime ? [scheduledTime] : [],
-            budgetGoals[t.name]?.isInvest !== false,
-          );
+          const overlapCleared = scheduledTime
+            ? clearOverlapFromBudgetGoalsOnly(targetKey, [scheduledTime])
+            : false;
           if (overlapCleared && typeof onOverlapCleared === "function") {
             onOverlapCleared(targetKey);
           } else if (typeof onScheduledUpdate === "function") {
