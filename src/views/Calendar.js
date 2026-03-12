@@ -3157,6 +3157,7 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
     const spans = [];
     for (const [taskName, data] of Object.entries(budgetGoals)) {
       const times = getScheduledTimesForTask(data);
+      const taskFromList = tasks.find((t) => (t.name || "").trim() === taskName);
       for (const st of times) {
         if (!st.trim()) continue;
         const parts = st.trim().split("-");
@@ -3170,7 +3171,7 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         );
         const opt = getTaskOptionByName(taskName);
         const prod = opt?.productivity || "other";
-        spans.push({
+        const span = {
           startSlot,
           endSlot: Math.max(endSlot, startSlot),
           startMin,
@@ -3179,7 +3180,13 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
           prod,
           startDisplay: fmt(startMin),
           endDisplay: fmt(endMin),
-        });
+        };
+        if (taskFromList) {
+          span.sectionId = taskFromList.sectionId;
+          span._task = taskFromList;
+          span._taskKey = taskFromList.kpiTodoId || taskFromList.taskId || taskFromList.name;
+        }
+        spans.push(span);
       }
     }
     for (const t of tasks) {
