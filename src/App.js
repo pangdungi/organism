@@ -211,13 +211,23 @@ export function mountApp(container) {
     saveTodoListBeforeUnmount(p);
     p.innerHTML = "";
     const render = RENDERERS[currentTabId];
-    if (render) {
-      p.appendChild(render());
-    } else {
-      const div = document.createElement("p");
-      div.textContent =
-        TABS.find((t) => t.id === currentTabId)?.label || "준비 중";
-      p.appendChild(div);
+    try {
+      if (render) {
+        const content = render();
+        if (content) p.appendChild(content);
+      } else {
+        const div = document.createElement("p");
+        div.textContent =
+          TABS.find((t) => t.id === currentTabId)?.label || "준비 중";
+        p.appendChild(div);
+      }
+    } catch (err) {
+      console.error("[renderMain]", currentTabId, err);
+      const errDiv = document.createElement("div");
+      errDiv.className = "app-render-error";
+      errDiv.style.cssText = "padding:1.5rem;color:#b91c1c;";
+      errDiv.innerHTML = `<p><strong>${TABS.find((t) => t.id === currentTabId)?.label || currentTabId} 로드 중 오류</strong></p><p>${String(err?.message || err)}</p>`;
+      p.appendChild(errDiv);
     }
   }
 

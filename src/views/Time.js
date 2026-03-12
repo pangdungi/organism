@@ -5986,12 +5986,18 @@ export function renderTimeBudgetTablesForCalendar(
     });
   }
 
+  const basicTaskDropdownOptions = [
+    { value: "수면하기", label: "수면하기", color: "cat-sleep" },
+    { value: "근무하기", label: "근무하기", color: "cat-work" },
+  ];
+
   function createBudgetTableRow(
     taskName,
     initialGoalTime,
     initialScheduledTime,
     isInvest,
     tbodyAndAddRow,
+    dropdownOptionsOverride,
   ) {
     const tr = document.createElement("tr");
     const { tbody, addRow, onOverlapCleared, onScheduledUpdate, allTbodies } =
@@ -6046,11 +6052,12 @@ export function renderTimeBudgetTablesForCalendar(
         if (saveBudgetScheduledTimes(targetDateStr, task, times, inv))
           overlapCleared = true;
       });
-      if (overlapCleared) {
-        if (typeof onOverlapCleared === "function")
-          onOverlapCleared(targetDateStr);
-        if (typeof onScheduledUpdate === "function")
-          onScheduledUpdate(targetDateStr);
+      if (overlapCleared && typeof onOverlapCleared === "function") {
+        onOverlapCleared(targetDateStr);
+      }
+      /* 예상 시간 저장 시 항상 타임테이블 갱신 (기본/투자/소비 탭 통일) */
+      if (typeof onScheduledUpdate === "function") {
+        onScheduledUpdate(targetDateStr);
       }
     }
 
@@ -6177,8 +6184,9 @@ export function renderTimeBudgetTablesForCalendar(
     startInput.addEventListener("input", scheduleTimetableUpdate);
     endInput.addEventListener("input", scheduleTimetableUpdate);
 
+    const opts = dropdownOptionsOverride || taskDropdownOptions;
     const taskDropdown = createTagDropdown(
-      taskDropdownOptions,
+      opts,
       taskName || "",
       "cat",
       () => {
@@ -6305,12 +6313,102 @@ export function renderTimeBudgetTablesForCalendar(
     }
   });
 
+  const BASIC_TASKS = ["수면하기", "근무하기"];
+  const basicTasks = [];
+  const seenBasic = new Set();
+  tasksFromToday.forEach((t) => {
+    if (!BASIC_TASKS.includes(t.task)) return;
+    const data = storedGoals[t.task];
+    const entries = expandByScheduledTimes(t.task, data, true, t.hrs);
+    entries.forEach((e) => {
+      basicTasks.push(e);
+      seenBasic.add(t.task);
+    });
+  });
+  BASIC_TASKS.forEach((task) => {
+    if (seenBasic.has(task)) return;
+    const data = storedGoals[task];
+    const entries = expandByScheduledTimes(task, data, true);
+    if (entries.length > 0) {
+      entries.forEach((e) => basicTasks.push(e));
+    } else {
+      basicTasks.push({ task, hrs: 0, isNonproductive: false, scheduledTime: "" });
+    }
+    seenBasic.add(task);
+  });
+
   const remainingHeader = document.createElement("div");
   remainingHeader.className = "time-budget-calendar-remaining";
   remainingHeader.innerHTML = `
     <div class="time-budget-calendar-remaining-title">남은 시간</div>
     <div class="time-budget-calendar-remaining-value">24:00</div>
   `;
+
+  const sortByStartTime = (list) =>
+    [...list].sort((a, b) => {
+      const { start: aStart } = parseScheduledTime(a.scheduledTime ?? "");
+      const { start: bStart } = parseScheduledTime(b.scheduledTime ?? "");
+      const aH = aStart ? parseTimeToHours(aStart) : Infinity;
+      const bH = bStart ? parseTimeToHours(bStart) : Infinity;
+      return aH - bH;
+    });
+
+  const basicAddRow = document.createElement("tr");
+  basicAddRow.className = "time-row-add time-row-add--placeholder";
+  basicAddRow.innerHTML = '<td colspan="5"></td>';
+
+  const basicBlock = document.createElement("div");
+  basicBlock.className =
+    "time-daily-budget-table-block time-daily-budget-table-block--basic";
+  const basicTableWrap = document.createElement("div");
+  basicTableWrap.className = "time-daily-budget-table-scroll-wrap";
+  const basicTable = document.createElement("table");
+  basicTable.className = "time-daily-budget-table";
+  basicTable.innerHTML = `
+    <colgroup>
+      <col class="time-budget-col-task">
+      <col class="time-budget-col-goal">
+      <col class="time-budget-col-start">
+      <col class="time-budget-col-end">
+      <col class="time-budget-col-delete">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>과제명</th>
+        <th class="time-budget-col-goal">목표 시간</th>
+        <th>예상 시작 시간</th>
+        <th>예상 마감 시간</th>
+        <th class="time-budget-col-delete"></th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  `;
+  const basicTbody = basicTable.querySelector("tbody");
+  const basicCtx = {
+    tbody: basicTbody,
+    addRow: basicAddRow,
+    onOverlapCleared,
+    onScheduledUpdate,
+  };
+  sortByStartTime(basicTasks).forEach((t) => {
+    const goal = storedGoals[t.task];
+    const goalTime = goal?.goalTime || "";
+    const scheduledTime = t.scheduledTime ?? goal?.scheduledTime ?? "";
+    basicTbody.appendChild(
+      createBudgetTableRow(
+        t.task,
+        goalTime,
+        scheduledTime,
+        true,
+        basicCtx,
+        basicTaskDropdownOptions,
+      ),
+    );
+  });
+  basicTbody.appendChild(basicAddRow);
+  basicTableWrap.appendChild(basicTable);
+  basicBlock.appendChild(basicTableWrap);
+  updateGoalDiffDisplays(basicBlock);
 
   const investBlock = document.createElement("div");
   investBlock.className =
@@ -6349,14 +6447,6 @@ export function renderTimeBudgetTablesForCalendar(
     onOverlapCleared,
     onScheduledUpdate,
   };
-  const sortByStartTime = (list) =>
-    [...list].sort((a, b) => {
-      const { start: aStart } = parseScheduledTime(a.scheduledTime ?? "");
-      const { start: bStart } = parseScheduledTime(b.scheduledTime ?? "");
-      const aH = aStart ? parseTimeToHours(aStart) : Infinity;
-      const bH = bStart ? parseTimeToHours(bStart) : Infinity;
-      return aH - bH;
-    });
   sortByStartTime(investTasks).forEach((t) => {
     const goal = storedGoals[t.task];
     const goalTime = goal?.goalTime || "";
@@ -6402,9 +6492,11 @@ export function renderTimeBudgetTablesForCalendar(
   `;
   const consumeTbody = consumeTable.querySelector("tbody");
   const allTbodies = [
+    [basicTbody, basicAddRow, true],
     [investTbody, investAddRow, true],
     [consumeTbody, consumeAddRow, false],
   ];
+  basicCtx.allTbodies = allTbodies;
   investCtx.allTbodies = allTbodies;
   const consumeCtx = {
     tbody: consumeTbody,
@@ -6430,7 +6522,8 @@ export function renderTimeBudgetTablesForCalendar(
   tabsBar.className = "time-daily-budget-tabs";
   tabsBar.innerHTML = `
     <div class="time-daily-budget-tabs-left">
-      <button type="button" class="time-daily-budget-tab active" data-tab="invest">투자내역</button>
+      <button type="button" class="time-daily-budget-tab active" data-tab="basic">기본</button>
+      <button type="button" class="time-daily-budget-tab" data-tab="invest">투자내역</button>
       <button type="button" class="time-daily-budget-tab" data-tab="consume">소비내역</button>
     </div>
     <button type="button" class="time-daily-budget-add-btn time-btn-add" title="계획하기">
@@ -6442,9 +6535,18 @@ export function renderTimeBudgetTablesForCalendar(
     e.stopPropagation();
     const activeTab = tabsBar.querySelector(".time-daily-budget-tab.active")
       ?.dataset?.tab;
-    const isInvest = activeTab !== "consume";
-    /* 과제설정 목록에서만 선택, 여기서 새 과제 추가 불가 */
-    if (activeTab === "consume") {
+    if (activeTab === "basic") {
+      const tr = createBudgetTableRow(
+        "수면하기",
+        "",
+        "",
+        true,
+        basicCtx,
+        basicTaskDropdownOptions,
+      );
+      basicTbody.insertBefore(tr, basicAddRow);
+      updateGoalDiffDisplays(basicBlock);
+    } else if (activeTab === "consume") {
       const tr = createBudgetTableRow("", "", "", false, consumeCtx);
       consumeTbody.insertBefore(tr, consumeAddRow);
       updateGoalDiffDisplays(consumeBlock);
@@ -6457,8 +6559,10 @@ export function renderTimeBudgetTablesForCalendar(
   });
   const tabPanels = document.createElement("div");
   tabPanels.className = "time-daily-budget-tab-panels";
-  investBlock.style.display = "";
+  basicBlock.style.display = "";
+  investBlock.style.display = "none";
   consumeBlock.style.display = "none";
+  tabPanels.appendChild(basicBlock);
   tabPanels.appendChild(investBlock);
   tabPanels.appendChild(consumeBlock);
 
@@ -6469,6 +6573,7 @@ export function renderTimeBudgetTablesForCalendar(
         .querySelectorAll(".time-daily-budget-tab")
         .forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
+      basicBlock.style.display = tab === "basic" ? "" : "none";
       investBlock.style.display = tab === "invest" ? "" : "none";
       consumeBlock.style.display = tab === "consume" ? "" : "none";
     });
@@ -6480,7 +6585,7 @@ export function renderTimeBudgetTablesForCalendar(
 
   function updateRemaining() {
     let goalSum = 0;
-    [investBlock, consumeBlock].forEach((block) => {
+    [basicBlock, investBlock, consumeBlock].forEach((block) => {
       block.querySelectorAll(".time-budget-time-input").forEach((inp) => {
         goalSum += parseTimeToHours(inp.value);
       });
@@ -6490,7 +6595,7 @@ export function renderTimeBudgetTablesForCalendar(
       remainingValueEl.textContent = formatHoursToHHMM(remaining);
   }
 
-  [investBlock, consumeBlock].forEach((block) => {
+  [basicBlock, investBlock, consumeBlock].forEach((block) => {
     block.addEventListener("input", (e) => {
       if (e.target.classList.contains("time-budget-time-input"))
         updateRemaining();
