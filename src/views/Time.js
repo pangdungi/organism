@@ -5986,9 +5986,10 @@ export function renderTimeBudgetTablesForCalendar(
     });
   }
 
+  /* 예상 타임테이블 색상 규칙과 통일: 기타=prod-green, 생산성=prod-pink, 비생산=prod-blue */
   const basicTaskDropdownOptions = [
-    { value: "수면하기", label: "수면하기", color: "cat-sleep" },
-    { value: "근무하기", label: "근무하기", color: "cat-work" },
+    { value: "수면하기", label: "수면하기", color: "prod-green" },
+    { value: "근무하기", label: "근무하기", color: "prod-green" },
   ];
 
   function createBudgetTableRow(
