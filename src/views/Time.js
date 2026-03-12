@@ -1960,6 +1960,7 @@ export function render() {
     <button type="button" class="time-view-tab active" data-view="all">시간 기록</button>
     <button type="button" class="time-view-tab" data-view="productivity">생산성별</button>
     <button type="button" class="time-view-tab" data-view="dashboard">대시보드</button>
+    <button type="button" class="time-view-tab" data-view="blank">탭</button>
   `;
 
   const now = new Date();
