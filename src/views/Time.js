@@ -1957,10 +1957,10 @@ export function render() {
   const viewTabs = document.createElement("div");
   viewTabs.className = "time-view-tabs";
   viewTabs.innerHTML = `
-    <button type="button" class="time-view-tab active" data-view="all">시간 기록</button>
+    <button type="button" class="time-view-tab active" data-view="all">1. 시간기록하기</button>
+    <button type="button" class="time-view-tab" data-view="blank">오딧</button>
     <button type="button" class="time-view-tab" data-view="productivity">생산성별</button>
     <button type="button" class="time-view-tab" data-view="dashboard">대시보드</button>
-    <button type="button" class="time-view-tab" data-view="blank">탭</button>
   `;
 
   const now = new Date();
@@ -2232,7 +2232,7 @@ export function render() {
         <div class="time-task-log-fixed-top">
           <div class="time-task-log-datetime-fields-wrap">
             <div class="time-task-log-field">
-              <label>과제 선택</label>
+              <label>이 시간에 할 행동 선택</label>
               <div class="time-task-log-task-wrap"></div>
             </div>
             <div class="time-task-log-field">
