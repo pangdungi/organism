@@ -892,20 +892,57 @@ function aggregateEnergyByHour(rows) {
   return result;
 }
 
+/** 방해 이벤트 파싱: "10:30|메신저체크;11:15|유튜브" → [{time,type},...] (구형 "3|메신저체크" 호환) */
+function parseFocusEvents(raw, defaultTime = "") {
+  const s = String(raw || "").trim();
+  if (!s) return [];
+  if (s.includes(";")) {
+    return s.split(";").map((seg) => {
+      const [t, type] = seg.split("|");
+      return { time: (t || "").trim(), type: (type || "").trim() };
+    });
+  }
+  const [a, b] = s.split("|");
+  if (/^\d{1,2}:\d{2}$/.test(String(a || "").trim())) {
+    return [{ time: (a || "").trim(), type: (b || "").trim() }];
+  }
+  const cnt = parseInt(String(a || "0").replace(/\D/g, ""), 10) || 0;
+  const type = (b || "").trim();
+  if (cnt <= 0 || !type) return [];
+  return Array.from({ length: cnt }, () => ({ time: defaultTime, type }));
+}
+
+/** 방해 값을 인라인 표시용 문자열로: "10:30 메신저체크, 11:15 유튜브" */
+function formatFocusForDisplay(raw) {
+  const events = parseFocusEvents(raw);
+  if (events.length === 0) return "";
+  return events
+    .map((e) => (e.time ? `${e.time} ${e.type}`.trim() : e.type || "").trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
 /** 방해 빈도 곡선용: 시간대별(0~23시) 방해횟수 집계 */
 function aggregateFocusByHour(rows) {
   const byHour = {};
   for (let h = 0; h <= 23; h++) byHour[h] = 0;
   rows.forEach((r) => {
-    const focusStr = String(r.focus || "0").split("|")[0];
-    const focus = parseInt(focusStr.replace(/\D/g, ""), 10) || 0;
-    if (focus <= 0) return;
+    const events = parseFocusEvents(r.focus);
+    if (events.length === 0) return;
     const startH = parseDateTimeToHours(r.startTime);
     const endH = parseDateTimeToHours(r.endTime);
-    if (startH == null || endH == null) return;
-    for (let h = 0; h <= 23; h++) {
-      if (startH < h + 1 && endH > h) byHour[h] += focus;
-    }
+    const hasTaskRange = startH != null && endH != null;
+    events.forEach((e) => {
+      if (e.time) {
+        const m = e.time.match(/^(\d{1,2}):?(\d{2})?/);
+        const h = m ? parseInt(m[1], 10) : null;
+        if (h != null && h >= 0 && h <= 23) byHour[h] += 1;
+      } else if (hasTaskRange) {
+        for (let h = 0; h <= 23; h++) {
+          if (startH < h + 1 && endH > h) byHour[h] += 1;
+        }
+      }
+    });
   });
   return byHour;
 }
@@ -1828,9 +1865,7 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   focusTd.className = "time-cell time-cell-focus";
   const focusSpan = document.createElement("span");
   focusSpan.className = "time-display-focus";
-  const focusRaw = (rowData.focus || "").trim();
-  const [fc, ft] = focusRaw.includes("|") ? focusRaw.split("|") : [focusRaw, ""];
-  focusSpan.textContent = ft ? `${fc || ""} ${ft}`.trim() : focusRaw;
+  focusSpan.textContent = formatFocusForDisplay(rowData.focus);
   focusTd.appendChild(focusSpan);
   tr.appendChild(focusTd);
 
@@ -1984,7 +2019,7 @@ function createTableHTML() {
         <th class="time-th-productivity">생산성</th>
         <th class="time-th-date">기록 날짜</th>
         <th class="time-th-price">행동의 가치</th>
-        <th class="time-th-focus">방해 횟수(회)</th>
+        <th class="time-th-focus">방해기록</th>
         <th class="time-th-energy">성취능력</th>
         <th class="time-th-feedback">과제 메모</th>
         <th class="time-th-actions"></th>
@@ -2533,7 +2568,7 @@ export function render() {
         </div>
         <div class="time-task-log-focus-section">
           <div class="time-task-log-focus-header">
-            <h4 class="time-task-log-focus-title">방해 횟수(회)</h4>
+            <h4 class="time-task-log-focus-title">방해기록</h4>
             <label class="time-task-log-focus-toggle">
               <input type="checkbox" class="time-task-log-focus-toggle-input" />
               <span class="time-task-log-focus-toggle-slider"></span>
@@ -2541,13 +2576,10 @@ export function render() {
           </div>
           <div class="time-task-log-focus-fields" hidden>
             <div class="time-task-log-focus-row">
-              <div class="time-task-log-stepper">
-                <button type="button" class="time-task-log-stepper-btn" data-action="minus" aria-label="감소">−</button>
-                <span class="time-task-log-stepper-value">0</span>
-                <button type="button" class="time-task-log-stepper-btn" data-action="plus" aria-label="증가">+</button>
-              </div>
               <div class="time-task-log-focus-type-dropdown-wrap"></div>
+              <button type="button" class="time-task-log-focus-now-btn">지금</button>
             </div>
+            <div class="time-task-log-focus-events-preview"></div>
           </div>
         </div>
         <div class="time-task-log-expense-section">
@@ -3665,7 +3697,7 @@ export function render() {
     });
   }
   let taskLogEnergyValue = "";
-  let taskLogFocusValue = "0";
+  let taskLogFocusEvents = [];
   const taskLogEnergySlider = taskLogModal.querySelector(
     ".time-task-log-energy-slider",
   );
@@ -3675,28 +3707,59 @@ export function render() {
   const taskLogEnergyFill = taskLogModal.querySelector(
     ".time-task-log-energy-fill",
   );
-  const focusStepperValueEl = taskLogModal.querySelector(
-    ".time-task-log-stepper-value",
+  const focusEventsPreviewEl = taskLogModal.querySelector(
+    ".time-task-log-focus-events-preview",
   );
-  const focusStepperMinus = taskLogModal.querySelector(
-    '.time-task-log-stepper-btn[data-action="minus"]',
-  );
-  const focusStepperPlus = taskLogModal.querySelector(
-    '.time-task-log-stepper-btn[data-action="plus"]',
+  const focusNowBtn = taskLogModal.querySelector(
+    ".time-task-log-focus-now-btn",
   );
   let taskLogFocusTypeValue = "";
-  function updateFocusStepper(value) {
-    const n = Math.max(0, parseInt(String(value || "0"), 10) || 0);
-    taskLogFocusValue = String(n);
-    if (focusStepperValueEl) focusStepperValueEl.textContent = n;
+
+  function getCurrentHHMM() {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   }
-  focusStepperMinus?.addEventListener("click", () => {
-    const n = Math.max(0, (parseInt(taskLogFocusValue, 10) || 0) - 1);
-    updateFocusStepper(n);
-  });
-  focusStepperPlus?.addEventListener("click", () => {
-    const n = (parseInt(taskLogFocusValue, 10) || 0) + 1;
-    updateFocusStepper(n);
+
+  function buildFocusValueFromEvents(events) {
+    if (!events.length) return "";
+    return events.map((e) => `${e.time || ""}|${e.type || ""}`.trim()).filter(Boolean).join(";");
+  }
+
+  function updateFocusPreview() {
+    const n = taskLogFocusEvents.length;
+    if (!focusEventsPreviewEl) return;
+    focusEventsPreviewEl.hidden = n === 0;
+    focusEventsPreviewEl.innerHTML = "";
+    taskLogFocusEvents.forEach((e, idx) => {
+      const item = document.createElement("div");
+      item.className = "time-task-log-focus-event-item";
+      const label = document.createElement("span");
+      label.className = "time-task-log-focus-event-label";
+      label.textContent = e.time ? `${e.time} ${e.type}`.trim() : e.type || "";
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "time-task-log-focus-event-del";
+      delBtn.textContent = "×";
+      delBtn.title = "삭제";
+      delBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        taskLogFocusEvents.splice(idx, 1);
+        updateFocusPreview();
+      });
+      item.appendChild(label);
+      item.appendChild(delBtn);
+      focusEventsPreviewEl.appendChild(item);
+    });
+  }
+
+  focusNowBtn?.addEventListener("click", () => {
+    const type = (focusTypeDropdown?._getValue?.() || "").trim();
+    if (!type) {
+      alert("방해 유형을 먼저 선택해주세요.");
+      return;
+    }
+    taskLogFocusEvents.push({ time: getCurrentHHMM(), type });
+    updateFocusPreview();
   });
   function updateScoreBtnStates(container, value) {
     if (!container) return;
@@ -3838,7 +3901,7 @@ export function render() {
     if (taskLogEmotionToggleInput) taskLogEmotionToggleInput.checked = false;
     if (taskLogEmotionFields) taskLogEmotionFields.hidden = true;
     taskLogEnergyValue = "50";
-    taskLogFocusValue = "0";
+    taskLogFocusEvents = [];
     taskLogFocusTypeValue = "";
     if (taskLogEnergyToggleInput) taskLogEnergyToggleInput.checked = false;
     if (taskLogEnergyFields) taskLogEnergyFields.hidden = true;
@@ -3846,7 +3909,7 @@ export function render() {
     if (taskLogFocusFields) taskLogFocusFields.hidden = true;
     focusTypeDropdown?._setValue?.("");
     updateEnergySlider("50");
-    updateFocusStepper("0");
+    updateFocusPreview();
   }
 
   function openTaskLogModalForEdit(tr, rowData) {
@@ -3918,23 +3981,15 @@ export function render() {
     if (taskLogEmotionFields) taskLogEmotionFields.hidden = true;
     taskLogEnergyValue = String(data.energy || "").trim();
     const focusRaw = String(data.focus || "").trim();
-    let focusCount = "0";
-    let focusType = "";
-    if (focusRaw.includes("|")) {
-      const parts = focusRaw.split("|");
-      focusCount = String(parts[0] || "0").trim() || "0";
-      focusType = String(parts[1] || "").trim();
-    } else if (focusRaw) {
-      const m = focusRaw.match(/^(\d+)\s+(.+)$/);
-      if (m) {
-        focusCount = m[1];
-        focusType = m[2].trim();
-      } else {
-        focusCount = /^\d+$/.test(focusRaw) ? focusRaw : "0";
-      }
-    }
-    taskLogFocusValue = focusCount;
-    taskLogFocusTypeValue = focusType;
+    const defaultTime = (() => {
+      const m = (data.startTime || "").match(/[T\s](\d{1,2}):(\d{2})/);
+      return m ? `${String(m[1]).padStart(2, "0")}:${m[2]}` : "";
+    })();
+    taskLogFocusEvents = parseFocusEvents(focusRaw, defaultTime);
+    taskLogFocusTypeValue =
+      taskLogFocusEvents.length > 0
+        ? taskLogFocusEvents[taskLogFocusEvents.length - 1].type
+        : "";
     if (taskLogEnergyToggleInput) {
       taskLogEnergyToggleInput.checked = !!taskLogEnergyValue;
       if (taskLogEnergyFields)
@@ -3946,7 +4001,7 @@ export function render() {
         taskLogFocusFields.hidden = !taskLogFocusToggleInput.checked;
     }
     updateEnergySlider(taskLogEnergyValue || "0");
-    updateFocusStepper(taskLogFocusValue || "0");
+    updateFocusPreview();
     focusTypeDropdown?._setValue?.(taskLogFocusTypeValue || "");
   }
 
@@ -4019,12 +4074,8 @@ export function render() {
     const energyToggleOn = taskLogEnergyToggleInput?.checked;
     const focusToggleOn = taskLogFocusToggleInput?.checked;
     const energyValue = energyToggleOn ? taskLogEnergyValue : "";
-    const focusCount = focusToggleOn ? taskLogFocusValue : "";
-    const focusType = focusToggleOn ? (focusTypeDropdown?._getValue?.() || "").trim() : "";
-    const focusValue = focusCount
-      ? focusType
-        ? `${focusCount}|${focusType}`
-        : focusCount
+    const focusValue = focusToggleOn
+      ? buildFocusValueFromEvents(taskLogFocusEvents)
       : "";
 
     const expenseToggleOn = taskLogExpenseToggleInput?.checked;
@@ -4109,7 +4160,7 @@ export function render() {
       const energyDisplay = editTr.querySelector(
         ".time-cell-energy .time-display-energy",
       );
-      if (focusDisplay) focusDisplay.textContent = focusValue || "";
+      if (focusDisplay) focusDisplay.textContent = formatFocusForDisplay(focusValue);
       if (energyDisplay)
         energyDisplay.textContent = formatEnergyForDisplay(energyValue);
       editTr._updatePrice?.();
