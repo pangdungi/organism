@@ -12085,6 +12085,11 @@ body.kpi-resizing {
   color: #1f2937;
 }
 
+.time-audit-svg .time-audit-bar-inner-label {
+  pointer-events: none;
+  user-select: none;
+}
+
 .time-audit-task-legend {
   display: flex;
   flex-wrap: wrap;

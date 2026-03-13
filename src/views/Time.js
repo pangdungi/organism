@@ -6089,13 +6089,29 @@ export function render() {
 
         const getCategoryColor = (cat) =>
           CATEGORY_GRAPH_COLORS[cat] || CATEGORY_GRAPH_COLORS[""];
-        const taskRects = dayRows
+        const minBarWidthForLabel = plotW * (1.5 / 24);
+        const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+        const taskRectsAndLabels = dayRows
           .map((r) => {
             const x1 = toX(r.startH);
             const x2 = toX(r.endH);
+            const w = Math.max(2, x2 - x1);
             const color = getCategoryColor(r.category);
-            return `<rect x="${x1}" y="${padTop}" width="${Math.max(2, x2 - x1)}" height="${plotH}" fill="${color}" stroke="rgba(0,0,0,0.06)" stroke-width="0.5"/>`;
-          })
+            const rectStr = `<rect x="${x1}" y="${padTop}" width="${w}" height="${plotH}" fill="${color}" stroke="rgba(0,0,0,0.06)" stroke-width="0.5"/>`;
+            const fitLabel = w >= minBarWidthForLabel;
+            const labelX = x1 + 5;
+            const labelY = padTop + plotH / 2;
+            const textStr = fitLabel
+              ? `<text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" font-size="6" fill="#374151" class="time-audit-bar-inner-label" transform="rotate(-90, ${labelX}, ${labelY})">${esc(r.taskName)}</text>`
+              : "";
+            return { rectStr, textStr, fitLabel, r };
+          });
+        const taskRects = taskRectsAndLabels
+          .map((o) => o.rectStr + o.textStr)
+          .join("");
+        const narrowLegendItems = taskRectsAndLabels
+          .filter((o) => !o.fitLabel)
+          .map((o) => `<span class="time-audit-legend-item" style="--legend-color:${getCategoryColor(o.r.category)}">${esc(o.r.taskName)} (${String(Math.floor(o.r.startH)).padStart(2, "0")}:${String(Math.round((o.r.startH % 1) * 60)).padStart(2, "0")}~${String(Math.floor(o.r.endH)).padStart(2, "0")}:${String(Math.round((o.r.endH % 1) * 60)).padStart(2, "0")})</span>`)
           .join("");
 
         const fmtHhMm = (h) =>
@@ -6126,6 +6142,7 @@ export function render() {
             <div class="time-audit-charts">
               <div class="time-audit-chart-wrap">
                 <svg class="time-audit-svg" viewBox="0 0 ${chartW} ${chartH}" preserveAspectRatio="xMidYMid meet">
+                  <defs><clipPath id="time-audit-conc-clip-${String(dateStr).replace(/[^a-z0-9-]/gi, "-")}"><rect x="${padLeft}" y="${padTop}" width="${plotW}" height="${plotH}"/></clipPath></defs>
                   ${Array.from({ length: 25 }, (_, i) => {
                     const x = toX(i);
                     return `<line x1="${x}" y1="${padTop}" x2="${x}" y2="${concBottom}" stroke="#e5e7eb" stroke-width="0.25" stroke-dasharray="4,3"/>`;
@@ -6133,15 +6150,13 @@ export function render() {
                   <line x1="${padLeft}" y1="${concBottom}" x2="${padLeft + plotW}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
                   <line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
                   <text x="${padLeft - 12}" y="${(padTop + concBottom) / 2}" text-anchor="middle" font-size="7" fill="#6b7280" transform="rotate(-90, ${padLeft - 12}, ${(padTop + concBottom) / 2})">집중력</text>
-                  ${taskRects}
+                  <g clip-path="url(#time-audit-conc-clip-${String(dateStr).replace(/[^a-z0-9-]/gi, "-")})">${taskRects}</g>
                   <path d="${concPathStr2.fillPath}" fill="none" stroke="none"/>
                   ${concPathStr2.strokePath ? `<path d="${concPathStr2.strokePath}" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>` : ""}
                   ${xLabels.filter((_, i) => i % 2 === 0 || i === xLabels.length - 1).map((l) => `<text x="${l.x}" y="${concBottom + 10}" text-anchor="middle" font-size="6" fill="#6b7280">${l.label}</text>`).join("")}
                 </svg>
               </div>
-              <div class="time-audit-task-legend">
-                ${dayRows.map((r) => `<span class="time-audit-legend-item" style="--legend-color:${getCategoryColor(r.category)}">${r.taskName} (${String(Math.floor(r.startH)).padStart(2, "0")}:${String(Math.round((r.startH % 1) * 60)).padStart(2, "0")}~${String(Math.floor(r.endH)).padStart(2, "0")}:${String(Math.round((r.endH % 1) * 60)).padStart(2, "0")})</span>`).join("")}
-              </div>
+              ${narrowLegendItems ? `<div class="time-audit-task-legend">${narrowLegendItems}</div>` : ""}
             </div>
             <div class="time-audit-event-list">
               <div class="time-audit-event-list-title">방해 기록</div>
