@@ -5667,7 +5667,7 @@ export function render() {
     investAddBtn.type = "button";
     investAddBtn.className = "time-btn-add";
     investAddBtn.innerHTML =
-      '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 계획하기';
+      '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18">';
     investAddCell.appendChild(investAddBtn);
     investAddRow.appendChild(investAddCell);
 
@@ -5696,7 +5696,7 @@ export function render() {
     consumeAddBtn.type = "button";
     consumeAddBtn.className = "time-btn-add";
     consumeAddBtn.innerHTML =
-      '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 계획하기';
+      '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18">';
     consumeAddCell.appendChild(consumeAddBtn);
     consumeAddRow.appendChild(consumeAddCell);
 
@@ -6777,7 +6777,7 @@ export function renderTimeBudgetTablesForCalendar(
       addBtn.type = "button";
       addBtn.className = "time-daily-budget-add-btn time-btn-add";
       addBtn.title = "계획하기";
-      addBtn.innerHTML = '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 계획하기';
+      addBtn.innerHTML = '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18">';
       addBtn.addEventListener("click", onAdd);
       header.appendChild(addBtn);
     }
