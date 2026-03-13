@@ -2237,7 +2237,7 @@ export function render() {
   viewTabs.className = "time-view-tabs";
   viewTabs.innerHTML = `
     <button type="button" class="time-view-tab active" data-view="all">1. 시간기록하기</button>
-    <button type="button" class="time-view-tab" data-view="blank">오딧</button>
+    <button type="button" class="time-view-tab" data-view="audit">오딧</button>
     <button type="button" class="time-view-tab" data-view="productivity">생산성별</button>
     <button type="button" class="time-view-tab" data-view="dashboard">대시보드</button>
   `;
@@ -2417,6 +2417,8 @@ export function render() {
       renderAll(filtered);
     } else if (view === "blank") {
       contentWrap.innerHTML = "";
+    } else if (view === "audit") {
+      renderAudit(filtered);
     } else if (view === "productivity") {
       renderByProductivity(filtered);
     } else if (view === "dashboard") {
@@ -5011,6 +5013,167 @@ export function render() {
     updateTotal();
   }
 
+  function renderAudit(rows = []) {
+    contentWrap.innerHTML = "";
+    const type = filterType;
+    const y = filterYear;
+    const m = filterMonth;
+    const start = startDateInput.value || filterStartDate;
+    const end = endDateInput.value || filterEndDate;
+    const periodLabel = getFilterPeriodLabel(type, y, m, start, end);
+    const filtered = filterRowsByFilterType(rows, type, y, m, start, end);
+    const auditRows = filtered.filter((r) => (r.focus || "").trim().length > 0);
+    const defaultTimeFromStart = (st) => {
+      const m = (st || "").match(/[T\s](\d{1,2}):(\d{2})/);
+      return m ? `${String(m[1]).padStart(2, "0")}:${m[2]}` : "";
+    };
+    const timeStrToHours = (t) => {
+      if (!t || typeof t !== "string") return null;
+      const m = t.trim().match(/^(\d{1,2}):?(\d{2})?/);
+      if (!m) return null;
+      return parseInt(m[1], 10) + (parseInt(m[2], 10) || 0) / 60;
+    };
+
+    const wrap = document.createElement("div");
+    wrap.className = "time-audit-view";
+
+    if (auditRows.length === 0) {
+      wrap.innerHTML = `
+        <div class="time-audit-empty">
+          <div class="time-audit-empty-title">${periodLabel} 방해기록이 있는 과제가 없습니다</div>
+          <div class="time-audit-empty-desc">해당 날짜의 시간기록 중 방해기록을 입력한 과제만 오딧에 표시됩니다.</div>
+        </div>
+      `;
+      contentWrap.appendChild(wrap);
+      return;
+    }
+
+    const chartW = 800;
+    const chartH = 140;
+    const padLeft = 48;
+    const padRight = 16;
+    const padTop = 28;
+    const padBottom = 40;
+    const plotW = chartW - padLeft - padRight;
+    const plotH = chartH - padTop - padBottom;
+
+    function pointsToSmoothCurve(pts, tension = 1) {
+      if (pts.length < 2) return "";
+      const t = tension;
+      let d = `M ${pts[0].x} ${pts[0].y}`;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[Math.max(0, i - 1)];
+        const p1 = pts[i];
+        const p2 = pts[i + 1];
+        const p3 = pts[Math.min(pts.length - 1, i + 2)];
+        const cp1x = p1.x + ((p2.x - p0.x) / 6) * t;
+        const cp1y = p1.y + ((p2.y - p0.y) / 6) * t;
+        const cp2x = p2.x - ((p3.x - p1.x) / 6) * t;
+        const cp2y = p2.y - ((p3.y - p1.y) / 6) * t;
+        d += ` C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${p2.x} ${p2.y}`;
+      }
+      return d;
+    }
+
+    auditRows.forEach((row) => {
+      const startH = parseDateTimeToHours(row.startTime);
+      const endH = parseDateTimeToHours(row.endTime);
+      const defTime = defaultTimeFromStart(row.startTime);
+      const events = parseFocusEvents(row.focus, defTime);
+      if (startH == null || endH == null || events.length === 0) return;
+
+      const rangeH = Math.max(0.01, endH - startH);
+      const toX = (hours) =>
+        padLeft +
+        (Math.max(0, Math.min(hours - startH, rangeH)) / rangeH) * plotW;
+      const concTop = padTop;
+      const concBottom = padTop + plotH;
+
+      const eventTimes = events
+        .map((e) => (e.time ? timeStrToHours(e.time) : null))
+        .filter((h) => h != null && h >= startH && h <= endH)
+        .sort((a, b) => a - b);
+
+      /* 집중력: 시작에서 0, 구간마다 상승 → 방해 시 0으로 하락 → 다시 상승 (톱날 형태) */
+      let concPath = `M ${padLeft} ${concBottom}`;
+      eventTimes.forEach((h) => {
+        const x = toX(h);
+        concPath += ` L ${x} ${concTop} L ${x} ${concBottom}`;
+      });
+      concPath += ` L ${padLeft + plotW} ${concTop} L ${padLeft + plotW} ${concBottom} L ${padLeft} ${concBottom} Z`;
+
+      const bySlot = {};
+      const slotStep = rangeH / 12;
+      for (let i = 0; i < 12; i++) {
+        const slotStart = startH + i * slotStep;
+        bySlot[slotStart] = 0;
+      }
+      eventTimes.forEach((h) => {
+        const slotIdx = Math.floor((h - startH) / slotStep);
+        const slotStart = startH + Math.min(slotIdx, 11) * slotStep;
+        bySlot[slotStart] = (bySlot[slotStart] || 0) + 1;
+      });
+      const slotEntries = Object.entries(bySlot)
+        .map(([k, v]) => ({ slot: parseFloat(k), value: v }))
+        .sort((a, b) => a.slot - b.slot);
+      const maxFreq = Math.max(...slotEntries.map((x) => x.value), 1);
+      const freqPoints = slotEntries.map((v, i) => ({
+        x: padLeft + (i / Math.max(1, slotEntries.length - 1)) * plotW,
+        y:
+          padTop +
+          plotH -
+          (v.value / maxFreq) * plotH,
+      }));
+      const freqPathD =
+        freqPoints.length >= 2
+          ? pointsToSmoothCurve(freqPoints)
+          : freqPoints.length === 1
+            ? `M ${freqPoints[0].x} ${freqPoints[0].y}`
+            : "";
+
+      const xLabels = [0, 0.25, 0.5, 0.75, 1].map((rat) => {
+        const h = startH + rat * rangeH;
+        const hr = Math.floor(h);
+        const min = Math.round((h - hr) * 60);
+        return {
+          x: padLeft + rat * plotW,
+          label: `${String(hr).padStart(2, "0")}:${String(min).padStart(2, "0")}`,
+        };
+      });
+
+      const block = document.createElement("div");
+      block.className = "time-audit-block";
+      const startLabel = (row.startTime || "").match(/[T\s](\d{1,2}):(\d{2})/);
+      const endLabel = (row.endTime || "").match(/[T\s](\d{1,2}):(\d{2})/);
+      const timeRangeStr =
+        startLabel && endLabel
+          ? `${startLabel[1]}:${startLabel[2]} ~ ${endLabel[1]}:${endLabel[2]}`
+          : "";
+      block.innerHTML = `
+        <div class="time-audit-task-name">${(row.taskName || "").trim() || "—"}</div>
+        <div class="time-audit-task-time">${timeRangeStr}</div>
+        <div class="time-audit-concentration-title">집중력</div>
+        <div class="time-audit-chart-wrap">
+          <svg class="time-audit-svg" viewBox="0 0 ${chartW} ${chartH}" preserveAspectRatio="xMidYMid meet">
+            <path d="${concPath}" fill="rgba(34,197,94,0.15)" stroke="#22c55e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="${padLeft}" y1="${concBottom}" x2="${padLeft + plotW}" y2="${concBottom}" stroke="#e5e7eb" stroke-width="0.5" stroke-dasharray="2,2"/>
+            ${xLabels.map((l) => `<text x="${l.x}" y="${chartH - 8}" text-anchor="middle" font-size="9" fill="#6b7280">${l.label}</text>`).join("")}
+          </svg>
+        </div>
+        <div class="time-audit-freq-title">방해 빈도</div>
+        <div class="time-audit-chart-wrap">
+          <svg class="time-audit-svg" viewBox="0 0 ${chartW} ${chartH}" preserveAspectRatio="xMidYMid meet">
+            <path d="${freqPathD}" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            ${xLabels.map((l) => `<text x="${l.x}" y="${chartH - 8}" text-anchor="middle" font-size="9" fill="#6b7280">${l.label}</text>`).join("")}
+          </svg>
+        </div>
+      `;
+      wrap.appendChild(block);
+    });
+
+    contentWrap.appendChild(wrap);
+  }
+
   function renderDashboard(rows = []) {
     contentWrap.innerHTML = "";
     const dash = document.createElement("div");
@@ -5946,7 +6109,13 @@ export function render() {
   }
 
   function updateFilterBarVisibility(view) {
-    if (view === "blank") {
+    if (view === "audit") {
+      filterTabs.style.display = "";
+      if (taskSetupBtn) taskSetupBtn.style.display = "none";
+      dayWrap.style.display = filterType === "day" ? "" : "none";
+      monthWrap.style.display = filterType === "month" ? "" : "none";
+      rangeWrap.style.display = filterType === "range" ? "" : "none";
+    } else if (view === "blank") {
       filterTabs.style.display = "none";
       if (taskSetupBtn) taskSetupBtn.style.display = "none";
       dayWrap.style.display = "none";
@@ -5979,7 +6148,7 @@ export function render() {
       cachedRows = getFullRowsForFilter(true);
     }
     const rowsToUse =
-      view === "dashboard" || view === "blank"
+      view === "dashboard" || view === "blank" || view === "audit"
         ? cachedRows
         : getFilteredRows(cachedRows);
     viewTabs.querySelectorAll(".time-view-tab").forEach((btn) => {
@@ -5990,13 +6159,15 @@ export function render() {
       renderAll(rowsToUse);
     } else if (view === "blank") {
       contentWrap.innerHTML = "";
+    } else if (view === "audit") {
+      renderAudit(getFilteredRows(cachedRows));
     } else if (view === "productivity") {
       renderByProductivity(rowsToUse);
     } else if (view === "dashboard") {
       renderDashboard(cachedRows);
     }
     totalFooter.style.display =
-      view === "dashboard" || view === "blank"
+      view === "dashboard" || view === "blank" || view === "audit"
         ? "none"
         : "";
     updateTotal();

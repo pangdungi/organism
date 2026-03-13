@@ -11520,6 +11520,77 @@ body.kpi-resizing {
   overflow: visible;
 }
 
+/* 오딧 탭: 방해기록 집중력·빈도 그래프 */
+.time-audit-view {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.time-audit-empty {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px dashed #e5e7eb;
+}
+
+.time-audit-empty-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.time-audit-empty-desc {
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.time-audit-block {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.time-audit-task-name {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.time-audit-task-time {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.time-audit-concentration-title,
+.time-audit-freq-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin-top: 0.25rem;
+}
+
+.time-audit-chart-wrap {
+  width: 100%;
+  min-height: 120px;
+  overflow: visible;
+}
+
+.time-audit-svg {
+  width: 100%;
+  height: auto;
+  min-height: 120px;
+  display: block;
+  overflow: visible;
+}
+
 .time-dashboard-widget-daily-revenue .time-dashboard-widget-title {
   margin-bottom: 0.35rem;
 }
