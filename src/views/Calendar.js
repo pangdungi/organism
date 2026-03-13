@@ -5563,6 +5563,9 @@ function renderEisenhowerView(tabsElement) {
       storageKey,
     } = payload;
     if (!name) return;
+    if (typeof console !== "undefined" && console.log) {
+      console.log("[TODO-DEBUG] Calendar.handleQuadrantDrop: before save", { quadrant, taskId, sectionId, name, hasSectionsWrap: !!wrap?.querySelector(".todo-sections-wrap") });
+    }
     saveTodoListBeforeUnmount(wrap);
     const todayKey = formatDateKey(new Date());
     const isUrgentImportant = quadrant === "urgent-important";
@@ -5628,6 +5631,9 @@ function renderEisenhowerView(tabsElement) {
     const { taskId, sectionId, name, isKpiTodo, kpiTodoId, storageKey } =
       payload;
     if (!name) return;
+    if (typeof console !== "undefined" && console.log) {
+      console.log("[TODO-DEBUG] Calendar.handleSidebarDropClearEisenhower: before save", { taskId, sectionId, hasSectionsWrap: !!wrap?.querySelector(".todo-sections-wrap") });
+    }
     saveTodoListBeforeUnmount(wrap);
     let ok = false;
     if (isKpiTodo && kpiTodoId && storageKey) {
@@ -5751,12 +5757,11 @@ export function render() {
   let currentView = "todo";
 
   function renderContent(view) {
-    if (
-      currentView === "todo" ||
-      currentView === "calendar" ||
-      currentView === "1day" ||
-      currentView === "eisenhower"
-    ) {
+    const onlySaveWhenFullTodoList = currentView === "todo" || currentView === "eisenhower";
+    if (onlySaveWhenFullTodoList) {
+      if (typeof console !== "undefined" && console.log) {
+        console.log("[TODO-DEBUG] Calendar.renderContent: saving before switch", { from: currentView, to: view, hasSectionsWrap: !!contentWrap?.querySelector(".todo-sections-wrap"), contentWrapChildren: contentWrap?.children?.length });
+      }
       saveTodoListBeforeUnmount(contentWrap);
     }
     currentView = view;

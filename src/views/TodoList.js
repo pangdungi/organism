@@ -15,6 +15,11 @@ const SECTION_TASKS_KEY = "todo-section-tasks";
 export const DRAG_TYPE_TODO_TO_CALENDAR = "todo-task-to-calendar";
 export const DRAG_TYPE_TODO_TO_EISENHOWER = "todo-task-to-eisenhower";
 
+const TODO_DEBUG = true;
+function todoDebug(...args) {
+  if (TODO_DEBUG && typeof console !== "undefined" && console.log) console.log("[TODO-DEBUG]", ...args);
+}
+
 function loadSectionTasks(sectionId) {
   try {
     const raw = localStorage.getItem(SECTION_TASKS_KEY);
@@ -23,7 +28,7 @@ function loadSectionTasks(sectionId) {
       const arr = obj[sectionId];
       if (Array.isArray(arr)) {
         const sectionLabel = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복", braindump: "브레인 덤프" }[sectionId] || sectionId;
-        return arr
+        const out = arr
           .filter((t) => (t.name || "").trim() !== "")
           .map((t) => ({
             ...t,
@@ -32,6 +37,8 @@ function loadSectionTasks(sectionId) {
             itemType: t.itemType || "todo",
             isKpiTodo: false,
           }));
+        todoDebug("loadSectionTasks", sectionId, "count", out.length);
+        return out;
       }
     }
   } catch (_) {}
@@ -216,6 +223,7 @@ const FIXED_SECTION_IDS_FOR_STORAGE = ["braindump", ...KPI_SECTION_IDS];
 
 let _saveSectionTasksTimer = null;
 function scheduleSaveSectionTasksFromDOM(sectionsWrap) {
+  todoDebug("scheduleSaveSectionTasksFromDOM", { hasWrap: !!sectionsWrap });
   if (!sectionsWrap) return;
   if (_saveSectionTasksTimer) clearTimeout(_saveSectionTasksTimer);
   _saveSectionTasksTimer = setTimeout(() => {
@@ -225,10 +233,14 @@ function scheduleSaveSectionTasksFromDOM(sectionsWrap) {
 }
 
 function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
+  todoDebug("collectAndSaveKpiTasksFromDOM", { hasWrap: !!sectionsWrap });
   if (!sectionsWrap) return;
   FIXED_SECTION_IDS_FOR_STORAGE.forEach((sectionId) => {
     const sec = sectionsWrap.querySelector(`.todo-section[data-section="${sectionId}"]`);
-    if (!sec) return;
+    if (!sec) {
+      todoDebug("collectAndSave: section not found", sectionId);
+      return;
+    }
     const sectionTasks = [];
     sec.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").forEach((row) => {
       const nameInput = row.querySelector(".todo-cell-name input");
@@ -267,17 +279,34 @@ function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
         });
       }
     });
+    todoDebug("collectAndSave: saving section", sectionId, "tasks", sectionTasks.length, sectionTasks.map((t) => ({ name: t.name, eisenhower: t.eisenhower })));
     saveSectionTasks(sectionId, sectionTasks);
   });
+  try {
+    const raw = localStorage.getItem(SECTION_TASKS_KEY);
+    const obj = raw ? JSON.parse(raw) : {};
+    const counts = {};
+    Object.keys(obj || {}).forEach((k) => { counts[k] = (obj[k] || []).length; });
+    todoDebug("collectAndSave: after save localStorage", SECTION_TASKS_KEY, counts);
+  } catch (_) {}
 }
 
 export function saveTodoListBeforeUnmount(container) {
+  const hasContainer = !!container;
   const sectionsWrap = container?.querySelector(".todo-sections-wrap");
+  todoDebug("saveTodoListBeforeUnmount", {
+    hasContainer,
+    hasSectionsWrap: !!sectionsWrap,
+    containerClass: container?.className,
+    containerChildren: container?.children?.length,
+  });
   if (sectionsWrap) {
     collectAndSaveKpiTasksFromDOM(sectionsWrap);
     getCustomSections().forEach((s) => {
       saveCustomSectionTasks(s.id, collectCustomSectionFromDOM(sectionsWrap, s.id));
     });
+  } else {
+    todoDebug("saveTodoListBeforeUnmount: no .todo-sections-wrap in container, save skipped");
   }
 }
 

@@ -19003,9 +19003,11 @@ body.kpi-resizing {
   width: 100%;
 }
 
-.calendar-todo-sidebar-body .todo-list-toolbar {
-  margin-bottom: 0.5rem;
-  flex-wrap: wrap;
+/* 환경설정 버튼: 할일 쏟아내기 탭에서만 표시. 날짜정하기/우선순위/오늘 해치우기 사이드바에서는 숨김 */
+.calendar-todo-sidebar-body .todo-list-toolbar,
+.todo-list-in-sidebar .todo-list-toolbar,
+.todo-list-eisenhower-sidebar .todo-list-toolbar {
+  display: none !important;
 }
 
 .calendar-todo-sidebar-body .todo-list-toolbar-btn {
