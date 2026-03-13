@@ -10086,6 +10086,98 @@ body.kpi-resizing {
   box-shadow: none;
 }
 
+/* 메모 / 태그 분리: 태그 입력 영역 */
+.time-task-log-tags-wrap {
+  margin-top: 0.25rem;
+}
+.time-task-log-tag-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  outline: none;
+  box-sizing: border-box;
+  margin-bottom: 0.5rem;
+}
+.time-task-log-tag-input:focus {
+  border-color: #d1d5db;
+}
+.time-task-log-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.time-task-log-tag-list .time-memo-tag-chip {
+  margin: 0;
+}
+
+/* 과제 메모 contenteditable + 인라인 태그 칩 (레거시/태그 칩 공통) */
+.time-task-log-feedback-editable {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.time-task-log-feedback-editable.is-empty:not(:focus)::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+}
+.time-memo-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  margin: 0 2px;
+  font-size: 0.8rem;
+  color: #1e40af;
+  background: #dbeafe;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+.time-memo-tag-chip-text {
+  pointer-events: none;
+}
+.time-memo-tag-chip-remove {
+  padding: 0;
+  margin: 0;
+  margin-left: 2px;
+  width: 14px;
+  height: 14px;
+  min-width: 14px;
+  min-height: 14px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.time-memo-tag-chip-remove:hover {
+  color: #374151;
+  background: rgba(0, 0, 0, 0.06);
+}
+/* 시간기록 테이블 메모 태그 열 - 태그마다 구분되도록 */
+.time-display-memo-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+.time-memo-tag-pill {
+  display: inline-block;
+  padding: 3px 8px;
+  font-size: 0.8rem;
+  color: #1e40af;
+  background: #dbeafe;
+  border: 1px solid #93c5fd;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
 /* 과제 선택 드롭다운 */
 .time-task-log-task-dropdown {
   position: relative;
@@ -10125,11 +10217,27 @@ body.kpi-resizing {
 }
 
 .time-task-log-task-dropdown-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.5rem 0.75rem;
   font-size: 0.9rem;
   cursor: pointer;
   color: #374151;
   border-bottom: 1px solid #f3f4f6;
+}
+
+.time-task-log-task-dropdown-option .time-task-prod-bar {
+  flex-shrink: 0;
+  width: 4px;
+  min-height: 1rem;
+  border-radius: 2px;
+  align-self: stretch;
+}
+
+.time-task-log-task-dropdown-option-label {
+  flex: 1;
+  min-width: 0;
 }
 
 .time-task-log-task-dropdown-option:last-child {
@@ -10313,7 +10421,8 @@ body.kpi-resizing {
 .time-task-log-energy-section,
 .time-task-log-focus-section,
 .time-task-log-expense-section,
-.time-task-log-emotion-section {
+.time-task-log-emotion-section,
+.time-task-log-todo-section {
   margin-top: 1.25rem;
   padding: 1.25rem;
   background: #f9fafb;
@@ -10707,7 +10816,8 @@ body.kpi-resizing {
 }
 
 .time-task-log-expense-header,
-.time-task-log-emotion-header {
+.time-task-log-emotion-header,
+.time-task-log-todo-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -10715,7 +10825,8 @@ body.kpi-resizing {
 }
 
 .time-task-log-expense-title,
-.time-task-log-emotion-title {
+.time-task-log-emotion-title,
+.time-task-log-todo-title {
   margin: 0;
   font-size: 0.95rem;
   font-weight: 600;
@@ -10772,6 +10883,60 @@ body.kpi-resizing {
   transform: translateY(-50%) translateX(22px);
 }
 
+.time-task-log-todo-toggle {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.time-task-log-todo-toggle-input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.time-task-log-todo-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #e5e7eb;
+  border-radius: 13px !important;
+  transition: 0.25s ease;
+}
+
+.time-task-log-todo-toggle-slider::before {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  left: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #fff;
+  border-radius: 50% !important;
+  transition: 0.25s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.time-task-log-todo-toggle-input:checked
+  + .time-task-log-todo-toggle-slider {
+  background: #9ca3af;
+}
+
+.time-task-log-todo-toggle-input:checked
+  + .time-task-log-todo-toggle-slider::before {
+  transform: translateY(-50%) translateX(22px);
+}
+
+.time-task-log-todo-fields {
+  margin-top: 0.75rem;
+}
+
 .time-task-log-emotion-fields {
   margin-top: 0.75rem;
 }
@@ -10798,7 +10963,8 @@ body.kpi-resizing {
 
 .time-task-log-emotion-q1,
 .time-task-log-emotion-q2,
-.time-task-log-emotion-q3 {
+.time-task-log-emotion-q3,
+.time-task-log-emotion-q4 {
   width: 100%;
   height: 120px;
   padding: 0.5rem 0.75rem;
@@ -10818,13 +10984,15 @@ body.kpi-resizing {
 
 .time-task-log-emotion-q1::-webkit-scrollbar,
 .time-task-log-emotion-q2::-webkit-scrollbar,
-.time-task-log-emotion-q3::-webkit-scrollbar {
+.time-task-log-emotion-q3::-webkit-scrollbar,
+.time-task-log-emotion-q4::-webkit-scrollbar {
   display: none;
 }
 
 .time-task-log-emotion-q1:focus,
 .time-task-log-emotion-q2:focus,
-.time-task-log-emotion-q3:focus {
+.time-task-log-emotion-q3:focus,
+.time-task-log-emotion-q4:focus {
   outline: none;
   border-color: #d1d5db;
   box-shadow: none;
@@ -12136,6 +12304,154 @@ body.kpi-resizing {
   text-align: center;
   font-size: 0.8rem;
   color: #9ca3af;
+}
+
+/* 오딧 4. 시간낭비내역 */
+.time-audit-region-time-thief {
+  margin-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 1rem;
+}
+
+.time-audit-thief-content {
+  display: flex;
+  flex-direction: row;
+  gap: 0;
+  align-items: stretch;
+  min-height: 180px;
+  width: 100%;
+}
+
+.time-audit-thief-left {
+  flex: 0 0 50%;
+  width: 50%;
+  box-sizing: border-box;
+  padding-right: 0.75rem;
+}
+
+.time-audit-thief-right-half {
+  flex: 0 0 50%;
+  width: 50%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: stretch;
+  padding-left: 0.75rem;
+}
+
+/* 테이블·요약 박스: 우선순위 섹션과 동일 회색/화이트 */
+.time-audit-thief-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.time-audit-thief-table {
+  width: 100%;
+  min-width: 160px;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.time-audit-thief-table thead th {
+  background: #f9fafb;
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+  font-weight: 600;
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.time-audit-thief-table tbody td {
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.time-audit-thief-task {
+  font-weight: 500;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #374151;
+}
+
+.time-audit-thief-time {
+  color: #374151;
+  font-weight: 500;
+}
+
+.time-audit-thief-value {
+  color: #374151;
+  font-weight: 600;
+}
+
+.time-audit-thief-empty {
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #9ca3af;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.time-audit-thief-right-half .time-audit-thief-center {
+  flex: 1 1 auto;
+  min-width: 140px;
+}
+
+.time-audit-thief-right-half .time-audit-thief-center .time-audit-pie-box {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+.time-audit-thief-right-half .time-audit-thief-right {
+  flex: 0 1 auto;
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.time-audit-thief-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem 0;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  text-align: center;
+  width: 100%;
+  box-sizing: border-box;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+.time-audit-thief-summary-time,
+.time-audit-thief-summary-value {
+  /* 박스는 위 .time-audit-thief-summary 회색/화이트 유지 */
+}
+
+.time-audit-thief-summary-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.time-audit-thief-summary-num {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #374151;
+  line-height: 1.2;
+}
+
+.time-audit-thief-summary-value .time-audit-thief-summary-num {
+  color: #2563eb;
 }
 
 .time-audit-schedule-table-wrap {
@@ -20338,4 +20654,119 @@ body.kpi-resizing {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
+}
+
+/* ----- 아카이브 (시간기록 메모·태그 목록, 미니멀) ----- */
+.archive-view {
+  padding: 1.5rem 1.25rem;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.archive-header {
+  margin-bottom: 1.5rem;
+}
+
+.archive-title {
+  margin: 0 0 1rem 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--gray-800, #1f2937);
+}
+
+.archive-search-wrap {
+  margin-top: 0.75rem;
+}
+
+.archive-search-input {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  border: 1px solid var(--gray-200, #e5e7eb);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--gray-800, #1f2937);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.archive-search-input::placeholder {
+  color: var(--gray-400, #9ca3af);
+}
+
+.archive-search-input:focus {
+  border-color: var(--gray-400, #9ca3af);
+}
+
+.archive-list-section {
+  margin-top: 0.5rem;
+}
+
+.archive-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.archive-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--gray-500, #6b7280);
+  margin: 0;
+}
+
+.archive-card {
+  padding: 1rem 1.25rem;
+  background: #fff;
+  border: 1px solid var(--gray-200, #e5e7eb);
+  border-radius: 8px;
+  transition: border-color 0.15s;
+}
+
+.archive-card:hover {
+  border-color: var(--gray-300, #d1d5db);
+}
+
+.archive-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.archive-card-date {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--gray-500, #6b7280);
+}
+
+.archive-card-time {
+  font-size: 0.8rem;
+  color: var(--gray-500, #6b7280);
+}
+
+.archive-card-memo {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--gray-800, #1f2937);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.archive-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.archive-tag-pill {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  color: #1e40af;
+  background: #dbeafe;
+  border-radius: 4px;
 }

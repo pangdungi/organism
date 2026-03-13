@@ -79,8 +79,6 @@ export function render() {
     <button type="button" class="time-view-tab diary-tab-btn" data-tab="3">감정관리</button>
     <button type="button" class="time-view-tab diary-tab-btn active" data-tab="2">통제일기</button>
     <button type="button" class="time-view-tab diary-tab-btn" data-tab="1">자유일기</button>
-    <button type="button" class="time-view-tab diary-tab-btn" data-tab="4">탭 4</button>
-    <button type="button" class="time-view-tab diary-tab-btn" data-tab="5">탭 5</button>
   `;
   el.appendChild(tabs);
 

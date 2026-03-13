@@ -179,6 +179,95 @@ function getAuditPriorityPieHtml(dateStr) {
   return makePie(priorityEntries, "우선순위별 완료", priorityColor) + makePie(kpiEntries, "KPI별 완료", kpiColor);
 }
 
+/** 오딧 4. 시간낭비내역: 비생산적 카테고리 파이 (회색 계열) */
+/** 비생산적 시간 비율 파이 – 파란색 계열, 볼드하지 않게 */
+const TIME_THIEF_PIE_COLORS = ["#93c5fd", "#bfdbfe", "#dbeafe", "#a5b4fc", "#c7d2fe", "#e0e7ff", "#818cf8", "#a78bfa"];
+function getAuditTimeThiefHtml(dateStr, filtered, hourlyRate) {
+  const dateRows = filtered.filter(
+    (r) => (normalizeDateForCompare(r.date || "") || (r.date || "").trim()) === dateStr,
+  );
+  const nonproductiveRows = dateRows.filter(
+    (r) => (String(r.productivity || "").trim()) === "nonproductive",
+  );
+  const hourly = parseFloat(String(hourlyRate || "0").replace(/,/g, "")) || 0;
+  const byTask = {};
+  nonproductiveRows.forEach((r) => {
+    const name = (r.taskName || "").trim() || "—";
+    const hrs = parseTimeToHours(r.timeTracked) || 0;
+    const price = hrs * hourly * -1;
+    if (!byTask[name]) byTask[name] = { taskName: name, hours: 0, price: 0 };
+    byTask[name].hours += hrs;
+    byTask[name].price += price;
+  });
+  const tableRows = Object.values(byTask).sort((a, b) => b.hours - a.hours);
+  const totalWastedHours = tableRows.reduce((s, r) => s + r.hours, 0);
+  const totalWastedValue = tableRows.reduce((s, r) => s + r.price, 0);
+  const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const tableHtml =
+    tableRows.length > 0
+      ? (() => {
+          const rowsHtml = tableRows
+            .map(
+              (r) =>
+                `<tr><td class="time-audit-thief-task">${esc(r.taskName)}</td><td class="time-audit-thief-time">${formatHoursToHHMM(r.hours)}</td><td class="time-audit-thief-value">${formatPrice(r.price)}</td></tr>`,
+            )
+            .join("");
+          return `<div class="time-audit-thief-table-wrap"><table class="time-audit-thief-table"><thead><tr><th>과제명</th><th>실제 보낸 시간</th><th>시간의 가치</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+        })()
+      : `<div class="time-audit-thief-empty">해당 날짜 비생산적 기록 없음</div>`;
+  const makePieByHours = (entries, title) => {
+    const total = entries.reduce((s, e) => s + e.hours, 0);
+    if (total <= 0)
+      return `<div class="time-audit-pie-box"><div class="time-audit-pie-title">${esc(title)}</div><div class="time-audit-pie-empty">데이터 없음</div></div>`;
+    let acc = 0;
+    const cx = 50;
+    const cy = 50;
+    const r = 40;
+    const segs = entries
+      .map((e, i) => {
+        const color = TIME_THIEF_PIE_COLORS[i % TIME_THIEF_PIE_COLORS.length];
+        const pct = e.hours / total;
+        if (pct >= 0.9999)
+          return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" title="${esc(e.taskName)}: ${Math.round(pct * 100)}%"/>`;
+        const a0 = (acc / total) * 2 * Math.PI - Math.PI / 2;
+        acc += e.hours;
+        const a1 = (acc / total) * 2 * Math.PI - Math.PI / 2;
+        const x0 = cx + r * Math.cos(a0);
+        const y0 = cy + r * Math.sin(a0);
+        const x1 = cx + r * Math.cos(a1);
+        const y1 = cy + r * Math.sin(a1);
+        const large = pct > 0.5 ? 1 : 0;
+        const d = `M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z`;
+        return `<path d="${d}" fill="${color}" title="${esc(e.taskName)}: ${Math.round(pct * 100)}%"/>`;
+      })
+      .join("");
+    const legend = entries
+      .map((e, i) => {
+        const color = TIME_THIEF_PIE_COLORS[i % TIME_THIEF_PIE_COLORS.length];
+        const pct = total > 0 ? Math.round((e.hours / total) * 100) : 0;
+        return `<span class="time-audit-pie-legend-item" style="--pie-color:${color}">${esc(e.taskName)} ${pct}%</span>`;
+      })
+      .join("");
+    return `<div class="time-audit-pie-box"><div class="time-audit-pie-title">${esc(title)}</div><div class="time-audit-pie-svg-wrap"><svg viewBox="0 0 100 100" class="time-audit-pie-svg">${segs}</svg></div><div class="time-audit-pie-legend">${legend}</div></div>`;
+  };
+  const pieHtml =
+    tableRows.length > 0
+      ? makePieByHours(tableRows, "비생산적 시간 비율")
+      : `<div class="time-audit-pie-box"><div class="time-audit-pie-title">비생산적 시간 비율</div><div class="time-audit-pie-empty">데이터 없음</div></div>`;
+  const timeBoxHtml = `
+    <div class="time-audit-thief-summary time-audit-thief-summary-time">
+      <div class="time-audit-thief-summary-label">오늘 낭비한 시간</div>
+      <div class="time-audit-thief-summary-num">${formatHoursToReadable(totalWastedHours)}</div>
+    </div>`;
+  const valueBoxHtml = `
+    <div class="time-audit-thief-summary time-audit-thief-summary-value">
+      <div class="time-audit-thief-summary-label">오늘 낭비한 시간의 가치</div>
+      <div class="time-audit-thief-summary-num">${formatPrice(totalWastedValue)}원</div>
+    </div>`;
+  const rightHalf = `<div class="time-audit-thief-right-half"><div class="time-audit-thief-center">${pieHtml}</div><div class="time-audit-thief-right time-audit-thief-time-wrap">${timeBoxHtml}</div><div class="time-audit-thief-right time-audit-thief-value-wrap">${valueBoxHtml}</div></div>`;
+  return `<div class="time-audit-thief-content"><div class="time-audit-thief-left">${tableHtml}</div>${rightHalf}</div>`;
+}
+
 const PRODUCTIVITY_OPTIONS = [
   { value: "productive", label: "생산적", color: "prod-pink" },
   { value: "nonproductive", label: "비생산적", color: "prod-blue" },
@@ -1924,6 +2013,7 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
         : ""),
     date: initialData?.date || "",
     feedback: initialData?.feedback || "",
+    memoTags: Array.isArray(initialData?.memoTags) ? initialData.memoTags : [],
     focus: String(initialData?.focus || "").trim(),
     energy: String(initialData?.energy || "").trim(),
   };
@@ -2065,6 +2155,19 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
 
   const memoTagTd = document.createElement("td");
   memoTagTd.className = "time-cell time-cell-memo-tag";
+  const memoTagList =
+    rowData.memoTags?.length > 0
+      ? rowData.memoTags
+      : parseTagsFromFeedback(rowData.feedback || "");
+  const memoTagWrap = document.createElement("span");
+  memoTagWrap.className = "time-display-memo-tags";
+  memoTagList.forEach((tag) => {
+    const pill = document.createElement("span");
+    pill.className = "time-memo-tag-pill";
+    pill.textContent = tag;
+    memoTagWrap.appendChild(pill);
+  });
+  memoTagTd.appendChild(memoTagWrap);
   tr.appendChild(memoTagTd);
 
   tr._onRowDelete = onRowDelete;
@@ -2086,6 +2189,229 @@ const PRODUCTIVITY_VIEW_ORDER = [
   { value: "productive", label: "생산적" },
   { value: "nonproductive", label: "비생산적" },
 ];
+
+/** 메모 문자열에서 #태그명 패턴 추출 → 태그 배열 (Archive 등에서 사용) */
+export function parseTagsFromFeedback(feedbackStr) {
+  if (!feedbackStr || typeof feedbackStr !== "string") return [];
+  const matches = feedbackStr.match(/#([^\s#]+)/g) || [];
+  return [...new Set(matches.map((m) => m.slice(1).trim()).filter(Boolean))];
+}
+
+/** contenteditable 메모 영역 직렬화: 텍스트 + #태그명 → 한 줄 문자열 */
+function serializeMemoContent(containerEl) {
+  if (!containerEl) return "";
+  const parts = [];
+  const walk = (node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const t = (node.textContent || "").trim();
+      if (t) parts.push(t);
+      return;
+    }
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      if (node.classList?.contains("time-memo-tag-chip")) {
+        const tag = (node.getAttribute("data-tag") || "").trim();
+        if (tag) parts.push("#" + tag);
+        return;
+      }
+      node.childNodes.forEach(walk);
+    }
+  };
+  containerEl.childNodes.forEach(walk);
+  return parts.join(" ");
+}
+
+/** 메모 문자열을 contenteditable에 반영 (텍스트 + 태그 칩) */
+function setMemoContent(containerEl, feedbackStr) {
+  if (!containerEl) return;
+  const str = (feedbackStr || "").trim();
+  containerEl.innerHTML = "";
+  if (!str) {
+    containerEl.classList.add("is-empty");
+    return;
+  }
+  containerEl.classList.remove("is-empty");
+  const tokens = str.split(/(#[^\s#]+)/g).filter(Boolean);
+  tokens.forEach((tok) => {
+    if (tok.startsWith("#") && tok.length > 1) {
+      const tagName = tok.slice(1).trim();
+      if (!tagName) return;
+      const chip = document.createElement("span");
+      chip.className = "time-memo-tag-chip";
+      chip.contentEditable = "false";
+      chip.setAttribute("data-tag", tagName);
+      chip.innerHTML = `<span class="time-memo-tag-chip-text">${escapeHtml(tagName)}</span><button type="button" class="time-memo-tag-chip-remove" aria-label="태그 삭제">&times;</button>`;
+      chip.querySelector(".time-memo-tag-chip-remove")?.addEventListener("click", (e) => {
+        e.preventDefault();
+        chip.remove();
+      });
+      containerEl.appendChild(chip);
+    } else {
+      const text = document.createTextNode(tok);
+      containerEl.appendChild(text);
+    }
+  });
+}
+
+function escapeHtml(s) {
+  const div = document.createElement("div");
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+/** contenteditable 메모 필드에 # 태그 입력·삭제 동작 초기화 */
+function initMemoFeedbackWithTags(containerEl) {
+  if (!containerEl) return;
+  let composing = false;
+  containerEl.addEventListener("compositionstart", () => { composing = true; });
+  containerEl.addEventListener("compositionend", () => { composing = false; });
+
+  function getTextBeforeCaret(container, range) {
+    const preRange = document.createRange();
+    preRange.setStart(container, 0);
+    preRange.setEnd(range.startContainer, range.startOffset);
+    return preRange.toString().replace(/\u200B/g, "");
+  }
+  function getTextAfterCaret(container, range) {
+    const postRange = document.createRange();
+    postRange.setStart(range.endContainer, range.endOffset);
+    postRange.setEnd(container, getNodeLength(container));
+    return postRange.toString();
+  }
+  function getNodeLength(node) {
+    if (node.nodeType === Node.TEXT_NODE) return (node.textContent || "").length;
+    return node.childNodes.length;
+  }
+  function tryCommitTag(container, range, replaceLen, tagName, insertSpaceAfter) {
+    const tagNameTrim = (tagName || "").trim();
+    if (!tagNameTrim) return;
+    const sel = window.getSelection();
+    const startCharOffset = getCharacterOffset(container, range.startContainer, range.startOffset);
+    const fromOffset = Math.max(0, startCharOffset - replaceLen);
+    const fromPos = getNodeAndOffsetAt(container, fromOffset);
+    if (!fromPos) return;
+    const delRange = document.createRange();
+    delRange.setStart(fromPos.node, fromPos.offset);
+    delRange.setEnd(range.startContainer, range.startOffset);
+    delRange.deleteContents();
+    const chip = document.createElement("span");
+    chip.className = "time-memo-tag-chip";
+    chip.contentEditable = "false";
+    chip.setAttribute("data-tag", tagNameTrim);
+    chip.innerHTML = `<span class="time-memo-tag-chip-text">${escapeHtml(tagNameTrim)}</span><button type="button" class="time-memo-tag-chip-remove" aria-label="태그 삭제">&times;</button>`;
+    chip.querySelector(".time-memo-tag-chip-remove")?.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      chip.remove();
+    });
+    range.setStart(fromPos.node, fromPos.offset);
+    range.collapse(true);
+    range.insertNode(chip);
+    if (insertSpaceAfter) {
+      const space = document.createTextNode("\u00A0");
+      chip.after(space);
+      range.setStart(space, 1);
+      range.setEnd(space, 1);
+    } else {
+      range.setStartAfter(chip);
+      range.setEndAfter(chip);
+    }
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+  function getCharacterOffset(container, targetNode, targetOffset) {
+    let count = 0;
+    const walk = (n) => {
+      if (n === targetNode) {
+        if (n.nodeType === Node.TEXT_NODE) {
+          count += Math.min(targetOffset, (n.textContent || "").length);
+          return true;
+        }
+        if (n.nodeType === Node.ELEMENT_NODE && n.classList?.contains("time-memo-tag-chip")) {
+          count += 1 + ((n.getAttribute("data-tag") || "").trim().length);
+          return true;
+        }
+        return true;
+      }
+      if (n.nodeType === Node.TEXT_NODE) {
+        count += (n.textContent || "").length;
+        return false;
+      }
+      if (n.nodeType === Node.ELEMENT_NODE && n.classList?.contains("time-memo-tag-chip")) {
+        count += 1 + ((n.getAttribute("data-tag") || "").trim().length);
+        return false;
+      }
+      if (n.nodeType === Node.ELEMENT_NODE) {
+        for (let i = 0; i < n.childNodes.length; i++) {
+          if (walk(n.childNodes[i])) return true;
+        }
+      }
+      return false;
+    };
+    walk(container);
+    return count;
+  }
+  function getNodeAndOffsetAt(container, charOffset) {
+    let passed = 0;
+    const walk = (n) => {
+      if (n.nodeType === Node.TEXT_NODE) {
+        const len = (n.textContent || "").length;
+        if (passed + len >= charOffset)
+          return { node: n, offset: charOffset - passed };
+        passed += len;
+        return null;
+      }
+      if (n.nodeType === Node.ELEMENT_NODE && n.classList?.contains("time-memo-tag-chip")) {
+        const len = 1 + ((n.getAttribute("data-tag") || "").trim().length);
+        if (passed + len >= charOffset) return { node: n, offset: 0 };
+        passed += len;
+        return null;
+      }
+      if (n.nodeType === Node.ELEMENT_NODE) {
+        for (let i = 0; i < n.childNodes.length; i++) {
+          const r = walk(n.childNodes[i]);
+          if (r) return r;
+        }
+      }
+      return null;
+    };
+    return walk(container);
+  }
+
+  containerEl.addEventListener("input", () => {
+    if (serializeMemoContent(containerEl).trim() === "") containerEl.classList.add("is-empty");
+    else containerEl.classList.remove("is-empty");
+    if (composing) return;
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    if (!containerEl.contains(range.commonAncestorContainer)) return;
+    const beforeCaret = getTextBeforeCaret(containerEl, range);
+    const tagMatch = beforeCaret.match(/#([^\s#]*)$/);
+    if (tagMatch) {
+      const tagPart = tagMatch[1];
+      if (/[\s,，]/.test(tagPart) || tagPart.endsWith("#")) return;
+      const after = getTextAfterCaret(containerEl, range).charAt(0);
+      if (tagPart.length > 0 && /[\s\n,]/.test(after)) {
+        tryCommitTag(containerEl, range, tagMatch[0].length, tagPart, false);
+      }
+    }
+  });
+
+  containerEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      if (composing) return; /* 한글 조합 중에는 태그 확정하지 않음 → 글자 중복/깨짐 방지 */
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return;
+      const range = sel.getRangeAt(0);
+      if (!containerEl.contains(range.commonAncestorContainer)) return;
+      const beforeCaret = getTextBeforeCaret(containerEl, range);
+      const tagMatch = beforeCaret.match(/#([^\s#]*)$/);
+      if (tagMatch && tagMatch[1].length > 0) {
+        e.preventDefault();
+        tryCommitTag(containerEl, range, tagMatch[0].length, tagMatch[1], e.key === " ");
+      }
+    }
+  });
+}
 
 /** 과제명, 사용시간, 피드백이 전부 비어있으면 빈 행 (저장 제외) */
 function isEmptyTimeRow(row) {
@@ -2169,6 +2495,7 @@ function createTableHTML() {
       <col class="time-col-focus">
       <col class="time-col-energy">
       <col class="time-col-feedback">
+      <col class="time-col-memo-tag">
       <col class="time-col-actions">
     </colgroup>
     <thead>
@@ -2400,7 +2727,7 @@ export function render() {
   viewTabs.className = "time-view-tabs";
   viewTabs.innerHTML = `
     <button type="button" class="time-view-tab active" data-view="all">1. 시간기록하기</button>
-    <button type="button" class="time-view-tab" data-view="audit">2. 오딧</button>
+    <button type="button" class="time-view-tab" data-view="audit">2.시간 보고서</button>
     <button type="button" class="time-view-tab" data-view="productivity">생산성별</button>
     <button type="button" class="time-view-tab" data-view="dashboard">대시보드</button>
   `;
@@ -2795,25 +3122,14 @@ export function render() {
         </div>
         <div class="time-task-log-scroll-area">
         <div class="time-task-log-field">
-          <label>과제 메모</label>
-          <textarea class="time-task-log-feedback" placeholder="과제 메모 입력" rows="3"></textarea>
+          <label>메모</label>
+          <textarea class="time-task-log-feedback time-task-log-memo-input" placeholder="메모 입력" rows="3"></textarea>
         </div>
-        <div class="time-task-log-energy-section">
-          <div class="time-task-log-energy-header">
-            <h4 class="time-task-log-energy-title">성취능력</h4>
-            <label class="time-task-log-energy-toggle">
-              <input type="checkbox" class="time-task-log-energy-toggle-input" />
-              <span class="time-task-log-energy-toggle-slider"></span>
-            </label>
-          </div>
-          <div class="time-task-log-energy-fields" hidden>
-            <div class="time-task-log-energy-slider-wrap">
-              <div class="time-task-log-energy-track">
-                <div class="time-task-log-energy-fill" style="width:50%"></div>
-                <input type="range" class="time-task-log-energy-slider" min="-50" max="50" value="0" />
-              </div>
-              <span class="time-task-log-energy-value">0%</span>
-            </div>
+        <div class="time-task-log-field">
+          <label>메모 분류 태그</label>
+          <div class="time-task-log-tags-wrap">
+            <input type="text" class="time-task-log-tag-input" placeholder="태그 입력 후 Enter" />
+            <div class="time-task-log-tag-list"></div>
           </div>
         </div>
         <div class="time-task-log-focus-section">
@@ -2888,6 +3204,17 @@ export function render() {
             </div>
           </div>
         </div>
+        <div class="time-task-log-todo-section">
+          <div class="time-task-log-todo-header">
+            <h4 class="time-task-log-todo-title">할일 기록</h4>
+            <label class="time-task-log-todo-toggle">
+              <input type="checkbox" class="time-task-log-todo-toggle-input" />
+              <span class="time-task-log-todo-toggle-slider"></span>
+            </label>
+          </div>
+          <div class="time-task-log-todo-fields" hidden>
+          </div>
+        </div>
         </div>
       </div>
       <div class="time-task-log-footer" data-task-log-footer style="display:none">
@@ -2959,6 +3286,40 @@ export function render() {
   const taskLogFeedbackInput = taskLogModal.querySelector(
     ".time-task-log-feedback",
   );
+  const taskLogTagInput = taskLogModal.querySelector(".time-task-log-tag-input");
+  const taskLogTagListEl = taskLogModal.querySelector(".time-task-log-tag-list");
+  let taskLogMemoTags = [];
+
+  function renderTaskLogTagPills() {
+    if (!taskLogTagListEl) return;
+    taskLogTagListEl.innerHTML = "";
+    taskLogMemoTags.forEach((tag, i) => {
+      const pill = document.createElement("span");
+      pill.className = "time-memo-tag-chip time-task-log-tag-pill";
+      pill.setAttribute("data-tag", tag);
+      pill.innerHTML = `<span class="time-memo-tag-chip-text">${escapeHtml(tag)}</span><button type="button" class="time-memo-tag-chip-remove" aria-label="태그 삭제">&times;</button>`;
+      pill.querySelector(".time-memo-tag-chip-remove")?.addEventListener("click", (e) => {
+        e.preventDefault();
+        taskLogMemoTags = taskLogMemoTags.filter((_, idx) => idx !== i);
+        renderTaskLogTagPills();
+      });
+      taskLogTagListEl.appendChild(pill);
+    });
+  }
+
+  if (taskLogTagInput && taskLogTagListEl) {
+    taskLogTagInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === ",") {
+        e.preventDefault();
+        const val = (taskLogTagInput.value || "").trim().replace(/^#/, "");
+        if (val && !taskLogMemoTags.includes(val)) {
+          taskLogMemoTags.push(val);
+          renderTaskLogTagPills();
+          taskLogTagInput.value = "";
+        }
+      }
+    });
+  }
 
   const normalizeHhMm = (val) => {
     if (!val || typeof val !== "string") return "";
@@ -3186,15 +3547,6 @@ export function render() {
     });
   });
 
-  const taskLogEnergySection = taskLogModal.querySelector(
-    ".time-task-log-energy-section",
-  );
-  const taskLogEnergyToggleInput = taskLogModal.querySelector(
-    ".time-task-log-energy-toggle-input",
-  );
-  const taskLogEnergyFields = taskLogModal.querySelector(
-    ".time-task-log-energy-fields",
-  );
   const taskLogFocusSection = taskLogModal.querySelector(
     ".time-task-log-focus-section",
   );
@@ -3249,6 +3601,12 @@ export function render() {
   const taskLogEmotionQ4 = taskLogModal.querySelector(
     ".time-task-log-emotion-q4",
   );
+  const taskLogTodoToggleInput = taskLogModal.querySelector(
+    ".time-task-log-todo-toggle-input",
+  );
+  const taskLogTodoFields = taskLogModal.querySelector(
+    ".time-task-log-todo-fields",
+  );
   const taskLogSubmitBtn = taskLogModal.querySelector(".time-task-log-submit");
   const taskLogBackdrop = taskLogModal.querySelector(
     ".time-task-setup-backdrop",
@@ -3282,7 +3640,22 @@ export function render() {
       tasks.forEach((t) => {
         const row = document.createElement("div");
         row.className = "time-task-log-task-dropdown-option";
-        row.textContent = t.name || "";
+        const prod =
+          (t.productivity || getProductivityFromCategory(t.category) || "productive").trim();
+        const barClass =
+          prod === "productive"
+            ? "time-task-prod-bar time-task-prod-bar--productive"
+            : prod === "nonproductive"
+              ? "time-task-prod-bar time-task-prod-bar--nonproductive"
+              : "time-task-prod-bar time-task-prod-bar--other";
+        const bar = document.createElement("span");
+        bar.className = barClass;
+        bar.setAttribute("aria-hidden", "true");
+        const label = document.createElement("span");
+        label.className = "time-task-log-task-dropdown-option-label";
+        label.textContent = t.name || "";
+        row.appendChild(bar);
+        row.appendChild(label);
         row.addEventListener("click", () => {
           value = t.name || "";
           trigger.textContent = value || "과제를 선택하세요";
@@ -3876,10 +4249,6 @@ export function render() {
     }
   }
 
-  taskLogEnergyToggleInput?.addEventListener("change", () => {
-    if (taskLogEnergyFields)
-      taskLogEnergyFields.hidden = !taskLogEnergyToggleInput.checked;
-  });
   taskLogFocusToggleInput?.addEventListener("change", () => {
     if (taskLogFocusFields)
       taskLogFocusFields.hidden = !taskLogFocusToggleInput.checked;
@@ -3902,17 +4271,7 @@ export function render() {
       });
     });
   }
-  let taskLogEnergyValue = "";
   let taskLogFocusEvents = [];
-  const taskLogEnergySlider = taskLogModal.querySelector(
-    ".time-task-log-energy-slider",
-  );
-  const taskLogEnergyValueEl = taskLogModal.querySelector(
-    ".time-task-log-energy-value",
-  );
-  const taskLogEnergyFill = taskLogModal.querySelector(
-    ".time-task-log-energy-fill",
-  );
   const focusEventsPreviewEl = taskLogModal.querySelector(
     ".time-task-log-focus-events-preview",
   );
@@ -4034,25 +4393,6 @@ export function render() {
     if (!isNaN(n) && n >= -50 && n <= 50) return n;
     return null;
   }
-  function updateEnergySlider(value) {
-    const v = parseEnergyToValue(value);
-    if (taskLogEnergySlider && taskLogEnergyValueEl) {
-      const val = v != null ? v : 0;
-      taskLogEnergySlider.value = val;
-      taskLogEnergyValueEl.textContent = val > 0 ? `+${val}%` : val + "%";
-      taskLogEnergyValue = String(val);
-      if (taskLogEnergyFill) taskLogEnergyFill.style.width = val + 50 + "%";
-    }
-  }
-  if (taskLogEnergySlider && taskLogEnergyValueEl) {
-    taskLogEnergySlider.addEventListener("input", () => {
-      const v = parseInt(taskLogEnergySlider.value, 10);
-      taskLogEnergyValueEl.textContent = v > 0 ? `+${v}%` : v + "%";
-      taskLogEnergyValue = String(v);
-      if (taskLogEnergyFill) taskLogEnergyFill.style.width = v + 50 + "%";
-    });
-  }
-
   taskLogExpenseToggleInput?.addEventListener("change", () => {
     if (taskLogExpenseFields)
       taskLogExpenseFields.hidden = !taskLogExpenseToggleInput.checked;
@@ -4061,6 +4401,10 @@ export function render() {
   taskLogEmotionToggleInput?.addEventListener("change", () => {
     if (taskLogEmotionFields)
       taskLogEmotionFields.hidden = !taskLogEmotionToggleInput.checked;
+  });
+  taskLogTodoToggleInput?.addEventListener("change", () => {
+    if (taskLogTodoFields)
+      taskLogTodoFields.hidden = !taskLogTodoToggleInput.checked;
   });
 
   taskLogExpenseAmountInput?.addEventListener("input", () => {
@@ -4141,7 +4485,9 @@ export function render() {
     setStartFromDatetime(defaultStart || "");
     setEndFromDatetime("");
     updateEndTimeClearVisibility();
-    taskLogFeedbackInput.value = "";
+    if (taskLogFeedbackInput) taskLogFeedbackInput.value = "";
+    taskLogMemoTags = [];
+    renderTaskLogTagPills();
     taskLogExpenseNameInput.value = "";
     expenseCategoryDropdown._setValue?.("");
     expenseClassificationDropdown._setValue?.("");
@@ -4159,16 +4505,14 @@ export function render() {
     if (taskLogEmotionQ4) taskLogEmotionQ4.value = "";
     if (taskLogEmotionToggleInput) taskLogEmotionToggleInput.checked = false;
     if (taskLogEmotionFields) taskLogEmotionFields.hidden = true;
-    taskLogEnergyValue = "50";
+    if (taskLogTodoToggleInput) taskLogTodoToggleInput.checked = false;
+    if (taskLogTodoFields) taskLogTodoFields.hidden = true;
     taskLogFocusEvents = [];
     taskLogFocusTypeValue = "";
     if (focusTimeInput) focusTimeInput.value = "";
-    if (taskLogEnergyToggleInput) taskLogEnergyToggleInput.checked = false;
-    if (taskLogEnergyFields) taskLogEnergyFields.hidden = true;
     if (taskLogFocusToggleInput) taskLogFocusToggleInput.checked = false;
     if (taskLogFocusFields) taskLogFocusFields.hidden = true;
     focusTypeDropdown?._setValue?.("");
-    updateEnergySlider("50");
     updateFocusPreview();
   }
 
@@ -4226,7 +4570,12 @@ export function render() {
     setStartFromDatetime(startTime || "");
     setEndFromDatetime(endTime || "");
     updateEndTimeClearVisibility();
-    taskLogFeedbackInput.value = data.feedback || "";
+    const feedbackRaw = data.feedback || "";
+    const memoOnly = feedbackRaw.replace(/#[^\s#]+/g, "").trim();
+    if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
+    taskLogMemoTags = Array.isArray(data.memoTags) ? [...data.memoTags] : parseTagsFromFeedback(feedbackRaw);
+    renderTaskLogTagPills();
+    if (taskLogTagInput) taskLogTagInput.value = "";
     taskLogExpenseNameInput.value = "";
     expenseCategoryDropdown._setValue?.("");
     expenseClassificationDropdown._setValue?.("");
@@ -4240,7 +4589,6 @@ export function render() {
     if (taskLogEmotionQ4) taskLogEmotionQ4.value = data.q4 ?? "";
     if (taskLogEmotionToggleInput) taskLogEmotionToggleInput.checked = false;
     if (taskLogEmotionFields) taskLogEmotionFields.hidden = true;
-    taskLogEnergyValue = String(data.energy || "").trim();
     const focusRaw = String(data.focus || "").trim();
     const defaultTime = (() => {
       const m = (data.startTime || "").match(/[T\s](\d{1,2}):(\d{2})/);
@@ -4251,17 +4599,11 @@ export function render() {
       taskLogFocusEvents.length > 0
         ? taskLogFocusEvents[taskLogFocusEvents.length - 1].type
         : "";
-    if (taskLogEnergyToggleInput) {
-      taskLogEnergyToggleInput.checked = !!taskLogEnergyValue;
-      if (taskLogEnergyFields)
-        taskLogEnergyFields.hidden = !taskLogEnergyToggleInput.checked;
-    }
     if (taskLogFocusToggleInput) {
       taskLogFocusToggleInput.checked = focusRaw !== "";
       if (taskLogFocusFields)
         taskLogFocusFields.hidden = !taskLogFocusToggleInput.checked;
     }
-    updateEnergySlider(taskLogEnergyValue || "0");
     updateFocusPreview();
     focusTypeDropdown?._setValue?.(taskLogFocusTypeValue || "");
   }
@@ -4297,7 +4639,8 @@ export function render() {
     if (startTime && endTime) {
       endTime = mergeEndTimeWithStartDate(startTime, endTime) || endTime;
     }
-    const feedback = (taskLogFeedbackInput.value || "").trim();
+    const feedback = (taskLogFeedbackInput?.value || "").trim();
+    const memoTags = taskLogMemoTags.slice();
     const timeTracked = (() => {
       if (startTime && endTime) {
         const toIso = (str) => {
@@ -4333,9 +4676,8 @@ export function render() {
     const expenseClassification =
       expenseClassificationDropdown._getValue?.() || "";
 
-    const energyToggleOn = taskLogEnergyToggleInput?.checked;
     const focusToggleOn = taskLogFocusToggleInput?.checked;
-    const energyValue = energyToggleOn ? taskLogEnergyValue : "";
+    const energyValue = "";
     const focusValue = focusToggleOn
       ? buildFocusValueFromEvents(taskLogFocusEvents)
       : "";
@@ -4372,6 +4714,7 @@ export function render() {
         category,
         date: dateStr,
         feedback,
+        memoTags,
         energy: energyValue,
         focus: focusValue,
       };
@@ -4400,6 +4743,17 @@ export function render() {
         : "";
       editTr.querySelector(".time-display-tracked").textContent = timeTracked;
       editTr.querySelector(".time-display-feedback").textContent = feedback;
+      const memoTagCell = editTr.querySelector(".time-cell-memo-tag .time-display-memo-tags");
+      if (memoTagCell) {
+        memoTagCell.innerHTML = "";
+        const editTags = memoTags;
+        editTags.forEach((tag) => {
+          const pill = document.createElement("span");
+          pill.className = "time-memo-tag-pill";
+          pill.textContent = tag;
+          memoTagCell.appendChild(pill);
+        });
+      }
       const catOpt = CATEGORY_OPTIONS.find((o) => o.value === category);
       editTr.querySelector(".time-cell-category .time-tag-pill").textContent =
         catOpt ? catOpt.label : "—";
@@ -4428,7 +4782,7 @@ export function render() {
       editTr._updatePrice?.();
     } else if (addCtx) {
       const ctx = addCtx;
-      const newRowData = {
+        const newRowData = {
         taskName,
         startTime,
         endTime,
@@ -4437,6 +4791,7 @@ export function render() {
         category,
         date: dateStr,
         feedback,
+        memoTags,
         energy: energyValue,
         focus: focusValue,
       };
@@ -5624,6 +5979,13 @@ export function render() {
             }).join("");
             const tableHtml = `<div class="time-audit-priority-table-wrap"><table class="time-audit-priority-table"><thead><tr><th>오늘의 할일</th><th>KPI</th><th>우선순위</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
             return `<div class="time-audit-priority-content"><div class="time-audit-priority-left">${tableHtml}</div><div class="time-audit-priority-right">${getAuditPriorityPieHtml(dateStr)}</div></div>`;
+          })()}
+          </div>
+          <div class="time-audit-region time-audit-region-time-thief">
+            <div class="time-audit-region-title">4. 시간낭비내역</div>
+          ${(() => {
+            const hourlyRate = parseFloat(String(el.querySelector(".time-hourly-input")?.value || "0").replace(/,/g, "")) || 0;
+            return getAuditTimeThiefHtml(dateStr, filtered, hourlyRate);
           })()}
           </div>
         `;
