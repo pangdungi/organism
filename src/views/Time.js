@@ -20,7 +20,7 @@ import {
   getKpiSyncedTaskNames,
   syncHabitTrackerLogs,
 } from "../utils/timeKpiSync.js";
-import { getKpiTodosAsTasks, syncKpiTodoCompleted } from "../utils/kpiTodoSync.js";
+import { getKpiTodosAsTasks, syncKpiTodoCompleted, getKpiTodosByKpiName } from "../utils/kpiTodoSync.js";
 import { getCustomSections } from "../utils/todoSettings.js";
 import { showToast } from "../utils/showToast.js";
 
@@ -3259,6 +3259,10 @@ export function render() {
           </div>
         </div>
         <div class="time-task-log-scroll-area">
+        <div class="time-task-log-kpi-todos-section" hidden>
+          <h4 class="time-task-log-kpi-todos-title">할일 목록</h4>
+          <div class="time-task-log-kpi-todos-list"></div>
+        </div>
         <div class="time-task-log-field">
           <label>메모</label>
           <textarea class="time-task-log-feedback time-task-log-memo-input" placeholder="메모 입력" rows="3"></textarea>
@@ -3751,6 +3755,12 @@ export function render() {
   );
   const taskLogTodoNameInput = taskLogModal.querySelector(
     ".time-task-log-todo-name",
+  );
+  const taskLogKpiTodosSection = taskLogModal.querySelector(
+    ".time-task-log-kpi-todos-section",
+  );
+  const taskLogKpiTodosList = taskLogModal.querySelector(
+    ".time-task-log-kpi-todos-list",
   );
   const taskLogSubmitBtn = taskLogModal.querySelector(".time-task-log-submit");
   const taskLogBackdrop = taskLogModal.querySelector(
@@ -4416,6 +4426,40 @@ export function render() {
         });
       });
     }
+    refreshKpiTodosInLogModal(taskName);
+  }
+
+  function refreshKpiTodosInLogModal(taskName) {
+    if (!taskLogKpiTodosSection || !taskLogKpiTodosList) return;
+    const data = getKpiTodosByKpiName((taskName || "").trim());
+    if (!data || data.todos.length === 0) {
+      taskLogKpiTodosSection.hidden = true;
+      taskLogKpiTodosList.innerHTML = "";
+      return;
+    }
+    taskLogKpiTodosSection.hidden = false;
+    taskLogKpiTodosList.innerHTML = "";
+    const { storageKey, todos } = data;
+    todos.forEach((todo) => {
+      const label = document.createElement("label");
+      label.className = "time-task-log-kpi-todo-row";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = !!todo.completed;
+      checkbox.dataset.todoId = todo.id;
+      checkbox.dataset.storageKey = storageKey;
+      const span = document.createElement("span");
+      span.className = "time-task-log-kpi-todo-text";
+      span.textContent = todo.text || "";
+      if (todo.completed) span.classList.add("is-done");
+      label.appendChild(checkbox);
+      label.appendChild(span);
+      checkbox.addEventListener("change", () => {
+        syncKpiTodoCompleted(todo.id, storageKey, checkbox.checked);
+        span.classList.toggle("is-done", checkbox.checked);
+      });
+      taskLogKpiTodosList.appendChild(label);
+    });
   }
 
   taskLogFocusToggleInput?.addEventListener("change", () => {
@@ -4576,6 +4620,44 @@ export function render() {
       taskLogTodoFields.hidden = !taskLogTodoToggleInput.checked;
   });
 
+  function addTodoNameToBraindump(name) {
+    const todoName = (name || "").trim();
+    if (!todoName) return false;
+    try {
+      const SECTION_TASKS_KEY = "todo-section-tasks";
+      const raw = localStorage.getItem(SECTION_TASKS_KEY);
+      const obj = raw ? JSON.parse(raw) : {};
+      const braindump = Array.isArray(obj.braindump) ? obj.braindump : [];
+      const taskId = `braindump-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      braindump.push({
+        taskId,
+        name: todoName,
+        startDate: "",
+        dueDate: "",
+        startTime: "",
+        endTime: "",
+        eisenhower: "",
+        done: false,
+        itemType: "todo",
+      });
+      obj.braindump = braindump;
+      localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+      document.dispatchEvent(new CustomEvent("todo-braindump-added", { detail: {} }));
+      return true;
+    } catch (_) {}
+    return false;
+  }
+
+  taskLogTodoNameInput?.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const todoName = (taskLogTodoNameInput?.value || "").trim();
+    if (!todoName) return;
+    if (addTodoNameToBraindump(todoName)) {
+      taskLogTodoNameInput.value = "";
+    }
+  });
+
   taskLogExpenseAmountInput?.addEventListener("input", () => {
     const v = taskLogExpenseAmountInput.value;
     const filtered = v.replace(/[^\d,]/g, "");
@@ -4677,6 +4759,8 @@ export function render() {
     if (taskLogTodoToggleInput) taskLogTodoToggleInput.checked = false;
     if (taskLogTodoFields) taskLogTodoFields.hidden = true;
     if (taskLogTodoNameInput) taskLogTodoNameInput.value = "";
+    if (taskLogKpiTodosSection) taskLogKpiTodosSection.hidden = true;
+    if (taskLogKpiTodosList) taskLogKpiTodosList.innerHTML = "";
     taskLogFocusEvents = [];
     taskLogFocusTypeValue = "";
     if (focusTimeInput) focusTimeInput.value = "";
@@ -5020,27 +5104,7 @@ export function render() {
     const todoToggleOn = taskLogTodoToggleInput?.checked;
     const todoName = (taskLogTodoNameInput?.value || "").trim();
     if (todoToggleOn && todoName) {
-      try {
-        const SECTION_TASKS_KEY = "todo-section-tasks";
-        const raw = localStorage.getItem(SECTION_TASKS_KEY);
-        const obj = raw ? JSON.parse(raw) : {};
-        const braindump = Array.isArray(obj.braindump) ? obj.braindump : [];
-        const taskId = `braindump-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-        braindump.push({
-          taskId,
-          name: todoName,
-          startDate: "",
-          dueDate: "",
-          startTime: "",
-          endTime: "",
-          eisenhower: "",
-          done: false,
-          itemType: "todo",
-        });
-        obj.braindump = braindump;
-        localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
-        document.dispatchEvent(new CustomEvent("todo-braindump-added", { detail: {} }));
-      } catch (_) {}
+      addTodoNameToBraindump(todoName);
     }
 
     if (editTr || addCtx) {

@@ -10937,6 +10937,86 @@ body.kpi-resizing {
   margin-top: 0.75rem;
 }
 
+.time-task-log-todo-fields .time-task-log-field {
+  margin-bottom: 0.75rem;
+}
+
+.time-task-log-todo-fields .time-task-log-field:last-child {
+  margin-bottom: 0;
+}
+
+/* 할일이름 입력 – 모달 입력폼 스타일 통일 (소비/수입명·금액과 동일) */
+.time-task-log-todo-name {
+  width: 100%;
+  height: 40px;
+  padding: 0 0.75rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+  border-radius: 0;
+  background: #fff;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.time-task-log-todo-name::placeholder {
+  color: #9ca3af;
+}
+
+.time-task-log-todo-name:focus {
+  outline: none;
+  border-color: #d1d5db;
+  box-shadow: none;
+}
+
+/* KPI 할일 목록 (메모 위, 선택한 행동이 KPI일 때만 표시) */
+.time-task-log-kpi-todos-section {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.time-task-log-kpi-todos-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.time-task-log-kpi-todos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.time-task-log-kpi-todo-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.time-task-log-kpi-todo-row input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}
+
+.time-task-log-kpi-todo-text {
+  flex: 1;
+}
+
+.time-task-log-kpi-todo-text.is-done {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
 .time-task-log-emotion-fields {
   margin-top: 0.75rem;
 }

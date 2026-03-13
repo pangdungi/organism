@@ -219,6 +219,33 @@ export function syncKpiTodoCompleted(kpiTodoId, storageKey, completed) {
 const STORAGE_KEYS = [DREAM_MAP_KEY, SIDEINCOME_KEY, HAPPINESS_KEY, HEALTH_KEY];
 
 /**
+ * KPI 이름으로 해당 KPI의 할일 목록 반환 (과제 기록 모달 등에서 사용)
+ * @param {string} kpiName - KPI 이름 (예: "요가")
+ * @returns {{ storageKey: string, kpiId: string, todos: Array<{ id: string, text: string, completed: boolean }> } | null}
+ */
+export function getKpiTodosByKpiName(kpiName) {
+  const name = (kpiName || "").trim();
+  if (!name) return null;
+  for (const storageKey of STORAGE_KEYS) {
+    const data = loadJson(storageKey, { kpis: [], kpiTodos: [] });
+    const kpi = (data.kpis || []).find(
+      (k) => (k.name || "").trim() === name
+    );
+    if (!kpi) continue;
+    const kpiId = kpi.id;
+    const todos = (data.kpiTodos || [])
+      .filter((t) => t.kpiId === kpiId && (t.text || "").trim() !== "")
+      .map((t) => ({
+        id: t.id,
+        text: (t.text || "").trim(),
+        completed: !!t.completed,
+      }));
+    return { storageKey, kpiId, todos };
+  }
+  return null;
+}
+
+/**
  * KPI 할일 1건 제거
  * @param {string} kpiTodoId
  * @param {string} storageKey
