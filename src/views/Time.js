@@ -6848,7 +6848,7 @@ export function renderTimeBudgetTablesForCalendar(
     return section;
   }
 
-  const basicSection = wrapBlockAsSection(basicBlock, "기본", () => {
+  const basicSection = wrapBlockAsSection(basicBlock, "1. 수면, 근무시간 배치", () => {
     const tr = createBudgetTableRow(
       "수면하기",
       "",
@@ -6861,13 +6861,13 @@ export function renderTimeBudgetTablesForCalendar(
     updateGoalDiffDisplays(basicBlock);
     updateRemaining();
   });
-  const investSection = wrapBlockAsSection(investBlock, "투자내역", () => {
+  const investSection = wrapBlockAsSection(investBlock, "3. 생산적 과제 배치", () => {
     const tr = createBudgetTableRow("", "", "", true, investCtx, investTaskDropdownOptions);
     investTbody.insertBefore(tr, investAddRow);
     updateGoalDiffDisplays(investBlock);
     updateRemaining();
   });
-  const consumeSection = wrapBlockAsSection(consumeBlock, "소비내역", () => {
+  const consumeSection = wrapBlockAsSection(consumeBlock, "4. 비생산적 과제 배치", () => {
     const tr = createBudgetTableRow("", "", "", false, consumeCtx, consumeTaskDropdownOptions);
     consumeTbody.insertBefore(tr, consumeAddRow);
     updateGoalDiffDisplays(consumeBlock);

@@ -4005,7 +4005,7 @@ function render1DayView(tabsElement) {
     todoSection.className = "calendar-1day-todo-section";
     const todoSectionHeader = document.createElement("div");
     todoSectionHeader.className = "calendar-1day-todo-section-header";
-    todoSectionHeader.textContent = "오늘의 할일";
+    todoSectionHeader.textContent = "2. KPI별 투두리스트 확인";
     const todoSectionBody = document.createElement("div");
     todoSectionBody.className = "calendar-1day-todo-section-body";
     todoSectionBody.appendChild(todoTable);
