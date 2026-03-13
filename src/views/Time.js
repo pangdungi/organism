@@ -2580,6 +2580,7 @@ export function render() {
             <div class="time-task-log-focus-row">
               <div class="time-task-log-focus-type-dropdown-wrap"></div>
               <button type="button" class="time-task-log-focus-now-btn">지금</button>
+              <input type="text" class="time-task-log-focus-time-input" placeholder="hh:mm" maxlength="5" title="시간 입력 후 Enter" />
             </div>
             <div class="time-task-log-focus-events-preview"></div>
           </div>
@@ -3715,7 +3716,35 @@ export function render() {
   const focusNowBtn = taskLogModal.querySelector(
     ".time-task-log-focus-now-btn",
   );
+  const focusTimeInput = taskLogModal.querySelector(
+    ".time-task-log-focus-time-input",
+  );
   let taskLogFocusTypeValue = "";
+
+  function isValidHhMm(val) {
+    if (!val || typeof val !== "string") return false;
+    const m = val.trim().match(/^(\d{1,2}):(\d{1,2})$/);
+    if (!m) return false;
+    const h = parseInt(m[1], 10);
+    const min = parseInt(m[2], 10);
+    return h >= 0 && h <= 23 && min >= 0 && min <= 59;
+  }
+
+  function formatToHhMm(val) {
+    if (!val || typeof val !== "string") return "";
+    const s = val.trim().replace(/[^\d:]/g, "");
+    if (s.length <= 2) return s;
+    const parts = s.split(":");
+    if (parts.length === 1 && s.length >= 3) {
+      return s.slice(0, 2) + ":" + s.slice(2, 4);
+    }
+    if (parts.length === 2) {
+      const h = parts[0].slice(0, 2);
+      const m = parts[1].slice(0, 2);
+      return h + ":" + m;
+    }
+    return s.slice(0, 5);
+  }
 
   function getCurrentHHMM() {
     const now = new Date();
@@ -3762,6 +3791,30 @@ export function render() {
     }
     taskLogFocusEvents.push({ time: getCurrentHHMM(), type });
     updateFocusPreview();
+  });
+
+  focusTimeInput?.addEventListener("input", (e) => {
+    const formatted = formatToHhMm(e.target.value);
+    if (formatted !== e.target.value) e.target.value = formatted;
+  });
+  focusTimeInput?.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const type = (focusTypeDropdown?._getValue?.() || "").trim();
+    if (!type) {
+      alert("방해 유형을 먼저 선택해주세요.");
+      return;
+    }
+    const timeVal = (focusTimeInput?.value || "").trim();
+    if (!isValidHhMm(timeVal)) {
+      alert("hh:mm 형식으로 입력해주세요 (예: 09:30).");
+      return;
+    }
+    const [h, m] = timeVal.split(":").map((x) => parseInt(x, 10) || 0);
+    const normalized = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    taskLogFocusEvents.push({ time: normalized, type });
+    updateFocusPreview();
+    focusTimeInput.value = "";
   });
   function updateScoreBtnStates(container, value) {
     if (!container) return;
@@ -3905,6 +3958,7 @@ export function render() {
     taskLogEnergyValue = "50";
     taskLogFocusEvents = [];
     taskLogFocusTypeValue = "";
+    if (focusTimeInput) focusTimeInput.value = "";
     if (taskLogEnergyToggleInput) taskLogEnergyToggleInput.checked = false;
     if (taskLogEnergyFields) taskLogEnergyFields.hidden = true;
     if (taskLogFocusToggleInput) taskLogFocusToggleInput.checked = false;
@@ -5048,12 +5102,12 @@ export function render() {
       return;
     }
 
-    const chartW = 800;
-    const chartH = 140;
-    const padLeft = 48;
-    const padRight = 16;
-    const padTop = 28;
-    const padBottom = 40;
+    const chartW = 420;
+    const chartH = 120;
+    const padLeft = 40;
+    const padRight = 12;
+    const padTop = 24;
+    const padBottom = 36;
     const plotW = chartW - padLeft - padRight;
     const plotH = chartH - padTop - padBottom;
 
@@ -5089,10 +5143,14 @@ export function render() {
       const concTop = padTop;
       const concBottom = padTop + plotH;
 
-      const eventTimes = events
-        .map((e) => (e.time ? timeStrToHours(e.time) : null))
-        .filter((h) => h != null && h >= startH && h <= endH)
-        .sort((a, b) => a - b);
+      const eventsInRange = events
+        .map((e) => ({
+          ...e,
+          hours: e.time ? timeStrToHours(e.time) : null,
+        }))
+        .filter((e) => e.hours != null && e.hours >= startH && e.hours <= endH)
+        .sort((a, b) => a.hours - b.hours);
+      const eventTimes = eventsInRange.map((e) => e.hours);
 
       /* 집중력: 시작에서 0, 구간마다 상승 → 방해 시 0으로 하락 → 다시 상승 (톱날 형태) */
       let concPath = `M ${padLeft} ${concBottom}`;
@@ -5101,35 +5159,6 @@ export function render() {
         concPath += ` L ${x} ${concTop} L ${x} ${concBottom}`;
       });
       concPath += ` L ${padLeft + plotW} ${concTop} L ${padLeft + plotW} ${concBottom} L ${padLeft} ${concBottom} Z`;
-
-      const bySlot = {};
-      const slotStep = rangeH / 12;
-      for (let i = 0; i < 12; i++) {
-        const slotStart = startH + i * slotStep;
-        bySlot[slotStart] = 0;
-      }
-      eventTimes.forEach((h) => {
-        const slotIdx = Math.floor((h - startH) / slotStep);
-        const slotStart = startH + Math.min(slotIdx, 11) * slotStep;
-        bySlot[slotStart] = (bySlot[slotStart] || 0) + 1;
-      });
-      const slotEntries = Object.entries(bySlot)
-        .map(([k, v]) => ({ slot: parseFloat(k), value: v }))
-        .sort((a, b) => a.slot - b.slot);
-      const maxFreq = Math.max(...slotEntries.map((x) => x.value), 1);
-      const freqPoints = slotEntries.map((v, i) => ({
-        x: padLeft + (i / Math.max(1, slotEntries.length - 1)) * plotW,
-        y:
-          padTop +
-          plotH -
-          (v.value / maxFreq) * plotH,
-      }));
-      const freqPathD =
-        freqPoints.length >= 2
-          ? pointsToSmoothCurve(freqPoints)
-          : freqPoints.length === 1
-            ? `M ${freqPoints[0].x} ${freqPoints[0].y}`
-            : "";
 
       const xLabels = [0, 0.25, 0.5, 0.75, 1].map((rat) => {
         const h = startH + rat * rangeH;
@@ -5141,6 +5170,16 @@ export function render() {
         };
       });
 
+      const vGridLines = xLabels
+        .map((l) => `<line x1="${l.x}" y1="${padTop}" x2="${l.x}" y2="${padTop + plotH}" stroke="#e5e7eb" stroke-width="0.5" stroke-dasharray="2,2"/>`)
+        .join("");
+      const hGridLines = [0.25, 0.5, 0.75]
+        .map((rat) => {
+          const y = padTop + plotH - rat * plotH;
+          return `<line x1="${padLeft}" y1="${y}" x2="${padLeft + plotW}" y2="${y}" stroke="#e5e7eb" stroke-width="0.5" stroke-dasharray="2,2"/>`;
+        })
+        .join("");
+
       const block = document.createElement("div");
       block.className = "time-audit-block";
       const startLabel = (row.startTime || "").match(/[T\s](\d{1,2}):(\d{2})/);
@@ -5149,25 +5188,37 @@ export function render() {
         startLabel && endLabel
           ? `${startLabel[1]}:${startLabel[2]} ~ ${endLabel[1]}:${endLabel[2]}`
           : "";
+      const listItemsHtml = eventsInRange
+        .map(
+          (e, i) =>
+            `<div class="time-audit-event-item" data-event-index="${i}">${e.time || ""} ${e.type || ""}</div>`,
+        )
+        .join("");
+
       block.innerHTML = `
         <div class="time-audit-task-name">${(row.taskName || "").trim() || "—"}</div>
         <div class="time-audit-task-time">${timeRangeStr}</div>
-        <div class="time-audit-concentration-title">집중력</div>
-        <div class="time-audit-chart-wrap">
-          <svg class="time-audit-svg" viewBox="0 0 ${chartW} ${chartH}" preserveAspectRatio="xMidYMid meet">
-            <path d="${concPath}" fill="rgba(34,197,94,0.15)" stroke="#22c55e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <line x1="${padLeft}" y1="${concBottom}" x2="${padLeft + plotW}" y2="${concBottom}" stroke="#e5e7eb" stroke-width="0.5" stroke-dasharray="2,2"/>
-            ${xLabels.map((l) => `<text x="${l.x}" y="${chartH - 8}" text-anchor="middle" font-size="9" fill="#6b7280">${l.label}</text>`).join("")}
-          </svg>
-        </div>
-        <div class="time-audit-freq-title">방해 빈도</div>
-        <div class="time-audit-chart-wrap">
-          <svg class="time-audit-svg" viewBox="0 0 ${chartW} ${chartH}" preserveAspectRatio="xMidYMid meet">
-            <path d="${freqPathD}" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            ${xLabels.map((l) => `<text x="${l.x}" y="${chartH - 8}" text-anchor="middle" font-size="9" fill="#6b7280">${l.label}</text>`).join("")}
-          </svg>
+        <div class="time-audit-row">
+          <div class="time-audit-charts">
+            <div class="time-audit-concentration-title">집중력</div>
+            <div class="time-audit-chart-wrap">
+              <svg class="time-audit-svg" viewBox="0 0 ${chartW} ${chartH}" preserveAspectRatio="xMidYMid meet">
+                ${vGridLines}
+                ${hGridLines}
+                <line x1="${padLeft}" y1="${concBottom}" x2="${padLeft + plotW}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
+                <line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
+                <path d="${concPath}" fill="rgba(34,197,94,0.15)" stroke="#22c55e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                ${xLabels.map((l) => `<text x="${l.x}" y="${chartH - 8}" text-anchor="middle" font-size="9" fill="#6b7280">${l.label}</text>`).join("")}
+              </svg>
+            </div>
+          </div>
+          <div class="time-audit-event-list">
+            <div class="time-audit-event-list-title">방해 기록</div>
+            <div class="time-audit-event-items">${listItemsHtml || '<div class="time-audit-event-empty">기록 없음</div>'}</div>
+          </div>
         </div>
       `;
+
       wrap.appendChild(block);
     });
 

@@ -10407,6 +10407,27 @@ body.kpi-resizing {
   border-color: #d1d5db;
 }
 
+.time-task-log-focus-time-input {
+  width: 5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #374151;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+.time-task-log-focus-time-input::placeholder {
+  color: #9ca3af;
+}
+
+.time-task-log-focus-time-input:focus {
+  outline: none;
+  border-color: #d1d5db;
+}
+
 .time-task-log-focus-type-dropdown {
   position: relative;
   width: 100%;
@@ -11558,6 +11579,58 @@ body.kpi-resizing {
   gap: 0.75rem;
 }
 
+.time-audit-row {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.time-audit-charts {
+  flex: 1;
+  min-width: 0;
+  max-width: 80%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.time-audit-event-list {
+  flex: 0 0 20%;
+  min-width: 100px;
+  padding: 0.5rem 0;
+}
+
+.time-audit-event-list-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+.time-audit-event-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.time-audit-event-item {
+  font-size: 0.9rem;
+  color: #374151;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.time-audit-event-item.is-highlighted {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.time-audit-event-empty {
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
 .time-audit-task-name {
   font-size: 1.05rem;
   font-weight: 600;
@@ -11579,14 +11652,18 @@ body.kpi-resizing {
 
 .time-audit-chart-wrap {
   width: 100%;
-  min-height: 120px;
+  min-height: 100px;
   overflow: visible;
+}
+
+.time-audit-freq-wrap {
+  position: relative;
 }
 
 .time-audit-svg {
   width: 100%;
   height: auto;
-  min-height: 120px;
+  min-height: 100px;
   display: block;
   overflow: visible;
 }
