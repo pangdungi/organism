@@ -12307,10 +12307,59 @@ body.kpi-resizing {
 }
 
 /* 오딧 4. 시간낭비내역 */
-.time-audit-region-time-thief {
+.time-audit-region-time-thief,
+.time-audit-region-time-investment,
+.time-audit-region-available {
   margin-top: 1rem;
   border-top: 1px solid #e5e7eb;
   padding-top: 1rem;
+}
+
+/* 오딧 6. 가용시간 – 4열 동일 너비 */
+.time-audit-available-content {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 0.75rem;
+  width: 100%;
+  align-items: stretch;
+}
+
+.time-audit-available-item {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.time-audit-available-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.35rem;
+}
+
+.time-audit-available-num {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #374151;
+  line-height: 1.2;
+}
+
+.time-audit-available-value-plus .time-audit-available-num {
+  color: #dc2626;
+}
+
+.time-audit-available-value-minus .time-audit-available-num {
+  color: #2563eb;
 }
 
 .time-audit-thief-content {
@@ -12452,6 +12501,11 @@ body.kpi-resizing {
 
 .time-audit-thief-summary-value .time-audit-thief-summary-num {
   color: #2563eb;
+}
+
+/* 오딧 5. 시간 투자 내역 – 오늘 번 돈 강조(빨간 계열) */
+.time-audit-investment-earned .time-audit-thief-summary-num {
+  color: #dc2626;
 }
 
 .time-audit-schedule-table-wrap {

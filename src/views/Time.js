@@ -268,6 +268,133 @@ function getAuditTimeThiefHtml(dateStr, filtered, hourlyRate) {
   return `<div class="time-audit-thief-content"><div class="time-audit-thief-left">${tableHtml}</div>${rightHalf}</div>`;
 }
 
+/** 오딧 5. 시간 투자 내역: 생산적 카테고리, 파이 빨간 계열(볼드하지 않게) */
+const TIME_INVESTMENT_PIE_COLORS = ["#fecaca", "#fca5a5", "#f87171", "#fca5a5", "#fecaca", "#fda4a4", "#fb7185", "#f9a8d4"];
+function getAuditTimeInvestmentHtml(dateStr, filtered, hourlyRate) {
+  const dateRows = filtered.filter(
+    (r) => (normalizeDateForCompare(r.date || "") || (r.date || "").trim()) === dateStr,
+  );
+  const productiveRows = dateRows.filter(
+    (r) => (String(r.productivity || "").trim()) === "productive",
+  );
+  const hourly = parseFloat(String(hourlyRate || "0").replace(/,/g, "")) || 0;
+  const byTask = {};
+  productiveRows.forEach((r) => {
+    const name = (r.taskName || "").trim() || "—";
+    const hrs = parseTimeToHours(r.timeTracked) || 0;
+    const price = hrs * hourly;
+    if (!byTask[name]) byTask[name] = { taskName: name, hours: 0, price: 0 };
+    byTask[name].hours += hrs;
+    byTask[name].price += price;
+  });
+  const tableRows = Object.values(byTask).sort((a, b) => b.hours - a.hours);
+  const totalInvestedHours = tableRows.reduce((s, r) => s + r.hours, 0);
+  const totalEarned = tableRows.reduce((s, r) => s + r.price, 0);
+  const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const tableHtml =
+    tableRows.length > 0
+      ? (() => {
+          const rowsHtml = tableRows
+            .map(
+              (r) =>
+                `<tr><td class="time-audit-thief-task">${esc(r.taskName)}</td><td class="time-audit-thief-time">${formatHoursToHHMM(r.hours)}</td><td class="time-audit-thief-value">${formatPrice(r.price)}</td></tr>`,
+            )
+            .join("");
+          return `<div class="time-audit-thief-table-wrap"><table class="time-audit-thief-table"><thead><tr><th>과제명</th><th>실제 보낸 시간</th><th>시간의 가치</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+        })()
+      : `<div class="time-audit-thief-empty">해당 날짜 생산적 기록 없음</div>`;
+  const makePieByHours = (entries, title) => {
+    const total = entries.reduce((s, e) => s + e.hours, 0);
+    if (total <= 0)
+      return `<div class="time-audit-pie-box"><div class="time-audit-pie-title">${esc(title)}</div><div class="time-audit-pie-empty">데이터 없음</div></div>`;
+    let acc = 0;
+    const cx = 50;
+    const cy = 50;
+    const r = 40;
+    const segs = entries
+      .map((e, i) => {
+        const color = TIME_INVESTMENT_PIE_COLORS[i % TIME_INVESTMENT_PIE_COLORS.length];
+        const pct = e.hours / total;
+        if (pct >= 0.9999)
+          return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" title="${esc(e.taskName)}: ${Math.round(pct * 100)}%"/>`;
+        const a0 = (acc / total) * 2 * Math.PI - Math.PI / 2;
+        acc += e.hours;
+        const a1 = (acc / total) * 2 * Math.PI - Math.PI / 2;
+        const x0 = cx + r * Math.cos(a0);
+        const y0 = cy + r * Math.sin(a0);
+        const x1 = cx + r * Math.cos(a1);
+        const y1 = cy + r * Math.sin(a1);
+        const large = pct > 0.5 ? 1 : 0;
+        const d = `M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z`;
+        return `<path d="${d}" fill="${color}" title="${esc(e.taskName)}: ${Math.round(pct * 100)}%"/>`;
+      })
+      .join("");
+    const legend = entries
+      .map((e, i) => {
+        const color = TIME_INVESTMENT_PIE_COLORS[i % TIME_INVESTMENT_PIE_COLORS.length];
+        const pct = total > 0 ? Math.round((e.hours / total) * 100) : 0;
+        return `<span class="time-audit-pie-legend-item" style="--pie-color:${color}">${esc(e.taskName)} ${pct}%</span>`;
+      })
+      .join("");
+    return `<div class="time-audit-pie-box"><div class="time-audit-pie-title">${esc(title)}</div><div class="time-audit-pie-svg-wrap"><svg viewBox="0 0 100 100" class="time-audit-pie-svg">${segs}</svg></div><div class="time-audit-pie-legend">${legend}</div></div>`;
+  };
+  const pieHtml =
+    tableRows.length > 0
+      ? makePieByHours(tableRows, "생산적 시간 비율")
+      : `<div class="time-audit-pie-box"><div class="time-audit-pie-title">생산적 시간 비율</div><div class="time-audit-pie-empty">데이터 없음</div></div>`;
+  const timeBoxHtml = `
+    <div class="time-audit-thief-summary time-audit-thief-summary-time">
+      <div class="time-audit-thief-summary-label">오늘 투자한 시간</div>
+      <div class="time-audit-thief-summary-num">${formatHoursToReadable(totalInvestedHours)}</div>
+    </div>`;
+  const valueBoxHtml = `
+    <div class="time-audit-thief-summary time-audit-thief-summary-value time-audit-investment-earned">
+      <div class="time-audit-thief-summary-label">오늘 번 돈</div>
+      <div class="time-audit-thief-summary-num">${formatPrice(totalEarned)}원</div>
+    </div>`;
+  const rightHalf = `<div class="time-audit-thief-right-half"><div class="time-audit-thief-center">${pieHtml}</div><div class="time-audit-thief-right time-audit-thief-time-wrap">${timeBoxHtml}</div><div class="time-audit-thief-right time-audit-thief-value-wrap">${valueBoxHtml}</div></div>`;
+  return `<div class="time-audit-thief-content time-audit-investment-content"><div class="time-audit-thief-left">${tableHtml}</div>${rightHalf}</div>`;
+}
+
+/** 오딧 6. 가용시간: 24 - 근무 - 수면, 오늘 하루의 가치(낭비+번돈 합), 총 수면/총 근무 – 4열 동일 너비 */
+function getAuditAvailableTimeHtml(dateStr, filtered, hourlyRate) {
+  const dateRows = filtered.filter(
+    (r) => (normalizeDateForCompare(r.date || "") || (r.date || "").trim()) === dateStr,
+  );
+  const hourly = parseFloat(String(hourlyRate || "0").replace(/,/g, "")) || 0;
+  let workHours = 0;
+  let sleepHours = 0;
+  let totalWastedValue = 0;
+  let totalEarned = 0;
+  dateRows.forEach((r) => {
+    const hrs = parseTimeToHours(r.timeTracked) || 0;
+    const cat = (r.category || getTaskOptionByName(r.taskName)?.category || "").trim();
+    if (cat === "work") workHours += hrs;
+    else if (cat === "sleep") sleepHours += hrs;
+    const p = (r.productivity || getProductivityFromCategory(cat) || "").trim();
+    if (p === "nonproductive") totalWastedValue += hrs * hourly * -1;
+    else if (p === "productive") totalEarned += hrs * hourly;
+  });
+  const availableHours = Math.max(0, 24 - workHours - sleepHours);
+  const dayValue = totalEarned + totalWastedValue;
+  const valueSign = dayValue >= 0 ? "+" : "";
+  const valueText = `${valueSign}${formatPrice(dayValue)}원`;
+  const valueClass = dayValue >= 0 ? "time-audit-available-box-value time-audit-available-value-plus" : "time-audit-available-box-value time-audit-available-value-minus";
+  const boxes = [
+    { label: "가용시간", value: formatHoursToReadable(availableHours), class: "time-audit-available-box-available" },
+    { label: "오늘 하루의 가치", value: valueText, class: valueClass },
+    { label: "총 수면시간", value: formatHoursToReadable(sleepHours), class: "time-audit-available-box-sleep" },
+    { label: "총 근무시간", value: formatHoursToReadable(workHours), class: "time-audit-available-box-work" },
+  ];
+  const items = boxes
+    .map(
+      (b) =>
+        `<div class="time-audit-available-item ${b.class}"><div class="time-audit-available-label">${b.label}</div><div class="time-audit-available-num">${b.value}</div></div>`,
+    )
+    .join("");
+  return `<div class="time-audit-available-content">${items}</div>`;
+}
+
 const PRODUCTIVITY_OPTIONS = [
   { value: "productive", label: "생산적", color: "prod-pink" },
   { value: "nonproductive", label: "비생산적", color: "prod-blue" },
@@ -1326,7 +1453,8 @@ function getFilterPeriodLabel(type, year, month, start, end) {
   if (type === "week") return "최근 7일";
   if (type === "day")
     return formatDateForDayFilter(start || toDateStr(new Date())) || "오늘";
-  if (type === "range" && start && end) return `${start} ~ ${end}`;
+  if (type === "range" && start && end)
+    return start === end ? (formatDateForDayFilter(start) || start) : `${start} ~ ${end}`;
   return "";
 }
 
@@ -2727,7 +2855,8 @@ export function render() {
   viewTabs.className = "time-view-tabs";
   viewTabs.innerHTML = `
     <button type="button" class="time-view-tab active" data-view="all">1. 시간기록하기</button>
-    <button type="button" class="time-view-tab" data-view="audit">2.시간 보고서</button>
+    <button type="button" class="time-view-tab" data-view="audit">2. 시간 보고서</button>
+    <button type="button" class="time-view-tab" data-view="improve">3. 시간 사용 개선하기</button>
     <button type="button" class="time-view-tab" data-view="productivity">생산성별</button>
     <button type="button" class="time-view-tab" data-view="dashboard">대시보드</button>
   `;
@@ -2777,8 +2906,8 @@ export function render() {
     </div>
     <div class="time-filter-range-wrap" data-filter-wrap="range" style="display:none">
       <input type="date" class="time-filter-start-date" />
-      <span>~</span>
-      <input type="date" class="time-filter-end-date" />
+      <span class="time-filter-range-sep" data-audit-range-hidden>~</span>
+      <input type="date" class="time-filter-end-date" data-audit-range-hidden />
     </div>
   `;
 
@@ -2895,12 +3024,18 @@ export function render() {
 
   function onFilterChange(skipMerge = false) {
     const view = viewTabs.querySelector(".time-view-tab.active")?.dataset?.view;
+    const type = filterType;
+    /* 시간 보고서는 하루용: 날짜 선택 시 시작일만 사용, 종료일 동기화 */
+    if (view === "audit" && type === "range") {
+      const single = startDateInput.value || filterStartDate;
+      endDateInput.value = single;
+      filterStartDate = filterEndDate = single;
+    }
     const rows =
       view === "dashboard"
         ? getFullRowsForFilter(skipMerge)
         : getFullRowsForFilter(skipMerge);
     cachedRows = rows;
-    const type = filterType;
     const y = filterYear;
     const m = filterMonth;
     const start = startDateInput.value || filterStartDate;
@@ -2916,6 +3051,8 @@ export function render() {
       contentWrap.innerHTML = "";
     } else if (view === "audit") {
       renderAudit(filtered);
+    } else if (view === "improve") {
+      contentWrap.innerHTML = "";
     } else if (view === "productivity") {
       renderByProductivity(filtered);
     } else if (view === "dashboard") {
@@ -3660,7 +3797,7 @@ export function render() {
           value = t.name || "";
           trigger.textContent = value || "과제를 선택하세요";
           panel.hidden = true;
-          onEmotionTaskSelected(value);
+          onTaskSelectedForLog(value);
         });
         panel.appendChild(row);
       });
@@ -3678,7 +3815,7 @@ export function render() {
     wrap._setValue = (v) => {
       value = v || "";
       trigger.textContent = value || "과제를 선택하세요";
-      onEmotionTaskSelected(value);
+      onTaskSelectedForLog(value);
     };
     return wrap;
   }
@@ -4232,16 +4369,40 @@ export function render() {
     taskLogFocusTypeDropdownWrap.appendChild(focusTypeDropdown);
   }
 
-  function onEmotionTaskSelected(taskName) {
+  const EXPENSE_TASK_NAMES = ["생산적 소비", "비생산적 소비"];
+
+  function onTaskSelectedForLog(taskName) {
     const isEmotionTask =
       taskName === EMOTION_TASK_POSITIVE || taskName === EMOTION_TASK_NEGATIVE;
+    const isExpenseTask =
+      EXPENSE_TASK_NAMES.includes((taskName || "").trim());
+
     if (isEmotionTask) {
+      if (taskLogExpenseToggleInput) {
+        taskLogExpenseToggleInput.checked = false;
+        if (taskLogExpenseFields) taskLogExpenseFields.hidden = true;
+      }
       if (taskLogEmotionToggleInput) {
         taskLogEmotionToggleInput.checked = true;
         if (taskLogEmotionFields) taskLogEmotionFields.hidden = false;
       }
       requestAnimationFrame(() => {
         taskLogEmotionSection?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+    } else if (isExpenseTask) {
+      if (taskLogEmotionToggleInput) {
+        taskLogEmotionToggleInput.checked = false;
+        if (taskLogEmotionFields) taskLogEmotionFields.hidden = true;
+      }
+      if (taskLogExpenseToggleInput) {
+        taskLogExpenseToggleInput.checked = true;
+        if (taskLogExpenseFields) taskLogExpenseFields.hidden = false;
+      }
+      requestAnimationFrame(() => {
+        taskLogExpenseSection?.scrollIntoView({
           behavior: "smooth",
           block: "start",
         });
@@ -5988,6 +6149,20 @@ export function render() {
             return getAuditTimeThiefHtml(dateStr, filtered, hourlyRate);
           })()}
           </div>
+          <div class="time-audit-region time-audit-region-time-investment">
+            <div class="time-audit-region-title">5. 시간 투자 내역</div>
+          ${(() => {
+            const hourlyRate = parseFloat(String(el.querySelector(".time-hourly-input")?.value || "0").replace(/,/g, "")) || 0;
+            return getAuditTimeInvestmentHtml(dateStr, filtered, hourlyRate);
+          })()}
+          </div>
+          <div class="time-audit-region time-audit-region-available">
+            <div class="time-audit-region-title">6. 가용시간</div>
+          ${(() => {
+            const hourlyRate = parseFloat(String(el.querySelector(".time-hourly-input")?.value || "0").replace(/,/g, "")) || 0;
+            return getAuditAvailableTimeHtml(dateStr, filtered, hourlyRate);
+          })()}
+          </div>
         `;
         wrap.appendChild(block);
         const tableWrap = block.querySelector(".time-audit-priority-table-wrap");
@@ -6955,6 +7130,17 @@ export function render() {
       filterTabs.querySelectorAll(".time-filter-btn:not([data-audit-hidden])").forEach((b) => {
         b.style.display = "";
       });
+      /* 시간 보고서는 하루용: 날짜 선택 시 기간이 아닌 단일 날짜만 표시 */
+      filterBar.querySelectorAll("[data-audit-range-hidden]").forEach((el) => {
+        el.style.display = "none";
+      });
+      /* 시간 보고서 날짜 선택 픽커에서는 삭제 버튼 숨김 */
+      if (startDateInput) {
+        startDateInput.dataset.hideDeleteBtn = "true";
+        const fp = startDateInput._flatpickr;
+        const delBtn = fp?.calendarContainer?.querySelector(".flatpickr-custom-btn-delete");
+        if (delBtn) delBtn.style.display = "none";
+      }
       if (filterType === "month" || filterType === "week") {
         filterType = "day";
         filterBar.querySelectorAll(".time-filter-btn").forEach((b) => b.classList.remove("active"));
@@ -6968,6 +7154,10 @@ export function render() {
         dayWrap.style.display = filterType === "day" ? "" : "none";
         monthWrap.style.display = "none";
         rangeWrap.style.display = filterType === "range" ? "" : "none";
+        if (filterType === "range") {
+          endDateInput.value = startDateInput.value || filterStartDate;
+          filterEndDate = filterStartDate = startDateInput.value || filterEndDate;
+        }
       }
     } else if (view === "blank") {
       filterTabs.style.display = "none";
@@ -6982,6 +7172,15 @@ export function render() {
       filterTabs.querySelectorAll("[data-audit-hidden]").forEach((b) => {
         b.style.display = "";
       });
+      filterBar.querySelectorAll("[data-audit-range-hidden]").forEach((el) => {
+        el.style.display = "";
+      });
+      if (startDateInput) {
+        delete startDateInput.dataset.hideDeleteBtn;
+        const fp = startDateInput._flatpickr;
+        const delBtn = fp?.calendarContainer?.querySelector(".flatpickr-custom-btn-delete");
+        if (delBtn) delBtn.style.display = "";
+      }
       dayWrap.style.display = filterType === "day" ? "" : "none";
       monthWrap.style.display = filterType === "month" ? "" : "none";
       rangeWrap.style.display = filterType === "range" ? "" : "none";
@@ -7005,7 +7204,7 @@ export function render() {
       cachedRows = getFullRowsForFilter(true);
     }
     const rowsToUse =
-      view === "dashboard" || view === "blank" || view === "audit"
+      view === "dashboard" || view === "blank" || view === "audit" || view === "improve"
         ? cachedRows
         : getFilteredRows(cachedRows);
     viewTabs.querySelectorAll(".time-view-tab").forEach((btn) => {
@@ -7018,13 +7217,15 @@ export function render() {
       contentWrap.innerHTML = "";
     } else if (view === "audit") {
       renderAudit(getFilteredRows(cachedRows));
+    } else if (view === "improve") {
+      contentWrap.innerHTML = "";
     } else if (view === "productivity") {
       renderByProductivity(rowsToUse);
     } else if (view === "dashboard") {
       renderDashboard(cachedRows);
     }
     totalFooter.style.display =
-      view === "dashboard" || view === "blank" || view === "audit"
+      view === "dashboard" || view === "blank" || view === "audit" || view === "improve"
         ? "none"
         : "";
     updateTotal();
