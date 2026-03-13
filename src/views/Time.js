@@ -2271,8 +2271,8 @@ export function render() {
   filterBar.innerHTML = `
     <button type="button" class="time-task-setup-btn" data-filter-for="all" title="과제명, 생산성, 카테고리를 한 번에 설정"><img src="/toolbaricons/settings.svg" alt="" class="time-btn-icon" width="18" height="18"> 과제 설정</button>
     <div class="time-filter-tabs" data-filter-for="all">
-      <button type="button" class="time-filter-btn" data-filter="month">월별</button>
-      <button type="button" class="time-filter-btn" data-filter="week">일주일</button>
+      <button type="button" class="time-filter-btn" data-filter="month" data-audit-hidden>월별</button>
+      <button type="button" class="time-filter-btn" data-filter="week" data-audit-hidden>일주일</button>
       <button type="button" class="time-filter-btn active" data-filter="day">하루</button>
       <button type="button" class="time-filter-btn" data-filter="range">날짜 선택</button>
     </div>
@@ -6308,9 +6308,26 @@ export function render() {
     if (view === "audit") {
       filterTabs.style.display = "";
       if (taskSetupBtn) taskSetupBtn.style.display = "none";
-      dayWrap.style.display = filterType === "day" ? "" : "none";
-      monthWrap.style.display = filterType === "month" ? "" : "none";
-      rangeWrap.style.display = filterType === "range" ? "" : "none";
+      filterTabs.querySelectorAll("[data-audit-hidden]").forEach((b) => {
+        b.style.display = "none";
+      });
+      filterTabs.querySelectorAll(".time-filter-btn:not([data-audit-hidden])").forEach((b) => {
+        b.style.display = "";
+      });
+      if (filterType === "month" || filterType === "week") {
+        filterType = "day";
+        filterBar.querySelectorAll(".time-filter-btn").forEach((b) => b.classList.remove("active"));
+        const dayBtn = filterBar.querySelector('[data-filter="day"]');
+        if (dayBtn) dayBtn.classList.add("active");
+        dayWrap.style.display = "";
+        monthWrap.style.display = "none";
+        rangeWrap.style.display = "none";
+        updateDayDisplay();
+      } else {
+        dayWrap.style.display = filterType === "day" ? "" : "none";
+        monthWrap.style.display = "none";
+        rangeWrap.style.display = filterType === "range" ? "" : "none";
+      }
     } else if (view === "blank") {
       filterTabs.style.display = "none";
       if (taskSetupBtn) taskSetupBtn.style.display = "none";
@@ -6321,6 +6338,9 @@ export function render() {
       filterTabs.style.display = "";
       if (taskSetupBtn)
         taskSetupBtn.style.display = view === "all" ? "" : "none";
+      filterTabs.querySelectorAll("[data-audit-hidden]").forEach((b) => {
+        b.style.display = "";
+      });
       dayWrap.style.display = filterType === "day" ? "" : "none";
       monthWrap.style.display = filterType === "month" ? "" : "none";
       rangeWrap.style.display = filterType === "range" ? "" : "none";
