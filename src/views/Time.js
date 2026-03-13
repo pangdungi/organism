@@ -5203,10 +5203,16 @@ export function render() {
           hasFocusInRange(h) &&
           eventTimes.some((t) => h >= t && h < t + RECOVERY_MINUTES / 60);
 
-        /* 톱니바퀴: 방해 시 수직 하락 → 6분간 바닥 유지 → 점진적 상승 */
+        /* 톱니바퀴: 방해 시 수직 하락 → 6분간 바닥 유지 → 점진적 상승. 초기: 방해 없으면 상단 */
         const concPathStr2 = (() => {
-          const pts = [{ x: padLeft, y: concBottom }];
-          let currentY = concBottom;
+          const firstSegStart = breakpoints[0];
+          const firstSegEnd = breakpoints[1];
+          const firstMidX = (firstSegStart + firstSegEnd) / 2;
+          const firstInTask = isInAnyTask(firstMidX);
+          const firstInRecovery = isInRecovery(firstMidX);
+          const startAtTop = firstInTask && !firstInRecovery;
+          const pts = [{ x: padLeft, y: startAtTop ? concTop : concBottom }];
+          let currentY = startAtTop ? concTop : concBottom;
           for (let i = 0; i < breakpoints.length - 1; i++) {
             const segStart = breakpoints[i];
             const segEnd = breakpoints[i + 1];

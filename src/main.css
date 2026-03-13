@@ -11615,6 +11615,14 @@ body.kpi-resizing {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  max-height: 180px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.time-audit-event-items::-webkit-scrollbar {
+  display: none;
 }
 
 .time-audit-event-item {
