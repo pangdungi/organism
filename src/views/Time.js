@@ -2031,6 +2031,10 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   energyTd.appendChild(energySpan);
   tr.appendChild(energyTd);
 
+  const emotionLightTd = document.createElement("td");
+  emotionLightTd.className = "time-cell time-cell-emotion-light";
+  tr.appendChild(emotionLightTd);
+
   const feedbackTd = document.createElement("td");
   feedbackTd.className = "time-cell time-cell-feedback";
   const feedbackSpan = document.createElement("span");
@@ -2175,6 +2179,7 @@ function createTableHTML() {
         <th class="time-th-price">행동의 가치</th>
         <th class="time-th-focus">방해기록</th>
         <th class="time-th-energy">성취능력</th>
+        <th class="time-th-emotion-light">감정신호등</th>
         <th class="time-th-feedback">과제 메모</th>
         <th class="time-th-actions"></th>
       </tr>
@@ -5369,15 +5374,19 @@ export function render() {
             <div class="time-audit-region-title">1. 집중력</div>
           <div class="time-audit-row">
             <div class="time-audit-charts">
-              <div class="time-audit-concentration-title">집중력</div>
               <div class="time-audit-chart-wrap">
                 <svg class="time-audit-svg" viewBox="0 0 ${chartW} ${chartH}" preserveAspectRatio="xMidYMid meet">
+                  ${Array.from({ length: 25 }, (_, i) => {
+                    const x = toX(i);
+                    return `<line x1="${x}" y1="${padTop}" x2="${x}" y2="${concBottom}" stroke="#e5e7eb" stroke-width="0.25" stroke-dasharray="4,3"/>`;
+                  }).join("")}
                   <line x1="${padLeft}" y1="${concBottom}" x2="${padLeft + plotW}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
                   <line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
+                  <text x="${padLeft - 12}" y="${(padTop + concBottom) / 2}" text-anchor="middle" font-size="7" fill="#6b7280" transform="rotate(-90, ${padLeft - 12}, ${(padTop + concBottom) / 2})">집중력</text>
                   ${taskRects}
                   <path d="${concPathStr2.fillPath}" fill="none" stroke="none"/>
                   ${concPathStr2.strokePath ? `<path d="${concPathStr2.strokePath}" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>` : ""}
-                  ${xLabels.filter((_, i) => i % 2 === 0 || i === xLabels.length - 1).map((l) => `<text x="${l.x}" y="${chartH - 10}" text-anchor="middle" font-size="9" fill="#6b7280">${l.label}</text>`).join("")}
+                  ${xLabels.filter((_, i) => i % 2 === 0 || i === xLabels.length - 1).map((l) => `<text x="${l.x}" y="${concBottom + 10}" text-anchor="middle" font-size="6" fill="#6b7280">${l.label}</text>`).join("")}
                 </svg>
               </div>
               <div class="time-audit-task-legend">
