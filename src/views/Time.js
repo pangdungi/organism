@@ -5342,13 +5342,26 @@ export function render() {
             });
             scheduleRows.sort((a, b) => a.section - b.section || a.task.localeCompare(b.task));
             if (scheduleRows.length === 0) return "";
+            const fmtGap = (goalTime, actualHrs) => {
+              if (!goalTime?.trim() || actualHrs <= 0) return "—";
+              const goalHrs = parseTimeToHours(goalTime);
+              const diff = actualHrs - goalHrs;
+              if (Math.abs(diff) < 1 / 60) return "0";
+              const sign = diff > 0 ? "+" : "-";
+              const absH = Math.abs(diff);
+              const h = Math.floor(absH);
+              const m = Math.round((absH - h) * 60);
+              if (h === 0) return `${sign}${m}m`;
+              if (m === 0) return `${sign}${h}h`;
+              return `${sign}${h}h ${m}m`;
+            };
             const rowsHtml = scheduleRows
               .map(
                 (r) =>
-                  `<tr><td class="time-audit-schedule-task">${r.task}</td><td class="time-audit-schedule-goal">${r.goalTime || "—"}</td><td class="time-audit-schedule-actual">${r.actualHrs > 0 ? formatHoursToHHMM(r.actualHrs) : "—"}</td></tr>`,
+                  `<tr><td class="time-audit-schedule-task">${r.task}</td><td class="time-audit-schedule-goal">${r.goalTime || "—"}</td><td class="time-audit-schedule-actual">${r.actualHrs > 0 ? formatHoursToHHMM(r.actualHrs) : "—"}</td><td class="time-audit-schedule-gap">${fmtGap(r.goalTime, r.actualHrs)}</td></tr>`,
               )
               .join("");
-            return `<div class="time-audit-schedule-table-wrap"><table class="time-audit-schedule-table"><thead><tr><th>과제명</th><th>목표 시간</th><th>실제시간</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+            return `<div class="time-audit-schedule-table-wrap"><table class="time-audit-schedule-table"><thead><tr><th>과제명</th><th>목표 시간</th><th>실제시간</th><th>시간 갭</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
           })()}
         `;
         wrap.appendChild(block);

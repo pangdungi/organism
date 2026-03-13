@@ -11739,8 +11739,13 @@ body.kpi-resizing {
 }
 
 .time-audit-schedule-goal,
-.time-audit-schedule-actual {
+.time-audit-schedule-actual,
+.time-audit-schedule-gap {
   white-space: nowrap;
+}
+
+.time-audit-schedule-gap {
+  color: #6b7280;
 }
 
 .time-dashboard-widget-daily-revenue .time-dashboard-widget-title {
