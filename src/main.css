@@ -764,7 +764,7 @@ body {
   }
 }
 
-/* 감정일기: 네모 영역(오른쪽 콘텐츠)만 스크롤, 사이드바·헤더 고정, 여백 연회색 */
+/* 감정관리: 네모 영역(오른쪽 콘텐츠)만 스크롤, 사이드바·헤더 고정, 여백 연회색 */
 .app-main:has(.diary-view) {
   overflow: hidden;
   display: flex;
@@ -15759,7 +15759,7 @@ body.kpi-resizing {
   border-color: #374151;
 }
 
-/* ----- 감정일기 ----- */
+/* ----- 감정관리 ----- */
 .diary-add-emotion-modal {
   position: fixed;
   inset: 0;
@@ -16381,7 +16381,7 @@ body.kpi-resizing {
   color: #a0a0a0;
 }
 
-/* 감정일기 피드 */
+/* 감정관리 피드 */
 .diary-paper-emotion-feed {
   padding-bottom: 2rem;
 }

@@ -1,10 +1,10 @@
 /**
- * 감정일기 데이터 - Diary.js와 Time.js에서 공유
+ * 감정관리 데이터 - Diary.js와 Time.js에서 공유
  */
 
 const DIARY_ENTRIES_KEY = "diary_entries";
 
-/** 탭 3 감정일기 기본 감정 목록 */
+/** 탭 3 감정관리 기본 감정 목록 */
 export const TAB3_DEFAULT_EMOTIONS = [
   "공포", "불안", "걱정", "기쁨", "행복", "즐거움", "고마움",
   "기특함", "감동", "사랑", "신뢰감", "자부심", "자신감", "자존심", "자격지심", "열등감",
@@ -12,11 +12,18 @@ export const TAB3_DEFAULT_EMOTIONS = [
   "편안감", "후련함", "부끄러움", "죄책감", "아쉬움", "수치심", "짜증", "원망",
 ];
 
-/** 탭 3 감정일기 템플릿 질문 */
+/** 탭 3 감정관리 템플릿 질문 */
 export const TAB3_EMOTION_TEMPLATE = [
   "1. 있는 그대로의 상황(사실만 적기)",
   "2. 그 상황에 대한 내 생각",
-  "3. 메모",
+  "3. 그 판단이 사실이라는 증거가 있나요?",
+];
+
+/** 탭 3 감정관리 템플릿 입력란 placeholder (과제 기록·감정관리 페이지 공통) */
+export const TAB3_EMOTION_PLACEHOLDERS = [
+  "상황을 최대한 객관적으로 감정, 생각 없이 적어주세요",
+  "그 상황에 대한 내 판단, 그 판단으로부터 나오는 감정만 적어보세요",
+  "증거가 없다면 다음 중 어떤 판단오류였나요? (속단, 흑백논리, 과잉일반화, 재앙화, 개인화, 부정적 초점, 완벽주의)",
 ];
 
 export function loadDiaryEntries() {
@@ -36,7 +43,7 @@ export function saveDiaryEntries(data) {
   } catch (_) {}
 }
 
-/** 탭 3 감정일기: 감정 목록 반환 */
+/** 탭 3 감정관리: 감정 목록 반환 */
 export function getEmotionList(all) {
   const tab = all["3"];
   if (!tab || !tab.emotionList || !Array.isArray(tab.emotionList)) {
@@ -51,7 +58,7 @@ const REMOVED_EMOTIONS = [
   "외로움", "난처함", "지겨움", "안도감", "그리움",
 ];
 
-/** 탭 3 감정일기: 데이터 구조 초기화 */
+/** 탭 3 감정관리: 데이터 구조 초기화 */
 export function ensureEmotionTabData(all) {
   if (!all["3"]) all["3"] = {};
   const tab = all["3"];
@@ -76,20 +83,45 @@ export function ensureEmotionTabData(all) {
   return tab;
 }
 
-/** 감정일기에 항목 추가 (Time.js 과제기록에서 호출) */
+/** (구) 감정별 추가 - 하위 호환용, 더 이상 사용 권장 안 함 */
 export function addEmotionEntry(entries, emotion, dateStr, q1, q2, q3) {
-  const tab = ensureEmotionTabData(entries);
-  if (!tab.emotions[emotion]) tab.emotions[emotion] = [];
-  const id = "em_" + Date.now();
+  return addOrUpdateTab3EntryByDate(entries, (dateStr || "").replace(/\//g, "-").slice(0, 10), q1, q2, q3);
+}
+
+/** 탭3 감정관리: 날짜별 1개 항목 추가 또는 해당 날짜 항목 업데이트 (Time.js에서 호출 가능) */
+export function addOrUpdateTab3EntryByDate(entries, dateStr, q1, q2, q3) {
   const normalizedDate = (dateStr || "").replace(/\//g, "-").slice(0, 10);
-  tab.emotions[emotion].unshift({
-    id,
-    date: normalizedDate,
-    emotion,
-    q1: (q1 || "").trim(),
-    q2: (q2 || "").trim(),
-    q3: (q3 || "").trim(),
-    updatedAt: new Date().toISOString(),
-  });
+  if (!normalizedDate) return entries;
+  ensureTab3Entries(entries);
+  const tab = entries["3"];
+  const list = tab.entries || [];
+  const existing = list.find((e) => (e.date || "").slice(0, 10) === normalizedDate);
+  const now = new Date().toISOString();
+  if (existing) {
+    existing.q1 = (q1 !== undefined && q1 !== null ? q1 : existing.q1 || "").trim();
+    existing.q2 = (q2 !== undefined && q2 !== null ? q2 : existing.q2 || "").trim();
+    existing.q3 = (q3 !== undefined && q3 !== null ? q3 : existing.q3 || "").trim();
+    existing.updatedAt = now;
+  } else {
+    list.push({
+      id: "e_" + Date.now(),
+      date: normalizedDate,
+      title: "제목없음",
+      q1: (q1 || "").trim(),
+      q2: (q2 || "").trim(),
+      q3: (q3 || "").trim(),
+      updatedAt: now,
+    });
+  }
   return entries;
+}
+
+/** 탭3 데이터를 날짜별 entries 구조로 보장 (기존 감정별 데이터가 있으면 entries만 비움) */
+export function ensureTab3Entries(entries) {
+  if (!entries["3"]) entries["3"] = {};
+  const tab = entries["3"];
+  if (!Array.isArray(tab.entries)) {
+    tab.entries = [];
+  }
+  return tab;
 }

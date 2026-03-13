@@ -12,9 +12,9 @@ import {
 import {
   loadDiaryEntries,
   saveDiaryEntries,
-  getEmotionList,
-  addEmotionEntry,
+  addOrUpdateTab3EntryByDate,
   TAB3_EMOTION_TEMPLATE,
+  TAB3_EMOTION_PLACEHOLDERS,
 } from "../diaryData.js";
 import {
   getKpiSyncedTaskNames,
@@ -2777,20 +2777,16 @@ export function render() {
           </div>
           <div class="time-task-log-emotion-fields" hidden>
             <div class="time-task-log-field">
-              <label>감정</label>
-              <div class="time-task-log-emotion-dropdown-wrap"></div>
-            </div>
-            <div class="time-task-log-field">
               <label>${TAB3_EMOTION_TEMPLATE[0]}</label>
-              <textarea class="time-task-log-emotion-q1" placeholder="상황을 적어주세요" rows="2"></textarea>
+              <textarea class="time-task-log-emotion-q1" placeholder="${TAB3_EMOTION_PLACEHOLDERS[0]}" rows="2"></textarea>
             </div>
             <div class="time-task-log-field">
               <label>${TAB3_EMOTION_TEMPLATE[1]}</label>
-              <textarea class="time-task-log-emotion-q2" placeholder="생각을 적어주세요" rows="2"></textarea>
+              <textarea class="time-task-log-emotion-q2" placeholder="${TAB3_EMOTION_PLACEHOLDERS[1]}" rows="2"></textarea>
             </div>
             <div class="time-task-log-field">
               <label>${TAB3_EMOTION_TEMPLATE[2]}</label>
-              <textarea class="time-task-log-emotion-q3" placeholder="메모" rows="2"></textarea>
+              <textarea class="time-task-log-emotion-q3" placeholder="${TAB3_EMOTION_PLACEHOLDERS[2]}" rows="2"></textarea>
             </div>
           </div>
         </div>
@@ -3131,9 +3127,6 @@ export function render() {
   );
   const taskLogEmotionFields = taskLogModal.querySelector(
     ".time-task-log-emotion-fields",
-  );
-  const taskLogEmotionDropdownWrap = taskLogModal.querySelector(
-    ".time-task-log-emotion-dropdown-wrap",
   );
   const taskLogEmotionQ1 = taskLogModal.querySelector(
     ".time-task-log-emotion-q1",
@@ -3762,69 +3755,10 @@ export function render() {
     taskLogFocusTypeDropdownWrap.appendChild(focusTypeDropdown);
   }
 
-  function buildEmotionDropdown() {
-    const wrap = document.createElement("div");
-    wrap.className = "time-task-log-emotion-dropdown";
-    const display = document.createElement("span");
-    display.className = "time-task-log-expense-dropdown-display";
-    display.textContent = "선택";
-    display.setAttribute("role", "button");
-    display.setAttribute("tabindex", "0");
-    const panel = document.createElement("div");
-    panel.className = "time-task-log-expense-dropdown-panel";
-    panel.hidden = true;
-    let value = "";
-    let currentTaskName = "";
-    function getEmotionsForTask(taskName) {
-      if (taskName === EMOTION_TASK_POSITIVE) return EMOTION_LIST_POSITIVE;
-      if (taskName === EMOTION_TASK_NEGATIVE) return EMOTION_LIST_NEGATIVE;
-      const entries = loadDiaryEntries();
-      return getEmotionList(entries);
-    }
-    function refresh() {
-      const emotions = getEmotionsForTask(currentTaskName);
-      panel.innerHTML = "";
-      emotions.forEach((em) => {
-        const row = document.createElement("div");
-        row.className = "time-task-log-expense-dropdown-option";
-        row.textContent = em;
-        row.addEventListener("click", () => {
-          value = em;
-          display.textContent = value || "선택";
-          panel.hidden = true;
-        });
-        panel.appendChild(row);
-      });
-    }
-    display.addEventListener("click", (e) => {
-      e.stopPropagation();
-      refresh();
-      panel.hidden = !panel.hidden;
-    });
-    document.addEventListener("click", (e) => {
-      if (!wrap.contains(e.target)) panel.hidden = true;
-    });
-    wrap.appendChild(display);
-    wrap.appendChild(panel);
-    wrap._getValue = () => value;
-    wrap._setValue = (v) => {
-      value = v || "";
-      display.textContent = value || "선택";
-    };
-    wrap._setTaskName = (taskName) => {
-      currentTaskName = (taskName || "").trim();
-    };
-    return wrap;
-  }
-  const emotionDropdown = buildEmotionDropdown();
-  taskLogEmotionDropdownWrap?.appendChild(emotionDropdown);
-
   function onEmotionTaskSelected(taskName) {
     const isEmotionTask =
       taskName === EMOTION_TASK_POSITIVE || taskName === EMOTION_TASK_NEGATIVE;
     if (isEmotionTask) {
-      emotionDropdown._setTaskName?.(taskName);
-      emotionDropdown._setValue?.("");
       if (taskLogEmotionToggleInput) {
         taskLogEmotionToggleInput.checked = true;
         if (taskLogEmotionFields) taskLogEmotionFields.hidden = false;
@@ -3835,8 +3769,6 @@ export function render() {
           block: "start",
         });
       });
-    } else {
-      emotionDropdown._setTaskName?.("");
     }
   }
 
@@ -4116,7 +4048,6 @@ export function render() {
       taskLogExpenseErrorEl.textContent = "";
       taskLogExpenseErrorEl.hidden = true;
     }
-    emotionDropdown._setValue?.("");
     if (taskLogEmotionQ1) taskLogEmotionQ1.value = "";
     if (taskLogEmotionQ2) taskLogEmotionQ2.value = "";
     if (taskLogEmotionQ3) taskLogEmotionQ3.value = "";
@@ -4196,7 +4127,6 @@ export function render() {
     taskLogExpenseAmountInput.value = "";
     if (taskLogExpenseToggleInput) taskLogExpenseToggleInput.checked = false;
     if (taskLogExpenseFields) taskLogExpenseFields.hidden = true;
-    emotionDropdown._setValue?.("");
     if (taskLogEmotionQ1) taskLogEmotionQ1.value = "";
     if (taskLogEmotionQ2) taskLogEmotionQ2.value = "";
     if (taskLogEmotionQ3) taskLogEmotionQ3.value = "";
@@ -4442,21 +4372,13 @@ export function render() {
     }
 
     const emotionToggleOn = taskLogEmotionToggleInput?.checked;
-    const emotionValue = emotionDropdown._getValue?.() || "";
     const emotionQ1 = (taskLogEmotionQ1?.value || "").trim();
     const emotionQ2 = (taskLogEmotionQ2?.value || "").trim();
     const emotionQ3 = (taskLogEmotionQ3?.value || "").trim();
     const hasEmotionContent = emotionQ1 || emotionQ2 || emotionQ3;
-    if (emotionToggleOn && emotionValue && hasEmotionContent) {
+    if (emotionToggleOn && hasEmotionContent) {
       const entries = loadDiaryEntries();
-      addEmotionEntry(
-        entries,
-        emotionValue,
-        dateStr,
-        emotionQ1,
-        emotionQ2,
-        emotionQ3,
-      );
+      addOrUpdateTab3EntryByDate(entries, dateStr, emotionQ1, emotionQ2, emotionQ3);
       saveDiaryEntries(entries);
     }
 
