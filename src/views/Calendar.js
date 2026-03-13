@@ -77,6 +77,8 @@ function getSectionTasksForDate(dateKey) {
             itemType: t.itemType || "todo",
             done: !!t.done,
             taskId: t.taskId || "",
+            eisenhower: (t.eisenhower || "").trim() || "",
+            classification: "",
           }),
         );
     });
@@ -120,6 +122,8 @@ function getSectionTasksWithDateRange() {
             itemType: t.itemType || "todo",
             done: !!t.done,
             taskId: t.taskId || "",
+            eisenhower: (t.eisenhower || "").trim() || "",
+            classification: "",
           }),
         );
     });
@@ -521,9 +525,12 @@ function getCustomSectionTasksForDate(dateKey) {
             startTime: t.startTime || "",
             endTime: t.endTime || "",
             sectionId: sec.id,
+            sectionLabel: sec.label || sec.id,
             itemType: t.itemType || "todo",
             done: !!t.done,
             taskId: t.taskId || "",
+            eisenhower: (t.eisenhower || "").trim() || "",
+            classification: "",
           }),
         );
     });
@@ -590,9 +597,12 @@ function getAllTasksWithDateRange() {
               startTime: t.startTime || "",
               endTime: t.endTime || "",
               sectionId: sec.id,
+              sectionLabel: sec.label || sec.id,
               itemType: t.itemType || "todo",
               done: !!t.done,
               taskId: t.taskId || "",
+              eisenhower: (t.eisenhower || "").trim() || "",
+              classification: "",
             }),
           );
       });
@@ -3909,10 +3919,16 @@ function render1DayView(tabsElement) {
       return input;
     };
 
+    const EISENHOWER_LABELS_1DAY = {
+      "urgent-important": "긴급+중요",
+      "important-not-urgent": "중요+여유",
+      "urgent-not-important": "긴급+덜중요",
+      "not-urgent-not-important": "둘다아님",
+    };
     const todoTable = document.createElement("table");
     todoTable.className = "calendar-1day-todo-table time-daily-budget-table";
     todoTable.innerHTML = `
-      <thead><tr><th>오늘의 할일</th><th>KPI</th></tr></thead>
+      <thead><tr><th>오늘의 할일</th><th>KPI</th><th>우선순위</th></tr></thead>
       <tbody></tbody>
     `;
     const todoTbody = todoTable.querySelector("tbody");
@@ -3998,10 +4014,14 @@ function render1DayView(tabsElement) {
       tr.appendChild(nameTd);
       const kpiTd = document.createElement("td");
       kpiTd.className = "calendar-1day-todo-kpi-cell";
-      if (t.classification) {
-        kpiTd.textContent = t.classification;
-      }
+      kpiTd.textContent = (t.classification || "").trim() || "";
       tr.appendChild(kpiTd);
+      const priorityTd = document.createElement("td");
+      priorityTd.className = "calendar-1day-todo-priority-cell";
+      priorityTd.textContent = (t.eisenhower || "").trim()
+        ? (EISENHOWER_LABELS_1DAY[(t.eisenhower || "").trim()] || (t.eisenhower || "").trim())
+        : "";
+      tr.appendChild(priorityTd);
       todoTbody.appendChild(tr);
     });
 
@@ -4009,7 +4029,7 @@ function render1DayView(tabsElement) {
     todoSection.className = "calendar-1day-todo-section";
     const todoSectionHeader = document.createElement("div");
     todoSectionHeader.className = "calendar-1day-todo-section-header";
-    todoSectionHeader.textContent = "2. KPI별 투두리스트 확인";
+    todoSectionHeader.textContent = "2. 투두리스트 확인";
     const todoSectionBody = document.createElement("div");
     todoSectionBody.className = "calendar-1day-todo-section-body";
     todoSectionBody.appendChild(todoTable);

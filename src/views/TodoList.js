@@ -214,6 +214,16 @@ function collectCustomSectionFromDOM(sectionsEl, sectionId) {
 const KPI_SECTION_IDS = ["dream", "sideincome", "happy", "health"];
 const FIXED_SECTION_IDS_FOR_STORAGE = ["braindump", ...KPI_SECTION_IDS];
 
+let _saveSectionTasksTimer = null;
+function scheduleSaveSectionTasksFromDOM(sectionsWrap) {
+  if (!sectionsWrap) return;
+  if (_saveSectionTasksTimer) clearTimeout(_saveSectionTasksTimer);
+  _saveSectionTasksTimer = setTimeout(() => {
+    _saveSectionTasksTimer = null;
+    collectAndSaveKpiTasksFromDOM(sectionsWrap);
+  }, 300);
+}
+
 function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
   if (!sectionsWrap) return;
   FIXED_SECTION_IDS_FOR_STORAGE.forEach((sectionId) => {
@@ -953,6 +963,8 @@ function createTaskRow(taskData = {}, options = {}) {
           const tbody = tr.parentElement;
           const countEl = section?.querySelector(".todo-section-count");
           if (countEl && tbody) countEl.textContent = String(tbody.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").length);
+        } else if (val !== "" && !isKpiTodo) {
+          scheduleSaveSectionTasksFromDOM(tr.closest(".todo-sections-wrap"));
         }
       }, 0);
     });
@@ -1035,6 +1047,8 @@ function createTaskRow(taskData = {}, options = {}) {
     syncHasDates();
     if (isKpiTodo && kpiTodoId && storageKey) {
       updateKpiTodo(kpiTodoId, storageKey, { startDate: startInput.value });
+    } else if (!isKpiTodo) {
+      scheduleSaveSectionTasksFromDOM(tr.closest(".todo-sections-wrap"));
     }
   });
   startWrap.addEventListener("mousedown", () => {
@@ -1095,6 +1109,8 @@ function createTaskRow(taskData = {}, options = {}) {
     syncHasDates();
     if (isKpiTodo && kpiTodoId && storageKey) {
       updateKpiTodo(kpiTodoId, storageKey, { dueDate: dueInput.value });
+    } else if (!isKpiTodo) {
+      scheduleSaveSectionTasksFromDOM(tr.closest(".todo-sections-wrap"));
     }
   });
   dueWrap.addEventListener("mousedown", () => {
