@@ -2063,34 +2063,18 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   feedbackTd.appendChild(feedbackSpan);
   tr.appendChild(feedbackTd);
 
-  const delBtn = document.createElement("button");
-  delBtn.type = "button";
-  delBtn.className = "time-btn-delete";
-  delBtn.textContent = "삭제";
-  delBtn.title = "삭제";
-  const actionsTd = document.createElement("td");
-  actionsTd.className = "time-cell time-cell-actions";
-  actionsTd.appendChild(delBtn);
-  tr.appendChild(actionsTd);
+  const memoTagTd = document.createElement("td");
+  memoTagTd.className = "time-cell time-cell-memo-tag";
+  tr.appendChild(memoTagTd);
 
+  tr._onRowDelete = onRowDelete;
   tr._updatePrice = updatePrice;
   updatePrice();
-
-  delBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (onRowDelete) {
-      onRowDelete(tr, tr._rowData || rowData);
-    } else {
-      tr.remove();
-      onUpdate?.();
-    }
-  });
 
   if (onRowEdit) {
     tr.classList.add("time-row-clickable");
     tr.title = "클릭하여 수정";
     tr.addEventListener("click", (e) => {
-      if (e.target.closest(".time-cell-actions")) return;
       onRowEdit(tr, collectRowFromTR(tr));
     });
   }
@@ -2201,7 +2185,7 @@ function createTableHTML() {
         <th class="time-th-energy">성취능력</th>
         <th class="time-th-emotion-light">감정신호등</th>
         <th class="time-th-feedback">과제 메모</th>
-        <th class="time-th-actions"></th>
+        <th class="time-th-memo-tag">메모 태그</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -2246,7 +2230,7 @@ function createProductivitySection(
       <td class="time-cell time-cell-tracked time-section-summary-tracked"></td>
       <td class="time-cell time-cell-category" colspan="3"></td>
       <td class="time-cell time-cell-price"><span class="time-section-summary-price"></span></td>
-      <td class="time-cell time-cell-focus" colspan="4"></td>
+      <td class="time-cell time-cell-focus" colspan="5"></td>
     </tr>
   `;
   table.appendChild(tfoot);
@@ -2427,6 +2411,8 @@ export function render() {
   let filterMonth = now.getMonth() + 1;
   let filterStartDate = toDateStr(now);
   let filterEndDate = toDateStr(now);
+  /** 과제 필터: null = 전체, string[] = 선택한 과제만 표시 (히스토리 기준) */
+  let selectedTaskNamesForFilter = null;
 
   const filterBar = document.createElement("div");
   filterBar.className = "time-filter-bar";
@@ -2437,6 +2423,7 @@ export function render() {
       <button type="button" class="time-filter-btn" data-filter="week" data-audit-hidden>일주일</button>
       <button type="button" class="time-filter-btn active" data-filter="day">하루</button>
       <button type="button" class="time-filter-btn" data-filter="range">날짜 선택</button>
+      <button type="button" class="time-filter-btn time-filter-task-select-btn" id="time-task-select-btn">과제선택</button>
     </div>
     <div class="time-filter-day-wrap" data-filter-wrap="day">
       <span class="time-filter-day-display">${formatDateForDayFilter(filterStartDate)}</span>
@@ -2591,7 +2578,11 @@ export function render() {
     const m = filterMonth;
     const start = startDateInput.value || filterStartDate;
     const end = endDateInput.value || filterEndDate;
-    const filtered = filterRowsByFilterType(rows, type, y, m, start, end);
+    let filtered = filterRowsByFilterType(rows, type, y, m, start, end);
+    if (selectedTaskNamesForFilter != null && selectedTaskNamesForFilter.length > 0) {
+      const set = new Set(selectedTaskNamesForFilter);
+      filtered = filtered.filter((r) => set.has((r.taskName || "").trim()));
+    }
     if (view === "all") {
       renderAll(filtered);
     } else if (view === "blank") {
@@ -2639,6 +2630,85 @@ export function render() {
   `;
   taskSetupModal.hidden = true;
   el.appendChild(taskSetupModal);
+
+  const taskSelectModal = document.createElement("div");
+  taskSelectModal.className = "time-task-setup-modal time-task-select-modal";
+  taskSelectModal.innerHTML = `
+    <div class="time-task-setup-backdrop"></div>
+    <div class="time-task-setup-panel time-task-select-panel">
+      <div class="time-task-setup-header">
+        <h3 class="time-task-setup-title">과제선택</h3>
+        <button type="button" class="time-task-setup-close" aria-label="닫기">&times;</button>
+      </div>
+      <div class="time-task-setup-body">
+        <p class="time-task-select-desc">표시할 과제를 선택하세요. 선택한 날짜/기간 내 해당 과제만 보입니다. (히스토리에 기록된 모든 과제가 나열됩니다)</p>
+        <div class="time-task-select-actions">
+          <button type="button" class="time-task-select-all-btn">전체 선택</button>
+          <button type="button" class="time-task-select-none-btn">전체 해제</button>
+        </div>
+        <div class="time-task-select-list" data-task-select-list></div>
+        <div class="time-task-select-footer">
+          <button type="button" class="time-task-select-apply-btn">적용</button>
+          <button type="button" class="time-task-select-clear-btn">필터 해제</button>
+        </div>
+      </div>
+    </div>
+  `;
+  taskSelectModal.hidden = true;
+  el.appendChild(taskSelectModal);
+
+  (function initTaskSelectModal() {
+    const taskSelectList = taskSelectModal.querySelector("[data-task-select-list]");
+    const taskSelectBackdrop = taskSelectModal.querySelector(".time-task-setup-backdrop");
+    const taskSelectClose = taskSelectModal.querySelector(".time-task-setup-header .time-task-setup-close");
+    const taskSelectAllBtn = taskSelectModal.querySelector(".time-task-select-all-btn");
+    const taskSelectNoneBtn = taskSelectModal.querySelector(".time-task-select-none-btn");
+    const taskSelectApplyBtn = taskSelectModal.querySelector(".time-task-select-apply-btn");
+    const taskSelectClearBtn = taskSelectModal.querySelector(".time-task-select-clear-btn");
+
+    function openTaskSelectModal() {
+      const rows = getFullRowsForFilter(true);
+      const names = [...new Set(rows.map((r) => (r.taskName || "").trim()).filter(Boolean))];
+      names.sort((a, b) => a.localeCompare(b, "ko"));
+      const selectedSet = selectedTaskNamesForFilter == null ? null : new Set(selectedTaskNamesForFilter);
+      taskSelectList.innerHTML = names
+        .map(
+          (name) =>
+            `<label class="time-task-select-item"><input type="checkbox" class="time-task-select-cb" data-task-name="${String(name).replace(/"/g, "&quot;")}" ${selectedSet === null || selectedSet.has(name) ? "checked" : ""} /><span>${String(name).replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span></label>`,
+        )
+        .join("");
+      if (names.length === 0) taskSelectList.innerHTML = "<p class=\"time-task-select-empty\">기록된 과제가 없습니다.</p>";
+      taskSelectModal.hidden = false;
+    }
+
+    function closeTaskSelectModal() {
+      taskSelectModal.hidden = true;
+    }
+
+    el.querySelector("#time-task-select-btn")?.addEventListener("click", openTaskSelectModal);
+    taskSelectBackdrop?.addEventListener("click", closeTaskSelectModal);
+    taskSelectClose?.addEventListener("click", closeTaskSelectModal);
+    taskSelectAllBtn?.addEventListener("click", () => {
+      taskSelectModal.querySelectorAll(".time-task-select-cb").forEach((cb) => { cb.checked = true; });
+    });
+    taskSelectNoneBtn?.addEventListener("click", () => {
+      taskSelectModal.querySelectorAll(".time-task-select-cb").forEach((cb) => { cb.checked = false; });
+    });
+    taskSelectApplyBtn?.addEventListener("click", () => {
+      const checked = [...taskSelectModal.querySelectorAll(".time-task-select-cb:checked")].map((cb) => cb.dataset.taskName || "");
+      selectedTaskNamesForFilter = checked.length === 0 ? null : checked;
+      closeTaskSelectModal();
+      onFilterChange();
+      const btn = el.querySelector("#time-task-select-btn");
+      if (btn) btn.classList.toggle("is-active", selectedTaskNamesForFilter != null && selectedTaskNamesForFilter.length > 0);
+    });
+    taskSelectClearBtn?.addEventListener("click", () => {
+      selectedTaskNamesForFilter = null;
+      closeTaskSelectModal();
+      onFilterChange();
+      el.querySelector("#time-task-select-btn")?.classList.remove("is-active");
+    });
+  })();
 
   const addTaskModal = document.createElement("div");
   addTaskModal.className = "time-task-setup-modal time-add-task-modal";
@@ -2709,7 +2779,6 @@ export function render() {
                 <div class="time-task-log-datetime-input-wrap">
                   <input type="text" class="time-task-log-time-end" placeholder="hh:mm" maxlength="5" />
                 </div>
-                <button type="button" class="time-task-log-datetime-clear" data-for="end" title="마감시간 지우기" aria-label="마감시간 지우기">×</button>
               </div>
               <div class="time-task-log-time-adjust-btns">
                 <button type="button" class="time-task-log-time-adjust-btn time-task-log-time-adjust-now" data-now="true">지금</button>
@@ -2817,6 +2886,9 @@ export function render() {
         </div>
         </div>
       </div>
+      <div class="time-task-log-footer" data-task-log-footer style="display:none">
+        <button type="button" class="time-task-log-delete-btn">과제 삭제</button>
+      </div>
       <div class="time-datetime-picker-wrap time-datetime-picker-bottom" hidden>
         <div class="time-datetime-picker-buttons-wrap">
           <div class="time-datetime-picker-header">
@@ -2864,6 +2936,7 @@ export function render() {
   taskLogPickerBackdrop?.addEventListener("click", closeDateTimePicker);
 
   const taskLogTitleEl = taskLogModal.querySelector(".time-task-setup-title");
+  const taskLogFooterEl = taskLogModal.querySelector("[data-task-log-footer]");
   const taskLogTaskWrap = taskLogModal.querySelector(
     ".time-task-log-task-wrap",
   );
@@ -2878,9 +2951,6 @@ export function render() {
   const taskLogTimeEnd = taskLogModal.querySelector(".time-task-log-time-end");
   const taskLogEndWrap = taskLogModal.querySelector(
     ".time-task-log-datetime-wrap-end",
-  );
-  const taskLogEndClearBtn = taskLogModal.querySelector(
-    '.time-task-log-datetime-clear[data-for="end"]',
   );
   const taskLogFeedbackInput = taskLogModal.querySelector(
     ".time-task-log-feedback",
@@ -3074,7 +3144,7 @@ export function render() {
     btn.addEventListener("click", () => {
       const endVal = (taskLogTimeEnd?.value || "").trim();
       const endHasTime = endVal && endVal.match(/\d{1,2}:\d{2}/);
-      const targetIsStart = lastFocusedTimeField === "start" || (lastFocusedTimeField === "end" && !endHasTime);
+      const targetIsStart = lastFocusedTimeField === "start";
 
       const startTimeVal = normalizeHhMm((taskLogTimeStart?.value || "").trim());
       const startHasTime = startTimeVal && startTimeVal.match(/\d{1,2}:\d{2}/);
@@ -3617,14 +3687,6 @@ export function render() {
     };
   }
 
-  taskLogEndClearBtn?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    taskLogTimeEnd.value = "";
-    taskLogEndInput.value = "";
-    syncEndToHidden();
-    updateEndTimeClearVisibility();
-  });
-
   function buildExpenseCategoryDropdown(initialValue, onUpdate) {
     const wrap = document.createElement("div");
     wrap.className = "time-task-log-expense-category-dropdown";
@@ -4051,6 +4113,7 @@ export function render() {
     pendingEditStartTime = "";
     taskLogTitleEl.textContent = "과제 기록";
     taskLogSubmitBtn.textContent = "기록";
+    if (taskLogFooterEl) taskLogFooterEl.style.display = "none";
     taskLogModal.hidden = false;
     taskLogModal.style.zIndex = "1002";
     document.body.style.overflow = "hidden";
@@ -4139,6 +4202,7 @@ export function render() {
     pendingEditStartTime = startTime || "";
     taskLogTitleEl.textContent = "과제 수정";
     taskLogSubmitBtn.textContent = "수정";
+    if (taskLogFooterEl) taskLogFooterEl.style.display = "";
     taskLogModal.hidden = false;
     taskLogModal.style.zIndex = "1002";
     document.body.style.overflow = "hidden";
@@ -4195,6 +4259,7 @@ export function render() {
 
   function closeTaskLogModal() {
     taskLogModal.hidden = true;
+    if (taskLogFooterEl) taskLogFooterEl.style.display = "none";
     closeDateTimePicker();
     taskLogModal.style.zIndex = "";
     document.body.style.overflow = "";
@@ -4433,6 +4498,15 @@ export function render() {
 
   taskLogBackdrop?.addEventListener("click", closeTaskLogModal);
   taskLogCloseBtn?.addEventListener("click", closeTaskLogModal);
+
+  const taskLogDeleteBtn = taskLogModal.querySelector(".time-task-log-delete-btn");
+  taskLogDeleteBtn?.addEventListener("click", () => {
+    const tr = taskLogEditTr;
+    if (!tr) return;
+    const rowData = tr._rowData || collectRowFromTR(tr);
+    if (tr._onRowDelete) tr._onRowDelete(tr, rowData);
+    closeTaskLogModal();
+  });
 
   const backdrop = taskSetupModal.querySelector(".time-task-setup-backdrop");
   const closeBtn = taskSetupModal.querySelector(".time-task-setup-close");
