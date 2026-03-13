@@ -3514,12 +3514,10 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
       if (useLaneLayout) {
         const lane = first.lane ?? 0;
         blockFill.style.borderRadius = lane === 0 ? "2px 0 0 2px" : lane === laneCount - 1 ? "0 2px 2px 0" : "0";
-        blockFill.style.border = "1px dotted rgba(0,0,0,0.12)";
-        if (lane > 0) blockFill.style.borderLeft = "none";
-        if (lane < laneCount - 1) blockFill.style.borderRight = "none";
+        blockFill.style.border = "none";
       } else {
         blockFill.style.borderRadius = "2px";
-        blockFill.style.border = "1px dotted rgba(0,0,0,0.12)";
+        blockFill.style.border = "none";
       }
       if (!useLaneLayout) {
         blockFill.style.position = "relative";
