@@ -5517,6 +5517,10 @@ export function render() {
               const cx = 50; const cy = 50; const r = 40;
               const segs = entries.map((e, i) => {
                 const pct = e.count / total;
+                /* 100% 단일 구간: SVG arc는 시작=끝이면 안 그려지므로 원으로 그림 */
+                if (pct >= 0.9999) {
+                  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${PIE_COLORS[i % PIE_COLORS.length]}" title="${esc(e.label)}: ${e.count} (100%)"/>`;
+                }
                 const a0 = (acc / total) * 2 * Math.PI - Math.PI / 2;
                 acc += e.count;
                 const a1 = (acc / total) * 2 * Math.PI - Math.PI / 2;
@@ -5526,7 +5530,11 @@ export function render() {
                 const d = `M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z`;
                 return `<path d="${d}" fill="${PIE_COLORS[i % PIE_COLORS.length]}" title="${esc(e.label)}: ${e.count}"/>`;
               }).join("");
-              const legend = entries.map((e, i) => `<span class="time-audit-pie-legend-item" style="--pie-color:${PIE_COLORS[i % PIE_COLORS.length]}">${esc(e.label)} ${e.count}</span>`).join("");
+              const legend = entries.map((e, i) => {
+                const pct = total > 0 ? Math.round((e.count / total) * 100) : 0;
+                const pctText = entries.length === 1 ? " 100%" : ` ${e.count} (${pct}%)`;
+                return `<span class="time-audit-pie-legend-item" style="--pie-color:${PIE_COLORS[i % PIE_COLORS.length]}">${esc(e.label)}${pctText}</span>`;
+              }).join("");
               return `<div class="time-audit-pie-box"><div class="time-audit-pie-title">${esc(title)}</div><div class="time-audit-pie-svg-wrap"><svg viewBox="0 0 100 100" class="time-audit-pie-svg">${segs}</svg></div><div class="time-audit-pie-legend">${legend}</div></div>`;
             };
             const priorityEntries = Object.entries(byPriority).map(([k, count]) => ({ label: EISENHOWER_LABELS[k] || k, count }));
