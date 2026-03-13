@@ -16022,16 +16022,30 @@ body.kpi-resizing {
 
 .diary-view .diary-tabs {
   flex-shrink: 0;
+  gap: 0;
 }
 
-.diary-view .diary-tabs .time-view-tab {
-  border: 1px solid #000;
-  border-radius: 4px;
+/* 감정관리 페이지 탭: 위쪽 양쪽 모서리만 둥글게, 탭끼리 선으로 연결 */
+.diary-tab-btn {
+  border: 1px solid #000 !important;
+  border-radius: 10px 10px 0 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  margin-left: -1px;
 }
 
-.diary-view .diary-tabs .time-view-tab.active {
-  border-color: #000;
-  border-width: 1px;
+.diary-tab-btn:first-child {
+  margin-left: 0;
+}
+
+.diary-tab-btn.active {
+  border-color: #000 !important;
+  border-width: 1px !important;
+  border-bottom: none !important;
+  border-bottom-width: 0 !important;
+  border-bottom-color: transparent !important;
+  margin-bottom: -1px;
+  padding-bottom: calc(0.4rem + 1px);
 }
 
 .diary-layout-wrap {

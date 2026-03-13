@@ -76,11 +76,11 @@ export function render() {
   const tabs = document.createElement("div");
   tabs.className = "time-view-tabs diary-tabs";
   tabs.innerHTML = `
-    <button type="button" class="time-view-tab" data-tab="3">감정관리</button>
-    <button type="button" class="time-view-tab active" data-tab="2">통제일기</button>
-    <button type="button" class="time-view-tab" data-tab="1">자유일기</button>
-    <button type="button" class="time-view-tab" data-tab="4">탭 4</button>
-    <button type="button" class="time-view-tab" data-tab="5">탭 5</button>
+    <button type="button" class="time-view-tab diary-tab-btn" data-tab="3">감정관리</button>
+    <button type="button" class="time-view-tab diary-tab-btn active" data-tab="2">통제일기</button>
+    <button type="button" class="time-view-tab diary-tab-btn" data-tab="1">자유일기</button>
+    <button type="button" class="time-view-tab diary-tab-btn" data-tab="4">탭 4</button>
+    <button type="button" class="time-view-tab diary-tab-btn" data-tab="5">탭 5</button>
   `;
   el.appendChild(tabs);
 
@@ -603,9 +603,9 @@ export function render() {
     }
   }
 
-  tabs.querySelectorAll(".time-view-tab").forEach((btn) => {
+  tabs.querySelectorAll(".diary-tab-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      tabs.querySelectorAll(".time-view-tab").forEach((b) => b.classList.remove("active"));
+      tabs.querySelectorAll(".diary-tab-btn").forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
       currentTabId = btn.dataset.tab;
       const list = ensureTabEntries(currentTabId);
