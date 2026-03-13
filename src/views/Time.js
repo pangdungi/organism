@@ -3348,7 +3348,7 @@ export function render() {
         </div>
         <div class="time-task-log-todo-section">
           <div class="time-task-log-todo-header">
-            <h4 class="time-task-log-todo-title">할일 기록</h4>
+            <h4 class="time-task-log-todo-title">투두리스트 (브레인덤프에 기록)</h4>
             <label class="time-task-log-todo-toggle">
               <input type="checkbox" class="time-task-log-todo-toggle-input" />
               <span class="time-task-log-todo-toggle-slider"></span>
@@ -3356,8 +3356,8 @@ export function render() {
           </div>
           <div class="time-task-log-todo-fields" hidden>
             <div class="time-task-log-field">
-              <label>할일이름</label>
               <input type="text" class="time-task-log-todo-name" placeholder="할일이름 입력" />
+              <div class="time-task-log-todo-added-list" aria-live="polite"></div>
             </div>
           </div>
         </div>
@@ -3755,6 +3755,9 @@ export function render() {
   );
   const taskLogTodoNameInput = taskLogModal.querySelector(
     ".time-task-log-todo-name",
+  );
+  const taskLogTodoAddedList = taskLogModal.querySelector(
+    ".time-task-log-todo-added-list",
   );
   const taskLogKpiTodosSection = taskLogModal.querySelector(
     ".time-task-log-kpi-todos-section",
@@ -4648,12 +4651,25 @@ export function render() {
     return false;
   }
 
+  const MAX_TODO_ADDED_DISPLAY = 5;
+  function showTodoAddedFeedback(name) {
+    if (!taskLogTodoAddedList || !(name || "").trim()) return;
+    const span = document.createElement("span");
+    span.className = "time-task-log-todo-added-item";
+    span.textContent = `✓ ${name.trim()}`;
+    taskLogTodoAddedList.appendChild(span);
+    const items = taskLogTodoAddedList.querySelectorAll(".time-task-log-todo-added-item");
+    if (items.length > MAX_TODO_ADDED_DISPLAY) items[0].remove();
+  }
+
   taskLogTodoNameInput?.addEventListener("keydown", (e) => {
     if (e.key !== "Enter") return;
+    if (e.isComposing) return;
     e.preventDefault();
     const todoName = (taskLogTodoNameInput?.value || "").trim();
     if (!todoName) return;
     if (addTodoNameToBraindump(todoName)) {
+      showTodoAddedFeedback(todoName);
       taskLogTodoNameInput.value = "";
     }
   });
@@ -4759,6 +4775,7 @@ export function render() {
     if (taskLogTodoToggleInput) taskLogTodoToggleInput.checked = false;
     if (taskLogTodoFields) taskLogTodoFields.hidden = true;
     if (taskLogTodoNameInput) taskLogTodoNameInput.value = "";
+    if (taskLogTodoAddedList) taskLogTodoAddedList.innerHTML = "";
     if (taskLogKpiTodosSection) taskLogKpiTodosSection.hidden = true;
     if (taskLogKpiTodosList) taskLogKpiTodosList.innerHTML = "";
     taskLogFocusEvents = [];
@@ -5104,7 +5121,7 @@ export function render() {
     const todoToggleOn = taskLogTodoToggleInput?.checked;
     const todoName = (taskLogTodoNameInput?.value || "").trim();
     if (todoToggleOn && todoName) {
-      addTodoNameToBraindump(todoName);
+      if (addTodoNameToBraindump(todoName)) showTodoAddedFeedback(todoName);
     }
 
     if (editTr || addCtx) {

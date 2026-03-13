@@ -10970,6 +10970,28 @@ body.kpi-resizing {
   box-shadow: none;
 }
 
+/* 할일 입력 후 추가됨 피드백 (입력란 아래) */
+.time-task-log-todo-added-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+  margin-top: 0.5rem;
+  min-height: 0;
+}
+.time-task-log-todo-added-item {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: normal;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* KPI 할일 목록 (메모 위, 선택한 행동이 KPI일 때만 표시) */
 .time-task-log-kpi-todos-section {
   margin-bottom: 1rem;

@@ -234,7 +234,12 @@ export function getKpiTodosByKpiName(kpiName) {
     if (!kpi) continue;
     const kpiId = kpi.id;
     const todos = (data.kpiTodos || [])
-      .filter((t) => t.kpiId === kpiId && (t.text || "").trim() !== "")
+      .filter(
+        (t) =>
+          t.kpiId === kpiId &&
+          (t.text || "").trim() !== "" &&
+          !t.completed
+      )
       .map((t) => ({
         id: t.id,
         text: (t.text || "").trim(),
