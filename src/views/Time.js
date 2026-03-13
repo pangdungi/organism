@@ -5228,7 +5228,21 @@ export function render() {
           for (let i = 1; i < pts.length; i++) {
             d += ` L ${pts[i].x} ${pts[i].y}`;
           }
-          return d + " Z";
+          const fillPath = d + " Z";
+          let strokeD = "";
+          for (let i = 0; i < pts.length - 1; i++) {
+            const a = pts[i];
+            const b = pts[i + 1];
+            const segAtBottom =
+              a.y === concBottom && b.y === concBottom && a.x !== b.x;
+            if (segAtBottom) {
+              if (strokeD) strokeD += ` M ${b.x} ${b.y}`;
+              continue;
+            }
+            if (!strokeD) strokeD = `M ${a.x} ${a.y}`;
+            strokeD += ` L ${b.x} ${b.y}`;
+          }
+          return { fillPath, strokePath: strokeD };
         })();
 
         const xLabels = [];
@@ -5292,7 +5306,8 @@ export function render() {
                   <line x1="${padLeft}" y1="${concBottom}" x2="${padLeft + plotW}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
                   <line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
                   ${taskRects}
-                  <path d="${concPathStr2}" fill="rgba(34,197,94,0.15)" stroke="#22c55e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="${concPathStr2.fillPath}" fill="rgba(34,197,94,0.15)" stroke="none"/>
+                  ${concPathStr2.strokePath ? `<path d="${concPathStr2.strokePath}" fill="none" stroke="#22c55e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>` : ""}
                   ${xLabels.filter((_, i) => i % 2 === 0 || i === xLabels.length - 1).map((l) => `<text x="${l.x}" y="${chartH - 10}" text-anchor="middle" font-size="9" fill="#6b7280">${l.label}</text>`).join("")}
                 </svg>
               </div>
