@@ -2718,8 +2718,6 @@ export function render() {
     const time = normalizeHhMm(taskLogTimeEnd?.value || "");
     if (date && time) {
       taskLogEndInput.value = `${date}T${time}`;
-    } else if (date) {
-      taskLogEndInput.value = `${date}T23:59`;
     } else {
       taskLogEndInput.value = "";
     }
@@ -2755,6 +2753,7 @@ export function render() {
   function setEndFromDatetime(dtStr) {
     if (!dtStr || typeof dtStr !== "string") {
       taskLogTimeEnd.value = "";
+      syncEndToHidden();
       return;
     }
     const m = dtStr.match(/[T\s](\d{1,2}):(\d{2})/);
