@@ -5373,56 +5373,47 @@ export function render() {
                         `<tr><td class="time-audit-schedule-task">${r.task}</td><td class="time-audit-schedule-goal">${r.goalTime || "—"}</td><td class="time-audit-schedule-actual">${r.actualHrs > 0 ? formatHoursToHHMM(r.actualHrs) : "—"}</td><td class="time-audit-schedule-gap">${fmtGap(r.goalTime, r.actualHrs)}</td></tr>`,
                     )
                     .join("");
-                  return `<div class="time-audit-below-section"><div class="time-audit-section-1"><div class="time-audit-schedule-table-wrap"><table class="time-audit-schedule-table"><thead><tr><th>과제명</th><th>목표 시간</th><th>실제시간</th><th>시간 갭</th></tr></thead><tbody>${rowsHtml}</tbody></table></div></div>`;
+                  return `<div class="time-audit-section-1"><div class="time-audit-schedule-table-wrap"><table class="time-audit-schedule-table"><thead><tr><th>과제명</th><th>목표 시간</th><th>실제시간</th><th>시간 갭</th></tr></thead><tbody>${rowsHtml}</tbody></table></div></div>`;
                 })()
               : "";
-            const goalEntries = scheduleRows
-              .filter((r) => !BASIC_TASKS.includes(r.task))
-              .map((r) => ({ task: r.task, hrs: parseTimeToHours(r.goalTime) }))
-              .filter((x) => x.hrs > 0);
-            const actualEntries = Object.entries(actualByTask)
-              .filter(([task]) => !BASIC_TASKS.includes(task))
-              .filter(([, hrs]) => hrs > 0)
-              .map(([task, hrs]) => ({ task, hrs }));
-            const goalTotal = goalEntries.reduce((s, x) => s + x.hrs, 0);
-            const actualTotal = actualEntries.reduce((s, x) => s + x.hrs, 0);
-            const makePieSegs = (entries, total) => {
-              if (total <= 0 || entries.length === 0) return [];
-              const r = 40;
-              const cx = 50;
-              const cy = 50;
-              const labelRadius = r * 0.6;
-              const startOffset = -Math.PI / 2;
-              let cumAngle = 0;
-              return entries.map((x, i) => {
-                const angle = (x.hrs / total) * 2 * Math.PI;
-                const startAngle = startOffset + cumAngle;
-                const endAngle = startOffset + cumAngle + angle;
-                const midAngle = (startAngle + endAngle) / 2;
-                cumAngle += angle;
-                const x1 = cx + r * Math.cos(startAngle);
-                const y1 = cy + r * Math.sin(startAngle);
-                const x2 = cx + r * Math.cos(endAngle);
-                const y2 = cy + r * Math.sin(endAngle);
-                const largeArc = angle > Math.PI ? 1 : 0;
-                const d = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`;
-                const tx = cx + labelRadius * Math.cos(midAngle);
-                const ty = cy + labelRadius * Math.sin(midAngle);
-                return { ...x, d, stroke: TASK_BAR_COLORS[i % TASK_BAR_COLORS.length], tx, ty };
-              });
-            };
-            const goalSegs = makePieSegs(goalEntries, goalTotal);
-            const actualSegs = makePieSegs(actualEntries, actualTotal);
-            const PIE_PCT_MIN = 8;
-            const goalPieHtml = goalSegs.length > 0
-              ? `<div class="time-audit-pie-wrap"><svg class="time-audit-pie" viewBox="0 0 100 100">${goalSegs.map((s) => { const pct = goalTotal > 0 ? ((s.hrs / goalTotal) * 100) : 0; const pctStr = pct.toFixed(1); const showInSlice = pct >= PIE_PCT_MIN; return `<path class="time-audit-pie-seg" d="${s.d}" fill="${s.stroke}"/>${showInSlice ? `<text x="${s.tx}" y="${s.ty}" text-anchor="middle" dominant-baseline="middle" class="time-audit-pie-pct">${pctStr}%</text>` : ""}`; }).join("")}</svg></div><div class="time-audit-pie-legend">${goalSegs.map((s) => { const pct = goalTotal > 0 ? ((s.hrs / goalTotal) * 100).toFixed(1) : 0; return `<span class="time-audit-legend-item"><i style="background:${s.stroke}"></i>${s.task} ${pct}%</span>`; }).join("")}</div>`
-              : `<div class="time-audit-pie-empty">목표 없음</div>`;
-            const actualPieHtml = actualSegs.length > 0
-              ? `<div class="time-audit-pie-wrap"><svg class="time-audit-pie" viewBox="0 0 100 100">${actualSegs.map((s) => { const pct = actualTotal > 0 ? ((s.hrs / actualTotal) * 100) : 0; const pctStr = pct.toFixed(1); const showInSlice = pct >= PIE_PCT_MIN; return `<path class="time-audit-pie-seg" d="${s.d}" fill="${s.stroke}"/>${showInSlice ? `<text x="${s.tx}" y="${s.ty}" text-anchor="middle" dominant-baseline="middle" class="time-audit-pie-pct">${pctStr}%</text>` : ""}`; }).join("")}</svg></div><div class="time-audit-pie-legend">${actualSegs.map((s) => { const pct = actualTotal > 0 ? ((s.hrs / actualTotal) * 100).toFixed(1) : 0; return `<span class="time-audit-legend-item"><i style="background:${s.stroke}"></i>${s.task} ${pct}%</span>`; }).join("")}</div>`
-              : `<div class="time-audit-pie-empty">기록 없음</div>`;
-            const goalCardHtml = `<div class="time-audit-pie-card"><div class="time-audit-pie-title">목표 시간 (수면·근무 제외)</div>${goalPieHtml}</div>`;
-            const actualCardHtml = `<div class="time-audit-pie-card"><div class="time-audit-pie-title">실제 시간 (수면·근무 제외)</div>${actualPieHtml}</div>`;
-            return (tableHtml ? tableHtml : "<div class=\"time-audit-below-section\">") + goalCardHtml + actualCardHtml + "</div>";
+            const barRows = scheduleRows.map((r, i) => ({
+              task: r.task,
+              goalHrs: parseTimeToHours(r.goalTime),
+              actualHrs: r.actualHrs,
+              color: TASK_BAR_COLORS[i % TASK_BAR_COLORS.length],
+            }));
+            const maxHrs = Math.max(1, ...barRows.flatMap((r) => [r.goalHrs, r.actualHrs]));
+            const barChartHtml = barRows.length > 0
+              ? `<div class="time-audit-bar-chart">
+                  <div class="time-audit-bar-chart-title">목표 vs 실제</div>
+                  <div class="time-audit-bar-rows">
+                    ${barRows.map((r) => {
+                      const rowMax = Math.max(r.goalHrs, r.actualHrs, 0.01);
+                      const slotPct = maxHrs > 0 ? (rowMax / maxHrs) * 100 : 0;
+                      const barPct = rowMax > 0 ? (r.actualHrs / rowMax) * 100 : 0;
+                      const goalMarkerPct = r.actualHrs > 0 && r.goalHrs > 0 && r.actualHrs > r.goalHrs
+                        ? (r.goalHrs / r.actualHrs) * 100
+                        : null;
+                      return `<div class="time-audit-bar-row">
+                        <div class="time-audit-bar-label" title="${r.task}">${r.task}</div>
+                        <div class="time-audit-bar-track">
+                          <div class="time-audit-bar-slot" style="flex: 0 0 ${slotPct}%">
+                            <div class="time-audit-bar-actual-wrap">
+                              <div class="time-audit-bar-actual" style="width:${barPct}%;--bar-color:${r.color}" title="실제: ${r.actualHrs > 0 ? formatHoursToHHMM(r.actualHrs) : "—"}"></div>
+                              ${goalMarkerPct != null ? `<div class="time-audit-bar-goal-marker" style="left:${goalMarkerPct}%" title="목표: ${formatHoursToHHMM(r.goalHrs)}"></div>` : ""}
+                            </div>
+                          </div>
+                        </div>
+                        <div class="time-audit-bar-values">
+                          <span class="time-audit-bar-goal-val">${r.goalHrs > 0 ? formatHoursToHHMM(r.goalHrs) : "—"}</span>
+                          <span class="time-audit-bar-actual-val">${r.actualHrs > 0 ? formatHoursToHHMM(r.actualHrs) : "—"}</span>
+                        </div>
+                      </div>`;
+                    }).join("")}
+                  </div>
+                </div>`
+              : `<div class="time-audit-bar-chart time-audit-bar-chart-empty"><div class="time-audit-pie-empty">목표 없음</div></div>`;
+            return `<div class="time-audit-below-section">${tableHtml || ""}${barChartHtml}</div>`;
           })()}
           </div>
         `;
