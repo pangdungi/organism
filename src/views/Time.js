@@ -2254,7 +2254,7 @@ export function render() {
   viewTabs.className = "time-view-tabs";
   viewTabs.innerHTML = `
     <button type="button" class="time-view-tab active" data-view="all">1. 시간기록하기</button>
-    <button type="button" class="time-view-tab" data-view="audit">오딧</button>
+    <button type="button" class="time-view-tab" data-view="audit">2. 오딧</button>
     <button type="button" class="time-view-tab" data-view="productivity">생산성별</button>
     <button type="button" class="time-view-tab" data-view="dashboard">대시보드</button>
   `;
