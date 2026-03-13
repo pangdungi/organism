@@ -1047,7 +1047,48 @@ body {
   border-bottom-color: #999;
 }
 
+/* 근무표 상단: 하루 근무시간(왼쪽) + 날짜 필터(오른쪽) */
+.work-schedule-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+.work-schedule-top-row .work-schedule-daily-hours-wrap {
+  margin-bottom: 0;
+}
+.work-schedule-top-row .work-schedule-filter-bar {
+  margin-bottom: 0;
+  margin-left: auto;
+}
+
 /* 근무표 필터 바 (월별/일주일/하루/날짜선택) */
+.work-schedule-daily-hours-wrap {
+  margin-bottom: 0.75rem;
+}
+.work-schedule-daily-hours-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary, #6b7280);
+}
+.work-schedule-daily-hours-input {
+  width: 5rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+.work-schedule-time-accumulation-display {
+  font-size: 0.9rem;
+}
+.work-schedule-time-accumulation-display:empty::before {
+  content: "\00a0";
+}
+
 .work-schedule-filter-bar {
   display: flex;
   align-items: center;
@@ -5115,13 +5156,13 @@ body {
 }
 
 .work-schedule-col-name {
-  width: 14%;
-  min-width: 70px;
+  width: 10%;
+  min-width: 60px;
 }
 
 .work-schedule-col-type {
-  width: 12%;
-  min-width: 100px;
+  width: 10%;
+  min-width: 80px;
 }
 
 .work-schedule-col-hours-worked {
@@ -5218,7 +5259,7 @@ body {
 
 .work-schedule-col-hours {
   width: 1%;
-  min-width: 110px;
+  min-width: 180px;
 }
 
 .work-schedule-th-hours {
@@ -13333,6 +13374,21 @@ body.kpi-resizing {
 .time-ledger-total-tracked,
 .time-ledger-total-price {
   font-weight: 700;
+}
+
+.time-ledger-over-row {
+  display: none;
+}
+.time-ledger-over-row.time-ledger-over-row-visible {
+  display: table-row;
+  background: #fef2f2;
+}
+.time-ledger-over-row .time-cell-task {
+  color: #991b1b;
+}
+.time-ledger-over-row .time-ledger-total-over.has-over {
+  color: #dc2626;
+  font-weight: 600;
 }
 
 .time-ledger-total-price.is-negative {

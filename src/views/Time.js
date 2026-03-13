@@ -5481,6 +5481,7 @@ export function render() {
     if (allTable && allTfoot) {
       const tbody = allTable.querySelector("tbody");
       const totalTrackedEl = allTfoot.querySelector(".time-ledger-total-tracked");
+      const totalOverEl = allTfoot.querySelector(".time-ledger-total-over");
       const totalPriceEl = allTfoot.querySelector(".time-ledger-total-price");
       const hourlyRate =
         parseFloat(
@@ -5503,6 +5504,13 @@ export function render() {
         totalPrice += price;
       });
       if (totalTrackedEl) totalTrackedEl.textContent = totalHrs > 0 ? formatHoursDisplay(totalHrs) : "";
+      const overHrs = totalHrs > 24 ? totalHrs - 24 : 0;
+      const overRow = allTfoot.querySelector(".time-ledger-over-row");
+      if (overRow) overRow.classList.toggle("time-ledger-over-row-visible", overHrs > 0);
+      if (totalOverEl) {
+        totalOverEl.textContent = overHrs > 0 ? formatHoursDisplay(overHrs) : "";
+        totalOverEl.classList.toggle("has-over", overHrs > 0);
+      }
       if (totalPriceEl) {
         totalPriceEl.textContent = formatPrice(totalPrice);
         totalPriceEl.className = "time-cell time-cell-price time-ledger-total-price" + (totalPrice < 0 ? " is-negative" : totalPrice > 0 ? " is-positive" : "");
@@ -5682,6 +5690,13 @@ export function render() {
         <td class="time-cell time-cell-tracked time-ledger-total-tracked"></td>
         <td class="time-cell time-cell-category" colspan="3"></td>
         <td class="time-cell time-cell-price time-ledger-total-price"></td>
+        <td class="time-cell time-cell-focus" colspan="5"></td>
+      </tr>
+      <tr class="time-ledger-over-row">
+        <td class="time-cell time-cell-task" colspan="3">초과된 기록시간</td>
+        <td class="time-cell time-cell-tracked time-ledger-total-over"></td>
+        <td class="time-cell time-cell-category" colspan="3"></td>
+        <td class="time-cell time-cell-price"></td>
         <td class="time-cell time-cell-focus" colspan="5"></td>
       </tr>
     `;
