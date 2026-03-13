@@ -3351,6 +3351,10 @@ export function render() {
             </label>
           </div>
           <div class="time-task-log-todo-fields" hidden>
+            <div class="time-task-log-field">
+              <label>할일이름</label>
+              <input type="text" class="time-task-log-todo-name" placeholder="할일이름 입력" />
+            </div>
           </div>
         </div>
         </div>
@@ -3744,6 +3748,9 @@ export function render() {
   );
   const taskLogTodoFields = taskLogModal.querySelector(
     ".time-task-log-todo-fields",
+  );
+  const taskLogTodoNameInput = taskLogModal.querySelector(
+    ".time-task-log-todo-name",
   );
   const taskLogSubmitBtn = taskLogModal.querySelector(".time-task-log-submit");
   const taskLogBackdrop = taskLogModal.querySelector(
@@ -4669,6 +4676,7 @@ export function render() {
     if (taskLogEmotionFields) taskLogEmotionFields.hidden = true;
     if (taskLogTodoToggleInput) taskLogTodoToggleInput.checked = false;
     if (taskLogTodoFields) taskLogTodoFields.hidden = true;
+    if (taskLogTodoNameInput) taskLogTodoNameInput.value = "";
     taskLogFocusEvents = [];
     taskLogFocusTypeValue = "";
     if (focusTimeInput) focusTimeInput.value = "";
@@ -5007,6 +5015,32 @@ export function render() {
       const entries = loadDiaryEntries();
       addOrUpdateTab3EntryByDate(entries, dateStr, emotionQ1, emotionQ2, emotionQ3, emotionQ4);
       saveDiaryEntries(entries);
+    }
+
+    const todoToggleOn = taskLogTodoToggleInput?.checked;
+    const todoName = (taskLogTodoNameInput?.value || "").trim();
+    if (todoToggleOn && todoName) {
+      try {
+        const SECTION_TASKS_KEY = "todo-section-tasks";
+        const raw = localStorage.getItem(SECTION_TASKS_KEY);
+        const obj = raw ? JSON.parse(raw) : {};
+        const braindump = Array.isArray(obj.braindump) ? obj.braindump : [];
+        const taskId = `braindump-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+        braindump.push({
+          taskId,
+          name: todoName,
+          startDate: "",
+          dueDate: "",
+          startTime: "",
+          endTime: "",
+          eisenhower: "",
+          done: false,
+          itemType: "todo",
+        });
+        obj.braindump = braindump;
+        localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+        document.dispatchEvent(new CustomEvent("todo-braindump-added", { detail: {} }));
+      } catch (_) {}
     }
 
     if (editTr || addCtx) {
