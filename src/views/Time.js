@@ -5322,6 +5322,34 @@ export function render() {
               <div class="time-audit-event-items">${listItemsHtml || '<div class="time-audit-event-empty">기록 없음</div>'}</div>
             </div>
           </div>
+          ${(() => {
+            const BASIC_TASKS = ["수면하기", "근무하기"];
+            const storedGoals = getBudgetGoals(dateStr);
+            const excluded = getBudgetExcluded(dateStr);
+            const dateRows = filtered.filter((r) => (normalizeDateForCompare(r.date || "") || r.date || "") === dateStr);
+            const actualByTask = aggregateHoursByTask(dateRows);
+            const scheduleRows = [];
+            Object.entries(storedGoals).forEach(([task, data]) => {
+              if (excluded.has(task) || isBudgetPlaceholder(task)) return;
+              const isBasic = BASIC_TASKS.includes(task);
+              const isInvest = data?.isInvest === true;
+              const isConsume = data?.isInvest === false;
+              if (!isBasic && !isInvest && !isConsume) return;
+              const goalTime = data?.goalTime || "";
+              const actualHrs = actualByTask[task] || 0;
+              const section = isBasic ? 1 : isInvest ? 3 : 4;
+              scheduleRows.push({ task, goalTime, actualHrs, section });
+            });
+            scheduleRows.sort((a, b) => a.section - b.section || a.task.localeCompare(b.task));
+            if (scheduleRows.length === 0) return "";
+            const rowsHtml = scheduleRows
+              .map(
+                (r) =>
+                  `<tr><td class="time-audit-schedule-task">${r.task}</td><td class="time-audit-schedule-goal">${r.goalTime || "—"}</td><td class="time-audit-schedule-actual">${r.actualHrs > 0 ? formatHoursToHHMM(r.actualHrs) : "—"}</td></tr>`,
+              )
+              .join("");
+            return `<div class="time-audit-schedule-table-wrap"><table class="time-audit-schedule-table"><thead><tr><th>과제명</th><th>목표 시간</th><th>실제시간</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+          })()}
         `;
         wrap.appendChild(block);
       });

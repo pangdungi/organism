@@ -11705,6 +11705,44 @@ body.kpi-resizing {
   overflow: visible;
 }
 
+.time-audit-schedule-table-wrap {
+  margin-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 1rem;
+}
+
+.time-audit-schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.time-audit-schedule-table th,
+.time-audit-schedule-table td {
+  padding: 0.4rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.time-audit-schedule-table th {
+  font-weight: 600;
+  color: #6b7280;
+  background: #f9fafb;
+}
+
+.time-audit-schedule-table td {
+  color: #374151;
+}
+
+.time-audit-schedule-task {
+  font-weight: 500;
+}
+
+.time-audit-schedule-goal,
+.time-audit-schedule-actual {
+  white-space: nowrap;
+}
+
 .time-dashboard-widget-daily-revenue .time-dashboard-widget-title {
   margin-bottom: 0.35rem;
 }
