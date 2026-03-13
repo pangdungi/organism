@@ -40,7 +40,7 @@ function getTasksForAuditDate(dateKey) {
         done: !!t.done,
         eisenhower: (t.eisenhower || "").trim() || "",
         classification: (t.classification || "").trim() || "",
-        sectionId: "kpi",
+        sectionId: t.sectionId || "kpi",
         taskId: t.kpiTodoId || "",
         kpiTodoId: t.kpiTodoId,
         storageKey: t.storageKey,
@@ -121,23 +121,40 @@ function setAuditTaskDone(sectionId, taskId, kpiTodoId, storageKey, done) {
 }
 
 const EISENHOWER_LABELS_AUDIT = { "urgent-important": "긴급+중요", "important-not-urgent": "중요+여유", "urgent-not-important": "긴급+덜중요", "not-urgent-not-important": "둘다아님" };
-const PIE_COLORS_AUDIT = ["#ef4444", "#f59e0b", "#22c55e", "#3b82f6", "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16"];
+/** 오딧 우선순위별 완료 파이 전용 – 볼드하지 않은 색 */
+const PRIORITY_PIE_COLORS_AUDIT = {
+  "urgent-important": "#d4a5a5",
+  "important-not-urgent": "#9cb89c",
+  "urgent-not-important": "#d4c4a0",
+  "not-urgent-not-important": "#9ca3af",
+};
+/** KPI별 완료 파이: sectionId(꿈/부수입/행복/건강) 기준 카테고리 컬러 */
+const KPI_SECTION_TO_CATEGORY = { dream: "dream", sideincome: "sideincome", happy: "happiness", health: "health" };
+function getKpiPieColorBySection(sectionId) {
+  const key = KPI_SECTION_TO_CATEGORY[sectionId] ?? "";
+  return CATEGORY_GRAPH_COLORS[key] ?? CATEGORY_GRAPH_COLORS[""];
+}
 function getAuditPriorityPieHtml(dateStr) {
   const tasks = getTasksForAuditDate(dateStr);
   const completed = tasks.filter((t) => t.done);
   const byPriority = {};
   completed.forEach((t) => { const k = (t.eisenhower || "").trim() || "(없음)"; byPriority[k] = (byPriority[k] || 0) + 1; });
   const byKpi = {};
-  completed.forEach((t) => { const k = (t.classification || "").trim() || "(없음)"; byKpi[k] = (byKpi[k] || 0) + 1; });
+  completed.forEach((t) => {
+    const k = (t.classification || "").trim() || "(없음)";
+    if (!byKpi[k]) byKpi[k] = { count: 0, sectionId: t.sectionId || "" };
+    byKpi[k].count += 1;
+  });
   const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  const makePie = (entries, title) => {
+  const makePie = (entries, title, getColor) => {
     const total = entries.reduce((s, e) => s + e.count, 0);
     if (total === 0) return `<div class="time-audit-pie-box"><div class="time-audit-pie-title">${esc(title)}</div><div class="time-audit-pie-empty">완료 없음</div></div>`;
     let acc = 0;
     const cx = 50; const cy = 50; const r = 40;
     const segs = entries.map((e, i) => {
+      const color = getColor(e, i);
       const pct = e.count / total;
-      if (pct >= 0.9999) return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${PIE_COLORS_AUDIT[i % PIE_COLORS_AUDIT.length]}" title="${esc(e.label)}: ${e.count} (100%)"/>`;
+      if (pct >= 0.9999) return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" title="${esc(e.label)}: ${e.count} (100%)"/>`;
       const a0 = (acc / total) * 2 * Math.PI - Math.PI / 2;
       acc += e.count;
       const a1 = (acc / total) * 2 * Math.PI - Math.PI / 2;
@@ -145,18 +162,21 @@ function getAuditPriorityPieHtml(dateStr) {
       const x1 = cx + r * Math.cos(a1); const y1 = cy + r * Math.sin(a1);
       const large = pct > 0.5 ? 1 : 0;
       const d = `M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z`;
-      return `<path d="${d}" fill="${PIE_COLORS_AUDIT[i % PIE_COLORS_AUDIT.length]}" title="${esc(e.label)}: ${e.count}"/>`;
+      return `<path d="${d}" fill="${color}" title="${esc(e.label)}: ${e.count}"/>`;
     }).join("");
     const legend = entries.map((e, i) => {
+      const color = getColor(e, i);
       const pct = total > 0 ? Math.round((e.count / total) * 100) : 0;
       const pctText = entries.length === 1 ? " 100%" : ` ${e.count} (${pct}%)`;
-      return `<span class="time-audit-pie-legend-item" style="--pie-color:${PIE_COLORS_AUDIT[i % PIE_COLORS_AUDIT.length]}">${esc(e.label)}${pctText}</span>`;
+      return `<span class="time-audit-pie-legend-item" style="--pie-color:${color}">${esc(e.label)}${pctText}</span>`;
     }).join("");
     return `<div class="time-audit-pie-box"><div class="time-audit-pie-title">${esc(title)}</div><div class="time-audit-pie-svg-wrap"><svg viewBox="0 0 100 100" class="time-audit-pie-svg">${segs}</svg></div><div class="time-audit-pie-legend">${legend}</div></div>`;
   };
-  const priorityEntries = Object.entries(byPriority).map(([k, count]) => ({ label: EISENHOWER_LABELS_AUDIT[k] || k, count }));
-  const kpiEntries = Object.entries(byKpi).map(([label, count]) => ({ label, count }));
-  return makePie(priorityEntries, "우선순위별 완료") + makePie(kpiEntries, "KPI별 완료");
+  const priorityEntries = Object.entries(byPriority).map(([k, count]) => ({ key: k, label: EISENHOWER_LABELS_AUDIT[k] || k, count }));
+  const kpiEntries = Object.entries(byKpi).map(([label, data]) => ({ label, count: data.count, sectionId: data.sectionId || "" }));
+  const priorityColor = (e, i) => PRIORITY_PIE_COLORS_AUDIT[e.key] ?? ["#d4a5a5", "#9cb89c", "#d4c4a0", "#9ca3af"][i % 4];
+  const kpiColor = (e, i) => getKpiPieColorBySection(e.sectionId);
+  return makePie(priorityEntries, "우선순위별 완료", priorityColor) + makePie(kpiEntries, "KPI별 완료", kpiColor);
 }
 
 const PRODUCTIVITY_OPTIONS = [
@@ -3043,42 +3063,52 @@ export function render() {
   taskLogTimeEnd?.addEventListener("keydown", restrictToTimeChars);
   taskLogTimeEnd?.addEventListener("paste", filterPastedTime);
 
+  let lastFocusedTimeField = "end";
+  [taskLogTimeStart, taskLogDateStart].forEach((el) => {
+    if (!el) return;
+    el.addEventListener("focus", () => { lastFocusedTimeField = "start"; });
+  });
+  taskLogTimeEnd?.addEventListener("focus", () => { lastFocusedTimeField = "end"; });
+
   taskLogModal.querySelectorAll(".time-task-log-time-adjust-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const endVal = (taskLogTimeEnd?.value || "").trim();
-      const endEmpty = !endVal || !endVal.match(/\d{1,2}:\d{2}/);
-      const fallbackTime = endEmpty
-        ? (taskLogTimeStart?.value || "").trim()
-        : "";
-      const useStartAsBase =
-        endEmpty && fallbackTime && fallbackTime.match(/\d{1,2}:\d{2}/);
+      const endHasTime = endVal && endVal.match(/\d{1,2}:\d{2}/);
+      const targetIsStart = lastFocusedTimeField === "start" || (lastFocusedTimeField === "end" && !endHasTime);
+
+      const startTimeVal = normalizeHhMm((taskLogTimeStart?.value || "").trim());
+      const startHasTime = startTimeVal && startTimeVal.match(/\d{1,2}:\d{2}/);
+      const fallbackTime = startHasTime ? startTimeVal : `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}`;
 
       if (btn.dataset.now === "true") {
-        const base = useStartAsBase
-          ? normalizeHhMm(fallbackTime) || fallbackTime
-          : null;
-        const newTime = base
-          ? base
-          : `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}`;
-        if (taskLogTimeEnd) taskLogTimeEnd.value = newTime;
+        const newTime = `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}`;
+        if (targetIsStart) {
+          if (taskLogTimeStart) taskLogTimeStart.value = newTime;
+          syncStartToHidden();
+        } else {
+          if (taskLogTimeEnd) taskLogTimeEnd.value = newTime;
+          syncEndToHidden();
+        }
       } else {
         const delta = parseInt(btn.dataset.delta || "0", 10);
-        let baseTime = endVal;
-        if (!baseTime || !baseTime.match(/\d{1,2}:\d{2}/)) {
-          baseTime = useStartAsBase
-            ? normalizeHhMm(fallbackTime) || fallbackTime
-            : `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}`;
-        }
-        baseTime = normalizeHhMm(baseTime) || baseTime;
-        const [h, min] = baseTime.split(":").map((n) => parseInt(n, 10) || 0);
+        const baseTime = targetIsStart
+          ? (startHasTime ? startTimeVal : fallbackTime)
+          : (endHasTime ? normalizeHhMm(endVal) : (startHasTime ? startTimeVal : fallbackTime));
+        const normalized = normalizeHhMm(baseTime) || fallbackTime;
+        const [h, min] = normalized.split(":").map((n) => parseInt(n, 10) || 0);
         let totalMin = h * 60 + min + delta;
         totalMin = ((totalMin % 1440) + 1440) % 1440;
         const nh = Math.floor(totalMin / 60) % 24;
         const nmin = totalMin % 60;
         const newTime = `${String(nh).padStart(2, "0")}:${String(nmin).padStart(2, "0")}`;
-        if (taskLogTimeEnd) taskLogTimeEnd.value = newTime;
+        if (targetIsStart) {
+          if (taskLogTimeStart) taskLogTimeStart.value = newTime;
+          syncStartToHidden();
+        } else {
+          if (taskLogTimeEnd) taskLogTimeEnd.value = newTime;
+          syncEndToHidden();
+        }
       }
-      syncEndToHidden();
     });
   });
 
