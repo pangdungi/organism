@@ -673,6 +673,23 @@ const CATEGORY_OPTIONS = [
   { value: "sleep", label: "수면", color: "cat-sleep" },
 ];
 
+/** 오딧 그래프용 카테고리 색상 (time-tag-pill과 동일) */
+const CATEGORY_GRAPH_COLORS = {
+  dream: "rgba(255,182,193,0.5)",
+  sideincome: "rgba(191,179,255,0.5)",
+  happiness: "rgba(255,218,185,0.5)",
+  health: "rgba(144,238,144,0.5)",
+  productive_consumption: "rgba(94,234,212,0.5)",
+  pleasure: "rgba(173,216,230,0.5)",
+  dreamblocking: "rgba(255,200,124,0.5)",
+  unhappiness: "rgba(221,160,221,0.5)",
+  unhealthy: "rgba(176,196,222,0.5)",
+  moneylosing: "rgba(255,160,122,0.5)",
+  work: "rgba(255,239,213,0.6)",
+  sleep: "rgba(230,230,250,0.6)",
+  "": "rgba(209,213,219,0.5)",
+};
+
 /** 투자=생산적(prod-pink), 소비=비생산적(prod-blue) 컬러 */
 function getTaskColorForDropdown(taskOpt, isProductive) {
   return isProductive ? "prod-pink" : "prod-blue";
@@ -5076,7 +5093,6 @@ export function render() {
     const end = endDateInput.value || filterEndDate;
     const periodLabel = getFilterPeriodLabel(type, y, m, start, end);
     const filtered = filterRowsByFilterType(rows, type, y, m, start, end);
-    const auditRows = filtered.filter((r) => (r.focus || "").trim().length > 0);
     const defaultTimeFromStart = (st) => {
       const m = (st || "").match(/[T\s](\d{1,2}):(\d{2})/);
       return m ? `${String(m[1]).padStart(2, "0")}:${m[2]}` : "";
@@ -5091,136 +5107,207 @@ export function render() {
     const wrap = document.createElement("div");
     wrap.className = "time-audit-view";
 
-    if (auditRows.length === 0) {
+    if (filtered.length === 0) {
       wrap.innerHTML = `
         <div class="time-audit-empty">
-          <div class="time-audit-empty-title">${periodLabel} 방해기록이 있는 과제가 없습니다</div>
-          <div class="time-audit-empty-desc">해당 날짜의 시간기록 중 방해기록을 입력한 과제만 오딧에 표시됩니다.</div>
+          <div class="time-audit-empty-title">${periodLabel} 시간기록이 없습니다</div>
+          <div class="time-audit-empty-desc">해당 날짜의 시간기록을 입력하면 오딧에 표시됩니다.</div>
         </div>
       `;
       contentWrap.appendChild(wrap);
       return;
     }
 
-    const chartW = 420;
-    const chartH = 120;
-    const padLeft = 40;
-    const padRight = 12;
-    const padTop = 24;
-    const padBottom = 36;
+    const chartW = 600;
+    const chartH = 180;
+    const padLeft = 44;
+    const padRight = 16;
+    const padTop = 28;
+    const padBottom = 44;
     const plotW = chartW - padLeft - padRight;
     const plotH = chartH - padTop - padBottom;
+    const toX = (hours) =>
+      padLeft + (Math.max(0, Math.min(hours, 24)) / 24) * plotW;
 
-    function pointsToSmoothCurve(pts, tension = 1) {
-      if (pts.length < 2) return "";
-      const t = tension;
-      let d = `M ${pts[0].x} ${pts[0].y}`;
-      for (let i = 0; i < pts.length - 1; i++) {
-        const p0 = pts[Math.max(0, i - 1)];
-        const p1 = pts[i];
-        const p2 = pts[i + 1];
-        const p3 = pts[Math.min(pts.length - 1, i + 2)];
-        const cp1x = p1.x + ((p2.x - p0.x) / 6) * t;
-        const cp1y = p1.y + ((p2.y - p0.y) / 6) * t;
-        const cp2x = p2.x - ((p3.x - p1.x) / 6) * t;
-        const cp2y = p2.y - ((p3.y - p1.y) / 6) * t;
-        d += ` C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${p2.x} ${p2.y}`;
-      }
-      return d;
-    }
-
-    auditRows.forEach((row) => {
+    const byDate = {};
+    filtered.forEach((row) => {
+      const d = normalizeDateForCompare(row.date || "") || row.date || "";
+      if (!d) return;
+      if (!byDate[d]) byDate[d] = { rows: [], events: [] };
       const startH = parseDateTimeToHours(row.startTime);
       const endH = parseDateTimeToHours(row.endTime);
       const defTime = defaultTimeFromStart(row.startTime);
       const events = parseFocusEvents(row.focus, defTime);
-      if (startH == null || endH == null || events.length === 0) return;
-
-      const rangeH = Math.max(0.01, endH - startH);
-      const toX = (hours) =>
-        padLeft +
-        (Math.max(0, Math.min(hours - startH, rangeH)) / rangeH) * plotW;
-      const concTop = padTop;
-      const concBottom = padTop + plotH;
-
-      const eventsInRange = events
+      if (startH == null || endH == null) return;
+      const eventsWithHours = events
         .map((e) => ({
           ...e,
           hours: e.time ? timeStrToHours(e.time) : null,
         }))
-        .filter((e) => e.hours != null && e.hours >= startH && e.hours <= endH)
-        .sort((a, b) => a.hours - b.hours);
-      const eventTimes = eventsInRange.map((e) => e.hours);
-
-      /* 집중력: 시작에서 0, 구간마다 상승 → 방해 시 0으로 하락 → 다시 상승 (톱날 형태) */
-      let concPath = `M ${padLeft} ${concBottom}`;
-      eventTimes.forEach((h) => {
-        const x = toX(h);
-        concPath += ` L ${x} ${concTop} L ${x} ${concBottom}`;
+        .filter((e) => e.hours != null && e.hours >= 0 && e.hours < 24);
+      const hasFocus = eventsWithHours.length > 0;
+      byDate[d].rows.push({
+        taskName: (row.taskName || "").trim() || "—",
+        startH,
+        endH,
+        events: eventsWithHours,
+        hasFocus,
+        category: (row.category || "").trim() || "",
       });
-      concPath += ` L ${padLeft + plotW} ${concTop} L ${padLeft + plotW} ${concBottom} L ${padLeft} ${concBottom} Z`;
-
-      const xLabels = [0, 0.25, 0.5, 0.75, 1].map((rat) => {
-        const h = startH + rat * rangeH;
-        const hr = Math.floor(h);
-        const min = Math.round((h - hr) * 60);
-        return {
-          x: padLeft + rat * plotW,
-          label: `${String(hr).padStart(2, "0")}:${String(min).padStart(2, "0")}`,
-        };
+      eventsWithHours.forEach((ev) => {
+        byDate[d].events.push({ hours: ev.hours, type: ev.type || "" });
       });
+    });
 
-      const vGridLines = xLabels
-        .map((l) => `<line x1="${l.x}" y1="${padTop}" x2="${l.x}" y2="${padTop + plotH}" stroke="#e5e7eb" stroke-width="0.5" stroke-dasharray="2,2"/>`)
-        .join("");
-      const hGridLines = [0.25, 0.5, 0.75]
-        .map((rat) => {
-          const y = padTop + plotH - rat * plotH;
-          return `<line x1="${padLeft}" y1="${y}" x2="${padLeft + plotW}" y2="${y}" stroke="#e5e7eb" stroke-width="0.5" stroke-dasharray="2,2"/>`;
-        })
-        .join("");
+    Object.keys(byDate)
+      .sort()
+      .forEach((dateStr) => {
+        const day = byDate[dateStr];
+        const dayRows = day.rows;
+        if (dayRows.length === 0) return;
 
-      const block = document.createElement("div");
-      block.className = "time-audit-block";
-      const startLabel = (row.startTime || "").match(/[T\s](\d{1,2}):(\d{2})/);
-      const endLabel = (row.endTime || "").match(/[T\s](\d{1,2}):(\d{2})/);
-      const timeRangeStr =
-        startLabel && endLabel
-          ? `${startLabel[1]}:${startLabel[2]} ~ ${endLabel[1]}:${endLabel[2]}`
-          : "";
-      const listItemsHtml = eventsInRange
-        .map(
-          (e, i) =>
-            `<div class="time-audit-event-item" data-event-index="${i}">${e.time || ""} ${e.type || ""}</div>`,
-        )
-        .join("");
+        const allEvents = day.events
+          .slice()
+          .sort((a, b) => (a.hours || 0) - (b.hours || 0));
+        const eventTimes = [...new Set(allEvents.map((e) => e.hours).filter((h) => h != null))].sort(
+          (a, b) => a - b,
+        );
+        const RECOVERY_MINUTES = 6;
+        const recoveryTimes = eventTimes.map((t) => t + RECOVERY_MINUTES / 60);
+        const taskBounds = dayRows.flatMap((r) => [r.startH, r.endH]);
+        const breakpoints = [
+          ...new Set([0, 24, ...eventTimes, ...recoveryTimes, ...taskBounds]),
+        ].sort((a, b) => a - b);
 
-      block.innerHTML = `
-        <div class="time-audit-task-name">${(row.taskName || "").trim() || "—"}</div>
-        <div class="time-audit-task-time">${timeRangeStr}</div>
-        <div class="time-audit-row">
-          <div class="time-audit-charts">
-            <div class="time-audit-concentration-title">집중력</div>
-            <div class="time-audit-chart-wrap">
-              <svg class="time-audit-svg" viewBox="0 0 ${chartW} ${chartH}" preserveAspectRatio="xMidYMid meet">
-                ${vGridLines}
-                ${hGridLines}
-                <line x1="${padLeft}" y1="${concBottom}" x2="${padLeft + plotW}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
-                <line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
-                <path d="${concPath}" fill="rgba(34,197,94,0.15)" stroke="#22c55e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                ${xLabels.map((l) => `<text x="${l.x}" y="${chartH - 8}" text-anchor="middle" font-size="9" fill="#6b7280">${l.label}</text>`).join("")}
-              </svg>
+        const concTop = padTop;
+        const concBottom = padTop + plotH;
+
+        const isInAnyTask = (h) =>
+          dayRows.some((r) => h >= r.startH && h < r.endH);
+        const hasFocusInRange = (h) =>
+          dayRows.some((r) => h >= r.startH && h < r.endH && r.hasFocus);
+        const isInRecovery = (h) =>
+          hasFocusInRange(h) &&
+          eventTimes.some((t) => h >= t && h < t + RECOVERY_MINUTES / 60);
+
+        /* 톱니바퀴: 방해 시 수직 하락 → 6분간 바닥 유지 → 점진적 상승 */
+        const concPathStr2 = (() => {
+          const pts = [{ x: padLeft, y: concBottom }];
+          let currentY = concBottom;
+          for (let i = 0; i < breakpoints.length - 1; i++) {
+            const segStart = breakpoints[i];
+            const segEnd = breakpoints[i + 1];
+            const midX = (segStart + segEnd) / 2;
+            const nextInTask = isInAnyTask(midX);
+            const nextInRecovery = isInRecovery(midX);
+            const x1 = toX(segStart);
+            const x2 = toX(segEnd);
+            if (eventTimes.includes(segStart) && currentY === concTop) {
+              pts.push({ x: x1, y: concBottom });
+              currentY = concBottom;
+            }
+            if (!nextInTask && currentY === concTop) {
+              pts.push({ x: x1, y: concBottom });
+              currentY = concBottom;
+            }
+            if (nextInRecovery || !nextInTask) {
+              pts.push({ x: x2, y: concBottom });
+              currentY = concBottom;
+            } else {
+              pts.push({ x: x2, y: concTop });
+              currentY = concTop;
+            }
+            if (eventTimes.includes(segEnd) && nextInTask && !nextInRecovery) {
+              pts.push({ x: x2, y: concBottom });
+              currentY = concBottom;
+            }
+          }
+          pts.push({ x: padLeft + plotW, y: currentY });
+          pts.push({ x: padLeft + plotW, y: concBottom });
+          let d = `M ${pts[0].x} ${pts[0].y}`;
+          for (let i = 1; i < pts.length; i++) {
+            d += ` L ${pts[i].x} ${pts[i].y}`;
+          }
+          return d + " Z";
+        })();
+
+        const xLabels = [];
+        for (let h = 0; h <= 24; h += 1) {
+          xLabels.push({
+            x: toX(h),
+            label: `${String(h).padStart(2, "0")}:00`,
+          });
+        }
+
+        const vGridLines = xLabels
+          .map((l) => `<line x1="${l.x}" y1="${padTop}" x2="${l.x}" y2="${padTop + plotH}" stroke="#e5e7eb" stroke-width="0.5" stroke-dasharray="2,2"/>`)
+          .join("");
+        const hGridLines = [0.25, 0.5, 0.75]
+          .map((rat) => {
+            const y = padTop + plotH - rat * plotH;
+            return `<line x1="${padLeft}" y1="${y}" x2="${padLeft + plotW}" y2="${y}" stroke="#e5e7eb" stroke-width="0.5" stroke-dasharray="2,2"/>`;
+          })
+          .join("");
+
+        const getCategoryColor = (cat) =>
+          CATEGORY_GRAPH_COLORS[cat] || CATEGORY_GRAPH_COLORS[""];
+        const taskRects = dayRows
+          .map((r) => {
+            const x1 = toX(r.startH);
+            const x2 = toX(r.endH);
+            const color = getCategoryColor(r.category);
+            return `<rect x="${x1}" y="${padTop}" width="${Math.max(2, x2 - x1)}" height="${plotH}" fill="${color}" stroke="rgba(0,0,0,0.06)" stroke-width="0.5"/>`;
+          })
+          .join("");
+
+        const fmtHhMm = (h) =>
+          h != null
+            ? `${String(Math.floor(h)).padStart(2, "0")}:${String(Math.round((h % 1) * 60)).padStart(2, "0")}`
+            : "";
+        const listItemsHtml = allEvents
+          .map(
+            (e) =>
+              `<div class="time-audit-event-item">${fmtHhMm(e.hours)} ${e.type || ""}</div>`,
+          )
+          .join("");
+
+        const dateLabel =
+          dateStr && dateStr.length >= 10
+            ? `${dateStr.slice(0, 4)}년 ${parseInt(dateStr.slice(5, 7), 10)}월 ${parseInt(dateStr.slice(8, 10), 10)}일`
+            : dateStr;
+
+        const block = document.createElement("div");
+        block.className = "time-audit-block time-audit-block-integrated";
+        block.innerHTML = `
+          <div class="time-audit-day-header">
+            <span class="time-audit-day-label">${dateLabel}</span>
+          </div>
+          <div class="time-audit-row">
+            <div class="time-audit-charts">
+              <div class="time-audit-concentration-title">집중력</div>
+              <div class="time-audit-chart-wrap">
+                <svg class="time-audit-svg" viewBox="0 0 ${chartW} ${chartH}" preserveAspectRatio="xMidYMid meet">
+                  ${vGridLines}
+                  ${hGridLines}
+                  <line x1="${padLeft}" y1="${concBottom}" x2="${padLeft + plotW}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
+                  <line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
+                  ${taskRects}
+                  <path d="${concPathStr2}" fill="rgba(34,197,94,0.15)" stroke="#22c55e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  ${xLabels.filter((_, i) => i % 2 === 0 || i === xLabels.length - 1).map((l) => `<text x="${l.x}" y="${chartH - 10}" text-anchor="middle" font-size="9" fill="#6b7280">${l.label}</text>`).join("")}
+                </svg>
+              </div>
+              <div class="time-audit-task-legend">
+                ${dayRows.map((r) => `<span class="time-audit-legend-item" style="--legend-color:${getCategoryColor(r.category)}">${r.taskName} (${String(Math.floor(r.startH)).padStart(2, "0")}:${String(Math.round((r.startH % 1) * 60)).padStart(2, "0")}~${String(Math.floor(r.endH)).padStart(2, "0")}:${String(Math.round((r.endH % 1) * 60)).padStart(2, "0")})</span>`).join("")}
+              </div>
+            </div>
+            <div class="time-audit-event-list">
+              <div class="time-audit-event-list-title">방해 기록</div>
+              <div class="time-audit-event-items">${listItemsHtml || '<div class="time-audit-event-empty">기록 없음</div>'}</div>
             </div>
           </div>
-          <div class="time-audit-event-list">
-            <div class="time-audit-event-list-title">방해 기록</div>
-            <div class="time-audit-event-items">${listItemsHtml || '<div class="time-audit-event-empty">기록 없음</div>'}</div>
-          </div>
-        </div>
-      `;
-
-      wrap.appendChild(block);
-    });
+        `;
+        wrap.appendChild(block);
+      });
 
     contentWrap.appendChild(wrap);
   }
