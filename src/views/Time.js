@@ -2143,7 +2143,6 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
     feedback: initialData?.feedback || "",
     memoTags: Array.isArray(initialData?.memoTags) ? initialData.memoTags : [],
     focus: String(initialData?.focus || "").trim(),
-    energy: String(initialData?.energy || "").trim(),
   };
   tr._rowData = rowData;
 
@@ -2260,18 +2259,6 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   focusSpan.textContent = formatFocusForDisplay(rowData.focus);
   focusTd.appendChild(focusSpan);
   tr.appendChild(focusTd);
-
-  const energyTd = document.createElement("td");
-  energyTd.className = "time-cell time-cell-energy";
-  const energySpan = document.createElement("span");
-  energySpan.className = "time-display-energy";
-  energySpan.textContent = formatEnergyForDisplay(rowData.energy);
-  energyTd.appendChild(energySpan);
-  tr.appendChild(energyTd);
-
-  const emotionLightTd = document.createElement("td");
-  emotionLightTd.className = "time-cell time-cell-emotion-light";
-  tr.appendChild(emotionLightTd);
 
   const feedbackTd = document.createElement("td");
   feedbackTd.className = "time-cell time-cell-feedback";
@@ -2577,9 +2564,6 @@ function collectRowFromTR(tr) {
     date: dateInput?.value || "",
     feedback: feedbackInput?.value || "",
     focus: (tr.querySelector(".time-display-focus")?.textContent || "").trim(),
-    energy: (
-      tr.querySelector(".time-display-energy")?.textContent || ""
-    ).trim(),
   };
 }
 
@@ -2621,7 +2605,6 @@ function createTableHTML() {
       <col class="time-col-date">
       <col class="time-col-price">
       <col class="time-col-focus">
-      <col class="time-col-energy">
       <col class="time-col-feedback">
       <col class="time-col-memo-tag">
       <col class="time-col-actions">
@@ -2637,8 +2620,6 @@ function createTableHTML() {
         <th class="time-th-date">기록 날짜</th>
         <th class="time-th-price">행동의 가치</th>
         <th class="time-th-focus">방해기록</th>
-        <th class="time-th-energy">성취능력</th>
-        <th class="time-th-emotion-light">감정신호등</th>
         <th class="time-th-feedback">과제 메모</th>
         <th class="time-th-memo-tag">메모 태그</th>
       </tr>
@@ -2685,7 +2666,7 @@ function createProductivitySection(
       <td class="time-cell time-cell-tracked time-section-summary-tracked"></td>
       <td class="time-cell time-cell-category" colspan="3"></td>
       <td class="time-cell time-cell-price"><span class="time-section-summary-price"></span></td>
-      <td class="time-cell time-cell-focus" colspan="5"></td>
+      <td class="time-cell time-cell-focus" colspan="3"></td>
     </tr>
   `;
   table.appendChild(tfoot);
@@ -4948,7 +4929,6 @@ export function render() {
       expenseClassificationDropdown._getValue?.() || "";
 
     const focusToggleOn = taskLogFocusToggleInput?.checked;
-    const energyValue = "";
     const focusValue = focusToggleOn
       ? buildFocusValueFromEvents(taskLogFocusEvents)
       : "";
@@ -4986,7 +4966,6 @@ export function render() {
         date: dateStr,
         feedback,
         memoTags,
-        energy: energyValue,
         focus: focusValue,
       };
       editTr._rowData = newRowData;
@@ -5044,12 +5023,7 @@ export function render() {
       const focusDisplay = editTr.querySelector(
         ".time-cell-focus .time-display-focus",
       );
-      const energyDisplay = editTr.querySelector(
-        ".time-cell-energy .time-display-energy",
-      );
       if (focusDisplay) focusDisplay.textContent = formatFocusForDisplay(focusValue);
-      if (energyDisplay)
-        energyDisplay.textContent = formatEnergyForDisplay(energyValue);
       editTr._updatePrice?.();
     } else if (addCtx) {
       const ctx = addCtx;
@@ -5063,7 +5037,6 @@ export function render() {
         date: dateStr,
         feedback,
         memoTags,
-        energy: energyValue,
         focus: focusValue,
       };
       const tr = createRow(
