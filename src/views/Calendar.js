@@ -3933,7 +3933,16 @@ function render1DayView(tabsElement) {
     `;
     const todoTbody = todoTable.querySelector("tbody");
 
-    tasks.forEach((t) => {
+    const EISENHOWER_ORDER = ["urgent-important", "important-not-urgent", "urgent-not-important", "not-urgent-not-important"];
+    const sortedTasks = [...tasks].sort((a, b) => {
+      const aq = (a.eisenhower || "").trim();
+      const bq = (b.eisenhower || "").trim();
+      const ai = aq ? EISENHOWER_ORDER.indexOf(aq) : 999;
+      const bi = bq ? EISENHOWER_ORDER.indexOf(bq) : 999;
+      return ai - bi;
+    });
+
+    sortedTasks.forEach((t) => {
       const isTodo = (t.itemType || "todo").toLowerCase() === "todo";
       const baseColor = getSectionColor(t.sectionId);
       const color = withMoreTransparency(baseColor);
