@@ -3227,69 +3227,35 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
       })));
     }
     const validSorted = sorted.filter((s) => s.endMin > s.startMin);
-    const resolved = resolveOverlapsInSpans(validSorted, fmt);
-    const normalized = resolved.map((s) => ({
+    const withLanes = assignLanesToSpans(validSorted);
+    const normalized = withLanes.spans.map((s) => ({
       ...s,
       startDisplay: fmt(s.startMin),
       endDisplay: fmt(s.endMin),
     }));
     if (TT_SYNC_DEBUG) {
-      console.log("[TT-SYNC] resolveOverlapsInSpans result", normalized.length, normalized.map((s) => ({
+      console.log("[TT-SYNC] assignLanesToSpans result", normalized.length, "maxLane:", withLanes.maxLane, normalized.map((s) => ({
         task: s.taskName,
         start: s.startDisplay,
         end: s.endDisplay,
+        lane: s.lane,
       })));
     }
-    return normalized;
+    return { spans: normalized, maxLane: withLanes.maxLane };
   };
-  /** 겹치는 구간 제거 - 같은 시간대에 한 과제만 표시 (먼저 나온 과제 우선) */
-  const resolveOverlapsInSpans = (spans, fmt) => {
-    const accepted = [];
+  /** 겹치는 스팬에 레인 할당 - 과제가 2개 이상이면 항상 레인 고정, 각 과제는 자기 레인에 전체 기간 유지 */
+  const assignLanesToSpans = (spans) => {
+    const laneEnds = [];
+    let maxLane = 0;
     for (const span of spans) {
-      let toAdd = [{ ...span }];
-      for (const acc of accepted) {
-        const next = [];
-        for (const s of toAdd) {
-          const overlapStart = Math.max(s.startMin, acc.startMin);
-          const overlapEnd = Math.min(s.endMin, acc.endMin);
-          if (overlapStart >= overlapEnd) {
-            next.push(s);
-            continue;
-          }
-          if (s.startMin < overlapStart) {
-            const startSlot = Math.floor(s.startMin / MIN_PER_SLOT);
-            const endSlot = Math.min(SLOTS_PER_DAY - 1, Math.floor((overlapStart - 1) / MIN_PER_SLOT));
-            next.push({
-              ...s,
-              startMin: s.startMin,
-              endMin: overlapStart,
-              startSlot,
-              endSlot: Math.max(endSlot, startSlot),
-              startDisplay: fmt(s.startMin),
-              endDisplay: fmt(overlapStart),
-            });
-          }
-          if (s.endMin > overlapEnd) {
-            const startSlot = Math.floor(overlapEnd / MIN_PER_SLOT);
-            const endSlot = Math.min(SLOTS_PER_DAY - 1, Math.floor((s.endMin - 1) / MIN_PER_SLOT));
-            next.push({
-              ...s,
-              startMin: overlapEnd,
-              endMin: s.endMin,
-              startSlot,
-              endSlot: Math.max(endSlot, startSlot),
-              startDisplay: fmt(overlapEnd),
-              endDisplay: fmt(s.endMin),
-            });
-          }
-        }
-        toAdd = next;
-      }
-      for (const s of toAdd) {
-        if (s.endMin > s.startMin) accepted.push(s);
-      }
+      let lane = 0;
+      while (lane < laneEnds.length && laneEnds[lane] > span.startMin) lane++;
+      if (lane >= laneEnds.length) laneEnds.push(span.endMin);
+      else laneEnds[lane] = span.endMin;
+      span.lane = lane;
+      maxLane = Math.max(maxLane, lane);
     }
-    return accepted.sort((a, b) => a.startMin - b.startMin);
+    return { spans, maxLane };
   };
   const getSlotExpected = (slotIndex) => {
     const slotStartMin = slotIndex * MIN_PER_SLOT;
@@ -3421,7 +3387,9 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
     }
     return spans;
   };
-  const expectedSpans = buildExpectedSpansFromTasks();
+  const expectedResult = buildExpectedSpansFromTasks();
+  const expectedSpans = expectedResult.spans;
+  const expectedMaxLane = expectedResult.maxLane;
   const actualSpans = buildSpans(getSlotActual);
   const SECTION_IDS_FOR_LIST_COLOR = [
     "braindump",
@@ -3430,35 +3398,19 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
     "health",
     "happy",
   ];
-  /** 경계에서 만나는 스팬을 연속 블록으로 그룹화 (01:50에서 두 과제가 동시에 일어나는 것처럼 보이지 않게) */
-  const groupContiguousSpans = (spans) => {
-    if (spans.length === 0) return [];
-    const groups = [];
-    let cur = [spans[0]];
-    for (let i = 1; i < spans.length; i++) {
-      const prev = cur[cur.length - 1];
-      const next = spans[i];
-      if (prev.endMin === next.startMin) {
-        cur.push(next);
-      } else {
-        groups.push(cur);
-        cur = [next];
-      }
-    }
-    groups.push(cur);
-    return groups;
-  };
-  const createOverlay = (spans, colors, isActual) => {
+  const createOverlay = (spans, colors, isActual, maxLane = 0) => {
     if (!isActual && TT_SYNC_DEBUG) {
       console.log("[TT-SYNC] createOverlay expected spans", spans.length, spans.map((s) => ({
         task: s.taskName,
         start: s.startDisplay,
         end: s.endDisplay,
+        lane: s.lane,
       })));
     }
     const overlay = document.createElement("div");
     overlay.className = `calendar-1day-time-fill-overlay calendar-1day-time-fill-overlay--${isActual ? "actual" : "expected"}`;
-    const groups = isActual ? spans.map((s) => [s]) : groupContiguousSpans(spans);
+    const laneCount = Math.max(1, maxLane + 1);
+    const groups = isActual ? spans.map((s) => [s]) : spans.map((s) => [s]);
     for (const group of groups) {
       const first = group[0];
       const last = group[group.length - 1];
@@ -3494,6 +3446,13 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
       blockFill.className =
         "calendar-1day-time-slot-fill calendar-1day-time-slot-fill--block calendar-1day-time-slot-fill--span";
       blockFill.style.gridRow = `${blockStartSlot + 2} / ${blockEndSlot + 3}`;
+      const useLaneLayout = !isActual && laneCount > 1;
+      if (useLaneLayout) {
+        const lane = first.lane ?? 0;
+        blockFill.style.width = `${100 / laneCount}%`;
+        blockFill.style.left = `${(lane / laneCount) * 100}%`;
+        blockFill.style.right = "auto";
+      }
       const heightPct =
         blockHeightMin > 0 && actualBlockMin < blockHeightMin
           ? ((actualBlockMin / blockHeightMin) * 100).toFixed(1)
@@ -3515,10 +3474,18 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
       blockFill.style.gap = "0";
       blockFill.style.padding = "0";
       blockFill.style.overflow = "hidden";
-      blockFill.style.borderRadius = "2px";
-      blockFill.style.border = "1px dotted rgba(0,0,0,0.12)";
+      if (useLaneLayout) {
+        const lane = first.lane ?? 0;
+        blockFill.style.borderRadius = lane === 0 ? "2px 0 0 2px" : lane === laneCount - 1 ? "0 2px 2px 0" : "0";
+        blockFill.style.border = "1px dotted rgba(0,0,0,0.12)";
+        if (lane > 0) blockFill.style.borderLeft = "none";
+        if (lane < laneCount - 1) blockFill.style.borderRight = "none";
+      } else {
+        blockFill.style.borderRadius = "2px";
+        blockFill.style.border = "1px dotted rgba(0,0,0,0.12)";
+      }
       blockFill.style.position = "relative";
-      blockFill.style.width = "100%";
+      if (!useLaneLayout) blockFill.style.width = "100%";
       blockFill.style.boxSizing = "border-box";
       for (const sp of group) {
         let c;
@@ -3564,7 +3531,7 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
     return overlay;
   };
   return {
-    expected: createOverlay(expectedSpans, prodColorsExpected, false),
+    expected: createOverlay(expectedSpans, prodColorsExpected, false, expectedMaxLane),
     actual: createOverlay(actualSpans, prodColorsActual, true),
   };
 }

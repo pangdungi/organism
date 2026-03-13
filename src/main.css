@@ -17370,6 +17370,7 @@ body.kpi-resizing {
   width: calc((100% - 4rem) / 2);
   pointer-events: auto;
   z-index: 0;
+  overflow: hidden;
 }
 
 .calendar-1day-view
