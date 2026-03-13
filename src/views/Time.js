@@ -20,7 +20,75 @@ import {
   getKpiSyncedTaskNames,
   syncHabitTrackerLogs,
 } from "../utils/timeKpiSync.js";
+import { getKpiTodosAsTasks } from "../utils/kpiTodoSync.js";
+import { getCustomSections } from "../utils/todoSettings.js";
 import { showToast } from "../utils/showToast.js";
+
+/** 오딧 3. 우선순위 영역: 해당 날짜 할일 목록 로드 (Calendar getTasksForDate와 동일 데이터) */
+const SECTION_TASKS_KEY_AUDIT = "todo-section-tasks";
+const CUSTOM_SECTION_TASKS_KEY_AUDIT = "todo-custom-section-tasks";
+const KPI_SECTION_IDS_AUDIT = ["braindump", "dream", "sideincome", "health", "happy"];
+function getTasksForAuditDate(dateKey) {
+  const out = [];
+  try {
+    const kpiTasks = getKpiTodosAsTasks().filter(
+      (t) => (t.dueDate || "").slice(0, 10) === dateKey,
+    );
+    kpiTasks.forEach((t) =>
+      out.push({
+        name: t.name || "",
+        done: !!t.done,
+        eisenhower: (t.eisenhower || "").trim() || "",
+        classification: (t.classification || "").trim() || "",
+      }),
+    );
+    const raw = localStorage.getItem(SECTION_TASKS_KEY_AUDIT);
+    if (raw) {
+      const obj = JSON.parse(raw);
+      KPI_SECTION_IDS_AUDIT.forEach((sectionId) => {
+        const arr = obj[sectionId];
+        if (!Array.isArray(arr)) return;
+        arr
+          .filter(
+            (t) =>
+              (t.name || "").trim() !== "" &&
+              (t.dueDate || "").slice(0, 10) === dateKey,
+          )
+          .forEach((t) =>
+            out.push({
+              name: (t.name || "").trim(),
+              done: !!t.done,
+              eisenhower: (t.eisenhower || "").trim() || "",
+              classification: "",
+            }),
+          );
+      });
+    }
+    const customRaw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY_AUDIT);
+    if (customRaw) {
+      const obj = JSON.parse(customRaw);
+      getCustomSections().forEach((sec) => {
+        const arr = obj[sec.id];
+        if (!Array.isArray(arr)) return;
+        arr
+          .filter(
+            (t) =>
+              (t.name || "").trim() !== "" &&
+              (t.dueDate || "").slice(0, 10) === dateKey,
+          )
+          .forEach((t) =>
+            out.push({
+              name: (t.name || "").trim(),
+              done: !!t.done,
+              eisenhower: (t.eisenhower || "").trim() || "",
+              classification: "",
+            }),
+          );
+      });
+    }
+  } catch (_) {}
+  return out;
+}
 
 const PRODUCTIVITY_OPTIONS = [
   { value: "productive", label: "생산적", color: "prod-pink" },
@@ -5414,6 +5482,58 @@ export function render() {
                 </div>`
               : `<div class="time-audit-bar-chart time-audit-bar-chart-empty"><div class="time-audit-pie-empty">목표 없음</div></div>`;
             return `<div class="time-audit-below-section">${tableHtml || ""}${barChartHtml}</div>`;
+          })()}
+          </div>
+          <div class="time-audit-region time-audit-region-priority">
+            <div class="time-audit-region-title">3. 우선순위</div>
+          ${(() => {
+            const tasks = getTasksForAuditDate(dateStr);
+            const EISENHOWER_ORDER = ["urgent-important", "important-not-urgent", "urgent-not-important", "not-urgent-not-important"];
+            const EISENHOWER_LABELS = { "urgent-important": "긴급+중요", "important-not-urgent": "중요+여유", "urgent-not-important": "긴급+덜중요", "not-urgent-not-important": "둘다아님" };
+            const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+            const sorted = [...tasks].sort((a, b) => {
+              const ai = EISENHOWER_ORDER.indexOf((a.eisenhower || "").trim());
+              const bi = EISENHOWER_ORDER.indexOf((b.eisenhower || "").trim());
+              return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
+            });
+            const tableRows = sorted.map((t) => {
+              const label = (t.name || "").trim() || "—";
+              const kpi = (t.classification || "").trim() || "—";
+              const priority = (t.eisenhower || "").trim() ? (EISENHOWER_LABELS[(t.eisenhower || "").trim()] || (t.eisenhower || "").trim()) : "—";
+              const checked = t.done ? " checked" : "";
+              return `<tr><td class="time-audit-priority-todo-cell"><label class="time-audit-priority-todo-row"><input type="checkbox" disabled${checked}><span>${esc(label)}</span></label></td><td>${esc(kpi)}</td><td>${esc(priority)}</td></tr>`;
+            }).join("");
+            const tableHtml = `<div class="time-audit-priority-table-wrap"><table class="time-audit-priority-table"><thead><tr><th>오늘의 할일</th><th>KPI</th><th>우선순위</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
+            const completed = tasks.filter((t) => t.done);
+            const byPriority = {};
+            completed.forEach((t) => { const k = (t.eisenhower || "").trim() || "(없음)"; byPriority[k] = (byPriority[k] || 0) + 1; });
+            const byKpi = {};
+            completed.forEach((t) => { const k = (t.classification || "").trim() || "(없음)"; byKpi[k] = (byKpi[k] || 0) + 1; });
+            const PIE_COLORS = ["#ef4444", "#f59e0b", "#22c55e", "#3b82f6", "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16"];
+            const makePieSvg = (entries, title) => {
+              const total = entries.reduce((s, e) => s + e.count, 0);
+              if (total === 0) return `<div class="time-audit-pie-box"><div class="time-audit-pie-title">${esc(title)}</div><div class="time-audit-pie-empty">완료 없음</div></div>`;
+              let acc = 0;
+              const cx = 50; const cy = 50; const r = 40;
+              const segs = entries.map((e, i) => {
+                const pct = e.count / total;
+                const a0 = (acc / total) * 2 * Math.PI - Math.PI / 2;
+                acc += e.count;
+                const a1 = (acc / total) * 2 * Math.PI - Math.PI / 2;
+                const x0 = cx + r * Math.cos(a0); const y0 = cy + r * Math.sin(a0);
+                const x1 = cx + r * Math.cos(a1); const y1 = cy + r * Math.sin(a1);
+                const large = pct > 0.5 ? 1 : 0;
+                const d = `M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z`;
+                return `<path d="${d}" fill="${PIE_COLORS[i % PIE_COLORS.length]}" title="${esc(e.label)}: ${e.count}"/>`;
+              }).join("");
+              const legend = entries.map((e, i) => `<span class="time-audit-pie-legend-item" style="--pie-color:${PIE_COLORS[i % PIE_COLORS.length]}">${esc(e.label)} ${e.count}</span>`).join("");
+              return `<div class="time-audit-pie-box"><div class="time-audit-pie-title">${esc(title)}</div><div class="time-audit-pie-svg-wrap"><svg viewBox="0 0 100 100" class="time-audit-pie-svg">${segs}</svg></div><div class="time-audit-pie-legend">${legend}</div></div>`;
+            };
+            const priorityEntries = Object.entries(byPriority).map(([k, count]) => ({ label: EISENHOWER_LABELS[k] || k, count }));
+            const kpiEntries = Object.entries(byKpi).map(([label, count]) => ({ label, count }));
+            const pie1 = makePieSvg(priorityEntries, "우선순위별 완료");
+            const pie2 = makePieSvg(kpiEntries, "KPI별 완료");
+            return `<div class="time-audit-priority-content"><div class="time-audit-priority-left">${tableHtml}</div><div class="time-audit-priority-right">${pie1}${pie2}</div></div>`;
           })()}
           </div>
         `;

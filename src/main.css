@@ -11857,6 +11857,151 @@ body.kpi-resizing {
   color: #9ca3af;
 }
 
+/* 오딧 3. 우선순위 영역: 투두리스트 표 + 우선순위/KPI 파이차트 (시간갭 표와 너비 맞춤) */
+.time-audit-region-priority {
+  margin-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 1rem;
+}
+
+.time-audit-priority-content {
+  display: flex;
+  flex-direction: row;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  align-items: stretch;
+  min-height: 220px;
+}
+
+/* 시간갭 .time-audit-section-1과 동일한 flex로 표 너비 일치 */
+.time-audit-priority-left {
+  flex: 1;
+  min-width: 280px;
+}
+
+.time-audit-priority-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.time-audit-priority-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.time-audit-priority-table thead th {
+  background: #f9fafb;
+  padding: 0.5rem 0.75rem;
+  text-align: center;
+  font-weight: 600;
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.time-audit-priority-table tbody td {
+  padding: 0.4rem 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  vertical-align: middle;
+}
+
+.time-audit-priority-todo-cell {
+  text-align: left;
+}
+
+.time-audit-priority-todo-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: default;
+}
+
+.time-audit-priority-todo-row input[type="checkbox"] {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.time-audit-priority-todo-row span {
+  word-break: break-word;
+}
+
+/* 남은 열을 두 파이차트가 균등 분할 */
+.time-audit-priority-right {
+  flex: 1;
+  min-width: 280px;
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.time-audit-priority-right .time-audit-pie-box {
+  flex: 1 1 160px;
+  min-width: 160px;
+}
+
+.time-audit-pie-box {
+  padding: 0.75rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  min-width: 140px;
+}
+
+.time-audit-pie-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.time-audit-pie-svg-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+  min-height: 120px;
+  align-items: center;
+}
+
+.time-audit-pie-svg {
+  width: 120px;
+  height: 120px;
+  display: block;
+}
+
+.time-audit-pie-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+  justify-content: center;
+}
+
+.time-audit-pie-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.time-audit-pie-legend-item::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pie-color, #94a3b8);
+}
+
+.time-audit-pie-box .time-audit-pie-empty {
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: #9ca3af;
+}
+
 .time-audit-schedule-table-wrap {
   margin-top: 1rem;
   border-top: 1px solid #e5e7eb;
