@@ -5308,7 +5308,7 @@ export function render() {
                   <line x1="${padLeft}" y1="${concBottom}" x2="${padLeft + plotW}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
                   <line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
                   ${taskRects}
-                  <path d="${concPathStr2.fillPath}" fill="rgba(239,68,68,0.12)" stroke="none"/>
+                  <path d="${concPathStr2.fillPath}" fill="none" stroke="none"/>
                   ${concPathStr2.strokePath ? `<path d="${concPathStr2.strokePath}" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>` : ""}
                   ${xLabels.filter((_, i) => i % 2 === 0 || i === xLabels.length - 1).map((l) => `<text x="${l.x}" y="${chartH - 10}" text-anchor="middle" font-size="9" fill="#6b7280">${l.label}</text>`).join("")}
                 </svg>
