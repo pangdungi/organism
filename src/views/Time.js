@@ -6932,14 +6932,14 @@ export function renderTimeBudgetTablesForCalendar(
   const fourPanels = document.createElement("div");
   fourPanels.className = "time-daily-budget-four-panels";
   fourPanels.appendChild(basicSection);
-  fourPanels.appendChild(investSection);
-  fourPanels.appendChild(consumeSection);
   if (todoSectionEl) {
     const todoWrap = document.createElement("div");
     todoWrap.className = "time-daily-budget-section time-daily-budget-section--todo";
     todoWrap.appendChild(todoSectionEl);
     fourPanels.appendChild(todoWrap);
   }
+  fourPanels.appendChild(investSection);
+  fourPanels.appendChild(consumeSection);
 
   container.innerHTML = "";
   container.appendChild(stickyHeader);
