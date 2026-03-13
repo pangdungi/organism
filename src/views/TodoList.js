@@ -66,12 +66,65 @@ function saveSectionTasks(sectionId, tasks) {
   try {
     const raw = localStorage.getItem(SECTION_TASKS_KEY);
     const obj = raw ? JSON.parse(raw) : {};
-    const toSave = tasks
+    const existingList = obj[sectionId] || [];
+    const domByTaskId = new Map(
+      tasks
+        .filter((t) => (t.name || "").trim() !== "")
+        .map((t) => [
+          t.taskId || "",
+          {
+            taskId: t.taskId || "",
+            name: (t.name || "").trim(),
+            startDate: (t.startDate || "").trim(),
+            dueDate: (t.dueDate || "").trim(),
+            startTime: t.startTime || "",
+            endTime: t.endTime || "",
+            eisenhower: t.eisenhower || "",
+            done: !!t.done,
+            itemType: t.itemType || "todo",
+          },
+        ]),
+    );
+    const merged = [];
+    existingList.forEach((ex) => {
+      const tid = ex.taskId || "";
+      const fromDom = domByTaskId.get(tid);
+      if (fromDom) {
+        merged.push({
+          ...ex,
+          name: fromDom.name,
+          startDate: fromDom.startDate || (ex.startDate || "").slice(0, 10) || "",
+          dueDate: fromDom.dueDate || (ex.dueDate || "").slice(0, 10) || "",
+          startTime: fromDom.startTime || ex.startTime || "",
+          endTime: fromDom.endTime || ex.endTime || "",
+          eisenhower: fromDom.eisenhower || ex.eisenhower || "",
+          done: fromDom.done,
+          itemType: fromDom.itemType || ex.itemType || "todo",
+        });
+        domByTaskId.delete(tid);
+      } else {
+        merged.push(ex);
+      }
+    });
+    domByTaskId.forEach((t) => {
+      merged.push({
+        taskId: t.taskId,
+        name: t.name,
+        startDate: t.startDate || "",
+        dueDate: t.dueDate || "",
+        startTime: t.startTime || "",
+        endTime: t.endTime || "",
+        eisenhower: t.eisenhower || "",
+        done: t.done,
+        itemType: t.itemType || "todo",
+      });
+    });
+    const toSave = merged
       .map(({ taskId, name, startDate, dueDate, startTime, endTime, eisenhower, done, itemType }) => ({
-        taskId,
+        taskId: taskId || "",
         name: (name || "").trim(),
-        startDate: startDate || "",
-        dueDate: dueDate || "",
+        startDate: (startDate || "").slice(0, 10) || "",
+        dueDate: (dueDate || "").slice(0, 10) || "",
         startTime: startTime || "",
         endTime: endTime || "",
         eisenhower: eisenhower || "",
@@ -279,7 +332,8 @@ function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
         });
       }
     });
-    todoDebug("collectAndSave: saving section", sectionId, "tasks", sectionTasks.length, sectionTasks.map((t) => ({ name: t.name, eisenhower: t.eisenhower })));
+    const withDate = sectionTasks.filter((t) => (t.dueDate || "").trim()).length;
+    todoDebug("collectAndSave: saving section", sectionId, "tasks", sectionTasks.length, "withDueDate", withDate, sectionTasks.map((t) => ({ name: (t.name || "").slice(0, 12), dueDate: (t.dueDate || "").slice(0, 10) })));
     saveSectionTasks(sectionId, sectionTasks);
   });
   try {

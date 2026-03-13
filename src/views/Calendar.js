@@ -42,6 +42,13 @@ const CUSTOM_SECTION_TASKS_KEY = "todo-custom-section-tasks";
 const SECTION_TASKS_KEY = "todo-section-tasks";
 const KPI_SECTION_IDS = ["braindump", "dream", "sideincome", "health", "happy"];
 
+const CALENDAR_DATE_DEBUG = true;
+function dateDebug(tag, ...args) {
+  if (CALENDAR_DATE_DEBUG && typeof console !== "undefined" && console.log) {
+    console.log("[DATE-DEBUG] " + tag, ...args);
+  }
+}
+
 function getSectionTasksForDate(dateKey) {
   const out = [];
   try {
@@ -132,21 +139,33 @@ function getSectionTasksWithDateRange() {
 }
 
 function updateSectionTaskDates(sectionId, taskId, startDate, dueDate) {
+  dateDebug("updateSectionTaskDates IN", { sectionId, taskId, startDate, dueDate });
   try {
     const raw = localStorage.getItem(SECTION_TASKS_KEY);
-    if (!raw) return false;
+    if (!raw) {
+      dateDebug("updateSectionTaskDates: no localStorage");
+      return false;
+    }
     const obj = JSON.parse(raw);
     const arr = obj[sectionId];
-    if (!Array.isArray(arr)) return false;
-    const t = arr.find((x) => (x.taskId || "") === taskId);
-    if (t) {
-      t.startDate = (startDate || "").slice(0, 10) || "";
-      t.dueDate = (dueDate || "").slice(0, 10) || "";
-      localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
-      return true;
+    if (!Array.isArray(arr)) {
+      dateDebug("updateSectionTaskDates: no arr for", sectionId);
+      return false;
     }
-  } catch (_) {}
-  return false;
+    const t = arr.find((x) => (x.taskId || "") === taskId);
+    if (!t) {
+      dateDebug("updateSectionTaskDates: task not found", { sectionId, taskId, taskIds: arr.map((x) => x.taskId) });
+      return false;
+    }
+    t.startDate = (startDate || "").slice(0, 10) || "";
+    t.dueDate = (dueDate || "").slice(0, 10) || "";
+    localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+    dateDebug("updateSectionTaskDates OK", { sectionId, taskId, savedDueDate: t.dueDate });
+    return true;
+  } catch (err) {
+    dateDebug("updateSectionTaskDates catch", err);
+    return false;
+  }
 }
 
 function updateSectionTaskTimes(sectionId, taskId, startTime, endTime) {
@@ -1216,6 +1235,7 @@ function renderMonthlyView(tabsElement) {
                 });
             }
           }
+          dateDebug("drop on day", { targetDate: key, name: payload?.name, sectionId: payload?.sectionId, taskId: payload?.taskId, newStart, newDue, ok });
           if (ok) {
             renderCalendar();
             refreshTodoList();
@@ -1908,6 +1928,7 @@ function render2WeekView(tabsElement) {
                 });
             }
           }
+          dateDebug("drop on day", { targetDate: key, name: payload?.name, sectionId: payload?.sectionId, taskId: payload?.taskId, newStart, newDue, ok });
           if (ok) {
             renderCalendar();
             refreshTodoList();
@@ -2588,6 +2609,7 @@ function render3WeekView(tabsElement) {
                 });
             }
           }
+          dateDebug("drop on day", { targetDate: key, name: payload?.name, sectionId: payload?.sectionId, taskId: payload?.taskId, newStart, newDue, ok });
           if (ok) {
             renderCalendar();
             refreshTodoList();
@@ -5217,6 +5239,7 @@ function renderCalendarView(tabsElement) {
 
   function renderSubView(subViewId) {
     contentArea.innerHTML = "";
+    dateDebug("renderSubView: saving before switch", { subViewId, hasSidebar: !!contentArea.querySelector(".calendar-todo-sidebar-body") });
     saveTodoListBeforeUnmount(contentArea);
     if (subViewId === "monthly") {
       contentArea.appendChild(renderMonthlyView(null));
