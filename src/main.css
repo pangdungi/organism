@@ -10375,11 +10375,32 @@ body.kpi-resizing {
   transform: translateY(-50%) translateX(22px);
 }
 
+.time-task-log-focus-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.time-task-log-focus-type-dropdown-wrap {
+  flex: 1;
+  min-width: 140px;
+}
+
+.time-task-log-focus-type-dropdown {
+  position: relative;
+  width: 100%;
+}
+
+.time-task-log-focus-type-dropdown .time-task-log-expense-dropdown-display {
+  min-height: 38px;
+  height: 38px;
+  border-radius: 6px;
+}
 .time-task-log-energy-fields,
 .time-task-log-focus-fields {
   margin-top: 1rem;
   width: 100%;
-  max-width: 280px;
+  max-width: 360px;
   display: flex;
   justify-content: flex-start;
 }
