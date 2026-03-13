@@ -11160,7 +11160,7 @@ body.kpi-resizing {
 
 .time-daily-budget-table th,
 .time-daily-budget-table td {
-  padding: 0.5rem 0.75rem;
+  padding: 0.35rem 0.6rem;
   border-bottom: 1px solid #eee;
   border-right: 1px solid #eee;
   text-align: left;
@@ -11189,6 +11189,27 @@ body.kpi-resizing {
 .time-daily-budget-table .time-tag-pill.cat-empty {
   background: #f3f4f6;
   color: #6b7280;
+}
+
+/* 과제명 드롭다운: 셀 전체 클릭 가능, 키보드 포커스 지원 */
+.time-daily-budget-table .time-tag-dropdown-wrap {
+  display: block;
+  width: 100%;
+}
+.time-daily-budget-table .time-tag-trigger {
+  display: block;
+  width: 100%;
+  min-height: 1.6rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 6px;
+  transition: background-color 0.15s;
+}
+.time-daily-budget-table .time-tag-trigger:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+.time-daily-budget-table .time-tag-trigger:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
 }
 
 .time-budget-col-goal {
@@ -16881,6 +16902,26 @@ body.kpi-resizing {
 .calendar-1day-budget-column .time-daily-budget-table .time-tag-pill.cat-empty {
   background: transparent;
   color: #374151;
+}
+
+.calendar-1day-budget-column .time-daily-budget-table .time-tag-dropdown-wrap {
+  display: block;
+  width: 100%;
+}
+.calendar-1day-budget-column .time-daily-budget-table .time-tag-trigger {
+  display: block;
+  width: 100%;
+  min-height: 1.6rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 6px;
+  transition: background-color 0.15s;
+}
+.calendar-1day-budget-column .time-daily-budget-table .time-tag-trigger:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+.calendar-1day-budget-column .time-daily-budget-table .time-tag-trigger:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
 }
 
 .calendar-1day-budget-column .time-budget-time-input,

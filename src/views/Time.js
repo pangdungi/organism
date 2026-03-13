@@ -1488,11 +1488,14 @@ function createTagDropdown(options, initialValue, optionClass, onSelect) {
   const trigger = document.createElement("button");
   trigger.type = "button";
   trigger.className = "time-tag-trigger";
+  trigger.setAttribute("aria-haspopup", "listbox");
+  trigger.setAttribute("aria-expanded", "false");
   function updateTrigger() {
     const opt = options.find((o) => o.value === value);
     const label = opt ? opt.label : value || "—";
     const colorClass = opt ? opt.color : "";
     trigger.innerHTML = `<span class="time-tag-pill ${optionClass} ${colorClass}">${label}</span>`;
+    trigger.setAttribute("aria-label", `선택: ${label}. 클릭 시 메뉴 열기`);
   }
   updateTrigger();
 
@@ -1515,13 +1518,24 @@ function createTagDropdown(options, initialValue, optionClass, onSelect) {
 
   function closePanel() {
     panel.hidden = true;
+    trigger.setAttribute("aria-expanded", "false");
+    document.removeEventListener("keydown", onDocKeydown);
     if (panel.parentElement === document.body) {
       document.body.removeChild(panel);
       wrap.appendChild(panel);
     }
   }
 
+  const onDocKeydown = (e) => {
+    if (e.key === "Escape") {
+      closePanel();
+      trigger.focus();
+      document.removeEventListener("keydown", onDocKeydown);
+    }
+  };
   function openPanel() {
+    trigger.setAttribute("aria-expanded", "true");
+    document.addEventListener("keydown", onDocKeydown);
     const rect = trigger.getBoundingClientRect();
     panel.style.position = "fixed";
     panel.style.top = `${rect.bottom + 4}px`;
