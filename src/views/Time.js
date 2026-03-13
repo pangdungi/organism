@@ -5381,28 +5381,41 @@ export function render() {
               .map(([task, hrs]) => ({ task, hrs }));
             const goalTotal = goalEntries.reduce((s, x) => s + x.hrs, 0);
             const actualTotal = actualEntries.reduce((s, x) => s + x.hrs, 0);
-            const circ = 2 * Math.PI * 40;
-            const offset = circ / 4;
-            const makeDonutSegs = (entries, total) => {
+            const makePieSegs = (entries, total) => {
               if (total <= 0 || entries.length === 0) return [];
-              let cum = 0;
+              const r = 40;
+              const cx = 50;
+              const cy = 50;
+              const labelRadius = r * 0.6;
+              const startOffset = -Math.PI / 2;
+              let cumAngle = 0;
               return entries.map((x, i) => {
-                const len = (x.hrs / total) * circ;
-                const seg = { ...x, len, dashOffset: -offset - cum, stroke: TASK_BAR_COLORS[i % TASK_BAR_COLORS.length] };
-                cum += len;
-                return seg;
+                const angle = (x.hrs / total) * 2 * Math.PI;
+                const startAngle = startOffset + cumAngle;
+                const endAngle = startOffset + cumAngle + angle;
+                const midAngle = (startAngle + endAngle) / 2;
+                cumAngle += angle;
+                const x1 = cx + r * Math.cos(startAngle);
+                const y1 = cy + r * Math.sin(startAngle);
+                const x2 = cx + r * Math.cos(endAngle);
+                const y2 = cy + r * Math.sin(endAngle);
+                const largeArc = angle > Math.PI ? 1 : 0;
+                const d = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+                const tx = cx + labelRadius * Math.cos(midAngle);
+                const ty = cy + labelRadius * Math.sin(midAngle);
+                return { ...x, d, stroke: TASK_BAR_COLORS[i % TASK_BAR_COLORS.length], tx, ty };
               });
             };
-            const goalSegs = makeDonutSegs(goalEntries, goalTotal);
-            const actualSegs = makeDonutSegs(actualEntries, actualTotal);
-            const goalDonutHtml = goalSegs.length > 0
-              ? `<div class="time-audit-donut-wrap"><svg class="time-audit-donut" viewBox="0 0 100 100"><circle class="time-audit-donut-bg" cx="50" cy="50" r="40"/>${goalSegs.map((s) => `<circle class="time-audit-donut-seg" cx="50" cy="50" r="40" stroke="${s.stroke}" stroke-dasharray="${s.len} ${circ - s.len}" stroke-dashoffset="${s.dashOffset}"/>`).join("")}</svg><div class="time-audit-donut-center"><span class="time-audit-donut-total">${formatHoursToHHMM(goalTotal)}</span><span class="time-audit-donut-label">목표</span></div></div><div class="time-audit-donut-legend">${goalSegs.map((s) => { const pct = goalTotal > 0 ? ((s.hrs / goalTotal) * 100).toFixed(1) : 0; return `<span class="time-audit-legend-item"><i style="background:${s.stroke}"></i>${s.task} ${pct}%</span>`; }).join("")}</div>`
-              : `<div class="time-audit-donut-empty">목표 없음</div>`;
-            const actualDonutHtml = actualSegs.length > 0
-              ? `<div class="time-audit-donut-wrap"><svg class="time-audit-donut" viewBox="0 0 100 100"><circle class="time-audit-donut-bg" cx="50" cy="50" r="40"/>${actualSegs.map((s) => `<circle class="time-audit-donut-seg" cx="50" cy="50" r="40" stroke="${s.stroke}" stroke-dasharray="${s.len} ${circ - s.len}" stroke-dashoffset="${s.dashOffset}"/>`).join("")}</svg><div class="time-audit-donut-center"><span class="time-audit-donut-total">${formatHoursToHHMM(actualTotal)}</span><span class="time-audit-donut-label">실제</span></div></div><div class="time-audit-donut-legend">${actualSegs.map((s) => { const pct = actualTotal > 0 ? ((s.hrs / actualTotal) * 100).toFixed(1) : 0; return `<span class="time-audit-legend-item"><i style="background:${s.stroke}"></i>${s.task} ${pct}%</span>`; }).join("")}</div>`
-              : `<div class="time-audit-donut-empty">기록 없음</div>`;
-            const goalCardHtml = `<div class="time-audit-pie-card"><div class="time-audit-pie-title">목표 시간 (수면·근무 제외)</div>${goalDonutHtml}</div>`;
-            const actualCardHtml = `<div class="time-audit-pie-card"><div class="time-audit-pie-title">실제 시간 (수면·근무 제외)</div>${actualDonutHtml}</div>`;
+            const goalSegs = makePieSegs(goalEntries, goalTotal);
+            const actualSegs = makePieSegs(actualEntries, actualTotal);
+            const goalPieHtml = goalSegs.length > 0
+              ? `<div class="time-audit-pie-wrap"><svg class="time-audit-pie" viewBox="0 0 100 100">${goalSegs.map((s) => { const pct = goalTotal > 0 ? ((s.hrs / goalTotal) * 100).toFixed(1) : 0; return `<path class="time-audit-pie-seg" d="${s.d}" fill="${s.stroke}" stroke="#fff" stroke-width="1"/><text x="${s.tx}" y="${s.ty}" text-anchor="middle" dominant-baseline="middle" class="time-audit-pie-pct">${pct}%</text>`; }).join("")}</svg></div><div class="time-audit-pie-legend">${goalSegs.map((s) => `<span class="time-audit-legend-item"><i style="background:${s.stroke}"></i>${s.task}</span>`).join("")}</div>`
+              : `<div class="time-audit-pie-empty">목표 없음</div>`;
+            const actualPieHtml = actualSegs.length > 0
+              ? `<div class="time-audit-pie-wrap"><svg class="time-audit-pie" viewBox="0 0 100 100">${actualSegs.map((s) => { const pct = actualTotal > 0 ? ((s.hrs / actualTotal) * 100).toFixed(1) : 0; return `<path class="time-audit-pie-seg" d="${s.d}" fill="${s.stroke}" stroke="#fff" stroke-width="1"/><text x="${s.tx}" y="${s.ty}" text-anchor="middle" dominant-baseline="middle" class="time-audit-pie-pct">${pct}%</text>`; }).join("")}</svg></div><div class="time-audit-pie-legend">${actualSegs.map((s) => `<span class="time-audit-legend-item"><i style="background:${s.stroke}"></i>${s.task}</span>`).join("")}</div>`
+              : `<div class="time-audit-pie-empty">기록 없음</div>`;
+            const goalCardHtml = `<div class="time-audit-pie-card"><div class="time-audit-pie-title">목표 시간 (수면·근무 제외)</div>${goalPieHtml}</div>`;
+            const actualCardHtml = `<div class="time-audit-pie-card"><div class="time-audit-pie-title">실제 시간 (수면·근무 제외)</div>${actualPieHtml}</div>`;
             return (tableHtml ? tableHtml : "<div class=\"time-audit-below-section\">") + goalCardHtml + actualCardHtml + "</div>";
           })()}
         `;
