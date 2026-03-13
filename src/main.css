@@ -17258,7 +17258,7 @@ body.kpi-resizing {
 }
 
 .calendar-1day-view .calendar-1day-time-slot--actual {
-  border-left: 1px solid #e5e7eb;
+  border-left: 1px dotted #e5e7eb;
 }
 
 .calendar-1day-view
@@ -17389,7 +17389,7 @@ body.kpi-resizing {
   display: flex;
   align-items: stretch;
   min-height: 2rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px dotted #e5e7eb;
 }
 
 .calendar-1day-view .calendar-1day-time-label {
@@ -17411,7 +17411,7 @@ body.kpi-resizing {
   min-width: 0;
   background: #fff;
   position: relative;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px dotted #e5e7eb;
 }
 
 .calendar-1day-view .calendar-1day-time-slot-fill {

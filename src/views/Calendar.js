@@ -3330,12 +3330,12 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
     return null;
   };
   const prodColorsActual = {
-    productive: { bg: "rgba(239, 68, 68, 0.28)", border: "rgb(239, 68, 68)" },
+    productive: { bg: "rgba(239, 68, 68, 0.1)", border: "rgb(239, 68, 68)" },
     nonproductive: {
-      bg: "rgba(59, 130, 246, 0.28)",
+      bg: "rgba(59, 130, 246, 0.1)",
       border: "rgb(59, 130, 246)",
     },
-    other: { bg: "rgba(34, 197, 94, 0.28)", border: "rgb(34, 197, 94)" },
+    other: { bg: "rgba(34, 197, 94, 0.1)", border: "rgb(34, 197, 94)" },
   };
   const prodColorsExpected = {
     productive: {
@@ -4219,12 +4219,12 @@ function render1DayView(tabsElement) {
       return null;
     };
     const prodColorsActual = {
-      productive: { bg: "rgba(239, 68, 68, 0.28)", border: "rgb(239, 68, 68)" },
+      productive: { bg: "rgba(239, 68, 68, 0.1)", border: "rgb(239, 68, 68)" },
       nonproductive: {
-        bg: "rgba(59, 130, 246, 0.28)",
+        bg: "rgba(59, 130, 246, 0.1)",
         border: "rgb(59, 130, 246)",
       },
-      other: { bg: "rgba(34, 197, 94, 0.28)", border: "rgb(34, 197, 94)" },
+      other: { bg: "rgba(34, 197, 94, 0.1)", border: "rgb(34, 197, 94)" },
     };
     const prodColorsExpected = {
       productive: {
