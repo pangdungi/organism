@@ -3908,7 +3908,7 @@ function render1DayView(tabsElement) {
     const todoTable = document.createElement("table");
     todoTable.className = "calendar-1day-todo-table time-daily-budget-table";
     todoTable.innerHTML = `
-      <thead><tr><th>오늘의 할일</th><th>KPI</th><th>목표 시간</th><th>예상 시작 시간</th><th>예상 마감 시간</th></tr></thead>
+      <thead><tr><th>오늘의 할일</th><th>KPI</th></tr></thead>
       <tbody></tbody>
     `;
     const todoTbody = todoTable.querySelector("tbody");
@@ -3987,113 +3987,6 @@ function render1DayView(tabsElement) {
         });
       }
 
-      const startInput = createHhMmInput();
-      startInput.classList.add("time-budget-scheduled-input");
-      const initialStart = (t.startTime || "").trim();
-      const initialEnd = (t.endTime || "").trim();
-      startInput.value = initialStart;
-      const endInput = createHhMmInput();
-      endInput.classList.add("time-budget-scheduled-input");
-      endInput.value =
-        initialStart &&
-        initialEnd &&
-        hhMmToMinutes(initialEnd) > hhMmToMinutes(initialStart)
-          ? initialEnd
-          : "";
-      const saveScheduled = () => {
-        let start = startInput.value.trim();
-        let end = endInput.value.trim();
-        if (start && end && hhMmToMinutes(end) <= hhMmToMinutes(start)) {
-          endInput.value = "";
-          end = "";
-          showToast("마감 시간은 시작 시간보다 뒤여야 합니다.");
-        }
-        const prevStart = (t.startTime || "").trim();
-        const prevEnd = (t.endTime || "").trim();
-        /* 값 변경 없으면 renderCalendar 호출 안 함 → 투자/소비 내역 행 사라짐 방지 */
-        if (start === prevStart && end === prevEnd) return;
-        let ok = false;
-        if (t.kpiTodoId && t.storageKey) {
-          ok = updateKpiTodo(t.kpiTodoId, t.storageKey, {
-            startTime: start,
-            endTime: end,
-          });
-        } else if (t.sectionId?.startsWith("custom-") && t.taskId) {
-          ok = updateCustomSectionTaskTimes(t.sectionId, t.taskId, start, end);
-        } else if (KPI_SECTION_IDS.includes(t.sectionId) && t.taskId) {
-          ok = updateSectionTaskTimes(t.sectionId, t.taskId, start, end);
-        }
-        if (ok) {
-          t.startTime = start;
-          t.endTime = end;
-          const scheduledTime = start && end ? `${start}-${end}` : "";
-          const overlapCleared = scheduledTime
-            ? clearOverlapFromBudgetGoalsOnly(targetKey, [scheduledTime])
-            : false;
-          if (overlapCleared && typeof onOverlapCleared === "function") {
-            onOverlapCleared(targetKey);
-          } else if (typeof onScheduledUpdate === "function") {
-            onScheduledUpdate(targetKey);
-          }
-          /* 포커스가 budget 영역(투자/소비 내역)으로 이동했으면 재렌더 방지 → 입력 중 행 사라짐 방지 */
-          requestAnimationFrame(() => {
-            if (budgetColumn.contains(document.activeElement)) return;
-            renderCalendar();
-            refreshTodoList();
-          });
-        }
-      };
-      startInput.addEventListener("blur", saveScheduled);
-      endInput.addEventListener("blur", saveScheduled);
-      const scheduleTimetableUpdate = () => {
-        const start = startInput.value.trim();
-        const end = endInput.value.trim();
-        if (start && end && hhMmToMinutes(end) > hhMmToMinutes(start)) {
-          if (typeof onScheduledUpdate === "function") {
-            onScheduledUpdate(targetKey);
-          }
-        }
-      };
-      startInput.addEventListener("input", scheduleTimetableUpdate);
-      endInput.addEventListener("input", scheduleTimetableUpdate);
-
-      const goalInput = createHhMmInput();
-      const initialGoal = (budgetGoals[t.name]?.goalTime || "").trim();
-      if (initialGoal) goalInput.value = initialGoal;
-
-      const diffSpan = document.createElement("span");
-      diffSpan.className = "time-budget-goal-diff";
-
-      function updateTodoRowDiff() {
-        const start = startInput.value.trim();
-        const end = endInput.value.trim();
-        const goalHrs = parseTimeToHours(goalInput.value);
-        let scheduledHrs = 0;
-        if (start && end && hhMmToMinutes(end) > hhMmToMinutes(start)) {
-          scheduledHrs = (hhMmToMinutes(end) - hhMmToMinutes(start)) / 60;
-        }
-        const diff = scheduledHrs - goalHrs;
-        diffSpan.textContent = formatGoalDiff(diff);
-        diffSpan.className = "time-budget-goal-diff";
-        if (diff > 0) diffSpan.classList.add("time-budget-goal-diff--over");
-        else if (diff < 0) diffSpan.classList.add("time-budget-goal-diff--short");
-      }
-
-      goalInput.addEventListener("blur", () => {
-        const goal = goalInput.value.trim();
-        const isInvest = budgetGoals[t.name]?.isInvest !== false;
-        saveBudgetGoal(targetKey, t.name, goal, isInvest);
-        updateTodoRowDiff();
-      });
-      goalInput.addEventListener("input", updateTodoRowDiff);
-      startInput.addEventListener("input", updateTodoRowDiff);
-      endInput.addEventListener("input", updateTodoRowDiff);
-
-      const goalWrap = document.createElement("span");
-      goalWrap.className = "time-budget-goal-wrap";
-      goalWrap.appendChild(goalInput);
-      goalWrap.appendChild(diffSpan);
-
       const tr = document.createElement("tr");
       tr.dataset.taskName = (t.name || "").trim();
       const nameTd = document.createElement("td");
@@ -4105,17 +3998,7 @@ function render1DayView(tabsElement) {
         kpiTd.textContent = t.classification;
       }
       tr.appendChild(kpiTd);
-      const goalTd = document.createElement("td");
-      goalTd.appendChild(goalWrap);
-      tr.appendChild(goalTd);
-      const startTd = document.createElement("td");
-      startTd.appendChild(startInput);
-      tr.appendChild(startTd);
-      const endTd = document.createElement("td");
-      endTd.appendChild(endInput);
-      tr.appendChild(endTd);
       todoTbody.appendChild(tr);
-      updateTodoRowDiff();
     });
 
     const todoSection = document.createElement("div");

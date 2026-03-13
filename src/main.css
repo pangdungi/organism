@@ -16622,22 +16622,32 @@ body.kpi-resizing {
   min-height: 2.5rem;
 }
 
-/* 오늘의 할일 테이블 - 콘텐츠에 맞게 확장, 넘치면 가로스크롤 */
+/* 오늘의 할일 테이블 - 오늘의 할일/KPI 2열, 제거된 열 너비 분배 */
 .calendar-1day-budget-column .calendar-1day-todo-table {
   border: 1px solid #e5e7eb;
-  width: max-content;
-  min-width: 100%;
-  table-layout: auto;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.calendar-1day-budget-column .calendar-1day-todo-table thead th:first-child,
+.calendar-1day-budget-column .calendar-1day-todo-table tbody td:first-child {
+  width: 50%;
 }
 
 .calendar-1day-budget-column .calendar-1day-todo-table thead th:nth-child(2),
 .calendar-1day-budget-column .calendar-1day-todo-table tbody td:nth-child(2) {
-  min-width: 5rem;
+  width: 50%;
+  min-width: 4rem;
 }
 
 .calendar-1day-budget-column .calendar-1day-todo-table thead th,
 .calendar-1day-budget-column .calendar-1day-todo-table tbody td {
   white-space: nowrap;
+}
+
+.calendar-1day-budget-column .calendar-1day-todo-table tbody td:first-child {
+  white-space: normal;
+  word-break: break-word;
 }
 
 .calendar-1day-budget-column .calendar-1day-todo-table thead th {

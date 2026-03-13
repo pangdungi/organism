@@ -23,6 +23,7 @@ const defaultOptions = {
     delBtn.addEventListener("click", () => {
       instance.clear();
       instance.close();
+      instance.input?.dispatchEvent(new Event("change", { bubbles: true }));
     });
     if (hideDelete) delBtn.style.display = "none";
     const todayBtn = document.createElement("button");
@@ -32,6 +33,8 @@ const defaultOptions = {
     todayBtn.addEventListener("click", () => {
       instance.setDate(new Date());
       instance.close();
+      // 프로그래밍 방식 변경은 native change 이벤트를 발생시키지 않음 → 수동 dispatch
+      instance.input?.dispatchEvent(new Event("change", { bubbles: true }));
     });
     wrap.appendChild(delBtn);
     wrap.appendChild(todayBtn);
