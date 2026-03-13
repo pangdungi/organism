@@ -2907,16 +2907,29 @@ export function render() {
 
   taskLogModal.querySelectorAll(".time-task-log-time-adjust-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
+      const endVal = (taskLogTimeEnd?.value || "").trim();
+      const endEmpty = !endVal || !endVal.match(/\d{1,2}:\d{2}/);
+      const fallbackTime = endEmpty
+        ? (taskLogTimeStart?.value || "").trim()
+        : "";
+      const useStartAsBase =
+        endEmpty && fallbackTime && fallbackTime.match(/\d{1,2}:\d{2}/);
+
       if (btn.dataset.now === "true") {
-        const now = new Date();
-        const newTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+        const base = useStartAsBase
+          ? normalizeHhMm(fallbackTime) || fallbackTime
+          : null;
+        const newTime = base
+          ? base
+          : `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}`;
         if (taskLogTimeEnd) taskLogTimeEnd.value = newTime;
       } else {
         const delta = parseInt(btn.dataset.delta || "0", 10);
-        let baseTime = (taskLogTimeEnd?.value || "").trim();
+        let baseTime = endVal;
         if (!baseTime || !baseTime.match(/\d{1,2}:\d{2}/)) {
-          const now = new Date();
-          baseTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+          baseTime = useStartAsBase
+            ? normalizeHhMm(fallbackTime) || fallbackTime
+            : `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}`;
         }
         baseTime = normalizeHhMm(baseTime) || baseTime;
         const [h, min] = baseTime.split(":").map((n) => parseInt(n, 10) || 0);
@@ -5253,15 +5266,6 @@ export function render() {
           });
         }
 
-        const vGridLines = xLabels
-          .map((l) => `<line x1="${l.x}" y1="${padTop}" x2="${l.x}" y2="${padTop + plotH}" stroke="#e5e7eb" stroke-width="0.5" stroke-dasharray="2,2"/>`)
-          .join("");
-        const hGridLines = [0.25, 0.5, 0.75]
-          .map((rat) => {
-            const y = padTop + plotH - rat * plotH;
-            return `<line x1="${padLeft}" y1="${y}" x2="${padLeft + plotW}" y2="${y}" stroke="#e5e7eb" stroke-width="0.5" stroke-dasharray="2,2"/>`;
-          })
-          .join("");
 
         const getCategoryColor = (cat) =>
           CATEGORY_GRAPH_COLORS[cat] || CATEGORY_GRAPH_COLORS[""];
@@ -5301,13 +5305,11 @@ export function render() {
               <div class="time-audit-concentration-title">집중력</div>
               <div class="time-audit-chart-wrap">
                 <svg class="time-audit-svg" viewBox="0 0 ${chartW} ${chartH}" preserveAspectRatio="xMidYMid meet">
-                  ${vGridLines}
-                  ${hGridLines}
                   <line x1="${padLeft}" y1="${concBottom}" x2="${padLeft + plotW}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
                   <line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
                   ${taskRects}
-                  <path d="${concPathStr2.fillPath}" fill="rgba(34,197,94,0.15)" stroke="none"/>
-                  ${concPathStr2.strokePath ? `<path d="${concPathStr2.strokePath}" fill="none" stroke="#22c55e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>` : ""}
+                  <path d="${concPathStr2.fillPath}" fill="rgba(239,68,68,0.12)" stroke="none"/>
+                  ${concPathStr2.strokePath ? `<path d="${concPathStr2.strokePath}" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>` : ""}
                   ${xLabels.filter((_, i) => i % 2 === 0 || i === xLabels.length - 1).map((l) => `<text x="${l.x}" y="${chartH - 10}" text-anchor="middle" font-size="9" fill="#6b7280">${l.label}</text>`).join("")}
                 </svg>
               </div>
