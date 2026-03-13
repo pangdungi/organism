@@ -17382,6 +17382,7 @@ body.kpi-resizing {
 .calendar-1day-view .calendar-1day-time-fill-overlay--actual {
   left: calc(4rem + (100% - 4rem) / 2);
   width: calc((100% - 4rem) / 2);
+  overflow: hidden;
 }
 
 .calendar-1day-view .calendar-1day-time-row {

@@ -3390,7 +3390,39 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   const expectedResult = buildExpectedSpansFromTasks();
   const expectedSpans = expectedResult.spans;
   const expectedMaxLane = expectedResult.maxLane;
-  const actualSpans = buildSpans(getSlotActual);
+  const buildActualSpansFromRows = () => {
+    const spans = [];
+    const toMinutes = (str) => parseDateTimeToMinutes(str) ?? parseHhMmToMinutes(str);
+    for (const r of actualRows) {
+      const startMin = toMinutes(r.startTime);
+      const endMin = toMinutes(r.endTime);
+      if (startMin == null || endMin == null || endMin <= startMin) continue;
+      const prod = r.productivity || getTaskOptionByName(r.taskName)?.productivity || "other";
+      spans.push({
+        startMin,
+        endMin,
+        taskName: r.taskName || "",
+        prod,
+        startDisplay: fmt(startMin),
+        endDisplay: fmt(endMin),
+      });
+    }
+    const sorted = spans.sort((a, b) => a.startMin - b.startMin);
+    const withLanes = assignLanesToSpans(sorted);
+    return {
+      spans: withLanes.spans.map((s) => ({
+        ...s,
+        startSlot: Math.floor(s.startMin / MIN_PER_SLOT),
+        endSlot: Math.min(SLOTS_PER_DAY - 1, Math.floor((s.endMin - 1) / MIN_PER_SLOT)),
+        startDisplay: fmt(s.startMin),
+        endDisplay: fmt(s.endMin),
+      })),
+      maxLane: withLanes.maxLane,
+    };
+  };
+  const actualResult = buildActualSpansFromRows();
+  const actualSpans = actualResult.spans;
+  const actualMaxLane = actualResult.maxLane;
   const SECTION_IDS_FOR_LIST_COLOR = [
     "braindump",
     "dream",
@@ -3446,7 +3478,7 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
       blockFill.className =
         "calendar-1day-time-slot-fill calendar-1day-time-slot-fill--block calendar-1day-time-slot-fill--span";
       blockFill.style.gridRow = `${blockStartSlot + 2} / ${blockEndSlot + 3}`;
-      const useLaneLayout = !isActual && laneCount > 1;
+      const useLaneLayout = laneCount > 1;
       if (useLaneLayout) {
         const lane = first.lane ?? 0;
         blockFill.style.width = `${100 / laneCount}%`;
@@ -3532,7 +3564,7 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   };
   return {
     expected: createOverlay(expectedSpans, prodColorsExpected, false, expectedMaxLane),
-    actual: createOverlay(actualSpans, prodColorsActual, true),
+    actual: createOverlay(actualSpans, prodColorsActual, true, actualMaxLane),
   };
 }
 
