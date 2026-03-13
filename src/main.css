@@ -11757,8 +11757,8 @@ body.kpi-resizing {
 
 .time-audit-pie-wrap {
   position: relative;
-  width: 120px;
-  height: 120px;
+  width: 160px;
+  height: 160px;
   margin: 0 auto 0.5rem;
   flex-shrink: 0;
 }
@@ -11778,7 +11778,7 @@ body.kpi-resizing {
 }
 
 .time-audit-pie-pct {
-  font-size: 8px;
+  font-size: 7px;
   font-weight: 600;
   fill: #1f2937;
   pointer-events: none;
