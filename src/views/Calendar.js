@@ -3477,21 +3477,26 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
       const blockFill = document.createElement("div");
       blockFill.className =
         "calendar-1day-time-slot-fill calendar-1day-time-slot-fill--block calendar-1day-time-slot-fill--span";
-      blockFill.style.gridRow = `${blockStartSlot + 2} / ${blockEndSlot + 3}`;
       const useLaneLayout = laneCount > 1;
+      const MIN_PER_DAY = 24 * 60;
       if (useLaneLayout) {
+        /* position: absolute로 겹치는 블록을 오버레이 기준 나란히 배치 (이미지처럼) */
         const lane = first.lane ?? 0;
-        blockFill.style.width = `${100 / laneCount}%`;
+        blockFill.style.position = "absolute";
         blockFill.style.left = `${(lane / laneCount) * 100}%`;
-        blockFill.style.right = "auto";
+        blockFill.style.width = `${100 / laneCount}%`;
+        blockFill.style.top = `calc(2.5rem + ${blockStartMin} * (100% - 2.5rem) / ${MIN_PER_DAY})`;
+        blockFill.style.height = `calc(${actualBlockMin} * (100% - 2.5rem) / ${MIN_PER_DAY})`;
+      } else {
+        blockFill.style.gridRow = `${blockStartSlot + 2} / ${blockEndSlot + 3}`;
       }
       const heightPct =
         blockHeightMin > 0 && actualBlockMin < blockHeightMin
           ? ((actualBlockMin / blockHeightMin) * 100).toFixed(1)
           : "100";
       blockFill.dataset.debugBlock = `${fmt(blockStartMin)}~${fmt(blockEndMin)} slot${blockStartSlot}-${blockEndSlot} h=${blockHeightMin}m actual=${actualBlockMin}m height=${heightPct}%`;
-      /* 실제 시작/종료 시간에 맞춰 색칠 (04:50 종료면 05:00까지 넘치지 않도록) */
-      if (blockHeightMin > 0) {
+      /* 실제 시작/종료 시간에 맞춰 색칠 (04:50 종료면 05:00까지 넘치지 않도록) - 레인 레이아웃이 아닐 때만 */
+      if (!useLaneLayout && blockHeightMin > 0) {
         const slotStartMin = blockStartSlot * MIN_PER_SLOT;
         const startOffset = blockStartMin - slotStartMin;
         if (startOffset > 0) {
@@ -3516,8 +3521,10 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         blockFill.style.borderRadius = "2px";
         blockFill.style.border = "1px dotted rgba(0,0,0,0.12)";
       }
-      blockFill.style.position = "relative";
-      if (!useLaneLayout) blockFill.style.width = "100%";
+      if (!useLaneLayout) {
+        blockFill.style.position = "relative";
+        blockFill.style.width = "100%";
+      }
       blockFill.style.boxSizing = "border-box";
       for (const sp of group) {
         let c;
