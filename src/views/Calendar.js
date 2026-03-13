@@ -3506,10 +3506,11 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
           startOffset: blockStartMin - blockStartSlot * MIN_PER_SLOT,
         });
       }
+      const useLaneLayout = laneCount > 1;
       const blockFill = document.createElement("div");
       blockFill.className =
-        "calendar-1day-time-slot-fill calendar-1day-time-slot-fill--block calendar-1day-time-slot-fill--span";
-      const useLaneLayout = laneCount > 1;
+        "calendar-1day-time-slot-fill calendar-1day-time-slot-fill--block calendar-1day-time-slot-fill--span" +
+        (useLaneLayout ? " calendar-1day-time-slot-fill--lane" : "");
       const MIN_PER_DAY = 24 * 60;
       if (useLaneLayout) {
         /* position: absolute로 겹치는 블록을 오버레이 기준 나란히 배치 (이미지처럼) */
@@ -3546,7 +3547,6 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
       if (useLaneLayout) {
         const lane = first.lane ?? 0;
         blockFill.style.borderRadius = lane === 0 ? "2px 0 0 2px" : lane === laneCount - 1 ? "0 2px 2px 0" : "0";
-        blockFill.style.border = "none";
       } else {
         blockFill.style.borderRadius = "2px";
         blockFill.style.border = "none";
@@ -3579,7 +3579,7 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         const seg = document.createElement("div");
         seg.className = "calendar-1day-time-slot-fill-seg";
         seg.style.flex = `0 0 ${segHeightPct}%`;
-        seg.style.minHeight = "1.25rem";
+        seg.style.minHeight = "2.5rem";
         seg.style.width = "100%";
         seg.style.display = "flex";
         seg.style.alignItems = "flex-start";
@@ -3587,10 +3587,17 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         seg.style.backgroundColor = c.bg;
         seg.style.boxSizing = "border-box";
         seg.style.borderBottom = `1px solid ${c.border}`;
-        const label = document.createElement("span");
-        label.className = "calendar-1day-time-slot-label";
-        label.textContent = `${sp.taskName} ${sp.startDisplay}~${sp.endDisplay}`;
-        seg.appendChild(label);
+        const labelWrap = document.createElement("div");
+        labelWrap.className = "calendar-1day-time-slot-label-wrap";
+        const labelName = document.createElement("span");
+        labelName.className = "calendar-1day-time-slot-label-name";
+        labelName.textContent = sp.taskName || "";
+        const labelTime = document.createElement("span");
+        labelTime.className = "calendar-1day-time-slot-label-time";
+        labelTime.textContent = `${sp.startDisplay} ~ ${sp.endDisplay}`;
+        labelWrap.appendChild(labelName);
+        labelWrap.appendChild(labelTime);
+        seg.appendChild(labelWrap);
         blockFill.appendChild(seg);
       }
       const lastSeg = blockFill.lastElementChild;

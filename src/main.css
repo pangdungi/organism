@@ -13209,6 +13209,33 @@ body.kpi-resizing {
   color: #dc2626;
 }
 
+/* 1. 시간기록하기 - 테이블 하단 합계행 (과제 기록 버튼 위) */
+.time-ledger-total-row {
+  background: #f9fafb;
+}
+
+.time-ledger-total-row td {
+  background: #f9fafb !important;
+  border-color: #e5e7eb;
+}
+
+.time-ledger-total-row .time-cell-task {
+  color: #374151;
+}
+
+.time-ledger-total-tracked,
+.time-ledger-total-price {
+  font-weight: 700;
+}
+
+.time-ledger-total-price.is-negative {
+  color: #2563eb;
+}
+
+.time-ledger-total-price.is-positive {
+  color: #dc2626;
+}
+
 /* 생산성별 섹션 - 표제목에 형광펜처럼 배경 컬러 적용 */
 .time-section[data-productivity="productive"] .time-section-title {
   background: #e8a4b8;
@@ -18623,6 +18650,43 @@ body.kpi-resizing {
 .calendar-1day-view .calendar-1day-time-slot-fill-seg {
   flex-shrink: 0;
   overflow: hidden;
+  min-height: 2.5rem;
+}
+
+/* 겹치는 구간(레인) 바마다 점선 테두리로 경계 구분 */
+.calendar-1day-view .calendar-1day-time-slot-fill--lane {
+  border: 1px dashed rgba(0, 0, 0, 0.12);
+  box-sizing: border-box;
+}
+
+.calendar-1day-view .calendar-1day-time-slot-label-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  width: 100%;
+}
+
+.calendar-1day-view .calendar-1day-time-slot-label-name,
+.calendar-1day-view .calendar-1day-time-slot-label-time {
+  font-size: 0.8rem;
+  line-height: 1.25;
+  color: #374151;
+  max-width: 100%;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.calendar-1day-view .calendar-1day-time-slot-label-name {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.calendar-1day-view .calendar-1day-time-slot-label-time {
+  /* 줄바꿈해서 시작~종료 시간 전부 보이게 (ellipsis 제거) */
+  word-break: keep-all;
 }
 
 .calendar-1day-view .calendar-1day-time-slot-label {

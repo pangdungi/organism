@@ -3047,6 +3047,7 @@ export function render() {
     }
     if (view === "all") {
       renderAll(filtered);
+      updateTotal();
     } else if (view === "blank") {
       contentWrap.innerHTML = "";
     } else if (view === "audit") {
@@ -5383,24 +5384,43 @@ export function render() {
     return [...allRowsCache];
   }
 
-  const totalFooter = document.createElement("div");
-  totalFooter.className = "time-total-footer";
-  const totalDisplay = document.createElement("span");
-  totalDisplay.className = "time-total-display";
-  totalFooter.appendChild(totalDisplay);
-  el.appendChild(totalFooter);
-
   function updateTotal() {
-    let sum = 0;
-    contentWrap
-      .querySelectorAll(".time-row .time-price-display")
-      .forEach((el) => {
-        sum += parsePriceFromDisplay(el.textContent || "");
-      });
-    totalDisplay.textContent = formatPrice(sum) + "원";
-    totalDisplay.classList.toggle("is-negative", sum < 0);
-    totalDisplay.classList.toggle("is-positive", sum > 0);
     updateHourlyHint();
+
+    /* 1. 시간기록하기 단일 테이블 합계행 (과제 기록 버튼 위) */
+    const allTable = contentWrap.querySelector(".time-ledger-container .time-ledger-table");
+    const allTfoot = allTable?.querySelector("tfoot .time-ledger-total-row");
+    if (allTable && allTfoot) {
+      const tbody = allTable.querySelector("tbody");
+      const totalTrackedEl = allTfoot.querySelector(".time-ledger-total-tracked");
+      const totalPriceEl = allTfoot.querySelector(".time-ledger-total-price");
+      const hourlyRate =
+        parseFloat(
+          String(el.querySelector(".time-hourly-input")?.value || "0").replace(
+            /,/g,
+            "",
+          ),
+        ) || 0;
+      let totalHrs = 0;
+      let totalPrice = 0;
+      tbody?.querySelectorAll(".time-row").forEach((tr) => {
+        const timeEl = tr.querySelector(".time-input-tracked") || tr.querySelector(".time-display-tracked");
+        const val = (timeEl?.value ?? timeEl?.textContent ?? "").trim();
+        const hrs = parseTimeToHours(val) || 0;
+        totalHrs += hrs;
+        const pv = (tr._rowData?.productivity || "").trim();
+        let price = hrs * hourlyRate;
+        if (pv === "nonproductive") price *= -1;
+        else if (pv === "other" || pv === "그 외" || !pv) price = 0;
+        totalPrice += price;
+      });
+      if (totalTrackedEl) totalTrackedEl.textContent = totalHrs > 0 ? formatHoursDisplay(totalHrs) : "";
+      if (totalPriceEl) {
+        totalPriceEl.textContent = formatPrice(totalPrice);
+        totalPriceEl.className = "time-cell time-cell-price time-ledger-total-price" + (totalPrice < 0 ? " is-negative" : totalPrice > 0 ? " is-positive" : "");
+      }
+    }
+
     contentWrap.querySelectorAll(".time-section").forEach((section) => {
       const tbody = section.querySelector("tbody");
       const tfoot = section.querySelector("tfoot");
@@ -5566,6 +5586,18 @@ export function render() {
       const tr = createRow(d, updateTotal, el, handleRowDelete, handleRowEdit);
       tbodyEl.appendChild(tr);
     });
+
+    const tfoot = document.createElement("tfoot");
+    tfoot.innerHTML = `
+      <tr class="time-ledger-total-row">
+        <td class="time-cell time-cell-task" colspan="3">합계</td>
+        <td class="time-cell time-cell-tracked time-ledger-total-tracked"></td>
+        <td class="time-cell time-cell-category" colspan="3"></td>
+        <td class="time-cell time-cell-price time-ledger-total-price"></td>
+        <td class="time-cell time-cell-focus" colspan="5"></td>
+      </tr>
+    `;
+    tbl.appendChild(tfoot);
 
     addBtnEl.addEventListener("click", () => {
       if (openTaskLogModal) {
@@ -7224,10 +7256,6 @@ export function render() {
     } else if (view === "dashboard") {
       renderDashboard(cachedRows);
     }
-    totalFooter.style.display =
-      view === "dashboard" || view === "blank" || view === "audit" || view === "improve"
-        ? "none"
-        : "";
     updateTotal();
   }
 
