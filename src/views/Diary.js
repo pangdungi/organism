@@ -76,9 +76,9 @@ export function render() {
   const tabs = document.createElement("div");
   tabs.className = "time-view-tabs diary-tabs";
   tabs.innerHTML = `
+    <button type="button" class="time-view-tab" data-tab="3">감정관리</button>
     <button type="button" class="time-view-tab active" data-tab="2">통제일기</button>
     <button type="button" class="time-view-tab" data-tab="1">자유일기</button>
-    <button type="button" class="time-view-tab" data-tab="3">감정관리</button>
     <button type="button" class="time-view-tab" data-tab="4">탭 4</button>
     <button type="button" class="time-view-tab" data-tab="5">탭 5</button>
   `;
@@ -168,8 +168,8 @@ export function render() {
         if (e.qa && typeof e.qa === "object") {
           s += Object.values(e.qa).join(" ");
         }
-        if (e.q1 != null || e.q2 != null || e.q3 != null) {
-          s += (e.q1 || "") + (e.q2 || "") + (e.q3 || "");
+        if (e.q1 != null || e.q2 != null || e.q3 != null || e.q4 != null) {
+          s += (e.q1 || "") + (e.q2 || "") + (e.q3 || "") + (e.q4 || "");
         }
         return s.toLowerCase();
       };
@@ -240,7 +240,7 @@ export function render() {
         const today = toDateStr(new Date());
         const id = "e_" + Date.now();
         const newEntry = currentTabId === "3"
-          ? { id, date: today, title: "제목없음", q1: "", q2: "", q3: "", updatedAt: new Date().toISOString() }
+          ? { id, date: today, title: "제목없음", q1: "", q2: "", q3: "", q4: "", updatedAt: new Date().toISOString() }
           : {
               id,
               date: today,
@@ -319,6 +319,7 @@ export function render() {
       if (!currentEntry.q1 && currentEntry.q1 !== "") currentEntry.q1 = "";
       if (!currentEntry.q2 && currentEntry.q2 !== "") currentEntry.q2 = "";
       if (!currentEntry.q3 && currentEntry.q3 !== "") currentEntry.q3 = "";
+      if (!currentEntry.q4 && currentEntry.q4 !== "") currentEntry.q4 = "";
       const titleRow = document.createElement("div");
       titleRow.className = "diary-paper-title-row diary-paper-qa-title-row";
       const titleInput = document.createElement("input");

@@ -16024,6 +16024,16 @@ body.kpi-resizing {
   flex-shrink: 0;
 }
 
+.diary-view .diary-tabs .time-view-tab {
+  border: 1px solid #000;
+  border-radius: 4px;
+}
+
+.diary-view .diary-tabs .time-view-tab.active {
+  border-color: #000;
+  border-width: 1px;
+}
+
 .diary-layout-wrap {
   display: flex;
   flex-direction: column;

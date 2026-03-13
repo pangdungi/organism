@@ -2882,6 +2882,10 @@ export function render() {
               <label>${TAB3_EMOTION_TEMPLATE[2]}</label>
               <textarea class="time-task-log-emotion-q3" placeholder="${TAB3_EMOTION_PLACEHOLDERS[2]}" rows="2"></textarea>
             </div>
+            <div class="time-task-log-field">
+              <label>${TAB3_EMOTION_TEMPLATE[3]}</label>
+              <textarea class="time-task-log-emotion-q4" placeholder="${TAB3_EMOTION_PLACEHOLDERS[3]}" rows="2"></textarea>
+            </div>
           </div>
         </div>
         </div>
@@ -3241,6 +3245,9 @@ export function render() {
   );
   const taskLogEmotionQ3 = taskLogModal.querySelector(
     ".time-task-log-emotion-q3",
+  );
+  const taskLogEmotionQ4 = taskLogModal.querySelector(
+    ".time-task-log-emotion-q4",
   );
   const taskLogSubmitBtn = taskLogModal.querySelector(".time-task-log-submit");
   const taskLogBackdrop = taskLogModal.querySelector(
@@ -4149,6 +4156,7 @@ export function render() {
     if (taskLogEmotionQ1) taskLogEmotionQ1.value = "";
     if (taskLogEmotionQ2) taskLogEmotionQ2.value = "";
     if (taskLogEmotionQ3) taskLogEmotionQ3.value = "";
+    if (taskLogEmotionQ4) taskLogEmotionQ4.value = "";
     if (taskLogEmotionToggleInput) taskLogEmotionToggleInput.checked = false;
     if (taskLogEmotionFields) taskLogEmotionFields.hidden = true;
     taskLogEnergyValue = "50";
@@ -4226,9 +4234,10 @@ export function render() {
     taskLogExpenseAmountInput.value = "";
     if (taskLogExpenseToggleInput) taskLogExpenseToggleInput.checked = false;
     if (taskLogExpenseFields) taskLogExpenseFields.hidden = true;
-    if (taskLogEmotionQ1) taskLogEmotionQ1.value = "";
-    if (taskLogEmotionQ2) taskLogEmotionQ2.value = "";
-    if (taskLogEmotionQ3) taskLogEmotionQ3.value = "";
+    if (taskLogEmotionQ1) taskLogEmotionQ1.value = data.q1 ?? "";
+    if (taskLogEmotionQ2) taskLogEmotionQ2.value = data.q2 ?? "";
+    if (taskLogEmotionQ3) taskLogEmotionQ3.value = data.q3 ?? "";
+    if (taskLogEmotionQ4) taskLogEmotionQ4.value = data.q4 ?? "";
     if (taskLogEmotionToggleInput) taskLogEmotionToggleInput.checked = false;
     if (taskLogEmotionFields) taskLogEmotionFields.hidden = true;
     taskLogEnergyValue = String(data.energy || "").trim();
@@ -4475,10 +4484,11 @@ export function render() {
     const emotionQ1 = (taskLogEmotionQ1?.value || "").trim();
     const emotionQ2 = (taskLogEmotionQ2?.value || "").trim();
     const emotionQ3 = (taskLogEmotionQ3?.value || "").trim();
-    const hasEmotionContent = emotionQ1 || emotionQ2 || emotionQ3;
+    const emotionQ4 = (taskLogEmotionQ4?.value || "").trim();
+    const hasEmotionContent = emotionQ1 || emotionQ2 || emotionQ3 || emotionQ4;
     if (emotionToggleOn && hasEmotionContent) {
       const entries = loadDiaryEntries();
-      addOrUpdateTab3EntryByDate(entries, dateStr, emotionQ1, emotionQ2, emotionQ3);
+      addOrUpdateTab3EntryByDate(entries, dateStr, emotionQ1, emotionQ2, emotionQ3, emotionQ4);
       saveDiaryEntries(entries);
     }
 
