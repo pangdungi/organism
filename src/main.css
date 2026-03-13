@@ -17905,7 +17905,7 @@ body.kpi-resizing {
 }
 
 .calendar-1day-view .calendar-1day-time-slot--actual {
-  border-left: 1px dotted #e5e7eb;
+  border-left: 1px solid #e5e7eb;
 }
 
 .calendar-1day-view
