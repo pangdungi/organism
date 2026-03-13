@@ -11579,6 +11579,21 @@ body.kpi-resizing {
   gap: 0.75rem;
 }
 
+.time-audit-region {
+  margin-bottom: 1.25rem;
+}
+.time-audit-region:last-child {
+  margin-bottom: 0;
+}
+.time-audit-region-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
 .time-audit-row {
   display: flex;
   gap: 1rem;
@@ -11714,7 +11729,7 @@ body.kpi-resizing {
 }
 
 .time-audit-below-section {
-  margin-top: 1rem;
+  margin-top: 0;
   border-top: 1px solid #e5e7eb;
   padding-top: 1rem;
   display: flex;

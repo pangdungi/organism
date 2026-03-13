@@ -5306,6 +5306,8 @@ export function render() {
           <div class="time-audit-day-header">
             <span class="time-audit-day-label">${dateLabel}</span>
           </div>
+          <div class="time-audit-region time-audit-region-concentration">
+            <div class="time-audit-region-title">1. 집중력</div>
           <div class="time-audit-row">
             <div class="time-audit-charts">
               <div class="time-audit-concentration-title">집중력</div>
@@ -5328,6 +5330,9 @@ export function render() {
               <div class="time-audit-event-items">${listItemsHtml || '<div class="time-audit-event-empty">기록 없음</div>'}</div>
             </div>
           </div>
+          </div>
+          <div class="time-audit-region time-audit-region-time-gap">
+            <div class="time-audit-region-title">2. 시간갭</div>
           ${(() => {
             const BASIC_TASKS = ["수면하기", "근무하기"];
             const storedGoals = getBudgetGoals(dateStr);
@@ -5419,6 +5424,7 @@ export function render() {
             const actualCardHtml = `<div class="time-audit-pie-card"><div class="time-audit-pie-title">실제 시간 (수면·근무 제외)</div>${actualPieHtml}</div>`;
             return (tableHtml ? tableHtml : "<div class=\"time-audit-below-section\">") + goalCardHtml + actualCardHtml + "</div>";
           })()}
+          </div>
         `;
         wrap.appendChild(block);
       });
