@@ -5231,7 +5231,6 @@ function renderCalendarView(tabsElement) {
     btn.textContent = v.label;
     subTabs.appendChild(btn);
   });
-  topRow.appendChild(subTabs);
   wrap.appendChild(topRow);
 
   const contentArea = document.createElement("div");
@@ -5244,7 +5243,17 @@ function renderCalendarView(tabsElement) {
     ? savedSubView
     : "monthly";
 
+  function placeSubTabsInNav() {
+    const nav = contentArea.querySelector(".calendar-monthly-nav");
+    const controls = contentArea.querySelector(".calendar-nav-controls");
+    if (nav && controls && subTabs.parentNode !== nav) {
+      subTabs.remove();
+      nav.insertBefore(subTabs, controls);
+    }
+  }
+
   function renderSubView(subViewId) {
+    if (subTabs.parentNode) subTabs.remove();
     contentArea.innerHTML = "";
     dateDebug("renderSubView: saving before switch", { subViewId, hasSidebar: !!contentArea.querySelector(".calendar-todo-sidebar-body") });
     saveTodoListBeforeUnmount(contentArea);
@@ -5257,6 +5266,7 @@ function renderCalendarView(tabsElement) {
     } else if (subViewId === "1week") {
       contentArea.appendChild(render1WeekView(null));
     }
+    placeSubTabsInNav();
     localStorage.setItem(CALENDAR_VIEW_KEY, subViewId);
   }
 
@@ -5774,10 +5784,10 @@ export function render() {
   const tabs = document.createElement("div");
   tabs.className = "time-view-tabs calendar-tabs";
   tabs.innerHTML = `
-    <button type="button" class="time-view-tab active" data-view="todo">할일 쏟아내기</button>
-    <button type="button" class="time-view-tab" data-view="eisenhower">우선순위 정렬</button>
-    <button type="button" class="time-view-tab" data-view="calendar">날짜정하기</button>
-    <button type="button" class="time-view-tab" data-view="1day">오늘 해치우기</button>
+    <button type="button" class="time-view-tab active" data-view="todo">1. 할일 쏟아내기</button>
+    <button type="button" class="time-view-tab" data-view="eisenhower">2. 우선순위 정렬</button>
+    <button type="button" class="time-view-tab" data-view="calendar">3. 날짜 정하기</button>
+    <button type="button" class="time-view-tab" data-view="1day">4. 오늘 해치우기</button>
   `;
   el.appendChild(tabs);
 

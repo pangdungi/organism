@@ -17709,6 +17709,13 @@ body.kpi-resizing {
   margin-bottom: 1rem;
 }
 
+.calendar-monthly-nav .calendar-sub-tabs {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
 .calendar-nav-date {
   display: flex;
   align-items: baseline;
@@ -19082,8 +19089,8 @@ body.kpi-resizing {
 }
 
 .calendar-monthly-day.today {
-  background: rgba(0, 0, 0, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+  background: transparent;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.35);
 }
 
 .calendar-monthly-day.today .calendar-monthly-day-num {

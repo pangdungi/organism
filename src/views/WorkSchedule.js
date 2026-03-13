@@ -260,7 +260,9 @@ function createWorkTypeInput(initialValue, onUpdate) {
     const val = (input.value || "").trim();
     display.textContent = val;
     display.className = "work-schedule-type-display";
-    if (val) display.classList.add("is-default");
+    if (val === "초과근무") display.classList.add("is-overtime");
+    else if (val === "조기퇴근") display.classList.add("is-early");
+    else if (val) display.classList.add("is-default");
   }
 
   function showInput() {
@@ -342,7 +344,7 @@ function createWorkTypeInput(initialValue, onUpdate) {
 
     matches.forEach((opt) => {
       const isProtected = PROTECTED_WORK_TYPES.includes(opt);
-      const tagClass = "";
+      const tagClass = opt === "초과근무" ? "work-schedule-tag-overtime" : opt === "조기퇴근" ? "work-schedule-tag-early" : "";
       const row = document.createElement("div");
       row.className = "time-task-name-option" + (isProtected ? " work-schedule-type-protected" : "");
       row.innerHTML =
