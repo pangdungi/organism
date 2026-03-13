@@ -20,7 +20,7 @@ import {
   getKpiSyncedTaskNames,
   syncHabitTrackerLogs,
 } from "../utils/timeKpiSync.js";
-import { getKpiTodosAsTasks } from "../utils/kpiTodoSync.js";
+import { getKpiTodosAsTasks, syncKpiTodoCompleted } from "../utils/kpiTodoSync.js";
 import { getCustomSections } from "../utils/todoSettings.js";
 import { showToast } from "../utils/showToast.js";
 
@@ -40,6 +40,10 @@ function getTasksForAuditDate(dateKey) {
         done: !!t.done,
         eisenhower: (t.eisenhower || "").trim() || "",
         classification: (t.classification || "").trim() || "",
+        sectionId: "kpi",
+        taskId: t.kpiTodoId || "",
+        kpiTodoId: t.kpiTodoId,
+        storageKey: t.storageKey,
       }),
     );
     const raw = localStorage.getItem(SECTION_TASKS_KEY_AUDIT);
@@ -60,6 +64,8 @@ function getTasksForAuditDate(dateKey) {
               done: !!t.done,
               eisenhower: (t.eisenhower || "").trim() || "",
               classification: "",
+              sectionId,
+              taskId: t.taskId || "",
             }),
           );
       });
@@ -82,12 +88,75 @@ function getTasksForAuditDate(dateKey) {
               done: !!t.done,
               eisenhower: (t.eisenhower || "").trim() || "",
               classification: "",
+              sectionId: sec.id,
+              taskId: t.taskId || "",
             }),
           );
       });
     }
   } catch (_) {}
   return out;
+}
+
+function setAuditTaskDone(sectionId, taskId, kpiTodoId, storageKey, done) {
+  if (kpiTodoId && storageKey) {
+    syncKpiTodoCompleted(kpiTodoId, storageKey, done);
+    return;
+  }
+  try {
+    const key = (sectionId || "").startsWith("custom-")
+      ? CUSTOM_SECTION_TASKS_KEY_AUDIT
+      : SECTION_TASKS_KEY_AUDIT;
+    const raw = localStorage.getItem(key);
+    if (!raw) return;
+    const obj = JSON.parse(raw);
+    const arr = obj[sectionId];
+    if (!Array.isArray(arr)) return;
+    const t = arr.find((x) => (x.taskId || "") === taskId);
+    if (t) {
+      t.done = !!done;
+      localStorage.setItem(key, JSON.stringify(obj));
+    }
+  } catch (_) {}
+}
+
+const EISENHOWER_LABELS_AUDIT = { "urgent-important": "긴급+중요", "important-not-urgent": "중요+여유", "urgent-not-important": "긴급+덜중요", "not-urgent-not-important": "둘다아님" };
+const PIE_COLORS_AUDIT = ["#ef4444", "#f59e0b", "#22c55e", "#3b82f6", "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16"];
+function getAuditPriorityPieHtml(dateStr) {
+  const tasks = getTasksForAuditDate(dateStr);
+  const completed = tasks.filter((t) => t.done);
+  const byPriority = {};
+  completed.forEach((t) => { const k = (t.eisenhower || "").trim() || "(없음)"; byPriority[k] = (byPriority[k] || 0) + 1; });
+  const byKpi = {};
+  completed.forEach((t) => { const k = (t.classification || "").trim() || "(없음)"; byKpi[k] = (byKpi[k] || 0) + 1; });
+  const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const makePie = (entries, title) => {
+    const total = entries.reduce((s, e) => s + e.count, 0);
+    if (total === 0) return `<div class="time-audit-pie-box"><div class="time-audit-pie-title">${esc(title)}</div><div class="time-audit-pie-empty">완료 없음</div></div>`;
+    let acc = 0;
+    const cx = 50; const cy = 50; const r = 40;
+    const segs = entries.map((e, i) => {
+      const pct = e.count / total;
+      if (pct >= 0.9999) return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${PIE_COLORS_AUDIT[i % PIE_COLORS_AUDIT.length]}" title="${esc(e.label)}: ${e.count} (100%)"/>`;
+      const a0 = (acc / total) * 2 * Math.PI - Math.PI / 2;
+      acc += e.count;
+      const a1 = (acc / total) * 2 * Math.PI - Math.PI / 2;
+      const x0 = cx + r * Math.cos(a0); const y0 = cy + r * Math.sin(a0);
+      const x1 = cx + r * Math.cos(a1); const y1 = cy + r * Math.sin(a1);
+      const large = pct > 0.5 ? 1 : 0;
+      const d = `M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z`;
+      return `<path d="${d}" fill="${PIE_COLORS_AUDIT[i % PIE_COLORS_AUDIT.length]}" title="${esc(e.label)}: ${e.count}"/>`;
+    }).join("");
+    const legend = entries.map((e, i) => {
+      const pct = total > 0 ? Math.round((e.count / total) * 100) : 0;
+      const pctText = entries.length === 1 ? " 100%" : ` ${e.count} (${pct}%)`;
+      return `<span class="time-audit-pie-legend-item" style="--pie-color:${PIE_COLORS_AUDIT[i % PIE_COLORS_AUDIT.length]}">${esc(e.label)}${pctText}</span>`;
+    }).join("");
+    return `<div class="time-audit-pie-box"><div class="time-audit-pie-title">${esc(title)}</div><div class="time-audit-pie-svg-wrap"><svg viewBox="0 0 100 100" class="time-audit-pie-svg">${segs}</svg></div><div class="time-audit-pie-legend">${legend}</div></div>`;
+  };
+  const priorityEntries = Object.entries(byPriority).map(([k, count]) => ({ label: EISENHOWER_LABELS_AUDIT[k] || k, count }));
+  const kpiEntries = Object.entries(byKpi).map(([label, count]) => ({ label, count }));
+  return makePie(priorityEntries, "우선순위별 완료") + makePie(kpiEntries, "KPI별 완료");
 }
 
 const PRODUCTIVITY_OPTIONS = [
@@ -5501,51 +5570,35 @@ export function render() {
               const kpi = (t.classification || "").trim() || "—";
               const priority = (t.eisenhower || "").trim() ? (EISENHOWER_LABELS[(t.eisenhower || "").trim()] || (t.eisenhower || "").trim()) : "—";
               const checked = t.done ? " checked" : "";
-              return `<tr><td class="time-audit-priority-todo-cell"><label class="time-audit-priority-todo-row"><input type="checkbox" disabled${checked}><span>${esc(label)}</span></label></td><td>${esc(kpi)}</td><td>${esc(priority)}</td></tr>`;
+              const sid = esc(t.sectionId || "");
+              const tid = esc(t.taskId || "");
+              const kid = esc(t.kpiTodoId || "");
+              const sk = esc(t.storageKey || "");
+              const dk = esc(dateStr);
+              return `<tr data-section-id="${sid}" data-task-id="${tid}" data-kpi-todo-id="${kid}" data-storage-key="${sk}" data-date-key="${dk}"><td class="time-audit-priority-todo-cell"><label class="time-audit-priority-todo-row"><input type="checkbox"${checked}><span>${esc(label)}</span></label></td><td>${esc(kpi)}</td><td>${esc(priority)}</td></tr>`;
             }).join("");
             const tableHtml = `<div class="time-audit-priority-table-wrap"><table class="time-audit-priority-table"><thead><tr><th>오늘의 할일</th><th>KPI</th><th>우선순위</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
-            const completed = tasks.filter((t) => t.done);
-            const byPriority = {};
-            completed.forEach((t) => { const k = (t.eisenhower || "").trim() || "(없음)"; byPriority[k] = (byPriority[k] || 0) + 1; });
-            const byKpi = {};
-            completed.forEach((t) => { const k = (t.classification || "").trim() || "(없음)"; byKpi[k] = (byKpi[k] || 0) + 1; });
-            const PIE_COLORS = ["#ef4444", "#f59e0b", "#22c55e", "#3b82f6", "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16"];
-            const makePieSvg = (entries, title) => {
-              const total = entries.reduce((s, e) => s + e.count, 0);
-              if (total === 0) return `<div class="time-audit-pie-box"><div class="time-audit-pie-title">${esc(title)}</div><div class="time-audit-pie-empty">완료 없음</div></div>`;
-              let acc = 0;
-              const cx = 50; const cy = 50; const r = 40;
-              const segs = entries.map((e, i) => {
-                const pct = e.count / total;
-                /* 100% 단일 구간: SVG arc는 시작=끝이면 안 그려지므로 원으로 그림 */
-                if (pct >= 0.9999) {
-                  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${PIE_COLORS[i % PIE_COLORS.length]}" title="${esc(e.label)}: ${e.count} (100%)"/>`;
-                }
-                const a0 = (acc / total) * 2 * Math.PI - Math.PI / 2;
-                acc += e.count;
-                const a1 = (acc / total) * 2 * Math.PI - Math.PI / 2;
-                const x0 = cx + r * Math.cos(a0); const y0 = cy + r * Math.sin(a0);
-                const x1 = cx + r * Math.cos(a1); const y1 = cy + r * Math.sin(a1);
-                const large = pct > 0.5 ? 1 : 0;
-                const d = `M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z`;
-                return `<path d="${d}" fill="${PIE_COLORS[i % PIE_COLORS.length]}" title="${esc(e.label)}: ${e.count}"/>`;
-              }).join("");
-              const legend = entries.map((e, i) => {
-                const pct = total > 0 ? Math.round((e.count / total) * 100) : 0;
-                const pctText = entries.length === 1 ? " 100%" : ` ${e.count} (${pct}%)`;
-                return `<span class="time-audit-pie-legend-item" style="--pie-color:${PIE_COLORS[i % PIE_COLORS.length]}">${esc(e.label)}${pctText}</span>`;
-              }).join("");
-              return `<div class="time-audit-pie-box"><div class="time-audit-pie-title">${esc(title)}</div><div class="time-audit-pie-svg-wrap"><svg viewBox="0 0 100 100" class="time-audit-pie-svg">${segs}</svg></div><div class="time-audit-pie-legend">${legend}</div></div>`;
-            };
-            const priorityEntries = Object.entries(byPriority).map(([k, count]) => ({ label: EISENHOWER_LABELS[k] || k, count }));
-            const kpiEntries = Object.entries(byKpi).map(([label, count]) => ({ label, count }));
-            const pie1 = makePieSvg(priorityEntries, "우선순위별 완료");
-            const pie2 = makePieSvg(kpiEntries, "KPI별 완료");
-            return `<div class="time-audit-priority-content"><div class="time-audit-priority-left">${tableHtml}</div><div class="time-audit-priority-right">${pie1}${pie2}</div></div>`;
+            return `<div class="time-audit-priority-content"><div class="time-audit-priority-left">${tableHtml}</div><div class="time-audit-priority-right">${getAuditPriorityPieHtml(dateStr)}</div></div>`;
           })()}
           </div>
         `;
         wrap.appendChild(block);
+        const tableWrap = block.querySelector(".time-audit-priority-table-wrap");
+        if (tableWrap) {
+          tableWrap.addEventListener("change", (e) => {
+            if (!e.target.matches("input[type=checkbox]")) return;
+            const tr = e.target.closest("tr");
+            if (!tr) return;
+            const sectionId = tr.dataset.sectionId || "";
+            const taskId = tr.dataset.taskId || "";
+            const kpiTodoId = tr.dataset.kpiTodoId || "";
+            const storageKey = tr.dataset.storageKey || "";
+            const dateKey = tr.dataset.dateKey || "";
+            setAuditTaskDone(sectionId, taskId, kpiTodoId || null, storageKey || null, e.target.checked);
+            const right = block.querySelector(".time-audit-priority-right");
+            if (right) right.innerHTML = getAuditPriorityPieHtml(dateKey);
+          });
+        }
       });
 
     contentWrap.appendChild(wrap);
