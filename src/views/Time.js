@@ -491,24 +491,9 @@ function clearOverlappingScheduledTimes(all, dateStr, taskName, newSlots) {
   return modifiedKeys;
 }
 
-/** 오늘의 할일 등 예산 블록 외부 과제: 겹침만 해결 (BUDGET_GOALS_KEY에 추가하지 않음). 투자/소비 테이블에 표시되지 않음 */
+/** 오늘의 할일 등 예산 블록 외부 과제: 겹침 해결 비활성화 (사용자 요청) */
 export function clearOverlapFromBudgetGoalsOnly(dateStr, scheduledTimes) {
-  if (!Array.isArray(scheduledTimes) || scheduledTimes.length === 0) return false;
-  try {
-    const raw = localStorage.getItem(BUDGET_GOALS_KEY);
-    const all = raw ? JSON.parse(raw) : {};
-    if (!all[dateStr]) return false;
-    const arr = scheduledTimes
-      .map((s) => String(s || "").trim())
-      .filter(Boolean)
-      .filter((s) => s.includes("-"));
-    if (arr.length === 0) return false;
-    const modifiedKeys = clearOverlappingScheduledTimes(all, dateStr, "__TODAY_ONLY__", arr);
-    if (modifiedKeys.size > 0) localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
-    return modifiedKeys.size > 0;
-  } catch (_) {
-    return false;
-  }
+  return false;
 }
 
 /** 캘린더 1일뷰 예정 시간 저장 - scheduledTimes 배열 지원 (같은 과제 여러 구간). 겹침 해결 시 true 반환 */
@@ -527,14 +512,7 @@ export function saveBudgetScheduledTimes(dateStr, taskName, scheduledTimes, isIn
       ? scheduledTimes.map((s) => String(s || "").trim()).filter(Boolean)
       : [];
     arr = resolveOverlapsWithinSlots(arr);
-    let overlapCleared = false;
     if (arr.length > 0) {
-      overlapCleared = clearOverlappingScheduledTimes(
-        all,
-        dateStr,
-        taskName,
-        arr,
-      ).size > 0;
       all[dateStr][key] = { ...existing, scheduledTimes: arr, isInvest };
     } else {
       const { scheduledTime: _st, scheduledTimes: _sts, ...rest } = existing;
@@ -542,7 +520,7 @@ export function saveBudgetScheduledTimes(dateStr, taskName, scheduledTimes, isIn
       if (!all[dateStr][key]) delete all[dateStr][key];
     }
     localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
-    return overlapCleared;
+    return false;
   } catch (_) {
     return false;
   }
@@ -570,9 +548,6 @@ function saveBudgetScheduledTimesBatch(dateStr, tasksInOrder, lastEditedTask) {
     if (!all[dateStr] || typeof all[dateStr] !== "object" || Array.isArray(all[dateStr]))
       all[dateStr] = {};
     const dateData = all[dateStr];
-    const modifiedByOthers = new Set();
-    const modifiedByClearOverlap = new Set();
-    let overlapCleared = false;
     const lastKey = (lastEditedTask || "").trim();
     const ordered = lastKey
       ? [
@@ -594,41 +569,12 @@ function saveBudgetScheduledTimesBatch(dateStr, tasksInOrder, lastEditedTask) {
     for (const { task, times, isInvest } of toProcess) {
       const key = (task || "").trim();
       if (!key) continue;
-      if (modifiedByOthers.has(key)) {
-        if (BUDGET_OVERLAP_DEBUG) {
-          console.log("[BUDGET-OVERLAP] skip entire (modifiedByOthers)", key);
-        }
-        continue;
-      }
       removeFromBudgetExcluded(dateStr, key);
       const existing = dateData[key] || {};
       let arr = Array.isArray(times)
         ? times.map((s) => String(s || "").trim()).filter(Boolean)
         : [];
-      const arrBefore = [...arr];
       arr = resolveOverlapsWithinSlots(arr);
-      if (BUDGET_OVERLAP_DEBUG && arrBefore.length > 0) {
-        console.log("[BUDGET-OVERLAP] processing", {
-          key,
-          arrBefore,
-          arrAfterResolve: [...arr],
-        });
-      }
-      const modifiedKeys = clearOverlappingScheduledTimes(all, dateStr, key, arr);
-      if (BUDGET_OVERLAP_DEBUG && modifiedKeys.size > 0) {
-        console.log("[BUDGET-OVERLAP] clearOverlappingScheduledTimes modified", {
-          key,
-          arr,
-          modifiedKeys: [...modifiedKeys],
-        });
-      }
-      if (modifiedKeys.size > 0) {
-        overlapCleared = true;
-        modifiedKeys.forEach((k) => {
-          modifiedByOthers.add(k);
-          modifiedByClearOverlap.add(k);
-        });
-      }
       if (arr.length > 0) {
         dateData[key] = { ...existing, scheduledTimes: arr, isInvest };
         if (BUDGET_OVERLAP_DEBUG) {
@@ -641,7 +587,7 @@ function saveBudgetScheduledTimesBatch(dateStr, tasksInOrder, lastEditedTask) {
       }
     }
     localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
-    return { overlapCleared, modifiedKeys: modifiedByClearOverlap };
+    return { overlapCleared: false, modifiedKeys: new Set() };
   } catch (_) {
     return { overlapCleared: false, modifiedKeys: new Set() };
   }
