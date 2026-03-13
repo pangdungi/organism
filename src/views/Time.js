@@ -5347,7 +5347,6 @@ export function render() {
               scheduleRows.push({ task, goalTime, actualHrs, section });
             });
             scheduleRows.sort((a, b) => a.section - b.section || a.task.localeCompare(b.task));
-            if (scheduleRows.length === 0) return "";
             const fmtGap = (goalTime, actualHrs) => {
               if (!goalTime?.trim() || actualHrs <= 0) return "—";
               const goalHrs = parseTimeToHours(goalTime);
@@ -5361,13 +5360,50 @@ export function render() {
               if (m === 0) return `${sign}${h}h`;
               return `${sign}${h}h ${m}m`;
             };
-            const rowsHtml = scheduleRows
-              .map(
-                (r) =>
-                  `<tr><td class="time-audit-schedule-task">${r.task}</td><td class="time-audit-schedule-goal">${r.goalTime || "—"}</td><td class="time-audit-schedule-actual">${r.actualHrs > 0 ? formatHoursToHHMM(r.actualHrs) : "—"}</td><td class="time-audit-schedule-gap">${fmtGap(r.goalTime, r.actualHrs)}</td></tr>`,
-              )
-              .join("");
-            return `<div class="time-audit-schedule-table-wrap"><table class="time-audit-schedule-table"><thead><tr><th>과제명</th><th>목표 시간</th><th>실제시간</th><th>시간 갭</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+            const tableHtml = scheduleRows.length > 0
+              ? (() => {
+                  const rowsHtml = scheduleRows
+                    .map(
+                      (r) =>
+                        `<tr><td class="time-audit-schedule-task">${r.task}</td><td class="time-audit-schedule-goal">${r.goalTime || "—"}</td><td class="time-audit-schedule-actual">${r.actualHrs > 0 ? formatHoursToHHMM(r.actualHrs) : "—"}</td><td class="time-audit-schedule-gap">${fmtGap(r.goalTime, r.actualHrs)}</td></tr>`,
+                    )
+                    .join("");
+                  return `<div class="time-audit-below-section"><div class="time-audit-section-1"><div class="time-audit-schedule-table-wrap"><table class="time-audit-schedule-table"><thead><tr><th>과제명</th><th>목표 시간</th><th>실제시간</th><th>시간 갭</th></tr></thead><tbody>${rowsHtml}</tbody></table></div></div>`;
+                })()
+              : "";
+            const goalEntries = scheduleRows
+              .filter((r) => !BASIC_TASKS.includes(r.task))
+              .map((r) => ({ task: r.task, hrs: parseTimeToHours(r.goalTime) }))
+              .filter((x) => x.hrs > 0);
+            const actualEntries = Object.entries(actualByTask)
+              .filter(([task]) => !BASIC_TASKS.includes(task))
+              .filter(([, hrs]) => hrs > 0)
+              .map(([task, hrs]) => ({ task, hrs }));
+            const goalTotal = goalEntries.reduce((s, x) => s + x.hrs, 0);
+            const actualTotal = actualEntries.reduce((s, x) => s + x.hrs, 0);
+            const circ = 2 * Math.PI * 40;
+            const offset = circ / 4;
+            const makeDonutSegs = (entries, total) => {
+              if (total <= 0 || entries.length === 0) return [];
+              let cum = 0;
+              return entries.map((x, i) => {
+                const len = (x.hrs / total) * circ;
+                const seg = { ...x, len, dashOffset: -offset - cum, stroke: TASK_BAR_COLORS[i % TASK_BAR_COLORS.length] };
+                cum += len;
+                return seg;
+              });
+            };
+            const goalSegs = makeDonutSegs(goalEntries, goalTotal);
+            const actualSegs = makeDonutSegs(actualEntries, actualTotal);
+            const goalDonutHtml = goalSegs.length > 0
+              ? `<div class="time-audit-donut-wrap"><svg class="time-audit-donut" viewBox="0 0 100 100"><circle class="time-audit-donut-bg" cx="50" cy="50" r="40"/>${goalSegs.map((s) => `<circle class="time-audit-donut-seg" cx="50" cy="50" r="40" stroke="${s.stroke}" stroke-dasharray="${s.len} ${circ - s.len}" stroke-dashoffset="${s.dashOffset}"/>`).join("")}</svg><div class="time-audit-donut-center"><span class="time-audit-donut-total">${formatHoursToHHMM(goalTotal)}</span><span class="time-audit-donut-label">목표</span></div></div><div class="time-audit-donut-legend">${goalSegs.map((s) => { const pct = goalTotal > 0 ? ((s.hrs / goalTotal) * 100).toFixed(1) : 0; return `<span class="time-audit-legend-item"><i style="background:${s.stroke}"></i>${s.task} ${pct}%</span>`; }).join("")}</div>`
+              : `<div class="time-audit-donut-empty">목표 없음</div>`;
+            const actualDonutHtml = actualSegs.length > 0
+              ? `<div class="time-audit-donut-wrap"><svg class="time-audit-donut" viewBox="0 0 100 100"><circle class="time-audit-donut-bg" cx="50" cy="50" r="40"/>${actualSegs.map((s) => `<circle class="time-audit-donut-seg" cx="50" cy="50" r="40" stroke="${s.stroke}" stroke-dasharray="${s.len} ${circ - s.len}" stroke-dashoffset="${s.dashOffset}"/>`).join("")}</svg><div class="time-audit-donut-center"><span class="time-audit-donut-total">${formatHoursToHHMM(actualTotal)}</span><span class="time-audit-donut-label">실제</span></div></div><div class="time-audit-donut-legend">${actualSegs.map((s) => { const pct = actualTotal > 0 ? ((s.hrs / actualTotal) * 100).toFixed(1) : 0; return `<span class="time-audit-legend-item"><i style="background:${s.stroke}"></i>${s.task} ${pct}%</span>`; }).join("")}</div>`
+              : `<div class="time-audit-donut-empty">기록 없음</div>`;
+            const goalCardHtml = `<div class="time-audit-pie-card"><div class="time-audit-pie-title">목표 시간 (수면·근무 제외)</div>${goalDonutHtml}</div>`;
+            const actualCardHtml = `<div class="time-audit-pie-card"><div class="time-audit-pie-title">실제 시간 (수면·근무 제외)</div>${actualDonutHtml}</div>`;
+            return (tableHtml ? tableHtml : "<div class=\"time-audit-below-section\">") + goalCardHtml + actualCardHtml + "</div>";
           })()}
         `;
         wrap.appendChild(block);

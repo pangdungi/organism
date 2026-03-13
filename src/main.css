@@ -11713,6 +11713,119 @@ body.kpi-resizing {
   overflow: visible;
 }
 
+.time-audit-below-section {
+  margin-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 1rem;
+  display: flex;
+  flex-direction: row;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.time-audit-section-1 {
+  flex: 1;
+  min-width: 280px;
+}
+
+.time-audit-section-1 .time-audit-schedule-table-wrap {
+  margin-top: 0;
+  border-top: none;
+  padding-top: 0;
+}
+
+.time-audit-pie-card {
+  flex: 0 0 auto;
+  min-width: 200px;
+  max-width: 280px;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.time-audit-pie-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 0.75rem;
+}
+
+.time-audit-donut-wrap {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  margin: 0 auto 0.5rem;
+}
+
+.time-audit-donut {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.time-audit-donut-bg {
+  fill: none;
+  stroke: #e5e7eb;
+  stroke-width: 12;
+}
+
+.time-audit-donut-seg {
+  fill: none;
+  stroke-width: 12;
+  stroke-linecap: round;
+  transition: opacity 0.2s;
+}
+
+.time-audit-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.time-audit-donut-total {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.time-audit-donut-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.time-audit-donut-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  font-size: 0.8rem;
+  color: #374151;
+}
+
+.time-audit-donut-legend .time-audit-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.time-audit-donut-legend .time-audit-legend-item i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.time-audit-donut-empty {
+  padding: 2rem;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #9ca3af;
+}
+
 .time-audit-schedule-table-wrap {
   margin-top: 1rem;
   border-top: 1px solid #e5e7eb;
