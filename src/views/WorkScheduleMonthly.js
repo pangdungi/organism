@@ -168,7 +168,7 @@ export function renderMonthlyContent() {
           item.className = "work-schedule-monthly-entry";
           const type = (entry.workType || "").trim();
           const hours = entry.hours ?? entry.hoursWorked ?? "";
-          const tagClass = type === "초과근무" ? "is-overtime" : type === "조기퇴근" ? "is-early" : "";
+          const tagClass = "";
           item.innerHTML = `<span class="work-schedule-monthly-type ${tagClass}">${type || "-"}</span><span class="work-schedule-monthly-hours">${hours ? hours + "h" : ""}</span>`;
           entriesEl.appendChild(item);
         });
