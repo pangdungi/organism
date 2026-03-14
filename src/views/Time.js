@@ -6050,6 +6050,58 @@ export function render() {
             )
             .join("")}</tbody></table></div>`;
 
+    const tasksForImportant = getTasksForAuditDate(dateKey);
+    const EISENHOWER_LABELS = { "urgent-important": "긴급+중요", "important-not-urgent": "중요+여유", "urgent-not-important": "긴급+덜중요", "not-urgent-not-important": "둘다아님" };
+    const dateRowsForKpi = filtered.filter(
+      (r) => (normalizeDateForCompare(r.date || "") || (r.date || "").trim()) === dateKey,
+    );
+    const actualByTaskKpi = aggregateHoursByTask(dateRowsForKpi);
+    const kpiHoursMap = {};
+    Object.entries(actualByTaskKpi).forEach(([timeTaskName, hours]) => {
+      if (!timeTaskName || hours <= 0) return;
+      const tn = String(timeTaskName).trim();
+      const matched = tasksForImportant.find(
+        (t) =>
+          (t.name || "").trim() === tn ||
+          (t.name || "").trim().startsWith(tn + " ") ||
+          tn.startsWith((t.name || "").trim() + " "),
+      );
+      if (matched) {
+        const kpi = (matched.classification || "").trim() || "(없음)";
+        kpiHoursMap[kpi] = (kpiHoursMap[kpi] || 0) + hours;
+      }
+    });
+    const kpiGroups = {};
+    tasksForImportant.forEach((t) => {
+      const kpi = (t.classification || "").trim() || "(없음)";
+      if (!kpiGroups[kpi]) kpiGroups[kpi] = [];
+      kpiGroups[kpi].push(t);
+    });
+    const kpiOrder = Object.keys(kpiGroups).sort((a, b) => (kpiHoursMap[b] || 0) - (kpiHoursMap[a] || 0));
+    const kpiCombinedRows = [];
+    kpiOrder.forEach((kpi) => {
+      const tasks = kpiGroups[kpi] || [];
+      if (tasks.length === 0) return;
+      const timeStr = kpiHoursMap[kpi] > 0 ? formatHoursToHHMM(kpiHoursMap[kpi]) : "—";
+      const rowspan = tasks.length;
+      tasks.forEach((t, i) => {
+        const label = (t.name || "").trim() || "—";
+        const priority = (t.eisenhower || "").trim() ? (EISENHOWER_LABELS[(t.eisenhower || "").trim()] || (t.eisenhower || "").trim()) : "—";
+        const check = t.done ? "☑" : "☐";
+        if (i === 0) {
+          kpiCombinedRows.push(
+            `<tr><td rowspan="${rowspan}" class="time-improve-kpi-name">${esc(kpi)}</td><td rowspan="${rowspan}" class="time-improve-kpi-hours">${timeStr}</td><td class="time-improve-kpi-todo">${check} ${esc(label)}</td><td class="time-improve-kpi-priority">${esc(priority)}</td></tr>`,
+          );
+        } else {
+          kpiCombinedRows.push(`<tr><td class="time-improve-kpi-todo">${check} ${esc(label)}</td><td class="time-improve-kpi-priority">${esc(priority)}</td></tr>`);
+        }
+      });
+    });
+    const priorityTableImportantHtml =
+      tasksForImportant.length === 0
+        ? "<p class=\"time-improve-important-empty\">해당 날짜 할일이 없습니다.</p>"
+        : `<div class="time-improve-important-table-wrap"><table class="time-improve-important-table time-improve-kpi-combined-table"><thead><tr><th>KPI</th><th>KPI 시간사용시간</th><th>KPI 할일</th><th>우선순위</th></tr></thead><tbody>${kpiCombinedRows.join("")}</tbody></table></div>`;
+
     const eventsListHtml =
       allEvents.length === 0
         ? "<p class=\"time-improve-events-empty\">해당 기간 방해기록이 없습니다.</p>"
@@ -6076,9 +6128,9 @@ export function render() {
             </div>
           </div>
           <div class="time-improve-input-block">
-            <h4 class="time-improve-input-label">2. 대책마련</h4>
+            <h4 class="time-improve-input-label">2. 방해요소 차단할 계획</h4>
             <div class="time-improve-answer-scroll">
-              <textarea class="time-improve-answer time-improve-countermeasures" placeholder="고질적 시간 도둑을 잡기 위해 나는 오늘부터 무엇을 해야 할까?"></textarea>
+              <textarea class="time-improve-answer time-improve-countermeasures" placeholder="예) 차단 시간 만들기, 휴대폰 끄기, 업무 외 인터넷창 끄기, 멀티태스킹금지 등"></textarea>
             </div>
           </div>
         </div>
@@ -6092,7 +6144,11 @@ export function render() {
             </div>
           </div>
         </div>
-        <div class="time-improve-quadrant time-improve-quadrant-empty"></div>
+        <div class="time-improve-quadrant time-improve-quadrant-important">
+          <h3 class="time-improve-section-title">3. 중요한일에 더 많은 시간 쓰기</h3>
+          <p class="time-improve-period">${periodLabel}</p>
+          <div class="time-improve-important-priority">${priorityTableImportantHtml}</div>
+        </div>
         <div class="time-improve-quadrant time-improve-quadrant-empty"></div>
       </div>
     `;
