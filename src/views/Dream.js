@@ -16,20 +16,22 @@ function loadDreamMap() {
     const raw = localStorage.getItem(DREAM_MAP_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
+      const kpis = (parsed.kpis || []).map((k) => ({ ...k, needHabitTracker: !!k.needHabitTracker }));
       return {
         dreams: parsed.dreams || [],
         goals: parsed.goals || [],
         tasks: parsed.tasks || [],
-        kpis: parsed.kpis || [],
+        kpis,
         kpiLogs: parsed.kpiLogs || [],
         kpiTodos: parsed.kpiTodos || [],
+        kpiDailyRepeatTodos: parsed.kpiDailyRepeatTodos || [],
         kpiOrder: parsed.kpiOrder || {},
         kpiTaskSync: parsed.kpiTaskSync || {},
         desiredLife: parsed.desiredLife || "",
       };
     }
   } catch (_) {}
-  return { dreams: [], goals: [], tasks: [], kpis: [], kpiLogs: [], kpiTodos: [], kpiOrder: {}, kpiTaskSync: {}, desiredLife: "" };
+  return { dreams: [], goals: [], tasks: [], kpis: [], kpiLogs: [], kpiTodos: [], kpiDailyRepeatTodos: [], kpiOrder: {}, kpiTaskSync: {}, desiredLife: "" };
 }
 
 function getTimeTaskOptionsRaw() {
@@ -96,6 +98,9 @@ function saveDreamMap(data) {
     const toSave = { ...data };
     if (toSave.kpiTodos && Array.isArray(toSave.kpiTodos)) {
       toSave.kpiTodos = toSave.kpiTodos.filter((t) => (t.text || "").trim() !== "");
+    }
+    if (toSave.kpiDailyRepeatTodos && Array.isArray(toSave.kpiDailyRepeatTodos)) {
+      toSave.kpiDailyRepeatTodos = toSave.kpiDailyRepeatTodos.filter((t) => (t.text || "").trim() !== "");
     }
     localStorage.setItem(DREAM_MAP_STORAGE_KEY, JSON.stringify(toSave));
   } catch (_) {}
@@ -320,6 +325,7 @@ export function render() {
     modal.querySelector(".dream-kpi-form").addEventListener("submit", (e) => {
       e.preventDefault();
       const form = e.target;
+      const needHabitChecked = !!(form.querySelector('input[name="needHabitTracker"]')?.checked);
       const kpi = {
         id: nextId(),
         dreamId: activeDreamId,
@@ -328,8 +334,9 @@ export function render() {
         targetValue: sanitizeNumericInput(form.targetValue.value) || "",
         targetStartDate: (form.targetStartDate?.value || "").trim() || "",
         targetDeadline: (form.targetDeadline.value || "").trim() || "",
-        needHabitTracker: !!form.needHabitTracker?.checked,
+        needHabitTracker: needHabitChecked,
       };
+      console.log("[매일반복] KPI 등록 직전", { needHabitChecked, kpiName: kpi.name, needHabitTracker: kpi.needHabitTracker });
       const data = loadDreamMap();
       data.kpis = data.kpis || [];
       const existingOrder = (data.kpiOrder || {})[activeDreamId] || data.kpis.filter((k) => k.dreamId === activeDreamId).map((k) => k.id);
@@ -337,9 +344,14 @@ export function render() {
       data.kpiOrder = data.kpiOrder || {};
       data.kpiOrder[activeDreamId] = [...existingOrder, kpi.id];
       saveDreamMap(data);
+      const afterLoad = loadDreamMap();
+      const savedKpi = (afterLoad.kpis || []).find((k) => k.id === kpi.id);
+      console.log("[매일반복] 저장 직후 로드해서 확인", { savedKpiFound: !!savedKpi, savedNeedHabitTracker: savedKpi?.needHabitTracker, raw: savedKpi });
       syncKpiToTimeTask(kpi, "add");
       close();
+      selectedKpiId = kpi.id;
       renderKpiList();
+      renderKpiHistory();
     });
     document.body.appendChild(modal);
     setupNumericOnlyInput(modal.querySelector('input[name="targetValue"]'));
@@ -412,6 +424,7 @@ export function render() {
       data.kpis = (data.kpis || []).filter((k) => k.id !== kpi.id);
       data.kpiLogs = (data.kpiLogs || []).filter((l) => l.kpiId !== kpi.id);
       data.kpiTodos = (data.kpiTodos || []).filter((t) => t.kpiId !== kpi.id);
+      data.kpiDailyRepeatTodos = (data.kpiDailyRepeatTodos || []).filter((t) => t.kpiId !== kpi.id);
       const order = (data.kpiOrder || {})[kpi.dreamId] || [];
       data.kpiOrder = { ...data.kpiOrder, [kpi.dreamId]: order.filter((id) => id !== kpi.id) };
       saveDreamMap(data);
@@ -432,7 +445,7 @@ export function render() {
         target.targetValue = sanitizeNumericInput(form.targetValue.value) || "";
         target.targetStartDate = (form.targetStartDate?.value || "").trim() || "";
         target.targetDeadline = (form.targetDeadline.value || "").trim() || "";
-        target.needHabitTracker = !!form.needHabitTracker?.checked;
+        target.needHabitTracker = !!form.querySelector('input[name="needHabitTracker"]')?.checked;
         saveDreamMap(data);
         if (oldName !== target.name) syncKpiToTimeTask(target, "update", oldName);
       }
@@ -628,6 +641,7 @@ export function render() {
     contentWrap.innerHTML = "";
     if (!activeDreamId) return;
     const data = loadDreamMap();
+    console.log("[매일반복] renderKpiList 로드된 kpis", (data.kpis || []).map((k) => ({ id: k.id, name: k.name, needHabitTracker: k.needHabitTracker })));
     let dreamKpis = (data.kpis || []).filter((k) => k.dreamId === activeDreamId);
     const order = (data.kpiOrder || {})[activeDreamId];
     if (order && order.length > 0) {
@@ -644,8 +658,8 @@ export function render() {
         syncKpiToTimeTask(kpi, "remove");
       }
     });
-    const activeKpis = dreamKpis.filter((k) => getKpiProgress(k).isInProgress);
     const completedKpis = dreamKpis.filter((k) => getKpiProgress(k).isCompleted);
+    const activeKpis = dreamKpis.filter((k) => !getKpiProgress(k).isCompleted);
 
     const filterBar = document.createElement("div");
     filterBar.className = "dream-kpi-filter-bar";
@@ -665,6 +679,7 @@ export function render() {
     const grid = document.createElement("div");
     grid.className = "dream-kpi-grid";
     const listToShow = kpiFilter === "active" ? activeKpis : kpiFilter === "completed" ? completedKpis : dreamKpis;
+    console.log("[매일반복] renderKpiList listToShow", listToShow.length, listToShow.map((k) => ({ name: k.name, needHabitTracker: k.needHabitTracker })));
     listToShow.forEach((kpi) => {
       const { progress, timeProgress, currentVal, targetVal, targetMins, accumulatedMins } = getKpiProgress(kpi);
       const investedMins = getAccumulatedMinutes(kpi.name);
@@ -856,6 +871,8 @@ export function render() {
     }
     const data = loadDreamMap();
     const kpi = (data.kpis || []).find((k) => k.id === selectedKpiId);
+    const needHabitTracker = kpi ? !!kpi.needHabitTracker : false;
+    console.log("[매일반복] renderKpiHistory", { selectedKpiId, kpiName: kpi?.name, needHabitTracker, rawKpi: kpi });
     if (!kpi) {
       historyWrap.hidden = true;
       return;
@@ -863,6 +880,13 @@ export function render() {
     const logs = getKpiLogs(selectedKpiId);
     const todos = (data.kpiTodos || []).filter((t) => t.kpiId === selectedKpiId && (t.text || "").trim() !== "");
     historyWrap.hidden = false;
+
+    const debugRow = document.createElement("div");
+    debugRow.className = "dream-kpi-history-debug-row";
+    debugRow.setAttribute("aria-hidden", "true");
+    debugRow.style.cssText = "font-size:0.7rem;color:#6b7280;margin-bottom:0.5rem;padding:0.25rem 0;";
+    debugRow.textContent = `디버그: needHabitTracker = ${needHabitTracker} (매일 반복 ${needHabitTracker ? "ON" : "OFF"})`;
+    historyWrap.appendChild(debugRow);
 
     const headerRow = document.createElement("div");
     headerRow.className = "dream-kpi-history-header";
@@ -1062,6 +1086,74 @@ export function render() {
     });
     historyWrap.appendChild(todoList);
     historyWrap.appendChild(addRow);
+
+    if (needHabitTracker) {
+      const dailyHeader = document.createElement("div");
+      dailyHeader.className = "dream-kpi-todo-header";
+      dailyHeader.innerHTML = `<span class="dream-kpi-todo-title">매일 반복되는 할일 목록</span>`;
+      historyWrap.appendChild(dailyHeader);
+      const dailyList = document.createElement("div");
+      dailyList.className = "dream-kpi-todo-list";
+      const dailyTodos = (data.kpiDailyRepeatTodos || []).filter((t) => t.kpiId === selectedKpiId && (t.text || "").trim() !== "");
+      dailyTodos.forEach((todo) => {
+        const completed = !!todo.completed;
+        const item = document.createElement("div");
+        item.className = "dream-kpi-todo-item" + (completed ? " is-completed" : "");
+        item.dataset.todoId = todo.id;
+        item.innerHTML = `
+          <label class="dream-kpi-todo-check-wrap">
+            <input type="checkbox" class="dream-kpi-todo-check" ${completed ? "checked" : ""} />
+          </label>
+          <span class="dream-kpi-todo-text">${escapeHtml(todo.text)}</span>
+          <button type="button" class="dream-kpi-todo-del" title="삭제">×</button>
+        `;
+        item.querySelector(".dream-kpi-todo-check").addEventListener("change", () => {
+          const d = loadDreamMap();
+          const t = d.kpiDailyRepeatTodos.find((x) => x.id === todo.id);
+          if (t) {
+            t.completed = !!item.querySelector(".dream-kpi-todo-check").checked;
+            saveDreamMap(d);
+            item.classList.toggle("is-completed", t.completed);
+          }
+        });
+        item.querySelector(".dream-kpi-todo-del").addEventListener("click", () => {
+          const d = loadDreamMap();
+          d.kpiDailyRepeatTodos = (d.kpiDailyRepeatTodos || []).filter((x) => x.id !== todo.id);
+          saveDreamMap(d);
+          renderKpiHistory();
+        });
+        dailyList.appendChild(item);
+      });
+      const dailyAddRow = document.createElement("div");
+      dailyAddRow.className = "dream-kpi-todo-add-row";
+      dailyAddRow.innerHTML = `
+        <span class="dream-kpi-todo-add-spacer"></span>
+        <input type="text" class="dream-kpi-todo-add-input dream-kpi-daily-repeat-add-input" placeholder="할 일 입력 (매일 반복)" />
+      `;
+      const dailyAddInput = dailyAddRow.querySelector(".dream-kpi-todo-add-input");
+      dailyAddInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.isComposing) {
+          e.preventDefault();
+          const val = dailyAddInput.value.trim();
+          if (!val) return;
+          const d = loadDreamMap();
+          d.kpiDailyRepeatTodos = d.kpiDailyRepeatTodos || [];
+          d.kpiDailyRepeatTodos.push({ id: nextId(), kpiId: selectedKpiId, text: val, completed: false });
+          saveDreamMap(d);
+          dailyAddInput.value = "";
+          renderKpiHistory();
+        }
+      });
+      historyWrap.appendChild(dailyList);
+      historyWrap.appendChild(dailyAddRow);
+    } else {
+      const debugLine = document.createElement("div");
+      debugLine.className = "dream-kpi-daily-repeat-debug";
+      debugLine.setAttribute("aria-hidden", "true");
+      debugLine.textContent = "매일 반복이 꺼져 있어서 '매일 반복되는 할일 목록'이 표시되지 않습니다. KPI 수정에서 '매일 반복'을 체크한 뒤 저장하세요.";
+      debugLine.style.cssText = "font-size:0.75rem;color:#6b7280;margin-top:0.5rem;padding:0.35rem 0;";
+      historyWrap.appendChild(debugLine);
+    }
   }
 
   function escapeHtml(str) {
@@ -1147,6 +1239,7 @@ export function render() {
       d.kpis = (d.kpis || []).filter((k) => k.dreamId !== dreamId);
       d.kpiLogs = (d.kpiLogs || []).filter((l) => !kpiIds.includes(l.kpiId));
       d.kpiTodos = (d.kpiTodos || []).filter((t) => !kpiIds.includes(t.kpiId));
+      d.kpiDailyRepeatTodos = (d.kpiDailyRepeatTodos || []).filter((t) => !kpiIds.includes(t.kpiId));
       delete d.kpiOrder?.[dreamId];
       d.kpiTaskSync = (d.kpiTaskSync || {});
       kpiIds.forEach((id) => delete d.kpiTaskSync[id]);

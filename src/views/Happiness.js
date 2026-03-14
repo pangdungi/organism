@@ -16,17 +16,19 @@ function loadHappinessMap() {
     const raw = localStorage.getItem(HAPPINESS_MAP_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
+      const kpis = (parsed.kpis || []).map((k) => ({ ...k, needHabitTracker: !!k.needHabitTracker }));
       return {
         happinesses: parsed.happinesses || [],
-        kpis: parsed.kpis || [],
+        kpis,
         kpiLogs: parsed.kpiLogs || [],
         kpiTodos: parsed.kpiTodos || [],
+        kpiDailyRepeatTodos: parsed.kpiDailyRepeatTodos || [],
         kpiOrder: parsed.kpiOrder || {},
         kpiTaskSync: parsed.kpiTaskSync || {},
       };
     }
   } catch (_) {}
-  return { happinesses: [], kpis: [], kpiLogs: [], kpiTodos: [], kpiOrder: {}, kpiTaskSync: {} };
+  return { happinesses: [], kpis: [], kpiLogs: [], kpiTodos: [], kpiDailyRepeatTodos: [], kpiOrder: {}, kpiTaskSync: {} };
 }
 
 function getTimeTaskOptionsRaw() {
@@ -93,6 +95,9 @@ function saveHappinessMap(data) {
     const toSave = { ...data };
     if (toSave.kpiTodos && Array.isArray(toSave.kpiTodos)) {
       toSave.kpiTodos = toSave.kpiTodos.filter((t) => (t.text || "").trim() !== "");
+    }
+    if (toSave.kpiDailyRepeatTodos && Array.isArray(toSave.kpiDailyRepeatTodos)) {
+      toSave.kpiDailyRepeatTodos = toSave.kpiDailyRepeatTodos.filter((t) => (t.text || "").trim() !== "");
     }
     localStorage.setItem(HAPPINESS_MAP_STORAGE_KEY, JSON.stringify(toSave));
   } catch (_) {}
@@ -302,6 +307,7 @@ export function render() {
     modal.querySelector(".dream-kpi-form").addEventListener("submit", (e) => {
       e.preventDefault();
       const form = e.target;
+      const needHabitChecked = !!(form.querySelector('input[name="needHabitTracker"]')?.checked);
       const kpi = {
         id: nextId(),
         happinessId: activeHappinessId,
@@ -310,7 +316,7 @@ export function render() {
         targetValue: sanitizeNumericInput(form.targetValue.value) || "",
         targetStartDate: (form.targetStartDate?.value || "").trim() || "",
         targetDeadline: (form.targetDeadline.value || "").trim() || "",
-        needHabitTracker: !!form.needHabitTracker?.checked,
+        needHabitTracker: needHabitChecked,
       };
       const data = loadHappinessMap();
       data.kpis = data.kpis || [];
@@ -321,7 +327,9 @@ export function render() {
       saveHappinessMap(data);
       syncKpiToTimeTask(kpi, "add");
       close();
+      selectedKpiId = kpi.id;
       renderKpiList();
+      renderKpiHistory();
     });
     document.body.appendChild(modal);
     setupNumericOnlyInput(modal.querySelector('input[name="targetValue"]'));
@@ -394,6 +402,7 @@ export function render() {
       data.kpis = (data.kpis || []).filter((k) => k.id !== kpi.id);
       data.kpiLogs = (data.kpiLogs || []).filter((l) => l.kpiId !== kpi.id);
       data.kpiTodos = (data.kpiTodos || []).filter((t) => t.kpiId !== kpi.id);
+      data.kpiDailyRepeatTodos = (data.kpiDailyRepeatTodos || []).filter((t) => t.kpiId !== kpi.id);
       const order = (data.kpiOrder || {})[kpi.happinessId] || [];
       data.kpiOrder = { ...data.kpiOrder, [kpi.happinessId]: order.filter((id) => id !== kpi.id) };
       saveHappinessMap(data);
@@ -414,7 +423,7 @@ export function render() {
         target.targetValue = sanitizeNumericInput(form.targetValue.value) || "";
         target.targetStartDate = (form.targetStartDate?.value || "").trim() || "";
         target.targetDeadline = (form.targetDeadline.value || "").trim() || "";
-        target.needHabitTracker = !!form.needHabitTracker?.checked;
+        target.needHabitTracker = !!form.querySelector('input[name="needHabitTracker"]')?.checked;
         saveHappinessMap(data);
         if (oldName !== target.name) syncKpiToTimeTask(target, "update", oldName);
       }
@@ -1043,6 +1052,58 @@ export function render() {
     });
     historyWrap.appendChild(todoList);
     historyWrap.appendChild(addRow);
+
+    const needHabitTracker = !!kpi.needHabitTracker;
+    if (needHabitTracker) {
+      const dailyHeader = document.createElement("div");
+      dailyHeader.className = "dream-kpi-todo-header";
+      dailyHeader.innerHTML = `<span class="dream-kpi-todo-title">매일 반복되는 할일 목록</span>`;
+      historyWrap.appendChild(dailyHeader);
+      const dailyList = document.createElement("div");
+      dailyList.className = "dream-kpi-todo-list";
+      const dailyTodos = (data.kpiDailyRepeatTodos || []).filter((t) => t.kpiId === selectedKpiId && (t.text || "").trim() !== "");
+      dailyTodos.forEach((todo) => {
+        const completed = !!todo.completed;
+        const item = document.createElement("div");
+        item.className = "dream-kpi-todo-item" + (completed ? " is-completed" : "");
+        item.innerHTML = `
+          <label class="dream-kpi-todo-check-wrap"><input type="checkbox" class="dream-kpi-todo-check" ${completed ? "checked" : ""} /></label>
+          <span class="dream-kpi-todo-text">${escapeHtml(todo.text)}</span>
+          <button type="button" class="dream-kpi-todo-del" title="삭제">×</button>
+        `;
+        item.querySelector(".dream-kpi-todo-check").addEventListener("change", () => {
+          const d = loadHappinessMap();
+          const t = d.kpiDailyRepeatTodos.find((x) => x.id === todo.id);
+          if (t) { t.completed = !!item.querySelector(".dream-kpi-todo-check").checked; saveHappinessMap(d); item.classList.toggle("is-completed", t.completed); }
+        });
+        item.querySelector(".dream-kpi-todo-del").addEventListener("click", () => {
+          const d = loadHappinessMap();
+          d.kpiDailyRepeatTodos = (d.kpiDailyRepeatTodos || []).filter((x) => x.id !== todo.id);
+          saveHappinessMap(d);
+          renderKpiHistory();
+        });
+        dailyList.appendChild(item);
+      });
+      const dailyAddRow = document.createElement("div");
+      dailyAddRow.className = "dream-kpi-todo-add-row";
+      dailyAddRow.innerHTML = `<span class="dream-kpi-todo-add-spacer"></span><input type="text" class="dream-kpi-todo-add-input" placeholder="할 일 입력 (매일 반복)" />`;
+      const dailyAddInput = dailyAddRow.querySelector(".dream-kpi-todo-add-input");
+      dailyAddInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.isComposing) {
+          e.preventDefault();
+          const val = dailyAddInput.value.trim();
+          if (!val) return;
+          const d = loadHappinessMap();
+          d.kpiDailyRepeatTodos = d.kpiDailyRepeatTodos || [];
+          d.kpiDailyRepeatTodos.push({ id: nextId(), kpiId: selectedKpiId, text: val, completed: false });
+          saveHappinessMap(d);
+          dailyAddInput.value = "";
+          renderKpiHistory();
+        }
+      });
+      historyWrap.appendChild(dailyList);
+      historyWrap.appendChild(dailyAddRow);
+    }
   }
 
   function escapeHtml(str) {
@@ -1127,6 +1188,7 @@ export function render() {
       d.kpis = (d.kpis || []).filter((k) => k.happinessId !== happinessId);
       d.kpiLogs = (d.kpiLogs || []).filter((l) => !kpiIds.includes(l.kpiId));
       d.kpiTodos = (d.kpiTodos || []).filter((t) => !kpiIds.includes(t.kpiId));
+      d.kpiDailyRepeatTodos = (d.kpiDailyRepeatTodos || []).filter((t) => !kpiIds.includes(t.kpiId));
       delete d.kpiOrder?.[happinessId];
       d.kpiTaskSync = d.kpiTaskSync || {};
       kpiIds.forEach((id) => delete d.kpiTaskSync[id]);

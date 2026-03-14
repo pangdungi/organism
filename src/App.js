@@ -211,9 +211,6 @@ export function mountApp(container) {
   function renderMain(mainEl) {
     const p = mainEl?.querySelector(".app-tab-panel");
     if (!p) return;
-    if (typeof console !== "undefined" && console.log) {
-      console.log("[TODO-DEBUG] App.renderMain: switching to tab", currentTabId, "panel children", p?.children?.length, "has todo-sections-wrap", !!p?.querySelector(".todo-sections-wrap"));
-    }
     saveTodoListBeforeUnmount(p);
     p.innerHTML = "";
     const render = RENDERERS[currentTabId];

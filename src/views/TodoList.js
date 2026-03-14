@@ -15,7 +15,7 @@ const SECTION_TASKS_KEY = "todo-section-tasks";
 export const DRAG_TYPE_TODO_TO_CALENDAR = "todo-task-to-calendar";
 export const DRAG_TYPE_TODO_TO_EISENHOWER = "todo-task-to-eisenhower";
 
-const TODO_DEBUG = true;
+const TODO_DEBUG = false;
 function todoDebug(...args) {
   if (TODO_DEBUG && typeof console !== "undefined" && console.log) console.log("[TODO-DEBUG]", ...args);
 }

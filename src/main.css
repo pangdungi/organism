@@ -15405,6 +15405,18 @@ body.kpi-resizing {
   background: #f9fafb;
 }
 
+.dream-kpi-daily-repeat-wrap {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.dream-kpi-daily-repeat-wrap .dream-kpi-todo-header {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
 .dream-kpi-card-inner {
   position: relative;
   flex: 0 0 auto;
