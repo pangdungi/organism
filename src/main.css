@@ -5658,6 +5658,30 @@ body {
   display: none;
 }
 
+.todo-list-toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  min-width: 0;
+}
+.todo-list-toolbar-row .todo-category-tabs {
+  flex: 1 1 0;
+  min-width: 0;
+  margin-bottom: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.todo-list-toolbar-row .todo-category-tabs::-webkit-scrollbar {
+  display: none;
+}
+.todo-list-toolbar-row .todo-list-toolbar {
+  flex-shrink: 0;
+  margin-bottom: 0;
+  margin-left: auto;
+}
+
 .todo-list-toolbar {
   display: flex;
   align-items: center;
@@ -17989,7 +18013,7 @@ body.kpi-resizing {
 
 .calendar-view-header {
   flex-shrink: 0;
-  margin-bottom: 0.5rem;
+  margin-bottom: 1rem;
 }
 .calendar-view-header .calendar-view-title {
   margin: 0;
@@ -20182,6 +20206,19 @@ body.kpi-resizing {
 .calendar-view-top-row--todo {
   flex-shrink: 0;
   padding: 0 0 0.25rem 0;
+}
+.calendar-view-top-row--with-settings {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+.calendar-view-top-row--with-settings .calendar-monthly-tabs-wrap {
+  flex: 1 1 auto;
+  justify-content: flex-start;
+}
+.calendar-view-top-row--with-settings .todo-list-toolbar-btn.todo-list-settings-btn {
+  flex-shrink: 0;
+  margin-left: auto;
 }
 .calendar-view-eisenhower.calendar-monthly-layout,
 .calendar-1day-view.calendar-monthly-layout,

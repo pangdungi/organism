@@ -1662,7 +1662,7 @@ function isOverdue(dueStr) {
 }
 
 export function render(options = {}) {
-  const { hideToolbar = false, hideHeader = false, enableDragToCalendar = false, enableDragToEisenhower = false, initialActiveTabIndex = 0, eisenhowerFilter = "", eisenhowerSidebarFirst = false } = options;
+  const { hideToolbar = false, hideHeader = false, settingsSlot = null, enableDragToCalendar = false, enableDragToEisenhower = false, initialActiveTabIndex = 0, eisenhowerFilter = "", eisenhowerSidebarFirst = false } = options;
   const el = document.createElement("div");
   el.className = "app-tab-panel-content todo-list-view";
 
@@ -1734,8 +1734,15 @@ export function render(options = {}) {
     });
   });
 
-  toolbar.appendChild(settingsBtn);
-  el.appendChild(toolbar);
+  if (settingsSlot) {
+    settingsSlot.appendChild(settingsBtn);
+  } else {
+    toolbar.appendChild(settingsBtn);
+  }
+
+  const toolbarRow = document.createElement("div");
+  toolbarRow.className = "todo-list-toolbar-row";
+  el.appendChild(toolbarRow);
 
   const categoryTabs = document.createElement("div");
   categoryTabs.className = "todo-category-tabs";
@@ -1847,7 +1854,10 @@ export function render(options = {}) {
     });
   });
   categoryTabs.appendChild(addTabBtn);
-  el.appendChild(categoryTabs);
+  toolbarRow.appendChild(categoryTabs);
+  if (!settingsSlot) {
+    toolbarRow.appendChild(toolbar);
+  }
 
   const listTabContextMenu = document.createElement("div");
   listTabContextMenu.className = "todo-list-tab-context-menu";

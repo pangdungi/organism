@@ -4499,9 +4499,9 @@ function renderTodoView(tabsElement) {
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout calendar-view-todo";
 
-  /* 1번 레이아웃: 탭을 최상단 전체 영역에 배치 */
+  /* 1번 레이아웃: 탭과 설정 버튼을 한 줄에 배치 */
   const topRow = document.createElement("div");
-  topRow.className = "calendar-view-top-row calendar-view-top-row--todo";
+  topRow.className = "calendar-view-top-row calendar-view-top-row--todo calendar-view-top-row--with-settings";
   if (tabsElement) {
     const tabsWrapper = document.createElement("div");
     tabsWrapper.className = "calendar-monthly-tabs-wrap";
@@ -4515,7 +4515,7 @@ function renderTodoView(tabsElement) {
 
   const todoContent = document.createElement("div");
   todoContent.className = "calendar-todo-content";
-  const todoListEl = renderTodoList({ hideHeader: true });
+  const todoListEl = renderTodoList({ hideHeader: true, settingsSlot: topRow });
   todoContent.appendChild(todoListEl);
   todoMain.appendChild(todoContent);
 

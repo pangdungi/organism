@@ -2839,8 +2839,6 @@ export function render() {
     <button type="button" class="time-view-tab active" data-view="all">1. 시간기록하기</button>
     <button type="button" class="time-view-tab" data-view="audit">2. 시간 보고서</button>
     <button type="button" class="time-view-tab" data-view="improve">3. 시간 사용 개선하기</button>
-    <button type="button" class="time-view-tab" data-view="productivity">생산성별</button>
-    <button type="button" class="time-view-tab" data-view="dashboard">대시보드</button>
   `;
 
   const now = new Date();
@@ -3013,10 +3011,7 @@ export function render() {
       endDateInput.value = single;
       filterStartDate = filterEndDate = single;
     }
-    const rows =
-      view === "dashboard"
-        ? getFullRowsForFilter(skipMerge)
-        : getFullRowsForFilter(skipMerge);
+    const rows = getFullRowsForFilter(skipMerge);
     cachedRows = rows;
     const y = filterYear;
     const m = filterMonth;
@@ -3036,10 +3031,6 @@ export function render() {
       renderAudit(filtered);
     } else if (view === "improve") {
       renderImprove(filtered);
-    } else if (view === "productivity") {
-      renderByProductivity(filtered);
-    } else if (view === "dashboard") {
-      renderDashboard(rows);
     }
   }
 
@@ -7739,12 +7730,12 @@ export function render() {
   function switchView(view) {
     const currentView = viewTabs.querySelector(".time-view-tab.active")?.dataset
       ?.view;
-    if (currentView === "all" || currentView === "productivity") {
+    if (currentView === "all") {
       mergeRowsIntoCache();
       cachedRows = getFullRowsForFilter(true);
     }
     const rowsToUse =
-      view === "dashboard" || view === "blank" || view === "audit" || view === "improve"
+      view === "blank" || view === "audit" || view === "improve"
         ? cachedRows
         : getFilteredRows(cachedRows);
     viewTabs.querySelectorAll(".time-view-tab").forEach((btn) => {
@@ -7759,10 +7750,6 @@ export function render() {
       renderAudit(getFilteredRows(cachedRows));
     } else if (view === "improve") {
       renderImprove(getFilteredRows(cachedRows));
-    } else if (view === "productivity") {
-      renderByProductivity(rowsToUse);
-    } else if (view === "dashboard") {
-      renderDashboard(cachedRows);
     }
     updateTotal();
   }
