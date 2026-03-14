@@ -251,6 +251,51 @@ export function getKpiTodosByKpiName(kpiName) {
 }
 
 /**
+ * KPI 이름으로 해당 KPI의 매일 반복 여부와 매일 할일 목록 반환 (과제 기록 모달용)
+ * @param {string} kpiName - KPI 이름
+ * @returns {{ storageKey: string, kpiId: string, needHabitTracker: boolean, dailyTodos: Array<{ id: string, text: string, completed: boolean }> } | null}
+ */
+export function getKpiDailyRepeatInfoByKpiName(kpiName) {
+  const name = (kpiName || "").trim();
+  if (!name) return null;
+  for (const storageKey of STORAGE_KEYS) {
+    const data = loadJson(storageKey, { kpis: [], kpiDailyRepeatTodos: [] });
+    const kpi = (data.kpis || []).find((k) => (k.name || "").trim() === name);
+    if (!kpi) continue;
+    const needHabitTracker = !!kpi.needHabitTracker;
+    const dailyTodos = (data.kpiDailyRepeatTodos || [])
+      .filter((t) => t.kpiId === kpi.id && (t.text || "").trim() !== "")
+      .map((t) => ({
+        id: t.id,
+        text: (t.text || "").trim(),
+        completed: !!t.completed,
+      }));
+    return { storageKey, kpiId: kpi.id, needHabitTracker, dailyTodos };
+  }
+  return null;
+}
+
+/**
+ * 매일 반복 할일 체크 상태 저장 (과제 기록 모달 등에서 체크 시 호출)
+ * @param {string} todoId - kpiDailyRepeatTodos 항목 id
+ * @param {string} storageKey - 저장소 키
+ * @param {boolean} completed - 완료 여부
+ */
+export function syncKpiDailyRepeatTodoCompleted(todoId, storageKey, completed) {
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    data.kpiDailyRepeatTodos = data.kpiDailyRepeatTodos || [];
+    const t = data.kpiDailyRepeatTodos.find((x) => x.id === todoId);
+    if (t) {
+      t.completed = !!completed;
+      localStorage.setItem(storageKey, JSON.stringify(data));
+    }
+  } catch (_) {}
+}
+
+/**
  * KPI 할일 1건 제거
  * @param {string} kpiTodoId
  * @param {string} storageKey

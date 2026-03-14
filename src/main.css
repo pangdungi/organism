@@ -11222,6 +11222,28 @@ body.kpi-resizing {
   color: #374151;
 }
 
+/* 매일 할일 목록 (과제 기록 모달, 매일 반복 KPI일 때만 표시) */
+.time-task-log-daily-todos-section {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.time-task-log-daily-todos-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.time-task-log-daily-todos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
 .time-task-log-kpi-todo-row input[type="checkbox"] {
   flex-shrink: 0;
   width: 1rem;

@@ -20,7 +20,7 @@ import {
   getKpiSyncedTaskNames,
   syncHabitTrackerLogs,
 } from "../utils/timeKpiSync.js";
-import { getKpiTodosAsTasks, syncKpiTodoCompleted, getKpiTodosByKpiName } from "../utils/kpiTodoSync.js";
+import { getKpiTodosAsTasks, syncKpiTodoCompleted, getKpiTodosByKpiName, getKpiDailyRepeatInfoByKpiName, syncKpiDailyRepeatTodoCompleted } from "../utils/kpiTodoSync.js";
 import { getCustomSections } from "../utils/todoSettings.js";
 import { showToast } from "../utils/showToast.js";
 
@@ -3340,6 +3340,10 @@ export function render() {
           <h4 class="time-task-log-kpi-todos-title">할일 목록</h4>
           <div class="time-task-log-kpi-todos-list"></div>
         </div>
+        <div class="time-task-log-daily-todos-section" hidden>
+          <h4 class="time-task-log-daily-todos-title">매일 할일 목록</h4>
+          <div class="time-task-log-daily-todos-list"></div>
+        </div>
         <div class="time-task-log-field">
           <label>메모</label>
           <textarea class="time-task-log-feedback time-task-log-memo-input" placeholder="메모 입력" rows="3"></textarea>
@@ -3841,6 +3845,12 @@ export function render() {
   );
   const taskLogKpiTodosList = taskLogModal.querySelector(
     ".time-task-log-kpi-todos-list",
+  );
+  const taskLogDailyTodosSection = taskLogModal.querySelector(
+    ".time-task-log-daily-todos-section",
+  );
+  const taskLogDailyTodosList = taskLogModal.querySelector(
+    ".time-task-log-daily-todos-list",
   );
   const taskLogSubmitBtn = taskLogModal.querySelector(".time-task-log-submit");
   const taskLogBackdrop = taskLogModal.querySelector(
@@ -4510,24 +4520,57 @@ export function render() {
   }
 
   function refreshKpiTodosInLogModal(taskName) {
+    const name = (taskName || "").trim();
     if (!taskLogKpiTodosSection || !taskLogKpiTodosList) return;
-    const data = getKpiTodosByKpiName((taskName || "").trim());
+
+    const data = getKpiTodosByKpiName(name);
     if (!data || data.todos.length === 0) {
       taskLogKpiTodosSection.hidden = true;
       taskLogKpiTodosList.innerHTML = "";
+    } else {
+      taskLogKpiTodosSection.hidden = false;
+      taskLogKpiTodosList.innerHTML = "";
+      const { storageKey, todos } = data;
+      todos.forEach((todo) => {
+        const label = document.createElement("label");
+        label.className = "time-task-log-kpi-todo-row";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = !!todo.completed;
+        checkbox.dataset.todoId = todo.id;
+        checkbox.dataset.storageKey = storageKey;
+        const span = document.createElement("span");
+        span.className = "time-task-log-kpi-todo-text";
+        span.textContent = todo.text || "";
+        if (todo.completed) span.classList.add("is-done");
+        label.appendChild(checkbox);
+        label.appendChild(span);
+        checkbox.addEventListener("change", () => {
+          syncKpiTodoCompleted(todo.id, storageKey, checkbox.checked);
+          span.classList.toggle("is-done", checkbox.checked);
+        });
+        taskLogKpiTodosList.appendChild(label);
+      });
+    }
+
+    if (!taskLogDailyTodosSection || !taskLogDailyTodosList) return;
+    const dailyInfo = getKpiDailyRepeatInfoByKpiName(name);
+    if (!dailyInfo || !dailyInfo.needHabitTracker) {
+      taskLogDailyTodosSection.hidden = true;
+      taskLogDailyTodosList.innerHTML = "";
       return;
     }
-    taskLogKpiTodosSection.hidden = false;
-    taskLogKpiTodosList.innerHTML = "";
-    const { storageKey, todos } = data;
-    todos.forEach((todo) => {
+    taskLogDailyTodosSection.hidden = false;
+    taskLogDailyTodosList.innerHTML = "";
+    const { storageKey: dailyStorageKey, dailyTodos } = dailyInfo;
+    dailyTodos.forEach((todo) => {
       const label = document.createElement("label");
-      label.className = "time-task-log-kpi-todo-row";
+      label.className = "time-task-log-kpi-todo-row time-task-log-daily-todo-row";
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
       checkbox.checked = !!todo.completed;
       checkbox.dataset.todoId = todo.id;
-      checkbox.dataset.storageKey = storageKey;
+      checkbox.dataset.storageKey = dailyStorageKey;
       const span = document.createElement("span");
       span.className = "time-task-log-kpi-todo-text";
       span.textContent = todo.text || "";
@@ -4535,10 +4578,10 @@ export function render() {
       label.appendChild(checkbox);
       label.appendChild(span);
       checkbox.addEventListener("change", () => {
-        syncKpiTodoCompleted(todo.id, storageKey, checkbox.checked);
+        syncKpiDailyRepeatTodoCompleted(todo.id, dailyStorageKey, checkbox.checked);
         span.classList.toggle("is-done", checkbox.checked);
       });
-      taskLogKpiTodosList.appendChild(label);
+      taskLogDailyTodosList.appendChild(label);
     });
   }
 
