@@ -5930,21 +5930,26 @@ export function render() {
   function getStoredImproveNotes(dateKey) {
     try {
       const raw = localStorage.getItem(TIME_IMPROVE_FOCUS_NOTES_KEY);
-      if (!raw) return { rootCause: "", countermeasures: "" };
+      if (!raw) return { rootCause: "", countermeasures: "", planReality: "" };
       const obj = JSON.parse(raw);
       const entry = obj[dateKey];
-      return entry && typeof entry === "object"
-        ? { rootCause: entry.rootCause || "", countermeasures: entry.countermeasures || "" }
-        : { rootCause: "", countermeasures: "" };
+      if (!entry || typeof entry !== "object")
+        return { rootCause: "", countermeasures: "", planReality: "" };
+      return {
+        rootCause: entry.rootCause || "",
+        countermeasures: entry.countermeasures || "",
+        planReality: entry.planReality || "",
+      };
     } catch (_) {}
-    return { rootCause: "", countermeasures: "" };
+    return { rootCause: "", countermeasures: "", planReality: "" };
   }
 
   function setStoredImproveNote(dateKey, field, text) {
     try {
       const raw = localStorage.getItem(TIME_IMPROVE_FOCUS_NOTES_KEY);
       const obj = raw ? JSON.parse(raw) : {};
-      if (!obj[dateKey] || typeof obj[dateKey] !== "object") obj[dateKey] = { rootCause: "", countermeasures: "" };
+      if (!obj[dateKey] || typeof obj[dateKey] !== "object")
+        obj[dateKey] = { rootCause: "", countermeasures: "", planReality: "" };
       obj[dateKey][field] = (text || "").trim();
       localStorage.setItem(TIME_IMPROVE_FOCUS_NOTES_KEY, JSON.stringify(obj));
     } catch (_) {}
@@ -5995,8 +6000,56 @@ export function render() {
     wrap.className = "time-improve-view";
     const dateKey = start.slice(0, 10) || start;
     const savedNotes = getStoredImproveNotes(dateKey);
-
     const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+    const GAP_MIN_MINUTES = 15;
+    const dateStr = dateKey;
+    const storedGoals = getBudgetGoals(dateStr);
+    const excluded = getBudgetExcluded(dateStr);
+    const dateRows = filtered.filter(
+      (r) => (normalizeDateForCompare(r.date || "") || r.date || "").trim() === dateStr,
+    );
+    const actualByTask = aggregateHoursByTask(dateRows);
+    const BASIC_TASKS_GAP = ["수면하기", "근무하기"];
+    const scheduleRowsGap = [];
+    Object.entries(storedGoals).forEach(([task, data]) => {
+      if (excluded.has(task) || isBudgetPlaceholder(task)) return;
+      const isBasic = BASIC_TASKS_GAP.includes(task);
+      const isInvest = data?.isInvest === true;
+      const isConsume = data?.isInvest === false;
+      if (!isBasic && !isInvest && !isConsume) return;
+      const goalTime = data?.goalTime || "";
+      if (!goalTime.trim()) return;
+      const actualHrs = actualByTask[task] || 0;
+      const goalHrs = parseTimeToHours(goalTime);
+      const diff = actualHrs - goalHrs;
+      const absDiff = Math.abs(diff);
+      if (absDiff < GAP_MIN_MINUTES / 60) return;
+      scheduleRowsGap.push({ task, goalTime, actualHrs, goalHrs, diff });
+    });
+    const fmtGapReality = (goalTime, actualHrs) => {
+      if (!goalTime?.trim() || (actualHrs <= 0 && !goalTime?.trim())) return "—";
+      const goalHrs = parseTimeToHours(goalTime);
+      const d = actualHrs - goalHrs;
+      if (Math.abs(d) < 1 / 60) return "0";
+      const sign = d > 0 ? "+" : "-";
+      const absH = Math.abs(d);
+      const h = Math.floor(absH);
+      const m = Math.round((absH - h) * 60);
+      if (h === 0) return `${sign}${m}m`;
+      if (m === 0) return `${sign}${h}h`;
+      return `${sign}${h}h ${m}m`;
+    };
+    const gapTableHtml =
+      scheduleRowsGap.length === 0
+        ? "<p class=\"time-improve-gap-empty\">시간 갭 15분 이상인 과제가 없습니다.</p>"
+        : `<div class="time-improve-gap-table-wrap"><table class="time-improve-gap-table time-audit-schedule-table"><thead><tr><th>과제명</th><th>목표 시간</th><th>실제시간</th><th>시간 갭</th></tr></thead><tbody>${scheduleRowsGap
+            .map(
+              (r) =>
+                `<tr><td class="time-audit-schedule-task">${esc(r.task)}</td><td class="time-audit-schedule-goal">${r.goalTime || "—"}</td><td class="time-audit-schedule-actual">${r.actualHrs > 0 ? formatHoursToHHMM(r.actualHrs) : "—"}</td><td class="time-audit-schedule-gap">${fmtGapReality(r.goalTime, r.actualHrs)}</td></tr>`,
+            )
+            .join("")}</tbody></table></div>`;
+
     const eventsListHtml =
       allEvents.length === 0
         ? "<p class=\"time-improve-events-empty\">해당 기간 방해기록이 없습니다.</p>"
@@ -6029,7 +6082,16 @@ export function render() {
             </div>
           </div>
         </div>
-        <div class="time-improve-quadrant time-improve-quadrant-empty"></div>
+        <div class="time-improve-quadrant time-improve-quadrant-reality">
+          <h3 class="time-improve-section-title">2. 계획의 현실성 높이기</h3>
+          <p class="time-improve-period">${periodLabel}</p>
+          <div class="time-improve-gap-section">${gapTableHtml}</div>
+          <div class="time-improve-input-block">
+            <div class="time-improve-answer-scroll">
+              <textarea class="time-improve-answer time-improve-plan-reality" placeholder="계획의 현실성을 높이기 위해 오늘 기록·반성할 내용을 적어보세요." rows="4"></textarea>
+            </div>
+          </div>
+        </div>
         <div class="time-improve-quadrant time-improve-quadrant-empty"></div>
         <div class="time-improve-quadrant time-improve-quadrant-empty"></div>
       </div>
@@ -6046,6 +6108,12 @@ export function render() {
       countermeasuresEl.value = savedNotes.countermeasures;
       countermeasuresEl.addEventListener("input", () => setStoredImproveNote(dateKey, "countermeasures", countermeasuresEl.value));
       countermeasuresEl.addEventListener("blur", () => setStoredImproveNote(dateKey, "countermeasures", countermeasuresEl.value));
+    }
+    const planRealityEl = wrap.querySelector(".time-improve-plan-reality");
+    if (planRealityEl) {
+      planRealityEl.value = savedNotes.planReality;
+      planRealityEl.addEventListener("input", () => setStoredImproveNote(dateKey, "planReality", planRealityEl.value));
+      planRealityEl.addEventListener("blur", () => setStoredImproveNote(dateKey, "planReality", planRealityEl.value));
     }
     contentWrap.appendChild(wrap);
   }
