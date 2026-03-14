@@ -12016,6 +12016,147 @@ body.kpi-resizing {
   color: #6b7280;
 }
 
+/* 3. 시간 사용 개선하기 - 사분면이 영역 전체를 넓게 사용, 1사분면에 집중력 높이기 */
+.time-improve-view {
+  width: 100%;
+  min-height: calc(100vh - 12rem);
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.time-improve-quadrants {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 1rem;
+  width: 100%;
+  height: 100%;
+  min-height: calc(100vh - 14rem);
+}
+
+.time-improve-quadrant {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.time-improve-quadrant-focus {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.time-improve-quadrant-focus .time-improve-events-wrap {
+  flex: 0 0 auto;
+}
+
+.time-improve-quadrant-focus .time-improve-events-scroll {
+  height: 140px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: none;
+}
+
+.time-improve-input-block {
+  flex: 0 0 auto;
+  margin-top: 0.75rem;
+}
+.time-improve-input-block:first-of-type {
+  margin-top: 0.5rem;
+}
+.time-improve-input-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 0.25rem 0;
+}
+
+.time-improve-quadrant-focus .time-improve-answer-scroll {
+  height: 100px;
+  flex: none;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.time-improve-quadrant-empty {
+  background: #f9fafb;
+}
+
+.time-improve-section-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 0.5rem 0;
+}
+.time-improve-period {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.time-improve-events-heading {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 0.5rem 0;
+  flex-shrink: 0;
+}
+
+.time-improve-events-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.time-improve-events-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.875rem;
+  color: #4b5563;
+  line-height: 1.6;
+}
+.time-improve-events-empty {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #9ca3af;
+}
+.time-improve-event-date {
+  color: #6b7280;
+}
+.time-improve-event-time {
+  font-weight: 500;
+}
+
+.time-improve-question {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0;
+}
+
+.time-improve-answer-scroll {
+  display: flex;
+}
+
+.time-improve-answer {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  resize: none;
+  box-sizing: border-box;
+  display: block;
+  overflow-y: auto;
+}
+
 .time-audit-block {
   background: #fff;
   border: 1px solid #e5e7eb;

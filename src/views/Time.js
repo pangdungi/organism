@@ -406,6 +406,7 @@ const BUDGET_GOALS_KEY = "time_daily_budget_goals";
 const BUDGET_EXCLUDED_KEY = "time_budget_excluded";
 const USER_HOURLY_RATE_KEY = "user_hourly_rate";
 const TIME_ROWS_KEY = "time_task_log_rows";
+const TIME_IMPROVE_FOCUS_NOTES_KEY = "time_improve_focus_notes";
 const FIXED_OTHER_TASKS = [
   { name: "수면하기", category: "sleep", productivity: "other" },
   { name: "근무하기", category: "work", productivity: "other" },
@@ -3034,7 +3035,7 @@ export function render() {
     } else if (view === "audit") {
       renderAudit(filtered);
     } else if (view === "improve") {
-      contentWrap.innerHTML = "";
+      renderImprove(filtered);
     } else if (view === "productivity") {
       renderByProductivity(filtered);
     } else if (view === "dashboard") {
@@ -5926,6 +5927,129 @@ export function render() {
     updateTotal();
   }
 
+  function getStoredImproveNotes(dateKey) {
+    try {
+      const raw = localStorage.getItem(TIME_IMPROVE_FOCUS_NOTES_KEY);
+      if (!raw) return { rootCause: "", countermeasures: "" };
+      const obj = JSON.parse(raw);
+      const entry = obj[dateKey];
+      return entry && typeof entry === "object"
+        ? { rootCause: entry.rootCause || "", countermeasures: entry.countermeasures || "" }
+        : { rootCause: "", countermeasures: "" };
+    } catch (_) {}
+    return { rootCause: "", countermeasures: "" };
+  }
+
+  function setStoredImproveNote(dateKey, field, text) {
+    try {
+      const raw = localStorage.getItem(TIME_IMPROVE_FOCUS_NOTES_KEY);
+      const obj = raw ? JSON.parse(raw) : {};
+      if (!obj[dateKey] || typeof obj[dateKey] !== "object") obj[dateKey] = { rootCause: "", countermeasures: "" };
+      obj[dateKey][field] = (text || "").trim();
+      localStorage.setItem(TIME_IMPROVE_FOCUS_NOTES_KEY, JSON.stringify(obj));
+    } catch (_) {}
+  }
+
+  function renderImprove(rows = []) {
+    contentWrap.innerHTML = "";
+    const type = filterType;
+    const y = filterYear;
+    const m = filterMonth;
+    const start = startDateInput.value || filterStartDate;
+    const end = endDateInput.value || filterEndDate;
+    const periodLabel = getFilterPeriodLabel(type, y, m, start, end);
+    const filtered = filterRowsByFilterType(rows, type, y, m, start, end);
+    const defaultTimeFromStart = (st) => {
+      const match = (st || "").match(/[T\s](\d{1,2}):(\d{2})/);
+      return match ? `${String(match[1]).padStart(2, "0")}:${match[2]}` : "";
+    };
+    const timeStrToHours = (t) => {
+      if (!t || typeof t !== "string") return null;
+      const m = t.trim().match(/^(\d{1,2}):?(\d{2})?/);
+      if (!m) return null;
+      return parseInt(m[1], 10) + (parseInt(m[2], 10) || 0) / 60;
+    };
+
+    const allEvents = [];
+    filtered.forEach((row) => {
+      const dateStr = normalizeDateForCompare(row.date || "") || (row.date || "").trim();
+      if (!dateStr) return;
+      const defTime = defaultTimeFromStart(row.startTime);
+      const events = parseFocusEvents(row.focus, defTime);
+      const taskName = (row.taskName || "").trim() || "—";
+      events.forEach((e) => {
+        const timeStr = (e.time || "").trim() || defTime;
+        const hours = timeStr ? timeStrToHours(timeStr) : null;
+        allEvents.push({
+          dateStr,
+          timeStr,
+          hours: hours != null ? hours : 0,
+          type: (e.type || "").trim() || "—",
+          taskName,
+        });
+      });
+    });
+    allEvents.sort((a, b) => a.dateStr.localeCompare(b.dateStr) || a.hours - b.hours);
+
+    const wrap = document.createElement("div");
+    wrap.className = "time-improve-view";
+    const dateKey = start.slice(0, 10) || start;
+    const savedNotes = getStoredImproveNotes(dateKey);
+
+    const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    const eventsListHtml =
+      allEvents.length === 0
+        ? "<p class=\"time-improve-events-empty\">해당 기간 방해기록이 없습니다.</p>"
+        : `<ul class="time-improve-events-list">${allEvents
+            .map(
+              (e) =>
+                `<li><span class="time-improve-event-date">${esc(e.dateStr)}</span> <span class="time-improve-event-time">${esc(e.timeStr)}</span> <span class="time-improve-event-type">${esc(e.type)}</span>${e.taskName !== "—" ? ` <span class="time-improve-event-task">(${esc(e.taskName)})</span>` : ""}</li>`,
+            )
+            .join("")}</ul>`;
+
+    wrap.innerHTML = `
+      <div class="time-improve-quadrants">
+        <div class="time-improve-quadrant time-improve-quadrant-focus">
+          <h3 class="time-improve-section-title">1. 집중력을 높이기</h3>
+          <p class="time-improve-period">${periodLabel}</p>
+          <div class="time-improve-events-wrap">
+            <h4 class="time-improve-events-heading">방해기록</h4>
+            <div class="time-improve-events-scroll">${eventsListHtml}</div>
+          </div>
+          <div class="time-improve-input-block">
+            <h4 class="time-improve-input-label">1. 근본 원인</h4>
+            <div class="time-improve-answer-scroll">
+              <textarea class="time-improve-answer time-improve-root-cause" placeholder="누가 혹은 무엇이 내게서 시간을 훔쳐가고 있나?"></textarea>
+            </div>
+          </div>
+          <div class="time-improve-input-block">
+            <h4 class="time-improve-input-label">2. 대책마련</h4>
+            <div class="time-improve-answer-scroll">
+              <textarea class="time-improve-answer time-improve-countermeasures" placeholder="고질적 시간 도둑을 잡기 위해 나는 오늘부터 무엇을 해야 할까?"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="time-improve-quadrant time-improve-quadrant-empty"></div>
+        <div class="time-improve-quadrant time-improve-quadrant-empty"></div>
+        <div class="time-improve-quadrant time-improve-quadrant-empty"></div>
+      </div>
+    `;
+
+    const rootCauseEl = wrap.querySelector(".time-improve-root-cause");
+    const countermeasuresEl = wrap.querySelector(".time-improve-countermeasures");
+    if (rootCauseEl) {
+      rootCauseEl.value = savedNotes.rootCause;
+      rootCauseEl.addEventListener("input", () => setStoredImproveNote(dateKey, "rootCause", rootCauseEl.value));
+      rootCauseEl.addEventListener("blur", () => setStoredImproveNote(dateKey, "rootCause", rootCauseEl.value));
+    }
+    if (countermeasuresEl) {
+      countermeasuresEl.value = savedNotes.countermeasures;
+      countermeasuresEl.addEventListener("input", () => setStoredImproveNote(dateKey, "countermeasures", countermeasuresEl.value));
+      countermeasuresEl.addEventListener("blur", () => setStoredImproveNote(dateKey, "countermeasures", countermeasuresEl.value));
+    }
+    contentWrap.appendChild(wrap);
+  }
+
   function renderAudit(rows = []) {
     contentWrap.innerHTML = "";
     const type = filterType;
@@ -7368,7 +7492,7 @@ export function render() {
     } else if (view === "audit") {
       renderAudit(getFilteredRows(cachedRows));
     } else if (view === "improve") {
-      contentWrap.innerHTML = "";
+      renderImprove(getFilteredRows(cachedRows));
     } else if (view === "productivity") {
       renderByProductivity(rowsToUse);
     } else if (view === "dashboard") {
