@@ -411,7 +411,7 @@ const FIXED_OTHER_TASKS = [
   { name: "수면하기", category: "sleep", productivity: "other" },
   { name: "근무하기", category: "work", productivity: "other" },
 ];
-/** 생산적 > 행복 고정 과제 (과제설정에서 수정·삭제 불가) */
+/** 생산적 고정 과제 (과제 설정에서 수정·삭제 불가) */
 const FIXED_PRODUCTIVE_TASKS = [
   {
     name: "감정적이기(긍정적)",
@@ -420,11 +420,46 @@ const FIXED_PRODUCTIVE_TASKS = [
   },
   {
     name: "생산적 소비",
-    category: "productive_consumption",
+    category: "sideincome",
     productivity: "productive",
   },
+  /* 생산적 → 부수입 */
+  { name: "돈 관리", category: "sideincome", productivity: "productive" },
+  { name: "경제 공부", category: "sideincome", productivity: "productive" },
+  { name: "경력 개발", category: "sideincome", productivity: "productive" },
+  /* 생산적 → 꿈 */
+  { name: "아이디어 작업하기", category: "dream", productivity: "productive" },
+  { name: "독서하기", category: "dream", productivity: "productive" },
+  { name: "독서 노트", category: "dream", productivity: "productive" },
+  { name: "시간기록", category: "dream", productivity: "productive" },
+  { name: "시간기록 점검", category: "dream", productivity: "productive" },
+  /* 생산적 → 건강 */
+  { name: "건강 검진", category: "health", productivity: "productive" },
+  { name: "병원 방문", category: "health", productivity: "productive" },
+  { name: "마사지", category: "health", productivity: "productive" },
+  { name: "스킨케어", category: "health", productivity: "productive" },
+  {
+    name: "낮잠 (30분 이상은 수면으로 기록)",
+    category: "health",
+    productivity: "productive",
+  },
+  { name: "구강케어", category: "health", productivity: "productive" },
+  { name: "샤워 및 씻기", category: "health", productivity: "productive" },
+  { name: "바디케어", category: "health", productivity: "productive" },
+  /* 생산적 → 행복 */
+  { name: "감정 기록하기", category: "happiness", productivity: "productive" },
+  { name: "의미 있는 영상 시청", category: "happiness", productivity: "productive" },
+  { name: "의미 있는 대화", category: "happiness", productivity: "productive" },
+  { name: "의미 있는 모임 참석", category: "happiness", productivity: "productive" },
+  { name: "의식적 콘텐츠 소비", category: "happiness", productivity: "productive" },
+  { name: "음악 듣기", category: "happiness", productivity: "productive" },
+  { name: "잡동사니 일 해결하기", category: "happiness", productivity: "productive" },
+  { name: "커피 마시기", category: "happiness", productivity: "productive" },
+  { name: "덕질하기", category: "happiness", productivity: "productive" },
+  { name: "다이어리 쓰기", category: "happiness", productivity: "productive" },
+  { name: "메모하기", category: "happiness", productivity: "productive" },
 ];
-/** 비생산적 > 불행 고정 과제 (과제설정에서 수정·삭제 불가) - 비생산적 소비: 돈을 잃는 일 */
+/** 비생산적 > 불행 고정 과제 (과제 설정에서 수정·삭제 불가) */
 const FIXED_NONPRODUCTIVE_TASKS = [
   {
     name: "감정적이기(부정적)",
@@ -434,6 +469,82 @@ const FIXED_NONPRODUCTIVE_TASKS = [
   {
     name: "비생산적 소비",
     category: "moneylosing",
+    productivity: "nonproductive",
+  },
+  {
+    name: "뭐 살지 고민하기",
+    category: "moneylosing",
+    productivity: "nonproductive",
+  },
+  {
+    name: "배달 메뉴 고민하기",
+    category: "moneylosing",
+    productivity: "nonproductive",
+  },
+  {
+    name: "건강하지 않은 식사",
+    category: "unhealthy",
+    productivity: "nonproductive",
+  },
+  {
+    name: "건강하지 않은 식사 준비",
+    category: "unhealthy",
+    productivity: "nonproductive",
+  },
+  {
+    name: "술 마시기",
+    category: "unhealthy",
+    productivity: "nonproductive",
+  },
+  /* 비생산적 → 불행 */
+  {
+    name: "의미 없는 대화 (험담, 불평, 단순 대화)",
+    category: "unhappiness",
+    productivity: "nonproductive",
+  },
+  { name: "논쟁하기", category: "unhappiness", productivity: "nonproductive" },
+  {
+    name: "중요하지 않은 통화",
+    category: "unhappiness",
+    productivity: "nonproductive",
+  },
+  { name: "물건 찾기", category: "unhappiness", productivity: "nonproductive" },
+  /* 비생산적 → 꿈을 방해하는 일 */
+  {
+    name: "무의식적 폰 사용",
+    category: "dreamblocking",
+    productivity: "nonproductive",
+  },
+  {
+    name: "무의식적 검색",
+    category: "dreamblocking",
+    productivity: "nonproductive",
+  },
+  /* 비생산적 → 쾌락충족 */
+  { name: "단순 이동", category: "pleasure", productivity: "nonproductive" },
+  {
+    name: "쇼츠/릴스 피드 보기",
+    category: "pleasure",
+    productivity: "nonproductive",
+  },
+  {
+    name: "무의식적 SNS",
+    category: "pleasure",
+    productivity: "nonproductive",
+  },
+  {
+    name: "알람 끄고 침대에 누워 있기",
+    category: "pleasure",
+    productivity: "nonproductive",
+  },
+  {
+    name: "쾌락성 모임 참석",
+    category: "pleasure",
+    productivity: "nonproductive",
+  },
+  {
+    name: "단순 쾌락형 영상 시청",
+    category: "pleasure",
     productivity: "nonproductive",
   },
 ];
@@ -506,7 +617,6 @@ const DEFAULT_TASK_OPTIONS = [
   ...FIXED_NONPRODUCTIVE_TASKS,
   { name: "전화통화", category: "dream", productivity: "productive" },
   { name: "영상편집", category: "sideincome", productivity: "productive" },
-  { name: "시간기록 점검", category: "dream", productivity: "productive" },
   { name: "러닝하기", category: "health", productivity: "productive" },
 ];
 
@@ -515,11 +625,6 @@ const PRODUCTIVE_CATEGORIES = [
   { value: "sideincome", label: "부수입", color: "cat-sideincome" },
   { value: "happiness", label: "행복", color: "cat-happiness" },
   { value: "health", label: "건강", color: "cat-health" },
-  {
-    value: "productive_consumption",
-    label: "생산적 소비",
-    color: "cat-prod-cons",
-  },
 ];
 
 const NONPRODUCTIVE_CATEGORIES = [
@@ -1029,11 +1134,6 @@ const CATEGORY_OPTIONS = [
   { value: "sideincome", label: "부수입", color: "cat-sideincome" },
   { value: "happiness", label: "행복", color: "cat-happiness" },
   { value: "health", label: "건강", color: "cat-health" },
-  {
-    value: "productive_consumption",
-    label: "생산적 소비",
-    color: "cat-prod-cons",
-  },
   { value: "pleasure", label: "쾌락충족", color: "cat-pleasure" },
   {
     value: "dreamblocking",
@@ -1053,7 +1153,7 @@ const CATEGORY_GRAPH_COLORS = {
   sideincome: "rgba(191,179,255,0.5)",
   happiness: "rgba(255,218,185,0.5)",
   health: "rgba(144,238,144,0.5)",
-  productive_consumption: "rgba(94,234,212,0.5)",
+  productive_consumption: "rgba(191,179,255,0.5)", /* 구 카테고리: 부수입과 동일 색 */
   pleasure: "rgba(173,216,230,0.5)",
   dreamblocking: "rgba(255,200,124,0.5)",
   unhappiness: "rgba(221,160,221,0.5)",
@@ -1077,7 +1177,6 @@ function getProductivityFromCategory(categoryValue) {
     "sideincome",
     "happiness",
     "health",
-    "productive_consumption",
   ];
   const nonproductive = [
     "unhappiness",
@@ -1768,8 +1867,15 @@ function calcPeriodValueFromFiltered(filtered, hourlyRate) {
 
 /** 카테고리 라벨 조회 */
 function getCategoryLabel(value) {
+  if (value === "productive_consumption") return "부수입"; /* 구 카테고리 → 부수입으로 표시 */
   const opt = CATEGORY_OPTIONS.find((o) => o.value === value);
   return opt ? opt.label : value || "그 외";
+}
+
+function getCategoryColor(value) {
+  if (value === "productive_consumption") return "cat-sideincome";
+  const opt = CATEGORY_OPTIONS.find((o) => o.value === value);
+  return opt ? opt.color : "cat-empty";
 }
 
 /** 하루 평균 가용시간 계산 (24 - 근무 - 수면) */
@@ -2209,10 +2315,8 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   catTd.className = "time-cell time-cell-category";
   const catDisplay = document.createElement("span");
   catDisplay.className = "time-tag-pill cat cat-empty";
-  const catOpt = CATEGORY_OPTIONS.find((o) => o.value === rowData.category);
-  catDisplay.textContent = catOpt ? catOpt.label : "—";
-  catDisplay.className =
-    "time-tag-pill cat " + (catOpt ? catOpt.color : "cat-empty");
+  catDisplay.textContent = getCategoryLabel(rowData.category) || "—";
+  catDisplay.className = "time-tag-pill cat " + getCategoryColor(rowData.category);
   catTd.appendChild(catDisplay);
 
   const taskTd = document.createElement("td");
@@ -2859,7 +2963,7 @@ export function render() {
       <button type="button" class="time-filter-btn" data-filter="week" data-audit-hidden>일주일</button>
       <button type="button" class="time-filter-btn active" data-filter="day">하루</button>
       <button type="button" class="time-filter-btn" data-filter="range">날짜 선택</button>
-      <button type="button" class="time-filter-btn time-filter-task-select-btn" id="time-task-select-btn">과제선택</button>
+      <button type="button" class="time-filter-btn time-filter-task-select-btn" id="time-task-select-btn">과제 선택</button>
     </div>
     <div class="time-filter-day-wrap" data-filter-wrap="day">
       <span class="time-filter-day-display">${formatDateForDayFilter(filterStartDate)}</span>
@@ -3052,7 +3156,7 @@ export function render() {
           <button type="button" class="time-task-setup-tab active" data-tab="all">전체</button>
           <button type="button" class="time-task-setup-tab" data-tab="productive">생산적</button>
           <button type="button" class="time-task-setup-tab" data-tab="nonproductive">비생산적</button>
-          <button type="button" class="time-task-setup-tab" data-tab="other">그외</button>
+          <button type="button" class="time-task-setup-tab" data-tab="other">그 외</button>
         </div>
         <div class="time-task-setup-subcats" data-subcat-bar style="display:none">
           <button type="button" class="time-task-setup-subcat-btn active" data-subcat="">전체</button>
@@ -3075,7 +3179,7 @@ export function render() {
     <div class="time-task-setup-backdrop"></div>
     <div class="time-task-setup-panel time-task-select-panel">
       <div class="time-task-setup-header">
-        <h3 class="time-task-setup-title">과제선택</h3>
+        <h3 class="time-task-setup-title">과제 선택</h3>
         <button type="button" class="time-task-setup-close" aria-label="닫기">&times;</button>
       </div>
       <div class="time-task-setup-body">
@@ -3204,7 +3308,7 @@ export function render() {
               <div class="time-task-log-task-wrap"></div>
             </div>
             <div class="time-task-log-field">
-              <label>시작시간</label>
+              <label>시작 시간</label>
               <div class="time-task-log-datetime-input-wrap">
                 <input type="date" class="time-task-log-date-start" data-hide-delete-btn="true" />
                 <input type="text" class="time-task-log-time-start" placeholder="hh:mm" maxlength="5" />
@@ -3212,7 +3316,7 @@ export function render() {
               <input type="hidden" class="time-task-log-start" />
             </div>
             <div class="time-task-log-field">
-              <label>마감시간</label>
+              <label>마감 시간</label>
               <div class="time-task-log-datetime-wrap time-task-log-datetime-wrap-end">
                 <div class="time-task-log-datetime-input-wrap">
                   <input type="text" class="time-task-log-time-end" placeholder="hh:mm" maxlength="5" />
@@ -3321,7 +3425,7 @@ export function render() {
         </div>
         <div class="time-task-log-todo-section">
           <div class="time-task-log-todo-header">
-            <h4 class="time-task-log-todo-title">투두리스트 (브레인덤프에 기록)</h4>
+            <h4 class="time-task-log-todo-title">투두 리스트 (브레인 덤프에 기록)</h4>
             <label class="time-task-log-todo-toggle">
               <input type="checkbox" class="time-task-log-todo-toggle-input" />
               <span class="time-task-log-todo-toggle-slider"></span>
@@ -3329,7 +3433,7 @@ export function render() {
           </div>
           <div class="time-task-log-todo-fields" hidden>
             <div class="time-task-log-field">
-              <input type="text" class="time-task-log-todo-name" placeholder="할일이름 입력" />
+              <input type="text" class="time-task-log-todo-name" placeholder="할 일 이름 입력" />
               <div class="time-task-log-todo-added-list" aria-live="polite"></div>
             </div>
           </div>
@@ -4537,7 +4641,7 @@ export function render() {
   focusNowBtn?.addEventListener("click", () => {
     const type = (focusTypeDropdown?._getValue?.() || "").trim();
     if (!type) {
-      alert("방해 유형을 먼저 선택해주세요.");
+      alert("방해 유형을 먼저 선택해 주세요.");
       return;
     }
     taskLogFocusEvents.push({ time: getCurrentHHMM(), type });
@@ -4553,7 +4657,7 @@ export function render() {
     e.preventDefault();
     const type = (focusTypeDropdown?._getValue?.() || "").trim();
     if (!type) {
-      alert("방해 유형을 먼저 선택해주세요.");
+      alert("방해 유형을 먼저 선택해 주세요.");
       return;
     }
     const timeVal = (focusTimeInput?.value || "").trim();
@@ -4885,7 +4989,7 @@ export function render() {
     const startRaw = (taskLogStartInput.value || "").trim();
     const endRaw = (taskLogEndInput.value || "").trim();
     if (!taskName || !startRaw) {
-      alert("과제 선택과 시작시간을 입력해주세요.");
+      alert("과제 선택과 시작 시간을 입력해 주세요.");
       return;
     }
     let startTime = formatDateTimeInput(startRaw) || startRaw;
@@ -5006,11 +5110,10 @@ export function render() {
           memoTagCell.appendChild(pill);
         });
       }
-      const catOpt = CATEGORY_OPTIONS.find((o) => o.value === category);
       editTr.querySelector(".time-cell-category .time-tag-pill").textContent =
-        catOpt ? catOpt.label : "—";
+        getCategoryLabel(category) || "—";
       editTr.querySelector(".time-cell-category .time-tag-pill").className =
-        "time-tag-pill cat " + (catOpt ? catOpt.color : "cat-empty");
+        "time-tag-pill cat " + getCategoryColor(category);
       const prodOpt = PRODUCTIVITY_OPTIONS.find(
         (o) => o.value === productivity,
       );
@@ -6829,8 +6932,7 @@ export function render() {
         cat: k,
         label: getCategoryLabel(k),
         hrs: v,
-        color:
-          CATEGORY_OPTIONS.find((o) => o.value === k)?.color || "cat-empty",
+        color: getCategoryColor(k),
       }))
       .sort((a, b) => b.hrs - a.hrs);
     const maxCatHrs = Math.max(...catEntries.map((x) => x.hrs), 0.01);

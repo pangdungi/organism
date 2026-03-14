@@ -9508,7 +9508,7 @@ body.kpi-resizing {
   color: #1f2937;
 }
 
-/* 과제설정 모달 */
+/* 과제 설정 모달 */
 .time-task-setup-modal {
   position: fixed;
   inset: 0;
@@ -13994,7 +13994,7 @@ body.kpi-resizing {
   color: #dc2626;
 }
 
-/* 1. 시간기록하기 - 테이블 하단 합계행 (과제 기록 버튼 위) */
+/* 1. 시간 기록하기 - 테이블 하단 합계행 (과제 기록 버튼 위) */
 .time-ledger-total-row {
   background: #f9fafb;
 }
