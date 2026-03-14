@@ -261,7 +261,7 @@ function getAuditTimeThiefHtml(dateStr, filtered, hourlyRate) {
     </div>`;
   const valueBoxHtml = `
     <div class="time-audit-thief-summary time-audit-thief-summary-value">
-      <div class="time-audit-thief-summary-label">오늘 낭비한 시간의 가치</div>
+      <div class="time-audit-thief-summary-label">오늘 낭비한 돈</div>
       <div class="time-audit-thief-summary-num">${formatPrice(totalWastedValue)}원</div>
     </div>`;
   const rightHalf = `<div class="time-audit-thief-right-half"><div class="time-audit-thief-center">${pieHtml}</div><div class="time-audit-thief-summaries"><div class="time-audit-thief-right time-audit-thief-time-wrap">${timeBoxHtml}</div><div class="time-audit-thief-right time-audit-thief-value-wrap">${valueBoxHtml}</div></div></div>`;

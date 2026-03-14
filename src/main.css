@@ -12905,13 +12905,14 @@ body.kpi-resizing {
   flex: 0 0 50%;
   width: 50%;
   box-sizing: border-box;
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: minmax(180px, 1fr);
   gap: 0.75rem;
   align-items: stretch;
   padding-left: 0.75rem;
   min-width: 0;
+  min-height: 180px;
 }
 
 /* 테이블·요약 박스: 우선순위 섹션과 동일 회색/화이트 */
@@ -12981,28 +12982,52 @@ body.kpi-resizing {
 }
 
 .time-audit-thief-right-half .time-audit-thief-center {
-  flex: 1 1 auto;
-  min-width: 140px;
-}
-
-.time-audit-thief-summaries {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
   display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  gap: 0.75rem;
-  align-items: stretch;
-  flex: 0 0 auto;
-  min-width: 200px;
-}
-
-.time-audit-thief-summaries .time-audit-thief-right {
-  flex: 1 1 0;
-  min-width: 90px;
+  flex-direction: column;
+  align-self: stretch;
 }
 
 .time-audit-thief-right-half .time-audit-thief-center .time-audit-pie-box {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   background: #f9fafb;
   border: 1px solid #e5e7eb;
+}
+
+.time-audit-thief-summaries {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  align-self: stretch;
+  overflow: hidden;
+}
+
+.time-audit-thief-summaries .time-audit-thief-right {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  overflow: hidden;
+}
+
+.time-audit-thief-summaries .time-audit-thief-right .time-audit-thief-summary {
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
 }
 
 .time-audit-thief-right-half .time-audit-thief-right {
