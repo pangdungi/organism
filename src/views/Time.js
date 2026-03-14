@@ -19,6 +19,7 @@ import {
 import {
   getKpiSyncedTaskNames,
   syncHabitTrackerLogs,
+  upsertHabitTrackerLogWithDailyState,
 } from "../utils/timeKpiSync.js";
 import { getKpiTodosAsTasks, syncKpiTodoCompleted, getKpiTodosByKpiName, getKpiDailyRepeatInfoByKpiName, syncKpiDailyRepeatTodoCompleted } from "../utils/kpiTodoSync.js";
 import { getCustomSections } from "../utils/todoSettings.js";
@@ -5251,6 +5252,28 @@ export function render() {
         allRowsCache = allRowsCache.filter(
           (c) => `${c.date}|${c.taskName}|${c.startTime}` !== oldKey,
         );
+      }
+      if (timeTracked) {
+        const dailyInfo = getKpiDailyRepeatInfoByKpiName(taskName);
+        if (dailyInfo && dailyInfo.needHabitTracker && taskLogDailyTodosList) {
+          const completed = [];
+          const incomplete = [];
+          taskLogDailyTodosList.querySelectorAll("label.time-task-log-daily-todo-row").forEach((label) => {
+            const cb = label.querySelector('input[type="checkbox"]');
+            const span = label.querySelector(".time-task-log-kpi-todo-text");
+            const id = (cb && cb.dataset && cb.dataset.todoId) ? cb.dataset.todoId : "";
+            const text = (span && span.textContent) ? span.textContent.trim() : "";
+            if (!id) return;
+            if (cb && cb.checked) completed.push({ id, text });
+            else incomplete.push({ id, text });
+          });
+          const dateRawStr = (dateStr || "").toString().replace(/\//g, "-").replace(/\s/g, "");
+          const m = dateRawStr.match(/(\d{4})[.\-\s]*(\d{1,2})[.\-\s]*(\d{1,2})/);
+          const normalizedDateRaw = m ? `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}` : dateRawStr.slice(0, 10);
+          if (normalizedDateRaw.length >= 10) {
+            upsertHabitTrackerLogWithDailyState(dailyInfo.storageKey, dailyInfo.kpiId, normalizedDateRaw, { completed, incomplete });
+          }
+        }
       }
       onFilterChange();
       saveTimeRows(getFullRowsForFilter(true));

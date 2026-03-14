@@ -879,6 +879,15 @@ export function render() {
         const item = document.createElement("div");
         item.className = "dream-kpi-history-item";
         const unitSuffix = kpi.unit ? " " + kpi.unit : "";
+        const completed = log.dailyCompleted || [];
+        const incomplete = log.dailyIncomplete || [];
+        let dailyLine = "";
+        if (completed.length || incomplete.length) {
+          const completedNames = completed.map((t) => (t.text || "").trim()).filter(Boolean).join(", ");
+          const incompleteNames = incomplete.map((t) => (t.text || "").trim()).filter(Boolean).join(", ");
+          if (completedNames) dailyLine = `${completedNames} 완료`;
+          if (incompleteNames) dailyLine += (dailyLine ? " / " : "") + `미완료: ${incompleteNames}`;
+        }
         item.innerHTML = `
           <div class="dream-kpi-history-item-body">
             <div class="dream-kpi-history-item-main">
@@ -887,6 +896,7 @@ export function render() {
               <span class="dream-kpi-history-status dream-kpi-history-status--${log.status === "순항" ? "good" : log.status === "보통" ? "normal" : "poor"}">${escapeHtml(log.status)}</span>
             </div>
             ${log.memo ? `<div class="dream-kpi-history-memo">${escapeHtml(log.memo)}</div>` : ""}
+            ${dailyLine ? `<div class="dream-kpi-history-daily">${escapeHtml(dailyLine)}</div>` : ""}
           </div>
           <div class="dream-kpi-history-actions">
             <button type="button" class="dream-kpi-history-edit">수정</button>
@@ -1067,15 +1077,10 @@ export function render() {
         const item = document.createElement("div");
         item.className = "dream-kpi-todo-item" + (completed ? " is-completed" : "");
         item.innerHTML = `
-          <label class="dream-kpi-todo-check-wrap"><input type="checkbox" class="dream-kpi-todo-check" ${completed ? "checked" : ""} /></label>
+          <label class="dream-kpi-todo-check-wrap"><input type="checkbox" class="dream-kpi-todo-check" ${completed ? "checked" : ""} disabled title="매일 할일 체크는 시간기록(과제 기록)에서만 가능합니다" /></label>
           <span class="dream-kpi-todo-text">${escapeHtml(todo.text)}</span>
           <button type="button" class="dream-kpi-todo-del" title="삭제">×</button>
         `;
-        item.querySelector(".dream-kpi-todo-check").addEventListener("change", () => {
-          const d = loadHappinessMap();
-          const t = d.kpiDailyRepeatTodos.find((x) => x.id === todo.id);
-          if (t) { t.completed = !!item.querySelector(".dream-kpi-todo-check").checked; saveHappinessMap(d); item.classList.toggle("is-completed", t.completed); }
-        });
         item.querySelector(".dream-kpi-todo-del").addEventListener("click", () => {
           const d = loadHappinessMap();
           d.kpiDailyRepeatTodos = (d.kpiDailyRepeatTodos || []).filter((x) => x.id !== todo.id);

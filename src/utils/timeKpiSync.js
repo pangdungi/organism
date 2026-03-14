@@ -117,6 +117,68 @@ function nextLogId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
 
+const STORAGE_CONFIG = [
+  { key: "kpi-dream-map", kpiKey: "dreamId", idKey: "dreamId" },
+  { key: "kpi-sideincome-paths", kpiKey: "pathId", idKey: "pathId" },
+  { key: "kpi-happiness-map", kpiKey: "happinessId", idKey: "happinessId" },
+  { key: "kpi-health-map", kpiKey: "healthId", idKey: "healthId" },
+];
+
+/**
+ * 매일 반복 KPI: 과제 기록 시 해당 날짜 로그에 매일 할일 완료/미완료 상태 저장 (시간기록 모달에서만 체크 반영)
+ * @param {string} storageKey
+ * @param {string} kpiId
+ * @param {string} dateRaw - YYYY-MM-DD
+ * @param {{ completed: Array<{id:string,text:string}>, incomplete: Array<{id:string,text:string}> }} dailyState
+ */
+export function upsertHabitTrackerLogWithDailyState(storageKey, kpiId, dateRaw, dailyState) {
+  if (!storageKey || !kpiId || !dateRaw || dateRaw.length < 10) return;
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    const kpis = data.kpis || [];
+    const kpi = kpis.find((k) => k.id === kpiId);
+    if (!kpi || !kpi.needHabitTracker) return;
+    const config = STORAGE_CONFIG.find((c) => c.key === storageKey);
+    if (!config) return;
+
+    const idKey = config.idKey;
+    const idValue = kpi[config.kpiKey];
+    const logs = data.kpiLogs || [];
+    const normDate = normalizeLogDate(dateRaw);
+    const existingIdx = logs.findIndex(
+      (l) => l.kpiId === kpiId && normalizeLogDate(l.dateRaw || l.date || "") === normDate,
+    );
+
+    const dailyCompleted = Array.isArray(dailyState?.completed) ? dailyState.completed : [];
+    const dailyIncomplete = Array.isArray(dailyState?.incomplete) ? dailyState.incomplete : [];
+    const dateDisplay = toDisplayDate(dateRaw);
+
+    if (existingIdx >= 0) {
+      logs[existingIdx].dailyCompleted = dailyCompleted;
+      logs[existingIdx].dailyIncomplete = dailyIncomplete;
+      logs[existingIdx].value = "1";
+      logs[existingIdx].status = "순항";
+    } else {
+      logs.push({
+        id: nextLogId(),
+        kpiId,
+        [idKey]: idValue,
+        date: dateDisplay,
+        dateRaw,
+        value: "1",
+        status: "순항",
+        memo: "",
+        dailyCompleted,
+        dailyIncomplete,
+      });
+    }
+    data.kpiLogs = logs;
+    localStorage.setItem(storageKey, JSON.stringify(data));
+  } catch (_) {}
+}
+
 /**
  * 매일 반복(needHabitTracker) KPI: 시간가계부 과제 기록이 있으면 해당 날짜 KPI 로그에 자동 연동
  * saveTimeRows 호출 후 실행
@@ -132,13 +194,6 @@ export function syncHabitTrackerLogs() {
     const key = `${name}|${dateRaw}`;
     if (!taskByDate.has(key)) taskByDate.set(key, { taskName: name, dateRaw });
   });
-
-  const STORAGE_CONFIG = [
-    { key: "kpi-dream-map", kpiKey: "dreamId", idKey: "dreamId" },
-    { key: "kpi-sideincome-paths", kpiKey: "pathId", idKey: "pathId" },
-    { key: "kpi-happiness-map", kpiKey: "happinessId", idKey: "happinessId" },
-    { key: "kpi-health-map", kpiKey: "healthId", idKey: "healthId" },
-  ];
 
   STORAGE_CONFIG.forEach(({ key, kpiKey, idKey }) => {
     try {

@@ -15735,6 +15735,13 @@ body.kpi-resizing {
   margin-bottom: 0.5rem;
 }
 
+.dream-kpi-history-daily {
+  font-size: 0.8rem;
+  color: #4b5563;
+  margin-top: 0.25rem;
+  line-height: 1.35;
+}
+
 .dream-kpi-history-actions {
   display: flex;
   gap: 0.5rem;
@@ -16637,7 +16644,7 @@ body.kpi-resizing {
   align-items: center;
   gap: 0.5rem;
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: 0.95rem;
   font-weight: 500;
   color: #6b7280;
 }
