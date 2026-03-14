@@ -12105,6 +12105,38 @@ body.kpi-resizing {
 .time-improve-important-priority .time-improve-important-table-wrap::-webkit-scrollbar {
   display: none;
 }
+.time-improve-important-thief {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+}
+.time-improve-important-thief .time-improve-input-label {
+  margin-bottom: 0.35rem;
+  font-size: 0.85rem;
+}
+.time-improve-thief-inner {
+  max-height: 100px;
+  overflow-y: auto;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.time-improve-thief-inner::-webkit-scrollbar {
+  display: none;
+}
+.time-improve-important-invest {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+}
+.time-improve-important-invest .time-improve-input-label {
+  margin-bottom: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.time-improve-important-invest .time-improve-answer-scroll {
+  min-height: 60px;
+}
 .time-improve-important-kpi .time-improve-important-table-wrap {
   margin-top: 0.35rem;
   border-top: 1px solid #e5e7eb;

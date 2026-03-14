@@ -5930,18 +5930,19 @@ export function render() {
   function getStoredImproveNotes(dateKey) {
     try {
       const raw = localStorage.getItem(TIME_IMPROVE_FOCUS_NOTES_KEY);
-      if (!raw) return { rootCause: "", countermeasures: "", planReality: "" };
+      if (!raw) return { rootCause: "", countermeasures: "", planReality: "", importantInvest: "" };
       const obj = JSON.parse(raw);
       const entry = obj[dateKey];
       if (!entry || typeof entry !== "object")
-        return { rootCause: "", countermeasures: "", planReality: "" };
+        return { rootCause: "", countermeasures: "", planReality: "", importantInvest: "" };
       return {
         rootCause: entry.rootCause || "",
         countermeasures: entry.countermeasures || "",
         planReality: entry.planReality || "",
+        importantInvest: entry.importantInvest || "",
       };
     } catch (_) {}
-    return { rootCause: "", countermeasures: "", planReality: "" };
+    return { rootCause: "", countermeasures: "", planReality: "", importantInvest: "" };
   }
 
   function setStoredImproveNote(dateKey, field, text) {
@@ -5949,7 +5950,7 @@ export function render() {
       const raw = localStorage.getItem(TIME_IMPROVE_FOCUS_NOTES_KEY);
       const obj = raw ? JSON.parse(raw) : {};
       if (!obj[dateKey] || typeof obj[dateKey] !== "object")
-        obj[dateKey] = { rootCause: "", countermeasures: "", planReality: "" };
+        obj[dateKey] = { rootCause: "", countermeasures: "", planReality: "", importantInvest: "" };
       obj[dateKey][field] = (text || "").trim();
       localStorage.setItem(TIME_IMPROVE_FOCUS_NOTES_KEY, JSON.stringify(obj));
     } catch (_) {}
@@ -6102,6 +6103,32 @@ export function render() {
         ? "<p class=\"time-improve-important-empty\">해당 날짜 할일이 없습니다.</p>"
         : `<div class="time-improve-important-table-wrap"><table class="time-improve-important-table time-improve-kpi-combined-table"><thead><tr><th>KPI</th><th>KPI 시간사용시간</th><th>KPI 할일</th><th>우선순위</th></tr></thead><tbody>${kpiCombinedRows.join("")}</tbody></table></div>`;
 
+    const viewRoot = contentWrap.parentElement;
+    const hourlyRateImprove = parseFloat(String(viewRoot?.querySelector(".time-hourly-input")?.value || "0").replace(/,/g, "")) || 0;
+    const dateRowsThief = filtered.filter(
+      (r) => (normalizeDateForCompare(r.date || "") || (r.date || "").trim()) === dateKey,
+    );
+    const nonproductiveRows = dateRowsThief.filter((r) => (String(r.productivity || "").trim()) === "nonproductive");
+    const byTaskThief = {};
+    nonproductiveRows.forEach((r) => {
+      const name = (r.taskName || "").trim() || "—";
+      const hrs = parseTimeToHours(r.timeTracked) || 0;
+      const price = hrs * hourlyRateImprove * -1;
+      if (!byTaskThief[name]) byTaskThief[name] = { taskName: name, hours: 0, price: 0 };
+      byTaskThief[name].hours += hrs;
+      byTaskThief[name].price += price;
+    });
+    const thiefTableRows = Object.values(byTaskThief).sort((a, b) => b.hours - a.hours);
+    const thiefTableHtml =
+      thiefTableRows.length > 0
+        ? `<div class="time-improve-thief-table-wrap"><table class="time-improve-important-table time-audit-thief-table"><thead><tr><th>과제명</th><th>실제 보낸 시간</th><th>시간의 가치</th></tr></thead><tbody>${thiefTableRows
+            .map(
+              (r) =>
+                `<tr><td class="time-audit-thief-task">${esc(r.taskName)}</td><td class="time-audit-thief-time">${formatHoursToHHMM(r.hours)}</td><td class="time-audit-thief-value">${formatPrice(r.price)}</td></tr>`,
+            )
+            .join("")}</tbody></table></div>`
+        : "<p class=\"time-improve-important-empty\">해당 날짜 비생산적 기록 없음</p>";
+
     const eventsListHtml =
       allEvents.length === 0
         ? "<p class=\"time-improve-events-empty\">해당 기간 방해기록이 없습니다.</p>"
@@ -6148,6 +6175,16 @@ export function render() {
           <h3 class="time-improve-section-title">3. 중요한일에 더 많은 시간 쓰기</h3>
           <p class="time-improve-period">${periodLabel}</p>
           <div class="time-improve-important-priority">${priorityTableImportantHtml}</div>
+          <div class="time-improve-important-thief">
+            <h4 class="time-improve-input-label">시간 낭비 내역</h4>
+            <div class="time-improve-thief-inner">${thiefTableHtml}</div>
+          </div>
+          <div class="time-improve-important-invest">
+            <h4 class="time-improve-input-label">어떻게 하면 비생산적 시간을 줄이고 중요한 시간에 더 투자할 수 있는가?</h4>
+            <div class="time-improve-answer-scroll">
+              <textarea class="time-improve-answer time-improve-important-invest-input" rows="3"></textarea>
+            </div>
+          </div>
         </div>
         <div class="time-improve-quadrant time-improve-quadrant-empty"></div>
       </div>
@@ -6170,6 +6207,12 @@ export function render() {
       planRealityEl.value = savedNotes.planReality;
       planRealityEl.addEventListener("input", () => setStoredImproveNote(dateKey, "planReality", planRealityEl.value));
       planRealityEl.addEventListener("blur", () => setStoredImproveNote(dateKey, "planReality", planRealityEl.value));
+    }
+    const importantInvestEl = wrap.querySelector(".time-improve-important-invest-input");
+    if (importantInvestEl) {
+      importantInvestEl.value = savedNotes.importantInvest;
+      importantInvestEl.addEventListener("input", () => setStoredImproveNote(dateKey, "importantInvest", importantInvestEl.value));
+      importantInvestEl.addEventListener("blur", () => setStoredImproveNote(dateKey, "importantInvest", importantInvestEl.value));
     }
     contentWrap.appendChild(wrap);
   }
