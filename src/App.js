@@ -13,10 +13,12 @@ import { render as renderHealth } from "./views/Health.js";
 import { render as renderArchive } from "./views/Archive.js";
 import { render as renderDiary } from "./views/Diary.js";
 import { render as renderIdea } from "./views/Idea.js";
+import { render as renderHome } from "./views/Home.js";
 
 const SIDEBAR_COLLAPSED_KEY = "app-sidebar-collapsed";
 
 const TABS = [
+  { id: "home", label: "Home", icon: "/toolbaricons/dashboard.svg" },
   { id: "dream", label: "꿈", icon: "/toolbaricons/star.svg" },
   { id: "sideincome", label: "부수입", icon: "/toolbaricons/money-circle.svg" },
   { id: "happiness", label: "행복", icon: "/toolbaricons/plug-electric.svg" },
@@ -35,6 +37,7 @@ const TABS = [
 ];
 
 const RENDERERS = {
+  home: renderHome,
   calendar: renderCalendar,
   time: renderTime,
   workschedule: renderWorkSchedule,
@@ -48,7 +51,7 @@ const RENDERERS = {
   idea: renderIdea,
 };
 
-let currentTabId = "dream";
+let currentTabId = "home";
 
 const ROUTINE_REMOVED_KEY = "app-routine-removed-v1";
 
