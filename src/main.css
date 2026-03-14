@@ -12107,6 +12107,10 @@ body.kpi-resizing {
   border-collapse: collapse;
   font-size: 0.85rem;
 }
+.time-improve-gap-table thead th:nth-child(4),
+.time-improve-gap-table tbody td:nth-child(4) {
+  font-weight: 700;
+}
 .time-improve-gap-empty {
   margin: 0.5rem 0 0 0;
   font-size: 0.85rem;
@@ -12229,6 +12233,11 @@ body.kpi-resizing {
   box-sizing: border-box;
   display: block;
   overflow-y: auto;
+  outline: none;
+}
+.time-improve-answer:focus {
+  outline: none;
+  border-color: #e5e7eb;
 }
 
 .time-audit-block {
@@ -18662,10 +18671,65 @@ body.kpi-resizing {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
+.time-budget-calendar-remaining-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+  width: 100%;
+}
+
 .time-budget-calendar-remaining-title {
   font-size: 0.8rem;
   color: #6b7280;
-  margin-bottom: 0.35rem;
+}
+
+.time-budget-calendar-yesterday-memo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #6b7280;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+.time-budget-calendar-yesterday-memo-btn:hover {
+  color: #374151;
+  background: rgba(0, 0, 0, 0.06);
+}
+.time-budget-calendar-yesterday-memo-btn .time-budget-calendar-yesterday-memo-icon {
+  display: block;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+}
+
+.time-budget-yesterday-memo-box {
+  width: 100%;
+  margin-top: 0.5rem;
+  text-align: left;
+}
+.time-budget-yesterday-memo-box[hidden] {
+  display: none !important;
+}
+.time-budget-yesterday-memo-content {
+  padding: 0.5rem 0.6rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #475569;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 120px;
+  overflow-y: auto;
 }
 
 .calendar-1day-budget-top-row .calendar-1day-budget-achievement-card {
