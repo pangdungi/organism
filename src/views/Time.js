@@ -3877,12 +3877,17 @@ export function render() {
     panel.className = "time-task-log-task-dropdown-panel";
     panel.hidden = true;
     let value = "";
-    function renderPanel() {
-      panel.innerHTML = "";
+    let searchQuery = "";
+
+    function renderOptions(container, filter) {
+      container.innerHTML = "";
       const allTasks = getFullTaskOptions();
-      const tasks = allTasks
-        .filter((t) => !(t.name || "").includes(" > "))
-        .sort((a, b) => (a.name || "").localeCompare(b.name || "", "ko"));
+      let tasks = allTasks.filter((t) => !(t.name || "").includes(" > "));
+      if (filter) {
+        const q = filter.toLowerCase();
+        tasks = tasks.filter((t) => (t.name || "").toLowerCase().includes(q));
+      }
+      tasks.sort((a, b) => (a.name || "").localeCompare(b.name || "", "ko"));
       tasks.forEach((t) => {
         const row = document.createElement("div");
         row.className = "time-task-log-task-dropdown-option";
@@ -3908,12 +3913,39 @@ export function render() {
           panel.hidden = true;
           onTaskSelectedForLog(value);
         });
-        panel.appendChild(row);
+        container.appendChild(row);
       });
     }
+
+    function renderPanel() {
+      panel.innerHTML = "";
+      const searchWrap = document.createElement("div");
+      searchWrap.className = "time-task-log-task-dropdown-search-wrap";
+      const searchInput = document.createElement("input");
+      searchInput.type = "text";
+      searchInput.placeholder = "과제 검색...";
+      searchInput.className = "time-task-log-task-dropdown-search";
+      searchInput.value = searchQuery;
+      searchInput.setAttribute("autocomplete", "off");
+      searchWrap.appendChild(searchInput);
+      panel.appendChild(searchWrap);
+      const optionsContainer = document.createElement("div");
+      optionsContainer.className = "time-task-log-task-dropdown-options";
+      panel.appendChild(optionsContainer);
+      searchInput.addEventListener("input", () => {
+        searchQuery = searchInput.value.trim();
+        renderOptions(optionsContainer, searchQuery);
+      });
+      searchInput.addEventListener("click", (e) => e.stopPropagation());
+      searchInput.addEventListener("keydown", (e) => e.stopPropagation());
+      renderOptions(optionsContainer, searchQuery);
+    }
+
     trigger.addEventListener("click", () => {
+      searchQuery = "";
       renderPanel();
       panel.hidden = !panel.hidden;
+      if (!panel.hidden) panel.querySelector(".time-task-log-task-dropdown-search")?.focus();
     });
     document.addEventListener("click", (e) => {
       if (!wrap.contains(e.target)) panel.hidden = true;

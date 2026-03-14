@@ -3275,13 +3275,14 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
     }
     return { spans: normalized, maxLane: withLanes.maxLane };
   };
-  /** 겹치는 스팬에 레인 할당 - 과제가 2개 이상이면 항상 레인 고정, 각 과제는 자기 레인에 전체 기간 유지 */
+  /** 겹치는 스팬에 레인 할당. 연속된 과제(이전 종료 시각 = 다음 시작 시각)는 같은 레인에 연결해 한 줄로 표시 */
   const assignLanesToSpans = (spans) => {
     const laneEnds = [];
     let maxLane = 0;
     for (const span of spans) {
       let lane = 0;
-      while (lane < laneEnds.length && laneEnds[lane] > span.startMin) lane++;
+      /* 이전 과제 종료 시각과 현재 과제 시작 시각이 같거나 1분 이내면 같은 레인(연속)으로 처리 */
+      while (lane < laneEnds.length && span.startMin < laneEnds[lane] - 1) lane++;
       if (lane >= laneEnds.length) laneEnds.push(span.endMin);
       else laneEnds[lane] = span.endMin;
       span.lane = lane;

@@ -10406,13 +10406,43 @@ body.kpi-resizing {
   left: 0;
   right: 0;
   margin-top: 2px;
-  max-height: 200px;
-  overflow-y: auto;
+  max-height: 240px;
+  display: flex;
+  flex-direction: column;
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   z-index: 10;
+}
+
+.time-task-log-task-dropdown-search-wrap {
+  flex-shrink: 0;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.time-task-log-task-dropdown-search {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.875rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.time-task-log-task-dropdown-search:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.time-task-log-task-dropdown-options {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  max-height: 180px;
 }
 
 .time-task-log-task-dropdown-option {
