@@ -5940,19 +5940,20 @@ export function render() {
   function getStoredImproveNotes(dateKey) {
     try {
       const raw = localStorage.getItem(TIME_IMPROVE_FOCUS_NOTES_KEY);
-      if (!raw) return { rootCause: "", countermeasures: "", planReality: "", importantInvest: "" };
+      if (!raw) return { rootCause: "", countermeasures: "", planReality: "", importantInvest: "", investReduce: "" };
       const obj = JSON.parse(raw);
       const entry = obj[dateKey];
       if (!entry || typeof entry !== "object")
-        return { rootCause: "", countermeasures: "", planReality: "", importantInvest: "" };
+        return { rootCause: "", countermeasures: "", planReality: "", importantInvest: "", investReduce: "" };
       return {
         rootCause: entry.rootCause || "",
         countermeasures: entry.countermeasures || "",
         planReality: entry.planReality || "",
         importantInvest: entry.importantInvest || "",
+        investReduce: entry.investReduce || "",
       };
     } catch (_) {}
-    return { rootCause: "", countermeasures: "", planReality: "", importantInvest: "" };
+    return { rootCause: "", countermeasures: "", planReality: "", importantInvest: "", investReduce: "" };
   }
 
   function setStoredImproveNote(dateKey, field, text) {
@@ -5960,7 +5961,7 @@ export function render() {
       const raw = localStorage.getItem(TIME_IMPROVE_FOCUS_NOTES_KEY);
       const obj = raw ? JSON.parse(raw) : {};
       if (!obj[dateKey] || typeof obj[dateKey] !== "object")
-        obj[dateKey] = { rootCause: "", countermeasures: "", planReality: "", importantInvest: "" };
+        obj[dateKey] = { rootCause: "", countermeasures: "", planReality: "", importantInvest: "", investReduce: "" };
       obj[dateKey][field] = (text || "").trim();
       localStorage.setItem(TIME_IMPROVE_FOCUS_NOTES_KEY, JSON.stringify(obj));
     } catch (_) {}
@@ -6129,6 +6130,8 @@ export function render() {
       byTaskThief[name].price += price;
     });
     const thiefTableRows = Object.values(byTaskThief).sort((a, b) => b.hours - a.hours);
+    const totalThiefHours = thiefTableRows.reduce((s, r) => s + r.hours, 0);
+    const totalThiefPrice = thiefTableRows.reduce((s, r) => s + r.price, 0);
     const thiefTableHtml =
       thiefTableRows.length > 0
         ? `<div class="time-improve-thief-table-wrap"><table class="time-improve-important-table time-audit-thief-table"><thead><tr><th>과제명</th><th>실제 보낸 시간</th><th>시간의 가치</th></tr></thead><tbody>${thiefTableRows
@@ -6138,6 +6141,12 @@ export function render() {
             )
             .join("")}</tbody></table></div>`
         : "<p class=\"time-improve-important-empty\">해당 날짜 비생산적 기록 없음</p>";
+    const investSummaryHtml =
+      `<div class="time-improve-invest-summary">
+        <div class="time-improve-invest-summary-row"><span class="time-improve-invest-summary-label">실제 보낸 시간 합계</span><span class="time-improve-invest-summary-value">${formatHoursToHHMM(totalThiefHours)}</span></div>
+        <div class="time-improve-invest-summary-row"><span class="time-improve-invest-summary-label">시간의 가치 합계</span><span class="time-improve-invest-summary-value time-improve-invest-summary-value-bold">${formatPrice(totalThiefPrice)}</span></div>
+      </div>`;
+    const investMentText = `이 <strong>${formatPrice(totalThiefPrice)}원</strong>만큼의 돈을 내고 쓸만큼 가치있는 활동들이었나요?`;
 
     const eventsListHtml =
       allEvents.length === 0
@@ -6184,19 +6193,32 @@ export function render() {
         <div class="time-improve-quadrant time-improve-quadrant-important">
           <h3 class="time-improve-section-title">3. 중요한일에 더 많은 시간 쓰기</h3>
           <p class="time-improve-period">${periodLabel}</p>
-          <div class="time-improve-important-priority">${priorityTableImportantHtml}</div>
-          <div class="time-improve-important-thief">
-            <h4 class="time-improve-input-label">시간 낭비 내역</h4>
-            <div class="time-improve-thief-inner">${thiefTableHtml}</div>
-          </div>
-          <div class="time-improve-important-invest">
-            <h4 class="time-improve-input-label">어떻게 하면 비생산적 시간을 줄이고 중요한 시간에 더 투자할 수 있는가?</h4>
-            <div class="time-improve-answer-scroll">
-              <textarea class="time-improve-answer time-improve-important-invest-input" rows="3"></textarea>
+          <div class="time-improve-important-scroll">
+            <div class="time-improve-important-priority">${priorityTableImportantHtml}</div>
+            <div class="time-improve-important-invest">
+              <h4 class="time-improve-input-label">당신은 오늘 중요한 일에 시간을 더 많이 썼나요? 아님 중요하지 않은 일에 더 많은 시간을 썼나요?</h4>
+              <div class="time-improve-answer-scroll">
+                <textarea class="time-improve-answer time-improve-important-invest-input" rows="3"></textarea>
+              </div>
             </div>
           </div>
         </div>
-        <div class="time-improve-quadrant time-improve-quadrant-empty"></div>
+        <div class="time-improve-quadrant time-improve-quadrant-invest">
+          <h3 class="time-improve-section-title">4. 비생산적 시간 아껴서 투자하기</h3>
+          <p class="time-improve-period">${periodLabel}</p>
+          <div class="time-improve-invest-scroll">
+            <div class="time-improve-invest-thief">
+              <div class="time-improve-thief-inner">${thiefTableHtml}</div>
+              ${investSummaryHtml}
+            </div>
+            <div class="time-improve-invest-ment">
+              <p class="time-improve-invest-ment-text">${investMentText}</p>
+              <div class="time-improve-answer-scroll">
+                <textarea class="time-improve-answer time-improve-invest-reduce-input" placeholder="비생산적 시간을 줄이기 위한 방법을 적어보세요." rows="3"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     `;
 
@@ -6223,6 +6245,12 @@ export function render() {
       importantInvestEl.value = savedNotes.importantInvest;
       importantInvestEl.addEventListener("input", () => setStoredImproveNote(dateKey, "importantInvest", importantInvestEl.value));
       importantInvestEl.addEventListener("blur", () => setStoredImproveNote(dateKey, "importantInvest", importantInvestEl.value));
+    }
+    const investReduceEl = wrap.querySelector(".time-improve-invest-reduce-input");
+    if (investReduceEl) {
+      investReduceEl.value = savedNotes.investReduce;
+      investReduceEl.addEventListener("input", () => setStoredImproveNote(dateKey, "investReduce", investReduceEl.value));
+      investReduceEl.addEventListener("blur", () => setStoredImproveNote(dateKey, "investReduce", investReduceEl.value));
     }
     contentWrap.appendChild(wrap);
   }
@@ -6621,7 +6649,7 @@ export function render() {
           })()}
           </div>
           <div class="time-audit-region time-audit-region-achievement">
-            <div class="time-audit-region-title">7. 생산성 영역</div>
+            <div class="time-audit-region-title">7. 오늘 내 하루 한눈에 보기</div>
             ${(() => {
               const concTop = padTop;
               const concBottom = padTop + plotH;
