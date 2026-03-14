@@ -604,10 +604,6 @@ export function render() {
   h.className = "work-schedule-title";
   h.textContent = "근무표";
   header.appendChild(h);
-  const desc = document.createElement("p");
-  desc.className = "work-schedule-desc";
-  desc.textContent = "근무 시간, 유형, 일정을 기록하고 메모를 남기세요.";
-  header.appendChild(desc);
   el.appendChild(header);
 
   const viewTabs = document.createElement("div");

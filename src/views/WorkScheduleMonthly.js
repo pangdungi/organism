@@ -45,10 +45,15 @@ function getDaysInMonth(year, month) {
   return days;
 }
 
+/** 월요일 시작 (0=월, 6=일) */
+function getMondayBasedDow(date) {
+  return (date.getDay() + 6) % 7;
+}
+
 function getCalendarGrid(year, month) {
   const first = new Date(year, month, 1);
   const last = new Date(year, month + 1, 0);
-  const startDow = first.getDay();
+  const startDow = getMondayBasedDow(first);
   const totalDays = last.getDate();
 
   const grid = [];
@@ -74,7 +79,7 @@ function formatDateKey(date) {
   return date.toISOString().slice(0, 10);
 }
 
-const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
+const DAY_NAMES = ["월", "화", "수", "목", "금", "토", "일"];
 const MONTH_NAMES_EN = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",

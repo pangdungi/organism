@@ -1662,9 +1662,18 @@ function isOverdue(dueStr) {
 }
 
 export function render(options = {}) {
-  const { hideToolbar = false, enableDragToCalendar = false, enableDragToEisenhower = false, initialActiveTabIndex = 0, eisenhowerFilter = "", eisenhowerSidebarFirst = false } = options;
+  const { hideToolbar = false, hideHeader = false, enableDragToCalendar = false, enableDragToEisenhower = false, initialActiveTabIndex = 0, eisenhowerFilter = "", eisenhowerSidebarFirst = false } = options;
   const el = document.createElement("div");
   el.className = "app-tab-panel-content todo-list-view";
+
+  const header = document.createElement("div");
+  header.className = "todo-list-header";
+  header.hidden = hideToolbar || hideHeader;
+  const titleEl = document.createElement("h2");
+  titleEl.className = "todo-list-title";
+  titleEl.textContent = "할일/일정";
+  header.appendChild(titleEl);
+  el.appendChild(header);
 
   const toolbar = document.createElement("div");
   toolbar.className = "todo-list-toolbar";

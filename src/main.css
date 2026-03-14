@@ -789,10 +789,29 @@ body {
   flex-direction: column;
 }
 
-/* 시간가계부: 전체 표 고정, 테이블 내부만 가로 스크롤 (열고정 셀만 고정) */
+/* 시간가계부: 영역 전체 고정, 콘텐츠 영역만 세로 스크롤 */
 .app-main:has(.time-ledger-view) {
-  overflow-x: hidden;
-  overscroll-behavior-x: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.app-main:has(.time-ledger-view) .app-tab-panel {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-main:has(.time-ledger-view) .app-tab-panel > .time-ledger-view {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
 }
 
 .time-ledger-container {
@@ -7257,6 +7276,16 @@ body {
   flex-direction: column;
 }
 
+.todo-list-header {
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+}
+.todo-list-header .todo-list-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
 .todo-list-view .kpi-view-content-wrap {
   flex: 1;
   min-height: 0;
@@ -9313,9 +9342,8 @@ body.kpi-resizing {
 
 /* ----- 시간가계부 데일리 입력용 ----- */
 .time-ledger-view {
-  padding: 1.5rem;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow: hidden;
   overscroll-behavior-x: none;
 }
 
@@ -11599,9 +11627,12 @@ body.kpi-resizing {
 }
 
 .time-view-content-wrap {
+  flex: 1;
+  min-height: 0;
   margin-bottom: 0.5rem;
   max-width: 100%;
   overflow-x: hidden;
+  overflow-y: auto;
   overscroll-behavior-x: none;
 }
 
@@ -17943,12 +17974,28 @@ body.kpi-resizing {
 }
 
 .calendar-view {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding: 1rem;
   font-family: var(
     --app-font-family,
     "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
+}
+
+.calendar-view-header {
+  flex-shrink: 0;
+  margin-bottom: 0.5rem;
+}
+.calendar-view-header .calendar-view-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #333;
 }
 
 .calendar-view .calendar-tabs {
@@ -18188,7 +18235,7 @@ body.kpi-resizing {
   flex-direction: column;
   gap: 0.5rem;
   flex-shrink: 0;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
 }
 .calendar-view-top-row .calendar-monthly-tabs-wrap {
   margin-bottom: 0;
@@ -18237,7 +18284,7 @@ body.kpi-resizing {
   flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
-  padding: 0.5rem;
+  padding: 0.25rem 0.5rem 0.5rem;
 }
 
 .calendar-monthly-nav {
@@ -20134,7 +20181,7 @@ body.kpi-resizing {
 .calendar-view-top-row--1day,
 .calendar-view-top-row--todo {
   flex-shrink: 0;
-  padding: 0 1rem 0.5rem;
+  padding: 0 0 0.25rem 0;
 }
 .calendar-view-eisenhower.calendar-monthly-layout,
 .calendar-1day-view.calendar-monthly-layout,

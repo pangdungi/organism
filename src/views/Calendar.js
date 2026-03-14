@@ -4515,7 +4515,7 @@ function renderTodoView(tabsElement) {
 
   const todoContent = document.createElement("div");
   todoContent.className = "calendar-todo-content";
-  const todoListEl = renderTodoList();
+  const todoListEl = renderTodoList({ hideHeader: true });
   todoContent.appendChild(todoListEl);
   todoMain.appendChild(todoContent);
 
@@ -5780,6 +5780,14 @@ function renderPlaceholderView(tabsElement, label) {
 export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content calendar-view";
+
+  const header = document.createElement("div");
+  header.className = "calendar-view-header";
+  const titleEl = document.createElement("h2");
+  titleEl.className = "calendar-view-title";
+  titleEl.textContent = "할일/일정";
+  header.appendChild(titleEl);
+  el.appendChild(header);
 
   const tabs = document.createElement("div");
   tabs.className = "time-view-tabs calendar-tabs";

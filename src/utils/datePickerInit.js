@@ -9,7 +9,7 @@ import "flatpickr/dist/flatpickr.min.css";
 const inited = new WeakSet();
 
 const defaultOptions = {
-  locale: { ...Korean, firstDayOfWeek: 0 },
+  locale: { ...Korean, firstDayOfWeek: 1 },
   allowInput: true,
   disableMobile: false,
   onReady(selectedDates, dateStr, instance) {
