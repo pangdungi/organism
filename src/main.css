@@ -12844,6 +12844,20 @@ body.kpi-resizing {
   padding: 0.5rem 0;
 }
 
+.time-audit-achievement-content .time-audit-chart-wrap {
+  margin-top: 0.5rem;
+}
+
+.time-audit-achievement-empty {
+  padding: 1.5rem 1rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #9ca3af;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0;
+}
+
 /* 오딧 6. 가용시간 – 4열 동일 너비 */
 .time-audit-available-content {
   display: flex;

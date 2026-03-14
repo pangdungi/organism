@@ -6335,6 +6335,11 @@ export function render() {
         }))
         .filter((e) => e.hours != null && e.hours >= 0 && e.hours < 24);
       const hasFocus = eventsWithHours.length > 0;
+      const achRaw = (row.achievement || "").toString().trim().replace(/%/g, "");
+      const achNum = achRaw === "" ? null : (() => {
+        const n = parseInt(achRaw, 10);
+        return Number.isNaN(n) ? null : Math.max(0, Math.min(150, n));
+      })();
       byDate[d].rows.push({
         taskName: (row.taskName || "").trim() || "—",
         startH,
@@ -6342,6 +6347,7 @@ export function render() {
         events: eventsWithHours,
         hasFocus,
         category: (row.category || "").trim() || "",
+        achievement: achNum,
       });
       eventsWithHours.forEach((ev) => {
         byDate[d].events.push({ hours: ev.hours, type: ev.type || "" });
@@ -6662,7 +6668,73 @@ export function render() {
           </div>
           <div class="time-audit-region time-audit-region-achievement">
             <div class="time-audit-region-title">7. 성취능력 영역</div>
-            <div class="time-audit-achievement-content"></div>
+            ${(() => {
+              const achievementRows = dayRows.filter((r) => r.achievement != null && r.taskName && r.taskName !== "—");
+              const concTop = padTop;
+              const concBottom = padTop + plotH;
+              const toY = (pct) => concBottom - (Math.max(0, Math.min(150, pct)) / 150) * plotH;
+              const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+              const clipId = "time-audit-ach-clip-" + String(dateStr).replace(/[^a-z0-9-]/gi, "-");
+              const minBarWidthForLabel = plotW * (1.5 / 24);
+              const achievementBarsAndLabels = achievementRows.map((r) => {
+                const x1 = toX(r.startH);
+                const x2 = toX(r.endH);
+                const w = Math.max(2, x2 - x1);
+                const pct = r.achievement;
+                const barH = (pct / 150) * plotH;
+                const y = concBottom - barH;
+                const color = getCategoryColor ? getCategoryColor(r.category) : "#94a3b8";
+                const rectStr = `<rect x="${x1}" y="${y}" width="${w}" height="${barH}" fill="${color}" stroke="rgba(0,0,0,0.08)" stroke-width="0.5" title="${esc(r.taskName)} ${pct}%"/>`;
+                const fitLabel = w >= minBarWidthForLabel;
+                const labelX = x1 + w / 2;
+                const labelY = y + barH / 2;
+                const textStr = fitLabel && barH >= 14
+                  ? `<text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" font-size="6" fill="#374151" class="time-audit-bar-inner-label" transform="rotate(-90, ${labelX}, ${labelY})">${esc(r.taskName)}</text>`
+                  : "";
+                const timeRange = `${String(Math.floor(r.startH)).padStart(2, "0")}:${String(Math.round((r.startH % 1) * 60)).padStart(2, "0")}~${String(Math.floor(r.endH)).padStart(2, "0")}:${String(Math.round((r.endH % 1) * 60)).padStart(2, "0")}`;
+                return { rectStr, textStr, fitLabel, r, timeRange, barH };
+              });
+              const barRects = achievementBarsAndLabels.map((o) => o.rectStr + o.textStr).join("");
+              const achievementLegendItems = achievementBarsAndLabels
+                .filter((o) => !o.fitLabel || o.barH < 14)
+                .map((o) => `<span class="time-audit-legend-item" style="--legend-color:${getCategoryColor ? getCategoryColor(o.r.category) : "#94a3b8"}">${esc(o.r.taskName)} (${o.timeRange}) ${o.r.achievement}%</span>`)
+                .join("");
+              const yTicks = [0, 50, 100, 150];
+              const yLabels = yTicks.map((pct) => {
+                const y = toY(pct);
+                return `<text x="${padLeft - 6}" y="${y + 3}" text-anchor="end" font-size="6" fill="#6b7280">${pct}%</text>`;
+              }).join("");
+              const xLabels = [];
+              for (let h = 0; h <= 24; h += 2) {
+                xLabels.push({ x: toX(h), label: `${String(h).padStart(2, "0")}:00` });
+              }
+              const xLabelStr = xLabels.map((l) => `<text x="${l.x}" y="${concBottom + 10}" text-anchor="middle" font-size="6" fill="#6b7280">${l.label}</text>`).join("");
+              if (achievementRows.length === 0) {
+                return `<div class="time-audit-achievement-content"><div class="time-audit-achievement-empty">과제+성취능력이 있는 기록이 없습니다.</div></div>`;
+              }
+              return `<div class="time-audit-achievement-content">
+                <div class="time-audit-chart-wrap">
+                  <svg class="time-audit-svg time-audit-achievement-svg" viewBox="0 0 ${chartW} ${chartH}" preserveAspectRatio="xMidYMid meet">
+                    <defs><clipPath id="${clipId}"><rect x="${padLeft}" y="${padTop}" width="${plotW}" height="${plotH}"/></clipPath></defs>
+                    ${Array.from({ length: 25 }, (_, i) => {
+                      const x = toX(i);
+                      return `<line x1="${x}" y1="${padTop}" x2="${x}" y2="${concBottom}" stroke="#e5e7eb" stroke-width="0.25" stroke-dasharray="4,3"/>`;
+                    }).join("")}
+                    ${[50, 100, 150].map((pct) => {
+                      const y = toY(pct);
+                      return `<line x1="${padLeft}" y1="${y}" x2="${padLeft + plotW}" y2="${y}" stroke="#e5e7eb" stroke-width="0.25" stroke-dasharray="3,3"/>`;
+                    }).join("")}
+                    <line x1="${padLeft}" y1="${concBottom}" x2="${padLeft + plotW}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
+                    <line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
+                    <text x="${padLeft - 28}" y="${(padTop + concBottom) / 2 - 12}" text-anchor="middle" font-size="7" fill="#6b7280" transform="rotate(-90, ${padLeft - 28}, ${(padTop + concBottom) / 2 - 12})">성취능력</text>
+                    <g clip-path="url(#${clipId})">${barRects}</g>
+                    ${yLabels}
+                    ${xLabelStr}
+                  </svg>
+                </div>
+                ${achievementLegendItems ? `<div class="time-audit-task-legend">${achievementLegendItems}</div>` : ""}
+              </div>`;
+            })()}
           </div>
         `;
         wrap.appendChild(block);
