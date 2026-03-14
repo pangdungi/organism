@@ -155,6 +155,7 @@ export function syncHabitTrackerLogs() {
       taskByDate.forEach(({ taskName, dateRaw }) => {
         const matchingKpis = kpis.filter((k) => (k.name || "").trim() === taskName);
         matchingKpis.forEach((kpi) => {
+        if (!kpi.needHabitTracker) return;
         const logKey = `${kpi.id}|${dateRaw}`;
         if (existingLogKeys.has(logKey)) return;
 
