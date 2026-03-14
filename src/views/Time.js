@@ -264,7 +264,7 @@ function getAuditTimeThiefHtml(dateStr, filtered, hourlyRate) {
       <div class="time-audit-thief-summary-label">오늘 낭비한 시간의 가치</div>
       <div class="time-audit-thief-summary-num">${formatPrice(totalWastedValue)}원</div>
     </div>`;
-  const rightHalf = `<div class="time-audit-thief-right-half"><div class="time-audit-thief-center">${pieHtml}</div><div class="time-audit-thief-right time-audit-thief-time-wrap">${timeBoxHtml}</div><div class="time-audit-thief-right time-audit-thief-value-wrap">${valueBoxHtml}</div></div>`;
+  const rightHalf = `<div class="time-audit-thief-right-half"><div class="time-audit-thief-center">${pieHtml}</div><div class="time-audit-thief-summaries"><div class="time-audit-thief-right time-audit-thief-time-wrap">${timeBoxHtml}</div><div class="time-audit-thief-right time-audit-thief-value-wrap">${valueBoxHtml}</div></div></div>`;
   return `<div class="time-audit-thief-content"><div class="time-audit-thief-left">${tableHtml}</div>${rightHalf}</div>`;
 }
 
@@ -352,7 +352,7 @@ function getAuditTimeInvestmentHtml(dateStr, filtered, hourlyRate) {
       <div class="time-audit-thief-summary-label">오늘 번 돈</div>
       <div class="time-audit-thief-summary-num">${formatPrice(totalEarned)}원</div>
     </div>`;
-  const rightHalf = `<div class="time-audit-thief-right-half"><div class="time-audit-thief-center">${pieHtml}</div><div class="time-audit-thief-right time-audit-thief-time-wrap">${timeBoxHtml}</div><div class="time-audit-thief-right time-audit-thief-value-wrap">${valueBoxHtml}</div></div>`;
+  const rightHalf = `<div class="time-audit-thief-right-half"><div class="time-audit-thief-center">${pieHtml}</div><div class="time-audit-thief-summaries"><div class="time-audit-thief-right time-audit-thief-time-wrap">${timeBoxHtml}</div><div class="time-audit-thief-right time-audit-thief-value-wrap">${valueBoxHtml}</div></div></div>`;
   return `<div class="time-audit-thief-content time-audit-investment-content"><div class="time-audit-thief-left">${tableHtml}</div>${rightHalf}</div>`;
 }
 
@@ -383,8 +383,8 @@ function getAuditAvailableTimeHtml(dateStr, filtered, hourlyRate) {
   const boxes = [
     { label: "가용시간", value: formatHoursToReadable(availableHours), class: "time-audit-available-box-available" },
     { label: "오늘 하루의 가치", value: valueText, class: valueClass },
-    { label: "총 수면시간", value: formatHoursToReadable(sleepHours), class: "time-audit-available-box-sleep" },
     { label: "총 근무시간", value: formatHoursToReadable(workHours), class: "time-audit-available-box-work" },
+    { label: "총 수면시간", value: formatHoursToReadable(sleepHours), class: "time-audit-available-box-sleep" },
   ];
   const items = boxes
     .map(
@@ -2266,7 +2266,8 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   achievementTd.className = "time-cell time-cell-achievement";
   const achievementSpan = document.createElement("span");
   achievementSpan.className = "time-display-achievement";
-  achievementSpan.textContent = rowData.achievement || "";
+  const achVal = (rowData.achievement || "").trim().replace(/%/g, "");
+  achievementSpan.textContent = achVal !== "" && !Number.isNaN(parseInt(achVal, 10)) ? `${achVal}%` : "";
   achievementTd.appendChild(achievementSpan);
   tr.appendChild(achievementTd);
 
@@ -3253,6 +3254,13 @@ export function render() {
           </div>
         </div>
         <div class="time-task-log-scroll-area">
+        <div class="time-task-log-field time-task-log-achievement-field">
+          <label>성취능력</label>
+          <div class="time-task-log-achievement-row">
+            <input type="number" class="time-task-log-achievement" min="-50" max="150" placeholder="-50~+150" step="1" inputmode="numeric" />
+            <span class="time-task-log-achievement-unit">%</span>
+          </div>
+        </div>
         <div class="time-task-log-kpi-todos-section" hidden>
           <h4 class="time-task-log-kpi-todos-title">할일 목록</h4>
           <div class="time-task-log-kpi-todos-list"></div>
@@ -4747,6 +4755,8 @@ export function render() {
     setEndFromDatetime("");
     updateEndTimeClearVisibility();
     if (taskLogFeedbackInput) taskLogFeedbackInput.value = "";
+    const achievementInputAdd = taskLogModal.querySelector(".time-task-log-achievement");
+    if (achievementInputAdd) achievementInputAdd.value = "";
     taskLogMemoTags = [];
     renderTaskLogTagPills();
     taskLogExpenseNameInput.value = "";
@@ -4838,6 +4848,16 @@ export function render() {
     const feedbackRaw = data.feedback || "";
     const memoOnly = feedbackRaw.replace(/#[^\s#]+/g, "").trim();
     if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
+    const achievementInput = taskLogModal.querySelector(".time-task-log-achievement");
+    if (achievementInput) {
+      const v = data.achievement;
+      if (v !== undefined && v !== null && v !== "") {
+        const n = parseInt(String(v).replace(/%/g, ""), 10);
+        achievementInput.value = Number.isNaN(n) ? "" : Math.max(-50, Math.min(150, n));
+      } else {
+        achievementInput.value = "";
+      }
+    }
     taskLogMemoTags = Array.isArray(data.memoTags) ? [...data.memoTags] : parseTagsFromFeedback(feedbackRaw);
     renderTaskLogTagPills();
     if (taskLogTagInput) taskLogTagInput.value = "";
@@ -4854,6 +4874,16 @@ export function render() {
     if (taskLogEmotionQ4) taskLogEmotionQ4.value = data.q4 ?? "";
     if (taskLogEmotionToggleInput) taskLogEmotionToggleInput.checked = false;
     if (taskLogEmotionFields) taskLogEmotionFields.hidden = true;
+    const taskNameForToggles = (data.taskName || "").trim();
+    if (EXPENSE_TASK_NAMES.includes(taskNameForToggles)) {
+      if (taskLogExpenseToggleInput) taskLogExpenseToggleInput.checked = true;
+      if (taskLogExpenseFields) taskLogExpenseFields.hidden = false;
+    }
+    const hasEmotionData = (data.q1 || data.q2 || data.q3 || data.q4) || data.taskName === EMOTION_TASK_POSITIVE || data.taskName === EMOTION_TASK_NEGATIVE;
+    if (hasEmotionData) {
+      if (taskLogEmotionToggleInput) taskLogEmotionToggleInput.checked = true;
+      if (taskLogEmotionFields) taskLogEmotionFields.hidden = false;
+    }
     const focusRaw = String(data.focus || "").trim();
     const defaultTime = (() => {
       const m = (data.startTime || "").match(/[T\s](\d{1,2}):(\d{2})/);
@@ -4946,6 +4976,16 @@ export function render() {
       ? buildFocusValueFromEvents(taskLogFocusEvents)
       : "";
 
+    const achievementInput = taskLogModal.querySelector(".time-task-log-achievement");
+    let achievementValue = "";
+    if (achievementInput && (achievementInput.value || "").trim() !== "") {
+      const n = parseInt(achievementInput.value.trim(), 10);
+      if (!Number.isNaN(n)) {
+        const clamped = Math.max(-50, Math.min(150, n));
+        achievementValue = String(clamped);
+      }
+    }
+
     const expenseToggleOn = taskLogExpenseToggleInput?.checked;
     if (expenseToggleOn) {
       const missing = [];
@@ -4969,7 +5009,6 @@ export function render() {
 
     if (editTr) {
       oldRowDataToRemove = editTr._rowData ? { ...editTr._rowData } : null;
-      const achievementValue = (editTr.querySelector(".time-display-achievement")?.textContent || "").trim();
       const newRowData = {
         taskName,
         startTime,
@@ -5040,7 +5079,7 @@ export function render() {
       );
       if (focusDisplay) focusDisplay.textContent = formatFocusForDisplay(focusValue);
       const achievementDisplay = editTr.querySelector(".time-cell-achievement .time-display-achievement");
-      if (achievementDisplay) achievementDisplay.textContent = achievementValue;
+      if (achievementDisplay) achievementDisplay.textContent = achievementValue ? `${achievementValue}%` : "";
       editTr._updatePrice?.();
     } else if (addCtx) {
       const ctx = addCtx;
@@ -5055,7 +5094,7 @@ export function render() {
         feedback,
         memoTags,
         focus: focusValue,
-        achievement: "",
+        achievement: achievementValue,
       };
       const tr = createRow(
         newRowData,
@@ -6459,8 +6498,15 @@ export function render() {
           <div class="time-audit-day-header">
             <span class="time-audit-day-label">${dateLabel}</span>
           </div>
+          <div class="time-audit-region time-audit-region-available">
+            <div class="time-audit-region-title">1. 가용시간</div>
+          ${(() => {
+            const hourlyRate = parseFloat(String(el.querySelector(".time-hourly-input")?.value || "0").replace(/,/g, "")) || 0;
+            return getAuditAvailableTimeHtml(dateStr, filtered, hourlyRate);
+          })()}
+          </div>
           <div class="time-audit-region time-audit-region-concentration">
-            <div class="time-audit-region-title">1. 집중력</div>
+            <div class="time-audit-region-title">2. 집중력</div>
           <div class="time-audit-row">
             <div class="time-audit-charts">
               <div class="time-audit-chart-wrap">
@@ -6488,7 +6534,7 @@ export function render() {
           </div>
           </div>
           <div class="time-audit-region time-audit-region-time-gap">
-            <div class="time-audit-region-title">2. 시간갭</div>
+            <div class="time-audit-region-title">3. 시간갭</div>
           ${(() => {
             const BASIC_TASKS = ["수면하기", "근무하기"];
             const storedGoals = getBudgetGoals(dateStr);
@@ -6573,7 +6619,7 @@ export function render() {
           })()}
           </div>
           <div class="time-audit-region time-audit-region-priority">
-            <div class="time-audit-region-title">3. 우선순위</div>
+            <div class="time-audit-region-title">4. 우선순위</div>
           ${(() => {
             const tasks = getTasksForAuditDate(dateStr);
             const EISENHOWER_ORDER = ["urgent-important", "important-not-urgent", "urgent-not-important", "not-urgent-not-important"];
@@ -6601,24 +6647,17 @@ export function render() {
           })()}
           </div>
           <div class="time-audit-region time-audit-region-time-thief">
-            <div class="time-audit-region-title">4. 시간낭비내역</div>
+            <div class="time-audit-region-title">5. 시간낭비내역</div>
           ${(() => {
             const hourlyRate = parseFloat(String(el.querySelector(".time-hourly-input")?.value || "0").replace(/,/g, "")) || 0;
             return getAuditTimeThiefHtml(dateStr, filtered, hourlyRate);
           })()}
           </div>
           <div class="time-audit-region time-audit-region-time-investment">
-            <div class="time-audit-region-title">5. 시간 투자 내역</div>
+            <div class="time-audit-region-title">6. 시간 투자 내역</div>
           ${(() => {
             const hourlyRate = parseFloat(String(el.querySelector(".time-hourly-input")?.value || "0").replace(/,/g, "")) || 0;
             return getAuditTimeInvestmentHtml(dateStr, filtered, hourlyRate);
-          })()}
-          </div>
-          <div class="time-audit-region time-audit-region-available">
-            <div class="time-audit-region-title">6. 가용시간</div>
-          ${(() => {
-            const hourlyRate = parseFloat(String(el.querySelector(".time-hourly-input")?.value || "0").replace(/,/g, "")) || 0;
-            return getAuditAvailableTimeHtml(dateStr, filtered, hourlyRate);
           })()}
           </div>
         `;
