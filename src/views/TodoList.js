@@ -82,6 +82,8 @@ function saveSectionTasks(sectionId, tasks) {
             eisenhower: t.eisenhower || "",
             done: !!t.done,
             itemType: t.itemType || "todo",
+            reminderDate: (t.reminderDate || "").trim(),
+            reminderTime: (t.reminderTime || "").trim(),
           },
         ]),
     );
@@ -100,6 +102,8 @@ function saveSectionTasks(sectionId, tasks) {
           eisenhower: fromDom.eisenhower || ex.eisenhower || "",
           done: fromDom.done,
           itemType: fromDom.itemType || ex.itemType || "todo",
+          reminderDate: fromDom.reminderDate || (ex.reminderDate || "").slice(0, 10) || "",
+          reminderTime: fromDom.reminderTime || ex.reminderTime || "",
         });
         domByTaskId.delete(tid);
       } else {
@@ -117,10 +121,12 @@ function saveSectionTasks(sectionId, tasks) {
         eisenhower: t.eisenhower || "",
         done: t.done,
         itemType: t.itemType || "todo",
+        reminderDate: t.reminderDate || "",
+        reminderTime: t.reminderTime || "",
       });
     });
     const toSave = merged
-      .map(({ taskId, name, startDate, dueDate, startTime, endTime, eisenhower, done, itemType }) => ({
+      .map(({ taskId, name, startDate, dueDate, startTime, endTime, eisenhower, done, itemType, reminderDate, reminderTime }) => ({
         taskId: taskId || "",
         name: (name || "").trim(),
         startDate: (startDate || "").slice(0, 10) || "",
@@ -130,6 +136,8 @@ function saveSectionTasks(sectionId, tasks) {
         eisenhower: eisenhower || "",
         done: !!done,
         itemType: itemType || "todo",
+        reminderDate: (reminderDate || "").slice(0, 10) || "",
+        reminderTime: reminderTime || "",
       }))
       .filter((t) => t.name !== "");
     obj[sectionId] = toSave;
@@ -158,6 +166,8 @@ function moveSectionTaskToSection(fromSectionId, taskId, targetSectionId, taskDa
       eisenhower: taskData.eisenhower || "",
       done: !!taskData.done,
       itemType: taskData.itemType || "todo",
+      reminderDate: (taskData.reminderDate || "").slice(0, 10) || "",
+      reminderTime: taskData.reminderTime || "",
     });
     localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
     return true;
@@ -186,6 +196,8 @@ function moveCustomSectionTaskToSection(fromSectionId, taskId, targetSectionId, 
       eisenhower: taskData.eisenhower || "",
       done: !!taskData.done,
       itemType: taskData.itemType || "todo",
+      reminderDate: (taskData.reminderDate || "").slice(0, 10) || "",
+      reminderTime: taskData.reminderTime || "",
     });
     localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(obj));
     return true;
@@ -266,6 +278,8 @@ function collectCustomSectionFromDOM(sectionsEl, sectionId) {
       eisenhower: eisenhowerSelect?.value || row.dataset.eisenhower || "",
       done: itemType === "todo" ? (doneCheck?.checked || false) : false,
       itemType,
+      reminderDate: row.dataset.reminderDate || "",
+      reminderTime: row.dataset.reminderTime || "",
     });
   });
   return tasks;
@@ -329,6 +343,8 @@ function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
           eisenhower,
           done,
           itemType,
+          reminderDate: row.dataset.reminderDate || "",
+          reminderTime: row.dataset.reminderTime || "",
         });
       }
     });
@@ -897,6 +913,8 @@ function createTaskRow(taskData = {}, options = {}) {
     isKpiTodo = false,
     kpiTodoId = "",
     storageKey = "",
+    reminderDate = "",
+    reminderTime = "",
   } = taskData;
   const { showCategoryCol = false, isSubtask = false, taskId: optTaskId, showCheckboxTypeMenu = null, enableDragToCalendar = false, enableDragToEisenhower = false, overdueColumnOrder = false, eisenhowerSidebarFirst = false } = options;
   const taskId = optTaskId || getTaskId(taskData);
@@ -912,6 +930,8 @@ function createTaskRow(taskData = {}, options = {}) {
   if (!isSubtask) tr.dataset.taskId = taskId;
   tr.dataset.startTime = startTime || "";
   tr.dataset.endTime = endTime || "";
+  tr.dataset.reminderDate = reminderDate || "";
+  tr.dataset.reminderTime = reminderTime || "";
   if (isKpiTodo) {
     tr.classList.add("todo-task-row--kpi");
     tr.dataset.isKpiTodo = "true";
@@ -1213,6 +1233,101 @@ function createTaskRow(taskData = {}, options = {}) {
   dueWrap.appendChild(dueInput);
   dueTd.appendChild(dueWrap);
 
+  const reminderTd = document.createElement("td");
+  reminderTd.className = "todo-cell-reminder";
+  const reminderBtn = document.createElement("button");
+  reminderBtn.type = "button";
+  reminderBtn.className = "todo-reminder-btn";
+  reminderBtn.title = "리마인더";
+  reminderBtn.innerHTML = `<svg class="todo-reminder-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 19.001c0 2.209 1.791 4 4 4s4-1.791 4-4"/><path d="m12 5.999v6"/><path d="m9 8.999h6"/><path d="m22 19.001-3-5.25v-5.752c0-3.866-3.134-7-7-7s-7 3.134-7 7v5.751l-3 5.25h20z"/></svg>`;
+  const reminderDisplaySpan = document.createElement("span");
+  reminderDisplaySpan.className = "todo-reminder-display";
+  function formatReminderDisplay(rDate, rTime) {
+    if (!(rDate || "").trim()) return "";
+    const parts = String(rDate).trim().split(/[-/]/);
+    const dateStr = parts.length >= 3 ? `${parts[1]}/${parts[2]}` : rDate;
+    return (rTime || "").trim() ? `${dateStr} ${(rTime || "").trim()}` : dateStr;
+  }
+  reminderDisplaySpan.textContent = formatReminderDisplay(reminderDate, reminderTime);
+  reminderBtn.addEventListener("click", () => {
+    const taskName = (nameInput.value || "").trim() || "(과제명 없음)";
+    const defaultDate = (tr.dataset.reminderDate || "").trim() || (dueInput.value || "").trim();
+    const defaultTime = (tr.dataset.reminderTime || "").trim();
+    const modal = document.createElement("div");
+    modal.className = "dream-kpi-modal todo-reminder-modal";
+    const escapeHtml = (s) => {
+      const d = document.createElement("div");
+      d.textContent = s;
+      return d.innerHTML;
+    };
+    modal.innerHTML = `
+      <div class="dream-kpi-backdrop"></div>
+      <div class="dream-kpi-panel">
+        <div class="dream-kpi-modal-header">
+          <h3 class="dream-kpi-modal-title">리마인더</h3>
+          <button type="button" class="dream-kpi-modal-close" title="닫기">×</button>
+        </div>
+        <div class="todo-reminder-form">
+          <div class="todo-reminder-field">
+            <label class="todo-reminder-label">과제명</label>
+            <p class="todo-reminder-task-name">${escapeHtml(taskName)}</p>
+          </div>
+          <div class="todo-reminder-field">
+            <label class="todo-reminder-label">날짜</label>
+            <input type="date" class="todo-reminder-date" value="${escapeHtml(defaultDate)}" />
+          </div>
+          <div class="todo-reminder-field">
+            <label class="todo-reminder-label">시간</label>
+            <input type="text" class="todo-reminder-time" placeholder="예: 14:30" autocomplete="off" value="${escapeHtml(defaultTime)}" />
+          </div>
+          <button type="button" class="dream-kpi-submit todo-reminder-save">설정</button>
+        </div>
+      </div>
+    `;
+    const close = () => modal.remove();
+    modal.querySelector(".dream-kpi-backdrop").addEventListener("click", close);
+    modal.querySelector(".dream-kpi-modal-close").addEventListener("click", close);
+    const timeInput = modal.querySelector(".todo-reminder-time");
+    function formatTimeInput(val) {
+      const digits = String(val || "").replace(/\D/g, "");
+      if (digits.length >= 4) {
+        const h = digits.slice(0, 2);
+        const m = digits.slice(2, 4);
+        return `${h}:${m}`;
+      }
+      if (digits.length === 2) return digits;
+      return digits;
+    }
+    timeInput.addEventListener("input", () => {
+      const raw = timeInput.value;
+      const digits = raw.replace(/\D/g, "");
+      if (digits.length >= 4) {
+        const pos = timeInput.selectionStart;
+        timeInput.value = formatTimeInput(raw);
+        timeInput.setSelectionRange(5, 5);
+      }
+    });
+    timeInput.addEventListener("blur", () => {
+      const digits = (timeInput.value || "").replace(/\D/g, "");
+      if (digits.length >= 2) timeInput.value = formatTimeInput(timeInput.value);
+    });
+    modal.querySelector(".todo-reminder-save").addEventListener("click", () => {
+      const dateVal = (modal.querySelector(".todo-reminder-date").value || "").trim();
+      let timeVal = (timeInput.value || "").trim();
+      const digits = timeVal.replace(/\D/g, "");
+      if (digits.length >= 2) timeVal = formatTimeInput(timeVal);
+      tr.dataset.reminderDate = dateVal;
+      tr.dataset.reminderTime = timeVal;
+      reminderDisplaySpan.textContent = formatReminderDisplay(dateVal, timeVal);
+      const wrap = tr.closest(".todo-sections-wrap");
+      if (wrap) scheduleSaveSectionTasksFromDOM(wrap);
+      close();
+    });
+    document.body.appendChild(modal);
+  });
+  reminderTd.appendChild(reminderBtn);
+  reminderTd.appendChild(reminderDisplaySpan);
+
   function formatOverdueText(dueStr) {
     if (!dueStr || !dueStr.trim()) return "";
     const parts = String(dueStr).trim().split(/[-/]/);
@@ -1288,6 +1403,7 @@ function createTaskRow(taskData = {}, options = {}) {
     tr.appendChild(kpiTd);
     tr.appendChild(startTd);
     tr.appendChild(dueTd);
+    tr.appendChild(reminderTd);
     tr.appendChild(overdueTd);
   } else {
     if (overdueColumnOrder) {
@@ -1296,6 +1412,7 @@ function createTaskRow(taskData = {}, options = {}) {
     tr.appendChild(kpiTd);
     tr.appendChild(startTd);
     tr.appendChild(dueTd);
+    tr.appendChild(reminderTd);
     if (!overdueColumnOrder) {
       tr.appendChild(overdueTd);
     }
@@ -1405,6 +1522,7 @@ function createSection(section, options = {}) {
       <col class="todo-col-kpi" style="min-width: 8rem; width: 10rem">
       <col class="todo-col-start" style="width: 4.5rem">
       <col class="todo-col-due" style="width: 4.5rem">
+      <col class="todo-col-reminder" style="width: 7.5rem">
       <col class="todo-col-eisenhower" style="width: 6rem">
       <col class="todo-col-delete" style="width: 2.5rem">
     </colgroup>`
@@ -1415,6 +1533,7 @@ function createSection(section, options = {}) {
       <col class="todo-col-kpi" style="min-width: 8rem; width: 10rem">
       <col class="todo-col-start" style="width: 4.5rem">
       <col class="todo-col-due" style="width: 4.5rem">
+      <col class="todo-col-reminder" style="width: 7.5rem">
       <col class="todo-col-eisenhower" style="width: 6rem">
       <col class="todo-col-category" style="width: 5rem">
       <col class="todo-col-delete" style="width: 2.5rem">
@@ -1429,6 +1548,7 @@ function createSection(section, options = {}) {
       <col class="todo-col-kpi" style="min-width: 8rem; width: 10rem">
       <col class="todo-col-start" style="width: 4.5rem">
       <col class="todo-col-due" style="width: 4.5rem">
+      <col class="todo-col-reminder" style="width: 7.5rem">
       <col class="todo-col-overdue" style="width: 5rem">
       <col class="todo-col-delete" style="width: 2.5rem">
     </colgroup>`
@@ -1439,6 +1559,7 @@ function createSection(section, options = {}) {
       <col class="todo-col-kpi" style="min-width: 8rem; width: 10rem">
       <col class="todo-col-start" style="width: 4.5rem">
       <col class="todo-col-due" style="width: 4.5rem">
+      <col class="todo-col-reminder" style="width: 7.5rem">
       <col class="todo-col-overdue" style="width: 5rem">
       <col class="todo-col-category" style="width: 5rem">
       <col class="todo-col-delete" style="width: 2.5rem">
@@ -1451,6 +1572,7 @@ function createSection(section, options = {}) {
       <col class="todo-col-kpi" style="min-width: 8rem; width: 10rem">
       <col class="todo-col-start" style="width: 4.5rem">
       <col class="todo-col-due" style="width: 4.5rem">
+      <col class="todo-col-reminder" style="width: 7.5rem">
       <col class="todo-col-overdue" style="width: 5rem">
       <col class="todo-col-eisenhower" style="width: 6rem">
       <col class="todo-col-delete" style="width: 2.5rem">
@@ -1461,6 +1583,7 @@ function createSection(section, options = {}) {
       <col class="todo-col-kpi" style="min-width: 8rem; width: 10rem">
       <col class="todo-col-start" style="width: 4.5rem">
       <col class="todo-col-due" style="width: 4.5rem">
+      <col class="todo-col-reminder" style="width: 7.5rem">
       <col class="todo-col-overdue" style="width: 5rem">
       <col class="todo-col-eisenhower" style="width: 6rem">
       <col class="todo-col-category" style="width: 5rem">
@@ -1476,6 +1599,7 @@ function createSection(section, options = {}) {
         <th class="todo-th-kpi">KPI</th>
         <th class="todo-th-start">시작일</th>
         <th class="todo-th-due">마감일</th>
+        <th class="todo-th-reminder">리마인더</th>
         <th class="todo-th-overdue">기한 초과</th>
         ${theadCategoryTh}
         <th class="todo-th-delete"></th>
@@ -1489,6 +1613,7 @@ function createSection(section, options = {}) {
         <th class="todo-th-kpi">KPI</th>
         <th class="todo-th-start">시작일</th>
         <th class="todo-th-due">마감일</th>
+        <th class="todo-th-reminder">리마인더</th>
         <th class="todo-th-eisenhower">아이젠하워</th>
         ${theadCategoryTh}
         <th class="todo-th-delete"></th>
@@ -1499,6 +1624,7 @@ function createSection(section, options = {}) {
         <th class="todo-th-kpi">KPI</th>
         <th class="todo-th-start">시작일</th>
         <th class="todo-th-due">마감일</th>
+        <th class="todo-th-reminder">리마인더</th>
         <th class="todo-th-overdue">기한 초과</th>
         <th class="todo-th-eisenhower">아이젠하워</th>
         ${theadCategoryTh}
@@ -1532,7 +1658,7 @@ function createSection(section, options = {}) {
   const addRow = document.createElement("tr");
   addRow.className = "todo-add-row";
   addRow.innerHTML = `
-    <td colspan="${hideCategoryCol ? 8 : 9}" class="todo-add-cell">
+    <td colspan="${hideCategoryCol ? 9 : 10}" class="todo-add-cell">
       <button type="button" class="todo-add-btn" title="할 일 추가">${ADD_TASK_ICON}</button>
     </td>
   `;
@@ -1610,6 +1736,8 @@ function collectTasksFromDOM(sectionsEl) {
         sectionId: rowSectionId,
         sectionLabel,
         done: doneCheck?.checked || false,
+        reminderDate: row.dataset.reminderDate || "",
+        reminderTime: row.dataset.reminderTime || "",
       };
       if (row.dataset.isKpiTodo === "true") {
         task.isKpiTodo = true;

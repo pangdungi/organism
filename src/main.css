@@ -6618,9 +6618,59 @@ body {
   overflow: visible;
 }
 
+.todo-th-reminder,
+.todo-cell-reminder {
+  width: 7.5rem !important;
+  min-width: 7.5rem !important;
+  max-width: 9rem !important;
+  text-align: left;
+  white-space: nowrap;
+  overflow: visible;
+}
+
 .todo-table col.todo-col-start,
 .todo-table col.todo-col-due {
   width: 4.5rem !important;
+}
+
+.todo-table col.todo-col-reminder {
+  width: 7.5rem !important;
+}
+
+.todo-reminder-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #999 !important;
+}
+
+.todo-reminder-btn .todo-reminder-icon {
+  display: block;
+}
+
+.todo-reminder-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #999;
+}
+
+.todo-reminder-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.todo-reminder-display {
+  margin-left: 0.25rem;
+  font-size: 0.8rem;
+  color: #6b7280;
+  white-space: nowrap;
 }
 
 .todo-th-overdue,
@@ -16484,6 +16534,54 @@ body.kpi-resizing {
   gap: 1rem;
 }
 
+/* 리마인더 모달 */
+.todo-reminder-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.todo-reminder-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.todo-reminder-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.todo-reminder-task-name {
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.95rem;
+  color: #374151;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+.todo-reminder-date,
+.todo-reminder-time {
+  padding: 0.5rem 0.6rem;
+  font-size: 0.95rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+.todo-reminder-date:focus,
+.todo-reminder-time:focus {
+  outline: none;
+  box-shadow: none;
+  border-color: #d1d5db;
+}
+
+.todo-reminder-modal .todo-reminder-save {
+  margin-top: 0.5rem;
+}
+
 .dream-kpi-field {
   display: flex;
   flex-direction: column;
@@ -20625,11 +20723,13 @@ body.kpi-resizing {
   font-size: 0.9rem;
 }
 
-/* 사이드바에서는 시작일·마감일 열 숨김, 이름·KPI는 가로드래그로 확인 */
+/* 사이드바에서는 시작일·마감일·리마인더 열 숨김, 이름·KPI는 가로드래그로 확인 */
 .todo-list-in-sidebar .todo-th-start,
 .todo-list-in-sidebar .todo-cell-start,
 .todo-list-in-sidebar .todo-th-due,
 .todo-list-in-sidebar .todo-cell-due,
+.todo-list-in-sidebar .todo-th-reminder,
+.todo-list-in-sidebar .todo-cell-reminder,
 .todo-list-in-sidebar .todo-th-start-time,
 .todo-list-in-sidebar .todo-cell-start-time,
 .todo-list-in-sidebar .todo-th-end-time,
@@ -20639,6 +20739,7 @@ body.kpi-resizing {
 
 .todo-list-in-sidebar .todo-table col.todo-col-start,
 .todo-list-in-sidebar .todo-table col.todo-col-due,
+.todo-list-in-sidebar .todo-table col.todo-col-reminder,
 .todo-list-in-sidebar .todo-table col.todo-col-start-time,
 .todo-list-in-sidebar .todo-table col.todo-col-end-time {
   width: 0 !important;
@@ -20708,6 +20809,7 @@ body.kpi-resizing {
 
 .calendar-todo-sidebar-body .todo-table col.todo-col-start,
 .calendar-todo-sidebar-body .todo-table col.todo-col-due,
+.calendar-todo-sidebar-body .todo-table col.todo-col-reminder,
 .calendar-todo-sidebar-body .todo-table col.todo-col-start-time,
 .calendar-todo-sidebar-body .todo-table col.todo-col-end-time {
   width: 0 !important;
@@ -20840,6 +20942,7 @@ body.kpi-resizing {
 
 .calendar-todo-sidebar-body .todo-table .todo-th-start,
 .calendar-todo-sidebar-body .todo-table .todo-th-due,
+.calendar-todo-sidebar-body .todo-table .todo-th-reminder,
 .calendar-todo-sidebar-body .todo-table .todo-th-start-time,
 .calendar-todo-sidebar-body .todo-table .todo-th-end-time {
   width: 0;
@@ -20848,6 +20951,7 @@ body.kpi-resizing {
 
 .calendar-todo-sidebar-body .todo-table .todo-cell-start,
 .calendar-todo-sidebar-body .todo-table .todo-cell-due,
+.calendar-todo-sidebar-body .todo-table .todo-cell-reminder,
 .calendar-todo-sidebar-body .todo-table .todo-cell-start-time,
 .calendar-todo-sidebar-body .todo-table .todo-cell-end-time {
   width: 0;
@@ -20970,11 +21074,13 @@ body.kpi-resizing {
   background: #fafafa;
 }
 
-/* 아이젠하워 사이드바: 시작일·마감일·기한초과 열 표시 (todo-list-in-sidebar에서 숨김 해제) */
+/* 아이젠하워 사이드바: 시작일·마감일·리마인더·기한초과 열 표시 (todo-list-in-sidebar에서 숨김 해제) */
 .todo-list-eisenhower-sidebar .todo-th-start,
 .todo-list-eisenhower-sidebar .todo-cell-start,
 .todo-list-eisenhower-sidebar .todo-th-due,
 .todo-list-eisenhower-sidebar .todo-cell-due,
+.todo-list-eisenhower-sidebar .todo-th-reminder,
+.todo-list-eisenhower-sidebar .todo-cell-reminder,
 .todo-list-eisenhower-sidebar .todo-th-overdue,
 .todo-list-eisenhower-sidebar .todo-cell-overdue {
   display: table-cell !important;
@@ -20982,6 +21088,7 @@ body.kpi-resizing {
 
 .todo-list-eisenhower-sidebar .todo-table col.todo-col-start,
 .todo-list-eisenhower-sidebar .todo-table col.todo-col-due,
+.todo-list-eisenhower-sidebar .todo-table col.todo-col-reminder,
 .todo-list-eisenhower-sidebar .todo-table col.todo-col-overdue {
   width: auto !important;
 }
