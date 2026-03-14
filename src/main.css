@@ -12832,10 +12832,16 @@ body.kpi-resizing {
 /* 오딧 4. 시간낭비내역 */
 .time-audit-region-time-thief,
 .time-audit-region-time-investment,
-.time-audit-region-available {
+.time-audit-region-available,
+.time-audit-region-achievement {
   margin-top: 1rem;
   border-top: 1px solid #e5e7eb;
   padding-top: 1rem;
+}
+
+.time-audit-achievement-content {
+  min-height: 80px;
+  padding: 0.5rem 0;
 }
 
 /* 오딧 6. 가용시간 – 4열 동일 너비 */

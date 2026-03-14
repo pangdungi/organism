@@ -3257,7 +3257,7 @@ export function render() {
         <div class="time-task-log-field time-task-log-achievement-field">
           <label>성취능력</label>
           <div class="time-task-log-achievement-row">
-            <input type="number" class="time-task-log-achievement" min="-50" max="150" placeholder="-50~+150" step="1" inputmode="numeric" />
+            <input type="number" class="time-task-log-achievement" min="0" max="150" placeholder="0~150" step="1" inputmode="numeric" />
             <span class="time-task-log-achievement-unit">%</span>
           </div>
         </div>
@@ -4853,7 +4853,7 @@ export function render() {
       const v = data.achievement;
       if (v !== undefined && v !== null && v !== "") {
         const n = parseInt(String(v).replace(/%/g, ""), 10);
-        achievementInput.value = Number.isNaN(n) ? "" : Math.max(-50, Math.min(150, n));
+        achievementInput.value = Number.isNaN(n) ? "" : Math.max(0, Math.min(150, n));
       } else {
         achievementInput.value = "";
       }
@@ -4981,7 +4981,7 @@ export function render() {
     if (achievementInput && (achievementInput.value || "").trim() !== "") {
       const n = parseInt(achievementInput.value.trim(), 10);
       if (!Number.isNaN(n)) {
-        const clamped = Math.max(-50, Math.min(150, n));
+        const clamped = Math.max(0, Math.min(150, n));
         achievementValue = String(clamped);
       }
     }
@@ -6659,6 +6659,10 @@ export function render() {
             const hourlyRate = parseFloat(String(el.querySelector(".time-hourly-input")?.value || "0").replace(/,/g, "")) || 0;
             return getAuditTimeInvestmentHtml(dateStr, filtered, hourlyRate);
           })()}
+          </div>
+          <div class="time-audit-region time-audit-region-achievement">
+            <div class="time-audit-region-title">7. 성취능력 영역</div>
+            <div class="time-audit-achievement-content"></div>
           </div>
         `;
         wrap.appendChild(block);
