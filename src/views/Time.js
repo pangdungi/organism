@@ -2144,7 +2144,6 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
     feedback: initialData?.feedback || "",
     memoTags: Array.isArray(initialData?.memoTags) ? initialData.memoTags : [],
     focus: String(initialData?.focus || "").trim(),
-    achievement: String(initialData?.achievement ?? "").trim(),
   };
   tr._rowData = rowData;
 
@@ -2261,15 +2260,6 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   focusSpan.textContent = formatFocusForDisplay(rowData.focus);
   focusTd.appendChild(focusSpan);
   tr.appendChild(focusTd);
-
-  const achievementTd = document.createElement("td");
-  achievementTd.className = "time-cell time-cell-achievement";
-  const achievementSpan = document.createElement("span");
-  achievementSpan.className = "time-display-achievement";
-  const achVal = (rowData.achievement || "").trim().replace(/%/g, "");
-  achievementSpan.textContent = achVal !== "" && !Number.isNaN(parseInt(achVal, 10)) ? `${achVal}%` : "";
-  achievementTd.appendChild(achievementSpan);
-  tr.appendChild(achievementTd);
 
   const feedbackTd = document.createElement("td");
   feedbackTd.className = "time-cell time-cell-feedback";
@@ -2575,7 +2565,6 @@ function collectRowFromTR(tr) {
     date: dateInput?.value || "",
     feedback: feedbackInput?.value || "",
     focus: (tr.querySelector(".time-display-focus")?.textContent || "").trim(),
-    achievement: (tr.querySelector(".time-display-achievement")?.textContent || "").trim(),
   };
 }
 
@@ -2617,7 +2606,6 @@ function createTableHTML() {
       <col class="time-col-date">
       <col class="time-col-price">
       <col class="time-col-focus">
-      <col class="time-col-achievement">
       <col class="time-col-feedback">
       <col class="time-col-memo-tag">
       <col class="time-col-actions">
@@ -2633,7 +2621,6 @@ function createTableHTML() {
         <th class="time-th-date">기록 날짜</th>
         <th class="time-th-price">행동의 가치</th>
         <th class="time-th-focus">방해기록</th>
-        <th class="time-th-achievement">성취능력</th>
         <th class="time-th-feedback">과제 메모</th>
         <th class="time-th-memo-tag">메모 태그</th>
       </tr>
@@ -3254,13 +3241,6 @@ export function render() {
           </div>
         </div>
         <div class="time-task-log-scroll-area">
-        <div class="time-task-log-field time-task-log-achievement-field">
-          <label>성취능력</label>
-          <div class="time-task-log-achievement-row">
-            <input type="number" class="time-task-log-achievement" min="0" max="150" placeholder="0~150" step="1" inputmode="numeric" />
-            <span class="time-task-log-achievement-unit">%</span>
-          </div>
-        </div>
         <div class="time-task-log-kpi-todos-section" hidden>
           <h4 class="time-task-log-kpi-todos-title">할일 목록</h4>
           <div class="time-task-log-kpi-todos-list"></div>
@@ -4755,8 +4735,6 @@ export function render() {
     setEndFromDatetime("");
     updateEndTimeClearVisibility();
     if (taskLogFeedbackInput) taskLogFeedbackInput.value = "";
-    const achievementInputAdd = taskLogModal.querySelector(".time-task-log-achievement");
-    if (achievementInputAdd) achievementInputAdd.value = "";
     taskLogMemoTags = [];
     renderTaskLogTagPills();
     taskLogExpenseNameInput.value = "";
@@ -4848,16 +4826,6 @@ export function render() {
     const feedbackRaw = data.feedback || "";
     const memoOnly = feedbackRaw.replace(/#[^\s#]+/g, "").trim();
     if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
-    const achievementInput = taskLogModal.querySelector(".time-task-log-achievement");
-    if (achievementInput) {
-      const v = data.achievement;
-      if (v !== undefined && v !== null && v !== "") {
-        const n = parseInt(String(v).replace(/%/g, ""), 10);
-        achievementInput.value = Number.isNaN(n) ? "" : Math.max(0, Math.min(150, n));
-      } else {
-        achievementInput.value = "";
-      }
-    }
     taskLogMemoTags = Array.isArray(data.memoTags) ? [...data.memoTags] : parseTagsFromFeedback(feedbackRaw);
     renderTaskLogTagPills();
     if (taskLogTagInput) taskLogTagInput.value = "";
@@ -4976,16 +4944,6 @@ export function render() {
       ? buildFocusValueFromEvents(taskLogFocusEvents)
       : "";
 
-    const achievementInput = taskLogModal.querySelector(".time-task-log-achievement");
-    let achievementValue = "";
-    if (achievementInput && (achievementInput.value || "").trim() !== "") {
-      const n = parseInt(achievementInput.value.trim(), 10);
-      if (!Number.isNaN(n)) {
-        const clamped = Math.max(0, Math.min(150, n));
-        achievementValue = String(clamped);
-      }
-    }
-
     const expenseToggleOn = taskLogExpenseToggleInput?.checked;
     if (expenseToggleOn) {
       const missing = [];
@@ -5020,7 +4978,6 @@ export function render() {
         feedback,
         memoTags,
         focus: focusValue,
-        achievement: achievementValue,
       };
       editTr._rowData = newRowData;
       editTr.querySelector(".time-display-task").textContent = taskName;
@@ -5078,8 +5035,6 @@ export function render() {
         ".time-cell-focus .time-display-focus",
       );
       if (focusDisplay) focusDisplay.textContent = formatFocusForDisplay(focusValue);
-      const achievementDisplay = editTr.querySelector(".time-cell-achievement .time-display-achievement");
-      if (achievementDisplay) achievementDisplay.textContent = achievementValue ? `${achievementValue}%` : "";
       editTr._updatePrice?.();
     } else if (addCtx) {
       const ctx = addCtx;
@@ -5094,7 +5049,6 @@ export function render() {
         feedback,
         memoTags,
         focus: focusValue,
-        achievement: achievementValue,
       };
       const tr = createRow(
         newRowData,
@@ -6667,50 +6621,41 @@ export function render() {
           })()}
           </div>
           <div class="time-audit-region time-audit-region-achievement">
-            <div class="time-audit-region-title">7. 성취능력 영역</div>
+            <div class="time-audit-region-title">7. 생산성 영역</div>
             ${(() => {
-              const achievementRows = dayRows.filter((r) => r.achievement != null && r.taskName && r.taskName !== "—");
               const concTop = padTop;
               const concBottom = padTop + plotH;
-              const toY = (pct) => concBottom - (Math.max(0, Math.min(150, pct)) / 150) * plotH;
               const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
               const clipId = "time-audit-ach-clip-" + String(dateStr).replace(/[^a-z0-9-]/gi, "-");
               const minBarWidthForLabel = plotW * (1.5 / 24);
-              const achievementBarsAndLabels = achievementRows.map((r) => {
+              const taskRectsAndLabels = dayRows.map((r) => {
                 const x1 = toX(r.startH);
                 const x2 = toX(r.endH);
                 const w = Math.max(2, x2 - x1);
-                const pct = r.achievement;
-                const barH = (pct / 150) * plotH;
-                const y = concBottom - barH;
                 const color = getCategoryColor ? getCategoryColor(r.category) : "#94a3b8";
-                const rectStr = `<rect x="${x1}" y="${y}" width="${w}" height="${barH}" fill="${color}" stroke="rgba(0,0,0,0.08)" stroke-width="0.5" title="${esc(r.taskName)} ${pct}%"/>`;
+                const rectStr = `<rect x="${x1}" y="${padTop}" width="${w}" height="${plotH}" fill="${color}" stroke="rgba(0,0,0,0.06)" stroke-width="0.5"/>`;
                 const fitLabel = w >= minBarWidthForLabel;
-                const labelX = x1 + w / 2;
-                const labelY = y + barH / 2;
-                const textStr = fitLabel && barH >= 14
-                  ? `<text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" font-size="6" fill="#374151" class="time-audit-bar-inner-label" transform="rotate(-90, ${labelX}, ${labelY})">${esc(r.taskName)}</text>`
-                  : "";
+                const labelX = x1 + 5;
+                const labelY = padTop + plotH / 2;
                 const timeRange = `${String(Math.floor(r.startH)).padStart(2, "0")}:${String(Math.round((r.startH % 1) * 60)).padStart(2, "0")}~${String(Math.floor(r.endH)).padStart(2, "0")}:${String(Math.round((r.endH % 1) * 60)).padStart(2, "0")}`;
-                return { rectStr, textStr, fitLabel, r, timeRange, barH };
+                const labelText = `${esc(r.taskName)} (${timeRange})`;
+                const textStr = fitLabel
+                  ? `<text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" font-size="6" fill="#374151" class="time-audit-bar-inner-label" transform="rotate(-90, ${labelX}, ${labelY})">${labelText}</text>`
+                  : "";
+                return { rectStr, textStr, fitLabel, r, timeRange };
               });
-              const barRects = achievementBarsAndLabels.map((o) => o.rectStr + o.textStr).join("");
-              const achievementLegendItems = achievementBarsAndLabels
-                .filter((o) => !o.fitLabel || o.barH < 14)
-                .map((o) => `<span class="time-audit-legend-item" style="--legend-color:${getCategoryColor ? getCategoryColor(o.r.category) : "#94a3b8"}">${esc(o.r.taskName)} (${o.timeRange}) ${o.r.achievement}%</span>`)
+              const barRects = taskRectsAndLabels.map((o) => o.rectStr + o.textStr).join("");
+              const achievementLegendItems = taskRectsAndLabels
+                .filter((o) => !o.fitLabel)
+                .map((o) => `<span class="time-audit-legend-item" style="--legend-color:${getCategoryColor ? getCategoryColor(o.r.category) : "#94a3b8"}">${esc(o.r.taskName)} (${o.timeRange})</span>`)
                 .join("");
-              const yTicks = [0, 50, 100, 150];
-              const yLabels = yTicks.map((pct) => {
-                const y = toY(pct);
-                return `<text x="${padLeft - 6}" y="${y + 3}" text-anchor="end" font-size="6" fill="#6b7280">${pct}%</text>`;
-              }).join("");
               const xLabels = [];
               for (let h = 0; h <= 24; h += 2) {
                 xLabels.push({ x: toX(h), label: `${String(h).padStart(2, "0")}:00` });
               }
               const xLabelStr = xLabels.map((l) => `<text x="${l.x}" y="${concBottom + 10}" text-anchor="middle" font-size="6" fill="#6b7280">${l.label}</text>`).join("");
-              if (achievementRows.length === 0) {
-                return `<div class="time-audit-achievement-content"><div class="time-audit-achievement-empty">과제+성취능력이 있는 기록이 없습니다.</div></div>`;
+              if (dayRows.length === 0) {
+                return `<div class="time-audit-achievement-content"><div class="time-audit-achievement-empty">해당 날짜 기록이 없습니다.</div></div>`;
               }
               return `<div class="time-audit-achievement-content">
                 <div class="time-audit-chart-wrap">
@@ -6720,15 +6665,9 @@ export function render() {
                       const x = toX(i);
                       return `<line x1="${x}" y1="${padTop}" x2="${x}" y2="${concBottom}" stroke="#e5e7eb" stroke-width="0.25" stroke-dasharray="4,3"/>`;
                     }).join("")}
-                    ${[50, 100, 150].map((pct) => {
-                      const y = toY(pct);
-                      return `<line x1="${padLeft}" y1="${y}" x2="${padLeft + plotW}" y2="${y}" stroke="#e5e7eb" stroke-width="0.25" stroke-dasharray="3,3"/>`;
-                    }).join("")}
                     <line x1="${padLeft}" y1="${concBottom}" x2="${padLeft + plotW}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
                     <line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
-                    <text x="${padLeft - 28}" y="${(padTop + concBottom) / 2 - 12}" text-anchor="middle" font-size="7" fill="#6b7280" transform="rotate(-90, ${padLeft - 28}, ${(padTop + concBottom) / 2 - 12})">성취능력</text>
                     <g clip-path="url(#${clipId})">${barRects}</g>
-                    ${yLabels}
                     ${xLabelStr}
                   </svg>
                 </div>
