@@ -9325,17 +9325,33 @@ body.kpi-resizing {
 
 .time-view-tabs {
   display: flex;
+  align-items: center;
   gap: 0.5rem;
   margin-bottom: 1rem;
+  width: 100%;
+  max-width: 100%;
   font-family: var(
     --app-font-family,
     "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-width: 0;
+  -webkit-overflow-scrolling: touch;
+}
+.time-view-tabs::-webkit-scrollbar {
+  height: 4px;
+}
+.time-view-tabs::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 2px;
 }
 
 .time-view-tab {
+  flex-shrink: 0;
   padding: 0.4rem 0.75rem;
   font-size: 0.9rem;
   color: #888;
@@ -9344,6 +9360,7 @@ body.kpi-resizing {
   border-bottom: 2px solid transparent;
   cursor: pointer;
   font-family: inherit;
+  white-space: nowrap;
   transition:
     color 0.15s,
     border-color 0.15s;
@@ -9358,13 +9375,14 @@ body.kpi-resizing {
   border-bottom-color: #999;
 }
 
-/* 시간가계부 필터 바 (월별/일주일/하루/날짜선택) */
+/* 시간가계부 필터 바 (월별/일주일/하루/날짜선택) - 좁은 창에서 줄바꿈 방지 */
 .time-filter-bar {
   display: flex;
   align-items: center;
   gap: 1rem;
   margin-left: auto;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .time-task-setup-btn {
@@ -11307,6 +11325,8 @@ body.kpi-resizing {
 .time-filter-tabs {
   display: flex;
   gap: 0.25rem;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
 }
 
 .time-filter-btn {
@@ -12051,13 +12071,23 @@ body.kpi-resizing {
 
 .time-improve-quadrant-focus .time-improve-events-wrap {
   flex: 0 0 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .time-improve-quadrant-focus .time-improve-events-scroll {
   height: 140px;
+  min-height: 140px;
+  max-height: 140px;
   overflow-y: auto;
   overflow-x: hidden;
   flex: none;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.time-improve-quadrant-focus .time-improve-events-scroll::-webkit-scrollbar {
+  display: none;
 }
 
 .time-improve-input-block {
@@ -12094,7 +12124,7 @@ body.kpi-resizing {
 .time-improve-period {
   font-size: 0.875rem;
   color: #6b7280;
-  margin: 0;
+  margin: 0 0 0.75rem 0;
 }
 
 .time-improve-events-heading {
@@ -12343,13 +12373,13 @@ body.kpi-resizing {
   padding-top: 0;
 }
 
-/* 시간갭 가로 막대 차트 */
+/* 시간갭 가로 막대 차트 - 표와 동일하게 양옆 모서리 제거 */
 .time-audit-bar-chart {
   flex: 1 1 320px;
   min-width: 280px;
   padding: 1rem;
   background: #f9fafb;
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px solid #e5e7eb;
 }
 
@@ -12474,9 +12504,10 @@ body.kpi-resizing {
 
 .time-audit-priority-table-wrap {
   overflow-x: auto;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background: #fff;
+  margin-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 1rem;
+  border-radius: 0;
 }
 
 .time-audit-priority-table {
@@ -12492,6 +12523,13 @@ body.kpi-resizing {
   font-weight: 600;
   color: #6b7280;
   border-bottom: 1px solid #e5e7eb;
+  border-radius: 0;
+}
+.time-audit-priority-table thead th:first-child,
+.time-audit-priority-table thead th:last-child,
+.time-audit-priority-table tbody td:first-child,
+.time-audit-priority-table tbody td:last-child {
+  border-radius: 0;
 }
 
 .time-audit-priority-table tbody td {
@@ -12539,7 +12577,7 @@ body.kpi-resizing {
   padding: 0.75rem;
   background: #f9fafb;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border-radius: 0;
   min-width: 140px;
 }
 
@@ -12682,9 +12720,10 @@ body.kpi-resizing {
 /* 테이블·요약 박스: 우선순위 섹션과 동일 회색/화이트 */
 .time-audit-thief-table-wrap {
   overflow-x: auto;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background: #fff;
+  margin-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 1rem;
+  border-radius: 0;
 }
 
 .time-audit-thief-table {
@@ -12701,6 +12740,13 @@ body.kpi-resizing {
   font-weight: 600;
   color: #6b7280;
   border-bottom: 1px solid #e5e7eb;
+  border-radius: 0;
+}
+.time-audit-thief-table thead th:first-child,
+.time-audit-thief-table thead th:last-child,
+.time-audit-thief-table tbody td:first-child,
+.time-audit-thief-table tbody td:last-child {
+  border-radius: 0;
 }
 
 .time-audit-thief-table tbody td {
@@ -12733,7 +12779,7 @@ body.kpi-resizing {
   font-size: 0.85rem;
   color: #9ca3af;
   background: #f9fafb;
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px solid #e5e7eb;
 }
 
@@ -12801,6 +12847,7 @@ body.kpi-resizing {
   margin-top: 1rem;
   border-top: 1px solid #e5e7eb;
   padding-top: 1rem;
+  border-radius: 0;
 }
 
 .time-audit-schedule-table {
@@ -12820,6 +12867,13 @@ body.kpi-resizing {
   font-weight: 600;
   color: #6b7280;
   background: #f9fafb;
+  border-radius: 0;
+}
+.time-audit-schedule-table thead th:first-child,
+.time-audit-schedule-table thead th:last-child,
+.time-audit-schedule-table tbody td:first-child,
+.time-audit-schedule-table tbody td:last-child {
+  border-radius: 0;
 }
 
 .time-audit-schedule-table td {
