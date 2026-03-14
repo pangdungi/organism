@@ -874,6 +874,85 @@ body {
   font-size: 1.25rem;
 }
 
+/* ----- Home (3분할, 오늘 해치우기 캘린더) ----- */
+.home-view {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  padding-top: 0.5rem;
+}
+
+.home-view-three {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-auto-rows: minmax(0, auto);
+  gap: 1rem;
+  flex: 1 1 auto;
+  min-height: min-content;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 900px) {
+  .home-view-three {
+    grid-template-columns: 1fr;
+  }
+}
+
+.home-view-section {
+  min-height: 120px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+}
+
+.home-view-section:not(:last-child) {
+  border-right: 1px solid #e5e7eb;
+}
+
+.home-view-section--calendar {
+  min-height: 75vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.home-view-section-title {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #374151;
+  flex-shrink: 0;
+}
+
+.home-embed-1day {
+  flex: 1 1 auto;
+  min-height: min-content;
+  overflow: visible;
+}
+
+.home-embed-1day .calendar-view-top-row--1day {
+  display: none;
+}
+
+.home-embed-1day .calendar-nav,
+.home-embed-1day .calendar-monthly-nav {
+  display: none;
+}
+
+/* 타임테이블만 표시: 왼쪽 배치 패널·구분선 숨김, 시간 컬럼 전체 너비 */
+.home-embed-1day .calendar-1day-budget-column,
+.home-embed-1day .calendar-1day-divider {
+  display: none !important;
+}
+
+.home-embed-1day .calendar-1day-split-layout .calendar-1day-time-column {
+  flex: 1 1 100%;
+  min-width: 0;
+  max-width: none;
+}
+
 /* ----- 일기장 (Q7a) ----- */
 .q7a-view {
   padding: 0;

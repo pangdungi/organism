@@ -5838,3 +5838,6 @@ export function render() {
 
   return el;
 }
+
+/** 홈 등 다른 화면에서 오늘 해치우기 캘린더만 삽입할 때 사용. tabsElement는 null 가능 */
+export { render1DayView };
