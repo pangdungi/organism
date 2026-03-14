@@ -2144,6 +2144,7 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
     feedback: initialData?.feedback || "",
     memoTags: Array.isArray(initialData?.memoTags) ? initialData.memoTags : [],
     focus: String(initialData?.focus || "").trim(),
+    achievement: String(initialData?.achievement ?? "").trim(),
   };
   tr._rowData = rowData;
 
@@ -2260,6 +2261,14 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   focusSpan.textContent = formatFocusForDisplay(rowData.focus);
   focusTd.appendChild(focusSpan);
   tr.appendChild(focusTd);
+
+  const achievementTd = document.createElement("td");
+  achievementTd.className = "time-cell time-cell-achievement";
+  const achievementSpan = document.createElement("span");
+  achievementSpan.className = "time-display-achievement";
+  achievementSpan.textContent = rowData.achievement || "";
+  achievementTd.appendChild(achievementSpan);
+  tr.appendChild(achievementTd);
 
   const feedbackTd = document.createElement("td");
   feedbackTd.className = "time-cell time-cell-feedback";
@@ -2565,6 +2574,7 @@ function collectRowFromTR(tr) {
     date: dateInput?.value || "",
     feedback: feedbackInput?.value || "",
     focus: (tr.querySelector(".time-display-focus")?.textContent || "").trim(),
+    achievement: (tr.querySelector(".time-display-achievement")?.textContent || "").trim(),
   };
 }
 
@@ -2606,6 +2616,7 @@ function createTableHTML() {
       <col class="time-col-date">
       <col class="time-col-price">
       <col class="time-col-focus">
+      <col class="time-col-achievement">
       <col class="time-col-feedback">
       <col class="time-col-memo-tag">
       <col class="time-col-actions">
@@ -2621,6 +2632,7 @@ function createTableHTML() {
         <th class="time-th-date">기록 날짜</th>
         <th class="time-th-price">행동의 가치</th>
         <th class="time-th-focus">방해기록</th>
+        <th class="time-th-achievement">성취능력</th>
         <th class="time-th-feedback">과제 메모</th>
         <th class="time-th-memo-tag">메모 태그</th>
       </tr>
@@ -2667,7 +2679,7 @@ function createProductivitySection(
       <td class="time-cell time-cell-tracked time-section-summary-tracked"></td>
       <td class="time-cell time-cell-category" colspan="3"></td>
       <td class="time-cell time-cell-price"><span class="time-section-summary-price"></span></td>
-      <td class="time-cell time-cell-focus" colspan="3"></td>
+      <td class="time-cell time-cell-focus" colspan="4"></td>
     </tr>
   `;
   table.appendChild(tfoot);
@@ -4957,6 +4969,7 @@ export function render() {
 
     if (editTr) {
       oldRowDataToRemove = editTr._rowData ? { ...editTr._rowData } : null;
+      const achievementValue = (editTr.querySelector(".time-display-achievement")?.textContent || "").trim();
       const newRowData = {
         taskName,
         startTime,
@@ -4968,6 +4981,7 @@ export function render() {
         feedback,
         memoTags,
         focus: focusValue,
+        achievement: achievementValue,
       };
       editTr._rowData = newRowData;
       editTr.querySelector(".time-display-task").textContent = taskName;
@@ -5025,6 +5039,8 @@ export function render() {
         ".time-cell-focus .time-display-focus",
       );
       if (focusDisplay) focusDisplay.textContent = formatFocusForDisplay(focusValue);
+      const achievementDisplay = editTr.querySelector(".time-cell-achievement .time-display-achievement");
+      if (achievementDisplay) achievementDisplay.textContent = achievementValue;
       editTr._updatePrice?.();
     } else if (addCtx) {
       const ctx = addCtx;
@@ -5039,6 +5055,7 @@ export function render() {
         feedback,
         memoTags,
         focus: focusValue,
+        achievement: "",
       };
       const tr = createRow(
         newRowData,
@@ -5691,14 +5708,14 @@ export function render() {
         <td class="time-cell time-cell-tracked time-ledger-total-tracked"></td>
         <td class="time-cell time-cell-category" colspan="3"></td>
         <td class="time-cell time-cell-price time-ledger-total-price"></td>
-        <td class="time-cell time-cell-focus" colspan="5"></td>
+        <td class="time-cell time-cell-focus" colspan="4"></td>
       </tr>
       <tr class="time-ledger-over-row">
         <td class="time-cell time-cell-task" colspan="3">초과된 기록시간</td>
         <td class="time-cell time-cell-tracked time-ledger-total-over"></td>
         <td class="time-cell time-cell-category" colspan="3"></td>
         <td class="time-cell time-cell-price"></td>
-        <td class="time-cell time-cell-focus" colspan="5"></td>
+        <td class="time-cell time-cell-focus" colspan="4"></td>
       </tr>
     `;
     tbl.appendChild(tfoot);

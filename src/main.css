@@ -14107,6 +14107,13 @@ body.kpi-resizing {
   min-width: 90px;
 }
 
+.time-ledger-table .time-col-achievement,
+.time-ledger-table .time-cell-achievement,
+.time-ledger-table .time-th-achievement {
+  width: 90px;
+  min-width: 90px;
+}
+
 .time-ledger-table .time-col-energy,
 .time-ledger-table .time-cell-energy,
 .time-ledger-table .time-th-energy {
