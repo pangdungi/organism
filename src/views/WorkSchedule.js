@@ -462,6 +462,39 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
   const tr = document.createElement("tr");
   tr.className = "work-schedule-row";
 
+  const dateTd = document.createElement("td");
+  dateTd.className = "work-schedule-cell work-schedule-cell-date";
+  const dateValue = initialData.workDate || "";
+  const dateDisplay = document.createElement("span");
+  dateDisplay.className = "work-schedule-date-display";
+  function formatDateYYMMDD(val) {
+    if (!val) return "";
+    const [y, m, d] = val.split("-");
+    if (!y || !m || !d) return val;
+    return `${y}/${m}/${d}`;
+  }
+  dateDisplay.textContent = formatDateYYMMDD(dateValue);
+  const dateInput = document.createElement("input");
+  dateInput.type = "date";
+  dateInput.className = "work-schedule-input-date";
+  dateInput.value = dateValue;
+  dateInput.tabIndex = -1;
+  dateInput.addEventListener("change", () => {
+    dateDisplay.textContent = formatDateYYMMDD(dateInput.value);
+    onUpdate();
+    onFilterApply?.();
+  });
+  dateTd.addEventListener("click", (e) => {
+    e.preventDefault();
+    dateInput.focus();
+    if (typeof dateInput.showPicker === "function") {
+      dateInput.showPicker();
+    }
+  });
+  dateTd.appendChild(dateDisplay);
+  dateTd.appendChild(dateInput);
+  tr.appendChild(dateTd);
+
   const nameTd = document.createElement("td");
   nameTd.className = "work-schedule-cell work-schedule-cell-name";
   const nameInput = document.createElement("input");
@@ -523,40 +556,6 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
   hoursWorkedInput.addEventListener("keydown", (e) => e.key === "Enter" && hoursWorkedInput.blur());
   hoursWorkedTd.appendChild(hoursWorkedInput);
   tr.appendChild(hoursWorkedTd);
-
-  function formatDateYYMMDD(val) {
-    if (!val) return "";
-    const [y, m, d] = val.split("-");
-    if (!y || !m || !d) return val;
-    return `${y}/${m}/${d}`;
-  }
-
-  const dateTd = document.createElement("td");
-  dateTd.className = "work-schedule-cell work-schedule-cell-date";
-  const dateValue = initialData.workDate || "";
-  const dateDisplay = document.createElement("span");
-  dateDisplay.className = "work-schedule-date-display";
-  dateDisplay.textContent = formatDateYYMMDD(dateValue);
-  const dateInput = document.createElement("input");
-  dateInput.type = "date";
-  dateInput.className = "work-schedule-input-date";
-  dateInput.value = dateValue;
-  dateInput.tabIndex = -1;
-  dateInput.addEventListener("change", () => {
-    dateDisplay.textContent = formatDateYYMMDD(dateInput.value);
-    onUpdate();
-    onFilterApply?.();
-  });
-  dateTd.addEventListener("click", (e) => {
-    e.preventDefault();
-    dateInput.focus();
-    if (typeof dateInput.showPicker === "function") {
-      dateInput.showPicker();
-    }
-  });
-  dateTd.appendChild(dateDisplay);
-  dateTd.appendChild(dateInput);
-  tr.appendChild(dateTd);
 
   const hoursTd = document.createElement("td");
   hoursTd.className = "work-schedule-cell work-schedule-cell-hours";
@@ -624,6 +623,10 @@ export function render() {
 
   function renderTableView() {
     contentWrap.innerHTML = "";
+    const notice = document.createElement("p");
+    notice.className = "work-schedule-notice";
+    notice.textContent = "시간기록에서 근무하기를 기록하면 자동으로 입력됩니다.";
+    contentWrap.appendChild(notice);
     const now = new Date();
     let filterType = "month";
     let filterYear = now.getFullYear();
@@ -843,20 +846,20 @@ export function render() {
     table.className = "work-schedule-table";
     table.innerHTML = `
       <colgroup>
+        <col class="work-schedule-col-date">
         <col class="work-schedule-col-name">
         <col class="work-schedule-col-type">
         <col class="work-schedule-col-hours-worked">
-        <col class="work-schedule-col-date">
         <col class="work-schedule-col-hours">
         <col class="work-schedule-col-memo">
         <col class="work-schedule-col-actions">
       </colgroup>
       <thead>
         <tr>
+          <th class="work-schedule-th-date">근무일</th>
           <th class="work-schedule-th-name">근무시간</th>
           <th class="work-schedule-th-type">근무유형</th>
           <th class="work-schedule-th-hours-worked">Hours</th>
-          <th class="work-schedule-th-date">근무일</th>
           <th class="work-schedule-th-hours">시간적립</th>
           <th class="work-schedule-th-memo">메모</th>
           <th class="work-schedule-th-actions"></th>

@@ -1103,7 +1103,88 @@ body {
   .calendar-view .calendar-view-header .calendar-view-title {
     display: none !important;
   }
+  .calendar-view .calendar-view-header .dream-view-label {
+    display: none !important;
+  }
   .calendar-view .calendar-monthly-tabs-wrap {
+    display: none !important;
+  }
+  /* 할일 뷰의 메인 탭(1. 할일, 3. 날짜정하기)은 모바일에서 표시 */
+  .calendar-view .calendar-monthly-tabs-wrap:has(.calendar-tabs) {
+    display: flex !important;
+  }
+
+  /* 모바일: 할일/일정에서 1. 할일 쏟아내기, 3. 날짜 정하기 탭만 표시 */
+  .calendar-view .calendar-tabs .time-view-tab[data-view="eisenhower"],
+  .calendar-view .calendar-tabs .time-view-tab[data-view="1day"] {
+    display: none !important;
+  }
+
+  /* 모바일: 3. 날짜 정하기 - 월별 캘린더만 표시 (서브탭·사이드바 숨김) */
+  .calendar-view-with-subtabs .calendar-sub-tabs {
+    display: none !important;
+  }
+  .calendar-view-with-subtabs .calendar-todo-sidebar {
+    display: none !important;
+  }
+
+  /* 모바일: 캘린더 컬러바/점 제거, 일정 있으면 +N 카운트만 표시 */
+  .calendar-view-with-subtabs .calendar-monthly-span-bar {
+    display: none !important;
+  }
+  .calendar-view-with-subtabs .calendar-monthly-day.today::before {
+    display: none !important;
+  }
+  .calendar-view-with-subtabs .calendar-day-more-btn {
+    background: transparent !important;
+    border: none !important;
+    color: #374151;
+    font-size: 0.75rem;
+  }
+
+  /* 모바일: 브레인덤프·꿈·부수입 탭 고정 - 스크롤은 섹션 영역만 */
+  .calendar-view-todo .calendar-todo-content {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0.25rem 0.5rem 0.5rem;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-list-view {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0.5rem;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-list-toolbar-row {
+    flex-shrink: 0;
+    z-index: 10;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.25rem;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-sections-wrap {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overflow-x: hidden;
+  }
+
+  /* 모바일: 할일 쏟아내기 - 할일 이름과 체크박스만 표시 */
+  .calendar-view-todo .calendar-todo-content .todo-table thead {
+    display: none !important;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-kpi,
+  .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-start,
+  .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-due,
+  .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-reminder,
+  .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-overdue,
+  .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-eisenhower,
+  .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-category,
+  .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-delete {
     display: none !important;
   }
 
@@ -1124,6 +1205,116 @@ body {
   .app-main:has(.home-view) .home-event-time-card {
     min-width: 7.5rem;
     flex-shrink: 0;
+  }
+
+  /* 모바일: 1. 시간기록하기에서 시간기록 테이블, 과제기록, 과제설정만 표시 */
+  .time-ledger-view .time-ledger-header,
+  .time-ledger-view .time-hourly-wrap,
+  .time-ledger-view .time-view-tabs,
+  .time-ledger-view .time-filter-bar .time-filter-tabs,
+  .time-ledger-view .time-filter-bar .time-filter-day-wrap,
+  .time-ledger-view .time-filter-bar .time-filter-month-wrap,
+  .time-ledger-view .time-filter-bar .time-filter-range-wrap,
+  .time-ledger-view .time-ledger-summary-panel {
+    display: none !important;
+  }
+  /* 과제 설정 버튼만 filter-bar에 남기기 */
+  .time-ledger-view .time-filter-bar {
+    flex-wrap: nowrap;
+    margin-bottom: 0.5rem;
+  }
+
+  /* 모바일: 근무표에서 월별보기 탭 제거 */
+  .work-schedule-view-tabs .work-schedule-view-tab[data-view="monthly"] {
+    display: none !important;
+  }
+
+  /* 모바일: 근무표 안내 멘트 숨김 */
+  .work-schedule-notice {
+    display: none !important;
+  }
+
+  /* 모바일: 시간가계부 카드 뷰 */
+  .time-ledger-mobile-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    flex-shrink: 0;
+  }
+  .time-ledger-mobile-toolbar .time-btn-add,
+  .time-ledger-mobile-toolbar .time-task-setup-btn {
+    display: flex;
+    flex: 1;
+    justify-content: center;
+    min-width: 0;
+  }
+  .time-ledger-mobile-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .time-ledger-mobile-card {
+    display: flex;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    cursor: pointer;
+    transition: box-shadow 0.2s;
+  }
+  .time-ledger-mobile-card:active {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  }
+  .time-mobile-card-color-bar {
+    width: 6px;
+    min-width: 6px;
+    flex-shrink: 0;
+  }
+  .time-mobile-card-body {
+    flex: 1;
+    min-width: 0;
+    padding: 0.75rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .time-mobile-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .time-mobile-card-task {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #1f2937;
+  }
+  .time-mobile-card-tracked {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #374151;
+    flex-shrink: 0;
+  }
+  .time-mobile-card-time {
+    font-size: 0.8rem;
+    color: #6b7280;
+  }
+  .time-mobile-card-memo {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    line-height: 1.4;
+    margin-top: 0.2rem;
+  }
+  .time-ledger-mobile-hidden-table {
+    position: absolute !important;
+    left: -9999px !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
   }
 }
 
@@ -1462,8 +1653,8 @@ body {
 }
 .home-todo-th-priority,
 .home-todo-td-priority {
-  width: 4.5rem;
-  max-width: 4.5rem;
+  width: 7.5rem;
+  min-width: 7.5rem;
   color: #6b7280;
   white-space: nowrap;
 }
@@ -1859,6 +2050,14 @@ body {
 
 .work-schedule-content-wrap {
   min-height: 200px;
+}
+
+/* 근무표 안내: 시간기록 연동 (모바일 제외) */
+.work-schedule-notice {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0 0 1rem;
+  padding: 0.5rem 0;
 }
 
 /* ----- 자산관리 뷰 ----- */
@@ -5966,6 +6165,99 @@ body {
 .work-schedule-col-date {
   width: 14%;
   min-width: 110px;
+}
+
+/* 근무일·근무시간 열 고정 (가로 스크롤 시) */
+.work-schedule-table .work-schedule-th-date,
+.work-schedule-table .work-schedule-cell-date {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #fcfcfc;
+  box-shadow: 1px 0 0 #e8eaed;
+}
+.work-schedule-table th.work-schedule-th-date {
+  background: #fcfcfc;
+}
+.work-schedule-table tbody tr:hover .work-schedule-cell-date {
+  background: #fafafa;
+}
+.work-schedule-table .work-schedule-sum-row .work-schedule-cell-date {
+  background: #f9fafb;
+}
+.work-schedule-table .work-schedule-th-name,
+.work-schedule-table .work-schedule-cell-name {
+  position: sticky;
+  left: 110px;
+  z-index: 2;
+  background: #fff;
+  box-shadow: 1px 0 0 #e8eaed;
+}
+.work-schedule-table th.work-schedule-th-name {
+  background: #fcfcfc;
+}
+.work-schedule-table tbody tr:hover .work-schedule-cell-name {
+  background: #fafafa;
+}
+.work-schedule-table .work-schedule-sum-row .work-schedule-cell-name {
+  background: #f9fafb;
+}
+
+/* 근무일·근무시간 열 고정 (가로 스크롤 시) */
+.work-schedule-table th.work-schedule-th-date,
+.work-schedule-table td.work-schedule-cell-date {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #fcfcfc;
+  box-shadow: 1px 0 0 #e8eaed;
+}
+.work-schedule-table tbody tr:hover td.work-schedule-cell-date {
+  background: #fafafa;
+}
+.work-schedule-table th.work-schedule-th-name,
+.work-schedule-table td.work-schedule-cell-name {
+  position: sticky;
+  left: 110px;
+  z-index: 2;
+  background: #fcfcfc;
+  box-shadow: 1px 0 0 #e8eaed;
+}
+.work-schedule-table tbody tr:hover td.work-schedule-cell-name {
+  background: #fafafa;
+}
+.work-schedule-table .work-schedule-sum-row td:first-child,
+.work-schedule-table .work-schedule-sum-row td:nth-child(2) {
+  background: #f9fafb;
+}
+
+/* 근무일·근무시간 열 고정 (가로 스크롤 시 고정) */
+.work-schedule-table-wrap {
+  overflow-x: auto;
+}
+.work-schedule-table .work-schedule-th-date,
+.work-schedule-table .work-schedule-cell-date {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #fcfcfc;
+  box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.08);
+}
+.work-schedule-table .work-schedule-th-name,
+.work-schedule-table .work-schedule-cell-name {
+  position: sticky;
+  left: 110px;
+  z-index: 2;
+  background: #fff;
+  box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.08);
+}
+.work-schedule-table tbody tr:hover .work-schedule-cell-date,
+.work-schedule-table tbody tr:hover .work-schedule-cell-name {
+  background: #fafafa;
+}
+.work-schedule-table .work-schedule-sum-row .work-schedule-cell-date,
+.work-schedule-table .work-schedule-sum-row .work-schedule-cell-name {
+  background: #f9fafb;
 }
 
 .work-schedule-col-hours {
@@ -11178,6 +11470,10 @@ body.kpi-resizing {
 
 .time-task-log-task-dropdown-trigger:hover {
   border-color: #9ca3af;
+}
+
+.time-task-log-task-dropdown-panel[hidden] {
+  display: none !important;
 }
 
 .time-task-log-task-dropdown-panel {
@@ -18529,17 +18825,16 @@ body.kpi-resizing {
   padding: 0;
   font-size: 1rem;
   line-height: 1;
-  color: #6b7280;
+  color: #374151;
   background: none;
   border: none;
   cursor: pointer;
   border-radius: 4px;
-  transition: background 0.15s;
 }
 
 .diary-sidebar-collapse-btn:hover {
-  background: #e5e7eb;
-  color: #374151;
+  background: none;
+  color: #111827;
 }
 
 .diary-layout.sidebar-collapsed .diary-sidebar-collapse {
@@ -18683,8 +18978,8 @@ body.kpi-resizing {
 }
 
 .diary-sidebar-collapse:hover {
-  background: #e5e7eb;
-  color: #374151;
+  background: transparent;
+  color: #1f2937;
 }
 
 .diary-add-page-wrap {
@@ -21270,26 +21565,25 @@ body.kpi-resizing {
   color: #d1d5db;
 }
 
-/* 오늘: 무인양품식 — 테두리 없이 숫자만 진하게 + 숫자 아래 점 */
+/* 오늘: 무인양품식 — 테두리 없이 숫자만 진하게 + 셀 안에 동그라미 점 */
 .calendar-monthly-day.today {
   background: transparent;
+  position: relative;
 }
 
 .calendar-monthly-day.today .calendar-monthly-day-num {
   font-weight: 700;
   color: #111827;
-  position: relative;
-  padding-top: 0.5rem;
 }
 
-.calendar-monthly-day.today .calendar-monthly-day-num::before {
+.calendar-monthly-day.today::before {
   content: "";
   position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  top: 0;
-  width: 7px;
-  height: 7px;
+  top: 0.4rem;
+  right: 0.4rem;
+  width: 6px;
+  height: 6px;
+  aspect-ratio: 1;
   border-radius: 50% !important; /* 전역 리셋(*::before { border-radius:0 !important }) 덮어쓰기 */
   background: #111827;
 }
@@ -21676,6 +21970,24 @@ body.kpi-resizing {
   text-align: center;
   color: #9ca3af;
   font-size: 0.85rem;
+}
+
+.calendar-day-expand-add-btn {
+  margin-top: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #374151;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.calendar-day-expand-add-btn:hover {
+  background: #e5e7eb;
 }
 
 /* 할일목록 사이드바 (접기/펼치기) - 캘린더와 동일 높이 */

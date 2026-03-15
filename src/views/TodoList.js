@@ -1422,6 +1422,7 @@ function createTaskRow(taskData = {}, options = {}) {
     "important-not-urgent": "중요+여유",
     "urgent-not-important": "긴급+덜중요",
     "not-urgent-not-important": "여유+안중요",
+    "not-urgent-": "여유+안중요",
   };
   const eisenhowerTd = document.createElement("td");
   eisenhowerTd.className = "todo-cell-eisenhower";
@@ -2112,7 +2113,12 @@ export function render(options = {}) {
   let allTasks = [...kpiTasks, ...sectionTasks, ...customTasks];
   if ((eisenhowerFilter || "").trim()) {
     const q = (eisenhowerFilter || "").trim();
-    allTasks = allTasks.filter((t) => (t.eisenhower || "").trim() === q);
+    const EISENHOWER_LABELS = { "urgent-important": "긴급+중요", "important-not-urgent": "중요+여유", "urgent-not-important": "긴급+덜중요", "not-urgent-not-important": "여유+안중요" };
+    const labelForQ = EISENHOWER_LABELS[q];
+    allTasks = allTasks.filter((t) => {
+      const v = (t.eisenhower || "").trim();
+      return v === q || (labelForQ && v === labelForQ);
+    });
   }
   const sectionResults = renderSections(sectionsWrap, allTasks, { tabMode: true, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, eisenhowerSidebarFirst });
 

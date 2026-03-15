@@ -2679,7 +2679,49 @@ function collectRowsFromDOM(container) {
     const row = collectRowFromTR(tr);
     if (!isEmptyTimeRow(row)) rows.push(row);
   });
+  container.querySelectorAll(".time-ledger-mobile-card").forEach((card) => {
+    if (card._rowData && !isEmptyTimeRow(card._rowData)) rows.push(card._rowData);
+  });
   return rows;
+}
+
+/** 모바일 카드용: 데스크탑 time-task-prod-bar와 동일한 생산성별 색상 */
+function getProductivityBarColor(prod) {
+  if (prod === "productive") return "rgba(232, 164, 184, 0.5)";
+  if (prod === "nonproductive") return "rgba(126, 184, 218, 0.5)";
+  return "rgba(124, 184, 124, 0.5)"; /* 기타(other) - 데스크탑 prod-bar--other */
+}
+
+/** 모바일 시간가계부 카드 생성 */
+function createMobileTimeCard(rowData, onEdit, onDelete) {
+  const prod = rowData.productivity || getProductivityFromCategory(rowData.category) || "";
+  const color = getProductivityBarColor(prod);
+  const startStr = toDisplayTimeOnly(rowData.startTime) || "";
+  const endStr = toDisplayTimeOnly(rowData.endTime) || "";
+  const timeRange = startStr && endStr ? `${startStr} - ${endStr}` : startStr || endStr || "";
+  const tracked = rowData.timeTracked || "";
+  const taskName = (rowData.taskName || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const memo = (rowData.feedback || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  const card = document.createElement("div");
+  card.className = "time-ledger-mobile-card";
+  card._rowData = rowData;
+  card._onRowDelete = onDelete;
+  card.innerHTML = `
+    <div class="time-mobile-card-color-bar" style="background:${color}"></div>
+    <div class="time-mobile-card-body">
+      <div class="time-mobile-card-header">
+        <span class="time-mobile-card-task">${taskName}</span>
+        <span class="time-mobile-card-tracked">${tracked || "—"}</span>
+      </div>
+      <div class="time-mobile-card-time">${timeRange || "—"}</div>
+      ${memo ? `<div class="time-mobile-card-memo">${memo}</div>` : ""}
+    </div>
+  `;
+  card.addEventListener("click", (e) => {
+    if (e.target.closest(".time-mobile-card-body")) onEdit(card, rowData);
+  });
+  return card;
 }
 
 /** 과제명 열 너비 변경 시 sticky left 위치 동기화 */
@@ -3282,10 +3324,6 @@ export function render() {
           <div class="time-add-task-categories" data-for="productive"></div>
           <div class="time-add-task-categories" data-for="nonproductive" style="display:none"></div>
         </div>
-        <div class="time-add-task-field">
-          <label>과제 메모</label>
-          <input type="text" class="time-add-task-memo" placeholder="과제 메모 입력" />
-        </div>
         <button type="button" class="time-add-task-submit">추가</button>
       </div>
     </div>
@@ -3314,7 +3352,7 @@ export function render() {
             <div class="time-task-log-field">
               <label>시작 시간</label>
               <div class="time-task-log-datetime-input-wrap">
-                <input type="date" class="time-task-log-date-start" data-hide-delete-btn="true" />
+                <input type="date" class="time-task-log-date-start" data-hide-delete-btn="true" data-use-native-mobile="true" />
                 <input type="text" class="time-task-log-time-start" placeholder="hh:mm" maxlength="5" />
               </div>
               <input type="hidden" class="time-task-log-start" />
@@ -3609,25 +3647,33 @@ export function render() {
   function setStartFromDatetime(dtStr) {
     if (!dtStr || typeof dtStr !== "string") {
       taskLogDateStart.value = "";
+      const fp = taskLogDateStart?._flatpickr;
+      if (fp) fp.clear();
       taskLogTimeStart.value = "";
+      syncStartToHidden();
       return;
     }
     const s = dtStr.trim();
     const m = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})[T\s](\d{1,2}):(\d{2})/);
     const m2 = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
     const timeMatch = s.match(/[T\s](\d{1,2}):(\d{2})/);
+    let dateStr = "";
     if (m) {
-      taskLogDateStart.value = `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`;
+      dateStr = `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`;
       taskLogTimeStart.value = `${String(parseInt(m[4], 10)).padStart(2, "0")}:${m[5]}`;
     } else if (m2 && timeMatch) {
-      taskLogDateStart.value = `${m2[1]}-${String(m2[2]).padStart(2, "0")}-${String(m2[3]).padStart(2, "0")}`;
+      dateStr = `${m2[1]}-${String(m2[2]).padStart(2, "0")}-${String(m2[3]).padStart(2, "0")}`;
       taskLogTimeStart.value = `${String(parseInt(timeMatch[1], 10)).padStart(2, "0")}:${timeMatch[2]}`;
     } else if (m2) {
-      taskLogDateStart.value = `${m2[1]}-${String(m2[2]).padStart(2, "0")}-${String(m2[3]).padStart(2, "0")}`;
+      dateStr = `${m2[1]}-${String(m2[2]).padStart(2, "0")}-${String(m2[3]).padStart(2, "0")}`;
       taskLogTimeStart.value = "";
     } else {
-      taskLogDateStart.value = "";
       taskLogTimeStart.value = "";
+    }
+    taskLogDateStart.value = dateStr;
+    const fp = taskLogDateStart?._flatpickr;
+    if (fp && dateStr) {
+      fp.setDate(dateStr + "T12:00:00", false);
     }
     syncStartToHidden();
   }
@@ -3910,13 +3956,21 @@ export function render() {
         label.textContent = t.name || "";
         row.appendChild(bar);
         row.appendChild(label);
-        row.addEventListener("mousedown", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
+        const closePanelAndSelect = () => {
           value = t.name || "";
           trigger.textContent = value || "과제를 선택하세요";
           panel.hidden = true;
           onTaskSelectedForLog(value);
+        };
+        row.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          closePanelAndSelect();
+        });
+        row.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          closePanelAndSelect();
         });
         container.appendChild(row);
       });
@@ -3952,9 +4006,13 @@ export function render() {
       panel.hidden = !panel.hidden;
       if (!panel.hidden) panel.querySelector(".time-task-log-task-dropdown-search")?.focus();
     });
-    document.addEventListener("click", (e) => {
-      if (!wrap.contains(e.target)) panel.hidden = true;
-    });
+    const closePanelOnOutside = (e) => {
+      if (!wrap.contains(e.target)) {
+        panel.hidden = true;
+      }
+    };
+    document.addEventListener("mousedown", closePanelOnOutside, true);
+    document.addEventListener("touchstart", closePanelOnOutside, true);
     wrap.appendChild(trigger);
     wrap.appendChild(panel);
     wrap._getValue = () => value;
@@ -4901,14 +4959,19 @@ export function render() {
       taskLogTaskWrap.innerHTML = "";
       taskLogTaskWrap.appendChild(taskLogTaskDropdown);
     }
+    const taskDropdownPanel = taskLogTaskDropdown?.querySelector(".time-task-log-task-dropdown-panel");
+    if (taskDropdownPanel) taskDropdownPanel.hidden = true;
     const mainTasks = getFullTaskOptions().filter(
       (t) => !(t.name || "").includes(" > "),
     );
     const firstTask = mainTasks[0]?.name || "";
     taskLogTaskDropdown._setValue?.(firstTask);
     const defaultStart = getDefaultStartTime(addContext);
-    setStartFromDatetime(defaultStart || "");
     setEndFromDatetime("");
+    setStartFromDatetime(defaultStart || "");
+    requestAnimationFrame(() => {
+      setStartFromDatetime(defaultStart || "");
+    });
     updateEndTimeClearVisibility();
     if (taskLogFeedbackInput) taskLogFeedbackInput.value = "";
     taskLogMemoTags = [];
@@ -5051,6 +5114,8 @@ export function render() {
     taskLogModal.hidden = true;
     if (taskLogFooterEl) taskLogFooterEl.style.display = "none";
     closeDateTimePicker();
+    const taskDropdownPanel = taskLogTaskDropdown?.querySelector(".time-task-log-task-dropdown-panel");
+    if (taskDropdownPanel) taskDropdownPanel.hidden = true;
     taskLogModal.style.zIndex = "";
     document.body.style.overflow = "";
     taskLogAddContext = null;
@@ -5156,7 +5221,9 @@ export function render() {
         focus: focusValue,
       };
       editTr._rowData = newRowData;
-      editTr.querySelector(".time-display-task").textContent = taskName;
+      const isMobileCard = editTr.classList?.contains("time-ledger-mobile-card");
+      if (!isMobileCard) {
+        editTr.querySelector(".time-display-task").textContent = taskName;
       const prodBarEl = editTr.querySelector(".time-task-prod-bar");
       if (prodBarEl) {
         prodBarEl.classList.remove(
@@ -5211,6 +5278,7 @@ export function render() {
       );
       if (focusDisplay) focusDisplay.textContent = formatFocusForDisplay(focusValue);
       editTr._updatePrice?.();
+      }
     } else if (addCtx) {
       const ctx = addCtx;
         const newRowData = {
@@ -5289,6 +5357,10 @@ export function render() {
         allRowsCache = allRowsCache.filter(
           (c) => `${c.date}|${c.taskName}|${c.startTime}` !== oldKey,
         );
+        const isMobileCardEdit = editTr.classList?.contains("time-ledger-mobile-card");
+        if (isMobileCardEdit && editTr._rowData) {
+          allRowsCache.push(editTr._rowData);
+        }
       }
       if (timeTracked) {
         const dailyInfo = getKpiDailyRepeatInfoByKpiName(taskName);
@@ -5361,7 +5433,6 @@ export function render() {
   const addTaskCatNonProd = addTaskModal.querySelector(
     '.time-add-task-categories[data-for="nonproductive"]',
   );
-  const addTaskMemoInput = addTaskModal.querySelector(".time-add-task-memo");
   const addTaskSubmitBtn = addTaskModal.querySelector(".time-add-task-submit");
 
   function renderCategoryButtons(container, categories) {
@@ -5516,7 +5587,6 @@ export function render() {
     addTaskModal.style.zIndex = "1001";
     addTaskNameInput.value = editTask ? editTask.name : "";
     addTaskNameInput.dataset.editName = editTask ? editTask.name : "";
-    if (addTaskMemoInput) addTaskMemoInput.value = editTask?.memo || "";
     const prod = editTask ? editTask.productivity : "productive";
     addTaskModal.querySelector(
       `input[name="addProd"][value="${prod}"]`,
@@ -5583,21 +5653,20 @@ export function render() {
     const prod =
       addTaskModal.querySelector('input[name="addProd"]:checked')?.value ||
       "productive";
-    const memo = (addTaskMemoInput?.value || "").trim();
     const editName = addTaskNameInput.dataset.editName || "";
     if (editName) {
       updateTaskOption(editName, {
         name,
         category: selectedCategory,
         productivity: prod,
-        memo,
+        memo: "",
       });
     } else {
       addTaskOptionFull({
         name,
         category: selectedCategory,
         productivity: prod,
-        memo,
+        memo: "",
       });
     }
     renderTaskSetupList();
@@ -5884,6 +5953,103 @@ export function render() {
 
   function renderAll(rows = []) {
     contentWrap.innerHTML = "";
+    const isMobile = window.matchMedia("(max-width: 767px)").matches;
+
+    if (isMobile) {
+      const toolbar = document.createElement("div");
+      toolbar.className = "time-ledger-mobile-toolbar";
+      const addBtnEl = document.createElement("button");
+      addBtnEl.type = "button";
+      addBtnEl.className = "time-btn-add";
+      addBtnEl.innerHTML =
+        '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 과제 기록';
+      const setupBtnEl = document.createElement("button");
+      setupBtnEl.type = "button";
+      setupBtnEl.className = "time-task-setup-btn";
+      setupBtnEl.innerHTML =
+        '<img src="/toolbaricons/settings.svg" alt="" class="time-btn-icon" width="18" height="18"> 과제 설정';
+      setupBtnEl.addEventListener("click", () => {
+        const modal = el.querySelector(".time-task-setup-modal:not(.time-task-select-modal):not(.time-add-task-modal):not(.time-task-log-modal)");
+        if (modal) modal.hidden = false;
+      });
+
+      const handleCardDelete = (card, rowData) => {
+        if (rowData) {
+          const k = `${rowData.date}|${rowData.taskName}|${rowData.startTime}`;
+          allRowsCache = allRowsCache.filter(
+            (c) => `${c.date}|${c.taskName}|${c.startTime}` !== k,
+          );
+          saveTimeRows(allRowsCache);
+        }
+        card.remove();
+        updateTotal();
+      };
+      const handleCardEdit = (card, rowData) => {
+        openTaskLogModalForEdit(card, rowData);
+      };
+
+      toolbar.appendChild(addBtnEl);
+      toolbar.appendChild(setupBtnEl);
+
+      const cardsWrap = document.createElement("div");
+      cardsWrap.className = "time-ledger-mobile-cards";
+      rows.forEach((d) => {
+        const card = createMobileTimeCard(d, handleCardEdit, handleCardDelete);
+        card._onRowDelete = handleCardDelete;
+        cardsWrap.appendChild(card);
+      });
+
+      const hiddenTableWrap = document.createElement("div");
+      hiddenTableWrap.className = "time-ledger-mobile-hidden-table";
+      hiddenTableWrap.style.cssText = "position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;";
+      const hiddenTable = document.createElement("table");
+      hiddenTable.className = "time-ledger-table";
+      hiddenTable.innerHTML = createTableHTML();
+      const hiddenTbody = hiddenTable.querySelector("tbody");
+      hiddenTableWrap.appendChild(hiddenTable);
+      contentWrap.appendChild(hiddenTableWrap);
+
+      addBtnEl.addEventListener("click", () => {
+        if (openTaskLogModal) {
+          openTaskLogModal({
+            productivity: null,
+            tbody: hiddenTbody,
+            addRow: null,
+            onRowUpdate: () => {
+              updateTotal();
+              onFilterChange();
+            },
+            viewEl: el,
+            createRow,
+            handleRowDelete: handleCardDelete,
+            handleRowEdit: handleCardEdit,
+          });
+        } else {
+          const dateStr =
+            filterType === "day"
+              ? filterStartDate
+              : (() => {
+                  const yesterday = new Date();
+                  yesterday.setDate(yesterday.getDate() - 1);
+                  return yesterday.toISOString().slice(0, 10);
+                })();
+          const card = createMobileTimeCard(
+            { date: dateStr },
+            handleCardEdit,
+            handleCardDelete,
+          );
+          card._onRowDelete = handleCardDelete;
+          cardsWrap.appendChild(card);
+          updateTotal();
+        }
+      });
+
+      contentWrap.appendChild(toolbar);
+      contentWrap.appendChild(cardsWrap);
+      updateTotal();
+      return;
+    }
+
     const wrap = document.createElement("div");
     wrap.className = "time-ledger-table-wrap";
     const tbl = document.createElement("table");

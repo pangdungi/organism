@@ -350,7 +350,8 @@ function fillTodoListContent(todoListContent) {
     nameTd.textContent = item.name;
     const priorityTd = document.createElement("td");
     priorityTd.className = "home-todo-td-priority";
-    priorityTd.textContent = item.eisenhower || "—";
+    const EISENHOWER_LABELS = { "urgent-important": "긴급+중요", "important-not-urgent": "중요+여유", "urgent-not-important": "긴급+덜중요", "not-urgent-not-important": "여유+안중요", "not-urgent-": "여유+안중요" };
+    priorityTd.textContent = item.eisenhower ? (EISENHOWER_LABELS[item.eisenhower] || item.eisenhower) : "—";
     tr.appendChild(checkTd);
     tr.appendChild(nameTd);
     tr.appendChild(priorityTd);

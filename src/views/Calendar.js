@@ -738,7 +738,8 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
 
 const MAX_VISIBLE_BARS_PER_DAY = 3;
 
-function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose) {
+function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose, options = {}) {
+  const { positionBelow = false, onAdd = null } = options;
   document
     .querySelectorAll(".calendar-event-bubble")
     .forEach((el) => el.remove());
@@ -755,6 +756,7 @@ function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose) {
   `,
     )
     .join("");
+  const addBtnHtml = onAdd ? '<button type="button" class="calendar-day-expand-add-btn">할일 추가</button>' : "";
   bubble.innerHTML = `
     <div class="calendar-event-bubble-body">
       <div class="calendar-event-bubble-header">
@@ -762,6 +764,7 @@ function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose) {
         <button type="button" class="calendar-event-bubble-close" title="닫기">×</button>
       </div>
       <div class="calendar-day-expand-list">${taskItems || "<div class='calendar-day-expand-empty'>할일 없음</div>"}</div>
+      ${addBtnHtml}
     </div>
   `;
 
@@ -773,6 +776,12 @@ function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose) {
   bubble
     .querySelector(".calendar-event-bubble-close")
     .addEventListener("click", close);
+  if (onAdd) {
+    bubble.querySelector(".calendar-day-expand-add-btn")?.addEventListener("click", () => {
+      close();
+      onAdd();
+    });
+  }
   setTimeout(() => {
     document.addEventListener("click", function outside(e) {
       if (!bubble.contains(e.target)) {
@@ -782,10 +791,13 @@ function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose) {
     });
   }, 0);
 
+  const top = positionBelow
+    ? cellRect.bottom + 4
+    : Math.min(cellRect.top, window.innerHeight - 320);
   Object.assign(bubble.style, {
     position: "fixed",
     left: `${Math.min(cellRect.left, window.innerWidth - 280)}px`,
-    top: `${Math.min(cellRect.top, window.innerHeight - 320)}px`,
+    top: `${top}px`,
     zIndex: 1002,
   });
 
@@ -1127,15 +1139,29 @@ function renderMonthlyView(tabsElement) {
           if (e.target.closest(".calendar-event-bubble")) return;
           e.stopPropagation();
           const rect = cell.getBoundingClientRect();
-          createCalendarEventBubble(
-            rect,
-            key,
-            () => {
-              renderCalendar();
-              refreshTodoList();
-            },
-            () => {},
-          );
+          const isMobile = window.matchMedia("(max-width: 767px)").matches;
+          if (isMobile) {
+            const tasks = getAllTasksForDateDisplay(key);
+            createCalendarDayExpandBubble(rect, key, tasks, () => {}, {
+              positionBelow: true,
+              onAdd: () => {
+                createCalendarEventBubble(rect, key, () => {
+                  renderCalendar();
+                  refreshTodoList();
+                }, () => {});
+              },
+            });
+          } else {
+            createCalendarEventBubble(
+              rect,
+              key,
+              () => {
+                renderCalendar();
+                refreshTodoList();
+              },
+              () => {},
+            );
+          }
         });
         cell.addEventListener("dragover", (e) => {
           if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR)) {
@@ -1431,20 +1457,23 @@ function renderMonthlyView(tabsElement) {
       moreEl.style.cssText =
         "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
       weekDateKeys.forEach((dateKey, dayIdx) => {
-        const overflowCount =
-          barsPerDay[dayIdx]?.length - MAX_VISIBLE_BARS_PER_DAY;
+        const totalCount = barsPerDay[dayIdx]?.length || 0;
+        const overflowCount = totalCount - MAX_VISIBLE_BARS_PER_DAY;
+        const isMobile = window.matchMedia("(max-width: 767px)").matches;
+        const showCount = isMobile ? totalCount > 0 : overflowCount > 0;
+        const displayCount = isMobile ? totalCount : overflowCount;
         const cell = weekRow.querySelector(
           `.calendar-monthly-day[data-date="${dateKey}"]`,
         );
         const slot = document.createElement("div");
         slot.style.cssText =
           "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
-        if (overflowCount > 0 && cell) {
+        if (showCount && cell) {
           slot.style.pointerEvents = "auto";
           const moreBtn = document.createElement("button");
           moreBtn.type = "button";
           moreBtn.className = "calendar-day-more-btn";
-          moreBtn.textContent = `+${overflowCount}`;
+          moreBtn.textContent = `+${displayCount}`;
           moreBtn.title = "더보기";
           moreBtn.addEventListener("click", (e) => {
             e.stopPropagation();
@@ -2128,20 +2157,23 @@ function render2WeekView(tabsElement) {
       moreEl.style.cssText =
         "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
       weekDateKeys.forEach((dateKey, dayIdx) => {
-        const overflowCount =
-          barsPerDay[dayIdx]?.length - MAX_VISIBLE_BARS_PER_DAY;
+        const totalCount = barsPerDay[dayIdx]?.length || 0;
+        const overflowCount = totalCount - MAX_VISIBLE_BARS_PER_DAY;
+        const isMobile = window.matchMedia("(max-width: 767px)").matches;
+        const showCount = isMobile ? totalCount > 0 : overflowCount > 0;
+        const displayCount = isMobile ? totalCount : overflowCount;
         const cell = weekRow.querySelector(
           `.calendar-monthly-day[data-date="${dateKey}"]`,
         );
         const slot = document.createElement("div");
         slot.style.cssText =
           "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
-        if (overflowCount > 0 && cell) {
+        if (showCount && cell) {
           slot.style.pointerEvents = "auto";
           const moreBtn = document.createElement("button");
           moreBtn.type = "button";
           moreBtn.className = "calendar-day-more-btn";
-          moreBtn.textContent = `+${overflowCount}`;
+          moreBtn.textContent = `+${displayCount}`;
           moreBtn.title = "더보기";
           moreBtn.addEventListener("click", (e) => {
             e.stopPropagation();
@@ -2810,20 +2842,23 @@ function render3WeekView(tabsElement) {
       moreEl.style.cssText =
         "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
       weekDateKeys.forEach((dateKey, dayIdx) => {
-        const overflowCount =
-          barsPerDay[dayIdx]?.length - MAX_VISIBLE_BARS_PER_DAY;
+        const totalCount = barsPerDay[dayIdx]?.length || 0;
+        const overflowCount = totalCount - MAX_VISIBLE_BARS_PER_DAY;
+        const isMobile = window.matchMedia("(max-width: 767px)").matches;
+        const showCount = isMobile ? totalCount > 0 : overflowCount > 0;
+        const displayCount = isMobile ? totalCount : overflowCount;
         const cell = weekRow.querySelector(
           `.calendar-monthly-day[data-date="${dateKey}"]`,
         );
         const slot = document.createElement("div");
         slot.style.cssText =
           "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
-        if (overflowCount > 0 && cell) {
+        if (showCount && cell) {
           slot.style.pointerEvents = "auto";
           const moreBtn = document.createElement("button");
           moreBtn.type = "button";
           moreBtn.className = "calendar-day-more-btn";
-          moreBtn.textContent = `+${overflowCount}`;
+          moreBtn.textContent = `+${displayCount}`;
           moreBtn.title = "더보기";
           moreBtn.addEventListener("click", (e) => {
             e.stopPropagation();
@@ -3950,7 +3985,9 @@ function render1DayView(tabsElement) {
       "important-not-urgent": "중요+여유",
       "urgent-not-important": "긴급+덜중요",
       "not-urgent-not-important": "여유+안중요",
+      "not-urgent-": "여유+안중요",
     };
+    const EISENHOWER_KEY_BY_LABEL_1DAY = { "긴급+중요": "urgent-important", "중요+여유": "important-not-urgent", "긴급+덜중요": "urgent-not-important", "여유+안중요": "not-urgent-not-important" };
     const todoTable = document.createElement("table");
     todoTable.className = "calendar-1day-todo-table time-daily-budget-table";
     todoTable.innerHTML = `
@@ -4935,20 +4972,23 @@ function render1WeekView(tabsElement) {
       moreEl.style.cssText =
         "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
       weekDateKeys.forEach((dateKey, dayIdx) => {
-        const overflowCount =
-          barsPerDay[dayIdx]?.length - MAX_VISIBLE_BARS_PER_DAY;
+        const totalCount = barsPerDay[dayIdx]?.length || 0;
+        const overflowCount = totalCount - MAX_VISIBLE_BARS_PER_DAY;
+        const isMobile = window.matchMedia("(max-width: 767px)").matches;
+        const showCount = isMobile ? totalCount > 0 : overflowCount > 0;
+        const displayCount = isMobile ? totalCount : overflowCount;
         const cell = weekRowEl.querySelector(
           `.calendar-monthly-day[data-date="${dateKey}"]`,
         );
         const slot = document.createElement("div");
         slot.style.cssText =
           "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
-        if (overflowCount > 0 && cell) {
+        if (showCount && cell) {
           slot.style.pointerEvents = "auto";
           const moreBtn = document.createElement("button");
           moreBtn.type = "button";
           moreBtn.className = "calendar-day-more-btn";
-          moreBtn.textContent = `+${overflowCount}`;
+          moreBtn.textContent = `+${displayCount}`;
           moreBtn.title = "더보기";
           moreBtn.addEventListener("click", (e) => {
             e.stopPropagation();
@@ -5324,9 +5364,12 @@ function renderCalendarView(tabsElement) {
 
   const CALENDAR_VIEW_KEY = "calendar-sub-view";
   const savedSubView = localStorage.getItem(CALENDAR_VIEW_KEY) || "monthly";
-  const initialSubView = CALENDAR_SUB_VIEWS.some((v) => v.id === savedSubView)
-    ? savedSubView
-    : "monthly";
+  const isMobile = window.matchMedia("(max-width: 767px)").matches;
+  const initialSubView = isMobile
+    ? "monthly"
+    : CALENDAR_SUB_VIEWS.some((v) => v.id === savedSubView)
+      ? savedSubView
+      : "monthly";
 
   function placeSubTabsInNav() {
     const nav = contentArea.querySelector(".calendar-monthly-nav");
@@ -5584,6 +5627,13 @@ function renderEisenhowerView(tabsElement) {
     "urgent-not-important": "긴급+덜중요",
     "not-urgent-not-important": "여유+안중요",
   };
+  /** 한글 레이블 → quadrant 키 (역매핑, 기존 데이터 호환) */
+  const EISENHOWER_KEY_BY_LABEL = {
+    "긴급+중요": "urgent-important",
+    "중요+여유": "important-not-urgent",
+    "긴급+덜중요": "urgent-not-important",
+    "여유+안중요": "not-urgent-not-important",
+  };
 
   function updateQuadrants() {
     const allTasks = getAllTasksForEisenhower();
@@ -5594,7 +5644,8 @@ function renderEisenhowerView(tabsElement) {
       "not-urgent-not-important": [],
     };
     allTasks.forEach((t) => {
-      const q = (t.eisenhower || "").trim();
+      const raw = (t.eisenhower || "").trim();
+      const q = EISENHOWER_KEY_BY_LABEL[raw] || raw;
       if (byQuadrant[q]) byQuadrant[q].push(t);
     });
     eisenhowerWrap
@@ -5671,6 +5722,7 @@ function renderEisenhowerView(tabsElement) {
       return;
     }
     const quadrant = quad.dataset.quadrant;
+    const label = EISENHOWER_LABELS[quadrant] || quadrant;
     const {
       taskId,
       sectionId,
@@ -5686,11 +5738,11 @@ function renderEisenhowerView(tabsElement) {
     const isUrgentImportant = quadrant === "urgent-important";
     let ok = false;
     if (isKpiTodo && kpiTodoId && storageKey) {
-      const updates = { eisenhower: quadrant };
+      const updates = { eisenhower: label };
       if (isUrgentImportant) updates.dueDate = todayKey;
       ok = updateKpiTodo(kpiTodoId, storageKey, updates);
     } else if ((sectionId || "").startsWith("custom-")) {
-      ok = updateCustomSectionTaskEisenhower(sectionId, taskId, quadrant);
+      ok = updateCustomSectionTaskEisenhower(sectionId, taskId, label);
       if (ok && isUrgentImportant) {
         updateCustomSectionTaskDates(
           sectionId,
@@ -5700,7 +5752,7 @@ function renderEisenhowerView(tabsElement) {
         );
       }
     } else {
-      ok = updateSectionTaskEisenhower(sectionId, taskId, quadrant);
+      ok = updateSectionTaskEisenhower(sectionId, taskId, label);
       if (ok && isUrgentImportant) {
         updateSectionTaskDates(sectionId, taskId, startDate || "", todayKey);
       }
@@ -5709,10 +5761,9 @@ function renderEisenhowerView(tabsElement) {
       updateQuadrants();
       const row = todoListEl.querySelector(`tr[data-task-id="${taskId}"]`);
       if (row) {
-        row.dataset.eisenhower = quadrant;
+        row.dataset.eisenhower = label;
         const displaySpan = row.querySelector(".todo-eisenhower-display");
-        if (displaySpan)
-          displaySpan.textContent = EISENHOWER_LABELS[quadrant] || quadrant;
+        if (displaySpan) displaySpan.textContent = label;
         if (isUrgentImportant) {
           const dueInput = row.querySelector(".todo-due-input-hidden");
           const dueDisplay = row.querySelector(".todo-due-display");

@@ -55,7 +55,10 @@ export function initDatePickersIn(container) {
   if (!container) return;
   container
     .querySelectorAll('input[type="date"]')
-    .forEach((el) => initDatePicker(el));
+    .forEach((el) => {
+      const useNativeMobile = el.dataset.useNativeMobile === "true";
+      initDatePicker(el, useNativeMobile ? { disableMobile: true } : {});
+    });
 }
 
 export function observeDatePickerInit(container) {

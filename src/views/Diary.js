@@ -97,6 +97,7 @@ export function render() {
   let currentEntryId = null;
   let searchQuery = "";
   let isComposing = false;
+  let sidebarCollapsed = false;
   let entries = loadDiaryEntries();
 
   function ensureTabEntries(tabId) {
@@ -156,7 +157,7 @@ export function render() {
   function renderLayout() {
     layoutWrap.innerHTML = "";
     const layout = document.createElement("div");
-    layout.className = "diary-layout";
+    layout.className = "diary-layout" + (sidebarCollapsed ? " sidebar-collapsed" : "");
 
     const sidebar = document.createElement("aside");
     sidebar.className = "diary-sidebar";
@@ -210,11 +211,18 @@ export function render() {
       sidebarHeader.innerHTML = `
         <span class="diary-sidebar-title">Pages</span>
         <div class="diary-sidebar-actions">
+          <button type="button" class="diary-sidebar-collapse diary-sidebar-collapse-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
           <button type="button" class="diary-sidebar-add-btn" title="페이지 추가">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           </button>
         </div>
       `;
+      sidebarHeader.querySelector(".diary-sidebar-collapse").addEventListener("click", () => {
+        sidebarCollapsed = !sidebarCollapsed;
+        renderLayout();
+      });
       sidebarHeader.querySelector(".diary-sidebar-add-btn").addEventListener("click", addPageHandler);
       sidebar.appendChild(sidebarHeader);
 
