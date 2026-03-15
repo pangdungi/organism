@@ -5522,10 +5522,14 @@ export function render() {
   el.className = "app-tab-panel-content asset-view";
 
   const header = document.createElement("div");
-  header.className = "asset-header";
-  const h = document.createElement("h2");
-  h.className = "asset-title";
+  header.className = "asset-header dream-view-header-wrap";
+  const label = document.createElement("span");
+  label.className = "dream-view-label";
+  label.textContent = "ASSET";
+  const h = document.createElement("h1");
+  h.className = "dream-view-title asset-title";
   h.textContent = "자산관리";
+  header.appendChild(label);
   header.appendChild(h);
   el.appendChild(header);
 

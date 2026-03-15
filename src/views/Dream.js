@@ -214,17 +214,28 @@ export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content dream-view";
 
-  const title = document.createElement("h2");
+  const header = document.createElement("header");
+  header.className = "dream-view-header";
+  const label = document.createElement("span");
+  label.className = "dream-view-label";
+  label.textContent = "DREAM";
+  const title = document.createElement("h1");
   title.className = "dream-view-title";
   title.textContent = "꿈";
-  el.appendChild(title);
+  const subtitle = document.createElement("p");
+  subtitle.className = "dream-view-subtitle";
+  subtitle.textContent = "그럴거야, 아주 잘 살거야";
+  header.appendChild(label);
+  header.appendChild(title);
+  header.appendChild(subtitle);
+  el.appendChild(header);
 
   const btnRow = document.createElement("div");
   btnRow.className = "dream-btn-row";
   const settingBtn = document.createElement("button");
   settingBtn.type = "button";
-  settingBtn.className = "dream-setting-btn";
-  settingBtn.textContent = "꿈 설정하기";
+  settingBtn.className = "dream-setting-link";
+  settingBtn.innerHTML = `<span class="dream-setting-link-icon" aria-hidden="true">⚙</span>꿈 설정하기`;
   settingBtn.addEventListener("click", () => showDesiredLifeModal());
   btnRow.appendChild(settingBtn);
   el.appendChild(btnRow);
@@ -1339,18 +1350,9 @@ export function render() {
   function updateDesiredLifeDisplay() {
     const data = loadDreamMap();
     const text = (data.desiredLife || "").trim();
-    if (text) {
-      btnRow.hidden = true;
-      desiredLifeWrap.hidden = false;
-      desiredLifeWrap.innerHTML = `
-        <p class="dream-desired-life-text">${escapeHtml(text).replace(/\n/g, "<br>")}</p>
-        <button type="button" class="dream-desired-life-edit-btn" title="수정"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="dream-edit-icon" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m13.75 5.25 5 5"/><path d="m16.714 2.286-13.5 13.5-1.964 6.964 6.964-1.964 13.5-13.5c1.381-1.381 1.381-3.619 0-5-1.38-1.381-3.619-1.381-5 0z"/></g></svg></button>`;
-      desiredLifeWrap.querySelector(".dream-desired-life-edit-btn").addEventListener("click", () => showDesiredLifeModal());
-    } else {
-      btnRow.hidden = false;
-      desiredLifeWrap.hidden = true;
-      desiredLifeWrap.innerHTML = "";
-    }
+    subtitle.textContent = text || "그럴거야, 아주 잘 살거야";
+    desiredLifeWrap.hidden = true;
+    desiredLifeWrap.innerHTML = "";
   }
 
   function renderTabs() {

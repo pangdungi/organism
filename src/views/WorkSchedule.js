@@ -599,10 +599,14 @@ export function render() {
   el.className = "app-tab-panel-content work-schedule-view";
 
   const header = document.createElement("div");
-  header.className = "work-schedule-header";
-  const h = document.createElement("h2");
-  h.className = "work-schedule-title";
+  header.className = "work-schedule-header dream-view-header-wrap";
+  const label = document.createElement("span");
+  label.className = "dream-view-label";
+  label.textContent = "WORK SCHEDULE";
+  const h = document.createElement("h1");
+  h.className = "dream-view-title work-schedule-title";
   h.textContent = "근무표";
+  header.appendChild(label);
   header.appendChild(h);
   el.appendChild(header);
 

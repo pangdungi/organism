@@ -3190,8 +3190,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
     }
     return null;
   };
-  const SLOTS_PER_DAY = 48;
-  const MIN_PER_SLOT = 30;
+  const SLOTS_PER_DAY = 24;
+  const MIN_PER_SLOT = 60;
   const getScheduledTimesForTask = (data) => {
     if (!data) return [];
     if (Array.isArray(data.scheduledTimes))
@@ -3548,9 +3548,9 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
       blockFill.style.overflow = "hidden";
       if (useLaneLayout) {
         const lane = first.lane ?? 0;
-        blockFill.style.borderRadius = lane === 0 ? "2px 0 0 2px" : lane === laneCount - 1 ? "0 2px 2px 0" : "0";
+        blockFill.style.borderRadius = lane === 0 ? "6px 0 0 6px" : lane === laneCount - 1 ? "0 6px 6px 0" : "0";
       } else {
-        blockFill.style.borderRadius = "2px";
+        blockFill.style.borderRadius = "6px";
         blockFill.style.border = "none";
       }
       if (!useLaneLayout) {
@@ -3558,6 +3558,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         blockFill.style.width = "100%";
       }
       blockFill.style.boxSizing = "border-box";
+      /* 타임박스: 왼쪽 진한 실선, 살짝 둥근 모서리, 투명 컬러 채움 */
+      let firstBorderColor = null;
       for (const sp of group) {
         let c;
         if (
@@ -3568,13 +3570,14 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         ) {
           const baseColor = getSectionColor(sp.sectionId);
           c = {
-            bg: withMoreTransparency(baseColor, 0.06),
-            border: withMoreTransparency(baseColor, 0.5),
+            bg: withMoreTransparency(baseColor, 0.08),
+            border: withMoreTransparency(baseColor, 0.55),
           };
         } else {
           c = colors[sp.prod];
         }
         if (!c) continue;
+        if (!firstBorderColor) firstBorderColor = c.border;
         /* actualBlockMin 기준으로 세그먼트 비율 계산 - 블록 높이 축소 시에도 세그먼트가 블록 전체를 채우도록 */
         const segHeightPct =
           actualBlockMin > 0 ? ((sp.endMin - sp.startMin) / actualBlockMin) * 100 : 0;
@@ -3585,10 +3588,9 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         seg.style.width = "100%";
         seg.style.display = "flex";
         seg.style.alignItems = "flex-start";
-        seg.style.padding = "2px 6px";
+        seg.style.padding = "4px 6px 4px 8px";
         seg.style.backgroundColor = c.bg;
         seg.style.boxSizing = "border-box";
-        seg.style.borderBottom = `1px solid ${c.border}`;
         const labelWrap = document.createElement("div");
         labelWrap.className = "calendar-1day-time-slot-label-wrap";
         const labelName = document.createElement("span");
@@ -3602,8 +3604,9 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         seg.appendChild(labelWrap);
         blockFill.appendChild(seg);
       }
-      const lastSeg = blockFill.lastElementChild;
-      if (lastSeg) lastSeg.style.borderBottom = "none";
+      if (firstBorderColor) {
+        blockFill.style.borderLeft = `2px solid ${firstBorderColor}`;
+      }
       overlay.appendChild(blockFill);
     }
     return overlay;
@@ -4196,8 +4199,8 @@ function render1DayView(tabsElement) {
       }
       return null;
     };
-    const SLOTS_PER_DAY = 48;
-    const MIN_PER_SLOT = 30;
+    const SLOTS_PER_DAY = 24;
+    const MIN_PER_SLOT = 60;
     const getScheduledTimesForTaskLocal = (data) => {
       if (!data) return [];
       if (Array.isArray(data.scheduledTimes))
@@ -4353,15 +4356,13 @@ function render1DayView(tabsElement) {
     headerRow.appendChild(headerActual);
     timeTable.appendChild(headerRow);
     for (let i = 0; i < SLOTS_PER_DAY; i++) {
-      const hour = Math.floor(i / 2);
-      const min = (i % 2) * 30;
       const row = document.createElement("div");
       row.className = "calendar-1day-time-row";
       row.style.gridColumn = "1";
       row.style.gridRow = `${i + 2}`;
       const timeLabel = document.createElement("div");
       timeLabel.className = "calendar-1day-time-label";
-      timeLabel.textContent = `${String(hour).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+      timeLabel.textContent = `${String(i).padStart(2, "0")}:00`;
       row.appendChild(timeLabel);
       timeTable.appendChild(row);
       const slotExpected = document.createElement("div");
@@ -4412,7 +4413,7 @@ function render1DayView(tabsElement) {
   wrap.appendChild(contentRow);
 
   wrap.addEventListener("dragend", () => {
-    window.__calendarDragDuration = 30;
+    window.__calendarDragDuration = 60;
     wrap
       .querySelectorAll(".calendar-day-drag-over")
       .forEach((el) => el.classList.remove("calendar-day-drag-over"));
@@ -5187,9 +5188,7 @@ function render1WeekView(tabsElement) {
   return wrap;
 }
 
-/** 연간 뷰: 왼쪽 월 라벨, 오른쪽 해당 월 날짜 셀 한 행 (Year Planner 구조) */
-const DAY_NAMES_SHORT_SUN_FIRST = ["일", "월", "화", "수", "목", "금", "토"];
-
+/** 연간 뷰: 왼쪽 월 라벨, 오른쪽 해당 월 날짜 셀 한 행 (Year Planner 구조), 요일 미표시, 클릭 시 할일 목록 버블 */
 function renderAnnualView(tabsElement) {
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout calendar-annual-view";
@@ -5249,21 +5248,23 @@ function renderAnnualView(tabsElement) {
         const isWeekend = dow === 0 || dow === 6;
         const cell = document.createElement("div");
         cell.className = "calendar-annual-cell";
+        cell.dataset.dateKey = key;
         if (key === todayKey) cell.classList.add("today");
         if (isWeekend) cell.classList.add("weekend");
         const dayNum = document.createElement("span");
         dayNum.className = "calendar-annual-cell-num";
         dayNum.textContent = d;
         cell.appendChild(dayNum);
-        const dayDow = document.createElement("span");
-        dayDow.className = "calendar-annual-cell-dow";
-        dayDow.textContent = DAY_NAMES_SHORT_SUN_FIRST[dow];
-        cell.appendChild(dayDow);
         if (getTasksForDate(key).length > 0) {
           const dot = document.createElement("span");
           dot.className = "calendar-annual-cell-dot";
           cell.appendChild(dot);
         }
+        cell.addEventListener("click", () => {
+          const rect = cell.getBoundingClientRect();
+          const tasks = getAllTasksForDateDisplay(key);
+          createCalendarDayExpandBubble(rect, key, tasks, () => {});
+        });
         daysRow.appendChild(cell);
       }
       row.appendChild(daysRow);
@@ -5871,10 +5872,14 @@ export function render() {
   el.className = "app-tab-panel-content calendar-view";
 
   const header = document.createElement("div");
-  header.className = "calendar-view-header";
-  const titleEl = document.createElement("h2");
-  titleEl.className = "calendar-view-title";
+  header.className = "calendar-view-header dream-view-header-wrap";
+  const label = document.createElement("span");
+  label.className = "dream-view-label";
+  label.textContent = "SCHEDULE";
+  const titleEl = document.createElement("h1");
+  titleEl.className = "dream-view-title calendar-view-title";
   titleEl.textContent = "할일/일정";
+  header.appendChild(label);
   header.appendChild(titleEl);
   el.appendChild(header);
 

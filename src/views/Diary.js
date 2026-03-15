@@ -69,9 +69,17 @@ export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content diary-view";
 
-  const h = document.createElement("h2");
+  const header = document.createElement("header");
+  header.className = "dream-view-header";
+  const label = document.createElement("span");
+  label.className = "dream-view-label";
+  label.textContent = "DIARY";
+  const h = document.createElement("h1");
+  h.className = "dream-view-title";
   h.textContent = "감정관리";
-  el.appendChild(h);
+  header.appendChild(label);
+  header.appendChild(h);
+  el.appendChild(header);
 
   const tabs = document.createElement("div");
   tabs.className = "time-view-tabs diary-tabs";

@@ -12,6 +12,7 @@ export const FONT_OPTIONS = [
   { value: "scdream3", label: "에스코어 드림 3" },
   { value: "nexonlv2", label: "NEXON Lv2 Gothic" },
   { value: "pretendard", label: "Pretendard" },
+  { value: "notoserifkr", label: "Noto Serif KR" },
 ];
 
 export function applyAppFont() {
@@ -24,6 +25,8 @@ export function applyAppFont() {
       fontFamily = '"NEXON Lv2 Gothic", -apple-system, sans-serif';
     } else if (saved === "pretendard") {
       fontFamily = '"Pretendard", -apple-system, sans-serif';
+    } else if (saved === "notoserifkr") {
+      fontFamily = '"Noto Serif KR", serif';
     } else {
       fontFamily = '"Noto Sans KR", -apple-system, sans-serif';
     }
@@ -32,6 +35,8 @@ export function applyAppFont() {
       document.documentElement.dataset.appFont = "nexonlv2";
     } else if (saved === "pretendard") {
       document.documentElement.dataset.appFont = "pretendard";
+    } else if (saved === "notoserifkr") {
+      document.documentElement.dataset.appFont = "notoserifkr";
     } else {
       delete document.documentElement.dataset.appFont;
     }
@@ -47,10 +52,17 @@ export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content idea-view";
 
-  const title = document.createElement("h2");
-  title.textContent = "My account";
-  title.className = "idea-view-title";
-  el.appendChild(title);
+  const header = document.createElement("header");
+  header.className = "dream-view-header";
+  const label = document.createElement("span");
+  label.className = "dream-view-label";
+  label.textContent = "MY ACCOUNT";
+  const title = document.createElement("h1");
+  title.className = "dream-view-title idea-view-title";
+  title.textContent = "나의 계정";
+  header.appendChild(label);
+  header.appendChild(title);
+  el.appendChild(header);
 
   const grid = document.createElement("div");
   grid.className = "time-dashboard-view idea-widget-grid";
@@ -64,6 +76,7 @@ export function render() {
       const v = localStorage.getItem(APP_FONT_KEY);
       if (v === "nexonlv2" || v === "leeseoyun") return "nexonlv2";
       if (v === "pretendard") return "pretendard";
+      if (v === "notoserifkr") return "notoserifkr";
       return v === "scdream2" ? "scdream3" : v || "scdream3";
     } catch (_) {
       return "scdream3";

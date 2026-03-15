@@ -211,10 +211,17 @@ export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content health-view dream-view";
 
-  const title = document.createElement("h2");
+  const header = document.createElement("header");
+  header.className = "dream-view-header";
+  const label = document.createElement("span");
+  label.className = "dream-view-label";
+  label.textContent = "HEALTH";
+  const title = document.createElement("h1");
   title.className = "dream-view-title";
   title.textContent = "건강";
-  el.appendChild(title);
+  header.appendChild(label);
+  header.appendChild(title);
+  el.appendChild(header);
 
   const tabsWrap = document.createElement("div");
   tabsWrap.className = "dream-tabs-wrap";

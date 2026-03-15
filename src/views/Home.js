@@ -492,22 +492,32 @@ export function render() {
 
   const section1 = document.createElement("div");
   section1.className = "home-view-section home-view-section--calendar";
+  const d = new Date();
+  const WEEKDAY_NAMES = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
   const header1 = document.createElement("h3");
   header1.className = "home-view-section-title";
   header1.textContent = "Daily";
   section1.appendChild(header1);
+  const dateAnchor = document.createElement("div");
+  dateAnchor.className = "home-daily-date-anchor";
+  dateAnchor.textContent = `${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
+  section1.appendChild(dateAnchor);
+  const weekdayEl = document.createElement("div");
+  weekdayEl.className = "home-daily-weekday";
+  weekdayEl.textContent = WEEKDAY_NAMES[d.getDay()];
+  section1.appendChild(weekdayEl);
   const calendarWrap = render1DayView(null);
   calendarWrap.classList.add("home-embed-1day");
   section1.appendChild(calendarWrap);
-  /* 홈 탭 전용: 날짜를 m/dd로만 표시(연도·이동 피커는 CSS로 숨김) */
+  /* 홈: 날짜는 상단 앵커에만 표시, nav 내부 날짜는 숨김 */
   const nav = calendarWrap.querySelector(".calendar-nav");
   if (nav) {
-    const monthEl = nav.querySelector(".calendar-nav-month");
-    if (monthEl) {
-      const d = new Date();
-      monthEl.textContent = `${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
-    }
+    const dateWrap = nav.querySelector(".calendar-nav-date");
+    if (dateWrap) dateWrap.style.display = "none";
   }
+  /* 홈: 오늘실제는 표 헤더로만 사용, 툴팁 제거 */
+  const actualToggle = calendarWrap.querySelector(".calendar-1day-time-header-cell--actual-toggle");
+  if (actualToggle) actualToggle.title = "";
 
   const section2 = document.createElement("div");
   section2.className = "home-view-section home-view-section--event";

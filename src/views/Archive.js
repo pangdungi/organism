@@ -24,10 +24,14 @@ export function render() {
   el.className = "app-tab-panel-content archive-view";
 
   const header = document.createElement("header");
-  header.className = "archive-header";
-  const h = document.createElement("h2");
-  h.className = "archive-title";
+  header.className = "archive-header dream-view-header-wrap";
+  const label = document.createElement("span");
+  label.className = "dream-view-label";
+  label.textContent = "ARCHIVE";
+  const h = document.createElement("h1");
+  h.className = "dream-view-title archive-title";
   h.textContent = "아카이브";
+  header.appendChild(label);
   header.appendChild(h);
 
   const searchWrap = document.createElement("div");

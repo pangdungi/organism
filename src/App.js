@@ -102,12 +102,7 @@ export function mountApp(container) {
     btn.title = tab.label;
     const label = document.createElement("span");
     label.className = "app-sidebar-item-label";
-    Array.from(tab.label).forEach((char) => {
-      const span = document.createElement("span");
-      span.className = "app-sidebar-item-char";
-      span.textContent = char;
-      label.appendChild(span);
-    });
+    label.textContent = tab.label;
     btn.appendChild(label);
     btn.addEventListener("click", () => {
       currentTabId = tab.id;
@@ -129,12 +124,7 @@ export function mountApp(container) {
   accountBtn.dataset.tabId = "idea";
   const accountLabel = document.createElement("span");
   accountLabel.className = "app-sidebar-item-label";
-  Array.from("나의 계정").forEach((char) => {
-    const span = document.createElement("span");
-    span.className = "app-sidebar-item-char";
-    span.textContent = char;
-    accountLabel.appendChild(span);
-  });
+  accountLabel.textContent = "나의 계정";
   accountBtn.appendChild(accountLabel);
   accountBtn.addEventListener("click", () => {
     currentTabId = "idea";

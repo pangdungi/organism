@@ -2877,10 +2877,14 @@ export function render() {
   el.className = "app-tab-panel-content time-ledger-view";
 
   const header = document.createElement("div");
-  header.className = "time-ledger-header";
-  const title = document.createElement("h2");
-  title.className = "time-ledger-title";
-  title.textContent = "데일리 시간 입력용";
+  header.className = "time-ledger-header dream-view-header-wrap";
+  const label = document.createElement("span");
+  label.className = "dream-view-label";
+  label.textContent = "TIME";
+  const title = document.createElement("h1");
+  title.className = "dream-view-title time-ledger-title";
+  title.textContent = "시간가계부";
+  header.appendChild(label);
   header.appendChild(title);
   el.appendChild(header);
 
