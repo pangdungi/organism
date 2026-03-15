@@ -957,6 +957,7 @@ function createTaskRow(taskData = {}, options = {}) {
         updateSectionTaskDone(secId, taskId, doneCheck.checked);
       }
     }
+    syncOverdueDisplay?.();
   });
 
   const scheduleIcon = document.createElement("img");
@@ -1373,15 +1374,19 @@ function createTaskRow(taskData = {}, options = {}) {
     if (diffDays === 0) return "오늘";
     return `${diffDays}일 남음`;
   }
+  function formatOverdueDisplay(dueStr, isDone) {
+    if (isDone && dueStr && isOverdue(dueStr)) return "과제 완료";
+    return formatOverdueText(dueStr);
+  }
 
   const overdueTd = document.createElement("td");
   overdueTd.className = "todo-cell-overdue";
   const overdueSpan = document.createElement("span");
   overdueSpan.className = "todo-overdue-display";
-  overdueSpan.textContent = formatOverdueText(dueDate);
+  overdueSpan.textContent = formatOverdueDisplay(dueDate, done);
   overdueTd.appendChild(overdueSpan);
   const syncOverdueDisplay = () => {
-    overdueSpan.textContent = formatOverdueText(dueInput.value);
+    overdueSpan.textContent = formatOverdueDisplay(dueInput.value, doneCheck.checked);
   };
 
   const EISENHOWER_LABELS = {
@@ -2316,7 +2321,7 @@ export function renderTodoListForEisenhowerSidebar(options = {}) {
   const sectionTasks = FIXED_SECTION_IDS_FOR_STORAGE.flatMap((sid) => loadSectionTasks(sid));
   const customTasks = getCustomSections().flatMap((s) => loadCustomSectionTasks(s.id));
   const allTasks = [...kpiTasks, ...sectionTasks, ...customTasks];
-  const overdueTasks = allTasks.filter((t) => isOverdue(t.dueDate)).map((t) => ({ ...t, sectionId: "overdue" }));
+  const overdueTasks = allTasks.filter((t) => isOverdue(t.dueDate) && !t.done).map((t) => ({ ...t, sectionId: "overdue" }));
 
   const overdueWrap = document.createElement("div");
   overdueWrap.className = "todo-eisenhower-overdue-section";
@@ -2339,7 +2344,7 @@ export function renderOverdueSection(options = {}) {
   const sectionTasks = FIXED_SECTION_IDS_FOR_STORAGE.flatMap((sid) => loadSectionTasks(sid));
   const customTasks = getCustomSections().flatMap((s) => loadCustomSectionTasks(s.id));
   const allTasks = [...kpiTasks, ...sectionTasks, ...customTasks];
-  const overdueTasks = allTasks.filter((t) => isOverdue(t.dueDate)).map((t) => ({ ...t, sectionId: "overdue" }));
+  const overdueTasks = allTasks.filter((t) => isOverdue(t.dueDate) && !t.done).map((t) => ({ ...t, sectionId: "overdue" }));
 
   const overdueWrap = document.createElement("div");
   overdueWrap.className = "todo-eisenhower-overdue-section todo-overdue-in-date-sidebar";
