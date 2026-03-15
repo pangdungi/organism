@@ -499,6 +499,15 @@ export function render() {
   const calendarWrap = render1DayView(null);
   calendarWrap.classList.add("home-embed-1day");
   section1.appendChild(calendarWrap);
+  /* 홈 탭 전용: 날짜를 m/dd로만 표시(연도·이동 피커는 CSS로 숨김) */
+  const nav = calendarWrap.querySelector(".calendar-nav");
+  if (nav) {
+    const monthEl = nav.querySelector(".calendar-nav-month");
+    if (monthEl) {
+      const d = new Date();
+      monthEl.textContent = `${d.getMonth() + 1}/${String(d.getDate()).padStart(2, "0")}`;
+    }
+  }
 
   const section2 = document.createElement("div");
   section2.className = "home-view-section home-view-section--event";

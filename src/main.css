@@ -1000,6 +1000,14 @@ body {
 .home-embed-1day .calendar-nav {
   background: none !important;
 }
+
+/* 홈 탭 Daily: 날짜 이동 피커(< 오늘 >) 제거, 연도 숨김 */
+.home-embed-1day .calendar-nav-controls {
+  display: none !important;
+}
+.home-embed-1day .calendar-nav-year {
+  display: none !important;
+}
 .home-embed-1day .calendar-1day-time-header {
   background: #f3f4f6 !important;
 }
@@ -1176,7 +1184,7 @@ body {
 .home-todo-list-table th {
   font-weight: 600;
   color: #374151;
-  background: #f9fafb;
+  background: transparent;
 }
 .home-todo-th-check {
   width: 2.5rem;
