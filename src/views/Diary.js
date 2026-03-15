@@ -87,7 +87,6 @@ export function render() {
 
   let currentTabId = "2";
   let currentEntryId = null;
-  let sidebarCollapsed = false;
   let searchQuery = "";
   let searchOpen = false;
   let isComposing = false;
@@ -150,7 +149,7 @@ export function render() {
   function renderLayout() {
     layoutWrap.innerHTML = "";
     const layout = document.createElement("div");
-    layout.className = "diary-layout" + (sidebarCollapsed ? " sidebar-collapsed" : "");
+    layout.className = "diary-layout";
 
     const sidebar = document.createElement("aside");
     sidebar.className = "diary-sidebar";
@@ -183,16 +182,11 @@ export function render() {
           <button type="button" class="diary-search-btn" title="검색">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           </button>
-          <button type="button" class="diary-sidebar-collapse-btn" title="${sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기"}">${sidebarCollapsed ? "»" : "«"}</button>
         </div>
       `;
       const searchBtn = sidebarHeader.querySelector(".diary-search-btn");
       searchBtn.addEventListener("click", () => {
         searchOpen = !searchOpen;
-        renderLayout();
-      });
-      sidebarHeader.querySelector(".diary-sidebar-collapse-btn").addEventListener("click", () => {
-        sidebarCollapsed = !sidebarCollapsed;
         renderLayout();
       });
       sidebar.appendChild(sidebarHeader);
@@ -293,19 +287,6 @@ export function render() {
     // ----- 오른쪽 콘텐츠 (빈 종이) -----
     const contentArea = document.createElement("div");
     contentArea.className = "diary-content-area";
-    const collapseZone = document.createElement("div");
-    collapseZone.className = "diary-collapse-zone";
-    collapseZone.title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
-    const collapsePopBtn = document.createElement("button");
-    collapsePopBtn.type = "button";
-    collapsePopBtn.className = "diary-collapse-pop";
-    collapsePopBtn.textContent = sidebarCollapsed ? "»" : "«";
-    collapsePopBtn.addEventListener("click", () => {
-      sidebarCollapsed = !sidebarCollapsed;
-      renderLayout();
-    });
-    collapseZone.appendChild(collapsePopBtn);
-    contentArea.appendChild(collapseZone);
     const scrollWrap = document.createElement("div");
     scrollWrap.className = "diary-content-scroll";
     const paper = document.createElement("div");

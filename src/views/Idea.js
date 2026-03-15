@@ -2,7 +2,7 @@
  * My account - 기본정보, 나의 시급계산하기, 색상 설정
  */
 
-import { getTodoSettings, saveTodoSettings, getCustomSections, DEFAULT_SECTION_COLORS, DEFAULT_TIME_CATEGORY_COLORS, applyTimeCategoryColors } from "../utils/todoSettings.js";
+import { getTodoSettings, saveTodoSettings, getCustomSections, DEFAULT_SECTION_COLORS, DEFAULT_TIME_CATEGORY_COLORS, DEFAULT_TASK_CATEGORY_COLORS, applyTimeCategoryColors, applyTaskCategoryColors } from "../utils/todoSettings.js";
 import { createColorPickerRow } from "../utils/todoSettingsModal.js";
 
 export const USER_HOURLY_RATE_KEY = "user_hourly_rate";
@@ -150,6 +150,17 @@ export function render() {
     { id: "nonproductive", label: "비생산" },
     { id: "other", label: "기타" },
   ];
+  /** 시간가계부 작업(세부) 카테고리 - 꿈/부수입/행복/건강은 리스트 색상과 통일이라 제외 */
+  const TASK_CATEGORY_SECTIONS = [
+    { id: "", label: "—" },
+    { id: "pleasure", label: "쾌락충족" },
+    { id: "dreamblocking", label: "꿈을 방해하는 일" },
+    { id: "unhappiness", label: "불행" },
+    { id: "unhealthy", label: "비건강" },
+    { id: "moneylosing", label: "돈을 잃는 일" },
+    { id: "work", label: "근무" },
+    { id: "sleep", label: "수면" },
+  ];
   function getSections() {
     return [...FIXED_SECTIONS, ...getCustomSections()];
   }
@@ -157,32 +168,59 @@ export function render() {
   const settings = getTodoSettings();
   let sectionColors = { ...settings.sectionColors };
   let timeCategoryColors = { ...settings.timeCategoryColors };
+  let taskCategoryColors = { ...(settings.taskCategoryColors || DEFAULT_TASK_CATEGORY_COLORS) };
 
   const colorWidget = document.createElement("div");
   colorWidget.className = "time-dashboard-widget idea-widget idea-widget-colors";
   colorWidget.innerHTML = `
     <div class="time-dashboard-widget-title">색상 설정</div>
     <div class="todo-settings-block idea-colors-block">
-      <h4 class="todo-settings-block-title">리스트 색상 · 시간가계부</h4>
-      <div class="idea-colors-rows"></div>
+      <div class="idea-colors-columns">
+        <div class="idea-colors-col">
+          <h4 class="todo-settings-block-title">리스트 색상</h4>
+          <div class="idea-colors-rows idea-colors-rows-list"></div>
+        </div>
+        <div class="idea-colors-col">
+          <h4 class="todo-settings-block-title">생산성 (시간가계부)</h4>
+          <div class="idea-colors-rows idea-colors-rows-time"></div>
+        </div>
+        <div class="idea-colors-col idea-colors-col-task">
+          <h4 class="todo-settings-block-title">작업 카테고리 (세부)</h4>
+          <div class="idea-colors-task-cols">
+            <div class="idea-colors-rows idea-colors-rows-task-left"></div>
+            <div class="idea-colors-rows idea-colors-rows-task-right"></div>
+          </div>
+        </div>
+      </div>
       <button type="button" class="todo-settings-save idea-colors-save">저장</button>
     </div>
   `;
-  const colorsRowsEl = colorWidget.querySelector(".idea-colors-rows");
+  const listRowsEl = colorWidget.querySelector(".idea-colors-rows-list");
+  const timeRowsEl = colorWidget.querySelector(".idea-colors-rows-time");
+  const taskRowsLeftEl = colorWidget.querySelector(".idea-colors-rows-task-left");
+  const taskRowsRightEl = colorWidget.querySelector(".idea-colors-rows-task-right");
   const colorSaveBtn = colorWidget.querySelector(".idea-colors-save");
 
   getSections().forEach((sec) => {
     const row = createColorPickerRow(sec.id, sec.label, sectionColors[sec.id], (color) => {
       sectionColors[sec.id] = color;
     });
-    colorsRowsEl.appendChild(row);
+    listRowsEl.appendChild(row);
   });
   TIME_CATEGORY_SECTIONS.forEach((sec) => {
     const defaultColor = DEFAULT_TIME_CATEGORY_COLORS[sec.id];
     const row = createColorPickerRow(sec.id, sec.label, timeCategoryColors[sec.id] || defaultColor, (color) => {
       timeCategoryColors[sec.id] = color;
     });
-    colorsRowsEl.appendChild(row);
+    timeRowsEl.appendChild(row);
+  });
+  TASK_CATEGORY_SECTIONS.forEach((sec, idx) => {
+    const defaultColor = DEFAULT_TASK_CATEGORY_COLORS[sec.id];
+    const row = createColorPickerRow(sec.id, sec.label, taskCategoryColors[sec.id] ?? defaultColor, (color) => {
+      taskCategoryColors[sec.id] = color;
+    });
+    if (idx < 5) taskRowsLeftEl.appendChild(row);
+    else taskRowsRightEl.appendChild(row);
   });
 
   colorSaveBtn.addEventListener("click", () => {
@@ -190,8 +228,10 @@ export function render() {
       ...getTodoSettings(),
       sectionColors,
       timeCategoryColors,
+      taskCategoryColors,
     });
     applyTimeCategoryColors();
+    applyTaskCategoryColors();
     document.dispatchEvent(new CustomEvent("app-colors-changed"));
     colorSaveBtn.textContent = "저장됨";
     setTimeout(() => { colorSaveBtn.textContent = "저장"; }, 1500);

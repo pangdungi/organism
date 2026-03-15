@@ -19,7 +19,7 @@ import {
   updateKpiTodo,
   removeKpiTodo,
 } from "../utils/kpiTodoSync.js";
-import { getSectionColor, getCustomSections } from "../utils/todoSettings.js";
+import { getSectionColor, getCustomSections, getTimeCategoryColorsForTimetable, getTimeCategoryColorsForTimetableExpected } from "../utils/todoSettings.js";
 import { getKpisByCategory } from "../utils/kpiViewModal.js";
 import { formatDeadlineRangeForDisplay } from "../utils/ganttModal.js";
 import {
@@ -3380,25 +3380,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
     }
     return null;
   };
-  const prodColorsActual = {
-    productive: { bg: "rgba(239, 68, 68, 0.1)", border: "rgb(239, 68, 68)" },
-    nonproductive: {
-      bg: "rgba(59, 130, 246, 0.1)",
-      border: "rgb(59, 130, 246)",
-    },
-    other: { bg: "rgba(34, 197, 94, 0.1)", border: "rgb(34, 197, 94)" },
-  };
-  const prodColorsExpected = {
-    productive: {
-      bg: "rgba(239, 68, 68, 0.06)",
-      border: "rgba(239, 68, 68, 0.5)",
-    },
-    nonproductive: {
-      bg: "rgba(59, 130, 246, 0.06)",
-      border: "rgba(59, 130, 246, 0.5)",
-    },
-    other: { bg: "rgba(34, 197, 94, 0.06)", border: "rgba(34, 197, 94, 0.5)" },
-  };
+  const prodColorsActual = getTimeCategoryColorsForTimetable();
+  const prodColorsExpected = getTimeCategoryColorsForTimetableExpected();
   const buildSpans = (getSlot) => {
     const slotInfos = [];
     for (let i = 0; i < SLOTS_PER_DAY; i++) slotInfos.push(getSlot(i));
@@ -4295,28 +4278,8 @@ function render1DayView(tabsElement) {
       }
       return null;
     };
-    const prodColorsActual = {
-      productive: { bg: "rgba(239, 68, 68, 0.1)", border: "rgb(239, 68, 68)" },
-      nonproductive: {
-        bg: "rgba(59, 130, 246, 0.1)",
-        border: "rgb(59, 130, 246)",
-      },
-      other: { bg: "rgba(34, 197, 94, 0.1)", border: "rgb(34, 197, 94)" },
-    };
-    const prodColorsExpected = {
-      productive: {
-        bg: "rgba(239, 68, 68, 0.06)",
-        border: "rgba(239, 68, 68, 0.5)",
-      },
-      nonproductive: {
-        bg: "rgba(59, 130, 246, 0.06)",
-        border: "rgba(59, 130, 246, 0.5)",
-      },
-      other: {
-        bg: "rgba(34, 197, 94, 0.06)",
-        border: "rgba(34, 197, 94, 0.5)",
-      },
-    };
+    const prodColorsActual = getTimeCategoryColorsForTimetable();
+    const prodColorsExpected = getTimeCategoryColorsForTimetableExpected();
     const buildSpans = (getSlot) => {
       const slotInfos = [];
       for (let i = 0; i < SLOTS_PER_DAY; i++) slotInfos.push(getSlot(i));

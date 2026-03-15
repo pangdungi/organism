@@ -61,6 +61,14 @@ export function initDatePickersIn(container) {
 export function observeDatePickerInit(container) {
   if (!container) return;
   initDatePickersIn(container);
-  const observer = new MutationObserver(() => initDatePickersIn(container));
+  let debounceTimer = 0;
+  const scheduleInit = () => {
+    if (debounceTimer) window.clearTimeout(debounceTimer);
+    debounceTimer = window.setTimeout(() => {
+      debounceTimer = 0;
+      initDatePickersIn(container);
+    }, 80);
+  };
+  const observer = new MutationObserver(scheduleInit);
   observer.observe(container, { childList: true, subtree: true });
 }
