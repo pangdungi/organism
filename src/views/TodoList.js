@@ -1274,11 +1274,16 @@ function createTaskRow(taskData = {}, options = {}) {
           </div>
           <div class="todo-reminder-field">
             <label class="todo-reminder-label">날짜</label>
-            <input type="date" class="todo-reminder-date" value="${escapeHtml(defaultDate)}" />
+            <div class="todo-reminder-date-row">
+              <input type="date" class="todo-reminder-date" value="${escapeHtml(defaultDate)}" />
+              <button type="button" class="todo-reminder-date-btn" data-offset="0">오늘</button>
+              <button type="button" class="todo-reminder-date-btn" data-offset="1">내일</button>
+            </div>
           </div>
           <div class="todo-reminder-field">
             <label class="todo-reminder-label">시간</label>
             <input type="text" class="todo-reminder-time" placeholder="예: 14:30" autocomplete="off" value="${escapeHtml(defaultTime)}" />
+            <span class="todo-reminder-time-error" aria-live="polite"></span>
           </div>
           <button type="button" class="dream-kpi-submit todo-reminder-save">설정</button>
         </div>
@@ -1287,6 +1292,21 @@ function createTaskRow(taskData = {}, options = {}) {
     const close = () => modal.remove();
     modal.querySelector(".dream-kpi-backdrop").addEventListener("click", close);
     modal.querySelector(".dream-kpi-modal-close").addEventListener("click", close);
+    const dateInput = modal.querySelector(".todo-reminder-date");
+    function toYYYYMMDD(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+    modal.querySelectorAll(".todo-reminder-date-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const offset = parseInt(btn.dataset.offset, 10) || 0;
+        const d = new Date();
+        d.setDate(d.getDate() + offset);
+        dateInput.value = toYYYYMMDD(d);
+      });
+    });
     const timeInput = modal.querySelector(".todo-reminder-time");
     function formatTimeInput(val) {
       const digits = String(val || "").replace(/\D/g, "");
@@ -1311,11 +1331,18 @@ function createTaskRow(taskData = {}, options = {}) {
       const digits = (timeInput.value || "").replace(/\D/g, "");
       if (digits.length >= 2) timeInput.value = formatTimeInput(timeInput.value);
     });
+    const timeErrorEl = modal.querySelector(".todo-reminder-time-error");
+    timeInput.addEventListener("input", () => { timeErrorEl.textContent = ""; }, { capture: true });
     modal.querySelector(".todo-reminder-save").addEventListener("click", () => {
       const dateVal = (modal.querySelector(".todo-reminder-date").value || "").trim();
       let timeVal = (timeInput.value || "").trim();
       const digits = timeVal.replace(/\D/g, "");
       if (digits.length >= 2) timeVal = formatTimeInput(timeVal);
+      if (!timeVal || digits.length < 2) {
+        timeErrorEl.textContent = "시간을 입력하세요.";
+        return;
+      }
+      timeErrorEl.textContent = "";
       tr.dataset.reminderDate = dateVal;
       tr.dataset.reminderTime = timeVal;
       reminderDisplaySpan.textContent = formatReminderDisplay(dateVal, timeVal);

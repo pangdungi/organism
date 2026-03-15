@@ -875,21 +875,50 @@ body {
 }
 
 /* ----- Home (3분할, 오늘 해치우기 캘린더) ----- */
+.app-main:has(.home-view) {
+  overflow: hidden !important;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.app-main:has(.home-view) .app-tab-panel {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden !important;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.app-main:has(.home-view) .app-tab-panel > .home-view {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden !important;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
 .home-view {
   display: flex;
   flex-direction: column;
+  flex: 1 1 0;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden !important;
   padding-top: 0.5rem;
 }
 
 .home-view-three {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  grid-auto-rows: minmax(0, auto);
+  grid-template-rows: minmax(0, 1fr);
   gap: 1rem;
-  flex: 1 1 auto;
-  min-height: min-content;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
   margin-top: 0.5rem;
 }
 
@@ -900,11 +929,12 @@ body {
 }
 
 .home-view-section {
-  min-height: 120px;
-  overflow: hidden;
+  min-height: 0;
+  overflow: hidden !important;
   display: flex;
   flex-direction: column;
   background: #fff;
+  height: 100%;
 }
 
 .home-view-section:not(:last-child) {
@@ -912,9 +942,13 @@ body {
 }
 
 .home-view-section--calendar {
-  min-height: 75vh;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.home-view-section--calendar::-webkit-scrollbar {
+  display: none;
 }
 
 .home-view-section-title {
@@ -962,13 +996,125 @@ body {
 }
 
 .home-view-section--event {
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden !important;
+  height: 100%;
+}
+
+.home-event-half {
+  flex: 0 0 50%;
+  min-height: 0;
+  max-height: 50%;
+  overflow: hidden !important;
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.home-event-half .home-view-section-title,
+.home-event-half .home-view-section-subtitle {
+  flex-shrink: 0;
+}
+
+/* Event 리스트: 박스 크기 유지, 영역 안에서만 세로 스크롤 */
+.home-event-half .home-event-list {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+.home-event-half .home-event-list::-webkit-scrollbar {
+  display: none;
+}
+
+.home-event-half:last-child {
+  border-bottom: none;
+}
+
+.home-reminder-content {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 0.5rem 0.75rem;
+  margin-top: 0.5rem;
+}
+.home-reminder-content::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.home-reminder-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 0.9rem;
+}
+
+.home-reminder-row:last-child {
+  border-bottom: none;
+}
+
+.home-reminder-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-reminder-row-time {
+  flex-shrink: 0;
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
+.home-reminder-row-edit {
+  flex-shrink: 0;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #374151;
+  cursor: pointer;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.home-reminder-row:hover .home-reminder-row-edit {
+  opacity: 1;
+}
+
+.home-reminder-row-edit:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
 }
 
 .home-event-list {
   padding: 0.5rem 0.75rem;
-  flex: 1;
+  flex: 1 1 0;
   min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+.home-event-list::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .home-event-list.home-event-list-cards {
@@ -989,6 +1135,7 @@ body {
   padding: 0.6rem 0.75rem;
   background: #fff;
   min-height: 2.5rem;
+  flex-shrink: 0;
 }
 
 .home-event-time-card.is-done .home-event-time-card-title {
@@ -16757,6 +16904,39 @@ body.kpi-resizing {
   font-size: 0.8rem;
   font-weight: 500;
   color: #6b7280;
+}
+
+.todo-reminder-time-error {
+  font-size: 0.8rem;
+  color: #dc2626;
+}
+
+.todo-reminder-date-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.todo-reminder-date-row .todo-reminder-date {
+  flex: 0 0 calc(100% / 3);
+  min-width: 0;
+}
+
+.todo-reminder-date-btn {
+  flex: 1;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #374151;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.todo-reminder-date-btn:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
 }
 
 .todo-reminder-task-name {
