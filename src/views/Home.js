@@ -32,6 +32,8 @@ function getEventsForCurrentMonth() {
         name: (t.name || "").trim(),
         dueDate: (t.dueDate || "").slice(0, 10),
         startDate: (t.startDate || "").slice(0, 10),
+        startTime: (t.startTime || "").trim(),
+        endTime: (t.endTime || "").trim(),
         sectionLabel: t.sectionLabel || "",
         done: !!t.done,
         itemType: t.itemType || "todo",
@@ -57,6 +59,8 @@ function getEventsForCurrentMonth() {
               name: (t.name || "").trim(),
               dueDate: (t.dueDate || "").slice(0, 10),
               startDate: (t.startDate || "").slice(0, 10),
+              startTime: (t.startTime || "").trim(),
+              endTime: (t.endTime || "").trim(),
               sectionLabel,
               done: !!t.done,
               itemType: (t.itemType || "todo"),
@@ -84,6 +88,8 @@ function getEventsForCurrentMonth() {
               name: (t.name || "").trim(),
               dueDate: (t.dueDate || "").slice(0, 10),
               startDate: (t.startDate || "").slice(0, 10),
+              startTime: (t.startTime || "").trim(),
+              endTime: (t.endTime || "").trim(),
               sectionLabel: sec.label || sec.id,
               done: !!t.done,
               itemType: (t.itemType || "todo"),
@@ -97,9 +103,21 @@ function getEventsForCurrentMonth() {
     const dateA = a.dueDate || a.startDate || "";
     const dateB = b.dueDate || b.startDate || "";
     if (dateA !== dateB) return dateA.localeCompare(dateB);
+    const timeA = a.startTime || "";
+    const timeB = b.startTime || "";
+    if (timeA !== timeB) return timeA.localeCompare(timeB);
     return (a.name || "").localeCompare(b.name || "", "ko");
   });
   return out;
+}
+
+function formatTimeRange(startTime, endTime) {
+  const s = (startTime || "").trim();
+  const e = (endTime || "").trim();
+  if (s && e) return `${s}~${e}`;
+  if (s) return s;
+  if (e) return e;
+  return "";
 }
 
 function formatEventDate(dateStr) {
@@ -156,32 +174,18 @@ export function render() {
   sub2.textContent = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
   section2.appendChild(sub2);
   const eventList = document.createElement("div");
-  eventList.className = "home-event-list home-event-cards";
+  eventList.className = "home-event-list home-event-list-cards";
   const events = getEventsForCurrentMonth();
   if (events.length === 0) {
     eventList.innerHTML = '<p class="home-event-empty">이번 달에 날짜가 배정된 이벤트가 없습니다.</p>';
   } else {
-    const byDate = new Map();
     events.forEach((ev) => {
-      const dateKey = (ev.dueDate || ev.startDate || "").slice(0, 10);
-      if (!dateKey) return;
-      if (!byDate.has(dateKey)) byDate.set(dateKey, []);
-      byDate.get(dateKey).push(ev);
-    });
-    const sortedDates = [...byDate.keys()].sort();
-    sortedDates.forEach((dateKey) => {
-      const dayEvents = byDate.get(dateKey) || [];
-      const dayNum = getDayNumber(dateKey);
-      const weekend = isWeekend(dateKey);
       const card = document.createElement("div");
-      card.className = "home-event-card" + (weekend ? " home-event-card--weekend" : "");
-      const namesHtml = dayEvents
-        .map((ev) => `<div class="home-event-card-item${ev.done ? " is-done" : ""}">${escapeHtml(ev.name)}</div>`)
-        .join("");
+      card.className = "home-event-time-card" + (ev.done ? " is-done" : "");
+      const timeRange = formatTimeRange(ev.startTime, ev.endTime);
       card.innerHTML = `
-        <div class="home-event-card-day">${dayNum}</div>
-        <div class="home-event-card-label">할일 목록</div>
-        <div class="home-event-card-list">${namesHtml}</div>
+        <div class="home-event-time-card-title">${escapeHtml(ev.name)}</div>
+        <div class="home-event-time-card-time">${escapeHtml(timeRange || formatEventDate(ev.dueDate || ev.startDate || ""))}</div>
       `;
       eventList.appendChild(card);
     });
