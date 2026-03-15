@@ -505,7 +505,7 @@ export function render() {
     const monthEl = nav.querySelector(".calendar-nav-month");
     if (monthEl) {
       const d = new Date();
-      monthEl.textContent = `${d.getMonth() + 1}/${String(d.getDate()).padStart(2, "0")}`;
+      monthEl.textContent = `${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
     }
   }
 
@@ -576,9 +576,9 @@ export function render() {
   fillTodoListContent(todoListContent);
   section3.appendChild(todoListContent);
 
+  threeCols.appendChild(section3);
   threeCols.appendChild(section1);
   threeCols.appendChild(section2);
-  threeCols.appendChild(section3);
   el.appendChild(threeCols);
 
   return el;

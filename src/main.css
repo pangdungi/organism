@@ -19008,6 +19008,95 @@ body.kpi-resizing {
   overflow-x: hidden;
 }
 
+/* 연간 뷰: 왼쪽 월, 오른쪽 해당 월 날짜 한 행 (Year Planner 구조) */
+.calendar-annual-view .calendar-annual-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.calendar-annual-view .calendar-annual-nav .calendar-nav-month {
+  display: none;
+}
+.calendar-annual-view .calendar-annual-nav .calendar-annual-label {
+  margin-left: 0.15rem;
+}
+.calendar-annual-grid-wrap {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.5rem 0;
+}
+.calendar-annual-table {
+  min-width: min-content;
+  background: #fff;
+  border-collapse: collapse;
+}
+.calendar-annual-row {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid #e5e7eb;
+  min-height: 2rem;
+}
+.calendar-annual-row-month {
+  flex-shrink: 0;
+  width: 3rem;
+  padding: 0.35rem 0.5rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  border-right: 1px solid #e5e7eb;
+}
+.calendar-annual-row-days {
+  display: flex;
+  flex-wrap: nowrap;
+  flex: 1 1 0;
+  min-width: 0;
+}
+.calendar-annual-cell {
+  flex: 0 0 2rem;
+  width: 2rem;
+  min-height: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid #f3f4f6;
+  padding: 0.2rem 0;
+  position: relative;
+  font-size: 0.7rem;
+}
+.calendar-annual-cell-num {
+  font-weight: 600;
+  color: #1f2937;
+}
+.calendar-annual-cell-dow {
+  font-size: 0.55rem;
+  color: #6b7280;
+  margin-top: 0.05rem;
+}
+.calendar-annual-cell.weekend {
+  background: rgba(0, 0, 0, 0.04);
+}
+.calendar-annual-cell.today {
+  background: rgba(59, 130, 246, 0.12);
+  font-weight: 700;
+}
+.calendar-annual-cell-dot {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #4b5563;
+  z-index: 1;
+}
+
 .calendar-monthly-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);

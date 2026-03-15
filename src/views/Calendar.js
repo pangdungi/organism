@@ -5187,11 +5187,117 @@ function render1WeekView(tabsElement) {
   return wrap;
 }
 
+/** 연간 뷰: 왼쪽 월 라벨, 오른쪽 해당 월 날짜 셀 한 행 (Year Planner 구조) */
+const DAY_NAMES_SHORT_SUN_FIRST = ["일", "월", "화", "수", "목", "금", "토"];
+
+function renderAnnualView(tabsElement) {
+  const wrap = document.createElement("div");
+  wrap.className = "calendar-monthly-layout calendar-annual-view";
+
+  let currentYear = new Date().getFullYear();
+  const todayKey = formatDateKey(new Date());
+
+  const calendarSection = document.createElement("div");
+  calendarSection.className = "calendar-monthly-main calendar-annual-main";
+  if (tabsElement) {
+    const tabsWrapper = document.createElement("div");
+    tabsWrapper.className = "calendar-monthly-tabs-wrap";
+    tabsWrapper.appendChild(tabsElement);
+    calendarSection.appendChild(tabsWrapper);
+  }
+
+  const nav = document.createElement("div");
+  nav.className = "calendar-monthly-nav calendar-annual-nav";
+  nav.innerHTML = `
+    <span class="calendar-nav-date">
+      <span class="calendar-nav-year">${currentYear}</span>
+      <span class="calendar-annual-label">년</span>
+    </span>
+    <div class="calendar-nav-controls">
+      <button type="button" class="calendar-nav-prev" title="이전 해">&lt;</button>
+      <button type="button" class="calendar-nav-today" title="올해">오늘</button>
+      <button type="button" class="calendar-nav-next" title="다음 해">&gt;</button>
+    </div>
+  `;
+  calendarSection.appendChild(nav);
+
+  const gridWrap = document.createElement("div");
+  gridWrap.className = "calendar-annual-grid-wrap";
+  const table = document.createElement("div");
+  table.className = "calendar-annual-table";
+
+  function renderYear() {
+    nav.querySelector(".calendar-nav-year").textContent = String(currentYear);
+    table.innerHTML = "";
+
+    for (let month = 0; month < 12; month++) {
+      const lastDay = new Date(currentYear, month + 1, 0).getDate();
+      const row = document.createElement("div");
+      row.className = "calendar-annual-row";
+
+      const monthLabel = document.createElement("div");
+      monthLabel.className = "calendar-annual-row-month";
+      monthLabel.textContent = MONTH_NAMES[month];
+      row.appendChild(monthLabel);
+
+      const daysRow = document.createElement("div");
+      daysRow.className = "calendar-annual-row-days";
+      for (let d = 1; d <= lastDay; d++) {
+        const date = new Date(currentYear, month, d);
+        const key = formatDateKey(date);
+        const dow = date.getDay();
+        const isWeekend = dow === 0 || dow === 6;
+        const cell = document.createElement("div");
+        cell.className = "calendar-annual-cell";
+        if (key === todayKey) cell.classList.add("today");
+        if (isWeekend) cell.classList.add("weekend");
+        const dayNum = document.createElement("span");
+        dayNum.className = "calendar-annual-cell-num";
+        dayNum.textContent = d;
+        cell.appendChild(dayNum);
+        const dayDow = document.createElement("span");
+        dayDow.className = "calendar-annual-cell-dow";
+        dayDow.textContent = DAY_NAMES_SHORT_SUN_FIRST[dow];
+        cell.appendChild(dayDow);
+        if (getTasksForDate(key).length > 0) {
+          const dot = document.createElement("span");
+          dot.className = "calendar-annual-cell-dot";
+          cell.appendChild(dot);
+        }
+        daysRow.appendChild(cell);
+      }
+      row.appendChild(daysRow);
+      table.appendChild(row);
+    }
+  }
+
+  renderYear();
+  gridWrap.appendChild(table);
+  calendarSection.appendChild(gridWrap);
+  wrap.appendChild(calendarSection);
+
+  nav.querySelector(".calendar-nav-today").addEventListener("click", () => {
+    currentYear = new Date().getFullYear();
+    renderYear();
+  });
+  nav.querySelector(".calendar-nav-prev").addEventListener("click", () => {
+    currentYear--;
+    renderYear();
+  });
+  nav.querySelector(".calendar-nav-next").addEventListener("click", () => {
+    currentYear++;
+    renderYear();
+  });
+
+  return wrap;
+}
+
 const CALENDAR_SUB_VIEWS = [
   { id: "monthly", label: "월별" },
   { id: "2week", label: "2주" },
   { id: "3week", label: "3주" },
   { id: "1week", label: "1주" },
+  { id: "annual", label: "연간" },
 ];
 
 function renderCalendarView(tabsElement) {
@@ -5252,6 +5358,8 @@ function renderCalendarView(tabsElement) {
       contentArea.appendChild(render3WeekView(null));
     } else if (subViewId === "1week") {
       contentArea.appendChild(render1WeekView(null));
+    } else if (subViewId === "annual") {
+      contentArea.appendChild(renderAnnualView(null));
     }
     placeSubTabsInNav();
     localStorage.setItem(CALENDAR_VIEW_KEY, subViewId);
