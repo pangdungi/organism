@@ -6910,6 +6910,18 @@ body {
 
 .todo-section-header--no-collapse {
   cursor: default;
+  background: #fff !important;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.todo-section-header--no-collapse:hover {
+  background: #fff !important;
+}
+
+.calendar-todo-sidebar-body .todo-section-header--no-collapse .todo-section-label {
+  color: #333;
+  font-weight: 600;
+  font-size: 0.95rem;
 }
 
 .todo-section-arrow {
@@ -12479,8 +12491,10 @@ body.kpi-resizing {
 .time-daily-budget-table thead th {
   background: #fafafa;
   font-weight: 500;
-  font-size: 13px;
-  color: #777;
+  font-size: 8.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #9ca3af;
 }
 
 .time-daily-budget-table tbody tr:last-child td {
@@ -12495,6 +12509,31 @@ body.kpi-resizing {
   background: #f3f4f6;
   color: #6b7280;
 }
+
+/* 과제명: 컬러바+텍스트만 (배경 없음, 폰트 진하게 가독성) - 모든 시간예산 테이블 */
+.time-daily-budget-table .time-tag-trigger .time-tag-pill {
+  background: transparent !important;
+  border-radius: 0;
+  padding-left: 0.5rem;
+  border-left: 3px solid #9ca3af;
+  color: #1f2937 !important;
+}
+.time-daily-budget-table .time-tag-trigger .time-tag-pill.prod-pink { border-left-color: #e8a4b8; }
+.time-daily-budget-table .time-tag-trigger .time-tag-pill.prod-blue { border-left-color: #6b9bd1; }
+.time-daily-budget-table .time-tag-trigger .time-tag-pill.prod-green { border-left-color: #7cb87c; }
+.time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-empty { border-left-color: #d1d5db; }
+.time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-dream { border-left-color: #e8b4b8; }
+.time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-sideincome { border-left-color: #bfb3ff; }
+.time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-happiness { border-left-color: #ffdab9; }
+.time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-health { border-left-color: #90ee90; }
+.time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-prod-cons { border-left-color: #5eead4; }
+.time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-pleasure { border-left-color: #add8e6; }
+.time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-dreamblocking { border-left-color: #ffc87c; }
+.time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-unhappiness { border-left-color: #dda0dd; }
+.time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-unhealthy { border-left-color: #b0c4de; }
+.time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-moneylosing { border-left-color: #ffa07a; }
+.time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-work { border-left-color: #ffefd5; }
+.time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-sleep { border-left-color: #e6e6fa; }
 
 /* 과제명 드롭다운: 셀 전체 클릭 가능, 키보드 포커스 지원 */
 .time-daily-budget-table .time-tag-dropdown-wrap {
@@ -15336,6 +15375,31 @@ body.kpi-resizing {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   z-index: 10000;
 }
+
+/* 드롭다운 옵션: 배경 없이 컬러바+텍스트 (2번 그림처럼) */
+.time-tag-panel .time-tag-option .time-tag-pill {
+  background: transparent !important;
+  color: #1f2937 !important;
+  border-radius: 0;
+  padding-left: 0.5rem;
+  border-left: 3px solid #9ca3af;
+}
+.time-tag-panel .time-tag-option .time-tag-pill.prod-pink { border-left-color: #e8a4b8; }
+.time-tag-panel .time-tag-option .time-tag-pill.prod-blue { border-left-color: #6b9bd1; }
+.time-tag-panel .time-tag-option .time-tag-pill.prod-green { border-left-color: #7cb87c; }
+.time-tag-panel .time-tag-option .time-tag-pill.cat-empty { border-left-color: #d1d5db; }
+.time-tag-panel .time-tag-option .time-tag-pill.cat-dream { border-left-color: #e8b4b8; }
+.time-tag-panel .time-tag-option .time-tag-pill.cat-sideincome { border-left-color: #bfb3ff; }
+.time-tag-panel .time-tag-option .time-tag-pill.cat-happiness { border-left-color: #ffdab9; }
+.time-tag-panel .time-tag-option .time-tag-pill.cat-health { border-left-color: #90ee90; }
+.time-tag-panel .time-tag-option .time-tag-pill.cat-prod-cons { border-left-color: #5eead4; }
+.time-tag-panel .time-tag-option .time-tag-pill.cat-pleasure { border-left-color: #add8e6; }
+.time-tag-panel .time-tag-option .time-tag-pill.cat-dreamblocking { border-left-color: #ffc87c; }
+.time-tag-panel .time-tag-option .time-tag-pill.cat-unhappiness { border-left-color: #dda0dd; }
+.time-tag-panel .time-tag-option .time-tag-pill.cat-unhealthy { border-left-color: #b0c4de; }
+.time-tag-panel .time-tag-option .time-tag-pill.cat-moneylosing { border-left-color: #ffa07a; }
+.time-tag-panel .time-tag-option .time-tag-pill.cat-work { border-left-color: #ffefd5; }
+.time-tag-panel .time-tag-option .time-tag-pill.cat-sleep { border-left-color: #e6e6fa; }
 
 .time-tag-option {
   padding: 0.4rem 0.75rem;
@@ -19185,21 +19249,24 @@ body.kpi-resizing {
   display: flex;
   align-items: baseline;
   gap: 0.35rem;
-  font-family: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  font-family: "DM Serif Display", serif;
 }
 
 .calendar-nav-month {
-  font-size: 2.25rem;
-  font-weight: 800;
+  font-family: "DM Serif Display", serif;
+  font-size: 3.25rem;
+  font-weight: normal;
   color: #1f2937;
-  line-height: 1.2;
+  line-height: 1.1;
   text-transform: uppercase;
+  letter-spacing: -0.02em;
 }
 
 .calendar-nav-year {
-  font-size: 1rem;
-  font-weight: 400;
-  color: #374151;
+  font-family: "DM Serif Display", serif;
+  font-size: 0.9rem;
+  font-weight: normal;
+  color: #b0b0b0;
 }
 
 .calendar-nav-controls {
@@ -19415,8 +19482,9 @@ body.kpi-resizing {
   z-index: 1000;
 }
 
-/* 4구획 세로 배치: 기본 | 투자내역 | 소비내역 | 오늘의 할일 */
-.calendar-1day-budget-column .time-daily-budget-four-panels {
+/* 4구획 세로 배치: 기본 | 투자내역 | 소비내역 | 오늘의 할일 (무인양품: 박스 없이 레이블 + 하단 구분선만) */
+.calendar-1day-budget-column .time-daily-budget-four-panels,
+.time-daily-budget-four-panels {
   flex: 1 1 0;
   min-height: 0;
   display: flex;
@@ -19425,23 +19493,25 @@ body.kpi-resizing {
   overflow: hidden;
 }
 
-.calendar-1day-budget-column .time-daily-budget-section {
+.calendar-1day-budget-column .time-daily-budget-section,
+.time-daily-budget-four-panels .time-daily-budget-section {
   flex: 1 1 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
+  border: none;
+  border-radius: 0;
 }
 
-.calendar-1day-budget-column .time-daily-budget-section-header {
+.calendar-1day-budget-column .time-daily-budget-section-header,
+.time-daily-budget-four-panels .time-daily-budget-section-header {
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.4rem 0.6rem;
-  background: #f9fafb;
+  padding: 0.4rem 0 0.5rem 0;
+  background: transparent;
   border-bottom: 1px solid #e5e7eb;
   font-size: 0.875rem;
   font-weight: 600;
@@ -19460,13 +19530,12 @@ body.kpi-resizing {
   flex-direction: column;
 }
 
-.calendar-1day-budget-column .time-daily-budget-section-scroll > .time-daily-budget-table-block {
+.calendar-1day-budget-column .time-daily-budget-section-scroll > .time-daily-budget-table-block,
+.time-daily-budget-four-panels .time-daily-budget-section-scroll > .time-daily-budget-table-block {
   flex: 1;
   min-height: 8rem;
-}
-
-.calendar-1day-budget-column .time-daily-budget-section--todo {
-  border: 1px solid #e5e7eb;
+  border: none;
+  border-radius: 0;
 }
 
 .calendar-1day-budget-column .time-daily-budget-section--todo .calendar-1day-todo-section {
@@ -19485,13 +19554,14 @@ body.kpi-resizing {
   min-height: 0;
 }
 
-/* 오늘의 할일 제목: 기본/투자/소비 헤더와 동일한 줄에 맞춤 + 위아래 여백 */
-.calendar-1day-budget-column .time-daily-budget-section--todo .calendar-1day-todo-section-header {
+/* 오늘의 할일 제목: 레이블 + 하단 구분선만 (무인양품 스타일) */
+.calendar-1day-budget-column .time-daily-budget-section--todo .calendar-1day-todo-section-header,
+.time-daily-budget-four-panels .time-daily-budget-section--todo .calendar-1day-todo-section-header {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  padding: 0.6rem 0.6rem;
-  background: #f9fafb;
+  padding: 0.4rem 0 0.5rem 0;
+  background: transparent;
   border-bottom: 1px solid #e5e7eb;
   font-size: 0.875rem;
   font-weight: 600;
@@ -19595,6 +19665,11 @@ body.kpi-resizing {
   top: 0;
   z-index: 5;
   box-shadow: 0 1px 0 #e5e7eb;
+  font-size: 8.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #9ca3af;
 }
 
 .calendar-1day-budget-column .calendar-1day-todo-table thead th:first-child,
@@ -19768,7 +19843,7 @@ body.kpi-resizing {
   display: table-row-group;
 }
 
-/* 테이블 헤더 행고정 - 스크롤 시 스크롤 영역 맨 위에 고정, 텍스트 상단 정렬 */
+/* 테이블 헤더 행고정 - 스크롤 시 스크롤 영역 맨 위에 고정, 텍스트 상단 정렬 / 8.5px 대문자 희미하게 */
 .calendar-1day-budget-column .time-daily-budget-table thead th {
   position: sticky;
   top: 0;
@@ -19776,6 +19851,11 @@ body.kpi-resizing {
   background: #fff;
   box-shadow: 0 1px 0 #e5e7eb;
   vertical-align: top;
+  font-size: 8.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #9ca3af;
 }
 
 .calendar-1day-budget-column .time-daily-budget-table thead th:last-child {
@@ -19857,6 +19937,56 @@ body.kpi-resizing {
   background: transparent;
   color: #374151;
 }
+
+/* 오늘 해치우기 과제명: 시간가계부처럼 컬러바+텍스트 (배경 제거, 폰트 진하게) */
+.calendar-1day-budget-column .time-daily-budget-table .time-tag-trigger .time-tag-pill,
+.time-daily-budget-four-panels .time-daily-budget-table .time-tag-trigger .time-tag-pill {
+  background: transparent !important;
+  border-radius: 0;
+  padding-left: 0.5rem;
+  border-left: 3px solid #9ca3af;
+  color: #1f2937 !important;
+}
+.calendar-1day-budget-column .time-daily-budget-table .time-tag-trigger .time-tag-pill.prod-pink,
+.time-daily-budget-four-panels .time-daily-budget-table .time-tag-trigger .time-tag-pill.prod-pink {
+  border-left-color: #e8a4b8;
+}
+.calendar-1day-budget-column .time-daily-budget-table .time-tag-trigger .time-tag-pill.prod-blue,
+.time-daily-budget-four-panels .time-daily-budget-table .time-tag-trigger .time-tag-pill.prod-blue {
+  border-left-color: #6b9bd1;
+}
+.calendar-1day-budget-column .time-daily-budget-table .time-tag-trigger .time-tag-pill.prod-green,
+.time-daily-budget-four-panels .time-daily-budget-table .time-tag-trigger .time-tag-pill.prod-green {
+  border-left-color: #7cb87c;
+}
+.calendar-1day-budget-column .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-empty,
+.time-daily-budget-four-panels .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-empty {
+  border-left-color: #d1d5db;
+}
+.calendar-1day-budget-column .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-dream,
+.time-daily-budget-four-panels .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-dream { border-left-color: #e8b4b8; }
+.calendar-1day-budget-column .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-sideincome,
+.time-daily-budget-four-panels .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-sideincome { border-left-color: #bfb3ff; }
+.calendar-1day-budget-column .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-happiness,
+.time-daily-budget-four-panels .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-happiness { border-left-color: #ffdab9; }
+.calendar-1day-budget-column .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-health,
+.time-daily-budget-four-panels .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-health { border-left-color: #90ee90; }
+.calendar-1day-budget-column .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-prod-cons,
+.time-daily-budget-four-panels .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-prod-cons { border-left-color: #5eead4; }
+.calendar-1day-budget-column .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-pleasure,
+.time-daily-budget-four-panels .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-pleasure { border-left-color: #add8e6; }
+.calendar-1day-budget-column .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-dreamblocking,
+.time-daily-budget-four-panels .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-dreamblocking { border-left-color: #ffc87c; }
+.calendar-1day-budget-column .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-unhappiness,
+.time-daily-budget-four-panels .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-unhappiness { border-left-color: #dda0dd; }
+.calendar-1day-budget-column .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-unhealthy,
+.time-daily-budget-four-panels .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-unhealthy { border-left-color: #b0c4de; }
+.calendar-1day-budget-column .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-moneylosing,
+.time-daily-budget-four-panels .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-moneylosing { border-left-color: #ffa07a; }
+.calendar-1day-budget-column .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-work,
+.time-daily-budget-four-panels .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-work { border-left-color: #ffefd5; }
+.calendar-1day-budget-column .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-sleep,
+.time-daily-budget-four-panels .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-sleep { border-left-color: #e6e6fa; }
 
 .calendar-1day-budget-column .time-daily-budget-table .time-tag-dropdown-wrap {
   display: block;
@@ -20004,7 +20134,7 @@ body.kpi-resizing {
 
 .time-budget-calendar-remaining-title {
   font-size: 0.8rem;
-  color: #6b7280;
+  color: #9ca3af;
 }
 
 .time-budget-calendar-yesterday-memo-btn {
@@ -20227,33 +20357,34 @@ body.kpi-resizing {
   min-height: 2.25rem;
 }
 
+/* 예상|오늘실제: 배경 없이 텍스트 굵기로만 구분 */
 .calendar-1day-view .calendar-1day-time-header-cell {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0.35rem 0.5rem;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 500;
   color: #6b7280;
   text-align: center;
 }
 
-/* 예상|오늘실제 열 구분: 주요(진하게) */
+/* 예상|오늘실제 열 구분: 세로 구분선 */
 .calendar-1day-view .calendar-1day-time-header-cell:not(:first-child) {
   border-left: 1.5px solid #d1d5db;
 }
 
-/* 오늘실제 버튼: 셀 안에 맞추어 선과 높이 일치, margin 제거 */
+/* 오늘실제: 배경 없음, 굵기로만 구분 (클릭 가능 유지) */
 .calendar-1day-view .calendar-1day-time-header-cell--actual-toggle {
   margin: 0;
-  padding: 0.25rem 0.5rem;
-  background: #e5e7eb;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  font-weight: 600;
+  padding: 0.35rem 0.5rem;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  font-weight: 700;
   color: #374151;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: color 0.15s;
   font-size: 0.75rem;
   line-height: 1.25;
 }
@@ -20269,8 +20400,7 @@ body.kpi-resizing {
 }
 
 .calendar-1day-view .calendar-1day-time-header-cell--actual-toggle:hover {
-  background: #d1d5db;
-  border-color: #9ca3af;
+  background: transparent;
   color: #1f2937;
 }
 
@@ -20614,14 +20744,30 @@ body.kpi-resizing {
   opacity: 1;
 }
 
-.calendar-monthly-span-bar--todo::before,
+/* 단일일: 채우기 없이 왼쪽 선 1.5px만 배정 컬러로 */
+.calendar-monthly-span-bar--todo {
+  border-left: 2px solid var(--bar-bg);
+  padding-left: 0.4rem;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0.25rem;
+  line-height: 1;
+}
+
+.calendar-monthly-span-bar--todo::before {
+  content: none;
+}
+
+/* 기간: 채우기 없이 윗선만 배정 컬러로 */
 .calendar-monthly-span-bar--range::before {
   content: "";
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
   background: var(--bar-bg);
-  opacity: 0.5;
-  border-radius: inherit;
+  border-radius: 0;
   z-index: 0;
 }
 
@@ -20629,13 +20775,6 @@ body.kpi-resizing {
 .calendar-monthly-span-bar--range > * {
   position: relative;
   z-index: 1;
-}
-
-.calendar-monthly-span-bar--todo {
-  justify-content: flex-start;
-  align-items: center;
-  gap: 0.25rem;
-  line-height: 1;
 }
 
 .calendar-monthly-span-bar--todo .calendar-monthly-span-bar-icon {
@@ -20753,8 +20892,16 @@ body.kpi-resizing {
   overflow: hidden;
 }
 
+.calendar-monthly-day:hover:not(.empty) {
+  background: #f3f4f6;
+}
+
 .calendar-monthly-day.empty {
   background: #fafafa;
+}
+
+.calendar-monthly-day.empty:hover {
+  background: #f3f4f6;
 }
 
 .calendar-monthly-day.other-month .calendar-monthly-day-num {
@@ -20779,8 +20926,8 @@ body.kpi-resizing {
   left: 50%;
   transform: translateX(-50%);
   top: 0;
-  width: 5px;
-  height: 5px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: #111827;
 }
@@ -20799,9 +20946,8 @@ body.kpi-resizing {
   box-shadow: inset 0 0 0 2px rgba(107, 114, 128, 0.3);
 }
 
-.calendar-monthly-day.sun .calendar-monthly-day-num,
-.calendar-monthly-day.sat .calendar-monthly-day-num {
-  color: #9a7b5c;
+.calendar-monthly-day.sun .calendar-monthly-day-num {
+  color: #78716c;
 }
 
 .calendar-monthly-day-num {
@@ -20817,7 +20963,7 @@ body.kpi-resizing {
 .calendar-monthly-day-entries {
   flex: 1;
   min-width: 0;
-  margin-top: 0.25rem;
+  margin-top: 0.5rem;
   overflow: hidden;
 }
 

@@ -285,18 +285,8 @@ const MONTH_NAMES = [
   "12월",
 ];
 const MONTH_NAMES_EN = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
 /** 월요일 시작 (0=월, 6=일) */
@@ -3890,7 +3880,9 @@ function render1DayView(tabsElement) {
   function format1DayNavDate(dayOffset) {
     const d = new Date();
     d.setDate(d.getDate() + dayOffset);
-    return `${d.getMonth() + 1}월 ${d.getDate()}일`;
+    const M = d.getMonth() + 1;
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${M}.${dd}`;
   }
 
   function renderCalendar() {

@@ -8686,67 +8686,12 @@ export function renderTimeBudgetTablesForCalendar(
   const remainingTitle = document.createElement("div");
   remainingTitle.className = "time-budget-calendar-remaining-title";
   remainingTitle.textContent = "남은 시간";
-  const yesterdayMemoBtn = document.createElement("button");
-  yesterdayMemoBtn.type = "button";
-  yesterdayMemoBtn.className = "time-budget-calendar-yesterday-memo-btn";
-  yesterdayMemoBtn.title = "어제 반성 메모 보기";
-  yesterdayMemoBtn.setAttribute("aria-label", "어제 반성 메모 보기");
-  const yesterdayMemoBtnIcon = document.createElement("img");
-  yesterdayMemoBtnIcon.src = "/toolbaricons/mail.svg";
-  yesterdayMemoBtnIcon.alt = "";
-  yesterdayMemoBtnIcon.width = 18;
-  yesterdayMemoBtnIcon.height = 18;
-  yesterdayMemoBtnIcon.className = "time-budget-calendar-yesterday-memo-icon";
-  yesterdayMemoBtn.appendChild(yesterdayMemoBtnIcon);
   remainingTitleRow.appendChild(remainingTitle);
-  remainingTitleRow.appendChild(yesterdayMemoBtn);
   const remainingValueEl = document.createElement("div");
   remainingValueEl.className = "time-budget-calendar-remaining-value";
   remainingValueEl.textContent = "24:00";
-  const yesterdayMemoBox = document.createElement("div");
-  yesterdayMemoBox.className = "time-budget-yesterday-memo-box";
-  yesterdayMemoBox.hidden = true;
-  const yesterdayMemoContent = document.createElement("div");
-  yesterdayMemoContent.className = "time-budget-yesterday-memo-content";
-  yesterdayMemoBox.appendChild(yesterdayMemoContent);
   remainingHeader.appendChild(remainingTitleRow);
   remainingHeader.appendChild(remainingValueEl);
-  remainingHeader.appendChild(yesterdayMemoBox);
-
-  function getYesterdayDateStr(str) {
-    const s = (str || "").trim().slice(0, 10);
-    if (!s) return "";
-    const d = new Date(s + "T12:00:00");
-    if (Number.isNaN(d.getTime())) return "";
-    d.setDate(d.getDate() - 1);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-  }
-  function getPlanRealityForDate(dateKey) {
-    try {
-      const raw = localStorage.getItem(TIME_IMPROVE_FOCUS_NOTES_KEY);
-      if (!raw) return "";
-      const obj = JSON.parse(raw);
-      const entry = obj[dateKey];
-      return entry && typeof entry === "object" ? (entry.planReality || "") : "";
-    } catch (_) {}
-    return "";
-  }
-  yesterdayMemoBtn.addEventListener("click", () => {
-    const isOpen = !yesterdayMemoBox.hidden;
-    if (isOpen) {
-      yesterdayMemoBox.hidden = true;
-      yesterdayMemoBtnIcon.src = "/toolbaricons/mail.svg";
-      return;
-    }
-    const yesterdayKey = getYesterdayDateStr(targetDateStr);
-    const text = yesterdayKey ? getPlanRealityForDate(yesterdayKey) : "";
-    yesterdayMemoContent.textContent = text || "어제 기록한 반성 메모가 없습니다.";
-    yesterdayMemoBox.hidden = false;
-    yesterdayMemoBtnIcon.src = "/toolbaricons/mail-open.svg";
-  });
 
   const sortByStartTime = (list) =>
     [...list].sort((a, b) => {
