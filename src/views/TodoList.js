@@ -1910,8 +1910,8 @@ export function render(options = {}) {
         el.classList.toggle("hide-completed", hideCompleted);
       },
       onClearCompleted: doClearCompleted,
-      onColorsChange: (colors) => {
-        applyTabColors(colors);
+      onColorsChange: () => {
+        applyTabColors();
       },
     });
   });
@@ -1929,25 +1929,9 @@ export function render(options = {}) {
   const categoryTabs = document.createElement("div");
   categoryTabs.className = "todo-category-tabs";
   const tabButtons = [];
-  const colors = getTodoSettings().sectionColors;
 
-  function applyTabColors(sectionColors) {
-    tabButtons.forEach((btn) => {
-      const secId = btn.dataset.section;
-      const c = sectionColors?.[secId];
-      if (c) {
-        btn.style.borderLeft = `1px solid ${c}`;
-        btn.style.borderTop = `1px solid ${c}`;
-        btn.style.borderRight = `1px solid ${c}`;
-        btn.style.borderBottom = `1px solid ${c}`;
-        btn.style.backgroundColor = "";
-      } else {
-        btn.style.borderLeft = "";
-        btn.style.borderTop = "";
-        btn.style.borderRight = "";
-        btn.style.borderBottom = "";
-      }
-    });
+  function applyTabColors() {
+    /* 리스트 탭 컬러 테두리 제거 - 탭 스타일은 CSS로 통일 */
   }
 
   getSections().forEach((section) => {
@@ -1956,13 +1940,6 @@ export function render(options = {}) {
     btn.className = "todo-category-tab";
     btn.dataset.section = section.id;
     btn.innerHTML = `<span class="todo-category-tab-label">${section.label}</span> <span class="todo-category-tab-count">0</span>`;
-    const c = colors[section.id];
-    if (c) {
-      btn.style.borderLeft = `1px solid ${c}`;
-      btn.style.borderTop = `1px solid ${c}`;
-      btn.style.borderRight = `1px solid ${c}`;
-      btn.style.borderBottom = `1px solid ${c}`;
-    }
     tabButtons.push(btn);
     categoryTabs.appendChild(btn);
   });
@@ -1988,13 +1965,6 @@ export function render(options = {}) {
         btn.className = "todo-category-tab";
         btn.dataset.section = newSection.id;
         btn.innerHTML = `<span class="todo-category-tab-label">${newSection.label}</span> <span class="todo-category-tab-count">0</span>`;
-        const c = colors[newSection.id];
-        if (c) {
-          btn.style.borderLeft = `1px solid ${c}`;
-          btn.style.borderTop = `1px solid ${c}`;
-          btn.style.borderRight = `1px solid ${c}`;
-          btn.style.borderBottom = `1px solid ${c}`;
-        }
         tabButtons.push(btn);
         categoryTabs.insertBefore(btn, addTabBtn);
 

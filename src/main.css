@@ -1466,7 +1466,8 @@ body {
 
 /* ----- 근무표 뷰 ----- */
 .work-schedule-view {
-  padding: 0;
+  padding: 1rem;
+  box-sizing: border-box;
 }
 
 .work-schedule-header {
@@ -1617,10 +1618,11 @@ body {
 
 /* ----- 자산관리 뷰 ----- */
 .asset-view {
-  padding: 0;
+  padding: 1rem;
   max-width: 100%;
   overflow-x: hidden;
   overscroll-behavior-x: none;
+  box-sizing: border-box;
 }
 
 .asset-header {
@@ -6180,11 +6182,13 @@ body {
   border: none !important;
 }
 
+/* 리스트 탭: 위 탭(할일 쏟아내기 등)과 통일 - 회색 밑선, 활성은 글자만 검정(밑선 없음) */
 .todo-category-tabs {
   display: flex;
-  gap: 0.25rem;
+  align-items: center;
+  gap: 0.5rem;
   flex-wrap: nowrap;
-  margin-bottom: 0.5rem;
+  margin-bottom: 1rem;
   font-family: var(
     --app-font-family,
     "S-Core Dream 3",
@@ -6195,6 +6199,7 @@ body {
   overflow-y: hidden;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .todo-category-tabs::-webkit-scrollbar {
@@ -6203,40 +6208,36 @@ body {
 
 .todo-category-tab {
   flex-shrink: 0;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 0.75rem 0.45rem;
   font-size: 0.9rem;
-  color: #888;
+  color: #9ca3af;
   background: none;
   border: none;
   cursor: pointer;
   font-family: inherit;
-  border-radius: 8px 8px 0 0 !important;
+  white-space: nowrap;
+  transition: color 0.2s ease;
 }
 
 .todo-category-tab:hover {
-  color: #555;
+  color: #6b7280;
 }
 
 .todo-category-tab.active {
-  color: #111;
+  color: #111827;
   font-weight: 600;
-  font-size: 1rem;
-  border-bottom: 1px solid #fff !important;
-  background: none;
-  border-radius: 8px 8px 0 0 !important;
-  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.04);
-  position: relative;
-  z-index: 1;
+  /* 밑선 없음 - 글자만 검정 */
 }
 
 .todo-category-tab-count {
   margin-left: 0.25rem;
   font-weight: 400;
-  color: #999;
+  color: inherit;
+  opacity: 0.9;
 }
 
 .todo-category-tab.active .todo-category-tab-count {
-  color: #333;
+  color: inherit;
 }
 
 .todo-category-tab-add {
@@ -9876,6 +9877,7 @@ body.kpi-resizing {
   overflow-y: hidden;
   min-width: 0;
   -webkit-overflow-scrolling: touch;
+  border-bottom: 1px solid #e5e7eb;
 }
 .time-view-tabs::-webkit-scrollbar {
   height: 4px;
@@ -9887,27 +9889,26 @@ body.kpi-resizing {
 
 .time-view-tab {
   flex-shrink: 0;
-  padding: 0.4rem 0.75rem;
+  padding: 0.5rem 0.75rem 0.45rem;
   font-size: 0.9rem;
-  color: #888;
+  color: #9ca3af;
   background: none;
   border: none;
-  border-bottom: 2px solid transparent;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
   cursor: pointer;
   font-family: inherit;
   white-space: nowrap;
-  transition:
-    color 0.15s,
-    border-color 0.15s;
+  transition: color 0.2s ease, border-color 0.2s ease;
 }
 
 .time-view-tab:hover {
-  color: #555;
+  color: #6b7280;
 }
 
 .time-view-tab.active {
-  color: #333;
-  border-bottom-color: #999;
+  color: #111827;
+  border-bottom-color: #111827;
 }
 
 /* 시간가계부 필터 바 (월별/일주일/하루/날짜선택) - 좁은 창에서 줄바꿈 방지 */
@@ -15406,7 +15407,8 @@ body.kpi-resizing {
 
 /* ----- My account (Idea) ----- */
 .idea-view {
-  padding: 0;
+  padding: 1rem;
+  box-sizing: border-box;
 }
 
 .idea-view-title {
@@ -17907,11 +17909,12 @@ body.kpi-resizing {
 }
 
 .diary-view {
-  padding: 0;
+  padding: 1rem;
   height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .diary-view h2 {
@@ -18762,9 +18765,7 @@ body.kpi-resizing {
 }
 .calendar-view-header .calendar-view-title {
   margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #333;
+  /* 제목 크기/색은 .dream-view-title과 통일 (2rem, 700, #1f2937) */
 }
 
 .calendar-view .calendar-tabs {
@@ -18779,6 +18780,12 @@ body.kpi-resizing {
   display: flex;
   flex-direction: column;
   font-family: inherit;
+}
+
+/* 할일 리스트: 위 메뉴탭(1. 할일 쏟아내기 등)과 좌우 정렬 */
+.calendar-content-wrap > .todo-list-view {
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .calendar-placeholder-wrap {
@@ -22570,9 +22577,10 @@ body.kpi-resizing {
 
 /* ----- 아카이브 (시간기록 메모·태그 목록, 미니멀) ----- */
 .archive-view {
-  padding: 1.5rem 1.25rem;
-  max-width: 720px;
-  margin: 0 auto;
+  padding: 1rem;
+  max-width: 100%;
+  margin: 0;
+  box-sizing: border-box;
 }
 
 .archive-header {
@@ -22581,9 +22589,7 @@ body.kpi-resizing {
 
 .archive-title {
   margin: 0 0 1rem 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--gray-800, #1f2937);
+  /* 크기/굵기/색은 .dream-view-title과 통일 (2rem, 700, #1f2937) */
 }
 
 .archive-search-wrap {
