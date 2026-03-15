@@ -23,6 +23,22 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "Cormorant Garamond";
+  src: url("/fonts/CormorantGaramond-VariableFont_wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "DM Serif Display";
+  src: url("/fonts/DMSerifDisplay-Regular.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --app-font-family: "S-Core Dream 3", -apple-system, sans-serif;
   /* 회색 톤 통일 */
@@ -545,9 +561,10 @@ body {
 }
 
 .app-sidebar {
-  width: 240px;
-  min-width: 200px;
-  background: #f8f9fa;
+  width: 56px;
+  min-width: 56px;
+  margin-right: 0.5rem;
+  background: none;
   color: #374151;
   display: flex;
   flex-direction: column;
@@ -557,94 +574,39 @@ body {
     -apple-system,
     sans-serif
   );
-  transition:
-    width 0.2s,
-    min-width 0.2s;
-  border-right: 1px solid #e5e7eb;
-}
-
-.app-sidebar.is-collapsed {
-  width: 56px;
-  min-width: 56px;
-}
-
-.app-sidebar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem;
-  border-bottom: 1px solid #e5e7eb;
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
-
-.app-sidebar.is-collapsed .app-sidebar-header {
-  justify-content: center;
-  padding: 0.75rem;
-}
-
-.app-sidebar-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  font-family: inherit;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.app-sidebar.is-collapsed .app-sidebar-title {
-  display: none;
-}
-
-.app-sidebar-collapse-btn {
-  flex-shrink: 0;
-  padding: 0.35rem;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #6b7280;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.app-sidebar-collapse-btn:hover {
-  background: #e5e7eb;
-  color: #374151;
-}
-
-.app-sidebar-collapse-btn img {
-  display: block;
-  filter: brightness(0);
 }
 
 .app-sidebar-nav {
-  flex: 1;
-  padding: 0.5rem 0;
+  flex: 0 0 auto;
+  padding: 0.5rem 0 0.5rem 0.25rem;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  overflow: visible;
+}
+
+.app-sidebar {
+  overflow: visible;
 }
 
 .app-sidebar-item {
   background: none;
-  border: none;
+  border: 1px solid #d1d5db;
   color: #374151;
-  text-align: left;
-  padding: 0.6rem 1rem;
+  text-align: center;
+  padding: 0.6rem 0 0.6rem 0.35rem;
   font-size: 0.95rem;
   cursor: pointer;
   transition: background 0.15s;
   font-family: inherit;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  justify-content: center;
+  gap: 0;
+  border-radius: 8px 0 0 8px !important;
+  margin-left: 2px;
 }
 
-.app-sidebar.is-collapsed .app-sidebar-item {
-  justify-content: center;
-  padding: 0.6rem;
-}
 
 .app-sidebar-item-icon {
   flex-shrink: 0;
@@ -661,26 +623,30 @@ body {
 }
 
 .app-sidebar-item-label {
-  white-space: nowrap;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
 }
 
-.app-sidebar.is-collapsed .app-sidebar-item-label {
-  display: none;
+.app-sidebar-item-char {
+  display: block;
 }
+
 
 .app-sidebar-item:hover {
-  background: #e5e7eb;
+  background: none;
 }
 
 .app-sidebar-item.active {
-  background: #e5e7eb;
+  background: none;
   font-weight: 600;
   color: #1f2937;
+  border-right: none !important;
 }
 
 .app-sidebar-logout {
-  margin-top: auto;
   color: #6b7280;
   font-size: 0.9rem;
   font-family: inherit;
@@ -737,26 +703,11 @@ body {
     z-index: 100;
     transform: translateX(-100%);
     transition: transform 0.2s;
-    width: 240px;
-    min-width: 200px;
+    width: 56px;
+    min-width: 56px;
   }
   .app-sidebar.is-open {
     transform: translateX(0);
-  }
-  .app-sidebar.is-open.is-collapsed {
-    width: 240px;
-    min-width: 200px;
-  }
-  .app-sidebar.is-open .app-sidebar-title,
-  .app-sidebar.is-open .app-sidebar-item-label {
-    display: block;
-  }
-  .app-sidebar.is-open .app-sidebar-item {
-    justify-content: flex-start;
-    padding: 0.6rem 1rem;
-  }
-  .app-sidebar.is-open .app-sidebar-header {
-    justify-content: space-between;
   }
   .app-main {
     padding: 1rem;
@@ -939,6 +890,7 @@ body {
 
 .home-view-section:not(:last-child) {
   border-right: 1px solid #e5e7eb;
+  box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.06);
 }
 
 .home-view-section--calendar {
@@ -954,10 +906,12 @@ body {
 .home-view-section-title {
   margin: 0;
   padding: 0.5rem 0.75rem 0;
-  font-size: 1.5rem;
-  font-weight: 900;
-  color: #374151;
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #6b7280;
   flex-shrink: 0;
+  font-family: "Cormorant Garamond", serif !important;
+  text-transform: uppercase;
 }
 
 .home-view-section-subtitle {

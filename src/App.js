@@ -15,10 +15,8 @@ import { render as renderDiary } from "./views/Diary.js";
 import { render as renderIdea } from "./views/Idea.js";
 import { render as renderHome } from "./views/Home.js";
 
-const SIDEBAR_COLLAPSED_KEY = "app-sidebar-collapsed";
-
 const TABS = [
-  { id: "home", label: "Home", icon: "/toolbaricons/dashboard.svg" },
+  { id: "home", label: "오늘", icon: "/toolbaricons/dashboard.svg" },
   { id: "dream", label: "꿈", icon: "/toolbaricons/star.svg" },
   { id: "sideincome", label: "부수입", icon: "/toolbaricons/money-circle.svg" },
   { id: "happiness", label: "행복", icon: "/toolbaricons/plug-electric.svg" },
@@ -33,7 +31,6 @@ const TABS = [
     icon: "/toolbaricons/calendar-heart1.svg",
   },
   { id: "archive", label: "아카이브", icon: "/toolbaricons/harddrive.svg" },
-  { id: "idea", label: "My account", icon: "/toolbaricons/user-square.svg" },
 ];
 
 const RENDERERS = {
@@ -93,29 +90,6 @@ export function mountApp(container) {
 
   const sidebar = document.createElement("aside");
   sidebar.className = "app-sidebar";
-  const isCollapsed = localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
-  if (isCollapsed) sidebar.classList.add("is-collapsed");
-
-  const sidebarHeader = document.createElement("div");
-  sidebarHeader.className = "app-sidebar-header";
-  const sidebarTitle = document.createElement("div");
-  sidebarTitle.className = "app-sidebar-title";
-  sidebarTitle.textContent = "라이프 플래너";
-  const collapseBtn = document.createElement("button");
-  collapseBtn.type = "button";
-  collapseBtn.className = "app-sidebar-collapse-btn";
-  collapseBtn.title = isCollapsed ? "사이드바 펼치기" : "사이드바 접기";
-  collapseBtn.innerHTML =
-    '<img src="/toolbaricons/menu.svg" alt="" width="20" height="20" />';
-  collapseBtn.addEventListener("click", () => {
-    sidebar.classList.toggle("is-collapsed");
-    const collapsed = sidebar.classList.contains("is-collapsed");
-    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "1" : "0");
-    collapseBtn.title = collapsed ? "사이드바 펼치기" : "사이드바 접기";
-  });
-  sidebarHeader.appendChild(sidebarTitle);
-  sidebarHeader.appendChild(collapseBtn);
-  sidebar.appendChild(sidebarHeader);
 
   const nav = document.createElement("nav");
   nav.className = "app-sidebar-nav";
@@ -126,22 +100,21 @@ export function mountApp(container) {
       "app-sidebar-item" + (tab.id === currentTabId ? " active" : "");
     btn.dataset.tabId = tab.id;
     btn.title = tab.label;
-    const icon = document.createElement("img");
-    icon.className = "app-sidebar-item-icon";
-    icon.src = tab.icon;
-    icon.alt = "";
-    icon.width = 20;
-    icon.height = 20;
     const label = document.createElement("span");
     label.className = "app-sidebar-item-label";
-    label.textContent = tab.label;
-    btn.appendChild(icon);
+    Array.from(tab.label).forEach((char) => {
+      const span = document.createElement("span");
+      span.className = "app-sidebar-item-char";
+      span.textContent = char;
+      label.appendChild(span);
+    });
     btn.appendChild(label);
     btn.addEventListener("click", () => {
       currentTabId = tab.id;
       nav
         .querySelectorAll(".app-sidebar-item")
         .forEach((b) => b.classList.remove("active"));
+      sidebar.querySelector(".app-sidebar-logout")?.classList.remove("active");
       btn.classList.add("active");
       renderMain(main);
       sidebar.classList.remove("is-open");
@@ -150,6 +123,31 @@ export function mountApp(container) {
     nav.appendChild(btn);
   });
 
+  const accountBtn = document.createElement("button");
+  accountBtn.className = "app-sidebar-item app-sidebar-logout";
+  accountBtn.title = "나의 계정";
+  accountBtn.dataset.tabId = "idea";
+  const accountLabel = document.createElement("span");
+  accountLabel.className = "app-sidebar-item-label";
+  Array.from("나의 계정").forEach((char) => {
+    const span = document.createElement("span");
+    span.className = "app-sidebar-item-char";
+    span.textContent = char;
+    accountLabel.appendChild(span);
+  });
+  accountBtn.appendChild(accountLabel);
+  accountBtn.addEventListener("click", () => {
+    currentTabId = "idea";
+    nav.querySelectorAll(".app-sidebar-item").forEach((b) => b.classList.remove("active"));
+    accountBtn.classList.add("active");
+    renderMain(main);
+    sidebar.classList.remove("is-open");
+    document.querySelector(".app-sidebar-overlay")?.remove();
+  });
+  sidebar.appendChild(nav);
+  sidebar.appendChild(accountBtn);
+  appScreen.appendChild(sidebar);
+
   document.addEventListener("app-switch-tab", (e) => {
     const tabId = e.detail?.tabId;
     if (tabId) {
@@ -157,29 +155,12 @@ export function mountApp(container) {
       nav.querySelectorAll(".app-sidebar-item").forEach((b) => {
         b.classList.toggle("active", b.dataset.tabId === tabId);
       });
+      if (accountBtn) {
+        accountBtn.classList.toggle("active", tabId === "idea");
+      }
       renderMain(main);
     }
   });
-
-  sidebar.appendChild(nav);
-
-  const logoutBtn = document.createElement("button");
-  logoutBtn.className = "app-sidebar-item app-sidebar-logout";
-  logoutBtn.title = "로그아웃";
-  const logoutIcon = document.createElement("img");
-  logoutIcon.className = "app-sidebar-item-icon";
-  logoutIcon.src = "/toolbaricons/send-out.svg";
-  logoutIcon.alt = "";
-  logoutIcon.width = 20;
-  logoutIcon.height = 20;
-  const logoutLabel = document.createElement("span");
-  logoutLabel.className = "app-sidebar-item-label";
-  logoutLabel.textContent = "로그아웃";
-  logoutBtn.appendChild(logoutIcon);
-  logoutBtn.appendChild(logoutLabel);
-  logoutBtn.addEventListener("click", () => signOut());
-  sidebar.appendChild(logoutBtn);
-  appScreen.appendChild(sidebar);
 
   const main = document.createElement("main");
   main.className = "app-main";
