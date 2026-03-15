@@ -121,7 +121,7 @@ function setAuditTaskDone(sectionId, taskId, kpiTodoId, storageKey, done) {
   } catch (_) {}
 }
 
-const EISENHOWER_LABELS_AUDIT = { "urgent-important": "긴급+중요", "important-not-urgent": "중요+여유", "urgent-not-important": "긴급+덜중요", "not-urgent-not-important": "둘다아님" };
+const EISENHOWER_LABELS_AUDIT = { "urgent-important": "긴급+중요", "important-not-urgent": "중요+여유", "urgent-not-important": "긴급+덜중요", "not-urgent-not-important": "여유+안중요" };
 /** 오딧 우선순위별 완료 파이 전용 – 볼드하지 않은 색 */
 const PRIORITY_PIE_COLORS_AUDIT = {
   "urgent-important": "#d4a5a5",
@@ -6259,7 +6259,7 @@ export function render() {
             .join("")}</tbody></table></div>`;
 
     const tasksForImportant = getTasksForAuditDate(dateKey);
-    const EISENHOWER_LABELS = { "urgent-important": "긴급+중요", "important-not-urgent": "중요+여유", "urgent-not-important": "긴급+덜중요", "not-urgent-not-important": "둘다아님" };
+    const EISENHOWER_LABELS = { "urgent-important": "긴급+중요", "important-not-urgent": "중요+여유", "urgent-not-important": "긴급+덜중요", "not-urgent-not-important": "여유+안중요" };
     const dateRowsForKpi = filtered.filter(
       (r) => (normalizeDateForCompare(r.date || "") || (r.date || "").trim()) === dateKey,
     );
@@ -6807,7 +6807,7 @@ export function render() {
           ${(() => {
             const tasks = getTasksForAuditDate(dateStr);
             const EISENHOWER_ORDER = ["urgent-important", "important-not-urgent", "urgent-not-important", "not-urgent-not-important"];
-            const EISENHOWER_LABELS = { "urgent-important": "긴급+중요", "important-not-urgent": "중요+여유", "urgent-not-important": "긴급+덜중요", "not-urgent-not-important": "둘다아님" };
+            const EISENHOWER_LABELS = { "urgent-important": "긴급+중요", "important-not-urgent": "중요+여유", "urgent-not-important": "긴급+덜중요", "not-urgent-not-important": "여유+안중요" };
             const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
             const sorted = [...tasks].sort((a, b) => {
               const ai = EISENHOWER_ORDER.indexOf((a.eisenhower || "").trim());

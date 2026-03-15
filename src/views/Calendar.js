@@ -3957,7 +3957,7 @@ function render1DayView(tabsElement) {
       "urgent-important": "긴급+중요",
       "important-not-urgent": "중요+여유",
       "urgent-not-important": "긴급+덜중요",
-      "not-urgent-not-important": "둘다아님",
+      "not-urgent-not-important": "여유+안중요",
     };
     const todoTable = document.createElement("table");
     todoTable.className = "calendar-1day-todo-table time-daily-budget-table";
@@ -5600,7 +5600,7 @@ function renderEisenhowerView(tabsElement) {
     "urgent-important": "긴급+중요",
     "important-not-urgent": "중요+여유",
     "urgent-not-important": "긴급+덜중요",
-    "not-urgent-not-important": "둘다아님",
+    "not-urgent-not-important": "여유+안중요",
   };
 
   function updateQuadrants() {

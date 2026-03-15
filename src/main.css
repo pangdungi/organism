@@ -6947,10 +6947,12 @@ body {
 
 .todo-table-wrap {
   border-top: 1px solid #eee;
+  overflow-x: auto;
 }
 
 .todo-table {
   width: 100%;
+  min-width: 52rem;
   table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.9rem;
@@ -6962,10 +6964,15 @@ body {
   );
 }
 
+.todo-table tbody tr {
+  border-bottom: 1px solid #eee;
+}
+
 .todo-table thead th {
   padding: 0.5rem 0.5rem;
   text-align: left;
   font-weight: 500;
+  font-size: 0.8rem;
   font-family: var(
     --app-font-family,
     "S-Core Dream 3",
@@ -6974,22 +6981,59 @@ body {
   );
   color: #888;
   border-bottom: 1px solid #eee;
-  border-right: 1px solid #eee;
   vertical-align: middle;
 }
 
-.todo-table thead th:last-child {
-  border-right: none;
+/* 이름 열 고정: 체크박스·이름 열 sticky, 나머지 가로 스크롤 */
+.todo-table thead th.todo-th-done {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: #fff;
+  border-right: 1px solid #eee;
+}
+
+.todo-table thead th.todo-th-name {
+  position: sticky;
+  left: 2rem;
+  z-index: 3;
+  background: #fff;
+  border-right: 1px solid #eee;
+  width: 14rem;
+  min-width: 14rem;
+  max-width: 14rem;
+}
+
+.todo-table tbody .todo-cell-done {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #fff;
+  border-right: 1px solid #eee;
+}
+
+.todo-table tbody .todo-cell-name {
+  position: sticky;
+  left: 2rem;
+  z-index: 1;
+  background: #fff;
+  border-right: 1px solid #eee;
+  width: 14rem !important;
+  min-width: 14rem !important;
+  max-width: 14rem !important;
+}
+
+.todo-row-overdue .todo-cell-done,
+.todo-row-overdue .todo-cell-name {
+  background: rgba(0, 0, 0, 0.015);
 }
 
 .todo-table tbody td {
-  border-bottom: 1px solid #eee;
-  border-right: 1px solid #eee;
+  border-bottom: none;
   vertical-align: middle;
-}
-
-.todo-table tbody td:last-child {
-  border-right: none;
+  box-sizing: border-box;
+  padding: 0.5rem 0.5rem;
+  line-height: 1.4;
 }
 
 .todo-th-toggle {
@@ -7004,6 +7048,7 @@ body {
   padding: 0.5rem 0.25rem !important;
   text-align: center;
   vertical-align: middle;
+  box-sizing: border-box;
 }
 
 .todo-done-check {
@@ -7071,13 +7116,13 @@ body {
   width: 7.5rem !important;
 }
 
-/* 벨 아이콘: 값 없을 때만 호버 시 표시, 값 있으면 항상 표시 */
-.todo-cell-reminder:has(.todo-reminder-display:empty) .todo-reminder-btn {
+/* 벨 아이콘: 값 없을 때만 호버 시 표시, 값 있으면 항상 표시 (빈 값은 "—" 표시로 .todo-cell-reminder-empty 사용) */
+.todo-cell-reminder-empty .todo-reminder-btn {
   opacity: 0;
   transition: opacity 0.2s ease;
 }
 
-.todo-task-row:hover .todo-cell-reminder:has(.todo-reminder-display:empty) .todo-reminder-btn {
+.todo-task-row:hover .todo-cell-reminder-empty .todo-reminder-btn {
   opacity: 1;
 }
 
@@ -7186,9 +7231,10 @@ body {
   width: 2rem !important;
 }
 
-/* Name 열이 남은 공간을 채우도록 */
+/* Name 열 고정 너비 (스크롤 시 열고정용) */
 .todo-table col.todo-col-name {
-  width: 100%;
+  width: 14rem;
+  min-width: 14rem;
 }
 
 .todo-th-delete,
@@ -7249,6 +7295,11 @@ body {
 
 .todo-task-row td {
   padding: 0.5rem 0.5rem;
+}
+
+/* 기한 초과된 행: 매우 투명한 회색 셀 배경 */
+.todo-row-overdue td {
+  background-color: rgba(0, 0, 0, 0.015);
 }
 
 .todo-task-sub td {
@@ -7507,6 +7558,11 @@ body {
     -apple-system,
     sans-serif
   );
+}
+
+/* 날짜 없을 때 "—" 표시 */
+.todo-due-empty {
+  color: #999;
 }
 
 /* 캘린더 아이콘: 값 없을 때만 호버 시 표시, 값 있으면 항상 표시(날짜 텍스트만 있음) */

@@ -954,6 +954,7 @@ function createTaskRow(taskData = {}, options = {}) {
   tr.dataset.endTime = endTime || "";
   tr.dataset.reminderDate = reminderDate || "";
   tr.dataset.reminderTime = reminderTime || "";
+  if (dueDate && isOverdue(dueDate)) tr.classList.add("todo-row-overdue");
   if (isKpiTodo) {
     tr.classList.add("todo-task-row--kpi");
     tr.dataset.isKpiTodo = "true";
@@ -1140,10 +1141,10 @@ function createTaskRow(taskData = {}, options = {}) {
   startDisplay.className = "todo-due-display";
   if (startDate && startDate.includes("-")) {
     const [y, m, d] = startDate.split("-");
-    startDisplay.innerHTML = y && m && d ? `<span class="todo-due-date-text">${m}/${d}</span>` : '<span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
+    startDisplay.innerHTML = y && m && d ? `<span class="todo-due-date-text">${m}/${d}</span>` : '<span class="todo-due-empty">—</span><span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
   } else {
     startDisplay.innerHTML =
-      '<span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
+      '<span class="todo-due-empty">—</span><span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
   }
   const startInput = document.createElement("input");
   startInput.type = "date";
@@ -1153,10 +1154,10 @@ function createTaskRow(taskData = {}, options = {}) {
     const val = startInput.value;
     if (val && val.includes("-")) {
       const [y, m, d] = val.split("-");
-      startDisplay.innerHTML = y && m && d ? `<span class="todo-due-date-text">${m}/${d}</span>` : '<span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
+      startDisplay.innerHTML = y && m && d ? `<span class="todo-due-date-text">${m}/${d}</span>` : '<span class="todo-due-empty">—</span><span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
     } else {
       startDisplay.innerHTML =
-        '<span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
+        '<span class="todo-due-empty">—</span><span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
     }
   };
   const syncHasDates = () => {
@@ -1201,10 +1202,10 @@ function createTaskRow(taskData = {}, options = {}) {
   dueDisplay.className = "todo-due-display";
   if (dueDate && dueDate.includes("-")) {
     const [y, m, d] = dueDate.split("-");
-    dueDisplay.innerHTML = y && m && d ? `<span class="todo-due-date-text">${m}/${d}</span>` : '<span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
+    dueDisplay.innerHTML = y && m && d ? `<span class="todo-due-date-text">${m}/${d}</span>` : '<span class="todo-due-empty">—</span><span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
   } else {
     dueDisplay.innerHTML =
-      '<span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
+      '<span class="todo-due-empty">—</span><span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
   }
   const dueInput = document.createElement("input");
   dueInput.type = "date";
@@ -1214,10 +1215,10 @@ function createTaskRow(taskData = {}, options = {}) {
     const val = dueInput.value;
     if (val && val.includes("-")) {
       const [y, m, d] = val.split("-");
-      dueDisplay.innerHTML = y && m && d ? `<span class="todo-due-date-text">${m}/${d}</span>` : '<span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
+      dueDisplay.innerHTML = y && m && d ? `<span class="todo-due-date-text">${m}/${d}</span>` : '<span class="todo-due-empty">—</span><span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
     } else {
       dueDisplay.innerHTML =
-        '<span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
+        '<span class="todo-due-empty">—</span><span class="todo-due-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M2 7h12M5 2v3M11 2v3"/></svg></span>';
     }
   };
   const syncDateMinMax = () => {
@@ -1271,7 +1272,9 @@ function createTaskRow(taskData = {}, options = {}) {
     const dateStr = parts.length >= 3 ? `${parts[1]}/${parts[2]}` : rDate;
     return (rTime || "").trim() ? `${dateStr} ${(rTime || "").trim()}` : dateStr;
   }
-  reminderDisplaySpan.textContent = formatReminderDisplay(reminderDate, reminderTime);
+  const reminderDisplayVal = formatReminderDisplay(reminderDate, reminderTime);
+  reminderDisplaySpan.textContent = reminderDisplayVal || "—";
+  reminderTd.classList.toggle("todo-cell-reminder-empty", !reminderDisplayVal);
   reminderBtn.addEventListener("click", () => {
     const taskName = (nameInput.value || "").trim() || "(과제명 없음)";
     const defaultDate = (tr.dataset.reminderDate || "").trim() || (dueInput.value || "").trim();
@@ -1368,7 +1371,9 @@ function createTaskRow(taskData = {}, options = {}) {
       timeErrorEl.textContent = "";
       tr.dataset.reminderDate = dateVal;
       tr.dataset.reminderTime = timeVal;
-      reminderDisplaySpan.textContent = formatReminderDisplay(dateVal, timeVal);
+      const nextDisplay = formatReminderDisplay(dateVal, timeVal);
+      reminderDisplaySpan.textContent = nextDisplay || "—";
+      reminderTd.classList.toggle("todo-cell-reminder-empty", !nextDisplay);
       const wrap = tr.closest(".todo-sections-wrap");
       if (wrap) scheduleSaveSectionTasksFromDOM(wrap);
       close();
@@ -1409,13 +1414,14 @@ function createTaskRow(taskData = {}, options = {}) {
   overdueTd.appendChild(overdueSpan);
   const syncOverdueDisplay = () => {
     overdueSpan.textContent = formatOverdueDisplay(dueInput.value, doneCheck.checked);
+    tr.classList.toggle("todo-row-overdue", !!(dueInput.value && isOverdue(dueInput.value)));
   };
 
   const EISENHOWER_LABELS = {
     "urgent-important": "긴급+중요",
     "important-not-urgent": "중요+여유",
     "urgent-not-important": "긴급+덜중요",
-    "not-urgent-not-important": "둘다아님",
+    "not-urgent-not-important": "여유+안중요",
   };
   const eisenhowerTd = document.createElement("td");
   eisenhowerTd.className = "todo-cell-eisenhower";
@@ -1448,7 +1454,7 @@ function createTaskRow(taskData = {}, options = {}) {
 
   const kpiTd = document.createElement("td");
   kpiTd.className = "todo-cell-kpi";
-  kpiTd.textContent = isKpiTodo && classification ? classification : "";
+  kpiTd.textContent = isKpiTodo && classification ? classification : "—";
 
   tr.appendChild(doneTd);
   tr.appendChild(nameTd);
