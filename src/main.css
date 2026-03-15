@@ -618,10 +618,6 @@ body {
   box-sizing: border-box;
 }
 
-.app-sidebar-item:last-of-type {
-  border-bottom: none;
-}
-
 .app-sidebar-item-icon {
   flex-shrink: 0;
   opacity: 0.7;
@@ -662,7 +658,9 @@ body {
   background: #fff;
 }
 
+/* 나의 계정만 하단 구분선 제거 (아카이브-나의계정 사이에는 선 유지) */
 .app-sidebar-logout {
+  border-bottom: none;
   color: #9ca3af;
   font-size: 0.88rem;
   font-family: inherit;
@@ -7174,7 +7172,7 @@ body {
 }
 
 .todo-reminder-btn:hover {
-  background: rgba(0, 0, 0, 0.06);
+  background: transparent;
   color: #999;
 }
 
@@ -14802,7 +14800,6 @@ body.kpi-resizing {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   overflow-x: auto;
   overflow-y: visible;
-  border: 1px solid #eee;
   overscroll-behavior-x: none;
   -webkit-overflow-scrolling: auto;
   scrollbar-width: none;
@@ -15608,6 +15605,14 @@ body.kpi-resizing {
   min-width: 0;
 }
 
+/* 나의 계정 위젯 제목: 크기·진하게 (기본정보, 나의 시급 계산하기, 색상 설정 등) */
+.idea-view .time-dashboard-widget-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
 .idea-widget-colors {
   grid-column: 1 / -1;
 }
@@ -15645,7 +15650,9 @@ body.kpi-resizing {
 }
 .idea-colors-col .todo-settings-block-title {
   margin: 0 0 0.5rem;
-  font-size: 0.9rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
 }
 .idea-colors-col .idea-colors-rows {
   display: flex;
@@ -15662,6 +15669,94 @@ body.kpi-resizing {
 
 .idea-font-row {
   margin-bottom: 1rem;
+}
+
+/* 폰트 선택 커스텀 드롭다운 (흰색·회색 톤) */
+.idea-font-dropdown {
+  position: relative;
+  min-width: 200px;
+}
+
+.idea-font-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  color: #374151;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  gap: 0.5rem;
+}
+
+.idea-font-trigger:hover {
+  border-color: #d1d5db;
+  background: #fafafa;
+}
+
+.idea-font-trigger:focus {
+  outline: none;
+  border-color: #9ca3af;
+  box-shadow: 0 0 0 2px rgba(156, 163, 175, 0.15);
+}
+
+.idea-font-trigger-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.idea-font-trigger-icon {
+  font-size: 0.65em;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.idea-font-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  padding: 4px 0;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 50;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.idea-font-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+  background: #fff;
+}
+
+.idea-font-option:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.idea-font-option-check {
+  color: #6b7280;
+  font-size: 0.9em;
+  flex-shrink: 0;
+}
+
+.idea-font-option-label {
+  flex: 1;
+  min-width: 0;
 }
 
 .idea-form-select {
@@ -19590,7 +19685,6 @@ body.kpi-resizing {
   align-items: center;
   padding: 0.4rem 0 0.5rem 0;
   background: transparent;
-  border-bottom: 1px solid #e5e7eb;
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--gray-800, #1f2937);
@@ -19652,9 +19746,10 @@ body.kpi-resizing {
   min-height: 2.5rem;
 }
 
-/* 오늘의 할일 테이블 - 오늘의 할일/KPI/우선순위 3열 */
+/* 오늘의 할일 테이블 - 오늘의 할일/KPI/우선순위 3열 (수면·근무시간 배치 표처럼 좌우 테두리 없음) */
 .calendar-1day-budget-column .calendar-1day-todo-table {
-  border: 1px solid #e5e7eb;
+  border-top: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
   width: 100%;
   table-layout: fixed;
 }
@@ -20572,15 +20667,12 @@ body.kpi-resizing {
   overflow: hidden;
 }
 
-/* 타임라인 행: 보조선(거의 안 보이게), 6시간마다 주요선(진하게) */
+/* 타임라인 행: 가로 구분선 모두 옅은 선으로 통일 */
 .calendar-1day-view .calendar-1day-time-row {
   display: flex;
   align-items: stretch;
   min-height: 3rem;
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-.calendar-1day-view .calendar-1day-time-row:nth-child(18n + 2) {
-  border-bottom: 1px solid #d1d5db;
 }
 
 .calendar-1day-view .calendar-1day-time-label {
@@ -20603,10 +20695,6 @@ body.kpi-resizing {
   background: #fff;
   position: relative;
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-.calendar-1day-view .calendar-1day-time-slot:nth-child(18n + 3),
-.calendar-1day-view .calendar-1day-time-slot:nth-child(18n + 4) {
-  border-bottom-color: #d1d5db;
 }
 
 .calendar-1day-view .calendar-1day-time-slot-fill {
@@ -20956,7 +21044,7 @@ body.kpi-resizing {
   top: 0;
   width: 7px;
   height: 7px;
-  border-radius: 50%;
+  border-radius: 50% !important; /* 전역 리셋(*::before { border-radius:0 !important }) 덮어쓰기 */
   background: #111827;
 }
 

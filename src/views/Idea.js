@@ -82,26 +82,82 @@ export function render() {
       return "scdream3";
     }
   })();
+  const currentFontOption = FONT_OPTIONS.find((o) => o.value === savedFont) || FONT_OPTIONS[0];
   basicInfoWidget.innerHTML = `
     <div class="time-dashboard-widget-title">기본정보</div>
     <div class="idea-font-row">
       <label class="idea-form-label">웹사이트 폰트</label>
-      <select class="idea-form-select idea-font-select">
-        ${FONT_OPTIONS.map((o) => `<option value="${o.value}" ${savedFont === o.value ? "selected" : ""}>${o.label}</option>`).join("")}
-      </select>
+      <div class="idea-font-dropdown">
+        <button type="button" class="idea-font-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="폰트 선택">
+          <span class="idea-font-trigger-label">${currentFontOption.label}</span>
+          <span class="idea-font-trigger-icon" aria-hidden="true">▼</span>
+        </button>
+        <div class="idea-font-panel" role="listbox" hidden>
+          ${FONT_OPTIONS.map((o) => `
+            <div class="idea-font-option" role="option" data-value="${o.value}" aria-selected="${o.value === savedFont}">
+              ${o.value === savedFont ? '<span class="idea-font-option-check">✓</span>' : ""}
+              <span class="idea-font-option-label">${o.label}</span>
+            </div>
+          `).join("")}
+        </div>
+      </div>
     </div>
     <div class="idea-basic-placeholder">기본정보를 입력할 수 있습니다.</div>
   `;
   grid.appendChild(basicInfoWidget);
 
-  const fontSelect = basicInfoWidget.querySelector(".idea-font-select");
-  fontSelect?.addEventListener("change", () => {
-    const val = fontSelect.value;
-    try {
-      localStorage.setItem(APP_FONT_KEY, val);
-      applyAppFont();
-    } catch (_) {}
+  const fontDropdown = basicInfoWidget.querySelector(".idea-font-dropdown");
+  const fontTrigger = basicInfoWidget.querySelector(".idea-font-trigger");
+  const fontTriggerLabel = basicInfoWidget.querySelector(".idea-font-trigger-label");
+  const fontPanel = basicInfoWidget.querySelector(".idea-font-panel");
+  const fontOptions = basicInfoWidget.querySelectorAll(".idea-font-option");
+
+  function closeFontPanel() {
+    fontPanel.hidden = true;
+    fontTrigger.setAttribute("aria-expanded", "false");
+  }
+
+  fontTrigger.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isOpen = !fontPanel.hidden;
+    if (isOpen) {
+      closeFontPanel();
+    } else {
+      fontPanel.hidden = false;
+      fontTrigger.setAttribute("aria-expanded", "true");
+      const onDocClick = () => {
+        closeFontPanel();
+        document.removeEventListener("click", onDocClick);
+      };
+      requestAnimationFrame(() => document.addEventListener("click", onDocClick));
+    }
   });
+
+  fontOptions.forEach((opt) => {
+    opt.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const val = opt.dataset.value;
+      try {
+        localStorage.setItem(APP_FONT_KEY, val);
+        applyAppFont();
+      } catch (_) {}
+      const chosen = FONT_OPTIONS.find((o) => o.value === val);
+      if (chosen) fontTriggerLabel.textContent = chosen.label;
+      fontOptions.forEach((o) => {
+        o.setAttribute("aria-selected", o.dataset.value === val ? "true" : "false");
+        o.querySelector(".idea-font-option-check")?.remove();
+        if (o.dataset.value === val) {
+          const check = document.createElement("span");
+          check.className = "idea-font-option-check";
+          check.textContent = "✓";
+          o.insertBefore(check, o.firstChild);
+        }
+      });
+      closeFontPanel();
+    });
+  });
+
+  fontPanel.addEventListener("click", (e) => e.stopPropagation());
 
   // ----- 나의 시급계산하기 위젯 -----
   const hourlyWidget = document.createElement("div");
