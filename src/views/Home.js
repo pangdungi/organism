@@ -3,7 +3,7 @@
  */
 
 import { render1DayView } from "./Calendar.js";
-import { getKpiTodosAsTasks } from "../utils/kpiTodoSync.js";
+import { getKpiTodosAsTasks, syncKpiTodoCompleted } from "../utils/kpiTodoSync.js";
 import { getCustomSections } from "../utils/todoSettings.js";
 
 const SECTION_TASKS_KEY = "todo-section-tasks";
@@ -217,6 +217,148 @@ function updateReminderInStorage(sectionId, taskId, reminderDate, reminderTime, 
   } catch (_) {}
 }
 
+/** 오늘 날짜(YYYY-MM-DD) 반환 */
+function getTodayDateKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** 마감일이 오늘인 모든 할일 수집 (섹션 + 커스텀 + KPI) */
+function getTasksDueToday() {
+  const today = getTodayDateKey();
+  const out = [];
+  try {
+    const raw = localStorage.getItem(SECTION_TASKS_KEY);
+    if (raw) {
+      const obj = JSON.parse(raw);
+      KPI_SECTION_IDS.forEach((sectionId) => {
+        const arr = obj[sectionId];
+        if (!Array.isArray(arr)) return;
+        arr.forEach((t) => {
+          const due = (t.dueDate || "").slice(0, 10);
+          if (due !== today) return;
+          out.push({
+            sectionId,
+            taskId: t.taskId || "",
+            name: (t.name || "").trim() || "(과제명 없음)",
+            done: !!t.done,
+            eisenhower: (t.eisenhower || "").trim(),
+            isCustom: false,
+            isKpiTodo: false,
+          });
+        });
+      });
+    }
+  } catch (_) {}
+  try {
+    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
+    if (raw) {
+      const obj = JSON.parse(raw);
+      getCustomSections().forEach((sec) => {
+        const arr = obj[sec.id];
+        if (!Array.isArray(arr)) return;
+        arr.forEach((t) => {
+          const due = (t.dueDate || "").slice(0, 10);
+          if (due !== today) return;
+          out.push({
+            sectionId: sec.id,
+            taskId: t.taskId || "",
+            name: (t.name || "").trim() || "(과제명 없음)",
+            done: !!t.done,
+            eisenhower: (t.eisenhower || "").trim(),
+            isCustom: true,
+            isKpiTodo: false,
+          });
+        });
+      });
+    }
+  } catch (_) {}
+  getKpiTodosAsTasks().forEach((t) => {
+    const due = (t.dueDate || "").slice(0, 10);
+    if (due !== today) return;
+    out.push({
+      sectionId: t.sectionId || "",
+      taskId: t.kpiTodoId || "",
+      name: (t.name || "").trim() || "(과제명 없음)",
+      done: !!t.done,
+      eisenhower: (t.eisenhower || "").trim(),
+      isCustom: false,
+      isKpiTodo: true,
+      kpiTodoId: t.kpiTodoId,
+      storageKey: t.storageKey,
+    });
+  });
+  out.sort((a, b) => (a.name || "").localeCompare(b.name || "", "ko"));
+  return out;
+}
+
+function updateHomeTaskDone(item, done) {
+  if (item.isKpiTodo && item.kpiTodoId && item.storageKey) {
+    syncKpiTodoCompleted(item.kpiTodoId, item.storageKey, done);
+    return;
+  }
+  const key = item.isCustom ? CUSTOM_SECTION_TASKS_KEY : SECTION_TASKS_KEY;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return;
+    const obj = JSON.parse(raw);
+    const arr = obj[item.sectionId];
+    if (!Array.isArray(arr)) return;
+    const t = arr.find((x) => (x.taskId || "") === item.taskId);
+    if (t) {
+      t.done = !!done;
+      localStorage.setItem(key, JSON.stringify(obj));
+    }
+  } catch (_) {}
+}
+
+/** To do list 영역: 마감일 오늘 할일 + 체크박스 + 우선순위 테이블 */
+function fillTodoListContent(todoListContent) {
+  todoListContent.innerHTML = "";
+  const tasks = getTasksDueToday();
+  if (tasks.length === 0) {
+    todoListContent.innerHTML = '<p class="home-event-empty">오늘 마감인 할일이 없습니다.</p>';
+    return;
+  }
+  const table = document.createElement("table");
+  table.className = "home-todo-list-table";
+  table.innerHTML = `
+    <thead><tr>
+      <th class="home-todo-th-check"></th>
+      <th class="home-todo-th-name">할일</th>
+      <th class="home-todo-th-priority">우선순위</th>
+    </tr></thead>
+    <tbody></tbody>
+  `;
+  const tbody = table.querySelector("tbody");
+  tasks.forEach((item) => {
+    const tr = document.createElement("tr");
+    tr.className = "home-todo-list-row" + (item.done ? " is-done" : "");
+    const checkTd = document.createElement("td");
+    checkTd.className = "home-todo-td-check";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.className = "home-todo-done-check";
+    checkbox.checked = item.done;
+    checkbox.addEventListener("change", () => {
+      updateHomeTaskDone(item, checkbox.checked);
+      tr.classList.toggle("is-done", checkbox.checked);
+    });
+    checkTd.appendChild(checkbox);
+    const nameTd = document.createElement("td");
+    nameTd.className = "home-todo-td-name";
+    nameTd.textContent = item.name;
+    const priorityTd = document.createElement("td");
+    priorityTd.className = "home-todo-td-priority";
+    priorityTd.textContent = item.eisenhower || "—";
+    tr.appendChild(checkTd);
+    tr.appendChild(nameTd);
+    tr.appendChild(priorityTd);
+    tbody.appendChild(tr);
+  });
+  todoListContent.appendChild(table);
+}
+
 /** 리마인더 영역 채우기: 목록 + 시간 + 수정 버튼. 수정 시 모달에서 저장하면 storage 반영 후 이 함수로 갱신. */
 function fillReminderContent(reminderContent) {
   reminderContent.innerHTML = "";
@@ -420,6 +562,10 @@ export function render() {
   header3.className = "home-view-section-title";
   header3.textContent = "To do list";
   section3.appendChild(header3);
+  const todoListContent = document.createElement("div");
+  todoListContent.className = "home-todo-list-content";
+  fillTodoListContent(todoListContent);
+  section3.appendChild(todoListContent);
 
   threeCols.appendChild(section1);
   threeCols.appendChild(section2);

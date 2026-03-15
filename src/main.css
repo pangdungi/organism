@@ -1149,6 +1149,61 @@ body {
   color: #6b7280;
 }
 
+.home-todo-list-content {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.5rem 0.75rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.home-todo-list-content::-webkit-scrollbar {
+  display: none;
+}
+
+.home-todo-list-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.home-todo-list-table th,
+.home-todo-list-table td {
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+.home-todo-list-table th {
+  font-weight: 600;
+  color: #374151;
+  background: #f9fafb;
+}
+.home-todo-th-check {
+  width: 2.5rem;
+  text-align: center;
+}
+.home-todo-td-check {
+  text-align: center;
+}
+.home-todo-td-name {
+  width: 100%;
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-todo-list-row.is-done .home-todo-td-name {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+.home-todo-th-priority,
+.home-todo-td-priority {
+  width: 4.5rem;
+  max-width: 4.5rem;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
 .home-event-time-card {
   border: 1px solid #e5e7eb;
   border-radius: 2px;
