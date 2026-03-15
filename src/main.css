@@ -7071,6 +7071,16 @@ body {
   width: 7.5rem !important;
 }
 
+/* 벨 아이콘: 값 없을 때만 호버 시 표시, 값 있으면 항상 표시 */
+.todo-cell-reminder:has(.todo-reminder-display:empty) .todo-reminder-btn {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.todo-task-row:hover .todo-cell-reminder:has(.todo-reminder-display:empty) .todo-reminder-btn {
+  opacity: 1;
+}
+
 .todo-reminder-btn {
   display: inline-flex;
   align-items: center;
@@ -7499,6 +7509,7 @@ body {
   );
 }
 
+/* 캘린더 아이콘: 값 없을 때만 호버 시 표시, 값 있으면 항상 표시(날짜 텍스트만 있음) */
 .todo-due-icon {
   display: inline-flex;
   align-items: center;
@@ -7506,6 +7517,12 @@ body {
   width: 1rem;
   height: 1rem;
   color: #999;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.todo-task-row:hover .todo-due-icon {
+  opacity: 1;
 }
 
 .todo-due-icon svg {
