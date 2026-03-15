@@ -222,7 +222,7 @@ function fillReminderContent(reminderContent) {
   reminderContent.innerHTML = "";
   const list = getRemindersFromAllSections();
   if (list.length === 0) {
-    reminderContent.innerHTML = '<p class="home-event-empty">설정된 리마인더가 없습니다.</p>';
+    reminderContent.innerHTML = '<p class="home-event-empty">No reminders set.</p>';
     return;
   }
   const escapeHtml = (s) => {
@@ -237,7 +237,7 @@ function fillReminderContent(reminderContent) {
     row.innerHTML = `
       <span class="home-reminder-row-name">${escapeHtml(item.name)}</span>
       <span class="home-reminder-row-time">${escapeHtml(displayTime)}</span>
-      <button type="button" class="home-reminder-row-edit" title="리마인더 수정">수정</button>
+      <button type="button" class="home-reminder-row-edit" title="Edit reminder">수정</button>
     `;
     row.querySelector(".home-reminder-row-edit").addEventListener("click", () => {
       openReminderModalFromHome(item, () => fillReminderContent(reminderContent));
@@ -261,7 +261,7 @@ function openReminderModalFromHome(item, onSaved) {
     <div class="dream-kpi-backdrop"></div>
     <div class="dream-kpi-panel">
       <div class="dream-kpi-modal-header">
-        <h3 class="dream-kpi-modal-title">리마인더</h3>
+        <h3 class="dream-kpi-modal-title">Reminder</h3>
         <button type="button" class="dream-kpi-modal-close" title="닫기">×</button>
       </div>
       <div class="todo-reminder-form">
@@ -354,11 +354,6 @@ export function render() {
   header1.className = "home-view-section-title";
   header1.textContent = "Daily";
   section1.appendChild(header1);
-  const sub1 = document.createElement("p");
-  sub1.className = "home-view-section-subtitle";
-  const today = new Date();
-  sub1.textContent = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
-  section1.appendChild(sub1);
   const calendarWrap = render1DayView(null);
   calendarWrap.classList.add("home-embed-1day");
   section1.appendChild(calendarWrap);
@@ -372,25 +367,34 @@ export function render() {
   header2.className = "home-view-section-title";
   header2.textContent = "Event";
   eventHalf.appendChild(header2);
-  const sub2 = document.createElement("p");
-  sub2.className = "home-view-section-subtitle";
-  const now = new Date();
-  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-  sub2.textContent = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
-  eventHalf.appendChild(sub2);
   const eventList = document.createElement("div");
-  eventList.className = "home-event-list home-event-list-cards";
+  eventList.className = "home-event-list home-event-list-grid";
   const events = getEventsForCurrentMonth();
   if (events.length === 0) {
     eventList.innerHTML = '<p class="home-event-empty">이번 달에 날짜가 배정된 이벤트가 없습니다.</p>';
   } else {
+    const byDate = {};
     events.forEach((ev) => {
+      const dateKey = (ev.dueDate || ev.startDate || "").slice(0, 10);
+      if (!dateKey) return;
+      if (!byDate[dateKey]) byDate[dateKey] = [];
+      byDate[dateKey].push(ev);
+    });
+    const sortedDates = Object.keys(byDate).sort();
+    sortedDates.forEach((dateKey) => {
+      const dayEvents = byDate[dateKey];
+      const dd = getDayNumber(dateKey);
       const card = document.createElement("div");
-      card.className = "home-event-time-card" + (ev.done ? " is-done" : "");
-      const timeRange = formatTimeRange(ev.startTime, ev.endTime);
+      card.className = "home-event-time-card" + (isWeekend(dateKey) ? " is-weekend" : "");
+      const titlesHtml = dayEvents
+        .map((ev) => {
+          const doneClass = ev.done ? " is-done" : "";
+          return `<div class="home-event-time-card-item${doneClass}">${escapeHtml(ev.name)}</div>`;
+        })
+        .join("");
       card.innerHTML = `
-        <div class="home-event-time-card-title">${escapeHtml(ev.name)}</div>
-        <div class="home-event-time-card-time">${escapeHtml(timeRange || formatEventDate(ev.dueDate || ev.startDate || ""))}</div>
+        <div class="home-event-time-card-dd">${escapeHtml(String(dd || ""))}</div>
+        <div class="home-event-time-card-list">${titlesHtml}</div>
       `;
       eventList.appendChild(card);
     });
@@ -402,7 +406,7 @@ export function render() {
   reminderHalf.className = "home-event-half";
   const headerReminder = document.createElement("h3");
   headerReminder.className = "home-view-section-title";
-  headerReminder.textContent = "리마인더";
+  headerReminder.textContent = "Reminder";
   reminderHalf.appendChild(headerReminder);
   const reminderContent = document.createElement("div");
   reminderContent.className = "home-reminder-content";

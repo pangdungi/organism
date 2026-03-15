@@ -1238,7 +1238,7 @@ function createTaskRow(taskData = {}, options = {}) {
   const reminderBtn = document.createElement("button");
   reminderBtn.type = "button";
   reminderBtn.className = "todo-reminder-btn";
-  reminderBtn.title = "리마인더";
+  reminderBtn.title = "Reminder";
   reminderBtn.innerHTML = `<svg class="todo-reminder-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 19.001c0 2.209 1.791 4 4 4s4-1.791 4-4"/><path d="m12 5.999v6"/><path d="m9 8.999h6"/><path d="m22 19.001-3-5.25v-5.752c0-3.866-3.134-7-7-7s-7 3.134-7 7v5.751l-3 5.25h20z"/></svg>`;
   const reminderDisplaySpan = document.createElement("span");
   reminderDisplaySpan.className = "todo-reminder-display";
@@ -1626,7 +1626,7 @@ function createSection(section, options = {}) {
         <th class="todo-th-kpi">KPI</th>
         <th class="todo-th-start">시작일</th>
         <th class="todo-th-due">마감일</th>
-        <th class="todo-th-reminder">리마인더</th>
+        <th class="todo-th-reminder">Reminder</th>
         <th class="todo-th-overdue">기한 초과</th>
         ${theadCategoryTh}
         <th class="todo-th-delete"></th>
@@ -1640,7 +1640,7 @@ function createSection(section, options = {}) {
         <th class="todo-th-kpi">KPI</th>
         <th class="todo-th-start">시작일</th>
         <th class="todo-th-due">마감일</th>
-        <th class="todo-th-reminder">리마인더</th>
+        <th class="todo-th-reminder">Reminder</th>
         <th class="todo-th-eisenhower">아이젠하워</th>
         ${theadCategoryTh}
         <th class="todo-th-delete"></th>
@@ -1651,7 +1651,7 @@ function createSection(section, options = {}) {
         <th class="todo-th-kpi">KPI</th>
         <th class="todo-th-start">시작일</th>
         <th class="todo-th-due">마감일</th>
-        <th class="todo-th-reminder">리마인더</th>
+        <th class="todo-th-reminder">Reminder</th>
         <th class="todo-th-overdue">기한 초과</th>
         <th class="todo-th-eisenhower">아이젠하워</th>
         ${theadCategoryTh}
