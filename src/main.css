@@ -10957,8 +10957,8 @@ body.kpi-resizing {
 }
 
 .time-task-log-task-dropdown-search:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  outline: none;
+  border-color: #9ca3af;
 }
 
 .time-task-log-task-dropdown-options {
@@ -14573,9 +14573,13 @@ body.kpi-resizing {
   text-align: center;
 }
 
-/* 생산성별 섹션 - 표 하단 합계 행 */
+/* 생산성별 섹션 - 표 하단 합계 행 (위 구분선 + 폰트 굵기) */
 .time-section-summary-row {
   font-weight: 600;
+}
+
+.time-section-summary-row td {
+  border-top: 1px solid #e5e7eb;
 }
 
 .time-section-summary-row .time-cell-task {
@@ -14596,14 +14600,15 @@ body.kpi-resizing {
   color: #dc2626;
 }
 
-/* 1. 시간 기록하기 - 테이블 하단 합계행 (과제 기록 버튼 위) */
+/* 1. 시간 기록하기 - 테이블 하단 합계행 (위 구분선 + 폰트 굵기만 구분) */
 .time-ledger-total-row {
-  background: #f9fafb;
+  font-weight: 600;
 }
 
 .time-ledger-total-row td {
-  background: #f9fafb !important;
+  background: transparent;
   border-color: #e5e7eb;
+  border-top: 1px solid #e5e7eb;
 }
 
 .time-ledger-total-row .time-cell-task {
@@ -14612,7 +14617,7 @@ body.kpi-resizing {
 
 .time-ledger-total-tracked,
 .time-ledger-total-price {
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .time-ledger-over-row {

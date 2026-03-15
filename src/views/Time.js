@@ -3911,7 +3911,9 @@ export function render() {
         label.textContent = t.name || "";
         row.appendChild(bar);
         row.appendChild(label);
-        row.addEventListener("click", () => {
+        row.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
           value = t.name || "";
           trigger.textContent = value || "과제를 선택하세요";
           panel.hidden = true;
