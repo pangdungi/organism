@@ -881,6 +881,252 @@ body {
   }
 }
 
+/* ========== 모바일 전용 스타일 가이드 ==========
+ * 화면 너비에 따라 다르게 보이게 하려면 @media (max-width: …) 사용.
+ * 예: @media (max-width: 768px) { … }  → 768px 이하(모바일)에서만 적용
+ *     @media (max-width: 480px) { … }  → 480px 이하(작은 폰)에서만 적용
+ *
+ * 유틸 클래스:
+ * - .show-on-mobile: 기본 숨김, 모바일(768px 이하)에서만 표시
+ * - .hide-on-mobile: 기본 표시, 모바일에서만 숨김
+ */
+.show-on-mobile {
+  display: none !important;
+}
+.hide-on-mobile {
+  display: revert;
+}
+@media (max-width: 768px) {
+  .show-on-mobile {
+    display: revert !important;
+  }
+  .hide-on-mobile {
+    display: none !important;
+  }
+  /* 여기에 모바일 전용 스타일 추가 */
+}
+
+/* 모바일(768px 미만): 세로 사이드바 숨기고 하단 가로 메뉴 표시 */
+.app-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: #f2f2f2;
+  border-top: 1px solid #e5e5e5;
+  padding: 0.35rem 0;
+  padding-bottom: env(safe-area-inset-bottom, 0.35rem);
+  flex-shrink: 0;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.app-bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.25rem;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: #6b7280;
+  font-size: 0.65rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+}
+
+.app-bottom-nav-item:hover {
+  background: #e8e8e8;
+  color: #374151;
+}
+
+.app-bottom-nav-item.active {
+  color: #374151;
+  font-weight: 600;
+}
+
+.app-bottom-nav-icon {
+  display: block;
+  flex-shrink: 0;
+  filter: brightness(0) opacity(0.65);
+}
+
+.app-bottom-nav-item.active .app-bottom-nav-icon {
+  filter: brightness(0) opacity(0.9);
+}
+
+.app-bottom-nav-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: center;
+}
+
+@media (max-width: 767px) {
+  .app-sidebar {
+    display: none !important;
+  }
+
+  .app-menu-btn {
+    display: none !important;
+  }
+
+  .app-bottom-nav {
+    display: flex !important;
+  }
+
+  .app-main {
+    padding-bottom: 4.5rem;
+  }
+
+  .app-sidebar-item--hide-on-mobile {
+    display: none !important;
+  }
+
+  /* 오늘 탭: 모바일에서 세로 드래그(스크롤)로 전체 콘텐츠 볼 수 있게 */
+  .app-main:has(.home-view) {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .app-main:has(.home-view) .app-tab-panel {
+    overflow-y: auto !important;
+    min-height: min-content;
+    -webkit-overflow-scrolling: touch;
+  }
+  .app-main:has(.home-view) .app-tab-panel > .home-view {
+    overflow-y: visible !important;
+    min-height: min-content;
+    flex: 0 1 auto;
+  }
+  .app-main:has(.home-view) .home-view {
+    overflow-y: visible !important;
+    min-height: min-content;
+  }
+  .app-main:has(.home-view) .home-view-three {
+    overflow: visible;
+    min-height: min-content;
+    grid-template-rows: auto;
+    flex: 0 1 auto;
+  }
+  .app-main:has(.home-view) .home-view-section {
+    overflow: visible !important;
+    height: auto;
+    min-height: min-content;
+  }
+
+  /* 모바일 전용: 오늘 탭 표시 순서 = 데일리(날짜·요일) → 투두리스트 → 이벤트 → 리마인더 */
+  .app-main:has(.home-view) .home-view-three {
+    display: flex;
+    flex-direction: column;
+  }
+  .app-main:has(.home-view) .home-view-section--calendar {
+    order: 1;
+  }
+  .app-main:has(.home-view) .home-view-section--todo {
+    order: 2;
+  }
+  .app-main:has(.home-view) .home-view-section--event {
+    order: 3;
+  }
+
+  /* 데일리 섹션(캘린더·예상/실제 시간 테이블)이 모바일에서도 높이 확보되어 보이도록 */
+  .app-main:has(.home-view) .home-view-section--calendar {
+    flex: 0 0 auto;
+    min-height: 0;
+  }
+  .app-main:has(.home-view) .home-view-section--calendar .home-embed-1day {
+    flex: 0 0 auto;
+    min-height: 420px;
+  }
+  .app-main:has(.home-view) .home-view-section--calendar .calendar-1day-view,
+  .app-main:has(.home-view) .home-view-section--calendar .calendar-1day-time-table-wrap {
+    min-height: 0;
+  }
+
+  /* 이벤트·리마인더: 영역 안에서 드래그(스크롤)로 더 보이게 */
+  .app-main:has(.home-view) .home-event-half {
+    flex: 0 0 auto;
+    min-height: 160px;
+    max-height: 36vh;
+    overflow: hidden !important;
+  }
+  .app-main:has(.home-view) .home-event-half .home-event-list,
+  .app-main:has(.home-view) .home-event-half .home-reminder-content {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 투두리스트: 제목 아래 리스트가 보이고, 많으면 영역 안에서 스크롤 */
+  .app-main:has(.home-view) .home-view-section--todo .home-todo-list-content {
+    flex: 0 1 auto;
+    min-height: 6rem;
+    max-height: 240px;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 모바일: 오늘 탭 세로 구분선 제거 (웹 3단 레이아웃용 border-right) */
+  .app-main:has(.home-view) .home-view-section:not(:last-child) {
+    border-right: none !important;
+    box-shadow: none !important;
+  }
+
+  /* 모바일: 나의 계정에서 시급계산하기만 표시 */
+  .idea-view .idea-widget-basic,
+  .idea-view .idea-widget-colors {
+    display: none !important;
+  }
+
+  /* 모바일 오늘 탭: 할일만 보이게 우선순위 열 숨김 + 열제목(할일) 숨김 */
+  .app-main:has(.home-view) .home-todo-th-priority,
+  .app-main:has(.home-view) .home-todo-td-priority {
+    display: none !important;
+  }
+  .app-main:has(.home-view) .home-todo-list-table thead {
+    display: none !important;
+  }
+
+  /* 모바일: 할일/일정 전용 탭에서만 제목·탭 숨김 (홈 임베드 제외) */
+  .calendar-view .calendar-view-header .calendar-view-title {
+    display: none !important;
+  }
+  .calendar-view .calendar-monthly-tabs-wrap {
+    display: none !important;
+  }
+
+  /* 모바일 오늘 탭: 이벤트 영역 가로 한 줄 + 가로 스크롤 */
+  .app-main:has(.home-view) .home-event-list.home-event-list-grid {
+    display: flex !important;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 0.5rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .app-main:has(.home-view) .home-event-list.home-event-list-grid::-webkit-scrollbar {
+    display: none;
+  }
+  .app-main:has(.home-view) .home-event-time-card {
+    min-width: 7.5rem;
+    flex-shrink: 0;
+  }
+}
+
 .home-view-section {
   min-height: 0;
   overflow: hidden !important;

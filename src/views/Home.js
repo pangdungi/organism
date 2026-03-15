@@ -576,7 +576,7 @@ export function render() {
   section2.appendChild(reminderHalf);
 
   const section3 = document.createElement("div");
-  section3.className = "home-view-section";
+  section3.className = "home-view-section home-view-section--todo";
   const header3 = document.createElement("h3");
   header3.className = "home-view-section-title";
   header3.textContent = "To do list";

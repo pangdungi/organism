@@ -94,27 +94,20 @@ export function mountApp(container) {
   const nav = document.createElement("nav");
   nav.className = "app-sidebar-nav";
 
+  const HIDE_ON_MOBILE_TAB_IDS = ["dream", "sideincome", "happiness", "health", "asset"];
   TABS.forEach((tab) => {
     const btn = document.createElement("button");
     btn.className =
       "app-sidebar-item" + (tab.id === currentTabId ? " active" : "");
+    if (HIDE_ON_MOBILE_TAB_IDS.includes(tab.id)) {
+      btn.classList.add("app-sidebar-item--hide-on-mobile");
+    }
     btn.dataset.tabId = tab.id;
     btn.title = tab.label;
     const label = document.createElement("span");
     label.className = "app-sidebar-item-label";
     label.textContent = tab.label;
     btn.appendChild(label);
-    btn.addEventListener("click", () => {
-      currentTabId = tab.id;
-      nav
-        .querySelectorAll(".app-sidebar-item")
-        .forEach((b) => b.classList.remove("active"));
-      sidebar.querySelector(".app-sidebar-logout")?.classList.remove("active");
-      btn.classList.add("active");
-      renderMain(main);
-      sidebar.classList.remove("is-open");
-      document.querySelector(".app-sidebar-overlay")?.remove();
-    });
     nav.appendChild(btn);
   });
 
@@ -126,31 +119,9 @@ export function mountApp(container) {
   accountLabel.className = "app-sidebar-item-label";
   accountLabel.textContent = "나의 계정";
   accountBtn.appendChild(accountLabel);
-  accountBtn.addEventListener("click", () => {
-    currentTabId = "idea";
-    nav.querySelectorAll(".app-sidebar-item").forEach((b) => b.classList.remove("active"));
-    accountBtn.classList.add("active");
-    renderMain(main);
-    sidebar.classList.remove("is-open");
-    document.querySelector(".app-sidebar-overlay")?.remove();
-  });
   sidebar.appendChild(nav);
   sidebar.appendChild(accountBtn);
   appScreen.appendChild(sidebar);
-
-  document.addEventListener("app-switch-tab", (e) => {
-    const tabId = e.detail?.tabId;
-    if (tabId) {
-      currentTabId = tabId;
-      nav.querySelectorAll(".app-sidebar-item").forEach((b) => {
-        b.classList.toggle("active", b.dataset.tabId === tabId);
-      });
-      if (accountBtn) {
-        accountBtn.classList.toggle("active", tabId === "idea");
-      }
-      renderMain(main);
-    }
-  });
 
   const main = document.createElement("main");
   main.className = "app-main";
@@ -178,6 +149,69 @@ export function mountApp(container) {
   const panel = document.createElement("div");
   panel.className = "app-tab-panel";
   main.appendChild(panel);
+
+  function setActiveTab(tabId) {
+    currentTabId = tabId;
+    nav.querySelectorAll(".app-sidebar-item").forEach((b) => {
+      b.classList.toggle("active", b.dataset.tabId === tabId);
+    });
+    accountBtn.classList.toggle("active", tabId === "idea");
+    if (bottomNav) {
+      bottomNav.querySelectorAll(".app-bottom-nav-item").forEach((b) => {
+        b.classList.toggle("active", b.dataset.tabId === tabId);
+      });
+    }
+    renderMain(main);
+  }
+
+  nav.querySelectorAll(".app-sidebar-item").forEach((b) => {
+    b.addEventListener("click", () => {
+      setActiveTab(b.dataset.tabId);
+      sidebar.classList.remove("is-open");
+      document.querySelector(".app-sidebar-overlay")?.remove();
+    });
+  });
+  accountBtn.addEventListener("click", () => {
+    setActiveTab("idea");
+    sidebar.classList.remove("is-open");
+    document.querySelector(".app-sidebar-overlay")?.remove();
+  });
+
+  const bottomNav = document.createElement("nav");
+  bottomNav.className = "app-bottom-nav";
+  bottomNav.setAttribute("aria-label", "하단 메뉴");
+  const mobileTabs = TABS.filter((t) => !HIDE_ON_MOBILE_TAB_IDS.includes(t.id));
+  mobileTabs.forEach((tab) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "app-bottom-nav-item" + (tab.id === currentTabId ? " active" : "");
+    btn.dataset.tabId = tab.id;
+    btn.title = tab.label;
+    btn.innerHTML = `<img src="${tab.icon}" alt="" class="app-bottom-nav-icon" width="22" height="22"><span class="app-bottom-nav-label">${tab.label}</span>`;
+    btn.addEventListener("click", () => {
+      setActiveTab(tab.id);
+      sidebar.classList.remove("is-open");
+      document.querySelector(".app-sidebar-overlay")?.remove();
+    });
+    bottomNav.appendChild(btn);
+  });
+  const accountBottomBtn = document.createElement("button");
+  accountBottomBtn.type = "button";
+  accountBottomBtn.className = "app-bottom-nav-item" + (currentTabId === "idea" ? " active" : "");
+  accountBottomBtn.dataset.tabId = "idea";
+  accountBottomBtn.title = "나의 계정";
+  accountBottomBtn.innerHTML = '<img src="/toolbaricons/user-square.svg" alt="" class="app-bottom-nav-icon" width="22" height="22"><span class="app-bottom-nav-label">나의 계정</span>';
+  accountBottomBtn.addEventListener("click", () => {
+    setActiveTab("idea");
+    sidebar.classList.remove("is-open");
+    document.querySelector(".app-sidebar-overlay")?.remove();
+  });
+  bottomNav.appendChild(accountBottomBtn);
+
+  document.addEventListener("app-switch-tab", (e) => {
+    const tabId = e.detail?.tabId;
+    if (tabId) setActiveTab(tabId);
+  });
 
   function renderMain(mainEl) {
     const p = mainEl?.querySelector(".app-tab-panel");
@@ -208,6 +242,7 @@ export function mountApp(container) {
   renderMain(main);
   appScreen.appendChild(main);
   appPage.appendChild(appScreen);
+  appPage.appendChild(bottomNav);
   container.appendChild(appPage);
   observeDatePickerInit(container);
   observeDatePickerInit(document.body);
