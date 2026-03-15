@@ -20943,6 +20943,43 @@ body.kpi-resizing {
   display: none;
 }
 
+/* 날짜 정하기 사이드바: 할일 60% + 기한 초과 40%, 각각 내부 스크롤·스크롤바 숨김 */
+.calendar-todo-sidebar-body:has(.calendar-todo-sidebar-main) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+}
+
+.calendar-todo-sidebar-main {
+  flex: 0 0 60%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 0.75rem 0.6rem;
+}
+
+.calendar-todo-sidebar-main::-webkit-scrollbar {
+  display: none;
+}
+
+.calendar-todo-sidebar-overdue {
+  flex: 0 0 40%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 0.75rem 0.6rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.calendar-todo-sidebar-overdue::-webkit-scrollbar {
+  display: none;
+}
+
 /* 1일 뷰 KPI 사이드바 */
 .calendar-kpi-sidebar-body {
   flex: 1;

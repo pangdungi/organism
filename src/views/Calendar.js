@@ -7,6 +7,7 @@
 import {
   render as renderTodoList,
   renderTodoListForEisenhowerSidebar,
+  renderOverdueSection,
   saveTodoListBeforeUnmount,
   DRAG_TYPE_TODO_TO_CALENDAR,
   DRAG_TYPE_TODO_TO_EISENHOWER,
@@ -1657,17 +1658,22 @@ function renderMonthlyView(tabsElement) {
         <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
       </button>
     </div>
-    <div class="calendar-todo-sidebar-body"></div>
+    <div class="calendar-todo-sidebar-body">
+      <div class="calendar-todo-sidebar-main"></div>
+      <div class="calendar-todo-sidebar-overdue"></div>
+    </div>
   `;
+  const body = todoSidebar.querySelector(".calendar-todo-sidebar-body");
+  const mainWrap = body.querySelector(".calendar-todo-sidebar-main");
+  const overdueWrapEl = body.querySelector(".calendar-todo-sidebar-overdue");
   const todoListEl = renderTodoList({
     hideToolbar: true,
     enableDragToCalendar: true,
     eisenhowerFilter: "important-not-urgent",
   });
   todoListEl.classList.add("todo-list-in-sidebar");
-  todoSidebar
-    .querySelector(".calendar-todo-sidebar-body")
-    .appendChild(todoListEl);
+  mainWrap.appendChild(todoListEl);
+  overdueWrapEl.appendChild(renderOverdueSection({ enableDragToCalendar: true }));
   todoSidebar
     .querySelector(".calendar-todo-sidebar-collapse")
     .addEventListener("click", () => {
@@ -1726,7 +1732,8 @@ function render2WeekView(tabsElement) {
   function refreshTodoList() {
     const body = wrap.querySelector(".calendar-todo-sidebar-body");
     if (body) {
-      const oldList = body.querySelector(".todo-list-in-sidebar");
+      const mainWrap = body.querySelector(".calendar-todo-sidebar-main") || body;
+      const oldList = mainWrap.querySelector(".todo-list-in-sidebar");
       let activeIndex = 0;
       if (oldList) {
         const activeTab = oldList.querySelector(
@@ -1748,7 +1755,7 @@ function render2WeekView(tabsElement) {
         eisenhowerFilter: "important-not-urgent",
       });
       newList.classList.add("todo-list-in-sidebar");
-      body.appendChild(newList);
+      mainWrap.appendChild(newList);
     }
   }
 
@@ -2338,17 +2345,22 @@ function render2WeekView(tabsElement) {
         <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
       </button>
     </div>
-    <div class="calendar-todo-sidebar-body"></div>
+    <div class="calendar-todo-sidebar-body">
+      <div class="calendar-todo-sidebar-main"></div>
+      <div class="calendar-todo-sidebar-overdue"></div>
+    </div>
   `;
+  const body = todoSidebar.querySelector(".calendar-todo-sidebar-body");
+  const mainWrap = body.querySelector(".calendar-todo-sidebar-main");
+  const overdueWrapEl = body.querySelector(".calendar-todo-sidebar-overdue");
   const todoListEl = renderTodoList({
     hideToolbar: true,
     enableDragToCalendar: true,
     eisenhowerFilter: "important-not-urgent",
   });
   todoListEl.classList.add("todo-list-in-sidebar");
-  todoSidebar
-    .querySelector(".calendar-todo-sidebar-body")
-    .appendChild(todoListEl);
+  mainWrap.appendChild(todoListEl);
+  overdueWrapEl.appendChild(renderOverdueSection({ enableDragToCalendar: true }));
   todoSidebar
     .querySelector(".calendar-todo-sidebar-collapse")
     .addEventListener("click", () => {
@@ -2407,7 +2419,8 @@ function render3WeekView(tabsElement) {
   function refreshTodoList() {
     const body = wrap.querySelector(".calendar-todo-sidebar-body");
     if (body) {
-      const oldList = body.querySelector(".todo-list-in-sidebar");
+      const mainWrap = body.querySelector(".calendar-todo-sidebar-main") || body;
+      const oldList = mainWrap.querySelector(".todo-list-in-sidebar");
       let activeIndex = 0;
       if (oldList) {
         const activeTab = oldList.querySelector(
@@ -2429,7 +2442,7 @@ function render3WeekView(tabsElement) {
         eisenhowerFilter: "important-not-urgent",
       });
       newList.classList.add("todo-list-in-sidebar");
-      body.appendChild(newList);
+      mainWrap.appendChild(newList);
     }
   }
 
@@ -3015,17 +3028,22 @@ function render3WeekView(tabsElement) {
         <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
       </button>
     </div>
-    <div class="calendar-todo-sidebar-body"></div>
+    <div class="calendar-todo-sidebar-body">
+      <div class="calendar-todo-sidebar-main"></div>
+      <div class="calendar-todo-sidebar-overdue"></div>
+    </div>
   `;
+  const body = todoSidebar.querySelector(".calendar-todo-sidebar-body");
+  const mainWrap = body.querySelector(".calendar-todo-sidebar-main");
+  const overdueWrapEl = body.querySelector(".calendar-todo-sidebar-overdue");
   const todoListEl = renderTodoList({
     hideToolbar: true,
     enableDragToCalendar: true,
     eisenhowerFilter: "important-not-urgent",
   });
   todoListEl.classList.add("todo-list-in-sidebar");
-  todoSidebar
-    .querySelector(".calendar-todo-sidebar-body")
-    .appendChild(todoListEl);
+  mainWrap.appendChild(todoListEl);
+  overdueWrapEl.appendChild(renderOverdueSection({ enableDragToCalendar: true }));
   todoSidebar
     .querySelector(".calendar-todo-sidebar-collapse")
     .addEventListener("click", () => {
@@ -5169,17 +5187,22 @@ function render1WeekView(tabsElement) {
         <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
       </button>
     </div>
-    <div class="calendar-todo-sidebar-body"></div>
+    <div class="calendar-todo-sidebar-body">
+      <div class="calendar-todo-sidebar-main"></div>
+      <div class="calendar-todo-sidebar-overdue"></div>
+    </div>
   `;
+  const body = todoSidebar.querySelector(".calendar-todo-sidebar-body");
+  const mainWrap = body.querySelector(".calendar-todo-sidebar-main");
+  const overdueWrapEl = body.querySelector(".calendar-todo-sidebar-overdue");
   const todoListEl = renderTodoList({
     hideToolbar: true,
     enableDragToCalendar: true,
     eisenhowerFilter: "important-not-urgent",
   });
   todoListEl.classList.add("todo-list-in-sidebar");
-  todoSidebar
-    .querySelector(".calendar-todo-sidebar-body")
-    .appendChild(todoListEl);
+  mainWrap.appendChild(todoListEl);
+  overdueWrapEl.appendChild(renderOverdueSection({ enableDragToCalendar: true }));
   todoSidebar
     .querySelector(".calendar-todo-sidebar-collapse")
     .addEventListener("click", () => {

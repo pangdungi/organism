@@ -2331,3 +2331,24 @@ export function renderTodoListForEisenhowerSidebar(options = {}) {
   mainList.appendChild(overdueWrap);
   return mainList;
 }
+
+/** 날짜 정하기 사이드바용: 기한 초과 섹션만 반환 (할일 목록 60% / 기한 초과 40% 분할 시 아래 40%에 넣음) */
+export function renderOverdueSection(options = {}) {
+  const { enableDragToCalendar = true } = options;
+  const kpiTasks = getKpiTodosAsTasks();
+  const sectionTasks = FIXED_SECTION_IDS_FOR_STORAGE.flatMap((sid) => loadSectionTasks(sid));
+  const customTasks = getCustomSections().flatMap((s) => loadCustomSectionTasks(s.id));
+  const allTasks = [...kpiTasks, ...sectionTasks, ...customTasks];
+  const overdueTasks = allTasks.filter((t) => isOverdue(t.dueDate)).map((t) => ({ ...t, sectionId: "overdue" }));
+
+  const overdueWrap = document.createElement("div");
+  overdueWrap.className = "todo-eisenhower-overdue-section todo-overdue-in-date-sidebar";
+  renderSections(overdueWrap, overdueTasks, {
+    tabMode: false,
+    showCheckboxTypeMenu: null,
+    enableDragToCalendar,
+    enableDragToEisenhower: false,
+    sectionsOverride: [{ id: "overdue", label: "기한 초과" }],
+  });
+  return overdueWrap;
+}
