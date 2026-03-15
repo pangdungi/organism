@@ -20,6 +20,28 @@ function todoDebug(...args) {
   if (TODO_DEBUG && typeof console !== "undefined" && console.log) console.log("[TODO-DEBUG]", ...args);
 }
 
+// 나의 계정에서 리스트 색상 저장 시 탭 버튼 색상 즉시 반영
+window.addEventListener("app-colors-changed", () => {
+  const container = document.querySelector(".todo-category-tabs");
+  if (!container) return;
+  const sectionColors = getTodoSettings().sectionColors;
+  container.querySelectorAll(".todo-category-tab[data-section]").forEach((btn) => {
+    const c = sectionColors?.[btn.dataset.section];
+    if (c) {
+      btn.style.borderLeft = `1px solid ${c}`;
+      btn.style.borderTop = `1px solid ${c}`;
+      btn.style.borderRight = `1px solid ${c}`;
+      btn.style.borderBottom = `1px solid ${c}`;
+      btn.style.backgroundColor = "";
+    } else {
+      btn.style.borderLeft = "";
+      btn.style.borderTop = "";
+      btn.style.borderRight = "";
+      btn.style.borderBottom = "";
+    }
+  });
+});
+
 function loadSectionTasks(sectionId) {
   try {
     const raw = localStorage.getItem(SECTION_TASKS_KEY);

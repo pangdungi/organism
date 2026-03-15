@@ -1,6 +1,9 @@
 /**
- * My account - 기본정보, 나의 시급계산하기
+ * My account - 기본정보, 나의 시급계산하기, 색상 설정
  */
+
+import { getTodoSettings, saveTodoSettings, getCustomSections, DEFAULT_SECTION_COLORS, DEFAULT_TIME_CATEGORY_COLORS, applyTimeCategoryColors } from "../utils/todoSettings.js";
+import { createColorPickerRow } from "../utils/todoSettingsModal.js";
 
 export const USER_HOURLY_RATE_KEY = "user_hourly_rate";
 export const APP_FONT_KEY = "app_font_family";
@@ -134,6 +137,67 @@ export function render() {
   `;
   grid.appendChild(hourlyWidget);
 
+  // ----- 색상 설정 위젯 -----
+  const FIXED_SECTIONS = [
+    { id: "braindump", label: "브레인 덤프" },
+    { id: "dream", label: "꿈" },
+    { id: "sideincome", label: "부수입" },
+    { id: "health", label: "건강" },
+    { id: "happy", label: "행복" },
+  ];
+  const TIME_CATEGORY_SECTIONS = [
+    { id: "productive", label: "생산" },
+    { id: "nonproductive", label: "비생산" },
+    { id: "other", label: "기타" },
+  ];
+  function getSections() {
+    return [...FIXED_SECTIONS, ...getCustomSections()];
+  }
+
+  const settings = getTodoSettings();
+  let sectionColors = { ...settings.sectionColors };
+  let timeCategoryColors = { ...settings.timeCategoryColors };
+
+  const colorWidget = document.createElement("div");
+  colorWidget.className = "time-dashboard-widget idea-widget idea-widget-colors";
+  colorWidget.innerHTML = `
+    <div class="time-dashboard-widget-title">색상 설정</div>
+    <div class="todo-settings-block idea-colors-block">
+      <h4 class="todo-settings-block-title">리스트 색상 · 시간가계부</h4>
+      <div class="idea-colors-rows"></div>
+      <button type="button" class="todo-settings-save idea-colors-save">저장</button>
+    </div>
+  `;
+  const colorsRowsEl = colorWidget.querySelector(".idea-colors-rows");
+  const colorSaveBtn = colorWidget.querySelector(".idea-colors-save");
+
+  getSections().forEach((sec) => {
+    const row = createColorPickerRow(sec.id, sec.label, sectionColors[sec.id], (color) => {
+      sectionColors[sec.id] = color;
+    });
+    colorsRowsEl.appendChild(row);
+  });
+  TIME_CATEGORY_SECTIONS.forEach((sec) => {
+    const defaultColor = DEFAULT_TIME_CATEGORY_COLORS[sec.id];
+    const row = createColorPickerRow(sec.id, sec.label, timeCategoryColors[sec.id] || defaultColor, (color) => {
+      timeCategoryColors[sec.id] = color;
+    });
+    colorsRowsEl.appendChild(row);
+  });
+
+  colorSaveBtn.addEventListener("click", () => {
+    saveTodoSettings({
+      ...getTodoSettings(),
+      sectionColors,
+      timeCategoryColors,
+    });
+    applyTimeCategoryColors();
+    document.dispatchEvent(new CustomEvent("app-colors-changed"));
+    colorSaveBtn.textContent = "저장됨";
+    setTimeout(() => { colorSaveBtn.textContent = "저장"; }, 1500);
+  });
+
+  grid.appendChild(colorWidget);
   el.appendChild(grid);
 
   // 시급 계산 로직

@@ -13,6 +13,13 @@ export const DEFAULT_SECTION_COLORS = {
   braindump: "rgba(238, 237, 255, 0.6)",
 };
 
+/** 시간가계부 생산/비생산/기타 기본 색상 (rgba, time-tag-pill용) */
+export const DEFAULT_TIME_CATEGORY_COLORS = {
+  productive: "rgba(232, 164, 184, 0.9)",
+  nonproductive: "rgba(107, 155, 209, 0.9)",
+  other: "rgba(232, 232, 232, 0.9)",
+};
+
 /** 커스텀 리스트용 기본 색상 풀 */
 const CUSTOM_SECTION_COLOR_POOL = [
   "rgba(245, 239, 239, 0.6)",
@@ -108,12 +115,14 @@ export function getTodoSettings() {
       return {
         hideCompleted: !!parsed.hideCompleted,
         sectionColors: { ...DEFAULT_SECTION_COLORS, ...parsed.sectionColors },
+        timeCategoryColors: { ...DEFAULT_TIME_CATEGORY_COLORS, ...parsed.timeCategoryColors },
       };
     }
   } catch (_) {}
   return {
     hideCompleted: false,
     sectionColors: { ...DEFAULT_SECTION_COLORS },
+    timeCategoryColors: { ...DEFAULT_TIME_CATEGORY_COLORS },
   };
 }
 
@@ -126,4 +135,29 @@ export function saveTodoSettings(settings) {
 export function getSectionColor(sectionId) {
   const s = getTodoSettings();
   return s.sectionColors[sectionId] || DEFAULT_SECTION_COLORS[sectionId] || "rgba(200, 200, 200, 0.5)";
+}
+
+export function getTimeCategoryColor(key) {
+  const s = getTodoSettings();
+  return s.timeCategoryColors?.[key] || DEFAULT_TIME_CATEGORY_COLORS[key] || "rgba(232,232,232,0.9)";
+}
+
+/** 저장된 시간가계부 생산/비생산/기타 색상을 DOM에 적용 */
+export function applyTimeCategoryColors() {
+  const s = getTodoSettings();
+  const productive = s.timeCategoryColors?.productive || DEFAULT_TIME_CATEGORY_COLORS.productive;
+  const nonproductive = s.timeCategoryColors?.nonproductive || DEFAULT_TIME_CATEGORY_COLORS.nonproductive;
+  const other = s.timeCategoryColors?.other || DEFAULT_TIME_CATEGORY_COLORS.other;
+  let styleEl = document.getElementById("time-category-colors-style");
+  if (!styleEl) {
+    styleEl = document.createElement("style");
+    styleEl.id = "time-category-colors-style";
+    document.head.appendChild(styleEl);
+  }
+  styleEl.textContent = `
+    .time-tag-pill.prod-pink { background: ${productive} !important; color: #fff !important; }
+    .time-tag-pill.prod-blue { background: ${nonproductive} !important; color: #fff !important; }
+    .time-tag-pill.prod-empty,
+    .time-tag-pill.cat-empty { background: ${other} !important; color: #888 !important; }
+  `;
 }

@@ -36,7 +36,7 @@ function rgbaToHex(rgba) {
   return `#${r}${g}${b}`;
 }
 
-function createColorPickerRow(sectionId, label, currentColor, onChange) {
+export function createColorPickerRow(sectionId, label, currentColor, onChange) {
   const row = document.createElement("div");
   row.className = "todo-settings-color-row";
   row.innerHTML = `
@@ -150,10 +150,6 @@ export function createTodoSettingsModal(options = {}) {
           <h4 class="todo-settings-block-title">표시 옵션</h4>
           <div class="todo-settings-toggles"></div>
         </div>
-        <div class="todo-settings-block">
-          <h4 class="todo-settings-block-title">리스트 색상</h4>
-          <div class="todo-settings-colors"></div>
-        </div>
       </div>
       <div class="todo-settings-footer">
         <button type="button" class="todo-settings-save">저장</button>
@@ -162,13 +158,11 @@ export function createTodoSettingsModal(options = {}) {
   `;
 
   const togglesEl = modal.querySelector(".todo-settings-toggles");
-  const colorsEl = modal.querySelector(".todo-settings-colors");
   const saveBtn = modal.querySelector(".todo-settings-save");
   const closeBtn = modal.querySelector(".todo-settings-close");
   const backdrop = modal.querySelector(".todo-settings-backdrop");
 
   let hideCompleted = settings.hideCompleted;
-  let sectionColors = { ...settings.sectionColors };
 
   const hideToggle = createToggleRow("완료항목 숨기기", hideCompleted, (v) => {
     hideCompleted = v;
@@ -186,22 +180,15 @@ export function createTodoSettingsModal(options = {}) {
   });
   togglesEl.appendChild(clearBtnRow);
 
-  getSections().forEach((sec) => {
-    const row = createColorPickerRow(sec.id, sec.label, sectionColors[sec.id], (color) => {
-      sectionColors[sec.id] = color;
-    });
-    colorsEl.appendChild(row);
-  });
-
   function close() {
     modal.remove();
     document.body.style.overflow = "";
   }
 
   function save() {
-    saveTodoSettings({ hideCompleted, sectionColors });
+    const current = getTodoSettings();
+    saveTodoSettings({ hideCompleted, sectionColors: current.sectionColors, timeCategoryColors: current.timeCategoryColors });
     onHideCompletedChange?.(hideCompleted);
-    onColorsChange?.(sectionColors);
     close();
   }
 

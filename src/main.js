@@ -4,9 +4,11 @@ import { login, signOut, changePassword } from "./auth.js";
 import { mountApp } from "./App.js";
 import { supabase } from "./supabase.js";
 import { applyAppFont } from "./views/Idea.js";
+import { applyTimeCategoryColors } from "./utils/todoSettings.js";
 
 function init() {
   applyAppFont();
+  applyTimeCategoryColors();
   const goLogin = () => showOnly("login");
   document.getElementById("btn-login")?.addEventListener("click", goLogin);
   document.getElementById("btn-login-hero")?.addEventListener("click", goLogin);
