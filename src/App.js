@@ -94,7 +94,7 @@ export function mountApp(container) {
   const nav = document.createElement("nav");
   nav.className = "app-sidebar-nav";
 
-  const HIDE_ON_MOBILE_TAB_IDS = ["dream", "sideincome", "happiness", "health", "asset"];
+  const HIDE_ON_MOBILE_TAB_IDS = ["dream", "sideincome", "happiness", "health", "asset", "diary"];
   TABS.forEach((tab) => {
     const btn = document.createElement("button");
     btn.className =
