@@ -96,7 +96,6 @@ export function render() {
   let currentTabId = "2";
   let currentEntryId = null;
   let searchQuery = "";
-  let searchOpen = false;
   let isComposing = false;
   let entries = loadDiaryEntries();
 
@@ -182,61 +181,7 @@ export function render() {
         ? fullEntryList.filter((e) => getEntrySearchText(e).includes(q))
         : fullEntryList;
 
-      const sidebarHeader = document.createElement("div");
-      sidebarHeader.className = "diary-sidebar-header";
-      sidebarHeader.innerHTML = `
-        <span class="diary-sidebar-title">Pages</span>
-        <div class="diary-sidebar-actions">
-          <button type="button" class="diary-search-btn" title="검색">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          </button>
-        </div>
-      `;
-      const searchBtn = sidebarHeader.querySelector(".diary-search-btn");
-      searchBtn.addEventListener("click", () => {
-        searchOpen = !searchOpen;
-        renderLayout();
-      });
-      sidebar.appendChild(sidebarHeader);
-
-      if (searchOpen) {
-        const searchRow = document.createElement("div");
-        searchRow.className = "diary-search-row";
-        const searchInput = document.createElement("input");
-        searchInput.type = "text";
-        searchInput.className = "diary-search-input";
-        searchInput.placeholder = "페이지 검색...";
-        searchInput.value = searchQuery;
-        searchInput.addEventListener("compositionstart", () => {
-          isComposing = true;
-        });
-        searchInput.addEventListener("compositionend", (e) => {
-          isComposing = false;
-          searchQuery = e.target.value;
-          filterPageListInPlace(searchQuery);
-        });
-        searchInput.addEventListener("input", () => {
-          searchQuery = searchInput.value;
-          if (!isComposing) filterPageListInPlace(searchQuery);
-        });
-        searchInput.addEventListener("keydown", (e) => {
-          if (e.key === "Escape") {
-            searchOpen = false;
-            renderLayout();
-          }
-        });
-        searchRow.appendChild(searchInput);
-        sidebar.appendChild(searchRow);
-        requestAnimationFrame(() => searchInput.focus());
-      }
-
-      const addPageWrap = document.createElement("div");
-      addPageWrap.className = "diary-add-page-wrap";
-      const addBtn = document.createElement("button");
-      addBtn.type = "button";
-      addBtn.className = "diary-add-page";
-      addBtn.innerHTML = '<span class="diary-add-page-icon">+</span> Add page';
-      addBtn.addEventListener("click", () => {
+      const addPageHandler = () => {
         const today = toDateStr(new Date());
         const id = "e_" + Date.now();
         const newEntry = currentTabId === "3"
@@ -258,9 +203,42 @@ export function render() {
           const el = layoutWrap.querySelector(`[data-entry-id="${id}"]`);
           if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
         });
+      };
+
+      const sidebarHeader = document.createElement("div");
+      sidebarHeader.className = "diary-sidebar-header";
+      sidebarHeader.innerHTML = `
+        <span class="diary-sidebar-title">Pages</span>
+        <div class="diary-sidebar-actions">
+          <button type="button" class="diary-sidebar-add-btn" title="페이지 추가">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </button>
+        </div>
+      `;
+      sidebarHeader.querySelector(".diary-sidebar-add-btn").addEventListener("click", addPageHandler);
+      sidebar.appendChild(sidebarHeader);
+
+      const searchRow = document.createElement("div");
+      searchRow.className = "diary-search-row";
+      const searchInput = document.createElement("input");
+      searchInput.type = "text";
+      searchInput.className = "diary-search-input";
+      searchInput.placeholder = "페이지 검색...";
+      searchInput.value = searchQuery;
+      searchInput.addEventListener("compositionstart", () => {
+        isComposing = true;
       });
-      addPageWrap.appendChild(addBtn);
-      sidebar.appendChild(addPageWrap);
+      searchInput.addEventListener("compositionend", (e) => {
+        isComposing = false;
+        searchQuery = e.target.value;
+        filterPageListInPlace(searchQuery);
+      });
+      searchInput.addEventListener("input", () => {
+        searchQuery = searchInput.value;
+        if (!isComposing) filterPageListInPlace(searchQuery);
+      });
+      searchRow.appendChild(searchInput);
+      sidebar.appendChild(searchRow);
 
       const pageListScrollWrap = document.createElement("div");
       pageListScrollWrap.className = "diary-page-list-scroll-wrap";
@@ -567,17 +545,7 @@ export function render() {
         });
         paper.appendChild(textarea);
       }
-      } else {
-        const empty = document.createElement("div");
-        empty.className = "diary-paper-empty";
-        empty.textContent = "'+ Add page'로 새 일기를 추가하세요.";
-        paper.appendChild(empty);
       }
-    } else if (currentTabId === "3" && !currentEntry) {
-      const empty = document.createElement("div");
-      empty.className = "diary-paper-empty";
-      empty.textContent = "'+ Add page'로 새 일기를 추가하세요.";
-      paper.appendChild(empty);
     }
 
     scrollWrap.appendChild(paper);
@@ -585,9 +553,7 @@ export function render() {
     layout.appendChild(contentArea);
     layoutWrap.appendChild(layout);
 
-    if (searchOpen) {
-      filterPageListInPlace(searchQuery);
-    }
+    filterPageListInPlace(searchQuery);
   }
 
   tabs.querySelectorAll(".diary-tab-btn").forEach((btn) => {

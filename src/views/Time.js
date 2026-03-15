@@ -2713,7 +2713,6 @@ function createTableHTML() {
       <col class="time-col-focus">
       <col class="time-col-feedback">
       <col class="time-col-memo-tag">
-      <col class="time-col-actions">
     </colgroup>
     <thead>
       <tr>
@@ -5684,14 +5683,12 @@ export function render() {
   function updateTotal() {
     updateHourlyHint();
 
-    /* 1. 시간기록하기 단일 테이블 합계행 (과제 기록 버튼 위) */
+    /* 1. 시간기록하기 단일 테이블 - 테이블 위 요약 패널 및 초과 행 */
     const allTable = contentWrap.querySelector(".time-ledger-container .time-ledger-table");
-    const allTfoot = allTable?.querySelector("tfoot .time-ledger-total-row");
-    if (allTable && allTfoot) {
+    const summaryPanelEl = contentWrap.querySelector(".time-ledger-summary-panel");
+    const allTfoot = allTable?.querySelector("tfoot");
+    if (allTable && summaryPanelEl) {
       const tbody = allTable.querySelector("tbody");
-      const totalTrackedEl = allTfoot.querySelector(".time-ledger-total-tracked");
-      const totalOverEl = allTfoot.querySelector(".time-ledger-total-over");
-      const totalPriceEl = allTfoot.querySelector(".time-ledger-total-price");
       const hourlyRate =
         parseFloat(
           String(el.querySelector(".time-hourly-input")?.value || "0").replace(
@@ -5700,29 +5697,56 @@ export function render() {
           ),
         ) || 0;
       let totalHrs = 0;
+      let productiveHrs = 0;
       let totalPrice = 0;
+      let wastedValue = 0;
       tbody?.querySelectorAll(".time-row").forEach((tr) => {
         const timeEl = tr.querySelector(".time-input-tracked") || tr.querySelector(".time-display-tracked");
         const val = (timeEl?.value ?? timeEl?.textContent ?? "").trim();
         const hrs = parseTimeToHours(val) || 0;
         totalHrs += hrs;
         const pv = (tr._rowData?.productivity || "").trim();
+        if (pv === "productive") productiveHrs += hrs;
         let price = hrs * hourlyRate;
-        if (pv === "nonproductive") price *= -1;
-        else if (pv === "other" || pv === "그 외" || !pv) price = 0;
+        if (pv === "nonproductive") {
+          price *= -1;
+          wastedValue += hrs * hourlyRate;
+        } else if (pv === "other" || pv === "그 외" || !pv) price = 0;
         totalPrice += price;
       });
-      if (totalTrackedEl) totalTrackedEl.textContent = totalHrs > 0 ? formatHoursDisplay(totalHrs) : "";
+      const setHoursParts = (numEl, unitEl, hours) => {
+        if (!numEl || !unitEl) return;
+        if (hours <= 0 || !isFinite(hours)) {
+          numEl.textContent = "0";
+          unitEl.textContent = "h 0m";
+          return;
+        }
+        const h = Math.floor(hours);
+        const m = Math.round((hours - h) * 60);
+        numEl.textContent = String(h);
+        unitEl.textContent = m === 0 ? "h" : `h ${m}m`;
+      };
+      const trackedNum = summaryPanelEl.querySelector(".time-ledger-summary-tracked");
+      const trackedUnit = trackedNum?.nextElementSibling;
+      setHoursParts(trackedNum, trackedUnit, totalHrs);
+      const prodNum = summaryPanelEl.querySelector(".time-ledger-summary-productive");
+      const prodUnit = prodNum?.nextElementSibling;
+      setHoursParts(prodNum, prodUnit, productiveHrs);
+      const priceNum = summaryPanelEl.querySelector(".time-ledger-summary-price");
+      const priceUnit = summaryPanelEl.querySelector(".time-ledger-summary-unit-block");
+      if (priceNum) priceNum.textContent = formatPrice(totalPrice);
+      if (priceUnit) priceUnit.textContent = "원";
+      const wastedNum = summaryPanelEl.querySelector(".time-ledger-summary-wasted");
+      const wastedUnit = wastedNum?.nextElementSibling;
+      if (wastedNum) wastedNum.textContent = formatPrice(wastedValue);
+      if (wastedUnit) wastedUnit.textContent = "원";
       const overHrs = totalHrs > 24 ? totalHrs - 24 : 0;
-      const overRow = allTfoot.querySelector(".time-ledger-over-row");
+      const overRow = allTfoot?.querySelector(".time-ledger-over-row");
       if (overRow) overRow.classList.toggle("time-ledger-over-row-visible", overHrs > 0);
+      const totalOverEl = allTfoot?.querySelector(".time-ledger-total-over");
       if (totalOverEl) {
         totalOverEl.textContent = overHrs > 0 ? formatHoursDisplay(overHrs) : "";
         totalOverEl.classList.toggle("has-over", overHrs > 0);
-      }
-      if (totalPriceEl) {
-        totalPriceEl.textContent = formatPrice(totalPrice);
-        totalPriceEl.className = "time-cell time-cell-price time-ledger-total-price" + (totalPrice < 0 ? " is-negative" : totalPrice > 0 ? " is-positive" : "");
       }
     }
 
@@ -5894,22 +5918,36 @@ export function render() {
 
     const tfoot = document.createElement("tfoot");
     tfoot.innerHTML = `
-      <tr class="time-ledger-total-row">
-        <td class="time-cell time-cell-task" colspan="3">합계</td>
-        <td class="time-cell time-cell-tracked time-ledger-total-tracked"></td>
-        <td class="time-cell time-cell-category" colspan="3"></td>
-        <td class="time-cell time-cell-price time-ledger-total-price"></td>
-        <td class="time-cell time-cell-focus" colspan="4"></td>
-      </tr>
       <tr class="time-ledger-over-row">
         <td class="time-cell time-cell-task" colspan="3">초과된 기록시간</td>
         <td class="time-cell time-cell-tracked time-ledger-total-over"></td>
         <td class="time-cell time-cell-category" colspan="3"></td>
         <td class="time-cell time-cell-price"></td>
-        <td class="time-cell time-cell-focus" colspan="4"></td>
+        <td class="time-cell time-cell-focus" colspan="3"></td>
       </tr>
     `;
     tbl.appendChild(tfoot);
+
+    const summaryPanel = document.createElement("div");
+    summaryPanel.className = "time-ledger-summary-panel";
+    summaryPanel.innerHTML = `
+      <div class="time-ledger-summary-cell">
+        <div class="time-ledger-summary-label">총 기록 시간</div>
+        <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-tracked">0</span><span class="time-ledger-summary-unit">h 0m</span></div>
+      </div>
+      <div class="time-ledger-summary-cell">
+        <div class="time-ledger-summary-label">생산적 시간</div>
+        <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-productive">0</span><span class="time-ledger-summary-unit">h</span></div>
+      </div>
+      <div class="time-ledger-summary-cell">
+        <div class="time-ledger-summary-label">환산 금액</div>
+        <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-price">0</span><span class="time-ledger-summary-unit time-ledger-summary-unit-block">원</span></div>
+      </div>
+      <div class="time-ledger-summary-cell">
+        <div class="time-ledger-summary-label">오늘 낭비한 시간의 가치</div>
+        <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-wasted">0</span><span class="time-ledger-summary-unit">원</span></div>
+      </div>
+    `;
 
     addBtnEl.addEventListener("click", () => {
       if (openTaskLogModal) {
@@ -5980,6 +6018,7 @@ export function render() {
     wrap.appendChild(tbl);
     const ledgerContainer = document.createElement("div");
     ledgerContainer.className = "time-ledger-container";
+    ledgerContainer.appendChild(summaryPanel);
     ledgerContainer.appendChild(wrap);
     const addButtonWrap = document.createElement("div");
     addButtonWrap.className = "time-add-button-wrap";

@@ -936,8 +936,9 @@ body {
   padding: 0.5rem 0.75rem 0;
   letter-spacing: -0.02em;
 }
-/* 홈 Daily: 요일 작게 (원래 DAILY 자리) */
+/* 홈 Daily: 요일 3글자 영문, DM Serif Display 고정 */
 .home-daily-weekday {
+  font-family: "DM Serif Display", serif !important;
   font-size: 0.9rem;
   font-weight: 500;
   color: #6b7280;
@@ -1636,30 +1637,42 @@ body {
   color: #1a1a2e;
 }
 
+/* 자산관리 탭: 시간가계부 탭과 동일 스타일 (밑줄형, 배경 없음) */
 .asset-view-tabs {
   display: flex;
+  align-items: center;
   gap: 0.5rem;
   margin-bottom: 1rem;
+  width: 100%;
+  max-width: 100%;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  min-width: 0;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .asset-view-tab {
-  padding: 0.4rem 0.75rem;
+  flex-shrink: 0;
+  padding: 0.5rem 0.75rem 0.45rem;
   font-size: 0.9rem;
-  color: #888;
+  color: #9ca3af;
   background: none;
   border: none;
-  border-bottom: 2px solid transparent;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
   cursor: pointer;
   font-family: inherit;
+  white-space: nowrap;
+  transition: color 0.2s ease, border-color 0.2s ease;
 }
 
 .asset-view-tab:hover {
-  color: #555;
+  color: #6b7280;
 }
 
 .asset-view-tab.active {
-  color: #333;
-  border-bottom-color: #999;
+  color: #111827;
+  border-bottom-color: #111827;
 }
 
 .asset-content-wrap {
@@ -14729,6 +14742,61 @@ body.kpi-resizing {
   gap: 0;
 }
 
+/* 시간가계부 테이블 위 요약 패널 (총 기록시간 / 생산적 시간 / 환산금액 / 낭비한 시간의 가치) */
+.time-ledger-summary-panel {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0.75rem 1rem;
+}
+
+.time-ledger-summary-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0 0.75rem;
+  border-right: 1px solid #e5e7eb;
+}
+
+.time-ledger-summary-cell:last-child {
+  border-right: none;
+}
+
+.time-ledger-summary-label {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.time-ledger-summary-value {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.2em;
+}
+
+.time-ledger-summary-num {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.time-ledger-summary-unit {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.time-ledger-summary-unit-block {
+  display: block;
+  font-size: 0.8rem;
+  color: #9ca3af;
+  margin-top: 0.1rem;
+}
+
 .time-ledger-table-wrap {
   background: #fff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
@@ -14777,7 +14845,7 @@ body.kpi-resizing {
 }
 
 .time-ledger-table thead th {
-  background: #fafafa;
+  background: transparent;
   font-weight: 500;
   font-size: 13px;
   color: #777;
@@ -14853,7 +14921,7 @@ body.kpi-resizing {
 
 .time-ledger-table thead .time-th-task {
   z-index: 2;
-  background: #fafafa;
+  background: transparent;
   padding: 0.2rem 0.3rem;
 }
 
@@ -14898,15 +14966,6 @@ body.kpi-resizing {
 .time-ledger-table .time-th-start {
   width: 90px;
   min-width: 90px;
-  position: sticky;
-  left: var(--sticky-left-start, 160px);
-  z-index: 1;
-  background: #fff;
-}
-
-.time-ledger-table thead .time-th-start {
-  z-index: 2;
-  background: #fafafa;
 }
 
 .time-ledger-table tbody tr:hover .time-cell-start {
@@ -14918,15 +14977,6 @@ body.kpi-resizing {
 .time-ledger-table .time-th-end {
   width: 90px;
   min-width: 90px;
-  position: sticky;
-  left: var(--sticky-left-end, 250px);
-  z-index: 1;
-  background: #fff;
-}
-
-.time-ledger-table thead .time-th-end {
-  z-index: 2;
-  background: #fafafa;
 }
 
 .time-ledger-table tbody tr:hover .time-cell-end {
@@ -14938,15 +14988,6 @@ body.kpi-resizing {
 .time-ledger-table .time-th-tracked {
   width: 90px;
   min-width: 90px;
-  position: sticky;
-  left: var(--sticky-left-tracked, 340px);
-  z-index: 1;
-  background: #fff;
-}
-
-.time-ledger-table thead .time-th-tracked {
-  z-index: 2;
-  background: #fafafa;
 }
 
 .time-ledger-table tbody tr:hover .time-cell-tracked {
@@ -15019,17 +15060,12 @@ body.kpi-resizing {
   min-width: 140px;
 }
 
-.time-ledger-table .time-col-actions {
-  width: 56px;
-  min-width: 56px;
-}
-
-.time-ledger-table .time-cell-actions,
-.time-ledger-table .time-th-actions {
-  width: 56px;
-  min-width: 56px;
-  white-space: nowrap;
-  position: relative;
+/* 메모 태그 열: 남은 공간 모두 사용 (삭제 열 제거로 확보된 공간) */
+.time-ledger-table .time-col-memo-tag,
+.time-ledger-table .time-cell-memo-tag,
+.time-ledger-table .time-th-memo-tag {
+  min-width: 120px;
+  width: auto;
 }
 
 .time-input-feedback {
@@ -18071,30 +18107,22 @@ body.kpi-resizing {
 
 .diary-view .diary-tabs {
   flex-shrink: 0;
-  gap: 0;
+  gap: 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
 }
 
-/* 감정관리 페이지 탭: 위쪽 양쪽 모서리만 둥글게, 탭끼리 선으로 연결 */
+/* 감정관리 페이지 탭: 언더라인 형식 (시간가계부/자산관리 탭과 동일) */
 .diary-tab-btn {
-  border: 1px solid #000 !important;
-  border-radius: 10px 10px 0 0 !important;
-  border-bottom-left-radius: 0 !important;
-  border-bottom-right-radius: 0 !important;
-  margin-left: -1px;
-}
-
-.diary-tab-btn:first-child {
+  border: none !important;
+  border-radius: 0 !important;
   margin-left: 0;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
 }
 
 .diary-tab-btn.active {
-  border-color: #000 !important;
-  border-width: 1px !important;
-  border-bottom: none !important;
-  border-bottom-width: 0 !important;
-  border-bottom-color: transparent !important;
-  margin-bottom: -1px;
-  padding-bottom: calc(0.4rem + 1px);
+  border-bottom-color: #111827 !important;
+  color: #111827;
 }
 
 .diary-layout-wrap {
@@ -18117,10 +18145,11 @@ body.kpi-resizing {
   min-width: 220px;
   flex-shrink: 0;
   min-height: 0;
-  background: #f0f0f0;
+  background: transparent;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  border-right: 1px solid #e0e0e0;
   transition:
     width 0.2s,
     min-width 0.2s;
@@ -18133,7 +18162,7 @@ body.kpi-resizing {
 }
 
 .diary-layout.sidebar-collapsed .diary-sidebar-title,
-.diary-layout.sidebar-collapsed .diary-search-btn,
+.diary-layout.sidebar-collapsed .diary-sidebar-add-btn,
 .diary-layout.sidebar-collapsed .diary-page-list,
 .diary-layout.sidebar-collapsed .diary-page-list-scroll-wrap,
 .diary-layout.sidebar-collapsed .diary-page-list-footer,
@@ -18201,7 +18230,7 @@ body.kpi-resizing {
   gap: 0.2rem;
 }
 
-.diary-search-btn {
+.diary-sidebar-add-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -18218,7 +18247,7 @@ body.kpi-resizing {
     color 0.15s;
 }
 
-.diary-search-btn:hover {
+.diary-sidebar-add-btn:hover {
   background: #e5e5e5;
   color: #374151;
 }
@@ -18321,7 +18350,7 @@ body.kpi-resizing {
   flex-shrink: 0;
   padding: 0.35rem 0;
   border-bottom: 1px solid #e0e0e0;
-  background: #f0f0f0;
+  background: transparent;
 }
 
 .diary-add-page-wrap .diary-add-page {
@@ -18333,7 +18362,7 @@ body.kpi-resizing {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  background: #f0f0f0;
+  background: transparent;
 }
 
 .diary-page-list {
@@ -18344,7 +18373,7 @@ body.kpi-resizing {
   flex-shrink: 0;
   border-top: 1px solid #e0e0e0;
   padding: 0.35rem 0 5rem 0;
-  background: #f0f0f0;
+  background: transparent;
 }
 
 .diary-emotion-list-wrap {
@@ -18357,7 +18386,7 @@ body.kpi-resizing {
   flex-shrink: 0;
   border-top: 1px solid #e0e0e0;
   padding: 0.35rem 0 5rem 0;
-  background: #f0f0f0;
+  background: transparent;
 }
 
 .diary-add-emotion-wrap .diary-add-page {
@@ -18515,12 +18544,6 @@ body.kpi-resizing {
 
 .diary-paper-text::placeholder {
   color: #d1d5db;
-}
-
-.diary-paper-empty {
-  padding: 3rem 0;
-  font-size: 0.95rem;
-  color: #9ca3af;
 }
 
 /* 통제일기 Q&A 템플릿 */
