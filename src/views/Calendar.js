@@ -1655,7 +1655,7 @@ function renderMonthlyView(tabsElement) {
     <div class="calendar-todo-sidebar-header">
       <span class="calendar-todo-sidebar-title">날짜 잡아서 해야 할일</span>
       <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
-        <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
+        <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6 6l4 6-4 6 M14 6l4 6-4 6"/></svg>
       </button>
     </div>
     <div class="calendar-todo-sidebar-body">
@@ -2342,7 +2342,7 @@ function render2WeekView(tabsElement) {
     <div class="calendar-todo-sidebar-header">
       <span class="calendar-todo-sidebar-title">날짜 잡아서 해야 할일</span>
       <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
-        <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
+        <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6 6l4 6-4 6 M14 6l4 6-4 6"/></svg>
       </button>
     </div>
     <div class="calendar-todo-sidebar-body">
@@ -3025,7 +3025,7 @@ function render3WeekView(tabsElement) {
     <div class="calendar-todo-sidebar-header">
       <span class="calendar-todo-sidebar-title">날짜 잡아서 해야 할일</span>
       <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
-        <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
+        <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6 6l4 6-4 6 M14 6l4 6-4 6"/></svg>
       </button>
     </div>
     <div class="calendar-todo-sidebar-body">
@@ -5148,7 +5148,7 @@ function render1WeekView(tabsElement) {
     <div class="calendar-todo-sidebar-header">
       <span class="calendar-todo-sidebar-title">날짜 잡아서 해야 할일</span>
       <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
-        <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
+        <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6 6l4 6-4 6 M14 6l4 6-4 6"/></svg>
       </button>
     </div>
     <div class="calendar-todo-sidebar-body">
@@ -5296,7 +5296,6 @@ function renderAnnualView(tabsElement) {
 const CALENDAR_SUB_VIEWS = [
   { id: "monthly", label: "월별" },
   { id: "2week", label: "2주" },
-  { id: "3week", label: "3주" },
   { id: "1week", label: "1주" },
   { id: "annual", label: "연간" },
 ];
@@ -5355,8 +5354,6 @@ function renderCalendarView(tabsElement) {
       contentArea.appendChild(renderMonthlyView(null));
     } else if (subViewId === "2week") {
       contentArea.appendChild(render2WeekView(null));
-    } else if (subViewId === "3week") {
-      contentArea.appendChild(render3WeekView(null));
     } else if (subViewId === "1week") {
       contentArea.appendChild(render1WeekView(null));
     } else if (subViewId === "annual") {
@@ -5414,36 +5411,29 @@ function renderEisenhowerView(tabsElement) {
   const eisenhowerWrap = document.createElement("div");
   eisenhowerWrap.className = "calendar-eisenhower-wrap";
   eisenhowerWrap.innerHTML = `
-    <div class="calendar-eisenhower-header">
-      <h2 class="calendar-eisenhower-title">아이젠하워</h2>
-    </div>
     <div class="calendar-eisenhower-matrix">
       <div class="calendar-eisenhower-quadrant calendar-eisenhower-q1" data-quadrant="urgent-important">
         <span class="calendar-eisenhower-quadrant-badge">0</span>
-        <span class="calendar-eisenhower-quadrant-tag">긴급 + 중요</span>
         <h3 class="calendar-eisenhower-quadrant-title">지금 당장 해야 해</h3>
-        <p class="calendar-eisenhower-quadrant-desc">오늘 안에 반드시 처리해야 하는 일. 미루면 큰일 나는 것들.</p>
+        <span class="calendar-eisenhower-quadrant-tag">긴급 + 중요</span>
         <ul class="calendar-eisenhower-quadrant-tasks"></ul>
       </div>
       <div class="calendar-eisenhower-quadrant calendar-eisenhower-q2" data-quadrant="important-not-urgent">
         <span class="calendar-eisenhower-quadrant-badge">0</span>
-        <span class="calendar-eisenhower-quadrant-tag">중요 + 여유 있음</span>
         <h3 class="calendar-eisenhower-quadrant-title">날짜 잡아서 해</h3>
-        <p class="calendar-eisenhower-quadrant-desc">중요하지만 급하지 않은 일. 미래의 나를 위해 시간 내서 하는 것들.</p>
+        <span class="calendar-eisenhower-quadrant-tag">중요 + 여유 있음</span>
         <ul class="calendar-eisenhower-quadrant-tasks"></ul>
       </div>
       <div class="calendar-eisenhower-quadrant calendar-eisenhower-q3" data-quadrant="urgent-not-important">
         <span class="calendar-eisenhower-quadrant-badge">0</span>
-        <span class="calendar-eisenhower-quadrant-tag">긴급 + 별로 안 중요</span>
         <h3 class="calendar-eisenhower-quadrant-title">다른 사람한테 맡겨</h3>
-        <p class="calendar-eisenhower-quadrant-desc">빨리 처리해야 하지만 내가 꼭 할 필요는 없는 일. 가능하면 넘기는 게 낫다.</p>
+        <span class="calendar-eisenhower-quadrant-tag">긴급 + 별로 안 중요</span>
         <ul class="calendar-eisenhower-quadrant-tasks"></ul>
       </div>
       <div class="calendar-eisenhower-quadrant calendar-eisenhower-q4" data-quadrant="not-urgent-not-important">
         <span class="calendar-eisenhower-quadrant-badge">0</span>
-        <span class="calendar-eisenhower-quadrant-tag">별로 안 중요 + 여유 있음</span>
         <h3 class="calendar-eisenhower-quadrant-title">그냥 하지 마</h3>
-        <p class="calendar-eisenhower-quadrant-desc">솔직히 안 해도 되는 일. 시간 낭비인 것들.</p>
+        <span class="calendar-eisenhower-quadrant-tag">별로 안 중요 + 여유 있음</span>
         <ul class="calendar-eisenhower-quadrant-tasks"></ul>
       </div>
     </div>
@@ -5480,7 +5470,7 @@ function renderEisenhowerView(tabsElement) {
     <div class="calendar-todo-sidebar-header">
       <span class="calendar-todo-sidebar-title">할 일</span>
       <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
-        <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
+        <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6 6l4 6-4 6 M14 6l4 6-4 6"/></svg>
       </button>
     </div>
     <div class="calendar-todo-sidebar-body" title="우선순위 취소: 사분면 항목을 여기로 드래그"></div>

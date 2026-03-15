@@ -1552,11 +1552,17 @@ function createSection(section, options = {}) {
   wrap.className = "todo-section" + (tabMode ? " todo-section-tab-panel" : "");
   wrap.dataset.section = section.id;
 
+  const isOverdueSection = section.id === "overdue";
   let header = null;
   if (!tabMode) {
     header = document.createElement("div");
-    header.className = "todo-section-header";
-    header.innerHTML = `
+    header.className = "todo-section-header" + (isOverdueSection ? " todo-section-header--no-collapse" : "");
+    header.innerHTML = isOverdueSection
+      ? `
+      <span class="todo-section-label">${section.label}</span>
+      <span class="todo-section-count">0</span>
+    `
+      : `
       <span class="todo-section-arrow">▼</span>
       <span class="todo-section-label">${section.label}</span>
       <span class="todo-section-count">0</span>
@@ -1655,7 +1661,7 @@ function createSection(section, options = {}) {
     ? `<tr>
         <th class="todo-th-done"></th>
         <th class="todo-th-name">Name</th>
-        <th class="todo-th-eisenhower">아이젠하워</th>
+        <th class="todo-th-eisenhower">우선순위</th>
         <th class="todo-th-kpi">KPI</th>
         <th class="todo-th-start">시작일</th>
         <th class="todo-th-due">마감일</th>
@@ -1674,7 +1680,7 @@ function createSection(section, options = {}) {
         <th class="todo-th-start">시작일</th>
         <th class="todo-th-due">마감일</th>
         <th class="todo-th-reminder">리마인더</th>
-        <th class="todo-th-eisenhower">아이젠하워</th>
+        <th class="todo-th-eisenhower">우선순위</th>
         ${theadCategoryTh}
         <th class="todo-th-delete"></th>
       </tr>`
@@ -1686,7 +1692,7 @@ function createSection(section, options = {}) {
         <th class="todo-th-due">마감일</th>
         <th class="todo-th-reminder">리마인더</th>
         <th class="todo-th-overdue">기한 초과</th>
-        <th class="todo-th-eisenhower">아이젠하워</th>
+        <th class="todo-th-eisenhower">우선순위</th>
         ${theadCategoryTh}
         <th class="todo-th-delete"></th>
       </tr>`;
@@ -1753,8 +1759,9 @@ function createSection(section, options = {}) {
     });
   }
 
-  if (header) {
-    header.querySelector(".todo-section-arrow").addEventListener("click", () => {
+  const arrowEl = header?.querySelector(".todo-section-arrow");
+  if (arrowEl) {
+    arrowEl.addEventListener("click", () => {
       wrap.classList.toggle("is-collapsed");
     });
   }
