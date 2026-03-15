@@ -65,3 +65,10 @@ async function doChangePassword() {
 }
 
 init();
+
+// PWA: 서비스 워커 등록 (앱 설치·홈 화면 추가 가능)
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
