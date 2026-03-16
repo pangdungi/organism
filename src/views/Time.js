@@ -4444,46 +4444,32 @@ export function render() {
     };
   }
 
-  function buildExpenseCategoryDropdown(initialValue, onUpdate) {
+  function buildExpenseCategoryButtons(initialValue, onUpdate) {
     const wrap = document.createElement("div");
-    wrap.className = "time-task-log-expense-category-dropdown";
-    const display = document.createElement("span");
-    display.className = "time-task-log-expense-dropdown-display";
-    const setDisplay = (val) => {
-      const txt = val || "선택";
-      display.textContent = txt;
-      display.classList.toggle("is-placeholder", !val);
-    };
-    setDisplay(initialValue);
-    const panel = document.createElement("div");
-    panel.className = "time-task-log-expense-dropdown-panel";
-    panel.hidden = true;
-    let value = initialValue || "";
+    wrap.className = "time-task-log-expense-category-btns";
+    let value = (initialValue || "").trim();
     getExpenseCategoryOptions().forEach((opt) => {
-      const row = document.createElement("div");
-      row.className = "time-task-log-expense-dropdown-option";
-      row.textContent = opt.label;
-      row.addEventListener("click", () => {
-        value = opt.label;
-        setDisplay(value);
-        panel.hidden = true;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "time-task-log-expense-cat-btn";
+      btn.dataset.cat = opt.label;
+      btn.textContent = opt.label;
+      if (value === opt.label) btn.classList.add("selected");
+      btn.addEventListener("click", () => {
+        value = value === opt.label ? "" : opt.label;
+        wrap.querySelectorAll(".time-task-log-expense-cat-btn").forEach((b) =>
+          b.classList.toggle("selected", b.dataset.cat === value),
+        );
         onUpdate?.(value);
       });
-      panel.appendChild(row);
+      wrap.appendChild(btn);
     });
-    display.addEventListener("click", (e) => {
-      e.stopPropagation();
-      panel.hidden = !panel.hidden;
-    });
-    document.addEventListener("click", (e) => {
-      if (!wrap.contains(e.target)) panel.hidden = true;
-    });
-    wrap.appendChild(display);
-    wrap.appendChild(panel);
     wrap._getValue = () => value;
     wrap._setValue = (v) => {
-      value = v || "";
-      setDisplay(value);
+      value = (v || "").trim();
+      wrap.querySelectorAll(".time-task-log-expense-cat-btn").forEach((b) =>
+        b.classList.toggle("selected", b.dataset.cat === value),
+      );
     };
     return wrap;
   }
@@ -4580,7 +4566,7 @@ export function render() {
     "",
     () => {},
   );
-  const expenseCategoryDropdown = buildExpenseCategoryDropdown("", (cat) => {
+  const expenseCategoryDropdown = buildExpenseCategoryButtons("", (cat) => {
     expenseClassificationDropdown._setCategory?.(cat);
     expenseClassificationDropdown._setValue?.("");
   });
