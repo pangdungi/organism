@@ -11219,41 +11219,34 @@ body.kpi-resizing {
   padding: 0;
 }
 
-.time-task-log-fixed-top {
-  flex-shrink: 0;
-  background: #FAFAF8;
-  padding: 0.85rem 1.25rem 0.75rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-/* 상단 고정 영역: 폰트·여백 축소 → 아래 스크롤 영역에 공간 확보 */
-.time-task-log-fixed-top .time-task-log-datetime-fields-wrap .time-task-log-field label {
+/* 스크롤 영역 안 datetime 필드 스타일 */
+.time-task-log-scroll-area .time-task-log-datetime-fields-wrap .time-task-log-field label {
   font-size: 0.75rem;
 }
-.time-task-log-fixed-top .time-task-log-field {
+.time-task-log-scroll-area .time-task-log-datetime-fields-wrap .time-task-log-field {
   margin-bottom: 0.7rem;
 }
-.time-task-log-fixed-top .time-task-log-datetime-input-wrap input[type="date"],
-.time-task-log-fixed-top .time-task-log-datetime-input-wrap .time-task-log-date-start,
-.time-task-log-fixed-top .time-task-log-datetime-input-wrap input.flatpickr-input {
+.time-task-log-scroll-area .time-task-log-datetime-fields-wrap .time-task-log-datetime-input-wrap input[type="date"],
+.time-task-log-scroll-area .time-task-log-datetime-fields-wrap .time-task-log-datetime-input-wrap .time-task-log-date-start,
+.time-task-log-scroll-area .time-task-log-datetime-fields-wrap .time-task-log-datetime-input-wrap input.flatpickr-input {
   padding: 0.35rem 0.6rem;
   font-size: 0.85rem;
 }
-.time-task-log-fixed-top .time-task-log-datetime-input-wrap input[type="text"] {
+.time-task-log-scroll-area .time-task-log-datetime-fields-wrap .time-task-log-datetime-input-wrap input[type="text"] {
   padding: 0.35rem 0.6rem;
   font-size: 0.85rem;
   font-family: "Noto Serif KR", serif !important;
   font-weight: 200 !important;
 }
-.time-task-log-fixed-top .time-task-log-task-dropdown-trigger {
+.time-task-log-scroll-area .time-task-log-datetime-fields-wrap .time-task-log-task-dropdown-trigger {
   padding: 0.35rem 0.6rem;
   font-size: 0.85rem;
 }
-.time-task-log-fixed-top .time-task-log-time-adjust-btns {
+.time-task-log-scroll-area .time-task-log-datetime-fields-wrap .time-task-log-time-adjust-btns {
   margin-top: 0.3rem;
   gap: 0.65rem;
 }
-.time-task-log-fixed-top .time-task-log-time-adjust-btn {
+.time-task-log-scroll-area .time-task-log-datetime-fields-wrap .time-task-log-time-adjust-btn {
   padding: 0.1rem 0.25rem;
   font-size: 0.65rem;
 }
@@ -11718,6 +11711,290 @@ body.kpi-resizing {
 }
 .time-task-log-todo-inner-add:hover {
   background: #4b5563 !important;
+}
+
+/* 소비 기록 row + 내부 모달 */
+.time-task-log-expense-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+.time-task-log-expense-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+}
+.time-task-log-expense-add-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1;
+  color: #fff;
+  background: #374151;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.time-task-log-expense-add-btn:hover {
+  background: #4b5563;
+}
+.time-task-log-expense-inner-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.time-task-log-expense-inner-modal[hidden] {
+  display: none;
+}
+.time-task-log-expense-inner-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+}
+.time-task-log-expense-inner-panel {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: #FAFAF8;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+.time-task-log-expense-inner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+.time-task-log-expense-inner-header-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #374151;
+}
+.time-task-log-expense-inner-close {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: #6b7280;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.time-task-log-expense-inner-close:hover {
+  color: #374151;
+  background: rgba(0, 0, 0, 0.05);
+}
+.time-task-log-expense-inner-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+}
+.time-task-log-expense-inner-fields .time-task-log-field {
+  margin-bottom: 0.75rem;
+}
+.time-task-log-expense-inner-fields .time-task-log-field:last-child {
+  margin-bottom: 0;
+}
+.time-task-log-expense-inner-name,
+.time-task-log-expense-inner-amount {
+  width: 100%;
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+  font-family: inherit;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  box-sizing: border-box;
+}
+.time-task-log-expense-inner-name:focus,
+.time-task-log-expense-inner-amount:focus {
+  outline: none;
+  border-bottom-color: #d1d5db;
+}
+/* 소비 기록 추가 목록 - 미니멀 스타일 */
+.time-task-log-expense-added-list {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+.time-task-log-expense-inner-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+  color: #374151;
+}
+.time-task-log-expense-inner-list-row:not(:last-child) {
+  border-bottom: 1px solid #f3f4f6;
+}
+.time-task-log-expense-inner-list-label {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+}
+.time-task-log-expense-inner-list-del {
+  padding: 0.2rem 0.4rem;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: #9ca3af;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+.time-task-log-expense-inner-list-del:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+.time-task-log-expense-inner-footer {
+  display: flex;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid #e5e7eb;
+  background: #FAFAF8;
+}
+.time-task-log-expense-inner-complete-btn {
+  width: 100%;
+  padding: 0.65rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #fff;
+  background: #374151;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.time-task-log-expense-inner-complete-btn:hover {
+  background: #4b5563;
+}
+.time-task-log-expense-inner-add-btn {
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #fff;
+  background: #374151;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.time-task-log-expense-inner-add-btn:hover {
+  background: #4b5563;
+}
+
+/* 감정 기록 row + 내부 모달 */
+.time-task-log-emotion-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+.time-task-log-emotion-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+}
+.time-task-log-emotion-add-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1;
+  color: #fff;
+  background: #374151;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.time-task-log-emotion-add-btn:hover {
+  background: #4b5563;
+}
+.time-task-log-emotion-inner-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.time-task-log-emotion-inner-modal[hidden] {
+  display: none;
+}
+.time-task-log-emotion-inner-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+}
+.time-task-log-emotion-inner-panel {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: #FAFAF8;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+.time-task-log-emotion-inner-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+}
+.time-task-log-emotion-inner-footer {
+  display: flex;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid #e5e7eb;
+}
+.time-task-log-emotion-inner-save-btn {
+  flex: 1;
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #fff;
+  background: #374151;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.time-task-log-emotion-inner-save-btn:hover {
+  background: #4b5563;
 }
 
 /* 방해기록 내부 모달 */
@@ -17582,6 +17859,22 @@ body.kpi-resizing {
   color: #9ca3af;
 }
 
+/* 월급/근무시간 입력 - 입력란 오른쪽에 단위(원, h) */
+.idea-input-with-unit {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.idea-input-with-unit .idea-form-input {
+  flex: 1;
+  min-width: 0;
+}
+.idea-input-with-unit .idea-input-unit {
+  font-size: 0.9rem;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
 .idea-form-input:focus {
   outline: none;
   border-color: #374151;
@@ -17606,37 +17899,47 @@ body.kpi-resizing {
   border-color: #111827;
 }
 
-/* 나의 계정 - 기본설정 (아이디 표시) */
-.idea-user-id-row {
+/* 나의 계정 - 기본 설정 (아이디, 웹사이트 폰트, 로그아웃) */
+.idea-basic-rows {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  margin-bottom: 0.75rem;
+  gap: 0.75rem;
 }
-.idea-user-id-value {
+.idea-basic-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+.idea-basic-row:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+.idea-basic-row .idea-form-label {
+  flex-shrink: 0;
+  min-width: 110px;
+}
+.idea-basic-row .idea-user-id-value {
+  flex: 1;
+  min-width: 0;
   font-size: 0.9rem;
   color: #374151;
   word-break: break-all;
 }
-
-/* 나의 계정 - 아이디 표시 */
-.idea-user-id-row {
+.idea-font-logout-row {
   display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  margin-bottom: 0.75rem;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
-.idea-user-id-value {
-  font-size: 0.9rem;
-  color: #374151;
-  word-break: break-all;
+.idea-font-logout-row .idea-font-dropdown {
+  flex: 1;
+  min-width: 160px;
 }
-
-/* 나의 계정 - 로그아웃 버튼 */
-.idea-account-actions {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #e5e7eb;
+.idea-font-logout-row .idea-btn-logout {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 .idea-btn-logout {
   padding: 0.5rem 1rem;

@@ -10,9 +10,6 @@ import {
   getExpenseClassificationOptions,
 } from "./Asset.js";
 import {
-  loadDiaryEntries,
-  saveDiaryEntries,
-  addOrUpdateTab3EntryByDate,
   TAB3_EMOTION_TEMPLATE,
   TAB3_EMOTION_PLACEHOLDERS,
 } from "../diaryData.js";
@@ -21,7 +18,7 @@ import {
   syncHabitTrackerLogs,
   upsertHabitTrackerLogWithDailyState,
 } from "../utils/timeKpiSync.js";
-import { getKpiTodosAsTasks, syncKpiTodoCompleted, getKpiTodosByKpiName, getKpiDailyRepeatInfoByKpiName, syncKpiDailyRepeatTodoCompleted, addBraindumpTodoToSection } from "../utils/kpiTodoSync.js";
+import { getKpiTodosAsTasks, syncKpiTodoCompleted, getKpiTodosByKpiName, getKpiDailyRepeatInfoByKpiName, syncKpiDailyRepeatTodoCompleted } from "../utils/kpiTodoSync.js";
 import { getCustomSections } from "../utils/todoSettings.js";
 import { showToast } from "../utils/showToast.js";
 
@@ -3344,41 +3341,39 @@ export function render() {
         <h3 class="time-task-setup-title">과제 기록</h3>
       </div>
       <div class="time-task-setup-body time-task-log-body">
-        <div class="time-task-log-fixed-top">
-          <div class="time-task-log-datetime-fields-wrap">
-            <div class="time-task-log-field">
-              <label>이 시간에 할 행동</label>
-              <div class="time-task-log-task-wrap"></div>
+        <div class="time-task-log-scroll-area">
+        <div class="time-task-log-datetime-fields-wrap">
+          <div class="time-task-log-field">
+            <label>이 시간에 할 행동</label>
+            <div class="time-task-log-task-wrap"></div>
+          </div>
+          <div class="time-task-log-field">
+            <label>시작 시간</label>
+            <div class="time-task-log-datetime-input-wrap">
+              <input type="date" class="time-task-log-date-start" name="time-task-log-date" data-hide-delete-btn="true" data-use-native-mobile="true" />
+              <input type="text" class="time-task-log-time-start" name="time-task-log-time-start" placeholder="hh:mm" maxlength="5" style="font-family: 'Noto Serif KR', serif; font-weight: 200" />
             </div>
-            <div class="time-task-log-field">
-              <label>시작 시간</label>
-              <div class="time-task-log-datetime-input-wrap">
-                <input type="date" class="time-task-log-date-start" name="time-task-log-date" data-hide-delete-btn="true" data-use-native-mobile="true" />
-                <input type="text" class="time-task-log-time-start" name="time-task-log-time-start" placeholder="hh:mm" maxlength="5" style="font-family: 'Noto Serif KR', serif; font-weight: 200" />
-              </div>
-              <input type="hidden" class="time-task-log-start" />
-            </div>
-            <div class="time-task-log-field">
-              <label>마감 시간</label>
-              <div class="time-task-log-end-row">
-                <div class="time-task-log-datetime-wrap time-task-log-datetime-wrap-end">
-                  <div class="time-task-log-datetime-input-wrap">
-                    <input type="text" class="time-task-log-time-end" name="time-task-log-time-end" placeholder="hh:mm" maxlength="5" style="font-family: 'Noto Serif KR', serif; font-weight: 200" />
-                  </div>
-                </div>
-                <div class="time-task-log-time-adjust-btns">
-                  <button type="button" class="time-task-log-time-adjust-btn time-task-log-time-adjust-now" data-now="true">지금</button>
-                  <button type="button" class="time-task-log-time-adjust-btn" data-delta="-30">−30</button>
-                  <button type="button" class="time-task-log-time-adjust-btn" data-delta="-15">−15</button>
-                  <button type="button" class="time-task-log-time-adjust-btn" data-delta="15">+15</button>
-                  <button type="button" class="time-task-log-time-adjust-btn" data-delta="30">+30</button>
+            <input type="hidden" class="time-task-log-start" />
+          </div>
+          <div class="time-task-log-field">
+            <label>마감 시간</label>
+            <div class="time-task-log-end-row">
+              <div class="time-task-log-datetime-wrap time-task-log-datetime-wrap-end">
+                <div class="time-task-log-datetime-input-wrap">
+                  <input type="text" class="time-task-log-time-end" name="time-task-log-time-end" placeholder="hh:mm" maxlength="5" style="font-family: 'Noto Serif KR', serif; font-weight: 200" />
                 </div>
               </div>
-              <input type="hidden" class="time-task-log-end" />
+              <div class="time-task-log-time-adjust-btns">
+                <button type="button" class="time-task-log-time-adjust-btn time-task-log-time-adjust-now" data-now="true">지금</button>
+                <button type="button" class="time-task-log-time-adjust-btn" data-delta="-30">−30</button>
+                <button type="button" class="time-task-log-time-adjust-btn" data-delta="-15">−15</button>
+                <button type="button" class="time-task-log-time-adjust-btn" data-delta="15">+15</button>
+                <button type="button" class="time-task-log-time-adjust-btn" data-delta="30">+30</button>
+              </div>
             </div>
+            <input type="hidden" class="time-task-log-end" />
           </div>
         </div>
-        <div class="time-task-log-scroll-area">
         <div class="time-task-log-kpi-todos-section" hidden>
           <h4 class="time-task-log-kpi-todos-title">할일 목록</h4>
           <div class="time-task-log-kpi-todos-list"></div>
@@ -3448,60 +3443,74 @@ export function render() {
             </div>
           </div>
         </div>
-        <div class="time-task-log-expense-section time-task-log-accordion-item time-task-log-accordion-expanded" data-accordion="expense">
-          <div class="time-task-log-expense-header time-task-log-accordion-header" role="button" tabindex="0" aria-expanded="true">
-            <h4 class="time-task-log-expense-title">소비 기록</h4>
-            <span class="time-task-log-accordion-chevron" aria-hidden="true">▼</span>
-          </div>
-          <div class="time-task-log-accordion-body">
-          <div class="time-task-log-expense-fields">
-            <div class="time-task-log-field">
-              <label>소비/수입명</label>
-              <input type="text" class="time-task-log-expense-name" name="time-task-log-expense-name" placeholder="" />
+        <div class="time-task-log-expense-row">
+          <span class="time-task-log-expense-label">소비 기록</span>
+          <button type="button" class="time-task-log-expense-add-btn" aria-label="소비 기록 추가">+</button>
+        </div>
+        <div class="time-task-log-expense-inner-modal" hidden>
+          <div class="time-task-log-expense-inner-backdrop"></div>
+          <div class="time-task-log-expense-inner-panel">
+            <div class="time-task-log-expense-inner-header">
+              <span class="time-task-log-expense-inner-header-label">소비/수입명</span>
+              <button type="button" class="time-task-log-expense-inner-close" aria-label="닫기">&times;</button>
             </div>
-            <div class="time-task-log-field">
-              <label>금액</label>
-              <div class="time-task-log-expense-amount-wrap">
-                <input type="text" class="time-task-log-expense-amount" name="time-task-log-expense-amount" placeholder="0" inputmode="numeric" />
-                <span class="time-task-log-expense-amount-unit">원</span>
+            <div class="time-task-log-expense-inner-body">
+              <div class="time-task-log-expense-inner-fields">
+                <div class="time-task-log-field time-task-log-expense-name-field">
+                  <input type="text" class="time-task-log-expense-name" name="time-task-log-expense-name" placeholder="소비/수입명" />
+                </div>
+                <div class="time-task-log-field">
+                  <label>금액</label>
+                  <div class="time-task-log-expense-amount-wrap">
+                    <input type="text" class="time-task-log-expense-amount" name="time-task-log-expense-amount" placeholder="0" inputmode="numeric" />
+                    <span class="time-task-log-expense-amount-unit">원</span>
+                  </div>
+                </div>
+                <div class="time-task-log-field">
+                  <label>카테고리</label>
+                  <div class="time-task-log-expense-category-wrap"></div>
+                </div>
+                <div class="time-task-log-field">
+                  <label>소비/수입 분류</label>
+                  <div class="time-task-log-expense-classification-wrap"></div>
+                </div>
+                <div class="time-task-log-expense-error" hidden></div>
+                <button type="button" class="time-task-log-expense-inner-add-btn">추가</button>
               </div>
+              <div class="time-task-log-expense-added-list"></div>
             </div>
-            <div class="time-task-log-field">
-              <label>카테고리</label>
-              <div class="time-task-log-expense-category-wrap"></div>
-            </div>
-            <div class="time-task-log-field">
-              <label>소비/수입 분류</label>
-              <div class="time-task-log-expense-classification-wrap"></div>
-            </div>
-            <div class="time-task-log-expense-error" hidden></div>
-          </div>
           </div>
         </div>
-        <div class="time-task-log-emotion-section time-task-log-accordion-item" data-accordion="emotion">
-          <div class="time-task-log-emotion-header time-task-log-accordion-header" role="button" tabindex="0" aria-expanded="false">
-            <h4 class="time-task-log-emotion-title">감정 기록</h4>
-            <span class="time-task-log-accordion-chevron" aria-hidden="true">▶</span>
-          </div>
-          <div class="time-task-log-accordion-body">
-          <div class="time-task-log-emotion-fields">
-            <div class="time-task-log-field">
-              <label>${TAB3_EMOTION_TEMPLATE[0]}</label>
-              <textarea class="time-task-log-emotion-q1" placeholder="${TAB3_EMOTION_PLACEHOLDERS[0]}" rows="2"></textarea>
+        <div class="time-task-log-emotion-row">
+          <span class="time-task-log-emotion-label">감정 기록</span>
+          <button type="button" class="time-task-log-emotion-add-btn" aria-label="감정 기록 추가">+</button>
+        </div>
+        <div class="time-task-log-emotion-inner-modal" hidden>
+          <div class="time-task-log-emotion-inner-backdrop"></div>
+          <div class="time-task-log-emotion-inner-panel">
+            <div class="time-task-log-emotion-inner-body">
+              <div class="time-task-log-emotion-fields">
+                <div class="time-task-log-field">
+                  <label>${TAB3_EMOTION_TEMPLATE[0]}</label>
+                  <textarea class="time-task-log-emotion-q1" placeholder="${TAB3_EMOTION_PLACEHOLDERS[0]}" rows="2"></textarea>
+                </div>
+                <div class="time-task-log-field">
+                  <label>${TAB3_EMOTION_TEMPLATE[1]}</label>
+                  <textarea class="time-task-log-emotion-q2" placeholder="${TAB3_EMOTION_PLACEHOLDERS[1]}" rows="2"></textarea>
+                </div>
+                <div class="time-task-log-field">
+                  <label>${TAB3_EMOTION_TEMPLATE[2]}</label>
+                  <textarea class="time-task-log-emotion-q3" placeholder="${TAB3_EMOTION_PLACEHOLDERS[2]}" rows="2"></textarea>
+                </div>
+                <div class="time-task-log-field">
+                  <label>${TAB3_EMOTION_TEMPLATE[3]}</label>
+                  <textarea class="time-task-log-emotion-q4" placeholder="${TAB3_EMOTION_PLACEHOLDERS[3]}" rows="2"></textarea>
+                </div>
+              </div>
             </div>
-            <div class="time-task-log-field">
-              <label>${TAB3_EMOTION_TEMPLATE[1]}</label>
-              <textarea class="time-task-log-emotion-q2" placeholder="${TAB3_EMOTION_PLACEHOLDERS[1]}" rows="2"></textarea>
+            <div class="time-task-log-emotion-inner-footer">
+              <button type="button" class="time-task-log-emotion-inner-save-btn">저장</button>
             </div>
-            <div class="time-task-log-field">
-              <label>${TAB3_EMOTION_TEMPLATE[2]}</label>
-              <textarea class="time-task-log-emotion-q3" placeholder="${TAB3_EMOTION_PLACEHOLDERS[2]}" rows="2"></textarea>
-            </div>
-            <div class="time-task-log-field">
-              <label>${TAB3_EMOTION_TEMPLATE[3]}</label>
-              <textarea class="time-task-log-emotion-q4" placeholder="${TAB3_EMOTION_PLACEHOLDERS[3]}" rows="2"></textarea>
-            </div>
-          </div>
           </div>
         </div>
         </div>
@@ -3928,11 +3937,14 @@ export function render() {
   const taskLogFocusFields = taskLogModal.querySelector(
     ".time-task-log-focus-fields",
   );
-  const taskLogExpenseSection = taskLogModal.querySelector(
-    ".time-task-log-expense-section",
+  const taskLogExpenseAddBtn = taskLogModal.querySelector(
+    ".time-task-log-expense-add-btn",
   );
-  const taskLogExpenseFields = taskLogModal.querySelector(
-    ".time-task-log-expense-fields",
+  const taskLogExpenseInnerModal = taskLogModal.querySelector(
+    ".time-task-log-expense-inner-modal",
+  );
+  const taskLogExpenseInnerBackdrop = taskLogModal.querySelector(
+    ".time-task-log-expense-inner-backdrop",
   );
   const taskLogExpenseNameInput = taskLogModal.querySelector(
     ".time-task-log-expense-name",
@@ -3949,11 +3961,26 @@ export function render() {
   const taskLogExpenseErrorEl = taskLogModal.querySelector(
     ".time-task-log-expense-error",
   );
-  const taskLogEmotionSection = taskLogModal.querySelector(
-    ".time-task-log-emotion-section",
+  const taskLogExpenseInnerList = taskLogModal.querySelector(
+    ".time-task-log-expense-added-list",
   );
-  const taskLogEmotionFields = taskLogModal.querySelector(
-    ".time-task-log-emotion-fields",
+  const taskLogExpenseInnerAdd = taskLogModal.querySelector(
+    ".time-task-log-expense-inner-add-btn",
+  );
+  const taskLogExpenseInnerClose = taskLogModal.querySelector(
+    ".time-task-log-expense-inner-close",
+  );
+  const taskLogEmotionAddBtn = taskLogModal.querySelector(
+    ".time-task-log-emotion-add-btn",
+  );
+  const taskLogEmotionInnerModal = taskLogModal.querySelector(
+    ".time-task-log-emotion-inner-modal",
+  );
+  const taskLogEmotionInnerBackdrop = taskLogModal.querySelector(
+    ".time-task-log-emotion-inner-backdrop",
+  );
+  const taskLogEmotionInnerSaveBtn = taskLogModal.querySelector(
+    ".time-task-log-emotion-inner-save-btn",
   );
   const taskLogEmotionQ1 = taskLogModal.querySelector(
     ".time-task-log-emotion-q1",
@@ -4684,8 +4711,8 @@ export function render() {
     expenseClassificationButtons._setCategory?.(cat);
     expenseClassificationButtons._setValue?.("");
   });
-  taskLogExpenseCategoryWrap.appendChild(expenseCategoryDropdown);
-  taskLogExpenseClassificationWrap.appendChild(expenseClassificationButtons);
+  taskLogExpenseCategoryWrap?.appendChild(expenseCategoryDropdown);
+  taskLogExpenseClassificationWrap?.appendChild(expenseClassificationButtons);
 
   const taskLogFocusInnerTypeWrap = taskLogModal.querySelector(
     ".time-task-log-focus-inner-type-wrap",
@@ -4704,39 +4731,20 @@ export function render() {
       EXPENSE_TASK_NAMES.includes((taskName || "").trim());
 
     if (isEmotionTask) {
-      taskLogExpenseSection?.classList?.remove("time-task-log-accordion-expanded");
-      const expenseBody = taskLogExpenseSection?.querySelector(".time-task-log-accordion-body");
-      const expenseChevron = taskLogExpenseSection?.querySelector(".time-task-log-accordion-chevron");
-      if (expenseBody) expenseBody.hidden = true;
-      if (expenseChevron) expenseChevron.textContent = "▶";
-      taskLogEmotionSection?.classList?.add("time-task-log-accordion-expanded");
-      const emotionBody = taskLogEmotionSection?.querySelector(".time-task-log-accordion-body");
-      const emotionChevron = taskLogEmotionSection?.querySelector(".time-task-log-accordion-chevron");
-      const emotionHeader = taskLogEmotionSection?.querySelector(".time-task-log-accordion-header");
-      if (emotionBody) emotionBody.hidden = false;
-      if (emotionChevron) emotionChevron.textContent = "▼";
-      if (emotionHeader) emotionHeader.setAttribute("aria-expanded", "true");
-      requestAnimationFrame(() => {
-        taskLogEmotionSection?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
+      openEmotionInnerModal();
     } else if (isExpenseTask) {
-      taskLogEmotionSection?.classList?.remove("time-task-log-accordion-expanded");
-      const emotionBody = taskLogEmotionSection?.querySelector(".time-task-log-accordion-body");
-      const emotionChevron = taskLogEmotionSection?.querySelector(".time-task-log-accordion-chevron");
-      if (emotionBody) emotionBody.hidden = true;
-      if (emotionChevron) emotionChevron.textContent = "▶";
-      taskLogExpenseSection?.classList?.add("time-task-log-accordion-expanded");
-      const expenseBody = taskLogExpenseSection?.querySelector(".time-task-log-accordion-body");
-      const expenseChevron = taskLogExpenseSection?.querySelector(".time-task-log-accordion-chevron");
-      const expenseHeader = taskLogExpenseSection?.querySelector(".time-task-log-accordion-header");
-      if (expenseBody) expenseBody.hidden = false;
-      if (expenseChevron) expenseChevron.textContent = "▼";
-      if (expenseHeader) expenseHeader.setAttribute("aria-expanded", "true");
-      requestAnimationFrame(() => {
-        taskLogExpenseSection?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
+      openExpenseInnerModal();
     }
     refreshKpiTodosInLogModal(taskName);
+  }
+
+  function openEmotionInnerModal() {
+    if (taskLogEmotionInnerModal) taskLogEmotionInnerModal.hidden = false;
+    taskLogEmotionQ1?.focus();
+  }
+
+  function closeEmotionInnerModal() {
+    if (taskLogEmotionInnerModal) taskLogEmotionInnerModal.hidden = true;
   }
 
   function refreshKpiTodosInLogModal(taskName) {
@@ -4989,16 +4997,19 @@ export function render() {
     if (!isNaN(n) && n >= -50 && n <= 50) return n;
     return null;
   }
-  function addTodoNameToBraindump(name) {
+  /** 할일 일정탭 리스트(todo-section-tasks)에 이름만 추가. KPI 불필요. */
+  function addTodoNameToSection(sectionId, name) {
     const todoName = (name || "").trim();
     if (!todoName) return false;
+    const VALID_SECTIONS = ["braindump", "dream", "sideincome", "happy", "health"];
+    if (!VALID_SECTIONS.includes(sectionId)) return false;
     try {
       const SECTION_TASKS_KEY = "todo-section-tasks";
       const raw = localStorage.getItem(SECTION_TASKS_KEY);
       const obj = raw ? JSON.parse(raw) : {};
-      const braindump = Array.isArray(obj.braindump) ? obj.braindump : [];
-      const taskId = `braindump-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-      braindump.push({
+      const arr = Array.isArray(obj[sectionId]) ? obj[sectionId] : [];
+      const taskId = `${sectionId}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      arr.push({
         taskId,
         name: todoName,
         startDate: "",
@@ -5009,7 +5020,7 @@ export function render() {
         done: false,
         itemType: "todo",
       });
-      obj.braindump = braindump;
+      obj[sectionId] = arr;
       localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
       document.dispatchEvent(new CustomEvent("todo-braindump-added", { detail: {} }));
       return true;
@@ -5025,21 +5036,11 @@ export function render() {
     { id: "health", label: "건강" },
   ];
   let taskLogTodoSelectedCategory = "braindump";
-  /** 과제 기록 시 추가한 할 일: { categoryLabel, todoName } → "카테고리 할일이름" 태그로 저장 */
+  /** 과제 기록 시 추가한 할 일: { categoryLabel, todoName } → "리스트 | 할일이름" 태그로 저장 */
   let taskLogTodoAddedItems = [];
 
   function addTodoToSection(sectionId, name) {
-    const todoName = (name || "").trim();
-    if (!todoName) return false;
-    if (sectionId === "braindump") {
-      return addTodoNameToBraindump(todoName);
-    }
-    const result = addBraindumpTodoToSection(sectionId, { text: todoName });
-    if (result.success) {
-      document.dispatchEvent(new CustomEvent("todo-braindump-added", { detail: {} }));
-      return true;
-    }
-    return false;
+    return addTodoNameToSection(sectionId, name);
   }
 
   function updateTodoPills() {
@@ -5048,7 +5049,7 @@ export function render() {
     taskLogTodoAddedItems.forEach((item, idx) => {
       const pill = document.createElement("span");
       pill.className = "time-task-log-todo-pill time-memo-tag-chip";
-      const label = [item.categoryLabel, item.todoName].filter(Boolean).join(" ") || "";
+      const label = [item.categoryLabel, item.todoName].filter(Boolean).join(" | ") || "";
       pill.innerHTML = `<span class="time-memo-tag-chip-text">${escapeHtml(label)}</span><button type="button" class="time-memo-tag-chip-remove" aria-label="삭제">&times;</button>`;
       pill.querySelector(".time-memo-tag-chip-remove")?.addEventListener("click", (ev) => {
         ev.preventDefault();
@@ -5093,6 +5094,10 @@ export function render() {
   taskLogTodoInnerBackdrop?.addEventListener("click", closeTodoInnerModal);
   taskLogTodoInnerCancel?.addEventListener("click", closeTodoInnerModal);
 
+  taskLogExpenseAddBtn?.addEventListener("click", openExpenseInnerModal);
+  taskLogExpenseInnerBackdrop?.addEventListener("click", closeExpenseInnerModal);
+  taskLogExpenseInnerClose?.addEventListener("click", closeExpenseInnerModal);
+
   taskLogTodoInnerAdd?.addEventListener("click", () => {
     const todoName = (taskLogTodoInnerName?.value || "").trim();
     if (!todoName) return;
@@ -5103,9 +5108,101 @@ export function render() {
       updateTodoPills();
       if (taskLogTodoInnerName) taskLogTodoInnerName.value = "";
       closeTodoInnerModal();
-    } else if (taskLogTodoSelectedCategory !== "braindump") {
-      showToast("해당 카테고리에 KPI를 먼저 추가해 주세요.", "warn");
+    } else {
+      showToast("할 일 추가에 실패했습니다.", "warn");
     }
+  });
+
+  /** 소비 모달: 추가한 기록 (가계부와 연동, id로 삭제) */
+  let taskLogExpenseAddedItems = [];
+
+  function getExpenseModalDate() {
+    const startRaw = (taskLogStartInput?.value || "").trim();
+    const parsed = parseDateFromDateTime(startRaw) || startRaw.slice(0, 10);
+    return (parsed || new Date().toISOString().slice(0, 10)).replace(/\//g, "-");
+  }
+
+  function updateExpenseInnerList() {
+    if (!taskLogExpenseInnerList) return;
+    taskLogExpenseInnerList.innerHTML = "";
+    taskLogExpenseAddedItems.forEach((item, idx) => {
+      const row = document.createElement("div");
+      row.className = "time-task-log-expense-inner-list-row";
+      const label = [item.name, [item.classification, item.amountFormatted].filter(Boolean).join(" ")]
+        .filter(Boolean).join(" - ");
+      row.innerHTML = `<span class="time-task-log-expense-inner-list-label">${escapeHtml(label)}</span><button type="button" class="time-task-log-expense-inner-list-del" aria-label="삭제">&times;</button>`;
+      row.querySelector(".time-task-log-expense-inner-list-del")?.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        if (item.id) {
+          const rows = loadExpenseRows().filter((r) => r.id !== item.id);
+          saveExpenseRows(rows);
+        }
+        taskLogExpenseAddedItems.splice(idx, 1);
+        updateExpenseInnerList();
+      });
+      taskLogExpenseInnerList.appendChild(row);
+    });
+  }
+
+  function openExpenseInnerModal() {
+    if (taskLogExpenseInnerModal) taskLogExpenseInnerModal.hidden = false;
+    taskLogExpenseNameInput?.focus();
+  }
+
+  function closeExpenseInnerModal() {
+    if (taskLogExpenseInnerModal) taskLogExpenseInnerModal.hidden = true;
+  }
+
+  taskLogExpenseAddBtn?.addEventListener("click", openExpenseInnerModal);
+  taskLogExpenseInnerBackdrop?.addEventListener("click", closeExpenseInnerModal);
+  taskLogExpenseInnerClose?.addEventListener("click", closeExpenseInnerModal);
+
+  taskLogExpenseInnerAdd?.addEventListener("click", () => {
+    const name = (taskLogExpenseNameInput?.value || "").trim();
+    const amountRaw = (taskLogExpenseAmountInput?.value || "").trim().replace(/,/g, "");
+    const expenseCategory = expenseCategoryDropdown._getValue?.() || "";
+    const expenseClassification = expenseClassificationButtons._getValue?.() || "";
+    if (!name || !expenseCategory || !expenseClassification || !amountRaw || !parseFloat(amountRaw)) {
+      if (taskLogExpenseErrorEl) {
+        taskLogExpenseErrorEl.textContent = "소비/수입명, 금액, 카테고리, 분류를 모두 입력해 주세요.";
+        taskLogExpenseErrorEl.hidden = false;
+      }
+      return;
+    }
+    if (taskLogExpenseErrorEl) {
+      taskLogExpenseErrorEl.textContent = "";
+      taskLogExpenseErrorEl.hidden = true;
+    }
+    const raw = parseFloat(amountRaw) || 0;
+    const signed = expenseCategory === "수입" ? Math.abs(raw) : -Math.abs(raw);
+    const amountFormatted = signed.toLocaleString("ko-KR");
+    const dateForExpense = getExpenseModalDate();
+    const id = `tl-exp-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const row = {
+      id,
+      name,
+      date: dateForExpense,
+      category: expenseCategory,
+      classification: expenseClassification,
+      amount: amountFormatted,
+      payment: "",
+      memo: "",
+    };
+    taskLogExpenseAddedItems.push({
+      id,
+      name,
+      classification: expenseClassification,
+      amountFormatted,
+    });
+    const existingRows = loadExpenseRows();
+    existingRows.push(row);
+    saveExpenseRows(existingRows);
+    updateExpenseInnerList();
+    taskLogExpenseNameInput.value = "";
+    taskLogExpenseAmountInput.value = "";
+    expenseCategoryDropdown._setValue?.("");
+    expenseClassificationButtons._setValue?.("");
+    expenseClassificationButtons._setCategory?.("");
   });
 
   taskLogExpenseAmountInput?.addEventListener("input", () => {
@@ -5225,6 +5322,10 @@ export function render() {
     if (taskLogTodoInnerName) taskLogTodoInnerName.value = "";
     taskLogTodoAddedItems = [];
     if (taskLogTodoPills) taskLogTodoPills.innerHTML = "";
+    taskLogExpenseAddedItems = [];
+    if (taskLogExpenseInnerList) taskLogExpenseInnerList.innerHTML = "";
+    if (taskLogExpenseInnerModal) taskLogExpenseInnerModal.hidden = true;
+    if (taskLogEmotionInnerModal) taskLogEmotionInnerModal.hidden = true;
     if (taskLogKpiTodosSection) taskLogKpiTodosSection.hidden = true;
     if (taskLogKpiTodosList) taskLogKpiTodosList.innerHTML = "";
     taskLogFocusEvents = [];
@@ -5302,10 +5403,10 @@ export function render() {
     expenseClassificationButtons._setValue?.("");
     expenseClassificationButtons._setCategory?.("");
     taskLogExpenseAmountInput.value = "";
-    if (taskLogEmotionQ1) taskLogEmotionQ1.value = data.q1 ?? "";
-    if (taskLogEmotionQ2) taskLogEmotionQ2.value = data.q2 ?? "";
-    if (taskLogEmotionQ3) taskLogEmotionQ3.value = data.q3 ?? "";
-    if (taskLogEmotionQ4) taskLogEmotionQ4.value = data.q4 ?? "";
+    if (taskLogEmotionQ1) taskLogEmotionQ1.value = "";
+    if (taskLogEmotionQ2) taskLogEmotionQ2.value = "";
+    if (taskLogEmotionQ3) taskLogEmotionQ3.value = "";
+    if (taskLogEmotionQ4) taskLogEmotionQ4.value = "";
     const taskNameForAccordion = (data.taskName || "").trim();
     const hasExpenseData =
       (taskLogExpenseNameInput?.value || "").trim() ||
@@ -5362,7 +5463,7 @@ export function render() {
     }
     const feedback = (taskLogFeedbackInput?.value || "").trim();
     const todoTags = taskLogTodoAddedItems.map(
-      (t) => [t.categoryLabel, t.todoName].filter(Boolean).join(" "),
+      (t) => [t.categoryLabel, t.todoName].filter(Boolean).join(" | "),
     ).filter(Boolean);
     const memoTags = [...taskLogMemoTags, ...todoTags];
     const timeTracked = (() => {
@@ -5552,16 +5653,7 @@ export function render() {
       saveExpenseRows(existingRows);
     }
 
-    const emotionQ1 = (taskLogEmotionQ1?.value || "").trim();
-    const emotionQ2 = (taskLogEmotionQ2?.value || "").trim();
-    const emotionQ3 = (taskLogEmotionQ3?.value || "").trim();
-    const emotionQ4 = (taskLogEmotionQ4?.value || "").trim();
-    const hasEmotionContent = emotionQ1 || emotionQ2 || emotionQ3 || emotionQ4;
-    if (hasEmotionContent) {
-      const entries = loadDiaryEntries();
-      addOrUpdateTab3EntryByDate(entries, dateStr, emotionQ1, emotionQ2, emotionQ3, emotionQ4);
-      saveDiaryEntries(entries);
-    }
+    /* 감정기록은 + 모달에서 저장 버튼 시 토스트만 표시, 실제 저장 없음 */
 
     /* 투두는 + 버튼 모달에서 카테고리 선택 후 추가 시 저장됨 */
 

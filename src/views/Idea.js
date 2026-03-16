@@ -52,7 +52,7 @@ export function applyAppFont() {
 
 function formatPrice(amount) {
   if (amount == null || Number.isNaN(amount)) return "—";
-  return new Intl.NumberFormat("ko-KR").format(Math.round(amount)) + "원";
+  return new Intl.NumberFormat("ko-KR").format(Math.round(amount)) + " 원";
 }
 
 export function render() {
@@ -74,17 +74,46 @@ export function render() {
   const grid = document.createElement("div");
   grid.className = "time-dashboard-view idea-widget-grid";
 
-  // ----- 기본설정 위젯 (로그인 ID, 로그아웃) - 왼쪽 -----
+  // ----- 기본 설정 위젯 (아이디, 웹사이트 폰트, 로그아웃) -----
+  const savedFont = (() => {
+    try {
+      const v = localStorage.getItem(APP_FONT_KEY);
+      if (v === "nexonlv2" || v === "leeseoyun") return "nexonlv2";
+      if (v === "pretendard") return "pretendard";
+      if (v === "notoserifkr") return "notoserifkr";
+      return v === "scdream2" ? "scdream3" : v || "scdream3";
+    } catch (_) {
+      return "scdream3";
+    }
+  })();
+  const currentFontOption = FONT_OPTIONS.find((o) => o.value === savedFont) || FONT_OPTIONS[0];
   const basicSettingsWidget = document.createElement("div");
   basicSettingsWidget.className = "time-dashboard-widget idea-widget idea-widget-basic-settings";
   basicSettingsWidget.innerHTML = `
-    <div class="time-dashboard-widget-title">기본설정</div>
-    <div class="idea-user-id-row">
-      <span class="idea-form-label">아이디</span>
-      <span class="idea-user-id-value" id="idea-user-id">—</span>
-    </div>
-    <div class="idea-account-actions">
-      <button type="button" class="idea-btn-logout">로그아웃</button>
+    <div class="time-dashboard-widget-title">기본 설정</div>
+    <div class="idea-basic-rows">
+      <div class="idea-basic-row">
+        <span class="idea-form-label">아이디</span>
+        <span class="idea-user-id-value" id="idea-user-id">—</span>
+      </div>
+      <div class="idea-basic-row idea-font-logout-row">
+        <label class="idea-form-label">웹사이트 폰트</label>
+        <div class="idea-font-dropdown">
+          <button type="button" class="idea-font-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="폰트 선택">
+            <span class="idea-font-trigger-label">${currentFontOption.label}</span>
+            <span class="idea-font-trigger-icon" aria-hidden="true">▼</span>
+          </button>
+          <div class="idea-font-panel" role="listbox" hidden>
+            ${FONT_OPTIONS.map((o) => `
+              <div class="idea-font-option" role="option" data-value="${o.value}" aria-selected="${o.value === savedFont}">
+                ${o.value === savedFont ? '<span class="idea-font-option-check">✓</span>' : ""}
+                <span class="idea-font-option-label">${o.label}</span>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+        <button type="button" class="idea-btn-logout">로그아웃</button>
+      </div>
     </div>
   `;
   grid.appendChild(basicSettingsWidget);
@@ -103,49 +132,11 @@ export function render() {
     });
   }
 
-  // ----- 폰트설정 위젯 (모바일: 숨김) -----
-  const fontWidget = document.createElement("div");
-  fontWidget.className =
-    "time-dashboard-widget idea-widget idea-widget-font hide-on-mobile";
-  const savedFont = (() => {
-    try {
-      const v = localStorage.getItem(APP_FONT_KEY);
-      if (v === "nexonlv2" || v === "leeseoyun") return "nexonlv2";
-      if (v === "pretendard") return "pretendard";
-      if (v === "notoserifkr") return "notoserifkr";
-      return v === "scdream2" ? "scdream3" : v || "scdream3";
-    } catch (_) {
-      return "scdream3";
-    }
-  })();
-  const currentFontOption = FONT_OPTIONS.find((o) => o.value === savedFont) || FONT_OPTIONS[0];
-  fontWidget.innerHTML = `
-    <div class="time-dashboard-widget-title">폰트설정</div>
-    <div class="idea-font-row">
-      <label class="idea-form-label">웹사이트 폰트</label>
-      <div class="idea-font-dropdown">
-        <button type="button" class="idea-font-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="폰트 선택">
-          <span class="idea-font-trigger-label">${currentFontOption.label}</span>
-          <span class="idea-font-trigger-icon" aria-hidden="true">▼</span>
-        </button>
-        <div class="idea-font-panel" role="listbox" hidden>
-          ${FONT_OPTIONS.map((o) => `
-            <div class="idea-font-option" role="option" data-value="${o.value}" aria-selected="${o.value === savedFont}">
-              ${o.value === savedFont ? '<span class="idea-font-option-check">✓</span>' : ""}
-              <span class="idea-font-option-label">${o.label}</span>
-            </div>
-          `).join("")}
-        </div>
-      </div>
-    </div>
-  `;
-  grid.appendChild(fontWidget);
-
-  const fontDropdown = fontWidget.querySelector(".idea-font-dropdown");
-  const fontTrigger = fontWidget.querySelector(".idea-font-trigger");
-  const fontTriggerLabel = fontWidget.querySelector(".idea-font-trigger-label");
-  const fontPanel = fontWidget.querySelector(".idea-font-panel");
-  const fontOptions = fontWidget.querySelectorAll(".idea-font-option");
+  const fontDropdown = basicSettingsWidget.querySelector(".idea-font-dropdown");
+  const fontTrigger = basicSettingsWidget.querySelector(".idea-font-trigger");
+  const fontTriggerLabel = basicSettingsWidget.querySelector(".idea-font-trigger-label");
+  const fontPanel = basicSettingsWidget.querySelector(".idea-font-panel");
+  const fontOptions = basicSettingsWidget.querySelectorAll(".idea-font-option");
 
   function closeFontPanel() {
     fontPanel.hidden = true;
@@ -199,19 +190,25 @@ export function render() {
   hourlyWidget.className =
     "time-dashboard-widget idea-widget idea-widget-hourly";
   hourlyWidget.innerHTML = `
-    <div class="time-dashboard-widget-title">나의 시급계산하기</div>
+    <div class="time-dashboard-widget-title">나의 시급 계산하기</div>
     <div class="idea-hourly-tabs">
       <button type="button" class="idea-hourly-tab active" data-mode="salary">월급직</button>
       <button type="button" class="idea-hourly-tab" data-mode="freelance">프리랜서</button>
     </div>
     <form class="idea-hourly-form">
       <div class="idea-form-row idea-row-salary">
-        <label class="idea-form-label">월급 (원)</label>
-        <input type="text" class="idea-form-input idea-input-amount" placeholder="예: 3000000" inputmode="numeric" />
+        <label class="idea-form-label">월급(원)</label>
+        <div class="idea-input-with-unit">
+          <input type="text" class="idea-form-input idea-input-amount" placeholder="예: 3000000" inputmode="numeric" />
+          <span class="idea-input-unit">원</span>
+        </div>
       </div>
       <div class="idea-form-row idea-row-salary">
-        <label class="idea-form-label">월 근무시간 (시간)</label>
-        <input type="text" class="idea-form-input idea-input-hours" placeholder="예: 160" inputmode="numeric" />
+        <label class="idea-form-label">월 근무시간(시간)</label>
+        <div class="idea-input-with-unit">
+          <input type="text" class="idea-form-input idea-input-hours" placeholder="예: 160" inputmode="numeric" />
+          <span class="idea-input-unit">h</span>
+        </div>
       </div>
       <div class="idea-form-row idea-row-freelance" style="display:none">
         <label class="idea-form-label">월 예상 수입 (원)</label>
@@ -236,6 +233,7 @@ export function render() {
       <div class="idea-hourly-result-wrap">
         <span class="idea-hourly-result-label">나의 시급</span>
         <span class="idea-hourly-result-value">—</span>
+        <span class="idea-hourly-result-unit">원</span>
       </div>
     </form>
   `;
@@ -277,7 +275,6 @@ export function render() {
   const colorWidget = document.createElement("div");
   colorWidget.className = "time-dashboard-widget idea-widget idea-widget-colors hide-on-mobile";
   colorWidget.innerHTML = `
-    <div class="time-dashboard-widget-title">색상 설정</div>
     <div class="todo-settings-block idea-colors-block">
       <div class="idea-colors-columns">
         <div class="idea-colors-col">
@@ -285,7 +282,7 @@ export function render() {
           <div class="idea-colors-rows idea-colors-rows-list"></div>
         </div>
         <div class="idea-colors-col">
-          <h4 class="todo-settings-block-title">생산성 (시간가계부)</h4>
+          <h4 class="todo-settings-block-title">생산성(시간가계부)</h4>
           <div class="idea-colors-rows idea-colors-rows-time"></div>
         </div>
         <div class="idea-colors-col idea-colors-col-task">
@@ -357,7 +354,21 @@ export function render() {
   const projectInput = hourlyWidget.querySelector(".idea-input-project-fee");
   const durationInput = hourlyWidget.querySelector(".idea-input-duration");
   const resultValue = hourlyWidget.querySelector(".idea-hourly-result-value");
+  const resultUnit = hourlyWidget.querySelector(".idea-hourly-result-unit");
   const calcBtn = hourlyWidget.querySelector(".idea-btn-calc");
+
+  function setHourlyResult(val) {
+    if (val == null || val === "—") {
+      resultValue.textContent = "—";
+      if (resultUnit) resultUnit.style.visibility = "hidden";
+    } else {
+      resultValue.textContent = new Intl.NumberFormat("ko-KR").format(Math.round(val));
+      if (resultUnit) {
+        resultUnit.textContent = " 원";
+        resultUnit.style.visibility = "";
+      }
+    }
+  }
 
   let mode = "salary"; // salary | freelance
 
@@ -386,7 +397,7 @@ export function render() {
     freelanceRows.forEach(
       (r) => (r.style.display = m === "freelance" ? "" : "none"),
     );
-    resultValue.textContent = "—";
+    setHourlyResult("—");
   }
 
   tabs.forEach((t) => {
@@ -412,26 +423,26 @@ export function render() {
       const amount = parseNumber(amountInput.value);
       const hours = parseNumber(hoursInput.value);
       if (amount <= 0 || hours <= 0) {
-        resultValue.textContent = "—";
+        setHourlyResult("—");
         return;
       }
       hourly = amount / hours;
-      resultValue.textContent = formatPrice(hourly);
+      setHourlyResult(hourly);
     } else {
       const fee = parseNumber(projectInput.value);
       const duration = parseNumber(durationInput.value);
       if (fee > 0 && duration > 0) {
         hourly = fee / duration;
-        resultValue.textContent = formatPrice(hourly);
+        setHourlyResult(hourly);
       } else {
         const amount = parseNumber(monthlyInput.value);
         const hours = parseNumber(freelanceHoursInput.value);
         if (amount <= 0 || hours <= 0) {
-          resultValue.textContent = "—";
+          setHourlyResult("—");
           return;
         }
         hourly = amount / hours;
-        resultValue.textContent = formatPrice(hourly);
+        setHourlyResult(hourly);
       }
     }
     if (hourly > 0) saveHourlyToAccount(hourly);
@@ -442,7 +453,7 @@ export function render() {
     const saved = localStorage.getItem(USER_HOURLY_RATE_KEY);
     if (saved) {
       const n = parseFloat(saved);
-      if (!Number.isNaN(n) && n > 0) resultValue.textContent = formatPrice(n);
+      if (!Number.isNaN(n) && n > 0) setHourlyResult(n);
     }
   } catch (_) {}
 

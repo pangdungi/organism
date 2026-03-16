@@ -6,45 +6,45 @@ const CUSTOM_SECTIONS_KEY = "todo-custom-sections";
 
 /** 리스트 기본 색상 (파스텔 톤) */
 export const DEFAULT_SECTION_COLORS = {
-  dream: "rgba(224, 238, 245, 0.6)",
-  sideincome: "rgba(231, 242, 207, 0.6)",
-  health: "rgba(245, 224, 233, 0.6)",
-  happy: "rgba(244, 227, 201, 0.6)",
-  braindump: "rgba(238, 237, 255, 0.6)",
+  braindump: "rgba(248, 207, 215, 0.6)",
+  dream: "rgba(147, 197, 253, 0.6)",
+  sideincome: "rgba(190, 242, 100, 0.6)",
+  health: "rgba(253, 164, 175, 0.6)",
+  happy: "rgba(253, 186, 116, 0.6)",
 };
 
 /** 시간가계부 생산/비생산/기타 기본 색상 (rgba, time-tag-pill용) */
 export const DEFAULT_TIME_CATEGORY_COLORS = {
   productive: "rgba(232, 164, 184, 0.9)",
   nonproductive: "rgba(107, 155, 209, 0.9)",
-  other: "rgba(232, 232, 232, 0.9)",
+  other: "rgba(231, 242, 207, 0.9)",
 };
 
 /** 시간가계부 작업(세부) 카테고리 기본 색상 - .time-tag-pill.cat-* 배경 */
 export const DEFAULT_TASK_CATEGORY_COLORS = {
   "": "rgba(209, 213, 219, 0.5)",
-  dream: "rgba(255, 182, 193, 0.7)",
-  sideincome: "rgba(191, 179, 255, 0.7)",
-  happiness: "rgba(255, 218, 185, 0.7)",
-  health: "rgba(144, 238, 144, 0.65)",
-  pleasure: "rgba(173, 216, 230, 0.7)",
+  dream: "rgba(147, 197, 253, 0.7)",
+  sideincome: "rgba(190, 242, 100, 0.7)",
+  happiness: "rgba(253, 186, 116, 0.7)",
+  health: "rgba(253, 164, 175, 0.7)",
+  pleasure: "rgba(255, 239, 213, 0.7)",
   dreamblocking: "rgba(255, 200, 124, 0.7)",
   unhappiness: "rgba(221, 160, 221, 0.65)",
   unhealthy: "rgba(176, 196, 222, 0.7)",
   moneylosing: "rgba(255, 160, 122, 0.65)",
-  work: "rgba(255, 239, 213, 0.8)",
+  work: "rgba(173, 216, 230, 0.7)",
   sleep: "rgba(230, 230, 250, 0.75)",
 };
 
 /** 커스텀 리스트용 기본 색상 풀 */
 const CUSTOM_SECTION_COLOR_POOL = [
-  "rgba(245, 239, 239, 0.6)",
-  "rgba(245, 224, 233, 0.6)",
-  "rgba(244, 217, 206, 0.6)",
-  "rgba(244, 227, 201, 0.6)",
-  "rgba(224, 238, 245, 0.6)",
-  "rgba(231, 242, 207, 0.6)",
-  "rgba(238, 237, 255, 0.6)",
+  "rgba(248, 207, 215, 0.6)",
+  "rgba(147, 197, 253, 0.6)",
+  "rgba(190, 242, 100, 0.6)",
+  "rgba(253, 164, 175, 0.6)",
+  "rgba(253, 186, 116, 0.6)",
+  "rgba(232, 164, 184, 0.6)",
+  "rgba(107, 155, 209, 0.6)",
 ];
 
 export function getCustomSections() {
@@ -112,15 +112,15 @@ function hashCode(str) {
   return h;
 }
 
-/** 파스텔톤 색상 프리셋 (#F5EFEF, #F5E0E9, #F4D9CE, #F4E3C9, #E0EEF5, #E7F2CF, #EEEDFF) */
+/** 파스텔톤 색상 프리셋 (팔레트 선택용) */
 export const PASTEL_PRESETS = [
-  "rgba(245, 239, 239, 0.6)",
-  "rgba(245, 224, 233, 0.6)",
-  "rgba(244, 217, 206, 0.6)",
-  "rgba(244, 227, 201, 0.6)",
-  "rgba(224, 238, 245, 0.6)",
+  "rgba(248, 207, 215, 0.6)",
+  "rgba(253, 186, 116, 0.6)",
+  "rgba(190, 242, 100, 0.6)",
+  "rgba(147, 197, 253, 0.6)",
+  "rgba(230, 230, 250, 0.6)",
+  "rgba(209, 213, 219, 0.6)",
   "rgba(231, 242, 207, 0.6)",
-  "rgba(238, 237, 255, 0.6)",
 ];
 
 export function getTodoSettings() {
