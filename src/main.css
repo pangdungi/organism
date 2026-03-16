@@ -16383,6 +16383,30 @@ body.kpi-resizing {
   border-color: #111827;
 }
 
+/* 나의 계정 - 로그아웃 버튼 */
+.idea-account-actions {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+.idea-btn-logout {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280;
+  background: transparent;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.idea-btn-logout:hover {
+  color: #374151;
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
 .idea-hourly-result-wrap {
   padding-top: 0.5rem;
   border-top: 1px solid #e5e7eb;

@@ -2,6 +2,7 @@
  * My account - 기본정보, 나의 시급계산하기, 색상 설정
  */
 
+import { signOut } from "../auth.js";
 import { getTodoSettings, saveTodoSettings, getCustomSections, DEFAULT_SECTION_COLORS, DEFAULT_TIME_CATEGORY_COLORS, DEFAULT_TASK_CATEGORY_COLORS, applyTimeCategoryColors, applyTaskCategoryColors } from "../utils/todoSettings.js";
 import { createColorPickerRow } from "../utils/todoSettingsModal.js";
 
@@ -103,8 +104,15 @@ export function render() {
       </div>
     </div>
     <div class="idea-basic-placeholder">기본정보를 입력할 수 있습니다.</div>
+    <div class="idea-account-actions">
+      <button type="button" class="idea-btn-logout">로그아웃</button>
+    </div>
   `;
   grid.appendChild(basicInfoWidget);
+
+  basicInfoWidget.querySelector(".idea-btn-logout").addEventListener("click", () => {
+    signOut();
+  });
 
   const fontDropdown = basicInfoWidget.querySelector(".idea-font-dropdown");
   const fontTrigger = basicInfoWidget.querySelector(".idea-font-trigger");
