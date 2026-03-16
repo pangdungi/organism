@@ -2072,6 +2072,7 @@ function createTaskNameInput(initialValue, onTaskSelect) {
 
   const input = document.createElement("input");
   input.type = "text";
+  input.name = "time-task-name";
   input.className = "time-input-task";
   input.placeholder = "Search";
   if (initialValue) input.value = initialValue;
@@ -3311,7 +3312,7 @@ export function render() {
       <div class="time-task-setup-body">
         <div class="time-add-task-field">
           <label>과제명</label>
-          <input type="text" class="time-add-task-name" placeholder="과제명 입력" />
+          <input type="text" class="time-add-task-name" name="time-add-task-name" placeholder="과제명 입력" />
         </div>
         <div class="time-add-task-field">
           <label>생산성</label>
@@ -3354,7 +3355,7 @@ export function render() {
               <label>시작 시간</label>
               <div class="time-task-log-datetime-input-wrap">
                 <input type="date" class="time-task-log-date-start" name="time-task-log-date" data-hide-delete-btn="true" data-use-native-mobile="true" />
-                <input type="text" class="time-task-log-time-start" placeholder="hh:mm" maxlength="5" />
+                <input type="text" class="time-task-log-time-start" name="time-task-log-time-start" placeholder="hh:mm" maxlength="5" />
               </div>
               <input type="hidden" class="time-task-log-start" />
             </div>
@@ -3362,7 +3363,7 @@ export function render() {
               <label>마감 시간</label>
               <div class="time-task-log-datetime-wrap time-task-log-datetime-wrap-end">
                 <div class="time-task-log-datetime-input-wrap">
-                  <input type="text" class="time-task-log-time-end" placeholder="hh:mm" maxlength="5" />
+                  <input type="text" class="time-task-log-time-end" name="time-task-log-time-end" placeholder="hh:mm" maxlength="5" />
                 </div>
               </div>
               <div class="time-task-log-time-adjust-btns">
@@ -3394,7 +3395,7 @@ export function render() {
         <div class="time-task-log-field">
           <label>메모 분류 태그</label>
           <div class="time-task-log-tags-wrap">
-            <input type="text" class="time-task-log-tag-input" placeholder="태그 입력 후 Enter" />
+            <input type="text" class="time-task-log-tag-input" name="time-task-log-tag" placeholder="태그 입력 후 Enter" />
             <div class="time-task-log-tag-list"></div>
           </div>
         </div>
@@ -3410,7 +3411,7 @@ export function render() {
             <div class="time-task-log-focus-row">
               <div class="time-task-log-focus-type-dropdown-wrap"></div>
               <button type="button" class="time-task-log-focus-now-btn">지금</button>
-              <input type="text" class="time-task-log-focus-time-input" placeholder="hh:mm" maxlength="5" title="시간 입력 후 Enter" />
+              <input type="text" class="time-task-log-focus-time-input" name="time-task-log-focus-time" placeholder="hh:mm" maxlength="5" title="시간 입력 후 Enter" />
             </div>
             <div class="time-task-log-focus-events-preview"></div>
           </div>
@@ -3426,7 +3427,7 @@ export function render() {
           <div class="time-task-log-expense-fields" hidden>
             <div class="time-task-log-field">
               <label>소비/수입명</label>
-              <input type="text" class="time-task-log-expense-name" placeholder="소비/수입명" />
+              <input type="text" class="time-task-log-expense-name" name="time-task-log-expense-name" placeholder="소비/수입명" />
             </div>
             <div class="time-task-log-field">
               <label>카테고리</label>
@@ -3438,7 +3439,7 @@ export function render() {
             </div>
             <div class="time-task-log-field">
               <label>금액</label>
-              <input type="text" class="time-task-log-expense-amount" placeholder="금액" inputmode="numeric" />
+              <input type="text" class="time-task-log-expense-amount" name="time-task-log-expense-amount" placeholder="금액" inputmode="numeric" />
             </div>
             <div class="time-task-log-expense-error" hidden></div>
           </div>
@@ -3480,7 +3481,7 @@ export function render() {
           </div>
           <div class="time-task-log-todo-fields" hidden>
             <div class="time-task-log-field">
-              <input type="text" class="time-task-log-todo-name" placeholder="할 일 이름 입력" />
+              <input type="text" class="time-task-log-todo-name" name="time-task-log-todo-name" placeholder="할 일 이름 입력" />
               <div class="time-task-log-todo-added-list" aria-live="polite"></div>
             </div>
           </div>

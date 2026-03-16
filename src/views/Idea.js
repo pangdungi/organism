@@ -15,6 +15,7 @@ export const FONT_OPTIONS = [
   { value: "nexonlv2", label: "NEXON Lv2 Gothic" },
   { value: "pretendard", label: "Pretendard" },
   { value: "notoserifkr", label: "Noto Serif KR" },
+  { value: "notosanskr", label: "Noto Sans KR" },
 ];
 
 export function applyAppFont() {
@@ -29,8 +30,10 @@ export function applyAppFont() {
       fontFamily = '"Pretendard", -apple-system, sans-serif';
     } else if (saved === "notoserifkr") {
       fontFamily = '"Noto Serif KR", serif';
-    } else {
+    } else if (saved === "notosanskr") {
       fontFamily = '"Noto Sans KR", -apple-system, sans-serif';
+    } else {
+      fontFamily = '"S-Core Dream 3", -apple-system, sans-serif';
     }
     document.documentElement.style.setProperty("--app-font-family", fontFamily);
     if (saved === "nexonlv2" || saved === "leeseoyun") {
@@ -39,6 +42,8 @@ export function applyAppFont() {
       document.documentElement.dataset.appFont = "pretendard";
     } else if (saved === "notoserifkr") {
       document.documentElement.dataset.appFont = "notoserifkr";
+    } else if (saved === "notosanskr") {
+      document.documentElement.dataset.appFont = "notosanskr";
     } else {
       delete document.documentElement.dataset.appFont;
     }
@@ -189,10 +194,10 @@ export function render() {
 
   fontPanel.addEventListener("click", (e) => e.stopPropagation());
 
-  // ----- 나의 시급계산하기 위젯 (모바일: 숨김) -----
+  // ----- 나의 시급계산하기 위젯 (모바일: 표시) -----
   const hourlyWidget = document.createElement("div");
   hourlyWidget.className =
-    "time-dashboard-widget idea-widget idea-widget-hourly hide-on-mobile";
+    "time-dashboard-widget idea-widget idea-widget-hourly";
   hourlyWidget.innerHTML = `
     <div class="time-dashboard-widget-title">나의 시급계산하기</div>
     <div class="idea-hourly-tabs">

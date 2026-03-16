@@ -650,7 +650,7 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
         </select>
       </div>
       <div class="calendar-event-bubble-name">
-        <input type="text" class="calendar-event-bubble-input" placeholder="할일 입력" />
+        <input type="text" name="calendar-event-name" class="calendar-event-bubble-input" placeholder="할일 입력" />
       </div>
       <button type="button" class="calendar-event-bubble-save">추가</button>
     </div>
@@ -3954,6 +3954,7 @@ function render1DayView(tabsElement) {
       const input = document.createElement("input");
       input.type = "text";
       input.className = "time-budget-time-input";
+      input.name = "calendar-time-budget";
       input.placeholder = "hh:mm";
       input.maxLength = 5;
       input.addEventListener("keydown", (e) => {

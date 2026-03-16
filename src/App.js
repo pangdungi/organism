@@ -1,5 +1,5 @@
 import { signOut } from "./auth.js";
-import { observeDatePickerInit } from "./utils/datePickerInit.js";
+import { observeDatePickerInit, initDatePickersIn } from "./utils/datePickerInit.js";
 import { getRoutineSyncedTaskNames } from "./utils/routineTimeSync.js";
 import { render as renderCalendar } from "./views/Calendar.js";
 import { saveTodoListBeforeUnmount } from "./views/TodoList.js";
@@ -223,6 +223,9 @@ export function mountApp(container) {
       if (render) {
         const content = render();
         if (content) p.appendChild(content);
+        if (window.matchMedia("(max-width: 767px)").matches) {
+          initDatePickersIn(p);
+        }
       } else {
         const div = document.createElement("p");
         div.textContent =
@@ -244,5 +247,7 @@ export function mountApp(container) {
   appPage.appendChild(appScreen);
   appPage.appendChild(bottomNav);
   container.appendChild(appPage);
-  observeDatePickerInit(container);
+  if (!window.matchMedia("(max-width: 767px)").matches) {
+    observeDatePickerInit(panel);
+  }
 }

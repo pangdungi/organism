@@ -47,6 +47,14 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "Noto Sans KR";
+  src: url("/fonts/NotoSansKR-VariableFont_wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --app-font-family: "S-Core Dream 3", -apple-system, sans-serif;
   /* 회색 톤 통일 */
@@ -619,7 +627,7 @@ body {
 
 .app-sidebar-nav {
   flex: 0 0 auto;
-  padding: 0.5rem 0;
+  padding: 0.5rem 0 0 0; /* 하단 패딩 제거: 나의 계정 탭 활성 시 위쪽 여백 없이 경계선까지 흰색 연속 */
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -1137,11 +1145,36 @@ body {
     box-shadow: none !important;
   }
 
-  /* 모바일: 나의 계정에서 시급계산하기만 표시 */
-  .idea-view .idea-widget-basic-settings,
+  /* 모바일: 나의 계정에서 기본설정·시급계산하기만 표시 (폰트·색상 숨김) */
   .idea-view .idea-widget-font,
   .idea-view .idea-widget-colors {
     display: none !important;
+  }
+
+  /* 모바일: 나의 계정 - 잘리지 않고 스크롤로 전체 보이게 */
+  .app-main:has(.idea-view) {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .app-main:has(.idea-view) .app-tab-panel {
+    overflow-y: visible !important;
+    min-height: min-content;
+    -webkit-overflow-scrolling: touch;
+  }
+  .app-main:has(.idea-view) .app-tab-panel > .idea-view {
+    overflow-y: visible !important;
+    min-height: min-content;
+  }
+  /* 나의 계정 모바일: 1열 배치, 여백 조정 */
+  .app-main:has(.idea-view) .idea-widget-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding-bottom: 1rem;
+  }
+  .app-main:has(.idea-view) .idea-view {
+    padding: 1rem;
+    padding-bottom: 1.5rem;
+    box-sizing: border-box;
   }
 
   /* 모바일 오늘 탭: 할일만 보이게 우선순위 열 숨김 + 열제목(할일) 숨김 */

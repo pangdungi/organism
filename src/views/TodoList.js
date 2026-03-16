@@ -726,7 +726,7 @@ function showAddListModal(options = {}) {
       </div>
       <div class="todo-list-modal-body">
         <p class="todo-list-modal-label">${label}</p>
-        <input type="text" class="todo-list-modal-input" placeholder="리스트 이름" maxlength="50" />
+        <input type="text" name="todo-list-modal-name" class="todo-list-modal-input" placeholder="리스트 이름" maxlength="50" />
         <p class="todo-list-modal-error" role="alert"></p>
       </div>
       <div class="todo-list-modal-footer">
@@ -882,6 +882,7 @@ function createSubtaskItem(parentTaskId, subtaskData, onRemove) {
   });
   const nameInput = document.createElement("input");
   nameInput.type = "text";
+  nameInput.name = "todo-subtask-name";
   nameInput.className = "todo-subtask-input";
   nameInput.value = name;
   nameInput.placeholder = "세부 할일 입력";
@@ -1023,6 +1024,7 @@ function createTaskRow(taskData = {}, options = {}) {
   nameWrap.className = "todo-cell-name-wrap";
   const nameInput = document.createElement("input");
   nameInput.type = "text";
+  nameInput.name = "todo-task-name";
   nameInput.value = name;
   let dateAreaClicked = false;
   if (isKpiTodo && kpiTodoId && storageKey) {
@@ -1149,6 +1151,7 @@ function createTaskRow(taskData = {}, options = {}) {
   const startInput = document.createElement("input");
   startInput.type = "date";
   startInput.className = "todo-start-input-hidden";
+  startInput.name = "todo-start-date";
   startInput.value = startDate;
   const syncStartDisplay = () => {
     const val = startInput.value;
@@ -1210,6 +1213,7 @@ function createTaskRow(taskData = {}, options = {}) {
   const dueInput = document.createElement("input");
   dueInput.type = "date";
   dueInput.className = "todo-due-input-hidden";
+  dueInput.name = "todo-due-date";
   dueInput.value = dueDate;
   const syncDueDisplay = () => {
     const val = dueInput.value;

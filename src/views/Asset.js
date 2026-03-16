@@ -4116,8 +4116,8 @@ function renderExpenseView(options = {}) {
       saveExpense();
     });
     tr.innerHTML = `
-      <td class="asset-expense-cell-name"><input type="text" class="asset-expense-input-name" placeholder="" value="${(data.name || "").replace(/"/g, "&quot;")}" /></td>
-      <td class="asset-expense-cell-amount"><input type="text" class="asset-expense-input-amount" placeholder="0" value="${(data.amount || "").replace(/"/g, "&quot;")}" /></td>
+      <td class="asset-expense-cell-name"><input type="text" class="asset-expense-input-name" name="asset-expense-name" placeholder="" value="${(data.name || "").replace(/"/g, "&quot;")}" /></td>
+      <td class="asset-expense-cell-amount"><input type="text" class="asset-expense-input-amount" name="asset-expense-amount" placeholder="0" value="${(data.amount || "").replace(/"/g, "&quot;")}" /></td>
       <td class="asset-expense-cell-date">
         <span class="asset-expense-date-display">${dateDisplayVal}</span>
         <input type="date" class="asset-expense-input-date" name="asset-expense-date" value="${dateValue}" tabindex="-1" />
@@ -4125,7 +4125,7 @@ function renderExpenseView(options = {}) {
       <td class="asset-expense-cell-category"></td>
       <td class="asset-expense-cell-classification"></td>
       <td class="asset-expense-cell-payment"></td>
-      <td class="asset-expense-cell-memo"><input type="text" class="asset-expense-input-memo" placeholder="" value="${(data.memo || "").replace(/"/g, "&quot;")}" /></td>
+      <td class="asset-expense-cell-memo"><input type="text" class="asset-expense-input-memo" name="asset-expense-memo" placeholder="" value="${(data.memo || "").replace(/"/g, "&quot;")}" /></td>
       <td class="asset-expense-cell-delete"><div class="asset-expense-delete-wrap"></div></td>
     `;
     tr.querySelector(".asset-expense-delete-wrap").appendChild(delBtn);
