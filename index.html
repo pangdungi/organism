@@ -77,22 +77,62 @@
               <div class="login-field">
                 <label class="login-label" for="login-pw">비밀번호</label>
                 <input type="password" id="login-pw" class="login-input" placeholder="비밀번호" autocomplete="current-password" />
+                <label class="login-show-pw">
+                  <input type="checkbox" id="login-show-pw" class="login-show-pw-checkbox" /> 비밀번호 보기
+                </label>
               </div>
               <button type="button" class="login-btn-cta" id="btn-do-login">로그인</button>
             </form>
             <div class="login-change-pw">
               <button type="button" class="login-link" id="btn-show-change-pw">비밀번호 변경</button>
+              <span class="login-link-sep">·</span>
+              <button type="button" class="login-link" id="btn-show-forgot-pw">비밀번호 찾기</button>
+              <div id="forgot-pw-form" class="login-change-form" style="display:none">
+                <p class="login-forgot-desc">가입한 이메일 주소를 입력하면 비밀번호 재설정 링크를 보내드려요.</p>
+                <input type="text" id="forgot-pw-email" class="login-input" placeholder="이메일 주소" autocomplete="email" />
+                <div class="login-change-actions">
+                  <button type="button" class="login-btn-cta login-btn-sm" id="btn-send-reset-mail">재설정 메일 보내기</button>
+                  <button type="button" class="login-link" id="btn-cancel-forgot">취소</button>
+                </div>
+              </div>
               <div id="change-pw-form" class="login-change-form" style="display:none">
                 <input type="text" id="cp-email" class="login-input" placeholder="아이디(이메일)" />
                 <input type="password" id="cp-current" class="login-input" placeholder="현재 비밀번호" />
                 <input type="password" id="cp-new" class="login-input" placeholder="새 비밀번호" />
                 <input type="password" id="cp-confirm" class="login-input" placeholder="새 비밀번호 확인" />
+                <label class="login-show-pw">
+                  <input type="checkbox" id="cp-show-pw" class="login-show-pw-checkbox" /> 비밀번호 보기
+                </label>
                 <div class="login-change-actions">
                   <button type="button" class="login-btn-cta login-btn-sm" id="btn-change-pw">변경하기</button>
                   <button type="button" class="login-link" id="btn-cancel-pw">취소</button>
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 비밀번호 재설정 (이메일 링크 클릭 후) -->
+      <div id="reset-password-page" class="page login-page" style="display:none">
+        <div class="login-wrap">
+          <div class="login-card">
+            <h1 class="login-title">새 비밀번호 설정</h1>
+            <p class="login-desc">새 비밀번호를 입력해 주세요.</p>
+            <form class="login-form" onsubmit="return false">
+              <div class="login-field">
+                <label class="login-label" for="reset-pw-new">새 비밀번호</label>
+                <input type="password" id="reset-pw-new" class="login-input" placeholder="새 비밀번호 (6자 이상)" autocomplete="new-password" />
+              </div>
+              <div class="login-field">
+                <label class="login-label" for="reset-pw-confirm">새 비밀번호 확인</label>
+                <input type="password" id="reset-pw-confirm" class="login-input" placeholder="새 비밀번호 확인" autocomplete="new-password" />
+                <label class="login-show-pw">
+                  <input type="checkbox" id="reset-pw-show" class="login-show-pw-checkbox" /> 비밀번호 보기
+                </label>
+              </div>
+              <button type="button" class="login-btn-cta" id="btn-reset-pw-submit">비밀번호 변경하기</button>
+            </form>
           </div>
         </div>
       </div>

@@ -21,6 +21,38 @@ export async function signOut() {
   showOnly("main");
 }
 
+/** 비밀번호 재설정 메일 요청 (가입 이메일로 링크 발송) */
+export async function resetPasswordRequest(email) {
+  if (!email?.trim()) {
+    return { ok: false, msg: "이메일을 입력하세요." };
+  }
+  if (!supabase) {
+    return { ok: false, msg: "연결되지 않았습니다." };
+  }
+  const redirectTo = `${window.location.origin}${window.location.pathname || "/"}`;
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+  if (error) {
+    return { ok: false, msg: error.message || "메일 발송에 실패했어요." };
+  }
+  return { ok: true };
+}
+
+/** 비밀번호 재설정 링크 클릭 후 새 비밀번호 설정 */
+export async function updatePasswordForRecovery(newPassword) {
+  if (!newPassword || newPassword.length < 6) {
+    return { ok: false, msg: "비밀번호는 6자 이상이어야 해요." };
+  }
+  if (!supabase) {
+    return { ok: false, msg: "연결되지 않았습니다." };
+  }
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) {
+    return { ok: false, msg: error.message || "비밀번호 변경에 실패했어요." };
+  }
+  await supabase.auth.signOut();
+  return { ok: true };
+}
+
 export async function changePassword({ email, currentPassword, newPassword }) {
   if (!email?.trim() || !currentPassword || !newPassword) {
     return { ok: false, msg: "모든 칸을 입력하세요." };

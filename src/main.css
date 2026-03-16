@@ -480,6 +480,23 @@ body {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 
+.login-show-pw {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: #6b7280;
+  cursor: pointer;
+  user-select: none;
+  margin-top: 0.25rem;
+}
+
+.login-show-pw-checkbox {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}
+
 .login-btn-cta {
   margin-top: 0.25rem;
   padding: 0.9rem 1.5rem;
@@ -510,6 +527,19 @@ body {
   margin-top: 1.75rem;
   padding-top: 1.75rem;
   border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.login-link-sep {
+  margin: 0 0.35rem;
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+
+.login-forgot-desc {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  color: #6b7280;
+  line-height: 1.4;
 }
 
 .login-link {

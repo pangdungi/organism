@@ -1,6 +1,6 @@
 import "./main.css";
 import { showOnly } from "./pages.js";
-import { login, signOut, changePassword } from "./auth.js";
+import { login, signOut, changePassword, resetPasswordRequest, updatePasswordForRecovery } from "./auth.js";
 import { mountApp } from "./App.js";
 import { supabase } from "./supabase.js";
 import { applyAppFont } from "./views/Idea.js";
@@ -16,12 +16,53 @@ function init() {
   document.getElementById("btn-login-cta")?.addEventListener("click", goLogin);
   document.getElementById("btn-do-login")?.addEventListener("click", doLogin);
   document.getElementById("btn-show-change-pw")?.addEventListener("click", () => {
+    document.getElementById("forgot-pw-form").style.display = "none";
     document.getElementById("change-pw-form").style.display = "block";
+  });
+  document.getElementById("btn-show-forgot-pw")?.addEventListener("click", () => {
+    document.getElementById("change-pw-form").style.display = "none";
+    document.getElementById("forgot-pw-form").style.display = "block";
   });
   document.getElementById("btn-cancel-pw")?.addEventListener("click", () => {
     document.getElementById("change-pw-form").style.display = "none";
   });
+  document.getElementById("btn-cancel-forgot")?.addEventListener("click", () => {
+    document.getElementById("forgot-pw-form").style.display = "none";
+  });
   document.getElementById("btn-change-pw")?.addEventListener("click", doChangePassword);
+  document.getElementById("btn-send-reset-mail")?.addEventListener("click", doForgotPassword);
+  document.getElementById("btn-reset-pw-submit")?.addEventListener("click", doResetPassword);
+
+  // PASSWORD_RECOVERY: 이메일 링크 클릭 후 새 비밀번호 페이지 표시
+  supabase?.auth?.onAuthStateChange?.((event) => {
+    if (event === "PASSWORD_RECOVERY") {
+      showOnly("reset-password");
+    }
+  });
+
+  // 로그인 비밀번호 보기
+  document.getElementById("login-show-pw")?.addEventListener("change", (e) => {
+    const pw = document.getElementById("login-pw");
+    if (pw) pw.type = e.target.checked ? "text" : "password";
+  });
+
+  // 비밀번호 변경 폼 비밀번호 보기
+  document.getElementById("cp-show-pw")?.addEventListener("change", (e) => {
+    const type = e.target.checked ? "text" : "password";
+    ["cp-current", "cp-new", "cp-confirm"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.type = type;
+    });
+  });
+
+  // 새 비밀번호 설정 폼 비밀번호 보기
+  document.getElementById("reset-pw-show")?.addEventListener("change", (e) => {
+    const type = e.target.checked ? "text" : "password";
+    ["reset-pw-new", "reset-pw-confirm"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.type = type;
+    });
+  });
 
   const app = document.getElementById("app");
   if (app) app.style.display = "block";
@@ -61,6 +102,34 @@ async function doChangePassword() {
   if (result.ok) {
     document.getElementById("change-pw-form").style.display = "none";
     alert("비밀번호 변경됐어. 다시 로그인해 주세요.");
+    showOnly("login");
+  } else {
+    alert(result.msg);
+  }
+}
+
+async function doForgotPassword() {
+  const email = document.getElementById("forgot-pw-email")?.value?.trim() || "";
+  const result = await resetPasswordRequest(email);
+  if (result.ok) {
+    document.getElementById("forgot-pw-form").style.display = "none";
+    document.getElementById("forgot-pw-email").value = "";
+    alert("비밀번호 재설정 메일을 보냈어요. 이메일을 확인해 주세요.");
+  } else {
+    alert(result.msg);
+  }
+}
+
+async function doResetPassword() {
+  const newPw = document.getElementById("reset-pw-new")?.value || "";
+  const confirm = document.getElementById("reset-pw-confirm")?.value || "";
+  if (newPw !== confirm) {
+    alert("새 비밀번호가 일치하지 않아요.");
+    return;
+  }
+  const result = await updatePasswordForRecovery(newPw);
+  if (result.ok) {
+    alert("비밀번호가 변경됐어요. 새 비밀번호로 로그인해 주세요.");
     showOnly("login");
   } else {
     alert(result.msg);
