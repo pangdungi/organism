@@ -3354,7 +3354,7 @@ export function render() {
               <label>시작 시간</label>
               <div class="time-task-log-datetime-input-wrap">
                 <input type="date" class="time-task-log-date-start" name="time-task-log-date" data-hide-delete-btn="true" data-use-native-mobile="true" />
-                <input type="text" class="time-task-log-time-start" name="time-task-log-time-start" placeholder="hh:mm" maxlength="5" />
+                <input type="text" class="time-task-log-time-start" name="time-task-log-time-start" placeholder="hh:mm" maxlength="5" style="font-family: 'Noto Serif KR', serif; font-weight: 200" />
               </div>
               <input type="hidden" class="time-task-log-start" />
             </div>
@@ -3363,7 +3363,7 @@ export function render() {
               <div class="time-task-log-end-row">
                 <div class="time-task-log-datetime-wrap time-task-log-datetime-wrap-end">
                   <div class="time-task-log-datetime-input-wrap">
-                    <input type="text" class="time-task-log-time-end" name="time-task-log-time-end" placeholder="hh:mm" maxlength="5" />
+                    <input type="text" class="time-task-log-time-end" name="time-task-log-time-end" placeholder="hh:mm" maxlength="5" style="font-family: 'Noto Serif KR', serif; font-weight: 200" />
                   </div>
                 </div>
                 <div class="time-task-log-time-adjust-btns">
@@ -3387,37 +3387,66 @@ export function render() {
           <h4 class="time-task-log-daily-todos-title">매일 할일 목록</h4>
           <div class="time-task-log-daily-todos-list"></div>
         </div>
-        <div class="time-task-log-accordion-item" data-accordion="memo">
-          <div class="time-task-log-accordion-header" role="button" tabindex="0" aria-expanded="false" aria-controls="time-task-log-accordion-memo">
-            <span class="time-task-log-accordion-title">메모 & 태그</span>
-            <span class="time-task-log-accordion-chevron" aria-hidden="true">▶</span>
-          </div>
-          <div class="time-task-log-accordion-body" id="time-task-log-accordion-memo" hidden>
-            <div class="time-task-log-field">
-              <textarea class="time-task-log-feedback time-task-log-memo-input" placeholder="" rows="3"></textarea>
-            </div>
-            <div class="time-task-log-field">
-              <label>태그</label>
-              <div class="time-task-log-tags-wrap">
-                <input type="text" class="time-task-log-tag-input" name="time-task-log-tag" placeholder="태그 입력 후 Enter" />
-                <div class="time-task-log-tag-list"></div>
+        <div class="time-task-log-memo-row">
+          <span class="time-task-log-memo-label">메모 & 태그</span>
+          <button type="button" class="time-task-log-memo-add-btn" aria-label="메모 추가">+</button>
+          <div class="time-task-log-tag-list"></div>
+          <textarea class="time-task-log-feedback time-task-log-memo-input" hidden aria-hidden="true"></textarea>
+        </div>
+        <div class="time-task-log-memo-inner-modal" hidden>
+          <div class="time-task-log-memo-inner-backdrop"></div>
+          <div class="time-task-log-memo-inner-panel">
+            <div class="time-task-log-memo-inner-body">
+              <div class="time-task-log-field">
+                <textarea class="time-task-log-memo-inner-input" placeholder="메모 입력" rows="3"></textarea>
               </div>
+              <div class="time-task-log-field">
+                <label>태그</label>
+                <div class="time-task-log-tags-wrap">
+                  <input type="text" class="time-task-log-memo-inner-tag-input" placeholder="태그 입력 후 Enter" />
+                  <div class="time-task-log-memo-inner-tag-list"></div>
+                </div>
+              </div>
+            </div>
+            <div class="time-task-log-memo-inner-footer">
+              <button type="button" class="time-task-log-memo-inner-cancel">취소</button>
+              <button type="button" class="time-task-log-memo-inner-add">추가</button>
             </div>
           </div>
         </div>
-        <div class="time-task-log-focus-section time-task-log-accordion-item" data-accordion="focus">
-          <div class="time-task-log-focus-header time-task-log-accordion-header" role="button" tabindex="0" aria-expanded="false">
-            <h4 class="time-task-log-focus-title">방해기록</h4>
+        <div class="time-task-log-focus-row">
+          <span class="time-task-log-focus-label">방해기록</span>
+          <button type="button" class="time-task-log-focus-add-btn" aria-label="방해기록 추가">+</button>
+          <div class="time-task-log-focus-events-pills"></div>
+        </div>
+        <div class="time-task-log-focus-inner-modal" hidden>
+          <div class="time-task-log-focus-inner-backdrop"></div>
+          <div class="time-task-log-focus-inner-panel">
+            <div class="time-task-log-focus-inner-body">
+              <div class="time-task-log-focus-inner-type-wrap"></div>
+              <div class="time-task-log-focus-inner-input-row">
+                <input type="text" class="time-task-log-focus-inner-time-input" placeholder="hh:mm" maxlength="5" title="시간 입력 후 Enter" style="font-family: 'Noto Serif KR', serif; font-weight: 200" />
+                <button type="button" class="time-task-log-focus-inner-now-btn">지금</button>
+              </div>
+              <div class="time-task-log-focus-inner-events-list"></div>
+            </div>
+            <div class="time-task-log-focus-inner-footer">
+              <button type="button" class="time-task-log-focus-inner-cancel">취소</button>
+              <button type="button" class="time-task-log-focus-inner-add">추가</button>
+            </div>
+          </div>
+        </div>
+        <div class="time-task-log-todo-section time-task-log-accordion-item" data-accordion="todo">
+          <div class="time-task-log-todo-header time-task-log-accordion-header" role="button" tabindex="0" aria-expanded="false">
+            <h4 class="time-task-log-todo-title">투두 리스트 (브레인 덤프에 기록)</h4>
             <span class="time-task-log-accordion-chevron" aria-hidden="true">▶</span>
           </div>
           <div class="time-task-log-accordion-body">
-          <div class="time-task-log-focus-fields">
-            <div class="time-task-log-focus-row">
-              <div class="time-task-log-focus-type-dropdown-wrap"></div>
-              <input type="text" class="time-task-log-focus-time-input" name="time-task-log-focus-time" placeholder="hh:mm" maxlength="5" title="시간 입력 후 Enter" />
-              <button type="button" class="time-task-log-focus-now-btn">지금</button>
+          <div class="time-task-log-todo-fields">
+            <div class="time-task-log-field">
+              <input type="text" class="time-task-log-todo-name" name="time-task-log-todo-name" placeholder="할 일 이름 입력" />
+              <div class="time-task-log-todo-added-list" aria-live="polite"></div>
             </div>
-            <div class="time-task-log-focus-events-preview"></div>
           </div>
           </div>
         </div>
@@ -3584,20 +3613,69 @@ export function render() {
     });
   }
 
-  if (taskLogTagInput && taskLogTagListEl) {
-    taskLogTagInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === ",") {
-        if (e.isComposing) return; /* 한글 조합 중 Enter 시 마지막 글자 중복 방지 */
-        e.preventDefault();
-        const val = (taskLogTagInput.value || "").trim().replace(/^#/, "");
-        if (val && !taskLogMemoTags.includes(val)) {
-          taskLogMemoTags.push(val);
-          renderTaskLogTagPills();
-          taskLogTagInput.value = "";
-        }
-      }
+  /* 메모 + 버튼 → 내부 모달 (토글 대신) */
+  const taskLogMemoAddBtn = taskLogModal.querySelector(".time-task-log-memo-add-btn");
+  const taskLogMemoInnerModal = taskLogModal.querySelector(".time-task-log-memo-inner-modal");
+  const taskLogMemoInnerBackdrop = taskLogModal.querySelector(".time-task-log-memo-inner-backdrop");
+  const taskLogMemoInnerInput = taskLogModal.querySelector(".time-task-log-memo-inner-input");
+  const taskLogMemoInnerTagInput = taskLogModal.querySelector(".time-task-log-memo-inner-tag-input");
+  const taskLogMemoInnerTagList = taskLogModal.querySelector(".time-task-log-memo-inner-tag-list");
+  const taskLogMemoInnerCancel = taskLogModal.querySelector(".time-task-log-memo-inner-cancel");
+  const taskLogMemoInnerAdd = taskLogModal.querySelector(".time-task-log-memo-inner-add");
+
+  let taskLogMemoModalTags = [];
+
+  function renderMemoModalTagPills() {
+    if (!taskLogMemoInnerTagList) return;
+    taskLogMemoInnerTagList.innerHTML = "";
+    taskLogMemoModalTags.forEach((tag, i) => {
+      const pill = document.createElement("span");
+      pill.className = "time-memo-tag-chip time-task-log-tag-pill";
+      pill.innerHTML = `<span class="time-memo-tag-chip-text">${escapeHtml(tag)}</span><button type="button" class="time-memo-tag-chip-remove" aria-label="태그 삭제">&times;</button>`;
+      pill.querySelector(".time-memo-tag-chip-remove")?.addEventListener("click", () => {
+        taskLogMemoModalTags = taskLogMemoModalTags.filter((_, idx) => idx !== i);
+        renderMemoModalTagPills();
+      });
+      taskLogMemoInnerTagList.appendChild(pill);
     });
   }
+
+  function openMemoInnerModal() {
+    if (taskLogMemoInnerModal) taskLogMemoInnerModal.hidden = false;
+    if (taskLogMemoInnerInput) taskLogMemoInnerInput.value = taskLogFeedbackInput?.value || "";
+    taskLogMemoModalTags = taskLogMemoTags.slice();
+    renderMemoModalTagPills();
+    if (taskLogMemoInnerTagInput) taskLogMemoInnerTagInput.value = "";
+    taskLogMemoInnerInput?.focus();
+  }
+
+  function closeMemoInnerModal() {
+    if (taskLogMemoInnerModal) taskLogMemoInnerModal.hidden = true;
+  }
+
+  taskLogMemoAddBtn?.addEventListener("click", openMemoInnerModal);
+  taskLogMemoInnerBackdrop?.addEventListener("click", closeMemoInnerModal);
+  taskLogMemoInnerCancel?.addEventListener("click", closeMemoInnerModal);
+
+  taskLogMemoInnerAdd?.addEventListener("click", () => {
+    if (taskLogFeedbackInput) taskLogFeedbackInput.value = (taskLogMemoInnerInput?.value || "").trim();
+    taskLogMemoTags = taskLogMemoModalTags.slice();
+    renderTaskLogTagPills();
+    closeMemoInnerModal();
+  });
+
+  taskLogMemoInnerTagInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === ",") {
+      if (e.isComposing) return;
+      e.preventDefault();
+      const val = (taskLogMemoInnerTagInput.value || "").trim().replace(/^#/, "");
+      if (val && !taskLogMemoModalTags.includes(val)) {
+        taskLogMemoModalTags.push(val);
+        renderMemoModalTagPills();
+        taskLogMemoInnerTagInput.value = "";
+      }
+    }
+  });
 
   const normalizeHhMm = (val) => {
     if (!val || typeof val !== "string") return "";
@@ -4536,7 +4614,8 @@ export function render() {
   const FOCUS_TYPE_ICONS = [
     { type: "스마트폰", svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m11.716 20.201 8.485-8.485"/><path d="m3.799 12.284 8.485-8.485"/><path d="m13.13 21.615-10.745-10.745c-.781-.781-.781-2.047 0-2.828l5.657-5.657c.781-.781 2.047-.781 2.828 0l10.745 10.745c.781.781.781 2.047 0 2.828l-5.657 5.657c-.781.781-2.047.781-2.828 0z"/><path d="m8 23c-3.866 0-7-3.134-7-7"/><path d="m16 1c3.866 0 7 3.134 7 7"/></g></svg>' },
     { type: "잡생각", svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 1h-5c-4.694 0-8.5 3.806-8.5 8.5 0 4.182 3.022 7.65 7 8.36v4.14l6-4h.5c4.694 0 8.5-3.806 8.5-8.5s-3.806-8.5-8.5-8.5z"/><path d="m12 10v-4"/><path d="m12 13v-.01"/></g></svg>' },
-    { type: "피곤/배고픔", svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="3.5" r="2.5"/><path d="m4 10h5 6 5"/><path d="m15 17h-6"/><path d="m6 23 3-6v-6.586"/><path d="m15 10.414v6.586l3 6"/></g></svg>' },
+    { type: "배고픔", svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 1v6"/><path d="m2 1v8c0 1.105.895 2 2 2v10c0 1.105.895 2 2 2s2-.895 2-2v-10c1.105 0 2-.895 2-2v-8"/><path d="m22 7c0-3.314-1.791-6-4-6s-4 2.686-4 6c0 2.22.806 4.153 2 5.191v8.809c0 1.105.895 2 2 2s2-.895 2-2v-8.809c1.194-1.038 2-2.971 2-5.191z"/></g></svg>' },
+    { type: "피곤함", svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="3.5" r="2.5"/><path d="m4 10h5 6 5"/><path d="m15 17h-6"/><path d="m6 23 3-6v-6.586"/><path d="m15 10.414v6.586l3 6"/></g></svg>' },
   ];
   function buildFocusTypeIconButtons(initialValue) {
     const wrap = document.createElement("div");
@@ -4548,7 +4627,8 @@ export function render() {
       btn.className = "time-task-log-focus-type-icon-btn";
       btn.dataset.type = type;
       btn.title = type;
-      btn.innerHTML = svg;
+      const label = type === "피곤함" ? "피곤" : type;
+      btn.innerHTML = `${svg}<span class="time-task-log-focus-type-icon-btn-label">${label}</span>`;
       btn.addEventListener("click", () => {
         value = value === type ? "" : type;
         wrap.querySelectorAll(".time-task-log-focus-type-icon-btn").forEach((b) => b.classList.toggle("selected", b.dataset.type === value));
@@ -4576,12 +4656,12 @@ export function render() {
   taskLogExpenseCategoryWrap.appendChild(expenseCategoryDropdown);
   taskLogExpenseClassificationWrap.appendChild(expenseClassificationDropdown);
 
-  const taskLogFocusTypeDropdownWrap = taskLogModal.querySelector(
-    ".time-task-log-focus-type-dropdown-wrap",
+  const taskLogFocusInnerTypeWrap = taskLogModal.querySelector(
+    ".time-task-log-focus-inner-type-wrap",
   );
   const focusTypeDropdown = buildFocusTypeIconButtons("");
-  if (taskLogFocusTypeDropdownWrap) {
-    taskLogFocusTypeDropdownWrap.appendChild(focusTypeDropdown);
+  if (taskLogFocusInnerTypeWrap) {
+    taskLogFocusInnerTypeWrap.appendChild(focusTypeDropdown);
   }
 
   const EXPENSE_TASK_NAMES = ["생산적 소비", "비생산적 소비"];
@@ -4712,15 +4792,24 @@ export function render() {
     });
   }
   let taskLogFocusEvents = [];
-  const focusEventsPreviewEl = taskLogModal.querySelector(
-    ".time-task-log-focus-events-preview",
+  const focusRowEventsPills = taskLogModal.querySelector(
+    ".time-task-log-focus-events-pills",
   );
-  const focusNowBtn = taskLogModal.querySelector(
-    ".time-task-log-focus-now-btn",
+  const focusModalEventsList = taskLogModal.querySelector(
+    ".time-task-log-focus-inner-events-list",
   );
-  const focusTimeInput = taskLogModal.querySelector(
-    ".time-task-log-focus-time-input",
+  const focusModalNowBtn = taskLogModal.querySelector(
+    ".time-task-log-focus-inner-now-btn",
   );
+  const focusModalTimeInput = taskLogModal.querySelector(
+    ".time-task-log-focus-inner-time-input",
+  );
+  const focusModal = taskLogModal.querySelector(".time-task-log-focus-inner-modal");
+  const focusModalBackdrop = taskLogModal.querySelector(".time-task-log-focus-inner-backdrop");
+  const focusModalCancel = taskLogModal.querySelector(".time-task-log-focus-inner-cancel");
+  const focusModalAdd = taskLogModal.querySelector(".time-task-log-focus-inner-add");
+  const focusAddBtn = taskLogModal.querySelector(".time-task-log-focus-add-btn");
+  let taskLogFocusModalEvents = [];
   let taskLogFocusTypeValue = "";
 
   function isValidHhMm(val) {
@@ -4758,12 +4847,21 @@ export function render() {
     return events.map((e) => `${e.time || ""}|${e.type || ""}`.trim()).filter(Boolean).join(";");
   }
 
-  function updateFocusPreview() {
-    const n = taskLogFocusEvents.length;
-    if (!focusEventsPreviewEl) return;
-    focusEventsPreviewEl.hidden = n === 0;
-    focusEventsPreviewEl.innerHTML = "";
-    taskLogFocusEvents.forEach((e, idx) => {
+  function updateFocusRowPills() {
+    if (!focusRowEventsPills) return;
+    focusRowEventsPills.innerHTML = "";
+    taskLogFocusEvents.forEach((e) => {
+      const pill = document.createElement("span");
+      pill.className = "time-task-log-focus-event-pill";
+      pill.textContent = e.time ? `${e.time} ${e.type}`.trim() : e.type || "";
+      focusRowEventsPills.appendChild(pill);
+    });
+  }
+
+  function updateFocusModalEventsList() {
+    if (!focusModalEventsList) return;
+    focusModalEventsList.innerHTML = "";
+    taskLogFocusModalEvents.forEach((e, idx) => {
       const item = document.createElement("div");
       item.className = "time-task-log-focus-event-item";
       const label = document.createElement("span");
@@ -4776,42 +4874,68 @@ export function render() {
       delBtn.title = "삭제";
       delBtn.addEventListener("click", (ev) => {
         ev.stopPropagation();
-        taskLogFocusEvents.splice(idx, 1);
-        updateFocusPreview();
+        taskLogFocusModalEvents.splice(idx, 1);
+        updateFocusModalEventsList();
       });
       item.appendChild(label);
       item.appendChild(delBtn);
-      focusEventsPreviewEl.appendChild(item);
+      focusModalEventsList.appendChild(item);
     });
   }
 
-  focusNowBtn?.addEventListener("click", () => {
-    const nowTime = getCurrentHHMM();
-    if (taskLogFocusEvents.some((e) => e.time === nowTime)) return;
-    const type = (focusTypeDropdown?._getValue?.() || "").trim();
-    taskLogFocusEvents.push({ time: nowTime, type });
-    updateFocusPreview();
+  function openFocusModal() {
+    taskLogFocusModalEvents = taskLogFocusEvents.slice();
+    updateFocusModalEventsList();
+    if (focusModal) focusModal.hidden = false;
+    if (focusModalTimeInput) focusModalTimeInput.value = "";
+    if (taskLogFocusModalEvents.length > 0) {
+      const last = taskLogFocusModalEvents[taskLogFocusModalEvents.length - 1];
+      focusTypeDropdown?._setValue?.(last.type || "");
+    }
+    focusModalTimeInput?.focus();
+  }
+
+  function closeFocusModal() {
+    if (focusModal) focusModal.hidden = true;
+  }
+
+  focusAddBtn?.addEventListener("click", openFocusModal);
+  focusModalBackdrop?.addEventListener("click", closeFocusModal);
+  focusModalCancel?.addEventListener("click", closeFocusModal);
+
+  focusModalAdd?.addEventListener("click", () => {
+    taskLogFocusEvents = taskLogFocusModalEvents.slice();
+    updateFocusRowPills();
+    closeFocusModal();
   });
 
-  focusTimeInput?.addEventListener("input", (e) => {
+  focusModalNowBtn?.addEventListener("click", () => {
+    const nowTime = getCurrentHHMM();
+    if (taskLogFocusModalEvents.some((e) => e.time === nowTime)) return;
+    const type = (focusTypeDropdown?._getValue?.() || "").trim();
+    taskLogFocusModalEvents.push({ time: nowTime, type });
+    updateFocusModalEventsList();
+  });
+
+  focusModalTimeInput?.addEventListener("input", (e) => {
     const formatted = formatToHhMm(e.target.value);
     if (formatted !== e.target.value) e.target.value = formatted;
   });
-  focusTimeInput?.addEventListener("keydown", (e) => {
+  focusModalTimeInput?.addEventListener("keydown", (e) => {
     if (e.key !== "Enter") return;
     e.preventDefault();
     const type = (focusTypeDropdown?._getValue?.() || "").trim();
-    const timeVal = (focusTimeInput?.value || "").trim();
+    const timeVal = (focusModalTimeInput?.value || "").trim();
     if (!isValidHhMm(timeVal)) {
       alert("hh:mm 형식으로 입력해주세요 (예: 09:30).");
       return;
     }
     const [h, m] = timeVal.split(":").map((x) => parseInt(x, 10) || 0);
     const normalized = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-    if (taskLogFocusEvents.some((ev) => ev.time === normalized)) return;
-    taskLogFocusEvents.push({ time: normalized, type });
-    updateFocusPreview();
-    focusTimeInput.value = "";
+    if (taskLogFocusModalEvents.some((ev) => ev.time === normalized)) return;
+    taskLogFocusModalEvents.push({ time: normalized, type });
+    updateFocusModalEventsList();
+    focusModalTimeInput.value = "";
   });
   function updateScoreBtnStates(container, value) {
     if (!container) return;
@@ -4999,7 +5123,7 @@ export function render() {
     if (taskLogKpiTodosList) taskLogKpiTodosList.innerHTML = "";
     taskLogFocusEvents = [];
     taskLogFocusTypeValue = "";
-    if (focusTimeInput) focusTimeInput.value = "";
+    if (focusModalTimeInput) focusModalTimeInput.value = "";
     focusTypeDropdown?._setValue?.("");
     updateFocusPreview();
   }
@@ -5091,16 +5215,7 @@ export function render() {
       taskLogFocusEvents.length > 0
         ? taskLogFocusEvents[taskLogFocusEvents.length - 1].type
         : "";
-    if (focusRaw && taskLogFocusSection) {
-      taskLogFocusSection.classList.add("time-task-log-accordion-expanded");
-      const fb = taskLogFocusSection.querySelector(".time-task-log-accordion-body");
-      const ch = taskLogFocusSection.querySelector(".time-task-log-accordion-chevron");
-      const hd = taskLogFocusSection.querySelector(".time-task-log-accordion-header");
-      if (fb) fb.hidden = false;
-      if (ch) ch.textContent = "▼";
-      if (hd) hd.setAttribute("aria-expanded", "true");
-    }
-    updateFocusPreview();
+    if (focusRaw) updateFocusRowPills();
     focusTypeDropdown?._setValue?.(taskLogFocusTypeValue || "");
   }
 

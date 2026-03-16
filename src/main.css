@@ -233,6 +233,14 @@ body {
   );
 }
 
+/* 과제 기록 모달·방해기록 모달: 시간 입력란만 세리프체 (#app input 덮어쓰기) */
+#app input.time-task-log-time-start,
+#app input.time-task-log-time-end,
+#app input.time-task-log-focus-inner-time-input {
+  font-family: "Noto Serif KR", serif !important;
+  font-weight: 200 !important;
+}
+
 /* ----- 랜딩 페이지 (ClickUp 스타일) ----- */
 .landing-page {
   display: flex;
@@ -11231,6 +11239,8 @@ body.kpi-resizing {
 .time-task-log-fixed-top .time-task-log-datetime-input-wrap input[type="text"] {
   padding: 0.35rem 0.6rem;
   font-size: 0.85rem;
+  font-family: "Noto Serif KR", serif !important;
+  font-weight: 200 !important;
 }
 .time-task-log-fixed-top .time-task-log-task-dropdown-trigger {
   padding: 0.35rem 0.6rem;
@@ -11324,6 +11334,384 @@ body.kpi-resizing {
 }
 .time-task-log-accordion-item:not(.time-task-log-accordion-expanded) .time-task-log-accordion-body > * {
   display: none !important;
+}
+
+/* 메모: + 버튼 행 (토글 대신) */
+.time-task-log-memo-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+.time-task-log-memo-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+}
+.time-task-log-memo-add-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1;
+  color: #fff;
+  background: #374151;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+.time-task-log-memo-add-btn:hover {
+  background: #4b5563;
+}
+.time-task-log-memo-row .time-task-log-tag-list {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 메모 내부 모달 (전체 모달보다 살짝 작게) */
+.time-task-log-memo-inner-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.time-task-log-memo-inner-modal[hidden] {
+  display: none;
+}
+.time-task-log-memo-inner-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+}
+.time-task-log-memo-inner-panel {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  max-height: 85%;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+.time-task-log-memo-inner-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+}
+.time-task-log-memo-inner-body .time-task-log-field {
+  margin-bottom: 0.75rem;
+}
+.time-task-log-memo-inner-body textarea {
+  width: 100%;
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+  font-family: inherit;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 0;
+  outline: none;
+  resize: vertical;
+  min-height: 4rem;
+}
+.time-task-log-memo-inner-body .time-task-log-tags-wrap {
+  margin-top: 0.25rem;
+}
+.time-task-log-memo-inner-body .time-task-log-tags-wrap input {
+  width: 100%;
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+  outline: none;
+}
+.time-task-log-memo-inner-footer {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+.time-task-log-memo-inner-footer button {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+}
+.time-task-log-memo-inner-footer button:hover {
+  background: #f3f4f6;
+}
+.time-task-log-memo-inner-add {
+  background: #374151 !important;
+  color: #fff !important;
+  border-color: #374151 !important;
+}
+.time-task-log-memo-inner-add:hover {
+  background: #4b5563 !important;
+  border-color: #4b5563 !important;
+}
+
+/* 방해기록: + 버튼 행 (토글 대신) */
+.time-task-log-focus-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+.time-task-log-focus-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+}
+.time-task-log-focus-add-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1;
+  color: #fff;
+  background: #374151;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+.time-task-log-focus-add-btn:hover {
+  background: #4b5563;
+}
+.time-task-log-focus-events-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+}
+.time-task-log-focus-events-pills .time-task-log-focus-event-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 0.8rem;
+  color: #374151;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+/* 방해기록 내부 모달 */
+.time-task-log-focus-inner-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.time-task-log-focus-inner-modal[hidden] {
+  display: none;
+}
+.time-task-log-focus-inner-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+}
+.time-task-log-focus-inner-panel {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  max-height: 85%;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+.time-task-log-focus-inner-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.time-task-log-focus-inner-body .time-task-log-focus-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.time-task-log-focus-inner-time-row,
+.time-task-log-focus-inner-input-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  width: 100%;
+}
+.time-task-log-focus-inner-time-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.4rem 0;
+  font-size: 0.9rem;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+}
+.time-task-log-focus-inner-now-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.7rem;
+  background: transparent;
+  color: #9ca3af;
+  border: none;
+  border-bottom: 1px solid #d1d5db;
+  border-radius: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.time-task-log-focus-inner-now-btn:hover {
+  color: #6b7280;
+  border-bottom-color: #9ca3af;
+}
+.time-task-log-focus-inner-type-wrap {
+  margin-top: 0.5rem;
+}
+.time-task-log-focus-inner-events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+.time-task-log-focus-inner-body .time-task-log-focus-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0;
+  border: none;
+  margin-bottom: 0.75rem;
+}
+.time-task-log-focus-inner-type-wrap {
+  flex-shrink: 0;
+  margin-bottom: 0.75rem;
+  display: flex;
+  justify-content: center;
+}
+.time-task-log-focus-inner-time-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.9rem;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+}
+.time-task-log-focus-inner-now-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  border: none;
+  border-bottom: 1px solid #d1d5db;
+  border-radius: 0;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.time-task-log-focus-inner-now-btn:hover {
+  color: #6b7280;
+  border-bottom-color: #9ca3af;
+}
+.time-task-log-focus-inner-events-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+.time-task-log-focus-inner-events-list .time-task-log-focus-event-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 0.8rem;
+  color: #374151;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+.time-task-log-focus-inner-events-list .time-task-log-focus-event-del {
+  padding: 0;
+  margin-left: 2px;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.time-task-log-focus-inner-events-list .time-task-log-focus-event-del:hover {
+  color: #374151;
+}
+.time-task-log-focus-inner-footer {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+.time-task-log-focus-inner-footer button {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+}
+.time-task-log-focus-inner-footer button:hover {
+  background: #f3f4f6;
+}
+.time-task-log-focus-inner-add {
+  background: #374151 !important;
+  color: #fff !important;
+  border-color: #374151 !important;
+}
+.time-task-log-focus-inner-add:hover {
+  background: #4b5563 !important;
+  border-color: #4b5563 !important;
 }
 
 .time-task-log-footer {
@@ -11433,12 +11821,17 @@ body.kpi-resizing {
   align-items: center;
 }
 
-/* 과제 기록 모달: 시작날짜·시작시간·마감시간 숫자만 세리프체 (Noto Serif KR) */
-.time-task-log-modal .time-task-log-datetime-input-wrap input[type="date"],
-.time-task-log-modal .time-task-log-datetime-input-wrap .time-task-log-date-start,
-.time-task-log-modal .time-task-log-datetime-input-wrap input.flatpickr-input,
-.time-task-log-modal .time-task-log-datetime-input-wrap input[type="text"].time-task-log-time-start,
-.time-task-log-modal .time-task-log-datetime-input-wrap input[type="text"].time-task-log-time-end {
+/* 과제 기록 모달: 시작날짜·시작시간·마감시간 숫자만 세리프체 (Noto Serif KR)
+   - #app input 전역 폰트(ID 선택자)보다 우선하려면 #app 포함 구체적 선택자 사용 */
+#app .time-task-log-modal input[type="date"].time-task-log-date-start,
+#app .time-task-log-modal .time-task-log-datetime-input-wrap input[type="date"],
+#app .time-task-log-modal .time-task-log-datetime-input-wrap .time-task-log-date-start,
+#app .time-task-log-modal .time-task-log-datetime-input-wrap input.flatpickr-input,
+#app .time-task-log-modal .time-task-log-datetime-input-wrap input.time-task-log-time-start,
+#app .time-task-log-modal .time-task-log-datetime-input-wrap input.time-task-log-time-end,
+#app input.time-task-log-time-start,
+#app input.time-task-log-time-end,
+#app input.time-task-log-focus-inner-time-input {
   font-family: "Noto Serif KR", serif !important;
   font-weight: 200 !important;
 }
@@ -11471,6 +11864,8 @@ body.kpi-resizing {
   width: 5rem;
   padding: 0.5rem 0.75rem;
   font-size: 0.9rem;
+  font-family: "Noto Serif KR", serif !important;
+  font-weight: 200 !important;
   border: none;
   border-bottom: 1px solid #e5e7eb;
   border-radius: 0;
@@ -12125,17 +12520,27 @@ body.kpi-resizing {
 
 .time-task-log-focus-type-icon-btn {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  padding: 0.4rem;
+  gap: 0.2rem;
+  min-width: 2.5rem;
+  padding: 0.4rem 0.35rem;
   background: transparent;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   cursor: pointer;
   color: #6b7280;
   transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.time-task-log-focus-type-icon-btn-label {
+  font-size: 0.65rem;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+.time-task-log-focus-type-icon-btn:hover .time-task-log-focus-type-icon-btn-label,
+.time-task-log-focus-type-icon-btn.selected .time-task-log-focus-type-icon-btn-label {
+  color: inherit;
 }
 
 .time-task-log-focus-type-icon-btn:hover {
@@ -12149,11 +12554,20 @@ body.kpi-resizing {
   color: #fff;
   border-color: #1f2937;
 }
+.time-task-log-focus-type-icon-btn.selected .time-task-log-focus-type-icon-label {
+  color: #fff;
+}
 
 .time-task-log-focus-type-icon-btn svg {
   width: 1.25rem;
   height: 1.25rem;
   flex-shrink: 0;
+}
+.time-task-log-focus-type-icon-label {
+  font-size: 0.65rem;
+  color: #9ca3af;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
 .time-task-log-focus-now-btn {
@@ -12921,6 +13335,10 @@ body.kpi-resizing {
   background: transparent;
   outline: none;
   box-sizing: border-box;
+}
+.time-task-log-expense-amount {
+  font-family: "Noto Serif KR", serif;
+  font-weight: 200;
 }
 
 .time-task-log-expense-dropdown-display {
