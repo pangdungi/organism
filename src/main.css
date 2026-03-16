@@ -12012,30 +12012,52 @@ body.kpi-resizing {
   background: #4b5563;
 }
 
-/* 소비/수입명 모달: 폰트·라인 색 #B0ADA6 */
+/* 소비/수입명 모달: 폰트 색 #1C1C1A 통일 */
 .time-task-log-expense-inner-modal .time-task-log-expense-inner-header-label,
 .time-task-log-expense-inner-modal .time-task-log-expense-inner-close,
 .time-task-log-expense-inner-modal .time-task-log-field label,
 .time-task-log-expense-inner-modal .time-task-log-expense-amount-unit,
 .time-task-log-expense-inner-modal .time-task-log-expense-cat-btn:not(.selected),
 .time-task-log-expense-inner-modal .time-task-log-expense-cls-btn:not(.selected),
-.time-task-log-expense-inner-modal .time-task-log-expense-classification-hint {
-  color: #B0ADA6;
+.time-task-log-expense-inner-modal .time-task-log-expense-classification-hint,
+.time-task-log-expense-inner-modal .time-task-log-expense-inner-body {
+  color: #1C1C1A;
+}
+.time-task-log-expense-inner-modal .time-task-log-expense-inner-fields .time-task-log-expense-name,
+.time-task-log-expense-inner-modal .time-task-log-expense-inner-fields .time-task-log-expense-amount {
+  color: #1C1C1A;
 }
 .time-task-log-expense-inner-modal .time-task-log-expense-inner-header {
+  color: #1C1C1A;
   border-bottom-color: #B0ADA6;
 }
 .time-task-log-expense-inner-modal .time-task-log-expense-inner-fields .time-task-log-expense-name,
 .time-task-log-expense-inner-modal .time-task-log-expense-inner-fields .time-task-log-expense-amount-wrap {
   border-bottom-color: #B0ADA6;
 }
+.time-task-log-expense-inner-modal .time-task-log-expense-inner-fields .time-task-log-expense-name,
+.time-task-log-expense-inner-modal .time-task-log-expense-inner-fields .time-task-log-expense-amount {
+  color: #1C1C1A;
+}
+.time-task-log-expense-inner-modal .time-task-log-expense-inner-fields .time-task-log-expense-name,
+.time-task-log-expense-inner-modal .time-task-log-expense-inner-fields .time-task-log-expense-amount {
+  color: #1C1C1A;
+}
 .time-task-log-expense-inner-modal .time-task-log-expense-name::placeholder,
 .time-task-log-expense-inner-modal .time-task-log-expense-amount::placeholder {
   color: #B0ADA6;
 }
+.time-task-log-expense-inner-modal .time-task-log-expense-inner-fields .time-task-log-expense-name,
+.time-task-log-expense-inner-modal .time-task-log-expense-inner-fields .time-task-log-expense-amount {
+  color: #1C1C1A;
+}
 .time-task-log-expense-inner-modal .time-task-log-expense-cat-btn:not(.selected),
 .time-task-log-expense-inner-modal .time-task-log-expense-cls-btn:not(.selected) {
   border-color: #B0ADA6;
+}
+.time-task-log-expense-inner-modal .time-task-log-expense-inner-name,
+.time-task-log-expense-inner-modal .time-task-log-expense-inner-amount {
+  color: #1C1C1A;
 }
 
 /* 감정 기록 row + 내부 모달 */
