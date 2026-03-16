@@ -3433,16 +3433,19 @@ export function render() {
               <input type="text" class="time-task-log-expense-name" name="time-task-log-expense-name" placeholder="" />
             </div>
             <div class="time-task-log-field">
+              <label>금액</label>
+              <div class="time-task-log-expense-amount-wrap">
+                <input type="text" class="time-task-log-expense-amount" name="time-task-log-expense-amount" placeholder="0" inputmode="numeric" />
+                <span class="time-task-log-expense-amount-unit">원</span>
+              </div>
+            </div>
+            <div class="time-task-log-field">
               <label>카테고리</label>
               <div class="time-task-log-expense-category-wrap"></div>
             </div>
             <div class="time-task-log-field">
               <label>소비/수입 분류</label>
               <div class="time-task-log-expense-classification-wrap"></div>
-            </div>
-            <div class="time-task-log-field">
-              <label>금액</label>
-              <input type="text" class="time-task-log-expense-amount" name="time-task-log-expense-amount" placeholder="" inputmode="numeric" />
             </div>
             <div class="time-task-log-expense-error" hidden></div>
           </div>
