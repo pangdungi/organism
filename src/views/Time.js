@@ -21,7 +21,7 @@ import {
   syncHabitTrackerLogs,
   upsertHabitTrackerLogWithDailyState,
 } from "../utils/timeKpiSync.js";
-import { getKpiTodosAsTasks, syncKpiTodoCompleted, getKpiTodosByKpiName, getKpiDailyRepeatInfoByKpiName, syncKpiDailyRepeatTodoCompleted } from "../utils/kpiTodoSync.js";
+import { getKpiTodosAsTasks, syncKpiTodoCompleted, getKpiTodosByKpiName, getKpiDailyRepeatInfoByKpiName, syncKpiDailyRepeatTodoCompleted, addBraindumpTodoToSection } from "../utils/kpiTodoSync.js";
 import { getCustomSections } from "../utils/todoSettings.js";
 import { showToast } from "../utils/showToast.js";
 
@@ -3387,30 +3387,18 @@ export function render() {
           <h4 class="time-task-log-daily-todos-title">매일 할일 목록</h4>
           <div class="time-task-log-daily-todos-list"></div>
         </div>
-        <div class="time-task-log-memo-row">
-          <span class="time-task-log-memo-label">메모 & 태그</span>
-          <button type="button" class="time-task-log-memo-add-btn" aria-label="메모 추가">+</button>
-          <div class="time-task-log-tag-list"></div>
-          <textarea class="time-task-log-feedback time-task-log-memo-input" hidden aria-hidden="true"></textarea>
-        </div>
-        <div class="time-task-log-memo-inner-modal" hidden>
-          <div class="time-task-log-memo-inner-backdrop"></div>
-          <div class="time-task-log-memo-inner-panel">
-            <div class="time-task-log-memo-inner-body">
-              <div class="time-task-log-field">
-                <textarea class="time-task-log-memo-inner-input" placeholder="메모 입력" rows="3"></textarea>
-              </div>
-              <div class="time-task-log-field">
-                <label>태그</label>
-                <div class="time-task-log-tags-wrap">
-                  <input type="text" class="time-task-log-memo-inner-tag-input" placeholder="태그 입력 후 Enter" />
-                  <div class="time-task-log-memo-inner-tag-list"></div>
-                </div>
-              </div>
+        <div class="time-task-log-memo-section">
+          <h4 class="time-task-log-memo-title">메모 & 태그</h4>
+          <div class="time-task-log-memo-fields">
+            <div class="time-task-log-field">
+              <textarea class="time-task-log-feedback time-task-log-memo-input" rows="3"></textarea>
             </div>
-            <div class="time-task-log-memo-inner-footer">
-              <button type="button" class="time-task-log-memo-inner-cancel">취소</button>
-              <button type="button" class="time-task-log-memo-inner-add">추가</button>
+            <div class="time-task-log-field">
+              <label>태그</label>
+              <div class="time-task-log-tags-wrap">
+                <input type="text" class="time-task-log-tag-input" placeholder="태그 입력 후 Enter" />
+                <div class="time-task-log-tag-list"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -3436,18 +3424,28 @@ export function render() {
             </div>
           </div>
         </div>
-        <div class="time-task-log-todo-section time-task-log-accordion-item" data-accordion="todo">
-          <div class="time-task-log-todo-header time-task-log-accordion-header" role="button" tabindex="0" aria-expanded="false">
-            <h4 class="time-task-log-todo-title">투두 리스트 (브레인 덤프에 기록)</h4>
-            <span class="time-task-log-accordion-chevron" aria-hidden="true">▶</span>
-          </div>
-          <div class="time-task-log-accordion-body">
-          <div class="time-task-log-todo-fields">
-            <div class="time-task-log-field">
-              <input type="text" class="time-task-log-todo-name" name="time-task-log-todo-name" placeholder="할 일 이름 입력" />
-              <div class="time-task-log-todo-added-list" aria-live="polite"></div>
+        <div class="time-task-log-todo-row">
+          <span class="time-task-log-todo-label">투두 리스트</span>
+          <button type="button" class="time-task-log-todo-add-btn" aria-label="할일 추가">+</button>
+          <div class="time-task-log-todo-pills"></div>
+        </div>
+        <div class="time-task-log-todo-inner-modal" hidden>
+          <div class="time-task-log-todo-inner-backdrop"></div>
+          <div class="time-task-log-todo-inner-panel">
+            <div class="time-task-log-todo-inner-body">
+              <div class="time-task-log-field">
+                <label>카테고리</label>
+                <div class="time-task-log-todo-category-wrap"></div>
+              </div>
+              <div class="time-task-log-field">
+                <label>할 일 이름</label>
+                <input type="text" class="time-task-log-todo-inner-name" placeholder="할 일 이름 입력" />
+              </div>
             </div>
-          </div>
+            <div class="time-task-log-todo-inner-footer">
+              <button type="button" class="time-task-log-todo-inner-cancel">취소</button>
+              <button type="button" class="time-task-log-todo-inner-add">추가</button>
+            </div>
           </div>
         </div>
         <div class="time-task-log-expense-section time-task-log-accordion-item time-task-log-accordion-expanded" data-accordion="expense">
@@ -3502,20 +3500,6 @@ export function render() {
             <div class="time-task-log-field">
               <label>${TAB3_EMOTION_TEMPLATE[3]}</label>
               <textarea class="time-task-log-emotion-q4" placeholder="${TAB3_EMOTION_PLACEHOLDERS[3]}" rows="2"></textarea>
-            </div>
-          </div>
-          </div>
-        </div>
-        <div class="time-task-log-todo-section time-task-log-accordion-item" data-accordion="todo">
-          <div class="time-task-log-todo-header time-task-log-accordion-header" role="button" tabindex="0" aria-expanded="false">
-            <h4 class="time-task-log-todo-title">투두 리스트 (브레인 덤프에 기록)</h4>
-            <span class="time-task-log-accordion-chevron" aria-hidden="true">▶</span>
-          </div>
-          <div class="time-task-log-accordion-body">
-          <div class="time-task-log-todo-fields">
-            <div class="time-task-log-field">
-              <input type="text" class="time-task-log-todo-name" name="time-task-log-todo-name" placeholder="할 일 이름 입력" />
-              <div class="time-task-log-todo-added-list" aria-live="polite"></div>
             </div>
           </div>
           </div>
@@ -3613,7 +3597,20 @@ export function render() {
     });
   }
 
-  /* 메모 + 버튼 → 내부 모달 (토글 대신) */
+  taskLogTagInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === ",") {
+      if (e.isComposing) return;
+      e.preventDefault();
+      const val = (taskLogTagInput?.value || "").trim().replace(/^#/, "");
+      if (val && !taskLogMemoTags.includes(val)) {
+        taskLogMemoTags.push(val);
+        renderTaskLogTagPills();
+        if (taskLogTagInput) taskLogTagInput.value = "";
+      }
+    }
+  });
+
+  /* 메모 + 버튼 → 내부 모달 (레거시, 미사용) */
   const taskLogMemoAddBtn = taskLogModal.querySelector(".time-task-log-memo-add-btn");
   const taskLogMemoInnerModal = taskLogModal.querySelector(".time-task-log-memo-inner-modal");
   const taskLogMemoInnerBackdrop = taskLogModal.querySelector(".time-task-log-memo-inner-backdrop");
@@ -3673,6 +3670,20 @@ export function render() {
         taskLogMemoModalTags.push(val);
         renderMemoModalTagPills();
         taskLogMemoInnerTagInput.value = "";
+      }
+    }
+  });
+
+  /* 메모 & 태그: 태그 입력 후 Enter → pill 추가 */
+  taskLogTagInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === ",") {
+      if (e.isComposing) return;
+      e.preventDefault();
+      const val = (taskLogTagInput.value || "").trim().replace(/^#/, "");
+      if (val && !taskLogMemoTags.includes(val)) {
+        taskLogMemoTags.push(val);
+        renderTaskLogTagPills();
+        taskLogTagInput.value = "";
       }
     }
   });
@@ -3956,14 +3967,29 @@ export function render() {
   const taskLogEmotionQ4 = taskLogModal.querySelector(
     ".time-task-log-emotion-q4",
   );
-  const taskLogTodoFields = taskLogModal.querySelector(
-    ".time-task-log-todo-fields",
+  const taskLogTodoAddBtn = taskLogModal.querySelector(
+    ".time-task-log-todo-add-btn",
   );
-  const taskLogTodoNameInput = taskLogModal.querySelector(
-    ".time-task-log-todo-name",
+  const taskLogTodoPills = taskLogModal.querySelector(
+    ".time-task-log-todo-pills",
   );
-  const taskLogTodoAddedList = taskLogModal.querySelector(
-    ".time-task-log-todo-added-list",
+  const taskLogTodoInnerModal = taskLogModal.querySelector(
+    ".time-task-log-todo-inner-modal",
+  );
+  const taskLogTodoCategoryWrap = taskLogModal.querySelector(
+    ".time-task-log-todo-category-wrap",
+  );
+  const taskLogTodoInnerName = taskLogModal.querySelector(
+    ".time-task-log-todo-inner-name",
+  );
+  const taskLogTodoInnerCancel = taskLogModal.querySelector(
+    ".time-task-log-todo-inner-cancel",
+  );
+  const taskLogTodoInnerAdd = taskLogModal.querySelector(
+    ".time-task-log-todo-inner-add",
+  );
+  const taskLogTodoInnerBackdrop = taskLogModal.querySelector(
+    ".time-task-log-todo-inner-backdrop",
   );
   const taskLogKpiTodosSection = taskLogModal.querySelector(
     ".time-task-log-kpi-todos-section",
@@ -4555,56 +4581,61 @@ export function render() {
     return wrap;
   }
 
-  function buildExpenseClassificationDropdown(
+  function buildExpenseClassificationButtons(
     initialCategory,
     initialValue,
     onUpdate,
   ) {
     const wrap = document.createElement("div");
-    wrap.className = "time-task-log-expense-classification-dropdown";
-    const display = document.createElement("span");
-    display.className = "time-task-log-expense-dropdown-display";
-    const panel = document.createElement("div");
-    panel.className = "time-task-log-expense-dropdown-panel";
-    panel.hidden = true;
+    wrap.className = "time-task-log-expense-classification-btns";
+    const hint = document.createElement("span");
+    hint.className = "time-task-log-expense-classification-hint";
+    hint.textContent = "카테고리 먼저 선택";
+    const btnsWrap = document.createElement("div");
+    btnsWrap.className = "time-task-log-expense-cls-btns-wrap";
     let value = initialValue || "";
     let category = initialCategory || "";
     function refresh() {
+      btnsWrap.innerHTML = "";
       const opts = getExpenseClassificationOptions(category);
-      panel.innerHTML = "";
-      opts.forEach((opt) => {
-        const row = document.createElement("div");
-        row.className = "time-task-log-expense-dropdown-option";
-        row.textContent = opt.label;
-        row.addEventListener("click", () => {
-          value = opt.label;
-          display.textContent = value || "선택";
-          panel.hidden = true;
-          onUpdate?.(value);
-        });
-        panel.appendChild(row);
-      });
+      if (!category || opts.length === 0) {
+        hint.hidden = false;
+        hint.textContent = "카테고리 먼저 선택";
+        value = "";
+        return;
+      }
+      hint.hidden = true;
       const valid = opts.some((o) => o.label === value);
       if (!valid) value = "";
-      display.textContent = value || (category ? "선택" : "카테고리 먼저 선택");
+      opts.forEach((opt) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "time-task-log-expense-cls-btn";
+        if (opt.color) btn.classList.add(opt.color);
+        btn.dataset.label = opt.label;
+        btn.textContent = opt.label;
+        if (value === opt.label) btn.classList.add("selected");
+        btn.addEventListener("click", () => {
+          value = value === opt.label ? "" : opt.label;
+          btnsWrap.querySelectorAll(".time-task-log-expense-cls-btn").forEach((b) =>
+            b.classList.toggle("selected", b.dataset.label === value),
+          );
+          onUpdate?.(value);
+        });
+        btnsWrap.appendChild(btn);
+      });
     }
-    display.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (!category) return;
-      panel.hidden = !panel.hidden;
-    });
-    document.addEventListener("click", (e) => {
-      if (!wrap.contains(e.target)) panel.hidden = true;
-    });
-    wrap.appendChild(display);
-    wrap.appendChild(panel);
+    wrap.appendChild(hint);
+    wrap.appendChild(btnsWrap);
     wrap._getValue = () => value;
     wrap._setValue = (v) => {
-      value = v || "";
-      display.textContent = value || "선택";
+      value = (v || "").trim();
+      btnsWrap.querySelectorAll(".time-task-log-expense-cls-btn").forEach((b) =>
+        b.classList.toggle("selected", b.dataset.label === value),
+      );
     };
     wrap._setCategory = (c) => {
-      category = c || "";
+      category = (c || "").trim();
       refresh();
     };
     refresh();
@@ -4644,17 +4675,17 @@ export function render() {
     return wrap;
   }
 
-  const expenseClassificationDropdown = buildExpenseClassificationDropdown(
+  const expenseClassificationButtons = buildExpenseClassificationButtons(
     "",
     "",
     () => {},
   );
   const expenseCategoryDropdown = buildExpenseCategoryButtons("", (cat) => {
-    expenseClassificationDropdown._setCategory?.(cat);
-    expenseClassificationDropdown._setValue?.("");
+    expenseClassificationButtons._setCategory?.(cat);
+    expenseClassificationButtons._setValue?.("");
   });
   taskLogExpenseCategoryWrap.appendChild(expenseCategoryDropdown);
-  taskLogExpenseClassificationWrap.appendChild(expenseClassificationDropdown);
+  taskLogExpenseClassificationWrap.appendChild(expenseClassificationButtons);
 
   const taskLogFocusInnerTypeWrap = taskLogModal.querySelector(
     ".time-task-log-focus-inner-type-wrap",
@@ -4850,10 +4881,16 @@ export function render() {
   function updateFocusRowPills() {
     if (!focusRowEventsPills) return;
     focusRowEventsPills.innerHTML = "";
-    taskLogFocusEvents.forEach((e) => {
+    taskLogFocusEvents.forEach((e, idx) => {
       const pill = document.createElement("span");
-      pill.className = "time-task-log-focus-event-pill";
-      pill.textContent = e.time ? `${e.time} ${e.type}`.trim() : e.type || "";
+      pill.className = "time-task-log-focus-event-pill time-memo-tag-chip";
+      const label = [e.type, e.time].filter(Boolean).join(" ") || "";
+      pill.innerHTML = `<span class="time-memo-tag-chip-text">${escapeHtml(label)}</span><button type="button" class="time-memo-tag-chip-remove" aria-label="삭제">&times;</button>`;
+      pill.querySelector(".time-memo-tag-chip-remove")?.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        taskLogFocusEvents.splice(idx, 1);
+        updateFocusRowPills();
+      });
       focusRowEventsPills.appendChild(pill);
     });
   }
@@ -4866,7 +4903,7 @@ export function render() {
       item.className = "time-task-log-focus-event-item";
       const label = document.createElement("span");
       label.className = "time-task-log-focus-event-label";
-      label.textContent = e.time ? `${e.time} ${e.type}`.trim() : e.type || "";
+      label.textContent = [e.type, e.time].filter(Boolean).join(" ") || "";
       const delBtn = document.createElement("button");
       delBtn.type = "button";
       delBtn.className = "time-task-log-focus-event-del";
@@ -4980,26 +5017,94 @@ export function render() {
     return false;
   }
 
-  const MAX_TODO_ADDED_DISPLAY = 5;
-  function showTodoAddedFeedback(name) {
-    if (!taskLogTodoAddedList || !(name || "").trim()) return;
-    const span = document.createElement("span");
-    span.className = "time-task-log-todo-added-item";
-    span.textContent = `✓ ${name.trim()}`;
-    taskLogTodoAddedList.appendChild(span);
-    const items = taskLogTodoAddedList.querySelectorAll(".time-task-log-todo-added-item");
-    if (items.length > MAX_TODO_ADDED_DISPLAY) items[0].remove();
+  const TODO_CATEGORIES = [
+    { id: "braindump", label: "브레인덤프" },
+    { id: "dream", label: "꿈" },
+    { id: "sideincome", label: "부수입" },
+    { id: "happy", label: "행복" },
+    { id: "health", label: "건강" },
+  ];
+  let taskLogTodoSelectedCategory = "braindump";
+  /** 과제 기록 시 추가한 할 일: { categoryLabel, todoName } → "카테고리 할일이름" 태그로 저장 */
+  let taskLogTodoAddedItems = [];
+
+  function addTodoToSection(sectionId, name) {
+    const todoName = (name || "").trim();
+    if (!todoName) return false;
+    if (sectionId === "braindump") {
+      return addTodoNameToBraindump(todoName);
+    }
+    const result = addBraindumpTodoToSection(sectionId, { text: todoName });
+    if (result.success) {
+      document.dispatchEvent(new CustomEvent("todo-braindump-added", { detail: {} }));
+      return true;
+    }
+    return false;
   }
 
-  taskLogTodoNameInput?.addEventListener("keydown", (e) => {
-    if (e.key !== "Enter") return;
-    if (e.isComposing) return;
-    e.preventDefault();
-    const todoName = (taskLogTodoNameInput?.value || "").trim();
+  function updateTodoPills() {
+    if (!taskLogTodoPills) return;
+    taskLogTodoPills.innerHTML = "";
+    taskLogTodoAddedItems.forEach((item, idx) => {
+      const pill = document.createElement("span");
+      pill.className = "time-task-log-todo-pill time-memo-tag-chip";
+      const label = [item.categoryLabel, item.todoName].filter(Boolean).join(" ") || "";
+      pill.innerHTML = `<span class="time-memo-tag-chip-text">${escapeHtml(label)}</span><button type="button" class="time-memo-tag-chip-remove" aria-label="삭제">&times;</button>`;
+      pill.querySelector(".time-memo-tag-chip-remove")?.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        taskLogTodoAddedItems.splice(idx, 1);
+        updateTodoPills();
+      });
+      taskLogTodoPills.appendChild(pill);
+    });
+  }
+
+  function renderTodoCategoryButtons() {
+    if (!taskLogTodoCategoryWrap) return;
+    taskLogTodoCategoryWrap.innerHTML = "";
+    TODO_CATEGORIES.forEach(({ id, label }) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `time-task-log-todo-category-btn${taskLogTodoSelectedCategory === id ? " selected" : ""}`;
+      btn.dataset.category = id;
+      btn.textContent = label;
+      btn.addEventListener("click", () => {
+        taskLogTodoSelectedCategory = id;
+        taskLogModal.querySelectorAll(".time-task-log-todo-category-btn").forEach((b) => b.classList.remove("selected"));
+        btn.classList.add("selected");
+      });
+      taskLogTodoCategoryWrap.appendChild(btn);
+    });
+  }
+
+  function openTodoInnerModal() {
+    taskLogTodoSelectedCategory = "braindump";
+    renderTodoCategoryButtons();
+    if (taskLogTodoInnerName) taskLogTodoInnerName.value = "";
+    if (taskLogTodoInnerModal) taskLogTodoInnerModal.hidden = false;
+    taskLogTodoInnerName?.focus();
+  }
+
+  function closeTodoInnerModal() {
+    if (taskLogTodoInnerModal) taskLogTodoInnerModal.hidden = true;
+  }
+
+  taskLogTodoAddBtn?.addEventListener("click", openTodoInnerModal);
+  taskLogTodoInnerBackdrop?.addEventListener("click", closeTodoInnerModal);
+  taskLogTodoInnerCancel?.addEventListener("click", closeTodoInnerModal);
+
+  taskLogTodoInnerAdd?.addEventListener("click", () => {
+    const todoName = (taskLogTodoInnerName?.value || "").trim();
     if (!todoName) return;
-    if (addTodoNameToBraindump(todoName)) {
-      showTodoAddedFeedback(todoName);
-      taskLogTodoNameInput.value = "";
+    const cat = TODO_CATEGORIES.find((c) => c.id === taskLogTodoSelectedCategory);
+    const sectionLabel = cat?.label || "";
+    if (addTodoToSection(taskLogTodoSelectedCategory, todoName)) {
+      taskLogTodoAddedItems.push({ categoryLabel: sectionLabel, todoName });
+      updateTodoPills();
+      if (taskLogTodoInnerName) taskLogTodoInnerName.value = "";
+      closeTodoInnerModal();
+    } else if (taskLogTodoSelectedCategory !== "braindump") {
+      showToast("해당 카테고리에 KPI를 먼저 추가해 주세요.", "warn");
     }
   });
 
@@ -5096,8 +5201,8 @@ export function render() {
     renderTaskLogTagPills();
     taskLogExpenseNameInput.value = "";
     expenseCategoryDropdown._setValue?.("");
-    expenseClassificationDropdown._setValue?.("");
-    expenseClassificationDropdown._setCategory?.("");
+    expenseClassificationButtons._setValue?.("");
+    expenseClassificationButtons._setCategory?.("");
     taskLogExpenseAmountInput.value = "";
     if (taskLogExpenseErrorEl) {
       taskLogExpenseErrorEl.textContent = "";
@@ -5117,8 +5222,9 @@ export function render() {
       if (chevron) chevron.textContent = "▶";
       if (header) header.setAttribute("aria-expanded", "false");
     });
-    if (taskLogTodoNameInput) taskLogTodoNameInput.value = "";
-    if (taskLogTodoAddedList) taskLogTodoAddedList.innerHTML = "";
+    if (taskLogTodoInnerName) taskLogTodoInnerName.value = "";
+    taskLogTodoAddedItems = [];
+    if (taskLogTodoPills) taskLogTodoPills.innerHTML = "";
     if (taskLogKpiTodosSection) taskLogKpiTodosSection.hidden = true;
     if (taskLogKpiTodosList) taskLogKpiTodosList.innerHTML = "";
     taskLogFocusEvents = [];
@@ -5188,11 +5294,13 @@ export function render() {
     if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
     taskLogMemoTags = Array.isArray(data.memoTags) ? [...data.memoTags] : parseTagsFromFeedback(feedbackRaw);
     renderTaskLogTagPills();
+    taskLogTodoAddedItems = [];
+    if (typeof updateTodoPills === "function") updateTodoPills();
     if (taskLogTagInput) taskLogTagInput.value = "";
     taskLogExpenseNameInput.value = "";
     expenseCategoryDropdown._setValue?.("");
-    expenseClassificationDropdown._setValue?.("");
-    expenseClassificationDropdown._setCategory?.("");
+    expenseClassificationButtons._setValue?.("");
+    expenseClassificationButtons._setCategory?.("");
     taskLogExpenseAmountInput.value = "";
     if (taskLogEmotionQ1) taskLogEmotionQ1.value = data.q1 ?? "";
     if (taskLogEmotionQ2) taskLogEmotionQ2.value = data.q2 ?? "";
@@ -5202,7 +5310,7 @@ export function render() {
     const hasExpenseData =
       (taskLogExpenseNameInput?.value || "").trim() ||
       (expenseCategoryDropdown?._getValue?.() || "").trim() ||
-      (expenseClassificationDropdown?._getValue?.() || "").trim() ||
+      (expenseClassificationButtons?._getValue?.() || "").trim() ||
       (taskLogExpenseAmountInput?.value || "").trim();
     const hasEmotionData = (data.q1 || data.q2 || data.q3 || data.q4) || data.taskName === EMOTION_TASK_POSITIVE || data.taskName === EMOTION_TASK_NEGATIVE;
     const focusRaw = String(data.focus || "").trim();
@@ -5253,7 +5361,10 @@ export function render() {
       endTime = mergeEndTimeWithStartDate(startTime, endTime) || endTime;
     }
     const feedback = (taskLogFeedbackInput?.value || "").trim();
-    const memoTags = taskLogMemoTags.slice();
+    const todoTags = taskLogTodoAddedItems.map(
+      (t) => [t.categoryLabel, t.todoName].filter(Boolean).join(" "),
+    ).filter(Boolean);
+    const memoTags = [...taskLogMemoTags, ...todoTags];
     const timeTracked = (() => {
       if (startTime && endTime) {
         const toIso = (str) => {
@@ -5286,7 +5397,7 @@ export function render() {
       .trim()
       .replace(/,/g, "");
     let expenseCategory = expenseCategoryDropdown._getValue?.() || "";
-    let expenseClassification = expenseClassificationDropdown._getValue?.() || "";
+    let expenseClassification = expenseClassificationButtons._getValue?.() || "";
 
     const focusValue =
       taskLogFocusEvents.length > 0
@@ -5452,10 +5563,7 @@ export function render() {
       saveDiaryEntries(entries);
     }
 
-    const todoName = (taskLogTodoNameInput?.value || "").trim();
-    if (todoName) {
-      if (addTodoNameToBraindump(todoName)) showTodoAddedFeedback(todoName);
-    }
+    /* 투두는 + 버튼 모달에서 카테고리 선택 후 추가 시 저장됨 */
 
     if (editTr || addCtx) {
       if (editTr && oldRowDataToRemove) {
