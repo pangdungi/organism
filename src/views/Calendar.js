@@ -890,13 +890,13 @@ function createCalendarBarDateEditBubble(
       <div class="calendar-bar-date-edit-row">
         <label class="calendar-event-bubble-label">시작일</label>
         <div class="calendar-bar-date-edit-input-wrap">
-          <input type="date" class="calendar-bar-date-edit-input" data-field="start" value="${startVal}" />
+          <input type="date" class="calendar-bar-date-edit-input" name="calendar-bar-date-start" data-field="start" value="${startVal}" />
           <button type="button" class="calendar-bar-date-edit-clear" title="시작일 제거 (단일일로 변경)">×</button>
         </div>
       </div>
       <div class="calendar-bar-date-edit-row">
         <label class="calendar-event-bubble-label">마감일</label>
-        <input type="date" class="calendar-bar-date-edit-input" data-field="due" value="${dueVal}" />
+        <input type="date" class="calendar-bar-date-edit-input" name="calendar-bar-date-due" data-field="due" value="${dueVal}" />
       </div>
       <button type="button" class="calendar-event-bubble-save">저장</button>
       ${hasRange ? '<button type="button" class="calendar-event-bubble-revert calendar-bar-revert-btn">되돌려놓기</button>' : ""}

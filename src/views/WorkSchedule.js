@@ -477,6 +477,7 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
   const dateInput = document.createElement("input");
   dateInput.type = "date";
   dateInput.className = "work-schedule-input-date";
+  dateInput.name = "work-schedule-date";
   dateInput.value = dateValue;
   dateInput.tabIndex = -1;
   dateInput.addEventListener("change", () => {
@@ -693,9 +694,9 @@ export function render() {
         </div>
       </div>
       <div class="time-filter-range-wrap" data-filter-wrap="range" style="display:none">
-        <input type="date" class="time-filter-start-date" />
+        <input type="date" class="time-filter-start-date" name="work-schedule-filter-start" />
         <span>~</span>
-        <input type="date" class="time-filter-end-date" />
+        <input type="date" class="time-filter-end-date" name="work-schedule-filter-end" />
       </div>
     `;
 

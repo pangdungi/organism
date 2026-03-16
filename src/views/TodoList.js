@@ -1301,7 +1301,7 @@ function createTaskRow(taskData = {}, options = {}) {
           <div class="todo-reminder-field">
             <label class="todo-reminder-label">날짜</label>
             <div class="todo-reminder-date-row">
-              <input type="date" class="todo-reminder-date" value="${escapeHtml(defaultDate)}" />
+              <input type="date" class="todo-reminder-date" name="todo-reminder-date" value="${escapeHtml(defaultDate)}" />
               <button type="button" class="todo-reminder-date-btn" data-offset="0">오늘</button>
               <button type="button" class="todo-reminder-date-btn" data-offset="1">내일</button>
             </div>

@@ -13,6 +13,8 @@ const defaultOptions = {
   allowInput: true,
   disableMobile: false,
   onReady(selectedDates, dateStr, instance) {
+    // 모바일 네이티브 피커 사용 시 calendarContainer가 없음 → early return
+    if (!instance?.calendarContainer) return;
     const wrap = document.createElement("div");
     const hideDelete = instance.input?.dataset?.hideDeleteBtn === "true";
     wrap.className = "flatpickr-custom-buttons" + (hideDelete ? " flatpickr-custom-buttons--no-delete" : "");
@@ -38,7 +40,9 @@ const defaultOptions = {
     });
     wrap.appendChild(delBtn);
     wrap.appendChild(todayBtn);
-    instance.calendarContainer.appendChild(wrap);
+    if (instance.calendarContainer) {
+      instance.calendarContainer.appendChild(wrap);
+    }
   },
 };
 

@@ -964,35 +964,39 @@ body {
   flex: 1;
   min-width: 0;
   padding: 0.35rem 0.25rem;
-  background: none;
+  background: transparent !important;
   border: none;
   border-radius: 6px;
-  color: #6b7280;
+  color: #9ca3af;
   font-size: 0.65rem;
   font-weight: 500;
   cursor: pointer;
   font-family: inherit;
-  transition: background 0.15s, color 0.15s;
+  transition: color 0.15s, filter 0.15s;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.app-bottom-nav-item:hover {
-  background: #e8e8e8;
-  color: #374151;
+.app-bottom-nav-item:hover,
+.app-bottom-nav-item:active {
+  background: transparent !important;
+  color: #9ca3af;
 }
 
 .app-bottom-nav-item.active {
-  color: #374151;
+  color: #111827;
   font-weight: 600;
+  background: transparent !important;
+  box-shadow: none;
 }
 
 .app-bottom-nav-icon {
   display: block;
   flex-shrink: 0;
-  filter: brightness(0) opacity(0.65);
+  filter: brightness(0) opacity(0.4);
 }
 
 .app-bottom-nav-item.active .app-bottom-nav-icon {
-  filter: brightness(0) opacity(0.9);
+  filter: brightness(0) opacity(1);
 }
 
 .app-bottom-nav-label {
@@ -1014,6 +1018,25 @@ body {
 
   .app-bottom-nav {
     display: flex !important;
+  }
+  /* 모바일: 액티브 탭은 배경 없이 검은색, 비활성은 회색 */
+  .app-bottom-nav-item {
+    background: transparent !important;
+    color: #9ca3af;
+  }
+  .app-bottom-nav-item:hover,
+  .app-bottom-nav-item:active {
+    background: transparent !important;
+  }
+  .app-bottom-nav-item.active {
+    background: transparent !important;
+    color: #111827;
+  }
+  .app-bottom-nav-icon {
+    filter: brightness(0) opacity(0.35);
+  }
+  .app-bottom-nav-item.active .app-bottom-nav-icon {
+    filter: brightness(0) saturate(1) opacity(1);
   }
 
   .app-main {
@@ -1115,7 +1138,8 @@ body {
   }
 
   /* 모바일: 나의 계정에서 시급계산하기만 표시 */
-  .idea-view .idea-widget-basic,
+  .idea-view .idea-widget-basic-settings,
+  .idea-view .idea-widget-font,
   .idea-view .idea-widget-colors {
     display: none !important;
   }
@@ -1382,6 +1406,7 @@ body {
   flex-shrink: 0;
   font-family: "Cormorant Garamond", serif !important;
   text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 /* DAILY는 EVENT·TO DO LIST와 동일 스타일(위는 사용 안 함) */
 .home-view-section-title--primary {
@@ -1401,7 +1426,7 @@ body {
   padding: 0.5rem 0.75rem 0;
   letter-spacing: -0.02em;
 }
-/* 홈 Daily: 요일 3글자 영문, DM Serif Display 고정 */
+/* 홈 Daily: 요일 3글자 영문 대문자 (MON TUE), DM Serif Display 고정 */
 .home-daily-weekday {
   font-family: "DM Serif Display", serif !important;
   font-size: 0.9rem;
@@ -1409,6 +1434,8 @@ body {
   color: #6b7280;
   margin: 0;
   padding: 0 0.75rem 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .home-view-section-subtitle {
@@ -1418,6 +1445,7 @@ body {
   font-weight: 500;
   color: #6b7280;
   flex-shrink: 0;
+  letter-spacing: 0.04em;
 }
 
 .home-embed-1day {
@@ -1561,6 +1589,14 @@ body {
   border-bottom: none;
 }
 
+.home-reminder-row--past {
+  opacity: 0.5;
+  color: #9ca3af;
+}
+.home-reminder-row--past .home-reminder-row-time {
+  color: #b8bdc4;
+}
+
 .home-reminder-row-name {
   flex: 1;
   min-width: 0;
@@ -1597,6 +1633,16 @@ body {
   border-color: #d1d5db;
 }
 
+/* 날짜가 지난 리마인더: 희미하게 표시 */
+.home-reminder-row--past {
+  opacity: 0.5;
+  color: #9ca3af;
+}
+.home-reminder-row--past .home-reminder-row-name,
+.home-reminder-row--past .home-reminder-row-time {
+  color: #9ca3af;
+}
+
 .home-event-list {
   padding: 0.5rem 0.75rem;
   flex: 1 1 0;
@@ -1630,7 +1676,7 @@ body {
 .home-event-empty {
   margin: 0;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: #e5e7eb;
 }
 
 .home-todo-list-content {
@@ -16411,6 +16457,32 @@ body.kpi-resizing {
 .idea-btn-calc:hover {
   background: #111827;
   border-color: #111827;
+}
+
+/* 나의 계정 - 기본설정 (아이디 표시) */
+.idea-user-id-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+.idea-user-id-value {
+  font-size: 0.9rem;
+  color: #374151;
+  word-break: break-all;
+}
+
+/* 나의 계정 - 아이디 표시 */
+.idea-user-id-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+.idea-user-id-value {
+  font-size: 0.9rem;
+  color: #374151;
+  word-break: break-all;
 }
 
 /* 나의 계정 - 로그아웃 버튼 */

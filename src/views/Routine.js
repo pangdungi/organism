@@ -138,11 +138,11 @@ function createAddRoutineModal(onAdd) {
         </div>
         <div class="routine-add-field">
           <label>시작일</label>
-          <input type="date" class="routine-add-start" />
+          <input type="date" class="routine-add-start" name="routine-add-start" />
         </div>
         <div class="routine-add-field">
           <label>종료일</label>
-          <input type="date" class="routine-add-end" />
+          <input type="date" class="routine-add-end" name="routine-add-end" />
         </div>
         <div class="routine-add-field">
           <label>색상</label>
@@ -253,11 +253,11 @@ function createEditRoutineModal(onSave, onDelete) {
         </div>
         <div class="routine-add-field">
           <label>시작일</label>
-          <input type="date" class="routine-add-start" />
+          <input type="date" class="routine-add-start" name="routine-add-start" />
         </div>
         <div class="routine-add-field">
           <label>종료일</label>
-          <input type="date" class="routine-add-end" />
+          <input type="date" class="routine-add-end" name="routine-add-end" />
         </div>
         <div class="routine-add-field">
           <label>색상</label>

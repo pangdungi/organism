@@ -3889,9 +3889,9 @@ function renderExpenseView(options = {}) {
       </div>
     </div>
     <div class="time-filter-range-wrap" data-filter-wrap="range" style="display:none">
-      <input type="date" class="time-filter-start-date" />
+      <input type="date" class="time-filter-start-date" name="asset-filter-start" />
       <span>~</span>
-      <input type="date" class="time-filter-end-date" />
+      <input type="date" class="time-filter-end-date" name="asset-filter-end" />
     </div>
   `;
 
@@ -4120,7 +4120,7 @@ function renderExpenseView(options = {}) {
       <td class="asset-expense-cell-amount"><input type="text" class="asset-expense-input-amount" placeholder="0" value="${(data.amount || "").replace(/"/g, "&quot;")}" /></td>
       <td class="asset-expense-cell-date">
         <span class="asset-expense-date-display">${dateDisplayVal}</span>
-        <input type="date" class="asset-expense-input-date" value="${dateValue}" tabindex="-1" />
+        <input type="date" class="asset-expense-input-date" name="asset-expense-date" value="${dateValue}" tabindex="-1" />
       </td>
       <td class="asset-expense-cell-category"></td>
       <td class="asset-expense-cell-classification"></td>

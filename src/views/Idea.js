@@ -3,6 +3,7 @@
  */
 
 import { signOut } from "../auth.js";
+import { supabase } from "../supabase.js";
 import { getTodoSettings, saveTodoSettings, getCustomSections, DEFAULT_SECTION_COLORS, DEFAULT_TIME_CATEGORY_COLORS, DEFAULT_TASK_CATEGORY_COLORS, applyTimeCategoryColors, applyTaskCategoryColors } from "../utils/todoSettings.js";
 import { createColorPickerRow } from "../utils/todoSettingsModal.js";
 
@@ -68,10 +69,39 @@ export function render() {
   const grid = document.createElement("div");
   grid.className = "time-dashboard-view idea-widget-grid";
 
-  // ----- 기본정보 위젯 -----
-  const basicInfoWidget = document.createElement("div");
-  basicInfoWidget.className =
-    "time-dashboard-widget idea-widget idea-widget-basic";
+  // ----- 기본설정 위젯 (로그인 ID, 로그아웃) - 왼쪽 -----
+  const basicSettingsWidget = document.createElement("div");
+  basicSettingsWidget.className = "time-dashboard-widget idea-widget idea-widget-basic-settings";
+  basicSettingsWidget.innerHTML = `
+    <div class="time-dashboard-widget-title">기본설정</div>
+    <div class="idea-user-id-row">
+      <span class="idea-form-label">아이디</span>
+      <span class="idea-user-id-value" id="idea-user-id">—</span>
+    </div>
+    <div class="idea-account-actions">
+      <button type="button" class="idea-btn-logout">로그아웃</button>
+    </div>
+  `;
+  grid.appendChild(basicSettingsWidget);
+
+  basicSettingsWidget.querySelector(".idea-btn-logout").addEventListener("click", () => {
+    signOut();
+  });
+
+  // 로그인된 사용자 ID 비동기 로드
+  if (typeof supabase !== "undefined" && supabase?.auth) {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const idEl = document.getElementById("idea-user-id");
+      if (idEl && session?.user?.email) {
+        idEl.textContent = session.user.email;
+      }
+    });
+  }
+
+  // ----- 폰트설정 위젯 (모바일: 숨김) -----
+  const fontWidget = document.createElement("div");
+  fontWidget.className =
+    "time-dashboard-widget idea-widget idea-widget-font hide-on-mobile";
   const savedFont = (() => {
     try {
       const v = localStorage.getItem(APP_FONT_KEY);
@@ -84,8 +114,8 @@ export function render() {
     }
   })();
   const currentFontOption = FONT_OPTIONS.find((o) => o.value === savedFont) || FONT_OPTIONS[0];
-  basicInfoWidget.innerHTML = `
-    <div class="time-dashboard-widget-title">기본정보</div>
+  fontWidget.innerHTML = `
+    <div class="time-dashboard-widget-title">폰트설정</div>
     <div class="idea-font-row">
       <label class="idea-form-label">웹사이트 폰트</label>
       <div class="idea-font-dropdown">
@@ -103,22 +133,14 @@ export function render() {
         </div>
       </div>
     </div>
-    <div class="idea-basic-placeholder">기본정보를 입력할 수 있습니다.</div>
-    <div class="idea-account-actions">
-      <button type="button" class="idea-btn-logout">로그아웃</button>
-    </div>
   `;
-  grid.appendChild(basicInfoWidget);
+  grid.appendChild(fontWidget);
 
-  basicInfoWidget.querySelector(".idea-btn-logout").addEventListener("click", () => {
-    signOut();
-  });
-
-  const fontDropdown = basicInfoWidget.querySelector(".idea-font-dropdown");
-  const fontTrigger = basicInfoWidget.querySelector(".idea-font-trigger");
-  const fontTriggerLabel = basicInfoWidget.querySelector(".idea-font-trigger-label");
-  const fontPanel = basicInfoWidget.querySelector(".idea-font-panel");
-  const fontOptions = basicInfoWidget.querySelectorAll(".idea-font-option");
+  const fontDropdown = fontWidget.querySelector(".idea-font-dropdown");
+  const fontTrigger = fontWidget.querySelector(".idea-font-trigger");
+  const fontTriggerLabel = fontWidget.querySelector(".idea-font-trigger-label");
+  const fontPanel = fontWidget.querySelector(".idea-font-panel");
+  const fontOptions = fontWidget.querySelectorAll(".idea-font-option");
 
   function closeFontPanel() {
     fontPanel.hidden = true;
@@ -167,10 +189,10 @@ export function render() {
 
   fontPanel.addEventListener("click", (e) => e.stopPropagation());
 
-  // ----- 나의 시급계산하기 위젯 -----
+  // ----- 나의 시급계산하기 위젯 (모바일: 숨김) -----
   const hourlyWidget = document.createElement("div");
   hourlyWidget.className =
-    "time-dashboard-widget idea-widget idea-widget-hourly";
+    "time-dashboard-widget idea-widget idea-widget-hourly hide-on-mobile";
   hourlyWidget.innerHTML = `
     <div class="time-dashboard-widget-title">나의 시급계산하기</div>
     <div class="idea-hourly-tabs">
@@ -248,7 +270,7 @@ export function render() {
   let taskCategoryColors = { ...(settings.taskCategoryColors || DEFAULT_TASK_CATEGORY_COLORS) };
 
   const colorWidget = document.createElement("div");
-  colorWidget.className = "time-dashboard-widget idea-widget idea-widget-colors";
+  colorWidget.className = "time-dashboard-widget idea-widget idea-widget-colors hide-on-mobile";
   colorWidget.innerHTML = `
     <div class="time-dashboard-widget-title">색상 설정</div>
     <div class="todo-settings-block idea-colors-block">

@@ -1936,6 +1936,7 @@ function createDateCell(initialValue) {
   const input = document.createElement("input");
   input.type = "date";
   input.className = "time-input-date-hidden";
+  input.name = "time-date";
   function refresh() {
     if (input.value) {
       display.textContent = formatDateDisplay(input.value);
@@ -3035,9 +3036,9 @@ export function render() {
       </div>
     </div>
     <div class="time-filter-range-wrap" data-filter-wrap="range" style="display:none">
-      <input type="date" class="time-filter-start-date" />
+      <input type="date" class="time-filter-start-date" name="time-filter-start" />
       <span class="time-filter-range-sep" data-audit-range-hidden>~</span>
-      <input type="date" class="time-filter-end-date" data-audit-range-hidden />
+      <input type="date" class="time-filter-end-date" name="time-filter-end" data-audit-range-hidden />
     </div>
   `;
 
@@ -3352,7 +3353,7 @@ export function render() {
             <div class="time-task-log-field">
               <label>시작 시간</label>
               <div class="time-task-log-datetime-input-wrap">
-                <input type="date" class="time-task-log-date-start" data-hide-delete-btn="true" data-use-native-mobile="true" />
+                <input type="date" class="time-task-log-date-start" name="time-task-log-date" data-hide-delete-btn="true" data-use-native-mobile="true" />
                 <input type="text" class="time-task-log-time-start" placeholder="hh:mm" maxlength="5" />
               </div>
               <input type="hidden" class="time-task-log-start" />

@@ -201,6 +201,21 @@ function formatReminderDisplay(rDate, rTime) {
   return (rTime || "").trim() ? `${dateStr} ${(rTime || "").trim()}` : dateStr;
 }
 
+/** 리마인더 날짜/시간이 과거인지 판별 (날짜 지난 리마인더 희미 표시용) */
+function isReminderPast(reminderDate, reminderTime) {
+  const dateStr = (reminderDate || "").trim().slice(0, 10);
+  if (!dateStr) return false;
+  const [y, m, d] = dateStr.split("-").map(Number);
+  if (!y || !m || !d) return false;
+  let reminderMs = new Date(y, m - 1, d).getTime();
+  const timeStr = (reminderTime || "").trim();
+  if (timeStr) {
+    const [hh, mm] = timeStr.split(":").map((n) => parseInt(n, 10) || 0);
+    reminderMs = new Date(y, m - 1, d, hh, mm, 0).getTime();
+  }
+  return reminderMs < Date.now();
+}
+
 function updateReminderInStorage(sectionId, taskId, reminderDate, reminderTime, isCustom) {
   const key = isCustom ? CUSTOM_SECTION_TASKS_KEY : SECTION_TASKS_KEY;
   try {
@@ -375,7 +390,8 @@ function fillReminderContent(reminderContent) {
   };
   list.forEach((item) => {
     const row = document.createElement("div");
-    row.className = "home-reminder-row";
+    const isPast = isReminderPast(item.reminderDate, item.reminderTime);
+    row.className = "home-reminder-row" + (isPast ? " home-reminder-row--past" : "");
     const displayTime = formatReminderDisplay(item.reminderDate, item.reminderTime);
     row.innerHTML = `
       <span class="home-reminder-row-name">${escapeHtml(item.name)}</span>
@@ -415,7 +431,7 @@ function openReminderModalFromHome(item, onSaved) {
         <div class="todo-reminder-field">
           <label class="todo-reminder-label">날짜</label>
           <div class="todo-reminder-date-row">
-            <input type="date" class="todo-reminder-date" value="${escapeHtml(defaultDate)}" />
+            <input type="date" class="todo-reminder-date" name="todo-reminder-date" value="${escapeHtml(defaultDate)}" />
             <button type="button" class="todo-reminder-date-btn" data-offset="0">오늘</button>
             <button type="button" class="todo-reminder-date-btn" data-offset="1">내일</button>
           </div>
@@ -494,7 +510,7 @@ export function render() {
   const section1 = document.createElement("div");
   section1.className = "home-view-section home-view-section--calendar";
   const d = new Date();
-  const WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const WEEKDAY_NAMES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
   const header1 = document.createElement("h3");
   header1.className = "home-view-section-title";
   header1.textContent = "Daily";
