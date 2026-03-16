@@ -3361,19 +3361,21 @@ export function render() {
             </div>
             <div class="time-task-log-field">
               <label>마감 시간</label>
-              <div class="time-task-log-datetime-wrap time-task-log-datetime-wrap-end">
-                <div class="time-task-log-datetime-input-wrap">
-                  <input type="text" class="time-task-log-time-end" name="time-task-log-time-end" placeholder="hh:mm" maxlength="5" />
+              <div class="time-task-log-end-row">
+                <div class="time-task-log-datetime-wrap time-task-log-datetime-wrap-end">
+                  <div class="time-task-log-datetime-input-wrap">
+                    <input type="text" class="time-task-log-time-end" name="time-task-log-time-end" placeholder="hh:mm" maxlength="5" />
+                  </div>
                 </div>
-              </div>
-              <div class="time-task-log-time-adjust-btns">
-                <button type="button" class="time-task-log-time-adjust-btn time-task-log-time-adjust-now" data-now="true">지금</button>
-                <button type="button" class="time-task-log-time-adjust-btn" data-delta="-30">−30</button>
-                <button type="button" class="time-task-log-time-adjust-btn" data-delta="-15">−15</button>
-                <button type="button" class="time-task-log-time-adjust-btn" data-delta="-5">−5</button>
-                <button type="button" class="time-task-log-time-adjust-btn" data-delta="5">+5</button>
-                <button type="button" class="time-task-log-time-adjust-btn" data-delta="15">+15</button>
-                <button type="button" class="time-task-log-time-adjust-btn" data-delta="30">+30</button>
+                <div class="time-task-log-time-adjust-btns">
+                  <button type="button" class="time-task-log-time-adjust-btn time-task-log-time-adjust-now" data-now="true">지금</button>
+                  <button type="button" class="time-task-log-time-adjust-btn" data-delta="-30">−30</button>
+                  <button type="button" class="time-task-log-time-adjust-btn" data-delta="-15">−15</button>
+                  <button type="button" class="time-task-log-time-adjust-btn" data-delta="-5">−5</button>
+                  <button type="button" class="time-task-log-time-adjust-btn" data-delta="5">+5</button>
+                  <button type="button" class="time-task-log-time-adjust-btn" data-delta="15">+15</button>
+                  <button type="button" class="time-task-log-time-adjust-btn" data-delta="30">+30</button>
+                </div>
               </div>
               <input type="hidden" class="time-task-log-end" />
             </div>

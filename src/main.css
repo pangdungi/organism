@@ -1177,6 +1177,33 @@ body {
     box-sizing: border-box;
   }
 
+  /* 모바일: 과제 기록/수정 모달 - 마감시간 입력+버튼 한 줄 유지 (데스크탑과 동일) */
+  .time-task-log-end-row {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 0.4rem !important;
+    flex-wrap: wrap !important;
+  }
+  .time-task-log-end-row .time-task-log-datetime-wrap-end {
+    flex: 0 0 auto !important;
+    width: auto !important;
+  }
+  .time-task-log-end-row .time-task-log-datetime-wrap-end input[type="text"] {
+    width: 4rem !important;
+    min-width: 4rem !important;
+    padding: 0.4rem 0.5rem !important;
+    font-size: 0.85rem !important;
+  }
+  .time-task-log-end-row .time-task-log-time-adjust-btns {
+    margin-top: 0 !important;
+    gap: 0.25rem !important;
+  }
+  .time-task-log-end-row .time-task-log-time-adjust-btn {
+    padding: 0.2rem 0.4rem !important;
+    font-size: 0.7rem !important;
+  }
+
   /* 모바일 오늘 탭: 할일만 보이게 우선순위 열 숨김 + 열제목(할일) 숨김 */
   .app-main:has(.home-view) .home-todo-th-priority,
   .app-main:has(.home-view) .home-todo-td-priority {
@@ -11395,6 +11422,28 @@ body.kpi-resizing {
 
 .time-task-log-datetime-clear:hover {
   color: #374151;
+}
+
+/* 마감시간: 입력 + 버튼 한 줄 배치 (세로 공간 절약) */
+.time-task-log-end-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.time-task-log-end-row .time-task-log-datetime-wrap-end {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 5rem;
+}
+.time-task-log-end-row .time-task-log-datetime-wrap-end .time-task-log-datetime-input-wrap {
+  width: auto;
+}
+.time-task-log-end-row .time-task-log-datetime-wrap-end input[type="text"] {
+  width: 4.5rem;
+}
+.time-task-log-end-row .time-task-log-time-adjust-btns {
+  margin-top: 0;
 }
 
 .time-task-log-time-adjust-btns {
