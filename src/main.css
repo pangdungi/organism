@@ -3102,7 +3102,7 @@ body {
   font-size: 14px;
   font-weight: 500;
   color: #fff;
-  background: #374151;
+  background: #1C1C1A;
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -4153,7 +4153,7 @@ body {
 
 .asset-networth-dashboard-progress-fill {
   height: 100%;
-  background: #374151;
+  background: #1C1C1A;
   border-radius: 999px;
   transition: width 0.3s ease;
 }
@@ -7320,7 +7320,7 @@ body {
 }
 
 .todo-settings-save:hover {
-  background: #374151;
+  background: #1C1C1A;
 }
 
 /* ----- 리스트 모달 (추가/편집/삭제 확인) 통일 디자인 ----- */
@@ -7475,7 +7475,7 @@ body {
 }
 
 .todo-list-modal-confirm:hover {
-  background: #374151;
+  background: #1C1C1A;
 }
 
 .todo-list-confirm-body {
@@ -9161,7 +9161,7 @@ body {
 }
 
 .kpi-confirm-ok:hover {
-  background: #374151;
+  background: #1C1C1A;
   border-color: #374151;
 }
 
@@ -9222,7 +9222,7 @@ body {
 }
 
 .app-toast-btn:hover {
-  background: #374151;
+  background: #1C1C1A;
   border-color: #374151;
 }
 
@@ -9309,7 +9309,7 @@ body {
   font-size: 0.9rem;
   font-weight: 500;
   color: #fff;
-  background: #374151;
+  background: #1C1C1A;
   border: 1px solid #374151;
   cursor: pointer;
 }
@@ -9718,7 +9718,7 @@ body {
   font-size: 0.9rem;
   font-weight: 500;
   color: #fff;
-  background: #374151;
+  background: #1C1C1A;
   border: 1px solid #374151;
   border-radius: 4px;
   cursor: pointer;
@@ -11200,7 +11200,7 @@ body.kpi-resizing {
   font-size: 0.9rem;
   font-weight: 500;
   color: #fff;
-  background: #374151;
+  background: #1C1C1A;
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -11399,7 +11399,7 @@ body.kpi-resizing {
   font-weight: 500;
   line-height: 1;
   color: #fff;
-  background: #374151;
+  background: #1C1C1A;
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -11500,7 +11500,7 @@ body.kpi-resizing {
   background: #f3f4f6;
 }
 .time-task-log-memo-inner-add {
-  background: #374151 !important;
+  background: #1C1C1A !important;
   color: #fff !important;
   border-color: #374151 !important;
 }
@@ -11519,6 +11519,7 @@ body.kpi-resizing {
   padding-left: 1.25rem;
   padding-right: 1.25rem;
   border-bottom-color: #ECEAE5;
+  min-height: 3.5rem;
 }
 .time-task-log-focus-row {
   display: flex;
@@ -11542,7 +11543,7 @@ body.kpi-resizing {
   font-weight: 500;
   line-height: 1;
   color: #fff;
-  background: #374151;
+  background: #1C1C1A;
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -11597,7 +11598,7 @@ body.kpi-resizing {
   font-weight: 500;
   line-height: 1;
   color: #fff;
-  background: #374151;
+  background: #1C1C1A;
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -11688,7 +11689,7 @@ body.kpi-resizing {
   background: #f9fafb;
 }
 .time-task-log-todo-category-btn.selected {
-  background: #374151;
+  background: #1C1C1A;
   color: #fff;
   border-color: #374151;
 }
@@ -11730,7 +11731,7 @@ body.kpi-resizing {
   color: #374151;
 }
 .time-task-log-todo-inner-add {
-  background: #374151 !important;
+  background: #1C1C1A !important;
   color: #fff !important;
   border: none;
 }
@@ -11761,7 +11762,7 @@ body.kpi-resizing {
   font-weight: 500;
   line-height: 1;
   color: #fff;
-  background: #374151;
+  background: #1C1C1A;
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -11940,7 +11941,7 @@ body.kpi-resizing {
   font-size: 0.9rem;
   font-weight: 500;
   color: #fff;
-  background: #374151;
+  background: #1C1C1A;
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -11959,7 +11960,7 @@ body.kpi-resizing {
   font-size: 0.95rem;
   font-weight: 600;
   color: #fff;
-  background: #374151;
+  background: #1C1C1A;
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -12020,7 +12021,7 @@ body.kpi-resizing {
   font-weight: 500;
   line-height: 1;
   color: #fff;
-  background: #374151;
+  background: #1C1C1A;
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -12121,7 +12122,7 @@ body.kpi-resizing {
   font-size: 0.95rem;
   font-weight: 500;
   color: #fff;
-  background: #374151;
+  background: #1C1C1A;
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -12313,7 +12314,7 @@ body.kpi-resizing {
   background: #f3f4f6;
 }
 .time-task-log-focus-inner-add {
-  background: #374151 !important;
+  background: #1C1C1A !important;
   color: #fff !important;
   border-color: #374151 !important;
 }
@@ -12345,7 +12346,7 @@ body.kpi-resizing {
   font-weight: 500;
   line-height: 1;
   color: #fff;
-  background: #374151;
+  background: #1C1C1A;
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -12429,7 +12430,7 @@ body.kpi-resizing {
   border-color: #9ca3af;
 }
 .time-task-log-todo-category-btn.selected {
-  background: #374151;
+  background: #1C1C1A;
   color: #fff;
   border-color: #374151;
 }
@@ -12456,7 +12457,7 @@ body.kpi-resizing {
   background: #f3f4f6;
 }
 .time-task-log-todo-inner-add {
-  background: #374151 !important;
+  background: #1C1C1A !important;
   color: #fff !important;
   border: 1px solid #374151;
 }
@@ -13054,7 +13055,7 @@ body.kpi-resizing {
   font-size: 0.85rem;
   font-weight: 500;
   color: #fff;
-  background: #374151;
+  background: #1C1C1A;
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -13532,7 +13533,7 @@ body.kpi-resizing {
 }
 
 .time-task-log-energy-slider::-webkit-slider-thumb:hover {
-  background: #374151;
+  background: #1C1C1A;
 }
 
 .time-task-log-energy-slider::-moz-range-thumb {
@@ -14078,7 +14079,7 @@ body.kpi-resizing {
   background: #f9fafb;
 }
 .time-task-log-expense-cat-btn.selected {
-  background: #374151;
+  background: #1C1C1A;
   color: #fff;
   border-color: #374151;
 }
@@ -14116,7 +14117,7 @@ body.kpi-resizing {
   background: #f9fafb;
 }
 .time-task-log-expense-cls-btn.selected {
-  background: #374151;
+  background: #1C1C1A;
   color: #fff;
   border-color: #374151;
 }
@@ -14215,7 +14216,7 @@ body.kpi-resizing {
   font-size: 0.9rem;
   font-weight: 500;
   color: #fff;
-  background: #374151;
+  background: #1C1C1A;
   border: none;
   border-radius: 0;
   cursor: pointer;
@@ -14356,7 +14357,7 @@ body.kpi-resizing {
 }
 
 .time-task-select-apply-btn:hover {
-  background: #374151;
+  background: #1C1C1A;
 }
 
 .time-task-select-clear-btn {
@@ -18639,7 +18640,7 @@ body.kpi-resizing {
 
 .dream-kpi-card-progress-fill {
   height: 100%;
-  background: #374151;
+  background: #1C1C1A;
   transition: width 0.3s;
 }
 
@@ -19197,7 +19198,7 @@ body.kpi-resizing {
 }
 
 .dream-kpi-filter-btn.active {
-  background: #374151;
+  background: #1C1C1A;
   border-color: #374151;
   color: #fff;
 }
@@ -19441,7 +19442,7 @@ body.kpi-resizing {
 
 .gantt-progress-fill {
   height: 100%;
-  background: #374151;
+  background: #1C1C1A;
   transition: width 0.3s;
 }
 
@@ -19988,7 +19989,7 @@ body.kpi-resizing {
 }
 
 .dream-kpi-submit:hover {
-  background: #374151;
+  background: #1C1C1A;
   border-color: #374151;
 }
 
@@ -20083,7 +20084,7 @@ body.kpi-resizing {
 }
 
 .dream-delete-confirm-submit:hover {
-  background: #374151;
+  background: #1C1C1A;
   border-color: #374151;
 }
 
@@ -20331,7 +20332,7 @@ body.kpi-resizing {
 }
 
 .dream-kpi-log-submit:hover {
-  background: #374151;
+  background: #1C1C1A;
   border-color: #374151;
 }
 
@@ -20437,7 +20438,7 @@ body.kpi-resizing {
 }
 
 .diary-add-emotion-btn-confirm {
-  background: #374151;
+  background: #1C1C1A;
   border: none;
   color: #fff;
 }
@@ -21017,7 +21018,7 @@ body.kpi-resizing {
 .diary-emotion-add-btn {
   padding: 0.4rem 1rem;
   font-size: 0.9rem;
-  background: #374151;
+  background: #1C1C1A;
   color: #fff;
   border: none;
   cursor: pointer;
@@ -21162,7 +21163,7 @@ body.kpi-resizing {
 .diary-emotion-save-btn {
   padding: 0.35rem 0.75rem;
   font-size: 0.85rem;
-  background: #374151;
+  background: #1C1C1A;
   color: #fff;
   border: none;
   cursor: pointer;
@@ -23525,7 +23526,7 @@ body.kpi-resizing {
   font-weight: 500;
   font-family: inherit;
   color: #fff;
-  background: var(--gray-700, #374151);
+  background: #1C1C1A;
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -24994,7 +24995,7 @@ body.kpi-resizing {
 }
 
 .routine-add-btn-confirm {
-  background: #374151;
+  background: #1C1C1A;
   color: #fff;
   border-color: #374151;
 }
