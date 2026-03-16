@@ -18,14 +18,26 @@ import {
   syncHabitTrackerLogs,
   upsertHabitTrackerLogWithDailyState,
 } from "../utils/timeKpiSync.js";
-import { getKpiTodosAsTasks, syncKpiTodoCompleted, getKpiTodosByKpiName, getKpiDailyRepeatInfoByKpiName, syncKpiDailyRepeatTodoCompleted } from "../utils/kpiTodoSync.js";
+import {
+  getKpiTodosAsTasks,
+  syncKpiTodoCompleted,
+  getKpiTodosByKpiName,
+  getKpiDailyRepeatInfoByKpiName,
+  syncKpiDailyRepeatTodoCompleted,
+} from "../utils/kpiTodoSync.js";
 import { getCustomSections } from "../utils/todoSettings.js";
 import { showToast } from "../utils/showToast.js";
 
 /** 오딧 3. 우선순위 영역: 해당 날짜 할일 목록 로드 (Calendar getTasksForDate와 동일 데이터) */
 const SECTION_TASKS_KEY_AUDIT = "todo-section-tasks";
 const CUSTOM_SECTION_TASKS_KEY_AUDIT = "todo-custom-section-tasks";
-const KPI_SECTION_IDS_AUDIT = ["braindump", "dream", "sideincome", "health", "happy"];
+const KPI_SECTION_IDS_AUDIT = [
+  "braindump",
+  "dream",
+  "sideincome",
+  "health",
+  "happy",
+];
 function getTasksForAuditDate(dateKey) {
   const out = [];
   try {
@@ -118,7 +130,12 @@ function setAuditTaskDone(sectionId, taskId, kpiTodoId, storageKey, done) {
   } catch (_) {}
 }
 
-const EISENHOWER_LABELS_AUDIT = { "urgent-important": "긴급+중요", "important-not-urgent": "중요+여유", "urgent-not-important": "긴급+덜중요", "not-urgent-not-important": "여유+안중요" };
+const EISENHOWER_LABELS_AUDIT = {
+  "urgent-important": "긴급+중요",
+  "important-not-urgent": "중요+여유",
+  "urgent-not-important": "긴급+덜중요",
+  "not-urgent-not-important": "여유+안중요",
+};
 /** 오딧 우선순위별 완료 파이 전용 – 볼드하지 않은 색 */
 const PRIORITY_PIE_COLORS_AUDIT = {
   "urgent-important": "#d4a5a5",
@@ -127,7 +144,12 @@ const PRIORITY_PIE_COLORS_AUDIT = {
   "not-urgent-not-important": "#9ca3af",
 };
 /** KPI별 완료 파이: sectionId(꿈/부수입/행복/건강) 기준 카테고리 컬러 */
-const KPI_SECTION_TO_CATEGORY = { dream: "dream", sideincome: "sideincome", happy: "happiness", health: "health" };
+const KPI_SECTION_TO_CATEGORY = {
+  dream: "dream",
+  sideincome: "sideincome",
+  happy: "happiness",
+  health: "health",
+};
 function getKpiPieColorBySection(sectionId) {
   const key = KPI_SECTION_TO_CATEGORY[sectionId] ?? "";
   return CATEGORY_GRAPH_COLORS[key] ?? CATEGORY_GRAPH_COLORS[""];
@@ -136,56 +158,99 @@ function getAuditPriorityPieHtml(dateStr) {
   const tasks = getTasksForAuditDate(dateStr);
   const completed = tasks.filter((t) => t.done);
   const byPriority = {};
-  completed.forEach((t) => { const k = (t.eisenhower || "").trim() || "(없음)"; byPriority[k] = (byPriority[k] || 0) + 1; });
+  completed.forEach((t) => {
+    const k = (t.eisenhower || "").trim() || "(없음)";
+    byPriority[k] = (byPriority[k] || 0) + 1;
+  });
   const byKpi = {};
   completed.forEach((t) => {
     const k = (t.classification || "").trim() || "(없음)";
     if (!byKpi[k]) byKpi[k] = { count: 0, sectionId: t.sectionId || "" };
     byKpi[k].count += 1;
   });
-  const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const esc = (s) =>
+    String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
   const makePie = (entries, title, getColor) => {
     const total = entries.reduce((s, e) => s + e.count, 0);
-    if (total === 0) return `<div class="time-audit-pie-box"><div class="time-audit-pie-title">${esc(title)}</div><div class="time-audit-pie-empty">완료 없음</div></div>`;
+    if (total === 0)
+      return `<div class="time-audit-pie-box"><div class="time-audit-pie-title">${esc(title)}</div><div class="time-audit-pie-empty">완료 없음</div></div>`;
     let acc = 0;
-    const cx = 50; const cy = 50; const r = 40;
-    const segs = entries.map((e, i) => {
-      const color = getColor(e, i);
-      const pct = e.count / total;
-      if (pct >= 0.9999) return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" title="${esc(e.label)}: ${e.count} (100%)"/>`;
-      const a0 = (acc / total) * 2 * Math.PI - Math.PI / 2;
-      acc += e.count;
-      const a1 = (acc / total) * 2 * Math.PI - Math.PI / 2;
-      const x0 = cx + r * Math.cos(a0); const y0 = cy + r * Math.sin(a0);
-      const x1 = cx + r * Math.cos(a1); const y1 = cy + r * Math.sin(a1);
-      const large = pct > 0.5 ? 1 : 0;
-      const d = `M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z`;
-      return `<path d="${d}" fill="${color}" title="${esc(e.label)}: ${e.count}"/>`;
-    }).join("");
-    const legend = entries.map((e, i) => {
-      const color = getColor(e, i);
-      const pct = total > 0 ? Math.round((e.count / total) * 100) : 0;
-      const pctText = entries.length === 1 ? " 100%" : ` ${e.count} (${pct}%)`;
-      return `<span class="time-audit-pie-legend-item" style="--pie-color:${color}">${esc(e.label)}${pctText}</span>`;
-    }).join("");
+    const cx = 50;
+    const cy = 50;
+    const r = 40;
+    const segs = entries
+      .map((e, i) => {
+        const color = getColor(e, i);
+        const pct = e.count / total;
+        if (pct >= 0.9999)
+          return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" title="${esc(e.label)}: ${e.count} (100%)"/>`;
+        const a0 = (acc / total) * 2 * Math.PI - Math.PI / 2;
+        acc += e.count;
+        const a1 = (acc / total) * 2 * Math.PI - Math.PI / 2;
+        const x0 = cx + r * Math.cos(a0);
+        const y0 = cy + r * Math.sin(a0);
+        const x1 = cx + r * Math.cos(a1);
+        const y1 = cy + r * Math.sin(a1);
+        const large = pct > 0.5 ? 1 : 0;
+        const d = `M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z`;
+        return `<path d="${d}" fill="${color}" title="${esc(e.label)}: ${e.count}"/>`;
+      })
+      .join("");
+    const legend = entries
+      .map((e, i) => {
+        const color = getColor(e, i);
+        const pct = total > 0 ? Math.round((e.count / total) * 100) : 0;
+        const pctText =
+          entries.length === 1 ? " 100%" : ` ${e.count} (${pct}%)`;
+        return `<span class="time-audit-pie-legend-item" style="--pie-color:${color}">${esc(e.label)}${pctText}</span>`;
+      })
+      .join("");
     return `<div class="time-audit-pie-box"><div class="time-audit-pie-title">${esc(title)}</div><div class="time-audit-pie-svg-wrap"><svg viewBox="0 0 100 100" class="time-audit-pie-svg">${segs}</svg></div><div class="time-audit-pie-legend">${legend}</div></div>`;
   };
-  const priorityEntries = Object.entries(byPriority).map(([k, count]) => ({ key: k, label: EISENHOWER_LABELS_AUDIT[k] || k, count }));
-  const kpiEntries = Object.entries(byKpi).map(([label, data]) => ({ label, count: data.count, sectionId: data.sectionId || "" }));
-  const priorityColor = (e, i) => PRIORITY_PIE_COLORS_AUDIT[e.key] ?? ["#d4a5a5", "#9cb89c", "#d4c4a0", "#9ca3af"][i % 4];
+  const priorityEntries = Object.entries(byPriority).map(([k, count]) => ({
+    key: k,
+    label: EISENHOWER_LABELS_AUDIT[k] || k,
+    count,
+  }));
+  const kpiEntries = Object.entries(byKpi).map(([label, data]) => ({
+    label,
+    count: data.count,
+    sectionId: data.sectionId || "",
+  }));
+  const priorityColor = (e, i) =>
+    PRIORITY_PIE_COLORS_AUDIT[e.key] ??
+    ["#d4a5a5", "#9cb89c", "#d4c4a0", "#9ca3af"][i % 4];
   const kpiColor = (e, i) => getKpiPieColorBySection(e.sectionId);
-  return makePie(priorityEntries, "우선순위별 완료", priorityColor) + makePie(kpiEntries, "KPI별 완료", kpiColor);
+  return (
+    makePie(priorityEntries, "우선순위별 완료", priorityColor) +
+    makePie(kpiEntries, "KPI별 완료", kpiColor)
+  );
 }
 
 /** 오딧 4. 시간낭비내역: 비생산적 카테고리 파이 (회색 계열) */
 /** 비생산적 시간 비율 파이 – 파란색 계열, 볼드하지 않게 */
-const TIME_THIEF_PIE_COLORS = ["#93c5fd", "#bfdbfe", "#dbeafe", "#a5b4fc", "#c7d2fe", "#e0e7ff", "#818cf8", "#a78bfa"];
+const TIME_THIEF_PIE_COLORS = [
+  "#93c5fd",
+  "#bfdbfe",
+  "#dbeafe",
+  "#a5b4fc",
+  "#c7d2fe",
+  "#e0e7ff",
+  "#818cf8",
+  "#a78bfa",
+];
 function getAuditTimeThiefHtml(dateStr, filtered, hourlyRate) {
   const dateRows = filtered.filter(
-    (r) => (normalizeDateForCompare(r.date || "") || (r.date || "").trim()) === dateStr,
+    (r) =>
+      (normalizeDateForCompare(r.date || "") || (r.date || "").trim()) ===
+      dateStr,
   );
   const nonproductiveRows = dateRows.filter(
-    (r) => (String(r.productivity || "").trim()) === "nonproductive",
+    (r) => String(r.productivity || "").trim() === "nonproductive",
   );
   const hourly = parseFloat(String(hourlyRate || "0").replace(/,/g, "")) || 0;
   const byTask = {};
@@ -200,7 +265,12 @@ function getAuditTimeThiefHtml(dateStr, filtered, hourlyRate) {
   const tableRows = Object.values(byTask).sort((a, b) => b.hours - a.hours);
   const totalWastedHours = tableRows.reduce((s, r) => s + r.hours, 0);
   const totalWastedValue = tableRows.reduce((s, r) => s + r.price, 0);
-  const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const esc = (s) =>
+    String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
   const tableHtml =
     tableRows.length > 0
       ? (() => {
@@ -267,13 +337,24 @@ function getAuditTimeThiefHtml(dateStr, filtered, hourlyRate) {
 }
 
 /** 오딧 5. 시간 투자 내역: 생산적 카테고리, 파이 빨간 계열(볼드하지 않게) */
-const TIME_INVESTMENT_PIE_COLORS = ["#fecaca", "#fca5a5", "#f87171", "#fca5a5", "#fecaca", "#fda4a4", "#fb7185", "#f9a8d4"];
+const TIME_INVESTMENT_PIE_COLORS = [
+  "#fecaca",
+  "#fca5a5",
+  "#f87171",
+  "#fca5a5",
+  "#fecaca",
+  "#fda4a4",
+  "#fb7185",
+  "#f9a8d4",
+];
 function getAuditTimeInvestmentHtml(dateStr, filtered, hourlyRate) {
   const dateRows = filtered.filter(
-    (r) => (normalizeDateForCompare(r.date || "") || (r.date || "").trim()) === dateStr,
+    (r) =>
+      (normalizeDateForCompare(r.date || "") || (r.date || "").trim()) ===
+      dateStr,
   );
   const productiveRows = dateRows.filter(
-    (r) => (String(r.productivity || "").trim()) === "productive",
+    (r) => String(r.productivity || "").trim() === "productive",
   );
   const hourly = parseFloat(String(hourlyRate || "0").replace(/,/g, "")) || 0;
   const byTask = {};
@@ -288,7 +369,12 @@ function getAuditTimeInvestmentHtml(dateStr, filtered, hourlyRate) {
   const tableRows = Object.values(byTask).sort((a, b) => b.hours - a.hours);
   const totalInvestedHours = tableRows.reduce((s, r) => s + r.hours, 0);
   const totalEarned = tableRows.reduce((s, r) => s + r.price, 0);
-  const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const esc = (s) =>
+    String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
   const tableHtml =
     tableRows.length > 0
       ? (() => {
@@ -311,7 +397,8 @@ function getAuditTimeInvestmentHtml(dateStr, filtered, hourlyRate) {
     const r = 40;
     const segs = entries
       .map((e, i) => {
-        const color = TIME_INVESTMENT_PIE_COLORS[i % TIME_INVESTMENT_PIE_COLORS.length];
+        const color =
+          TIME_INVESTMENT_PIE_COLORS[i % TIME_INVESTMENT_PIE_COLORS.length];
         const pct = e.hours / total;
         if (pct >= 0.9999)
           return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" title="${esc(e.taskName)}: ${Math.round(pct * 100)}%"/>`;
@@ -329,7 +416,8 @@ function getAuditTimeInvestmentHtml(dateStr, filtered, hourlyRate) {
       .join("");
     const legend = entries
       .map((e, i) => {
-        const color = TIME_INVESTMENT_PIE_COLORS[i % TIME_INVESTMENT_PIE_COLORS.length];
+        const color =
+          TIME_INVESTMENT_PIE_COLORS[i % TIME_INVESTMENT_PIE_COLORS.length];
         const pct = total > 0 ? Math.round((e.hours / total) * 100) : 0;
         return `<span class="time-audit-pie-legend-item" style="--pie-color:${color}">${esc(e.taskName)} ${pct}%</span>`;
       })
@@ -357,7 +445,9 @@ function getAuditTimeInvestmentHtml(dateStr, filtered, hourlyRate) {
 /** 오딧 6. 가용시간: 24 - 근무 - 수면, 오늘 하루의 가치(낭비+번돈 합), 총 수면/총 근무 – 4열 동일 너비 */
 function getAuditAvailableTimeHtml(dateStr, filtered, hourlyRate) {
   const dateRows = filtered.filter(
-    (r) => (normalizeDateForCompare(r.date || "") || (r.date || "").trim()) === dateStr,
+    (r) =>
+      (normalizeDateForCompare(r.date || "") || (r.date || "").trim()) ===
+      dateStr,
   );
   const hourly = parseFloat(String(hourlyRate || "0").replace(/,/g, "")) || 0;
   let workHours = 0;
@@ -366,7 +456,11 @@ function getAuditAvailableTimeHtml(dateStr, filtered, hourlyRate) {
   let totalEarned = 0;
   dateRows.forEach((r) => {
     const hrs = parseTimeToHours(r.timeTracked) || 0;
-    const cat = (r.category || getTaskOptionByName(r.taskName)?.category || "").trim();
+    const cat = (
+      r.category ||
+      getTaskOptionByName(r.taskName)?.category ||
+      ""
+    ).trim();
     if (cat === "work") workHours += hrs;
     else if (cat === "sleep") sleepHours += hrs;
     const p = (r.productivity || getProductivityFromCategory(cat) || "").trim();
@@ -377,12 +471,27 @@ function getAuditAvailableTimeHtml(dateStr, filtered, hourlyRate) {
   const dayValue = totalEarned + totalWastedValue;
   const valueSign = dayValue >= 0 ? "+" : "";
   const valueText = `${valueSign}${formatPrice(dayValue)}원`;
-  const valueClass = dayValue >= 0 ? "time-audit-available-box-value time-audit-available-value-plus" : "time-audit-available-box-value time-audit-available-value-minus";
+  const valueClass =
+    dayValue >= 0
+      ? "time-audit-available-box-value time-audit-available-value-plus"
+      : "time-audit-available-box-value time-audit-available-value-minus";
   const boxes = [
-    { label: "가용시간", value: formatHoursToReadable(availableHours), class: "time-audit-available-box-available" },
+    {
+      label: "가용시간",
+      value: formatHoursToReadable(availableHours),
+      class: "time-audit-available-box-available",
+    },
     { label: "오늘 하루의 가치", value: valueText, class: valueClass },
-    { label: "총 근무시간", value: formatHoursToReadable(workHours), class: "time-audit-available-box-work" },
-    { label: "총 수면시간", value: formatHoursToReadable(sleepHours), class: "time-audit-available-box-sleep" },
+    {
+      label: "총 근무시간",
+      value: formatHoursToReadable(workHours),
+      class: "time-audit-available-box-work",
+    },
+    {
+      label: "총 수면시간",
+      value: formatHoursToReadable(sleepHours),
+      class: "time-audit-available-box-sleep",
+    },
   ];
   const items = boxes
     .map(
@@ -446,12 +555,28 @@ const FIXED_PRODUCTIVE_TASKS = [
   { name: "바디케어", category: "health", productivity: "productive" },
   /* 생산적 → 행복 */
   { name: "감정 기록하기", category: "happiness", productivity: "productive" },
-  { name: "의미 있는 영상 시청", category: "happiness", productivity: "productive" },
+  {
+    name: "의미 있는 영상 시청",
+    category: "happiness",
+    productivity: "productive",
+  },
   { name: "의미 있는 대화", category: "happiness", productivity: "productive" },
-  { name: "의미 있는 모임 참석", category: "happiness", productivity: "productive" },
-  { name: "의식적 콘텐츠 소비", category: "happiness", productivity: "productive" },
+  {
+    name: "의미 있는 모임 참석",
+    category: "happiness",
+    productivity: "productive",
+  },
+  {
+    name: "의식적 콘텐츠 소비",
+    category: "happiness",
+    productivity: "productive",
+  },
   { name: "음악 듣기", category: "happiness", productivity: "productive" },
-  { name: "잡동사니 일 해결하기", category: "happiness", productivity: "productive" },
+  {
+    name: "잡동사니 일 해결하기",
+    category: "happiness",
+    productivity: "productive",
+  },
   { name: "커피 마시기", category: "happiness", productivity: "productive" },
   { name: "덕질하기", category: "happiness", productivity: "productive" },
   { name: "다이어리 쓰기", category: "happiness", productivity: "productive" },
@@ -953,7 +1078,9 @@ function clearOverlappingScheduledTimes(all, dateStr, taskName, newSlots) {
       }
       const sameContent =
         remaining.length === otherSlots.length &&
-        remaining.every((s, i) => (otherSlots[i] || "").trim() === (s || "").trim());
+        remaining.every(
+          (s, i) => (otherSlots[i] || "").trim() === (s || "").trim(),
+        );
       if (remaining.length === 0) {
         const { scheduledTime: _st, scheduledTimes: _sts, ...rest } = other;
         dateData[otherKey] = Object.keys(rest).length ? rest : undefined;
@@ -974,7 +1101,12 @@ export function clearOverlapFromBudgetGoalsOnly(dateStr, scheduledTimes) {
 }
 
 /** 캘린더 1일뷰 예정 시간 저장 - scheduledTimes 배열 지원 (같은 과제 여러 구간). 겹침 해결 시 true 반환 */
-export function saveBudgetScheduledTimes(dateStr, taskName, scheduledTimes, isInvest) {
+export function saveBudgetScheduledTimes(
+  dateStr,
+  taskName,
+  scheduledTimes,
+  isInvest,
+) {
   if (!(taskName || "").trim()) return false;
   try {
     removeFromBudgetExcluded(dateStr, taskName);
@@ -1018,11 +1150,16 @@ function saveBudgetScheduledTime(dateStr, taskName, scheduledTime, isInvest) {
  * lastEditedTask를 먼저 처리 → 다른 과제의 겹치는 구간 제거. 이미 수정된 과제는 DOM 값으로 덮어쓰지 않음.
  */
 function saveBudgetScheduledTimesBatch(dateStr, tasksInOrder, lastEditedTask) {
-  if (!(dateStr || "").trim()) return { overlapCleared: false, modifiedKeys: new Set() };
+  if (!(dateStr || "").trim())
+    return { overlapCleared: false, modifiedKeys: new Set() };
   try {
     const raw = localStorage.getItem(BUDGET_GOALS_KEY);
     const all = raw ? JSON.parse(raw) : {};
-    if (!all[dateStr] || typeof all[dateStr] !== "object" || Array.isArray(all[dateStr]))
+    if (
+      !all[dateStr] ||
+      typeof all[dateStr] !== "object" ||
+      Array.isArray(all[dateStr])
+    )
       all[dateStr] = {};
     const dateData = all[dateStr];
     const lastKey = (lastEditedTask || "").trim();
@@ -1040,7 +1177,10 @@ function saveBudgetScheduledTimesBatch(dateStr, tasksInOrder, lastEditedTask) {
       console.log("[BUDGET-OVERLAP] saveBudgetScheduledTimesBatch", {
         lastEditedTask,
         lastKey,
-        toProcess: toProcess.map((t) => ({ task: t.task, times: [...(t.times || [])] })),
+        toProcess: toProcess.map((t) => ({
+          task: t.task,
+          times: [...(t.times || [])],
+        })),
       });
     }
     for (const { task, times, isInvest } of toProcess) {
@@ -1090,10 +1230,19 @@ function saveTimeRows(rows) {
     localStorage.setItem(TIME_ROWS_KEY, JSON.stringify(arr));
     syncHabitTrackerLogs();
     if (TIME_ROWS_SYNC_DEBUG) {
-      console.log("[시간가계부→캘린더] saveTimeRows 완료, calendar-time-rows-updated dispatch 직전", {
-        totalRows: arr.length,
-        sample: arr.slice(0, 2).map((r) => ({ task: r.taskName, start: r.startTime, end: r.endTime })),
-      });
+      console.log(
+        "[시간가계부→캘린더] saveTimeRows 완료, calendar-time-rows-updated dispatch 직전",
+        {
+          totalRows: arr.length,
+          sample: arr
+            .slice(0, 2)
+            .map((r) => ({
+              task: r.taskName,
+              start: r.startTime,
+              end: r.endTime,
+            })),
+        },
+      );
     }
     if (typeof document !== "undefined") {
       document.dispatchEvent(
@@ -1151,7 +1300,8 @@ const CATEGORY_GRAPH_COLORS = {
   sideincome: "rgba(191,179,255,0.5)",
   happiness: "rgba(255,218,185,0.5)",
   health: "rgba(144,238,144,0.5)",
-  productive_consumption: "rgba(191,179,255,0.5)", /* 구 카테고리: 부수입과 동일 색 */
+  productive_consumption:
+    "rgba(191,179,255,0.5)" /* 구 카테고리: 부수입과 동일 색 */,
   pleasure: "rgba(173,216,230,0.5)",
   dreamblocking: "rgba(255,200,124,0.5)",
   unhappiness: "rgba(221,160,221,0.5)",
@@ -1170,12 +1320,7 @@ function getTaskColorForDropdown(taskOpt, isProductive) {
 /** 카테고리에 따른 생산성 자동 매핑 */
 function getProductivityFromCategory(categoryValue) {
   if (!categoryValue) return "";
-  const productive = [
-    "dream",
-    "sideincome",
-    "happiness",
-    "health",
-  ];
+  const productive = ["dream", "sideincome", "happiness", "health"];
   const nonproductive = [
     "unhappiness",
     "unhealthy",
@@ -1552,7 +1697,9 @@ function getFilterPeriodLabel(type, year, month, start, end) {
   if (type === "day")
     return formatDateForDayFilter(start || toDateStr(new Date())) || "오늘";
   if (type === "range" && start && end)
-    return start === end ? (formatDateForDayFilter(start) || start) : `${start} ~ ${end}`;
+    return start === end
+      ? formatDateForDayFilter(start) || start
+      : `${start} ~ ${end}`;
   return "";
 }
 
@@ -1691,7 +1838,13 @@ function aggregateDailyRevenueFromFiltered(filtered, hourlyRate) {
 }
 
 /** 일별 수익 차트 위젯 생성 (rangeStart, rangeEnd 있을 때만) */
-function createDailyRevenueWidget(periodLabel, filtered, hourlyRate, rangeStart, rangeEnd) {
+function createDailyRevenueWidget(
+  periodLabel,
+  filtered,
+  hourlyRate,
+  rangeStart,
+  rangeEnd,
+) {
   if (!rangeStart || !rangeEnd) return null;
   const dailyRev = aggregateDailyRevenueFromFiltered(filtered, hourlyRate);
   const dailyData = [];
@@ -1746,8 +1899,18 @@ function createDailyRevenueWidget(periodLabel, filtered, hourlyRate, rangeStart,
   const barW = Math.max(4, barTotalW - barGap);
   const zeroY = padTop + plotH - ((0 - yMin) / yRange) * plotH;
   const monthNames = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
   ];
   const yTicks = [];
   const step =
@@ -1761,21 +1924,14 @@ function createDailyRevenueWidget(periodLabel, filtered, hourlyRate, rangeStart,
       if (item.price === 0) return "";
       const x = padLeft + i * barTotalW + (barTotalW - barW) / 2;
       const barH =
-        yRange > 0
-          ? Math.max(1, (Math.abs(item.price) / yRange) * plotH)
-          : 0;
+        yRange > 0 ? Math.max(1, (Math.abs(item.price) / yRange) * plotH) : 0;
       const isNeg = item.price < 0;
       const y = isNeg ? zeroY : zeroY - barH;
       const fill = isNeg
         ? "#8b7355"
-        : [
-            "#4a5568",
-            "#718096",
-            "#a0aec0",
-            "#2b6cb0",
-            "#3182ce",
-            "#63b3ed",
-          ][i % 6];
+        : ["#4a5568", "#718096", "#a0aec0", "#2b6cb0", "#3182ce", "#63b3ed"][
+            i % 6
+          ];
       const rx = 3;
       return `<rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="${rx}" ry="${rx}" fill="${fill}" class="time-dash-vbar"/>`;
     })
@@ -1811,8 +1967,7 @@ function createDailyRevenueWidget(periodLabel, filtered, hourlyRate, rangeStart,
       if (item.price === 0) return "";
       const x = padLeft + (i + 0.5) * barTotalW;
       const isNeg = item.price < 0;
-      const barH =
-        yRange > 0 ? (Math.abs(item.price) / yRange) * plotH : 0;
+      const barH = yRange > 0 ? (Math.abs(item.price) / yRange) * plotH : 0;
       const barTop = isNeg ? zeroY : zeroY - barH;
       const barBottom = isNeg ? zeroY + barH : zeroY;
       const labelGap = 8;
@@ -1865,7 +2020,8 @@ function calcPeriodValueFromFiltered(filtered, hourlyRate) {
 
 /** 카테고리 라벨 조회 */
 function getCategoryLabel(value) {
-  if (value === "productive_consumption") return "부수입"; /* 구 카테고리 → 부수입으로 표시 */
+  if (value === "productive_consumption")
+    return "부수입"; /* 구 카테고리 → 부수입으로 표시 */
   const opt = CATEGORY_OPTIONS.find((o) => o.value === value);
   return opt ? opt.label : value || "그 외";
 }
@@ -2316,7 +2472,8 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   const catDisplay = document.createElement("span");
   catDisplay.className = "time-tag-pill cat cat-empty";
   catDisplay.textContent = getCategoryLabel(rowData.category) || "—";
-  catDisplay.className = "time-tag-pill cat " + getCategoryColor(rowData.category);
+  catDisplay.className =
+    "time-tag-pill cat " + getCategoryColor(rowData.category);
   catTd.appendChild(catDisplay);
 
   const taskTd = document.createElement("td");
@@ -2460,10 +2617,12 @@ function setMemoContent(containerEl, feedbackStr) {
       chip.contentEditable = "false";
       chip.setAttribute("data-tag", tagName);
       chip.innerHTML = `<span class="time-memo-tag-chip-text">${escapeHtml(tagName)}</span><button type="button" class="time-memo-tag-chip-remove" aria-label="태그 삭제">&times;</button>`;
-      chip.querySelector(".time-memo-tag-chip-remove")?.addEventListener("click", (e) => {
-        e.preventDefault();
-        chip.remove();
-      });
+      chip
+        .querySelector(".time-memo-tag-chip-remove")
+        ?.addEventListener("click", (e) => {
+          e.preventDefault();
+          chip.remove();
+        });
       containerEl.appendChild(chip);
     } else {
       const text = document.createTextNode(tok);
@@ -2482,8 +2641,12 @@ function escapeHtml(s) {
 function initMemoFeedbackWithTags(containerEl) {
   if (!containerEl) return;
   let composing = false;
-  containerEl.addEventListener("compositionstart", () => { composing = true; });
-  containerEl.addEventListener("compositionend", () => { composing = false; });
+  containerEl.addEventListener("compositionstart", () => {
+    composing = true;
+  });
+  containerEl.addEventListener("compositionend", () => {
+    composing = false;
+  });
 
   function getTextBeforeCaret(container, range) {
     const preRange = document.createRange();
@@ -2498,14 +2661,25 @@ function initMemoFeedbackWithTags(containerEl) {
     return postRange.toString();
   }
   function getNodeLength(node) {
-    if (node.nodeType === Node.TEXT_NODE) return (node.textContent || "").length;
+    if (node.nodeType === Node.TEXT_NODE)
+      return (node.textContent || "").length;
     return node.childNodes.length;
   }
-  function tryCommitTag(container, range, replaceLen, tagName, insertSpaceAfter) {
+  function tryCommitTag(
+    container,
+    range,
+    replaceLen,
+    tagName,
+    insertSpaceAfter,
+  ) {
     const tagNameTrim = (tagName || "").trim();
     if (!tagNameTrim) return;
     const sel = window.getSelection();
-    const startCharOffset = getCharacterOffset(container, range.startContainer, range.startOffset);
+    const startCharOffset = getCharacterOffset(
+      container,
+      range.startContainer,
+      range.startOffset,
+    );
     const fromOffset = Math.max(0, startCharOffset - replaceLen);
     const fromPos = getNodeAndOffsetAt(container, fromOffset);
     if (!fromPos) return;
@@ -2518,10 +2692,12 @@ function initMemoFeedbackWithTags(containerEl) {
     chip.contentEditable = "false";
     chip.setAttribute("data-tag", tagNameTrim);
     chip.innerHTML = `<span class="time-memo-tag-chip-text">${escapeHtml(tagNameTrim)}</span><button type="button" class="time-memo-tag-chip-remove" aria-label="태그 삭제">&times;</button>`;
-    chip.querySelector(".time-memo-tag-chip-remove")?.addEventListener("click", (ev) => {
-      ev.preventDefault();
-      chip.remove();
-    });
+    chip
+      .querySelector(".time-memo-tag-chip-remove")
+      ?.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        chip.remove();
+      });
     range.setStart(fromPos.node, fromPos.offset);
     range.collapse(true);
     range.insertNode(chip);
@@ -2545,8 +2721,11 @@ function initMemoFeedbackWithTags(containerEl) {
           count += Math.min(targetOffset, (n.textContent || "").length);
           return true;
         }
-        if (n.nodeType === Node.ELEMENT_NODE && n.classList?.contains("time-memo-tag-chip")) {
-          count += 1 + ((n.getAttribute("data-tag") || "").trim().length);
+        if (
+          n.nodeType === Node.ELEMENT_NODE &&
+          n.classList?.contains("time-memo-tag-chip")
+        ) {
+          count += 1 + (n.getAttribute("data-tag") || "").trim().length;
           return true;
         }
         return true;
@@ -2555,8 +2734,11 @@ function initMemoFeedbackWithTags(containerEl) {
         count += (n.textContent || "").length;
         return false;
       }
-      if (n.nodeType === Node.ELEMENT_NODE && n.classList?.contains("time-memo-tag-chip")) {
-        count += 1 + ((n.getAttribute("data-tag") || "").trim().length);
+      if (
+        n.nodeType === Node.ELEMENT_NODE &&
+        n.classList?.contains("time-memo-tag-chip")
+      ) {
+        count += 1 + (n.getAttribute("data-tag") || "").trim().length;
         return false;
       }
       if (n.nodeType === Node.ELEMENT_NODE) {
@@ -2579,8 +2761,11 @@ function initMemoFeedbackWithTags(containerEl) {
         passed += len;
         return null;
       }
-      if (n.nodeType === Node.ELEMENT_NODE && n.classList?.contains("time-memo-tag-chip")) {
-        const len = 1 + ((n.getAttribute("data-tag") || "").trim().length);
+      if (
+        n.nodeType === Node.ELEMENT_NODE &&
+        n.classList?.contains("time-memo-tag-chip")
+      ) {
+        const len = 1 + (n.getAttribute("data-tag") || "").trim().length;
         if (passed + len >= charOffset) return { node: n, offset: 0 };
         passed += len;
         return null;
@@ -2597,7 +2782,8 @@ function initMemoFeedbackWithTags(containerEl) {
   }
 
   containerEl.addEventListener("input", () => {
-    if (serializeMemoContent(containerEl).trim() === "") containerEl.classList.add("is-empty");
+    if (serializeMemoContent(containerEl).trim() === "")
+      containerEl.classList.add("is-empty");
     else containerEl.classList.remove("is-empty");
     if (composing) return;
     const sel = window.getSelection();
@@ -2618,7 +2804,8 @@ function initMemoFeedbackWithTags(containerEl) {
 
   containerEl.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") {
-      if (composing) return; /* 한글 조합 중에는 태그 확정하지 않음 → 글자 중복/깨짐 방지 */
+      if (composing)
+        return; /* 한글 조합 중에는 태그 확정하지 않음 → 글자 중복/깨짐 방지 */
       const sel = window.getSelection();
       if (!sel.rangeCount) return;
       const range = sel.getRangeAt(0);
@@ -2627,7 +2814,13 @@ function initMemoFeedbackWithTags(containerEl) {
       const tagMatch = beforeCaret.match(/#([^\s#]*)$/);
       if (tagMatch && tagMatch[1].length > 0) {
         e.preventDefault();
-        tryCommitTag(containerEl, range, tagMatch[0].length, tagMatch[1], e.key === " ");
+        tryCommitTag(
+          containerEl,
+          range,
+          tagMatch[0].length,
+          tagMatch[1],
+          e.key === " ",
+        );
       }
     }
   });
@@ -2679,7 +2872,8 @@ function collectRowsFromDOM(container) {
     if (!isEmptyTimeRow(row)) rows.push(row);
   });
   container.querySelectorAll(".time-ledger-mobile-card").forEach((card) => {
-    if (card._rowData && !isEmptyTimeRow(card._rowData)) rows.push(card._rowData);
+    if (card._rowData && !isEmptyTimeRow(card._rowData))
+      rows.push(card._rowData);
   });
   return rows;
 }
@@ -2693,14 +2887,20 @@ function getProductivityBarColor(prod) {
 
 /** 모바일 시간가계부 카드 생성 */
 function createMobileTimeCard(rowData, onEdit, onDelete) {
-  const prod = rowData.productivity || getProductivityFromCategory(rowData.category) || "";
+  const prod =
+    rowData.productivity || getProductivityFromCategory(rowData.category) || "";
   const color = getProductivityBarColor(prod);
   const startStr = toDisplayTimeOnly(rowData.startTime) || "";
   const endStr = toDisplayTimeOnly(rowData.endTime) || "";
-  const timeRange = startStr && endStr ? `${startStr} - ${endStr}` : startStr || endStr || "";
+  const timeRange =
+    startStr && endStr ? `${startStr} - ${endStr}` : startStr || endStr || "";
   const tracked = rowData.timeTracked || "";
-  const taskName = (rowData.taskName || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const memo = (rowData.feedback || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const taskName = (rowData.taskName || "")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  const memo = (rowData.feedback || "")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 
   const card = document.createElement("div");
   card.className = "time-ledger-mobile-card";
@@ -2827,13 +3027,14 @@ function createProductivitySection(
     let totalPrice = 0;
     const hourlyRate =
       parseFloat(
-        String(viewEl?.querySelector(".time-hourly-input")?.value || "0").replace(
-          /,/g,
-          "",
-        ),
+        String(
+          viewEl?.querySelector(".time-hourly-input")?.value || "0",
+        ).replace(/,/g, ""),
       ) || 0;
     rows.forEach((tr) => {
-      const timeEl = tr.querySelector(".time-input-tracked") || tr.querySelector(".time-display-tracked");
+      const timeEl =
+        tr.querySelector(".time-input-tracked") ||
+        tr.querySelector(".time-display-tracked");
       const val = (timeEl?.value ?? timeEl?.textContent ?? "").trim();
       const hrs = parseTimeToHours(val) || 0;
       totalHrs += hrs;
@@ -2843,9 +3044,12 @@ function createProductivitySection(
       else if (pv === "other" || pv === "그 외" || !pv) price = 0;
       totalPrice += price;
     });
-    summaryTrackedEl.textContent = totalHrs > 0 ? formatHoursDisplay(totalHrs) : "";
+    summaryTrackedEl.textContent =
+      totalHrs > 0 ? formatHoursDisplay(totalHrs) : "";
     summaryPriceEl.textContent = formatPrice(totalPrice);
-    summaryPriceEl.className = "time-section-summary-price" + (totalPrice < 0 ? " is-negative" : totalPrice > 0 ? " is-positive" : "");
+    summaryPriceEl.className =
+      "time-section-summary-price" +
+      (totalPrice < 0 ? " is-negative" : totalPrice > 0 ? " is-positive" : "");
   }
 
   const onRowUpdate = () => {
@@ -3167,7 +3371,10 @@ export function render() {
     const start = startDateInput.value || filterStartDate;
     const end = endDateInput.value || filterEndDate;
     let filtered = filterRowsByFilterType(rows, type, y, m, start, end);
-    if (selectedTaskNamesForFilter != null && selectedTaskNamesForFilter.length > 0) {
+    if (
+      selectedTaskNamesForFilter != null &&
+      selectedTaskNamesForFilter.length > 0
+    ) {
       const set = new Set(selectedTaskNamesForFilter);
       filtered = filtered.filter((r) => set.has((r.taskName || "").trim()));
     }
@@ -3245,26 +3452,47 @@ export function render() {
   el.appendChild(taskSelectModal);
 
   (function initTaskSelectModal() {
-    const taskSelectList = taskSelectModal.querySelector("[data-task-select-list]");
-    const taskSelectBackdrop = taskSelectModal.querySelector(".time-task-setup-backdrop");
-    const taskSelectClose = taskSelectModal.querySelector(".time-task-setup-header .time-task-setup-close");
-    const taskSelectAllBtn = taskSelectModal.querySelector(".time-task-select-all-btn");
-    const taskSelectNoneBtn = taskSelectModal.querySelector(".time-task-select-none-btn");
-    const taskSelectApplyBtn = taskSelectModal.querySelector(".time-task-select-apply-btn");
-    const taskSelectClearBtn = taskSelectModal.querySelector(".time-task-select-clear-btn");
+    const taskSelectList = taskSelectModal.querySelector(
+      "[data-task-select-list]",
+    );
+    const taskSelectBackdrop = taskSelectModal.querySelector(
+      ".time-task-setup-backdrop",
+    );
+    const taskSelectClose = taskSelectModal.querySelector(
+      ".time-task-setup-header .time-task-setup-close",
+    );
+    const taskSelectAllBtn = taskSelectModal.querySelector(
+      ".time-task-select-all-btn",
+    );
+    const taskSelectNoneBtn = taskSelectModal.querySelector(
+      ".time-task-select-none-btn",
+    );
+    const taskSelectApplyBtn = taskSelectModal.querySelector(
+      ".time-task-select-apply-btn",
+    );
+    const taskSelectClearBtn = taskSelectModal.querySelector(
+      ".time-task-select-clear-btn",
+    );
 
     function openTaskSelectModal() {
       const rows = getFullRowsForFilter(true);
-      const names = [...new Set(rows.map((r) => (r.taskName || "").trim()).filter(Boolean))];
+      const names = [
+        ...new Set(rows.map((r) => (r.taskName || "").trim()).filter(Boolean)),
+      ];
       names.sort((a, b) => a.localeCompare(b, "ko"));
-      const selectedSet = selectedTaskNamesForFilter == null ? null : new Set(selectedTaskNamesForFilter);
+      const selectedSet =
+        selectedTaskNamesForFilter == null
+          ? null
+          : new Set(selectedTaskNamesForFilter);
       taskSelectList.innerHTML = names
         .map(
           (name) =>
             `<label class="time-task-select-item"><input type="checkbox" class="time-task-select-cb" data-task-name="${String(name).replace(/"/g, "&quot;")}" ${selectedSet === null || selectedSet.has(name) ? "checked" : ""} /><span>${String(name).replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span></label>`,
         )
         .join("");
-      if (names.length === 0) taskSelectList.innerHTML = "<p class=\"time-task-select-empty\">기록된 과제가 없습니다.</p>";
+      if (names.length === 0)
+        taskSelectList.innerHTML =
+          '<p class="time-task-select-empty">기록된 과제가 없습니다.</p>';
       taskSelectModal.hidden = false;
     }
 
@@ -3272,22 +3500,36 @@ export function render() {
       taskSelectModal.hidden = true;
     }
 
-    el.querySelector("#time-task-select-btn")?.addEventListener("click", openTaskSelectModal);
+    el.querySelector("#time-task-select-btn")?.addEventListener(
+      "click",
+      openTaskSelectModal,
+    );
     taskSelectBackdrop?.addEventListener("click", closeTaskSelectModal);
     taskSelectClose?.addEventListener("click", closeTaskSelectModal);
     taskSelectAllBtn?.addEventListener("click", () => {
-      taskSelectModal.querySelectorAll(".time-task-select-cb").forEach((cb) => { cb.checked = true; });
+      taskSelectModal.querySelectorAll(".time-task-select-cb").forEach((cb) => {
+        cb.checked = true;
+      });
     });
     taskSelectNoneBtn?.addEventListener("click", () => {
-      taskSelectModal.querySelectorAll(".time-task-select-cb").forEach((cb) => { cb.checked = false; });
+      taskSelectModal.querySelectorAll(".time-task-select-cb").forEach((cb) => {
+        cb.checked = false;
+      });
     });
     taskSelectApplyBtn?.addEventListener("click", () => {
-      const checked = [...taskSelectModal.querySelectorAll(".time-task-select-cb:checked")].map((cb) => cb.dataset.taskName || "");
+      const checked = [
+        ...taskSelectModal.querySelectorAll(".time-task-select-cb:checked"),
+      ].map((cb) => cb.dataset.taskName || "");
       selectedTaskNamesForFilter = checked.length === 0 ? null : checked;
       closeTaskSelectModal();
       onFilterChange();
       const btn = el.querySelector("#time-task-select-btn");
-      if (btn) btn.classList.toggle("is-active", selectedTaskNamesForFilter != null && selectedTaskNamesForFilter.length > 0);
+      if (btn)
+        btn.classList.toggle(
+          "is-active",
+          selectedTaskNamesForFilter != null &&
+            selectedTaskNamesForFilter.length > 0,
+        );
     });
     taskSelectClearBtn?.addEventListener("click", () => {
       selectedTaskNamesForFilter = null;
@@ -3383,13 +3625,12 @@ export function render() {
           <div class="time-task-log-daily-todos-list"></div>
         </div>
         <div class="time-task-log-memo-section">
-          <h4 class="time-task-log-memo-title">메모 & 태그</h4>
+          <h4 class="time-task-log-memo-title">메모</h4>
           <div class="time-task-log-memo-fields">
             <div class="time-task-log-field">
               <textarea class="time-task-log-feedback time-task-log-memo-input" rows="3"></textarea>
             </div>
             <div class="time-task-log-field">
-              <label>태그</label>
               <div class="time-task-log-tags-wrap">
                 <input type="text" class="time-task-log-tag-input" placeholder="태그 입력 후 Enter" />
                 <div class="time-task-log-tag-list"></div>
@@ -3433,7 +3674,6 @@ export function render() {
                 <div class="time-task-log-todo-category-wrap"></div>
               </div>
               <div class="time-task-log-field">
-                <label>할 일 이름</label>
                 <input type="text" class="time-task-log-todo-inner-name" placeholder="할 일 이름 입력" />
               </div>
             </div>
@@ -3449,7 +3689,7 @@ export function render() {
         </div>
         <div class="time-task-log-expense-inner-modal" hidden>
           <div class="time-task-log-expense-inner-backdrop"></div>
-          <div class="time-task-log-expense-inner-panel">
+          <div class="time-task-log-emotion-inner-panel">
             <div class="time-task-log-expense-inner-header">
               <span class="time-task-log-expense-inner-header-label">소비/수입명</span>
               <button type="button" class="time-task-log-expense-inner-close" aria-label="닫기">&times;</button>
@@ -3488,6 +3728,10 @@ export function render() {
         <div class="time-task-log-emotion-inner-modal" hidden>
           <div class="time-task-log-emotion-inner-backdrop"></div>
           <div class="time-task-log-emotion-inner-panel">
+            <div class="time-task-log-emotion-inner-header">
+              <span class="time-task-log-emotion-inner-header-label">감정 기록</span>
+              <button type="button" class="time-task-log-emotion-inner-close" aria-label="닫기">&times;</button>
+            </div>
             <div class="time-task-log-emotion-inner-body">
               <div class="time-task-log-emotion-fields">
                 <div class="time-task-log-field">
@@ -3585,8 +3829,12 @@ export function render() {
   const taskLogFeedbackInput = taskLogModal.querySelector(
     ".time-task-log-feedback",
   );
-  const taskLogTagInput = taskLogModal.querySelector(".time-task-log-tag-input");
-  const taskLogTagListEl = taskLogModal.querySelector(".time-task-log-tag-list");
+  const taskLogTagInput = taskLogModal.querySelector(
+    ".time-task-log-tag-input",
+  );
+  const taskLogTagListEl = taskLogModal.querySelector(
+    ".time-task-log-tag-list",
+  );
   let taskLogMemoTags = [];
 
   function renderTaskLogTagPills() {
@@ -3597,11 +3845,13 @@ export function render() {
       pill.className = "time-memo-tag-chip time-task-log-tag-pill";
       pill.setAttribute("data-tag", tag);
       pill.innerHTML = `<span class="time-memo-tag-chip-text">${escapeHtml(tag)}</span><button type="button" class="time-memo-tag-chip-remove" aria-label="태그 삭제">&times;</button>`;
-      pill.querySelector(".time-memo-tag-chip-remove")?.addEventListener("click", (e) => {
-        e.preventDefault();
-        taskLogMemoTags = taskLogMemoTags.filter((_, idx) => idx !== i);
-        renderTaskLogTagPills();
-      });
+      pill
+        .querySelector(".time-memo-tag-chip-remove")
+        ?.addEventListener("click", (e) => {
+          e.preventDefault();
+          taskLogMemoTags = taskLogMemoTags.filter((_, idx) => idx !== i);
+          renderTaskLogTagPills();
+        });
       taskLogTagListEl.appendChild(pill);
     });
   }
@@ -3620,14 +3870,30 @@ export function render() {
   });
 
   /* 메모 + 버튼 → 내부 모달 (레거시, 미사용) */
-  const taskLogMemoAddBtn = taskLogModal.querySelector(".time-task-log-memo-add-btn");
-  const taskLogMemoInnerModal = taskLogModal.querySelector(".time-task-log-memo-inner-modal");
-  const taskLogMemoInnerBackdrop = taskLogModal.querySelector(".time-task-log-memo-inner-backdrop");
-  const taskLogMemoInnerInput = taskLogModal.querySelector(".time-task-log-memo-inner-input");
-  const taskLogMemoInnerTagInput = taskLogModal.querySelector(".time-task-log-memo-inner-tag-input");
-  const taskLogMemoInnerTagList = taskLogModal.querySelector(".time-task-log-memo-inner-tag-list");
-  const taskLogMemoInnerCancel = taskLogModal.querySelector(".time-task-log-memo-inner-cancel");
-  const taskLogMemoInnerAdd = taskLogModal.querySelector(".time-task-log-memo-inner-add");
+  const taskLogMemoAddBtn = taskLogModal.querySelector(
+    ".time-task-log-memo-add-btn",
+  );
+  const taskLogMemoInnerModal = taskLogModal.querySelector(
+    ".time-task-log-memo-inner-modal",
+  );
+  const taskLogMemoInnerBackdrop = taskLogModal.querySelector(
+    ".time-task-log-memo-inner-backdrop",
+  );
+  const taskLogMemoInnerInput = taskLogModal.querySelector(
+    ".time-task-log-memo-inner-input",
+  );
+  const taskLogMemoInnerTagInput = taskLogModal.querySelector(
+    ".time-task-log-memo-inner-tag-input",
+  );
+  const taskLogMemoInnerTagList = taskLogModal.querySelector(
+    ".time-task-log-memo-inner-tag-list",
+  );
+  const taskLogMemoInnerCancel = taskLogModal.querySelector(
+    ".time-task-log-memo-inner-cancel",
+  );
+  const taskLogMemoInnerAdd = taskLogModal.querySelector(
+    ".time-task-log-memo-inner-add",
+  );
 
   let taskLogMemoModalTags = [];
 
@@ -3638,17 +3904,22 @@ export function render() {
       const pill = document.createElement("span");
       pill.className = "time-memo-tag-chip time-task-log-tag-pill";
       pill.innerHTML = `<span class="time-memo-tag-chip-text">${escapeHtml(tag)}</span><button type="button" class="time-memo-tag-chip-remove" aria-label="태그 삭제">&times;</button>`;
-      pill.querySelector(".time-memo-tag-chip-remove")?.addEventListener("click", () => {
-        taskLogMemoModalTags = taskLogMemoModalTags.filter((_, idx) => idx !== i);
-        renderMemoModalTagPills();
-      });
+      pill
+        .querySelector(".time-memo-tag-chip-remove")
+        ?.addEventListener("click", () => {
+          taskLogMemoModalTags = taskLogMemoModalTags.filter(
+            (_, idx) => idx !== i,
+          );
+          renderMemoModalTagPills();
+        });
       taskLogMemoInnerTagList.appendChild(pill);
     });
   }
 
   function openMemoInnerModal() {
     if (taskLogMemoInnerModal) taskLogMemoInnerModal.hidden = false;
-    if (taskLogMemoInnerInput) taskLogMemoInnerInput.value = taskLogFeedbackInput?.value || "";
+    if (taskLogMemoInnerInput)
+      taskLogMemoInnerInput.value = taskLogFeedbackInput?.value || "";
     taskLogMemoModalTags = taskLogMemoTags.slice();
     renderMemoModalTagPills();
     if (taskLogMemoInnerTagInput) taskLogMemoInnerTagInput.value = "";
@@ -3664,7 +3935,8 @@ export function render() {
   taskLogMemoInnerCancel?.addEventListener("click", closeMemoInnerModal);
 
   taskLogMemoInnerAdd?.addEventListener("click", () => {
-    if (taskLogFeedbackInput) taskLogFeedbackInput.value = (taskLogMemoInnerInput?.value || "").trim();
+    if (taskLogFeedbackInput)
+      taskLogFeedbackInput.value = (taskLogMemoInnerInput?.value || "").trim();
     taskLogMemoTags = taskLogMemoModalTags.slice();
     renderTaskLogTagPills();
     closeMemoInnerModal();
@@ -3674,7 +3946,9 @@ export function render() {
     if (e.key === "Enter" || e.key === ",") {
       if (e.isComposing) return;
       e.preventDefault();
-      const val = (taskLogMemoInnerTagInput.value || "").trim().replace(/^#/, "");
+      const val = (taskLogMemoInnerTagInput.value || "")
+        .trim()
+        .replace(/^#/, "");
       if (val && !taskLogMemoModalTags.includes(val)) {
         taskLogMemoModalTags.push(val);
         renderMemoModalTagPills();
@@ -3761,7 +4035,9 @@ export function render() {
       return;
     }
     const s = dtStr.trim();
-    const m = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})[T\s](\d{1,2}):(\d{2})/);
+    const m = s.match(
+      /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})[T\s](\d{1,2}):(\d{2})/,
+    );
     const m2 = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
     const timeMatch = s.match(/[T\s](\d{1,2}):(\d{2})/);
     let dateStr = "";
@@ -3885,51 +4161,70 @@ export function render() {
   let lastFocusedTimeField = "end";
   [taskLogTimeStart, taskLogDateStart].forEach((el) => {
     if (!el) return;
-    el.addEventListener("focus", () => { lastFocusedTimeField = "start"; });
-  });
-  taskLogTimeEnd?.addEventListener("focus", () => { lastFocusedTimeField = "end"; });
-
-  taskLogModal.querySelectorAll(".time-task-log-time-adjust-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const endVal = (taskLogTimeEnd?.value || "").trim();
-      const endHasTime = endVal && endVal.match(/\d{1,2}:\d{2}/);
-      const targetIsStart = lastFocusedTimeField === "start";
-
-      const startTimeVal = normalizeHhMm((taskLogTimeStart?.value || "").trim());
-      const startHasTime = startTimeVal && startTimeVal.match(/\d{1,2}:\d{2}/);
-      const fallbackTime = startHasTime ? startTimeVal : `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}`;
-
-      if (btn.dataset.now === "true") {
-        const newTime = `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}`;
-        if (targetIsStart) {
-          if (taskLogTimeStart) taskLogTimeStart.value = newTime;
-          syncStartToHidden();
-        } else {
-          if (taskLogTimeEnd) taskLogTimeEnd.value = newTime;
-          syncEndToHidden();
-        }
-      } else {
-        const delta = parseInt(btn.dataset.delta || "0", 10);
-        const baseTime = targetIsStart
-          ? (startHasTime ? startTimeVal : fallbackTime)
-          : (endHasTime ? normalizeHhMm(endVal) : (startHasTime ? startTimeVal : fallbackTime));
-        const normalized = normalizeHhMm(baseTime) || fallbackTime;
-        const [h, min] = normalized.split(":").map((n) => parseInt(n, 10) || 0);
-        let totalMin = h * 60 + min + delta;
-        totalMin = ((totalMin % 1440) + 1440) % 1440;
-        const nh = Math.floor(totalMin / 60) % 24;
-        const nmin = totalMin % 60;
-        const newTime = `${String(nh).padStart(2, "0")}:${String(nmin).padStart(2, "0")}`;
-        if (targetIsStart) {
-          if (taskLogTimeStart) taskLogTimeStart.value = newTime;
-          syncStartToHidden();
-        } else {
-          if (taskLogTimeEnd) taskLogTimeEnd.value = newTime;
-          syncEndToHidden();
-        }
-      }
+    el.addEventListener("focus", () => {
+      lastFocusedTimeField = "start";
     });
   });
+  taskLogTimeEnd?.addEventListener("focus", () => {
+    lastFocusedTimeField = "end";
+  });
+
+  taskLogModal
+    .querySelectorAll(".time-task-log-time-adjust-btn")
+    .forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const endVal = (taskLogTimeEnd?.value || "").trim();
+        const endHasTime = endVal && endVal.match(/\d{1,2}:\d{2}/);
+        const targetIsStart = lastFocusedTimeField === "start";
+
+        const startTimeVal = normalizeHhMm(
+          (taskLogTimeStart?.value || "").trim(),
+        );
+        const startHasTime =
+          startTimeVal && startTimeVal.match(/\d{1,2}:\d{2}/);
+        const fallbackTime = startHasTime
+          ? startTimeVal
+          : `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}`;
+
+        if (btn.dataset.now === "true") {
+          const newTime = `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}`;
+          if (targetIsStart) {
+            if (taskLogTimeStart) taskLogTimeStart.value = newTime;
+            syncStartToHidden();
+          } else {
+            if (taskLogTimeEnd) taskLogTimeEnd.value = newTime;
+            syncEndToHidden();
+          }
+        } else {
+          const delta = parseInt(btn.dataset.delta || "0", 10);
+          const baseTime = targetIsStart
+            ? startHasTime
+              ? startTimeVal
+              : fallbackTime
+            : endHasTime
+              ? normalizeHhMm(endVal)
+              : startHasTime
+                ? startTimeVal
+                : fallbackTime;
+          const normalized = normalizeHhMm(baseTime) || fallbackTime;
+          const [h, min] = normalized
+            .split(":")
+            .map((n) => parseInt(n, 10) || 0);
+          let totalMin = h * 60 + min + delta;
+          totalMin = ((totalMin % 1440) + 1440) % 1440;
+          const nh = Math.floor(totalMin / 60) % 24;
+          const nmin = totalMin % 60;
+          const newTime = `${String(nh).padStart(2, "0")}:${String(nmin).padStart(2, "0")}`;
+          if (targetIsStart) {
+            if (taskLogTimeStart) taskLogTimeStart.value = newTime;
+            syncStartToHidden();
+          } else {
+            if (taskLogTimeEnd) taskLogTimeEnd.value = newTime;
+            syncEndToHidden();
+          }
+        }
+      });
+    });
 
   const taskLogFocusSection = taskLogModal.querySelector(
     ".time-task-log-focus-section",
@@ -3981,6 +4276,9 @@ export function render() {
   );
   const taskLogEmotionInnerSaveBtn = taskLogModal.querySelector(
     ".time-task-log-emotion-inner-save-btn",
+  );
+  const taskLogEmotionInnerClose = taskLogModal.querySelector(
+    ".time-task-log-emotion-inner-close",
   );
   const taskLogEmotionQ1 = taskLogModal.querySelector(
     ".time-task-log-emotion-q1",
@@ -4039,46 +4337,67 @@ export function render() {
   );
 
   /* 아코디언: 한 번에 하나만 열림, 열린 걸 다시 누르면 닫힘 */
-  taskLogModal.querySelectorAll(".time-task-log-accordion-header").forEach((header) => {
-    header.addEventListener("click", (e) => {
-      if (e.target.closest("label")) return;
-      const item = header.closest(".time-task-log-accordion-item");
-      if (!item) return;
-      const body = item.querySelector(".time-task-log-accordion-body");
-      const chevron = item.querySelector(".time-task-log-accordion-chevron");
-      const isExpanded = item.classList.contains("time-task-log-accordion-expanded");
-      if (isExpanded) {
-        item.classList.remove("time-task-log-accordion-expanded");
-        header.setAttribute("aria-expanded", "false");
-        if (chevron) chevron.textContent = "▶";
-        if (body) body.hidden = true;
-      } else {
-        taskLogModal.querySelectorAll(".time-task-log-accordion-item").forEach((other) => {
-          if (other === item) return;
-          other.classList.remove("time-task-log-accordion-expanded");
-          const otherHeader = other.querySelector(".time-task-log-accordion-header");
-          const otherBody = other.querySelector(".time-task-log-accordion-body");
-          const otherChevron = other.querySelector(".time-task-log-accordion-chevron");
-          if (otherHeader) otherHeader.setAttribute("aria-expanded", "false");
-          if (otherBody) otherBody.hidden = true;
-          if (otherChevron) otherChevron.textContent = "▶";
-        });
-        item.classList.add("time-task-log-accordion-expanded");
-        header.setAttribute("aria-expanded", "true");
-        if (chevron) chevron.textContent = "▼";
-        if (body) body.hidden = false;
-        requestAnimationFrame(() => {
-          item.scrollIntoView({ behavior: "smooth", block: "nearest" });
-        });
-      }
+  taskLogModal
+    .querySelectorAll(".time-task-log-accordion-header")
+    .forEach((header) => {
+      header.addEventListener("click", (e) => {
+        if (e.target.closest("label")) return;
+        const item = header.closest(".time-task-log-accordion-item");
+        if (!item) return;
+        const body = item.querySelector(".time-task-log-accordion-body");
+        const chevron = item.querySelector(".time-task-log-accordion-chevron");
+        const isExpanded = item.classList.contains(
+          "time-task-log-accordion-expanded",
+        );
+        if (isExpanded) {
+          item.classList.remove("time-task-log-accordion-expanded");
+          header.setAttribute("aria-expanded", "false");
+          if (chevron) chevron.textContent = "▶";
+          if (body) body.hidden = true;
+        } else {
+          taskLogModal
+            .querySelectorAll(".time-task-log-accordion-item")
+            .forEach((other) => {
+              if (other === item) return;
+              other.classList.remove("time-task-log-accordion-expanded");
+              const otherHeader = other.querySelector(
+                ".time-task-log-accordion-header",
+              );
+              const otherBody = other.querySelector(
+                ".time-task-log-accordion-body",
+              );
+              const otherChevron = other.querySelector(
+                ".time-task-log-accordion-chevron",
+              );
+              if (otherHeader)
+                otherHeader.setAttribute("aria-expanded", "false");
+              if (otherBody) otherBody.hidden = true;
+              if (otherChevron) otherChevron.textContent = "▶";
+            });
+          item.classList.add("time-task-log-accordion-expanded");
+          header.setAttribute("aria-expanded", "true");
+          if (chevron) chevron.textContent = "▼";
+          if (body) body.hidden = false;
+          requestAnimationFrame(() => {
+            item.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          });
+        }
+      });
     });
-  });
-  taskLogModal.querySelectorAll(".time-task-log-accordion-item:not(.time-task-log-accordion-expanded) .time-task-log-accordion-body").forEach((body) => {
-    body.hidden = true;
-  });
-  taskLogModal.querySelectorAll(".time-task-log-accordion-item:not(.time-task-log-accordion-expanded) .time-task-log-accordion-chevron").forEach((chevron) => {
-    chevron.textContent = "▶";
-  });
+  taskLogModal
+    .querySelectorAll(
+      ".time-task-log-accordion-item:not(.time-task-log-accordion-expanded) .time-task-log-accordion-body",
+    )
+    .forEach((body) => {
+      body.hidden = true;
+    });
+  taskLogModal
+    .querySelectorAll(
+      ".time-task-log-accordion-item:not(.time-task-log-accordion-expanded) .time-task-log-accordion-chevron",
+    )
+    .forEach((chevron) => {
+      chevron.textContent = "▶";
+    });
 
   let taskLogTaskDropdown = null;
   let taskLogAddContext = null;
@@ -4110,8 +4429,11 @@ export function render() {
       tasks.forEach((t) => {
         const row = document.createElement("div");
         row.className = "time-task-log-task-dropdown-option";
-        const prod =
-          (t.productivity || getProductivityFromCategory(t.category) || "productive").trim();
+        const prod = (
+          t.productivity ||
+          getProductivityFromCategory(t.category) ||
+          "productive"
+        ).trim();
         const barClass =
           prod === "productive"
             ? "time-task-prod-bar time-task-prod-bar--productive"
@@ -4174,7 +4496,8 @@ export function render() {
       searchQuery = "";
       renderPanel();
       panel.hidden = !panel.hidden;
-      if (!panel.hidden) panel.querySelector(".time-task-log-task-dropdown-search")?.focus();
+      if (!panel.hidden)
+        panel.querySelector(".time-task-log-task-dropdown-search")?.focus();
     });
     const closePanelOnOutside = (e) => {
       if (!wrap.contains(e.target)) {
@@ -4591,9 +4914,11 @@ export function render() {
       if (value === opt.label) btn.classList.add("selected");
       btn.addEventListener("click", () => {
         value = value === opt.label ? "" : opt.label;
-        wrap.querySelectorAll(".time-task-log-expense-cat-btn").forEach((b) =>
-          b.classList.toggle("selected", b.dataset.cat === value),
-        );
+        wrap
+          .querySelectorAll(".time-task-log-expense-cat-btn")
+          .forEach((b) =>
+            b.classList.toggle("selected", b.dataset.cat === value),
+          );
         onUpdate?.(value);
       });
       wrap.appendChild(btn);
@@ -4601,9 +4926,11 @@ export function render() {
     wrap._getValue = () => value;
     wrap._setValue = (v) => {
       value = (v || "").trim();
-      wrap.querySelectorAll(".time-task-log-expense-cat-btn").forEach((b) =>
-        b.classList.toggle("selected", b.dataset.cat === value),
-      );
+      wrap
+        .querySelectorAll(".time-task-log-expense-cat-btn")
+        .forEach((b) =>
+          b.classList.toggle("selected", b.dataset.cat === value),
+        );
     };
     return wrap;
   }
@@ -4644,9 +4971,11 @@ export function render() {
         if (value === opt.label) btn.classList.add("selected");
         btn.addEventListener("click", () => {
           value = value === opt.label ? "" : opt.label;
-          btnsWrap.querySelectorAll(".time-task-log-expense-cls-btn").forEach((b) =>
-            b.classList.toggle("selected", b.dataset.label === value),
-          );
+          btnsWrap
+            .querySelectorAll(".time-task-log-expense-cls-btn")
+            .forEach((b) =>
+              b.classList.toggle("selected", b.dataset.label === value),
+            );
           onUpdate?.(value);
         });
         btnsWrap.appendChild(btn);
@@ -4657,9 +4986,11 @@ export function render() {
     wrap._getValue = () => value;
     wrap._setValue = (v) => {
       value = (v || "").trim();
-      btnsWrap.querySelectorAll(".time-task-log-expense-cls-btn").forEach((b) =>
-        b.classList.toggle("selected", b.dataset.label === value),
-      );
+      btnsWrap
+        .querySelectorAll(".time-task-log-expense-cls-btn")
+        .forEach((b) =>
+          b.classList.toggle("selected", b.dataset.label === value),
+        );
     };
     wrap._setCategory = (c) => {
       category = (c || "").trim();
@@ -4670,10 +5001,22 @@ export function render() {
   }
 
   const FOCUS_TYPE_ICONS = [
-    { type: "스마트폰", svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m11.716 20.201 8.485-8.485"/><path d="m3.799 12.284 8.485-8.485"/><path d="m13.13 21.615-10.745-10.745c-.781-.781-.781-2.047 0-2.828l5.657-5.657c.781-.781 2.047-.781 2.828 0l10.745 10.745c.781.781.781 2.047 0 2.828l-5.657 5.657c-.781.781-2.047.781-2.828 0z"/><path d="m8 23c-3.866 0-7-3.134-7-7"/><path d="m16 1c3.866 0 7 3.134 7 7"/></g></svg>' },
-    { type: "잡생각", svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 1h-5c-4.694 0-8.5 3.806-8.5 8.5 0 4.182 3.022 7.65 7 8.36v4.14l6-4h.5c4.694 0 8.5-3.806 8.5-8.5s-3.806-8.5-8.5-8.5z"/><path d="m12 10v-4"/><path d="m12 13v-.01"/></g></svg>' },
-    { type: "배고픔", svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 1v6"/><path d="m2 1v8c0 1.105.895 2 2 2v10c0 1.105.895 2 2 2s2-.895 2-2v-10c1.105 0 2-.895 2-2v-8"/><path d="m22 7c0-3.314-1.791-6-4-6s-4 2.686-4 6c0 2.22.806 4.153 2 5.191v8.809c0 1.105.895 2 2 2s2-.895 2-2v-8.809c1.194-1.038 2-2.971 2-5.191z"/></g></svg>' },
-    { type: "피곤함", svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="3.5" r="2.5"/><path d="m4 10h5 6 5"/><path d="m15 17h-6"/><path d="m6 23 3-6v-6.586"/><path d="m15 10.414v6.586l3 6"/></g></svg>' },
+    {
+      type: "스마트폰",
+      svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m11.716 20.201 8.485-8.485"/><path d="m3.799 12.284 8.485-8.485"/><path d="m13.13 21.615-10.745-10.745c-.781-.781-.781-2.047 0-2.828l5.657-5.657c.781-.781 2.047-.781 2.828 0l10.745 10.745c.781.781.781 2.047 0 2.828l-5.657 5.657c-.781.781-2.047.781-2.828 0z"/><path d="m8 23c-3.866 0-7-3.134-7-7"/><path d="m16 1c3.866 0 7 3.134 7 7"/></g></svg>',
+    },
+    {
+      type: "잡생각",
+      svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 1h-5c-4.694 0-8.5 3.806-8.5 8.5 0 4.182 3.022 7.65 7 8.36v4.14l6-4h.5c4.694 0 8.5-3.806 8.5-8.5s-3.806-8.5-8.5-8.5z"/><path d="m12 10v-4"/><path d="m12 13v-.01"/></g></svg>',
+    },
+    {
+      type: "배고픔",
+      svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 1v6"/><path d="m2 1v8c0 1.105.895 2 2 2v10c0 1.105.895 2 2 2s2-.895 2-2v-10c1.105 0 2-.895 2-2v-8"/><path d="m22 7c0-3.314-1.791-6-4-6s-4 2.686-4 6c0 2.22.806 4.153 2 5.191v8.809c0 1.105.895 2 2 2s2-.895 2-2v-8.809c1.194-1.038 2-2.971 2-5.191z"/></g></svg>',
+    },
+    {
+      type: "피곤함",
+      svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="3.5" r="2.5"/><path d="m4 10h5 6 5"/><path d="m15 17h-6"/><path d="m6 23 3-6v-6.586"/><path d="m15 10.414v6.586l3 6"/></g></svg>',
+    },
   ];
   function buildFocusTypeIconButtons(initialValue) {
     const wrap = document.createElement("div");
@@ -4689,7 +5032,11 @@ export function render() {
       btn.innerHTML = `${svg}<span class="time-task-log-focus-type-icon-btn-label">${label}</span>`;
       btn.addEventListener("click", () => {
         value = value === type ? "" : type;
-        wrap.querySelectorAll(".time-task-log-focus-type-icon-btn").forEach((b) => b.classList.toggle("selected", b.dataset.type === value));
+        wrap
+          .querySelectorAll(".time-task-log-focus-type-icon-btn")
+          .forEach((b) =>
+            b.classList.toggle("selected", b.dataset.type === value),
+          );
       });
       if (value === type) btn.classList.add("selected");
       wrap.appendChild(btn);
@@ -4697,7 +5044,11 @@ export function render() {
     wrap._getValue = () => value;
     wrap._setValue = (v) => {
       value = (v || "").trim();
-      wrap.querySelectorAll(".time-task-log-focus-type-icon-btn").forEach((b) => b.classList.toggle("selected", b.dataset.type === value));
+      wrap
+        .querySelectorAll(".time-task-log-focus-type-icon-btn")
+        .forEach((b) =>
+          b.classList.toggle("selected", b.dataset.type === value),
+        );
     };
     return wrap;
   }
@@ -4727,8 +5078,7 @@ export function render() {
   function onTaskSelectedForLog(taskName) {
     const isEmotionTask =
       taskName === EMOTION_TASK_POSITIVE || taskName === EMOTION_TASK_NEGATIVE;
-    const isExpenseTask =
-      EXPENSE_TASK_NAMES.includes((taskName || "").trim());
+    const isExpenseTask = EXPENSE_TASK_NAMES.includes((taskName || "").trim());
 
     if (isEmotionTask) {
       openEmotionInnerModal();
@@ -4793,7 +5143,8 @@ export function render() {
     const { storageKey: dailyStorageKey, dailyTodos } = dailyInfo;
     dailyTodos.forEach((todo) => {
       const label = document.createElement("label");
-      label.className = "time-task-log-kpi-todo-row time-task-log-daily-todo-row";
+      label.className =
+        "time-task-log-kpi-todo-row time-task-log-daily-todo-row";
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
       checkbox.checked = !!todo.completed;
@@ -4806,7 +5157,11 @@ export function render() {
       label.appendChild(checkbox);
       label.appendChild(span);
       checkbox.addEventListener("change", () => {
-        syncKpiDailyRepeatTodoCompleted(todo.id, dailyStorageKey, checkbox.checked);
+        syncKpiDailyRepeatTodoCompleted(
+          todo.id,
+          dailyStorageKey,
+          checkbox.checked,
+        );
         span.classList.toggle("is-done", checkbox.checked);
       });
       taskLogDailyTodosList.appendChild(label);
@@ -4843,11 +5198,21 @@ export function render() {
   const focusModalTimeInput = taskLogModal.querySelector(
     ".time-task-log-focus-inner-time-input",
   );
-  const focusModal = taskLogModal.querySelector(".time-task-log-focus-inner-modal");
-  const focusModalBackdrop = taskLogModal.querySelector(".time-task-log-focus-inner-backdrop");
-  const focusModalCancel = taskLogModal.querySelector(".time-task-log-focus-inner-cancel");
-  const focusModalAdd = taskLogModal.querySelector(".time-task-log-focus-inner-add");
-  const focusAddBtn = taskLogModal.querySelector(".time-task-log-focus-add-btn");
+  const focusModal = taskLogModal.querySelector(
+    ".time-task-log-focus-inner-modal",
+  );
+  const focusModalBackdrop = taskLogModal.querySelector(
+    ".time-task-log-focus-inner-backdrop",
+  );
+  const focusModalCancel = taskLogModal.querySelector(
+    ".time-task-log-focus-inner-cancel",
+  );
+  const focusModalAdd = taskLogModal.querySelector(
+    ".time-task-log-focus-inner-add",
+  );
+  const focusAddBtn = taskLogModal.querySelector(
+    ".time-task-log-focus-add-btn",
+  );
   let taskLogFocusModalEvents = [];
   let taskLogFocusTypeValue = "";
 
@@ -4883,7 +5248,10 @@ export function render() {
 
   function buildFocusValueFromEvents(events) {
     if (!events.length) return "";
-    return events.map((e) => `${e.time || ""}|${e.type || ""}`.trim()).filter(Boolean).join(";");
+    return events
+      .map((e) => `${e.time || ""}|${e.type || ""}`.trim())
+      .filter(Boolean)
+      .join(";");
   }
 
   function updateFocusRowPills() {
@@ -4894,11 +5262,13 @@ export function render() {
       pill.className = "time-task-log-focus-event-pill time-memo-tag-chip";
       const label = [e.type, e.time].filter(Boolean).join(" ") || "";
       pill.innerHTML = `<span class="time-memo-tag-chip-text">${escapeHtml(label)}</span><button type="button" class="time-memo-tag-chip-remove" aria-label="삭제">&times;</button>`;
-      pill.querySelector(".time-memo-tag-chip-remove")?.addEventListener("click", (ev) => {
-        ev.preventDefault();
-        taskLogFocusEvents.splice(idx, 1);
-        updateFocusRowPills();
-      });
+      pill
+        .querySelector(".time-memo-tag-chip-remove")
+        ?.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          taskLogFocusEvents.splice(idx, 1);
+          updateFocusRowPills();
+        });
       focusRowEventsPills.appendChild(pill);
     });
   }
@@ -5001,7 +5371,13 @@ export function render() {
   function addTodoNameToSection(sectionId, name) {
     const todoName = (name || "").trim();
     if (!todoName) return false;
-    const VALID_SECTIONS = ["braindump", "dream", "sideincome", "happy", "health"];
+    const VALID_SECTIONS = [
+      "braindump",
+      "dream",
+      "sideincome",
+      "happy",
+      "health",
+    ];
     if (!VALID_SECTIONS.includes(sectionId)) return false;
     try {
       const SECTION_TASKS_KEY = "todo-section-tasks";
@@ -5022,7 +5398,9 @@ export function render() {
       });
       obj[sectionId] = arr;
       localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
-      document.dispatchEvent(new CustomEvent("todo-braindump-added", { detail: {} }));
+      document.dispatchEvent(
+        new CustomEvent("todo-braindump-added", { detail: {} }),
+      );
       return true;
     } catch (_) {}
     return false;
@@ -5049,13 +5427,16 @@ export function render() {
     taskLogTodoAddedItems.forEach((item, idx) => {
       const pill = document.createElement("span");
       pill.className = "time-task-log-todo-pill time-memo-tag-chip";
-      const label = [item.categoryLabel, item.todoName].filter(Boolean).join(" | ") || "";
+      const label =
+        [item.categoryLabel, item.todoName].filter(Boolean).join(" | ") || "";
       pill.innerHTML = `<span class="time-memo-tag-chip-text">${escapeHtml(label)}</span><button type="button" class="time-memo-tag-chip-remove" aria-label="삭제">&times;</button>`;
-      pill.querySelector(".time-memo-tag-chip-remove")?.addEventListener("click", (ev) => {
-        ev.preventDefault();
-        taskLogTodoAddedItems.splice(idx, 1);
-        updateTodoPills();
-      });
+      pill
+        .querySelector(".time-memo-tag-chip-remove")
+        ?.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          taskLogTodoAddedItems.splice(idx, 1);
+          updateTodoPills();
+        });
       taskLogTodoPills.appendChild(pill);
     });
   }
@@ -5071,7 +5452,9 @@ export function render() {
       btn.textContent = label;
       btn.addEventListener("click", () => {
         taskLogTodoSelectedCategory = id;
-        taskLogModal.querySelectorAll(".time-task-log-todo-category-btn").forEach((b) => b.classList.remove("selected"));
+        taskLogModal
+          .querySelectorAll(".time-task-log-todo-category-btn")
+          .forEach((b) => b.classList.remove("selected"));
         btn.classList.add("selected");
       });
       taskLogTodoCategoryWrap.appendChild(btn);
@@ -5095,13 +5478,18 @@ export function render() {
   taskLogTodoInnerCancel?.addEventListener("click", closeTodoInnerModal);
 
   taskLogExpenseAddBtn?.addEventListener("click", openExpenseInnerModal);
-  taskLogExpenseInnerBackdrop?.addEventListener("click", closeExpenseInnerModal);
+  taskLogExpenseInnerBackdrop?.addEventListener(
+    "click",
+    closeExpenseInnerModal,
+  );
   taskLogExpenseInnerClose?.addEventListener("click", closeExpenseInnerModal);
 
   taskLogTodoInnerAdd?.addEventListener("click", () => {
     const todoName = (taskLogTodoInnerName?.value || "").trim();
     if (!todoName) return;
-    const cat = TODO_CATEGORIES.find((c) => c.id === taskLogTodoSelectedCategory);
+    const cat = TODO_CATEGORIES.find(
+      (c) => c.id === taskLogTodoSelectedCategory,
+    );
     const sectionLabel = cat?.label || "";
     if (addTodoToSection(taskLogTodoSelectedCategory, todoName)) {
       taskLogTodoAddedItems.push({ categoryLabel: sectionLabel, todoName });
@@ -5119,7 +5507,10 @@ export function render() {
   function getExpenseModalDate() {
     const startRaw = (taskLogStartInput?.value || "").trim();
     const parsed = parseDateFromDateTime(startRaw) || startRaw.slice(0, 10);
-    return (parsed || new Date().toISOString().slice(0, 10)).replace(/\//g, "-");
+    return (parsed || new Date().toISOString().slice(0, 10)).replace(
+      /\//g,
+      "-",
+    );
   }
 
   function updateExpenseInnerList() {
@@ -5128,18 +5519,21 @@ export function render() {
     taskLogExpenseAddedItems.forEach((item, idx) => {
       const row = document.createElement("div");
       row.className = "time-task-log-expense-inner-list-row";
-      const label = [item.name, [item.classification, item.amountFormatted].filter(Boolean).join(" ")]
-        .filter(Boolean).join(" - ");
-      row.innerHTML = `<span class="time-task-log-expense-inner-list-label">${escapeHtml(label)}</span><button type="button" class="time-task-log-expense-inner-list-del" aria-label="삭제">&times;</button>`;
-      row.querySelector(".time-task-log-expense-inner-list-del")?.addEventListener("click", (ev) => {
-        ev.preventDefault();
-        if (item.id) {
-          const rows = loadExpenseRows().filter((r) => r.id !== item.id);
-          saveExpenseRows(rows);
-        }
-        taskLogExpenseAddedItems.splice(idx, 1);
-        updateExpenseInnerList();
-      });
+      const name = escapeHtml(item.name || "");
+      const category = escapeHtml(item.classification || "");
+      const price = escapeHtml(item.amountFormatted || "");
+      row.innerHTML = `<span class="time-task-log-expense-inner-list-name">${name}</span><span class="time-task-log-expense-inner-list-category">${category}</span><span class="time-task-log-expense-inner-list-price">${price}</span><button type="button" class="time-task-log-expense-inner-list-del" aria-label="삭제">&times;</button>`;
+      row
+        .querySelector(".time-task-log-expense-inner-list-del")
+        ?.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          if (item.id) {
+            const rows = loadExpenseRows().filter((r) => r.id !== item.id);
+            saveExpenseRows(rows);
+          }
+          taskLogExpenseAddedItems.splice(idx, 1);
+          updateExpenseInnerList();
+        });
       taskLogExpenseInnerList.appendChild(row);
     });
   }
@@ -5154,17 +5548,56 @@ export function render() {
   }
 
   taskLogExpenseAddBtn?.addEventListener("click", openExpenseInnerModal);
-  taskLogExpenseInnerBackdrop?.addEventListener("click", closeExpenseInnerModal);
+  taskLogExpenseInnerBackdrop?.addEventListener(
+    "click",
+    closeExpenseInnerModal,
+  );
   taskLogExpenseInnerClose?.addEventListener("click", closeExpenseInnerModal);
+
+  taskLogEmotionAddBtn?.addEventListener("click", openEmotionInnerModal);
+  taskLogEmotionInnerBackdrop?.addEventListener(
+    "click",
+    closeEmotionInnerModal,
+  );
+  taskLogEmotionInnerClose?.addEventListener("click", closeEmotionInnerModal);
+  // 이벤트 위임: 직접 핸들러가 동작하지 않는 경우 대비 (capture 단계에서 먼저 처리)
+  taskLogEmotionInnerModal?.addEventListener(
+    "click",
+    (e) => {
+      if (
+        e.target?.closest?.(".time-task-log-emotion-inner-close") ||
+        e.target?.closest?.(".time-task-log-emotion-inner-backdrop")
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeEmotionInnerModal();
+      }
+    },
+    true,
+  );
+  taskLogEmotionInnerSaveBtn?.addEventListener("click", () => {
+    showToast("기록이 완료됐습니다.", "감정관리 탭에서 볼 수 있습니다.");
+    closeEmotionInnerModal();
+  });
 
   taskLogExpenseInnerAdd?.addEventListener("click", () => {
     const name = (taskLogExpenseNameInput?.value || "").trim();
-    const amountRaw = (taskLogExpenseAmountInput?.value || "").trim().replace(/,/g, "");
+    const amountRaw = (taskLogExpenseAmountInput?.value || "")
+      .trim()
+      .replace(/,/g, "");
     const expenseCategory = expenseCategoryDropdown._getValue?.() || "";
-    const expenseClassification = expenseClassificationButtons._getValue?.() || "";
-    if (!name || !expenseCategory || !expenseClassification || !amountRaw || !parseFloat(amountRaw)) {
+    const expenseClassification =
+      expenseClassificationButtons._getValue?.() || "";
+    if (
+      !name ||
+      !expenseCategory ||
+      !expenseClassification ||
+      !amountRaw ||
+      !parseFloat(amountRaw)
+    ) {
       if (taskLogExpenseErrorEl) {
-        taskLogExpenseErrorEl.textContent = "소비/수입명, 금액, 카테고리, 분류를 모두 입력해 주세요.";
+        taskLogExpenseErrorEl.textContent =
+          "소비/수입명, 금액, 카테고리, 분류를 모두 입력해 주세요.";
         taskLogExpenseErrorEl.hidden = false;
       }
       return;
@@ -5211,7 +5644,10 @@ export function render() {
     const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     if (v !== formatted) {
       taskLogExpenseAmountInput.value = formatted;
-      taskLogExpenseAmountInput.setSelectionRange(formatted.length, formatted.length);
+      taskLogExpenseAmountInput.setSelectionRange(
+        formatted.length,
+        formatted.length,
+      );
     }
   });
 
@@ -5279,7 +5715,9 @@ export function render() {
       taskLogTaskWrap.innerHTML = "";
       taskLogTaskWrap.appendChild(taskLogTaskDropdown);
     }
-    const taskDropdownPanel = taskLogTaskDropdown?.querySelector(".time-task-log-task-dropdown-panel");
+    const taskDropdownPanel = taskLogTaskDropdown?.querySelector(
+      ".time-task-log-task-dropdown-panel",
+    );
     if (taskDropdownPanel) taskDropdownPanel.hidden = true;
     const mainTasks = getFullTaskOptions().filter(
       (t) => !(t.name || "").includes(" > "),
@@ -5309,16 +5747,22 @@ export function render() {
     if (taskLogEmotionQ2) taskLogEmotionQ2.value = "";
     if (taskLogEmotionQ3) taskLogEmotionQ3.value = "";
     if (taskLogEmotionQ4) taskLogEmotionQ4.value = "";
-    taskLogModal.querySelectorAll(".time-task-log-accordion-item").forEach((item) => {
-      if (!item.classList.contains("time-task-log-accordion-expanded") || item.dataset?.accordion === "expense") return;
-      item.classList.remove("time-task-log-accordion-expanded");
-      const body = item.querySelector(".time-task-log-accordion-body");
-      const chevron = item.querySelector(".time-task-log-accordion-chevron");
-      const header = item.querySelector(".time-task-log-accordion-header");
-      if (body) body.hidden = true;
-      if (chevron) chevron.textContent = "▶";
-      if (header) header.setAttribute("aria-expanded", "false");
-    });
+    taskLogModal
+      .querySelectorAll(".time-task-log-accordion-item")
+      .forEach((item) => {
+        if (
+          !item.classList.contains("time-task-log-accordion-expanded") ||
+          item.dataset?.accordion === "expense"
+        )
+          return;
+        item.classList.remove("time-task-log-accordion-expanded");
+        const body = item.querySelector(".time-task-log-accordion-body");
+        const chevron = item.querySelector(".time-task-log-accordion-chevron");
+        const header = item.querySelector(".time-task-log-accordion-header");
+        if (body) body.hidden = true;
+        if (chevron) chevron.textContent = "▶";
+        if (header) header.setAttribute("aria-expanded", "false");
+      });
     if (taskLogTodoInnerName) taskLogTodoInnerName.value = "";
     taskLogTodoAddedItems = [];
     if (taskLogTodoPills) taskLogTodoPills.innerHTML = "";
@@ -5393,7 +5837,9 @@ export function render() {
     const feedbackRaw = data.feedback || "";
     const memoOnly = feedbackRaw.replace(/#[^\s#]+/g, "").trim();
     if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
-    taskLogMemoTags = Array.isArray(data.memoTags) ? [...data.memoTags] : parseTagsFromFeedback(feedbackRaw);
+    taskLogMemoTags = Array.isArray(data.memoTags)
+      ? [...data.memoTags]
+      : parseTagsFromFeedback(feedbackRaw);
     renderTaskLogTagPills();
     taskLogTodoAddedItems = [];
     if (typeof updateTodoPills === "function") updateTodoPills();
@@ -5413,7 +5859,13 @@ export function render() {
       (expenseCategoryDropdown?._getValue?.() || "").trim() ||
       (expenseClassificationButtons?._getValue?.() || "").trim() ||
       (taskLogExpenseAmountInput?.value || "").trim();
-    const hasEmotionData = (data.q1 || data.q2 || data.q3 || data.q4) || data.taskName === EMOTION_TASK_POSITIVE || data.taskName === EMOTION_TASK_NEGATIVE;
+    const hasEmotionData =
+      data.q1 ||
+      data.q2 ||
+      data.q3 ||
+      data.q4 ||
+      data.taskName === EMOTION_TASK_POSITIVE ||
+      data.taskName === EMOTION_TASK_NEGATIVE;
     const focusRaw = String(data.focus || "").trim();
     const defaultTime = (() => {
       const m = (data.startTime || "").match(/[T\s](\d{1,2}):(\d{2})/);
@@ -5432,7 +5884,9 @@ export function render() {
     taskLogModal.hidden = true;
     if (taskLogFooterEl) taskLogFooterEl.style.display = "none";
     closeDateTimePicker();
-    const taskDropdownPanel = taskLogTaskDropdown?.querySelector(".time-task-log-task-dropdown-panel");
+    const taskDropdownPanel = taskLogTaskDropdown?.querySelector(
+      ".time-task-log-task-dropdown-panel",
+    );
     if (taskDropdownPanel) taskDropdownPanel.hidden = true;
     taskLogModal.style.zIndex = "";
     document.body.style.overflow = "";
@@ -5462,9 +5916,9 @@ export function render() {
       endTime = mergeEndTimeWithStartDate(startTime, endTime) || endTime;
     }
     const feedback = (taskLogFeedbackInput?.value || "").trim();
-    const todoTags = taskLogTodoAddedItems.map(
-      (t) => [t.categoryLabel, t.todoName].filter(Boolean).join(" | "),
-    ).filter(Boolean);
+    const todoTags = taskLogTodoAddedItems
+      .map((t) => [t.categoryLabel, t.todoName].filter(Boolean).join(" | "))
+      .filter(Boolean);
     const memoTags = [...taskLogMemoTags, ...todoTags];
     const timeTracked = (() => {
       if (startTime && endTime) {
@@ -5498,7 +5952,8 @@ export function render() {
       .trim()
       .replace(/,/g, "");
     let expenseCategory = expenseCategoryDropdown._getValue?.() || "";
-    let expenseClassification = expenseClassificationButtons._getValue?.() || "";
+    let expenseClassification =
+      expenseClassificationButtons._getValue?.() || "";
 
     const focusValue =
       taskLogFocusEvents.length > 0
@@ -5542,67 +5997,73 @@ export function render() {
         focus: focusValue,
       };
       editTr._rowData = newRowData;
-      const isMobileCard = editTr.classList?.contains("time-ledger-mobile-card");
+      const isMobileCard = editTr.classList?.contains(
+        "time-ledger-mobile-card",
+      );
       if (!isMobileCard) {
         editTr.querySelector(".time-display-task").textContent = taskName;
-      const prodBarEl = editTr.querySelector(".time-task-prod-bar");
-      if (prodBarEl) {
-        prodBarEl.classList.remove(
-          "time-task-prod-bar--productive",
-          "time-task-prod-bar--nonproductive",
-          "time-task-prod-bar--other",
+        const prodBarEl = editTr.querySelector(".time-task-prod-bar");
+        if (prodBarEl) {
+          prodBarEl.classList.remove(
+            "time-task-prod-bar--productive",
+            "time-task-prod-bar--nonproductive",
+            "time-task-prod-bar--other",
+          );
+          prodBarEl.classList.add(
+            productivity === "productive"
+              ? "time-task-prod-bar--productive"
+              : productivity === "nonproductive"
+                ? "time-task-prod-bar--nonproductive"
+                : "time-task-prod-bar--other",
+          );
+        }
+        editTr.querySelector(".time-display-start").textContent = startTime
+          ? toDisplayTimeOnly(startTime) || startTime
+          : "";
+        editTr.querySelector(".time-display-end").textContent = endTime
+          ? toDisplayTimeOnly(endTime) || endTime
+          : "";
+        editTr.querySelector(".time-display-tracked").textContent = timeTracked;
+        editTr.querySelector(".time-display-feedback").textContent = feedback;
+        const memoTagCell = editTr.querySelector(
+          ".time-cell-memo-tag .time-display-memo-tags",
         );
-        prodBarEl.classList.add(
-          productivity === "productive"
-            ? "time-task-prod-bar--productive"
-            : productivity === "nonproductive"
-              ? "time-task-prod-bar--nonproductive"
-              : "time-task-prod-bar--other",
+        if (memoTagCell) {
+          memoTagCell.innerHTML = "";
+          const editTags = memoTags;
+          editTags.forEach((tag) => {
+            const pill = document.createElement("span");
+            pill.className = "time-memo-tag-pill";
+            pill.textContent = tag;
+            memoTagCell.appendChild(pill);
+          });
+        }
+        editTr.querySelector(".time-cell-category .time-tag-pill").textContent =
+          getCategoryLabel(category) || "—";
+        editTr.querySelector(".time-cell-category .time-tag-pill").className =
+          "time-tag-pill cat " + getCategoryColor(category);
+        const prodOpt = PRODUCTIVITY_OPTIONS.find(
+          (o) => o.value === productivity,
         );
-      }
-      editTr.querySelector(".time-display-start").textContent = startTime
-        ? toDisplayTimeOnly(startTime) || startTime
-        : "";
-      editTr.querySelector(".time-display-end").textContent = endTime
-        ? toDisplayTimeOnly(endTime) || endTime
-        : "";
-      editTr.querySelector(".time-display-tracked").textContent = timeTracked;
-      editTr.querySelector(".time-display-feedback").textContent = feedback;
-      const memoTagCell = editTr.querySelector(".time-cell-memo-tag .time-display-memo-tags");
-      if (memoTagCell) {
-        memoTagCell.innerHTML = "";
-        const editTags = memoTags;
-        editTags.forEach((tag) => {
-          const pill = document.createElement("span");
-          pill.className = "time-memo-tag-pill";
-          pill.textContent = tag;
-          memoTagCell.appendChild(pill);
-        });
-      }
-      editTr.querySelector(".time-cell-category .time-tag-pill").textContent =
-        getCategoryLabel(category) || "—";
-      editTr.querySelector(".time-cell-category .time-tag-pill").className =
-        "time-tag-pill cat " + getCategoryColor(category);
-      const prodOpt = PRODUCTIVITY_OPTIONS.find(
-        (o) => o.value === productivity,
-      );
-      editTr.querySelector(
-        ".time-cell-productivity .time-tag-pill",
-      ).textContent = prodOpt ? prodOpt.label : "";
-      editTr.querySelector(".time-cell-productivity .time-tag-pill").className =
-        "time-tag-pill prod " + (prodOpt ? prodOpt.color : "");
-      editTr.querySelector(".time-display-date").textContent = dateStr
-        ? formatDateDisplay(dateStr)
-        : "";
-      const focusDisplay = editTr.querySelector(
-        ".time-cell-focus .time-display-focus",
-      );
-      if (focusDisplay) focusDisplay.textContent = formatFocusForDisplay(focusValue);
-      editTr._updatePrice?.();
+        editTr.querySelector(
+          ".time-cell-productivity .time-tag-pill",
+        ).textContent = prodOpt ? prodOpt.label : "";
+        editTr.querySelector(
+          ".time-cell-productivity .time-tag-pill",
+        ).className = "time-tag-pill prod " + (prodOpt ? prodOpt.color : "");
+        editTr.querySelector(".time-display-date").textContent = dateStr
+          ? formatDateDisplay(dateStr)
+          : "";
+        const focusDisplay = editTr.querySelector(
+          ".time-cell-focus .time-display-focus",
+        );
+        if (focusDisplay)
+          focusDisplay.textContent = formatFocusForDisplay(focusValue);
+        editTr._updatePrice?.();
       }
     } else if (addCtx) {
       const ctx = addCtx;
-        const newRowData = {
+      const newRowData = {
         taskName,
         startTime,
         endTime,
@@ -5663,7 +6124,9 @@ export function render() {
         allRowsCache = allRowsCache.filter(
           (c) => `${c.date}|${c.taskName}|${c.startTime}` !== oldKey,
         );
-        const isMobileCardEdit = editTr.classList?.contains("time-ledger-mobile-card");
+        const isMobileCardEdit = editTr.classList?.contains(
+          "time-ledger-mobile-card",
+        );
         if (isMobileCardEdit && editTr._rowData) {
           allRowsCache.push(editTr._rowData);
         }
@@ -5673,20 +6136,36 @@ export function render() {
         if (dailyInfo && dailyInfo.needHabitTracker && taskLogDailyTodosList) {
           const completed = [];
           const incomplete = [];
-          taskLogDailyTodosList.querySelectorAll("label.time-task-log-daily-todo-row").forEach((label) => {
-            const cb = label.querySelector('input[type="checkbox"]');
-            const span = label.querySelector(".time-task-log-kpi-todo-text");
-            const id = (cb && cb.dataset && cb.dataset.todoId) ? cb.dataset.todoId : "";
-            const text = (span && span.textContent) ? span.textContent.trim() : "";
-            if (!id) return;
-            if (cb && cb.checked) completed.push({ id, text });
-            else incomplete.push({ id, text });
-          });
-          const dateRawStr = (dateStr || "").toString().replace(/\//g, "-").replace(/\s/g, "");
-          const m = dateRawStr.match(/(\d{4})[.\-\s]*(\d{1,2})[.\-\s]*(\d{1,2})/);
-          const normalizedDateRaw = m ? `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}` : dateRawStr.slice(0, 10);
+          taskLogDailyTodosList
+            .querySelectorAll("label.time-task-log-daily-todo-row")
+            .forEach((label) => {
+              const cb = label.querySelector('input[type="checkbox"]');
+              const span = label.querySelector(".time-task-log-kpi-todo-text");
+              const id =
+                cb && cb.dataset && cb.dataset.todoId ? cb.dataset.todoId : "";
+              const text =
+                span && span.textContent ? span.textContent.trim() : "";
+              if (!id) return;
+              if (cb && cb.checked) completed.push({ id, text });
+              else incomplete.push({ id, text });
+            });
+          const dateRawStr = (dateStr || "")
+            .toString()
+            .replace(/\//g, "-")
+            .replace(/\s/g, "");
+          const m = dateRawStr.match(
+            /(\d{4})[.\-\s]*(\d{1,2})[.\-\s]*(\d{1,2})/,
+          );
+          const normalizedDateRaw = m
+            ? `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`
+            : dateRawStr.slice(0, 10);
           if (normalizedDateRaw.length >= 10) {
-            upsertHabitTrackerLogWithDailyState(dailyInfo.storageKey, dailyInfo.kpiId, normalizedDateRaw, { completed, incomplete });
+            upsertHabitTrackerLogWithDailyState(
+              dailyInfo.storageKey,
+              dailyInfo.kpiId,
+              normalizedDateRaw,
+              { completed, incomplete },
+            );
           }
         }
       }
@@ -5700,7 +6179,9 @@ export function render() {
   taskLogBackdrop?.addEventListener("click", closeTaskLogModal);
   taskLogCloseBtn?.addEventListener("click", closeTaskLogModal);
 
-  const taskLogDeleteBtn = taskLogModal.querySelector(".time-task-log-delete-btn");
+  const taskLogDeleteBtn = taskLogModal.querySelector(
+    ".time-task-log-delete-btn",
+  );
   taskLogDeleteBtn?.addEventListener("click", () => {
     const tr = taskLogEditTr;
     if (!tr) return;
@@ -6059,8 +6540,12 @@ export function render() {
     updateHourlyHint();
 
     /* 1. 시간기록하기 단일 테이블 - 테이블 위 요약 패널 및 초과 행 */
-    const allTable = contentWrap.querySelector(".time-ledger-container .time-ledger-table");
-    const summaryPanelEl = contentWrap.querySelector(".time-ledger-summary-panel");
+    const allTable = contentWrap.querySelector(
+      ".time-ledger-container .time-ledger-table",
+    );
+    const summaryPanelEl = contentWrap.querySelector(
+      ".time-ledger-summary-panel",
+    );
     const allTfoot = allTable?.querySelector("tfoot");
     if (allTable && summaryPanelEl) {
       const tbody = allTable.querySelector("tbody");
@@ -6076,7 +6561,9 @@ export function render() {
       let totalPrice = 0;
       let wastedValue = 0;
       tbody?.querySelectorAll(".time-row").forEach((tr) => {
-        const timeEl = tr.querySelector(".time-input-tracked") || tr.querySelector(".time-display-tracked");
+        const timeEl =
+          tr.querySelector(".time-input-tracked") ||
+          tr.querySelector(".time-display-tracked");
         const val = (timeEl?.value ?? timeEl?.textContent ?? "").trim();
         const hrs = parseTimeToHours(val) || 0;
         totalHrs += hrs;
@@ -6101,26 +6588,38 @@ export function render() {
         numEl.textContent = String(h);
         unitEl.textContent = m === 0 ? "h" : `h ${m}m`;
       };
-      const trackedNum = summaryPanelEl.querySelector(".time-ledger-summary-tracked");
+      const trackedNum = summaryPanelEl.querySelector(
+        ".time-ledger-summary-tracked",
+      );
       const trackedUnit = trackedNum?.nextElementSibling;
       setHoursParts(trackedNum, trackedUnit, totalHrs);
-      const prodNum = summaryPanelEl.querySelector(".time-ledger-summary-productive");
+      const prodNum = summaryPanelEl.querySelector(
+        ".time-ledger-summary-productive",
+      );
       const prodUnit = prodNum?.nextElementSibling;
       setHoursParts(prodNum, prodUnit, productiveHrs);
-      const priceNum = summaryPanelEl.querySelector(".time-ledger-summary-price");
-      const priceUnit = summaryPanelEl.querySelector(".time-ledger-summary-unit-block");
+      const priceNum = summaryPanelEl.querySelector(
+        ".time-ledger-summary-price",
+      );
+      const priceUnit = summaryPanelEl.querySelector(
+        ".time-ledger-summary-unit-block",
+      );
       if (priceNum) priceNum.textContent = formatPrice(totalPrice);
       if (priceUnit) priceUnit.textContent = "원";
-      const wastedNum = summaryPanelEl.querySelector(".time-ledger-summary-wasted");
+      const wastedNum = summaryPanelEl.querySelector(
+        ".time-ledger-summary-wasted",
+      );
       const wastedUnit = wastedNum?.nextElementSibling;
       if (wastedNum) wastedNum.textContent = formatPrice(wastedValue);
       if (wastedUnit) wastedUnit.textContent = "원";
       const overHrs = totalHrs > 24 ? totalHrs - 24 : 0;
       const overRow = allTfoot?.querySelector(".time-ledger-over-row");
-      if (overRow) overRow.classList.toggle("time-ledger-over-row-visible", overHrs > 0);
+      if (overRow)
+        overRow.classList.toggle("time-ledger-over-row-visible", overHrs > 0);
       const totalOverEl = allTfoot?.querySelector(".time-ledger-total-over");
       if (totalOverEl) {
-        totalOverEl.textContent = overHrs > 0 ? formatHoursDisplay(overHrs) : "";
+        totalOverEl.textContent =
+          overHrs > 0 ? formatHoursDisplay(overHrs) : "";
         totalOverEl.classList.toggle("has-over", overHrs > 0);
       }
     }
@@ -6128,7 +6627,9 @@ export function render() {
     contentWrap.querySelectorAll(".time-section").forEach((section) => {
       const tbody = section.querySelector("tbody");
       const tfoot = section.querySelector("tfoot");
-      const summaryTracked = tfoot?.querySelector(".time-section-summary-tracked");
+      const summaryTracked = tfoot?.querySelector(
+        ".time-section-summary-tracked",
+      );
       const summaryPrice = tfoot?.querySelector(".time-section-summary-price");
       if (!tbody || !summaryTracked || !summaryPrice) return;
       const prod = section.dataset.productivity || "";
@@ -6142,7 +6643,9 @@ export function render() {
       let totalHrs = 0;
       let totalPrice = 0;
       tbody.querySelectorAll(".time-row").forEach((tr) => {
-        const timeEl = tr.querySelector(".time-input-tracked") || tr.querySelector(".time-display-tracked");
+        const timeEl =
+          tr.querySelector(".time-input-tracked") ||
+          tr.querySelector(".time-display-tracked");
         const val = (timeEl?.value ?? timeEl?.textContent ?? "").trim();
         const hrs = parseTimeToHours(val) || 0;
         totalHrs += hrs;
@@ -6152,9 +6655,16 @@ export function render() {
         else if (pv === "other" || pv === "그 외" || !pv) price = 0;
         totalPrice += price;
       });
-      summaryTracked.textContent = totalHrs > 0 ? formatHoursDisplay(totalHrs) : "";
+      summaryTracked.textContent =
+        totalHrs > 0 ? formatHoursDisplay(totalHrs) : "";
       summaryPrice.textContent = formatPrice(totalPrice);
-      summaryPrice.className = "time-section-summary-price" + (totalPrice < 0 ? " is-negative" : totalPrice > 0 ? " is-positive" : "");
+      summaryPrice.className =
+        "time-section-summary-price" +
+        (totalPrice < 0
+          ? " is-negative"
+          : totalPrice > 0
+            ? " is-positive"
+            : "");
     });
   }
   el._updateTotal = updateTotal;
@@ -6275,7 +6785,9 @@ export function render() {
       setupBtnEl.innerHTML =
         '<img src="/toolbaricons/settings.svg" alt="" class="time-btn-icon" width="18" height="18"> 과제 설정';
       setupBtnEl.addEventListener("click", () => {
-        const modal = el.querySelector(".time-task-setup-modal:not(.time-task-select-modal):not(.time-add-task-modal):not(.time-task-log-modal)");
+        const modal = el.querySelector(
+          ".time-task-setup-modal:not(.time-task-select-modal):not(.time-add-task-modal):not(.time-task-log-modal)",
+        );
         if (modal) modal.hidden = false;
       });
 
@@ -6307,7 +6819,8 @@ export function render() {
 
       const hiddenTableWrap = document.createElement("div");
       hiddenTableWrap.className = "time-ledger-mobile-hidden-table";
-      hiddenTableWrap.style.cssText = "position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;";
+      hiddenTableWrap.style.cssText =
+        "position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;";
       const hiddenTable = document.createElement("table");
       hiddenTable.className = "time-ledger-table";
       hiddenTable.innerHTML = createTableHTML();
@@ -6507,11 +7020,12 @@ export function render() {
     const start = startDateInput.value || filterStartDate;
     const end = endDateInput.value || filterEndDate;
     const periodLabel = getFilterPeriodLabel(type, y, m, start, end);
-    const { productive, nonproductive } =
-      aggregateHoursByProductivity(rows);
+    const { productive, nonproductive } = aggregateHoursByProductivity(rows);
     const totalProdNonProd = productive + nonproductive || 1;
-    const prodPct = totalProdNonProd > 0 ? (productive / totalProdNonProd) * 100 : 0;
-    const nonProdPct = totalProdNonProd > 0 ? (nonproductive / totalProdNonProd) * 100 : 0;
+    const prodPct =
+      totalProdNonProd > 0 ? (productive / totalProdNonProd) * 100 : 0;
+    const nonProdPct =
+      totalProdNonProd > 0 ? (nonproductive / totalProdNonProd) * 100 : 0;
     const circ = 2 * Math.PI * 40;
     const offset = circ / 4;
     const prodLen = (prodPct / 100) * circ;
@@ -6603,7 +7117,14 @@ export function render() {
       end,
     );
     if (type !== "day" && rangeStart && rangeEnd) {
-      const filteredForChart = filterRowsByFilterType(rows, type, y, m, start, end);
+      const filteredForChart = filterRowsByFilterType(
+        rows,
+        type,
+        y,
+        m,
+        start,
+        end,
+      );
       const widgetDailyRev = createDailyRevenueWidget(
         periodLabel,
         filteredForChart,
@@ -6649,11 +7170,24 @@ export function render() {
   function getStoredImproveNotes(dateKey) {
     try {
       const raw = localStorage.getItem(TIME_IMPROVE_FOCUS_NOTES_KEY);
-      if (!raw) return { rootCause: "", countermeasures: "", planReality: "", importantInvest: "", investReduce: "" };
+      if (!raw)
+        return {
+          rootCause: "",
+          countermeasures: "",
+          planReality: "",
+          importantInvest: "",
+          investReduce: "",
+        };
       const obj = JSON.parse(raw);
       const entry = obj[dateKey];
       if (!entry || typeof entry !== "object")
-        return { rootCause: "", countermeasures: "", planReality: "", importantInvest: "", investReduce: "" };
+        return {
+          rootCause: "",
+          countermeasures: "",
+          planReality: "",
+          importantInvest: "",
+          investReduce: "",
+        };
       return {
         rootCause: entry.rootCause || "",
         countermeasures: entry.countermeasures || "",
@@ -6662,7 +7196,13 @@ export function render() {
         investReduce: entry.investReduce || "",
       };
     } catch (_) {}
-    return { rootCause: "", countermeasures: "", planReality: "", importantInvest: "", investReduce: "" };
+    return {
+      rootCause: "",
+      countermeasures: "",
+      planReality: "",
+      importantInvest: "",
+      investReduce: "",
+    };
   }
 
   function setStoredImproveNote(dateKey, field, text) {
@@ -6670,7 +7210,13 @@ export function render() {
       const raw = localStorage.getItem(TIME_IMPROVE_FOCUS_NOTES_KEY);
       const obj = raw ? JSON.parse(raw) : {};
       if (!obj[dateKey] || typeof obj[dateKey] !== "object")
-        obj[dateKey] = { rootCause: "", countermeasures: "", planReality: "", importantInvest: "", investReduce: "" };
+        obj[dateKey] = {
+          rootCause: "",
+          countermeasures: "",
+          planReality: "",
+          importantInvest: "",
+          investReduce: "",
+        };
       obj[dateKey][field] = (text || "").trim();
       localStorage.setItem(TIME_IMPROVE_FOCUS_NOTES_KEY, JSON.stringify(obj));
     } catch (_) {}
@@ -6698,7 +7244,8 @@ export function render() {
 
     const allEvents = [];
     filtered.forEach((row) => {
-      const dateStr = normalizeDateForCompare(row.date || "") || (row.date || "").trim();
+      const dateStr =
+        normalizeDateForCompare(row.date || "") || (row.date || "").trim();
       if (!dateStr) return;
       const defTime = defaultTimeFromStart(row.startTime);
       const events = parseFocusEvents(row.focus, defTime);
@@ -6715,20 +7262,29 @@ export function render() {
         });
       });
     });
-    allEvents.sort((a, b) => a.dateStr.localeCompare(b.dateStr) || a.hours - b.hours);
+    allEvents.sort(
+      (a, b) => a.dateStr.localeCompare(b.dateStr) || a.hours - b.hours,
+    );
 
     const wrap = document.createElement("div");
     wrap.className = "time-improve-view";
     const dateKey = start.slice(0, 10) || start;
     const savedNotes = getStoredImproveNotes(dateKey);
-    const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    const esc = (s) =>
+      String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
 
     const GAP_MIN_MINUTES = 15;
     const dateStr = dateKey;
     const storedGoals = getBudgetGoals(dateStr);
     const excluded = getBudgetExcluded(dateStr);
     const dateRows = filtered.filter(
-      (r) => (normalizeDateForCompare(r.date || "") || r.date || "").trim() === dateStr,
+      (r) =>
+        (normalizeDateForCompare(r.date || "") || r.date || "").trim() ===
+        dateStr,
     );
     const actualByTask = aggregateHoursByTask(dateRows);
     const BASIC_TASKS_GAP = ["수면하기", "근무하기"];
@@ -6749,7 +7305,8 @@ export function render() {
       scheduleRowsGap.push({ task, goalTime, actualHrs, goalHrs, diff });
     });
     const fmtGapReality = (goalTime, actualHrs) => {
-      if (!goalTime?.trim() || (actualHrs <= 0 && !goalTime?.trim())) return "—";
+      if (!goalTime?.trim() || (actualHrs <= 0 && !goalTime?.trim()))
+        return "—";
       const goalHrs = parseTimeToHours(goalTime);
       const d = actualHrs - goalHrs;
       if (Math.abs(d) < 1 / 60) return "0";
@@ -6763,7 +7320,7 @@ export function render() {
     };
     const gapTableHtml =
       scheduleRowsGap.length === 0
-        ? "<p class=\"time-improve-gap-empty\">시간 갭 15분 이상인 과제가 없습니다.</p>"
+        ? '<p class="time-improve-gap-empty">시간 갭 15분 이상인 과제가 없습니다.</p>'
         : `<div class="time-improve-gap-table-wrap"><table class="time-improve-gap-table time-audit-schedule-table"><thead><tr><th>과제명</th><th>목표 시간</th><th>실제시간</th><th>시간 갭</th></tr></thead><tbody>${scheduleRowsGap
             .map(
               (r) =>
@@ -6772,9 +7329,16 @@ export function render() {
             .join("")}</tbody></table></div>`;
 
     const tasksForImportant = getTasksForAuditDate(dateKey);
-    const EISENHOWER_LABELS = { "urgent-important": "긴급+중요", "important-not-urgent": "중요+여유", "urgent-not-important": "긴급+덜중요", "not-urgent-not-important": "여유+안중요" };
+    const EISENHOWER_LABELS = {
+      "urgent-important": "긴급+중요",
+      "important-not-urgent": "중요+여유",
+      "urgent-not-important": "긴급+덜중요",
+      "not-urgent-not-important": "여유+안중요",
+    };
     const dateRowsForKpi = filtered.filter(
-      (r) => (normalizeDateForCompare(r.date || "") || (r.date || "").trim()) === dateKey,
+      (r) =>
+        (normalizeDateForCompare(r.date || "") || (r.date || "").trim()) ===
+        dateKey,
     );
     const actualByTaskKpi = aggregateHoursByTask(dateRowsForKpi);
     const kpiHoursMap = {};
@@ -6798,47 +7362,67 @@ export function render() {
       if (!kpiGroups[kpi]) kpiGroups[kpi] = [];
       kpiGroups[kpi].push(t);
     });
-    const kpiOrder = Object.keys(kpiGroups).sort((a, b) => (kpiHoursMap[b] || 0) - (kpiHoursMap[a] || 0));
+    const kpiOrder = Object.keys(kpiGroups).sort(
+      (a, b) => (kpiHoursMap[b] || 0) - (kpiHoursMap[a] || 0),
+    );
     const kpiCombinedRows = [];
     kpiOrder.forEach((kpi) => {
       const tasks = kpiGroups[kpi] || [];
       if (tasks.length === 0) return;
-      const timeStr = kpiHoursMap[kpi] > 0 ? formatHoursToHHMM(kpiHoursMap[kpi]) : "—";
+      const timeStr =
+        kpiHoursMap[kpi] > 0 ? formatHoursToHHMM(kpiHoursMap[kpi]) : "—";
       const rowspan = tasks.length;
       tasks.forEach((t, i) => {
         const label = (t.name || "").trim() || "—";
-        const priority = (t.eisenhower || "").trim() ? (EISENHOWER_LABELS[(t.eisenhower || "").trim()] || (t.eisenhower || "").trim()) : "—";
+        const priority = (t.eisenhower || "").trim()
+          ? EISENHOWER_LABELS[(t.eisenhower || "").trim()] ||
+            (t.eisenhower || "").trim()
+          : "—";
         const check = t.done ? "☑" : "☐";
         if (i === 0) {
           kpiCombinedRows.push(
             `<tr><td rowspan="${rowspan}" class="time-improve-kpi-name">${esc(kpi)}</td><td rowspan="${rowspan}" class="time-improve-kpi-hours">${timeStr}</td><td class="time-improve-kpi-todo">${check} ${esc(label)}</td><td class="time-improve-kpi-priority">${esc(priority)}</td></tr>`,
           );
         } else {
-          kpiCombinedRows.push(`<tr><td class="time-improve-kpi-todo">${check} ${esc(label)}</td><td class="time-improve-kpi-priority">${esc(priority)}</td></tr>`);
+          kpiCombinedRows.push(
+            `<tr><td class="time-improve-kpi-todo">${check} ${esc(label)}</td><td class="time-improve-kpi-priority">${esc(priority)}</td></tr>`,
+          );
         }
       });
     });
     const priorityTableImportantHtml =
       tasksForImportant.length === 0
-        ? "<p class=\"time-improve-important-empty\">해당 날짜 할일이 없습니다.</p>"
+        ? '<p class="time-improve-important-empty">해당 날짜 할일이 없습니다.</p>'
         : `<div class="time-improve-important-table-wrap"><table class="time-improve-important-table time-improve-kpi-combined-table"><thead><tr><th>KPI</th><th>KPI 시간사용시간</th><th>KPI 할일</th><th>우선순위</th></tr></thead><tbody>${kpiCombinedRows.join("")}</tbody></table></div>`;
 
     const viewRoot = contentWrap.parentElement;
-    const hourlyRateImprove = parseFloat(String(viewRoot?.querySelector(".time-hourly-input")?.value || "0").replace(/,/g, "")) || 0;
+    const hourlyRateImprove =
+      parseFloat(
+        String(
+          viewRoot?.querySelector(".time-hourly-input")?.value || "0",
+        ).replace(/,/g, ""),
+      ) || 0;
     const dateRowsThief = filtered.filter(
-      (r) => (normalizeDateForCompare(r.date || "") || (r.date || "").trim()) === dateKey,
+      (r) =>
+        (normalizeDateForCompare(r.date || "") || (r.date || "").trim()) ===
+        dateKey,
     );
-    const nonproductiveRows = dateRowsThief.filter((r) => (String(r.productivity || "").trim()) === "nonproductive");
+    const nonproductiveRows = dateRowsThief.filter(
+      (r) => String(r.productivity || "").trim() === "nonproductive",
+    );
     const byTaskThief = {};
     nonproductiveRows.forEach((r) => {
       const name = (r.taskName || "").trim() || "—";
       const hrs = parseTimeToHours(r.timeTracked) || 0;
       const price = hrs * hourlyRateImprove * -1;
-      if (!byTaskThief[name]) byTaskThief[name] = { taskName: name, hours: 0, price: 0 };
+      if (!byTaskThief[name])
+        byTaskThief[name] = { taskName: name, hours: 0, price: 0 };
       byTaskThief[name].hours += hrs;
       byTaskThief[name].price += price;
     });
-    const thiefTableRows = Object.values(byTaskThief).sort((a, b) => b.hours - a.hours);
+    const thiefTableRows = Object.values(byTaskThief).sort(
+      (a, b) => b.hours - a.hours,
+    );
     const totalThiefHours = thiefTableRows.reduce((s, r) => s + r.hours, 0);
     const totalThiefPrice = thiefTableRows.reduce((s, r) => s + r.price, 0);
     const thiefTableHtml =
@@ -6849,9 +7433,8 @@ export function render() {
                 `<tr><td class="time-audit-thief-task">${esc(r.taskName)}</td><td class="time-audit-thief-time">${formatHoursToHHMM(r.hours)}</td><td class="time-audit-thief-value">${formatPrice(r.price)}</td></tr>`,
             )
             .join("")}</tbody></table></div>`
-        : "<p class=\"time-improve-important-empty\">해당 날짜 비생산적 기록 없음</p>";
-    const investSummaryHtml =
-      `<div class="time-improve-invest-summary">
+        : '<p class="time-improve-important-empty">해당 날짜 비생산적 기록 없음</p>';
+    const investSummaryHtml = `<div class="time-improve-invest-summary">
         <div class="time-improve-invest-summary-row"><span class="time-improve-invest-summary-label">실제 보낸 시간 합계</span><span class="time-improve-invest-summary-value">${formatHoursToHHMM(totalThiefHours)}</span></div>
         <div class="time-improve-invest-summary-row"><span class="time-improve-invest-summary-label">시간의 가치 합계</span><span class="time-improve-invest-summary-value time-improve-invest-summary-value-bold">${formatPrice(totalThiefPrice)}</span></div>
       </div>`;
@@ -6859,7 +7442,7 @@ export function render() {
 
     const eventsListHtml =
       allEvents.length === 0
-        ? "<p class=\"time-improve-events-empty\">해당 기간 방해기록이 없습니다.</p>"
+        ? '<p class="time-improve-events-empty">해당 기간 방해기록이 없습니다.</p>'
         : `<ul class="time-improve-events-list">${allEvents
             .map(
               (e) =>
@@ -6932,34 +7515,76 @@ export function render() {
     `;
 
     const rootCauseEl = wrap.querySelector(".time-improve-root-cause");
-    const countermeasuresEl = wrap.querySelector(".time-improve-countermeasures");
+    const countermeasuresEl = wrap.querySelector(
+      ".time-improve-countermeasures",
+    );
     if (rootCauseEl) {
       rootCauseEl.value = savedNotes.rootCause;
-      rootCauseEl.addEventListener("input", () => setStoredImproveNote(dateKey, "rootCause", rootCauseEl.value));
-      rootCauseEl.addEventListener("blur", () => setStoredImproveNote(dateKey, "rootCause", rootCauseEl.value));
+      rootCauseEl.addEventListener("input", () =>
+        setStoredImproveNote(dateKey, "rootCause", rootCauseEl.value),
+      );
+      rootCauseEl.addEventListener("blur", () =>
+        setStoredImproveNote(dateKey, "rootCause", rootCauseEl.value),
+      );
     }
     if (countermeasuresEl) {
       countermeasuresEl.value = savedNotes.countermeasures;
-      countermeasuresEl.addEventListener("input", () => setStoredImproveNote(dateKey, "countermeasures", countermeasuresEl.value));
-      countermeasuresEl.addEventListener("blur", () => setStoredImproveNote(dateKey, "countermeasures", countermeasuresEl.value));
+      countermeasuresEl.addEventListener("input", () =>
+        setStoredImproveNote(
+          dateKey,
+          "countermeasures",
+          countermeasuresEl.value,
+        ),
+      );
+      countermeasuresEl.addEventListener("blur", () =>
+        setStoredImproveNote(
+          dateKey,
+          "countermeasures",
+          countermeasuresEl.value,
+        ),
+      );
     }
     const planRealityEl = wrap.querySelector(".time-improve-plan-reality");
     if (planRealityEl) {
       planRealityEl.value = savedNotes.planReality;
-      planRealityEl.addEventListener("input", () => setStoredImproveNote(dateKey, "planReality", planRealityEl.value));
-      planRealityEl.addEventListener("blur", () => setStoredImproveNote(dateKey, "planReality", planRealityEl.value));
+      planRealityEl.addEventListener("input", () =>
+        setStoredImproveNote(dateKey, "planReality", planRealityEl.value),
+      );
+      planRealityEl.addEventListener("blur", () =>
+        setStoredImproveNote(dateKey, "planReality", planRealityEl.value),
+      );
     }
-    const importantInvestEl = wrap.querySelector(".time-improve-important-invest-input");
+    const importantInvestEl = wrap.querySelector(
+      ".time-improve-important-invest-input",
+    );
     if (importantInvestEl) {
       importantInvestEl.value = savedNotes.importantInvest;
-      importantInvestEl.addEventListener("input", () => setStoredImproveNote(dateKey, "importantInvest", importantInvestEl.value));
-      importantInvestEl.addEventListener("blur", () => setStoredImproveNote(dateKey, "importantInvest", importantInvestEl.value));
+      importantInvestEl.addEventListener("input", () =>
+        setStoredImproveNote(
+          dateKey,
+          "importantInvest",
+          importantInvestEl.value,
+        ),
+      );
+      importantInvestEl.addEventListener("blur", () =>
+        setStoredImproveNote(
+          dateKey,
+          "importantInvest",
+          importantInvestEl.value,
+        ),
+      );
     }
-    const investReduceEl = wrap.querySelector(".time-improve-invest-reduce-input");
+    const investReduceEl = wrap.querySelector(
+      ".time-improve-invest-reduce-input",
+    );
     if (investReduceEl) {
       investReduceEl.value = savedNotes.investReduce;
-      investReduceEl.addEventListener("input", () => setStoredImproveNote(dateKey, "investReduce", investReduceEl.value));
-      investReduceEl.addEventListener("blur", () => setStoredImproveNote(dateKey, "investReduce", investReduceEl.value));
+      investReduceEl.addEventListener("input", () =>
+        setStoredImproveNote(dateKey, "investReduce", investReduceEl.value),
+      );
+      investReduceEl.addEventListener("blur", () =>
+        setStoredImproveNote(dateKey, "investReduce", investReduceEl.value),
+      );
     }
     contentWrap.appendChild(wrap);
   }
@@ -7026,11 +7651,17 @@ export function render() {
         }))
         .filter((e) => e.hours != null && e.hours >= 0 && e.hours < 24);
       const hasFocus = eventsWithHours.length > 0;
-      const achRaw = (row.achievement || "").toString().trim().replace(/%/g, "");
-      const achNum = achRaw === "" ? null : (() => {
-        const n = parseInt(achRaw, 10);
-        return Number.isNaN(n) ? null : Math.max(0, Math.min(150, n));
-      })();
+      const achRaw = (row.achievement || "")
+        .toString()
+        .trim()
+        .replace(/%/g, "");
+      const achNum =
+        achRaw === ""
+          ? null
+          : (() => {
+              const n = parseInt(achRaw, 10);
+              return Number.isNaN(n) ? null : Math.max(0, Math.min(150, n));
+            })();
       byDate[d].rows.push({
         taskName: (row.taskName || "").trim() || "—",
         startH,
@@ -7055,9 +7686,9 @@ export function render() {
         const allEvents = day.events
           .slice()
           .sort((a, b) => (a.hours || 0) - (b.hours || 0));
-        const eventTimes = [...new Set(allEvents.map((e) => e.hours).filter((h) => h != null))].sort(
-          (a, b) => a - b,
-        );
+        const eventTimes = [
+          ...new Set(allEvents.map((e) => e.hours).filter((h) => h != null)),
+        ].sort((a, b) => a - b);
         const RECOVERY_MINUTES = 6;
         const recoveryTimes = eventTimes.map((t) => t + RECOVERY_MINUTES / 60);
         const taskBounds = dayRows.flatMap((r) => [r.startH, r.endH]);
@@ -7145,32 +7776,37 @@ export function render() {
           });
         }
 
-
         const getCategoryColor = (cat) =>
           CATEGORY_GRAPH_COLORS[cat] || CATEGORY_GRAPH_COLORS[""];
         const minBarWidthForLabel = plotW * (1.5 / 24);
-        const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
-        const taskRectsAndLabels = dayRows
-          .map((r) => {
-            const x1 = toX(r.startH);
-            const x2 = toX(r.endH);
-            const w = Math.max(2, x2 - x1);
-            const color = getCategoryColor(r.category);
-            const rectStr = `<rect x="${x1}" y="${padTop}" width="${w}" height="${plotH}" fill="${color}" stroke="rgba(0,0,0,0.06)" stroke-width="0.5"/>`;
-            const fitLabel = w >= minBarWidthForLabel;
-            const labelX = x1 + 5;
-            const labelY = padTop + plotH / 2;
-            const textStr = fitLabel
-              ? `<text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" font-size="6" fill="#374151" class="time-audit-bar-inner-label" transform="rotate(-90, ${labelX}, ${labelY})">${esc(r.taskName)}</text>`
-              : "";
-            return { rectStr, textStr, fitLabel, r };
-          });
+        const esc = (s) =>
+          String(s)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/"/g, "&quot;");
+        const taskRectsAndLabels = dayRows.map((r) => {
+          const x1 = toX(r.startH);
+          const x2 = toX(r.endH);
+          const w = Math.max(2, x2 - x1);
+          const color = getCategoryColor(r.category);
+          const rectStr = `<rect x="${x1}" y="${padTop}" width="${w}" height="${plotH}" fill="${color}" stroke="rgba(0,0,0,0.06)" stroke-width="0.5"/>`;
+          const fitLabel = w >= minBarWidthForLabel;
+          const labelX = x1 + 5;
+          const labelY = padTop + plotH / 2;
+          const textStr = fitLabel
+            ? `<text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" font-size="6" fill="#374151" class="time-audit-bar-inner-label" transform="rotate(-90, ${labelX}, ${labelY})">${esc(r.taskName)}</text>`
+            : "";
+          return { rectStr, textStr, fitLabel, r };
+        });
         const taskRects = taskRectsAndLabels
           .map((o) => o.rectStr + o.textStr)
           .join("");
         const narrowLegendItems = taskRectsAndLabels
           .filter((o) => !o.fitLabel)
-          .map((o) => `<span class="time-audit-legend-item" style="--legend-color:${getCategoryColor(o.r.category)}">${esc(o.r.taskName)} (${String(Math.floor(o.r.startH)).padStart(2, "0")}:${String(Math.round((o.r.startH % 1) * 60)).padStart(2, "0")}~${String(Math.floor(o.r.endH)).padStart(2, "0")}:${String(Math.round((o.r.endH % 1) * 60)).padStart(2, "0")})</span>`)
+          .map(
+            (o) =>
+              `<span class="time-audit-legend-item" style="--legend-color:${getCategoryColor(o.r.category)}">${esc(o.r.taskName)} (${String(Math.floor(o.r.startH)).padStart(2, "0")}:${String(Math.round((o.r.startH % 1) * 60)).padStart(2, "0")}~${String(Math.floor(o.r.endH)).padStart(2, "0")}:${String(Math.round((o.r.endH % 1) * 60)).padStart(2, "0")})</span>`,
+          )
           .join("");
 
         const fmtHhMm = (h) =>
@@ -7198,7 +7834,12 @@ export function render() {
           <div class="time-audit-region time-audit-region-available">
             <div class="time-audit-region-title">1. 가용시간</div>
           ${(() => {
-            const hourlyRate = parseFloat(String(el.querySelector(".time-hourly-input")?.value || "0").replace(/,/g, "")) || 0;
+            const hourlyRate =
+              parseFloat(
+                String(
+                  el.querySelector(".time-hourly-input")?.value || "0",
+                ).replace(/,/g, ""),
+              ) || 0;
             return getAuditAvailableTimeHtml(dateStr, filtered, hourlyRate);
           })()}
           </div>
@@ -7219,7 +7860,13 @@ export function render() {
                   <g clip-path="url(#time-audit-conc-clip-${String(dateStr).replace(/[^a-z0-9-]/gi, "-")})">${taskRects}</g>
                   <path d="${concPathStr2.fillPath}" fill="none" stroke="none"/>
                   ${concPathStr2.strokePath ? `<path d="${concPathStr2.strokePath}" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>` : ""}
-                  ${xLabels.filter((_, i) => i % 2 === 0 || i === xLabels.length - 1).map((l) => `<text x="${l.x}" y="${concBottom + 10}" text-anchor="middle" font-size="6" fill="#6b7280">${l.label}</text>`).join("")}
+                  ${xLabels
+                    .filter((_, i) => i % 2 === 0 || i === xLabels.length - 1)
+                    .map(
+                      (l) =>
+                        `<text x="${l.x}" y="${concBottom + 10}" text-anchor="middle" font-size="6" fill="#6b7280">${l.label}</text>`,
+                    )
+                    .join("")}
                 </svg>
               </div>
               ${narrowLegendItems ? `<div class="time-audit-task-legend">${narrowLegendItems}</div>` : ""}
@@ -7236,7 +7883,11 @@ export function render() {
             const BASIC_TASKS = ["수면하기", "근무하기"];
             const storedGoals = getBudgetGoals(dateStr);
             const excluded = getBudgetExcluded(dateStr);
-            const dateRows = filtered.filter((r) => (normalizeDateForCompare(r.date || "") || r.date || "") === dateStr);
+            const dateRows = filtered.filter(
+              (r) =>
+                (normalizeDateForCompare(r.date || "") || r.date || "") ===
+                dateStr,
+            );
             const actualByTask = aggregateHoursByTask(dateRows);
             const scheduleRows = [];
             Object.entries(storedGoals).forEach(([task, data]) => {
@@ -7250,7 +7901,9 @@ export function render() {
               const section = isBasic ? 1 : isInvest ? 3 : 4;
               scheduleRows.push({ task, goalTime, actualHrs, section });
             });
-            scheduleRows.sort((a, b) => a.section - b.section || a.task.localeCompare(b.task));
+            scheduleRows.sort(
+              (a, b) => a.section - b.section || a.task.localeCompare(b.task),
+            );
             const fmtGap = (goalTime, actualHrs) => {
               if (!goalTime?.trim() || actualHrs <= 0) return "—";
               const goalHrs = parseTimeToHours(goalTime);
@@ -7264,36 +7917,47 @@ export function render() {
               if (m === 0) return `${sign}${h}h`;
               return `${sign}${h}h ${m}m`;
             };
-            const tableHtml = scheduleRows.length > 0
-              ? (() => {
-                  const rowsHtml = scheduleRows
-                    .map(
-                      (r) =>
-                        `<tr><td class="time-audit-schedule-task">${r.task}</td><td class="time-audit-schedule-goal">${r.goalTime || "—"}</td><td class="time-audit-schedule-actual">${r.actualHrs > 0 ? formatHoursToHHMM(r.actualHrs) : "—"}</td><td class="time-audit-schedule-gap">${fmtGap(r.goalTime, r.actualHrs)}</td></tr>`,
-                    )
-                    .join("");
-                  return `<div class="time-audit-section-1"><div class="time-audit-schedule-table-wrap"><table class="time-audit-schedule-table"><thead><tr><th>과제명</th><th>목표 시간</th><th>실제시간</th><th>시간 갭</th></tr></thead><tbody>${rowsHtml}</tbody></table></div></div>`;
-                })()
-              : "";
+            const tableHtml =
+              scheduleRows.length > 0
+                ? (() => {
+                    const rowsHtml = scheduleRows
+                      .map(
+                        (r) =>
+                          `<tr><td class="time-audit-schedule-task">${r.task}</td><td class="time-audit-schedule-goal">${r.goalTime || "—"}</td><td class="time-audit-schedule-actual">${r.actualHrs > 0 ? formatHoursToHHMM(r.actualHrs) : "—"}</td><td class="time-audit-schedule-gap">${fmtGap(r.goalTime, r.actualHrs)}</td></tr>`,
+                      )
+                      .join("");
+                    return `<div class="time-audit-section-1"><div class="time-audit-schedule-table-wrap"><table class="time-audit-schedule-table"><thead><tr><th>과제명</th><th>목표 시간</th><th>실제시간</th><th>시간 갭</th></tr></thead><tbody>${rowsHtml}</tbody></table></div></div>`;
+                  })()
+                : "";
             const barRows = scheduleRows.map((r, i) => ({
               task: r.task,
               goalHrs: parseTimeToHours(r.goalTime),
               actualHrs: r.actualHrs,
               color: TASK_BAR_COLORS[i % TASK_BAR_COLORS.length],
             }));
-            const maxHrs = Math.max(1, ...barRows.flatMap((r) => [r.goalHrs, r.actualHrs]));
-            const barChartHtml = barRows.length > 0
-              ? `<div class="time-audit-bar-chart">
+            const maxHrs = Math.max(
+              1,
+              ...barRows.flatMap((r) => [r.goalHrs, r.actualHrs]),
+            );
+            const barChartHtml =
+              barRows.length > 0
+                ? `<div class="time-audit-bar-chart">
                   <div class="time-audit-bar-chart-title">목표 vs 실제</div>
                   <div class="time-audit-bar-rows">
-                    ${barRows.map((r) => {
-                      const rowMax = Math.max(r.goalHrs, r.actualHrs, 0.01);
-                      const slotPct = maxHrs > 0 ? (rowMax / maxHrs) * 100 : 0;
-                      const barPct = rowMax > 0 ? (r.actualHrs / rowMax) * 100 : 0;
-                      const goalMarkerPct = r.actualHrs > 0 && r.goalHrs > 0 && r.actualHrs > r.goalHrs
-                        ? (r.goalHrs / r.actualHrs) * 100
-                        : null;
-                      return `<div class="time-audit-bar-row">
+                    ${barRows
+                      .map((r) => {
+                        const rowMax = Math.max(r.goalHrs, r.actualHrs, 0.01);
+                        const slotPct =
+                          maxHrs > 0 ? (rowMax / maxHrs) * 100 : 0;
+                        const barPct =
+                          rowMax > 0 ? (r.actualHrs / rowMax) * 100 : 0;
+                        const goalMarkerPct =
+                          r.actualHrs > 0 &&
+                          r.goalHrs > 0 &&
+                          r.actualHrs > r.goalHrs
+                            ? (r.goalHrs / r.actualHrs) * 100
+                            : null;
+                        return `<div class="time-audit-bar-row">
                         <div class="time-audit-bar-label" title="${r.task}">${r.task}</div>
                         <div class="time-audit-bar-track">
                           <div class="time-audit-bar-slot" style="flex: 0 0 ${slotPct}%">
@@ -7308,10 +7972,11 @@ export function render() {
                           <span class="time-audit-bar-actual-val">${r.actualHrs > 0 ? formatHoursToHHMM(r.actualHrs) : "—"}</span>
                         </div>
                       </div>`;
-                    }).join("")}
+                      })
+                      .join("")}
                   </div>
                 </div>`
-              : `<div class="time-audit-bar-chart time-audit-bar-chart-empty"><div class="time-audit-pie-empty">목표 없음</div></div>`;
+                : `<div class="time-audit-bar-chart time-audit-bar-chart-empty"><div class="time-audit-pie-empty">목표 없음</div></div>`;
             return `<div class="time-audit-below-section">${tableHtml || ""}${barChartHtml}</div>`;
           })()}
           </div>
@@ -7319,26 +7984,46 @@ export function render() {
             <div class="time-audit-region-title">4. 우선순위</div>
           ${(() => {
             const tasks = getTasksForAuditDate(dateStr);
-            const EISENHOWER_ORDER = ["urgent-important", "important-not-urgent", "urgent-not-important", "not-urgent-not-important"];
-            const EISENHOWER_LABELS = { "urgent-important": "긴급+중요", "important-not-urgent": "중요+여유", "urgent-not-important": "긴급+덜중요", "not-urgent-not-important": "여유+안중요" };
-            const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+            const EISENHOWER_ORDER = [
+              "urgent-important",
+              "important-not-urgent",
+              "urgent-not-important",
+              "not-urgent-not-important",
+            ];
+            const EISENHOWER_LABELS = {
+              "urgent-important": "긴급+중요",
+              "important-not-urgent": "중요+여유",
+              "urgent-not-important": "긴급+덜중요",
+              "not-urgent-not-important": "여유+안중요",
+            };
+            const esc = (s) =>
+              String(s ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
             const sorted = [...tasks].sort((a, b) => {
               const ai = EISENHOWER_ORDER.indexOf((a.eisenhower || "").trim());
               const bi = EISENHOWER_ORDER.indexOf((b.eisenhower || "").trim());
               return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
             });
-            const tableRows = sorted.map((t) => {
-              const label = (t.name || "").trim() || "—";
-              const kpi = (t.classification || "").trim() || "—";
-              const priority = (t.eisenhower || "").trim() ? (EISENHOWER_LABELS[(t.eisenhower || "").trim()] || (t.eisenhower || "").trim()) : "—";
-              const checked = t.done ? " checked" : "";
-              const sid = esc(t.sectionId || "");
-              const tid = esc(t.taskId || "");
-              const kid = esc(t.kpiTodoId || "");
-              const sk = esc(t.storageKey || "");
-              const dk = esc(dateStr);
-              return `<tr data-section-id="${sid}" data-task-id="${tid}" data-kpi-todo-id="${kid}" data-storage-key="${sk}" data-date-key="${dk}"><td class="time-audit-priority-todo-cell"><label class="time-audit-priority-todo-row"><input type="checkbox"${checked}><span>${esc(label)}</span></label></td><td>${esc(kpi)}</td><td>${esc(priority)}</td></tr>`;
-            }).join("");
+            const tableRows = sorted
+              .map((t) => {
+                const label = (t.name || "").trim() || "—";
+                const kpi = (t.classification || "").trim() || "—";
+                const priority = (t.eisenhower || "").trim()
+                  ? EISENHOWER_LABELS[(t.eisenhower || "").trim()] ||
+                    (t.eisenhower || "").trim()
+                  : "—";
+                const checked = t.done ? " checked" : "";
+                const sid = esc(t.sectionId || "");
+                const tid = esc(t.taskId || "");
+                const kid = esc(t.kpiTodoId || "");
+                const sk = esc(t.storageKey || "");
+                const dk = esc(dateStr);
+                return `<tr data-section-id="${sid}" data-task-id="${tid}" data-kpi-todo-id="${kid}" data-storage-key="${sk}" data-date-key="${dk}"><td class="time-audit-priority-todo-cell"><label class="time-audit-priority-todo-row"><input type="checkbox"${checked}><span>${esc(label)}</span></label></td><td>${esc(kpi)}</td><td>${esc(priority)}</td></tr>`;
+              })
+              .join("");
             const tableHtml = `<div class="time-audit-priority-table-wrap"><table class="time-audit-priority-table"><thead><tr><th>오늘의 할일</th><th>KPI</th><th>우선순위</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
             return `<div class="time-audit-priority-content"><div class="time-audit-priority-left">${tableHtml}</div><div class="time-audit-priority-right">${getAuditPriorityPieHtml(dateStr)}</div></div>`;
           })()}
@@ -7346,14 +8031,24 @@ export function render() {
           <div class="time-audit-region time-audit-region-time-thief">
             <div class="time-audit-region-title">5. 시간낭비내역</div>
           ${(() => {
-            const hourlyRate = parseFloat(String(el.querySelector(".time-hourly-input")?.value || "0").replace(/,/g, "")) || 0;
+            const hourlyRate =
+              parseFloat(
+                String(
+                  el.querySelector(".time-hourly-input")?.value || "0",
+                ).replace(/,/g, ""),
+              ) || 0;
             return getAuditTimeThiefHtml(dateStr, filtered, hourlyRate);
           })()}
           </div>
           <div class="time-audit-region time-audit-region-time-investment">
             <div class="time-audit-region-title">6. 시간 투자 내역</div>
           ${(() => {
-            const hourlyRate = parseFloat(String(el.querySelector(".time-hourly-input")?.value || "0").replace(/,/g, "")) || 0;
+            const hourlyRate =
+              parseFloat(
+                String(
+                  el.querySelector(".time-hourly-input")?.value || "0",
+                ).replace(/,/g, ""),
+              ) || 0;
             return getAuditTimeInvestmentHtml(dateStr, filtered, hourlyRate);
           })()}
           </div>
@@ -7362,14 +8057,22 @@ export function render() {
             ${(() => {
               const concTop = padTop;
               const concBottom = padTop + plotH;
-              const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
-              const clipId = "time-audit-ach-clip-" + String(dateStr).replace(/[^a-z0-9-]/gi, "-");
+              const esc = (s) =>
+                String(s ?? "")
+                  .replace(/&/g, "&amp;")
+                  .replace(/</g, "&lt;")
+                  .replace(/"/g, "&quot;");
+              const clipId =
+                "time-audit-ach-clip-" +
+                String(dateStr).replace(/[^a-z0-9-]/gi, "-");
               const minBarWidthForLabel = plotW * (1.5 / 24);
               const taskRectsAndLabels = dayRows.map((r) => {
                 const x1 = toX(r.startH);
                 const x2 = toX(r.endH);
                 const w = Math.max(2, x2 - x1);
-                const color = getCategoryColor ? getCategoryColor(r.category) : "#94a3b8";
+                const color = getCategoryColor
+                  ? getCategoryColor(r.category)
+                  : "#94a3b8";
                 const rectStr = `<rect x="${x1}" y="${padTop}" width="${w}" height="${plotH}" fill="${color}" stroke="rgba(0,0,0,0.06)" stroke-width="0.5"/>`;
                 const fitLabel = w >= minBarWidthForLabel;
                 const labelX = x1 + 5;
@@ -7381,16 +8084,29 @@ export function render() {
                   : "";
                 return { rectStr, textStr, fitLabel, r, timeRange };
               });
-              const barRects = taskRectsAndLabels.map((o) => o.rectStr + o.textStr).join("");
+              const barRects = taskRectsAndLabels
+                .map((o) => o.rectStr + o.textStr)
+                .join("");
               const achievementLegendItems = taskRectsAndLabels
                 .filter((o) => !o.fitLabel)
-                .map((o) => `<span class="time-audit-legend-item" style="--legend-color:${getCategoryColor ? getCategoryColor(o.r.category) : "#94a3b8"}">${esc(o.r.taskName)} (${o.timeRange})</span>`)
+                .map(
+                  (o) =>
+                    `<span class="time-audit-legend-item" style="--legend-color:${getCategoryColor ? getCategoryColor(o.r.category) : "#94a3b8"}">${esc(o.r.taskName)} (${o.timeRange})</span>`,
+                )
                 .join("");
               const xLabels = [];
               for (let h = 0; h <= 24; h += 2) {
-                xLabels.push({ x: toX(h), label: `${String(h).padStart(2, "0")}:00` });
+                xLabels.push({
+                  x: toX(h),
+                  label: `${String(h).padStart(2, "0")}:00`,
+                });
               }
-              const xLabelStr = xLabels.map((l) => `<text x="${l.x}" y="${concBottom + 10}" text-anchor="middle" font-size="6" fill="#6b7280">${l.label}</text>`).join("");
+              const xLabelStr = xLabels
+                .map(
+                  (l) =>
+                    `<text x="${l.x}" y="${concBottom + 10}" text-anchor="middle" font-size="6" fill="#6b7280">${l.label}</text>`,
+                )
+                .join("");
               if (dayRows.length === 0) {
                 return `<div class="time-audit-achievement-content"><div class="time-audit-achievement-empty">해당 날짜 기록이 없습니다.</div></div>`;
               }
@@ -7414,7 +8130,9 @@ export function render() {
           </div>
         `;
         wrap.appendChild(block);
-        const tableWrap = block.querySelector(".time-audit-priority-table-wrap");
+        const tableWrap = block.querySelector(
+          ".time-audit-priority-table-wrap",
+        );
         if (tableWrap) {
           tableWrap.addEventListener("change", (e) => {
             if (!e.target.matches("input[type=checkbox]")) return;
@@ -7425,7 +8143,13 @@ export function render() {
             const kpiTodoId = tr.dataset.kpiTodoId || "";
             const storageKey = tr.dataset.storageKey || "";
             const dateKey = tr.dataset.dateKey || "";
-            setAuditTaskDone(sectionId, taskId, kpiTodoId || null, storageKey || null, e.target.checked);
+            setAuditTaskDone(
+              sectionId,
+              taskId,
+              kpiTodoId || null,
+              storageKey || null,
+              e.target.checked,
+            );
             const right = block.querySelector(".time-audit-priority-right");
             if (right) right.innerHTML = getAuditPriorityPieHtml(dateKey);
           });
@@ -7934,7 +8658,6 @@ export function render() {
     `;
     dash.appendChild(widgetEnergyCurve);
 
-
     contentWrap.appendChild(dash);
   }
 
@@ -8375,9 +9098,11 @@ export function render() {
       filterTabs.querySelectorAll("[data-audit-hidden]").forEach((b) => {
         b.style.display = "none";
       });
-      filterTabs.querySelectorAll(".time-filter-btn:not([data-audit-hidden])").forEach((b) => {
-        b.style.display = "";
-      });
+      filterTabs
+        .querySelectorAll(".time-filter-btn:not([data-audit-hidden])")
+        .forEach((b) => {
+          b.style.display = "";
+        });
       /* 시간 보고서는 하루용: 날짜 선택 시 기간이 아닌 단일 날짜만 표시 */
       filterBar.querySelectorAll("[data-audit-range-hidden]").forEach((el) => {
         el.style.display = "none";
@@ -8386,12 +9111,16 @@ export function render() {
       if (startDateInput) {
         startDateInput.dataset.hideDeleteBtn = "true";
         const fp = startDateInput._flatpickr;
-        const delBtn = fp?.calendarContainer?.querySelector(".flatpickr-custom-btn-delete");
+        const delBtn = fp?.calendarContainer?.querySelector(
+          ".flatpickr-custom-btn-delete",
+        );
         if (delBtn) delBtn.style.display = "none";
       }
       if (filterType === "month" || filterType === "week") {
         filterType = "day";
-        filterBar.querySelectorAll(".time-filter-btn").forEach((b) => b.classList.remove("active"));
+        filterBar
+          .querySelectorAll(".time-filter-btn")
+          .forEach((b) => b.classList.remove("active"));
         const dayBtn = filterBar.querySelector('[data-filter="day"]');
         if (dayBtn) dayBtn.classList.add("active");
         dayWrap.style.display = "";
@@ -8404,7 +9133,8 @@ export function render() {
         rangeWrap.style.display = filterType === "range" ? "" : "none";
         if (filterType === "range") {
           endDateInput.value = startDateInput.value || filterStartDate;
-          filterEndDate = filterStartDate = startDateInput.value || filterEndDate;
+          filterEndDate = filterStartDate =
+            startDateInput.value || filterEndDate;
         }
       }
     } else if (view === "blank") {
@@ -8426,7 +9156,9 @@ export function render() {
       if (startDateInput) {
         delete startDateInput.dataset.hideDeleteBtn;
         const fp = startDateInput._flatpickr;
-        const delBtn = fp?.calendarContainer?.querySelector(".flatpickr-custom-btn-delete");
+        const delBtn = fp?.calendarContainer?.querySelector(
+          ".flatpickr-custom-btn-delete",
+        );
         if (delBtn) delBtn.style.display = "";
       }
       dayWrap.style.display = filterType === "day" ? "" : "none";
@@ -8493,7 +9225,9 @@ export function render() {
 /** 오늘의 할일 과제를 BUDGET_GOALS_KEY에서 제거 (투자/소비 테이블에 표시되지 않도록) */
 function removeTodayTasksFromBudgetGoals(dateStr, todoSectionEl) {
   if (!todoSectionEl || !dateStr) return;
-  const names = [...todoSectionEl.querySelectorAll(".calendar-1day-todo-table tbody tr")]
+  const names = [
+    ...todoSectionEl.querySelectorAll(".calendar-1day-todo-table tbody tr"),
+  ]
     .map((r) => (r.dataset.taskName || "").trim())
     .filter(Boolean);
   if (names.length === 0) return;
@@ -8848,7 +9582,9 @@ export function renderTimeBudgetTablesForCalendar(
           const raw = localStorage.getItem(BUDGET_GOALS_KEY);
           const all = raw ? JSON.parse(raw) : {};
           const dateData = all[targetDateStr] || {};
-          const blocks = document.querySelectorAll(".time-daily-budget-table-block");
+          const blocks = document.querySelectorAll(
+            ".time-daily-budget-table-block",
+          );
           for (const taskName of modifiedKeys) {
             const times = dateData[taskName]?.scheduledTimes;
             if (!Array.isArray(times) || times.length === 0) continue;
@@ -8857,14 +9593,18 @@ export function renderTimeBudgetTablesForCalendar(
             let start = (parts[0] || "").trim();
             let end = (parts[1] || "").trim();
             if (!start || !end) continue;
-            if (start.length === 4 && !start.includes(":")) start = `${start.slice(0, 2)}:${start.slice(2)}`;
-            if (end.length === 4 && !end.includes(":")) end = `${end.slice(0, 2)}:${end.slice(2)}`;
+            if (start.length === 4 && !start.includes(":"))
+              start = `${start.slice(0, 2)}:${start.slice(2)}`;
+            if (end.length === 4 && !end.includes(":"))
+              end = `${end.slice(0, 2)}:${end.slice(2)}`;
             blocks.forEach((block) => {
               const tb = block.querySelector("tbody");
               if (!tb) return;
               tb.querySelectorAll("tr").forEach((row) => {
                 if ((row.dataset.taskName || "").trim() !== taskName) return;
-                const inputs = row.querySelectorAll(".time-budget-scheduled-input");
+                const inputs = row.querySelectorAll(
+                  ".time-budget-scheduled-input",
+                );
                 if (inputs[0]) inputs[0].value = start;
                 if (inputs[1]) inputs[1].value = end;
                 row.dataset.scheduledStart = start;
@@ -9027,7 +9767,8 @@ export function renderTimeBudgetTablesForCalendar(
     /* 입력 중간(예: "03"만 입력)에 저장되면 03:00으로 잘리는 문제 방지 - 디바운스 400ms */
     let scheduleTimetableUpdateDebounce = null;
     const scheduleTimetableUpdateDebounced = () => {
-      if (scheduleTimetableUpdateDebounce) clearTimeout(scheduleTimetableUpdateDebounce);
+      if (scheduleTimetableUpdateDebounce)
+        clearTimeout(scheduleTimetableUpdateDebounce);
       scheduleTimetableUpdateDebounce = setTimeout(() => {
         scheduleTimetableUpdateDebounce = null;
         scheduleTimetableUpdate();
@@ -9037,18 +9778,13 @@ export function renderTimeBudgetTablesForCalendar(
     endInput.addEventListener("input", scheduleTimetableUpdateDebounced);
 
     const opts = dropdownOptionsOverride || investTaskDropdownOptions;
-    const taskDropdown = createTagDropdown(
-      opts,
-      taskName || "",
-      "cat",
-      () => {
-        /* 과제명 선택 시 예상 시간이 이미 있으면 타임테이블 갱신 필요 */
-        saveCurrentGoal(true, true);
-        if (tbody) refreshAllGoalInputStates(tbody);
-        const block = tr.closest(".time-daily-budget-table-block");
-        if (block) updateGoalDiffDisplays(block);
-      },
-    );
+    const taskDropdown = createTagDropdown(opts, taskName || "", "cat", () => {
+      /* 과제명 선택 시 예상 시간이 이미 있으면 타임테이블 갱신 필요 */
+      saveCurrentGoal(true, true);
+      if (tbody) refreshAllGoalInputStates(tbody);
+      const block = tr.closest(".time-daily-budget-table-block");
+      if (block) updateGoalDiffDisplays(block);
+    });
     taskDropdown.wrap._getValue = taskDropdown.getValue;
     taskTd.appendChild(taskDropdown.wrap);
     tr.appendChild(taskTd);
@@ -9187,7 +9923,12 @@ export function renderTimeBudgetTablesForCalendar(
     if (entries.length > 0) {
       entries.forEach((e) => basicTasks.push(e));
     } else {
-      basicTasks.push({ task, hrs: 0, isNonproductive: false, scheduledTime: "" });
+      basicTasks.push({
+        task,
+        hrs: 0,
+        isNonproductive: false,
+        scheduledTime: "",
+      });
     }
     seenBasic.add(task);
   });
@@ -9315,7 +10056,14 @@ export function renderTimeBudgetTablesForCalendar(
     const scheduledTime = t.scheduledTime ?? goal?.scheduledTime ?? "";
     const opts = ensureTaskInOptions(investTaskDropdownOptions, t.task, true);
     investTbody.appendChild(
-      createBudgetTableRow(t.task, goalTime, scheduledTime, true, investCtx, opts),
+      createBudgetTableRow(
+        t.task,
+        goalTime,
+        scheduledTime,
+        true,
+        investCtx,
+        opts,
+      ),
     );
   });
   investTbody.appendChild(investAddRow);
@@ -9374,7 +10122,14 @@ export function renderTimeBudgetTablesForCalendar(
     const scheduledTime = t.scheduledTime ?? goal?.scheduledTime ?? "";
     const opts = ensureTaskInOptions(consumeTaskDropdownOptions, t.task, false);
     consumeTbody.appendChild(
-      createBudgetTableRow(t.task, goalTime, scheduledTime, false, consumeCtx, opts),
+      createBudgetTableRow(
+        t.task,
+        goalTime,
+        scheduledTime,
+        false,
+        consumeCtx,
+        opts,
+      ),
     );
   });
   consumeTbody.appendChild(consumeAddRow);
@@ -9394,7 +10149,8 @@ export function renderTimeBudgetTablesForCalendar(
       addBtn.type = "button";
       addBtn.className = "time-daily-budget-add-btn time-btn-add";
       addBtn.title = "계획하기";
-      addBtn.innerHTML = '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18">';
+      addBtn.innerHTML =
+        '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18">';
       addBtn.addEventListener("click", onAdd);
       header.appendChild(addBtn);
     }
@@ -9411,31 +10167,57 @@ export function renderTimeBudgetTablesForCalendar(
     return section;
   }
 
-  const basicSection = wrapBlockAsSection(basicBlock, "1. 수면, 근무시간 배치", () => {
-    const tr = createBudgetTableRow(
-      "수면하기",
-      "",
-      "",
-      true,
-      basicCtx,
-      basicTaskDropdownOptions,
-    );
-    basicTbody.insertBefore(tr, basicAddRow);
-    updateGoalDiffDisplays(basicBlock);
-    updateRemaining();
-  });
-  const investSection = wrapBlockAsSection(investBlock, "3. 생산적 과제 배치", () => {
-    const tr = createBudgetTableRow("", "", "", true, investCtx, investTaskDropdownOptions);
-    investTbody.insertBefore(tr, investAddRow);
-    updateGoalDiffDisplays(investBlock);
-    updateRemaining();
-  });
-  const consumeSection = wrapBlockAsSection(consumeBlock, "4. 비생산적 과제 배치", () => {
-    const tr = createBudgetTableRow("", "", "", false, consumeCtx, consumeTaskDropdownOptions);
-    consumeTbody.insertBefore(tr, consumeAddRow);
-    updateGoalDiffDisplays(consumeBlock);
-    updateRemaining();
-  });
+  const basicSection = wrapBlockAsSection(
+    basicBlock,
+    "1. 수면, 근무시간 배치",
+    () => {
+      const tr = createBudgetTableRow(
+        "수면하기",
+        "",
+        "",
+        true,
+        basicCtx,
+        basicTaskDropdownOptions,
+      );
+      basicTbody.insertBefore(tr, basicAddRow);
+      updateGoalDiffDisplays(basicBlock);
+      updateRemaining();
+    },
+  );
+  const investSection = wrapBlockAsSection(
+    investBlock,
+    "3. 생산적 과제 배치",
+    () => {
+      const tr = createBudgetTableRow(
+        "",
+        "",
+        "",
+        true,
+        investCtx,
+        investTaskDropdownOptions,
+      );
+      investTbody.insertBefore(tr, investAddRow);
+      updateGoalDiffDisplays(investBlock);
+      updateRemaining();
+    },
+  );
+  const consumeSection = wrapBlockAsSection(
+    consumeBlock,
+    "4. 비생산적 과제 배치",
+    () => {
+      const tr = createBudgetTableRow(
+        "",
+        "",
+        "",
+        false,
+        consumeCtx,
+        consumeTaskDropdownOptions,
+      );
+      consumeTbody.insertBefore(tr, consumeAddRow);
+      updateGoalDiffDisplays(consumeBlock);
+      updateRemaining();
+    },
+  );
 
   function updateRemaining() {
     let goalSum = 0;
@@ -9448,10 +10230,14 @@ export function renderTimeBudgetTablesForCalendar(
       goalSum += parseTimeToHours(inp.value);
     };
     [basicBlock, investBlock, consumeBlock].forEach((block) => {
-      block.querySelectorAll(".time-budget-goal-wrap .time-budget-time-input").forEach(addGoalFromInput);
+      block
+        .querySelectorAll(".time-budget-goal-wrap .time-budget-time-input")
+        .forEach(addGoalFromInput);
     });
     if (todoSectionEl) {
-      todoSectionEl.querySelectorAll(".time-budget-goal-wrap .time-budget-time-input").forEach(addGoalFromInput);
+      todoSectionEl
+        .querySelectorAll(".time-budget-goal-wrap .time-budget-time-input")
+        .forEach(addGoalFromInput);
     }
     const remaining = Math.max(0, 24 - goalSum);
     if (remainingValueEl)
@@ -9493,7 +10279,8 @@ export function renderTimeBudgetTablesForCalendar(
   fourPanels.appendChild(basicSection);
   if (todoSectionEl) {
     const todoWrap = document.createElement("div");
-    todoWrap.className = "time-daily-budget-section time-daily-budget-section--todo";
+    todoWrap.className =
+      "time-daily-budget-section time-daily-budget-section--todo";
     todoWrap.appendChild(todoSectionEl);
     fourPanels.appendChild(todoWrap);
   }

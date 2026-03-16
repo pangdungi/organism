@@ -645,7 +645,7 @@ body {
 }
 
 .app-sidebar-item {
-  background: transparent;
+  background: #f2f2f2;
   border: none;
   border-bottom: 1px solid #e5e5e5;
   border-radius: 0;
@@ -689,21 +689,19 @@ body {
 
 .app-sidebar-item:hover {
   background: #e8e8e8;
-  color: #6b7280;
+  color: #9ca3af;
 }
 
 .app-sidebar-item.active {
-  background: #F8F7F4;
+  background: #fff;
   font-weight: 600;
   color: #374151;
-  border-bottom: 1px solid #e5e7eb;
-  box-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.04),
-    -1px 0 0 0 #e5e7eb;
+  border-bottom: 1px solid #e5e5e5;
+  box-shadow: 1px 0 0 0 #374151;
 }
 
 .app-sidebar-item.active:hover {
-  background: #F8F7F4;
+  background: #fff;
 }
 
 /* 나의 계정만 하단 구분선 제거 (아카이브-나의계정 사이에는 선 유지) */
@@ -1209,8 +1207,8 @@ body {
     width: auto !important;
   }
   .time-task-log-end-row .time-task-log-datetime-wrap-end input[type="text"] {
-    width: 4rem !important;
-    min-width: 4rem !important;
+    width: 6rem !important;
+    min-width: 6rem !important;
     padding: 0.4rem 0.5rem !important;
     font-size: 0.85rem !important;
   }
@@ -9196,10 +9194,17 @@ body {
 }
 
 .app-toast-message {
-  margin: 0 0 1.25rem;
+  margin: 0 0 0.5rem;
   font-size: 0.95rem;
   line-height: 1.5;
   color: #374151;
+}
+
+.app-toast-sub {
+  margin: 0 0 1.25rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #9ca3af;
 }
 
 .app-toast-btn {
@@ -10813,16 +10818,18 @@ body.kpi-resizing {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 0.5rem;
-  background: #FAFAF8;
+  background: #F5F3EF;
 }
 
 .time-task-log-header .time-task-setup-close {
   justify-self: start;
+  color: #B0ADA6;
 }
 
 .time-task-log-header .time-task-setup-title {
   justify-self: center;
   text-align: center;
+  color: #6A6760;
 }
 
 .time-task-setup-body {
@@ -11230,11 +11237,13 @@ body.kpi-resizing {
 .time-task-log-scroll-area .time-task-log-datetime-fields-wrap .time-task-log-datetime-input-wrap .time-task-log-date-start,
 .time-task-log-scroll-area .time-task-log-datetime-fields-wrap .time-task-log-datetime-input-wrap input.flatpickr-input {
   padding: 0.35rem 0.6rem;
-  font-size: 0.85rem;
+  font-size: 1.4rem;
 }
 .time-task-log-scroll-area .time-task-log-datetime-fields-wrap .time-task-log-datetime-input-wrap input[type="text"] {
+  width: 6rem;
+  min-width: 6rem;
   padding: 0.35rem 0.6rem;
-  font-size: 0.85rem;
+  font-size: 1.4rem;
   font-family: "Noto Serif KR", serif !important;
   font-weight: 200 !important;
 }
@@ -11501,13 +11510,23 @@ body.kpi-resizing {
 }
 
 /* 방해기록: + 버튼 행 (토글 대신) */
+.time-task-log-scroll-area .time-task-log-focus-row,
+.time-task-log-scroll-area .time-task-log-todo-row,
+.time-task-log-scroll-area .time-task-log-expense-row,
+.time-task-log-scroll-area .time-task-log-emotion-row {
+  margin-left: -1.25rem;
+  margin-right: -1.25rem;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  border-bottom-color: #ECEAE5;
+}
 .time-task-log-focus-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
   padding: 0.6rem 0;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #ECEAE5;
 }
 .time-task-log-focus-label {
   font-size: 0.9rem;
@@ -11515,6 +11534,7 @@ body.kpi-resizing {
   color: #374151;
 }
 .time-task-log-focus-add-btn {
+  margin-left: auto;
   width: 28px;
   height: 28px;
   padding: 0;
@@ -11539,7 +11559,7 @@ body.kpi-resizing {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
-  flex: 1;
+  flex-basis: 100%;
   min-width: 0;
 }
 .time-task-log-focus-events-pills .time-task-log-focus-event-pill {
@@ -11561,7 +11581,7 @@ body.kpi-resizing {
   align-items: center;
   gap: 0.5rem;
   padding: 0.6rem 0;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #ECEAE5;
 }
 .time-task-log-todo-label {
   font-size: 0.9rem;
@@ -11569,6 +11589,7 @@ body.kpi-resizing {
   color: #374151;
 }
 .time-task-log-todo-add-btn {
+  margin-left: auto;
   width: 28px;
   height: 28px;
   padding: 0;
@@ -11593,7 +11614,7 @@ body.kpi-resizing {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
-  flex: 1;
+  flex-basis: 100%;
   min-width: 0;
 }
 .time-task-log-todo-pills .time-task-log-todo-pill {
@@ -11602,7 +11623,7 @@ body.kpi-resizing {
   gap: 4px;
   padding: 2px 6px;
   font-size: 0.8rem;
-  color: #374151;
+  color: #6A6760;
   background: #F8F7F4;
   border: 1px solid #e5e7eb;
   border-radius: 4px;
@@ -11671,6 +11692,10 @@ body.kpi-resizing {
   color: #fff;
   border-color: #374151;
 }
+/* 할 일 이름 라벨 제거 */
+.time-task-log-todo-inner-body .time-task-log-field:has(.time-task-log-todo-inner-name) > label {
+  display: none;
+}
 .time-task-log-todo-inner-name {
   width: 100%;
   padding: 0.5rem 0.75rem;
@@ -11720,7 +11745,7 @@ body.kpi-resizing {
   align-items: center;
   gap: 0.5rem;
   padding: 0.6rem 0;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #ECEAE5;
 }
 .time-task-log-expense-label {
   font-size: 0.9rem;
@@ -11728,6 +11753,7 @@ body.kpi-resizing {
   color: #374151;
 }
 .time-task-log-expense-add-btn {
+  margin-left: auto;
   width: 28px;
   height: 28px;
   padding: 0;
@@ -11784,7 +11810,7 @@ body.kpi-resizing {
 .time-task-log-expense-inner-header-label {
   font-size: 0.95rem;
   font-weight: 600;
-  color: #374151;
+  color: #B0ADA6;
 }
 .time-task-log-expense-inner-close {
   width: 32px;
@@ -11793,9 +11819,9 @@ body.kpi-resizing {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.4rem;
+  font-size: 1.25rem;
   line-height: 1;
-  color: #6b7280;
+  color: #B0ADA6;
   background: none;
   border: none;
   border-radius: 6px;
@@ -11817,6 +11843,14 @@ body.kpi-resizing {
 }
 .time-task-log-expense-inner-fields .time-task-log-field:last-child {
   margin-bottom: 0;
+}
+.time-task-log-expense-inner-fields .time-task-log-expense-name:focus,
+.time-task-log-expense-inner-fields .time-task-log-expense-amount-wrap:focus-within {
+  border-bottom-color: #374151;
+}
+.time-task-log-expense-inner-fields .time-task-log-expense-amount-wrap {
+  border-bottom: 1px solid #e5e7eb;
+  transition: border-bottom-color 0.15s;
 }
 .time-task-log-expense-inner-name,
 .time-task-log-expense-inner-amount {
@@ -11845,8 +11879,7 @@ body.kpi-resizing {
 .time-task-log-expense-inner-list-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.75rem;
   padding: 0.5rem 0;
   font-size: 0.9rem;
   color: #374151;
@@ -11854,10 +11887,26 @@ body.kpi-resizing {
 .time-task-log-expense-inner-list-row:not(:last-child) {
   border-bottom: 1px solid #f3f4f6;
 }
-.time-task-log-expense-inner-list-label {
+.time-task-log-expense-inner-list-name {
   flex: 1;
   min-width: 0;
   font-weight: 500;
+  text-align: left;
+}
+.time-task-log-expense-inner-list-category {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8rem;
+  color: #9ca3af;
+  font-weight: 400;
+  text-align: center;
+}
+.time-task-log-expense-inner-list-price {
+  flex: 1;
+  min-width: 0;
+  font-family: "Noto Serif KR", serif;
+  font-weight: 500;
+  text-align: right;
 }
 .time-task-log-expense-inner-list-del {
   padding: 0.2rem 0.4rem;
@@ -11869,11 +11918,15 @@ body.kpi-resizing {
   border-radius: 4px;
   cursor: pointer;
   flex-shrink: 0;
-  transition: color 0.15s, background 0.15s;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+.time-task-log-expense-inner-list-row:hover .time-task-log-expense-inner-list-del {
+  opacity: 1;
 }
 .time-task-log-expense-inner-list-del:hover {
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.08);
+  color: #6b7280;
+  background: none;
 }
 .time-task-log-expense-inner-footer {
   display: flex;
@@ -11897,18 +11950,51 @@ body.kpi-resizing {
   background: #4b5563;
 }
 .time-task-log-expense-inner-add-btn {
-  padding: 0.4rem 0.9rem;
-  font-size: 0.85rem;
-  font-weight: 500;
+  display: block;
+  width: calc(100% + 2.5rem);
+  margin-top: 1.25rem;
+  margin-left: -1.25rem;
+  margin-right: -1.25rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
   color: #fff;
   background: #374151;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s;
+  box-sizing: border-box;
+  text-align: center;
 }
 .time-task-log-expense-inner-add-btn:hover {
   background: #4b5563;
+}
+
+/* 소비/수입명 모달: 폰트·라인 색 #B0ADA6 */
+.time-task-log-expense-inner-modal .time-task-log-expense-inner-header-label,
+.time-task-log-expense-inner-modal .time-task-log-expense-inner-close,
+.time-task-log-expense-inner-modal .time-task-log-field label,
+.time-task-log-expense-inner-modal .time-task-log-expense-amount-unit,
+.time-task-log-expense-inner-modal .time-task-log-expense-cat-btn:not(.selected),
+.time-task-log-expense-inner-modal .time-task-log-expense-cls-btn:not(.selected),
+.time-task-log-expense-inner-modal .time-task-log-expense-classification-hint {
+  color: #B0ADA6;
+}
+.time-task-log-expense-inner-modal .time-task-log-expense-inner-header {
+  border-bottom-color: #B0ADA6;
+}
+.time-task-log-expense-inner-modal .time-task-log-expense-inner-fields .time-task-log-expense-name,
+.time-task-log-expense-inner-modal .time-task-log-expense-inner-fields .time-task-log-expense-amount-wrap {
+  border-bottom-color: #B0ADA6;
+}
+.time-task-log-expense-inner-modal .time-task-log-expense-name::placeholder,
+.time-task-log-expense-inner-modal .time-task-log-expense-amount::placeholder {
+  color: #B0ADA6;
+}
+.time-task-log-expense-inner-modal .time-task-log-expense-cat-btn:not(.selected),
+.time-task-log-expense-inner-modal .time-task-log-expense-cls-btn:not(.selected) {
+  border-color: #B0ADA6;
 }
 
 /* 감정 기록 row + 내부 모달 */
@@ -11918,7 +12004,7 @@ body.kpi-resizing {
   align-items: center;
   gap: 0.5rem;
   padding: 0.6rem 0;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #ECEAE5;
 }
 .time-task-log-emotion-label {
   font-size: 0.9rem;
@@ -11926,6 +12012,7 @@ body.kpi-resizing {
   color: #374151;
 }
 .time-task-log-emotion-add-btn {
+  margin-left: auto;
   width: 28px;
   height: 28px;
   padding: 0;
@@ -11961,9 +12048,10 @@ body.kpi-resizing {
 }
 .time-task-log-emotion-inner-panel {
   position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 400px;
-  max-height: 90vh;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
   background: #FAFAF8;
@@ -11971,11 +12059,56 @@ body.kpi-resizing {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
   overflow: hidden;
 }
+.time-task-log-emotion-inner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #FAFAF8;
+}
+.time-task-log-emotion-inner-header-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #374151;
+}
+.time-task-log-emotion-inner-close {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: #6b7280;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background 0.15s;
+}
+.time-task-log-emotion-inner-close:hover {
+  color: #374151;
+  background: rgba(0, 0, 0, 0.05);
+}
 .time-task-log-emotion-inner-body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 1rem 1.25rem;
+}
+/* 감정 기록 모달 textarea: 높이 고정, 넘치면 내부 스크롤 */
+.time-task-log-emotion-inner-modal .time-task-log-emotion-q1,
+.time-task-log-emotion-inner-modal .time-task-log-emotion-q2,
+.time-task-log-emotion-inner-modal .time-task-log-emotion-q3,
+.time-task-log-emotion-inner-modal .time-task-log-emotion-q4 {
+  max-height: 100px;
+  height: 80px;
+  overflow-y: auto;
+  resize: none;
 }
 .time-task-log-emotion-inner-footer {
   display: flex;
@@ -12196,7 +12329,7 @@ body.kpi-resizing {
   align-items: center;
   gap: 0.5rem;
   padding: 0.6rem 0;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #ECEAE5;
 }
 .time-task-log-todo-label {
   font-size: 0.9rem;
@@ -12207,6 +12340,7 @@ body.kpi-resizing {
   width: 28px;
   height: 28px;
   padding: 0;
+  margin-left: auto;
   font-size: 1.25rem;
   font-weight: 500;
   line-height: 1;
@@ -12228,7 +12362,7 @@ body.kpi-resizing {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
-  flex: 1;
+  flex-basis: 100%;
   min-width: 0;
 }
 .time-task-log-todo-pill {
@@ -12236,7 +12370,7 @@ body.kpi-resizing {
   align-items: center;
   padding: 2px 8px;
   font-size: 0.8rem;
-  color: #374151;
+  color: #6A6760;
   background: #F8F7F4;
   border: 1px solid #e5e7eb;
   border-radius: 6px;
@@ -12460,7 +12594,7 @@ body.kpi-resizing {
   width: 11rem !important;
   max-width: none !important;
   padding: 0.5rem 0.75rem;
-  font-size: 0.9rem;
+  font-size: 1.4rem;
   border: none;
   border-bottom: 1px solid #e5e7eb;
   border-radius: 0;
@@ -12478,9 +12612,10 @@ body.kpi-resizing {
 }
 
 .time-task-log-datetime-input-wrap input[type="text"] {
-  width: 5rem;
+  width: 6rem;
+  min-width: 6rem;
   padding: 0.5rem 0.75rem;
-  font-size: 0.9rem;
+  font-size: 1.4rem;
   font-family: "Noto Serif KR", serif !important;
   font-weight: 200 !important;
   border: none;
@@ -12578,7 +12713,8 @@ body.kpi-resizing {
   width: auto;
 }
 .time-task-log-end-row .time-task-log-datetime-wrap-end input[type="text"] {
-  width: 4.5rem;
+  width: 6rem;
+  min-width: 6rem;
 }
 .time-task-log-end-row .time-task-log-time-adjust-btns {
   margin-top: 0;
@@ -12683,8 +12819,11 @@ body.kpi-resizing {
   flex-wrap: wrap;
   gap: 0.35rem;
 }
-.time-task-log-tag-list .time-memo-tag-chip {
+.time-task-log-tag-list .time-memo-tag-chip,
+.time-task-log-tag-list .time-task-log-tag-pill {
   margin: 0;
+  background: transparent;
+  border: none;
 }
 
 /* 과제 메모 contenteditable + 인라인 태그 칩 (레거시/태그 칩 공통) */
@@ -13903,6 +14042,10 @@ body.kpi-resizing {
   gap: 0.25rem;
   border-bottom: 1px solid #e5e7eb;
   width: 100%;
+  transition: border-bottom-color 0.15s;
+}
+.time-task-log-expense-amount-wrap:focus-within {
+  border-bottom-color: #374151;
 }
 .time-task-log-expense-amount-wrap input {
   flex: 1;
@@ -14021,7 +14164,7 @@ body.kpi-resizing {
 .time-task-log-expense-name:focus,
 .time-task-log-expense-amount:focus {
   outline: none;
-  border-bottom-color: #9ca3af;
+  border-bottom-color: #374151;
   box-shadow: none;
 }
 
@@ -16830,7 +16973,7 @@ body.kpi-resizing {
 }
 
 .time-ledger-table-wrap {
-  background: #F8F7F4;
+  background: #FAFAF8;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   overflow-x: auto;
   overflow-y: visible;
@@ -16845,7 +16988,7 @@ body.kpi-resizing {
   padding: 0.5rem 0.6rem;
   border: 1px solid #eee;
   border-top: none;
-  background: #F8F7F4;
+  background: #FAFAF8;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
@@ -16876,7 +17019,7 @@ body.kpi-resizing {
 }
 
 .time-ledger-table tbody td {
-  background: #F8F7F4;
+  background: #FAFAF8;
 }
 
 .time-ledger-table thead th {
@@ -16890,7 +17033,7 @@ body.kpi-resizing {
 }
 
 .time-ledger-table tbody td {
-  background: #F8F7F4;
+  background: #FAFAF8;
 }
 
 .time-ledger-table tbody tr:hover td {
@@ -16906,7 +17049,7 @@ body.kpi-resizing {
   position: sticky;
   left: 0;
   z-index: 1;
-  background: #F8F7F4;
+  background: #FAFAF8;
 }
 
 .time-ledger-table .time-cell-task {
