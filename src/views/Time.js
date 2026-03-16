@@ -3646,17 +3646,17 @@ export function render() {
         <div class="time-task-log-focus-inner-modal" hidden>
           <div class="time-task-log-focus-inner-backdrop"></div>
           <div class="time-task-log-focus-inner-panel">
+            <div class="time-task-log-focus-inner-header">
+              <span class="time-task-log-focus-inner-header-label">방해기록</span>
+              <button type="button" class="time-task-log-focus-inner-close" aria-label="닫기">&times;</button>
+            </div>
             <div class="time-task-log-focus-inner-body">
               <div class="time-task-log-focus-inner-type-wrap"></div>
               <div class="time-task-log-focus-inner-input-row">
-                <input type="text" class="time-task-log-focus-inner-time-input" placeholder="hh:mm" maxlength="5" title="시간 입력 후 Enter" style="font-family: 'Noto Serif KR', serif; font-weight: 200" />
+                <input type="text" class="time-task-log-focus-inner-time-input" placeholder="hh:mm" maxlength="5" style="font-family: 'Noto Serif KR', serif; font-weight: 200" />
+                <button type="button" class="time-task-log-focus-inner-add">추가</button>
                 <button type="button" class="time-task-log-focus-inner-now-btn">지금</button>
               </div>
-              <div class="time-task-log-focus-inner-events-list"></div>
-            </div>
-            <div class="time-task-log-focus-inner-footer">
-              <button type="button" class="time-task-log-focus-inner-cancel">취소</button>
-              <button type="button" class="time-task-log-focus-inner-add">추가</button>
             </div>
           </div>
         </div>
@@ -3668,6 +3668,10 @@ export function render() {
         <div class="time-task-log-todo-inner-modal" hidden>
           <div class="time-task-log-todo-inner-backdrop"></div>
           <div class="time-task-log-todo-inner-panel">
+            <div class="time-task-log-todo-inner-header">
+              <span class="time-task-log-todo-inner-header-label">할일 추가</span>
+              <button type="button" class="time-task-log-todo-inner-close" aria-label="닫기">&times;</button>
+            </div>
             <div class="time-task-log-todo-inner-body">
               <div class="time-task-log-field">
                 <label>카테고리</label>
@@ -3678,7 +3682,6 @@ export function render() {
               </div>
             </div>
             <div class="time-task-log-todo-inner-footer">
-              <button type="button" class="time-task-log-todo-inner-cancel">취소</button>
               <button type="button" class="time-task-log-todo-inner-add">추가</button>
             </div>
           </div>
@@ -4307,8 +4310,8 @@ export function render() {
   const taskLogTodoInnerName = taskLogModal.querySelector(
     ".time-task-log-todo-inner-name",
   );
-  const taskLogTodoInnerCancel = taskLogModal.querySelector(
-    ".time-task-log-todo-inner-cancel",
+  const taskLogTodoInnerClose = taskLogModal.querySelector(
+    ".time-task-log-todo-inner-close",
   );
   const taskLogTodoInnerAdd = taskLogModal.querySelector(
     ".time-task-log-todo-inner-add",
@@ -5204,15 +5207,14 @@ export function render() {
   const focusModalBackdrop = taskLogModal.querySelector(
     ".time-task-log-focus-inner-backdrop",
   );
-  const focusModalCancel = taskLogModal.querySelector(
-    ".time-task-log-focus-inner-cancel",
+  const focusModalClose = taskLogModal.querySelector(
+    ".time-task-log-focus-inner-close",
   );
   const focusModalAdd = taskLogModal.querySelector(
     ".time-task-log-focus-inner-add",
   );
-  const focusAddBtn = taskLogModal.querySelector(
-    ".time-task-log-focus-add-btn",
-  );
+  const focusRow = taskLogModal.querySelector(".time-task-log-focus-row");
+  const focusAddBtn = taskLogModal.querySelector(".time-task-log-focus-add-btn");
   let taskLogFocusModalEvents = [];
   let taskLogFocusTypeValue = "";
 
@@ -5260,7 +5262,7 @@ export function render() {
     taskLogFocusEvents.forEach((e, idx) => {
       const pill = document.createElement("span");
       pill.className = "time-task-log-focus-event-pill time-memo-tag-chip";
-      const label = [e.type, e.time].filter(Boolean).join(" ") || "";
+      const label = [e.type, e.time].filter(Boolean).join(" | ") || "";
       pill.innerHTML = `<span class="time-memo-tag-chip-text">${escapeHtml(label)}</span><button type="button" class="time-memo-tag-chip-remove" aria-label="삭제">&times;</button>`;
       pill
         .querySelector(".time-memo-tag-chip-remove")
@@ -5314,14 +5316,25 @@ export function render() {
     if (focusModal) focusModal.hidden = true;
   }
 
-  focusAddBtn?.addEventListener("click", openFocusModal);
+  focusAddBtn?.addEventListener("click", () => openFocusModal());
   focusModalBackdrop?.addEventListener("click", closeFocusModal);
-  focusModalCancel?.addEventListener("click", closeFocusModal);
+  focusModalClose?.addEventListener("click", closeFocusModal);
 
   focusModalAdd?.addEventListener("click", () => {
+    // 추가 클릭 시, 시간 입력란에 유효한 값이 있으면 아직 리스트에 없는 경우 먼저 추가
+    const timeVal = (focusModalTimeInput?.value || "").trim();
+    if (isValidHhMm(timeVal)) {
+      const [h, m] = timeVal.split(":").map((x) => parseInt(x, 10) || 0);
+      const normalized = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+      if (!taskLogFocusModalEvents.some((ev) => ev.time === normalized)) {
+        const type = (focusTypeDropdown?._getValue?.() || "").trim();
+        taskLogFocusModalEvents.push({ time: normalized, type });
+      }
+    }
+
     taskLogFocusEvents = taskLogFocusModalEvents.slice();
     updateFocusRowPills();
-    closeFocusModal();
+    closeFocusModal(); // 추가 시 모달 닫기
   });
 
   focusModalNowBtn?.addEventListener("click", () => {
@@ -5475,7 +5488,7 @@ export function render() {
 
   taskLogTodoAddBtn?.addEventListener("click", openTodoInnerModal);
   taskLogTodoInnerBackdrop?.addEventListener("click", closeTodoInnerModal);
-  taskLogTodoInnerCancel?.addEventListener("click", closeTodoInnerModal);
+  taskLogTodoInnerClose?.addEventListener("click", closeTodoInnerModal);
 
   taskLogExpenseAddBtn?.addEventListener("click", openExpenseInnerModal);
   taskLogExpenseInnerBackdrop?.addEventListener(
