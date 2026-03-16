@@ -3342,13 +3342,12 @@ export function render() {
       <div class="time-task-setup-header time-task-log-header">
         <button type="button" class="time-task-setup-close" aria-label="닫기">&times;</button>
         <h3 class="time-task-setup-title">과제 기록</h3>
-        <button type="button" class="time-task-log-submit">기록</button>
       </div>
       <div class="time-task-setup-body time-task-log-body">
         <div class="time-task-log-fixed-top">
           <div class="time-task-log-datetime-fields-wrap">
             <div class="time-task-log-field">
-              <label>이 시간에 할 행동 선택</label>
+              <label>이 시간에 할 행동</label>
               <div class="time-task-log-task-wrap"></div>
             </div>
             <div class="time-task-log-field">
@@ -3371,8 +3370,6 @@ export function render() {
                   <button type="button" class="time-task-log-time-adjust-btn time-task-log-time-adjust-now" data-now="true">지금</button>
                   <button type="button" class="time-task-log-time-adjust-btn" data-delta="-30">−30</button>
                   <button type="button" class="time-task-log-time-adjust-btn" data-delta="-15">−15</button>
-                  <button type="button" class="time-task-log-time-adjust-btn" data-delta="-5">−5</button>
-                  <button type="button" class="time-task-log-time-adjust-btn" data-delta="5">+5</button>
                   <button type="button" class="time-task-log-time-adjust-btn" data-delta="15">+15</button>
                   <button type="button" class="time-task-log-time-adjust-btn" data-delta="30">+30</button>
                 </div>
@@ -3390,46 +3387,50 @@ export function render() {
           <h4 class="time-task-log-daily-todos-title">매일 할일 목록</h4>
           <div class="time-task-log-daily-todos-list"></div>
         </div>
-        <div class="time-task-log-field">
-          <label>메모</label>
-          <textarea class="time-task-log-feedback time-task-log-memo-input" placeholder="메모 입력" rows="3"></textarea>
-        </div>
-        <div class="time-task-log-field">
-          <label>메모 분류 태그</label>
-          <div class="time-task-log-tags-wrap">
-            <input type="text" class="time-task-log-tag-input" name="time-task-log-tag" placeholder="태그 입력 후 Enter" />
-            <div class="time-task-log-tag-list"></div>
+        <div class="time-task-log-accordion-item" data-accordion="memo">
+          <div class="time-task-log-accordion-header" role="button" tabindex="0" aria-expanded="false" aria-controls="time-task-log-accordion-memo">
+            <span class="time-task-log-accordion-title">메모 & 태그</span>
+            <span class="time-task-log-accordion-chevron" aria-hidden="true">▶</span>
+          </div>
+          <div class="time-task-log-accordion-body" id="time-task-log-accordion-memo" hidden>
+            <div class="time-task-log-field">
+              <textarea class="time-task-log-feedback time-task-log-memo-input" placeholder="" rows="3"></textarea>
+            </div>
+            <div class="time-task-log-field">
+              <label>태그</label>
+              <div class="time-task-log-tags-wrap">
+                <input type="text" class="time-task-log-tag-input" name="time-task-log-tag" placeholder="태그 입력 후 Enter" />
+                <div class="time-task-log-tag-list"></div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="time-task-log-focus-section">
-          <div class="time-task-log-focus-header">
+        <div class="time-task-log-focus-section time-task-log-accordion-item" data-accordion="focus">
+          <div class="time-task-log-focus-header time-task-log-accordion-header" role="button" tabindex="0" aria-expanded="false">
             <h4 class="time-task-log-focus-title">방해기록</h4>
-            <label class="time-task-log-focus-toggle">
-              <input type="checkbox" class="time-task-log-focus-toggle-input" />
-              <span class="time-task-log-focus-toggle-slider"></span>
-            </label>
+            <span class="time-task-log-accordion-chevron" aria-hidden="true">▶</span>
           </div>
-          <div class="time-task-log-focus-fields" hidden>
+          <div class="time-task-log-accordion-body">
+          <div class="time-task-log-focus-fields">
             <div class="time-task-log-focus-row">
               <div class="time-task-log-focus-type-dropdown-wrap"></div>
-              <button type="button" class="time-task-log-focus-now-btn">지금</button>
               <input type="text" class="time-task-log-focus-time-input" name="time-task-log-focus-time" placeholder="hh:mm" maxlength="5" title="시간 입력 후 Enter" />
+              <button type="button" class="time-task-log-focus-now-btn">지금</button>
             </div>
             <div class="time-task-log-focus-events-preview"></div>
           </div>
-        </div>
-        <div class="time-task-log-expense-section">
-          <div class="time-task-log-expense-header">
-            <h4 class="time-task-log-expense-title">소비 기록</h4>
-            <label class="time-task-log-expense-toggle">
-              <input type="checkbox" class="time-task-log-expense-toggle-input" />
-              <span class="time-task-log-expense-toggle-slider"></span>
-            </label>
           </div>
-          <div class="time-task-log-expense-fields" hidden>
+        </div>
+        <div class="time-task-log-expense-section time-task-log-accordion-item time-task-log-accordion-expanded" data-accordion="expense">
+          <div class="time-task-log-expense-header time-task-log-accordion-header" role="button" tabindex="0" aria-expanded="true">
+            <h4 class="time-task-log-expense-title">소비 기록</h4>
+            <span class="time-task-log-accordion-chevron" aria-hidden="true">▼</span>
+          </div>
+          <div class="time-task-log-accordion-body">
+          <div class="time-task-log-expense-fields">
             <div class="time-task-log-field">
               <label>소비/수입명</label>
-              <input type="text" class="time-task-log-expense-name" name="time-task-log-expense-name" placeholder="소비/수입명" />
+              <input type="text" class="time-task-log-expense-name" name="time-task-log-expense-name" placeholder="" />
             </div>
             <div class="time-task-log-field">
               <label>카테고리</label>
@@ -3441,20 +3442,19 @@ export function render() {
             </div>
             <div class="time-task-log-field">
               <label>금액</label>
-              <input type="text" class="time-task-log-expense-amount" name="time-task-log-expense-amount" placeholder="금액" inputmode="numeric" />
+              <input type="text" class="time-task-log-expense-amount" name="time-task-log-expense-amount" placeholder="" inputmode="numeric" />
             </div>
             <div class="time-task-log-expense-error" hidden></div>
           </div>
-        </div>
-        <div class="time-task-log-emotion-section">
-          <div class="time-task-log-emotion-header">
-            <h4 class="time-task-log-emotion-title">감정 기록</h4>
-            <label class="time-task-log-emotion-toggle">
-              <input type="checkbox" class="time-task-log-emotion-toggle-input" />
-              <span class="time-task-log-emotion-toggle-slider"></span>
-            </label>
           </div>
-          <div class="time-task-log-emotion-fields" hidden>
+        </div>
+        <div class="time-task-log-emotion-section time-task-log-accordion-item" data-accordion="emotion">
+          <div class="time-task-log-emotion-header time-task-log-accordion-header" role="button" tabindex="0" aria-expanded="false">
+            <h4 class="time-task-log-emotion-title">감정 기록</h4>
+            <span class="time-task-log-accordion-chevron" aria-hidden="true">▶</span>
+          </div>
+          <div class="time-task-log-accordion-body">
+          <div class="time-task-log-emotion-fields">
             <div class="time-task-log-field">
               <label>${TAB3_EMOTION_TEMPLATE[0]}</label>
               <textarea class="time-task-log-emotion-q1" placeholder="${TAB3_EMOTION_PLACEHOLDERS[0]}" rows="2"></textarea>
@@ -3472,26 +3472,27 @@ export function render() {
               <textarea class="time-task-log-emotion-q4" placeholder="${TAB3_EMOTION_PLACEHOLDERS[3]}" rows="2"></textarea>
             </div>
           </div>
-        </div>
-        <div class="time-task-log-todo-section">
-          <div class="time-task-log-todo-header">
-            <h4 class="time-task-log-todo-title">투두 리스트 (브레인 덤프에 기록)</h4>
-            <label class="time-task-log-todo-toggle">
-              <input type="checkbox" class="time-task-log-todo-toggle-input" />
-              <span class="time-task-log-todo-toggle-slider"></span>
-            </label>
           </div>
-          <div class="time-task-log-todo-fields" hidden>
+        </div>
+        <div class="time-task-log-todo-section time-task-log-accordion-item" data-accordion="todo">
+          <div class="time-task-log-todo-header time-task-log-accordion-header" role="button" tabindex="0" aria-expanded="false">
+            <h4 class="time-task-log-todo-title">투두 리스트 (브레인 덤프에 기록)</h4>
+            <span class="time-task-log-accordion-chevron" aria-hidden="true">▶</span>
+          </div>
+          <div class="time-task-log-accordion-body">
+          <div class="time-task-log-todo-fields">
             <div class="time-task-log-field">
               <input type="text" class="time-task-log-todo-name" name="time-task-log-todo-name" placeholder="할 일 이름 입력" />
               <div class="time-task-log-todo-added-list" aria-live="polite"></div>
             </div>
           </div>
+          </div>
         </div>
         </div>
       </div>
-      <div class="time-task-log-footer" data-task-log-footer style="display:none">
-        <button type="button" class="time-task-log-delete-btn">과제 삭제</button>
+      <div class="time-task-log-footer" data-task-log-footer>
+        <button type="button" class="time-task-log-submit">기록</button>
+        <button type="button" class="time-task-log-delete-btn" hidden>과제 삭제</button>
       </div>
       <div class="time-datetime-picker-wrap time-datetime-picker-bottom" hidden>
         <div class="time-datetime-picker-buttons-wrap">
@@ -3583,6 +3584,7 @@ export function render() {
   if (taskLogTagInput && taskLogTagListEl) {
     taskLogTagInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === ",") {
+        if (e.isComposing) return; /* 한글 조합 중 Enter 시 마지막 글자 중복 방지 */
         e.preventDefault();
         const val = (taskLogTagInput.value || "").trim().replace(/^#/, "");
         if (val && !taskLogMemoTags.includes(val)) {
@@ -3831,17 +3833,11 @@ export function render() {
   const taskLogFocusSection = taskLogModal.querySelector(
     ".time-task-log-focus-section",
   );
-  const taskLogFocusToggleInput = taskLogModal.querySelector(
-    ".time-task-log-focus-toggle-input",
-  );
   const taskLogFocusFields = taskLogModal.querySelector(
     ".time-task-log-focus-fields",
   );
   const taskLogExpenseSection = taskLogModal.querySelector(
     ".time-task-log-expense-section",
-  );
-  const taskLogExpenseToggleInput = taskLogModal.querySelector(
-    ".time-task-log-expense-toggle-input",
   );
   const taskLogExpenseFields = taskLogModal.querySelector(
     ".time-task-log-expense-fields",
@@ -3864,9 +3860,6 @@ export function render() {
   const taskLogEmotionSection = taskLogModal.querySelector(
     ".time-task-log-emotion-section",
   );
-  const taskLogEmotionToggleInput = taskLogModal.querySelector(
-    ".time-task-log-emotion-toggle-input",
-  );
   const taskLogEmotionFields = taskLogModal.querySelector(
     ".time-task-log-emotion-fields",
   );
@@ -3881,9 +3874,6 @@ export function render() {
   );
   const taskLogEmotionQ4 = taskLogModal.querySelector(
     ".time-task-log-emotion-q4",
-  );
-  const taskLogTodoToggleInput = taskLogModal.querySelector(
-    ".time-task-log-todo-toggle-input",
   );
   const taskLogTodoFields = taskLogModal.querySelector(
     ".time-task-log-todo-fields",
@@ -3913,6 +3903,48 @@ export function render() {
   const taskLogCloseBtn = taskLogModal.querySelector(
     ".time-task-setup-panel .time-task-setup-close",
   );
+
+  /* 아코디언: 한 번에 하나만 열림, 열린 걸 다시 누르면 닫힘 */
+  taskLogModal.querySelectorAll(".time-task-log-accordion-header").forEach((header) => {
+    header.addEventListener("click", (e) => {
+      if (e.target.closest("label")) return;
+      const item = header.closest(".time-task-log-accordion-item");
+      if (!item) return;
+      const body = item.querySelector(".time-task-log-accordion-body");
+      const chevron = item.querySelector(".time-task-log-accordion-chevron");
+      const isExpanded = item.classList.contains("time-task-log-accordion-expanded");
+      if (isExpanded) {
+        item.classList.remove("time-task-log-accordion-expanded");
+        header.setAttribute("aria-expanded", "false");
+        if (chevron) chevron.textContent = "▶";
+        if (body) body.hidden = true;
+      } else {
+        taskLogModal.querySelectorAll(".time-task-log-accordion-item").forEach((other) => {
+          if (other === item) return;
+          other.classList.remove("time-task-log-accordion-expanded");
+          const otherHeader = other.querySelector(".time-task-log-accordion-header");
+          const otherBody = other.querySelector(".time-task-log-accordion-body");
+          const otherChevron = other.querySelector(".time-task-log-accordion-chevron");
+          if (otherHeader) otherHeader.setAttribute("aria-expanded", "false");
+          if (otherBody) otherBody.hidden = true;
+          if (otherChevron) otherChevron.textContent = "▶";
+        });
+        item.classList.add("time-task-log-accordion-expanded");
+        header.setAttribute("aria-expanded", "true");
+        if (chevron) chevron.textContent = "▼";
+        if (body) body.hidden = false;
+        requestAnimationFrame(() => {
+          item.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        });
+      }
+    });
+  });
+  taskLogModal.querySelectorAll(".time-task-log-accordion-item:not(.time-task-log-accordion-expanded) .time-task-log-accordion-body").forEach((body) => {
+    body.hidden = true;
+  });
+  taskLogModal.querySelectorAll(".time-task-log-accordion-item:not(.time-task-log-accordion-expanded) .time-task-log-accordion-chevron").forEach((chevron) => {
+    chevron.textContent = "▶";
+  });
 
   let taskLogTaskDropdown = null;
   let taskLogAddContext = null;
@@ -4417,7 +4449,12 @@ export function render() {
     wrap.className = "time-task-log-expense-category-dropdown";
     const display = document.createElement("span");
     display.className = "time-task-log-expense-dropdown-display";
-    display.textContent = initialValue || "선택";
+    const setDisplay = (val) => {
+      const txt = val || "선택";
+      display.textContent = txt;
+      display.classList.toggle("is-placeholder", !val);
+    };
+    setDisplay(initialValue);
     const panel = document.createElement("div");
     panel.className = "time-task-log-expense-dropdown-panel";
     panel.hidden = true;
@@ -4428,7 +4465,7 @@ export function render() {
       row.textContent = opt.label;
       row.addEventListener("click", () => {
         value = opt.label;
-        display.textContent = value || "선택";
+        setDisplay(value);
         panel.hidden = true;
         onUpdate?.(value);
       });
@@ -4446,7 +4483,7 @@ export function render() {
     wrap._getValue = () => value;
     wrap._setValue = (v) => {
       value = v || "";
-      display.textContent = value || "선택";
+      setDisplay(value);
     };
     return wrap;
   }
@@ -4507,52 +4544,33 @@ export function render() {
     return wrap;
   }
 
-  const FOCUS_TYPE_OPTIONS = [
-    "",
-    "메신저체크",
-    "소셜미디어",
-    "유튜브/영상 매체",
-    "무관한 검색",
-    "중요하지않은 일처리",
-    "배고픔",
-    "생리현상",
-    "전화통화",
-    "집안일",
+  const FOCUS_TYPE_ICONS = [
+    { type: "스마트폰", svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m11.716 20.201 8.485-8.485"/><path d="m3.799 12.284 8.485-8.485"/><path d="m13.13 21.615-10.745-10.745c-.781-.781-.781-2.047 0-2.828l5.657-5.657c.781-.781 2.047-.781 2.828 0l10.745 10.745c.781.781.781 2.047 0 2.828l-5.657 5.657c-.781.781-2.047.781-2.828 0z"/><path d="m8 23c-3.866 0-7-3.134-7-7"/><path d="m16 1c3.866 0 7 3.134 7 7"/></g></svg>' },
+    { type: "잡생각", svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 1h-5c-4.694 0-8.5 3.806-8.5 8.5 0 4.182 3.022 7.65 7 8.36v4.14l6-4h.5c4.694 0 8.5-3.806 8.5-8.5s-3.806-8.5-8.5-8.5z"/><path d="m12 10v-4"/><path d="m12 13v-.01"/></g></svg>' },
+    { type: "피곤/배고픔", svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="3.5" r="2.5"/><path d="m4 10h5 6 5"/><path d="m15 17h-6"/><path d="m6 23 3-6v-6.586"/><path d="m15 10.414v6.586l3 6"/></g></svg>' },
   ];
-  function buildFocusTypeDropdown(initialValue) {
+  function buildFocusTypeIconButtons(initialValue) {
     const wrap = document.createElement("div");
-    wrap.className = "time-task-log-focus-type-dropdown";
-    const display = document.createElement("span");
-    display.className = "time-task-log-expense-dropdown-display";
-    display.textContent = initialValue || "방해 유형 선택";
-    const panel = document.createElement("div");
-    panel.className = "time-task-log-expense-dropdown-panel";
-    panel.hidden = true;
-    let value = initialValue || "";
-    FOCUS_TYPE_OPTIONS.forEach((opt) => {
-      const row = document.createElement("div");
-      row.className = "time-task-log-expense-dropdown-option";
-      row.textContent = opt || "방해 유형 선택";
-      row.addEventListener("click", () => {
-        value = opt || "";
-        display.textContent = value || "방해 유형 선택";
-        panel.hidden = true;
+    wrap.className = "time-task-log-focus-type-icons";
+    let value = (initialValue || "").trim();
+    FOCUS_TYPE_ICONS.forEach(({ type, svg }) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "time-task-log-focus-type-icon-btn";
+      btn.dataset.type = type;
+      btn.title = type;
+      btn.innerHTML = svg;
+      btn.addEventListener("click", () => {
+        value = value === type ? "" : type;
+        wrap.querySelectorAll(".time-task-log-focus-type-icon-btn").forEach((b) => b.classList.toggle("selected", b.dataset.type === value));
       });
-      panel.appendChild(row);
+      if (value === type) btn.classList.add("selected");
+      wrap.appendChild(btn);
     });
-    display.addEventListener("click", (e) => {
-      e.stopPropagation();
-      panel.hidden = !panel.hidden;
-    });
-    document.addEventListener("click", (e) => {
-      if (!wrap.contains(e.target)) panel.hidden = true;
-    });
-    wrap.appendChild(display);
-    wrap.appendChild(panel);
     wrap._getValue = () => value;
     wrap._setValue = (v) => {
       value = (v || "").trim();
-      display.textContent = value || "방해 유형 선택";
+      wrap.querySelectorAll(".time-task-log-focus-type-icon-btn").forEach((b) => b.classList.toggle("selected", b.dataset.type === value));
     };
     return wrap;
   }
@@ -4572,7 +4590,7 @@ export function render() {
   const taskLogFocusTypeDropdownWrap = taskLogModal.querySelector(
     ".time-task-log-focus-type-dropdown-wrap",
   );
-  const focusTypeDropdown = buildFocusTypeDropdown("");
+  const focusTypeDropdown = buildFocusTypeIconButtons("");
   if (taskLogFocusTypeDropdownWrap) {
     taskLogFocusTypeDropdownWrap.appendChild(focusTypeDropdown);
   }
@@ -4586,34 +4604,36 @@ export function render() {
       EXPENSE_TASK_NAMES.includes((taskName || "").trim());
 
     if (isEmotionTask) {
-      if (taskLogExpenseToggleInput) {
-        taskLogExpenseToggleInput.checked = false;
-        if (taskLogExpenseFields) taskLogExpenseFields.hidden = true;
-      }
-      if (taskLogEmotionToggleInput) {
-        taskLogEmotionToggleInput.checked = true;
-        if (taskLogEmotionFields) taskLogEmotionFields.hidden = false;
-      }
+      taskLogExpenseSection?.classList?.remove("time-task-log-accordion-expanded");
+      const expenseBody = taskLogExpenseSection?.querySelector(".time-task-log-accordion-body");
+      const expenseChevron = taskLogExpenseSection?.querySelector(".time-task-log-accordion-chevron");
+      if (expenseBody) expenseBody.hidden = true;
+      if (expenseChevron) expenseChevron.textContent = "▶";
+      taskLogEmotionSection?.classList?.add("time-task-log-accordion-expanded");
+      const emotionBody = taskLogEmotionSection?.querySelector(".time-task-log-accordion-body");
+      const emotionChevron = taskLogEmotionSection?.querySelector(".time-task-log-accordion-chevron");
+      const emotionHeader = taskLogEmotionSection?.querySelector(".time-task-log-accordion-header");
+      if (emotionBody) emotionBody.hidden = false;
+      if (emotionChevron) emotionChevron.textContent = "▼";
+      if (emotionHeader) emotionHeader.setAttribute("aria-expanded", "true");
       requestAnimationFrame(() => {
-        taskLogEmotionSection?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
+        taskLogEmotionSection?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     } else if (isExpenseTask) {
-      if (taskLogEmotionToggleInput) {
-        taskLogEmotionToggleInput.checked = false;
-        if (taskLogEmotionFields) taskLogEmotionFields.hidden = true;
-      }
-      if (taskLogExpenseToggleInput) {
-        taskLogExpenseToggleInput.checked = true;
-        if (taskLogExpenseFields) taskLogExpenseFields.hidden = false;
-      }
+      taskLogEmotionSection?.classList?.remove("time-task-log-accordion-expanded");
+      const emotionBody = taskLogEmotionSection?.querySelector(".time-task-log-accordion-body");
+      const emotionChevron = taskLogEmotionSection?.querySelector(".time-task-log-accordion-chevron");
+      if (emotionBody) emotionBody.hidden = true;
+      if (emotionChevron) emotionChevron.textContent = "▶";
+      taskLogExpenseSection?.classList?.add("time-task-log-accordion-expanded");
+      const expenseBody = taskLogExpenseSection?.querySelector(".time-task-log-accordion-body");
+      const expenseChevron = taskLogExpenseSection?.querySelector(".time-task-log-accordion-chevron");
+      const expenseHeader = taskLogExpenseSection?.querySelector(".time-task-log-accordion-header");
+      if (expenseBody) expenseBody.hidden = false;
+      if (expenseChevron) expenseChevron.textContent = "▼";
+      if (expenseHeader) expenseHeader.setAttribute("aria-expanded", "true");
       requestAnimationFrame(() => {
-        taskLogExpenseSection?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
+        taskLogExpenseSection?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     }
     refreshKpiTodosInLogModal(taskName);
@@ -4684,11 +4704,6 @@ export function render() {
       taskLogDailyTodosList.appendChild(label);
     });
   }
-
-  taskLogFocusToggleInput?.addEventListener("change", () => {
-    if (taskLogFocusFields)
-      taskLogFocusFields.hidden = !taskLogFocusToggleInput.checked;
-  });
 
   function setupScoreButtons(container, getValue, setValue) {
     if (!container) return;
@@ -4782,12 +4797,10 @@ export function render() {
   }
 
   focusNowBtn?.addEventListener("click", () => {
+    const nowTime = getCurrentHHMM();
+    if (taskLogFocusEvents.some((e) => e.time === nowTime)) return;
     const type = (focusTypeDropdown?._getValue?.() || "").trim();
-    if (!type) {
-      alert("방해 유형을 먼저 선택해 주세요.");
-      return;
-    }
-    taskLogFocusEvents.push({ time: getCurrentHHMM(), type });
+    taskLogFocusEvents.push({ time: nowTime, type });
     updateFocusPreview();
   });
 
@@ -4799,10 +4812,6 @@ export function render() {
     if (e.key !== "Enter") return;
     e.preventDefault();
     const type = (focusTypeDropdown?._getValue?.() || "").trim();
-    if (!type) {
-      alert("방해 유형을 먼저 선택해 주세요.");
-      return;
-    }
     const timeVal = (focusTimeInput?.value || "").trim();
     if (!isValidHhMm(timeVal)) {
       alert("hh:mm 형식으로 입력해주세요 (예: 09:30).");
@@ -4810,6 +4819,7 @@ export function render() {
     }
     const [h, m] = timeVal.split(":").map((x) => parseInt(x, 10) || 0);
     const normalized = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    if (taskLogFocusEvents.some((ev) => ev.time === normalized)) return;
     taskLogFocusEvents.push({ time: normalized, type });
     updateFocusPreview();
     focusTimeInput.value = "";
@@ -4829,20 +4839,6 @@ export function render() {
     if (!isNaN(n) && n >= -50 && n <= 50) return n;
     return null;
   }
-  taskLogExpenseToggleInput?.addEventListener("change", () => {
-    if (taskLogExpenseFields)
-      taskLogExpenseFields.hidden = !taskLogExpenseToggleInput.checked;
-  });
-
-  taskLogEmotionToggleInput?.addEventListener("change", () => {
-    if (taskLogEmotionFields)
-      taskLogEmotionFields.hidden = !taskLogEmotionToggleInput.checked;
-  });
-  taskLogTodoToggleInput?.addEventListener("change", () => {
-    if (taskLogTodoFields)
-      taskLogTodoFields.hidden = !taskLogTodoToggleInput.checked;
-  });
-
   function addTodoNameToBraindump(name) {
     const todoName = (name || "").trim();
     if (!todoName) return false;
@@ -4896,8 +4892,12 @@ export function render() {
 
   taskLogExpenseAmountInput?.addEventListener("input", () => {
     const v = taskLogExpenseAmountInput.value;
-    const filtered = v.replace(/[^\d,]/g, "");
-    if (v !== filtered) taskLogExpenseAmountInput.value = filtered;
+    const digits = v.replace(/\D/g, "");
+    const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    if (v !== formatted) {
+      taskLogExpenseAmountInput.value = formatted;
+      taskLogExpenseAmountInput.setSelectionRange(formatted.length, formatted.length);
+    }
   });
 
   function getDefaultStartTime(addContext) {
@@ -4951,7 +4951,8 @@ export function render() {
     pendingEditStartTime = "";
     taskLogTitleEl.textContent = "과제 기록";
     taskLogSubmitBtn.textContent = "기록";
-    if (taskLogFooterEl) taskLogFooterEl.style.display = "none";
+    if (taskLogFooterEl) taskLogFooterEl.style.display = "";
+    if (taskLogDeleteBtn) taskLogDeleteBtn.hidden = true;
     taskLogModal.hidden = false;
     taskLogModal.style.zIndex = "1002";
     document.body.style.overflow = "hidden";
@@ -4985,8 +4986,6 @@ export function render() {
     expenseClassificationDropdown._setValue?.("");
     expenseClassificationDropdown._setCategory?.("");
     taskLogExpenseAmountInput.value = "";
-    if (taskLogExpenseToggleInput) taskLogExpenseToggleInput.checked = false;
-    if (taskLogExpenseFields) taskLogExpenseFields.hidden = true;
     if (taskLogExpenseErrorEl) {
       taskLogExpenseErrorEl.textContent = "";
       taskLogExpenseErrorEl.hidden = true;
@@ -4995,10 +4994,16 @@ export function render() {
     if (taskLogEmotionQ2) taskLogEmotionQ2.value = "";
     if (taskLogEmotionQ3) taskLogEmotionQ3.value = "";
     if (taskLogEmotionQ4) taskLogEmotionQ4.value = "";
-    if (taskLogEmotionToggleInput) taskLogEmotionToggleInput.checked = false;
-    if (taskLogEmotionFields) taskLogEmotionFields.hidden = true;
-    if (taskLogTodoToggleInput) taskLogTodoToggleInput.checked = false;
-    if (taskLogTodoFields) taskLogTodoFields.hidden = true;
+    taskLogModal.querySelectorAll(".time-task-log-accordion-item").forEach((item) => {
+      if (!item.classList.contains("time-task-log-accordion-expanded") || item.dataset?.accordion === "expense") return;
+      item.classList.remove("time-task-log-accordion-expanded");
+      const body = item.querySelector(".time-task-log-accordion-body");
+      const chevron = item.querySelector(".time-task-log-accordion-chevron");
+      const header = item.querySelector(".time-task-log-accordion-header");
+      if (body) body.hidden = true;
+      if (chevron) chevron.textContent = "▶";
+      if (header) header.setAttribute("aria-expanded", "false");
+    });
     if (taskLogTodoNameInput) taskLogTodoNameInput.value = "";
     if (taskLogTodoAddedList) taskLogTodoAddedList.innerHTML = "";
     if (taskLogKpiTodosSection) taskLogKpiTodosSection.hidden = true;
@@ -5006,8 +5011,6 @@ export function render() {
     taskLogFocusEvents = [];
     taskLogFocusTypeValue = "";
     if (focusTimeInput) focusTimeInput.value = "";
-    if (taskLogFocusToggleInput) taskLogFocusToggleInput.checked = false;
-    if (taskLogFocusFields) taskLogFocusFields.hidden = true;
     focusTypeDropdown?._setValue?.("");
     updateFocusPreview();
   }
@@ -5051,6 +5054,7 @@ export function render() {
     taskLogTitleEl.textContent = "과제 수정";
     taskLogSubmitBtn.textContent = "수정";
     if (taskLogFooterEl) taskLogFooterEl.style.display = "";
+    if (taskLogDeleteBtn) taskLogDeleteBtn.hidden = false;
     taskLogModal.hidden = false;
     taskLogModal.style.zIndex = "1002";
     document.body.style.overflow = "hidden";
@@ -5077,24 +5081,17 @@ export function render() {
     expenseClassificationDropdown._setValue?.("");
     expenseClassificationDropdown._setCategory?.("");
     taskLogExpenseAmountInput.value = "";
-    if (taskLogExpenseToggleInput) taskLogExpenseToggleInput.checked = false;
-    if (taskLogExpenseFields) taskLogExpenseFields.hidden = true;
     if (taskLogEmotionQ1) taskLogEmotionQ1.value = data.q1 ?? "";
     if (taskLogEmotionQ2) taskLogEmotionQ2.value = data.q2 ?? "";
     if (taskLogEmotionQ3) taskLogEmotionQ3.value = data.q3 ?? "";
     if (taskLogEmotionQ4) taskLogEmotionQ4.value = data.q4 ?? "";
-    if (taskLogEmotionToggleInput) taskLogEmotionToggleInput.checked = false;
-    if (taskLogEmotionFields) taskLogEmotionFields.hidden = true;
-    const taskNameForToggles = (data.taskName || "").trim();
-    if (EXPENSE_TASK_NAMES.includes(taskNameForToggles)) {
-      if (taskLogExpenseToggleInput) taskLogExpenseToggleInput.checked = true;
-      if (taskLogExpenseFields) taskLogExpenseFields.hidden = false;
-    }
+    const taskNameForAccordion = (data.taskName || "").trim();
+    const hasExpenseData =
+      (taskLogExpenseNameInput?.value || "").trim() ||
+      (expenseCategoryDropdown?._getValue?.() || "").trim() ||
+      (expenseClassificationDropdown?._getValue?.() || "").trim() ||
+      (taskLogExpenseAmountInput?.value || "").trim();
     const hasEmotionData = (data.q1 || data.q2 || data.q3 || data.q4) || data.taskName === EMOTION_TASK_POSITIVE || data.taskName === EMOTION_TASK_NEGATIVE;
-    if (hasEmotionData) {
-      if (taskLogEmotionToggleInput) taskLogEmotionToggleInput.checked = true;
-      if (taskLogEmotionFields) taskLogEmotionFields.hidden = false;
-    }
     const focusRaw = String(data.focus || "").trim();
     const defaultTime = (() => {
       const m = (data.startTime || "").match(/[T\s](\d{1,2}):(\d{2})/);
@@ -5105,10 +5102,14 @@ export function render() {
       taskLogFocusEvents.length > 0
         ? taskLogFocusEvents[taskLogFocusEvents.length - 1].type
         : "";
-    if (taskLogFocusToggleInput) {
-      taskLogFocusToggleInput.checked = focusRaw !== "";
-      if (taskLogFocusFields)
-        taskLogFocusFields.hidden = !taskLogFocusToggleInput.checked;
+    if (focusRaw && taskLogFocusSection) {
+      taskLogFocusSection.classList.add("time-task-log-accordion-expanded");
+      const fb = taskLogFocusSection.querySelector(".time-task-log-accordion-body");
+      const ch = taskLogFocusSection.querySelector(".time-task-log-accordion-chevron");
+      const hd = taskLogFocusSection.querySelector(".time-task-log-accordion-header");
+      if (fb) fb.hidden = false;
+      if (ch) ch.textContent = "▼";
+      if (hd) hd.setAttribute("aria-expanded", "true");
     }
     updateFocusPreview();
     focusTypeDropdown?._setValue?.(taskLogFocusTypeValue || "");
@@ -5180,17 +5181,17 @@ export function render() {
     const expenseAmount = (taskLogExpenseAmountInput.value || "")
       .trim()
       .replace(/,/g, "");
-    const expenseCategory = expenseCategoryDropdown._getValue?.() || "";
-    const expenseClassification =
-      expenseClassificationDropdown._getValue?.() || "";
+    let expenseCategory = expenseCategoryDropdown._getValue?.() || "";
+    let expenseClassification = expenseClassificationDropdown._getValue?.() || "";
 
-    const focusToggleOn = taskLogFocusToggleInput?.checked;
-    const focusValue = focusToggleOn
-      ? buildFocusValueFromEvents(taskLogFocusEvents)
-      : "";
+    const focusValue =
+      taskLogFocusEvents.length > 0
+        ? buildFocusValueFromEvents(taskLogFocusEvents)
+        : "";
 
-    const expenseToggleOn = taskLogExpenseToggleInput?.checked;
-    if (expenseToggleOn) {
+    const hasExpenseContent =
+      expenseName || expenseCategory || expenseClassification || expenseAmount;
+    if (hasExpenseContent) {
       const missing = [];
       if (!expenseName) missing.push("소비/수입명");
       if (!expenseCategory) missing.push("카테고리");
@@ -5310,7 +5311,6 @@ export function render() {
     }
 
     if (
-      expenseToggleOn &&
       expenseName &&
       expenseCategory &&
       expenseClassification &&
@@ -5337,21 +5337,19 @@ export function render() {
       saveExpenseRows(existingRows);
     }
 
-    const emotionToggleOn = taskLogEmotionToggleInput?.checked;
     const emotionQ1 = (taskLogEmotionQ1?.value || "").trim();
     const emotionQ2 = (taskLogEmotionQ2?.value || "").trim();
     const emotionQ3 = (taskLogEmotionQ3?.value || "").trim();
     const emotionQ4 = (taskLogEmotionQ4?.value || "").trim();
     const hasEmotionContent = emotionQ1 || emotionQ2 || emotionQ3 || emotionQ4;
-    if (emotionToggleOn && hasEmotionContent) {
+    if (hasEmotionContent) {
       const entries = loadDiaryEntries();
       addOrUpdateTab3EntryByDate(entries, dateStr, emotionQ1, emotionQ2, emotionQ3, emotionQ4);
       saveDiaryEntries(entries);
     }
 
-    const todoToggleOn = taskLogTodoToggleInput?.checked;
     const todoName = (taskLogTodoNameInput?.value || "").trim();
-    if (todoToggleOn && todoName) {
+    if (todoName) {
       if (addTodoNameToBraindump(todoName)) showTodoAddedFeedback(todoName);
     }
 

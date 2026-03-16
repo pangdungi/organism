@@ -1177,6 +1177,15 @@ body {
     box-sizing: border-box;
   }
 
+  /* 모바일: 과제 기록/수정 모달 - 높이 확대해 아코디언 펼쳤을 때 내용 모두 볼 수 있게 */
+  .time-task-log-modal .time-task-log-panel {
+    height: 95vh;
+    max-height: none;
+  }
+  .time-task-log-modal .time-task-log-scroll-area {
+    padding-bottom: 3rem;
+  }
+
   /* 모바일: 과제 기록/수정 모달 - 마감시간 입력+버튼 한 줄 유지 (데스크탑과 동일) */
   .time-task-log-end-row {
     display: flex !important;
@@ -1197,11 +1206,11 @@ body {
   }
   .time-task-log-end-row .time-task-log-time-adjust-btns {
     margin-top: 0 !important;
-    gap: 0.25rem !important;
+    gap: 0.65rem !important;
   }
   .time-task-log-end-row .time-task-log-time-adjust-btn {
-    padding: 0.2rem 0.4rem !important;
-    font-size: 0.7rem !important;
+    padding: 0.1rem 0.25rem !important;
+    font-size: 0.65rem !important;
   }
 
   /* 모바일 오늘 탭: 할일만 보이게 우선순위 열 숨김 + 열제목(할일) 숨김 */
@@ -1475,22 +1484,23 @@ body {
   color: #374151;
 }
 
-/* 홈 Daily: 날짜를 페이지 시선 앵커로 – DM Serif Display, 크고 무게감 */
+/* 홈 Daily: 날짜를 페이지 시선 앵커로 – Noto Serif KR, 크고 무게감 */
 .home-daily-date-anchor {
-  font-family: "DM Serif Display", serif !important;
+  font-family: "Noto Serif KR", serif !important;
   font-size: 3.25rem;
-  font-weight: normal;
+  font-weight: 200;
   line-height: 1.1;
   color: #1f2937;
   margin: 0;
   padding: 0.5rem 0.75rem 0;
   letter-spacing: -0.02em;
 }
-/* 홈 Daily: 요일 3글자 영문 대문자 (MON TUE), DM Serif Display 고정 */
+/* 홈 Daily: 요일 3글자 영문 대문자 (MON TUE), Noto Serif KR 이탤릭 */
 .home-daily-weekday {
-  font-family: "DM Serif Display", serif !important;
+  font-family: "Noto Serif KR", serif !important;
   font-size: 0.9rem;
   font-weight: 500;
+  font-style: italic;
   color: #6b7280;
   margin: 0;
   padding: 0 0.75rem 0.5rem;
@@ -10805,13 +10815,6 @@ body.kpi-resizing {
   text-align: center;
 }
 
-.time-task-log-header .time-task-log-submit {
-  justify-self: end;
-  width: auto;
-  margin-top: 0;
-  padding: 0.4rem 1rem;
-}
-
 .time-task-setup-body {
   padding: 1.25rem;
   flex: 1;
@@ -11191,11 +11194,11 @@ body.kpi-resizing {
   background: #1f2937;
 }
 
-/* 과제 기록 모달 */
+/* 과제 기록 모달 - 1) 높이 확대 (90vh) */
 .time-task-log-modal .time-task-log-panel {
   max-width: 420px;
-  height: 80vh;
-  max-height: 640px;
+  height: 90vh;
+  max-height: 720px;
 }
 
 .time-task-log-modal .time-task-log-body {
@@ -11208,8 +11211,38 @@ body.kpi-resizing {
 .time-task-log-fixed-top {
   flex-shrink: 0;
   background: #fff;
-  padding: 1.25rem 1.25rem 1rem;
+  padding: 0.85rem 1.25rem 0.75rem;
   border-bottom: 1px solid #e5e7eb;
+}
+
+/* 상단 고정 영역: 폰트·여백 축소 → 아래 스크롤 영역에 공간 확보 */
+.time-task-log-fixed-top .time-task-log-datetime-fields-wrap .time-task-log-field label {
+  font-size: 0.75rem;
+}
+.time-task-log-fixed-top .time-task-log-field {
+  margin-bottom: 0.7rem;
+}
+.time-task-log-fixed-top .time-task-log-datetime-input-wrap input[type="date"],
+.time-task-log-fixed-top .time-task-log-datetime-input-wrap .time-task-log-date-start,
+.time-task-log-fixed-top .time-task-log-datetime-input-wrap input.flatpickr-input {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+}
+.time-task-log-fixed-top .time-task-log-datetime-input-wrap input[type="text"] {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+}
+.time-task-log-fixed-top .time-task-log-task-dropdown-trigger {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+}
+.time-task-log-fixed-top .time-task-log-time-adjust-btns {
+  margin-top: 0.3rem;
+  gap: 0.65rem;
+}
+.time-task-log-fixed-top .time-task-log-time-adjust-btn {
+  padding: 0.1rem 0.25rem;
+  font-size: 0.65rem;
 }
 
 .time-task-log-scroll-area {
@@ -11228,27 +11261,101 @@ body.kpi-resizing {
   display: none;
 }
 
+/* 아코디언: 접이식 섹션 (스크롤 영역 공간 확보) */
+.time-task-log-accordion-item {
+  border-bottom: 1px solid #e5e7eb;
+}
+.time-task-log-accordion-item + .time-task-log-accordion-item {
+  margin-top: 0.75rem;
+}
+.time-task-log-accordion-item:last-child {
+  border-bottom: none;
+}
+.time-task-log-accordion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.time-task-log-accordion-header:hover {
+  color: #374151;
+}
+.time-task-log-accordion-title,
+.time-task-log-accordion-header h4,
+.time-task-log-accordion-header .time-task-log-expense-title,
+.time-task-log-accordion-header .time-task-log-emotion-title,
+.time-task-log-accordion-header .time-task-log-todo-title,
+.time-task-log-accordion-header .time-task-log-focus-title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+  flex: 1;
+}
+.time-task-log-accordion-chevron {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  color: #9ca3af;
+  margin-left: 0.5rem;
+  transition: transform 0.2s;
+}
+.time-task-log-accordion-item.time-task-log-accordion-expanded .time-task-log-accordion-chevron {
+  transform: rotate(-90deg);
+}
+.time-task-log-accordion-body {
+  overflow-y: auto;
+  max-height: 500px;
+  padding-bottom: 0.75rem;
+  transition: max-height 0.25s ease-out;
+}
+/* 감정기록: 4문항 전체 노출을 위해 최대높이 확대 */
+.time-task-log-emotion-section .time-task-log-accordion-body {
+  max-height: 560px;
+}
+.time-task-log-accordion-item:not(.time-task-log-accordion-expanded) .time-task-log-accordion-body {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin: 0;
+  opacity: 0;
+}
+.time-task-log-accordion-item:not(.time-task-log-accordion-expanded) .time-task-log-accordion-body > * {
+  display: none !important;
+}
+
 .time-task-log-footer {
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
   padding: 0.75rem 1.25rem 1rem;
   border-top: 1px solid #e5e7eb;
-  background: #f9fafb;
+  background: #fff;
+}
+
+.time-task-log-footer .time-task-log-submit {
+  width: 100%;
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 .time-task-log-delete-btn {
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
-  color: #b91c1c;
-  background: transparent;
-  border: 1px solid #fca5a5;
-  border-radius: 6px;
+  font-size: 0.8rem;
+  color: #9ca3af;
+  background: none;
+  border: none;
+  padding: 0.25rem 0.5rem;
   cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .time-task-log-delete-btn:hover {
-  background: #fef2f2;
-  border-color: #f87171;
+  color: #b91c1c;
 }
 
 .time-task-log-datetime-fields-wrap {
@@ -11309,6 +11416,12 @@ body.kpi-resizing {
   margin-bottom: 0.35rem;
 }
 
+/* 과제 기록 모달 상단 3개 라벨: 작은 폰트, 연회색 */
+.time-task-log-datetime-fields-wrap .time-task-log-field label {
+  font-size: 0.8rem;
+  color: #9ca3af;
+}
+
 .time-task-log-start,
 .time-task-log-end {
   display: none;
@@ -11320,6 +11433,15 @@ body.kpi-resizing {
   align-items: center;
 }
 
+/* 과제 기록 모달: 시작날짜·시작시간·마감시간 숫자만 세리프체 (Noto Serif KR) */
+.time-task-log-modal .time-task-log-datetime-input-wrap input[type="date"],
+.time-task-log-modal .time-task-log-datetime-input-wrap .time-task-log-date-start,
+.time-task-log-modal .time-task-log-datetime-input-wrap input.flatpickr-input,
+.time-task-log-modal .time-task-log-datetime-input-wrap input[type="text"].time-task-log-time-start,
+.time-task-log-modal .time-task-log-datetime-input-wrap input[type="text"].time-task-log-time-end {
+  font-family: "Noto Serif KR", serif !important;
+  font-weight: 200 !important;
+}
 .time-task-log-datetime-input-wrap input[type="date"],
 .time-task-log-datetime-input-wrap .time-task-log-date-start,
 .time-task-log-datetime-input-wrap input.flatpickr-input {
@@ -11329,8 +11451,10 @@ body.kpi-resizing {
   max-width: none !important;
   padding: 0.5rem 0.75rem;
   font-size: 0.9rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 0;
+  background: transparent;
   box-sizing: border-box;
 }
 .time-task-log-datetime-input-wrap input[type="date"]:focus,
@@ -11340,21 +11464,23 @@ body.kpi-resizing {
 .time-task-log-datetime-input-wrap input.flatpickr-input.active {
   outline: none !important;
   box-shadow: none !important;
-  border-color: #d1d5db !important;
+  border-bottom-color: #9ca3af !important;
 }
 
 .time-task-log-datetime-input-wrap input[type="text"] {
   width: 5rem;
   padding: 0.5rem 0.75rem;
   font-size: 0.9rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 0;
+  background: transparent;
 }
 .time-task-log-datetime-input-wrap input[type="text"]:focus,
 .time-task-log-datetime-input-wrap input[type="text"]:focus-visible {
   outline: none !important;
   box-shadow: none !important;
-  border-color: #d1d5db !important;
+  border-bottom-color: #9ca3af !important;
 }
 
 .time-task-log-datetime-input-wrap input::placeholder {
@@ -11449,23 +11575,25 @@ body.kpi-resizing {
 .time-task-log-time-adjust-btns {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: 0.65rem;
   margin-top: 0.4rem;
 }
 
 .time-task-log-time-adjust-btn {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  background: #fff;
-  color: #374151;
+  padding: 0.1rem 0.25rem;
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: #6b7280;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 0;
   cursor: pointer;
 }
 
 .time-task-log-time-adjust-btn:hover {
-  background: #f3f4f6;
-  border-color: #9ca3af;
+  color: #374151;
+  border-bottom-color: #9ca3af;
 }
 
 .time-task-log-routine-subs-wrap {
@@ -11521,17 +11649,22 @@ body.kpi-resizing {
 }
 .time-task-log-tag-input {
   width: 100%;
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem 0;
   font-size: 0.9rem;
   font-family: inherit;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 0;
   outline: none;
   box-sizing: border-box;
   margin-bottom: 0.5rem;
+  background: transparent;
 }
 .time-task-log-tag-input:focus {
-  border-color: #d1d5db;
+  border-bottom-color: #d1d5db;
+}
+.time-task-log-tag-input::placeholder {
+  color: #e5e7eb;
 }
 .time-task-log-tag-list {
   display: flex;
@@ -11558,8 +11691,9 @@ body.kpi-resizing {
   padding: 2px 6px;
   margin: 0 2px;
   font-size: 0.8rem;
-  color: #1e40af;
-  background: #dbeafe;
+  color: #374151;
+  background: #fff;
+  border: 1px solid #e5e7eb;
   border-radius: 4px;
   vertical-align: middle;
 }
@@ -11576,7 +11710,7 @@ body.kpi-resizing {
   min-height: 14px;
   border: none;
   background: transparent;
-  color: #6b7280;
+  color: #e5e7eb;
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
@@ -11584,10 +11718,11 @@ body.kpi-resizing {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease;
 }
-.time-memo-tag-chip-remove:hover {
-  color: #374151;
-  background: rgba(0, 0, 0, 0.06);
+.time-memo-tag-chip:hover .time-memo-tag-chip-remove {
+  opacity: 1;
 }
 /* 시간기록 테이블 메모 태그 열 - 태그마다 구분되도록 */
 .time-display-memo-tags {
@@ -11600,9 +11735,9 @@ body.kpi-resizing {
   display: inline-block;
   padding: 3px 8px;
   font-size: 0.8rem;
-  color: #1e40af;
-  background: #dbeafe;
-  border: 1px solid #93c5fd;
+  color: #374151;
+  background: #fff;
+  border: 1px solid #e5e7eb;
   border-radius: 6px;
   white-space: nowrap;
 }
@@ -11615,19 +11750,20 @@ body.kpi-resizing {
 
 .time-task-log-task-dropdown-trigger {
   width: 100%;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.9rem;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.85rem;
   text-align: left;
   color: #374151;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 0;
   cursor: pointer;
-  transition: border-color 0.2s;
+  transition: border-bottom-color 0.2s;
 }
 
 .time-task-log-task-dropdown-trigger:hover {
-  border-color: #9ca3af;
+  border-bottom-color: #9ca3af;
 }
 
 .time-task-log-task-dropdown-panel[hidden] {
@@ -11886,11 +12022,7 @@ body.kpi-resizing {
 .time-task-log-expense-section,
 .time-task-log-emotion-section,
 .time-task-log-todo-section {
-  margin-top: 1.25rem;
-  padding: 1.25rem;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  margin-top: 0;
 }
 
 .time-task-log-energy-section,
@@ -11982,35 +12114,77 @@ body.kpi-resizing {
 }
 .time-task-log-focus-type-dropdown-wrap {
   flex: 1;
-  min-width: 140px;
+  min-width: 0;
+}
+
+.time-task-log-focus-type-icons {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.time-task-log-focus-type-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0.4rem;
+  background: transparent;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #6b7280;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.time-task-log-focus-type-icon-btn:hover {
+  background: transparent;
+  color: #374151;
+  border-color: #d1d5db;
+}
+
+.time-task-log-focus-type-icon-btn.selected {
+  background: #1f2937;
+  color: #fff;
+  border-color: #1f2937;
+}
+
+.time-task-log-focus-type-icon-btn svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
 }
 
 .time-task-log-focus-now-btn {
-  padding: 0.5rem 1rem;
-  font-size: 0.9rem;
+  padding: 0.05rem 0.15rem;
+  font-size: 0.55rem;
   font-weight: 500;
-  color: #374151;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  color: #9ca3af;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 0;
   cursor: pointer;
   white-space: nowrap;
 }
 
 .time-task-log-focus-now-btn:hover {
-  background: #f3f4f6;
-  border-color: #d1d5db;
+  color: #6b7280;
+  border-bottom-color: #9ca3af;
 }
 
 .time-task-log-focus-time-input {
   width: 5rem;
   padding: 0.5rem 0.75rem;
   font-size: 0.9rem;
-  font-weight: 500;
+  font-family: "Noto Serif KR", serif !important;
+  font-weight: 200 !important;
   color: #374151;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 0;
   box-sizing: border-box;
 }
 
@@ -12020,7 +12194,8 @@ body.kpi-resizing {
 
 .time-task-log-focus-time-input:focus {
   outline: none;
-  border-color: #d1d5db;
+  box-shadow: none;
+  border-bottom-color: #9ca3af;
 }
 
 .time-task-log-focus-type-dropdown {
@@ -12031,7 +12206,15 @@ body.kpi-resizing {
 .time-task-log-focus-type-dropdown .time-task-log-expense-dropdown-display {
   min-height: 38px;
   height: 38px;
-  border-radius: 6px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 0;
+}
+
+.time-task-log-focus-type-dropdown .time-task-log-expense-dropdown-display:hover,
+.time-task-log-focus-type-dropdown .time-task-log-expense-dropdown-display:focus {
+  border-bottom-color: #9ca3af;
 }
 
 .time-task-log-focus-fields {
@@ -12064,17 +12247,20 @@ body.kpi-resizing {
   align-items: center;
   gap: 0.25rem;
   padding: 0.2rem 0.4rem;
-  background: #f3f4f6;
+  background: transparent;
+  border: 1px solid #e5e7eb;
   border-radius: 4px;
   font-size: 0.8rem;
+  color: #1f2937;
 }
 
 .time-task-log-focus-event-item:hover {
-  background: #e5e7eb;
+  border-color: #d1d5db;
 }
 
 .time-task-log-focus-event-label {
   flex: 1;
+  color: #1f2937;
 }
 
 .time-task-log-focus-event-del {
@@ -12098,8 +12284,8 @@ body.kpi-resizing {
 }
 
 .time-task-log-focus-event-del:hover {
-  color: #dc2626;
-  background: #fee2e2;
+  color: #1f2937;
+  background: transparent;
 }
 
 .time-task-log-energy-fields,
@@ -12569,6 +12755,14 @@ body.kpi-resizing {
   -ms-overflow-style: none;
 }
 
+.time-task-log-emotion-q1::placeholder,
+.time-task-log-emotion-q2::placeholder,
+.time-task-log-emotion-q3::placeholder,
+.time-task-log-emotion-q4::placeholder {
+  color: #9ca3af;
+  font-style: italic;
+}
+
 .time-task-log-emotion-q1::-webkit-scrollbar,
 .time-task-log-emotion-q2::-webkit-scrollbar,
 .time-task-log-emotion-q3::-webkit-scrollbar,
@@ -12647,15 +12841,84 @@ body.kpi-resizing {
   margin-bottom: 0;
 }
 
+.time-task-log-expense-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+.time-task-log-expense-tab {
+  padding: 0.4rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #6b7280;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+}
+.time-task-log-expense-tab:hover {
+  color: #374151;
+}
+.time-task-log-expense-tab.active {
+  color: #374151;
+  border-bottom-color: #374151;
+}
+
+.time-task-log-expense-amount-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-bottom: 1px solid #e5e7eb;
+  width: 100%;
+}
+.time-task-log-expense-amount-wrap input {
+  flex: 1;
+  border: none !important;
+  border-bottom: none !important;
+}
+.time-task-log-expense-amount-unit {
+  font-size: 0.9rem;
+  color: #6b7280;
+  padding-right: 0.25rem;
+}
+
+.time-task-log-expense-category-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.time-task-log-expense-cat-btn {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #374151;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.time-task-log-expense-cat-btn:hover {
+  border-color: #9ca3af;
+  background: #f9fafb;
+}
+.time-task-log-expense-cat-btn.selected {
+  background: #374151;
+  color: #fff;
+  border-color: #374151;
+}
+
 .time-task-log-expense-name,
 .time-task-log-expense-amount {
   width: 100%;
   height: 40px;
   padding: 0 0.75rem;
   font-size: 0.9rem;
-  border: 1px solid #e5e7eb;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
   border-radius: 0;
-  background: #fff;
+  background: transparent;
   outline: none;
   box-sizing: border-box;
 }
@@ -12670,34 +12933,33 @@ body.kpi-resizing {
   font-size: 0.9rem;
   text-align: left;
   color: #374151;
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
   border-radius: 0;
   cursor: pointer;
   outline: none;
   box-sizing: border-box;
 }
+.time-task-log-expense-dropdown-display.is-placeholder {
+  color: #9ca3af;
+}
 
 .time-task-log-expense-name:focus,
 .time-task-log-expense-amount:focus {
   outline: none;
-  border-color: #d1d5db;
+  border-bottom-color: #9ca3af;
   box-shadow: none;
 }
 
 .time-task-log-expense-dropdown-display:hover,
 .time-task-log-expense-dropdown-display:focus {
-  border-color: #d1d5db;
+  border-bottom-color: #9ca3af;
 }
 
 .time-task-log-expense-category-dropdown,
 .time-task-log-expense-classification-dropdown {
   position: relative;
-}
-
-.time-task-log-expense-dropdown-display:hover,
-.time-task-log-expense-dropdown-display:focus {
-  border-color: #d1d5db;
 }
 
 .time-task-log-expense-dropdown-panel {
@@ -12733,7 +12995,6 @@ body.kpi-resizing {
 
 .time-task-log-submit {
   width: 100%;
-  margin-top: 1rem;
   padding: 0.6rem 1rem;
   font-size: 0.9rem;
   font-weight: 500;
