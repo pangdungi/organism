@@ -18998,6 +18998,7 @@ body.kpi-resizing {
   font-size: 0.9rem;
   font-weight: 600;
   color: #1a1a2e;
+  letter-spacing: 0.04em;
   padding-right: 3rem;
   margin-bottom: 0.25rem;
   flex-shrink: 0;
@@ -19010,7 +19011,8 @@ body.kpi-resizing {
 }
 
 .dream-kpi-card-target-num {
-  font-size: 2rem;
+  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  font-size: 2.2rem;
   font-weight: 700;
   color: #1a1a2e;
   line-height: 1.2;
@@ -19046,7 +19048,7 @@ body.kpi-resizing {
 
 .dream-kpi-card-invested {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #B8B8B8;
   margin-top: 0.5rem;
 }
 
@@ -19054,7 +19056,7 @@ body.kpi-resizing {
   font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
   font-size: 1.1rem;
   font-weight: 600;
-  color: #374151;
+  color: #B8B8B8;
 }
 
 .dream-kpi-card-progress {
@@ -19077,7 +19079,7 @@ body.kpi-resizing {
 .dream-kpi-card-progress-text {
   font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
   font-size: 0.8rem;
-  color: #6b7280;
+  color: #B8B8B8;
 }
 
 .dream-kpi-time-circle-wrap {
@@ -19156,7 +19158,8 @@ body.kpi-resizing {
 .dream-kpi-history-title {
   margin: 0;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 300;
+  letter-spacing: 0.08em;
   color: #1a1a2e;
 }
 
@@ -19165,15 +19168,18 @@ body.kpi-resizing {
   font-size: 0.85rem;
   font-family: inherit;
   font-weight: 500;
-  color: #374151;
-  background: #F8F7F4;
-  border: 1px solid #d1d5db;
+  color: #B8B8B8;
+  letter-spacing: 0.04em;
+  background: transparent;
+  border: none;
+  border-bottom: 0.5px solid #E8E8E6;
   cursor: pointer;
 }
 
 .dream-kpi-history-log-btn:hover {
-  background: #f9fafb;
-  border-color: #9ca3af;
+  background: transparent;
+  color: #6b7280;
+  border-bottom-color: #E8E8E6;
 }
 
 .dream-kpi-history-divider {
@@ -19694,7 +19700,7 @@ body.kpi-resizing {
   font-family: inherit;
   font-size: 0.9rem;
   font-weight: 500;
-  color: #9ca3af;
+  color: #B8B8B8;
   background: transparent;
   border: 0.5px solid #E8E8E6;
   cursor: pointer;
