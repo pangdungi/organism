@@ -1672,9 +1672,9 @@ function renderMonthlyView(tabsElement) {
   let sidebarCollapsed = false;
   todoSidebar.innerHTML = `
     <div class="calendar-todo-sidebar-header">
-      <span class="calendar-todo-sidebar-title">날짜 잡아서 해야 할일</span>
+      <span class="calendar-todo-sidebar-title">할일 접기</span>
       <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
-        <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6 6l4 6-4 6 M14 6l4 6-4 6"/></svg>
+        <span class="calendar-todo-sidebar-collapse-text">접기</span>
       </button>
     </div>
     <div class="calendar-todo-sidebar-body">
@@ -1693,14 +1693,16 @@ function renderMonthlyView(tabsElement) {
   todoListEl.classList.add("todo-list-in-sidebar");
   mainWrap.appendChild(todoListEl);
   overdueWrapEl.appendChild(renderOverdueSection({ enableDragToCalendar: true }));
-  todoSidebar
-    .querySelector(".calendar-todo-sidebar-collapse")
-    .addEventListener("click", () => {
+  (() => {
+    const collapseBtn = todoSidebar.querySelector(".calendar-todo-sidebar-collapse");
+    const titleEl = todoSidebar.querySelector(".calendar-todo-sidebar-title");
+    collapseBtn.addEventListener("click", () => {
       sidebarCollapsed = !sidebarCollapsed;
       todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
-      todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title =
-        sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+      collapseBtn.title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+      titleEl.textContent = sidebarCollapsed ? "할일" : "할일 접기";
     });
+  })();
   wrap.appendChild(todoSidebar);
 
   wrap.addEventListener("dragend", () => {
@@ -2362,9 +2364,9 @@ function render2WeekView(tabsElement) {
   let sidebarCollapsed = false;
   todoSidebar.innerHTML = `
     <div class="calendar-todo-sidebar-header">
-      <span class="calendar-todo-sidebar-title">날짜 잡아서 해야 할일</span>
+      <span class="calendar-todo-sidebar-title">할일 접기</span>
       <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
-        <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6 6l4 6-4 6 M14 6l4 6-4 6"/></svg>
+        <span class="calendar-todo-sidebar-collapse-text">접기</span>
       </button>
     </div>
     <div class="calendar-todo-sidebar-body">
@@ -2383,14 +2385,16 @@ function render2WeekView(tabsElement) {
   todoListEl.classList.add("todo-list-in-sidebar");
   mainWrap.appendChild(todoListEl);
   overdueWrapEl.appendChild(renderOverdueSection({ enableDragToCalendar: true }));
-  todoSidebar
-    .querySelector(".calendar-todo-sidebar-collapse")
-    .addEventListener("click", () => {
+  (() => {
+    const collapseBtn = todoSidebar.querySelector(".calendar-todo-sidebar-collapse");
+    const titleEl = todoSidebar.querySelector(".calendar-todo-sidebar-title");
+    collapseBtn.addEventListener("click", () => {
       sidebarCollapsed = !sidebarCollapsed;
       todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
-      todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title =
-        sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+      collapseBtn.title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+      titleEl.textContent = sidebarCollapsed ? "할일" : "할일 접기";
     });
+  })();
   wrap.appendChild(todoSidebar);
 
   wrap.addEventListener("dragend", () => {
@@ -3048,9 +3052,9 @@ function render3WeekView(tabsElement) {
   let sidebarCollapsed = false;
   todoSidebar.innerHTML = `
     <div class="calendar-todo-sidebar-header">
-      <span class="calendar-todo-sidebar-title">날짜 잡아서 해야 할일</span>
+      <span class="calendar-todo-sidebar-title">할일 접기</span>
       <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
-        <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6 6l4 6-4 6 M14 6l4 6-4 6"/></svg>
+        <span class="calendar-todo-sidebar-collapse-text">접기</span>
       </button>
     </div>
     <div class="calendar-todo-sidebar-body">
@@ -3069,14 +3073,16 @@ function render3WeekView(tabsElement) {
   todoListEl.classList.add("todo-list-in-sidebar");
   mainWrap.appendChild(todoListEl);
   overdueWrapEl.appendChild(renderOverdueSection({ enableDragToCalendar: true }));
-  todoSidebar
-    .querySelector(".calendar-todo-sidebar-collapse")
-    .addEventListener("click", () => {
+  (() => {
+    const collapseBtn = todoSidebar.querySelector(".calendar-todo-sidebar-collapse");
+    const titleEl = todoSidebar.querySelector(".calendar-todo-sidebar-title");
+    collapseBtn.addEventListener("click", () => {
       sidebarCollapsed = !sidebarCollapsed;
       todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
-      todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title =
-        sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+      collapseBtn.title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+      titleEl.textContent = sidebarCollapsed ? "할일" : "할일 접기";
     });
+  })();
   wrap.appendChild(todoSidebar);
 
   wrap.addEventListener("dragend", () => {
@@ -5179,9 +5185,9 @@ function render1WeekView(tabsElement) {
   let sidebarCollapsed = false;
   todoSidebar.innerHTML = `
     <div class="calendar-todo-sidebar-header">
-      <span class="calendar-todo-sidebar-title">날짜 잡아서 해야 할일</span>
+      <span class="calendar-todo-sidebar-title">할일 접기</span>
       <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
-        <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6 6l4 6-4 6 M14 6l4 6-4 6"/></svg>
+        <span class="calendar-todo-sidebar-collapse-text">접기</span>
       </button>
     </div>
     <div class="calendar-todo-sidebar-body">
@@ -5200,14 +5206,16 @@ function render1WeekView(tabsElement) {
   todoListEl.classList.add("todo-list-in-sidebar");
   mainWrap.appendChild(todoListEl);
   overdueWrapEl.appendChild(renderOverdueSection({ enableDragToCalendar: true }));
-  todoSidebar
-    .querySelector(".calendar-todo-sidebar-collapse")
-    .addEventListener("click", () => {
+  (() => {
+    const collapseBtn = todoSidebar.querySelector(".calendar-todo-sidebar-collapse");
+    const titleEl = todoSidebar.querySelector(".calendar-todo-sidebar-title");
+    collapseBtn.addEventListener("click", () => {
       sidebarCollapsed = !sidebarCollapsed;
       todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
-      todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title =
-        sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+      collapseBtn.title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+      titleEl.textContent = sidebarCollapsed ? "할일" : "할일 접기";
     });
+  })();
   wrap.appendChild(todoSidebar);
 
   wrap.addEventListener("dragend", () => {
@@ -5504,9 +5512,9 @@ function renderEisenhowerView(tabsElement) {
   todoSidebar.style.width = `${sidebarWidth}px`;
   todoSidebar.innerHTML = `
     <div class="calendar-todo-sidebar-header">
-      <span class="calendar-todo-sidebar-title">할 일</span>
+      <span class="calendar-todo-sidebar-title">할일 접기</span>
       <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
-        <svg class="calendar-todo-sidebar-collapse-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6 6l4 6-4 6 M14 6l4 6-4 6"/></svg>
+        <span class="calendar-todo-sidebar-collapse-text">접기</span>
       </button>
     </div>
     <div class="calendar-todo-sidebar-body" title="우선순위 취소: 사분면 항목을 여기로 드래그"></div>
@@ -5517,11 +5525,13 @@ function renderEisenhowerView(tabsElement) {
   todoSidebar
     .querySelector(".calendar-todo-sidebar-body")
     .appendChild(todoListEl);
+  const titleEl = todoSidebar.querySelector(".calendar-todo-sidebar-title");
   todoSidebar
     .querySelector(".calendar-todo-sidebar-collapse")
     .addEventListener("click", () => {
       sidebarCollapsed = !sidebarCollapsed;
       todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
+      titleEl.textContent = sidebarCollapsed ? "할일" : "할일 접기";
       if (sidebarCollapsed) {
         todoSidebar.style.width = "";
       } else {

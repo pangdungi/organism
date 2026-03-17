@@ -1873,12 +1873,17 @@ body {
   width: 2.5rem;
   text-align: center;
 }
-/* 할일·우선순위 헤더: DM Mono, #B8B8B8 (table th보다 우선) */
+/* 할일·우선순위 헤더 (table th보다 우선) */
 .home-todo-list-table .home-todo-th-name,
 .home-todo-list-table .home-todo-th-priority {
   font-size: 10px !important;
   font-weight: 300 !important;
-  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  ) !important;
   letter-spacing: 0.03em !important;
   color: #B8B8B8 !important;
 }
@@ -6930,6 +6935,7 @@ body {
   padding: 0.5rem;
   width: 100%;
   max-width: 100%;
+  background: #F9F9F8;
   font-family: var(
     --app-font-family,
     "S-Core Dream 3",
@@ -6937,6 +6943,7 @@ body {
     sans-serif
   );
   box-sizing: border-box;
+  background: #F9F9F8;
 }
 
 .todo-list-view.hide-completed .todo-task-row:has(.todo-done-check:checked) {
@@ -7839,9 +7846,15 @@ body {
   text-align: left;
   font-weight: 300;
   font-size: 0.8rem;
-  font-family: "DM Mono", "SF Mono", Consolas, monospace;
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
   letter-spacing: 0.14em;
   color: #B8B8B8;
+  background: #F9F9F8;
   border-bottom: 1px solid #eee;
   vertical-align: middle;
 }
@@ -7864,6 +7877,7 @@ body {
   position: sticky;
   left: 0;
   z-index: 1;
+  background: #F9F9F8;
   border-right: 1px solid #eee;
 }
 
@@ -7871,7 +7885,7 @@ body {
   position: sticky;
   left: 2rem;
   z-index: 1;
-  background: transparent;
+  background: #F9F9F8;
   border-right: none;
 }
 
@@ -21899,7 +21913,7 @@ body.kpi-resizing {
   align-self: flex-start;
   font-size: 0.65rem;
   font-weight: 500;
-  color: #9ca3af;
+  color: #B8B8B8;
   background: none;
   padding: 0;
   margin-top: 0.25rem;
@@ -21909,8 +21923,8 @@ body.kpi-resizing {
 
 .calendar-eisenhower-quadrant-title {
   font-size: 1rem;
-  font-weight: 700;
-  color: #1f2937;
+  font-weight: 300;
+  color: #3A3A3A;
   margin: 0 0 0.35rem 0;
 }
 
@@ -24297,11 +24311,10 @@ body.kpi-resizing {
 }
 
 .calendar-todo-sidebar.collapsed {
-  width: 48px;
-  min-width: 48px;
+  width: 80px;
+  min-width: 80px;
 }
 
-.calendar-todo-sidebar.collapsed .calendar-todo-sidebar-title,
 .calendar-todo-sidebar.collapsed .calendar-todo-sidebar-body,
 .calendar-todo-sidebar.collapsed .calendar-kpi-sidebar-body {
   display: none;
@@ -24349,7 +24362,7 @@ body.kpi-resizing {
 }
 
 .calendar-todo-sidebar-collapse:hover {
-  background: #eee;
+  background: transparent;
 }
 
 .calendar-todo-sidebar-collapse-icon {
@@ -24357,8 +24370,9 @@ body.kpi-resizing {
   filter: brightness(0) saturate(100%) invert(45%);
 }
 
-.calendar-todo-sidebar-collapse:hover .calendar-todo-sidebar-collapse-icon {
-  filter: brightness(0) saturate(100%) invert(35%);
+.calendar-todo-sidebar-collapse:hover .calendar-todo-sidebar-collapse-icon,
+.calendar-todo-sidebar-collapse:hover .calendar-todo-sidebar-collapse-text {
+  opacity: 0.8;
 }
 
 .calendar-todo-sidebar-body {
