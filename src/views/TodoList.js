@@ -1665,7 +1665,7 @@ function createSection(section, options = {}) {
   const theadEisenhowerSidebarFirst = eisenhowerSidebarFirst
     ? `<tr>
         <th class="todo-th-done"></th>
-        <th class="todo-th-name">Name</th>
+        <th class="todo-th-name">NAME</th>
         <th class="todo-th-eisenhower">우선순위</th>
         <th class="todo-th-kpi">KPI</th>
         <th class="todo-th-start">시작일</th>
@@ -1679,7 +1679,7 @@ function createSection(section, options = {}) {
   const theadOverdue = overdueColumnOrder
     ? `<tr>
         <th class="todo-th-done"></th>
-        <th class="todo-th-name">Name</th>
+        <th class="todo-th-name">NAME</th>
         <th class="todo-th-overdue">기한 초과</th>
         <th class="todo-th-kpi">KPI</th>
         <th class="todo-th-start">시작일</th>
@@ -1691,7 +1691,7 @@ function createSection(section, options = {}) {
       </tr>`
     : `<tr>
         <th class="todo-th-done"></th>
-        <th class="todo-th-name">Name</th>
+        <th class="todo-th-name">NAME</th>
         <th class="todo-th-kpi">KPI</th>
         <th class="todo-th-start">시작일</th>
         <th class="todo-th-due">마감일</th>
