@@ -513,7 +513,6 @@ export function render() {
       "-" +
       String(today.getDate()).padStart(2, "0");
     let valueVal = "";
-    let statusVal = "순항";
     let memoVal = "";
     if (editLog) {
       if (editLog.dateRaw) {
@@ -524,7 +523,6 @@ export function render() {
           dateVal = `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
       }
       valueVal = sanitizeNumericInput(editLog.value) || "";
-      statusVal = editLog.status || "순항";
       memoVal = editLog.memo || "";
     }
     modal.innerHTML = `
@@ -595,7 +593,7 @@ export function render() {
               date: dateStr,
               dateRaw: dateVal,
               value: sanitizeNumericInput(form.value.value) || "",
-              status: form.status.value || "순항",
+              status: "순항",
               memo: (form.memo.value || "").trim(),
             };
           }
@@ -607,7 +605,7 @@ export function render() {
             date: dateStr,
             dateRaw: dateVal,
             value: sanitizeNumericInput(form.value.value) || "",
-            status: form.status.value || "순항",
+            status: "순항",
             memo: (form.memo.value || "").trim(),
           };
           data.kpiLogs = data.kpiLogs || [];
@@ -1024,7 +1022,6 @@ export function render() {
             <div class="dream-kpi-history-item-main">
               <span class="dream-kpi-history-date">${escapeHtml(log.date)}</span>
               <span class="dream-kpi-history-value">${escapeHtml(log.value || "—")}${unitSuffix}</span>
-              <span class="dream-kpi-history-status dream-kpi-history-status--${log.status === "순항" ? "good" : log.status === "보통" ? "normal" : "poor"}">${escapeHtml(log.status)}</span>
             </div>
             ${log.memo ? `<div class="dream-kpi-history-memo">${escapeHtml(log.memo)}</div>` : ""}
           </div>
@@ -1054,6 +1051,10 @@ export function render() {
     todoHeader.className = "dream-kpi-todo-header";
     todoHeader.innerHTML = `<span class="dream-kpi-todo-title">할일 목록</span>`;
     historyWrap.appendChild(todoHeader);
+
+    const todoDivider = document.createElement("div");
+    todoDivider.className = "dream-kpi-todo-divider";
+    historyWrap.appendChild(todoDivider);
 
     const todoList = document.createElement("div");
     todoList.className = "dream-kpi-todo-list";

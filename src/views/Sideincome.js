@@ -476,7 +476,6 @@ export function render() {
         if (m) dateVal = `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
       }
       valueVal = sanitizeNumericInput(editLog.value) || "";
-      statusVal = editLog.status || "순항";
       memoVal = editLog.memo || "";
     }
     modal.innerHTML = `
@@ -500,17 +499,9 @@ export function render() {
               </div>
             </div>
             <div class="dream-kpi-log-row">
-              <div class="dream-kpi-log-field">
+              <div class="dream-kpi-log-field dream-kpi-log-field--full">
                 <label>오늘 측정값</label>
                 <input type="text" name="value" placeholder="숫자 입력" value="${escapeHtml(valueVal)}" inputmode="numeric" />
-              </div>
-              <div class="dream-kpi-log-field">
-                <label>목표 대비 상태</label>
-                <div class="dream-kpi-log-status">
-                  <label class="dream-kpi-log-status-btn"><input type="radio" name="status" value="순항" ${statusVal === "순항" ? "checked" : ""} /><span>순항</span></label>
-                  <label class="dream-kpi-log-status-btn"><input type="radio" name="status" value="보통" ${statusVal === "보통" ? "checked" : ""} /><span>보통</span></label>
-                  <label class="dream-kpi-log-status-btn"><input type="radio" name="status" value="부진" ${statusVal === "부진" ? "checked" : ""} /><span>부진</span></label>
-                </div>
               </div>
             </div>
             <div class="dream-kpi-log-field">
@@ -539,7 +530,7 @@ export function render() {
             date: dateStr,
             dateRaw: dateVal,
             value: sanitizeNumericInput(form.value.value) || "",
-            status: form.status.value || "순항",
+            status: "순항",
             memo: (form.memo.value || "").trim(),
           };
         }
@@ -551,7 +542,7 @@ export function render() {
           date: dateStr,
           dateRaw: dateVal,
           value: sanitizeNumericInput(form.value.value) || "",
-          status: form.status.value || "순항",
+          status: "순항",
           memo: (form.memo.value || "").trim(),
         };
         data.kpiLogs = data.kpiLogs || [];
@@ -583,7 +574,6 @@ export function render() {
         if (m) dateVal = `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
       }
       valueVal = sanitizeNumericInput(editLog.value) || "";
-      statusVal = editLog.status || "순항";
       memoVal = editLog.memo || "";
     }
     modal.innerHTML = `
@@ -647,7 +637,7 @@ export function render() {
             date: dateStr,
             dateRaw: dateVal,
             value: sanitizeNumericInput(form.value.value) || "",
-            status: form.status.value || "순항",
+            status: "순항",
             memo: (form.memo.value || "").trim(),
           };
         }
@@ -658,7 +648,7 @@ export function render() {
           date: dateStr,
           dateRaw: dateVal,
           value: sanitizeNumericInput(form.value.value) || "",
-          status: form.status.value || "순항",
+          status: "순항",
           memo: (form.memo.value || "").trim(),
         };
         data.pathLogs = data.pathLogs || [];
@@ -1059,7 +1049,6 @@ export function render() {
             <div class="dream-kpi-history-item-main">
               <span class="dream-kpi-history-date">${escapeHtml(log.date)}</span>
               <span class="dream-kpi-history-value">${escapeHtml(log.value || "—")}${unitSuffix}</span>
-              <span class="dream-kpi-history-status dream-kpi-history-status--${log.status === "순항" ? "good" : log.status === "보통" ? "normal" : "poor"}">${escapeHtml(log.status)}</span>
             </div>
             ${log.memo ? `<div class="dream-kpi-history-memo">${escapeHtml(log.memo)}</div>` : ""}
             ${dailyLine ? `<div class="dream-kpi-history-daily">${escapeHtml(dailyLine)}</div>` : ""}
@@ -1086,6 +1075,10 @@ export function render() {
     todoHeader.className = "dream-kpi-todo-header";
     todoHeader.innerHTML = `<span class="dream-kpi-todo-title">할일 목록</span>`;
     historyWrap.appendChild(todoHeader);
+
+    const todoDivider = document.createElement("div");
+    todoDivider.className = "dream-kpi-todo-divider";
+    historyWrap.appendChild(todoDivider);
 
     const todoList = document.createElement("div");
     todoList.className = "dream-kpi-todo-list";
@@ -1235,6 +1228,9 @@ export function render() {
       dailyHeader.className = "dream-kpi-todo-header";
       dailyHeader.innerHTML = `<span class="dream-kpi-todo-title">매일 반복되는 할일 목록</span>`;
       historyWrap.appendChild(dailyHeader);
+      const dailyDivider = document.createElement("div");
+      dailyDivider.className = "dream-kpi-todo-divider";
+      historyWrap.appendChild(dailyDivider);
       const dailyList = document.createElement("div");
       dailyList.className = "dream-kpi-todo-list";
       const dailyTodos = (data.kpiDailyRepeatTodos || []).filter((t) => t.kpiId === selectedKpiId && (t.text || "").trim() !== "");
