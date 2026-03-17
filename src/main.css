@@ -20248,23 +20248,54 @@ body.kpi-resizing {
 }
 
 .dream-kpi-field-checkbox {
-  margin-top: 0.25rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid #E8E8E6;
+  border-bottom: 1px solid #E8E8E6;
 }
 
 .dream-kpi-checkbox-label {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: space-between;
+  gap: 0.75rem;
   cursor: pointer;
   font-size: 0.95rem;
   font-weight: 500;
-  color: #6b7280;
+  color: #3A3A3A;
+}
+
+.dream-kpi-checkbox-label {
+  position: relative;
 }
 
 .dream-kpi-checkbox-label input[type="checkbox"] {
-  width: auto;
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
   margin: 0;
-  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* 토글 트랙 + 썸 (체크박스 숨기고 시각적 토글로 대체) */
+.dream-kpi-checkbox-label::after {
+  content: "";
+  flex-shrink: 0;
+  width: 44px;
+  height: 24px;
+  border-radius: 12px !important;
+  background: #DCDCDA;
+  background-image: radial-gradient(circle at 12px 50%, #fff 10px, transparent 11px);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: background 0.2s, background-image 0.2s;
+}
+
+.dream-kpi-checkbox-label:has(input:checked)::after {
+  background: #111111;
+  background-image: radial-gradient(circle at 32px 50%, #fff 10px, transparent 11px);
 }
 
 .dream-kpi-form input,
@@ -20473,26 +20504,27 @@ body.kpi-resizing {
 .dream-kpi-delete-note {
   margin: 0 0 0.5rem;
   font-size: 0.8rem;
-  color: #6b7280;
+  font-weight: 300;
+  color: #3A3A3A;
 }
 
 .dream-kpi-delete-btn {
   display: inline-block;
-  padding: 0.4rem 0.75rem;
+  padding: 0.4rem 0;
   font-size: 0.85rem;
   font-family: inherit;
   font-weight: 500;
-  color: #6b7280;
-  background: #F8F7F4;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
+  color: #B8B8B8;
+  background: transparent;
+  border: none;
+  border-bottom: 0.5px solid #E8E8E6;
+  border-radius: 0;
   cursor: pointer;
 }
 
 .dream-kpi-delete-btn:hover {
-  color: #374151;
-  background: #f9fafb;
-  border-color: #9ca3af;
+  color: #9ca3af;
+  border-bottom-color: #D1D5DB;
 }
 
 /* 꿈 삭제 확인 모달 */
