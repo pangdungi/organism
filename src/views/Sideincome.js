@@ -253,9 +253,6 @@ export function render() {
             </div>
             <div class="dream-kpi-field">
               <label>달성기한</label>
-              </div>
-            <div class="dream-kpi-field">
-              <label>달성기한</label>
               <input type="date" name="targetDeadline" />
             </div>
           </div>
@@ -264,8 +261,6 @@ export function render() {
             <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
             <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
             <button type="button" class="dream-kpi-deadline-quick-btn" data-days="60">+60일</button>
-          </div>
-            </div>
           </div>
           <div class="dream-kpi-field dream-kpi-field-checkbox">
             <label class="dream-kpi-checkbox-label">
@@ -344,9 +339,6 @@ export function render() {
             </div>
             <div class="dream-kpi-field">
               <label>달성기한</label>
-              </div>
-            <div class="dream-kpi-field">
-              <label>달성기한</label>
               <input type="date" name="targetDeadline" value="${escapeHtml(toDateInputValue(kpi.targetDeadline))}" />
             </div>
           </div>
@@ -355,8 +347,6 @@ export function render() {
             <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
             <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
             <button type="button" class="dream-kpi-deadline-quick-btn" data-days="60">+60일</button>
-          </div>
-            </div>
           </div>
           <div class="dream-kpi-field dream-kpi-field-checkbox">
             <label class="dream-kpi-checkbox-label">
