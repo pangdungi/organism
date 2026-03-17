@@ -21,7 +21,7 @@ import {
 } from "../utils/kpiTodoSync.js";
 import { getSectionColor, getCustomSections, getTimeCategoryColorsForTimetable, getTimeCategoryColorsForTimetableExpected } from "../utils/todoSettings.js";
 import { getKpisByCategory } from "../utils/kpiViewModal.js";
-import { formatDeadlineRangeForDisplay } from "../utils/ganttModal.js";
+import { formatDeadlineRangeForDisplay, formatDeadlineRangeCompact } from "../utils/ganttModal.js";
 import {
   getAccumulatedMinutes,
   minutesToHhMm,
@@ -3755,7 +3755,7 @@ function render1DayView(tabsElement) {
           <div class="dream-kpi-card-inner calendar-kpi-card-inner">
             <div class="dream-kpi-card-name">${escapeHtml(k.name)}</div>
             <div class="dream-kpi-card-target-num">${k.targetValue ? escapeHtml(String(k.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) + (k.unit ? '<span class="dream-kpi-card-unit"> ' + escapeHtml(k.unit) + "</span>" : "") : "—"}</div>
-            ${k.targetStartDate || k.targetDeadline ? `<div class="dream-kpi-card-deadline">목표기한 ${escapeHtml(formatDeadlineRangeForDisplay(k.targetStartDate, k.targetDeadline))}</div>` : ""}
+            ${k.targetStartDate || k.targetDeadline ? `<div class="dream-kpi-card-deadline">${escapeHtml(formatDeadlineRangeCompact(k.targetStartDate, k.targetDeadline))}</div>` : ""}
             <div class="dream-kpi-card-progress">
               <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${k.progress}%"></div></div>
               <div class="dream-kpi-card-progress-text">${escapeHtml(k.progressText)}</div>

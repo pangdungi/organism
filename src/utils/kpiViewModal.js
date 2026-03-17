@@ -2,7 +2,7 @@
  * 캘린더용 KPI 보기 모달 - 카테고리별(꿈, 부수입, 행복, 건강) KPI 카드 세로 배치
  */
 
-import { formatDeadlineRangeForDisplay } from "./ganttModal.js";
+import { formatDeadlineRangeCompact } from "./ganttModal.js";
 import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes } from "./timeKpiSync.js";
 
 const DREAM_MAP_KEY = "kpi-dream-map";
@@ -143,7 +143,7 @@ export function showKpiViewModal() {
             <div class="dream-kpi-card-inner">
               <div class="dream-kpi-card-name">${escapeHtml(k.name)}</div>
               <div class="dream-kpi-card-target-num">${k.targetValue ? escapeHtml(String(k.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) + (k.unit ? '<span class="dream-kpi-card-unit"> ' + escapeHtml(k.unit) + "</span>" : "") : "—"}</div>
-              ${(k.targetStartDate || k.targetDeadline) ? `<div class="dream-kpi-card-deadline">목표기한 ${escapeHtml(formatDeadlineRangeForDisplay(k.targetStartDate, k.targetDeadline))}</div>` : ""}
+              ${(k.targetStartDate || k.targetDeadline) ? `<div class="dream-kpi-card-deadline">${escapeHtml(formatDeadlineRangeCompact(k.targetStartDate, k.targetDeadline))}</div>` : ""}
               <div class="dream-kpi-card-progress">
                 <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${k.progress}%"></div></div>
                 <div class="dream-kpi-card-progress-text">${escapeHtml(k.progressText)}</div>

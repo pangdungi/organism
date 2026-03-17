@@ -7,6 +7,7 @@ import {
   toDateInputValue,
   formatDeadlineForDisplay,
   formatDeadlineRangeForDisplay,
+  formatDeadlineRangeCompact,
 } from "../utils/ganttModal.js";
 import {
   getAccumulatedMinutes,
@@ -801,7 +802,7 @@ export function render() {
           <button type="button" class="dream-kpi-card-edit" title="KPI 수정">수정</button>
           <div class="dream-kpi-card-name">${escapeHtml(kpi.name)}</div>
           <div class="dream-kpi-card-target-num">${kpi.targetValue ? escapeHtml(String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) + (kpi.unit ? '<span class="dream-kpi-card-unit"> ' + escapeHtml(kpi.unit) + "</span>" : "") : "—"}</div>
-          ${kpi.targetStartDate || kpi.targetDeadline ? `<div class="dream-kpi-card-deadline">목표기한 ${escapeHtml(formatDeadlineRangeForDisplay(kpi.targetStartDate, kpi.targetDeadline))}</div>` : ""}
+          ${kpi.targetStartDate || kpi.targetDeadline ? `<div class="dream-kpi-card-deadline">${escapeHtml(formatDeadlineRangeCompact(kpi.targetStartDate, kpi.targetDeadline))}</div>` : ""}
           <div class="dream-kpi-card-progress">
             <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${progress}%"></div></div>
             <div class="dream-kpi-card-progress-text">${escapeHtml(progressText)}</div>
@@ -946,7 +947,7 @@ export function render() {
             <button type="button" class="dream-kpi-card-edit" title="KPI 수정">수정</button>
             <div class="dream-kpi-card-name">${escapeHtml(kpi.name)}</div>
             <div class="dream-kpi-card-target-num">${kpi.targetValue ? escapeHtml(String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) + (kpi.unit ? '<span class="dream-kpi-card-unit"> ' + escapeHtml(kpi.unit) + "</span>" : "") : "—"}</div>
-            ${kpi.targetStartDate || kpi.targetDeadline ? `<div class="dream-kpi-card-deadline">목표기한 ${escapeHtml(formatDeadlineRangeForDisplay(kpi.targetStartDate, kpi.targetDeadline))}</div>` : ""}
+            ${kpi.targetStartDate || kpi.targetDeadline ? `<div class="dream-kpi-card-deadline">${escapeHtml(formatDeadlineRangeCompact(kpi.targetStartDate, kpi.targetDeadline))}</div>` : ""}
             <div class="dream-kpi-card-progress">
               <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:100%"></div></div>
               <div class="dream-kpi-card-progress-text">${escapeHtml(progressText)} ✓</div>

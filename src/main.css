@@ -18594,28 +18594,30 @@ body.kpi-resizing {
 
 .dream-view-label {
   display: block;
+  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
   font-size: 0.65rem;
-  font-weight: 500;
-  letter-spacing: 0.12em;
-  color: #9ca3af;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  color: #B8B8B8;
   margin-bottom: 0.2rem;
 }
 
 .dream-view-title {
-  margin: 0 0 0.3rem;
+  margin: 6px 0 0.3rem;
   font-size: 2rem;
-  font-weight: 700;
+  font-weight: 200;
   color: #1f2937;
-  font-family: var(--app-font-family), "Noto Serif KR", Georgia, serif;
+  font-family: "Noto Serif KR", Georgia, serif !important;
   line-height: 1.2;
 }
 
 .dream-view-subtitle {
-  margin: 0;
+  margin: 6px 0 0 0;
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #B8B8B8;
   font-weight: 400;
   font-style: italic;
+  letter-spacing: 0.02em;
 }
 
 .dream-btn-row {
@@ -18639,8 +18641,8 @@ body.kpi-resizing {
   width: 36px;
   height: 36px;
   padding: 0;
-  background: #F8F7F4;
-  border: 1px solid #e5e7eb;
+  background: transparent;
+  border: 0.5px solid #E8E8E6;
   border-radius: 6px 6px 0 0 !important;
   cursor: pointer;
   color: #6b7280;
@@ -18651,8 +18653,8 @@ body.kpi-resizing {
 }
 
 .dream-add-icon-btn:hover {
-  background: #f9fafb;
-  border-color: #d1d5db;
+  background: transparent;
+  border-color: #E8E8E6;
   color: #374151;
 }
 
@@ -18733,8 +18735,8 @@ body.kpi-resizing {
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
   color: #6b7280;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: transparent;
+  border: 0.5px solid #E8E8E6;
   border-radius: 6px 6px 0 0 !important; /* 윗부분 모서리만 둥글게 (전역 reset 덮어쓰기) */
   font-family: inherit;
   cursor: pointer;
@@ -18746,8 +18748,8 @@ body.kpi-resizing {
 }
 
 .dream-tab:hover {
-  background: #f3f4f6;
-  border-color: #d1d5db;
+  background: transparent;
+  border-color: #E8E8E6;
   color: #374151;
 }
 
@@ -18775,9 +18777,9 @@ body.kpi-resizing {
 }
 
 .dream-tab.active {
-  background: #F8F7F4;
-  border-color: #d1d5db;
-  border-bottom: 1px solid #fff; /* 밑선 제거 - 유지 */
+  background: transparent;
+  border-color: #E8E8E6;
+  border-bottom: 0.5px solid transparent; /* 밑선 제거 */
   border-radius: 6px 6px 0 0 !important; /* 윗부분 모서리만 둥글게 (전역 reset 덮어쓰기) */
   color: #1a1a2e;
   font-weight: 500;
@@ -18916,8 +18918,8 @@ body.kpi-resizing {
   max-width: 280px;
   min-height: 0;
   padding: 1rem;
-  background: #F8F7F4;
-  border: 1px solid #e5e7eb;
+  background: transparent;
+  border: 0.5px solid #E8E8E6;
   cursor: grab;
   transition:
     border-color 0.2s,
@@ -18929,7 +18931,7 @@ body.kpi-resizing {
 }
 
 .dream-kpi-card:hover {
-  border-color: #d1d5db;
+  border-color: #E8E8E6;
 }
 
 .dream-kpi-card.is-selected {
@@ -18942,14 +18944,14 @@ body.kpi-resizing {
 }
 
 .dream-kpi-card-drag-over {
-  border-color: #9ca3af;
-  background: #f9fafb;
+  border-color: #E8E8E6;
+  background: transparent;
 }
 
 .dream-kpi-daily-repeat-wrap {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 0.5px solid #E8E8E6;
 }
 
 .dream-kpi-daily-repeat-wrap .dream-kpi-todo-header {
@@ -19029,7 +19031,13 @@ body.kpi-resizing {
   margin-bottom: 0.25rem;
 }
 
-.dream-kpi-card-deadline,
+.dream-kpi-card-deadline {
+  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  font-size: 0.75rem;
+  color: #B8B8B8;
+  margin-bottom: 0.75rem;
+}
+
 .dream-kpi-card-time {
   font-size: 0.75rem;
   color: #6b7280;
@@ -19043,6 +19051,7 @@ body.kpi-resizing {
 }
 
 .dream-kpi-card-invested-value {
+  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
   font-size: 1.1rem;
   font-weight: 600;
   color: #374151;
@@ -19054,7 +19063,7 @@ body.kpi-resizing {
 
 .dream-kpi-card-progress-bar {
   height: 6px;
-  background: #e5e7eb;
+  background: #E8E8E6;
   overflow: hidden;
   margin-bottom: 0.35rem;
 }
@@ -19066,6 +19075,7 @@ body.kpi-resizing {
 }
 
 .dream-kpi-card-progress-text {
+  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
   font-size: 0.8rem;
   color: #6b7280;
 }
@@ -19594,40 +19604,44 @@ body.kpi-resizing {
   color: #374151;
 }
 
-/* KPI 필터 바 - 활성 상태 명확히 */
+/* KPI 필터 바 - 탭 스타일 (활성 밑줄이 하단 선과 일치) */
 .dream-kpi-filter-bar {
   display: flex;
-  gap: 0.35rem;
+  gap: 2rem;
   margin-bottom: 1rem;
+  padding-bottom: 0;
+  border-bottom: 1px solid #E8E8E6;
 }
 
 .dream-kpi-filter-btn {
-  padding: 0.45rem 0.9rem;
+  padding: 0 0 0.5rem;
+  margin-bottom: -2px;
   font-size: 0.85rem;
-  font-weight: 500;
-  border: 1px solid #e5e7eb;
-  background: #F8F7F4;
-  border-radius: 6px;
+  font-weight: 400;
+  border: none;
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
   cursor: pointer;
-  color: #9ca3af;
-  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  color: #B8B8B8;
+  transition: color 0.2s, border-color 0.2s;
 }
 
 .dream-kpi-filter-btn:hover {
-  border-color: #d1d5db;
   color: #6b7280;
 }
 
 .dream-kpi-filter-btn.active {
-  background: #1C1C1A;
-  border-color: #374151;
-  color: #fff;
+  font-weight: 500;
+  color: #111;
+  border-bottom-color: #111;
+  margin-bottom: -2px; /* 밑줄이 하단 구분선에 딱 맞게 */
 }
 
 .dream-kpi-filter-btn.active:hover {
-  background: #4b5563;
-  border-color: #4b5563;
-  color: #fff;
+  font-weight: 500;
+  color: #111;
+  border-bottom-color: #111;
 }
 
 /* 달성 완료 접기 섹션 */
@@ -19681,8 +19695,8 @@ body.kpi-resizing {
   font-size: 0.9rem;
   font-weight: 500;
   color: #9ca3af;
-  background: #fafafa;
-  border: 2px dashed #d1d5db;
+  background: transparent;
+  border: 0.5px solid #E8E8E6;
   cursor: pointer;
   transition:
     border-color 0.2s,
@@ -19692,8 +19706,8 @@ body.kpi-resizing {
 
 .dream-kpi-add-card:hover {
   color: #374151;
-  background: #f9fafb;
-  border-color: #9ca3af;
+  background: transparent;
+  border-color: #E8E8E6;
 }
 
 .dream-kpi-add-card-text {

@@ -83,6 +83,23 @@ export function formatDeadlineRangeForDisplay(startStr, endStr) {
   return `${start} ~ ${end}`;
 }
 
+/** KPI 카드용: yyyy.mm.dd - yyyy.mm.dd 형식 (목표기한 접두사 없음) */
+export function formatDeadlineRangeCompact(startStr, endStr) {
+  const fmt = (s) => {
+    if (!s || typeof s !== "string") return "";
+    const m = s.trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (m) return `${m[1]}.${String(parseInt(m[2], 10)).padStart(2, "0")}.${String(parseInt(m[3], 10)).padStart(2, "0")}`;
+    const d = parseTargetDeadline(s);
+    return d ? dateToYmd(d).replace(/-/g, ".") : s;
+  };
+  const start = fmt(startStr);
+  const end = fmt(endStr);
+  if (!start && !end) return "";
+  if (!start) return end;
+  if (!end) return start;
+  return `${start} - ${end}`;
+}
+
 function parseNum(str) {
   const n = parseFloat(String(str || "").replace(/[^0-9.-]/g, ""));
   return Number.isNaN(n) ? 0 : n;
