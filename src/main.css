@@ -40,6 +40,22 @@
 }
 
 @font-face {
+  font-family: "DM Mono";
+  src: url("/fonts/DMMono-Regular.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "EB Garamond";
+  src: url("/fonts/EBGaramond-VariableFont_wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
   font-family: "Noto Serif KR";
   src: url("/fonts/NotoSerifKR-VariableFont_wght.ttf") format("truetype");
   font-weight: 100 900;
@@ -57,8 +73,9 @@
 
 :root {
   --app-font-family: "S-Core Dream 3", -apple-system, sans-serif;
-  --app-bg: #EFECEA;
+  --app-bg: #F9F9F8;
   --content-bg: #F8F7F4;
+  --line: #D8D5D0;
   /* 회색 톤 통일 */
   --gray-50: #f9fafb;
   --gray-100: #f3f4f6;
@@ -198,7 +215,7 @@ body {
     -apple-system,
     sans-serif
   );
-  background: #EFECEA;
+  background: #F9F9F8;
   color: var(--gray-800, #1f2937);
 }
 
@@ -248,7 +265,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: #EFECEA;
+  background: #F9F9F8;
 }
 
 .landing-header {
@@ -594,7 +611,7 @@ body {
 .app-page {
   position: fixed;
   inset: 0;
-  background: #EFECEA;
+  background: #F9F9F8;
   z-index: 1;
 }
 
@@ -618,8 +635,8 @@ body {
 
 /* 사이드바 탭: 회색 계열 미니멀 + 구획선·그림자·여백 */
 .app-sidebar {
-  width: 56px;
-  min-width: 56px;
+  width: 44px;
+  min-width: 44px;
   margin-right: 0;
   background: #f2f2f2;
   color: #6b7280;
@@ -647,16 +664,16 @@ body {
 .app-sidebar-item {
   background: #f2f2f2;
   border: none;
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid #E4E1DC;
   border-radius: 0;
   color: #9ca3af;
   text-align: center;
-  padding: 0.65rem 0.5rem;
-  font-size: 0.9rem;
-  font-weight: 500;
+  padding: 1.75rem 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 200;
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease;
-  font-family: inherit;
+  font-family: "Noto Serif KR", serif !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -684,7 +701,11 @@ body {
   writing-mode: vertical-rl;
   text-orientation: mixed;
   line-height: 1.3;
-  letter-spacing: 0.02em;
+  font-size: 0.8rem;
+  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  font-weight: 300;
+  letter-spacing: 0.12em;
+  color: #B8B8B8;
 }
 
 .app-sidebar-item:hover {
@@ -693,11 +714,26 @@ body {
 }
 
 .app-sidebar-item.active {
+  position: relative;
   background: #fff;
-  font-weight: 600;
-  color: #374151;
-  border-bottom: 1px solid #e5e5e5;
-  box-shadow: 1px 0 0 0 #374151;
+  font-size: 0.85rem;
+  font-family: "Noto Serif KR", serif !important;
+  font-weight: 200;
+  color: #7A7A7A;
+  border-bottom: 1px solid #E4E1DC;
+  box-shadow: none;
+}
+.app-sidebar-item.active .app-sidebar-item-label {
+  color: #7A7A7A;
+}
+.app-sidebar-item.active::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 3px;
+  background: #4A4845;
 }
 
 .app-sidebar-item.active:hover {
@@ -709,7 +745,7 @@ body {
   border-bottom: none;
   color: #9ca3af;
   font-size: 0.88rem;
-  font-family: inherit;
+  font-family: "Noto Serif KR", serif !important;
 }
 
 .app-sidebar-logout:hover {
@@ -914,7 +950,7 @@ body {
   display: grid;
   grid-template-columns: 3fr 5fr 4fr;
   grid-template-rows: minmax(0, 1fr);
-  gap: 1rem;
+  gap: 0;
   flex: 1 1 0;
   min-height: 0;
   overflow: hidden;
@@ -1454,14 +1490,13 @@ body {
   overflow: hidden !important;
   display: flex;
   flex-direction: column;
-  background: #F8F7F4;
+  background: #F9F9F8;
   height: 100%;
 }
 
-/* 선 계층: 섹션 구분선은 주요(진하게) */
+/* 선 계층: 섹션 구분선 */
 .home-view-section:not(:last-child) {
-  border-right: 1.5px solid #d1d5db;
-  box-shadow: 1px 0 0 0 #d1d5db;
+  border-right: 1px solid var(--line);
 }
 
 .home-view-section--calendar {
@@ -1477,13 +1512,13 @@ body {
 .home-view-section-title {
   margin: 0;
   padding: 0.5rem 0.75rem 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #6b7280;
+  font-size: 10px;
+  font-weight: 300;
+  color: #B8b8b8;
   flex-shrink: 0;
-  font-family: "Cormorant Garamond", serif !important;
+  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.24em;
 }
 /* DAILY는 EVENT·TO DO LIST와 동일 스타일(위는 사용 안 함) */
 .home-view-section-title--primary {
@@ -1492,24 +1527,35 @@ body {
   color: #374151;
 }
 
-/* 홈 Daily: 날짜를 페이지 시선 앵커로 – Noto Serif KR, 크고 무게감 */
+/* Daily 섹션: DAILY·날짜·TUE 왼쪽 여백 (선에서 분리) */
+.home-view-section--calendar .home-view-section-title {
+  padding-left: 1.5rem !important;
+}
+.home-view-section--calendar .home-daily-date-anchor {
+  padding-left: 1.5rem !important;
+}
+.home-view-section--calendar .home-daily-weekday {
+  padding-left: 1.5rem !important;
+}
+
+/* 홈 Daily: 날짜를 페이지 시선 앵커로 – EB Garamond, 크고 무게감 */
 .home-daily-date-anchor {
-  font-family: "Noto Serif KR", serif !important;
-  font-size: 3.25rem;
+  font-family: "EB Garamond", serif !important;
+  font-size: 76px;
   font-weight: 200;
   line-height: 1.1;
-  color: #1f2937;
-  margin: 0;
+  color: #111111;
+  margin: 0 0 7px;
   padding: 0.5rem 0.75rem 0;
   letter-spacing: -0.02em;
 }
-/* 홈 Daily: 요일 3글자 영문 대문자 (MON TUE), Noto Serif KR 이탤릭 */
+/* 홈 Daily: 요일 3글자 영문 대문자 (MON TUE), DM Mono */
 .home-daily-weekday {
-  font-family: "Noto Serif KR", serif !important;
-  font-size: 0.9rem;
+  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  font-size: 8.5px;
   font-weight: 500;
-  font-style: italic;
-  color: #6b7280;
+  font-style: normal;
+  color: #B8B8B8;
   margin: 0;
   padding: 0 0.75rem 0.5rem;
   text-transform: uppercase;
@@ -1550,6 +1596,7 @@ body {
   flex: 1 1 100%;
   min-width: 0;
   max-width: none;
+  padding: 0 !important;
 }
 
 /* Daily 영역 초록/컬러 바 제거 – 회색·흰색만 */
@@ -1572,7 +1619,7 @@ body {
   display: none !important;
 }
 .home-embed-1day .calendar-1day-time-header {
-  background: #f3f4f6 !important;
+  background: transparent !important;
 }
 /* 홈 탭: 오늘실제를 예상처럼 표 헤더로만 표시, 버튼 비활성화 */
 .home-embed-1day .calendar-1day-time-header-cell--actual-toggle {
@@ -1581,19 +1628,45 @@ body {
   background: transparent !important;
   border: none !important;
   padding: 0.4rem 0.5rem;
-  font-weight: 600;
+  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  font-weight: 300;
   font-size: 0.75rem;
-  color: #6b7280;
+  letter-spacing: 0.16em;
+  color: #B8B8B8;
 }
 .home-embed-1day .calendar-1day-time-header-cell--actual-toggle:hover {
   background: transparent !important;
   border: none !important;
 }
+.home-embed-1day .calendar-1day-time-header-cell,
+.home-embed-1day .calendar-1day-time-header-cell--actual-toggle {
+  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  font-weight: 300 !important;
+  letter-spacing: 0.16em !important;
+  color: #B8B8B8 !important;
+}
 .home-embed-1day .calendar-1day-actual-toggle-icon {
   display: none;
 }
 .home-embed-1day .calendar-monthly-main {
-  background: #F8F7F4 !important;
+  background: transparent !important;
+}
+/* 홈 Daily 타임테이블: 모든 배경 제거 */
+.home-embed-1day .calendar-1day-view,
+.home-embed-1day .calendar-1day-time-grid,
+.home-embed-1day .calendar-1day-time-column,
+.home-embed-1day .calendar-1day-time-header-label,
+.home-embed-1day .calendar-1day-time-label,
+.home-embed-1day .calendar-1day-time-slot,
+.home-embed-1day .calendar-1day-time-slot--expected,
+.home-embed-1day .calendar-1day-time-slot--actual,
+.home-embed-1day .calendar-1day-time-header-cell,
+.home-embed-1day .calendar-1day-time-row,
+.home-embed-1day .calendar-1day-time-table-wrap,
+.home-embed-1day .calendar-1day-time-table,
+.home-embed-1day .calendar-1day-time-table-inner,
+.home-embed-1day .calendar-monthly-layout {
+  background: transparent !important;
 }
 
 .home-view-section--event {
@@ -1668,11 +1741,11 @@ body {
 }
 
 .home-reminder-row--past {
-  opacity: 0.5;
-  color: #9ca3af;
+  opacity: 1;
+  color: #D8D8D6;
 }
 .home-reminder-row--past .home-reminder-row-time {
-  color: #b8bdc4;
+  color: #D8D8D6;
 }
 
 .home-reminder-row-name {
@@ -1687,19 +1760,22 @@ body {
   flex-shrink: 0;
   color: #6b7280;
   font-size: 0.85rem;
+  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
 }
 
 .home-reminder-row-edit {
   flex-shrink: 0;
   padding: 0.25rem 0.5rem;
   font-size: 0.8rem;
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
-  color: #374151;
+  border: none;
+  border-bottom: 0.5px solid #E8E8E6;
+  background: transparent;
+  color: #E8E8E6;
+  font-weight: 300;
+  letter-spacing: 0.06em;
   cursor: pointer;
-  border-radius: 4px;
   opacity: 0;
-  transition: opacity 0.15s ease;
+  transition: opacity 0.15s, color 0.15s;
 }
 
 .home-reminder-row:hover .home-reminder-row-edit {
@@ -1707,18 +1783,17 @@ body {
 }
 
 .home-reminder-row-edit:hover {
-  background: #f3f4f6;
-  border-color: #d1d5db;
+  color: #374151;
 }
 
 /* 날짜가 지난 리마인더: 희미하게 표시 */
 .home-reminder-row--past {
-  opacity: 0.5;
-  color: #9ca3af;
+  opacity: 1;
+  color: #D8D8D6;
 }
 .home-reminder-row--past .home-reminder-row-name,
 .home-reminder-row--past .home-reminder-row-time {
-  color: #9ca3af;
+  color: #D8D8D6 !important;
 }
 
 .home-event-list {
@@ -1747,7 +1822,7 @@ body {
 .home-event-list.home-event-list-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 0.5rem;
+  gap: 0;
   align-content: start;
 }
 
@@ -1755,6 +1830,12 @@ body {
   margin: 0;
   font-size: 0.875rem;
   color: #e5e7eb;
+}
+.home-todo-empty.home-event-empty,
+.home-event-empty.home-todo-empty {
+  font-size: 11px;
+  color: #C0BDBA;
+  font-style: italic;
 }
 
 .home-todo-list-content {
@@ -1791,8 +1872,35 @@ body {
   width: 2.5rem;
   text-align: center;
 }
+/* 할일·우선순위 헤더: DM Mono, #B8B8B8 (table th보다 우선) */
+.home-todo-list-table .home-todo-th-name,
+.home-todo-list-table .home-todo-th-priority {
+  font-size: 10px !important;
+  font-weight: 300 !important;
+  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  letter-spacing: 0.03em !important;
+  color: #B8B8B8 !important;
+}
 .home-todo-td-check {
   text-align: center;
+}
+.home-todo-done-check {
+  cursor: pointer;
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 0;
+  background: #F8F7F4;
+}
+.home-todo-done-check:checked {
+  background: #111111
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-6' stroke='%23fff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E")
+    center/70% no-repeat;
+  border-color: #111111;
+  border-radius: 0;
 }
 .home-todo-td-name {
   width: 100%;
@@ -1809,8 +1917,11 @@ body {
 .home-todo-td-priority {
   width: 7.5rem;
   min-width: 7.5rem;
-  color: #6b7280;
   white-space: nowrap;
+}
+.home-todo-td-priority {
+  color: #B8B8B8;
+  font-size: 12px;
 }
 
 /* 이벤트 캘린더 셀: 보조(거의 안 보이게) */
@@ -1835,15 +1946,37 @@ body {
 }
 
 .home-event-time-card.is-weekend {
-  background: #f3f4f6;
+  background: transparent;
+}
+
+.home-event-time-card.is-today {
+  background: #EBEBEA !important;
+}
+
+.home-event-time-card.is-today .home-event-time-card-dd::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  min-width: 6px;
+  min-height: 6px;
+  border-radius: 50% !important;
+  background: #1f2937;
+  margin-left: 6px;
+  vertical-align: middle;
+  flex-shrink: 0;
 }
 
 .home-event-time-card-dd {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #111;
+  font-size: 9.5px;
+  font-weight: 300;
+  color: #B8B8B8;
   line-height: 1.2;
   flex-shrink: 0;
+}
+
+.home-event-time-card.is-today .home-event-time-card-dd {
+  color: #111;
 }
 
 .home-event-time-card-list {
@@ -1865,6 +1998,12 @@ body {
   font-size: 0.8rem;
   font-weight: 500;
   color: #374151;
+}
+.home-event-time-card:not(.is-today) .home-event-time-card-item {
+  font-weight: 300;
+  color: #7A7A7A;
+}
+.home-event-time-card-item {
   line-height: 1.3;
   flex-shrink: 0;
   overflow: hidden;
@@ -1872,6 +2011,18 @@ body {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  padding-left: 0.5rem;
+  margin-left: 0.25rem;
+  position: relative;
+}
+.home-event-time-card-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2px;
+  height: 1em;
+  background: #9ca3af;
 }
 
 .home-event-time-card-item.is-done {
@@ -23011,15 +23162,17 @@ body.kpi-resizing {
   min-height: 2.25rem;
 }
 
-/* 예상|오늘실제: 배경 없이 텍스트 굵기로만 구분 */
+/* 예상|오늘실제: DM Mono, 가벼운 굵기 */
 .calendar-1day-view .calendar-1day-time-header-cell {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0.35rem 0.5rem;
+  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
   font-size: 0.75rem;
-  font-weight: 500;
-  color: #6b7280;
+  font-weight: 300;
+  letter-spacing: 0.16em;
+  color: #B8B8B8;
   text-align: center;
 }
 
@@ -23028,15 +23181,17 @@ body.kpi-resizing {
   border-left: 1.5px solid #d1d5db;
 }
 
-/* 오늘실제: 배경 없음, 굵기로만 구분 (클릭 가능 유지) */
+/* 오늘실제: DM Mono, 예상과 동일 스타일 (클릭 가능 유지) */
 .calendar-1day-view .calendar-1day-time-header-cell--actual-toggle {
   margin: 0;
   padding: 0.35rem 0.5rem;
   background: transparent;
   border: none;
   border-radius: 0;
-  font-weight: 700;
-  color: #374151;
+  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  font-weight: 300;
+  letter-spacing: 0.16em;
+  color: #B8B8B8;
   cursor: pointer;
   transition: color 0.15s;
   font-size: 0.75rem;
@@ -23044,7 +23199,7 @@ body.kpi-resizing {
 }
 
 .calendar-1day-view .calendar-1day-time-header-cell--actual-toggle .calendar-1day-actual-toggle-date {
-  font-weight: 700;
+  font-weight: 300;
 }
 
 .calendar-1day-view .calendar-1day-time-header-cell--actual-toggle .calendar-1day-actual-toggle-icon {
@@ -23055,7 +23210,7 @@ body.kpi-resizing {
 
 .calendar-1day-view .calendar-1day-time-header-cell--actual-toggle:hover {
   background: transparent;
-  color: #1f2937;
+  color: #9a9a9a;
 }
 
 .calendar-1day-view .calendar-1day-time-slot--actual {
@@ -23210,8 +23365,10 @@ body.kpi-resizing {
   flex-shrink: 0;
   width: 4rem;
   padding: 0.25rem 0.5rem;
-  font-size: 0.7rem;
-  color: var(--gray-400, #9ca3af);
+  font-size: 10px;
+  font-weight: 300;
+  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  color: #B8B8B8;
   position: sticky;
   left: 0;
   z-index: 1;

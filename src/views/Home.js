@@ -139,6 +139,13 @@ function isWeekend(dateStr) {
   return day === 0 || day === 6;
 }
 
+function isToday(dateStr) {
+  if (!dateStr || dateStr.length < 10) return false;
+  const now = new Date();
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  return dateStr.slice(0, 10) === todayKey;
+}
+
 /** 모든 탭(섹션)에서 리마인더가 설정된 할일만 수집. 탭명은 제외. */
 function getRemindersFromAllSections() {
   const out = [];
@@ -332,7 +339,7 @@ function fillTodoListContent(todoListContent) {
   todoListContent.innerHTML = "";
   const tasks = getTasksDueToday();
   if (tasks.length === 0) {
-    todoListContent.innerHTML = '<p class="home-event-empty">오늘 마감인 할일이 없습니다.</p>';
+    todoListContent.innerHTML = '<p class="home-event-empty home-todo-empty">오늘 마감인 할일이 없습니다.</p>';
     return;
   }
   const table = document.createElement("table");
@@ -395,8 +402,8 @@ function fillReminderContent(reminderContent) {
     const displayTime = formatReminderDisplay(item.reminderDate, item.reminderTime);
     row.innerHTML = `
       <span class="home-reminder-row-name">${escapeHtml(item.name)}</span>
-      <span class="home-reminder-row-time">${escapeHtml(displayTime)}</span>
       <button type="button" class="home-reminder-row-edit" title="Edit reminder">수정</button>
+      <span class="home-reminder-row-time">${escapeHtml(displayTime)}</span>
     `;
     row.querySelector(".home-reminder-row-edit").addEventListener("click", () => {
       openReminderModalFromHome(item, () => fillReminderContent(reminderContent));
@@ -563,7 +570,10 @@ export function render() {
       const dayEvents = byDate[dateKey];
       const dd = getDayNumber(dateKey);
       const card = document.createElement("div");
-      card.className = "home-event-time-card" + (isWeekend(dateKey) ? " is-weekend" : "");
+      card.className =
+        "home-event-time-card" +
+        (isWeekend(dateKey) ? " is-weekend" : "") +
+        (isToday(dateKey) ? " is-today" : "");
       const titlesHtml = dayEvents
         .map((ev) => {
           const doneClass = ev.done ? " is-done" : "";
