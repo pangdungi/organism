@@ -6,6 +6,7 @@
 import { toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay, formatDeadlineRangeCompact } from "../utils/ganttModal.js";
 import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
 import { getSubtasks, addSubtask, updateSubtask, removeSubtask } from "../utils/todoSubtasks.js";
+import { setupDeadlineQuickButtons } from "../utils/deadlineQuickButtons.js";
 
 const DREAM_MAP_STORAGE_KEY = "kpi-dream-map";
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
@@ -173,43 +174,6 @@ function setupActionUnitTimeCalc(modal) {
   });
 }
 
-function setupDeadlineQuickButtons(modal) {
-  const startInput = modal.querySelector('input[name="targetStartDate"]');
-  const deadlineInput = modal.querySelector('input[name="targetDeadline"]');
-  const todayStr = () => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  };
-  modal.querySelectorAll(".dream-kpi-today-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const target = btn.dataset.target;
-      const inp = target === "start" ? startInput : deadlineInput;
-      if (inp) {
-        inp.value = todayStr();
-        inp.dispatchEvent(new Event("input", { bubbles: true }));
-      }
-    });
-  });
-  modal.querySelectorAll(".dream-kpi-deadline-quick-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const days = parseInt(btn.dataset.days, 10);
-      const deadlineVal = deadlineInput?.value?.trim();
-      const startVal = startInput?.value?.trim();
-      const baseDate = deadlineVal ? new Date(deadlineVal + "T12:00:00") : (startVal ? new Date(startVal + "T12:00:00") : new Date());
-      if (isNaN(baseDate.getTime())) return;
-      const result = new Date(baseDate);
-      result.setDate(result.getDate() + days);
-      const y = result.getFullYear();
-      const m = String(result.getMonth() + 1).padStart(2, "0");
-      const d = String(result.getDate()).padStart(2, "0");
-      if (deadlineInput) {
-        deadlineInput.value = `${y}-${m}-${d}`;
-        deadlineInput.dispatchEvent(new Event("input", { bubbles: true }));
-      }
-    });
-  });
-}
-
 export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content dream-view";
@@ -306,19 +270,17 @@ export function render() {
             <div class="dream-kpi-field">
               <label>시작기한</label>
               <input type="date" name="targetStartDate" />
-              <div class="dream-kpi-deadline-quick">
-                <button type="button" class="dream-kpi-today-btn" data-target="start">오늘</button>
-              </div>
             </div>
             <div class="dream-kpi-field">
               <label>달성기한</label>
               <input type="date" name="targetDeadline" />
-              <div class="dream-kpi-deadline-quick">
-                <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
-                <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
-                <button type="button" class="dream-kpi-deadline-quick-btn" data-days="60">+60일</button>
-              </div>
             </div>
+          </div>
+          <div class="dream-kpi-deadline-quick">
+            <button type="button" class="dream-kpi-today-btn">오늘</button>
+            <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
+            <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
+            <button type="button" class="dream-kpi-deadline-quick-btn" data-days="60">+60일</button>
           </div>
           <div class="dream-kpi-field dream-kpi-field-checkbox">
             <label class="dream-kpi-checkbox-label">
@@ -398,19 +360,17 @@ export function render() {
             <div class="dream-kpi-field">
               <label>시작기한</label>
               <input type="date" name="targetStartDate" value="${escapeHtml(toDateInputValue(kpi.targetStartDate))}" />
-              <div class="dream-kpi-deadline-quick">
-                <button type="button" class="dream-kpi-today-btn" data-target="start">오늘</button>
-              </div>
             </div>
             <div class="dream-kpi-field">
               <label>달성기한</label>
               <input type="date" name="targetDeadline" value="${escapeHtml(toDateInputValue(kpi.targetDeadline))}" />
-              <div class="dream-kpi-deadline-quick">
-                <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
-                <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
-                <button type="button" class="dream-kpi-deadline-quick-btn" data-days="60">+60일</button>
-              </div>
             </div>
+          </div>
+          <div class="dream-kpi-deadline-quick">
+            <button type="button" class="dream-kpi-today-btn">오늘</button>
+            <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
+            <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
+            <button type="button" class="dream-kpi-deadline-quick-btn" data-days="60">+60일</button>
           </div>
           <div class="dream-kpi-field dream-kpi-field-checkbox">
             <label class="dream-kpi-checkbox-label">

@@ -20243,7 +20243,7 @@ body.kpi-resizing {
   font-size: 0.8rem;
   font-weight: 300;
   letter-spacing: 0.18em;
-  color: #B8B8B8;
+  color: #3A3A3A;
   margin-bottom: 8px;
 }
 
@@ -20328,25 +20328,26 @@ body.kpi-resizing {
   padding: 0.2rem 0.5rem;
   font-size: 0.75rem;
   font-family: inherit;
-  color: #6b7280;
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
+  color: #B8B8B8;
+  letter-spacing: 0.06em;
+  background: transparent;
+  border: 0.25px solid #DCDCDA;
   cursor: pointer;
 }
 
 .dream-kpi-deadline-quick-btn:hover,
 .dream-kpi-today-btn:hover {
-  background: #e5e7eb;
-  color: #374151;
+  background: transparent;
 }
 
 .dream-kpi-today-btn {
   padding: 0.2rem 0.5rem;
   font-size: 0.75rem;
   font-family: inherit;
-  color: #6b7280;
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
+  color: #B8B8B8;
+  letter-spacing: 0.06em;
+  background: transparent;
+  border: 0.25px solid #DCDCDA;
   cursor: pointer;
 }
 
