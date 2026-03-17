@@ -7842,15 +7842,11 @@ body {
 .todo-table thead th {
   padding: 0.5rem 0.5rem;
   text-align: left;
-  font-weight: 500;
+  font-weight: 300;
   font-size: 0.8rem;
-  font-family: var(
-    --app-font-family,
-    "S-Core Dream 3",
-    -apple-system,
-    sans-serif
-  );
-  color: #888;
+  font-family: "DM Mono", "SF Mono", Consolas, monospace;
+  letter-spacing: 0.14em;
+  color: #B8B8B8;
   border-bottom: 1px solid #eee;
   vertical-align: middle;
 }
@@ -7993,7 +7989,7 @@ body {
   background: transparent;
   border-radius: 4px;
   cursor: pointer;
-  color: #999 !important;
+  color: #B8B8B8 !important;
 }
 
 .todo-reminder-btn .todo-reminder-icon {
@@ -8002,7 +7998,7 @@ body {
 
 .todo-reminder-btn:hover {
   background: transparent;
-  color: #999;
+  color: #B8B8B8;
 }
 
 .todo-reminder-icon {
@@ -8014,7 +8010,9 @@ body {
 .todo-reminder-display {
   margin-left: 0.25rem;
   font-size: 0.8rem;
-  color: #6b7280;
+  font-family: "DM Mono", "SF Mono", Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  color: #B8B8B8;
   white-space: nowrap;
 }
 
@@ -8025,6 +8023,11 @@ body {
   text-align: center;
   font-size: 0.85rem;
   color: #6b7280;
+}
+
+.todo-overdue-display {
+  font-family: "DM Mono", "SF Mono", Consolas, monospace;
+  color: #B8B8B8;
 }
 
 .todo-th-eisenhower,
@@ -8404,14 +8407,9 @@ body {
 .todo-due-date-text {
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
-  color: #333;
+  color: #B8B8B8;
   white-space: nowrap;
-  font-family: var(
-    --app-font-family,
-    "S-Core Dream 3",
-    -apple-system,
-    sans-serif
-  );
+  font-family: "DM Mono", "SF Mono", Consolas, monospace;
 }
 
 /* 날짜 없을 때 "—" 표시 */
@@ -22007,7 +22005,8 @@ body.kpi-resizing {
 
 .todo-eisenhower-display {
   font-size: 0.8rem;
-  color: #6b7280;
+  font-family: "DM Mono", "SF Mono", Consolas, monospace;
+  color: #B8B8B8;
 }
 
 /* 월별 캘린더 레이아웃 - 화면 높이에 맞춤, 캘린더·사이드바 동일 높이 */
