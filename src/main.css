@@ -2256,6 +2256,7 @@ body {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .work-schedule-view-tab {
@@ -2275,7 +2276,7 @@ body {
 
 .work-schedule-view-tab.active {
   color: #333;
-  border-bottom-color: #999;
+  border-bottom: 2px solid #111827;
 }
 
 /* 근무표 상단: 하루 근무시간(왼쪽) + 날짜 필터(오른쪽) */
