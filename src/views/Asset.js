@@ -240,12 +240,11 @@ const DEFAULT_EXPENSE_CLASSIFICATION_BY_CATEGORY = {
     { label: "기타투자", color: "expense-cls-orange" },
   ],
   수입: [
-    { label: "월급", color: "expense-cls-teal" },
-    { label: "부업", color: "expense-cls-blue" },
+    { label: "근로소득", color: "expense-cls-teal" },
+    { label: "부수입", color: "expense-cls-blue" },
     { label: "용돈", color: "expense-cls-green" },
     { label: "임대소득", color: "expense-cls-purple" },
-    { label: "투자소득", color: "expense-cls-orange" },
-    { label: "자산인출", color: "expense-cls-pink" },
+    { label: "금융수입", color: "expense-cls-orange" },
     { label: "이월", color: "expense-cls-indigo" },
     { label: "기타", color: "expense-cls-gray" },
   ],
@@ -657,6 +656,7 @@ function collectExpenseRowsFromDOM(tableEl) {
   tableEl?.querySelectorAll(".asset-expense-row").forEach((tr) => {
     const nameInput = tr.querySelector(".asset-expense-input-name");
     const dateInput = tr.querySelector(".asset-expense-input-date");
+    const flowTypeInput = tr.querySelector(".asset-expense-input-flow-type");
     const categoryInput = tr.querySelector(".asset-expense-input-category");
     const classificationInput = tr.querySelector(".asset-expense-input-classification");
     const amountInput = tr.querySelector(".asset-expense-input-amount");
@@ -665,6 +665,7 @@ function collectExpenseRowsFromDOM(tableEl) {
     rows.push({
       name: nameInput?.value || "",
       date: dateInput?.value || "",
+      flowType: flowTypeInput?.value || "",
       category: categoryInput?.value || "",
       classification: classificationInput?.value || "",
       amount: amountInput?.value || "",
@@ -728,7 +729,7 @@ function collectAssetRowsFromDOM(tableEl) {
 /** 다른 드롭다운 패널 모두 닫기 (겹침 방지) */
 function closeAllDebtDropdownPanels(exceptPanel = null) {
   const selectors =
-    ".asset-debt-type-panel, .asset-debt-repayment-panel, .asset-stock-category-panel, .asset-insurance-kind-panel, .asset-asset-type-panel, .asset-asset-category-panel, .asset-asset-savings-goal-panel, .asset-expense-category-panel, .asset-expense-classification-panel, .asset-expense-payment-panel, .asset-plan-category-panel";
+    ".asset-debt-type-panel, .asset-debt-repayment-panel, .asset-stock-category-panel, .asset-insurance-kind-panel, .asset-asset-type-panel, .asset-asset-category-panel, .asset-asset-savings-goal-panel, .asset-expense-flow-type-panel, .asset-expense-category-panel, .asset-expense-classification-panel, .asset-expense-payment-panel, .asset-plan-category-panel";
   document.querySelectorAll(selectors).forEach((p) => {
     if (p !== exceptPanel) p.hidden = true;
   });
@@ -736,7 +737,7 @@ function closeAllDebtDropdownPanels(exceptPanel = null) {
 
 let _scrollCloseHandlerAttached = false;
 const DROPDOWN_PANEL_SELECTOR =
-  ".asset-debt-type-panel, .asset-debt-repayment-panel, .asset-stock-category-panel, .asset-insurance-kind-panel, .asset-asset-type-panel, .asset-asset-category-panel, .asset-asset-savings-goal-panel, .asset-expense-category-panel, .asset-expense-classification-panel, .asset-expense-payment-panel, .asset-plan-category-panel";
+  ".asset-debt-type-panel, .asset-debt-repayment-panel, .asset-stock-category-panel, .asset-insurance-kind-panel, .asset-asset-type-panel, .asset-asset-category-panel, .asset-asset-savings-goal-panel, .asset-expense-flow-type-panel, .asset-expense-category-panel, .asset-expense-classification-panel, .asset-expense-payment-panel, .asset-plan-category-panel";
 /** 스크롤 시 열린 옵션창 자동 닫기 (스크롤 따라 올라가는 현상 방지) - 단, 옵션창 내부 스크롤 시에는 닫지 않음 */
 function setupScrollClosePanels() {
   if (_scrollCloseHandlerAttached) return;
@@ -1378,6 +1379,80 @@ function createSavingsGoalDropdown(initialValue, onUpdate) {
 }
 
 /** 지출입력장 카테고리 드롭다운 - 고정비, 변동비, 저축, 투자, 기타 */
+/** 큰분류 드롭다운 - 선택 → 지출(파랑) / 입금(빨강) */
+function createExpenseFlowTypeDropdown(initialValue, onUpdate) {
+  const FLOW_OPTIONS = [
+    { label: "지출", value: "지출", color: "asset-flow-expense" },
+    { label: "입금", value: "입금", color: "asset-flow-deposit" },
+  ];
+  const wrap = document.createElement("div");
+  wrap.className = "asset-expense-flow-type-wrap";
+
+  const input = document.createElement("input");
+  input.type = "hidden";
+  input.className = "asset-expense-input-flow-type";
+  input.value = initialValue || "";
+
+  const display = document.createElement("span");
+  display.className = "asset-expense-flow-type-display";
+
+  function updateDisplay() {
+    const val = input.value || "";
+    display.textContent = val || "선택";
+    const opt = FLOW_OPTIONS.find((o) => o.value === val);
+    display.className = "asset-expense-flow-type-display " + (opt ? opt.color : "");
+  }
+
+  const panel = document.createElement("div");
+  panel.className = "asset-expense-flow-type-panel";
+  panel.hidden = true;
+
+  function updatePanelPosition() {
+    const rect = display.getBoundingClientRect();
+    panel.style.top = `${rect.bottom + 2}px`;
+    panel.style.left = `${rect.left}px`;
+    panel.style.minWidth = `${Math.max(rect.width, 100)}px`;
+  }
+
+  display.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (panel.hidden) {
+      closeAllDebtDropdownPanels(panel);
+      updatePanelPosition();
+      document.body.appendChild(panel);
+      panel.hidden = false;
+      const handler = (ev) => {
+        document.removeEventListener("click", handler);
+        if (!wrap.contains(ev.target) && !panel.contains(ev.target)) {
+          panel.hidden = true;
+        }
+      };
+      setTimeout(() => document.addEventListener("click", handler), 0);
+    } else {
+      panel.hidden = true;
+    }
+  });
+
+  FLOW_OPTIONS.forEach((opt) => {
+    const row = document.createElement("div");
+    row.className = "asset-expense-flow-type-option " + opt.color;
+    row.textContent = opt.label;
+    row.addEventListener("click", () => {
+      input.value = opt.value;
+      updateDisplay();
+      panel.hidden = true;
+      onUpdate?.();
+    });
+    panel.appendChild(row);
+  });
+
+  updateDisplay();
+  wrap.appendChild(input);
+  wrap.appendChild(display);
+  wrap.appendChild(panel);
+  return wrap;
+}
+
 function createExpenseCategoryDropdown(initialValue, onUpdate) {
   const wrap = document.createElement("div");
   wrap.className = "asset-expense-category-wrap";
@@ -3984,6 +4059,7 @@ function renderExpenseView(options = {}) {
     <colgroup>
       <col class="asset-expense-col-date">
       <col class="asset-expense-col-name">
+      <col class="asset-expense-col-flow-type">
       <col class="asset-expense-col-category">
       <col class="asset-expense-col-classification">
       <col class="asset-expense-col-amount">
@@ -3995,6 +4071,7 @@ function renderExpenseView(options = {}) {
       <tr>
         <th class="asset-expense-th-date">거래일</th>
         <th class="asset-expense-th-name">소비/수입 명</th>
+        <th class="asset-expense-th-flow-type">큰분류</th>
         <th class="asset-expense-th-category">카테고리</th>
         <th class="asset-expense-th-classification">소비/수입 분류</th>
         <th class="asset-expense-th-amount">금액</th>
@@ -4006,7 +4083,7 @@ function renderExpenseView(options = {}) {
     <tbody></tbody>
     <tfoot class="asset-expense-tfoot">
       <tr class="asset-expense-summary-row">
-        <td colspan="4" class="asset-expense-summary-label">합계</td>
+        <td colspan="5" class="asset-expense-summary-label">합계</td>
         <td class="asset-expense-summary-total">-</td>
         <td colspan="3"></td>
       </tr>
@@ -4066,9 +4143,9 @@ function renderExpenseView(options = {}) {
     table.querySelectorAll(".asset-expense-row").forEach((tr) => {
       if (tr.style.display === "none") return;
       const amtRaw = parseNum(tr.querySelector(".asset-expense-input-amount")?.value);
-      const category = tr.querySelector(".asset-expense-input-category")?.value || "";
-      if (amtRaw !== null) {
-        const amt = category === "수입" ? Math.abs(amtRaw) : -Math.abs(amtRaw);
+      const flowType = tr.querySelector(".asset-expense-input-flow-type")?.value || "";
+      if (amtRaw !== null && (flowType === "입금" || flowType === "지출")) {
+        const amt = flowType === "입금" ? Math.abs(amtRaw) : -Math.abs(amtRaw);
         total += amt;
       }
     });
@@ -4115,12 +4192,14 @@ function renderExpenseView(options = {}) {
       onTotalsUpdate?.();
       saveExpense();
     });
+    const flowTypeValue = data.flowType ?? "";
     tr.innerHTML = `
       <td class="asset-expense-cell-date">
         <span class="asset-expense-date-display">${dateDisplayVal}</span>
         <input type="date" class="asset-expense-input-date" name="asset-expense-date" value="${dateValue}" tabindex="-1" />
       </td>
       <td class="asset-expense-cell-name"><input type="text" class="asset-expense-input-name" name="asset-expense-name" placeholder="" value="${(data.name || "").replace(/"/g, "&quot;")}" /></td>
+      <td class="asset-expense-cell-flow-type"></td>
       <td class="asset-expense-cell-category"></td>
       <td class="asset-expense-cell-classification"></td>
       <td class="asset-expense-cell-amount"><input type="text" class="asset-expense-input-amount" name="asset-expense-amount" placeholder="0" value="${(data.amount || "").replace(/"/g, "&quot;")}" /></td>
@@ -4129,6 +4208,14 @@ function renderExpenseView(options = {}) {
       <td class="asset-expense-cell-delete"><div class="asset-expense-delete-wrap"></div></td>
     `;
     tr.querySelector(".asset-expense-delete-wrap").appendChild(delBtn);
+    const flowTypeTd = tr.querySelector(".asset-expense-cell-flow-type");
+    const flowTypeDropdown = createExpenseFlowTypeDropdown(flowTypeValue, () => {
+      applyAmountSign();
+      onTotalsUpdate?.();
+      saveExpense();
+    });
+    flowTypeTd.appendChild(flowTypeDropdown);
+
     const categoryTd = tr.querySelector(".asset-expense-cell-category");
     const classificationTd = tr.querySelector(".asset-expense-cell-classification");
     const nameInput = tr.querySelector(".asset-expense-input-name");
@@ -4145,11 +4232,12 @@ function renderExpenseView(options = {}) {
     const amountInput = tr.querySelector(".asset-expense-input-amount");
 
     function applyAmountSign() {
-      const categoryInput = categoryTd.querySelector(".asset-expense-input-category");
-      const category = categoryInput?.value || "";
+      const flowTypeInput = flowTypeTd.querySelector(".asset-expense-input-flow-type");
+      const flowType = flowTypeInput?.value || "";
       const raw = parseNum(amountInput.value);
       if (raw === null) return;
-      const signed = category === "수입" ? Math.abs(raw) : -Math.abs(raw);
+      if (flowType !== "입금" && flowType !== "지출") return;
+      const signed = flowType === "입금" ? Math.abs(raw) : -Math.abs(raw);
       amountInput.value = formatNum(signed);
       onTotalsUpdate?.();
     }
@@ -4352,12 +4440,14 @@ function createAssetSettingsModal(onSave) {
       row.className = "asset-settings-row asset-settings-cat-row" + (modal._selectedIdx === i ? " active" : "") + (isDefault ? "" : " asset-settings-cat-row--with-remove");
       row.dataset.catIdx = String(i);
       row.innerHTML = `
-        <input type="text" class="asset-settings-input" placeholder="카테고리명" value="${(c.label || "").replace(/"/g, "&quot;")}" />
+        <input type="text" class="asset-settings-input${isDefault ? " asset-settings-input--default" : ""}" placeholder="카테고리명" value="${(c.label || "").replace(/"/g, "&quot;")}" ${isDefault ? "readonly" : ""} />
         ${isDefault ? "" : '<button type="button" class="asset-settings-remove" title="삭제">×</button>'}
       `;
       const input = row.querySelector(".asset-settings-input");
-      input.addEventListener("input", () => { cats[i].label = input.value.trim(); });
-      input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); input.blur(); } });
+      if (!isDefault) {
+        input.addEventListener("input", () => { cats[i].label = input.value.trim(); });
+        input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); input.blur(); } });
+      }
       input.addEventListener("focus", (e) => {
         e.stopPropagation();
         modal._selectedIdx = i;
@@ -4409,15 +4499,17 @@ function createAssetSettingsModal(onSave) {
       const row = document.createElement("div");
       row.className = "asset-settings-row" + (isDefault ? "" : " asset-settings-row--with-remove");
       row.innerHTML = `
-        <input type="text" class="asset-settings-input" placeholder="분류명" value="${(cls.label || "").replace(/"/g, "&quot;")}" />
+        <input type="text" class="asset-settings-input${isDefault ? " asset-settings-input--default" : ""}" placeholder="분류명" value="${(cls.label || "").replace(/"/g, "&quot;")}" ${isDefault ? "readonly" : ""} />
         ${isDefault ? "" : '<button type="button" class="asset-settings-remove" title="삭제">×</button>'}
       `;
       const clsInput = row.querySelector(".asset-settings-input");
-      clsInput.addEventListener("input", (e) => {
-        if (!byCat[c.label]) byCat[c.label] = [];
-        byCat[c.label][clsIdx].label = e.target.value.trim();
-      });
-      clsInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); clsInput.blur(); } });
+      if (!isDefault) {
+        clsInput.addEventListener("input", (e) => {
+          if (!byCat[c.label]) byCat[c.label] = [];
+          byCat[c.label][clsIdx].label = e.target.value.trim();
+        });
+        clsInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); clsInput.blur(); } });
+      }
       if (!isDefault) {
         row.querySelector(".asset-settings-remove").addEventListener("click", () => {
           byCat[c.label].splice(clsIdx, 1);
@@ -4439,12 +4531,14 @@ function createAssetSettingsModal(onSave) {
       const row = document.createElement("div");
       row.className = "asset-settings-row" + (isDefault ? "" : " asset-settings-row--with-remove");
       row.innerHTML = `
-        <input type="text" class="asset-settings-input" placeholder="결제수단" value="${(name || "").replace(/"/g, "&quot;")}" />
+        <input type="text" class="asset-settings-input${isDefault ? " asset-settings-input--default" : ""}" placeholder="결제수단" value="${(name || "").replace(/"/g, "&quot;")}" ${isDefault ? "readonly" : ""} />
         ${isDefault ? "" : '<button type="button" class="asset-settings-remove" title="삭제">×</button>'}
       `;
       const input = row.querySelector(".asset-settings-input");
-      input.addEventListener("input", () => { modal._payments[i] = input.value.trim(); });
-      input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); input.blur(); } });
+      if (!isDefault) {
+        input.addEventListener("input", () => { modal._payments[i] = input.value.trim(); });
+        input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); input.blur(); } });
+      }
       if (!isDefault) {
         row.querySelector(".asset-settings-remove").addEventListener("click", () => {
           modal._payments.splice(i, 1);

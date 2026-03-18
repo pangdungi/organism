@@ -2919,7 +2919,7 @@ body {
   color: #6b7280;
 }
 
-/* 거래일, 금액 열 고정 (가로 스크롤 시) - 열 순서: 거래일·소비/수입명·카테고리·분류·금액·결제수단·메모·삭제 */
+/* 거래일, 금액 열 고정 (가로 스크롤 시) - 열 순서: 거래일·소비/수입명·큰분류·카테고리·분류·금액·결제수단·메모·삭제 */
 .asset-expense-col-date,
 .asset-expense-th-date,
 .asset-expense-cell-date {
@@ -2939,7 +2939,7 @@ body {
 .asset-expense-th-amount,
 .asset-expense-cell-amount {
   position: sticky;
-  left: 405px;
+  left: 475px;
   z-index: 1;
   background: #f9f9f8;
   box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.06);
@@ -2963,7 +2963,7 @@ body {
 }
 
 .asset-expense-summary-row .asset-expense-summary-total {
-  left: 405px;
+  left: 475px;
   box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.06);
 }
 
@@ -2978,6 +2978,10 @@ body {
 .asset-expense-col-date {
   width: 8%;
   min-width: 80px;
+}
+.asset-expense-col-flow-type {
+  width: 70px;
+  min-width: 70px;
 }
 .asset-expense-col-category {
   width: 8%;
@@ -3227,6 +3231,16 @@ body {
   box-shadow: none;
 }
 
+.asset-settings-input--default {
+  background: #f4f4f5;
+  cursor: default;
+  color: #374151;
+}
+.asset-settings-input--default:focus {
+  cursor: default;
+  border-color: #e5e7eb;
+}
+
 .asset-settings-remove {
   width: 1.75rem;
   height: 1.75rem;
@@ -3250,7 +3264,7 @@ body {
 
 .asset-settings-remove:hover {
   color: #374151;
-  background: #e5e7eb;
+  background: none;
 }
 
 .asset-settings-add-cat,
@@ -3778,6 +3792,81 @@ body {
   padding: 0.2rem 0.4rem;
   font-size: 13px;
   color: #9ca3af;
+}
+
+/* 지출입력장 큰분류(입금/지출) 드롭다운 */
+.asset-expense-flow-type-wrap {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.asset-expense-flow-type-display {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0.2rem 0.4rem;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #f0f0f0;
+  color: #666;
+  border: 1px solid transparent;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.asset-expense-flow-type-display:hover {
+  background: #e8e8e8;
+}
+
+.asset-expense-flow-type-display.asset-flow-deposit {
+  background: rgba(252, 165, 165, 0.5);
+  color: #b91c1c;
+  border-color: rgba(248, 113, 113, 0.6);
+}
+
+.asset-expense-flow-type-display.asset-flow-expense {
+  background: rgba(147, 197, 253, 0.4);
+  color: #1e40af;
+  border-color: rgba(147, 197, 253, 0.6);
+}
+
+.asset-expense-flow-type-panel {
+  position: fixed;
+  z-index: 99999;
+  background: #f9f9f8;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.asset-expense-flow-type-option {
+  padding: 0.4rem 0.75rem;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.asset-expense-flow-type-option:hover {
+  background: #f4f4f5;
+}
+
+.asset-expense-flow-type-option.asset-flow-deposit {
+  color: #b91c1c;
+  font-weight: 500;
+}
+
+.asset-expense-flow-type-option.asset-flow-expense {
+  color: #1e40af;
+  font-weight: 500;
 }
 
 /* 지출입력장 카테고리 드롭다운 */
