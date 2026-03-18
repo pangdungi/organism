@@ -276,12 +276,12 @@ body {
   );
 }
 
-/* 과제 기록 모달·방해기록 모달: 시간 입력란만 세리프체 (#app input 덮어쓰기) */
+/* 과제 기록 모달·방해기록 모달: 시간 입력란 DM Mono (#app input 덮어쓰기) */
 #app input.time-task-log-time-start,
 #app input.time-task-log-time-end,
 #app input.time-task-log-focus-inner-time-input {
-  font-family: "Noto Serif KR", serif !important;
-  font-weight: 200 !important;
+  font-family: "DM Mono", monospace !important;
+  font-weight: 300 !important;
 }
 
 /* ----- 랜딩 페이지 (ClickUp 스타일) ----- */
@@ -11095,23 +11095,42 @@ body.kpi-resizing {
 }
 
 .time-task-log-header {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
   background: #f9f9f8;
   font-weight: 300;
 }
 
 .time-task-log-header .time-task-setup-close {
-  justify-self: start;
-  color: #b0ada6;
+  order: 2;
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  font-family: "Noto Sans KR", sans-serif;
+  font-weight: 200;
+  color: #b8b8b8;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.time-task-log-header .time-task-setup-close:hover {
+  color: #374151;
+  background: none;
 }
 
 .time-task-log-header .time-task-setup-title {
-  justify-self: center;
-  text-align: center;
-  color: #1c1c1a;
+  order: 1;
+  text-align: left;
+  font-family: "Noto Serif KR", serif;
+  font-weight: 200;
+  font-size: 1.1rem;
+  letter-spacing: -0.01em;
+  color: #111111;
 }
 
 .time-task-setup-body {
@@ -11513,7 +11532,7 @@ body.kpi-resizing {
   .time-task-log-datetime-fields-wrap
   .time-task-log-field
   label {
-  font-size: 0.75rem;
+  font-size: 0.8rem;
 }
 .time-task-log-scroll-area
   .time-task-log-datetime-fields-wrap
@@ -11543,8 +11562,8 @@ body.kpi-resizing {
   min-width: 6rem;
   padding: 0.35rem 0.6rem;
   font-size: 1.4rem;
-  font-family: "Noto Serif KR", serif !important;
-  font-weight: 200 !important;
+  font-family: "DM Mono", monospace !important;
+  font-weight: 300 !important;
 }
 .time-task-log-scroll-area
   .time-task-log-datetime-fields-wrap
@@ -11658,8 +11677,8 @@ body.kpi-resizing {
 .time-task-log-memo-title {
   margin: 0 0 0.5rem;
   font-size: 0.9rem;
-  font-weight: 600;
-  color: #374151;
+  font-weight: 400;
+  color: #111111;
 }
 .time-task-log-memo-fields .time-task-log-field {
   margin-bottom: 0.75rem;
@@ -11844,7 +11863,7 @@ body.kpi-resizing {
 }
 .time-task-log-focus-label {
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 400;
   color: #374151;
 }
 .time-task-log-focus-add-btn {
@@ -11900,7 +11919,7 @@ body.kpi-resizing {
 }
 .time-task-log-todo-label {
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 400;
   color: #374151;
 }
 .time-task-log-todo-add-btn {
@@ -11987,7 +12006,7 @@ body.kpi-resizing {
 }
 .time-task-log-todo-inner-header-label {
   font-size: 0.95rem;
-  font-weight: 600;
+  font-weight: 400;
   color: #b0ada6;
 }
 .time-task-log-todo-inner-close {
@@ -12013,7 +12032,7 @@ body.kpi-resizing {
 }
 .time-task-log-todo-inner-close:hover {
   color: #374151;
-  background: rgba(0, 0, 0, 0.05);
+  background: none;
 }
 .time-task-log-todo-inner-body {
   flex: 1;
@@ -12104,7 +12123,7 @@ body.kpi-resizing {
 }
 .time-task-log-expense-label {
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 400;
   color: #374151;
 }
 .time-task-log-expense-add-btn {
@@ -12164,7 +12183,7 @@ body.kpi-resizing {
 }
 .time-task-log-expense-inner-header-label {
   font-size: 0.95rem;
-  font-weight: 600;
+  font-weight: 400;
   color: #b0ada6;
 }
 .time-task-log-expense-inner-close {
@@ -12190,7 +12209,7 @@ body.kpi-resizing {
 }
 .time-task-log-expense-inner-close:hover {
   color: #374151;
-  background: rgba(0, 0, 0, 0.05);
+  background: none;
 }
 .time-task-log-expense-inner-body {
   flex: 1;
@@ -12418,7 +12437,7 @@ body.kpi-resizing {
 }
 .time-task-log-emotion-label {
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 400;
   color: #374151;
 }
 .time-task-log-emotion-add-btn {
@@ -12505,7 +12524,7 @@ body.kpi-resizing {
 }
 .time-task-log-emotion-inner-close:hover {
   color: #374151;
-  background: rgba(0, 0, 0, 0.05);
+  background: none;
 }
 .time-task-log-emotion-inner-body {
   flex: 1;
@@ -12561,7 +12580,7 @@ body.kpi-resizing {
 .time-task-log-emotion-inner-header-label,
 .time-task-log-focus-inner-header-label {
   font-size: 0.95rem;
-  font-weight: 600;
+  font-weight: 400;
   color: #1c1c1a;
 }
 .time-task-log-todo-inner-close,
@@ -12596,7 +12615,7 @@ body.kpi-resizing {
 .time-task-log-focus-inner-close:focus,
 .time-task-log-focus-inner-close:focus-visible {
   color: #374151;
-  background: rgba(0, 0, 0, 0.05) !important;
+  background: none !important;
   border: none !important;
   box-shadow: none !important;
   outline: none !important;
@@ -12642,7 +12661,7 @@ body.kpi-resizing {
 }
 .time-task-log-focus-inner-header-label {
   font-size: 0.95rem;
-  font-weight: 600;
+  font-weight: 400;
   color: #b0ada6;
 }
 .time-task-log-focus-inner-close {
@@ -12671,7 +12690,7 @@ body.kpi-resizing {
 .time-task-log-focus-inner-close:focus,
 .time-task-log-focus-inner-close:focus-visible {
   color: #374151;
-  background: rgba(0, 0, 0, 0.05) !important;
+  background: none !important;
   border: none !important;
   box-shadow: none !important;
   outline: none !important;
@@ -12889,7 +12908,7 @@ body.kpi-resizing {
 .time-task-log-emotion-inner-header-label,
 .time-task-log-focus-inner-header-label {
   font-size: 0.95rem;
-  font-weight: 600;
+  font-weight: 400;
   color: #1c1c1a;
 }
 .time-task-log-todo-inner-close,
@@ -12930,7 +12949,7 @@ body.kpi-resizing {
 .time-task-log-focus-inner-close:focus,
 .time-task-log-focus-inner-close:focus-visible {
   color: #374151;
-  background: rgba(0, 0, 0, 0.05) !important;
+  background: none !important;
   border: none !important;
   box-shadow: none !important;
   outline: none !important;
@@ -12955,7 +12974,7 @@ body.kpi-resizing {
 }
 .time-task-log-todo-label {
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 400;
   color: #374151;
 }
 .time-task-log-todo-add-btn {
@@ -13181,10 +13200,14 @@ body.kpi-resizing {
   margin-bottom: 0.35rem;
 }
 
-/* 과제 기록 모달 상단 3개 라벨: 작은 폰트, 연회색 */
+/* 과제 기록 모달 상단 3개 라벨: dream-kpi-field 스타일 통일 */
 .time-task-log-datetime-fields-wrap .time-task-log-field label {
+  font-family: "DM Mono", monospace;
   font-size: 0.8rem;
-  color: #9ca3af;
+  font-weight: 300;
+  letter-spacing: 0.18em;
+  color: #111111;
+  margin-bottom: 8px;
 }
 
 .time-task-log-start,
@@ -13198,7 +13221,7 @@ body.kpi-resizing {
   align-items: center;
 }
 
-/* 과제 기록 모달: 시작날짜·시작시간·마감시간 숫자만 세리프체 (Noto Serif KR)
+/* 과제 기록 모달: 날짜 입력 Noto Serif KR / 시간 입력 DM Mono
    - #app input 전역 폰트(ID 선택자)보다 우선하려면 #app 포함 구체적 선택자 사용 */
 #app .time-task-log-modal input[type="date"].time-task-log-date-start,
 #app .time-task-log-modal .time-task-log-datetime-input-wrap input[type="date"],
@@ -13209,7 +13232,10 @@ body.kpi-resizing {
 #app
   .time-task-log-modal
   .time-task-log-datetime-input-wrap
-  input.flatpickr-input,
+  input.flatpickr-input {
+  font-family: "Noto Serif KR", serif !important;
+  font-weight: 200 !important;
+}
 #app
   .time-task-log-modal
   .time-task-log-datetime-input-wrap
@@ -13221,8 +13247,8 @@ body.kpi-resizing {
 #app input.time-task-log-time-start,
 #app input.time-task-log-time-end,
 #app input.time-task-log-focus-inner-time-input {
-  font-family: "Noto Serif KR", serif !important;
-  font-weight: 200 !important;
+  font-family: "DM Mono", monospace !important;
+  font-weight: 300 !important;
 }
 .time-task-log-datetime-input-wrap input[type="date"],
 .time-task-log-datetime-input-wrap .time-task-log-date-start,
@@ -13254,8 +13280,8 @@ body.kpi-resizing {
   min-width: 6rem;
   padding: 0.5rem 0.75rem;
   font-size: 1.4rem;
-  font-family: "Noto Serif KR", serif !important;
-  font-weight: 200 !important;
+  font-family: "DM Mono", monospace !important;
+  font-weight: 300 !important;
   border: none;
   border-bottom: 1px solid #e5e7eb;
   border-radius: 0;

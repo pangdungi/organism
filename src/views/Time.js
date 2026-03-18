@@ -3593,7 +3593,7 @@ export function render() {
             <label>시작 시간</label>
             <div class="time-task-log-datetime-input-wrap">
               <input type="date" class="time-task-log-date-start" name="time-task-log-date" data-hide-delete-btn="true" data-use-native-mobile="true" />
-              <input type="text" class="time-task-log-time-start" name="time-task-log-time-start" placeholder="hh:mm" maxlength="5" style="font-family: 'Noto Serif KR', serif; font-weight: 200" />
+              <input type="text" class="time-task-log-time-start" name="time-task-log-time-start" placeholder="hh:mm" maxlength="5" style="font-family: 'DM Mono', monospace; font-weight: 300" />
             </div>
             <input type="hidden" class="time-task-log-start" />
           </div>
@@ -3602,7 +3602,7 @@ export function render() {
             <div class="time-task-log-end-row">
               <div class="time-task-log-datetime-wrap time-task-log-datetime-wrap-end">
                 <div class="time-task-log-datetime-input-wrap">
-                  <input type="text" class="time-task-log-time-end" name="time-task-log-time-end" placeholder="hh:mm" maxlength="5" style="font-family: 'Noto Serif KR', serif; font-weight: 200" />
+                  <input type="text" class="time-task-log-time-end" name="time-task-log-time-end" placeholder="hh:mm" maxlength="5" style="font-family: 'DM Mono', monospace; font-weight: 300" />
                 </div>
               </div>
               <div class="time-task-log-time-adjust-btns">
@@ -3653,7 +3653,7 @@ export function render() {
             <div class="time-task-log-focus-inner-body">
               <div class="time-task-log-focus-inner-type-wrap"></div>
               <div class="time-task-log-focus-inner-input-row">
-                <input type="text" class="time-task-log-focus-inner-time-input" placeholder="hh:mm" maxlength="5" style="font-family: 'Noto Serif KR', serif; font-weight: 200" />
+                <input type="text" class="time-task-log-focus-inner-time-input" placeholder="hh:mm" maxlength="5" style="font-family: 'DM Mono', monospace; font-weight: 300" />
                 <button type="button" class="time-task-log-focus-inner-add">추가</button>
                 <button type="button" class="time-task-log-focus-inner-now-btn">지금</button>
               </div>
@@ -3669,7 +3669,7 @@ export function render() {
           <div class="time-task-log-todo-inner-backdrop"></div>
           <div class="time-task-log-todo-inner-panel">
             <div class="time-task-log-todo-inner-header">
-              <span class="time-task-log-todo-inner-header-label">할일 추가</span>
+              <span class="time-task-log-todo-inner-header-label">투두리스트</span>
               <button type="button" class="time-task-log-todo-inner-close" aria-label="닫기">&times;</button>
             </div>
             <div class="time-task-log-todo-inner-body">
