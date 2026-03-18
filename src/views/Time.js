@@ -10161,7 +10161,8 @@ export function renderTimeBudgetTablesForCalendar(
       addBtn.type = "button";
       addBtn.className = "time-daily-budget-add-btn time-btn-add";
       addBtn.title = "계획하기";
-      addBtn.innerHTML = "+";
+      addBtn.innerHTML =
+        '<img src="/toolbaricons/add-square.svg" alt="" class="time-daily-budget-add-icon" width="18" height="18">';
       addBtn.addEventListener("click", onAdd);
       header.appendChild(addBtn);
     }
