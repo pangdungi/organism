@@ -253,14 +253,13 @@ function createWorkTypeInput(initialValue, onUpdate) {
   const input = document.createElement("input");
   input.type = "text";
   input.className = "time-input-task work-schedule-input-type";
-  input.placeholder = "";
+  input.placeholder = "선택";
   if (initialValue) input.value = initialValue;
 
   function updateDisplay() {
     const val = (input.value || "").trim();
-    display.textContent = val;
-    display.className = "work-schedule-type-display";
-    if (val) display.classList.add("is-default");
+    display.textContent = val || "선택";
+    display.className = "work-schedule-type-display" + (val ? " is-default" : " is-placeholder");
   }
 
   function showInput() {
@@ -274,7 +273,7 @@ function createWorkTypeInput(initialValue, onUpdate) {
       wrap.classList.remove("is-editing");
       wrap.classList.add("has-value");
     } else {
-      wrap.classList.add("is-editing");
+      wrap.classList.remove("is-editing");
       wrap.classList.remove("has-value");
     }
   }
@@ -300,11 +299,7 @@ function createWorkTypeInput(initialValue, onUpdate) {
 
   inputWrap.appendChild(display);
   inputWrap.appendChild(input);
-  if (initialValue) {
-    showDisplay();
-  } else {
-    wrap.classList.add("is-editing");
-  }
+  showDisplay();
 
   const panel = document.createElement("div");
   panel.className = "time-task-name-panel work-schedule-type-panel";
@@ -649,16 +644,21 @@ export function render() {
     dailyHoursWrap.className = "work-schedule-daily-hours-wrap";
     const dailyHoursLabel = document.createElement("label");
     dailyHoursLabel.className = "work-schedule-daily-hours-label";
-    dailyHoursLabel.textContent = "하루 근무시간 입력하기 ";
+    dailyHoursLabel.textContent = "";
+    const labelText = document.createTextNode("하루 근무시간 ");
     const dailyHoursInput = document.createElement("input");
-    dailyHoursInput.type = "number";
+    dailyHoursInput.type = "text";
+    dailyHoursInput.inputMode = "decimal";
     dailyHoursInput.className = "work-schedule-daily-hours-input";
-    dailyHoursInput.min = "0";
-    dailyHoursInput.step = "0.5";
     dailyHoursInput.placeholder = "8.5 (8시간 30분)";
     dailyHoursInput.value = String(getDailyHours());
     dailyHoursInput.title = "8시간 30분이면 8.5 입력";
+    const hoursUnit = document.createElement("span");
+    hoursUnit.className = "work-schedule-daily-hours-unit";
+    hoursUnit.textContent = "h";
+    dailyHoursLabel.appendChild(labelText);
     dailyHoursLabel.appendChild(dailyHoursInput);
+    dailyHoursLabel.appendChild(hoursUnit);
     dailyHoursWrap.appendChild(dailyHoursLabel);
 
     const filterBar = document.createElement("div");
@@ -867,7 +867,7 @@ export function render() {
         </tr>
       </thead>
       <tbody></tbody>
-      <tfoot>
+      <tfoot class="work-schedule-tfoot">
         <tr class="work-schedule-sum-row">
           <td colspan="4"></td>
           <td class="work-schedule-sum-cell"></td>
@@ -898,8 +898,7 @@ export function render() {
     const sumCell = table.querySelector(".work-schedule-sum-cell");
     function updateSum() {
       const total = getHoursSum(tableWrap);
-      const sign = total > 0 ? "+ " : total < 0 ? "" : "";
-      sumCell.textContent = total === 0 ? "0 hrs" : `${sign}${total} hrs`;
+      sumCell.textContent = formatTimeAccumulation(total) || "0";
     }
 
     const onUpdate = () => {
@@ -929,12 +928,21 @@ export function render() {
       updateSum();
     }
 
+    function sanitizeDailyHoursInput(val) {
+      const cleaned = String(val || "").replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1");
+      return cleaned;
+    }
     dailyHoursInput.addEventListener("input", () => {
-      setDailyHours(dailyHoursInput.value);
+      const raw = dailyHoursInput.value;
+      const sanitized = sanitizeDailyHoursInput(raw);
+      if (raw !== sanitized) dailyHoursInput.value = sanitized;
+      setDailyHours(sanitized);
       refreshAllRowsTimeAccumulation();
     });
     dailyHoursInput.addEventListener("change", () => {
-      setDailyHours(dailyHoursInput.value);
+      const sanitized = sanitizeDailyHoursInput(dailyHoursInput.value);
+      if (dailyHoursInput.value !== sanitized) dailyHoursInput.value = sanitized;
+      setDailyHours(sanitized);
       refreshAllRowsTimeAccumulation();
     });
 

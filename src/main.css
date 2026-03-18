@@ -2301,20 +2301,37 @@ body {
 }
 .work-schedule-daily-hours-label {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 0.5rem;
-  font-size: 0.9rem;
-  color: var(--text-secondary, #6b7280);
+  font-size: 10px;
+  font-weight: 300;
+  color: #7a7a7a;
+  line-height: 1;
 }
 .work-schedule-daily-hours-input {
-  width: 5rem;
-  padding: 0.35rem 0.5rem;
-  border: 1px solid var(--border-color, #e5e7eb);
-  border-radius: 4px;
-  font-size: 0.9rem;
+  width: 3.5rem;
+  min-width: 3.5rem;
+  padding: 0 0 0.1rem 0;
+  border: none;
+  border-bottom: 0.5px solid #dcdcda;
+  border-radius: 0;
+  background: transparent;
+  font-family: "Noto Serif KR", Georgia, serif !important;
+  font-weight: 200;
+  font-size: 22px;
+  color: #111111;
+  text-align: center;
+  outline: none;
+  box-sizing: content-box;
+}
+.work-schedule-daily-hours-unit {
+  font-size: 10px;
+  font-weight: 300;
+  color: #7a7a7a;
 }
 .work-schedule-time-accumulation-display {
   font-size: 0.9rem;
+  color: #b8b8b8;
 }
 .work-schedule-time-accumulation-display:empty::before {
   content: "\00a0";
@@ -6491,9 +6508,12 @@ body {
 
 .work-schedule-table-wrap {
   background: #f9f9f8;
-  border: 1px solid #e5e7eb;
+  border-top: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+  border-left: none;
+  border-right: none;
   overflow: auto;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  box-shadow: none;
   overscroll-behavior-x: none;
   -webkit-overflow-scrolling: auto;
 }
@@ -6525,24 +6545,28 @@ body {
 }
 
 .work-schedule-table th {
-  background: #fcfcfc;
-  font-weight: 500;
+  background: none;
+  font-weight: 300;
   font-size: 13px;
-  color: #9ca3af;
+  color: #b8b8b8;
 }
 
 .work-schedule-table tbody tr:hover td {
-  background: #fafafa;
+  background: none;
 }
 
+.work-schedule-tfoot {
+  background: none;
+}
 .work-schedule-sum-row td {
-  background: #f9fafb;
+  background: none;
   font-weight: 500;
   color: #374151;
 }
 
-.work-schedule-sum-cell {
+.work-schedule-sum-row .work-schedule-sum-cell {
   font-weight: 600;
+  color: #111111;
 }
 
 .work-schedule-col-name {
@@ -6569,12 +6593,11 @@ body {
   background: transparent;
 }
 
-.work-schedule-type-wrap.has-value:not(.is-editing)
-  .work-schedule-type-display {
+.work-schedule-type-wrap:not(.is-editing) .work-schedule-type-display {
   display: inline-block;
 }
 
-.work-schedule-type-wrap.has-value:not(.is-editing) .time-input-task {
+.work-schedule-type-wrap:not(.is-editing) .time-input-task {
   display: none !important;
 }
 
@@ -6588,9 +6611,13 @@ body {
   width: fit-content;
 }
 
-.work-schedule-type-wrap:not(.has-value) .work-schedule-type-display,
 .work-schedule-type-wrap.is-editing .work-schedule-type-display {
   display: none !important;
+}
+
+.work-schedule-type-display.is-placeholder {
+  background: #f0f0f0;
+  color: #b8b8b8;
 }
 
 .work-schedule-type-display.is-overtime {
@@ -6657,13 +6684,13 @@ body {
   box-shadow: 1px 0 0 #e8eaed;
 }
 .work-schedule-table th.work-schedule-th-date {
-  background: #fcfcfc;
+  background: none;
 }
 .work-schedule-table tbody tr:hover .work-schedule-cell-date {
-  background: #fafafa;
+  background: none;
 }
 .work-schedule-table .work-schedule-sum-row .work-schedule-cell-date {
-  background: #f9fafb;
+  background: none;
 }
 .work-schedule-table .work-schedule-th-name,
 .work-schedule-table .work-schedule-cell-name {
@@ -6674,13 +6701,13 @@ body {
   box-shadow: 1px 0 0 #e8eaed;
 }
 .work-schedule-table th.work-schedule-th-name {
-  background: #fcfcfc;
+  background: none;
 }
 .work-schedule-table tbody tr:hover .work-schedule-cell-name {
-  background: #fafafa;
+  background: none;
 }
 .work-schedule-table .work-schedule-sum-row .work-schedule-cell-name {
-  background: #f9fafb;
+  background: none;
 }
 
 /* 근무일·근무시간 열 고정 (가로 스크롤 시) */
@@ -6689,26 +6716,33 @@ body {
   position: sticky;
   left: 0;
   z-index: 2;
-  background: #fcfcfc;
   box-shadow: 1px 0 0 #e8eaed;
 }
+.work-schedule-table th.work-schedule-th-date {
+  background: none;
+}
+.work-schedule-table td.work-schedule-cell-date {
+  background: none;
+}
 .work-schedule-table tbody tr:hover td.work-schedule-cell-date {
-  background: #fafafa;
+  background: none;
 }
 .work-schedule-table th.work-schedule-th-name,
 .work-schedule-table td.work-schedule-cell-name {
   position: sticky;
   left: 110px;
   z-index: 2;
-  background: #fcfcfc;
   box-shadow: 1px 0 0 #e8eaed;
 }
+.work-schedule-table th.work-schedule-th-name {
+  background: none;
+}
 .work-schedule-table tbody tr:hover td.work-schedule-cell-name {
-  background: #fafafa;
+  background: none;
 }
 .work-schedule-table .work-schedule-sum-row td:first-child,
 .work-schedule-table .work-schedule-sum-row td:nth-child(2) {
-  background: #f9fafb;
+  background: none;
 }
 
 /* 근무일·근무시간 열 고정 (가로 스크롤 시 고정) */
@@ -6720,24 +6754,39 @@ body {
   position: sticky;
   left: 0;
   z-index: 2;
-  background: #fcfcfc;
   box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.08);
+}
+.work-schedule-table th.work-schedule-th-date {
+  background: none;
+}
+.work-schedule-table td.work-schedule-cell-date {
+  background: none;
 }
 .work-schedule-table .work-schedule-th-name,
 .work-schedule-table .work-schedule-cell-name {
   position: sticky;
   left: 110px;
   z-index: 2;
-  background: #f9f9f8;
+  background: none;
   box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.08);
 }
-.work-schedule-table tbody tr:hover .work-schedule-cell-date,
-.work-schedule-table tbody tr:hover .work-schedule-cell-name {
-  background: #fafafa;
+.work-schedule-table td.work-schedule-cell-name {
+  background: none !important;
+  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  font-weight: 300 !important;
+  color: #3a3a3a !important;
 }
-.work-schedule-table .work-schedule-sum-row .work-schedule-cell-date,
+.work-schedule-table tbody tr:hover .work-schedule-cell-date {
+  background: none;
+}
+.work-schedule-table tbody tr:hover .work-schedule-cell-name {
+  background: none;
+}
+.work-schedule-table .work-schedule-sum-row .work-schedule-cell-date {
+  background: none;
+}
 .work-schedule-table .work-schedule-sum-row .work-schedule-cell-name {
-  background: #f9fafb;
+  background: none;
 }
 
 .work-schedule-col-hours {
@@ -6773,6 +6822,11 @@ body {
   background: transparent;
   font-family: inherit;
 }
+.work-schedule-input-name {
+  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  font-weight: 300 !important;
+  color: #3a3a3a !important;
+}
 
 .work-schedule-input-name:focus,
 .work-schedule-input-memo:focus {
@@ -6793,6 +6847,20 @@ body {
 .work-schedule-cell-date {
   cursor: pointer;
   position: relative;
+  text-align: left;
+  background: none !important;
+}
+.work-schedule-cell-date:focus-within {
+  background: none !important;
+}
+
+.work-schedule-cell-date .work-schedule-input-date,
+.work-schedule-cell-date input.flatpickr-input {
+  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  font-weight: 300 !important;
+  color: #3a3a3a !important;
+  text-align: left !important;
+  background: none !important;
 }
 
 .work-schedule-date-display {
@@ -6800,9 +6868,15 @@ body {
   padding: 0.2rem 0.5rem;
   font-size: 14px;
   font-variant-numeric: tabular-nums;
+  background: none;
+  font-family: "DM Mono", "SF Mono", Consolas, monospace;
+  font-weight: 300;
+  color: #3a3a3a;
+  text-align: left;
 }
 
-.work-schedule-input-date {
+.work-schedule-input-date,
+.work-schedule-input-date.flatpickr-input {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -6810,15 +6884,20 @@ body {
   opacity: 0;
   cursor: pointer;
   border: none;
-  background: transparent;
-  font-family: inherit;
+  background: none !important;
+  font-family: "DM Mono", "SF Mono", Consolas, monospace;
 }
 
+
 .work-schedule-input-date:focus,
-.work-schedule-input-date:focus-visible {
+.work-schedule-input-date:focus-visible,
+.work-schedule-cell-date input.flatpickr-input:focus,
+.work-schedule-cell-date input.flatpickr-input:focus-visible,
+.work-schedule-cell-date input.flatpickr-input.active {
   outline: none !important;
   box-shadow: none !important;
   border: none !important;
+  background: none !important;
 }
 
 .work-schedule-input-date::-webkit-calendar-picker-indicator {
@@ -6902,7 +6981,7 @@ body {
 }
 
 .work-schedule-row-add {
-  background: #fafafa;
+  background: none;
 }
 
 .work-schedule-cell-add {
