@@ -21950,7 +21950,7 @@ body.kpi-resizing {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
   border-bottom: 1px solid #e0e0e0;
@@ -22002,15 +22002,22 @@ body.kpi-resizing {
   width: 100%;
   padding: 0.4rem 0.6rem;
   font-size: 0.85rem;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  background: #f8f8f8;
+  font-weight: 300;
+  color: #b8b8b8;
+  border: none;
+  border-bottom: 1px solid #e0e0e0;
+  border-radius: 0;
+  background: transparent;
   font-family: inherit;
+}
+
+.diary-search-input::placeholder {
+  color: #b8b8b8;
 }
 
 .diary-search-input:focus {
   outline: none;
-  border-color: #b0b0b0;
+  border-bottom-color: #b0b0b0;
 }
 
 .diary-content-area {

@@ -209,7 +209,6 @@ export function render() {
       const sidebarHeader = document.createElement("div");
       sidebarHeader.className = "diary-sidebar-header";
       sidebarHeader.innerHTML = `
-        <span class="diary-sidebar-title">Pages</span>
         <div class="diary-sidebar-actions">
           <button type="button" class="diary-sidebar-collapse diary-sidebar-collapse-btn">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
