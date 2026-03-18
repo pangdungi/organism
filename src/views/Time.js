@@ -3694,13 +3694,13 @@ export function render() {
           <div class="time-task-log-expense-inner-backdrop"></div>
           <div class="time-task-log-emotion-inner-panel">
             <div class="time-task-log-expense-inner-header">
-              <span class="time-task-log-expense-inner-header-label">소비/수입명</span>
+              <span class="time-task-log-expense-inner-header-label">소비 기록</span>
               <button type="button" class="time-task-log-expense-inner-close" aria-label="닫기">&times;</button>
             </div>
             <div class="time-task-log-expense-inner-body">
               <div class="time-task-log-expense-inner-fields">
                 <div class="time-task-log-field time-task-log-expense-name-field">
-                  <input type="text" class="time-task-log-expense-name" name="time-task-log-expense-name" placeholder="소비/수입명" />
+                  <input type="text" class="time-task-log-expense-name" name="time-task-log-expense-name" placeholder="소비명" />
                 </div>
                 <div class="time-task-log-field">
                   <label>금액</label>
@@ -5076,18 +5076,7 @@ export function render() {
     taskLogFocusInnerTypeWrap.appendChild(focusTypeDropdown);
   }
 
-  const EXPENSE_TASK_NAMES = ["생산적 소비", "비생산적 소비"];
-
   function onTaskSelectedForLog(taskName) {
-    const isEmotionTask =
-      taskName === EMOTION_TASK_POSITIVE || taskName === EMOTION_TASK_NEGATIVE;
-    const isExpenseTask = EXPENSE_TASK_NAMES.includes((taskName || "").trim());
-
-    if (isEmotionTask) {
-      openEmotionInnerModal();
-    } else if (isExpenseTask) {
-      openExpenseInnerModal();
-    }
     refreshKpiTodosInLogModal(taskName);
   }
 

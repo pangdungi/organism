@@ -2919,10 +2919,10 @@ body {
   color: #6b7280;
 }
 
-/* 소비/수입 명, 금액 열 고정 (가로 스크롤 시) */
-.asset-expense-col-name,
-.asset-expense-th-name,
-.asset-expense-cell-name {
+/* 거래일, 금액 열 고정 (가로 스크롤 시) - 열 순서: 거래일·소비/수입명·카테고리·분류·금액·결제수단·메모·삭제 */
+.asset-expense-col-date,
+.asset-expense-th-date,
+.asset-expense-cell-date {
   position: sticky;
   left: 0;
   z-index: 1;
@@ -2930,7 +2930,7 @@ body {
   box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.06);
 }
 
-.asset-expense-table thead .asset-expense-th-name {
+.asset-expense-table thead .asset-expense-th-date {
   z-index: 2;
   background: #f9fafb;
 }
@@ -2939,7 +2939,7 @@ body {
 .asset-expense-th-amount,
 .asset-expense-cell-amount {
   position: sticky;
-  left: 150px;
+  left: 405px;
   z-index: 1;
   background: #f9f9f8;
   box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.06);
@@ -2963,7 +2963,7 @@ body {
 }
 
 .asset-expense-summary-row .asset-expense-summary-total {
-  left: 150px;
+  left: 405px;
   box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.06);
 }
 

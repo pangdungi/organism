@@ -3982,22 +3982,22 @@ function renderExpenseView(options = {}) {
   table.className = "asset-expense-table";
   table.innerHTML = `
     <colgroup>
-      <col class="asset-expense-col-name">
-      <col class="asset-expense-col-amount">
       <col class="asset-expense-col-date">
+      <col class="asset-expense-col-name">
       <col class="asset-expense-col-category">
       <col class="asset-expense-col-classification">
+      <col class="asset-expense-col-amount">
       <col class="asset-expense-col-payment">
       <col class="asset-expense-col-memo">
       <col class="asset-expense-col-delete">
     </colgroup>
     <thead>
       <tr>
-        <th class="asset-expense-th-name">소비/수입 명</th>
-        <th class="asset-expense-th-amount">금액</th>
         <th class="asset-expense-th-date">거래일</th>
+        <th class="asset-expense-th-name">소비/수입 명</th>
         <th class="asset-expense-th-category">카테고리</th>
         <th class="asset-expense-th-classification">소비/수입 분류</th>
+        <th class="asset-expense-th-amount">금액</th>
         <th class="asset-expense-th-payment">결제수단</th>
         <th class="asset-expense-th-memo">메모</th>
         <th class="asset-expense-th-delete"></th>
@@ -4006,9 +4006,9 @@ function renderExpenseView(options = {}) {
     <tbody></tbody>
     <tfoot class="asset-expense-tfoot">
       <tr class="asset-expense-summary-row">
-        <td class="asset-expense-summary-label">합계</td>
+        <td colspan="4" class="asset-expense-summary-label">합계</td>
         <td class="asset-expense-summary-total">-</td>
-        <td colspan="6"></td>
+        <td colspan="3"></td>
       </tr>
     </tfoot>
   `;
@@ -4116,14 +4116,14 @@ function renderExpenseView(options = {}) {
       saveExpense();
     });
     tr.innerHTML = `
-      <td class="asset-expense-cell-name"><input type="text" class="asset-expense-input-name" name="asset-expense-name" placeholder="" value="${(data.name || "").replace(/"/g, "&quot;")}" /></td>
-      <td class="asset-expense-cell-amount"><input type="text" class="asset-expense-input-amount" name="asset-expense-amount" placeholder="0" value="${(data.amount || "").replace(/"/g, "&quot;")}" /></td>
       <td class="asset-expense-cell-date">
         <span class="asset-expense-date-display">${dateDisplayVal}</span>
         <input type="date" class="asset-expense-input-date" name="asset-expense-date" value="${dateValue}" tabindex="-1" />
       </td>
+      <td class="asset-expense-cell-name"><input type="text" class="asset-expense-input-name" name="asset-expense-name" placeholder="" value="${(data.name || "").replace(/"/g, "&quot;")}" /></td>
       <td class="asset-expense-cell-category"></td>
       <td class="asset-expense-cell-classification"></td>
+      <td class="asset-expense-cell-amount"><input type="text" class="asset-expense-input-amount" name="asset-expense-amount" placeholder="0" value="${(data.amount || "").replace(/"/g, "&quot;")}" /></td>
       <td class="asset-expense-cell-payment"></td>
       <td class="asset-expense-cell-memo"><input type="text" class="asset-expense-input-memo" name="asset-expense-memo" placeholder="" value="${(data.memo || "").replace(/"/g, "&quot;")}" /></td>
       <td class="asset-expense-cell-delete"><div class="asset-expense-delete-wrap"></div></td>
