@@ -1335,11 +1335,15 @@ function renderMonthlyView(tabsElement) {
           .filter((b) => b.isSingleDay && b.dayIdx === dayIdx)
           .sort((a, b) => a.row - b.row),
       );
+      const effectiveMaxPerDay = weekDateKeys.map((_, dayIdx) => {
+        const n = barsPerDay[dayIdx]?.length || 0;
+        return n > MAX_VISIBLE_BARS_PER_DAY ? MAX_VISIBLE_BARS_PER_DAY - 1 : MAX_VISIBLE_BARS_PER_DAY;
+      });
       allBars.forEach((b) => {
         if (b.isSingleDay && b.dayIdx != null) {
           const dayBars = barsPerDay[b.dayIdx];
           const idx = dayBars.indexOf(b);
-          b.isOverflow = idx >= MAX_VISIBLE_BARS_PER_DAY;
+          b.isOverflow = idx >= effectiveMaxPerDay[b.dayIdx];
         }
       });
       const barsWithRow = allBars;
@@ -1467,7 +1471,8 @@ function renderMonthlyView(tabsElement) {
         "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
       weekDateKeys.forEach((dateKey, dayIdx) => {
         const totalCount = barsPerDay[dayIdx]?.length || 0;
-        const overflowCount = totalCount - MAX_VISIBLE_BARS_PER_DAY;
+        const effectiveMax = effectiveMaxPerDay[dayIdx] ?? MAX_VISIBLE_BARS_PER_DAY;
+        const overflowCount = totalCount - effectiveMax;
         const isMobile = window.matchMedia("(max-width: 767px)").matches;
         const showCount = isMobile ? totalCount > 0 : overflowCount > 0;
         const displayCount = isMobile ? totalCount : overflowCount;
@@ -2050,11 +2055,15 @@ function render2WeekView(tabsElement) {
           .filter((b) => b.isSingleDay && b.dayIdx === dayIdx)
           .sort((a, b) => a.row - b.row),
       );
+      const effectiveMaxPerDay = weekDateKeys.map((_, dayIdx) => {
+        const n = barsPerDay[dayIdx]?.length || 0;
+        return n > MAX_VISIBLE_BARS_PER_DAY ? MAX_VISIBLE_BARS_PER_DAY - 1 : MAX_VISIBLE_BARS_PER_DAY;
+      });
       allBars.forEach((b) => {
         if (b.isSingleDay && b.dayIdx != null) {
           const dayBars = barsPerDay[b.dayIdx];
           const idx = dayBars.indexOf(b);
-          b.isOverflow = idx >= MAX_VISIBLE_BARS_PER_DAY;
+          b.isOverflow = idx >= effectiveMaxPerDay[b.dayIdx];
         }
       });
       const barsWithRow = allBars;
@@ -2180,7 +2189,8 @@ function render2WeekView(tabsElement) {
         "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
       weekDateKeys.forEach((dateKey, dayIdx) => {
         const totalCount = barsPerDay[dayIdx]?.length || 0;
-        const overflowCount = totalCount - MAX_VISIBLE_BARS_PER_DAY;
+        const effectiveMax = effectiveMaxPerDay[dayIdx] ?? MAX_VISIBLE_BARS_PER_DAY;
+        const overflowCount = totalCount - effectiveMax;
         const isMobile = window.matchMedia("(max-width: 767px)").matches;
         const showCount = isMobile ? totalCount > 0 : overflowCount > 0;
         const displayCount = isMobile ? totalCount : overflowCount;
@@ -2753,11 +2763,15 @@ function render3WeekView(tabsElement) {
           .filter((b) => b.isSingleDay && b.dayIdx === dayIdx)
           .sort((a, b) => a.row - b.row),
       );
+      const effectiveMaxPerDay = weekDateKeys.map((_, dayIdx) => {
+        const n = barsPerDay[dayIdx]?.length || 0;
+        return n > MAX_VISIBLE_BARS_PER_DAY ? MAX_VISIBLE_BARS_PER_DAY - 1 : MAX_VISIBLE_BARS_PER_DAY;
+      });
       allBars.forEach((b) => {
         if (b.isSingleDay && b.dayIdx != null) {
           const dayBars = barsPerDay[b.dayIdx];
           const idx = dayBars.indexOf(b);
-          b.isOverflow = idx >= MAX_VISIBLE_BARS_PER_DAY;
+          b.isOverflow = idx >= effectiveMaxPerDay[b.dayIdx];
         }
       });
       const barsWithRow = allBars;
@@ -2908,7 +2922,8 @@ function render3WeekView(tabsElement) {
         "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
       weekDateKeys.forEach((dateKey, dayIdx) => {
         const totalCount = barsPerDay[dayIdx]?.length || 0;
-        const overflowCount = totalCount - MAX_VISIBLE_BARS_PER_DAY;
+        const effectiveMax = effectiveMaxPerDay[dayIdx] ?? MAX_VISIBLE_BARS_PER_DAY;
+        const overflowCount = totalCount - effectiveMax;
         const isMobile = window.matchMedia("(max-width: 767px)").matches;
         const showCount = isMobile ? totalCount > 0 : overflowCount > 0;
         const displayCount = isMobile ? totalCount : overflowCount;
@@ -4927,11 +4942,15 @@ function render1WeekView(tabsElement) {
           .filter((b) => b.isSingleDay && b.dayIdx === dayIdx)
           .sort((a, b) => a.row - b.row),
       );
+      const effectiveMaxPerDay = weekDateKeys.map((_, dayIdx) => {
+        const n = barsPerDay[dayIdx]?.length || 0;
+        return n > MAX_VISIBLE_BARS_PER_DAY ? MAX_VISIBLE_BARS_PER_DAY - 1 : MAX_VISIBLE_BARS_PER_DAY;
+      });
       allBars.forEach((b) => {
         if (b.isSingleDay && b.dayIdx != null) {
           const dayBars = barsPerDay[b.dayIdx];
           const idx = dayBars.indexOf(b);
-          b.isOverflow = idx >= MAX_VISIBLE_BARS_PER_DAY;
+          b.isOverflow = idx >= effectiveMaxPerDay[b.dayIdx];
         }
       });
       const barsWithRow = allBars;
@@ -5082,7 +5101,8 @@ function render1WeekView(tabsElement) {
         "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
       weekDateKeys.forEach((dateKey, dayIdx) => {
         const totalCount = barsPerDay[dayIdx]?.length || 0;
-        const overflowCount = totalCount - MAX_VISIBLE_BARS_PER_DAY;
+        const effectiveMax = effectiveMaxPerDay[dayIdx] ?? MAX_VISIBLE_BARS_PER_DAY;
+        const overflowCount = totalCount - effectiveMax;
         const isMobile = window.matchMedia("(max-width: 767px)").matches;
         const showCount = isMobile ? totalCount > 0 : overflowCount > 0;
         const displayCount = isMobile ? totalCount : overflowCount;

@@ -24073,6 +24073,7 @@ body.kpi-resizing {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .calendar-monthly-week {
@@ -24251,21 +24252,21 @@ body.kpi-resizing {
 .calendar-day-more-btn {
   display: block;
   width: 100%;
-  margin-top: 0.2rem;
+  margin-top: 0.35rem;
   padding: 0.2rem 0.4rem;
   font-size: 0.7rem;
   font-weight: 600;
-  color: #6b7280;
-  background: rgba(107, 114, 128, 0.12);
-  border: 1px solid rgba(107, 114, 128, 0.25);
+  color: #B8B8B8;
+  background: transparent;
+  border: none;
   border-radius: 4px;
   cursor: pointer;
   font-family: inherit;
-  text-align: center;
+  text-align: left;
 }
 
 .calendar-day-more-btn:hover {
-  background: rgba(107, 114, 128, 0.2);
+  background: rgba(107, 114, 128, 0.1);
   color: #374151;
 }
 
@@ -25294,7 +25295,11 @@ body.kpi-resizing {
 }
 
 .calendar-todo-sidebar-body .todo-section-label {
-  color: #4b5563;
+  font-size: 0.95rem;
+  font-weight: 200;
+  letter-spacing: -0.01em;
+  color: #111111;
+  font-family: "Noto Serif KR", serif;
 }
 
 .calendar-todo-sidebar-body .todo-table-wrap {
