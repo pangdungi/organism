@@ -7452,7 +7452,7 @@ export function render() {
         <div class="time-improve-invest-summary-row"><span class="time-improve-invest-summary-label">실제 보낸 시간 합계</span><span class="time-improve-invest-summary-value">${formatHoursToHHMM(totalThiefHours)}</span></div>
         <div class="time-improve-invest-summary-row"><span class="time-improve-invest-summary-label">시간의 가치 합계</span><span class="time-improve-invest-summary-value time-improve-invest-summary-value-bold">${formatPrice(totalThiefPrice)}</span></div>
       </div>`;
-    const investMentText = `이 <strong>${formatPrice(totalThiefPrice)}원</strong>만큼의 돈을 내고 쓸만큼 가치있는 활동들이었나요?`;
+    const investMentText = `이 <strong>${formatPrice(totalThiefPrice)}원</strong> 만큼의 돈을 내고 쓸만큼 가치있는 활동들이었나요?`;
 
     const eventsListHtml =
       allEvents.length === 0
@@ -7467,7 +7467,10 @@ export function render() {
     wrap.innerHTML = `
       <div class="time-improve-quadrants">
         <div class="time-improve-quadrant time-improve-quadrant-focus">
-          <h3 class="time-improve-section-title">1. 집중력을 높이기</h3>
+          <div class="time-improve-section-header">
+            <span class="time-improve-section-num">01</span>
+            <h3 class="time-improve-section-title">집중력을 높이기</h3>
+          </div>
           <p class="time-improve-period">${periodLabel}</p>
           <div class="time-improve-events-wrap">
             <h4 class="time-improve-events-heading">방해기록</h4>
@@ -7487,7 +7490,10 @@ export function render() {
           </div>
         </div>
         <div class="time-improve-quadrant time-improve-quadrant-reality">
-          <h3 class="time-improve-section-title">2. 계획의 현실성 높이기</h3>
+          <div class="time-improve-section-header">
+            <span class="time-improve-section-num">02</span>
+            <h3 class="time-improve-section-title">계획의 현실성 높이기</h3>
+          </div>
           <p class="time-improve-period">${periodLabel}</p>
           <div class="time-improve-gap-section">${gapTableHtml}</div>
           <div class="time-improve-input-block">
@@ -7497,12 +7503,15 @@ export function render() {
           </div>
         </div>
         <div class="time-improve-quadrant time-improve-quadrant-important">
-          <h3 class="time-improve-section-title">3. 중요한일에 더 많은 시간 쓰기</h3>
+          <div class="time-improve-section-header">
+            <span class="time-improve-section-num">03</span>
+            <h3 class="time-improve-section-title">중요한일에 더 많은 시간 쓰기</h3>
+          </div>
           <p class="time-improve-period">${periodLabel}</p>
           <div class="time-improve-important-scroll">
             <div class="time-improve-important-priority">${priorityTableImportantHtml}</div>
             <div class="time-improve-important-invest">
-              <h4 class="time-improve-input-label">당신은 오늘 중요한 일에 시간을 더 많이 썼나요? 아님 중요하지 않은 일에 더 많은 시간을 썼나요?</h4>
+              <h4 class="time-improve-input-label">당신은 오늘 중요한 일에 시간을 더 많이 썼나요?</h4>
               <div class="time-improve-answer-scroll">
                 <textarea class="time-improve-answer time-improve-important-invest-input" rows="3"></textarea>
               </div>
@@ -7510,7 +7519,10 @@ export function render() {
           </div>
         </div>
         <div class="time-improve-quadrant time-improve-quadrant-invest">
-          <h3 class="time-improve-section-title">4. 비생산적 시간 아껴서 투자하기</h3>
+          <div class="time-improve-section-header">
+            <span class="time-improve-section-num">04</span>
+            <h3 class="time-improve-section-title">비생산적 시간 아껴서 투자하기</h3>
+          </div>
           <p class="time-improve-period">${periodLabel}</p>
           <div class="time-improve-invest-scroll">
             <div class="time-improve-invest-thief">
