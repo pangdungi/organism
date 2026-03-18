@@ -11010,7 +11010,8 @@ body.kpi-resizing {
   font-weight: 500;
   color: #374151;
   background: #f9f9f8;
-  border: 1px solid #d1d5db;
+  border: none;
+  border-right: 1px solid #e5e7eb;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
@@ -11020,9 +11021,8 @@ body.kpi-resizing {
 }
 
 .time-task-setup-btn:hover {
-  background: #f9fafb;
-  border-color: #9ca3af;
-  color: #1f2937;
+  background: #f9f9f8;
+  color: #374151;
 }
 
 /* 과제 설정 모달 */
@@ -14887,24 +14887,22 @@ body.kpi-resizing {
   padding: 0.4rem 0.75rem;
   font-size: 13px;
   font-weight: 500;
-  color: #6b7280;
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  color: #b8b8b8;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .time-filter-btn:hover {
-  background: #e5e7eb;
-  color: #374151;
+  color: #111111;
 }
 
 .time-filter-btn.active {
-  background: #f9f9f8;
-  color: #1a1a2e;
-  border-color: #d1d5db;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  color: #111111;
+  border-bottom-color: #111111;
 }
 
 .time-filter-task-select-btn.is-active {
@@ -15055,7 +15053,7 @@ body.kpi-resizing {
   font-size: 0.9rem;
   color: #6b7280;
   background: #f9f9f8;
-  border: 1px solid #e5e7eb;
+  border: none;
   border-radius: 50%;
   cursor: pointer;
   transition: all 0.2s;
@@ -15072,6 +15070,29 @@ body.kpi-resizing {
 .time-filter-range-wrap span {
   font-size: 13px;
   color: #6b7280;
+}
+
+/* 시간가계부 월별 wrap: 테두리 제거, 폰트 컬러 B8B8B8 */
+.time-filter-month-wrap .time-period-trigger,
+.time-filter-month-wrap .asset-cashflow-year-nav {
+  border: none;
+  background: transparent;
+  border-radius: 0;
+}
+
+.time-filter-month-wrap .time-period-trigger:hover {
+  border: none;
+  background: transparent;
+}
+
+.time-filter-month-wrap .time-period-trigger,
+.time-filter-month-wrap .asset-cashflow-year-display,
+.time-filter-month-wrap .asset-cashflow-year-btn {
+  color: #b8b8b8;
+}
+
+.time-filter-month-wrap .time-period-trigger::after {
+  border-top-color: #b8b8b8;
 }
 
 .time-filter-year,
@@ -17611,6 +17632,7 @@ body.kpi-resizing {
   border: none;
   border-bottom: 1px solid #e5e7eb;
   padding: 0.75rem 1rem;
+  margin-top: 0.75rem;
 }
 
 .time-ledger-summary-cell {
@@ -18450,10 +18472,14 @@ body.kpi-resizing {
   opacity: 0.9;
 }
 
-.time-btn-add:hover .time-add-icon,
-.time-task-setup-btn:hover .time-btn-icon {
+.time-btn-add:hover .time-add-icon {
   filter: brightness(0) saturate(100%) invert(35%);
   opacity: 1;
+}
+
+.time-task-setup-btn:hover .time-btn-icon {
+  filter: brightness(0) saturate(100%) invert(45%);
+  opacity: 0.9;
 }
 
 .time-btn-delete {

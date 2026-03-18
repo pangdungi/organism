@@ -3206,7 +3206,7 @@ export function render() {
   const filterBar = document.createElement("div");
   filterBar.className = "time-filter-bar";
   filterBar.innerHTML = `
-    <button type="button" class="time-task-setup-btn" data-filter-for="all" title="과제명, 생산성, 카테고리를 한 번에 설정"><img src="/toolbaricons/settings.svg" alt="" class="time-btn-icon" width="18" height="18"> 과제 설정</button>
+    <button type="button" class="time-task-setup-btn" data-filter-for="all" title="과제명, 생산성, 카테고리를 한 번에 설정"><img src="/toolbaricons/settings.svg" alt="과제 설정" class="time-btn-icon" width="18" height="18"></button>
     <div class="time-filter-tabs" data-filter-for="all">
       <button type="button" class="time-filter-btn" data-filter="month" data-audit-hidden>월별</button>
       <button type="button" class="time-filter-btn" data-filter="week" data-audit-hidden>일주일</button>
@@ -6795,8 +6795,9 @@ export function render() {
       const setupBtnEl = document.createElement("button");
       setupBtnEl.type = "button";
       setupBtnEl.className = "time-task-setup-btn";
+      setupBtnEl.title = "과제명, 생산성, 카테고리를 한 번에 설정";
       setupBtnEl.innerHTML =
-        '<img src="/toolbaricons/settings.svg" alt="" class="time-btn-icon" width="18" height="18"> 과제 설정';
+        '<img src="/toolbaricons/settings.svg" alt="과제 설정" class="time-btn-icon" width="18" height="18">';
       setupBtnEl.addEventListener("click", () => {
         const modal = el.querySelector(
           ".time-task-setup-modal:not(.time-task-select-modal):not(.time-add-task-modal):not(.time-task-log-modal)",
