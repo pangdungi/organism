@@ -36,11 +36,16 @@ export function render() {
 
   const searchWrap = document.createElement("div");
   searchWrap.className = "archive-search-wrap";
+  const searchIcon = document.createElement("span");
+  searchIcon.className = "archive-search-icon";
+  searchIcon.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>';
+  searchIcon.setAttribute("aria-hidden", "true");
   const searchInput = document.createElement("input");
   searchInput.type = "search";
   searchInput.className = "archive-search-input";
   searchInput.placeholder = "날짜, 시간, 메모, 태그로 검색";
   searchInput.setAttribute("aria-label", "검색");
+  searchWrap.appendChild(searchIcon);
   searchWrap.appendChild(searchInput);
   header.appendChild(searchWrap);
   el.appendChild(header);

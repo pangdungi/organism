@@ -7215,7 +7215,7 @@ export function render() {
       return {
         rootCause: entry.rootCause || "",
         countermeasures: entry.countermeasures || "",
-        planReality: entry.planReality || "",
+        planReality: entry.planReality ?? entry.planReality2 ?? "",
         importantInvest: entry.importantInvest || "",
         investReduce: entry.investReduce || "",
       };
@@ -7505,10 +7505,14 @@ export function render() {
             <h3 class="time-improve-section-title">계획의 현실성 높이기</h3>
           </div>
           <p class="time-improve-period">${periodLabel}</p>
-          <div class="time-improve-gap-section">${gapTableHtml}</div>
+          <div class="time-improve-reality-gap-wrap">
+            <h4 class="time-improve-events-heading">시간 갭</h4>
+            <div class="time-improve-gap-section">${gapTableHtml}</div>
+          </div>
           <div class="time-improve-input-block">
+            <h4 class="time-improve-input-label">1. 반성 및 개선점</h4>
             <div class="time-improve-answer-scroll">
-              <textarea class="time-improve-answer time-improve-plan-reality" placeholder="계획의 현실성을 높이기 위해 오늘 기록·반성할 내용을 적어보세요." rows="4"></textarea>
+              <textarea class="time-improve-answer time-improve-plan-reality" placeholder="반성할 점과 다음에 개선할 내용을 적어보세요."></textarea>
             </div>
           </div>
         </div>
@@ -7518,13 +7522,14 @@ export function render() {
             <h3 class="time-improve-section-title">중요한일에 더 많은 시간 쓰기</h3>
           </div>
           <p class="time-improve-period">${periodLabel}</p>
-          <div class="time-improve-important-scroll">
-            <div class="time-improve-important-priority">${priorityTableImportantHtml}</div>
-            <div class="time-improve-important-invest">
-              <h4 class="time-improve-input-label">당신은 오늘 중요한 일에 시간을 더 많이 썼나요?</h4>
-              <div class="time-improve-answer-scroll">
-                <textarea class="time-improve-answer time-improve-important-invest-input" rows="3"></textarea>
-              </div>
+          <div class="time-improve-important-data-wrap">
+            <h4 class="time-improve-events-heading">KPI · 우선순위</h4>
+            <div class="time-improve-important-data-scroll">${priorityTableImportantHtml}</div>
+          </div>
+          <div class="time-improve-input-block">
+            <h4 class="time-improve-input-label">당신은 오늘 중요한 일에 시간을 더 많이 썼나요?</h4>
+            <div class="time-improve-answer-scroll">
+              <textarea class="time-improve-answer time-improve-important-invest-input" rows="3"></textarea>
             </div>
           </div>
         </div>
@@ -7534,16 +7539,18 @@ export function render() {
             <h3 class="time-improve-section-title">비생산적 시간 아껴서 투자하기</h3>
           </div>
           <p class="time-improve-period">${periodLabel}</p>
-          <div class="time-improve-invest-scroll">
-            <div class="time-improve-invest-thief">
+          <div class="time-improve-invest-data-wrap">
+            <h4 class="time-improve-events-heading">비생산적 시간 현황</h4>
+            <div class="time-improve-invest-data-scroll">
               <div class="time-improve-thief-inner">${thiefTableHtml}</div>
               ${investSummaryHtml}
-            </div>
-            <div class="time-improve-invest-ment">
               <p class="time-improve-invest-ment-text">${investMentText}</p>
-              <div class="time-improve-answer-scroll">
-                <textarea class="time-improve-answer time-improve-invest-reduce-input" placeholder="비생산적 시간을 줄이기 위한 방법을 적어보세요." rows="3"></textarea>
-              </div>
+            </div>
+          </div>
+          <div class="time-improve-input-block">
+            <h4 class="time-improve-input-label">비생산적 시간을 줄이기 위한 방법을 적어보세요.</h4>
+            <div class="time-improve-answer-scroll">
+              <textarea class="time-improve-answer time-improve-invest-reduce-input" placeholder="예) 불필요한 SNS 시간 줄이기, 업무 시간 집중하기 등" rows="3"></textarea>
             </div>
           </div>
         </div>
