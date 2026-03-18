@@ -128,14 +128,14 @@ const EXPENSE_ROWS_KEY = "asset_expense_rows";
 const DEFAULT_DEBT_ROWS_COUNT = 5;
 const DEFAULT_ASSET_ROWS_COUNT = 5;
 const DEBT_TYPE_OPTIONS = [
-  { label: "학자금대출", color: "asset-debt-type-blue" },
-  { label: "마통", color: "asset-debt-type-green" },
-  { label: "카드할부", color: "asset-debt-type-purple" },
-  { label: "신용대출", color: "asset-debt-type-orange" },
-  { label: "주택담보대출", color: "asset-debt-type-pink" },
-  { label: "기타대출", color: "asset-debt-type-teal" },
-  { label: "신용카드 대금", color: "asset-debt-type-indigo" },
-  { label: "친구/가족 빌린돈", color: "asset-debt-type-amber" },
+  { label: "학자금대출" },
+  { label: "마통" },
+  { label: "카드할부" },
+  { label: "신용대출" },
+  { label: "주택담보대출" },
+  { label: "기타대출" },
+  { label: "신용카드 대금" },
+  { label: "친구/가족 빌린돈" },
 ];
 
 const REPAYMENT_OPTIONS = [
@@ -777,7 +777,7 @@ function setupScrollClosePanels() {
   );
 }
 
-/** 부채유형 드롭다운 - 고정 옵션, 파스텔 pill 스타일 */
+/** 부채유형 드롭다운 - 상환방식과 동일한 회색계열 스타일 */
 function createDebtTypeDropdown(initialValue, onUpdate) {
   const wrap = document.createElement("div");
   wrap.className = "asset-debt-type-wrap";
@@ -790,15 +790,9 @@ function createDebtTypeDropdown(initialValue, onUpdate) {
   const display = document.createElement("span");
   display.className = "asset-debt-type-display";
 
-  function getColorClass(val) {
-    const opt = DEBT_TYPE_OPTIONS.find((o) => o.label === val);
-    return opt ? opt.color : "";
-  }
-
   function updateDisplay() {
     const val = input.value || "";
     display.textContent = val || "선택";
-    display.className = "asset-debt-type-display " + getColorClass(val);
   }
 
   display.addEventListener("click", (e) => {
@@ -828,15 +822,10 @@ function createDebtTypeDropdown(initialValue, onUpdate) {
     panel.style.minWidth = `${Math.max(rect.width, 180)}px`;
   }
 
-  const sep = document.createElement("div");
-  sep.className = "asset-debt-type-separator";
-  sep.textContent = "—";
-  panel.appendChild(sep);
-
   DEBT_TYPE_OPTIONS.forEach((opt) => {
     const row = document.createElement("div");
     row.className = "asset-debt-type-option";
-    row.innerHTML = `<span class="asset-debt-type-tag ${opt.color}">${opt.label}</span>`;
+    row.textContent = opt.label;
     row.addEventListener("click", () => {
       input.value = opt.label;
       updateDisplay();
@@ -5366,10 +5355,10 @@ function renderCashflowView() {
   wrap.appendChild(dashboard);
 
   function aggregateByCategory(rows, year, month) {
-    const 소비 = { label: "소비", value: 0, color: "rgba(13, 148, 136, 0.55)" };
-    const 저축 = { label: "저축", value: 0, color: "rgba(34, 197, 94, 0.55)" };
-    const 투자 = { label: "투자", value: 0, color: "rgba(139, 92, 246, 0.55)" };
-    const 수입 = { label: "수입", value: 0, color: "#3b82f6" };
+    const 소비 = { label: "소비", value: 0, color: "#C4D8F2" };
+    const 저축 = { label: "저축", value: 0, color: "#F2D9C4" };
+    const 투자 = { label: "투자", value: 0, color: "#C8D0D8" };
+    const 수입 = { label: "수입", value: 0, color: "#E0C4E8" };
 
     rows.forEach((r) => {
       const dateParts = (r.date || "").split("-");
@@ -5399,11 +5388,11 @@ function renderCashflowView() {
 
   /** 현금흐름 세로 흐름용: 수입, 고정비, 변동비, 저축, 기타 */
   function aggregateByCategoryDetailed(rows, year, month) {
-    const 수입 = { label: "수입", value: 0, color: "#3b82f6", desc: "월급, 부업, 용돈, 보너스, 임대소득, 투자소득" };
-    const 고정비 = { label: "고정비", value: 0, color: "#0d9488", desc: "월세, 보험, 통신비, 관리비" };
-    const 변동비 = { label: "변동비", value: 0, color: "#06b6d4", desc: "식비, 교통비, 쇼핑" };
-    const 저축 = { label: "저축/투자", value: 0, color: "#22c55e", desc: "예적금, 주식, 연금, 펀드" };
-    const 기타 = { label: "기타", value: 0, color: "#f59e0b", desc: "경조사비, 선물비, Me 비용" };
+    const 수입 = { label: "수입", value: 0, color: "#E0C4E8", desc: "월급, 부업, 용돈, 보너스, 임대소득, 투자소득" };
+    const 고정비 = { label: "고정비", value: 0, color: "#C4DCC8", desc: "월세, 보험, 통신비, 관리비" };
+    const 변동비 = { label: "변동비", value: 0, color: "#C4E0DC", desc: "식비, 교통비, 쇼핑" };
+    const 저축 = { label: "저축/투자", value: 0, color: "#F2D9C4", desc: "예적금, 주식, 연금, 펀드" };
+    const 기타 = { label: "기타", value: 0, color: "#F2E8C4", desc: "경조사비, 선물비, Me 비용" };
 
     rows.forEach((r) => {
       const dateParts = (r.date || "").split("-");
@@ -5565,18 +5554,26 @@ function renderCashflowView() {
       기타: ["기타"],
     };
 
+    const catTagStyle = {
+      수입: { bg: "rgba(224,196,232,0.4)", color: "#6b21a8" },
+      고정비: { bg: "rgba(196,220,200,0.4)", color: "#2d5a3d" },
+      변동비: { bg: "rgba(196,224,220,0.4)", color: "#0d5c5c" },
+      "저축/투자": { bg: "rgba(242,217,196,0.4)", color: "#9a5a2e" },
+      기타: { bg: "rgba(242,232,196,0.4)", color: "#b45309" },
+    };
     const flowItems = flowData
       .map(
         (d, i) => {
           const hasArrow = i < flowData.length - 1;
           const keys = categoryKeyMap[d.label] || [];
           const breakdown = aggregateByClassification(keys, rows, selectedYear, selectedMonth);
+          const tagStyle = catTagStyle[d.label] || catTagStyle.기타;
           const breakdownHtml =
             breakdown.length > 0
               ? breakdown
                   .map(
                     (b) =>
-                      `<div class="asset-cashflow-breakdown-row"><span class="asset-expense-classification-tag ${b.color}">${b.label}</span><span class="asset-cashflow-breakdown-amt">${b.value > 0 ? formatNum(b.value) + "원" : "—"}</span></div>`
+                      `<div class="asset-cashflow-breakdown-row"><span class="asset-expense-classification-tag" style="background:${tagStyle.bg};color:${tagStyle.color}">${b.label}</span><span class="asset-cashflow-breakdown-amt">${b.value > 0 ? formatNum(b.value) + "원" : "—"}</span></div>`
                   )
                   .join("")
               : '<div class="asset-cashflow-breakdown-empty">—</div>';
@@ -5697,10 +5694,11 @@ function renderCashflowView() {
     `;
 
     const fixedExpenseData = aggregateFixedExpenseByClassification(rows, selectedYear, selectedMonth);
+    const 고정비TagStyle = { bg: "rgba(196,220,200,0.4)", color: "#2d5a3d" };
     const fixedExpenseTableRows = fixedExpenseData
       .map(
         (d) =>
-          `<tr><td class="asset-fixed-expense-cls"><span class="asset-expense-classification-tag ${d.color}">${d.label}</span></td><td class="asset-fixed-expense-amt">${d.value > 0 ? formatNum(d.value) + "원" : "—"}</td></tr>`
+          `<tr><td class="asset-fixed-expense-cls"><span class="asset-expense-classification-tag" style="background:${고정비TagStyle.bg};color:${고정비TagStyle.color}">${d.label}</span></td><td class="asset-fixed-expense-amt">${d.value > 0 ? formatNum(d.value) + "원" : "—"}</td></tr>`
       )
       .join("");
     const fixedExpenseTotal = fixedExpenseData.reduce((s, d) => s + d.value, 0);

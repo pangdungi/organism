@@ -4615,7 +4615,7 @@ body {
 }
 
 .asset-debt-progress-remaining-value {
-  color: #8b5cf6;
+  color: #6b21a8;
   font-variant-numeric: tabular-nums;
 }
 
@@ -4628,7 +4628,7 @@ body {
 
 .asset-debt-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #8b5cf6 0%, #a78bfa 100%);
+  background: #E0C4E8;
   border-radius: 999px;
   transition: width 0.3s ease;
 }
@@ -4644,7 +4644,7 @@ body {
 
 .asset-debt-progress-percent {
   font-weight: 600;
-  color: #8b5cf6;
+  color: #6b21a8;
   font-variant-numeric: tabular-nums;
 }
 
@@ -4732,8 +4732,8 @@ body {
   display: inline-flex;
   align-items: center;
   padding: 0.35rem 0.75rem;
-  background: #059669;
-  color: #fff;
+  background: #C4DCC8;
+  color: #2d5a3d;
   border-radius: 999px;
   font-size: 0.9rem;
   font-weight: 500;
@@ -6027,8 +6027,8 @@ body {
   display: inline-flex;
   align-items: center;
   padding: 0.35rem 0.75rem;
-  background: #8b5cf6;
-  color: #fff;
+  background: #E0C4E8;
+  color: #6b21a8;
   border-radius: 999px;
   font-size: 0.9rem;
   font-weight: 500;
@@ -6350,139 +6350,26 @@ body {
   background: #e8e8e8;
 }
 
-.asset-debt-type-display.asset-debt-type-blue {
-  background: rgba(147, 197, 253, 0.4);
-  color: #1e40af;
-  border-color: rgba(147, 197, 253, 0.6);
-}
-
-.asset-debt-type-display.asset-debt-type-green {
-  background: rgba(167, 243, 208, 0.4);
-  color: #047857;
-  border-color: rgba(167, 243, 208, 0.6);
-}
-
-.asset-debt-type-display.asset-debt-type-purple {
-  background: rgba(196, 181, 253, 0.4);
-  color: #5b21b6;
-  border-color: rgba(196, 181, 253, 0.6);
-}
-
-.asset-debt-type-display.asset-debt-type-orange {
-  background: rgba(253, 186, 116, 0.4);
-  color: #c2410c;
-  border-color: rgba(253, 186, 116, 0.6);
-}
-
-.asset-debt-type-display.asset-debt-type-pink {
-  background: rgba(251, 207, 232, 0.4);
-  color: #9d174d;
-  border-color: rgba(251, 207, 232, 0.6);
-}
-
-.asset-debt-type-display.asset-debt-type-teal {
-  background: rgba(94, 234, 212, 0.4);
-  color: #0f766e;
-  border-color: rgba(94, 234, 212, 0.6);
-}
-
-.asset-debt-type-display.asset-debt-type-indigo {
-  background: rgba(165, 180, 252, 0.4);
-  color: #3730a3;
-  border-color: rgba(165, 180, 252, 0.6);
-}
-
-.asset-debt-type-display.asset-debt-type-amber {
-  background: rgba(253, 230, 138, 0.4);
-  color: #b45309;
-  border-color: rgba(253, 230, 138, 0.6);
-}
-
 .asset-debt-type-panel {
   position: fixed;
   z-index: 10000;
   background: #f9f9f8;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-  max-height: 240px;
+  max-height: 200px;
   overflow-y: auto;
 }
 
-.asset-debt-type-separator {
-  padding: 0.35rem 0.6rem;
-  text-align: center;
-  color: #bbb;
-  font-size: 12px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
 .asset-debt-type-option {
-  display: flex;
-  align-items: center;
   padding: 0.4rem 0.6rem;
+  font-size: 13px;
   cursor: pointer;
-  font-size: 14px;
-  color: #333;
-  border-bottom: 1px solid #f5f5f5;
-}
-
-.asset-debt-type-option:last-child {
-  border-bottom: none;
+  color: #374151;
 }
 
 .asset-debt-type-option:hover {
-  background: #f8f8f8;
-}
-
-.asset-debt-type-tag {
-  display: inline-block;
-  padding: 0.2rem 0.5rem;
-  font-size: 13px;
-  font-weight: 500;
-  border-radius: 6px;
-  white-space: nowrap;
-}
-
-.asset-debt-type-tag.asset-debt-type-blue {
-  background: rgba(147, 197, 253, 0.4);
-  color: #1e40af;
-}
-
-.asset-debt-type-tag.asset-debt-type-green {
-  background: rgba(167, 243, 208, 0.4);
-  color: #047857;
-}
-
-.asset-debt-type-tag.asset-debt-type-purple {
-  background: rgba(196, 181, 253, 0.4);
-  color: #5b21b6;
-}
-
-.asset-debt-type-tag.asset-debt-type-orange {
-  background: rgba(253, 186, 116, 0.4);
-  color: #c2410c;
-}
-
-.asset-debt-type-tag.asset-debt-type-pink {
-  background: rgba(251, 207, 232, 0.4);
-  color: #9d174d;
-}
-
-.asset-debt-type-tag.asset-debt-type-teal {
-  background: rgba(94, 234, 212, 0.4);
-  color: #0f766e;
-}
-
-.asset-debt-type-tag.asset-debt-type-indigo {
-  background: rgba(165, 180, 252, 0.4);
-  color: #3730a3;
-}
-
-.asset-debt-type-tag.asset-debt-type-amber {
-  background: rgba(253, 230, 138, 0.4);
-  color: #b45309;
+  background: #f3f4f6;
 }
 
 .asset-debt-balance-display {
