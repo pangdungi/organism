@@ -467,7 +467,7 @@ function collectDebtRowsFromDOM(tableEl) {
     const principalInput = tr.querySelector(".asset-debt-input-principal");
     const startDateInput = tr.querySelector(".asset-debt-input-start-date");
     const endDateInput = tr.querySelector(".asset-debt-input-end-date");
-    const paidInput = tr.querySelector(".asset-debt-input-paid");
+    const paidDisplay = tr.querySelector(".asset-debt-paid-display");
     const extraPaidInput = tr.querySelector(".asset-debt-input-extra-paid");
     rows.push({
       name: nameInput?.value || "",
@@ -478,7 +478,7 @@ function collectDebtRowsFromDOM(tableEl) {
       principal: principalInput?.value || "",
       startDate: startDateInput?.value || "",
       endDate: endDateInput?.value || "",
-      paid: paidInput?.value || "",
+      paid: paidDisplay?.textContent?.trim() && paidDisplay.textContent !== "-" ? paidDisplay.textContent.trim() : "",
       extraPaid: extraPaidInput?.value || "",
     });
   });
@@ -501,6 +501,7 @@ function loadAssetRows() {
           months: r.months ?? "",
           openDate: r.openDate ?? "",
           maturityDate: r.maturityDate ?? "",
+          matured: r.matured === true,
         }));
       }
     }
@@ -515,6 +516,7 @@ function loadAssetRows() {
     months: "",
     openDate: "",
     maturityDate: "",
+    matured: false,
   }));
 }
 
@@ -746,6 +748,7 @@ function collectAssetRowsFromDOM(tableEl) {
       months: monthsInput?.value || "",
       openDate: openDateInput?.value || "",
       maturityDate: maturityDateInput?.value || "",
+      matured: tr.dataset.matured === "true",
     });
   });
   return rows;
@@ -1872,6 +1875,14 @@ function formatNum(val) {
   return n === null ? "" : n.toLocaleString("ko-KR");
 }
 
+/** 숫자 전용 입력: 비숫자 문자 제거 (allowDecimal: 소수점 허용 여부) */
+function filterNumericInput(el, allowDecimal) {
+  const re = allowDecimal ? /[^\d,.]/g : /[^\d,]/g;
+  const v = el.value;
+  const filtered = v.replace(re, "");
+  if (v !== filtered) el.value = filtered;
+}
+
 function parseDate(val) {
   const s = String(val || "").trim();
   if (!s) return null;
@@ -2310,6 +2321,7 @@ function renderNetworthView() {
     periodInput.className = "asset-debt-input-period";
     periodInput.value = data.periodYears ?? "";
     periodInput.placeholder = "-";
+    periodInput.addEventListener("input", () => filterNumericInput(periodInput, false));
     periodInput.addEventListener("keydown", (e) => e.key === "Enter" && periodInput.blur());
     periodTd.appendChild(periodInput);
     tr.appendChild(periodTd);
@@ -2321,6 +2333,7 @@ function renderNetworthView() {
     rateInput.className = "asset-debt-input-rate";
     rateInput.value = data.interestRate ?? "";
     rateInput.placeholder = "-";
+    rateInput.addEventListener("input", () => filterNumericInput(rateInput, true));
     rateInput.addEventListener("keydown", (e) => e.key === "Enter" && rateInput.blur());
     rateTd.appendChild(rateInput);
     tr.appendChild(rateTd);
@@ -2332,6 +2345,7 @@ function renderNetworthView() {
     principalInput.className = "asset-debt-input-principal";
     principalInput.value = data.principal ? (formatNum(data.principal) || data.principal) : "";
     principalInput.placeholder = "-";
+    principalInput.addEventListener("input", () => filterNumericInput(principalInput, false));
     principalInput.addEventListener("blur", () => {
       const formatted = formatNum(principalInput.value);
       if (formatted !== "") principalInput.value = formatted;
@@ -2353,7 +2367,7 @@ function renderNetworthView() {
         periodInput.value,
         repaymentInput?.value
       );
-      interestSpan.textContent = interest !== null ? formatNum(interest) : "-";
+      interestSpan.textContent = interest !== null ? formatNum(interest) : "";
     }
 
     let updatePaidFromDatesRef;
@@ -2391,11 +2405,11 @@ function renderNetworthView() {
         repaymentInput?.value
       );
       if (result !== null) {
-        monthlyPrincipalSpan.textContent = formatNum(result.monthlyPrincipal) || "-";
-        monthlyInterestSpan.textContent = formatNum(result.monthlyInterest) || "-";
+        monthlyPrincipalSpan.textContent = formatNum(result.monthlyPrincipal) || "";
+        monthlyInterestSpan.textContent = formatNum(result.monthlyInterest) || "";
       } else {
-        monthlyPrincipalSpan.textContent = "-";
-        monthlyInterestSpan.textContent = "-";
+        monthlyPrincipalSpan.textContent = "";
+        monthlyInterestSpan.textContent = "";
       }
     }
 
@@ -2480,17 +2494,9 @@ function renderNetworthView() {
 
     const paidTd = document.createElement("td");
     paidTd.className = "asset-debt-cell-paid";
-    const paidInput = document.createElement("input");
-    paidInput.type = "text";
-    paidInput.className = "asset-debt-input-paid";
-    paidInput.value = data.paid ? (formatNum(data.paid) || data.paid) : "";
-    paidInput.placeholder = "-";
-    paidInput.addEventListener("input", onUpdate);
-    paidInput.addEventListener("blur", () => {
-      const formatted = formatNum(paidInput.value);
-      if (formatted !== "") paidInput.value = formatted;
-    });
-    paidInput.addEventListener("keydown", (e) => e.key === "Enter" && paidInput.blur());
+    const paidSpan = document.createElement("span");
+    paidSpan.className = "asset-debt-paid-display";
+    paidSpan.title = "시작일~오늘 기준 자동 계산 (입력 불가)";
 
     function updatePaidFromDates() {
       const repaymentInput = repaymentTd.querySelector(".asset-debt-input-repayment");
@@ -2502,10 +2508,9 @@ function renderNetworthView() {
         startDateInput.value,
         endDateInput.value
       );
-      if (calc !== null) {
-        paidInput.value = formatNum(calc);
-        paidInput.dispatchEvent(new Event("input", { bubbles: true }));
-      }
+      paidSpan.textContent = calc !== null ? formatNum(calc) : "-";
+      updateBalanceRef?.();
+      onUpdate();
     }
     updatePaidFromDatesRef = updatePaidFromDates;
 
@@ -2528,7 +2533,7 @@ function renderNetworthView() {
       updatePaidFromDates();
       onUpdate();
     });
-    paidTd.appendChild(paidInput);
+    paidTd.appendChild(paidSpan);
     tr.appendChild(paidTd);
 
     const extraPaidTd = document.createElement("td");
@@ -2539,6 +2544,7 @@ function renderNetworthView() {
     extraPaidInput.value = data.extraPaid ? (formatNum(data.extraPaid) || data.extraPaid) : "";
     extraPaidInput.placeholder = "-";
     extraPaidInput.title = "중도상환 금액 (수수료 제외)";
+    extraPaidInput.addEventListener("input", () => filterNumericInput(extraPaidInput, false));
     extraPaidInput.addEventListener("input", onUpdate);
     extraPaidInput.addEventListener("blur", () => {
       const formatted = formatNum(extraPaidInput.value);
@@ -2573,7 +2579,7 @@ function renderNetworthView() {
         const balance = Math.max(0, calcBalance - extraPaid);
         balanceSpan.textContent = formatNum(balance) || "-";
       } else {
-        const paid = parseNum(paidInput.value);
+        const paid = parseNum(paidSpan.textContent);
         if (p === null && paid === null) balanceSpan.textContent = "-";
         else {
           const balance = Math.max(0, (p ?? 0) - (paid ?? 0) - extraPaid);
@@ -2583,7 +2589,6 @@ function renderNetworthView() {
     }
 
     principalInput.addEventListener("input", updateBalance);
-    paidInput.addEventListener("input", updateBalance);
     extraPaidInput.addEventListener("input", updateBalance);
     rateInput.addEventListener("input", updateBalance);
     periodInput.addEventListener("input", updateBalance);
@@ -2636,7 +2641,7 @@ function renderNetworthView() {
     let sumInterest = 0;
     table.querySelectorAll(".asset-debt-row").forEach((tr) => {
       const p = parseNum(tr.querySelector(".asset-debt-input-principal")?.value);
-      const paid = parseNum(tr.querySelector(".asset-debt-input-paid")?.value);
+      const paid = parseNum(tr.querySelector(".asset-debt-paid-display")?.textContent);
       const extraPaid = parseNum(tr.querySelector(".asset-debt-input-extra-paid")?.value);
       const balanceEl = tr.querySelector(".asset-debt-balance-display");
       const balance = parseNum(balanceEl?.textContent);
@@ -2754,6 +2759,7 @@ function renderNetworthView() {
     salePriceInput.className = "asset-asset-input-sale-price";
     salePriceInput.value = data.salePrice ? (formatNum(data.salePrice) || data.salePrice) : "";
     salePriceInput.placeholder = "-";
+    salePriceInput.addEventListener("input", () => filterNumericInput(salePriceInput, false));
     salePriceInput.addEventListener("input", () => {
       updateAssetValueDisplay();
       onAssetUpdate();
@@ -2775,6 +2781,7 @@ function renderNetworthView() {
     loanInput.className = "asset-asset-input-loan";
     loanInput.value = data.loan ? (formatNum(data.loan) || data.loan) : "";
     loanInput.placeholder = "-";
+    loanInput.addEventListener("input", () => filterNumericInput(loanInput, false));
     loanInput.addEventListener("input", () => {
       updateAssetValueDisplay();
       onAssetUpdate();
@@ -2799,7 +2806,7 @@ function renderNetworthView() {
       const sale = parseNum(salePriceInput.value);
       const loan = parseNum(loanInput.value);
       const val = sale !== null && loan !== null ? sale - loan : null;
-      assetValueDisplay.textContent = val !== null ? formatNum(val) : "-";
+      assetValueDisplay.textContent = val !== null ? formatNum(val) : "";
     }
     updateAssetValueDisplay();
     tr.appendChild(assetValueTd);
@@ -3219,6 +3226,7 @@ function renderNetworthView() {
     const tr = document.createElement("tr");
     tr.className = "asset-asset-row";
     if (isSavings) tr.dataset.savings = "true";
+    if (isSavings) tr.dataset.matured = data.matured ? "true" : "false";
 
     const nameTd = document.createElement("td");
     nameTd.className = "asset-asset-cell-name";
@@ -3261,6 +3269,7 @@ function renderNetworthView() {
     principalInput.className = "asset-asset-input-principal";
     principalInput.value = data.principal ? (formatNum(data.principal) || data.principal) : "";
     principalInput.placeholder = "-";
+    principalInput.addEventListener("input", () => filterNumericInput(principalInput, false));
     principalInput.addEventListener("input", () => {
       if (isDeposit) updateDepositMaturityAmt();
       onAssetUpdate();
@@ -3282,12 +3291,12 @@ function renderNetworthView() {
         rateInput?.value
       );
       if (result !== null) {
-        interestDisplay.textContent = result.interest > 0 ? formatNum(result.interest) : "-";
+        interestDisplay.textContent = result.interest > 0 ? formatNum(result.interest) : "";
         maturityAmtDisplay.textContent =
-          result.maturityAmount > 0 ? formatNum(result.maturityAmount) : "-";
+          result.maturityAmount > 0 ? formatNum(result.maturityAmount) : "";
       } else {
-        interestDisplay.textContent = "-";
-        maturityAmtDisplay.textContent = "-";
+        interestDisplay.textContent = "";
+        maturityAmtDisplay.textContent = "";
       }
     }
 
@@ -3300,6 +3309,7 @@ function renderNetworthView() {
       monthlyInput.className = "asset-asset-input-monthly";
       monthlyInput.value = data.monthly ? (formatNum(data.monthly) || data.monthly) : "";
       monthlyInput.placeholder = "-";
+      monthlyInput.addEventListener("input", () => filterNumericInput(monthlyInput, false));
       monthlyInput.addEventListener("input", () => {
         updatePrincipalFromCalc();
         updateInterestAndMaturityAmt();
@@ -3352,12 +3362,12 @@ function renderNetworthView() {
         rateInput?.value
       );
       if (result !== null) {
-        interestDisplay.textContent = result.interest > 0 ? formatNum(result.interest) : "-";
+        interestDisplay.textContent = result.interest > 0 ? formatNum(result.interest) : "";
         maturityAmtDisplay.textContent =
-          result.maturityAmount > 0 ? formatNum(result.maturityAmount) : "-";
+          result.maturityAmount > 0 ? formatNum(result.maturityAmount) : "";
       } else {
-        interestDisplay.textContent = "-";
-        maturityAmtDisplay.textContent = "-";
+        interestDisplay.textContent = "";
+        maturityAmtDisplay.textContent = "";
       }
     }
 
@@ -3368,6 +3378,7 @@ function renderNetworthView() {
     rateInput.className = "asset-asset-input-rate";
     rateInput.value = data.rate ?? "";
     rateInput.placeholder = "-";
+    rateInput.addEventListener("input", () => filterNumericInput(rateInput, true));
     rateInput.addEventListener("input", () => {
       if (isDeposit) updateDepositMaturityAmt();
       else {
@@ -3389,6 +3400,7 @@ function renderNetworthView() {
       monthsInput.className = "asset-asset-input-months";
       monthsInput.value = data.months ?? "";
       monthsInput.placeholder = "-";
+      monthsInput.addEventListener("input", () => filterNumericInput(monthsInput, false));
       monthsInput.addEventListener("input", () => {
         updateInterestAndMaturityAmt();
         onAssetUpdate();
@@ -3477,7 +3489,7 @@ function renderNetworthView() {
     interestTd.className = "asset-asset-cell-interest";
     const interestDisplay = document.createElement("span");
     interestDisplay.className = "asset-asset-interest-display";
-    interestDisplay.textContent = "-";
+    interestDisplay.textContent = "";
     interestTd.appendChild(interestDisplay);
     tr.appendChild(interestTd);
 
@@ -3485,7 +3497,7 @@ function renderNetworthView() {
     maturityAmtTd.className = "asset-asset-cell-maturity-amt";
     const maturityAmtDisplay = document.createElement("span");
     maturityAmtDisplay.className = "asset-asset-maturity-amt-display";
-    maturityAmtDisplay.textContent = "-";
+    maturityAmtDisplay.textContent = "";
     maturityAmtTd.appendChild(maturityAmtDisplay);
     tr.appendChild(maturityAmtTd);
 
@@ -3543,8 +3555,8 @@ function renderNetworthView() {
         });
         const saleCell = el.totalsRow.querySelector(".asset-asset-cell-totals-sale-price");
         const loanCell = el.totalsRow.querySelector(".asset-asset-cell-totals-loan");
-        if (saleCell) saleCell.textContent = saleTotal > 0 ? formatNum(saleTotal) : "-";
-        if (loanCell) loanCell.textContent = loanTotal > 0 ? formatNum(loanTotal) : "-";
+        if (saleCell) saleCell.textContent = saleTotal > 0 ? formatNum(saleTotal) : "";
+        if (loanCell) loanCell.textContent = loanTotal > 0 ? formatNum(loanTotal) : "";
       } else if (el.isInsurance) {
         el.tbody.querySelectorAll(".asset-asset-row-insurance").forEach((tr) => {
           const surrender = parseNum(tr.querySelector(".asset-insurance-input-surrender")?.value);
@@ -3565,13 +3577,21 @@ function renderNetworthView() {
         if (totalPaidCell) totalPaidCell.textContent = sum > 0 ? formatNum(sum) : "-";
         if (monthlyReceiptCell) monthlyReceiptCell.textContent = monthlyReceiptTotal > 0 ? formatNum(monthlyReceiptTotal) : "-";
       } else {
+        let sumMaturityAmt = 0;
         el.tbody.querySelectorAll(".asset-asset-row:not(.asset-asset-row-real-estate):not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(.asset-asset-row-annuity)").forEach((tr) => {
           if (tr.dataset.matured === "true") return;
           const p = parseNum(tr.querySelector(".asset-asset-input-principal")?.value);
           if (p !== null) sum += p;
+          if (g.key === "예금" || g.key === "적금") {
+            const m = parseNum(tr.querySelector(".asset-asset-maturity-amt-display")?.textContent);
+            if (m !== null) sumMaturityAmt += m;
+          }
         });
+        const maturityAmtCell = el.totalsRow.querySelector(".asset-asset-cell-totals-maturity-amt");
+        if (maturityAmtCell) maturityAmtCell.textContent = sumMaturityAmt > 0 ? formatNum(sumMaturityAmt) : "-";
       }
-      el.totalsCell.textContent = sum > 0 ? formatNum(sum) : "-";
+      const emptyVal = el.isRealEstate ? "" : "-";
+      el.totalsCell.textContent = sum > 0 ? formatNum(sum) : emptyVal;
     });
   }
 
@@ -3637,8 +3657,8 @@ function renderNetworthView() {
       const display = tr.querySelector(".asset-asset-maturity-rate-display");
       if (!display) return;
       const rate = calcMaturityRate(openInput?.value, maturityInput?.value);
-      display.textContent = rate !== null ? `${rate}%` : "-";
-      tr.dataset.matured = rate === 100 ? "true" : "false";
+      display.textContent = rate !== null ? `${rate}%` : "";
+      /* matured는 우클릭 '만기로 이동'으로만 변경 (자동 미적용) */
     });
     document.querySelectorAll("[data-deposit-savings-tabs]").forEach((tabsEl) => {
       const active = tabsEl.dataset.activeTab || "in-progress";
@@ -3937,9 +3957,9 @@ function renderNetworthView() {
     } else if (isRealEstate) {
       subTotalsRow.innerHTML = `
         <td class="asset-asset-cell-totals-label" colspan="1">합계</td>
-        <td class="asset-asset-cell-totals-sale-price">-</td>
-        <td class="asset-asset-cell-totals-loan">-</td>
-        <td class="asset-asset-cell-totals-asset-value">-</td>
+        <td class="asset-asset-cell-totals-sale-price"></td>
+        <td class="asset-asset-cell-totals-loan"></td>
+        <td class="asset-asset-cell-totals-asset-value"></td>
         <td class="asset-asset-cell-actions"></td>
       `;
       subTotalsCell = subTotalsRow.querySelector(".asset-asset-cell-totals-asset-value");
@@ -3962,11 +3982,12 @@ function renderNetworthView() {
       subTotalsCell = subTotalsRow.querySelector(".asset-annuity-cell-totals-total-paid");
     } else {
       const totalsColspan = isDeposit ? 2 : isSavings ? 2 : 3;
-      const totalsEmptyCells = isDeposit ? 6 : isSavings ? 8 : 8;
+      const totalsEmptyCells = isDeposit ? 5 : isSavings ? 7 : 8;
       subTotalsRow.innerHTML = `
         <td class="asset-asset-cell-totals-label" colspan="${totalsColspan}">합계</td>
         <td class="asset-asset-cell-totals-principal">-</td>
         ${Array(totalsEmptyCells).fill("<td></td>").join("")}
+        <td class="asset-asset-cell-totals-maturity-amt">-</td>
         <td class="asset-asset-cell-actions"></td>
       `;
       subTotalsCell = subTotalsRow.querySelector(".asset-asset-cell-totals-principal");
@@ -4004,6 +4025,40 @@ function renderNetworthView() {
     });
 
     subsectionElements[g.key] = { tbody: subTbody, totalsRow: subTotalsRow, totalsCell: subTotalsCell, isRealEstate, isStock, isInsurance, isAnnuity };
+
+    if (tabsEl) {
+      subTbody.addEventListener("contextmenu", (e) => {
+        const tr = e.target.closest(".asset-asset-row");
+        if (!tr || tr.dataset.savings !== "true") return;
+        e.preventDefault();
+        const menu = document.createElement("div");
+        menu.className = "asset-asset-maturity-context-menu";
+        menu.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;z-index:100000;`;
+        const isMatured = tr.dataset.matured === "true";
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "asset-asset-maturity-context-menu-item";
+        btn.textContent = isMatured ? "보유중으로 이동" : "만기로 이동";
+        btn.addEventListener("click", () => {
+          tr.dataset.matured = isMatured ? "false" : "true";
+          document.body.removeChild(menu);
+          document.removeEventListener("click", hide);
+          document.removeEventListener("contextmenu", hide);
+          onAssetUpdate();
+        });
+        menu.appendChild(btn);
+        const hide = () => {
+          if (menu.parentNode) document.body.removeChild(menu);
+          document.removeEventListener("click", hide);
+          document.removeEventListener("contextmenu", hide);
+        };
+        document.body.appendChild(menu);
+        requestAnimationFrame(() => {
+          document.addEventListener("click", hide);
+          document.addEventListener("contextmenu", hide);
+        });
+      });
+    }
 
     subTableWrap.appendChild(subTable);
     const assetTableContainer = document.createElement("div");

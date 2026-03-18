@@ -3734,7 +3734,6 @@ body {
   font-size: 14px;
   border: none;
   background: transparent;
-  font-family: inherit;
   box-sizing: border-box;
 }
 
@@ -4620,7 +4619,7 @@ body {
 }
 
 .asset-debt-progress-bar {
-  height: 10px;
+  height: 5px;
   background: #e5e7eb;
   border-radius: 999px;
   overflow: hidden;
@@ -4719,6 +4718,33 @@ body {
   color: #6b7280;
   background: #f9fafb;
   border-bottom: 1px solid #e5e7eb;
+}
+
+.asset-asset-maturity-context-menu {
+  min-width: 10rem;
+  padding: 0.25rem 0;
+  background: #f9f9f8;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.asset-asset-maturity-context-menu-item {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  text-align: left;
+  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  color: #111111;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.asset-asset-maturity-context-menu-item:hover {
+  background: #f3f4f6;
+  color: #111;
 }
 
 .asset-asset-header {
@@ -4914,6 +4940,11 @@ body {
   box-sizing: border-box;
 }
 
+.asset-asset-input-sale-price:focus,
+.asset-asset-input-loan:focus {
+  outline: none;
+}
+
 .asset-asset-asset-value-display {
   font-weight: 500;
   color: #374151;
@@ -5004,12 +5035,8 @@ body {
   display: block;
   padding: 0.2rem 0.4rem;
   font-size: 13px;
-  color: #374151;
+  color: #b8b8b8;
   font-variant-numeric: tabular-nums;
-}
-
-.asset-asset-maturity-rate-display {
-  color: #6b7280;
 }
 
 .asset-asset-input-name:focus,
@@ -5956,7 +5983,8 @@ body {
   font-size: 13px;
 }
 
-.asset-asset-cell-totals-principal {
+.asset-asset-cell-totals-principal,
+.asset-asset-cell-totals-maturity-amt {
   font-weight: 600;
   color: #374151;
 }
@@ -6077,6 +6105,7 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   overscroll-behavior-x: none;
   -webkit-overflow-scrolling: auto;
+  max-width: 100%;
 }
 
 .asset-debt-add-button-wrap {
@@ -6088,10 +6117,10 @@ body {
 }
 
 .asset-debt-table {
-  width: max-content;
-  min-width: 100%;
+  width: fit-content;
   border-collapse: collapse;
   font-size: 14px;
+  table-layout: auto;
 }
 
 .asset-debt-table th,
@@ -6101,6 +6130,8 @@ body {
   border-bottom: 1px solid #e5e7eb;
   border-right: 1px solid #e8eaed;
   white-space: nowrap;
+  min-width: max-content;
+  box-sizing: border-box;
 }
 
 .asset-debt-table th:last-child,
@@ -6134,72 +6165,10 @@ body {
   background: #f5f5f5;
 }
 
-.asset-debt-col-name {
-  width: 10%;
-  min-width: 80px;
-}
-
-.asset-debt-col-type {
-  width: 9%;
-  min-width: 65px;
-}
-
-.asset-debt-col-repayment {
-  width: 9%;
-  min-width: 75px;
-}
-
-.asset-debt-col-period {
-  width: 7%;
-  min-width: 55px;
-}
-
-.asset-debt-col-rate {
-  width: 6%;
-  min-width: 50px;
-}
-
-.asset-debt-col-principal {
-  width: 10%;
-  min-width: 85px;
-}
-
-.asset-debt-col-interest {
-  width: 9%;
-  min-width: 75px;
-}
-
-.asset-debt-col-monthly-principal,
-.asset-debt-col-monthly-interest {
-  width: 7%;
-  min-width: 65px;
-}
-
-.asset-debt-col-start-date,
-.asset-debt-col-end-date {
-  width: 8%;
-  min-width: 95px;
-}
-
-.asset-debt-col-paid,
-.asset-debt-col-extra-paid {
-  width: 9%;
-  min-width: 75px;
-}
-
-.asset-debt-col-balance {
-  width: 9%;
-  min-width: 75px;
-}
-
-.asset-debt-col-actions {
-  width: 50px;
-  min-width: 50px;
-}
+/* 대출 테이블: 셀 min-width: max-content로 내용에 맞게 열 너비 자동 조절 */
 
 .asset-debt-input-name,
 .asset-debt-input-principal,
-.asset-debt-input-paid,
 .asset-debt-input-extra-paid,
 .asset-debt-input-period,
 .asset-debt-input-rate {
@@ -6208,7 +6177,8 @@ body {
   font-size: 13px;
   border: none;
   background: transparent;
-  font-family: inherit;
+  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  color: #111111;
 }
 
 /* 날짜 셀: 행 클릭 시 날짜 픽커, 아이콘/플레이스홀더 숨김 */
@@ -6221,7 +6191,8 @@ body {
 .asset-debt-date-display {
   display: block;
   font-size: 13px;
-  color: #374151;
+  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  color: #111111;
   padding: 0.2rem 0.4rem;
 }
 
@@ -6259,7 +6230,6 @@ body {
 
 .asset-debt-input-name:focus,
 .asset-debt-input-principal:focus,
-.asset-debt-input-paid:focus,
 .asset-debt-input-extra-paid:focus,
 .asset-debt-input-period:focus,
 .asset-debt-input-rate:focus {
@@ -6318,7 +6288,8 @@ body {
 .asset-debt-monthly-interest-display {
   display: inline-block;
   font-size: 14px;
-  color: #374151;
+  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  color: #b8b8b8;
 }
 
 /* 부채유형 드롭다운 */
@@ -6372,9 +6343,11 @@ body {
   background: #f3f4f6;
 }
 
+.asset-debt-paid-display,
 .asset-debt-balance-display {
   font-size: 14px;
-  color: #374151;
+  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  color: #111111;
 }
 
 .asset-debt-row-totals {
