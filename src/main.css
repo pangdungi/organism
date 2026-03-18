@@ -4953,7 +4953,6 @@ body {
 .asset-asset-cell-totals-sale-price,
 .asset-asset-cell-totals-loan,
 .asset-asset-cell-totals-asset-value {
-  font-weight: 500;
   text-align: right;
 }
 
@@ -5603,9 +5602,19 @@ body {
   width: 100%;
   padding: 0.3rem 0.5rem;
   font-size: 12px;
+  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
   border: 1px solid #ddd;
   border-radius: 4px;
   box-sizing: border-box;
+  outline: none;
+}
+
+.asset-asset-savings-goal-add-input:focus {
+  border-color: #ddd;
+}
+
+.asset-asset-savings-goal-add-input::placeholder {
+  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
 }
 
 /* 주식분류 드롭다운 */
@@ -5921,9 +5930,19 @@ body {
   width: 100%;
   padding: 0.3rem 0.5rem;
   font-size: 12px;
+  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
   border: 1px solid #ddd;
   border-radius: 4px;
   box-sizing: border-box;
+  outline: none;
+}
+
+.asset-stock-category-add-input:focus {
+  border-color: #ddd;
+}
+
+.asset-stock-category-add-input::placeholder {
+  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
 }
 
 .asset-asset-category-option {
@@ -5975,16 +5994,26 @@ body {
 
 .asset-asset-row-totals {
   background: #f5f5f5;
-  font-weight: 500;
+  font-weight: 600;
+  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  color: #374151;
 }
 
 .asset-asset-cell-totals-label {
   color: #6b7280;
   font-size: 13px;
+  font-weight: 600;
 }
 
 .asset-asset-cell-totals-principal,
-.asset-asset-cell-totals-maturity-amt {
+.asset-asset-cell-totals-maturity-amt,
+.asset-asset-cell-totals-sale-price,
+.asset-asset-cell-totals-loan,
+.asset-asset-cell-totals-asset-value,
+.asset-stock-cell-totals-appraisal-amt,
+.asset-insurance-cell-totals-surrender,
+.asset-annuity-cell-totals-total-paid,
+.asset-annuity-cell-totals-monthly-receipt {
   font-weight: 600;
   color: #374151;
 }
@@ -6352,12 +6381,15 @@ body {
 
 .asset-debt-row-totals {
   background: #f5f5f5;
-  font-weight: 500;
+  font-weight: 600;
+  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  color: #374151;
 }
 
 .asset-debt-cell-totals-label {
   color: #6b7280;
   font-size: 13px;
+  font-weight: 600;
 }
 
 .asset-debt-cell-totals-principal,

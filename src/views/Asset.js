@@ -61,8 +61,7 @@ function isDefaultStockCategory(name) {
 }
 
 function getStockCategoryColor(label) {
-  const opt = DEFAULT_STOCK_CATEGORY_OPTIONS.find((o) => o.label === label);
-  return opt ? opt.color : "asset-stock-cat-gray";
+  return "asset-stock-cat-gray";
 }
 
 const DEFAULT_INSURANCE_KIND_OPTIONS = [
@@ -2856,6 +2855,7 @@ function renderNetworthView() {
     avgPriceInput.className = "asset-stock-input-avg-price";
     avgPriceInput.value = data.avgPrice ? (formatNum(data.avgPrice) || data.avgPrice) : "";
     avgPriceInput.placeholder = "-";
+    avgPriceInput.addEventListener("input", () => filterNumericInput(avgPriceInput, true));
     avgPriceInput.addEventListener("input", () => {
       updateStockCalculations();
       onAssetUpdate();
@@ -2877,6 +2877,7 @@ function renderNetworthView() {
     currentPriceInput.className = "asset-stock-input-current-price";
     currentPriceInput.value = data.currentPrice ? (formatNum(data.currentPrice) || data.currentPrice) : "";
     currentPriceInput.placeholder = "-";
+    currentPriceInput.addEventListener("input", () => filterNumericInput(currentPriceInput, true));
     currentPriceInput.addEventListener("input", () => {
       updateStockCalculations();
       onAssetUpdate();
@@ -2898,6 +2899,7 @@ function renderNetworthView() {
     quantityInput.className = "asset-stock-input-quantity";
     quantityInput.value = data.quantity ?? "";
     quantityInput.placeholder = "-";
+    quantityInput.addEventListener("input", () => filterNumericInput(quantityInput, false));
     quantityInput.addEventListener("input", () => {
       updateStockCalculations();
       onAssetUpdate();
@@ -2942,10 +2944,10 @@ function renderNetworthView() {
       const profitLoss = purchaseAmt !== null && appraisalAmt !== null ? appraisalAmt - purchaseAmt : null;
       const returnRate = purchaseAmt !== null && purchaseAmt > 0 && profitLoss !== null
         ? (profitLoss / purchaseAmt) * 100 : null;
-      appraisalAmtSpan.textContent = appraisalAmt !== null ? formatNum(Math.round(appraisalAmt)) : "-";
-      profitLossSpan.textContent = profitLoss !== null ? (profitLoss >= 0 ? "" : "-") + formatNum(Math.abs(Math.round(profitLoss))) : "-";
+      appraisalAmtSpan.textContent = appraisalAmt !== null ? formatNum(Math.round(appraisalAmt)) : "";
+      profitLossSpan.textContent = profitLoss !== null ? (profitLoss >= 0 ? "" : "-") + formatNum(Math.abs(Math.round(profitLoss))) : "";
       profitLossSpan.className = "asset-stock-profit-loss-display " + (profitLoss !== null ? (profitLoss >= 0 ? "profit" : "loss") : "");
-      returnRateSpan.textContent = returnRate !== null ? Math.round(returnRate) + "%" : "-";
+      returnRateSpan.textContent = returnRate !== null ? Math.round(returnRate) + "%" : "";
       returnRateSpan.className = "asset-stock-return-rate-display " + (returnRate !== null ? (returnRate >= 0 ? "profit" : "loss") : "");
     }
     updateStockCalculations();
@@ -3099,6 +3101,7 @@ function renderNetworthView() {
       input.className = cls;
       input.value = val ? (formatNum(val) || val) : "";
       input.placeholder = placeholder;
+      input.addEventListener("input", () => filterNumericInput(input, false));
       input.addEventListener("input", () => { updateAnnuityCalc(); onAssetUpdate(); });
       input.addEventListener("blur", () => {
         const f = formatNum(input.value);
@@ -3195,15 +3198,15 @@ function renderNetworthView() {
           if (monthly !== null && monthly >= 0 && months > 0) {
             totalPaidSpan.textContent = formatNum(Math.round(monthly * months));
           } else {
-            totalPaidSpan.textContent = "-";
+            totalPaidSpan.textContent = "";
           }
         } else {
           paymentYearsSpan.textContent = "-";
-          totalPaidSpan.textContent = "-";
+          totalPaidSpan.textContent = "";
         }
       } else {
         paymentYearsSpan.textContent = "-";
-        totalPaidSpan.textContent = "-";
+        totalPaidSpan.textContent = "";
       }
     }
     monthlyInput.addEventListener("input", updateAnnuityCalc);
@@ -3574,8 +3577,8 @@ function renderNetworthView() {
         });
         const totalPaidCell = el.totalsRow.querySelector(".asset-annuity-cell-totals-total-paid");
         const monthlyReceiptCell = el.totalsRow.querySelector(".asset-annuity-cell-totals-monthly-receipt");
-        if (totalPaidCell) totalPaidCell.textContent = sum > 0 ? formatNum(sum) : "-";
-        if (monthlyReceiptCell) monthlyReceiptCell.textContent = monthlyReceiptTotal > 0 ? formatNum(monthlyReceiptTotal) : "-";
+        if (totalPaidCell) totalPaidCell.textContent = sum > 0 ? formatNum(sum) : "";
+        if (monthlyReceiptCell) monthlyReceiptCell.textContent = monthlyReceiptTotal > 0 ? formatNum(monthlyReceiptTotal) : "";
       } else {
         let sumMaturityAmt = 0;
         el.tbody.querySelectorAll(".asset-asset-row:not(.asset-asset-row-real-estate):not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(.asset-asset-row-annuity)").forEach((tr) => {
@@ -3590,7 +3593,7 @@ function renderNetworthView() {
         const maturityAmtCell = el.totalsRow.querySelector(".asset-asset-cell-totals-maturity-amt");
         if (maturityAmtCell) maturityAmtCell.textContent = sumMaturityAmt > 0 ? formatNum(sumMaturityAmt) : "-";
       }
-      const emptyVal = el.isRealEstate ? "" : "-";
+      const emptyVal = el.isRealEstate || el.isStock ? "" : "-";
       el.totalsCell.textContent = sum > 0 ? formatNum(sum) : emptyVal;
     });
   }
@@ -3948,7 +3951,7 @@ function renderNetworthView() {
     if (isStock) {
       subTotalsRow.innerHTML = `
         <td class="asset-asset-cell-totals-label" colspan="5">합계</td>
-        <td class="asset-stock-cell-totals-appraisal-amt">-</td>
+        <td class="asset-stock-cell-totals-appraisal-amt"></td>
         <td></td>
         <td></td>
         <td class="asset-stock-cell-actions"></td>
@@ -3974,9 +3977,9 @@ function renderNetworthView() {
     } else if (isAnnuity) {
       subTotalsRow.innerHTML = `
         <td class="asset-asset-cell-totals-label" colspan="6">합계</td>
-        <td class="asset-annuity-cell-totals-total-paid">-</td>
+        <td class="asset-annuity-cell-totals-total-paid"></td>
         <td></td>
-        <td class="asset-annuity-cell-totals-monthly-receipt">-</td>
+        <td class="asset-annuity-cell-totals-monthly-receipt"></td>
         <td class="asset-asset-cell-actions"></td>
       `;
       subTotalsCell = subTotalsRow.querySelector(".asset-annuity-cell-totals-total-paid");
