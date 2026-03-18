@@ -5330,7 +5330,6 @@ function renderCashflowView() {
 
   const viewTabs = document.createElement("div");
   viewTabs.className = "time-view-tabs";
-  viewTabs.innerHTML = `<button type="button" class="time-view-tab active" disabled>대시보드</button>`;
 
   const periodWrap = document.createElement("div");
   periodWrap.className = "asset-cashflow-period-wrap";
