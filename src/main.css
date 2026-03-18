@@ -3476,7 +3476,6 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 1rem;
 }
 
 .asset-cashflow-period-wrap {
@@ -7148,8 +7147,7 @@ body {
 }
 
 .todo-category-tab-add:hover {
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 6px;
+  background: transparent;
 }
 
 .todo-category-tab-add:hover .todo-category-tab-add-icon {
@@ -7908,6 +7906,10 @@ body {
 .todo-section-header--no-collapse {
   cursor: default;
   border-bottom: 1px solid #e5e5e5;
+}
+
+.todo-section-header--no-collapse:hover {
+  background: #fafafa;
 }
 
 .calendar-todo-sidebar-body
@@ -10941,7 +10943,6 @@ body.kpi-resizing {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 1rem;
   width: 100%;
   max-width: 100%;
   font-family: var(
@@ -24418,9 +24419,19 @@ body.kpi-resizing {
   top: -6px;
   width: 12px;
   height: 12px;
-  background: #f8f7f4;
+  background: #F9F9F8;
   border-left: 1px solid var(--gray-200, #e5e7eb);
   border-top: 1px solid var(--gray-200, #e5e7eb);
+  transform: rotate(45deg);
+}
+
+.calendar-event-bubble--above .calendar-event-bubble-tail {
+  top: auto;
+  bottom: -6px;
+  border-left: none;
+  border-top: none;
+  border-right: 1px solid var(--gray-200, #e5e7eb);
+  border-bottom: 1px solid var(--gray-200, #e5e7eb);
   transform: rotate(45deg);
 }
 
@@ -24433,7 +24444,9 @@ body.kpi-resizing {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.5rem;
+  margin: 0 -1rem 0.5rem;
+  padding: 0 1rem 0.5rem;
+  border-bottom: 0.5px solid #DCDCDA;
 }
 
 .calendar-event-bubble-date {
@@ -25303,6 +25316,13 @@ body.kpi-resizing {
   padding: 0.65rem 0.75rem;
   font-size: 0.9rem;
   line-height: 1.4;
+}
+
+.calendar-todo-sidebar-body .todo-section-header--no-collapse {
+  margin-left: -0.75rem;
+  margin-right: -0.75rem;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
 }
 
 .calendar-todo-sidebar-body .todo-section-label {

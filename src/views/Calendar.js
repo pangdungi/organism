@@ -724,6 +724,7 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
         bubble.querySelector(".calendar-event-bubble-save").click();
     });
 
+  const BUBBLE_PADDING = 16;
   Object.assign(bubble.style, {
     position: "fixed",
     left: `${cellRect.left}px`,
@@ -732,6 +733,13 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
   });
 
   document.body.appendChild(bubble);
+
+  const bubbleHeight = bubble.getBoundingClientRect().height;
+  if (cellRect.bottom + 4 + bubbleHeight > window.innerHeight - BUBBLE_PADDING) {
+    bubble.style.top = `${cellRect.top - bubbleHeight - 4}px`;
+    bubble.classList.add("calendar-event-bubble--above");
+  }
+
   bubble.querySelector(".calendar-event-bubble-input").focus();
   return bubble;
 }
@@ -791,7 +799,8 @@ function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose, option
     });
   }, 0);
 
-  const top = positionBelow
+  const BUBBLE_PADDING = 16;
+  let top = positionBelow
     ? cellRect.bottom + 4
     : Math.min(cellRect.top, window.innerHeight - 320);
   Object.assign(bubble.style, {
@@ -802,6 +811,14 @@ function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose, option
   });
 
   document.body.appendChild(bubble);
+
+  if (positionBelow) {
+    const bubbleHeight = bubble.getBoundingClientRect().height;
+    if (cellRect.bottom + 4 + bubbleHeight > window.innerHeight - BUBBLE_PADDING) {
+      bubble.style.top = `${cellRect.top - bubbleHeight - 4}px`;
+    }
+  }
+
   return bubble;
 }
 
