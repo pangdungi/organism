@@ -4044,6 +4044,11 @@ body {
   color: #3730a3;
 }
 
+/* 지출입력장 지출 분류 - 숨은 input 감춤 (흰 네모 방지) */
+.asset-expense-classification-hidden {
+  display: none !important;
+}
+
 /* 지출입력장 지출 분류 드롭다운 */
 .asset-expense-classification-wrap {
   position: relative;
@@ -4055,6 +4060,8 @@ body {
 
 .asset-expense-classification-display {
   display: inline-block;
+  position: relative;
+  z-index: 1;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4143,6 +4150,36 @@ body {
   border-color: rgba(209, 213, 219, 0.6);
 }
 
+.asset-expense-classification-display.expense-cat-teal {
+  background: rgba(94, 234, 212, 0.4);
+  color: #0f766e;
+  border-color: rgba(94, 234, 212, 0.6);
+}
+.asset-expense-classification-display.expense-cat-blue {
+  background: rgba(147, 197, 253, 0.4);
+  color: #1e40af;
+  border-color: rgba(147, 197, 253, 0.6);
+}
+.asset-expense-classification-display.expense-cat-green {
+  background: rgba(167, 243, 208, 0.4);
+  color: #047857;
+  border-color: rgba(167, 243, 208, 0.6);
+}
+.asset-expense-classification-display.expense-cat-purple {
+  background: rgba(196, 181, 253, 0.4);
+  color: #5b21b6;
+  border-color: rgba(196, 181, 253, 0.6);
+}
+.asset-expense-classification-display.expense-cat-indigo {
+  background: rgba(165, 180, 252, 0.4);
+  color: #3730a3;
+  border-color: rgba(165, 180, 252, 0.6);
+}
+
+.asset-expense-classification-panel[hidden] {
+  display: none !important;
+}
+
 .asset-expense-classification-panel {
   position: fixed;
   z-index: 99999;
@@ -4153,6 +4190,60 @@ body {
   overflow: hidden;
   max-height: 240px;
   overflow-y: auto;
+}
+
+/* 지출입력장 소비/수입 분류 - 가로 펠렛 배치 */
+.asset-expense-classification-panel--pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.asset-expense-classification-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.asset-expense-classification-pill:hover {
+  opacity: 0.9;
+  transform: scale(1.02);
+}
+
+/* 펠렛 색상 - 카테고리(고정비/변동비/저축/투자/수입)에 맞춤 */
+.asset-expense-classification-pill.expense-cat-teal {
+  background: rgba(94, 234, 212, 0.45);
+  color: #0f766e;
+}
+.asset-expense-classification-pill.expense-cat-blue {
+  background: rgba(147, 197, 253, 0.45);
+  color: #1e40af;
+}
+.asset-expense-classification-pill.expense-cat-green {
+  background: rgba(167, 243, 208, 0.45);
+  color: #047857;
+}
+.asset-expense-classification-pill.expense-cat-purple {
+  background: rgba(196, 181, 253, 0.45);
+  color: #5b21b6;
+}
+.asset-expense-classification-pill.expense-cat-orange {
+  background: rgba(253, 186, 116, 0.45);
+  color: #c2410c;
+}
+.asset-expense-classification-pill.expense-cat-indigo {
+  background: rgba(165, 180, 252, 0.45);
+  color: #3730a3;
 }
 
 .asset-expense-classification-option {

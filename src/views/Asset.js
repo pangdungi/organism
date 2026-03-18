@@ -1572,9 +1572,9 @@ function createExpenseClassificationDropdownByFlowType(initialFlowType, initialC
   let flowType = initialFlowType || "";
   const clsToCat = getClassificationToCategoryMap();
 
-  function getColorClass(val, opts) {
-    const opt = (opts || []).find((o) => o.label === val);
-    return opt ? opt.color : "";
+  function getColorClass(val) {
+    const category = clsToCat[val] || "";
+    return getExpenseCategoryOptions().find((o) => o.label === category)?.color || "";
   }
 
   function updateDisplay() {
@@ -1582,50 +1582,94 @@ function createExpenseClassificationDropdownByFlowType(initialFlowType, initialC
     const opts = getClassificationsByFlowType(flowType);
     display.textContent = val || "선택";
     const canSelect = flowType === "입금" || flowType === "지출";
-    display.className = "asset-expense-classification-display " + (canSelect ? "" : "is-disabled ") + getColorClass(val, opts);
+    display.className = "asset-expense-classification-display " + (canSelect ? "" : "is-disabled ") + getColorClass(val);
   }
 
   const panel = document.createElement("div");
-  panel.className = "asset-expense-classification-panel";
+  panel.className = "asset-expense-classification-panel asset-expense-classification-panel--pills";
   panel.hidden = true;
+
+  let closeHandler = null;
+
+  function getCategoryColorClass(category) {
+    const opt = getExpenseCategoryOptions().find((o) => o.label === category);
+    return opt ? opt.color : "expense-cat-teal";
+  }
 
   function buildPanel() {
     panel.innerHTML = "";
     const opts = getClassificationsByFlowType(flowType);
     opts.forEach((opt) => {
-      const row = document.createElement("div");
-      row.className = "asset-expense-classification-option";
-      row.innerHTML = `<span class="asset-expense-classification-tag ${opt.color}">${opt.label}</span>`;
-      row.addEventListener("click", () => {
+      const category = clsToCat[opt.label] || "";
+      const pill = document.createElement("button");
+      pill.type = "button";
+      pill.className = "asset-expense-classification-pill " + getCategoryColorClass(category);
+      pill.textContent = opt.label;
+      pill.addEventListener("mousedown", (e) => e.stopPropagation());
+      pill.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         classificationInput.value = opt.label;
-        categoryInput.value = clsToCat[opt.label] || "";
+        categoryInput.value = category;
         updateDisplay();
         panel.hidden = true;
-        onSelect?.(opt.label, categoryInput.value);
+        if (closeHandler) document.removeEventListener("mousedown", closeHandler, true);
+        onSelect?.(opt.label, category);
       });
-      panel.appendChild(row);
+      panel.appendChild(pill);
     });
   }
 
   display.addEventListener("click", (e) => {
     e.stopPropagation();
-    if (flowType !== "입금" && flowType !== "지출") return;
     if (panel.hidden) {
+      if (flowType !== "입금" && flowType !== "지출") {
+        closeAllDebtDropdownPanels(panel);
+        const rect = display.getBoundingClientRect();
+        panel.style.top = `${rect.bottom + 2}px`;
+        panel.style.left = `${rect.left}px`;
+        panel.style.minWidth = `${Math.max(rect.width, 200)}px`;
+        panel.style.maxWidth = `min(420px, calc(100vw - ${Math.round(rect.left) + 24}px))`;
+        document.body.appendChild(panel);
+        panel.innerHTML = '<p class="asset-expense-classification-hint">큰분류(지출/입금)를 먼저 선택해주세요</p>';
+        panel.hidden = false;
+        closeHandler = (ev) => {
+          if (panel.hidden) {
+            document.removeEventListener("mousedown", closeHandler, true);
+            return;
+          }
+          const inWrap = wrap.contains(ev.target);
+          const inPanel = panel.contains(ev.target);
+          if (!inWrap && !inPanel) {
+            panel.hidden = true;
+            document.removeEventListener("mousedown", closeHandler, true);
+          }
+        };
+        setTimeout(() => document.addEventListener("mousedown", closeHandler, true), 0);
+        return;
+      }
       closeAllDebtDropdownPanels(panel);
       const rect = display.getBoundingClientRect();
       panel.style.top = `${rect.bottom + 2}px`;
       panel.style.left = `${rect.left}px`;
-      panel.style.minWidth = `${Math.max(rect.width, 160)}px`;
+      panel.style.minWidth = `${Math.max(rect.width, 200)}px`;
+      panel.style.maxWidth = `min(420px, calc(100vw - ${Math.round(rect.left) + 24}px))`;
       document.body.appendChild(panel);
       buildPanel();
       panel.hidden = false;
-      const handler = (ev) => {
-        document.removeEventListener("click", handler);
-        if (!wrap.contains(ev.target) && !panel.contains(ev.target)) {
+      closeHandler = (ev) => {
+        if (panel.hidden) {
+          document.removeEventListener("mousedown", closeHandler, true);
+          return;
+        }
+        const inWrap = wrap.contains(ev.target);
+        const inPanel = panel.contains(ev.target);
+        if (!inWrap && !inPanel) {
           panel.hidden = true;
+          document.removeEventListener("mousedown", closeHandler, true);
         }
       };
-      setTimeout(() => document.addEventListener("click", handler), 0);
+      setTimeout(() => document.addEventListener("mousedown", closeHandler, true), 0);
     } else {
       panel.hidden = true;
     }
@@ -1644,10 +1688,13 @@ function createExpenseClassificationDropdownByFlowType(initialFlowType, initialC
   }
 
   refresh(flowType);
-  wrap.appendChild(classificationInput);
-  wrap.appendChild(categoryInput);
+  const hiddenContainer = document.createElement("div");
+  hiddenContainer.className = "asset-expense-classification-hidden";
+  hiddenContainer.appendChild(classificationInput);
+  hiddenContainer.appendChild(categoryInput);
   wrap.appendChild(display);
   wrap.appendChild(panel);
+  wrap.appendChild(hiddenContainer);
   return { wrap, classificationInput, categoryInput, refresh, updateDisplay };
 }
 
