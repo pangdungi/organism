@@ -25,7 +25,7 @@ import {
   getKpiDailyRepeatInfoByKpiName,
   syncKpiDailyRepeatTodoCompleted,
 } from "../utils/kpiTodoSync.js";
-import { getCustomSections } from "../utils/todoSettings.js";
+import { getCustomSections, getTaskCategoryColor } from "../utils/todoSettings.js";
 import { showToast } from "../utils/showToast.js";
 
 /** 오딧 3. 우선순위 영역: 해당 날짜 할일 목록 로드 (Calendar getTasksForDate와 동일 데이터) */
@@ -1768,6 +1768,27 @@ function aggregateHoursByTask(rows) {
     map[task] = (map[task] || 0) + hrs;
   });
   return map;
+}
+
+/** 과제별 dominant 카테고리 (해당 과제에 가장 많은 시간이 배정된 카테고리) */
+function getDominantCategoryForTask(rows, taskName) {
+  const byCat = {};
+  rows.forEach((r) => {
+    if ((r.taskName || "").trim() !== taskName) return;
+    const cat = (r.category || "").trim() || "";
+    const hrs = parseTimeToHours(r.timeTracked);
+    if (hrs <= 0) return;
+    byCat[cat] = (byCat[cat] || 0) + hrs;
+  });
+  let maxHrs = 0;
+  let maxCat = "";
+  Object.entries(byCat).forEach(([cat, hrs]) => {
+    if (hrs > maxHrs) {
+      maxHrs = hrs;
+      maxCat = cat;
+    }
+  });
+  return maxCat;
 }
 
 /** 카테고리별 시간 집계 { category: hours } */
@@ -8355,10 +8376,10 @@ export function render() {
     const nonProdByTask = aggregateHoursByTask(nonProdRows);
     const nonProdEntries = Object.entries(nonProdByTask)
       .filter(([, v]) => v > 0)
-      .map(([task, hrs], i) => ({
+      .map(([task, hrs]) => ({
         label: task,
         hrs,
-        stroke: TASK_BAR_COLORS[i % TASK_BAR_COLORS.length],
+        stroke: getTaskCategoryColor(getDominantCategoryForTask(nonProdRows, task)),
       }))
       .sort((a, b) => b.hrs - a.hrs);
     const nonProdTotal = nonProdEntries.reduce((s, x) => s + x.hrs, 0);
@@ -8411,10 +8432,10 @@ export function render() {
     const prodByTask = aggregateHoursByTask(prodRows);
     const prodEntries = Object.entries(prodByTask)
       .filter(([, v]) => v > 0)
-      .map(([task, hrs], i) => ({
+      .map(([task, hrs]) => ({
         label: task,
         hrs,
-        stroke: TASK_BAR_COLORS[i % TASK_BAR_COLORS.length],
+        stroke: getTaskCategoryColor(getDominantCategoryForTask(prodRows, task)),
       }))
       .sort((a, b) => b.hrs - a.hrs);
     const prodTotal = prodEntries.reduce((s, x) => s + x.hrs, 0);
@@ -8465,10 +8486,10 @@ export function render() {
     // 7. 과제별 시간 사용 현황 (가로 막대 차트)
     const byTask = aggregateHoursByTask(filtered);
     const taskEntries = Object.entries(byTask)
-      .map(([task, hrs], i) => ({
+      .map(([task, hrs]) => ({
         task,
         hrs,
-        color: TASK_BAR_COLORS[i % TASK_BAR_COLORS.length],
+        color: getTaskCategoryColor(getDominantCategoryForTask(filtered, task)),
       }))
       .sort((a, b) => b.hrs - a.hrs);
     const maxTaskHrs = Math.max(...taskEntries.map((x) => x.hrs), 0.01);

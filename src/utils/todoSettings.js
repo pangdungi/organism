@@ -173,6 +173,13 @@ export function getTimeCategoryColor(key) {
   return s.timeCategoryColors?.[key] || DEFAULT_TIME_CATEGORY_COLORS[key] || "rgba(232,232,232,0.9)";
 }
 
+/** 작업(세부) 카테고리 색상 조회 - 리스트 색상 제외, 작업 카테고리 설정만 사용 */
+export function getTaskCategoryColor(key) {
+  const s = getTodoSettings();
+  const taskColors = s.taskCategoryColors || DEFAULT_TASK_CATEGORY_COLORS;
+  return taskColors[key] ?? DEFAULT_TASK_CATEGORY_COLORS[key] ?? "rgba(212, 212, 208, 0.5)";
+}
+
 /** rgba 문자열에서 bg(투명) / border 색으로 변환 (타임테이블 예상·실제 블록용) */
 function rgbaToTimetableColors(rgbaStr, bgAlpha = 0.15, borderAlpha = 0.5) {
   const m = rgbaStr.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
@@ -231,6 +238,12 @@ export function applyTimeCategoryColors() {
     .time-task-prod-bar--productive { background: ${productive} !important; }
     .time-task-prod-bar--nonproductive { background: ${nonproductive} !important; }
     .time-task-prod-bar--other { background: ${other} !important; }
+    .time-dash-donut-seg.prod-pink { stroke: ${productive} !important; }
+    .time-dash-donut-seg.prod-blue { stroke: ${nonproductive} !important; }
+    .time-dash-donut-seg.prod-green { stroke: ${other} !important; }
+    .time-dash-bar-fill.prod-pink { background: ${productive} !important; }
+    .time-dash-bar-fill.prod-blue { background: ${nonproductive} !important; }
+    .time-dash-bar-fill.prod-green { background: ${other} !important; }
   `;
 }
 
@@ -250,19 +263,10 @@ const TASK_CATEGORY_CSS_MAP = [
   { key: "sleep", class: "cat-sleep" },
 ];
 
-/** 리스트 색상과 통일되는 작업 카테고리 → sectionColors 키 매핑 (행복 = happy) */
-const TASK_CATEGORY_TO_SECTION = {
-  dream: "dream",
-  sideincome: "sideincome",
-  happiness: "happy",
-  health: "health",
-};
-
-/** 저장된 작업(세부) 카테고리 색상을 DOM에 적용. 꿈/부수입/행복/건강은 리스트 색상(sectionColors) 사용 */
+/** 저장된 작업(세부) 카테고리 색상을 DOM에 적용. 리스트 색상 무시, 작업 카테고리 설정만 사용 */
 export function applyTaskCategoryColors() {
   const s = getTodoSettings();
   const taskColors = s.taskCategoryColors || DEFAULT_TASK_CATEGORY_COLORS;
-  const sectionColors = s.sectionColors || {};
   let styleEl = document.getElementById("task-category-colors-style");
   if (!styleEl) {
     styleEl = document.createElement("style");
@@ -270,11 +274,9 @@ export function applyTaskCategoryColors() {
     document.head.appendChild(styleEl);
   }
   const rules = TASK_CATEGORY_CSS_MAP.map(({ key, class: cls }) => {
-    const bg =
-      TASK_CATEGORY_TO_SECTION[key] != null
-        ? sectionColors[TASK_CATEGORY_TO_SECTION[key]] ?? DEFAULT_TASK_CATEGORY_COLORS[key]
-        : taskColors[key] ?? DEFAULT_TASK_CATEGORY_COLORS[key];
-    return bg ? `.time-tag-pill.${cls} { background: ${bg} !important; }` : "";
+    const bg = taskColors[key] ?? DEFAULT_TASK_CATEGORY_COLORS[key];
+    if (!bg) return "";
+    return `.time-tag-pill.${cls}, .time-dash-bar-fill.${cls} { background: ${bg} !important; }`;
   }).filter(Boolean);
   styleEl.textContent = rules.join("\n");
 }
