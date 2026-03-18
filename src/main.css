@@ -22557,7 +22557,7 @@ body.kpi-resizing {
   background: transparent;
 }
 
-/* 할일: 카테고리 탭 + 테이블 헤더 스크롤 시 상단 고정 */
+/* 할일: 카테고리 탭 + 테이블 헤더 */
 .calendar-todo-content .todo-list-toolbar-row {
   position: sticky;
   top: 0;
@@ -22565,17 +22565,14 @@ body.kpi-resizing {
   background: #f9f9f8;
 }
 
-.calendar-todo-content .todo-table thead th {
-  position: sticky;
-  top: 52px;
-  z-index: 5;
-  background: #f9f9f8;
-  box-shadow: 0 1px 0 #eee;
+.calendar-todo-content .todo-table-wrap {
+  margin-top: 0;
 }
 
-.calendar-todo-content .todo-table thead th.todo-th-done,
-.calendar-todo-content .todo-table thead th.todo-th-name {
-  z-index: 6;
+/* 원인: th에 position:sticky+top 적용 시 스크롤컨테이너와 상호작용해 th가 아래로 밀리는 버그 → sticky 제거 */
+.calendar-todo-content .todo-table thead th {
+  background: #f9f9f8;
+  box-shadow: 0 1px 0 #eee;
 }
 
 .calendar-monthly-nav {
