@@ -650,7 +650,7 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
         </select>
       </div>
       <div class="calendar-event-bubble-name">
-        <input type="text" name="calendar-event-name" class="calendar-event-bubble-input" placeholder="할일 입력" />
+        <input type="text" name="calendar-event-name" class="calendar-event-bubble-input" placeholder="할일을 입력하세요" />
       </div>
       <button type="button" class="calendar-event-bubble-save">추가</button>
     </div>

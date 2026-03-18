@@ -7914,7 +7914,7 @@ body {
   .todo-section-header--no-collapse
   .todo-section-label {
   color: #333;
-  font-weight: 600;
+  font-weight: 300;
   font-size: 0.95rem;
 }
 
@@ -24406,10 +24406,10 @@ body.kpi-resizing {
   );
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   border-radius: 8px;
-  background: #f8f7f4;
+  background: #F9F9F8;
   border: 1px solid var(--gray-200, #e5e7eb);
   min-width: 220px;
-  color: var(--gray-700, #374151);
+  color: #111111;
 }
 
 .calendar-event-bubble-tail {
@@ -24438,7 +24438,10 @@ body.kpi-resizing {
 
 .calendar-event-bubble-date {
   font-size: 0.8rem;
-  color: var(--gray-500, #6b7280);
+  font-family: "DM Mono", "SF Mono", Consolas, monospace;
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  color: #7A7A7A;
 }
 
 .calendar-event-bubble-close {
@@ -24447,7 +24450,9 @@ body.kpi-resizing {
   cursor: pointer;
   font-size: 1.2rem;
   line-height: 1;
-  color: var(--gray-400, #9ca3af);
+  font-family: "Noto Sans KR", sans-serif;
+  font-weight: 200;
+  color: #B8B8B8;
   padding: 0 0.25rem;
 }
 
@@ -24488,9 +24493,10 @@ body.kpi-resizing {
   font-family: inherit;
   font-weight: 500;
   color: #374151;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  background: #f8f7f4;
+  border: none;
+  border-bottom: 1px solid #DCDCDA;
+  border-radius: 0;
+  background-color: transparent;
   appearance: none;
   -webkit-appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
@@ -24500,11 +24506,11 @@ body.kpi-resizing {
   box-sizing: border-box;
 }
 .calendar-event-bubble-select:hover {
-  border-color: #9ca3af;
+  border-bottom-color: #DCDCDA;
 }
 .calendar-event-bubble-select:focus {
   outline: none;
-  border-color: #9ca3af;
+  border-bottom-color: #DCDCDA;
 }
 .calendar-event-bubble-select option {
   background: #f8f7f4;
@@ -24522,13 +24528,18 @@ body.kpi-resizing {
   font-size: 0.9rem;
   font-family: inherit;
   color: #374151;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
+  border: none;
+  border-bottom: 1px solid #DCDCDA;
+  border-radius: 0;
+  background: transparent;
   box-sizing: border-box;
+}
+.calendar-event-bubble-input::placeholder {
+  color: #E8E8E6;
 }
 .calendar-event-bubble-input:focus {
   outline: none;
-  border-color: #9ca3af;
+  border-bottom-color: #DCDCDA;
 }
 
 .calendar-event-bubble-save {
@@ -24650,7 +24661,7 @@ body.kpi-resizing {
   align-items: center;
   gap: 0.5rem;
   padding: 0.4rem 0.5rem;
-  background: #f9fafb;
+  background: #F9F9F8;
   border-radius: 6px;
   font-size: 0.85rem;
 }

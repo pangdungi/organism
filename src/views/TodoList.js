@@ -1671,7 +1671,7 @@ function createSection(section, options = {}) {
         <th class="todo-th-start">시작일</th>
         <th class="todo-th-due">마감일</th>
         <th class="todo-th-reminder">리마인더</th>
-        <th class="todo-th-overdue">기한 초과</th>
+        <th class="todo-th-overdue">기한</th>
         ${theadCategoryTh}
         <th class="todo-th-delete"></th>
       </tr>`
@@ -1680,7 +1680,7 @@ function createSection(section, options = {}) {
     ? `<tr>
         <th class="todo-th-done"></th>
         <th class="todo-th-name">NAME</th>
-        <th class="todo-th-overdue">기한 초과</th>
+        <th class="todo-th-overdue">기한</th>
         <th class="todo-th-kpi">KPI</th>
         <th class="todo-th-start">시작일</th>
         <th class="todo-th-due">마감일</th>
@@ -1696,7 +1696,7 @@ function createSection(section, options = {}) {
         <th class="todo-th-start">시작일</th>
         <th class="todo-th-due">마감일</th>
         <th class="todo-th-reminder">리마인더</th>
-        <th class="todo-th-overdue">기한 초과</th>
+        <th class="todo-th-overdue">기한</th>
         <th class="todo-th-eisenhower">우선순위</th>
         ${theadCategoryTh}
         <th class="todo-th-delete"></th>
