@@ -15038,8 +15038,8 @@ body.kpi-resizing {
 
 .time-filter-day-nav {
   display: flex;
-  gap: 0.25rem;
-  margin-left: 0.25rem;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .time-filter-day-prev,
@@ -17648,8 +17648,9 @@ body.kpi-resizing {
 
 .time-ledger-summary-label {
   font-size: 0.75rem;
-  color: #9ca3af;
-  font-weight: 500;
+  color: #b8b8b8;
+  font-weight: 300;
+  letter-spacing: 0.14em;
 }
 
 .time-ledger-summary-value {
@@ -17663,6 +17664,37 @@ body.kpi-resizing {
   font-size: 1.25rem;
   font-weight: 700;
   color: #1f2937;
+}
+
+.time-ledger-summary-num.time-ledger-summary-wasted {
+  font-family: "Noto Serif KR", serif;
+  font-weight: 200;
+  letter-spacing: -0.01em;
+}
+
+.time-ledger-summary-num.time-ledger-summary-price {
+  font-family: "Noto Serif KR", serif;
+  font-weight: 200;
+  letter-spacing: -0.01em;
+  color: #111111;
+}
+
+.time-ledger-summary-num.time-ledger-summary-tracked,
+.time-ledger-summary-num.time-ledger-summary-productive {
+  font-family: "Noto Serif KR", serif;
+  font-weight: 200;
+  letter-spacing: -0.01em;
+  color: #111111;
+}
+
+/* 총 기록 시간, 생산적 시간: h/mm/m 단위도 숫자와 동일 스타일·폰트사이즈 */
+.time-ledger-summary-cell:nth-child(1) .time-ledger-summary-unit,
+.time-ledger-summary-cell:nth-child(2) .time-ledger-summary-unit {
+  font-family: "Noto Serif KR", serif;
+  font-size: 1.25rem;
+  font-weight: 200;
+  letter-spacing: -0.01em;
+  color: #111111;
 }
 
 .time-ledger-summary-unit {
@@ -17692,10 +17724,8 @@ body.kpi-resizing {
 /* 과제 기록 버튼 - 가로 스크롤과 무관하게 고정 */
 .time-add-button-wrap {
   padding: 0.5rem 0.6rem;
-  border: 1px solid #eee;
-  border-top: none;
+  border: none;
   background: #f9f9f8;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .time-ledger-table-wrap::-webkit-scrollbar {
@@ -18445,7 +18475,7 @@ body.kpi-resizing {
   background: #f9f9f8;
   font-size: 0.85rem;
   font-weight: 500;
-  color: #374151;
+  color: #b8b8b8;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -18456,28 +18486,17 @@ body.kpi-resizing {
 
 .time-btn-add:hover {
   background: #f9fafb;
-  color: #1f2937;
+  color: #b8b8b8;
 }
 
-.time-add-icon,
 .time-btn-icon {
   display: block;
   flex-shrink: 0;
   filter: brightness(0) saturate(100%) invert(45%);
 }
 
-.time-btn-add .time-add-icon,
 .time-task-setup-btn .time-btn-icon {
   opacity: 0.9;
-}
-
-.time-btn-add .time-add-icon {
-  filter: brightness(0) saturate(100%) invert(72%);
-}
-
-.time-btn-add:hover .time-add-icon {
-  filter: brightness(0) saturate(100%) invert(72%);
-  opacity: 1;
 }
 
 .time-task-setup-btn:hover .time-btn-icon {

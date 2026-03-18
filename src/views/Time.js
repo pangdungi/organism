@@ -3215,9 +3215,9 @@ export function render() {
       <button type="button" class="time-filter-btn time-filter-task-select-btn" id="time-task-select-btn">과제 선택</button>
     </div>
     <div class="time-filter-day-wrap" data-filter-wrap="day">
-      <span class="time-filter-day-display">${formatDateForDayFilter(filterStartDate)}</span>
       <div class="time-filter-day-nav">
         <button type="button" class="time-filter-day-prev" aria-label="이전 날짜">&lt;</button>
+        <span class="time-filter-day-display">${formatDateForDayFilter(filterStartDate)}</span>
         <button type="button" class="time-filter-day-next" aria-label="다음 날짜">&gt;</button>
       </div>
     </div>
@@ -6733,7 +6733,7 @@ export function render() {
   addBtn.type = "button";
   addBtn.className = "time-btn-add";
   addBtn.innerHTML =
-    '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 과제 기록';
+    '+ 과제 기록';
 
   const initialHandleRowDelete = (tr, rowData) => {
     if (rowData) {
@@ -6791,7 +6791,7 @@ export function render() {
       addBtnEl.type = "button";
       addBtnEl.className = "time-btn-add";
       addBtnEl.innerHTML =
-        '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 과제 기록';
+        '+ 과제 기록';
       const setupBtnEl = document.createElement("button");
       setupBtnEl.type = "button";
       setupBtnEl.className = "time-task-setup-btn";
@@ -6893,7 +6893,7 @@ export function render() {
     addBtnEl.type = "button";
     addBtnEl.className = "time-btn-add";
     addBtnEl.innerHTML =
-      '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18"> 과제 기록';
+      '+ 과제 기록';
 
     const handleRowDelete = (tr, rowData) => {
       if (rowData) {
@@ -8967,8 +8967,7 @@ export function render() {
     const investAddBtn = document.createElement("button");
     investAddBtn.type = "button";
     investAddBtn.className = "time-btn-add";
-    investAddBtn.innerHTML =
-      '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18">';
+    investAddBtn.innerHTML = "+";
     investAddCell.appendChild(investAddBtn);
     investAddRow.appendChild(investAddCell);
 
@@ -8996,8 +8995,7 @@ export function render() {
     const consumeAddBtn = document.createElement("button");
     consumeAddBtn.type = "button";
     consumeAddBtn.className = "time-btn-add";
-    consumeAddBtn.innerHTML =
-      '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18">';
+    consumeAddBtn.innerHTML = "+";
     consumeAddCell.appendChild(consumeAddBtn);
     consumeAddRow.appendChild(consumeAddCell);
 
@@ -10163,8 +10161,7 @@ export function renderTimeBudgetTablesForCalendar(
       addBtn.type = "button";
       addBtn.className = "time-daily-budget-add-btn time-btn-add";
       addBtn.title = "계획하기";
-      addBtn.innerHTML =
-        '<img src="/toolbaricons/add-square.svg" alt="" class="time-add-icon" width="18" height="18">';
+      addBtn.innerHTML = "+";
       addBtn.addEventListener("click", onAdd);
       header.appendChild(addBtn);
     }

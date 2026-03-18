@@ -671,9 +671,9 @@ export function render() {
         <button type="button" class="time-filter-btn" data-filter="range">날짜 선택</button>
       </div>
       <div class="time-filter-day-wrap" data-filter-wrap="day" style="display:none">
-        <span class="time-filter-day-display">${formatDateForDayFilter(filterStartDate)}</span>
         <div class="time-filter-day-nav">
           <button type="button" class="time-filter-day-prev" aria-label="이전 날짜">&lt;</button>
+          <span class="time-filter-day-display">${formatDateForDayFilter(filterStartDate)}</span>
           <button type="button" class="time-filter-day-next" aria-label="다음 날짜">&gt;</button>
         </div>
       </div>
