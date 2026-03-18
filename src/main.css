@@ -2913,7 +2913,7 @@ body {
 }
 
 .asset-expense-table th {
-  background: #f9fafb;
+  background: rgba(232, 232, 230, 0.5);
   font-weight: 500;
   font-size: 13px;
   color: #6b7280;
@@ -2932,7 +2932,7 @@ body {
 
 .asset-expense-table thead .asset-expense-th-date {
   z-index: 2;
-  background: #f9fafb;
+  background: rgba(232, 232, 230, 0.5);
 }
 
 .asset-expense-col-amount,
@@ -2947,14 +2947,14 @@ body {
 
 .asset-expense-table thead .asset-expense-th-amount {
   z-index: 2;
-  background: #f9fafb;
+  background: rgba(232, 232, 230, 0.5);
 }
 
 .asset-expense-summary-row .asset-expense-summary-label,
 .asset-expense-summary-row .asset-expense-summary-total {
   position: sticky;
   z-index: 1;
-  background: #f9fafb;
+  background: rgba(232, 232, 230, 0.5);
 }
 
 .asset-expense-summary-row .asset-expense-summary-label {
@@ -3008,8 +3008,8 @@ body {
   border-top: 2px solid #e5e7eb;
 }
 .asset-expense-summary-row td {
-  background: #f9fafb;
-  font-weight: 500;
+  background: rgba(232, 232, 230, 0.5);
+  font-weight: 600;
   font-size: 13px;
   color: #374151;
   padding: 0.5rem 0.6rem;
@@ -3027,15 +3027,28 @@ body {
   margin-left: auto;
   padding: 0.4rem 0.75rem;
   font-size: 13px;
-  color: #374151;
-  background: #f9f9f8;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  color: #dcdcda;
+  background: none;
+  border: none;
+  border-radius: 0;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
+
 .asset-expense-settings-btn:hover {
-  background: #f9fafb;
-  border-color: #d1d5db;
+  background: transparent;
+  color: #111111;
+}
+
+.asset-expense-settings-btn .asset-expense-settings-icon {
+  display: block;
+  color: #dcdcda;
+}
+
+.asset-expense-settings-btn:hover .asset-expense-settings-icon {
+  color: #111111;
 }
 
 /* ----- 가계부 설정 모달 ----- */
@@ -3487,6 +3500,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  border-bottom: none;
 }
 
 .asset-cashflow-period-wrap {
@@ -4833,7 +4847,7 @@ body {
 }
 
 .asset-asset-table th {
-  background: #f9fafb;
+  background: rgba(232, 232, 230, 0.5);
   font-weight: 500;
   font-size: 13px;
   color: #6b7280;
@@ -4850,7 +4864,7 @@ body {
 }
 
 .asset-asset-table th:first-child {
-  background: #f9fafb;
+  background: rgba(232, 232, 230, 0.5);
 }
 
 /* 총자산 합계/소계 행 첫 셀 배경 */
@@ -6169,7 +6183,7 @@ body {
 }
 
 .asset-debt-table th {
-  background: #f9fafb;
+  background: rgba(232, 232, 230, 0.5);
   font-weight: 500;
   font-size: 13px;
   color: #6b7280;
@@ -6186,7 +6200,7 @@ body {
 }
 
 .asset-debt-table th.asset-debt-th-name {
-  background: #f9fafb;
+  background: rgba(232, 232, 230, 0.5);
 }
 
 .asset-debt-row-totals .asset-debt-cell-totals-label,
