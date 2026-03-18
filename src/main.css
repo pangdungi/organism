@@ -15338,6 +15338,9 @@ body.kpi-resizing {
   border-right: 1px solid #eee;
   text-align: left;
 }
+.time-daily-budget-table td {
+  border-top: none;
+}
 
 .time-daily-budget-table th:last-child,
 .time-daily-budget-table td:last-child {
@@ -15351,6 +15354,20 @@ body.kpi-resizing {
   text-transform: uppercase;
   letter-spacing: 0.02em;
   color: #9ca3af;
+  border-top: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* 오늘 해치우기 4패널: separate로 thead th 전용 border (TH-TD 공유 border 깜빡임 제거) */
+.time-daily-budget-four-panels .time-daily-budget-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.time-daily-budget-four-panels .time-daily-budget-table thead th {
+  border-bottom: 1px solid #e5e7eb;
+}
+.time-daily-budget-four-panels .time-daily-budget-table tbody tr:first-child td {
+  border-top: none;
 }
 
 .time-daily-budget-table tbody tr:last-child td {
@@ -22933,7 +22950,6 @@ body.kpi-resizing {
 /* 오늘의 할일 테이블 - 오늘의 할일/KPI/우선순위 3열 (수면·근무시간 배치 표처럼 좌우 테두리 없음) */
 /* thead th에 border-top 줄 경우 1,2,3,4번 첫 열에 이중 보더 발생 → 테이블 자체에만 상단선 */
 .calendar-1day-budget-column .calendar-1day-todo-table {
-  border-top: 1px solid #e5e7eb;
   border-bottom: 1px solid #e5e7eb;
   width: 100%;
   table-layout: fixed;
@@ -22971,8 +22987,9 @@ body.kpi-resizing {
   text-align: center;
   position: sticky;
   top: 0;
+  border-top: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
   z-index: 5;
-  box-shadow: 0 1px 0 #e5e7eb;
   font-size: 9.5px;
   font-weight: 500;
   text-transform: uppercase;
@@ -23141,6 +23158,8 @@ body.kpi-resizing {
 .calendar-1day-budget-column .time-daily-budget-table {
   display: table;
   width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 /* 투자/소비 테이블 - 줄바꿈 방지, 과제명 열 고정 */
@@ -23178,7 +23197,6 @@ body.kpi-resizing {
   top: 0;
   z-index: 5;
   background: #f9f9f8;
-  box-shadow: 0 1px 0 #e5e7eb;
   vertical-align: top;
   font-size: 9.5px;
   font-weight: 500;
@@ -23188,9 +23206,7 @@ body.kpi-resizing {
 }
 
 .calendar-1day-budget-column .time-daily-budget-table thead th:last-child {
-  box-shadow:
-    0 1px 0 #e5e7eb,
-    -1px 0 0 #e5e7eb;
+  box-shadow: -1px 0 0 #e5e7eb;
 }
 
 /* 캘린더 1일뷰 시간투자/소비 내역 - 가로·세로 선 표시 */
@@ -23199,6 +23215,17 @@ body.kpi-resizing {
   border: none;
   border-right: 1px solid #e5e7eb;
   border-bottom: 1px solid #e5e7eb;
+}
+.calendar-1day-budget-column .time-daily-budget-table td {
+  border-top: none;
+}
+
+/* thead th 전용 border-bottom (TH-TD 공유 border 깜빡임 제거) */
+.calendar-1day-budget-column .time-daily-budget-table thead th {
+  border-bottom: 1px solid #e5e7eb;
+}
+.calendar-1day-budget-column .time-daily-budget-table tbody tr:first-child td {
+  border-top: none;
 }
 
 .calendar-1day-budget-column .time-daily-budget-table th:last-child,
