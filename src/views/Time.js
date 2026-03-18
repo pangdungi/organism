@@ -7899,7 +7899,7 @@ export function render() {
                     .filter((_, i) => i % 2 === 0 || i === xLabels.length - 1)
                     .map(
                       (l) =>
-                        `<text x="${l.x}" y="${concBottom + 10}" text-anchor="middle" font-size="6" fill="#6b7280">${l.label}</text>`,
+                        `<text x="${l.x}" y="${concBottom + 10}" text-anchor="middle" font-size="6" fill="#b8b8b8">${l.label}</text>`,
                     )
                     .join("")}
                 </svg>
@@ -8139,7 +8139,7 @@ export function render() {
               const xLabelStr = xLabels
                 .map(
                   (l) =>
-                    `<text x="${l.x}" y="${concBottom + 10}" text-anchor="middle" font-size="6" fill="#6b7280">${l.label}</text>`,
+                    `<text x="${l.x}" y="${concBottom + 10}" text-anchor="middle" font-size="6" fill="#b8b8b8">${l.label}</text>`,
                 )
                 .join("");
               if (dayRows.length === 0) {

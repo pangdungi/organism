@@ -16319,12 +16319,13 @@ body.kpi-resizing {
   margin-bottom: 0;
 }
 .time-audit-region-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #374151;
+  font-size: 0.57rem;
+  font-weight: 300;
+  letter-spacing: 0.18em;
+  color: #b8b8b8;
   margin-bottom: 0.75rem;
   padding-bottom: 0.35rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #dcdcda;
 }
 
 .time-audit-row {
@@ -16354,8 +16355,9 @@ body.kpi-resizing {
 
 .time-audit-event-list-title {
   font-size: 0.8rem;
-  font-weight: 600;
-  color: #6b7280;
+  font-weight: 300;
+  letter-spacing: 0.14em;
+  color: #b8b8b8;
   margin-bottom: 0.5rem;
 }
 
@@ -16388,7 +16390,7 @@ body.kpi-resizing {
 
 .time-audit-event-empty {
   font-size: 0.85rem;
-  color: #9ca3af;
+  color: #d8d8d6;
 }
 
 .time-audit-task-name {
@@ -16408,11 +16410,13 @@ body.kpi-resizing {
 
 .time-audit-day-label {
   font-size: 1rem;
-  font-weight: 600;
-  color: #1f2937;
+  font-family: "Noto Serif KR", serif;
+  font-weight: 200;
+  color: #111111;
 }
 
 .time-audit-svg .time-audit-bar-inner-label {
+  fill: #7a7a7a;
   pointer-events: none;
   user-select: none;
 }
@@ -16430,6 +16434,7 @@ body.kpi-resizing {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
+  color: #7a7a7a;
 }
 
 .time-audit-legend-item::before {
@@ -16782,7 +16787,7 @@ body.kpi-resizing {
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
-  gap: 0.75rem;
+  gap: 0;
   width: 100%;
   align-items: stretch;
 }
@@ -16795,25 +16800,37 @@ body.kpi-resizing {
   align-items: center;
   justify-content: center;
   padding: 0.75rem;
-  background: #f9fafb;
+  background: transparent;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border-right: none;
+  border-radius: 0;
 }
+
+.time-audit-available-item:last-child {
+  border-right: 1px solid #e5e7eb;
+}
+
 
 .time-audit-available-label {
   font-size: 0.75rem;
-  font-weight: 600;
-  color: #6b7280;
+  font-weight: 300;
+  letter-spacing: 0.14em;
+  color: #b8b8b8;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
-  margin-bottom: 0.35rem;
+  margin-bottom: 6px;
+  text-align: left;
+  align-self: flex-start;
 }
 
 .time-audit-available-num {
   font-size: 1.1rem;
-  font-weight: 700;
+  font-family: "Noto Serif KR", serif;
+  font-weight: 400;
+  letter-spacing: -0.01em;
   color: #374151;
   line-height: 1.2;
+  text-align: left;
+  align-self: flex-start;
 }
 
 .time-audit-available-value-plus .time-audit-available-num {
