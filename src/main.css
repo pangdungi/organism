@@ -2919,7 +2919,7 @@ body {
   color: #6b7280;
 }
 
-/* 거래일, 금액 열 고정 (가로 스크롤 시) - 열 순서: 거래일·소비/수입명·큰분류·카테고리·분류·금액·결제수단·메모·삭제 */
+/* 거래일, 금액 열 고정 (가로 스크롤 시) - 열 순서: 거래일·금액·큰분류·소비/수입분류·소비/수입명·결제수단·카테고리·메모·삭제 */
 .asset-expense-col-date,
 .asset-expense-th-date,
 .asset-expense-cell-date {
@@ -2939,7 +2939,7 @@ body {
 .asset-expense-th-amount,
 .asset-expense-cell-amount {
   position: sticky;
-  left: 475px;
+  left: 80px;
   z-index: 1;
   background: #f9f9f8;
   box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.06);
@@ -2963,7 +2963,7 @@ body {
 }
 
 .asset-expense-summary-row .asset-expense-summary-total {
-  left: 475px;
+  left: 80px;
   box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.06);
 }
 
@@ -2983,13 +2983,13 @@ body {
   width: 70px;
   min-width: 70px;
 }
-.asset-expense-col-category {
-  width: 8%;
-  min-width: 75px;
-}
 .asset-expense-col-classification {
   width: 12%;
   min-width: 100px;
+}
+.asset-expense-col-category {
+  width: 8%;
+  min-width: 75px;
 }
 .asset-expense-col-payment {
   width: 12%;
@@ -3869,6 +3869,43 @@ body {
   font-weight: 500;
 }
 
+/* 지출입력장 카테고리 (자동 채움, 읽기 전용) */
+.asset-expense-category-display-readonly {
+  display: inline-block;
+  padding: 0.2rem 0.4rem;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 6px;
+  background: #f4f4f5;
+  color: #6b7280;
+  min-height: 1.5em;
+}
+
+.asset-expense-category-display-readonly.expense-cat-teal {
+  background: rgba(94, 234, 212, 0.3);
+  color: #0f766e;
+}
+.asset-expense-category-display-readonly.expense-cat-blue {
+  background: rgba(147, 197, 253, 0.3);
+  color: #1e40af;
+}
+.asset-expense-category-display-readonly.expense-cat-green {
+  background: rgba(167, 243, 208, 0.3);
+  color: #047857;
+}
+.asset-expense-category-display-readonly.expense-cat-purple {
+  background: rgba(196, 181, 253, 0.3);
+  color: #5b21b6;
+}
+.asset-expense-category-display-readonly.expense-cat-orange {
+  background: rgba(253, 186, 116, 0.3);
+  color: #c2410c;
+}
+.asset-expense-category-display-readonly.expense-cat-indigo {
+  background: rgba(165, 180, 252, 0.3);
+  color: #3730a3;
+}
+
 /* 지출입력장 카테고리 드롭다운 */
 .asset-expense-category-wrap {
   position: relative;
@@ -4040,6 +4077,14 @@ body {
   background: #e8e8e8;
 }
 
+.asset-expense-classification-display.is-disabled {
+  cursor: default;
+  color: #9ca3af;
+  background: #f4f4f5;
+}
+.asset-expense-classification-display.is-disabled:hover {
+  background: #f4f4f5;
+}
 .asset-expense-classification-display.is-required-first {
   color: #9ca3af;
   font-style: italic;

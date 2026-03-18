@@ -391,6 +391,31 @@ function getExpenseClassificationOptions(category) {
   return byCat[category] || byCat.기타 || [];
 }
 
+/** 분류 → 카테고리 매핑 (소비/수입 분류 선택 시 카테고리 자동 채우기용) */
+function getClassificationToCategoryMap() {
+  const map = {};
+  const byCat = getExpenseClassificationByCategory();
+  Object.keys(byCat).forEach((cat) => {
+    (byCat[cat] || []).forEach((o) => {
+      map[o.label] = cat;
+    });
+  });
+  return map;
+}
+
+/** 큰분류(입금/지출)에 따른 소비/수입 분류 옵션: 입금→수입만, 지출→고정비/변동비/저축/투자 */
+function getClassificationsByFlowType(flowType) {
+  const byCat = getExpenseClassificationByCategory();
+  if (flowType === "입금") {
+    return (byCat.수입 || []).map((o) => ({ ...o }));
+  }
+  if (flowType === "지출") {
+    const cats = ["고정비", "변동비", "저축", "투자"];
+    return cats.flatMap((cat) => (byCat[cat] || []).map((o) => ({ ...o })));
+  }
+  return [];
+}
+
 function loadDebtRows() {
   try {
     const raw = localStorage.getItem(DEBT_ROWS_KEY);
@@ -1526,7 +1551,107 @@ function createExpenseCategoryDropdown(initialValue, onUpdate) {
   return wrap;
 }
 
-/** 지출입력장 지출 분류 드롭다운 - 카테고리에 따라 옵션 변경 */
+/** 지출입력장 소비/수입 분류 드롭다운 - 큰분류(입금/지출)에 따라 옵션 변경, 선택 시 카테고리 자동 채움 */
+function createExpenseClassificationDropdownByFlowType(initialFlowType, initialClassification, initialCategory, onSelect) {
+  const wrap = document.createElement("div");
+  wrap.className = "asset-expense-classification-wrap";
+
+  const classificationInput = document.createElement("input");
+  classificationInput.type = "hidden";
+  classificationInput.className = "asset-expense-input-classification";
+  classificationInput.value = initialClassification || "";
+
+  const categoryInput = document.createElement("input");
+  categoryInput.type = "hidden";
+  categoryInput.className = "asset-expense-input-category";
+  categoryInput.value = initialCategory || "";
+
+  const display = document.createElement("span");
+  display.className = "asset-expense-classification-display";
+
+  let flowType = initialFlowType || "";
+  const clsToCat = getClassificationToCategoryMap();
+
+  function getColorClass(val, opts) {
+    const opt = (opts || []).find((o) => o.label === val);
+    return opt ? opt.color : "";
+  }
+
+  function updateDisplay() {
+    const val = classificationInput.value || "";
+    const opts = getClassificationsByFlowType(flowType);
+    display.textContent = val || "선택";
+    const canSelect = flowType === "입금" || flowType === "지출";
+    display.className = "asset-expense-classification-display " + (canSelect ? "" : "is-disabled ") + getColorClass(val, opts);
+  }
+
+  const panel = document.createElement("div");
+  panel.className = "asset-expense-classification-panel";
+  panel.hidden = true;
+
+  function buildPanel() {
+    panel.innerHTML = "";
+    const opts = getClassificationsByFlowType(flowType);
+    opts.forEach((opt) => {
+      const row = document.createElement("div");
+      row.className = "asset-expense-classification-option";
+      row.innerHTML = `<span class="asset-expense-classification-tag ${opt.color}">${opt.label}</span>`;
+      row.addEventListener("click", () => {
+        classificationInput.value = opt.label;
+        categoryInput.value = clsToCat[opt.label] || "";
+        updateDisplay();
+        panel.hidden = true;
+        onSelect?.(opt.label, categoryInput.value);
+      });
+      panel.appendChild(row);
+    });
+  }
+
+  display.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (flowType !== "입금" && flowType !== "지출") return;
+    if (panel.hidden) {
+      closeAllDebtDropdownPanels(panel);
+      const rect = display.getBoundingClientRect();
+      panel.style.top = `${rect.bottom + 2}px`;
+      panel.style.left = `${rect.left}px`;
+      panel.style.minWidth = `${Math.max(rect.width, 160)}px`;
+      document.body.appendChild(panel);
+      buildPanel();
+      panel.hidden = false;
+      const handler = (ev) => {
+        document.removeEventListener("click", handler);
+        if (!wrap.contains(ev.target) && !panel.contains(ev.target)) {
+          panel.hidden = true;
+        }
+      };
+      setTimeout(() => document.addEventListener("click", handler), 0);
+    } else {
+      panel.hidden = true;
+    }
+  });
+
+  function refresh(newFlowType) {
+    flowType = newFlowType || "";
+    const opts = getClassificationsByFlowType(flowType);
+    const currentVal = classificationInput.value;
+    const valid = opts.some((o) => o.label === currentVal);
+    if (!valid) {
+      classificationInput.value = "";
+      categoryInput.value = "";
+    }
+    updateDisplay();
+  }
+
+  refresh(flowType);
+  wrap.appendChild(classificationInput);
+  wrap.appendChild(categoryInput);
+  wrap.appendChild(display);
+  wrap.appendChild(panel);
+  return { wrap, classificationInput, categoryInput, refresh, updateDisplay };
+}
+
+/** 지출입력장 지출 분류 드롭다운 - 카테고리에 따라 옵션 변경 (가계부 설정 등에서 사용) */
 function createExpenseClassificationDropdown(category, initialValue, onUpdate) {
   const wrap = document.createElement("div");
   wrap.className = "asset-expense-classification-wrap";
@@ -4058,24 +4183,24 @@ function renderExpenseView(options = {}) {
   table.innerHTML = `
     <colgroup>
       <col class="asset-expense-col-date">
-      <col class="asset-expense-col-name">
-      <col class="asset-expense-col-flow-type">
-      <col class="asset-expense-col-category">
-      <col class="asset-expense-col-classification">
       <col class="asset-expense-col-amount">
+      <col class="asset-expense-col-flow-type">
+      <col class="asset-expense-col-classification">
+      <col class="asset-expense-col-name">
       <col class="asset-expense-col-payment">
+      <col class="asset-expense-col-category">
       <col class="asset-expense-col-memo">
       <col class="asset-expense-col-delete">
     </colgroup>
     <thead>
       <tr>
         <th class="asset-expense-th-date">거래일</th>
-        <th class="asset-expense-th-name">소비/수입 명</th>
-        <th class="asset-expense-th-flow-type">큰분류</th>
-        <th class="asset-expense-th-category">카테고리</th>
-        <th class="asset-expense-th-classification">소비/수입 분류</th>
         <th class="asset-expense-th-amount">금액</th>
+        <th class="asset-expense-th-flow-type">큰분류</th>
+        <th class="asset-expense-th-classification">소비/수입 분류</th>
+        <th class="asset-expense-th-name">소비/수입 명</th>
         <th class="asset-expense-th-payment">결제수단</th>
+        <th class="asset-expense-th-category">카테고리</th>
         <th class="asset-expense-th-memo">메모</th>
         <th class="asset-expense-th-delete"></th>
       </tr>
@@ -4083,9 +4208,9 @@ function renderExpenseView(options = {}) {
     <tbody></tbody>
     <tfoot class="asset-expense-tfoot">
       <tr class="asset-expense-summary-row">
-        <td colspan="5" class="asset-expense-summary-label">합계</td>
+        <td class="asset-expense-summary-label">합계</td>
         <td class="asset-expense-summary-total">-</td>
-        <td colspan="3"></td>
+        <td colspan="7"></td>
       </tr>
     </tfoot>
   `;
@@ -4192,36 +4317,64 @@ function renderExpenseView(options = {}) {
       onTotalsUpdate?.();
       saveExpense();
     });
-    const flowTypeValue = data.flowType ?? "";
+    const flowTypeValue = data.flowType ?? (data.category === "수입" ? "입금" : data.category ? "지출" : "");
     tr.innerHTML = `
       <td class="asset-expense-cell-date">
         <span class="asset-expense-date-display">${dateDisplayVal}</span>
         <input type="date" class="asset-expense-input-date" name="asset-expense-date" value="${dateValue}" tabindex="-1" />
       </td>
-      <td class="asset-expense-cell-name"><input type="text" class="asset-expense-input-name" name="asset-expense-name" placeholder="" value="${(data.name || "").replace(/"/g, "&quot;")}" /></td>
-      <td class="asset-expense-cell-flow-type"></td>
-      <td class="asset-expense-cell-category"></td>
-      <td class="asset-expense-cell-classification"></td>
       <td class="asset-expense-cell-amount"><input type="text" class="asset-expense-input-amount" name="asset-expense-amount" placeholder="0" value="${(data.amount || "").replace(/"/g, "&quot;")}" /></td>
+      <td class="asset-expense-cell-flow-type"></td>
+      <td class="asset-expense-cell-classification"></td>
+      <td class="asset-expense-cell-name"><input type="text" class="asset-expense-input-name" name="asset-expense-name" placeholder="" value="${(data.name || "").replace(/"/g, "&quot;")}" /></td>
       <td class="asset-expense-cell-payment"></td>
+      <td class="asset-expense-cell-category"></td>
       <td class="asset-expense-cell-memo"><input type="text" class="asset-expense-input-memo" name="asset-expense-memo" placeholder="" value="${(data.memo || "").replace(/"/g, "&quot;")}" /></td>
       <td class="asset-expense-cell-delete"><div class="asset-expense-delete-wrap"></div></td>
     `;
     tr.querySelector(".asset-expense-delete-wrap").appendChild(delBtn);
     const flowTypeTd = tr.querySelector(".asset-expense-cell-flow-type");
-    const flowTypeDropdown = createExpenseFlowTypeDropdown(flowTypeValue, () => {
-      applyAmountSign();
-      onTotalsUpdate?.();
-      saveExpense();
-    });
-    flowTypeTd.appendChild(flowTypeDropdown);
-
     const categoryTd = tr.querySelector(".asset-expense-cell-category");
     const classificationTd = tr.querySelector(".asset-expense-cell-classification");
     const nameInput = tr.querySelector(".asset-expense-input-name");
     const memoInput = tr.querySelector(".asset-expense-input-memo");
 
     const initialCategory = data.category || "";
+    const initialClassification = data.classification || "";
+
+    const classificationDropdown = createExpenseClassificationDropdownByFlowType(
+      flowTypeValue,
+      initialClassification,
+      initialCategory,
+      () => {
+        updateCategoryDisplay();
+        applyAmountSign();
+        onTotalsUpdate?.();
+        saveExpense();
+      }
+    );
+    classificationTd.appendChild(classificationDropdown.wrap);
+
+    const categoryDisplay = document.createElement("span");
+    categoryDisplay.className = "asset-expense-category-display-readonly";
+    function updateCategoryDisplay() {
+      const cat = classificationDropdown.categoryInput?.value || "";
+      categoryDisplay.textContent = cat || "-";
+      const opt = getExpenseCategoryOptions().find((o) => o.label === cat);
+      categoryDisplay.className = "asset-expense-category-display-readonly " + (opt ? opt.color : "");
+    }
+    categoryTd.appendChild(categoryDisplay);
+
+    const flowTypeDropdown = createExpenseFlowTypeDropdown(flowTypeValue, () => {
+      const flowTypeInput = flowTypeTd.querySelector(".asset-expense-input-flow-type");
+      classificationDropdown.refresh(flowTypeInput?.value || "");
+      updateCategoryDisplay();
+      applyAmountSign();
+      onTotalsUpdate?.();
+      saveExpense();
+    });
+    flowTypeTd.appendChild(flowTypeDropdown);
+
     const paymentTd = tr.querySelector(".asset-expense-cell-payment");
     const paymentInput = createExpensePaymentInput(data.payment || "", () => {
       onTotalsUpdate?.();
@@ -4242,15 +4395,12 @@ function renderExpenseView(options = {}) {
       onTotalsUpdate?.();
     }
 
-    const classificationDropdown = createExpenseClassificationDropdown(initialCategory, data.classification || "", () => {});
-    classificationTd.appendChild(classificationDropdown.wrap);
-    const categoryDropdownWrap = createExpenseCategoryDropdown(initialCategory, () => {
-      const categoryInput = categoryTd.querySelector(".asset-expense-input-category");
-      classificationDropdown.refresh(categoryInput?.value || "");
-      applyAmountSign();
-      saveExpense();
-    });
-    categoryTd.appendChild(categoryDropdownWrap);
+    const origRefresh = classificationDropdown.refresh;
+    classificationDropdown.refresh = (flowType) => {
+      origRefresh(flowType);
+      updateCategoryDisplay();
+    };
+    updateCategoryDisplay();
 
     amountInput.addEventListener("blur", () => {
       applyAmountSign();
