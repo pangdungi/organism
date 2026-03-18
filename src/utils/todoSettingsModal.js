@@ -83,6 +83,8 @@ function showColorPickerModal(label, currentColor, onChange) {
   const backdrop = modal.querySelector(".todo-settings-color-modal-backdrop");
   const closeBtn = modal.querySelector(".todo-settings-color-modal-close");
 
+  let selectedRgba = hexToRgba(currentHex, alpha);
+
   APP_PRESET_COLORS.forEach((preset) => {
     const btn = document.createElement("button");
     btn.type = "button";
@@ -92,10 +94,9 @@ function showColorPickerModal(label, currentColor, onChange) {
     btn.title = preset.name;
     if (preset.hex.toLowerCase() === currentHex.toLowerCase()) btn.classList.add("selected");
     btn.addEventListener("click", () => {
-      const rgba = hexToRgba(preset.hex, alpha);
-      onChange(rgba);
-      modal.remove();
-      document.body.style.overflow = "";
+      swatchesEl.querySelectorAll(".todo-settings-color-modal-swatch").forEach((b) => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      selectedRgba = hexToRgba(preset.hex, alpha);
     });
     swatchesEl.appendChild(btn);
   });
@@ -106,7 +107,11 @@ function showColorPickerModal(label, currentColor, onChange) {
   }
 
   backdrop.addEventListener("click", close);
-  closeBtn.addEventListener("click", close);
+
+  closeBtn.addEventListener("click", () => {
+    onChange(selectedRgba);
+    close();
+  });
   modal.addEventListener("keydown", (e) => {
     if (e.key === "Escape") close();
   });

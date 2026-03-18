@@ -7829,7 +7829,7 @@ export function render() {
           const labelX = x1 + 5;
           const labelY = padTop + plotH / 2;
           const textStr = fitLabel
-            ? `<text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" font-size="6" fill="#374151" class="time-audit-bar-inner-label" transform="rotate(-90, ${labelX}, ${labelY})">${esc(r.taskName)}</text>`
+            ? `<text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" font-size="6" fill="#7a7a7a" class="time-audit-bar-inner-label" transform="rotate(-90, ${labelX}, ${labelY})">${esc(r.taskName)}</text>`
             : "";
           return { rectStr, textStr, fitLabel, r };
         });
@@ -7891,7 +7891,7 @@ export function render() {
                   }).join("")}
                   <line x1="${padLeft}" y1="${concBottom}" x2="${padLeft + plotW}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
                   <line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
-                  <text x="${padLeft - 12}" y="${(padTop + concBottom) / 2}" text-anchor="middle" font-size="7" fill="#6b7280" transform="rotate(-90, ${padLeft - 12}, ${(padTop + concBottom) / 2})">집중력</text>
+                  <text class="time-audit-conc-y-label" x="${padLeft - 12}" y="${(padTop + concBottom) / 2}" text-anchor="middle" font-size="7" fill="#7a7a7a" transform="rotate(-90, ${padLeft - 12}, ${(padTop + concBottom) / 2})">집중력</text>
                   <g clip-path="url(#time-audit-conc-clip-${String(dateStr).replace(/[^a-z0-9-]/gi, "-")})">${taskRects}</g>
                   <path d="${concPathStr2.fillPath}" fill="none" stroke="none"/>
                   ${concPathStr2.strokePath ? `<path d="${concPathStr2.strokePath}" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>` : ""}
@@ -7964,12 +7964,19 @@ export function render() {
                     return `<div class="time-audit-section-1"><div class="time-audit-schedule-table-wrap"><table class="time-audit-schedule-table"><thead><tr><th>과제명</th><th>목표 시간</th><th>실제시간</th><th>시간 갭</th></tr></thead><tbody>${rowsHtml}</tbody></table></div></div>`;
                   })()
                 : "";
-            const barRows = scheduleRows.map((r, i) => ({
-              task: r.task,
-              goalHrs: parseTimeToHours(r.goalTime),
-              actualHrs: r.actualHrs,
-              color: TASK_BAR_COLORS[i % TASK_BAR_COLORS.length],
-            }));
+            const barRows = scheduleRows.map((r) => {
+              let cat = "";
+              if (r.task === "근무하기") cat = "work";
+              else if (r.task === "수면하기") cat = "sleep";
+              else cat = getDominantCategoryForTask(dateRows, r.task);
+              const color = getCategoryColorForReport(cat);
+              return {
+                task: r.task,
+                goalHrs: parseTimeToHours(r.goalTime),
+                actualHrs: r.actualHrs,
+                color,
+              };
+            });
             const maxHrs = Math.max(
               1,
               ...barRows.flatMap((r) => [r.goalHrs, r.actualHrs]),
@@ -8115,7 +8122,7 @@ export function render() {
                 const timeRange = `${String(Math.floor(r.startH)).padStart(2, "0")}:${String(Math.round((r.startH % 1) * 60)).padStart(2, "0")}~${String(Math.floor(r.endH)).padStart(2, "0")}:${String(Math.round((r.endH % 1) * 60)).padStart(2, "0")}`;
                 const labelText = `${esc(r.taskName)} (${timeRange})`;
                 const textStr = fitLabel
-                  ? `<text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" font-size="6" fill="#374151" class="time-audit-bar-inner-label" transform="rotate(-90, ${labelX}, ${labelY})">${labelText}</text>`
+                  ? `<text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" font-size="6" fill="#7a7a7a" class="time-audit-bar-inner-label" transform="rotate(-90, ${labelX}, ${labelY})">${labelText}</text>`
                   : "";
                 return { rectStr, textStr, fitLabel, r, timeRange };
               });

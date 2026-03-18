@@ -16409,7 +16409,7 @@ body.kpi-resizing {
 }
 
 .time-audit-day-label {
-  font-size: 1rem;
+  font-size: 22px;
   font-family: "Noto Serif KR", serif;
   font-weight: 200;
   color: #111111;
@@ -16419,6 +16419,10 @@ body.kpi-resizing {
   fill: #7a7a7a;
   pointer-events: none;
   user-select: none;
+}
+
+.time-audit-svg .time-audit-conc-y-label {
+  fill: #7a7a7a !important;
 }
 
 .time-audit-task-legend {
@@ -16498,14 +16502,14 @@ body.kpi-resizing {
   flex: 1 1 320px;
   min-width: 280px;
   padding: 1rem;
-  background: #f9fafb;
+  background: none;
   border-radius: 0;
   border: 1px solid #e5e7eb;
 }
 
 .time-audit-bar-chart-title {
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 400;
   color: #6b7280;
   margin-bottom: 0.75rem;
 }
@@ -16790,6 +16794,7 @@ body.kpi-resizing {
   gap: 0;
   width: 100%;
   align-items: stretch;
+  padding: 16px 18px;
 }
 
 .time-audit-available-item {
@@ -16799,7 +16804,7 @@ body.kpi-resizing {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 0.75rem;
+  padding: 16px 18px;
   background: transparent;
   border: 1px solid #e5e7eb;
   border-right: none;
@@ -16833,13 +16838,7 @@ body.kpi-resizing {
   align-self: flex-start;
 }
 
-.time-audit-available-value-plus .time-audit-available-num {
-  color: #dc2626;
-}
-
-.time-audit-available-value-minus .time-audit-available-num {
-  color: #2563eb;
-}
+/* value-plus/minus 색상은 todoSettings.applyTimeCategoryColors()에서 사용자 카테고리 색상으로 주입 */
 
 .time-audit-thief-content {
   display: flex;
@@ -17057,11 +17056,14 @@ body.kpi-resizing {
 }
 
 .time-audit-schedule-table th {
-  font-weight: 600;
-  color: #6b7280;
-  background: #f9fafb;
+  font-size: 0.54rem;
+  font-weight: 300;
+  letter-spacing: 0.12em;
+  background: none;
+  text-align: left;
   border-radius: 0;
 }
+/* th 색상은 todoSettings.applyTaskCategoryColors()에서 작업 카테고리(기본) 색상으로 주입 */
 .time-audit-schedule-table thead th:first-child,
 .time-audit-schedule-table thead th:last-child,
 .time-audit-schedule-table tbody td:first-child,

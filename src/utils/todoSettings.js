@@ -189,6 +189,13 @@ export function getCategoryColorForReport(key) {
   return getTaskCategoryColor((key || "").trim());
 }
 
+/** rgba → rgb 변환 (텍스트 색상용 불투명 색) */
+function rgbaToRgb(rgbaStr) {
+  const m = rgbaStr.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+  if (!m) return rgbaStr;
+  return `rgb(${m[1]}, ${m[2]}, ${m[3]})`;
+}
+
 /** rgba 문자열에서 bg(투명) / border 색으로 변환 (타임테이블 예상·실제 블록용) */
 function rgbaToTimetableColors(rgbaStr, bgAlpha = 0.15, borderAlpha = 0.5) {
   const m = rgbaStr.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
@@ -238,6 +245,8 @@ export function applyTimeCategoryColors() {
     styleEl.id = "time-category-colors-style";
     document.head.appendChild(styleEl);
   }
+  const prodRgb = rgbaToRgb(productive);
+  const nonprodRgb = rgbaToRgb(nonproductive);
   styleEl.textContent = `
     .time-tag-pill.prod-pink { background: ${productive} !important; color: #fff !important; }
     .time-tag-pill.prod-blue { background: ${nonproductive} !important; color: #fff !important; }
@@ -253,6 +262,8 @@ export function applyTimeCategoryColors() {
     .time-dash-bar-fill.prod-pink { background: ${productive} !important; }
     .time-dash-bar-fill.prod-blue { background: ${nonproductive} !important; }
     .time-dash-bar-fill.prod-green { background: ${other} !important; }
+    .time-audit-available-value-plus .time-audit-available-num { color: ${prodRgb} !important; }
+    .time-audit-available-value-minus .time-audit-available-num { color: ${nonprodRgb} !important; }
   `;
 }
 
@@ -299,5 +310,8 @@ export function applyTaskCategoryColors() {
     if (!bg) return "";
     return `.time-tag-pill.${cls}, .time-dash-bar-fill.${cls} { background: ${bg} !important; }`;
   }).filter(Boolean);
+  const emptyColor = taskColors[""] ?? DEFAULT_TASK_CATEGORY_COLORS[""];
+  const emptyRgb = emptyColor ? rgbaToRgb(emptyColor) : "rgb(184, 184, 184)";
+  rules.push(`.time-audit-schedule-table th { color: ${emptyRgb} !important; }`);
   styleEl.textContent = rules.join("\n");
 }
