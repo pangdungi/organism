@@ -17730,9 +17730,10 @@ body.kpi-resizing {
 
 .time-ledger-table thead th {
   background: transparent;
-  font-weight: 500;
+  font-weight: 300;
   font-size: 13px;
-  color: #777;
+  letter-spacing: 0.14em;
+  color: #b8b8b8;
   white-space: nowrap;
   text-align: center;
   padding: 0.35rem 0.75rem;
@@ -18440,7 +18441,7 @@ body.kpi-resizing {
 
 .time-btn-add {
   padding: 0.4rem 0.75rem;
-  border: 1px solid #d1d5db;
+  border: none;
   background: #f9f9f8;
   font-size: 0.85rem;
   font-weight: 500;
@@ -18455,7 +18456,6 @@ body.kpi-resizing {
 
 .time-btn-add:hover {
   background: #f9fafb;
-  border-color: #9ca3af;
   color: #1f2937;
 }
 
@@ -18471,8 +18471,12 @@ body.kpi-resizing {
   opacity: 0.9;
 }
 
+.time-btn-add .time-add-icon {
+  filter: brightness(0) saturate(100%) invert(72%);
+}
+
 .time-btn-add:hover .time-add-icon {
-  filter: brightness(0) saturate(100%) invert(35%);
+  filter: brightness(0) saturate(100%) invert(72%);
   opacity: 1;
 }
 
