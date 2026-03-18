@@ -3827,15 +3827,15 @@ body {
 }
 
 .asset-expense-flow-type-display.asset-flow-deposit {
-  background: rgba(252, 165, 165, 0.5);
-  color: #b91c1c;
-  border-color: rgba(248, 113, 113, 0.6);
+  background: rgba(242, 196, 196, 0.5);
+  color: #9f1239;
+  border-color: transparent;
 }
 
 .asset-expense-flow-type-display.asset-flow-expense {
-  background: rgba(147, 197, 253, 0.4);
-  color: #1e40af;
-  border-color: rgba(147, 197, 253, 0.6);
+  background: rgba(196, 216, 242, 0.4);
+  color: #1e4a8a;
+  border-color: transparent;
 }
 
 .asset-expense-flow-type-panel {
@@ -3860,12 +3860,12 @@ body {
 }
 
 .asset-expense-flow-type-option.asset-flow-deposit {
-  color: #b91c1c;
+  color: #9f1239;
   font-weight: 500;
 }
 
 .asset-expense-flow-type-option.asset-flow-expense {
-  color: #1e40af;
+  color: #1e4a8a;
   font-weight: 500;
 }
 
@@ -3882,28 +3882,28 @@ body {
 }
 
 .asset-expense-category-display-readonly.expense-cat-teal {
-  background: rgba(94, 234, 212, 0.3);
-  color: #0f766e;
+  background: rgba(196, 220, 200, 0.3);
+  color: #2d5a3d;
 }
 .asset-expense-category-display-readonly.expense-cat-blue {
-  background: rgba(147, 197, 253, 0.3);
-  color: #1e40af;
+  background: rgba(196, 224, 220, 0.3);
+  color: #0d5c5c;
 }
 .asset-expense-category-display-readonly.expense-cat-green {
-  background: rgba(167, 243, 208, 0.3);
-  color: #047857;
+  background: rgba(242, 217, 196, 0.3);
+  color: #9a5a2e;
 }
 .asset-expense-category-display-readonly.expense-cat-purple {
-  background: rgba(196, 181, 253, 0.3);
-  color: #5b21b6;
+  background: rgba(200, 208, 216, 0.3);
+  color: #4b5563;
 }
 .asset-expense-category-display-readonly.expense-cat-orange {
   background: rgba(253, 186, 116, 0.3);
   color: #c2410c;
 }
 .asset-expense-category-display-readonly.expense-cat-indigo {
-  background: rgba(165, 180, 252, 0.3);
-  color: #3730a3;
+  background: rgba(224, 196, 232, 0.3);
+  color: #6b21a8;
 }
 
 /* 지출입력장 카테고리 드롭다운 */
@@ -3940,27 +3940,27 @@ body {
 }
 
 .asset-expense-category-display.expense-cat-teal {
-  background: rgba(94, 234, 212, 0.4);
-  color: #0f766e;
-  border-color: rgba(94, 234, 212, 0.6);
+  background: rgba(196, 220, 200, 0.4);
+  color: #2d5a3d;
+  border-color: rgba(196, 220, 200, 0.6);
 }
 
 .asset-expense-category-display.expense-cat-blue {
-  background: rgba(147, 197, 253, 0.4);
-  color: #1e40af;
-  border-color: rgba(147, 197, 253, 0.6);
+  background: rgba(196, 224, 220, 0.4);
+  color: #0d5c5c;
+  border-color: rgba(196, 224, 220, 0.6);
 }
 
 .asset-expense-category-display.expense-cat-green {
-  background: rgba(167, 243, 208, 0.4);
-  color: #047857;
-  border-color: rgba(167, 243, 208, 0.6);
+  background: rgba(242, 217, 196, 0.4);
+  color: #9a5a2e;
+  border-color: rgba(242, 217, 196, 0.6);
 }
 
 .asset-expense-category-display.expense-cat-purple {
-  background: rgba(196, 181, 253, 0.4);
-  color: #5b21b6;
-  border-color: rgba(196, 181, 253, 0.6);
+  background: rgba(200, 208, 216, 0.4);
+  color: #4b5563;
+  border-color: rgba(200, 208, 216, 0.6);
 }
 
 .asset-expense-category-display.expense-cat-orange {
@@ -3970,9 +3970,9 @@ body {
 }
 
 .asset-expense-category-display.expense-cat-indigo {
-  background: rgba(165, 180, 252, 0.4);
-  color: #3730a3;
-  border-color: rgba(165, 180, 252, 0.6);
+  background: rgba(224, 196, 232, 0.4);
+  color: #6b21a8;
+  border-color: rgba(224, 196, 232, 0.6);
 }
 
 .asset-expense-category-panel {
@@ -4015,23 +4015,23 @@ body {
 }
 
 .asset-expense-category-tag.expense-cat-teal {
-  background: rgba(94, 234, 212, 0.4);
-  color: #0f766e;
+  background: rgba(196, 220, 200, 0.4);
+  color: #2d5a3d;
 }
 
 .asset-expense-category-tag.expense-cat-blue {
-  background: rgba(147, 197, 253, 0.4);
-  color: #1e40af;
+  background: rgba(196, 224, 220, 0.4);
+  color: #0d5c5c;
 }
 
 .asset-expense-category-tag.expense-cat-green {
-  background: rgba(167, 243, 208, 0.4);
-  color: #047857;
+  background: rgba(242, 217, 196, 0.4);
+  color: #9a5a2e;
 }
 
 .asset-expense-category-tag.expense-cat-purple {
-  background: rgba(196, 181, 253, 0.4);
-  color: #5b21b6;
+  background: rgba(200, 208, 216, 0.4);
+  color: #4b5563;
 }
 
 .asset-expense-category-tag.expense-cat-orange {
@@ -4040,8 +4040,8 @@ body {
 }
 
 .asset-expense-category-tag.expense-cat-indigo {
-  background: rgba(165, 180, 252, 0.4);
-  color: #3730a3;
+  background: rgba(224, 196, 232, 0.4);
+  color: #6b21a8;
 }
 
 /* 지출입력장 지출 분류 - 숨은 input 감춤 (흰 네모 방지) */
@@ -4107,73 +4107,73 @@ body {
 .asset-expense-classification-display.expense-cls-teal {
   background: rgba(94, 234, 212, 0.4);
   color: #0f766e;
-  border-color: rgba(94, 234, 212, 0.6);
+  border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-blue {
   background: rgba(147, 197, 253, 0.4);
   color: #1e40af;
-  border-color: rgba(147, 197, 253, 0.6);
+  border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-green {
   background: rgba(167, 243, 208, 0.4);
   color: #047857;
-  border-color: rgba(167, 243, 208, 0.6);
+  border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-purple {
   background: rgba(196, 181, 253, 0.4);
   color: #5b21b6;
-  border-color: rgba(196, 181, 253, 0.6);
+  border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-orange {
   background: rgba(253, 186, 116, 0.4);
   color: #c2410c;
-  border-color: rgba(253, 186, 116, 0.6);
+  border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-pink {
   background: rgba(251, 207, 232, 0.4);
   color: #9d174d;
-  border-color: rgba(251, 207, 232, 0.6);
+  border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-indigo {
   background: rgba(165, 180, 252, 0.4);
   color: #3730a3;
-  border-color: rgba(165, 180, 252, 0.6);
+  border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-amber {
   background: rgba(253, 230, 138, 0.4);
   color: #b45309;
-  border-color: rgba(253, 230, 138, 0.6);
+  border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-gray {
   background: rgba(209, 213, 219, 0.5);
   color: #4b5563;
-  border-color: rgba(209, 213, 219, 0.6);
+  border-color: transparent;
 }
 
 .asset-expense-classification-display.expense-cat-teal {
-  background: rgba(94, 234, 212, 0.4);
-  color: #0f766e;
-  border-color: rgba(94, 234, 212, 0.6);
+  background: rgba(196, 220, 200, 0.4);
+  color: #2d5a3d;
+  border-color: transparent;
 }
 .asset-expense-classification-display.expense-cat-blue {
-  background: rgba(147, 197, 253, 0.4);
-  color: #1e40af;
-  border-color: rgba(147, 197, 253, 0.6);
+  background: rgba(196, 224, 220, 0.4);
+  color: #0d5c5c;
+  border-color: transparent;
 }
 .asset-expense-classification-display.expense-cat-green {
-  background: rgba(167, 243, 208, 0.4);
-  color: #047857;
-  border-color: rgba(167, 243, 208, 0.6);
+  background: rgba(242, 217, 196, 0.4);
+  color: #9a5a2e;
+  border-color: transparent;
 }
 .asset-expense-classification-display.expense-cat-purple {
-  background: rgba(196, 181, 253, 0.4);
-  color: #5b21b6;
-  border-color: rgba(196, 181, 253, 0.6);
+  background: rgba(200, 208, 216, 0.4);
+  color: #4b5563;
+  border-color: transparent;
 }
 .asset-expense-classification-display.expense-cat-indigo {
-  background: rgba(165, 180, 252, 0.4);
-  color: #3730a3;
-  border-color: rgba(165, 180, 252, 0.6);
+  background: rgba(224, 196, 232, 0.4);
+  color: #6b21a8;
+  border-color: transparent;
 }
 
 .asset-expense-classification-panel[hidden] {
@@ -4222,28 +4222,28 @@ body {
 
 /* 펠렛 색상 - 카테고리(고정비/변동비/저축/투자/수입)에 맞춤 */
 .asset-expense-classification-pill.expense-cat-teal {
-  background: rgba(94, 234, 212, 0.45);
-  color: #0f766e;
+  background: rgba(196, 220, 200, 0.45);
+  color: #2d5a3d;
 }
 .asset-expense-classification-pill.expense-cat-blue {
-  background: rgba(147, 197, 253, 0.45);
-  color: #1e40af;
+  background: rgba(196, 224, 220, 0.45);
+  color: #0d5c5c;
 }
 .asset-expense-classification-pill.expense-cat-green {
-  background: rgba(167, 243, 208, 0.45);
-  color: #047857;
+  background: rgba(242, 217, 196, 0.45);
+  color: #9a5a2e;
 }
 .asset-expense-classification-pill.expense-cat-purple {
-  background: rgba(196, 181, 253, 0.45);
-  color: #5b21b6;
+  background: rgba(200, 208, 216, 0.45);
+  color: #4b5563;
 }
 .asset-expense-classification-pill.expense-cat-orange {
   background: rgba(253, 186, 116, 0.45);
   color: #c2410c;
 }
 .asset-expense-classification-pill.expense-cat-indigo {
-  background: rgba(165, 180, 252, 0.45);
-  color: #3730a3;
+  background: rgba(224, 196, 232, 0.45);
+  color: #6b21a8;
 }
 
 .asset-expense-classification-option {
@@ -4342,8 +4342,8 @@ body {
 }
 
 .asset-expense-payment-wrap .asset-expense-payment-display.has-value {
-  background: rgba(147, 197, 253, 0.35);
-  color: #1e40af;
+  background: rgba(212, 212, 208, 0.5);
+  color: #4b5563;
 }
 
 .asset-expense-payment-panel {
