@@ -1,10 +1,18 @@
 /**
  * 할일목록 환경설정 모달
  * - 완료항목 숨기기/제거 토글
- * - 리스트별 색상 설정 (파스텔 프리셋 + HEX 입력)
+ * - 리스트별 색상 설정 (10가지 프리셋만, HEX 입력 제거)
  */
 
-import { getTodoSettings, saveTodoSettings, PASTEL_PRESETS, DEFAULT_SECTION_COLORS, getCustomSections, getCustomSectionColor } from "./todoSettings.js";
+import {
+  getTodoSettings,
+  saveTodoSettings,
+  DEFAULT_SECTION_COLORS,
+  getCustomSections,
+  getCustomSectionColor,
+  APP_PRESET_COLORS,
+  hexToRgba,
+} from "./todoSettings.js";
 
 const FIXED_SECTIONS = [
   { id: "braindump", label: "브레인 덤프" },
@@ -18,17 +26,13 @@ function getSections() {
   return [...FIXED_SECTIONS, ...getCustomSections()];
 }
 
-function hexToRgba(hex, alpha = 0.6) {
-  const m = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i) || hex.match(/^#?([a-f\d])([a-f\d])([a-f\d])$/i);
-  if (!m) return null;
-  const r = m[1].length === 2 ? parseInt(m[1], 16) : parseInt(m[1] + m[1], 16);
-  const g = m[2].length === 2 ? parseInt(m[2], 16) : parseInt(m[2] + m[2], 16);
-  const b = m[3].length === 2 ? parseInt(m[3], 16) : parseInt(m[3] + m[3], 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+function getAlphaFromRgba(rgba) {
+  const m = rgba?.match(/rgba?\([^,]+,[^,]+,[^,]+,\s*([\d.]+)/);
+  return m ? parseFloat(m[1]) : 0.6;
 }
 
 function rgbaToHex(rgba) {
-  const m = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  const m = rgba?.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
   if (!m) return "";
   const r = parseInt(m[1], 10).toString(16).padStart(2, "0");
   const g = parseInt(m[2], 10).toString(16).padStart(2, "0");
@@ -36,79 +40,110 @@ function rgbaToHex(rgba) {
   return `#${r}${g}${b}`;
 }
 
-export function createColorPickerRow(sectionId, label, currentColor, onChange) {
-  const row = document.createElement("div");
-  row.className = "todo-settings-color-row";
-  row.innerHTML = `
-    <span class="todo-settings-color-label">${label}</span>
-    <div class="todo-settings-color-swatches"></div>
-    <div class="todo-settings-color-hex-wrap">
-      <input type="text" class="todo-settings-color-hex" placeholder="#HEX" maxlength="7" />
+function findClosestPresetHex(rgba) {
+  const hex = rgbaToHex(rgba);
+  if (!hex) return APP_PRESET_COLORS[0].hex;
+  const exact = APP_PRESET_COLORS.find((c) => c.hex.toLowerCase() === hex.toLowerCase());
+  if (exact) return exact.hex;
+  const [r, g, b] = (rgba?.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/) || []).slice(1).map(Number);
+  if (isNaN(r)) return APP_PRESET_COLORS[0].hex;
+  let best = APP_PRESET_COLORS[0].hex;
+  let minDist = Infinity;
+  for (const c of APP_PRESET_COLORS) {
+    const m = c.hex.match(/#([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})/i);
+    if (!m) continue;
+    const cr = parseInt(m[1], 16);
+    const cg = parseInt(m[2], 16);
+    const cb = parseInt(m[3], 16);
+    const d = (r - cr) ** 2 + (g - cg) ** 2 + (b - cb) ** 2;
+    if (d < minDist) {
+      minDist = d;
+      best = c.hex;
+    }
+  }
+  return best;
+}
+
+function showColorPickerModal(label, currentColor, onChange) {
+  const alpha = getAlphaFromRgba(currentColor);
+  const currentHex = findClosestPresetHex(currentColor || "rgba(200,200,200,0.6)");
+
+  const modal = document.createElement("div");
+  modal.className = "todo-settings-color-modal";
+  modal.innerHTML = `
+    <div class="todo-settings-color-modal-backdrop"></div>
+    <div class="todo-settings-color-modal-panel">
+      <h4 class="todo-settings-color-modal-title">${label}</h4>
+      <div class="todo-settings-color-modal-swatches"></div>
+      <button type="button" class="todo-settings-color-modal-close">닫기</button>
     </div>
   `;
 
-  const swatchesEl = row.querySelector(".todo-settings-color-swatches");
-  const hexInput = row.querySelector(".todo-settings-color-hex");
+  const swatchesEl = modal.querySelector(".todo-settings-color-modal-swatches");
+  const backdrop = modal.querySelector(".todo-settings-color-modal-backdrop");
+  const closeBtn = modal.querySelector(".todo-settings-color-modal-close");
 
-  const defaultColor = DEFAULT_SECTION_COLORS[sectionId] || getCustomSectionColor(sectionId);
-  let selectedColor = currentColor || defaultColor;
-
-  PASTEL_PRESETS.forEach((preset) => {
+  APP_PRESET_COLORS.forEach((preset) => {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "todo-settings-color-swatch";
-    btn.style.backgroundColor = preset;
-    btn.dataset.color = preset;
-    btn.title = preset;
-    if (preset === selectedColor) btn.classList.add("selected");
+    btn.className = "todo-settings-color-modal-swatch";
+    btn.style.backgroundColor = preset.hex;
+    btn.dataset.hex = preset.hex;
+    btn.title = preset.name;
+    if (preset.hex.toLowerCase() === currentHex.toLowerCase()) btn.classList.add("selected");
     btn.addEventListener("click", () => {
-      selectedColor = preset;
-      swatchesEl.querySelectorAll(".todo-settings-color-swatch").forEach((b) => b.classList.remove("selected"));
-      btn.classList.add("selected");
-      hexInput.value = rgbaToHex(preset);
-      onChange(preset);
+      const rgba = hexToRgba(preset.hex, alpha);
+      onChange(rgba);
+      modal.remove();
+      document.body.style.overflow = "";
     });
     swatchesEl.appendChild(btn);
   });
 
-  const customBtn = document.createElement("button");
-  customBtn.type = "button";
-  customBtn.className = "todo-settings-color-swatch todo-settings-color-swatch-custom";
-  customBtn.title = "커스텀 색상";
-  customBtn.innerHTML = `<span class="todo-settings-custom-icon">#</span>`;
-  if (!PASTEL_PRESETS.includes(selectedColor)) {
-    customBtn.classList.add("selected");
-    customBtn.style.backgroundColor = selectedColor;
+  function close() {
+    modal.remove();
+    document.body.style.overflow = "";
   }
-  customBtn.addEventListener("click", () => {
-    hexInput.focus();
-  });
-  swatchesEl.appendChild(customBtn);
 
-  hexInput.value = rgbaToHex(selectedColor);
-  hexInput.addEventListener("input", () => {
-    const val = hexInput.value.trim();
-    if (/^#[0-9a-fA-F]{3,6}$/.test(val)) {
-      const rgba = hexToRgba(val);
-      if (rgba) {
-        selectedColor = rgba;
-        swatchesEl.querySelectorAll(".todo-settings-color-swatch:not(.todo-settings-color-swatch-custom)").forEach((b) => b.classList.remove("selected"));
-        customBtn.classList.add("selected");
-        customBtn.style.backgroundColor = rgba;
-        onChange(rgba);
-      }
-    }
+  backdrop.addEventListener("click", close);
+  closeBtn.addEventListener("click", close);
+  modal.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") close();
   });
-  hexInput.addEventListener("blur", () => {
-    const val = hexInput.value.trim();
-    if (val && /^#[0-9a-fA-F]{3,6}$/.test(val)) {
-      const rgba = hexToRgba(val);
-      if (rgba) {
-        selectedColor = rgba;
-        onChange(rgba);
-      }
-    }
+
+  document.body.appendChild(modal);
+  document.body.style.overflow = "hidden";
+}
+
+export function createColorPickerRow(sectionId, label, currentColor, onChange) {
+  const defaultColor = DEFAULT_SECTION_COLORS[sectionId] || getCustomSectionColor(sectionId);
+  let selectedColor = currentColor || defaultColor;
+
+  const row = document.createElement("div");
+  row.className = "todo-settings-color-row todo-settings-color-row-chip";
+  row.innerHTML = `
+    <span class="todo-settings-color-label">${label}</span>
+    <button type="button" class="todo-settings-color-chip" title="${label} 색상 선택">
+      <span class="todo-settings-color-chip-inner"></span>
+    </button>
+  `;
+
+  const chip = row.querySelector(".todo-settings-color-chip");
+  const chipInner = row.querySelector(".todo-settings-color-chip-inner");
+
+  function updateChip() {
+    chipInner.style.backgroundColor = selectedColor;
+  }
+
+  chip.addEventListener("click", () => {
+    showColorPickerModal(label, selectedColor, (rgba) => {
+      selectedColor = rgba;
+      updateChip();
+      onChange(rgba);
+    });
   });
+
+  updateChip();
 
   return row;
 }

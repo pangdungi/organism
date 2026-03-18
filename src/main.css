@@ -7477,6 +7477,101 @@ body {
   border-color: #6b7280;
 }
 
+/* 칩+모달 방식 (10 프리셋만, hex 입력 제거) */
+.todo-settings-color-row-chip .todo-settings-color-chip {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  padding: 2px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #fff;
+}
+
+.todo-settings-color-row-chip .todo-settings-color-chip:hover {
+  border-color: #9ca3af;
+}
+
+.todo-settings-color-row-chip .todo-settings-color-chip-inner {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+}
+
+.todo-settings-color-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.todo-settings-color-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.todo-settings-color-modal-panel {
+  position: relative;
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.25rem;
+  min-width: 260px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+.todo-settings-color-modal-title {
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.todo-settings-color-modal-swatches {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.todo-settings-color-modal-swatch {
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.todo-settings-color-modal-swatch:hover {
+  border-color: #9ca3af;
+}
+
+.todo-settings-color-modal-swatch.selected {
+  border-color: #374151;
+  box-shadow: 0 0 0 1px #fff;
+}
+
+.todo-settings-color-modal-close {
+  width: 100%;
+  padding: 0.5rem;
+  font-size: 0.9rem;
+  color: #6b7280;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.todo-settings-color-modal-close:hover {
+  background: #e5e7eb;
+}
+
 .todo-settings-footer {
   padding: 1rem 1.25rem;
   border-top: none;
