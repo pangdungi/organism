@@ -3705,7 +3705,6 @@ function renderNetworthView() {
     subHeader.innerHTML = `<span class="asset-asset-subtitle">${g.label}</span>`;
 
     let tabsEl = null;
-    let maturityHintEl = null;
     if (isDeposit || (isSavings && g.key === "적금")) {
       tabsEl = document.createElement("div");
       tabsEl.className = "asset-asset-deposit-savings-tabs";
@@ -3718,9 +3717,6 @@ function renderNetworthView() {
       tabsEl.querySelectorAll(".asset-asset-tab-btn").forEach((btn) => {
         btn.addEventListener("click", () => applyDepositSavingsTabFilter(tabsEl, btn.dataset.tab));
       });
-      maturityHintEl = document.createElement("div");
-      maturityHintEl.className = "asset-asset-maturity-hint";
-      maturityHintEl.textContent = "※ 합계에는 보유중인 항목만 포함됩니다 (만기된 항목 제외)";
     }
 
     const subTableWrap = document.createElement("div");
@@ -4073,7 +4069,6 @@ function renderNetworthView() {
     assetTableContainer.appendChild(assetAddButtonWrap);
     subSection.appendChild(subHeader);
     if (tabsEl) subSection.appendChild(tabsEl);
-    if (maturityHintEl) subSection.appendChild(maturityHintEl);
     subSection.appendChild(assetTableContainer);
     assetTableWrap.appendChild(subSection);
   });
