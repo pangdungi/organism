@@ -25,7 +25,7 @@ import {
   getKpiDailyRepeatInfoByKpiName,
   syncKpiDailyRepeatTodoCompleted,
 } from "../utils/kpiTodoSync.js";
-import { getCustomSections, getTaskCategoryColor } from "../utils/todoSettings.js";
+import { getCustomSections, getCategoryColorForReport } from "../utils/todoSettings.js";
 import { showToast } from "../utils/showToast.js";
 
 /** 오딧 3. 우선순위 영역: 해당 날짜 할일 목록 로드 (Calendar getTasksForDate와 동일 데이터) */
@@ -7462,7 +7462,7 @@ export function render() {
         <div class="time-improve-invest-summary-row"><span class="time-improve-invest-summary-label">실제 보낸 시간 합계</span><span class="time-improve-invest-summary-value">${formatHoursToHHMM(totalThiefHours)}</span></div>
         <div class="time-improve-invest-summary-row"><span class="time-improve-invest-summary-label">시간의 가치 합계</span><span class="time-improve-invest-summary-value time-improve-invest-summary-value-bold">${formatPrice(totalThiefPrice)}</span></div>
       </div>`;
-    const investMentText = `이 <strong>${formatPrice(totalThiefPrice)}원</strong> 만큼의 돈을 내고 쓸만큼 가치있는 활동들이었나요?`;
+    const investMentText = `이 <strong>${formatPrice(Math.abs(totalThiefPrice))}원</strong> 만큼의 돈을 내고 쓸만큼 가치있는 활동들이었나요?`;
 
     const eventsListHtml =
       allEvents.length === 0
@@ -7812,8 +7812,7 @@ export function render() {
           });
         }
 
-        const getCategoryColor = (cat) =>
-          CATEGORY_GRAPH_COLORS[cat] || CATEGORY_GRAPH_COLORS[""];
+        const getCategoryColor = (cat) => getCategoryColorForReport(cat);
         const minBarWidthForLabel = plotW * (1.5 / 24);
         const esc = (s) =>
           String(s)
@@ -8379,7 +8378,7 @@ export function render() {
       .map(([task, hrs]) => ({
         label: task,
         hrs,
-        stroke: getTaskCategoryColor(getDominantCategoryForTask(nonProdRows, task)),
+        stroke: getCategoryColorForReport(getDominantCategoryForTask(nonProdRows, task)),
       }))
       .sort((a, b) => b.hrs - a.hrs);
     const nonProdTotal = nonProdEntries.reduce((s, x) => s + x.hrs, 0);
@@ -8435,7 +8434,7 @@ export function render() {
       .map(([task, hrs]) => ({
         label: task,
         hrs,
-        stroke: getTaskCategoryColor(getDominantCategoryForTask(prodRows, task)),
+        stroke: getCategoryColorForReport(getDominantCategoryForTask(prodRows, task)),
       }))
       .sort((a, b) => b.hrs - a.hrs);
     const prodTotal = prodEntries.reduce((s, x) => s + x.hrs, 0);
@@ -8489,7 +8488,7 @@ export function render() {
       .map(([task, hrs]) => ({
         task,
         hrs,
-        color: getTaskCategoryColor(getDominantCategoryForTask(filtered, task)),
+        color: getCategoryColorForReport(getDominantCategoryForTask(filtered, task)),
       }))
       .sort((a, b) => b.hrs - a.hrs);
     const maxTaskHrs = Math.max(...taskEntries.map((x) => x.hrs), 0.01);

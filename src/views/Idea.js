@@ -101,7 +101,7 @@ export function render() {
         <span class="idea-form-label">아이디</span>
         <span class="idea-user-id-value" id="idea-user-id">—</span>
       </div>
-      <div class="idea-basic-row idea-font-logout-row">
+      <div class="idea-basic-row idea-font-row">
         <label class="idea-form-label">웹사이트 폰트</label>
         <div class="idea-font-dropdown">
           <button type="button" class="idea-font-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="폰트 선택">
@@ -117,6 +117,8 @@ export function render() {
             `).join("")}
           </div>
         </div>
+      </div>
+      <div class="idea-logout-row">
         <button type="button" class="idea-btn-logout">로그아웃</button>
       </div>
     </div>
@@ -201,38 +203,56 @@ export function render() {
       <button type="button" class="idea-hourly-tab" data-mode="freelance">프리랜서</button>
     </div>
     <form class="idea-hourly-form">
-      <div class="idea-form-row idea-row-salary">
-        <label class="idea-form-label">월급(원)</label>
-        <div class="idea-input-with-unit">
-          <input type="text" class="idea-form-input idea-input-amount" placeholder="예: 3000000" inputmode="numeric" />
-          <span class="idea-input-unit">원</span>
+      <div class="idea-salary-row-inline">
+        <div class="idea-form-row idea-row-salary">
+          <label class="idea-form-label">월급(원)</label>
+          <div class="idea-input-with-unit">
+            <input type="text" class="idea-form-input idea-input-amount" placeholder="예: 3000000" inputmode="numeric" />
+            <span class="idea-input-unit">원</span>
+          </div>
+        </div>
+        <div class="idea-form-row idea-row-salary">
+          <label class="idea-form-label">월 근무시간(시간)</label>
+          <div class="idea-input-with-unit">
+            <input type="text" class="idea-form-input idea-input-hours" placeholder="예: 160" inputmode="numeric" />
+            <span class="idea-input-unit">h</span>
+          </div>
         </div>
       </div>
-      <div class="idea-form-row idea-row-salary">
-        <label class="idea-form-label">월 근무시간(시간)</label>
-        <div class="idea-input-with-unit">
-          <input type="text" class="idea-form-input idea-input-hours" placeholder="예: 160" inputmode="numeric" />
-          <span class="idea-input-unit">h</span>
+      <div class="idea-freelance-row-inline" style="display:none">
+        <div class="idea-form-row idea-row-freelance">
+          <label class="idea-form-label">월 예상 수입 (원)</label>
+          <div class="idea-input-with-unit">
+            <input type="text" class="idea-form-input idea-input-monthly" placeholder="예: 5000000" inputmode="numeric" />
+            <span class="idea-input-unit">원</span>
+          </div>
         </div>
-      </div>
-      <div class="idea-form-row idea-row-freelance" style="display:none">
-        <label class="idea-form-label">월 예상 수입 (원)</label>
-        <input type="text" class="idea-form-input idea-input-monthly" placeholder="예: 5000000" inputmode="numeric" />
-      </div>
-      <div class="idea-form-row idea-row-freelance" style="display:none">
-        <label class="idea-form-label">월 근무시간 (시간)</label>
-        <input type="text" class="idea-form-input idea-input-freelance-hours" placeholder="예: 160" inputmode="numeric" />
+        <div class="idea-form-row idea-row-freelance">
+          <label class="idea-form-label">월 근무시간 (시간)</label>
+          <div class="idea-input-with-unit">
+            <input type="text" class="idea-form-input idea-input-freelance-hours" placeholder="예: 160" inputmode="numeric" />
+            <span class="idea-input-unit">h</span>
+          </div>
+        </div>
       </div>
       <div class="idea-form-row idea-row-freelance idea-freelance-divider" style="display:none">
         <span class="idea-form-hint">또는 건당 기준</span>
       </div>
-      <div class="idea-form-row idea-row-freelance" style="display:none">
-        <label class="idea-form-label">건당 금액 (원)</label>
-        <input type="text" class="idea-form-input idea-input-project-fee" placeholder="예: 500000" inputmode="numeric" />
-      </div>
-      <div class="idea-form-row idea-row-freelance" style="display:none">
-        <label class="idea-form-label">예상 소요시간 (시간)</label>
-        <input type="text" class="idea-form-input idea-input-duration" placeholder="예: 20" inputmode="numeric" />
+      <div class="idea-freelance-row-inline idea-freelance-per-case" style="display:none">
+        <div class="idea-form-row idea-row-freelance">
+          <label class="idea-form-label">건당 금액 (원)</label>
+          <div class="idea-input-with-unit">
+            <input type="text" class="idea-form-input idea-input-project-fee" placeholder="예: 500000" inputmode="numeric" />
+            <span class="idea-input-unit">원</span>
+          </div>
+        </div>
+        <div class="idea-form-row idea-row-freelance">
+          <label class="idea-form-label">예상 소요시간 (시간)</label>
+          <div class="idea-input-with-unit">
+            <input type="text" class="idea-form-input idea-input-duration" placeholder="예: 20" inputmode="numeric" />
+            <span class="idea-input-unit">h</span>
+          </div>
+        </div>
       </div>
       <button type="button" class="idea-btn-calc">계산하기</button>
       <div class="idea-hourly-result-wrap">
@@ -298,38 +318,14 @@ export function render() {
           </div>
         </div>
       </div>
-      <button type="button" class="todo-settings-save idea-colors-save">저장</button>
     </div>
   `;
   const listRowsEl = colorWidget.querySelector(".idea-colors-rows-list");
   const timeRowsEl = colorWidget.querySelector(".idea-colors-rows-time");
   const taskRowsLeftEl = colorWidget.querySelector(".idea-colors-rows-task-left");
   const taskRowsRightEl = colorWidget.querySelector(".idea-colors-rows-task-right");
-  const colorSaveBtn = colorWidget.querySelector(".idea-colors-save");
 
-  getSections().forEach((sec) => {
-    const row = createColorPickerRow(sec.id, sec.label, sectionColors[sec.id], (color) => {
-      sectionColors[sec.id] = color;
-    });
-    listRowsEl.appendChild(row);
-  });
-  TIME_CATEGORY_SECTIONS.forEach((sec) => {
-    const defaultColor = DEFAULT_TIME_CATEGORY_COLORS[sec.id];
-    const row = createColorPickerRow(sec.id, sec.label, timeCategoryColors[sec.id] || defaultColor, (color) => {
-      timeCategoryColors[sec.id] = color;
-    });
-    timeRowsEl.appendChild(row);
-  });
-  TASK_CATEGORY_SECTIONS.forEach((sec, idx) => {
-    const defaultColor = DEFAULT_TASK_CATEGORY_COLORS[sec.id];
-    const row = createColorPickerRow(sec.id, sec.label, taskCategoryColors[sec.id] ?? defaultColor, (color) => {
-      taskCategoryColors[sec.id] = color;
-    });
-    if (idx < 5) taskRowsLeftEl.appendChild(row);
-    else taskRowsRightEl.appendChild(row);
-  });
-
-  colorSaveBtn.addEventListener("click", () => {
+  function saveColors() {
     saveTodoSettings({
       ...getTodoSettings(),
       sectionColors,
@@ -339,8 +335,31 @@ export function render() {
     applyTimeCategoryColors();
     applyTaskCategoryColors();
     document.dispatchEvent(new CustomEvent("app-colors-changed"));
-    colorSaveBtn.textContent = "저장됨";
-    setTimeout(() => { colorSaveBtn.textContent = "저장"; }, 1500);
+  }
+
+  getSections().forEach((sec) => {
+    const row = createColorPickerRow(sec.id, sec.label, sectionColors[sec.id], (color) => {
+      sectionColors[sec.id] = color;
+      saveColors();
+    });
+    listRowsEl.appendChild(row);
+  });
+  TIME_CATEGORY_SECTIONS.forEach((sec) => {
+    const defaultColor = DEFAULT_TIME_CATEGORY_COLORS[sec.id];
+    const row = createColorPickerRow(sec.id, sec.label, timeCategoryColors[sec.id] || defaultColor, (color) => {
+      timeCategoryColors[sec.id] = color;
+      saveColors();
+    });
+    timeRowsEl.appendChild(row);
+  });
+  TASK_CATEGORY_SECTIONS.forEach((sec, idx) => {
+    const defaultColor = DEFAULT_TASK_CATEGORY_COLORS[sec.id];
+    const row = createColorPickerRow(sec.id, sec.label, taskCategoryColors[sec.id] ?? defaultColor, (color) => {
+      taskCategoryColors[sec.id] = color;
+      saveColors();
+    });
+    if (idx < 5) taskRowsLeftEl.appendChild(row);
+    else taskRowsRightEl.appendChild(row);
   });
 
   grid.appendChild(colorWidget);
@@ -348,8 +367,9 @@ export function render() {
 
   // 시급 계산 로직
   const tabs = hourlyWidget.querySelectorAll(".idea-hourly-tab");
-  const salaryRows = hourlyWidget.querySelectorAll(".idea-row-salary");
-  const freelanceRows = hourlyWidget.querySelectorAll(".idea-row-freelance");
+  const freelanceBlocks = hourlyWidget.querySelectorAll(
+    ".idea-freelance-row-inline, .idea-freelance-divider",
+  );
   const amountInput = hourlyWidget.querySelector(".idea-input-amount");
   const hoursInput = hourlyWidget.querySelector(".idea-input-hours");
   const monthlyInput = hourlyWidget.querySelector(".idea-input-monthly");
@@ -369,7 +389,7 @@ export function render() {
     } else {
       resultValue.textContent = new Intl.NumberFormat("ko-KR").format(Math.round(val));
       if (resultUnit) {
-        resultUnit.textContent = " 원";
+        resultUnit.textContent = "원";
         resultUnit.style.visibility = "";
       }
     }
@@ -398,9 +418,10 @@ export function render() {
   function switchMode(m) {
     mode = m;
     tabs.forEach((t) => t.classList.toggle("active", t.dataset.mode === m));
-    salaryRows.forEach((r) => (r.style.display = m === "salary" ? "" : "none"));
-    freelanceRows.forEach(
-      (r) => (r.style.display = m === "freelance" ? "" : "none"),
+    const salaryWrap = hourlyWidget.querySelector(".idea-salary-row-inline");
+    if (salaryWrap) salaryWrap.style.display = m === "salary" ? "" : "none";
+    freelanceBlocks.forEach(
+      (b) => (b.style.display = m === "freelance" ? "" : "none"),
     );
     setHourlyResult("—");
   }

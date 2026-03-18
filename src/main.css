@@ -730,6 +730,7 @@ body {
   font-weight: 300;
   letter-spacing: 0.12em;
   color: #b8b8b8;
+  font-family: "S-Core Dream 3", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .app-sidebar-item:hover {
@@ -768,7 +769,7 @@ body {
   border-bottom: none;
   color: #9ca3af;
   font-size: 0.88rem;
-  font-family: "Noto Serif KR", serif !important;
+  font-family: "S-Core Dream 3", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .app-sidebar-logout:hover {
@@ -7647,7 +7648,7 @@ body {
   border: 1px solid #e5e7eb;
   border-radius: 6px;
   cursor: pointer;
-  background: #fff;
+  background: transparent;
 }
 
 .todo-settings-color-row-chip .todo-settings-color-chip:hover {
@@ -7722,15 +7723,15 @@ body {
   width: 100%;
   padding: 0.5rem;
   font-size: 0.9rem;
-  color: #6b7280;
-  background: #f3f4f6;
+  color: #fff;
+  background: #111111;
   border: none;
   border-radius: 6px;
   cursor: pointer;
 }
 
 .todo-settings-color-modal-close:hover {
-  background: #e5e7eb;
+  background: #1c1c1a;
 }
 
 .todo-settings-footer {
@@ -18787,18 +18788,38 @@ body.kpi-resizing {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 1.25rem;
+  background: transparent;
 }
 
 .idea-widget {
   min-width: 0;
 }
 
-/* 나의 계정 위젯 제목: 크기·진하게 (기본정보, 나의 시급 계산하기, 색상 설정 등) */
+/* 기본 설정, 나의 시급 계산하기: 각각 한 줄씩 세로 배치 */
+.idea-widget-basic-settings,
+.idea-widget-hourly {
+  grid-column: 1 / -1;
+}
+
+.idea-widget-basic-settings {
+  border-bottom: 1px solid rgba(220, 220, 218, 0.5);
+  padding-bottom: 2rem;
+}
+
+/* 나의 계정 위젯: 그림자 제거 */
+.idea-view .time-dashboard-widget {
+  box-shadow: none;
+}
+
+/* 나의 계정 위젯 제목: 기본정보, 나의 시급 계산하기, 색상 설정 등 */
 .idea-view .time-dashboard-widget-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 300;
+  letter-spacing: 0.2em;
+  color: #b8b8b8;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(220, 220, 218, 0.5);
 }
 
 .idea-widget-colors {
@@ -18838,9 +18859,12 @@ body.kpi-resizing {
 }
 .idea-colors-col .todo-settings-block-title {
   margin: 0 0 0.5rem;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #111111;
+  padding-bottom: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 300;
+  letter-spacing: 0.2em;
+  color: #b8b8b8;
+  border-bottom: 1px solid #dcdcda;
 }
 .idea-colors-col .idea-colors-rows {
   display: flex;
@@ -18849,7 +18873,11 @@ body.kpi-resizing {
 }
 .idea-colors-col .todo-settings-color-row {
   padding: 0.5rem 0;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: none;
+}
+.idea-colors-col .todo-settings-color-label {
+  color: #7a7a7a;
+  font-weight: 300;
 }
 .idea-colors-col .todo-settings-color-row:last-child {
   border-bottom: none;
@@ -18870,11 +18898,14 @@ body.kpi-resizing {
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  min-width: 120px;
+  max-width: 200px;
   padding: 0.5rem 0.75rem;
   font-size: 14px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background: #f9f9f8;
+  border: none;
+  border-bottom: 1px solid rgba(220, 220, 218, 0.5);
+  border-radius: 0;
+  background: transparent;
   color: #374151;
   font-family: inherit;
   cursor: pointer;
@@ -18883,14 +18914,13 @@ body.kpi-resizing {
 }
 
 .idea-font-trigger:hover {
-  border-color: #d1d5db;
-  background: #fafafa;
+  background: rgba(249, 249, 248, 0.5);
 }
 
 .idea-font-trigger:focus {
   outline: none;
-  border-color: #9ca3af;
-  box-shadow: 0 0 0 2px rgba(156, 163, 175, 0.15);
+  border-bottom-color: #9ca3af;
+  box-shadow: none;
 }
 
 .idea-font-trigger-label {
@@ -18980,6 +19010,24 @@ body.kpi-resizing {
   gap: 1rem;
 }
 
+.idea-salary-row-inline {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-end;
+}
+
+.idea-salary-row-inline .idea-form-row,
+.idea-freelance-row-inline .idea-form-row {
+  flex: 1;
+  min-width: 0;
+}
+
+.idea-freelance-row-inline {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-end;
+}
+
 .idea-form-row {
   display: flex;
   flex-direction: column;
@@ -18992,12 +19040,18 @@ body.kpi-resizing {
   color: #374151;
 }
 
+.idea-hourly-form .idea-form-label {
+  color: #b8b8b8;
+}
+
 .idea-form-input {
   padding: 0.5rem 0.75rem;
   font-size: 14px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  color: #111827;
+  border: none;
+  border-bottom: 1px solid #dcdcda;
+  border-radius: 0;
+  background: transparent;
+  color: #b8b8b8;
   font-family: inherit;
 }
 
@@ -19017,32 +19071,41 @@ body.kpi-resizing {
 }
 .idea-input-with-unit .idea-input-unit {
   font-size: 0.9rem;
-  color: #6b7280;
+  color: #b8b8b8;
   flex-shrink: 0;
 }
 
 .idea-form-input:focus {
   outline: none;
-  border-color: #374151;
-  box-shadow: 0 0 0 2px rgba(55, 65, 81, 0.1);
+  border-bottom-color: #9ca3af;
+  box-shadow: none;
+}
+
+.idea-btn-calc,
+.idea-btn-logout {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 300;
+  color: #b8b8b8;
+  cursor: pointer;
+  padding: 0 0 1px;
+  letter-spacing: 0.06em;
+  transition: color 0.15s, border-color 0.15s;
+  background: none;
+  border: none;
+  border-bottom: 0.5px solid #e8e8e6;
+  border-radius: 0;
 }
 
 .idea-btn-calc {
-  padding: 0.5rem 1rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: #fff;
-  background: #1a1a2e;
-  border: 1px solid #1a1a2e;
-  border-radius: 8px;
-  cursor: pointer;
-  font-family: inherit;
+  margin-top: 14px;
   align-self: flex-start;
 }
 
-.idea-btn-calc:hover {
-  background: #111827;
-  border-color: #111827;
+.idea-btn-calc:hover,
+.idea-btn-logout:hover {
+  color: #374151;
+  border-bottom-color: #9ca3af;
 }
 
 /* 나의 계정 - 기본 설정 (아이디, 웹사이트 폰트, 로그아웃) */
@@ -19056,11 +19119,12 @@ body.kpi-resizing {
   align-items: center;
   gap: 0.75rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: none;
+  color: #7a7a7a;
+  font-weight: 300;
 }
 .idea-basic-row:last-child {
   padding-bottom: 0;
-  border-bottom: none;
 }
 .idea-basic-row .idea-form-label {
   flex-shrink: 0;
@@ -19070,61 +19134,48 @@ body.kpi-resizing {
   flex: 1;
   min-width: 0;
   font-size: 0.9rem;
-  color: #374151;
+  color: #7a7a7a;
   word-break: break-all;
 }
-.idea-font-logout-row {
+.idea-font-row {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  flex-wrap: wrap;
 }
-.idea-font-logout-row .idea-font-dropdown {
-  flex: 1;
-  min-width: 160px;
+.idea-font-row .idea-font-dropdown {
+  flex: 0 0 auto;
+  width: fit-content;
+  min-width: 120px;
+  max-width: 200px;
 }
-.idea-font-logout-row .idea-btn-logout {
-  margin-left: auto;
-  flex-shrink: 0;
-}
-.idea-btn-logout {
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #6b7280;
-  background: transparent;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  cursor: pointer;
-  font-family: inherit;
-  transition:
-    background 0.2s,
-    color 0.2s,
-    border-color 0.2s;
-}
-.idea-btn-logout:hover {
-  color: #374151;
-  background: #f9fafb;
-  border-color: #9ca3af;
+.idea-logout-row {
+  padding-top: 1rem;
+  border-top: none;
 }
 
 .idea-hourly-result-wrap {
   padding-top: 0.5rem;
   border-top: none;
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
 }
 
-.idea-hourly-result-label {
-  font-size: 0.8rem;
-  color: #6b7280;
+.idea-hourly-result-label,
+.idea-hourly-result-unit {
+  font-size: 12px;
+  font-weight: 300;
+  color: #7a7a7a;
 }
 
 .idea-hourly-result-value {
   font-size: 1.5rem;
-  font-weight: 700;
-  color: #111827;
+  font-weight: 200;
+  font-family: "Noto Serif KR", serif;
+  letter-spacing: -0.01em;
+  color: #111111;
 }
 
 .idea-hourly-tabs {
@@ -19137,23 +19188,26 @@ body.kpi-resizing {
   padding: 0.4rem 0.9rem;
   font-size: 0.85rem;
   font-weight: 500;
-  color: #6b7280;
-  background: #f3f4f6;
+  color: #b8b8b8;
+  background: transparent;
   border: none;
-  border-radius: 8px;
+  border-bottom: 1px solid #dcdcda;
+  border-radius: 0;
   cursor: pointer;
   font-family: inherit;
   transition: all 0.15s;
 }
 
 .idea-hourly-tab:hover {
-  background: #e5e7eb;
+  background: transparent;
   color: #374151;
+  border-bottom-color: #9ca3af;
 }
 
 .idea-hourly-tab.active {
-  background: #1a1a2e;
-  color: #fff;
+  background: transparent;
+  color: #111111;
+  border-bottom-color: #111111;
 }
 
 .idea-freelance-divider {

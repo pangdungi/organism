@@ -75,7 +75,7 @@ function showColorPickerModal(label, currentColor, onChange) {
     <div class="todo-settings-color-modal-panel">
       <h4 class="todo-settings-color-modal-title">${label}</h4>
       <div class="todo-settings-color-modal-swatches"></div>
-      <button type="button" class="todo-settings-color-modal-close">닫기</button>
+      <button type="button" class="todo-settings-color-modal-close">저장</button>
     </div>
   `;
 
