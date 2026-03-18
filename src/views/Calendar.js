@@ -1279,12 +1279,14 @@ function renderMonthlyView(tabsElement) {
         const width = ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
         const baseColor = getSectionColor(t.sectionId);
         const color = withMoreTransparency(baseColor);
+        const isFirstSegment = barStart === t.startDate;
         allBars.push({
           left,
           width,
           name: t.name,
           color,
           isSingleDay: false,
+          isFirstSegment,
           itemType: t.itemType || "todo",
           done: !!t.done,
           kpiTodoId: t.kpiTodoId,
@@ -1343,13 +1345,14 @@ function renderMonthlyView(tabsElement) {
       const barsWithRow = allBars;
       barsWithRow.forEach((b) => {
         const isTodo = (b.itemType || "todo").toLowerCase() === "todo";
+        const showCheckbox = isTodo && (b.isSingleDay || b.isFirstSegment);
         const bar = document.createElement("div");
         bar.className =
           "calendar-monthly-span-bar" +
           (b.isSingleDay
             ? " calendar-monthly-span-bar--todo"
             : " calendar-monthly-span-bar--range") +
-          (isTodo ? " calendar-monthly-span-bar--has-checkbox" : "") +
+          (showCheckbox ? " calendar-monthly-span-bar--has-checkbox" : "") +
           (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "");
         bar.title = b.name;
         bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.15 + b.row * BAR_HEIGHT}rem`;
@@ -1362,10 +1365,16 @@ function renderMonthlyView(tabsElement) {
           }
         } else {
           if (isTodo) {
-            bar.innerHTML = `<span class="calendar-monthly-span-bar-checkbox" style="border-color:${b.color}"><span class="calendar-monthly-span-bar-checkbox-inner"></span></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+            bar.innerHTML = showCheckbox
+              ? `<span class="calendar-monthly-span-bar-checkbox" style="border-color:${b.color}"><span class="calendar-monthly-span-bar-checkbox-inner"></span></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
+              : "";
           } else {
-            bar.style.setProperty("--schedule-icon-color", b.color);
-            bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" style="border-color:${b.color}"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+            if (b.isFirstSegment) {
+              bar.style.setProperty("--schedule-icon-color", b.color);
+              bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" style="border-color:${b.color}"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+            } else {
+              bar.innerHTML = "";
+            }
           }
         }
         if (isTodo && b.done) {
@@ -1469,10 +1478,10 @@ function renderMonthlyView(tabsElement) {
         slot.style.cssText =
           "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
         if (showCount && cell) {
-          slot.style.pointerEvents = "auto";
           const moreBtn = document.createElement("button");
           moreBtn.type = "button";
           moreBtn.className = "calendar-day-more-btn";
+          moreBtn.style.pointerEvents = "auto";
           moreBtn.textContent = `+${displayCount}`;
           moreBtn.title = "더보기";
           moreBtn.addEventListener("click", (e) => {
@@ -1485,7 +1494,6 @@ function renderMonthlyView(tabsElement) {
         }
         moreEl.appendChild(slot);
       });
-      weekWrap.appendChild(moreEl);
       weekWrap.addEventListener("dragover", (e) => {
         e.preventDefault();
         if (
@@ -1636,6 +1644,7 @@ function renderMonthlyView(tabsElement) {
       });
       weekWrap.appendChild(weekRow);
       weekWrap.appendChild(barsEl);
+      weekWrap.appendChild(moreEl);
       calendarGrid.appendChild(weekWrap);
     });
   }
@@ -1985,12 +1994,14 @@ function render2WeekView(tabsElement) {
         const width = ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
         const baseColor = getSectionColor(t.sectionId);
         const color = withMoreTransparency(baseColor);
+        const isFirstSegment = barStart === t.startDate;
         allBars.push({
           left,
           width,
           name: t.name,
           color,
           isSingleDay: false,
+          isFirstSegment,
           itemType: t.itemType || "todo",
           done: !!t.done,
           kpiTodoId: t.kpiTodoId,
@@ -2049,13 +2060,14 @@ function render2WeekView(tabsElement) {
       const barsWithRow = allBars;
       barsWithRow.forEach((b) => {
         const isTodo = (b.itemType || "todo").toLowerCase() === "todo";
+        const showCheckbox = isTodo && (b.isSingleDay || b.isFirstSegment);
         const bar = document.createElement("div");
         bar.className =
           "calendar-monthly-span-bar" +
           (b.isSingleDay
             ? " calendar-monthly-span-bar--todo"
             : " calendar-monthly-span-bar--range") +
-          (isTodo ? " calendar-monthly-span-bar--has-checkbox" : "") +
+          (showCheckbox ? " calendar-monthly-span-bar--has-checkbox" : "") +
           (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "");
         bar.title = b.name;
         bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.15 + b.row * BAR_HEIGHT}rem`;
@@ -2068,10 +2080,16 @@ function render2WeekView(tabsElement) {
           }
         } else {
           if (isTodo) {
-            bar.innerHTML = `<span class="calendar-monthly-span-bar-checkbox" style="border-color:${b.color}"><span class="calendar-monthly-span-bar-checkbox-inner"></span></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+            bar.innerHTML = showCheckbox
+              ? `<span class="calendar-monthly-span-bar-checkbox" style="border-color:${b.color}"><span class="calendar-monthly-span-bar-checkbox-inner"></span></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
+              : "";
           } else {
-            bar.style.setProperty("--schedule-icon-color", b.color);
-            bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" style="border-color:${b.color}"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+            if (b.isFirstSegment) {
+              bar.style.setProperty("--schedule-icon-color", b.color);
+              bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" style="border-color:${b.color}"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+            } else {
+              bar.innerHTML = "";
+            }
           }
         }
         if (isTodo && b.done) {
@@ -2173,10 +2191,10 @@ function render2WeekView(tabsElement) {
         slot.style.cssText =
           "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
         if (showCount && cell) {
-          slot.style.pointerEvents = "auto";
           const moreBtn = document.createElement("button");
           moreBtn.type = "button";
           moreBtn.className = "calendar-day-more-btn";
+          moreBtn.style.pointerEvents = "auto";
           moreBtn.textContent = `+${displayCount}`;
           moreBtn.title = "더보기";
           moreBtn.addEventListener("click", (e) => {
@@ -2189,7 +2207,6 @@ function render2WeekView(tabsElement) {
         }
         moreEl.appendChild(slot);
       });
-      weekWrap.appendChild(moreEl);
       weekWrap.addEventListener("dragover", (e) => {
         e.preventDefault();
         if (
@@ -2340,6 +2357,7 @@ function render2WeekView(tabsElement) {
       });
       weekWrap.appendChild(weekRow);
       weekWrap.appendChild(barsEl);
+      weekWrap.appendChild(moreEl);
       calendarGrid.appendChild(weekWrap);
     });
   }
@@ -2679,12 +2697,14 @@ function render3WeekView(tabsElement) {
         const width = ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
         const baseColor = getSectionColor(t.sectionId);
         const color = withMoreTransparency(baseColor);
+        const isFirstSegment = barStart === t.startDate;
         allBars.push({
           left,
           width,
           name: t.name,
           color,
           isSingleDay: false,
+          isFirstSegment,
           itemType: t.itemType || "todo",
           done: !!t.done,
           kpiTodoId: t.kpiTodoId,
@@ -2744,12 +2764,13 @@ function render3WeekView(tabsElement) {
       barsWithRow.forEach((b) => {
         const isTodo = (b.itemType || "todo").toLowerCase() === "todo";
         const bar = document.createElement("div");
+        const showCheckbox = isTodo && (b.isSingleDay || b.isFirstSegment);
         bar.className =
           "calendar-monthly-span-bar" +
           (b.isSingleDay
             ? " calendar-monthly-span-bar--todo"
             : " calendar-monthly-span-bar--range") +
-          (isTodo ? " calendar-monthly-span-bar--has-checkbox" : "") +
+          (showCheckbox ? " calendar-monthly-span-bar--has-checkbox" : "") +
           (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "");
         bar.title = b.name;
         bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.15 + b.row * BAR_HEIGHT}rem`;
@@ -2786,6 +2807,42 @@ function render3WeekView(tabsElement) {
             refreshTodoList();
           };
           bar.addEventListener("click", toggleDone);
+        } else {
+          if (isTodo) {
+            bar.innerHTML = showCheckbox
+              ? `<span class="calendar-monthly-span-bar-checkbox" style="border-color:${b.color}"><span class="calendar-monthly-span-bar-checkbox-inner"></span></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
+              : "";
+          } else {
+            bar.innerHTML = b.isFirstSegment ? `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>` : "";
+          }
+          if (isTodo && b.done) {
+            bar.classList.add("is-completed");
+            bar
+              .querySelector(".calendar-monthly-span-bar-checkbox-inner")
+              ?.classList.add("checked");
+          }
+          if (isTodo) {
+            bar.addEventListener("click", (e) => {
+              e.stopPropagation();
+              const newDone = !b.done;
+              if (b.kpiTodoId && b.storageKey) {
+                syncKpiTodoCompleted(b.kpiTodoId, b.storageKey, newDone);
+              } else if (b.sectionId && b.taskId) {
+                if ((b.sectionId || "").startsWith("custom-")) {
+                  updateCustomSectionTaskDone(b.sectionId, b.taskId, newDone);
+                } else {
+                  updateSectionTaskDone(b.sectionId, b.taskId, newDone);
+                }
+              }
+              b.done = newDone;
+              bar.classList.toggle("is-completed", newDone);
+              bar
+                .querySelector(".calendar-monthly-span-bar-checkbox-inner")
+                ?.classList.toggle("checked", newDone);
+              renderCalendar();
+              refreshTodoList();
+            });
+          }
         }
         if (!b.isSingleDay && b.startDate && b.dueDate) {
           bar.addEventListener("contextmenu", (e) => {
@@ -2862,10 +2919,10 @@ function render3WeekView(tabsElement) {
         slot.style.cssText =
           "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
         if (showCount && cell) {
-          slot.style.pointerEvents = "auto";
           const moreBtn = document.createElement("button");
           moreBtn.type = "button";
           moreBtn.className = "calendar-day-more-btn";
+          moreBtn.style.pointerEvents = "auto";
           moreBtn.textContent = `+${displayCount}`;
           moreBtn.title = "더보기";
           moreBtn.addEventListener("click", (e) => {
@@ -2878,7 +2935,6 @@ function render3WeekView(tabsElement) {
         }
         moreEl.appendChild(slot);
       });
-      weekWrap.appendChild(moreEl);
       weekWrap.addEventListener("dragover", (e) => {
         e.preventDefault();
         if (
@@ -3030,6 +3086,7 @@ function render3WeekView(tabsElement) {
       });
       weekWrap.appendChild(weekRow);
       weekWrap.appendChild(barsEl);
+      weekWrap.appendChild(moreEl);
       calendarGrid.appendChild(weekWrap);
     });
   }
@@ -4814,12 +4871,14 @@ function render1WeekView(tabsElement) {
         const width = ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
         const baseColor = getSectionColor(t.sectionId);
         const color = withMoreTransparency(baseColor);
+        const isFirstSegment = barStart === t.startDate;
         allBars.push({
           left,
           width,
           name: t.name,
           color,
           isSingleDay: false,
+          isFirstSegment,
           itemType: t.itemType || "todo",
           done: !!t.done,
           kpiTodoId: t.kpiTodoId,
@@ -4879,12 +4938,13 @@ function render1WeekView(tabsElement) {
       barsWithRow.forEach((b) => {
         const isTodo = (b.itemType || "todo").toLowerCase() === "todo";
         const bar = document.createElement("div");
+        const showCheckbox = isTodo && (b.isSingleDay || b.isFirstSegment);
         bar.className =
           "calendar-monthly-span-bar" +
           (b.isSingleDay
             ? " calendar-monthly-span-bar--todo"
             : " calendar-monthly-span-bar--range") +
-          (isTodo ? " calendar-monthly-span-bar--has-checkbox" : "") +
+          (showCheckbox ? " calendar-monthly-span-bar--has-checkbox" : "") +
           (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "");
         bar.title = b.name;
         bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.15 + b.row * BAR_HEIGHT}rem`;
@@ -4921,6 +4981,42 @@ function render1WeekView(tabsElement) {
             refreshTodoList();
           };
           bar.addEventListener("click", toggleDone);
+        } else {
+          if (isTodo) {
+            bar.innerHTML = showCheckbox
+              ? `<span class="calendar-monthly-span-bar-checkbox" style="border-color:${b.color}"><span class="calendar-monthly-span-bar-checkbox-inner"></span></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
+              : "";
+          } else {
+            bar.innerHTML = b.isFirstSegment ? `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>` : "";
+          }
+          if (isTodo && b.done) {
+            bar.classList.add("is-completed");
+            bar
+              .querySelector(".calendar-monthly-span-bar-checkbox-inner")
+              ?.classList.add("checked");
+          }
+          if (isTodo) {
+            bar.addEventListener("click", (e) => {
+              e.stopPropagation();
+              const newDone = !b.done;
+              if (b.kpiTodoId && b.storageKey) {
+                syncKpiTodoCompleted(b.kpiTodoId, b.storageKey, newDone);
+              } else if (b.sectionId && b.taskId) {
+                if ((b.sectionId || "").startsWith("custom-")) {
+                  updateCustomSectionTaskDone(b.sectionId, b.taskId, newDone);
+                } else {
+                  updateSectionTaskDone(b.sectionId, b.taskId, newDone);
+                }
+              }
+              b.done = newDone;
+              bar.classList.toggle("is-completed", newDone);
+              bar
+                .querySelector(".calendar-monthly-span-bar-checkbox-inner")
+                ?.classList.toggle("checked", newDone);
+              renderCalendar();
+              refreshTodoList();
+            });
+          }
         }
         if (!b.isSingleDay && b.startDate && b.dueDate) {
           bar.addEventListener("contextmenu", (e) => {
@@ -4997,10 +5093,10 @@ function render1WeekView(tabsElement) {
         slot.style.cssText =
           "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
         if (showCount && cell) {
-          slot.style.pointerEvents = "auto";
           const moreBtn = document.createElement("button");
           moreBtn.type = "button";
           moreBtn.className = "calendar-day-more-btn";
+          moreBtn.style.pointerEvents = "auto";
           moreBtn.textContent = `+${displayCount}`;
           moreBtn.title = "더보기";
           moreBtn.addEventListener("click", (e) => {
@@ -5013,7 +5109,6 @@ function render1WeekView(tabsElement) {
         }
         moreEl.appendChild(slot);
       });
-      weekWrap.appendChild(moreEl);
       weekWrap.addEventListener("dragover", (e) => {
         e.preventDefault();
         if (
@@ -5165,6 +5260,7 @@ function render1WeekView(tabsElement) {
       });
       weekWrap.appendChild(weekRowEl);
       weekWrap.appendChild(barsEl);
+      weekWrap.appendChild(moreEl);
       calendarGrid.appendChild(weekWrap);
     });
   }
@@ -5523,7 +5619,7 @@ function renderEisenhowerView(tabsElement) {
   todoSidebar.style.width = `${sidebarWidth}px`;
   todoSidebar.innerHTML = `
     <div class="calendar-todo-sidebar-header">
-      <span class="calendar-todo-sidebar-title">날짜 잡아서 해야 할일</span>
+      <span class="calendar-todo-sidebar-title">할일</span>
       <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
         <span class="calendar-todo-sidebar-collapse-text">접기</span>
       </button>
@@ -5543,7 +5639,7 @@ function renderEisenhowerView(tabsElement) {
     .addEventListener("click", () => {
       sidebarCollapsed = !sidebarCollapsed;
       todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
-      titleEl.textContent = sidebarCollapsed ? "할일" : "날짜 잡아서 해야 할일";
+      titleEl.textContent = "할일";
       if (collapseTextEl) collapseTextEl.textContent = sidebarCollapsed ? "할일" : "접기";
       if (sidebarCollapsed) {
         todoSidebar.style.width = "";

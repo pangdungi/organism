@@ -24,6 +24,30 @@
 }
 
 @font-face {
+  font-family: "NEXON Lv1 Gothic";
+  src: url("/fonts/NEXON-Lv1-Gothic-Light.otf") format("opentype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "NEXON Lv1 Gothic";
+  src: url("/fonts/NEXON-Lv1-Gothic.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "NEXON Lv1 Gothic";
+  src: url("/fonts/NEXON-Lv1-Gothic-Bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
   font-family: "Cormorant Garamond";
   src: url("/fonts/CormorantGaramond-VariableFont_wght.ttf") format("truetype");
   font-weight: 100 900;
@@ -8148,7 +8172,7 @@ body {
 }
 
 .todo-overdue-display {
-  font-family: "DM Mono", "SF Mono", Consolas, monospace;
+  font-weight: 300;
   color: #b8b8b8;
 }
 
@@ -22308,7 +22332,7 @@ body.kpi-resizing {
 
 .todo-eisenhower-display {
   font-size: 0.8rem;
-  font-family: "DM Mono", "SF Mono", Consolas, monospace;
+  font-weight: 300;
   color: #b8b8b8;
 }
 
@@ -24111,7 +24135,7 @@ body.kpi-resizing {
   opacity: 1;
 }
 
-/* 단일일: 채우기 없이 왼쪽 선 1.5px만 배정 컬러로 */
+/* 단일일: 채우기 없이 왼쪽 선 1.5px만 배정 컬러로, 라디우스 제거 */
 .calendar-monthly-span-bar--todo {
   border-left: 2px solid var(--bar-bg);
   padding-left: 0.4rem;
@@ -24119,23 +24143,20 @@ body.kpi-resizing {
   align-items: center;
   gap: 0.25rem;
   line-height: 1;
+  border-radius: 0 !important;
 }
 
 .calendar-monthly-span-bar--todo::before {
   content: none;
 }
 
-/* 기간: 채우기 없이 윗선만 배정 컬러로 */
+/* 기간(스팬): 배경 적용 (윗선만이 아니라 전체) */
+.calendar-monthly-span-bar--range {
+  background: var(--bar-bg) !important;
+}
+
 .calendar-monthly-span-bar--range::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: var(--bar-bg);
-  border-radius: 0;
-  z-index: 0;
+  content: none;
 }
 
 .calendar-monthly-span-bar--todo > *,
@@ -24260,7 +24281,7 @@ body.kpi-resizing {
 }
 
 .calendar-monthly-day:hover:not(.empty) {
-  background: #f3f4f6;
+  background: #F4F4F2;
 }
 
 .calendar-monthly-day.empty {
@@ -24268,7 +24289,7 @@ body.kpi-resizing {
 }
 
 .calendar-monthly-day.empty:hover {
-  background: #f3f4f6;
+  background: #F4F4F2;
 }
 
 .calendar-monthly-day.other-month .calendar-monthly-day-num {

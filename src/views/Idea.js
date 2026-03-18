@@ -12,6 +12,7 @@ export const APP_FONT_KEY = "app_font_family";
 
 export const FONT_OPTIONS = [
   { value: "scdream3", label: "에스코어 드림 3" },
+  { value: "nexonlv1", label: "NEXON Lv1 Gothic" },
   { value: "nexonlv2", label: "NEXON Lv2 Gothic" },
   { value: "pretendard", label: "Pretendard" },
   { value: "notoserifkr", label: "Noto Serif KR" },
@@ -24,6 +25,8 @@ export function applyAppFont() {
     let fontFamily = '"S-Core Dream 3", -apple-system, sans-serif';
     if (saved === "scdream2" || saved === "scdream3") {
       fontFamily = '"S-Core Dream 3", -apple-system, sans-serif';
+    } else if (saved === "nexonlv1") {
+      fontFamily = '"NEXON Lv1 Gothic", -apple-system, sans-serif';
     } else if (saved === "nexonlv2" || saved === "leeseoyun") {
       fontFamily = '"NEXON Lv2 Gothic", -apple-system, sans-serif';
     } else if (saved === "pretendard") {
@@ -36,7 +39,9 @@ export function applyAppFont() {
       fontFamily = '"S-Core Dream 3", -apple-system, sans-serif';
     }
     document.documentElement.style.setProperty("--app-font-family", fontFamily);
-    if (saved === "nexonlv2" || saved === "leeseoyun") {
+    if (saved === "nexonlv1") {
+      document.documentElement.dataset.appFont = "nexonlv1";
+    } else if (saved === "nexonlv2" || saved === "leeseoyun") {
       document.documentElement.dataset.appFont = "nexonlv2";
     } else if (saved === "pretendard") {
       document.documentElement.dataset.appFont = "pretendard";
