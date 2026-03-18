@@ -24150,9 +24150,9 @@ body.kpi-resizing {
   content: none;
 }
 
-/* 기간(스팬): 배경 적용 (윗선만이 아니라 전체) */
+/* 기간(스팬): 배경 적용 - 스팬에만 투명도 추가 (프리셋 색상 유지) */
 .calendar-monthly-span-bar--range {
-  background: var(--bar-bg) !important;
+  background: color-mix(in srgb, var(--bar-bg) 36%, rgb(125 125 125 / 0.05)) !important;
 }
 
 .calendar-monthly-span-bar--range::before {
