@@ -310,8 +310,5 @@ export function applyTaskCategoryColors() {
     if (!bg) return "";
     return `.time-tag-pill.${cls}, .time-dash-bar-fill.${cls} { background: ${bg} !important; }`;
   }).filter(Boolean);
-  const emptyColor = taskColors[""] ?? DEFAULT_TASK_CATEGORY_COLORS[""];
-  const emptyRgb = emptyColor ? rgbaToRgb(emptyColor) : "rgb(184, 184, 184)";
-  rules.push(`.time-audit-schedule-table th { color: ${emptyRgb} !important; }`);
   styleEl.textContent = rules.join("\n");
 }

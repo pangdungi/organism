@@ -7891,7 +7891,7 @@ export function render() {
                   }).join("")}
                   <line x1="${padLeft}" y1="${concBottom}" x2="${padLeft + plotW}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
                   <line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
-                  <text class="time-audit-conc-y-label" x="${padLeft - 12}" y="${(padTop + concBottom) / 2}" text-anchor="middle" font-size="7" fill="#7a7a7a" transform="rotate(-90, ${padLeft - 12}, ${(padTop + concBottom) / 2})">집중력</text>
+                  <text class="time-audit-conc-y-label" x="${padLeft - 12}" y="${(padTop + concBottom) / 2}" text-anchor="middle" font-size="7" fill="#B8B8B8" transform="rotate(-90, ${padLeft - 12}, ${(padTop + concBottom) / 2})">집중력</text>
                   <g clip-path="url(#time-audit-conc-clip-${String(dateStr).replace(/[^a-z0-9-]/gi, "-")})">${taskRects}</g>
                   <path d="${concPathStr2.fillPath}" fill="none" stroke="none"/>
                   ${concPathStr2.strokePath ? `<path d="${concPathStr2.strokePath}" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>` : ""}

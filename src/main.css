@@ -1928,15 +1928,15 @@ body {
   margin: 0;
   appearance: none;
   -webkit-appearance: none;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #9ca3af;
   border-radius: 0;
-  background: #f9f9f8;
+  background: #fff;
 }
 .home-todo-done-check:checked {
-  background: #111111
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-6' stroke='%23fff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E")
+  background: #fff
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-6' stroke='%23374151' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E")
     center/70% no-repeat;
-  border-color: #111111;
+  border-color: #9ca3af;
   border-radius: 0;
 }
 .home-todo-td-name {
@@ -16422,7 +16422,7 @@ body.kpi-resizing {
 }
 
 .time-audit-svg .time-audit-conc-y-label {
-  fill: #7a7a7a !important;
+  fill: #B8B8B8 !important;
 }
 
 .time-audit-task-legend {
@@ -16641,11 +16641,13 @@ body.kpi-resizing {
 }
 
 .time-audit-priority-table thead th {
-  background: #f9fafb;
+  background: none;
   padding: 0.5rem 0.75rem;
-  text-align: center;
-  font-weight: 600;
-  color: #6b7280;
+  text-align: left;
+  font-size: 0.6em;
+  font-weight: 300;
+  letter-spacing: 0.12em;
+  color: #b8b8b8;
   border-bottom: 1px solid #e5e7eb;
   border-radius: 0;
 }
@@ -16676,6 +16678,20 @@ body.kpi-resizing {
 .time-audit-priority-todo-row input[type="checkbox"] {
   margin: 0;
   flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid #9ca3af;
+  border-radius: 0;
+  background: #fff;
+}
+.time-audit-priority-todo-row input[type="checkbox"]:checked {
+  background: #fff
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-6' stroke='%23374151' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E")
+    center/70% no-repeat;
+  border-color: #9ca3af;
 }
 
 .time-audit-priority-todo-row span {
@@ -16699,7 +16715,7 @@ body.kpi-resizing {
 
 .time-audit-pie-box {
   padding: 0.75rem;
-  background: #f9fafb;
+  background: none;
   border: 1px solid #e5e7eb;
   border-radius: 0;
   min-width: 140px;
@@ -16707,8 +16723,8 @@ body.kpi-resizing {
 
 .time-audit-pie-title {
   font-size: 0.8rem;
-  font-weight: 600;
-  color: #6b7280;
+  font-weight: 400;
+  color: #B8B8B8;
   margin-bottom: 0.5rem;
   text-align: center;
 }
@@ -16887,11 +16903,13 @@ body.kpi-resizing {
 }
 
 .time-audit-thief-table thead th {
-  background: #f9fafb;
+  background: none;
   padding: 0.4rem 0.5rem;
   text-align: left;
-  font-weight: 600;
-  color: #6b7280;
+  font-size: 0.6em;
+  font-weight: 300;
+  letter-spacing: 0.12em;
+  color: #b8b8b8;
   border-bottom: 1px solid #e5e7eb;
   border-radius: 0;
 }
@@ -16950,7 +16968,7 @@ body.kpi-resizing {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: #f9fafb;
+  background: none;
   border: 1px solid #e5e7eb;
 }
 
@@ -16996,14 +17014,15 @@ body.kpi-resizing {
 .time-audit-thief-summary {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem 0;
+  gap: 1.35rem 0;
   padding: 1rem 1.25rem;
   border-radius: 12px;
   text-align: center;
   width: 100%;
   box-sizing: border-box;
-  background: #f9fafb;
+  background: none;
   border: 1px solid #e5e7eb;
+  font-weight: 400;
 }
 
 .time-audit-thief-summary-time,
@@ -17013,7 +17032,7 @@ body.kpi-resizing {
 
 .time-audit-thief-summary-label {
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 400;
   color: #6b7280;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -17021,7 +17040,7 @@ body.kpi-resizing {
 
 .time-audit-thief-summary-num {
   font-size: 1.35rem;
-  font-weight: 700;
+  font-weight: 400;
   color: #374151;
   line-height: 1.2;
 }
@@ -17062,8 +17081,8 @@ body.kpi-resizing {
   background: none;
   text-align: left;
   border-radius: 0;
+  color: #B8B8B8;
 }
-/* th 색상은 todoSettings.applyTaskCategoryColors()에서 작업 카테고리(기본) 색상으로 주입 */
 .time-audit-schedule-table thead th:first-child,
 .time-audit-schedule-table thead th:last-child,
 .time-audit-schedule-table tbody td:first-child,
