@@ -1772,12 +1772,12 @@ function createExpenseClassificationDropdown(category, initialValue, onUpdate) {
       document.body.appendChild(panel);
       panel.hidden = false;
       const handler = (ev) => {
-        document.removeEventListener("click", handler);
         if (!wrap.contains(ev.target) && !panel.contains(ev.target)) {
           panel.hidden = true;
+          document.removeEventListener("mousedown", handler, true);
         }
       };
-      setTimeout(() => document.addEventListener("click", handler), 0);
+      setTimeout(() => document.addEventListener("mousedown", handler, true), 0);
     } else {
       panel.hidden = true;
     }
