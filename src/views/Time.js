@@ -5658,6 +5658,7 @@ export function render() {
     taskLogExpenseFlowTypeWrap?._setValue?.("");
     expenseClassificationButtons._setValue?.("");
     expenseClassificationButtons._setFlowType?.();
+    closeExpenseInnerModal();
   });
 
   taskLogExpenseAmountInput?.addEventListener("input", () => {
