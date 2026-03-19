@@ -6869,6 +6869,12 @@ export function render() {
       toolbar.appendChild(addBtnEl);
       toolbar.appendChild(setupBtnEl);
 
+      const dateDivider = document.createElement("div");
+      dateDivider.className = "date-divider";
+      const today = new Date();
+      dateDivider.textContent =
+        `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, "0")}.${String(today.getDate()).padStart(2, "0")}`;
+
       const cardsWrap = document.createElement("div");
       cardsWrap.className = "time-ledger-mobile-cards";
       rows.forEach((d) => {
@@ -6924,6 +6930,7 @@ export function render() {
       });
 
       contentWrap.appendChild(toolbar);
+      contentWrap.appendChild(dateDivider);
       contentWrap.appendChild(cardsWrap);
       updateTotal();
       return;

@@ -864,6 +864,13 @@ body {
   padding: 1.5rem;
 }
 
+@media (max-width: 768px) {
+  .app-main:has(.time-ledger-view) .app-tab-panel > .time-ledger-view {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+}
+
 .time-ledger-container {
   max-width: 100%;
   min-width: 0;
@@ -1155,6 +1162,8 @@ body {
 
   .app-main {
     padding-bottom: 4.5rem;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
   }
 
   .app-sidebar-item--hide-on-mobile {
@@ -1339,9 +1348,20 @@ body {
     padding-bottom: 1rem;
   }
   .app-main:has(.idea-view) .idea-view {
-    padding: 1rem;
-    padding-bottom: 1.5rem;
+    padding: 1rem 0 1.5rem;
     box-sizing: border-box;
+  }
+
+  /* 모바일: 모든 탭 뷰 좌우 패딩 제거 (화면 끝까지) */
+  .app-main:has(.asset-view) .app-tab-panel > .asset-view,
+  .app-main:has(.diary-view) .app-tab-panel > .diary-view,
+  .app-main:has(.archive-view) .app-tab-panel > .archive-view,
+  .app-main:has(.dream-view) .app-tab-panel > .dream-view,
+  .app-main:has(.work-schedule-view) .app-tab-panel > .work-schedule-view,
+  .app-main:has(.sideincome-view) .app-tab-panel > .sideincome-view,
+  .app-main:has(.happiness-view) .app-tab-panel > .happiness-view {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
   }
 
   /* 모바일: 과제 기록/수정 모달 - 높이 확대해 아코디언 펼쳤을 때 내용 모두 볼 수 있게 */
@@ -1576,17 +1596,25 @@ body {
   .calendar-view-todo .calendar-todo-content .todo-sections-wrap {
     flex: 1 1 0;
     min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-section.todo-section-tab-panel.is-active {
+    display: flex !important;
+    flex: 1 1 0;
+    min-height: 0;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  /* 모바일: 스크롤을 테이블 래퍼로 두어 thead가 상단에 고정되도록 */
+  .calendar-view-todo .calendar-todo-content .todo-table-wrap {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-x: auto;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    overflow-x: hidden;
-  }
-
-  /* 모바일: 할일 테이블 데스크톱과 동일 열 구성, 가로 스크롤로 전체 확인 */
-  .calendar-view-todo .calendar-todo-content .todo-table-wrap {
-    overflow-x: auto;
-    overflow-y: visible;
     max-width: 100%;
-    -webkit-overflow-scrolling: touch;
   }
   .calendar-view-todo .calendar-todo-content .todo-table {
     display: table;
@@ -1675,20 +1703,29 @@ body {
     display: none !important;
   }
 
-  /* 모바일: 시간가계부 카드 뷰 */
+  /* 모바일: 시간가계부 툴바 - 과제 기록 왼쪽, 설정 오른쪽, 패딩·하단 보더 */
   .time-ledger-mobile-toolbar {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
+    justify-content: space-between;
+    padding: 12px 24px;
+    margin-bottom: 0;
+    border-bottom: 1px solid #e5e7eb;
     flex-shrink: 0;
   }
   .time-ledger-mobile-toolbar .time-btn-add,
   .time-ledger-mobile-toolbar .time-task-setup-btn {
     display: flex;
-    flex: 1;
-    justify-content: center;
+    align-items: center;
     min-width: 0;
+  }
+  .time-ledger-view .date-divider {
+    padding: 0 24px 10px;
+    font-size: 16px;
+    font-family: "Noto Sans KR", sans-serif;
+    color: #000000;
+    text-align: left;
+    flex-shrink: 0;
   }
   .time-ledger-mobile-cards {
     display: flex;
@@ -23663,10 +23700,17 @@ body.kpi-resizing {
   margin-top: 0;
 }
 
-/* 원인: th에 position:sticky+top 적용 시 스크롤컨테이너와 상호작용해 th가 아래로 밀리는 버그 → sticky 제거 */
+/* 데스크톱: 스크롤 컨테이너는 .calendar-todo-content(overflow-y:auto) → thead 상단 고정 */
 .calendar-todo-content .todo-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   background: #f9f9f8;
   box-shadow: 0 1px 0 #eee;
+}
+.calendar-todo-content .todo-table thead th.todo-th-done,
+.calendar-todo-content .todo-table thead th.todo-th-name {
+  z-index: 4;
 }
 
 .calendar-monthly-nav {
