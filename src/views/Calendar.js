@@ -748,11 +748,18 @@ const MAX_VISIBLE_BARS_PER_DAY = 3;
 
 function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose, options = {}) {
   const { positionBelow = false, onAdd = null } = options;
+  const isMobile = window.matchMedia("(max-width: 767px)").matches;
   document
-    .querySelectorAll(".calendar-event-bubble")
+    .querySelectorAll(".calendar-event-bubble, .calendar-day-expand-overlay")
     .forEach((el) => el.remove());
+  let overlayEl = null;
+  if (isMobile) {
+    overlayEl = document.createElement("div");
+    overlayEl.className = "calendar-day-expand-overlay";
+    document.body.appendChild(overlayEl);
+  }
   const bubble = document.createElement("div");
-  bubble.className = "calendar-event-bubble calendar-day-expand-bubble";
+  bubble.className = "calendar-event-bubble calendar-day-expand-bubble" + (isMobile ? " calendar-day-expand-bubble--mobile" : "");
   const taskItems = tasks
     .map(
       (t) => `
@@ -778,8 +785,11 @@ function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose, option
 
   const close = () => {
     bubble.remove();
+    if (overlayEl) overlayEl.remove();
     onClose?.();
   };
+
+  if (overlayEl) overlayEl.addEventListener("click", close);
 
   bubble
     .querySelector(".calendar-event-bubble-close")
@@ -792,7 +802,7 @@ function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose, option
   }
   setTimeout(() => {
     document.addEventListener("click", function outside(e) {
-      if (!bubble.contains(e.target)) {
+      if (!bubble.contains(e.target) && !(overlayEl && overlayEl.contains(e.target))) {
         document.removeEventListener("click", outside);
         close();
       }
@@ -1430,10 +1440,10 @@ function renderMonthlyView(tabsElement) {
               ?.classList.toggle("checked", newDone);
             refreshTodoList();
           };
-          bar.addEventListener("click", toggleDone);
+          if (!window.matchMedia("(max-width: 767px)").matches) bar.addEventListener("click", toggleDone);
         }
         if (!b.isSingleDay && b.startDate && b.dueDate) {
-          bar.addEventListener("contextmenu", (e) => {
+            bar.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             e.stopPropagation();
             createCalendarBarDateEditBubble(
@@ -2155,10 +2165,10 @@ function render2WeekView(tabsElement) {
               ?.classList.toggle("checked", newDone);
             refreshTodoList();
           };
-          bar.addEventListener("click", toggleDone);
+          if (!window.matchMedia("(max-width: 767px)").matches) bar.addEventListener("click", toggleDone);
         }
         if (!b.isSingleDay && b.startDate && b.dueDate) {
-          bar.addEventListener("contextmenu", (e) => {
+            bar.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             e.stopPropagation();
             createCalendarBarDateEditBubble(
@@ -2859,7 +2869,7 @@ function render3WeekView(tabsElement) {
             renderCalendar();
             refreshTodoList();
           };
-          bar.addEventListener("click", toggleDone);
+          if (!window.matchMedia("(max-width: 767px)").matches) bar.addEventListener("click", toggleDone);
         } else {
           if (isTodo) {
             bar.innerHTML = showCheckbox
@@ -5045,7 +5055,7 @@ function render1WeekView(tabsElement) {
             renderCalendar();
             refreshTodoList();
           };
-          bar.addEventListener("click", toggleDone);
+          if (!window.matchMedia("(max-width: 767px)").matches) bar.addEventListener("click", toggleDone);
         } else {
           if (isTodo) {
             bar.innerHTML = showCheckbox

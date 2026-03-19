@@ -1627,6 +1627,27 @@ body {
     right: 0.2rem !important;
   }
 
+  /* 모바일: 날짜 셀 클릭 시 확대 보기 오버레이 + 넓은 카드 */
+  .calendar-day-expand-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 1001;
+  }
+  .calendar-day-expand-bubble--mobile {
+    left: 50% !important;
+    transform: translateX(-50%);
+    width: calc(100% - 2rem) !important;
+    max-width: 400px;
+    top: 50% !important;
+    transform: translate(-50%, -50%);
+    max-height: 70vh;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  }
+  .calendar-day-expand-bubble--mobile .calendar-event-bubble-body {
+    max-height: 60vh;
+  }
+
   /* 모바일: 할일 영역(calendar-todo-main·calendar-todo-content) 패딩 제거 */
   .calendar-view .calendar-monthly-main.calendar-todo-main {
     padding: 0 !important;
