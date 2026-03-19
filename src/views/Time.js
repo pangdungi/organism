@@ -10,6 +10,7 @@ import {
   getClassificationsByFlowType,
   getPaymentOptions,
 } from "./Asset.js";
+import { EXPENSE_MODAL_CLASSIFICATIONS } from "../expenseModalClassifications.js";
 import {
   TAB3_EMOTION_TEMPLATE,
   TAB3_EMOTION_PLACEHOLDERS,
@@ -3723,16 +3724,12 @@ export function render() {
                     </div>
                   </div>
                   <div class="time-task-log-expense-name-cell">
-                    <label>소비/수입명</label>
+                    <label>소비명</label>
                     <input type="text" class="time-task-log-expense-name" name="time-task-log-expense-name" placeholder="스타벅스" />
                   </div>
                 </div>
-                <div class="time-task-log-field time-task-log-expense-flow-type-row">
-                  <label>큰분류</label>
-                  <div class="time-task-log-expense-flow-type-wrap"></div>
-                </div>
                 <div class="time-task-log-field">
-                  <label>소비/수입 분류</label>
+                  <label>소비 분류</label>
                   <div class="time-task-log-expense-classification-wrap"></div>
                 </div>
                 <div class="time-task-log-expense-error" hidden></div>
@@ -4264,9 +4261,6 @@ export function render() {
   );
   const taskLogExpenseNameInput = taskLogModal.querySelector(
     ".time-task-log-expense-name",
-  );
-  const taskLogExpenseFlowTypeWrap = taskLogModal.querySelector(
-    ".time-task-log-expense-flow-type-wrap",
   );
   const taskLogExpenseClassificationWrap = taskLogModal.querySelector(
     ".time-task-log-expense-classification-wrap",
@@ -4925,7 +4919,7 @@ export function render() {
     };
   }
 
-  /** 큰분류(입금/지출)에 따라 소비/수입 분류 옵션 표시. 지출 시 분류 선택 후 결제수단(현금/체크카드/신용카드) 선택 */
+  /** 소비 기록 모달 전용: 소비 분류(아이콘+라벨) + 결제수단(현금/체크카드/신용카드) 선택 */
   function buildExpenseClassificationByFlowTypeButtons(
     getFlowType,
     initialValue,
@@ -4946,7 +4940,10 @@ export function render() {
     function renderButtons() {
       const flowType = (getFlowType && getFlowType()) || "";
       btnsWrap.innerHTML = "";
-      const opts = getClassificationsByFlowType(flowType);
+      const isExpense = flowType === "지출";
+      const opts = isExpense
+        ? EXPENSE_MODAL_CLASSIFICATIONS
+        : getClassificationsByFlowType(flowType);
       if (!flowType || opts.length === 0) {
         hint.hidden = false;
         hint.textContent = "큰분류(입금/지출)를 먼저 선택해 주세요.";
@@ -4958,25 +4955,35 @@ export function render() {
       hint.hidden = true;
 
       const paymentOptions = getPaymentOptions && getPaymentOptions();
-      const isExpense = flowType === "지출";
+
+      function makeClsBtn(opt, selected, onClick) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "time-task-log-expense-cls-btn";
+        if (selected) btn.classList.add("selected");
+        if (opt.color) btn.classList.add(opt.color);
+        btn.dataset.label = opt.label;
+        if (opt.svg) {
+          btn.classList.add("time-task-log-expense-cls-btn-with-icon");
+          btn.innerHTML = `<span class="time-task-log-expense-cls-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">${opt.svg}</svg></span><span class="time-task-log-expense-cls-label">${escapeHtml(opt.label)}</span>`;
+        } else {
+          btn.textContent = opt.label;
+        }
+        btn.addEventListener("click", onClick);
+        return btn;
+      }
 
       if (isExpense && (expenseStep === "payment" || expenseStep === "done") && value) {
-        const selectedOpt = opts.find((o) => o.label === value);
+        const selectedOpt = EXPENSE_MODAL_CLASSIFICATIONS.find((o) => o.label === value);
         if (selectedOpt) {
-          const clsBtn = document.createElement("button");
-          clsBtn.type = "button";
-          clsBtn.className = "time-task-log-expense-cls-btn selected";
-          if (selectedOpt.color) clsBtn.classList.add(selectedOpt.color);
-          clsBtn.dataset.label = selectedOpt.label;
-          clsBtn.textContent = selectedOpt.label;
-          clsBtn.title = "다시 누르면 분류 수정";
-          clsBtn.addEventListener("click", () => {
+          const clsBtn = makeClsBtn(selectedOpt, true, () => {
             expenseStep = "all";
             value = "";
             payment = "";
             renderButtons();
             onUpdate?.("");
           });
+          clsBtn.title = "다시 누르면 분류 수정";
           btnsWrap.appendChild(clsBtn);
         }
         (paymentOptions || ["현금", "체크카드", "신용카드"]).forEach((opt) => {
@@ -5004,14 +5011,7 @@ export function render() {
         expenseStep = "all";
       }
       opts.forEach((opt) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "time-task-log-expense-cls-btn";
-        if (opt.color) btn.classList.add(opt.color);
-        btn.dataset.label = opt.label;
-        btn.textContent = opt.label;
-        if (value === opt.label) btn.classList.add("selected");
-        btn.addEventListener("click", () => {
+        const btn = makeClsBtn(opt, value === opt.label, () => {
           if (isExpense) {
             value = opt.label;
             expenseStep = "payment";
@@ -5104,39 +5104,12 @@ export function render() {
     return wrap;
   }
 
+  /* 소비 기록 모달: 항상 지출만 기록, 큰분류 선택 없음 */
   const expenseClassificationButtons = buildExpenseClassificationByFlowTypeButtons(
-    () => taskLogExpenseFlowTypeWrap?._getValue?.() || "",
+    () => "지출",
     "",
     () => {},
   );
-
-  if (taskLogExpenseFlowTypeWrap) {
-    let expenseFlowType = "";
-    ["지출", "입금"].forEach((label) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "time-task-log-expense-flow-type-btn";
-      if (label === "입금") btn.classList.add("time-task-log-expense-flow-type-deposit");
-      else btn.classList.add("time-task-log-expense-flow-type-expense");
-      btn.textContent = label;
-      btn.addEventListener("click", () => {
-        expenseFlowType = expenseFlowType === label ? "" : label;
-        taskLogExpenseFlowTypeWrap
-          .querySelectorAll(".time-task-log-expense-flow-type-btn")
-          .forEach((b) => b.classList.toggle("selected", b.textContent === expenseFlowType));
-        expenseClassificationButtons._setFlowType?.();
-        expenseClassificationButtons._setValue?.("");
-      });
-      taskLogExpenseFlowTypeWrap.appendChild(btn);
-    });
-    taskLogExpenseFlowTypeWrap._getValue = () => expenseFlowType;
-    taskLogExpenseFlowTypeWrap._setValue = (v) => {
-      expenseFlowType = (v || "").trim();
-      taskLogExpenseFlowTypeWrap
-        .querySelectorAll(".time-task-log-expense-flow-type-btn")
-        .forEach((b) => b.classList.toggle("selected", b.textContent === expenseFlowType));
-    };
-  }
 
   taskLogExpenseClassificationWrap?.appendChild(expenseClassificationButtons);
 
@@ -5667,23 +5640,22 @@ export function render() {
     const amountRaw = (taskLogExpenseAmountInput?.value || "")
       .trim()
       .replace(/,/g, "");
-    const expenseFlowType = taskLogExpenseFlowTypeWrap?._getValue?.() || "";
     const expenseClassification =
       expenseClassificationButtons._getValue?.() || "";
+    const expensePayment =
+      expenseClassificationButtons._getPaymentValue?.() || "";
     const classificationToCategory = getClassificationToCategoryMap();
     const expenseCategory = expenseClassification
       ? (classificationToCategory[expenseClassification] || "")
       : "";
-    if (
-      !name ||
-      !expenseFlowType ||
-      !expenseClassification ||
-      !amountRaw ||
-      !parseFloat(amountRaw)
-    ) {
+    const missing = [];
+    if (!expenseClassification) missing.push("소비 분류");
+    if (!amountRaw || !parseFloat(amountRaw)) missing.push("금액");
+    if (!expensePayment) missing.push("결제수단");
+    if (missing.length > 0) {
       if (taskLogExpenseErrorEl) {
         taskLogExpenseErrorEl.textContent =
-          "소비/수입명, 금액, 큰분류, 분류를 모두 입력해 주세요.";
+          "입력 필요: " + missing.join(", ");
         taskLogExpenseErrorEl.hidden = false;
       }
       return;
@@ -5693,17 +5665,13 @@ export function render() {
       taskLogExpenseErrorEl.hidden = true;
     }
     const raw = parseFloat(amountRaw) || 0;
-    const signed = expenseFlowType === "입금" ? Math.abs(raw) : -Math.abs(raw);
+    const signed = -Math.abs(raw);
     const amountFormatted = signed.toLocaleString("ko-KR");
     const dateForExpense = getExpenseModalDate();
     const id = `tl-exp-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-    const expensePayment =
-      expenseFlowType === "지출"
-        ? (expenseClassificationButtons._getPaymentValue?.() || "")
-        : "";
     const row = {
       id,
-      name,
+      name: name || "",
       date: dateForExpense,
       category: expenseCategory,
       classification: expenseClassification,
@@ -5713,7 +5681,7 @@ export function render() {
     };
     taskLogExpenseAddedItems.push({
       id,
-      name,
+      name: name || "",
       classification: expenseClassification,
       amountFormatted,
     });
@@ -5723,7 +5691,6 @@ export function render() {
     updateExpenseInnerList();
     taskLogExpenseNameInput.value = "";
     taskLogExpenseAmountInput.value = "";
-    taskLogExpenseFlowTypeWrap?._setValue?.("");
     expenseClassificationButtons._setValue?.("");
     expenseClassificationButtons._setFlowType?.();
     closeExpenseInnerModal();
@@ -5826,7 +5793,6 @@ export function render() {
     taskLogMemoTags = [];
     renderTaskLogTagPills();
     taskLogExpenseNameInput.value = "";
-    taskLogExpenseFlowTypeWrap?._setValue?.("");
     expenseClassificationButtons._setValue?.("");
     expenseClassificationButtons._setFlowType?.();
     taskLogExpenseAmountInput.value = "";
@@ -5937,7 +5903,6 @@ export function render() {
     if (typeof updateTodoPills === "function") updateTodoPills();
     if (taskLogTagInput) taskLogTagInput.value = "";
     taskLogExpenseNameInput.value = "";
-    taskLogExpenseFlowTypeWrap?._setValue?.("");
     expenseClassificationButtons._setValue?.("");
     expenseClassificationButtons._setFlowType?.();
     taskLogExpenseAmountInput.value = "";
@@ -5948,7 +5913,6 @@ export function render() {
     const taskNameForAccordion = (data.taskName || "").trim();
     const hasExpenseData =
       (taskLogExpenseNameInput?.value || "").trim() ||
-      (taskLogExpenseFlowTypeWrap?._getValue?.() || "").trim() ||
       (expenseClassificationButtons?._getValue?.() || "").trim() ||
       (taskLogExpenseAmountInput?.value || "").trim();
     const hasEmotionData =
@@ -6043,9 +6007,10 @@ export function render() {
     const expenseAmount = (taskLogExpenseAmountInput.value || "")
       .trim()
       .replace(/,/g, "");
-    const expenseFlowType = taskLogExpenseFlowTypeWrap?._getValue?.() || "";
     const expenseClassification =
       expenseClassificationButtons._getValue?.() || "";
+    const expensePayment =
+      expenseClassificationButtons._getPaymentValue?.() || "";
     const classificationToCategory = getClassificationToCategoryMap();
     const expenseCategory = expenseClassification
       ? (classificationToCategory[expenseClassification] || "")
@@ -6057,13 +6022,12 @@ export function render() {
         : "";
 
     const hasExpenseContent =
-      expenseName || expenseFlowType || expenseClassification || expenseAmount;
+      expenseName || expenseClassification || expenseAmount;
     if (hasExpenseContent) {
       const missing = [];
-      if (!expenseName) missing.push("소비/수입명");
-      if (!expenseFlowType) missing.push("큰분류");
-      if (!expenseClassification) missing.push("소비/수입 분류");
+      if (!expenseClassification) missing.push("소비 분류");
       if (!expenseAmount || !parseFloat(expenseAmount)) missing.push("금액");
+      if (!expensePayment) missing.push("결제수단");
       if (missing.length > 0) {
         if (taskLogExpenseErrorEl) {
           taskLogExpenseErrorEl.textContent =
@@ -6184,26 +6148,21 @@ export function render() {
     }
 
     if (
-      expenseName &&
       expenseCategory &&
       expenseClassification &&
       expenseAmount &&
-      parseFloat(expenseAmount)
+      parseFloat(expenseAmount) &&
+      expensePayment
     ) {
       const raw = parseFloat(String(expenseAmount).replace(/,/g, "")) || 0;
-      const signed =
-        expenseCategory === "수입" ? Math.abs(raw) : -Math.abs(raw);
+      const signed = -Math.abs(raw);
       const amountFormatted = signed.toLocaleString("ko-KR");
       const existingRows = loadExpenseRows();
       const dateForExpense = (
         dateStr || new Date().toISOString().slice(0, 10)
       ).replace(/\//g, "-");
-      const expensePayment =
-        expenseCategory !== "수입"
-          ? (expenseClassificationButtons._getPaymentValue?.() || "")
-          : "";
       existingRows.push({
-        name: expenseName,
+        name: expenseName || "",
         date: dateForExpense,
         category: expenseCategory,
         classification: expenseClassification,

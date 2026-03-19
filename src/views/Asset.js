@@ -202,10 +202,9 @@ const DEFAULT_EXPENSE_CLASSIFICATION_BY_CATEGORY = {
     { label: "통신비", color: "expense-cls-green" },
     { label: "관리비", color: "expense-cls-purple" },
     { label: "구독료", color: "expense-cls-orange" },
-    { label: "교통비", color: "expense-cls-pink" },
     { label: "대출상환", color: "expense-cls-indigo" },
     { label: "교육비", color: "expense-cls-blue" },
-    { label: "건강 관련", color: "expense-cls-green" },
+    { label: "운동", color: "expense-cls-green" },
   ],
   변동비: [
     { label: "식비", color: "expense-cls-teal" },
@@ -286,6 +285,20 @@ function getExpenseClassificationByCategory() {
       const missingDefaults = defaults.filter((d) => !existingLabels.has(d.label)).map((o) => ({ ...o }));
       out[cat] = [...savedList, ...missingDefaults];
     });
+    // 고정비: 교통비 제거(변동비만), 건강 관련 → 운동
+    if (out.고정비) {
+      const has운동 = out.고정비.some((o) => o.label === "운동");
+      out.고정비 = out.고정비
+        .filter((o) => o.label !== "교통비")
+        .map((o) =>
+          o.label === "건강 관련"
+            ? { label: "운동", color: o.color || "expense-cls-green" }
+            : o,
+        );
+      if (!has운동 && !out.고정비.some((o) => o.label === "운동")) {
+        out.고정비.push({ label: "운동", color: "expense-cls-green" });
+      }
+    }
   } catch (_) {
     Object.keys(DEFAULT_EXPENSE_CLASSIFICATION_BY_CATEGORY).forEach((k) => {
       out[k] = DEFAULT_EXPENSE_CLASSIFICATION_BY_CATEGORY[k].map((o) => ({ ...o }));

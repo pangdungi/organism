@@ -12734,18 +12734,17 @@ body.kpi-resizing {
   margin-right: -1.25rem;
   padding: 0.75rem 1.25rem;
   font-size: 0.95rem;
-  font-weight: 600;
+  font-weight: 400;
   color: #fff;
   background: #1c1c1a;
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  transition: background 0.15s;
   box-sizing: border-box;
   text-align: center;
 }
 .time-task-log-expense-inner-add-btn:hover {
-  background: #4b5563;
+  background: #1c1c1a;
 }
 
 /* 소비/수입명 모달: 폰트 색 #1C1C1A 통일 */
@@ -15203,8 +15202,8 @@ body.kpi-resizing {
   display: none;
 }
 .time-task-log-expense-cls-btns-wrap {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
   gap: 0.35rem;
 }
 .time-task-log-expense-cls-btn {
@@ -15225,6 +15224,34 @@ body.kpi-resizing {
   background: #1c1c1a;
   color: #fff;
   border-color: #374151;
+}
+
+.time-task-log-expense-cls-btn-with-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-width: 0;
+  padding: 0.5rem 0.35rem;
+}
+.time-task-log-expense-cls-btn-with-icon .time-task-log-expense-cls-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+.time-task-log-expense-cls-btn-with-icon .time-task-log-expense-cls-icon svg {
+  width: 100%;
+  height: 100%;
+}
+.time-task-log-expense-cls-btn-with-icon .time-task-log-expense-cls-label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .time-task-log-expense-payment-btn {
