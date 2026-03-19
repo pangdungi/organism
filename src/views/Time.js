@@ -6833,11 +6833,17 @@ export function render() {
     if (isMobile) {
       const toolbar = document.createElement("div");
       toolbar.className = "time-ledger-mobile-toolbar";
+      const leftWrap = document.createElement("div");
+      leftWrap.className = "time-ledger-mobile-toolbar-left";
       const addBtnEl = document.createElement("button");
       addBtnEl.type = "button";
       addBtnEl.className = "time-btn-add";
-      addBtnEl.innerHTML =
-        '+ 과제 기록';
+      addBtnEl.innerHTML = "+";
+      const addLabel = document.createElement("span");
+      addLabel.className = "time-ledger-add-label";
+      addLabel.textContent = "과제 기록";
+      leftWrap.appendChild(addBtnEl);
+      leftWrap.appendChild(addLabel);
       const setupBtnEl = document.createElement("button");
       setupBtnEl.type = "button";
       setupBtnEl.className = "time-task-setup-btn";
@@ -6866,7 +6872,7 @@ export function render() {
         openTaskLogModalForEdit(card, rowData);
       };
 
-      toolbar.appendChild(addBtnEl);
+      toolbar.appendChild(leftWrap);
       toolbar.appendChild(setupBtnEl);
 
       const dateDivider = document.createElement("div");
@@ -6894,7 +6900,7 @@ export function render() {
       hiddenTableWrap.appendChild(hiddenTable);
       contentWrap.appendChild(hiddenTableWrap);
 
-      addBtnEl.addEventListener("click", () => {
+      const openAdd = () => {
         if (openTaskLogModal) {
           openTaskLogModal({
             productivity: null,
@@ -6927,7 +6933,8 @@ export function render() {
           cardsWrap.appendChild(card);
           updateTotal();
         }
-      });
+      };
+      leftWrap.addEventListener("click", openAdd);
 
       contentWrap.appendChild(toolbar);
       contentWrap.appendChild(dateDivider);

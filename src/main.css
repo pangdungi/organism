@@ -87,14 +87,6 @@
   font-display: swap;
 }
 
-@font-face {
-  font-family: "Noto Sans KR";
-  src: url("/fonts/NotoSansKR-VariableFont_wght.ttf") format("truetype");
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
-
 :root {
   --app-font-family: "S-Core Dream 3", -apple-system, sans-serif;
   --app-bg: #f9f9f8;
@@ -235,8 +227,8 @@ body {
   margin: 0;
   font-family: var(
     --app-font-family,
-    "Noto Sans KR",
     -apple-system,
+    BlinkMacSystemFont,
     sans-serif
   );
   background: #f9f9f8;
@@ -1703,7 +1695,7 @@ body {
     display: none !important;
   }
 
-  /* 모바일: 시간가계부 툴바 - 과제 기록 왼쪽(검은 버튼), 설정 오른쪽(톤다운), 하단 보더만 */
+  /* 모바일: 시간가계부 툴바 - + 버튼만 검은색, 과제 기록 텍스트는 옆에, 설정 톤다운 */
   .time-ledger-mobile-toolbar {
     display: flex;
     align-items: center;
@@ -1714,20 +1706,35 @@ body {
     border-right: none;
     flex-shrink: 0;
   }
+  .time-ledger-mobile-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+  }
   .time-ledger-mobile-toolbar .time-btn-add {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 0;
+    width: 2rem;
+    height: 2rem;
+    min-width: 2rem;
+    min-height: 2rem;
+    padding: 0;
     background: #111111;
     color: #fff;
     border: none;
-    padding: 0.5rem 0.6rem;
     border-radius: 2px;
+    font-size: 1.1rem;
+    line-height: 1;
   }
   .time-ledger-mobile-toolbar .time-btn-add:hover {
     background: #333;
     color: #fff;
+  }
+  .time-ledger-mobile-toolbar .time-ledger-add-label {
+    color: #000;
+    font-size: 16px;
   }
   .time-ledger-mobile-toolbar .time-task-setup-btn {
     display: flex;
@@ -1744,10 +1751,12 @@ body {
     opacity: 0.7;
   }
   .time-ledger-view .date-divider {
-    padding: 0 24px 10px;
-    font-size: 16px;
-    font-family: "Noto Sans KR", sans-serif;
-    color: #000000;
+    padding: 10px 24px 10px;
+    font-size: 10px;
+    font-family: "DM Mono", "SF Mono", Consolas, monospace;
+    color: #b8b8b8;
+    font-weight: 300;
+    letter-spacing: 0.08em;
     text-align: left;
     flex-shrink: 0;
   }
@@ -1768,13 +1777,14 @@ body {
     transition: box-shadow 0.2s;
     margin: 0 24px 8px;
     padding: 14px;
+    border-bottom: 0.5px solid #f0f0ee;
   }
   .time-ledger-mobile-card:active {
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
   }
   .time-mobile-card-color-bar {
-    width: 6px;
-    min-width: 6px;
+    width: 3px;
+    min-width: 3px;
     flex-shrink: 0;
   }
   .time-ledger-mobile-card .time-mobile-card-body {
@@ -1790,21 +1800,27 @@ body {
     align-items: flex-start;
     justify-content: space-between;
     gap: 0.5rem;
+    font-weight: 300;
+    color: #111111;
   }
   .time-mobile-card-task {
-    font-weight: 600;
+    font-weight: 300;
     font-size: 0.95rem;
-    color: #1f2937;
+    color: #111111;
   }
   .time-mobile-card-tracked {
+    font-family: "DM Mono", "SF Mono", Consolas, monospace;
+    font-weight: 300;
     font-size: 0.85rem;
-    font-weight: 600;
-    color: #374151;
+    color: #b8b8b8;
     flex-shrink: 0;
   }
   .time-mobile-card-time {
-    font-size: 0.8rem;
-    color: #6b7280;
+    font-family: "DM Mono", "SF Mono", Consolas, monospace;
+    font-weight: 300;
+    font-size: 10px;
+    letter-spacing: 0.02em;
+    color: #b8b8b8;
   }
   .time-mobile-card-memo {
     font-size: 0.75rem;
@@ -3472,7 +3488,7 @@ body {
   padding: 0;
   font-size: 16px;
   line-height: 1;
-  font-family: "Noto Sans KR", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 200;
   color: #b8b8b8;
   background: none;
@@ -7944,7 +7960,7 @@ body {
   padding: 0;
   font-size: 16px;
   line-height: 1;
-  font-family: "Noto Sans KR", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 200;
   color: #b8b8b8;
   background: none;
@@ -8299,7 +8315,7 @@ body {
   padding: 0;
   font-size: 16px;
   line-height: 1;
-  font-family: "Noto Sans KR", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 200;
   color: #b8b8b8;
   background: none;
@@ -10200,8 +10216,8 @@ body {
 .kpi-dream-declare-wrap {
   font-family: var(
     --app-font-family,
-    "Noto Sans KR",
     -apple-system,
+    BlinkMacSystemFont,
     sans-serif
   );
   font-size: 0.9375rem;
@@ -10607,7 +10623,7 @@ body {
   padding: 0;
   font-size: 16px;
   line-height: 1;
-  font-family: "Noto Sans KR", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 200;
   color: #b8b8b8;
   background: none;
@@ -10706,8 +10722,8 @@ body {
   max-width: 640px;
   font-family: var(
     --app-font-family,
-    "Noto Sans KR",
     -apple-system,
+    BlinkMacSystemFont,
     sans-serif
   );
   font-size: 0.9375rem;
@@ -10825,8 +10841,8 @@ body {
 .kpi-dream-phase-edit-wrap {
   font-family: var(
     --app-font-family,
-    "Noto Sans KR",
     -apple-system,
+    BlinkMacSystemFont,
     sans-serif
   );
   font-size: 0.9375rem;
@@ -10922,8 +10938,8 @@ body {
   padding: 0;
   font-family: var(
     --app-font-family,
-    "Noto Sans KR",
     -apple-system,
+    BlinkMacSystemFont,
     sans-serif
   );
   font-size: 0.9375rem;
@@ -11805,7 +11821,7 @@ body.kpi-resizing {
   padding: 0;
   font-size: 16px;
   line-height: 1;
-  font-family: "Noto Sans KR", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 200;
   color: #b8b8b8;
   background: none;
@@ -21635,7 +21651,7 @@ body.kpi-resizing {
   padding: 0;
   font-size: 16px;
   line-height: 1;
-  font-family: "Noto Sans KR", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 200;
   color: #b8b8b8;
   background: none;
@@ -23714,7 +23730,7 @@ body.kpi-resizing {
   background: transparent;
 }
 
-/* 할일: 카테고리 탭 상단 고정만 (thead sticky는 테이블 레이아웃 깨짐으로 제거) */
+/* 할일: 카테고리 탭만 상단 고정. thead sticky는 overflow 해제 시 열 정렬 깨짐으로 미적용 */
 .calendar-todo-content .todo-list-toolbar-row {
   position: sticky;
   top: 0;
@@ -25784,7 +25800,7 @@ body.kpi-resizing {
   cursor: pointer;
   font-size: 1.2rem;
   line-height: 1;
-  font-family: "Noto Sans KR", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 200;
   color: #B8B8B8;
   padding: 0 0.25rem;
