@@ -8,6 +8,7 @@ import {
   saveExpenseRows,
   getClassificationToCategoryMap,
   getClassificationsByFlowType,
+  getPaymentOptions,
 } from "./Asset.js";
 import {
   TAB3_EMOTION_TEMPLATE,
@@ -4924,7 +4925,7 @@ export function render() {
     };
   }
 
-  /** 큰분류(입금/지출)에 따라 소비/수입 분류 옵션 표시. getFlowType()으로 현재 큰분류 조회 */
+  /** 큰분류(입금/지출)에 따라 소비/수입 분류 옵션 표시. 지출 시 분류 선택 후 결제수단(현금/체크카드/신용카드) 선택 */
   function buildExpenseClassificationByFlowTypeButtons(
     getFlowType,
     initialValue,
@@ -4938,7 +4939,11 @@ export function render() {
     const btnsWrap = document.createElement("div");
     btnsWrap.className = "time-task-log-expense-cls-btns-wrap";
     let value = (initialValue || "").trim();
-    function refresh() {
+    let payment = "";
+    /** 지출 전용: "all" | "payment" | "done" */
+    let expenseStep = "all";
+
+    function renderButtons() {
       const flowType = (getFlowType && getFlowType()) || "";
       btnsWrap.innerHTML = "";
       const opts = getClassificationsByFlowType(flowType);
@@ -4946,11 +4951,58 @@ export function render() {
         hint.hidden = false;
         hint.textContent = "큰분류(입금/지출)를 먼저 선택해 주세요.";
         value = "";
+        payment = "";
+        expenseStep = "all";
         return;
       }
       hint.hidden = true;
+
+      const paymentOptions = getPaymentOptions && getPaymentOptions();
+      const isExpense = flowType === "지출";
+
+      if (isExpense && (expenseStep === "payment" || expenseStep === "done") && value) {
+        const selectedOpt = opts.find((o) => o.label === value);
+        if (selectedOpt) {
+          const clsBtn = document.createElement("button");
+          clsBtn.type = "button";
+          clsBtn.className = "time-task-log-expense-cls-btn selected";
+          if (selectedOpt.color) clsBtn.classList.add(selectedOpt.color);
+          clsBtn.dataset.label = selectedOpt.label;
+          clsBtn.textContent = selectedOpt.label;
+          clsBtn.title = "다시 누르면 분류 수정";
+          clsBtn.addEventListener("click", () => {
+            expenseStep = "all";
+            value = "";
+            payment = "";
+            renderButtons();
+            onUpdate?.("");
+          });
+          btnsWrap.appendChild(clsBtn);
+        }
+        (paymentOptions || ["현금", "체크카드", "신용카드"]).forEach((opt) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "time-task-log-expense-payment-btn";
+          btn.dataset.payment = opt;
+          btn.textContent = opt;
+          if (payment === opt) btn.classList.add("selected");
+          btn.addEventListener("click", () => {
+            payment = opt;
+            expenseStep = "done";
+            renderButtons();
+            onUpdate?.(value);
+          });
+          btnsWrap.appendChild(btn);
+        });
+        return;
+      }
+
       const valid = opts.some((o) => o.label === value);
-      if (!valid) value = "";
+      if (!valid) {
+        value = "";
+        payment = "";
+        expenseStep = "all";
+      }
       opts.forEach((opt) => {
         const btn = document.createElement("button");
         btn.type = "button";
@@ -4960,30 +5012,42 @@ export function render() {
         btn.textContent = opt.label;
         if (value === opt.label) btn.classList.add("selected");
         btn.addEventListener("click", () => {
-          value = value === opt.label ? "" : opt.label;
-          btnsWrap
-            .querySelectorAll(".time-task-log-expense-cls-btn")
-            .forEach((b) =>
-              b.classList.toggle("selected", b.dataset.label === value),
-            );
-          onUpdate?.(value);
+          if (isExpense) {
+            value = opt.label;
+            expenseStep = "payment";
+            payment = "";
+            renderButtons();
+            onUpdate?.(value);
+          } else {
+            value = value === opt.label ? "" : opt.label;
+            btnsWrap
+              .querySelectorAll(".time-task-log-expense-cls-btn")
+              .forEach((b) =>
+                b.classList.toggle("selected", b.dataset.label === value),
+              );
+            onUpdate?.(value);
+          }
         });
         btnsWrap.appendChild(btn);
       });
     }
+
     wrap.appendChild(hint);
     wrap.appendChild(btnsWrap);
     wrap._getValue = () => value;
+    wrap._getPaymentValue = () => payment;
     wrap._setValue = (v) => {
       value = (v || "").trim();
-      btnsWrap
-        .querySelectorAll(".time-task-log-expense-cls-btn")
-        .forEach((b) =>
-          b.classList.toggle("selected", b.dataset.label === value),
-        );
+      payment = "";
+      expenseStep = "all";
+      renderButtons();
     };
-    wrap._setFlowType = () => refresh();
-    refresh();
+    wrap._setFlowType = () => {
+      payment = "";
+      expenseStep = "all";
+      renderButtons();
+    };
+    renderButtons();
     return wrap;
   }
 
@@ -5633,6 +5697,10 @@ export function render() {
     const amountFormatted = signed.toLocaleString("ko-KR");
     const dateForExpense = getExpenseModalDate();
     const id = `tl-exp-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const expensePayment =
+      expenseFlowType === "지출"
+        ? (expenseClassificationButtons._getPaymentValue?.() || "")
+        : "";
     const row = {
       id,
       name,
@@ -5640,7 +5708,7 @@ export function render() {
       category: expenseCategory,
       classification: expenseClassification,
       amount: amountFormatted,
-      payment: "",
+      payment: expensePayment,
       memo: "",
     };
     taskLogExpenseAddedItems.push({
@@ -6130,13 +6198,17 @@ export function render() {
       const dateForExpense = (
         dateStr || new Date().toISOString().slice(0, 10)
       ).replace(/\//g, "-");
+      const expensePayment =
+        expenseCategory !== "수입"
+          ? (expenseClassificationButtons._getPaymentValue?.() || "")
+          : "";
       existingRows.push({
         name: expenseName,
         date: dateForExpense,
         category: expenseCategory,
         classification: expenseClassification,
         amount: amountFormatted,
-        payment: "",
+        payment: expensePayment,
         memo: "",
       });
       saveExpenseRows(existingRows);

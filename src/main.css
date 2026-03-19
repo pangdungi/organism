@@ -15227,6 +15227,26 @@ body.kpi-resizing {
   border-color: #374151;
 }
 
+.time-task-log-expense-payment-btn {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #374151;
+  background: #f9f9f8;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.time-task-log-expense-payment-btn:hover {
+  border-color: #9ca3af;
+  background: #f9fafb;
+}
+.time-task-log-expense-payment-btn.selected {
+  background: #1c1c1a;
+  color: #fff;
+  border-color: #374151;
+}
+
 .time-task-log-expense-name,
 .time-task-log-expense-amount {
   width: 100%;

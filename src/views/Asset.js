@@ -5859,6 +5859,7 @@ export {
   getExpenseClassificationOptions,
   getClassificationToCategoryMap,
   getClassificationsByFlowType,
+  getPaymentOptions,
 };
 
 export function render() {
