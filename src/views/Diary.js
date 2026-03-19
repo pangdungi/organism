@@ -270,10 +270,6 @@ export function render() {
       pageListScrollWrap.appendChild(pageList);
       sidebar.appendChild(pageListScrollWrap);
 
-      const pageListFooter = document.createElement("div");
-      pageListFooter.className = "diary-page-list-footer";
-      sidebar.appendChild(pageListFooter);
-
       layout.appendChild(sidebar);
     }
 

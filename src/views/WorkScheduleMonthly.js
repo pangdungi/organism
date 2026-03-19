@@ -120,11 +120,43 @@ export function renderMonthlyContent() {
   nav.appendChild(nextBtn);
   el.appendChild(nav);
 
+  const filterRow = document.createElement("div");
+  filterRow.className = "work-schedule-monthly-filter";
+  const btnHours = document.createElement("button");
+  btnHours.type = "button";
+  btnHours.className = "work-schedule-monthly-filter-btn active";
+  btnHours.dataset.mode = "hours";
+  btnHours.textContent = "근무시간";
+  const btnType = document.createElement("button");
+  btnType.type = "button";
+  btnType.className = "work-schedule-monthly-filter-btn";
+  btnType.dataset.mode = "type";
+  btnType.textContent = "근무유형";
+  const btnBalance = document.createElement("button");
+  btnBalance.type = "button";
+  btnBalance.className = "work-schedule-monthly-filter-btn";
+  btnBalance.dataset.mode = "balance";
+  btnBalance.textContent = "밸런스";
+  filterRow.appendChild(btnHours);
+  filterRow.appendChild(btnType);
+  filterRow.appendChild(btnBalance);
+  el.appendChild(filterRow);
+
   const calendarWrap = document.createElement("div");
   calendarWrap.className = "work-schedule-monthly-calendar";
 
   let currentYear = new Date().getFullYear();
   let currentMonth = new Date().getMonth();
+  let displayMode = "hours";
+
+  filterRow.querySelectorAll(".work-schedule-monthly-filter-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      displayMode = btn.dataset.mode || "hours";
+      filterRow.querySelectorAll(".work-schedule-monthly-filter-btn").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      renderCalendar();
+    });
+  });
 
   function renderCalendar() {
     const rows = loadWorkScheduleRows();
@@ -168,15 +200,22 @@ export function renderMonthlyContent() {
         const entries = byDate[key] || [];
         const entriesEl = document.createElement("div");
         entriesEl.className = "work-schedule-monthly-day-entries";
-        entries.forEach((entry) => {
+        if (entries.length > 0) {
           const item = document.createElement("div");
           item.className = "work-schedule-monthly-entry";
-          const type = (entry.workType || "").trim();
-          const hours = entry.hours ?? entry.hoursWorked ?? "";
-          const tagClass = "";
-          item.innerHTML = `<span class="work-schedule-monthly-type ${tagClass}">${type || "-"}</span><span class="work-schedule-monthly-hours">${hours ? hours + "h" : ""}</span>`;
+          if (displayMode === "hours") {
+            const total = entries.reduce((s, e) => s + (parseFloat(e.hoursWorked) || 0), 0);
+            item.innerHTML = `<span class="work-schedule-monthly-hours">${total ? total + "h" : "-"}</span>`;
+          } else if (displayMode === "type") {
+            const types = entries.map((e) => (e.workType || "").trim() || "-").filter(Boolean);
+            item.innerHTML = `<span class="work-schedule-monthly-type">${types.length ? types.join(", ") : "-"}</span>`;
+          } else {
+            const totalBalance = entries.reduce((s, e) => s + (parseFloat(e.hours) || 0), 0);
+            const sign = totalBalance > 0 ? "+ " : totalBalance < 0 ? "" : "";
+            item.innerHTML = `<span class="work-schedule-monthly-hours">${totalBalance !== 0 ? sign + totalBalance + "h" : "0h"}</span>`;
+          }
           entriesEl.appendChild(item);
-        });
+        }
         cell.appendChild(entriesEl);
         weekRow.appendChild(cell);
       });

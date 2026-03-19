@@ -7025,7 +7025,36 @@ body {
 }
 
 .work-schedule-monthly-content .work-schedule-monthly-nav {
+  margin-bottom: 0.5rem;
+}
+
+.work-schedule-monthly-filter {
+  display: flex;
+  gap: 0.25rem;
   margin-bottom: 1rem;
+}
+
+.work-schedule-monthly-filter-btn {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 300;
+  color: #6b7280;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.work-schedule-monthly-filter-btn:hover {
+  color: #374151;
+  background: #e5e7eb;
+}
+
+.work-schedule-monthly-filter-btn.active {
+  color: #111827;
+  background: #e5e7eb;
+  border-color: #d1d5db;
 }
 
 .work-schedule-monthly-nav {
@@ -21860,11 +21889,12 @@ body.kpi-resizing {
   margin-left: 0;
   border-bottom: 3px solid transparent;
   margin-bottom: -1px;
+  color: #111111;
 }
 
 .diary-tab-btn.active {
-  border-bottom-color: #111827 !important;
-  color: #111827;
+  border-bottom: 3px solid #111111 !important;
+  color: #111111;
 }
 
 .diary-layout-wrap {
@@ -21891,7 +21921,7 @@ body.kpi-resizing {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-right: 1px solid #e0e0e0;
+  border-right: 1px solid #DCDCDA;
   transition:
     width 0.2s,
     min-width 0.2s;
@@ -21980,7 +22010,7 @@ body.kpi-resizing {
   padding: 0;
   background: none;
   border: none;
-  color: #6b7280;
+  color: #B8B8B8;
   cursor: pointer;
   border-radius: 4px;
   transition:
@@ -21989,8 +22019,8 @@ body.kpi-resizing {
 }
 
 .diary-sidebar-add-btn:hover {
-  background: #e5e5e5;
-  color: #374151;
+  background: none;
+  color: #111111;
 }
 
 .diary-search-row {
@@ -22118,10 +22148,7 @@ body.kpi-resizing {
 }
 
 .diary-page-list-footer {
-  flex-shrink: 0;
-  border-top: 1px solid #e0e0e0;
-  padding: 0.35rem 0 5rem 0;
-  background: transparent;
+  display: none;
 }
 
 .diary-emotion-list-wrap {
@@ -22160,6 +22187,7 @@ body.kpi-resizing {
   color: #374151;
   background: none;
   border: none;
+  border-right: 3px solid transparent;
   cursor: pointer;
   text-align: left;
   font-family: inherit;
@@ -22171,10 +22199,9 @@ body.kpi-resizing {
 }
 
 .diary-page-item.active {
-  background: #e0e0e0;
+  background: #F4F4F2;
   font-weight: 600;
-  border-left: 3px solid #6b7280;
-  padding-left: calc(1rem - 3px);
+  border-right: 3px solid #111111;
 }
 
 .diary-add-page {
@@ -22224,12 +22251,12 @@ body.kpi-resizing {
   min-width: 0;
   padding: 0;
   font-size: 1.75rem;
-  font-weight: 700;
+  font-weight: 200;
   color: #111827;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   border: none;
   background: transparent;
-  font-family: inherit;
+  font-family: "Noto Serif KR", serif;
 }
 
 .diary-paper-title-input:focus {
@@ -22245,7 +22272,7 @@ body.kpi-resizing {
   padding: 0.35rem;
   background: none;
   border: none;
-  color: #9ca3af;
+  color: #B8B8B8;
   cursor: pointer;
   border-radius: 4px;
   transition:
@@ -22254,22 +22281,23 @@ body.kpi-resizing {
 }
 
 .diary-paper-delete-btn:hover {
-  color: #6b7280;
-  background: #e8e8e8;
+  background: none;
+  color: #111111;
 }
 
 .diary-paper-date {
   margin: 0 0 0.25rem;
   font-size: 1.75rem;
-  font-weight: 700;
+  font-weight: 200;
   color: #111827;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
+  font-family: "Noto Serif KR", serif;
 }
 
 .diary-paper-meta {
   margin: 0 0 0.5rem;
   font-size: 0.8rem;
-  color: #9ca3af;
+  color: #D8D8D6;
 }
 
 .diary-paper-text {
@@ -22333,7 +22361,7 @@ body.kpi-resizing {
   font-size: 0.95rem;
   font-weight: 600;
   color: #374151;
-  background: #e8e8e8;
+  background: transparent;
   border-bottom: 1px solid #e0e0e0;
 }
 
