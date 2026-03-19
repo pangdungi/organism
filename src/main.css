@@ -1005,6 +1005,10 @@ body {
   .home-view-section-title {
     display: none !important;
   }
+  /* 모바일: 투두리스트 섹션만 타이틀(TO DO LIST) 표시 */
+  .home-view-section--todo .home-view-section-title {
+    display: block !important;
+  }
 }
 
 /* 모바일(768px 미만): 세로 사이드바 숨기고 하단 가로 메뉴 표시 */
@@ -1212,6 +1216,30 @@ body {
     box-shadow: none !important;
   }
 
+  /* 모바일: THU 바로 아래 구분선 – 끝까지 이어지게, #DCDCDA 0.5px (패딩 넘어서 가상요소로 그림) */
+  .app-main:has(.home-view) .home-view-section--calendar .home-daily-weekday {
+    position: relative;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0;
+    border-bottom: none !important;
+  }
+  .app-main:has(.home-view) .home-view-section--calendar .home-daily-weekday::after {
+    content: "";
+    position: absolute;
+    left: -1.5rem;
+    right: -0.75rem;
+    bottom: 0;
+    height: 0.5px;
+    background: #DCDCDA;
+  }
+  /* 모바일: 날짜/요일과 할일목록·할일목록과 카드 섹션 구분선 – 끝까지, #DCDCDA 0.5px */
+  .app-main:has(.home-view) .home-view-section--todo {
+    border-top: 0.5px solid #DCDCDA !important;
+    border-bottom: 0.5px solid #DCDCDA !important;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
   /* 모바일: 나의 계정에서 기본설정·시급계산하기만 표시 (폰트·색상 숨김) */
   .idea-view .idea-widget-font,
   .idea-view .idea-widget-colors {
@@ -1287,6 +1315,11 @@ body {
   }
   .app-main:has(.home-view) .home-todo-list-table thead {
     display: none !important;
+  }
+  /* 모바일: 우선순위 숨김 시 이름 열이 마지막이므로 오른쪽 끝 패딩 */
+  .app-main:has(.home-view) .home-todo-list-table .home-todo-td-name,
+  .app-main:has(.home-view) .home-todo-list-table .home-todo-th-name {
+    padding-right: calc(0.75rem + 0.5rem) !important;
   }
 
   /* 모바일: 할일/일정 전용 탭에서만 제목·탭 숨김 (홈 임베드 제외) */
@@ -1889,16 +1922,27 @@ body {
 }
 
 .home-todo-list-table {
-  width: 100%;
+  width: calc(100% + 1.5rem);
+  max-width: none;
+  margin-left: -0.75rem;
+  margin-right: -0.75rem;
   border-collapse: collapse;
   font-size: 0.9rem;
 }
-/* TO DO LIST 행 구분: 보조(연하게) */
+/* TO DO LIST 행 구분: 끝까지 이어지는 선, #DCDCDA 0.5px */
 .home-todo-list-table th,
 .home-todo-list-table td {
   padding: 0.4rem 0.5rem;
   text-align: left;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 0.5px solid #DCDCDA;
+}
+.home-todo-list-table th:first-child,
+.home-todo-list-table td:first-child {
+  padding-left: calc(0.75rem + 0.5rem);
+}
+.home-todo-list-table th:last-child,
+.home-todo-list-table td:last-child {
+  padding-right: calc(0.75rem + 0.5rem);
 }
 .home-todo-list-table th {
   font-weight: 600;
@@ -1926,23 +1970,27 @@ body {
 .home-todo-td-check {
   text-align: center;
 }
+/* 홈 할일 체크박스: 할일/일정 탭과 동일한 2번 스타일 (모바일·데스크탑 공통) */
 .home-todo-done-check {
   cursor: pointer;
   width: 1rem;
   height: 1rem;
   margin: 0;
+  flex-shrink: 0;
   appearance: none;
   -webkit-appearance: none;
-  border: 1px solid #9ca3af;
+  border: 1px solid #e5e7eb;
   border-radius: 0;
-  background: #fff;
+  background: #f9f9f8;
+}
+.home-todo-done-check:hover {
+  border-color: #d1d5db;
 }
 .home-todo-done-check:checked {
-  background: #fff
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-6' stroke='%23374151' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E")
+  background: #111111
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-6' stroke='%23fff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E")
     center/70% no-repeat;
-  border-color: #9ca3af;
-  border-radius: 0;
+  border-color: #111111;
 }
 .home-todo-td-name {
   width: 100%;
