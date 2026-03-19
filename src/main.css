@@ -1703,7 +1703,7 @@ body {
     display: none !important;
   }
 
-  /* 모바일: 시간가계부 툴바 - 과제 기록 왼쪽, 설정 오른쪽, 패딩·하단 보더 */
+  /* 모바일: 시간가계부 툴바 - 과제 기록 왼쪽(검은 버튼), 설정 오른쪽(톤다운), 하단 보더만 */
   .time-ledger-mobile-toolbar {
     display: flex;
     align-items: center;
@@ -1711,13 +1711,37 @@ body {
     padding: 12px 24px;
     margin-bottom: 0;
     border-bottom: 1px solid #e5e7eb;
+    border-right: none;
     flex-shrink: 0;
   }
-  .time-ledger-mobile-toolbar .time-btn-add,
+  .time-ledger-mobile-toolbar .time-btn-add {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    background: #111111;
+    color: #fff;
+    border: none;
+    padding: 0.5rem 0.6rem;
+    border-radius: 2px;
+  }
+  .time-ledger-mobile-toolbar .time-btn-add:hover {
+    background: #333;
+    color: #fff;
+  }
   .time-ledger-mobile-toolbar .time-task-setup-btn {
     display: flex;
     align-items: center;
     min-width: 0;
+    border: none;
+    background: transparent;
+  }
+  .time-ledger-mobile-toolbar .time-task-setup-btn .time-btn-icon {
+    opacity: 0.5;
+    filter: brightness(0) saturate(100%) invert(60%);
+  }
+  .time-ledger-mobile-toolbar .time-task-setup-btn:hover .time-btn-icon {
+    opacity: 0.7;
   }
   .time-ledger-view .date-divider {
     padding: 0 24px 10px;
@@ -1730,18 +1754,20 @@ body {
   .time-ledger-mobile-cards {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
   .time-ledger-mobile-card {
     display: flex;
     background: #f9f9f8;
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    border-radius: 0;
+    box-shadow: none;
     overflow: hidden;
     cursor: pointer;
     transition: box-shadow 0.2s;
+    margin: 0 24px 8px;
+    padding: 14px;
   }
   .time-ledger-mobile-card:active {
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
@@ -1751,10 +1777,10 @@ body {
     min-width: 6px;
     flex-shrink: 0;
   }
-  .time-mobile-card-body {
+  .time-ledger-mobile-card .time-mobile-card-body {
     flex: 1;
     min-width: 0;
-    padding: 0.75rem 1rem;
+    padding: 0 0 0 0.5rem;
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
@@ -23688,7 +23714,7 @@ body.kpi-resizing {
   background: transparent;
 }
 
-/* 할일: 카테고리 탭 + 테이블 헤더 */
+/* 할일: 카테고리 탭 상단 고정만 (thead sticky는 테이블 레이아웃 깨짐으로 제거) */
 .calendar-todo-content .todo-list-toolbar-row {
   position: sticky;
   top: 0;
@@ -23700,17 +23726,9 @@ body.kpi-resizing {
   margin-top: 0;
 }
 
-/* 데스크톱: 스크롤 컨테이너는 .calendar-todo-content(overflow-y:auto) → thead 상단 고정 */
 .calendar-todo-content .todo-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 2;
   background: #f9f9f8;
   box-shadow: 0 1px 0 #eee;
-}
-.calendar-todo-content .todo-table thead th.todo-th-done,
-.calendar-todo-content .todo-table thead th.todo-th-name {
-  z-index: 4;
 }
 
 .calendar-monthly-nav {
