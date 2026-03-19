@@ -1005,8 +1005,9 @@ body {
   .home-view-section-title {
     display: none !important;
   }
-  /* 모바일: 투두리스트 섹션만 타이틀(TO DO LIST) 표시 */
-  .home-view-section--todo .home-view-section-title {
+  /* 모바일: 투두리스트·이벤트 섹션 타이틀 표시 */
+  .home-view-section--todo .home-view-section-title,
+  .home-view-section--event .home-view-section-title {
     display: block !important;
   }
 }
@@ -1155,6 +1156,7 @@ body {
     min-height: min-content;
   }
 
+
   /* 모바일 전용: 오늘 탭 표시 순서 = 데일리(날짜·요일) → 투두리스트 → 이벤트 → 리마인더 */
   .app-main:has(.home-view) .home-view-three {
     display: flex;
@@ -1186,12 +1188,16 @@ body {
     min-height: 0;
   }
 
-  /* 이벤트·리마인더: 영역 안에서 드래그(스크롤)로 더 보이게 */
+  /* 이벤트·리마인더: 영역 높이 넉넉히 (카드 안 잘리게) */
   .app-main:has(.home-view) .home-event-half {
     flex: 0 0 auto;
     min-height: 160px;
     max-height: 36vh;
     overflow: hidden !important;
+  }
+  .app-main:has(.home-view) .home-event-half:first-child {
+    min-height: 220px;
+    max-height: 48vh;
   }
   .app-main:has(.home-view) .home-event-half .home-event-list,
   .app-main:has(.home-view) .home-event-half .home-reminder-content {
@@ -1199,6 +1205,19 @@ body {
     min-height: 0;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
+  }
+  /* 모바일: 이벤트 영역 패딩 (위 0, 좌우 28px, 아래 16px) */
+  /* 모바일: 이벤트 카드 영역 패딩 (헤더와 안 겹치게 위 여백, 좌우 28px, 아래 16px) */
+  .app-main:has(.home-view) .home-event-half .home-event-list {
+    padding: 12px 28px 16px !important;
+  }
+  /* 모바일: 이벤트·리마인더 헤더 패딩 14px 28px 12px */
+  .app-main:has(.home-view) .home-event-half .home-view-section-title {
+    padding: 14px 28px 12px !important;
+  }
+  /* 모바일: 투두리스트 헤더 패딩 14px 28px 12px */
+  .app-main:has(.home-view) .home-view-section--todo .home-view-section-title {
+    padding: 14px 28px 12px !important;
   }
 
   /* 투두리스트: 제목 아래 리스트가 보이고, 많으면 영역 안에서 스크롤 */
@@ -1216,25 +1235,37 @@ body {
     box-shadow: none !important;
   }
 
-  /* 모바일: THU 바로 아래 구분선 – 끝까지 이어지게, #DCDCDA 0.5px (패딩 넘어서 가상요소로 그림) */
-  .app-main:has(.home-view) .home-view-section--calendar .home-daily-weekday {
-    position: relative;
-    padding-bottom: 0.5rem;
-    margin-bottom: 0;
+  /* 모바일 홈만: 좌우 패딩 제거해서 날짜 헤더 보더가 화면 끝까지 나가게 */
+  .app-main:has(.home-view) {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  /* 모바일 전용: 날짜 행 헤더 – 패딩 4px 28px 20px, 하단 선 끝까지 */
+  .app-main:has(.home-view) .date-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 4px 28px 20px;
+    border-bottom: 0.5px solid var(--line);
+    margin: 0;
+  }
+  .app-main:has(.home-view) .date-header .home-daily-date-anchor,
+  .app-main:has(.home-view) .date-header .home-daily-weekday {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .app-main:has(.home-view) .home-embed-1day {
+    border-top: none !important;
+  }
+  /* 모바일 홈: THU 아래 굵은 선 제거 (원래 .calendar-1day-time-header의 border-bottom 1.5px #d1d5db가 보이던 부분) */
+  .app-main:has(.home-view) .home-embed-1day .calendar-1day-time-header {
     border-bottom: none !important;
   }
-  .app-main:has(.home-view) .home-view-section--calendar .home-daily-weekday::after {
-    content: "";
-    position: absolute;
-    left: -1.5rem;
-    right: -0.75rem;
-    bottom: 0;
-    height: 0.5px;
-    background: #DCDCDA;
-  }
-  /* 모바일: 날짜/요일과 할일목록·할일목록과 카드 섹션 구분선 – 끝까지, #DCDCDA 0.5px */
+  /* 모바일: 할일목록과 카드 섹션 구분선만 (헤더 보더와 겹치지 않도록 border-top 제거) */
   .app-main:has(.home-view) .home-view-section--todo {
-    border-top: 0.5px solid #DCDCDA !important;
     border-bottom: 0.5px solid #DCDCDA !important;
     padding-top: 0.75rem;
     padding-bottom: 0.75rem;
@@ -1316,10 +1347,27 @@ body {
   .app-main:has(.home-view) .home-todo-list-table thead {
     display: none !important;
   }
+  /* 모바일: 할일 목록 행 패딩 11px 28px */
+  .app-main:has(.home-view) .home-todo-list-table th,
+  .app-main:has(.home-view) .home-todo-list-table td {
+    padding: 11px 28px !important;
+  }
   /* 모바일: 우선순위 숨김 시 이름 열이 마지막이므로 오른쪽 끝 패딩 */
   .app-main:has(.home-view) .home-todo-list-table .home-todo-td-name,
   .app-main:has(.home-view) .home-todo-list-table .home-todo-th-name {
-    padding-right: calc(0.75rem + 0.5rem) !important;
+    padding-right: 28px !important;
+  }
+
+  /* 모바일: 할일 목록 영역 폰트웨이트 300, 컬러 #3a3a3a */
+  .app-main:has(.home-view) .home-todo-list-content,
+  .app-main:has(.home-view) .home-todo-list-content .home-todo-list-table {
+    font-weight: 300 !important;
+    color: #3a3a3a !important;
+  }
+  .app-main:has(.home-view) .home-todo-list-content .home-todo-list-table td,
+  .app-main:has(.home-view) .home-todo-list-content .home-todo-list-table th {
+    font-weight: 300 !important;
+    color: #3a3a3a !important;
   }
 
   /* 모바일: 할일/일정 전용 탭에서만 제목·탭 숨김 (홈 임베드 제외) */
@@ -1430,6 +1478,10 @@ body {
   .app-main:has(.home-view) .home-event-time-card {
     min-width: 7.5rem;
     flex-shrink: 0;
+    background: #F4F4F2 !important;
+  }
+  .app-main:has(.home-view) .home-event-time-card.is-today {
+    background: #ebebea !important;
   }
 
   /* 모바일: 1. 시간기록하기에서 시간기록 테이블, 과제기록, 과제설정만 표시 */
@@ -1586,6 +1638,9 @@ body {
 }
 
 /* Daily 섹션: DAILY·날짜·TUE 왼쪽 여백 (선에서 분리) */
+.home-view-section--calendar .home-view-section-title {
+  padding-left: 1.5rem !important;
+}
 .home-view-section--calendar .home-view-section-title {
   padding-left: 1.5rem !important;
 }
@@ -1799,8 +1854,8 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.4rem 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 11px 28px;
+  border-bottom: 0.5px solid #F0F0EE;
   font-size: 0.9rem;
 }
 
@@ -1826,8 +1881,8 @@ body {
 
 .home-reminder-row-time {
   flex-shrink: 0;
-  color: #6b7280;
-  font-size: 0.85rem;
+  color: #B8B8B8;
+  font-size: 9px;
   font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
 }
 
@@ -1929,12 +1984,12 @@ body {
   border-collapse: collapse;
   font-size: 0.9rem;
 }
-/* TO DO LIST 행 구분: 끝까지 이어지는 선, #DCDCDA 0.5px */
+/* TO DO LIST 행 구분: 끝까지 이어지는 선, #F0F0EE 0.5px */
 .home-todo-list-table th,
 .home-todo-list-table td {
   padding: 0.4rem 0.5rem;
   text-align: left;
-  border-bottom: 0.5px solid #DCDCDA;
+  border-bottom: 0.5px solid #F0F0EE;
 }
 .home-todo-list-table th:first-child,
 .home-todo-list-table td:first-child {
