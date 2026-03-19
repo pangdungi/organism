@@ -714,7 +714,11 @@ body {
   font-weight: 300;
   letter-spacing: 0.12em;
   color: #b8b8b8;
-  font-family: "S-Core Dream 3", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family:
+    "S-Core Dream 3",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
 }
 
 .app-sidebar-item:hover {
@@ -753,7 +757,11 @@ body {
   border-bottom: none;
   color: #9ca3af;
   font-size: 0.88rem;
-  font-family: "S-Core Dream 3", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family:
+    "S-Core Dream 3",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
 }
 
 .app-sidebar-logout:hover {
@@ -1053,7 +1061,7 @@ body {
   right: 0;
   z-index: 50;
   background: transparent;
-  border-top: 1px solid #DCDCDA;
+  border-top: 1px solid #dcdcda;
   padding: 0.35rem 0;
   padding-bottom: env(safe-area-inset-bottom, 0.35rem);
   flex-shrink: 0;
@@ -1075,7 +1083,7 @@ body {
   background: transparent !important;
   border: none;
   border-radius: 6px;
-  color: #B8B8B8;
+  color: #b8b8b8;
   font-size: 0.65rem;
   font-weight: 300;
   cursor: pointer;
@@ -1089,7 +1097,7 @@ body {
 .app-bottom-nav-item:hover,
 .app-bottom-nav-item:active {
   background: transparent !important;
-  color: #B8B8B8;
+  color: #b8b8b8;
 }
 
 .app-bottom-nav-item.active {
@@ -1135,7 +1143,7 @@ body {
   /* 모바일: 액티브 #111111, 비활성 #B8B8B8, 아이콘 18px */
   .app-bottom-nav-item {
     background: transparent !important;
-    color: #B8B8B8;
+    color: #b8b8b8;
   }
   .app-bottom-nav-item:hover,
   .app-bottom-nav-item:active {
@@ -1192,7 +1200,6 @@ body {
     height: auto;
     min-height: min-content;
   }
-
 
   /* 모바일 전용: 오늘 탭 표시 순서 = 데일리(날짜·요일) → 투두리스트 → 이벤트 → 리마인더 */
   .app-main:has(.home-view) .home-view-three {
@@ -1308,7 +1315,7 @@ body {
   }
   /* 모바일: 할일목록과 카드 섹션 구분선만 (헤더 보더와 겹치지 않도록 border-top 제거) */
   .app-main:has(.home-view) .home-view-section--todo {
-    border-bottom: 0.5px solid #DCDCDA !important;
+    border-bottom: 0.5px solid #dcdcda !important;
     padding-top: 0.75rem;
     padding-bottom: 0.75rem;
   }
@@ -1392,6 +1399,70 @@ body {
     font-size: 0.65rem !important;
   }
 
+  /* 모바일: 날짜 1줄, 시작·마감 시간 2줄로 분리 */
+  .time-task-log-datetime-onerow .time-task-log-datetime-input-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto 1fr;
+    grid-template-rows: auto auto;
+    gap: 0.5rem 0.35rem;
+  }
+  .time-task-log-datetime-input-row input[type="date"],
+  .time-task-log-datetime-input-row input.time-task-log-date-start,
+  .time-task-log-datetime-input-row input.flatpickr-input {
+    grid-row: 1;
+    grid-column: 1 / -1;
+  }
+  .time-task-log-datetime-input-row .time-task-log-datetime-sep:first-of-type,
+  .time-task-log-datetime-input-row input.time-task-log-time-start {
+    grid-row: 2;
+  }
+  .time-task-log-datetime-input-row .time-task-log-datetime-sep:first-of-type {
+    grid-column: 1;
+  }
+  .time-task-log-datetime-input-row input.time-task-log-time-start {
+    grid-column: 2;
+  }
+  .time-task-log-datetime-input-row .time-task-log-datetime-sep:last-of-type,
+  .time-task-log-datetime-input-row input.time-task-log-time-end {
+    grid-row: 2;
+  }
+  .time-task-log-datetime-input-row .time-task-log-datetime-sep:last-of-type {
+    grid-column: 3;
+  }
+  .time-task-log-datetime-input-row input.time-task-log-time-end {
+    grid-column: 4;
+  }
+  .time-task-log-datetime-input-row input[type="date"],
+  .time-task-log-datetime-input-row input.time-task-log-date-start,
+  .time-task-log-datetime-input-row input.flatpickr-input,
+  .time-task-log-datetime-input-row input[type="text"] {
+    padding: 0.35rem 0.4rem !important;
+    font-size: 0.85rem !important;
+  }
+  .time-task-log-datetime-sep {
+    font-size: 0.85rem !important;
+    padding-bottom: 0.35rem !important;
+  }
+  .time-task-log-datetime-onerow .time-task-log-datetime-sep {
+    display: none !important;
+  }
+
+  /* 모바일: 소비 분류 그리드 한글 라벨 크기 축소 (튀어나오지 않게) */
+  .time-task-log-expense-cls-btn-with-icon .time-task-log-expense-cls-label {
+    font-size: 0.5rem !important;
+    line-height: 1.15;
+    white-space: normal;
+    word-break: keep-all;
+    max-width: 100%;
+  }
+
+  /* 모바일: 결제 수단 버튼 폰트/패딩만 축소 (4열 레이아웃은 공통 스타일에서 적용) */
+  .time-task-log-expense-cls-btns-wrap:has(.time-task-log-expense-payment-btn)
+    .time-task-log-expense-payment-btn {
+    font-size: 0.8rem !important;
+    padding: 0.4rem 0.35rem !important;
+  }
+
   /* 모바일 오늘 탭: 할일만 보이게 우선순위 열 숨김 + 열제목(할일) 숨김 */
   .app-main:has(.home-view) .home-todo-th-priority,
   .app-main:has(.home-view) .home-todo-td-priority {
@@ -1445,11 +1516,12 @@ body {
   }
   /* 모바일: 할일/캘린더/타임라인 헤더 통일 - 패딩 14px 24px 0, 하단 보더 0.5px */
   .calendar-view .calendar-view-top-row,
-  .calendar-view .calendar-view-top-row--todo.calendar-view-top-row--with-settings,
+  .calendar-view
+    .calendar-view-top-row--todo.calendar-view-top-row--with-settings,
   .calendar-view .calendar-view-top-row--1day {
     padding: 14px 24px 0 !important;
     margin-bottom: 4px;
-    border-bottom: 0.5px solid #DCDCDA;
+    border-bottom: 0.5px solid #dcdcda;
   }
   .calendar-view .calendar-view-top-row .calendar-monthly-tabs-wrap,
   .calendar-view .calendar-view-top-row--todo .calendar-monthly-tabs-wrap {
@@ -1530,7 +1602,10 @@ body {
     padding: 0 !important;
   }
 
-  /* 모바일: 타임라인(오늘 해치우기) 탭 - 시간 컬럼만 보이게, 화면 전체 채우기 */
+  /* 모바일: 타임라인(오늘 해치우기) 탭 - 패딩 제거, 시간 컬럼만 보이게 */
+  .calendar-view .calendar-monthly-main:has(.calendar-1day-view) {
+    padding: 0 !important;
+  }
   .calendar-view .calendar-1day-view .calendar-1day-budget-column,
   .calendar-view .calendar-1day-view .calendar-1day-divider {
     display: none !important;
@@ -1541,12 +1616,15 @@ body {
     min-height: 0;
     width: 100%;
   }
-  .calendar-view .calendar-1day-view .calendar-1day-split-layout .calendar-1day-time-column {
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-split-layout
+    .calendar-1day-time-column {
     flex: 1 1 100%;
     width: 100%;
     min-width: 0;
     max-width: none;
-    padding: 12px 16px;
+    padding: 0;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -1572,7 +1650,7 @@ body {
     flex-shrink: 0;
     z-index: 10;
     background: #f9f9f8;
-    border-bottom: 0.5px solid #DCDCDA;
+    border-bottom: 0.5px solid #dcdcda;
     margin-bottom: 0;
     padding: 0 24px 0.25rem;
   }
@@ -1592,7 +1670,9 @@ body {
     display: flex;
     flex-direction: column;
   }
-  .calendar-view-todo .calendar-todo-content .todo-section.todo-section-tab-panel.is-active {
+  .calendar-view-todo
+    .calendar-todo-content
+    .todo-section.todo-section-tab-panel.is-active {
     display: flex !important;
     flex: 1 1 0;
     min-height: 0;
@@ -1630,16 +1710,30 @@ body {
   .calendar-view-todo .calendar-todo-content .todo-table tbody {
     display: table-row-group;
   }
-  .calendar-view-todo .calendar-todo-content .todo-table tbody tr.todo-task-row {
-    border-bottom: 0.5px solid #DCDCDA;
+  .calendar-view-todo
+    .calendar-todo-content
+    .todo-table
+    tbody
+    tr.todo-task-row {
+    border-bottom: 0.5px solid #dcdcda;
   }
-  .calendar-view-todo .calendar-todo-content .todo-table tbody tr.todo-task-row td {
+  .calendar-view-todo
+    .calendar-todo-content
+    .todo-table
+    tbody
+    tr.todo-task-row
+    td {
     padding: 0.5rem 0.5rem;
     vertical-align: middle;
     box-sizing: border-box;
     border-bottom: none;
   }
-  .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-name .todo-cell-name-wrap input {
+  .calendar-view-todo
+    .calendar-todo-content
+    .todo-table
+    .todo-cell-name
+    .todo-cell-name-wrap
+    input {
     font-size: 13px;
     font-weight: 300;
   }
@@ -1662,7 +1756,7 @@ body {
   .app-main:has(.home-view) .home-event-time-card {
     min-width: 7.5rem;
     flex-shrink: 0;
-    background: #F4F4F2 !important;
+    background: #f4f4f2 !important;
   }
   .app-main:has(.home-view) .home-event-time-card.is-today {
     background: #ebebea !important;
@@ -2098,7 +2192,7 @@ body {
   align-items: center;
   gap: 0.5rem;
   padding: 11px 28px;
-  border-bottom: 0.5px solid #F0F0EE;
+  border-bottom: 0.5px solid #f0f0ee;
   font-size: 0.9rem;
 }
 
@@ -2124,7 +2218,7 @@ body {
 
 .home-reminder-row-time {
   flex-shrink: 0;
-  color: #B8B8B8;
+  color: #b8b8b8;
   font-size: 9px;
   font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
 }
@@ -2232,7 +2326,7 @@ body {
 .home-todo-list-table td {
   padding: 0.4rem 0.5rem;
   text-align: left;
-  border-bottom: 0.5px solid #F0F0EE;
+  border-bottom: 0.5px solid #f0f0ee;
 }
 .home-todo-list-table th:first-child,
 .home-todo-list-table td:first-child {
@@ -4605,7 +4699,9 @@ body {
   border-radius: 6px;
   cursor: pointer;
   white-space: nowrap;
-  transition: opacity 0.15s, transform 0.1s;
+  transition:
+    opacity 0.15s,
+    transform 0.1s;
 }
 
 .asset-expense-classification-pill:hover {
@@ -5021,7 +5117,7 @@ body {
 
 .asset-debt-progress-fill {
   height: 100%;
-  background: #E0C4E8;
+  background: #e0c4e8;
   border-radius: 999px;
   transition: width 0.3s ease;
 }
@@ -5129,7 +5225,12 @@ body {
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
   text-align: left;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
   color: #111111;
   background: none;
   border: none;
@@ -5152,7 +5253,7 @@ body {
   display: inline-flex;
   align-items: center;
   padding: 0.35rem 0.75rem;
-  background: #C4DCC8;
+  background: #c4dcc8;
   color: #2d5a3d;
   border-radius: 999px;
   font-size: 0.9rem;
@@ -5996,7 +6097,12 @@ body {
   width: 100%;
   padding: 0.3rem 0.5rem;
   font-size: 12px;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
   border: 1px solid #ddd;
   border-radius: 4px;
   box-sizing: border-box;
@@ -6008,7 +6114,12 @@ body {
 }
 
 .asset-asset-savings-goal-add-input::placeholder {
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
 }
 
 /* 주식분류 드롭다운 */
@@ -6324,7 +6435,12 @@ body {
   width: 100%;
   padding: 0.3rem 0.5rem;
   font-size: 12px;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
   border: 1px solid #ddd;
   border-radius: 4px;
   box-sizing: border-box;
@@ -6336,7 +6452,12 @@ body {
 }
 
 .asset-stock-category-add-input::placeholder {
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
 }
 
 .asset-asset-category-option {
@@ -6389,7 +6510,12 @@ body {
 .asset-asset-row-totals {
   background: #f5f5f5;
   font-weight: 600;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
   color: #374151;
 }
 
@@ -6478,7 +6604,7 @@ body {
   display: inline-flex;
   align-items: center;
   padding: 0.35rem 0.75rem;
-  background: #E0C4E8;
+  background: #e0c4e8;
   color: #6b21a8;
   border-radius: 999px;
   font-size: 0.9rem;
@@ -6600,7 +6726,12 @@ body {
   font-size: 13px;
   border: none;
   background: transparent;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
   color: #111111;
 }
 
@@ -6614,7 +6745,12 @@ body {
 .asset-debt-date-display {
   display: block;
   font-size: 13px;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
   color: #111111;
   padding: 0.2rem 0.4rem;
 }
@@ -6711,7 +6847,12 @@ body {
 .asset-debt-monthly-interest-display {
   display: inline-block;
   font-size: 14px;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
   color: #b8b8b8;
 }
 
@@ -6769,14 +6910,24 @@ body {
 .asset-debt-paid-display,
 .asset-debt-balance-display {
   font-size: 14px;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
   color: #111111;
 }
 
 .asset-debt-row-totals {
   background: #f5f5f5;
   font-weight: 600;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
   color: #374151;
 }
 
@@ -7244,7 +7395,6 @@ body {
   font-family: "DM Mono", "SF Mono", Consolas, monospace;
 }
 
-
 .work-schedule-input-date:focus,
 .work-schedule-input-date:focus-visible,
 .work-schedule-cell-date input.flatpickr-input:focus,
@@ -7434,10 +7584,10 @@ body {
 .work-schedule-monthly-today-btn {
   padding: 0.4rem 0.75rem;
   font-size: 0.9rem;
-  color: #B8B8B8;
+  color: #b8b8b8;
   background: transparent;
   border: none;
-  border-bottom: 1px solid #E8E8E6;
+  border-bottom: 1px solid #e8e8e6;
   border-radius: 0;
   cursor: pointer;
   font-family: inherit;
@@ -7451,7 +7601,7 @@ body {
 .work-schedule-monthly-nav-btn {
   padding: 0.4rem 0.75rem;
   font-size: 1.1rem;
-  color: #B8B8B8;
+  color: #b8b8b8;
   background: #f9f9f8;
   border: none;
   border-radius: 0;
@@ -7496,7 +7646,7 @@ body {
   padding: 0.5rem;
   font-size: 12px;
   font-weight: 500;
-  color: #B8B8B8;
+  color: #b8b8b8;
   text-align: left;
 }
 
@@ -7526,7 +7676,7 @@ body {
 }
 
 .work-schedule-monthly-day.other-month {
-  background: #F2F2F2;
+  background: #f2f2f2;
 }
 
 .work-schedule-monthly-day.other-month .work-schedule-monthly-day-num {
@@ -7534,7 +7684,7 @@ body {
 }
 
 .work-schedule-monthly-day.today {
-  background: #EDEDED;
+  background: #ededed;
 }
 
 .work-schedule-monthly-day.today .work-schedule-monthly-day-num::after {
@@ -7559,7 +7709,7 @@ body {
   font-size: 12px;
   font-weight: 300;
   font-family: "DM Mono", monospace;
-  color: #7A7A7A;
+  color: #7a7a7a;
   margin-bottom: 0.25rem;
 }
 
@@ -8218,7 +8368,9 @@ body {
   border: 2px solid transparent;
   border-radius: 8px;
   cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 
 .todo-settings-color-modal-swatch:hover {
@@ -8841,7 +8993,7 @@ body {
 
 .todo-task-row.todo-row-overdue,
 .todo-task-row.todo-row-overdue td {
-  background-color: #F5F5F4 !important;
+  background-color: #f5f5f4 !important;
 }
 
 .todo-overdue-display {
@@ -9157,7 +9309,7 @@ body {
   flex: 1;
   min-width: 60px;
   border: none;
-  border-bottom: 1px solid #DCDCDA;
+  border-bottom: 1px solid #dcdcda;
   border-radius: 0;
   background: transparent !important;
   background-color: transparent !important;
@@ -9182,7 +9334,7 @@ body {
   font-weight: 300;
   color: #64748b !important;
   border: none;
-  border-bottom: 1px solid #DCDCDA;
+  border-bottom: 1px solid #dcdcda;
   border-radius: 0;
   background: transparent !important;
   background-color: transparent !important;
@@ -9199,7 +9351,10 @@ body {
 
 /* 세부 할일 입력: 셀 배경과 맞추기 (배경 완전 제거) */
 .todo-cell-name .todo-subtask-input-group .todo-subtask-input,
-.todo-cell-name .todo-subtasks-container .todo-subtask-input-group .todo-subtask-input {
+.todo-cell-name
+  .todo-subtasks-container
+  .todo-subtask-input-group
+  .todo-subtask-input {
   background: transparent !important;
   background-color: transparent !important;
 }
@@ -11779,7 +11934,7 @@ body.kpi-resizing {
 .time-task-setup-title {
   margin: 0;
   font-size: 1.1rem;
-  font-weight: 600;
+  font-weight: 400;
   color: #1f2937;
 }
 
@@ -12997,7 +13152,10 @@ body.kpi-resizing {
   border-radius: 6px;
   background: transparent;
   cursor: pointer;
-  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    color 0.15s;
 }
 .time-task-log-expense-flow-type-btn.time-task-log-expense-flow-type-expense {
   color: #1e4a8a;
@@ -13213,6 +13371,14 @@ body.kpi-resizing {
 .time-task-log-expense-inner-modal
   .time-task-log-expense-cls-btn:not(.selected) {
   border-color: #b0ada6;
+}
+.time-task-log-expense-inner-modal
+  .time-task-log-expense-cls-btn:not(.selected) {
+  color: #b8b8b8;
+}
+.time-task-log-expense-inner-modal
+  .time-task-log-expense-cls-btn:not(.selected):hover {
+  color: #111111;
 }
 .time-task-log-expense-inner-modal .time-task-log-expense-inner-name,
 .time-task-log-expense-inner-modal .time-task-log-expense-inner-amount {
@@ -15606,17 +15772,26 @@ body.kpi-resizing {
   grid-template-columns: repeat(6, 1fr);
   gap: 0.35rem;
 }
+/* 결제 수단 4개일 때 빈 2칸 없이 4열로 채움 (모바일·데스크톱 공통) */
+.time-task-log-expense-cls-btns-wrap:has(.time-task-log-expense-payment-btn) {
+  grid-template-columns: repeat(4, 1fr);
+}
+.time-task-log-expense-cls-btns-wrap:has(.time-task-log-expense-payment-btn)
+  .time-task-log-expense-payment-btn {
+  white-space: nowrap;
+}
 .time-task-log-expense-cls-btn {
   padding: 0.35rem 0.75rem;
   font-size: 0.85rem;
   font-weight: 500;
-  color: #374151;
+  color: #b8b8b8;
   background: #f9f9f8;
-  border: 1px solid #d1d5db;
+  border: 1px solid #e5e7eb;
   border-radius: 6px;
   cursor: pointer;
 }
 .time-task-log-expense-cls-btn:hover {
+  color: #111111;
   border-color: #9ca3af;
   background: #f9fafb;
 }
@@ -15641,6 +15816,7 @@ body.kpi-resizing {
   justify-content: center;
   width: 28px;
   height: 28px;
+  color: inherit;
 }
 .time-task-log-expense-cls-btn-with-icon .time-task-log-expense-cls-icon svg {
   width: 100%;
@@ -15652,6 +15828,7 @@ body.kpi-resizing {
   line-height: 1.2;
   text-align: center;
   white-space: nowrap;
+  color: inherit;
 }
 
 .time-task-log-expense-payment-btn {
@@ -16269,7 +16446,11 @@ body.kpi-resizing {
 .time-daily-budget-four-panels .time-daily-budget-table thead th {
   border-bottom: 1px solid #e5e7eb;
 }
-.time-daily-budget-four-panels .time-daily-budget-table tbody tr:first-child td {
+.time-daily-budget-four-panels
+  .time-daily-budget-table
+  tbody
+  tr:first-child
+  td {
   border-top: none;
 }
 
@@ -16591,9 +16772,12 @@ body.kpi-resizing {
 }
 
 /* 3. 시간 사용 개선하기 - 월별/일주일/과제선택 숨김, 하루 날짜선택만 표시 */
-.time-ledger-view:has(.time-view-tab[data-view="improve"].active) .time-filter-btn[data-filter="month"],
-.time-ledger-view:has(.time-view-tab[data-view="improve"].active) .time-filter-btn[data-filter="week"],
-.time-ledger-view:has(.time-view-tab[data-view="improve"].active) .time-filter-task-select-btn {
+.time-ledger-view:has(.time-view-tab[data-view="improve"].active)
+  .time-filter-btn[data-filter="month"],
+.time-ledger-view:has(.time-view-tab[data-view="improve"].active)
+  .time-filter-btn[data-filter="week"],
+.time-ledger-view:has(.time-view-tab[data-view="improve"].active)
+  .time-filter-task-select-btn {
   display: none;
 }
 
@@ -16657,7 +16841,9 @@ body.kpi-resizing {
   display: flex;
   flex-direction: column;
 }
-.time-improve-quadrant-reality .time-improve-input-block .time-improve-input-label {
+.time-improve-quadrant-reality
+  .time-improve-input-block
+  .time-improve-input-label {
   margin-bottom: 0.25rem;
 }
 .time-improve-quadrant-reality .time-improve-answer-scroll {
@@ -16717,7 +16903,9 @@ body.kpi-resizing {
   display: flex;
   flex-direction: column;
 }
-.time-improve-quadrant-important .time-improve-input-block .time-improve-input-label {
+.time-improve-quadrant-important
+  .time-improve-input-block
+  .time-improve-input-label {
   margin-bottom: 0.25rem;
   flex-shrink: 0;
 }
@@ -16959,7 +17147,9 @@ body.kpi-resizing {
   display: flex;
   flex-direction: column;
 }
-.time-improve-quadrant-invest .time-improve-input-block .time-improve-input-label {
+.time-improve-quadrant-invest
+  .time-improve-input-block
+  .time-improve-input-label {
   margin-bottom: 0.25rem;
   flex-shrink: 0;
   font-family: "DM Mono", "SF Mono", Consolas, monospace;
@@ -17260,7 +17450,7 @@ body.kpi-resizing {
 }
 
 .time-audit-svg .time-audit-conc-y-label {
-  fill: #B8B8B8 !important;
+  fill: #b8b8b8 !important;
 }
 
 .time-audit-task-legend {
@@ -17562,7 +17752,7 @@ body.kpi-resizing {
 .time-audit-pie-title {
   font-size: 0.8rem;
   font-weight: 400;
-  color: #B8B8B8;
+  color: #b8b8b8;
   margin-bottom: 0.5rem;
   text-align: center;
 }
@@ -17668,7 +17858,6 @@ body.kpi-resizing {
 .time-audit-available-item:last-child {
   border-right: 1px solid #e5e7eb;
 }
-
 
 .time-audit-available-label {
   font-size: 0.75rem;
@@ -17919,7 +18108,7 @@ body.kpi-resizing {
   background: none;
   text-align: left;
   border-radius: 0;
-  color: #B8B8B8;
+  color: #b8b8b8;
 }
 .time-audit-schedule-table thead th:first-child,
 .time-audit-schedule-table thead th:last-child,
@@ -19966,7 +20155,9 @@ body.kpi-resizing {
   cursor: pointer;
   padding: 0 0 1px;
   letter-spacing: 0.06em;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
   background: none;
   border: none;
   border-bottom: 0.5px solid #e8e8e6;
@@ -21689,7 +21880,7 @@ body.kpi-resizing {
 .todo-reminder-modal .todo-reminder-label {
   font-size: 0.75rem;
   font-weight: 300;
-  color: #B8B8B8;
+  color: #b8b8b8;
   letter-spacing: 0.018em;
 }
 
@@ -21722,7 +21913,9 @@ body.kpi-resizing {
 /* 리마인더 날짜: 전역 input[type=date] 고딕체 덮어쓰기, DM Mono 강제 */
 .todo-reminder-modal .todo-reminder-date-row input[type="date"],
 .todo-reminder-modal .todo-reminder-date-row input.todo-reminder-date,
-.todo-reminder-modal .todo-reminder-date-row input.flatpickr-input.todo-reminder-date {
+.todo-reminder-modal
+  .todo-reminder-date-row
+  input.flatpickr-input.todo-reminder-date {
   font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
 }
 
@@ -21770,7 +21963,7 @@ body.kpi-resizing {
   padding: 0.4rem 0;
   font-size: 0.95rem;
   font-weight: 300;
-  color: #B8B8B8;
+  color: #b8b8b8;
   letter-spacing: 0.018em;
   background: transparent;
   border: none;
@@ -22077,7 +22270,12 @@ body.kpi-resizing {
   padding: 0.6rem 1rem;
   font-size: 0.9rem;
   font-weight: 300;
-  font-family: var(--app-font-family, "S-Core Dream 3", -apple-system, sans-serif);
+  font-family: var(
+    --app-font-family,
+    "S-Core Dream 3",
+    -apple-system,
+    sans-serif
+  );
   letter-spacing: 0.12em;
   color: #f9f9f8;
   background: #111111;
@@ -22605,7 +22803,7 @@ body.kpi-resizing {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-right: 1px solid #DCDCDA;
+  border-right: 1px solid #dcdcda;
   transition:
     width 0.2s,
     min-width 0.2s;
@@ -22694,7 +22892,7 @@ body.kpi-resizing {
   padding: 0;
   background: none;
   border: none;
-  color: #B8B8B8;
+  color: #b8b8b8;
   cursor: pointer;
   border-radius: 4px;
   transition:
@@ -22883,7 +23081,7 @@ body.kpi-resizing {
 }
 
 .diary-page-item.active {
-  background: #F4F4F2;
+  background: #f4f4f2;
   font-weight: 600;
   border-right: 3px solid #111111;
 }
@@ -22956,7 +23154,7 @@ body.kpi-resizing {
   padding: 0.35rem;
   background: none;
   border: none;
-  color: #B8B8B8;
+  color: #b8b8b8;
   cursor: pointer;
   border-radius: 4px;
   transition:
@@ -22981,7 +23179,7 @@ body.kpi-resizing {
 .diary-paper-meta {
   margin: 0 0 0.5rem;
   font-size: 0.8rem;
-  color: #D8D8D6;
+  color: #d8d8d6;
 }
 
 .diary-paper-text {
@@ -23802,7 +24000,7 @@ body.kpi-resizing {
   font-size: 1.1rem;
   font-weight: 300;
   line-height: 1;
-  color: #B8B8B8;
+  color: #b8b8b8;
   letter-spacing: 0.06em;
   background: none;
   border: none;
@@ -23824,7 +24022,7 @@ body.kpi-resizing {
   font-size: 0.875rem;
   font-weight: 300;
   line-height: 1;
-  color: #B8B8B8;
+  color: #b8b8b8;
   letter-spacing: 0.06em;
   background: none;
   border: none;
@@ -23952,7 +24150,7 @@ body.kpi-resizing {
   padding: 0.5rem;
   font-size: 0.7rem;
   font-weight: 300;
-  color: #B8B8B8;
+  color: #b8b8b8;
   letter-spacing: 0.1em;
   text-align: right;
 }
@@ -24309,7 +24507,9 @@ body.kpi-resizing {
   font-size: 14px;
 }
 
-.calendar-1day-budget-column .time-daily-budget-add-btn .time-daily-budget-add-icon {
+.calendar-1day-budget-column
+  .time-daily-budget-add-btn
+  .time-daily-budget-add-icon {
   display: block;
   filter: brightness(0) saturate(100%) invert(72%);
 }
@@ -25491,7 +25691,11 @@ body.kpi-resizing {
 
 /* 기간(스팬): 배경 적용 - 스팬에만 투명도 추가 (프리셋 색상 유지) */
 .calendar-monthly-span-bar--range {
-  background: color-mix(in srgb, var(--bar-bg) 36%, rgb(125 125 125 / 0.05)) !important;
+  background: color-mix(
+    in srgb,
+    var(--bar-bg) 36%,
+    rgb(125 125 125 / 0.05)
+  ) !important;
 }
 
 .calendar-monthly-span-bar--range::before {
@@ -25594,7 +25798,7 @@ body.kpi-resizing {
   padding: 0.2rem 0.4rem;
   font-size: 0.7rem;
   font-weight: 600;
-  color: #B8B8B8;
+  color: #b8b8b8;
   background: transparent;
   border: none;
   border-radius: 4px;
@@ -25620,7 +25824,7 @@ body.kpi-resizing {
 }
 
 .calendar-monthly-day:hover:not(.empty) {
-  background: #F4F4F2;
+  background: #f4f4f2;
 }
 
 .calendar-monthly-day.empty {
@@ -25628,7 +25832,7 @@ body.kpi-resizing {
 }
 
 .calendar-monthly-day.empty:hover {
-  background: #F4F4F2;
+  background: #f4f4f2;
 }
 
 .calendar-monthly-day.other-month .calendar-monthly-day-num {
@@ -25744,7 +25948,7 @@ body.kpi-resizing {
   );
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   border-radius: 8px;
-  background: #F9F9F8;
+  background: #f9f9f8;
   border: 1px solid var(--gray-200, #e5e7eb);
   min-width: 220px;
   color: #111111;
@@ -25756,7 +25960,7 @@ body.kpi-resizing {
   top: -6px;
   width: 12px;
   height: 12px;
-  background: #F9F9F8;
+  background: #f9f9f8;
   border-left: 1px solid var(--gray-200, #e5e7eb);
   border-top: 1px solid var(--gray-200, #e5e7eb);
   transform: rotate(45deg);
@@ -25783,7 +25987,7 @@ body.kpi-resizing {
   justify-content: space-between;
   margin: 0 -1rem 0.5rem;
   padding: 0 1rem 0.5rem;
-  border-bottom: 0.5px solid #DCDCDA;
+  border-bottom: 0.5px solid #dcdcda;
 }
 
 .calendar-event-bubble-date {
@@ -25791,7 +25995,7 @@ body.kpi-resizing {
   font-family: "DM Mono", "SF Mono", Consolas, monospace;
   font-weight: 300;
   letter-spacing: 0.04em;
-  color: #7A7A7A;
+  color: #7a7a7a;
 }
 
 .calendar-event-bubble-close {
@@ -25802,7 +26006,7 @@ body.kpi-resizing {
   line-height: 1;
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 200;
-  color: #B8B8B8;
+  color: #b8b8b8;
   padding: 0 0.25rem;
 }
 
@@ -25844,7 +26048,7 @@ body.kpi-resizing {
   font-weight: 500;
   color: #374151;
   border: none;
-  border-bottom: 1px solid #DCDCDA;
+  border-bottom: 1px solid #dcdcda;
   border-radius: 0;
   background-color: transparent;
   appearance: none;
@@ -25856,11 +26060,11 @@ body.kpi-resizing {
   box-sizing: border-box;
 }
 .calendar-event-bubble-select:hover {
-  border-bottom-color: #DCDCDA;
+  border-bottom-color: #dcdcda;
 }
 .calendar-event-bubble-select:focus {
   outline: none;
-  border-bottom-color: #DCDCDA;
+  border-bottom-color: #dcdcda;
 }
 .calendar-event-bubble-select option {
   background: #f9f9f8;
@@ -25879,17 +26083,17 @@ body.kpi-resizing {
   font-family: inherit;
   color: #374151;
   border: none;
-  border-bottom: 1px solid #DCDCDA;
+  border-bottom: 1px solid #dcdcda;
   border-radius: 0;
   background: transparent;
   box-sizing: border-box;
 }
 .calendar-event-bubble-input::placeholder {
-  color: #E8E8E6;
+  color: #e8e8e6;
 }
 .calendar-event-bubble-input:focus {
   outline: none;
-  border-bottom-color: #DCDCDA;
+  border-bottom-color: #dcdcda;
 }
 
 .calendar-event-bubble-save {
@@ -26011,7 +26215,7 @@ body.kpi-resizing {
   align-items: center;
   gap: 0.5rem;
   padding: 0.4rem 0.5rem;
-  background: #F9F9F8;
+  background: #f9f9f8;
   border-radius: 6px;
   font-size: 0.85rem;
 }
@@ -26199,7 +26403,6 @@ body.kpi-resizing {
   padding: 0.5rem;
 }
 
-
 .calendar-todo-sidebar-header {
   display: flex;
   align-items: center;
@@ -26240,7 +26443,7 @@ body.kpi-resizing {
 .calendar-todo-sidebar-collapse-text {
   font-size: 10px;
   letter-spacing: 0.06em;
-  color: #B8B8B8;
+  color: #b8b8b8;
 }
 
 .calendar-todo-sidebar-collapse:hover .calendar-todo-sidebar-collapse-icon,
@@ -27681,7 +27884,6 @@ body.kpi-resizing {
   color: #d8d8d6;
   font-weight: 400;
 }
-
 
 .archive-list-section {
   margin-top: 0.5rem;
