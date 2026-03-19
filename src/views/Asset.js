@@ -134,7 +134,7 @@ const DEBT_TYPE_OPTIONS = [
   { label: "주택담보대출" },
   { label: "기타대출" },
   { label: "신용카드 대금" },
-  { label: "친구/가족 빌린돈" },
+  { label: "친구/가족 빌린 돈" },
 ];
 
 const REPAYMENT_OPTIONS = [
@@ -153,7 +153,7 @@ const ASSET_TYPE_OPTIONS = [
   { label: "연금적립액", color: "asset-asset-type-orange" },
   { label: "부동산 전월세 보증금", color: "asset-asset-type-pink" },
   { label: "CMA", color: "asset-asset-type-cyan" },
-  { label: "청약 통장", color: "asset-asset-type-indigo" },
+  { label: "청약통장", color: "asset-asset-type-indigo" },
   { label: "RP", color: "asset-asset-type-lime" },
   { label: "발행어음", color: "asset-asset-type-amber" },
   { label: "ETF", color: "asset-asset-type-rose" },
@@ -169,7 +169,7 @@ const ASSET_CATEGORY_OPTIONS = [
 ];
 
 const ASSET_GROUP_MAP = {
-  예금: ["CMA", "청약 통장", "RP", "발행어음"],
+  예금: ["CMA", "청약통장", "RP", "발행어음"],
   적금: ["예적금잔고"],
   부동산: ["부동산", "부동산 전월세 보증금"],
   주식: ["주식", "펀드", "ETF", "채권", "가상자산"],
@@ -301,7 +301,7 @@ function saveExpenseClassificationByCategory(obj) {
 }
 
 const SAVINGS_GOAL_OPTIONS_KEY = "asset_savings_goal_options";
-const DEFAULT_SAVINGS_GOAL_OPTIONS = ["전세자금", "여행자금", "결혼자금", "목돈마련", "통장잔고", "현금보관", "생활비", "예비자금", "비상금", "그외"];
+const DEFAULT_SAVINGS_GOAL_OPTIONS = ["전세자금", "여행자금", "결혼자금", "목돈마련", "통장잔고", "현금보관", "생활비", "예비자금", "비상금", "그 외"];
 
 const EXPENSE_PAYMENT_OPTIONS_KEY = "asset_expense_payment_options";
 const DEFAULT_PAYMENT_OPTIONS = ["신용카드", "체크카드", "현금"];
@@ -1622,7 +1622,7 @@ function createExpenseClassificationDropdownByFlowType(initialFlowType, initialC
         panel.style.minWidth = `${Math.max(rect.width, 200)}px`;
         panel.style.maxWidth = `min(420px, calc(100vw - ${Math.round(rect.left) + 24}px))`;
         document.body.appendChild(panel);
-        panel.innerHTML = '<p class="asset-expense-classification-hint">큰분류(지출/입금)를 먼저 선택해주세요</p>';
+        panel.innerHTML = '<p class="asset-expense-classification-hint">큰 분류(지출/입금)를 먼저 선택해 주세요.</p>';
         panel.hidden = false;
         closeHandler = (ev) => {
           if (panel.hidden) {
@@ -1716,7 +1716,7 @@ function createExpenseClassificationDropdown(category, initialValue, onUpdate) {
     if (!opts || opts.length === 0) {
       const hintRow = document.createElement("div");
       hintRow.className = "asset-expense-classification-hint";
-      hintRow.textContent = "카테고리를 먼저 선택해주세요";
+      hintRow.textContent = "카테고리를 먼저 선택해 주세요";
       panel.appendChild(hintRow);
       return;
     }
@@ -1738,7 +1738,7 @@ function createExpenseClassificationDropdown(category, initialValue, onUpdate) {
     const optsList = opts ?? getExpenseClassificationOptions(category);
     const val = input.value || "";
     const isEmpty = !category && !val;
-    display.textContent = val || (isEmpty ? "카테고리 먼저 선택" : "선택");
+    display.textContent = val || (isEmpty ? "카테고리를 먼저 선택" : "선택");
     display.className = "asset-expense-classification-display " + (isEmpty ? "is-required-first" : "") + " " + getColorClass(val, optsList);
   }
 
@@ -2033,7 +2033,7 @@ function calcMonthlyPrincipalAndInterest(principal, rateStr, periodStr, repaymen
 }
 
 /** 시작일~기준일 기준 상환금액 자동 계산 (지금까지 갚은 금액)
- *  endDate: 마무리일(대출만기). 실제 계산은 min(오늘, 마무리일)로 함 → "지금까지 갚은 금액" */
+ *  endDate: 만기일(대출만기). 실제 계산은 min(오늘, 만기일)로 함 → "지금까지 갚은 금액" */
 function calcRepaidAmountFromDates(principal, rateStr, periodStr, repaymentMethod, startDate, endDate) {
   const P = parseNum(principal);
   const rate = parseRate(rateStr);
@@ -2044,7 +2044,7 @@ function calcRepaidAmountFromDates(principal, rateStr, periodStr, repaymentMetho
   if (n <= 0) return null;
   const r = rate !== null && rate >= 0 ? rate / 100 / 12 : 0;
 
-  /* 상환금액 = 지금까지 갚은 금액 → 오늘과 마무리일(대출만기) 중 더 이른 날짜까지 */
+  /* 상환금액 = 지금까지 갚은 금액 → 오늘과 만기일(대출만기) 중 더 이른 날짜까지 */
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   if (start) start.setHours(0, 0, 0, 0);
@@ -2251,9 +2251,9 @@ function renderNetworthView() {
         <th class="asset-debt-th-monthly-principal">월 원금</th>
         <th class="asset-debt-th-monthly-interest">월 이자</th>
         <th class="asset-debt-th-start-date">시작일</th>
-        <th class="asset-debt-th-end-date">마무리일</th>
+        <th class="asset-debt-th-end-date">만기일</th>
         <th class="asset-debt-th-paid">상환금액</th>
-        <th class="asset-debt-th-extra-paid">중도상환(수수료제외)</th>
+        <th class="asset-debt-th-extra-paid">중도상환(수수료 제외)</th>
         <th class="asset-debt-th-balance">잔액</th>
         <th class="asset-debt-th-actions"></th>
       </tr>
