@@ -3712,14 +3712,17 @@ export function render() {
             </div>
             <div class="time-task-log-expense-inner-body">
               <div class="time-task-log-expense-inner-fields">
-                <div class="time-task-log-field time-task-log-expense-name-field">
-                  <input type="text" class="time-task-log-expense-name" name="time-task-log-expense-name" placeholder="소비명" />
-                </div>
-                <div class="time-task-log-field">
-                  <label>금액</label>
-                  <div class="time-task-log-expense-amount-wrap">
-                    <input type="text" class="time-task-log-expense-amount" name="time-task-log-expense-amount" placeholder="0" inputmode="numeric" />
-                    <span class="time-task-log-expense-amount-unit">원</span>
+                <div class="time-task-log-field time-task-log-expense-amount-name-row">
+                  <div class="time-task-log-expense-amount-cell">
+                    <label>금액</label>
+                    <div class="time-task-log-expense-amount-wrap">
+                      <input type="text" class="time-task-log-expense-amount" name="time-task-log-expense-amount" placeholder="0" inputmode="numeric" />
+                      <span class="time-task-log-expense-amount-unit">원</span>
+                    </div>
+                  </div>
+                  <div class="time-task-log-expense-name-cell">
+                    <label>소비명</label>
+                    <input type="text" class="time-task-log-expense-name" name="time-task-log-expense-name" placeholder="소비명" />
                   </div>
                 </div>
                 <div class="time-task-log-field">

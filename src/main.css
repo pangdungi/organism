@@ -12531,6 +12531,35 @@ body.kpi-resizing {
 .time-task-log-expense-inner-fields .time-task-log-field:last-child {
   margin-bottom: 0;
 }
+
+/* 소비 기록: 금액 − 소비명 한 줄 배치 (금액 먼저) */
+.time-task-log-expense-amount-name-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.time-task-log-expense-amount-cell {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.time-task-log-expense-amount-cell label,
+.time-task-log-expense-name-cell label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.35rem;
+}
+.time-task-log-expense-name-cell {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.time-task-log-expense-name-cell .time-task-log-expense-name {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .time-task-log-expense-inner-fields .time-task-log-expense-name:focus,
 .time-task-log-expense-inner-fields
   .time-task-log-expense-amount-wrap:focus-within {
