@@ -221,14 +221,14 @@ export function render() {
       </div>
       <div class="idea-freelance-row-inline" style="display:none">
         <div class="idea-form-row idea-row-freelance">
-          <label class="idea-form-label">월 예상 수입 (원)</label>
+          <label class="idea-form-label">월 예상 수입(원)</label>
           <div class="idea-input-with-unit">
             <input type="text" class="idea-form-input idea-input-monthly" placeholder="예: 5000000" inputmode="numeric" />
             <span class="idea-input-unit">원</span>
           </div>
         </div>
         <div class="idea-form-row idea-row-freelance">
-          <label class="idea-form-label">월 근무시간 (시간)</label>
+          <label class="idea-form-label">월 근무시간(시간)</label>
           <div class="idea-input-with-unit">
             <input type="text" class="idea-form-input idea-input-freelance-hours" placeholder="예: 160" inputmode="numeric" />
             <span class="idea-input-unit">h</span>
@@ -240,14 +240,14 @@ export function render() {
       </div>
       <div class="idea-freelance-row-inline idea-freelance-per-case" style="display:none">
         <div class="idea-form-row idea-row-freelance">
-          <label class="idea-form-label">건당 금액 (원)</label>
+          <label class="idea-form-label">건당 금액(원)</label>
           <div class="idea-input-with-unit">
             <input type="text" class="idea-form-input idea-input-project-fee" placeholder="예: 500000" inputmode="numeric" />
             <span class="idea-input-unit">원</span>
           </div>
         </div>
         <div class="idea-form-row idea-row-freelance">
-          <label class="idea-form-label">예상 소요시간 (시간)</label>
+          <label class="idea-form-label">예상 소요시간(시간)</label>
           <div class="idea-input-with-unit">
             <input type="text" class="idea-form-input idea-input-duration" placeholder="예: 20" inputmode="numeric" />
             <span class="idea-input-unit">h</span>
@@ -311,7 +311,7 @@ export function render() {
           <div class="idea-colors-rows idea-colors-rows-time"></div>
         </div>
         <div class="idea-colors-col idea-colors-col-task">
-          <h4 class="todo-settings-block-title">작업 카테고리 (세부)</h4>
+          <h4 class="todo-settings-block-title">작업 카테고리(세부)</h4>
           <div class="idea-colors-task-cols">
             <div class="idea-colors-rows idea-colors-rows-task-left"></div>
             <div class="idea-colors-rows idea-colors-rows-task-right"></div>
