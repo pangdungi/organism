@@ -1005,12 +1005,6 @@ body {
   .home-view-section-title {
     display: none !important;
   }
-  .home-daily-date-anchor {
-    font-size: 56px;
-  }
-  .home-daily-weekday {
-    font-style: italic;
-  }
 }
 
 /* 모바일(768px 미만): 세로 사이드바 숨기고 하단 가로 메뉴 표시 */
@@ -1591,6 +1585,16 @@ body {
   padding: 0 0.75rem 0.5rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+}
+
+/* 모바일: 날짜·요일 오버라이드 (기본 스타일보다 뒤에 두어 적용되도록) */
+@media (max-width: 768px) {
+  .home-daily-date-anchor {
+    font-size: 56px !important;
+  }
+  .home-daily-weekday {
+    font-style: italic !important;
+  }
 }
 
 .home-view-section-subtitle {
