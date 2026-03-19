@@ -7024,37 +7024,53 @@ body {
   margin-top: 0;
 }
 
+.work-schedule-monthly-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: nowrap;
+  margin-bottom: 1rem;
+}
+
 .work-schedule-monthly-content .work-schedule-monthly-nav {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+
+.work-schedule-monthly-top-row .work-schedule-monthly-filter {
+  margin-bottom: 0;
+  flex-shrink: 0;
 }
 
 .work-schedule-monthly-filter {
   display: flex;
+  justify-content: flex-end;
   gap: 0.25rem;
   margin-bottom: 1rem;
 }
 
 .work-schedule-monthly-filter-btn {
-  padding: 0.35rem 0.6rem;
+  padding: 0.35rem 0.6rem 0.35rem;
   font-size: 0.85rem;
   font-weight: 300;
   color: #6b7280;
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .work-schedule-monthly-filter-btn:hover {
   color: #374151;
-  background: #e5e7eb;
 }
 
 .work-schedule-monthly-filter-btn.active {
-  color: #111827;
-  background: #e5e7eb;
-  border-color: #d1d5db;
+  color: #111111;
+  background: transparent;
+  border-bottom-color: #111111;
 }
 
 .work-schedule-monthly-nav {
@@ -7067,26 +7083,27 @@ body {
 .work-schedule-monthly-today-btn {
   padding: 0.4rem 0.75rem;
   font-size: 0.9rem;
-  color: #374151;
-  background: #f9f9f8;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  color: #B8B8B8;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #E8E8E6;
+  border-radius: 0;
   cursor: pointer;
   font-family: inherit;
 }
 
 .work-schedule-monthly-today-btn:hover {
-  background: #f9fafb;
+  color: #111111;
+  border-bottom-color: #111111;
 }
 
 .work-schedule-monthly-nav-btn {
-  width: 36px;
-  height: 36px;
-  padding: 0;
+  padding: 0.4rem 0.75rem;
   font-size: 1.1rem;
-  color: #374151;
-  background: transparent;
+  color: #B8B8B8;
+  background: #f9f9f8;
   border: none;
+  border-radius: 0;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -7094,15 +7111,16 @@ body {
 }
 
 .work-schedule-monthly-nav-btn:hover {
-  color: #1f2937;
+  color: #111111;
   background: #f3f4f6;
-  border-radius: 6px;
 }
 
 .work-schedule-monthly-label {
   font-size: 1rem;
-  font-weight: 500;
-  color: #374151;
+  font-weight: 200;
+  color: #111111;
+  font-family: "Noto Sans KR", sans-serif;
+  letter-spacing: -0.01em;
   min-width: 140px;
   text-align: center;
 }
@@ -7118,7 +7136,10 @@ body {
 .work-schedule-monthly-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  background: #f9fafb;
+  background: transparent;
+  border-top: none;
+  border-left: none;
+  border-right: none;
   border-bottom: 1px solid #e5e7eb;
 }
 
@@ -7126,8 +7147,8 @@ body {
   padding: 0.5rem;
   font-size: 12px;
   font-weight: 500;
-  color: #6b7280;
-  text-align: center;
+  color: #B8B8B8;
+  text-align: left;
 }
 
 .work-schedule-monthly-week {

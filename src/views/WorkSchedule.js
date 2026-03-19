@@ -608,7 +608,7 @@ export function render() {
   const viewTabs = document.createElement("div");
   viewTabs.className = "work-schedule-view-tabs";
   viewTabs.innerHTML = `
-    <button type="button" class="work-schedule-view-tab active" data-view="all">1. 근무기록 트랙커</button>
+    <button type="button" class="work-schedule-view-tab active" data-view="all">1. 근무기록 트래커</button>
     <button type="button" class="work-schedule-view-tab" data-view="monthly">2. 월별보기</button>
   `;
   el.appendChild(viewTabs);

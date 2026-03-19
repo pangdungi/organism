@@ -84,6 +84,10 @@ const MONTH_NAMES_EN = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
+const MONTH_NAMES_SHORT = [
+  "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+  "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
+];
 
 /** 근무표 내부에서 사용하는 먼슬리 캘린더 콘텐츠 */
 export function renderMonthlyContent() {
@@ -118,7 +122,9 @@ export function renderMonthlyContent() {
   nav.appendChild(prevBtn);
   nav.appendChild(monthLabel);
   nav.appendChild(nextBtn);
-  el.appendChild(nav);
+
+  const topRow = document.createElement("div");
+  topRow.className = "work-schedule-monthly-top-row";
 
   const filterRow = document.createElement("div");
   filterRow.className = "work-schedule-monthly-filter";
@@ -140,7 +146,9 @@ export function renderMonthlyContent() {
   filterRow.appendChild(btnHours);
   filterRow.appendChild(btnType);
   filterRow.appendChild(btnBalance);
-  el.appendChild(filterRow);
+  topRow.appendChild(nav);
+  topRow.appendChild(filterRow);
+  el.appendChild(topRow);
 
   const calendarWrap = document.createElement("div");
   calendarWrap.className = "work-schedule-monthly-calendar";
@@ -163,7 +171,7 @@ export function renderMonthlyContent() {
     const byDate = groupByDate(rows);
     const grid = getCalendarGrid(currentYear, currentMonth);
 
-    monthLabel.textContent = `${MONTH_NAMES_EN[currentMonth]} ${currentYear}`;
+    monthLabel.textContent = `${MONTH_NAMES_SHORT[currentMonth]} ${currentYear}`;
 
     calendarWrap.innerHTML = "";
 
