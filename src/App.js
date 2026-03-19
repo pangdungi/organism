@@ -21,8 +21,8 @@ const TABS = [
   { id: "sideincome", label: "부수입", icon: "/toolbaricons/money-circle.svg" },
   { id: "happiness", label: "행복", icon: "/toolbaricons/plug-electric.svg" },
   { id: "health", label: "건강", icon: "/toolbaricons/heart-rate.svg" },
-  { id: "calendar", label: "할일/일정", icon: "/toolbaricons/calendar-alt.svg" },
-  { id: "time", label: "시간가계부", icon: "/toolbaricons/timer.svg" },
+  { id: "calendar", label: "할일/일정", mobileLabel: "할일", icon: "/toolbaricons/calendar-alt.svg" },
+  { id: "time", label: "시간가계부", mobileLabel: "시간", icon: "/toolbaricons/timer.svg" },
   { id: "diary", label: "감정관리", icon: "/toolbaricons/chat-bubbles.svg" },
   { id: "asset", label: "자산관리", icon: "/toolbaricons/wallet.svg" },
   {
@@ -185,9 +185,10 @@ export function mountApp(container) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "app-bottom-nav-item" + (tab.id === currentTabId ? " active" : "");
-    btn.dataset.tabId = tab.id;
-    btn.title = tab.label;
-    btn.innerHTML = `<img src="${tab.icon}" alt="" class="app-bottom-nav-icon" width="22" height="22"><span class="app-bottom-nav-label">${tab.label}</span>`;
+btn.dataset.tabId = tab.id;
+    const navLabel = tab.mobileLabel ?? tab.label;
+    btn.title = navLabel;
+    btn.innerHTML = `<img src="${tab.icon}" alt="" class="app-bottom-nav-icon" width="18" height="18"><span class="app-bottom-nav-label">${navLabel}</span>`;
     btn.addEventListener("click", () => {
       setActiveTab(tab.id);
       sidebar.classList.remove("is-open");
@@ -200,7 +201,7 @@ export function mountApp(container) {
   accountBottomBtn.className = "app-bottom-nav-item" + (currentTabId === "idea" ? " active" : "");
   accountBottomBtn.dataset.tabId = "idea";
   accountBottomBtn.title = "나의 계정";
-  accountBottomBtn.innerHTML = '<img src="/toolbaricons/user-square.svg" alt="" class="app-bottom-nav-icon" width="22" height="22"><span class="app-bottom-nav-label">나의 계정</span>';
+  accountBottomBtn.innerHTML = '<img src="/toolbaricons/user-square.svg" alt="" class="app-bottom-nav-icon" width="18" height="18"><span class="app-bottom-nav-label">나의 계정</span>';
   accountBottomBtn.addEventListener("click", () => {
     setActiveTab("idea");
     sidebar.classList.remove("is-open");

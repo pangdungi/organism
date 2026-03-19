@@ -517,7 +517,7 @@ export function render() {
   const section1 = document.createElement("div");
   section1.className = "home-view-section home-view-section--calendar";
   const d = new Date();
-  const WEEKDAY_NAMES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+  const WEEKDAY_NAMES = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
   const header1 = document.createElement("h3");
   header1.className = "home-view-section-title";
   header1.textContent = "Daily";

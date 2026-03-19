@@ -1021,7 +1021,7 @@ body {
   right: 0;
   z-index: 50;
   background: #f2f2f2;
-  border-top: 1px solid #e5e5e5;
+  border-top: 1px solid #DCDCDA;
   padding: 0.35rem 0;
   padding-bottom: env(safe-area-inset-bottom, 0.35rem);
   flex-shrink: 0;
@@ -1043,9 +1043,9 @@ body {
   background: transparent !important;
   border: none;
   border-radius: 6px;
-  color: #9ca3af;
+  color: #B8B8B8;
   font-size: 0.65rem;
-  font-weight: 500;
+  font-weight: 300;
   cursor: pointer;
   font-family: inherit;
   transition:
@@ -1057,12 +1057,12 @@ body {
 .app-bottom-nav-item:hover,
 .app-bottom-nav-item:active {
   background: transparent !important;
-  color: #9ca3af;
+  color: #B8B8B8;
 }
 
 .app-bottom-nav-item.active {
-  color: #111827;
-  font-weight: 600;
+  color: #111111;
+  font-weight: 300;
   background: transparent !important;
   box-shadow: none;
 }
@@ -1070,11 +1070,13 @@ body {
 .app-bottom-nav-icon {
   display: block;
   flex-shrink: 0;
-  filter: brightness(0) opacity(0.4);
+  width: 18px;
+  height: 18px;
+  filter: brightness(0) opacity(0.28); /* ≈ #B8B8B8 on white */
 }
 
 .app-bottom-nav-item.active .app-bottom-nav-icon {
-  filter: brightness(0) opacity(1);
+  filter: brightness(0) opacity(0.93); /* ≈ #111111 */
 }
 
 .app-bottom-nav-label {
@@ -1083,6 +1085,7 @@ body {
   text-overflow: ellipsis;
   max-width: 100%;
   text-align: center;
+  font-weight: 300;
 }
 
 @media (max-width: 767px) {
@@ -1097,10 +1100,10 @@ body {
   .app-bottom-nav {
     display: flex !important;
   }
-  /* 모바일: 액티브 탭은 배경 없이 검은색, 비활성은 회색 */
+  /* 모바일: 액티브 #111111, 비활성 #B8B8B8, 아이콘 18px */
   .app-bottom-nav-item {
     background: transparent !important;
-    color: #9ca3af;
+    color: #B8B8B8;
   }
   .app-bottom-nav-item:hover,
   .app-bottom-nav-item:active {
@@ -1108,13 +1111,13 @@ body {
   }
   .app-bottom-nav-item.active {
     background: transparent !important;
-    color: #111827;
+    color: #111111;
   }
   .app-bottom-nav-icon {
-    filter: brightness(0) opacity(0.35);
+    filter: brightness(0) opacity(0.28); /* ≈ #B8B8B8 */
   }
   .app-bottom-nav-item.active .app-bottom-nav-icon {
-    filter: brightness(0) saturate(1) opacity(1);
+    filter: brightness(0) opacity(0.93); /* ≈ #111111 */
   }
 
   .app-main {
@@ -1347,15 +1350,16 @@ body {
   .app-main:has(.home-view) .home-todo-list-table thead {
     display: none !important;
   }
-  /* 모바일: 할일 목록 행 패딩 11px 28px */
+  /* 모바일: 할일 목록 행 하나에 패딩 통일 — [28px][체크박스][13px gap][텍스트][28px] */
   .app-main:has(.home-view) .home-todo-list-table th,
   .app-main:has(.home-view) .home-todo-list-table td {
-    padding: 11px 28px !important;
+    padding: 11px 0 !important;
   }
-  /* 모바일: 우선순위 숨김 시 이름 열이 마지막이므로 오른쪽 끝 패딩 */
-  .app-main:has(.home-view) .home-todo-list-table .home-todo-td-name,
-  .app-main:has(.home-view) .home-todo-list-table .home-todo-th-name {
-    padding-right: 28px !important;
+  .app-main:has(.home-view) .home-todo-list-table .home-todo-td-check {
+    padding: 11px 13px 11px 28px !important;
+  }
+  .app-main:has(.home-view) .home-todo-list-table .home-todo-td-name {
+    padding: 11px 28px 11px 0 !important;
   }
 
   /* 모바일: 할일 목록 영역 폰트웨이트 300, 컬러 #3a3a3a */
@@ -1678,7 +1682,7 @@ body {
 /* 모바일: 날짜·요일 오버라이드 (기본 스타일보다 뒤에 두어 적용되도록) */
 @media (max-width: 768px) {
   .home-daily-date-anchor {
-    font-size: 56px !important;
+    font-size: 72px !important;
   }
   .home-daily-weekday {
     font-style: italic !important;
