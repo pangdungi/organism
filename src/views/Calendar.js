@@ -1280,7 +1280,7 @@ function renderMonthlyView(tabsElement) {
 
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
-      const BAR_HEIGHT = 1.5;
+      const BAR_HEIGHT = window.matchMedia("(max-width: 767px)").matches ? 1 : 2;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
@@ -1490,9 +1490,8 @@ function renderMonthlyView(tabsElement) {
         const totalCount = barsPerDay[dayIdx]?.length || 0;
         const effectiveMax = effectiveMaxPerDay[dayIdx] ?? MAX_VISIBLE_BARS_PER_DAY;
         const overflowCount = totalCount - effectiveMax;
-        const isMobile = window.matchMedia("(max-width: 767px)").matches;
-        const showCount = isMobile ? totalCount > 0 : overflowCount > 0;
-        const displayCount = isMobile ? totalCount : overflowCount;
+        const showCount = overflowCount > 0;
+        const displayCount = overflowCount;
         const cell = weekRow.querySelector(
           `.calendar-monthly-day[data-date="${dateKey}"]`,
         );
@@ -2000,7 +1999,7 @@ function render2WeekView(tabsElement) {
 
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
-      const BAR_HEIGHT = 1.5;
+      const BAR_HEIGHT = window.matchMedia("(max-width: 767px)").matches ? 1 : 2;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
@@ -2208,9 +2207,8 @@ function render2WeekView(tabsElement) {
         const totalCount = barsPerDay[dayIdx]?.length || 0;
         const effectiveMax = effectiveMaxPerDay[dayIdx] ?? MAX_VISIBLE_BARS_PER_DAY;
         const overflowCount = totalCount - effectiveMax;
-        const isMobile = window.matchMedia("(max-width: 767px)").matches;
-        const showCount = isMobile ? totalCount > 0 : overflowCount > 0;
-        const displayCount = isMobile ? totalCount : overflowCount;
+        const showCount = overflowCount > 0;
+        const displayCount = overflowCount;
         const cell = weekRow.querySelector(
           `.calendar-monthly-day[data-date="${dateKey}"]`,
         );
@@ -2708,7 +2706,7 @@ function render3WeekView(tabsElement) {
 
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
-      const BAR_HEIGHT = 1.5;
+      const BAR_HEIGHT = window.matchMedia("(max-width: 767px)").matches ? 1 : 2;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
@@ -2941,9 +2939,8 @@ function render3WeekView(tabsElement) {
         const totalCount = barsPerDay[dayIdx]?.length || 0;
         const effectiveMax = effectiveMaxPerDay[dayIdx] ?? MAX_VISIBLE_BARS_PER_DAY;
         const overflowCount = totalCount - effectiveMax;
-        const isMobile = window.matchMedia("(max-width: 767px)").matches;
-        const showCount = isMobile ? totalCount > 0 : overflowCount > 0;
-        const displayCount = isMobile ? totalCount : overflowCount;
+        const showCount = overflowCount > 0;
+        const displayCount = overflowCount;
         const cell = weekRow.querySelector(
           `.calendar-monthly-day[data-date="${dateKey}"]`,
         );
@@ -4887,7 +4884,7 @@ function render1WeekView(tabsElement) {
 
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
-      const BAR_HEIGHT = 1.5;
+      const BAR_HEIGHT = window.matchMedia("(max-width: 767px)").matches ? 1 : 2;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
@@ -5120,9 +5117,8 @@ function render1WeekView(tabsElement) {
         const totalCount = barsPerDay[dayIdx]?.length || 0;
         const effectiveMax = effectiveMaxPerDay[dayIdx] ?? MAX_VISIBLE_BARS_PER_DAY;
         const overflowCount = totalCount - effectiveMax;
-        const isMobile = window.matchMedia("(max-width: 767px)").matches;
-        const showCount = isMobile ? totalCount > 0 : overflowCount > 0;
-        const displayCount = isMobile ? totalCount : overflowCount;
+        const showCount = overflowCount > 0;
+        const displayCount = overflowCount;
         const cell = weekRowEl.querySelector(
           `.calendar-monthly-day[data-date="${dateKey}"]`,
         );
