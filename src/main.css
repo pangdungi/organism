@@ -12452,6 +12452,27 @@ body.kpi-resizing {
 .time-task-log-expense-add-btn:hover {
   background: #4b5563;
 }
+.time-task-log-expense-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  flex-basis: 100%;
+  min-width: 0;
+}
+.time-task-log-expense-pills .time-task-log-expense-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 0.8rem;
+  color: #374151;
+  background: #f9f9f8;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+}
+.time-task-log-expense-pills .time-memo-tag-chip {
+  margin: 0;
+}
 .time-task-log-expense-inner-modal {
   position: fixed;
   inset: 0;
@@ -12622,8 +12643,9 @@ body.kpi-resizing {
   outline: none;
   border-bottom-color: #d1d5db;
 }
-/* 소비 기록 추가 목록 - 미니멀 스타일 */
+/* 소비 기록 추가 목록 - 모달에는 표시하지 않고 행 아래 태그로만 표시 */
 .time-task-log-expense-added-list {
+  display: none;
   margin-top: 1.25rem;
   padding-top: 1rem;
   border-top: none;

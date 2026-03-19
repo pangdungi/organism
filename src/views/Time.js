@@ -3702,6 +3702,7 @@ export function render() {
         <div class="time-task-log-expense-row">
           <span class="time-task-log-expense-label">소비 기록</span>
           <button type="button" class="time-task-log-expense-add-btn" aria-label="소비 기록 추가">+</button>
+          <div class="time-task-log-expense-pills"></div>
         </div>
         <div class="time-task-log-expense-inner-modal" hidden>
           <div class="time-task-log-expense-inner-backdrop"></div>
@@ -4277,6 +4278,9 @@ export function render() {
   );
   const taskLogExpenseInnerList = taskLogModal.querySelector(
     ".time-task-log-expense-added-list",
+  );
+  const taskLogExpensePills = taskLogModal.querySelector(
+    ".time-task-log-expense-pills",
   );
   const taskLogExpenseInnerAdd = taskLogModal.querySelector(
     ".time-task-log-expense-inner-add-btn",
@@ -5520,18 +5524,20 @@ export function render() {
     );
   }
 
-  function updateExpenseInnerList() {
-    if (!taskLogExpenseInnerList) return;
-    taskLogExpenseInnerList.innerHTML = "";
+  /** 소비 기록을 방해기록·투두처럼 행 아래 태그(분류 | 가격)로만 표시. 모달 내 목록은 사용하지 않음 */
+  function updateExpensePills() {
+    if (!taskLogExpensePills) return;
+    taskLogExpensePills.innerHTML = "";
     taskLogExpenseAddedItems.forEach((item, idx) => {
-      const row = document.createElement("div");
-      row.className = "time-task-log-expense-inner-list-row";
-      const name = escapeHtml(item.name || "");
-      const category = escapeHtml(item.classification || "");
-      const price = escapeHtml(item.amountFormatted || "");
-      row.innerHTML = `<span class="time-task-log-expense-inner-list-name">${name}</span><span class="time-task-log-expense-inner-list-category">${category}</span><span class="time-task-log-expense-inner-list-price">${price}</span><button type="button" class="time-task-log-expense-inner-list-del" aria-label="삭제">&times;</button>`;
-      row
-        .querySelector(".time-task-log-expense-inner-list-del")
+      const pill = document.createElement("span");
+      pill.className = "time-task-log-expense-pill time-memo-tag-chip";
+      const label =
+        [item.classification || "", item.amountFormatted || ""]
+          .filter(Boolean)
+          .join(" | ") || "";
+      pill.innerHTML = `<span class="time-memo-tag-chip-text">${escapeHtml(label)}</span><button type="button" class="time-memo-tag-chip-remove" aria-label="삭제">&times;</button>`;
+      pill
+        .querySelector(".time-memo-tag-chip-remove")
         ?.addEventListener("click", (ev) => {
           ev.preventDefault();
           if (item.id) {
@@ -5539,10 +5545,15 @@ export function render() {
             saveExpenseRows(rows);
           }
           taskLogExpenseAddedItems.splice(idx, 1);
-          updateExpenseInnerList();
+          updateExpensePills();
         });
-      taskLogExpenseInnerList.appendChild(row);
+      taskLogExpensePills.appendChild(pill);
     });
+  }
+
+  function updateExpenseInnerList() {
+    if (taskLogExpenseInnerList) taskLogExpenseInnerList.innerHTML = "";
+    updateExpensePills();
   }
 
   function openExpenseInnerModal() {
@@ -5779,6 +5790,7 @@ export function render() {
     if (taskLogTodoPills) taskLogTodoPills.innerHTML = "";
     taskLogExpenseAddedItems = [];
     if (taskLogExpenseInnerList) taskLogExpenseInnerList.innerHTML = "";
+    updateExpensePills();
     if (taskLogExpenseInnerModal) taskLogExpenseInnerModal.hidden = true;
     if (taskLogEmotionInnerModal) taskLogEmotionInnerModal.hidden = true;
     if (taskLogKpiTodosSection) taskLogKpiTodosSection.hidden = true;
