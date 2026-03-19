@@ -1010,6 +1010,22 @@ body {
   .home-view-section--event .home-view-section-title {
     display: block !important;
   }
+  /* 할일 날짜 선택 모달: input 터치 영역 확대 */
+  .todo-mobile-date-input {
+    display: block;
+    width: 100%;
+    min-height: 48px;
+    padding: 0.75rem;
+    font-size: 1rem;
+    border: 1px solid var(--line, #d8d5d0);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+  }
+  .todo-mobile-date-hint {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--gray-500, #6b7280);
+  }
 }
 
 /* 모바일(768px 미만): 세로 사이드바 숨기고 하단 가로 메뉴 표시 */

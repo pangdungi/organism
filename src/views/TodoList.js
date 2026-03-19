@@ -851,6 +851,59 @@ function showConfirmModal(options = {}) {
   document.body.style.overflow = "hidden";
 }
 
+/** 모바일 전용: 날짜 선택 모달. 모달 안 input을 탭하면 네이티브 날짜 픽커가 열림 */
+function showMobileDateModal(options) {
+  const { title = "날짜 선택", value = "", min = "", max = "", onSelect } = options;
+  const modal = document.createElement("div");
+  modal.className = "todo-list-modal todo-mobile-date-modal";
+  modal.innerHTML = `
+    <div class="todo-list-modal-backdrop"></div>
+    <div class="todo-list-modal-panel todo-mobile-date-panel">
+      <div class="todo-list-modal-header">
+        <h3 class="todo-list-modal-title">${title}</h3>
+        <button type="button" class="todo-list-modal-close" aria-label="닫기">×</button>
+      </div>
+      <div class="todo-list-modal-body">
+        <input type="date" class="todo-mobile-date-input" value="${(value || "").slice(0, 10)}" ${min ? `min="${min}"` : ""} ${max ? `max="${max}"` : ""} />
+        <p class="todo-mobile-date-hint">위 칸을 눌러 날짜를 선택하세요</p>
+      </div>
+      <div class="todo-list-modal-footer">
+        <button type="button" class="todo-list-modal-cancel">취소</button>
+        <button type="button" class="todo-list-modal-confirm">확인</button>
+      </div>
+    </div>
+  `;
+  const backdrop = modal.querySelector(".todo-list-modal-backdrop");
+  const closeBtn = modal.querySelector(".todo-list-modal-close");
+  const cancelBtn = modal.querySelector(".todo-list-modal-cancel");
+  const confirmBtn = modal.querySelector(".todo-list-modal-confirm");
+  const dateInput = modal.querySelector(".todo-mobile-date-input");
+
+  function close() {
+    modal.remove();
+    document.body.style.overflow = "";
+  }
+
+  function apply() {
+    const val = (dateInput.value || "").trim().slice(0, 10);
+    if (val) onSelect?.(val);
+    close();
+  }
+
+  dateInput.addEventListener("change", apply);
+  confirmBtn.addEventListener("click", apply);
+  cancelBtn.addEventListener("click", close);
+  closeBtn.addEventListener("click", close);
+  backdrop.addEventListener("click", close);
+  modal.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") close();
+  });
+
+  document.body.appendChild(modal);
+  document.body.style.overflow = "hidden";
+  dateInput.focus();
+}
+
 function getSections() {
   return [...FIXED_SECTIONS, ...getCustomSections()];
 }
@@ -1187,10 +1240,27 @@ function createTaskRow(taskData = {}, options = {}) {
   });
   startWrap.addEventListener("mousedown", () => {
     dateAreaClicked = true;
-    console.log("[DEBUG todo-row] startWrap mousedown, dateAreaClicked=true");
   });
   startWrap.addEventListener("click", () => {
-    console.log("[DEBUG todo-row] startWrap click, focusing startInput");
+    if (window.matchMedia("(max-width: 768px)").matches) {
+      showMobileDateModal({
+        title: "시작일",
+        value: startInput.value,
+        max: dueInput.value || "",
+        onSelect(val) {
+          startInput.value = val;
+          syncStartDisplay();
+          syncHasDates();
+          syncDateLine();
+          if (isKpiTodo && kpiTodoId && storageKey) {
+            updateKpiTodo(kpiTodoId, storageKey, { startDate: val });
+          } else if (!isKpiTodo) {
+            scheduleSaveSectionTasksFromDOM(tr.closest(".todo-sections-wrap"));
+          }
+        },
+      });
+      return;
+    }
     startInput.focus();
     if (startInput._flatpickr) startInput._flatpickr.open();
     else if (typeof startInput.showPicker === "function") startInput.showPicker();
@@ -1251,17 +1321,34 @@ function createTaskRow(taskData = {}, options = {}) {
   });
   dueWrap.addEventListener("mousedown", () => {
     dateAreaClicked = true;
-    console.log("[DEBUG todo-row] dueWrap mousedown, dateAreaClicked=true");
   });
   dueWrap.addEventListener("click", () => {
+    if (window.matchMedia("(max-width: 768px)").matches) {
+      showMobileDateModal({
+        title: "마감일",
+        value: dueInput.value,
+        min: startInput.value || "",
+        onSelect(val) {
+          dueInput.value = val;
+          syncDueDisplay();
+          syncOverdueDisplay?.();
+          syncHasDates();
+          syncDateLine();
+          if (isKpiTodo && kpiTodoId && storageKey) {
+            updateKpiTodo(kpiTodoId, storageKey, { dueDate: val });
+          } else if (!isKpiTodo) {
+            scheduleSaveSectionTasksFromDOM(tr.closest(".todo-sections-wrap"));
+          }
+        },
+      });
+      return;
+    }
     dueInput.focus();
     if (dueInput._flatpickr) dueInput._flatpickr.open();
     else if (typeof dueInput.showPicker === "function") dueInput.showPicker();
     else dueInput.click();
   });
-  if (isKpiTodo) {
-    dueWrap.style.cursor = "pointer";
-  }
+  dueWrap.style.cursor = "pointer";
   dueWrap.appendChild(dueDisplay);
   dueWrap.appendChild(dueInput);
   dueTd.appendChild(dueWrap);
