@@ -1002,6 +1002,15 @@ body {
     display: none !important;
   }
   /* 여기에 모바일 전용 스타일 추가 */
+  .home-view-section-title {
+    display: none !important;
+  }
+  .home-daily-date-anchor {
+    font-size: 56px;
+  }
+  .home-daily-weekday {
+    font-style: italic;
+  }
 }
 
 /* 모바일(768px 미만): 세로 사이드바 숨기고 하단 가로 메뉴 표시 */
