@@ -1319,7 +1319,7 @@ function createTaskRow(taskData = {}, options = {}) {
           </div>
           <div class="todo-reminder-field">
             <label class="todo-reminder-label">시간</label>
-            <input type="text" class="todo-reminder-time" placeholder="예: 14:30" autocomplete="off" value="${escapeHtml(defaultTime)}" />
+            <input type="text" class="todo-reminder-time" placeholder="14:30" autocomplete="off" value="${escapeHtml(defaultTime)}" />
             <span class="todo-reminder-time-error" aria-live="polite"></span>
           </div>
           <button type="button" class="dream-kpi-submit todo-reminder-save">설정</button>
