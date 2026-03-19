@@ -1,6 +1,6 @@
 /**
- * 할일목록 - 토글 헤더 + Name, Due date + Add Task + 분류 드롭다운
- * KPI 할일(꿈/부수입/행복/건강) 연동: 마감일 없음, 꿈이름 자동, 분류=KPI이름
+ * 할 일 목록 - 토글 헤더 + Name, Due date + Add Task + 분류 드롭다운
+ * KPI 할 일(꿈/부수입/행복/건강) 연동: 마감일 없음, 꿈 이름 자동, 분류=KPI이름
  */
 
 import { getKpiTodosAsTasks, syncKpiTodoCompleted, removeAllCompletedKpiTodos, removeKpiTodo, updateKpiTodo, moveKpiTodoToSection } from "../utils/kpiTodoSync.js";
@@ -468,7 +468,7 @@ const ADD_TASK_ICON =
   '<svg viewBox="0 0 24 24" width="20" height="20"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>';
 
 const LIST_ICON =
-  '<img src="/toolbaricons/list.svg" alt="세부 할일" class="todo-list-icon" width="18" height="18">';
+  '<img src="/toolbaricons/list.svg" alt="세부 할 일" class="todo-list-icon" width="18" height="18">';
 
 function createCategoryDropdown(initialValue, onUpdate) {
   const wrap = document.createElement("div");
@@ -885,7 +885,7 @@ function createSubtaskItem(parentTaskId, subtaskData, onRemove) {
   nameInput.name = "todo-subtask-name";
   nameInput.className = "todo-subtask-input";
   nameInput.value = name;
-  nameInput.placeholder = "세부 할일 입력";
+  nameInput.placeholder = "세부 할 일 입력";
   nameInput.addEventListener("blur", () => {
     const val = (nameInput.value || "").trim();
     if (val === "") {
@@ -1109,7 +1109,7 @@ function createTaskRow(taskData = {}, options = {}) {
     const listBtn = document.createElement("button");
     listBtn.type = "button";
     listBtn.className = "todo-list-btn";
-    listBtn.title = "세부 할일 추가";
+    listBtn.title = "세부 할 일 추가";
     listBtn.innerHTML = LIST_ICON;
     listBtn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -1279,7 +1279,9 @@ function createTaskRow(taskData = {}, options = {}) {
   const reminderDisplayVal = formatReminderDisplay(reminderDate, reminderTime);
   reminderDisplaySpan.textContent = reminderDisplayVal || "";
   reminderTd.classList.toggle("todo-cell-reminder-empty", !reminderDisplayVal);
-  reminderBtn.addEventListener("click", () => {
+  reminderBtn.hidden = !!reminderDisplayVal;
+
+  function openReminderModal() {
     const taskName = (nameInput.value || "").trim() || "(과제명 없음)";
     const defaultDate = (tr.dataset.reminderDate || "").trim() || (dueInput.value || "").trim();
     const defaultTime = (tr.dataset.reminderTime || "").trim();
@@ -1352,7 +1354,6 @@ function createTaskRow(taskData = {}, options = {}) {
       const raw = timeInput.value;
       const digits = raw.replace(/\D/g, "");
       if (digits.length >= 4) {
-        const pos = timeInput.selectionStart;
         timeInput.value = formatTimeInput(raw);
         timeInput.setSelectionRange(5, 5);
       }
@@ -1378,12 +1379,21 @@ function createTaskRow(taskData = {}, options = {}) {
       const nextDisplay = formatReminderDisplay(dateVal, timeVal);
       reminderDisplaySpan.textContent = nextDisplay || "";
       reminderTd.classList.toggle("todo-cell-reminder-empty", !nextDisplay);
+      reminderBtn.hidden = !!nextDisplay;
+      reminderDisplaySpan.classList.toggle("todo-reminder-display--clickable", !!nextDisplay);
       const wrap = tr.closest(".todo-sections-wrap");
       if (wrap) scheduleSaveSectionTasksFromDOM(wrap);
       close();
     });
     document.body.appendChild(modal);
+  }
+
+  reminderBtn.addEventListener("click", openReminderModal);
+  reminderDisplaySpan.addEventListener("click", (e) => {
+    if (reminderDisplaySpan.textContent.trim()) openReminderModal();
   });
+  if (reminderDisplayVal) reminderDisplaySpan.classList.add("todo-reminder-display--clickable");
+
   reminderTd.appendChild(reminderBtn);
   reminderTd.appendChild(reminderDisplaySpan);
 
@@ -1665,7 +1675,7 @@ function createSection(section, options = {}) {
   const theadEisenhowerSidebarFirst = eisenhowerSidebarFirst
     ? `<tr>
         <th class="todo-th-done"></th>
-        <th class="todo-th-name">NAME</th>
+        <th class="todo-th-name">할일 이름</th>
         <th class="todo-th-eisenhower">우선순위</th>
         <th class="todo-th-kpi">KPI</th>
         <th class="todo-th-start">시작일</th>
@@ -1679,7 +1689,7 @@ function createSection(section, options = {}) {
   const theadOverdue = overdueColumnOrder
     ? `<tr>
         <th class="todo-th-done"></th>
-        <th class="todo-th-name">NAME</th>
+        <th class="todo-th-name">할일 이름</th>
         <th class="todo-th-overdue">기한</th>
         <th class="todo-th-kpi">KPI</th>
         <th class="todo-th-start">시작일</th>
@@ -1691,7 +1701,7 @@ function createSection(section, options = {}) {
       </tr>`
     : `<tr>
         <th class="todo-th-done"></th>
-        <th class="todo-th-name">NAME</th>
+        <th class="todo-th-name">할일 이름</th>
         <th class="todo-th-kpi">KPI</th>
         <th class="todo-th-start">시작일</th>
         <th class="todo-th-due">마감일</th>
@@ -1871,7 +1881,7 @@ export function render(options = {}) {
   header.hidden = hideToolbar || hideHeader;
   const titleEl = document.createElement("h2");
   titleEl.className = "todo-list-title";
-  titleEl.textContent = "할일/일정";
+  titleEl.textContent = "할 일/일정";
   header.appendChild(titleEl);
   el.appendChild(header);
 
@@ -1881,7 +1891,7 @@ export function render(options = {}) {
   const settingsBtn = document.createElement("button");
   settingsBtn.type = "button";
   settingsBtn.className = "todo-list-toolbar-btn todo-list-settings-btn";
-  settingsBtn.title = "할일 환경설정";
+  settingsBtn.title = "할 일 환경 설정";
   settingsBtn.innerHTML = '<img src="/toolbaricons/settings.svg" alt="" class="todo-list-settings-icon" width="18" height="18">';
 
   const initialSettings = getTodoSettings();

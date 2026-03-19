@@ -7317,11 +7317,11 @@ body {
 
 .todo-list-settings-btn .todo-list-settings-icon {
   display: block;
-  filter: brightness(0) saturate(100%) invert(45%);
+  filter: brightness(0) saturate(100%) invert(72%);
 }
 
 .todo-list-settings-btn:hover .todo-list-settings-icon {
-  filter: brightness(0) saturate(100%) invert(35%);
+  filter: brightness(0) saturate(100%) invert(72%);
 }
 
 .todo-list-toolbar-btn {
@@ -8409,14 +8409,22 @@ body {
   width: 7.5rem !important;
 }
 
-/* 벨 아이콘: 값 없을 때만 호버 시 표시, 값 있으면 항상 표시 (빈 값은 "—" 표시로 .todo-cell-reminder-empty 사용) */
+/* 리마인더: 값 없을 때만 종+ 버튼 표시, 값 있으면 날짜/시간 텍스트만 표시(클릭 시 수정) */
+.todo-cell-reminder:not(.todo-cell-reminder-empty) .todo-reminder-btn {
+  display: none !important;
+}
+.todo-cell-reminder-empty .todo-reminder-display {
+  display: none;
+}
 .todo-cell-reminder-empty .todo-reminder-btn {
   opacity: 0;
   transition: opacity 0.2s ease;
 }
-
-.todo-task-row:hover .todo-cell-reminder-empty .todo-reminder-btn {
+.todo-cell-reminder-empty:hover .todo-reminder-btn {
   opacity: 1;
+}
+.todo-reminder-display--clickable {
+  cursor: pointer;
 }
 
 .todo-reminder-btn {
@@ -8461,9 +8469,14 @@ body {
 .todo-cell-overdue {
   width: 5rem !important;
   min-width: 4.5rem;
-  text-align: center;
+  text-align: left;
   font-size: 0.85rem;
   color: #6b7280;
+}
+
+.todo-task-row.todo-row-overdue,
+.todo-task-row.todo-row-overdue td {
+  background-color: rgba(238, 236, 234, 0.15) !important;
 }
 
 .todo-overdue-display {

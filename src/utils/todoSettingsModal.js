@@ -1,6 +1,6 @@
 /**
- * 할일목록 환경설정 모달
- * - 완료항목 숨기기/제거 토글
+ * 할 일 목록 환경 설정 모달
+ * - 완료 항목 숨기기/제거 토글
  * - 리스트별 색상 설정 (10가지 프리셋만, HEX 입력 제거)
  */
 
@@ -182,7 +182,7 @@ export function createTodoSettingsModal(options = {}) {
     <div class="todo-settings-backdrop"></div>
     <div class="todo-settings-panel">
       <div class="todo-settings-header">
-        <h3 class="todo-settings-title">할일 환경설정</h3>
+        <h3 class="todo-settings-title">할 일 환경 설정</h3>
         <button type="button" class="todo-settings-close" aria-label="닫기">×</button>
       </div>
       <div class="todo-settings-body">
@@ -204,7 +204,7 @@ export function createTodoSettingsModal(options = {}) {
 
   let hideCompleted = settings.hideCompleted;
 
-  const hideToggle = createToggleRow("완료항목 숨기기", hideCompleted, (v) => {
+  const hideToggle = createToggleRow("완료 항목 숨기기", hideCompleted, (v) => {
     hideCompleted = v;
   });
   togglesEl.appendChild(hideToggle);
@@ -212,7 +212,7 @@ export function createTodoSettingsModal(options = {}) {
   const clearBtnRow = document.createElement("div");
   clearBtnRow.className = "todo-settings-clear-row";
   clearBtnRow.innerHTML = `
-    <span class="todo-settings-toggle-label">완료항목 모두 제거</span>
+    <span class="todo-settings-toggle-label">완료 항목 모두 제거</span>
     <button type="button" class="todo-settings-clear-btn">제거</button>
   `;
   clearBtnRow.querySelector(".todo-settings-clear-btn").addEventListener("click", () => {
