@@ -1034,6 +1034,15 @@ body {
   .todo-mobile-date-modal .todo-list-modal-confirm:hover {
     background: #111111;
   }
+  /* 모바일: X 닫기 버튼 터치 영역 확대 */
+  .todo-mobile-date-modal .todo-list-modal-close {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 /* 모바일(768px 미만): 세로 사이드바 숨기고 하단 가로 메뉴 표시 */
@@ -1434,13 +1443,33 @@ body {
   .calendar-view .calendar-view-top-row--todo .calendar-monthly-tabs-wrap {
     padding: 0;
   }
-  /* 모바일에서만: 헤더 플러스 버튼 표시, 테이블 내 플러스 행 숨김 */
-  .calendar-view-todo .todo-header-add-slot {
-    display: flex !important;
-    align-items: center;
+  /* 모바일: 에드 버튼 셀 가로 스크롤 시에도 왼쪽에 고정 */
+  .calendar-view-todo .todo-add-row .todo-add-cell-btn {
+    position: sticky;
+    left: 0;
+    width: 2.5rem;
+    min-width: 2.5rem;
+    max-width: 2.5rem;
+    background: var(--app-bg, #fff);
+    z-index: 2;
+    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.06);
   }
-  .calendar-view-todo .todo-add-row {
-    display: none !important;
+  .calendar-view-todo .todo-add-row .todo-add-cell-fill {
+    padding: 0;
+    width: 1%;
+  }
+  /* 에드 버튼: 설정 아이콘과 스타일 통일 (연한 회색, 얇은 선) */
+  .calendar-view-todo .todo-add-row .todo-add-btn {
+    color: #b8b8b8;
+    background: none;
+    border: none;
+    padding: 0.35rem;
+  }
+  .calendar-view-todo .todo-add-row .todo-add-btn svg {
+    stroke-width: 1.2;
+  }
+  .calendar-view-todo .todo-add-row .todo-add-btn:hover {
+    color: #9ca3af;
   }
   /* 모바일: 할일/일정 탭바(.time-view-tabs) 하단 보더 제거 */
   .calendar-view .time-view-tabs {
@@ -1567,6 +1596,16 @@ body {
   }
   .calendar-view-todo .calendar-todo-content .todo-table thead {
     display: table-header-group;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #f9f9f8;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-table thead th.todo-th-done,
+  .calendar-view-todo .calendar-todo-content .todo-table thead th.todo-th-name {
+    z-index: 4;
   }
   .calendar-view-todo .calendar-todo-content .todo-table tbody {
     display: table-row-group;
@@ -8530,20 +8569,25 @@ body {
   background: #f9f9f8;
   border-bottom: 1px solid #eee;
   vertical-align: middle;
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 /* 이름 열 고정: 체크박스·이름 열 sticky, 나머지 가로 스크롤 */
 .todo-table thead th.todo-th-done {
   position: sticky;
+  top: 0;
   left: 0;
-  z-index: 3;
+  z-index: 4;
   border-right: 1px solid #eee;
 }
 
 .todo-table thead th.todo-th-name {
   position: sticky;
+  top: 0;
   left: 2rem;
-  z-index: 3;
+  z-index: 4;
   border-right: 1px solid #eee;
 }
 

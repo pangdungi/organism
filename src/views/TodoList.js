@@ -864,7 +864,7 @@ function showMobileDateModal(options) {
         <button type="button" class="todo-list-modal-close" aria-label="닫기">×</button>
       </div>
       <div class="todo-list-modal-body">
-        <input type="date" class="todo-mobile-date-input" value="${(value || "").slice(0, 10)}" ${min ? `min="${min}"` : ""} ${max ? `max="${max}"` : ""} />
+        <input type="date" class="todo-mobile-date-input" tabindex="-1" value="${(value || "").slice(0, 10)}" ${min ? `min="${min}"` : ""} ${max ? `max="${max}"` : ""} />
       </div>
       <div class="todo-list-modal-footer">
         <button type="button" class="todo-list-modal-cancel">취소</button>
@@ -892,7 +892,14 @@ function showMobileDateModal(options) {
   dateInput.addEventListener("change", apply);
   confirmBtn.addEventListener("click", apply);
   cancelBtn.addEventListener("click", close);
-  closeBtn.addEventListener("click", close);
+  closeBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    close();
+  });
+  closeBtn.addEventListener("touchend", (e) => {
+    e.preventDefault();
+    close();
+  });
   backdrop.addEventListener("click", close);
   modal.addEventListener("keydown", (e) => {
     if (e.key === "Escape") close();
@@ -900,6 +907,10 @@ function showMobileDateModal(options) {
 
   document.body.appendChild(modal);
   document.body.style.overflow = "hidden";
+  // 모달만 보이게: 입력 포커스 시 날짜 피커가 같이 뜨지 않도록 X 버튼에 포커스
+  requestAnimationFrame(() => {
+    closeBtn.focus();
+  });
 }
 
 function getSections() {
@@ -1846,12 +1857,14 @@ function createSection(section, options = {}) {
 
   const addRow = document.createElement("tr");
   addRow.className = "todo-add-row";
+  const addColspan = hideCategoryCol ? 9 : 10;
   addRow.innerHTML = `
-    <td colspan="${hideCategoryCol ? 9 : 10}" class="todo-add-cell">
+    <td class="todo-add-cell todo-add-cell-btn">
       <button type="button" class="todo-add-btn" title="할 일 추가">${ADD_TASK_ICON}</button>
     </td>
+    <td colspan="${addColspan - 1}" class="todo-add-cell todo-add-cell-fill"></td>
   `;
-  if (!hideAddRow) tbody.appendChild(addRow);
+  if (!hideAddRow) tbody.insertBefore(addRow, tbody.firstChild);
 
   const countEl = () => (tabMode ? wrap.querySelector(".todo-section-count") : header?.querySelector(".todo-section-count"));
 
@@ -1872,7 +1885,7 @@ function createSection(section, options = {}) {
       const taskId = getTaskId(taskData);
       taskData.taskId = taskId;
       const tr = createTaskRow(taskData, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, overdueColumnOrder, eisenhowerSidebarFirst });
-      tbody.insertBefore(tr, addRow);
+      tbody.insertBefore(tr, addRow.nextSibling);
       updateCount();
       console.log("[DEBUG todo-row] + clicked, new row created", { taskId, sectionId: section.id });
       const nameInput = tr.querySelector(".todo-cell-name input");
@@ -2289,11 +2302,10 @@ export function render(options = {}) {
       const taskId = getTaskId(taskData);
       taskData.taskId = taskId;
       const tr = createTaskRow(taskData, { showCategoryCol: false, hideCategoryCol: true, isSubtask: false, taskId, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, overdueColumnOrder: false, eisenhowerSidebarFirst });
-      const isMobile = window.matchMedia("(max-width: 768px)").matches;
-      if (isMobile) {
+      if (addRow) {
+        tbody.insertBefore(tr, addRow.nextSibling);
+      } else if (tbody.firstChild) {
         tbody.insertBefore(tr, tbody.firstChild);
-      } else if (addRow) {
-        tbody.insertBefore(tr, addRow);
       } else {
         tbody.appendChild(tr);
       }
@@ -2440,7 +2452,7 @@ export function render(options = {}) {
           showCheckboxTypeMenu,
         });
         newTr.dataset.sectionId = targetSectionId;
-        if (addRow) targetTbody.insertBefore(newTr, addRow);
+        if (addRow) targetTbody.insertBefore(newTr, addRow.nextSibling);
 
         setSubtasks(taskId, subtasksToMove);
         const container = newTr.querySelector(".todo-subtasks-container");

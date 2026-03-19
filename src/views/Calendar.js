@@ -4622,9 +4622,6 @@ function renderTodoView(tabsElement) {
     tabsWrapper.appendChild(tabsElement);
     topRow.appendChild(tabsWrapper);
   }
-  const addButtonSlot = document.createElement("div");
-  addButtonSlot.className = "todo-header-add-slot";
-  topRow.appendChild(addButtonSlot);
   wrap.appendChild(topRow);
 
   const todoMain = document.createElement("div");
@@ -4632,7 +4629,7 @@ function renderTodoView(tabsElement) {
 
   const todoContent = document.createElement("div");
   todoContent.className = "calendar-todo-content";
-  const todoListEl = renderTodoList({ hideHeader: true, settingsSlot: topRow, addButtonSlot });
+  const todoListEl = renderTodoList({ hideHeader: true, settingsSlot: topRow });
   todoContent.appendChild(todoListEl);
   todoMain.appendChild(todoContent);
 

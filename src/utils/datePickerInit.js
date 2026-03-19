@@ -65,17 +65,45 @@ export function initDatePickersIn(container) {
     });
 }
 
+function getDateInputsInNodes(nodes) {
+  const inputs = [];
+  nodes.forEach((node) => {
+    if (!node || node.nodeType !== 1) return;
+    if (node.tagName === "INPUT" && (node.type === "date" || node.type === "datetime-local")) inputs.push(node);
+    if (typeof node.querySelectorAll === "function") {
+      node.querySelectorAll('input[type="date"], input[type="datetime-local"]').forEach((el) => inputs.push(el));
+    }
+  });
+  return [...new Set(inputs)];
+}
+
 export function observeDatePickerInit(container) {
   if (!container) return;
   initDatePickersIn(container);
   let debounceTimer = 0;
-  const scheduleInit = () => {
+  let observerLock = false;
+  const observer = new MutationObserver((mutations) => {
+    if (observerLock) return;
+    const addedNodes = [];
+    mutations.forEach((m) => {
+      m.addedNodes.forEach((n) => addedNodes.push(n));
+    });
+    const toInit = getDateInputsInNodes(addedNodes);
+    if (toInit.length === 0) return;
     if (debounceTimer) window.clearTimeout(debounceTimer);
     debounceTimer = window.setTimeout(() => {
       debounceTimer = 0;
-      initDatePickersIn(container);
+      observerLock = true;
+      observer.disconnect();
+      toInit.forEach((el) => {
+        const useNativeMobile = el.dataset?.useNativeMobile === "true";
+        initDatePicker(el, useNativeMobile ? { disableMobile: true } : {});
+      });
+      requestAnimationFrame(() => {
+        observerLock = false;
+        observer.observe(container, { childList: true, subtree: true });
+      });
     }, 80);
-  };
-  const observer = new MutationObserver(scheduleInit);
+  });
   observer.observe(container, { childList: true, subtree: true });
 }
