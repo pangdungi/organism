@@ -276,14 +276,6 @@ body {
   );
 }
 
-/* 과제 기록 모달·방해기록 모달: 시간 입력란 DM Mono (#app input 덮어쓰기) */
-#app input.time-task-log-time-start,
-#app input.time-task-log-time-end,
-#app input.time-task-log-focus-inner-time-input {
-  font-family: "DM Mono", monospace !important;
-  font-weight: 300 !important;
-}
-
 /* ----- 랜딩 페이지 (ClickUp 스타일) ----- */
 .landing-page {
   display: flex;
@@ -11837,7 +11829,7 @@ body.kpi-resizing {
   .time-task-log-datetime-fields-wrap
   .time-task-log-field
   label {
-  font-size: 0.8rem;
+  font-size: 8px;
 }
 .time-task-log-scroll-area
   .time-task-log-datetime-fields-wrap
@@ -11867,8 +11859,6 @@ body.kpi-resizing {
   min-width: 6rem;
   padding: 0.35rem 0.6rem;
   font-size: 1.4rem;
-  font-family: "DM Mono", monospace !important;
-  font-weight: 300 !important;
 }
 .time-task-log-scroll-area
   .time-task-log-datetime-fields-wrap
@@ -11981,9 +11971,9 @@ body.kpi-resizing {
 }
 .time-task-log-memo-title {
   margin: 0 0 0.5rem;
-  font-size: 0.9rem;
+  font-size: 8px;
   font-weight: 400;
-  color: #111111;
+  color: #b8b8b8;
 }
 .time-task-log-memo-fields .time-task-log-field {
   margin-bottom: 0.75rem;
@@ -13507,11 +13497,10 @@ body.kpi-resizing {
 
 /* 과제 기록 모달 상단 3개 라벨: dream-kpi-field 스타일 통일 */
 .time-task-log-datetime-fields-wrap .time-task-log-field label {
-  font-family: "DM Mono", monospace;
-  font-size: 0.8rem;
-  font-weight: 300;
+  font-size: 8px;
+  font-weight: 400;
   letter-spacing: 0.18em;
-  color: #111111;
+  color: #b8b8b8;
   margin-bottom: 8px;
 }
 
@@ -13520,15 +13509,67 @@ body.kpi-resizing {
   display: none;
 }
 
+/* 날짜-시작-마감 한 줄 배치 */
+.time-task-log-datetime-onerow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.time-task-log-datetime-input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.time-task-log-datetime-input-row input[type="date"],
+.time-task-log-datetime-input-row input.time-task-log-date-start,
+.time-task-log-datetime-input-row input.flatpickr-input,
+.time-task-log-datetime-input-row input[type="text"] {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  font-size: 1.4rem;
+  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  font-weight: 300 !important;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 0;
+  background: transparent;
+  box-sizing: border-box;
+  line-height: 1.2;
+}
+.time-task-log-datetime-input-row input:focus,
+.time-task-log-datetime-input-row input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-bottom-color: #9ca3af !important;
+}
+.time-task-log-datetime-input-row input::placeholder {
+  color: #9ca3af;
+}
+.time-task-log-datetime-input-row input[type="text"] {
+  text-align: center;
+}
+.time-task-log-datetime-sep {
+  flex-shrink: 0;
+  align-self: flex-end;
+  padding-bottom: 0.35rem;
+  font-family: "DM Mono", "SF Mono", Consolas, monospace;
+  font-size: 1.2rem;
+  font-weight: 300;
+  color: #9ca3af;
+}
+.time-task-log-datetime-onerow .time-task-log-time-adjust-btns {
+  margin-top: 0.25rem;
+}
+
 .time-task-log-datetime-input-wrap {
   display: flex;
   gap: 0.5rem;
   align-items: center;
 }
 
-/* 과제 기록 모달: 날짜 입력 Noto Serif KR / 시간 입력 DM Mono
-   - #app input 전역 폰트(ID 선택자)보다 우선하려면 #app 포함 구체적 선택자 사용 */
-#app .time-task-log-modal input[type="date"].time-task-log-date-start,
+/* 과제 기록 모달: datetime-onerow가 아닌 기존 datetime-input-wrap용 (다른 모달) */
 #app .time-task-log-modal .time-task-log-datetime-input-wrap input[type="date"],
 #app
   .time-task-log-modal
@@ -13538,21 +13579,7 @@ body.kpi-resizing {
   .time-task-log-modal
   .time-task-log-datetime-input-wrap
   input.flatpickr-input {
-  font-family: "Noto Serif KR", serif !important;
-  font-weight: 200 !important;
-}
-#app
-  .time-task-log-modal
-  .time-task-log-datetime-input-wrap
-  input.time-task-log-time-start,
-#app
-  .time-task-log-modal
-  .time-task-log-datetime-input-wrap
-  input.time-task-log-time-end,
-#app input.time-task-log-time-start,
-#app input.time-task-log-time-end,
-#app input.time-task-log-focus-inner-time-input {
-  font-family: "DM Mono", monospace !important;
+  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
   font-weight: 300 !important;
 }
 .time-task-log-datetime-input-wrap input[type="date"],
@@ -13585,8 +13612,6 @@ body.kpi-resizing {
   min-width: 6rem;
   padding: 0.5rem 0.75rem;
   font-size: 1.4rem;
-  font-family: "DM Mono", monospace !important;
-  font-weight: 300 !important;
   border: none;
   border-bottom: 1px solid #e5e7eb;
   border-radius: 0;
@@ -13793,8 +13818,6 @@ body.kpi-resizing {
 .time-task-log-tag-list .time-memo-tag-chip,
 .time-task-log-tag-list .time-task-log-tag-pill {
   margin: 0;
-  background: transparent;
-  border: none;
 }
 
 /* 과제 메모 contenteditable + 인라인 태그 칩 (레거시/태그 칩 공통) */
@@ -13847,6 +13870,7 @@ body.kpi-resizing {
 }
 .time-memo-tag-chip:hover .time-memo-tag-chip-remove {
   opacity: 1;
+  color: #111111;
 }
 /* 시간기록 테이블 메모 태그 열 - 태그마다 구분되도록 */
 .time-display-memo-tags {
@@ -27113,13 +27137,14 @@ body.kpi-resizing {
   gap: 0.35rem;
 }
 
+/* 아카이브 태그: time-memo-tag-chip(스타일 2)과 통일 */
 .archive-tag-pill {
-  display: inline-block;
-  padding: 0.2rem 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 300;
-  color: #b8b8b8;
-  background: none;
-  border: 0.5px solid #dcdcda;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  font-size: 0.8rem;
+  color: #374151;
+  background: #f9f9f8;
+  border: 1px solid #e5e7eb;
   border-radius: 4px;
 }

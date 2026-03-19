@@ -3610,30 +3610,22 @@ export function render() {
             <label>이 시간에 할 행동</label>
             <div class="time-task-log-task-wrap"></div>
           </div>
-          <div class="time-task-log-field">
-            <label>시작 시간</label>
-            <div class="time-task-log-datetime-input-wrap">
+          <div class="time-task-log-field time-task-log-datetime-onerow">
+            <div class="time-task-log-datetime-input-row">
               <input type="date" class="time-task-log-date-start" name="time-task-log-date" data-hide-delete-btn="true" data-use-native-mobile="true" />
-              <input type="text" class="time-task-log-time-start" name="time-task-log-time-start" placeholder="hh:mm" maxlength="5" style="font-family: 'DM Mono', monospace; font-weight: 300" />
+              <span class="time-task-log-datetime-sep">−</span>
+              <input type="text" class="time-task-log-time-start" name="time-task-log-time-start" placeholder="hh:mm" maxlength="5" />
+              <span class="time-task-log-datetime-sep">−</span>
+              <input type="text" class="time-task-log-time-end" name="time-task-log-time-end" placeholder="hh:mm" maxlength="5" />
+            </div>
+            <div class="time-task-log-time-adjust-btns">
+              <button type="button" class="time-task-log-time-adjust-btn time-task-log-time-adjust-now" data-now="true">지금</button>
+              <button type="button" class="time-task-log-time-adjust-btn" data-delta="-30">−30</button>
+              <button type="button" class="time-task-log-time-adjust-btn" data-delta="-15">−15</button>
+              <button type="button" class="time-task-log-time-adjust-btn" data-delta="15">+15</button>
+              <button type="button" class="time-task-log-time-adjust-btn" data-delta="30">+30</button>
             </div>
             <input type="hidden" class="time-task-log-start" />
-          </div>
-          <div class="time-task-log-field">
-            <label>마감 시간</label>
-            <div class="time-task-log-end-row">
-              <div class="time-task-log-datetime-wrap time-task-log-datetime-wrap-end">
-                <div class="time-task-log-datetime-input-wrap">
-                  <input type="text" class="time-task-log-time-end" name="time-task-log-time-end" placeholder="hh:mm" maxlength="5" style="font-family: 'DM Mono', monospace; font-weight: 300" />
-                </div>
-              </div>
-              <div class="time-task-log-time-adjust-btns">
-                <button type="button" class="time-task-log-time-adjust-btn time-task-log-time-adjust-now" data-now="true">지금</button>
-                <button type="button" class="time-task-log-time-adjust-btn" data-delta="-30">−30</button>
-                <button type="button" class="time-task-log-time-adjust-btn" data-delta="-15">−15</button>
-                <button type="button" class="time-task-log-time-adjust-btn" data-delta="15">+15</button>
-                <button type="button" class="time-task-log-time-adjust-btn" data-delta="30">+30</button>
-              </div>
-            </div>
             <input type="hidden" class="time-task-log-end" />
           </div>
         </div>
@@ -3674,7 +3666,7 @@ export function render() {
             <div class="time-task-log-focus-inner-body">
               <div class="time-task-log-focus-inner-type-wrap"></div>
               <div class="time-task-log-focus-inner-input-row">
-                <input type="text" class="time-task-log-focus-inner-time-input" placeholder="hh:mm" maxlength="5" style="font-family: 'DM Mono', monospace; font-weight: 300" />
+                <input type="text" class="time-task-log-focus-inner-time-input" placeholder="hh:mm" maxlength="5"  />
                 <button type="button" class="time-task-log-focus-inner-add">추가</button>
                 <button type="button" class="time-task-log-focus-inner-now-btn">지금</button>
               </div>
@@ -5347,12 +5339,13 @@ export function render() {
     closeFocusModal(); // 추가 시 모달 닫기
   });
 
-  focusModalNowBtn?.addEventListener("click", () => {
+  focusModalNowBtn?.addEventListener("click", (ev) => {
+    ev.preventDefault();
     const nowTime = getCurrentHHMM();
-    if (taskLogFocusModalEvents.some((e) => e.time === nowTime)) return;
-    const type = (focusTypeDropdown?._getValue?.() || "").trim();
-    taskLogFocusModalEvents.push({ time: nowTime, type });
-    updateFocusModalEventsList();
+    if (focusModalTimeInput) {
+      focusModalTimeInput.value = nowTime;
+      focusModalTimeInput.focus();
+    }
   });
 
   focusModalTimeInput?.addEventListener("input", (e) => {
