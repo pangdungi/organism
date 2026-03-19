@@ -12560,6 +12560,41 @@ body.kpi-resizing {
   box-sizing: border-box;
 }
 
+/* 소비 기록: 큰분류 입금/지출 버튼 */
+.time-task-log-expense-flow-type-wrap {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+.time-task-log-expense-flow-type-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+.time-task-log-expense-flow-type-btn.time-task-log-expense-flow-type-expense {
+  color: #1e4a8a;
+}
+.time-task-log-expense-flow-type-btn.time-task-log-expense-flow-type-expense:hover,
+.time-task-log-expense-flow-type-btn.time-task-log-expense-flow-type-expense.selected {
+  background: rgba(196, 216, 242, 0.4);
+  border-color: transparent;
+}
+.time-task-log-expense-flow-type-btn.time-task-log-expense-flow-type-deposit {
+  color: #9f1239;
+}
+.time-task-log-expense-flow-type-btn.time-task-log-expense-flow-type-deposit:hover,
+.time-task-log-expense-flow-type-btn.time-task-log-expense-flow-type-deposit.selected {
+  background: rgba(242, 196, 196, 0.5);
+  border-color: transparent;
+}
+
 .time-task-log-expense-inner-fields .time-task-log-expense-name:focus,
 .time-task-log-expense-inner-fields
   .time-task-log-expense-amount-wrap:focus-within {

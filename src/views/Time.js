@@ -6,8 +6,8 @@
 import {
   loadExpenseRows,
   saveExpenseRows,
-  getExpenseCategoryOptions,
-  getExpenseClassificationOptions,
+  getClassificationToCategoryMap,
+  getClassificationsByFlowType,
 } from "./Asset.js";
 import {
   TAB3_EMOTION_TEMPLATE,
@@ -3721,13 +3721,13 @@ export function render() {
                     </div>
                   </div>
                   <div class="time-task-log-expense-name-cell">
-                    <label>소비명</label>
-                    <input type="text" class="time-task-log-expense-name" name="time-task-log-expense-name" placeholder="소비명" />
+                    <label>소비/수입명</label>
+                    <input type="text" class="time-task-log-expense-name" name="time-task-log-expense-name" placeholder="스타벅스" />
                   </div>
                 </div>
-                <div class="time-task-log-field">
-                  <label>카테고리</label>
-                  <div class="time-task-log-expense-category-wrap"></div>
+                <div class="time-task-log-field time-task-log-expense-flow-type-row">
+                  <label>큰분류</label>
+                  <div class="time-task-log-expense-flow-type-wrap"></div>
                 </div>
                 <div class="time-task-log-field">
                   <label>소비/수입 분류</label>
@@ -4263,8 +4263,8 @@ export function render() {
   const taskLogExpenseNameInput = taskLogModal.querySelector(
     ".time-task-log-expense-name",
   );
-  const taskLogExpenseCategoryWrap = taskLogModal.querySelector(
-    ".time-task-log-expense-category-wrap",
+  const taskLogExpenseFlowTypeWrap = taskLogModal.querySelector(
+    ".time-task-log-expense-flow-type-wrap",
   );
   const taskLogExpenseClassificationWrap = taskLogModal.querySelector(
     ".time-task-log-expense-classification-wrap",
@@ -4920,42 +4920,9 @@ export function render() {
     };
   }
 
-  function buildExpenseCategoryButtons(initialValue, onUpdate) {
-    const wrap = document.createElement("div");
-    wrap.className = "time-task-log-expense-category-btns";
-    let value = (initialValue || "").trim();
-    getExpenseCategoryOptions().forEach((opt) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "time-task-log-expense-cat-btn";
-      btn.dataset.cat = opt.label;
-      btn.textContent = opt.label;
-      if (value === opt.label) btn.classList.add("selected");
-      btn.addEventListener("click", () => {
-        value = value === opt.label ? "" : opt.label;
-        wrap
-          .querySelectorAll(".time-task-log-expense-cat-btn")
-          .forEach((b) =>
-            b.classList.toggle("selected", b.dataset.cat === value),
-          );
-        onUpdate?.(value);
-      });
-      wrap.appendChild(btn);
-    });
-    wrap._getValue = () => value;
-    wrap._setValue = (v) => {
-      value = (v || "").trim();
-      wrap
-        .querySelectorAll(".time-task-log-expense-cat-btn")
-        .forEach((b) =>
-          b.classList.toggle("selected", b.dataset.cat === value),
-        );
-    };
-    return wrap;
-  }
-
-  function buildExpenseClassificationButtons(
-    initialCategory,
+  /** 큰분류(입금/지출)에 따라 소비/수입 분류 옵션 표시. getFlowType()으로 현재 큰분류 조회 */
+  function buildExpenseClassificationByFlowTypeButtons(
+    getFlowType,
     initialValue,
     onUpdate,
   ) {
@@ -4963,17 +4930,17 @@ export function render() {
     wrap.className = "time-task-log-expense-classification-btns";
     const hint = document.createElement("span");
     hint.className = "time-task-log-expense-classification-hint";
-    hint.textContent = "카테고리 먼저 선택";
+    hint.textContent = "큰분류(입금/지출)를 먼저 선택해 주세요.";
     const btnsWrap = document.createElement("div");
     btnsWrap.className = "time-task-log-expense-cls-btns-wrap";
-    let value = initialValue || "";
-    let category = initialCategory || "";
+    let value = (initialValue || "").trim();
     function refresh() {
+      const flowType = (getFlowType && getFlowType()) || "";
       btnsWrap.innerHTML = "";
-      const opts = getExpenseClassificationOptions(category);
-      if (!category || opts.length === 0) {
+      const opts = getClassificationsByFlowType(flowType);
+      if (!flowType || opts.length === 0) {
         hint.hidden = false;
-        hint.textContent = "카테고리 먼저 선택";
+        hint.textContent = "큰분류(입금/지출)를 먼저 선택해 주세요.";
         value = "";
         return;
       }
@@ -5011,10 +4978,7 @@ export function render() {
           b.classList.toggle("selected", b.dataset.label === value),
         );
     };
-    wrap._setCategory = (c) => {
-      category = (c || "").trim();
-      refresh();
-    };
+    wrap._setFlowType = () => refresh();
     refresh();
     return wrap;
   }
@@ -5072,16 +5036,40 @@ export function render() {
     return wrap;
   }
 
-  const expenseClassificationButtons = buildExpenseClassificationButtons(
-    "",
+  const expenseClassificationButtons = buildExpenseClassificationByFlowTypeButtons(
+    () => taskLogExpenseFlowTypeWrap?._getValue?.() || "",
     "",
     () => {},
   );
-  const expenseCategoryDropdown = buildExpenseCategoryButtons("", (cat) => {
-    expenseClassificationButtons._setCategory?.(cat);
-    expenseClassificationButtons._setValue?.("");
-  });
-  taskLogExpenseCategoryWrap?.appendChild(expenseCategoryDropdown);
+
+  if (taskLogExpenseFlowTypeWrap) {
+    let expenseFlowType = "";
+    ["지출", "입금"].forEach((label) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "time-task-log-expense-flow-type-btn";
+      if (label === "입금") btn.classList.add("time-task-log-expense-flow-type-deposit");
+      else btn.classList.add("time-task-log-expense-flow-type-expense");
+      btn.textContent = label;
+      btn.addEventListener("click", () => {
+        expenseFlowType = expenseFlowType === label ? "" : label;
+        taskLogExpenseFlowTypeWrap
+          .querySelectorAll(".time-task-log-expense-flow-type-btn")
+          .forEach((b) => b.classList.toggle("selected", b.textContent === expenseFlowType));
+        expenseClassificationButtons._setFlowType?.();
+        expenseClassificationButtons._setValue?.("");
+      });
+      taskLogExpenseFlowTypeWrap.appendChild(btn);
+    });
+    taskLogExpenseFlowTypeWrap._getValue = () => expenseFlowType;
+    taskLogExpenseFlowTypeWrap._setValue = (v) => {
+      expenseFlowType = (v || "").trim();
+      taskLogExpenseFlowTypeWrap
+        .querySelectorAll(".time-task-log-expense-flow-type-btn")
+        .forEach((b) => b.classList.toggle("selected", b.textContent === expenseFlowType));
+    };
+  }
+
   taskLogExpenseClassificationWrap?.appendChild(expenseClassificationButtons);
 
   const taskLogFocusInnerTypeWrap = taskLogModal.querySelector(
@@ -5604,19 +5592,23 @@ export function render() {
     const amountRaw = (taskLogExpenseAmountInput?.value || "")
       .trim()
       .replace(/,/g, "");
-    const expenseCategory = expenseCategoryDropdown._getValue?.() || "";
+    const expenseFlowType = taskLogExpenseFlowTypeWrap?._getValue?.() || "";
     const expenseClassification =
       expenseClassificationButtons._getValue?.() || "";
+    const classificationToCategory = getClassificationToCategoryMap();
+    const expenseCategory = expenseClassification
+      ? (classificationToCategory[expenseClassification] || "")
+      : "";
     if (
       !name ||
-      !expenseCategory ||
+      !expenseFlowType ||
       !expenseClassification ||
       !amountRaw ||
       !parseFloat(amountRaw)
     ) {
       if (taskLogExpenseErrorEl) {
         taskLogExpenseErrorEl.textContent =
-          "소비/수입명, 금액, 카테고리, 분류를 모두 입력해 주세요.";
+          "소비/수입명, 금액, 큰분류, 분류를 모두 입력해 주세요.";
         taskLogExpenseErrorEl.hidden = false;
       }
       return;
@@ -5626,7 +5618,7 @@ export function render() {
       taskLogExpenseErrorEl.hidden = true;
     }
     const raw = parseFloat(amountRaw) || 0;
-    const signed = expenseCategory === "수입" ? Math.abs(raw) : -Math.abs(raw);
+    const signed = expenseFlowType === "입금" ? Math.abs(raw) : -Math.abs(raw);
     const amountFormatted = signed.toLocaleString("ko-KR");
     const dateForExpense = getExpenseModalDate();
     const id = `tl-exp-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -5652,9 +5644,9 @@ export function render() {
     updateExpenseInnerList();
     taskLogExpenseNameInput.value = "";
     taskLogExpenseAmountInput.value = "";
-    expenseCategoryDropdown._setValue?.("");
+    taskLogExpenseFlowTypeWrap?._setValue?.("");
     expenseClassificationButtons._setValue?.("");
-    expenseClassificationButtons._setCategory?.("");
+    expenseClassificationButtons._setFlowType?.();
   });
 
   taskLogExpenseAmountInput?.addEventListener("input", () => {
@@ -5754,9 +5746,9 @@ export function render() {
     taskLogMemoTags = [];
     renderTaskLogTagPills();
     taskLogExpenseNameInput.value = "";
-    expenseCategoryDropdown._setValue?.("");
+    taskLogExpenseFlowTypeWrap?._setValue?.("");
     expenseClassificationButtons._setValue?.("");
-    expenseClassificationButtons._setCategory?.("");
+    expenseClassificationButtons._setFlowType?.();
     taskLogExpenseAmountInput.value = "";
     if (taskLogExpenseErrorEl) {
       taskLogExpenseErrorEl.textContent = "";
@@ -5864,9 +5856,9 @@ export function render() {
     if (typeof updateTodoPills === "function") updateTodoPills();
     if (taskLogTagInput) taskLogTagInput.value = "";
     taskLogExpenseNameInput.value = "";
-    expenseCategoryDropdown._setValue?.("");
+    taskLogExpenseFlowTypeWrap?._setValue?.("");
     expenseClassificationButtons._setValue?.("");
-    expenseClassificationButtons._setCategory?.("");
+    expenseClassificationButtons._setFlowType?.();
     taskLogExpenseAmountInput.value = "";
     if (taskLogEmotionQ1) taskLogEmotionQ1.value = "";
     if (taskLogEmotionQ2) taskLogEmotionQ2.value = "";
@@ -5875,7 +5867,7 @@ export function render() {
     const taskNameForAccordion = (data.taskName || "").trim();
     const hasExpenseData =
       (taskLogExpenseNameInput?.value || "").trim() ||
-      (expenseCategoryDropdown?._getValue?.() || "").trim() ||
+      (taskLogExpenseFlowTypeWrap?._getValue?.() || "").trim() ||
       (expenseClassificationButtons?._getValue?.() || "").trim() ||
       (taskLogExpenseAmountInput?.value || "").trim();
     const hasEmotionData =
@@ -5970,9 +5962,13 @@ export function render() {
     const expenseAmount = (taskLogExpenseAmountInput.value || "")
       .trim()
       .replace(/,/g, "");
-    let expenseCategory = expenseCategoryDropdown._getValue?.() || "";
-    let expenseClassification =
+    const expenseFlowType = taskLogExpenseFlowTypeWrap?._getValue?.() || "";
+    const expenseClassification =
       expenseClassificationButtons._getValue?.() || "";
+    const classificationToCategory = getClassificationToCategoryMap();
+    const expenseCategory = expenseClassification
+      ? (classificationToCategory[expenseClassification] || "")
+      : "";
 
     const focusValue =
       taskLogFocusEvents.length > 0
@@ -5980,11 +5976,11 @@ export function render() {
         : "";
 
     const hasExpenseContent =
-      expenseName || expenseCategory || expenseClassification || expenseAmount;
+      expenseName || expenseFlowType || expenseClassification || expenseAmount;
     if (hasExpenseContent) {
       const missing = [];
       if (!expenseName) missing.push("소비/수입명");
-      if (!expenseCategory) missing.push("카테고리");
+      if (!expenseFlowType) missing.push("큰분류");
       if (!expenseClassification) missing.push("소비/수입 분류");
       if (!expenseAmount || !parseFloat(expenseAmount)) missing.push("금액");
       if (missing.length > 0) {
