@@ -1398,12 +1398,15 @@ body {
   .app-tab-panel-content.calendar-view {
     padding: 0 !important;
   }
-  /* 모바일: 할일/일정 헤더(탭+설정) 패딩 14px 24px 0, 하단 보더 0.5px */
-  .calendar-view .calendar-view-top-row--todo.calendar-view-top-row--with-settings {
+  /* 모바일: 할일/캘린더/타임라인 헤더 통일 - 패딩 14px 24px 0, 하단 보더 0.5px */
+  .calendar-view .calendar-view-top-row,
+  .calendar-view .calendar-view-top-row--todo.calendar-view-top-row--with-settings,
+  .calendar-view .calendar-view-top-row--1day {
     padding: 14px 24px 0 !important;
     margin-bottom: 4px;
     border-bottom: 0.5px solid #DCDCDA;
   }
+  .calendar-view .calendar-view-top-row .calendar-monthly-tabs-wrap,
   .calendar-view .calendar-view-top-row--todo .calendar-monthly-tabs-wrap {
     padding: 0;
   }
@@ -1461,6 +1464,30 @@ body {
   .calendar-view .calendar-monthly-main.calendar-todo-main {
     padding: 0 !important;
   }
+
+  /* 모바일: 타임라인(오늘 해치우기) 탭 - 시간 컬럼만 보이게, 화면 전체 채우기 */
+  .calendar-view .calendar-1day-view .calendar-1day-budget-column,
+  .calendar-view .calendar-1day-view .calendar-1day-divider {
+    display: none !important;
+  }
+  .calendar-view .calendar-1day-view .calendar-1day-split-layout {
+    display: flex;
+    flex: 1 1 0;
+    min-height: 0;
+    width: 100%;
+  }
+  .calendar-view .calendar-1day-view .calendar-1day-split-layout .calendar-1day-time-column {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    padding: 12px 16px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
   .calendar-view-todo .calendar-todo-content {
     display: flex;
     flex-direction: column;

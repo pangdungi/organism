@@ -2204,8 +2204,14 @@ export function render(options = {}) {
       const taskId = getTaskId(taskData);
       taskData.taskId = taskId;
       const tr = createTaskRow(taskData, { showCategoryCol: false, hideCategoryCol: true, isSubtask: false, taskId, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, overdueColumnOrder: false, eisenhowerSidebarFirst });
-      if (addRow) tbody.insertBefore(tr, addRow);
-      else tbody.appendChild(tr);
+      const isMobile = window.matchMedia("(max-width: 768px)").matches;
+      if (isMobile) {
+        tbody.insertBefore(tr, tbody.firstChild);
+      } else if (addRow) {
+        tbody.insertBefore(tr, addRow);
+      } else {
+        tbody.appendChild(tr);
+      }
       updateCount();
       updateTabLabels();
       const nameInput = tr.querySelector(".todo-cell-name input");
