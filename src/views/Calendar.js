@@ -4613,7 +4613,7 @@ function renderTodoView(tabsElement) {
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout calendar-view-todo";
 
-  /* 1번 레이아웃: 탭과 설정 버튼을 한 줄에 배치 */
+  /* 1번 레이아웃: 탭 | 플러스 버튼 | 설정 버튼 한 줄에 배치 */
   const topRow = document.createElement("div");
   topRow.className = "calendar-view-top-row calendar-view-top-row--todo calendar-view-top-row--with-settings";
   if (tabsElement) {
@@ -4622,6 +4622,9 @@ function renderTodoView(tabsElement) {
     tabsWrapper.appendChild(tabsElement);
     topRow.appendChild(tabsWrapper);
   }
+  const addButtonSlot = document.createElement("div");
+  addButtonSlot.className = "todo-header-add-slot";
+  topRow.appendChild(addButtonSlot);
   wrap.appendChild(topRow);
 
   const todoMain = document.createElement("div");
@@ -4629,7 +4632,7 @@ function renderTodoView(tabsElement) {
 
   const todoContent = document.createElement("div");
   todoContent.className = "calendar-todo-content";
-  const todoListEl = renderTodoList({ hideHeader: true, settingsSlot: topRow });
+  const todoListEl = renderTodoList({ hideHeader: true, settingsSlot: topRow, addButtonSlot });
   todoContent.appendChild(todoListEl);
   todoMain.appendChild(todoContent);
 

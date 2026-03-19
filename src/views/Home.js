@@ -609,7 +609,7 @@ export function render() {
   section3.className = "home-view-section home-view-section--todo";
   const header3 = document.createElement("h3");
   header3.className = "home-view-section-title";
-  header3.textContent = "To do list";
+  header3.textContent = "Today's to do list";
   section3.appendChild(header3);
   const todoListContent = document.createElement("div");
   todoListContent.className = "home-todo-list-content";

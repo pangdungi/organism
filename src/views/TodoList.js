@@ -1128,7 +1128,10 @@ function createTaskRow(taskData = {}, options = {}) {
     });
     nameWrap.appendChild(listBtn);
   }
+  const dateLineEl = document.createElement("div");
+  dateLineEl.className = "todo-task-date-line";
   nameTd.appendChild(nameWrap);
+  nameTd.appendChild(dateLineEl);
   if (!isSubtask) {
     const subtasksContainer = document.createElement("div");
     subtasksContainer.className = "todo-subtasks-container";
@@ -1175,6 +1178,7 @@ function createTaskRow(taskData = {}, options = {}) {
   startInput.addEventListener("change", () => {
     syncStartDisplay();
     syncHasDates();
+    syncDateLine();
     if (isKpiTodo && kpiTodoId && storageKey) {
       updateKpiTodo(kpiTodoId, storageKey, { startDate: startInput.value });
     } else if (!isKpiTodo) {
@@ -1238,6 +1242,7 @@ function createTaskRow(taskData = {}, options = {}) {
     syncDueDisplay();
     syncOverdueDisplay?.();
     syncHasDates();
+    syncDateLine();
     if (isKpiTodo && kpiTodoId && storageKey) {
       updateKpiTodo(kpiTodoId, storageKey, { dueDate: dueInput.value });
     } else if (!isKpiTodo) {
@@ -1419,6 +1424,22 @@ function createTaskRow(taskData = {}, options = {}) {
     if (isDone && dueStr && isOverdue(dueStr)) return "과제 완료";
     return formatOverdueText(dueStr);
   }
+  function toMMDD(dateStr) {
+    if (!dateStr || !String(dateStr).trim()) return "";
+    const parts = String(dateStr).trim().split(/[-/]/);
+    if (parts.length < 3) return "";
+    return `${parts[1]}/${parts[2]}`;
+  }
+  function syncDateLine() {
+    const s = toMMDD(startInput.value);
+    const d = toMMDD(dueInput.value);
+    let t = "";
+    if (s && d) t = `${s} - ${d}`;
+    else if (d) t = d;
+    else if (s) t = s;
+    if (t && dueInput.value && isOverdue(dueInput.value)) t += " " + formatOverdueText(dueInput.value);
+    dateLineEl.textContent = t;
+  }
 
   const overdueTd = document.createElement("td");
   overdueTd.className = "todo-cell-overdue";
@@ -1439,7 +1460,7 @@ function createTaskRow(taskData = {}, options = {}) {
     "not-urgent-": "여유+안중요",
   };
   const eisenhowerTd = document.createElement("td");
-  eisenhowerTd.className = "todo-cell-eisenhower";
+  eisenhowerTd.className = "todo-cell-eisenhower" + (!eisenhower ? " todo-cell-eisenhower--empty" : "");
   tr.dataset.eisenhower = eisenhower || "";
   const eisenhowerSpan = document.createElement("span");
   eisenhowerSpan.className = "todo-eisenhower-display";
@@ -1509,6 +1530,8 @@ function createTaskRow(taskData = {}, options = {}) {
     tr.appendChild(lastColTd);
   }
   tr.appendChild(delTd);
+
+  syncDateLine();
 
   if ((enableDragToCalendar && !hasDates) || enableDragToEisenhower) {
     if (!isSubtask) {
@@ -1872,7 +1895,7 @@ function isOverdue(dueStr) {
 }
 
 export function render(options = {}) {
-  const { hideToolbar = false, hideHeader = false, settingsSlot = null, enableDragToCalendar = false, enableDragToEisenhower = false, initialActiveTabIndex = 0, eisenhowerFilter = "", eisenhowerSidebarFirst = false } = options;
+  const { hideToolbar = false, hideHeader = false, settingsSlot = null, addButtonSlot = null, enableDragToCalendar = false, enableDragToEisenhower = false, initialActiveTabIndex = 0, eisenhowerFilter = "", eisenhowerSidebarFirst = false } = options;
   const el = document.createElement("div");
   el.className = "app-tab-panel-content todo-list-view";
 
@@ -2162,6 +2185,34 @@ export function render(options = {}) {
     });
   });
   tabButtons.forEach((b, i) => b.classList.toggle("active", i === safeIndex));
+
+  if (addButtonSlot) {
+    const headerAddBtn = document.createElement("button");
+    headerAddBtn.type = "button";
+    headerAddBtn.className = "todo-add-btn todo-header-add-btn";
+    headerAddBtn.title = "할 일 추가";
+    headerAddBtn.innerHTML = ADD_TASK_ICON;
+    headerAddBtn.addEventListener("click", () => {
+      const idx = activeSectionIndex;
+      if (idx < 0 || idx >= sectionResults.length) return;
+      const { section, wrap, updateCount } = sectionResults[idx];
+      if (section.id === "overdue") return;
+      const tbody = wrap.querySelector("tbody");
+      if (!tbody) return;
+      const addRow = tbody.querySelector(".todo-add-row");
+      const taskData = { sectionId: section.id, sectionLabel: section.label, name: "", done: false };
+      const taskId = getTaskId(taskData);
+      taskData.taskId = taskId;
+      const tr = createTaskRow(taskData, { showCategoryCol: false, hideCategoryCol: true, isSubtask: false, taskId, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, overdueColumnOrder: false, eisenhowerSidebarFirst });
+      if (addRow) tbody.insertBefore(tr, addRow);
+      else tbody.appendChild(tr);
+      updateCount();
+      updateTabLabels();
+      const nameInput = tr.querySelector(".todo-cell-name input");
+      if (nameInput) nameInput.focus();
+    });
+    addButtonSlot.appendChild(headerAddBtn);
+  }
 
   el.appendChild(sectionsWrap);
 

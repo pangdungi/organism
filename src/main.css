@@ -1020,7 +1020,7 @@ body {
   left: 0;
   right: 0;
   z-index: 50;
-  background: #f2f2f2;
+  background: transparent;
   border-top: 1px solid #DCDCDA;
   padding: 0.35rem 0;
   padding-bottom: env(safe-area-inset-bottom, 0.35rem);
@@ -1407,6 +1407,14 @@ body {
   .calendar-view .calendar-view-top-row--todo .calendar-monthly-tabs-wrap {
     padding: 0;
   }
+  /* 모바일에서만: 헤더 플러스 버튼 표시, 테이블 내 플러스 행 숨김 */
+  .calendar-view-todo .todo-header-add-slot {
+    display: flex !important;
+    align-items: center;
+  }
+  .calendar-view-todo .todo-add-row {
+    display: none !important;
+  }
   /* 모바일: 할일/일정 탭바(.time-view-tabs) 하단 보더 제거 */
   .calendar-view .time-view-tabs {
     border-bottom: none !important;
@@ -1449,12 +1457,15 @@ body {
     font-size: 0.75rem;
   }
 
-  /* 모바일: 브레인덤프·꿈·부수입 탭 고정 - 스크롤은 섹션 영역만 */
+  /* 모바일: 할일 영역(calendar-todo-main·calendar-todo-content) 패딩 제거 */
+  .calendar-view .calendar-monthly-main.calendar-todo-main {
+    padding: 0 !important;
+  }
   .calendar-view-todo .calendar-todo-content {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    padding: 0.25rem 0.5rem 0.5rem;
+    padding: 0 !important;
     background: transparent;
   }
   .calendar-view-todo .calendar-todo-content .todo-list-view {
@@ -1463,15 +1474,24 @@ body {
     flex: 1 1 0;
     min-height: 0;
     overflow: hidden;
-    padding: 0.5rem;
+    padding: 0 !important;
   }
   .calendar-view-todo .calendar-todo-content .todo-list-toolbar-row {
     flex-shrink: 0;
     z-index: 10;
     background: #f9f9f8;
-    border-bottom: 1px solid #e5e7eb;
-    margin-bottom: 0.5rem;
-    padding-bottom: 0.25rem;
+    border-bottom: 0.5px solid #DCDCDA;
+    margin-bottom: 0;
+    padding: 0 24px 0.25rem;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-category-tabs {
+    font-size: 10px;
+    font-weight: 300;
+    border-bottom: none;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-category-tab {
+    font-size: 10px;
+    font-weight: 300;
   }
   .calendar-view-todo .calendar-todo-content .todo-sections-wrap {
     flex: 1 1 0;
@@ -1481,19 +1501,112 @@ body {
     overflow-x: hidden;
   }
 
-  /* 모바일: 할일 쏟아내기 - 할일 이름과 체크박스만 표시 */
+  /* 모바일: 할일 쏟아내기 - 테이블을 블록으로, 컨테이너 너비 안으로 제한 */
+  .calendar-view-todo .calendar-todo-content .todo-table-wrap {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-table {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
   .calendar-view-todo .calendar-todo-content .todo-table thead {
     display: none !important;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-table tbody {
+    display: block;
+    width: 100%;
+    max-width: 100%;
   }
   .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-kpi,
   .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-start,
   .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-due,
   .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-reminder,
   .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-overdue,
-  .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-eisenhower,
   .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-category,
   .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-delete {
     display: none !important;
+  }
+  /* 모바일: 하나의 row를 플렉스 한 줄로, 컨테이너 너비 안으로 (기한초과 등 끝까지 보이게) */
+  .calendar-view-todo .calendar-todo-content .todo-table tbody tr.todo-task-row {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 13px 24px;
+    border-bottom: 0.5px solid #DCDCDA;
+    transition: background 0.1s;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-table tbody tr.todo-task-row td {
+    display: block;
+    min-width: 0;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-done,
+  .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-name,
+  .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-eisenhower {
+    padding: 0;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-done {
+    flex-shrink: 0;
+    border-right: none;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-name {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-name .todo-cell-name-wrap {
+    min-width: 0;
+    overflow: hidden;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-name .todo-cell-name-wrap input {
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 300;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-eisenhower {
+    flex: 0 0 auto;
+    min-width: 0;
+    text-align: right;
+    white-space: nowrap;
+  }
+  /* 모바일: 날짜 라인 표시 (할일 아래), 한 줄 유지 */
+  .calendar-view-todo .calendar-todo-content .todo-task-date-line {
+    display: block;
+    font-size: 9px;
+    font-weight: 300;
+    color: #D8D8D6;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* 모바일: 우선순위 없으면 숨김 */
+  .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-eisenhower--empty {
+    display: none !important;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-eisenhower .todo-eisenhower-display {
+    font-size: 9px;
+    font-weight: 300;
+    color: #D8D8D6;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-table .todo-cell-eisenhower .todo-eisenhower-display::before {
+    content: "";
+    display: inline-block;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #D8D8D6;
+    margin-right: 6px;
+    vertical-align: middle;
   }
 
   /* 모바일 오늘 탭: 이벤트 영역 가로 한 줄 + 가로 스크롤 */
@@ -8822,6 +8935,11 @@ body {
   min-width: 0;
 }
 
+/* 데스크톱: 날짜 라인 숨김 (모바일에서만 표시) */
+.todo-task-date-line {
+  display: none;
+}
+
 .todo-list-btn {
   flex-shrink: 0;
   padding: 0.25rem;
@@ -9101,6 +9219,11 @@ body {
 .todo-cell-start-time .todo-start-time-input::placeholder,
 .todo-cell-end-time .todo-end-time-input::placeholder {
   color: #9ca3af;
+}
+
+/* 데스크톱: 헤더 플러스 슬롯 숨김 (모바일에서만 표시) */
+.todo-header-add-slot {
+  display: none !important;
 }
 
 .todo-add-row td {
