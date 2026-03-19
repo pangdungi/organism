@@ -1602,7 +1602,6 @@ body {
   }
   .calendar-view-with-subtabs .calendar-monthly-span-bar {
     min-height: 0.95rem !important;
-    top: 0.08rem !important;
   }
   .calendar-view-with-subtabs .calendar-monthly-span-bar .calendar-monthly-span-bar-text {
     font-size: 0.6rem !important;
@@ -1619,7 +1618,7 @@ body {
     font-size: 0.55rem !important;
   }
   .calendar-view-with-subtabs .calendar-monthly-bars {
-    top: 1rem !important;
+    top: 1.35rem !important;
   }
   .calendar-view-with-subtabs .calendar-monthly-day.today::before {
     width: 3px !important;
@@ -25638,11 +25637,11 @@ body.kpi-resizing {
 
 .calendar-monthly-week-wrap {
   position: relative;
-  flex: 1;
+  flex: 0 0 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .calendar-monthly-week {
