@@ -133,8 +133,8 @@ function setAuditTaskDone(sectionId, taskId, kpiTodoId, storageKey, done) {
 const EISENHOWER_LABELS_AUDIT = {
   "urgent-important": "긴급+중요",
   "important-not-urgent": "중요+여유",
-  "urgent-not-important": "긴급+덜중요",
-  "not-urgent-not-important": "여유+안중요",
+  "urgent-not-important": "긴급+덜 중요",
+  "not-urgent-not-important": "여유+안 중요",
 };
 /** 오딧 우선순위별 완료 파이 전용 – 볼드하지 않은 색 */
 const PRIORITY_PIE_COLORS_AUDIT = {
@@ -5799,7 +5799,7 @@ export function render() {
     taskLogFocusTypeValue = "";
     if (focusModalTimeInput) focusModalTimeInput.value = "";
     focusTypeDropdown?._setValue?.("");
-    updateFocusPreview();
+    updateFocusRowPills();
   }
 
   function openTaskLogModalForEdit(tr, rowData) {
@@ -7356,8 +7356,8 @@ export function render() {
     const EISENHOWER_LABELS = {
       "urgent-important": "긴급+중요",
       "important-not-urgent": "중요+여유",
-      "urgent-not-important": "긴급+덜중요",
-      "not-urgent-not-important": "여유+안중요",
+      "urgent-not-important": "긴급+덜 중요",
+      "not-urgent-not-important": "여유+안 중요",
     };
     const dateRowsForKpi = filtered.filter(
       (r) =>
@@ -8042,8 +8042,8 @@ export function render() {
             const EISENHOWER_LABELS = {
               "urgent-important": "긴급+중요",
               "important-not-urgent": "중요+여유",
-              "urgent-not-important": "긴급+덜중요",
-              "not-urgent-not-important": "여유+안중요",
+              "urgent-not-important": "긴급+덜 중요",
+              "not-urgent-not-important": "여유+안 중요",
             };
             const esc = (s) =>
               String(s ?? "")
