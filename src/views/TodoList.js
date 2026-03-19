@@ -865,7 +865,6 @@ function showMobileDateModal(options) {
       </div>
       <div class="todo-list-modal-body">
         <input type="date" class="todo-mobile-date-input" value="${(value || "").slice(0, 10)}" ${min ? `min="${min}"` : ""} ${max ? `max="${max}"` : ""} />
-        <p class="todo-mobile-date-hint">위 칸을 눌러 날짜를 선택하세요</p>
       </div>
       <div class="todo-list-modal-footer">
         <button type="button" class="todo-list-modal-cancel">취소</button>
@@ -901,7 +900,6 @@ function showMobileDateModal(options) {
 
   document.body.appendChild(modal);
   document.body.style.overflow = "hidden";
-  dateInput.focus();
 }
 
 function getSections() {

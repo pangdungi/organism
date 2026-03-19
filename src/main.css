@@ -1010,7 +1010,7 @@ body {
   .home-view-section--event .home-view-section-title {
     display: block !important;
   }
-  /* 할일 날짜 선택 모달: input 터치 영역 확대 */
+  /* 할일 날짜 선택 모달: input 터치 영역 확대, 파란 테두리 제거 */
   .todo-mobile-date-input {
     display: block;
     width: 100%;
@@ -1019,12 +1019,20 @@ body {
     font-size: 1rem;
     border: 1px solid var(--line, #d8d5d0);
     border-radius: 8px;
-    margin-bottom: 0.5rem;
   }
-  .todo-mobile-date-hint {
-    margin: 0;
-    font-size: 0.85rem;
-    color: var(--gray-500, #6b7280);
+  .todo-mobile-date-input:focus {
+    outline: none;
+    border-color: var(--line, #d8d5d0);
+  }
+  .todo-mobile-date-modal .todo-list-modal-cancel,
+  .todo-mobile-date-modal .todo-list-modal-confirm {
+    font-weight: 400;
+  }
+  .todo-mobile-date-modal .todo-list-modal-confirm {
+    background: #111111;
+  }
+  .todo-mobile-date-modal .todo-list-modal-confirm:hover {
+    background: #111111;
   }
 }
 
