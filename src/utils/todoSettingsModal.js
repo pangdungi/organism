@@ -187,7 +187,6 @@ export function createTodoSettingsModal(options = {}) {
       </div>
       <div class="todo-settings-body">
         <div class="todo-settings-block">
-          <h4 class="todo-settings-block-title">표시 옵션</h4>
           <div class="todo-settings-toggles"></div>
         </div>
       </div>

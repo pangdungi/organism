@@ -1243,6 +1243,11 @@ body {
     padding-left: 0 !important;
     padding-right: 0 !important;
   }
+  /* 모바일 할일/일정 탭: 좌우 패딩 제거해서 리스트가 화면 끝까지 나가게 */
+  .app-main:has(.calendar-view) {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
   /* 모바일 전용: 날짜 행 헤더 – 패딩 4px 28px 20px, 하단 선 끝까지 */
   .app-main:has(.home-view) .date-header {
     display: flex;
@@ -1384,15 +1389,42 @@ body {
   .calendar-view .calendar-monthly-tabs-wrap {
     display: none !important;
   }
-  /* 할일 뷰의 메인 탭(1. 할일, 3. 날짜정하기)은 모바일에서 표시 */
+  /* 할일 뷰의 메인 탭(1. 할일, 3. 날짜 정하기)은 모바일에서 표시 */
   .calendar-view .calendar-monthly-tabs-wrap:has(.calendar-tabs) {
     display: flex !important;
   }
 
-  /* 모바일: 할일/일정에서 1. 할일 쏟아내기, 3. 날짜 정하기 탭만 표시 */
-  .calendar-view .calendar-tabs .time-view-tab[data-view="eisenhower"],
-  .calendar-view .calendar-tabs .time-view-tab[data-view="1day"] {
+  /* 모바일: 할일/일정 탭 패널 패딩 제거 (화면 끝까지) */
+  .app-tab-panel-content.calendar-view {
+    padding: 0 !important;
+  }
+  /* 모바일: 할일/일정 헤더(탭+설정) 패딩 14px 24px 0, 하단 보더 0.5px */
+  .calendar-view .calendar-view-top-row--todo.calendar-view-top-row--with-settings {
+    padding: 14px 24px 0 !important;
+    margin-bottom: 4px;
+    border-bottom: 0.5px solid #DCDCDA;
+  }
+  .calendar-view .calendar-view-top-row--todo .calendar-monthly-tabs-wrap {
+    padding: 0;
+  }
+  /* 모바일: 할일/일정 탭바(.time-view-tabs) 하단 보더 제거 */
+  .calendar-view .time-view-tabs {
+    border-bottom: none !important;
+  }
+
+  /* 모바일: 할일/일정에서 우선순위 정렬만 숨김, 할일·캘린더·타임라인(오늘 해치우기) 표시 */
+  .calendar-view .calendar-tabs .time-view-tab[data-view="eisenhower"] {
     display: none !important;
+  }
+  /* 모바일: 탭 라벨을 할일 / 캘린더로 짧게, 번호 제거 */
+  .calendar-view .calendar-tabs .time-view-tab[data-mobile-label] {
+    font-size: 0;
+    line-height: 0;
+  }
+  .calendar-view .calendar-tabs .time-view-tab[data-mobile-label]::after {
+    content: attr(data-mobile-label);
+    font-size: 0.9rem;
+    line-height: normal;
   }
 
   /* 모바일: 3. 날짜 정하기 - 월별 캘린더만 표시 (서브탭·사이드바 숨김) */
@@ -7708,7 +7740,7 @@ body {
 .todo-settings-title {
   margin: 0;
   font-size: 1.1rem;
-  font-family: "Noto Serif KR", serif;
+  font-family: inherit;
   font-weight: 200;
   letter-spacing: -0.01em;
   color: #111111;

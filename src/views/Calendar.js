@@ -6076,10 +6076,10 @@ export function render() {
   const tabs = document.createElement("div");
   tabs.className = "time-view-tabs calendar-tabs";
   tabs.innerHTML = `
-    <button type="button" class="time-view-tab active" data-view="todo">1. 할일 쏟아내기</button>
+    <button type="button" class="time-view-tab active" data-view="todo" data-mobile-label="할일">1. 할일 쏟아내기</button>
     <button type="button" class="time-view-tab" data-view="eisenhower">2. 우선순위 정렬</button>
-    <button type="button" class="time-view-tab" data-view="calendar">3. 날짜 정하기</button>
-    <button type="button" class="time-view-tab" data-view="1day">4. 오늘 해치우기</button>
+    <button type="button" class="time-view-tab" data-view="calendar" data-mobile-label="캘린더">3. 날짜 정하기</button>
+    <button type="button" class="time-view-tab" data-view="1day" data-mobile-label="타임라인">4. 오늘 해치우기</button>
   `;
   el.appendChild(tabs);
 
