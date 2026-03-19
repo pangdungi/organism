@@ -12158,8 +12158,8 @@ body.kpi-resizing {
 }
 .time-task-log-focus-label {
   font-size: 0.9rem;
-  font-weight: 400;
-  color: #374151;
+  font-weight: 300;
+  color: #3a3a3a;
 }
 .time-task-log-focus-add-btn {
   margin-left: auto;
@@ -12214,8 +12214,8 @@ body.kpi-resizing {
 }
 .time-task-log-todo-label {
   font-size: 0.9rem;
-  font-weight: 400;
-  color: #374151;
+  font-weight: 300;
+  color: #3a3a3a;
 }
 .time-task-log-todo-add-btn {
   margin-left: auto;
@@ -12399,12 +12399,12 @@ body.kpi-resizing {
   color: #374151;
 }
 .time-task-log-todo-inner-add {
-  background: #1c1c1a !important;
+  background: #111111 !important;
   color: #fff !important;
   border: none;
 }
 .time-task-log-todo-inner-add:hover {
-  background: #4b5563 !important;
+  background: #111111 !important;
 }
 
 /* 소비 기록 row + 내부 모달 */
@@ -12418,8 +12418,8 @@ body.kpi-resizing {
 }
 .time-task-log-expense-label {
   font-size: 0.9rem;
-  font-weight: 400;
-  color: #374151;
+  font-weight: 300;
+  color: #3a3a3a;
 }
 .time-task-log-expense-add-btn {
   margin-left: auto;
@@ -12732,8 +12732,8 @@ body.kpi-resizing {
 }
 .time-task-log-emotion-label {
   font-size: 0.9rem;
-  font-weight: 400;
-  color: #374151;
+  font-weight: 300;
+  color: #3a3a3a;
 }
 .time-task-log-emotion-add-btn {
   margin-left: auto;
@@ -13098,6 +13098,9 @@ body.kpi-resizing {
   outline: none;
   background: transparent;
 }
+.time-task-log-focus-inner-time-input::placeholder {
+  color: #b8b8b8;
+}
 .time-task-log-focus-inner-now-btn {
   padding: 0.25rem 0.5rem;
   font-size: 0.75rem;
@@ -13269,8 +13272,8 @@ body.kpi-resizing {
 }
 .time-task-log-todo-label {
   font-size: 0.9rem;
-  font-weight: 400;
-  color: #374151;
+  font-weight: 300;
+  color: #3a3a3a;
 }
 .time-task-log-todo-add-btn {
   width: 28px;
@@ -13394,13 +13397,13 @@ body.kpi-resizing {
   background: #f3f4f6;
 }
 .time-task-log-todo-inner-add {
-  background: #1c1c1a !important;
+  background: #111111 !important;
   color: #fff !important;
   border: 1px solid #374151;
 }
 .time-task-log-todo-inner-add:hover {
-  background: #4b5563 !important;
-  border-color: #4b5563 !important;
+  background: #111111 !important;
+  border-color: #374151 !important;
 }
 
 .time-task-log-footer {
@@ -13545,7 +13548,7 @@ body.kpi-resizing {
   border-bottom-color: #9ca3af !important;
 }
 .time-task-log-datetime-input-row input::placeholder {
-  color: #9ca3af;
+  color: #b8b8b8;
 }
 .time-task-log-datetime-input-row input[type="text"] {
   text-align: center;
@@ -13625,7 +13628,7 @@ body.kpi-resizing {
 }
 
 .time-task-log-datetime-input-wrap input::placeholder {
-  color: #9ca3af;
+  color: #b8b8b8;
 }
 
 .time-task-log-datetime-trigger {
@@ -14362,7 +14365,7 @@ body.kpi-resizing {
 }
 
 .time-task-log-focus-time-input::placeholder {
-  color: #9ca3af;
+  color: #b8b8b8;
 }
 
 .time-task-log-focus-time-input:focus {
