@@ -59,7 +59,7 @@ function getCalendarGrid(year, month) {
   const grid = [];
   let week = [];
   for (let i = 0; i < startDow; i++) {
-    week.push(null);
+    week.push(new Date(year, month, -(startDow - 1 - i)));
   }
   for (let d = 1; d <= totalDays; d++) {
     week.push(new Date(year, month, d));
@@ -69,7 +69,10 @@ function getCalendarGrid(year, month) {
     }
   }
   if (week.length > 0) {
-    while (week.length < 7) week.push(null);
+    const pad = 7 - week.length;
+    for (let i = 1; i <= pad; i++) {
+      week.push(new Date(year, month + 1, i));
+    }
     grid.push(week);
   }
   return grid;
@@ -198,6 +201,14 @@ export function renderMonthlyContent() {
         }
         const key = formatDateKey(date);
         cell.dataset.date = key;
+        const isCurrentMonth = date.getFullYear() === currentYear && date.getMonth() === currentMonth;
+        if (!isCurrentMonth) cell.classList.add("other-month");
+        const now = new Date();
+        const todayKey = formatDateKey(now);
+        if (key === todayKey) cell.classList.add("today");
+        if (date.getFullYear() !== currentYear || date.getMonth() !== currentMonth) {
+          cell.classList.add("other-month");
+        }
         const dayNum = document.createElement("div");
         dayNum.className = "work-schedule-monthly-day-num";
         dayNum.textContent = date.getDate();
