@@ -87,25 +87,39 @@
   font-display: swap;
 }
 
-/* 루트 폰트: 높은 해상도에서는 16px, 기본/작은 모니터에서는 비례 축소 (탭·사이드바 등 rem 전부 영향) */
+/* 기준 16px = 1rem — 타이포 스케일(Display·H1·H2·Body·Secondary·Caption) 고정 */
 html {
   font-size: 16px;
 }
-@media (max-width: 2560px) {
-  html { font-size: 15px; }
-}
-@media (max-width: 1920px) {
-  html { font-size: 14px; }
-}
-@media (max-width: 1440px) {
-  html { font-size: 13px; }
-}
-@media (max-width: 1280px) {
-  html { font-size: 12px; }
-}
 
 :root {
-  --app-font-family: "S-Core Dream 3", -apple-system, sans-serif;
+  /* 타이포 시스템: Space Grotesk / Noto Sans KR / DM Mono */
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-heading: "Space Grotesk", system-ui, sans-serif;
+  --font-body: "Noto Sans KR", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic",
+    sans-serif;
+  --font-mono: "DM Mono", ui-monospace, "SF Mono", Consolas, monospace;
+
+  --app-font-family: var(--font-body);
+
+  --fs-display: 2.25rem; /* Display 36px / 700 */
+  --fs-h1: 1.375rem; /* Heading1 22px / 600 */
+  --fs-h2: 1rem; /* Heading2 16px / 500 */
+  --fs-body: 0.875rem; /* Body 14px / 400 */
+  --fs-secondary: 0.75rem; /* Secondary 12px / 300 */
+  --fs-caption: 0.625rem; /* Label·Caption 10px / DM Mono / 대문자 */
+  --fs-mono: 0.875rem; /* 숫자(본문과 동일 계열) */
+
+  --fw-display: 700;
+  --fw-h1: 600;
+  --fw-h2: 500;
+  --fw-body: 400;
+  --fw-secondary: 300;
+  --fw-mono: 300;
+
+  --text-ink: #111111;
+  --text-muted: #6b7280;
+
   --app-bg: #F5F1E8;
   --content-bg: #F5F1E8;
   --line: #d8d5d0;
@@ -206,12 +220,7 @@ input[type="datetime-local"]:not([data-fp-initialized]),
 input[type="time"] {
   accent-color: var(--gray-500, #6b7280);
   color-scheme: light;
-  font-family: var(
-    --app-font-family,
-    "S-Core Dream 3",
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--app-font-family, var(--font-body));
   color: var(--gray-700, #374151);
 }
 
@@ -242,14 +251,12 @@ body {
 
 body {
   margin: 0;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif
-  );
+  font-family: var(--app-font-family, var(--font-body));
+  font-size: var(--fs-body);
+  font-weight: var(--fw-body);
+  line-height: 1.5;
   background: #F5F1E8;
-  color: var(--gray-800, #1f2937);
+  color: var(--text-ink);
 }
 
 #app {
@@ -257,12 +264,8 @@ body {
   overflow-x: hidden;
   overscroll-behavior: none;
   max-width: 100%;
-  font-family: var(
-    --app-font-family,
-    "S-Core Dream 3",
-    -apple-system,
-    sans-serif
-  );
+  font-family: inherit;
+  font-size: inherit;
 }
 
 /* 앱 화면(사이드바+메인)일 때 뷰포트 높이로 고정, 페이지 스크롤 없이 내부만 스크롤 */
@@ -272,23 +275,88 @@ body {
 }
 
 #app button {
-  font-family: var(
-    --app-font-family,
-    "S-Core Dream 3",
-    -apple-system,
-    sans-serif
-  );
+  font-family: inherit;
 }
 
 #app input,
 #app select,
 #app textarea {
-  font-family: var(
-    --app-font-family,
-    "S-Core Dream 3",
-    -apple-system,
-    sans-serif
-  );
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* 유틸: 명세 그대로 적용할 때 */
+.type-display {
+  font-family: var(--font-display);
+  font-weight: var(--fw-display);
+  font-size: var(--fs-display);
+  line-height: 1.15;
+  color: var(--text-ink);
+}
+.type-h1 {
+  font-family: var(--font-heading);
+  font-weight: var(--fw-h1);
+  font-size: var(--fs-h1);
+  line-height: 1.25;
+  color: var(--text-ink);
+}
+.type-h2 {
+  font-family: var(--font-heading);
+  font-weight: var(--fw-h2);
+  font-size: var(--fs-h2);
+  line-height: 1.35;
+  color: var(--text-ink);
+}
+.type-body {
+  font-family: var(--font-body);
+  font-weight: var(--fw-body);
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  color: var(--text-ink);
+}
+.type-secondary {
+  font-family: var(--font-body);
+  font-weight: var(--fw-secondary);
+  font-size: var(--fs-secondary);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.type-caption {
+  font-family: var(--font-mono);
+  font-weight: var(--fw-mono);
+  font-size: var(--fs-caption);
+  line-height: 1.4;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.type-num {
+  font-family: var(--font-mono);
+  font-weight: var(--fw-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 로그인 후 앱: 패널 제목·부제 통일 */
+#signin-page .dream-view-title,
+#signin-page .calendar-view-title,
+#signin-page .idea-view-title,
+#signin-page .kpi-view-title {
+  font-family: var(--font-heading);
+  font-weight: var(--fw-h1);
+  font-size: var(--fs-h1);
+  line-height: 1.25;
+  color: var(--text-ink);
+  letter-spacing: -0.02em;
+}
+
+#signin-page .dream-view-label,
+#signin-page .calendar-view-header .dream-view-label {
+  font-family: var(--font-mono);
+  font-weight: var(--fw-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 /* ----- 랜딩 페이지 (ClickUp 스타일) ----- */
@@ -318,9 +386,10 @@ body {
 }
 
 .landing-logo {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #1a1a2e;
+  font-family: var(--font-heading);
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-h2);
+  color: var(--text-ink);
 }
 
 .landing-btn-nav {
@@ -352,18 +421,21 @@ body {
 
 .landing-hero-title {
   margin: 0 0 1.5rem;
-  font-size: clamp(2rem, 5vw, 3.25rem);
-  font-weight: 700;
-  line-height: 1.2;
-  color: #1a1a2e;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, var(--fs-display));
+  font-weight: var(--fw-display);
+  line-height: 1.15;
+  color: var(--text-ink);
   letter-spacing: -0.02em;
 }
 
 .landing-hero-sub {
   margin: 0 0 2rem;
-  font-size: 1.15rem;
-  line-height: 1.7;
-  color: #555;
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-body);
+  line-height: 1.6;
+  color: var(--text-ink);
   max-width: 32.5rem;
   margin-left: auto;
   margin-right: auto;
@@ -397,10 +469,11 @@ body {
 
 .landing-features-title {
   margin: 0 0 2.5rem;
-  font-size: 1.75rem;
-  font-weight: 700;
+  font-family: var(--font-heading);
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-h1);
   text-align: center;
-  color: #1a1a2e;
+  color: var(--text-ink);
 }
 
 .landing-features-grid {
@@ -432,16 +505,19 @@ body {
 
 .landing-feature-card h3 {
   margin: 0 0 0.5rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #1a1a2e;
+  font-family: var(--font-heading);
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-h2);
+  color: var(--text-ink);
 }
 
 .landing-feature-card p {
   margin: 0;
-  font-size: 0.9rem;
+  font-family: var(--font-body);
+  font-size: var(--fs-secondary);
+  font-weight: var(--fw-secondary);
   line-height: 1.5;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .landing-cta {
@@ -452,16 +528,19 @@ body {
 
 .landing-cta h2 {
   margin: 0 0 1.5rem;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #1a1a2e;
+  font-family: var(--font-heading);
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-h1);
+  color: var(--text-ink);
 }
 
 .landing-footer {
   padding: 2rem 1.5rem;
   text-align: center;
-  font-size: 0.85rem;
-  color: #888;
+  font-family: var(--font-body);
+  font-size: var(--fs-secondary);
+  font-weight: var(--fw-secondary);
+  color: var(--text-muted);
   border-top: 0.0625rem solid rgba(0, 0, 0, 0.06);
 }
 
@@ -493,17 +572,20 @@ body {
 
 .login-title {
   margin: 0 0 0.5rem;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #1a1a2e;
+  font-family: var(--font-heading);
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-h1);
+  color: var(--text-ink);
   letter-spacing: -0.02em;
 }
 
 .login-desc {
   margin: 0 0 1.75rem;
-  font-size: 0.9rem;
+  font-family: var(--font-body);
+  font-size: var(--fs-secondary);
+  font-weight: var(--fw-secondary);
   line-height: 1.5;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .login-form {
@@ -680,7 +762,6 @@ body {
   min-height: 0;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -817,11 +898,7 @@ body {
   font-weight: 300;
   letter-spacing: 0.02em;
   color: rgba(255, 255, 255, 0.88);
-  font-family:
-    "S-Core Dream 3",
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif;
+  font-family: inherit;
   flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
@@ -886,12 +963,8 @@ body {
 .app-sidebar-logout {
   border-bottom: none;
   color: rgba(255, 255, 255, 0.88);
-  font-size: 0.8125rem;
-  font-family:
-    "S-Core Dream 3",
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif;
+  font-size: var(--fs-secondary);
+  font-family: inherit;
 }
 
 .app-sidebar-logout:hover {
@@ -907,6 +980,8 @@ body {
   overflow-y: auto;
   padding: 1.5rem;
   font-family: inherit;
+  font-size: inherit;
+  color: var(--text-ink);
 }
 
 .app-menu-btn {
@@ -1055,7 +1130,11 @@ body {
 
 .app-tab-panel h2 {
   margin: 0 0 1rem;
-  font-size: 1.25rem;
+  font-family: var(--font-heading);
+  font-weight: var(--fw-h2);
+  font-size: var(--fs-h2);
+  line-height: 1.35;
+  color: var(--text-ink);
 }
 
 /* ----- Home (3분할, 오늘 해치우기 캘린더) ----- */
@@ -2618,16 +2697,12 @@ body {
 /* 할일·우선순위 헤더 (table th보다 우선) */
 .home-todo-list-table .home-todo-th-name,
 .home-todo-list-table .home-todo-th-priority {
-  font-size: 0.625rem !important;
-  font-weight: 300 !important;
-  font-family: var(
-    --app-font-family,
-    "S-Core Dream 3",
-    -apple-system,
-    sans-serif
-  ) !important;
-  letter-spacing: 0.03em !important;
-  color: #b8b8b8 !important;
+  font-family: var(--font-mono) !important;
+  font-size: var(--fs-caption) !important;
+  font-weight: var(--fw-mono) !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  color: var(--text-muted) !important;
 }
 .home-todo-td-check {
   text-align: center;
@@ -5497,7 +5572,6 @@ body {
   text-align: left;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -6369,7 +6443,6 @@ body {
   font-size: 0.75rem;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -6386,7 +6459,6 @@ body {
 .asset-asset-savings-goal-add-input::placeholder {
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -6707,7 +6779,6 @@ body {
   font-size: 0.75rem;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -6724,7 +6795,6 @@ body {
 .asset-stock-category-add-input::placeholder {
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -6782,7 +6852,6 @@ body {
   font-weight: 600;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -6998,7 +7067,6 @@ body {
   background: transparent;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -7017,7 +7085,6 @@ body {
   font-size: 0.8125rem;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -7119,7 +7186,6 @@ body {
   font-size: 0.875rem;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -7182,7 +7248,6 @@ body {
   font-size: 0.875rem;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -7194,7 +7259,6 @@ body {
   font-weight: 600;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -8035,7 +8099,6 @@ body {
   background: #F5F1E8;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -8113,7 +8176,6 @@ body {
   cursor: pointer;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -8150,7 +8212,6 @@ body {
   margin-bottom: 1rem;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -8235,7 +8296,6 @@ body {
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.15);
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -8248,7 +8308,6 @@ body {
   font-size: 0.9rem;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -8276,7 +8335,6 @@ body {
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.15);
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -8289,7 +8347,6 @@ body {
   font-size: 0.875rem;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -8765,7 +8822,6 @@ body {
   font-size: 0.95rem;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -8806,7 +8862,6 @@ body {
   font-size: 0.95rem;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -8829,7 +8884,6 @@ body {
   font-weight: 500;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -8875,7 +8929,6 @@ body {
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.15);
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -8924,7 +8977,6 @@ body {
   cursor: pointer;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -8967,7 +9019,6 @@ body {
   font-size: 0.95rem;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -9014,7 +9065,6 @@ body {
   color: #333;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -9025,7 +9075,6 @@ body {
   font-size: 0.85rem;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -9044,7 +9093,6 @@ body {
   font-size: 0.9rem;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -9061,7 +9109,6 @@ body {
   font-size: 0.8rem;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -9611,7 +9658,6 @@ body {
   padding: 0.15rem 0;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -9652,7 +9698,6 @@ body {
   padding: 0.15rem 0;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -9742,7 +9787,6 @@ body {
   white-space: nowrap;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -9792,7 +9836,6 @@ body {
   padding: 0.25rem;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -12079,7 +12122,6 @@ body.kpi-resizing {
   max-width: 100%;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -22542,7 +22584,6 @@ body.kpi-resizing {
   font-weight: 300;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -23850,7 +23891,6 @@ body.kpi-resizing {
   padding: 1rem;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -23927,7 +23967,6 @@ body.kpi-resizing {
   margin: 0;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -24162,7 +24201,6 @@ body.kpi-resizing {
   color: #9ca3af;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -26224,7 +26262,6 @@ body.kpi-resizing {
 .calendar-event-bubble {
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -26399,7 +26436,6 @@ body.kpi-resizing {
 .calendar-bar-date-edit-bubble {
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -26580,7 +26616,6 @@ body.kpi-resizing {
   border-left: 0.0313rem solid #dcdcda;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
@@ -27269,7 +27304,6 @@ body.kpi-resizing {
   font-size: 0.8rem;
   font-family: var(
     --app-font-family,
-    "S-Core Dream 3",
     -apple-system,
     sans-serif
   );
