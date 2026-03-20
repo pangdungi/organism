@@ -1824,6 +1824,12 @@ body {
     padding-right: 0 !important;
   }
 
+  /* 모바일: dream-view 헤더 좌우 패딩 — 오늘 탭 등 다른 헤더와 통일 (1.75rem) */
+  .dream-view-header {
+    padding-left: 1.75rem;
+    padding-right: 1.75rem;
+  }
+
   /* 모바일: 과제 기록/수정 모달 - 높이 확대해 아코디언 펼쳤을 때 내용 모두 볼 수 있게 */
   .time-task-log-modal .time-task-log-panel {
     height: 95vh;
@@ -2222,6 +2228,12 @@ body {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
+  }
+
+  /* 모바일: 월별 캘린더만 좌우 패딩 제거 (화면 끝까지) */
+  .calendar-view .calendar-monthly-main {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
   }
 
   /* 모바일: 할일 영역(calendar-todo-main·calendar-todo-content) 패딩 제거 */
@@ -24366,7 +24378,7 @@ body.kpi-resizing {
   border-bottom: var(--line-l3);
 }
 
-.diary-qa-answer {
+#app .diary-qa-answer {
   width: 100%;
   min-height: 3.75rem;
   padding: 1rem 1.25rem;
@@ -24382,11 +24394,11 @@ body.kpi-resizing {
   box-sizing: border-box;
 }
 
-.diary-qa-answer:focus {
+#app .diary-qa-answer:focus {
   outline: none;
 }
 
-.diary-qa-answer::placeholder {
+#app .diary-qa-answer::placeholder {
   color: var(--text-placeholder);
 }
 
