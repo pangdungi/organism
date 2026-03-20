@@ -159,6 +159,18 @@ html {
   --divider-subtle: var(--line-l3);
   --line: var(--line-l2-color); /* 인풋·보더 색 조합용 */
   /* 카드 & 뱃지 (CARDS & BADGES 명세) */
+  /* 자산관리(가계부) 웜톤 컬러 팔레트 - 컬러코드 매칭 */
+  --asset-warm-1: #C97A6A;
+  --asset-warm-2: #C4906A;
+  --asset-warm-3: #B89A6A;
+  --asset-warm-4: #8A9E82;
+  --asset-warm-5: #6B7A6E;
+  --asset-warm-6: #7A8E9A;
+  --asset-warm-7: #8A7A9E;
+  --asset-warm-8: #9E8A8A;
+  --asset-warm-9: #3D4A3E;
+  --asset-warm-10: #C4BEA8;
+
   --card-bg-light: #F5F1E8;
   --card-bg-dark: #344945;
   --card-border-light: var(--line-l7);
@@ -3277,8 +3289,8 @@ body {
 }
 
 .q7a-sidebar-item.active {
-  background: #e5e7eb;
-  color: #1f2937;
+  background: var(--ui-surface-alt);
+  color: var(--text-ink);
   font-weight: 500;
 }
 
@@ -3558,7 +3570,7 @@ body {
   flex-shrink: 0;
   padding: 0.5rem 0.75rem 0.45rem;
   font-size: 0.9rem;
-  color: #9ca3af;
+  color: var(--text-muted);
   background: none;
   border: none;
   border-bottom: 0.1875rem solid transparent;
@@ -3572,11 +3584,11 @@ body {
 }
 
 .asset-view-tab:hover {
-  color: var(--text-muted);
+  color: var(--text-body);
 }
 
 .asset-view-tab.active {
-  color: #111827;
+  color: var(--text-ink);
   border-bottom-color: var(--line-l1-color);
 }
 
@@ -3606,7 +3618,7 @@ body {
 .asset-plan-section-title {
   font-size: 1rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-ink);
   margin: 0 0 0.75rem;
 }
 
@@ -3620,7 +3632,7 @@ body {
   border: var(--line-l3);
   overflow-x: auto;
   overflow-y: visible;
-  background: #F5F1E8;
+  background: var(--content-bg);
   overscroll-behavior-x: none;
   -webkit-overflow-scrolling: auto;
 }
@@ -3629,7 +3641,7 @@ body {
   padding: 0.5rem 0.6rem;
   border: var(--line-l3);
   border-top: none;
-  background: #F5F1E8;
+  background: var(--content-bg);
 }
 
 .asset-plan-table {
@@ -3693,9 +3705,13 @@ body {
 }
 
 .asset-plan-table th {
-  background: rgba(232, 232, 230, 0.5);
+  background: var(--ui-surface-alt);
   font-weight: 500;
   color: var(--text-muted);
+}
+
+.asset-plan-table tbody td {
+  background: var(--content-bg);
 }
 
 .asset-plan-table tbody tr:last-child td {
@@ -3708,7 +3724,11 @@ body {
 }
 
 .asset-plan-row-add {
-  background: #fafafa;
+  background: var(--ui-surface-alt);
+}
+
+.asset-plan-row-add td {
+  background: var(--ui-surface-alt);
 }
 
 .asset-plan-cell-add {
@@ -3765,8 +3785,9 @@ body {
   font-size: 0.85rem;
   border: none;
   border-radius: 0;
-  background: transparent;
+  background: var(--content-bg);
   font-family: inherit;
+  color: var(--text-body);
 }
 
 .asset-plan-input:focus {
@@ -3808,6 +3829,7 @@ body {
   cursor: pointer;
   border-radius: 0.25rem;
   min-width: 3.75rem;
+  background: var(--ui-surface-alt);
 }
 
 .asset-plan-category-display:hover {
@@ -3817,7 +3839,7 @@ body {
 .asset-plan-category-panel {
   position: fixed;
   z-index: 1000;
-  background: #F5F1E8;
+  background: var(--content-bg);
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
@@ -3836,7 +3858,7 @@ body {
 }
 
 .asset-plan-category-option:hover {
-  background: #f5f5f5;
+  background: var(--ui-surface-alt);
 }
 
 .asset-plan-category-tag {
@@ -3847,36 +3869,36 @@ body {
 }
 
 .asset-plan-category-tag.expense-cls-teal {
-  background: rgba(94, 234, 212, 0.4);
-  color: #0f766e;
+  background: var(--asset-warm-4);
+  color: var(--asset-warm-9);
 }
 .asset-plan-category-tag.expense-cls-blue {
-  background: rgba(147, 197, 253, 0.4);
-  color: #1e40af;
+  background: var(--asset-warm-6);
+  color: var(--asset-warm-9);
 }
 .asset-plan-category-tag.expense-cls-green {
-  background: rgba(167, 243, 208, 0.4);
-  color: #047857;
+  background: var(--asset-warm-4);
+  color: var(--asset-warm-9);
 }
 .asset-plan-category-tag.expense-cls-purple {
-  background: rgba(196, 181, 253, 0.4);
-  color: #5b21b6;
+  background: var(--asset-warm-7);
+  color: var(--asset-warm-9);
 }
 .asset-plan-category-tag.expense-cls-orange {
-  background: rgba(253, 186, 116, 0.4);
-  color: #c2410c;
+  background: var(--asset-warm-2);
+  color: var(--asset-warm-9);
 }
 .asset-plan-category-tag.expense-cls-pink {
-  background: rgba(251, 207, 232, 0.4);
-  color: #9d174d;
+  background: var(--asset-warm-1);
+  color: var(--asset-warm-9);
 }
 .asset-plan-category-tag.expense-cls-indigo {
-  background: rgba(165, 180, 252, 0.4);
-  color: #3730a3;
+  background: var(--asset-warm-7);
+  color: var(--asset-warm-9);
 }
 .asset-plan-category-tag.expense-cls-gray {
-  background: rgba(209, 213, 219, 0.5);
-  color: #4b5563;
+  background: var(--asset-warm-5);
+  color: var(--asset-warm-9);
 }
 
 .asset-plan-cell-total .asset-plan-total-display {
@@ -4348,11 +4370,11 @@ body {
 }
 
 .asset-settings-cat-row:hover {
-  background: #f4f4f5;
+  background: var(--ui-surface-alt);
 }
 
 .asset-settings-cat-row.active {
-  background: #f4f4f5;
+  background: var(--ui-surface-alt);
   border-left-color: var(--text-body);
 }
 
@@ -4374,13 +4396,13 @@ body {
 }
 
 .asset-settings-input--default {
-  background: #f4f4f5;
+  background: var(--ui-surface-alt);
   cursor: default;
   color: var(--text-body);
 }
 .asset-settings-input--default:focus {
   cursor: default;
-  border-color: #e5e7eb;
+  border-color: var(--line-l3-color);
 }
 
 .asset-settings-remove {
@@ -4707,8 +4729,8 @@ body {
 }
 
 .asset-cashflow-panel .time-period-option.is-selected {
-  background: #f0f0f0;
-  color: #1a1a2e;
+  background: var(--ui-surface-alt);
+  color: var(--text-ink);
 }
 
 .asset-cashflow-panel .time-period-option.is-selected::before {
@@ -4842,7 +4864,7 @@ body {
 .asset-variable-bar-track {
   flex: 1;
   height: 0.5rem;
-  background: #e5e7eb;
+  background: var(--line-l3-color);
   border-radius: 0.25rem;
   overflow: hidden;
 }
@@ -4956,8 +4978,8 @@ body {
   font-weight: 500;
   border-radius: 0.375rem;
   cursor: pointer;
-  background: #f0f0f0;
-  color: #666;
+  background: var(--ui-surface-alt);
+  color: var(--text-body);
   border: 0.09375rem solid transparent;
   transition:
     background 0.15s,
@@ -4965,7 +4987,7 @@ body {
 }
 
 .asset-expense-flow-type-display:hover {
-  background: #e8e8e8;
+  background: var(--ui-surface-alt);
 }
 
 .asset-expense-flow-type-display.asset-flow-deposit {
@@ -4998,7 +5020,7 @@ body {
 }
 
 .asset-expense-flow-type-option:hover {
-  background: #f4f4f5;
+  background: var(--ui-surface-alt);
 }
 
 .asset-expense-flow-type-option.asset-flow-deposit {
@@ -5018,34 +5040,34 @@ body {
   font-size: 0.8125rem;
   font-weight: 500;
   border-radius: 0.375rem;
-  background: #f4f4f5;
+  background: var(--ui-surface-alt);
   color: var(--text-muted);
   min-height: 1.5em;
 }
 
 .asset-expense-category-display-readonly.expense-cat-teal {
-  background: rgba(196, 220, 200, 0.3);
-  color: #2d5a3d;
+  background: var(--asset-warm-4);
+  color: var(--asset-warm-9);
 }
 .asset-expense-category-display-readonly.expense-cat-blue {
-  background: rgba(196, 224, 220, 0.3);
-  color: #0d5c5c;
+  background: var(--asset-warm-6);
+  color: var(--asset-warm-9);
 }
 .asset-expense-category-display-readonly.expense-cat-green {
-  background: rgba(242, 217, 196, 0.3);
-  color: #9a5a2e;
+  background: var(--asset-warm-5);
+  color: var(--asset-warm-9);
 }
 .asset-expense-category-display-readonly.expense-cat-purple {
-  background: rgba(200, 208, 216, 0.3);
-  color: #4b5563;
+  background: var(--asset-warm-7);
+  color: var(--asset-warm-9);
 }
 .asset-expense-category-display-readonly.expense-cat-orange {
-  background: rgba(253, 186, 116, 0.3);
-  color: #c2410c;
+  background: var(--asset-warm-2);
+  color: var(--asset-warm-9);
 }
 .asset-expense-category-display-readonly.expense-cat-indigo {
-  background: rgba(224, 196, 232, 0.3);
-  color: #6b21a8;
+  background: var(--asset-warm-8);
+  color: var(--asset-warm-9);
 }
 
 /* 지출입력장 카테고리 드롭다운 */
@@ -5069,8 +5091,8 @@ body {
   border-radius: 0.375rem;
   white-space: nowrap;
   cursor: pointer;
-  background: #f0f0f0;
-  color: #666;
+  background: var(--ui-surface-alt);
+  color: var(--text-body);
   border: 0.09375rem solid transparent;
   transition:
     background 0.15s,
@@ -5078,43 +5100,43 @@ body {
 }
 
 .asset-expense-category-display:hover {
-  background: #e8e8e8;
+  background: var(--ui-surface-alt);
 }
 
 .asset-expense-category-display.expense-cat-teal {
-  background: rgba(196, 220, 200, 0.4);
-  color: #2d5a3d;
-  border-color: rgba(196, 220, 200, 0.6);
+  background: var(--asset-warm-4);
+  color: var(--asset-warm-9);
+  border-color: var(--asset-warm-4);
 }
 
 .asset-expense-category-display.expense-cat-blue {
-  background: rgba(196, 224, 220, 0.4);
-  color: #0d5c5c;
-  border-color: rgba(196, 224, 220, 0.6);
+  background: var(--asset-warm-6);
+  color: var(--asset-warm-9);
+  border-color: var(--asset-warm-6);
 }
 
 .asset-expense-category-display.expense-cat-green {
-  background: rgba(242, 217, 196, 0.4);
-  color: #9a5a2e;
-  border-color: rgba(242, 217, 196, 0.6);
+  background: var(--asset-warm-5);
+  color: var(--asset-warm-9);
+  border-color: var(--asset-warm-5);
 }
 
 .asset-expense-category-display.expense-cat-purple {
-  background: rgba(200, 208, 216, 0.4);
-  color: #4b5563;
-  border-color: rgba(200, 208, 216, 0.6);
+  background: var(--asset-warm-7);
+  color: var(--asset-warm-9);
+  border-color: var(--asset-warm-7);
 }
 
 .asset-expense-category-display.expense-cat-orange {
-  background: rgba(253, 186, 116, 0.4);
-  color: #c2410c;
-  border-color: rgba(253, 186, 116, 0.6);
+  background: var(--asset-warm-2);
+  color: var(--asset-warm-9);
+  border-color: var(--asset-warm-2);
 }
 
 .asset-expense-category-display.expense-cat-indigo {
-  background: rgba(224, 196, 232, 0.4);
-  color: #6b21a8;
-  border-color: rgba(224, 196, 232, 0.6);
+  background: var(--asset-warm-8);
+  color: var(--asset-warm-9);
+  border-color: var(--asset-warm-8);
 }
 
 .asset-expense-category-panel {
@@ -5144,7 +5166,7 @@ body {
 }
 
 .asset-expense-category-option:hover {
-  background: #f8f8f8;
+  background: var(--ui-surface-alt);
 }
 
 .asset-expense-category-tag {
@@ -5157,33 +5179,33 @@ body {
 }
 
 .asset-expense-category-tag.expense-cat-teal {
-  background: rgba(196, 220, 200, 0.4);
-  color: #2d5a3d;
+  background: var(--asset-warm-4);
+  color: var(--asset-warm-9);
 }
 
 .asset-expense-category-tag.expense-cat-blue {
-  background: rgba(196, 224, 220, 0.4);
-  color: #0d5c5c;
+  background: var(--asset-warm-6);
+  color: var(--asset-warm-9);
 }
 
 .asset-expense-category-tag.expense-cat-green {
-  background: rgba(242, 217, 196, 0.4);
-  color: #9a5a2e;
+  background: var(--asset-warm-5);
+  color: var(--asset-warm-9);
 }
 
 .asset-expense-category-tag.expense-cat-purple {
-  background: rgba(200, 208, 216, 0.4);
-  color: #4b5563;
+  background: var(--asset-warm-7);
+  color: var(--asset-warm-9);
 }
 
 .asset-expense-category-tag.expense-cat-orange {
-  background: rgba(253, 186, 116, 0.4);
-  color: #c2410c;
+  background: var(--asset-warm-2);
+  color: var(--asset-warm-9);
 }
 
 .asset-expense-category-tag.expense-cat-indigo {
-  background: rgba(224, 196, 232, 0.4);
-  color: #6b21a8;
+  background: var(--asset-warm-8);
+  color: var(--asset-warm-9);
 }
 
 /* 지출입력장 지출 분류 - 숨은 input 감춤 (흰 네모 방지) */
@@ -5247,74 +5269,74 @@ body {
 }
 
 .asset-expense-classification-display.expense-cls-teal {
-  background: rgba(94, 234, 212, 0.4);
-  color: #0f766e;
+  background: var(--asset-warm-4);
+  color: var(--asset-warm-9);
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-blue {
-  background: rgba(147, 197, 253, 0.4);
-  color: #1e40af;
+  background: var(--asset-warm-6);
+  color: var(--asset-warm-9);
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-green {
-  background: rgba(167, 243, 208, 0.4);
-  color: #047857;
+  background: var(--asset-warm-4);
+  color: var(--asset-warm-9);
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-purple {
-  background: rgba(196, 181, 253, 0.4);
-  color: #5b21b6;
+  background: var(--asset-warm-7);
+  color: var(--asset-warm-9);
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-orange {
-  background: rgba(253, 186, 116, 0.4);
-  color: #c2410c;
+  background: var(--asset-warm-2);
+  color: var(--asset-warm-9);
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-pink {
-  background: rgba(251, 207, 232, 0.4);
-  color: #9d174d;
+  background: var(--asset-warm-1);
+  color: var(--asset-warm-9);
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-indigo {
-  background: rgba(165, 180, 252, 0.4);
-  color: #3730a3;
+  background: var(--asset-warm-7);
+  color: var(--asset-warm-9);
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-amber {
-  background: rgba(253, 230, 138, 0.4);
-  color: #b45309;
+  background: var(--asset-warm-3);
+  color: var(--asset-warm-9);
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-gray {
-  background: rgba(209, 213, 219, 0.5);
-  color: #4b5563;
+  background: var(--asset-warm-5);
+  color: var(--asset-warm-9);
   border-color: transparent;
 }
 
 .asset-expense-classification-display.expense-cat-teal {
-  background: rgba(196, 220, 200, 0.4);
-  color: #2d5a3d;
+  background: var(--asset-warm-4);
+  color: var(--asset-warm-9);
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cat-blue {
-  background: rgba(196, 224, 220, 0.4);
-  color: #0d5c5c;
+  background: var(--asset-warm-6);
+  color: var(--asset-warm-9);
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cat-green {
-  background: rgba(242, 217, 196, 0.4);
-  color: #9a5a2e;
+  background: var(--asset-warm-5);
+  color: var(--asset-warm-9);
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cat-purple {
-  background: rgba(200, 208, 216, 0.4);
-  color: #4b5563;
+  background: var(--asset-warm-7);
+  color: var(--asset-warm-9);
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cat-indigo {
-  background: rgba(224, 196, 232, 0.4);
-  color: #6b21a8;
+  background: var(--asset-warm-8);
+  color: var(--asset-warm-9);
   border-color: transparent;
 }
 
@@ -5364,30 +5386,30 @@ body {
   transform: scale(1.02);
 }
 
-/* 펠렛 색상 - 카테고리(고정비/변동비/저축/투자/수입)에 맞춤 */
+/* 펠렛 색상 - 웜톤 팔레트 */
 .asset-expense-classification-pill.expense-cat-teal {
-  background: rgba(196, 220, 200, 0.45);
-  color: #2d5a3d;
+  background: var(--asset-warm-4);
+  color: var(--asset-warm-9);
 }
 .asset-expense-classification-pill.expense-cat-blue {
-  background: rgba(196, 224, 220, 0.45);
-  color: #0d5c5c;
+  background: var(--asset-warm-6);
+  color: var(--asset-warm-9);
 }
 .asset-expense-classification-pill.expense-cat-green {
-  background: rgba(242, 217, 196, 0.45);
-  color: #9a5a2e;
+  background: var(--asset-warm-5);
+  color: var(--asset-warm-9);
 }
 .asset-expense-classification-pill.expense-cat-purple {
-  background: rgba(200, 208, 216, 0.45);
-  color: #4b5563;
+  background: var(--asset-warm-7);
+  color: var(--asset-warm-9);
 }
 .asset-expense-classification-pill.expense-cat-orange {
-  background: rgba(253, 186, 116, 0.45);
-  color: #c2410c;
+  background: var(--asset-warm-2);
+  color: var(--asset-warm-9);
 }
 .asset-expense-classification-pill.expense-cat-indigo {
-  background: rgba(224, 196, 232, 0.45);
-  color: #6b21a8;
+  background: var(--asset-warm-8);
+  color: var(--asset-warm-9);
 }
 
 .asset-expense-classification-option {
@@ -5418,40 +5440,40 @@ body {
 }
 
 .asset-expense-classification-tag.expense-cls-teal {
-  background: rgba(94, 234, 212, 0.4);
-  color: #0f766e;
+  background: var(--asset-warm-4);
+  color: var(--asset-warm-9);
 }
 .asset-expense-classification-tag.expense-cls-blue {
-  background: rgba(147, 197, 253, 0.4);
-  color: #1e40af;
+  background: var(--asset-warm-6);
+  color: var(--asset-warm-9);
 }
 .asset-expense-classification-tag.expense-cls-green {
-  background: rgba(167, 243, 208, 0.4);
-  color: #047857;
+  background: var(--asset-warm-4);
+  color: var(--asset-warm-9);
 }
 .asset-expense-classification-tag.expense-cls-purple {
-  background: rgba(196, 181, 253, 0.4);
-  color: #5b21b6;
+  background: var(--asset-warm-7);
+  color: var(--asset-warm-9);
 }
 .asset-expense-classification-tag.expense-cls-orange {
-  background: rgba(253, 186, 116, 0.4);
-  color: #c2410c;
+  background: var(--asset-warm-2);
+  color: var(--asset-warm-9);
 }
 .asset-expense-classification-tag.expense-cls-pink {
-  background: rgba(251, 207, 232, 0.4);
-  color: #9d174d;
+  background: var(--asset-warm-1);
+  color: var(--asset-warm-9);
 }
 .asset-expense-classification-tag.expense-cls-indigo {
-  background: rgba(165, 180, 252, 0.4);
-  color: #3730a3;
+  background: var(--asset-warm-7);
+  color: var(--asset-warm-9);
 }
 .asset-expense-classification-tag.expense-cls-amber {
-  background: rgba(253, 230, 138, 0.4);
-  color: #b45309;
+  background: var(--asset-warm-3);
+  color: var(--asset-warm-9);
 }
 .asset-expense-classification-tag.expense-cls-gray {
-  background: rgba(209, 213, 219, 0.5);
-  color: #4b5563;
+  background: var(--asset-warm-5);
+  color: var(--asset-warm-9);
 }
 
 /* 지출입력장 결제수단 - 드롭다운 선택만 (가계부 설정에서 등록) */
@@ -5602,7 +5624,7 @@ body {
 .asset-networth-dashboard {
   padding: 2rem 1.5rem;
   margin-bottom: 1.5rem;
-  background: #fafafa;
+  background: var(--ui-surface-alt);
   border: var(--line-l3);
   border-radius: 0.625rem;
 }
@@ -5627,7 +5649,7 @@ body {
   display: block;
   font-size: 0.8rem;
   font-weight: 500;
-  color: #9ca3af;
+  color: var(--text-muted);
   margin-bottom: 0.35rem;
   letter-spacing: 0.02em;
 }
@@ -5645,7 +5667,7 @@ body {
 .asset-networth-dashboard-formula-eq {
   font-size: 1.25rem;
   font-weight: 500;
-  color: #d1d5db;
+  color: var(--text-muted);
   padding-bottom: 0.4rem;
 }
 
@@ -5653,7 +5675,7 @@ body {
   .asset-networth-dashboard-formula-value {
   font-size: 1.85rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--text-ink);
 }
 
 .asset-networth-dashboard-target {
@@ -5665,7 +5687,7 @@ body {
   display: block;
   font-size: 0.75rem;
   font-weight: 500;
-  color: #9ca3af;
+  color: var(--text-muted);
   margin-bottom: 0.4rem;
 }
 
@@ -5690,7 +5712,7 @@ body {
 
 .asset-networth-dashboard-target-input:focus {
   outline: none;
-  border-color: #d1d5db;
+  border-color: var(--line-l3-color);
   box-shadow: 0 0 0 0.125rem rgba(0, 0, 0, 0.04);
 }
 
@@ -5765,7 +5787,7 @@ body {
 
 .asset-debt-progress-bar {
   height: 0.3125rem;
-  background: #e5e7eb;
+  background: var(--line-l3-color);
   border-radius: 62.4375rem;
   overflow: hidden;
 }
@@ -5783,7 +5805,7 @@ body {
   align-items: center;
   margin-top: 0.4rem;
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--text-muted);
 }
 
 .asset-debt-progress-percent {
@@ -5999,13 +6021,13 @@ body {
 }
 
 .asset-asset-table th:first-child {
-  background: rgba(232, 232, 230, 0.5);
+  background: var(--ui-surface-alt);
 }
 
 /* 총자산 합계/소계 행 첫 셀 배경 */
 .asset-asset-table .asset-asset-row-totals td:first-child,
 .asset-asset-table .asset-asset-row-subtotals td:first-child {
-  background: #f5f5f5;
+  background: var(--ui-surface-alt);
 }
 
 .asset-asset-col-name {
@@ -6388,8 +6410,8 @@ body {
   border-radius: 0.375rem;
   white-space: nowrap;
   cursor: pointer;
-  background: #f0f0f0;
-  color: #666;
+  background: var(--ui-surface-alt);
+  color: var(--text-body);
   border: 0.09375rem solid transparent;
   transition:
     background 0.15s,
@@ -6397,7 +6419,7 @@ body {
 }
 
 .asset-asset-type-display:hover {
-  background: #e8e8e8;
+  background: var(--ui-surface-alt);
 }
 
 .asset-asset-type-display.asset-asset-type-teal {
@@ -6513,7 +6535,7 @@ body {
 }
 
 .asset-asset-type-option:hover {
-  background: #f8f8f8;
+  background: var(--ui-surface-alt);
 }
 
 .asset-asset-type-tag {
@@ -6607,8 +6629,8 @@ body {
   border-radius: 0.375rem;
   white-space: nowrap;
   cursor: pointer;
-  background: #f0f0f0;
-  color: #666;
+  background: var(--ui-surface-alt);
+  color: var(--text-body);
   border: 0.09375rem solid transparent;
   transition:
     background 0.15s,
@@ -6616,7 +6638,7 @@ body {
 }
 
 .asset-asset-category-display:hover {
-  background: #e8e8e8;
+  background: var(--ui-surface-alt);
 }
 
 .asset-asset-category-display.asset-asset-category-teal {
@@ -6658,7 +6680,7 @@ body {
 .asset-asset-category-separator {
   padding: 0.35rem 0.6rem;
   text-align: center;
-  color: #bbb;
+  color: var(--text-muted);
   font-size: 0.75rem;
   border-bottom: var(--line-l3);
 }
@@ -6680,8 +6702,8 @@ body {
   border-radius: 0.375rem;
   white-space: nowrap;
   cursor: pointer;
-  background: #f0f0f0;
-  color: #666;
+  background: var(--ui-surface-alt);
+  color: var(--text-body);
   border: 0.09375rem solid transparent;
   transition:
     background 0.15s,
@@ -6689,7 +6711,7 @@ body {
 }
 
 .asset-asset-savings-goal-display:hover {
-  background: #e8e8e8;
+  background: var(--ui-surface-alt);
 }
 
 .asset-asset-savings-goal-panel {
@@ -6719,7 +6741,7 @@ body {
 }
 
 .asset-asset-savings-goal-option:hover {
-  background: #f5f5f5;
+  background: var(--ui-surface-alt);
 }
 
 .asset-asset-savings-goal-option-delete {
@@ -6738,7 +6760,7 @@ body {
 
 .asset-asset-savings-goal-option-delete:hover {
   color: var(--text-muted);
-  background: rgba(107, 114, 128, 0.12);
+  background: var(--ui-surface-alt);
   opacity: 1;
 }
 
@@ -6798,7 +6820,7 @@ body {
 }
 
 .asset-stock-category-display:hover {
-  background: #f0f0f0;
+  background: var(--ui-surface-alt);
 }
 
 .asset-stock-category-display.asset-stock-cat-green {
@@ -6860,7 +6882,7 @@ body {
 }
 
 .asset-stock-category-option:hover {
-  background: #f5f5f5;
+  background: var(--ui-surface-alt);
 }
 
 .asset-stock-category-tag {
@@ -6918,7 +6940,7 @@ body {
 
 .asset-stock-category-option-delete:hover {
   color: var(--text-muted);
-  background: rgba(107, 114, 128, 0.12);
+  background: var(--ui-surface-alt);
   opacity: 1;
 }
 
@@ -6946,7 +6968,7 @@ body {
 }
 
 .asset-insurance-kind-display:hover {
-  background: #f0f0f0;
+  background: var(--ui-surface-alt);
 }
 
 .asset-insurance-kind-display.asset-insurance-kind-blue {
@@ -6998,7 +7020,7 @@ body {
 }
 
 .asset-insurance-kind-option:hover {
-  background: #f5f5f5;
+  background: var(--ui-surface-alt);
 }
 
 .asset-insurance-kind-tag {
@@ -7046,7 +7068,7 @@ body {
 
 .asset-insurance-kind-option-delete:hover {
   color: var(--text-muted);
-  background: rgba(107, 114, 128, 0.12);
+  background: var(--ui-surface-alt);
   opacity: 1;
 }
 
@@ -7125,7 +7147,7 @@ body {
 }
 
 .asset-asset-category-option:hover {
-  background: #f8f8f8;
+  background: var(--ui-surface-alt);
 }
 
 .asset-asset-category-tag {
@@ -7158,7 +7180,7 @@ body {
 }
 
 .asset-asset-row-totals {
-  background: #f5f5f5;
+  background: var(--ui-surface-alt);
   font-weight: 600;
   font-family: var(
     --app-font-family,
@@ -7188,7 +7210,7 @@ body {
 }
 
 .asset-asset-row-add {
-  background: #fafafa;
+  background: var(--ui-surface-alt);
 }
 
 .asset-asset-cell-add {
@@ -7202,7 +7224,7 @@ body {
   gap: 0.35rem;
   padding: 0.4rem 0;
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: var(--text-muted);
   background: transparent;
   border: none;
   cursor: pointer;
@@ -7267,7 +7289,7 @@ body {
 
 .asset-debt-more {
   font-size: 1.2rem;
-  color: #9ca3af;
+  color: var(--text-muted);
   cursor: pointer;
 }
 
@@ -7338,7 +7360,7 @@ body {
 }
 
 .asset-debt-table th {
-  background: rgba(232, 232, 230, 0.5);
+  background: var(--ui-surface-alt);
   font-weight: 500;
   font-size: 0.8125rem;
   color: var(--text-muted);
@@ -7350,17 +7372,17 @@ body {
   position: sticky;
   left: 0;
   z-index: 2;
-  background: #F5F1E8;
+  background: var(--content-bg);
   box-shadow: 0.125rem 0 0.25rem -0.125rem rgba(0, 0, 0, 0.08);
 }
 
 .asset-debt-table th.asset-debt-th-name {
-  background: rgba(232, 232, 230, 0.5);
+  background: var(--content-bg);
 }
 
 .asset-debt-row-totals .asset-debt-cell-totals-label,
 .asset-debt-row-totals .asset-debt-cell-name {
-  background: #f5f5f5;
+  background: var(--ui-surface-alt);
 }
 
 /* 대출 테이블: 셀 min-width: max-content로 내용에 맞게 열 너비 자동 조절 */
@@ -7458,14 +7480,14 @@ body {
   border-radius: 0.375rem;
   white-space: nowrap;
   cursor: pointer;
-  background: #f0f0f0;
-  color: #666;
+  background: var(--ui-surface-alt);
+  color: var(--text-body);
   border: 0.09375rem solid transparent;
   transition: background 0.15s;
 }
 
 .asset-debt-repayment-display:hover {
-  background: #e8e8e8;
+  background: var(--ui-surface-alt);
 }
 
 .asset-debt-repayment-panel {
@@ -7519,8 +7541,8 @@ body {
   border-radius: 0.375rem;
   white-space: nowrap;
   cursor: pointer;
-  background: #f0f0f0;
-  color: #666;
+  background: var(--ui-surface-alt);
+  color: var(--text-body);
   border: 0.09375rem solid transparent;
   transition:
     background 0.15s,
@@ -7528,7 +7550,7 @@ body {
 }
 
 .asset-debt-type-display:hover {
-  background: #e8e8e8;
+  background: var(--ui-surface-alt);
 }
 
 .asset-debt-type-panel {
@@ -7565,7 +7587,7 @@ body {
 }
 
 .asset-debt-row-totals {
-  background: #f5f5f5;
+  background: var(--ui-surface-alt);
   font-weight: 600;
   font-family: var(
     --app-font-family,
@@ -7590,7 +7612,7 @@ body {
 }
 
 .asset-debt-row-add {
-  background: #fafafa;
+  background: var(--ui-surface-alt);
 }
 
 .asset-debt-cell-add {
@@ -7604,7 +7626,7 @@ body {
   gap: 0.35rem;
   padding: 0.4rem 0;
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: var(--text-muted);
   background: transparent;
   border: none;
   cursor: pointer;
@@ -8172,7 +8194,7 @@ body {
 
 .work-schedule-btn-delete:hover {
   color: var(--text-muted);
-  border-color: #e5e7eb;
+  border-color: var(--line-l3-color);
   background: var(--ui-surface-alt);
 }
 
@@ -8542,8 +8564,8 @@ body {
 .todo-list-toolbar-btn {
   padding: 0.35rem 0.6rem;
   font-size: 0.85rem;
-  color: #555;
-  background: #f5f5f5;
+  color: var(--text-muted);
+  background: var(--ui-surface-alt);
   border: var(--line-l3);
   border-radius: 0.375rem;
   cursor: pointer;
@@ -8555,9 +8577,9 @@ body {
 }
 
 .todo-list-toolbar-btn:hover {
-  color: #333;
-  background: #eee;
-  border-color: #d1d5db;
+  color: var(--text-ink);
+  background: var(--ui-surface-alt);
+  border-color: var(--line-l3-color);
 }
 
 .todo-list-clear-completed-btn:hover {
@@ -9698,9 +9720,9 @@ body {
 .todo-filter-btn {
   padding: 0.3rem 0.6rem;
   font-size: 0.8rem;
-  color: #666;
-  background: #f5f5f5;
-  border: 0.09375rem solid #e5e5e5;
+  color: var(--text-muted);
+  background: var(--ui-surface-alt);
+  border: 0.09375rem solid var(--line-l3-color);
   cursor: pointer;
   font-family: var(
     --app-font-family,
@@ -9710,15 +9732,15 @@ body {
 }
 
 .todo-filter-btn:hover {
-  color: #333;
-  background: #eee;
-  border-color: #ddd;
+  color: var(--text-ink);
+  background: var(--ui-surface-alt);
+  border-color: var(--line-l3-color);
 }
 
 .todo-filter-btn.active {
-  color: #333;
-  background: #e8e8e8;
-  border-color: #ccc;
+  color: var(--text-ink);
+  background: var(--ui-surface-alt);
+  border-color: var(--line-l3-color);
 }
 
 .todo-section {
@@ -9752,7 +9774,7 @@ body {
 }
 
 .todo-section-header:hover {
-  background: #f5f5f5;
+  background: var(--ui-surface-alt);
 }
 
 .todo-section-header--no-collapse {
@@ -10723,7 +10745,7 @@ body {
 
 .todo-category-option:hover,
 .todo-category-option.is-highlighted {
-  background: #f8f8f8;
+  background: var(--ui-surface-alt);
 }
 
 .todo-category-tag {
@@ -10758,8 +10780,8 @@ body {
 }
 
 .todo-category-delete-btn:hover {
-  color: #666;
-  background: #eee;
+  color: var(--text-muted);
+  background: var(--ui-surface-alt);
 }
 
 .todo-category-delete-icon {
@@ -11601,8 +11623,8 @@ body {
 }
 
 .kpi-dream-dashboard-edit:hover {
-  background: #e5e7eb;
-  border-color: #9ca3af;
+  background: var(--ui-surface-alt);
+  border-color: var(--line-l3-color);
   color: var(--text-body);
 }
 
@@ -11632,7 +11654,7 @@ body {
   content: "";
   flex: 1;
   height: 0.0625rem;
-  background: #eee;
+  background: var(--line-l3-color);
   margin-left: 1rem;
 }
 
@@ -11655,23 +11677,23 @@ body {
   padding: 0.3rem 0.6rem;
   font-family: inherit;
   font-size: 0.8rem;
-  color: #666;
-  background: #f5f5f5;
-  border: 0.09375rem solid #e5e5e5;
+  color: var(--text-muted);
+  background: var(--ui-surface-alt);
+  border: 0.09375rem solid var(--line-l3-color);
   border-radius: 0.25rem;
   cursor: pointer;
 }
 
 .kpi-goals-order-btn:hover {
-  color: #333;
-  background: #eee;
-  border-color: #ddd;
+  color: var(--text-ink);
+  background: var(--content-bg);
+  border-color: var(--line-l3-color);
 }
 
 .kpi-goals-order-btn.active {
-  color: #333;
-  background: #e8e8e8;
-  border-color: #ccc;
+  color: var(--text-ink);
+  background: var(--content-bg);
+  border-color: var(--line-l3-color);
 }
 
 .kpi-goals-add-btn {
@@ -11687,8 +11709,8 @@ body {
 }
 
 .kpi-goals-add-btn:hover {
-  background: #e5e7eb;
-  border-color: #9ca3af;
+  background: var(--content-bg);
+  border-color: var(--line-l3-color);
 }
 
 .kpi-goals-clear-btn {
@@ -13021,7 +13043,7 @@ body.kpi-resizing {
   max-width: 30rem;
   height: 70vh;
   max-height: 35rem;
-  background: #F5F1E8;
+  background: var(--content-bg);
   border-radius: var(--modal-radius);
   box-shadow: 0 0.625rem 2.5rem rgba(0, 0, 0, 0.15);
   display: flex;
@@ -13035,14 +13057,14 @@ body.kpi-resizing {
   justify-content: space-between;
   padding: 1rem 1.25rem;
   border-bottom: var(--line-l3);
-  background: #F5F1E8;
+  background: var(--content-bg);
 }
 
 .time-task-setup-title {
   margin: 0;
   font-size: 1.1rem;
   font-weight: 400;
-  color: #1f2937;
+  color: var(--text-ink);
 }
 
 .time-task-setup-close {
@@ -13068,7 +13090,10 @@ body.kpi-resizing {
 
 .time-task-setup-close:hover {
   color: var(--text-body);
-  background: #e5e7eb;
+  background: transparent !important;
+}
+.time-task-setup-header .time-task-setup-close:hover {
+  background: transparent !important;
 }
 
 .time-task-log-header {
@@ -13076,7 +13101,7 @@ body.kpi-resizing {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  background: #F5F1E8;
+  background: var(--content-bg);
   font-weight: 300;
 }
 
@@ -13150,8 +13175,8 @@ body.kpi-resizing {
 }
 
 .time-task-add-btn:hover {
-  background: #e5e7eb;
-  border-color: #9ca3af;
+  background: var(--ui-surface-alt);
+  border-color: var(--line-l3-color);
 }
 
 .time-task-setup-tabs {
@@ -13174,50 +13199,51 @@ body.kpi-resizing {
 }
 
 .time-task-setup-tab[data-tab="all"]:hover {
-  background: #e5e7eb;
+  background: var(--ui-surface-alt);
   color: var(--text-body);
 }
 
 .time-task-setup-tab[data-tab="all"].active {
-  background: #e5e7eb;
-  color: #1f2937;
-  border-color: #d1d5db;
+  background: var(--ui-surface-alt);
+  color: var(--text-ink);
+  border-color: var(--line-l3-color);
 }
 
+/* 생산적·비생산적·그 외 탭 웜톤 (자산관리 팔레트와 동일) */
 .time-task-setup-tab[data-tab="productive"]:hover {
-  background: #fecaca;
-  color: #b91c1c;
-  border-color: #fca5a5;
+  background: var(--asset-warm-1);
+  color: var(--asset-warm-9);
+  border-color: var(--asset-warm-1);
 }
 
 .time-task-setup-tab[data-tab="productive"].active {
-  background: #fecaca;
-  color: #991b1b;
-  border-color: #f87171;
+  background: var(--asset-warm-1);
+  color: var(--asset-warm-9);
+  border-color: var(--asset-warm-1);
 }
 
 .time-task-setup-tab[data-tab="nonproductive"]:hover {
-  background: #bfdbfe;
-  color: #1d4ed8;
-  border-color: #93c5fd;
+  background: var(--asset-warm-6);
+  color: var(--asset-warm-9);
+  border-color: var(--asset-warm-6);
 }
 
 .time-task-setup-tab[data-tab="nonproductive"].active {
-  background: #bfdbfe;
-  color: #1e40af;
-  border-color: #60a5fa;
+  background: var(--asset-warm-6);
+  color: var(--asset-warm-9);
+  border-color: var(--asset-warm-6);
 }
 
 .time-task-setup-tab[data-tab="other"]:hover {
-  background: #bbf7d0;
-  color: #15803d;
-  border-color: #86efac;
+  background: var(--asset-warm-4);
+  color: var(--asset-warm-9);
+  border-color: var(--asset-warm-4);
 }
 
 .time-task-setup-tab[data-tab="other"].active {
-  background: #bbf7d0;
-  color: #166534;
-  border-color: #4ade80;
+  background: var(--asset-warm-4);
+  color: var(--asset-warm-9);
+  border-color: var(--asset-warm-4);
 }
 
 .time-task-setup-subcats {
@@ -13246,9 +13272,9 @@ body.kpi-resizing {
 }
 
 .time-task-setup-subcat-btn.active {
-  background: #e5e7eb;
-  color: #1f2937;
-  border-color: #d1d5db;
+  background: var(--ui-surface-alt);
+  color: var(--text-ink);
+  border-color: var(--line-l3-color);
 }
 
 .time-task-setup-subcat-btn.cat-dream.active {
@@ -13291,7 +13317,7 @@ body.kpi-resizing {
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem 0.75rem;
-  background: #fafafa;
+  background: var(--ui-surface-alt);
   border: var(--line-l3);
   border-radius: var(--modal-radius);
   font-size: 0.9rem;
@@ -13299,13 +13325,13 @@ body.kpi-resizing {
 
 .time-task-setup-item-sub {
   padding-left: 2rem;
-  background: #f5f5f5;
+  background: var(--content-bg);
 }
 
 .time-task-setup-item-name {
   flex: 1;
   font-weight: 500;
-  color: #1f2937;
+  color: var(--text-ink);
 }
 
 .time-task-setup-item-cat {
@@ -13330,7 +13356,7 @@ body.kpi-resizing {
   font-size: 0.8rem;
   border: var(--line-l3);
   border-radius: var(--modal-radius);
-  background: #F5F1E8;
+  background: var(--content-bg);
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s;
@@ -13357,6 +13383,8 @@ body.kpi-resizing {
 /* 과제 추가 서브모달 */
 .time-add-task-modal .time-add-task-panel {
   max-width: 25rem;
+  background: var(--content-bg);
+  border-radius: var(--modal-radius);
 }
 
 .time-add-task-field {
@@ -13382,7 +13410,7 @@ body.kpi-resizing {
 .time-add-task-name:focus,
 .time-add-task-name:focus-visible {
   outline: none;
-  border-color: #d1d5db;
+  border-color: var(--line-l3-color);
   box-shadow: none;
 }
 
@@ -13397,7 +13425,7 @@ body.kpi-resizing {
 .time-add-task-memo:focus,
 .time-add-task-memo:focus-visible {
   outline: none;
-  border-color: #d1d5db;
+  border-color: var(--line-l3-color);
   box-shadow: none;
 }
 
@@ -13425,8 +13453,8 @@ body.kpi-resizing {
   padding: 0.35rem 0.6rem;
   font-size: 0.8rem;
   border: var(--line-l3);
-  border-radius: 0.375rem;
-  background: #F5F1E8;
+  border-radius: var(--modal-radius);
+  background: var(--content-bg);
   color: var(--text-body);
   cursor: pointer;
   transition: all 0.2s;
@@ -13437,9 +13465,9 @@ body.kpi-resizing {
 }
 
 .time-add-task-cat-btn.active {
-  background: #e0e7ff;
-  border-color: #a5b4fc;
-  color: #4338ca;
+  background: var(--asset-warm-6);
+  border-color: var(--asset-warm-6);
+  color: var(--asset-warm-9);
 }
 
 .time-add-task-cat-btn.cat-dream {
@@ -13480,16 +13508,16 @@ body.kpi-resizing {
   padding: 0.6rem 1rem;
   font-size: 0.9rem;
   font-weight: 500;
-  color: #fff;
-  background: #1c1c1a;
+  color: var(--ui-btn-primary-fg);
+  background: var(--ui-btn-primary-bg);
   border: none;
-  border-radius: 0.5rem;
+  border-radius: var(--modal-radius);
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .time-add-task-submit:hover {
-  background: #1f2937;
+  background: var(--ui-btn-primary-hover);
 }
 
 /* 과제 기록 모달 - 통일 디자인: 크림 배경, 세이지 버튼 */
@@ -20164,9 +20192,12 @@ body.kpi-resizing {
 }
 
 .time-ledger-table thead .time-th-task {
+  position: sticky;
+  left: 0;
   z-index: 2;
-  background: transparent;
+  background: #F5F1E8;
   padding: 0.2rem 0.3rem;
+  box-shadow: 0.125rem 0 0.25rem -0.125rem rgba(0, 0, 0, 0.06);
 }
 
 .time-ledger-table tbody tr:hover .time-cell-task {
@@ -23971,15 +24002,16 @@ body.kpi-resizing {
 
 .diary-search-input {
   width: 100%;
-  padding: 0.4rem 0.6rem;
+  padding: 0.6rem 0.75rem;
   font-size: 0.85rem;
   font-weight: 300;
-  color: var(--text-muted);
+  color: var(--text-body);
   border: none;
   border-bottom: var(--line-l3);
   border-radius: 0;
-  background: transparent;
+  background: var(--content-bg);
   font-family: inherit;
+  box-sizing: border-box;
 }
 
 .diary-search-input::placeholder {
@@ -23988,7 +24020,7 @@ body.kpi-resizing {
 
 .diary-search-input:focus {
   outline: none;
-  border-bottom-color: #b0b0b0;
+  border-bottom-color: var(--line-l3-color);
 }
 
 .diary-content-area {
@@ -24030,7 +24062,7 @@ body.kpi-resizing {
   padding: 0.35rem 0.4rem;
   font-size: 0.8rem;
   color: var(--text-muted);
-  background: #e8e8e8;
+  background: var(--ui-surface-alt);
   border: none;
   border-radius: 0 0.25rem 0.25rem 0;
   cursor: pointer;
@@ -24045,7 +24077,7 @@ body.kpi-resizing {
 }
 
 .diary-collapse-pop:hover {
-  background: #e0e0e0;
+  background: var(--content-bg);
   color: var(--text-body);
 }
 
@@ -24062,7 +24094,7 @@ body.kpi-resizing {
 
 .diary-sidebar-collapse:hover {
   background: transparent;
-  color: #1f2937;
+  color: var(--text-ink);
 }
 
 .diary-add-page-wrap {
@@ -24116,7 +24148,7 @@ body.kpi-resizing {
 .diary-search-no-result {
   padding: 1rem;
   font-size: 0.9rem;
-  color: #a0a0a0;
+  color: var(--text-muted);
   text-align: center;
 }
 
@@ -24136,13 +24168,14 @@ body.kpi-resizing {
 }
 
 .diary-page-item:hover {
-  background: #e8e8e8;
+  background: var(--ui-surface-alt);
 }
 
 .diary-page-item.active {
-  background: #f4f4f2;
+  background: var(--ui-surface-alt);
   font-weight: 600;
-  border-right: 0.1875rem solid #111111;
+  border-right: 0.1875rem solid var(--line-l8-color);
+  color: var(--text-ink);
 }
 
 .diary-add-page {
@@ -24238,13 +24271,13 @@ body.kpi-resizing {
 .diary-paper-meta {
   margin: 0 0 0.5rem;
   font-size: 0.8rem;
-  color: #d8d8d6;
+  color: var(--text-muted);
 }
 
 .diary-paper-text {
   width: 100%;
   min-height: calc(100vh - 20rem);
-  padding: 0;
+  padding: 1rem 1.25rem;
   margin: 0;
   background: transparent;
   font-size: 1rem;
@@ -24253,6 +24286,7 @@ body.kpi-resizing {
   border: none;
   resize: none;
   font-family: inherit;
+  box-sizing: border-box;
 }
 
 .diary-paper-text:focus {
@@ -24309,16 +24343,17 @@ body.kpi-resizing {
 .diary-qa-answer {
   width: 100%;
   min-height: 3.75rem;
-  padding: 0.75rem 1rem;
+  padding: 1rem 1.25rem;
   font-size: 0.9rem;
   line-height: 1.6;
   color: var(--text-body);
   border: none;
   resize: none;
   overflow-y: auto;
-  background: #F5F1E8;
+  background: var(--content-bg);
   font-family: inherit;
   display: block;
+  box-sizing: border-box;
 }
 
 .diary-qa-answer:focus {

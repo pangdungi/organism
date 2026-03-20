@@ -3232,7 +3232,6 @@ export function render() {
     <button type="button" class="time-task-setup-btn" data-filter-for="all" title="과제명, 생산성, 카테고리를 한 번에 설정"><img src="/toolbaricons/settings.svg" alt="과제 설정" class="time-btn-icon" width="18" height="18"></button>
     <div class="time-filter-tabs" data-filter-for="all">
       <button type="button" class="time-filter-btn" data-filter="month" data-audit-hidden>월별</button>
-      <button type="button" class="time-filter-btn" data-filter="week" data-audit-hidden>일주일</button>
       <button type="button" class="time-filter-btn active" data-filter="day">하루</button>
       <button type="button" class="time-filter-btn" data-filter="range">날짜 선택</button>
       <button type="button" class="time-filter-btn time-filter-task-select-btn" id="time-task-select-btn">과제 선택</button>
