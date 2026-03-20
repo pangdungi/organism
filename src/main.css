@@ -4293,36 +4293,36 @@ body {
 }
 
 .asset-plan-category-tag.expense-cls-teal {
-  background: var(--asset-warm-4);
-  color: var(--asset-warm-9);
+  background: rgba(94, 234, 212, 0.4);
+  color: #0f766e;
 }
 .asset-plan-category-tag.expense-cls-blue {
-  background: var(--asset-warm-6);
-  color: var(--asset-warm-9);
+  background: rgba(147, 197, 253, 0.4);
+  color: #1e40af;
 }
 .asset-plan-category-tag.expense-cls-green {
-  background: var(--asset-warm-4);
-  color: var(--asset-warm-9);
+  background: rgba(167, 243, 208, 0.4);
+  color: #047857;
 }
 .asset-plan-category-tag.expense-cls-purple {
-  background: var(--asset-warm-7);
-  color: var(--asset-warm-9);
+  background: rgba(196, 181, 253, 0.4);
+  color: #5b21b6;
 }
 .asset-plan-category-tag.expense-cls-orange {
-  background: var(--asset-warm-2);
-  color: var(--asset-warm-9);
+  background: rgba(253, 186, 116, 0.4);
+  color: #c2410c;
 }
 .asset-plan-category-tag.expense-cls-pink {
-  background: var(--asset-warm-1);
-  color: var(--asset-warm-9);
+  background: rgba(251, 207, 232, 0.4);
+  color: #9d174d;
 }
 .asset-plan-category-tag.expense-cls-indigo {
-  background: var(--asset-warm-7);
-  color: var(--asset-warm-9);
+  background: rgba(165, 180, 252, 0.4);
+  color: #3730a3;
 }
 .asset-plan-category-tag.expense-cls-gray {
-  background: var(--asset-warm-5);
-  color: var(--asset-warm-9);
+  background: rgba(209, 213, 219, 0.5);
+  color: #4b5563;
 }
 
 .asset-plan-cell-total .asset-plan-total-display {
@@ -5473,28 +5473,28 @@ body {
 }
 
 .asset-expense-category-display-readonly.expense-cat-teal {
-  background: var(--asset-warm-4);
-  color: var(--asset-warm-9);
+  background: rgba(94, 234, 212, 0.4);
+  color: #0f766e;
 }
 .asset-expense-category-display-readonly.expense-cat-blue {
-  background: var(--asset-warm-6);
-  color: var(--asset-warm-9);
+  background: rgba(147, 197, 253, 0.4);
+  color: #1e40af;
 }
 .asset-expense-category-display-readonly.expense-cat-green {
-  background: var(--asset-warm-5);
-  color: var(--asset-warm-9);
+  background: rgba(167, 243, 208, 0.4);
+  color: #047857;
 }
 .asset-expense-category-display-readonly.expense-cat-purple {
-  background: var(--asset-warm-7);
-  color: var(--asset-warm-9);
+  background: rgba(196, 181, 253, 0.4);
+  color: #5b21b6;
 }
 .asset-expense-category-display-readonly.expense-cat-orange {
-  background: var(--asset-warm-2);
-  color: var(--asset-warm-9);
+  background: rgba(253, 186, 116, 0.4);
+  color: #c2410c;
 }
 .asset-expense-category-display-readonly.expense-cat-indigo {
-  background: var(--asset-warm-8);
-  color: var(--asset-warm-9);
+  background: rgba(165, 180, 252, 0.4);
+  color: #3730a3;
 }
 
 /* 지출입력장 카테고리 드롭다운 */
@@ -5531,39 +5531,39 @@ body {
 }
 
 .asset-expense-category-display.expense-cat-teal {
-  background: var(--asset-warm-4);
-  color: var(--asset-warm-9);
-  border-color: var(--asset-warm-4);
+  background: rgba(94, 234, 212, 0.4);
+  color: #0f766e;
+  border-color: rgba(94, 234, 212, 0.6);
 }
 
 .asset-expense-category-display.expense-cat-blue {
-  background: var(--asset-warm-6);
-  color: var(--asset-warm-9);
-  border-color: var(--asset-warm-6);
+  background: rgba(147, 197, 253, 0.4);
+  color: #1e40af;
+  border-color: rgba(147, 197, 253, 0.6);
 }
 
 .asset-expense-category-display.expense-cat-green {
-  background: var(--asset-warm-5);
-  color: var(--asset-warm-9);
-  border-color: var(--asset-warm-5);
+  background: rgba(167, 243, 208, 0.4);
+  color: #047857;
+  border-color: rgba(167, 243, 208, 0.6);
 }
 
 .asset-expense-category-display.expense-cat-purple {
-  background: var(--asset-warm-7);
-  color: var(--asset-warm-9);
-  border-color: var(--asset-warm-7);
+  background: rgba(196, 181, 253, 0.4);
+  color: #5b21b6;
+  border-color: rgba(196, 181, 253, 0.6);
 }
 
 .asset-expense-category-display.expense-cat-orange {
-  background: var(--asset-warm-2);
-  color: var(--asset-warm-9);
-  border-color: var(--asset-warm-2);
+  background: rgba(253, 186, 116, 0.4);
+  color: #c2410c;
+  border-color: rgba(253, 186, 116, 0.6);
 }
 
 .asset-expense-category-display.expense-cat-indigo {
-  background: var(--asset-warm-8);
-  color: var(--asset-warm-9);
-  border-color: var(--asset-warm-8);
+  background: rgba(165, 180, 252, 0.4);
+  color: #3730a3;
+  border-color: rgba(165, 180, 252, 0.6);
 }
 
 .asset-expense-category-panel {
@@ -5606,33 +5606,33 @@ body {
 }
 
 .asset-expense-category-tag.expense-cat-teal {
-  background: var(--asset-warm-4);
-  color: var(--asset-warm-9);
+  background: rgba(94, 234, 212, 0.4);
+  color: #0f766e;
 }
 
 .asset-expense-category-tag.expense-cat-blue {
-  background: var(--asset-warm-6);
-  color: var(--asset-warm-9);
+  background: rgba(147, 197, 253, 0.4);
+  color: #1e40af;
 }
 
 .asset-expense-category-tag.expense-cat-green {
-  background: var(--asset-warm-5);
-  color: var(--asset-warm-9);
+  background: rgba(167, 243, 208, 0.4);
+  color: #047857;
 }
 
 .asset-expense-category-tag.expense-cat-purple {
-  background: var(--asset-warm-7);
-  color: var(--asset-warm-9);
+  background: rgba(196, 181, 253, 0.4);
+  color: #5b21b6;
 }
 
 .asset-expense-category-tag.expense-cat-orange {
-  background: var(--asset-warm-2);
-  color: var(--asset-warm-9);
+  background: rgba(253, 186, 116, 0.4);
+  color: #c2410c;
 }
 
 .asset-expense-category-tag.expense-cat-indigo {
-  background: var(--asset-warm-8);
-  color: var(--asset-warm-9);
+  background: rgba(165, 180, 252, 0.4);
+  color: #3730a3;
 }
 
 /* 지출입력장 지출 분류 - 숨은 input 감춤 (흰 네모 방지) */
@@ -5696,74 +5696,74 @@ body {
 }
 
 .asset-expense-classification-display.expense-cls-teal {
-  background: var(--asset-warm-4);
-  color: var(--asset-warm-9);
+  background: rgba(94, 234, 212, 0.4);
+  color: #0f766e;
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-blue {
-  background: var(--asset-warm-6);
-  color: var(--asset-warm-9);
+  background: rgba(147, 197, 253, 0.4);
+  color: #1e40af;
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-green {
-  background: var(--asset-warm-4);
-  color: var(--asset-warm-9);
+  background: rgba(167, 243, 208, 0.4);
+  color: #047857;
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-purple {
-  background: var(--asset-warm-7);
-  color: var(--asset-warm-9);
+  background: rgba(196, 181, 253, 0.4);
+  color: #5b21b6;
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-orange {
-  background: var(--asset-warm-2);
-  color: var(--asset-warm-9);
+  background: rgba(253, 186, 116, 0.4);
+  color: #c2410c;
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-pink {
-  background: var(--asset-warm-1);
-  color: var(--asset-warm-9);
+  background: rgba(251, 207, 232, 0.4);
+  color: #9d174d;
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-indigo {
-  background: var(--asset-warm-7);
-  color: var(--asset-warm-9);
+  background: rgba(165, 180, 252, 0.4);
+  color: #3730a3;
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-amber {
-  background: var(--asset-warm-3);
-  color: var(--asset-warm-9);
+  background: rgba(253, 230, 138, 0.5);
+  color: #b45309;
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-gray {
-  background: var(--asset-warm-5);
-  color: var(--asset-warm-9);
+  background: rgba(209, 213, 219, 0.5);
+  color: #4b5563;
   border-color: transparent;
 }
 
 .asset-expense-classification-display.expense-cat-teal {
-  background: var(--asset-warm-4);
-  color: var(--asset-warm-9);
+  background: rgba(94, 234, 212, 0.4);
+  color: #0f766e;
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cat-blue {
-  background: var(--asset-warm-6);
-  color: var(--asset-warm-9);
+  background: rgba(147, 197, 253, 0.4);
+  color: #1e40af;
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cat-green {
-  background: var(--asset-warm-5);
-  color: var(--asset-warm-9);
+  background: rgba(167, 243, 208, 0.4);
+  color: #047857;
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cat-purple {
-  background: var(--asset-warm-7);
-  color: var(--asset-warm-9);
+  background: rgba(196, 181, 253, 0.4);
+  color: #5b21b6;
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cat-indigo {
-  background: var(--asset-warm-8);
-  color: var(--asset-warm-9);
+  background: rgba(165, 180, 252, 0.4);
+  color: #3730a3;
   border-color: transparent;
 }
 
@@ -5813,30 +5813,30 @@ body {
   transform: scale(1.02);
 }
 
-/* 펠렛 색상 - 웜톤 팔레트 */
+/* 펠렛 색상 - 파스텔 (이전 컬러) */
 .asset-expense-classification-pill.expense-cat-teal {
-  background: var(--asset-warm-4);
-  color: var(--asset-warm-9);
+  background: rgba(94, 234, 212, 0.4);
+  color: #0f766e;
 }
 .asset-expense-classification-pill.expense-cat-blue {
-  background: var(--asset-warm-6);
-  color: var(--asset-warm-9);
+  background: rgba(147, 197, 253, 0.4);
+  color: #1e40af;
 }
 .asset-expense-classification-pill.expense-cat-green {
-  background: var(--asset-warm-5);
-  color: var(--asset-warm-9);
+  background: rgba(167, 243, 208, 0.4);
+  color: #047857;
 }
 .asset-expense-classification-pill.expense-cat-purple {
-  background: var(--asset-warm-7);
-  color: var(--asset-warm-9);
+  background: rgba(196, 181, 253, 0.4);
+  color: #5b21b6;
 }
 .asset-expense-classification-pill.expense-cat-orange {
-  background: var(--asset-warm-2);
-  color: var(--asset-warm-9);
+  background: rgba(253, 186, 116, 0.4);
+  color: #c2410c;
 }
 .asset-expense-classification-pill.expense-cat-indigo {
-  background: var(--asset-warm-8);
-  color: var(--asset-warm-9);
+  background: rgba(165, 180, 252, 0.4);
+  color: #3730a3;
 }
 
 .asset-expense-classification-option {
@@ -5867,40 +5867,40 @@ body {
 }
 
 .asset-expense-classification-tag.expense-cls-teal {
-  background: var(--asset-warm-4);
-  color: var(--asset-warm-9);
+  background: rgba(94, 234, 212, 0.4);
+  color: #0f766e;
 }
 .asset-expense-classification-tag.expense-cls-blue {
-  background: var(--asset-warm-6);
-  color: var(--asset-warm-9);
+  background: rgba(147, 197, 253, 0.4);
+  color: #1e40af;
 }
 .asset-expense-classification-tag.expense-cls-green {
-  background: var(--asset-warm-4);
-  color: var(--asset-warm-9);
+  background: rgba(167, 243, 208, 0.4);
+  color: #047857;
 }
 .asset-expense-classification-tag.expense-cls-purple {
-  background: var(--asset-warm-7);
-  color: var(--asset-warm-9);
+  background: rgba(196, 181, 253, 0.4);
+  color: #5b21b6;
 }
 .asset-expense-classification-tag.expense-cls-orange {
-  background: var(--asset-warm-2);
-  color: var(--asset-warm-9);
+  background: rgba(253, 186, 116, 0.4);
+  color: #c2410c;
 }
 .asset-expense-classification-tag.expense-cls-pink {
-  background: var(--asset-warm-1);
-  color: var(--asset-warm-9);
+  background: rgba(251, 207, 232, 0.4);
+  color: #9d174d;
 }
 .asset-expense-classification-tag.expense-cls-indigo {
-  background: var(--asset-warm-7);
-  color: var(--asset-warm-9);
+  background: rgba(165, 180, 252, 0.4);
+  color: #3730a3;
 }
 .asset-expense-classification-tag.expense-cls-amber {
-  background: var(--asset-warm-3);
-  color: var(--asset-warm-9);
+  background: rgba(253, 230, 138, 0.5);
+  color: #b45309;
 }
 .asset-expense-classification-tag.expense-cls-gray {
-  background: var(--asset-warm-5);
-  color: var(--asset-warm-9);
+  background: rgba(209, 213, 219, 0.5);
+  color: #4b5563;
 }
 
 /* 지출입력장 결제수단 - 드롭다운 선택만 (가계부 설정에서 등록) */
