@@ -318,10 +318,18 @@ body {
 #app input[type="tel"]:focus,
 #app input[type="url"]:focus,
 #app input[type="number"]:focus,
+#app input[type="date"]:focus,
+#app input[type="datetime-local"]:focus,
 #app textarea:focus {
   outline: none;
+  box-shadow: none;
   border-bottom: var(--line-l6);
   padding-bottom: calc(0.5rem - 0.25px);
+}
+#app input[type="date"]:focus-visible,
+#app input[type="datetime-local"]:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 #app select {
   background-color: transparent;
@@ -330,9 +338,26 @@ body {
   color: var(--text-body);
   padding: 0.45rem 0.5rem;
 }
-#app select:focus {
+#app select:focus,
+#app select:focus-visible {
   outline: none;
+  box-shadow: none;
   border-color: var(--line-l1-color);
+}
+
+/* 앱 전역: 포커스 시 파란색 아웃라인/그림자 제거 (모든 창) */
+#app *:focus {
+  outline: none;
+}
+#app *:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+#app input:focus,
+#app textarea:focus,
+#app select:focus,
+#app button:focus {
+  box-shadow: none;
 }
 
 /* 유틸: 명세 그대로 적용할 때 */
@@ -2502,11 +2527,12 @@ body {
     color: var(--text-body);
   }
   .time-ledger-mobile-toolbar .time-task-setup-btn .time-btn-icon {
-    opacity: 0.85;
-    filter: brightness(0) saturate(100%);
+    opacity: 0.95;
+    filter: brightness(0) saturate(100%) invert(26%) sepia(10%) saturate(1200%) hue-rotate(115deg);
   }
   .time-ledger-mobile-toolbar .time-task-setup-btn:hover .time-btn-icon {
     opacity: 1;
+    filter: brightness(0) saturate(100%) invert(26%) sepia(10%) saturate(1200%) hue-rotate(115deg);
   }
   .time-ledger-view .date-divider {
     padding: 0.625rem 1.5rem 0.625rem;
@@ -4172,7 +4198,7 @@ body {
   margin-left: auto;
   padding: 0.4rem 0.75rem;
   font-size: 0.8125rem;
-  color: #dcdcda;
+  color: var(--text-body);
   background: none;
   border: none;
   border-radius: 0;
@@ -4189,11 +4215,11 @@ body {
 
 .asset-expense-settings-btn .asset-expense-settings-icon {
   display: block;
-  color: #dcdcda;
+  color: currentColor;
 }
 
 .asset-expense-settings-btn:hover .asset-expense-settings-icon {
-  color: var(--text-ink);
+  color: currentColor;
 }
 
 /* ----- 가계부 설정 모달 ----- */
@@ -4978,9 +5004,9 @@ body {
   font-weight: 500;
   border-radius: 0.375rem;
   cursor: pointer;
-  background: var(--ui-surface-alt);
+  background: var(--content-bg);
   color: var(--text-body);
-  border: 0.09375rem solid transparent;
+  border: 0.09375rem solid var(--line-l3-color);
   transition:
     background 0.15s,
     border-color 0.15s;
@@ -5005,7 +5031,7 @@ body {
 .asset-expense-flow-type-panel {
   position: fixed;
   z-index: 99999;
-  background: #F5F1E8;
+  background: var(--content-bg);
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
@@ -5091,9 +5117,9 @@ body {
   border-radius: 0.375rem;
   white-space: nowrap;
   cursor: pointer;
-  background: var(--ui-surface-alt);
+  background: var(--content-bg);
   color: var(--text-body);
-  border: 0.09375rem solid transparent;
+  border: 0.09375rem solid var(--line-l3-color);
   transition:
     background 0.15s,
     border-color 0.15s;
@@ -5236,28 +5262,28 @@ body {
   border-radius: 0.375rem;
   white-space: nowrap;
   cursor: pointer;
-  background: var(--ui-surface-alt);
+  background: var(--content-bg);
   color: var(--text-body);
-  border: 0.09375rem solid transparent;
+  border: 0.09375rem solid var(--line-l3-color);
   transition:
     background 0.15s,
     border-color 0.15s;
 }
 
 .asset-expense-classification-display:hover {
-  background: var(--content-bg);
+  background: var(--ui-surface-alt);
 }
 
 .asset-expense-classification-display.is-disabled {
   cursor: default;
   color: var(--text-muted);
-  background: var(--ui-surface-alt);
+  background: var(--content-bg);
 }
 .asset-expense-classification-display.is-disabled:hover {
-  background: var(--ui-surface-alt);
+  background: var(--content-bg);
 }
 .asset-expense-classification-display.is-required-first {
-  color: #9ca3af;
+  color: var(--text-muted);
   font-style: italic;
 }
 
@@ -5499,16 +5525,16 @@ body {
   border-radius: 0.375rem;
   white-space: nowrap;
   cursor: pointer;
-  background: var(--ui-surface-alt);
+  background: var(--content-bg);
   color: var(--text-body);
-  border: 0.09375rem solid transparent;
+  border: 0.09375rem solid var(--line-l3-color);
   transition:
     background 0.15s,
     border-color 0.15s;
 }
 
 .asset-expense-payment-wrap .asset-expense-payment-display.has-value {
-  background: var(--ui-surface-alt);
+  background: var(--content-bg);
   color: var(--text-body);
 }
 
@@ -5520,7 +5546,7 @@ body {
   margin-top: 0;
   max-height: 13.75rem;
   overflow-y: auto;
-  background: #F5F1E8;
+  background: var(--content-bg);
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
@@ -8554,11 +8580,11 @@ body {
 
 .todo-list-settings-btn .todo-list-settings-icon {
   display: block;
-  filter: brightness(0) saturate(100%) invert(72%);
+  filter: brightness(0) saturate(100%) invert(26%) sepia(10%) saturate(1200%) hue-rotate(115deg);
 }
 
 .todo-list-settings-btn:hover .todo-list-settings-icon {
-  filter: brightness(0) saturate(100%) invert(72%);
+  filter: brightness(0) saturate(100%) invert(26%) sepia(10%) saturate(1200%) hue-rotate(115deg);
 }
 
 .todo-list-toolbar-btn {
@@ -8598,7 +8624,7 @@ body {
   border: none !important;
 }
 
-/* 리스트 탭: 위 탭(할일 쏟아내기 등)과 통일 - 회색 밑선, 활성은 글자만 검정(밑선 없음) */
+/* 리스트 탭: 앱 팔레트 통일 - 밑선, 비활성/활성 텍스트 웜톤 */
 .todo-category-tabs {
   display: flex;
   align-items: center;
@@ -8625,7 +8651,7 @@ body {
   flex-shrink: 0;
   padding: 0.5rem 0.75rem 0.45rem;
   font-size: 0.9rem;
-  color: #9ca3af;
+  color: var(--text-muted);
   background: none;
   border: none;
   cursor: pointer;
@@ -8635,13 +8661,12 @@ body {
 }
 
 .todo-category-tab:hover {
-  color: var(--text-muted);
+  color: var(--text-body);
 }
 
 .todo-category-tab.active {
-  color: #111827;
+  color: var(--text-ink);
   font-weight: 600;
-  /* 밑선 없음 - 글자만 검정 */
 }
 
 .todo-category-tab .todo-category-tab-label {
@@ -8670,13 +8695,13 @@ body {
 }
 
 .todo-category-tab-add:hover .todo-category-tab-add-icon {
-  filter: brightness(0) saturate(100%) invert(35%);
+  filter: brightness(0) saturate(100%) invert(26%) sepia(10%) saturate(1200%) hue-rotate(115deg);
 }
 
 .todo-category-tab-add-icon {
   display: block;
   flex-shrink: 0;
-  filter: brightness(0) saturate(100%) invert(53%);
+  filter: brightness(0) saturate(100%) invert(26%) sepia(10%) saturate(1200%) hue-rotate(115deg);
 }
 
 /* 할일 우클릭 컨텍스트 메뉴 - 리스트 이동 */
@@ -17521,8 +17546,8 @@ body.kpi-resizing {
   background: transparent !important;
   border-radius: 0;
   padding-left: 0.5rem;
-  border-left: 0.1875rem solid #9ca3af;
-  color: #1f2937 !important;
+  border-left: 0.1875rem solid var(--line-l3-color);
+  color: var(--text-ink) !important;
 }
 .time-daily-budget-table .time-tag-trigger .time-tag-pill.prod-pink {
   border-left-color: #e8a4b8;
@@ -17534,7 +17559,7 @@ body.kpi-resizing {
   border-left-color: #7cb87c;
 }
 .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-empty {
-  border-left-color: #d1d5db;
+  border-left-color: var(--line-l3-color);
 }
 .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-dream {
   border-left-color: #e8b4b8;
@@ -20596,8 +20621,8 @@ body.kpi-resizing {
 /* 생산성 색상 */
 .time-tag-pill.prod-empty,
 .time-tag-pill.cat-empty {
-  background: #e8e8e8;
-  color: #888;
+  background: var(--ui-surface-alt);
+  color: var(--text-muted);
 }
 
 .time-tag-pill.prod-pink {
@@ -20685,7 +20710,7 @@ body.kpi-resizing {
   min-width: 8.75rem;
   max-height: 12.5rem;
   overflow-y: auto;
-  background: #F5F1E8;
+  background: var(--content-bg);
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
@@ -20695,10 +20720,10 @@ body.kpi-resizing {
 /* 드롭다운 옵션: 배경 없이 컬러바+텍스트 (2번 그림처럼) */
 .time-tag-panel .time-tag-option .time-tag-pill {
   background: transparent !important;
-  color: #1f2937 !important;
+  color: var(--text-ink) !important;
   border-radius: 0;
   padding-left: 0.5rem;
-  border-left: 0.1875rem solid #9ca3af;
+  border-left: 0.1875rem solid var(--line-l3-color);
 }
 .time-tag-panel .time-tag-option .time-tag-pill.prod-pink {
   border-left-color: #e8a4b8;
@@ -20710,7 +20735,7 @@ body.kpi-resizing {
   border-left-color: #7cb87c;
 }
 .time-tag-panel .time-tag-option .time-tag-pill.cat-empty {
-  border-left-color: #d1d5db;
+  border-left-color: var(--line-l3-color);
 }
 .time-tag-panel .time-tag-option .time-tag-pill.cat-dream {
   border-left-color: #e8b4b8;
@@ -20845,19 +20870,20 @@ body.kpi-resizing {
   color: var(--text-muted);
 }
 
+/* 설정/툴바 아이콘 통일: 앱 텍스트 색(웜톤) */
 .time-btn-icon {
   display: block;
   flex-shrink: 0;
-  filter: brightness(0) saturate(100%) invert(45%);
+  filter: brightness(0) saturate(100%) invert(26%) sepia(10%) saturate(1200%) hue-rotate(115deg);
 }
 
 .time-task-setup-btn .time-btn-icon {
-  opacity: 0.9;
+  opacity: 0.95;
 }
 
 .time-task-setup-btn:hover .time-btn-icon {
-  filter: brightness(0) saturate(100%) invert(45%);
-  opacity: 0.9;
+  filter: brightness(0) saturate(100%) invert(26%) sepia(10%) saturate(1200%) hue-rotate(115deg);
+  opacity: 1;
 }
 
 .time-btn-delete {
@@ -25048,6 +25074,16 @@ body.kpi-resizing {
   margin-bottom: 1rem;
 }
 
+/* 1일 뷰(오늘 해치우기): 왼쪽 큰 날짜 제거, 가운데 날짜 버튼만 표시 */
+.calendar-1day-nav {
+  justify-content: center;
+}
+.calendar-1day-nav .calendar-nav-today {
+  min-width: 8rem;
+  font-weight: 500;
+  color: var(--text-body);
+}
+
 .calendar-monthly-nav .calendar-sub-tabs {
   flex-shrink: 0;
   display: flex;
@@ -25132,6 +25168,10 @@ body.kpi-resizing {
   flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden;
+  background: var(--content-bg);
+  border: none;
+  border-bottom: var(--line-l3);
+  border-radius: 0;
 }
 
 /* 연간 뷰: 왼쪽 월, 오른쪽 해당 월 날짜 한 행 (Year Planner 구조) */
@@ -25238,15 +25278,16 @@ body.kpi-resizing {
 .calendar-monthly-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  border-bottom: 0.0938rem solid #d1d5db;
+  background: transparent;
+  border: none;
+  border-bottom: var(--line-l3);
 }
 
 .calendar-monthly-weekday {
   padding: 0.5rem;
-  font-size: 0.7rem;
-  font-weight: 300;
+  font-size: 0.75rem;
+  font-weight: 500;
   color: var(--text-muted);
-  letter-spacing: 0.1em;
   text-align: right;
 }
 
@@ -26721,8 +26762,12 @@ body.kpi-resizing {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   flex: 1;
-  min-height: 3.5rem;
   min-width: 0;
+  border-bottom: var(--line-l3);
+}
+
+.calendar-monthly-week:last-child {
+  border-bottom: none;
 }
 
 .calendar-monthly-bars {
@@ -26759,7 +26804,7 @@ body.kpi-resizing {
   padding: 0.15rem 0.5rem;
   font-size: 0.7rem;
   line-height: 1.35;
-  color: #1f2937;
+  color: var(--text-ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -26837,7 +26882,7 @@ body.kpi-resizing {
 }
 
 .calendar-monthly-span-bar:not(.is-completed) .calendar-monthly-span-bar-text {
-  color: #111827;
+  color: var(--text-ink);
 }
 
 .calendar-monthly-span-bar--has-checkbox {
@@ -26916,57 +26961,70 @@ body.kpi-resizing {
 }
 
 .calendar-monthly-day {
-  border-right: none;
-  border-bottom: var(--line-l3);
-  padding: 0.55rem 0.45rem;
-  min-height: 0;
+  min-height: 5rem;
+  padding: 0.35rem;
+  border-right: var(--line-l3);
+  border-bottom: none;
+  font-size: 0.8125rem;
+  text-align: right;
   min-width: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
+.calendar-monthly-day:last-child {
+  border-right: none;
+}
+
 .calendar-monthly-day:hover:not(.empty) {
-  background: #f4f4f2;
+  background: var(--ui-surface-alt);
 }
 
 .calendar-monthly-day.empty {
-  background: #fafafa;
+  background: var(--ui-surface-alt);
 }
 
 .calendar-monthly-day.empty:hover {
-  background: #f4f4f2;
+  background: var(--ui-surface-alt);
+}
+
+.calendar-monthly-day.other-month {
+  background: var(--ui-surface-alt);
 }
 
 .calendar-monthly-day.other-month .calendar-monthly-day-num {
-  color: #d1d5db;
+  color: var(--text-muted);
 }
 
-/* 오늘: 무인양품식 — 테두리 없이 숫자만 진하게 + 셀 안에 동그라미 점 */
+/* 오늘: 근무표와 동일 — 셀 배경 + 숫자 옆 동그라미 점 */
 .calendar-monthly-day.today {
-  background: transparent;
+  background: var(--ui-surface-alt);
   position: relative;
 }
 
 .calendar-monthly-day.today .calendar-monthly-day-num {
   font-weight: 700;
-  color: #111827;
+  color: var(--text-ink);
+}
+
+.calendar-monthly-day.today .calendar-monthly-day-num::after {
+  content: "";
+  display: inline-block;
+  width: 0.25rem;
+  height: 0.25rem;
+  background: var(--text-ink);
+  border-radius: 50% !important;
+  margin-left: 0.375rem;
+  vertical-align: middle;
 }
 
 .calendar-monthly-day.today::before {
-  content: "";
-  position: absolute;
-  top: 0.4rem;
-  right: 0.4rem;
-  width: 0.375rem;
-  height: 0.375rem;
-  aspect-ratio: 1;
-  border-radius: 50% !important; /* 전역 리셋(*::before { border-radius:0 !important }) 덮어쓰기 */
-  background: #111827;
+  content: none;
 }
 
 .calendar-monthly-day.calendar-day-focused {
-  background: rgba(0, 0, 0, 0.06);
+  background: var(--ui-surface-alt);
   box-shadow: inset 0 0 0 0.125rem rgba(0, 0, 0, 0.15);
 }
 
@@ -26975,17 +27033,20 @@ body.kpi-resizing {
 }
 
 .calendar-monthly-day.calendar-day-drag-over {
-  background: rgba(107, 114, 128, 0.12);
+  background: var(--ui-surface-alt);
   box-shadow: inset 0 0 0 0.125rem rgba(107, 114, 128, 0.3);
 }
 
 .calendar-monthly-day.sun .calendar-monthly-day-num {
-  color: #78716c;
+  color: var(--text-muted);
 }
 
 .calendar-monthly-day-num {
-  font-size: 0.9rem;
-  color: #333;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-family: "DM Mono", monospace;
+  color: var(--text-body);
+  margin-bottom: 0.25rem;
   text-align: right;
   line-height: 1.5;
   flex-shrink: 0;
@@ -26996,8 +27057,11 @@ body.kpi-resizing {
 .calendar-monthly-day-entries {
   flex: 1;
   min-width: 0;
-  margin-top: 0.5rem;
+  margin-top: 0.25rem;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
 }
 
 .calendar-monthly-day .calendar-monthly-day-num {

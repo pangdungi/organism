@@ -3799,15 +3799,11 @@ function render1DayView(tabsElement) {
   calendarSection.className = "calendar-monthly-main";
 
   const nav = document.createElement("div");
-  nav.className = "calendar-nav";
+  nav.className = "calendar-nav calendar-1day-nav";
   nav.innerHTML = `
-    <span class="calendar-nav-date">
-      <span class="calendar-nav-month"></span>
-      <span class="calendar-nav-year"></span>
-    </span>
     <div class="calendar-nav-controls">
       <button type="button" class="calendar-nav-prev" title="이전 날">&lt;</button>
-      <button type="button" class="calendar-nav-today" title="오늘">오늘</button>
+      <button type="button" class="calendar-nav-today" title="해당 날짜">날짜</button>
       <button type="button" class="calendar-nav-next" title="다음 날">&gt;</button>
     </div>
   `;
@@ -4063,11 +4059,14 @@ function render1DayView(tabsElement) {
     const grid = getCalendarGridFor1Day(dayOffset);
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + dayOffset);
-    nav.querySelector(".calendar-nav-month").textContent =
-      format1DayNavDate(dayOffset);
-    nav.querySelector(".calendar-nav-year").textContent = String(
-      targetDate.getFullYear(),
-    );
+    const todayBtn = nav.querySelector(".calendar-nav-today");
+    if (todayBtn) {
+      const y = targetDate.getFullYear();
+      const m = targetDate.getMonth() + 1;
+      const d = targetDate.getDate();
+      todayBtn.textContent = `${y}. ${m}. ${d}.`;
+      todayBtn.title = dayOffset === 0 ? "오늘" : `${y}년 ${m}월 ${d}일`;
+    }
 
     calendarGrid.innerHTML = "";
     calendarGrid.className =

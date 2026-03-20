@@ -252,7 +252,7 @@ export function applyTimeCategoryColors() {
     .time-tag-pill.prod-blue { background: ${nonproductive} !important; color: #fff !important; }
     .time-tag-pill.prod-green { background: ${other} !important; color: #fff !important; }
     .time-tag-pill.prod-empty,
-    .time-tag-pill.cat-empty { background: ${other} !important; color: #888 !important; }
+    .time-tag-pill.cat-empty { background: var(--ui-surface-alt) !important; color: var(--text-muted) !important; }
     .time-task-prod-bar--productive { background: ${productive} !important; }
     .time-task-prod-bar--nonproductive { background: ${nonproductive} !important; }
     .time-task-prod-bar--other { background: ${other} !important; }
