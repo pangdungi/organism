@@ -8,26 +8,19 @@ const WORK_SCHEDULE_KEY = "work_schedule_rows";
 const WORK_TYPE_OPTIONS_KEY = "work_schedule_type_options";
 const WORK_SCHEDULE_DAILY_HOURS_KEY = "work_schedule_daily_hours";
 const TIME_ROWS_KEY = "time_task_log_rows";
-/** 가장 많이 쓰는 근무유형만 기본 목록 (맞춤법 반영) */
+/** 기본 근무유형 순서: 초과근무 → 조기퇴근 → 연차 → 휴가 → 정규근무 (연차·휴가는 00:00-00:00, 수정 불가) */
 const DEFAULT_WORK_TYPE_OPTIONS = [
-  { name: "정규근무", start: "", end: "" },
   { name: "초과근무", start: "", end: "" },
   { name: "조기퇴근", start: "", end: "" },
-  { name: "야간근무", start: "", end: "" },
-  { name: "주말근무", start: "", end: "" },
-  { name: "재택근무", start: "", end: "" },
-  { name: "출장", start: "", end: "" },
-  { name: "연차 유급 휴가", start: "", end: "" },
-  { name: "반차(오전)", start: "", end: "" },
-  { name: "반차(오후)", start: "", end: "" },
-  { name: "유급 병가", start: "", end: "" },
-  { name: "무급 병가", start: "", end: "" },
-  { name: "지각", start: "", end: "" },
-  { name: "공휴일 근무", start: "", end: "" },
+  { name: "연차", start: "00:00", end: "00:00" },
+  { name: "휴가", start: "00:00", end: "00:00" },
+  { name: "정규근무", start: "", end: "" },
 ];
-/** 계산에 사용되어 삭제/이름 변경 불가 (초과근무, 조기퇴근) */
+/** 수정·삭제 불가 (UI에서 시작/마감 입력 없음, 삭제 버튼 없음) */
+const READONLY_WORK_TYPES = ["초과근무", "조기퇴근", "연차", "휴가"];
 const CALC_PROTECTED_WORK_TYPES = ["초과근무", "조기퇴근"];
-const PROTECTED_WORK_TYPES = CALC_PROTECTED_WORK_TYPES;
+const PROTECTED_WORK_TYPES = READONLY_WORK_TYPES;
+const WORK_TYPE_DISPLAY_ORDER = DEFAULT_WORK_TYPE_OPTIONS.map((o) => o.name);
 
 const DELETE_ICON =
   '<svg class="time-task-delete-icon" viewBox="0 0 16 16" width="12" height="12"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
@@ -41,17 +34,40 @@ function normalizeTypeEntry(o) {
   };
 }
 
+const ALLOWED_WORK_TYPE_NAMES = new Set(DEFAULT_WORK_TYPE_OPTIONS.map((o) => o.name));
+
 function getWorkTypeOptionsFull() {
+  const defaultFull = DEFAULT_WORK_TYPE_OPTIONS.map((o) => ({ name: o.name, start: o.start || "", end: o.end || "" }));
   try {
     const raw = localStorage.getItem(WORK_TYPE_OPTIONS_KEY);
     if (raw) {
       const arr = JSON.parse(raw);
       if (Array.isArray(arr) && arr.length > 0) {
-        return arr.map(normalizeTypeEntry).filter((o) => o.name);
+        const normalized = arr.map(normalizeTypeEntry).filter((o) => o.name);
+        const onlyAllowed = normalized.filter((o) => ALLOWED_WORK_TYPE_NAMES.has(o.name));
+        if (onlyAllowed.length !== normalized.length || onlyAllowed.length !== defaultFull.length) {
+          try {
+            localStorage.setItem(WORK_TYPE_OPTIONS_KEY, JSON.stringify(defaultFull));
+          } catch (_) {}
+          return defaultFull;
+        }
+        const merged = onlyAllowed.map((o) => {
+          const def = defaultFull.find((d) => d.name === o.name);
+          return def ? { name: o.name, start: o.start || def.start, end: o.end || def.end } : o;
+        });
+        merged.sort((a, b) => {
+          const i = WORK_TYPE_DISPLAY_ORDER.indexOf(a.name);
+          const j = WORK_TYPE_DISPLAY_ORDER.indexOf(b.name);
+          if (i < 0 && j < 0) return 0;
+          if (i < 0) return 1;
+          if (j < 0) return -1;
+          return i - j;
+        });
+        return merged;
       }
     }
   } catch (_) {}
-  return DEFAULT_WORK_TYPE_OPTIONS.map((o) => ({ name: o.name, start: o.start || "", end: o.end || "" }));
+  return defaultFull;
 }
 
 function getWorkTypeOptions() {
@@ -72,7 +88,7 @@ function addWorkTypeOption(name, start, end) {
 }
 
 function updateWorkTypeOption(name, start, end) {
-  if (CALC_PROTECTED_WORK_TYPES.includes(name)) return getWorkTypeOptionsFull();
+  if (READONLY_WORK_TYPES.includes(name)) return getWorkTypeOptionsFull();
   const full = getWorkTypeOptionsFull();
   const idx = full.findIndex((o) => o.name === name);
   if (idx < 0) return full;
@@ -753,7 +769,6 @@ export function render() {
           <h3 class="work-schedule-type-settings-title" id="work-schedule-type-settings-title">근무유형 설정</h3>
           <button type="button" class="work-schedule-type-settings-close" aria-label="닫기">&times;</button>
         </div>
-        <p class="work-schedule-type-settings-desc">시작·마감 시간은 선택 입력입니다. 넣어두면 테이블에서 해당 유형 선택 시 자동으로 채워집니다. 초과근무·조기퇴근은 삭제 불가.</p>
         <div class="work-schedule-type-settings-list-head">
           <span class="work-schedule-type-settings-th-start">시작</span>
           <span class="work-schedule-type-settings-th-end">마감</span>
@@ -762,8 +777,8 @@ export function render() {
         </div>
         <div class="work-schedule-type-settings-list" data-type-list></div>
         <div class="work-schedule-type-settings-add">
-          <input type="text" class="work-schedule-type-settings-add-start" placeholder="09:00 (선택)" maxlength="5" title="시작시간 선택" />
-          <input type="text" class="work-schedule-type-settings-add-end" placeholder="18:00 (선택)" maxlength="5" title="마감시간 선택" />
+          <input type="text" class="work-schedule-type-settings-add-start work-schedule-time-input" placeholder="hh:mm" maxlength="5" title="시작시간" inputmode="numeric" autocomplete="off" />
+          <input type="text" class="work-schedule-type-settings-add-end work-schedule-time-input" placeholder="hh:mm" maxlength="5" title="마감시간" inputmode="numeric" autocomplete="off" />
           <input type="text" class="work-schedule-type-settings-input" placeholder="근무유형 입력" maxlength="50" />
           <button type="button" class="work-schedule-type-settings-add-btn">추가</button>
         </div>
@@ -775,41 +790,71 @@ export function render() {
     const addInput = modal.querySelector(".work-schedule-type-settings-input");
     const addBtn = modal.querySelector(".work-schedule-type-settings-add-btn");
 
+    function formatTimeInputField(el) {
+      if (!el || !el.matches(".work-schedule-time-input")) return;
+      const raw = (el.value || "").replace(/\D/g, "").slice(0, 4);
+      if (raw.length <= 2) {
+        el.value = raw;
+        return;
+      }
+      el.value = raw.slice(0, -2) + ":" + raw.slice(-2);
+    }
+    modal.addEventListener("input", (e) => {
+      if (e.target.matches(".work-schedule-time-input")) formatTimeInputField(e.target);
+    });
+    modal.addEventListener("keydown", (e) => {
+      if (!e.target.matches(".work-schedule-time-input")) return;
+      const key = e.key;
+      if (key === "Backspace" || key === "Delete" || key === "Tab" || key === "ArrowLeft" || key === "ArrowRight" || key === ":" || e.ctrlKey || e.metaKey) return;
+      if (!/^\d$/.test(key)) e.preventDefault();
+    });
+
     function renderTypeList() {
       const full = getWorkTypeOptionsFull();
-      const protectedFirst = [
-        ...full.filter((o) => CALC_PROTECTED_WORK_TYPES.includes(o.name)),
-        ...full.filter((o) => !CALC_PROTECTED_WORK_TYPES.includes(o.name)),
-      ];
+      const sorted = [...full].sort((a, b) => {
+        const i = WORK_TYPE_DISPLAY_ORDER.indexOf(a.name);
+        const j = WORK_TYPE_DISPLAY_ORDER.indexOf(b.name);
+        if (i < 0 && j < 0) return 0;
+        if (i < 0) return 1;
+        if (j < 0) return -1;
+        return i - j;
+      });
       listEl.innerHTML = "";
-      protectedFirst.forEach((entry) => {
-        const isProtected = CALC_PROTECTED_WORK_TYPES.includes(entry.name);
+      sorted.forEach((entry) => {
+        const isReadonly = READONLY_WORK_TYPES.includes(entry.name);
         const row = document.createElement("div");
-        row.className = "work-schedule-type-settings-row" + (isProtected ? " is-protected" : "");
+        row.className = "work-schedule-type-settings-row" + (isReadonly ? " is-protected" : "");
         const startVal = escapeHtml(entry.start);
         const endVal = escapeHtml(entry.end);
-        row.innerHTML =
-          `<input type="text" class="work-schedule-type-settings-row-start" placeholder="선택" value="${startVal}" maxlength="5" ${isProtected ? "" : ""} />` +
-          `<input type="text" class="work-schedule-type-settings-row-end" placeholder="선택" value="${endVal}" maxlength="5" />` +
-          `<span class="work-schedule-type-settings-name">${escapeHtml(entry.name)}</span>` +
-          (isProtected
-            ? '<span class="work-schedule-type-settings-badge">계산에 사용 (삭제 불가)</span>'
-            : `<button type="button" class="work-schedule-type-settings-del" title="삭제">${DELETE_ICON}</button>`);
-        const startInp = row.querySelector(".work-schedule-type-settings-row-start");
-        const endInp = row.querySelector(".work-schedule-type-settings-row-end");
-        const saveRow = () => {
-          updateWorkTypeOption(entry.name, startInp.value.trim(), endInp.value.trim());
-        };
-        startInp.addEventListener("blur", saveRow);
-        endInp.addEventListener("blur", saveRow);
-        startInp.addEventListener("change", saveRow);
-        endInp.addEventListener("change", saveRow);
-        const delBtn = row.querySelector(".work-schedule-type-settings-del");
-        if (delBtn) {
-          delBtn.addEventListener("click", () => {
-            removeWorkTypeOption(entry.name);
-            renderTypeList();
-          });
+        if (isReadonly) {
+          const badgeText = CALC_PROTECTED_WORK_TYPES.includes(entry.name) ? "계산에 사용 (삭제 불가)" : "수정·삭제 불가";
+          row.innerHTML =
+            `<span class="work-schedule-type-settings-row-no-time" aria-hidden="true">—</span>` +
+            `<span class="work-schedule-type-settings-row-no-time" aria-hidden="true">—</span>` +
+            `<span class="work-schedule-type-settings-name">${escapeHtml(entry.name)}</span>` +
+            `<span class="work-schedule-type-settings-badge">${badgeText}</span>`;
+        } else {
+          row.innerHTML =
+            `<input type="text" class="work-schedule-type-settings-row-start work-schedule-time-input" placeholder="hh:mm" value="${startVal}" maxlength="5" inputmode="numeric" autocomplete="off" />` +
+            `<input type="text" class="work-schedule-type-settings-row-end work-schedule-time-input" placeholder="hh:mm" value="${endVal}" maxlength="5" inputmode="numeric" autocomplete="off" />` +
+            `<span class="work-schedule-type-settings-name">${escapeHtml(entry.name)}</span>` +
+            `<button type="button" class="work-schedule-type-settings-del" title="삭제">${DELETE_ICON}</button>`;
+          const startInp = row.querySelector(".work-schedule-type-settings-row-start");
+          const endInp = row.querySelector(".work-schedule-type-settings-row-end");
+          const saveRow = () => {
+            updateWorkTypeOption(entry.name, startInp.value.trim(), endInp.value.trim());
+          };
+          startInp.addEventListener("blur", saveRow);
+          endInp.addEventListener("blur", saveRow);
+          startInp.addEventListener("change", saveRow);
+          endInp.addEventListener("change", saveRow);
+          const delBtn = row.querySelector(".work-schedule-type-settings-del");
+          if (delBtn) {
+            delBtn.addEventListener("click", () => {
+              removeWorkTypeOption(entry.name);
+              renderTypeList();
+            });
+          }
         }
         listEl.appendChild(row);
       });

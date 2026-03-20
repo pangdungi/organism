@@ -274,11 +274,12 @@ body {
 .app-toast-panel,
 .kpi-goals-modal-panel,
 .asset-settings-panel,
-.diary-add-emotion-panel {
+.diary-add-emotion-panel,
+.work-schedule-type-settings-panel {
   border-radius: var(--modal-radius) !important;
 }
 
-/* 모달 X(닫기): 패널 또는 닫기 버튼 호버/포커스 시에만 표시 */
+/* 모달 X(닫기): 항상 표시 (호버 불필요) */
 .todo-settings-panel .todo-settings-close,
 .asset-settings-panel .asset-settings-close,
 .work-schedule-type-settings-panel .work-schedule-type-settings-close,
@@ -296,61 +297,6 @@ body {
 .time-task-log-panel .time-task-log-emotion-inner-close,
 .diary-add-emotion-panel .diary-add-emotion-close,
 .calendar-event-bubble .calendar-event-bubble-close {
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.todo-settings-panel:hover .todo-settings-close,
-.todo-settings-panel .todo-settings-close:hover,
-.todo-settings-panel .todo-settings-close:focus,
-.asset-settings-panel:hover .asset-settings-close,
-.asset-settings-panel .asset-settings-close:hover,
-.asset-settings-panel .asset-settings-close:focus,
-.work-schedule-type-settings-panel:hover .work-schedule-type-settings-close,
-.work-schedule-type-settings-panel .work-schedule-type-settings-close:hover,
-.work-schedule-type-settings-panel .work-schedule-type-settings-close:focus,
-.todo-list-modal-panel:hover .todo-list-modal-close,
-.todo-list-modal-panel .todo-list-modal-close:hover,
-.todo-list-modal-panel .todo-list-modal-close:focus,
-.todo-list-modal:hover .todo-list-modal-close,
-.todo-list-modal .todo-list-modal-close:hover,
-.todo-list-modal .todo-list-modal-close:focus,
-.time-task-setup-panel:hover .time-task-setup-close,
-.time-task-setup-panel .time-task-setup-close:hover,
-.time-task-setup-panel .time-task-setup-close:focus,
-.kpi-goals-modal-panel:hover .kpi-goals-modal-close,
-.kpi-goals-modal-panel .kpi-goals-modal-close:hover,
-.kpi-goals-modal-panel .kpi-goals-modal-close:focus,
-.dream-kpi-panel:hover .dream-kpi-modal-close,
-.dream-kpi-panel .dream-kpi-modal-close:hover,
-.dream-kpi-panel .dream-kpi-modal-close:focus,
-.dream-delete-confirm-panel:hover .dream-kpi-modal-close,
-.dream-delete-confirm-panel .dream-kpi-modal-close:hover,
-.dream-delete-confirm-panel .dream-kpi-modal-close:focus,
-.dream-path-context-panel:hover .dream-kpi-modal-close,
-.dream-path-context-panel .dream-kpi-modal-close:hover,
-.dream-path-context-panel .dream-kpi-modal-close:focus,
-.kpi-confirm-panel:hover .dream-kpi-modal-close,
-.kpi-confirm-panel .dream-kpi-modal-close:hover,
-.kpi-confirm-panel .dream-kpi-modal-close:focus,
-.time-task-log-panel:hover .time-task-log-focus-inner-close,
-.time-task-log-panel .time-task-log-focus-inner-close:hover,
-.time-task-log-panel .time-task-log-focus-inner-close:focus,
-.time-task-log-panel:hover .time-task-log-todo-inner-close,
-.time-task-log-panel .time-task-log-todo-inner-close:hover,
-.time-task-log-panel .time-task-log-todo-inner-close:focus,
-.time-task-log-panel:hover .time-task-log-expense-inner-close,
-.time-task-log-panel .time-task-log-expense-inner-close:hover,
-.time-task-log-panel .time-task-log-expense-inner-close:focus,
-.time-task-log-panel:hover .time-task-log-emotion-inner-close,
-.time-task-log-panel .time-task-log-emotion-inner-close:hover,
-.time-task-log-panel .time-task-log-emotion-inner-close:focus,
-.diary-add-emotion-panel:hover .diary-add-emotion-close,
-.diary-add-emotion-panel .diary-add-emotion-close:hover,
-.diary-add-emotion-panel .diary-add-emotion-close:focus,
-.calendar-event-bubble:hover .calendar-event-bubble-close,
-.calendar-event-bubble .calendar-event-bubble-close:hover,
-.calendar-event-bubble .calendar-event-bubble-close:focus {
   opacity: 1;
 }
 
@@ -1877,6 +1823,29 @@ body {
   .app-main:has(.idea-view) .idea-view {
     padding: 0.875rem 0 1rem !important;
     box-sizing: border-box;
+  }
+
+  /* 모바일: 근무기록 트래커 테이블 줄바꿈 없이 가로 스크롤, 스크롤바 숨김 */
+  .work-schedule-content-wrap .work-schedule-table-wrap {
+    overflow-x: auto;
+    overflow-y: visible;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .work-schedule-content-wrap .work-schedule-table-wrap::-webkit-scrollbar {
+    display: none;
+  }
+  .work-schedule-content-wrap .work-schedule-table {
+    white-space: nowrap;
+    min-width: max-content;
+  }
+  .work-schedule-content-wrap .work-schedule-table th,
+  .work-schedule-content-wrap .work-schedule-table td {
+    white-space: nowrap;
+  }
+  .work-schedule-content-wrap .work-schedule-table .work-schedule-cell-memo {
+    white-space: normal;
+    max-width: 12rem;
   }
 
   /* 모바일: 근무표·아카이브·나의계정 헤더 패딩 통일 (오늘 탭 date-header와 동일: 0.25rem 1.75rem 1.25rem) */
@@ -3585,7 +3554,7 @@ body {
   padding: 0.4rem 0.5rem;
   font-size: 0.9rem;
   border: var(--line-l3);
-  border-radius: 0;
+  border-radius: var(--modal-radius);
   background: var(--content-bg);
   color: var(--text-body);
 }
@@ -3653,7 +3622,15 @@ body {
   background: none;
   color: var(--text-muted);
   cursor: pointer;
-  border-radius: 0.25rem;
+  border-radius: var(--modal-radius);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.work-schedule-type-settings-row:hover .work-schedule-type-settings-del,
+.work-schedule-type-settings-del:hover,
+.work-schedule-type-settings-del:focus {
+  opacity: 1;
 }
 
 .work-schedule-type-settings-del:hover {
@@ -3679,9 +3656,18 @@ body {
   padding: 0.5rem 0.75rem;
   font-size: 0.9rem;
   border: var(--line-l3);
-  border-radius: 0.375rem;
+  border-radius: var(--modal-radius);
   background: var(--content-bg);
   color: var(--text-body);
+}
+
+.work-schedule-type-settings-input::placeholder,
+.work-schedule-type-settings-add-start::placeholder,
+.work-schedule-type-settings-add-end::placeholder,
+.work-schedule-type-settings-row-start::placeholder,
+.work-schedule-type-settings-row-end::placeholder {
+  color: var(--text-placeholder);
+  font-weight: 300;
 }
 
 .work-schedule-type-settings-input:focus,
@@ -3697,7 +3683,7 @@ body {
   color: var(--text-ink);
   background: var(--ui-surface-alt);
   border: var(--line-l3);
-  border-radius: 0.375rem;
+  border-radius: var(--modal-radius);
   cursor: pointer;
 }
 
@@ -3739,7 +3725,7 @@ body {
   padding: 0.35rem 0.4rem;
   font-size: 0.85rem;
   border: var(--line-l3);
-  border-radius: 0.25rem;
+  border-radius: var(--modal-radius);
   background: var(--content-bg);
   color: var(--text-body);
 }
@@ -3752,6 +3738,13 @@ body {
   box-shadow: none;
 }
 
+.work-schedule-type-settings-row-no-time {
+  width: 4rem;
+  flex-shrink: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
 .work-schedule-type-settings-add-start,
 .work-schedule-type-settings-add-end {
   width: 4rem;
@@ -3759,7 +3752,7 @@ body {
   padding: 0.5rem 0.4rem;
   font-size: 0.85rem;
   border: var(--line-l3);
-  border-radius: 0.375rem;
+  border-radius: var(--modal-radius);
   background: var(--content-bg);
   color: var(--text-body);
 }
@@ -4661,7 +4654,7 @@ body {
   font-family: var(--font-heading);
   font-weight: 200;
   letter-spacing: -0.01em;
-  color: var(--text-ink);
+  color: var(--text-body);
 }
 
 .asset-settings-close {
@@ -4676,7 +4669,7 @@ body {
   line-height: 1;
   font-family: inherit;
   font-weight: 500;
-  color: var(--text-body);
+  color: var(--text-muted);
   background: none;
   border: none;
   cursor: pointer;
@@ -4711,7 +4704,7 @@ body {
 
 .asset-settings-tab-btn.active {
   color: var(--text-body);
-  border-bottom-color: var(--text-body);
+  border-bottom-color: var(--line-l8-color);
 }
 
 .asset-settings-body {
@@ -4749,7 +4742,7 @@ body {
   margin: 0 0 0.5rem 0;
   font-size: 0.9rem;
   font-weight: 600;
-  color: var(--text-body);
+  color: var(--text-muted);
 }
 
 .asset-settings-selected-cat {
@@ -4782,15 +4775,17 @@ body {
   padding: 0.35rem 0.5rem;
   border-radius: 0.375rem;
   border-left: 0.1875rem solid transparent;
+  color: var(--text-muted);
 }
 
 .asset-settings-cat-row:hover {
-  background: var(--ui-surface-alt);
+  background: rgba(196, 190, 168, 0.2);
 }
 
 .asset-settings-cat-row.active {
-  background: var(--ui-surface-alt);
-  border-left-color: var(--text-body);
+  background: rgba(122, 158, 138, 0.12);
+  border-left-color: var(--line-l8-color);
+  color: var(--text-body);
 }
 
 .asset-settings-input {
@@ -4806,12 +4801,12 @@ body {
 .asset-settings-input:focus {
   outline: none;
   cursor: text;
-  border-color: #9ca3af;
+  border-color: var(--line-l2-color);
   box-shadow: none;
 }
 
 .asset-settings-input--default {
-  background: var(--ui-surface-alt);
+  background: rgba(196, 190, 168, 0.15);
   cursor: default;
   color: var(--text-body);
 }
@@ -4869,7 +4864,7 @@ body {
 .asset-settings-empty {
   padding: 1.5rem;
   font-size: 0.8125rem;
-  color: #9ca3af;
+  color: var(--text-muted);
   text-align: center;
 }
 
@@ -4883,15 +4878,16 @@ body {
   padding: 0.5rem 1.25rem;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #fff;
-  background: #1c1c1a;
-  border: none;
-  border-radius: 0.5rem;
+  color: var(--text-ink);
+  background: var(--ui-surface-alt);
+  border: var(--line-l2);
+  border-radius: var(--modal-radius);
   cursor: pointer;
 }
 
 .asset-settings-save:hover {
-  background: #1f2937;
+  background: var(--content-bg);
+  border-color: var(--line-l1-color);
 }
 
 /* ----- 현금흐름 (월급 흐름 시각화) ----- */
