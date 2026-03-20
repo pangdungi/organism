@@ -8,42 +8,13 @@ import { getTodoSettings, saveTodoSettings, getCustomSections, DEFAULT_SECTION_C
 import { createColorPickerRow } from "../utils/todoSettingsModal.js";
 
 export const USER_HOURLY_RATE_KEY = "user_hourly_rate";
-export const APP_FONT_KEY = "app_font_family";
 
-export const FONT_OPTIONS = [
-  { value: "nexonlv1", label: "NEXON Lv1 Gothic (기본)" },
-  { value: "scdream3", label: "에스코어 드림 3" },
-  { value: "nexonlv2", label: "NEXON Lv2 Gothic" },
-  { value: "pretendard", label: "Pretendard" },
-];
-
+/** 한글 NEXON Lv1 고정 — 웹사이트 폰트 설정 제거됨 */
 export function applyAppFont() {
   try {
-    const saved = localStorage.getItem(APP_FONT_KEY) || "nexonlv1";
-    let fontFamily = '"NEXON Lv1 Gothic", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
-    if (saved === "scdream2" || saved === "scdream3") {
-      fontFamily = '"S-Core Dream 3", -apple-system, sans-serif';
-    } else if (saved === "nexonlv1") {
-      fontFamily = '"NEXON Lv1 Gothic", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
-    } else if (saved === "nexonlv2" || saved === "leeseoyun") {
-      fontFamily = '"NEXON Lv2 Gothic", -apple-system, sans-serif';
-    } else if (saved === "pretendard") {
-      fontFamily = '"Pretendard", -apple-system, sans-serif';
-    } else {
-      fontFamily = '"NEXON Lv1 Gothic", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
-    }
-    document.documentElement.style.setProperty("--app-font-family", fontFamily);
-    if (saved === "nexonlv1") {
-      document.documentElement.dataset.appFont = "nexonlv1";
-    } else if (saved === "nexonlv2" || saved === "leeseoyun") {
-      document.documentElement.dataset.appFont = "nexonlv2";
-    } else if (saved === "pretendard") {
-      document.documentElement.dataset.appFont = "pretendard";
-    } else if (saved === "scdream2" || saved === "scdream3") {
-      delete document.documentElement.dataset.appFont;
-    } else {
-      document.documentElement.dataset.appFont = "nexonlv1";
-    }
+    const stack =
+      '"Space Grotesk", "NEXON Lv1 Gothic", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+    document.documentElement.style.setProperty("--app-font-family", stack);
   } catch (_) {}
 }
 
@@ -71,19 +42,7 @@ export function render() {
   const grid = document.createElement("div");
   grid.className = "time-dashboard-view idea-widget-grid";
 
-  // ----- 기본 설정 위젯 (아이디, 웹사이트 폰트, 로그아웃) -----
-  const savedFont = (() => {
-    try {
-      const v = localStorage.getItem(APP_FONT_KEY);
-      if (v === "nexonlv2" || v === "leeseoyun") return "nexonlv2";
-      if (v === "pretendard") return "pretendard";
-      if (v === "nexonlv1") return "nexonlv1";
-      return v === "scdream2" ? "scdream3" : v || "nexonlv1";
-    } catch (_) {
-      return "nexonlv1";
-    }
-  })();
-  const currentFontOption = FONT_OPTIONS.find((o) => o.value === savedFont) || FONT_OPTIONS[0];
+  // ----- 기본 설정 위젯 (아이디, 로그아웃) — 웹사이트 폰트 설정 제거(한글 NEXON 고정) -----
   const basicSettingsWidget = document.createElement("div");
   basicSettingsWidget.className = "time-dashboard-widget idea-widget idea-widget-basic-settings";
   basicSettingsWidget.innerHTML = `
@@ -92,23 +51,6 @@ export function render() {
       <div class="idea-basic-row">
         <span class="idea-form-label">아이디</span>
         <span class="idea-user-id-value" id="idea-user-id">—</span>
-      </div>
-      <div class="idea-basic-row idea-font-row">
-        <label class="idea-form-label">웹사이트 폰트</label>
-        <div class="idea-font-dropdown">
-          <button type="button" class="idea-font-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="폰트 선택">
-            <span class="idea-font-trigger-label">${currentFontOption.label}</span>
-            <span class="idea-font-trigger-icon" aria-hidden="true">▼</span>
-          </button>
-          <div class="idea-font-panel" role="listbox" hidden>
-            ${FONT_OPTIONS.map((o) => `
-              <div class="idea-font-option" role="option" data-value="${o.value}" aria-selected="${o.value === savedFont}">
-                ${o.value === savedFont ? '<span class="idea-font-option-check">✓</span>' : ""}
-                <span class="idea-font-option-label">${o.label}</span>
-              </div>
-            `).join("")}
-          </div>
-        </div>
       </div>
       <div class="idea-logout-row">
         <button type="button" class="idea-btn-logout">로그아웃</button>
@@ -121,7 +63,6 @@ export function render() {
     signOut();
   });
 
-  // 로그인된 사용자 ID 비동기 로드
   if (typeof supabase !== "undefined" && supabase?.auth) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       const idEl = document.getElementById("idea-user-id");
@@ -130,59 +71,6 @@ export function render() {
       }
     });
   }
-
-  const fontDropdown = basicSettingsWidget.querySelector(".idea-font-dropdown");
-  const fontTrigger = basicSettingsWidget.querySelector(".idea-font-trigger");
-  const fontTriggerLabel = basicSettingsWidget.querySelector(".idea-font-trigger-label");
-  const fontPanel = basicSettingsWidget.querySelector(".idea-font-panel");
-  const fontOptions = basicSettingsWidget.querySelectorAll(".idea-font-option");
-
-  function closeFontPanel() {
-    fontPanel.hidden = true;
-    fontTrigger.setAttribute("aria-expanded", "false");
-  }
-
-  fontTrigger.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const isOpen = !fontPanel.hidden;
-    if (isOpen) {
-      closeFontPanel();
-    } else {
-      fontPanel.hidden = false;
-      fontTrigger.setAttribute("aria-expanded", "true");
-      const onDocClick = () => {
-        closeFontPanel();
-        document.removeEventListener("click", onDocClick);
-      };
-      requestAnimationFrame(() => document.addEventListener("click", onDocClick));
-    }
-  });
-
-  fontOptions.forEach((opt) => {
-    opt.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const val = opt.dataset.value;
-      try {
-        localStorage.setItem(APP_FONT_KEY, val);
-        applyAppFont();
-      } catch (_) {}
-      const chosen = FONT_OPTIONS.find((o) => o.value === val);
-      if (chosen) fontTriggerLabel.textContent = chosen.label;
-      fontOptions.forEach((o) => {
-        o.setAttribute("aria-selected", o.dataset.value === val ? "true" : "false");
-        o.querySelector(".idea-font-option-check")?.remove();
-        if (o.dataset.value === val) {
-          const check = document.createElement("span");
-          check.className = "idea-font-option-check";
-          check.textContent = "✓";
-          o.insertBefore(check, o.firstChild);
-        }
-      });
-      closeFontPanel();
-    });
-  });
-
-  fontPanel.addEventListener("click", (e) => e.stopPropagation());
 
   // ----- 나의 시급계산하기 위젯 (모바일: 표시) -----
   const hourlyWidget = document.createElement("div");
