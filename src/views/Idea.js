@@ -11,29 +11,26 @@ export const USER_HOURLY_RATE_KEY = "user_hourly_rate";
 export const APP_FONT_KEY = "app_font_family";
 
 export const FONT_OPTIONS = [
+  { value: "nexonlv1", label: "NEXON Lv1 Gothic (기본)" },
   { value: "scdream3", label: "에스코어 드림 3" },
-  { value: "nexonlv1", label: "NEXON Lv1 Gothic" },
   { value: "nexonlv2", label: "NEXON Lv2 Gothic" },
   { value: "pretendard", label: "Pretendard" },
-  { value: "notoserifkr", label: "Noto Serif KR" },
 ];
 
 export function applyAppFont() {
   try {
-    const saved = localStorage.getItem(APP_FONT_KEY) || "scdream3";
-    let fontFamily = '"S-Core Dream 3", -apple-system, sans-serif';
+    const saved = localStorage.getItem(APP_FONT_KEY) || "nexonlv1";
+    let fontFamily = '"NEXON Lv1 Gothic", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
     if (saved === "scdream2" || saved === "scdream3") {
       fontFamily = '"S-Core Dream 3", -apple-system, sans-serif';
     } else if (saved === "nexonlv1") {
-      fontFamily = '"NEXON Lv1 Gothic", -apple-system, sans-serif';
+      fontFamily = '"NEXON Lv1 Gothic", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
     } else if (saved === "nexonlv2" || saved === "leeseoyun") {
       fontFamily = '"NEXON Lv2 Gothic", -apple-system, sans-serif';
     } else if (saved === "pretendard") {
       fontFamily = '"Pretendard", -apple-system, sans-serif';
-    } else if (saved === "notoserifkr") {
-      fontFamily = '"Noto Serif KR", serif';
     } else {
-      fontFamily = '"S-Core Dream 3", -apple-system, sans-serif';
+      fontFamily = '"NEXON Lv1 Gothic", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
     }
     document.documentElement.style.setProperty("--app-font-family", fontFamily);
     if (saved === "nexonlv1") {
@@ -42,10 +39,10 @@ export function applyAppFont() {
       document.documentElement.dataset.appFont = "nexonlv2";
     } else if (saved === "pretendard") {
       document.documentElement.dataset.appFont = "pretendard";
-    } else if (saved === "notoserifkr") {
-      document.documentElement.dataset.appFont = "notoserifkr";
-    } else {
+    } else if (saved === "scdream2" || saved === "scdream3") {
       delete document.documentElement.dataset.appFont;
+    } else {
+      document.documentElement.dataset.appFont = "nexonlv1";
     }
   } catch (_) {}
 }
@@ -80,10 +77,10 @@ export function render() {
       const v = localStorage.getItem(APP_FONT_KEY);
       if (v === "nexonlv2" || v === "leeseoyun") return "nexonlv2";
       if (v === "pretendard") return "pretendard";
-      if (v === "notoserifkr") return "notoserifkr";
-      return v === "scdream2" ? "scdream3" : v || "scdream3";
+      if (v === "nexonlv1") return "nexonlv1";
+      return v === "scdream2" ? "scdream3" : v || "nexonlv1";
     } catch (_) {
-      return "scdream3";
+      return "nexonlv1";
     }
   })();
   const currentFontOption = FONT_OPTIONS.find((o) => o.value === savedFont) || FONT_OPTIONS[0];
