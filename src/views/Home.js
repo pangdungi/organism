@@ -1,8 +1,7 @@
 /**
- * Home 페이지 - 3분할 레이아웃, 한 구역에 오늘 해치우기 캘린더
+ * Home 페이지 - 투두리스트 + 이벤트·리마인더 레이아웃
  */
 
-import { render1DayView } from "./Calendar.js";
 import { getKpiTodosAsTasks, syncKpiTodoCompleted } from "../utils/kpiTodoSync.js";
 import { getCustomSections } from "../utils/todoSettings.js";
 
@@ -512,39 +511,7 @@ export function render() {
   el.className = "app-tab-panel-content home-view";
 
   const threeCols = document.createElement("div");
-  threeCols.className = "home-view-three";
-
-  const section1 = document.createElement("div");
-  section1.className = "home-view-section home-view-section--calendar";
-  const d = new Date();
-  const WEEKDAY_NAMES = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
-  const header1 = document.createElement("h3");
-  header1.className = "home-view-section-title";
-  header1.textContent = "Daily";
-  section1.appendChild(header1);
-  const dateHeader = document.createElement("div");
-  dateHeader.className = "date-header";
-  const dateAnchor = document.createElement("div");
-  dateAnchor.className = "home-daily-date-anchor";
-  dateAnchor.textContent = `${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
-  dateHeader.appendChild(dateAnchor);
-  const weekdayEl = document.createElement("div");
-  weekdayEl.className = "home-daily-weekday";
-  weekdayEl.textContent = WEEKDAY_NAMES[d.getDay()];
-  dateHeader.appendChild(weekdayEl);
-  section1.appendChild(dateHeader);
-  const calendarWrap = render1DayView(null);
-  calendarWrap.classList.add("home-embed-1day");
-  section1.appendChild(calendarWrap);
-  /* 홈: 날짜는 상단 앵커에만 표시, nav 내부 날짜는 숨김 */
-  const nav = calendarWrap.querySelector(".calendar-nav");
-  if (nav) {
-    const dateWrap = nav.querySelector(".calendar-nav-date");
-    if (dateWrap) dateWrap.style.display = "none";
-  }
-  /* 홈: 오늘실제는 표 헤더로만 사용, 툴팁 제거 */
-  const actualToggle = calendarWrap.querySelector(".calendar-1day-time-header-cell--actual-toggle");
-  if (actualToggle) actualToggle.title = "";
+  threeCols.className = "home-view-three home-view-three--no-calendar";
 
   const section2 = document.createElement("div");
   section2.className = "home-view-section home-view-section--event";
@@ -617,7 +584,6 @@ export function render() {
   section3.appendChild(todoListContent);
 
   threeCols.appendChild(section3);
-  threeCols.appendChild(section1);
   threeCols.appendChild(section2);
   el.appendChild(threeCols);
 

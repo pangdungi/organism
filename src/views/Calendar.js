@@ -4731,23 +4731,13 @@ function render1WeekView(tabsElement) {
     }
   }
 
-  function format1WeekNavRange(week) {
-    if (!week[0] || !week[6]) return "";
-    const d1 = week[0];
-    const d2 = week[6];
-    const sameYear = d1.getFullYear() === d2.getFullYear();
-    const s1 = `${d1.getMonth() + 1}.${d1.getDate()}`;
-    const s2 = sameYear
-      ? `${d2.getMonth() + 1}.${d2.getDate()}`
-      : `${d2.getFullYear()}.${d2.getMonth() + 1}.${d2.getDate()}`;
-    return `${s1} ~ ${s2}`;
-  }
-
   function renderCalendar() {
     const week = getCalendarGridFor1Week(weekOffset);
     const grid = [week];
+    /* 월별 뷰와 동일하게 몇 월인지만 표기 */
+    const monthIndex = week[0] ? week[0].getMonth() : new Date().getMonth();
     nav.querySelector(".calendar-nav-month").textContent =
-      format1WeekNavRange(week);
+      MONTH_NAMES_EN[monthIndex];
     nav.querySelector(".calendar-nav-year").textContent = week[0]
       ? String(week[0].getFullYear())
       : "";
@@ -4779,7 +4769,7 @@ function render1WeekView(tabsElement) {
       const firstDayKey = weekDateKeys[0] || "";
       const lastDayKey = weekDateKeys[weekDateKeys.length - 1] || "";
 
-      weekRow.forEach((date) => {
+      weekRow.forEach((date, weekDayIndex) => {
         const cell = document.createElement("div");
         cell.className = "calendar-monthly-day";
         if (!date) {
@@ -4789,9 +4779,16 @@ function render1WeekView(tabsElement) {
         }
         const key = formatDateKey(date);
         cell.dataset.date = key;
+        const dayHead = document.createElement("div");
+        dayHead.className = "calendar-1week-day-head";
+        const weekdayEl = document.createElement("span");
+        weekdayEl.className = "calendar-1week-day-weekday";
+        weekdayEl.textContent = DAY_NAMES[weekDayIndex] || "";
         const dayNum = document.createElement("div");
         dayNum.className = "calendar-monthly-day-num";
         dayNum.textContent = date.getDate();
+        dayHead.appendChild(weekdayEl);
+        dayHead.appendChild(dayNum);
 
         const isCurrentMonth = date.getMonth() === primaryMonth;
         if (!isCurrentMonth) cell.classList.add("other-month");
@@ -4799,7 +4796,7 @@ function render1WeekView(tabsElement) {
         if (date.getDay() === 0) cell.classList.add("sun");
         if (date.getDay() === 6) cell.classList.add("sat");
 
-        cell.appendChild(dayNum);
+        cell.appendChild(dayHead);
         const entriesEl = document.createElement("div");
         entriesEl.className = "calendar-monthly-day-entries";
         cell.appendChild(entriesEl);
@@ -5009,6 +5006,17 @@ function render1WeekView(tabsElement) {
       const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 3 * BAR_HEIGHT + BOTTOM_PAD;
       const requiredHeight = BARS_TOP + rowsNeeded * BAR_HEIGHT + BOTTOM_PAD;
       weekRowEl.style.minHeight = `${Math.max(DEFAULT_ROW_HEIGHT_REM, requiredHeight)}rem`;
+      const isMobileStack = window.matchMedia("(max-width: 767px)").matches;
+      if (isMobileStack) {
+        barsEl.style.display = "none";
+        weekRowEl
+          .querySelectorAll(".calendar-monthly-day:not(.empty) .calendar-monthly-day-entries")
+          .forEach((ent) => {
+            ent.innerHTML = "";
+            ent.style.position = "relative";
+            ent.style.minHeight = "";
+          });
+      }
       const barsWithRow = allBars;
       barsWithRow.forEach((b) => {
         const isTodo = (b.itemType || "todo").toLowerCase() === "todo";
@@ -5149,12 +5157,48 @@ function render1WeekView(tabsElement) {
             );
           });
         }
+        if (isMobileStack && !b.isOverflow) {
+          if (b.isSingleDay && b.dateKey) {
+            const cell = weekRowEl.querySelector(
+              `.calendar-monthly-day[data-date="${b.dateKey}"]`,
+            );
+            const entries = cell?.querySelector(".calendar-monthly-day-entries");
+            if (entries) {
+              const daySingles = visibleBars.filter(
+                (x) => x.isSingleDay && x.dateKey === b.dateKey,
+              );
+              const localIdx = daySingles.indexOf(b);
+              bar.style.cssText = `left:0;right:0;width:100%;max-width:100%;box-sizing:border-box;--bar-bg:${b.color};top:${0.1 + localIdx * BAR_HEIGHT}rem;`;
+              entries.appendChild(bar);
+              entries.style.minHeight = `${0.1 + daySingles.length * BAR_HEIGHT + 0.35}rem`;
+              return;
+            }
+          } else if (!b.isSingleDay && b.startDate && b.dueDate) {
+            const anchorKey =
+              b.startDate < firstDayKey ? firstDayKey : b.startDate;
+            const cell = weekRowEl.querySelector(
+              `.calendar-monthly-day[data-date="${anchorKey}"]`,
+            );
+            const entries = cell?.querySelector(".calendar-monthly-day-entries");
+            if (entries) {
+              bar.style.cssText = `left:0;right:0;width:100%;max-width:100%;box-sizing:border-box;--bar-bg:${b.color};top:${0.1 + b.row * BAR_HEIGHT}rem;`;
+              entries.appendChild(bar);
+              const needH = 0.1 + (b.row + 1) * BAR_HEIGHT + 0.35;
+              const cur = parseFloat(entries.style.minHeight) || 0;
+              if (needH > cur) entries.style.minHeight = `${needH}rem`;
+              return;
+            }
+          }
+        }
         barsEl.appendChild(bar);
       });
       const moreEl = document.createElement("div");
       moreEl.className = "calendar-day-more-overlay";
       moreEl.style.cssText =
         "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
+      if (isMobileStack) {
+        moreEl.style.display = "none";
+      }
       weekDateKeys.forEach((dateKey, dayIdx) => {
         const totalCount = barsPerDay[dayIdx]?.length || 0;
         const effectiveMax = effectiveMaxPerDay[dayIdx] ?? MAX_VISIBLE_BARS_PER_DAY;

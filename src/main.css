@@ -1062,6 +1062,13 @@ body {
   }
 }
 
+/* 홈: Daily 캘린더 열 없음 → 넓은 화면에서 투두 | 이벤트 2열 */
+@media (min-width: 56.25rem) {
+  .home-view-three.home-view-three--no-calendar {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 4fr);
+  }
+}
+
 /* ========== 모바일 전용 스타일 가이드 ==========
  * 화면 너비에 따라 다르게 보이게 하려면 @media (max-width: …) 사용.
  * 예: @media (max-width: 48rem) { … }  → 48rem 이하(모바일)에서만 적용
@@ -1296,35 +1303,16 @@ body {
     min-height: min-content;
   }
 
-  /* 모바일 전용: 오늘 탭 표시 순서 = 데일리(날짜·요일) → 투두리스트 → 이벤트 → 리마인더 */
+  /* 모바일 전용: 오늘 탭 표시 순서 = 투두리스트 → 이벤트·리마인더 */
   .app-main:has(.home-view) .home-view-three {
     display: flex;
     flex-direction: column;
   }
-  .app-main:has(.home-view) .home-view-section--calendar {
+  .app-main:has(.home-view) .home-view-section--todo {
     order: 1;
   }
-  .app-main:has(.home-view) .home-view-section--todo {
-    order: 2;
-  }
   .app-main:has(.home-view) .home-view-section--event {
-    order: 3;
-  }
-
-  /* 데일리 섹션(캘린더·예상/실제 시간 테이블)이 모바일에서도 높이 확보되어 보이도록 */
-  .app-main:has(.home-view) .home-view-section--calendar {
-    flex: 0 0 auto;
-    min-height: 0;
-  }
-  .app-main:has(.home-view) .home-view-section--calendar .home-embed-1day {
-    flex: 0 0 auto;
-    min-height: 26.25rem;
-  }
-  .app-main:has(.home-view) .home-view-section--calendar .calendar-1day-view,
-  .app-main:has(.home-view)
-    .home-view-section--calendar
-    .calendar-1day-time-table-wrap {
-    min-height: 0;
+    order: 2;
   }
 
   /* 이벤트·리마인더: 영역 높이 넉넉히 (카드 안 잘리게) */
@@ -1383,30 +1371,6 @@ body {
   .app-main:has(.calendar-view) {
     padding-left: 0 !important;
     padding-right: 0 !important;
-  }
-  /* 모바일 전용: 날짜 행 헤더 – 패딩 0.25rem 1.75rem 1.25rem, 하단 선 끝까지 */
-  .app-main:has(.home-view) .date-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    width: 100%;
-    box-sizing: border-box;
-    padding: 0.25rem 1.75rem 1.25rem;
-    border-bottom: 0.0313rem solid var(--line);
-    margin: 0;
-  }
-  .app-main:has(.home-view) .date-header .home-daily-date-anchor,
-  .app-main:has(.home-view) .date-header .home-daily-weekday {
-    padding: 0 !important;
-    margin: 0 !important;
-  }
-
-  .app-main:has(.home-view) .home-embed-1day {
-    border-top: none !important;
-  }
-  /* 모바일 홈: THU 아래 굵은 선 제거 (원래 .calendar-1day-time-header의 border-bottom 0.0938rem #d1d5db가 보이던 부분) */
-  .app-main:has(.home-view) .home-embed-1day .calendar-1day-time-header {
-    border-bottom: none !important;
   }
   /* 모바일: 할일목록과 카드 섹션 구분선만 (헤더 보더와 겹치지 않도록 border-top 제거) */
   .app-main:has(.home-view) .home-view-section--todo {
@@ -1730,8 +1694,12 @@ body {
   .calendar-view-with-subtabs .calendar-monthly-day.today::before {
     width: 0.1875rem !important;
     height: 0.1875rem !important;
-    top: 0.2rem !important;
-    right: 0.2rem !important;
+    top: 0.35rem !important;
+    right: auto !important;
+    left: 0.25rem !important;
+  }
+  .calendar-view-with-subtabs .calendar-monthly-day.today .calendar-monthly-day-num {
+    padding-left: 0.5rem !important;
   }
 
   /* 모바일: 날짜 셀 클릭 시 확대 보기 오버레이 + 넓은 카드 */
@@ -1753,6 +1721,67 @@ body {
   }
   .calendar-day-expand-bubble--mobile .calendar-event-bubble-body {
     max-height: 60vh;
+  }
+
+  /* 모바일: 1주 뷰 — 한 줄에 한 날짜씩 7행으로 표시 */
+  .calendar-1week-view .calendar-monthly-grid {
+    display: flex;
+    flex-direction: column;
+  }
+  /* 요일은 각 날짜 셀 안으로 옮김 — 상단 7열 헤더 제거 */
+  .calendar-1week-view .calendar-monthly-weekdays {
+    display: none !important;
+  }
+  .calendar-1week-view .calendar-1week-day-head {
+    display: flex !important;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0.4rem;
+    margin-bottom: 0.25rem;
+  }
+  .calendar-1week-view .calendar-1week-day-weekday {
+    display: inline !important;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #9ca3af;
+    flex-shrink: 0;
+  }
+  .calendar-1week-view .calendar-monthly-week-wrap {
+    flex: 1;
+    min-height: 0;
+  }
+  .calendar-1week-view .calendar-monthly-week {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .calendar-1week-view .calendar-monthly-day {
+    width: 100%;
+    min-height: 4.5rem;
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    border: 0.0625rem solid var(--line, #e5e7eb);
+    border-radius: 0 !important;
+    padding: 0.5rem !important;
+  }
+  .calendar-1week-view .calendar-monthly-day.empty {
+    display: none;
+  }
+  .calendar-1week-view .calendar-monthly-day-num {
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 0;
+    text-align: left;
+  }
+  .calendar-1week-view .calendar-monthly-day-entries {
+    min-height: 2rem;
+  }
+  /* 모바일 1주: 할일 바를 셀 안에서 왼쪽부터 전체 너비로 */
+  .calendar-1week-view .calendar-monthly-day-entries .calendar-monthly-span-bar {
+    left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   /* 모바일: 할일 영역(calendar-todo-main·calendar-todo-content) 패딩 제거 */
@@ -25374,6 +25403,14 @@ body.kpi-resizing {
   grid-template-columns: 4rem 1fr 1fr;
   grid-template-rows: 2.5rem repeat(24, minmax(3rem, 1fr));
   min-height: 100%;
+}
+
+/* 1주 뷰: 데스크톱은 상단 요일 행만 사용, 셀 안 요일 라벨은 숨김 */
+.calendar-1week-day-weekday {
+  display: none;
+}
+.calendar-1week-day-head {
+  display: contents;
 }
 
 /* 1주 뷰 - 7일 예상 타임라인 */
