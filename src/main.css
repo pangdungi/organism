@@ -24865,21 +24865,28 @@ body.kpi-resizing {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: var(--icon-size-tab);
+  height: var(--icon-size-tab);
   padding: 0;
-  font-size: 1rem;
-  line-height: 1;
+  font-size: 0;
+  line-height: 0;
   color: var(--text-body);
   background: none;
   border: none;
   cursor: pointer;
   border-radius: 0.25rem;
+  transition: color 0.15s;
+}
+
+.diary-sidebar-collapse-btn svg {
+  width: var(--icon-size-tab);
+  height: var(--icon-size-tab);
+  stroke-width: var(--icon-stroke);
 }
 
 .diary-sidebar-collapse-btn:hover {
   background: none;
-  color: #111827;
+  color: var(--text-ink);
 }
 
 .diary-layout.sidebar-collapsed .diary-sidebar-collapse {
@@ -24899,8 +24906,9 @@ body.kpi-resizing {
 .diary-sidebar-title {
   flex: 1;
   min-width: 0;
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-h2);
+  font-family: var(--font-body);
   color: var(--text-body);
   line-height: 1.75rem;
 }
@@ -24915,17 +24923,21 @@ body.kpi-resizing {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: var(--icon-size-tab);
+  height: var(--icon-size-tab);
   padding: 0;
   background: none;
   border: none;
-  color: var(--text-muted);
+  color: var(--text-body);
   cursor: pointer;
   border-radius: 0.25rem;
-  transition:
-    background 0.15s,
-    color 0.15s;
+  transition: color 0.15s;
+}
+
+.diary-sidebar-add-btn svg {
+  width: var(--icon-size-tab);
+  height: var(--icon-size-tab);
+  stroke-width: var(--icon-stroke);
 }
 
 .diary-sidebar-add-btn:hover {
@@ -24941,8 +24953,9 @@ body.kpi-resizing {
 .diary-search-input {
   width: 100%;
   padding: 0.6rem 0.75rem;
-  font-size: 0.85rem;
-  font-weight: 300;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-body);
+  font-family: var(--font-body);
   color: var(--text-body);
   border: none;
   border-bottom: var(--line-l3);
@@ -25020,14 +25033,14 @@ body.kpi-resizing {
 }
 
 .diary-sidebar-collapse {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.85rem;
-  color: var(--text-muted);
+  padding: 0;
+  font-size: 0;
+  color: inherit;
   background: none;
   border: none;
   cursor: pointer;
   border-radius: 0.25rem;
-  transition: background 0.15s;
+  transition: color 0.15s;
 }
 
 .diary-sidebar-collapse:hover {
@@ -25094,14 +25107,15 @@ body.kpi-resizing {
   display: block;
   width: 100%;
   padding: 0.6rem 1rem;
-  font-size: 0.9rem;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-body);
+  font-family: var(--font-body);
   color: var(--text-body);
   background: none;
   border: none;
   border-right: 0.1875rem solid transparent;
   cursor: pointer;
   text-align: left;
-  font-family: inherit;
   transition: background 0.15s;
 }
 
@@ -25110,9 +25124,9 @@ body.kpi-resizing {
 }
 
 .diary-page-item.active {
-  background: var(--ui-surface-alt);
+  background: #E8E2D2;
   font-weight: 600;
-  border-right: 0.1875rem solid var(--line-l8-color);
+  border-right: 0.1875rem solid #2A3828;
   color: var(--text-ink);
 }
 
@@ -25121,13 +25135,14 @@ body.kpi-resizing {
   align-items: center;
   gap: 0.35rem;
   padding: 0.35rem 1rem;
-  font-size: 0.9rem;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-body);
+  font-family: var(--font-body);
   color: var(--text-muted);
   background: none;
   border: none;
   cursor: pointer;
   text-align: left;
-  font-family: inherit;
   transition: background 0.15s;
 }
 
@@ -25147,8 +25162,9 @@ body.kpi-resizing {
   margin: 0;
   padding: 2rem 2.5rem 2rem 2rem;
   min-height: 100%;
-  background: #F5F1E8;
+  background: var(--content-bg);
   border-radius: 0.5rem;
+  font-family: var(--font-body);
 }
 
 .diary-paper-title-row {
@@ -25164,7 +25180,7 @@ body.kpi-resizing {
   padding: 0;
   font-size: 1.75rem;
   font-weight: 200;
-  color: #111827;
+  color: var(--text-ink);
   letter-spacing: -0.01em;
   border: none;
   background: transparent;
@@ -25201,14 +25217,16 @@ body.kpi-resizing {
   margin: 0 0 0.25rem;
   font-size: 1.75rem;
   font-weight: 200;
-  color: #111827;
+  color: var(--text-ink);
   letter-spacing: -0.01em;
   font-family: var(--font-heading);
 }
 
 .diary-paper-meta {
   margin: 0 0 0.5rem;
-  font-size: 0.8rem;
+  font-size: var(--fs-secondary);
+  font-weight: var(--fw-body);
+  font-family: var(--font-body);
   color: var(--text-muted);
 }
 
@@ -25218,12 +25236,13 @@ body.kpi-resizing {
   padding: 1rem 1.25rem;
   margin: 0;
   background: transparent;
-  font-size: 1rem;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-body);
   line-height: 1.75;
   color: var(--text-body);
   border: none;
   resize: none;
-  font-family: inherit;
+  font-family: var(--font-body);
   box-sizing: border-box;
 }
 
@@ -25260,13 +25279,13 @@ body.kpi-resizing {
   flex: 1;
   min-width: 0;
   padding: 0.35rem 0.75rem;
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-h2);
+  font-family: var(--font-body);
   color: var(--text-body);
   background: transparent;
   border: none;
   border-radius: 0;
-  font-family: inherit;
 }
 
 .diary-paper-qa .diary-paper-qa-header-title:focus {
@@ -25292,8 +25311,9 @@ body.kpi-resizing {
 
 .diary-qa-question {
   padding: 0.6rem 1rem;
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-h2);
+  font-family: var(--font-heading);
   color: var(--text-body);
   background: transparent;
   border-bottom: var(--line-l3);
@@ -25303,14 +25323,15 @@ body.kpi-resizing {
   width: 100%;
   min-height: 3.75rem;
   padding: 1rem 1.25rem;
-  font-size: 0.9rem;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-body);
   line-height: 1.6;
   color: var(--text-body);
   border: none;
   resize: none;
   overflow-y: auto;
   background: var(--content-bg);
-  font-family: inherit;
+  font-family: var(--font-body);
   display: block;
   box-sizing: border-box;
 }
@@ -25329,7 +25350,9 @@ body.kpi-resizing {
 }
 
 .diary-emotion-description {
-  font-size: 0.9rem;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-body);
+  font-family: var(--font-body);
   line-height: 1.6;
   color: var(--text-muted);
   margin-bottom: 1.25rem;
