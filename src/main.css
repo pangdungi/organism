@@ -7709,8 +7709,9 @@ body {
   color: var(--text-ink);
 }
 
-.work-schedule-col-name {
-  width: 10%;
+.work-schedule-col-start-time,
+.work-schedule-col-end-time {
+  width: 8%;
   min-width: 3.75rem;
 }
 
@@ -7814,7 +7815,7 @@ body {
   min-width: 6.875rem;
 }
 
-/* 근무일·근무시간 열 고정 (가로 스크롤 시) */
+/* 근무일·시작시간·마감시간 열 고정 (가로 스크롤 시) */
 .work-schedule-table .work-schedule-th-date,
 .work-schedule-table .work-schedule-cell-date {
   position: sticky;
@@ -7832,25 +7833,42 @@ body {
 .work-schedule-table .work-schedule-sum-row .work-schedule-cell-date {
   background: none;
 }
-.work-schedule-table .work-schedule-th-name,
-.work-schedule-table .work-schedule-cell-name {
+.work-schedule-table .work-schedule-th-start-time,
+.work-schedule-table .work-schedule-cell-start-time {
   position: sticky;
   left: 6.875rem;
   z-index: 2;
-  background: #F5F1E8;
+  background: var(--content-bg, #F5F1E8);
   box-shadow: 1px 0 0 var(--line-l3-color);
 }
-.work-schedule-table th.work-schedule-th-name {
+.work-schedule-table th.work-schedule-th-start-time {
   background: none;
 }
-.work-schedule-table tbody tr:hover .work-schedule-cell-name {
+.work-schedule-table tbody tr:hover .work-schedule-cell-start-time {
   background: none;
 }
-.work-schedule-table .work-schedule-sum-row .work-schedule-cell-name {
+.work-schedule-table .work-schedule-sum-row .work-schedule-cell-start-time {
+  background: none;
+}
+.work-schedule-table .work-schedule-th-end-time,
+.work-schedule-table .work-schedule-cell-end-time {
+  position: sticky;
+  left: 10.625rem;
+  z-index: 2;
+  background: var(--content-bg, #F5F1E8);
+  box-shadow: 1px 0 0 var(--line-l3-color);
+}
+.work-schedule-table th.work-schedule-th-end-time {
+  background: none;
+}
+.work-schedule-table tbody tr:hover .work-schedule-cell-end-time {
+  background: none;
+}
+.work-schedule-table .work-schedule-sum-row .work-schedule-cell-end-time {
   background: none;
 }
 
-/* 근무일·근무시간 열 고정 (가로 스크롤 시) */
+/* 근무일·시작·마감 열 고정 (가로 스크롤 시) */
 .work-schedule-table th.work-schedule-th-date,
 .work-schedule-table td.work-schedule-cell-date {
   position: sticky;
@@ -7867,25 +7885,39 @@ body {
 .work-schedule-table tbody tr:hover td.work-schedule-cell-date {
   background: none;
 }
-.work-schedule-table th.work-schedule-th-name,
-.work-schedule-table td.work-schedule-cell-name {
+.work-schedule-table th.work-schedule-th-start-time,
+.work-schedule-table td.work-schedule-cell-start-time {
   position: sticky;
   left: 6.875rem;
   z-index: 2;
   box-shadow: 1px 0 0 var(--line-l3-color);
 }
-.work-schedule-table th.work-schedule-th-name {
+.work-schedule-table th.work-schedule-th-start-time {
   background: none;
 }
-.work-schedule-table tbody tr:hover td.work-schedule-cell-name {
+.work-schedule-table tbody tr:hover td.work-schedule-cell-start-time {
+  background: none;
+}
+.work-schedule-table th.work-schedule-th-end-time,
+.work-schedule-table td.work-schedule-cell-end-time {
+  position: sticky;
+  left: 10.625rem;
+  z-index: 2;
+  box-shadow: 1px 0 0 var(--line-l3-color);
+}
+.work-schedule-table th.work-schedule-th-end-time {
+  background: none;
+}
+.work-schedule-table tbody tr:hover td.work-schedule-cell-end-time {
   background: none;
 }
 .work-schedule-table .work-schedule-sum-row td:first-child,
-.work-schedule-table .work-schedule-sum-row td:nth-child(2) {
+.work-schedule-table .work-schedule-sum-row td:nth-child(2),
+.work-schedule-table .work-schedule-sum-row td:nth-child(3) {
   background: none;
 }
 
-/* 근무일·근무시간 열 고정 (가로 스크롤 시 고정) */
+/* 근무일·시작·마감 열 고정 (가로 스크롤 시 고정) */
 .work-schedule-table-wrap {
   overflow-x: auto;
 }
@@ -7902,30 +7934,41 @@ body {
 .work-schedule-table td.work-schedule-cell-date {
   background: none;
 }
-.work-schedule-table .work-schedule-th-name,
-.work-schedule-table .work-schedule-cell-name {
+.work-schedule-table .work-schedule-th-start-time,
+.work-schedule-table .work-schedule-cell-start-time {
   position: sticky;
   left: 6.875rem;
   z-index: 2;
   background: none;
   box-shadow: 0.125rem 0 0.25rem -0.125rem rgba(0, 0, 0, 0.08);
 }
-.work-schedule-table td.work-schedule-cell-name {
+.work-schedule-table .work-schedule-th-end-time,
+.work-schedule-table .work-schedule-cell-end-time {
+  position: sticky;
+  left: 10.625rem;
+  z-index: 2;
+  background: none;
+  box-shadow: 0.125rem 0 0.25rem -0.125rem rgba(0, 0, 0, 0.08);
+}
+.work-schedule-table td.work-schedule-cell-start-time,
+.work-schedule-table td.work-schedule-cell-end-time {
   background: none !important;
   font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
-  font-weight: 300 !important;
-  color: #3a3a3a !important;
+  font-weight: 500 !important;
+  color: var(--text-body) !important;
 }
 .work-schedule-table tbody tr:hover .work-schedule-cell-date {
   background: none;
 }
-.work-schedule-table tbody tr:hover .work-schedule-cell-name {
+.work-schedule-table tbody tr:hover .work-schedule-cell-start-time,
+.work-schedule-table tbody tr:hover .work-schedule-cell-end-time {
   background: none;
 }
 .work-schedule-table .work-schedule-sum-row .work-schedule-cell-date {
   background: none;
 }
-.work-schedule-table .work-schedule-sum-row .work-schedule-cell-name {
+.work-schedule-table .work-schedule-sum-row .work-schedule-cell-start-time,
+.work-schedule-table .work-schedule-sum-row .work-schedule-cell-end-time {
   background: none;
 }
 
@@ -7953,7 +7996,8 @@ body {
   white-space: nowrap;
 }
 
-.work-schedule-input-name,
+.work-schedule-input-start-time,
+.work-schedule-input-end-time,
 .work-schedule-input-memo {
   width: 100%;
   padding: 0.2rem 0.5rem;
@@ -7962,13 +8006,15 @@ body {
   background: transparent;
   font-family: inherit;
 }
-.work-schedule-input-name {
+.work-schedule-input-start-time,
+.work-schedule-input-end-time {
   font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
-  font-weight: 300 !important;
-  color: #3a3a3a !important;
+  font-weight: 500 !important;
+  color: var(--text-body) !important;
 }
 
-.work-schedule-input-name:focus,
+.work-schedule-input-start-time:focus,
+.work-schedule-input-end-time:focus,
 .work-schedule-input-memo:focus {
   outline: none;
   box-shadow: none;

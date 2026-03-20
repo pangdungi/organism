@@ -152,10 +152,25 @@ function parseTimeToHours(str) {
   return null;
 }
 
-/** 시간기록의 근무하기 → 근무표 행 형식으로 변환 (근무시간, Hours, 근무일 채움, 근무유형/메모는 유지용) */
+/** "09:00~18:00" 형태에서 [시작, 마감] 파싱. 하위 호환용 */
+function parseNameToStartEnd(name) {
+  if (!name || typeof name !== "string") return { startTime: "", endTime: "" };
+  const parts = name.trim().split("~");
+  const start = (parts[0] || "").trim();
+  const end = (parts[1] || "").trim();
+  return { startTime: start, endTime: end };
+}
+
+/** 시간기록의 근무하기 → 근무표 행 형식 (시작시간, 마감시간, Hours, 근무일, 근무유형/메모 유지) */
 function getWorkRowsFromTimeRecord() {
   const timeRows = loadTimeRows();
   const workTaskName = "근무하기";
+  const toTimeString = (hours) => {
+    if (hours == null || Number.isNaN(hours)) return "";
+    const h = Math.floor(hours) % 24;
+    const m = Math.round((hours - Math.floor(hours)) * 60);
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  };
   const rows = timeRows
     .filter((r) => (r.taskName || "").trim() === workTaskName)
     .filter((r) => r.startTime && r.endTime && r.date)
@@ -164,17 +179,12 @@ function getWorkRowsFromTimeRecord() {
       const endH = parseTimeToHours(r.endTime);
       if (startH == null || endH == null) return null;
       const duration = endH > startH ? endH - startH : 24 - startH + endH;
-      const toTimeString = (hours) => {
-        if (hours == null || Number.isNaN(hours)) return "";
-        const h = Math.floor(hours) % 24;
-        const m = Math.round((hours - Math.floor(hours)) * 60);
-        return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-      };
       const startStr = toTimeString(startH);
       const endStr = toTimeString(endH);
       const dateStr = String(r.date || "").trim().replace(/\//g, "-").slice(0, 10);
       return {
-        name: startStr && endStr ? `${startStr}~${endStr}` : "",
+        startTime: startStr,
+        endTime: endStr,
         hoursWorked: duration > 0 ? String(Math.round(duration * 100) / 100) : "",
         workDate: dateStr,
         workType: "",
@@ -185,19 +195,38 @@ function getWorkRowsFromTimeRecord() {
   return rows;
 }
 
-/** 근무표 = 시간기록의 "근무하기"만 표시. 저장된 근무유형·메모는 동일 날짜+근무시간일 때만 유지 (시간기록에 없는 과거 행은 더 이상 누적하지 않음) */
+/** 저장된 행에서 시작/마감 추출 (name "09:00~18:00" 하위 호환) */
+function normalizeRowStartEnd(row) {
+  if (row.startTime != null && row.endTime != null && row.startTime !== "" && row.endTime !== "") {
+    return { ...row, startTime: String(row.startTime).trim(), endTime: String(row.endTime).trim() };
+  }
+  const { startTime, endTime } = parseNameToStartEnd(row.name || "");
+  return { ...row, startTime, endTime };
+}
+
+/** 행 일치 키: 근무일|시작|마감 */
+function rowKey(r) {
+  const n = normalizeRowStartEnd(r);
+  return `${n.workDate || ""}|${n.startTime || ""}|${n.endTime || ""}`;
+}
+
+/** 근무표 = 시간기록 "근무하기" + 저장된 수동 행. 저장된 근무유형·메모는 동일 날짜+시작+마감일 때 유지 */
 function getMergedInitialRows() {
   const fromTime = getWorkRowsFromTimeRecord();
   const saved = loadRows();
-  const key = (r) => `${r.workDate || ""}|${(r.name || "").trim()}`;
-  return fromTime.map((t) => {
-    const match = saved.find((s) => key(s) === key(t));
+  const keyFromTime = (t) => rowKey(t);
+  const mergedFromTime = fromTime.map((t) => {
+    const match = saved.find((s) => rowKey(normalizeRowStartEnd(s)) === keyFromTime(t));
     return {
       ...t,
       workType: match?.workType ?? t.workType,
       memo: match?.memo ?? t.memo,
     };
   });
+  const savedOnly = saved
+    .map(normalizeRowStartEnd)
+    .filter((s) => !fromTime.some((ft) => rowKey(ft) === rowKey(s)));
+  return [...mergedFromTime, ...savedOnly];
 }
 
 function getHoursSum(tableEl) {
@@ -211,6 +240,14 @@ function getHoursSum(tableEl) {
   return sum;
 }
 
+/** 시작/마감 문자열(HH:MM)으로 근무 시간(hours) 계산 */
+function durationFromStartEnd(startStr, endStr) {
+  const startH = parseTimeToHours(startStr);
+  const endH = parseTimeToHours(endStr);
+  if (startH == null || endH == null) return null;
+  return endH > startH ? endH - startH : 24 - startH + endH;
+}
+
 function collectRowsFromDOM(tableEl) {
   const rows = [];
   tableEl?.querySelectorAll(".work-schedule-row").forEach((tr) => {
@@ -219,11 +256,20 @@ function collectRowsFromDOM(tableEl) {
     const typeInput = tr.querySelector(".work-schedule-input-type");
     const dateInput = tr.querySelector(".work-schedule-input-date");
     const memoInput = tr.querySelector(".work-schedule-input-memo");
-    const nameInput = tr.querySelector(".work-schedule-input-name");
+    const startTimeInput = tr.querySelector(".work-schedule-input-start-time");
+    const endTimeInput = tr.querySelector(".work-schedule-input-end-time");
+    const startTime = (startTimeInput?.value || "").trim();
+    const endTime = (endTimeInput?.value || "").trim();
+    let hoursWorked = (hoursWorkedInput?.value || "").trim();
+    if (startTime && endTime) {
+      const d = durationFromStartEnd(startTime, endTime);
+      if (d != null && d > 0) hoursWorked = String(Math.round(d * 100) / 100);
+    }
     rows.push({
-      name: nameInput?.value || "",
+      startTime,
+      endTime,
       workType: typeInput?.value || "",
-      hoursWorked: hoursWorkedInput?.value || "",
+      hoursWorked,
       workDate: dateInput?.value || "",
       hours: hoursInput?.value || "",
       memo: memoInput?.value || "",
@@ -234,7 +280,7 @@ function collectRowsFromDOM(tableEl) {
 
 function getRowsToSave(tableEl) {
   return collectRowsFromDOM(tableEl).filter((r) => {
-    const hasAny = (r.name || "").trim() || (r.workType || "").trim() || (r.hoursWorked || "").trim() || (r.workDate || "").trim() || (r.hours || "").trim() || (r.memo || "").trim();
+    const hasAny = (r.startTime || "").trim() || (r.endTime || "").trim() || (r.workType || "").trim() || (r.hoursWorked || "").trim() || (r.workDate || "").trim() || (r.hours || "").trim() || (r.memo || "").trim();
     return !!hasAny;
   });
 }
@@ -491,16 +537,33 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
   dateTd.appendChild(dateInput);
   tr.appendChild(dateTd);
 
-  const nameTd = document.createElement("td");
-  nameTd.className = "work-schedule-cell work-schedule-cell-name";
-  const nameInput = document.createElement("input");
-  nameInput.type = "text";
-  nameInput.className = "work-schedule-input-name";
-  nameInput.placeholder = "";
-  nameInput.value = initialData.name || "";
-  nameInput.addEventListener("keydown", (e) => e.key === "Enter" && nameInput.blur());
-  nameTd.appendChild(nameInput);
-  tr.appendChild(nameTd);
+  const { startTime: initStart, endTime: initEnd } = initialData.startTime != null && initialData.endTime != null
+    ? { startTime: initialData.startTime || "", endTime: initialData.endTime || "" }
+    : parseNameToStartEnd(initialData.name || "");
+
+  const startTimeTd = document.createElement("td");
+  startTimeTd.className = "work-schedule-cell work-schedule-cell-start-time";
+  const startTimeInput = document.createElement("input");
+  startTimeInput.type = "text";
+  startTimeInput.className = "work-schedule-input-start-time";
+  startTimeInput.placeholder = "hh:mm";
+  startTimeInput.value = initStart;
+  startTimeInput.inputMode = "numeric";
+  startTimeInput.addEventListener("keydown", (e) => e.key === "Enter" && startTimeInput.blur());
+  startTimeTd.appendChild(startTimeInput);
+  tr.appendChild(startTimeTd);
+
+  const endTimeTd = document.createElement("td");
+  endTimeTd.className = "work-schedule-cell work-schedule-cell-end-time";
+  const endTimeInput = document.createElement("input");
+  endTimeInput.type = "text";
+  endTimeInput.className = "work-schedule-input-end-time";
+  endTimeInput.placeholder = "hh:mm";
+  endTimeInput.value = initEnd;
+  endTimeInput.inputMode = "numeric";
+  endTimeInput.addEventListener("keydown", (e) => e.key === "Enter" && endTimeInput.blur());
+  endTimeTd.appendChild(endTimeInput);
+  tr.appendChild(endTimeTd);
 
   let typeInputWrap;
   const hoursWorkedInput = document.createElement("input");
@@ -539,6 +602,23 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
     onUpdate();
   };
 
+  function syncHoursWorkedFromStartEnd() {
+    const startStr = (startTimeInput?.value || "").trim();
+    const endStr = (endTimeInput?.value || "").trim();
+    if (startStr && endStr) {
+      const d = durationFromStartEnd(startStr, endStr);
+      if (d != null && d > 0) {
+        hoursWorkedInput.value = String(Math.round(d * 100) / 100);
+      }
+    }
+    rowOnUpdate();
+  }
+
+  startTimeInput.addEventListener("input", syncHoursWorkedFromStartEnd);
+  startTimeInput.addEventListener("change", syncHoursWorkedFromStartEnd);
+  endTimeInput.addEventListener("input", syncHoursWorkedFromStartEnd);
+  endTimeInput.addEventListener("change", syncHoursWorkedFromStartEnd);
+
   typeInputWrap = createWorkTypeInput(initialData.workType || "", rowOnUpdate);
 
   const typeTd = document.createElement("td");
@@ -559,6 +639,7 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
   hoursTd.appendChild(hoursInput);
   tr.appendChild(hoursTd);
 
+  if (initStart && initEnd) syncHoursWorkedFromStartEnd();
   updateTimeAccumulationDisplay();
 
   const memoTd = document.createElement("td");
@@ -848,7 +929,8 @@ export function render() {
     table.innerHTML = `
       <colgroup>
         <col class="work-schedule-col-date">
-        <col class="work-schedule-col-name">
+        <col class="work-schedule-col-start-time">
+        <col class="work-schedule-col-end-time">
         <col class="work-schedule-col-type">
         <col class="work-schedule-col-hours-worked">
         <col class="work-schedule-col-hours">
@@ -858,7 +940,8 @@ export function render() {
       <thead>
         <tr>
           <th class="work-schedule-th-date">근무일</th>
-          <th class="work-schedule-th-name">근무시간</th>
+          <th class="work-schedule-th-start-time">시작시간</th>
+          <th class="work-schedule-th-end-time">마감시간</th>
           <th class="work-schedule-th-type">근무유형</th>
           <th class="work-schedule-th-hours-worked">Hours</th>
           <th class="work-schedule-th-hours">시간적립</th>
@@ -869,7 +952,7 @@ export function render() {
       <tbody></tbody>
       <tfoot class="work-schedule-tfoot">
         <tr class="work-schedule-sum-row">
-          <td colspan="4"></td>
+          <td colspan="5"></td>
           <td class="work-schedule-sum-cell"></td>
           <td colspan="2"></td>
         </tr>
@@ -881,7 +964,7 @@ export function render() {
     const addRow = document.createElement("tr");
     addRow.className = "work-schedule-row-add";
     const addCell = document.createElement("td");
-    addCell.colSpan = 7;
+    addCell.colSpan = 8;
     addCell.className = "work-schedule-cell-add";
     const addBtn = document.createElement("button");
     addBtn.type = "button";
