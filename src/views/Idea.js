@@ -159,7 +159,7 @@ export function render() {
   ];
   /** 시간가계부 작업(세부) 카테고리 - 꿈/부수입/행복/건강은 리스트 색상과 통일이라 제외 */
   const TASK_CATEGORY_SECTIONS = [
-    { id: "", label: "—" },
+    { id: "", label: "그외" },
     { id: "pleasure", label: "쾌락충족" },
     { id: "dreamblocking", label: "꿈을 방해하는 일" },
     { id: "unhappiness", label: "불행" },

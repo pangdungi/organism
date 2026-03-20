@@ -4,18 +4,18 @@
 const TODO_SETTINGS_KEY = "todo-settings";
 const CUSTOM_SECTIONS_KEY = "todo-custom-sections";
 
-/** 앱 정체성용 10가지 프리셋 색상 (hex) */
+/** 앱 정체성용 10가지 프리셋 색상 (hex) - 컬러 코드 팔레트 */
 export const APP_PRESET_COLORS = [
-  { id: "rose", name: "로즈", hex: "#F2C4C4" },
-  { id: "peach", name: "피치", hex: "#F2D9C4" },
-  { id: "sand", name: "샌드", hex: "#F2E8C4" },
-  { id: "sage", name: "세이지", hex: "#C4DCC8" },
-  { id: "mint", name: "민트", hex: "#C4E0DC" },
-  { id: "sky", name: "스카이", hex: "#C4D8F2" },
-  { id: "lavender", name: "라벤더", hex: "#CCC4F2" },
-  { id: "mauve", name: "모브", hex: "#E0C4E8" },
-  { id: "smoke", name: "스모크", hex: "#D4D4D0" },
-  { id: "slate", name: "슬레이트", hex: "#C8D0D8" },
+  { id: "rose", name: "로즈", hex: "#C97A6A" },
+  { id: "peach", name: "피치", hex: "#C4906A" },
+  { id: "sand", name: "샌드", hex: "#B89A6A" },
+  { id: "sage", name: "세이지", hex: "#8A9E82" },
+  { id: "mint", name: "민트", hex: "#6B7A6E" },
+  { id: "sky", name: "스카이", hex: "#7A8E9A" },
+  { id: "lavender", name: "라벤더", hex: "#8A7A9E" },
+  { id: "mauve", name: "모브", hex: "#9E8A8A" },
+  { id: "smoke", name: "스모크", hex: "#3D4A3E" },
+  { id: "slate", name: "슬레이트", hex: "#C4BEA8" },
 ];
 
 export function hexToRgba(hex, alpha = 0.6) {
@@ -35,34 +35,34 @@ export const APP_PRESET_RGBA_TIME = APP_PRESET_COLORS.map((c) => hexToRgba(c.hex
 
 /** 리스트 기본 색상 (10 프리셋 내) */
 export const DEFAULT_SECTION_COLORS = {
-  braindump: hexToRgba("#D4D4D0", 0.6),
-  dream: hexToRgba("#C4DCC8", 0.6),
-  sideincome: hexToRgba("#F2E8C4", 0.6),
-  health: hexToRgba("#F2C4C4", 0.6),
-  happy: hexToRgba("#F2D9C4", 0.6),
+  braindump: hexToRgba("#C4BEA8", 0.6),
+  dream: hexToRgba("#8A9E82", 0.6),
+  sideincome: hexToRgba("#B89A6A", 0.6),
+  health: hexToRgba("#C97A6A", 0.6),
+  happy: hexToRgba("#C4906A", 0.6),
 };
 
 /** 시간가계부 생산/비생산/기타 기본 색상 (rgba, time-tag-pill용) */
 export const DEFAULT_TIME_CATEGORY_COLORS = {
-  productive: hexToRgba("#F2C4C4", 0.9),
-  nonproductive: hexToRgba("#C4D8F2", 0.9),
-  other: hexToRgba("#C4DCC8", 0.9),
+  productive: hexToRgba("#C97A6A", 0.9),
+  nonproductive: hexToRgba("#7A8E9A", 0.9),
+  other: hexToRgba("#8A9E82", 0.9),
 };
 
 /** 시간가계부 작업(세부) 카테고리 기본 색상 - .time-tag-pill.cat-* 배경 */
 export const DEFAULT_TASK_CATEGORY_COLORS = {
-  "": hexToRgba("#D4D4D0", 0.5),
-  dream: hexToRgba("#C4DCC8", 0.7),
-  sideincome: hexToRgba("#F2E8C4", 0.7),
-  happiness: hexToRgba("#F2D9C4", 0.7),
-  health: hexToRgba("#F2C4C4", 0.7),
-  pleasure: hexToRgba("#F2D9C4", 0.7),
-  dreamblocking: hexToRgba("#E0C4E8", 0.7),
-  unhappiness: hexToRgba("#E0C4E8", 0.65),
-  unhealthy: hexToRgba("#C8D0D8", 0.7),
-  moneylosing: hexToRgba("#F2C4C4", 0.65),
-  work: hexToRgba("#C4D8F2", 0.7),
-  sleep: hexToRgba("#CCC4F2", 0.75),
+  "": hexToRgba("#C4BEA8", 0.5),
+  dream: hexToRgba("#8A9E82", 0.7),
+  sideincome: hexToRgba("#B89A6A", 0.7),
+  happiness: hexToRgba("#C4906A", 0.7),
+  health: hexToRgba("#C97A6A", 0.7),
+  pleasure: hexToRgba("#C4906A", 0.7),
+  dreamblocking: hexToRgba("#8A7A9E", 0.7),
+  unhappiness: hexToRgba("#8A7A9E", 0.65),
+  unhealthy: hexToRgba("#7A8E9A", 0.7),
+  moneylosing: hexToRgba("#C97A6A", 0.65),
+  work: hexToRgba("#7A8E9A", 0.7),
+  sleep: hexToRgba("#8A7A9E", 0.75),
 };
 
 /** 커스텀 리스트용 기본 색상 풀 (10 프리셋만) */

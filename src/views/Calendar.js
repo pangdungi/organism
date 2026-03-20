@@ -5566,18 +5566,20 @@ const CALENDAR_SUB_VIEWS = [
 
 const MOBILE_SCHEDULE_CAL_SUB_VIEWS = [
   { id: "monthly", label: "월별" },
+  { id: "2week", label: "2주" },
   { id: "1week", label: "1주" },
 ];
 
 /**
  * 할일/일정 > 날짜 정하기 하위 뷰(월별·2주·1주·연간) 공통 셸
  * @param {HTMLElement|null} tabsElement 상단 할일/일정 1~4번 탭(없으면 null)
- * @param {{ subViewsList?: {id:string,label:string}[], storageKey?: string, forceInitialMonthlyOnMobile?: boolean }} opts
+ * @param {{ subViewsList?: {id:string,label:string}[], storageKey?: string, forceInitialMonthlyOnMobile?: boolean, keepSubTabsOnTop?: boolean }} opts
  */
 function createCalendarSubViewRoot(tabsElement, opts = {}) {
   const subViewsList = opts.subViewsList || CALENDAR_SUB_VIEWS;
   const storageKey = opts.storageKey || "calendar-sub-view";
   const forceInitialMonthlyOnMobile = !!opts.forceInitialMonthlyOnMobile;
+  const keepSubTabsOnTop = !!opts.keepSubTabsOnTop;
 
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout calendar-view-with-subtabs";
@@ -5610,6 +5612,9 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
   const contentArea = document.createElement("div");
   contentArea.className = "calendar-view-content-area";
   wrap.appendChild(contentArea);
+  if (keepSubTabsOnTop) {
+    wrap.insertBefore(subTabs, contentArea);
+  }
 
   const savedSubView = localStorage.getItem(storageKey) || "monthly";
   const isMobile = window.matchMedia("(max-width: 767px)").matches;
@@ -5647,7 +5652,11 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
     } else if (subViewId === "annual") {
       contentArea.appendChild(renderAnnualView(null));
     }
-    placeSubTabsInNav();
+    if (keepSubTabsOnTop) {
+      wrap.insertBefore(subTabs, contentArea);
+    } else {
+      placeSubTabsInNav();
+    }
     localStorage.setItem(storageKey, subViewId);
   }
 
@@ -5708,6 +5717,7 @@ export function renderMobileScheduleCalendar() {
       subViewsList: MOBILE_SCHEDULE_CAL_SUB_VIEWS,
       storageKey: "calendar-mobile-schedule-sub-view",
       forceInitialMonthlyOnMobile: false,
+      keepSubTabsOnTop: true,
     }),
   );
   el.appendChild(contentWrap);

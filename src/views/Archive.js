@@ -101,7 +101,7 @@ export function render() {
     if (records.length === 0) {
       const empty = document.createElement("p");
       empty.className = "archive-empty";
-      empty.textContent = "메모가 없습니다. 시간기록에서 과제 메모를 입력하면 여기 모입니다.";
+      empty.innerHTML = "메모가 없습니다.<br>시간기록에서 과제 메모를 입력하면 여기 모입니다.";
       listEl.appendChild(empty);
       return;
     }

@@ -3658,122 +3658,19 @@ export function render() {
           <button type="button" class="time-task-log-focus-add-btn" aria-label="방해기록 추가">+</button>
           <div class="time-task-log-focus-events-pills"></div>
         </div>
-        <div class="time-task-log-focus-inner-modal" hidden>
-          <div class="time-task-log-focus-inner-backdrop"></div>
-          <div class="time-task-log-focus-inner-panel">
-            <div class="time-task-log-focus-inner-header">
-              <span class="time-task-log-focus-inner-header-label">방해기록</span>
-              <button type="button" class="time-task-log-focus-inner-close" aria-label="닫기">&times;</button>
-            </div>
-            <div class="time-task-log-focus-inner-body">
-              <div class="time-task-log-focus-inner-type-wrap"></div>
-              <div class="time-task-log-focus-inner-input-row">
-                <input type="text" class="time-task-log-focus-inner-time-input" placeholder="hh:mm" maxlength="5"  />
-                <button type="button" class="time-task-log-focus-inner-add">추가</button>
-                <button type="button" class="time-task-log-focus-inner-now-btn">지금</button>
-              </div>
-            </div>
-          </div>
-        </div>
         <div class="time-task-log-todo-row">
           <span class="time-task-log-todo-label">투두 리스트</span>
           <button type="button" class="time-task-log-todo-add-btn" aria-label="할일 추가">+</button>
           <div class="time-task-log-todo-pills"></div>
-        </div>
-        <div class="time-task-log-todo-inner-modal" hidden>
-          <div class="time-task-log-todo-inner-backdrop"></div>
-          <div class="time-task-log-todo-inner-panel">
-            <div class="time-task-log-todo-inner-header">
-              <span class="time-task-log-todo-inner-header-label">투두리스트</span>
-              <button type="button" class="time-task-log-todo-inner-close" aria-label="닫기">&times;</button>
-            </div>
-            <div class="time-task-log-todo-inner-body">
-              <div class="time-task-log-field">
-                <label>카테고리</label>
-                <div class="time-task-log-todo-category-wrap"></div>
-              </div>
-              <div class="time-task-log-field">
-                <input type="text" class="time-task-log-todo-inner-name" placeholder="할 일 이름 입력" />
-              </div>
-            </div>
-            <div class="time-task-log-todo-inner-footer">
-              <button type="button" class="time-task-log-todo-inner-add">추가</button>
-            </div>
-          </div>
         </div>
         <div class="time-task-log-expense-row">
           <span class="time-task-log-expense-label">소비 기록</span>
           <button type="button" class="time-task-log-expense-add-btn" aria-label="소비 기록 추가">+</button>
           <div class="time-task-log-expense-pills"></div>
         </div>
-        <div class="time-task-log-expense-inner-modal" hidden>
-          <div class="time-task-log-expense-inner-backdrop"></div>
-          <div class="time-task-log-emotion-inner-panel">
-            <div class="time-task-log-expense-inner-header">
-              <span class="time-task-log-expense-inner-header-label">소비 기록</span>
-              <button type="button" class="time-task-log-expense-inner-close" aria-label="닫기">&times;</button>
-            </div>
-            <div class="time-task-log-expense-inner-body">
-              <div class="time-task-log-expense-inner-fields">
-                <div class="time-task-log-field time-task-log-expense-amount-name-row">
-                  <div class="time-task-log-expense-amount-cell">
-                    <label>금액</label>
-                    <div class="time-task-log-expense-amount-wrap">
-                      <input type="text" class="time-task-log-expense-amount" name="time-task-log-expense-amount" placeholder="0" inputmode="numeric" />
-                      <span class="time-task-log-expense-amount-unit">원</span>
-                    </div>
-                  </div>
-                  <div class="time-task-log-expense-name-cell">
-                    <label>소비명</label>
-                    <input type="text" class="time-task-log-expense-name" name="time-task-log-expense-name" placeholder="스타벅스" />
-                  </div>
-                </div>
-                <div class="time-task-log-field">
-                  <label>소비 분류</label>
-                  <div class="time-task-log-expense-classification-wrap"></div>
-                </div>
-                <div class="time-task-log-expense-error" hidden></div>
-                <button type="button" class="time-task-log-expense-inner-add-btn">추가</button>
-              </div>
-              <div class="time-task-log-expense-added-list"></div>
-            </div>
-          </div>
-        </div>
         <div class="time-task-log-emotion-row">
           <span class="time-task-log-emotion-label">감정 기록</span>
           <button type="button" class="time-task-log-emotion-add-btn" aria-label="감정 기록 추가">+</button>
-        </div>
-        <div class="time-task-log-emotion-inner-modal" hidden>
-          <div class="time-task-log-emotion-inner-backdrop"></div>
-          <div class="time-task-log-emotion-inner-panel">
-            <div class="time-task-log-emotion-inner-header">
-              <span class="time-task-log-emotion-inner-header-label">감정 기록</span>
-              <button type="button" class="time-task-log-emotion-inner-close" aria-label="닫기">&times;</button>
-            </div>
-            <div class="time-task-log-emotion-inner-body">
-              <div class="time-task-log-emotion-fields">
-                <div class="time-task-log-field">
-                  <label>${TAB3_EMOTION_TEMPLATE[0]}</label>
-                  <textarea class="time-task-log-emotion-q1" placeholder="${TAB3_EMOTION_PLACEHOLDERS[0]}" rows="2"></textarea>
-                </div>
-                <div class="time-task-log-field">
-                  <label>${TAB3_EMOTION_TEMPLATE[1]}</label>
-                  <textarea class="time-task-log-emotion-q2" placeholder="${TAB3_EMOTION_PLACEHOLDERS[1]}" rows="2"></textarea>
-                </div>
-                <div class="time-task-log-field">
-                  <label>${TAB3_EMOTION_TEMPLATE[2]}</label>
-                  <textarea class="time-task-log-emotion-q3" placeholder="${TAB3_EMOTION_PLACEHOLDERS[2]}" rows="2"></textarea>
-                </div>
-                <div class="time-task-log-field">
-                  <label>${TAB3_EMOTION_TEMPLATE[3]}</label>
-                  <textarea class="time-task-log-emotion-q4" placeholder="${TAB3_EMOTION_PLACEHOLDERS[3]}" rows="2"></textarea>
-                </div>
-              </div>
-            </div>
-            <div class="time-task-log-emotion-inner-footer">
-              <button type="button" class="time-task-log-emotion-inner-save-btn">저장</button>
-            </div>
-          </div>
         </div>
         </div>
       </div>
@@ -3806,6 +3703,109 @@ export function render() {
           <div class="time-datetime-picker-column" data-col="ampm"></div>
           <div class="time-datetime-picker-column" data-col="hour"></div>
           <div class="time-datetime-picker-column" data-col="minute"></div>
+        </div>
+      </div>
+    </div>
+    <div class="time-task-log-focus-inner-modal" hidden>
+      <div class="time-task-log-focus-inner-backdrop"></div>
+      <div class="time-task-log-focus-inner-panel">
+        <div class="time-task-log-focus-inner-header">
+          <span class="time-task-log-focus-inner-header-label">방해기록</span>
+          <button type="button" class="time-task-log-focus-inner-close" aria-label="닫기">&times;</button>
+        </div>
+        <div class="time-task-log-focus-inner-body">
+          <div class="time-task-log-focus-inner-type-wrap"></div>
+          <div class="time-task-log-focus-inner-input-row">
+            <input type="text" class="time-task-log-focus-inner-time-input" placeholder="hh:mm" maxlength="5"  />
+            <button type="button" class="time-task-log-focus-inner-add">추가</button>
+            <button type="button" class="time-task-log-focus-inner-now-btn">지금</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="time-task-log-todo-inner-modal" hidden>
+      <div class="time-task-log-todo-inner-backdrop"></div>
+      <div class="time-task-log-todo-inner-panel">
+        <div class="time-task-log-todo-inner-header">
+          <span class="time-task-log-todo-inner-header-label">투두리스트</span>
+          <button type="button" class="time-task-log-todo-inner-close" aria-label="닫기">&times;</button>
+        </div>
+        <div class="time-task-log-todo-inner-body">
+          <div class="time-task-log-field">
+            <label>카테고리</label>
+            <div class="time-task-log-todo-category-wrap"></div>
+          </div>
+          <div class="time-task-log-field">
+            <input type="text" class="time-task-log-todo-inner-name" placeholder="할 일 이름 입력" />
+          </div>
+        </div>
+        <div class="time-task-log-todo-inner-footer">
+          <button type="button" class="time-task-log-todo-inner-add">추가</button>
+        </div>
+      </div>
+    </div>
+    <div class="time-task-log-expense-inner-modal" hidden>
+      <div class="time-task-log-expense-inner-backdrop"></div>
+      <div class="time-task-log-emotion-inner-panel">
+        <div class="time-task-log-expense-inner-header">
+          <span class="time-task-log-expense-inner-header-label">소비 기록</span>
+          <button type="button" class="time-task-log-expense-inner-close" aria-label="닫기">&times;</button>
+        </div>
+        <div class="time-task-log-expense-inner-body">
+          <div class="time-task-log-expense-inner-fields">
+            <div class="time-task-log-field time-task-log-expense-amount-name-row">
+              <div class="time-task-log-expense-amount-cell">
+                <label>금액</label>
+                <div class="time-task-log-expense-amount-wrap">
+                  <input type="text" class="time-task-log-expense-amount" name="time-task-log-expense-amount" placeholder="0" inputmode="numeric" />
+                  <span class="time-task-log-expense-amount-unit">원</span>
+                </div>
+              </div>
+              <div class="time-task-log-expense-name-cell">
+                <label>소비명</label>
+                <input type="text" class="time-task-log-expense-name" name="time-task-log-expense-name" placeholder="스타벅스" />
+              </div>
+            </div>
+            <div class="time-task-log-field">
+              <label>소비 분류</label>
+              <div class="time-task-log-expense-classification-wrap"></div>
+            </div>
+            <div class="time-task-log-expense-error" hidden></div>
+            <button type="button" class="time-task-log-expense-inner-add-btn">추가</button>
+          </div>
+          <div class="time-task-log-expense-added-list"></div>
+        </div>
+      </div>
+    </div>
+    <div class="time-task-log-emotion-inner-modal" hidden>
+      <div class="time-task-log-emotion-inner-backdrop"></div>
+      <div class="time-task-log-emotion-inner-panel">
+        <div class="time-task-log-emotion-inner-header">
+          <span class="time-task-log-emotion-inner-header-label">감정 기록</span>
+          <button type="button" class="time-task-log-emotion-inner-close" aria-label="닫기">&times;</button>
+        </div>
+        <div class="time-task-log-emotion-inner-body">
+          <div class="time-task-log-emotion-fields">
+            <div class="time-task-log-field">
+              <label>${TAB3_EMOTION_TEMPLATE[0]}</label>
+              <textarea class="time-task-log-emotion-q1" placeholder="${TAB3_EMOTION_PLACEHOLDERS[0]}" rows="2"></textarea>
+            </div>
+            <div class="time-task-log-field">
+              <label>${TAB3_EMOTION_TEMPLATE[1]}</label>
+              <textarea class="time-task-log-emotion-q2" placeholder="${TAB3_EMOTION_PLACEHOLDERS[1]}" rows="2"></textarea>
+            </div>
+            <div class="time-task-log-field">
+              <label>${TAB3_EMOTION_TEMPLATE[2]}</label>
+              <textarea class="time-task-log-emotion-q3" placeholder="${TAB3_EMOTION_PLACEHOLDERS[2]}" rows="2"></textarea>
+            </div>
+            <div class="time-task-log-field">
+              <label>${TAB3_EMOTION_TEMPLATE[3]}</label>
+              <textarea class="time-task-log-emotion-q4" placeholder="${TAB3_EMOTION_PLACEHOLDERS[3]}" rows="2"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="time-task-log-emotion-inner-footer">
+          <button type="button" class="time-task-log-emotion-inner-save-btn">저장</button>
         </div>
       </div>
     </div>

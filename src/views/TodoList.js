@@ -1011,6 +1011,8 @@ function showTodoTaskModal(options) {
   } = taskData;
 
   const title = mode === "add" ? "할 일 추가" : "할 일 수정";
+  const currentSectionId = (taskData.sectionId || sectionId || "").trim();
+  const sections = getSections();
   const escapeHtml = (s) => {
     const d = document.createElement("div");
     d.textContent = s ?? "";
@@ -1052,6 +1054,12 @@ function showTodoTaskModal(options) {
             ${EISENHOWER_OPTIONS.map((o) => `<option value="${escapeHtml(o.value)}" ${o.value === eisenhower ? "selected" : ""}>${escapeHtml(o.label)}</option>`).join("")}
           </select>
         </div>
+        <div class="todo-task-edit-field">
+          <label class="todo-task-edit-label">리스트</label>
+          <select class="todo-task-edit-section" aria-label="다른 리스트로 이동">
+            ${sections.map((s) => `<option value="${escapeHtml(s.id)}" ${s.id === currentSectionId ? "selected" : ""}>${escapeHtml(s.label)}</option>`).join("")}
+          </select>
+        </div>
       </div>
       <div class="todo-list-modal-footer todo-task-edit-footer">
         ${mode === "edit" ? '<button type="button" class="todo-task-edit-delete">삭제</button>' : ""}
@@ -1072,6 +1080,7 @@ function showTodoTaskModal(options) {
   const reminderDateInput = modal.querySelector(".todo-task-edit-reminder-date");
   const reminderTimeInput = modal.querySelector(".todo-task-edit-reminder-time");
   const eisenhowerSelect = modal.querySelector(".todo-task-edit-eisenhower");
+  const sectionSelect = modal.querySelector(".todo-task-edit-section");
 
   function close() {
     modal.remove();
@@ -1096,6 +1105,8 @@ function showTodoTaskModal(options) {
     let reminderTimeVal = (reminderTimeInput?.value || "").trim();
     const digits = reminderTimeVal.replace(/\D/g, "");
     if (digits.length >= 2) reminderTimeVal = formatTimeToHHMM(reminderTimeVal);
+    const chosenSectionId = (sectionSelect?.value || "").trim() || sectionId;
+    const chosenSection = sections.find((s) => s.id === chosenSectionId);
     return {
       name: (nameInput?.value || "").trim(),
       startDate: startVal,
@@ -1103,8 +1114,8 @@ function showTodoTaskModal(options) {
       reminderDate: (reminderDateInput?.value || "").trim().slice(0, 10),
       reminderTime: reminderTimeVal,
       eisenhower: eisenhowerSelect?.value || "",
-      sectionId,
-      sectionLabel,
+      sectionId: chosenSectionId,
+      sectionLabel: chosenSection?.label ?? sectionLabel,
     };
   }
 
@@ -2130,7 +2141,26 @@ function createTaskCard(taskData, options = {}) {
       sectionLabel,
       mode: "edit",
       onSave: (payload) => {
+        const newSectionId = (payload.sectionId || "").trim();
+        if (newSectionId && newSectionId !== sectionId) {
+          if (sectionId && sectionId.startsWith("custom-")) {
+            removeTaskFromCustomSectionStorage(sectionId, taskId);
+            clearSubtasks(taskId);
+          } else if (sectionId) {
+            removeTaskFromSectionStorage(sectionId, taskId);
+            clearSubtasks(taskId);
+          }
+          const targetWrap = sectionsWrap?.querySelector(`.todo-section[data-section="${newSectionId}"] .todo-cards-wrap`);
+          if (targetWrap) {
+            const addWrap = targetWrap.querySelector(".todo-cards-add-wrap");
+            card.remove();
+            if (addWrap) targetWrap.insertBefore(card, addWrap);
+            else targetWrap.appendChild(card);
+          }
+          card.dataset.sectionId = newSectionId;
+        }
         updateCardFromData(payload);
+        updateCount();
         scheduleSave();
       },
       onDelete: () => {
