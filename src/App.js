@@ -63,6 +63,7 @@ const RENDERERS = {
 let currentTabId = "home";
 
 const ROUTINE_REMOVED_KEY = "app-routine-removed-v1";
+const SIDEBAR_COLLAPSED_KEY = "app-sidebar-collapsed-v1";
 
 function migrateRemoveRoutineTasks() {
   if (localStorage.getItem(ROUTINE_REMOVED_KEY) === "1") return;
@@ -103,12 +104,37 @@ export function mountApp(container) {
   const sidebar = document.createElement("aside");
   sidebar.className = "app-sidebar";
 
+  const sidebarHeader = document.createElement("div");
+  sidebarHeader.className = "app-sidebar-header";
+  const sidebarToggle = document.createElement("button");
+  sidebarToggle.type = "button";
+  sidebarToggle.className = "app-sidebar-toggle";
+  sidebarToggle.innerHTML =
+    '<img src="/toolbaricons/caret-left-double.svg" alt="" class="app-sidebar-toggle-icon" width="18" height="18" />';
+  sidebarHeader.appendChild(sidebarToggle);
+  sidebar.appendChild(sidebarHeader);
+
   const nav = document.createElement("nav");
   nav.className = "app-sidebar-nav";
 
   const HIDE_ON_MOBILE_TAB_IDS = ["dream", "sideincome", "happiness", "health", "asset", "diary"];
+
+  function appendSidebarIcon(btn, iconSrc) {
+    const iconWrap = document.createElement("span");
+    iconWrap.className = "app-sidebar-item-icon";
+    const iconImg = document.createElement("img");
+    iconImg.src = iconSrc;
+    iconImg.alt = "";
+    iconImg.width = 18;
+    iconImg.height = 18;
+    iconImg.loading = "lazy";
+    iconWrap.appendChild(iconImg);
+    btn.appendChild(iconWrap);
+  }
+
   TABS.forEach((tab) => {
     const btn = document.createElement("button");
+    btn.type = "button";
     btn.className =
       "app-sidebar-item" + (tab.id === currentTabId ? " active" : "");
     if (HIDE_ON_MOBILE_TAB_IDS.includes(tab.id)) {
@@ -122,6 +148,7 @@ export function mountApp(container) {
     }
     btn.dataset.tabId = tab.id;
     btn.title = tab.label;
+    appendSidebarIcon(btn, tab.icon);
     const label = document.createElement("span");
     label.className = "app-sidebar-item-label";
     label.textContent = tab.label;
@@ -130,15 +157,41 @@ export function mountApp(container) {
   });
 
   const accountBtn = document.createElement("button");
+  accountBtn.type = "button";
   accountBtn.className = "app-sidebar-item app-sidebar-logout";
   accountBtn.title = "나의 계정";
   accountBtn.dataset.tabId = "idea";
+  appendSidebarIcon(accountBtn, "/toolbaricons/user-square.svg");
   const accountLabel = document.createElement("span");
   accountLabel.className = "app-sidebar-item-label";
   accountLabel.textContent = "나의 계정";
   accountBtn.appendChild(accountLabel);
   nav.appendChild(accountBtn);
   sidebar.appendChild(nav);
+
+  function applySidebarCollapsed(collapsed) {
+    sidebar.classList.toggle("is-collapsed", collapsed);
+    sidebarToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    sidebarToggle.setAttribute(
+      "aria-label",
+      collapsed ? "사이드바 펼치기" : "사이드바 접기",
+    );
+    try {
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "1" : "0");
+    } catch (_) {}
+  }
+  let startCollapsed = false;
+  try {
+    startCollapsed = localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
+  } catch (_) {}
+  applySidebarCollapsed(startCollapsed);
+
+  sidebarToggle.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    applySidebarCollapsed(!sidebar.classList.contains("is-collapsed"));
+  });
+
   appScreen.appendChild(sidebar);
 
   const main = document.createElement("main");
