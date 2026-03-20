@@ -2616,6 +2616,23 @@ body {
   }
   .calendar-view-with-subtabs .calendar-monthly-day-entries {
     margin-top: 0.2rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.375rem !important;
+    overflow: visible !important;
+  }
+  .calendar-view-with-subtabs .calendar-monthly-day-entries .calendar-monthly-span-bar {
+    position: relative !important;
+    top: auto !important;
+    left: 0 !important;
+    right: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    min-height: 1.65rem !important;
+    padding: 0.3rem 0.45rem !important;
+    flex-shrink: 0;
   }
   .calendar-view-with-subtabs .calendar-monthly-span-bar {
     min-height: 0.95rem !important;
@@ -2745,10 +2762,79 @@ body {
     max-height: 60vh;
   }
 
+  /* 모바일: 날짜 셀 전체가 클릭 영역 — 글자/할일 텍스트 눌러도 모달 열림 */
+  .calendar-monthly-day .calendar-monthly-day-num,
+  .calendar-monthly-day .calendar-monthly-day-entries,
+  .calendar-monthly-day .calendar-monthly-day-entries .calendar-monthly-span-bar {
+    pointer-events: none;
+  }
+
+  /* 모바일 월별·2주·3주·1주: 셀 안 할일 바 세로 쌓기 + 간격 (absolute top 겹침 방지) */
+  .calendar-monthly-day:not(.empty) .calendar-monthly-day-entries {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.375rem;
+    overflow: visible;
+  }
+  .calendar-monthly-day-entries .calendar-monthly-span-bar {
+    position: relative !important;
+    top: auto !important;
+    left: 0 !important;
+    right: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    min-height: 1.65rem !important;
+    padding: 0.3rem 0.45rem !important;
+    flex-shrink: 0;
+  }
+  .calendar-monthly-day-entries .calendar-monthly-span-bar--has-checkbox {
+    gap: 0.35rem !important;
+    padding-left: 0.4rem !important;
+  }
+
   /* 모바일: 1주 뷰 — 한 줄에 한 날짜씩 7행으로 표시 */
   .calendar-1week-view .calendar-monthly-grid {
     display: flex;
     flex-direction: column;
+  }
+  /* 모바일 1주 뷰: 태스크에 체크박스 표시 + 우리 스타일 적용 */
+  .calendar-1week-view .calendar-monthly-span-bar--has-checkbox .calendar-monthly-span-bar-checkbox {
+    display: flex !important;
+    width: var(--cb-size);
+    height: var(--cb-size);
+    min-width: var(--cb-size);
+    min-height: var(--cb-size);
+    border: var(--cb-border);
+    border-radius: 0;
+    background: var(--cb-bg);
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+  .calendar-1week-view .calendar-monthly-span-bar-checkbox:hover {
+    background: var(--cb-bg-hover);
+  }
+  .calendar-1week-view .calendar-monthly-span-bar-checkbox.checked,
+  .calendar-1week-view .calendar-monthly-span-bar.is-completed .calendar-monthly-span-bar-checkbox {
+    background: var(--cb-bg-checked);
+    border: var(--cb-border);
+  }
+  .calendar-1week-view .calendar-monthly-span-bar-checkbox-inner {
+    width: 0.35rem;
+    height: 0.5rem;
+    border-right: 0.125rem solid #F2EDE0;
+    border-bottom: 0.125rem solid #F2EDE0;
+    transform: rotate(45deg) translateY(-0.05rem);
+    opacity: 0;
+  }
+  .calendar-1week-view .calendar-monthly-span-bar-checkbox-inner.checked {
+    opacity: 1;
+  }
+  .calendar-1week-view .calendar-monthly-span-bar--has-checkbox {
+    gap: 0.35rem !important;
+    padding-left: 0.4rem !important;
   }
   /* 요일은 각 날짜 셀 안으로 옮김 — 상단 7열 헤더 제거 */
   .calendar-1week-view .calendar-monthly-weekdays {
@@ -2760,6 +2846,10 @@ body {
     align-items: baseline;
     gap: 0.4rem;
     margin-bottom: 0.25rem;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: transparent;
   }
   .calendar-1week-view .calendar-1week-day-weekday {
     display: inline !important;
@@ -2800,13 +2890,6 @@ body {
   .calendar-1week-view .calendar-monthly-day-entries {
     min-height: 2rem;
   }
-  /* 모바일 1주: 할일 바를 셀 안에서 왼쪽부터 전체 너비로 */
-  .calendar-1week-view .calendar-monthly-day-entries .calendar-monthly-span-bar {
-    left: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-  }
 
   /* 모바일: 월별 캘린더만 좌우 패딩 제거 (화면 끝까지) */
   .calendar-view .calendar-monthly-main {
@@ -2814,9 +2897,17 @@ body {
     padding-right: 0 !important;
   }
 
-  /* 모바일: 할일 영역(calendar-todo-main·calendar-todo-content) 패딩 제거 */
+  /* 모바일: 할일 영역 높이 체인 확보 */
   .calendar-view .calendar-monthly-main.calendar-todo-main {
     padding: 0 !important;
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .calendar-view .calendar-content-wrap > .calendar-monthly-layout {
+    flex: 1 1 0;
+    min-height: 0;
   }
 
   /* 모바일: 타임라인(오늘 해치우기) 탭 - 패딩 제거, 시간 컬럼만 보이게 */
@@ -2851,6 +2942,8 @@ body {
   .calendar-view-todo .calendar-todo-content {
     display: flex;
     flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
     overflow: hidden;
     padding: 0 !important;
     background: transparent;
@@ -2995,14 +3088,42 @@ body {
     font-size: 0.8125rem;
     font-weight: 300;
   }
-  /* 모바일: 할일 카드 영역 스크롤 */
+  /* 모바일: 할일 카드 영역 — 뷰포트 기준 높이로 스크롤 확실히 동작 */
   .calendar-view-todo .calendar-todo-content .todo-cards-wrap {
     flex: 1 1 0;
     min-height: 0;
+    max-height: calc(100vh - 10rem);
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
-    padding: 0.75rem 1rem;
+    touch-action: pan-y;
+    overscroll-behavior-y: contain;
+    padding: 0.75rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
+    gap: 0.875rem;
+  }
+
+  /* 모바일: 할일 카드 — 내용만큼 늘어나고 잘리지 않음 */
+  .calendar-view-todo .todo-card {
+    overflow: visible;
+    flex-shrink: 0;
+  }
+  .calendar-view-todo .todo-card-name {
+    overflow: visible;
+    text-overflow: unset;
+  }
+  .calendar-view-todo .todo-card-name-wrap {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    row-gap: 0.2rem;
+  }
+  .calendar-view-todo .todo-card-content {
+    gap: 0.5rem;
+  }
+  .calendar-view-todo .todo-card-inner {
+    padding: 1rem 1.25rem 1.125rem;
+  }
+  .calendar-view-todo .todo-card-dates {
+    padding-bottom: 0.125rem;
   }
 
   /* 모바일 오늘 탭: 이벤트 영역 가로 한 줄 + 가로 스크롤 */
@@ -9248,7 +9369,10 @@ body {
 .work-schedule-monthly-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  background: transparent;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--content-bg);
   border: none;
   border-bottom: var(--line-l3);
 }
@@ -26293,7 +26417,10 @@ body.kpi-resizing {
 .calendar-monthly-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  background: transparent;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--content-bg);
   border: none;
   border-bottom: var(--line-l3);
 }
@@ -27374,6 +27501,10 @@ body.kpi-resizing {
   align-items: baseline;
   gap: 0.4rem;
   margin-bottom: 0.25rem;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: transparent;
 }
 .calendar-1week-view .calendar-1week-day-weekday {
   display: inline !important;
@@ -27886,32 +28017,29 @@ body.kpi-resizing {
 
 .calendar-monthly-span-bar--todo,
 .calendar-monthly-span-bar--range {
-  background: transparent !important;
   opacity: 1;
 }
 
-/* 단일일: 채우기 없이 왼쪽 선 0.0938rem만 배정 컬러로, 라디우스 제거 */
-.calendar-monthly-span-bar--todo {
-  border-left: 0.125rem solid var(--bar-bg);
-  padding-left: 0.4rem;
-  justify-content: flex-start;
-  align-items: center;
-  gap: 0.25rem;
-  line-height: 1;
-  border-radius: 0 !important;
-}
-
-.calendar-monthly-span-bar--todo::before {
-  content: none;
-}
-
-/* 기간(스팬): 배경 적용 - 스팬에만 투명도 추가 (프리셋 색상 유지) */
+/* 단일일·기간 공통: 배경 채우기로 통일 (헷갈리지 않도록) */
+.calendar-monthly-span-bar--todo,
 .calendar-monthly-span-bar--range {
   background: color-mix(
     in srgb,
     var(--bar-bg) 36%,
     rgb(125 125 125 / 0.05)
   ) !important;
+  padding-left: 0.4rem;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0.25rem;
+  line-height: 1;
+  border-radius: 0 !important;
+  border-left: none;
+}
+
+.calendar-monthly-span-bar--todo::before,
+.calendar-monthly-span-bar--range::before {
+  content: none;
 }
 
 .calendar-monthly-span-bar--range::before {

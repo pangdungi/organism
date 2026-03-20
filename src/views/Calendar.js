@@ -755,6 +755,7 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
   return bubble;
 }
 
+/** 기본 행 높이는 이 개수(3개) 분량, 그 이상이면 행을 늘려 전부 표시 */
 const MAX_VISIBLE_BARS_PER_DAY = 3;
 
 function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose, options = {}) {
@@ -1408,19 +1409,11 @@ function renderMonthlyView(tabsElement) {
           .filter((b) => b.isSingleDay && b.dayIdx === dayIdx)
           .sort((a, b) => a.row - b.row),
       );
-      const effectiveMaxPerDay = weekDateKeys.map((_, dayIdx) => {
-        const n = barsPerDay[dayIdx]?.length || 0;
-        return n > MAX_VISIBLE_BARS_PER_DAY ? MAX_VISIBLE_BARS_PER_DAY - 1 : MAX_VISIBLE_BARS_PER_DAY;
-      });
+      /* 기본 3개 높이 유지, 그 이상이면 행을 늘려 전부 표시 (+n 버튼 없음) */
       allBars.forEach((b) => {
-        if (b.isSingleDay && b.dayIdx != null) {
-          const dayBars = barsPerDay[b.dayIdx];
-          const idx = dayBars.indexOf(b);
-          b.isOverflow = idx >= effectiveMaxPerDay[b.dayIdx];
-        }
+        b.isOverflow = false;
       });
-      const visibleBars = allBars.filter((b) => !b.isOverflow);
-      const maxRow = visibleBars.length ? Math.max(...visibleBars.map((b) => b.row), 0) : 0;
+      const maxRow = allBars.length ? Math.max(...allBars.map((b) => b.row), 0) : 0;
       const rowsNeeded = maxRow + 1;
       const BARS_TOP = window.matchMedia("(max-width: 767px)").matches ? 1.35 : 1.75;
       const BOTTOM_PAD = 0.6;
@@ -1550,33 +1543,10 @@ function renderMonthlyView(tabsElement) {
       moreEl.className = "calendar-day-more-overlay";
       moreEl.style.cssText =
         "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
-      weekDateKeys.forEach((dateKey, dayIdx) => {
-        const totalCount = barsPerDay[dayIdx]?.length || 0;
-        const effectiveMax = effectiveMaxPerDay[dayIdx] ?? MAX_VISIBLE_BARS_PER_DAY;
-        const overflowCount = totalCount - effectiveMax;
-        const showCount = overflowCount > 0;
-        const displayCount = overflowCount;
-        const cell = weekRow.querySelector(
-          `.calendar-monthly-day[data-date="${dateKey}"]`,
-        );
+      weekDateKeys.forEach((dateKey) => {
         const slot = document.createElement("div");
         slot.style.cssText =
           "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
-        if (showCount && cell) {
-          const moreBtn = document.createElement("button");
-          moreBtn.type = "button";
-          moreBtn.className = "calendar-day-more-btn";
-          moreBtn.style.pointerEvents = "auto";
-          moreBtn.textContent = `+${displayCount}`;
-          moreBtn.title = "더보기";
-          moreBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            const rect = cell.getBoundingClientRect();
-            const tasks = getAllTasksForDateDisplay(dateKey);
-            createCalendarDayExpandBubble(rect, dateKey, tasks, () => {});
-          });
-          slot.appendChild(moreBtn);
-        }
         moreEl.appendChild(slot);
       });
       weekWrap.addEventListener("dragover", (e) => {
@@ -2135,19 +2105,11 @@ function render2WeekView(tabsElement) {
           .filter((b) => b.isSingleDay && b.dayIdx === dayIdx)
           .sort((a, b) => a.row - b.row),
       );
-      const effectiveMaxPerDay = weekDateKeys.map((_, dayIdx) => {
-        const n = barsPerDay[dayIdx]?.length || 0;
-        return n > MAX_VISIBLE_BARS_PER_DAY ? MAX_VISIBLE_BARS_PER_DAY - 1 : MAX_VISIBLE_BARS_PER_DAY;
-      });
+      /* 기본 3개 높이 유지, 그 이상이면 행을 늘려 전부 표시 (+n 버튼 없음) */
       allBars.forEach((b) => {
-        if (b.isSingleDay && b.dayIdx != null) {
-          const dayBars = barsPerDay[b.dayIdx];
-          const idx = dayBars.indexOf(b);
-          b.isOverflow = idx >= effectiveMaxPerDay[b.dayIdx];
-        }
+        b.isOverflow = false;
       });
-      const visibleBars = allBars.filter((b) => !b.isOverflow);
-      const maxRow = visibleBars.length ? Math.max(...visibleBars.map((b) => b.row), 0) : 0;
+      const maxRow = allBars.length ? Math.max(...allBars.map((b) => b.row), 0) : 0;
       const rowsNeeded = maxRow + 1;
       const BARS_TOP = window.matchMedia("(max-width: 767px)").matches ? 1.35 : 1.75;
       const BOTTOM_PAD = 0.6;
@@ -2275,33 +2237,10 @@ function render2WeekView(tabsElement) {
       moreEl.className = "calendar-day-more-overlay";
       moreEl.style.cssText =
         "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
-      weekDateKeys.forEach((dateKey, dayIdx) => {
-        const totalCount = barsPerDay[dayIdx]?.length || 0;
-        const effectiveMax = effectiveMaxPerDay[dayIdx] ?? MAX_VISIBLE_BARS_PER_DAY;
-        const overflowCount = totalCount - effectiveMax;
-        const showCount = overflowCount > 0;
-        const displayCount = overflowCount;
-        const cell = weekRow.querySelector(
-          `.calendar-monthly-day[data-date="${dateKey}"]`,
-        );
+      weekDateKeys.forEach((dateKey) => {
         const slot = document.createElement("div");
         slot.style.cssText =
           "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
-        if (showCount && cell) {
-          const moreBtn = document.createElement("button");
-          moreBtn.type = "button";
-          moreBtn.className = "calendar-day-more-btn";
-          moreBtn.style.pointerEvents = "auto";
-          moreBtn.textContent = `+${displayCount}`;
-          moreBtn.title = "더보기";
-          moreBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            const rect = cell.getBoundingClientRect();
-            const tasks = getAllTasksForDateDisplay(dateKey);
-            createCalendarDayExpandBubble(rect, dateKey, tasks, () => {});
-          });
-          slot.appendChild(moreBtn);
-        }
         moreEl.appendChild(slot);
       });
       weekWrap.addEventListener("dragover", (e) => {
@@ -2850,19 +2789,11 @@ function render3WeekView(tabsElement) {
           .filter((b) => b.isSingleDay && b.dayIdx === dayIdx)
           .sort((a, b) => a.row - b.row),
       );
-      const effectiveMaxPerDay = weekDateKeys.map((_, dayIdx) => {
-        const n = barsPerDay[dayIdx]?.length || 0;
-        return n > MAX_VISIBLE_BARS_PER_DAY ? MAX_VISIBLE_BARS_PER_DAY - 1 : MAX_VISIBLE_BARS_PER_DAY;
-      });
+      /* 기본 3개 높이 유지, 그 이상이면 행을 늘려 전부 표시 (+n 버튼 없음) */
       allBars.forEach((b) => {
-        if (b.isSingleDay && b.dayIdx != null) {
-          const dayBars = barsPerDay[b.dayIdx];
-          const idx = dayBars.indexOf(b);
-          b.isOverflow = idx >= effectiveMaxPerDay[b.dayIdx];
-        }
+        b.isOverflow = false;
       });
-      const visibleBars = allBars.filter((b) => !b.isOverflow);
-      const maxRow = visibleBars.length ? Math.max(...visibleBars.map((b) => b.row), 0) : 0;
+      const maxRow = allBars.length ? Math.max(...allBars.map((b) => b.row), 0) : 0;
       const rowsNeeded = maxRow + 1;
       const BARS_TOP = window.matchMedia("(max-width: 767px)").matches ? 1.35 : 1.75;
       const BOTTOM_PAD = 0.6;
@@ -3015,33 +2946,10 @@ function render3WeekView(tabsElement) {
       moreEl.className = "calendar-day-more-overlay";
       moreEl.style.cssText =
         "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
-      weekDateKeys.forEach((dateKey, dayIdx) => {
-        const totalCount = barsPerDay[dayIdx]?.length || 0;
-        const effectiveMax = effectiveMaxPerDay[dayIdx] ?? MAX_VISIBLE_BARS_PER_DAY;
-        const overflowCount = totalCount - effectiveMax;
-        const showCount = overflowCount > 0;
-        const displayCount = overflowCount;
-        const cell = weekRow.querySelector(
-          `.calendar-monthly-day[data-date="${dateKey}"]`,
-        );
+      weekDateKeys.forEach((dateKey) => {
         const slot = document.createElement("div");
         slot.style.cssText =
           "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
-        if (showCount && cell) {
-          const moreBtn = document.createElement("button");
-          moreBtn.type = "button";
-          moreBtn.className = "calendar-day-more-btn";
-          moreBtn.style.pointerEvents = "auto";
-          moreBtn.textContent = `+${displayCount}`;
-          moreBtn.title = "더보기";
-          moreBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            const rect = cell.getBoundingClientRect();
-            const tasks = getAllTasksForDateDisplay(dateKey);
-            createCalendarDayExpandBubble(rect, dateKey, tasks, () => {});
-          });
-          slot.appendChild(moreBtn);
-        }
         moreEl.appendChild(slot);
       });
       weekWrap.addEventListener("dragover", (e) => {
@@ -4813,6 +4721,7 @@ function render1WeekView(tabsElement) {
     const todayKey = formatDateKey(new Date());
     const primaryMonth = week[0]?.getMonth() ?? new Date().getMonth();
     const rangeTasks = getAllTasksWithDateRange();
+    const is1WeekView = true;
 
     grid.forEach((weekRow) => {
       const weekWrap = document.createElement("div");
@@ -4976,35 +4885,37 @@ function render1WeekView(tabsElement) {
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
       const CELL_GAP = 3.5;
-      rangeTasks.forEach((t) => {
-        const barStart = t.startDate > firstDayKey ? t.startDate : firstDayKey;
-        const barEnd = t.dueDate < lastDayKey ? t.dueDate : lastDayKey;
-        if (barStart > barEnd) return;
-        const startIdx = weekDateKeys.indexOf(barStart);
-        const endIdx = weekDateKeys.indexOf(barEnd);
-        if (startIdx < 0 || endIdx < 0) return;
-        const left = (startIdx / 7) * 100 + CELL_GAP / 7;
-        const width = ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
-        const baseColor = getSectionColor(t.sectionId);
-        const color = withMoreTransparency(baseColor);
-        const isFirstSegment = barStart === t.startDate;
-        allBars.push({
-          left,
-          width,
-          name: t.name,
-          color,
-          isSingleDay: false,
-          isFirstSegment,
-          itemType: t.itemType || "todo",
-          done: !!t.done,
-          kpiTodoId: t.kpiTodoId,
-          storageKey: t.storageKey,
-          taskId: t.taskId,
-          sectionId: t.sectionId,
-          startDate: t.startDate,
-          dueDate: t.dueDate,
+      if (!is1WeekView) {
+        rangeTasks.forEach((t) => {
+          const barStart = t.startDate > firstDayKey ? t.startDate : firstDayKey;
+          const barEnd = t.dueDate < lastDayKey ? t.dueDate : lastDayKey;
+          if (barStart > barEnd) return;
+          const startIdx = weekDateKeys.indexOf(barStart);
+          const endIdx = weekDateKeys.indexOf(barEnd);
+          if (startIdx < 0 || endIdx < 0) return;
+          const left = (startIdx / 7) * 100 + CELL_GAP / 7;
+          const width = ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
+          const baseColor = getSectionColor(t.sectionId);
+          const color = withMoreTransparency(baseColor);
+          const isFirstSegment = barStart === t.startDate;
+          allBars.push({
+            left,
+            width,
+            name: t.name,
+            color,
+            isSingleDay: false,
+            isFirstSegment,
+            itemType: t.itemType || "todo",
+            done: !!t.done,
+            kpiTodoId: t.kpiTodoId,
+            storageKey: t.storageKey,
+            taskId: t.taskId,
+            sectionId: t.sectionId,
+            startDate: t.startDate,
+            dueDate: t.dueDate,
+          });
         });
-      });
+      }
       weekDateKeys.forEach((dateKey, dayIdx) => {
         getTasksForDate(dateKey, true).forEach((t) => {
           const left = (dayIdx / 7) * 100 + CELL_GAP / 7;
@@ -5043,19 +4954,11 @@ function render1WeekView(tabsElement) {
           .filter((b) => b.isSingleDay && b.dayIdx === dayIdx)
           .sort((a, b) => a.row - b.row),
       );
-      const effectiveMaxPerDay = weekDateKeys.map((_, dayIdx) => {
-        const n = barsPerDay[dayIdx]?.length || 0;
-        return n > MAX_VISIBLE_BARS_PER_DAY ? MAX_VISIBLE_BARS_PER_DAY - 1 : MAX_VISIBLE_BARS_PER_DAY;
-      });
+      /* 기본 3개 높이 유지, 그 이상이면 행을 늘려 전부 표시 (+n 버튼 없음) */
       allBars.forEach((b) => {
-        if (b.isSingleDay && b.dayIdx != null) {
-          const dayBars = barsPerDay[b.dayIdx];
-          const idx = dayBars.indexOf(b);
-          b.isOverflow = idx >= effectiveMaxPerDay[b.dayIdx];
-        }
+        b.isOverflow = false;
       });
-      const visibleBars = allBars.filter((b) => !b.isOverflow);
-      const maxRow = visibleBars.length ? Math.max(...visibleBars.map((b) => b.row), 0) : 0;
+      const maxRow = allBars.length ? Math.max(...allBars.map((b) => b.row), 0) : 0;
       const rowsNeeded = maxRow + 1;
       const BARS_TOP = window.matchMedia("(max-width: 767px)").matches ? 1.35 : 1.75;
       const BOTTOM_PAD = 0.6;
@@ -5063,7 +4966,8 @@ function render1WeekView(tabsElement) {
       const requiredHeight = BARS_TOP + rowsNeeded * BAR_HEIGHT + BOTTOM_PAD;
       weekRowEl.style.minHeight = `${Math.max(DEFAULT_ROW_HEIGHT_REM, requiredHeight)}rem`;
       const isMobileStack = window.matchMedia("(max-width: 767px)").matches;
-      if (isMobileStack) {
+      const stackBarsInCells = isMobileStack || is1WeekView;
+      if (stackBarsInCells) {
         barsEl.style.display = "none";
         weekRowEl
           .querySelectorAll(".calendar-monthly-day:not(.empty) .calendar-monthly-day-entries")
@@ -5119,7 +5023,8 @@ function render1WeekView(tabsElement) {
             renderCalendar();
             refreshTodoList();
           };
-          if (!window.matchMedia("(max-width: 767px)").matches) bar.addEventListener("click", toggleDone);
+          const isMobileBar = window.matchMedia("(max-width: 767px)").matches;
+          if (!isMobileBar || is1WeekView) bar.addEventListener("click", toggleDone);
         } else {
           if (isTodo) {
             bar.innerHTML = showCheckbox
@@ -5134,7 +5039,8 @@ function render1WeekView(tabsElement) {
               .querySelector(".calendar-monthly-span-bar-checkbox-inner")
               ?.classList.add("checked");
           }
-          if (isTodo && !window.matchMedia("(max-width: 767px)").matches) {
+          const isMobileRangeBar = window.matchMedia("(max-width: 767px)").matches;
+          if (isTodo && (!isMobileRangeBar || is1WeekView)) {
             bar.addEventListener("click", (e) => {
               e.stopPropagation();
               const newDone = !b.done;
@@ -5213,14 +5119,14 @@ function render1WeekView(tabsElement) {
             );
           });
         }
-        if (isMobileStack && !b.isOverflow) {
+        if (stackBarsInCells && !b.isOverflow) {
           if (b.isSingleDay && b.dateKey) {
             const cell = weekRowEl.querySelector(
               `.calendar-monthly-day[data-date="${b.dateKey}"]`,
             );
             const entries = cell?.querySelector(".calendar-monthly-day-entries");
             if (entries) {
-              const daySingles = visibleBars.filter(
+              const daySingles = allBars.filter(
                 (x) => x.isSingleDay && x.dateKey === b.dateKey,
               );
               const localIdx = daySingles.indexOf(b);
@@ -5229,7 +5135,7 @@ function render1WeekView(tabsElement) {
               entries.style.minHeight = `${0.1 + daySingles.length * BAR_HEIGHT + 0.35}rem`;
               return;
             }
-          } else if (!b.isSingleDay && b.startDate && b.dueDate) {
+          } else if (!is1WeekView && !b.isSingleDay && b.startDate && b.dueDate) {
             const anchorKey =
               b.startDate < firstDayKey ? firstDayKey : b.startDate;
             const cell = weekRowEl.querySelector(
@@ -5255,33 +5161,10 @@ function render1WeekView(tabsElement) {
       if (isMobileStack) {
         moreEl.style.display = "none";
       }
-      weekDateKeys.forEach((dateKey, dayIdx) => {
-        const totalCount = barsPerDay[dayIdx]?.length || 0;
-        const effectiveMax = effectiveMaxPerDay[dayIdx] ?? MAX_VISIBLE_BARS_PER_DAY;
-        const overflowCount = totalCount - effectiveMax;
-        const showCount = overflowCount > 0;
-        const displayCount = overflowCount;
-        const cell = weekRowEl.querySelector(
-          `.calendar-monthly-day[data-date="${dateKey}"]`,
-        );
+      weekDateKeys.forEach((dateKey) => {
         const slot = document.createElement("div");
         slot.style.cssText =
           "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
-        if (showCount && cell) {
-          const moreBtn = document.createElement("button");
-          moreBtn.type = "button";
-          moreBtn.className = "calendar-day-more-btn";
-          moreBtn.style.pointerEvents = "auto";
-          moreBtn.textContent = `+${displayCount}`;
-          moreBtn.title = "더보기";
-          moreBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            const rect = cell.getBoundingClientRect();
-            const tasks = getAllTasksForDateDisplay(dateKey);
-            createCalendarDayExpandBubble(rect, dateKey, tasks, () => {});
-          });
-          slot.appendChild(moreBtn);
-        }
         moreEl.appendChild(slot);
       });
       weekWrap.addEventListener("dragover", (e) => {
@@ -5632,7 +5515,11 @@ const MOBILE_SCHEDULE_CAL_SUB_VIEWS = [
  * @param {{ subViewsList?: {id:string,label:string}[], storageKey?: string, forceInitialMonthlyOnMobile?: boolean, keepSubTabsOnTop?: boolean }} opts
  */
 function createCalendarSubViewRoot(tabsElement, opts = {}) {
-  const subViewsList = opts.subViewsList || CALENDAR_SUB_VIEWS;
+  const isMobile = window.matchMedia("(max-width: 767px)").matches;
+  const baseList = opts.subViewsList || CALENDAR_SUB_VIEWS;
+  const subViewsList = isMobile
+    ? baseList
+    : baseList.filter((v) => v.id !== "2week");
   const storageKey = opts.storageKey || "calendar-sub-view";
   const forceInitialMonthlyOnMobile = !!opts.forceInitialMonthlyOnMobile;
   const keepSubTabsOnTop = !!opts.keepSubTabsOnTop;
@@ -5673,7 +5560,6 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
   }
 
   const savedSubView = localStorage.getItem(storageKey) || "monthly";
-  const isMobile = window.matchMedia("(max-width: 767px)").matches;
   const inList = subViewsList.some((v) => v.id === savedSubView);
   const initialSubView =
     forceInitialMonthlyOnMobile && isMobile
