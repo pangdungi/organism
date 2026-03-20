@@ -8,17 +8,15 @@ const WORK_SCHEDULE_KEY = "work_schedule_rows";
 const WORK_TYPE_OPTIONS_KEY = "work_schedule_type_options";
 const WORK_SCHEDULE_DAILY_HOURS_KEY = "work_schedule_daily_hours";
 const TIME_ROWS_KEY = "time_task_log_rows";
-/** 기본 근무유형 순서: 초과근무 → 조기퇴근 → 연차 → 휴가 → 정규근무 (연차·휴가는 00:00-00:00, 수정 불가) */
+/** 기본 근무유형 순서: 연차 → 휴가 → 정규근무 (연차·휴가는 00:00-00:00, 수정 불가) */
 const DEFAULT_WORK_TYPE_OPTIONS = [
-  { name: "초과근무", start: "", end: "" },
-  { name: "조기퇴근", start: "", end: "" },
   { name: "연차", start: "00:00", end: "00:00" },
   { name: "휴가", start: "00:00", end: "00:00" },
   { name: "정규근무", start: "", end: "" },
 ];
 /** 수정·삭제 불가 (UI에서 시작/마감 입력 없음, 삭제 버튼 없음) */
-const READONLY_WORK_TYPES = ["초과근무", "조기퇴근", "연차", "휴가"];
-const CALC_PROTECTED_WORK_TYPES = ["초과근무", "조기퇴근"];
+const READONLY_WORK_TYPES = ["연차", "휴가"];
+const CALC_PROTECTED_WORK_TYPES = [];
 const PROTECTED_WORK_TYPES = READONLY_WORK_TYPES;
 const WORK_TYPE_DISPLAY_ORDER = DEFAULT_WORK_TYPE_OPTIONS.map((o) => o.name);
 
@@ -111,8 +109,8 @@ function removeWorkTypeOption(name) {
 function getDefaultStartEndForType(workTypeName) {
   const full = getWorkTypeOptionsFull();
   const entry = full.find((o) => o.name === workTypeName);
-  if (entry && (entry.start || entry.end)) return { start: entry.start || "09:00", end: entry.end || "18:00" };
-  return { start: "09:00", end: "18:00" };
+  if (!entry) return { start: "", end: "" };
+  return { start: entry.start || "", end: entry.end || "" };
 }
 
 function loadRows() {

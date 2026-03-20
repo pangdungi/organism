@@ -245,10 +245,7 @@ export function renderMonthlyContent(opts = {}) {
               item.className = "work-schedule-monthly-entry work-schedule-monthly-entry--pills";
               types.forEach((t) => {
                 const pill = document.createElement("span");
-                pill.className = "work-schedule-monthly-type-pill";
-                if (t === "초과근무") pill.classList.add("is-overtime");
-                else if (t === "조기퇴근") pill.classList.add("is-early");
-                else pill.classList.add("is-default");
+                pill.className = "work-schedule-monthly-type-pill is-default";
                 pill.textContent = t;
                 item.appendChild(pill);
               });

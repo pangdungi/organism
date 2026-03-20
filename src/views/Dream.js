@@ -186,23 +186,9 @@ export function render() {
   const title = document.createElement("h1");
   title.className = "dream-view-title";
   title.textContent = "꿈";
-  const subtitle = document.createElement("p");
-  subtitle.className = "dream-view-subtitle";
-  subtitle.textContent = "그럴거야, 아주 잘 살거야";
   header.appendChild(label);
   header.appendChild(title);
-  header.appendChild(subtitle);
   el.appendChild(header);
-
-  const btnRow = document.createElement("div");
-  btnRow.className = "dream-btn-row";
-  const settingBtn = document.createElement("button");
-  settingBtn.type = "button";
-  settingBtn.className = "dream-setting-link";
-  settingBtn.innerHTML = `<span class="dream-setting-link-icon" aria-hidden="true">⚙</span>꿈 설정하기`;
-  settingBtn.addEventListener("click", () => showDesiredLifeModal());
-  btnRow.appendChild(settingBtn);
-  el.appendChild(btnRow);
 
   const desiredLifeWrap = document.createElement("div");
   desiredLifeWrap.className = "dream-desired-life-wrap";
@@ -1304,9 +1290,6 @@ export function render() {
   }
 
   function updateDesiredLifeDisplay() {
-    const data = loadDreamMap();
-    const text = (data.desiredLife || "").trim();
-    subtitle.textContent = text || "그럴거야, 아주 잘 살거야";
     desiredLifeWrap.hidden = true;
     desiredLifeWrap.innerHTML = "";
   }
