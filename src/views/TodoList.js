@@ -2111,9 +2111,13 @@ function createTaskCard(taskData, options = {}) {
   contentCol.appendChild(datesEl);
   contentCol.appendChild(reminderEl);
 
+  const doneWrap = document.createElement("div");
+  doneWrap.className = "todo-card-done-wrap";
+  doneWrap.appendChild(doneCheck);
+
   const inner = document.createElement("div");
   inner.className = "todo-card-inner";
-  inner.appendChild(doneCheck);
+  inner.appendChild(doneWrap);
   inner.appendChild(contentCol);
   inner.appendChild(delBtn);
   card.appendChild(inner);
@@ -2215,8 +2219,7 @@ function createTaskCard(taskData, options = {}) {
     }
   }
 
-  inner.addEventListener("click", (e) => {
-    if (e.target === doneCheck || e.target === delBtn || delBtn.contains(e.target)) return;
+  contentCol.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
     showTodoTaskModal({
@@ -3133,7 +3136,7 @@ export function render(options = {}) {
       showContextMenu(e.clientX, e.clientY, sectionId || null);
       return;
     }
-    if (card && !e.target.closest(".todo-card-delete") && !card.querySelector(".todo-done-check")?.contains(e.target)) {
+    if (card && !e.target.closest(".todo-card-delete") && !e.target.closest(".todo-card-done-wrap")) {
       e.preventDefault();
       e.stopPropagation();
       contextMenuTargetRow = null;

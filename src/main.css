@@ -10779,13 +10779,34 @@ body {
   position: relative;
 }
 
+.todo-card-done-wrap {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 1.25rem;
+  padding: 0.25rem 0;
+}
+
 .todo-card-done {
   flex-shrink: 0;
   margin: 0;
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1.75rem;
+  height: 1.75rem;
   accent-color: var(--accent-viridian);
   cursor: pointer;
+}
+
+@media (max-width: 48rem) {
+  .todo-card-done-wrap {
+    margin-right: 1rem;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+  }
+  .todo-card-done {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
 }
 
 .todo-card-content {
