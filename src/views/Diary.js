@@ -134,6 +134,15 @@ export function render() {
     return [...raw].sort((a, b) => (b.updatedAt || b.date || "").localeCompare(a.updatedAt || a.date || ""));
   }
 
+  function getTabEntriesRaw(tabId) {
+    if (tabId === "3") {
+      ensureTab3Entries(entries);
+      return entries["3"].entries || [];
+    }
+    ensureTabEntries(tabId);
+    return entries[tabId]?.entries || [];
+  }
+
   function getEntryById(tabId, id) {
     const list = ensureTabEntries(tabId);
     return list.find((e) => e.id === id) || null;
@@ -570,10 +579,10 @@ export function render() {
         const deleteBtn = document.createElement("button");
         deleteBtn.type = "button";
         deleteBtn.className = "diary-paper-delete-btn diary-paper-delete-btn-qa";
-        deleteBtn.title = "삭제";
+        deleteBtn.title = "해당 기록 삭제";
         deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
         deleteBtn.addEventListener("click", () => {
-          const list = ensureTabEntries(currentTabId);
+          const list = getTabEntriesRaw(currentTabId);
           const idx = list.findIndex((x) => x.id === entry.id);
           if (idx >= 0) {
             list.splice(idx, 1);
@@ -670,29 +679,42 @@ export function render() {
       if (!currentEntry.q2 && currentEntry.q2 !== "") currentEntry.q2 = "";
       if (!currentEntry.q3 && currentEntry.q3 !== "") currentEntry.q3 = "";
       if (!currentEntry.q4 && currentEntry.q4 !== "") currentEntry.q4 = "";
-      const titleRow = document.createElement("div");
-      titleRow.className = "diary-paper-title-row diary-paper-qa-title-row";
-      const titleInput = document.createElement("input");
-      titleInput.type = "text";
-      titleInput.className = "diary-paper-title-input diary-paper-qa-title-input";
-      titleInput.value = formatDateDisplay(currentEntry.date || toDateStr(new Date()));
-      titleInput.readOnly = true;
-      titleInput.style.background = "transparent";
-      titleRow.appendChild(titleInput);
-      paper.appendChild(titleRow);
       const qaHeader = document.createElement("div");
       qaHeader.className = "diary-paper-qa-header";
-      const meta = document.createElement("div");
-      meta.className = "diary-paper-meta";
-      meta.textContent = formatDateDisplay(currentEntry.date || toDateStr(new Date()));
-      qaHeader.appendChild(meta);
+      const headerTitleInput = document.createElement("input");
+      headerTitleInput.type = "text";
+      headerTitleInput.className = "diary-paper-meta diary-paper-qa-header-title";
+      const displayTitle3 =
+        (currentEntry.title || "").trim() === "제목없음" || !(currentEntry.title || "").trim()
+          ? formatDateDisplay(currentEntry.date || toDateStr(new Date()))
+          : (currentEntry.title || "").trim();
+      headerTitleInput.value = displayTitle3;
+      headerTitleInput.placeholder = formatDateDisplay(currentEntry.date || toDateStr(new Date()));
+      headerTitleInput.addEventListener("input", () => {
+        const t = getEntryById(currentTabId, currentEntryId);
+        if (t) {
+          t.title = (headerTitleInput.value || "").trim() || "제목없음";
+          t.updatedAt = new Date().toISOString();
+          saveDiaryEntries(entries);
+        }
+      });
+      headerTitleInput.addEventListener("blur", () => {
+        const t = getEntryById(currentTabId, currentEntryId);
+        if (t) {
+          t.title = (headerTitleInput.value || "").trim() || "제목없음";
+          t.updatedAt = new Date().toISOString();
+          saveDiaryEntries(entries);
+          renderLayout();
+        }
+      });
+      qaHeader.appendChild(headerTitleInput);
       const deleteBtn = document.createElement("button");
       deleteBtn.type = "button";
       deleteBtn.className = "diary-paper-delete-btn diary-paper-delete-btn-qa";
-      deleteBtn.title = "페이지 삭제";
+      deleteBtn.title = "해당 기록 삭제";
       deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
       deleteBtn.addEventListener("click", () => {
-        const list = ensureTabEntries("3");
+        const list = getTabEntriesRaw("3");
         const idx = list.findIndex((x) => x.id === currentEntry.id);
         if (idx >= 0) {
           list.splice(idx, 1);
@@ -741,59 +763,42 @@ export function render() {
           saveDiaryEntries(entries);
         }
         paper.className = "diary-paper diary-paper-qa";
-        const titleRow = document.createElement("div");
-        titleRow.className = "diary-paper-title-row diary-paper-qa-title-row";
-        const titleInput = document.createElement("input");
-        titleInput.type = "text";
-        titleInput.className = "diary-paper-title-input diary-paper-qa-title-input";
-        const displayTitle =
+        const qaHeader = document.createElement("div");
+        qaHeader.className = "diary-paper-qa-header";
+        const headerTitleInput = document.createElement("input");
+        headerTitleInput.type = "text";
+        headerTitleInput.className = "diary-paper-meta diary-paper-qa-header-title";
+        const displayTitle2 =
           (currentEntry.title || "").trim() === "제목없음" || !(currentEntry.title || "").trim()
             ? formatDateDisplay(currentEntry.date || toDateStr(new Date()))
-            : currentEntry.title.trim();
-        titleInput.value = displayTitle;
-        titleInput.placeholder = formatDateDisplay(currentEntry.date || toDateStr(new Date()));
-        const applyQaTitle = () => {
+            : (currentEntry.title || "").trim();
+        headerTitleInput.value = displayTitle2;
+        headerTitleInput.placeholder = formatDateDisplay(currentEntry.date || toDateStr(new Date()));
+        headerTitleInput.addEventListener("input", () => {
           const t = getEntryById(currentTabId, currentEntryId);
           if (t) {
-            const v = (titleInput.value || "").trim();
-            t.title = v || "제목없음";
+            t.title = (headerTitleInput.value || "").trim() || "제목없음";
+            t.updatedAt = new Date().toISOString();
+            saveDiaryEntries(entries);
+          }
+        });
+        headerTitleInput.addEventListener("blur", () => {
+          const t = getEntryById(currentTabId, currentEntryId);
+          if (t) {
+            t.title = (headerTitleInput.value || "").trim() || "제목없음";
             t.updatedAt = new Date().toISOString();
             saveDiaryEntries(entries);
             renderLayout();
           }
-        };
-        titleInput.addEventListener("input", () => {
-          const t = getEntryById(currentTabId, currentEntryId);
-          if (t) {
-            const v = (titleInput.value || "").trim();
-            t.title = v || "제목없음";
-            t.updatedAt = new Date().toISOString();
-            saveDiaryEntries(entries);
-          }
         });
-        titleInput.addEventListener("blur", applyQaTitle);
-        titleInput.addEventListener("keydown", (e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            titleInput.blur();
-          }
-        });
-        titleRow.appendChild(titleInput);
-        paper.appendChild(titleRow);
-
-        const qaHeader = document.createElement("div");
-        qaHeader.className = "diary-paper-qa-header";
-        const meta = document.createElement("div");
-        meta.className = "diary-paper-meta";
-        meta.textContent = formatDateDisplay(currentEntry.date || toDateStr(new Date()));
-        qaHeader.appendChild(meta);
+        qaHeader.appendChild(headerTitleInput);
         const deleteBtn = document.createElement("button");
         deleteBtn.type = "button";
         deleteBtn.className = "diary-paper-delete-btn diary-paper-delete-btn-qa";
-        deleteBtn.title = "페이지 삭제";
+        deleteBtn.title = "해당 기록 삭제";
         deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
         deleteBtn.addEventListener("click", () => {
-          const list = ensureTabEntries(currentTabId);
+          const list = getTabEntriesRaw(currentTabId);
           const idx = list.findIndex((x) => x.id === currentEntry.id);
           if (idx >= 0) {
             list.splice(idx, 1);
@@ -874,10 +879,10 @@ export function render() {
         const deleteBtn = document.createElement("button");
         deleteBtn.type = "button";
         deleteBtn.className = "diary-paper-delete-btn";
-        deleteBtn.title = "페이지 삭제";
+        deleteBtn.title = "해당 기록 삭제";
         deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
         deleteBtn.addEventListener("click", () => {
-          const list = ensureTabEntries(currentTabId);
+          const list = getTabEntriesRaw(currentTabId);
           const idx = list.findIndex((x) => x.id === currentEntry.id);
           if (idx >= 0) {
             list.splice(idx, 1);
@@ -888,11 +893,6 @@ export function render() {
         });
         titleRow.appendChild(deleteBtn);
         paper.appendChild(titleRow);
-
-        const meta = document.createElement("div");
-        meta.className = "diary-paper-meta";
-        meta.textContent = formatDateDisplay(currentEntry.date || toDateStr(new Date()));
-        paper.appendChild(meta);
 
         const textarea = document.createElement("textarea");
         textarea.className = "diary-paper-text";

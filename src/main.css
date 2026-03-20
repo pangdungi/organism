@@ -25256,6 +25256,27 @@ body.kpi-resizing {
   margin: 0;
 }
 
+.diary-paper-qa .diary-paper-qa-header-title {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-body);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  font-family: inherit;
+}
+
+.diary-paper-qa .diary-paper-qa-header-title:focus {
+  outline: none;
+}
+
+.diary-paper-qa .diary-paper-qa-header-title::placeholder {
+  color: var(--text-placeholder);
+}
+
 .diary-paper-delete-btn-qa {
   flex-shrink: 0;
 }
