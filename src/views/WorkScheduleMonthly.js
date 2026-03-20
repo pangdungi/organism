@@ -92,10 +92,14 @@ const MONTH_NAMES_SHORT = [
   "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
 ];
 
-/** 근무표 내부에서 사용하는 먼슬리 캘린더 콘텐츠 */
-export function renderMonthlyContent() {
+/**
+ * 근무표 내부에서 사용하는 먼슬리 캘린더 콘텐츠
+ * @param {{ hoursOnly?: boolean }} opts - hoursOnly: true면 근무시간만 표시(필터 버튼 숨김, 모바일 캘린더 탭용)
+ */
+export function renderMonthlyContent(opts = {}) {
+  const hoursOnly = !!opts.hoursOnly;
   const el = document.createElement("div");
-  el.className = "work-schedule-monthly-content";
+  el.className = "work-schedule-monthly-content" + (hoursOnly ? " work-schedule-monthly-content--hours-only" : "");
 
   const nav = document.createElement("div");
   nav.className = "work-schedule-monthly-nav";
@@ -131,26 +135,28 @@ export function renderMonthlyContent() {
 
   const filterRow = document.createElement("div");
   filterRow.className = "work-schedule-monthly-filter";
-  const btnHours = document.createElement("button");
-  btnHours.type = "button";
-  btnHours.className = "work-schedule-monthly-filter-btn active";
-  btnHours.dataset.mode = "hours";
-  btnHours.textContent = "근무시간";
-  const btnType = document.createElement("button");
-  btnType.type = "button";
-  btnType.className = "work-schedule-monthly-filter-btn";
-  btnType.dataset.mode = "type";
-  btnType.textContent = "근무유형";
-  const btnBalance = document.createElement("button");
-  btnBalance.type = "button";
-  btnBalance.className = "work-schedule-monthly-filter-btn";
-  btnBalance.dataset.mode = "balance";
-  btnBalance.textContent = "밸런스";
-  filterRow.appendChild(btnHours);
-  filterRow.appendChild(btnType);
-  filterRow.appendChild(btnBalance);
+  if (!hoursOnly) {
+    const btnHours = document.createElement("button");
+    btnHours.type = "button";
+    btnHours.className = "work-schedule-monthly-filter-btn active";
+    btnHours.dataset.mode = "hours";
+    btnHours.textContent = "근무시간";
+    const btnType = document.createElement("button");
+    btnType.type = "button";
+    btnType.className = "work-schedule-monthly-filter-btn";
+    btnType.dataset.mode = "type";
+    btnType.textContent = "근무유형";
+    const btnBalance = document.createElement("button");
+    btnBalance.type = "button";
+    btnBalance.className = "work-schedule-monthly-filter-btn";
+    btnBalance.dataset.mode = "balance";
+    btnBalance.textContent = "밸런스";
+    filterRow.appendChild(btnHours);
+    filterRow.appendChild(btnType);
+    filterRow.appendChild(btnBalance);
+  }
   topRow.appendChild(nav);
-  topRow.appendChild(filterRow);
+  if (!hoursOnly) topRow.appendChild(filterRow);
   el.appendChild(topRow);
 
   const calendarWrap = document.createElement("div");
@@ -160,14 +166,16 @@ export function renderMonthlyContent() {
   let currentMonth = new Date().getMonth();
   let displayMode = "hours";
 
-  filterRow.querySelectorAll(".work-schedule-monthly-filter-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      displayMode = btn.dataset.mode || "hours";
-      filterRow.querySelectorAll(".work-schedule-monthly-filter-btn").forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      renderCalendar();
+  if (!hoursOnly) {
+    filterRow.querySelectorAll(".work-schedule-monthly-filter-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        displayMode = btn.dataset.mode || "hours";
+        filterRow.querySelectorAll(".work-schedule-monthly-filter-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        renderCalendar();
+      });
     });
-  });
+  }
 
   function renderCalendar() {
     const rows = loadWorkScheduleRows();

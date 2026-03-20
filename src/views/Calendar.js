@@ -38,6 +38,7 @@ import {
   parseTimeToHours,
 } from "./Time.js";
 import { showToast } from "../utils/showToast.js";
+import { renderMonthlyContent as renderWorkScheduleMonthlyContent } from "./WorkScheduleMonthly.js";
 
 const CUSTOM_SECTION_TASKS_KEY = "todo-custom-section-tasks";
 const SECTION_TASKS_KEY = "todo-section-tasks";
@@ -5567,6 +5568,7 @@ const CALENDAR_SUB_VIEWS = [
 const MOBILE_SCHEDULE_CAL_SUB_VIEWS = [
   { id: "monthly", label: "월별" },
   { id: "1week", label: "1주" },
+  { id: "workschedule", label: "근무표" },
 ];
 
 /**
@@ -5650,6 +5652,8 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
       contentArea.appendChild(render1WeekView(null));
     } else if (subViewId === "annual") {
       contentArea.appendChild(renderAnnualView(null));
+    } else if (subViewId === "workschedule") {
+      contentArea.appendChild(renderWorkScheduleMonthlyContent({ hoursOnly: true }));
     }
     if (keepSubTabsOnTop) {
       wrap.insertBefore(subTabs, contentArea);

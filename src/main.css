@@ -1755,14 +1755,14 @@ body {
     overflow-y: visible !important;
     min-height: min-content;
   }
-  /* 나의 계정 모바일: 1열 배치, 여백 조정 */
+  /* 나의 계정 모바일: 1열 배치, 좌우 패딩 제거(다른 탭과 통일) */
   .app-main:has(.idea-view) .idea-widget-grid {
     grid-template-columns: 1fr;
     gap: 1rem;
     padding-bottom: 1rem;
   }
   .app-main:has(.idea-view) .idea-view {
-    padding: 1rem 1.75rem 1.25rem !important;
+    padding: 0.875rem 0 1rem !important;
     box-sizing: border-box;
   }
 
@@ -1779,6 +1779,7 @@ body {
   .app-main:has(.diary-view) .app-tab-panel > .diary-view,
   .app-main:has(.archive-view) .app-tab-panel > .archive-view,
   .app-main:has(.dream-view) .app-tab-panel > .dream-view,
+  .app-main:has(.idea-view) .app-tab-panel > .idea-view,
   .app-main:has(.work-schedule-view) .app-tab-panel > .work-schedule-view,
   .app-main:has(.sideincome-view) .app-tab-panel > .sideincome-view,
   .app-main:has(.happiness-view) .app-tab-panel > .happiness-view {
@@ -2092,6 +2093,16 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  /* 모바일 캘린더 탭 > 근무표: 월별보기 캘린더(근무시간만) */
+  .calendar-view--mobile-schedule .calendar-view-content-area .work-schedule-monthly-content {
+    width: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .calendar-view--mobile-schedule .calendar-view-content-area .work-schedule-monthly-content--hours-only .work-schedule-monthly-top-row {
+    flex-wrap: nowrap;
   }
 
   /* 모바일: 날짜 셀 클릭 시 확대 보기 오버레이 + 넓은 카드 */
@@ -3924,7 +3935,7 @@ body {
 }
 
 .asset-expense-filter-btn:hover {
-  background: #e5e7eb;
+  background: var(--ui-surface-alt);
   color: var(--text-body);
 }
 
@@ -3975,7 +3986,7 @@ body {
 }
 
 .asset-expense-table-wrap {
-  background: #F5F1E8;
+  background: var(--content-bg);
   border: var(--line-l3);
   border-radius: 0;
   overflow-x: auto;
@@ -3991,7 +4002,7 @@ body {
   padding: 0.5rem 0.6rem;
   border: var(--line-l3);
   border-top: none;
-  background: #F5F1E8;
+  background: var(--content-bg);
   box-shadow: 0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.06);
 }
 
@@ -4025,7 +4036,7 @@ body {
 }
 
 .asset-expense-table th {
-  background: var(--card-bg-light);
+  background: var(--content-bg);
   font-weight: 600;
   font-size: 0.8125rem;
   color: var(--text-ink);
@@ -4038,13 +4049,13 @@ body {
   position: sticky;
   left: 0;
   z-index: 1;
-  background: #F5F1E8;
+  background: var(--content-bg);
   box-shadow: 0.125rem 0 0.25rem -0.125rem rgba(0, 0, 0, 0.06);
 }
 
 .asset-expense-table thead .asset-expense-th-date {
   z-index: 2;
-  background: var(--card-bg-light);
+  background: var(--content-bg);
 }
 
 .asset-expense-col-amount,
@@ -4053,20 +4064,20 @@ body {
   position: sticky;
   left: 5rem;
   z-index: 1;
-  background: #F5F1E8;
+  background: var(--content-bg);
   box-shadow: 0.125rem 0 0.25rem -0.125rem rgba(0, 0, 0, 0.06);
 }
 
 .asset-expense-table thead .asset-expense-th-amount {
   z-index: 2;
-  background: var(--card-bg-light);
+  background: var(--content-bg);
 }
 
 .asset-expense-summary-row .asset-expense-summary-label,
 .asset-expense-summary-row .asset-expense-summary-total {
   position: sticky;
   z-index: 1;
-  background: rgba(232, 232, 230, 0.5);
+  background: var(--ui-surface-alt);
 }
 
 .asset-expense-summary-row .asset-expense-summary-label {
@@ -4120,7 +4131,7 @@ body {
   border-top: var(--line-l2);
 }
 .asset-expense-summary-row td {
-  background: rgba(232, 232, 230, 0.5);
+  background: var(--ui-surface-alt);
   font-weight: 600;
   font-size: 0.8125rem;
   color: var(--text-body);
@@ -5203,8 +5214,8 @@ body {
   border-radius: 0.375rem;
   white-space: nowrap;
   cursor: pointer;
-  background: #f0f0f0;
-  color: #666;
+  background: var(--ui-surface-alt);
+  color: var(--text-body);
   border: 0.09375rem solid transparent;
   transition:
     background 0.15s,
@@ -5212,16 +5223,16 @@ body {
 }
 
 .asset-expense-classification-display:hover {
-  background: #e8e8e8;
+  background: var(--content-bg);
 }
 
 .asset-expense-classification-display.is-disabled {
   cursor: default;
-  color: #9ca3af;
-  background: #f4f4f5;
+  color: var(--text-muted);
+  background: var(--ui-surface-alt);
 }
 .asset-expense-classification-display.is-disabled:hover {
-  background: #f4f4f5;
+  background: var(--ui-surface-alt);
 }
 .asset-expense-classification-display.is-required-first {
   color: #9ca3af;
@@ -5394,7 +5405,7 @@ body {
 }
 
 .asset-expense-classification-option:hover {
-  background: #f8f8f8;
+  background: var(--ui-surface-alt);
 }
 
 .asset-expense-classification-tag {
@@ -5466,8 +5477,8 @@ body {
   border-radius: 0.375rem;
   white-space: nowrap;
   cursor: pointer;
-  background: #f0f0f0;
-  color: #666;
+  background: var(--ui-surface-alt);
+  color: var(--text-body);
   border: 0.09375rem solid transparent;
   transition:
     background 0.15s,
@@ -5475,8 +5486,8 @@ body {
 }
 
 .asset-expense-payment-wrap .asset-expense-payment-display.has-value {
-  background: rgba(212, 212, 208, 0.5);
-  color: #4b5563;
+  background: var(--ui-surface-alt);
+  color: var(--text-body);
 }
 
 .asset-expense-payment-panel {
@@ -5511,7 +5522,7 @@ body {
 
 .asset-expense-payment-option:hover,
 .asset-expense-payment-option.is-highlighted {
-  background: #f8f8f8;
+  background: var(--ui-surface-alt);
 }
 
 .asset-expense-payment-option .asset-expense-payment-tag {
@@ -5520,7 +5531,7 @@ body {
 }
 
 .asset-expense-row-add {
-  background: #fafafa;
+  background: var(--ui-surface-alt);
 }
 
 .asset-expense-cell-add {
@@ -8326,7 +8337,7 @@ body {
   font-size: 0.75rem;
   font-weight: 500;
   color: var(--text-muted);
-  text-align: left;
+  text-align: right;
 }
 
 .work-schedule-monthly-week {
@@ -8344,6 +8355,7 @@ body {
   padding: 0.35rem;
   border-right: var(--line-l3);
   font-size: 0.8125rem;
+  text-align: right;
 }
 
 .work-schedule-monthly-day:last-child {
@@ -8390,12 +8402,14 @@ body {
   font-family: "DM Mono", monospace;
   color: var(--text-body);
   margin-bottom: 0.25rem;
+  text-align: right;
 }
 
 .work-schedule-monthly-day-entries {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+  align-items: flex-end;
 }
 
 .work-schedule-monthly-entry {
@@ -12918,7 +12932,7 @@ body.kpi-resizing {
   padding: 0.5rem 0.75rem 0.45rem;
   font-size: 0.9rem;
   color: var(--text-muted);
-  background: none;
+  background: transparent;
   border: none;
   border-bottom: 0.09375rem solid transparent;
   margin-bottom: -0.0625rem;
@@ -12931,14 +12945,22 @@ body.kpi-resizing {
     border-color 0.2s ease;
 }
 
-.time-view-tab:hover {
+.time-view-tab:hover,
+.time-view-tab:focus {
+  background: transparent;
   color: var(--text-muted);
+}
+.time-view-tab:focus-visible {
+  outline: none;
 }
 
 .time-view-tab.active {
   color: var(--text-ink);
   border-bottom-color: var(--line-l1-color);
   margin-bottom: 0;
+}
+.time-view-tab.active:hover {
+  background: transparent;
 }
 
 /* 시간가계부 필터 바 (월별/일주일/하루/날짜선택) - 좁은 창에서 줄바꿈 방지 */
@@ -24737,9 +24759,9 @@ body.kpi-resizing {
   border-bottom: none;
 }
 
-/* 긴급+중요만 회색 톤으로 구분 */
+/* 긴급+중요 사분면도 앱 배경과 통일 */
 .calendar-eisenhower-q1 {
-  background: #f5f5f3;
+  background: var(--content-bg);
 }
 
 .calendar-eisenhower-quadrant-badge {
@@ -28167,6 +28189,19 @@ body.kpi-resizing {
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  background: var(--content-bg);
+}
+.todo-list-eisenhower-sidebar .todo-eisenhower-overdue-section .todo-section-header,
+.todo-list-eisenhower-sidebar .todo-eisenhower-overdue-section .todo-section-header--no-collapse {
+  background: var(--content-bg);
+}
+.todo-list-eisenhower-sidebar .todo-eisenhower-overdue-section .todo-section-header:hover,
+.todo-list-eisenhower-sidebar .todo-eisenhower-overdue-section .todo-section-header--no-collapse:hover {
+  background: var(--ui-surface-alt);
+}
+.todo-list-eisenhower-sidebar .todo-eisenhower-overdue-section .todo-table thead,
+.todo-list-eisenhower-sidebar .todo-eisenhower-overdue-section .todo-table thead th {
+  background: var(--content-bg);
 }
 
 .todo-list-eisenhower-sidebar
@@ -28212,12 +28247,12 @@ body.kpi-resizing {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: #fafafa;
-  box-shadow: 0 0.0625rem 0 #e5e7eb;
+  background: var(--content-bg);
+  box-shadow: 0 0.0625rem 0 var(--line-l3-color);
 }
 
 .todo-list-eisenhower-sidebar .todo-section-tab-panel .todo-table thead th {
-  background: #fafafa;
+  background: var(--content-bg);
 }
 
 /* 아이젠하워 사이드바: 시작일·마감일·리마인더·기한초과 열 표시 (todo-list-in-sidebar에서 숨김 해제) */
