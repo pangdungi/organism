@@ -278,6 +278,82 @@ body {
   border-radius: var(--modal-radius) !important;
 }
 
+/* 모달 X(닫기): 패널 또는 닫기 버튼 호버/포커스 시에만 표시 */
+.todo-settings-panel .todo-settings-close,
+.asset-settings-panel .asset-settings-close,
+.work-schedule-type-settings-panel .work-schedule-type-settings-close,
+.todo-list-modal-panel .todo-list-modal-close,
+.todo-list-modal .todo-list-modal-close,
+.time-task-setup-panel .time-task-setup-close,
+.kpi-goals-modal-panel .kpi-goals-modal-close,
+.dream-kpi-panel .dream-kpi-modal-close,
+.dream-delete-confirm-panel .dream-kpi-modal-close,
+.dream-path-context-panel .dream-kpi-modal-close,
+.kpi-confirm-panel .dream-kpi-modal-close,
+.time-task-log-panel .time-task-log-focus-inner-close,
+.time-task-log-panel .time-task-log-todo-inner-close,
+.time-task-log-panel .time-task-log-expense-inner-close,
+.time-task-log-panel .time-task-log-emotion-inner-close,
+.diary-add-emotion-panel .diary-add-emotion-close,
+.calendar-event-bubble .calendar-event-bubble-close {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.todo-settings-panel:hover .todo-settings-close,
+.todo-settings-panel .todo-settings-close:hover,
+.todo-settings-panel .todo-settings-close:focus,
+.asset-settings-panel:hover .asset-settings-close,
+.asset-settings-panel .asset-settings-close:hover,
+.asset-settings-panel .asset-settings-close:focus,
+.work-schedule-type-settings-panel:hover .work-schedule-type-settings-close,
+.work-schedule-type-settings-panel .work-schedule-type-settings-close:hover,
+.work-schedule-type-settings-panel .work-schedule-type-settings-close:focus,
+.todo-list-modal-panel:hover .todo-list-modal-close,
+.todo-list-modal-panel .todo-list-modal-close:hover,
+.todo-list-modal-panel .todo-list-modal-close:focus,
+.todo-list-modal:hover .todo-list-modal-close,
+.todo-list-modal .todo-list-modal-close:hover,
+.todo-list-modal .todo-list-modal-close:focus,
+.time-task-setup-panel:hover .time-task-setup-close,
+.time-task-setup-panel .time-task-setup-close:hover,
+.time-task-setup-panel .time-task-setup-close:focus,
+.kpi-goals-modal-panel:hover .kpi-goals-modal-close,
+.kpi-goals-modal-panel .kpi-goals-modal-close:hover,
+.kpi-goals-modal-panel .kpi-goals-modal-close:focus,
+.dream-kpi-panel:hover .dream-kpi-modal-close,
+.dream-kpi-panel .dream-kpi-modal-close:hover,
+.dream-kpi-panel .dream-kpi-modal-close:focus,
+.dream-delete-confirm-panel:hover .dream-kpi-modal-close,
+.dream-delete-confirm-panel .dream-kpi-modal-close:hover,
+.dream-delete-confirm-panel .dream-kpi-modal-close:focus,
+.dream-path-context-panel:hover .dream-kpi-modal-close,
+.dream-path-context-panel .dream-kpi-modal-close:hover,
+.dream-path-context-panel .dream-kpi-modal-close:focus,
+.kpi-confirm-panel:hover .dream-kpi-modal-close,
+.kpi-confirm-panel .dream-kpi-modal-close:hover,
+.kpi-confirm-panel .dream-kpi-modal-close:focus,
+.time-task-log-panel:hover .time-task-log-focus-inner-close,
+.time-task-log-panel .time-task-log-focus-inner-close:hover,
+.time-task-log-panel .time-task-log-focus-inner-close:focus,
+.time-task-log-panel:hover .time-task-log-todo-inner-close,
+.time-task-log-panel .time-task-log-todo-inner-close:hover,
+.time-task-log-panel .time-task-log-todo-inner-close:focus,
+.time-task-log-panel:hover .time-task-log-expense-inner-close,
+.time-task-log-panel .time-task-log-expense-inner-close:hover,
+.time-task-log-panel .time-task-log-expense-inner-close:focus,
+.time-task-log-panel:hover .time-task-log-emotion-inner-close,
+.time-task-log-panel .time-task-log-emotion-inner-close:hover,
+.time-task-log-panel .time-task-log-emotion-inner-close:focus,
+.diary-add-emotion-panel:hover .diary-add-emotion-close,
+.diary-add-emotion-panel .diary-add-emotion-close:hover,
+.diary-add-emotion-panel .diary-add-emotion-close:focus,
+.calendar-event-bubble:hover .calendar-event-bubble-close,
+.calendar-event-bubble .calendar-event-bubble-close:hover,
+.calendar-event-bubble .calendar-event-bubble-close:focus {
+  opacity: 1;
+}
+
 #app button {
   font-family: inherit;
 }
@@ -3628,6 +3704,72 @@ body {
 .work-schedule-type-settings-add-btn:hover {
   background: var(--ui-surface-alt);
   border-color: var(--line-l3-color);
+}
+
+.work-schedule-type-settings-list-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.25rem 0.25rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--line-l3-color);
+}
+
+.work-schedule-type-settings-th-start,
+.work-schedule-type-settings-th-end {
+  width: 4rem;
+  flex-shrink: 0;
+}
+
+.work-schedule-type-settings-th-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.work-schedule-type-settings-th-action {
+  width: 2.5rem;
+  flex-shrink: 0;
+}
+
+.work-schedule-type-settings-row-start,
+.work-schedule-type-settings-row-end {
+  width: 4rem;
+  flex-shrink: 0;
+  padding: 0.35rem 0.4rem;
+  font-size: 0.85rem;
+  border: var(--line-l3);
+  border-radius: 0.25rem;
+  background: var(--content-bg);
+  color: var(--text-body);
+}
+
+.work-schedule-type-settings-row-start:focus,
+.work-schedule-type-settings-row-end:focus,
+.work-schedule-type-settings-row-start:focus-visible,
+.work-schedule-type-settings-row-end:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.work-schedule-type-settings-add-start,
+.work-schedule-type-settings-add-end {
+  width: 4rem;
+  flex-shrink: 0;
+  padding: 0.5rem 0.4rem;
+  font-size: 0.85rem;
+  border: var(--line-l3);
+  border-radius: 0.375rem;
+  background: var(--content-bg);
+  color: var(--text-body);
+}
+
+.work-schedule-type-settings-add-start:focus,
+.work-schedule-type-settings-add-end:focus,
+.work-schedule-type-settings-add-start:focus-visible,
+.work-schedule-type-settings-add-end:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .work-schedule-view-tabs {
@@ -25360,9 +25502,46 @@ body.kpi-resizing {
   margin-bottom: 1rem;
 }
 
-/* 1일 뷰(오늘 해치우기): 왼쪽 큰 날짜 제거, 가운데 날짜 버튼만 표시 */
+/* 1일 뷰(오늘 해치우기): 남은시간(왼쪽) + 날짜피커(오른쪽) 한 줄 */
+.calendar-1day-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  flex-shrink: 0;
+}
+
+.calendar-1day-top-bar-left {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.calendar-1day-top-bar-right {
+  flex: 0 0 auto;
+}
+
+.calendar-1day-top-bar .time-budget-calendar-remaining {
+  padding: 0.5rem 0.75rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: left;
+}
+
+.calendar-1day-top-bar .time-budget-calendar-remaining-title-row {
+  margin-bottom: 0;
+  justify-content: flex-start;
+  width: auto;
+}
+
+.calendar-1day-top-bar .time-budget-calendar-remaining-value {
+  font-size: 1.25rem;
+}
+
+/* 1일 뷰(오늘 해치우기): 가운데 날짜 버튼만 표시 */
 .calendar-1day-nav {
-  justify-content: center;
+  justify-content: flex-end;
 }
 .calendar-1day-nav .calendar-nav-today {
   min-width: 8rem;

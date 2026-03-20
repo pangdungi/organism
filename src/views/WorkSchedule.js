@@ -7,37 +7,23 @@ import { renderMonthlyContent } from "./WorkScheduleMonthly.js";
 const WORK_SCHEDULE_KEY = "work_schedule_rows";
 const WORK_TYPE_OPTIONS_KEY = "work_schedule_type_options";
 const WORK_SCHEDULE_DAILY_HOURS_KEY = "work_schedule_daily_hours";
-const WORK_SCHEDULE_DEFAULT_START_KEY = "work_schedule_default_start";
-const WORK_SCHEDULE_DEFAULT_END_KEY = "work_schedule_default_end";
 const TIME_ROWS_KEY = "time_task_log_rows";
-const DEFAULT_START_TIME = "09:00";
-const DEFAULT_END_TIME = "18:00";
+/** 가장 많이 쓰는 근무유형만 기본 목록 (맞춤법 반영) */
 const DEFAULT_WORK_TYPE_OPTIONS = [
-  "정규근무",
-  "초과근무",
-  "야간근무",
-  "주말근무",
-  "공휴일근무",
-  "당직/대기",
-  "출장",
-  "재택근무",
-  "연차 유급휴가",
-  "반차(오전)",
-  "반차(오후)",
-  "대체휴일",
-  "공휴일",
-  "특별휴가",
-  "유급 병가",
-  "무급병가",
-  "출산휴가",
-  "지각",
-  "조기퇴근",
-  "외출 후 미복귀",
-  "무단결근",
-  "승인된 결근",
-  "교육/훈련",
-  "군복무",
-  "공무출석",
+  { name: "정규근무", start: "", end: "" },
+  { name: "초과근무", start: "", end: "" },
+  { name: "조기퇴근", start: "", end: "" },
+  { name: "야간근무", start: "", end: "" },
+  { name: "주말근무", start: "", end: "" },
+  { name: "재택근무", start: "", end: "" },
+  { name: "출장", start: "", end: "" },
+  { name: "연차 유급 휴가", start: "", end: "" },
+  { name: "반차(오전)", start: "", end: "" },
+  { name: "반차(오후)", start: "", end: "" },
+  { name: "유급 병가", start: "", end: "" },
+  { name: "무급 병가", start: "", end: "" },
+  { name: "지각", start: "", end: "" },
+  { name: "공휴일 근무", start: "", end: "" },
 ];
 /** 계산에 사용되어 삭제/이름 변경 불가 (초과근무, 조기퇴근) */
 const CALC_PROTECTED_WORK_TYPES = ["초과근무", "조기퇴근"];
@@ -46,37 +32,71 @@ const PROTECTED_WORK_TYPES = CALC_PROTECTED_WORK_TYPES;
 const DELETE_ICON =
   '<svg class="time-task-delete-icon" viewBox="0 0 16 16" width="12" height="12"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
 
-function getWorkTypeOptions() {
+function normalizeTypeEntry(o) {
+  if (typeof o === "string") return { name: (o || "").trim(), start: "", end: "" };
+  return {
+    name: (o.name || "").trim(),
+    start: (o.start != null ? String(o.start) : "").trim(),
+    end: (o.end != null ? String(o.end) : "").trim(),
+  };
+}
+
+function getWorkTypeOptionsFull() {
   try {
     const raw = localStorage.getItem(WORK_TYPE_OPTIONS_KEY);
     if (raw) {
       const arr = JSON.parse(raw);
       if (Array.isArray(arr) && arr.length > 0) {
-        return arr.map((o) => (typeof o === "string" ? o : o.name));
+        return arr.map(normalizeTypeEntry).filter((o) => o.name);
       }
     }
   } catch (_) {}
-  return [...DEFAULT_WORK_TYPE_OPTIONS];
+  return DEFAULT_WORK_TYPE_OPTIONS.map((o) => ({ name: o.name, start: o.start || "", end: o.end || "" }));
 }
 
-function addWorkTypeOption(name) {
-  const opts = getWorkTypeOptions();
+function getWorkTypeOptions() {
+  return getWorkTypeOptionsFull().map((o) => o.name);
+}
+
+function addWorkTypeOption(name, start, end) {
+  const full = getWorkTypeOptionsFull();
   const trimmed = (name || "").trim();
-  if (!trimmed || opts.includes(trimmed)) return opts;
-  opts.unshift(trimmed);
+  if (!trimmed) return full;
+  if (full.some((o) => o.name === trimmed)) return full;
+  const newEntry = { name: trimmed, start: (start != null ? String(start) : "").trim(), end: (end != null ? String(end) : "").trim() };
+  full.unshift(newEntry);
   try {
-    localStorage.setItem(WORK_TYPE_OPTIONS_KEY, JSON.stringify(opts));
+    localStorage.setItem(WORK_TYPE_OPTIONS_KEY, JSON.stringify(full));
   } catch (_) {}
-  return opts;
+  return full;
+}
+
+function updateWorkTypeOption(name, start, end) {
+  if (CALC_PROTECTED_WORK_TYPES.includes(name)) return getWorkTypeOptionsFull();
+  const full = getWorkTypeOptionsFull();
+  const idx = full.findIndex((o) => o.name === name);
+  if (idx < 0) return full;
+  full[idx] = { name, start: (start != null ? String(start) : "").trim(), end: (end != null ? String(end) : "").trim() };
+  try {
+    localStorage.setItem(WORK_TYPE_OPTIONS_KEY, JSON.stringify(full));
+  } catch (_) {}
+  return full;
 }
 
 function removeWorkTypeOption(name) {
-  if (PROTECTED_WORK_TYPES.includes(name)) return getWorkTypeOptions();
-  const opts = getWorkTypeOptions().filter((o) => o !== name);
+  if (PROTECTED_WORK_TYPES.includes(name)) return getWorkTypeOptionsFull();
+  const full = getWorkTypeOptionsFull().filter((o) => o.name !== name);
   try {
-    localStorage.setItem(WORK_TYPE_OPTIONS_KEY, JSON.stringify(opts));
+    localStorage.setItem(WORK_TYPE_OPTIONS_KEY, JSON.stringify(full));
   } catch (_) {}
-  return opts;
+  return full;
+}
+
+function getDefaultStartEndForType(workTypeName) {
+  const full = getWorkTypeOptionsFull();
+  const entry = full.find((o) => o.name === workTypeName);
+  if (entry && (entry.start || entry.end)) return { start: entry.start || "09:00", end: entry.end || "18:00" };
+  return { start: "09:00", end: "18:00" };
 }
 
 function loadRows() {
@@ -115,23 +135,6 @@ function setDailyHours(val) {
   } catch (_) {}
 }
 
-function getDefaultStartEnd() {
-  try {
-    const start = localStorage.getItem(WORK_SCHEDULE_DEFAULT_START_KEY);
-    const end = localStorage.getItem(WORK_SCHEDULE_DEFAULT_END_KEY);
-    if (start != null && start.trim() !== "" && end != null && end.trim() !== "") {
-      return { start: String(start).trim(), end: String(end).trim() };
-    }
-  } catch (_) {}
-  return { start: DEFAULT_START_TIME, end: DEFAULT_END_TIME };
-}
-
-function setDefaultStartEnd(start, end) {
-  try {
-    if (start != null && String(start).trim() !== "") localStorage.setItem(WORK_SCHEDULE_DEFAULT_START_KEY, String(start).trim());
-    if (end != null && String(end).trim() !== "") localStorage.setItem(WORK_SCHEDULE_DEFAULT_END_KEY, String(end).trim());
-  } catch (_) {}
-}
 
 /** 시간적립 표시 문구: Hours - 하루근무시간 → "+ N시간" / "- N시간" */
 function formatTimeAccumulation(diff) {
@@ -647,10 +650,11 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
   endTimeInput.addEventListener("input", syncHoursWorkedFromStartEnd);
   endTimeInput.addEventListener("change", syncHoursWorkedFromStartEnd);
 
-  const fillDefaultStartEnd = () => {
-    const def = getDefaultStartEnd();
-    if (!(startTimeInput?.value || "").trim()) startTimeInput.value = def.start;
-    if (!(endTimeInput?.value || "").trim()) endTimeInput.value = def.end;
+  const fillDefaultStartEnd = (workTypeName) => {
+    if (!(workTypeName || "").trim()) return;
+    const def = getDefaultStartEndForType(workTypeName);
+    if (!(startTimeInput?.value || "").trim() && def.start) startTimeInput.value = def.start;
+    if (!(endTimeInput?.value || "").trim() && def.end) endTimeInput.value = def.end;
     syncHoursWorkedFromStartEnd();
     rowOnUpdate();
   };
@@ -742,7 +746,6 @@ export function render() {
     modal.className = "work-schedule-type-settings-modal";
     modal.setAttribute("role", "dialog");
     modal.setAttribute("aria-labelledby", "work-schedule-type-settings-title");
-    const def = getDefaultStartEnd();
     modal.innerHTML = `
       <div class="work-schedule-type-settings-backdrop"></div>
       <div class="work-schedule-type-settings-panel">
@@ -750,50 +753,61 @@ export function render() {
           <h3 class="work-schedule-type-settings-title" id="work-schedule-type-settings-title">근무유형 설정</h3>
           <button type="button" class="work-schedule-type-settings-close" aria-label="닫기">&times;</button>
         </div>
-        <div class="work-schedule-type-settings-default-time">
-          <label class="work-schedule-type-settings-default-label">기본 시작·마감 시간 (근무유형만 선택 시 자동 입력)</label>
-          <div class="work-schedule-type-settings-default-row">
-            <input type="text" class="work-schedule-type-settings-default-start" placeholder="09:00" value="${escapeHtml(def.start)}" maxlength="5" />
-            <span class="work-schedule-type-settings-default-sep">~</span>
-            <input type="text" class="work-schedule-type-settings-default-end" placeholder="18:00" value="${escapeHtml(def.end)}" maxlength="5" />
-          </div>
+        <p class="work-schedule-type-settings-desc">시작·마감 시간은 선택 입력입니다. 넣어두면 테이블에서 해당 유형 선택 시 자동으로 채워집니다. 초과근무·조기퇴근은 삭제 불가.</p>
+        <div class="work-schedule-type-settings-list-head">
+          <span class="work-schedule-type-settings-th-start">시작</span>
+          <span class="work-schedule-type-settings-th-end">마감</span>
+          <span class="work-schedule-type-settings-th-name">근무유형</span>
+          <span class="work-schedule-type-settings-th-action"></span>
         </div>
-        <p class="work-schedule-type-settings-desc">초과근무·조기퇴근은 시간적립 계산에 사용되어 삭제할 수 없습니다.</p>
         <div class="work-schedule-type-settings-list" data-type-list></div>
         <div class="work-schedule-type-settings-add">
-          <input type="text" class="work-schedule-type-settings-input" placeholder="새 근무유형 입력" maxlength="50" />
+          <input type="text" class="work-schedule-type-settings-add-start" placeholder="09:00 (선택)" maxlength="5" title="시작시간 선택" />
+          <input type="text" class="work-schedule-type-settings-add-end" placeholder="18:00 (선택)" maxlength="5" title="마감시간 선택" />
+          <input type="text" class="work-schedule-type-settings-input" placeholder="근무유형 입력" maxlength="50" />
           <button type="button" class="work-schedule-type-settings-add-btn">추가</button>
         </div>
       </div>
     `;
     const listEl = modal.querySelector("[data-type-list]");
+    const addStartInput = modal.querySelector(".work-schedule-type-settings-add-start");
+    const addEndInput = modal.querySelector(".work-schedule-type-settings-add-end");
     const addInput = modal.querySelector(".work-schedule-type-settings-input");
     const addBtn = modal.querySelector(".work-schedule-type-settings-add-btn");
-    const defaultStartInput = modal.querySelector(".work-schedule-type-settings-default-start");
-    const defaultEndInput = modal.querySelector(".work-schedule-type-settings-default-end");
-
-    defaultStartInput.addEventListener("change", () => setDefaultStartEnd(defaultStartInput.value.trim(), defaultEndInput.value.trim()));
-    defaultEndInput.addEventListener("change", () => setDefaultStartEnd(defaultStartInput.value.trim(), defaultEndInput.value.trim()));
-    defaultStartInput.addEventListener("blur", () => setDefaultStartEnd(defaultStartInput.value.trim(), defaultEndInput.value.trim()));
-    defaultEndInput.addEventListener("blur", () => setDefaultStartEnd(defaultStartInput.value.trim(), defaultEndInput.value.trim()));
 
     function renderTypeList() {
-      const opts = getWorkTypeOptions();
-      const protectedFirst = [...CALC_PROTECTED_WORK_TYPES, ...opts.filter((n) => !CALC_PROTECTED_WORK_TYPES.includes(n))];
+      const full = getWorkTypeOptionsFull();
+      const protectedFirst = [
+        ...full.filter((o) => CALC_PROTECTED_WORK_TYPES.includes(o.name)),
+        ...full.filter((o) => !CALC_PROTECTED_WORK_TYPES.includes(o.name)),
+      ];
       listEl.innerHTML = "";
-      protectedFirst.forEach((name) => {
-        const isProtected = CALC_PROTECTED_WORK_TYPES.includes(name);
+      protectedFirst.forEach((entry) => {
+        const isProtected = CALC_PROTECTED_WORK_TYPES.includes(entry.name);
         const row = document.createElement("div");
         row.className = "work-schedule-type-settings-row" + (isProtected ? " is-protected" : "");
+        const startVal = escapeHtml(entry.start);
+        const endVal = escapeHtml(entry.end);
         row.innerHTML =
-          `<span class="work-schedule-type-settings-name">${escapeHtml(name)}</span>` +
+          `<input type="text" class="work-schedule-type-settings-row-start" placeholder="선택" value="${startVal}" maxlength="5" ${isProtected ? "" : ""} />` +
+          `<input type="text" class="work-schedule-type-settings-row-end" placeholder="선택" value="${endVal}" maxlength="5" />` +
+          `<span class="work-schedule-type-settings-name">${escapeHtml(entry.name)}</span>` +
           (isProtected
-            ? '<span class="work-schedule-type-settings-badge">계산에 사용 (편집 불가)</span>'
+            ? '<span class="work-schedule-type-settings-badge">계산에 사용 (삭제 불가)</span>'
             : `<button type="button" class="work-schedule-type-settings-del" title="삭제">${DELETE_ICON}</button>`);
+        const startInp = row.querySelector(".work-schedule-type-settings-row-start");
+        const endInp = row.querySelector(".work-schedule-type-settings-row-end");
+        const saveRow = () => {
+          updateWorkTypeOption(entry.name, startInp.value.trim(), endInp.value.trim());
+        };
+        startInp.addEventListener("blur", saveRow);
+        endInp.addEventListener("blur", saveRow);
+        startInp.addEventListener("change", saveRow);
+        endInp.addEventListener("change", saveRow);
         const delBtn = row.querySelector(".work-schedule-type-settings-del");
         if (delBtn) {
           delBtn.addEventListener("click", () => {
-            removeWorkTypeOption(name);
+            removeWorkTypeOption(entry.name);
             renderTypeList();
           });
         }
@@ -802,9 +816,13 @@ export function render() {
     }
 
     addBtn.addEventListener("click", () => {
-      const val = (addInput.value || "").trim();
-      if (!val) return;
-      addWorkTypeOption(val);
+      const name = (addInput.value || "").trim();
+      if (!name) return;
+      const start = (addStartInput.value || "").trim();
+      const end = (addEndInput.value || "").trim();
+      addWorkTypeOption(name, start, end);
+      addStartInput.value = "";
+      addEndInput.value = "";
       addInput.value = "";
       renderTypeList();
     });

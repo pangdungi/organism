@@ -4300,6 +4300,7 @@ function render1DayView(tabsElement) {
       todoSection,
       onScheduledUpdate,
       onOverlapCleared,
+      topBarLeft,
     );
     calendarGrid.appendChild(budgetColumn);
     refreshKpiSidebar(taskStats);
@@ -4569,7 +4570,17 @@ function render1DayView(tabsElement) {
     renderCalendar();
   });
 
-  calendarSection.appendChild(nav);
+  const topBar = document.createElement("div");
+  topBar.className = "calendar-1day-top-bar";
+  const topBarLeft = document.createElement("div");
+  topBarLeft.className = "calendar-1day-top-bar-left";
+  const topBarRight = document.createElement("div");
+  topBarRight.className = "calendar-1day-top-bar-right";
+  topBarRight.appendChild(nav);
+  topBar.appendChild(topBarLeft);
+  topBar.appendChild(topBarRight);
+
+  calendarSection.appendChild(topBar);
   calendarSection.appendChild(calendarGrid);
   contentRow.appendChild(calendarSection);
   wrap.appendChild(contentRow);

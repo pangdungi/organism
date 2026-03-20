@@ -163,9 +163,18 @@ export function saveTodoSettings(settings) {
   } catch (_) {}
 }
 
+/**
+ * 리스트(섹션) 색상 조회. 월별 캘린더 태스크 색상은 이 값만 사용한다.
+ * 나의 계정 → 리스트 색상에서 고른 컬러(todoSettings.sectionColors) 및 기본값(DEFAULT_SECTION_COLORS),
+ * 미지정 시 앱 컬러팔레트(APP_PRESET)에서만 fallback.
+ */
 export function getSectionColor(sectionId) {
   const s = getTodoSettings();
-  return s.sectionColors[sectionId] || DEFAULT_SECTION_COLORS[sectionId] || "rgba(200, 200, 200, 0.5)";
+  return (
+    s.sectionColors[sectionId] ||
+    DEFAULT_SECTION_COLORS[sectionId] ||
+    CUSTOM_SECTION_COLOR_POOL[Math.abs(hashCode(String(sectionId || ""))) % CUSTOM_SECTION_COLOR_POOL.length]
+  );
 }
 
 export function getTimeCategoryColor(key) {

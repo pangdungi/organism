@@ -9321,13 +9321,14 @@ function removeTodayTasksFromBudgetGoals(dateStr, todoSectionEl) {
   } catch (_) {}
 }
 
-/** 캘린더 1일뷰용: 시간 투자/소비 내역 테이블만 렌더 (일간시간예산에서 사용) */
+/** 캘린더 1일뷰용: 시간 투자/소비 내역 테이블만 렌더 (일간시간예산에서 사용). topBarLeft 있으면 남은시간을 그쪽에 넣고 상단 한 줄로 축소 */
 export function renderTimeBudgetTablesForCalendar(
   container,
   dateStr,
   todoSectionEl,
   onScheduledUpdate,
   onOverlapCleared,
+  topBarLeft,
 ) {
   const targetDateStr = dateStr || toDateStr(new Date());
   removeTodayTasksFromBudgetGoals(targetDateStr, todoSectionEl);
@@ -10341,14 +10342,6 @@ export function renderTimeBudgetTablesForCalendar(
   }
   updateRemaining();
 
-  const topRow = document.createElement("div");
-  topRow.className = "calendar-1day-budget-top-row";
-  topRow.appendChild(remainingHeader);
-
-  const stickyHeader = document.createElement("div");
-  stickyHeader.className = "calendar-1day-budget-sticky-header";
-  stickyHeader.appendChild(topRow);
-
   const fourPanels = document.createElement("div");
   fourPanels.className = "time-daily-budget-four-panels";
   fourPanels.appendChild(basicSection);
@@ -10363,6 +10356,18 @@ export function renderTimeBudgetTablesForCalendar(
   fourPanels.appendChild(consumeSection);
 
   container.innerHTML = "";
-  container.appendChild(stickyHeader);
-  container.appendChild(fourPanels);
+  if (topBarLeft) {
+    topBarLeft.innerHTML = "";
+    topBarLeft.appendChild(remainingHeader);
+    container.appendChild(fourPanels);
+  } else {
+    const topRow = document.createElement("div");
+    topRow.className = "calendar-1day-budget-top-row";
+    topRow.appendChild(remainingHeader);
+    const stickyHeader = document.createElement("div");
+    stickyHeader.className = "calendar-1day-budget-sticky-header";
+    stickyHeader.appendChild(topRow);
+    container.appendChild(stickyHeader);
+    container.appendChild(fourPanels);
+  }
 }
