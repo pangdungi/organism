@@ -4163,7 +4163,6 @@ function renderExpenseView(options = {}) {
   filterBar.innerHTML = `
     <div class="time-filter-tabs">
       <button type="button" class="time-filter-btn active" data-filter="month">월별</button>
-      <button type="button" class="time-filter-btn" data-filter="week">일주일</button>
       <button type="button" class="time-filter-btn" data-filter="day">하루</button>
       <button type="button" class="time-filter-btn" data-filter="range">날짜 선택</button>
     </div>

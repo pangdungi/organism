@@ -632,6 +632,7 @@ function getAllTasksWithDateRange() {
 }
 
 function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
+  if (document.querySelector(".calendar-monthly-layout.calendar-1week-view")) return null;
   const isMobile = window.matchMedia("(max-width: 767px)").matches;
   document
     .querySelectorAll(".calendar-event-bubble, .calendar-day-expand-overlay")
@@ -5024,7 +5025,16 @@ function render1WeekView(tabsElement) {
             refreshTodoList();
           };
           const isMobileBar = window.matchMedia("(max-width: 767px)").matches;
-          if (!isMobileBar || is1WeekView) bar.addEventListener("click", toggleDone);
+          if (!isMobileBar || is1WeekView) {
+            bar.addEventListener("click", toggleDone);
+            const checkEl = bar.querySelector(".calendar-monthly-span-bar-checkbox");
+            if (checkEl) {
+              checkEl.addEventListener("click", (e) => {
+                e.stopPropagation();
+                toggleDone(e);
+              });
+            }
+          }
         } else {
           if (isTodo) {
             bar.innerHTML = showCheckbox
@@ -5041,7 +5051,7 @@ function render1WeekView(tabsElement) {
           }
           const isMobileRangeBar = window.matchMedia("(max-width: 767px)").matches;
           if (isTodo && (!isMobileRangeBar || is1WeekView)) {
-            bar.addEventListener("click", (e) => {
+            const rangeToggleDone = (e) => {
               e.stopPropagation();
               const newDone = !b.done;
               if (b.kpiTodoId && b.storageKey) {
@@ -5060,7 +5070,12 @@ function render1WeekView(tabsElement) {
                 ?.classList.toggle("checked", newDone);
               renderCalendar();
               refreshTodoList();
-            });
+            };
+            bar.addEventListener("click", rangeToggleDone);
+            const rangeCheckEl = bar.querySelector(".calendar-monthly-span-bar-checkbox");
+            if (rangeCheckEl) {
+              rangeCheckEl.addEventListener("click", rangeToggleDone);
+            }
           }
         }
         if (!b.isSingleDay && b.startDate && b.dueDate) {
@@ -6026,6 +6041,26 @@ function renderEisenhowerView(tabsElement) {
                 : dueDisplay.innerHTML;
           }
         }
+      } else {
+        const card = todoListEl.querySelector(`.todo-card[data-task-id="${taskId}"]`);
+        if (card) {
+          card.dataset.eisenhower = label;
+          card.classList.add("todo-card--priority-assigned");
+          card.draggable = false;
+          const priorityEl = card.querySelector(".todo-card-priority");
+          if (priorityEl) {
+            priorityEl.textContent = label;
+            priorityEl.hidden = false;
+          }
+          if (isUrgentImportant) {
+            card.dataset.dueDate = todayKey;
+            const datesEl = card.querySelector(".todo-card-dates");
+            if (datesEl && todayKey) {
+              const [, m, d] = todayKey.split("-");
+              datesEl.textContent = m && d ? `${m}/${d}` : todayKey;
+            }
+          }
+        }
       }
     }
   }
@@ -6063,6 +6098,18 @@ function renderEisenhowerView(tabsElement) {
         row.dataset.eisenhower = "";
         const displaySpan = row.querySelector(".todo-eisenhower-display");
         if (displaySpan) displaySpan.textContent = "";
+      } else {
+        const card = todoListEl.querySelector(`.todo-card[data-task-id="${taskId}"]`);
+        if (card) {
+          card.dataset.eisenhower = "";
+          card.classList.remove("todo-card--priority-assigned");
+          card.draggable = true;
+          const priorityEl = card.querySelector(".todo-card-priority");
+          if (priorityEl) {
+            priorityEl.textContent = "";
+            priorityEl.hidden = true;
+          }
+        }
       }
     }
   }

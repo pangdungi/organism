@@ -1953,9 +1953,20 @@ function createTaskRow(taskData = {}, options = {}) {
   return tr;
 }
 
-/** 시작~마감: 라벨 없이 날짜만. 마감만 있으면 마감만 */
+/** 시작~마감: 라벨 없이 날짜만. 마감만 있으면 마감만. 기한 초과 시 "n일 초과" */
 function formatCardDates(taskData) {
   const { startDate = "", dueDate = "" } = taskData;
+  if (dueDate && isOverdue(dueDate)) {
+    const parts = String(dueDate).trim().split(/[-/]/);
+    if (parts.length >= 3) {
+      const due = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      due.setHours(0, 0, 0, 0);
+      const diffDays = Math.round((due.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+      if (diffDays < 0) return `${Math.abs(diffDays)}일 초과`;
+    }
+  }
   const toMD = (str) => {
     if (!str || !String(str).includes("-")) return "";
     const [, m, d] = str.trim().split("-");
@@ -1997,8 +2008,10 @@ function createTaskCard(taskData, options = {}) {
     kpiTodoId = "",
     storageKey = "",
   } = taskData;
-  const { updateCount = () => {}, sectionsWrap = null, scheduleSave = () => {} } = options;
+  const { updateCount = () => {}, sectionsWrap = null, scheduleSave = () => {}, enableDragToEisenhower = false, enableDragToCalendar = false } = options;
   const taskId = getTaskId(taskData);
+  const kpiName = isKpiTodo && classification ? classification : "";
+  const hasDueDate = (dueDate || startDate || "").trim() !== "";
 
   const card = document.createElement("div");
   card.className = "todo-card" + (done ? " is-done" : "");
@@ -2047,6 +2060,11 @@ function createTaskCard(taskData, options = {}) {
   nameWrap.appendChild(nameEl);
   nameWrap.appendChild(priorityEl);
 
+  const kpiEl = document.createElement("div");
+  kpiEl.className = "todo-card-kpi";
+  kpiEl.textContent = kpiName;
+  if (!kpiName) kpiEl.hidden = true;
+
   const datesEl = document.createElement("div");
   datesEl.className = "todo-card-dates";
   datesEl.textContent = formatCardDates(taskData);
@@ -2089,6 +2107,7 @@ function createTaskCard(taskData, options = {}) {
   const contentCol = document.createElement("div");
   contentCol.className = "todo-card-content";
   contentCol.appendChild(nameWrap);
+  contentCol.appendChild(kpiEl);
   contentCol.appendChild(datesEl);
   contentCol.appendChild(reminderEl);
 
@@ -2099,6 +2118,67 @@ function createTaskCard(taskData, options = {}) {
   inner.appendChild(delBtn);
   card.appendChild(inner);
 
+  if (enableDragToEisenhower) {
+    const hasPriority = (eisenhower || "").trim() !== "";
+    card.draggable = !hasPriority;
+    if (hasPriority) card.classList.add("todo-card--priority-assigned");
+    card.addEventListener("dragstart", (e) => {
+      if (card.classList.contains("todo-card--priority-assigned")) {
+        e.preventDefault();
+        return;
+      }
+      e.stopPropagation();
+      const payload = {
+        taskId,
+        sectionId: sectionId || "",
+        name: (name || "").trim(),
+        startDate: startDate || "",
+        dueDate: dueDate || "",
+        isKpiTodo: !!isKpiTodo,
+        kpiTodoId: kpiTodoId || "",
+        storageKey: storageKey || "",
+      };
+      e.dataTransfer.setData(DRAG_TYPE_TODO_TO_EISENHOWER, JSON.stringify(payload));
+      e.dataTransfer.effectAllowed = "move";
+      card.classList.add("todo-card-dragging");
+    });
+    card.addEventListener("dragend", () => {
+      card.classList.remove("todo-card-dragging");
+    });
+  }
+
+  if (enableDragToCalendar) {
+    card.draggable = !hasDueDate;
+    if (hasDueDate) card.classList.add("todo-card--has-due");
+    card.addEventListener("dragstart", (e) => {
+      if (card.classList.contains("todo-card--has-due")) {
+        e.preventDefault();
+        return;
+      }
+      e.stopPropagation();
+      const payload = {
+        taskId,
+        sectionId: sectionId || "",
+        name: (name || "").trim(),
+        startDate: startDate || "",
+        dueDate: dueDate || "",
+        done: done,
+        itemType: itemType || "todo",
+        isKpiTodo: !!isKpiTodo,
+        kpiTodoId: kpiTodoId || "",
+        storageKey: storageKey || "",
+        _durationMin: 30,
+      };
+      e.dataTransfer.setData(DRAG_TYPE_TODO_TO_CALENDAR, JSON.stringify(payload));
+      e.dataTransfer.effectAllowed = "move";
+      if (typeof window !== "undefined") window.__calendarDragDuration = 30;
+      card.classList.add("todo-card-dragging");
+    });
+    card.addEventListener("dragend", () => {
+      card.classList.remove("todo-card-dragging");
+    });
+  }
+
   function updateCardFromData(data) {
     const n = (data.name || "").trim() || "(제목 없음)";
     card.dataset.name = data.name || "";
@@ -2108,10 +2188,23 @@ function createTaskCard(taskData, options = {}) {
     card.dataset.reminderTime = data.reminderTime || "";
     card.dataset.eisenhower = data.eisenhower || "";
     nameEl.textContent = n;
+    const kpiLabel = data.isKpiTodo && data.classification ? data.classification : "";
+    kpiEl.textContent = kpiLabel;
+    kpiEl.hidden = !kpiLabel;
     datesEl.textContent = formatCardDates(data);
     const priorityText = data.eisenhower ? (EISENHOWER_LABELS[data.eisenhower] || data.eisenhower) : "";
     priorityEl.textContent = priorityText;
     priorityEl.hidden = !priorityText;
+    if (card.closest(".todo-list-eisenhower-sidebar")) {
+      const hasP = (data.eisenhower || "").trim() !== "";
+      card.classList.toggle("todo-card--priority-assigned", hasP);
+      card.draggable = !hasP;
+    }
+    if (card.closest(".todo-list-in-sidebar") && !card.closest(".todo-list-eisenhower-sidebar")) {
+      const hasDue = (data.dueDate || data.startDate || "").trim() !== "";
+      card.classList.toggle("todo-card--has-due", hasDue);
+      card.draggable = !hasDue;
+    }
     const remText = formatCardReminder(data.reminderDate, data.reminderTime);
     if (remText) {
       const bell = '<svg class="todo-card-reminder-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 19.001c0 2.209 1.791 4 4 4s4-1.791 4-4"/><path d="m12 5.999v6"/><path d="m9 8.999h6"/><path d="m22 19.001-3-5.25v-5.752c0-3.866-3.134-7-7-7s-7 3.134-7 7v5.751l-3 5.25h20z"/></svg>';
@@ -2233,7 +2326,7 @@ function createSection(section, options = {}) {
     initialTasks.forEach((t) => {
       const taskId = t.taskId || getTaskId(t);
       t.taskId = taskId;
-      const card = createTaskCard(t, { updateCount, sectionsWrap, scheduleSave });
+      const card = createTaskCard(t, { updateCount, sectionsWrap, scheduleSave, enableDragToEisenhower, enableDragToCalendar });
       cardsWrap.appendChild(card);
     });
     const addWrap = document.createElement("div");
@@ -2254,7 +2347,7 @@ function createSection(section, options = {}) {
         onSave: (payload) => {
           const taskId = getTaskId(payload);
           const newTask = { ...payload, taskId, done: false };
-          const card = createTaskCard(newTask, { updateCount, sectionsWrap, scheduleSave });
+          const card = createTaskCard(newTask, { updateCount, sectionsWrap, scheduleSave, enableDragToEisenhower, enableDragToCalendar });
           cardsWrap.insertBefore(card, addWrap.nextSibling);
           updateCount();
           scheduleSave();
@@ -2262,7 +2355,7 @@ function createSection(section, options = {}) {
       });
     });
     addWrap.appendChild(addBtn);
-    cardsWrap.insertBefore(addWrap, cardsWrap.firstChild);
+    if (section.id !== "overdue") cardsWrap.insertBefore(addWrap, cardsWrap.firstChild);
     if (header) wrap.appendChild(header);
     wrap.appendChild(cardsWrap);
     updateCount();
@@ -2560,7 +2653,7 @@ function renderSections(container, tasksData = [], options = {}) {
       hideAddRow: true,
       overdueColumnOrder: section.id === "overdue",
       eisenhowerSidebarFirst: eisenhowerSidebarFirst && section.id !== "overdue",
-      cardLayout: cardLayout && section.id !== "overdue",
+      cardLayout: cardLayout || section.id === "overdue",
       sectionsWrap: container,
     };
     const { wrap, updateCount } = createSection(section, sectionOpts);

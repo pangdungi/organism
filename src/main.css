@@ -2875,6 +2875,7 @@ body {
     border: var(--divider-default);
     border-left: none;
     border-right: none;
+    border-bottom: none;
     border-radius: 0 !important;
     padding: 0.5rem !important;
   }
@@ -4990,20 +4991,20 @@ body {
 }
 
 .asset-plan-category-tag.expense-cls-teal {
-  background: rgba(94, 234, 212, 0.4);
-  color: #0f766e;
+  background: rgba(168, 196, 182, 0.5);
+  color: #4d6158;
 }
 .asset-plan-category-tag.expense-cls-blue {
-  background: rgba(147, 197, 253, 0.4);
-  color: #1e40af;
+  background: rgba(178, 186, 218, 0.45);
+  color: #4b5568;
 }
 .asset-plan-category-tag.expense-cls-green {
-  background: rgba(167, 243, 208, 0.4);
-  color: #047857;
+  background: rgba(198, 212, 178, 0.5);
+  color: #4d6348;
 }
 .asset-plan-category-tag.expense-cls-purple {
-  background: rgba(196, 181, 253, 0.4);
-  color: #5b21b6;
+  background: rgba(198, 188, 218, 0.48);
+  color: #5c4a72;
 }
 .asset-plan-category-tag.expense-cls-orange {
   background: rgba(253, 186, 116, 0.4);
@@ -5129,6 +5130,8 @@ body {
 }
 
 .asset-expense-table-wrap {
+  width: 100%;
+  max-width: 100%;
   background: var(--content-bg);
   border: var(--line-l3);
   border-radius: 0;
@@ -5136,7 +5139,7 @@ body {
   overflow-y: visible;
   box-shadow: 0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.06);
   overscroll-behavior-x: none;
-  -webkit-overflow-scrolling: auto;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -5156,7 +5159,8 @@ body {
 .asset-expense-table {
   width: max-content;
   min-width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 0.875rem;
 }
 
@@ -5192,45 +5196,47 @@ body {
   position: sticky;
   left: 0;
   z-index: 1;
-  background: var(--content-bg);
-  box-shadow: 0.125rem 0 0.25rem -0.125rem rgba(0, 0, 0, 0.06);
+  background: #F5F1E8;
+  box-shadow: 0.125rem 0 0.25rem -0.125rem rgba(0, 0, 0, 0.08);
 }
 
 .asset-expense-table thead .asset-expense-th-date {
   z-index: 2;
-  background: var(--content-bg);
+  background: #F5F1E8;
 }
 
 .asset-expense-col-amount,
 .asset-expense-th-amount,
 .asset-expense-cell-amount {
   position: sticky;
-  left: 5rem;
+  left: 6rem;
   z-index: 1;
-  background: var(--content-bg);
-  box-shadow: 0.125rem 0 0.25rem -0.125rem rgba(0, 0, 0, 0.06);
+  background: #F5F1E8;
+  box-shadow: 0.25rem 0 0.35rem -0.125rem rgba(0, 0, 0, 0.1);
+  border-right: var(--divider-subtle);
 }
 
 .asset-expense-table thead .asset-expense-th-amount {
   z-index: 2;
-  background: var(--content-bg);
+  background: #F5F1E8;
 }
 
 .asset-expense-summary-row .asset-expense-summary-label,
 .asset-expense-summary-row .asset-expense-summary-total {
   position: sticky;
   z-index: 1;
-  background: var(--content-bg);
+  background: #F5F1E8;
 }
 
 .asset-expense-summary-row .asset-expense-summary-label {
   left: 0;
-  box-shadow: 0.125rem 0 0.25rem -0.125rem rgba(0, 0, 0, 0.06);
+  box-shadow: 0.125rem 0 0.25rem -0.125rem rgba(0, 0, 0, 0.08);
 }
 
 .asset-expense-summary-row .asset-expense-summary-total {
-  left: 5rem;
-  box-shadow: 0.125rem 0 0.25rem -0.125rem rgba(0, 0, 0, 0.06);
+  left: 6rem;
+  box-shadow: 0.25rem 0 0.35rem -0.125rem rgba(0, 0, 0, 0.1);
+  border-right: var(--divider-subtle);
 }
 
 .asset-expense-col-name {
@@ -5242,8 +5248,8 @@ body {
   min-width: 7.5rem;
 }
 .asset-expense-col-date {
-  width: 8%;
-  min-width: 5rem;
+  width: 6rem;
+  min-width: 6rem;
 }
 .asset-expense-col-flow-type {
   width: 4.375rem;
@@ -6043,6 +6049,20 @@ body {
   color: var(--text-ink);
 }
 
+/* 가계부 테이블 내 입력창만: 보더 바텀 숨김 */
+.asset-expense-table .asset-expense-input-name,
+.asset-expense-table .asset-expense-input-date,
+.asset-expense-table .asset-expense-input-amount,
+.asset-expense-table .asset-expense-input-memo {
+  border-bottom: none !important;
+}
+.asset-expense-table .asset-expense-input-name:focus,
+.asset-expense-table .asset-expense-input-date:focus,
+.asset-expense-table .asset-expense-input-amount:focus,
+.asset-expense-table .asset-expense-input-memo:focus {
+  border-bottom: none !important;
+}
+
 .asset-expense-cell-date {
   cursor: pointer;
   position: relative;
@@ -6180,20 +6200,20 @@ body {
 }
 
 .asset-expense-category-display-readonly.expense-cat-teal {
-  background: rgba(94, 234, 212, 0.4);
-  color: #0f766e;
+  background: rgba(168, 196, 182, 0.5);
+  color: #4d6158;
 }
 .asset-expense-category-display-readonly.expense-cat-blue {
-  background: rgba(147, 197, 253, 0.4);
-  color: #1e40af;
+  background: rgba(178, 186, 218, 0.45);
+  color: #4b5568;
 }
 .asset-expense-category-display-readonly.expense-cat-green {
-  background: rgba(167, 243, 208, 0.4);
-  color: #047857;
+  background: rgba(198, 212, 178, 0.5);
+  color: #4d6348;
 }
 .asset-expense-category-display-readonly.expense-cat-purple {
-  background: rgba(196, 181, 253, 0.4);
-  color: #5b21b6;
+  background: rgba(198, 188, 218, 0.48);
+  color: #5c4a72;
 }
 .asset-expense-category-display-readonly.expense-cat-orange {
   background: rgba(253, 186, 116, 0.4);
@@ -6238,27 +6258,27 @@ body {
 }
 
 .asset-expense-category-display.expense-cat-teal {
-  background: rgba(94, 234, 212, 0.4);
-  color: #0f766e;
-  border-color: rgba(94, 234, 212, 0.6);
+  background: rgba(168, 196, 182, 0.5);
+  color: #4d6158;
+  border-color: rgba(168, 196, 182, 0.68);
 }
 
 .asset-expense-category-display.expense-cat-blue {
-  background: rgba(147, 197, 253, 0.4);
-  color: #1e40af;
-  border-color: rgba(147, 197, 253, 0.6);
+  background: rgba(178, 186, 218, 0.45);
+  color: #4b5568;
+  border-color: rgba(178, 186, 218, 0.6);
 }
 
 .asset-expense-category-display.expense-cat-green {
-  background: rgba(167, 243, 208, 0.4);
-  color: #047857;
-  border-color: rgba(167, 243, 208, 0.6);
+  background: rgba(198, 212, 178, 0.5);
+  color: #4d6348;
+  border-color: rgba(198, 212, 178, 0.68);
 }
 
 .asset-expense-category-display.expense-cat-purple {
-  background: rgba(196, 181, 253, 0.4);
-  color: #5b21b6;
-  border-color: rgba(196, 181, 253, 0.6);
+  background: rgba(198, 188, 218, 0.48);
+  color: #5c4a72;
+  border-color: rgba(198, 188, 218, 0.65);
 }
 
 .asset-expense-category-display.expense-cat-orange {
@@ -6313,23 +6333,23 @@ body {
 }
 
 .asset-expense-category-tag.expense-cat-teal {
-  background: rgba(94, 234, 212, 0.4);
-  color: #0f766e;
+  background: rgba(168, 196, 182, 0.5);
+  color: #4d6158;
 }
 
 .asset-expense-category-tag.expense-cat-blue {
-  background: rgba(147, 197, 253, 0.4);
-  color: #1e40af;
+  background: rgba(178, 186, 218, 0.45);
+  color: #4b5568;
 }
 
 .asset-expense-category-tag.expense-cat-green {
-  background: rgba(167, 243, 208, 0.4);
-  color: #047857;
+  background: rgba(198, 212, 178, 0.5);
+  color: #4d6348;
 }
 
 .asset-expense-category-tag.expense-cat-purple {
-  background: rgba(196, 181, 253, 0.4);
-  color: #5b21b6;
+  background: rgba(198, 188, 218, 0.48);
+  color: #5c4a72;
 }
 
 .asset-expense-category-tag.expense-cat-orange {
@@ -6403,23 +6423,23 @@ body {
 }
 
 .asset-expense-classification-display.expense-cls-teal {
-  background: rgba(94, 234, 212, 0.4);
-  color: #0f766e;
+  background: rgba(168, 196, 182, 0.5);
+  color: #4d6158;
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-blue {
-  background: rgba(147, 197, 253, 0.4);
-  color: #1e40af;
+  background: rgba(178, 186, 218, 0.45);
+  color: #4b5568;
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-green {
-  background: rgba(167, 243, 208, 0.4);
-  color: #047857;
+  background: rgba(198, 212, 178, 0.5);
+  color: #4d6348;
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-purple {
-  background: rgba(196, 181, 253, 0.4);
-  color: #5b21b6;
+  background: rgba(198, 188, 218, 0.48);
+  color: #5c4a72;
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cls-orange {
@@ -6449,23 +6469,23 @@ body {
 }
 
 .asset-expense-classification-display.expense-cat-teal {
-  background: rgba(94, 234, 212, 0.4);
-  color: #0f766e;
+  background: rgba(168, 196, 182, 0.5);
+  color: #4d6158;
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cat-blue {
-  background: rgba(147, 197, 253, 0.4);
-  color: #1e40af;
+  background: rgba(178, 186, 218, 0.45);
+  color: #4b5568;
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cat-green {
-  background: rgba(167, 243, 208, 0.4);
-  color: #047857;
+  background: rgba(198, 212, 178, 0.5);
+  color: #4d6348;
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cat-purple {
-  background: rgba(196, 181, 253, 0.4);
-  color: #5b21b6;
+  background: rgba(198, 188, 218, 0.48);
+  color: #5c4a72;
   border-color: transparent;
 }
 .asset-expense-classification-display.expense-cat-indigo {
@@ -6522,20 +6542,20 @@ body {
 
 /* 펠렛 색상 - 파스텔 (이전 컬러) */
 .asset-expense-classification-pill.expense-cat-teal {
-  background: rgba(94, 234, 212, 0.4);
-  color: #0f766e;
+  background: rgba(168, 196, 182, 0.5);
+  color: #4d6158;
 }
 .asset-expense-classification-pill.expense-cat-blue {
-  background: rgba(147, 197, 253, 0.4);
-  color: #1e40af;
+  background: rgba(178, 186, 218, 0.45);
+  color: #4b5568;
 }
 .asset-expense-classification-pill.expense-cat-green {
-  background: rgba(167, 243, 208, 0.4);
-  color: #047857;
+  background: rgba(198, 212, 178, 0.5);
+  color: #4d6348;
 }
 .asset-expense-classification-pill.expense-cat-purple {
-  background: rgba(196, 181, 253, 0.4);
-  color: #5b21b6;
+  background: rgba(198, 188, 218, 0.48);
+  color: #5c4a72;
 }
 .asset-expense-classification-pill.expense-cat-orange {
   background: rgba(253, 186, 116, 0.4);
@@ -6574,20 +6594,20 @@ body {
 }
 
 .asset-expense-classification-tag.expense-cls-teal {
-  background: rgba(94, 234, 212, 0.4);
-  color: #0f766e;
+  background: rgba(168, 196, 182, 0.5);
+  color: #4d6158;
 }
 .asset-expense-classification-tag.expense-cls-blue {
-  background: rgba(147, 197, 253, 0.4);
-  color: #1e40af;
+  background: rgba(178, 186, 218, 0.45);
+  color: #4b5568;
 }
 .asset-expense-classification-tag.expense-cls-green {
-  background: rgba(167, 243, 208, 0.4);
-  color: #047857;
+  background: rgba(198, 212, 178, 0.5);
+  color: #4d6348;
 }
 .asset-expense-classification-tag.expense-cls-purple {
-  background: rgba(196, 181, 253, 0.4);
-  color: #5b21b6;
+  background: rgba(198, 188, 218, 0.48);
+  color: #5c4a72;
 }
 .asset-expense-classification-tag.expense-cls-orange {
   background: rgba(253, 186, 116, 0.4);
@@ -7572,27 +7592,27 @@ body {
 }
 
 .asset-asset-type-display.asset-asset-type-teal {
-  background: rgba(94, 234, 212, 0.4);
-  color: #0f766e;
-  border-color: rgba(94, 234, 212, 0.6);
+  background: rgba(168, 196, 182, 0.5);
+  color: #4d6158;
+  border-color: rgba(168, 196, 182, 0.68);
 }
 
 .asset-asset-type-display.asset-asset-type-blue {
-  background: rgba(147, 197, 253, 0.4);
-  color: #1e40af;
-  border-color: rgba(147, 197, 253, 0.6);
+  background: rgba(178, 186, 218, 0.45);
+  color: #4b5568;
+  border-color: rgba(178, 186, 218, 0.6);
 }
 
 .asset-asset-type-display.asset-asset-type-green {
-  background: rgba(167, 243, 208, 0.4);
-  color: #047857;
-  border-color: rgba(167, 243, 208, 0.6);
+  background: rgba(198, 212, 178, 0.5);
+  color: #4d6348;
+  border-color: rgba(198, 212, 178, 0.68);
 }
 
 .asset-asset-type-display.asset-asset-type-purple {
-  background: rgba(196, 181, 253, 0.4);
-  color: #5b21b6;
-  border-color: rgba(196, 181, 253, 0.6);
+  background: rgba(198, 188, 218, 0.48);
+  color: #5c4a72;
+  border-color: rgba(198, 188, 218, 0.65);
 }
 
 .asset-asset-type-display.asset-asset-type-orange {
@@ -7639,7 +7659,7 @@ body {
 
 .asset-asset-type-display.asset-asset-type-emerald {
   background: rgba(110, 231, 183, 0.4);
-  color: #047857;
+  color: #4d6348;
   border-color: rgba(110, 231, 183, 0.6);
 }
 
@@ -7697,23 +7717,23 @@ body {
 }
 
 .asset-asset-type-tag.asset-asset-type-teal {
-  background: rgba(94, 234, 212, 0.4);
-  color: #0f766e;
+  background: rgba(168, 196, 182, 0.5);
+  color: #4d6158;
 }
 
 .asset-asset-type-tag.asset-asset-type-blue {
-  background: rgba(147, 197, 253, 0.4);
-  color: #1e40af;
+  background: rgba(178, 186, 218, 0.45);
+  color: #4b5568;
 }
 
 .asset-asset-type-tag.asset-asset-type-green {
-  background: rgba(167, 243, 208, 0.4);
-  color: #047857;
+  background: rgba(198, 212, 178, 0.5);
+  color: #4d6348;
 }
 
 .asset-asset-type-tag.asset-asset-type-purple {
-  background: rgba(196, 181, 253, 0.4);
-  color: #5b21b6;
+  background: rgba(198, 188, 218, 0.48);
+  color: #5c4a72;
 }
 
 .asset-asset-type-tag.asset-asset-type-orange {
@@ -7753,7 +7773,7 @@ body {
 
 .asset-asset-type-tag.asset-asset-type-emerald {
   background: rgba(110, 231, 183, 0.4);
-  color: #047857;
+  color: #4d6348;
 }
 
 .asset-asset-type-tag.asset-asset-type-sky {
@@ -7791,21 +7811,21 @@ body {
 }
 
 .asset-asset-category-display.asset-asset-category-teal {
-  background: rgba(94, 234, 212, 0.4);
-  color: #0f766e;
-  border-color: rgba(94, 234, 212, 0.6);
+  background: rgba(168, 196, 182, 0.5);
+  color: #4d6158;
+  border-color: rgba(168, 196, 182, 0.68);
 }
 
 .asset-asset-category-display.asset-asset-category-blue {
-  background: rgba(147, 197, 253, 0.4);
-  color: #1e40af;
-  border-color: rgba(147, 197, 253, 0.6);
+  background: rgba(178, 186, 218, 0.45);
+  color: #4b5568;
+  border-color: rgba(178, 186, 218, 0.6);
 }
 
 .asset-asset-category-display.asset-asset-category-purple {
-  background: rgba(196, 181, 253, 0.4);
-  color: #5b21b6;
-  border-color: rgba(196, 181, 253, 0.6);
+  background: rgba(198, 188, 218, 0.48);
+  color: #5c4a72;
+  border-color: rgba(198, 188, 218, 0.65);
 }
 
 .asset-asset-category-display.asset-asset-category-orange {
@@ -7965,18 +7985,18 @@ body {
 }
 
 .asset-stock-category-display.asset-stock-cat-green {
-  background: rgba(167, 243, 208, 0.5);
-  color: #047857;
+  background: rgba(198, 212, 178, 0.55);
+  color: #4d6348;
 }
 
 .asset-stock-category-display.asset-stock-cat-blue {
-  background: rgba(147, 197, 253, 0.5);
-  color: #1e40af;
+  background: rgba(178, 186, 218, 0.5);
+  color: #4b5568;
 }
 
 .asset-stock-category-display.asset-stock-cat-purple {
-  background: rgba(196, 181, 253, 0.5);
-  color: #5b21b6;
+  background: rgba(198, 188, 218, 0.52);
+  color: #5c4a72;
 }
 
 .asset-stock-category-display.asset-stock-cat-pink {
@@ -8036,18 +8056,18 @@ body {
 }
 
 .asset-stock-category-tag.asset-stock-cat-green {
-  background: rgba(167, 243, 208, 0.5);
-  color: #047857;
+  background: rgba(198, 212, 178, 0.55);
+  color: #4d6348;
 }
 
 .asset-stock-category-tag.asset-stock-cat-blue {
-  background: rgba(147, 197, 253, 0.5);
-  color: #1e40af;
+  background: rgba(178, 186, 218, 0.5);
+  color: #4b5568;
 }
 
 .asset-stock-category-tag.asset-stock-cat-purple {
-  background: rgba(196, 181, 253, 0.5);
-  color: #5b21b6;
+  background: rgba(198, 188, 218, 0.52);
+  color: #5c4a72;
 }
 
 .asset-stock-category-tag.asset-stock-cat-pink {
@@ -8113,8 +8133,8 @@ body {
 }
 
 .asset-insurance-kind-display.asset-insurance-kind-blue {
-  background: rgba(147, 197, 253, 0.5);
-  color: #1e40af;
+  background: rgba(178, 186, 218, 0.5);
+  color: #4b5568;
 }
 
 .asset-insurance-kind-display.asset-insurance-kind-amber {
@@ -8123,8 +8143,8 @@ body {
 }
 
 .asset-insurance-kind-display.asset-insurance-kind-purple {
-  background: rgba(196, 181, 253, 0.5);
-  color: #5b21b6;
+  background: rgba(198, 188, 218, 0.52);
+  color: #5c4a72;
 }
 
 .asset-insurance-kind-display.asset-insurance-kind-gray {
@@ -8174,8 +8194,8 @@ body {
 }
 
 .asset-insurance-kind-tag.asset-insurance-kind-blue {
-  background: rgba(147, 197, 253, 0.5);
-  color: #1e40af;
+  background: rgba(178, 186, 218, 0.5);
+  color: #4b5568;
 }
 
 .asset-insurance-kind-tag.asset-insurance-kind-amber {
@@ -8184,8 +8204,8 @@ body {
 }
 
 .asset-insurance-kind-tag.asset-insurance-kind-purple {
-  background: rgba(196, 181, 253, 0.5);
-  color: #5b21b6;
+  background: rgba(198, 188, 218, 0.52);
+  color: #5c4a72;
 }
 
 .asset-insurance-kind-tag.asset-insurance-kind-gray {
@@ -8293,18 +8313,18 @@ body {
 }
 
 .asset-asset-category-tag.asset-asset-category-teal {
-  background: rgba(94, 234, 212, 0.4);
-  color: #0f766e;
+  background: rgba(168, 196, 182, 0.5);
+  color: #4d6158;
 }
 
 .asset-asset-category-tag.asset-asset-category-blue {
-  background: rgba(147, 197, 253, 0.4);
-  color: #1e40af;
+  background: rgba(178, 186, 218, 0.45);
+  color: #4b5568;
 }
 
 .asset-asset-category-tag.asset-asset-category-purple {
-  background: rgba(196, 181, 253, 0.4);
-  color: #5b21b6;
+  background: rgba(198, 188, 218, 0.48);
+  color: #5c4a72;
 }
 
 .asset-asset-category-tag.asset-asset-category-orange {
@@ -8916,8 +8936,8 @@ body {
 }
 
 .work-schedule-type-display.is-overtime {
-  background: rgba(147, 197, 253, 0.45);
-  color: #1e40af;
+  background: rgba(178, 186, 218, 0.45);
+  color: #4b5568;
 }
 
 .work-schedule-type-display.is-early {
@@ -8955,8 +8975,8 @@ body {
 }
 
 .work-schedule-type-panel .work-schedule-tag-overtime {
-  background: rgba(147, 197, 253, 0.45);
-  color: #1e40af;
+  background: rgba(178, 186, 218, 0.45);
+  color: #4b5568;
 }
 
 .work-schedule-type-panel .work-schedule-tag-early {
@@ -9494,8 +9514,8 @@ body {
 }
 
 .work-schedule-monthly-type.is-overtime {
-  background: rgba(147, 197, 253, 0.45);
-  color: #1e40af;
+  background: rgba(178, 186, 218, 0.45);
+  color: #4b5568;
   border-radius: 0;
 }
 
@@ -9535,8 +9555,8 @@ body {
 }
 
 .work-schedule-monthly-type-pill.is-overtime {
-  background: rgba(147, 197, 253, 0.45);
-  color: #1e40af;
+  background: rgba(178, 186, 218, 0.45);
+  color: #4b5568;
 }
 
 .work-schedule-monthly-type-pill.is-early {
@@ -9596,12 +9616,14 @@ body {
   min-width: 0;
   margin-bottom: 0;
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
   -ms-overflow-style: none;
   display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
   gap: 0.125rem 0.25rem;
+  -webkit-overflow-scrolling: touch;
 }
 .todo-list-toolbar-row .todo-category-tabs::-webkit-scrollbar {
   display: none;
@@ -10394,6 +10416,37 @@ body {
   opacity: 0.98;
 }
 
+.todo-card-dragging {
+  opacity: 0.7;
+}
+
+/* 이미 중요도 배정된 카드: 드래그 불가 + 비활성 스타일 */
+.todo-card--priority-assigned {
+  background: #D8D2C0 !important;
+  cursor: default;
+}
+.todo-card--priority-assigned .todo-card-name,
+.todo-card--priority-assigned .todo-card-dates,
+.todo-card--priority-assigned .todo-card-priority,
+.todo-card--priority-assigned .todo-card-kpi,
+.todo-card--priority-assigned .todo-card-reminder,
+.todo-card--priority-assigned .todo-card-reminder-icon {
+  color: #A8A290 !important;
+}
+
+.todo-card--has-due {
+  background: #D8D2C0 !important;
+  cursor: default;
+}
+.todo-card--has-due .todo-card-name,
+.todo-card--has-due .todo-card-dates,
+.todo-card--has-due .todo-card-priority,
+.todo-card--has-due .todo-card-kpi,
+.todo-card--has-due .todo-card-reminder,
+.todo-card--has-due .todo-card-reminder-icon {
+  color: #A8A290 !important;
+}
+
 .todo-card-inner {
   display: flex;
   align-items: flex-start;
@@ -10451,7 +10504,7 @@ body {
   font-family: var(--font-body);
   font-size: var(--fs-caption);
   font-weight: var(--fw-secondary);
-  color: var(--text-caption-color);
+  color: var(--text-muted);
   line-height: 1.3;
   flex-shrink: 0;
   max-width: 42%;
@@ -10462,8 +10515,17 @@ body {
   font-family: var(--font-body);
   font-size: var(--fs-secondary);
   font-weight: var(--fw-secondary);
-  color: var(--text-caption-color);
+  color: var(--text-muted);
   line-height: 1.35;
+}
+
+.todo-card-kpi {
+  font-family: var(--font-body);
+  font-size: var(--fs-secondary);
+  font-weight: var(--fw-secondary);
+  color: var(--text-muted);
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 .todo-card-reminder {
@@ -10473,7 +10535,7 @@ body {
   font-family: var(--font-body);
   font-size: var(--fs-secondary);
   font-weight: var(--fw-secondary);
-  color: var(--text-caption-color);
+  color: var(--text-muted);
   line-height: 1.35;
 }
 
@@ -10481,8 +10543,8 @@ body {
   flex-shrink: 0;
   width: var(--icon-size-sm);
   height: var(--icon-size-sm);
-  color: var(--text-caption-color);
-  opacity: 0.88;
+  color: var(--text-muted);
+  opacity: 0.9;
 }
 
 .todo-card-reminder-icon svg {
@@ -10501,6 +10563,7 @@ body {
 
 .todo-card.is-done .todo-card-priority,
 .todo-card.is-done .todo-card-dates,
+.todo-card.is-done .todo-card-kpi,
 .todo-card.is-done .todo-card-reminder {
   color: var(--text-placeholder);
 }
@@ -10835,7 +10898,7 @@ body {
   align-items: center;
   gap: 0.5rem;
   padding: 0.6rem 1rem;
-  background: #fafafa;
+  background: var(--content-bg);
   cursor: pointer;
   font-size: 0.95rem;
   font-family: var(--font-body);
@@ -10851,7 +10914,7 @@ body {
 }
 
 .todo-section-header--no-collapse:hover {
-  background: #fafafa;
+  background: var(--content-bg);
 }
 
 .calendar-todo-sidebar-body
@@ -14342,7 +14405,7 @@ body.kpi-resizing {
 
 .time-task-setup-subcat-btn.cat-sideincome.active {
   background: rgba(16, 185, 129, 0.2);
-  color: #047857;
+  color: #4d6348;
   border-color: #6ee7b7;
 }
 
@@ -19177,7 +19240,7 @@ body.kpi-resizing {
 .time-improve-kpi-combined-table .time-improve-kpi-name,
 .time-improve-kpi-combined-table .time-improve-kpi-hours {
   vertical-align: top;
-  background: #fafafa;
+  background: var(--content-bg);
 }
 .time-improve-kpi-combined-table th {
   font-size: 0.75rem;
@@ -21256,7 +21319,7 @@ body.kpi-resizing {
 }
 
 .time-ledger-table tbody tr:hover td {
-  background: #fafafa;
+  background: #E8E2D2;
 }
 
 .time-ledger-table .time-col-task,
@@ -21330,7 +21393,7 @@ body.kpi-resizing {
 }
 
 .time-ledger-table tbody tr:hover .time-cell-task {
-  background: #fafafa;
+  background: #E8E2D2;
 }
 
 .time-col-resizer {
@@ -21373,7 +21436,7 @@ body.kpi-resizing {
 }
 
 .time-ledger-table tbody tr:hover .time-cell-start {
-  background: #fafafa;
+  background: #E8E2D2;
 }
 
 .time-ledger-table .time-col-end,
@@ -21384,7 +21447,7 @@ body.kpi-resizing {
 }
 
 .time-ledger-table tbody tr:hover .time-cell-end {
-  background: #fafafa;
+  background: #E8E2D2;
 }
 
 .time-ledger-table .time-col-tracked,
@@ -21395,7 +21458,7 @@ body.kpi-resizing {
 }
 
 .time-ledger-table tbody tr:hover .time-cell-tracked {
-  background: #fafafa;
+  background: #E8E2D2;
 }
 
 .time-ledger-table .time-cell-productivity {
@@ -21646,7 +21709,7 @@ body.kpi-resizing {
 }
 
 .time-input-task:hover {
-  background: #fafafa;
+  background: #E8E2D2;
 }
 
 .time-input-task:focus {
@@ -26416,11 +26479,11 @@ body.kpi-resizing {
   background: rgba(0, 0, 0, 0.04);
 }
 .calendar-annual-cell.today {
-  background: #e5e7eb;
+  background: var(--ui-surface-alt);
   font-weight: 700;
 }
 .calendar-annual-cell.today:hover {
-  background: #d1d5db;
+  background: #e0dcd2;
 }
 .calendar-annual-cell-dot {
   position: absolute;
@@ -27550,6 +27613,7 @@ body.kpi-resizing {
   border: var(--divider-default);
   border-left: none;
   border-right: none;
+  border-bottom: none;
   border-radius: 0 !important;
   padding: 0.5rem !important;
 }
@@ -29188,6 +29252,27 @@ body.kpi-resizing {
   font-size: 0.8rem;
 }
 
+/* 사이드바: 툴바 행 가로 스크롤, 탭 텍스트 안 잘리게 */
+.calendar-todo-sidebar-body .todo-list-toolbar-row {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  flex-wrap: nowrap;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.calendar-todo-sidebar-body .todo-list-toolbar-row::-webkit-scrollbar {
+  display: none;
+}
+.calendar-todo-sidebar-body .todo-list-toolbar-row .todo-category-tabs {
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+}
+.calendar-todo-sidebar-body .todo-list-toolbar-row .todo-category-tab {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 /* 사이드바: 카테고리 탭 한 줄 가로스크롤, 보더 전체 너비 */
 .todo-list-in-sidebar .todo-category-tabs {
   flex-wrap: nowrap;
@@ -29586,6 +29671,46 @@ body.kpi-resizing {
 
 .todo-list-eisenhower-sidebar .todo-section-tab-panel .todo-table thead th {
   background: var(--content-bg);
+}
+
+/* 아이젠하워 사이드바: 카드 레이아웃 시 카드가 잘리지 않고 유동적으로 늘어나도록 */
+.todo-list-eisenhower-sidebar .todo-section-tab-panel .todo-section {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.todo-list-eisenhower-sidebar .todo-section-tab-panel .todo-section .todo-cards-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.todo-list-eisenhower-sidebar .todo-card {
+  overflow: visible;
+  flex-shrink: 0;
+}
+.todo-list-eisenhower-sidebar .todo-card-name {
+  overflow: visible;
+  text-overflow: unset;
+}
+.todo-list-eisenhower-sidebar .todo-card-name-wrap {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  row-gap: 0.2rem;
+}
+.todo-list-eisenhower-sidebar .todo-eisenhower-overdue-section .todo-card {
+  overflow: visible;
+  flex-shrink: 0;
+}
+.todo-list-eisenhower-sidebar .todo-eisenhower-overdue-section .todo-card-name {
+  overflow: visible;
+  text-overflow: unset;
+}
+.todo-list-eisenhower-sidebar .todo-eisenhower-overdue-section .todo-card-name-wrap {
+  flex-wrap: wrap;
+  align-items: flex-start;
 }
 
 /* 아이젠하워 사이드바: 시작일·마감일·리마인더·기한초과 열 표시 (todo-list-in-sidebar에서 숨김 해제) */
