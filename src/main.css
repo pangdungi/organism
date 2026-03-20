@@ -9332,7 +9332,7 @@ body {
   letter-spacing: 0.018em;
 }
 
-/* 모든 입력 필드 높이 통일(날짜/시간 동일), 넘침 방지 */
+/* 모달 입력 폼 통일: KPI/할일 동일 - 밑줄만(underline), 배경 투명 */
 .todo-task-edit-name,
 .todo-task-edit-start,
 .todo-task-edit-due,
@@ -9344,12 +9344,13 @@ body {
   min-width: 0;
   height: 2.5rem;
   min-height: 2.5rem;
-  padding: 0 0.75rem;
+  padding: 0.5rem 0;
   font-size: var(--fs-body);
   font-family: var(--app-font-family);
   color: var(--text-body);
-  background: var(--app-bg);
-  border: var(--line-l5);
+  background: transparent;
+  border: none;
+  border-bottom: var(--line-l3);
   box-sizing: border-box;
   line-height: 1.4;
   -webkit-appearance: none;
@@ -9359,12 +9360,13 @@ body {
 .todo-task-edit-name {
   height: auto;
   min-height: 2.5rem;
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem 0;
 }
 
 .todo-task-edit-eisenhower {
   height: 2.5rem;
-  padding: 0 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: var(--line-l3);
 }
 
 .todo-task-edit-name:focus,
@@ -9374,7 +9376,7 @@ body {
 .todo-task-edit-reminder-time:focus,
 .todo-task-edit-eisenhower:focus {
   outline: none;
-  border: var(--line-l6);
+  border-bottom-color: var(--accent-viridian);
 }
 
 .todo-task-edit-name::placeholder {
@@ -13282,12 +13284,12 @@ body.kpi-resizing {
   background: #1f2937;
 }
 
-/* 과제 기록 모달 - 1) 높이 확대 (90vh), 배경 #F9F9F8 */
+/* 과제 기록 모달 - 통일 디자인: 크림 배경, 세이지 버튼 */
 .time-task-log-modal .time-task-log-panel {
   max-width: 26.25rem;
   height: 90vh;
   max-height: 45rem;
-  background: #F5F1E8;
+  background: var(--content-bg);
 }
 
 .time-task-log-modal .time-task-log-body {
@@ -13365,7 +13367,7 @@ body.kpi-resizing {
   scrollbar-width: none;
   -ms-overflow-style: none;
   padding: 1rem 1.25rem 1.25rem;
-  background: #F5F1E8;
+  background: var(--content-bg);
 }
 
 .time-task-log-scroll-area::-webkit-scrollbar {
@@ -13501,10 +13503,10 @@ body.kpi-resizing {
   font-size: 1.25rem;
   font-weight: 500;
   line-height: 1;
-  color: #fff;
-  background: #1c1c1a;
+  color: var(--ui-btn-primary-fg);
+  background: var(--ui-btn-primary-bg);
   border: none;
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -13513,7 +13515,7 @@ body.kpi-resizing {
   transition: background 0.2s;
 }
 .time-task-log-memo-add-btn:hover {
-  background: #4b5563;
+  background: var(--ui-btn-primary-hover);
 }
 .time-task-log-memo-row .time-task-log-tag-list {
   flex: 1;
@@ -13646,10 +13648,10 @@ body.kpi-resizing {
   font-size: 1.25rem;
   font-weight: 500;
   line-height: 1;
-  color: #fff;
-  background: #1c1c1a;
+  color: var(--ui-btn-primary-fg);
+  background: var(--ui-btn-primary-bg);
   border: none;
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -13658,7 +13660,7 @@ body.kpi-resizing {
   transition: background 0.2s;
 }
 .time-task-log-focus-add-btn:hover {
-  background: #4b5563;
+  background: var(--ui-btn-primary-hover);
 }
 /* 방해기록 pills: 투두 리스트처럼 + 버튼 아래 행에 리스트 표시 */
 .time-task-log-focus-events-pills {
@@ -13702,10 +13704,10 @@ body.kpi-resizing {
   font-size: 1.25rem;
   font-weight: 500;
   line-height: 1;
-  color: #fff;
-  background: #1c1c1a;
+  color: var(--ui-btn-primary-fg);
+  background: var(--ui-btn-primary-bg);
   border: none;
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -13714,7 +13716,7 @@ body.kpi-resizing {
   transition: background 0.2s;
 }
 .time-task-log-todo-add-btn:hover {
-  background: #4b5563;
+  background: var(--ui-btn-primary-hover);
 }
 .time-task-log-todo-pills {
   display: flex;
@@ -13908,15 +13910,15 @@ body.kpi-resizing {
   font-size: 1.25rem;
   font-weight: 500;
   line-height: 1;
-  color: #fff;
-  background: #1c1c1a;
+  color: var(--ui-btn-primary-fg);
+  background: var(--ui-btn-primary-bg);
   border: none;
-  border-radius: 0.25rem;
+  border-radius: 0.5rem;
   cursor: pointer;
   flex-shrink: 0;
 }
 .time-task-log-expense-add-btn:hover {
-  background: #4b5563;
+  background: var(--ui-btn-primary-hover);
 }
 .time-task-log-expense-pills {
   display: flex;
@@ -14185,17 +14187,18 @@ body.kpi-resizing {
 .time-task-log-expense-inner-complete-btn {
   width: 100%;
   padding: 0.65rem 1rem;
-  font-size: 0.9rem;
+  font-size: var(--fs-body);
+  font-family: var(--font-body);
   font-weight: 500;
-  color: #fff;
-  background: #1c1c1a;
+  color: var(--ui-btn-primary-fg);
+  background: var(--ui-btn-primary-bg);
   border: none;
   border-radius: 0.5rem;
   cursor: pointer;
   transition: background 0.15s;
 }
 .time-task-log-expense-inner-complete-btn:hover {
-  background: #4b5563;
+  background: var(--ui-btn-primary-hover);
 }
 .time-task-log-expense-inner-add-btn {
   display: block;
@@ -14204,10 +14207,11 @@ body.kpi-resizing {
   margin-left: -1.25rem;
   margin-right: -1.25rem;
   padding: 0.75rem 1.25rem;
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
+  font-family: var(--font-body);
   font-weight: 400;
-  color: #fff;
-  background: #1c1c1a;
+  color: var(--ui-btn-primary-fg);
+  background: var(--ui-btn-primary-bg);
   border: none;
   border-radius: 0.5rem;
   cursor: pointer;
@@ -14215,7 +14219,7 @@ body.kpi-resizing {
   text-align: center;
 }
 .time-task-log-expense-inner-add-btn:hover {
-  background: #1c1c1a;
+  background: var(--ui-btn-primary-hover);
 }
 
 /* 소비/수입명 모달: 폰트 색 #1C1C1A 통일 */
@@ -14320,15 +14324,15 @@ body.kpi-resizing {
   font-size: 1.25rem;
   font-weight: 500;
   line-height: 1;
-  color: #fff;
-  background: #1c1c1a;
+  color: var(--ui-btn-primary-fg);
+  background: var(--ui-btn-primary-bg);
   border: none;
-  border-radius: 0.25rem;
+  border-radius: 0.5rem;
   cursor: pointer;
   flex-shrink: 0;
 }
 .time-task-log-emotion-add-btn:hover {
-  background: #4b5563;
+  background: var(--ui-btn-primary-hover);
 }
 .time-task-log-emotion-inner-modal {
   position: fixed;
@@ -14999,7 +15003,7 @@ body.kpi-resizing {
   gap: 0.75rem;
   padding: 0.75rem 1.25rem 1rem;
   border-top: none;
-  background: #F5F1E8;
+  background: var(--content-bg);
 }
 
 .time-task-log-footer .time-task-log-submit {
@@ -15395,7 +15399,7 @@ body.kpi-resizing {
   background: transparent;
 }
 .time-task-log-tag-input:focus {
-  border-bottom-color: #d1d5db;
+  border-bottom-color: var(--accent-viridian);
 }
 .time-task-log-tag-input::placeholder {
   color: var(--text-placeholder);
@@ -16865,17 +16869,18 @@ body.kpi-resizing {
 .time-task-log-submit {
   width: 100%;
   padding: 0.6rem 1rem;
-  font-size: 0.9rem;
+  font-size: var(--fs-body);
+  font-family: var(--font-body);
   font-weight: 500;
-  color: #fff;
-  background: #1c1c1a;
+  color: var(--ui-btn-primary-fg);
+  background: var(--ui-btn-primary-bg);
   border: none;
-  border-radius: 0;
+  border-radius: 0.5rem;
   cursor: pointer;
 }
 
 .time-task-log-submit:hover {
-  background: #1f2937;
+  background: var(--ui-btn-primary-hover);
 }
 
 .time-filter-tabs {
