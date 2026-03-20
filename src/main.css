@@ -26873,47 +26873,48 @@ body.kpi-resizing {
 .calendar-1day-view .calendar-1day-budget-column {
   flex: 1 1 0;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 0.75rem 1rem;
   background: #f5f1e8;
   border-right: var(--line-l3);
+  -webkit-overflow-scrolling: touch;
 }
 
-/* 투자/소비내역 - 남은 공간 절반 차지, 내부 스크롤 */
+/* 투자/소비내역 - 4구역이 여기 안에 있으면 스크롤은 위 budget-column에서 담당 */
 .calendar-1day-budget-column .calendar-1day-budget-tables-scroll {
-  flex: 1 1 0;
+  flex: 0 0 auto;
   min-height: 0;
   min-width: 100%;
   display: flex;
   flex-direction: column;
   overflow-x: auto;
-  overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  overflow-y: visible;
   position: relative;
   z-index: 1000;
 }
 
-/* 4구획 세로 배치: 기본 | 투자내역 | 소비내역 | 오늘의 할일 (무인양품: 박스 없이 레이블 + 하단 구분선만) */
+/* 4구획 세로 배치: 구역별 내부 스크롤 없이 콘텐츠만큼 늘어나고, 왼쪽 열 전체로 스크롤 */
 .calendar-1day-budget-column .time-daily-budget-four-panels,
 .time-daily-budget-four-panels {
-  flex: 1 1 0;
+  flex: 0 0 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .calendar-1day-budget-column .time-daily-budget-section,
 .time-daily-budget-four-panels .time-daily-budget-section {
-  flex: 1 1 0;
+  flex: 0 0 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
   border: none;
   border-radius: 0;
 }
@@ -26943,9 +26944,9 @@ body.kpi-resizing {
 }
 
 .calendar-1day-budget-column .time-daily-budget-section-scroll {
-  flex: 1;
+  flex: 0 0 auto;
   min-height: 0;
-  overflow-y: auto;
+  overflow-y: visible;
   overflow-x: auto;
   display: flex;
   flex-direction: column;
@@ -26957,7 +26958,7 @@ body.kpi-resizing {
 .time-daily-budget-four-panels
   .time-daily-budget-section-scroll
   > .time-daily-budget-table-block {
-  flex: 1;
+  flex: 0 0 auto;
   min-height: 8rem;
   border: none;
   border-radius: 0;
@@ -27043,13 +27044,12 @@ body.kpi-resizing {
 }
 
 .calendar-1day-budget-column .calendar-1day-todo-section-body {
-  flex: 1;
+  flex: 0 0 auto;
   min-height: 0;
   overflow-x: auto;
-  overflow-y: auto;
+  overflow-y: visible;
   scrollbar-width: thin;
   -ms-overflow-style: none;
-  max-height: 14rem;
 }
 
 .calendar-1day-budget-column
