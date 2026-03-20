@@ -119,8 +119,8 @@ export function mountApp(container) {
   accountLabel.className = "app-sidebar-item-label";
   accountLabel.textContent = "나의 계정";
   accountBtn.appendChild(accountLabel);
+  nav.appendChild(accountBtn);
   sidebar.appendChild(nav);
-  sidebar.appendChild(accountBtn);
   appScreen.appendChild(sidebar);
 
   const main = document.createElement("main");
