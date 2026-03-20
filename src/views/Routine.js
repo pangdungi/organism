@@ -438,17 +438,17 @@ function createRoutineAccordion(routine, onItemChange, onRoutineEdit, openEditMo
   const colgroup = document.createElement("colgroup");
   const colName = document.createElement("col");
   colName.className = "routine-track-col-name";
-  colName.style.width = "120px";
+  colName.style.width = "7.5rem";
   colgroup.appendChild(colName);
   for (let i = 0; i < routine.days; i++) {
     const col = document.createElement("col");
     col.className = "routine-track-col-day";
-    col.style.width = "40px";
+    col.style.width = "2.5rem";
     colgroup.appendChild(col);
   }
   const colActions = document.createElement("col");
   colActions.className = "routine-track-col-actions";
-  colActions.style.width = "50px";
+  colActions.style.width = "3.125rem";
   colgroup.appendChild(colActions);
   table.appendChild(colgroup);
 

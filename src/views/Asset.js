@@ -1633,7 +1633,7 @@ function createExpenseClassificationDropdownByFlowType(initialFlowType, initialC
         panel.style.top = `${rect.bottom + 2}px`;
         panel.style.left = `${rect.left}px`;
         panel.style.minWidth = `${Math.max(rect.width, 200)}px`;
-        panel.style.maxWidth = `min(420px, calc(100vw - ${Math.round(rect.left) + 24}px))`;
+        panel.style.maxWidth = `min(26.25rem, calc(100vw - ${Math.round(rect.left) + 24}px))`;
         document.body.appendChild(panel);
         panel.innerHTML = '<p class="asset-expense-classification-hint">큰 분류(지출/입금)를 먼저 선택해 주세요.</p>';
         panel.hidden = false;
@@ -1657,7 +1657,7 @@ function createExpenseClassificationDropdownByFlowType(initialFlowType, initialC
       panel.style.top = `${rect.bottom + 2}px`;
       panel.style.left = `${rect.left}px`;
       panel.style.minWidth = `${Math.max(rect.width, 200)}px`;
-      panel.style.maxWidth = `min(420px, calc(100vw - ${Math.round(rect.left) + 24}px))`;
+      panel.style.maxWidth = `min(26.25rem, calc(100vw - ${Math.round(rect.left) + 24}px))`;
       document.body.appendChild(panel);
       buildPanel();
       panel.hidden = false;

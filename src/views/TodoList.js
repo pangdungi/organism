@@ -28,10 +28,10 @@ window.addEventListener("app-colors-changed", () => {
   container.querySelectorAll(".todo-category-tab[data-section]").forEach((btn) => {
     const c = sectionColors?.[btn.dataset.section];
     if (c) {
-      btn.style.borderLeft = `1px solid ${c}`;
-      btn.style.borderTop = `1px solid ${c}`;
-      btn.style.borderRight = `1px solid ${c}`;
-      btn.style.borderBottom = `1px solid ${c}`;
+      btn.style.borderLeft = `0.0625rem solid ${c}`;
+      btn.style.borderTop = `0.0625rem solid ${c}`;
+      btn.style.borderRight = `0.0625rem solid ${c}`;
+      btn.style.borderBottom = `0.0625rem solid ${c}`;
       btn.style.backgroundColor = "";
     } else {
       btn.style.borderLeft = "";

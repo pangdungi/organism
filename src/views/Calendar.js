@@ -3705,9 +3705,9 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
       blockFill.style.overflow = "hidden";
       if (useLaneLayout) {
         const lane = first.lane ?? 0;
-        blockFill.style.borderRadius = lane === 0 ? "6px 0 0 6px" : lane === laneCount - 1 ? "0 6px 6px 0" : "0";
+        blockFill.style.borderRadius = lane === 0 ? "0.375rem 0 0 0.375rem" : lane === laneCount - 1 ? "0 0.375rem 0.375rem 0" : "0";
       } else {
-        blockFill.style.borderRadius = "6px";
+        blockFill.style.borderRadius = "0.375rem";
         blockFill.style.border = "none";
       }
       if (!useLaneLayout) {
@@ -3745,7 +3745,7 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         seg.style.width = "100%";
         seg.style.display = "flex";
         seg.style.alignItems = "flex-start";
-        seg.style.padding = "4px 6px 4px 8px";
+        seg.style.padding = "0.25rem 0.375rem 0.25rem 0.5rem";
         seg.style.backgroundColor = c.bg;
         seg.style.boxSizing = "border-box";
         const labelWrap = document.createElement("div");
@@ -3762,7 +3762,7 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         blockFill.appendChild(seg);
       }
       if (firstBorderColor) {
-        blockFill.style.borderLeft = `2px solid ${firstBorderColor}`;
+        blockFill.style.borderLeft = `0.125rem solid ${firstBorderColor}`;
       }
       overlay.appendChild(blockFill);
     }

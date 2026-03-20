@@ -6892,7 +6892,7 @@ export function render() {
       const hiddenTableWrap = document.createElement("div");
       hiddenTableWrap.className = "time-ledger-mobile-hidden-table";
       hiddenTableWrap.style.cssText =
-        "position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;";
+        "position:absolute;left:-62.5rem;width:0.0625rem;height:0.0625rem;overflow:hidden;";
       const hiddenTable = document.createElement("table");
       hiddenTable.className = "time-ledger-table";
       hiddenTable.innerHTML = createTableHTML();
