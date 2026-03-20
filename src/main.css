@@ -10501,6 +10501,39 @@ body {
   background: var(--ui-surface-alt);
 }
 
+/* 과제 기록 모달: 할일 목록 플러스 버튼 디자인 통일 (방해/투두/소비/감정/메모 + 버튼) */
+.time-task-log-memo-add-btn,
+.time-task-log-focus-add-btn,
+.time-task-log-todo-add-btn,
+.time-task-log-expense-add-btn,
+.time-task-log-emotion-add-btn {
+  margin-left: auto;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  font-size: 1.25rem;
+  font-family: inherit;
+  color: var(--text-muted);
+  background: var(--content-bg, #F5F1E8);
+  border: var(--line-l4);
+  box-shadow: 0 0.0625rem 0.25rem rgba(0, 0, 0, 0.06);
+  border-radius: 0.75rem !important;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+.time-task-log-memo-add-btn:hover,
+.time-task-log-focus-add-btn:hover,
+.time-task-log-todo-add-btn:hover,
+.time-task-log-expense-add-btn:hover,
+.time-task-log-emotion-add-btn:hover {
+  color: var(--accent-viridian);
+  background: var(--ui-surface-alt);
+}
+
 /* 분류 드롭다운 */
 .todo-category-wrap {
   position: relative;
@@ -13574,27 +13607,6 @@ body.kpi-resizing {
   font-weight: 600;
   color: var(--text-body);
 }
-.time-task-log-memo-add-btn {
-  width: 1.75rem;
-  height: 1.75rem;
-  padding: 0;
-  font-size: 1.25rem;
-  font-weight: 500;
-  line-height: 1;
-  color: var(--ui-btn-primary-fg);
-  background: var(--ui-btn-primary-bg);
-  border: none;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: background 0.2s;
-}
-.time-task-log-memo-add-btn:hover {
-  background: var(--ui-btn-primary-hover);
-}
 .time-task-log-memo-row .time-task-log-tag-list {
   flex: 1;
   min-width: 0;
@@ -13718,28 +13730,6 @@ body.kpi-resizing {
   font-weight: 300;
   color: #3a3a3a;
 }
-.time-task-log-focus-add-btn {
-  margin-left: auto;
-  width: 1.75rem;
-  height: 1.75rem;
-  padding: 0;
-  font-size: 1.25rem;
-  font-weight: 500;
-  line-height: 1;
-  color: var(--ui-btn-primary-fg);
-  background: var(--ui-btn-primary-bg);
-  border: none;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: background 0.2s;
-}
-.time-task-log-focus-add-btn:hover {
-  background: var(--ui-btn-primary-hover);
-}
 /* 방해기록 pills: 투두 리스트처럼 + 버튼 아래 행에 리스트 표시 */
 .time-task-log-focus-events-pills {
   display: flex;
@@ -13773,28 +13763,6 @@ body.kpi-resizing {
   font-size: 0.9rem;
   font-weight: 300;
   color: #3a3a3a;
-}
-.time-task-log-todo-add-btn {
-  margin-left: auto;
-  width: 1.75rem;
-  height: 1.75rem;
-  padding: 0;
-  font-size: 1.25rem;
-  font-weight: 500;
-  line-height: 1;
-  color: var(--ui-btn-primary-fg);
-  background: var(--ui-btn-primary-bg);
-  border: none;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: background 0.2s;
-}
-.time-task-log-todo-add-btn:hover {
-  background: var(--ui-btn-primary-hover);
 }
 .time-task-log-todo-pills {
   display: flex;
@@ -13979,24 +13947,6 @@ body.kpi-resizing {
   font-size: 0.9rem;
   font-weight: 300;
   color: #3a3a3a;
-}
-.time-task-log-expense-add-btn {
-  margin-left: auto;
-  width: 1.75rem;
-  height: 1.75rem;
-  padding: 0;
-  font-size: 1.25rem;
-  font-weight: 500;
-  line-height: 1;
-  color: var(--ui-btn-primary-fg);
-  background: var(--ui-btn-primary-bg);
-  border: none;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-.time-task-log-expense-add-btn:hover {
-  background: var(--ui-btn-primary-hover);
 }
 .time-task-log-expense-pills {
   display: flex;
@@ -14393,24 +14343,6 @@ body.kpi-resizing {
   font-size: 0.9rem;
   font-weight: 300;
   color: #3a3a3a;
-}
-.time-task-log-emotion-add-btn {
-  margin-left: auto;
-  width: 1.75rem;
-  height: 1.75rem;
-  padding: 0;
-  font-size: 1.25rem;
-  font-weight: 500;
-  line-height: 1;
-  color: var(--ui-btn-primary-fg);
-  background: var(--ui-btn-primary-bg);
-  border: none;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-.time-task-log-emotion-add-btn:hover {
-  background: var(--ui-btn-primary-hover);
 }
 .time-task-log-emotion-inner-modal {
   position: fixed;
@@ -14943,28 +14875,6 @@ body.kpi-resizing {
   font-size: 0.9rem;
   font-weight: 300;
   color: #3a3a3a;
-}
-.time-task-log-todo-add-btn {
-  width: 1.75rem;
-  height: 1.75rem;
-  padding: 0;
-  margin-left: auto;
-  font-size: 1.25rem;
-  font-weight: 500;
-  line-height: 1;
-  color: var(--ui-btn-primary-fg);
-  background: var(--ui-btn-primary-bg);
-  border: none;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: background 0.2s;
-}
-.time-task-log-todo-add-btn:hover {
-  background: var(--ui-btn-primary-hover);
 }
 .time-task-log-todo-pills {
   display: flex;
