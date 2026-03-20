@@ -19,6 +19,22 @@
     <title>라이프 플래너</title>
   </head>
   <body>
+    <!-- 태블릿(아이패드 미니 등) 세로: 가로 전환 안내 (CSS로 표시 구간 제어) -->
+    <div
+      id="tablet-landscape-hint"
+      class="app-tablet-landscape-hint"
+      aria-hidden="true"
+    >
+      <div class="app-tablet-landscape-hint-inner">
+        <p id="tablet-landscape-hint-title" class="app-tablet-landscape-hint-title">
+          가로 모드에서 이용해 주세요
+        </p>
+        <p class="app-tablet-landscape-hint-desc">
+          이 화면 크기에서는 세로보다 <strong>가로</strong>로 두는 것이 보기 좋습니다.<br />
+          기기를 옆으로 돌려 주세요.
+        </p>
+      </div>
+    </div>
     <div id="app">
       <!-- 메인(랜딩) -->
       <div id="main-page" class="page landing-page">

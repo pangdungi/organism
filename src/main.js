@@ -10,6 +10,31 @@ function init() {
   applyAppFont();
   applyTimeCategoryColors();
   applyTaskCategoryColors();
+
+  /* 태블릿 세로: 가로 전환 안내 레이어 접근성 */
+  (function initTabletLandscapeHintA11y() {
+    const el = document.getElementById("tablet-landscape-hint");
+    if (!el) return;
+    const mq = window.matchMedia(
+      "(orientation: portrait) and (min-width: 37.5rem) and (max-width: 64rem)",
+    );
+    const sync = () => {
+      const show = mq.matches;
+      el.setAttribute("aria-hidden", show ? "false" : "true");
+      if (show) {
+        el.setAttribute("role", "alertdialog");
+        el.setAttribute("aria-modal", "true");
+        el.setAttribute("aria-labelledby", "tablet-landscape-hint-title");
+      } else {
+        el.removeAttribute("role");
+        el.removeAttribute("aria-modal");
+        el.removeAttribute("aria-labelledby");
+      }
+    };
+    sync();
+    mq.addEventListener("change", sync);
+  })();
+
   const goLogin = () => showOnly("login");
   document.getElementById("btn-login")?.addEventListener("click", goLogin);
   document.getElementById("btn-login-hero")?.addEventListener("click", goLogin);

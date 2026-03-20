@@ -295,10 +295,45 @@ body {
   font-size: inherit;
 }
 
-/* 앱 화면(사이드바+메인)일 때 뷰포트 높이로 고정, 페이지 스크롤 없이 내부만 스크롤 */
-#app:has(#app-screen) {
-  height: 100vh;
-  overflow: hidden;
+/* 태블릿(아이패드 미니 등) 세로: 가로 전환 안내 — 가로(landscape)에서만 본문 사용 */
+.app-tablet-landscape-hint {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  padding-top: max(2rem, env(safe-area-inset-top, 0));
+  padding-bottom: max(2rem, env(safe-area-inset-bottom, 0));
+  box-sizing: border-box;
+  background: rgba(245, 241, 232, 0.98);
+  color: var(--text-ink);
+  text-align: center;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+}
+.app-tablet-landscape-hint-inner {
+  max-width: 22rem;
+}
+.app-tablet-landscape-hint-title {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+}
+.app-tablet-landscape-hint-desc {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--text-body);
+  line-height: 1.55;
+}
+
+/* 세로 + 뷰포트 너비가 태블릿 구간(폰 세로 제외) */
+@media (orientation: portrait) and (min-width: 37.5rem) and (max-width: 64rem) {
+  .app-tablet-landscape-hint {
+    display: flex;
+  }
 }
 
 /* 사이트 전체 모달·다이얼로그 패널 모서리 통일 (누락 방지) */
@@ -421,6 +456,25 @@ body {
   outline: none;
   box-shadow: none;
   border-color: var(--line-l1-color);
+}
+
+/* 표 안 입력폼: 밑줄( border-bottom ) 제거 — 모든 table 내 input/select/textarea */
+#app table input,
+#app table select,
+#app table textarea {
+  border-bottom: none !important;
+}
+#app table input:focus,
+#app table input:focus-visible,
+#app table select:focus,
+#app table select:focus-visible,
+#app table textarea:focus,
+#app table textarea:focus-visible {
+  border-bottom: none !important;
+}
+#app table input:disabled,
+#app table textarea:disabled {
+  border-bottom: none !important;
 }
 
 /* 앱 전역: 포커스 시 파란색 아웃라인/그림자 제거 (모든 창) */
@@ -1497,8 +1551,87 @@ body {
   }
 }
 
-/* 홈: Daily 캘린더 열 없음 → 넓은 화면에서 투두 | 이벤트 2열 */
-@media (min-width: 56.25rem) {
+/* 태블릿·아이패드: 오늘 탭도 세로 스크롤 + 할일 아래 이벤트 (48rem~64rem에서 데스크탑 레이아웃 대신) */
+@media (max-width: 64rem) {
+  .app-main:has(.home-view) {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .app-main:has(.home-view) .app-tab-panel {
+    overflow-y: auto !important;
+    min-height: min-content;
+    -webkit-overflow-scrolling: touch;
+  }
+  .app-main:has(.home-view) .app-tab-panel > .home-view {
+    overflow-y: visible !important;
+    min-height: min-content;
+    flex: 0 1 auto;
+  }
+  .app-main:has(.home-view) .home-view {
+    overflow-y: visible !important;
+    min-height: min-content;
+  }
+  .app-main:has(.home-view) .home-view-three {
+    overflow: visible;
+    min-height: min-content;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    flex: 0 1 auto;
+  }
+  .app-main:has(.home-view) .home-view-three {
+    display: flex;
+    flex-direction: column;
+  }
+  .app-main:has(.home-view) .home-view-left-col {
+    flex: 0 1 auto;
+    min-height: 0;
+  }
+  .app-main:has(.home-view) .home-view-section {
+    overflow: visible !important;
+    height: auto;
+    min-height: min-content;
+  }
+  .app-main:has(.home-view) .home-view-section--todo .home-todo-list-content {
+    flex: 0 1 auto;
+    min-height: 6rem;
+    max-height: 18rem;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* 이벤트 섹션이 할일 뒤로 들어가지 않도록: 100% 높이·overflow 해제, 문서 흐름으로 아래에 배치 */
+  .app-main:has(.home-view) .home-view-section--event {
+    height: auto !important;
+    min-height: 0;
+    overflow: visible !important;
+    flex: 0 0 auto;
+  }
+  .app-main:has(.home-view) .home-event-half {
+    max-height: none;
+    flex: 0 0 auto;
+    overflow: visible !important;
+  }
+  .app-main:has(.home-view) .home-event-half .home-event-list,
+  .app-main:has(.home-view) .home-event-half .home-reminder-content {
+    overflow-y: visible;
+    flex: 0 1 auto;
+  }
+  /* 태블릿: 투두·이벤트·리마인더 제목·본문 패딩을 위(날짜·그리드)와 통일 — 1.75rem */
+  .app-main:has(.home-view) .home-view-section--todo .home-view-section-title {
+    padding: 0.875rem 1.75rem 0.75rem !important;
+  }
+  .app-main:has(.home-view) .home-event-half .home-view-section-title {
+    padding: 0.875rem 1.75rem 0.75rem !important;
+  }
+  .app-main:has(.home-view) .home-event-half .home-reminder-content {
+    padding: 0.875rem 1.75rem 0.75rem !important;
+  }
+  .app-main:has(.home-view) .home-event-half .home-event-list {
+    padding: 0.75rem 1.75rem 1rem !important;
+  }
+}
+
+/* 홈: Daily 캘린더 열 없음 → 넓은 화면(64rem 초과)에서만 투두 | 이벤트 2열 */
+@media (min-width: 64rem) {
   .home-view-three.home-view-three--no-calendar {
     grid-template-columns: minmax(0, 3fr) minmax(0, 4fr);
   }
@@ -1511,7 +1644,7 @@ body {
   min-width: 0;
 }
 
-@media (min-width: 56.25rem) {
+@media (min-width: 64rem) {
   .home-view-left-col .home-view-date-title,
   .home-view-left-col .home-time-summary-grid {
     padding-left: 0;
@@ -2915,7 +3048,8 @@ body {
     gap: 0.35rem !important;
     padding-left: 0.4rem !important;
   }
-  /* 모바일 1주 뷰: 할일 바·체크박스가 클릭받을 수 있도록 (셀 클릭과 구분) */
+  /* 모바일 1주 뷰: entries·바·체크박스 터치 가능 (부모가 none이면 자식도 히트 안 됨 → entries도 auto) */
+  .calendar-1week-view .calendar-monthly-day .calendar-monthly-day-entries,
   .calendar-1week-view .calendar-monthly-day-entries .calendar-monthly-span-bar,
   .calendar-1week-view .calendar-monthly-day-entries .calendar-monthly-span-bar .calendar-monthly-span-bar-checkbox,
   .calendar-1week-view .calendar-monthly-day-entries .calendar-monthly-span-bar .calendar-monthly-span-bar-checkbox-inner {
@@ -5130,7 +5264,7 @@ body {
 .asset-expense-table-container {
   max-width: 100%;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .asset-expense-table-wrap {
@@ -5274,52 +5408,63 @@ body {
   color: var(--text-muted);
 }
 
-/* 거래일, 금액 열 고정 (가로 스크롤 시) - 열 순서: 거래일·금액·큰분류·소비/수입분류·소비/수입명·결제수단·카테고리·메모·삭제 */
+/* 거래일, 금액 열 고정 (가로 스크롤 시) - 스크롤은 .asset-expense-table-wrap만, 거래일·금액만 왼쪽에 고정 */
 .asset-expense-col-date,
 .asset-expense-th-date,
 .asset-expense-cell-date {
-  position: sticky;
-  left: 0;
-  z-index: 1;
-  background: #F5F1E8;
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 2;
+  width: 6rem;
+  min-width: 6rem;
+  max-width: 6rem;
+  box-sizing: border-box;
+  background: #F5F1E8 !important;
   box-shadow: 0.125rem 0 0.25rem -0.125rem rgba(0, 0, 0, 0.08);
+  overflow: visible;
 }
 
 .asset-expense-table thead .asset-expense-th-date {
-  z-index: 2;
-  background: #F5F1E8;
+  z-index: 3;
+  background: #F5F1E8 !important;
 }
 
 .asset-expense-col-amount,
 .asset-expense-th-amount,
 .asset-expense-cell-amount {
-  position: sticky;
-  left: 6rem;
-  z-index: 1;
-  background: #F5F1E8;
+  position: sticky !important;
+  left: 6rem !important;
+  z-index: 2;
+  width: 7.5rem;
+  min-width: 7.5rem;
+  max-width: 7.5rem;
+  box-sizing: border-box;
+  background: #F5F1E8 !important;
   box-shadow: 0.25rem 0 0.35rem -0.125rem rgba(0, 0, 0, 0.1);
   border-right: var(--divider-subtle);
+  overflow: visible;
 }
 
 .asset-expense-table thead .asset-expense-th-amount {
-  z-index: 2;
-  background: #F5F1E8;
+  z-index: 3;
+  background: #F5F1E8 !important;
 }
 
 .asset-expense-summary-row .asset-expense-summary-label,
 .asset-expense-summary-row .asset-expense-summary-total {
-  position: sticky;
-  z-index: 1;
-  background: #F5F1E8;
+  position: sticky !important;
+  z-index: 2;
+  background: #F5F1E8 !important;
+  overflow: visible;
 }
 
 .asset-expense-summary-row .asset-expense-summary-label {
-  left: 0;
+  left: 0 !important;
   box-shadow: 0.125rem 0 0.25rem -0.125rem rgba(0, 0, 0, 0.08);
 }
 
 .asset-expense-summary-row .asset-expense-summary-total {
-  left: 6rem;
+  left: 6rem !important;
   box-shadow: 0.25rem 0 0.35rem -0.125rem rgba(0, 0, 0, 0.1);
   border-right: var(--divider-subtle);
 }
@@ -28907,9 +29052,21 @@ body.kpi-resizing {
   align-items: stretch;
 }
 
-/* 아이젠하워 뷰에서만 사이드바 기본 너비 (리사이즈 시 인라인으로 덮어씀) */
-.calendar-view-eisenhower .calendar-todo-sidebar {
-  width: 26.25rem;
+/* 아이젠하워 뷰: 할일 사이드바 너비는 날짜 정하기와 동일(20rem) */
+
+/* 아이패드 미니 세로 등: 우선순위 정렬에서 4분면 넓게, 할일 사이드바 줄이기 */
+@media (max-width: 64rem) {
+  .calendar-view-eisenhower .calendar-todo-sidebar {
+    width: 16rem;
+    min-width: 12rem;
+  }
+  .calendar-view-eisenhower .calendar-eisenhower-wrap {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .calendar-view-eisenhower .calendar-eisenhower-matrix {
+    min-height: 16rem;
+  }
 }
 
 /* 아이젠하워 뷰: 리사이즈 핸들 선 숨김 */

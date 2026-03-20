@@ -5028,11 +5028,17 @@ function render1WeekView(tabsElement) {
           };
           const isMobileBar = window.matchMedia("(max-width: 767px)").matches;
           if (!isMobileBar || is1WeekView) {
-            bar.addEventListener("click", toggleDone);
-            const checkEl = bar.querySelector(".calendar-monthly-span-bar-checkbox");
-            if (checkEl) {
-              checkEl.addEventListener("click", toggleDone);
-            }
+            const attachToggle = (el) => {
+              if (!el) return;
+              el.addEventListener("click", toggleDone);
+              el.addEventListener("touchend", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleDone(e);
+              }, { passive: false });
+            };
+            attachToggle(bar);
+            attachToggle(bar.querySelector(".calendar-monthly-span-bar-checkbox"));
           }
         } else {
           if (isTodo) {
@@ -5051,6 +5057,7 @@ function render1WeekView(tabsElement) {
           const isMobileRangeBar = window.matchMedia("(max-width: 767px)").matches;
           if (isTodo && (!isMobileRangeBar || is1WeekView)) {
             const rangeToggleDone = (e) => {
+              e.preventDefault();
               e.stopPropagation();
               const newDone = !b.done;
               if (b.kpiTodoId && b.storageKey) {
@@ -5070,11 +5077,17 @@ function render1WeekView(tabsElement) {
               renderCalendar();
               refreshTodoList();
             };
-            bar.addEventListener("click", rangeToggleDone);
-            const rangeCheckEl = bar.querySelector(".calendar-monthly-span-bar-checkbox");
-            if (rangeCheckEl) {
-              rangeCheckEl.addEventListener("click", rangeToggleDone);
-            }
+            const attachRangeToggle = (el) => {
+              if (!el) return;
+              el.addEventListener("click", rangeToggleDone);
+              el.addEventListener("touchend", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                rangeToggleDone(e);
+              }, { passive: false });
+            };
+            attachRangeToggle(bar);
+            attachRangeToggle(bar.querySelector(".calendar-monthly-span-bar-checkbox"));
           }
         }
         if (!b.isSingleDay && b.startDate && b.dueDate) {
