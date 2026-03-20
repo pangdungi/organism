@@ -2168,6 +2168,19 @@ body {
 }
 
 @media (max-width: 47.9375rem) {
+  /* 모바일: 입력 포커스 시 자동 확대 방지 (iOS 등은 font-size 16px 미만일 때 줌함) */
+  #app input[type="text"],
+  #app input[type="email"],
+  #app input[type="password"],
+  #app input[type="number"],
+  #app input[type="date"],
+  #app input[type="search"],
+  #app input[type="tel"],
+  #app textarea,
+  #app select {
+    font-size: 16px !important;
+  }
+
   /* 모바일: 상단 safe area + 추가 여백으로 상태바·노치와 겹침 방지 */
   #app:has(#app-screen) {
     padding-top: calc(env(safe-area-inset-top, 0) + 1rem);
@@ -2708,6 +2721,27 @@ body {
     box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.2);
   }
   .calendar-day-expand-bubble--mobile .calendar-event-bubble-body {
+    max-height: 60vh;
+  }
+  .calendar-day-expand-bubble--mobile .calendar-day-expand-item[data-done="true"] .calendar-day-expand-text {
+    text-decoration: line-through;
+    opacity: 0.6;
+  }
+
+  /* 모바일: 날짜 셀 클릭 시 할일 추가 버블 — 가운데 모달 */
+  .calendar-event-bubble--mobile {
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%);
+    width: calc(100% - 2rem) !important;
+    max-width: 25rem;
+    max-height: 70vh;
+    box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.2);
+  }
+  .calendar-event-bubble--mobile .calendar-event-bubble-tail {
+    display: none;
+  }
+  .calendar-event-bubble--mobile .calendar-event-bubble-body {
     max-height: 60vh;
   }
 
@@ -28147,12 +28181,13 @@ body.kpi-resizing {
 /* 캘린더 날짜셀 클릭 시 말풍선 팝업 */
 .calendar-event-bubble {
   font-family: var(--font-body);
+  font-size: var(--fs-body);
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.12);
-  border-radius: var(--modal-radius);
+  border-radius: var(--modal-radius) !important;
   background: var(--content-bg);
-  border: var(--line-l3);
+  border: var(--line-l2);
   min-width: 13.75rem;
-  color: var(--text-ink);
+  color: var(--text-body);
 }
 
 .calendar-event-bubble-tail {
@@ -28188,15 +28223,15 @@ body.kpi-resizing {
   justify-content: space-between;
   margin: 0 -1rem 0.5rem;
   padding: 0 1rem 0.5rem;
-  border-bottom: var(--divider-subtle);
+  border-bottom: var(--line-l3);
 }
 
 .calendar-event-bubble-date {
-  font-size: 0.8rem;
+  font-size: var(--fs-secondary);
   font-family: var(--font-mono);
-  font-weight: 300;
+  font-weight: var(--fw-mono);
   letter-spacing: 0.04em;
-  color: #7a7a7a;
+  color: var(--text-muted);
 }
 
 .calendar-event-bubble-close {
@@ -28212,12 +28247,12 @@ body.kpi-resizing {
   line-height: 1;
   font-family: inherit;
   font-weight: 500;
-  color: var(--text-body);
+  color: var(--text-muted);
   padding: 0 0.25rem;
 }
 
 .calendar-event-bubble-close:hover {
-  color: var(--gray-700, #374151);
+  color: var(--text-ink);
 }
 
 .calendar-event-bubble-type {
@@ -28241,36 +28276,39 @@ body.kpi-resizing {
 
 .calendar-event-bubble-label {
   display: block;
-  font-size: 0.75rem;
-  color: var(--gray-500, #6b7280);
+  font-size: var(--fs-caption);
+  font-family: var(--font-body);
+  font-weight: var(--fw-body);
+  color: var(--text-muted);
   margin-bottom: 0.2rem;
 }
 
 .calendar-event-bubble-select {
   width: 100%;
-  padding: 0.5rem 2rem 0.5rem 0.75rem;
-  font-size: 0.9rem;
-  font-family: inherit;
-  font-weight: 500;
+  padding: 0.5rem 2rem 0.5rem 0;
+  font-size: var(--fs-body);
+  font-family: var(--font-body);
+  font-weight: var(--fw-body);
   color: var(--text-body);
   border: none;
-  border-bottom: var(--divider-default);
+  border-bottom: var(--input-border-idle);
   border-radius: 0;
   background-color: transparent;
   appearance: none;
   -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B7A6E' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 0.75rem center;
+  background-position: right 0.5rem center;
   cursor: pointer;
   box-sizing: border-box;
 }
 .calendar-event-bubble-select:hover {
-  border-bottom-color: #c8c5bc;
+  border-bottom-color: var(--line-l2-color);
 }
 .calendar-event-bubble-select:focus {
   outline: none;
-  border-bottom-color: #c8c5bc;
+  border-bottom: var(--input-border-focus);
+  background: var(--input-focus-bg);
 }
 .calendar-event-bubble-select option {
   background: var(--content-bg);
@@ -28284,12 +28322,12 @@ body.kpi-resizing {
 
 .calendar-event-bubble-input {
   width: 100%;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.9rem;
-  font-family: inherit;
+  padding: 0.5rem 0;
+  font-size: var(--fs-body);
+  font-family: var(--font-body);
   color: var(--text-body);
   border: none;
-  border-bottom: var(--divider-default);
+  border-bottom: var(--input-border-idle);
   border-radius: 0;
   background: transparent;
   box-sizing: border-box;
@@ -28299,19 +28337,20 @@ body.kpi-resizing {
 }
 .calendar-event-bubble-input:focus {
   outline: none;
-  border-bottom-color: #c8c5bc;
+  border-bottom: var(--input-border-focus);
+  background: var(--input-focus-bg);
 }
 
 .calendar-event-bubble-save {
   width: 100%;
-  padding: 0.4rem 0.75rem;
+  padding: 0.5rem 0.75rem;
   font-size: var(--fs-body);
   font-weight: 500;
-  font-family: var(--font-body, inherit);
+  font-family: var(--font-body);
   color: var(--ui-btn-primary-fg);
   background: var(--ui-btn-primary-bg);
   border: none;
-  border-radius: var(--modal-radius);
+  border-radius: 0;
   cursor: pointer;
 }
 
@@ -28357,24 +28396,25 @@ body.kpi-resizing {
 .calendar-bar-date-edit-bubble .calendar-bar-date-edit-input {
   width: 100%;
   padding: 0.35rem 0.5rem;
-  font-size: 0.85rem;
-  font-family: inherit;
-  color: var(--gray-700, #374151);
+  font-size: var(--fs-body);
+  font-family: var(--font-body);
+  color: var(--text-body);
   border: var(--line-l3);
-  border-radius: 0.25rem;
+  border-radius: 0;
   box-sizing: border-box;
 }
 .calendar-bar-date-edit-bubble .calendar-bar-date-edit-input:focus {
   outline: none;
-  border-color: var(--gray-400, #9ca3af);
+  border: var(--input-border-focus);
 }
 .calendar-bar-date-edit-bubble .calendar-event-bubble-save {
   font-family: inherit;
 }
 
 .calendar-bar-revert-desc {
-  font-size: 0.8rem;
-  color: var(--gray-500, #6b7280);
+  font-size: var(--fs-secondary);
+  font-family: var(--font-body);
+  color: var(--text-muted);
   margin: 0 0 0.75rem;
   line-height: 1.4;
 }
@@ -28416,9 +28456,10 @@ body.kpi-resizing {
   align-items: center;
   gap: 0.5rem;
   padding: 0.4rem 0.5rem;
-  background: #F5F1E8;
+  background: var(--content-bg, #F5F1E8);
   border-radius: 0.375rem;
-  font-size: 0.85rem;
+  font-size: var(--fs-body);
+  cursor: pointer;
 }
 
 .calendar-day-expand-item[data-done="true"] .calendar-day-expand-text {
@@ -28465,26 +28506,27 @@ body.kpi-resizing {
 .calendar-day-expand-empty {
   padding: 0.75rem;
   text-align: center;
-  color: #9ca3af;
-  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-size: var(--fs-body);
+  font-family: var(--font-body);
 }
 
 .calendar-day-expand-add-btn {
   margin-top: 0.5rem;
   width: 100%;
   padding: 0.5rem 0.75rem;
-  font-size: 0.85rem;
+  font-size: var(--fs-body);
   font-weight: 500;
-  color: var(--text-body);
-  background: var(--ui-surface-alt);
-  border: var(--line-l3);
-  border-radius: var(--modal-radius);
+  font-family: var(--font-body);
+  color: var(--ui-btn-primary-fg);
+  background: var(--ui-btn-primary-bg);
+  border: none;
+  border-radius: 0;
   cursor: pointer;
-  font-family: inherit;
 }
 
 .calendar-day-expand-add-btn:hover {
-  background: #e5e7eb;
+  background: var(--ui-btn-primary-hover);
 }
 
 /* 할일목록 사이드바 (접기/펼치기) - 캘린더와 동일 높이 */
