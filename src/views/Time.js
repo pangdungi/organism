@@ -2041,6 +2041,43 @@ function calcPeriodValueFromFiltered(filtered, hourlyRate) {
   return sum;
 }
 
+/** 오늘 날짜 시간 기록 요약 (홈/오늘 뷰 4분면용) */
+export function getTodayTimeSummary() {
+  const now = new Date();
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const rows = loadTimeRows().filter(
+    (r) => (r.date || "").toString().slice(0, 10) === todayKey,
+  );
+  let hourlyRate = 0;
+  try {
+    hourlyRate = parseFloat(String(localStorage.getItem(USER_HOURLY_RATE_KEY) || "0").replace(/,/g, "")) || 0;
+  } catch (_) {}
+  let totalHrs = 0;
+  let productiveHrs = 0;
+  let totalPrice = 0;
+  let wastedValue = 0;
+  rows.forEach((r) => {
+    const hrs = parseTimeToHours(r.timeTracked) || 0;
+    totalHrs += hrs;
+    const pv = (r.productivity || getProductivityFromCategory(r.category) || "").trim();
+    if (pv === "productive") productiveHrs += hrs;
+    let price = hrs * hourlyRate;
+    if (pv === "nonproductive") {
+      price *= -1;
+      wastedValue += hrs * hourlyRate;
+    } else if (pv === "other" || pv === "그 외" || !pv) price = 0;
+    totalPrice += price;
+  });
+  const trackedDisplay = totalHrs <= 0 || !isFinite(totalHrs) ? "0h 0m" : formatHoursDisplay(totalHrs);
+  const productiveDisplay = productiveHrs <= 0 || !isFinite(productiveHrs) ? "0h 0m" : formatHoursDisplay(productiveHrs);
+  return {
+    trackedDisplay,
+    productiveDisplay,
+    priceDisplay: formatPrice(totalPrice),
+    wastedDisplay: formatPrice(wastedValue),
+  };
+}
+
 /** 카테고리 라벨 조회 */
 function getCategoryLabel(value) {
   if (value === "productive_consumption")

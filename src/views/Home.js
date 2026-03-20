@@ -4,6 +4,7 @@
 
 import { getKpiTodosAsTasks, syncKpiTodoCompleted } from "../utils/kpiTodoSync.js";
 import { getCustomSections } from "../utils/todoSettings.js";
+import { getTodayTimeSummary } from "./Time.js";
 
 const SECTION_TASKS_KEY = "todo-section-tasks";
 const CUSTOM_SECTION_TASKS_KEY = "todo-custom-section-tasks";
@@ -506,12 +507,49 @@ function openReminderModalFromHome(item, onSaved) {
   document.body.appendChild(modal);
 }
 
+function formatTodayTitle(date) {
+  const m = date.getMonth() + 1;
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${m}.${d}`;
+}
+
 export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content home-view";
 
+  const dateTitle = document.createElement("h1");
+  dateTitle.className = "home-view-date-title";
+  dateTitle.textContent = formatTodayTitle(new Date());
+
+  const timeSummary = getTodayTimeSummary();
+  const summaryGrid = document.createElement("div");
+  summaryGrid.className = "home-time-summary-grid";
+  summaryGrid.innerHTML = `
+    <div class="home-time-summary-cell">
+      <span class="home-time-summary-label">총 기록 시간</span>
+      <span class="home-time-summary-value">${timeSummary.trackedDisplay}</span>
+    </div>
+    <div class="home-time-summary-cell">
+      <span class="home-time-summary-label">생산적 시간</span>
+      <span class="home-time-summary-value">${timeSummary.productiveDisplay}</span>
+    </div>
+    <div class="home-time-summary-cell">
+      <span class="home-time-summary-label">환산 금액</span>
+      <span class="home-time-summary-value">${timeSummary.priceDisplay}<span class="home-time-summary-unit">원</span></span>
+    </div>
+    <div class="home-time-summary-cell">
+      <span class="home-time-summary-label">오늘 낭비한 시간의 가치</span>
+      <span class="home-time-summary-value">${timeSummary.wastedDisplay}<span class="home-time-summary-unit">원</span></span>
+    </div>
+  `;
+
   const threeCols = document.createElement("div");
   threeCols.className = "home-view-three home-view-three--no-calendar";
+
+  const leftCol = document.createElement("div");
+  leftCol.className = "home-view-left-col";
+  leftCol.appendChild(dateTitle);
+  leftCol.appendChild(summaryGrid);
 
   const section2 = document.createElement("div");
   section2.className = "home-view-section home-view-section--event";
@@ -583,7 +621,8 @@ export function render() {
   fillTodoListContent(todoListContent);
   section3.appendChild(todoListContent);
 
-  threeCols.appendChild(section3);
+  leftCol.appendChild(section3);
+  threeCols.appendChild(leftCol);
   threeCols.appendChild(section2);
   el.appendChild(threeCols);
 

@@ -1428,6 +1428,57 @@ body {
   padding-top: 0.5rem;
 }
 
+.home-view-date-title {
+  font-size: 1.75rem;
+  font-weight: var(--fw-mono);
+  font-family: var(--font-mono);
+  color: var(--text-ink);
+  margin: 0 0 0.75rem;
+  padding: 0 1.75rem;
+  letter-spacing: 0.02em;
+}
+
+.home-time-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, auto);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0 1.75rem;
+}
+
+.home-time-summary-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+  background: var(--content-bg);
+  border: 1px solid var(--line-l3);
+  border-radius: 0.375rem;
+}
+
+.home-time-summary-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+.home-time-summary-value {
+  font-size: 1.125rem;
+  font-weight: var(--fw-mono);
+  font-family: var(--font-mono);
+  color: var(--text-ink);
+  letter-spacing: 0.02em;
+}
+
+.home-time-summary-value .home-time-summary-unit {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-left: 0.15em;
+}
+
 /* Daily(가장 자주 사용) 넓게, Event·Todo 비율 조정 */
 .home-view-three {
   display: grid;
@@ -1450,6 +1501,24 @@ body {
 @media (min-width: 56.25rem) {
   .home-view-three.home-view-three--no-calendar {
     grid-template-columns: minmax(0, 3fr) minmax(0, 4fr);
+  }
+}
+
+.home-view-left-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+@media (min-width: 56.25rem) {
+  .home-view-left-col .home-view-date-title,
+  .home-view-left-col .home-time-summary-grid {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .home-view-left-col {
+    padding: 0 1.75rem;
   }
 }
 
@@ -2208,6 +2277,16 @@ body {
     min-height: min-content;
     flex: 0 1 auto;
   }
+  .app-main:has(.home-view) .home-time-summary-grid {
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .app-main:has(.home-view) .home-time-summary-cell {
+    padding: 0.6rem 0.75rem;
+  }
+  .app-main:has(.home-view) .home-time-summary-value {
+    font-size: 1rem;
+  }
   .app-main:has(.home-view) .home-view {
     overflow-y: visible !important;
     min-height: min-content;
@@ -2835,6 +2914,12 @@ body {
   .calendar-1week-view .calendar-monthly-span-bar--has-checkbox {
     gap: 0.35rem !important;
     padding-left: 0.4rem !important;
+  }
+  /* 모바일 1주 뷰: 할일 바·체크박스가 클릭받을 수 있도록 (셀 클릭과 구분) */
+  .calendar-1week-view .calendar-monthly-day-entries .calendar-monthly-span-bar,
+  .calendar-1week-view .calendar-monthly-day-entries .calendar-monthly-span-bar .calendar-monthly-span-bar-checkbox,
+  .calendar-1week-view .calendar-monthly-day-entries .calendar-monthly-span-bar .calendar-monthly-span-bar-checkbox-inner {
+    pointer-events: auto !important;
   }
   /* 요일은 각 날짜 셀 안으로 옮김 — 상단 7열 헤더 제거 */
   .calendar-1week-view .calendar-monthly-weekdays {
@@ -10422,7 +10507,7 @@ body {
 
 /* 이미 중요도 배정된 카드: 드래그 불가 + 비활성 스타일 */
 .todo-card--priority-assigned {
-  background: #D8D2C0 !important;
+  background: #E8E2D2 !important;
   cursor: default;
 }
 .todo-card--priority-assigned .todo-card-name,
@@ -10435,7 +10520,7 @@ body {
 }
 
 .todo-card--has-due {
-  background: #D8D2C0 !important;
+  background: #E8E2D2 !important;
   cursor: default;
 }
 .todo-card--has-due .todo-card-name,

@@ -4770,6 +4770,7 @@ function render1WeekView(tabsElement) {
         cell.style.cursor = "pointer";
         cell.addEventListener("click", (e) => {
           if (e.target.closest(".calendar-event-bubble")) return;
+          if (e.target.closest(".calendar-monthly-span-bar")) return;
           e.stopPropagation();
           const rect = cell.getBoundingClientRect();
           createCalendarEventBubble(
@@ -5005,8 +5006,9 @@ function render1WeekView(tabsElement) {
           bar.dataset.storageKey = b.storageKey || "";
           bar.dataset.done = b.done ? "true" : "false";
           bar.dataset.itemType = b.itemType || "todo";
-          const toggleDone = () => {
-            let newDone = !bar.dataset.done;
+          const toggleDone = (e) => {
+            if (e) e.stopPropagation();
+            const newDone = bar.dataset.done !== "true";
             if (b.kpiTodoId && b.storageKey) {
               syncKpiTodoCompleted(b.kpiTodoId, b.storageKey, newDone);
             } else if (b.sectionId && b.taskId) {
@@ -5029,10 +5031,7 @@ function render1WeekView(tabsElement) {
             bar.addEventListener("click", toggleDone);
             const checkEl = bar.querySelector(".calendar-monthly-span-bar-checkbox");
             if (checkEl) {
-              checkEl.addEventListener("click", (e) => {
-                e.stopPropagation();
-                toggleDone(e);
-              });
+              checkEl.addEventListener("click", toggleDone);
             }
           }
         } else {
