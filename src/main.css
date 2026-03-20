@@ -3762,17 +3762,18 @@ body {
 .work-schedule-type-settings-add-btn {
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--text-ink);
-  background: var(--ui-surface-alt);
-  border: var(--line-l3);
-  border-radius: var(--modal-radius);
+  font-weight: 600;
+  color: var(--ui-btn-primary-fg);
+  background: var(--ui-btn-primary-bg);
+  border: 1px solid var(--ui-btn-primary-bg);
+  border-radius: 0;
   cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .work-schedule-type-settings-add-btn:hover {
-  background: var(--ui-surface-alt);
-  border-color: var(--line-l3-color);
+  background: var(--ui-btn-primary-hover);
+  border-color: var(--ui-btn-primary-hover);
 }
 
 .work-schedule-type-settings-list-head {

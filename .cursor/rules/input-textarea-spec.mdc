@@ -1,0 +1,60 @@
+---
+description: 일반 텍스트 인풋·텍스트에어리어 통일 명세
+globs: src/main.css, src/**/*.css, src/views/**/*.js, src/**/*.html
+alwaysApply: true
+---
+
+# 입력창 통일 규칙 (일반 텍스트 인풋 · 텍스트에어리어)
+
+모든 텍스트 입력창(`input[type="text"]`, `input[type="email"]`, `input[type="password"]` 등)과 `textarea`는 아래 명세로 통일한다.
+
+---
+
+## 1. 일반 텍스트 인풋 (Input)
+
+### 공통 구조
+- 상단: 레이블
+- 그 아래: 입력 영역(placeholder 또는 입력값), **밑줄만** 사용 (박스 테두리 없음)
+
+### 상태별 CSS
+
+| 상태 | 규칙 |
+|------|------|
+| **IDLE (기본)** | `border: none` · `border-bottom: 1px solid #C4BEA8` · `background: transparent` · placeholder 색 `#C4BEA8` |
+| **FOCUS** | `border-bottom: 1.5px solid #2A3828` · 레이블 색 `#2A3828` · 입력 텍스트 색 `#1A2218` |
+| **FILLED (입력 완료)** | `border-bottom: 1px solid #C4BEA8` · 텍스트 색 `#3D4A3E` · 레이블 색 `#A8A290` |
+| **ERROR** | `border-bottom: 1.5px solid #8B5C3A` · 레이블·에러메시지 색 `#8B5C3A` · 에러메시지는 border 아래 표시 |
+| **DISABLED** | `border-bottom: 1px solid #E8E2D2` · `opacity: 0.5` · `cursor: not-allowed` |
+
+### 색상 변수 매핑 (프로젝트에 있으면 사용)
+- `#C4BEA8` → `var(--text-placeholder)` 또는 동일 값
+- `#2A3828` → `var(--ui-btn-primary-bg)` / 강조
+- `#1A2218` → `var(--text-ink)`
+- `#3D4A3E` → `var(--text-body)`
+- `#A8A290` → `var(--text-caption-color)`
+- `#8B5C3A` → 에러용 (프로젝트 변수 있으면 사용)
+- `#E8E2D2` → 비활성 밑줄
+
+---
+
+## 2. 텍스트에어리어 (Textarea)
+
+### 공통
+- **박스 테두리 없음, border-bottom만** 사용 (인풋과 동일한 밑줄 스타일).
+
+### 상태별 CSS
+
+| 상태 | 규칙 |
+|------|------|
+| **IDLE** | `border: none` · **border-bottom만** 표시 · `resize: none` · `line-height: 1.8` |
+| **FOCUS** | `border-bottom: 1.5px solid #2A3828` · `background: rgba(42, 56, 40, 0.02)` |
+
+IDLE 시 border-bottom 두께/색은 일반 인풋 IDLE과 동일하게 1px solid #C4BEA8 로 맞춘다.
+
+---
+
+## 적용 시 유의사항
+
+- 기존에 `border` 전체를 쓰는 인풋/텍스트에어리어는 **밑줄형(border-bottom만)** 으로 바꾼다.
+- 레이블·에러메시지가 있는 컴포넌트는 위 색상 규칙을 레이블/에러에도 적용한다.
+- 모달·폼 등 **모든 화면**에서 동일 명세를 적용한다.

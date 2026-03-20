@@ -42,17 +42,18 @@ function getWorkTypeOptionsFull() {
       const arr = JSON.parse(raw);
       if (Array.isArray(arr) && arr.length > 0) {
         const normalized = arr.map(normalizeTypeEntry).filter((o) => o.name);
-        const onlyAllowed = normalized.filter((o) => ALLOWED_WORK_TYPE_NAMES.has(o.name));
-        if (onlyAllowed.length !== normalized.length || onlyAllowed.length !== defaultFull.length) {
-          try {
-            localStorage.setItem(WORK_TYPE_OPTIONS_KEY, JSON.stringify(defaultFull));
-          } catch (_) {}
-          return defaultFull;
+        const seen = new Set();
+        const merged = [];
+        for (const d of defaultFull) {
+          const fromStorage = normalized.find((o) => o.name === d.name);
+          merged.push(fromStorage ? { name: d.name, start: fromStorage.start || d.start, end: fromStorage.end || d.end } : d);
+          seen.add(d.name);
         }
-        const merged = onlyAllowed.map((o) => {
-          const def = defaultFull.find((d) => d.name === o.name);
-          return def ? { name: o.name, start: o.start || def.start, end: o.end || def.end } : o;
-        });
+        for (const o of normalized) {
+          if (seen.has(o.name)) continue;
+          merged.push({ name: o.name, start: o.start || "", end: o.end || "" });
+          seen.add(o.name);
+        }
         merged.sort((a, b) => {
           const i = WORK_TYPE_DISPLAY_ORDER.indexOf(a.name);
           const j = WORK_TYPE_DISPLAY_ORDER.indexOf(b.name);
@@ -836,10 +837,17 @@ export function render() {
           const saveRow = () => {
             updateWorkTypeOption(entry.name, startInp.value.trim(), endInp.value.trim());
           };
+          let saveRowTimer = null;
+          const saveRowDebounced = () => {
+            if (saveRowTimer) clearTimeout(saveRowTimer);
+            saveRowTimer = setTimeout(saveRow, 300);
+          };
           startInp.addEventListener("blur", saveRow);
           endInp.addEventListener("blur", saveRow);
           startInp.addEventListener("change", saveRow);
           endInp.addEventListener("change", saveRow);
+          startInp.addEventListener("input", saveRowDebounced);
+          endInp.addEventListener("input", saveRowDebounced);
           const delBtn = row.querySelector(".work-schedule-type-settings-del");
           if (delBtn) {
             delBtn.addEventListener("click", () => {
