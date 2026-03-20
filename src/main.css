@@ -471,6 +471,7 @@ body {
 /* 로그인 후 앱: 패널 제목·부제 통일 */
 #signin-page .dream-view-title,
 #signin-page .calendar-view-title,
+#signin-page .idea-view-title,
 #signin-page .kpi-view-title {
   font-family: var(--font-heading);
   font-weight: var(--fw-h1);
@@ -478,15 +479,6 @@ body {
   line-height: 1.25;
   color: var(--text-ink);
   letter-spacing: -0.02em;
-}
-
-#signin-page .idea-view-title {
-  font-family: var(--font-heading);
-  font-weight: 500;
-  font-size: var(--fs-h2);
-  line-height: 1.35;
-  color: var(--text-ink);
-  letter-spacing: -0.01em;
 }
 
 #signin-page .dream-view-label,
@@ -1007,13 +999,25 @@ body {
 }
 
 .app-sidebar-header {
+  position: relative;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   padding: 0.45rem 0.5rem;
-  border-bottom: var(--divider-default);
+  border-bottom: none;
   box-sizing: border-box;
+}
+
+/* 상단 << 버튼 아래 선: 24px 가로 여백, 1px, rgba(255,255,255,0.1) */
+.app-sidebar-header::after {
+  content: "";
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .app-sidebar.is-collapsed .app-sidebar-header {
@@ -1073,7 +1077,6 @@ body {
   position: relative;
   background: #344945;
   border: none;
-  border-bottom: var(--divider-subtle);
   border-radius: 0;
   color: rgba(255, 255, 255, 0.88);
   text-align: left;
@@ -1108,12 +1111,14 @@ body {
   display: block;
 }
 
+/* 비활성: rgba(255,255,255,0.25), 20px */
 .app-sidebar-item .app-sidebar-item-icon img {
-  filter: brightness(0) invert(1) opacity(0.82);
+  filter: brightness(0) invert(1) opacity(0.25);
 }
 
+/* 활성: #FFFFFF, 20px */
 .app-sidebar-item.active .app-sidebar-item-icon img {
-  filter: brightness(0) invert(1) opacity(0.96);
+  filter: brightness(0) invert(1) opacity(1);
 }
 
 .app-sidebar-item-label {
@@ -1124,7 +1129,7 @@ body {
   font-size: 0.8125rem;
   font-weight: 300;
   letter-spacing: 0.02em;
-  color: rgba(255, 255, 255, 0.88);
+  color: rgba(255, 255, 255, 0.25);
   font-family: inherit;
   flex: 1 1 auto;
   min-width: 0;
@@ -1160,15 +1165,14 @@ body {
 
 /* 액티브: 미니멀 — 짧은 왼쪽 바 + 아주 옅은 하이라이트만 (밝은 블록 X) */
 .app-sidebar-item.active {
-  background: rgba(255, 255, 255, 0.055);
+  background: rgba(255, 255, 255, 0.06);
   font-weight: 400;
   color: #ffffff;
-  border-bottom: var(--divider-subtle);
   box-shadow: none;
 }
 
 .app-sidebar-item.active .app-sidebar-item-label {
-  color: rgba(255, 255, 255, 0.98);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .app-sidebar-item.active::after {
@@ -1179,7 +1183,7 @@ body {
   left: 0;
   width: 2px;
   border-radius: 0;
-  background: var(--line-l8-color);
+  background: #7A9E8A;
 }
 
 .app-sidebar-item.active:hover {
@@ -8312,7 +8316,7 @@ body {
   min-width: 6.875rem;
 }
 
-/* 근무일 열만 고정 (가로 스크롤 시): 열+보더가 함께 고정, 셀 배경으로 스크롤 시 비침 방지 */
+/* 근무일 열만 고정 (가로 스크롤 시): 열 고정, 우측 보더는 box-shadow로 그려서 스크롤해도 같이 이동 안 함 */
 .work-schedule-table-wrap {
   overflow-x: auto;
 }
@@ -8322,7 +8326,8 @@ body {
   left: 0;
   z-index: 2;
   background: var(--content-bg);
-  box-shadow: 1px 0 0 var(--line-l3-color);
+  border-right: none;
+  box-shadow: 1px 0 0 0 var(--line-l3-color);
 }
 .work-schedule-table tbody tr:hover .work-schedule-cell-date {
   background: var(--ui-surface-alt) !important;
@@ -21739,14 +21744,6 @@ body.kpi-resizing {
 
 .dream-view-header {
   margin-bottom: 1.5rem;
-}
-
-.idea-view .dream-view-header {
-  padding: 1rem 1.25rem;
-  margin-left: -1rem;
-  margin-right: -1rem;
-  margin-bottom: 1.5rem;
-  border-bottom: var(--line-l3);
 }
 
 .dream-view-label {
