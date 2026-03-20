@@ -471,7 +471,6 @@ body {
 /* 로그인 후 앱: 패널 제목·부제 통일 */
 #signin-page .dream-view-title,
 #signin-page .calendar-view-title,
-#signin-page .idea-view-title,
 #signin-page .kpi-view-title {
   font-family: var(--font-heading);
   font-weight: var(--fw-h1);
@@ -479,6 +478,15 @@ body {
   line-height: 1.25;
   color: var(--text-ink);
   letter-spacing: -0.02em;
+}
+
+#signin-page .idea-view-title {
+  font-family: var(--font-heading);
+  font-weight: 500;
+  font-size: var(--fs-h2);
+  line-height: 1.35;
+  color: var(--text-ink);
+  letter-spacing: -0.01em;
 }
 
 #signin-page .dream-view-label,
@@ -21302,15 +21310,16 @@ body.kpi-resizing {
   box-shadow: none;
 }
 
-/* 나의 계정 위젯 제목: 기본정보, 나의 시급 계산하기, 색상 설정 등 */
+/* 나의 계정 위젯 제목: 기본정보, 나의 시급 계산하기, 색상 설정 등 — H2 계층 */
 .idea-view .time-dashboard-widget-title {
-  font-size: 0.9375rem;
-  font-weight: 300;
-  letter-spacing: 0.2em;
-  color: var(--text-muted);
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 0.09375rem solid rgba(220, 220, 218, 0.5);
+  font-family: var(--font-heading);
+  font-size: var(--fs-h2);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-ink);
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: var(--line-l3);
 }
 
 .idea-widget-colors {
@@ -21351,11 +21360,12 @@ body.kpi-resizing {
 .idea-colors-col .todo-settings-block-title {
   margin: 0 0 0.5rem;
   padding-bottom: 0.5rem;
-  font-size: 0.9rem;
-  font-weight: 300;
-  letter-spacing: 0.2em;
-  color: var(--text-muted);
-  border-bottom: var(--divider-default);
+  font-family: var(--font-heading);
+  font-size: var(--fs-h2);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-ink);
+  border-bottom: var(--line-l3);
 }
 .idea-colors-col .idea-colors-rows {
   display: flex;
@@ -21572,33 +21582,41 @@ body.kpi-resizing {
   box-shadow: none;
 }
 
-.idea-btn-calc,
-.idea-btn-logout {
-  font-family: inherit;
-  font-size: 0.75rem;
-  font-weight: 300;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 0 0 0.0625rem;
-  letter-spacing: 0.06em;
-  transition:
-    color 0.15s,
-    border-color 0.15s;
-  background: none;
-  border: none;
-  border-bottom: var(--line-l3);
-  border-radius: 0;
-}
-
+/* 나의 계정: 계산하기 = Primary, 로그아웃 = Secondary */
 .idea-btn-calc {
   margin-top: 0.875rem;
   align-self: flex-start;
+  font-family: var(--font-heading);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ui-btn-primary-fg);
+  background: var(--ui-btn-primary-bg);
+  border: none;
+  border-radius: 0;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: background 0.15s;
 }
 
-.idea-btn-calc:hover,
+.idea-btn-calc:hover {
+  background: var(--ui-btn-primary-hover);
+}
+
+.idea-btn-logout {
+  font-family: var(--font-heading);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ui-btn-secondary-color);
+  background: transparent;
+  border: var(--ui-btn-secondary-border);
+  border-radius: 0;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
 .idea-btn-logout:hover {
-  color: var(--text-body);
-  border-bottom-color: var(--line-l2-color);
+  background: var(--cb-bg-hover);
 }
 
 /* 나의 계정 - 기본 설정 (아이디, 웹사이트 폰트, 로그아웃) */
@@ -21721,6 +21739,14 @@ body.kpi-resizing {
 
 .dream-view-header {
   margin-bottom: 1.5rem;
+}
+
+.idea-view .dream-view-header {
+  padding: 1rem 1.25rem;
+  margin-left: -1rem;
+  margin-right: -1rem;
+  margin-bottom: 1.5rem;
+  border-bottom: var(--line-l3);
 }
 
 .dream-view-label {
