@@ -234,8 +234,21 @@ export function renderMonthlyContent(opts = {}) {
             const total = entries.reduce((s, e) => s + (parseFloat(e.hoursWorked) || 0), 0);
             item.innerHTML = `<span class="work-schedule-monthly-hours">${total ? total + "h" : "-"}</span>`;
           } else if (displayMode === "type") {
-            const types = entries.map((e) => (e.workType || "").trim() || "-").filter(Boolean);
-            item.innerHTML = `<span class="work-schedule-monthly-type">${types.length ? types.join(", ") : "-"}</span>`;
+            const types = [...new Set(entries.map((e) => (e.workType || "").trim()).filter(Boolean))];
+            if (types.length === 0) {
+              item.innerHTML = '<span class="work-schedule-monthly-type-pill is-placeholder">-</span>';
+            } else {
+              item.className = "work-schedule-monthly-entry work-schedule-monthly-entry--pills";
+              types.forEach((t) => {
+                const pill = document.createElement("span");
+                pill.className = "work-schedule-monthly-type-pill";
+                if (t === "초과근무") pill.classList.add("is-overtime");
+                else if (t === "조기퇴근") pill.classList.add("is-early");
+                else pill.classList.add("is-default");
+                pill.textContent = t;
+                item.appendChild(pill);
+              });
+            }
           } else {
             const totalBalance = entries.reduce((s, e) => s + (parseFloat(e.hours) || 0), 0);
             const sign = totalBalance > 0 ? "+ " : totalBalance < 0 ? "" : "";
