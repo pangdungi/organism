@@ -166,6 +166,12 @@ html {
   --divider-subtle: var(--line-l3);
   --line: var(--line-l2-color);
 
+  /* 입력창 통일 명세: IDLE 밑줄 #C4BEA8 / FOCUS 1.5px #2A3828 / DISABLED #E8E2D2 / textarea focus 배경 */
+  --input-border-idle: 1px solid var(--text-placeholder);
+  --input-border-focus: 1.5px solid var(--ui-btn-primary-bg);
+  --input-border-disabled: 1px solid #E8E2D2;
+  --input-focus-bg: rgba(42, 56, 40, 0.02);
+
   /* 프로그레스 바 공통 스펙: 트랙 #D8D2C0 / radius 0 / 기본 4px·얇은 2px·세그먼트 6px / 진행 #2A3828·완료 #7A9E8A·초과 #8B5C3A / transition width 0.3s */
   --progress-track-bg: #D8D2C0;
   --progress-radius: 0;
@@ -309,7 +315,8 @@ body {
 .kpi-goals-modal-panel,
 .asset-settings-panel,
 .diary-add-emotion-panel,
-.work-schedule-type-settings-panel {
+.work-schedule-type-settings-panel,
+.dream-kpi-log-panel {
   border-radius: var(--modal-radius) !important;
 }
 
@@ -351,7 +358,7 @@ body {
   font-weight: 300;
 }
 
-/* 폼 인풋: 밑줄형 · 강조선 Viridian (회색 박스 배경 제거) */
+/* 폼 인풋: 입력창 통일 명세 — 밑줄형 only, IDLE/FOCUS/DISABLED */
 #app input[type="text"],
 #app input[type="search"],
 #app input[type="email"],
@@ -362,10 +369,11 @@ body {
 #app textarea {
   background-color: transparent;
   border: none;
-  border-bottom: var(--line-l5);
+  border-bottom: var(--input-border-idle);
   border-radius: 0;
   box-shadow: none;
   padding: 0.5rem 0;
+  color: var(--text-body);
 }
 #app input[type="text"]:focus,
 #app input[type="search"]:focus,
@@ -379,8 +387,22 @@ body {
 #app textarea:focus {
   outline: none;
   box-shadow: none;
-  border-bottom: var(--line-l6);
-  padding-bottom: calc(0.5rem - 0.25px);
+  border-bottom: var(--input-border-focus);
+  padding-bottom: calc(0.5rem - 0.5px);
+  color: var(--text-ink);
+}
+#app input:disabled,
+#app textarea:disabled {
+  border-bottom: var(--input-border-disabled);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+#app textarea {
+  resize: none;
+  line-height: 1.8;
+}
+#app textarea:focus {
+  background: var(--input-focus-bg);
 }
 #app input[type="date"]:focus-visible,
 #app input[type="datetime-local"]:focus-visible {
@@ -815,19 +837,19 @@ body {
 .login-label {
   font-size: 0.9rem;
   font-weight: 500;
-  color: #1a1a2e;
+  color: var(--text-caption-color);
 }
 
 .login-input {
-  padding: 0.75rem 1rem;
+  width: 100%;
+  padding: 0.75rem 0;
   font-size: 1rem;
-  color: #1a1a2e;
-  background: #F5F1E8;
-  border: 0.09375rem solid rgba(0, 0, 0, 0.15);
-  border-radius: 0.625rem;
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
+  color: var(--text-body);
+  background: transparent;
+  border: none;
+  border-bottom: var(--input-border-idle);
+  border-radius: 0;
+  transition: border-color 0.2s;
 }
 
 .login-input::placeholder {
@@ -836,8 +858,9 @@ body {
 
 .login-input:focus {
   outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 0.1875rem rgba(99, 102, 241, 0.15);
+  box-shadow: none;
+  border-bottom: var(--input-border-focus);
+  color: var(--text-ink);
 }
 
 .login-show-pw {
@@ -3634,11 +3657,12 @@ body {
 .work-schedule-type-settings-default-start,
 .work-schedule-type-settings-default-end {
   width: 4.5rem;
-  padding: 0.4rem 0.5rem;
+  padding: 0.4rem 0;
   font-size: 0.9rem;
-  border: var(--line-l3);
-  border-radius: var(--modal-radius);
-  background: var(--content-bg);
+  border: none;
+  border-bottom: var(--input-border-idle);
+  border-radius: 0;
+  background: transparent;
   color: var(--text-body);
 }
 
@@ -3648,6 +3672,8 @@ body {
 .work-schedule-type-settings-default-end:focus-visible {
   outline: none;
   box-shadow: none;
+  border-bottom: var(--input-border-focus);
+  color: var(--text-ink);
 }
 
 .work-schedule-type-settings-default-sep {
@@ -3736,11 +3762,12 @@ body {
 .work-schedule-type-settings-input {
   flex: 1;
   min-width: 0;
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem 0;
   font-size: 0.9rem;
-  border: var(--line-l3);
-  border-radius: var(--modal-radius);
-  background: var(--content-bg);
+  border: none;
+  border-bottom: var(--input-border-idle);
+  border-radius: 0;
+  background: transparent;
   color: var(--text-body);
 }
 
@@ -3757,6 +3784,8 @@ body {
 .work-schedule-type-settings-input:focus-visible {
   outline: none;
   box-shadow: none;
+  border-bottom: var(--input-border-focus);
+  color: var(--text-ink);
 }
 
 .work-schedule-type-settings-add-btn {
@@ -3811,11 +3840,12 @@ body {
 .work-schedule-type-settings-row-end {
   width: 4rem;
   flex-shrink: 0;
-  padding: 0.35rem 0.4rem;
+  padding: 0.35rem 0;
   font-size: 0.85rem;
-  border: var(--line-l3);
-  border-radius: var(--modal-radius);
-  background: var(--content-bg);
+  border: none;
+  border-bottom: var(--input-border-idle);
+  border-radius: 0;
+  background: transparent;
   color: var(--text-body);
 }
 
@@ -3825,6 +3855,8 @@ body {
 .work-schedule-type-settings-row-end:focus-visible {
   outline: none;
   box-shadow: none;
+  border-bottom: var(--input-border-focus);
+  color: var(--text-ink);
 }
 
 .work-schedule-type-settings-row-no-time {
@@ -3838,11 +3870,12 @@ body {
 .work-schedule-type-settings-add-end {
   width: 4rem;
   flex-shrink: 0;
-  padding: 0.5rem 0.4rem;
+  padding: 0.5rem 0;
   font-size: 0.85rem;
-  border: var(--line-l3);
-  border-radius: var(--modal-radius);
-  background: var(--content-bg);
+  border: none;
+  border-bottom: var(--input-border-idle);
+  border-radius: 0;
+  background: transparent;
   color: var(--text-body);
 }
 
@@ -3852,6 +3885,8 @@ body {
 .work-schedule-type-settings-add-end:focus-visible {
   outline: none;
   box-shadow: none;
+  border-bottom: var(--input-border-focus);
+  color: var(--text-ink);
 }
 
 .work-schedule-view-tabs {
@@ -3916,18 +3951,23 @@ body {
   min-width: 3.5rem;
   padding: 0.05rem 0 0.25rem 0;
   border: none;
-  border-bottom: var(--divider-subtle);
+  border-bottom: var(--input-border-idle);
   border-radius: 0;
   background: transparent;
   font-family: var(--font-heading);
   font-weight: 600;
   font-size: 1.25rem;
   line-height: 1.2;
-  color: var(--text-ink);
+  color: var(--text-body);
   text-align: center;
   outline: none;
   box-sizing: content-box;
   vertical-align: baseline;
+}
+.work-schedule-daily-hours-input:focus {
+  border-bottom: var(--input-border-focus);
+  color: var(--text-ink);
+  box-shadow: none;
 }
 .work-schedule-daily-hours-unit {
   font-size: 0.875rem;
@@ -4278,17 +4318,21 @@ body {
 
 .asset-plan-input {
   width: 100%;
-  padding: 0.2rem 0.4rem;
+  padding: 0.2rem 0;
   font-size: 0.85rem;
   border: none;
+  border-bottom: var(--input-border-idle);
   border-radius: 0;
-  background: var(--content-bg);
+  background: transparent;
   font-family: inherit;
   color: var(--text-body);
 }
 
 .asset-plan-input:focus {
   outline: none;
+  box-shadow: none;
+  border-bottom: var(--input-border-focus);
+  color: var(--text-ink);
 }
 
 .asset-plan-cell-col4-calc {
@@ -4881,28 +4925,32 @@ body {
 .asset-settings-input {
   flex: 1;
   min-width: 0;
-  padding: 0.4rem 0.6rem;
+  padding: 0.4rem 0;
   cursor: pointer;
   font-size: 0.8125rem;
-  border: var(--line-l3);
-  border-radius: 0.375rem;
+  border: none;
+  border-bottom: var(--input-border-idle);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-body);
 }
 
 .asset-settings-input:focus {
   outline: none;
   cursor: text;
-  border-color: var(--line-l2-color);
   box-shadow: none;
+  border-bottom: var(--input-border-focus);
+  color: var(--text-ink);
 }
 
 .asset-settings-input--default {
-  background: rgba(196, 190, 168, 0.15);
+  background: transparent;
   cursor: default;
   color: var(--text-body);
 }
 .asset-settings-input--default:focus {
   cursor: default;
-  border-color: var(--line-l3-color);
+  border-bottom: var(--input-border-idle);
 }
 
 .asset-settings-remove {
@@ -5396,11 +5444,13 @@ body {
 .asset-expense-input-memo {
   width: 100%;
   min-width: 0;
-  padding: 0.2rem 0.4rem;
+  padding: 0.2rem 0;
   font-size: 0.875rem;
   border: none;
+  border-bottom: var(--input-border-idle);
   background: transparent;
   box-sizing: border-box;
+  color: var(--text-body);
 }
 
 .asset-expense-input-name:focus,
@@ -5408,6 +5458,9 @@ body {
 .asset-expense-input-amount:focus,
 .asset-expense-input-memo:focus {
   outline: none;
+  box-shadow: none;
+  border-bottom: var(--input-border-focus);
+  color: var(--text-ink);
 }
 
 .asset-expense-cell-date {
@@ -5456,7 +5509,7 @@ body {
   white-space: nowrap;
   padding: 0.2rem 0.4rem;
   font-size: 0.8125rem;
-  color: #9ca3af;
+  color: var(--text-placeholder);
 }
 
 /* 지출입력장 큰분류(입금/지출) 드롭다운 */
@@ -6197,12 +6250,13 @@ body {
   max-width: 11.25rem;
   margin: 0 auto;
   display: block;
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem 0;
   font-size: 0.95rem;
   font-variant-numeric: tabular-nums;
-  border: var(--line-l3);
-  border-radius: 0.375rem;
-  background: #F5F1E8;
+  border: none;
+  border-bottom: var(--input-border-idle);
+  border-radius: 0;
+  background: transparent;
   color: var(--text-body);
   text-align: center;
 }
@@ -6213,8 +6267,9 @@ body {
 
 .asset-networth-dashboard-target-input:focus {
   outline: none;
-  border-color: var(--line-l3-color);
-  box-shadow: 0 0 0 0.125rem rgba(0, 0, 0, 0.04);
+  box-shadow: none;
+  border-bottom: var(--input-border-focus);
+  color: var(--text-ink);
 }
 
 .asset-networth-dashboard-progress-wrap {
@@ -6600,17 +6655,23 @@ body {
 .asset-asset-input-sale-price,
 .asset-asset-input-loan {
   width: 100%;
-  padding: 0.2rem 0.4rem;
+  padding: 0.2rem 0;
   font-size: 0.8125rem;
   border: none;
+  border-bottom: var(--input-border-idle);
   background: transparent;
   font-family: inherit;
   box-sizing: border-box;
+  color: var(--text-body);
 }
 
+.asset-asset-input-contract:focus,
 .asset-asset-input-sale-price:focus,
 .asset-asset-input-loan:focus {
   outline: none;
+  box-shadow: none;
+  border-bottom: var(--input-border-focus);
+  color: var(--text-ink);
 }
 
 .asset-asset-asset-value-display {
@@ -6635,12 +6696,14 @@ body {
 .asset-asset-input-interest,
 .asset-asset-input-maturity-amt {
   width: 100%;
-  padding: 0.2rem 0.4rem;
+  padding: 0.2rem 0;
   font-size: 0.8125rem;
   border: none;
+  border-bottom: var(--input-border-idle);
   background: transparent;
   font-family: inherit;
   box-sizing: border-box;
+  color: var(--text-body);
 }
 
 .asset-asset-cell-date {
@@ -6717,20 +6780,25 @@ body {
 .asset-asset-input-interest:focus,
 .asset-asset-input-maturity-amt:focus {
   outline: none;
+  box-shadow: none;
+  border-bottom: var(--input-border-focus);
+  color: var(--text-ink);
 }
 
-/* 주식 입력창 - 테두리 제거 */
+/* 주식 입력창: 입력창 통일 명세 */
 .asset-stock-input-name,
 .asset-stock-input-current-price,
 .asset-stock-input-avg-price,
 .asset-stock-input-quantity {
   width: 100%;
-  padding: 0.2rem 0.4rem;
+  padding: 0.2rem 0;
   font-size: 0.8125rem;
   border: none;
+  border-bottom: var(--input-border-idle);
   background: transparent;
   font-family: inherit;
   box-sizing: border-box;
+  color: var(--text-body);
   outline: none;
 }
 
@@ -6743,8 +6811,9 @@ body {
 .asset-stock-input-avg-price:focus-visible,
 .asset-stock-input-quantity:focus-visible {
   outline: none;
-  border: none;
   box-shadow: none;
+  border-bottom: var(--input-border-focus);
+  color: var(--text-ink);
 }
 
 /* 보험/연금 입력창 - 주식과 동일 스타일 (테두리 제거) */
@@ -6760,13 +6829,15 @@ body {
 .asset-annuity-input-monthly,
 .asset-annuity-input-monthly-receipt {
   width: 100%;
-  padding: 0.2rem 0.4rem;
+  padding: 0.2rem 0;
   font-size: 0.8125rem;
   border: none;
+  border-bottom: var(--input-border-idle);
   background: transparent;
   font-family: inherit;
   box-sizing: border-box;
   outline: none;
+  color: var(--text-body);
 }
 
 .asset-insurance-input-name:focus,
@@ -6792,8 +6863,9 @@ body {
 .asset-annuity-input-monthly:focus-visible,
 .asset-annuity-input-monthly-receipt:focus-visible {
   outline: none;
-  border: none;
   box-shadow: none;
+  border-bottom: var(--input-border-focus);
+  color: var(--text-ink);
 }
 
 /* 주식 테이블 열 너비 */
@@ -8317,7 +8389,7 @@ body {
   min-width: 6.875rem;
 }
 
-/* 근무일 열만 고정 (가로 스크롤 시): 열 고정, 우측 보더는 box-shadow로 그려서 스크롤해도 같이 이동 안 함 */
+/* 근무일 열만 고정 (가로 스크롤 시): sticky + 좌·우 경계는 셀에 직접 그림(collapse 테이블은 스크롤 시 왼쪽 테두리가 밀려 사라질 수 있음) */
 .work-schedule-table-wrap {
   overflow-x: auto;
 }
@@ -8327,8 +8399,12 @@ body {
   left: 0;
   z-index: 2;
   background: var(--content-bg);
-  border-right: none;
-  box-shadow: 1px 0 0 0 var(--line-l3-color);
+  border-right: var(--line-l2);
+  /* 왼쪽: border-collapse 시 테이블 외곽선이 스크롤과 함께 가면 안 보임 → inset 그림자는 sticky 레이어에 고정 */
+  box-shadow: inset 1px 0 0 0 var(--line-l2-color);
+}
+.work-schedule-table thead .work-schedule-th-date {
+  z-index: 3;
 }
 .work-schedule-table tbody tr:hover .work-schedule-cell-date {
   background: var(--ui-surface-alt) !important;
@@ -8391,6 +8467,35 @@ body {
   box-shadow: none;
 }
 
+/* 근무표 셀 안 입력: 행 구분선과 밑줄이 겹쳐 보기 어려움 → idle/focus 모두 밑줄 제거 */
+#app .work-schedule-table input.work-schedule-input-start-time,
+#app .work-schedule-table input.work-schedule-input-end-time,
+#app .work-schedule-table input.work-schedule-input-memo,
+#app .work-schedule-table input.work-schedule-input-hours,
+#app .work-schedule-table input.work-schedule-input-hours-worked,
+#app .work-schedule-table input.time-input-task {
+  border: none !important;
+  border-bottom: none !important;
+  padding: 0.2rem 0.5rem !important;
+}
+#app .work-schedule-table input.work-schedule-input-start-time:focus,
+#app .work-schedule-table input.work-schedule-input-start-time:focus-visible,
+#app .work-schedule-table input.work-schedule-input-end-time:focus,
+#app .work-schedule-table input.work-schedule-input-end-time:focus-visible,
+#app .work-schedule-table input.work-schedule-input-memo:focus,
+#app .work-schedule-table input.work-schedule-input-memo:focus-visible,
+#app .work-schedule-table input.work-schedule-input-hours:focus,
+#app .work-schedule-table input.work-schedule-input-hours:focus-visible,
+#app .work-schedule-table input.work-schedule-input-hours-worked:focus,
+#app .work-schedule-table input.work-schedule-input-hours-worked:focus-visible,
+#app .work-schedule-table input.time-input-task:focus,
+#app .work-schedule-table input.time-input-task:focus-visible {
+  border: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+  padding: 0.2rem 0.5rem !important;
+}
+
 .work-schedule-select-type {
   width: 100%;
   padding: 0.35rem 0.5rem;
@@ -8403,7 +8508,6 @@ body {
 
 .work-schedule-cell-date {
   cursor: pointer;
-  position: relative;
   text-align: left;
   background: var(--content-bg) !important;
 }
@@ -11888,24 +11992,33 @@ body {
 .kpi-dream-declare-form input,
 .kpi-dream-declare-form textarea {
   width: 100%;
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem 0;
   font-family: inherit;
   font-size: inherit;
   line-height: 1.5;
-  border: var(--line-l3);
-  border-radius: 0.25rem;
+  border: none;
+  border-bottom: var(--input-border-idle);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-body);
   box-sizing: border-box;
 }
 
 .kpi-dream-declare-form textarea {
-  resize: vertical;
+  resize: none;
+  line-height: 1.8;
   min-height: 6.25rem;
 }
 
 .kpi-dream-declare-form input:focus,
 .kpi-dream-declare-form textarea:focus {
   outline: none;
-  border-color: var(--line-l2-color);
+  box-shadow: none;
+  border-bottom: var(--input-border-focus);
+  color: var(--text-ink);
+}
+.kpi-dream-declare-form textarea:focus {
+  background: var(--input-focus-bg);
 }
 
 .kpi-dream-declare-actions {
@@ -12299,17 +12412,21 @@ body {
 .kpi-goals-modal-form textarea,
 .kpi-goals-modal-form select {
   width: 100%;
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem 0;
   font-family: inherit;
   font-size: 0.9375rem;
   line-height: 1.5;
-  border: var(--line-l3);
-  border-radius: 0.25rem;
+  border: none;
+  border-bottom: var(--input-border-idle);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-body);
   box-sizing: border-box;
 }
 
 .kpi-goals-modal-form textarea {
-  resize: vertical;
+  resize: none;
+  line-height: 1.8;
   min-height: 4.5rem;
 }
 
@@ -12317,7 +12434,12 @@ body {
 .kpi-goals-modal-form textarea:focus,
 .kpi-goals-modal-form select:focus {
   outline: none;
-  border-color: var(--line-l2-color);
+  box-shadow: none;
+  border-bottom: var(--input-border-focus);
+  color: var(--text-ink);
+}
+.kpi-goals-modal-form textarea:focus {
+  background: var(--input-focus-bg);
 }
 
 .kpi-goals-modal-actions {
@@ -14041,13 +14163,19 @@ body.kpi-resizing {
   -webkit-appearance: none;
   appearance: none;
   border: none;
-  border-top: none;
-  border-bottom: var(--line-l3);
+  border-bottom: var(--input-border-idle);
   border-radius: 0;
   outline: none;
   resize: none;
+  line-height: 1.8;
   overflow-y: auto;
   box-sizing: border-box;
+  color: var(--text-body);
+}
+.time-task-log-memo-fields textarea.time-task-log-feedback:focus {
+  border-bottom: var(--input-border-focus);
+  background: var(--input-focus-bg) !important;
+  color: var(--text-ink);
 }
 .time-task-log-memo-fields .time-task-log-tags-wrap {
   margin-top: 0.25rem;
@@ -14117,11 +14245,19 @@ body.kpi-resizing {
   font-family: inherit;
   background: transparent;
   border: none;
-  border-bottom: var(--line-l3);
+  border-bottom: var(--input-border-idle);
   border-radius: 0;
   outline: none;
-  resize: vertical;
+  resize: none;
+  line-height: 1.8;
   min-height: 4rem;
+  color: var(--text-body);
+}
+.time-task-log-memo-inner-body textarea:focus {
+  border-bottom: var(--input-border-focus);
+  background: var(--input-focus-bg);
+  color: var(--text-ink);
+  box-shadow: none;
 }
 .time-task-log-memo-inner-body .time-task-log-tags-wrap {
   margin-top: 0.25rem;
@@ -14131,8 +14267,14 @@ body.kpi-resizing {
   padding: 0.5rem 0;
   font-size: 0.9rem;
   border: none;
-  border-bottom: var(--line-l3);
+  border-bottom: var(--input-border-idle);
   outline: none;
+  color: var(--text-body);
+}
+.time-task-log-memo-inner-body .time-task-log-tags-wrap input:focus {
+  border-bottom: var(--input-border-focus);
+  color: var(--text-ink);
+  box-shadow: none;
 }
 .time-task-log-memo-inner-footer {
   display: flex;
@@ -23529,13 +23671,13 @@ body.kpi-resizing {
 .dream-kpi-form textarea,
 .dream-kpi-form select {
   width: 100%;
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem 0;
   font-size: 0.9rem;
   font-family: inherit;
   color: var(--text-body);
   background: transparent;
   border: none;
-  border-bottom: var(--line-l3);
+  border-bottom: var(--input-border-idle);
   box-sizing: border-box;
 }
 
@@ -23552,11 +23694,17 @@ body.kpi-resizing {
 .dream-kpi-form textarea:focus,
 .dream-kpi-form select:focus {
   outline: none;
-  border-bottom-color: var(--accent-viridian);
+  box-shadow: none;
+  border-bottom: var(--input-border-focus);
+  color: var(--text-ink);
+}
+.dream-kpi-form textarea:focus {
+  background: var(--input-focus-bg);
 }
 
 .dream-kpi-form textarea {
   resize: none;
+  line-height: 1.8;
   height: 4.5rem;
   min-height: 4.5rem;
   max-height: 4.5rem;
@@ -23914,7 +24062,6 @@ body.kpi-resizing {
   padding: 0;
   background: var(--app-bg);
   border: var(--line-l2);
-  border-radius: var(--modal-radius);
   box-shadow: 0 0.25rem 1.25rem rgba(0, 0, 0, 0.08);
   overflow: hidden;
 }
@@ -23964,7 +24111,7 @@ body.kpi-resizing {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  padding: 0 1.25rem 1.25rem;
+  padding: 1rem 1.25rem 1.25rem;
 }
 
 .dream-kpi-log-section {
@@ -23994,17 +24141,18 @@ body.kpi-resizing {
 .dream-kpi-log-form input,
 .dream-kpi-log-form textarea {
   width: 100%;
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem 0;
   font-size: 0.9rem;
   font-family: inherit;
-  color: #1a1a2e;
-  background: #F5F1E8;
-  border: var(--line-l3);
+  color: var(--text-body);
+  background: transparent;
+  border: none;
+  border-bottom: var(--input-border-idle);
   box-sizing: border-box;
 }
 
 .dream-kpi-log-readonly {
-  background: var(--app-bg);
+  background: transparent;
   color: var(--text-muted);
 }
 
@@ -24016,11 +24164,17 @@ body.kpi-resizing {
 .dream-kpi-log-form input:focus,
 .dream-kpi-log-form textarea:focus {
   outline: none;
-  border-color: var(--accent-viridian);
+  box-shadow: none;
+  border-bottom: var(--input-border-focus);
+  color: var(--text-ink);
+}
+.dream-kpi-log-form textarea:focus {
+  background: var(--input-focus-bg);
 }
 
 .dream-kpi-log-form textarea {
   resize: none;
+  line-height: 1.8;
   height: 4.5rem;
   min-height: 4.5rem;
   max-height: 4.5rem;
@@ -24072,7 +24226,7 @@ body.kpi-resizing {
   color: var(--ui-btn-primary-fg);
   background: var(--ui-btn-primary-bg);
   border: none;
-  border-radius: 0 !important;
+  border-radius: var(--modal-radius) !important;
   cursor: pointer;
   transition: background 0.15s;
 }
