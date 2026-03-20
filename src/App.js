@@ -1,7 +1,10 @@
 import { signOut } from "./auth.js";
 import { observeDatePickerInit, initDatePickersIn } from "./utils/datePickerInit.js";
 import { getRoutineSyncedTaskNames } from "./utils/routineTimeSync.js";
-import { render as renderCalendar } from "./views/Calendar.js";
+import {
+  render as renderCalendar,
+  renderMobileScheduleCalendar,
+} from "./views/Calendar.js";
 import { saveTodoListBeforeUnmount } from "./views/TodoList.js";
 import { render as renderTime } from "./views/Time.js";
 import { render as renderWorkSchedule } from "./views/WorkSchedule.js";
@@ -29,6 +32,14 @@ const TABS = [
     id: "workschedule",
     label: "근무표",
     icon: "/toolbaricons/calendar-heart1.svg",
+    sidebarDesktopOnly: true,
+  },
+  {
+    id: "schedulecalendar",
+    label: "캘린더",
+    mobileLabel: "캘린더",
+    icon: "/toolbaricons/calendar-heart1.svg",
+    sidebarMobileOnly: true,
   },
   { id: "archive", label: "아카이브", icon: "/toolbaricons/harddrive.svg" },
 ];
@@ -38,6 +49,7 @@ const RENDERERS = {
   calendar: renderCalendar,
   time: renderTime,
   workschedule: renderWorkSchedule,
+  schedulecalendar: renderMobileScheduleCalendar,
   asset: renderAsset,
   dream: renderDream,
   sideincome: renderSideincome,
@@ -101,6 +113,12 @@ export function mountApp(container) {
       "app-sidebar-item" + (tab.id === currentTabId ? " active" : "");
     if (HIDE_ON_MOBILE_TAB_IDS.includes(tab.id)) {
       btn.classList.add("app-sidebar-item--hide-on-mobile");
+    }
+    if (tab.sidebarDesktopOnly) {
+      btn.classList.add("app-sidebar-item--desktop-only");
+    }
+    if (tab.sidebarMobileOnly) {
+      btn.classList.add("app-sidebar-item--mobile-only");
     }
     btn.dataset.tabId = tab.id;
     btn.title = tab.label;
@@ -180,7 +198,10 @@ export function mountApp(container) {
   const bottomNav = document.createElement("nav");
   bottomNav.className = "app-bottom-nav";
   bottomNav.setAttribute("aria-label", "하단 메뉴");
-  const mobileTabs = TABS.filter((t) => !HIDE_ON_MOBILE_TAB_IDS.includes(t.id));
+  const mobileTabs = TABS.filter(
+    (t) =>
+      !HIDE_ON_MOBILE_TAB_IDS.includes(t.id) && !t.sidebarDesktopOnly,
+  );
   mobileTabs.forEach((tab) => {
     const btn = document.createElement("button");
     btn.type = "button";

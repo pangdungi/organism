@@ -698,6 +698,11 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+/* 데스크탑: 모바일 전용 사이드바 탭 숨김 */
+.app-sidebar-item--mobile-only {
+  display: none !important;
+}
+
 .app-sidebar-item {
   background: #f2f2f2;
   border: none;
@@ -1251,6 +1256,14 @@ body {
     display: none !important;
   }
 
+  .app-sidebar-item--mobile-only {
+    display: flex !important;
+  }
+
+  .app-sidebar-item--desktop-only {
+    display: none !important;
+  }
+
   /* 오늘 탭: 모바일에서 세로 드래그(스크롤)로 전체 콘텐츠 볼 수 있게 */
   .app-main:has(.home-view) {
     overflow-y: auto !important;
@@ -1584,11 +1597,15 @@ body {
     color: #3a3a3a !important;
   }
 
-  /* 모바일: 할일/일정 전용 탭에서만 제목·탭 숨김 (홈 임베드 제외) */
-  .calendar-view .calendar-view-header .calendar-view-title {
+  /* 모바일: 할일/일정 전용 탭에서만 제목·탭 숨김 (홈 임베드·모바일 캘린더 단독 탭 제외) */
+  .calendar-view:not(.calendar-view--mobile-schedule)
+    .calendar-view-header
+    .calendar-view-title {
     display: none !important;
   }
-  .calendar-view .calendar-view-header .dream-view-label {
+  .calendar-view:not(.calendar-view--mobile-schedule)
+    .calendar-view-header
+    .dream-view-label {
     display: none !important;
   }
   .calendar-view .calendar-monthly-tabs-wrap {

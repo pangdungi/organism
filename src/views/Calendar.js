@@ -5520,7 +5520,21 @@ const CALENDAR_SUB_VIEWS = [
   { id: "annual", label: "연간" },
 ];
 
-function renderCalendarView(tabsElement) {
+const MOBILE_SCHEDULE_CAL_SUB_VIEWS = [
+  { id: "monthly", label: "월별" },
+  { id: "1week", label: "1주" },
+];
+
+/**
+ * 할일/일정 > 날짜 정하기 하위 뷰(월별·2주·1주·연간) 공통 셸
+ * @param {HTMLElement|null} tabsElement 상단 할일/일정 1~4번 탭(없으면 null)
+ * @param {{ subViewsList?: {id:string,label:string}[], storageKey?: string, forceInitialMonthlyOnMobile?: boolean }} opts
+ */
+function createCalendarSubViewRoot(tabsElement, opts = {}) {
+  const subViewsList = opts.subViewsList || CALENDAR_SUB_VIEWS;
+  const storageKey = opts.storageKey || "calendar-sub-view";
+  const forceInitialMonthlyOnMobile = !!opts.forceInitialMonthlyOnMobile;
+
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout calendar-view-with-subtabs";
 
@@ -5535,7 +5549,7 @@ function renderCalendarView(tabsElement) {
 
   const subTabs = document.createElement("div");
   subTabs.className = "calendar-sub-tabs";
-  CALENDAR_SUB_VIEWS.forEach((v, i) => {
+  subViewsList.forEach((v, i) => {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className =
@@ -5553,14 +5567,15 @@ function renderCalendarView(tabsElement) {
   contentArea.className = "calendar-view-content-area";
   wrap.appendChild(contentArea);
 
-  const CALENDAR_VIEW_KEY = "calendar-sub-view";
-  const savedSubView = localStorage.getItem(CALENDAR_VIEW_KEY) || "monthly";
+  const savedSubView = localStorage.getItem(storageKey) || "monthly";
   const isMobile = window.matchMedia("(max-width: 767px)").matches;
-  const initialSubView = isMobile
-    ? "monthly"
-    : CALENDAR_SUB_VIEWS.some((v) => v.id === savedSubView)
-      ? savedSubView
-      : "monthly";
+  const inList = subViewsList.some((v) => v.id === savedSubView);
+  const initialSubView =
+    forceInitialMonthlyOnMobile && isMobile
+      ? "monthly"
+      : inList
+        ? savedSubView
+        : subViewsList[0]?.id || "monthly";
 
   function placeSubTabsInNav() {
     const nav = contentArea.querySelector(".calendar-monthly-nav");
@@ -5574,7 +5589,10 @@ function renderCalendarView(tabsElement) {
   function renderSubView(subViewId) {
     if (subTabs.parentNode) subTabs.remove();
     contentArea.innerHTML = "";
-    dateDebug("renderSubView: saving before switch", { subViewId, hasSidebar: !!contentArea.querySelector(".calendar-todo-sidebar-body") });
+    dateDebug("renderSubView: saving before switch", {
+      subViewId,
+      hasSidebar: !!contentArea.querySelector(".calendar-todo-sidebar-body"),
+    });
     saveTodoListBeforeUnmount(contentArea);
     if (subViewId === "monthly") {
       contentArea.appendChild(renderMonthlyView(null));
@@ -5586,7 +5604,7 @@ function renderCalendarView(tabsElement) {
       contentArea.appendChild(renderAnnualView(null));
     }
     placeSubTabsInNav();
-    localStorage.setItem(CALENDAR_VIEW_KEY, subViewId);
+    localStorage.setItem(storageKey, subViewId);
   }
 
   subTabs.querySelectorAll(".calendar-sub-tab").forEach((btn) => {
@@ -5611,6 +5629,45 @@ function renderCalendarView(tabsElement) {
   renderSubView(initialSubView);
 
   return wrap;
+}
+
+function renderCalendarView(tabsElement) {
+  return createCalendarSubViewRoot(tabsElement, {
+    subViewsList: CALENDAR_SUB_VIEWS,
+    storageKey: "calendar-sub-view",
+    forceInitialMonthlyOnMobile: true,
+  });
+}
+
+/** 모바일 하단 '캘린더' 탭: 할일/일정의 월별·1주 뷰만 (상단 서브탭만 표시) */
+export function renderMobileScheduleCalendar() {
+  const el = document.createElement("div");
+  el.className =
+    "app-tab-panel-content calendar-view calendar-view--mobile-schedule";
+
+  const header = document.createElement("div");
+  header.className = "calendar-view-header dream-view-header-wrap";
+  const label = document.createElement("span");
+  label.className = "dream-view-label";
+  label.textContent = "SCHEDULE";
+  const titleEl = document.createElement("h1");
+  titleEl.className = "dream-view-title calendar-view-title";
+  titleEl.textContent = "캘린더";
+  header.appendChild(label);
+  header.appendChild(titleEl);
+  el.appendChild(header);
+
+  const contentWrap = document.createElement("div");
+  contentWrap.className = "calendar-content-wrap";
+  contentWrap.appendChild(
+    createCalendarSubViewRoot(null, {
+      subViewsList: MOBILE_SCHEDULE_CAL_SUB_VIEWS,
+      storageKey: "calendar-mobile-schedule-sub-view",
+      forceInitialMonthlyOnMobile: false,
+    }),
+  );
+  el.appendChild(contentWrap);
+  return el;
 }
 
 function renderEisenhowerView(tabsElement) {
