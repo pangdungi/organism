@@ -5663,7 +5663,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
     } else if (subViewId === "annual") {
       contentArea.appendChild(renderAnnualView(null));
     } else if (subViewId === "workschedule") {
-      contentArea.appendChild(renderWorkScheduleMonthlyContent({ hoursOnly: true }));
+      contentArea.appendChild(renderWorkScheduleMonthlyContent({ typeOnly: true }));
     }
     if (keepSubTabsOnTop) {
       wrap.insertBefore(subTabs, contentArea);

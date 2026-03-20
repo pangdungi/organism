@@ -94,12 +94,16 @@ const MONTH_NAMES_SHORT = [
 
 /**
  * 근무표 내부에서 사용하는 먼슬리 캘린더 콘텐츠
- * @param {{ hoursOnly?: boolean }} opts - hoursOnly: true면 근무시간만 표시(필터 버튼 숨김, 모바일 캘린더 탭용)
+ * @param {{ hoursOnly?: boolean, typeOnly?: boolean }} opts
+ *   - hoursOnly: true면 근무시간만 표시(필터 버튼 숨김)
+ *   - typeOnly: true면 근무유형만 표시(필터 버튼 숨김, 모바일 캘린더 탭용)
  */
 export function renderMonthlyContent(opts = {}) {
   const hoursOnly = !!opts.hoursOnly;
+  const typeOnly = !!opts.typeOnly;
+  const noFilter = hoursOnly || typeOnly;
   const el = document.createElement("div");
-  el.className = "work-schedule-monthly-content" + (hoursOnly ? " work-schedule-monthly-content--hours-only" : "");
+  el.className = "work-schedule-monthly-content" + (noFilter ? " work-schedule-monthly-content--hours-only" : "");
 
   const nav = document.createElement("div");
   nav.className = "work-schedule-monthly-nav";
@@ -156,7 +160,7 @@ export function renderMonthlyContent(opts = {}) {
     filterRow.appendChild(btnBalance);
   }
   topRow.appendChild(nav);
-  if (!hoursOnly) topRow.appendChild(filterRow);
+  if (!noFilter) topRow.appendChild(filterRow);
   el.appendChild(topRow);
 
   const calendarWrap = document.createElement("div");
@@ -164,9 +168,9 @@ export function renderMonthlyContent(opts = {}) {
 
   let currentYear = new Date().getFullYear();
   let currentMonth = new Date().getMonth();
-  let displayMode = "hours";
+  let displayMode = typeOnly ? "type" : "hours";
 
-  if (!hoursOnly) {
+  if (!noFilter) {
     filterRow.querySelectorAll(".work-schedule-monthly-filter-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         displayMode = btn.dataset.mode || "hours";

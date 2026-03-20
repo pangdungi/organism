@@ -2182,7 +2182,7 @@ body {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  /* 모바일 캘린더 탭 > 근무표: 월별보기 캘린더(근무시간만) */
+  /* 모바일 캘린더 탭 > 근무표: 월별보기 캘린더(근무유형만) */
   .calendar-view--mobile-schedule .calendar-view-content-area .work-schedule-monthly-content {
     width: 100%;
     min-height: 0;
@@ -2252,6 +2252,8 @@ body {
     flex: 0 0 auto;
     box-sizing: border-box;
     border: var(--divider-default);
+    border-left: none;
+    border-right: none;
     border-radius: 0 !important;
     padding: 0.5rem !important;
   }
@@ -3452,6 +3454,20 @@ body {
   margin: 0;
 }
 
+.work-schedule-header-inner .dream-view-label {
+  color: var(--text-muted);
+  font-family: var(--font-mono), "DM Mono", monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+}
+
+.work-schedule-header-inner .dream-view-title {
+  color: var(--text-ink);
+  font-family: var(--font-heading);
+  font-weight: var(--fw-h1);
+  font-size: var(--fs-h1);
+}
+
 .work-schedule-header-inner .work-schedule-settings-btn {
   margin-left: auto;
   padding: 0.35rem;
@@ -3714,6 +3730,11 @@ body {
 }
 
 .work-schedule-type-settings-th-action {
+  width: 2.5rem;
+  flex-shrink: 0;
+}
+
+.work-schedule-type-settings-row-action {
   width: 2.5rem;
   flex-shrink: 0;
 }
@@ -8079,9 +8100,10 @@ body {
 
 .work-schedule-title {
   margin: 0 0 0.5rem;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1a1a2e;
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-h1);
+  color: var(--text-ink);
+  font-family: var(--font-heading);
 }
 
 .work-schedule-desc {
@@ -8091,7 +8113,7 @@ body {
 }
 
 .work-schedule-table-wrap {
-  background: #F5F1E8;
+  background: var(--content-bg);
   border-top: var(--line-l3);
   border-bottom: var(--line-l3);
   border-left: none;
@@ -8129,8 +8151,8 @@ body {
 }
 
 .work-schedule-table th {
-  background: none;
-  font-weight: 300;
+  background: var(--content-bg);
+  font-weight: 500;
   font-size: 0.8125rem;
   color: var(--text-muted);
 }

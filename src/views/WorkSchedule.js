@@ -827,12 +827,14 @@ export function render() {
         const startVal = escapeHtml(entry.start);
         const endVal = escapeHtml(entry.end);
         if (isReadonly) {
-          const badgeText = CALC_PROTECTED_WORK_TYPES.includes(entry.name) ? "계산에 사용 (삭제 불가)" : "수정·삭제 불가";
+          const showTime = entry.start || entry.end;
+          const startDisplay = showTime ? (entry.start || "00:00") : "—";
+          const endDisplay = showTime ? (entry.end || "00:00") : "—";
           row.innerHTML =
-            `<span class="work-schedule-type-settings-row-no-time" aria-hidden="true">—</span>` +
-            `<span class="work-schedule-type-settings-row-no-time" aria-hidden="true">—</span>` +
+            `<span class="work-schedule-type-settings-row-no-time" aria-hidden="true">${escapeHtml(startDisplay)}</span>` +
+            `<span class="work-schedule-type-settings-row-no-time" aria-hidden="true">${escapeHtml(endDisplay)}</span>` +
             `<span class="work-schedule-type-settings-name">${escapeHtml(entry.name)}</span>` +
-            `<span class="work-schedule-type-settings-badge">${badgeText}</span>`;
+            `<span class="work-schedule-type-settings-row-action"></span>`;
         } else {
           row.innerHTML =
             `<input type="text" class="work-schedule-type-settings-row-start work-schedule-time-input" placeholder="hh:mm" value="${startVal}" maxlength="5" inputmode="numeric" autocomplete="off" />` +
