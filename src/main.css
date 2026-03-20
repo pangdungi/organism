@@ -6430,8 +6430,12 @@ body {
   border-right: none;
 }
 
+.asset-asset-table th,
+.asset-asset-table td {
+  background: var(--content-bg);
+}
+
 .asset-asset-table th {
-  background: rgba(232, 232, 230, 0.5);
   font-weight: 500;
   font-size: 0.8125rem;
   color: var(--text-muted);
@@ -6443,18 +6447,14 @@ body {
   position: sticky;
   left: 0;
   z-index: 2;
-  background: #F5F1E8;
+  background: var(--content-bg);
   box-shadow: 0.125rem 0 0.25rem -0.125rem rgba(0, 0, 0, 0.08);
-}
-
-.asset-asset-table th:first-child {
-  background: var(--ui-surface-alt);
 }
 
 /* 총자산 합계/소계 행 첫 셀 배경 */
 .asset-asset-table .asset-asset-row-totals td:first-child,
 .asset-asset-table .asset-asset-row-subtotals td:first-child {
-  background: var(--ui-surface-alt);
+  background: var(--content-bg);
 }
 
 .asset-asset-col-name {
@@ -6837,9 +6837,9 @@ body {
   border-radius: 0.375rem;
   white-space: nowrap;
   cursor: pointer;
-  background: var(--ui-surface-alt);
+  background: var(--content-bg);
   color: var(--text-body);
-  border: 0.09375rem solid transparent;
+  border: 0.09375rem solid var(--line-l3-color);
   transition:
     background 0.15s,
     border-color 0.15s;
@@ -7056,9 +7056,9 @@ body {
   border-radius: 0.375rem;
   white-space: nowrap;
   cursor: pointer;
-  background: var(--ui-surface-alt);
+  background: var(--content-bg);
   color: var(--text-body);
-  border: 0.09375rem solid transparent;
+  border: 0.09375rem solid var(--line-l3-color);
   transition:
     background 0.15s,
     border-color 0.15s;
@@ -7129,9 +7129,9 @@ body {
   border-radius: 0.375rem;
   white-space: nowrap;
   cursor: pointer;
-  background: var(--ui-surface-alt);
+  background: var(--content-bg);
   color: var(--text-body);
-  border: 0.09375rem solid transparent;
+  border: 0.09375rem solid var(--line-l3-color);
   transition:
     background 0.15s,
     border-color 0.15s;
@@ -7607,7 +7607,7 @@ body {
 }
 
 .asset-asset-row-totals {
-  background: var(--ui-surface-alt);
+  background: var(--content-bg);
   font-weight: 600;
   font-family: var(
     --app-font-family,
@@ -7637,7 +7637,7 @@ body {
 }
 
 .asset-asset-row-add {
-  background: var(--ui-surface-alt);
+  background: var(--content-bg);
 }
 
 .asset-asset-cell-add {
@@ -7786,8 +7786,12 @@ body {
   border-right: none;
 }
 
+.asset-debt-table th,
+.asset-debt-table td {
+  background: var(--content-bg);
+}
+
 .asset-debt-table th {
-  background: var(--ui-surface-alt);
   font-weight: 500;
   font-size: 0.8125rem;
   color: var(--text-muted);
@@ -7809,7 +7813,7 @@ body {
 
 .asset-debt-row-totals .asset-debt-cell-totals-label,
 .asset-debt-row-totals .asset-debt-cell-name {
-  background: var(--ui-surface-alt);
+  background: var(--content-bg);
 }
 
 /* 대출 테이블: 셀 min-width: max-content로 내용에 맞게 열 너비 자동 조절 */
@@ -7907,9 +7911,9 @@ body {
   border-radius: 0.375rem;
   white-space: nowrap;
   cursor: pointer;
-  background: var(--ui-surface-alt);
+  background: var(--content-bg);
   color: var(--text-body);
-  border: 0.09375rem solid transparent;
+  border: 0.09375rem solid var(--line-l3-color);
   transition: background 0.15s;
 }
 
@@ -7968,9 +7972,9 @@ body {
   border-radius: 0.375rem;
   white-space: nowrap;
   cursor: pointer;
-  background: var(--ui-surface-alt);
+  background: var(--content-bg);
   color: var(--text-body);
-  border: 0.09375rem solid transparent;
+  border: 0.09375rem solid var(--line-l3-color);
   transition:
     background 0.15s,
     border-color 0.15s;
@@ -8014,7 +8018,7 @@ body {
 }
 
 .asset-debt-row-totals {
-  background: var(--ui-surface-alt);
+  background: var(--content-bg);
   font-weight: 600;
   font-family: var(
     --app-font-family,
@@ -8114,6 +8118,7 @@ body {
   border-left: none;
   border-right: none;
   overflow: auto;
+  overflow-x: auto;
   box-shadow: none;
   overscroll-behavior-x: none;
   -webkit-overflow-scrolling: auto;
@@ -8127,6 +8132,7 @@ body {
 
 .work-schedule-table {
   width: 100%;
+  min-width: 48rem;
   border-collapse: collapse;
   font-size: 0.875rem;
 }
@@ -8138,6 +8144,8 @@ body {
   vertical-align: middle;
   border-bottom: var(--line-l3);
   border-right: var(--line-l3);
+  background: var(--content-bg);
+  white-space: nowrap;
 }
 
 .work-schedule-table th:last-child,
@@ -8146,21 +8154,20 @@ body {
 }
 
 .work-schedule-table th {
-  background: var(--content-bg);
   font-weight: 500;
   font-size: 0.8125rem;
   color: var(--text-muted);
 }
 
 .work-schedule-table tbody tr:hover td {
-  background: none;
+  background: var(--ui-surface-alt);
 }
 
 .work-schedule-tfoot {
   background: none;
 }
 .work-schedule-sum-row td {
-  background: none;
+  background: var(--content-bg);
   font-weight: 500;
   color: var(--text-body);
 }
@@ -8184,6 +8191,10 @@ body {
 .work-schedule-col-hours-worked {
   width: 1%;
   min-width: 4.375rem;
+}
+
+.work-schedule-table .work-schedule-cell-memo {
+  white-space: normal;
 }
 
 .work-schedule-cell-type {
@@ -8276,109 +8287,7 @@ body {
   min-width: 6.875rem;
 }
 
-/* 근무일·시작시간·마감시간 열 고정 (가로 스크롤 시) */
-.work-schedule-table .work-schedule-th-date,
-.work-schedule-table .work-schedule-cell-date {
-  position: sticky;
-  left: 0;
-  z-index: 2;
-  background: var(--content-bg, #F5F1E8);
-  box-shadow: 1px 0 0 var(--line-l3-color);
-}
-.work-schedule-table th.work-schedule-th-date {
-  background: none;
-}
-.work-schedule-table tbody tr:hover .work-schedule-cell-date {
-  background: none;
-}
-.work-schedule-table .work-schedule-sum-row .work-schedule-cell-date {
-  background: none;
-}
-.work-schedule-table .work-schedule-th-start-time,
-.work-schedule-table .work-schedule-cell-start-time {
-  position: sticky;
-  left: 6.875rem;
-  z-index: 2;
-  background: var(--content-bg, #F5F1E8);
-  box-shadow: 1px 0 0 var(--line-l3-color);
-}
-.work-schedule-table th.work-schedule-th-start-time {
-  background: none;
-}
-.work-schedule-table tbody tr:hover .work-schedule-cell-start-time {
-  background: none;
-}
-.work-schedule-table .work-schedule-sum-row .work-schedule-cell-start-time {
-  background: none;
-}
-.work-schedule-table .work-schedule-th-end-time,
-.work-schedule-table .work-schedule-cell-end-time {
-  position: sticky;
-  left: 10.625rem;
-  z-index: 2;
-  background: var(--content-bg, #F5F1E8);
-  box-shadow: 1px 0 0 var(--line-l3-color);
-}
-.work-schedule-table th.work-schedule-th-end-time {
-  background: none;
-}
-.work-schedule-table tbody tr:hover .work-schedule-cell-end-time {
-  background: none;
-}
-.work-schedule-table .work-schedule-sum-row .work-schedule-cell-end-time {
-  background: none;
-}
-
-/* 근무일·시작·마감 열 고정 (가로 스크롤 시) */
-.work-schedule-table th.work-schedule-th-date,
-.work-schedule-table td.work-schedule-cell-date {
-  position: sticky;
-  left: 0;
-  z-index: 2;
-  box-shadow: 1px 0 0 var(--line-l3-color);
-}
-.work-schedule-table th.work-schedule-th-date {
-  background: none;
-}
-.work-schedule-table td.work-schedule-cell-date {
-  background: none;
-}
-.work-schedule-table tbody tr:hover td.work-schedule-cell-date {
-  background: none;
-}
-.work-schedule-table th.work-schedule-th-start-time,
-.work-schedule-table td.work-schedule-cell-start-time {
-  position: sticky;
-  left: 6.875rem;
-  z-index: 2;
-  box-shadow: 1px 0 0 var(--line-l3-color);
-}
-.work-schedule-table th.work-schedule-th-start-time {
-  background: none;
-}
-.work-schedule-table tbody tr:hover td.work-schedule-cell-start-time {
-  background: none;
-}
-.work-schedule-table th.work-schedule-th-end-time,
-.work-schedule-table td.work-schedule-cell-end-time {
-  position: sticky;
-  left: 10.625rem;
-  z-index: 2;
-  box-shadow: 1px 0 0 var(--line-l3-color);
-}
-.work-schedule-table th.work-schedule-th-end-time {
-  background: none;
-}
-.work-schedule-table tbody tr:hover td.work-schedule-cell-end-time {
-  background: none;
-}
-.work-schedule-table .work-schedule-sum-row td:first-child,
-.work-schedule-table .work-schedule-sum-row td:nth-child(2),
-.work-schedule-table .work-schedule-sum-row td:nth-child(3) {
-  background: none;
-}
-
-/* 근무일·시작·마감 열 고정 (가로 스크롤 시 고정) */
+/* 근무일 열만 고정 (가로 스크롤 시): 열+보더가 함께 고정, 셀 배경으로 스크롤 시 비침 방지 */
 .work-schedule-table-wrap {
   overflow-x: auto;
 }
@@ -8387,50 +8296,20 @@ body {
   position: sticky;
   left: 0;
   z-index: 2;
-  box-shadow: 0.125rem 0 0.25rem -0.125rem rgba(0, 0, 0, 0.08);
+  background: var(--content-bg);
+  box-shadow: 1px 0 0 var(--line-l3-color);
 }
-.work-schedule-table th.work-schedule-th-date {
-  background: none;
+.work-schedule-table tbody tr:hover .work-schedule-cell-date {
+  background: var(--ui-surface-alt);
 }
-.work-schedule-table td.work-schedule-cell-date {
-  background: none;
-}
-.work-schedule-table .work-schedule-th-start-time,
-.work-schedule-table .work-schedule-cell-start-time {
-  position: sticky;
-  left: 6.875rem;
-  z-index: 2;
-  background: none;
-  box-shadow: 0.125rem 0 0.25rem -0.125rem rgba(0, 0, 0, 0.08);
-}
-.work-schedule-table .work-schedule-th-end-time,
-.work-schedule-table .work-schedule-cell-end-time {
-  position: sticky;
-  left: 10.625rem;
-  z-index: 2;
-  background: none;
-  box-shadow: 0.125rem 0 0.25rem -0.125rem rgba(0, 0, 0, 0.08);
+.work-schedule-table .work-schedule-sum-row .work-schedule-cell-date {
+  background: var(--content-bg);
 }
 .work-schedule-table td.work-schedule-cell-start-time,
 .work-schedule-table td.work-schedule-cell-end-time {
-  background: none !important;
-  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
-  font-weight: 500 !important;
-  color: var(--text-body) !important;
-}
-.work-schedule-table tbody tr:hover .work-schedule-cell-date {
-  background: none;
-}
-.work-schedule-table tbody tr:hover .work-schedule-cell-start-time,
-.work-schedule-table tbody tr:hover .work-schedule-cell-end-time {
-  background: none;
-}
-.work-schedule-table .work-schedule-sum-row .work-schedule-cell-date {
-  background: none;
-}
-.work-schedule-table .work-schedule-sum-row .work-schedule-cell-start-time,
-.work-schedule-table .work-schedule-sum-row .work-schedule-cell-end-time {
-  background: none;
+  font-family: "DM Mono", "SF Mono", Consolas, monospace;
+  font-weight: 500;
+  color: var(--text-body);
 }
 
 .work-schedule-col-hours {

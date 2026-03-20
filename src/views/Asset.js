@@ -5646,8 +5646,8 @@ function renderCashflowView() {
 
           return `
       <div class="asset-cashflow-flow-row ${hasArrow ? "has-arrow" : ""}">
-        <div class="asset-cashflow-flow-item" data-flow="${d.label}" style="background:${d.color}0d;border-color:${d.color}30">
-          <div class="asset-cashflow-flow-icon" style="background:${d.color}25;color:${d.color}">
+        <div class="asset-cashflow-flow-item" data-flow="${d.label}" style="background:${d.color}1a;border-color:${d.color}40">
+          <div class="asset-cashflow-flow-icon" style="background:${d.color}38;color:${d.color}">
             ${d.label === "수입" ? "↑" : d.label === "고정비" ? "⌂" : d.label === "변동비" ? "×" : d.label === "저축/투자" ? "○" : "✦"}
           </div>
           <div class="asset-cashflow-flow-content">
