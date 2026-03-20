@@ -3438,38 +3438,33 @@ body {
   box-sizing: border-box;
 }
 
+/* 근무표 헤더: 자산관리·꿈 뷰와 동일 (dream-view-label + dream-view-title 세로 배치) */
 .work-schedule-header {
   margin-bottom: 1rem;
 }
 
 .work-schedule-header-inner {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
-.work-schedule-header-inner .dream-view-label,
-.work-schedule-header-inner .dream-view-title {
+.work-schedule-header-title-wrap {
+  flex: 0 0 auto;
+}
+
+.work-schedule-header-title-wrap .dream-view-label,
+.work-schedule-header-title-wrap .dream-view-title {
   margin: 0;
 }
 
-.work-schedule-header-inner .dream-view-label {
-  color: var(--text-muted);
-  font-family: var(--font-mono), "DM Mono", monospace;
-  font-size: 0.65rem;
-  letter-spacing: 0.2em;
-}
-
-.work-schedule-header-inner .dream-view-title {
-  color: var(--text-ink);
-  font-family: var(--font-heading);
-  font-weight: var(--fw-h1);
-  font-size: var(--fs-h1);
+.work-schedule-header-title-wrap .dream-view-title {
+  margin-top: 0.375rem;
 }
 
 .work-schedule-header-inner .work-schedule-settings-btn {
-  margin-left: auto;
+  flex-shrink: 0;
   padding: 0.35rem;
   border: none;
   background: none;
@@ -6157,14 +6152,14 @@ body {
 
 .asset-networth-dashboard-progress-bar {
   height: 0.375rem;
-  background: var(--ui-surface-alt);
+  background: rgba(122, 158, 138, 0.2);
   border-radius: 62.4375rem;
   overflow: hidden;
 }
 
 .asset-networth-dashboard-progress-fill {
   height: 100%;
-  background: #1c1c1a;
+  background: var(--line-l8-color);
   border-radius: 62.4375rem;
   transition: width 0.3s ease;
 }
@@ -6213,20 +6208,20 @@ body {
 }
 
 .asset-debt-progress-remaining-value {
-  color: #6b21a8;
+  color: var(--line-l8-color);
   font-variant-numeric: tabular-nums;
 }
 
 .asset-debt-progress-bar {
   height: 0.3125rem;
-  background: var(--line-l3-color);
+  background: rgba(122, 158, 138, 0.2);
   border-radius: 62.4375rem;
   overflow: hidden;
 }
 
 .asset-debt-progress-fill {
   height: 100%;
-  background: #e0c4e8;
+  background: var(--line-l8-color);
   border-radius: 62.4375rem;
   transition: width 0.3s ease;
 }
@@ -6242,7 +6237,7 @@ body {
 
 .asset-debt-progress-percent {
   font-weight: 600;
-  color: #6b21a8;
+  color: var(--line-l8-color);
   font-variant-numeric: tabular-nums;
 }
 
@@ -6361,8 +6356,8 @@ body {
   display: inline-flex;
   align-items: center;
   padding: 0.35rem 0.75rem;
-  background: #c4dcc8;
-  color: #2d5a3d;
+  background: rgba(122, 158, 138, 0.2);
+  color: var(--line-l1-color);
   border-radius: 62.4375rem;
   font-size: 0.9rem;
   font-weight: 500;
@@ -6375,7 +6370,7 @@ body {
 
 .asset-asset-more {
   font-size: 1.2rem;
-  color: #9ca3af;
+  color: var(--text-muted);
   cursor: pointer;
 }
 
@@ -7707,8 +7702,8 @@ body {
   display: inline-flex;
   align-items: center;
   padding: 0.35rem 0.75rem;
-  background: #e0c4e8;
-  color: #6b21a8;
+  background: rgba(122, 158, 138, 0.2);
+  color: var(--line-l1-color);
   border-radius: 62.4375rem;
   font-size: 0.9rem;
   font-weight: 500;
@@ -26828,12 +26823,65 @@ body.kpi-resizing {
   min-height: 100%;
 }
 
-/* 1주 뷰: 데스크톱은 상단 요일 행만 사용, 셀 안 요일 라벨은 숨김 */
-.calendar-1week-day-weekday {
+/* 1주 뷰: 데스크톱도 모바일처럼 한 줄에 한 날짜씩 7행으로 표시 */
+.calendar-1week-view .calendar-monthly-grid {
+  display: flex;
+  flex-direction: column;
+}
+.calendar-1week-view .calendar-monthly-weekdays {
+  display: none !important;
+}
+.calendar-1week-view .calendar-1week-day-head {
+  display: flex !important;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin-bottom: 0.25rem;
+}
+.calendar-1week-view .calendar-1week-day-weekday {
+  display: inline !important;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.calendar-1week-view .calendar-monthly-week-wrap {
+  flex: 1;
+  min-height: 0;
+}
+.calendar-1week-view .calendar-monthly-week {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.calendar-1week-view .calendar-monthly-day {
+  width: 100%;
+  min-height: 4.5rem;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  border: var(--divider-default);
+  border-left: none;
+  border-right: none;
+  border-radius: 0 !important;
+  padding: 0.5rem !important;
+}
+.calendar-1week-view .calendar-monthly-day.empty {
   display: none;
 }
-.calendar-1week-day-head {
-  display: contents;
+.calendar-1week-view .calendar-monthly-day-num {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0;
+  text-align: left;
+}
+.calendar-1week-view .calendar-monthly-day-entries {
+  min-height: 2rem;
+}
+.calendar-1week-view .calendar-monthly-day-entries .calendar-monthly-span-bar {
+  left: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 /* 1주 뷰 - 7일 예상 타임라인 */
