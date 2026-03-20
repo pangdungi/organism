@@ -5566,7 +5566,6 @@ const CALENDAR_SUB_VIEWS = [
 
 const MOBILE_SCHEDULE_CAL_SUB_VIEWS = [
   { id: "monthly", label: "월별" },
-  { id: "2week", label: "2주" },
   { id: "1week", label: "1주" },
 ];
 
