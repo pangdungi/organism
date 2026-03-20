@@ -428,13 +428,9 @@ function createWorkTypeInput(initialValue, onUpdate, onTypeSelect) {
       const tagClass = "";
       const row = document.createElement("div");
       row.className = "time-task-name-option" + (isProtected ? " work-schedule-type-protected" : "");
-      row.innerHTML =
-        `<span class="time-task-tag ${tagClass}">${opt}</span>` +
-        (isProtected ? "" : `<button type="button" class="time-task-delete-btn" title="삭제">${DELETE_ICON}</button>`);
+      row.innerHTML = `<span class="time-task-tag ${tagClass}">${opt}</span>`;
       row.dataset.value = opt;
-      const delBtn = row.querySelector(".time-task-delete-btn");
-      row.addEventListener("click", (e) => {
-        if (e.target.closest(".time-task-delete-btn")) return;
+      row.addEventListener("click", () => {
         input.value = opt;
         showDisplay();
         panel.hidden = true;
@@ -442,13 +438,6 @@ function createWorkTypeInput(initialValue, onUpdate, onTypeSelect) {
         onTypeSelect?.(opt);
         onUpdate?.();
       });
-      if (delBtn) {
-        delBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          removeWorkTypeOption(opt);
-          renderPanel(input.value);
-        });
-      }
       panel.appendChild(row);
     });
 

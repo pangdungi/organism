@@ -23887,25 +23887,31 @@ body.kpi-resizing {
   position: relative;
   width: 100%;
   max-width: 30rem;
-  padding: 1.5rem;
-  background: #F5F1E8;
-  border: var(--line-l3);
+  padding: 0;
+  background: var(--app-bg);
+  border: var(--line-l2);
+  border-radius: var(--modal-radius);
   box-shadow: 0 0.25rem 1.25rem rgba(0, 0, 0, 0.08);
+  overflow: hidden;
 }
 
 .dream-kpi-log-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-bottom: 0.35rem;
+  padding: 1rem 1.25rem;
+  border-bottom: var(--line-l3);
+  flex-shrink: 0;
 }
 
 .dream-kpi-log-title {
   margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1a1a2e;
+  font-family: var(--font-heading);
+  font-size: var(--fs-h2);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-ink);
 }
 
 .dream-kpi-log-close {
@@ -23930,16 +23936,11 @@ body.kpi-resizing {
   color: var(--text-body);
 }
 
-.dream-kpi-log-subtitle {
-  margin: 0 0 1.25rem;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
 .dream-kpi-log-form {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  padding: 0 1.25rem 1.25rem;
 }
 
 .dream-kpi-log-section {
@@ -24020,10 +24021,11 @@ body.kpi-resizing {
   gap: 0.35rem;
   padding: 0.45rem 0.75rem;
   font-size: 0.85rem;
-  font-family: inherit;
-  color: var(--text-body);
-  background: #F5F1E8;
-  border: var(--line-l3);
+  font-family: var(--font-body);
+  color: var(--ui-btn-secondary-color);
+  background: transparent;
+  border: var(--ui-btn-secondary-border);
+  border-radius: 0;
   cursor: pointer;
 }
 
@@ -24032,21 +24034,23 @@ body.kpi-resizing {
 }
 
 .dream-kpi-log-status-btn:has(input:checked) {
-  background: var(--ui-surface-alt);
-  border-color: var(--line-l2-color);
+  background: var(--cb-bg-hover);
+  border: var(--ui-btn-secondary-border);
+  color: var(--ui-btn-secondary-color);
   font-weight: 500;
 }
 
 .dream-kpi-log-submit {
-  padding: 0.6rem 1rem;
-  font-size: 0.9rem;
+  padding: 0.65rem 1.25rem;
+  font-size: var(--fs-body);
   font-weight: 500;
-  font-family: inherit;
+  font-family: var(--font-heading);
   color: var(--ui-btn-primary-fg);
   background: var(--ui-btn-primary-bg);
   border: none;
-  border-radius: 0;
+  border-radius: 0 !important;
   cursor: pointer;
+  transition: background 0.15s;
 }
 
 .dream-kpi-log-submit:hover {

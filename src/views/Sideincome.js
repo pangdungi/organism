@@ -445,7 +445,6 @@ export function render() {
           <h3 class="dream-kpi-log-title">${isEdit ? "로그 수정" : "오늘의 수치 기록"}</h3>
           <button type="button" class="dream-kpi-log-close" title="닫기">×</button>
         </div>
-        <p class="dream-kpi-log-subtitle">${isEdit ? "기록을 수정합니다." : "설정한 KPI 기준으로 오늘 측정값을 기록하세요."}</p>
         <form class="dream-kpi-log-form">
           <div class="dream-kpi-log-section">
             <div class="dream-kpi-log-row">
@@ -543,7 +542,6 @@ export function render() {
           <h3 class="dream-kpi-log-title">${isEdit ? "부수입 로그 수정" : "부수입 로그 추가"}</h3>
           <button type="button" class="dream-kpi-log-close" title="닫기">×</button>
         </div>
-        <p class="dream-kpi-log-subtitle">${isEdit ? "기록을 수정합니다." : "부수입 경로에 수입 기록을 추가하세요."}</p>
         <form class="dream-kpi-log-form">
           <div class="dream-kpi-log-section">
             <div class="dream-kpi-log-row">
