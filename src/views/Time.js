@@ -4046,8 +4046,6 @@ export function render() {
   function setStartFromDatetime(dtStr) {
     if (!dtStr || typeof dtStr !== "string") {
       taskLogDateStart.value = "";
-      const fp = taskLogDateStart?._flatpickr;
-      if (fp) fp.clear();
       taskLogTimeStart.value = "";
       syncStartToHidden();
       return;
@@ -4072,10 +4070,6 @@ export function render() {
       taskLogTimeStart.value = "";
     }
     taskLogDateStart.value = dateStr;
-    const fp = taskLogDateStart?._flatpickr;
-    if (fp && dateStr) {
-      fp.setDate(dateStr + "T12:00:00", false);
-    }
     syncStartToHidden();
   }
 
@@ -9204,15 +9198,7 @@ export function render() {
       filterBar.querySelectorAll("[data-audit-range-hidden]").forEach((el) => {
         el.style.display = "none";
       });
-      /* 시간 보고서 날짜 선택 픽커에서는 삭제 버튼 숨김 */
-      if (startDateInput) {
-        startDateInput.dataset.hideDeleteBtn = "true";
-        const fp = startDateInput._flatpickr;
-        const delBtn = fp?.calendarContainer?.querySelector(
-          ".flatpickr-custom-btn-delete",
-        );
-        if (delBtn) delBtn.style.display = "none";
-      }
+      if (startDateInput) startDateInput.dataset.hideDeleteBtn = "true";
       if (filterType === "month" || filterType === "week") {
         filterType = "day";
         filterBar
@@ -9250,14 +9236,7 @@ export function render() {
       filterBar.querySelectorAll("[data-audit-range-hidden]").forEach((el) => {
         el.style.display = "";
       });
-      if (startDateInput) {
-        delete startDateInput.dataset.hideDeleteBtn;
-        const fp = startDateInput._flatpickr;
-        const delBtn = fp?.calendarContainer?.querySelector(
-          ".flatpickr-custom-btn-delete",
-        );
-        if (delBtn) delBtn.style.display = "";
-      }
+      if (startDateInput) delete startDateInput.dataset.hideDeleteBtn;
       dayWrap.style.display = filterType === "day" ? "" : "none";
       monthWrap.style.display = filterType === "month" ? "" : "none";
       rangeWrap.style.display = filterType === "range" ? "" : "none";

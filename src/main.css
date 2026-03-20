@@ -186,87 +186,9 @@ html {
   --gray-900: #111827;
 }
 
-/* 날짜 픽커: Flatpickr 회색 미니멀 */
-.flatpickr-day.selected,
-.flatpickr-day.startRange,
-.flatpickr-day.endRange,
-.flatpickr-day.selected.inRange,
-.flatpickr-day.startRange.inRange,
-.flatpickr-day.endRange.inRange,
-.flatpickr-day.selected:focus,
-.flatpickr-day.startRange:focus,
-.flatpickr-day.endRange:focus,
-.flatpickr-day.selected:hover,
-.flatpickr-day.startRange:hover,
-.flatpickr-day.endRange:hover,
-.flatpickr-day.selected.prevMonthDay,
-.flatpickr-day.startRange.prevMonthDay,
-.flatpickr-day.endRange.prevMonthDay,
-.flatpickr-day.selected.nextMonthDay,
-.flatpickr-day.startRange.nextMonthDay,
-.flatpickr-day.endRange.nextMonthDay {
-  background: var(--gray-500, #6b7280) !important;
-  border-color: var(--gray-500, #6b7280) !important;
-}
-
-.flatpickr-day.selected.startRange + .endRange:not(:nth-child(7n + 1)),
-.flatpickr-day.startRange.startRange + .endRange:not(:nth-child(7n + 1)),
-.flatpickr-day.endRange.startRange + .endRange:not(:nth-child(7n + 1)) {
-  box-shadow: -0.625rem 0 0 var(--gray-500, #6b7280) !important;
-}
-
-.flatpickr-day.week.selected {
-  box-shadow:
-    -0.3125rem 0 0 var(--gray-500, #6b7280),
-    0.3125rem 0 0 var(--gray-500, #6b7280) !important;
-}
-
-.flatpickr-day.today {
-  border-color: var(--gray-400, #9ca3af) !important;
-}
-
-.flatpickr-day.today:hover,
-.flatpickr-day.today:focus {
-  border-color: var(--gray-400, #9ca3af) !important;
-  background: var(--gray-400, #9ca3af) !important;
-}
-
-.flatpickr-months .flatpickr-month {
-  background: var(--gray-50, var(--app-bg)) !important;
-}
-
-.flatpickr-current-month .flatpickr-monthDropdown-months:hover,
-.flatpickr-current-month .numInputWrapper span.arrowUp:hover,
-.flatpickr-current-month .numInputWrapper span.arrowDown:hover {
-  background: var(--gray-200, #e5e7eb) !important;
-}
-
-/* Flatpickr 하단 삭제/오늘 버튼 (네이티브 픽커와 동일) */
-.flatpickr-custom-buttons {
-  display: flex;
-  justify-content: space-between;
-  padding: 0.5rem 0.75rem;
-  border-top: var(--line-l3);
-  background: var(--gray-50, var(--app-bg));
-}
-.flatpickr-custom-btn {
-  background: none;
-  border: none;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.875rem;
-  color: #000;
-  cursor: pointer;
-}
-.flatpickr-custom-btn:hover {
-  text-decoration: underline;
-}
-.flatpickr-custom-buttons--no-delete {
-  justify-content: flex-end;
-}
-
-/* 네이티브 date/time input (폰트·회색 톤 통일) */
-input[type="date"]:not([data-fp-initialized]),
-input[type="datetime-local"]:not([data-fp-initialized]),
+/* 날짜·시간 입력: 네이티브 픽커 통일 (폰트·톤) */
+input[type="date"],
+input[type="datetime-local"],
 input[type="time"] {
   accent-color: var(--gray-500, #6b7280);
   color-scheme: light;
@@ -1434,10 +1356,10 @@ body {
     font-weight: 400;
   }
   .todo-mobile-date-modal .todo-list-modal-confirm {
-    background: #111111;
+    background: var(--ui-btn-primary-bg);
   }
   .todo-mobile-date-modal .todo-list-modal-confirm:hover {
-    background: #111111;
+    background: var(--ui-btn-primary-hover);
   }
   /* 모바일: X 닫기 버튼 터치 영역 확대 */
   .todo-mobile-date-modal .todo-list-modal-close {
@@ -1447,6 +1369,21 @@ body {
     align-items: center;
     justify-content: center;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 모바일: 모달 열 때 자동 확대/이동 방지 — 입력창은 탭할 때만 키보드, 한 곳에 고정 */
+  [class$="modal"] {
+    position: fixed !important;
+    inset: 0 !important;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+  [class$="modal"] input,
+  [class$="modal"] textarea,
+  [class$="modal"] select {
+    font-size: 16px !important;
+    max-width: 100%;
   }
 }
 
@@ -1458,7 +1395,7 @@ body {
   left: 0;
   right: 0;
   z-index: 50;
-  background: #344945;
+  background: var(--accent-viridian);
   border-top: var(--line-l2);
   padding: 0.35rem 0;
   padding-bottom: env(safe-area-inset-bottom, 0.35rem);
@@ -1467,6 +1404,7 @@ body {
   justify-content: space-around;
   align-items: stretch;
   gap: 0;
+  font-family: var(--app-font-family);
 }
 
 .app-bottom-nav-item {
@@ -1526,6 +1464,7 @@ body {
 }
 
 .app-bottom-nav-label {
+  font-family: var(--app-font-family);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1818,7 +1757,8 @@ body {
   }
   .time-task-log-datetime-input-row input[type="date"],
   .time-task-log-datetime-input-row input.time-task-log-date-start,
-  .time-task-log-datetime-input-row input.flatpickr-input {
+  .time-task-log-datetime-input-row input[type="date"],
+.time-task-log-datetime-input-row input[type="datetime-local"] {
     grid-row: 1;
     grid-column: 1 / -1;
   }
@@ -1844,7 +1784,8 @@ body {
   }
   .time-task-log-datetime-input-row input[type="date"],
   .time-task-log-datetime-input-row input.time-task-log-date-start,
-  .time-task-log-datetime-input-row input.flatpickr-input,
+  .time-task-log-datetime-input-row input[type="date"],
+.time-task-log-datetime-input-row input[type="datetime-local"],
   .time-task-log-datetime-input-row input[type="text"] {
     padding: 0.35rem 0.4rem !important;
     font-size: 0.85rem !important;
@@ -1952,22 +1893,8 @@ body {
     z-index: 2;
     box-shadow: 0.125rem 0 0.25rem rgba(0, 0, 0, 0.06);
   }
-  .calendar-view-todo .todo-add-row .todo-add-cell-fill {
-    padding: 0;
-    width: 1%;
-  }
-  /* 에드 버튼: 설정 아이콘과 스타일 통일 (연한 회색, 얇은 선) */
-  .calendar-view-todo .todo-add-row .todo-add-btn {
-    color: var(--text-muted);
-    background: none;
-    border: none;
-    padding: 0.35rem;
-  }
-  .calendar-view-todo .todo-add-row .todo-add-btn svg {
+  .calendar-view-todo .todo-list-toolbar-add-wrap .todo-add-btn svg {
     stroke-width: 1.2;
-  }
-  .calendar-view-todo .todo-add-row .todo-add-btn:hover {
-    color: #9ca3af;
   }
   /* 모바일: 할일/일정 탭바(.time-view-tabs) 하단 보더 제거 */
   .calendar-view .time-view-tabs {
@@ -2327,7 +2254,7 @@ body {
     display: none !important;
   }
 
-  /* 모바일: 시간가계부 툴바 - + 버튼만 검은색, 과제 기록 텍스트는 옆에, 설정 톤다운 */
+  /* 모바일: 시간가계부 툴바 — 데스크탑과 동일 viridian·폰트·색상 통일 */
   .time-ledger-mobile-toolbar {
     display: flex;
     align-items: center;
@@ -2337,6 +2264,7 @@ body {
     border-bottom: var(--line-l3);
     border-right: none;
     flex-shrink: 0;
+    font-family: var(--app-font-family);
   }
   .time-ledger-mobile-toolbar-left {
     display: flex;
@@ -2353,20 +2281,22 @@ body {
     min-width: 2rem;
     min-height: 2rem;
     padding: 0;
-    background: #111111;
-    color: #fff;
+    background: var(--ui-btn-primary-bg);
+    color: var(--ui-btn-primary-fg);
     border: none;
     border-radius: 0.125rem;
     font-size: 1.1rem;
     line-height: 1;
   }
   .time-ledger-mobile-toolbar .time-btn-add:hover {
-    background: #333;
-    color: #fff;
+    background: var(--ui-btn-primary-hover);
+    color: var(--ui-btn-primary-fg);
   }
   .time-ledger-mobile-toolbar .time-ledger-add-label {
-    color: #000;
-    font-size: 1rem;
+    color: var(--text-ink);
+    font-family: var(--font-heading);
+    font-size: var(--fs-h2);
+    font-weight: var(--fw-h2);
   }
   .time-ledger-mobile-toolbar .time-task-setup-btn {
     display: flex;
@@ -2374,20 +2304,21 @@ body {
     min-width: 0;
     border: none;
     background: transparent;
+    color: var(--text-body);
   }
   .time-ledger-mobile-toolbar .time-task-setup-btn .time-btn-icon {
-    opacity: 0.5;
-    filter: brightness(0) saturate(100%) invert(60%);
+    opacity: 0.85;
+    filter: brightness(0) saturate(100%);
   }
   .time-ledger-mobile-toolbar .time-task-setup-btn:hover .time-btn-icon {
-    opacity: 0.7;
+    opacity: 1;
   }
   .time-ledger-view .date-divider {
     padding: 0.625rem 1.5rem 0.625rem;
-    font-size: 0.625rem;
-    font-family: "DM Mono", "SF Mono", Consolas, monospace;
+    font-size: var(--fs-caption);
+    font-family: var(--app-font-family);
     color: var(--text-muted);
-    font-weight: 300;
+    font-weight: var(--fw-body);
     letter-spacing: 0.08em;
     text-align: left;
     flex-shrink: 0;
@@ -7888,7 +7819,7 @@ body {
 }
 
 .work-schedule-cell-date .work-schedule-input-date,
-.work-schedule-cell-date input.flatpickr-input {
+.work-schedule-cell-date input[type="date"] {
   font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
   font-weight: 300 !important;
   color: #3a3a3a !important;
@@ -7909,7 +7840,7 @@ body {
 }
 
 .work-schedule-input-date,
-.work-schedule-input-date.flatpickr-input {
+.work-schedule-input-date[type="date"] {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -7923,9 +7854,9 @@ body {
 
 .work-schedule-input-date:focus,
 .work-schedule-input-date:focus-visible,
-.work-schedule-cell-date input.flatpickr-input:focus,
-.work-schedule-cell-date input.flatpickr-input:focus-visible,
-.work-schedule-cell-date input.flatpickr-input.active {
+.work-schedule-cell-date input[type="date"]:focus,
+.work-schedule-cell-date input[type="date"]:focus-visible,
+.work-schedule-cell-date input[type="date"].active {
   outline: none !important;
   box-shadow: none !important;
   border: none !important;
@@ -8313,6 +8244,12 @@ body {
   gap: 0.5rem;
   margin-bottom: 0.5rem;
   min-width: 0;
+  width: 100%;
+}
+.todo-list-toolbar-add-wrap {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
 }
 .todo-list-toolbar-row .todo-category-tabs {
   flex: 1 1 0;
@@ -8321,6 +8258,10 @@ body {
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.125rem 0.25rem;
 }
 .todo-list-toolbar-row .todo-category-tabs::-webkit-scrollbar {
   display: none;
@@ -8329,6 +8270,18 @@ body {
   flex-shrink: 0;
   margin-bottom: 0;
   margin-left: auto;
+}
+
+.calendar-todo-content .todo-list-toolbar-add-wrap .todo-add-btn,
+.todo-list-toolbar-add-wrap .todo-add-btn {
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  padding: 0.35rem;
+}
+.calendar-todo-content .todo-list-toolbar-add-wrap .todo-add-btn:hover,
+.todo-list-toolbar-add-wrap .todo-add-btn:hover {
+  color: var(--text-body);
 }
 
 .todo-list-toolbar {
@@ -10016,7 +9969,7 @@ body {
   color: #9ca3af;
 }
 
-/* 데스크톱: 헤더 플러스 슬롯 숨김 (모바일에서만 표시) */
+/* 레거시: 헤더 플러스 슬롯 (툴바 +로 통일, 미사용) */
 .todo-header-add-slot {
   display: none !important;
 }
@@ -12377,7 +12330,7 @@ body.kpi-resizing {
 }
 
 .time-view-tab.active {
-  color: #111827;
+  color: var(--text-ink);
   border-bottom-color: var(--line-l1-color);
   margin-bottom: 0;
 }
@@ -12949,7 +12902,11 @@ body.kpi-resizing {
 .time-task-log-scroll-area
   .time-task-log-datetime-fields-wrap
   .time-task-log-datetime-input-wrap
-  input.flatpickr-input {
+  input[type="date"],
+.time-task-log-scroll-area
+  .time-task-log-datetime-fields-wrap
+  .time-task-log-datetime-input-wrap
+  input[type="datetime-local"] {
   padding: 0.35rem 0.6rem;
   font-size: 1.4rem;
 }
@@ -14736,7 +14693,8 @@ body.kpi-resizing {
 }
 .time-task-log-datetime-input-row input[type="date"],
 .time-task-log-datetime-input-row input.time-task-log-date-start,
-.time-task-log-datetime-input-row input.flatpickr-input,
+.time-task-log-datetime-input-row input[type="date"],
+.time-task-log-datetime-input-row input[type="datetime-local"],
 .time-task-log-datetime-input-row input[type="text"] {
   flex: 1 1 0;
   min-width: 0;
@@ -14784,20 +14742,18 @@ body.kpi-resizing {
 
 /* 과제 기록 모달: datetime-onerow가 아닌 기존 datetime-input-wrap용 (다른 모달) */
 #app .time-task-log-modal .time-task-log-datetime-input-wrap input[type="date"],
+#app .time-task-log-modal .time-task-log-datetime-input-wrap input[type="datetime-local"],
 #app
   .time-task-log-modal
   .time-task-log-datetime-input-wrap
-  .time-task-log-date-start,
-#app
-  .time-task-log-modal
-  .time-task-log-datetime-input-wrap
-  input.flatpickr-input {
+  .time-task-log-date-start {
   font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
   font-weight: 300 !important;
 }
 .time-task-log-datetime-input-wrap input[type="date"],
 .time-task-log-datetime-input-wrap .time-task-log-date-start,
-.time-task-log-datetime-input-wrap input.flatpickr-input {
+.time-task-log-datetime-input-wrap input[type="date"],
+.time-task-log-datetime-input-wrap input[type="datetime-local"] {
   flex: 0 0 auto !important;
   min-width: 11rem !important;
   width: 11rem !important;
@@ -14812,9 +14768,12 @@ body.kpi-resizing {
 }
 .time-task-log-datetime-input-wrap input[type="date"]:focus,
 .time-task-log-datetime-input-wrap .time-task-log-date-start:focus,
-.time-task-log-datetime-input-wrap input.flatpickr-input:focus,
-.time-task-log-datetime-input-wrap input.flatpickr-input:focus-visible,
-.time-task-log-datetime-input-wrap input.flatpickr-input.active {
+.time-task-log-datetime-input-wrap input[type="date"],
+.time-task-log-datetime-input-wrap input[type="datetime-local"]:focus,
+.time-task-log-datetime-input-wrap input[type="date"],
+.time-task-log-datetime-input-wrap input[type="datetime-local"]:focus-visible,
+.time-task-log-datetime-input-wrap input[type="date"],
+.time-task-log-datetime-input-wrap input[type="datetime-local"].active {
   outline: none !important;
   box-shadow: none !important;
   border-bottom-color: #9ca3af !important;
@@ -22391,8 +22350,8 @@ body.kpi-resizing {
 .dream-kpi-modal-title {
   margin: 0;
   font-family: var(--font-heading);
-  font-size: var(--modal-close-fs);
-  font-weight: 200;
+  font-size: var(--fs-h2);
+  font-weight: 500;
   letter-spacing: -0.01em;
   color: var(--text-ink);
 }
@@ -22480,7 +22439,7 @@ body.kpi-resizing {
 .todo-reminder-modal .todo-reminder-date-row input.todo-reminder-date,
 .todo-reminder-modal
   .todo-reminder-date-row
-  input.flatpickr-input.todo-reminder-date {
+  input.todo-reminder-date[type="date"] {
   font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
 }
 

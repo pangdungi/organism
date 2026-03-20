@@ -1300,8 +1300,7 @@ function createTaskRow(taskData = {}, options = {}) {
       return;
     }
     startInput.focus();
-    if (startInput._flatpickr) startInput._flatpickr.open();
-    else if (typeof startInput.showPicker === "function") startInput.showPicker();
+    if (typeof startInput.showPicker === "function") startInput.showPicker();
     else startInput.click();
   });
   startWrap.style.cursor = "pointer";
@@ -1382,8 +1381,7 @@ function createTaskRow(taskData = {}, options = {}) {
       return;
     }
     dueInput.focus();
-    if (dueInput._flatpickr) dueInput._flatpickr.open();
-    else if (typeof dueInput.showPicker === "function") dueInput.showPicker();
+    if (typeof dueInput.showPicker === "function") dueInput.showPicker();
     else dueInput.click();
   });
   dueWrap.style.cursor = "pointer";
@@ -2009,7 +2007,7 @@ function renderSections(container, tasksData = [], options = {}) {
       showCheckboxTypeMenu,
       enableDragToCalendar,
       enableDragToEisenhower,
-      hideAddRow: section.id === "overdue",
+      hideAddRow: true,
       overdueColumnOrder: section.id === "overdue",
       eisenhowerSidebarFirst: eisenhowerSidebarFirst && section.id !== "overdue",
     };
@@ -2032,7 +2030,7 @@ function isOverdue(dueStr) {
 }
 
 export function render(options = {}) {
-  const { hideToolbar = false, hideHeader = false, settingsSlot = null, addButtonSlot = null, enableDragToCalendar = false, enableDragToEisenhower = false, initialActiveTabIndex = 0, eisenhowerFilter = "", eisenhowerSidebarFirst = false } = options;
+  const { hideToolbar = false, hideHeader = false, settingsSlot = null, enableDragToCalendar = false, enableDragToEisenhower = false, initialActiveTabIndex = 0, eisenhowerFilter = "", eisenhowerSidebarFirst = false } = options;
   const el = document.createElement("div");
   el.className = "app-tab-panel-content todo-list-view";
 
@@ -2262,38 +2260,36 @@ export function render(options = {}) {
   });
   tabButtons.forEach((b, i) => b.classList.toggle("active", i === safeIndex));
 
-  if (addButtonSlot) {
-    const headerAddBtn = document.createElement("button");
-    headerAddBtn.type = "button";
-    headerAddBtn.className = "todo-add-btn todo-header-add-btn";
-    headerAddBtn.title = "할 일 추가";
-    headerAddBtn.innerHTML = ADD_TASK_ICON;
-    headerAddBtn.addEventListener("click", () => {
-      const idx = activeSectionIndex;
-      if (idx < 0 || idx >= sectionResults.length) return;
-      const { section, wrap, updateCount } = sectionResults[idx];
-      if (section.id === "overdue") return;
-      const tbody = wrap.querySelector("tbody");
-      if (!tbody) return;
-      const addRow = tbody.querySelector(".todo-add-row");
-      const taskData = { sectionId: section.id, sectionLabel: section.label, name: "", done: false };
-      const taskId = getTaskId(taskData);
-      taskData.taskId = taskId;
-      const tr = createTaskRow(taskData, { showCategoryCol: false, hideCategoryCol: true, isSubtask: false, taskId, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, overdueColumnOrder: false, eisenhowerSidebarFirst });
-      if (addRow) {
-        tbody.insertBefore(tr, addRow.nextSibling);
-      } else if (tbody.firstChild) {
-        tbody.insertBefore(tr, tbody.firstChild);
-      } else {
-        tbody.appendChild(tr);
-      }
-      updateCount();
-      updateTabLabels();
-      const nameInput = tr.querySelector(".todo-cell-name input");
-      if (nameInput) nameInput.focus();
-    });
-    addButtonSlot.appendChild(headerAddBtn);
-  }
+  const headerAddWrap = document.createElement("div");
+  headerAddWrap.className = "todo-list-toolbar-add-wrap";
+  const headerAddBtn = document.createElement("button");
+  headerAddBtn.type = "button";
+  headerAddBtn.className = "todo-add-btn todo-header-add-btn";
+  headerAddBtn.title = "할 일 추가";
+  headerAddBtn.innerHTML = ADD_TASK_ICON;
+  headerAddBtn.addEventListener("click", () => {
+    const idx = activeSectionIndex;
+    if (idx < 0 || idx >= sectionResults.length) return;
+    const { section, wrap, updateCount } = sectionResults[idx];
+    if (section.id === "overdue") return;
+    const tbody = wrap.querySelector("tbody");
+    if (!tbody) return;
+    const taskData = { sectionId: section.id, sectionLabel: section.label, name: "", done: false };
+    const taskId = getTaskId(taskData);
+    taskData.taskId = taskId;
+    const tr = createTaskRow(taskData, { showCategoryCol: false, hideCategoryCol: true, isSubtask: false, taskId, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, overdueColumnOrder: false, eisenhowerSidebarFirst });
+    if (tbody.firstChild) {
+      tbody.insertBefore(tr, tbody.firstChild);
+    } else {
+      tbody.appendChild(tr);
+    }
+    updateCount();
+    updateTabLabels();
+    const nameInput = tr.querySelector(".todo-cell-name input");
+    if (nameInput) nameInput.focus();
+  });
+  headerAddWrap.appendChild(headerAddBtn);
+  toolbarRow.insertBefore(headerAddWrap, toolbarRow.firstChild);
 
   el.appendChild(sectionsWrap);
 
@@ -2419,7 +2415,6 @@ export function render(options = {}) {
       const targetResult = sectionResults.find((r) => r.wrap.dataset.section === targetSectionId);
       if (targetResult) {
         const targetTbody = targetResult.wrap.querySelector("tbody");
-        const addRow = targetTbody?.querySelector(".todo-add-row");
         const taskData = result.task;
         const taskId = getTaskId(taskData);
         taskData.taskId = taskId;
@@ -2430,7 +2425,11 @@ export function render(options = {}) {
           showCheckboxTypeMenu,
         });
         newTr.dataset.sectionId = targetSectionId;
-        if (addRow) targetTbody.insertBefore(newTr, addRow.nextSibling);
+        if (targetTbody.firstChild) {
+          targetTbody.insertBefore(newTr, targetTbody.firstChild);
+        } else {
+          targetTbody.appendChild(newTr);
+        }
 
         setSubtasks(taskId, subtasksToMove);
         const container = newTr.querySelector(".todo-subtasks-container");

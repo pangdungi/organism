@@ -67,6 +67,29 @@ function init() {
   const app = document.getElementById("app");
   if (app) app.style.display = "block";
 
+  // 모바일: 모달 열릴 때 자동 포커스(키보드) 방지 — 사용자가 입력창 탭할 때만 키보드
+  (function initMobileModalNoAutoFocus() {
+    const isMobile = () => window.matchMedia("(max-width: 48rem)").matches;
+    const blurInput = () => {
+      const a = document.activeElement;
+      if (a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA" || a.tagName === "SELECT")) a.blur();
+    };
+    const observer = new MutationObserver((mutations) => {
+      if (!isMobile()) return;
+      for (const m of mutations) {
+        if (m.type === "attributes" && m.attributeName === "hidden") {
+          const el = m.target;
+          if (!el.hasAttribute?.("hidden") && el.getAttribute?.("class")?.includes("modal")) {
+            blurInput();
+            [0, 50, 150, 300].forEach((ms) => setTimeout(blurInput, ms));
+            break;
+          }
+        }
+      }
+    });
+    observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["hidden"] });
+  })();
+
   async function showInitialPage() {
     if (supabase) {
       const { data: { session } } = await supabase.auth.getSession();
