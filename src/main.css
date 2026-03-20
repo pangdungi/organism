@@ -116,7 +116,8 @@ html {
   --text-body: #3d4a42; /* 본문·할일 이름·숫자 */
   --text-muted: #7a8c80; /* 보조·날짜시간 보조 */
   --text-caption-color: #b0bdb4; /* 잉크 희미 · 라벨·캡션 */
-  --text-placeholder: #b0bdb4; /* placeholder (잉크 희미) */
+  --text-placeholder: #c5cec8; /* placeholder (한 단계 더 흐림 · 타이핑 값과 구분) */
+  --text-placeholder-hint: #d2d9d5; /* placeholder 더 흐림 (시간 등 짧은 힌트) */
 
   --accent-viridian: #344945;
   --app-bg: #F5F1E8;
@@ -726,7 +727,7 @@ body {
 }
 
 .login-input::placeholder {
-  color: #999;
+  color: var(--text-placeholder);
 }
 
 .login-input:focus {
@@ -1384,6 +1385,58 @@ body {
   [class$="modal"] select {
     font-size: 16px !important;
     max-width: 100%;
+  }
+
+  /* 모바일: 할일 추가/수정 모달 — 패널·시작일·마감일·리마인더 넘침 방지, 시간 입력 높이 통일 */
+  .todo-task-edit-modal .todo-list-modal {
+    padding: 0.75rem;
+    align-items: safe center;
+    box-sizing: border-box;
+  }
+  .todo-task-edit-modal .todo-list-modal-panel.todo-task-edit-panel {
+    max-width: min(22rem, calc(100vw - 1.5rem));
+    width: 100%;
+    margin: auto;
+    box-sizing: border-box;
+  }
+  .todo-task-edit-modal .todo-task-edit-body {
+    padding: 0.875rem 1rem;
+    overflow-x: hidden;
+    box-sizing: border-box;
+  }
+  .todo-task-edit-modal .todo-task-edit-field {
+    max-width: 100%;
+  }
+  .todo-task-edit-modal .todo-task-edit-name,
+  .todo-task-edit-modal .todo-task-edit-start,
+  .todo-task-edit-modal .todo-task-edit-due,
+  .todo-task-edit-modal .todo-task-edit-reminder-date,
+  .todo-task-edit-modal .todo-task-edit-reminder-time,
+  .todo-task-edit-modal .todo-task-edit-eisenhower {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .todo-task-edit-modal .todo-task-edit-start,
+  .todo-task-edit-modal .todo-task-edit-due,
+  .todo-task-edit-modal .todo-task-edit-reminder-date,
+  .todo-task-edit-modal .todo-task-edit-reminder-time,
+  .todo-task-edit-modal .todo-task-edit-eisenhower {
+    height: 2.5rem !important;
+    min-height: 2.5rem !important;
+  }
+  .todo-task-edit-modal .todo-task-edit-reminder-row {
+    flex-direction: column;
+    gap: 0.5rem;
+    max-width: 100%;
+  }
+  .todo-task-edit-modal .todo-task-edit-reminder-row .todo-task-edit-reminder-date,
+  .todo-task-edit-modal .todo-task-edit-reminder-row .todo-task-edit-reminder-time {
+    flex: none;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0;
   }
 }
 
@@ -2108,11 +2161,30 @@ body {
   }
   .calendar-view-todo .calendar-todo-content .todo-list-toolbar-row {
     flex-shrink: 0;
+    flex-wrap: nowrap;
     z-index: 10;
     background: #F5F1E8;
     border-bottom: var(--divider-subtle);
     margin-bottom: 0;
     padding: 0 1.5rem 0.25rem;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-list-toolbar-row .todo-category-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    flex-shrink: 1;
+    min-width: 0;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-list-toolbar-row .todo-category-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-list-toolbar-row .todo-category-tab {
+    flex-shrink: 0;
   }
   .calendar-view-todo .calendar-todo-content .todo-category-tabs {
     font-size: 0.625rem;
@@ -2139,7 +2211,7 @@ body {
     flex-direction: column;
     overflow: hidden;
   }
-  /* 모바일: 스크롤을 테이블 래퍼로 두어 thead가 상단에 고정되도록 */
+  /* 모바일: 스크롤을 테이블 래퍼로 두어 thead가 상단에 고정되도록. 패딩 대신 테이블 마진으로 여백 처리해 스크롤 시 틈새로 내용이 비치지 않게 함 */
   .calendar-view-todo .calendar-todo-content .todo-table-wrap {
     flex: 1 1 0;
     min-height: 0;
@@ -2147,12 +2219,16 @@ body {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     max-width: 100%;
+    box-sizing: border-box;
+    background: var(--content-bg, #F5F1E8);
   }
   .calendar-view-todo .calendar-todo-content .todo-table {
     display: table;
     width: 100%;
     min-width: min-content;
     border-collapse: collapse;
+    margin-left: 1rem;
+    margin-right: 1rem;
   }
   .calendar-view-todo .calendar-todo-content .todo-table thead {
     display: table-header-group;
@@ -2167,10 +2243,23 @@ body {
   .calendar-view-todo .calendar-todo-content .todo-table thead th.todo-th-name {
     z-index: 4;
   }
-  /* 모바일: 할일 테이블 왼쪽 패딩을 홈 할일(1.75rem)과 동일하게 */
-  .calendar-view-todo .calendar-todo-content .todo-table thead th:first-child,
-  .calendar-view-todo .calendar-todo-content .todo-table tbody td:first-child {
-    padding-left: 1.75rem !important;
+  /* 모바일: 체크박스·할일이름 열 정상 정렬 (패딩은 table-wrap에만 적용) */
+  .calendar-view-todo .calendar-todo-content .todo-table tbody tr.todo-task-row td.todo-cell-done,
+  .calendar-view-todo .calendar-todo-content .todo-table tbody tr.todo-task-row td.todo-cell-name {
+    vertical-align: middle;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-table tbody tr.todo-task-row td.todo-cell-done .todo-done-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-table tbody tr.todo-task-row td.todo-cell-name .todo-cell-name-wrap {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 0.5rem;
   }
   .calendar-view-todo .calendar-todo-content .todo-table tbody {
     display: table-row-group;
@@ -2201,6 +2290,15 @@ body {
     input {
     font-size: 0.8125rem;
     font-weight: 300;
+  }
+  /* 모바일: 할일 카드 영역 스크롤 */
+  .calendar-view-todo .calendar-todo-content .todo-cards-wrap {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding: 0.75rem 1rem;
   }
 
   /* 모바일 오늘 탭: 이벤트 영역 가로 한 줄 + 가로 스크롤 */
@@ -5498,7 +5596,7 @@ body {
 }
 
 .asset-networth-dashboard-target-input::placeholder {
-  color: #9ca3af;
+  color: var(--text-placeholder);
 }
 
 .asset-networth-dashboard-target-input:focus {
@@ -8233,6 +8331,10 @@ body {
   display: none;
 }
 
+.todo-list-view.hide-completed .todo-card:has(.todo-done-check:checked) {
+  display: none;
+}
+
 .todo-list-view.hide-completed
   .todo-subtask-item:has(.todo-done-check:checked) {
   display: none;
@@ -8270,18 +8372,6 @@ body {
   flex-shrink: 0;
   margin-bottom: 0;
   margin-left: auto;
-}
-
-.calendar-todo-content .todo-list-toolbar-add-wrap .todo-add-btn,
-.todo-list-toolbar-add-wrap .todo-add-btn {
-  color: var(--text-muted);
-  background: none;
-  border: none;
-  padding: 0.35rem;
-}
-.calendar-todo-content .todo-list-toolbar-add-wrap .todo-add-btn:hover,
-.todo-list-toolbar-add-wrap .todo-add-btn:hover {
-  color: var(--text-body);
 }
 
 .todo-list-toolbar {
@@ -8435,27 +8525,19 @@ body {
   z-index: 1100;
   min-width: 8rem;
   padding: 0.25rem 0;
-  background: #F5F1E8;
-  border: var(--line-l3);
+  background: var(--content-bg);
+  border: var(--line-l4);
   border-radius: 0.5rem;
-  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.15);
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.12);
+  font-family: var(--font-body);
 }
 
 .todo-braindump-context-menu-item {
   display: block;
   width: 100%;
   padding: 0.5rem 1rem;
-  font-size: 0.9rem;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-size: var(--fs-body);
+  font-family: var(--font-body);
   text-align: left;
   color: var(--text-body);
   background: none;
@@ -8549,9 +8631,10 @@ body {
   width: 100%;
   max-width: 30rem;
   max-height: 85vh;
-  background: #F5F1E8;
+  background: var(--content-bg);
+  border: var(--line-l4);
   border-radius: 0.75rem;
-  box-shadow: 0 0.625rem 2.5rem rgba(0, 0, 0, 0.15);
+  box-shadow: 0 0.25rem 1.25rem rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -8562,8 +8645,8 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.25rem;
-  border-bottom: var(--line-l3);
-  background: #F5F1E8;
+  border-bottom: var(--line-l4);
+  background: var(--content-bg);
 }
 
 .todo-settings-title {
@@ -8815,18 +8898,20 @@ body {
 
 .todo-settings-color-modal-panel {
   position: relative;
-  background: #fff;
+  background: var(--content-bg);
+  border: var(--line-l4);
   border-radius: 0.75rem;
   padding: 1.25rem;
   min-width: 16.25rem;
-  box-shadow: 0 0.625rem 2.5rem rgba(0, 0, 0, 0.15);
+  box-shadow: 0 0.25rem 1.25rem rgba(0, 0, 0, 0.1);
 }
 
 .todo-settings-color-modal-title {
   margin: 0 0 1rem;
-  font-size: 0.95rem;
-  font-weight: 500;
-  color: var(--text-body);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  font-family: var(--font-body);
+  color: var(--text-ink);
 }
 
 .todo-settings-color-modal-swatches {
@@ -8849,27 +8934,28 @@ body {
 }
 
 .todo-settings-color-modal-swatch:hover {
-  border-color: #9ca3af;
+  border-color: var(--text-muted);
 }
 
 .todo-settings-color-modal-swatch.selected {
-  border-color: var(--text-body);
-  box-shadow: 0 0 0 0.0625rem #fff;
+  border-color: var(--accent-viridian);
+  box-shadow: 0 0 0 0.0625rem var(--content-bg);
 }
 
 .todo-settings-color-modal-close {
   width: 100%;
-  padding: 0.5rem;
-  font-size: 0.9rem;
-  color: #fff;
-  background: #111111;
+  padding: 0.6rem 1rem;
+  font-size: var(--fs-body);
+  font-family: var(--font-body);
+  color: var(--ui-btn-primary-fg);
+  background: var(--ui-btn-primary-bg);
   border: none;
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   cursor: pointer;
 }
 
 .todo-settings-color-modal-close:hover {
-  background: #1c1c1a;
+  background: var(--ui-btn-primary-hover);
 }
 
 .todo-settings-footer {
@@ -8880,24 +8966,25 @@ body {
 .todo-settings-save {
   width: 100%;
   padding: 0.6rem 1rem;
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
+  font-family: var(--font-body);
   font-weight: 400;
-  color: #fff;
-  background: #111111;
+  color: var(--ui-btn-primary-fg);
+  background: var(--ui-btn-primary-bg);
   border: none;
   border-radius: 0.5rem;
   cursor: pointer;
 }
 
 .todo-settings-save:hover {
-  background: #1c1c1a;
+  background: var(--ui-btn-primary-hover);
 }
 
 /* ----- 리스트 모달 (추가/편집/삭제 확인) 통일 디자인 ----- */
 .todo-list-modal {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -8914,9 +9001,10 @@ body {
   position: relative;
   width: 100%;
   max-width: 22.5rem;
-  background: #F5F1E8;
-  border-radius: 0.75rem;
-  box-shadow: 0 0.625rem 2.5rem rgba(0, 0, 0, 0.15);
+  background: var(--content-bg);
+  border: var(--line-l4);
+  box-shadow: 0 0.25rem 1.25rem rgba(0, 0, 0, 0.1);
+  border-radius: 0.75rem !important;
   overflow: hidden;
 }
 
@@ -8930,9 +9018,11 @@ body {
 
 .todo-list-modal-title {
   margin: 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #1f2937;
+  font-family: var(--font-heading);
+  font-size: var(--fs-h2);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-ink);
 }
 
 .todo-list-modal-close {
@@ -8963,33 +9053,30 @@ body {
 
 .todo-list-modal-label {
   margin: 0 0 0.5rem;
-  font-size: 0.9rem;
-  color: #4b5563;
+  font-size: var(--fs-secondary);
+  font-weight: 300;
+  color: var(--text-muted);
 }
 
 .todo-list-modal-input {
   width: 100%;
   padding: 0.6rem 0.75rem;
-  font-size: 0.95rem;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
-  color: #1f2937;
-  background: #F5F1E8;
-  border: var(--line-l3);
-  border-radius: 0.5rem;
+  font-size: var(--fs-body);
+  font-family: inherit;
+  color: var(--text-body);
+  background: var(--app-bg);
+  border: var(--line-l5);
+  border-radius: 0.5rem !important;
   box-sizing: border-box;
 }
 
 .todo-list-modal-input:focus {
   outline: none;
-  border-color: #9ca3af;
+  border: var(--line-l6);
 }
 
 .todo-list-modal-input::placeholder {
-  color: #9ca3af;
+  color: var(--text-placeholder);
 }
 
 .todo-list-modal-error {
@@ -9010,43 +9097,35 @@ body {
 .todo-list-modal-cancel {
   flex: 1;
   padding: 0.6rem 1rem;
-  font-size: 0.95rem;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
-  color: #4b5563;
-  background: #F5F1E8;
+  font-size: var(--fs-body);
+  font-family: inherit;
+  color: var(--text-body);
+  background: var(--ui-surface-alt);
   border: var(--line-l3);
-  border-radius: 0.5rem;
+  border-radius: 0.5rem !important;
   cursor: pointer;
 }
 
 .todo-list-modal-cancel:hover {
   background: var(--ui-surface-alt);
-  border-color: #d1d5db;
+  border-color: var(--line-l2-color);
 }
 
 .todo-list-modal-confirm {
   flex: 1;
   padding: 0.6rem 1rem;
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
   font-weight: 500;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
-  color: #fff;
-  background: #4b5563;
+  font-family: inherit;
+  color: var(--ui-btn-primary-fg);
+  background: var(--ui-btn-primary-bg);
   border: none;
-  border-radius: 0.5rem;
+  border-radius: 0.5rem !important;
   cursor: pointer;
 }
 
 .todo-list-modal-confirm:hover {
-  background: #1c1c1a;
+  background: var(--ui-btn-primary-hover);
 }
 
 .todo-list-confirm-body {
@@ -9066,6 +9145,334 @@ body {
 
 .todo-list-confirm-delete:hover {
   background: #b91c1c;
+}
+
+/* ----- 할일 카드 레이아웃 (통일 디자인: 크림 카드 + 세이지 메타) ----- */
+.todo-cards-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  min-height: 0;
+}
+
+.todo-card {
+  background: var(--content-bg, #F5F1E8);
+  border: var(--line-l4);
+  box-shadow: 0 0.0625rem 0.25rem rgba(0, 0, 0, 0.06);
+  border-radius: 0.75rem !important;
+  overflow: hidden;
+  transition: box-shadow 0.15s ease;
+}
+
+.todo-card:active {
+  opacity: 0.98;
+}
+
+.todo-card-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  position: relative;
+}
+
+.todo-card-done {
+  flex-shrink: 0;
+  margin: 0.125rem 0 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: var(--accent-viridian);
+  cursor: pointer;
+}
+
+.todo-card-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.todo-card-name-wrap {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.todo-card-name {
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-h2);
+  line-height: 1.45;
+  color: var(--text-ink);
+  word-break: break-word;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.todo-card.is-done .todo-card-name {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.todo-card-priority {
+  font-family: var(--font-body);
+  font-size: var(--fs-secondary);
+  font-weight: var(--fw-secondary);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.todo-card-dates {
+  font-family: var(--font-body);
+  font-size: var(--fs-secondary);
+  font-weight: var(--fw-secondary);
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.todo-card-reminder {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-body);
+  font-size: var(--fs-secondary);
+  font-weight: var(--fw-secondary);
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.todo-card-reminder-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.todo-card-delete {
+  flex-shrink: 0;
+  padding: 0.25rem;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-radius: 0.25rem !important;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.todo-card-delete:hover {
+  color: #dc2626;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.todo-cards-add-wrap {
+  padding: 0.5rem 0;
+  display: flex;
+  justify-content: flex-start;
+}
+
+/* .todo-cards-add-btn 스타일은 .todo-add-btn과 통일 (위에서 함께 정의) */
+
+/* 할일 추가/수정 모달 — 카드와 동일한 패널 스타일, 컨텐츠 넘침 방지 */
+.todo-task-edit-modal .todo-list-modal-panel.todo-task-edit-panel {
+  max-width: 22rem;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.todo-task-edit-modal .todo-list-modal-header {
+  padding: 1rem 1.25rem;
+  border-bottom: var(--line-l3);
+}
+
+.todo-task-edit-modal .todo-list-modal-title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--fs-h2);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-ink);
+}
+
+.todo-task-edit-modal .todo-list-modal-close {
+  color: var(--text-body);
+}
+
+.todo-task-edit-modal .todo-list-modal-close:hover {
+  color: var(--accent-viridian);
+}
+
+.todo-task-edit-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  max-height: 70vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+.todo-task-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.todo-task-edit-label {
+  font-size: var(--fs-secondary);
+  font-weight: 300;
+  color: var(--text-muted);
+  letter-spacing: 0.018em;
+}
+
+/* 모든 입력 필드 높이 통일(날짜/시간 동일), 넘침 방지 */
+.todo-task-edit-name,
+.todo-task-edit-start,
+.todo-task-edit-due,
+.todo-task-edit-reminder-date,
+.todo-task-edit-reminder-time,
+.todo-task-edit-eisenhower {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0 0.75rem;
+  font-size: var(--fs-body);
+  font-family: var(--app-font-family);
+  color: var(--text-body);
+  background: var(--app-bg);
+  border: var(--line-l5);
+  box-sizing: border-box;
+  line-height: 1.4;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.todo-task-edit-name {
+  height: auto;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.todo-task-edit-eisenhower {
+  height: 2.5rem;
+  padding: 0 0.75rem;
+}
+
+.todo-task-edit-name:focus,
+.todo-task-edit-start:focus,
+.todo-task-edit-due:focus,
+.todo-task-edit-reminder-date:focus,
+.todo-task-edit-reminder-time:focus,
+.todo-task-edit-eisenhower:focus {
+  outline: none;
+  border: var(--line-l6);
+}
+
+.todo-task-edit-name::placeholder {
+  color: var(--text-placeholder);
+}
+
+/* 리마인더 시간 placeholder 더 흐리게 (타이핑 값과 확실히 구분) */
+.todo-task-edit-modal .todo-task-edit-reminder-time::placeholder {
+  color: var(--text-placeholder-hint) !important;
+}
+
+/* date 입력 빈 값일 때 힌트(연도. 월. 일.) 흐린 색 · 값 있으면 본문 색 (JS에서 .has-value 토글) */
+.todo-task-edit-modal .todo-task-edit-start,
+.todo-task-edit-modal .todo-task-edit-due,
+.todo-task-edit-modal .todo-task-edit-reminder-date {
+  color: var(--text-placeholder);
+}
+.todo-task-edit-modal .todo-task-edit-start.has-value,
+.todo-task-edit-modal .todo-task-edit-due.has-value,
+.todo-task-edit-modal .todo-task-edit-reminder-date.has-value {
+  color: var(--text-body);
+}
+
+.todo-task-edit-reminder-row {
+  display: flex;
+  gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.todo-task-edit-reminder-row .todo-task-edit-reminder-date {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.todo-task-edit-reminder-row .todo-task-edit-reminder-time {
+  flex: 0 0 5rem;
+  min-width: 0;
+}
+
+/* 날짜 입력이 모달 밖으로 나가지 않도록 */
+.todo-task-edit-modal input[type="date"] {
+  min-width: 0 !important;
+}
+
+.todo-task-edit-modal .todo-list-modal-footer.todo-task-edit-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 1rem 1.25rem;
+  border-top: var(--line-l3);
+  background: var(--content-bg);
+}
+
+.todo-task-edit-delete {
+  margin-right: auto;
+  padding: 0.5rem 0.75rem;
+  font-size: var(--fs-secondary);
+  font-family: inherit;
+  color: #dc2626;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.todo-task-edit-delete:hover {
+  text-decoration: underline;
+}
+
+.todo-task-edit-modal .todo-list-modal-cancel {
+  padding: 0.5rem 1rem;
+  font-size: var(--fs-body);
+  font-family: inherit;
+  color: var(--text-body);
+  background: var(--ui-surface-alt);
+  border: var(--line-l3);
+  cursor: pointer;
+}
+
+.todo-task-edit-modal .todo-list-modal-cancel:hover {
+  border-color: var(--line-l2-color);
+}
+
+.todo-task-edit-modal .todo-list-modal-confirm {
+  padding: 0.5rem 1rem;
+  font-size: var(--fs-body);
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--ui-btn-primary-fg);
+  background: var(--ui-btn-primary-bg);
+  border: none;
+  cursor: pointer;
+}
+
+.todo-task-edit-modal .todo-list-modal-confirm:hover {
+  background: var(--ui-btn-primary-hover);
 }
 
 /* 리스트 탭 우클릭 컨텍스트 메뉴 */
@@ -9273,13 +9680,14 @@ body {
   z-index: 2;
 }
 
-/* 이름 열 고정: 체크박스·이름 열 sticky, 나머지 가로 스크롤 */
+/* 이름 열 고정: 체크박스·이름 열 sticky, 나머지 가로 스크롤. 보더는 box-shadow로 셀과 함께 고정 */
 .todo-table thead th.todo-th-done {
   position: sticky;
   top: 0;
   left: 0;
   z-index: 4;
-  border-right: var(--line-l3);
+  border-right: none;
+  box-shadow: 1px 0 0 0 var(--line-l3-color);
 }
 
 .todo-table thead th.todo-th-name {
@@ -9287,7 +9695,8 @@ body {
   top: 0;
   left: 2rem;
   z-index: 4;
-  border-right: var(--line-l3);
+  border-right: none;
+  box-shadow: 1px 0 0 0 var(--line-l3-color);
 }
 
 .todo-table tbody .todo-cell-done {
@@ -9295,7 +9704,8 @@ body {
   left: 0;
   z-index: 1;
   background: #F5F1E8;
-  border-right: var(--line-l3);
+  border-right: none;
+  box-shadow: 1px 0 0 0 var(--line-l3-color);
 }
 
 .todo-table tbody .todo-cell-name {
@@ -9303,7 +9713,8 @@ body {
   left: 2rem;
   z-index: 1;
   background: #F5F1E8;
-  border-right: var(--line-l3);
+  border-right: none;
+  box-shadow: 1px 0 0 0 var(--line-l3-color);
 }
 
 .todo-table tbody td {
@@ -9840,7 +10251,7 @@ body {
 .todo-subtask-item
   .todo-subtask-input-group
   input:not(.todo-done-check)::placeholder {
-  color: #94a3b8;
+  color: var(--text-placeholder);
 }
 
 .todo-cell-name input:not(.todo-done-check) {
@@ -9863,7 +10274,7 @@ body {
 }
 
 .todo-cell-name input:not(.todo-done-check)::placeholder {
-  color: #bbb;
+  color: var(--text-placeholder);
 }
 
 .todo-due-wrap {
@@ -9966,7 +10377,7 @@ body {
 
 .todo-cell-start-time .todo-start-time-input::placeholder,
 .todo-cell-end-time .todo-end-time-input::placeholder {
-  color: #9ca3af;
+  color: var(--text-placeholder);
 }
 
 /* 레거시: 헤더 플러스 슬롯 (툴바 +로 통일, 미사용) */
@@ -9979,28 +10390,35 @@ body {
   padding: 0.5rem 0.5rem;
 }
 
-.todo-add-btn {
-  display: flex;
+/* + 버튼 통일: 툴바·헤더·카드·테이블 모두 동일한 박스 스타일 */
+.todo-add-btn,
+.todo-cards-add-btn {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: none;
-  border: none;
-  color: #9ca3af;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  font-size: 1.25rem;
+  font-family: inherit;
+  color: var(--text-muted);
+  background: var(--content-bg, #F5F1E8);
+  border: var(--line-l4);
+  box-shadow: 0 0.0625rem 0.25rem rgba(0, 0, 0, 0.06);
+  border-radius: 0.75rem !important;
   cursor: pointer;
-  padding: 0.25rem;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  transition: color 0.15s, background 0.15s;
 }
 
-.todo-add-btn svg {
+.todo-add-btn svg,
+.todo-cards-add-btn svg {
   display: block;
 }
 
-.todo-add-btn:hover {
-  color: #4b5563;
+.todo-add-btn:hover,
+.todo-cards-add-btn:hover {
+  color: var(--accent-viridian);
+  background: var(--ui-surface-alt);
 }
 
 /* 분류 드롭다운 */
@@ -10383,7 +10801,7 @@ body {
 }
 
 .kpi-side-memo::placeholder {
-  color: #bbb;
+  color: var(--text-placeholder);
 }
 
 .kpi-side-memo:focus {
@@ -10620,7 +11038,7 @@ body {
 }
 
 .kpi-mindmap-input::placeholder {
-  color: #9ca3af;
+  color: var(--text-placeholder);
 }
 
 .kpi-mindmap-input--dream {
@@ -11842,7 +12260,7 @@ body {
 }
 
 .kpi-table input::placeholder {
-  color: #b0b0b0;
+  color: var(--text-placeholder);
 }
 
 .kpi-table input:focus,
@@ -12018,7 +12436,7 @@ body {
 }
 
 .kpi-status-search::placeholder {
-  color: #999;
+  color: var(--text-placeholder);
 }
 
 .kpi-status-list {
@@ -12194,7 +12612,7 @@ body.kpi-resizing {
 
 .kpi-input-actual::placeholder,
 .kpi-input-target::placeholder {
-  color: #b0b0b0;
+  color: var(--text-placeholder);
   text-align: center;
 }
 
@@ -12421,10 +12839,10 @@ body.kpi-resizing {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
+  min-width: 3rem;
+  min-height: 3rem;
   padding: 0;
-  font-size: var(--modal-close-fs);
+  font-size: 1.625rem;
   line-height: 1;
   font-family: inherit;
   font-weight: 500;
@@ -12458,10 +12876,10 @@ body.kpi-resizing {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
+  min-width: 3rem;
+  min-height: 3rem;
   padding: 0;
-  font-size: var(--modal-close-fs);
+  font-size: 1.625rem;
   line-height: 1;
   font-family: inherit;
   font-weight: 500;
@@ -13851,7 +14269,7 @@ body.kpi-resizing {
 }
 .time-task-log-expense-inner-modal .time-task-log-expense-name::placeholder,
 .time-task-log-expense-inner-modal .time-task-log-expense-amount::placeholder {
-  color: #b0ada6;
+  color: var(--text-placeholder);
 }
 .time-task-log-expense-inner-modal
   .time-task-log-expense-inner-fields
@@ -14264,7 +14682,7 @@ body.kpi-resizing {
   background: transparent;
 }
 .time-task-log-focus-inner-time-input::placeholder {
-  color: var(--text-muted);
+  color: var(--text-placeholder);
 }
 .time-task-log-focus-inner-now-btn {
   padding: 0.25rem 0.5rem;
@@ -14716,7 +15134,7 @@ body.kpi-resizing {
   border-bottom-color: #9ca3af !important;
 }
 .time-task-log-datetime-input-row input::placeholder {
-  color: var(--text-muted);
+  color: var(--text-placeholder);
 }
 .time-task-log-datetime-input-row input[type="text"] {
   text-align: center;
@@ -14797,7 +15215,7 @@ body.kpi-resizing {
 }
 
 .time-task-log-datetime-input-wrap input::placeholder {
-  color: var(--text-muted);
+  color: var(--text-placeholder);
 }
 
 .time-task-log-datetime-trigger {
@@ -14980,7 +15398,7 @@ body.kpi-resizing {
   border-bottom-color: #d1d5db;
 }
 .time-task-log-tag-input::placeholder {
-  color: #e5e7eb;
+  color: var(--text-placeholder);
 }
 .time-task-log-tag-list {
   display: flex;
@@ -14999,7 +15417,7 @@ body.kpi-resizing {
 }
 .time-task-log-feedback-editable.is-empty:not(:focus)::before {
   content: attr(data-placeholder);
-  color: #9ca3af;
+  color: var(--text-placeholder);
 }
 .time-memo-tag-chip {
   display: inline-flex;
@@ -15534,7 +15952,7 @@ body.kpi-resizing {
 }
 
 .time-task-log-focus-time-input::placeholder {
-  color: var(--text-muted);
+  color: var(--text-placeholder);
 }
 
 .time-task-log-focus-time-input:focus {
@@ -15956,7 +16374,7 @@ body.kpi-resizing {
 }
 
 .time-task-log-todo-name::placeholder {
-  color: #9ca3af;
+  color: var(--text-placeholder);
 }
 
 .time-task-log-todo-name:focus {
@@ -16105,7 +16523,7 @@ body.kpi-resizing {
 .time-task-log-emotion-q2::placeholder,
 .time-task-log-emotion-q3::placeholder,
 .time-task-log-emotion-q4::placeholder {
-  color: #9ca3af;
+  color: var(--text-placeholder);
   font-style: italic;
 }
 
@@ -16393,7 +16811,7 @@ body.kpi-resizing {
   box-sizing: border-box;
 }
 .time-task-log-expense-dropdown-display.is-placeholder {
-  color: #9ca3af;
+  color: var(--text-placeholder);
 }
 
 .time-task-log-expense-name:focus,
@@ -17065,7 +17483,7 @@ body.kpi-resizing {
 }
 
 .time-budget-time-input::placeholder {
-  color: #999;
+  color: var(--text-placeholder);
 }
 
 .time-budget-time-input:focus {
@@ -17082,7 +17500,7 @@ body.kpi-resizing {
 }
 
 .time-budget-scheduled-input::placeholder {
-  color: #999;
+  color: var(--text-placeholder);
 }
 
 .time-budget-scheduled-input:focus {
@@ -17818,7 +18236,7 @@ body.kpi-resizing {
 }
 .time-improve-answer::placeholder {
   font-weight: 300;
-  color: #d8d8d6;
+  color: var(--text-placeholder);
 }
 
 .time-improve-answer:focus {
@@ -19965,7 +20383,7 @@ body.kpi-resizing {
 }
 
 .time-input-task::placeholder {
-  color: #999;
+  color: var(--text-placeholder);
 }
 
 .time-input-task:hover {
@@ -19988,7 +20406,7 @@ body.kpi-resizing {
 }
 
 .time-input-tracked::placeholder {
-  color: #999;
+  color: var(--text-placeholder);
 }
 
 .time-input-start,
@@ -20004,7 +20422,7 @@ body.kpi-resizing {
 
 .time-input-start::placeholder,
 .time-input-end::placeholder {
-  color: #999;
+  color: var(--text-placeholder);
 }
 
 .time-input-start:focus,
@@ -20626,7 +21044,7 @@ body.kpi-resizing {
 }
 
 .idea-form-input::placeholder {
-  color: #9ca3af;
+  color: var(--text-placeholder);
 }
 
 /* 월급/근무시간 입력 - 입력란 오른쪽에 단위(원, h) */
@@ -21045,7 +21463,7 @@ body.kpi-resizing {
 }
 
 .dream-current-title-input::placeholder {
-  color: #9ca3af;
+  color: var(--text-placeholder);
 }
 
 .dream-current-title-input:focus {
@@ -22444,7 +22862,7 @@ body.kpi-resizing {
 }
 
 .todo-reminder-date-row .todo-reminder-date::placeholder {
-  color: #d1d5db;
+  color: var(--text-placeholder);
 }
 
 .todo-reminder-date-row .todo-reminder-date:focus {
@@ -22509,7 +22927,7 @@ body.kpi-resizing {
 }
 
 .todo-reminder-time::placeholder {
-  color: #d1d5db;
+  color: var(--text-placeholder-hint) !important;
 }
 
 .todo-reminder-time:focus {
@@ -23236,7 +23654,7 @@ body.kpi-resizing {
 }
 
 .diary-add-emotion-input::placeholder {
-  color: #9ca3af;
+  color: var(--text-placeholder);
 }
 
 .diary-add-emotion-actions {
@@ -23463,7 +23881,7 @@ body.kpi-resizing {
 }
 
 .diary-search-input::placeholder {
-  color: var(--text-muted);
+  color: var(--text-placeholder);
 }
 
 .diary-search-input:focus {
@@ -23685,7 +24103,7 @@ body.kpi-resizing {
 }
 
 .diary-paper-title-input::placeholder {
-  color: #9ca3af;
+  color: var(--text-placeholder);
 }
 
 .diary-paper-delete-btn {
@@ -23740,7 +24158,7 @@ body.kpi-resizing {
 }
 
 .diary-paper-text::placeholder {
-  color: #d1d5db;
+  color: var(--text-placeholder);
 }
 
 /* 통제일기 Q&A 템플릿 */
@@ -23806,7 +24224,7 @@ body.kpi-resizing {
 }
 
 .diary-qa-answer::placeholder {
-  color: #a0a0a0;
+  color: var(--text-placeholder);
 }
 
 /* 감정관리 피드 */
@@ -24168,7 +24586,7 @@ body.kpi-resizing {
 
 .calendar-placeholder {
   padding: 2rem;
-  color: #9ca3af;
+  color: var(--text-placeholder);
   font-size: 0.95rem;
 }
 
@@ -26641,7 +27059,7 @@ body.kpi-resizing {
   box-sizing: border-box;
 }
 .calendar-event-bubble-input::placeholder {
-  color: #e8e8e6;
+  color: var(--text-placeholder);
 }
 .calendar-event-bubble-input:focus {
   outline: none;
@@ -27561,7 +27979,7 @@ body.kpi-resizing {
 }
 
 .calendar-todo-sidebar-body .todo-table .todo-cell-name input::placeholder {
-  color: var(--gray-400, #9ca3af);
+  color: var(--text-placeholder);
 }
 
 .calendar-todo-sidebar-body
@@ -28437,7 +28855,7 @@ body.kpi-resizing {
 }
 
 .archive-search-input::placeholder {
-  color: #d8d8d6;
+  color: var(--text-placeholder);
   font-weight: 400;
 }
 

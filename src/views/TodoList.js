@@ -359,45 +359,86 @@ function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
       return;
     }
     const sectionTasks = [];
-    sec.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").forEach((row) => {
-      const nameInput = row.querySelector(".todo-cell-name input");
-      const startInput = row.querySelector(".todo-start-input-hidden");
-      const dueInput = row.querySelector(".todo-due-input-hidden");
-      const eisenhowerSelect = row.querySelector(".todo-eisenhower-select");
-      const doneCheck = row.querySelector(".todo-done-check");
-      const name = (nameInput?.value || "").trim();
-      const startDate = startInput?.value || "";
-      const dueDate = dueInput?.value || "";
-      const startTime = row.dataset.startTime || "";
-      const endTime = row.dataset.endTime || "";
-      const eisenhower = eisenhowerSelect?.value || row.dataset.eisenhower || "";
-      const done = doneCheck?.checked || false;
-      const itemType = row.dataset.itemType || "todo";
-      const kpiTodoId = row.dataset.kpiTodoId;
-      const storageKey = row.dataset.kpiStorageKey;
+    const cardsWrap = sec.querySelector(".todo-cards-wrap");
+    if (cardsWrap) {
+      cardsWrap.querySelectorAll(".todo-card").forEach((card) => {
+        const name = (card.dataset.name || "").trim();
+        const kpiTodoId = card.dataset.kpiTodoId;
+        const storageKey = card.dataset.kpiStorageKey;
+        const done = card.dataset.done === "true";
 
-      if (kpiTodoId && storageKey) {
-        if (name === "") {
-          removeKpiTodo(kpiTodoId, storageKey);
-        } else {
-          updateKpiTodo(kpiTodoId, storageKey, { text: name, startDate, dueDate, startTime, endTime, eisenhower, completed: done, itemType });
+        if (kpiTodoId && storageKey) {
+          if (name === "") {
+            removeKpiTodo(kpiTodoId, storageKey);
+          } else {
+            updateKpiTodo(kpiTodoId, storageKey, {
+              text: name,
+              startDate: card.dataset.startDate || "",
+              dueDate: card.dataset.dueDate || "",
+              startTime: "",
+              endTime: "",
+              eisenhower: card.dataset.eisenhower || "",
+              completed: done,
+              itemType: card.dataset.itemType || "todo",
+            });
+          }
+        } else if (name !== "") {
+          sectionTasks.push({
+            taskId: card.dataset.taskId || "",
+            name,
+            startDate: card.dataset.startDate || "",
+            dueDate: card.dataset.dueDate || "",
+            startTime: "",
+            endTime: "",
+            eisenhower: card.dataset.eisenhower || "",
+            done,
+            itemType: card.dataset.itemType || "todo",
+            reminderDate: card.dataset.reminderDate || "",
+            reminderTime: card.dataset.reminderTime || "",
+          });
         }
-      } else if (name !== "") {
-        sectionTasks.push({
-          taskId: row.dataset.taskId || "",
-          name,
-          startDate,
-          dueDate,
-          startTime,
-          endTime,
-          eisenhower,
-          done,
-          itemType,
-          reminderDate: row.dataset.reminderDate || "",
-          reminderTime: row.dataset.reminderTime || "",
-        });
-      }
-    });
+      });
+    } else {
+      sec.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").forEach((row) => {
+        const nameInput = row.querySelector(".todo-cell-name input");
+        const startInput = row.querySelector(".todo-start-input-hidden");
+        const dueInput = row.querySelector(".todo-due-input-hidden");
+        const eisenhowerSelect = row.querySelector(".todo-eisenhower-select");
+        const doneCheck = row.querySelector(".todo-done-check");
+        const name = (nameInput?.value || "").trim();
+        const startDate = startInput?.value || "";
+        const dueDate = dueInput?.value || "";
+        const startTime = row.dataset.startTime || "";
+        const endTime = row.dataset.endTime || "";
+        const eisenhower = eisenhowerSelect?.value || row.dataset.eisenhower || "";
+        const done = doneCheck?.checked || false;
+        const itemType = row.dataset.itemType || "todo";
+        const kpiTodoId = row.dataset.kpiTodoId;
+        const storageKey = row.dataset.kpiStorageKey;
+
+        if (kpiTodoId && storageKey) {
+          if (name === "") {
+            removeKpiTodo(kpiTodoId, storageKey);
+          } else {
+            updateKpiTodo(kpiTodoId, storageKey, { text: name, startDate, dueDate, startTime, endTime, eisenhower, completed: done, itemType });
+          }
+        } else if (name !== "") {
+          sectionTasks.push({
+            taskId: row.dataset.taskId || "",
+            name,
+            startDate,
+            dueDate,
+            startTime,
+            endTime,
+            eisenhower,
+            done,
+            itemType,
+            reminderDate: row.dataset.reminderDate || "",
+            reminderTime: row.dataset.reminderTime || "",
+          });
+        }
+      });
+    }
     const withDate = sectionTasks.filter((t) => (t.dueDate || "").trim()).length;
     todoDebug("collectAndSave: saving section", sectionId, "tasks", sectionTasks.length, "withDueDate", withDate, sectionTasks.map((t) => ({ name: (t.name || "").slice(0, 12), dueDate: (t.dueDate || "").slice(0, 10) })));
     saveSectionTasks(sectionId, sectionTasks);
@@ -940,6 +981,192 @@ function showMobileDateModal(options) {
   requestAnimationFrame(() => {
     closeBtn.focus();
   });
+}
+
+const EISENHOWER_OPTIONS = [
+  { value: "", label: "선택 안 함" },
+  { value: "urgent-important", label: "긴급+중요" },
+  { value: "important-not-urgent", label: "중요+여유" },
+  { value: "urgent-not-important", label: "긴급+덜중요" },
+  { value: "not-urgent-not-important", label: "여유+안중요" },
+];
+
+/** 할일 추가/수정 통합 모달. 카드 레이아웃에서 사용. onSave(폼값 객체), onDelete(수정 시만) */
+function showTodoTaskModal(options) {
+  const {
+    taskData = {},
+    sectionId = "",
+    sectionLabel = "",
+    mode = "add",
+    onSave,
+    onDelete,
+  } = options;
+  const {
+    name = "",
+    startDate = "",
+    dueDate = "",
+    reminderDate = "",
+    reminderTime = "",
+    eisenhower = "",
+  } = taskData;
+
+  const title = mode === "add" ? "할 일 추가" : "할 일 수정";
+  const escapeHtml = (s) => {
+    const d = document.createElement("div");
+    d.textContent = s ?? "";
+    return d.innerHTML;
+  };
+
+  const modal = document.createElement("div");
+  modal.className = "todo-list-modal todo-task-edit-modal";
+  modal.innerHTML = `
+    <div class="todo-list-modal-backdrop"></div>
+    <div class="todo-list-modal-panel todo-task-edit-panel">
+      <div class="todo-list-modal-header">
+        <h3 class="todo-list-modal-title">${title}</h3>
+        <button type="button" class="todo-list-modal-close" aria-label="닫기">×</button>
+      </div>
+      <div class="todo-list-modal-body todo-task-edit-body">
+        <div class="todo-task-edit-field">
+          <label class="todo-task-edit-label">할일 이름</label>
+          <input type="text" class="todo-task-edit-name" placeholder="할 일 입력" value="${escapeHtml(name)}" maxlength="500" />
+        </div>
+        <div class="todo-task-edit-field">
+          <label class="todo-task-edit-label">시작일</label>
+          <input type="date" class="todo-task-edit-start" value="${escapeHtml((startDate || "").slice(0, 10))}" />
+        </div>
+        <div class="todo-task-edit-field">
+          <label class="todo-task-edit-label">마감일</label>
+          <input type="date" class="todo-task-edit-due" value="${escapeHtml((dueDate || "").slice(0, 10))}" />
+        </div>
+        <div class="todo-task-edit-field">
+          <label class="todo-task-edit-label">리마인더</label>
+          <div class="todo-task-edit-reminder-row">
+            <input type="date" class="todo-task-edit-reminder-date" value="${escapeHtml((reminderDate || "").slice(0, 10))}" />
+            <input type="text" class="todo-task-edit-reminder-time" placeholder="14:30" value="${escapeHtml(reminderTime)}" maxlength="5" />
+          </div>
+        </div>
+        <div class="todo-task-edit-field">
+          <label class="todo-task-edit-label">우선순위</label>
+          <select class="todo-task-edit-eisenhower">
+            ${EISENHOWER_OPTIONS.map((o) => `<option value="${escapeHtml(o.value)}" ${o.value === eisenhower ? "selected" : ""}>${escapeHtml(o.label)}</option>`).join("")}
+          </select>
+        </div>
+      </div>
+      <div class="todo-list-modal-footer todo-task-edit-footer">
+        ${mode === "edit" ? '<button type="button" class="todo-task-edit-delete">삭제</button>' : ""}
+        <button type="button" class="todo-list-modal-cancel">취소</button>
+        <button type="button" class="todo-list-modal-confirm">확인</button>
+      </div>
+    </div>
+  `;
+
+  const backdrop = modal.querySelector(".todo-list-modal-backdrop");
+  const closeBtn = modal.querySelector(".todo-list-modal-close");
+  const cancelBtn = modal.querySelector(".todo-list-modal-cancel");
+  const confirmBtn = modal.querySelector(".todo-list-modal-confirm");
+  const deleteBtn = modal.querySelector(".todo-task-edit-delete");
+  const nameInput = modal.querySelector(".todo-task-edit-name");
+  const startInput = modal.querySelector(".todo-task-edit-start");
+  const dueInput = modal.querySelector(".todo-task-edit-due");
+  const reminderDateInput = modal.querySelector(".todo-task-edit-reminder-date");
+  const reminderTimeInput = modal.querySelector(".todo-task-edit-reminder-time");
+  const eisenhowerSelect = modal.querySelector(".todo-task-edit-eisenhower");
+
+  function close() {
+    modal.remove();
+    document.body.style.overflow = "";
+  }
+
+  function formatTimeToHHMM(val) {
+    const digits = String(val || "").replace(/\D/g, "");
+    if (digits.length >= 4) return `${digits.slice(0, 2)}:${digits.slice(2, 4)}`;
+    if (digits.length === 2) return digits;
+    return digits;
+  }
+  function gatherForm() {
+    const startVal = (startInput?.value || "").trim().slice(0, 10);
+    const dueVal = (dueInput?.value || "").trim().slice(0, 10);
+    if (startVal && dueVal) {
+      startInput.min = "";
+      startInput.max = dueVal;
+      dueInput.min = startVal;
+      dueInput.max = "";
+    }
+    let reminderTimeVal = (reminderTimeInput?.value || "").trim();
+    const digits = reminderTimeVal.replace(/\D/g, "");
+    if (digits.length >= 2) reminderTimeVal = formatTimeToHHMM(reminderTimeVal);
+    return {
+      name: (nameInput?.value || "").trim(),
+      startDate: startVal,
+      dueDate: dueVal,
+      reminderDate: (reminderDateInput?.value || "").trim().slice(0, 10),
+      reminderTime: reminderTimeVal,
+      eisenhower: eisenhowerSelect?.value || "",
+      sectionId,
+      sectionLabel,
+    };
+  }
+
+  confirmBtn?.addEventListener("click", () => {
+    const payload = { ...taskData, ...gatherForm() };
+    onSave?.(payload);
+    close();
+  });
+  cancelBtn?.addEventListener("click", close);
+  closeBtn?.addEventListener("click", close);
+  /* 열린 직후 같은 탭이 백드롭에 전달되어 바로 닫히는 것 방지 */
+  let allowBackdropClose = false;
+  setTimeout(() => {
+    allowBackdropClose = true;
+  }, 100);
+  backdrop?.addEventListener("click", (e) => {
+    if (e.target !== backdrop || !allowBackdropClose) return;
+    close();
+  });
+  if (mode === "edit" && onDelete && deleteBtn) {
+    deleteBtn.addEventListener("click", () => {
+      onDelete?.();
+      close();
+    });
+  }
+  modal.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") close();
+  });
+
+  document.body.appendChild(modal);
+  document.body.style.overflow = "hidden";
+
+  function updateDateInputPlaceholderClass(input) {
+    if (!input) return;
+    if ((input.value || "").trim()) input.classList.add("has-value");
+    else input.classList.remove("has-value");
+  }
+  [startInput, dueInput, reminderDateInput].forEach(updateDateInputPlaceholderClass);
+  [startInput, dueInput, reminderDateInput].forEach((input) => {
+    if (!input) return;
+    input.addEventListener("input", () => updateDateInputPlaceholderClass(input));
+    input.addEventListener("change", () => updateDateInputPlaceholderClass(input));
+  });
+
+  if (reminderTimeInput) {
+    const digitsInit = (reminderTimeInput.value || "").replace(/\D/g, "");
+    if (digitsInit.length >= 2) reminderTimeInput.value = formatTimeToHHMM(reminderTimeInput.value);
+    reminderTimeInput.addEventListener("input", () => {
+      const raw = reminderTimeInput.value;
+      const digits = raw.replace(/\D/g, "");
+      if (digits.length >= 4) {
+        reminderTimeInput.value = formatTimeToHHMM(raw);
+        reminderTimeInput.setSelectionRange(5, 5);
+      }
+    });
+    reminderTimeInput.addEventListener("blur", () => {
+      const digits = (reminderTimeInput.value || "").replace(/\D/g, "");
+      if (digits.length >= 2) reminderTimeInput.value = formatTimeToHHMM(reminderTimeInput.value);
+    });
+  }
+
+  requestAnimationFrame(() => closeBtn?.focus());
 }
 
 function getSections() {
@@ -1715,8 +1942,222 @@ function createTaskRow(taskData = {}, options = {}) {
   return tr;
 }
 
+/** 시작~마감: 라벨 없이 날짜만. 마감만 있으면 마감만 */
+function formatCardDates(taskData) {
+  const { startDate = "", dueDate = "" } = taskData;
+  const toMD = (str) => {
+    if (!str || !String(str).includes("-")) return "";
+    const [, m, d] = str.trim().split("-");
+    return m && d ? `${m}/${d}` : "";
+  };
+  const start = toMD(startDate);
+  const due = toMD(dueDate);
+  if (start && due) return `${start} ~ ${due}`;
+  if (due) return due;
+  if (start) return start;
+  return "";
+}
+
+/** 리마인더: 날짜 + 시간(있으면) */
+function formatCardReminder(reminderDate = "", reminderTime = "") {
+  if (!(reminderDate || "").trim()) return "";
+  const parts = String(reminderDate).trim().split(/[-/]/);
+  const dateStr = parts.length >= 3 ? `${parts[1]}/${parts[2]}` : reminderDate;
+  return (reminderTime || "").trim() ? `${dateStr} ${(reminderTime || "").trim()}` : dateStr;
+}
+
+const EISENHOWER_LABELS = { "urgent-important": "긴급+중요", "important-not-urgent": "중요+여유", "urgent-not-important": "긴급+덜중요", "not-urgent-not-important": "여유+안중요" };
+
+/** 카드 레이아웃용 할일 카드 한 개. 클릭 시 모달로 수정, 체크박스로 완료 토글 */
+function createTaskCard(taskData, options = {}) {
+  const {
+    name = "",
+    startDate = "",
+    dueDate = "",
+    reminderDate = "",
+    reminderTime = "",
+    eisenhower = "",
+    classification = "",
+    sectionId = "",
+    sectionLabel = "",
+    done = false,
+    itemType = "todo",
+    isKpiTodo = false,
+    kpiTodoId = "",
+    storageKey = "",
+  } = taskData;
+  const { updateCount = () => {}, sectionsWrap = null, scheduleSave = () => {} } = options;
+  const taskId = getTaskId(taskData);
+
+  const card = document.createElement("div");
+  card.className = "todo-card" + (done ? " is-done" : "");
+  card.dataset.taskId = taskId;
+  card.dataset.sectionId = sectionId;
+  card.dataset.name = name;
+  card.dataset.startDate = startDate;
+  card.dataset.dueDate = dueDate;
+  card.dataset.reminderDate = reminderDate;
+  card.dataset.reminderTime = reminderTime;
+  card.dataset.eisenhower = eisenhower;
+  card.dataset.done = done ? "true" : "false";
+  card.dataset.itemType = itemType;
+  if (isKpiTodo) {
+    card.dataset.isKpiTodo = "true";
+    card.dataset.kpiTodoId = kpiTodoId;
+    card.dataset.kpiStorageKey = storageKey;
+  }
+
+  const doneCheck = document.createElement("input");
+  doneCheck.type = "checkbox";
+  doneCheck.className = "todo-done-check todo-card-done";
+  doneCheck.checked = done;
+  doneCheck.addEventListener("change", (e) => {
+    e.stopPropagation();
+    const newDone = doneCheck.checked;
+    card.dataset.done = newDone ? "true" : "false";
+    card.classList.toggle("is-done", newDone);
+    if (isKpiTodo && kpiTodoId && storageKey) syncKpiTodoCompleted(kpiTodoId, storageKey, newDone);
+    scheduleSave();
+    updateCount();
+  });
+
+  const nameWrap = document.createElement("div");
+  nameWrap.className = "todo-card-name-wrap";
+
+  const nameEl = document.createElement("span");
+  nameEl.className = "todo-card-name";
+  nameEl.textContent = name || "(제목 없음)";
+
+  const priorityEl = document.createElement("span");
+  priorityEl.className = "todo-card-priority";
+  priorityEl.textContent = eisenhower ? (EISENHOWER_LABELS[eisenhower] || eisenhower) : "";
+  if (!eisenhower) priorityEl.hidden = true;
+
+  nameWrap.appendChild(nameEl);
+  nameWrap.appendChild(priorityEl);
+
+  const datesEl = document.createElement("div");
+  datesEl.className = "todo-card-dates";
+  datesEl.textContent = formatCardDates(taskData);
+
+  const BELL_ICON = '<svg class="todo-card-reminder-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 19.001c0 2.209 1.791 4 4 4s4-1.791 4-4"/><path d="m12 5.999v6"/><path d="m9 8.999h6"/><path d="m22 19.001-3-5.25v-5.752c0-3.866-3.134-7-7-7s-7 3.134-7 7v5.751l-3 5.25h20z"/></svg>';
+  const reminderEl = document.createElement("div");
+  reminderEl.className = "todo-card-reminder";
+  const reminderText = formatCardReminder(reminderDate, reminderTime);
+  if (reminderText) {
+    reminderEl.innerHTML = `${BELL_ICON}<span class="todo-card-reminder-text">${reminderText}</span>`;
+    reminderEl.hidden = false;
+  } else {
+    reminderEl.hidden = true;
+  }
+
+  const delBtn = document.createElement("button");
+  delBtn.type = "button";
+  delBtn.className = "todo-task-delete-btn todo-card-delete";
+  delBtn.title = "삭제";
+  delBtn.innerHTML = TASK_DELETE_ICON;
+  delBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (isKpiTodo && kpiTodoId && storageKey) {
+      if (removeKpiTodo(kpiTodoId, storageKey)) card.remove();
+    } else if (sectionId && sectionId.startsWith("custom-")) {
+      removeTaskFromCustomSectionStorage(sectionId, taskId);
+      clearSubtasks(taskId);
+      card.remove();
+    } else if (sectionId) {
+      removeTaskFromSectionStorage(sectionId, taskId);
+      clearSubtasks(taskId);
+      card.remove();
+    } else {
+      card.remove();
+    }
+    updateCount();
+    scheduleSave();
+  });
+
+  const contentCol = document.createElement("div");
+  contentCol.className = "todo-card-content";
+  contentCol.appendChild(nameWrap);
+  contentCol.appendChild(datesEl);
+  contentCol.appendChild(reminderEl);
+
+  const inner = document.createElement("div");
+  inner.className = "todo-card-inner";
+  inner.appendChild(doneCheck);
+  inner.appendChild(contentCol);
+  inner.appendChild(delBtn);
+  card.appendChild(inner);
+
+  function updateCardFromData(data) {
+    const n = (data.name || "").trim() || "(제목 없음)";
+    card.dataset.name = data.name || "";
+    card.dataset.startDate = data.startDate || "";
+    card.dataset.dueDate = data.dueDate || "";
+    card.dataset.reminderDate = data.reminderDate || "";
+    card.dataset.reminderTime = data.reminderTime || "";
+    card.dataset.eisenhower = data.eisenhower || "";
+    nameEl.textContent = n;
+    datesEl.textContent = formatCardDates(data);
+    const priorityText = data.eisenhower ? (EISENHOWER_LABELS[data.eisenhower] || data.eisenhower) : "";
+    priorityEl.textContent = priorityText;
+    priorityEl.hidden = !priorityText;
+    const remText = formatCardReminder(data.reminderDate, data.reminderTime);
+    if (remText) {
+      const bell = '<svg class="todo-card-reminder-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 19.001c0 2.209 1.791 4 4 4s4-1.791 4-4"/><path d="m12 5.999v6"/><path d="m9 8.999h6"/><path d="m22 19.001-3-5.25v-5.752c0-3.866-3.134-7-7-7s-7 3.134-7 7v5.751l-3 5.25h20z"/></svg>';
+      reminderEl.innerHTML = `${bell}<span class="todo-card-reminder-text">${remText}</span>`;
+      reminderEl.hidden = false;
+    } else {
+      reminderEl.hidden = true;
+    }
+  }
+
+  inner.addEventListener("click", (e) => {
+    if (e.target === doneCheck || e.target === delBtn || delBtn.contains(e.target)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    showTodoTaskModal({
+      taskData: {
+        name: card.dataset.name,
+        startDate: card.dataset.startDate,
+        dueDate: card.dataset.dueDate,
+        reminderDate: card.dataset.reminderDate,
+        reminderTime: card.dataset.reminderTime,
+        eisenhower: card.dataset.eisenhower,
+        sectionId,
+        sectionLabel,
+      },
+      sectionId,
+      sectionLabel,
+      mode: "edit",
+      onSave: (payload) => {
+        updateCardFromData(payload);
+        scheduleSave();
+      },
+      onDelete: () => {
+        if (isKpiTodo && kpiTodoId && storageKey) {
+          if (removeKpiTodo(kpiTodoId, storageKey)) card.remove();
+        } else if (sectionId && sectionId.startsWith("custom-")) {
+          removeTaskFromCustomSectionStorage(sectionId, taskId);
+          clearSubtasks(taskId);
+          card.remove();
+        } else if (sectionId) {
+          removeTaskFromSectionStorage(sectionId, taskId);
+          clearSubtasks(taskId);
+          card.remove();
+        } else {
+          card.remove();
+        }
+        updateCount();
+        scheduleSave();
+      },
+    });
+  });
+
+  return card;
+}
+
 function createSection(section, options = {}) {
-  const { lastColHeader = "분류", initialTasks = [], showCategoryCol = false, sectionIdForAdd = null, hideCategoryCol = true, tabMode = false, showCheckboxTypeMenu = null, enableDragToCalendar = false, enableDragToEisenhower = false, hideAddRow = false, overdueColumnOrder = false, eisenhowerSidebarFirst = false } = options;
+  const { lastColHeader = "분류", initialTasks = [], showCategoryCol = false, sectionIdForAdd = null, hideCategoryCol = true, tabMode = false, showCheckboxTypeMenu = null, enableDragToCalendar = false, enableDragToEisenhower = false, hideAddRow = false, overdueColumnOrder = false, eisenhowerSidebarFirst = false, cardLayout = false } = options;
   const sectionId = sectionIdForAdd ?? section.id;
 
   const wrap = document.createElement("div");
@@ -1744,6 +2185,58 @@ function createSection(section, options = {}) {
     countSpan.textContent = "0";
     countSpan.style.display = "none";
     wrap.appendChild(countSpan);
+  }
+
+  const countEl = () => (tabMode ? wrap.querySelector(".todo-section-count") : header?.querySelector(".todo-section-count"));
+
+  if (cardLayout) {
+    const cardsWrap = document.createElement("div");
+    cardsWrap.className = "todo-cards-wrap";
+    const sectionsWrap = options.sectionsWrap || wrap.closest(".todo-sections-wrap");
+    function scheduleSave() {
+      if (sectionsWrap) scheduleSaveSectionTasksFromDOM(sectionsWrap);
+    }
+    function updateCount() {
+      const el = countEl();
+      if (el) el.textContent = String(cardsWrap.querySelectorAll(".todo-card").length);
+    }
+    initialTasks.forEach((t) => {
+      const taskId = t.taskId || getTaskId(t);
+      t.taskId = taskId;
+      const card = createTaskCard(t, { updateCount, sectionsWrap, scheduleSave });
+      cardsWrap.appendChild(card);
+    });
+    const addWrap = document.createElement("div");
+    addWrap.className = "todo-cards-add-wrap";
+    const addBtn = document.createElement("button");
+    addBtn.type = "button";
+    addBtn.className = "todo-add-btn todo-cards-add-btn";
+    addBtn.title = "할 일 추가";
+    addBtn.innerHTML = ADD_TASK_ICON;
+    addBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      showTodoTaskModal({
+        taskData: { sectionId, sectionLabel: section.label },
+        sectionId,
+        sectionLabel: section.label,
+        mode: "add",
+        onSave: (payload) => {
+          const taskId = getTaskId(payload);
+          const newTask = { ...payload, taskId, done: false };
+          const card = createTaskCard(newTask, { updateCount, sectionsWrap, scheduleSave });
+          cardsWrap.insertBefore(card, addWrap.nextSibling);
+          updateCount();
+          scheduleSave();
+        },
+      });
+    });
+    addWrap.appendChild(addBtn);
+    cardsWrap.insertBefore(addWrap, cardsWrap.firstChild);
+    if (header) wrap.appendChild(header);
+    wrap.appendChild(cardsWrap);
+    updateCount();
+    return { wrap, updateCount };
   }
 
   const tableWrap = document.createElement("div");
@@ -1903,8 +2396,6 @@ function createSection(section, options = {}) {
   `;
   if (!hideAddRow) tbody.insertBefore(addRow, tbody.firstChild);
 
-  const countEl = () => (tabMode ? wrap.querySelector(".todo-section-count") : header?.querySelector(".todo-section-count"));
-
   function updateCount() {
     const el = countEl();
     if (el) el.textContent = String(tbody.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").length);
@@ -1952,6 +2443,35 @@ function collectTasksFromDOM(sectionsEl) {
   sectionsEl?.querySelectorAll(".todo-section").forEach((sec) => {
     const secId = sec.dataset.section;
     const isCategoryView = sectionIds.has(secId);
+    const cardsWrap = sec.querySelector(".todo-cards-wrap");
+    if (cardsWrap) {
+      cardsWrap.querySelectorAll(".todo-card").forEach((card) => {
+        const rowSectionId = card.dataset.sectionId || secId;
+        const sectionLabel = getSections().find((s) => s.id === rowSectionId)?.label || "";
+        const task = {
+          taskId: card.dataset.taskId || "",
+          name: card.dataset.name || "",
+          startDate: card.dataset.startDate || "",
+          dueDate: card.dataset.dueDate || "",
+          startTime: "",
+          endTime: "",
+          eisenhower: card.dataset.eisenhower || "",
+          classification: secId,
+          sectionId: rowSectionId,
+          sectionLabel,
+          done: card.dataset.done === "true",
+          reminderDate: card.dataset.reminderDate || "",
+          reminderTime: card.dataset.reminderTime || "",
+        };
+        if (card.dataset.isKpiTodo === "true") {
+          task.isKpiTodo = true;
+          task.kpiTodoId = card.dataset.kpiTodoId || "";
+          task.storageKey = card.dataset.kpiStorageKey || "";
+        }
+        tasks.push(task);
+      });
+      return;
+    }
     sec.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").forEach((row) => {
       const nameInput = row.querySelector(".todo-cell-name input");
       const startInput = row.querySelector(".todo-start-input-hidden");
@@ -1991,7 +2511,7 @@ function collectTasksFromDOM(sectionsEl) {
 }
 
 function renderSections(container, tasksData = [], options = {}) {
-  const { tabMode = false, showCheckboxTypeMenu = null, enableDragToCalendar = false, enableDragToEisenhower = false, sectionsOverride = null, eisenhowerSidebarFirst = false } = options;
+  const { tabMode = false, showCheckboxTypeMenu = null, enableDragToCalendar = false, enableDragToEisenhower = false, sectionsOverride = null, eisenhowerSidebarFirst = false, cardLayout = false } = options;
   container.innerHTML = "";
   const results = [];
   const sections = sectionsOverride || getSections();
@@ -2010,6 +2530,8 @@ function renderSections(container, tasksData = [], options = {}) {
       hideAddRow: true,
       overdueColumnOrder: section.id === "overdue",
       eisenhowerSidebarFirst: eisenhowerSidebarFirst && section.id !== "overdue",
+      cardLayout: cardLayout && section.id !== "overdue",
+      sectionsWrap: container,
     };
     const { wrap, updateCount } = createSection(section, sectionOpts);
     container.appendChild(wrap);
@@ -2065,9 +2587,20 @@ export function render(options = {}) {
         rowsToRemove.push(row);
       }
     });
+    const cardsToRemove = [];
+    el.querySelectorAll(".todo-card").forEach((card) => {
+      const check = card.querySelector(".todo-done-check");
+      if (check?.checked && card.dataset.taskId) {
+        cardsToRemove.push(card);
+      }
+    });
     rowsToRemove.forEach((r) => {
       clearSubtasks(r.dataset.taskId);
       r.remove();
+    });
+    cardsToRemove.forEach((c) => {
+      clearSubtasks(c.dataset.taskId);
+      c.remove();
     });
     el.querySelectorAll(".todo-subtask-item").forEach((item) => {
       const check = item.querySelector(".todo-done-check");
@@ -2078,9 +2611,12 @@ export function render(options = {}) {
         item.remove();
       }
     });
-    if (removed > 0 || rowsToRemove.length > 0) {
+    if (removed > 0 || rowsToRemove.length > 0 || cardsToRemove.length > 0) {
       el.querySelectorAll(".todo-section").forEach((sec) => {
-        const count = sec.querySelectorAll(".todo-task-row").length;
+        const cardsWrap = sec.querySelector(".todo-cards-wrap");
+        const count = cardsWrap
+          ? cardsWrap.querySelectorAll(".todo-card").length
+          : sec.querySelectorAll(".todo-task-row").length;
         const countEl = sec.querySelector(".todo-section-count");
         if (countEl) countEl.textContent = count;
       });
@@ -2231,12 +2767,19 @@ export function render(options = {}) {
       return v === q || (labelForQ && v === labelForQ);
     });
   }
-  const sectionResults = renderSections(sectionsWrap, allTasks, { tabMode: true, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, eisenhowerSidebarFirst, sectionsOverride: FIXED_SECTIONS });
+  const sectionResults = renderSections(sectionsWrap, allTasks, { tabMode: true, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, eisenhowerSidebarFirst, sectionsOverride: FIXED_SECTIONS, cardLayout: true });
 
   function updateTabLabels() {
     tabButtons.forEach((btn, i) => {
       const sec = sectionResults[i]?.wrap;
-      const count = sec ? sec.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").length : 0;
+      if (!sec) {
+        btn.querySelector(".todo-category-tab-count").textContent = "0";
+        return;
+      }
+      const cardsWrap = sec.querySelector(".todo-cards-wrap");
+      const count = cardsWrap
+        ? cardsWrap.querySelectorAll(".todo-card").length
+        : sec.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").length;
       btn.querySelector(".todo-category-tab-count").textContent = String(count);
     });
   }
@@ -2260,76 +2803,67 @@ export function render(options = {}) {
   });
   tabButtons.forEach((b, i) => b.classList.toggle("active", i === safeIndex));
 
-  const headerAddWrap = document.createElement("div");
-  headerAddWrap.className = "todo-list-toolbar-add-wrap";
-  const headerAddBtn = document.createElement("button");
-  headerAddBtn.type = "button";
-  headerAddBtn.className = "todo-add-btn todo-header-add-btn";
-  headerAddBtn.title = "할 일 추가";
-  headerAddBtn.innerHTML = ADD_TASK_ICON;
-  headerAddBtn.addEventListener("click", () => {
-    const idx = activeSectionIndex;
-    if (idx < 0 || idx >= sectionResults.length) return;
-    const { section, wrap, updateCount } = sectionResults[idx];
-    if (section.id === "overdue") return;
-    const tbody = wrap.querySelector("tbody");
-    if (!tbody) return;
-    const taskData = { sectionId: section.id, sectionLabel: section.label, name: "", done: false };
-    const taskId = getTaskId(taskData);
-    taskData.taskId = taskId;
-    const tr = createTaskRow(taskData, { showCategoryCol: false, hideCategoryCol: true, isSubtask: false, taskId, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, overdueColumnOrder: false, eisenhowerSidebarFirst });
-    if (tbody.firstChild) {
-      tbody.insertBefore(tr, tbody.firstChild);
-    } else {
-      tbody.appendChild(tr);
-    }
-    updateCount();
-    updateTabLabels();
-    const nameInput = tr.querySelector(".todo-cell-name input");
-    if (nameInput) nameInput.focus();
-  });
-  headerAddWrap.appendChild(headerAddBtn);
-  toolbarRow.insertBefore(headerAddWrap, toolbarRow.firstChild);
-
   el.appendChild(sectionsWrap);
 
   const observer = new MutationObserver(() => {
     updateTabLabels();
   });
   sectionResults.forEach(({ wrap }) => {
-    observer.observe(wrap.querySelector("tbody"), { childList: true });
+    const target = wrap.querySelector(".todo-cards-wrap") || wrap.querySelector("tbody");
+    if (target) observer.observe(target, { childList: true });
   });
 
-  // 우클릭 컨텍스트 메뉴: 태스크를 다른 리스트로 이동
+  // 우클릭 컨텍스트 메뉴: 태스크를 다른 리스트로 이동 (테이블 행 + 카드 모두)
   let contextMenuTargetRow = null;
+  let contextMenuTargetCard = null;
   const { menu, show: showContextMenu, hide: hideContextMenu } = createBraindumpContextMenu((targetSectionId) => {
     const row = contextMenuTargetRow;
-    if (!row) return;
-    const section = row.closest(".todo-section");
-    const fromSectionId = section?.dataset.section || row.dataset.sectionId || "";
+    const card = contextMenuTargetCard;
+    const fromEl = row || card;
+    if (!fromEl) return;
+    const section = fromEl.closest(".todo-section");
+    const fromSectionId = section?.dataset.section || fromEl.dataset.sectionId || "";
     if (fromSectionId === targetSectionId) return;
 
-    const oldTaskId = row.dataset.taskId || "";
+    const oldTaskId = fromEl.dataset.taskId || "";
     const subtasksToMove = getSubtasks(oldTaskId);
 
-    const nameInput = row.querySelector(".todo-cell-name input");
-    const startInput = row.querySelector(".todo-start-input-hidden");
-    const dueInput = row.querySelector(".todo-due-input-hidden");
-    const doneCheck = row.querySelector(".todo-done-check");
-    const eisenhowerSelect = row.querySelector(".todo-eisenhower-select");
-    const name = (nameInput?.value || "").trim();
-    const startDate = startInput?.value || "";
-    const dueDate = dueInput?.value || "";
-    const startTime = row.dataset.startTime || "";
-    const endTime = row.dataset.endTime || "";
-    const eisenhower = eisenhowerSelect?.value || row.dataset.eisenhower || "";
-    const done = doneCheck?.checked || false;
-    const itemType = row.dataset.itemType || "todo";
+    let name, startDate, dueDate, startTime, endTime, eisenhower, done, itemType, reminderDate, reminderTime, kpiTodoId, storageKey;
+    if (row) {
+      const nameInput = row.querySelector(".todo-cell-name input");
+      const startInput = row.querySelector(".todo-start-input-hidden");
+      const dueInput = row.querySelector(".todo-due-input-hidden");
+      const doneCheck = row.querySelector(".todo-done-check");
+      const eisenhowerSelect = row.querySelector(".todo-eisenhower-select");
+      name = (nameInput?.value || "").trim();
+      startDate = startInput?.value || "";
+      dueDate = dueInput?.value || "";
+      startTime = row.dataset.startTime || "";
+      endTime = row.dataset.endTime || "";
+      eisenhower = eisenhowerSelect?.value || row.dataset.eisenhower || "";
+      done = doneCheck?.checked || false;
+      itemType = row.dataset.itemType || "todo";
+      reminderDate = row.dataset.reminderDate || "";
+      reminderTime = row.dataset.reminderTime || "";
+      kpiTodoId = row.dataset.kpiTodoId;
+      storageKey = row.dataset.kpiStorageKey;
+    } else {
+      name = (card.dataset.name || "").trim();
+      startDate = card.dataset.startDate || "";
+      dueDate = card.dataset.dueDate || "";
+      startTime = "";
+      endTime = "";
+      eisenhower = card.dataset.eisenhower || "";
+      done = card.dataset.done === "true";
+      itemType = card.dataset.itemType || "todo";
+      reminderDate = card.dataset.reminderDate || "";
+      reminderTime = card.dataset.reminderTime || "";
+      kpiTodoId = card.dataset.kpiTodoId;
+      storageKey = card.dataset.kpiStorageKey;
+    }
 
     let result = { success: false };
-    const kpiTodoId = row.dataset.kpiTodoId;
-    const storageKey = row.dataset.kpiStorageKey;
-    const taskPayload = { taskId: oldTaskId, name, startDate, dueDate, startTime, endTime, eisenhower, done, itemType };
+    const taskPayload = { taskId: oldTaskId, name, startDate, dueDate, startTime, endTime, eisenhower, done, itemType, reminderDate, reminderTime };
     const sectionLabelMap = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복", braindump: "브레인 덤프" };
     const getTargetLabel = (id) => sectionLabelMap[id] || getCustomSections().find((s) => s.id === id)?.label || id;
 
@@ -2343,7 +2877,7 @@ export function render(options = {}) {
             if (!customObj[targetSectionId]) customObj[targetSectionId] = [];
             customObj[targetSectionId].push({ ...taskPayload, taskId: oldTaskId });
             localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(customObj));
-            result = { success: true, task: { name, startDate, dueDate, startTime, endTime, eisenhower, done, sectionId: targetSectionId, sectionLabel: getTargetLabel(targetSectionId), itemType, isKpiTodo: false, taskId: oldTaskId } };
+            result = { success: true, task: { name, startDate, dueDate, startTime, endTime, eisenhower, done, sectionId: targetSectionId, sectionLabel: getTargetLabel(targetSectionId), itemType, isKpiTodo: false, taskId: oldTaskId, reminderDate, reminderTime } };
           } catch (_) {}
         }
       } else {
@@ -2407,45 +2941,56 @@ export function render(options = {}) {
       }
 
       if (moved) {
-        result = { success: true, task: { name, startDate, dueDate, startTime, endTime, eisenhower, done, sectionId: targetSectionId, sectionLabel: getTargetLabel(targetSectionId), itemType, isKpiTodo: false, taskId: oldTaskId } };
+        result = { success: true, task: { name, startDate, dueDate, startTime, endTime, eisenhower, done, sectionId: targetSectionId, sectionLabel: getTargetLabel(targetSectionId), itemType, isKpiTodo: false, taskId: oldTaskId, reminderDate, reminderTime } };
       }
     }
 
     if (result.success && result.task) {
       const targetResult = sectionResults.find((r) => r.wrap.dataset.section === targetSectionId);
       if (targetResult) {
-        const targetTbody = targetResult.wrap.querySelector("tbody");
         const taskData = result.task;
         const taskId = getTaskId(taskData);
         taskData.taskId = taskId;
-        const newTr = createTaskRow(taskData, {
-          hideCategoryCol: true,
-          isSubtask: false,
-          taskId,
-          showCheckboxTypeMenu,
-        });
-        newTr.dataset.sectionId = targetSectionId;
-        if (targetTbody.firstChild) {
-          targetTbody.insertBefore(newTr, targetTbody.firstChild);
-        } else {
-          targetTbody.appendChild(newTr);
+        const targetCardsWrap = targetResult.wrap.querySelector(".todo-cards-wrap");
+        const targetTbody = targetResult.wrap.querySelector("tbody");
+
+        if (targetCardsWrap) {
+          const addWrap = targetCardsWrap.querySelector(".todo-cards-add-wrap");
+          const scheduleSave = () => scheduleSaveSectionTasksFromDOM(sectionsWrap);
+          const updateCount = targetResult.updateCount || (() => {});
+          const card = createTaskCard(taskData, { updateCount, sectionsWrap, scheduleSave });
+          targetCardsWrap.insertBefore(card, addWrap ? addWrap.nextSibling : null);
+          updateCount();
+          scheduleSave();
+        } else if (targetTbody) {
+          const newTr = createTaskRow(taskData, {
+            hideCategoryCol: true,
+            isSubtask: false,
+            taskId,
+            showCheckboxTypeMenu,
+          });
+          newTr.dataset.sectionId = targetSectionId;
+          if (targetTbody.firstChild) {
+            targetTbody.insertBefore(newTr, targetTbody.firstChild);
+          } else {
+            targetTbody.appendChild(newTr);
+          }
+          const container = newTr.querySelector(".todo-subtasks-container");
+          const updateCount = () => {
+            const countEl = targetResult.wrap?.querySelector(".todo-section-count");
+            if (countEl) countEl.textContent = String(targetTbody.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").length || 0);
+          };
+          subtasksToMove.forEach((st) => {
+            const item = createSubtaskItem(taskId, st, updateCount);
+            if (container) container.appendChild(item);
+          });
         }
 
         setSubtasks(taskId, subtasksToMove);
-        const container = newTr.querySelector(".todo-subtasks-container");
-        const updateCount = () => {
-          const countEl = targetResult.wrap?.querySelector(".todo-section-count");
-          if (countEl) countEl.textContent = String(targetTbody?.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").length || 0);
-        };
-        subtasksToMove.forEach((st) => {
-          const item = createSubtaskItem(taskId, st, updateCount);
-          if (container) container.appendChild(item);
-        });
-
         clearSubtasks(oldTaskId);
-        targetResult.updateCount();
+        if (targetResult.updateCount) targetResult.updateCount();
       }
-      row.remove();
+      fromEl.remove();
       sectionResults.find((r) => r.wrap === section)?.updateCount();
       updateTabLabels();
     }
@@ -2454,14 +2999,26 @@ export function render(options = {}) {
 
   sectionsWrap.addEventListener("contextmenu", (e) => {
     const row = e.target.closest(".todo-task-row:not(.todo-subtask-row)");
-    if (!row) return;
-    if (!e.target.closest(".todo-cell-name")) return;
-    e.preventDefault();
-    e.stopPropagation();
-    contextMenuTargetRow = row;
-    const section = row.closest(".todo-section");
-    const sectionId = section?.dataset.section || "";
-    showContextMenu(e.clientX, e.clientY, sectionId || null);
+    const card = e.target.closest(".todo-card");
+    if (row && e.target.closest(".todo-cell-name")) {
+      e.preventDefault();
+      e.stopPropagation();
+      contextMenuTargetRow = row;
+      contextMenuTargetCard = null;
+      const section = row.closest(".todo-section");
+      const sectionId = section?.dataset.section || "";
+      showContextMenu(e.clientX, e.clientY, sectionId || null);
+      return;
+    }
+    if (card && !e.target.closest(".todo-card-delete") && !card.querySelector(".todo-done-check")?.contains(e.target)) {
+      e.preventDefault();
+      e.stopPropagation();
+      contextMenuTargetRow = null;
+      contextMenuTargetCard = card;
+      const section = card.closest(".todo-section");
+      const sectionId = section?.dataset.section || card.dataset.sectionId || "";
+      showContextMenu(e.clientX, e.clientY, sectionId || null);
+    }
   });
 
   return el;
