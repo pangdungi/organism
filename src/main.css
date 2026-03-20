@@ -2436,25 +2436,33 @@ body {
     gap: 0.5rem;
     cursor: pointer;
   }
+  /* 모바일 툴바 + 버튼: 할일 목록 + 버튼과 동일 디자인 통일 */
   .time-ledger-mobile-toolbar .time-btn-add {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    min-width: 2rem;
-    min-height: 2rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
     padding: 0;
-    background: var(--ui-btn-primary-bg);
-    color: var(--ui-btn-primary-fg);
-    border: none;
-    border-radius: 0.125rem;
-    font-size: 1.1rem;
+    font-size: 1.25rem;
+    font-family: inherit;
+    color: var(--text-muted);
+    background: var(--content-bg, #F5F1E8);
+    border: var(--line-l4);
+    box-shadow: 0 0.0625rem 0.25rem rgba(0, 0, 0, 0.06);
+    border-radius: var(--modal-radius) !important;
     line-height: 1;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
   }
   .time-ledger-mobile-toolbar .time-btn-add:hover {
-    background: var(--ui-btn-primary-hover);
-    color: var(--ui-btn-primary-fg);
+    color: var(--accent-viridian);
+    background: var(--ui-surface-alt);
+  }
+  .time-ledger-mobile-toolbar .time-btn-add svg {
+    display: block;
   }
   .time-ledger-mobile-toolbar .time-ledger-add-label {
     color: var(--text-ink);
@@ -3336,7 +3344,7 @@ body {
 .work-schedule-view-tab {
   padding: 0.4rem 0.75rem;
   font-size: 0.9rem;
-  color: #888;
+  color: var(--text-muted);
   background: none;
   border: none;
   border-bottom: 0.125rem solid transparent;
@@ -3345,11 +3353,11 @@ body {
 }
 
 .work-schedule-view-tab:hover {
-  color: #555;
+  color: var(--text-body);
 }
 
 .work-schedule-view-tab.active {
-  color: #333;
+  color: var(--text-ink);
   border-bottom: var(--line-l1);
 }
 
@@ -3376,33 +3384,37 @@ body {
 }
 .work-schedule-daily-hours-label {
   display: inline-flex;
-  align-items: flex-end;
-  gap: 0.5rem;
-  font-size: 0.625rem;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
   font-weight: 300;
-  color: #7a7a7a;
+  color: var(--text-muted);
   line-height: 1;
 }
 .work-schedule-daily-hours-input {
   width: 3.5rem;
   min-width: 3.5rem;
-  padding: 0 0 0.1rem 0;
+  padding: 0.05rem 0 0.25rem 0;
   border: none;
   border-bottom: var(--divider-subtle);
   border-radius: 0;
   background: transparent;
   font-family: var(--font-heading);
-  font-weight: 200;
-  font-size: 1.375rem;
+  font-weight: 600;
+  font-size: 1.25rem;
+  line-height: 1.2;
   color: var(--text-ink);
   text-align: center;
   outline: none;
   box-sizing: content-box;
+  vertical-align: baseline;
 }
 .work-schedule-daily-hours-unit {
-  font-size: 0.625rem;
-  font-weight: 300;
-  color: #7a7a7a;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-body);
+  line-height: 1;
+  vertical-align: baseline;
 }
 .work-schedule-time-accumulation-display {
   font-size: 0.9rem;
@@ -3439,14 +3451,14 @@ body {
 }
 
 .work-schedule-filter-btn:hover {
-  background: #e5e7eb;
+  background: var(--ui-surface-alt);
   color: var(--text-body);
 }
 
 .work-schedule-filter-btn.active {
-  background: #F5F1E8;
-  color: #1a1a2e;
-  border-color: #d1d5db;
+  background: var(--content-bg, #F5F1E8);
+  color: var(--text-ink);
+  border-color: var(--line-l3-color);
   box-shadow: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.05);
 }
 
@@ -7744,7 +7756,7 @@ body {
 }
 
 .work-schedule-type-display.is-placeholder {
-  background: #f0f0f0;
+  background: var(--ui-surface-alt);
   color: var(--text-muted);
 }
 
@@ -7759,8 +7771,8 @@ body {
 }
 
 .work-schedule-type-display.is-default {
-  background: #f0f0f0;
-  color: #333;
+  background: var(--ui-surface-alt);
+  color: var(--text-body);
 }
 
 .work-schedule-type-wrap .time-input-task:focus {
@@ -7808,7 +7820,7 @@ body {
   position: sticky;
   left: 0;
   z-index: 2;
-  background: #fcfcfc;
+  background: var(--content-bg, #F5F1E8);
   box-shadow: 1px 0 0 var(--line-l3-color);
 }
 .work-schedule-table th.work-schedule-th-date {
@@ -8293,11 +8305,11 @@ body {
 }
 
 .work-schedule-monthly-day.empty {
-  background: #fafafa;
+  background: var(--ui-surface-alt);
 }
 
 .work-schedule-monthly-day.other-month {
-  background: #f2f2f2;
+  background: var(--ui-surface-alt);
 }
 
 .work-schedule-monthly-day.other-month .work-schedule-monthly-day-num {
@@ -8305,7 +8317,7 @@ body {
 }
 
 .work-schedule-monthly-day.today {
-  background: #ededed;
+  background: var(--ui-surface-alt);
 }
 
 .work-schedule-monthly-day.today .work-schedule-monthly-day-num::after {
@@ -8313,7 +8325,7 @@ body {
   display: inline-block;
   width: 0.25rem;
   height: 0.25rem;
-  background: #000;
+  background: var(--text-ink);
   -webkit-border-radius: 50% !important;
   border-radius: 50% !important;
   -webkit-clip-path: circle(50%);
@@ -8323,14 +8335,14 @@ body {
 }
 
 .work-schedule-monthly-day.sun .work-schedule-monthly-day-num {
-  color: #7a7a7a;
+  color: var(--text-muted);
 }
 
 .work-schedule-monthly-day-num {
-  font-size: 0.75rem;
-  font-weight: 300;
+  font-size: 0.8125rem;
+  font-weight: 500;
   font-family: "DM Mono", monospace;
-  color: #7a7a7a;
+  color: var(--text-body);
   margin-bottom: 0.25rem;
 }
 
@@ -8345,15 +8357,15 @@ body {
   align-items: center;
   gap: 0.35rem;
   font-size: 0.6875rem;
-  border-left: 0.0938rem solid #7a7a7a;
+  border-left: 0.0938rem solid var(--line-l3-color);
   padding-left: 0.35rem;
 }
 
 .work-schedule-monthly-type {
   padding: 0.15rem 0.35rem;
   border-radius: 0;
-  background: #f0f0f0;
-  color: #333;
+  background: var(--ui-surface-alt);
+  color: var(--text-body);
 }
 
 .work-schedule-monthly-type.is-overtime {
@@ -20287,9 +20299,9 @@ body.kpi-resizing {
   margin-top: 0.125rem;
   max-height: 13.75rem;
   overflow-y: auto;
-  background: #F5F1E8;
+  background: var(--content-bg, #F5F1E8);
   border: var(--line-l3);
-  border-radius: 0.5rem;
+  border-radius: var(--modal-radius);
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
   z-index: 100;
 }
@@ -20306,7 +20318,7 @@ body.kpi-resizing {
 .time-task-name-separator {
   padding: 0.35rem 0.6rem;
   text-align: center;
-  color: #bbb;
+  color: var(--text-muted);
   font-size: 0.75rem;
   border-bottom: var(--line-l3);
 }
@@ -20318,7 +20330,7 @@ body.kpi-resizing {
   padding: 0.4rem 0.6rem;
   cursor: pointer;
   font-size: 0.875rem;
-  color: #333;
+  color: var(--text-body);
   border-bottom: var(--line-l3);
 }
 
@@ -20328,7 +20340,7 @@ body.kpi-resizing {
 
 .time-task-name-option:hover,
 .time-task-name-option.is-highlighted {
-  background: #f8f8f8;
+  background: var(--ui-surface-alt);
 }
 
 .time-task-name-option .time-task-tag {
@@ -20341,9 +20353,9 @@ body.kpi-resizing {
   padding: 0.2rem;
   border: none;
   background: none;
-  color: #999;
+  color: var(--text-muted);
   cursor: pointer;
-  border-radius: 0.25rem;
+  border-radius: var(--modal-radius);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -20360,8 +20372,8 @@ body.kpi-resizing {
 }
 
 .time-task-delete-btn:hover {
-  color: #666;
-  background: #eee;
+  color: var(--text-body);
+  background: var(--ui-surface-alt);
 }
 
 .time-task-delete-icon {
@@ -20373,10 +20385,10 @@ body.kpi-resizing {
   padding: 0.2rem 0.5rem;
   font-size: 0.8125rem;
   font-weight: 500;
-  border-radius: 0.375rem;
+  border-radius: var(--modal-radius);
   white-space: nowrap;
-  background: #f0f0f0;
-  color: #333;
+  background: var(--ui-surface-alt);
+  color: var(--text-body);
 }
 
 .time-task-name-create {
@@ -20384,7 +20396,7 @@ body.kpi-resizing {
 }
 
 .time-task-create-label {
-  color: #888;
+  color: var(--text-muted);
   font-size: 0.8125rem;
   margin-right: 0.35rem;
 }
