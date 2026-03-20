@@ -423,7 +423,8 @@ export function saveTodoListBeforeUnmount(container) {
   if (sectionsWrap) {
     collectAndSaveKpiTasksFromDOM(sectionsWrap);
     getCustomSections().forEach((s) => {
-      saveCustomSectionTasks(s.id, collectCustomSectionFromDOM(sectionsWrap, s.id));
+      const sec = sectionsWrap.querySelector(`.todo-section[data-section="${s.id}"]`);
+      if (sec) saveCustomSectionTasks(s.id, collectCustomSectionFromDOM(sectionsWrap, s.id));
     });
   } else {
     todoDebug("saveTodoListBeforeUnmount: no .todo-sections-wrap in container, save skipped");
@@ -2121,7 +2122,8 @@ export function render(options = {}) {
     /* 리스트 탭 컬러 테두리 제거 - 탭 스타일은 CSS로 통일 */
   }
 
-  getSections().forEach((section) => {
+  /* 할일/일정: 고정 5개 탭만 표시 (브레인덤프, 꿈, 부수입, 건강, 행복), 리스트 추가 비노출 */
+  FIXED_SECTIONS.forEach((section) => {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "todo-category-tab";
@@ -2131,68 +2133,6 @@ export function render(options = {}) {
     categoryTabs.appendChild(btn);
   });
 
-  const addTabBtn = document.createElement("button");
-  addTabBtn.type = "button";
-  addTabBtn.className = "todo-category-tab todo-category-tab-add";
-  addTabBtn.title = "리스트 추가";
-  addTabBtn.innerHTML = '<img src="/toolbaricons/add-square.svg" alt="" class="todo-category-tab-add-icon" width="16" height="16">';
-  addTabBtn.addEventListener("click", () => {
-    showAddListModal({
-      validate: (name) => {
-        if (!name || !name.trim()) return "리스트 이름을 입력하세요.";
-        if (getCustomSections().some((s) => s.label === name.trim())) return "같은 이름의 리스트가 이미 있습니다.";
-        return null;
-      },
-      onSuccess: (name) => {
-        const newSection = addCustomSection(name.trim());
-        if (!newSection) return;
-        const colors = getTodoSettings().sectionColors;
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "todo-category-tab";
-        btn.dataset.section = newSection.id;
-        btn.innerHTML = `<span class="todo-category-tab-label">${newSection.label}</span> <span class="todo-category-tab-count">0</span>`;
-        tabButtons.push(btn);
-        categoryTabs.insertBefore(btn, addTabBtn);
-
-        const { wrap, updateCount } = createSection(newSection, {
-          lastColHeader: "분류",
-          initialTasks: [],
-          showCategoryCol: false,
-          sectionIdForAdd: newSection.id,
-          hideCategoryCol: true,
-          tabMode: true,
-          showCheckboxTypeMenu,
-          enableDragToCalendar,
-          enableDragToEisenhower,
-        });
-        wrap.classList.remove("is-active");
-        sectionResults.push({ section: newSection, wrap, updateCount });
-        sectionsWrap.appendChild(wrap);
-
-        observer.observe(wrap.querySelector("tbody"), { childList: true });
-
-        const newIndex = tabButtons.length - 2;
-        btn.addEventListener("click", () => {
-          activeSectionIndex = newIndex;
-          tabButtons.forEach((b) => b.classList.remove("active"));
-          btn.classList.add("active");
-          sectionResults.forEach((r, idx) => {
-            r.wrap.classList.toggle("is-active", idx === newIndex);
-          });
-        });
-
-        activeSectionIndex = newIndex;
-        tabButtons.forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        sectionResults.forEach((r, idx) => {
-          r.wrap.classList.toggle("is-active", idx === newIndex);
-        });
-        updateTabLabels();
-      },
-    });
-  });
-  categoryTabs.appendChild(addTabBtn);
   toolbarRow.appendChild(categoryTabs);
   if (!settingsSlot) {
     toolbarRow.appendChild(toolbar);
@@ -2293,7 +2233,7 @@ export function render(options = {}) {
       return v === q || (labelForQ && v === labelForQ);
     });
   }
-  const sectionResults = renderSections(sectionsWrap, allTasks, { tabMode: true, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, eisenhowerSidebarFirst });
+  const sectionResults = renderSections(sectionsWrap, allTasks, { tabMode: true, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, eisenhowerSidebarFirst, sectionsOverride: FIXED_SECTIONS });
 
   function updateTabLabels() {
     tabButtons.forEach((btn, i) => {

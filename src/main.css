@@ -1200,6 +1200,12 @@ body {
 }
 
 @media (max-width: 47.9375rem) {
+  /* 모바일: 상단 safe area(노치·카메라·배터리 영역)만큼 패딩 */
+  #app:has(#app-screen) {
+    padding-top: env(safe-area-inset-top, 0);
+    box-sizing: border-box;
+  }
+
   .app-sidebar {
     display: none !important;
   }
@@ -1210,11 +1216,15 @@ body {
 
   .app-bottom-nav {
     display: flex !important;
+    padding: 0.55rem 0 0 0 !important;
+    padding-bottom: env(safe-area-inset-bottom, 0.55rem) !important;
   }
-  /* 모바일: 액티브 #111111, 비활성 #B8B8B8, 아이콘 1.125rem */
+  /* 모바일: 액티브 #111111, 비활성 #B8B8B8, 아이콘 1.125rem, 탭 높이 살짝 확대 */
   .app-bottom-nav-item {
     background: transparent !important;
     color: #b8b8b8;
+    padding: 0.5rem 0.25rem !important;
+    font-size: 0.7rem !important;
   }
   .app-bottom-nav-item:hover,
   .app-bottom-nav-item:active {
@@ -1418,8 +1428,16 @@ body {
     padding-bottom: 1rem;
   }
   .app-main:has(.idea-view) .idea-view {
-    padding: 1rem 0 1.5rem;
+    padding: 1rem 1.75rem 1.25rem !important;
     box-sizing: border-box;
+  }
+
+  /* 모바일: 근무표·아카이브·나의계정 헤더 패딩 통일 (오늘 탭 date-header와 동일: 0.25rem 1.75rem 1.25rem) */
+  .work-schedule-view .work-schedule-header {
+    padding: 0.25rem 1.75rem 1.25rem !important;
+  }
+  .archive-view .archive-header {
+    padding: 0.25rem 1.75rem 1.25rem !important;
   }
 
   /* 모바일: 모든 탭 뷰 좌우 패딩 제거 (화면 끝까지) */
@@ -1828,6 +1846,11 @@ body {
   .calendar-view-todo .calendar-todo-content .todo-table thead th.todo-th-done,
   .calendar-view-todo .calendar-todo-content .todo-table thead th.todo-th-name {
     z-index: 4;
+  }
+  /* 모바일: 할일 테이블 왼쪽 패딩을 홈 할일(1.75rem)과 동일하게 */
+  .calendar-view-todo .calendar-todo-content .todo-table thead th:first-child,
+  .calendar-view-todo .calendar-todo-content .todo-table tbody td:first-child {
+    padding-left: 1.75rem !important;
   }
   .calendar-view-todo .calendar-todo-content .todo-table tbody {
     display: table-row-group;
