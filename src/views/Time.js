@@ -3147,7 +3147,7 @@ export function render() {
   header.className = "time-ledger-header dream-view-header-wrap";
   const label = document.createElement("span");
   label.className = "dream-view-label";
-  label.textContent = "TIME";
+  label.textContent = "TIME BUDGET";
   const title = document.createElement("h1");
   title.className = "dream-view-title time-ledger-title";
   title.textContent = "시간가계부";

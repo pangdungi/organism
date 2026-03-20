@@ -23712,6 +23712,10 @@ body.kpi-resizing {
   flex-shrink: 0;
   margin-bottom: 1rem;
 }
+/* 할일/일정 탭에서만 제목(SCHEDULE, 할일/일정) 영역 숨김 */
+.calendar-view .calendar-view-header {
+  display: none;
+}
 .calendar-view-header .calendar-view-title {
   margin: 0;
   /* 제목 크기/색은 .dream-view-title과 통일 (2rem, 700, #1f2937) */
