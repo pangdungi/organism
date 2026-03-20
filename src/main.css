@@ -4470,6 +4470,7 @@ body {
   border-bottom: var(--divider-subtle);
   border-right: var(--divider-subtle);
   overflow: hidden;
+  background: var(--content-bg);
 }
 
 .asset-expense-table th {
@@ -4482,10 +4483,9 @@ body {
 }
 
 .asset-expense-table th {
-  background: var(--content-bg);
-  font-weight: 600;
+  font-weight: 500;
   font-size: 0.8125rem;
-  color: var(--text-ink);
+  color: var(--text-muted);
 }
 
 /* 거래일, 금액 열 고정 (가로 스크롤 시) - 열 순서: 거래일·금액·큰분류·소비/수입분류·소비/수입명·결제수단·카테고리·메모·삭제 */
@@ -4523,7 +4523,7 @@ body {
 .asset-expense-summary-row .asset-expense-summary-total {
   position: sticky;
   z-index: 1;
-  background: var(--ui-surface-alt);
+  background: var(--content-bg);
 }
 
 .asset-expense-summary-row .asset-expense-summary-label {
@@ -4577,7 +4577,7 @@ body {
   border-top: var(--line-l2);
 }
 .asset-expense-summary-row td {
-  background: var(--ui-surface-alt);
+  background: var(--content-bg);
   font-weight: 600;
   font-size: 0.8125rem;
   color: var(--text-body);
@@ -8164,7 +8164,7 @@ body {
 }
 
 .work-schedule-tfoot {
-  background: none;
+  background: var(--content-bg);
 }
 .work-schedule-sum-row td {
   background: var(--content-bg);
@@ -8300,7 +8300,7 @@ body {
   box-shadow: 1px 0 0 var(--line-l3-color);
 }
 .work-schedule-table tbody tr:hover .work-schedule-cell-date {
-  background: var(--ui-surface-alt);
+  background: var(--ui-surface-alt) !important;
 }
 .work-schedule-table .work-schedule-sum-row .work-schedule-cell-date {
   background: var(--content-bg);
@@ -8374,10 +8374,10 @@ body {
   cursor: pointer;
   position: relative;
   text-align: left;
-  background: none !important;
+  background: var(--content-bg) !important;
 }
 .work-schedule-cell-date:focus-within {
-  background: none !important;
+  background: var(--ui-surface-alt) !important;
 }
 
 .work-schedule-cell-date .work-schedule-input-date,
@@ -8506,7 +8506,7 @@ body {
 }
 
 .work-schedule-row-add {
-  background: none;
+  background: var(--content-bg);
 }
 
 .work-schedule-cell-add {
