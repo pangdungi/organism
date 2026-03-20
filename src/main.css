@@ -1682,9 +1682,9 @@ body {
     line-height: normal;
   }
 
-  /* 모바일: 3. 날짜 정하기 - 월별 캘린더만 표시 (서브탭·사이드바 숨김) */
+  /* 모바일: 3. 날짜 정하기 - 월별·1주 등 서브탭 표시 (탭 전환 가능), 사이드바만 숨김 */
   .calendar-view-with-subtabs .calendar-sub-tabs {
-    display: none !important;
+    display: flex !important;
   }
   .calendar-view-with-subtabs .calendar-todo-sidebar {
     display: none !important;
