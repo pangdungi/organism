@@ -1205,9 +1205,9 @@ body {
 }
 
 @media (max-width: 47.9375rem) {
-  /* 모바일: 상단 safe area(노치·카메라·배터리 영역)만큼 패딩 */
+  /* 모바일: 상단 safe area + 추가 여백으로 상태바·노치와 겹침 방지 */
   #app:has(#app-screen) {
-    padding-top: env(safe-area-inset-top, 0);
+    padding-top: calc(env(safe-area-inset-top, 0) + 1rem);
     box-sizing: border-box;
   }
 
@@ -1221,8 +1221,8 @@ body {
 
   .app-bottom-nav {
     display: flex !important;
-    padding: 0.55rem 0 0 0 !important;
-    padding-bottom: env(safe-area-inset-bottom, 0.55rem) !important;
+    padding: 0.75rem 0 0 0 !important;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0) + 0.75rem) !important;
   }
   /* 모바일: 액티브 #111111, 비활성 #B8B8B8, 아이콘 1.125rem, 탭 높이 살짝 확대 */
   .app-bottom-nav-item {
@@ -1247,6 +1247,7 @@ body {
   }
 
   .app-main {
+    padding-top: calc(env(safe-area-inset-top, 0) + 2.25rem);
     padding-bottom: 4.5rem;
     padding-left: 0 !important;
     padding-right: 0 !important;
