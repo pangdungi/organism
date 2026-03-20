@@ -1576,7 +1576,7 @@ body {
   .calendar-view .calendar-monthly-tabs-wrap {
     display: none !important;
   }
-  /* 할일 뷰의 메인 탭(1. 할일, 3. 날짜 정하기)은 모바일에서 표시 */
+  /* 할일 뷰의 메인 탭(할일·타임라인 등)은 모바일에서 표시 — 날짜 정하기는 하단 '캘린더' 탭에서만 */
   .calendar-view .calendar-monthly-tabs-wrap:has(.calendar-tabs) {
     display: flex !important;
   }
@@ -1585,7 +1585,7 @@ body {
   .app-tab-panel-content.calendar-view {
     padding: 0 !important;
   }
-  /* 모바일: 할일/캘린더/타임라인 헤더 통일 - 패딩 0.875rem 1.5rem 0, 하단 보더 0.0313rem */
+  /* 모바일: 할일/타임라인 헤더 통일 - 패딩 0.875rem 1.5rem 0, 하단 보더 0.0313rem */
   .calendar-view .calendar-view-top-row,
   .calendar-view
     .calendar-view-top-row--todo.calendar-view-top-row--with-settings,
@@ -1631,8 +1631,11 @@ body {
     border-bottom: none !important;
   }
 
-  /* 모바일: 할일/일정에서 우선순위 정렬만 숨김, 할일·캘린더·타임라인(오늘 해치우기) 표시 */
+  /* 모바일: 우선순위 정렬 숨김. 날짜 정하기(캘린더)는 하단 캘린더 탭 전용이라 여기서도 숨김 */
   .calendar-view .calendar-tabs .time-view-tab[data-view="eisenhower"] {
+    display: none !important;
+  }
+  .calendar-view .calendar-tabs .time-view-tab[data-view="calendar"] {
     display: none !important;
   }
   /* 모바일: 탭 라벨을 할일 / 캘린더로 짧게, 번호 제거 */

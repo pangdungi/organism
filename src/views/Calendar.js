@@ -6261,6 +6261,18 @@ export function render() {
     });
   });
 
+  /* 모바일: 상단에서 '날짜 정하기' 탭 숨김(하단 캘린더 탭과 중복). 좁혀졌을 때 캘린더 뷰면 할일로 전환 */
+  const hideCalendarSubTabMq = window.matchMedia("(max-width: 47.9375rem)");
+  function exitCalendarViewOnMobile() {
+    if (!hideCalendarSubTabMq.matches) return;
+    const active = tabs.querySelector(".time-view-tab.active");
+    if (active?.dataset?.view !== "calendar") return;
+    const todoBtn = tabs.querySelector('.time-view-tab[data-view="todo"]');
+    if (todoBtn) todoBtn.click();
+  }
+  hideCalendarSubTabMq.addEventListener("change", exitCalendarViewOnMobile);
+  exitCalendarViewOnMobile();
+
   renderContent("todo");
   el.appendChild(contentWrap);
 
