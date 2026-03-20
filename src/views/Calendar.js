@@ -1290,7 +1290,7 @@ function renderMonthlyView(tabsElement) {
 
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
-      const BAR_HEIGHT = window.matchMedia("(max-width: 767px)").matches ? 0.8 : 1.85;
+      const BAR_HEIGHT = window.matchMedia("(max-width: 767px)").matches ? 0.95 : 2.05;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
@@ -1378,7 +1378,7 @@ function renderMonthlyView(tabsElement) {
       const rowsNeeded = maxRow + 1;
       const BARS_TOP = window.matchMedia("(max-width: 767px)").matches ? 1.35 : 1.75;
       const BOTTOM_PAD = 0.6;
-      const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 4 * BAR_HEIGHT + BOTTOM_PAD;
+      const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 3 * BAR_HEIGHT + BOTTOM_PAD;
       const requiredHeight = BARS_TOP + rowsNeeded * BAR_HEIGHT + BOTTOM_PAD;
       weekRow.style.minHeight = `${Math.max(DEFAULT_ROW_HEIGHT_REM, requiredHeight)}rem`;
       const barsWithRow = allBars;
@@ -2017,7 +2017,7 @@ function render2WeekView(tabsElement) {
 
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
-      const BAR_HEIGHT = window.matchMedia("(max-width: 767px)").matches ? 0.8 : 1.85;
+      const BAR_HEIGHT = window.matchMedia("(max-width: 767px)").matches ? 0.95 : 2.05;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
@@ -2105,7 +2105,7 @@ function render2WeekView(tabsElement) {
       const rowsNeeded = maxRow + 1;
       const BARS_TOP = window.matchMedia("(max-width: 767px)").matches ? 1.35 : 1.75;
       const BOTTOM_PAD = 0.6;
-      const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 4 * BAR_HEIGHT + BOTTOM_PAD;
+      const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 3 * BAR_HEIGHT + BOTTOM_PAD;
       const requiredHeight = BARS_TOP + rowsNeeded * BAR_HEIGHT + BOTTOM_PAD;
       weekRow.style.minHeight = `${Math.max(DEFAULT_ROW_HEIGHT_REM, requiredHeight)}rem`;
       const barsWithRow = allBars;
@@ -2732,7 +2732,7 @@ function render3WeekView(tabsElement) {
 
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
-      const BAR_HEIGHT = window.matchMedia("(max-width: 767px)").matches ? 0.8 : 1.85;
+      const BAR_HEIGHT = window.matchMedia("(max-width: 767px)").matches ? 0.95 : 2.05;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
@@ -2820,7 +2820,7 @@ function render3WeekView(tabsElement) {
       const rowsNeeded = maxRow + 1;
       const BARS_TOP = window.matchMedia("(max-width: 767px)").matches ? 1.35 : 1.75;
       const BOTTOM_PAD = 0.6;
-      const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 4 * BAR_HEIGHT + BOTTOM_PAD;
+      const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 3 * BAR_HEIGHT + BOTTOM_PAD;
       const requiredHeight = BARS_TOP + rowsNeeded * BAR_HEIGHT + BOTTOM_PAD;
       weekRow.style.minHeight = `${Math.max(DEFAULT_ROW_HEIGHT_REM, requiredHeight)}rem`;
       const barsWithRow = allBars;
@@ -4918,7 +4918,7 @@ function render1WeekView(tabsElement) {
 
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
-      const BAR_HEIGHT = window.matchMedia("(max-width: 767px)").matches ? 0.8 : 1.85;
+      const BAR_HEIGHT = window.matchMedia("(max-width: 767px)").matches ? 0.95 : 2.05;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
@@ -5006,7 +5006,7 @@ function render1WeekView(tabsElement) {
       const rowsNeeded = maxRow + 1;
       const BARS_TOP = window.matchMedia("(max-width: 767px)").matches ? 1.35 : 1.75;
       const BOTTOM_PAD = 0.6;
-      const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 4 * BAR_HEIGHT + BOTTOM_PAD;
+      const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 3 * BAR_HEIGHT + BOTTOM_PAD;
       const requiredHeight = BARS_TOP + rowsNeeded * BAR_HEIGHT + BOTTOM_PAD;
       weekRowEl.style.minHeight = `${Math.max(DEFAULT_ROW_HEIGHT_REM, requiredHeight)}rem`;
       const barsWithRow = allBars;

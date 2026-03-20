@@ -280,6 +280,34 @@ function removeCustomSectionTasks(sectionId) {
   } catch (_) {}
 }
 
+function removeTaskFromSectionStorage(sectionId, taskId) {
+  try {
+    const raw = localStorage.getItem(SECTION_TASKS_KEY);
+    if (!raw) return false;
+    const obj = JSON.parse(raw);
+    const arr = obj[sectionId];
+    if (!Array.isArray(arr)) return false;
+    obj[sectionId] = arr.filter((t) => (t.taskId || "") !== taskId);
+    localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+    return true;
+  } catch (_) {}
+  return false;
+}
+
+function removeTaskFromCustomSectionStorage(sectionId, taskId) {
+  try {
+    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
+    if (!raw) return false;
+    const obj = JSON.parse(raw);
+    const arr = obj[sectionId];
+    if (!Array.isArray(arr)) return false;
+    obj[sectionId] = arr.filter((t) => (t.taskId || "") !== taskId);
+    localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(obj));
+    return true;
+  } catch (_) {}
+  return false;
+}
+
 function collectCustomSectionFromDOM(sectionsEl, sectionId) {
   const tasks = [];
   const sec = sectionsEl?.querySelector(`.todo-section[data-section="${sectionId}"]`);
@@ -1574,8 +1602,18 @@ function createTaskRow(taskData = {}, options = {}) {
     e.stopPropagation();
     const section = tr.closest(".todo-section");
     const tbody = tr.parentElement;
+    const sectionId = section?.dataset?.section || tr.dataset.sectionId || "";
+    const rowTaskId = tr.dataset.taskId || "";
     if (isKpiTodo && kpiTodoId && storageKey) {
       if (removeKpiTodo(kpiTodoId, storageKey)) tr.remove();
+    } else if (sectionId && rowTaskId) {
+      if (sectionId.startsWith("custom-")) {
+        removeTaskFromCustomSectionStorage(sectionId, rowTaskId);
+      } else {
+        removeTaskFromSectionStorage(sectionId, rowTaskId);
+      }
+      clearSubtasks(rowTaskId);
+      tr.remove();
     } else {
       tr.remove();
     }
