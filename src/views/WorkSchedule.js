@@ -21,7 +21,7 @@ const PROTECTED_WORK_TYPES = READONLY_WORK_TYPES;
 const WORK_TYPE_DISPLAY_ORDER = DEFAULT_WORK_TYPE_OPTIONS.map((o) => o.name);
 
 const DELETE_ICON =
-  '<svg class="time-task-delete-icon" viewBox="0 0 16 16" width="12" height="12"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+  '<svg class="time-task-delete-icon" viewBox="0 0 16 16" width="16" height="16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
 
 function normalizeTypeEntry(o) {
   if (typeof o === "string") return { name: (o || "").trim(), start: "", end: "" };
@@ -748,7 +748,7 @@ export function render() {
   settingsBtn.setAttribute("aria-label", "근무유형 설정");
   settingsBtn.title = "근무유형 설정";
   settingsBtn.innerHTML =
-    '<img src="/toolbaricons/settings.svg" alt="" class="work-schedule-settings-icon" width="18" height="18">';
+    '<img src="/toolbaricons/settings.svg" alt="" class="work-schedule-settings-icon" width="20" height="20">';
   headerInner.appendChild(settingsBtn);
   header.appendChild(headerInner);
   el.appendChild(header);

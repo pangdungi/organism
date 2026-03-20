@@ -2236,7 +2236,7 @@ function createTagDropdown(options, initialValue, optionClass, onSelect) {
 }
 
 const DELETE_ICON =
-  '<svg class="time-task-delete-icon" viewBox="0 0 16 16" width="12" height="12"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+  '<svg class="time-task-delete-icon" viewBox="0 0 16 16" width="16" height="16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
 
 /** 과제명 입력: 포커스 시 목록 표시, 목록에 없으면 Create 옵션 */
 function createTaskNameInput(initialValue, onTaskSelect) {
@@ -3229,7 +3229,7 @@ export function render() {
   const filterBar = document.createElement("div");
   filterBar.className = "time-filter-bar";
   filterBar.innerHTML = `
-    <button type="button" class="time-task-setup-btn" data-filter-for="all" title="과제명, 생산성, 카테고리를 한 번에 설정"><img src="/toolbaricons/settings.svg" alt="과제 설정" class="time-btn-icon" width="18" height="18"></button>
+    <button type="button" class="time-task-setup-btn" data-filter-for="all" title="과제명, 생산성, 카테고리를 한 번에 설정"><img src="/toolbaricons/settings.svg" alt="과제 설정" class="time-btn-icon" width="20" height="20"></button>
     <div class="time-filter-tabs" data-filter-for="all">
       <button type="button" class="time-filter-btn" data-filter="month" data-audit-hidden>월별</button>
       <button type="button" class="time-filter-btn active" data-filter="day">하루</button>
@@ -4958,7 +4958,7 @@ export function render() {
         btn.dataset.label = opt.label;
         if (opt.svg) {
           btn.classList.add("time-task-log-expense-cls-btn-with-icon");
-          btn.innerHTML = `<span class="time-task-log-expense-cls-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">${opt.svg}</svg></span><span class="time-task-log-expense-cls-label">${escapeHtml(opt.label)}</span>`;
+          btn.innerHTML = `<span class="time-task-log-expense-cls-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${opt.svg}</svg></span><span class="time-task-log-expense-cls-label">${escapeHtml(opt.label)}</span>`;
         } else {
           btn.textContent = opt.label;
         }
@@ -5047,19 +5047,19 @@ export function render() {
   const FOCUS_TYPE_ICONS = [
     {
       type: "스마트폰",
-      svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m11.716 20.201 8.485-8.485"/><path d="m3.799 12.284 8.485-8.485"/><path d="m13.13 21.615-10.745-10.745c-.781-.781-.781-2.047 0-2.828l5.657-5.657c.781-.781 2.047-.781 2.828 0l10.745 10.745c.781.781.781 2.047 0 2.828l-5.657 5.657c-.781.781-2.047.781-2.828 0z"/><path d="m8 23c-3.866 0-7-3.134-7-7"/><path d="m16 1c3.866 0 7 3.134 7 7"/></g></svg>',
+      svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m11.716 20.201 8.485-8.485"/><path d="m3.799 12.284 8.485-8.485"/><path d="m13.13 21.615-10.745-10.745c-.781-.781-.781-2.047 0-2.828l5.657-5.657c.781-.781 2.047-.781 2.828 0l10.745 10.745c.781.781.781 2.047 0 2.828l-5.657 5.657c-.781.781-2.047.781-2.828 0z"/><path d="m8 23c-3.866 0-7-3.134-7-7"/><path d="m16 1c3.866 0 7 3.134 7 7"/></g></svg>',
     },
     {
       type: "잡생각",
-      svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 1h-5c-4.694 0-8.5 3.806-8.5 8.5 0 4.182 3.022 7.65 7 8.36v4.14l6-4h.5c4.694 0 8.5-3.806 8.5-8.5s-3.806-8.5-8.5-8.5z"/><path d="m12 10v-4"/><path d="m12 13v-.01"/></g></svg>',
+      svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 1h-5c-4.694 0-8.5 3.806-8.5 8.5 0 4.182 3.022 7.65 7 8.36v4.14l6-4h.5c4.694 0 8.5-3.806 8.5-8.5s-3.806-8.5-8.5-8.5z"/><path d="m12 10v-4"/><path d="m12 13v-.01"/></g></svg>',
     },
     {
       type: "배고픔",
-      svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 1v6"/><path d="m2 1v8c0 1.105.895 2 2 2v10c0 1.105.895 2 2 2s2-.895 2-2v-10c1.105 0 2-.895 2-2v-8"/><path d="m22 7c0-3.314-1.791-6-4-6s-4 2.686-4 6c0 2.22.806 4.153 2 5.191v8.809c0 1.105.895 2 2 2s2-.895 2-2v-8.809c1.194-1.038 2-2.971 2-5.191z"/></g></svg>',
+      svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 1v6"/><path d="m2 1v8c0 1.105.895 2 2 2v10c0 1.105.895 2 2 2s2-.895 2-2v-10c1.105 0 2-.895 2-2v-8"/><path d="m22 7c0-3.314-1.791-6-4-6s-4 2.686-4 6c0 2.22.806 4.153 2 5.191v8.809c0 1.105.895 2 2 2s2-.895 2-2v-8.809c1.194-1.038 2-2.971 2-5.191z"/></g></svg>',
     },
     {
       type: "피곤함",
-      svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="3.5" r="2.5"/><path d="m4 10h5 6 5"/><path d="m15 17h-6"/><path d="m6 23 3-6v-6.586"/><path d="m15 10.414v6.586l3 6"/></g></svg>',
+      svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="3.5" r="2.5"/><path d="m4 10h5 6 5"/><path d="m15 17h-6"/><path d="m6 23 3-6v-6.586"/><path d="m15 10.414v6.586l3 6"/></g></svg>',
     },
   ];
   function buildFocusTypeIconButtons(initialValue) {
@@ -6842,7 +6842,7 @@ export function render() {
       setupBtnEl.className = "time-task-setup-btn";
       setupBtnEl.title = "과제명, 생산성, 카테고리를 한 번에 설정";
       setupBtnEl.innerHTML =
-        '<img src="/toolbaricons/settings.svg" alt="과제 설정" class="time-btn-icon" width="18" height="18">';
+        '<img src="/toolbaricons/settings.svg" alt="과제 설정" class="time-btn-icon" width="20" height="20">';
       setupBtnEl.addEventListener("click", () => {
         const modal = el.querySelector(
           ".time-task-setup-modal:not(.time-task-select-modal):not(.time-add-task-modal):not(.time-task-log-modal)",
@@ -10226,7 +10226,7 @@ export function renderTimeBudgetTablesForCalendar(
       addBtn.className = "time-daily-budget-add-btn time-btn-add";
       addBtn.title = "계획하기";
       addBtn.innerHTML =
-        '<img src="/toolbaricons/add-square.svg" alt="" class="time-daily-budget-add-icon" width="18" height="18">';
+        '<img src="/toolbaricons/add-square.svg" alt="" class="time-daily-budget-add-icon" width="20" height="20">';
       addBtn.addEventListener("click", onAdd);
       header.appendChild(addBtn);
     }

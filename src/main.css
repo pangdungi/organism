@@ -79,45 +79,49 @@
   font-display: swap;
 }
 
-/* 기준 16px = 1rem — 타이포 스케일(Display·H1·H2·Body·Secondary·Caption) 고정 */
+/* 기준 16px = 1rem — 타이포·텍스트 스타일 명세 통일 */
 html {
   font-size: 16px;
 }
 
 :root {
-  /* 라틴: Space Grotesk → 한글 글리프는 NEXON Lv1 Gothic · 숫자·라벨(캡션) DM Mono */
-  --font-display: "Space Grotesk", "NEXON Lv1 Gothic", -apple-system, "Apple SD Gothic Neo",
-    "Malgun Gothic", sans-serif;
-  --font-heading: "Space Grotesk", "NEXON Lv1 Gothic", -apple-system, "Apple SD Gothic Neo",
-    "Malgun Gothic", sans-serif;
-  --font-body: "Space Grotesk", "NEXON Lv1 Gothic", -apple-system, "Apple SD Gothic Neo",
-    "Malgun Gothic", sans-serif;
-  --font-mono: "DM Mono", "NEXON Lv1 Gothic", ui-monospace, "SF Mono", Consolas, monospace;
+  /* 폰트: 한글 NEXON Lv1 Gothic · 영문 Display/Heading Space Grotesk · 숫자·날짜·레이블 DM Mono */
+  --font-display: "Space Grotesk", "NEXON Lv1 Gothic", sans-serif;
+  --font-heading: "Space Grotesk", "NEXON Lv1 Gothic", sans-serif;
+  --font-body: "NEXON Lv1 Gothic", "Space Grotesk", sans-serif;
+  --font-mono: "DM Mono", monospace;
 
   --app-font-family: var(--font-body);
 
-  --fs-display: 2.25rem; /* Display 36px / 700 */
-  --fs-h1: 1.375rem; /* Heading1 22px / 600 */
-  --fs-h2: 1rem; /* Heading2 16px / 500 */
-  --fs-body: 0.875rem; /* Body 14px / 400 */
-  --fs-secondary: 0.75rem; /* Secondary 12px / 300 */
-  --fs-caption: 0.625rem; /* Label·Caption 10px / DM Mono / 대문자 */
-  --fs-mono: 0.875rem; /* 숫자(본문과 동일 계열) */
+  /* 타이포 크기 명세: Display 32px / H1 20px / H2 15px / H3·Body 13px / Small 11px / Mono 13px / Label 10px / Micro 8px */
+  --fs-display: 2rem; /* 32px */
+  --fs-h1: 1.25rem; /* 20px H1 한글 페이지 타이틀 */
+  --fs-h2: 0.9375rem; /* 15px H2 한글 섹션 제목 */
+  --fs-h3: 0.8125rem; /* 13px H3 한글 카드 타이틀 */
+  --fs-body: 0.8125rem; /* 13px 본문 */
+  --fs-small: 0.6875rem; /* 11px 보조 설명 */
+  --fs-mono: 0.8125rem; /* 13px 숫자·날짜 */
+  --fs-caption: 0.625rem; /* 10px Label DM 300 */
+  --fs-micro: 0.5rem; /* 8px Micro TAB LABEL */
+  --fs-secondary: var(--fs-small);
 
+  /* 굵기: Display SG 700 / H1·H2 Bold / H3·Body·Small Regular / Mono·Label·Micro DM 300 */
   --fw-display: 700;
-  --fw-h1: 600;
-  --fw-h2: 500;
+  --fw-h1: 700;
+  --fw-h2: 700;
+  --fw-h3: 400;
   --fw-body: 400;
-  --fw-secondary: 300;
+  --fw-small: 400;
   --fw-mono: 300;
+  --fw-secondary: 300;
 
-  /* 베이지 영역 텍스트 색 (명세) */
-  --text-ink: #1a1f1c; /* 페이지·섹션 제목 */
-  --text-body: #3d4a42; /* 본문·할일 이름·숫자 */
-  --text-muted: #7a8c80; /* 보조·날짜시간 보조 */
-  --text-caption-color: #b0bdb4; /* 잉크 희미 · 라벨·캡션 */
-  --text-placeholder: #c5cec8; /* placeholder (한 단계 더 흐림 · 타이핑 값과 구분) */
-  --text-placeholder-hint: #d2d9d5; /* placeholder 더 흐림 (시간 등 짧은 힌트) */
+  /* 텍스트 색 명세: 강조·섹션 #1A2218 / 본문·리스트·숫자 #3D4A3E / 보조 #6B7A6E / 레이블 #A8A290 / Placeholder #C4BEA8 */
+  --text-ink: #1A2218; /* 강조타이틀·섹션제목 */
+  --text-body: #3D4A3E; /* 본문·리스트 */
+  --text-muted: #6B7A6E; /* 보조 */
+  --text-caption-color: #A8A290; /* 레이블·캡션 DM 300 */
+  --text-placeholder: #C4BEA8; /* placeholder */
+  --text-placeholder-hint: #C4BEA8; /* placeholder 힌트 */
 
   --accent-viridian: #344945;
   --app-bg: #F5F1E8;
@@ -161,6 +165,33 @@ html {
   --divider-default: var(--line-l2);
   --divider-subtle: var(--line-l3);
   --line: var(--line-l2-color);
+
+  /* 프로그레스 바 공통 스펙: 트랙 #D8D2C0 / radius 0 / 기본 4px·얇은 2px·세그먼트 6px / 진행 #2A3828·완료 #7A9E8A·초과 #8B5C3A / transition width 0.3s */
+  --progress-track-bg: #D8D2C0;
+  --progress-radius: 0;
+  --progress-height: 4px;
+  --progress-height-thin: 2px;
+  --progress-height-segmented: 6px;
+  --progress-fill: #2A3828;
+  --progress-fill-done: #7A9E8A;
+  --progress-fill-exceeded: #8B5C3A;
+  --progress-transition: width 0.3s;
+
+  /* 아이콘 공통: 스트로크 1.5px / 일반 UI 24px / 탭바 20px / 소형 16px */
+  --icon-stroke: 1.5;
+  --icon-size-ui: 24px;
+  --icon-size-tab: 20px;
+  --icon-size-sm: 16px;
+
+  /* 체크박스 공통: 14×14px / 기본 1.5px #2A3828 / 호버 배경 #E8E2D2 / 완료 배경 #2A3828 체크 #F2EDE0 / 비활성 1px #C4BEA8 */
+  --cb-size: 14px;
+  --cb-border: 1.5px solid #2A3828;
+  --cb-border-disabled: 1px solid #C4BEA8;
+  --cb-bg: transparent;
+  --cb-bg-hover: #E8E2D2;
+  --cb-bg-checked: #2A3828;
+  --cb-check-bg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-6' stroke='%23F2EDE0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E");
+
   /* 카드 & 뱃지 (CARDS & BADGES 명세) */
   /* 자산관리(가계부) 웜톤 컬러 팔레트 - 컬러코드 매칭 */
   --asset-warm-1: #C97A6A;
@@ -210,7 +241,7 @@ input[type="datetime-local"],
 input[type="time"] {
   accent-color: var(--gray-500, #6b7280);
   color-scheme: light;
-  font-family: var(--app-font-family, var(--font-body));
+  font-family: var(--font-body);
   color: var(--gray-700, #374151);
 }
 
@@ -241,7 +272,7 @@ body {
 
 body {
   margin: 0;
-  font-family: var(--app-font-family, var(--font-body));
+  font-family: var(--font-body);
   font-size: var(--fs-body);
   font-weight: var(--fw-body);
   line-height: 1.5;
@@ -821,9 +852,24 @@ body {
 }
 
 .login-show-pw-checkbox {
-  width: 1rem;
-  height: 1rem;
+  width: var(--cb-size);
+  height: var(--cb-size);
   cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  border: var(--cb-border);
+  border-radius: 0;
+  background: var(--cb-bg);
+  box-sizing: border-box;
+}
+
+.login-show-pw-checkbox:hover {
+  background: var(--cb-bg-hover);
+}
+
+.login-show-pw-checkbox:checked {
+  background: var(--cb-bg-checked) var(--cb-check-bg) center/70% no-repeat;
+  border: var(--cb-border);
 }
 
 .login-btn-cta {
@@ -937,11 +983,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
   border-right: var(--line-l2);
   overflow: hidden;
   transition:
@@ -1051,7 +1093,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.25rem;
+  width: var(--icon-size-tab);
 }
 
 .app-sidebar-item-icon img {
@@ -1511,7 +1553,7 @@ body {
   }
 }
 
-/* 모바일: 하단 탭 — 사이드바와 동일 Viridian #344945 */
+/* 모바일: 하단 탭 배경 #2A3828 / 활성 아이콘·텍스트 #FFFFFF / 활성 인디케이터 2px #7A9E8A */
 .app-bottom-nav {
   display: none;
   position: fixed;
@@ -1519,7 +1561,7 @@ body {
   left: 0;
   right: 0;
   z-index: 50;
-  background: var(--accent-viridian);
+  background: #2A3828;
   border-top: var(--line-l2);
   padding: 0.35rem 0;
   padding-bottom: env(safe-area-inset-bottom, 0.35rem);
@@ -1528,10 +1570,11 @@ body {
   justify-content: space-around;
   align-items: stretch;
   gap: 0;
-  font-family: var(--app-font-family);
+  font-family: var(--font-body);
 }
 
 .app-bottom-nav-item {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1543,58 +1586,77 @@ body {
   background: transparent !important;
   border: none;
   border-radius: 0;
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 8px;
   font-weight: 300;
   cursor: pointer;
-  font-family: inherit;
-  transition:
-    background 0.2s ease,
-    color 0.15s,
-    filter 0.15s;
+  font-family: var(--font-mono);
+  transition: color 0.15s, filter 0.15s;
   -webkit-tap-highlight-color: transparent;
 }
 
 .app-bottom-nav-item:hover,
 .app-bottom-nav-item:active {
-  background: rgba(255, 255, 255, 0.1) !important;
-  color: #ffffff;
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.app-bottom-nav-item:hover .app-bottom-nav-icon,
+.app-bottom-nav-item:active .app-bottom-nav-icon {
+  filter: brightness(0) invert(1) opacity(0.5);
 }
 
 .app-bottom-nav-item.active {
-  color: #ffffff;
+  color: rgba(255, 255, 255, 0.75);
   font-weight: 400;
-  background: rgba(255, 255, 255, 0.05) !important;
-  box-shadow: inset 0 2px 0 var(--line-l8-color);
+  background: transparent !important;
+  box-shadow: none;
+}
+
+.app-bottom-nav-item.active::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 2px;
+  background: #7A9E8A;
 }
 
 .app-bottom-nav-item.active:hover,
 .app-bottom-nav-item.active:active {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #ffffff;
-  box-shadow: inset 0 2px 0 var(--line-l8-color);
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.75);
+  box-shadow: none;
+}
+
+.app-bottom-nav-item.active:hover .app-bottom-nav-icon,
+.app-bottom-nav-item.active:active .app-bottom-nav-icon {
+  filter: brightness(0) invert(1) opacity(1);
 }
 
 .app-bottom-nav-icon {
   display: block;
   flex-shrink: 0;
-  width: 1.125rem;
-  height: 1.125rem;
-  filter: brightness(0) invert(1) opacity(0.82);
+  width: var(--icon-size-tab);
+  height: var(--icon-size-tab);
+  filter: brightness(0) invert(1) opacity(0.25);
 }
 
 .app-bottom-nav-item.active .app-bottom-nav-icon {
-  filter: brightness(0) invert(1) opacity(0.96);
+  filter: brightness(0) invert(1) opacity(1);
 }
 
 .app-bottom-nav-label {
-  font-family: var(--app-font-family);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: inherit;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
   text-align: center;
-  font-weight: 300;
 }
 
 /* ~736px 이하만 하단 가로 메뉴. 737~767px(아이패드 미니 744pt 등)은 세로 사이드바 유지 */
@@ -1609,39 +1671,43 @@ body {
 
   .app-bottom-nav {
     display: flex !important;
-    background: #344945 !important;
+    background: #2A3828 !important;
     border-top: var(--line-l2) !important;
     padding: 0.75rem 0 0 0 !important;
     padding-bottom: calc(env(safe-area-inset-bottom, 0) + 0.75rem) !important;
   }
   .app-bottom-nav-item {
     background: transparent !important;
-    color: rgba(255, 255, 255, 0.82);
+    color: rgba(255, 255, 255, 0.25);
     padding: 0.5rem 0.25rem !important;
-    font-size: 0.7rem !important;
+    font-size: 8px !important;
     border-radius: 0 !important;
   }
   .app-bottom-nav-item:hover,
   .app-bottom-nav-item:active {
-    background: rgba(255, 255, 255, 0.1) !important;
-    color: #ffffff;
+    background: transparent !important;
+    color: rgba(255, 255, 255, 0.5);
   }
   .app-bottom-nav-item.active {
-    background: rgba(255, 255, 255, 0.05) !important;
-    color: #ffffff;
-    box-shadow: inset 0 2px 0 var(--line-l8-color);
+    background: transparent !important;
+    color: rgba(255, 255, 255, 0.75);
+    box-shadow: none !important;
   }
   .app-bottom-nav-item.active:hover,
   .app-bottom-nav-item.active:active {
-    background: rgba(255, 255, 255, 0.08) !important;
-    color: #ffffff;
-    box-shadow: inset 0 2px 0 var(--line-l8-color);
+    background: transparent !important;
+    color: rgba(255, 255, 255, 0.75);
+    box-shadow: none !important;
   }
   .app-bottom-nav-icon {
-    filter: brightness(0) invert(1) opacity(0.82);
+    filter: brightness(0) invert(1) opacity(0.25);
+  }
+  .app-bottom-nav-item:hover .app-bottom-nav-icon,
+  .app-bottom-nav-item:active .app-bottom-nav-icon {
+    filter: brightness(0) invert(1) opacity(0.5);
   }
   .app-bottom-nav-item.active .app-bottom-nav-icon {
-    filter: brightness(0) invert(1) opacity(0.96);
+    filter: brightness(0) invert(1) opacity(1);
   }
 
   .app-main {
@@ -2048,7 +2114,7 @@ body {
     box-shadow: 0.125rem 0 0.25rem rgba(0, 0, 0, 0.06);
   }
   .calendar-view-todo .todo-list-toolbar-add-wrap .todo-add-btn svg {
-    stroke-width: 1.2;
+    stroke-width: var(--icon-stroke);
   }
   /* 모바일: 할일/일정 탭바(.time-view-tabs) 하단 보더 제거 */
   .calendar-view .time-view-tabs {
@@ -2526,7 +2592,7 @@ body {
     border-bottom: var(--line-l3);
     border-right: none;
     flex-shrink: 0;
-    font-family: var(--app-font-family);
+    font-family: var(--font-body);
   }
   .time-ledger-mobile-toolbar-left {
     display: flex;
@@ -2587,7 +2653,7 @@ body {
   .time-ledger-view .date-divider {
     padding: 0.625rem 1.5rem 0.625rem;
     font-size: var(--fs-caption);
-    font-family: var(--app-font-family);
+    font-family: var(--font-body);
     color: var(--text-muted);
     font-weight: var(--fw-body);
     letter-spacing: 0.08em;
@@ -2643,14 +2709,14 @@ body {
     color: var(--text-ink);
   }
   .time-mobile-card-tracked {
-    font-family: "DM Mono", "SF Mono", Consolas, monospace;
+    font-family: var(--font-mono);
     font-weight: 300;
     font-size: 0.85rem;
     color: var(--text-muted);
     flex-shrink: 0;
   }
   .time-mobile-card-time {
-    font-family: "DM Mono", "SF Mono", Consolas, monospace;
+    font-family: var(--font-mono);
     font-weight: 300;
     font-size: 0.625rem;
     letter-spacing: 0.02em;
@@ -2703,7 +2769,7 @@ body {
   font-weight: 300;
   color: var(--text-muted);
   flex-shrink: 0;
-  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  font-family: var(--font-mono) !important;
   text-transform: uppercase;
   letter-spacing: 0.24em;
 }
@@ -2741,7 +2807,7 @@ body {
 }
 /* 홈 Daily: 요일 3글자 영문 대문자 (MON TUE), DM Mono */
 .home-daily-weekday {
-  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  font-family: var(--font-mono) !important;
   font-size: 0.5313rem;
   font-weight: 500;
   font-style: normal;
@@ -2828,7 +2894,7 @@ body {
   background: transparent !important;
   border: none !important;
   padding: 0.4rem 0.5rem;
-  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  font-family: var(--font-mono) !important;
   font-weight: 300;
   font-size: 0.75rem;
   letter-spacing: 0.16em;
@@ -2840,7 +2906,7 @@ body {
 }
 .home-embed-1day .calendar-1day-time-header-cell,
 .home-embed-1day .calendar-1day-time-header-cell--actual-toggle {
-  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  font-family: var(--font-mono) !important;
   font-weight: 300 !important;
   letter-spacing: 0.16em !important;
   color: var(--text-muted) !important;
@@ -2960,7 +3026,7 @@ body {
   flex-shrink: 0;
   color: var(--text-muted);
   font-size: 0.5625rem;
-  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  font-family: var(--font-mono) !important;
 }
 
 .home-reminder-row-edit {
@@ -3101,24 +3167,25 @@ body {
 /* 홈 할일 체크박스: 할일/일정 탭과 동일한 2번 스타일 (모바일·데스크탑 공통) */
 .home-todo-done-check {
   cursor: pointer;
-  width: 1rem;
-  height: 1rem;
+  width: var(--cb-size);
+  height: var(--cb-size);
   margin: 0;
   flex-shrink: 0;
   appearance: none;
   -webkit-appearance: none;
-  border: var(--line-l5);
+  border: var(--cb-border);
   border-radius: 0;
-  background: var(--card-bg-light);
+  background: var(--cb-bg);
+  box-sizing: border-box;
 }
+
 .home-todo-done-check:hover {
-  border-color: var(--line-l2-color);
+  background: var(--cb-bg-hover);
 }
+
 .home-todo-done-check:checked {
-  background: var(--accent-viridian)
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-6' stroke='%23fff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E")
-    center/70% no-repeat;
-  border-color: var(--text-ink);
+  background: var(--cb-bg-checked) var(--cb-check-bg) center/70% no-repeat;
+  border: var(--cb-border);
 }
 .home-todo-td-name {
   width: 100%;
@@ -4607,6 +4674,7 @@ body {
 .asset-expense-settings-btn .asset-expense-settings-icon {
   display: block;
   color: currentColor;
+  stroke-width: var(--icon-stroke);
 }
 
 .asset-expense-settings-btn:hover .asset-expense-settings-icon {
@@ -6144,17 +6212,17 @@ body {
 }
 
 .asset-networth-dashboard-progress-bar {
-  height: 0.375rem;
-  background: rgba(122, 158, 138, 0.2);
-  border-radius: 62.4375rem;
+  height: var(--progress-height);
+  background: var(--progress-track-bg);
+  border-radius: var(--progress-radius);
   overflow: hidden;
 }
 
 .asset-networth-dashboard-progress-fill {
   height: 100%;
-  background: var(--line-l8-color);
-  border-radius: 62.4375rem;
-  transition: width 0.3s ease;
+  background: var(--progress-fill);
+  border-radius: var(--progress-radius);
+  transition: var(--progress-transition);
 }
 
 .asset-networth-dashboard-remaining {
@@ -6201,22 +6269,22 @@ body {
 }
 
 .asset-debt-progress-remaining-value {
-  color: var(--line-l8-color);
+  color: var(--progress-fill);
   font-variant-numeric: tabular-nums;
 }
 
 .asset-debt-progress-bar {
-  height: 0.3125rem;
-  background: rgba(122, 158, 138, 0.2);
-  border-radius: 62.4375rem;
+  height: var(--progress-height);
+  background: var(--progress-track-bg);
+  border-radius: var(--progress-radius);
   overflow: hidden;
 }
 
 .asset-debt-progress-fill {
   height: 100%;
-  background: var(--line-l8-color);
-  border-radius: 62.4375rem;
-  transition: width 0.3s ease;
+  background: var(--progress-fill);
+  border-radius: var(--progress-radius);
+  transition: var(--progress-transition);
 }
 
 .asset-debt-progress-footer {
@@ -6230,7 +6298,7 @@ body {
 
 .asset-debt-progress-percent {
   font-weight: 600;
-  color: var(--line-l8-color);
+  color: var(--progress-fill);
   font-variant-numeric: tabular-nums;
 }
 
@@ -6322,11 +6390,7 @@ body {
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
   text-align: left;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
   color: var(--text-ink);
   background: none;
   border: none;
@@ -7193,11 +7257,7 @@ body {
   width: 100%;
   padding: 0.3rem 0.5rem;
   font-size: 0.75rem;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
   border: var(--line-l3);
   border-radius: 0.25rem;
   box-sizing: border-box;
@@ -7209,11 +7269,7 @@ body {
 }
 
 .asset-asset-savings-goal-add-input::placeholder {
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
 }
 
 /* 주식분류 드롭다운 */
@@ -7529,11 +7585,7 @@ body {
   width: 100%;
   padding: 0.3rem 0.5rem;
   font-size: 0.75rem;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
   border: var(--line-l3);
   border-radius: 0.25rem;
   box-sizing: border-box;
@@ -7545,11 +7597,7 @@ body {
 }
 
 .asset-stock-category-add-input::placeholder {
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
 }
 
 .asset-asset-category-option {
@@ -7602,11 +7650,7 @@ body {
 .asset-asset-row-totals {
   background: var(--content-bg);
   font-weight: 600;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
   color: var(--text-body);
 }
 
@@ -7821,11 +7865,7 @@ body {
   font-size: 0.8125rem;
   border: none;
   background: transparent;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
   color: var(--text-ink);
 }
 
@@ -7839,11 +7879,7 @@ body {
 .asset-debt-date-display {
   display: block;
   font-size: 0.8125rem;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
   color: var(--text-ink);
   padding: 0.2rem 0.4rem;
 }
@@ -7940,11 +7976,7 @@ body {
 .asset-debt-monthly-interest-display {
   display: inline-block;
   font-size: 0.875rem;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
   color: var(--text-muted);
 }
 
@@ -8002,22 +8034,14 @@ body {
 .asset-debt-paid-display,
 .asset-debt-balance-display {
   font-size: 0.875rem;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
   color: var(--text-ink);
 }
 
 .asset-debt-row-totals {
   background: var(--content-bg);
   font-weight: 600;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
   color: var(--text-body);
 }
 
@@ -8300,7 +8324,7 @@ body {
 }
 .work-schedule-table td.work-schedule-cell-start-time,
 .work-schedule-table td.work-schedule-cell-end-time {
-  font-family: "DM Mono", "SF Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-weight: 500;
   color: var(--text-body);
 }
@@ -8341,7 +8365,7 @@ body {
 }
 .work-schedule-input-start-time,
 .work-schedule-input-end-time {
-  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  font-family: var(--font-mono) !important;
   font-weight: 500 !important;
   color: var(--text-body) !important;
 }
@@ -8375,7 +8399,7 @@ body {
 
 .work-schedule-cell-date .work-schedule-input-date,
 .work-schedule-cell-date input[type="date"] {
-  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  font-family: var(--font-mono) !important;
   font-weight: 300 !important;
   color: #3a3a3a !important;
   text-align: left !important;
@@ -8388,7 +8412,7 @@ body {
   font-size: 0.875rem;
   font-variant-numeric: tabular-nums;
   background: none;
-  font-family: "DM Mono", "SF Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-weight: 300;
   color: #3a3a3a;
   text-align: left;
@@ -8404,7 +8428,7 @@ body {
   cursor: pointer;
   border: none;
   background: none !important;
-  font-family: "DM Mono", "SF Mono", Consolas, monospace;
+  font-family: var(--font-mono);
 }
 
 .work-schedule-input-date:focus,
@@ -8721,7 +8745,7 @@ body {
 .work-schedule-monthly-day-num {
   font-size: 0.8125rem;
   font-weight: 500;
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-mono);
   color: var(--text-body);
   margin-bottom: 0.25rem;
   text-align: right;
@@ -8817,11 +8841,7 @@ body {
   width: 100%;
   max-width: 100%;
   background: #F5F1E8;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
   box-sizing: border-box;
   background: #F5F1E8;
 }
@@ -8908,11 +8928,7 @@ body {
   border: var(--line-l3);
   border-radius: 0.375rem;
   cursor: pointer;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
 }
 
 .todo-list-toolbar-btn:hover {
@@ -8944,11 +8960,7 @@ body {
   gap: 0.5rem;
   flex-wrap: nowrap;
   margin-bottom: 1rem;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
@@ -9058,11 +9070,7 @@ body {
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.15);
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
 }
 
 .todo-checkbox-type-menu-item {
@@ -9070,11 +9078,7 @@ body {
   width: 100%;
   padding: 0.4rem 0.75rem;
   font-size: 0.875rem;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
   text-align: left;
   color: var(--text-body);
   background: none;
@@ -9348,7 +9352,7 @@ body {
   font-size: 0.8rem;
   border: var(--line-l3);
   border-radius: 0.25rem;
-  font-family: monospace;
+  font-family: var(--font-mono);
 }
 
 .todo-settings-color-hex:focus {
@@ -9756,11 +9760,24 @@ body {
 
 .todo-card-reminder-icon {
   flex-shrink: 0;
-  width: 0.6875rem;
-  height: 0.6875rem;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
   color: var(--text-caption-color);
   opacity: 0.88;
-  stroke-width: 1.75;
+}
+
+.todo-card-reminder-icon svg {
+  stroke-width: var(--icon-stroke);
+}
+
+.todo-reminder-icon {
+  width: var(--icon-size-tab);
+  height: var(--icon-size-tab);
+  display: block;
+}
+
+.todo-reminder-icon svg {
+  stroke-width: var(--icon-stroke);
 }
 
 .todo-card.is-done .todo-card-priority,
@@ -9875,7 +9892,7 @@ body {
   min-height: 2.5rem;
   padding: 0.5rem 0;
   font-size: var(--fs-body);
-  font-family: var(--app-font-family);
+  font-family: var(--font-body);
   color: var(--text-body);
   background: transparent;
   border: none;
@@ -10020,11 +10037,7 @@ body {
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.15);
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
 }
 
 .todo-list-tab-context-menu-item {
@@ -10068,11 +10081,7 @@ body {
   background: var(--ui-surface-alt);
   border: 0.09375rem solid var(--line-l3-color);
   cursor: pointer;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
 }
 
 .todo-filter-btn:hover {
@@ -10110,11 +10119,7 @@ body {
   background: #fafafa;
   cursor: pointer;
   font-size: 0.95rem;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
 }
 
 .todo-section-header:hover {
@@ -10156,21 +10161,13 @@ body {
   flex: 1;
   text-align: left;
   color: #333;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
 }
 
 .todo-section-count {
   color: #999;
   font-size: 0.85rem;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
 }
 
 .todo-table-wrap {
@@ -10184,11 +10181,7 @@ body {
   table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.9rem;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
 }
 
 .todo-table tbody tr {
@@ -10200,11 +10193,7 @@ body {
   text-align: left;
   font-weight: 300;
   font-size: 0.8rem;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
   letter-spacing: 0.14em;
   color: var(--text-muted);
   background: #F5F1E8;
@@ -10277,26 +10266,31 @@ body {
 
 .todo-done-check {
   cursor: pointer;
-  width: 1rem;
-  height: 1rem;
+  width: var(--cb-size);
+  height: var(--cb-size);
   margin: 0;
   flex-shrink: 0;
   appearance: none;
   -webkit-appearance: none;
-  border: var(--line-l3);
+  border: var(--cb-border);
   border-radius: 0;
-  background: #F5F1E8;
-}
-
-.todo-done-check:checked {
-  background: #111111
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-6' stroke='%23fff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E")
-    center/70% no-repeat;
-  border-color: var(--text-ink);
+  background: var(--cb-bg);
+  box-sizing: border-box;
 }
 
 .todo-done-check:hover {
-  border-color: var(--line-l2-color);
+  background: var(--cb-bg-hover);
+}
+
+.todo-done-check:checked {
+  background: var(--cb-bg-checked) var(--cb-check-bg) center/70% no-repeat;
+  border: var(--cb-border);
+}
+
+.todo-done-check:disabled {
+  border: var(--cb-border-disabled);
+  background: var(--cb-bg);
+  cursor: default;
 }
 
 /* 체크 시 취소선 */
@@ -10381,16 +10375,11 @@ body {
   color: var(--text-muted);
 }
 
-.todo-reminder-icon {
-  width: 1.125rem;
-  height: 1.125rem;
-  display: block;
-}
 
 .todo-reminder-display {
   margin-left: 0.25rem;
   font-size: 0.8rem;
-  font-family: "DM Mono", "SF Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
   white-space: nowrap;
@@ -10701,25 +10690,27 @@ body {
 .todo-subtask-input-group .todo-done-check {
   flex-shrink: 0;
   flex-grow: 0;
-  width: 0.75rem;
-  min-width: 0.75rem;
-  max-width: 0.75rem;
-  height: 0.75rem;
+  width: var(--cb-size);
+  min-width: var(--cb-size);
+  max-width: var(--cb-size);
+  height: var(--cb-size);
   margin: 0;
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
-  border: var(--line-l3);
-  border-radius: 0.125rem;
-  background: #F5F1E8;
+  border: var(--cb-border);
+  border-radius: 0;
+  background: var(--cb-bg);
+  box-sizing: border-box;
+}
+
+.todo-subtask-input-group .todo-done-check:hover {
+  background: var(--cb-bg-hover);
 }
 
 .todo-subtask-input-group .todo-done-check:checked {
-  background: #111111
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-6' stroke='%23fff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E")
-    center/65% no-repeat;
-  border-color: var(--text-ink);
-  border-color: var(--line-l2-color);
+  background: var(--cb-bg-checked) var(--cb-check-bg) center/70% no-repeat;
+  border: var(--cb-border);
 }
 
 .todo-subtask-input-group .todo-subtask-input {
@@ -10756,11 +10747,7 @@ body {
   background: transparent !important;
   background-color: transparent !important;
   padding: 0.15rem 0;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
   -webkit-appearance: none;
   appearance: none;
 }
@@ -10796,11 +10783,7 @@ body {
   font-size: 0.9rem;
   background: transparent;
   padding: 0.15rem 0;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
   color: #4b5563 !important;
 }
 
@@ -10828,7 +10811,7 @@ body {
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
   white-space: nowrap;
-  font-family: "DM Mono", "SF Mono", Consolas, monospace;
+  font-family: var(--font-mono);
 }
 
 /* 날짜 없을 때 "—" 표시 */
@@ -10841,8 +10824,8 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1rem;
-  height: 1rem;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
   color: #999;
   opacity: 0;
   transition: opacity 0.2s ease;
@@ -10855,6 +10838,7 @@ body {
 .todo-due-icon svg {
   width: 100%;
   height: 100%;
+  stroke-width: var(--icon-stroke);
 }
 
 .todo-due-input-hidden,
@@ -10885,11 +10869,7 @@ body {
   font-variant-numeric: tabular-nums;
   color: var(--gray-700, #374151);
   white-space: nowrap;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
 }
 
 .todo-cell-start-time .todo-start-time-input,
@@ -11130,6 +11110,7 @@ body {
 
 .todo-category-delete-icon {
   display: block;
+  stroke-width: var(--icon-stroke);
 }
 
 .todo-category-create {
@@ -11195,9 +11176,30 @@ body {
 }
 
 .kpi-todo-check {
-  width: 1rem;
-  height: 1rem;
+  width: var(--cb-size);
+  height: var(--cb-size);
   cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  border: var(--cb-border);
+  border-radius: 0;
+  background: var(--cb-bg);
+  box-sizing: border-box;
+}
+
+.kpi-todo-check:hover {
+  background: var(--cb-bg-hover);
+}
+
+.kpi-todo-check:checked {
+  background: var(--cb-bg-checked) var(--cb-check-bg) center/70% no-repeat;
+  border: var(--cb-border);
+}
+
+.kpi-todo-check:disabled {
+  border: var(--cb-border-disabled);
+  background: var(--cb-bg);
+  cursor: default;
 }
 
 .kpi-table-todo .kpi-row-done .kpi-input-name {
@@ -11825,12 +11827,7 @@ body {
 }
 
 .kpi-dream-declare-wrap {
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif
-  );
+  font-family: var(--font-body);
   font-size: 0.9375rem;
   line-height: 1.5;
 }
@@ -12336,12 +12333,7 @@ body {
 /* 꿈 여정 */
 .kpi-dream-wrap {
   max-width: 40rem;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif
-  );
+  font-family: var(--font-body);
   font-size: 0.9375rem;
   line-height: 1.5;
 }
@@ -12454,12 +12446,7 @@ body {
 }
 
 .kpi-dream-phase-edit-wrap {
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif
-  );
+  font-family: var(--font-body);
   font-size: 0.9375rem;
   line-height: 1.5;
 }
@@ -12551,12 +12538,7 @@ body {
 /* 단계 완료 표시 모드 */
 .kpi-dream-phase-display {
   padding: 0;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif
-  );
+  font-family: var(--font-body);
   font-size: 0.9375rem;
   line-height: 1.5;
 }
@@ -13267,11 +13249,7 @@ body.kpi-resizing {
   gap: 0.5rem;
   width: 100%;
   max-width: 100%;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
   flex-wrap: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
@@ -15587,7 +15565,7 @@ body.kpi-resizing {
   min-width: 0;
   padding: 0.35rem 0.5rem;
   font-size: 1.4rem;
-  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  font-family: var(--font-mono) !important;
   font-weight: 300 !important;
   border: none;
   border-bottom: var(--line-l3);
@@ -15612,7 +15590,7 @@ body.kpi-resizing {
   flex-shrink: 0;
   align-self: flex-end;
   padding-bottom: 0.35rem;
-  font-family: "DM Mono", "SF Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 1.2rem;
   font-weight: 300;
   color: #9ca3af;
@@ -15634,7 +15612,7 @@ body.kpi-resizing {
   .time-task-log-modal
   .time-task-log-datetime-input-wrap
   .time-task-log-date-start {
-  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  font-family: var(--font-mono) !important;
   font-weight: 300 !important;
 }
 .time-task-log-datetime-input-wrap input[type="date"],
@@ -16931,9 +16909,30 @@ body.kpi-resizing {
 
 .time-task-log-kpi-todo-row input[type="checkbox"] {
   flex-shrink: 0;
-  width: 1rem;
-  height: 1rem;
+  width: var(--cb-size);
+  height: var(--cb-size);
   cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  border: var(--cb-border);
+  border-radius: 0;
+  background: var(--cb-bg);
+  box-sizing: border-box;
+}
+
+.time-task-log-kpi-todo-row input[type="checkbox"]:hover {
+  background: var(--cb-bg-hover);
+}
+
+.time-task-log-kpi-todo-row input[type="checkbox"]:checked {
+  background: var(--cb-bg-checked) var(--cb-check-bg) center/70% no-repeat;
+  border: var(--cb-border);
+}
+
+.time-task-log-kpi-todo-row input[type="checkbox"]:disabled {
+  border: var(--cb-border-disabled);
+  background: var(--cb-bg);
+  cursor: default;
 }
 
 .time-task-log-kpi-todo-text {
@@ -17442,8 +17441,29 @@ body.kpi-resizing {
   background: var(--app-bg);
 }
 
-.time-task-select-item input {
+.time-task-select-item input,
+.time-task-select-cb {
   margin: 0;
+  width: var(--cb-size);
+  height: var(--cb-size);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  border: var(--cb-border);
+  border-radius: 0;
+  background: var(--cb-bg);
+  box-sizing: border-box;
+}
+
+.time-task-select-item input:hover,
+.time-task-select-cb:hover {
+  background: var(--cb-bg-hover);
+}
+
+.time-task-select-item input:checked,
+.time-task-select-cb:checked {
+  background: var(--cb-bg-checked) var(--cb-check-bg) center/70% no-repeat;
+  border: var(--cb-border);
 }
 
 .time-task-select-empty {
@@ -18549,7 +18569,7 @@ body.kpi-resizing {
   .time-improve-input-label {
   margin-bottom: 0.25rem;
   flex-shrink: 0;
-  font-family: "DM Mono", "SF Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-weight: 300;
   color: var(--text-muted);
   letter-spacing: 0.04em;
@@ -18594,7 +18614,7 @@ body.kpi-resizing {
   font-weight: 500;
 }
 .time-improve-invest-summary-value {
-  font-family: "DM Mono", "SF Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   color: var(--text-ink);
   font-weight: 300;
 }
@@ -19103,20 +19123,24 @@ body.kpi-resizing {
 .time-audit-priority-todo-row input[type="checkbox"] {
   margin: 0;
   flex-shrink: 0;
-  width: 1rem;
-  height: 1rem;
+  width: var(--cb-size);
+  height: var(--cb-size);
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
-  border: 0.09375rem solid #9ca3af;
+  border: var(--cb-border);
   border-radius: 0;
-  background: #fff;
+  background: var(--cb-bg);
+  box-sizing: border-box;
 }
+
+.time-audit-priority-todo-row input[type="checkbox"]:hover {
+  background: var(--cb-bg-hover);
+}
+
 .time-audit-priority-todo-row input[type="checkbox"]:checked {
-  background: #fff
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-6' stroke='%23374151' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E")
-    center/70% no-repeat;
-  border-color: var(--line-l2-color);
+  background: var(--cb-bg-checked) var(--cb-check-bg) center/70% no-repeat;
+  border: var(--cb-border);
 }
 
 .time-audit-priority-todo-row span {
@@ -20825,6 +20849,7 @@ body.kpi-resizing {
 
 .time-task-delete-icon {
   display: block;
+  stroke-width: var(--icon-stroke);
 }
 
 .time-task-tag {
@@ -21700,7 +21725,7 @@ body.kpi-resizing {
 
 .dream-view-label {
   display: block;
-  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  font-family: var(--font-mono) !important;
   font-size: 0.65rem;
   font-weight: 400;
   letter-spacing: 0.2em;
@@ -21743,9 +21768,15 @@ body.kpi-resizing {
 }
 
 .dream-add-icon-btn .dream-add-icon {
-  width: 1rem;
-  height: 1rem;
+  width: var(--icon-size-ui);
+  height: var(--icon-size-ui);
   display: block;
+}
+
+.dream-add-icon-btn .dream-add-icon,
+.todo-add-btn svg,
+.todo-cards-add-btn svg {
+  stroke-width: var(--icon-stroke);
 }
 
 .dream-tabs-wrap {
@@ -22125,18 +22156,18 @@ body.kpi-resizing {
 }
 
 .dream-kpi-card-progress-bar {
-  height: 0.375rem;
-  background: #e0dcd1;
-  border-radius: 999px;
+  height: var(--progress-height);
+  background: var(--progress-track-bg);
+  border-radius: var(--progress-radius);
   overflow: hidden;
   margin-bottom: 0.35rem;
 }
 
 .dream-kpi-card-progress-fill {
   height: 100%;
-  background: var(--card-bg-dark);
-  transition: width 0.3s;
-  border-radius: 999px;
+  background: var(--progress-fill);
+  transition: var(--progress-transition);
+  border-radius: var(--progress-radius);
 }
 
 .dream-kpi-card-progress-text {
@@ -22168,13 +22199,13 @@ body.kpi-resizing {
 
 .dream-kpi-time-circle-bg {
   fill: none;
-  stroke: #e5e7eb;
+  stroke: var(--progress-track-bg);
   stroke-width: 3;
 }
 
 .dream-kpi-time-circle-fill {
   fill: none;
-  stroke: #3b82f6;
+  stroke: var(--progress-fill);
   stroke-width: 3;
   stroke-linecap: round;
   transition: stroke-dasharray 0.3s;
@@ -22194,7 +22225,7 @@ body.kpi-resizing {
 
 .dream-kpi-time-accumulated {
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-ink);
 }
 
 .dream-kpi-time-sep {
@@ -22202,8 +22233,8 @@ body.kpi-resizing {
 }
 
 .dream-kpi-time-remaining {
-  font-size: 0.7rem;
-  color: #9ca3af;
+  font-size: var(--fs-small);
+  color: var(--text-muted);
 }
 
 .dream-kpi-history-wrap {
@@ -22221,10 +22252,11 @@ body.kpi-resizing {
 
 .dream-kpi-history-title {
   margin: 0;
-  font-size: 1rem;
-  font-weight: 300;
-  letter-spacing: 0.08em;
-  color: #7a7a7a;
+  font-family: var(--font-heading);
+  font-size: var(--fs-h2);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-ink);
 }
 
 .dream-kpi-history-log-btn {
@@ -22248,15 +22280,15 @@ body.kpi-resizing {
 
 .dream-kpi-history-divider,
 .dream-kpi-todo-divider {
-  height: 0.125rem;
-  background: #e5e7eb;
+  height: 0;
+  border-top: var(--line-l3);
   margin: 1rem 0;
 }
 
 .dream-kpi-history-empty {
   margin: 0;
-  font-size: 0.9rem;
-  color: #9ca3af;
+  font-size: var(--fs-secondary);
+  color: var(--text-muted);
 }
 
 .dream-kpi-history-list {
@@ -22303,9 +22335,9 @@ body.kpi-resizing {
 }
 
 .dream-kpi-history-value {
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
   font-weight: 600;
-  color: #1a1a2e;
+  color: var(--text-ink);
 }
 
 .dream-kpi-history-status {
@@ -22320,13 +22352,13 @@ body.kpi-resizing {
 }
 
 .dream-kpi-history-status--normal {
-  background: #e5e7eb;
+  background: var(--ui-surface-alt);
   color: var(--text-muted);
 }
 
 .dream-kpi-history-status--poor {
-  background: #d1d5db;
-  color: #4b5563;
+  background: var(--ui-surface-alt);
+  color: var(--text-body);
 }
 
 .dream-kpi-history-memo {
@@ -22337,8 +22369,8 @@ body.kpi-resizing {
 }
 
 .dream-kpi-history-daily {
-  font-size: 0.8rem;
-  color: #4b5563;
+  font-size: var(--fs-small);
+  color: var(--text-muted);
   margin-top: 0.25rem;
   line-height: 1.35;
 }
@@ -22358,10 +22390,10 @@ body.kpi-resizing {
 .dream-kpi-history-edit,
 .dream-kpi-history-delete {
   padding: 0.3rem 0.6rem;
-  font-size: 0.8rem;
-  font-family: inherit;
+  font-size: var(--fs-small);
+  font-family: var(--font-body);
   color: var(--text-body);
-  background: #F5F1E8;
+  background: var(--app-bg);
   border: var(--line-l3);
   cursor: pointer;
 }
@@ -22391,10 +22423,11 @@ body.kpi-resizing {
 }
 
 .dream-kpi-todo-title {
-  font-size: 1rem;
-  font-weight: 300;
-  letter-spacing: 0.08em;
-  color: #7a7a7a;
+  font-family: var(--font-heading);
+  font-size: var(--fs-h2);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-ink);
 }
 
 .dream-kpi-todo-add-row {
@@ -22449,21 +22482,31 @@ body.kpi-resizing {
 }
 
 .dream-kpi-todo-check {
-  width: 1rem;
-  height: 1rem;
+  width: var(--cb-size);
+  height: var(--cb-size);
   appearance: none;
   -webkit-appearance: none;
   cursor: pointer;
-  border: var(--line-l3);
+  border: var(--cb-border);
   border-radius: 0;
   margin: 0;
-  background: transparent;
+  background: var(--cb-bg);
+  box-sizing: border-box;
 }
+
+.dream-kpi-todo-check:hover {
+  background: var(--cb-bg-hover);
+}
+
 .dream-kpi-todo-check:checked {
-  background: #111111
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-6' stroke='%23fff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E")
-    center/70% no-repeat;
-  border-color: var(--text-ink);
+  background: var(--cb-bg-checked) var(--cb-check-bg) center/70% no-repeat;
+  border: var(--cb-border);
+}
+
+.dream-kpi-todo-check:disabled {
+  border: var(--cb-border-disabled);
+  background: var(--cb-bg);
+  cursor: default;
 }
 
 .dream-kpi-todo-text {
@@ -22537,8 +22580,8 @@ body.kpi-resizing {
   flex-shrink: 0;
 }
 .dream-kpi-todo-subitem .dream-kpi-todo-check {
-  width: 0.875rem;
-  height: 0.875rem;
+  width: var(--cb-size);
+  height: var(--cb-size);
 }
 .dream-kpi-todo-subitem-text {
   font-size: 0.85rem;
@@ -22606,17 +22649,17 @@ body.kpi-resizing {
   margin-bottom: 0.75rem;
 }
 .dream-kpi-path-summary-bar {
-  height: 0.5rem;
-  background: #e5e7eb;
-  border-radius: 0.25rem;
+  height: var(--progress-height);
+  background: var(--progress-track-bg);
+  border-radius: var(--progress-radius);
   overflow: hidden;
   margin-bottom: 0.25rem;
 }
 .dream-kpi-path-summary-fill {
   height: 100%;
-  background: #1a1a2e;
-  border-radius: 0.25rem;
-  transition: width 0.2s ease;
+  background: var(--progress-fill);
+  border-radius: var(--progress-radius);
+  transition: var(--progress-transition);
 }
 .dream-kpi-path-summary-text {
   font-size: 0.85rem;
@@ -22762,7 +22805,7 @@ body.kpi-resizing {
   display: none;
 }
 .dream-kpi-card-completed .dream-kpi-card-progress-fill {
-  background: #10b981;
+  background: var(--progress-fill-done);
 }
 
 .dream-kpi-add-card {
@@ -22958,15 +23001,17 @@ body.kpi-resizing {
 
 .gantt-progress-bar {
   flex: 1;
-  height: 0.375rem;
-  background: #e5e7eb;
+  height: var(--progress-height);
+  background: var(--progress-track-bg);
+  border-radius: var(--progress-radius);
   overflow: hidden;
 }
 
 .gantt-progress-fill {
   height: 100%;
-  background: #1c1c1a;
-  transition: width 0.3s;
+  background: var(--progress-fill);
+  border-radius: var(--progress-radius);
+  transition: var(--progress-transition);
 }
 
 .gantt-row-timeline {
@@ -23273,7 +23318,7 @@ body.kpi-resizing {
   font-weight: 300;
   color: var(--text-ink);
   letter-spacing: 0.018em;
-  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  font-family: var(--font-mono) !important;
   border: none;
   border-bottom: var(--line-l3);
   border-radius: 0;
@@ -23286,7 +23331,7 @@ body.kpi-resizing {
 .todo-reminder-modal
   .todo-reminder-date-row
   input.todo-reminder-date[type="date"] {
-  font-family: "DM Mono", "SF Mono", Consolas, monospace !important;
+  font-family: var(--font-mono) !important;
 }
 
 .todo-reminder-date-row .todo-reminder-date::placeholder {
@@ -23303,7 +23348,7 @@ body.kpi-resizing {
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
   font-weight: 300;
-  font-family: "DM Mono", "SF Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   border: var(--line-l3);
   background: #fff;
   color: var(--text-muted);
@@ -23347,7 +23392,7 @@ body.kpi-resizing {
   font-weight: 200;
   color: var(--text-ink);
   letter-spacing: 0.018em;
-  font-family: "DM Mono", "SF Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   border: none;
   border-bottom: var(--line-l3);
   border-radius: 0;
@@ -23471,7 +23516,7 @@ body.kpi-resizing {
 }
 
 .dream-kpi-form input[type="date"] {
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-mono);
 }
 
 .dream-kpi-form input::placeholder,
@@ -24962,11 +25007,7 @@ body.kpi-resizing {
   min-height: 0;
   overflow: hidden;
   padding: 1rem;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
 }
 
 .calendar-view-header {
@@ -25038,11 +25079,7 @@ body.kpi-resizing {
   font-weight: 600;
   color: #333;
   margin: 0;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
 }
 
 .calendar-eisenhower-count {
@@ -25178,22 +25215,20 @@ body.kpi-resizing {
 
 .calendar-eisenhower-task-checkbox {
   flex-shrink: 0;
-  width: 1rem;
-  height: 1rem;
-  border: var(--line-l3);
-  border-radius: 0.1875rem;
+  width: var(--cb-size);
+  height: var(--cb-size);
+  border: var(--cb-border);
+  border-radius: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.7rem;
-  color: #fff;
-  background: #F5F1E8;
+  box-sizing: border-box;
+  background: var(--cb-bg);
 }
 
 .calendar-eisenhower-task-checkbox.checked {
-  background: #4b5563;
-  border-color: var(--line-l1-color);
-  color: #fff;
+  background: var(--cb-bg-checked) var(--cb-check-bg) center/70% no-repeat;
+  border: var(--cb-border);
 }
 
 .calendar-eisenhower-task-name {
@@ -25272,11 +25307,7 @@ body.kpi-resizing {
   background: none;
   cursor: pointer;
   color: #9ca3af;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
   white-space: nowrap;
   transition:
     color 0.2s ease,
@@ -25411,7 +25442,7 @@ body.kpi-resizing {
 }
 
 .calendar-nav-year {
-  font-family: "DM Mono", "SF Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 0.9rem;
   font-weight: 300;
   letter-spacing: 0.04em;
@@ -26437,18 +26468,18 @@ body.kpi-resizing {
 }
 
 .calendar-sidebar-progress-bar-wrap {
-  height: 0.375rem;
-  background: #e5e7eb;
-  border-radius: 0.1875rem;
+  height: var(--progress-height);
+  background: var(--progress-track-bg);
+  border-radius: var(--progress-radius);
   overflow: hidden;
   margin-bottom: 0.5rem;
 }
 
 .calendar-sidebar-progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, #3b82f6 0%, #22c55e 100%);
-  border-radius: 0.1875rem;
-  transition: width 0.2s ease;
+  background: var(--progress-fill);
+  border-radius: var(--progress-radius);
+  transition: var(--progress-transition);
 }
 
 .calendar-sidebar-progress-value {
@@ -27255,24 +27286,29 @@ body.kpi-resizing {
 
 .calendar-monthly-span-bar-checkbox {
   flex-shrink: 0;
-  width: 0.85rem;
-  height: 0.85rem;
-  border-radius: 0.125rem;
-  border: 0.0938rem solid var(--line-l1-color);
+  width: var(--cb-size);
+  height: var(--cb-size);
+  border-radius: 0;
+  border: var(--cb-border);
   display: flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--cb-bg);
 }
 
 .calendar-monthly-span-bar-checkbox-inner {
   width: 0.35rem;
   height: 0.5rem;
-  border-right: 0.125rem solid var(--line-l1-color);
-  border-bottom: 0.125rem solid var(--line-l1-color);
+  border-right: 0.125rem solid #F2EDE0;
+  border-bottom: 0.125rem solid #F2EDE0;
   transform: rotate(45deg) translateY(-0.05rem);
   opacity: 0;
+}
+
+.calendar-monthly-span-bar-checkbox.checked {
+  background: var(--cb-bg-checked);
+  border: var(--cb-border);
 }
 
 .calendar-monthly-span-bar-checkbox-inner.checked {
@@ -27398,7 +27434,7 @@ body.kpi-resizing {
 .calendar-monthly-day-num {
   font-size: 0.8125rem;
   font-weight: 500;
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-mono);
   color: var(--text-body);
   margin-bottom: 0.25rem;
   text-align: right;
@@ -27461,11 +27497,7 @@ body.kpi-resizing {
 
 /* 캘린더 날짜셀 클릭 시 말풍선 팝업 */
 .calendar-event-bubble {
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.12);
   border-radius: var(--modal-radius);
   background: var(--content-bg);
@@ -27512,7 +27544,7 @@ body.kpi-resizing {
 
 .calendar-event-bubble-date {
   font-size: 0.8rem;
-  font-family: "DM Mono", "SF Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-weight: 300;
   letter-spacing: 0.04em;
   color: #7a7a7a;
@@ -27640,11 +27672,7 @@ body.kpi-resizing {
 
 /* 컬러바 우클릭: 시작일/마감일 수정 팝업 */
 .calendar-bar-date-edit-bubble {
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
 }
 .calendar-bar-date-edit-bubble .calendar-bar-date-edit-row {
   margin-bottom: 0.5rem;
@@ -27751,25 +27779,24 @@ body.kpi-resizing {
 
 .calendar-day-expand-checkbox {
   flex-shrink: 0;
-  width: 0.9rem;
-  height: 0.9rem;
-  border: 0.0938rem solid #9ca3af;
-  border-radius: 0.1875rem;
-  background: #F5F1E8;
+  width: var(--cb-size);
+  height: var(--cb-size);
+  border: var(--cb-border);
+  border-radius: 0;
+  background: var(--cb-bg);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.6rem;
-  color: #fff;
+  box-sizing: border-box;
 }
 
 .calendar-day-expand-checkbox.checked {
-  background: #4b5563;
-  border-color: var(--line-l1-color);
+  background: var(--cb-bg-checked) var(--cb-check-bg) center/70% no-repeat;
+  border: var(--cb-border);
 }
 
 .calendar-day-expand-checkbox.checked::after {
-  content: "✓";
+  content: none;
 }
 
 .calendar-day-expand-text {
@@ -27820,11 +27847,7 @@ body.kpi-resizing {
   display: flex;
   flex-direction: column;
   border-left: var(--divider-subtle);
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
   transition:
     width 0.2s,
     min-width 0.2s;
@@ -28215,8 +28238,30 @@ body.kpi-resizing {
 
 .calendar-kpi-todo-check {
   margin: 0;
-  width: 0.9rem;
-  height: 0.9rem;
+  width: var(--cb-size);
+  height: var(--cb-size);
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  border: var(--cb-border);
+  border-radius: 0;
+  background: var(--cb-bg);
+  box-sizing: border-box;
+}
+
+.calendar-kpi-todo-check:hover {
+  background: var(--cb-bg-hover);
+}
+
+.calendar-kpi-todo-check:checked {
+  background: var(--cb-bg-checked) var(--cb-check-bg) center/70% no-repeat;
+  border: var(--cb-border);
+}
+
+.calendar-kpi-todo-check:disabled {
+  border: var(--cb-border-disabled);
+  background: var(--cb-bg);
+  cursor: default;
 }
 
 .calendar-kpi-todo-text {
@@ -28508,11 +28553,7 @@ body.kpi-resizing {
 
 .calendar-todo-sidebar-body .todo-table .todo-cell-name input {
   font-size: 0.8rem;
-  font-family: var(
-    --app-font-family,
-    -apple-system,
-    sans-serif
-  );
+  font-family: var(--font-body);
   color: var(--gray-600, #4b5563);
   padding: 0.2rem 0.35rem 0.2rem 0;
   line-height: 1.5;
@@ -28863,9 +28904,9 @@ body.kpi-resizing {
 .routine-accordion-progress-bar {
   position: relative;
   width: 100%;
-  height: 1.25rem;
-  background: #e5e7eb;
-  border-radius: 0.25rem;
+  height: var(--progress-height-segmented);
+  background: var(--progress-track-bg);
+  border-radius: var(--progress-radius);
   overflow: hidden;
 }
 
@@ -28875,9 +28916,9 @@ body.kpi-resizing {
   top: 0;
   bottom: 0;
   width: 0%;
-  background: var(--routine-color, #e07a5f);
-  border-radius: 0.25rem;
-  transition: width 0.2s;
+  background: var(--progress-fill);
+  border-radius: var(--progress-radius);
+  transition: var(--progress-transition);
 }
 
 .routine-accordion-progress-pct {
@@ -29474,7 +29515,7 @@ body.kpi-resizing {
   align-items: center;
   gap: 0.75rem;
   margin-bottom: 0.5rem;
-  font-family: "DM Mono", "SF Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-weight: 300;
   color: var(--text-muted);
   letter-spacing: 0.04em;

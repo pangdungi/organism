@@ -110,7 +110,7 @@ export function mountApp(container) {
   sidebarToggle.type = "button";
   sidebarToggle.className = "app-sidebar-toggle";
   sidebarToggle.innerHTML =
-    '<img src="/toolbaricons/caret-left-double.svg" alt="" class="app-sidebar-toggle-icon" width="18" height="18" />';
+    '<img src="/toolbaricons/caret-left-double.svg" alt="" class="app-sidebar-toggle-icon" width="20" height="20" />';
   sidebarHeader.appendChild(sidebarToggle);
   sidebar.appendChild(sidebarHeader);
 
@@ -125,8 +125,8 @@ export function mountApp(container) {
     const iconImg = document.createElement("img");
     iconImg.src = iconSrc;
     iconImg.alt = "";
-    iconImg.width = 18;
-    iconImg.height = 18;
+    iconImg.width = 20;
+    iconImg.height = 20;
     iconImg.loading = "lazy";
     iconWrap.appendChild(iconImg);
     btn.appendChild(iconWrap);
@@ -262,7 +262,7 @@ export function mountApp(container) {
 btn.dataset.tabId = tab.id;
     const navLabel = tab.mobileLabel ?? tab.label;
     btn.title = navLabel;
-    btn.innerHTML = `<img src="${tab.icon}" alt="" class="app-bottom-nav-icon" width="18" height="18"><span class="app-bottom-nav-label">${navLabel}</span>`;
+    btn.innerHTML = `<img src="${tab.icon}" alt="" class="app-bottom-nav-icon" width="20" height="20"><span class="app-bottom-nav-label">${navLabel}</span>`;
     btn.addEventListener("click", () => {
       setActiveTab(tab.id);
       sidebar.classList.remove("is-open");
@@ -275,7 +275,7 @@ btn.dataset.tabId = tab.id;
   accountBottomBtn.className = "app-bottom-nav-item" + (currentTabId === "idea" ? " active" : "");
   accountBottomBtn.dataset.tabId = "idea";
   accountBottomBtn.title = "나의 계정";
-  accountBottomBtn.innerHTML = '<img src="/toolbaricons/user-square.svg" alt="" class="app-bottom-nav-icon" width="18" height="18"><span class="app-bottom-nav-label">나의 계정</span>';
+  accountBottomBtn.innerHTML = '<img src="/toolbaricons/user-square.svg" alt="" class="app-bottom-nav-icon" width="20" height="20"><span class="app-bottom-nav-label">나의 계정</span>';
   accountBottomBtn.addEventListener("click", () => {
     setActiveTab("idea");
     sidebar.classList.remove("is-open");
