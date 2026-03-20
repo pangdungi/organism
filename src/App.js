@@ -26,7 +26,6 @@ const TABS = [
   { id: "health", label: "건강", icon: "/toolbaricons/heart-rate.svg" },
   { id: "calendar", label: "할일/일정", mobileLabel: "할일", icon: "/toolbaricons/calendar-alt.svg" },
   { id: "time", label: "시간가계부", mobileLabel: "시간", icon: "/toolbaricons/timer.svg" },
-  { id: "diary", label: "감정관리", icon: "/toolbaricons/chat-bubbles.svg" },
   { id: "asset", label: "자산관리", icon: "/toolbaricons/wallet.svg" },
   {
     id: "workschedule",
@@ -41,6 +40,7 @@ const TABS = [
     icon: "/toolbaricons/calendar-heart1.svg",
     sidebarMobileOnly: true,
   },
+  { id: "diary", label: "감정관리", mobileLabel: "감정", icon: "/toolbaricons/chat-bubbles.svg" },
   { id: "archive", label: "아카이브", icon: "/toolbaricons/harddrive.svg" },
 ];
 
@@ -117,7 +117,7 @@ export function mountApp(container) {
   const nav = document.createElement("nav");
   nav.className = "app-sidebar-nav";
 
-  const HIDE_ON_MOBILE_TAB_IDS = ["dream", "sideincome", "happiness", "health", "asset", "diary"];
+  const HIDE_ON_MOBILE_TAB_IDS = ["dream", "sideincome", "happiness", "health", "asset"];
 
   function appendSidebarIcon(btn, iconSrc) {
     const iconWrap = document.createElement("span");

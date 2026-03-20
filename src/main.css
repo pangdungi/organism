@@ -1760,6 +1760,411 @@ body {
   .app-sidebar-item--desktop-only {
     display: none !important;
   }
+
+  /* 하단 탭 개수 증가 대비 — 가로 스크롤 (감정·아카이브 등) */
+  .app-bottom-nav {
+    justify-content: flex-start !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 0.1rem;
+    padding-left: 0.35rem !important;
+    padding-right: 0.35rem !important;
+  }
+  .app-bottom-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .app-bottom-nav-item {
+    flex: 0 0 auto !important;
+    min-width: 3.1rem;
+    padding-left: 0.35rem !important;
+    padding-right: 0.35rem !important;
+  }
+
+  /* 감정관리(모바일): DIARY 대제목·사이드바 없음, 서브탭 + 일기 선택 + 본문만 */
+  .diary-view--mobile {
+    padding-top: 0.35rem;
+  }
+  .diary-view--mobile .diary-tabs {
+    padding: 0 0.75rem;
+  }
+  .diary-layout--mobile {
+    flex-direction: column;
+  }
+  .diary-layout--mobile .diary-content-area {
+    min-width: 0;
+    border-left: none !important;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  .diary-layout--mobile .diary-content-scroll {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .diary-view--mobile .diary-paper {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .diary-mobile-header {
+    padding: 0.5rem 0.75rem;
+    flex-shrink: 0;
+  }
+  .diary-mobile-header .dream-view-title {
+    margin: 0;
+    font-size: 1.25rem;
+  }
+  .diary-mobile-entry-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 0.35rem 0.75rem;
+    flex-shrink: 0;
+    border-bottom: var(--line-l3);
+    background: var(--content-bg);
+  }
+  .diary-mobile-entry-select {
+    flex: 1;
+    min-width: 0;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.875rem;
+    font-family: var(--font-body);
+    color: var(--text-body);
+    background: var(--content-bg);
+    border: var(--line-l3);
+    border-radius: 0;
+  }
+  .diary-mobile-entry-select:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+  .diary-mobile-add-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.65rem;
+    min-height: 2.45rem;
+    padding: 0;
+    color: var(--ui-btn-secondary-color);
+    background: var(--content-bg);
+    border: var(--ui-btn-secondary-border);
+    cursor: pointer;
+  }
+  .diary-mobile-add-btn-primary {
+    color: var(--ui-btn-primary-fg);
+    background: var(--ui-btn-primary-bg);
+    border: none;
+  }
+  .diary-mobile-add-btn-primary:hover {
+    background: var(--ui-btn-primary-hover);
+  }
+  .diary-mobile-tap-edit {
+    cursor: pointer;
+  }
+  .diary-feed-card {
+    margin-bottom: 1.5rem;
+  }
+  .diary-feed-card:last-child {
+    margin-bottom: 4rem;
+  }
+  .diary-feed-empty {
+    padding: 2rem 1rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+  }
+  .diary-feed-card .diary-paper-qa-header {
+    margin-bottom: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: #D8D2C0;
+    border-bottom: none;
+  }
+  .diary-feed-card .diary-feed-card-title {
+    flex: 1;
+    min-width: 0;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-body);
+    background: transparent;
+    border: none !important;
+    border-bottom: none !important;
+    border-radius: 0;
+    font-family: inherit;
+    box-shadow: none !important;
+  }
+  .diary-feed-card .diary-feed-card-title:focus {
+    outline: none;
+  }
+  .diary-feed-card .diary-feed-card-title::placeholder {
+    color: var(--text-placeholder);
+  }
+
+  /* 일기 추가 모달 (모바일) */
+  .diary-add-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    box-sizing: border-box;
+  }
+  .diary-add-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+  }
+  .diary-add-modal-panel {
+    position: relative;
+    width: 100%;
+    max-width: 22rem;
+    background: var(--content-bg);
+    border: var(--line-l2);
+    border-radius: var(--modal-radius) !important;
+    box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.12);
+  }
+  .diary-add-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: var(--line-l3);
+  }
+  .diary-add-modal-title {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 500;
+    color: var(--text-body);
+  }
+  .diary-add-modal-close {
+    flex-shrink: 0;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    padding: 0;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+  .diary-add-modal-close:hover {
+    color: var(--text-body);
+  }
+  .diary-add-modal-body {
+    padding: 1.25rem;
+  }
+  .diary-add-modal-label {
+    margin: 0 0 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+  }
+  .diary-add-modal-label + .diary-add-modal-radios,
+  .diary-add-modal-label + .diary-add-modal-date {
+    margin-top: 0;
+  }
+  .diary-add-modal-radios {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  .diary-add-modal-radio {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+    color: var(--text-body);
+    cursor: pointer;
+  }
+  .diary-add-modal-radio input {
+    margin: 0;
+    accent-color: var(--ui-btn-primary-bg);
+  }
+  .diary-add-modal-date {
+    width: 100%;
+    padding: 0.5rem 0 0.6rem;
+    font-size: 1rem;
+    font-family: inherit;
+    color: var(--text-body);
+    background: transparent;
+    border: none;
+    border-bottom: var(--input-border-idle);
+    border-radius: 0;
+    box-sizing: border-box;
+  }
+  .diary-add-modal-date:focus {
+    outline: none;
+    border-bottom: var(--input-border-focus);
+    background: var(--input-focus-bg);
+  }
+  .diary-add-modal-date::placeholder {
+    color: var(--text-placeholder);
+  }
+  .diary-add-modal-footer {
+    padding: 1rem 1.25rem;
+    border-top: var(--line-l3);
+  }
+  .diary-add-modal-confirm {
+    width: 100%;
+    padding: 0.6rem 1rem;
+    font-size: 1rem;
+    font-weight: 500;
+    font-family: inherit;
+    color: var(--ui-btn-primary-fg);
+    background: var(--ui-btn-primary-bg);
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+  }
+  .diary-add-modal-confirm:hover {
+    background: var(--ui-btn-primary-hover);
+  }
+
+  /* 일기 단계별 질문 모달 (모바일) */
+  .diary-step-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    box-sizing: border-box;
+  }
+  .diary-step-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+  }
+  .diary-step-modal-panel {
+    position: relative;
+    width: 100%;
+    max-width: 22rem;
+    background: var(--content-bg);
+    border: var(--line-l2);
+    border-radius: var(--modal-radius) !important;
+    box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.12);
+  }
+  .diary-step-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-bottom: var(--line-l3);
+  }
+  .diary-step-modal-progress {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+  }
+  .diary-step-modal-close {
+    flex-shrink: 0;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    padding: 0;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+  .diary-step-modal-close:hover {
+    color: var(--text-body);
+  }
+  .diary-step-modal-body {
+    padding: 1rem 1.25rem;
+  }
+  .diary-step-modal-question {
+    margin: 0 0 0.75rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-body);
+  }
+  .diary-step-modal-answer {
+    width: 100%;
+    min-height: 5rem;
+    padding: 0.5rem 0 0.75rem;
+    font-size: 1rem;
+    font-family: inherit;
+    line-height: 1.8;
+    color: var(--text-body);
+    background: transparent;
+    border: none;
+    border-bottom: var(--input-border-idle);
+    border-radius: 0;
+    resize: none;
+    box-sizing: border-box;
+  }
+  .diary-step-modal-answer:focus {
+    outline: none;
+    border-bottom: var(--input-border-focus);
+    background: var(--input-focus-bg);
+  }
+  .diary-step-modal-answer::placeholder {
+    color: var(--text-placeholder);
+  }
+  .diary-step-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-top: var(--line-l3);
+  }
+  .diary-step-modal-prev {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    color: var(--ui-btn-secondary-color);
+    background: transparent;
+    border: var(--ui-btn-secondary-border);
+    cursor: pointer;
+  }
+  .diary-step-modal-prev:hover:not(:disabled) {
+    opacity: 0.9;
+  }
+  .diary-step-modal-prev:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .diary-step-modal-prev svg {
+    display: block;
+  }
+  .diary-step-modal-next {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: 0.6rem 1rem;
+    font-size: 1rem;
+    font-weight: 500;
+    font-family: inherit;
+    color: var(--ui-btn-primary-fg);
+    background: var(--ui-btn-primary-bg);
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+  }
+  .diary-step-modal-next:hover {
+    background: var(--ui-btn-primary-hover);
+  }
+  .diary-step-modal-next svg {
+    display: block;
+  }
 }
 
 @media (max-width: 47.9375rem) {
@@ -8494,6 +8899,24 @@ body {
   border-bottom: none !important;
   box-shadow: none !important;
   padding: 0.2rem 0.5rem !important;
+}
+
+/* 표형 레이아웃 예외: 감정관리(통제일기·감정관리 탭) Q&A 블록 입력 — 밑줄 제거 */
+#app .diary-paper .diary-qa-answer,
+#app .diary-paper .diary-paper-title-input,
+#app .diary-paper .diary-paper-text {
+  border: none !important;
+  border-bottom: none !important;
+}
+#app .diary-paper .diary-qa-answer:focus,
+#app .diary-paper .diary-qa-answer:focus-visible,
+#app .diary-paper .diary-paper-title-input:focus,
+#app .diary-paper .diary-paper-title-input:focus-visible,
+#app .diary-paper .diary-paper-text:focus,
+#app .diary-paper .diary-paper-text:focus-visible {
+  border: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
 }
 
 .work-schedule-select-type {
@@ -24400,8 +24823,8 @@ body.kpi-resizing {
 }
 
 .diary-sidebar {
-  width: 13.75rem;
-  min-width: 13.75rem;
+  width: 9.625rem;
+  min-width: 9.625rem;
   flex-shrink: 0;
   min-height: 0;
   background: transparent;
