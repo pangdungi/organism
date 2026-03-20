@@ -1337,7 +1337,7 @@ function renderMonthlyView(tabsElement) {
 
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
-      const BAR_HEIGHT = window.matchMedia("(max-width: 767px)").matches ? 0.95 : 2.05;
+      const BAR_HEIGHT = window.matchMedia("(max-width: 767px)").matches ? 1.35 : 2.05;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
@@ -2033,7 +2033,7 @@ function render2WeekView(tabsElement) {
 
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
-      const BAR_HEIGHT = window.matchMedia("(max-width: 767px)").matches ? 0.95 : 2.05;
+      const BAR_HEIGHT = window.matchMedia("(max-width: 767px)").matches ? 1.35 : 2.05;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
@@ -2717,7 +2717,7 @@ function render3WeekView(tabsElement) {
 
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
-      const BAR_HEIGHT = window.matchMedia("(max-width: 767px)").matches ? 0.95 : 2.05;
+      const BAR_HEIGHT = window.matchMedia("(max-width: 767px)").matches ? 1.35 : 2.05;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
@@ -4880,7 +4880,7 @@ function render1WeekView(tabsElement) {
 
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
-      const BAR_HEIGHT = window.matchMedia("(max-width: 767px)").matches ? 0.95 : 2.05;
+      const BAR_HEIGHT = window.matchMedia("(max-width: 767px)").matches ? 1.35 : 2.05;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];

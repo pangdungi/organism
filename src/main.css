@@ -3102,6 +3102,26 @@ body {
     gap: 0.875rem;
   }
 
+  /* 모바일: 할일 목록 + 버튼 우측 하단 고정, 영역 배경 투명 */
+  .calendar-view-todo .calendar-todo-content .todo-cards-wrap .todo-cards-add-wrap {
+    position: fixed;
+    bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+    right: 1rem;
+    z-index: 30;
+    background: transparent;
+    padding: 0;
+    flex-shrink: 0;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-cards-wrap .todo-cards-add-wrap .todo-cards-add-btn {
+    color: var(--ui-btn-primary-fg);
+    background: var(--ui-btn-primary-bg);
+    border: none;
+    box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.15);
+  }
+  .calendar-view-todo .calendar-todo-content .todo-cards-wrap .todo-cards-add-wrap .todo-cards-add-btn:hover {
+    background: var(--ui-btn-primary-hover);
+  }
+
   /* 모바일: 할일 카드 — 내용만큼 늘어나고 잘리지 않음 */
   .calendar-view-todo .todo-card {
     overflow: visible;
