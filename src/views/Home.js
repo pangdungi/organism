@@ -507,10 +507,25 @@ function openReminderModalFromHome(item, onSaved) {
   document.body.appendChild(modal);
 }
 
+const HOME_DATE_TITLE_MONTH_ABBR = [
+  "JAN",
+  "FEB",
+  "MAR",
+  "APR",
+  "MAY",
+  "JUN",
+  "JUL",
+  "AUG",
+  "SEP",
+  "OCT",
+  "NOV",
+  "DEC",
+];
+
 function formatTodayTitle(date) {
-  const m = date.getMonth() + 1;
+  const mmm = HOME_DATE_TITLE_MONTH_ABBR[date.getMonth()];
   const d = String(date.getDate()).padStart(2, "0");
-  return `${m}.${d}`;
+  return `${mmm}.${d}`;
 }
 
 export function render() {

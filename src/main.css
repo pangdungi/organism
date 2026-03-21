@@ -1482,14 +1482,26 @@ body {
   padding-top: 0.5rem;
 }
 
+/* 오늘 탭 날짜(MMM/dd): 캘린더 .calendar-nav-month와 동일 톤 */
 .home-view-date-title {
-  font-size: 1.75rem;
-  font-weight: var(--fw-mono);
-  font-family: var(--font-mono);
-  color: var(--text-ink);
+  font-family: var(--font-heading);
+  font-size: 3.25rem;
+  font-weight: 400;
+  color: #1f2937;
+  line-height: 1.1;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
   margin: 0 0 0.75rem;
   padding: 0 1.75rem;
-  letter-spacing: 0.02em;
+}
+
+@media (max-width: 48rem) {
+  .home-view-date-title {
+    font-size: clamp(2rem, 11vw, 3.25rem);
+    /* 모바일: 대형 제목 상단 잘림 방지 */
+    line-height: 1.2;
+    padding-top: 0.28em;
+  }
 }
 
 .home-time-summary-grid {
@@ -2428,6 +2440,9 @@ body {
   }
   .app-main:has(.home-view) .home-view {
     overflow-y: visible !important;
+    min-height: min-content;
+  }
+  .app-main:has(.home-view) .home-view-left-col {
     min-height: min-content;
   }
   .app-main:has(.home-view) .home-view-three {
@@ -10826,11 +10841,11 @@ body {
   min-width: 0;
 }
 
-/* 카드 시각 위계: 할일 이름이 최우선, 나머지는 더 작·얇·흐리게 */
+/* 카드 시각 위계: 할일 이름은 H3 티어(본문보다 강조, H2 섹션 제목보다 한 단계 낮음) */
 .todo-card-name {
   font-family: var(--font-body);
-  font-size: var(--fs-h2);
-  font-weight: var(--fw-h2);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-h3);
   line-height: 1.4;
   color: var(--text-ink);
   letter-spacing: -0.01em;
