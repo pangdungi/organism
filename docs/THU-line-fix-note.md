@@ -7,7 +7,8 @@
 - **선택자:** `.calendar-1day-view .calendar-1day-time-header`
 - **속성:** `border-bottom: 1.5px solid #d1d5db;`
 
-이 요소는 **1일 뷰 시간 테이블의 맨 위 헤더 행**(예상|오늘실제)입니다.  
+이 요소는 **1일 뷰 시간표 영역**(예상|오늘실제)의 헤더입니다.  
+(스크롤 시 상단 고정을 위해 `.calendar-1day-time-table` 그리드 밖, `.calendar-1day-time-table-wrap`의 직계 자식으로 둠.)  
 홈에서는 THU 다음에 오는 `.home-embed-1day` 안에 있어서, THU 바로 아래에 보이는 “굵은 선”이 바로 이 **헤더의 border-bottom**입니다.
 
 ## 왜 끝까지 안 이어져 보였는지

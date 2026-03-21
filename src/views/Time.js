@@ -6858,7 +6858,7 @@ export function render() {
 
   function renderAll(rows = []) {
     contentWrap.innerHTML = "";
-    const isMobile = window.matchMedia("(max-width: 767px)").matches;
+    const isMobile = window.matchMedia("(max-width: 48rem)").matches;
 
     if (isMobile) {
       const toolbar = document.createElement("div");

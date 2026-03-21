@@ -633,7 +633,7 @@ function getAllTasksWithDateRange() {
 
 function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
   if (document.querySelector(".calendar-monthly-layout.calendar-1week-view")) return null;
-  const isMobile = window.matchMedia("(max-width: 767px)").matches;
+  const isMobile = window.matchMedia("(max-width: 48rem)").matches;
   document
     .querySelectorAll(".calendar-event-bubble, .calendar-day-expand-overlay")
     .forEach((el) => el.remove());
@@ -761,7 +761,7 @@ const MAX_VISIBLE_BARS_PER_DAY = 3;
 
 function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose, options = {}) {
   const { positionBelow = false, onAdd = null } = options;
-  const isMobile = window.matchMedia("(max-width: 767px)").matches;
+  const isMobile = window.matchMedia("(max-width: 48rem)").matches;
   document
     .querySelectorAll(".calendar-event-bubble, .calendar-day-expand-overlay")
     .forEach((el) => el.remove());
@@ -1201,7 +1201,7 @@ function renderMonthlyView(tabsElement) {
         cell.addEventListener(
           "click",
           (e) => {
-            if (window.matchMedia("(max-width: 767px)").matches && cell.contains(e.target)) {
+            if (window.matchMedia("(max-width: 48rem)").matches && cell.contains(e.target)) {
               e.stopPropagation();
               e.preventDefault();
               const rect = cell.getBoundingClientRect();
@@ -1224,7 +1224,7 @@ function renderMonthlyView(tabsElement) {
           if (e.target.closest(".calendar-event-bubble")) return;
           e.stopPropagation();
           const rect = cell.getBoundingClientRect();
-          const isMobile = window.matchMedia("(max-width: 767px)").matches;
+          const isMobile = window.matchMedia("(max-width: 48rem)").matches;
           if (isMobile) {
             return;
           }
@@ -1338,7 +1338,7 @@ function renderMonthlyView(tabsElement) {
 
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
-      const BAR_HEIGHT = window.matchMedia("(max-width: 767px)").matches ? 1.35 : 2.05;
+      const BAR_HEIGHT = window.matchMedia("(max-width: 48rem)").matches ? 1.35 : 2.05;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
@@ -1416,7 +1416,7 @@ function renderMonthlyView(tabsElement) {
       });
       const maxRow = allBars.length ? Math.max(...allBars.map((b) => b.row), 0) : 0;
       const rowsNeeded = maxRow + 1;
-      const BARS_TOP = window.matchMedia("(max-width: 767px)").matches ? 1.35 : 1.75;
+      const BARS_TOP = window.matchMedia("(max-width: 48rem)").matches ? 1.35 : 1.75;
       const BOTTOM_PAD = 0.6;
       const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 3 * BAR_HEIGHT + BOTTOM_PAD;
       const requiredHeight = BARS_TOP + rowsNeeded * BAR_HEIGHT + BOTTOM_PAD;
@@ -1480,7 +1480,7 @@ function renderMonthlyView(tabsElement) {
               ?.classList.toggle("checked", newDone);
             refreshTodoList();
           };
-          if (!window.matchMedia("(max-width: 767px)").matches) bar.addEventListener("click", toggleDone);
+          if (!window.matchMedia("(max-width: 48rem)").matches) bar.addEventListener("click", toggleDone);
         }
         if (!b.isSingleDay && b.startDate && b.dueDate) {
             bar.addEventListener("contextmenu", (e) => {
@@ -2034,7 +2034,7 @@ function render2WeekView(tabsElement) {
 
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
-      const BAR_HEIGHT = window.matchMedia("(max-width: 767px)").matches ? 1.35 : 2.05;
+      const BAR_HEIGHT = window.matchMedia("(max-width: 48rem)").matches ? 1.35 : 2.05;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
@@ -2112,7 +2112,7 @@ function render2WeekView(tabsElement) {
       });
       const maxRow = allBars.length ? Math.max(...allBars.map((b) => b.row), 0) : 0;
       const rowsNeeded = maxRow + 1;
-      const BARS_TOP = window.matchMedia("(max-width: 767px)").matches ? 1.35 : 1.75;
+      const BARS_TOP = window.matchMedia("(max-width: 48rem)").matches ? 1.35 : 1.75;
       const BOTTOM_PAD = 0.6;
       const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 3 * BAR_HEIGHT + BOTTOM_PAD;
       const requiredHeight = BARS_TOP + rowsNeeded * BAR_HEIGHT + BOTTOM_PAD;
@@ -2174,7 +2174,7 @@ function render2WeekView(tabsElement) {
               ?.classList.toggle("checked", newDone);
             refreshTodoList();
           };
-          if (!window.matchMedia("(max-width: 767px)").matches) bar.addEventListener("click", toggleDone);
+          if (!window.matchMedia("(max-width: 48rem)").matches) bar.addEventListener("click", toggleDone);
         }
         if (!b.isSingleDay && b.startDate && b.dueDate) {
             bar.addEventListener("contextmenu", (e) => {
@@ -2718,7 +2718,7 @@ function render3WeekView(tabsElement) {
 
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
-      const BAR_HEIGHT = window.matchMedia("(max-width: 767px)").matches ? 1.35 : 2.05;
+      const BAR_HEIGHT = window.matchMedia("(max-width: 48rem)").matches ? 1.35 : 2.05;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
@@ -2796,7 +2796,7 @@ function render3WeekView(tabsElement) {
       });
       const maxRow = allBars.length ? Math.max(...allBars.map((b) => b.row), 0) : 0;
       const rowsNeeded = maxRow + 1;
-      const BARS_TOP = window.matchMedia("(max-width: 767px)").matches ? 1.35 : 1.75;
+      const BARS_TOP = window.matchMedia("(max-width: 48rem)").matches ? 1.35 : 1.75;
       const BOTTOM_PAD = 0.6;
       const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 3 * BAR_HEIGHT + BOTTOM_PAD;
       const requiredHeight = BARS_TOP + rowsNeeded * BAR_HEIGHT + BOTTOM_PAD;
@@ -2847,7 +2847,7 @@ function render3WeekView(tabsElement) {
             renderCalendar();
             refreshTodoList();
           };
-          if (!window.matchMedia("(max-width: 767px)").matches) bar.addEventListener("click", toggleDone);
+          if (!window.matchMedia("(max-width: 48rem)").matches) bar.addEventListener("click", toggleDone);
         } else {
           if (isTodo) {
             bar.innerHTML = showCheckbox
@@ -2862,7 +2862,7 @@ function render3WeekView(tabsElement) {
               .querySelector(".calendar-monthly-span-bar-checkbox-inner")
               ?.classList.add("checked");
           }
-          if (isTodo && !window.matchMedia("(max-width: 767px)").matches) {
+          if (isTodo && !window.matchMedia("(max-width: 48rem)").matches) {
             bar.addEventListener("click", (e) => {
               e.stopPropagation();
               const newDone = !b.done;
@@ -3632,10 +3632,10 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         blockFill.style.position = "absolute";
         blockFill.style.left = `${(lane / laneCount) * 100}%`;
         blockFill.style.width = `${100 / laneCount}%`;
-        blockFill.style.top = `calc(2.5rem + ${blockStartMin} * (100% - 2.5rem) / ${MIN_PER_DAY})`;
-        blockFill.style.height = `calc(${actualBlockMin} * (100% - 2.5rem) / ${MIN_PER_DAY})`;
+        blockFill.style.top = `calc(${blockStartMin} * 100% / ${MIN_PER_DAY})`;
+        blockFill.style.height = `calc(${actualBlockMin} * 100% / ${MIN_PER_DAY})`;
       } else {
-        blockFill.style.gridRow = `${blockStartSlot + 2} / ${blockEndSlot + 3}`;
+        blockFill.style.gridRow = `${blockStartSlot + 1} / ${blockEndSlot + 2}`;
       }
       const heightPct =
         blockHeightMin > 0 && actualBlockMin < blockHeightMin
@@ -4114,7 +4114,7 @@ function render1DayView(tabsElement) {
           .querySelector(".calendar-monthly-span-bar-checkbox-inner")
           ?.classList.add("checked");
       }
-      if (isTodo && !window.matchMedia("(max-width: 767px)").matches) {
+      if (isTodo && !window.matchMedia("(max-width: 48rem)").matches) {
         bar.addEventListener("click", (e) => {
           e.stopPropagation();
           const newDone = !t.done;
@@ -4445,8 +4445,6 @@ function render1DayView(tabsElement) {
       "calendar-1day-time-table calendar-1day-time-table--compare";
     const headerRow = document.createElement("div");
     headerRow.className = "calendar-1day-time-header";
-    headerRow.style.gridColumn = "1 / -1";
-    headerRow.style.gridRow = "1";
     const headerLabel = document.createElement("div");
     headerLabel.className = "calendar-1day-time-header-label";
     headerLabel.textContent = "";
@@ -4471,12 +4469,11 @@ function render1DayView(tabsElement) {
     headerRow.appendChild(headerLabel);
     headerRow.appendChild(headerExpected);
     headerRow.appendChild(headerActual);
-    timeTable.appendChild(headerRow);
     for (let i = 0; i < SLOTS_PER_DAY; i++) {
       const row = document.createElement("div");
       row.className = "calendar-1day-time-row";
       row.style.gridColumn = "1";
-      row.style.gridRow = `${i + 2}`;
+      row.style.gridRow = `${i + 1}`;
       const timeLabel = document.createElement("div");
       timeLabel.className = "calendar-1day-time-label";
       timeLabel.textContent = `${String(i).padStart(2, "0")}:00`;
@@ -4486,14 +4483,14 @@ function render1DayView(tabsElement) {
       slotExpected.className =
         "calendar-1day-time-slot calendar-1day-time-slot--expected";
       slotExpected.style.gridColumn = "2";
-      slotExpected.style.gridRow = `${i + 2}`;
+      slotExpected.style.gridRow = `${i + 1}`;
       slotExpected.dataset.slotIndex = String(i);
       timeTable.appendChild(slotExpected);
       const slotActual = document.createElement("div");
       slotActual.className =
         "calendar-1day-time-slot calendar-1day-time-slot--actual";
       slotActual.style.gridColumn = "3";
-      slotActual.style.gridRow = `${i + 2}`;
+      slotActual.style.gridRow = `${i + 1}`;
       timeTable.appendChild(slotActual);
     }
     const actualDateKeyForInit = wrap.dataset.actualShowsYesterday === "true" ? getYesterdayKey(targetKey) : undefined;
@@ -4506,6 +4503,7 @@ function render1DayView(tabsElement) {
     timeTableInner.appendChild(timeTable);
     timeTableInner.appendChild(fillOverlayExpected);
     timeTableInner.appendChild(fillOverlayActual);
+    timeTableWrap.appendChild(headerRow);
     timeTableWrap.appendChild(timeTableInner);
     timeColumn.appendChild(timeTableWrap);
     wrap.dataset.dateStr = targetKey;
@@ -4882,7 +4880,7 @@ function render1WeekView(tabsElement) {
 
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
-      const BAR_HEIGHT = window.matchMedia("(max-width: 767px)").matches ? 1.35 : 2.05;
+      const BAR_HEIGHT = window.matchMedia("(max-width: 48rem)").matches ? 1.35 : 2.05;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
@@ -4962,12 +4960,12 @@ function render1WeekView(tabsElement) {
       });
       const maxRow = allBars.length ? Math.max(...allBars.map((b) => b.row), 0) : 0;
       const rowsNeeded = maxRow + 1;
-      const BARS_TOP = window.matchMedia("(max-width: 767px)").matches ? 1.35 : 1.75;
+      const BARS_TOP = window.matchMedia("(max-width: 48rem)").matches ? 1.35 : 1.75;
       const BOTTOM_PAD = 0.6;
       const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 3 * BAR_HEIGHT + BOTTOM_PAD;
       const requiredHeight = BARS_TOP + rowsNeeded * BAR_HEIGHT + BOTTOM_PAD;
       weekRowEl.style.minHeight = `${Math.max(DEFAULT_ROW_HEIGHT_REM, requiredHeight)}rem`;
-      const isMobileStack = window.matchMedia("(max-width: 767px)").matches;
+      const isMobileStack = window.matchMedia("(max-width: 48rem)").matches;
       const stackBarsInCells = isMobileStack || is1WeekView;
       if (stackBarsInCells) {
         barsEl.style.display = "none";
@@ -5026,7 +5024,7 @@ function render1WeekView(tabsElement) {
             if (!is1WeekView) renderCalendar();
             refreshTodoList();
           };
-          const isMobileBar = window.matchMedia("(max-width: 767px)").matches;
+          const isMobileBar = window.matchMedia("(max-width: 48rem)").matches;
           if (!isMobileBar || is1WeekView) {
             const attachToggle = (el) => {
               if (!el) return;
@@ -5059,7 +5057,7 @@ function render1WeekView(tabsElement) {
               .querySelector(".calendar-monthly-span-bar-checkbox-inner")
               ?.classList.add("checked");
           }
-          const isMobileRangeBar = window.matchMedia("(max-width: 767px)").matches;
+          const isMobileRangeBar = window.matchMedia("(max-width: 48rem)").matches;
           if (isTodo && (!isMobileRangeBar || is1WeekView)) {
             const rangeToggleDone = (e) => {
               e.preventDefault();
@@ -5552,7 +5550,7 @@ const MOBILE_SCHEDULE_CAL_SUB_VIEWS = [
  * @param {{ subViewsList?: {id:string,label:string}[], storageKey?: string, forceInitialMonthlyOnMobile?: boolean, keepSubTabsOnTop?: boolean }} opts
  */
 function createCalendarSubViewRoot(tabsElement, opts = {}) {
-  const isMobile = window.matchMedia("(max-width: 767px)").matches;
+  const isMobile = window.matchMedia("(max-width: 48rem)").matches;
   const baseList = opts.subViewsList || CALENDAR_SUB_VIEWS;
   const subViewsList = isMobile
     ? baseList
@@ -6285,7 +6283,7 @@ export function render() {
   });
 
   /* 모바일: 상단에서 '날짜 정하기' 탭 숨김(하단 캘린더 탭과 중복). 좁혀졌을 때 캘린더 뷰면 할일로 전환 */
-  const hideCalendarSubTabMq = window.matchMedia("(max-width: 47.9375rem)");
+  const hideCalendarSubTabMq = window.matchMedia("(max-width: 48rem)");
   function exitCalendarViewOnMobile() {
     if (!hideCalendarSubTabMq.matches) return;
     const active = tabs.querySelector(".time-view-tab.active");

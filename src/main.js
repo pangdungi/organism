@@ -16,7 +16,7 @@ function init() {
     const el = document.getElementById("tablet-landscape-hint");
     if (!el) return;
     const mq = window.matchMedia(
-      "(orientation: portrait) and (min-width: 37.5rem) and (max-width: 64rem)",
+      "(orientation: portrait) and (min-width: 48.0625rem) and (max-width: 64rem)",
     );
     const sync = () => {
       const show = mq.matches;
@@ -25,6 +25,28 @@ function init() {
         el.setAttribute("role", "alertdialog");
         el.setAttribute("aria-modal", "true");
         el.setAttribute("aria-labelledby", "tablet-landscape-hint-title");
+      } else {
+        el.removeAttribute("role");
+        el.removeAttribute("aria-modal");
+        el.removeAttribute("aria-labelledby");
+      }
+    };
+    sync();
+    mq.addEventListener("change", sync);
+  })();
+
+  /* 모바일 폰 가로: 세로 전환 안내 레이어 접근성 */
+  (function initPhonePortraitHintA11y() {
+    const el = document.getElementById("phone-portrait-hint");
+    if (!el) return;
+    const mq = window.matchMedia("(orientation: landscape) and (max-height: 33rem)");
+    const sync = () => {
+      const show = mq.matches;
+      el.setAttribute("aria-hidden", show ? "false" : "true");
+      if (show) {
+        el.setAttribute("role", "alertdialog");
+        el.setAttribute("aria-modal", "true");
+        el.setAttribute("aria-labelledby", "phone-portrait-hint-title");
       } else {
         el.removeAttribute("role");
         el.removeAttribute("aria-modal");

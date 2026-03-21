@@ -298,7 +298,7 @@ btn.dataset.tabId = tab.id;
       if (render) {
         const content = render();
         if (content) p.appendChild(content);
-        if (window.matchMedia("(max-width: 767px)").matches) {
+        if (window.matchMedia("(max-width: 48rem)").matches) {
           initDatePickersIn(p);
         }
       } else {
@@ -322,7 +322,7 @@ btn.dataset.tabId = tab.id;
   appPage.appendChild(appScreen);
   appPage.appendChild(bottomNav);
   container.appendChild(appPage);
-  if (!window.matchMedia("(max-width: 767px)").matches) {
+  if (!window.matchMedia("(max-width: 48rem)").matches) {
     observeDatePickerInit(panel);
   }
 }
