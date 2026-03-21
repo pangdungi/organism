@@ -18,7 +18,7 @@ export async function login(email, password) {
 export async function signOut() {
   if (supabase) await supabase.auth.signOut();
   document.getElementById("app-screen").innerHTML = "";
-  showOnly("main");
+  showOnly("login");
 }
 
 /** 비밀번호 재설정 메일 요청 (가입 이메일로 링크 발송) */

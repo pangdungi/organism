@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300&family=Space+Grotesk:wght@500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300&family=Noto+Sans+KR:wght@300;400&family=Space+Grotesk:wght@500;600;700&family=Syne:wght@800&display=swap"
       rel="stylesheet"
     />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
@@ -51,61 +51,18 @@
       </div>
     </div>
     <div id="app">
-      <!-- 메인(랜딩) -->
-      <div id="main-page" class="page landing-page">
-        <header class="landing-header">
-          <div class="landing-header-inner">
-            <span class="landing-logo">라이프 플래너</span>
-            <button type="button" class="landing-btn-nav" id="btn-login">로그인</button>
+      <!-- 진입: 로그인만 (가입·결제는 외부) -->
+      <div id="login-page" class="page login-page login-page--gate" style="display: flex">
+        <header class="auth-gate-header">
+          <div class="auth-gate-header-inner">
+            <span class="auth-gate-logo">Organism</span>
           </div>
         </header>
-        <main class="landing-main">
-          <section class="landing-hero">
-            <h1 class="landing-hero-title">인생을 한 곳에서<br />관리하세요</h1>
-            <p class="landing-hero-sub">인생 KPI, 시간가계부, 감정일기, 자산관리까지.<br />라이프 종합 플래너 하나로 삶을 설계하세요.</p>
-            <button type="button" class="landing-btn-cta" id="btn-login-hero">무료로 시작하기</button>
-          </section>
-          <section class="landing-features">
-            <h2 class="landing-features-title">한 곳에 모인 라이프 관리</h2>
-            <div class="landing-features-grid">
-              <div class="landing-feature-card">
-                <span class="landing-feature-icon">📊</span>
-                <h3>인생 KPI</h3>
-                <p>꿈, 부수입, 행복, 건강 목표를 한눈에 추적</p>
-              </div>
-              <div class="landing-feature-card">
-                <span class="landing-feature-icon">⏱</span>
-                <h3>시간가계부</h3>
-                <p>시간을 돈처럼 기록하고 생산성 관리</p>
-              </div>
-              <div class="landing-feature-card">
-                <span class="landing-feature-icon">📅</span>
-                <h3>캘린더 & 루틴</h3>
-                <p>일정과 데일리 루틴을 한 화면에서</p>
-              </div>
-              <div class="landing-feature-card">
-                <span class="landing-feature-icon">📝</span>
-                <h3>감정일기 & Q7A</h3>
-                <p>매일의 감정과 질문으로 성장 기록</p>
-              </div>
-            </div>
-          </section>
-          <section class="landing-cta">
-            <h2>지금 바로 시작하세요</h2>
-            <button type="button" class="landing-btn-cta" id="btn-login-cta">로그인</button>
-          </section>
-        </main>
-        <footer class="landing-footer">
-          <p>라이프 종합 플래너 · 결제·가입은 별도 사이트에서 진행됩니다.</p>
-        </footer>
-      </div>
-
-      <!-- 로그인 -->
-      <div id="login-page" class="page login-page" style="display:none">
-        <div class="login-wrap">
-          <div class="login-card">
+        <div class="auth-gate-body">
+          <div class="login-wrap">
+            <div class="login-card login-card--brand">
             <h1 class="login-title">로그인</h1>
-            <p class="login-desc">결제·가입은 별도 사이트에서 진행됩니다. 가입한 아이디와 비밀번호로 로그인하세요.</p>
+            <p class="login-desc">가입 및 결제가 완료된 <strong>아이디(이메일)</strong>와 비밀번호로 들어옵니다.</p>
             <form class="login-form" onsubmit="return false">
               <div class="login-field">
                 <label class="login-label" for="login-id">아이디(이메일)</label>
@@ -147,13 +104,23 @@
               </div>
             </div>
           </div>
+          </div>
         </div>
+        <footer class="auth-gate-footer">
+          <p>가입·결제·회원권은 별도 안내 페이지에서 진행됩니다. 이 화면에서는 로그인만 합니다.</p>
+        </footer>
       </div>
 
       <!-- 비밀번호 재설정 (이메일 링크 클릭 후) -->
-      <div id="reset-password-page" class="page login-page" style="display:none">
+      <div id="reset-password-page" class="page login-page login-page--gate" style="display: none">
+        <header class="auth-gate-header">
+          <div class="auth-gate-header-inner">
+            <span class="auth-gate-logo">Organism</span>
+          </div>
+        </header>
+        <div class="auth-gate-body">
         <div class="login-wrap">
-          <div class="login-card">
+          <div class="login-card login-card--brand">
             <h1 class="login-title">새 비밀번호 설정</h1>
             <p class="login-desc">새 비밀번호를 입력해 주세요.</p>
             <form class="login-form" onsubmit="return false">
@@ -171,6 +138,7 @@
               <button type="button" class="login-btn-cta" id="btn-reset-pw-submit">비밀번호 변경하기</button>
             </form>
           </div>
+        </div>
         </div>
       </div>
 

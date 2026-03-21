@@ -57,10 +57,6 @@ function init() {
     mq.addEventListener("change", sync);
   })();
 
-  const goLogin = () => showOnly("login");
-  document.getElementById("btn-login")?.addEventListener("click", goLogin);
-  document.getElementById("btn-login-hero")?.addEventListener("click", goLogin);
-  document.getElementById("btn-login-cta")?.addEventListener("click", goLogin);
   document.getElementById("btn-do-login")?.addEventListener("click", doLogin);
   document.getElementById("btn-show-change-pw")?.addEventListener("click", () => {
     document.getElementById("forgot-pw-form").style.display = "none";
@@ -84,6 +80,11 @@ function init() {
   supabase?.auth?.onAuthStateChange?.((event) => {
     if (event === "PASSWORD_RECOVERY") {
       showOnly("reset-password");
+      return;
+    }
+    if (event === "SIGNED_OUT") {
+      document.getElementById("app-screen").innerHTML = "";
+      showOnly("login");
     }
   });
 
@@ -146,8 +147,7 @@ function init() {
         return;
       }
     }
-    showOnly("signin");
-    mountApp(document.getElementById("app-screen"));
+    showOnly("login");
   }
   showInitialPage();
 }

@@ -106,6 +106,13 @@ export function mountApp(container) {
 
   const sidebarHeader = document.createElement("div");
   sidebarHeader.className = "app-sidebar-header";
+  const brandTitle = document.createElement("span");
+  brandTitle.className = "app-sidebar-brand-title";
+  const brandTitleText = document.createElement("span");
+  brandTitleText.className = "app-sidebar-brand-title-text";
+  brandTitleText.textContent = "Organism";
+  brandTitle.appendChild(brandTitleText);
+  sidebarHeader.appendChild(brandTitle);
   const sidebarToggle = document.createElement("button");
   sidebarToggle.type = "button";
   sidebarToggle.className = "app-sidebar-toggle";
@@ -167,7 +174,10 @@ export function mountApp(container) {
   accountLabel.textContent = "나의 계정";
   accountBtn.appendChild(accountLabel);
   nav.appendChild(accountBtn);
-  sidebar.appendChild(nav);
+  const sidebarBody = document.createElement("div");
+  sidebarBody.className = "app-sidebar-body";
+  sidebarBody.appendChild(nav);
+  sidebar.appendChild(sidebarBody);
 
   function applySidebarCollapsed(collapsed) {
     sidebar.classList.toggle("is-collapsed", collapsed);

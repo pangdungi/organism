@@ -654,197 +654,206 @@ body {
   color: var(--badge-muted-text);
 }
 
-/* ----- 랜딩 페이지 (ClickUp 스타일) ----- */
-.landing-page {
+/* ----- 인증 게이트: Viridian 다크 · 로그인 전용 ----- */
+.login-page.login-page--gate {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  background: #f5f1e8;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 0;
+  background: #1a1a1a;
+  color-scheme: dark;
 }
 
-.landing-header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: rgba(255, 255, 255, 0.9);
+.auth-gate-header {
+  flex-shrink: 0;
+  background: rgba(26, 26, 26, 0.92);
   backdrop-filter: blur(0.5rem);
-  border-bottom: 0.09375rem solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.landing-header-inner {
-  max-width: 75rem;
+.auth-gate-header-inner {
+  max-width: 28rem;
   margin: 0 auto;
   padding: 1rem 1.5rem;
+}
+
+/* 사이드바 브랜드와 동일: Syne 800 · Primary 텍스트(크림) */
+.auth-gate-logo {
+  font-family: "Syne", var(--font-heading), sans-serif;
+  font-size: 1.1875rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.35;
+  color: var(--ui-btn-primary-fg);
+}
+
+.auth-gate-body {
+  flex: 1;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  min-height: 0;
 }
 
-.landing-logo {
-  font-family: var(--font-heading);
-  font-size: var(--fs-h2);
-  font-weight: var(--fw-h2);
-  color: var(--text-ink);
-}
-
-.landing-btn-nav {
-  padding: 0.5rem 1.25rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  font-family: var(--font-heading);
-  color: var(--ui-btn-secondary-color);
-  background: transparent;
-  border: var(--ui-btn-secondary-border);
-  border-radius: 0;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.landing-btn-nav:hover {
-  opacity: 0.9;
-}
-
-.landing-main {
-  flex: 1;
-}
-
-.landing-hero {
-  padding: 5rem 1.5rem 6rem;
+.auth-gate-footer {
+  flex-shrink: 0;
+  padding: 1rem 1.5rem 1.5rem;
   text-align: center;
-  background: linear-gradient(180deg, #f8f7ff 0%, #fff 60%);
+  font-family: "Noto Sans KR", var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 300;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.45);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(26, 26, 26, 0.85);
 }
 
-.landing-hero-title {
-  margin: 0 0 1.5rem;
-  font-family: var(--font-display);
-  font-size: clamp(2rem, 5vw, var(--fs-display));
-  font-weight: var(--fw-display);
-  line-height: 1.15;
-  color: var(--text-ink);
+/* 카드: 브랜드 Viridian #344945 */
+.login-page--gate .login-card--brand {
+  background: #344945 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 0.625rem !important;
+  box-shadow: 0 0.5rem 2.5rem rgba(0, 0, 0, 0.45) !important;
+}
+
+.login-page--gate .login-title {
+  font-family: "Space Grotesk", var(--font-heading);
+  font-weight: 700;
+  color: #ffffff;
   letter-spacing: -0.02em;
 }
 
-.landing-hero-sub {
-  margin: 0 0 2rem;
-  font-family: var(--font-body);
-  font-size: var(--fs-body);
-  font-weight: var(--fw-body);
-  line-height: 1.6;
-  color: var(--text-ink);
-  max-width: 32.5rem;
-  margin-left: auto;
-  margin-right: auto;
+.login-page--gate .login-desc {
+  font-family: "Noto Sans KR", var(--font-body);
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.55;
 }
 
-.landing-btn-cta {
-  padding: 0.9rem 2rem;
-  font-size: 1rem;
+.login-page--gate .login-desc strong {
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.login-page--gate .login-label {
+  font-family: "DM Mono", var(--font-mono), monospace;
+  font-weight: 300;
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.login-page--gate .login-input {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  caret-color: #ffffff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.login-page--gate .login-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.35);
+  font-family: "Noto Sans KR", var(--font-body);
+  font-weight: 300;
+}
+
+.login-page--gate .login-input:focus {
+  border-bottom-color: rgba(255, 255, 255, 0.42);
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Chrome/Safari 자동완성: 노란·하얀 배경 + 검정 글자 덮어쓰기 */
+.login-page--gate .login-input:-webkit-autofill,
+.login-page--gate .login-input:-webkit-autofill:hover,
+.login-page--gate .login-input:-webkit-autofill:focus,
+.login-page--gate .login-input:-webkit-autofill:active {
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff;
+  box-shadow: 0 0 0 100rem #344945 inset !important;
+  -webkit-box-shadow: 0 0 0 100rem #344945 inset !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+  transition: background-color 99999s ease-out 0s;
+}
+
+.login-page--gate .login-show-pw {
+  font-family: "Noto Sans KR", var(--font-body);
+  font-weight: 300;
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.login-page--gate .login-show-pw-checkbox {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: transparent;
+}
+
+.login-page--gate .login-show-pw-checkbox:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.login-page--gate .login-show-pw-checkbox:checked {
+  background-color: rgba(255, 255, 255, 0.95);
+  border-color: rgba(255, 255, 255, 0.95);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-6' stroke='%23344945' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E");
+  background-size: 70%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.login-page--gate .login-change-pw {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.login-page--gate .login-forgot-desc {
+  font-family: "Noto Sans KR", var(--font-body);
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.login-page--gate .login-link {
+  font-family: "Noto Sans KR", var(--font-body);
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.login-page--gate .login-link:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}
+
+.login-page--gate .login-link-sep {
+  color: rgba(255, 255, 255, 0.22);
+}
+
+/* CTA: 카드 톤 유지, 얇은 유리감(순백 버튼 지양) */
+.login-page--gate .login-btn-cta {
+  color: rgba(255, 255, 255, 0.94) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  border-radius: 0.5rem !important;
+  font-family: "Space Grotesk", var(--font-heading);
   font-weight: 600;
-  font-family: var(--font-heading);
-  color: var(--ui-btn-primary-fg);
-  background: var(--ui-btn-primary-bg);
-  border: none;
-  border-radius: 0;
-  cursor: pointer;
-  transition: background 0.15s;
 }
 
-.landing-btn-cta:hover {
-  background: var(--ui-btn-primary-hover);
+.login-page--gate .login-btn-cta:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+  color: #ffffff !important;
 }
 
-.landing-btn-cta:disabled {
-  background: var(--ui-btn-disabled-bg);
-  color: var(--ui-btn-disabled-fg);
-  border-color: var(--ui-btn-disabled-bg);
-  cursor: not-allowed;
-}
-
-.landing-features {
-  padding: 4rem 1.5rem 5rem;
-  max-width: 68.75rem;
-  margin: 0 auto;
-}
-
-.landing-features-title {
-  margin: 0 0 2.5rem;
-  font-family: var(--font-heading);
-  font-size: var(--fs-h1);
-  font-weight: var(--fw-h1);
-  text-align: center;
-  color: var(--text-ink);
-}
-
-.landing-features-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-  gap: 1.5rem;
-}
-
-.landing-feature-card {
-  padding: 1.75rem;
-  background: #f5f1e8;
-  border: 0.09375rem solid rgba(0, 0, 0, 0.08);
-  border-radius: 0.75rem;
-  transition:
-    box-shadow 0.2s,
-    border-color 0.2s;
-}
-
-.landing-feature-card:hover {
-  border-color: rgba(99, 102, 241, 0.3);
-  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.06);
-}
-
-.landing-feature-icon {
-  display: block;
-  font-size: 2rem;
-  margin-bottom: 1rem;
-}
-
-.landing-feature-card h3 {
-  margin: 0 0 0.5rem;
-  font-family: var(--font-heading);
-  font-size: var(--fs-h2);
-  font-weight: var(--fw-h2);
-  color: var(--text-ink);
-}
-
-.landing-feature-card p {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: var(--fs-secondary);
-  font-weight: var(--fw-secondary);
-  line-height: 1.5;
-  color: var(--text-muted);
-}
-
-.landing-cta {
-  padding: 4rem 1.5rem;
-  text-align: center;
-  background: linear-gradient(180deg, #fff 0%, #f8f7ff 100%);
-}
-
-.landing-cta h2 {
-  margin: 0 0 1.5rem;
-  font-family: var(--font-heading);
-  font-size: var(--fs-h1);
-  font-weight: var(--fw-h1);
-  color: var(--text-ink);
-}
-
-.landing-footer {
-  padding: 2rem 1.5rem;
-  text-align: center;
-  font-family: var(--font-body);
-  font-size: var(--fs-secondary);
-  font-weight: var(--fw-secondary);
-  color: var(--text-muted);
-  border-top: 0.09375rem solid rgba(0, 0, 0, 0.06);
-}
-
-/* ----- 로그인 페이지 (ClickUp 스타일) ----- */
-.login-page {
+/* ----- 로그인 카드 (레거시 전체화면 로그인용 백업) ----- */
+.login-page:not(.login-page--gate) {
   position: fixed;
   inset: 0;
   min-height: 100vh;
@@ -1073,11 +1082,20 @@ body {
   min-height: 0;
   font-family: var(--font-body);
   border-right: var(--line-l2);
-  overflow: hidden;
+  /* x/y 한쪽만 hidden이면 다른 축이 auto로 바뀌며 다시 잘릴 수 있음 — 스크롤은 .app-sidebar-body만 */
+  overflow: visible;
   transition:
     width 0.22s ease,
     min-width 0.22s ease,
     max-width 0.22s ease;
+}
+
+.app-sidebar-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .app-sidebar.is-collapsed {
@@ -1090,11 +1108,41 @@ body {
   position: relative;
   flex-shrink: 0;
   display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding: 0.45rem 0.5rem;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 3.5rem;
+  padding: 0.85rem 0.65rem 1.25rem;
   border-bottom: none;
   box-sizing: border-box;
+  overflow: visible;
+}
+
+/* 바깥: stretch로 행 높이 통일 → 디센더가 flex 줄 밖으로 덜 새나감 */
+.app-sidebar-brand-title {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  overflow: visible;
+  user-select: none;
+  position: relative;
+  z-index: 1;
+}
+
+/* 사이드바 상단 브랜드 글자: Syne 800 · 크림(#F2EDE0) */
+.app-sidebar-brand-title-text {
+  font-family: "Syne", var(--font-heading), sans-serif;
+  font-weight: 800;
+  font-size: 1.0625rem;
+  letter-spacing: -0.03em;
+  line-height: 2.25rem;
+  display: inline-block;
+  color: var(--ui-btn-primary-fg);
+  white-space: nowrap;
+  overflow: visible;
+  padding-bottom: 0.15rem;
 }
 
 /* 상단 << 버튼 아래 선: 24px 가로 여백, 1px, rgba(255,255,255,0.1) */
@@ -1106,6 +1154,8 @@ body {
   bottom: 0;
   height: 1px;
   background: rgba(255, 255, 255, 0.1);
+  z-index: 0;
+  pointer-events: none;
 }
 
 .app-sidebar.is-collapsed .app-sidebar-header {
@@ -1114,18 +1164,25 @@ body {
   padding-right: 0.25rem;
 }
 
+.app-sidebar.is-collapsed .app-sidebar-brand-title {
+  display: none;
+}
+
 .app-sidebar-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  align-self: center;
+  width: 2.5rem;
+  height: 2.5rem;
   padding: 0;
   border: none;
   border-radius: 0.25rem;
   background: transparent;
   color: rgba(255, 255, 255, 0.92);
   cursor: pointer;
+  position: relative;
+  z-index: 1;
   transition: background 0.2s ease;
   -webkit-tap-highlight-color: transparent;
 }
@@ -1677,6 +1734,10 @@ body {
   .home-view-left-col {
     padding: 0 1.75rem;
   }
+  /* Daily+투두 열 ↔ 이벤트·리마인더 열: 토큰 구분선(--line-l1/l2/l3 중 패널 기본 = l2) */
+  .home-view-three.home-view-three--no-calendar .home-view-left-col {
+    border-right: var(--line-l2);
+  }
 }
 
 /* ========== 모바일 전용 스타일 가이드 ==========
@@ -1950,6 +2011,15 @@ body {
 
 /* 48rem 이하: 하단 가로 탭(모바일). 아이패드 미니 세로(744·768 CSS px) 포함 */
 @media (max-width: 48rem) {
+  .auth-gate-body {
+    padding: 1.25rem 1rem;
+  }
+
+  .login-page--gate .login-card--brand {
+    padding: 1.75rem 1.25rem !important;
+    border-radius: 0.5rem !important;
+  }
+
   .app-sidebar {
     display: none !important;
   }
