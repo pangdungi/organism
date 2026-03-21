@@ -29,6 +29,7 @@ import {
 } from "../utils/kpiTodoSync.js";
 import { getCustomSections, getCategoryColorForReport } from "../utils/todoSettings.js";
 import { showToast } from "../utils/showToast.js";
+import { USER_HOURLY_RATE_KEY } from "../utils/userHourlySync.js";
 
 /** 오딧 3. 우선순위 영역: 해당 날짜 할일 목록 로드 (Calendar getTasksForDate와 동일 데이터) */
 const SECTION_TASKS_KEY_AUDIT = "todo-section-tasks";
@@ -513,7 +514,6 @@ const PRODUCTIVITY_OPTIONS = [
 const TASK_OPTIONS_KEY = "time_task_options";
 const BUDGET_GOALS_KEY = "time_daily_budget_goals";
 const BUDGET_EXCLUDED_KEY = "time_budget_excluded";
-const USER_HOURLY_RATE_KEY = "user_hourly_rate";
 const TIME_ROWS_KEY = "time_task_log_rows";
 const TIME_IMPROVE_FOCUS_NOTES_KEY = "time_improve_focus_notes";
 const FIXED_OTHER_TASKS = [
@@ -10678,4 +10678,21 @@ export function renderTimeBudgetTablesForCalendar(
     container.appendChild(stickyHeader);
     container.appendChild(fourPanels);
   }
+}
+
+if (typeof document !== "undefined") {
+  document.addEventListener("app-hourly-rate-changed", (e) => {
+    const rate = Number(e.detail?.rate ?? 0);
+    const root = document.querySelector(".app-tab-panel-content.time-ledger-view");
+    if (!root) return;
+    const inp = root.querySelector(".time-hourly-input");
+    const disp = root.querySelector(".time-hourly-display");
+    if (inp) inp.value = String(rate);
+    if (disp) {
+      disp.textContent =
+        rate > 0
+          ? new Intl.NumberFormat("ko-KR").format(Math.round(rate)) + "원"
+          : "—";
+    }
+  });
 }

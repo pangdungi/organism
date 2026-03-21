@@ -4,10 +4,15 @@
 
 import { signOut } from "../auth.js";
 import { supabase } from "../supabase.js";
+import {
+  USER_HOURLY_RATE_KEY,
+  pushAppearanceToSupabase,
+  applyAppearanceFromServer,
+} from "../utils/userHourlySync.js";
+
+export { USER_HOURLY_RATE_KEY };
 import { getTodoSettings, saveTodoSettings, getCustomSections, DEFAULT_SECTION_COLORS, DEFAULT_TIME_CATEGORY_COLORS, DEFAULT_TASK_CATEGORY_COLORS, applyTimeCategoryColors, applyTaskCategoryColors } from "../utils/todoSettings.js";
 import { createColorPickerRow } from "../utils/todoSettingsModal.js";
-
-export const USER_HOURLY_RATE_KEY = "user_hourly_rate";
 
 /** 한글 NEXON Lv1 고정 — 웹사이트 폰트 설정 제거됨 */
 export function applyAppFont() {
@@ -111,7 +116,7 @@ export function render() {
       if (!session?.user?.id || !statusEl || !passEl) return;
       supabase
         .from("user_subscriptions")
-        .select("subscription_status, signup_at")
+        .select("subscription_status, signup_at, hourly_rate")
         .eq("user_id", session.user.id)
         .maybeSingle()
         .then(({ data, error }) => {
@@ -131,6 +136,25 @@ export function render() {
             statusEl.textContent = "작업중";
             passEl.hidden = true;
           }
+          const hr = data.hourly_rate != null ? Number(data.hourly_rate) : NaN;
+          if (!Number.isNaN(hr) && hr > 0) {
+            try {
+              localStorage.setItem(USER_HOURLY_RATE_KEY, String(hr));
+            } catch (_) {}
+            const rv = document.querySelector(".idea-hourly-result-value");
+            const ru = document.querySelector(".idea-hourly-result-unit");
+            if (rv) {
+              rv.textContent = new Intl.NumberFormat("ko-KR").format(Math.round(hr));
+              if (ru) {
+                ru.textContent = "원";
+                ru.style.visibility = "";
+              }
+            }
+            document.dispatchEvent(
+              new CustomEvent("app-hourly-rate-changed", { detail: { rate: hr } }),
+            );
+          }
+          applyAppearanceFromServer(data.appearance);
         });
     });
   }
@@ -278,6 +302,7 @@ export function render() {
     applyTimeCategoryColors();
     applyTaskCategoryColors();
     document.dispatchEvent(new CustomEvent("app-colors-changed"));
+    void pushAppearanceToSupabase();
   }
 
   getSections().forEach((sec) => {
@@ -380,10 +405,16 @@ export function render() {
     }
   });
 
-  function saveHourlyToAccount(hourly) {
+  async function saveHourlyToAccount(hourly) {
     try {
       localStorage.setItem(USER_HOURLY_RATE_KEY, String(hourly));
     } catch (_) {}
+    document.dispatchEvent(
+      new CustomEvent("app-hourly-rate-changed", { detail: { rate: hourly } }),
+    );
+    if (!supabase) return;
+    const { error } = await supabase.rpc("set_my_hourly_rate", { p_rate: hourly });
+    if (error) console.warn("[set_my_hourly_rate]", error.message);
   }
 
   function calculateHourly() {
@@ -414,7 +445,7 @@ export function render() {
         setHourlyResult(hourly);
       }
     }
-    if (hourly > 0) saveHourlyToAccount(hourly);
+    if (hourly > 0) void saveHourlyToAccount(hourly);
   }
 
   // 저장된 시급 로드

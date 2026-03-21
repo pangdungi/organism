@@ -11,6 +11,7 @@ import {
 import { mountApp } from "./App.js";
 import { supabase } from "./supabase.js";
 import { applyAppFont } from "./views/Idea.js";
+import { pullUserPrefsFromSupabase } from "./utils/userHourlySync.js";
 import { applyTimeCategoryColors, applyTaskCategoryColors } from "./utils/todoSettings.js";
 import { showToast } from "./utils/showToast.js";
 
@@ -180,6 +181,7 @@ function init() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         showOnly("signin");
+        await pullUserPrefsFromSupabase();
         mountApp(document.getElementById("app-screen"));
         return;
       }
@@ -196,6 +198,7 @@ async function doLogin() {
   const result = await login(id, pw);
   if (result.ok) {
     showOnly("signin");
+    await pullUserPrefsFromSupabase();
     mountApp(document.getElementById("app-screen"));
   } else {
     showToast(result.msg);
@@ -223,6 +226,7 @@ async function doSignUp() {
   const session = result.data?.session;
   if (session) {
     showOnly("signin");
+    await pullUserPrefsFromSupabase();
     mountApp(document.getElementById("app-screen"));
     return;
   }

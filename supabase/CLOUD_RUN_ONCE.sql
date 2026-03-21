@@ -10,7 +10,8 @@ create table if not exists public.user_subscriptions (
     constraint user_subscriptions_status_check
       check (subscription_status in ('inactive', 'active')),
   signup_at timestamptz not null,
-  access_until timestamptz not null
+  access_until timestamptz not null,
+  hourly_rate numeric(14, 2)
 );
 
 comment on table public.user_subscriptions is 'UID별 구독 상태; 가입 시 7일 trial';
@@ -65,3 +66,56 @@ from auth.users u
 where not exists (
   select 1 from public.user_subscriptions s where s.user_id = u.id
 );
+
+-- 이미 예전 스크립트로 테이블만 만든 경우: 컬럼·RPC 추가
+alter table public.user_subscriptions
+  add column if not exists hourly_rate numeric(14, 2);
+
+comment on column public.user_subscriptions.hourly_rate is '나의 시급(원)';
+
+create or replace function public.set_my_hourly_rate (p_rate numeric)
+  returns void
+  language plpgsql
+  security definer
+  set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'not authenticated';
+  end if;
+  update public.user_subscriptions
+  set
+    hourly_rate = case
+      when p_rate is not null and p_rate > 0 then round(p_rate, 2)
+      else null
+    end
+  where user_id = auth.uid();
+end;
+$$;
+
+revoke all on function public.set_my_hourly_rate (numeric) from public;
+grant execute on function public.set_my_hourly_rate (numeric) to authenticated;
+
+alter table public.user_subscriptions
+  add column if not exists appearance jsonb;
+
+comment on column public.user_subscriptions.appearance is 'sectionColors, timeCategoryColors, taskCategoryColors';
+
+create or replace function public.set_my_appearance (p_appearance jsonb)
+  returns void
+  language plpgsql
+  security definer
+  set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'not authenticated';
+  end if;
+  update public.user_subscriptions
+  set appearance = p_appearance
+  where user_id = auth.uid();
+end;
+$$;
+
+revoke all on function public.set_my_appearance (jsonb) from public;
+grant execute on function public.set_my_appearance (jsonb) to authenticated;
