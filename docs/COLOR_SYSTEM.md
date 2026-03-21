@@ -1,6 +1,6 @@
 # 컬러 시스템 정리
 
-앱의 색상(리스트/생산성/작업 카테고리)은 10가지 프리셋으로 통일되어 있음.
+앱의 색상(리스트/생산성/작업 카테고리)은 **22가지** 프리셋(hex)으로 통일되어 있음(기본 10 + Behr 세이지/클래식/올리브 12).
 
 ## 1. 데이터 정의 & 저장
 
@@ -9,11 +9,11 @@
 | `src/utils/todoSettings.js` | 색상 정의, localStorage 저장/로드 |
 
 ### 주요 export
-- **APP_PRESET_COLORS** - 10가지 hex 프리셋 (로즈, 피치, 샌드, 세이지, 민트, 스카이, 라벤더, 모브, 스모크, 슬레이트)
+- **APP_PRESET_COLORS** - 22가지 hex 프리셋 (기본 10 + Behr 세이지/클래식/올리브 12 — `todoSettings.js` 주석 참고)
 - **hexToRgba(hex, alpha)** - hex → rgba 변환
-- **DEFAULT_SECTION_COLORS** - 리스트 기본색 (braindump, dream, sideincome, health, happy)
-- **DEFAULT_TIME_CATEGORY_COLORS** - 생산/비생산/기타 기본색
-- **DEFAULT_TASK_CATEGORY_COLORS** - 작업(세부) 카테고리 기본색
+- **DEFAULT_SECTION_COLORS** - 리스트 기본색 (브레인덤프·꿈·부수입·건강·행복; `sectionListPresetVersion`으로 1회 마이그레이션, 커스텀 리스트 색은 유지)
+- **DEFAULT_TIME_CATEGORY_COLORS** - 생산 `#C97A6A` / 비생산 `#7A8E9A` / 기타 `#8A9E82` (로컬 `timeCategoryPresetVersion`으로 1회 마이그레이션)
+- **DEFAULT_TASK_CATEGORY_COLORS** - 작업(세부) 기본색(꿈·부수입·행복·건강은 리스트 4색과 동일, 그외 항목은 다른 프리셋; `taskSubcategoryPresetVersion`)
 - **getSectionColor(sectionId)** - 리스트 색 조회
 - **getTimeCategoryColor(key)** - 생산성 색 조회
 - **getTimeCategoryColorsForTimetable()** - 타임테이블 블록용 rgba
@@ -27,7 +27,7 @@
 
 | 파일 | 역할 |
 |------|------|
-| `src/utils/todoSettingsModal.js` | createColorPickerRow (칩+모달), 10 프리셋만 선택 |
+| `src/utils/todoSettingsModal.js` | createColorPickerRow (칩+모달), 22 프리셋 선택 |
 | `src/views/Idea.js` | 나의계정 → 리스트 색상 / 생산성 / 작업 카테고리 설정 블록 |
 
 설정 저장 시 `document.dispatchEvent(new CustomEvent("app-colors-changed"))` 발생.

@@ -525,6 +525,109 @@ function revertTaskToTodoList(barData) {
   return ok;
 }
 
+/** 캘린더 막대 → 사이드바 드롭 시 날짜 제거(dataTransfer 식별용) */
+const DRAG_TYPE_CALENDAR_SPAN = "application/x-lp-calendar-span";
+
+function dataTransferHasType(dataTransfer, type) {
+  const types = dataTransfer?.types;
+  if (!types) return false;
+  return Array.from(types).includes(type);
+}
+
+function calendarSpanBarPayloadJson(b) {
+  return JSON.stringify({
+    name: b.name,
+    dueDate: b.dueDate,
+    startDate: b.startDate || "",
+    kpiTodoId: b.kpiTodoId,
+    storageKey: b.storageKey,
+    taskId: b.taskId,
+    sectionId: b.sectionId,
+    done: !!b.done,
+    itemType: b.itemType || "todo",
+  });
+}
+
+function bindCalendarSpanBarDragHandlers(bar, b) {
+  const canDrag =
+    (b.isSingleDay && b.dueDate) || (!b.isSingleDay && b.startDate && b.dueDate);
+  if (!canDrag) return;
+  bar.draggable = true;
+  bar.classList.add("calendar-monthly-span-bar--draggable");
+  bar.addEventListener("dragstart", (e) => {
+    e.dataTransfer.effectAllowed = "move";
+    const json = calendarSpanBarPayloadJson(b);
+    e.dataTransfer.setData(DRAG_TYPE_CALENDAR_SPAN, json);
+    e.dataTransfer.setData("application/json", json);
+    e.dataTransfer.setData("text/plain", b.name || "");
+    bar.classList.add("calendar-monthly-span-bar--dragging");
+  });
+  bar.addEventListener("dragend", () => {
+    bar.classList.remove("calendar-monthly-span-bar--dragging");
+  });
+}
+
+/** 날짜 정하기: 캘린더 막대를 오른쪽 할일 사이드바에 놓으면 시작일·마감일 제거 */
+function attachCalendarTodoSidebarSpanRevertDrop(
+  sidebarBody,
+  renderCalendar,
+  refreshTodoList,
+) {
+  if (!sidebarBody) return;
+  const dragOverClass = "calendar-todo-sidebar-drag-over";
+  const acceptsSidebarSpanRevert = (dt) =>
+    dataTransferHasType(dt, DRAG_TYPE_CALENDAR_SPAN) ||
+    (dataTransferHasType(dt, "application/json") &&
+      !dataTransferHasType(dt, DRAG_TYPE_TODO_TO_CALENDAR));
+
+  sidebarBody.addEventListener("dragover", (e) => {
+    if (acceptsSidebarSpanRevert(e.dataTransfer)) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      sidebarBody.classList.add(dragOverClass);
+    }
+  });
+  sidebarBody.addEventListener("dragleave", (e) => {
+    if (!sidebarBody.contains(e.relatedTarget)) {
+      sidebarBody.classList.remove(dragOverClass);
+    }
+  });
+  sidebarBody.addEventListener("drop", (e) => {
+    sidebarBody.classList.remove(dragOverClass);
+    if (!acceptsSidebarSpanRevert(e.dataTransfer)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    let json = "";
+    if (dataTransferHasType(e.dataTransfer, DRAG_TYPE_CALENDAR_SPAN)) {
+      json = e.dataTransfer.getData(DRAG_TYPE_CALENDAR_SPAN);
+    }
+    if (!json && dataTransferHasType(e.dataTransfer, "application/json")) {
+      json = e.dataTransfer.getData("application/json");
+    }
+    if (!json) return;
+    try {
+      const payload = JSON.parse(json);
+      if (!payload || (!payload.taskId && !payload.kpiTodoId)) return;
+      if (!revertTaskToTodoList(payload)) return;
+      refreshTodoList?.();
+      renderCalendar?.();
+    } catch (_) {}
+  });
+}
+
+/** 캘린더·우선순위 뷰: 할일 사이드바 기본 접힘(사용자가 펼침). 아이젠하워는 접힘 시 저장 너비 해제 */
+function applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar, opts = {}) {
+  const { clearInlineWidth = false } = opts;
+  todoSidebar.classList.add("collapsed");
+  if (clearInlineWidth) todoSidebar.style.width = "";
+  const collapseBtn = todoSidebar.querySelector(".calendar-todo-sidebar-collapse");
+  const titleEl = todoSidebar.querySelector(".calendar-todo-sidebar-title");
+  const collapseTextEl = todoSidebar.querySelector(".calendar-todo-sidebar-collapse-text");
+  if (collapseBtn) collapseBtn.title = "사이드바 펼치기";
+  if (titleEl) titleEl.textContent = "할일";
+  if (collapseTextEl) collapseTextEl.textContent = "할일";
+}
+
 function getCustomSectionTasksForDate(dateKey) {
   const out = [];
   try {
@@ -1510,31 +1613,8 @@ function renderMonthlyView(tabsElement) {
             );
           });
         }
+        bindCalendarSpanBarDragHandlers(bar, b);
         if (b.isSingleDay && b.dueDate) {
-          bar.draggable = true;
-          bar.classList.add("calendar-monthly-span-bar--draggable");
-          bar.addEventListener("dragstart", (e) => {
-            e.dataTransfer.effectAllowed = "move";
-            e.dataTransfer.setData(
-              "application/json",
-              JSON.stringify({
-                name: b.name,
-                dueDate: b.dueDate,
-                startDate: b.startDate || "",
-                kpiTodoId: b.kpiTodoId,
-                storageKey: b.storageKey,
-                taskId: b.taskId,
-                sectionId: b.sectionId,
-                done: !!b.done,
-                itemType: b.itemType || "todo",
-              }),
-            );
-            e.dataTransfer.setData("text/plain", b.name || "");
-            bar.classList.add("calendar-monthly-span-bar--dragging");
-          });
-          bar.addEventListener("dragend", () => {
-            bar.classList.remove("calendar-monthly-span-bar--dragging");
-          });
           bar.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -1746,7 +1826,7 @@ function renderMonthlyView(tabsElement) {
 
   const todoSidebar = document.createElement("aside");
   todoSidebar.className = "calendar-todo-sidebar";
-  let sidebarCollapsed = false;
+  let sidebarCollapsed = true;
   todoSidebar.innerHTML = `
     <div class="calendar-todo-sidebar-header">
       <span class="calendar-todo-sidebar-title">날짜 잡아서 해야 할일</span>
@@ -1782,7 +1862,11 @@ function renderMonthlyView(tabsElement) {
       if (collapseTextEl) collapseTextEl.textContent = sidebarCollapsed ? "할일" : "접기";
     });
   })();
+  applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
   wrap.appendChild(todoSidebar);
+  attachCalendarTodoSidebarSpanRevertDrop(body, () => renderCalendar(), () =>
+    refreshTodoList(),
+  );
 
   wrap.addEventListener("dragend", () => {
     wrap
@@ -2204,31 +2288,8 @@ function render2WeekView(tabsElement) {
             );
           });
         }
+        bindCalendarSpanBarDragHandlers(bar, b);
         if (b.isSingleDay && b.dueDate) {
-          bar.draggable = true;
-          bar.classList.add("calendar-monthly-span-bar--draggable");
-          bar.addEventListener("dragstart", (e) => {
-            e.dataTransfer.effectAllowed = "move";
-            e.dataTransfer.setData(
-              "application/json",
-              JSON.stringify({
-                name: b.name,
-                dueDate: b.dueDate,
-                startDate: b.startDate || "",
-                kpiTodoId: b.kpiTodoId,
-                storageKey: b.storageKey,
-                taskId: b.taskId,
-                sectionId: b.sectionId,
-                done: !!b.done,
-                itemType: b.itemType || "todo",
-              }),
-            );
-            e.dataTransfer.setData("text/plain", b.name || "");
-            bar.classList.add("calendar-monthly-span-bar--dragging");
-          });
-          bar.addEventListener("dragend", () => {
-            bar.classList.remove("calendar-monthly-span-bar--dragging");
-          });
           bar.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -2430,7 +2491,7 @@ function render2WeekView(tabsElement) {
 
   const todoSidebar = document.createElement("aside");
   todoSidebar.className = "calendar-todo-sidebar";
-  let sidebarCollapsed = false;
+  let sidebarCollapsed = true;
   todoSidebar.innerHTML = `
     <div class="calendar-todo-sidebar-header">
       <span class="calendar-todo-sidebar-title">날짜 잡아서 해야 할일</span>
@@ -2466,7 +2527,11 @@ function render2WeekView(tabsElement) {
       if (collapseTextEl) collapseTextEl.textContent = sidebarCollapsed ? "할일" : "접기";
     });
   })();
+  applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
   wrap.appendChild(todoSidebar);
+  attachCalendarTodoSidebarSpanRevertDrop(body, () => renderCalendar(), () =>
+    refreshTodoList(),
+  );
 
   wrap.addEventListener("dragend", () => {
     wrap
@@ -2913,31 +2978,8 @@ function render3WeekView(tabsElement) {
             );
           });
         }
+        bindCalendarSpanBarDragHandlers(bar, b);
         if (b.isSingleDay && b.dueDate) {
-          bar.draggable = true;
-          bar.classList.add("calendar-monthly-span-bar--draggable");
-          bar.addEventListener("dragstart", (e) => {
-            e.dataTransfer.effectAllowed = "move";
-            e.dataTransfer.setData(
-              "application/json",
-              JSON.stringify({
-                name: b.name,
-                dueDate: b.dueDate,
-                startDate: b.startDate || "",
-                kpiTodoId: b.kpiTodoId,
-                storageKey: b.storageKey,
-                taskId: b.taskId,
-                sectionId: b.sectionId,
-                done: !!b.done,
-                itemType: b.itemType || "todo",
-              }),
-            );
-            e.dataTransfer.setData("text/plain", b.name || "");
-            bar.classList.add("calendar-monthly-span-bar--dragging");
-          });
-          bar.addEventListener("dragend", () => {
-            bar.classList.remove("calendar-monthly-span-bar--dragging");
-          });
           bar.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -3140,7 +3182,7 @@ function render3WeekView(tabsElement) {
 
   const todoSidebar = document.createElement("aside");
   todoSidebar.className = "calendar-todo-sidebar";
-  let sidebarCollapsed = false;
+  let sidebarCollapsed = true;
   todoSidebar.innerHTML = `
     <div class="calendar-todo-sidebar-header">
       <span class="calendar-todo-sidebar-title">날짜 잡아서 해야 할일</span>
@@ -3176,7 +3218,11 @@ function render3WeekView(tabsElement) {
       if (collapseTextEl) collapseTextEl.textContent = sidebarCollapsed ? "할일" : "접기";
     });
   })();
+  applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
   wrap.appendChild(todoSidebar);
+  attachCalendarTodoSidebarSpanRevertDrop(body, () => renderCalendar(), () =>
+    refreshTodoList(),
+  );
 
   wrap.addEventListener("dragend", () => {
     wrap
@@ -5120,31 +5166,8 @@ function render1WeekView(tabsElement) {
             );
           });
         }
+        bindCalendarSpanBarDragHandlers(bar, b);
         if (b.isSingleDay && b.dueDate) {
-          bar.draggable = true;
-          bar.classList.add("calendar-monthly-span-bar--draggable");
-          bar.addEventListener("dragstart", (e) => {
-            e.dataTransfer.effectAllowed = "move";
-            e.dataTransfer.setData(
-              "application/json",
-              JSON.stringify({
-                name: b.name,
-                dueDate: b.dueDate,
-                startDate: b.startDate || "",
-                kpiTodoId: b.kpiTodoId,
-                storageKey: b.storageKey,
-                taskId: b.taskId,
-                sectionId: b.sectionId,
-                done: !!b.done,
-                itemType: b.itemType || "todo",
-              }),
-            );
-            e.dataTransfer.setData("text/plain", b.name || "");
-            bar.classList.add("calendar-monthly-span-bar--dragging");
-          });
-          bar.addEventListener("dragend", () => {
-            bar.classList.remove("calendar-monthly-span-bar--dragging");
-          });
           bar.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -5383,7 +5406,7 @@ function render1WeekView(tabsElement) {
 
   const todoSidebar = document.createElement("aside");
   todoSidebar.className = "calendar-todo-sidebar";
-  let sidebarCollapsed = false;
+  let sidebarCollapsed = true;
   todoSidebar.innerHTML = `
     <div class="calendar-todo-sidebar-header">
       <span class="calendar-todo-sidebar-title">날짜 잡아서 해야 할일</span>
@@ -5419,7 +5442,11 @@ function render1WeekView(tabsElement) {
       if (collapseTextEl) collapseTextEl.textContent = sidebarCollapsed ? "할일" : "접기";
     });
   })();
+  applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
   wrap.appendChild(todoSidebar);
+  attachCalendarTodoSidebarSpanRevertDrop(body, () => renderCalendar(), () =>
+    refreshTodoList(),
+  );
 
   wrap.addEventListener("dragend", () => {
     wrap
@@ -5779,7 +5806,7 @@ function renderEisenhowerView(tabsElement) {
 
   const todoSidebar = document.createElement("aside");
   todoSidebar.className = "calendar-todo-sidebar";
-  let sidebarCollapsed = false;
+  let sidebarCollapsed = true;
   const savedWidth = parseInt(
     localStorage.getItem(EISENHOWER_SIDEBAR_WIDTH_KEY),
     10,
@@ -5826,6 +5853,7 @@ function renderEisenhowerView(tabsElement) {
       todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title =
         sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
     });
+  applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar, { clearInlineWidth: true });
   contentRow.appendChild(todoSidebar);
   wrap.appendChild(contentRow);
 

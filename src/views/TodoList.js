@@ -5,7 +5,17 @@
 
 import { getKpiTodosAsTasks, syncKpiTodoCompleted, removeAllCompletedKpiTodos, removeKpiTodo, updateKpiTodo, moveKpiTodoToSection } from "../utils/kpiTodoSync.js";
 import { createTodoSettingsModal } from "../utils/todoSettingsModal.js";
-import { getTodoSettings, getCustomSections, addCustomSection, removeCustomSection, updateCustomSectionLabel, getSectionColor } from "../utils/todoSettings.js";
+import {
+  getTodoSettings,
+  getCustomSections,
+  addCustomSection,
+  removeCustomSection,
+  updateCustomSectionLabel,
+  getSectionColor,
+  snapRgbaToNearestPreset,
+  pickRandomPresetRgba,
+  readableTextForPresetRgbaBg,
+} from "../utils/todoSettings.js";
 import { getSubtasks, addSubtask, updateSubtask, removeSubtask, clearSubtasks, setSubtasks } from "../utils/todoSubtasks.js";
 import { createBraindumpContextMenu } from "../utils/braindumpContextMenu.js";
 import { createTodoCheckboxTypeMenu } from "../utils/todoCheckboxTypeMenu.js";
@@ -496,33 +506,43 @@ export function saveTodoListBeforeUnmount(container) {
 
 const TODO_CATEGORY_OPTIONS_KEY = "todo_category_options";
 const DEFAULT_CATEGORIES = ["학업", "잡무", "사이드프로젝트", "회사"];
-const PASTEL_COLORS = [
-  { bg: "rgba(167, 243, 208, 0.5)", text: "#047857" },
-  { bg: "rgba(196, 181, 253, 0.5)", text: "#5b21b6" },
-  { bg: "rgba(253, 186, 116, 0.5)", text: "#c2410c" },
-  { bg: "rgba(251, 207, 232, 0.5)", text: "#9d174d" },
-  { bg: "rgba(147, 197, 253, 0.5)", text: "#1e40af" },
-  { bg: "rgba(190, 242, 100, 0.5)", text: "#4d7c0f" },
-  { bg: "rgba(253, 230, 138, 0.5)", text: "#b45309" },
-  { bg: "rgba(125, 211, 252, 0.5)", text: "#0369a1" },
-  { bg: "rgba(165, 180, 252, 0.5)", text: "#3730a3" },
-  { bg: "rgba(110, 231, 183, 0.5)", text: "#047857" },
-  { bg: "rgba(94, 234, 212, 0.5)", text: "#0f766e" },
-  { bg: "rgba(253, 164, 175, 0.5)", text: "#be123c" },
-];
+
+function randomTodoCategoryChipPair() {
+  const bg = pickRandomPresetRgba(0.55);
+  return { bg, text: readableTextForPresetRgbaBg(bg) };
+}
+
+function migrateCategoryOptionsToPresetPalette(arr) {
+  let changed = false;
+  const out = arr.map((o) => {
+    const bg =
+      typeof o.bg === "string" ? snapRgbaToNearestPreset(o.bg) : o.bg;
+    const text = readableTextForPresetRgbaBg(bg);
+    if (bg !== o.bg || text !== o.text) changed = true;
+    return { ...o, bg, text };
+  });
+  return { out, changed };
+}
 
 function getCategoryOptions() {
   try {
     const raw = localStorage.getItem(TODO_CATEGORY_OPTIONS_KEY);
     if (raw) {
       const arr = JSON.parse(raw);
-      if (Array.isArray(arr) && arr.length > 0) return arr;
+      if (Array.isArray(arr) && arr.length > 0) {
+        const { out, changed } = migrateCategoryOptionsToPresetPalette(arr);
+        if (changed) {
+          try {
+            localStorage.setItem(TODO_CATEGORY_OPTIONS_KEY, JSON.stringify(out));
+          } catch (_) {}
+        }
+        return out;
+      }
     }
   } catch (_) {}
   const defaults = DEFAULT_CATEGORIES.map((name) => ({
     name,
-    bg: PASTEL_COLORS[DEFAULT_CATEGORIES.indexOf(name) % PASTEL_COLORS.length].bg,
-    text: PASTEL_COLORS[DEFAULT_CATEGORIES.indexOf(name) % PASTEL_COLORS.length].text,
+    ...randomTodoCategoryChipPair(),
   }));
   try {
     localStorage.setItem(TODO_CATEGORY_OPTIONS_KEY, JSON.stringify(defaults));
@@ -534,8 +554,8 @@ function addCategoryOption(name) {
   const opts = getCategoryOptions();
   const trimmed = (name || "").trim();
   if (!trimmed || opts.some((o) => o.name === trimmed)) return opts;
-  const color = PASTEL_COLORS[Math.floor(Math.random() * PASTEL_COLORS.length)];
-  opts.unshift({ name: trimmed, bg: color.bg, text: color.text });
+  const pair = randomTodoCategoryChipPair();
+  opts.unshift({ name: trimmed, bg: pair.bg, text: pair.text });
   try {
     localStorage.setItem(TODO_CATEGORY_OPTIONS_KEY, JSON.stringify(opts));
   } catch (_) {}

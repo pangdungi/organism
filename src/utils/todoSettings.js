@@ -4,18 +4,33 @@
 const TODO_SETTINGS_KEY = "todo-settings";
 const CUSTOM_SECTIONS_KEY = "todo-custom-sections";
 
-/** 앱 정체성용 10가지 프리셋 색상 (hex) - 컬러 코드 팔레트 */
+/**
+ * 앱 정체성용 프리셋 (hex) — 기본 10색 + Behr 세이지/클래식/올리브 차트 12색 (공개 RGB·hex 근사값)
+ * Fertile Green은 차트 코드 오기 가능 → Behr 명칭 기준 S340-6 반영
+ */
 export const APP_PRESET_COLORS = [
-  { id: "rose", name: "로즈", hex: "#C97A6A" },
-  { id: "peach", name: "피치", hex: "#C4906A" },
-  { id: "sand", name: "샌드", hex: "#B89A6A" },
-  { id: "sage", name: "세이지", hex: "#8A9E82" },
-  { id: "mint", name: "민트", hex: "#6B7A6E" },
-  { id: "sky", name: "스카이", hex: "#7A8E9A" },
-  { id: "lavender", name: "라벤더", hex: "#8A7A9E" },
-  { id: "mauve", name: "모브", hex: "#9E8A8A" },
-  { id: "smoke", name: "스모크", hex: "#3D4A3E" },
-  { id: "slate", name: "슬레이트", hex: "#C4BEA8" },
+  { id: "rose", name: "테라코타 레드", hex: "#C97A6A" },
+  { id: "peach", name: "오렌지 브라운 · 피치", hex: "#C4906A" },
+  { id: "sand", name: "오렌지 브라운 · 샌드", hex: "#B89A6A" },
+  { id: "sage", name: "그린 · 세이지", hex: "#8A9E82" },
+  { id: "mint", name: "그린 · 민트", hex: "#6B7A6E" },
+  { id: "sky", name: "슬레이트 블루", hex: "#7A8E9A" },
+  { id: "lavender", name: "머브", hex: "#8A7A9E" },
+  { id: "mauve", name: "로즈", hex: "#9E8A8A" },
+  { id: "smoke", name: "그린 · 포레스트", hex: "#3D4A3E" },
+  { id: "slate", name: "뉴트럴", hex: "#C4BEA8" },
+  { id: "behr-chinese-jade", name: "Behr · Chinese Jade (PPU10-09)", hex: "#CBD1BA" },
+  { id: "behr-laurel-mist", name: "Behr · Laurel Mist (430E-3)", hex: "#ACB5A1" },
+  { id: "behr-cameroon-green", name: "Behr · Cameroon Green (PPU12-17)", hex: "#60746D" },
+  { id: "behr-secluded-woods", name: "Behr · Secluded Woods (S420-7)", hex: "#41534A" },
+  { id: "behr-cavan", name: "Behr · Cavan (M380-1)", hex: "#DCE2CE" },
+  { id: "behr-chopped-dill", name: "Behr · Chopped Dill (M380-4)", hex: "#B3C09F" },
+  { id: "behr-greener-pastures", name: "Behr · Greener Pastures (S410-6)", hex: "#637C65" },
+  { id: "behr-deep-jungle", name: "Behr · Deep Jungle (470F-7)", hex: "#3F564A" },
+  { id: "behr-bay-water", name: "Behr · Bay Water (S380-4)", hex: "#AAAD94" },
+  { id: "behr-fertile-green", name: "Behr · Fertile Green (S340-6)", hex: "#8B8757" },
+  { id: "behr-amazon-jungle", name: "Behr · Amazon Jungle (PPU9-24)", hex: "#686747" },
+  { id: "behr-down-to-earth", name: "Behr · Down-to-Earth (S360-7)", hex: "#5C6242" },
 ];
 
 export function hexToRgba(hex, alpha = 0.6) {
@@ -27,45 +42,167 @@ export function hexToRgba(hex, alpha = 0.6) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-/** 10가지 프리셋 rgba (리스트용 alpha 0.6) */
+/** 프리셋 rgba (리스트용 alpha 0.6) */
 export const APP_PRESET_RGBA_LIST = APP_PRESET_COLORS.map((c) => hexToRgba(c.hex, 0.6));
 
-/** 10가지 프리셋 rgba (시간가계부 생산성용 alpha 0.9) */
+/** 프리셋 rgba (시간가계부 생산성용 alpha 0.9) */
 export const APP_PRESET_RGBA_TIME = APP_PRESET_COLORS.map((c) => hexToRgba(c.hex, 0.9));
 
-/** 리스트 기본 색상 (10 프리셋 내) */
+function hashCode(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h << 5) - h + str.charCodeAt(i);
+  return h;
+}
+
+/**
+ * 저장된 rgba/rgb를 프리셋 팔레트 중 가장 가까운 색으로 맞춤(알파 유지).
+ * 파스텔·임의 hex로 저장된 값도 로드 시 팔레트로만 쓰이게 함.
+ */
+export function snapRgbaToNearestPreset(colorStr) {
+  if (typeof colorStr !== "string") return colorStr;
+  const m = colorStr
+    .trim()
+    .match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)/i);
+  if (!m) return colorStr;
+  const r = parseInt(m[1], 10);
+  const g = parseInt(m[2], 10);
+  const b = parseInt(m[3], 10);
+  const a = m[4] !== undefined ? parseFloat(m[4]) : 1;
+  let bestHex = APP_PRESET_COLORS[0].hex;
+  let minD = Infinity;
+  for (const c of APP_PRESET_COLORS) {
+    const hm = c.hex.match(/^#([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+    if (!hm) continue;
+    const cr = parseInt(hm[1], 16);
+    const cg = parseInt(hm[2], 16);
+    const cb = parseInt(hm[3], 16);
+    const d = (r - cr) ** 2 + (g - cg) ** 2 + (b - cb) ** 2;
+    if (d < minD) {
+      minD = d;
+      bestHex = c.hex;
+    }
+  }
+  const snapped = hexToRgba(bestHex, a);
+  return snapped || colorStr;
+}
+
+function snapStoredColorValue(v) {
+  if (typeof v !== "string") return v;
+  const t = v.trim();
+  if (/^rgba?\(/i.test(t)) return snapRgbaToNearestPreset(t);
+  if (/^#[a-f\d]{3,8}$/i.test(t)) {
+    const full =
+      t.length === 4
+        ? `#${t[1]}${t[1]}${t[2]}${t[2]}${t[3]}${t[3]}`
+        : t.length >= 7
+          ? t.slice(0, 7)
+          : t;
+    const asRgba = hexToRgba(full, 0.6);
+    return asRgba ? snapRgbaToNearestPreset(asRgba) : v;
+  }
+  return v;
+}
+
+function snapSettingsColorMaps(settings) {
+  let wasMutated = false;
+  const snapRecord = (rec) => {
+    if (!rec || typeof rec !== "object") return rec;
+    const out = { ...rec };
+    for (const k of Object.keys(out)) {
+      const next = snapStoredColorValue(out[k]);
+      if (next !== out[k]) {
+        out[k] = next;
+        wasMutated = true;
+      }
+    }
+    return out;
+  };
+  return {
+    settings: {
+      ...settings,
+      sectionColors: snapRecord(settings.sectionColors),
+      timeCategoryColors: snapRecord(settings.timeCategoryColors),
+      taskCategoryColors: snapRecord(settings.taskCategoryColors),
+    },
+    wasMutated,
+  };
+}
+
+/** rgba 배경에 맞는 명도 대비용 글자색(프리셋 톤용) */
+function pillTextColorForRgbaBg(rgbaStr) {
+  const m = rgbaStr?.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+  if (!m) return "#ffffff";
+  const r = parseInt(m[1], 10) / 255;
+  const g = parseInt(m[2], 10) / 255;
+  const b = parseInt(m[3], 10) / 255;
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return lum > 0.62 ? "#3D4A3E" : "#ffffff";
+}
+
+/** 할일 분류 칩 등 프리셋 rgba 배경 위 글자색 */
+export function readableTextForPresetRgbaBg(rgbaStr) {
+  return pillTextColorForRgbaBg(rgbaStr);
+}
+
+/** 신규 리스트·칩 등에 쓸 프리셋 중 무작위 rgba */
+export function pickRandomPresetRgba(alpha = 0.6) {
+  const i = Math.floor(Math.random() * APP_PRESET_COLORS.length);
+  return hexToRgba(APP_PRESET_COLORS[i].hex, alpha) || hexToRgba(APP_PRESET_COLORS[0].hex, alpha);
+}
+
+/**
+ * 리스트 기본 색 (프리셋만)
+ * 꿈·부수입·건강·행복 = 지정 4색, 브레인 덤프는 그 외 팔레트 톤
+ */
 export const DEFAULT_SECTION_COLORS = {
-  braindump: hexToRgba("#C4BEA8", 0.6),
-  dream: hexToRgba("#8A9E82", 0.6),
-  sideincome: hexToRgba("#B89A6A", 0.6),
-  health: hexToRgba("#C97A6A", 0.6),
-  happy: hexToRgba("#C4906A", 0.6),
+  braindump: hexToRgba("#8B8757", 0.6),
+  dream: hexToRgba("#8A7A9E", 0.6),
+  sideincome: hexToRgba("#C4BEA8", 0.6),
+  health: hexToRgba("#3D4A3E", 0.6),
+  happy: hexToRgba("#9E8A8A", 0.6),
 };
 
-/** 시간가계부 생산/비생산/기타 기본 색상 (rgba, time-tag-pill용) */
+/**
+ * 시간가계부 생산성 3분류 기본 색 (10색 팔레트와 동일 hex, 알파 0.9)
+ * - 생산: 테라코타 레드 #C97A6A
+ * - 비생산: 슬레이트 블루 #7A8E9A
+ * - 기타: 그린(세이지) #8A9E82
+ */
 export const DEFAULT_TIME_CATEGORY_COLORS = {
   productive: hexToRgba("#C97A6A", 0.9),
   nonproductive: hexToRgba("#7A8E9A", 0.9),
   other: hexToRgba("#8A9E82", 0.9),
 };
 
-/** 시간가계부 작업(세부) 카테고리 기본 색상 - .time-tag-pill.cat-* 배경 */
+/** 생산성 색 프리셋 개편 시 버전 올리면, 저장값 없거나 구버전이면 아래 기본으로 일괄 적용 */
+const TIME_CATEGORY_PRESET_VERSION = 1;
+
+/** 고정 리스트(브레인덤프·꿈·부수입·건강·행복) 기본색 재배치 시 버전 증가 */
+const SECTION_LIST_PRESET_VERSION = 1;
+
+/**
+ * 작업(세부) 카테고리 기본색 — 꿈/부수입/행복/건강은 리스트 4색과 동일(폴백용),
+ * 그외·쾌락충족 등은 위 4색을 쓰지 않는 팔레트로 서로 다르게
+ */
 export const DEFAULT_TASK_CATEGORY_COLORS = {
-  "": hexToRgba("#C4BEA8", 0.5),
-  dream: hexToRgba("#8A9E82", 0.7),
-  sideincome: hexToRgba("#B89A6A", 0.7),
-  happiness: hexToRgba("#C4906A", 0.7),
-  health: hexToRgba("#C97A6A", 0.7),
+  "": hexToRgba("#C97A6A", 0.5),
+  dream: hexToRgba("#8A7A9E", 0.7),
+  sideincome: hexToRgba("#C4BEA8", 0.7),
+  happiness: hexToRgba("#9E8A8A", 0.7),
+  health: hexToRgba("#3D4A3E", 0.7),
   pleasure: hexToRgba("#C4906A", 0.7),
-  dreamblocking: hexToRgba("#8A7A9E", 0.7),
-  unhappiness: hexToRgba("#8A7A9E", 0.65),
-  unhealthy: hexToRgba("#7A8E9A", 0.7),
-  moneylosing: hexToRgba("#C97A6A", 0.65),
-  work: hexToRgba("#7A8E9A", 0.7),
-  sleep: hexToRgba("#8A7A9E", 0.75),
+  dreamblocking: hexToRgba("#B89A6A", 0.7),
+  unhappiness: hexToRgba("#8A9E82", 0.65),
+  unhealthy: hexToRgba("#6B7A6E", 0.7),
+  moneylosing: hexToRgba("#7A8E9A", 0.65),
+  work: hexToRgba("#60746D", 0.7),
+  sleep: hexToRgba("#B3C09F", 0.75),
 };
 
-/** 커스텀 리스트용 기본 색상 풀 (10 프리셋만) */
+/** 작업 세부 기본색 일괄 갱신(구버전 로컬 덮어쓰기) */
+const TASK_SUBCATEGORY_PRESET_VERSION = 1;
+
+/** 커스텀 리스트용 기본 색상 풀 (프리셋 전체) */
 const CUSTOM_SECTION_COLOR_POOL = APP_PRESET_RGBA_LIST;
 
 export function getCustomSections() {
@@ -90,7 +227,7 @@ export function addCustomSection(label) {
   try {
     localStorage.setItem(CUSTOM_SECTIONS_KEY, JSON.stringify(existing));
     const settings = getTodoSettings();
-    const color = CUSTOM_SECTION_COLOR_POOL[existing.length % CUSTOM_SECTION_COLOR_POOL.length];
+    const color = pickRandomPresetRgba(0.6);
     saveTodoSettings({ ...settings, sectionColors: { ...settings.sectionColors, [id]: color } });
   } catch (_) {
     return null;
@@ -127,12 +264,6 @@ export function getCustomSectionColor(sectionId) {
   return settings.sectionColors[sectionId] || CUSTOM_SECTION_COLOR_POOL[Math.abs(hashCode(sectionId)) % CUSTOM_SECTION_COLOR_POOL.length];
 }
 
-function hashCode(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (h << 5) - h + str.charCodeAt(i);
-  return h;
-}
-
 /** @deprecated 팔레트 선택용 - APP_PRESET_RGBA_LIST 사용 */
 export const PASTEL_PRESETS = APP_PRESET_RGBA_LIST;
 
@@ -141,12 +272,64 @@ export function getTodoSettings() {
     const raw = localStorage.getItem(TODO_SETTINGS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      return {
+      const timePresetOk =
+        Number(parsed.timeCategoryPresetVersion) === TIME_CATEGORY_PRESET_VERSION;
+      const timeCategoryColors = timePresetOk
+        ? { ...DEFAULT_TIME_CATEGORY_COLORS, ...parsed.timeCategoryColors }
+        : { ...DEFAULT_TIME_CATEGORY_COLORS };
+
+      const sectionPresetOk =
+        Number(parsed.sectionListPresetVersion) === SECTION_LIST_PRESET_VERSION;
+      let sectionColors;
+      if (sectionPresetOk) {
+        sectionColors = { ...DEFAULT_SECTION_COLORS, ...parsed.sectionColors };
+      } else {
+        sectionColors = { ...DEFAULT_SECTION_COLORS };
+        const prevSec = parsed.sectionColors || {};
+        for (const k of Object.keys(prevSec)) {
+          if (String(k).startsWith("custom-")) sectionColors[k] = prevSec[k];
+        }
+      }
+
+      const taskSubOk =
+        Number(parsed.taskSubcategoryPresetVersion) ===
+        TASK_SUBCATEGORY_PRESET_VERSION;
+      const taskCategoryColors = taskSubOk
+        ? { ...DEFAULT_TASK_CATEGORY_COLORS, ...parsed.taskCategoryColors }
+        : { ...DEFAULT_TASK_CATEGORY_COLORS };
+
+      const merged = {
         hideCompleted: !!parsed.hideCompleted,
-        sectionColors: { ...DEFAULT_SECTION_COLORS, ...parsed.sectionColors },
-        timeCategoryColors: { ...DEFAULT_TIME_CATEGORY_COLORS, ...parsed.timeCategoryColors },
-        taskCategoryColors: { ...DEFAULT_TASK_CATEGORY_COLORS, ...parsed.taskCategoryColors },
+        sectionColors,
+        timeCategoryColors,
+        taskCategoryColors,
       };
+      const { settings, wasMutated } = snapSettingsColorMaps(merged);
+      const needPersistTimePreset = !timePresetOk;
+      const needPersistSectionPreset = !sectionPresetOk;
+      const needPersistTaskSub = !taskSubOk;
+      if (
+        wasMutated ||
+        needPersistTimePreset ||
+        needPersistSectionPreset ||
+        needPersistTaskSub
+      ) {
+        try {
+          localStorage.setItem(
+            TODO_SETTINGS_KEY,
+            JSON.stringify({
+              hideCompleted: settings.hideCompleted,
+              sectionColors: settings.sectionColors,
+              timeCategoryColors: settings.timeCategoryColors,
+              taskCategoryColors: settings.taskCategoryColors,
+              timeCategoryPresetVersion: TIME_CATEGORY_PRESET_VERSION,
+              sectionListPresetVersion: SECTION_LIST_PRESET_VERSION,
+              taskSubcategoryPresetVersion: TASK_SUBCATEGORY_PRESET_VERSION,
+            }),
+          );
+        } catch (_) {}
+      }
+      return settings;
     }
   } catch (_) {}
   return {
@@ -159,7 +342,15 @@ export function getTodoSettings() {
 
 export function saveTodoSettings(settings) {
   try {
-    localStorage.setItem(TODO_SETTINGS_KEY, JSON.stringify(settings));
+    localStorage.setItem(
+      TODO_SETTINGS_KEY,
+      JSON.stringify({
+        ...settings,
+        timeCategoryPresetVersion: TIME_CATEGORY_PRESET_VERSION,
+        sectionListPresetVersion: SECTION_LIST_PRESET_VERSION,
+        taskSubcategoryPresetVersion: TASK_SUBCATEGORY_PRESET_VERSION,
+      }),
+    );
   } catch (_) {}
 }
 
@@ -179,14 +370,22 @@ export function getSectionColor(sectionId) {
 
 export function getTimeCategoryColor(key) {
   const s = getTodoSettings();
-  return s.timeCategoryColors?.[key] || DEFAULT_TIME_CATEGORY_COLORS[key] || "rgba(232,232,232,0.9)";
+  return (
+    s.timeCategoryColors?.[key] ||
+    DEFAULT_TIME_CATEGORY_COLORS[key] ||
+    hexToRgba(APP_PRESET_COLORS[0].hex, 0.9)
+  );
 }
 
 /** 작업(세부) 카테고리 색상 조회 - 쾌락충족·꿈방해·불행·비건강·돈잃는일·근무·수면 등만 작업 카테고리 설정 사용 */
 export function getTaskCategoryColor(key) {
   const s = getTodoSettings();
   const taskColors = s.taskCategoryColors || DEFAULT_TASK_CATEGORY_COLORS;
-  return taskColors[key] ?? DEFAULT_TASK_CATEGORY_COLORS[key] ?? "rgba(212, 212, 208, 0.5)";
+  return (
+    taskColors[key] ??
+    DEFAULT_TASK_CATEGORY_COLORS[key] ??
+    hexToRgba(APP_PRESET_COLORS[0].hex, 0.5)
+  );
 }
 
 /** 작업 카테고리 색상 조회 - 꿈/부수입/건강/행복은 리스트 색상, 나머지는 작업 카테고리 설정 */
@@ -317,7 +516,8 @@ export function applyTaskCategoryColors() {
         ? sectionColors[TASK_CATEGORY_TO_SECTION[key]] ?? DEFAULT_TASK_CATEGORY_COLORS[key]
         : taskColors[key] ?? DEFAULT_TASK_CATEGORY_COLORS[key];
     if (!bg) return "";
-    return `.time-tag-pill.${cls}, .time-dash-bar-fill.${cls} { background: ${bg} !important; }`;
+    const fg = pillTextColorForRgbaBg(bg);
+    return `.time-tag-pill.${cls}, .time-dash-bar-fill.${cls} { background: ${bg} !important; color: ${fg} !important; }`;
   }).filter(Boolean);
   styleEl.textContent = rules.join("\n");
 }
