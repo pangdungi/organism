@@ -2789,6 +2789,12 @@ body {
   .app-tab-panel-content.calendar-view {
     padding: 0 !important;
   }
+  /* 모바일: 월 네비(MAR·연도 / 오늘·화살표) 좌우 살짝 여백 */
+  .calendar-monthly-layout .calendar-monthly-nav {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    box-sizing: border-box;
+  }
   /* 모바일: 할일/타임라인 헤더 통일 - 패딩 0.875rem 1.5rem 0, 하단 보더 0.0313rem */
   .calendar-view .calendar-view-top-row,
   .calendar-view
