@@ -18,8 +18,10 @@ import {
   syncKpiTodoCompleted,
   updateKpiTodo,
   removeKpiTodo,
+  clearKpiTodoCalendarRevertSnapshot,
 } from "../utils/kpiTodoSync.js";
 import { getSectionColor, getCustomSections, getTimeCategoryColorsForTimetable, getTimeCategoryColorsForTimetableExpected } from "../utils/todoSettings.js";
+import { registerEisenhowerQuadrantsRefresh } from "../utils/eisenhowerQuadrantsBridge.js";
 import { getKpisByCategory } from "../utils/kpiViewModal.js";
 import { formatDeadlineRangeForDisplay, formatDeadlineRangeCompact } from "../utils/ganttModal.js";
 import {
@@ -100,6 +102,8 @@ function getSectionTasksForDate(dateKey) {
             taskId: t.taskId || "",
             eisenhower: (t.eisenhower || "").trim() || "",
             classification: "",
+            _calPrevStart: ((t._calPrevStart || "").toString().slice(0, 10) || ""),
+            _calPrevDue: ((t._calPrevDue || "").toString().slice(0, 10) || ""),
           }),
         );
     });
@@ -145,6 +149,8 @@ function getSectionTasksWithDateRange() {
             taskId: t.taskId || "",
             eisenhower: (t.eisenhower || "").trim() || "",
             classification: "",
+            _calPrevStart: ((t._calPrevStart || "").toString().slice(0, 10) || ""),
+            _calPrevDue: ((t._calPrevDue || "").toString().slice(0, 10) || ""),
           }),
         );
     });
@@ -152,7 +158,14 @@ function getSectionTasksWithDateRange() {
   return out;
 }
 
-function updateSectionTaskDates(sectionId, taskId, startDate, dueDate) {
+function updateSectionTaskDates(
+  sectionId,
+  taskId,
+  startDate,
+  dueDate,
+  opts = {},
+) {
+  const { recordCalendarSidebarRevert = false } = opts;
   dateDebug("updateSectionTaskDates IN", { sectionId, taskId, startDate, dueDate });
   try {
     const raw = localStorage.getItem(SECTION_TASKS_KEY);
@@ -170,6 +183,10 @@ function updateSectionTaskDates(sectionId, taskId, startDate, dueDate) {
     if (!t) {
       dateDebug("updateSectionTaskDates: task not found", { sectionId, taskId, taskIds: arr.map((x) => x.taskId) });
       return false;
+    }
+    if (recordCalendarSidebarRevert) {
+      t._calPrevStart = ((t.startDate || "").slice(0, 10) || "");
+      t._calPrevDue = ((t.dueDate || "").slice(0, 10) || "");
     }
     t.startDate = (startDate || "").slice(0, 10) || "";
     t.dueDate = (dueDate || "").slice(0, 10) || "";
@@ -269,6 +286,8 @@ function addSectionTaskToCalendar(sectionId, taskData) {
       endTime: taskData.endTime || "",
       done: !!taskData.done,
       itemType: taskData.itemType || "todo",
+      _calPrevStart: ((taskData._calPrevStart || "").toString().slice(0, 10) || ""),
+      _calPrevDue: ((taskData._calPrevDue || "").toString().slice(0, 10) || ""),
     });
     localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
     return true;
@@ -405,6 +424,30 @@ function formatDateKey(date) {
   return `${y}-${m}-${d}`;
 }
 
+/** 날짜 정하기: 마감이 오늘 이전이면 기한 초과 (미완료만) */
+function calendarTodoDueIsOverdue(dueStr, done) {
+  if (done) return false;
+  const key = (dueStr || "").toString().trim().slice(0, 10);
+  if (!key) return false;
+  const parts = key.split(/[-/]/);
+  if (parts.length < 3) return false;
+  const due = new Date(
+    parseInt(parts[0], 10),
+    parseInt(parts[1], 10) - 1,
+    parseInt(parts[2], 10),
+  );
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  due.setHours(0, 0, 0, 0);
+  return due.getTime() < today.getTime();
+}
+
+function calendarBarTaskIsOverdueTodo(task) {
+  const isTodo = (task.itemType || "todo").toLowerCase() === "todo";
+  if (!isTodo) return false;
+  return calendarTodoDueIsOverdue(task.dueDate, !!task.done);
+}
+
 function escapeHtml(s) {
   const div = document.createElement("div");
   div.textContent = s;
@@ -434,7 +477,14 @@ function updateCustomSectionTaskDone(sectionId, taskId, done) {
   } catch (_) {}
 }
 
-function updateCustomSectionTaskDates(sectionId, taskId, startDate, dueDate) {
+function updateCustomSectionTaskDates(
+  sectionId,
+  taskId,
+  startDate,
+  dueDate,
+  opts = {},
+) {
+  const { recordCalendarSidebarRevert = false } = opts;
   try {
     const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
     if (!raw) return false;
@@ -443,6 +493,10 @@ function updateCustomSectionTaskDates(sectionId, taskId, startDate, dueDate) {
     if (!Array.isArray(arr)) return false;
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
+      if (recordCalendarSidebarRevert) {
+        t._calPrevStart = ((t.startDate || "").slice(0, 10) || "");
+        t._calPrevDue = ((t.dueDate || "").slice(0, 10) || "");
+      }
       t.startDate = (startDate || "").slice(0, 10) || "";
       t.dueDate = (dueDate || "").slice(0, 10) || "";
       localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(obj));
@@ -488,6 +542,8 @@ function addCalendarTodoToCustomSection(sectionId, taskData) {
       endTime: taskData.endTime || "",
       done: !!taskData.done,
       itemType: taskData.itemType || "todo",
+      _calPrevStart: ((taskData._calPrevStart || "").toString().slice(0, 10) || ""),
+      _calPrevDue: ((taskData._calPrevDue || "").toString().slice(0, 10) || ""),
     });
     localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(obj));
     return true;
@@ -501,26 +557,91 @@ function addDaysToDateKey(dateKey, days) {
   return formatDateKey(d);
 }
 
-/** 캘린더 할일의 시작일/마감일을 비워 할일목록으로 되돌리기 */
+function clearSectionTaskCalendarRevertSnapshot(sectionId, taskId) {
+  try {
+    const raw = localStorage.getItem(SECTION_TASKS_KEY);
+    if (!raw) return;
+    const obj = JSON.parse(raw);
+    const arr = obj[sectionId];
+    const t = arr?.find((x) => (x.taskId || "") === taskId);
+    if (!t) return;
+    delete t._calPrevStart;
+    delete t._calPrevDue;
+    localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+  } catch (_) {}
+}
+
+function clearCustomSectionTaskCalendarRevertSnapshot(sectionId, taskId) {
+  try {
+    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
+    if (!raw) return;
+    const obj = JSON.parse(raw);
+    const arr = obj[sectionId];
+    const t = arr?.find((x) => (x.taskId || "") === taskId);
+    if (!t) return;
+    delete t._calPrevStart;
+    delete t._calPrevDue;
+    localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(obj));
+  } catch (_) {}
+}
+
+/**
+ * 캘린더 막대 → 사이드바: 캘린더에 올리기 직전 스냅샷이 있으면 그때 날짜로 복구,
+ * 없으면 시작·마감 비움(날짜 미배정).
+ */
 function revertTaskToTodoList(barData) {
+  const revS = (
+    barData.revertStartDate ||
+    barData._calPrevStart ||
+    ""
+  )
+    .toString()
+    .trim()
+    .slice(0, 10) || "";
+  const revD = (
+    barData.revertDueDate ||
+    barData._calPrevDue ||
+    ""
+  )
+    .toString()
+    .trim()
+    .slice(0, 10) || "";
   let ok = false;
   if (barData.kpiTodoId && barData.storageKey) {
     ok = updateKpiTodo(barData.kpiTodoId, barData.storageKey, {
-      startDate: "",
-      dueDate: "",
+      startDate: revS,
+      dueDate: revD,
     });
+    if (ok) {
+      clearKpiTodoCalendarRevertSnapshot(
+        barData.kpiTodoId,
+        barData.storageKey,
+      );
+    }
   } else if (
     KPI_SECTION_IDS.includes(barData.sectionId) &&
     !barData.kpiTodoId
   ) {
-    ok = updateSectionTaskDates(barData.sectionId, barData.taskId, "", "");
+    ok = updateSectionTaskDates(barData.sectionId, barData.taskId, revS, revD);
+    if (ok) {
+      clearSectionTaskCalendarRevertSnapshot(
+        barData.sectionId,
+        barData.taskId,
+      );
+    }
   } else if (barData.sectionId?.startsWith("custom-")) {
     ok = updateCustomSectionTaskDates(
       barData.sectionId,
       barData.taskId,
-      "",
-      "",
+      revS,
+      revD,
     );
+    if (ok) {
+      clearCustomSectionTaskCalendarRevertSnapshot(
+        barData.sectionId,
+        barData.taskId,
+      );
+    }
   }
   return ok;
 }
@@ -535,6 +656,8 @@ function dataTransferHasType(dataTransfer, type) {
 }
 
 function calendarSpanBarPayloadJson(b) {
+  const revS = (b._calPrevStart || "").toString().slice(0, 10) || "";
+  const revD = (b._calPrevDue || "").toString().slice(0, 10) || "";
   return JSON.stringify({
     name: b.name,
     dueDate: b.dueDate,
@@ -545,6 +668,8 @@ function calendarSpanBarPayloadJson(b) {
     sectionId: b.sectionId,
     done: !!b.done,
     itemType: b.itemType || "todo",
+    revertStartDate: revS,
+    revertDueDate: revD,
   });
 }
 
@@ -615,6 +740,43 @@ function attachCalendarTodoSidebarSpanRevertDrop(
   });
 }
 
+/** 날짜 정하기 사이드바: 메인 탭(날짜 미배정) + 기한 초과 영역을 저장소 기준으로 다시 그림 */
+function refreshCalendarDateTodoSidebar(layoutWrap) {
+  const body = layoutWrap.querySelector(".calendar-todo-sidebar-body");
+  if (!body) return;
+  const mainWrap = body.querySelector(".calendar-todo-sidebar-main") || body;
+  const overdueWrap = body.querySelector(".calendar-todo-sidebar-overdue");
+  const oldList = mainWrap.querySelector(".todo-list-in-sidebar");
+  let activeIndex = 0;
+  if (oldList) {
+    const activeTab = oldList.querySelector(
+      ".todo-category-tab:not(.todo-category-tab-add).active",
+    );
+    const tabs = oldList.querySelectorAll(
+      ".todo-category-tab:not(.todo-category-tab-add)",
+    );
+    if (activeTab && tabs.length) {
+      const idx = Array.from(tabs).indexOf(activeTab);
+      if (idx >= 0) activeIndex = idx;
+    }
+    oldList.remove();
+  }
+  const newList = renderTodoList({
+    hideToolbar: true,
+    enableDragToCalendar: true,
+    initialActiveTabIndex: activeIndex,
+    eisenhowerFilter: "important-not-urgent",
+    hideDoneTasks: true,
+  });
+  newList.classList.add("todo-list-in-sidebar");
+  mainWrap.appendChild(newList);
+  if (overdueWrap) {
+    overdueWrap.replaceChildren(
+      renderOverdueSection({ enableDragToCalendar: true }),
+    );
+  }
+}
+
 /** 캘린더·우선순위 뷰: 할일 사이드바 기본 접힘(사용자가 펼침). 아이젠하워는 접힘 시 저장 너비 해제 */
 function applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar, opts = {}) {
   const { clearInlineWidth = false } = opts;
@@ -657,6 +819,8 @@ function getCustomSectionTasksForDate(dateKey) {
             taskId: t.taskId || "",
             eisenhower: (t.eisenhower || "").trim() || "",
             classification: "",
+            _calPrevStart: ((t._calPrevStart || "").toString().slice(0, 10) || ""),
+            _calPrevDue: ((t._calPrevDue || "").toString().slice(0, 10) || ""),
           }),
         );
     });
@@ -729,6 +893,8 @@ function getAllTasksWithDateRange() {
               taskId: t.taskId || "",
               eisenhower: (t.eisenhower || "").trim() || "",
               classification: "",
+              _calPrevStart: ((t._calPrevStart || "").toString().slice(0, 10) || ""),
+              _calPrevDue: ((t._calPrevDue || "").toString().slice(0, 10) || ""),
             }),
           );
       });
@@ -742,6 +908,8 @@ function getAllTasksWithDateRange() {
       ...t,
       startDate: (t.startDate || "").slice(0, 10),
       dueDate: (t.dueDate || "").slice(0, 10),
+      _calPrevStart: ((t._calPrevStart || "").toString().slice(0, 10) || ""),
+      _calPrevDue: ((t._calPrevDue || "").toString().slice(0, 10) || ""),
     }));
   return [...kpiWithRange, ...sectionRange, ...customRange];
 }
@@ -1002,7 +1170,7 @@ function createCalendarBarRevertBubble(
         <span class="calendar-event-bubble-date">${escapeHtml(barData.name || "")}</span>
         <button type="button" class="calendar-event-bubble-close" title="닫기">×</button>
       </div>
-      <p class="calendar-bar-revert-desc">시작일·마감일을 비우고 할일목록으로 되돌립니다.</p>
+      <p class="calendar-bar-revert-desc">캘린더에 올리기 전 날짜로 되돌리거나, 이전에 날짜가 없었으면 미배정으로 돌아갑니다.</p>
       <button type="button" class="calendar-event-bubble-revert calendar-bar-revert-btn">되돌려놓기</button>
     </div>
   `;
@@ -1227,32 +1395,7 @@ function renderMonthlyView(tabsElement) {
   calendarGrid.className = "calendar-monthly-grid";
 
   function refreshTodoList() {
-    const body = wrap.querySelector(".calendar-todo-sidebar-body");
-    if (body) {
-      const oldList = body.querySelector(".todo-list-in-sidebar");
-      let activeIndex = 0;
-      if (oldList) {
-        const activeTab = oldList.querySelector(
-          ".todo-category-tab:not(.todo-category-tab-add).active",
-        );
-        const tabs = oldList.querySelectorAll(
-          ".todo-category-tab:not(.todo-category-tab-add)",
-        );
-        if (activeTab && tabs.length) {
-          const idx = Array.from(tabs).indexOf(activeTab);
-          if (idx >= 0) activeIndex = idx;
-        }
-        oldList.remove();
-      }
-      const newList = renderTodoList({
-        hideToolbar: true,
-        enableDragToCalendar: true,
-        initialActiveTabIndex: activeIndex,
-        eisenhowerFilter: "important-not-urgent",
-      });
-      newList.classList.add("todo-list-in-sidebar");
-      body.appendChild(newList);
-    }
+    refreshCalendarDateTodoSidebar(wrap);
   }
 
   function renderCalendar() {
@@ -1394,6 +1537,7 @@ function renderMonthlyView(tabsElement) {
             ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
               startDate: newStart,
               dueDate: newDue,
+              recordCalendarSidebarRevert: true,
             });
           } else if (
             payload.sectionId &&
@@ -1404,6 +1548,7 @@ function renderMonthlyView(tabsElement) {
               payload.taskId,
               newStart,
               newDue,
+              { recordCalendarSidebarRevert: true },
             );
             if (!ok && (payload.name || "").trim()) {
               ok = addCalendarTodoToCustomSection(payload.sectionId, {
@@ -1413,6 +1558,8 @@ function renderMonthlyView(tabsElement) {
                 dueDate: newDue,
                 done: !!payload.done,
                 itemType: payload.itemType || "todo",
+                _calPrevStart: oldStart,
+                _calPrevDue: oldDue,
               });
             }
           } else if (
@@ -1423,6 +1570,7 @@ function renderMonthlyView(tabsElement) {
               ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
                 startDate: newStart,
                 dueDate: newDue,
+                recordCalendarSidebarRevert: true,
               });
             } else {
               ok =
@@ -1431,6 +1579,7 @@ function renderMonthlyView(tabsElement) {
                   payload.taskId,
                   newStart,
                   newDue,
+                  { recordCalendarSidebarRevert: true },
                 ) ||
                 addSectionTaskToCalendar(payload.sectionId, {
                   taskId: payload.taskId,
@@ -1439,6 +1588,8 @@ function renderMonthlyView(tabsElement) {
                   dueDate: newDue,
                   done: !!payload.done,
                   itemType: payload.itemType || "todo",
+                  _calPrevStart: oldStart,
+                  _calPrevDue: oldDue,
                 });
             }
           }
@@ -1485,6 +1636,9 @@ function renderMonthlyView(tabsElement) {
           sectionId: t.sectionId,
           startDate: t.startDate,
           dueDate: t.dueDate,
+          isOverdueBar: calendarBarTaskIsOverdueTodo(t),
+          _calPrevStart: (t._calPrevStart || "").toString().slice(0, 10) || "",
+          _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
         });
       });
       weekDateKeys.forEach((dateKey, dayIdx) => {
@@ -1509,6 +1663,9 @@ function renderMonthlyView(tabsElement) {
             sectionId: t.sectionId,
             startDate: t.startDate || "",
             dueDate: t.dueDate || dateKey,
+            isOverdueBar: calendarBarTaskIsOverdueTodo(t),
+            _calPrevStart: (t._calPrevStart || "").toString().slice(0, 10) || "",
+            _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
           });
         });
       });
@@ -1547,7 +1704,8 @@ function renderMonthlyView(tabsElement) {
             ? " calendar-monthly-span-bar--todo"
             : " calendar-monthly-span-bar--range") +
           (showCheckbox ? " calendar-monthly-span-bar--has-checkbox" : "") +
-          (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "");
+          (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "") +
+          (b.isOverdueBar ? " calendar-monthly-span-bar--overdue" : "");
         bar.title = b.name;
         bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.15 + b.row * BAR_HEIGHT}rem`;
         if (b.isSingleDay) {
@@ -1747,6 +1905,7 @@ function renderMonthlyView(tabsElement) {
             payload.taskId,
             newStart,
             newDue,
+            { recordCalendarSidebarRevert: true },
           );
           if (!ok && (payload.name || "").trim()) {
             ok = addCalendarTodoToCustomSection(payload.sectionId, {
@@ -1756,6 +1915,8 @@ function renderMonthlyView(tabsElement) {
               dueDate: newDue,
               done: !!payload.done,
               itemType: payload.itemType || "todo",
+              _calPrevStart: oldStart,
+              _calPrevDue: oldDue,
             });
           }
         } else if (
@@ -1766,6 +1927,7 @@ function renderMonthlyView(tabsElement) {
             ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
               startDate: newStart,
               dueDate: newDue,
+              recordCalendarSidebarRevert: true,
             });
           } else {
             ok =
@@ -1774,6 +1936,7 @@ function renderMonthlyView(tabsElement) {
                 payload.taskId,
                 newStart,
                 newDue,
+                { recordCalendarSidebarRevert: true },
               ) ||
               addSectionTaskToCalendar(payload.sectionId, {
                 taskId: payload.taskId,
@@ -1782,6 +1945,8 @@ function renderMonthlyView(tabsElement) {
                 dueDate: newDue,
                 done: !!payload.done,
                 itemType: payload.itemType || "todo",
+                _calPrevStart: oldStart,
+                _calPrevDue: oldDue,
               });
           }
         }
@@ -1846,6 +2011,7 @@ function renderMonthlyView(tabsElement) {
     hideToolbar: true,
     enableDragToCalendar: true,
     eisenhowerFilter: "important-not-urgent",
+    hideDoneTasks: true,
   });
   todoListEl.classList.add("todo-list-in-sidebar");
   mainWrap.appendChild(todoListEl);
@@ -1914,33 +2080,7 @@ function render2WeekView(tabsElement) {
   calendarGrid.className = "calendar-monthly-grid";
 
   function refreshTodoList() {
-    const body = wrap.querySelector(".calendar-todo-sidebar-body");
-    if (body) {
-      const mainWrap = body.querySelector(".calendar-todo-sidebar-main") || body;
-      const oldList = mainWrap.querySelector(".todo-list-in-sidebar");
-      let activeIndex = 0;
-      if (oldList) {
-        const activeTab = oldList.querySelector(
-          ".todo-category-tab:not(.todo-category-tab-add).active",
-        );
-        const tabs = oldList.querySelectorAll(
-          ".todo-category-tab:not(.todo-category-tab-add)",
-        );
-        if (activeTab && tabs.length) {
-          const idx = Array.from(tabs).indexOf(activeTab);
-          if (idx >= 0) activeIndex = idx;
-        }
-        oldList.remove();
-      }
-      const newList = renderTodoList({
-        hideToolbar: true,
-        enableDragToCalendar: true,
-        initialActiveTabIndex: activeIndex,
-        eisenhowerFilter: "important-not-urgent",
-      });
-      newList.classList.add("todo-list-in-sidebar");
-      mainWrap.appendChild(newList);
-    }
+    refreshCalendarDateTodoSidebar(wrap);
   }
 
   function format2WeekNavRange(grid) {
@@ -2071,6 +2211,7 @@ function render2WeekView(tabsElement) {
             ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
               startDate: newStart,
               dueDate: newDue,
+              recordCalendarSidebarRevert: true,
             });
           } else if (
             payload.sectionId &&
@@ -2081,6 +2222,7 @@ function render2WeekView(tabsElement) {
               payload.taskId,
               newStart,
               newDue,
+              { recordCalendarSidebarRevert: true },
             );
             if (!ok && (payload.name || "").trim()) {
               ok = addCalendarTodoToCustomSection(payload.sectionId, {
@@ -2090,6 +2232,8 @@ function render2WeekView(tabsElement) {
                 dueDate: newDue,
                 done: !!payload.done,
                 itemType: payload.itemType || "todo",
+                _calPrevStart: oldStart,
+                _calPrevDue: oldDue,
               });
             }
           } else if (
@@ -2100,6 +2244,7 @@ function render2WeekView(tabsElement) {
               ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
                 startDate: newStart,
                 dueDate: newDue,
+                recordCalendarSidebarRevert: true,
               });
             } else {
               ok =
@@ -2108,6 +2253,7 @@ function render2WeekView(tabsElement) {
                   payload.taskId,
                   newStart,
                   newDue,
+                  { recordCalendarSidebarRevert: true },
                 ) ||
                 addSectionTaskToCalendar(payload.sectionId, {
                   taskId: payload.taskId,
@@ -2116,6 +2262,8 @@ function render2WeekView(tabsElement) {
                   dueDate: newDue,
                   done: !!payload.done,
                   itemType: payload.itemType || "todo",
+                  _calPrevStart: oldStart,
+                  _calPrevDue: oldDue,
                 });
             }
           }
@@ -2162,6 +2310,9 @@ function render2WeekView(tabsElement) {
           sectionId: t.sectionId,
           startDate: t.startDate,
           dueDate: t.dueDate,
+          isOverdueBar: calendarBarTaskIsOverdueTodo(t),
+          _calPrevStart: (t._calPrevStart || "").toString().slice(0, 10) || "",
+          _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
         });
       });
       weekDateKeys.forEach((dateKey, dayIdx) => {
@@ -2186,6 +2337,9 @@ function render2WeekView(tabsElement) {
             sectionId: t.sectionId,
             startDate: t.startDate || "",
             dueDate: t.dueDate || dateKey,
+            isOverdueBar: calendarBarTaskIsOverdueTodo(t),
+            _calPrevStart: (t._calPrevStart || "").toString().slice(0, 10) || "",
+            _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
           });
         });
       });
@@ -2224,7 +2378,8 @@ function render2WeekView(tabsElement) {
             ? " calendar-monthly-span-bar--todo"
             : " calendar-monthly-span-bar--range") +
           (showCheckbox ? " calendar-monthly-span-bar--has-checkbox" : "") +
-          (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "");
+          (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "") +
+          (b.isOverdueBar ? " calendar-monthly-span-bar--overdue" : "");
         bar.title = b.name;
         bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.15 + b.row * BAR_HEIGHT}rem`;
         if (b.isSingleDay) {
@@ -2422,6 +2577,7 @@ function render2WeekView(tabsElement) {
             payload.taskId,
             newStart,
             newDue,
+            { recordCalendarSidebarRevert: true },
           );
           if (!ok && (payload.name || "").trim()) {
             ok = addCalendarTodoToCustomSection(payload.sectionId, {
@@ -2431,6 +2587,8 @@ function render2WeekView(tabsElement) {
               dueDate: newDue,
               done: !!payload.done,
               itemType: payload.itemType || "todo",
+              _calPrevStart: oldStart,
+              _calPrevDue: oldDue,
             });
           }
         } else if (
@@ -2441,6 +2599,7 @@ function render2WeekView(tabsElement) {
             ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
               startDate: newStart,
               dueDate: newDue,
+              recordCalendarSidebarRevert: true,
             });
           } else {
             ok =
@@ -2449,6 +2608,7 @@ function render2WeekView(tabsElement) {
                 payload.taskId,
                 newStart,
                 newDue,
+                { recordCalendarSidebarRevert: true },
               ) ||
               addSectionTaskToCalendar(payload.sectionId, {
                 taskId: payload.taskId,
@@ -2457,6 +2617,8 @@ function render2WeekView(tabsElement) {
                 dueDate: newDue,
                 done: !!payload.done,
                 itemType: payload.itemType || "todo",
+                _calPrevStart: oldStart,
+                _calPrevDue: oldDue,
               });
           }
         }
@@ -2511,6 +2673,7 @@ function render2WeekView(tabsElement) {
     hideToolbar: true,
     enableDragToCalendar: true,
     eisenhowerFilter: "important-not-urgent",
+    hideDoneTasks: true,
   });
   todoListEl.classList.add("todo-list-in-sidebar");
   mainWrap.appendChild(todoListEl);
@@ -2579,33 +2742,7 @@ function render3WeekView(tabsElement) {
   calendarGrid.className = "calendar-monthly-grid";
 
   function refreshTodoList() {
-    const body = wrap.querySelector(".calendar-todo-sidebar-body");
-    if (body) {
-      const mainWrap = body.querySelector(".calendar-todo-sidebar-main") || body;
-      const oldList = mainWrap.querySelector(".todo-list-in-sidebar");
-      let activeIndex = 0;
-      if (oldList) {
-        const activeTab = oldList.querySelector(
-          ".todo-category-tab:not(.todo-category-tab-add).active",
-        );
-        const tabs = oldList.querySelectorAll(
-          ".todo-category-tab:not(.todo-category-tab-add)",
-        );
-        if (activeTab && tabs.length) {
-          const idx = Array.from(tabs).indexOf(activeTab);
-          if (idx >= 0) activeIndex = idx;
-        }
-        oldList.remove();
-      }
-      const newList = renderTodoList({
-        hideToolbar: true,
-        enableDragToCalendar: true,
-        initialActiveTabIndex: activeIndex,
-        eisenhowerFilter: "important-not-urgent",
-      });
-      newList.classList.add("todo-list-in-sidebar");
-      mainWrap.appendChild(newList);
-    }
+    refreshCalendarDateTodoSidebar(wrap);
   }
 
   function format3WeekNavRange(grid) {
@@ -2736,6 +2873,7 @@ function render3WeekView(tabsElement) {
             ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
               startDate: newStart,
               dueDate: newDue,
+              recordCalendarSidebarRevert: true,
             });
           } else if (
             payload.sectionId &&
@@ -2746,6 +2884,7 @@ function render3WeekView(tabsElement) {
               payload.taskId,
               newStart,
               newDue,
+              { recordCalendarSidebarRevert: true },
             );
             if (!ok && (payload.name || "").trim()) {
               ok = addCalendarTodoToCustomSection(payload.sectionId, {
@@ -2755,6 +2894,8 @@ function render3WeekView(tabsElement) {
                 dueDate: newDue,
                 done: !!payload.done,
                 itemType: payload.itemType || "todo",
+                _calPrevStart: oldStart,
+                _calPrevDue: oldDue,
               });
             }
           } else if (
@@ -2765,6 +2906,7 @@ function render3WeekView(tabsElement) {
               ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
                 startDate: newStart,
                 dueDate: newDue,
+                recordCalendarSidebarRevert: true,
               });
             } else {
               ok =
@@ -2773,6 +2915,7 @@ function render3WeekView(tabsElement) {
                   payload.taskId,
                   newStart,
                   newDue,
+                  { recordCalendarSidebarRevert: true },
                 ) ||
                 addSectionTaskToCalendar(payload.sectionId, {
                   taskId: payload.taskId,
@@ -2781,6 +2924,8 @@ function render3WeekView(tabsElement) {
                   dueDate: newDue,
                   done: !!payload.done,
                   itemType: payload.itemType || "todo",
+                  _calPrevStart: oldStart,
+                  _calPrevDue: oldDue,
                 });
             }
           }
@@ -2827,6 +2972,9 @@ function render3WeekView(tabsElement) {
           sectionId: t.sectionId,
           startDate: t.startDate,
           dueDate: t.dueDate,
+          isOverdueBar: calendarBarTaskIsOverdueTodo(t),
+          _calPrevStart: (t._calPrevStart || "").toString().slice(0, 10) || "",
+          _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
         });
       });
       weekDateKeys.forEach((dateKey, dayIdx) => {
@@ -2851,6 +2999,9 @@ function render3WeekView(tabsElement) {
             sectionId: t.sectionId,
             startDate: t.startDate || "",
             dueDate: t.dueDate || dateKey,
+            isOverdueBar: calendarBarTaskIsOverdueTodo(t),
+            _calPrevStart: (t._calPrevStart || "").toString().slice(0, 10) || "",
+            _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
           });
         });
       });
@@ -2889,7 +3040,8 @@ function render3WeekView(tabsElement) {
             ? " calendar-monthly-span-bar--todo"
             : " calendar-monthly-span-bar--range") +
           (showCheckbox ? " calendar-monthly-span-bar--has-checkbox" : "") +
-          (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "");
+          (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "") +
+          (b.isOverdueBar ? " calendar-monthly-span-bar--overdue" : "");
         bar.title = b.name;
         bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.15 + b.row * BAR_HEIGHT}rem`;
         if (b.isSingleDay) {
@@ -3113,6 +3265,7 @@ function render3WeekView(tabsElement) {
             payload.taskId,
             newStart,
             newDue,
+            { recordCalendarSidebarRevert: true },
           );
           if (!ok && (payload.name || "").trim()) {
             ok = addCalendarTodoToCustomSection(payload.sectionId, {
@@ -3122,6 +3275,8 @@ function render3WeekView(tabsElement) {
               dueDate: newDue,
               done: !!payload.done,
               itemType: payload.itemType || "todo",
+              _calPrevStart: oldStart,
+              _calPrevDue: oldDue,
             });
           }
         } else if (
@@ -3132,6 +3287,7 @@ function render3WeekView(tabsElement) {
             ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
               startDate: newStart,
               dueDate: newDue,
+              recordCalendarSidebarRevert: true,
             });
           } else {
             ok =
@@ -3140,6 +3296,7 @@ function render3WeekView(tabsElement) {
                 payload.taskId,
                 newStart,
                 newDue,
+                { recordCalendarSidebarRevert: true },
               ) ||
               addSectionTaskToCalendar(payload.sectionId, {
                 taskId: payload.taskId,
@@ -3148,6 +3305,8 @@ function render3WeekView(tabsElement) {
                 dueDate: newDue,
                 done: !!payload.done,
                 itemType: payload.itemType || "todo",
+                _calPrevStart: oldStart,
+                _calPrevDue: oldDue,
               });
           }
         }
@@ -3202,6 +3361,7 @@ function render3WeekView(tabsElement) {
     hideToolbar: true,
     enableDragToCalendar: true,
     eisenhowerFilter: "important-not-urgent",
+    hideDoneTasks: true,
   });
   todoListEl.classList.add("todo-list-in-sidebar");
   mainWrap.appendChild(todoListEl);
@@ -4157,7 +4317,8 @@ function render1DayView(tabsElement) {
       const bar = document.createElement("div");
       bar.className =
         "calendar-monthly-span-bar calendar-monthly-span-bar--todo" +
-        (isTodo ? " calendar-monthly-span-bar--has-checkbox" : "");
+        (isTodo ? " calendar-monthly-span-bar--has-checkbox" : "") +
+        (calendarBarTaskIsOverdueTodo(t) ? " calendar-monthly-span-bar--overdue" : "");
       bar.title = t.name;
       bar.style.cssText = `--bar-bg:${color}`;
       if (isTodo) {
@@ -4719,31 +4880,7 @@ function render1WeekView(tabsElement) {
   calendarGrid.className = "calendar-monthly-grid";
 
   function refreshTodoList() {
-    const body = wrap.querySelector(".calendar-todo-sidebar-body");
-    if (body) {
-      const oldList = body.querySelector(".todo-list-in-sidebar");
-      let activeIndex = 0;
-      if (oldList) {
-        const activeTab = oldList.querySelector(
-          ".todo-category-tab:not(.todo-category-tab-add).active",
-        );
-        const tabs = oldList.querySelectorAll(
-          ".todo-category-tab:not(.todo-category-tab-add)",
-        );
-        if (activeTab && tabs.length) {
-          const idx = Array.from(tabs).indexOf(activeTab);
-          if (idx >= 0) activeIndex = idx;
-        }
-        oldList.remove();
-      }
-      const newList = renderTodoList({
-        hideToolbar: true,
-        enableDragToCalendar: true,
-        initialActiveTabIndex: activeIndex,
-      });
-      newList.classList.add("todo-list-in-sidebar");
-      body.appendChild(newList);
-    }
+    refreshCalendarDateTodoSidebar(wrap);
   }
 
   function renderCalendar() {
@@ -4874,6 +5011,7 @@ function render1WeekView(tabsElement) {
             ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
               startDate: newStart,
               dueDate: newDue,
+              recordCalendarSidebarRevert: true,
             });
           } else if (
             payload.sectionId &&
@@ -4884,6 +5022,7 @@ function render1WeekView(tabsElement) {
               payload.taskId,
               newStart,
               newDue,
+              { recordCalendarSidebarRevert: true },
             );
             if (!ok && (payload.name || "").trim()) {
               ok = addCalendarTodoToCustomSection(payload.sectionId, {
@@ -4893,6 +5032,8 @@ function render1WeekView(tabsElement) {
                 dueDate: newDue,
                 done: !!payload.done,
                 itemType: payload.itemType || "todo",
+                _calPrevStart: oldStart,
+                _calPrevDue: oldDue,
               });
             }
           } else if (
@@ -4903,6 +5044,7 @@ function render1WeekView(tabsElement) {
               ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
                 startDate: newStart,
                 dueDate: newDue,
+                recordCalendarSidebarRevert: true,
               });
             } else {
               ok =
@@ -4911,6 +5053,7 @@ function render1WeekView(tabsElement) {
                   payload.taskId,
                   newStart,
                   newDue,
+                  { recordCalendarSidebarRevert: true },
                 ) ||
                 addSectionTaskToCalendar(payload.sectionId, {
                   taskId: payload.taskId,
@@ -4919,6 +5062,8 @@ function render1WeekView(tabsElement) {
                   dueDate: newDue,
                   done: !!payload.done,
                   itemType: payload.itemType || "todo",
+                  _calPrevStart: oldStart,
+                  _calPrevDue: oldDue,
                 });
             }
           }
@@ -4965,6 +5110,9 @@ function render1WeekView(tabsElement) {
             sectionId: t.sectionId,
             startDate: t.startDate,
             dueDate: t.dueDate,
+            isOverdueBar: calendarBarTaskIsOverdueTodo(t),
+            _calPrevStart: (t._calPrevStart || "").toString().slice(0, 10) || "",
+            _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
           });
         });
       }
@@ -4990,6 +5138,9 @@ function render1WeekView(tabsElement) {
             sectionId: t.sectionId,
             startDate: t.startDate || "",
             dueDate: t.dueDate || dateKey,
+            isOverdueBar: calendarBarTaskIsOverdueTodo(t),
+            _calPrevStart: (t._calPrevStart || "").toString().slice(0, 10) || "",
+            _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
           });
         });
       });
@@ -5040,7 +5191,8 @@ function render1WeekView(tabsElement) {
             ? " calendar-monthly-span-bar--todo"
             : " calendar-monthly-span-bar--range") +
           (showCheckbox ? " calendar-monthly-span-bar--has-checkbox" : "") +
-          (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "");
+          (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "") +
+          (b.isOverdueBar ? " calendar-monthly-span-bar--overdue" : "");
         bar.title = b.name;
         bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.15 + b.row * BAR_HEIGHT}rem`;
         if (b.isSingleDay) {
@@ -5337,6 +5489,7 @@ function render1WeekView(tabsElement) {
             payload.taskId,
             newStart,
             newDue,
+            { recordCalendarSidebarRevert: true },
           );
           if (!ok && (payload.name || "").trim()) {
             ok = addCalendarTodoToCustomSection(payload.sectionId, {
@@ -5346,6 +5499,8 @@ function render1WeekView(tabsElement) {
               dueDate: newDue,
               done: !!payload.done,
               itemType: payload.itemType || "todo",
+              _calPrevStart: oldStart,
+              _calPrevDue: oldDue,
             });
           }
         } else if (
@@ -5356,6 +5511,7 @@ function render1WeekView(tabsElement) {
             ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
               startDate: newStart,
               dueDate: newDue,
+              recordCalendarSidebarRevert: true,
             });
           } else {
             ok =
@@ -5364,6 +5520,7 @@ function render1WeekView(tabsElement) {
                 payload.taskId,
                 newStart,
                 newDue,
+                { recordCalendarSidebarRevert: true },
               ) ||
               addSectionTaskToCalendar(payload.sectionId, {
                 taskId: payload.taskId,
@@ -5372,6 +5529,8 @@ function render1WeekView(tabsElement) {
                 dueDate: newDue,
                 done: !!payload.done,
                 itemType: payload.itemType || "todo",
+                _calPrevStart: oldStart,
+                _calPrevDue: oldDue,
               });
           }
         }
@@ -5426,6 +5585,7 @@ function render1WeekView(tabsElement) {
     hideToolbar: true,
     enableDragToCalendar: true,
     eisenhowerFilter: "important-not-urgent",
+    hideDoneTasks: true,
   });
   todoListEl.classList.add("todo-list-in-sidebar");
   mainWrap.appendChild(todoListEl);
@@ -5955,7 +6115,7 @@ function renderEisenhowerView(tabsElement) {
   };
 
   function updateQuadrants() {
-    const allTasks = getAllTasksForEisenhower();
+    const allTasks = getAllTasksForEisenhower().filter((t) => !t.done);
     const byQuadrant = {
       "urgent-important": [],
       "important-not-urgent": [],
@@ -6220,6 +6380,7 @@ function renderEisenhowerView(tabsElement) {
   }
 
   updateQuadrants();
+  registerEisenhowerQuadrantsRefresh(updateQuadrants);
 
   return wrap;
 }
@@ -6287,6 +6448,7 @@ export function render() {
     if (onlySaveWhenFullTodoList) {
       saveTodoListBeforeUnmount(contentWrap);
     }
+    registerEisenhowerQuadrantsRefresh(null);
     currentView = view;
     if (contentWrap.contains(tabs)) {
       el.insertBefore(tabs, contentWrap);

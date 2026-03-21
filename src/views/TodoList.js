@@ -17,6 +17,7 @@ import {
   readableTextForPresetRgbaBg,
 } from "../utils/todoSettings.js";
 import { getSubtasks, addSubtask, updateSubtask, removeSubtask, clearSubtasks, setSubtasks } from "../utils/todoSubtasks.js";
+import { refreshEisenhowerQuadrantsIfActive } from "../utils/eisenhowerQuadrantsBridge.js";
 import { createBraindumpContextMenu } from "../utils/braindumpContextMenu.js";
 import { createTodoCheckboxTypeMenu } from "../utils/todoCheckboxTypeMenu.js";
 
@@ -149,15 +150,16 @@ function saveSectionTasks(sectionId, tasks) {
         merged.push({
           ...ex,
           name: fromDom.name,
-          startDate: fromDom.startDate || (ex.startDate || "").slice(0, 10) || "",
-          dueDate: fromDom.dueDate || (ex.dueDate || "").slice(0, 10) || "",
-          startTime: fromDom.startTime || ex.startTime || "",
-          endTime: fromDom.endTime || ex.endTime || "",
-          eisenhower: fromDom.eisenhower || ex.eisenhower || "",
+          /* DOM이 비워도 빈 값이 저장되도록 (|| ex 는 "" 를 덮어써서 지우기가 반영 안 됨) */
+          startDate: (fromDom.startDate || "").slice(0, 10) || "",
+          dueDate: (fromDom.dueDate || "").slice(0, 10) || "",
+          startTime: fromDom.startTime || "",
+          endTime: fromDom.endTime || "",
+          eisenhower: fromDom.eisenhower || "",
           done: fromDom.done,
           itemType: fromDom.itemType || ex.itemType || "todo",
-          reminderDate: fromDom.reminderDate || (ex.reminderDate || "").slice(0, 10) || "",
-          reminderTime: fromDom.reminderTime || ex.reminderTime || "",
+          reminderDate: (fromDom.reminderDate || "").slice(0, 10) || "",
+          reminderTime: (fromDom.reminderTime || "").trim() || "",
         });
         domByTaskId.delete(tid);
       } else {
@@ -1087,7 +1089,11 @@ function showTodoTaskModal(options) {
           <label class="todo-task-edit-label">리마인더</label>
           <div class="todo-task-edit-reminder-row">
             <input type="date" class="todo-task-edit-reminder-date" value="${escapeHtml((reminderDate || "").slice(0, 10))}" />
-            <input type="text" class="todo-task-edit-reminder-time" placeholder="14:30" value="${escapeHtml(reminderTime)}" maxlength="5" />
+            <div class="todo-task-edit-reminder-time-actions">
+              <input type="text" class="todo-task-edit-reminder-time" placeholder="14:30" value="${escapeHtml(reminderTime)}" maxlength="5" />
+              <button type="button" class="todo-task-edit-reminder-btn todo-task-edit-reminder-clear-date" aria-label="리마인더 날짜만 지우기">날짜 삭제</button>
+              <button type="button" class="todo-task-edit-reminder-btn todo-task-edit-reminder-clear-all" aria-label="리마인더 날짜·시간 모두 지우기"><span class="todo-task-edit-reminder-clear-all-label todo-task-edit-reminder-clear-all-label--long">리마인더 삭제</span><span class="todo-task-edit-reminder-clear-all-label todo-task-edit-reminder-clear-all-label--short">삭제</span></button>
+            </div>
           </div>
         </div>
         <div class="todo-task-edit-field">
@@ -1121,6 +1127,8 @@ function showTodoTaskModal(options) {
   const dueInput = modal.querySelector(".todo-task-edit-due");
   const reminderDateInput = modal.querySelector(".todo-task-edit-reminder-date");
   const reminderTimeInput = modal.querySelector(".todo-task-edit-reminder-time");
+  const reminderClearDateBtn = modal.querySelector(".todo-task-edit-reminder-clear-date");
+  const reminderClearAllBtn = modal.querySelector(".todo-task-edit-reminder-clear-all");
   const eisenhowerSelect = modal.querySelector(".todo-task-edit-eisenhower");
   const sectionSelect = modal.querySelector(".todo-task-edit-section");
 
@@ -1200,6 +1208,20 @@ function showTodoTaskModal(options) {
     if (!input) return;
     input.addEventListener("input", () => updateDateInputPlaceholderClass(input));
     input.addEventListener("change", () => updateDateInputPlaceholderClass(input));
+  });
+
+  reminderClearDateBtn?.addEventListener("click", () => {
+    if (reminderDateInput) {
+      reminderDateInput.value = "";
+      updateDateInputPlaceholderClass(reminderDateInput);
+    }
+  });
+  reminderClearAllBtn?.addEventListener("click", () => {
+    if (reminderDateInput) {
+      reminderDateInput.value = "";
+      updateDateInputPlaceholderClass(reminderDateInput);
+    }
+    if (reminderTimeInput) reminderTimeInput.value = "";
   });
 
   if (reminderTimeInput) {
@@ -1310,7 +1332,17 @@ function createTaskRow(taskData = {}, options = {}) {
     reminderDate = "",
     reminderTime = "",
   } = taskData;
-  const { showCategoryCol = false, isSubtask = false, taskId: optTaskId, showCheckboxTypeMenu = null, enableDragToCalendar = false, enableDragToEisenhower = false, overdueColumnOrder = false, eisenhowerSidebarFirst = false } = options;
+  const {
+    showCategoryCol = false,
+    isSubtask = false,
+    taskId: optTaskId,
+    showCheckboxTypeMenu = null,
+    enableDragToCalendar = false,
+    enableDragToEisenhower = false,
+    enableDragOverdueToCalendar = false,
+    overdueColumnOrder = false,
+    eisenhowerSidebarFirst = false,
+  } = options;
   const taskId = optTaskId || getTaskId(taskData);
 
   const tr = document.createElement("tr");
@@ -1946,7 +1978,14 @@ function createTaskRow(taskData = {}, options = {}) {
 
   syncDateLine();
 
-  if ((enableDragToCalendar && !hasDates) || enableDragToEisenhower) {
+  const canDragToCalendar =
+    enableDragToCalendar &&
+    (!hasDates ||
+      (enableDragOverdueToCalendar &&
+        !!(dueDate || "").trim() &&
+        isOverdue(dueDate)));
+
+  if (canDragToCalendar || enableDragToEisenhower) {
     if (!isSubtask) {
       tr.draggable = true;
       tr.addEventListener("dragstart", (e) => {
@@ -1954,7 +1993,13 @@ function createTaskRow(taskData = {}, options = {}) {
         const startInput = tr.querySelector(".todo-start-input-hidden");
         const dueInput = tr.querySelector(".todo-due-input-hidden");
         const doneCheck = tr.querySelector(".todo-done-check");
-        const rowSectionId = taskData.sectionId || tr.dataset.sectionId || tr.closest(".todo-section")?.dataset?.section || "";
+        const rowSectionId =
+          (taskData.sourceSectionId ||
+            taskData.sectionId ||
+            tr.dataset.sectionId ||
+            tr.closest(".todo-section")?.dataset?.section ||
+            ""
+          ).trim();
         const startTime = tr.dataset.startTime || "";
         const endTime = tr.dataset.endTime || "";
         const eisenhowerVal = tr.dataset.eisenhower || "";
@@ -1983,7 +2028,7 @@ function createTaskRow(taskData = {}, options = {}) {
         if (enableDragToEisenhower) {
           e.dataTransfer.setData(DRAG_TYPE_TODO_TO_EISENHOWER, JSON.stringify(payload));
         }
-        if (enableDragToCalendar && !hasDates) {
+        if (canDragToCalendar) {
           window.__calendarDragDuration = durationMin;
           e.dataTransfer.setData(DRAG_TYPE_TODO_TO_CALENDAR, JSON.stringify(payload));
         }
@@ -2049,8 +2094,20 @@ function createTaskCard(taskData, options = {}) {
     isKpiTodo = false,
     kpiTodoId = "",
     storageKey = "",
+    sourceSectionId = "",
   } = taskData;
-  const { updateCount = () => {}, sectionsWrap = null, scheduleSave = () => {}, enableDragToEisenhower = false, enableDragToCalendar = false } = options;
+  const storageSectionId =
+    sectionId === "overdue" && (sourceSectionId || "").trim()
+      ? String(sourceSectionId).trim()
+      : sectionId;
+  const {
+    updateCount = () => {},
+    sectionsWrap = null,
+    scheduleSave = () => {},
+    enableDragToEisenhower = false,
+    enableDragToCalendar = false,
+    enableDragOverdueToCalendar = false,
+  } = options;
   const taskId = getTaskId(taskData);
   const kpiName = isKpiTodo && classification ? classification : "";
   const hasDueDate = (dueDate || startDate || "").trim() !== "";
@@ -2083,7 +2140,14 @@ function createTaskCard(taskData, options = {}) {
     card.dataset.done = newDone ? "true" : "false";
     card.classList.toggle("is-done", newDone);
     if (isKpiTodo && kpiTodoId && storageKey) syncKpiTodoCompleted(kpiTodoId, storageKey, newDone);
+    else if (!isKpiTodo && storageSectionId && FIXED_SECTION_IDS_FOR_STORAGE.includes(storageSectionId)) {
+      updateSectionTaskDone(storageSectionId, taskId, newDone);
+    }
     scheduleSave();
+    if (newDone && card.closest(".todo-list-eisenhower-sidebar, .todo-list-in-sidebar")) {
+      refreshEisenhowerQuadrantsIfActive();
+      card.remove();
+    }
     updateCount();
   });
 
@@ -2131,12 +2195,12 @@ function createTaskCard(taskData, options = {}) {
     e.stopPropagation();
     if (isKpiTodo && kpiTodoId && storageKey) {
       if (removeKpiTodo(kpiTodoId, storageKey)) card.remove();
-    } else if (sectionId && sectionId.startsWith("custom-")) {
-      removeTaskFromCustomSectionStorage(sectionId, taskId);
+    } else if (storageSectionId && storageSectionId.startsWith("custom-")) {
+      removeTaskFromCustomSectionStorage(storageSectionId, taskId);
       clearSubtasks(taskId);
       card.remove();
-    } else if (sectionId) {
-      removeTaskFromSectionStorage(sectionId, taskId);
+    } else if (storageSectionId) {
+      removeTaskFromSectionStorage(storageSectionId, taskId);
       clearSubtasks(taskId);
       card.remove();
     } else {
@@ -2176,7 +2240,7 @@ function createTaskCard(taskData, options = {}) {
       e.stopPropagation();
       const payload = {
         taskId,
-        sectionId: sectionId || "",
+        sectionId: (sourceSectionId || sectionId || "").trim(),
         name: (name || "").trim(),
         startDate: startDate || "",
         dueDate: dueDate || "",
@@ -2193,18 +2257,24 @@ function createTaskCard(taskData, options = {}) {
     });
   }
 
+  const allowCalendarDrag =
+    !hasDueDate ||
+    (enableDragOverdueToCalendar && (dueDate || "").trim() !== "" && isOverdue(dueDate));
+
   if (enableDragToCalendar) {
-    card.draggable = !hasDueDate;
+    if (enableDragToEisenhower) {
+      const hasPriority = (eisenhower || "").trim() !== "";
+      card.draggable = allowCalendarDrag || !hasPriority;
+    } else {
+      card.draggable = allowCalendarDrag;
+    }
     if (hasDueDate) card.classList.add("todo-card--has-due");
     card.addEventListener("dragstart", (e) => {
-      if (card.classList.contains("todo-card--has-due")) {
-        e.preventDefault();
-        return;
-      }
+      if (!allowCalendarDrag) return;
       e.stopPropagation();
       const payload = {
         taskId,
-        sectionId: sectionId || "",
+        sectionId: (sourceSectionId || sectionId || "").trim(),
         name: (name || "").trim(),
         startDate: startDate || "",
         dueDate: dueDate || "",
@@ -2257,6 +2327,7 @@ function createTaskCard(taskData, options = {}) {
       reminderEl.innerHTML = `${bell}<span class="todo-card-reminder-text">${remText}</span>`;
       reminderEl.hidden = false;
     } else {
+      reminderEl.innerHTML = "";
       reminderEl.hidden = true;
     }
   }
@@ -2272,20 +2343,20 @@ function createTaskCard(taskData, options = {}) {
         reminderDate: card.dataset.reminderDate,
         reminderTime: card.dataset.reminderTime,
         eisenhower: card.dataset.eisenhower,
-        sectionId,
+        sectionId: storageSectionId,
         sectionLabel,
       },
-      sectionId,
+      sectionId: storageSectionId,
       sectionLabel,
       mode: "edit",
       onSave: (payload) => {
         const newSectionId = (payload.sectionId || "").trim();
-        if (newSectionId && newSectionId !== sectionId) {
-          if (sectionId && sectionId.startsWith("custom-")) {
-            removeTaskFromCustomSectionStorage(sectionId, taskId);
+        if (newSectionId && newSectionId !== storageSectionId) {
+          if (storageSectionId && storageSectionId.startsWith("custom-")) {
+            removeTaskFromCustomSectionStorage(storageSectionId, taskId);
             clearSubtasks(taskId);
-          } else if (sectionId) {
-            removeTaskFromSectionStorage(sectionId, taskId);
+          } else if (storageSectionId) {
+            removeTaskFromSectionStorage(storageSectionId, taskId);
             clearSubtasks(taskId);
           }
           const targetWrap = sectionsWrap?.querySelector(`.todo-section[data-section="${newSectionId}"] .todo-cards-wrap`);
@@ -2304,12 +2375,12 @@ function createTaskCard(taskData, options = {}) {
       onDelete: () => {
         if (isKpiTodo && kpiTodoId && storageKey) {
           if (removeKpiTodo(kpiTodoId, storageKey)) card.remove();
-        } else if (sectionId && sectionId.startsWith("custom-")) {
-          removeTaskFromCustomSectionStorage(sectionId, taskId);
+        } else if (storageSectionId && storageSectionId.startsWith("custom-")) {
+          removeTaskFromCustomSectionStorage(storageSectionId, taskId);
           clearSubtasks(taskId);
           card.remove();
-        } else if (sectionId) {
-          removeTaskFromSectionStorage(sectionId, taskId);
+        } else if (storageSectionId) {
+          removeTaskFromSectionStorage(storageSectionId, taskId);
           clearSubtasks(taskId);
           card.remove();
         } else {
@@ -2325,7 +2396,7 @@ function createTaskCard(taskData, options = {}) {
 }
 
 function createSection(section, options = {}) {
-  const { lastColHeader = "분류", initialTasks = [], showCategoryCol = false, sectionIdForAdd = null, hideCategoryCol = true, tabMode = false, showCheckboxTypeMenu = null, enableDragToCalendar = false, enableDragToEisenhower = false, hideAddRow = false, overdueColumnOrder = false, eisenhowerSidebarFirst = false, cardLayout = false } = options;
+  const { lastColHeader = "분류", initialTasks = [], showCategoryCol = false, sectionIdForAdd = null, hideCategoryCol = true, tabMode = false, showCheckboxTypeMenu = null, enableDragToCalendar = false, enableDragToEisenhower = false, enableDragOverdueToCalendar = false, hideAddRow = false, overdueColumnOrder = false, eisenhowerSidebarFirst = false, cardLayout = false } = options;
   const sectionId = sectionIdForAdd ?? section.id;
 
   const wrap = document.createElement("div");
@@ -2371,7 +2442,7 @@ function createSection(section, options = {}) {
     initialTasks.forEach((t) => {
       const taskId = t.taskId || getTaskId(t);
       t.taskId = taskId;
-      const card = createTaskCard(t, { updateCount, sectionsWrap, scheduleSave, enableDragToEisenhower, enableDragToCalendar });
+      const card = createTaskCard(t, { updateCount, sectionsWrap, scheduleSave, enableDragToEisenhower, enableDragToCalendar, enableDragOverdueToCalendar });
       cardsWrap.appendChild(card);
     });
     const addWrap = document.createElement("div");
@@ -2392,7 +2463,7 @@ function createSection(section, options = {}) {
         onSave: (payload) => {
           const taskId = getTaskId(payload);
           const newTask = { ...payload, taskId, done: false };
-          const card = createTaskCard(newTask, { updateCount, sectionsWrap, scheduleSave, enableDragToEisenhower, enableDragToCalendar });
+          const card = createTaskCard(newTask, { updateCount, sectionsWrap, scheduleSave, enableDragToEisenhower, enableDragToCalendar, enableDragOverdueToCalendar });
           cardsWrap.insertBefore(card, addWrap.nextSibling);
           updateCount();
           scheduleSave();
@@ -2541,7 +2612,7 @@ function createSection(section, options = {}) {
   initialTasks.forEach((t) => {
     const taskId = t.taskId || getTaskId(t);
     t.taskId = taskId;
-    const tr = createTaskRow(t, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, overdueColumnOrder, eisenhowerSidebarFirst });
+    const tr = createTaskRow(t, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, enableDragOverdueToCalendar, overdueColumnOrder, eisenhowerSidebarFirst });
     tr.dataset.sectionId = t.sectionId || "";
     tbody.appendChild(tr);
     const container = tr.querySelector(".todo-subtasks-container");
@@ -2580,7 +2651,7 @@ function createSection(section, options = {}) {
         : { sectionId };
       const taskId = getTaskId(taskData);
       taskData.taskId = taskId;
-      const tr = createTaskRow(taskData, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, overdueColumnOrder, eisenhowerSidebarFirst });
+      const tr = createTaskRow(taskData, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, enableDragOverdueToCalendar, overdueColumnOrder, eisenhowerSidebarFirst });
       tbody.insertBefore(tr, addRow.nextSibling);
       updateCount();
       console.log("[DEBUG todo-row] + clicked, new row created", { taskId, sectionId: section.id });
@@ -2695,6 +2766,7 @@ function renderSections(container, tasksData = [], options = {}) {
       showCheckboxTypeMenu,
       enableDragToCalendar,
       enableDragToEisenhower,
+      enableDragOverdueToCalendar: section.id === "overdue" && enableDragToCalendar,
       hideAddRow: true,
       overdueColumnOrder: section.id === "overdue",
       eisenhowerSidebarFirst: eisenhowerSidebarFirst && section.id !== "overdue",
@@ -2720,7 +2792,18 @@ function isOverdue(dueStr) {
 }
 
 export function render(options = {}) {
-  const { hideToolbar = false, hideHeader = false, settingsSlot = null, enableDragToCalendar = false, enableDragToEisenhower = false, initialActiveTabIndex = 0, eisenhowerFilter = "", eisenhowerSidebarFirst = false } = options;
+  const {
+    hideToolbar = false,
+    hideHeader = false,
+    settingsSlot = null,
+    enableDragToCalendar = false,
+    enableDragToEisenhower = false,
+    initialActiveTabIndex = 0,
+    eisenhowerFilter = "",
+    eisenhowerSidebarFirst = false,
+    /** 우선순위 정렬·날짜 정하기 등: 완료된 할일은 목록에 넣지 않음 */
+    hideDoneTasks = false,
+  } = options;
   const el = document.createElement("div");
   el.className = "app-tab-panel-content todo-list-view";
 
@@ -2934,6 +3017,9 @@ export function render(options = {}) {
       const v = (t.eisenhower || "").trim();
       return v === q || (labelForQ && v === labelForQ);
     });
+  }
+  if (hideDoneTasks) {
+    allTasks = allTasks.filter((t) => !t.done);
   }
   const sectionResults = renderSections(sectionsWrap, allTasks, { tabMode: true, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, eisenhowerSidebarFirst, sectionsOverride: FIXED_SECTIONS, cardLayout: true });
 
@@ -3195,14 +3281,21 @@ export function render(options = {}) {
 /** 아이젠하워 사이드바용: 할일(탭) + 기한 초과 섹션 */
 export function renderTodoListForEisenhowerSidebar(options = {}) {
   const { enableDragToEisenhower = true } = options;
-  const mainList = render({ hideToolbar: true, enableDragToEisenhower, eisenhowerSidebarFirst: true });
+  const mainList = render({
+    hideToolbar: true,
+    enableDragToEisenhower,
+    eisenhowerSidebarFirst: true,
+    hideDoneTasks: true,
+  });
   mainList.classList.add("todo-list-eisenhower-sidebar");
 
   const kpiTasks = getKpiTodosAsTasks();
   const sectionTasks = FIXED_SECTION_IDS_FOR_STORAGE.flatMap((sid) => loadSectionTasks(sid));
   const customTasks = getCustomSections().flatMap((s) => loadCustomSectionTasks(s.id));
   const allTasks = [...kpiTasks, ...sectionTasks, ...customTasks];
-  const overdueTasks = allTasks.filter((t) => isOverdue(t.dueDate) && !t.done).map((t) => ({ ...t, sectionId: "overdue" }));
+  const overdueTasks = allTasks
+    .filter((t) => isOverdue(t.dueDate) && !t.done)
+    .map((t) => ({ ...t, sourceSectionId: t.sectionId, sectionId: "overdue" }));
 
   const overdueWrap = document.createElement("div");
   overdueWrap.className = "todo-eisenhower-overdue-section";
@@ -3225,7 +3318,9 @@ export function renderOverdueSection(options = {}) {
   const sectionTasks = FIXED_SECTION_IDS_FOR_STORAGE.flatMap((sid) => loadSectionTasks(sid));
   const customTasks = getCustomSections().flatMap((s) => loadCustomSectionTasks(s.id));
   const allTasks = [...kpiTasks, ...sectionTasks, ...customTasks];
-  const overdueTasks = allTasks.filter((t) => isOverdue(t.dueDate) && !t.done).map((t) => ({ ...t, sectionId: "overdue" }));
+  const overdueTasks = allTasks
+    .filter((t) => isOverdue(t.dueDate) && !t.done)
+    .map((t) => ({ ...t, sourceSectionId: t.sectionId, sectionId: "overdue" }));
 
   const overdueWrap = document.createElement("div");
   overdueWrap.className = "todo-eisenhower-overdue-section todo-overdue-in-date-sidebar";

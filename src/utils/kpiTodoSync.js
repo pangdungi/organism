@@ -58,6 +58,10 @@ export function getKpiTodosAsTasks() {
         kpiId: kpi.id,
         storageKey: DREAM_MAP_KEY,
         itemType: todo.itemType || "todo",
+        _calPrevStart:
+          (todo._calPrevStart || "").toString().trim().slice(0, 10) || "",
+        _calPrevDue:
+          (todo._calPrevDue || "").toString().trim().slice(0, 10) || "",
       });
     });
 
@@ -90,6 +94,10 @@ export function getKpiTodosAsTasks() {
         kpiId: kpi.id,
         storageKey: SIDEINCOME_KEY,
         itemType: todo.itemType || "todo",
+        _calPrevStart:
+          (todo._calPrevStart || "").toString().trim().slice(0, 10) || "",
+        _calPrevDue:
+          (todo._calPrevDue || "").toString().trim().slice(0, 10) || "",
       });
     });
 
@@ -122,6 +130,10 @@ export function getKpiTodosAsTasks() {
         kpiId: kpi.id,
         storageKey: HAPPINESS_KEY,
         itemType: todo.itemType || "todo",
+        _calPrevStart:
+          (todo._calPrevStart || "").toString().trim().slice(0, 10) || "",
+        _calPrevDue:
+          (todo._calPrevDue || "").toString().trim().slice(0, 10) || "",
       });
     });
 
@@ -154,6 +166,10 @@ export function getKpiTodosAsTasks() {
         kpiId: kpi.id,
         storageKey: HEALTH_KEY,
         itemType: todo.itemType || "todo",
+        _calPrevStart:
+          (todo._calPrevStart || "").toString().trim().slice(0, 10) || "",
+        _calPrevDue:
+          (todo._calPrevDue || "").toString().trim().slice(0, 10) || "",
       });
     });
 
@@ -175,6 +191,13 @@ export function updateKpiTodo(kpiTodoId, storageKey, updates) {
     data.kpiTodos = data.kpiTodos || [];
     const todo = data.kpiTodos.find((t) => t.id === kpiTodoId);
     if (!todo) return false;
+    if (updates && updates.recordCalendarSidebarRevert) {
+      todo._calPrevStart =
+        (todo.startDate || "").toString().trim().slice(0, 10) || "";
+      todo._calPrevDue =
+        (todo.dueDate || "").toString().trim().slice(0, 10) || "";
+      delete updates.recordCalendarSidebarRevert;
+    }
     if (updates.text !== undefined) todo.text = String(updates.text).trim();
     if (updates.startDate !== undefined)
       todo.startDate = updates.startDate
@@ -193,6 +216,23 @@ export function updateKpiTodo(kpiTodoId, storageKey, updates) {
     if (updates.itemType !== undefined)
       todo.itemType = updates.itemType === "schedule" ? "schedule" : "todo";
     if (updates.completed !== undefined) todo.completed = !!updates.completed;
+    localStorage.setItem(storageKey, JSON.stringify(data));
+    return true;
+  } catch (_) {}
+  return false;
+}
+
+/** 캘린더 ↔ 사이드바 되돌리기용 스냅샷 필드 제거 */
+export function clearKpiTodoCalendarRevertSnapshot(kpiTodoId, storageKey) {
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    data.kpiTodos = data.kpiTodos || [];
+    const todo = data.kpiTodos.find((t) => t.id === kpiTodoId);
+    if (!todo) return false;
+    delete todo._calPrevStart;
+    delete todo._calPrevDue;
     localStorage.setItem(storageKey, JSON.stringify(data));
     return true;
   } catch (_) {}

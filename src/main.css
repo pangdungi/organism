@@ -1802,19 +1802,41 @@ body {
   }
   .todo-task-edit-modal .todo-task-edit-reminder-row {
     flex-direction: column;
+    align-items: stretch;
     gap: 0.5rem;
     max-width: 100%;
   }
-  .todo-task-edit-modal
-    .todo-task-edit-reminder-row
-    .todo-task-edit-reminder-date,
-  .todo-task-edit-modal
-    .todo-task-edit-reminder-row
-    .todo-task-edit-reminder-time {
+  .todo-task-edit-modal .todo-task-edit-reminder-row .todo-task-edit-reminder-date {
     flex: none;
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0;
+  }
+  .todo-task-edit-modal .todo-task-edit-reminder-time-actions {
+    flex: none;
+    width: 100% !important;
+    max-width: 100% !important;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .todo-task-edit-modal
+    .todo-task-edit-reminder-time-actions
+    .todo-task-edit-reminder-time {
+    flex: 1 1 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 4rem !important;
+  }
+  .todo-task-edit-modal .todo-task-edit-reminder-clear-date {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .todo-task-edit-modal .todo-task-edit-reminder-clear-all-label--long {
+    display: none;
+  }
+  .todo-task-edit-modal .todo-task-edit-reminder-clear-all-label--short {
+    display: inline;
   }
 }
 
@@ -10806,6 +10828,28 @@ body {
   color: #a8a290 !important;
 }
 
+/* 기한 초과 목록 카드(할일 쏟아내기·아이젠하워 하단 / 날짜정하기 사이드바) — 캘린더 기한초과 막대와 통일 */
+.todo-eisenhower-overdue-section .todo-card {
+  background: rgba(139, 92, 58, 0.12) !important;
+  border: 1px solid rgba(139, 92, 58, 0.3) !important;
+  box-shadow: 0 0.0625rem 0.25rem rgba(139, 92, 58, 0.08);
+}
+.todo-eisenhower-overdue-section .todo-card .todo-card-name,
+.todo-eisenhower-overdue-section .todo-card .todo-card-dates,
+.todo-eisenhower-overdue-section .todo-card .todo-card-priority,
+.todo-eisenhower-overdue-section .todo-card .todo-card-kpi,
+.todo-eisenhower-overdue-section .todo-card .todo-card-reminder,
+.todo-eisenhower-overdue-section .todo-card .todo-card-reminder-icon {
+  color: #8b5c3a !important;
+}
+.todo-eisenhower-overdue-section .todo-card.is-done .todo-card-name,
+.todo-eisenhower-overdue-section .todo-card.is-done .todo-card-dates,
+.todo-eisenhower-overdue-section .todo-card.is-done .todo-card-priority,
+.todo-eisenhower-overdue-section .todo-card.is-done .todo-card-kpi,
+.todo-eisenhower-overdue-section .todo-card.is-done .todo-card-reminder {
+  color: var(--text-muted) !important;
+}
+
 .todo-card-inner {
   display: flex;
   align-items: center;
@@ -10917,6 +10961,11 @@ body {
   font-weight: var(--fw-secondary);
   color: var(--text-muted);
   line-height: 1.35;
+}
+
+/* display:flex 가 native [hidden] 보다 우선하여 리마인더가 안 사라지는 문제 방지 */
+.todo-card-reminder[hidden] {
+  display: none !important;
 }
 
 .todo-card-reminder-icon {
@@ -11112,6 +11161,8 @@ body {
 
 .todo-task-edit-reminder-row {
   display: flex;
+  flex-direction: row;
+  align-items: center;
   gap: 0.5rem;
   min-width: 0;
   max-width: 100%;
@@ -11122,9 +11173,49 @@ body {
   min-width: 0;
 }
 
+.todo-task-edit-reminder-time-actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
 .todo-task-edit-reminder-row .todo-task-edit-reminder-time {
   flex: 0 0 5rem;
+  width: 5rem !important;
+  max-width: 5rem !important;
   min-width: 0;
+}
+
+.todo-task-edit-reminder-btn {
+  flex-shrink: 0;
+  padding: 0.35rem 0.5rem;
+  margin: 0;
+  font-size: 0.75rem;
+  font-family: inherit;
+  line-height: 1.2;
+  color: var(--text-muted);
+  background: var(--ui-surface-alt, rgba(0, 0, 0, 0.04));
+  border: var(--line-l3);
+  border-radius: 0.25rem;
+  cursor: pointer;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.todo-task-edit-reminder-btn:hover {
+  color: var(--text-body);
+  border-color: var(--accent-viridian);
+}
+
+.todo-task-edit-reminder-clear-date {
+  display: none;
+}
+
+.todo-task-edit-reminder-clear-all-label--short {
+  display: none;
 }
 
 /* 날짜 입력이 모달 밖으로 나가지 않도록 */
@@ -11555,17 +11646,37 @@ body {
   color: var(--text-muted);
 }
 
+/* 기한 초과 행: 날짜 정하기 캘린더 막대(.calendar-monthly-span-bar--overdue)와 색 통일 */
 .todo-task-row.todo-row-overdue,
 .todo-task-row.todo-row-overdue td {
-  background-color: #f5f5f4 !important;
+  background-color: rgba(139, 92, 58, 0.12) !important;
 }
 .todo-task-row.todo-row-overdue {
-  box-shadow: inset 2px 0 0 0 var(--line-l9-color);
+  box-shadow: inset 0 0 0 1px rgba(139, 92, 58, 0.3);
+}
+.todo-task-row.todo-row-overdue,
+.todo-task-row.todo-row-overdue td {
+  color: #8b5c3a;
+}
+.todo-task-row.todo-row-overdue .todo-cell-name input,
+.todo-task-row.todo-row-overdue .todo-subtask-input {
+  color: #8b5c3a;
+}
+.todo-task-row.todo-row-overdue .todo-eisenhower-display,
+.todo-task-row.todo-row-overdue .todo-due-display,
+.todo-task-row.todo-row-overdue .todo-reminder-display,
+.todo-task-row.todo-row-overdue .todo-cell-kpi,
+.todo-task-row.todo-row-overdue .todo-cell-category {
+  color: #8b5c3a;
 }
 
 .todo-overdue-display {
   font-weight: 300;
   color: var(--text-muted);
+}
+.todo-task-row.todo-row-overdue .todo-overdue-display {
+  color: #8b5c3a;
+  font-weight: 500;
 }
 
 .todo-th-eisenhower,
@@ -28519,6 +28630,30 @@ body.kpi-resizing {
 
 .calendar-monthly-span-bar--range::before {
   content: none;
+}
+
+/* 날짜 정하기: 기한 초과 할 일 막대 (일반 날짜 배정 막대와 구분) */
+.calendar-view-with-subtabs .calendar-monthly-span-bar--overdue.calendar-monthly-span-bar--todo,
+.calendar-view-with-subtabs .calendar-monthly-span-bar--overdue.calendar-monthly-span-bar--range,
+.calendar-1day-view .calendar-monthly-span-bar--overdue.calendar-monthly-span-bar--todo {
+  background: rgba(139, 92, 58, 0.12) !important;
+  border: 1px solid rgba(139, 92, 58, 0.3) !important;
+  color: #8b5c3a;
+}
+
+.calendar-view-with-subtabs .calendar-monthly-span-bar--overdue .calendar-monthly-span-bar-text,
+.calendar-1day-view .calendar-monthly-span-bar--overdue .calendar-monthly-span-bar-text {
+  color: #8b5c3a;
+}
+
+.calendar-view-with-subtabs .calendar-monthly-span-bar--overdue .calendar-monthly-span-bar-checkbox,
+.calendar-1day-view .calendar-monthly-span-bar--overdue .calendar-monthly-span-bar-checkbox {
+  border-color: rgba(139, 92, 58, 0.45) !important;
+}
+
+.calendar-view-with-subtabs .calendar-monthly-span-bar--overdue .calendar-monthly-span-bar-icon,
+.calendar-1day-view .calendar-monthly-span-bar--overdue .calendar-monthly-span-bar-icon {
+  border-color: rgba(139, 92, 58, 0.45) !important;
 }
 
 .calendar-monthly-span-bar--todo > *,
