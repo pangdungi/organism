@@ -44,11 +44,23 @@ const CUSTOM_SECTION_TASKS_KEY = "todo-custom-section-tasks";
 const SECTION_TASKS_KEY = "todo-section-tasks";
 const KPI_SECTION_IDS = ["braindump", "dream", "sideincome", "health", "happy"];
 
-const CALENDAR_DATE_DEBUG = true;
+const CALENDAR_DATE_DEBUG = false;
 function dateDebug(tag, ...args) {
   if (CALENDAR_DATE_DEBUG && typeof console !== "undefined" && console.log) {
     console.log("[DATE-DEBUG] " + tag, ...args);
   }
+}
+
+/** 1일 뷰: document 리스너는 한 번만 — 탭 전환·재진입 시 핸들러만 교체 (누적 방지) */
+let oneDayTimetableRefreshHandler = null;
+function ensureOneDayTimetableDocumentListeners() {
+  if (ensureOneDayTimetableDocumentListeners._bound) return;
+  ensureOneDayTimetableDocumentListeners._bound = true;
+  const run = (e) => {
+    oneDayTimetableRefreshHandler?.(e);
+  };
+  document.addEventListener("calendar-budget-scheduled-updated", run);
+  document.addEventListener("calendar-time-rows-updated", run);
 }
 
 function getSectionTasksForDate(dateKey) {
@@ -4589,14 +4601,8 @@ function render1DayView(tabsElement) {
     }
   };
 
-  document.addEventListener(
-    "calendar-budget-scheduled-updated",
-    (e) => refreshTimetableOverlays(e),
-  );
-  document.addEventListener(
-    "calendar-time-rows-updated",
-    (e) => refreshTimetableOverlays(e),
-  );
+  ensureOneDayTimetableDocumentListeners();
+  oneDayTimetableRefreshHandler = (e) => refreshTimetableOverlays(e);
 
   renderCalendar();
 

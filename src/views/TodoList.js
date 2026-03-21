@@ -20,6 +20,28 @@ function todoDebug(...args) {
   if (TODO_DEBUG && typeof console !== "undefined" && console.log) console.log("[TODO-DEBUG]", ...args);
 }
 
+/** 커스텀 리스트 탭 우클릭 메뉴: document dismiss 리스너 1회만 (render 반복 시 누적 방지) */
+let todoListTabContextMenuActive = null;
+let todoListTabContextTargetActive = null;
+function ensureTodoListTabGlobalDismiss() {
+  if (ensureTodoListTabGlobalDismiss._ok) return;
+  ensureTodoListTabGlobalDismiss._ok = true;
+  document.addEventListener("click", (e) => {
+    const menu = todoListTabContextMenuActive;
+    if (!menu || menu.hidden) return;
+    if (menu.contains(e.target)) return;
+    menu.hidden = true;
+    todoListTabContextTargetActive = null;
+  });
+  document.addEventListener("contextmenu", (e) => {
+    const menu = todoListTabContextMenuActive;
+    if (!menu || menu.hidden) return;
+    if (menu.contains(e.target)) return;
+    menu.hidden = true;
+    todoListTabContextTargetActive = null;
+  });
+}
+
 // 나의 계정에서 리스트 색상 저장 시 탭 버튼 색상 즉시 반영
 window.addEventListener("app-colors-changed", () => {
   const container = document.querySelector(".todo-category-tabs");
@@ -2805,16 +2827,18 @@ export function render(options = {}) {
     <button type="button" class="todo-list-tab-context-menu-item" data-action="edit">편집</button>
     <button type="button" class="todo-list-tab-context-menu-item" data-action="delete">삭제</button>
   `;
-  document.body.appendChild(listTabContextMenu);
+  el.appendChild(listTabContextMenu);
+  todoListTabContextMenuActive = listTabContextMenu;
+  ensureTodoListTabGlobalDismiss();
 
-  let listTabContextTarget = null;
   const hideListTabMenu = () => {
     listTabContextMenu.hidden = true;
-    listTabContextTarget = null;
+    todoListTabContextTargetActive = null;
   };
   listTabContextMenu.querySelector('[data-action="edit"]').addEventListener("click", () => {
-    if (!listTabContextTarget) return;
-    const sectionId = listTabContextTarget.dataset.section;
+    if (!todoListTabContextTargetActive) return;
+    const tabEl = todoListTabContextTargetActive;
+    const sectionId = tabEl.dataset.section;
     const section = getCustomSections().find((s) => s.id === sectionId);
     if (!section) return;
     hideListTabMenu();
@@ -2822,13 +2846,14 @@ export function render(options = {}) {
       sectionId,
       currentLabel: section.label,
       onSuccess: (updated) => {
-        listTabContextTarget.querySelector(".todo-category-tab-label").textContent = updated.label;
+        const labelEl = tabEl.querySelector(".todo-category-tab-label");
+        if (labelEl) labelEl.textContent = updated.label;
       },
     });
   });
   listTabContextMenu.querySelector('[data-action="delete"]').addEventListener("click", () => {
-    if (!listTabContextTarget) return;
-    const tabToRemove = listTabContextTarget;
+    if (!todoListTabContextTargetActive) return;
+    const tabToRemove = todoListTabContextTargetActive;
     const sectionId = tabToRemove.dataset.section;
     const section = getCustomSections().find((s) => s.id === sectionId);
     if (!section) return;
@@ -2857,9 +2882,6 @@ export function render(options = {}) {
       },
     });
   });
-  document.addEventListener("click", hideListTabMenu);
-  document.addEventListener("contextmenu", hideListTabMenu);
-
   categoryTabs.addEventListener("contextmenu", (e) => {
     const tab = e.target.closest(".todo-category-tab:not(.todo-category-tab-add)");
     if (!tab) return;
@@ -2867,7 +2889,7 @@ export function render(options = {}) {
     if (!sectionId || !sectionId.startsWith("custom-")) return;
     e.preventDefault();
     e.stopPropagation();
-    listTabContextTarget = tab;
+    todoListTabContextTargetActive = tab;
     listTabContextMenu.hidden = false;
     listTabContextMenu.style.left = `${e.clientX}px`;
     listTabContextMenu.style.top = `${e.clientY}px`;
