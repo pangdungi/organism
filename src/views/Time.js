@@ -1591,6 +1591,200 @@ function formatHoursDisplay(hours) {
   return `${h}h ${m}m`;
 }
 
+/** 모바일 시간기록 카드: 진행 중(마감 없음)일 때 경과 시간 갱신용 타이머 정리 */
+function clearTimeLedgerMobileElapsedTimer(viewEl) {
+  if (!viewEl?._timeLedgerMobileElapsedIntervalId) return;
+  clearInterval(viewEl._timeLedgerMobileElapsedIntervalId);
+  viewEl._timeLedgerMobileElapsedIntervalId = null;
+}
+
+function rowHasEndTimeForMobileCard(rowData) {
+  return !!(rowData?.endTime && String(rowData.endTime).trim());
+}
+
+/** 행의 시작 시각을 로컬 Date로 (없으면 null) */
+function getRowStartInstantForMobileCard(rowData) {
+  if (!rowData) return null;
+  const st = (rowData.startTime || "").trim();
+  if (!st) return null;
+  const normalized = formatDateTimeInput(st);
+  const s = normalized || st;
+  const m = s.match(
+    /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})\s+(\d{1,2}):(\d{2})/,
+  );
+  if (m) {
+    return new Date(
+      parseInt(m[1], 10),
+      parseInt(m[2], 10) - 1,
+      parseInt(m[3], 10),
+      parseInt(m[4], 10),
+      parseInt(m[5], 10),
+      0,
+      0,
+    );
+  }
+  const m2 = s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2})/);
+  if (m2) {
+    return new Date(
+      parseInt(m2[1], 10),
+      parseInt(m2[2], 10) - 1,
+      parseInt(m2[3], 10),
+      parseInt(m2[4], 10),
+      parseInt(m2[5], 10),
+      0,
+      0,
+    );
+  }
+  const dateStr = (rowData.date || "").trim().replace(/\//g, "-");
+  const timeStr = toDisplayTimeOnly(st);
+  if (!dateStr || !timeStr) return null;
+  const dm = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const tm = timeStr.match(/^(\d{2}):(\d{2})$/);
+  if (!dm || !tm) return null;
+  return new Date(
+    parseInt(dm[1], 10),
+    parseInt(dm[2], 10) - 1,
+    parseInt(dm[3], 10),
+    parseInt(tm[1], 10),
+    parseInt(tm[2], 10),
+    0,
+    0,
+  );
+}
+
+function formatElapsedDurationForMobileCard(ms) {
+  const hours = ms / 3600000;
+  return formatHoursDisplay(hours);
+}
+
+/** 모바일 카드 우측: 수동 사용시간 > 마감 있음(빈 사용시간은 —) > 진행 중이면 경과 */
+function getMobileCardTrackedDisplayForRow(rowData) {
+  const tracked = (rowData.timeTracked || "").trim();
+  if (tracked) return tracked;
+  if (rowHasEndTimeForMobileCard(rowData)) return "—";
+  const start = getRowStartInstantForMobileCard(rowData);
+  if (!start) return "—";
+  const ms = Date.now() - start.getTime();
+  if (ms < 0) return "0h";
+  return formatElapsedDurationForMobileCard(ms);
+}
+
+function formatClockHHMMFromDate(d) {
+  const h = String(d.getHours()).padStart(2, "0");
+  const m = String(d.getMinutes()).padStart(2, "0");
+  return `${h}:${m}`;
+}
+
+/** 모바일 카드 시간대 줄: 완료 시 시작–마감, 진행 중이면 시작–현재 시각 */
+function getMobileCardTimeRangeDisplayForRow(rowData) {
+  const startStr = toDisplayTimeOnly(rowData?.startTime) || "";
+  const endStr = toDisplayTimeOnly(rowData?.endTime) || "";
+  if (startStr && endStr) return `${startStr} - ${endStr}`;
+  if (startStr && !rowHasEndTimeForMobileCard(rowData))
+    return `${startStr} - ${formatClockHHMMFromDate(new Date())}`;
+  return startStr || endStr || "";
+}
+
+function getMobileCardProductivityValue(rowData) {
+  if (!rowData) return "";
+  return (
+    (rowData.productivity || "").trim() ||
+    getProductivityFromCategory(rowData.category) ||
+    ""
+  );
+}
+
+function hoursBetweenRowStartEnd(rowData) {
+  let startTime =
+    formatDateTimeInput(rowData.startTime) ||
+    String(rowData.startTime || "").trim();
+  let endTime =
+    formatDateTimeInput(rowData.endTime) ||
+    String(rowData.endTime || "").trim();
+  if (!startTime || !endTime) return 0;
+  endTime = mergeEndTimeWithStartDate(startTime, endTime) || endTime;
+  const toIso = (str) => {
+    const m = str.match(
+      /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})[T\s]+(\d{1,2}):(\d{2})/,
+    );
+    if (m)
+      return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}T${m[4].padStart(2, "0")}:${m[5]}:00`;
+    const m2 = str.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    if (m2)
+      return `${m2[1]}-${m2[2]}-${m2[3]}T${m2[4]}:${m2[5]}:00`;
+    return String(str).replace(" ", "T") + ":00";
+  };
+  try {
+    const s = new Date(toIso(startTime));
+    const e = new Date(toIso(endTime));
+    const diff = (e - s) / (1000 * 60 * 60);
+    return diff > 0 && isFinite(diff) ? diff : 0;
+  } catch (_) {
+    return 0;
+  }
+}
+
+/** 행동의 가치 계산용 유효 시간(h): 사용시간 입력 > 마감 있음(구간) > 진행 중(경과) */
+function getMobileCardEffectiveHoursForPrice(rowData) {
+  const tracked = (rowData.timeTracked || "").trim();
+  if (tracked) return parseTimeToHours(tracked) || 0;
+  if (rowHasEndTimeForMobileCard(rowData))
+    return hoursBetweenRowStartEnd(rowData);
+  const start = getRowStartInstantForMobileCard(rowData);
+  if (!start) return 0;
+  const ms = Date.now() - start.getTime();
+  return ms < 0 ? 0 : ms / 3600000;
+}
+
+function computeMobileCardPriceValue(rowData, hourlyRate) {
+  const hours = getMobileCardEffectiveHoursForPrice(rowData);
+  const rate = parseFloat(String(hourlyRate ?? 0).replace(/,/g, "")) || 0;
+  const pv = getMobileCardProductivityValue(rowData);
+  let price = hours * rate;
+  if (pv === "nonproductive") price *= -1;
+  else if (pv === "other" || pv === "그 외" || !pv) price = 0;
+  return price;
+}
+
+function applyMobileCardPriceEl(priceEl, value) {
+  if (!priceEl) return;
+  priceEl.textContent = formatPrice(value);
+  priceEl.classList.toggle("is-negative", value < 0);
+  priceEl.classList.toggle("is-positive", value > 0);
+}
+
+function mobileCardNeedsLiveClock(rowData) {
+  if (!rowData) return false;
+  if ((rowData.timeTracked || "").trim()) return false;
+  if (rowHasEndTimeForMobileCard(rowData)) return false;
+  return !!getRowStartInstantForMobileCard(rowData);
+}
+
+function updateMobileTimeCardLiveFields(card) {
+  if (!card?._rowData || !mobileCardNeedsLiveClock(card._rowData)) return;
+  const rd = card._rowData;
+  const viewEl = card._timeLedgerViewEl;
+  const trackedEl = card.querySelector(".time-mobile-card-tracked");
+  const timeEl = card.querySelector(".time-mobile-card-time");
+  const priceEl = card.querySelector(".time-mobile-card-price");
+  const start = getRowStartInstantForMobileCard(rd);
+  if (!start) return;
+  const ms = Date.now() - start.getTime();
+  if (trackedEl)
+    trackedEl.textContent =
+      ms < 0 ? "0h" : formatElapsedDurationForMobileCard(ms);
+  if (timeEl) {
+    const range = getMobileCardTimeRangeDisplayForRow(rd);
+    timeEl.textContent = range || "—";
+  }
+  if (priceEl && viewEl) {
+    const hourlyInput = viewEl.querySelector(".time-hourly-input");
+    const hourlyRate =
+      parseFloat(String(hourlyInput?.value || "0").replace(/,/g, "")) || 0;
+    applyMobileCardPriceEl(priceEl, computeMobileCardPriceValue(rd, hourlyRate));
+  }
+}
+
 /** 시간(소수)을 "HH:MM" 형식으로 표시 */
 function formatHoursToHHMM(hours) {
   if (hours < 0 || !isFinite(hours)) return "00:00";
@@ -2508,7 +2702,6 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   timeTd.className = "time-cell time-cell-tracked";
   const timeSpan = document.createElement("span");
   timeSpan.className = "time-display-tracked";
-  timeSpan.textContent = rowData.timeTracked || "";
   timeTd.appendChild(timeSpan);
 
   function updatePrice() {
@@ -2516,14 +2709,29 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
     const hourlyInput = viewEl?.querySelector(".time-hourly-input");
     const hourlyRate =
       parseFloat(String(hourlyInput?.value || "0").replace(/,/g, "")) || 0;
-    const hours = parseTimeToHours(data.timeTracked);
-    const pv = (data.productivity || "").trim();
+    const hours = getMobileCardEffectiveHoursForPrice(data);
+    const pv = getMobileCardProductivityValue(data);
     let price = hours * hourlyRate;
     if (pv === "nonproductive") price *= -1;
     else if (pv === "other" || pv === "그 외" || !pv) price = 0;
     priceDisplay.textContent = formatPrice(price);
     priceDisplay.classList.toggle("is-negative", price < 0);
     priceDisplay.classList.toggle("is-positive", price > 0);
+
+    const tracked = (data.timeTracked || "").trim();
+    const hasStart = !!(data.startTime && String(data.startTime).trim());
+    if (tracked) timeSpan.textContent = tracked;
+    else if (!hasStart) timeSpan.textContent = "";
+    else timeSpan.textContent = formatHoursToHHMM(hours);
+
+    if (mobileCardNeedsLiveClock(data)) {
+      endTimeSpan.textContent = formatClockHHMMFromDate(new Date());
+    } else {
+      endTimeSpan.textContent = data.endTime
+        ? toDisplayTimeOnly(data.endTime) || data.endTime
+        : "";
+    }
+
     viewEl?._updateTotal?.();
   }
 
@@ -2946,15 +3154,23 @@ function getProductivityBarColor(prod) {
 }
 
 /** 모바일 시간가계부 카드 생성 */
-function createMobileTimeCard(rowData, onEdit, onDelete) {
+function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   const prod =
     rowData.productivity || getProductivityFromCategory(rowData.category) || "";
   const color = getProductivityBarColor(prod);
-  const startStr = toDisplayTimeOnly(rowData.startTime) || "";
-  const endStr = toDisplayTimeOnly(rowData.endTime) || "";
+  const tracked = getMobileCardTrackedDisplayForRow(rowData);
   const timeRange =
-    startStr && endStr ? `${startStr} - ${endStr}` : startStr || endStr || "";
-  const tracked = rowData.timeTracked || "";
+    getMobileCardTimeRangeDisplayForRow(rowData) || "—";
+  const hourlyRate =
+    parseFloat(
+      String(viewEl?.querySelector(".time-hourly-input")?.value || "0").replace(
+        /,/g,
+        "",
+      ),
+    ) || 0;
+  const priceVal = computeMobileCardPriceValue(rowData, hourlyRate);
+  const priceClass =
+    priceVal < 0 ? " is-negative" : priceVal > 0 ? " is-positive" : "";
   const taskName = (rowData.taskName || "")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
@@ -2965,15 +3181,19 @@ function createMobileTimeCard(rowData, onEdit, onDelete) {
   const card = document.createElement("div");
   card.className = "time-ledger-mobile-card";
   card._rowData = rowData;
+  card._timeLedgerViewEl = viewEl || null;
   card._onRowDelete = onDelete;
   card.innerHTML = `
     <div class="time-mobile-card-color-bar" style="background:${color}"></div>
     <div class="time-mobile-card-body">
       <div class="time-mobile-card-header">
         <span class="time-mobile-card-task">${taskName}</span>
-        <span class="time-mobile-card-tracked">${tracked || "—"}</span>
+        <div class="time-mobile-card-right">
+          <span class="time-mobile-card-tracked">${tracked}</span>
+          <span class="time-mobile-card-price${priceClass}">${formatPrice(priceVal)}</span>
+        </div>
       </div>
-      <div class="time-mobile-card-time">${timeRange || "—"}</div>
+      <div class="time-mobile-card-time">${timeRange}</div>
       ${memo ? `<div class="time-mobile-card-memo">${memo}</div>` : ""}
     </div>
   `;
@@ -3441,6 +3661,7 @@ export function render() {
       renderAll(filtered);
       updateTotal();
     } else if (view === "blank") {
+      clearTimeLedgerMobileElapsedTimer(el);
       contentWrap.innerHTML = "";
     } else if (view === "audit") {
       renderAudit(filtered);
@@ -6857,6 +7078,7 @@ export function render() {
   updateTotal();
 
   function renderAll(rows = []) {
+    clearTimeLedgerMobileElapsedTimer(el);
     contentWrap.innerHTML = "";
     const isMobile = window.matchMedia("(max-width: 48rem)").matches;
 
@@ -6914,7 +7136,12 @@ export function render() {
       const cardsWrap = document.createElement("div");
       cardsWrap.className = "time-ledger-mobile-cards";
       rows.forEach((d) => {
-        const card = createMobileTimeCard(d, handleCardEdit, handleCardDelete);
+        const card = createMobileTimeCard(
+          d,
+          handleCardEdit,
+          handleCardDelete,
+          el,
+        );
         card._onRowDelete = handleCardDelete;
         cardsWrap.appendChild(card);
       });
@@ -6958,6 +7185,7 @@ export function render() {
             { date: dateStr },
             handleCardEdit,
             handleCardDelete,
+            el,
           );
           card._onRowDelete = handleCardDelete;
           cardsWrap.appendChild(card);
@@ -6969,6 +7197,19 @@ export function render() {
       contentWrap.appendChild(toolbar);
       contentWrap.appendChild(dateDivider);
       contentWrap.appendChild(cardsWrap);
+      const refreshMobileElapsed = () => {
+        cardsWrap
+          .querySelectorAll(".time-ledger-mobile-card")
+          .forEach(updateMobileTimeCardLiveFields);
+      };
+      const anyLiveElapsed = rows.some((d) => mobileCardNeedsLiveClock(d));
+      if (anyLiveElapsed) {
+        refreshMobileElapsed();
+        el._timeLedgerMobileElapsedIntervalId = setInterval(
+          refreshMobileElapsed,
+          10000,
+        );
+      }
       updateTotal();
       return;
     }
@@ -7114,9 +7355,23 @@ export function render() {
     addButtonWrap.appendChild(addBtnEl);
     ledgerContainer.appendChild(addButtonWrap);
     contentWrap.appendChild(ledgerContainer);
+
+    const refreshDesktopLiveRows = () => {
+      tbodyEl.querySelectorAll("tr.time-row").forEach((rowEl) => {
+        if (mobileCardNeedsLiveClock(rowEl._rowData)) rowEl._updatePrice?.();
+      });
+    };
+    if (rows.some((d) => mobileCardNeedsLiveClock(d))) {
+      refreshDesktopLiveRows();
+      el._timeLedgerMobileElapsedIntervalId = setInterval(
+        refreshDesktopLiveRows,
+        10000,
+      );
+    }
   }
 
   function renderByProductivity(rows = []) {
+    clearTimeLedgerMobileElapsedTimer(el);
     contentWrap.innerHTML = "";
     const type = filterType;
     const y = filterYear;
@@ -7268,6 +7523,18 @@ export function render() {
         ),
       );
     });
+    const refreshProductivityLiveRows = () => {
+      contentWrap.querySelectorAll("tr.time-row").forEach((rowEl) => {
+        if (mobileCardNeedsLiveClock(rowEl._rowData)) rowEl._updatePrice?.();
+      });
+    };
+    if (rows.some((d) => mobileCardNeedsLiveClock(d))) {
+      refreshProductivityLiveRows();
+      el._timeLedgerMobileElapsedIntervalId = setInterval(
+        refreshProductivityLiveRows,
+        10000,
+      );
+    }
     updateTotal();
   }
 
@@ -7327,6 +7594,7 @@ export function render() {
   }
 
   function renderImprove(rows = []) {
+    clearTimeLedgerMobileElapsedTimer(el);
     contentWrap.innerHTML = "";
     const type = filterType;
     const y = filterYear;
@@ -7713,6 +7981,7 @@ export function render() {
   }
 
   function renderAudit(rows = []) {
+    clearTimeLedgerMobileElapsedTimer(el);
     contentWrap.innerHTML = "";
     const type = filterType;
     const y = filterYear;
@@ -8289,6 +8558,7 @@ export function render() {
   }
 
   function renderDashboard(rows = []) {
+    clearTimeLedgerMobileElapsedTimer(el);
     contentWrap.innerHTML = "";
     const dash = document.createElement("div");
     dash.className = "time-dashboard-view";
@@ -9306,6 +9576,7 @@ export function render() {
     if (view === "all") {
       renderAll(rowsToUse);
     } else if (view === "blank") {
+      clearTimeLedgerMobileElapsedTimer(el);
       contentWrap.innerHTML = "";
     } else if (view === "audit") {
       renderAudit(getFilteredRows(cachedRows));

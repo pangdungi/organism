@@ -3757,6 +3757,27 @@ body {
     color: var(--text-muted);
     flex-shrink: 0;
   }
+  .time-mobile-card-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.12rem;
+    flex-shrink: 0;
+    text-align: right;
+  }
+  .time-mobile-card-price {
+    font-family: var(--font-mono);
+    font-weight: 300;
+    font-size: 0.7rem;
+    color: #555;
+    line-height: 1.2;
+  }
+  .time-mobile-card-price.is-negative {
+    color: #1a73e8;
+  }
+  .time-mobile-card-price.is-positive {
+    color: #c00;
+  }
   .time-mobile-card-time {
     font-family: var(--font-mono);
     font-weight: 300;
