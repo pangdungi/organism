@@ -1,10 +1,35 @@
 import "./main.css";
 import { showOnly } from "./pages.js";
-import { login, signOut, changePassword, resetPasswordRequest, updatePasswordForRecovery } from "./auth.js";
+import {
+  login,
+  signUp,
+  signOut,
+  changePassword,
+  resetPasswordRequest,
+  updatePasswordForRecovery,
+} from "./auth.js";
 import { mountApp } from "./App.js";
 import { supabase } from "./supabase.js";
 import { applyAppFont } from "./views/Idea.js";
 import { applyTimeCategoryColors, applyTaskCategoryColors } from "./utils/todoSettings.js";
+import { showToast } from "./utils/showToast.js";
+
+function setAuthGatePanel(mode) {
+  const signupEl = document.getElementById("auth-panel-signup");
+  const loginEl = document.getElementById("auth-panel-login");
+  if (!signupEl || !loginEl) return;
+  const forgot = document.getElementById("forgot-pw-form");
+  const change = document.getElementById("change-pw-form");
+  if (mode === "signup") {
+    signupEl.style.display = "";
+    loginEl.style.display = "none";
+    if (forgot) forgot.style.display = "none";
+    if (change) change.style.display = "none";
+  } else {
+    signupEl.style.display = "none";
+    loginEl.style.display = "";
+  }
+}
 
 function init() {
   applyAppFont();
@@ -58,6 +83,9 @@ function init() {
   })();
 
   document.getElementById("btn-do-login")?.addEventListener("click", doLogin);
+  document.getElementById("btn-do-signup")?.addEventListener("click", doSignUp);
+  document.getElementById("btn-go-login")?.addEventListener("click", () => setAuthGatePanel("login"));
+  document.getElementById("btn-go-signup")?.addEventListener("click", () => setAuthGatePanel("signup"));
   document.getElementById("btn-show-change-pw")?.addEventListener("click", () => {
     document.getElementById("forgot-pw-form").style.display = "none";
     document.getElementById("change-pw-form").style.display = "block";
@@ -85,6 +113,7 @@ function init() {
     if (event === "SIGNED_OUT") {
       document.getElementById("app-screen").innerHTML = "";
       showOnly("login");
+      setAuthGatePanel("signup");
     }
   });
 
@@ -92,6 +121,14 @@ function init() {
   document.getElementById("login-show-pw")?.addEventListener("change", (e) => {
     const pw = document.getElementById("login-pw");
     if (pw) pw.type = e.target.checked ? "text" : "password";
+  });
+
+  document.getElementById("signup-show-pw")?.addEventListener("change", (e) => {
+    const type = e.target.checked ? "text" : "password";
+    ["signup-pw", "signup-pw-confirm"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.type = type;
+    });
   });
 
   // 비밀번호 변경 폼 비밀번호 보기
@@ -148,6 +185,7 @@ function init() {
       }
     }
     showOnly("login");
+    setAuthGatePanel("signup");
   }
   showInitialPage();
 }
@@ -160,8 +198,41 @@ async function doLogin() {
     showOnly("signin");
     mountApp(document.getElementById("app-screen"));
   } else {
-    alert(result.msg);
+    showToast(result.msg);
   }
+}
+
+async function doSignUp() {
+  const email = document.getElementById("signup-email")?.value?.trim() || "";
+  const pw = document.getElementById("signup-pw")?.value || "";
+  const confirm = document.getElementById("signup-pw-confirm")?.value || "";
+  if (!email) {
+    showToast("이메일을 입력하세요.");
+    return;
+  }
+  if (pw !== confirm) {
+    showToast("비밀번호가 서로 달라요.");
+    return;
+  }
+  const result = await signUp(email, pw);
+  if (!result.ok) {
+    showToast(result.msg);
+    return;
+  }
+  // 이메일 확인(Confirm email)이 켜져 있으면 signUp 직후 session 은 null → 메일 안내
+  const session = result.data?.session;
+  if (session) {
+    showOnly("signin");
+    mountApp(document.getElementById("app-screen"));
+    return;
+  }
+  showToast(
+    "가입 확인 메일을 보냈어요.",
+    "메일의 링크를 눌러 인증한 뒤 아래에서 로그인해 주세요.",
+  );
+  setAuthGatePanel("login");
+  const loginId = document.getElementById("login-id");
+  if (loginId) loginId.value = email;
 }
 
 async function doChangePassword() {
@@ -171,10 +242,11 @@ async function doChangePassword() {
   const result = await changePassword({ email, currentPassword: current, newPassword: newPw });
   if (result.ok) {
     document.getElementById("change-pw-form").style.display = "none";
-    alert("비밀번호 변경됐어. 다시 로그인해 주세요.");
+    showToast("비밀번호 변경됐어. 다시 로그인해 주세요.");
     showOnly("login");
+    setAuthGatePanel("login");
   } else {
-    alert(result.msg);
+    showToast(result.msg);
   }
 }
 
@@ -184,9 +256,9 @@ async function doForgotPassword() {
   if (result.ok) {
     document.getElementById("forgot-pw-form").style.display = "none";
     document.getElementById("forgot-pw-email").value = "";
-    alert("비밀번호 재설정 메일을 보냈어요. 이메일을 확인해 주세요.");
+    showToast("비밀번호 재설정 메일을 보냈어요.", "이메일을 확인해 주세요.");
   } else {
-    alert(result.msg);
+    showToast(result.msg);
   }
 }
 
@@ -194,15 +266,16 @@ async function doResetPassword() {
   const newPw = document.getElementById("reset-pw-new")?.value || "";
   const confirm = document.getElementById("reset-pw-confirm")?.value || "";
   if (newPw !== confirm) {
-    alert("새 비밀번호가 일치하지 않아요.");
+    showToast("새 비밀번호가 일치하지 않아요.");
     return;
   }
   const result = await updatePasswordForRecovery(newPw);
   if (result.ok) {
-    alert("비밀번호가 변경됐어요. 새 비밀번호로 로그인해 주세요.");
+    showToast("비밀번호가 변경됐어요.", "새 비밀번호로 로그인해 주세요.");
     showOnly("login");
+    setAuthGatePanel("login");
   } else {
-    alert(result.msg);
+    showToast(result.msg);
   }
 }
 

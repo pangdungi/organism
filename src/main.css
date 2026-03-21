@@ -836,6 +836,16 @@ body {
   color: rgba(255, 255, 255, 0.22);
 }
 
+.login-page--gate .login-auth-switch {
+  margin: 1.25rem 0 0;
+  text-align: center;
+}
+
+.login-page--gate .login-auth-switch--tight {
+  margin: 0 0 0.75rem;
+  text-align: center;
+}
+
 /* CTA: 카드 톤 유지, 얇은 유리감(순백 버튼 지양) */
 .login-page--gate .login-btn-cta {
   color: rgba(255, 255, 255, 0.94) !important;
@@ -2672,6 +2682,19 @@ body {
   .app-main:has(.idea-view) .idea-view {
     padding: 0.875rem 0 1rem !important;
     box-sizing: border-box;
+  }
+
+  /* 모바일: 나의 계정 — 구독 위젯 */
+  .app-main:has(.idea-view) .idea-widget-subscription {
+    grid-column: 1 / -1;
+    padding-top: 0.25rem;
+  }
+  .app-main:has(.idea-view) .idea-subscription-pass {
+    margin: 0.75rem 0 0;
+    font-size: 0.9375rem;
+    line-height: 1.45;
+    color: var(--text-ink);
+    opacity: 0.92;
   }
 
   /* 모바일: 근무기록 트래커 테이블 줄바꿈 없이 가로 스크롤, 스크롤바 숨김 */
@@ -22705,6 +22728,13 @@ body.kpi-resizing {
 .idea-widget-basic-settings {
   border-bottom: 0.09375rem solid rgba(220, 220, 218, 0.5);
   padding-bottom: 2rem;
+}
+
+/* 나의 계정 — 구독 위젯: 기본·시급과 동일 풀너비 (신규 블록만 추가) */
+@media (min-width: 48.0625rem) {
+  .idea-widget-subscription {
+    grid-column: 1 / -1;
+  }
 }
 
 /* 나의 계정 위젯: 그림자 제거 */

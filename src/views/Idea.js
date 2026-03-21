@@ -23,6 +23,27 @@ function formatPrice(amount) {
   return new Intl.NumberFormat("ko-KR").format(Math.round(amount)) + " 원";
 }
 
+function formatDateKo(iso) {
+  if (!iso) return "—";
+  try {
+    return new Intl.DateTimeFormat("ko-KR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }).format(new Date(iso));
+  } catch {
+    return "—";
+  }
+}
+
+/** signup_at 기준 N일 후 (DB interval '365 days' 와 동일하게 ms로 가산) */
+function addDaysFromIso(iso, days) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
+  return d;
+}
+
 export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content idea-view";
@@ -63,12 +84,54 @@ export function render() {
     signOut();
   });
 
+  // ----- 구독 (로그아웃 아래 구분선 다음 · 시급 위젯 위) -----
+  const subscriptionWidget = document.createElement("div");
+  subscriptionWidget.className =
+    "time-dashboard-widget idea-widget idea-widget-subscription";
+  subscriptionWidget.innerHTML = `
+    <div class="time-dashboard-widget-title">구독</div>
+    <div class="idea-subscription-body">
+      <div class="idea-basic-row idea-subscription-row">
+        <span class="idea-form-label">구독상태</span>
+        <span class="idea-user-id-value idea-subscription-status" id="idea-subscription-status">—</span>
+      </div>
+      <p class="idea-subscription-pass" id="idea-subscription-pass" hidden></p>
+    </div>
+  `;
+  grid.appendChild(subscriptionWidget);
+
   if (typeof supabase !== "undefined" && supabase?.auth) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       const idEl = document.getElementById("idea-user-id");
       if (idEl && session?.user?.email) {
         idEl.textContent = session.user.email;
       }
+      const statusEl = document.getElementById("idea-subscription-status");
+      const passEl = document.getElementById("idea-subscription-pass");
+      if (!session?.user?.id || !statusEl || !passEl) return;
+      supabase
+        .from("user_subscriptions")
+        .select("subscription_status, signup_at")
+        .eq("user_id", session.user.id)
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (error || !data) {
+            statusEl.textContent = "—";
+            passEl.hidden = true;
+            return;
+          }
+          if (data.subscription_status === "active") {
+            statusEl.textContent = "구독중";
+            const start = formatDateKo(data.signup_at);
+            const endD = addDaysFromIso(data.signup_at, 365);
+            const end = endD ? formatDateKo(endD.toISOString()) : "—";
+            passEl.textContent = `1년 이용권 (${start} ~ ${end})`;
+            passEl.hidden = false;
+          } else {
+            statusEl.textContent = "작업중";
+            passEl.hidden = true;
+          }
+        });
     });
   }
 
