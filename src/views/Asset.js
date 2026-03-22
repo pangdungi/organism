@@ -15,6 +15,11 @@ import {
   attachAssetStockCategoryOptionsSaveListener,
   hydrateAssetStockCategoryOptionsFromCloud,
 } from "../utils/assetStockCategorySupabase.js";
+import {
+  PLAN_MONTHLY_GOALS_STORAGE_KEY,
+  attachAssetPlanMonthlyGoalsSaveListener,
+  hydrateAssetPlanMonthlyGoalsFromCloud,
+} from "../utils/assetPlanMonthlyGoalsSupabase.js";
 
 const DEBT_ROWS_KEY = "asset_debt_rows";
 const ASSET_ROWS_KEY = "asset_asset_rows";
@@ -5305,6 +5310,54 @@ function createPlanExpenseCategoryDropdown(initialValue, onSelect) {
   return { wrap, getValue: () => display.textContent === "선택" ? "" : display.textContent };
 }
 
+function planTableTypeToStorageSection(tableType) {
+  if (tableType === "investSavings") return "invest_savings";
+  return tableType;
+}
+
+function savePlanMonthlyGoalsFromPlanView(planRoot) {
+  if (!planRoot?.classList?.contains("asset-plan-view")) return;
+  const out = [];
+  planRoot.querySelectorAll(".asset-plan-section").forEach((section) => {
+    const tt = section.dataset.planTableType;
+    if (!tt) return;
+    const sectionKey = planTableTypeToStorageSection(tt);
+    const tbody = section.querySelector("tbody");
+    if (!tbody) return;
+    tbody.querySelectorAll("tr.asset-plan-row").forEach((tr, idx) => {
+      const cat = (tr.dataset.planCategory || "").trim();
+      const cls = (tr.dataset.planClassification || "").trim();
+      const goalInput = tr.querySelector("td:nth-child(2) input");
+      const monthlyGoalStr = (goalInput?.value || "").trim();
+      if (!cls) return;
+      out.push({
+        section: sectionKey,
+        category: cat,
+        classification: cls,
+        monthlyGoalStr,
+        sortOrder: idx,
+      });
+    });
+  });
+  try {
+    localStorage.setItem(PLAN_MONTHLY_GOALS_STORAGE_KEY, JSON.stringify(out));
+  } catch (_) {}
+  window.dispatchEvent(new CustomEvent("asset-plan-monthly-goals-saved"));
+}
+
+function loadSavedPlanRowsForTableType(tableType) {
+  const key = planTableTypeToStorageSection(tableType);
+  try {
+    const raw = localStorage.getItem(PLAN_MONTHLY_GOALS_STORAGE_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr.filter((r) => r.section === key).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  } catch (_) {
+    return [];
+  }
+}
+
 function renderPlanView() {
   const wrap = document.createElement("div");
   wrap.className = "asset-plan-view";
@@ -5312,6 +5365,7 @@ function renderPlanView() {
   const createTable = (title, col1Label, col4Label, col4Calculated, goalType, tableType) => {
     const section = document.createElement("div");
     section.className = "asset-plan-section";
+    section.dataset.planTableType = tableType;
     const h3 = document.createElement("h3");
     h3.className = "asset-plan-section-title";
     h3.textContent = title;
@@ -5363,49 +5417,74 @@ function renderPlanView() {
       }
     }
 
-    addBtn.addEventListener("click", () => {
+    function persistPlanGoals() {
+      savePlanMonthlyGoalsFromPlanView(wrap);
+    }
+
+    function appendPlanRow(savedRow) {
       const tr = document.createElement("tr");
       tr.className = "asset-plan-row";
+      const savedCls = (savedRow?.classification || "").trim();
+      const savedCat = (savedRow?.category || "").trim();
+      if (savedCls) tr.dataset.planClassification = savedCls;
+      if (savedCat) tr.dataset.planCategory = savedCat;
+
       const deleteBtn = document.createElement("button");
       deleteBtn.type = "button";
       deleteBtn.className = "asset-plan-btn-delete";
       deleteBtn.textContent = "삭제";
-      deleteBtn.addEventListener("click", () => tr.remove());
+      deleteBtn.addEventListener("click", () => {
+        tr.remove();
+        persistPlanGoals();
+      });
       const col4Content = col4Calculated
         ? `<span class="asset-plan-col4-display">-</span>`
         : `<input type="text" class="asset-plan-input" placeholder="" />`;
       const col4Class = col4Calculated ? "asset-plan-cell-col4-calc" : "";
-      const col1Content = (tableType === "income" || tableType === "investSavings" || tableType === "expense")
-        ? `<td class="asset-plan-cell-category"></td>`
-        : `<td><input type="text" class="asset-plan-input" placeholder="" /></td>`;
-      const col3Content = (tableType === "income" || tableType === "investSavings" || tableType === "expense")
-        ? `<td class="asset-plan-cell-total"><span class="asset-plan-total-display">-</span></td>`
-        : `<td><input type="text" class="asset-plan-input asset-plan-input-amount" inputmode="numeric" placeholder="" /></td>`;
+      const col1Content =
+        tableType === "income" || tableType === "investSavings" || tableType === "expense"
+          ? `<td class="asset-plan-cell-category"></td>`
+          : `<td><input type="text" class="asset-plan-input" placeholder="" /></td>`;
+      const col3Content =
+        tableType === "income" || tableType === "investSavings" || tableType === "expense"
+          ? `<td class="asset-plan-cell-total"><span class="asset-plan-total-display">-</span></td>`
+          : `<td><input type="text" class="asset-plan-input asset-plan-input-amount" inputmode="numeric" placeholder="" /></td>`;
       tr.innerHTML = `${col1Content}<td><input type="text" class="asset-plan-input asset-plan-input-amount" inputmode="numeric" placeholder="" /></td>${col3Content}<td class="${col4Class}">${col4Content}</td><td class="asset-plan-cell-goal"><span class="asset-plan-goal-display">-</span></td><td class="asset-plan-cell-delete"><div class="asset-plan-delete-wrap"></div></td>`;
       tr.querySelector(".asset-plan-delete-wrap").appendChild(deleteBtn);
       const goalInput = tr.querySelector("td:nth-child(2) input");
       const totalInput = tr.querySelector("td:nth-child(3) input");
       const totalDisplay = tr.querySelector(".asset-plan-total-display");
       const categoryCell = tr.querySelector(".asset-plan-cell-category");
+      if (savedRow?.monthlyGoalStr) goalInput.value = savedRow.monthlyGoalStr;
+
       if (tableType === "income" && categoryCell) {
-        const dropdown = createPlanIncomeCategoryDropdown("", (classification) => {
+        const dropdown = createPlanIncomeCategoryDropdown(savedCls || "", (classification) => {
+          tr.dataset.planCategory = "수입";
+          tr.dataset.planClassification = classification;
           const sum = getExpenseSumByIncomeClassification(classification);
           if (totalDisplay) totalDisplay.textContent = sum > 0 ? formatNum(sum) : "-";
           updateCol4AndGoal(tr);
+          persistPlanGoals();
         });
         categoryCell.appendChild(dropdown.wrap);
       } else if (tableType === "investSavings" && categoryCell) {
-        const dropdown = createPlanInvestSavingsCategoryDropdown("", (category, classification) => {
+        const dropdown = createPlanInvestSavingsCategoryDropdown(savedCls || "", (category, classification) => {
+          tr.dataset.planCategory = category;
+          tr.dataset.planClassification = classification;
           const sum = getExpenseSumByInvestSavingsClassification(category, classification);
           if (totalDisplay) totalDisplay.textContent = sum > 0 ? formatNum(sum) : "-";
           updateCol4AndGoal(tr);
+          persistPlanGoals();
         });
         categoryCell.appendChild(dropdown.wrap);
       } else if (tableType === "expense" && categoryCell) {
-        const dropdown = createPlanExpenseCategoryDropdown("", (category, classification) => {
+        const dropdown = createPlanExpenseCategoryDropdown(savedCls || "", (category, classification) => {
+          tr.dataset.planCategory = category;
+          tr.dataset.planClassification = classification;
           const sum = getExpenseSumByExpenseClassification(category, classification);
           if (totalDisplay) totalDisplay.textContent = sum > 0 ? formatNum(sum) : "-";
           updateCol4AndGoal(tr);
+          persistPlanGoals();
         });
         categoryCell.appendChild(dropdown.wrap);
       }
@@ -5414,17 +5493,18 @@ function renderPlanView() {
           if (e.target.closest(".asset-plan-category-display")) return;
         });
       }
-      const formatAmount = (input) => {
+      const formatAmount = (input, alsoPersist) => {
         input.addEventListener("blur", () => {
           const formatted = formatNum(input.value);
           if (formatted !== "") input.value = formatted;
           updateCol4AndGoal(tr);
+          if (alsoPersist) persistPlanGoals();
         });
         input.addEventListener("keydown", (e) => e.key === "Enter" && input.blur());
       };
-      formatAmount(goalInput);
+      formatAmount(goalInput, true);
       if (totalInput) {
-        formatAmount(totalInput);
+        formatAmount(totalInput, false);
         const onInput = () => updateCol4AndGoal(tr);
         goalInput.addEventListener("input", onInput);
         totalInput.addEventListener("input", onInput);
@@ -5432,7 +5512,19 @@ function renderPlanView() {
         goalInput.addEventListener("input", () => updateCol4AndGoal(tr));
       }
       tbody.appendChild(tr);
-    });
+      if (savedCls && totalDisplay && (tableType === "income" || tableType === "investSavings" || tableType === "expense")) {
+        let sum = 0;
+        if (tableType === "income") sum = getExpenseSumByIncomeClassification(savedCls);
+        else if (tableType === "investSavings" && savedCat)
+          sum = getExpenseSumByInvestSavingsClassification(savedCat, savedCls);
+        else if (tableType === "expense" && savedCat) sum = getExpenseSumByExpenseClassification(savedCat, savedCls);
+        totalDisplay.textContent = sum > 0 ? formatNum(sum) : "-";
+      }
+      updateCol4AndGoal(tr);
+    }
+
+    loadSavedPlanRowsForTableType(tableType).forEach((r) => appendPlanRow(r));
+    addBtn.addEventListener("click", () => appendPlanRow(null));
 
     table.appendChild(thead);
     table.appendChild(tbody);
@@ -6047,6 +6139,8 @@ export function render() {
         saveExpenseRows(rows);
       }
     }
+    const prevPlan = contentWrap.querySelector(".asset-plan-view");
+    if (prevPlan) savePlanMonthlyGoalsFromPlanView(prevPlan);
     contentWrap.innerHTML = "";
     if (view === "networth") {
       contentWrap.appendChild(renderNetworthView());
@@ -6078,6 +6172,7 @@ export function render() {
   attachAssetExpenseTransactionsSaveListener();
   attachAssetNetWorthGoalSaveListener();
   attachAssetStockCategoryOptionsSaveListener();
+  attachAssetPlanMonthlyGoalsSaveListener();
 
   renderView("expense");
 
@@ -6086,10 +6181,11 @@ export function render() {
   void (async () => {
     try {
       await hydrateAssetExpensePrefsFromCloud();
-      const [expenseDataReplaced, networthDataReplaced, stockCatReplaced] = await Promise.all([
+      const [expenseDataReplaced, networthDataReplaced, stockCatReplaced, planGoalsReplaced] = await Promise.all([
         hydrateAssetExpenseTransactionsFromCloud(),
         hydrateAssetNetWorthGoalFromCloud(),
         hydrateAssetStockCategoryOptionsFromCloud(),
+        hydrateAssetPlanMonthlyGoalsFromCloud(),
       ]);
       if (expenseDataReplaced) {
         const activeTab = viewTabs.querySelector(".asset-view-tab.active");
@@ -6101,6 +6197,12 @@ export function render() {
         const activeTab = viewTabs.querySelector(".asset-view-tab.active");
         if (activeTab?.dataset?.view === "networth") {
           renderView("networth");
+        }
+      }
+      if (planGoalsReplaced) {
+        const activeTab = viewTabs.querySelector(".asset-view-tab.active");
+        if (activeTab?.dataset?.view === "plan") {
+          renderView("plan");
         }
       }
     } catch (e) {
