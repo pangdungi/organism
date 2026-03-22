@@ -3,7 +3,15 @@
  * KPI 할 일(꿈/부수입/행복/건강) 연동: 마감일 없음, 꿈 이름 자동, 분류=KPI이름
  */
 
-import { getKpiTodosAsTasks, syncKpiTodoCompleted, removeAllCompletedKpiTodos, removeKpiTodo, updateKpiTodo, moveKpiTodoToSection } from "../utils/kpiTodoSync.js";
+import {
+  getKpiTodosAsTasks,
+  getKpiDisplayNameForTodo,
+  syncKpiTodoCompleted,
+  removeAllCompletedKpiTodos,
+  removeKpiTodo,
+  updateKpiTodo,
+  moveKpiTodoToSection,
+} from "../utils/kpiTodoSync.js";
 import { createTodoSettingsModal } from "../utils/todoSettingsModal.js";
 import {
   getTodoSettings,
@@ -1933,9 +1941,15 @@ function createTaskRow(taskData = {}, options = {}) {
   });
   delTd.appendChild(delBtn);
 
+  const kpiColText =
+    isKpiTodo && kpiTodoId && storageKey
+      ? (classification || "").trim() || getKpiDisplayNameForTodo(kpiTodoId, storageKey)
+      : isKpiTodo && classification
+        ? classification
+        : "";
   const kpiTd = document.createElement("td");
   kpiTd.className = "todo-cell-kpi";
-  kpiTd.textContent = isKpiTodo && classification ? classification : "";
+  kpiTd.textContent = kpiColText;
 
   tr.appendChild(doneTd);
   tr.appendChild(nameTd);
@@ -1966,7 +1980,7 @@ function createTaskRow(taskData = {}, options = {}) {
       lastColTd.textContent = sectionLabel;
       lastColTd.classList.add("todo-cell-category-readonly");
     } else if (isKpiTodo) {
-      lastColTd.textContent = classification;
+      lastColTd.textContent = kpiColText;
       lastColTd.classList.add("todo-cell-category-readonly");
     } else {
       const categoryDropdown = createCategoryDropdown(classification, () => {});
@@ -2094,6 +2108,7 @@ function createTaskCard(taskData, options = {}) {
     isKpiTodo = false,
     kpiTodoId = "",
     storageKey = "",
+    kpiId = "",
     sourceSectionId = "",
   } = taskData;
   const storageSectionId =
@@ -2109,7 +2124,10 @@ function createTaskCard(taskData, options = {}) {
     enableDragOverdueToCalendar = false,
   } = options;
   const taskId = getTaskId(taskData);
-  const kpiName = isKpiTodo && classification ? classification : "";
+  const kpiName =
+    isKpiTodo && kpiTodoId && storageKey
+      ? (classification || "").trim() || getKpiDisplayNameForTodo(kpiTodoId, storageKey)
+      : "";
   const hasDueDate = (dueDate || startDate || "").trim() !== "";
 
   const card = document.createElement("div");
@@ -2128,6 +2146,8 @@ function createTaskCard(taskData, options = {}) {
     card.dataset.isKpiTodo = "true";
     card.dataset.kpiTodoId = kpiTodoId;
     card.dataset.kpiStorageKey = storageKey;
+    if (kpiId) card.dataset.kpiId = String(kpiId);
+    if (kpiName) card.dataset.kpiLabel = kpiName;
   }
 
   const doneCheck = document.createElement("input");
@@ -2304,9 +2324,16 @@ function createTaskCard(taskData, options = {}) {
     card.dataset.reminderTime = data.reminderTime || "";
     card.dataset.eisenhower = data.eisenhower || "";
     nameEl.textContent = n;
-    const kpiLabel = data.isKpiTodo && data.classification ? data.classification : "";
+    const isKpiCard = card.dataset.isKpiTodo === "true";
+    const kid = card.dataset.kpiTodoId || "";
+    const sk = card.dataset.kpiStorageKey || "";
+    let kpiLabel = "";
+    if (isKpiCard && kid && sk) {
+      kpiLabel = (data.classification || "").trim() || getKpiDisplayNameForTodo(kid, sk);
+    }
     kpiEl.textContent = kpiLabel;
     kpiEl.hidden = !kpiLabel;
+    if (kpiLabel) card.dataset.kpiLabel = kpiLabel;
     datesEl.textContent = formatCardDates(data);
     const priorityText = data.eisenhower ? (EISENHOWER_LABELS[data.eisenhower] || data.eisenhower) : "";
     priorityEl.textContent = priorityText;
@@ -2345,6 +2372,12 @@ function createTaskCard(taskData, options = {}) {
         eisenhower: card.dataset.eisenhower,
         sectionId: storageSectionId,
         sectionLabel,
+        isKpiTodo: card.dataset.isKpiTodo === "true",
+        classification: card.dataset.kpiLabel || "",
+        kpiTodoId: card.dataset.kpiTodoId || "",
+        storageKey: card.dataset.kpiStorageKey || "",
+        kpiId: card.dataset.kpiId || "",
+        itemType: card.dataset.itemType || "todo",
       },
       sectionId: storageSectionId,
       sectionLabel,
@@ -2687,6 +2720,14 @@ function collectTasksFromDOM(sectionsEl) {
       cardsWrap.querySelectorAll(".todo-card").forEach((card) => {
         const rowSectionId = card.dataset.sectionId || secId;
         const sectionLabel = getSections().find((s) => s.id === rowSectionId)?.label || "";
+        const isKpiCard = card.dataset.isKpiTodo === "true";
+        const kpiTid = card.dataset.kpiTodoId || "";
+        const kpiSk = card.dataset.kpiStorageKey || "";
+        let classificationVal = secId;
+        if (isKpiCard && kpiTid && kpiSk) {
+          classificationVal =
+            (card.dataset.kpiLabel || "").trim() || getKpiDisplayNameForTodo(kpiTid, kpiSk);
+        }
         const task = {
           taskId: card.dataset.taskId || "",
           name: card.dataset.name || "",
@@ -2695,17 +2736,17 @@ function collectTasksFromDOM(sectionsEl) {
           startTime: "",
           endTime: "",
           eisenhower: card.dataset.eisenhower || "",
-          classification: secId,
+          classification: classificationVal,
           sectionId: rowSectionId,
           sectionLabel,
           done: card.dataset.done === "true",
           reminderDate: card.dataset.reminderDate || "",
           reminderTime: card.dataset.reminderTime || "",
         };
-        if (card.dataset.isKpiTodo === "true") {
+        if (isKpiCard) {
           task.isKpiTodo = true;
-          task.kpiTodoId = card.dataset.kpiTodoId || "";
-          task.storageKey = card.dataset.kpiStorageKey || "";
+          task.kpiTodoId = kpiTid;
+          task.storageKey = kpiSk;
         }
         tasks.push(task);
       });

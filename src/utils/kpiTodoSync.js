@@ -177,6 +177,27 @@ export function getKpiTodosAsTasks() {
 }
 
 /**
+ * KPI 할일 id로 연결된 KPI 표시 이름 조회 (할일 카드·모달에서 classification 유실 시 보강)
+ * @param {string|number} kpiTodoId
+ * @param {string} storageKey
+ * @returns {string}
+ */
+export function getKpiDisplayNameForTodo(kpiTodoId, storageKey) {
+  if (kpiTodoId == null || String(kpiTodoId).trim() === "" || !storageKey) return "";
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return "";
+    const data = JSON.parse(raw);
+    const todo = (data.kpiTodos || []).find((t) => String(t.id) === String(kpiTodoId));
+    if (!todo) return "";
+    const kpi = (data.kpis || []).find((k) => k.id === todo.kpiId);
+    const name = (kpi?.name || "").trim();
+    return name || "(KPI)";
+  } catch (_) {}
+  return "";
+}
+
+/**
  * KPI 할일 텍스트/마감일 수정 (캘린더 할일목록에서 수정 시 KPI에 반영)
  * @param {string} kpiTodoId
  * @param {string} storageKey

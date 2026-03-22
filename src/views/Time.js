@@ -30,6 +30,24 @@ import {
 import { getCustomSections, getCategoryColorForReport } from "../utils/todoSettings.js";
 import { showToast } from "../utils/showToast.js";
 import { USER_HOURLY_RATE_KEY } from "../utils/userHourlySync.js";
+import * as TTC from "../utils/timeTaskOptionsConstants.js";
+import {
+  getFullTaskOptions,
+  getTaskOptions,
+  addTaskOption,
+  addTaskOptionFull,
+  updateTaskOption,
+  removeTaskOption,
+  getTaskOptionByName,
+  migrateTimeLogRowsTaskIds,
+  isUuid,
+} from "../utils/timeTaskOptionsModel.js";
+import {
+  hydrateTimeLedgerTasksFromCloud,
+  attachTimeLedgerTasksSaveListener,
+} from "../utils/timeLedgerTasksSupabase.js";
+
+export { getTaskOptionByName };
 
 /** 오딧 3. 우선순위 영역: 해당 날짜 할일 목록 로드 (Calendar getTasksForDate와 동일 데이터) */
 const SECTION_TASKS_KEY_AUDIT = "todo-section-tasks";
@@ -511,172 +529,10 @@ const PRODUCTIVITY_OPTIONS = [
   { value: "other", label: "그 외", color: "prod-green" },
 ];
 
-const TASK_OPTIONS_KEY = "time_task_options";
 const BUDGET_GOALS_KEY = "time_daily_budget_goals";
 const BUDGET_EXCLUDED_KEY = "time_budget_excluded";
 const TIME_ROWS_KEY = "time_task_log_rows";
 const TIME_IMPROVE_FOCUS_NOTES_KEY = "time_improve_focus_notes";
-const FIXED_OTHER_TASKS = [
-  { name: "수면하기", category: "sleep", productivity: "other" },
-  { name: "근무하기", category: "work", productivity: "other" },
-];
-/** 생산적 고정 과제 (과제 설정에서 수정·삭제 불가) */
-const FIXED_PRODUCTIVE_TASKS = [
-  {
-    name: "감정적이기(긍정적)",
-    category: "happiness",
-    productivity: "productive",
-  },
-  {
-    name: "생산적 소비",
-    category: "sideincome",
-    productivity: "productive",
-  },
-  /* 생산적 → 부수입 */
-  { name: "돈 관리", category: "sideincome", productivity: "productive" },
-  { name: "경제 공부", category: "sideincome", productivity: "productive" },
-  { name: "경력 개발", category: "sideincome", productivity: "productive" },
-  /* 생산적 → 꿈 */
-  { name: "아이디어 작업하기", category: "dream", productivity: "productive" },
-  { name: "독서하기", category: "dream", productivity: "productive" },
-  { name: "독서 노트", category: "dream", productivity: "productive" },
-  { name: "시간기록", category: "dream", productivity: "productive" },
-  { name: "시간기록 점검", category: "dream", productivity: "productive" },
-  /* 생산적 → 건강 */
-  { name: "건강 검진", category: "health", productivity: "productive" },
-  { name: "병원 방문", category: "health", productivity: "productive" },
-  { name: "마사지", category: "health", productivity: "productive" },
-  { name: "스킨케어", category: "health", productivity: "productive" },
-  {
-    name: "낮잠 (30분 이상은 수면으로 기록)",
-    category: "health",
-    productivity: "productive",
-  },
-  { name: "구강케어", category: "health", productivity: "productive" },
-  { name: "샤워 및 씻기", category: "health", productivity: "productive" },
-  { name: "바디케어", category: "health", productivity: "productive" },
-  /* 생산적 → 행복 */
-  { name: "감정 기록하기", category: "happiness", productivity: "productive" },
-  {
-    name: "의미 있는 영상 시청",
-    category: "happiness",
-    productivity: "productive",
-  },
-  { name: "의미 있는 대화", category: "happiness", productivity: "productive" },
-  {
-    name: "의미 있는 모임 참석",
-    category: "happiness",
-    productivity: "productive",
-  },
-  {
-    name: "의식적 콘텐츠 소비",
-    category: "happiness",
-    productivity: "productive",
-  },
-  { name: "음악 듣기", category: "happiness", productivity: "productive" },
-  {
-    name: "잡동사니 일 해결하기",
-    category: "happiness",
-    productivity: "productive",
-  },
-  { name: "커피 마시기", category: "happiness", productivity: "productive" },
-  { name: "덕질하기", category: "happiness", productivity: "productive" },
-  { name: "다이어리 쓰기", category: "happiness", productivity: "productive" },
-  { name: "메모하기", category: "happiness", productivity: "productive" },
-];
-/** 비생산적 > 불행 고정 과제 (과제 설정에서 수정·삭제 불가) */
-const FIXED_NONPRODUCTIVE_TASKS = [
-  {
-    name: "감정적이기(부정적)",
-    category: "unhappiness",
-    productivity: "nonproductive",
-  },
-  {
-    name: "비생산적 소비",
-    category: "moneylosing",
-    productivity: "nonproductive",
-  },
-  {
-    name: "뭐 살지 고민하기",
-    category: "moneylosing",
-    productivity: "nonproductive",
-  },
-  {
-    name: "배달 메뉴 고민하기",
-    category: "moneylosing",
-    productivity: "nonproductive",
-  },
-  {
-    name: "건강하지 않은 식사",
-    category: "unhealthy",
-    productivity: "nonproductive",
-  },
-  {
-    name: "건강하지 않은 식사 준비",
-    category: "unhealthy",
-    productivity: "nonproductive",
-  },
-  {
-    name: "술 마시기",
-    category: "unhealthy",
-    productivity: "nonproductive",
-  },
-  /* 비생산적 → 불행 */
-  {
-    name: "의미 없는 대화 (험담, 불평, 단순 대화)",
-    category: "unhappiness",
-    productivity: "nonproductive",
-  },
-  { name: "논쟁하기", category: "unhappiness", productivity: "nonproductive" },
-  {
-    name: "중요하지 않은 통화",
-    category: "unhappiness",
-    productivity: "nonproductive",
-  },
-  { name: "물건 찾기", category: "unhappiness", productivity: "nonproductive" },
-  /* 비생산적 → 꿈을 방해하는 일 */
-  {
-    name: "무의식적 폰 사용",
-    category: "dreamblocking",
-    productivity: "nonproductive",
-  },
-  {
-    name: "무의식적 검색",
-    category: "dreamblocking",
-    productivity: "nonproductive",
-  },
-  /* 비생산적 → 쾌락충족 */
-  { name: "단순 이동", category: "pleasure", productivity: "nonproductive" },
-  {
-    name: "쇼츠/릴스 피드 보기",
-    category: "pleasure",
-    productivity: "nonproductive",
-  },
-  {
-    name: "무의식적 SNS",
-    category: "pleasure",
-    productivity: "nonproductive",
-  },
-  {
-    name: "알람 끄고 침대에 누워 있기",
-    category: "pleasure",
-    productivity: "nonproductive",
-  },
-  {
-    name: "쾌락성 모임 참석",
-    category: "pleasure",
-    productivity: "nonproductive",
-  },
-  {
-    name: "단순 쾌락형 영상 시청",
-    category: "pleasure",
-    productivity: "nonproductive",
-  },
-];
-/** 구버전 과제명 (목록에서 제거 후 신규 고정 과제로 대체) */
-const REPLACED_TASK_NAMES = ["감정적이기"];
-/** 수정/삭제 불가 과제 (특수 로직 적용) */
-const TASKS_LOCKED_FOR_EDIT = ["낮잠"];
 
 /** 감정적이기 과제 선택 시 감정 드롭다운 필터 */
 const EMOTION_TASK_POSITIVE = "감정적이기(긍정적)";
@@ -717,10 +573,10 @@ const EMOTION_LIST_NEGATIVE = [
 
 function getLockedTaskNames() {
   return new Set([
-    ...FIXED_OTHER_TASKS.map((t) => t.name),
-    ...FIXED_PRODUCTIVE_TASKS.map((t) => t.name),
-    ...FIXED_NONPRODUCTIVE_TASKS.map((t) => t.name),
-    ...TASKS_LOCKED_FOR_EDIT,
+    ...TTC.FIXED_OTHER_TASKS.map((t) => t.name),
+    ...TTC.FIXED_PRODUCTIVE_TASKS.map((t) => t.name),
+    ...TTC.FIXED_NONPRODUCTIVE_TASKS.map((t) => t.name),
+    ...TTC.TASKS_LOCKED_FOR_EDIT,
     ...getKpiSyncedTaskNames(),
   ]);
 }
@@ -728,22 +584,13 @@ function getLockedTaskNames() {
 /** 과제 설정 모달에서 수정/삭제 버튼 숨김 대상 (고정 과제 + KPI 연동) */
 function getLockedForSetupDisplay() {
   return new Set([
-    ...FIXED_OTHER_TASKS.map((t) => t.name),
-    ...FIXED_PRODUCTIVE_TASKS.map((t) => t.name),
-    ...FIXED_NONPRODUCTIVE_TASKS.map((t) => t.name),
-    ...TASKS_LOCKED_FOR_EDIT,
+    ...TTC.FIXED_OTHER_TASKS.map((t) => t.name),
+    ...TTC.FIXED_PRODUCTIVE_TASKS.map((t) => t.name),
+    ...TTC.FIXED_NONPRODUCTIVE_TASKS.map((t) => t.name),
+    ...TTC.TASKS_LOCKED_FOR_EDIT,
     ...getKpiSyncedTaskNames(),
   ]);
 }
-
-const DEFAULT_TASK_OPTIONS = [
-  ...FIXED_OTHER_TASKS,
-  ...FIXED_PRODUCTIVE_TASKS,
-  ...FIXED_NONPRODUCTIVE_TASKS,
-  { name: "전화통화", category: "dream", productivity: "productive" },
-  { name: "영상편집", category: "sideincome", productivity: "productive" },
-  { name: "러닝하기", category: "health", productivity: "productive" },
-];
 
 const PRODUCTIVE_CATEGORIES = [
   { value: "dream", label: "꿈", color: "cat-dream" },
@@ -763,114 +610,6 @@ const NONPRODUCTIVE_CATEGORIES = [
   { value: "unhealthy", label: "비건강", color: "cat-unhealthy" },
   { value: "moneylosing", label: "돈을 잃는 일", color: "cat-moneylosing" },
 ];
-
-function getFullTaskOptions() {
-  let arr = [];
-  try {
-    const raw = localStorage.getItem(TASK_OPTIONS_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        arr = parsed.map((o) =>
-          typeof o === "string"
-            ? { name: o, category: "", productivity: "productive", memo: "" }
-            : {
-                name: o.name || "",
-                category: o.category || "",
-                productivity: o.productivity || "productive",
-                memo: o.memo || "",
-              },
-        );
-      }
-    }
-  } catch (_) {}
-  if (arr.length === 0) return [...DEFAULT_TASK_OPTIONS];
-  const fixedOtherNames = new Set(FIXED_OTHER_TASKS.map((t) => t.name));
-  const fixedProdNames = new Set(FIXED_PRODUCTIVE_TASKS.map((t) => t.name));
-  const fixedNonProdNames = new Set(
-    FIXED_NONPRODUCTIVE_TASKS.map((t) => t.name),
-  );
-  const replacedNames = new Set(REPLACED_TASK_NAMES);
-  const others = arr.filter(
-    (o) =>
-      !fixedOtherNames.has(o.name) &&
-      !fixedProdNames.has(o.name) &&
-      !fixedNonProdNames.has(o.name) &&
-      !replacedNames.has(o.name),
-  );
-  return [
-    ...FIXED_OTHER_TASKS,
-    ...FIXED_PRODUCTIVE_TASKS,
-    ...FIXED_NONPRODUCTIVE_TASKS,
-    ...others,
-  ];
-}
-
-function getTaskOptions() {
-  return getFullTaskOptions().map((o) => o.name);
-}
-
-function addTaskOption(name) {
-  const opts = getFullTaskOptions();
-  const trimmed = (name || "").trim();
-  if (!trimmed || opts.some((o) => o.name === trimmed)) return opts;
-  opts.unshift({ name: trimmed, category: "", productivity: "productive" });
-  try {
-    localStorage.setItem(TASK_OPTIONS_KEY, JSON.stringify(opts));
-  } catch (_) {}
-  return opts;
-}
-
-function addTaskOptionFull(task) {
-  const opts = getFullTaskOptions();
-  const name = (task?.name || "").trim();
-  if (!name || opts.some((o) => o.name === name)) return opts;
-  opts.unshift({
-    name,
-    category: task.category || "",
-    productivity: task.productivity || "productive",
-    memo: task.memo || "",
-  });
-  try {
-    localStorage.setItem(TASK_OPTIONS_KEY, JSON.stringify(opts));
-  } catch (_) {}
-  return opts;
-}
-
-function updateTaskOption(oldName, task) {
-  if (getLockedTaskNames().has(oldName)) return getFullTaskOptions();
-  const opts = getFullTaskOptions();
-  const idx = opts.findIndex((o) => o.name === oldName);
-  if (idx < 0) return opts;
-  const name = (task?.name || "").trim();
-  if (!name) return opts;
-  opts[idx] = {
-    name,
-    category: task.category || "",
-    productivity: task.productivity || "productive",
-    memo: task.memo || "",
-  };
-  if (name !== oldName && opts.some((o, i) => i !== idx && o.name === name)) {
-    opts.splice(idx, 1);
-  }
-  try {
-    localStorage.setItem(TASK_OPTIONS_KEY, JSON.stringify(opts));
-  } catch (_) {}
-  return opts;
-}
-
-function removeTaskOption(name) {
-  if (getLockedTaskNames().has(name)) return getFullTaskOptions();
-  const opts = getFullTaskOptions().filter((o) => o.name !== name);
-  try {
-    localStorage.setItem(TASK_OPTIONS_KEY, JSON.stringify(opts));
-  } catch (_) {}
-  return opts;
-}
-
-export function getTaskOptionByName(name) {
-  return getFullTaskOptions().find((o) => o.name === name) || null;
-}
 
 /** 일간시간예산 목표 시간 저장/불러오기 - { "YYYY-MM-DD": { "과제명": { goalTime: "08:00", scheduledTime: "hh:mm-hh:mm", isInvest: true } } } */
 export function getBudgetGoals(dateStr) {
@@ -3115,10 +2854,12 @@ function collectRowFromTR(tr) {
   const feedbackInput = tr.querySelector(".time-input-feedback");
   const taskName = (taskInput?.value || "").trim();
   const opt = taskName ? getTaskOptionByName(taskName) : null;
+  const tid = (opt?.id || "").trim();
   const startVal = (startInput?.value || "").trim();
   const endVal = (endInput?.value || "").trim();
   return {
     taskName,
+    taskId: isUuid(tid) ? tid : "",
     startTime: startVal ? formatDateTimeInput(startVal) || startVal : "",
     endTime: endVal ? formatDateTimeInput(endVal) || endVal : "",
     timeTracked: timeInput?.value || "",
@@ -3399,6 +3140,9 @@ function createProductivitySection(
 export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content time-ledger-view";
+
+  attachTimeLedgerTasksSaveListener();
+  void hydrateTimeLedgerTasksFromCloud();
 
   const header = document.createElement("div");
   header.className = "time-ledger-header dream-view-header-wrap";
@@ -3846,6 +3590,7 @@ export function render() {
           <div class="time-add-task-categories" data-for="nonproductive" style="display:none"></div>
         </div>
         <button type="button" class="time-add-task-submit">추가</button>
+        <button type="button" class="time-add-task-delete" hidden>과제 삭제</button>
       </div>
     </div>
   `;
@@ -6531,6 +6276,8 @@ export function render() {
     '.time-add-task-categories[data-for="nonproductive"]',
   );
   const addTaskSubmitBtn = addTaskModal.querySelector(".time-add-task-submit");
+  const addTaskModalTitle = addTaskModal.querySelector(".time-task-setup-title");
+  const addTaskDeleteBtn = addTaskModal.querySelector(".time-add-task-delete");
 
   function renderCategoryButtons(container, categories) {
     container.innerHTML = "";
@@ -6555,6 +6302,8 @@ export function render() {
 
   let selectedSubcat = "";
   let activeSetupTab = "all";
+  /** 과제 수정 모달이 열려 있을 때 리스트에서 강조할 과제명 */
+  let setupListSelectedTaskName = "";
 
   function renderSubcatButtons(prodType) {
     if (!setupSubcatBar) return;
@@ -6625,43 +6374,37 @@ export function render() {
         const isLocked = lockedForDisplay.has(t.name);
         const catLabel = getCatLabel(t.category);
         const row = document.createElement("div");
-        row.className = "time-task-setup-item";
+        const isRowSelected =
+          Boolean(setupListSelectedTaskName) &&
+          setupListSelectedTaskName === t.name;
+        row.className =
+          "time-task-setup-item" +
+          (isLocked
+            ? " time-task-setup-item--locked"
+            : " time-task-setup-item--editable") +
+          (isRowSelected ? " time-task-setup-item--selected" : "");
         row.innerHTML = `
           <span class="time-task-setup-item-name">${(t.name || "").replace(/</g, "&lt;")}</span>
           <span class="time-task-setup-item-cat">${catLabel}</span>
-          ${
-            isLocked
-              ? ""
-              : `<div class="time-task-setup-item-actions">
-            <button type="button" class="time-task-setup-edit" title="수정">수정</button>
-            <button type="button" class="time-task-setup-del" title="삭제">삭제</button>
-          </div>`
-          }
         `;
         if (!isLocked) {
-          row
-            .querySelector(".time-task-setup-edit")
-            .addEventListener("click", () => {
-              if (getLockedTaskNames().has(t.name)) {
-                alert(
-                  "이 과제는 KPI와 연동되어 있어 과제 설정에서 수정할 수 없습니다.",
-                );
-                return;
-              }
-              openAddTaskModal(t);
-            });
-          row
-            .querySelector(".time-task-setup-del")
-            .addEventListener("click", () => {
-              if (getLockedTaskNames().has(t.name)) {
-                alert(
-                  "이 과제는 KPI와 연동되어 있어 과제 설정에서 삭제할 수 없습니다. 해당 메뉴에서 수정해주세요.",
-                );
-                return;
-              }
-              removeTaskOption(t.name);
-              renderTaskSetupList();
-            });
+          row.setAttribute("role", "button");
+          row.tabIndex = 0;
+          row.addEventListener("click", () => {
+            if (getLockedTaskNames().has(t.name)) {
+              alert(
+                "이 과제는 KPI와 연동되어 있어 과제 설정에서 수정할 수 없습니다.",
+              );
+              return;
+            }
+            openAddTaskModal(t);
+          });
+          row.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              row.click();
+            }
+          });
         }
         container.appendChild(row);
       });
@@ -6679,12 +6422,30 @@ export function render() {
   }
 
   let selectedCategory = "";
+  function syncAddTaskSubmitState() {
+    const name = (addTaskNameInput.value || "").trim();
+    addTaskSubmitBtn.disabled = !(name && selectedCategory);
+  }
   function openAddTaskModal(editTask) {
     addTaskModal.hidden = false;
     addTaskModal.style.zIndex = "1001";
+    setupListSelectedTaskName = editTask ? editTask.name : "";
+    const isEdit = Boolean(editTask);
+    if (addTaskModalTitle) {
+      addTaskModalTitle.textContent = isEdit ? "과제 수정" : "과제 추가";
+    }
+    addTaskSubmitBtn.textContent = isEdit ? "저장" : "추가";
+    if (addTaskDeleteBtn) {
+      addTaskDeleteBtn.hidden = !isEdit;
+    }
     addTaskNameInput.value = editTask ? editTask.name : "";
     addTaskNameInput.dataset.editName = editTask ? editTask.name : "";
-    const prod = editTask ? editTask.productivity : "productive";
+    const prod =
+      editTask &&
+      (editTask.productivity === "productive" ||
+        editTask.productivity === "nonproductive")
+        ? editTask.productivity
+        : "productive";
     addTaskModal.querySelector(
       `input[name="addProd"][value="${prod}"]`,
     ).checked = true;
@@ -6702,13 +6463,19 @@ export function render() {
       .forEach((b) =>
         b.classList.toggle("active", b.dataset.value === selectedCategory),
       );
+    syncAddTaskSubmitState();
+    renderTaskSetupList();
     addTaskNameInput.focus();
   }
 
   function closeAddTaskModal() {
     addTaskModal.hidden = true;
     addTaskModal.style.zIndex = "";
+    setupListSelectedTaskName = "";
+    renderTaskSetupList();
   }
+
+  addTaskNameInput.addEventListener("input", syncAddTaskSubmitState);
 
   addTaskProdRadios.forEach((r) => {
     r.addEventListener("change", () => {
@@ -6723,6 +6490,7 @@ export function render() {
       addTaskCatNonProd
         .querySelectorAll(".time-add-task-cat-btn")
         .forEach((b) => b.classList.remove("active"));
+      syncAddTaskSubmitState();
     });
   });
   addTaskCatProd.querySelectorAll(".time-add-task-cat-btn").forEach((b) => {
@@ -6732,6 +6500,7 @@ export function render() {
         .forEach((x) => x.classList.remove("active"));
       b.classList.add("active");
       selectedCategory = b.dataset.value;
+      syncAddTaskSubmitState();
     });
   });
   addTaskCatNonProd.querySelectorAll(".time-add-task-cat-btn").forEach((b) => {
@@ -6741,12 +6510,13 @@ export function render() {
         .forEach((x) => x.classList.remove("active"));
       b.classList.add("active");
       selectedCategory = b.dataset.value;
+      syncAddTaskSubmitState();
     });
   });
 
   addTaskSubmitBtn.addEventListener("click", () => {
     const name = (addTaskNameInput.value || "").trim();
-    if (!name) return;
+    if (!name || !selectedCategory) return;
     const prod =
       addTaskModal.querySelector('input[name="addProd"]:checked')?.value ||
       "productive";
@@ -6766,9 +6536,23 @@ export function render() {
         memo: "",
       });
     }
-    renderTaskSetupList();
     closeAddTaskModal();
   });
+
+  addTaskDeleteBtn?.addEventListener("click", () => {
+    const editName = (addTaskNameInput.dataset.editName || "").trim();
+    if (!editName) return;
+    if (getLockedTaskNames().has(editName)) {
+      alert(
+        "이 과제는 KPI와 연동되어 있어 여기서 삭제할 수 없습니다. 해당 메뉴에서 수정해주세요.",
+      );
+      return;
+    }
+    removeTaskOption(editName);
+    closeAddTaskModal();
+  });
+
+  syncAddTaskSubmitState();
 
   addTaskBtn?.addEventListener("click", () => openAddTaskModal(null));
   addTaskBackdrop?.addEventListener("click", closeAddTaskModal);

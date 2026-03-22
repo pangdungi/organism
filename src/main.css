@@ -15009,19 +15009,22 @@ body.kpi-resizing {
   width: 100%;
   padding: 0.6rem 1rem;
   font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--text-body);
-  background: var(--ui-surface-alt);
-  border: var(--line-l10);
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--ui-btn-primary-fg);
+  background: var(--ui-btn-primary-bg);
+  border: 1px solid var(--ui-btn-primary-bg);
   border-radius: var(--modal-radius);
   cursor: pointer;
   margin-bottom: 1rem;
-  transition: all 0.2s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .time-task-add-btn:hover {
-  background: var(--ui-surface-alt);
-  border-color: var(--line-l3-color);
+  background: var(--ui-btn-primary-hover);
+  border-color: var(--ui-btn-primary-hover);
 }
 
 .time-task-setup-tabs {
@@ -15032,63 +15035,36 @@ body.kpi-resizing {
   margin-bottom: 1rem;
 }
 
+/* 과제 설정 상단 탭: 서브 칩 명세와 동일 (카테고리별 컬러 없음) */
 .time-task-setup-tab {
-  padding: 0.4rem 0.75rem;
-  font-size: 0.85rem;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  font-weight: var(--fw-mono);
+  letter-spacing: 0.1em;
+  line-height: 1.25;
   color: var(--text-muted);
-  background: var(--ui-surface-alt);
-  border: var(--line-l3);
-  border-radius: var(--modal-radius);
+  background: var(--ui-btn-primary-fg);
+  border: 1px solid var(--text-placeholder);
+  border-radius: 0;
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
-.time-task-setup-tab[data-tab="all"]:hover {
-  background: var(--ui-surface-alt);
-  color: var(--text-body);
+.time-task-setup-tab:hover:not(.active) {
+  background: var(--cb-bg-hover);
+  border-color: var(--text-caption-color);
+  color: var(--ui-btn-primary-bg);
 }
 
-.time-task-setup-tab[data-tab="all"].active {
-  background: var(--ui-surface-alt);
-  color: var(--text-ink);
-  border-color: var(--line-l3-color);
-}
-
-/* 생산적·비생산적·그 외 탭 웜톤 (자산관리 팔레트와 동일) */
-.time-task-setup-tab[data-tab="productive"]:hover {
-  background: var(--asset-warm-1);
-  color: var(--asset-warm-9);
-  border-color: var(--asset-warm-1);
-}
-
-.time-task-setup-tab[data-tab="productive"].active {
-  background: var(--asset-warm-1);
-  color: var(--asset-warm-9);
-  border-color: var(--asset-warm-1);
-}
-
-.time-task-setup-tab[data-tab="nonproductive"]:hover {
-  background: var(--asset-warm-6);
-  color: var(--asset-warm-9);
-  border-color: var(--asset-warm-6);
-}
-
-.time-task-setup-tab[data-tab="nonproductive"].active {
-  background: var(--asset-warm-6);
-  color: var(--asset-warm-9);
-  border-color: var(--asset-warm-6);
-}
-
-.time-task-setup-tab[data-tab="other"]:hover {
-  background: var(--asset-warm-4);
-  color: var(--asset-warm-9);
-  border-color: var(--asset-warm-4);
-}
-
-.time-task-setup-tab[data-tab="other"].active {
-  background: var(--asset-warm-4);
-  color: var(--asset-warm-9);
-  border-color: var(--asset-warm-4);
+.time-task-setup-tab.active {
+  background: var(--cb-bg-hover);
+  border: 1px solid var(--ui-btn-primary-bg);
+  color: var(--ui-btn-primary-bg);
+  font-weight: var(--fw-body);
 }
 
 .time-task-setup-subcats {
@@ -15097,132 +15073,127 @@ body.kpi-resizing {
   gap: 0.35rem;
   margin-bottom: 0.75rem;
   padding: 0.5rem 0;
+  border-top: 1px solid var(--text-placeholder);
 }
 
+/* 하위 카테고리 칩: 상단 탭과 동일 서브 칩 스타일 */
 .time-task-setup-subcat-btn {
-  padding: 0.3rem 0.6rem;
-  font-size: 0.8rem;
-  font-family: inherit;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  font-weight: var(--fw-mono);
+  letter-spacing: 0.1em;
+  line-height: 1.25;
   color: var(--text-muted);
-  background: var(--app-bg);
-  border: var(--line-l3);
-  border-radius: var(--modal-radius);
+  background: var(--ui-btn-primary-fg);
+  border: 1px solid var(--text-placeholder);
+  border-radius: 0;
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
-.time-task-setup-subcat-btn:hover {
-  background: var(--ui-surface-alt);
-  color: var(--text-body);
+.time-task-setup-subcat-btn:hover:not(.active) {
+  background: var(--cb-bg-hover);
+  border-color: var(--text-caption-color);
+  color: var(--ui-btn-primary-bg);
 }
 
 .time-task-setup-subcat-btn.active {
-  background: var(--ui-surface-alt);
-  color: var(--text-ink);
-  border-color: var(--line-l3-color);
+  background: var(--cb-bg-hover);
+  border: 1px solid var(--ui-btn-primary-bg);
+  color: var(--ui-btn-primary-bg);
+  font-weight: var(--fw-body);
 }
 
-.time-task-setup-subcat-btn.cat-dream.active {
-  background: rgba(59, 130, 246, 0.2);
-  color: #1d4ed8;
-  border-color: #93c5fd;
-}
-
-.time-task-setup-subcat-btn.cat-sideincome.active {
-  background: rgba(16, 185, 129, 0.2);
-  color: #4d6348;
-  border-color: #6ee7b7;
-}
-
-.time-task-setup-subcat-btn.cat-happiness.active {
-  background: rgba(245, 158, 11, 0.2);
-  color: #b45309;
-  border-color: #fcd34d;
-}
-
-.time-task-setup-subcat-btn.cat-health.active {
-  background: rgba(34, 197, 94, 0.2);
-  color: #15803d;
-  border-color: #86efac;
-}
-
-.time-task-setup-subcat-btn.cat-prod-cons.active {
-  background: rgba(20, 184, 166, 0.2);
-  color: #0f766e;
-}
-
+/* 과제 설정 리스트: Shell / Sand 호버 / Linen+좌측 띠 선택 (폰트 크기는 기존 유지) */
 .time-task-setup-list {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0;
+  border: 1px solid var(--cb-bg-hover);
+  border-radius: 0;
+  overflow: hidden;
 }
 
 .time-task-setup-item {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  background: var(--ui-surface-alt);
-  border: var(--line-l3);
-  border-radius: var(--modal-radius);
+  padding: 13px 16px;
+  background: var(--ui-btn-primary-fg);
+  border: none;
+  border-radius: 0;
+  border-bottom: 1px solid var(--cb-bg-hover);
   font-size: 0.9rem;
+  transition: background 0.15s ease;
+}
+
+.time-task-setup-item:last-child {
+  border-bottom: none;
+}
+
+.time-task-setup-item--editable:hover:not(.time-task-setup-item--selected) {
+  background: var(--ui-surface-alt);
+}
+
+.time-task-setup-item--selected {
+  background: var(--cb-bg-hover);
+  border-left: 2px solid var(--ui-btn-primary-bg);
+  padding-left: 14px;
+}
+
+.time-task-setup-item--selected.time-task-setup-item--editable:hover {
+  background: var(--cb-bg-hover);
 }
 
 .time-task-setup-item-sub {
-  padding-left: 2rem;
-  background: var(--content-bg);
+  padding: 13px 16px 13px 2rem;
+  background: var(--ui-btn-primary-fg);
+  border-bottom: 1px solid var(--cb-bg-hover);
 }
 
 .time-task-setup-item-name {
   flex: 1;
-  font-weight: 500;
+  font-family: "Noto Sans KR", var(--font-body);
+  font-weight: 300;
   color: var(--text-ink);
 }
 
 .time-task-setup-item-cat {
   flex: 0 0 auto;
+  margin-left: auto;
   font-size: 0.8rem;
-  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-weight: var(--fw-mono);
+  color: var(--text-caption-color);
 }
 
-.time-task-setup-item-actions {
-  display: flex;
-  gap: 0.35rem;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-.time-task-setup-item:hover .time-task-setup-item-actions {
-  opacity: 1;
-}
-
-.time-task-setup-edit,
-.time-task-setup-del {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.8rem;
-  border: var(--line-l3);
-  border-radius: var(--modal-radius);
-  background: var(--content-bg);
-  color: var(--text-muted);
+.time-task-setup-item--editable {
   cursor: pointer;
-  transition: all 0.2s;
 }
 
-.time-task-setup-edit:hover,
-.time-task-setup-del:hover {
-  background: var(--ui-surface-alt);
-  color: var(--text-body);
+.time-task-setup-item--editable:focus {
+  outline: none;
 }
 
-.time-task-setup-del:hover {
-  border-color: #fca5a5;
-  color: #dc2626;
+.time-task-setup-item--editable:focus-visible {
+  outline: 2px solid var(--ui-btn-primary-bg);
+  outline-offset: -2px;
+}
+
+.time-task-setup-item--locked {
+  cursor: default;
 }
 
 .time-task-setup-empty {
   padding: 1.5rem;
   text-align: center;
-  color: #9ca3af;
+  color: var(--text-caption-color);
   font-size: 0.9rem;
+  background: var(--ui-btn-primary-fg);
 }
 
 /* 과제 추가 서브모달 */
@@ -15230,6 +15201,10 @@ body.kpi-resizing {
   max-width: 25rem;
   background: var(--content-bg);
   border-radius: var(--modal-radius);
+}
+
+.time-add-task-modal .time-task-setup-body {
+  border-top: 1px solid var(--text-placeholder);
 }
 
 .time-add-task-field {
@@ -15294,57 +15269,38 @@ body.kpi-resizing {
   gap: 0.35rem;
 }
 
+/* 과제 추가 모달 카테고리: 서브 칩과 동일(카테고리별 색 없음) */
 .time-add-task-cat-btn {
   padding: 0.35rem 0.6rem;
   font-size: 0.8rem;
-  border: var(--line-l3);
-  border-radius: var(--modal-radius);
-  background: var(--content-bg);
-  color: var(--text-body);
+  border: 1px solid var(--text-placeholder);
+  border-radius: 0;
+  background: var(--ui-btn-primary-fg);
+  color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
-.time-add-task-cat-btn:hover {
-  background: var(--ui-surface-alt);
+.time-add-task-cat-btn:hover:not(.active) {
+  background: var(--cb-bg-hover);
+  border-color: var(--text-caption-color);
+  color: var(--ui-btn-primary-bg);
 }
 
 .time-add-task-cat-btn.active {
-  background: var(--asset-warm-6);
-  border-color: var(--asset-warm-6);
-  color: var(--asset-warm-9);
+  background: var(--cb-bg-hover);
+  border: 1px solid var(--ui-btn-primary-bg);
+  color: var(--ui-btn-primary-bg);
+  font-weight: var(--fw-body);
 }
 
-.time-add-task-cat-btn.cat-dream {
-  --cat-bg: #dbeafe;
-}
-.time-add-task-cat-btn.cat-sideincome {
-  --cat-bg: #d1fae5;
-}
-.time-add-task-cat-btn.cat-happiness {
-  --cat-bg: #fef3c7;
-}
-.time-add-task-cat-btn.cat-health {
-  --cat-bg: #d1fae5;
-}
-
-.time-add-task-cat-btn.cat-prod-cons {
-  --cat-bg: #ccfbf1;
-}
-.time-add-task-cat-btn.cat-pleasure {
-  --cat-bg: #fce7f3;
-}
-.time-add-task-cat-btn.cat-dreamblocking {
-  --cat-bg: #e0e7ff;
-}
-.time-add-task-cat-btn.cat-unhappiness {
-  --cat-bg: #ede9fe;
-}
-.time-add-task-cat-btn.cat-unhealthy {
-  --cat-bg: #dbeafe;
-}
-.time-add-task-cat-btn.cat-moneylosing {
-  --cat-bg: #ffedd5;
+.time-add-task-cat-btn.active:hover {
+  background: var(--cb-bg-hover);
+  border-color: var(--ui-btn-primary-bg);
+  color: var(--ui-btn-primary-bg);
 }
 
 .time-add-task-submit {
@@ -15363,6 +15319,46 @@ body.kpi-resizing {
 
 .time-add-task-submit:hover {
   background: var(--ui-btn-primary-hover);
+}
+
+.time-add-task-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: var(--ui-btn-disabled-fg);
+  background: var(--ui-btn-disabled-bg);
+}
+
+.time-add-task-submit:disabled:hover {
+  background: var(--ui-btn-disabled-bg);
+}
+
+.time-add-task-delete[hidden] {
+  display: none !important;
+}
+
+.time-add-task-delete {
+  display: block;
+  width: 100%;
+  margin-top: 0.65rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--text-placeholder);
+  border-radius: var(--modal-radius);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.time-add-task-delete:hover {
+  color: #b91c1c;
+  border-color: #fca5a5;
+  background: #fef2f2;
 }
 
 /* 과제 기록 모달 - 통일 디자인: 크림 배경, 세이지 버튼 */

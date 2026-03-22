@@ -58,12 +58,18 @@ export function syncRoutineToTimeTasks(routine) {
   const existingNames = new Set(filtered.map((o) => o.name));
   const toAdd = [];
 
+  const newId = () =>
+    typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `t-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
   if (!existingNames.has(mainName)) {
     toAdd.push({
       name: mainName,
       category: "happiness",
       productivity: "productive",
       memo: "",
+      id: newId(),
     });
     existingNames.add(mainName);
   }
@@ -78,6 +84,7 @@ export function syncRoutineToTimeTasks(routine) {
         category: "happiness",
         productivity: "productive",
         memo: "",
+        id: newId(),
       });
       existingNames.add(fullName);
     }
