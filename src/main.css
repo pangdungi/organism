@@ -2720,6 +2720,20 @@ body {
     max-width: 12rem;
   }
 
+  /* 모바일: 근무유형 설정 모달 시간 입력 — iOS 줌 방지(16px); 모달은 #app 밖 body에 붙음 */
+  .work-schedule-type-settings-modal input.work-schedule-time-input,
+  .work-schedule-type-settings-modal .work-schedule-type-settings-row-start,
+  .work-schedule-type-settings-modal .work-schedule-type-settings-row-end,
+  .work-schedule-type-settings-modal .work-schedule-type-settings-add-start,
+  .work-schedule-type-settings-modal .work-schedule-type-settings-add-end,
+  .work-schedule-type-settings-modal .work-schedule-type-settings-default-start,
+  .work-schedule-type-settings-modal .work-schedule-type-settings-default-end {
+    font-size: 16px !important;
+  }
+  .work-schedule-type-settings-modal .work-schedule-type-settings-row-no-time {
+    font-size: 16px !important;
+  }
+
   /* 모바일: 근무표·아카이브·나의계정 헤더 패딩 통일 (오늘 탭 date-header와 동일: 0.25rem 1.75rem 1.25rem) */
   .work-schedule-view .work-schedule-header {
     padding: 0.25rem 1.75rem 1.25rem !important;
@@ -4948,6 +4962,51 @@ body {
   box-shadow: none;
   border-bottom: var(--input-border-focus);
   color: var(--text-ink);
+}
+
+/* 근무유형 설정 모달: 시작·마감 — body 직결 포털이라 #app 밖; DM Mono는 본표와 동일 */
+.work-schedule-type-settings-modal input.work-schedule-time-input,
+.work-schedule-type-settings-modal .work-schedule-type-settings-row-start,
+.work-schedule-type-settings-modal .work-schedule-type-settings-row-end,
+.work-schedule-type-settings-modal .work-schedule-type-settings-add-start,
+.work-schedule-type-settings-modal .work-schedule-type-settings-add-end,
+.work-schedule-type-settings-modal .work-schedule-type-settings-default-start,
+.work-schedule-type-settings-modal .work-schedule-type-settings-default-end {
+  font-family: var(--font-mono) !important;
+  font-weight: 500 !important;
+  font-variant-numeric: tabular-nums !important;
+  letter-spacing: 0.02em !important;
+  color: var(--text-body) !important;
+}
+.work-schedule-type-settings-modal input.work-schedule-time-input:focus,
+.work-schedule-type-settings-modal input.work-schedule-time-input:focus-visible,
+.work-schedule-type-settings-modal .work-schedule-type-settings-row-start:focus,
+.work-schedule-type-settings-modal .work-schedule-type-settings-row-start:focus-visible,
+.work-schedule-type-settings-modal .work-schedule-type-settings-row-end:focus,
+.work-schedule-type-settings-modal .work-schedule-type-settings-row-end:focus-visible,
+.work-schedule-type-settings-modal .work-schedule-type-settings-add-start:focus,
+.work-schedule-type-settings-modal .work-schedule-type-settings-add-start:focus-visible,
+.work-schedule-type-settings-modal .work-schedule-type-settings-add-end:focus,
+.work-schedule-type-settings-modal .work-schedule-type-settings-add-end:focus-visible,
+.work-schedule-type-settings-modal .work-schedule-type-settings-default-start:focus,
+.work-schedule-type-settings-modal .work-schedule-type-settings-default-start:focus-visible,
+.work-schedule-type-settings-modal .work-schedule-type-settings-default-end:focus,
+.work-schedule-type-settings-modal .work-schedule-type-settings-default-end:focus-visible {
+  color: var(--text-ink) !important;
+}
+.work-schedule-type-settings-modal .work-schedule-type-settings-row-start::placeholder,
+.work-schedule-type-settings-modal .work-schedule-type-settings-row-end::placeholder,
+.work-schedule-type-settings-modal .work-schedule-type-settings-add-start::placeholder,
+.work-schedule-type-settings-modal .work-schedule-type-settings-add-end::placeholder {
+  font-family: var(--font-mono) !important;
+  font-weight: var(--fw-mono) !important;
+  color: var(--text-placeholder) !important;
+}
+.work-schedule-type-settings-modal .work-schedule-type-settings-row-no-time {
+  font-family: var(--font-mono) !important;
+  font-weight: 500 !important;
+  font-variant-numeric: tabular-nums !important;
+  letter-spacing: 0.02em !important;
 }
 
 .work-schedule-view-tabs {

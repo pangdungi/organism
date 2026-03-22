@@ -2,6 +2,8 @@
  * 근무표 먼슬리 뷰 - 근무일별 근무유형과 Hours를 캘린더에 표시
  */
 
+import { applyWorkScheduleRowTimesFromTypes } from "../utils/workScheduleEntryResolve.js";
+
 const WORK_SCHEDULE_KEY = "work_schedule_rows";
 
 function loadWorkScheduleRows() {
@@ -9,7 +11,7 @@ function loadWorkScheduleRows() {
     const raw = localStorage.getItem(WORK_SCHEDULE_KEY);
     if (raw) {
       const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) return arr;
+      if (Array.isArray(arr)) return applyWorkScheduleRowTimesFromTypes(arr);
     }
   } catch (_) {}
   return [];

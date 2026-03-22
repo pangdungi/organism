@@ -3,6 +3,21 @@
  * 근무시간, 근무유형, 근무일, 시간(근무표), 메모
  */
 import { renderMonthlyContent } from "./WorkScheduleMonthly.js";
+import { hydrateWorkScheduleFromCloud } from "../utils/workScheduleSupabase.js";
+import {
+  applyWorkScheduleRowTimesFromTypes,
+  normalizeWorkDateKey,
+  workDateHasTimeLedgerWork,
+} from "../utils/workScheduleEntryResolve.js";
+
+const ENTRY_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function notifyWorkScheduleSaved() {
+  try {
+    window.dispatchEvent(new CustomEvent("work-schedule-saved"));
+  } catch (_) {}
+}
 
 const WORK_SCHEDULE_KEY = "work_schedule_rows";
 const WORK_TYPE_OPTIONS_KEY = "work_schedule_type_options";
@@ -83,6 +98,7 @@ function addWorkTypeOption(name, start, end) {
   try {
     localStorage.setItem(WORK_TYPE_OPTIONS_KEY, JSON.stringify(full));
   } catch (_) {}
+  notifyWorkScheduleSaved();
   return full;
 }
 
@@ -95,6 +111,7 @@ function updateWorkTypeOption(name, start, end) {
   try {
     localStorage.setItem(WORK_TYPE_OPTIONS_KEY, JSON.stringify(full));
   } catch (_) {}
+  notifyWorkScheduleSaved();
   return full;
 }
 
@@ -104,6 +121,7 @@ function removeWorkTypeOption(name) {
   try {
     localStorage.setItem(WORK_TYPE_OPTIONS_KEY, JSON.stringify(full));
   } catch (_) {}
+  notifyWorkScheduleSaved();
   return full;
 }
 
@@ -119,16 +137,61 @@ function loadRows() {
     const raw = localStorage.getItem(WORK_SCHEDULE_KEY);
     if (raw) {
       const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) return arr;
+      if (Array.isArray(arr)) {
+        let dirty = false;
+        const out = arr.map((r) => {
+          const id = r.id != null ? String(r.id).trim() : "";
+          if (id && ENTRY_ID_RE.test(id)) return r;
+          dirty = true;
+          return { ...r, id: crypto.randomUUID() };
+        });
+        if (dirty) {
+          try {
+            localStorage.setItem(WORK_SCHEDULE_KEY, JSON.stringify(out));
+          } catch (_) {}
+        }
+        return out;
+      }
     }
   } catch (_) {}
   return [];
 }
 
 function saveRows(rows) {
+  const withIds = rows.map((r) => {
+    const id = r.id != null ? String(r.id).trim() : "";
+    if (id && ENTRY_ID_RE.test(id)) return r;
+    return { ...r, id: crypto.randomUUID() };
+  });
   try {
-    localStorage.setItem(WORK_SCHEDULE_KEY, JSON.stringify(rows));
+    localStorage.setItem(WORK_SCHEDULE_KEY, JSON.stringify(withIds));
   } catch (_) {}
+  notifyWorkScheduleSaved();
+  return withIds;
+}
+
+function rowHasPersistableContent(r) {
+  return !!(
+    (r.startTime || "").trim() ||
+    (r.endTime || "").trim() ||
+    (r.workType || "").trim() ||
+    (r.hoursWorked || "").trim() ||
+    (r.workDate || "").trim() ||
+    (r.hours || "").trim() ||
+    (r.memo || "").trim()
+  );
+}
+
+/** saveRows로 보정된 id를 DOM 행에 반영 (다음 저장 시 중복 id 방지) */
+function syncEntryIdsAfterSave(tableWrap, rowsWithIds) {
+  if (!tableWrap || !rowsWithIds?.length) return;
+  let i = 0;
+  tableWrap.querySelectorAll(".work-schedule-row").forEach((tr) => {
+    const r = collectRowFromTr(tr);
+    if (!rowHasPersistableContent(r)) return;
+    const id = rowsWithIds[i++]?.id;
+    if (id && ENTRY_ID_RE.test(String(id))) tr.dataset.entryId = String(id);
+  });
 }
 
 function getDailyHours() {
@@ -148,6 +211,7 @@ function setDailyHours(val) {
   try {
     localStorage.setItem(WORK_SCHEDULE_DAILY_HOURS_KEY, String(n));
   } catch (_) {}
+  notifyWorkScheduleSaved();
 }
 
 
@@ -252,6 +316,21 @@ function rowKey(r) {
   return `${n.workDate || ""}|${n.startTime || ""}|${n.endTime || ""}`;
 }
 
+/** 시간기록에서만 온 행: 저장본과 매칭 전까지 탭 전환·리렌더 시에도 동일 id 유지 */
+function stableSessionIdForTimeRow(t) {
+  const k = rowKey(t);
+  const sessKey = `work_schedule_row_id_${k}`;
+  try {
+    let id = sessionStorage.getItem(sessKey);
+    if (id && ENTRY_ID_RE.test(id)) return id;
+    id = crypto.randomUUID();
+    sessionStorage.setItem(sessKey, id);
+    return id;
+  } catch (_) {
+    return crypto.randomUUID();
+  }
+}
+
 /** 근무표 = 시간기록 "근무하기" + 저장된 수동 행. 같은 날짜에 시간기록이 있으면 실제 기록으로 덮어쓰고, 없을 때만 저장된 행 표시 */
 function getMergedInitialRows() {
   const fromTime = getWorkRowsFromTimeRecord();
@@ -261,15 +340,16 @@ function getMergedInitialRows() {
     const match = saved.find((s) => rowKey(normalizeRowStartEnd(s)) === keyFromTime(t));
     return {
       ...t,
+      id: match?.id || (t.id && ENTRY_ID_RE.test(String(t.id).trim()) ? String(t.id).trim() : stableSessionIdForTimeRow(t)),
       workType: match?.workType ?? t.workType,
       memo: match?.memo ?? t.memo,
     };
   });
-  const timeRecordDates = new Set(fromTime.map((ft) => (ft.workDate || "").trim()).filter(Boolean));
+  const timeRecordDates = new Set(fromTime.map((ft) => normalizeWorkDateKey(ft.workDate)).filter((d) => d.length >= 10));
   const savedOnly = saved
     .map(normalizeRowStartEnd)
-    .filter((s) => !timeRecordDates.has((s.workDate || "").trim()));
-  return [...mergedFromTime, ...savedOnly];
+    .filter((s) => !timeRecordDates.has(normalizeWorkDateKey(s.workDate)));
+  return applyWorkScheduleRowTimesFromTypes([...mergedFromTime, ...savedOnly]);
 }
 
 function getHoursSum(tableEl) {
@@ -291,41 +371,44 @@ function durationFromStartEnd(startStr, endStr) {
   return endH > startH ? endH - startH : 24 - startH + endH;
 }
 
+function collectRowFromTr(tr) {
+  const hoursInput = tr.querySelector(".work-schedule-input-hours");
+  const hoursWorkedInput = tr.querySelector(".work-schedule-input-hours-worked");
+  const typeInput = tr.querySelector(".work-schedule-input-type");
+  const dateInput = tr.querySelector(".work-schedule-input-date");
+  const memoInput = tr.querySelector(".work-schedule-input-memo");
+  const startTimeInput = tr.querySelector(".work-schedule-input-start-time");
+  const endTimeInput = tr.querySelector(".work-schedule-input-end-time");
+  const startTime = (startTimeInput?.value || "").trim();
+  const endTime = (endTimeInput?.value || "").trim();
+  let hoursWorked = (hoursWorkedInput?.value || "").trim();
+  if (startTime && endTime) {
+    const d = durationFromStartEnd(startTime, endTime);
+    if (d != null && d > 0) hoursWorked = String(Math.round(d * 100) / 100);
+  }
+  const idRaw = (tr.dataset.entryId || "").trim();
+  return {
+    ...(idRaw && ENTRY_ID_RE.test(idRaw) ? { id: idRaw } : {}),
+    startTime,
+    endTime,
+    workType: typeInput?.value || "",
+    hoursWorked,
+    workDate: dateInput?.value || "",
+    hours: hoursInput?.value || "",
+    memo: memoInput?.value || "",
+  };
+}
+
 function collectRowsFromDOM(tableEl) {
   const rows = [];
   tableEl?.querySelectorAll(".work-schedule-row").forEach((tr) => {
-    const hoursInput = tr.querySelector(".work-schedule-input-hours");
-    const hoursWorkedInput = tr.querySelector(".work-schedule-input-hours-worked");
-    const typeInput = tr.querySelector(".work-schedule-input-type");
-    const dateInput = tr.querySelector(".work-schedule-input-date");
-    const memoInput = tr.querySelector(".work-schedule-input-memo");
-    const startTimeInput = tr.querySelector(".work-schedule-input-start-time");
-    const endTimeInput = tr.querySelector(".work-schedule-input-end-time");
-    const startTime = (startTimeInput?.value || "").trim();
-    const endTime = (endTimeInput?.value || "").trim();
-    let hoursWorked = (hoursWorkedInput?.value || "").trim();
-    if (startTime && endTime) {
-      const d = durationFromStartEnd(startTime, endTime);
-      if (d != null && d > 0) hoursWorked = String(Math.round(d * 100) / 100);
-    }
-    rows.push({
-      startTime,
-      endTime,
-      workType: typeInput?.value || "",
-      hoursWorked,
-      workDate: dateInput?.value || "",
-      hours: hoursInput?.value || "",
-      memo: memoInput?.value || "",
-    });
+    rows.push(collectRowFromTr(tr));
   });
   return rows;
 }
 
 function getRowsToSave(tableEl) {
-  return collectRowsFromDOM(tableEl).filter((r) => {
-    const hasAny = (r.startTime || "").trim() || (r.endTime || "").trim() || (r.workType || "").trim() || (r.hoursWorked || "").trim() || (r.workDate || "").trim() || (r.hours || "").trim() || (r.memo || "").trim();
-    return !!hasAny;
-  });
+  return collectRowsFromDOM(tableEl).filter((r) => rowHasPersistableContent(r));
 }
 
 /** 근무유형 입력: 과제명처럼 Create/삭제 가능. onTypeSelect(workType)는 유형 선택 시 호출(기본 시작/마감 채우기용) */
@@ -537,6 +620,9 @@ function createWorkTypeInput(initialValue, onUpdate, onTypeSelect) {
 function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHours) {
   const tr = document.createElement("tr");
   tr.className = "work-schedule-row";
+  const initialId = initialData.id != null ? String(initialData.id).trim() : "";
+  const rowId = initialId && ENTRY_ID_RE.test(initialId) ? initialId : crypto.randomUUID();
+  tr.dataset.entryId = rowId;
 
   const dateTd = document.createElement("td");
   dateTd.className = "work-schedule-cell work-schedule-cell-date";
@@ -656,9 +742,14 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
 
   const fillDefaultStartEnd = (workTypeName) => {
     if (!(workTypeName || "").trim()) return;
+    const d = normalizeWorkDateKey(dateInput.value);
+    if (workDateHasTimeLedgerWork(d)) {
+      rowOnUpdate();
+      return;
+    }
     const def = getDefaultStartEndForType(workTypeName);
-    if (!(startTimeInput?.value || "").trim() && def.start) startTimeInput.value = def.start;
-    if (!(endTimeInput?.value || "").trim() && def.end) endTimeInput.value = def.end;
+    if (def.start) startTimeInput.value = def.start;
+    if (def.end) endTimeInput.value = def.end;
     syncHoursWorkedFromStartEnd();
     rowOnUpdate();
   };
@@ -900,6 +991,8 @@ export function render() {
   const contentWrap = document.createElement("div");
   contentWrap.className = "work-schedule-content-wrap";
   el.appendChild(contentWrap);
+
+  let activeWorkScheduleView = "all";
 
   function renderTableView() {
     contentWrap.innerHTML = "";
@@ -1177,7 +1270,8 @@ export function render() {
     tfoot.appendChild(addRow);
 
     function save() {
-      saveRows(getRowsToSave(tableWrap));
+      const withIds = saveRows(getRowsToSave(tableWrap));
+      syncEntryIdsAfterSave(tableWrap, withIds);
     }
 
     const sumCell = table.querySelector(".work-schedule-sum-cell");
@@ -1264,10 +1358,11 @@ export function render() {
   }
 
   function switchView(view) {
+    activeWorkScheduleView = view || "all";
     viewTabs.querySelectorAll(".work-schedule-view-tab").forEach((btn) => {
-      btn.classList.toggle("active", btn.dataset.view === view);
+      btn.classList.toggle("active", btn.dataset.view === activeWorkScheduleView);
     });
-    if (view === "all") {
+    if (activeWorkScheduleView === "all") {
       renderTableView();
     } else {
       renderMonthlyView();
@@ -1279,6 +1374,9 @@ export function render() {
   });
 
   renderTableView();
+  void hydrateWorkScheduleFromCloud().finally(() => {
+    switchView(activeWorkScheduleView);
+  });
 
   return el;
 }
