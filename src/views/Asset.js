@@ -11,6 +11,10 @@ import {
   attachAssetNetWorthGoalSaveListener,
   hydrateAssetNetWorthGoalFromCloud,
 } from "../utils/assetNetWorthTargetSupabase.js";
+import {
+  attachAssetStockCategoryOptionsSaveListener,
+  hydrateAssetStockCategoryOptionsFromCloud,
+} from "../utils/assetStockCategorySupabase.js";
 
 const DEBT_ROWS_KEY = "asset_debt_rows";
 const ASSET_ROWS_KEY = "asset_asset_rows";
@@ -56,6 +60,7 @@ function addStockCategoryOption(name) {
   try {
     localStorage.setItem(STOCK_CATEGORY_OPTIONS_KEY, JSON.stringify(custom));
   } catch (_) {}
+  window.dispatchEvent(new CustomEvent("asset-stock-category-options-saved"));
   return getStockCategoryOptions();
 }
 
@@ -66,6 +71,7 @@ function removeStockCategoryOption(name) {
   try {
     localStorage.setItem(STOCK_CATEGORY_OPTIONS_KEY, JSON.stringify(custom));
   } catch (_) {}
+  window.dispatchEvent(new CustomEvent("asset-stock-category-options-saved"));
   return getStockCategoryOptions();
 }
 
@@ -5981,6 +5987,7 @@ export function render() {
 
   attachAssetExpenseTransactionsSaveListener();
   attachAssetNetWorthGoalSaveListener();
+  attachAssetStockCategoryOptionsSaveListener();
 
   renderView("expense");
 
@@ -5989,9 +5996,10 @@ export function render() {
   void (async () => {
     try {
       await hydrateAssetExpensePrefsFromCloud();
-      const [expenseDataReplaced, networthDataReplaced] = await Promise.all([
+      const [expenseDataReplaced, networthDataReplaced, stockCatReplaced] = await Promise.all([
         hydrateAssetExpenseTransactionsFromCloud(),
         hydrateAssetNetWorthGoalFromCloud(),
+        hydrateAssetStockCategoryOptionsFromCloud(),
       ]);
       if (expenseDataReplaced) {
         const activeTab = viewTabs.querySelector(".asset-view-tab.active");
@@ -5999,7 +6007,7 @@ export function render() {
           renderView("expense");
         }
       }
-      if (networthDataReplaced) {
+      if (networthDataReplaced || stockCatReplaced) {
         const activeTab = viewTabs.querySelector(".asset-view-tab.active");
         if (activeTab?.dataset?.view === "networth") {
           renderView("networth");
