@@ -46,6 +46,11 @@ import {
   hydrateTimeLedgerTasksFromCloud,
   attachTimeLedgerTasksSaveListener,
 } from "../utils/timeLedgerTasksSupabase.js";
+import {
+  getStoredImproveNotes,
+  setStoredImproveNote,
+} from "../utils/timeImproveNotesModel.js";
+import { hydrateTimeImproveNotesFromCloud } from "../utils/timeImproveNotesSupabase.js";
 
 export { getTaskOptionByName };
 
@@ -532,7 +537,6 @@ const PRODUCTIVITY_OPTIONS = [
 const BUDGET_GOALS_KEY = "time_daily_budget_goals";
 const BUDGET_EXCLUDED_KEY = "time_budget_excluded";
 const TIME_ROWS_KEY = "time_task_log_rows";
-const TIME_IMPROVE_FOCUS_NOTES_KEY = "time_improve_focus_notes";
 
 /** 감정적이기 과제 선택 시 감정 드롭다운 필터 */
 const EMOTION_TASK_POSITIVE = "감정적이기(긍정적)";
@@ -3143,6 +3147,7 @@ export function render() {
 
   attachTimeLedgerTasksSaveListener();
   void hydrateTimeLedgerTasksFromCloud();
+  void hydrateTimeImproveNotesFromCloud();
 
   const header = document.createElement("div");
   header.className = "time-ledger-header dream-view-header-wrap";
@@ -7320,61 +7325,6 @@ export function render() {
       );
     }
     updateTotal();
-  }
-
-  function getStoredImproveNotes(dateKey) {
-    try {
-      const raw = localStorage.getItem(TIME_IMPROVE_FOCUS_NOTES_KEY);
-      if (!raw)
-        return {
-          rootCause: "",
-          countermeasures: "",
-          planReality: "",
-          importantInvest: "",
-          investReduce: "",
-        };
-      const obj = JSON.parse(raw);
-      const entry = obj[dateKey];
-      if (!entry || typeof entry !== "object")
-        return {
-          rootCause: "",
-          countermeasures: "",
-          planReality: "",
-          importantInvest: "",
-          investReduce: "",
-        };
-      return {
-        rootCause: entry.rootCause || "",
-        countermeasures: entry.countermeasures || "",
-        planReality: entry.planReality ?? entry.planReality2 ?? "",
-        importantInvest: entry.importantInvest || "",
-        investReduce: entry.investReduce || "",
-      };
-    } catch (_) {}
-    return {
-      rootCause: "",
-      countermeasures: "",
-      planReality: "",
-      importantInvest: "",
-      investReduce: "",
-    };
-  }
-
-  function setStoredImproveNote(dateKey, field, text) {
-    try {
-      const raw = localStorage.getItem(TIME_IMPROVE_FOCUS_NOTES_KEY);
-      const obj = raw ? JSON.parse(raw) : {};
-      if (!obj[dateKey] || typeof obj[dateKey] !== "object")
-        obj[dateKey] = {
-          rootCause: "",
-          countermeasures: "",
-          planReality: "",
-          importantInvest: "",
-          investReduce: "",
-        };
-      obj[dateKey][field] = (text || "").trim();
-      localStorage.setItem(TIME_IMPROVE_FOCUS_NOTES_KEY, JSON.stringify(obj));
-    } catch (_) {}
   }
 
   function renderImprove(rows = []) {
