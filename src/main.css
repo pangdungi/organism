@@ -469,21 +469,21 @@ body {
   border-color: var(--line-l1-color);
 }
 
-/* 표 안 입력폼: 밑줄( border-bottom ) 제거 — 모든 table 내 input/select/textarea */
-#app table input,
+/* 표 안 입력폼: 밑줄(border-bottom) 제거 — 텍스트형 input/select/textarea만 (체크·라디오 제외) */
+#app table input:not([type="checkbox"]):not([type="radio"]),
 #app table select,
 #app table textarea {
   border-bottom: none !important;
 }
-#app table input:focus,
-#app table input:focus-visible,
+#app table input:not([type="checkbox"]):not([type="radio"]):focus,
+#app table input:not([type="checkbox"]):not([type="radio"]):focus-visible,
 #app table select:focus,
 #app table select:focus-visible,
 #app table textarea:focus,
 #app table textarea:focus-visible {
   border-bottom: none !important;
 }
-#app table input:disabled,
+#app table input:not([type="checkbox"]):not([type="radio"]):disabled,
 #app table textarea:disabled {
   border-bottom: none !important;
 }
@@ -10395,19 +10395,26 @@ body {
   color: var(--text-muted);
   background: none;
   border: none;
+  border-bottom: 0.09375rem solid transparent;
+  margin-bottom: -0.0625rem;
   cursor: pointer;
   font-family: inherit;
   white-space: nowrap;
-  transition: color 0.2s ease;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .todo-category-tab:hover {
   color: var(--text-body);
 }
 
+/* 활성: 상단 할일 쏟아내기(.time-view-tab.active)와 동일 — 진한 밑줄 */
 .todo-category-tab.active {
   color: var(--text-ink);
   font-weight: 600;
+  border-bottom-color: var(--line-l1-color);
+  margin-bottom: 0;
 }
 
 .todo-category-tab .todo-category-tab-label {
