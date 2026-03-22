@@ -7913,6 +7913,25 @@ body {
   position: relative;
 }
 
+/* 적금: 만기일은 개설일+개월 자동값만 (달력 수정 불가) */
+.asset-asset-cell-maturity-date--computed.asset-asset-cell-date {
+  cursor: default;
+}
+
+.asset-asset-maturity-date-wrap--computed {
+  pointer-events: none;
+  user-select: none;
+}
+
+.asset-asset-date-display--computed {
+  color: var(--text-muted);
+}
+
+.asset-asset-maturity-date-wrap--computed .asset-asset-input-date-hidden {
+  cursor: default;
+  pointer-events: none;
+}
+
 .asset-asset-date-wrap {
   position: relative;
   display: block;
@@ -8088,6 +8107,7 @@ body {
   width: 6%;
   min-width: 3.75rem;
 }
+.asset-asset-table-stock .asset-stock-col-purchase-amt,
 .asset-asset-table-stock .asset-stock-col-appraisal-amt {
   width: 10%;
   min-width: 5.3125rem;
@@ -8103,6 +8123,26 @@ body {
 .asset-asset-table-stock .asset-stock-col-actions {
   width: 2.8125rem;
   min-width: 2.8125rem;
+}
+
+/* 주식 평가손익·수익률: +/−와 색 (익 빨강 / 손 파랑) */
+.asset-stock-profit-loss-display.profit,
+.asset-stock-return-rate-display.profit {
+  color: #c62828;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.asset-stock-profit-loss-display.loss,
+.asset-stock-return-rate-display.loss {
+  color: #1565c0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.asset-stock-profit-loss-display.breakeven,
+.asset-stock-return-rate-display.breakeven {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
 
 /* 투자성 보험 테이블 열 너비 */
@@ -8899,6 +8939,7 @@ body {
 .asset-asset-cell-totals-sale-price,
 .asset-asset-cell-totals-loan,
 .asset-asset-cell-totals-asset-value,
+.asset-stock-cell-totals-purchase-amt,
 .asset-stock-cell-totals-appraisal-amt,
 .asset-insurance-cell-totals-surrender,
 .asset-annuity-cell-totals-total-paid,

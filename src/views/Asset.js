@@ -1880,6 +1880,7 @@ function parseNum(val) {
   return Number.isNaN(n) ? null : n;
 }
 
+/** 금리 문자열 → 연 이율 숫자(퍼센트 포인트). 예: 4.2 또는 4.2% → 4.2 (계산 시 /100 적용) */
 function parseRate(val) {
   const s = String(val || "").replace(/%/g, "").replace(/,/g, "").trim();
   const n = parseFloat(s);
@@ -1934,8 +1935,8 @@ function calcMaturityRate(openDate, maturityDate) {
   return Math.min(100, Math.round((elapsedMs / totalMs) * 100));
 }
 
-/** 월납입액, 개설일, 만기일, 이자율로 현재 자산액 계산 (적금 단리 공식) */
-function calcAssetFromMonthlyDeposit(monthly, openDate, maturityDate, rateStr) {
+/** 적금: 개설일~현재(또는 만기)까지 월납입 누적액 (이자 제외) */
+function calcCumulativePaidFromMonthlyDeposit(monthly, openDate, maturityDate) {
   const monthlyAmt = parseNum(monthly);
   const open = parseDate(openDate);
   const maturity = parseDate(maturityDate);
@@ -1946,14 +1947,7 @@ function calcAssetFromMonthlyDeposit(monthly, openDate, maturityDate, rateStr) {
   const elapsedMonths =
     (endDate.getFullYear() - open.getFullYear()) * 12 + (endDate.getMonth() - open.getMonth());
   if (elapsedMonths <= 0) return 0;
-  const rate = parseRate(rateStr);
-  if (rate === null || rate === 0) {
-    return Math.round(monthlyAmt * elapsedMonths);
-  }
-  const r = rate / 100 / 12;
-  const principal = monthlyAmt * elapsedMonths;
-  const interest = monthlyAmt * r * (elapsedMonths * (elapsedMonths + 1)) / 2;
-  return Math.round(principal + interest);
+  return Math.round(monthlyAmt * elapsedMonths);
 }
 
 /** 예금 만기예상액, 이자 계산 (원금, 개설일, 만기일, 이자율) - 단리 */
@@ -2262,17 +2256,17 @@ function renderNetworthView() {
         <th class="asset-debt-th-name">대출 이름</th>
         <th class="asset-debt-th-type">부채유형</th>
         <th class="asset-debt-th-repayment">상환방식</th>
-        <th class="asset-debt-th-period">대출개월</th>
-        <th class="asset-debt-th-rate">대출금리</th>
-        <th class="asset-debt-th-principal">총원금</th>
+        <th class="asset-debt-th-period">약정 개월</th>
+        <th class="asset-debt-th-rate">금리(%)</th>
+        <th class="asset-debt-th-principal">대출 원금</th>
         <th class="asset-debt-th-interest">총 대출 이자</th>
         <th class="asset-debt-th-monthly-principal">월 원금</th>
         <th class="asset-debt-th-monthly-interest">월 이자</th>
-        <th class="asset-debt-th-start-date">시작일</th>
+        <th class="asset-debt-th-start-date">가입일</th>
         <th class="asset-debt-th-end-date">만기일</th>
         <th class="asset-debt-th-paid">상환금액</th>
         <th class="asset-debt-th-extra-paid">중도상환(수수료 제외)</th>
-        <th class="asset-debt-th-balance">잔액</th>
+        <th class="asset-debt-th-balance">잔여 원금</th>
         <th class="asset-debt-th-actions"></th>
       </tr>
     </thead>
@@ -2349,7 +2343,8 @@ function renderNetworthView() {
     rateInput.type = "text";
     rateInput.className = "asset-debt-input-rate";
     rateInput.value = data.interestRate ?? "";
-    rateInput.placeholder = "-";
+    rateInput.placeholder = "예: 4.2";
+    rateInput.title = "연 금리, 퍼센트 숫자만 (4.2 = 4.2%, % 생략 가능)";
     rateInput.addEventListener("input", () => filterNumericInput(rateInput, true));
     rateInput.addEventListener("keydown", (e) => e.key === "Enter" && rateInput.blur());
     rateTd.appendChild(rateInput);
@@ -2513,7 +2508,7 @@ function renderNetworthView() {
     paidTd.className = "asset-debt-cell-paid";
     const paidSpan = document.createElement("span");
     paidSpan.className = "asset-debt-paid-display";
-    paidSpan.title = "시작일~오늘 기준 자동 계산 (입력 불가)";
+    paidSpan.title = "가입일~오늘 기준 자동 계산 (입력 불가)";
 
     function updatePaidFromDates() {
       const repaymentInput = repaymentTd.querySelector(".asset-debt-input-repayment");
@@ -2681,7 +2676,7 @@ function renderNetworthView() {
     if (extraPaidCell) extraPaidCell.textContent = sumExtraPaid > 0 ? formatNum(sumExtraPaid) : "-";
     balanceCell.textContent = sumBalance !== 0 ? formatNum(sumBalance) : "-";
 
-    /* 프로그레스 바 업데이트: (상환금액 + 중도상환) / (총원금 + 총 대출 이자) × 100 */
+    /* 프로그레스 바 업데이트: (상환금액 + 중도상환) / (대출 원금 + 총 대출 이자) × 100 */
     const totalToRepay = sumPrincipal + (sumInterest || 0);
     const totalPaid = sumPaid + sumExtraPaid;
     const percent = totalToRepay > 0 ? Math.min(100, (totalPaid / totalToRepay) * 100) : 0;
@@ -2888,28 +2883,6 @@ function renderNetworthView() {
     avgPriceTd.appendChild(avgPriceInput);
     tr.appendChild(avgPriceTd);
 
-    const currentPriceTd = document.createElement("td");
-    currentPriceTd.className = "asset-stock-cell-current-price";
-    const currentPriceInput = document.createElement("input");
-    currentPriceInput.type = "text";
-    currentPriceInput.className = "asset-stock-input-current-price";
-    currentPriceInput.value = data.currentPrice ? (formatNum(data.currentPrice) || data.currentPrice) : "";
-    currentPriceInput.placeholder = "-";
-    currentPriceInput.addEventListener("input", () => filterNumericInput(currentPriceInput, true));
-    currentPriceInput.addEventListener("input", () => {
-      updateStockCalculations();
-      onAssetUpdate();
-    });
-    currentPriceInput.addEventListener("blur", () => {
-      const formatted = formatNum(currentPriceInput.value);
-      if (formatted !== "") currentPriceInput.value = formatted;
-      updateStockCalculations();
-      onAssetUpdate();
-    });
-    currentPriceInput.addEventListener("keydown", (e) => e.key === "Enter" && currentPriceInput.blur());
-    currentPriceTd.appendChild(currentPriceInput);
-    tr.appendChild(currentPriceTd);
-
     const quantityTd = document.createElement("td");
     quantityTd.className = "asset-stock-cell-quantity";
     const quantityInput = document.createElement("input");
@@ -2931,6 +2904,35 @@ function renderNetworthView() {
     quantityInput.addEventListener("keydown", (e) => e.key === "Enter" && quantityInput.blur());
     quantityTd.appendChild(quantityInput);
     tr.appendChild(quantityTd);
+
+    const purchaseAmtTd = document.createElement("td");
+    purchaseAmtTd.className = "asset-stock-cell-purchase-amt";
+    const purchaseAmtSpan = document.createElement("span");
+    purchaseAmtSpan.className = "asset-stock-purchase-amt-display";
+    purchaseAmtTd.appendChild(purchaseAmtSpan);
+    tr.appendChild(purchaseAmtTd);
+
+    const currentPriceTd = document.createElement("td");
+    currentPriceTd.className = "asset-stock-cell-current-price";
+    const currentPriceInput = document.createElement("input");
+    currentPriceInput.type = "text";
+    currentPriceInput.className = "asset-stock-input-current-price";
+    currentPriceInput.value = data.currentPrice ? (formatNum(data.currentPrice) || data.currentPrice) : "";
+    currentPriceInput.placeholder = "-";
+    currentPriceInput.addEventListener("input", () => filterNumericInput(currentPriceInput, true));
+    currentPriceInput.addEventListener("input", () => {
+      updateStockCalculations();
+      onAssetUpdate();
+    });
+    currentPriceInput.addEventListener("blur", () => {
+      const formatted = formatNum(currentPriceInput.value);
+      if (formatted !== "") currentPriceInput.value = formatted;
+      updateStockCalculations();
+      onAssetUpdate();
+    });
+    currentPriceInput.addEventListener("keydown", (e) => e.key === "Enter" && currentPriceInput.blur());
+    currentPriceTd.appendChild(currentPriceInput);
+    tr.appendChild(currentPriceTd);
 
     const appraisalAmtTd = document.createElement("td");
     appraisalAmtTd.className = "asset-stock-cell-appraisal-amt";
@@ -2962,11 +2964,34 @@ function renderNetworthView() {
       const profitLoss = purchaseAmt !== null && appraisalAmt !== null ? appraisalAmt - purchaseAmt : null;
       const returnRate = purchaseAmt !== null && purchaseAmt > 0 && profitLoss !== null
         ? (profitLoss / purchaseAmt) * 100 : null;
+      purchaseAmtSpan.textContent = purchaseAmt !== null ? formatNum(Math.round(purchaseAmt)) : "";
       appraisalAmtSpan.textContent = appraisalAmt !== null ? formatNum(Math.round(appraisalAmt)) : "";
-      profitLossSpan.textContent = profitLoss !== null ? (profitLoss >= 0 ? "" : "-") + formatNum(Math.abs(Math.round(profitLoss))) : "";
-      profitLossSpan.className = "asset-stock-profit-loss-display " + (profitLoss !== null ? (profitLoss >= 0 ? "profit" : "loss") : "");
-      returnRateSpan.textContent = returnRate !== null ? Math.round(returnRate) + "%" : "";
-      returnRateSpan.className = "asset-stock-return-rate-display " + (returnRate !== null ? (returnRate >= 0 ? "profit" : "loss") : "");
+      if (profitLoss === null) {
+        profitLossSpan.textContent = "";
+        profitLossSpan.className = "asset-stock-profit-loss-display";
+      } else {
+        const plRounded = Math.round(profitLoss);
+        const plAbs = formatNum(Math.abs(plRounded));
+        if (plRounded > 0) {
+          profitLossSpan.textContent = "+" + plAbs;
+          profitLossSpan.className = "asset-stock-profit-loss-display profit";
+        } else if (plRounded < 0) {
+          profitLossSpan.textContent = "-" + plAbs;
+          profitLossSpan.className = "asset-stock-profit-loss-display loss";
+        } else {
+          profitLossSpan.textContent = "0";
+          profitLossSpan.className = "asset-stock-profit-loss-display breakeven";
+        }
+      }
+      if (returnRate === null) {
+        returnRateSpan.textContent = "";
+        returnRateSpan.className = "asset-stock-return-rate-display";
+      } else {
+        const rr = Math.round(returnRate);
+        returnRateSpan.textContent = (rr > 0 ? "+" : rr < 0 ? "" : "") + rr + "%";
+        returnRateSpan.className =
+          "asset-stock-return-rate-display " + (rr > 0 ? "profit" : rr < 0 ? "loss" : "breakeven");
+      }
     }
     updateStockCalculations();
 
@@ -3301,7 +3326,10 @@ function renderNetworthView() {
     });
     principalInput.addEventListener("keydown", (e) => e.key === "Enter" && principalInput.blur());
     principalTd.appendChild(principalInput);
-    tr.appendChild(principalTd);
+    const deferPrincipalToBeforeMaturityAmt = isSavings && !isDeposit;
+    if (!deferPrincipalToBeforeMaturityAmt) {
+      tr.appendChild(principalTd);
+    }
 
     function updateDepositMaturityAmt() {
       if (!isDeposit) return;
@@ -3360,11 +3388,10 @@ function renderNetworthView() {
 
     function updatePrincipalFromCalc() {
       if (isDeposit || !monthlyInput) return;
-      const calc = calcAssetFromMonthlyDeposit(
+      const calc = calcCumulativePaidFromMonthlyDeposit(
         monthlyInput.value,
         openDateInput?.value,
-        maturityDateInput?.value,
-        rateInput?.value
+        maturityDateInput?.value
       );
       if (calc !== null) {
         principalInput.value = formatNum(calc);
@@ -3398,7 +3425,8 @@ function renderNetworthView() {
     rateInput.type = "text";
     rateInput.className = "asset-asset-input-rate";
     rateInput.value = data.rate ?? "";
-    rateInput.placeholder = "-";
+    rateInput.placeholder = isSavings ? "예: 4.2" : "-";
+    rateInput.title = isSavings ? "연 금리, 퍼센트 숫자만 (4.2 = 4.2%, % 생략 가능)" : "";
     rateInput.addEventListener("input", () => filterNumericInput(rateInput, true));
     rateInput.addEventListener("input", () => {
       if (isDeposit) updateDepositMaturityAmt();
@@ -3423,6 +3451,8 @@ function renderNetworthView() {
       monthsInput.placeholder = "-";
       monthsInput.addEventListener("input", () => filterNumericInput(monthsInput, false));
       monthsInput.addEventListener("input", () => {
+        syncSavingsMaturityFromOpenAndMonths();
+        updatePrincipalFromCalc();
         updateInterestAndMaturityAmt();
         onAssetUpdate();
       });
@@ -3430,6 +3460,9 @@ function renderNetworthView() {
       monthsTd.appendChild(monthsInput);
       tr.appendChild(monthsTd);
     }
+
+    /* 적금: 개설일+개월 → 만기일 자동(대출 만기와 동일). 본문은 maturityDateInput 생성 후 할당 */
+    var syncSavingsMaturityFromOpenAndMonths = function () {};
 
     const openDateTd = document.createElement("td");
     openDateTd.className = "asset-asset-cell-open-date asset-asset-cell-date";
@@ -3449,6 +3482,7 @@ function renderNetworthView() {
       refreshOpenDate();
       if (isDeposit) updateDepositMaturityAmt();
       else {
+        syncSavingsMaturityFromOpenAndMonths();
         updatePrincipalFromCalc();
         updateInterestAndMaturityAmt();
       }
@@ -3479,6 +3513,19 @@ function renderNetworthView() {
     function refreshMaturityDate() {
       maturityDateDisplay.textContent = maturityDateInput.value ? formatDateYYMMDD(maturityDateInput.value) : "";
     }
+    syncSavingsMaturityFromOpenAndMonths = function () {
+      if (isDeposit || !monthsInput) return;
+      const open = parseDate(openDateInput.value);
+      const m = parseNum(monthsInput.value);
+      if (!open || m === null || m <= 0) return;
+      const end = new Date(open);
+      end.setMonth(end.getMonth() + Math.floor(m));
+      const y = end.getFullYear();
+      const mo = String(end.getMonth() + 1).padStart(2, "0");
+      const d = String(end.getDate()).padStart(2, "0");
+      maturityDateInput.value = `${y}-${mo}-${d}`;
+      refreshMaturityDate();
+    };
     maturityDateInput.addEventListener("change", () => {
       refreshMaturityDate();
       if (isDeposit) updateDepositMaturityAmt();
@@ -3488,11 +3535,20 @@ function renderNetworthView() {
       }
       onAssetUpdate();
     });
-    maturityDateWrap.addEventListener("click", () => {
-      maturityDateInput.focus();
-      if (typeof maturityDateInput.showPicker === "function") maturityDateInput.showPicker();
-      else maturityDateInput.click();
-    });
+    if (isDeposit) {
+      maturityDateWrap.addEventListener("click", () => {
+        maturityDateInput.focus();
+        if (typeof maturityDateInput.showPicker === "function") maturityDateInput.showPicker();
+        else maturityDateInput.click();
+      });
+    } else {
+      maturityDateTd.classList.add("asset-asset-cell-maturity-date--computed");
+      maturityDateTd.title = "가입일·개월 기준 자동 계산 (직접 수정 불가)";
+      maturityDateWrap.classList.add("asset-asset-maturity-date-wrap--computed");
+      maturityDateDisplay.classList.add("asset-asset-date-display--computed");
+      maturityDateInput.readOnly = true;
+      maturityDateInput.setAttribute("aria-readonly", "true");
+    }
     refreshMaturityDate();
     maturityDateWrap.appendChild(maturityDateDisplay);
     maturityDateWrap.appendChild(maturityDateInput);
@@ -3514,6 +3570,10 @@ function renderNetworthView() {
     interestTd.appendChild(interestDisplay);
     tr.appendChild(interestTd);
 
+    if (deferPrincipalToBeforeMaturityAmt) {
+      tr.appendChild(principalTd);
+    }
+
     const maturityAmtTd = document.createElement("td");
     maturityAmtTd.className = "asset-asset-cell-maturity-amt";
     const maturityAmtDisplay = document.createElement("span");
@@ -3524,6 +3584,9 @@ function renderNetworthView() {
 
     if (isDeposit) updateDepositMaturityAmt();
     else {
+      if (monthsInput && openDateInput.value && monthsInput.value && !maturityDateInput.value) {
+        syncSavingsMaturityFromOpenAndMonths();
+      }
       updatePrincipalFromCalc();
       updateInterestAndMaturityAmt();
     }
@@ -3559,11 +3622,17 @@ function renderNetworthView() {
       if (!el) return;
       let sum = 0;
       if (el.isStock) {
+        let sumPurchase = 0;
         el.tbody.querySelectorAll(".asset-asset-row-stock").forEach((tr) => {
+          const purchaseSpan = tr.querySelector(".asset-stock-purchase-amt-display");
+          const purchase = parseNum(purchaseSpan?.textContent);
+          if (purchase !== null) sumPurchase += purchase;
           const appraisalSpan = tr.querySelector(".asset-stock-appraisal-amt-display");
           const appraisal = parseNum(appraisalSpan?.textContent);
           if (appraisal !== null) sum += appraisal;
         });
+        const purchaseCell = el.totalsRow.querySelector(".asset-stock-cell-totals-purchase-amt");
+        if (purchaseCell) purchaseCell.textContent = sumPurchase > 0 ? formatNum(sumPurchase) : "";
       } else if (el.isRealEstate) {
         let saleTotal = 0;
         let loanTotal = 0;
@@ -3761,9 +3830,9 @@ function renderNetworthView() {
           <tr>
             <th class="asset-asset-th-name">상품명</th>
             <th class="asset-asset-th-category">용도</th>
-            <th class="asset-asset-th-principal">원금</th>
-            <th class="asset-asset-th-rate">이자율</th>
-            <th class="asset-asset-th-open-date">개설일</th>
+            <th class="asset-asset-th-principal">예치금</th>
+            <th class="asset-asset-th-rate">금리(%)</th>
+            <th class="asset-asset-th-open-date">가입일</th>
             <th class="asset-asset-th-maturity-date">만기일</th>
             <th class="asset-asset-th-maturity-rate">만기율</th>
             <th class="asset-asset-th-interest">이자</th>
@@ -3778,7 +3847,6 @@ function renderNetworthView() {
         <colgroup>
           <col class="asset-asset-col-name">
           <col class="asset-asset-col-category">
-          <col class="asset-asset-col-principal">
           <col class="asset-asset-col-monthly">
           <col class="asset-asset-col-rate">
           <col class="asset-asset-col-months">
@@ -3786,6 +3854,7 @@ function renderNetworthView() {
           <col class="asset-asset-col-maturity-date">
           <col class="asset-asset-col-maturity-rate">
           <col class="asset-asset-col-interest">
+          <col class="asset-asset-col-principal">
           <col class="asset-asset-col-maturity-amt">
           <col class="asset-asset-col-actions">
         </colgroup>
@@ -3793,14 +3862,14 @@ function renderNetworthView() {
           <tr>
             <th class="asset-asset-th-name">상품명</th>
             <th class="asset-asset-th-category">용도</th>
-            <th class="asset-asset-th-principal">자산액</th>
             <th class="asset-asset-th-monthly">월납입액</th>
-            <th class="asset-asset-th-rate">이자율</th>
+            <th class="asset-asset-th-rate">금리(%)</th>
             <th class="asset-asset-th-months">개월수</th>
-            <th class="asset-asset-th-open-date">개설일</th>
+            <th class="asset-asset-th-open-date">가입일</th>
             <th class="asset-asset-th-maturity-date">만기일</th>
             <th class="asset-asset-th-maturity-rate">만기율</th>
             <th class="asset-asset-th-interest">이자</th>
+            <th class="asset-asset-th-principal">납입액</th>
             <th class="asset-asset-th-maturity-amt">만기예상액</th>
             <th class="asset-asset-th-actions"></th>
           </tr>
@@ -3894,8 +3963,9 @@ function renderNetworthView() {
           <col class="asset-stock-col-name">
           <col class="asset-stock-col-category">
           <col class="asset-stock-col-avg-price">
-          <col class="asset-stock-col-current-price">
           <col class="asset-stock-col-quantity">
+          <col class="asset-stock-col-purchase-amt">
+          <col class="asset-stock-col-current-price">
           <col class="asset-stock-col-appraisal-amt">
           <col class="asset-stock-col-return-rate">
           <col class="asset-stock-col-profit-loss">
@@ -3905,9 +3975,10 @@ function renderNetworthView() {
           <tr>
             <th class="asset-stock-th-name">종목명</th>
             <th class="asset-stock-th-category">주식분류</th>
-            <th class="asset-stock-th-avg-price">평균단가</th>
-            <th class="asset-stock-th-current-price">현재가</th>
+            <th class="asset-stock-th-avg-price">매입단가</th>
             <th class="asset-stock-th-quantity">보유수량</th>
+            <th class="asset-stock-th-purchase-amt">매입금액</th>
+            <th class="asset-stock-th-current-price">현재가</th>
             <th class="asset-stock-th-appraisal-amt">평가금액</th>
             <th class="asset-stock-th-return-rate">수익률</th>
             <th class="asset-stock-th-profit-loss">평가손익</th>
@@ -3940,9 +4011,9 @@ function renderNetworthView() {
             <th class="asset-asset-th-type">자산유형</th>
             <th class="asset-asset-th-principal">자산액</th>
             <th class="asset-asset-th-monthly">월납입액</th>
-            <th class="asset-asset-th-rate">이자율</th>
+            <th class="asset-asset-th-rate">금리(%)</th>
             <th class="asset-asset-th-months">개월수</th>
-            <th class="asset-asset-th-open-date">개설일</th>
+            <th class="asset-asset-th-open-date">가입일</th>
             <th class="asset-asset-th-maturity-date">만기일</th>
             <th class="asset-asset-th-maturity-rate">만기율</th>
             <th class="asset-asset-th-interest">이자</th>
@@ -3965,6 +4036,7 @@ function renderNetworthView() {
     if (isStock) {
       subTotalsRow.innerHTML = `
         <td class="asset-asset-cell-totals-label" colspan="5">합계</td>
+        <td class="asset-stock-cell-totals-purchase-amt"></td>
         <td class="asset-stock-cell-totals-appraisal-amt"></td>
         <td></td>
         <td></td>
@@ -3997,9 +4069,27 @@ function renderNetworthView() {
         <td class="asset-asset-cell-actions"></td>
       `;
       subTotalsCell = subTotalsRow.querySelector(".asset-annuity-cell-totals-total-paid");
+    } else if (isDeposit) {
+      subTotalsRow.innerHTML = `
+        <td class="asset-asset-cell-totals-label" colspan="2">합계</td>
+        <td class="asset-asset-cell-totals-principal">-</td>
+        ${Array(5).fill("<td></td>").join("")}
+        <td class="asset-asset-cell-totals-maturity-amt">-</td>
+        <td class="asset-asset-cell-actions"></td>
+      `;
+      subTotalsCell = subTotalsRow.querySelector(".asset-asset-cell-totals-principal");
+    } else if (isSavings) {
+      subTotalsRow.innerHTML = `
+        <td class="asset-asset-cell-totals-label" colspan="2">합계</td>
+        ${Array(7).fill("<td></td>").join("")}
+        <td class="asset-asset-cell-totals-principal">-</td>
+        <td class="asset-asset-cell-totals-maturity-amt">-</td>
+        <td class="asset-asset-cell-actions"></td>
+      `;
+      subTotalsCell = subTotalsRow.querySelector(".asset-asset-cell-totals-principal");
     } else {
-      const totalsColspan = isDeposit ? 2 : isSavings ? 2 : 3;
-      const totalsEmptyCells = isDeposit ? 5 : isSavings ? 7 : 8;
+      const totalsColspan = 3;
+      const totalsEmptyCells = 8;
       subTotalsRow.innerHTML = `
         <td class="asset-asset-cell-totals-label" colspan="${totalsColspan}">합계</td>
         <td class="asset-asset-cell-totals-principal">-</td>
