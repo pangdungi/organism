@@ -57,6 +57,8 @@ import {
 import { hydrateTimeImproveNotesFromCloud } from "../utils/timeImproveNotesSupabase.js";
 import { ensureTimeLedgerEntryIds } from "../utils/timeLedgerEntriesModel.js";
 import { hydrateTimeLedgerEntriesFromCloud } from "../utils/timeLedgerEntriesSupabase.js";
+import { persistSectionTasksAndSchedule } from "../utils/todoSectionTasksSupabase.js";
+import { SECTION_TASKS_KEY } from "../utils/todoSectionTasksModel.js";
 
 export { getTaskOptionByName };
 
@@ -5474,11 +5476,14 @@ export function render() {
     ];
     if (!VALID_SECTIONS.includes(sectionId)) return false;
     try {
-      const SECTION_TASKS_KEY = "todo-section-tasks";
       const raw = localStorage.getItem(SECTION_TASKS_KEY);
       const obj = raw ? JSON.parse(raw) : {};
       const arr = Array.isArray(obj[sectionId]) ? obj[sectionId] : [];
-      const taskId = `${sectionId}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      const taskId =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : "";
+      if (!taskId) return false;
       arr.push({
         taskId,
         name: todoName,
@@ -5491,7 +5496,7 @@ export function render() {
         itemType: "todo",
       });
       obj[sectionId] = arr;
-      localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+      persistSectionTasksAndSchedule(obj);
       document.dispatchEvent(
         new CustomEvent("todo-braindump-added", { detail: {} }),
       );

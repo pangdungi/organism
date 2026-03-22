@@ -41,9 +41,11 @@ import {
 } from "./Time.js";
 import { showToast } from "../utils/showToast.js";
 import { renderMonthlyContent as renderWorkScheduleMonthlyContent } from "./WorkScheduleMonthly.js";
-
-const CUSTOM_SECTION_TASKS_KEY = "todo-custom-section-tasks";
-const SECTION_TASKS_KEY = "todo-section-tasks";
+import {
+  persistSectionTasksAndSchedule,
+  persistCustomSectionTasksAndSchedule,
+} from "../utils/todoSectionTasksSupabase.js";
+import { SECTION_TASKS_KEY, CUSTOM_SECTION_TASKS_KEY } from "../utils/todoSectionTasksModel.js";
 const KPI_SECTION_IDS = ["braindump", "dream", "sideincome", "health", "happy"];
 
 const CALENDAR_DATE_DEBUG = false;
@@ -190,7 +192,7 @@ function updateSectionTaskDates(
     }
     t.startDate = (startDate || "").slice(0, 10) || "";
     t.dueDate = (dueDate || "").slice(0, 10) || "";
-    localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+    persistSectionTasksAndSchedule(obj);
     dateDebug("updateSectionTaskDates OK", { sectionId, taskId, savedDueDate: t.dueDate });
     return true;
   } catch (err) {
@@ -210,7 +212,7 @@ function updateSectionTaskTimes(sectionId, taskId, startTime, endTime) {
     if (t) {
       t.startTime = (startTime || "").trim() || "";
       t.endTime = (endTime || "").trim() || "";
-      localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+      persistSectionTasksAndSchedule(obj);
       return true;
     }
   } catch (_) {}
@@ -227,7 +229,7 @@ function updateSectionTaskDone(sectionId, taskId, done) {
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
       t.done = !!done;
-      localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+      persistSectionTasksAndSchedule(obj);
       return true;
     }
   } catch (_) {}
@@ -244,7 +246,7 @@ function updateSectionTaskEisenhower(sectionId, taskId, eisenhower) {
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
       t.eisenhower = (eisenhower || "").trim() || "";
-      localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+      persistSectionTasksAndSchedule(obj);
       return true;
     }
   } catch (_) {}
@@ -261,7 +263,7 @@ function updateCustomSectionTaskEisenhower(sectionId, taskId, eisenhower) {
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
       t.eisenhower = (eisenhower || "").trim() || "";
-      localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(obj));
+      persistCustomSectionTasksAndSchedule(obj);
       return true;
     }
   } catch (_) {}
@@ -289,7 +291,7 @@ function addSectionTaskToCalendar(sectionId, taskData) {
       _calPrevStart: ((taskData._calPrevStart || "").toString().slice(0, 10) || ""),
       _calPrevDue: ((taskData._calPrevDue || "").toString().slice(0, 10) || ""),
     });
-    localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+    persistSectionTasksAndSchedule(obj);
     return true;
   } catch (_) {}
   return false;
@@ -472,7 +474,7 @@ function updateCustomSectionTaskDone(sectionId, taskId, done) {
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
       t.done = !!done;
-      localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(obj));
+      persistCustomSectionTasksAndSchedule(obj);
     }
   } catch (_) {}
 }
@@ -499,7 +501,7 @@ function updateCustomSectionTaskDates(
       }
       t.startDate = (startDate || "").slice(0, 10) || "";
       t.dueDate = (dueDate || "").slice(0, 10) || "";
-      localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(obj));
+      persistCustomSectionTasksAndSchedule(obj);
       return true;
     }
   } catch (_) {}
@@ -517,7 +519,7 @@ function updateCustomSectionTaskTimes(sectionId, taskId, startTime, endTime) {
     if (t) {
       t.startTime = (startTime || "").trim() || "";
       t.endTime = (endTime || "").trim() || "";
-      localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(obj));
+      persistCustomSectionTasksAndSchedule(obj);
       return true;
     }
   } catch (_) {}
@@ -545,7 +547,7 @@ function addCalendarTodoToCustomSection(sectionId, taskData) {
       _calPrevStart: ((taskData._calPrevStart || "").toString().slice(0, 10) || ""),
       _calPrevDue: ((taskData._calPrevDue || "").toString().slice(0, 10) || ""),
     });
-    localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(obj));
+    persistCustomSectionTasksAndSchedule(obj);
     return true;
   } catch (_) {}
   return false;
@@ -567,7 +569,7 @@ function clearSectionTaskCalendarRevertSnapshot(sectionId, taskId) {
     if (!t) return;
     delete t._calPrevStart;
     delete t._calPrevDue;
-    localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+    persistSectionTasksAndSchedule(obj);
   } catch (_) {}
 }
 
@@ -581,7 +583,7 @@ function clearCustomSectionTaskCalendarRevertSnapshot(sectionId, taskId) {
     if (!t) return;
     delete t._calPrevStart;
     delete t._calPrevDue;
-    localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(obj));
+    persistCustomSectionTasksAndSchedule(obj);
   } catch (_) {}
 }
 

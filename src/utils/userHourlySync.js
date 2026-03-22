@@ -14,23 +14,34 @@ export const USER_HOURLY_RATE_KEY = "user_hourly_rate";
 /** DB appearance JSON → localStorage + CSS 변수 */
 export function applyAppearanceFromServer(a) {
   if (!a || typeof a !== "object") return;
-  const hasAny = a.sectionColors || a.timeCategoryColors || a.taskCategoryColors;
+  const hasAny =
+    a.sectionColors ||
+    a.timeCategoryColors ||
+    a.taskCategoryColors ||
+    typeof a.hideCompleted === "boolean";
   if (!hasAny) return;
   const cur = getTodoSettings();
+  const hideCompleted =
+    typeof a.hideCompleted === "boolean" ? a.hideCompleted : cur.hideCompleted;
+  const sectionColors = a.sectionColors
+    ? { ...DEFAULT_SECTION_COLORS, ...a.sectionColors }
+    : { ...cur.sectionColors };
+  const timeCategoryColors = a.timeCategoryColors
+    ? { ...DEFAULT_TIME_CATEGORY_COLORS, ...a.timeCategoryColors }
+    : { ...cur.timeCategoryColors };
+  const taskCategoryColors = a.taskCategoryColors
+    ? { ...DEFAULT_TASK_CATEGORY_COLORS, ...a.taskCategoryColors }
+    : { ...cur.taskCategoryColors };
   saveTodoSettings({
-    hideCompleted: cur.hideCompleted,
-    sectionColors: { ...DEFAULT_SECTION_COLORS, ...(a.sectionColors || {}) },
-    timeCategoryColors: {
-      ...DEFAULT_TIME_CATEGORY_COLORS,
-      ...(a.timeCategoryColors || {}),
-    },
-    taskCategoryColors: {
-      ...DEFAULT_TASK_CATEGORY_COLORS,
-      ...(a.taskCategoryColors || {}),
-    },
+    hideCompleted,
+    sectionColors,
+    timeCategoryColors,
+    taskCategoryColors,
   });
-  applyTimeCategoryColors();
-  applyTaskCategoryColors();
+  if (a.sectionColors || a.timeCategoryColors || a.taskCategoryColors) {
+    applyTimeCategoryColors();
+    applyTaskCategoryColors();
+  }
   document.dispatchEvent(new CustomEvent("app-colors-changed"));
 }
 
@@ -81,6 +92,7 @@ export async function pushAppearanceToSupabase() {
       sectionColors: s.sectionColors,
       timeCategoryColors: s.timeCategoryColors,
       taskCategoryColors: s.taskCategoryColors,
+      hideCompleted: !!s.hideCompleted,
     },
   });
   if (error) console.warn("[set_my_appearance]", error.message);

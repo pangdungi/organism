@@ -18,6 +18,7 @@ import { render as renderDiary } from "./views/Diary.js";
 import { render as renderIdea } from "./views/Idea.js";
 import { render as renderHome } from "./views/Home.js";
 import { attachAssetExpenseTransactionsSaveListener } from "./utils/assetExpenseTransactionsSupabase.js";
+import { hydrateTodoSectionTasksFromCloud } from "./utils/todoSectionTasksSupabase.js";
 
 const TABS = [
   { id: "home", label: "오늘", icon: "/toolbaricons/dashboard.svg" },
@@ -330,7 +331,12 @@ btn.dataset.tabId = tab.id;
     }
   }
 
+  window.__lpRenderMain = () => renderMain(main);
+
   renderMain(main);
+  void hydrateTodoSectionTasksFromCloud().then((needRefresh) => {
+    if (needRefresh) renderMain(main);
+  });
   appScreen.appendChild(main);
   appPage.appendChild(appScreen);
   appPage.appendChild(bottomNav);

@@ -10117,7 +10117,11 @@ body {
 }
 
 .work-schedule-monthly-day.other-month {
-  background: var(--ui-surface-alt);
+  background: #eceadf;
+}
+
+.work-schedule-monthly-day.other-month:hover {
+  background: #eceadf;
 }
 
 .work-schedule-monthly-day.other-month .work-schedule-monthly-day-num {
@@ -10125,7 +10129,11 @@ body {
 }
 
 .work-schedule-monthly-day.today {
-  background: var(--ui-surface-alt);
+  background: #e8e2d2;
+}
+
+.work-schedule-monthly-day.today:hover {
+  background: #e8e2d2;
 }
 
 .work-schedule-monthly-day.today .work-schedule-monthly-day-num::after {
@@ -11050,6 +11058,31 @@ body {
   font-size: 0.95rem;
   line-height: 1.5;
   color: var(--text-body);
+}
+
+.todo-list-confirm-warn {
+  margin: 0.75rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.todo-list-confirm-btn--danger {
+  flex: 1;
+  padding: 0.6rem 1rem;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  font-family: inherit;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 0.09375rem solid #fecaca;
+  border-radius: var(--modal-radius);
+  cursor: pointer;
+}
+
+.todo-list-confirm-btn--danger:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
 }
 
 .todo-list-confirm-delete {
@@ -29121,7 +29154,11 @@ body.kpi-resizing {
 }
 
 .calendar-monthly-day.other-month {
-  background: var(--ui-surface-alt);
+  background: #eceadf;
+}
+
+.calendar-monthly-day.other-month:hover {
+  background: #eceadf;
 }
 
 .calendar-monthly-day.other-month .calendar-monthly-day-num {
@@ -29130,8 +29167,12 @@ body.kpi-resizing {
 
 /* 오늘: 근무표와 동일 — 셀 배경 + 숫자 옆 동그라미 점 */
 .calendar-monthly-day.today {
-  background: var(--ui-surface-alt);
+  background: #e8e2d2;
   position: relative;
+}
+
+.calendar-monthly-day.today:hover {
+  background: #e8e2d2;
 }
 
 .calendar-monthly-day.today .calendar-monthly-day-num {

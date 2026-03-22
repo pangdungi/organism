@@ -13,6 +13,7 @@ import {
   APP_PRESET_COLORS,
   hexToRgba,
 } from "./todoSettings.js";
+import { pushAppearanceToSupabase } from "./userHourlySync.js";
 
 const FIXED_SECTIONS = [
   { id: "braindump", label: "브레인 덤프" },
@@ -224,14 +225,20 @@ export function createTodoSettingsModal(options = {}) {
     document.body.style.overflow = "";
   }
 
-  function save() {
+  async function save() {
     const current = getTodoSettings();
-    saveTodoSettings({ hideCompleted, sectionColors: current.sectionColors, timeCategoryColors: current.timeCategoryColors });
+    saveTodoSettings({
+      hideCompleted,
+      sectionColors: current.sectionColors,
+      timeCategoryColors: current.timeCategoryColors,
+      taskCategoryColors: current.taskCategoryColors,
+    });
+    await pushAppearanceToSupabase();
     onHideCompletedChange?.(hideCompleted);
     close();
   }
 
-  saveBtn.addEventListener("click", save);
+  saveBtn.addEventListener("click", () => void save());
   closeBtn.addEventListener("click", close);
   backdrop.addEventListener("click", close);
 

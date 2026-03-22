@@ -75,3 +75,24 @@ export function removeSubtask(taskId, subtaskId) {
 export function clearSubtasks(taskId) {
   setSubtasks(taskId, []);
 }
+
+/** 완료 체크된 세부 항목만 제거 (부모 할 일은 유지) */
+export function removeAllCompletedSubtasksFromStore() {
+  const all = loadAll();
+  let changed = false;
+  for (const taskId of Object.keys(all)) {
+    const items = Array.isArray(all[taskId]) ? all[taskId] : [];
+    const next = items.filter((it) => !it.done);
+    if (next.length !== items.length) {
+      changed = true;
+      if (next.length === 0) delete all[taskId];
+      else all[taskId] = next;
+    }
+  }
+  if (changed) {
+    try {
+      localStorage.setItem(TODO_SUBTASKS_KEY, JSON.stringify(all));
+    } catch (_) {}
+  }
+  return changed;
+}

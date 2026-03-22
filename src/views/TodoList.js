@@ -24,13 +24,28 @@ import {
   pickRandomPresetRgba,
   readableTextForPresetRgbaBg,
 } from "../utils/todoSettings.js";
-import { getSubtasks, addSubtask, updateSubtask, removeSubtask, clearSubtasks, setSubtasks } from "../utils/todoSubtasks.js";
+import {
+  getSubtasks,
+  addSubtask,
+  updateSubtask,
+  removeSubtask,
+  clearSubtasks,
+  setSubtasks,
+  removeAllCompletedSubtasksFromStore,
+} from "../utils/todoSubtasks.js";
 import { refreshEisenhowerQuadrantsIfActive } from "../utils/eisenhowerQuadrantsBridge.js";
 import { createBraindumpContextMenu } from "../utils/braindumpContextMenu.js";
 import { createTodoCheckboxTypeMenu } from "../utils/todoCheckboxTypeMenu.js";
-
-const CUSTOM_SECTION_TASKS_KEY = "todo-custom-section-tasks";
-const SECTION_TASKS_KEY = "todo-section-tasks";
+import {
+  persistSectionTasksAndSchedule,
+  persistCustomSectionTasksAndSchedule,
+  syncTodoSectionTasksToSupabase,
+} from "../utils/todoSectionTasksSupabase.js";
+import {
+  SECTION_TASKS_KEY,
+  CUSTOM_SECTION_TASKS_KEY,
+  removeCompletedFromSectionTaskStores,
+} from "../utils/todoSectionTasksModel.js";
 export const DRAG_TYPE_TODO_TO_CALENDAR = "todo-task-to-calendar";
 export const DRAG_TYPE_TODO_TO_EISENHOWER = "todo-task-to-eisenhower";
 
@@ -118,7 +133,7 @@ function updateSectionTaskDone(sectionId, taskId, done) {
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
       t.done = !!done;
-      localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+      persistSectionTasksAndSchedule(obj);
       return true;
     }
   } catch (_) {}
@@ -189,7 +204,14 @@ function saveSectionTasks(sectionId, tasks) {
         reminderTime: t.reminderTime || "",
       });
     });
-    const toSave = merged
+    /* 동일 taskId 중복(저장소 UUID vs DOM task-… 불일치 등) 시 마지막 행만 유지 */
+    const mergeDedup = new Map();
+    merged.forEach((t, idx) => {
+      const id = (t.taskId || "").trim();
+      mergeDedup.set(id || `_noid_${idx}`, t);
+    });
+    const mergedUnique = [...mergeDedup.values()];
+    const toSave = mergedUnique
       .map(({ taskId, name, startDate, dueDate, startTime, endTime, eisenhower, done, itemType, reminderDate, reminderTime }) => ({
         taskId: taskId || "",
         name: (name || "").trim(),
@@ -205,7 +227,7 @@ function saveSectionTasks(sectionId, tasks) {
       }))
       .filter((t) => t.name !== "");
     obj[sectionId] = toSave;
-    localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+    persistSectionTasksAndSchedule(obj);
   } catch (_) {}
 }
 
@@ -233,7 +255,7 @@ function moveSectionTaskToSection(fromSectionId, taskId, targetSectionId, taskDa
       reminderDate: (taskData.reminderDate || "").slice(0, 10) || "",
       reminderTime: taskData.reminderTime || "",
     });
-    localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+    persistSectionTasksAndSchedule(obj);
     return true;
   } catch (_) {}
   return false;
@@ -263,7 +285,7 @@ function moveCustomSectionTaskToSection(fromSectionId, taskId, targetSectionId, 
       reminderDate: (taskData.reminderDate || "").slice(0, 10) || "",
       reminderTime: taskData.reminderTime || "",
     });
-    localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(obj));
+    persistCustomSectionTasksAndSchedule(obj);
     return true;
   } catch (_) {}
   return false;
@@ -308,7 +330,7 @@ function saveCustomSectionTasks(sectionId, tasks) {
       }))
       .filter((t) => t.name !== "");
     obj[sectionId] = toSave;
-    localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(obj));
+    persistCustomSectionTasksAndSchedule(obj);
   } catch (_) {}
 }
 
@@ -318,7 +340,7 @@ function removeCustomSectionTasks(sectionId) {
     if (!raw) return;
     const obj = JSON.parse(raw);
     delete obj[sectionId];
-    localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(obj));
+    persistCustomSectionTasksAndSchedule(obj);
   } catch (_) {}
 }
 
@@ -330,7 +352,7 @@ function removeTaskFromSectionStorage(sectionId, taskId) {
     const arr = obj[sectionId];
     if (!Array.isArray(arr)) return false;
     obj[sectionId] = arr.filter((t) => (t.taskId || "") !== taskId);
-    localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+    persistSectionTasksAndSchedule(obj);
     return true;
   } catch (_) {}
   return false;
@@ -344,7 +366,7 @@ function removeTaskFromCustomSectionStorage(sectionId, taskId) {
     const arr = obj[sectionId];
     if (!Array.isArray(arr)) return false;
     obj[sectionId] = arr.filter((t) => (t.taskId || "") !== taskId);
-    localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(obj));
+    persistCustomSectionTasksAndSchedule(obj);
     return true;
   } catch (_) {}
   return false;
@@ -926,23 +948,43 @@ function showEditListModal(options = {}) {
   });
 }
 
+function escapeConfirmHtml(s) {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function showConfirmModal(options = {}) {
-  const { title = "확인", message, confirmText = "확인", cancelText = "취소", onConfirm } = options;
+  const {
+    title = "확인",
+    message,
+    warnMessage,
+    confirmText = "확인",
+    cancelText = "취소",
+    confirmDanger = false,
+    onConfirm,
+  } = options;
   const modal = document.createElement("div");
   modal.className = "todo-list-modal todo-list-confirm-modal";
+  const confirmBtnClass = confirmDanger
+    ? "todo-list-modal-confirm todo-list-confirm-btn--danger"
+    : "todo-list-modal-confirm todo-list-confirm-delete";
   modal.innerHTML = `
     <div class="todo-list-modal-backdrop"></div>
     <div class="todo-list-modal-panel">
       <div class="todo-list-modal-header">
-        <h3 class="todo-list-modal-title">${title}</h3>
+        <h3 class="todo-list-modal-title">${escapeConfirmHtml(title)}</h3>
         <button type="button" class="todo-list-modal-close" aria-label="닫기">×</button>
       </div>
       <div class="todo-list-modal-body todo-list-confirm-body">
-        <p class="todo-list-confirm-message">${(message || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")}</p>
+        <p class="todo-list-confirm-message">${escapeConfirmHtml(message)}</p>
+        ${warnMessage ? `<p class="todo-list-confirm-warn">${escapeConfirmHtml(warnMessage)}</p>` : ""}
       </div>
       <div class="todo-list-modal-footer">
-        <button type="button" class="todo-list-modal-cancel">${cancelText}</button>
-        <button type="button" class="todo-list-modal-confirm todo-list-confirm-delete">${confirmText}</button>
+        <button type="button" class="todo-list-modal-cancel">${escapeConfirmHtml(cancelText)}</button>
+        <button type="button" class="${confirmBtnClass}">${escapeConfirmHtml(confirmText)}</button>
       </div>
     </div>
   `;
@@ -2316,6 +2358,8 @@ function createTaskCard(taskData, options = {}) {
   }
 
   function updateCardFromData(data) {
+    const tid = (data.taskId || "").trim();
+    if (tid) card.dataset.taskId = tid;
     const n = (data.name || "").trim() || "(제목 없음)";
     card.dataset.name = data.name || "";
     card.dataset.startDate = data.startDate || "";
@@ -2364,6 +2408,7 @@ function createTaskCard(taskData, options = {}) {
     e.stopPropagation();
     showTodoTaskModal({
       taskData: {
+        taskId: card.dataset.taskId || "",
         name: card.dataset.name,
         startDate: card.dataset.startDate,
         dueDate: card.dataset.dueDate,
@@ -2870,51 +2915,35 @@ export function render(options = {}) {
   let hideCompleted = initialSettings.hideCompleted;
   el.classList.toggle("hide-completed", hideCompleted);
 
-  function doClearCompleted() {
-    const removed = removeAllCompletedKpiTodos();
-    const rowsToRemove = [];
-    el.querySelectorAll(".todo-task-row").forEach((row) => {
-      const check = row.querySelector(".todo-done-check");
-      if (check?.checked && row.dataset.taskId) {
-        rowsToRemove.push(row);
-      }
-    });
-    const cardsToRemove = [];
-    el.querySelectorAll(".todo-card").forEach((card) => {
-      const check = card.querySelector(".todo-done-check");
-      if (check?.checked && card.dataset.taskId) {
-        cardsToRemove.push(card);
-      }
-    });
-    rowsToRemove.forEach((r) => {
-      clearSubtasks(r.dataset.taskId);
-      r.remove();
-    });
-    cardsToRemove.forEach((c) => {
-      clearSubtasks(c.dataset.taskId);
-      c.remove();
-    });
-    el.querySelectorAll(".todo-subtask-item").forEach((item) => {
-      const check = item.querySelector(".todo-done-check");
-      if (check?.checked) {
-        const parentTaskId = item.dataset.parentTaskId;
-        const subtaskId = item.dataset.subtaskId;
-        if (parentTaskId && subtaskId) removeSubtask(parentTaskId, subtaskId);
-        item.remove();
-      }
-    });
-    if (removed > 0 || rowsToRemove.length > 0 || cardsToRemove.length > 0) {
-      el.querySelectorAll(".todo-section").forEach((sec) => {
-        const cardsWrap = sec.querySelector(".todo-cards-wrap");
-        const count = cardsWrap
-          ? cardsWrap.querySelectorAll(".todo-card").length
-          : sec.querySelectorAll(".todo-task-row").length;
-        const countEl = sec.querySelector(".todo-section-count");
-        if (countEl) countEl.textContent = count;
-      });
-      sectionResults.forEach(({ updateCount }) => updateCount());
-      updateTabLabels();
+  async function runClearCompletedConfirmed() {
+    removeAllCompletedKpiTodos();
+    removeAllCompletedSubtasksFromStore();
+    const { fixed, custom, changed } = removeCompletedFromSectionTaskStores();
+    if (changed) {
+      persistSectionTasksAndSchedule(fixed);
+      persistCustomSectionTasksAndSchedule(custom);
     }
+    try {
+      await syncTodoSectionTasksToSupabase();
+    } catch (e) {
+      console.warn("[clear-completed] sync", e);
+    }
+    try {
+      window.__lpRenderMain?.();
+    } catch (_) {}
+  }
+
+  function promptClearCompleted() {
+    showConfirmModal({
+      title: "완료 항목 모두 제거",
+      message:
+        "Supabase에 동기화된 할 일 중 완료 처리된 항목만 삭제합니다. 브레인 덤프·고정 리스트·추가 리스트의 할 일과, 꿈·부수입·건강·행복에 연결된 KPI 할 일이 포함됩니다.",
+      warnMessage: "삭제 후에는 복구할 수 없습니다.",
+      confirmText: "제거",
+      cancelText: "취소",
+      confirmDanger: true,
+      onConfirm: () => void runClearCompletedConfirmed(),
+    });
   }
 
   settingsBtn.addEventListener("click", () => {
@@ -2923,7 +2952,7 @@ export function render(options = {}) {
         hideCompleted = v;
         el.classList.toggle("hide-completed", hideCompleted);
       },
-      onClearCompleted: doClearCompleted,
+      onClearCompleted: promptClearCompleted,
       onColorsChange: () => {
         applyTabColors();
       },
@@ -3171,7 +3200,7 @@ export function render(options = {}) {
             const customObj = customRaw ? JSON.parse(customRaw) : {};
             if (!customObj[targetSectionId]) customObj[targetSectionId] = [];
             customObj[targetSectionId].push({ ...taskPayload, taskId: oldTaskId });
-            localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(customObj));
+            persistCustomSectionTasksAndSchedule(customObj);
             result = { success: true, task: { name, startDate, dueDate, startTime, endTime, eisenhower, done, sectionId: targetSectionId, sectionLabel: getTargetLabel(targetSectionId), itemType, isKpiTodo: false, taskId: oldTaskId, reminderDate, reminderTime } };
           } catch (_) {}
         }
@@ -3202,12 +3231,12 @@ export function render(options = {}) {
             const idx = fromArr.findIndex((x) => (x.taskId || "") === oldTaskId);
             if (idx < 0) return false;
             fromArr.splice(idx, 1);
-            localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj));
+            persistSectionTasksAndSchedule(obj);
             const customRaw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
             const customObj = customRaw ? JSON.parse(customRaw) : {};
             if (!customObj[targetSectionId]) customObj[targetSectionId] = [];
             customObj[targetSectionId].push({ ...taskPayload, taskId: oldTaskId });
-            localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(customObj));
+            persistCustomSectionTasksAndSchedule(customObj);
             return true;
           } catch (_) {}
           return false;
@@ -3223,12 +3252,12 @@ export function render(options = {}) {
             const idx = fromArr.findIndex((x) => (x.taskId || "") === oldTaskId);
             if (idx < 0) return false;
             fromArr.splice(idx, 1);
-            localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(obj));
+            persistCustomSectionTasksAndSchedule(obj);
             const sectionRaw = localStorage.getItem(SECTION_TASKS_KEY);
             const sectionObj = sectionRaw ? JSON.parse(sectionRaw) : {};
             if (!sectionObj[targetSectionId]) sectionObj[targetSectionId] = [];
             sectionObj[targetSectionId].push({ ...taskPayload, taskId: oldTaskId });
-            localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(sectionObj));
+            persistSectionTasksAndSchedule(sectionObj);
             return true;
           } catch (_) {}
           return false;
