@@ -20,6 +20,10 @@ import {
   attachAssetPlanMonthlyGoalsSaveListener,
   hydrateAssetPlanMonthlyGoalsFromCloud,
 } from "../utils/assetPlanMonthlyGoalsSupabase.js";
+import {
+  attachAssetNetWorthBundleSaveListener,
+  hydrateAssetNetWorthBundleFromCloud,
+} from "../utils/assetNetWorthBundleSupabase.js";
 
 const DEBT_ROWS_KEY = "asset_debt_rows";
 const ASSET_ROWS_KEY = "asset_asset_rows";
@@ -442,18 +446,20 @@ function loadDebtRows() {
     const raw = localStorage.getItem(DEBT_ROWS_KEY);
     if (raw) {
       const arr = JSON.parse(raw);
-      if (Array.isArray(arr) && arr.length > 0) {
+      /* 빈 배열 [] 도 “대출 없음”으로 유지 (이전: length>0 아니면 기본 5행 → 삭제 후에도 5행 부활) */
+      if (Array.isArray(arr)) {
+        if (arr.length === 0) return [];
         return arr.map((r) => ({
-        ...r,
-        debtType: r.debtType ?? "",
-        repayment: r.repayment ?? "",
-        periodYears: r.periodYears ?? "",
-        interestRate: r.interestRate ?? "",
-        startDate: r.startDate ?? "",
-        endDate: r.endDate ?? "",
-        paid: r.paid ?? "",
-        extraPaid: r.extraPaid ?? "",
-      }));
+          ...r,
+          debtType: r.debtType ?? "",
+          repayment: r.repayment ?? "",
+          periodYears: r.periodYears ?? "",
+          interestRate: r.interestRate ?? "",
+          startDate: r.startDate ?? "",
+          endDate: r.endDate ?? "",
+          paid: r.paid ?? "",
+          extraPaid: r.extraPaid ?? "",
+        }));
       }
     }
   } catch (_) {}
@@ -511,7 +517,8 @@ function loadAssetRows() {
     const raw = localStorage.getItem(ASSET_ROWS_KEY);
     if (raw) {
       const arr = JSON.parse(raw);
-      if (Array.isArray(arr) && arr.length > 0) {
+      if (Array.isArray(arr)) {
+        if (arr.length === 0) return [];
         return arr.map((r) => ({
           ...r,
           assetType: r.assetType ?? "",
@@ -767,7 +774,11 @@ function collectRealEstateRowsFromDOM(tableEl) {
 
 function collectAssetRowsFromDOM(tableEl) {
   const rows = [];
-  tableEl?.querySelectorAll(".asset-asset-row:not(.asset-asset-row-real-estate):not(.asset-asset-row-stock)").forEach((tr) => {
+  tableEl
+    ?.querySelectorAll(
+      ".asset-asset-row:not(.asset-asset-row-real-estate):not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(.asset-asset-row-annuity)",
+    )
+    .forEach((tr) => {
     const nameInput = tr.querySelector(".asset-asset-input-name");
     const principalInput = tr.querySelector(".asset-asset-input-principal");
     const monthlyInput = tr.querySelector(".asset-asset-input-monthly");
@@ -1899,11 +1910,33 @@ function formatNum(val) {
 }
 
 /** 숫자 전용 입력: 비숫자 문자 제거 (allowDecimal: 소수점 허용 여부) */
-function filterNumericInput(el, allowDecimal) {
+function filterNumericInput(el, allowDecimal, inputEvent) {
+  if (inputEvent && inputEvent.isComposing) return;
   const re = allowDecimal ? /[^\d,.]/g : /[^\d,]/g;
   const v = el.value;
   const filtered = v.replace(re, "");
   if (v !== filtered) el.value = filtered;
+}
+
+/**
+ * 자유 텍스트 input: IME 조합 중에는 input 콜백 생략(한글 중복·꼬임 방지).
+ * 조합 직후 input 이벤트가 안 오는 브라우저 대비: compositionend 뒤 microtask로 한 번 더 commit.
+ * 포커스 이동 시 마지막 글자 반영: blur 시 commit.
+ */
+function bindNetWorthTextInput(el, onCommit) {
+  let imeComposing = false;
+  el.addEventListener("compositionstart", () => {
+    imeComposing = true;
+  });
+  el.addEventListener("compositionend", () => {
+    imeComposing = false;
+    queueMicrotask(() => onCommit());
+  });
+  el.addEventListener("input", (e) => {
+    if (e.isComposing || imeComposing) return;
+    onCommit();
+  });
+  el.addEventListener("blur", () => onCommit());
 }
 
 function parseDate(val) {
@@ -2315,8 +2348,8 @@ function renderNetworthView() {
     nameInput.className = "asset-debt-input-name";
     nameInput.value = data.name || "";
     nameInput.placeholder = "";
-    nameInput.addEventListener("input", onUpdate);
-    nameInput.addEventListener("keydown", (e) => e.key === "Enter" && nameInput.blur());
+    bindNetWorthTextInput(nameInput, onUpdate);
+    nameInput.addEventListener("keydown", (e) => e.key === "Enter" && !e.isComposing && nameInput.blur());
     nameTd.appendChild(nameInput);
     tr.appendChild(nameTd);
 
@@ -2337,7 +2370,7 @@ function renderNetworthView() {
     periodInput.className = "asset-debt-input-period";
     periodInput.value = data.periodYears ?? "";
     periodInput.placeholder = "-";
-    periodInput.addEventListener("input", () => filterNumericInput(periodInput, false));
+    periodInput.addEventListener("input", (e) => filterNumericInput(periodInput, false, e));
     periodInput.addEventListener("keydown", (e) => e.key === "Enter" && periodInput.blur());
     periodTd.appendChild(periodInput);
     tr.appendChild(periodTd);
@@ -2350,7 +2383,7 @@ function renderNetworthView() {
     rateInput.value = data.interestRate ?? "";
     rateInput.placeholder = "예: 4.2";
     rateInput.title = "연 금리, 퍼센트 숫자만 (4.2 = 4.2%, % 생략 가능)";
-    rateInput.addEventListener("input", () => filterNumericInput(rateInput, true));
+    rateInput.addEventListener("input", (e) => filterNumericInput(rateInput, true, e));
     rateInput.addEventListener("keydown", (e) => e.key === "Enter" && rateInput.blur());
     rateTd.appendChild(rateInput);
     tr.appendChild(rateTd);
@@ -2362,7 +2395,7 @@ function renderNetworthView() {
     principalInput.className = "asset-debt-input-principal";
     principalInput.value = data.principal ? (formatNum(data.principal) || data.principal) : "";
     principalInput.placeholder = "-";
-    principalInput.addEventListener("input", () => filterNumericInput(principalInput, false));
+    principalInput.addEventListener("input", (e) => filterNumericInput(principalInput, false, e));
     principalInput.addEventListener("blur", () => {
       const formatted = formatNum(principalInput.value);
       if (formatted !== "") principalInput.value = formatted;
@@ -2561,7 +2594,7 @@ function renderNetworthView() {
     extraPaidInput.value = data.extraPaid ? (formatNum(data.extraPaid) || data.extraPaid) : "";
     extraPaidInput.placeholder = "-";
     extraPaidInput.title = "중도상환 금액 (수수료 제외)";
-    extraPaidInput.addEventListener("input", () => filterNumericInput(extraPaidInput, false));
+    extraPaidInput.addEventListener("input", (e) => filterNumericInput(extraPaidInput, false, e));
     extraPaidInput.addEventListener("input", onUpdate);
     extraPaidInput.addEventListener("blur", () => {
       const formatted = formatNum(extraPaidInput.value);
@@ -2640,9 +2673,11 @@ function renderNetworthView() {
     return tr;
   }
 
+  /** 대출 행 로컬 반영: onUpdate() → 여기. localStorage asset_debt_rows + "asset-networth-bundle-saved" */
   function save() {
     const rows = collectDebtRowsFromDOM(tableWrap);
     saveDebtRows(rows);
+    window.dispatchEvent(new CustomEvent("asset-networth-bundle-saved"));
   }
 
   function updateCount() {
@@ -2763,9 +2798,8 @@ function renderNetworthView() {
     contractInput.className = "asset-asset-input-contract";
     contractInput.value = data.contract || "";
     contractInput.placeholder = "";
-    contractInput.addEventListener("input", onAssetUpdate);
-    contractInput.addEventListener("blur", () => onAssetUpdate());
-    contractInput.addEventListener("keydown", (e) => e.key === "Enter" && contractInput.blur());
+    bindNetWorthTextInput(contractInput, onAssetUpdate);
+    contractInput.addEventListener("keydown", (e) => e.key === "Enter" && !e.isComposing && contractInput.blur());
     contractTd.appendChild(contractInput);
     tr.appendChild(contractTd);
 
@@ -2776,7 +2810,7 @@ function renderNetworthView() {
     salePriceInput.className = "asset-asset-input-sale-price";
     salePriceInput.value = data.salePrice ? (formatNum(data.salePrice) || data.salePrice) : "";
     salePriceInput.placeholder = "-";
-    salePriceInput.addEventListener("input", () => filterNumericInput(salePriceInput, false));
+    salePriceInput.addEventListener("input", (e) => filterNumericInput(salePriceInput, false, e));
     salePriceInput.addEventListener("input", () => {
       updateAssetValueDisplay();
       onAssetUpdate();
@@ -2798,7 +2832,7 @@ function renderNetworthView() {
     loanInput.className = "asset-asset-input-loan";
     loanInput.value = data.loan ? (formatNum(data.loan) || data.loan) : "";
     loanInput.placeholder = "-";
-    loanInput.addEventListener("input", () => filterNumericInput(loanInput, false));
+    loanInput.addEventListener("input", (e) => filterNumericInput(loanInput, false, e));
     loanInput.addEventListener("input", () => {
       updateAssetValueDisplay();
       onAssetUpdate();
@@ -2856,8 +2890,8 @@ function renderNetworthView() {
     nameInput.className = "asset-stock-input-name";
     nameInput.value = data.name || "";
     nameInput.placeholder = "";
-    nameInput.addEventListener("input", onAssetUpdate);
-    nameInput.addEventListener("keydown", (e) => e.key === "Enter" && nameInput.blur());
+    bindNetWorthTextInput(nameInput, onAssetUpdate);
+    nameInput.addEventListener("keydown", (e) => e.key === "Enter" && !e.isComposing && nameInput.blur());
     nameTd.appendChild(nameInput);
     tr.appendChild(nameTd);
 
@@ -2873,7 +2907,7 @@ function renderNetworthView() {
     avgPriceInput.className = "asset-stock-input-avg-price";
     avgPriceInput.value = data.avgPrice ? (formatNum(data.avgPrice) || data.avgPrice) : "";
     avgPriceInput.placeholder = "-";
-    avgPriceInput.addEventListener("input", () => filterNumericInput(avgPriceInput, true));
+    avgPriceInput.addEventListener("input", (e) => filterNumericInput(avgPriceInput, true, e));
     avgPriceInput.addEventListener("input", () => {
       updateStockCalculations();
       onAssetUpdate();
@@ -2895,7 +2929,7 @@ function renderNetworthView() {
     quantityInput.className = "asset-stock-input-quantity";
     quantityInput.value = data.quantity ?? "";
     quantityInput.placeholder = "-";
-    quantityInput.addEventListener("input", () => filterNumericInput(quantityInput, false));
+    quantityInput.addEventListener("input", (e) => filterNumericInput(quantityInput, false, e));
     quantityInput.addEventListener("input", () => {
       updateStockCalculations();
       onAssetUpdate();
@@ -2924,7 +2958,7 @@ function renderNetworthView() {
     currentPriceInput.className = "asset-stock-input-current-price";
     currentPriceInput.value = data.currentPrice ? (formatNum(data.currentPrice) || data.currentPrice) : "";
     currentPriceInput.placeholder = "-";
-    currentPriceInput.addEventListener("input", () => filterNumericInput(currentPriceInput, true));
+    currentPriceInput.addEventListener("input", (e) => filterNumericInput(currentPriceInput, true, e));
     currentPriceInput.addEventListener("input", () => {
       updateStockCalculations();
       onAssetUpdate();
@@ -3046,8 +3080,8 @@ function renderNetworthView() {
       input.className = cls;
       input.value = val || "";
       input.placeholder = placeholder;
-      input.addEventListener("input", onAssetUpdate);
-      input.addEventListener("keydown", (e) => e.key === "Enter" && input.blur());
+      bindNetWorthTextInput(input, onAssetUpdate);
+      input.addEventListener("keydown", (e) => e.key === "Enter" && !e.isComposing && input.blur());
       td.appendChild(input);
       tr.appendChild(td);
       return input;
@@ -3149,7 +3183,7 @@ function renderNetworthView() {
       input.className = cls;
       input.value = val ? (formatNum(val) || val) : "";
       input.placeholder = placeholder;
-      input.addEventListener("input", () => filterNumericInput(input, false));
+      input.addEventListener("input", (e) => filterNumericInput(input, false, e));
       input.addEventListener("input", () => { updateAnnuityCalc(); onAssetUpdate(); });
       input.addEventListener("blur", () => {
         const f = formatNum(input.value);
@@ -3169,8 +3203,11 @@ function renderNetworthView() {
       input.className = cls;
       input.value = val || "";
       input.placeholder = placeholder;
-      input.addEventListener("input", () => { updateAnnuityCalc(); onAssetUpdate(); });
-      input.addEventListener("keydown", (e) => e.key === "Enter" && input.blur());
+      bindNetWorthTextInput(input, () => {
+        updateAnnuityCalc();
+        onAssetUpdate();
+      });
+      input.addEventListener("keydown", (e) => e.key === "Enter" && !e.isComposing && input.blur());
       td.appendChild(input);
       tr.appendChild(td);
       return input;
@@ -3286,8 +3323,8 @@ function renderNetworthView() {
     nameInput.className = "asset-asset-input-name";
     nameInput.value = data.name || "";
     nameInput.placeholder = "";
-    nameInput.addEventListener("input", onAssetUpdate);
-    nameInput.addEventListener("keydown", (e) => e.key === "Enter" && nameInput.blur());
+    bindNetWorthTextInput(nameInput, onAssetUpdate);
+    nameInput.addEventListener("keydown", (e) => e.key === "Enter" && !e.isComposing && nameInput.blur());
     nameTd.appendChild(nameInput);
     tr.appendChild(nameTd);
 
@@ -3320,7 +3357,7 @@ function renderNetworthView() {
     principalInput.className = "asset-asset-input-principal";
     principalInput.value = data.principal ? (formatNum(data.principal) || data.principal) : "";
     principalInput.placeholder = "-";
-    principalInput.addEventListener("input", () => filterNumericInput(principalInput, false));
+    principalInput.addEventListener("input", (e) => filterNumericInput(principalInput, false, e));
     principalInput.addEventListener("input", () => {
       if (isDeposit) updateDepositMaturityAmt();
       onAssetUpdate();
@@ -3363,7 +3400,7 @@ function renderNetworthView() {
       monthlyInput.className = "asset-asset-input-monthly";
       monthlyInput.value = data.monthly ? (formatNum(data.monthly) || data.monthly) : "";
       monthlyInput.placeholder = "-";
-      monthlyInput.addEventListener("input", () => filterNumericInput(monthlyInput, false));
+      monthlyInput.addEventListener("input", (e) => filterNumericInput(monthlyInput, false, e));
       monthlyInput.addEventListener("input", () => {
         updatePrincipalFromCalc();
         updateInterestAndMaturityAmt();
@@ -3432,7 +3469,7 @@ function renderNetworthView() {
     rateInput.value = data.rate ?? "";
     rateInput.placeholder = isSavings ? "예: 4.2" : "-";
     rateInput.title = isSavings ? "연 금리, 퍼센트 숫자만 (4.2 = 4.2%, % 생략 가능)" : "";
-    rateInput.addEventListener("input", () => filterNumericInput(rateInput, true));
+    rateInput.addEventListener("input", (e) => filterNumericInput(rateInput, true, e));
     rateInput.addEventListener("input", () => {
       if (isDeposit) updateDepositMaturityAmt();
       else {
@@ -3454,7 +3491,7 @@ function renderNetworthView() {
       monthsInput.className = "asset-asset-input-months";
       monthsInput.value = data.months ?? "";
       monthsInput.placeholder = "-";
-      monthsInput.addEventListener("input", () => filterNumericInput(monthsInput, false));
+      monthsInput.addEventListener("input", (e) => filterNumericInput(monthsInput, false, e));
       monthsInput.addEventListener("input", () => {
         syncSavingsMaturityFromOpenAndMonths();
         updatePrincipalFromCalc();
@@ -3612,6 +3649,11 @@ function renderNetworthView() {
     return tr;
   }
 
+  /**
+   * 순자산(총 자산 테이블) 로컬 반영 시점: onAssetUpdate() → 여기.
+   * - localStorage: asset_asset_rows, asset_real_estate_rows, asset_stock_rows, asset_insurance_rows, asset_annuity_rows
+   * - 이후 window "asset-networth-bundle-saved" → assetNetWorthBundleSupabase 에서 디바운스 upsert
+   */
   function saveAssets() {
     const rows = collectAssetRowsFromDOM(assetTableWrap);
     saveAssetRows(rows);
@@ -3619,6 +3661,11 @@ function renderNetworthView() {
     saveRealEstateRows(realEstateRows);
     const stockRows = collectStockRowsFromDOM(assetTableWrap);
     saveStockRows(stockRows);
+    const insuranceRows = collectInsuranceRowsFromDOM(assetTableWrap);
+    saveInsuranceRows(insuranceRows);
+    const annuityRows = collectAnnuityRowsFromDOM(assetTableWrap);
+    saveAnnuityRows(annuityRows);
+    window.dispatchEvent(new CustomEvent("asset-networth-bundle-saved"));
   }
 
   function updateAssetTotals() {
@@ -3777,6 +3824,7 @@ function renderNetworthView() {
     });
   }
 
+  /** 예·적금·부동산·주식·보험·연금 셀 변경·행 삭제·추가 시마다 호출 → saveAssets + 화면 합계 갱신 */
   const onAssetUpdate = () => {
     updateAllMaturityRates();
     saveAssets();
@@ -4213,6 +4261,22 @@ function renderNetworthView() {
     initialRealEstateRows.forEach((row) => {
       const tr = createRealEstateRow(row, onAssetUpdate);
       realEstateEl.tbody.insertBefore(tr, realEstateEl.totalsRow);
+    });
+  }
+
+  const insuranceEl = subsectionElements["보험"];
+  if (insuranceEl) {
+    loadInsuranceRows().forEach((row) => {
+      const tr = createInsuranceRow(row, onAssetUpdate);
+      insuranceEl.tbody.insertBefore(tr, insuranceEl.totalsRow);
+    });
+  }
+
+  const annuityEl = subsectionElements["연금"];
+  if (annuityEl) {
+    loadAnnuityRows().forEach((row) => {
+      const tr = createAnnuityRow(row, onAssetUpdate);
+      annuityEl.tbody.insertBefore(tr, annuityEl.totalsRow);
     });
   }
 
@@ -5502,14 +5566,18 @@ function renderPlanView() {
         });
         input.addEventListener("keydown", (e) => e.key === "Enter" && input.blur());
       };
+      const onGoalAmountInput = (e) => {
+        filterNumericInput(goalInput, false, e);
+        updateCol4AndGoal(tr);
+      };
+      goalInput.addEventListener("input", onGoalAmountInput);
       formatAmount(goalInput, true);
       if (totalInput) {
         formatAmount(totalInput, false);
-        const onInput = () => updateCol4AndGoal(tr);
-        goalInput.addEventListener("input", onInput);
-        totalInput.addEventListener("input", onInput);
-      } else if (totalDisplay && (tableType === "income" || tableType === "investSavings" || tableType === "expense")) {
-        goalInput.addEventListener("input", () => updateCol4AndGoal(tr));
+        totalInput.addEventListener("input", (e) => {
+          filterNumericInput(totalInput, false, e);
+          updateCol4AndGoal(tr);
+        });
       }
       tbody.appendChild(tr);
       if (savedCls && totalDisplay && (tableType === "income" || tableType === "investSavings" || tableType === "expense")) {
@@ -6173,6 +6241,7 @@ export function render() {
   attachAssetNetWorthGoalSaveListener();
   attachAssetStockCategoryOptionsSaveListener();
   attachAssetPlanMonthlyGoalsSaveListener();
+  attachAssetNetWorthBundleSaveListener();
 
   renderView("expense");
 
@@ -6181,19 +6250,21 @@ export function render() {
   void (async () => {
     try {
       await hydrateAssetExpensePrefsFromCloud();
-      const [expenseDataReplaced, networthDataReplaced, stockCatReplaced, planGoalsReplaced] = await Promise.all([
-        hydrateAssetExpenseTransactionsFromCloud(),
-        hydrateAssetNetWorthGoalFromCloud(),
-        hydrateAssetStockCategoryOptionsFromCloud(),
-        hydrateAssetPlanMonthlyGoalsFromCloud(),
-      ]);
+      const [expenseDataReplaced, networthDataReplaced, stockCatReplaced, planGoalsReplaced, nwBundleReplaced] =
+        await Promise.all([
+          hydrateAssetExpenseTransactionsFromCloud(),
+          hydrateAssetNetWorthGoalFromCloud(),
+          hydrateAssetStockCategoryOptionsFromCloud(),
+          hydrateAssetPlanMonthlyGoalsFromCloud(),
+          hydrateAssetNetWorthBundleFromCloud(),
+        ]);
       if (expenseDataReplaced) {
         const activeTab = viewTabs.querySelector(".asset-view-tab.active");
         if (activeTab?.dataset?.view === "expense") {
           renderView("expense");
         }
       }
-      if (networthDataReplaced || stockCatReplaced) {
+      if (networthDataReplaced || stockCatReplaced || nwBundleReplaced) {
         const activeTab = viewTabs.querySelector(".asset-view-tab.active");
         if (activeTab?.dataset?.view === "networth") {
           renderView("networth");

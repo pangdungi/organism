@@ -7731,8 +7731,14 @@ body {
   box-shadow: none;
 }
 
+/* 서브섹션 안에서는 바깥 카드(.asset-asset-subsection)가 테두리를 담당.
+   다만 기본 .asset-asset-add-button-wrap 의 좌·우·하단 선을 전부 없애면
+   합계 행 아래·카드 맨 아래 구분이 약해져 "하단 보더 없음"처럼 보임 → 위·아래만 복구 */
 .asset-asset-subsection .asset-asset-add-button-wrap {
-  border: none;
+  border-left: none;
+  border-right: none;
+  border-top: var(--line-l3);
+  border-bottom: var(--line-l3);
   box-shadow: none;
 }
 
@@ -9387,6 +9393,14 @@ body {
 
 .asset-debt-btn-delete:hover {
   color: var(--text-muted);
+}
+
+/* 모바일: 호버 없음 → 삭제 버튼이 투명(opacity:0)이면 탭이 안 되는 것처럼 보임 */
+@media (max-width: 48rem) {
+  .asset-asset-btn-delete,
+  .asset-debt-btn-delete {
+    opacity: 1;
+  }
 }
 
 .work-schedule-title {
