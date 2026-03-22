@@ -19,18 +19,11 @@ const STOCK_ROWS_KEY = "asset_stock_rows";
 const INSURANCE_ROWS_KEY = "asset_insurance_rows";
 const ANNUITY_ROWS_KEY = "asset_annuity_rows";
 
-const DEFAULT_STOCK_CATEGORY_OPTIONS = [
-  { label: "미국주식", color: "asset-stock-cat-green" },
-  { label: "국내주식", color: "asset-stock-cat-blue" },
-  { label: "ETF", color: "asset-stock-cat-purple" },
-  { label: "코인", color: "asset-stock-cat-pink" },
-  { label: "현물", color: "asset-stock-cat-amber" },
-  { label: "선물", color: "asset-stock-cat-gray" },
-];
+const DEFAULT_STOCK_CATEGORY_OPTIONS = ["미국주식", "국내주식", "ETF", "코인", "현물", "선물"];
 const STOCK_CATEGORY_OPTIONS_KEY = "asset_stock_category_options";
 
 function getStockCategoryOptions() {
-  const defaults = DEFAULT_STOCK_CATEGORY_OPTIONS.map((o) => o.label);
+  const defaults = [...DEFAULT_STOCK_CATEGORY_OPTIONS];
   try {
     const raw = localStorage.getItem(STOCK_CATEGORY_OPTIONS_KEY);
     if (raw) {
@@ -43,9 +36,32 @@ function getStockCategoryOptions() {
   return defaults;
 }
 
+function addStockCategoryOption(name) {
+  const defaults = DEFAULT_STOCK_CATEGORY_OPTIONS;
+  const trimmed = (name || "").trim();
+  if (!trimmed || defaults.includes(trimmed)) return getStockCategoryOptions();
+  const opts = getStockCategoryOptions();
+  if (opts.includes(trimmed)) return opts;
+  let custom = [];
+  try {
+    const raw = localStorage.getItem(STOCK_CATEGORY_OPTIONS_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) {
+        custom = arr.filter((s) => typeof s === "string" && s.trim() && !defaults.includes(s.trim()));
+      }
+    }
+  } catch (_) {}
+  if (!custom.includes(trimmed)) custom.push(trimmed);
+  try {
+    localStorage.setItem(STOCK_CATEGORY_OPTIONS_KEY, JSON.stringify(custom));
+  } catch (_) {}
+  return getStockCategoryOptions();
+}
+
 function removeStockCategoryOption(name) {
-  if (!name || DEFAULT_STOCK_CATEGORY_OPTIONS.some((o) => o.label === name)) return getStockCategoryOptions();
-  const defaults = DEFAULT_STOCK_CATEGORY_OPTIONS.map((o) => o.label);
+  if (!name || DEFAULT_STOCK_CATEGORY_OPTIONS.includes(name)) return getStockCategoryOptions();
+  const defaults = DEFAULT_STOCK_CATEGORY_OPTIONS;
   const custom = getStockCategoryOptions().filter((o) => !defaults.includes(o) && o !== name);
   try {
     localStorage.setItem(STOCK_CATEGORY_OPTIONS_KEY, JSON.stringify(custom));
@@ -54,12 +70,7 @@ function removeStockCategoryOption(name) {
 }
 
 function isDefaultStockCategory(name) {
-  return DEFAULT_STOCK_CATEGORY_OPTIONS.some((o) => o.label === name);
-}
-
-function getStockCategoryColor(label) {
-  const opt = DEFAULT_STOCK_CATEGORY_OPTIONS.find((o) => o.label === label);
-  return opt ? opt.color : "asset-stock-cat-gray";
+  return DEFAULT_STOCK_CATEGORY_OPTIONS.includes(name);
 }
 
 const DEFAULT_INSURANCE_KIND_OPTIONS = [
@@ -1087,7 +1098,7 @@ function createAssetCategoryDropdown(initialValue, onUpdate) {
   return wrap;
 }
 
-/** 주식분류 드롭다운 - 기본 6종만 선택(임의 추가 없음). 예전에 로컬에만 넣었던 항목은 삭제 가능 */
+/** 주식분류 드롭다운 - 기본 6종 + 하단에서 Enter로 사용자 추가(예금·적금 용도와 다름). 사용자 추가분은 삭제 가능 */
 function createStockCategoryDropdown(initialValue, onUpdate) {
   const wrap = document.createElement("div");
   wrap.className = "asset-stock-category-wrap";
@@ -1101,48 +1112,68 @@ function createStockCategoryDropdown(initialValue, onUpdate) {
   function updateDisplay() {
     const val = input.value || "";
     display.textContent = val || "선택";
-    display.className = "asset-stock-category-display" + (val ? " " + getStockCategoryColor(val) : "");
+    display.className = "asset-stock-category-display";
   }
 
   const panel = document.createElement("div");
-  panel.className = "asset-stock-category-panel asset-stock-category-panel--pills";
+  panel.className = "asset-stock-category-panel";
   panel.hidden = true;
 
   function buildPanel() {
     panel.innerHTML = "";
     getStockCategoryOptions().forEach((label) => {
-      const item = document.createElement("span");
-      item.className = "asset-stock-category-pill-item";
-      const pill = document.createElement("button");
-      pill.type = "button";
-      pill.className = "asset-stock-category-pill " + getStockCategoryColor(label);
-      pill.textContent = label;
-      pill.addEventListener("click", (e) => {
+      const row = document.createElement("div");
+      row.className = "asset-stock-category-option";
+      const lbl = document.createElement("span");
+      lbl.className = "asset-stock-category-option-label";
+      lbl.textContent = label;
+      lbl.addEventListener("click", (e) => {
         e.stopPropagation();
         input.value = label;
         updateDisplay();
         panel.hidden = true;
         onUpdate?.();
       });
-      item.appendChild(pill);
+      row.appendChild(lbl);
       if (!isDefaultStockCategory(label)) {
         const delBtn = document.createElement("button");
         delBtn.type = "button";
-        delBtn.className = "asset-stock-category-pill-delete";
+        delBtn.className = "asset-stock-category-option-delete";
         delBtn.title = "삭제";
         delBtn.setAttribute("aria-label", "삭제");
         delBtn.innerHTML =
-          '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+          '<svg viewBox="0 0 16 16" width="16" height="16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
         delBtn.addEventListener("click", (e) => {
           e.stopPropagation();
           removeStockCategoryOption(label);
           buildPanel();
           onUpdate?.();
         });
-        item.appendChild(delBtn);
+        row.appendChild(delBtn);
       }
-      panel.appendChild(item);
+      panel.appendChild(row);
     });
+    const addRow = document.createElement("div");
+    addRow.className = "asset-stock-category-add";
+    const addInput = document.createElement("input");
+    addInput.type = "text";
+    addInput.placeholder = "추가 입력 후 Enter";
+    addInput.className = "asset-stock-category-add-input";
+    addInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        const val = (addInput.value || "").trim();
+        if (val) {
+          addStockCategoryOption(val);
+          input.value = val;
+          updateDisplay();
+          addInput.value = "";
+          buildPanel();
+          onUpdate?.();
+        }
+      }
+    });
+    addRow.appendChild(addInput);
+    panel.appendChild(addRow);
   }
 
   display.addEventListener("click", (e) => {
@@ -1151,10 +1182,9 @@ function createStockCategoryDropdown(initialValue, onUpdate) {
       closeAllDebtDropdownPanels(panel);
       buildPanel();
       const rect = display.getBoundingClientRect();
-      panel.style.position = "fixed";
       panel.style.top = `${rect.bottom + 2}px`;
       panel.style.left = `${rect.left}px`;
-      panel.style.minWidth = `${Math.max(rect.width, 160)}px`;
+      panel.style.minWidth = `${Math.max(rect.width, 140)}px`;
       document.body.appendChild(panel);
       panel.hidden = false;
       const handler = (ev) => {
