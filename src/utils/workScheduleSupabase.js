@@ -5,6 +5,15 @@
 import { supabase } from "../supabase.js";
 import { applyWorkScheduleRowTimesFromTypes } from "./workScheduleEntryResolve.js";
 
+/** localStorage `debug_work_schedule` = `1` 이면 동기화 진단 로그 */
+function wsSyncLog(...args) {
+  try {
+    if (localStorage.getItem("debug_work_schedule") === "1") {
+      console.log("[work-schedule sync]", ...args);
+    }
+  } catch (_) {}
+}
+
 const SETTINGS_TABLE = "work_schedule_settings";
 const TYPES_TABLE = "work_schedule_types";
 const ENTRIES_TABLE = "work_schedule_entries";
@@ -195,6 +204,14 @@ export async function pullWorkScheduleFromSupabase() {
 
   const mergedRows = mergeEntriesLocalAndServer(localRows, entriesRes.data || []);
   const resolvedRows = applyWorkScheduleRowTimesFromTypes(mergedRows);
+  wsSyncLog(
+    "pull: localRows",
+    localRows.length,
+    "server",
+    (entriesRes.data || []).length,
+    "merged→localStorage",
+    resolvedRows.length,
+  );
 
   try {
     localStorage.setItem(WORK_SCHEDULE_KEY, JSON.stringify(resolvedRows));
@@ -296,14 +313,18 @@ export async function syncWorkScheduleToSupabase() {
     if (eErr) console.warn("[work-schedule sync] entries upsert", eErr.message);
   }
 
+  // 이번 라운드에 유효한 행 upsert가 없으면 서버 고아 삭제를 하지 않음(빈 로컬/일시 오류로 전체 삭제되는 것 방지).
   const { data: remoteEntries, error: reErr } = await supabase.from(ENTRIES_TABLE).select("id").eq("user_id", userId);
-  if (!reErr && remoteEntries) {
+  if (!reErr && remoteEntries && entryPayloads.length > 0) {
+    wsSyncLog("push: orphan entry delete check, remote", remoteEntries.length, "local ids", idsStillInLocal.size);
     for (const r of remoteEntries) {
       if (!idsStillInLocal.has(r.id)) {
         const { error: dErr } = await supabase.from(ENTRIES_TABLE).delete().eq("user_id", userId).eq("id", r.id);
         if (dErr) console.warn("[work-schedule sync] entry delete", dErr.message);
       }
     }
+  } else if (!reErr && remoteEntries?.length && entryPayloads.length === 0) {
+    wsSyncLog("push: SKIP orphan entry delete (entryPayloads empty), rows", rows.length);
   }
 }
 
@@ -337,10 +358,10 @@ export async function pushAllLocalWorkScheduleIfServerEmpty() {
   await syncWorkScheduleToSupabase();
 }
 
-/** 근무표 탭 진입 시: pull → 서버 행 없으면 로컬 업로드 */
+/** 근무표 탭 진입 시: pull → 서버 행 없으면 로컬 업로드 (표는 이 Promise 이후 한 번만 그리는 것을 권장) */
 export async function hydrateWorkScheduleFromCloud() {
-  if (!supabase) return;
   attachWorkScheduleSaveListener();
+  if (!supabase) return;
   await pullWorkScheduleFromSupabase();
   await pushAllLocalWorkScheduleIfServerEmpty();
 }

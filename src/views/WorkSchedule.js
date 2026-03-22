@@ -10,6 +10,34 @@ import {
   workDateHasTimeLedgerWork,
 } from "../utils/workScheduleEntryResolve.js";
 
+/** localStorage `debug_work_schedule` = `1` 이면 근무표 UI/하이드레이트 진단 로그 */
+function wsUiLog(...args) {
+  try {
+    if (localStorage.getItem("debug_work_schedule") === "1") {
+      console.log("[work-schedule-ui]", ...args);
+    }
+  } catch (_) {}
+}
+
+let _workScheduleHydrateGeneration = 0;
+
+/** renderTableView마다 document 리스너가 쌓이면 이전 인스턴스·비연결 DOM과 꼬임 → 전역 1개만 유지 */
+let _wsMonthDropdownDocCloser = null;
+function bindWorkScheduleMonthDropdownOutsideClose(monthDropdownWrap, monthPanel) {
+  if (_wsMonthDropdownDocCloser) {
+    document.removeEventListener("click", _wsMonthDropdownDocCloser);
+    _wsMonthDropdownDocCloser = null;
+  }
+  _wsMonthDropdownDocCloser = (e) => {
+    if (!monthDropdownWrap || !monthPanel) return;
+    if (!monthDropdownWrap.contains(e.target)) {
+      monthPanel.classList.remove("is-open");
+      monthDropdownWrap.classList.remove("is-open");
+    }
+  };
+  document.addEventListener("click", _wsMonthDropdownDocCloser);
+}
+
 const ENTRY_ID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -558,7 +586,7 @@ function createWorkTypeInput(initialValue, onUpdate, onTypeSelect) {
 
   input.addEventListener("keydown", (e) => {
     if (panel.hidden) {
-      if (e.key === "Enter") {
+      if (e.key === "Enter" && !e.isComposing) {
         e.preventDefault();
         input.blur();
       }
@@ -581,6 +609,7 @@ function createWorkTypeInput(initialValue, onUpdate, onTypeSelect) {
       return;
     }
     if (e.key === "Enter") {
+      if (e.isComposing) return;
       e.preventDefault();
       const sel = opts[highlightedIndex >= 0 ? highlightedIndex : 0];
       if (sel) {
@@ -666,11 +695,12 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
   startTimeTd.className = "work-schedule-cell work-schedule-cell-start-time";
   const startTimeInput = document.createElement("input");
   startTimeInput.type = "text";
-  startTimeInput.className = "work-schedule-input-start-time";
-  startTimeInput.placeholder = "hh:mm";
+  startTimeInput.className = "work-schedule-input-start-time work-schedule-time-readonly";
+  startTimeInput.readOnly = true;
+  startTimeInput.tabIndex = -1;
+  startTimeInput.setAttribute("aria-readonly", "true");
+  startTimeInput.title = "시간은 시간가계부의 근무하기 기록에서 수정할 수 있습니다.";
   startTimeInput.value = initStart;
-  startTimeInput.inputMode = "numeric";
-  startTimeInput.addEventListener("keydown", (e) => e.key === "Enter" && startTimeInput.blur());
   startTimeTd.appendChild(startTimeInput);
   tr.appendChild(startTimeTd);
 
@@ -678,11 +708,12 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
   endTimeTd.className = "work-schedule-cell work-schedule-cell-end-time";
   const endTimeInput = document.createElement("input");
   endTimeInput.type = "text";
-  endTimeInput.className = "work-schedule-input-end-time";
-  endTimeInput.placeholder = "hh:mm";
+  endTimeInput.className = "work-schedule-input-end-time work-schedule-time-readonly";
+  endTimeInput.readOnly = true;
+  endTimeInput.tabIndex = -1;
+  endTimeInput.setAttribute("aria-readonly", "true");
+  endTimeInput.title = "시간은 시간가계부의 근무하기 기록에서 수정할 수 있습니다.";
   endTimeInput.value = initEnd;
-  endTimeInput.inputMode = "numeric";
-  endTimeInput.addEventListener("keydown", (e) => e.key === "Enter" && endTimeInput.blur());
   endTimeTd.appendChild(endTimeInput);
   tr.appendChild(endTimeTd);
 
@@ -735,11 +766,6 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
     rowOnUpdate();
   }
 
-  startTimeInput.addEventListener("input", syncHoursWorkedFromStartEnd);
-  startTimeInput.addEventListener("change", syncHoursWorkedFromStartEnd);
-  endTimeInput.addEventListener("input", syncHoursWorkedFromStartEnd);
-  endTimeInput.addEventListener("change", syncHoursWorkedFromStartEnd);
-
   const fillDefaultStartEnd = (workTypeName) => {
     if (!(workTypeName || "").trim()) return;
     const d = normalizeWorkDateKey(dateInput.value);
@@ -763,7 +789,9 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
   const hoursWorkedTd = document.createElement("td");
   hoursWorkedTd.className = "work-schedule-cell work-schedule-cell-hours-worked";
   hoursWorkedInput.addEventListener("input", rowOnUpdate);
-  hoursWorkedInput.addEventListener("keydown", (e) => e.key === "Enter" && hoursWorkedInput.blur());
+  hoursWorkedInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.isComposing) hoursWorkedInput.blur();
+  });
   hoursWorkedTd.appendChild(hoursWorkedInput);
   tr.appendChild(hoursWorkedTd);
 
@@ -783,7 +811,25 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
   memoInput.className = "work-schedule-input-memo";
   memoInput.placeholder = "";
   memoInput.value = initialData.memo || "";
-  memoInput.addEventListener("keydown", (e) => e.key === "Enter" && memoInput.blur());
+  let memoImeComposing = false;
+  memoInput.addEventListener("compositionstart", () => {
+    memoImeComposing = true;
+  });
+  memoInput.addEventListener("compositionend", () => {
+    memoImeComposing = false;
+  });
+  memoInput.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    if (e.isComposing || memoImeComposing) return;
+    memoInput.blur();
+  });
+  memoInput.addEventListener("blur", () => {
+    if (memoImeComposing) {
+      queueMicrotask(() => memoInput.focus());
+      return;
+    }
+    onUpdate();
+  });
   memoTd.appendChild(memoInput);
   tr.appendChild(memoTd);
 
@@ -998,7 +1044,8 @@ export function render() {
     contentWrap.innerHTML = "";
     const notice = document.createElement("p");
     notice.className = "work-schedule-notice";
-    notice.textContent = "시간기록에서 근무하기를 기록하면 자동으로 입력됩니다.";
+    notice.textContent =
+      "시작·마감 시간은 시간가계부의 근무하기 기록을 기준으로 표시됩니다. 시간을 바꾸려면 시간가계부에서 수정해 주세요.";
     contentWrap.appendChild(notice);
     const now = new Date();
     let filterType = "month";
@@ -1124,12 +1171,7 @@ export function render() {
       yearDisplay.textContent = filterYear;
       applyFilter();
     });
-    document.addEventListener("click", (e) => {
-      if (!monthDropdownWrap?.contains(e.target)) {
-        monthPanel?.classList.remove("is-open");
-        monthDropdownWrap?.classList.remove("is-open");
-      }
-    });
+    bindWorkScheduleMonthDropdownOutsideClose(monthDropdownWrap, monthPanel);
 
     function updateDayDisplay() {
       if (dayDisplay) dayDisplay.textContent = formatDateForDayFilter(filterStartDate);
@@ -1285,6 +1327,10 @@ export function render() {
       updateSum();
     };
 
+    // 행 생성 시 save()가 getRowsToSave(tableWrap)를 쓰므로, table을 tableWrap에 먼저 붙여야 함.
+    // (append가 forEach 뒤에 있으면 DOM에서 행을 못 찾아 localStorage가 []로 덮이고, 동기화 시 서버 행이 전부 삭제됨)
+    tableWrap.appendChild(table);
+
     const getDailyHoursFn = () => parseFloat(dailyHoursInput?.value) || 8.5;
 
     function refreshAllRowsTimeAccumulation() {
@@ -1326,6 +1372,7 @@ export function render() {
     });
 
     const initialRows = getMergedInitialRows();
+    wsUiLog("renderTableView: merged row count", initialRows.length);
     initialRows.forEach((row) => {
       const tr = createRow(row, onUpdate, el, applyFilter, getDailyHoursFn);
       tbody.appendChild(tr);
@@ -1338,7 +1385,6 @@ export function render() {
       save();
     });
 
-    tableWrap.appendChild(table);
     const topRow = document.createElement("div");
     topRow.className = "work-schedule-top-row";
     topRow.appendChild(dailyHoursWrap);
@@ -1346,6 +1392,10 @@ export function render() {
     contentWrap.appendChild(topRow);
     contentWrap.appendChild(tableWrap);
     applyFilter();
+    const visibleRows = [...tableWrap.querySelectorAll(".work-schedule-row")].filter(
+      (tr) => tr.style.display !== "none",
+    ).length;
+    wsUiLog("renderTableView: after filter, visible data rows", visibleRows, "/", initialRows.length);
   }
 
   function renderMonthlyView() {
@@ -1373,10 +1423,25 @@ export function render() {
     btn.addEventListener("click", () => switchView(btn.dataset.view));
   });
 
-  renderTableView();
-  void hydrateWorkScheduleFromCloud().finally(() => {
-    switchView(activeWorkScheduleView);
-  });
+  // pull 반영 후 한 번만 그림. 이전 탭 인스턴스의 hydrate.finally가 늦게 끝나면 최신 화면을 덮어쓸 수 있어 세대·연결 여부로 차단.
+  contentWrap.innerHTML =
+    '<p class="work-schedule-notice work-schedule-cloud-loading" aria-live="polite">근무표를 불러오는 중…</p>';
+  const hydrateGen = ++_workScheduleHydrateGeneration;
+  wsUiLog("mount hydrate start, gen=", hydrateGen);
+  void hydrateWorkScheduleFromCloud()
+    .catch((err) => console.warn("[work-schedule]", err))
+    .finally(() => {
+      if (hydrateGen !== _workScheduleHydrateGeneration) {
+        wsUiLog("hydrate.finally SKIP (superseded by newer mount)", hydrateGen, "current=", _workScheduleHydrateGeneration);
+        return;
+      }
+      if (!el.isConnected) {
+        wsUiLog("hydrate.finally SKIP (panel no longer in document)");
+        return;
+      }
+      wsUiLog("hydrate.finally OK → switchView", activeWorkScheduleView);
+      switchView(activeWorkScheduleView);
+    });
 
   return el;
 }
