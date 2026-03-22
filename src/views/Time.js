@@ -6,6 +6,7 @@
 import {
   loadExpenseRows,
   saveExpenseRows,
+  newExpenseRowId,
   getClassificationToCategoryMap,
   getClassificationsByFlowType,
   getPaymentOptions,
@@ -5625,6 +5626,7 @@ export function render() {
           if (item.id) {
             const rows = loadExpenseRows().filter((r) => r.id !== item.id);
             saveExpenseRows(rows);
+            window.dispatchEvent(new CustomEvent("asset-expense-transactions-saved"));
           }
           taskLogExpenseAddedItems.splice(idx, 1);
           updateExpensePills();
@@ -5732,11 +5734,16 @@ export function render() {
     const signed = -Math.abs(raw);
     const amountFormatted = signed.toLocaleString("ko-KR");
     const dateForExpense = getExpenseModalDate();
-    const id = `tl-exp-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const id = newExpenseRowId();
+    if (!id) {
+      showToast("거래 ID를 만들 수 없습니다. 브라우저를 업데이트해 주세요.", "warn");
+      return;
+    }
     const row = {
       id,
       name: name || "",
       date: dateForExpense,
+      flowType: "지출",
       category: expenseCategory,
       classification: expenseClassification,
       amount: amountFormatted,
@@ -5752,6 +5759,7 @@ export function render() {
     const existingRows = loadExpenseRows();
     existingRows.push(row);
     saveExpenseRows(existingRows);
+    window.dispatchEvent(new CustomEvent("asset-expense-transactions-saved"));
     updateExpenseInnerList();
     taskLogExpenseNameInput.value = "";
     taskLogExpenseAmountInput.value = "";
@@ -6242,16 +6250,22 @@ export function render() {
       const dateForExpense = (
         dateStr || new Date().toISOString().slice(0, 10)
       ).replace(/\//g, "-");
-      existingRows.push({
-        name: expenseName || "",
-        date: dateForExpense,
-        category: expenseCategory,
-        classification: expenseClassification,
-        amount: amountFormatted,
-        payment: expensePayment,
-        memo: "",
-      });
-      saveExpenseRows(existingRows);
+      const expId = newExpenseRowId();
+      if (expId) {
+        existingRows.push({
+          id: expId,
+          name: expenseName || "",
+          date: dateForExpense,
+          flowType: "지출",
+          category: expenseCategory,
+          classification: expenseClassification,
+          amount: amountFormatted,
+          payment: expensePayment,
+          memo: "",
+        });
+        saveExpenseRows(existingRows);
+        window.dispatchEvent(new CustomEvent("asset-expense-transactions-saved"));
+      }
     }
 
     /* 감정 기록은 내장 모달 저장 시 diary_entries(감정일기)에 별도 반영됨 */

@@ -6154,6 +6154,7 @@ function renderCashflowView() {
 export {
   loadExpenseRows,
   saveExpenseRows,
+  newExpenseRowId,
   getExpenseCategoryOptions,
   getExpenseClassificationByCategory,
   getExpenseClassificationOptions,

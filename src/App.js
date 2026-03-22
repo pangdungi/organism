@@ -17,6 +17,7 @@ import { render as renderArchive } from "./views/Archive.js";
 import { render as renderDiary } from "./views/Diary.js";
 import { render as renderIdea } from "./views/Idea.js";
 import { render as renderHome } from "./views/Home.js";
+import { attachAssetExpenseTransactionsSaveListener } from "./utils/assetExpenseTransactionsSupabase.js";
 
 const TABS = [
   { id: "home", label: "오늘", icon: "/toolbaricons/dashboard.svg" },
@@ -93,6 +94,8 @@ function migrateRemoveRoutineTasks() {
 export function mountApp(container) {
   if (!container) return;
   migrateRemoveRoutineTasks();
+  /* 가계부 미방문 시에도 시간가계부 소비 저장 → Supabase 동기화 이벤트 수신 */
+  attachAssetExpenseTransactionsSaveListener();
   container.innerHTML = "";
 
   const appPage = document.createElement("div");
