@@ -1,9 +1,28 @@
 /**
- * 감정관리 데이터 - Diary.js와 Time.js에서 공유
- * 탭3: 날짜별 q1~q4만 사용 (감정 이름 목록·emotions 객체 없음)
+ * 감정일기 데이터 - Diary.js와 Time.js에서 공유
+ * 탭3: 날짜별 q1~q4 (같은 날짜 여러 항목 가능)
  */
 
 const DIARY_ENTRIES_KEY = "diary_entries";
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isDiaryEntryUuid(id) {
+  return UUID_RE.test(String(id || "").trim());
+}
+
+/** Supabase 동기화용: 항목 id가 없거나 레거시(e_…)면 UUID 부여 */
+export function ensureDiaryEntryUuid(e) {
+  if (!e || typeof e !== "object") return;
+  if (isDiaryEntryUuid(e.id)) return;
+  e.id = newDiaryEntryId();
+}
+
+export function newDiaryEntryId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return "e_" + Date.now() + "_" + Math.random().toString(36).slice(2, 9);
+}
 
 /** 탭 3 감정관리 템플릿 질문 */
 export const TAB3_EMOTION_TEMPLATE = [
@@ -65,30 +84,21 @@ export function saveDiaryEntries(data) {
   } catch (_) {}
 }
 
-/** 탭3 감정관리: 날짜별 1개 항목 추가 또는 해당 날짜 항목 업데이트 (Time.js 등에서 호출 가능) */
-export function addOrUpdateTab3EntryByDate(entries, dateStr, q1, q2, q3, q4) {
+/** 탭3 감정일기: 항상 새 항목 추가 (같은 날짜 여러 개 가능, Time.js 과제 모달 등) */
+export function appendTab3Entry(entries, dateStr, q1, q2, q3, q4) {
   const normalizedDate = (dateStr || "").replace(/\//g, "-").slice(0, 10);
   if (!normalizedDate) return entries;
   ensureTab3Entries(entries);
-  const tab = entries["3"];
-  const list = tab.entries || [];
-  const existing = list.find((e) => (e.date || "").slice(0, 10) === normalizedDate);
-  if (existing) {
-    existing.q1 = (q1 !== undefined && q1 !== null ? q1 : existing.q1 || "").trim();
-    existing.q2 = (q2 !== undefined && q2 !== null ? q2 : existing.q2 || "").trim();
-    existing.q3 = (q3 !== undefined && q3 !== null ? q3 : existing.q3 || "").trim();
-    existing.q4 = (q4 !== undefined && q4 !== null ? q4 : existing.q4 || "").trim();
-  } else {
-    list.push({
-      id: "e_" + Date.now(),
-      date: normalizedDate,
-      title: "제목없음",
-      q1: (q1 || "").trim(),
-      q2: (q2 || "").trim(),
-      q3: (q3 || "").trim(),
-      q4: (q4 || "").trim(),
-    });
-  }
+  const list = entries["3"].entries;
+  list.push({
+    id: newDiaryEntryId(),
+    date: normalizedDate,
+    title: "제목없음",
+    q1: (q1 || "").trim(),
+    q2: (q2 || "").trim(),
+    q3: (q3 || "").trim(),
+    q4: (q4 || "").trim(),
+  });
   return entries;
 }
 

@@ -5623,8 +5623,8 @@ function renderCashflowView() {
   let selectedYear = now.getFullYear();
   let selectedMonth = now.getMonth() + 1;
 
-  const viewTabs = document.createElement("div");
-  viewTabs.className = "time-view-tabs";
+  const periodToolbar = document.createElement("div");
+  periodToolbar.className = "asset-cashflow-period-toolbar";
 
   const periodWrap = document.createElement("div");
   periodWrap.className = "asset-cashflow-period-wrap";
@@ -5657,8 +5657,8 @@ function renderCashflowView() {
 
   periodWrap.appendChild(monthWrap);
   periodWrap.appendChild(yearWrap);
-  viewTabs.appendChild(periodWrap);
-  wrap.appendChild(viewTabs);
+  periodToolbar.appendChild(periodWrap);
+  wrap.appendChild(periodToolbar);
 
   const dashboard = document.createElement("div");
   dashboard.className = "time-dashboard-view";
@@ -5695,7 +5695,8 @@ function renderCashflowView() {
   });
 
   monthPanel.addEventListener("click", (e) => e.stopPropagation());
-  document.addEventListener("click", () => {
+  document.addEventListener("click", (e) => {
+    if (periodWrap.contains(e.target)) return;
     monthPanel.classList.remove("is-open");
     monthWrap.classList.remove("is-open");
   });

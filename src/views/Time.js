@@ -14,6 +14,9 @@ import { EXPENSE_MODAL_CLASSIFICATIONS } from "../expenseModalClassifications.js
 import {
   TAB3_EMOTION_TEMPLATE,
   TAB3_EMOTION_PLACEHOLDERS,
+  appendTab3Entry,
+  loadDiaryEntries,
+  saveDiaryEntries,
 } from "../diaryData.js";
 import {
   getKpiSyncedTaskNames,
@@ -51,6 +54,8 @@ import {
   setStoredImproveNote,
 } from "../utils/timeImproveNotesModel.js";
 import { hydrateTimeImproveNotesFromCloud } from "../utils/timeImproveNotesSupabase.js";
+import { ensureTimeLedgerEntryIds } from "../utils/timeLedgerEntriesModel.js";
+import { hydrateTimeLedgerEntriesFromCloud } from "../utils/timeLedgerEntriesSupabase.js";
 
 export { getTaskOptionByName };
 
@@ -961,7 +966,15 @@ export function loadTimeRows() {
     const raw = localStorage.getItem(TIME_ROWS_KEY);
     if (raw) {
       const arr = JSON.parse(raw);
-      return Array.isArray(arr) ? arr : [];
+      if (Array.isArray(arr)) {
+        const { rows, dirty } = ensureTimeLedgerEntryIds(arr);
+        if (dirty) {
+          try {
+            localStorage.setItem(TIME_ROWS_KEY, JSON.stringify(rows));
+          } catch (_) {}
+        }
+        return rows;
+      }
     }
   } catch (_) {}
   return [];
@@ -972,14 +985,19 @@ const BUDGET_OVERLAP_DEBUG = true; /* 수면/요가 겹침 해결 디버그 */
 function saveTimeRows(rows) {
   try {
     const arr = Array.isArray(rows) ? rows : [];
-    localStorage.setItem(TIME_ROWS_KEY, JSON.stringify(arr));
+    const { rows: withIds, dirty } = ensureTimeLedgerEntryIds(arr);
+    const toSave = withIds;
+    if (dirty) {
+      /* 신규 id 부여분 반영 */
+    }
+    localStorage.setItem(TIME_ROWS_KEY, JSON.stringify(toSave));
     syncHabitTrackerLogs();
     if (TIME_ROWS_SYNC_DEBUG) {
       console.log(
         "[시간가계부→캘린더] saveTimeRows 완료, calendar-time-rows-updated dispatch 직전",
         {
-          totalRows: arr.length,
-          sample: arr
+          totalRows: toSave.length,
+          sample: toSave
             .slice(0, 2)
             .map((r) => ({
               task: r.taskName,
@@ -994,6 +1012,11 @@ function saveTimeRows(rows) {
         new CustomEvent("calendar-time-rows-updated", { detail: {} }),
       );
     }
+    try {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("time-ledger-entries-saved"));
+      }
+    } catch (_) {}
   } catch (_) {}
 }
 
@@ -2382,8 +2405,20 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   const tr = document.createElement("tr");
   tr.className = "time-row";
 
+  const taskName = initialData?.taskName || "";
+  const opt = taskName ? getTaskOptionByName(taskName) : null;
+  const idIn = String(initialData?.id || "").trim();
+  const rowId =
+    isUuid(idIn)
+      ? idIn
+      : typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `t-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  const tid = String((initialData?.taskId || opt?.id || "").trim());
   const rowData = {
-    taskName: initialData?.taskName || "",
+    id: rowId,
+    taskName,
+    taskId: isUuid(tid) ? tid : "",
     startTime: (initialData?.startTime || "").trim(),
     endTime: (initialData?.endTime || "").trim(),
     timeTracked: initialData?.timeTracked || "",
@@ -2391,14 +2426,11 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
       initialData?.productivity ??
       (initialData?.category
         ? getProductivityFromCategory(initialData.category)
-        : initialData?.taskName
-          ? getTaskOptionByName(initialData.taskName)?.productivity
+        : taskName
+          ? opt?.productivity
           : ""),
     category:
-      initialData?.category ??
-      (initialData?.taskName
-        ? getTaskOptionByName(initialData.taskName)?.category
-        : ""),
+      initialData?.category ?? (taskName ? opt?.category : ""),
     date: initialData?.date || "",
     feedback: initialData?.feedback || "",
     memoTags: Array.isArray(initialData?.memoTags) ? initialData.memoTags : [],
@@ -2467,13 +2499,10 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
     else if (!hasStart) timeSpan.textContent = "";
     else timeSpan.textContent = formatHoursToHHMM(hours);
 
-    if (mobileCardNeedsLiveClock(data)) {
-      endTimeSpan.textContent = formatClockHHMMFromDate(new Date());
-    } else {
-      endTimeSpan.textContent = data.endTime
-        ? toDisplayTimeOnly(data.endTime) || data.endTime
-        : "";
-    }
+    /* 데스크톱 테이블 행: 마감 없음이면 빈 칸(진행 중). 라이브 시계는 모바일 카드 전용. */
+    endTimeSpan.textContent = data.endTime
+      ? toDisplayTimeOnly(data.endTime) || data.endTime
+      : "";
 
     viewEl?._updateTotal?.();
   }
@@ -2875,6 +2904,7 @@ function collectRowFromTR(tr) {
     date: dateInput?.value || "",
     feedback: feedbackInput?.value || "",
     focus: (tr.querySelector(".time-display-focus")?.textContent || "").trim(),
+    memoTags: [],
   };
 }
 
@@ -3238,7 +3268,7 @@ export function render() {
     <button type="button" class="time-task-setup-btn" data-filter-for="all" title="과제명, 생산성, 카테고리를 한 번에 설정"><img src="/toolbaricons/settings.svg" alt="과제 설정" class="time-btn-icon" width="20" height="20"></button>
     <div class="time-filter-tabs" data-filter-for="all">
       <button type="button" class="time-filter-btn" data-filter="month" data-audit-hidden>월별</button>
-      <button type="button" class="time-filter-btn active" data-filter="day">하루</button>
+      <button type="button" class="time-filter-btn active" data-filter="day">오늘</button>
       <button type="button" class="time-filter-btn" data-filter="range">날짜 선택</button>
       <button type="button" class="time-filter-btn time-filter-task-select-btn" id="time-task-select-btn">과제 선택</button>
     </div>
@@ -3347,6 +3377,14 @@ export function render() {
       dayDisplay.textContent = formatDateForDayFilter(filterStartDate);
   }
 
+  function goToTodayForDayFilter() {
+    const today = toDateStr(new Date());
+    filterStartDate = filterEndDate = today;
+    startDateInput.value = today;
+    endDateInput.value = today;
+    updateDayDisplay();
+  }
+
   dayPrevBtn?.addEventListener("click", () => {
     const d = new Date(filterStartDate + "T12:00:00");
     d.setDate(d.getDate() - 1);
@@ -3368,7 +3406,9 @@ export function render() {
 
   filterBar.querySelectorAll(".time-filter-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      filterType = btn.dataset.filter;
+      const nextType = btn.dataset.filter;
+      if (!nextType) return; /* 과제 선택 등 data-filter 없는 탭 버튼 제외 */
+      filterType = nextType;
       filterBar
         .querySelectorAll(".time-filter-btn")
         .forEach((b) => b.classList.remove("active"));
@@ -3376,7 +3416,7 @@ export function render() {
       dayWrap.style.display = filterType === "day" ? "" : "none";
       monthWrap.style.display = filterType === "month" ? "" : "none";
       rangeWrap.style.display = filterType === "range" ? "" : "none";
-      if (filterType === "day") updateDayDisplay();
+      if (filterType === "day") goToTodayForDayFilter();
       onFilterChange();
     });
   });
@@ -3419,8 +3459,12 @@ export function render() {
     }
   }
 
-  viewTabs.appendChild(filterBar);
-  el.appendChild(viewTabs);
+  /* filterBar는 월 드롭다운 패널이 세로로 열리므로 .time-view-tabs(overflow-y:hidden) 밖에 둠 */
+  const tabsFilterRow = document.createElement("div");
+  tabsFilterRow.className = "time-ledger-tabs-filter-row";
+  tabsFilterRow.appendChild(viewTabs);
+  tabsFilterRow.appendChild(filterBar);
+  el.appendChild(tabsFilterRow);
 
   const taskSetupModal = document.createElement("div");
   taskSetupModal.className = "time-task-setup-modal";
@@ -3753,7 +3797,7 @@ export function render() {
     </div>
     <div class="time-task-log-expense-inner-modal" hidden>
       <div class="time-task-log-expense-inner-backdrop"></div>
-      <div class="time-task-log-emotion-inner-panel">
+      <div class="time-task-log-expense-inner-panel">
         <div class="time-task-log-expense-inner-header">
           <span class="time-task-log-expense-inner-header-label">소비 기록</span>
           <button type="button" class="time-task-log-expense-inner-close" aria-label="닫기">&times;</button>
@@ -5632,7 +5676,26 @@ export function render() {
     true,
   );
   taskLogEmotionInnerSaveBtn?.addEventListener("click", () => {
-    showToast("기록이 완료됐습니다.", "감정관리 탭에서 볼 수 있습니다.");
+    const q1 = (taskLogEmotionQ1?.value || "").trim();
+    const q2 = (taskLogEmotionQ2?.value || "").trim();
+    const q3 = (taskLogEmotionQ3?.value || "").trim();
+    const q4 = (taskLogEmotionQ4?.value || "").trim();
+    if (!q1 && !q2 && !q3 && !q4) {
+      showToast("감정 기록에 내용을 한 줄이라도 입력해 주세요.", "warn");
+      return;
+    }
+    const dateStr = getExpenseModalDate();
+    const diary = loadDiaryEntries();
+    appendTab3Entry(diary, dateStr, q1, q2, q3, q4);
+    saveDiaryEntries(diary);
+    if (taskLogEmotionQ1) taskLogEmotionQ1.value = "";
+    if (taskLogEmotionQ2) taskLogEmotionQ2.value = "";
+    if (taskLogEmotionQ3) taskLogEmotionQ3.value = "";
+    if (taskLogEmotionQ4) taskLogEmotionQ4.value = "";
+    showToast(
+      "감정일기에 저장했습니다.",
+      "감정일기 탭에서 같은 양식으로 확인할 수 있습니다.",
+    );
     closeEmotionInnerModal();
   });
 
@@ -6045,7 +6108,17 @@ export function render() {
 
     if (editTr) {
       oldRowDataToRemove = editTr._rowData ? { ...editTr._rowData } : null;
+      const prevRow = editTr._rowData || {};
+      const optTask = taskName ? getTaskOptionByName(taskName) : null;
+      const tidRow = String((optTask?.id || prevRow.taskId || "").trim());
+      const prevId = String(prevRow.id || "").trim();
       const newRowData = {
+        id: isUuid(prevId)
+          ? prevId
+          : typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `t-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        taskId: isUuid(tidRow) ? tidRow : "",
         taskName,
         startTime,
         endTime,
@@ -6124,7 +6197,14 @@ export function render() {
       }
     } else if (addCtx) {
       const ctx = addCtx;
+      const optAdd = taskName ? getTaskOptionByName(taskName) : null;
+      const tidAdd = String((optAdd?.id || "").trim());
       const newRowData = {
+        id:
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `t-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        taskId: isUuid(tidAdd) ? tidAdd : "",
         taskName,
         startTime,
         endTime,
@@ -6174,7 +6254,7 @@ export function render() {
       saveExpenseRows(existingRows);
     }
 
-    /* 감정기록은 + 모달에서 저장 버튼 시 토스트만 표시, 실제 저장 없음 */
+    /* 감정 기록은 내장 모달 저장 시 diary_entries(감정일기)에 별도 반영됨 */
 
     /* 투두는 + 버튼 모달에서 카테고리 선택 후 추가 시 저장됨 */
 
@@ -6612,6 +6692,15 @@ export function render() {
 
   let allRowsCache = loadTimeRows();
   let cachedRows = [];
+
+  void hydrateTimeLedgerEntriesFromCloud().then((pulled) => {
+    if (!pulled) return;
+    allRowsCache = loadTimeRows();
+    cachedRows = getFullRowsForFilter(true);
+    const active =
+      viewTabs.querySelector(".time-view-tab.active")?.dataset?.view || "all";
+    switchView(active);
+  });
 
   function mergeRowsIntoCache() {
     const fromDom = collectRowsFromDOM(contentWrap);

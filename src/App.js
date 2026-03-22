@@ -40,7 +40,7 @@ const TABS = [
     icon: "/toolbaricons/calendar-heart1.svg",
     sidebarMobileOnly: true,
   },
-  { id: "diary", label: "감정관리", mobileLabel: "감정", icon: "/toolbaricons/chat-bubbles.svg" },
+  { id: "diary", label: "감정일기", mobileLabel: "감정일기", icon: "/toolbaricons/chat-bubbles.svg" },
   { id: "archive", label: "아카이브", icon: "/toolbaricons/harddrive.svg" },
 ];
 

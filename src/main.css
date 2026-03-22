@@ -2811,6 +2811,51 @@ body {
     padding-bottom: 3rem;
   }
 
+  /* 모바일: 과제 기록 안 + 로 열리는 중첩 모달 — 패널·하단 CTA 모서리 통일 */
+  .time-task-log-focus-inner-panel,
+  .time-task-log-todo-inner-panel,
+  .time-task-log-expense-inner-panel,
+  .time-task-log-emotion-inner-panel,
+  .time-task-log-memo-inner-panel {
+    border-radius: var(--modal-radius) !important;
+    overflow: hidden;
+  }
+  .time-task-log-expense-inner-complete-btn,
+  .time-task-log-expense-inner-add-btn,
+  .time-task-log-emotion-inner-save-btn,
+  .time-task-log-todo-inner-footer button,
+  .time-task-log-todo-inner-add,
+  .time-task-log-memo-inner-footer button,
+  .time-task-log-memo-inner-add,
+  .time-task-log-focus-inner-footer button,
+  .time-task-log-focus-inner-add {
+    border-radius: var(--modal-radius) !important;
+  }
+  .time-task-log-expense-inner-add-btn {
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+    box-sizing: border-box;
+  }
+  .time-task-log-emotion-inner-modal textarea.time-task-log-emotion-q1,
+  .time-task-log-emotion-inner-modal textarea.time-task-log-emotion-q2,
+  .time-task-log-emotion-inner-modal textarea.time-task-log-emotion-q3,
+  .time-task-log-emotion-inner-modal textarea.time-task-log-emotion-q4 {
+    border: var(--line-l3) !important;
+    border-radius: 0.5rem !important;
+    padding: 0.5rem 0.75rem !important;
+  }
+  .time-task-log-emotion-inner-modal textarea.time-task-log-emotion-q1:focus,
+  .time-task-log-emotion-inner-modal textarea.time-task-log-emotion-q2:focus,
+  .time-task-log-emotion-inner-modal textarea.time-task-log-emotion-q3:focus,
+  .time-task-log-emotion-inner-modal textarea.time-task-log-emotion-q4:focus {
+    border: var(--input-border-focus) !important;
+    border-radius: 0.5rem !important;
+    padding: 0.5rem 0.75rem !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
   /* 모바일: 과제 기록/수정 모달 - 마감시간 입력+버튼 한 줄 유지 (데스크탑과 동일) */
   .time-task-log-end-row {
     display: flex !important;
@@ -5634,6 +5679,8 @@ body {
 }
 
 .asset-expense-filter-bar {
+  position: relative;
+  z-index: 500; /* sticky·스크롤 테이블·합성 레이어보다 위 (모달 1000 미만) */
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -5707,6 +5754,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0;
+  position: relative;
+  z-index: 0; /* 필터 줄(월 드롭다운)보다 아래 층 */
 }
 
 .asset-expense-table-wrap {
@@ -6224,6 +6273,8 @@ body {
 }
 
 .asset-cashflow-view .time-dashboard-view {
+  position: relative;
+  z-index: 0;
   background: transparent;
 }
 
@@ -6384,11 +6435,17 @@ body {
   z-index: 1;
 }
 
-.asset-cashflow-view .time-view-tabs {
+/* 현금흐름: 월 패널이 잘리지 않도록 time-view-tabs(overflow-y:hidden) 미사용 */
+.asset-cashflow-period-toolbar {
+  position: relative;
+  z-index: 500; /* 대시보드·표 형 블록보다 위에 월 패널 */
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   gap: 0.5rem;
-  border-bottom: none;
 }
 
 .asset-cashflow-period-wrap {
@@ -14768,6 +14825,24 @@ body.kpi-resizing {
   margin-bottom: 1rem;
 }
 
+/* 탭 + 필터 한 줄: 필터 안 드롭다운이 .time-view-tabs overflow-y에 잘리지 않도록 분리 */
+.time-ledger-tabs-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  border-bottom: var(--line-l3);
+  font-family: var(--font-body);
+}
+
+.time-ledger-tabs-filter-row .time-view-tabs {
+  flex: 1;
+  min-width: 0;
+  border-bottom: none;
+}
+
 .time-view-tabs {
   display: flex;
   align-items: center;
@@ -21790,7 +21865,6 @@ body.kpi-resizing {
 }
 .time-ledger-over-row.time-ledger-over-row-visible {
   display: table-row;
-  background: #fef2f2;
 }
 .time-ledger-over-row .time-cell-task {
   color: #991b1b;

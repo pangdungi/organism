@@ -1,13 +1,14 @@
 /**
- * 감정관리 - 탭별 날짜 단위 기록 (탭마다 하루 1페이지)
+ * 감정일기 - 탭별 날짜 단위 기록
  * - 사이드바·본문 헤더에는 날짜만 표시, 제목 입력 없음
- * - 같은 날짜 중복 데이터는 로드 시 하나로 병합
+ * - 같은 날짜에 여러 페이지(항목) 가능
  */
 
 import {
   loadDiaryEntries,
   saveDiaryEntries,
   ensureTab3Entries,
+  newDiaryEntryId,
   TAB3_EMOTION_TEMPLATE,
   TAB3_EMOTION_PLACEHOLDERS,
 } from "../diaryData.js";
@@ -44,99 +45,11 @@ function normalizeDiaryDateStr(dateVal) {
   return String(dateVal).replace(/\//g, "-").slice(0, 10);
 }
 
-function parseDiaryEntryIdNum(id) {
-  const m = /^e_(\d+)$/.exec(String(id || ""));
-  return m ? parseInt(m[1], 10) : 0;
-}
-
-function pickMergedEntryId(group) {
-  let best = group[0].id;
-  let bestNum = parseDiaryEntryIdNum(best);
-  for (let i = 1; i < group.length; i++) {
-    const n = parseDiaryEntryIdNum(group[i].id);
-    if (n >= bestNum) {
-      bestNum = n;
-      best = group[i].id;
-    }
-  }
-  return best;
-}
-
 /** 일기 날짜 내림차순, 같은 날짜면 id 내림차순 */
 function compareDiaryEntriesNewestFirst(a, b) {
   const byDate = (b.date || "").localeCompare(a.date || "");
   if (byDate !== 0) return byDate;
   return (b.id || "").localeCompare(a.id || "");
-}
-
-function hasDuplicateDatesInList(list) {
-  const seen = new Set();
-  for (const e of list) {
-    const d = normalizeDiaryDateStr(e?.date);
-    if (!d) continue;
-    if (seen.has(d)) return true;
-    seen.add(d);
-  }
-  return false;
-}
-
-function mergeDiaryEntryGroup(tabId, group) {
-  if (group.length === 1) {
-    const e = group[0];
-    const d = normalizeDiaryDateStr(e.date);
-    if (d) e.date = d;
-    return e;
-  }
-  const sorted = [...group].sort((a, b) => parseDiaryEntryIdNum(b.id) - parseDiaryEntryIdNum(a.id));
-  const first = sorted[0];
-  const base = { ...first };
-  base.id = pickMergedEntryId(sorted);
-  base.date = normalizeDiaryDateStr(first.date) || first.date;
-  base.title = "제목없음";
-  if (tabId === "1") {
-    const parts = sorted.map((g) => (g.content || "").trim()).filter(Boolean);
-    base.content = parts.join("\n\n");
-  } else if (tabId === "2") {
-    base.qa = Object.fromEntries(TAB2_QA_TEMPLATE.map((_, i) => [String(i), ""]));
-    for (const g of sorted) {
-      if (!g.qa || typeof g.qa !== "object") continue;
-      for (let i = 0; i < TAB2_QA_TEMPLATE.length; i++) {
-        const k = String(i);
-        const v = (g.qa[k] || "").trim();
-        if (!v) continue;
-        const cur = (base.qa[k] || "").trim();
-        base.qa[k] = cur && cur !== v ? `${cur}\n\n${v}` : v;
-      }
-    }
-  } else if (tabId === "3") {
-    for (const key of ["q1", "q2", "q3", "q4"]) {
-      const parts = sorted.map((g) => (g[key] || "").trim()).filter(Boolean);
-      base[key] = parts.join("\n\n");
-    }
-  }
-  return base;
-}
-
-function dedupeMergeDiaryEntryList(tabId, list) {
-  const noDate = [];
-  const withDate = [];
-  for (const e of list) {
-    const d = normalizeDiaryDateStr(e?.date);
-    if (!d) noDate.push(e);
-    else withDate.push(e);
-  }
-  const byDate = new Map();
-  for (const e of withDate) {
-    const d = normalizeDiaryDateStr(e.date);
-    if (!byDate.has(d)) byDate.set(d, []);
-    byDate.get(d).push(e);
-  }
-  const merged = [];
-  for (const [, g] of byDate) {
-    merged.push(mergeDiaryEntryGroup(tabId, g));
-  }
-  merged.sort(compareDiaryEntriesNewestFirst);
-  return merged.concat(noDate);
 }
 
 /** 기존 날짜 기반 데이터를 entry 배열로 마이그레이션 */
@@ -176,7 +89,7 @@ export function render() {
     label.textContent = "DIARY";
     const h = document.createElement("h1");
     h.className = "dream-view-title";
-    h.textContent = "감정관리";
+    h.textContent = "감정일기";
     header.appendChild(label);
     header.appendChild(h);
     el.appendChild(header);
@@ -198,7 +111,7 @@ export function render() {
   tabs.className = "time-view-tabs diary-tabs";
   if (!mobileViewport) {
     tabs.innerHTML = `
-      <button type="button" class="time-view-tab diary-tab-btn" data-tab="3">감정관리</button>
+      <button type="button" class="time-view-tab diary-tab-btn" data-tab="3">감정일기</button>
       <button type="button" class="time-view-tab diary-tab-btn active" data-tab="2">통제일기</button>
       <button type="button" class="time-view-tab diary-tab-btn" data-tab="1">자유일기</button>
     `;
@@ -220,12 +133,7 @@ export function render() {
   function ensureTabEntries(tabId) {
     if (tabId === "3") {
       ensureTab3Entries(entries);
-      let list = entries["3"].entries || [];
-      if (hasDuplicateDatesInList(list)) {
-        entries["3"].entries = dedupeMergeDiaryEntryList("3", list);
-        saveDiaryEntries(entries);
-        list = entries["3"].entries;
-      }
+      const list = entries["3"].entries || [];
       return [...list].sort(compareDiaryEntriesNewestFirst);
     }
     const tab = entries[tabId];
@@ -235,12 +143,7 @@ export function render() {
       entries[tabId] = { entries: list };
       if (needsMigration) saveDiaryEntries(entries);
     }
-    let raw = entries[tabId].entries;
-    if (hasDuplicateDatesInList(raw)) {
-      entries[tabId].entries = dedupeMergeDiaryEntryList(tabId, raw);
-      saveDiaryEntries(entries);
-      raw = entries[tabId].entries;
-    }
+    const raw = entries[tabId].entries;
     return [...raw].sort(compareDiaryEntriesNewestFirst);
   }
 
@@ -332,18 +235,7 @@ export function render() {
       const today = toDateStr(new Date());
       ensureTabEntries(currentTabId);
       const rawList = getTabEntriesRaw(currentTabId);
-      const norm = normalizeDiaryDateStr(today);
-      const existing = rawList.find((e) => normalizeDiaryDateStr(e.date) === norm);
-      if (existing) {
-        currentEntryId = existing.id;
-        renderLayout();
-        requestAnimationFrame(() => {
-          const hit = layoutWrap.querySelector(`[data-entry-id="${existing.id}"]`);
-          if (hit) hit.scrollIntoView({ block: "nearest", behavior: "smooth" });
-        });
-        return;
-      }
-      const id = "e_" + Date.now();
+      const id = newDiaryEntryId();
       const newEntry =
         currentTabId === "3"
           ? { id, date: today, title: "제목없음", q1: "", q2: "", q3: "", q4: "" }
@@ -365,7 +257,7 @@ export function render() {
     };
 
     function getTabLabel(tabId) {
-      if (tabId === "3") return "감정관리";
+      if (tabId === "3") return "감정일기";
       if (tabId === "2") return "통제일기";
       return "자유일기";
     }
@@ -420,7 +312,7 @@ export function render() {
           <div class="diary-add-modal-body">
             <p class="diary-add-modal-label">유형</p>
             <div class="diary-add-modal-radios">
-              <label class="diary-add-modal-radio"><input type="radio" name="diary-type" value="3" /> 감정관리</label>
+              <label class="diary-add-modal-radio"><input type="radio" name="diary-type" value="3" /> 감정일기</label>
               <label class="diary-add-modal-radio"><input type="radio" name="diary-type" value="2" checked /> 통제일기</label>
               <label class="diary-add-modal-radio"><input type="radio" name="diary-type" value="1" /> 자유일기</label>
             </div>
@@ -444,17 +336,8 @@ export function render() {
         const dateStr = dateInput ? dateInput.value : today;
         close();
         ensureTabEntries(tabId);
-        const norm = normalizeDiaryDateStr(dateStr);
         const rawList = getTabEntriesRaw(tabId);
-        const existing = rawList.find((e) => normalizeDiaryDateStr(e.date) === norm);
-        if (existing) {
-          currentTabId = tabId;
-          currentEntryId = existing.id;
-          updateMobileTabs();
-          renderLayout();
-          return;
-        }
-        const id = "e_" + Date.now();
+        const id = newDiaryEntryId();
         const newEntry =
           tabId === "3"
             ? { id, date: dateStr, title: "제목없음", q1: "", q2: "", q3: "", q4: "" }

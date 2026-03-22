@@ -3,7 +3,12 @@
  */
 
 import { supabase } from "../supabase.js";
-import { loadDiaryEntries, saveDiaryEntries } from "../diaryData.js";
+import {
+  loadDiaryEntries,
+  saveDiaryEntries,
+  ensureDiaryEntryUuid,
+  isDiaryEntryUuid,
+} from "../diaryData.js";
 
 const TABLE = "diary_daily_entries";
 
@@ -93,18 +98,22 @@ export function rowsToDiaryEntries(rows) {
   return out;
 }
 
-/** 서버 데이터와 로컬 병합: 같은 (탭, 날짜)는 서버 행 우선 */
+/** 서버 데이터와 로컬 병합: 행 id 기준. 동일 id는 서버 행 우선, 로컬만 있는 행 유지 */
 export function mergeDiaryServerWins(local, serverRows) {
   const fromServer = rowsToDiaryEntries(serverRows);
   const out = emptyDiaryShape();
   for (const tabId of ["1", "2", "3"]) {
-    const key = (e) => `${tabId}|${normalizeDate(e.date)}`;
     const map = new Map();
-    for (const e of local?.[tabId]?.entries || []) {
-      if (normalizeDate(e.date)) map.set(key(e), JSON.parse(JSON.stringify(e)));
-    }
     for (const e of fromServer[tabId].entries || []) {
-      map.set(key(e), e);
+      const id = String(e?.id || "").trim();
+      if (id) map.set(id, e);
+    }
+    for (const e of local?.[tabId]?.entries || []) {
+      const copy = JSON.parse(JSON.stringify(e));
+      if (!String(copy?.id || "").trim()) ensureDiaryEntryUuid(copy);
+      const id = String(copy.id || "").trim();
+      if (!id) continue;
+      if (!map.has(id)) map.set(id, copy);
     }
     out[tabId].entries = sortEntriesList([...map.values()]);
   }
@@ -153,12 +162,13 @@ export async function pushAllLocalDiaryIfServerEmpty(entries) {
 let _pushTimer = null;
 const PUSH_DEBOUNCE_MS = 900;
 
-/** 로컬 상태를 서버에 반영 (upsert + 로컬에 없는 행 삭제) */
+/** 로컬 상태를 서버에 반영 (id PK upsert + 로컬에 없는 id 삭제) */
 export async function syncDiaryToSupabase(entries) {
   const userId = await getSessionUserId();
   if (!userId || !supabase || !entries || typeof entries !== "object") return;
 
-  const localKeys = new Set();
+  let mutatedIds = false;
+  const localIds = new Set();
   const upserts = [];
 
   for (const tabId of ["1", "2", "3"]) {
@@ -168,8 +178,15 @@ export async function syncDiaryToSupabase(entries) {
     for (const e of list) {
       const d = normalizeDate(e.date);
       if (!d || d.length < 10) continue;
-      localKeys.add(`${kind}|${d}`);
+      if (!isDiaryEntryUuid(e.id)) {
+        ensureDiaryEntryUuid(e);
+        mutatedIds = true;
+      }
+      const id = String(e.id || "").trim();
+      if (!id) continue;
+      localIds.add(id);
       upserts.push({
+        id,
         user_id: userId,
         diary_kind: kind,
         entry_date: d,
@@ -178,28 +195,25 @@ export async function syncDiaryToSupabase(entries) {
     }
   }
 
+  if (mutatedIds) saveDiaryEntries(entries);
+
   if (upserts.length > 0) {
     const { error } = await supabase.from(TABLE).upsert(upserts, {
-      onConflict: "user_id,diary_kind,entry_date",
+      onConflict: "id",
     });
     if (error) console.warn("[diary sync] upsert", error.message);
   }
 
   const { data: remote, error: rErr } = await supabase
     .from(TABLE)
-    .select("diary_kind, entry_date")
+    .select("id")
     .eq("user_id", userId);
   if (rErr || !remote) return;
 
   for (const r of remote) {
-    const k = `${r.diary_kind}|${r.entry_date}`;
-    if (!localKeys.has(k)) {
-      const { error: dErr } = await supabase
-        .from(TABLE)
-        .delete()
-        .eq("user_id", userId)
-        .eq("diary_kind", r.diary_kind)
-        .eq("entry_date", r.entry_date);
+    const rid = r.id;
+    if (rid && !localIds.has(String(rid))) {
+      const { error: dErr } = await supabase.from(TABLE).delete().eq("id", rid);
       if (dErr) console.warn("[diary sync] delete", dErr.message);
     }
   }
@@ -225,7 +239,7 @@ export function attachDiarySaveListener() {
   });
 }
 
-/** 감정관리 탭 진입 시: pull → 서버 비었으면 로컬 업로드 */
+/** 감정일기 탭 진입 시: pull → 서버 비었으면 로컬 업로드 */
 export async function hydrateDiaryFromCloud() {
   if (!supabase) return;
   attachDiarySaveListener();
