@@ -55,6 +55,7 @@ import {
   setStoredImproveNote,
 } from "../utils/timeImproveNotesModel.js";
 import { hydrateTimeImproveNotesFromCloud } from "../utils/timeImproveNotesSupabase.js";
+import { scheduleTimeDailyBudgetSyncPush } from "../utils/timeDailyBudgetSupabase.js";
 import { ensureTimeLedgerEntryIds } from "../utils/timeLedgerEntriesModel.js";
 import { hydrateTimeLedgerEntriesFromCloud } from "../utils/timeLedgerEntriesSupabase.js";
 import { persistSectionTasksAndSchedule } from "../utils/todoSectionTasksSupabase.js";
@@ -546,6 +547,11 @@ const BUDGET_GOALS_KEY = "time_daily_budget_goals";
 const BUDGET_EXCLUDED_KEY = "time_budget_excluded";
 const TIME_ROWS_KEY = "time_task_log_rows";
 
+function notifyTimeDailyBudgetSaved(dateStr) {
+  if (!(dateStr || "").trim()) return;
+  scheduleTimeDailyBudgetSyncPush(String(dateStr).trim().slice(0, 10));
+}
+
 /** 감정적이기 과제 선택 시 감정 드롭다운 필터 */
 const EMOTION_TASK_POSITIVE = "감정적이기(긍정적)";
 const EMOTION_TASK_NEGATIVE = "감정적이기(부정적)";
@@ -661,6 +667,7 @@ export function saveBudgetGoal(dateStr, taskName, goalTime, isInvest) {
         : { isInvest };
     }
     localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
+    notifyTimeDailyBudgetSaved(dateStr);
   } catch (_) {}
 }
 
@@ -689,6 +696,7 @@ function deleteBudgetGoalEntry(dateStr, taskName) {
     if (!excl[dateStr]) excl[dateStr] = [];
     if (!excl[dateStr].includes(key)) excl[dateStr].push(key);
     localStorage.setItem(BUDGET_EXCLUDED_KEY, JSON.stringify(excl));
+    notifyTimeDailyBudgetSaved(dateStr);
   } catch (_) {}
 }
 
@@ -712,6 +720,7 @@ function removeFromBudgetExcluded(dateStr, taskName) {
       excl[dateStr] = excl[dateStr].filter((n) => n !== key);
       if (excl[dateStr].length === 0) delete excl[dateStr];
       localStorage.setItem(BUDGET_EXCLUDED_KEY, JSON.stringify(excl));
+      notifyTimeDailyBudgetSaved(dateStr);
     }
   } catch (_) {}
 }
@@ -882,6 +891,7 @@ export function saveBudgetScheduledTimes(
       if (!all[dateStr][key]) delete all[dateStr][key];
     }
     localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
+    notifyTimeDailyBudgetSaved(dateStr);
     return false;
   } catch (_) {
     return false;
@@ -957,6 +967,7 @@ function saveBudgetScheduledTimesBatch(dateStr, tasksInOrder, lastEditedTask) {
       }
     }
     localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
+    notifyTimeDailyBudgetSaved(dateStr);
     return { overlapCleared: false, modifiedKeys: new Set() };
   } catch (_) {
     return { overlapCleared: false, modifiedKeys: new Set() };
@@ -9467,7 +9478,10 @@ function removeTodayTasksFromBudgetGoals(dateStr, todoSectionEl) {
         modified = true;
       }
     });
-    if (modified) localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
+    if (modified) {
+      localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
+      notifyTimeDailyBudgetSaved(dateStr);
+    }
   } catch (_) {}
 }
 

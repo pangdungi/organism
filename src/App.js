@@ -19,6 +19,7 @@ import { render as renderIdea } from "./views/Idea.js";
 import { render as renderHome } from "./views/Home.js";
 import { attachAssetExpenseTransactionsSaveListener } from "./utils/assetExpenseTransactionsSupabase.js";
 import { hydrateTodoSectionTasksFromCloud } from "./utils/todoSectionTasksSupabase.js";
+import { hydrateTimeDailyBudgetFromCloud } from "./utils/timeDailyBudgetSupabase.js";
 
 const TABS = [
   { id: "home", label: "오늘", icon: "/toolbaricons/dashboard.svg" },
@@ -334,8 +335,11 @@ btn.dataset.tabId = tab.id;
   window.__lpRenderMain = () => renderMain(main);
 
   renderMain(main);
-  void hydrateTodoSectionTasksFromCloud().then((needRefresh) => {
-    if (needRefresh) renderMain(main);
+  void Promise.all([
+    hydrateTodoSectionTasksFromCloud(),
+    hydrateTimeDailyBudgetFromCloud(),
+  ]).then(([needTodoRefresh, budgetMerged]) => {
+    if (needTodoRefresh || budgetMerged) renderMain(main);
   });
   appScreen.appendChild(main);
   appPage.appendChild(appScreen);

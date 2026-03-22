@@ -210,7 +210,9 @@ function saveSectionTasks(sectionId, tasks) {
       const id = (t.taskId || "").trim();
       mergeDedup.set(id || `_noid_${idx}`, t);
     });
-    const mergedUnique = [...mergeDedup.values()];
+    const mergedUnique = dedupeMergedSectionTasksByNamePreferUuid([
+      ...mergeDedup.values(),
+    ]);
     const toSave = mergedUnique
       .map(({ taskId, name, startDate, dueDate, startTime, endTime, eisenhower, done, itemType, reminderDate, reminderTime }) => ({
         taskId: taskId || "",
@@ -402,6 +404,72 @@ function collectCustomSectionFromDOM(sectionsEl, sectionId) {
 const KPI_SECTION_IDS = ["dream", "sideincome", "happy", "health"];
 const FIXED_SECTION_IDS_FOR_STORAGE = ["braindump", ...KPI_SECTION_IDS];
 
+/** ensureCalendarSectionTaskIds 등으로 저장소 taskId만 UUID로 바뀐 뒤 DOM은 task-* 인 불일치 방지 */
+const TASK_ID_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function syncSectionDomTaskIdsFromStorage(sectionId, sec) {
+  if (!sec || !sectionId) return;
+  try {
+    const raw = localStorage.getItem(SECTION_TASKS_KEY);
+    const obj = raw ? JSON.parse(raw) : {};
+    const arr = obj[sectionId];
+    if (!Array.isArray(arr)) return;
+    const nameToUuid = new Map();
+    arr.forEach((t) => {
+      const n = (t.name || "").trim();
+      const tid = String(t.taskId || "").trim();
+      if (!n || !TASK_ID_UUID_RE.test(tid)) return;
+      if (!nameToUuid.has(n)) nameToUuid.set(n, tid);
+    });
+    sec.querySelectorAll(".todo-card").forEach((card) => {
+      const n = (card.dataset.name || "").trim();
+      const uuid = nameToUuid.get(n);
+      const cur = (card.dataset.taskId || "").trim();
+      if (uuid && cur !== uuid) card.dataset.taskId = uuid;
+    });
+    sec.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").forEach((row) => {
+      const nameInput = row.querySelector(".todo-cell-name input");
+      const n = (nameInput?.value || "").trim();
+      const uuid = nameToUuid.get(n);
+      const cur = (row.dataset.taskId || "").trim();
+      if (uuid && cur !== uuid) row.dataset.taskId = uuid;
+    });
+  } catch (_) {}
+}
+
+/**
+ * 동일 섹션·동일 과제명으로 여러 행이 쌓인 경우(저장소 UUID vs DOM task-* 병합 실수)만 정리한다.
+ * 과제명이 같아도 서로 다른 UUID 할 일은 그대로 둔다(이전 로직은 이름만 같으면 1개로 합쳐
+ * 로컬에서 행이 사라지고, 다음 Supabase 동기화 시 wantIds 밖 id가 원격에서 삭제되는 문제가 있었음).
+ */
+function dedupeMergedSectionTasksByNamePreferUuid(merged) {
+  const nameGroups = new Map();
+  for (const t of merged) {
+    const n = (t.name || "").trim();
+    if (!n) continue;
+    if (!nameGroups.has(n)) nameGroups.set(n, []);
+    nameGroups.get(n).push(t);
+  }
+
+  const dropRef = new WeakSet();
+  for (const [, list] of nameGroups) {
+    if (list.length < 2) continue;
+    const hasUuid = list.some((t) => TASK_ID_UUID_RE.test((t.taskId || "").trim()));
+    if (hasUuid) {
+      for (const t of list) {
+        if (!TASK_ID_UUID_RE.test((t.taskId || "").trim())) dropRef.add(t);
+      }
+      continue;
+    }
+    for (let i = 1; i < list.length; i++) {
+      dropRef.add(list[i]);
+    }
+  }
+
+  return merged.filter((t) => !dropRef.has(t));
+}
+
 let _saveSectionTasksTimer = null;
 function scheduleSaveSectionTasksFromDOM(sectionsWrap) {
   todoDebug("scheduleSaveSectionTasksFromDOM", { hasWrap: !!sectionsWrap });
@@ -422,6 +490,7 @@ function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
       todoDebug("collectAndSave: section not found", sectionId);
       return;
     }
+    syncSectionDomTaskIdsFromStorage(sectionId, sec);
     const sectionTasks = [];
     const cardsWrap = sec.querySelector(".todo-cards-wrap");
     if (cardsWrap) {
