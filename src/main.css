@@ -25643,6 +25643,15 @@ body.kpi-resizing {
   box-sizing: border-box;
 }
 
+/* 탭 + layoutWrap 래퍼: 부모에서 남는 높이를 받아 통제일기 본문 스크롤 체인 유지 */
+.diary-view-inner {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .diary-view h2 {
   margin: 0 0 1rem;
   font-size: 1.25rem;

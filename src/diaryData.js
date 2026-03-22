@@ -1,16 +1,9 @@
 /**
  * 감정관리 데이터 - Diary.js와 Time.js에서 공유
+ * 탭3: 날짜별 q1~q4만 사용 (감정 이름 목록·emotions 객체 없음)
  */
 
 const DIARY_ENTRIES_KEY = "diary_entries";
-
-/** 탭 3 감정관리 기본 감정 목록 */
-export const TAB3_DEFAULT_EMOTIONS = [
-  "공포", "불안", "걱정", "기쁨", "행복", "즐거움", "고마움",
-  "기특함", "감동", "사랑", "신뢰감", "자부심", "자신감", "자존심", "자격지심", "열등감",
-  "슬픔", "우울", "분노", "억울함", "괘씸함", "서운함", "미움", "부러움", "혐오", "괴로움", "부담감",
-  "편안감", "후련함", "부끄러움", "죄책감", "아쉬움", "수치심", "짜증", "원망",
-];
 
 /** 탭 3 감정관리 템플릿 질문 */
 export const TAB3_EMOTION_TEMPLATE = [
@@ -28,12 +21,36 @@ export const TAB3_EMOTION_PLACEHOLDERS = [
   "아니라면 지금부터 내가 할 행동은?",
 ];
 
+function stripUpdatedAtFromDiaryEntries(data) {
+  if (!data || typeof data !== "object") return;
+  for (const tid of ["1", "2", "3"]) {
+    const tab = data[tid];
+    const list = tab?.entries;
+    if (!Array.isArray(list)) continue;
+    for (const e of list) {
+      if (e && Object.prototype.hasOwnProperty.call(e, "updatedAt")) delete e.updatedAt;
+    }
+  }
+}
+
+/** 구버전 탭3: emotionList / emotions 필드 제거 */
+function stripLegacyTab3EmotionCatalog(data) {
+  const tab = data?.["3"];
+  if (!tab || typeof tab !== "object") return;
+  if (Object.prototype.hasOwnProperty.call(tab, "emotionList")) delete tab.emotionList;
+  if (Object.prototype.hasOwnProperty.call(tab, "emotions")) delete tab.emotions;
+}
+
 export function loadDiaryEntries() {
   try {
     const raw = localStorage.getItem(DIARY_ENTRIES_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === "object") return parsed;
+      if (parsed && typeof parsed === "object") {
+        stripUpdatedAtFromDiaryEntries(parsed);
+        stripLegacyTab3EmotionCatalog(parsed);
+        return parsed;
+      }
     }
   } catch (_) {}
   return {};
@@ -43,54 +60,12 @@ export function saveDiaryEntries(data) {
   try {
     localStorage.setItem(DIARY_ENTRIES_KEY, JSON.stringify(data));
   } catch (_) {}
+  try {
+    window.dispatchEvent(new CustomEvent("diary-entries-saved", { detail: { data } }));
+  } catch (_) {}
 }
 
-/** 탭 3 감정관리: 감정 목록 반환 */
-export function getEmotionList(all) {
-  const tab = all["3"];
-  if (!tab || !tab.emotionList || !Array.isArray(tab.emotionList)) {
-    return [...TAB3_DEFAULT_EMOTIONS];
-  }
-  return tab.emotionList;
-}
-
-/** 제거된 감정 (기본 목록에서 삭제됨) - 기존 데이터에서도 제거 */
-const REMOVED_EMOTIONS = [
-  "근심", "황홀감", "따분함", "시샘", "얄미움", "섭섭함",
-  "외로움", "난처함", "지겨움", "안도감", "그리움",
-];
-
-/** 탭 3 감정관리: 데이터 구조 초기화 */
-export function ensureEmotionTabData(all) {
-  if (!all["3"]) all["3"] = {};
-  const tab = all["3"];
-  if (!tab.emotions || typeof tab.emotions !== "object") {
-    tab.emotions = Object.fromEntries(TAB3_DEFAULT_EMOTIONS.map((e) => [e, []]));
-  }
-  if (!tab.emotionList || !Array.isArray(tab.emotionList)) {
-    tab.emotionList = [...TAB3_DEFAULT_EMOTIONS];
-  } else {
-    tab.emotionList = tab.emotionList.filter((e) => !REMOVED_EMOTIONS.includes(e));
-    REMOVED_EMOTIONS.forEach((e) => delete tab.emotions[e]);
-    TAB3_DEFAULT_EMOTIONS.forEach((emotion) => {
-      if (!tab.emotionList.includes(emotion)) {
-        const insertIdx = TAB3_DEFAULT_EMOTIONS.indexOf(emotion);
-        const before = TAB3_DEFAULT_EMOTIONS[insertIdx - 1];
-        const beforeIdx = tab.emotionList.indexOf(before);
-        tab.emotionList.splice(beforeIdx >= 0 ? beforeIdx + 1 : 0, 0, emotion);
-        if (!tab.emotions[emotion]) tab.emotions[emotion] = [];
-      }
-    });
-  }
-  return tab;
-}
-
-/** (구) 감정별 추가 - 하위 호환용, 더 이상 사용 권장 안 함 */
-export function addEmotionEntry(entries, emotion, dateStr, q1, q2, q3) {
-  return addOrUpdateTab3EntryByDate(entries, (dateStr || "").replace(/\//g, "-").slice(0, 10), q1, q2, q3, "");
-}
-
-/** 탭3 감정관리: 날짜별 1개 항목 추가 또는 해당 날짜 항목 업데이트 (Time.js에서 호출 가능) */
+/** 탭3 감정관리: 날짜별 1개 항목 추가 또는 해당 날짜 항목 업데이트 (Time.js 등에서 호출 가능) */
 export function addOrUpdateTab3EntryByDate(entries, dateStr, q1, q2, q3, q4) {
   const normalizedDate = (dateStr || "").replace(/\//g, "-").slice(0, 10);
   if (!normalizedDate) return entries;
@@ -98,13 +73,11 @@ export function addOrUpdateTab3EntryByDate(entries, dateStr, q1, q2, q3, q4) {
   const tab = entries["3"];
   const list = tab.entries || [];
   const existing = list.find((e) => (e.date || "").slice(0, 10) === normalizedDate);
-  const now = new Date().toISOString();
   if (existing) {
     existing.q1 = (q1 !== undefined && q1 !== null ? q1 : existing.q1 || "").trim();
     existing.q2 = (q2 !== undefined && q2 !== null ? q2 : existing.q2 || "").trim();
     existing.q3 = (q3 !== undefined && q3 !== null ? q3 : existing.q3 || "").trim();
     existing.q4 = (q4 !== undefined && q4 !== null ? q4 : existing.q4 || "").trim();
-    existing.updatedAt = now;
   } else {
     list.push({
       id: "e_" + Date.now(),
@@ -114,18 +87,18 @@ export function addOrUpdateTab3EntryByDate(entries, dateStr, q1, q2, q3, q4) {
       q2: (q2 || "").trim(),
       q3: (q3 || "").trim(),
       q4: (q4 || "").trim(),
-      updatedAt: now,
     });
   }
   return entries;
 }
 
-/** 탭3 데이터를 날짜별 entries 구조로 보장 (기존 감정별 데이터가 있으면 entries만 비움) */
+/** 탭3 데이터를 날짜별 entries 구조로 보장 */
 export function ensureTab3Entries(entries) {
   if (!entries["3"]) entries["3"] = {};
   const tab = entries["3"];
   if (!Array.isArray(tab.entries)) {
     tab.entries = [];
   }
+  stripLegacyTab3EmotionCatalog(entries);
   return tab;
 }

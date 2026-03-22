@@ -1,9 +1,7 @@
 /**
- * 감정관리 - 탭별로 페이지 목록 사이드바 + 빈 종이 콘텐츠
- * - 새 페이지: 기본 제목 "제목없음"
- * - 제목 미지정(제목없음): 사이드바/종이에 날짜 표시
- * - 제목 지정: 해당 제목 표시
- * - 같은 날이어도 제목이 다르면 별도 데이터
+ * 감정관리 - 탭별 날짜 단위 기록 (탭마다 하루 1페이지)
+ * - 사이드바·본문 헤더에는 날짜만 표시, 제목 입력 없음
+ * - 같은 날짜 중복 데이터는 로드 시 하나로 병합
  */
 
 import {
@@ -13,6 +11,7 @@ import {
   TAB3_EMOTION_TEMPLATE,
   TAB3_EMOTION_PLACEHOLDERS,
 } from "../diaryData.js";
+import { hydrateDiaryFromCloud } from "../utils/diarySupabase.js";
 
 /** 탭 2 통제일기 Q&A 템플릿 */
 const TAB2_QA_TEMPLATE = [
@@ -40,6 +39,106 @@ function formatDateDisplay(dateStr) {
   return `${y}/${m}/${d}`;
 }
 
+function normalizeDiaryDateStr(dateVal) {
+  if (!dateVal) return "";
+  return String(dateVal).replace(/\//g, "-").slice(0, 10);
+}
+
+function parseDiaryEntryIdNum(id) {
+  const m = /^e_(\d+)$/.exec(String(id || ""));
+  return m ? parseInt(m[1], 10) : 0;
+}
+
+function pickMergedEntryId(group) {
+  let best = group[0].id;
+  let bestNum = parseDiaryEntryIdNum(best);
+  for (let i = 1; i < group.length; i++) {
+    const n = parseDiaryEntryIdNum(group[i].id);
+    if (n >= bestNum) {
+      bestNum = n;
+      best = group[i].id;
+    }
+  }
+  return best;
+}
+
+/** 일기 날짜 내림차순, 같은 날짜면 id 내림차순 */
+function compareDiaryEntriesNewestFirst(a, b) {
+  const byDate = (b.date || "").localeCompare(a.date || "");
+  if (byDate !== 0) return byDate;
+  return (b.id || "").localeCompare(a.id || "");
+}
+
+function hasDuplicateDatesInList(list) {
+  const seen = new Set();
+  for (const e of list) {
+    const d = normalizeDiaryDateStr(e?.date);
+    if (!d) continue;
+    if (seen.has(d)) return true;
+    seen.add(d);
+  }
+  return false;
+}
+
+function mergeDiaryEntryGroup(tabId, group) {
+  if (group.length === 1) {
+    const e = group[0];
+    const d = normalizeDiaryDateStr(e.date);
+    if (d) e.date = d;
+    return e;
+  }
+  const sorted = [...group].sort((a, b) => parseDiaryEntryIdNum(b.id) - parseDiaryEntryIdNum(a.id));
+  const first = sorted[0];
+  const base = { ...first };
+  base.id = pickMergedEntryId(sorted);
+  base.date = normalizeDiaryDateStr(first.date) || first.date;
+  base.title = "제목없음";
+  if (tabId === "1") {
+    const parts = sorted.map((g) => (g.content || "").trim()).filter(Boolean);
+    base.content = parts.join("\n\n");
+  } else if (tabId === "2") {
+    base.qa = Object.fromEntries(TAB2_QA_TEMPLATE.map((_, i) => [String(i), ""]));
+    for (const g of sorted) {
+      if (!g.qa || typeof g.qa !== "object") continue;
+      for (let i = 0; i < TAB2_QA_TEMPLATE.length; i++) {
+        const k = String(i);
+        const v = (g.qa[k] || "").trim();
+        if (!v) continue;
+        const cur = (base.qa[k] || "").trim();
+        base.qa[k] = cur && cur !== v ? `${cur}\n\n${v}` : v;
+      }
+    }
+  } else if (tabId === "3") {
+    for (const key of ["q1", "q2", "q3", "q4"]) {
+      const parts = sorted.map((g) => (g[key] || "").trim()).filter(Boolean);
+      base[key] = parts.join("\n\n");
+    }
+  }
+  return base;
+}
+
+function dedupeMergeDiaryEntryList(tabId, list) {
+  const noDate = [];
+  const withDate = [];
+  for (const e of list) {
+    const d = normalizeDiaryDateStr(e?.date);
+    if (!d) noDate.push(e);
+    else withDate.push(e);
+  }
+  const byDate = new Map();
+  for (const e of withDate) {
+    const d = normalizeDiaryDateStr(e.date);
+    if (!byDate.has(d)) byDate.set(d, []);
+    byDate.get(d).push(e);
+  }
+  const merged = [];
+  for (const [, g] of byDate) {
+    merged.push(mergeDiaryEntryGroup(tabId, g));
+  }
+  merged.sort(compareDiaryEntriesNewestFirst);
+  return merged.concat(noDate);
+}
+
 /** 기존 날짜 기반 데이터를 entry 배열로 마이그레이션 */
 function migrateToEntries(tabData) {
   if (Array.isArray(tabData)) return tabData;
@@ -49,7 +148,6 @@ function migrateToEntries(tabData) {
       date,
       title: "제목없음",
       content: v?.content || "",
-      updatedAt: v?.updatedAt || new Date().toISOString(),
     }));
   }
   return tabData?.entries || [];
@@ -58,11 +156,7 @@ function migrateToEntries(tabData) {
 function getTabEntriesList(tabId, all) {
   const tab = all[tabId];
   const list = migrateToEntries(tab);
-  return list.sort((a, b) => {
-    const da = a.updatedAt || a.date || "";
-    const db = b.updatedAt || b.date || "";
-    return db.localeCompare(da);
-  });
+  return list.sort(compareDiaryEntriesNewestFirst);
 }
 
 export function render() {
@@ -96,6 +190,10 @@ export function render() {
     el.appendChild(header);
   }
 
+  const inner = document.createElement("div");
+  inner.className = "diary-view-inner";
+  el.appendChild(inner);
+
   const tabs = document.createElement("div");
   tabs.className = "time-view-tabs diary-tabs";
   if (!mobileViewport) {
@@ -105,10 +203,11 @@ export function render() {
       <button type="button" class="time-view-tab diary-tab-btn" data-tab="1">자유일기</button>
     `;
   }
-  el.appendChild(tabs);
+  inner.appendChild(tabs);
 
   const layoutWrap = document.createElement("div");
   layoutWrap.className = "diary-layout-wrap";
+  inner.appendChild(layoutWrap);
 
   let currentTabId = "2";
   let currentEntryId = null;
@@ -117,11 +216,17 @@ export function render() {
   let sidebarCollapsed = false;
   let entries = loadDiaryEntries();
 
+  (function mountDiary() {
   function ensureTabEntries(tabId) {
     if (tabId === "3") {
       ensureTab3Entries(entries);
-      const list = entries["3"].entries || [];
-      return [...list].sort((a, b) => (b.updatedAt || b.date || "").localeCompare(a.updatedAt || a.date || ""));
+      let list = entries["3"].entries || [];
+      if (hasDuplicateDatesInList(list)) {
+        entries["3"].entries = dedupeMergeDiaryEntryList("3", list);
+        saveDiaryEntries(entries);
+        list = entries["3"].entries;
+      }
+      return [...list].sort(compareDiaryEntriesNewestFirst);
     }
     const tab = entries[tabId];
     const needsMigration = !tab || !Array.isArray(tab) && !tab.entries;
@@ -130,8 +235,13 @@ export function render() {
       entries[tabId] = { entries: list };
       if (needsMigration) saveDiaryEntries(entries);
     }
-    const raw = entries[tabId].entries;
-    return [...raw].sort((a, b) => (b.updatedAt || b.date || "").localeCompare(a.updatedAt || a.date || ""));
+    let raw = entries[tabId].entries;
+    if (hasDuplicateDatesInList(raw)) {
+      entries[tabId].entries = dedupeMergeDiaryEntryList(tabId, raw);
+      saveDiaryEntries(entries);
+      raw = entries[tabId].entries;
+    }
+    return [...raw].sort(compareDiaryEntriesNewestFirst);
   }
 
   function getTabEntriesRaw(tabId) {
@@ -150,9 +260,8 @@ export function render() {
 
   function getDisplayLabel(entry) {
     if (!entry) return "";
-    return (entry.title || "").trim() === "제목없음" || !(entry.title || "").trim()
-      ? formatDateDisplay(entry.date)
-      : entry.title.trim();
+    const d = normalizeDiaryDateStr(entry.date);
+    return d ? formatDateDisplay(d) : formatDateDisplay(entry.date) || "";
   }
 
   function filterPageListInPlace(query) {
@@ -209,7 +318,7 @@ export function render() {
     }
 
     const getEntrySearchText = (e) => {
-      let s = (e.title || "") + (e.content || "") + (e.date || "");
+      let s = (e.content || "") + (e.date || "");
       if (e.qa && typeof e.qa === "object") {
         s += Object.values(e.qa).join(" ");
       }
@@ -221,20 +330,31 @@ export function render() {
 
     const addPageHandler = () => {
       const today = toDateStr(new Date());
+      ensureTabEntries(currentTabId);
+      const rawList = getTabEntriesRaw(currentTabId);
+      const norm = normalizeDiaryDateStr(today);
+      const existing = rawList.find((e) => normalizeDiaryDateStr(e.date) === norm);
+      if (existing) {
+        currentEntryId = existing.id;
+        renderLayout();
+        requestAnimationFrame(() => {
+          const hit = layoutWrap.querySelector(`[data-entry-id="${existing.id}"]`);
+          if (hit) hit.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        });
+        return;
+      }
       const id = "e_" + Date.now();
       const newEntry =
         currentTabId === "3"
-          ? { id, date: today, title: "제목없음", q1: "", q2: "", q3: "", q4: "", updatedAt: new Date().toISOString() }
+          ? { id, date: today, title: "제목없음", q1: "", q2: "", q3: "", q4: "" }
           : {
               id,
               date: today,
               title: "제목없음",
               content: "",
               qa: currentTabId === "2" ? Object.fromEntries(TAB2_QA_TEMPLATE.map((_, i) => [String(i), ""])) : undefined,
-              updatedAt: new Date().toISOString(),
             };
-      ensureTabEntries(currentTabId);
-      entries[currentTabId].entries.push(newEntry);
+      rawList.push(newEntry);
       saveDiaryEntries(entries);
       currentEntryId = id;
       renderLayout();
@@ -323,11 +443,21 @@ export function render() {
         const dateInput = modal.querySelector(".diary-add-modal-date");
         const dateStr = dateInput ? dateInput.value : today;
         close();
-        const id = "e_" + Date.now();
         ensureTabEntries(tabId);
+        const norm = normalizeDiaryDateStr(dateStr);
+        const rawList = getTabEntriesRaw(tabId);
+        const existing = rawList.find((e) => normalizeDiaryDateStr(e.date) === norm);
+        if (existing) {
+          currentTabId = tabId;
+          currentEntryId = existing.id;
+          updateMobileTabs();
+          renderLayout();
+          return;
+        }
+        const id = "e_" + Date.now();
         const newEntry =
           tabId === "3"
-            ? { id, date: dateStr, title: "제목없음", q1: "", q2: "", q3: "", q4: "", updatedAt: new Date().toISOString() }
+            ? { id, date: dateStr, title: "제목없음", q1: "", q2: "", q3: "", q4: "" }
             : tabId === "2"
               ? {
                   id,
@@ -335,10 +465,9 @@ export function render() {
                   title: "제목없음",
                   content: "",
                   qa: Object.fromEntries(TAB2_QA_TEMPLATE.map((_, i) => [String(i), ""])),
-                  updatedAt: new Date().toISOString(),
                 }
-              : { id, date: dateStr, title: "제목없음", content: "", updatedAt: new Date().toISOString() };
-        entries[tabId].entries.push(newEntry);
+              : { id, date: dateStr, title: "제목없음", content: "" };
+        rawList.push(newEntry);
         saveDiaryEntries(entries);
         openStepModal(newEntry, tabId);
       });
@@ -375,7 +504,6 @@ export function render() {
         } else {
           entry.content = answers[key] ?? "";
         }
-        entry.updatedAt = new Date().toISOString();
         saveDiaryEntries(entries);
       };
 
@@ -391,7 +519,6 @@ export function render() {
             entry.content = val;
           }
         });
-        entry.updatedAt = new Date().toISOString();
         saveDiaryEntries(entries);
       };
 
@@ -467,7 +594,7 @@ export function render() {
           <button type="button" class="diary-sidebar-collapse diary-sidebar-collapse-btn">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
-          <button type="button" class="diary-sidebar-add-btn" title="페이지 추가">
+          <button type="button" class="diary-sidebar-add-btn" title="오늘 날짜 일기">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           </button>
         </div>
@@ -484,7 +611,7 @@ export function render() {
       const searchInput = document.createElement("input");
       searchInput.type = "text";
       searchInput.className = "diary-search-input";
-      searchInput.placeholder = "페이지 검색...";
+      searchInput.placeholder = "날짜·내용 검색...";
       searchInput.value = searchQuery;
       searchInput.addEventListener("compositionstart", () => {
         isComposing = true;
@@ -555,27 +682,12 @@ export function render() {
         card.className = "diary-paper diary-paper-qa diary-feed-card" + (currentTabId === "3" ? " diary-paper-tab3" : "");
         const qaHeader = document.createElement("div");
         qaHeader.className = "diary-paper-qa-header";
-        const titleInput = document.createElement("input");
-        titleInput.type = "text";
-        titleInput.className = "diary-paper-meta diary-feed-card-title";
-        const displayTitle =
-          (entry.title || "").trim() === "제목없음" || !(entry.title || "").trim()
-            ? formatDateDisplay(entry.date || toDateStr(new Date()))
-            : (entry.title || "").trim();
-        titleInput.value = displayTitle;
-        titleInput.placeholder = formatDateDisplay(entry.date || toDateStr(new Date()));
-        titleInput.addEventListener("input", () => {
-          entry.title = (titleInput.value || "").trim() || "제목없음";
-          entry.updatedAt = new Date().toISOString();
-          saveDiaryEntries(entries);
-        });
-        titleInput.addEventListener("blur", () => {
-          const v = (titleInput.value || "").trim();
-          entry.title = v || "제목없음";
-          entry.updatedAt = new Date().toISOString();
-          saveDiaryEntries(entries);
-        });
-        qaHeader.appendChild(titleInput);
+        const dateLabel = document.createElement("span");
+        dateLabel.className = "diary-paper-meta diary-feed-card-title";
+        dateLabel.setAttribute("aria-label", "일기 날짜");
+        const dNorm = normalizeDiaryDateStr(entry.date) || entry.date;
+        dateLabel.textContent = formatDateDisplay(dNorm) || formatDateDisplay(toDateStr(new Date()));
+        qaHeader.appendChild(dateLabel);
         const deleteBtn = document.createElement("button");
         deleteBtn.type = "button";
         deleteBtn.className = "diary-paper-delete-btn diary-paper-delete-btn-qa";
@@ -615,7 +727,6 @@ export function render() {
             };
             ansArea.addEventListener("input", () => {
               entry[key] = ansArea.value;
-              entry.updatedAt = new Date().toISOString();
               saveDiaryEntries(entries);
               adjustHeight();
             });
@@ -646,7 +757,6 @@ export function render() {
             ansArea.addEventListener("input", () => {
               if (!entry.qa) entry.qa = {};
               entry.qa[String(i)] = ansArea.value;
-              entry.updatedAt = new Date().toISOString();
               saveDiaryEntries(entries);
               adjustHeight();
             });
@@ -661,7 +771,6 @@ export function render() {
           textarea.value = entry.content || "";
           textarea.addEventListener("input", () => {
             entry.content = textarea.value;
-            entry.updatedAt = new Date().toISOString();
             saveDiaryEntries(entries);
           });
           card.appendChild(textarea);
@@ -681,33 +790,12 @@ export function render() {
       if (!currentEntry.q4 && currentEntry.q4 !== "") currentEntry.q4 = "";
       const qaHeader = document.createElement("div");
       qaHeader.className = "diary-paper-qa-header";
-      const headerTitleInput = document.createElement("input");
-      headerTitleInput.type = "text";
-      headerTitleInput.className = "diary-paper-meta diary-paper-qa-header-title";
-      const displayTitle3 =
-        (currentEntry.title || "").trim() === "제목없음" || !(currentEntry.title || "").trim()
-          ? formatDateDisplay(currentEntry.date || toDateStr(new Date()))
-          : (currentEntry.title || "").trim();
-      headerTitleInput.value = displayTitle3;
-      headerTitleInput.placeholder = formatDateDisplay(currentEntry.date || toDateStr(new Date()));
-      headerTitleInput.addEventListener("input", () => {
-        const t = getEntryById(currentTabId, currentEntryId);
-        if (t) {
-          t.title = (headerTitleInput.value || "").trim() || "제목없음";
-          t.updatedAt = new Date().toISOString();
-          saveDiaryEntries(entries);
-        }
-      });
-      headerTitleInput.addEventListener("blur", () => {
-        const t = getEntryById(currentTabId, currentEntryId);
-        if (t) {
-          t.title = (headerTitleInput.value || "").trim() || "제목없음";
-          t.updatedAt = new Date().toISOString();
-          saveDiaryEntries(entries);
-          renderLayout();
-        }
-      });
-      qaHeader.appendChild(headerTitleInput);
+      const dateLabel3 = document.createElement("span");
+      dateLabel3.className = "diary-paper-meta diary-paper-qa-header-title";
+      dateLabel3.setAttribute("aria-label", "일기 날짜");
+      const d3 = normalizeDiaryDateStr(currentEntry.date) || currentEntry.date;
+      dateLabel3.textContent = formatDateDisplay(d3) || formatDateDisplay(toDateStr(new Date()));
+      qaHeader.appendChild(dateLabel3);
       const deleteBtn = document.createElement("button");
       deleteBtn.type = "button";
       deleteBtn.className = "diary-paper-delete-btn diary-paper-delete-btn-qa";
@@ -745,7 +833,6 @@ export function render() {
           const t = getEntryById(currentTabId, currentEntryId);
           if (t) {
             t[key] = ansArea.value;
-            t.updatedAt = new Date().toISOString();
             saveDiaryEntries(entries);
           }
           adjustHeight();
@@ -765,33 +852,12 @@ export function render() {
         paper.className = "diary-paper diary-paper-qa";
         const qaHeader = document.createElement("div");
         qaHeader.className = "diary-paper-qa-header";
-        const headerTitleInput = document.createElement("input");
-        headerTitleInput.type = "text";
-        headerTitleInput.className = "diary-paper-meta diary-paper-qa-header-title";
-        const displayTitle2 =
-          (currentEntry.title || "").trim() === "제목없음" || !(currentEntry.title || "").trim()
-            ? formatDateDisplay(currentEntry.date || toDateStr(new Date()))
-            : (currentEntry.title || "").trim();
-        headerTitleInput.value = displayTitle2;
-        headerTitleInput.placeholder = formatDateDisplay(currentEntry.date || toDateStr(new Date()));
-        headerTitleInput.addEventListener("input", () => {
-          const t = getEntryById(currentTabId, currentEntryId);
-          if (t) {
-            t.title = (headerTitleInput.value || "").trim() || "제목없음";
-            t.updatedAt = new Date().toISOString();
-            saveDiaryEntries(entries);
-          }
-        });
-        headerTitleInput.addEventListener("blur", () => {
-          const t = getEntryById(currentTabId, currentEntryId);
-          if (t) {
-            t.title = (headerTitleInput.value || "").trim() || "제목없음";
-            t.updatedAt = new Date().toISOString();
-            saveDiaryEntries(entries);
-            renderLayout();
-          }
-        });
-        qaHeader.appendChild(headerTitleInput);
+        const dateLabel2 = document.createElement("span");
+        dateLabel2.className = "diary-paper-meta diary-paper-qa-header-title";
+        dateLabel2.setAttribute("aria-label", "일기 날짜");
+        const d2 = normalizeDiaryDateStr(currentEntry.date) || currentEntry.date;
+        dateLabel2.textContent = formatDateDisplay(d2) || formatDateDisplay(toDateStr(new Date()));
+        qaHeader.appendChild(dateLabel2);
         const deleteBtn = document.createElement("button");
         deleteBtn.type = "button";
         deleteBtn.className = "diary-paper-delete-btn diary-paper-delete-btn-qa";
@@ -829,7 +895,6 @@ export function render() {
             if (t) {
               if (!t.qa) t.qa = {};
               t.qa[String(i)] = ansArea.value;
-              t.updatedAt = new Date().toISOString();
               saveDiaryEntries(entries);
             }
             adjustHeight();
@@ -842,40 +907,15 @@ export function render() {
       } else {
         const titleRow = document.createElement("div");
         titleRow.className = "diary-paper-title-row";
-        const titleInput = document.createElement("input");
-        titleInput.type = "text";
-        titleInput.className = "diary-paper-title-input";
-        const displayTitleFree =
-          (currentEntry.title || "").trim() === "제목없음" || !(currentEntry.title || "").trim()
-            ? formatDateDisplay(currentEntry.date || toDateStr(new Date()))
-            : currentEntry.title.trim();
-        titleInput.value = displayTitleFree;
-        titleInput.placeholder = formatDateDisplay(currentEntry.date || toDateStr(new Date()));
-        titleInput.addEventListener("input", () => {
-          const t = getEntryById(currentTabId, currentEntryId);
-          if (t) {
-            t.title = titleInput.value.trim() || "제목없음";
-            t.updatedAt = new Date().toISOString();
-            saveDiaryEntries(entries);
-          }
-        });
-        const applyTitle = () => {
-          const t = getEntryById(currentTabId, currentEntryId);
-          if (t) {
-            t.title = (titleInput.value || "").trim() || "제목없음";
-            t.updatedAt = new Date().toISOString();
-            saveDiaryEntries(entries);
-            renderLayout();
-          }
-        };
-        titleInput.addEventListener("blur", applyTitle);
-        titleInput.addEventListener("keydown", (e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            titleInput.blur();
-          }
-        });
-        titleRow.appendChild(titleInput);
+        const dateLabelFree = document.createElement("span");
+        dateLabelFree.className = "diary-paper-date";
+        dateLabelFree.setAttribute("aria-label", "일기 날짜");
+        dateLabelFree.style.flex = "1";
+        dateLabelFree.style.minWidth = "0";
+        dateLabelFree.style.marginBottom = "0";
+        const d1 = normalizeDiaryDateStr(currentEntry.date) || currentEntry.date;
+        dateLabelFree.textContent = formatDateDisplay(d1) || formatDateDisplay(toDateStr(new Date()));
+        titleRow.appendChild(dateLabelFree);
         const deleteBtn = document.createElement("button");
         deleteBtn.type = "button";
         deleteBtn.className = "diary-paper-delete-btn";
@@ -902,7 +942,6 @@ export function render() {
           const t = getEntryById(currentTabId, currentEntryId);
           if (t) {
             t.content = textarea.value;
-            t.updatedAt = new Date().toISOString();
             saveDiaryEntries(entries);
           }
         });
@@ -932,10 +971,21 @@ export function render() {
     });
   });
 
-  const initialList = ensureTabEntries(currentTabId);
-  currentEntryId = initialList.length > 0 ? initialList[0].id : null;
-  renderLayout();
+    const initialList = ensureTabEntries(currentTabId);
+    currentEntryId = initialList.length > 0 ? initialList[0].id : null;
+    renderLayout();
 
-  el.appendChild(layoutWrap);
+    void hydrateDiaryFromCloud()
+      .catch((err) => console.warn("[diary]", err))
+      .finally(() => {
+        entries = loadDiaryEntries();
+        const alist = ensureTabEntries(currentTabId);
+        if (currentEntryId && !alist.some((e) => e.id === currentEntryId)) {
+          currentEntryId = alist.length > 0 ? alist[0].id : null;
+        }
+        renderLayout();
+      });
+  })();
+
   return el;
 }
