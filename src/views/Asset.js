@@ -2,6 +2,16 @@
  * 자산관리 - 순자산(총 부채), 지출입력장, 현금흐름, 자산관리계획
  */
 
+import { hydrateAssetExpensePrefsFromCloud } from "../utils/assetExpensePrefsSupabase.js";
+import {
+  attachAssetExpenseTransactionsSaveListener,
+  hydrateAssetExpenseTransactionsFromCloud,
+} from "../utils/assetExpenseTransactionsSupabase.js";
+import {
+  attachAssetNetWorthGoalSaveListener,
+  hydrateAssetNetWorthGoalFromCloud,
+} from "../utils/assetNetWorthTargetSupabase.js";
+
 const DEBT_ROWS_KEY = "asset_debt_rows";
 const ASSET_ROWS_KEY = "asset_asset_rows";
 const REAL_ESTATE_ROWS_KEY = "asset_real_estate_rows";
@@ -33,19 +43,6 @@ function getStockCategoryOptions() {
   return defaults;
 }
 
-function addStockCategoryOption(name) {
-  const defaults = DEFAULT_STOCK_CATEGORY_OPTIONS.map((o) => o.label);
-  const opts = getStockCategoryOptions();
-  const trimmed = (name || "").trim();
-  if (!trimmed || opts.includes(trimmed)) return opts;
-  const custom = opts.filter((o) => !defaults.includes(o));
-  custom.push(trimmed);
-  try {
-    localStorage.setItem(STOCK_CATEGORY_OPTIONS_KEY, JSON.stringify(custom));
-  } catch (_) {}
-  return getStockCategoryOptions();
-}
-
 function removeStockCategoryOption(name) {
   if (!name || DEFAULT_STOCK_CATEGORY_OPTIONS.some((o) => o.label === name)) return getStockCategoryOptions();
   const defaults = DEFAULT_STOCK_CATEGORY_OPTIONS.map((o) => o.label);
@@ -61,7 +58,8 @@ function isDefaultStockCategory(name) {
 }
 
 function getStockCategoryColor(label) {
-  return "asset-stock-cat-gray";
+  const opt = DEFAULT_STOCK_CATEGORY_OPTIONS.find((o) => o.label === label);
+  return opt ? opt.color : "asset-stock-cat-gray";
 }
 
 const DEFAULT_INSURANCE_KIND_OPTIONS = [
@@ -327,17 +325,6 @@ function getSavingsGoalOptions() {
     }
   } catch (_) {}
   return [...DEFAULT_SAVINGS_GOAL_OPTIONS];
-}
-
-function addSavingsGoalOption(name) {
-  const opts = getSavingsGoalOptions();
-  const trimmed = (name || "").trim();
-  if (!trimmed || opts.includes(trimmed)) return opts;
-  opts.push(trimmed);
-  try {
-    localStorage.setItem(SAVINGS_GOAL_OPTIONS_KEY, JSON.stringify(opts));
-  } catch (_) {}
-  return opts;
 }
 
 function removeSavingsGoalOption(name) {
@@ -671,6 +658,11 @@ function saveNetWorthTarget(value) {
   try {
     localStorage.setItem(NET_WORTH_TARGET_KEY, String(value ?? ""));
   } catch (_) {}
+  window.dispatchEvent(new CustomEvent("asset-networth-target-saved"));
+}
+
+function newExpenseRowId() {
+  return typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "";
 }
 
 function loadExpenseRows() {
@@ -678,7 +670,22 @@ function loadExpenseRows() {
     const raw = localStorage.getItem(EXPENSE_ROWS_KEY);
     if (raw) {
       const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) return arr;
+      if (Array.isArray(arr)) {
+        const uuidRe =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        let needSave = false;
+        const out = arr.map((r) => {
+          if (typeof r !== "object" || !r) return r;
+          const id = String(r.id || "").trim();
+          if (!id || !uuidRe.test(id)) {
+            needSave = true;
+            return { ...r, id: newExpenseRowId() };
+          }
+          return r;
+        });
+        if (needSave) saveExpenseRows(out);
+        return out;
+      }
     }
   } catch (_) {}
   return [];
@@ -693,6 +700,11 @@ function saveExpenseRows(rows) {
 function collectExpenseRowsFromDOM(tableEl) {
   const rows = [];
   tableEl?.querySelectorAll(".asset-expense-row").forEach((tr) => {
+    let id = tr.dataset.assetExpenseRowId || "";
+    if (!id) {
+      id = newExpenseRowId();
+      if (id) tr.dataset.assetExpenseRowId = id;
+    }
     const nameInput = tr.querySelector(".asset-expense-input-name");
     const dateInput = tr.querySelector(".asset-expense-input-date");
     const flowTypeInput = tr.querySelector(".asset-expense-input-flow-type");
@@ -702,6 +714,7 @@ function collectExpenseRowsFromDOM(tableEl) {
     const paymentInput = tr.querySelector(".asset-expense-input-payment");
     const memoInput = tr.querySelector(".asset-expense-input-memo");
     rows.push({
+      id,
       name: nameInput?.value || "",
       date: dateInput?.value || "",
       flowType: flowTypeInput?.value || "",
@@ -1074,7 +1087,7 @@ function createAssetCategoryDropdown(initialValue, onUpdate) {
   return wrap;
 }
 
-/** 주식분류 드롭다운 - 미국주식, 국내주식, ETF, 코인, 현물, 선물 + 사용자 추가 */
+/** 주식분류 드롭다운 - 기본 6종만 선택(임의 추가 없음). 예전에 로컬에만 넣었던 항목은 삭제 가능 */
 function createStockCategoryDropdown(initialValue, onUpdate) {
   const wrap = document.createElement("div");
   wrap.className = "asset-stock-category-wrap";
@@ -1092,67 +1105,44 @@ function createStockCategoryDropdown(initialValue, onUpdate) {
   }
 
   const panel = document.createElement("div");
-  panel.className = "asset-stock-category-panel";
+  panel.className = "asset-stock-category-panel asset-stock-category-panel--pills";
   panel.hidden = true;
 
   function buildPanel() {
     panel.innerHTML = "";
-    const titleRow = document.createElement("div");
-    titleRow.className = "asset-stock-category-panel-title";
-    titleRow.textContent = "옵션 선택 또는 생성";
-    panel.appendChild(titleRow);
     getStockCategoryOptions().forEach((label) => {
-      const row = document.createElement("div");
-      row.className = "asset-stock-category-option";
-      const tag = document.createElement("span");
-      tag.className = "asset-stock-category-tag " + getStockCategoryColor(label);
-      tag.textContent = label;
-      tag.addEventListener("click", (e) => {
+      const item = document.createElement("span");
+      item.className = "asset-stock-category-pill-item";
+      const pill = document.createElement("button");
+      pill.type = "button";
+      pill.className = "asset-stock-category-pill " + getStockCategoryColor(label);
+      pill.textContent = label;
+      pill.addEventListener("click", (e) => {
         e.stopPropagation();
         input.value = label;
         updateDisplay();
         panel.hidden = true;
         onUpdate?.();
       });
-      row.appendChild(tag);
+      item.appendChild(pill);
       if (!isDefaultStockCategory(label)) {
         const delBtn = document.createElement("button");
         delBtn.type = "button";
-        delBtn.className = "asset-stock-category-option-delete";
+        delBtn.className = "asset-stock-category-pill-delete";
         delBtn.title = "삭제";
+        delBtn.setAttribute("aria-label", "삭제");
         delBtn.innerHTML =
-          '<svg viewBox="0 0 16 16" width="16" height="16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+          '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
         delBtn.addEventListener("click", (e) => {
           e.stopPropagation();
           removeStockCategoryOption(label);
           buildPanel();
           onUpdate?.();
         });
-        row.appendChild(delBtn);
+        item.appendChild(delBtn);
       }
-      panel.appendChild(row);
+      panel.appendChild(item);
     });
-    const addRow = document.createElement("div");
-    addRow.className = "asset-stock-category-add";
-    const addInput = document.createElement("input");
-    addInput.type = "text";
-    addInput.placeholder = "추가 입력 후 Enter";
-    addInput.className = "asset-stock-category-add-input";
-    addInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        const val = (addInput.value || "").trim();
-        if (val) {
-          addStockCategoryOption(val);
-          input.value = val;
-          updateDisplay();
-          addInput.value = "";
-          buildPanel();
-          onUpdate?.();
-        }
-      }
-    });
-    addRow.appendChild(addInput);
-    panel.appendChild(addRow);
   }
 
   display.addEventListener("click", (e) => {
@@ -1298,7 +1288,7 @@ function createInsuranceKindDropdown(initialValue, onUpdate) {
   return wrap;
 }
 
-/** 예적금 용도 드롭다운 - 전세자금, 여행자금 등 + 사용자 추가 */
+/** 예적금 용도 드롭다운 - 기본 목록만 (예금·적금 공통, 임의 추가 없음) */
 function createSavingsGoalDropdown(initialValue, onUpdate) {
   const wrap = document.createElement("div");
   wrap.className = "asset-asset-savings-goal-wrap";
@@ -1354,27 +1344,6 @@ function createSavingsGoalDropdown(initialValue, onUpdate) {
       }
       panel.appendChild(row);
     });
-    const addRow = document.createElement("div");
-    addRow.className = "asset-asset-savings-goal-add";
-    const addInput = document.createElement("input");
-    addInput.type = "text";
-    addInput.placeholder = "추가 입력 후 Enter";
-    addInput.className = "asset-asset-savings-goal-add-input";
-    addInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        const val = (addInput.value || "").trim();
-        if (val) {
-          addSavingsGoalOption(val);
-          input.value = val;
-          updateDisplay();
-          addInput.value = "";
-          buildPanel();
-          onUpdate?.();
-        }
-      }
-    });
-    addRow.appendChild(addInput);
-    panel.appendChild(addRow);
   }
 
   display.addEventListener("click", (e) => {
@@ -4401,11 +4370,19 @@ function renderExpenseView(options = {}) {
   function saveExpense() {
     const rows = collectExpenseRowsFromDOM(table);
     saveExpenseRows(rows);
+    window.dispatchEvent(new CustomEvent("asset-expense-transactions-saved"));
   }
 
   function createExpenseRow(data = {}, onTotalsUpdate, onFilterApply) {
     const tr = document.createElement("tr");
     tr.className = "asset-expense-row";
+    const uuidRe =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const rowId =
+      data.id && uuidRe.test(String(data.id).trim())
+        ? String(data.id).trim()
+        : newExpenseRowId();
+    if (rowId) tr.dataset.assetExpenseRowId = rowId;
     const todayValue = getTodayDateValue();
     const dateValue = data.date || todayValue;
     const dateDisplayVal = formatDateYYMMDD(dateValue);
@@ -4925,6 +4902,9 @@ function createAssetSettingsModal(onSave) {
       });
       savePaymentOptions(payments.length > 0 ? payments : DEFAULT_PAYMENT_OPTIONS);
     }
+    try {
+      window.dispatchEvent(new CustomEvent("asset-expense-prefs-saved"));
+    } catch (_) {}
   }
 
   saveBtn.addEventListener("click", () => {
@@ -5969,9 +5949,36 @@ export function render() {
     btn.addEventListener("click", () => switchView(btn.dataset.view));
   });
 
+  attachAssetExpenseTransactionsSaveListener();
+  attachAssetNetWorthGoalSaveListener();
+
   renderView("expense");
 
   setupScrollClosePanels();
+
+  void (async () => {
+    try {
+      await hydrateAssetExpensePrefsFromCloud();
+      const [expenseDataReplaced, networthDataReplaced] = await Promise.all([
+        hydrateAssetExpenseTransactionsFromCloud(),
+        hydrateAssetNetWorthGoalFromCloud(),
+      ]);
+      if (expenseDataReplaced) {
+        const activeTab = viewTabs.querySelector(".asset-view-tab.active");
+        if (activeTab?.dataset?.view === "expense") {
+          renderView("expense");
+        }
+      }
+      if (networthDataReplaced) {
+        const activeTab = viewTabs.querySelector(".asset-view-tab.active");
+        if (activeTab?.dataset?.view === "networth") {
+          renderView("networth");
+        }
+      }
+    } catch (e) {
+      console.warn("[asset-expense-cloud]", e);
+    }
+  })();
 
   return el;
 }

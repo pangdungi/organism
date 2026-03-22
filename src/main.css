@@ -2755,6 +2755,47 @@ body {
     padding-right: 0 !important;
   }
 
+  /* 모바일: 가계부 테이블 — 거래일(고정 열) 너비 확대로 날짜 전체 표시, 메모 열 축소 */
+  .asset-expense-col-date,
+  .asset-expense-th-date,
+  .asset-expense-cell-date {
+    width: 8.5rem !important;
+    min-width: 8.5rem !important;
+    max-width: none !important;
+  }
+  .asset-expense-col-amount,
+  .asset-expense-th-amount,
+  .asset-expense-cell-amount {
+    left: 8.5rem !important;
+  }
+  .asset-expense-summary-row .asset-expense-summary-total {
+    left: 8.5rem !important;
+  }
+  col.asset-expense-col-date {
+    width: 8.5rem !important;
+  }
+  .asset-expense-date-display {
+    max-width: none !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+  .asset-expense-col-memo,
+  .asset-expense-th-memo,
+  .asset-expense-cell-memo {
+    width: 5.75rem !important;
+    min-width: 4.5rem !important;
+    max-width: 6.5rem !important;
+    box-sizing: border-box;
+  }
+  col.asset-expense-col-memo {
+    width: 5.75rem !important;
+    max-width: 6.5rem !important;
+  }
+  .asset-expense-table .asset-expense-input-memo {
+    max-width: 100%;
+    min-width: 0;
+  }
+
   /* 모바일: dream-view 헤더 좌우 패딩 — 오늘 탭 등 다른 헤더와 통일 (1.75rem) */
   .dream-view-header {
     padding-left: 1.75rem;
@@ -5722,6 +5763,11 @@ body {
   border-right: none;
 }
 
+.asset-expense-table th.asset-expense-th-date,
+.asset-expense-table td.asset-expense-cell-date {
+  overflow: visible;
+}
+
 .asset-expense-table th {
   font-weight: 500;
   font-size: 0.8125rem;
@@ -5729,15 +5775,16 @@ body {
 }
 
 /* 거래일, 금액 열 고정 (가로 스크롤 시) - 스크롤은 .asset-expense-table-wrap만, 거래일·금액만 왼쪽에 고정 */
+/* 거래일: YYYY/MM/DD 전체가 보이도록 너비 확보 (6rem은 잘림) */
 .asset-expense-col-date,
 .asset-expense-th-date,
 .asset-expense-cell-date {
   position: sticky !important;
   left: 0 !important;
   z-index: 2;
-  width: 6rem;
-  min-width: 6rem;
-  max-width: 6rem;
+  width: 8.75rem;
+  min-width: 8.75rem;
+  max-width: 8.75rem;
   box-sizing: border-box;
   background: #f5f1e8 !important;
   box-shadow: 0.125rem 0 0.25rem -0.125rem rgba(0, 0, 0, 0.08);
@@ -5753,7 +5800,7 @@ body {
 .asset-expense-th-amount,
 .asset-expense-cell-amount {
   position: sticky !important;
-  left: 6rem !important;
+  left: 8.75rem !important;
   z-index: 2;
   width: 7.5rem;
   min-width: 7.5rem;
@@ -5784,7 +5831,7 @@ body {
 }
 
 .asset-expense-summary-row .asset-expense-summary-total {
-  left: 6rem !important;
+  left: 8.75rem !important;
   box-shadow: 0.25rem 0 0.35rem -0.125rem rgba(0, 0, 0, 0.1);
   border-right: var(--divider-subtle);
 }
@@ -5798,8 +5845,8 @@ body {
   min-width: 7.5rem;
 }
 .asset-expense-col-date {
-  width: 6rem;
-  min-width: 6rem;
+  width: 8.75rem;
+  min-width: 8.75rem;
 }
 .asset-expense-col-flow-type {
   width: 4.375rem;
@@ -5818,8 +5865,9 @@ body {
   min-width: 6.25rem;
 }
 .asset-expense-col-memo {
-  width: auto;
-  min-width: 8.125rem;
+  width: 8.5rem;
+  min-width: 5rem;
+  max-width: 10rem;
 }
 .asset-expense-col-delete {
   width: 3%;
@@ -6625,8 +6673,8 @@ body {
 .asset-expense-date-display {
   display: block;
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
+  text-overflow: clip;
   white-space: nowrap;
   padding: 0.2rem 0.4rem;
   font-size: 0.875rem;
