@@ -28985,28 +28985,29 @@ body.kpi-resizing {
   content: none;
 }
 
-/* 날짜 정하기: 기한 초과 할 일 막대 (일반 날짜 배정 막대와 구분) */
+/* 날짜 정하기: 기한 초과 할 일 막대 — 배경은 리스트 색(--bar-bg) 그대로, 갈색으로 덮지 않음 (KPI·꿈 등 섹션 컬러 유지) */
 .calendar-view-with-subtabs .calendar-monthly-span-bar--overdue.calendar-monthly-span-bar--todo,
 .calendar-view-with-subtabs .calendar-monthly-span-bar--overdue.calendar-monthly-span-bar--range,
 .calendar-1day-view .calendar-monthly-span-bar--overdue.calendar-monthly-span-bar--todo {
-  background: rgba(139, 92, 58, 0.12) !important;
-  border: 1px solid rgba(139, 92, 58, 0.3) !important;
-  color: #8b5c3a;
+  box-shadow: inset 0.2rem 0 0 rgba(139, 92, 58, 0.72) !important;
+  border: 1px solid
+    color-mix(in srgb, var(--bar-bg, transparent) 55%, rgba(139, 92, 58, 0.32)) !important;
+  color: var(--text-ink);
 }
 
 .calendar-view-with-subtabs .calendar-monthly-span-bar--overdue .calendar-monthly-span-bar-text,
 .calendar-1day-view .calendar-monthly-span-bar--overdue .calendar-monthly-span-bar-text {
-  color: #8b5c3a;
+  color: var(--text-ink);
 }
 
 .calendar-view-with-subtabs .calendar-monthly-span-bar--overdue .calendar-monthly-span-bar-checkbox,
 .calendar-1day-view .calendar-monthly-span-bar--overdue .calendar-monthly-span-bar-checkbox {
-  border-color: rgba(139, 92, 58, 0.45) !important;
+  border-color: color-mix(in srgb, var(--bar-bg, #9ca3af) 60%, rgba(139, 92, 58, 0.45)) !important;
 }
 
 .calendar-view-with-subtabs .calendar-monthly-span-bar--overdue .calendar-monthly-span-bar-icon,
 .calendar-1day-view .calendar-monthly-span-bar--overdue .calendar-monthly-span-bar-icon {
-  border-color: rgba(139, 92, 58, 0.45) !important;
+  border-color: color-mix(in srgb, var(--bar-bg, #9ca3af) 60%, rgba(139, 92, 58, 0.45)) !important;
 }
 
 .calendar-monthly-span-bar--todo > *,
