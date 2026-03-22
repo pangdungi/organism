@@ -4618,6 +4618,29 @@ const DEFAULT_CAT_COLOR = "expense-cat-teal";
 const DEFAULT_CLS_COLOR = "expense-cls-teal";
 const DEFAULT_CATEGORY_LABELS = ["고정비", "변동비", "저축", "투자", "수입"];
 
+/** 가계부 설정 텍스트 입력: 한글 IME 조합 중 input으로 상태 꼬임·마지막 글자 중복 방지 */
+function bindAssetSettingsInputImeSafe(input, onCommitValue) {
+  let composing = false;
+  const commit = () => onCommitValue((input.value || "").trim());
+  input.addEventListener("compositionstart", () => {
+    composing = true;
+  });
+  input.addEventListener("compositionend", () => {
+    composing = false;
+    commit();
+  });
+  input.addEventListener("input", () => {
+    if (composing) return;
+    commit();
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    if (e.isComposing || composing) return;
+    e.preventDefault();
+    input.blur();
+  });
+}
+
 function createAssetSettingsModal(onSave) {
   const modal = document.createElement("div");
   modal.className = "asset-settings-modal";
@@ -4638,7 +4661,6 @@ function createAssetSettingsModal(onSave) {
             <div class="asset-settings-col asset-settings-col-left">
               <h4 class="asset-settings-col-title">카테고리</h4>
               <div class="asset-settings-category-list"></div>
-              <button type="button" class="asset-settings-add-cat">+ 추가</button>
             </div>
             <div class="asset-settings-col asset-settings-col-right">
               <h4 class="asset-settings-col-title">소비/수입 분류 <span class="asset-settings-selected-cat"></span></h4>
@@ -4663,7 +4685,6 @@ function createAssetSettingsModal(onSave) {
   const categoryList = modal.querySelector(".asset-settings-category-list");
   const classificationList = modal.querySelector(".asset-settings-classification-list");
   const selectedCatSpan = modal.querySelector(".asset-settings-selected-cat");
-  const addCatBtn = modal.querySelector(".asset-settings-add-cat");
   const addClsBtn = modal.querySelector(".asset-settings-add-cls");
   const paymentList = modal.querySelector(".asset-settings-payment-list");
   const addPaymentBtn = modal.querySelector(".asset-settings-add-payment");
@@ -4697,11 +4718,13 @@ function createAssetSettingsModal(onSave) {
       `;
       const input = row.querySelector(".asset-settings-input");
       if (!isDefault) {
-        input.addEventListener("input", () => { cats[i].label = input.value.trim(); });
-        input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); input.blur(); } });
+        bindAssetSettingsInputImeSafe(input, (v) => {
+          cats[i].label = v;
+        });
       }
       input.addEventListener("focus", (e) => {
         e.stopPropagation();
+        if (modal._selectedIdx === i) return;
         modal._selectedIdx = i;
         renderCategories(cats);
         renderClassifications(cats, modal._byCat);
@@ -4721,11 +4744,13 @@ function createAssetSettingsModal(onSave) {
         });
       }
       row.addEventListener("click", (e) => {
-        if (!e.target.matches(".asset-settings-remove") && !e.target.matches("input")) {
-          modal._selectedIdx = i;
-          renderCategories(cats);
-          renderClassifications(cats, modal._byCat);
-        }
+        if (e.target.closest(".asset-settings-remove")) return;
+        /* 사용자 추가 카테고리: 입력란 클릭은 편집만(전체 리렌더 방지). 시스템 카테고리는 행/텍스트 클릭 모두 선택 */
+        if (!isDefault && e.target.matches(".asset-settings-input")) return;
+        if (modal._selectedIdx === i) return;
+        modal._selectedIdx = i;
+        renderCategories(cats);
+        renderClassifications(cats, modal._byCat);
       });
       categoryList.appendChild(row);
     });
@@ -4756,11 +4781,13 @@ function createAssetSettingsModal(onSave) {
       `;
       const clsInput = row.querySelector(".asset-settings-input");
       if (!isDefault) {
-        clsInput.addEventListener("input", (e) => {
+        bindAssetSettingsInputImeSafe(clsInput, (v) => {
           if (!byCat[c.label]) byCat[c.label] = [];
-          byCat[c.label][clsIdx].label = e.target.value.trim();
+          byCat[c.label][clsIdx].label = v;
         });
-        clsInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); clsInput.blur(); } });
+      } else {
+        clsInput.setAttribute("tabindex", "-1");
+        clsInput.addEventListener("mousedown", (e) => e.preventDefault());
       }
       if (!isDefault) {
         row.querySelector(".asset-settings-remove").addEventListener("click", () => {
@@ -4788,8 +4815,12 @@ function createAssetSettingsModal(onSave) {
       `;
       const input = row.querySelector(".asset-settings-input");
       if (!isDefault) {
-        input.addEventListener("input", () => { modal._payments[i] = input.value.trim(); });
-        input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); input.blur(); } });
+        bindAssetSettingsInputImeSafe(input, (v) => {
+          modal._payments[i] = v;
+        });
+      } else {
+        input.setAttribute("tabindex", "-1");
+        input.addEventListener("mousedown", (e) => e.preventDefault());
       }
       if (!isDefault) {
         row.querySelector(".asset-settings-remove").addEventListener("click", () => {
@@ -4853,16 +4884,6 @@ function createAssetSettingsModal(onSave) {
     });
     return { cats: newCats, byCat };
   }
-
-  addCatBtn.addEventListener("click", () => {
-    const cats = modal._cats || [];
-    const byCat = modal._byCat || {};
-    cats.push({ label: "", color: DEFAULT_CAT_COLOR });
-    byCat[""] = [];
-    modal._selectedIdx = cats.length - 1;
-    renderCategories(cats);
-    renderClassifications(cats, byCat);
-  });
 
   addClsBtn.addEventListener("click", () => {
     const cats = modal._cats || [];

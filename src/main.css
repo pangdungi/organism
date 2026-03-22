@@ -6084,9 +6084,15 @@ body {
   cursor: default;
   color: var(--text-body);
 }
+/* 시스템 고정 항목(readonly): 클릭해도 편집 포커스처럼 보이지 않게 — :focus의 color/밑줄을 편집 필드와 동일하게 맞춤 */
 .asset-settings-input--default:focus {
   cursor: default;
   border-bottom: var(--input-border-idle);
+  color: var(--text-body);
+  box-shadow: none;
+}
+.asset-settings-input--default:focus-visible {
+  outline: none;
 }
 
 .asset-settings-remove {
@@ -6115,7 +6121,6 @@ body {
   background: none;
 }
 
-.asset-settings-add-cat,
 .asset-settings-add-cls,
 .asset-settings-add-payment {
   padding: 0.4rem 0.75rem;
@@ -6128,7 +6133,6 @@ body {
   align-self: flex-start;
 }
 
-.asset-settings-add-cat:hover,
 .asset-settings-add-cls:hover,
 .asset-settings-add-payment:hover {
   background: var(--ui-surface-alt);
