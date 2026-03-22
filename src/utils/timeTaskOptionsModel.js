@@ -175,6 +175,12 @@ export function getFullTaskOptions() {
   return assignIdsToMergedList(merged);
 }
 
+/** localStorage 직접 수정(예: KPI 추가) 후 UUID 부여·Supabase 푸시 예약 */
+export function notifyTimeLedgerTasksChanged() {
+  getFullTaskOptions();
+  notifySaved();
+}
+
 export function getTaskOptions() {
   return getFullTaskOptions().map((o) => o.name);
 }
@@ -333,6 +339,28 @@ export function migrateTimeLogRowsTaskIds() {
   } catch (_) {}
 }
 
+function readStoredTaskOptionRows() {
+  try {
+    const raw = localStorage.getItem(TASK_OPTIONS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((o) =>
+      typeof o === "string"
+        ? { name: o, category: "", productivity: "productive", memo: "", id: "" }
+        : {
+            name: (o?.name || "").trim(),
+            category: (o?.category || "").trim(),
+            productivity: o?.productivity || "productive",
+            memo: (o?.memo || "").trim(),
+            id: (o?.id || "").trim(),
+          },
+    );
+  } catch (_) {
+    return [];
+  }
+}
+
 /** 서버에서 내려받은 행으로 로컬 과제 목록 덮기·병합 */
 export function applyTimeLedgerTasksFromServer(serverRows) {
   if (!Array.isArray(serverRows) || serverRows.length === 0) return false;
@@ -374,6 +402,32 @@ export function applyTimeLedgerTasksFromServer(serverRows) {
       productivity: normalizeProductivity(r.productivity),
       memo: (r.memo || "").trim(),
     });
+  }
+  /* KPI가 막 추가돼 서버에 아직 없을 때: pull이 로컬만 덮어쓰지 않도록 kpiTaskSync 과제 유지 */
+  const namesInOut = new Set(
+    out.map((t) => (t.name || "").trim()).filter(Boolean),
+  );
+  const kpiSyncedNames = getKpiSyncedTaskNames();
+  if (kpiSyncedNames.size > 0) {
+    for (const row of readStoredTaskOptionRows()) {
+      const n = (row.name || "").trim();
+      if (!n || !kpiSyncedNames.has(n) || namesInOut.has(n)) continue;
+      let rid = String(row.id || "").trim();
+      if (!isUuid(rid)) {
+        rid =
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `t-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+      }
+      out.push({
+        id: rid,
+        name: n,
+        category: (row.category || "").trim(),
+        productivity: normalizeProductivity(row.productivity),
+        memo: (row.memo || "").trim(),
+      });
+      namesInOut.add(n);
+    }
   }
   const order = new Map(
     serverRows.map((r, i) => [String(r.id || "").trim(), r.sort_order ?? i]),

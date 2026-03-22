@@ -202,17 +202,72 @@ export function flattenCalendarTasksForSync(userId) {
   return payloads;
 }
 
-/** 완료된 최상위 할 일만 제거. 제거된 taskId의 세부할일 저장소도 비움. */
-export function removeCompletedFromSectionTaskStores() {
+function taskRowMarkedDone(t) {
+  if (!t || typeof t !== "object") return false;
+  if (t.done === true || t.done === 1) return true;
+  const s = t.done;
+  if (typeof s === "string" && s.toLowerCase() === "true") return true;
+  return false;
+}
+
+/**
+ * 고정·커스텀 섹션 저장소에서 완료된 할 일을 모두 제거 후 Supabase 동기 시 삭제되도록 반환.
+ * - 화면: 카드 data-done / 테이블 todo 행 체크 기준 taskId 제거(저장소 done 과 불일치해도 삭제)
+ * - 저장소: done 플래그 true 인 행 제거(다른 기기·탭에만 있던 완료분)
+ */
+export function purgeAllCompletedSectionAndCustomTasks() {
+  const fixed = readSectionTasksObject();
+  const custom = readCustomSectionTasksObject();
+  const beforeSnap = JSON.stringify({ fixed, custom });
   const removedParentIds = [];
-  const strip = (obj) => {
-    let changed = false;
+  const calKeys = new Set(CALENDAR_FIXED_SECTION_IDS);
+
+  function applyRemoveIds(arr, idSet) {
+    const a = Array.isArray(arr) ? arr : [];
+    const next = [];
+    for (const t of a) {
+      const tid = String(t.taskId || "").trim();
+      if (tid && idSet.has(tid)) {
+        removedParentIds.push(tid);
+        continue;
+      }
+      next.push(t);
+    }
+    return next;
+  }
+
+  if (typeof document !== "undefined") {
+    document.querySelectorAll(".todo-section[data-section]").forEach((sec) => {
+      const sid = (sec.dataset.section || "").trim();
+      if (!sid || sid === "overdue") return;
+      const idSet = new Set();
+      sec.querySelectorAll(".todo-card").forEach((card) => {
+        if (card.dataset.done !== "true") return;
+        const id = (card.dataset.taskId || "").trim();
+        if (id) idSet.add(id);
+      });
+      sec.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").forEach((row) => {
+        const it = (row.dataset.itemType || "todo").toLowerCase();
+        if (it !== "todo") return;
+        if (!row.querySelector(".todo-done-check")?.checked) return;
+        const id = (row.dataset.taskId || "").trim();
+        if (id) idSet.add(id);
+      });
+      if (idSet.size === 0) return;
+      if (calKeys.has(sid)) {
+        fixed[sid] = applyRemoveIds(fixed[sid], idSet);
+      } else if (sid.startsWith("custom-")) {
+        custom[sid] = applyRemoveIds(custom[sid], idSet);
+      }
+    });
+  }
+
+  function stripDoneRows(obj) {
     for (const k of Object.keys(obj)) {
       const arr = Array.isArray(obj[k]) ? obj[k] : [];
       const next = [];
       for (const t of arr) {
-        if (t?.done) {
-          changed = true;
+        if (taskRowMarkedDone(t)) {
           const id = String(t.taskId || "").trim();
           if (id) removedParentIds.push(id);
         } else {
@@ -221,14 +276,14 @@ export function removeCompletedFromSectionTaskStores() {
       }
       obj[k] = next;
     }
-    return changed;
-  };
-  const fixed = readSectionTasksObject();
-  const custom = readCustomSectionTasksObject();
-  const f = strip(fixed);
-  const c = strip(custom);
+  }
+  stripDoneRows(fixed);
+  stripDoneRows(custom);
+
   for (const id of new Set(removedParentIds)) {
     clearSubtasks(id);
   }
-  return { fixed, custom, changed: f || c };
+
+  const changed = beforeSnap !== JSON.stringify({ fixed, custom });
+  return { fixed, custom, changed };
 }

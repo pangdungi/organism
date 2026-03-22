@@ -293,11 +293,11 @@ export function getKpiTodosByKpiName(kpiName) {
       (k) => (k.name || "").trim() === name
     );
     if (!kpi) continue;
-    const kpiId = kpi.id;
+    const kpiId = String(kpi.id);
     const todos = (data.kpiTodos || [])
       .filter(
         (t) =>
-          t.kpiId === kpiId &&
+          String(t.kpiId) === kpiId &&
           (t.text || "").trim() !== "" &&
           !t.completed
       )
@@ -325,7 +325,7 @@ export function getKpiDailyRepeatInfoByKpiName(kpiName) {
     if (!kpi) continue;
     const needHabitTracker = !!kpi.needHabitTracker;
     const dailyTodos = (data.kpiDailyRepeatTodos || [])
-      .filter((t) => t.kpiId === kpi.id && (t.text || "").trim() !== "")
+      .filter((t) => String(t.kpiId) === String(kpi.id) && (t.text || "").trim() !== "")
       .map((t) => ({
         id: t.id,
         text: (t.text || "").trim(),

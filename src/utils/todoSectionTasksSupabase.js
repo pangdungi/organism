@@ -33,6 +33,14 @@ export function persistCustomSectionTasksAndSchedule(obj) {
   scheduleTodoSectionTasksSyncPush();
 }
 
+/** 완료 항목 일괄 제거 시: 서버에 남아 있는 done=true 행을 직접 삭제(upsert만으로는 로컬에 id가 남으면 계속 재업로드될 수 있음) */
+export async function deleteCompletedCalendarSectionTasksFromSupabase() {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return;
+  const { error } = await supabase.from(TABLE).delete().eq("user_id", userId).eq("done", true);
+  if (error) console.warn("[calendar-section-tasks] delete completed rows", error.message);
+}
+
 export async function syncTodoSectionTasksToSupabase() {
   const userId = await getSessionUserId();
   if (!userId || !supabase) return;

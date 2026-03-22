@@ -20,6 +20,19 @@ import { render as renderHome } from "./views/Home.js";
 import { attachAssetExpenseTransactionsSaveListener } from "./utils/assetExpenseTransactionsSupabase.js";
 import { hydrateTodoSectionTasksFromCloud } from "./utils/todoSectionTasksSupabase.js";
 import { hydrateTimeDailyBudgetFromCloud } from "./utils/timeDailyBudgetSupabase.js";
+import { hydrateTimeLedgerTasksFromCloud } from "./utils/timeLedgerTasksSupabase.js";
+import {
+  attachHealthKpiMapSaveListener,
+  hydrateHealthKpiMapFromCloud,
+} from "./utils/healthKpiMapSupabase.js";
+import {
+  attachHappinessKpiMapSaveListener,
+  hydrateHappinessKpiMapFromCloud,
+} from "./utils/happinessKpiMapSupabase.js";
+import {
+  attachDreamKpiMapSaveListener,
+  hydrateDreamKpiMapFromCloud,
+} from "./utils/dreamKpiMapSupabase.js";
 
 const TABS = [
   { id: "home", label: "오늘", icon: "/toolbaricons/dashboard.svg" },
@@ -98,6 +111,9 @@ export function mountApp(container) {
   migrateRemoveRoutineTasks();
   /* 가계부 미방문 시에도 시간가계부 소비 저장 → Supabase 동기화 이벤트 수신 */
   attachAssetExpenseTransactionsSaveListener();
+  attachHealthKpiMapSaveListener();
+  attachHappinessKpiMapSaveListener();
+  attachDreamKpiMapSaveListener();
   container.innerHTML = "";
 
   const appPage = document.createElement("div");
@@ -303,10 +319,18 @@ btn.dataset.tabId = tab.id;
     if (tabId) setActiveTab(tabId);
   });
 
-  function renderMain(mainEl) {
+  /**
+   * @param {HTMLElement} mainEl
+   * @param {{ skipTodoSaveBeforeUnmount?: boolean }} [opts]
+   * - skipTodoSaveBeforeUnmount: 저장소를 이미 갱신한 뒤(예: 완료 일괄 제거) DOM이 옛 상태일 때 true.
+   *   그렇지 않으면 save가 DOM을 다시 저장해 퍼지 결과를 덮어쓴다.
+   */
+  function renderMain(mainEl, opts = {}) {
     const p = mainEl?.querySelector(".app-tab-panel");
     if (!p) return;
-    saveTodoListBeforeUnmount(p);
+    if (!opts.skipTodoSaveBeforeUnmount) {
+      saveTodoListBeforeUnmount(p);
+    }
     p.innerHTML = "";
     const render = RENDERERS[currentTabId];
     try {
@@ -332,14 +356,18 @@ btn.dataset.tabId = tab.id;
     }
   }
 
-  window.__lpRenderMain = () => renderMain(main);
+  window.__lpRenderMain = (opts) => renderMain(main, opts || {});
 
   renderMain(main);
   void Promise.all([
     hydrateTodoSectionTasksFromCloud(),
     hydrateTimeDailyBudgetFromCloud(),
-  ]).then(([needTodoRefresh, budgetMerged]) => {
-    if (needTodoRefresh || budgetMerged) renderMain(main);
+    hydrateTimeLedgerTasksFromCloud(),
+    hydrateHealthKpiMapFromCloud(),
+    hydrateHappinessKpiMapFromCloud(),
+    hydrateDreamKpiMapFromCloud(),
+  ]).then(([needTodoRefresh, budgetMerged, , healthKpiPulled, happinessKpiPulled, dreamKpiPulled]) => {
+    if (needTodoRefresh || budgetMerged || healthKpiPulled || happinessKpiPulled || dreamKpiPulled) renderMain(main);
   });
   appScreen.appendChild(main);
   appPage.appendChild(appScreen);

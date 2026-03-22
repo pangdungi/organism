@@ -39,12 +39,13 @@ import { createTodoCheckboxTypeMenu } from "../utils/todoCheckboxTypeMenu.js";
 import {
   persistSectionTasksAndSchedule,
   persistCustomSectionTasksAndSchedule,
+  deleteCompletedCalendarSectionTasksFromSupabase,
   syncTodoSectionTasksToSupabase,
 } from "../utils/todoSectionTasksSupabase.js";
 import {
   SECTION_TASKS_KEY,
   CUSTOM_SECTION_TASKS_KEY,
-  removeCompletedFromSectionTaskStores,
+  purgeAllCompletedSectionAndCustomTasks,
 } from "../utils/todoSectionTasksModel.js";
 export const DRAG_TYPE_TODO_TO_CALENDAR = "todo-task-to-calendar";
 export const DRAG_TYPE_TODO_TO_EISENHOWER = "todo-task-to-eisenhower";
@@ -604,6 +605,9 @@ export function saveTodoListBeforeUnmount(container) {
     todoDebug("saveTodoListBeforeUnmount: no .todo-sections-wrap in container, save skipped");
   }
 }
+
+/** 할일/일정 메인 화면(탭 바 있는 전체 뷰)에서 마지막으로 본 고정 리스트 탭 — Supabase 동기 후 __lpRenderMain()으로 전체가 다시 그려질 때 브레인 덤프(0)로만 초기화되는 문제 방지 */
+const SESSION_TODO_FIXED_TAB_INDEX = "lp-todo-main-fixed-tab-index";
 
 const TODO_CATEGORY_OPTIONS_KEY = "todo_category_options";
 const DEFAULT_CATEGORIES = ["학업", "잡무", "사이드프로젝트", "회사"];
@@ -2953,12 +2957,15 @@ export function render(options = {}) {
     settingsSlot = null,
     enableDragToCalendar = false,
     enableDragToEisenhower = false,
-    initialActiveTabIndex = 0,
+    initialActiveTabIndex: initialActiveTabIndexOpt,
     eisenhowerFilter = "",
     eisenhowerSidebarFirst = false,
     /** 우선순위 정렬·날짜 정하기 등: 완료된 할일은 목록에 넣지 않음 */
     hideDoneTasks = false,
   } = options;
+  const hasExplicitInitialTab = Object.prototype.hasOwnProperty.call(options, "initialActiveTabIndex");
+  /** 사이드바 등 hideToolbar 임베드는 탭 세션과 분리(메인 할일 탭이 꿈인데 캘린더 옆바가 브레인 덤프로 열리는 혼선 방지) */
+  const persistFixedListTabToSession = !hideToolbar && !hasExplicitInitialTab;
   const el = document.createElement("div");
   el.className = "app-tab-panel-content todo-list-view";
 
@@ -2985,29 +2992,41 @@ export function render(options = {}) {
   el.classList.toggle("hide-completed", hideCompleted);
 
   async function runClearCompletedConfirmed() {
+    /* 완료 표시가 저장소와 어긋나도 DOM 기준으로 잡기 위해 먼저 한 번 저장 */
+    try {
+      const panel = document.querySelector(".app-tab-panel");
+      if (panel) saveTodoListBeforeUnmount(panel);
+    } catch (_) {}
+    /* KPI 할 일: 화면에서 완료된 카드는 즉시 KPI JSON에서 제거 + JSON 상 completed 일괄 제거 */
+    try {
+      document.querySelectorAll('.todo-card[data-is-kpi-todo="true"]').forEach((card) => {
+        if (card.dataset.done !== "true") return;
+        const id = (card.dataset.kpiTodoId || "").trim();
+        const sk = (card.dataset.kpiStorageKey || "").trim();
+        if (id && sk) removeKpiTodo(id, sk);
+      });
+    } catch (_) {}
     removeAllCompletedKpiTodos();
     removeAllCompletedSubtasksFromStore();
-    const { fixed, custom, changed } = removeCompletedFromSectionTaskStores();
+    const { fixed, custom, changed } = purgeAllCompletedSectionAndCustomTasks();
     if (changed) {
       persistSectionTasksAndSchedule(fixed);
       persistCustomSectionTasksAndSchedule(custom);
     }
     try {
+      await deleteCompletedCalendarSectionTasksFromSupabase();
       await syncTodoSectionTasksToSupabase();
-    } catch (e) {
-      console.warn("[clear-completed] sync", e);
-    }
+    } catch (_) {}
     try {
-      window.__lpRenderMain?.();
+      /* DOM은 아직 완료 카드가 남아 있음; save 생략하지 않으면 renderMain이 그 DOM으로 localStorage를 다시 덮어씀 */
+      window.__lpRenderMain?.({ skipTodoSaveBeforeUnmount: true });
     } catch (_) {}
   }
 
   function promptClearCompleted() {
     showConfirmModal({
       title: "완료 항목 모두 제거",
-      message:
-        "Supabase에 동기화된 할 일 중 완료 처리된 항목만 삭제합니다. 브레인 덤프·고정 리스트·추가 리스트의 할 일과, 꿈·부수입·건강·행복에 연결된 KPI 할 일이 포함됩니다.",
-      warnMessage: "삭제 후에는 복구할 수 없습니다.",
+      message: "삭제 후에는 복구할 수 없습니다.",
       confirmText: "제거",
       cancelText: "취소",
       confirmDanger: true,
@@ -3178,6 +3197,19 @@ export function render(options = {}) {
   }
   updateTabLabels();
 
+  let initialActiveTabIndex = 0;
+  if (hasExplicitInitialTab) {
+    initialActiveTabIndex = Math.max(0, Math.min(Number(initialActiveTabIndexOpt) || 0, tabButtons.length - 1));
+  } else if (persistFixedListTabToSession) {
+    try {
+      const raw = sessionStorage.getItem(SESSION_TODO_FIXED_TAB_INDEX);
+      if (raw != null) {
+        const n = parseInt(raw, 10);
+        if (!Number.isNaN(n) && n >= 0 && n < tabButtons.length) initialActiveTabIndex = n;
+      }
+    } catch (_) {}
+  }
+
   const safeIndex = Math.max(0, Math.min(initialActiveTabIndex, tabButtons.length - 1));
   let activeSectionIndex = safeIndex;
   sectionResults.forEach((r, i) => {
@@ -3187,6 +3219,11 @@ export function render(options = {}) {
   tabButtons.forEach((btn, i) => {
     btn.addEventListener("click", () => {
       activeSectionIndex = i;
+      if (persistFixedListTabToSession) {
+        try {
+          sessionStorage.setItem(SESSION_TODO_FIXED_TAB_INDEX, String(i));
+        } catch (_) {}
+      }
       tabButtons.forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
       sectionResults.forEach((r, idx) => {

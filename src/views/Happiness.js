@@ -3,18 +3,19 @@
  * 행복 추가 시 탭 형성, KPI 카드, 로그, 할일
  */
 
+import { HAPPINESS_KPI_MAP_STORAGE_KEY } from "../utils/happinessKpiMapSupabase.js";
+import { notifyTimeLedgerTasksChanged } from "../utils/timeTaskOptionsModel.js";
 import { toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay, formatDeadlineRangeCompact } from "../utils/ganttModal.js";
 import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
 import { getSubtasks, addSubtask, updateSubtask, removeSubtask } from "../utils/todoSubtasks.js";
 import { setupDeadlineQuickButtons } from "../utils/deadlineQuickButtons.js";
 
-const HAPPINESS_MAP_STORAGE_KEY = "kpi-happiness-map";
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
 
 function loadHappinessMap() {
   try {
-    const raw = localStorage.getItem(HAPPINESS_MAP_STORAGE_KEY);
+    const raw = localStorage.getItem(HAPPINESS_KPI_MAP_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       const kpis = (parsed.kpis || []).map((k) => ({ ...k, needHabitTracker: !!k.needHabitTracker }));
@@ -62,6 +63,7 @@ function syncKpiToTimeTask(kpi, action, oldName) {
       localStorage.setItem(TIME_TASK_OPTIONS_KEY, JSON.stringify(opts));
     } catch (_) {}
     saveHappinessMap(data);
+    notifyTimeLedgerTasksChanged();
   } else if (action === "remove") {
     const name = data.kpiTaskSync[kpi.id];
     if (name) {
@@ -71,6 +73,7 @@ function syncKpiToTimeTask(kpi, action, oldName) {
         localStorage.setItem(TIME_TASK_OPTIONS_KEY, JSON.stringify(opts));
       } catch (_) {}
       saveHappinessMap(data);
+      notifyTimeLedgerTasksChanged();
     }
   } else if (action === "update" && oldName) {
     const newName = (kpi.name || "").trim();
@@ -87,6 +90,7 @@ function syncKpiToTimeTask(kpi, action, oldName) {
         localStorage.setItem(TIME_TASK_OPTIONS_KEY, JSON.stringify(opts));
       } catch (_) {}
       saveHappinessMap(data);
+      notifyTimeLedgerTasksChanged();
     }
   }
 }
@@ -100,7 +104,10 @@ function saveHappinessMap(data) {
     if (toSave.kpiDailyRepeatTodos && Array.isArray(toSave.kpiDailyRepeatTodos)) {
       toSave.kpiDailyRepeatTodos = toSave.kpiDailyRepeatTodos.filter((t) => (t.text || "").trim() !== "");
     }
-    localStorage.setItem(HAPPINESS_MAP_STORAGE_KEY, JSON.stringify(toSave));
+    localStorage.setItem(HAPPINESS_KPI_MAP_STORAGE_KEY, JSON.stringify(toSave));
+    try {
+      window.dispatchEvent(new CustomEvent("happiness-kpi-map-saved"));
+    } catch (_) {}
   } catch (_) {}
 }
 
@@ -805,7 +812,10 @@ export function render() {
       return;
     }
     const logs = getKpiLogs(selectedKpiId);
-    const todos = (data.kpiTodos || []).filter((t) => t.kpiId === selectedKpiId && (t.text || "").trim() !== "");
+    const selKpi = String(selectedKpiId);
+    const todos = (data.kpiTodos || []).filter(
+      (t) => String(t.kpiId) === selKpi && (t.text || "").trim() !== "",
+    );
     historyWrap.hidden = false;
 
     const headerRow = document.createElement("div");
@@ -881,7 +891,7 @@ export function render() {
     const todoList = document.createElement("div");
     todoList.className = "dream-kpi-todo-list";
     todos.forEach((todo) => {
-      const taskId = `kpi-${todo.id}-${HAPPINESS_MAP_STORAGE_KEY}`;
+      const taskId = `kpi-${todo.id}-${HAPPINESS_KPI_MAP_STORAGE_KEY}`;
       const subtasks = getSubtasks(taskId);
 
       const item = document.createElement("div");
@@ -1003,7 +1013,7 @@ export function render() {
       const val = addInput.value.trim();
       if (!val) return;
       const data = loadHappinessMap();
-      const todo = { id: nextId(), kpiId: selectedKpiId, text: val, completed: false };
+      const todo = { id: nextId(), kpiId: selKpi, text: val, completed: false };
       data.kpiTodos = data.kpiTodos || [];
       data.kpiTodos.push(todo);
       saveHappinessMap(data);
@@ -1011,6 +1021,7 @@ export function render() {
       renderKpiHistory();
       setTimeout(() => historyWrap.querySelector(".dream-kpi-todo-add-input")?.focus(), 0);
     };
+    addInput.addEventListener("blur", () => addTodoFromInput());
     addInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.isComposing) {
         e.preventDefault();
@@ -1031,39 +1042,86 @@ export function render() {
       historyWrap.appendChild(dailyDivider);
       const dailyList = document.createElement("div");
       dailyList.className = "dream-kpi-todo-list";
-      const dailyTodos = (data.kpiDailyRepeatTodos || []).filter((t) => t.kpiId === selectedKpiId && (t.text || "").trim() !== "");
+      const dailyTodos = (data.kpiDailyRepeatTodos || []).filter(
+        (t) => String(t.kpiId) === selKpi && (t.text || "").trim() !== "",
+      );
       dailyTodos.forEach((todo) => {
         const completed = !!todo.completed;
         const item = document.createElement("div");
         item.className = "dream-kpi-todo-item" + (completed ? " is-completed" : "");
-        item.innerHTML = `
-          <label class="dream-kpi-todo-check-wrap"><input type="checkbox" class="dream-kpi-todo-check" ${completed ? "checked" : ""} disabled title="매일 할일 체크는 시간기록(과제 기록)에서만 가능합니다" /></label>
-          <span class="dream-kpi-todo-text">${escapeHtml(todo.text)}</span>
-          <button type="button" class="dream-kpi-todo-del" title="삭제">×</button>
-        `;
-        item.querySelector(".dream-kpi-todo-del").addEventListener("click", () => {
+        const label = document.createElement("label");
+        label.className = "dream-kpi-todo-check-wrap";
+        const check = document.createElement("input");
+        check.type = "checkbox";
+        check.className = "dream-kpi-todo-check";
+        check.disabled = true;
+        check.checked = completed;
+        check.title = "매일 할일 체크는 시간기록(과제 기록)에서만 가능합니다";
+        label.appendChild(check);
+        const textInput = document.createElement("input");
+        textInput.type = "text";
+        textInput.className = "dream-kpi-todo-text dream-kpi-daily-repeat-edit-input";
+        textInput.value = todo.text || "";
+        textInput.title = "할 일 내용 수정";
+        textInput.autocomplete = "off";
+        textInput.style.cssText =
+          "flex:1;min-width:0;border:none;background:transparent;font:inherit;color:inherit;padding:0;margin:0;box-sizing:border-box;";
+        const saveDailyRepeatText = () => {
+          const d = loadHappinessMap();
+          const arr = d.kpiDailyRepeatTodos || [];
+          const row = arr.find((x) => x.id === todo.id);
+          if (!row) return;
+          const val = textInput.value.trim();
+          if (!val) {
+            textInput.value = row.text || "";
+            return;
+          }
+          if (row.text === val) return;
+          row.text = val;
+          saveHappinessMap(d);
+        };
+        textInput.addEventListener("blur", saveDailyRepeatText);
+        textInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" && !e.isComposing) {
+            e.preventDefault();
+            textInput.blur();
+          }
+        });
+        const delBtn = document.createElement("button");
+        delBtn.type = "button";
+        delBtn.className = "dream-kpi-todo-del";
+        delBtn.title = "삭제";
+        delBtn.textContent = "×";
+        delBtn.addEventListener("click", () => {
           const d = loadHappinessMap();
           d.kpiDailyRepeatTodos = (d.kpiDailyRepeatTodos || []).filter((x) => x.id !== todo.id);
           saveHappinessMap(d);
           renderKpiHistory();
         });
+        item.appendChild(label);
+        item.appendChild(textInput);
+        item.appendChild(delBtn);
         dailyList.appendChild(item);
       });
       const dailyAddRow = document.createElement("div");
       dailyAddRow.className = "dream-kpi-todo-add-row";
       dailyAddRow.innerHTML = `<span class="dream-kpi-todo-add-spacer"></span><input type="text" class="dream-kpi-todo-add-input" placeholder="할 일 입력 (매일 반복)" />`;
       const dailyAddInput = dailyAddRow.querySelector(".dream-kpi-todo-add-input");
+      const addDailyFromInput = () => {
+        const val = dailyAddInput.value.trim();
+        if (!val) return;
+        const d = loadHappinessMap();
+        d.kpiDailyRepeatTodos = d.kpiDailyRepeatTodos || [];
+        d.kpiDailyRepeatTodos.push({ id: nextId(), kpiId: selKpi, text: val, completed: false });
+        saveHappinessMap(d);
+        dailyAddInput.value = "";
+        renderKpiHistory();
+      };
+      dailyAddInput.addEventListener("blur", () => addDailyFromInput());
       dailyAddInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && !e.isComposing) {
           e.preventDefault();
-          const val = dailyAddInput.value.trim();
-          if (!val) return;
-          const d = loadHappinessMap();
-          d.kpiDailyRepeatTodos = d.kpiDailyRepeatTodos || [];
-          d.kpiDailyRepeatTodos.push({ id: nextId(), kpiId: selectedKpiId, text: val, completed: false });
-          saveHappinessMap(d);
-          dailyAddInput.value = "";
-          renderKpiHistory();
+          addDailyFromInput();
         }
       });
       historyWrap.appendChild(dailyList);

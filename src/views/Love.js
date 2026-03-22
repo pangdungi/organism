@@ -3,6 +3,7 @@
  * 행복 추가 시 탭 형성, KPI 카드, 로그, 할일
  */
 
+import { notifyTimeLedgerTasksChanged } from "../utils/timeTaskOptionsModel.js";
 import {
   toDateInputValue,
   formatDeadlineForDisplay,
@@ -87,6 +88,7 @@ function syncKpiToTimeTask(kpi, action, oldName) {
       localStorage.setItem(TIME_TASK_OPTIONS_KEY, JSON.stringify(opts));
     } catch (_) {}
     saveHappinessMap(data);
+    notifyTimeLedgerTasksChanged();
   } else if (action === "remove") {
     const name = data.kpiTaskSync[kpi.id];
     if (name) {
@@ -96,6 +98,7 @@ function syncKpiToTimeTask(kpi, action, oldName) {
         localStorage.setItem(TIME_TASK_OPTIONS_KEY, JSON.stringify(opts));
       } catch (_) {}
       saveHappinessMap(data);
+      notifyTimeLedgerTasksChanged();
     }
   } else if (action === "update" && oldName) {
     const newName = (kpi.name || "").trim();
@@ -112,6 +115,7 @@ function syncKpiToTimeTask(kpi, action, oldName) {
         localStorage.setItem(TIME_TASK_OPTIONS_KEY, JSON.stringify(opts));
       } catch (_) {}
       saveHappinessMap(data);
+      notifyTimeLedgerTasksChanged();
     }
   }
 }
@@ -951,8 +955,9 @@ export function render() {
       return;
     }
     const logs = getKpiLogs(selectedKpiId);
+    const selKpi = String(selectedKpiId);
     const todos = (data.kpiTodos || []).filter(
-      (t) => t.kpiId === selectedKpiId && (t.text || "").trim() !== "",
+      (t) => String(t.kpiId) === selKpi && (t.text || "").trim() !== "",
     );
     historyWrap.hidden = false;
 
@@ -1167,7 +1172,7 @@ export function render() {
       const data = loadHappinessMap();
       const todo = {
         id: nextId(),
-        kpiId: selectedKpiId,
+        kpiId: selKpi,
         text: val,
         completed: false,
       };
@@ -1181,6 +1186,7 @@ export function render() {
         0,
       );
     };
+    addInput.addEventListener("blur", () => addTodoFromInput());
     addInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.isComposing) {
         e.preventDefault();
