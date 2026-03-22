@@ -33,6 +33,10 @@ import {
   attachDreamKpiMapSaveListener,
   hydrateDreamKpiMapFromCloud,
 } from "./utils/dreamKpiMapSupabase.js";
+import {
+  attachSideincomeKpiMapSaveListener,
+  hydrateSideincomeKpiMapFromCloud,
+} from "./utils/sideincomeKpiMapSupabase.js";
 
 const TABS = [
   { id: "home", label: "오늘", icon: "/toolbaricons/dashboard.svg" },
@@ -114,6 +118,7 @@ export function mountApp(container) {
   attachHealthKpiMapSaveListener();
   attachHappinessKpiMapSaveListener();
   attachDreamKpiMapSaveListener();
+  attachSideincomeKpiMapSaveListener();
   container.innerHTML = "";
 
   const appPage = document.createElement("div");
@@ -366,9 +371,28 @@ btn.dataset.tabId = tab.id;
     hydrateHealthKpiMapFromCloud(),
     hydrateHappinessKpiMapFromCloud(),
     hydrateDreamKpiMapFromCloud(),
-  ]).then(([needTodoRefresh, budgetMerged, , healthKpiPulled, happinessKpiPulled, dreamKpiPulled]) => {
-    if (needTodoRefresh || budgetMerged || healthKpiPulled || happinessKpiPulled || dreamKpiPulled) renderMain(main);
-  });
+    hydrateSideincomeKpiMapFromCloud(),
+  ]).then(
+    ([
+      needTodoRefresh,
+      budgetMerged,
+      ,
+      healthKpiPulled,
+      happinessKpiPulled,
+      dreamKpiPulled,
+      sideincomeKpiPulled,
+    ]) => {
+      if (
+        needTodoRefresh ||
+        budgetMerged ||
+        healthKpiPulled ||
+        happinessKpiPulled ||
+        dreamKpiPulled ||
+        sideincomeKpiPulled
+      )
+        renderMain(main);
+    }
+  );
   appScreen.appendChild(main);
   appPage.appendChild(appScreen);
   appPage.appendChild(bottomNav);

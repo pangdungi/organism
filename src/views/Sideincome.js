@@ -4,19 +4,19 @@
  * 탭 우클릭 시 이름 수정/삭제 모달
  */
 
+import { SIDEINCOME_KPI_MAP_STORAGE_KEY } from "../utils/sideincomeKpiMapSupabase.js";
 import { notifyTimeLedgerTasksChanged } from "../utils/timeTaskOptionsModel.js";
 import { toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay, formatDeadlineRangeCompact } from "../utils/ganttModal.js";
 import { setupDeadlineQuickButtons } from "../utils/deadlineQuickButtons.js";
 import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
 import { getSubtasks, addSubtask, updateSubtask, removeSubtask } from "../utils/todoSubtasks.js";
 
-const SIDEINCOME_STORAGE_KEY = "kpi-sideincome-paths";
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
 
 function loadSideincomeMap() {
   try {
-    const raw = localStorage.getItem(SIDEINCOME_STORAGE_KEY);
+    const raw = localStorage.getItem(SIDEINCOME_KPI_MAP_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       const kpis = (parsed.kpis || []).map((k) => ({ ...k, needHabitTracker: !!k.needHabitTracker }));
@@ -106,7 +106,10 @@ function saveSideincomeMap(data) {
     if (toSave.kpiDailyRepeatTodos && Array.isArray(toSave.kpiDailyRepeatTodos)) {
       toSave.kpiDailyRepeatTodos = toSave.kpiDailyRepeatTodos.filter((t) => (t.text || "").trim() !== "");
     }
-    localStorage.setItem(SIDEINCOME_STORAGE_KEY, JSON.stringify(toSave));
+    localStorage.setItem(SIDEINCOME_KPI_MAP_STORAGE_KEY, JSON.stringify(toSave));
+    try {
+      window.dispatchEvent(new CustomEvent("sideincome-kpi-map-saved"));
+    } catch (_) {}
   } catch (_) {}
 }
 
@@ -1048,7 +1051,7 @@ export function render() {
     const todoList = document.createElement("div");
     todoList.className = "dream-kpi-todo-list";
     todos.forEach((todo) => {
-      const taskId = `kpi-${todo.id}-${SIDEINCOME_STORAGE_KEY}`;
+      const taskId = `kpi-${todo.id}-${SIDEINCOME_KPI_MAP_STORAGE_KEY}`;
       const subtasks = getSubtasks(taskId);
 
       const item = document.createElement("div");
