@@ -2684,6 +2684,14 @@ body {
     box-sizing: border-box;
   }
 
+  /* 모바일: 나의 계정 — 기본설정·구독·시급 위젯 좌우 패딩 제거(상하는 .time-dashboard-widget 유지) */
+  .app-main:has(.idea-view) .time-dashboard-widget.idea-widget-basic-settings,
+  .app-main:has(.idea-view) .time-dashboard-widget.idea-widget-subscription,
+  .app-main:has(.idea-view) .time-dashboard-widget.idea-widget-hourly {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
   /* 모바일: 나의 계정 — 구독 위젯 */
   .app-main:has(.idea-view) .idea-widget-subscription {
     grid-column: 1 / -1;
@@ -3731,6 +3739,50 @@ body {
   .time-ledger-view .time-filter-bar {
     flex-wrap: nowrap;
     margin-bottom: 0.5rem;
+  }
+
+  /* 모바일: 탭 행 — 총 기록 시간(왼쪽) + 과제 설정(오른쪽); 데스크탭 탭은 위에서 숨김 */
+  .time-ledger-view .time-ledger-tabs-filter-row {
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    box-sizing: border-box;
+  }
+  .time-ledger-view .time-ledger-mobile-tabs-summary {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    padding: 0.35rem 0 0.45rem;
+  }
+  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-label {
+    font-size: 0.7rem;
+    line-height: 1.2;
+  }
+  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-value {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.2em;
+    line-height: 1.2;
+  }
+  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-num,
+  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-unit {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    font-weight: 200;
+    letter-spacing: -0.01em;
+    color: var(--text-ink);
+  }
+  .time-ledger-view .time-ledger-tabs-filter-row .time-filter-bar {
+    flex-shrink: 0;
+    margin-bottom: 0;
+  }
+  .time-ledger-view .time-filter-bar .time-task-setup-btn {
+    border-right: none;
   }
 
   /* 모바일: 근무표에서 월별보기 탭 제거 */

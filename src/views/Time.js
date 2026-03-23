@@ -3476,6 +3476,23 @@ export function render() {
   /* filterBar는 월 드롭다운 패널이 세로로 열리므로 .time-view-tabs(overflow-y:hidden) 밖에 둠 */
   const tabsFilterRow = document.createElement("div");
   tabsFilterRow.className = "time-ledger-tabs-filter-row";
+  const mobileTabsSummary = document.createElement("div");
+  mobileTabsSummary.className = "time-ledger-mobile-tabs-summary";
+  mobileTabsSummary.innerHTML = `
+    <div class="time-ledger-summary-label">총 기록 시간</div>
+    <div class="time-ledger-summary-value">
+      <span class="time-ledger-summary-num time-ledger-mobile-tabs-tracked-num">0</span><span class="time-ledger-summary-unit time-ledger-mobile-tabs-tracked-unit">h 0m</span>
+    </div>
+  `;
+  function syncMobileTabsSummaryDisplay() {
+    const view =
+      viewTabs.querySelector(".time-view-tab.active")?.dataset?.view || "all";
+    const isMobile = window.matchMedia("(max-width: 48rem)").matches;
+    mobileTabsSummary.style.display =
+      isMobile && view === "all" ? "" : "none";
+  }
+  window.addEventListener("resize", syncMobileTabsSummaryDisplay);
+  tabsFilterRow.appendChild(mobileTabsSummary);
   tabsFilterRow.appendChild(viewTabs);
   tabsFilterRow.appendChild(filterBar);
   el.appendChild(tabsFilterRow);
@@ -6757,6 +6774,19 @@ export function render() {
   function updateTotal() {
     updateHourlyHint();
 
+    const setHoursParts = (numEl, unitEl, hours) => {
+      if (!numEl || !unitEl) return;
+      if (hours <= 0 || !isFinite(hours)) {
+        numEl.textContent = "0";
+        unitEl.textContent = "h 0m";
+        return;
+      }
+      const h = Math.floor(hours);
+      const m = Math.round((hours - h) * 60);
+      numEl.textContent = String(h);
+      unitEl.textContent = m === 0 ? "h" : `h ${m}m`;
+    };
+
     /* 1. 시간기록하기 단일 테이블 - 테이블 위 요약 패널 및 초과 행 */
     const allTable = contentWrap.querySelector(
       ".time-ledger-container .time-ledger-table",
@@ -6794,18 +6824,6 @@ export function render() {
         } else if (pv === "other" || pv === "그 외" || !pv) price = 0;
         totalPrice += price;
       });
-      const setHoursParts = (numEl, unitEl, hours) => {
-        if (!numEl || !unitEl) return;
-        if (hours <= 0 || !isFinite(hours)) {
-          numEl.textContent = "0";
-          unitEl.textContent = "h 0m";
-          return;
-        }
-        const h = Math.floor(hours);
-        const m = Math.round((hours - h) * 60);
-        numEl.textContent = String(h);
-        unitEl.textContent = m === 0 ? "h" : `h ${m}m`;
-      };
       const trackedNum = summaryPanelEl.querySelector(
         ".time-ledger-summary-tracked",
       );
@@ -6840,6 +6858,27 @@ export function render() {
           overHrs > 0 ? formatHoursDisplay(overHrs) : "";
         totalOverEl.classList.toggle("has-over", overHrs > 0);
       }
+    }
+
+    const mobileTabsSummaryEl = el.querySelector(
+      ".time-ledger-mobile-tabs-summary",
+    );
+    if (mobileTabsSummaryEl) {
+      let mobileTotalHrs = 0;
+      contentWrap
+        .querySelectorAll(".time-ledger-mobile-card")
+        .forEach((card) => {
+          const rd = card._rowData;
+          if (!rd || isEmptyTimeRow(rd)) return;
+          mobileTotalHrs += getMobileCardEffectiveHoursForPrice(rd);
+        });
+      const mTrackedNum = mobileTabsSummaryEl.querySelector(
+        ".time-ledger-mobile-tabs-tracked-num",
+      );
+      const mTrackedUnit = mobileTabsSummaryEl.querySelector(
+        ".time-ledger-mobile-tabs-tracked-unit",
+      );
+      setHoursParts(mTrackedNum, mTrackedUnit, mobileTotalHrs);
     }
 
     contentWrap.querySelectorAll(".time-section").forEach((section) => {
@@ -7004,18 +7043,7 @@ export function render() {
       addLabel.textContent = "과제 기록";
       leftWrap.appendChild(addBtnEl);
       leftWrap.appendChild(addLabel);
-      const setupBtnEl = document.createElement("button");
-      setupBtnEl.type = "button";
-      setupBtnEl.className = "time-task-setup-btn";
-      setupBtnEl.title = "과제명, 생산성, 카테고리를 한 번에 설정";
-      setupBtnEl.innerHTML =
-        '<img src="/toolbaricons/settings.svg" alt="과제 설정" class="time-btn-icon" width="20" height="20">';
-      setupBtnEl.addEventListener("click", () => {
-        const modal = el.querySelector(
-          ".time-task-setup-modal:not(.time-task-select-modal):not(.time-add-task-modal):not(.time-task-log-modal)",
-        );
-        if (modal) modal.hidden = false;
-      });
+      /* 과제 설정: 모바일은 위쪽 .time-filter-bar의 톱니만 사용(중복 제거) */
 
       const handleCardDelete = (card, rowData) => {
         if (rowData) {
@@ -7033,7 +7061,6 @@ export function render() {
       };
 
       toolbar.appendChild(leftWrap);
-      toolbar.appendChild(setupBtnEl);
 
       const dateDivider = document.createElement("div");
       dateDivider.className = "date-divider";
@@ -7109,6 +7136,7 @@ export function render() {
         cardsWrap
           .querySelectorAll(".time-ledger-mobile-card")
           .forEach(updateMobileTimeCardLiveFields);
+        updateTotal();
       };
       const anyLiveElapsed = rows.some((d) => mobileCardNeedsLiveClock(d));
       if (anyLiveElapsed) {
@@ -9437,6 +9465,7 @@ export function render() {
       renderImprove(getFilteredRows(cachedRows));
     }
     updateTotal();
+    syncMobileTabsSummaryDisplay();
   }
 
   viewTabs.querySelectorAll(".time-view-tab").forEach((btn) => {
@@ -9454,6 +9483,7 @@ export function render() {
   contentWrap.appendChild(ledgerContainer);
 
   onFilterChange(true);
+  syncMobileTabsSummaryDisplay();
 
   return el;
 }

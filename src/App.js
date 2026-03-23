@@ -287,10 +287,25 @@ export function mountApp(container) {
   const bottomNav = document.createElement("nav");
   bottomNav.className = "app-bottom-nav";
   bottomNav.setAttribute("aria-label", "하단 메뉴");
-  const mobileTabs = TABS.filter(
+  const mobileTabsFiltered = TABS.filter(
     (t) =>
       !HIDE_ON_MOBILE_TAB_IDS.includes(t.id) && !t.sidebarDesktopOnly,
   );
+  /** 모바일 하단 탭 순서: 오늘 → 시간 → 할일 → 나머지 */
+  const MOBILE_BOTTOM_NAV_ORDER = [
+    "home",
+    "time",
+    "calendar",
+    "schedulecalendar",
+    "diary",
+    "archive",
+  ];
+  const mobileTabs = [
+    ...MOBILE_BOTTOM_NAV_ORDER.map((id) =>
+      mobileTabsFiltered.find((t) => t.id === id),
+    ).filter(Boolean),
+    ...mobileTabsFiltered.filter((t) => !MOBILE_BOTTOM_NAV_ORDER.includes(t.id)),
+  ];
   mobileTabs.forEach((tab) => {
     const btn = document.createElement("button");
     btn.type = "button";
