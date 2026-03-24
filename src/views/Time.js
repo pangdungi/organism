@@ -1545,7 +1545,10 @@ function mobileCardNeedsLiveClock(rowData) {
 }
 
 function updateMobileTimeCardLiveFields(card) {
-  if (!card?._rowData || !mobileCardNeedsLiveClock(card._rowData)) return;
+  if (!card?._rowData) return;
+  const live = mobileCardNeedsLiveClock(card._rowData);
+  card.classList.toggle("time-ledger-mobile-card--in-progress", live);
+  if (!live) return;
   const rd = card._rowData;
   const viewEl = card._timeLedgerViewEl;
   const trackedEl = card.querySelector(".time-mobile-card-tracked");
@@ -3051,9 +3054,19 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   const memo = (rowData.feedback || "")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+  const focusText = formatFocusForDisplay(rowData.focus || "")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  const focusBlock = focusText
+    ? `<div class="time-mobile-card-focus"><span class="time-mobile-card-focus-label">방해기록</span><span class="time-mobile-card-focus-text">${focusText}</span></div>`
+    : "";
 
   const card = document.createElement("div");
-  card.className = "time-ledger-mobile-card";
+  card.className =
+    "time-ledger-mobile-card" +
+    (mobileCardNeedsLiveClock(rowData)
+      ? " time-ledger-mobile-card--in-progress"
+      : "");
   card._rowData = rowData;
   card._timeLedgerViewEl = viewEl || null;
   card._onRowDelete = onDelete;
@@ -3069,6 +3082,7 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
         <span class="time-mobile-card-price${priceClass}">${formatPrice(priceVal)}</span>
       </div>
       ${memo ? `<div class="time-mobile-card-memo">${memo}</div>` : ""}
+      ${focusBlock}
     </div>
   `;
   card.addEventListener("click", (e) => {
@@ -3299,6 +3313,11 @@ export function render() {
   hourlyAddSlot.className = "time-hourly-add-slot";
   const hourlyRateBlock = document.createElement("div");
   hourlyRateBlock.className = "time-hourly-rate-block";
+  const hourlyHint = document.createElement("span");
+  hourlyHint.className = "time-hourly-hint";
+  hourlyHint.textContent = "My account에서 시급을 설정하면 금액이 계산됩니다";
+  const hourlyRateValues = document.createElement("div");
+  hourlyRateValues.className = "time-hourly-rate-values";
   const hourlyLabel = document.createElement("span");
   hourlyLabel.className = "time-hourly-label";
   hourlyLabel.textContent = "내 시급: ";
@@ -3327,19 +3346,17 @@ export function render() {
         new CustomEvent("app-switch-tab", { detail: { tabId: "idea" } }),
       );
     });
-    hourlyRateBlock.appendChild(setupLink);
+    hourlyRateValues.appendChild(setupLink);
   }
   const hourlyInput = document.createElement("input");
   hourlyInput.type = "hidden";
   hourlyInput.className = "time-hourly-input";
   hourlyInput.value = String(storedRate);
-  const hourlyHint = document.createElement("span");
-  hourlyHint.className = "time-hourly-hint";
-  hourlyHint.textContent = "My account에서 시급을 설정하면 금액이 계산됩니다";
-  hourlyRateBlock.appendChild(hourlyLabel);
-  hourlyRateBlock.appendChild(hourlyDisplay);
-  hourlyRateBlock.appendChild(hourlyInput);
+  hourlyRateValues.appendChild(hourlyLabel);
+  hourlyRateValues.appendChild(hourlyDisplay);
+  hourlyRateValues.appendChild(hourlyInput);
   hourlyRateBlock.appendChild(hourlyHint);
+  hourlyRateBlock.appendChild(hourlyRateValues);
   hourlyWrap.appendChild(hourlyAddSlot);
   hourlyWrap.appendChild(hourlyRateBlock);
   el.appendChild(hourlyWrap);
@@ -5257,6 +5274,10 @@ export function render() {
 
   const FOCUS_TYPE_ICONS = [
     {
+      type: "영상매체",
+      svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m15.007 20h-12.014c-1.101 0-1.993-.892-1.993-1.993v-12.014c0-1.101.892-1.993 1.993-1.993h12.015c1.1 0 1.992.892 1.992 1.993v12.015c0 1.1-.892 1.992-1.993 1.992z"/><path d="m17 9 6-3v12l-6-3"/></g></svg>',
+    },
+    {
       type: "스마트폰",
       svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m11.716 20.201 8.485-8.485"/><path d="m3.799 12.284 8.485-8.485"/><path d="m13.13 21.615-10.745-10.745c-.781-.781-.781-2.047 0-2.828l5.657-5.657c.781-.781 2.047-.781 2.828 0l10.745 10.745c.781.781.781 2.047 0 2.828l-5.657 5.657c-.781.781-2.047.781-2.828 0z"/><path d="m8 23c-3.866 0-7-3.134-7-7"/><path d="m16 1c3.866 0 7 3.134 7 7"/></g></svg>',
     },
@@ -5942,7 +5963,12 @@ export function render() {
     }
   });
 
-  function getDefaultStartTime(addContext) {
+  /**
+   * 신규 과제 기록 모달: 시작 시각 = 해당 날짜 저장본 중 가장 늦은 시각(종료 있으면 종료, 없으면 시작).
+   * '마지막' 버튼과 동일 로직(getLatestLedgerHhMmForTaskLogDate + loadTimeRows).
+   * 해당 날짜 기록이 없으면 그 날짜 기준 00:00.
+   */
+  function getDefaultStartTime() {
     const dateStr =
       filterType === "day"
         ? filterStartDate
@@ -5951,40 +5977,9 @@ export function render() {
             y.setDate(y.getDate() - 1);
             return y.toISOString().slice(0, 10);
           })();
-    let allRows = [];
-    if (addContext?.viewEl) {
-      allRows = Array.from(addContext.viewEl.querySelectorAll("tr.time-row"));
-    } else if (addContext?.tbody) {
-      allRows = Array.from(addContext.tbody.querySelectorAll("tr.time-row"));
-    }
-    const rowsForDate = allRows.filter((r) => {
-      const rd = r._rowData;
-      if (!rd) return false;
-      const rowDate = (rd.date || "")
-        .toString()
-        .replace(/\//g, "-")
-        .slice(0, 10);
-      return rowDate === dateStr;
-    });
-    if (rowsForDate.length === 0) {
-      const todayStr = toDateStr(new Date());
-      return todayStr + "T00:00";
-    }
-    let latestEnd = null;
-    rowsForDate.forEach((r) => {
-      const et = r._rowData?.endTime;
-      if (!et) return;
-      const normalized = (et || "").trim().replace(/\s+/, "T");
-      const d = new Date(normalized);
-      if (!isNaN(d.getTime()) && (!latestEnd || d > latestEnd)) latestEnd = d;
-    });
-    if (!latestEnd) return dateStr + "T00:00";
-    const y = latestEnd.getFullYear();
-    const m = String(latestEnd.getMonth() + 1).padStart(2, "0");
-    const day = String(latestEnd.getDate()).padStart(2, "0");
-    const h = String(latestEnd.getHours()).padStart(2, "0");
-    const min = String(latestEnd.getMinutes()).padStart(2, "0");
-    return `${y}-${m}-${day}T${h}:${min}`;
+    const latestHhMm = getLatestLedgerHhMmForTaskLogDate(dateStr, null);
+    if (!latestHhMm) return `${dateStr}T00:00`;
+    return `${dateStr}T${latestHhMm}`;
   }
 
   function openTaskLogModal(addContext) {
@@ -6016,7 +6011,7 @@ export function render() {
     );
     const firstTask = mainTasks[0]?.name || "";
     taskLogTaskDropdown._setValue?.(firstTask);
-    const defaultStart = getDefaultStartTime(addContext);
+    const defaultStart = getDefaultStartTime();
     setEndFromDatetime("");
     setStartFromDatetime(defaultStart || "");
     requestAnimationFrame(() => {
@@ -6931,7 +6926,7 @@ export function render() {
       unitEl.textContent = m === 0 ? "h" : `h ${m}m`;
     };
 
-    /* 1. 시간기록하기 단일 테이블 - 테이블 위 요약 패널 및 초과 행 */
+    /* 1. 시간기록하기: 요약 패널 + 테이블 행 또는 카드 목록 */
     const allTable = contentWrap.querySelector(
       ".time-ledger-container .time-ledger-table",
     );
@@ -6939,8 +6934,10 @@ export function render() {
       ".time-ledger-summary-panel",
     );
     const allTfoot = allTable?.querySelector("tfoot");
-    if (allTable && summaryPanelEl) {
-      const tbody = allTable.querySelector("tbody");
+    const cardNodes = contentWrap.querySelectorAll(".time-ledger-mobile-card");
+    const useCardTotals = summaryPanelEl && !allTable;
+
+    if (summaryPanelEl && (allTable || useCardTotals)) {
       const hourlyRate =
         parseFloat(
           String(el.querySelector(".time-hourly-input")?.value || "0").replace(
@@ -6952,22 +6949,46 @@ export function render() {
       let productiveHrs = 0;
       let totalPrice = 0;
       let wastedValue = 0;
-      tbody?.querySelectorAll(".time-row").forEach((tr) => {
-        const timeEl =
-          tr.querySelector(".time-input-tracked") ||
-          tr.querySelector(".time-display-tracked");
-        const val = (timeEl?.value ?? timeEl?.textContent ?? "").trim();
-        const hrs = parseTimeToHours(val) || 0;
-        totalHrs += hrs;
-        const pv = (tr._rowData?.productivity || "").trim();
-        if (pv === "productive") productiveHrs += hrs;
-        let price = hrs * hourlyRate;
-        if (pv === "nonproductive") {
-          price *= -1;
-          wastedValue += hrs * hourlyRate;
-        } else if (pv === "other" || pv === "그 외" || !pv) price = 0;
-        totalPrice += price;
-      });
+
+      if (allTable) {
+        const tbody = allTable.querySelector("tbody");
+        tbody?.querySelectorAll(".time-row").forEach((tr) => {
+          const timeEl =
+            tr.querySelector(".time-input-tracked") ||
+            tr.querySelector(".time-display-tracked");
+          const val = (timeEl?.value ?? timeEl?.textContent ?? "").trim();
+          const hrs = parseTimeToHours(val) || 0;
+          totalHrs += hrs;
+          const pv = (tr._rowData?.productivity || "").trim();
+          if (pv === "productive") productiveHrs += hrs;
+          let price = hrs * hourlyRate;
+          if (pv === "nonproductive") {
+            price *= -1;
+            wastedValue += hrs * hourlyRate;
+          } else if (pv === "other" || pv === "그 외" || !pv) price = 0;
+          totalPrice += price;
+        });
+      } else {
+        cardNodes.forEach((card) => {
+          const rd = card._rowData;
+          if (!rd || isEmptyTimeRow(rd)) return;
+          const hrs = getMobileCardEffectiveHoursForPrice(rd);
+          totalHrs += hrs;
+          const pv = (
+            rd.productivity ||
+            getProductivityFromCategory(rd.category) ||
+            ""
+          ).trim();
+          if (pv === "productive") productiveHrs += hrs;
+          let price = hrs * hourlyRate;
+          if (pv === "nonproductive") {
+            price *= -1;
+            wastedValue += hrs * hourlyRate;
+          } else if (pv === "other" || pv === "그 외" || !pv) price = 0;
+          totalPrice += price;
+        });
+      }
+
       const trackedNum = summaryPanelEl.querySelector(
         ".time-ledger-summary-tracked",
       );
@@ -6993,14 +7014,19 @@ export function render() {
       if (wastedNum) wastedNum.textContent = formatPrice(wastedValue);
       if (wastedUnit) wastedUnit.textContent = "원";
       const overHrs = totalHrs > 24 ? totalHrs - 24 : 0;
-      const overRow = allTfoot?.querySelector(".time-ledger-over-row");
-      if (overRow)
-        overRow.classList.toggle("time-ledger-over-row-visible", overHrs > 0);
-      const totalOverEl = allTfoot?.querySelector(".time-ledger-total-over");
-      if (totalOverEl) {
-        totalOverEl.textContent =
-          overHrs > 0 ? formatHoursDisplay(overHrs) : "";
-        totalOverEl.classList.toggle("has-over", overHrs > 0);
+      if (allTable && allTfoot) {
+        const overRow = allTfoot.querySelector(".time-ledger-over-row");
+        if (overRow)
+          overRow.classList.toggle(
+            "time-ledger-over-row-visible",
+            overHrs > 0,
+          );
+        const totalOverEl = allTfoot.querySelector(".time-ledger-total-over");
+        if (totalOverEl) {
+          totalOverEl.textContent =
+            overHrs > 0 ? formatHoursDisplay(overHrs) : "";
+          totalOverEl.classList.toggle("has-over", overHrs > 0);
+        }
       }
     }
 
@@ -7131,6 +7157,87 @@ export function render() {
 
     if (isMobile) {
       el.querySelector(".time-hourly-add-slot")?.replaceChildren();
+    }
+
+    const handleCardDelete = (card, rowData) => {
+      if (rowData) {
+        const k = `${rowData.date}|${rowData.taskName}|${rowData.startTime}`;
+        allRowsCache = allRowsCache.filter(
+          (c) => `${c.date}|${c.taskName}|${c.startTime}` !== k,
+        );
+        saveTimeRows(allRowsCache);
+      }
+      card.remove();
+      updateTotal();
+    };
+    const handleCardEdit = (card, rowData) => {
+      openTaskLogModalForEdit(card, rowData);
+    };
+
+    const hiddenTableWrap = document.createElement("div");
+    hiddenTableWrap.className = "time-ledger-mobile-hidden-table";
+    hiddenTableWrap.style.cssText =
+      "position:absolute;left:-62.5rem;width:0.0625rem;height:0.0625rem;overflow:hidden;";
+    const hiddenTable = document.createElement("table");
+    hiddenTable.className = "time-ledger-table";
+    hiddenTable.innerHTML = createTableHTML();
+    const hiddenTbody = hiddenTable.querySelector("tbody");
+    hiddenTableWrap.appendChild(hiddenTable);
+    contentWrap.appendChild(hiddenTableWrap);
+
+    const cardsWrap = document.createElement("div");
+    cardsWrap.className = isMobile
+      ? "time-ledger-mobile-cards"
+      : "time-ledger-mobile-cards time-ledger-desktop-cards";
+
+    rows.forEach((d) => {
+      const card = createMobileTimeCard(
+        d,
+        handleCardEdit,
+        handleCardDelete,
+        el,
+      );
+      card._onRowDelete = handleCardDelete;
+      cardsWrap.appendChild(card);
+    });
+
+    const openAdd = () => {
+      if (openTaskLogModal) {
+        openTaskLogModal({
+          productivity: null,
+          tbody: hiddenTbody,
+          addRow: null,
+          onRowUpdate: () => {
+            updateTotal();
+            onFilterChange();
+          },
+          viewEl: el,
+          createRow,
+          handleRowDelete: handleCardDelete,
+          handleRowEdit: handleCardEdit,
+        });
+      } else {
+        const dateStr =
+          filterType === "day"
+            ? filterStartDate
+            : (() => {
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                return yesterday.toISOString().slice(0, 10);
+              })();
+        const card = createMobileTimeCard(
+          { date: dateStr },
+          handleCardEdit,
+          handleCardDelete,
+          el,
+        );
+        card._onRowDelete = handleCardDelete;
+        cardsWrap.appendChild(card);
+        updateTotal();
+      }
+    };
+
+    if (isMobile) {
       const toolbar = document.createElement("div");
       toolbar.className = "time-ledger-mobile-toolbar";
       const leftWrap = document.createElement("div");
@@ -7144,23 +7251,6 @@ export function render() {
       addLabel.textContent = "과제 기록";
       leftWrap.appendChild(addBtnEl);
       leftWrap.appendChild(addLabel);
-      /* 과제 설정: 모바일은 위쪽 .time-filter-bar의 톱니만 사용(중복 제거) */
-
-      const handleCardDelete = (card, rowData) => {
-        if (rowData) {
-          const k = `${rowData.date}|${rowData.taskName}|${rowData.startTime}`;
-          allRowsCache = allRowsCache.filter(
-            (c) => `${c.date}|${c.taskName}|${c.startTime}` !== k,
-          );
-          saveTimeRows(allRowsCache);
-        }
-        card.remove();
-        updateTotal();
-      };
-      const handleCardEdit = (card, rowData) => {
-        openTaskLogModalForEdit(card, rowData);
-      };
-
       toolbar.appendChild(leftWrap);
 
       const dateDivider = document.createElement("div");
@@ -7169,65 +7259,6 @@ export function render() {
       dateDivider.textContent =
         `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, "0")}.${String(today.getDate()).padStart(2, "0")}`;
 
-      const cardsWrap = document.createElement("div");
-      cardsWrap.className = "time-ledger-mobile-cards";
-      rows.forEach((d) => {
-        const card = createMobileTimeCard(
-          d,
-          handleCardEdit,
-          handleCardDelete,
-          el,
-        );
-        card._onRowDelete = handleCardDelete;
-        cardsWrap.appendChild(card);
-      });
-
-      const hiddenTableWrap = document.createElement("div");
-      hiddenTableWrap.className = "time-ledger-mobile-hidden-table";
-      hiddenTableWrap.style.cssText =
-        "position:absolute;left:-62.5rem;width:0.0625rem;height:0.0625rem;overflow:hidden;";
-      const hiddenTable = document.createElement("table");
-      hiddenTable.className = "time-ledger-table";
-      hiddenTable.innerHTML = createTableHTML();
-      const hiddenTbody = hiddenTable.querySelector("tbody");
-      hiddenTableWrap.appendChild(hiddenTable);
-      contentWrap.appendChild(hiddenTableWrap);
-
-      const openAdd = () => {
-        if (openTaskLogModal) {
-          openTaskLogModal({
-            productivity: null,
-            tbody: hiddenTbody,
-            addRow: null,
-            onRowUpdate: () => {
-              updateTotal();
-              onFilterChange();
-            },
-            viewEl: el,
-            createRow,
-            handleRowDelete: handleCardDelete,
-            handleRowEdit: handleCardEdit,
-          });
-        } else {
-          const dateStr =
-            filterType === "day"
-              ? filterStartDate
-              : (() => {
-                  const yesterday = new Date();
-                  yesterday.setDate(yesterday.getDate() - 1);
-                  return yesterday.toISOString().slice(0, 10);
-                })();
-          const card = createMobileTimeCard(
-            { date: dateStr },
-            handleCardEdit,
-            handleCardDelete,
-            el,
-          );
-          card._onRowDelete = handleCardDelete;
-          cardsWrap.appendChild(card);
-          updateTotal();
-        }
-      };
       leftWrap.addEventListener("click", openAdd);
 
       const dayNavForToolbar = filterBar.querySelector(".time-filter-day-nav");
@@ -7241,66 +7272,10 @@ export function render() {
       contentWrap.appendChild(toolbar);
       contentWrap.appendChild(dateDivider);
       contentWrap.appendChild(cardsWrap);
-      const refreshMobileElapsed = () => {
-        cardsWrap
-          .querySelectorAll(".time-ledger-mobile-card")
-          .forEach(updateMobileTimeCardLiveFields);
-        updateTotal();
-      };
-      const anyLiveElapsed = rows.some((d) => mobileCardNeedsLiveClock(d));
-      if (anyLiveElapsed) {
-        refreshMobileElapsed();
-        el._timeLedgerMobileElapsedIntervalId = setInterval(
-          refreshMobileElapsed,
-          10000,
-        );
-      }
-      updateTotal();
-      return;
-    }
-
-    const wrap = document.createElement("div");
-    wrap.className = "time-ledger-table-wrap";
-    const tbl = document.createElement("table");
-    tbl.className = "time-ledger-table";
-    tbl.innerHTML = createTableHTML();
-    const tbodyEl = tbl.querySelector("tbody");
-
-    const handleRowDelete = (tr, rowData) => {
-      if (rowData) {
-        const k = `${rowData.date}|${rowData.taskName}|${rowData.startTime}`;
-        allRowsCache = allRowsCache.filter(
-          (c) => `${c.date}|${c.taskName}|${c.startTime}` !== k,
-        );
-        saveTimeRows(allRowsCache);
-      }
-      tr.remove();
-      updateTotal();
-    };
-    const handleRowEdit = (tr, rowData) => {
-      openTaskLogModalForEdit(tr, rowData);
-    };
-
-    rows.forEach((d) => {
-      const tr = createRow(d, updateTotal, el, handleRowDelete, handleRowEdit);
-      tbodyEl.appendChild(tr);
-    });
-
-    const tfoot = document.createElement("tfoot");
-    tfoot.innerHTML = `
-      <tr class="time-ledger-over-row">
-        <td class="time-cell time-cell-task" colspan="3">초과된 기록시간</td>
-        <td class="time-cell time-cell-tracked time-ledger-total-over"></td>
-        <td class="time-cell time-cell-category" colspan="3"></td>
-        <td class="time-cell time-cell-price"></td>
-        <td class="time-cell time-cell-focus" colspan="3"></td>
-      </tr>
-    `;
-    tbl.appendChild(tfoot);
-
-    const summaryPanel = document.createElement("div");
-    summaryPanel.className = "time-ledger-summary-panel";
-    summaryPanel.innerHTML = `
+    } else {
+      const summaryPanel = document.createElement("div");
+      summaryPanel.className = "time-ledger-summary-panel";
+      summaryPanel.innerHTML = `
       <div class="time-ledger-summary-cell">
         <div class="time-ledger-summary-label">총 기록 시간</div>
         <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-tracked">0</span><span class="time-ledger-summary-unit">h 0m</span></div>
@@ -7319,109 +7294,45 @@ export function render() {
       </div>
     `;
 
-    const openDesktopAdd = () => {
-      if (openTaskLogModal) {
-        openTaskLogModal({
-          productivity: null,
-          tbody: tbodyEl,
-          addRow: null,
-          onRowUpdate: updateTotal,
-          viewEl: el,
-          createRow,
-          handleRowDelete,
-          handleRowEdit,
-        });
-      } else {
-        const dateStr =
-          filterType === "day"
-            ? filterStartDate
-            : (() => {
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                return yesterday.toISOString().slice(0, 10);
-              })();
-        const tr = createRow(
-          { date: dateStr },
-          updateTotal,
-          el,
-          handleRowDelete,
-          handleRowEdit,
-        );
-        tbodyEl.appendChild(tr);
-        updateTotal();
+      const ledgerContainer = document.createElement("div");
+      ledgerContainer.className = "time-ledger-container";
+      ledgerContainer.appendChild(summaryPanel);
+      ledgerContainer.appendChild(cardsWrap);
+      contentWrap.appendChild(ledgerContainer);
+
+      const hourlyAddSlotEl = el.querySelector(".time-hourly-add-slot");
+      if (hourlyAddSlotEl) {
+        hourlyAddSlotEl.innerHTML = "";
+        const addInner = document.createElement("div");
+        addInner.className = "time-hourly-add-inner";
+        const addBtnEl = document.createElement("button");
+        addBtnEl.type = "button";
+        addBtnEl.className = "time-btn-add";
+        addBtnEl.textContent = "+";
+        const addLabel = document.createElement("span");
+        addLabel.className = "time-ledger-add-label";
+        addLabel.textContent = "과제 기록";
+        addInner.appendChild(addBtnEl);
+        addInner.appendChild(addLabel);
+        hourlyAddSlotEl.appendChild(addInner);
+        addInner.addEventListener("click", openAdd);
       }
-    };
-
-    const hourlyAddSlotEl = el.querySelector(".time-hourly-add-slot");
-    if (hourlyAddSlotEl) {
-      hourlyAddSlotEl.innerHTML = "";
-      const addInner = document.createElement("div");
-      addInner.className = "time-hourly-add-inner";
-      const addBtnEl = document.createElement("button");
-      addBtnEl.type = "button";
-      addBtnEl.className = "time-btn-add";
-      addBtnEl.textContent = "+";
-      const addLabel = document.createElement("span");
-      addLabel.className = "time-ledger-add-label";
-      addLabel.textContent = "과제 기록";
-      addInner.appendChild(addBtnEl);
-      addInner.appendChild(addLabel);
-      hourlyAddSlotEl.appendChild(addInner);
-      addInner.addEventListener("click", openDesktopAdd);
     }
 
-    const taskThEl = tbl.querySelector(".time-th-task");
-    const taskColEl = tbl.querySelector(".time-col-task");
-    if (taskThEl && taskColEl) {
-      const resizerEl = document.createElement("div");
-      resizerEl.className = "time-col-resizer";
-      resizerEl.title = "드래그하여 너비 조절";
-      taskThEl.appendChild(resizerEl);
-      resizerEl.addEventListener("mousedown", (e) => {
-        e.preventDefault();
-        const startX = e.clientX;
-        const startWidth = taskThEl.getBoundingClientRect().width;
-        const onMove = (moveE) => {
-          const dx = moveE.clientX - startX;
-          const newWidth = Math.max(80, Math.min(500, startWidth + dx));
-          taskColEl.style.width = `${newWidth}px`;
-          taskColEl.style.minWidth = `${newWidth}px`;
-          updateStickyLefts(tbl);
-        };
-        const onUp = () => {
-          document.removeEventListener("mousemove", onMove);
-          document.removeEventListener("mouseup", onUp);
-          document.body.style.cursor = "";
-          document.body.style.userSelect = "";
-          updateStickyLefts(tbl);
-        };
-        document.addEventListener("mousemove", onMove);
-        document.addEventListener("mouseup", onUp);
-        document.body.style.cursor = "col-resize";
-        document.body.style.userSelect = "none";
-      });
-      requestAnimationFrame(() => updateStickyLefts(tbl));
-    }
-
-    wrap.appendChild(tbl);
-    const ledgerContainer = document.createElement("div");
-    ledgerContainer.className = "time-ledger-container";
-    ledgerContainer.appendChild(summaryPanel);
-    ledgerContainer.appendChild(wrap);
-    contentWrap.appendChild(ledgerContainer);
-
-    const refreshDesktopLiveRows = () => {
-      tbodyEl.querySelectorAll("tr.time-row").forEach((rowEl) => {
-        if (mobileCardNeedsLiveClock(rowEl._rowData)) rowEl._updatePrice?.();
-      });
+    const refreshCardLiveFields = () => {
+      cardsWrap
+        .querySelectorAll(".time-ledger-mobile-card")
+        .forEach(updateMobileTimeCardLiveFields);
+      updateTotal();
     };
     if (rows.some((d) => mobileCardNeedsLiveClock(d))) {
-      refreshDesktopLiveRows();
+      refreshCardLiveFields();
       el._timeLedgerMobileElapsedIntervalId = setInterval(
-        refreshDesktopLiveRows,
+        refreshCardLiveFields,
         10000,
       );
     }
+    updateTotal();
   }
 
   function renderByProductivity(rows = []) {

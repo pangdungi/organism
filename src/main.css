@@ -3926,6 +3926,10 @@ body {
   .time-ledger-mobile-card:active {
     box-shadow: 0 0.125rem 0.375rem rgba(0, 0, 0, 0.12);
   }
+
+  .time-ledger-mobile-card.time-ledger-mobile-card--in-progress {
+    background: #e8e2d2;
+  }
   .time-mobile-card-color-bar {
     width: 0.1875rem;
     min-width: 0.1875rem;
@@ -3998,6 +4002,26 @@ body {
     color: #9ca3af;
     line-height: 1.4;
     margin-top: 0.2rem;
+  }
+  .time-mobile-card-focus {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    margin-top: 0.35rem;
+    padding-top: 0.35rem;
+    border-top: var(--line-l3);
+  }
+  .time-mobile-card-focus-label {
+    font-size: 0.625rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+  }
+  .time-mobile-card-focus-text {
+    font-size: 0.72rem;
+    color: #6b7280;
+    line-height: 1.45;
+    word-break: break-word;
   }
   .time-ledger-mobile-hidden-table {
     position: absolute !important;
@@ -22036,20 +22060,34 @@ body.kpi-resizing {
 .time-hourly-wrap {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 1rem;
   flex-wrap: wrap;
   margin-bottom: 1rem;
 }
 
+/* 과제 기록은 왼쪽; 힌트는 왼쪽(시급 미입력 시만 표시), 내 시급 문구·금액은 오른쪽 끝 */
 .time-hourly-rate-block {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 0.75rem;
+  margin-left: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.time-hourly-rate-values {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 0.5rem;
-  flex: 1;
-  min-width: 0;
+  flex-shrink: 0;
+  margin-left: auto;
+  text-align: right;
 }
 
 .time-hourly-add-slot:not(:empty) {
@@ -22136,14 +22174,41 @@ body.kpi-resizing {
 }
 
 .time-hourly-hint {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 0.75rem;
   color: #999;
+  line-height: 1.35;
+  text-align: left;
   opacity: 0;
   transition: opacity 0.2s;
 }
 
+/* 숨김일 때는 레이아웃에서 제외(opacity만으로는 공간을 계속 먹음) */
+.time-hourly-hint:not(.is-visible) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  flex: none;
+  pointer-events: none;
+}
+
 .time-hourly-hint.is-visible {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
   opacity: 1;
+  pointer-events: auto;
 }
 
 .time-ledger-title {
@@ -22156,6 +22221,150 @@ body.kpi-resizing {
   display: flex;
   flex-direction: column;
   gap: 0;
+}
+
+/* 데스크탑: 시간기록하기(전체) — 카드 목록 (왼쪽 정렬·넓게, 실험용 레이아웃) */
+@media (min-width: 48.0625rem) {
+  .time-ledger-container .time-ledger-desktop-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    align-self: stretch;
+    min-height: 0;
+  }
+
+  .time-ledger-container .time-ledger-desktop-cards .time-ledger-mobile-card {
+    display: flex;
+    background: #f5f1e8;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: hidden;
+    cursor: pointer;
+    transition: box-shadow 0.2s;
+    margin: 0 0 0.625rem;
+    padding: 1.125rem 1.25rem;
+    border-bottom: var(--line-l3);
+  }
+
+  .time-ledger-container .time-ledger-desktop-cards .time-ledger-mobile-card:hover {
+    box-shadow: 0 0.0625rem 0.25rem rgba(0, 0, 0, 0.06);
+  }
+
+  .time-ledger-container
+    .time-ledger-desktop-cards
+    .time-ledger-mobile-card.time-ledger-mobile-card--in-progress {
+    background: #e8e2d2;
+  }
+
+  .time-ledger-container .time-ledger-desktop-cards .time-mobile-card-color-bar {
+    width: 0.25rem;
+    min-width: 0.25rem;
+    flex-shrink: 0;
+  }
+
+  .time-ledger-container .time-ledger-desktop-cards .time-mobile-card-body {
+    flex: 1;
+    min-width: 0;
+    padding: 0 0 0 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .time-ledger-container .time-ledger-desktop-cards .time-mobile-card-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-weight: 300;
+    color: var(--text-ink);
+  }
+
+  .time-ledger-container .time-ledger-desktop-cards .time-mobile-card-task {
+    font-weight: 400;
+    font-size: 1.0625rem;
+    color: var(--text-ink);
+    min-width: 0;
+  }
+
+  .time-ledger-container .time-ledger-desktop-cards .time-mobile-card-tracked {
+    font-family: var(--font-mono);
+    font-weight: 300;
+    font-size: 0.9375rem;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    text-align: right;
+  }
+
+  .time-ledger-container .time-ledger-desktop-cards .time-mobile-card-meta {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .time-ledger-container .time-ledger-desktop-cards .time-mobile-card-price {
+    font-family: var(--font-mono);
+    font-weight: 400;
+    font-size: 0.8125rem;
+    color: #555;
+    line-height: 1.2;
+    flex-shrink: 0;
+    text-align: right;
+  }
+
+  .time-ledger-container .time-ledger-desktop-cards .time-mobile-card-price.is-negative {
+    color: #1a73e8;
+  }
+
+  .time-ledger-container .time-ledger-desktop-cards .time-mobile-card-price.is-positive {
+    color: #c00;
+  }
+
+  .time-ledger-container .time-ledger-desktop-cards .time-mobile-card-time {
+    font-family: var(--font-mono);
+    font-weight: 300;
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+    color: var(--text-muted);
+    flex: 1;
+    min-width: 0;
+  }
+
+  .time-ledger-container .time-ledger-desktop-cards .time-mobile-card-memo {
+    font-size: 0.875rem;
+    color: #9ca3af;
+    line-height: 1.45;
+    margin-top: 0.25rem;
+  }
+
+  .time-ledger-container .time-ledger-desktop-cards .time-mobile-card-focus {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin-top: 0.4rem;
+    padding-top: 0.4rem;
+    border-top: var(--line-l3);
+  }
+
+  .time-ledger-container .time-ledger-desktop-cards .time-mobile-card-focus-label {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+  }
+
+  .time-ledger-container .time-ledger-desktop-cards .time-mobile-card-focus-text {
+    font-size: 0.8125rem;
+    color: #6b7280;
+    line-height: 1.45;
+    word-break: break-word;
+  }
 }
 
 /* 시간가계부 테이블 위 요약 패널 (총 기록시간 / 생산적 시간 / 환산금액 / 낭비한 시간의 가치) */
@@ -31479,7 +31688,8 @@ body.kpi-resizing {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  border-bottom: var(--line-l3);
+  /* 하단만: l3(0.5px)보다 한 단계 두꺼운 l2(1px) */
+  border-bottom: var(--line-l2);
   background: transparent;
   transition: border-bottom-color 0.2s;
 }
@@ -31496,7 +31706,7 @@ body.kpi-resizing {
   width: 1.125rem;
   height: 1.125rem;
 }
-/* 전역 input[type=search] 밑줄 제거 — 하단선은 .archive-search-wrap만 사용 */
+/* 전역 input[type=search] 밑줄 제거 — 하단선은 .archive-search-wrap만 */
 #app .archive-search-input,
 .archive-search-input {
   flex: 1;
