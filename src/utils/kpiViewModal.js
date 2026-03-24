@@ -29,6 +29,19 @@ function getAccumulatedLogValue(kpiId, logs) {
   return filtered.reduce((sum, log) => sum + parseNum(log.value), 0);
 }
 
+/** 날짜 기준 최신 로그 한 건의 숫자값 (없으면 null) */
+function getLatestLogNumeric(kpiId, logs) {
+  const filtered = (logs || []).filter((l) => l.kpiId === kpiId);
+  if (filtered.length === 0) return null;
+  filtered.sort((a, b) => {
+    const da = a.dateRaw || a.date || "";
+    const db = b.dateRaw || b.date || "";
+    return db.localeCompare(da);
+  });
+  const v = parseNum(filtered[0].value);
+  return Number.isNaN(v) ? null : v;
+}
+
 function escapeHtml(str) {
   const div = document.createElement("div");
   div.textContent = str || "";
@@ -53,12 +66,27 @@ export function getKpisByCategory() {
   const STORAGE_BY_CATEGORY = { 꿈: DREAM_MAP_KEY, 부수입: SIDEINCOME_KEY, 행복: HAPPINESS_KEY, 건강: HEALTH_KEY };
 
   function addKpi(kpi, logs, parentName, category) {
-    const currentVal = getAccumulatedLogValue(kpi.id, logs);
     const targetVal = parseNum(kpi.targetValue);
-    const progress = targetVal > 0 ? Math.min(100, (currentVal / targetVal) * 100) : 0;
+    const directionLower = kpi.direction === "lower";
     const unitSuffix = kpi.unit ? " " + kpi.unit : "";
     const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
-    const progressText = `${formatNum(currentVal)} / ${kpi.targetValue ? String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",") : "—"}${unitSuffix}`;
+    const targetStr = kpi.targetValue
+      ? String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+      : "—";
+    let progress = 0;
+    let progressText;
+    if (lowerDream) {
+      const latest = getLatestLogNumeric(kpi.id, logs);
+      if (targetVal > 0 && latest != null) {
+        progress = Math.min(100, (targetVal / Math.max(latest, 1e-9)) * 100);
+      }
+      progressText = `최근 ${formatNum(latest)} / 상한 ${targetStr}${unitSuffix}`;
+    } else {
+      const currentVal = getAccumulatedLogValue(kpi.id, logs);
+      progress =
+        targetVal > 0 ? Math.min(100, (currentVal / targetVal) * 100) : 0;
+      progressText = `${formatNum(currentVal)} / ${targetStr}${unitSuffix}`;
+    }
     result[category].push({
       kpiId: kpi.id,
       storageKey: STORAGE_BY_CATEGORY[category],
@@ -71,6 +99,7 @@ export function getKpisByCategory() {
       targetTimeRequired: kpi.targetTimeRequired,
       progress,
       progressText,
+      directionLower,
     });
   }
 
@@ -139,10 +168,10 @@ export function showKpiViewModal() {
             `
                 : "";
             return `
-          <div class="kpi-view-card dream-kpi-card">
+          <div class="kpi-view-card dream-kpi-card${k.directionLower ? " dream-kpi-card--lower-better" : ""}">
             <div class="dream-kpi-card-inner">
-              <div class="dream-kpi-card-name">${escapeHtml(k.name)}</div>
-              <div class="dream-kpi-card-target-num">${k.targetValue ? escapeHtml(String(k.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) + (k.unit ? '<span class="dream-kpi-card-unit"> ' + escapeHtml(k.unit) + "</span>" : "") : "—"}</div>
+              <div class="dream-kpi-card-name">${escapeHtml(k.name)}${k.directionLower ? '<span class="dream-kpi-card-direction-badge" title="낮을수록 좋음 KPI">↓낮음</span>' : ""}</div>
+              <div class="dream-kpi-card-target-num">${k.directionLower ? '<span class="dream-kpi-card-target-prefix">상한 </span>' : ""}${k.targetValue ? escapeHtml(String(k.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) + (k.unit ? '<span class="dream-kpi-card-unit"> ' + escapeHtml(k.unit) + "</span>" : "") : "—"}</div>
               ${(k.targetStartDate || k.targetDeadline) ? `<div class="dream-kpi-card-deadline">${escapeHtml(formatDeadlineRangeCompact(k.targetStartDate, k.targetDeadline))}</div>` : ""}
               <div class="dream-kpi-card-progress">
                 <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${k.progress}%"></div></div>

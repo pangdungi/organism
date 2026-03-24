@@ -2810,6 +2810,14 @@ body {
     padding-right: 1.75rem;
   }
 
+  /* 모바일: KPI 지표 방향 라벨 살짝 작게 (한 줄 레이아웃은 전역과 동일) */
+  .dream-kpi-direction-field .dream-kpi-direction-option {
+    font-size: 0.8125rem;
+  }
+  .dream-kpi-direction-field .dream-kpi-direction-option > span {
+    line-height: 1.35;
+  }
+
   /* 모바일: 과제 기록/수정 모달 - 높이 확대해 아코디언 펼쳤을 때 내용 모두 볼 수 있게 */
   .time-task-log-modal .time-task-log-panel {
     height: 95vh;
@@ -24133,6 +24141,27 @@ body.kpi-resizing {
   flex-shrink: 0;
 }
 
+.dream-kpi-card-direction-badge {
+  display: inline-block;
+  margin-left: 0.35rem;
+  font-family: var(--font-mono), var(--font-body);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.25rem;
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+  vertical-align: middle;
+}
+
+.dream-kpi-card-target-prefix {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-right: 0.2em;
+}
+
 .dream-kpi-card-current {
   font-size: 0.8rem;
   color: var(--text-muted);
@@ -25481,6 +25510,50 @@ body.kpi-resizing {
   margin-bottom: 0.5rem;
 }
 
+.dream-kpi-field-label {
+  font-family: var(--font-mono), var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 300;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.dream-kpi-direction-field .dream-kpi-direction-options {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+}
+
+.dream-kpi-direction-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 0;
+  min-width: 0;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--text-body);
+  letter-spacing: normal;
+  margin-bottom: 0;
+}
+
+.dream-kpi-direction-option input {
+  margin-top: 0;
+  flex-shrink: 0;
+  width: auto;
+  max-width: none;
+}
+
+.dream-kpi-direction-option > span {
+  flex: 1;
+  min-width: 0;
+}
+
 .dream-kpi-field-checkbox {
   margin-top: 0.5rem;
   margin-bottom: 0.5rem;
@@ -25542,7 +25615,8 @@ body.kpi-resizing {
   );
 }
 
-.dream-kpi-form input,
+/* 라디오·체크는 행 안에서만 자연 크기 (width:100%면 라벨 텍스트가 세로 한 글자씩 깨짐) */
+.dream-kpi-form input:not([type="radio"]):not([type="checkbox"]),
 .dream-kpi-form textarea,
 .dream-kpi-form select {
   width: 100%;
@@ -25565,7 +25639,7 @@ body.kpi-resizing {
   color: var(--text-placeholder);
 }
 
-.dream-kpi-form input:focus,
+.dream-kpi-form input:not([type="radio"]):not([type="checkbox"]):focus,
 .dream-kpi-form textarea:focus,
 .dream-kpi-form select:focus {
   outline: none;
@@ -25987,6 +26061,16 @@ body.kpi-resizing {
   flex-direction: column;
   gap: 1rem;
   padding: 1rem 1.25rem 1.25rem;
+}
+
+.dream-kpi-log-lower-hint {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  background: rgba(52, 73, 69, 0.08);
+  border-radius: 0.35rem;
 }
 
 .dream-kpi-log-section {

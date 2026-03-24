@@ -41,6 +41,7 @@ function normalizePayload(p) {
   const kpis = (Array.isArray(p.kpis) ? p.kpis : []).map((k) => ({
     ...k,
     needHabitTracker: !!k.needHabitTracker,
+    direction: k.direction === "lower" ? "lower" : "higher",
   }));
   return {
     healths: Array.isArray(p.healths) ? p.healths : [],
@@ -89,6 +90,7 @@ function rowToKpi(r) {
     targetDeadline: r.target_deadline ?? "",
     targetTimeRequired: r.target_time_required ?? "",
     needHabitTracker: !!r.need_habit_tracker,
+    direction: r.direction === "lower" ? "lower" : "higher",
   };
 }
 
@@ -174,6 +176,7 @@ function kpiToRow(userId, k) {
     target_deadline: (k.targetDeadline || "").trim(),
     target_time_required: (k.targetTimeRequired || "").trim(),
     need_habit_tracker: !!k.needHabitTracker,
+    direction: k.direction === "lower" ? "lower" : "higher",
   };
 }
 
