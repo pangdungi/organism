@@ -3799,13 +3799,40 @@ body {
   .time-ledger-mobile-toolbar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
+    gap: 0.5rem;
     padding: 0.75rem 1.5rem;
     margin-bottom: 0;
     border-bottom: var(--line-l3);
     border-right: none;
     flex-shrink: 0;
     font-family: var(--font-body);
+    /* .time-view-content-wrap 스크롤 시 목록만 움직이고 툴바는 상단 고정 */
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--content-bg, #f5f1e8);
+  }
+  /* 일자 이동(< 날짜 >): 과제 기록 왼쪽, 네비는 툴바 오른쪽 끝 */
+  .time-ledger-mobile-toolbar-day {
+    margin-left: auto;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+  }
+  .time-ledger-mobile-toolbar-day .time-filter-day-nav {
+    gap: 0.25rem;
+  }
+  .time-ledger-mobile-toolbar-day .time-filter-day-prev,
+  .time-ledger-mobile-toolbar-day .time-filter-day-next {
+    width: 1.5rem;
+    height: 1.5rem;
+    font-size: 0.8rem;
+  }
+  .time-ledger-mobile-toolbar-day .time-filter-day-display {
+    font-size: 0.75rem;
+    white-space: nowrap;
   }
   .time-ledger-mobile-toolbar-left {
     display: flex;
@@ -3910,20 +3937,21 @@ body {
     padding: 0 0 0 0.5rem;
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
+    gap: 0.25rem;
   }
   .time-mobile-card-header {
     display: flex;
-    align-items: flex-start;
+    align-items: baseline;
     justify-content: space-between;
     gap: 0.5rem;
     font-weight: 300;
     color: var(--text-ink);
   }
   .time-mobile-card-task {
-    font-weight: 300;
+    font-weight: 400;
     font-size: 0.95rem;
     color: var(--text-ink);
+    min-width: 0;
   }
   .time-mobile-card-tracked {
     font-family: var(--font-mono);
@@ -3931,14 +3959,15 @@ body {
     font-size: 0.85rem;
     color: var(--text-muted);
     flex-shrink: 0;
-  }
-  .time-mobile-card-right {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.12rem;
-    flex-shrink: 0;
     text-align: right;
+  }
+  .time-mobile-card-meta {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-width: 0;
   }
   .time-mobile-card-price {
     font-family: var(--font-mono);
@@ -3946,6 +3975,8 @@ body {
     font-size: 0.7rem;
     color: #555;
     line-height: 1.2;
+    flex-shrink: 0;
+    text-align: right;
   }
   .time-mobile-card-price.is-negative {
     color: #1a73e8;
@@ -3959,6 +3990,8 @@ body {
     font-size: 0.625rem;
     letter-spacing: 0.02em;
     color: var(--text-muted);
+    flex: 1;
+    min-width: 0;
   }
   .time-mobile-card-memo {
     font-size: 0.75rem;
@@ -22003,8 +22036,73 @@ body.kpi-resizing {
 .time-hourly-wrap {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
   margin-bottom: 1rem;
+}
+
+.time-hourly-rate-block {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.time-hourly-add-slot:not(:empty) {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.time-hourly-add-slot:empty {
+  display: none;
+}
+
+.time-hourly-add-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+/* 모바일 툴바와 동일: 왼쪽 + 과제 기록 */
+.time-hourly-add-inner .time-btn-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0;
+  font-size: 1.25rem;
+  font-family: inherit;
+  color: var(--text-muted);
+  background: var(--content-bg, #f5f1e8);
+  border: var(--line-l4);
+  box-shadow: 0 0.0625rem 0.25rem rgba(0, 0, 0, 0.06);
+  border-radius: var(--modal-radius) !important;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+
+.time-hourly-add-inner .time-btn-add:hover {
+  color: var(--accent-viridian);
+  background: var(--ui-surface-alt);
+}
+
+.time-hourly-add-inner .time-ledger-add-label {
+  color: var(--text-ink);
+  font-family: var(--font-heading);
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-h2);
 }
 
 .time-hourly-label {

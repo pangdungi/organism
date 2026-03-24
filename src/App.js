@@ -351,6 +351,13 @@ btn.dataset.tabId = tab.id;
     if (!opts.skipTodoSaveBeforeUnmount) {
       saveTodoListBeforeUnmount(p);
     }
+    const prevRoot = p.firstElementChild;
+    if (prevRoot?._lpTabAbortController) {
+      try {
+        prevRoot._lpTabAbortController.abort();
+      } catch (_) {}
+      prevRoot._lpTabAbortController = null;
+    }
     p.innerHTML = "";
     const render = RENDERERS[currentTabId];
     try {

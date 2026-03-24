@@ -687,7 +687,8 @@ const ADD_TASK_ICON =
 const LIST_ICON =
   '<img src="/toolbaricons/list.svg" alt="세부 할 일" class="todo-list-icon" width="20" height="20">';
 
-function createCategoryDropdown(initialValue, onUpdate) {
+/** @param {AbortSignal} [tabSignal] 할일 탭 이탈 시 document/window 리스너 정리 */
+function createCategoryDropdown(initialValue, onUpdate, tabSignal) {
   const wrap = document.createElement("div");
   wrap.className = "todo-category-wrap";
 
@@ -906,18 +907,27 @@ function createCategoryDropdown(initialValue, onUpdate) {
     }
   });
 
-  document.addEventListener("click", (e) => {
+  const docClickClose = (e) => {
     if (!wrap.contains(e.target)) closePanel();
-  });
-
-  wrap.appendChild(inputWrap);
-  wrap.appendChild(panel);
-
+  };
   const scrollResizeHandler = () => {
     if (!panel.hidden) updatePanelPosition();
   };
-  window.addEventListener("scroll", scrollResizeHandler, true);
-  window.addEventListener("resize", scrollResizeHandler);
+  if (tabSignal) {
+    document.addEventListener("click", docClickClose, { signal: tabSignal });
+    window.addEventListener("scroll", scrollResizeHandler, {
+      capture: true,
+      signal: tabSignal,
+    });
+    window.addEventListener("resize", scrollResizeHandler, { signal: tabSignal });
+  } else {
+    document.addEventListener("click", docClickClose);
+    window.addEventListener("scroll", scrollResizeHandler, true);
+    window.addEventListener("resize", scrollResizeHandler);
+  }
+
+  wrap.appendChild(inputWrap);
+  wrap.appendChild(panel);
 
   return { wrap, input };
 }
@@ -1465,6 +1475,7 @@ function createTaskRow(taskData = {}, options = {}) {
     enableDragOverdueToCalendar = false,
     overdueColumnOrder = false,
     eisenhowerSidebarFirst = false,
+    categoryUiSignal,
   } = options;
   const taskId = optTaskId || getTaskId(taskData);
 
@@ -2098,7 +2109,11 @@ function createTaskRow(taskData = {}, options = {}) {
       lastColTd.textContent = kpiColText;
       lastColTd.classList.add("todo-cell-category-readonly");
     } else {
-      const categoryDropdown = createCategoryDropdown(classification, () => {});
+      const categoryDropdown = createCategoryDropdown(
+        classification,
+        () => {},
+        categoryUiSignal,
+      );
       lastColTd.appendChild(categoryDropdown.wrap);
     }
     tr.appendChild(lastColTd);
@@ -2547,7 +2562,23 @@ function createTaskCard(taskData, options = {}) {
 }
 
 function createSection(section, options = {}) {
-  const { lastColHeader = "분류", initialTasks = [], showCategoryCol = false, sectionIdForAdd = null, hideCategoryCol = true, tabMode = false, showCheckboxTypeMenu = null, enableDragToCalendar = false, enableDragToEisenhower = false, enableDragOverdueToCalendar = false, hideAddRow = false, overdueColumnOrder = false, eisenhowerSidebarFirst = false, cardLayout = false } = options;
+  const {
+    lastColHeader = "분류",
+    initialTasks = [],
+    showCategoryCol = false,
+    sectionIdForAdd = null,
+    hideCategoryCol = true,
+    tabMode = false,
+    showCheckboxTypeMenu = null,
+    enableDragToCalendar = false,
+    enableDragToEisenhower = false,
+    enableDragOverdueToCalendar = false,
+    hideAddRow = false,
+    overdueColumnOrder = false,
+    eisenhowerSidebarFirst = false,
+    cardLayout = false,
+    categoryUiSignal,
+  } = options;
   const sectionId = sectionIdForAdd ?? section.id;
 
   const wrap = document.createElement("div");
@@ -2763,7 +2794,19 @@ function createSection(section, options = {}) {
   initialTasks.forEach((t) => {
     const taskId = t.taskId || getTaskId(t);
     t.taskId = taskId;
-    const tr = createTaskRow(t, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, enableDragOverdueToCalendar, overdueColumnOrder, eisenhowerSidebarFirst });
+    const tr = createTaskRow(t, {
+      showCategoryCol,
+      hideCategoryCol,
+      isSubtask: false,
+      taskId,
+      showCheckboxTypeMenu,
+      enableDragToCalendar,
+      enableDragToEisenhower,
+      enableDragOverdueToCalendar,
+      overdueColumnOrder,
+      eisenhowerSidebarFirst,
+      categoryUiSignal,
+    });
     tr.dataset.sectionId = t.sectionId || "";
     tbody.appendChild(tr);
     const container = tr.querySelector(".todo-subtasks-container");
@@ -2802,7 +2845,19 @@ function createSection(section, options = {}) {
         : { sectionId };
       const taskId = getTaskId(taskData);
       taskData.taskId = taskId;
-      const tr = createTaskRow(taskData, { showCategoryCol, hideCategoryCol, isSubtask: false, taskId, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, enableDragOverdueToCalendar, overdueColumnOrder, eisenhowerSidebarFirst });
+      const tr = createTaskRow(taskData, {
+        showCategoryCol,
+        hideCategoryCol,
+        isSubtask: false,
+        taskId,
+        showCheckboxTypeMenu,
+        enableDragToCalendar,
+        enableDragToEisenhower,
+        enableDragOverdueToCalendar,
+        overdueColumnOrder,
+        eisenhowerSidebarFirst,
+        categoryUiSignal,
+      });
       tbody.insertBefore(tr, addRow.nextSibling);
       updateCount();
       console.log("[DEBUG todo-row] + clicked, new row created", { taskId, sectionId: section.id });
@@ -2909,7 +2964,16 @@ function collectTasksFromDOM(sectionsEl) {
 }
 
 function renderSections(container, tasksData = [], options = {}) {
-  const { tabMode = false, showCheckboxTypeMenu = null, enableDragToCalendar = false, enableDragToEisenhower = false, sectionsOverride = null, eisenhowerSidebarFirst = false, cardLayout = false } = options;
+  const {
+    tabMode = false,
+    showCheckboxTypeMenu = null,
+    enableDragToCalendar = false,
+    enableDragToEisenhower = false,
+    sectionsOverride = null,
+    eisenhowerSidebarFirst = false,
+    cardLayout = false,
+    categoryUiSignal,
+  } = options;
   container.innerHTML = "";
   const results = [];
   const sections = sectionsOverride || getSections();
@@ -2931,6 +2995,7 @@ function renderSections(container, tasksData = [], options = {}) {
       eisenhowerSidebarFirst: eisenhowerSidebarFirst && section.id !== "overdue",
       cardLayout: cardLayout || section.id === "overdue",
       sectionsWrap: container,
+      categoryUiSignal,
     };
     const { wrap, updateCount } = createSection(section, sectionOpts);
     container.appendChild(wrap);
@@ -2968,6 +3033,9 @@ export function render(options = {}) {
   const persistFixedListTabToSession = !hideToolbar && !hasExplicitInitialTab;
   const el = document.createElement("div");
   el.className = "app-tab-panel-content todo-list-view";
+  const listTabAbort = new AbortController();
+  el._lpTabAbortController = listTabAbort;
+  const listUiSignal = listTabAbort.signal;
 
   const header = document.createElement("div");
   header.className = "todo-list-header";
@@ -3179,7 +3247,16 @@ export function render(options = {}) {
   if (hideDoneTasks) {
     allTasks = allTasks.filter((t) => !t.done);
   }
-  const sectionResults = renderSections(sectionsWrap, allTasks, { tabMode: true, showCheckboxTypeMenu, enableDragToCalendar, enableDragToEisenhower, eisenhowerSidebarFirst, sectionsOverride: FIXED_SECTIONS, cardLayout: true });
+  const sectionResults = renderSections(sectionsWrap, allTasks, {
+    tabMode: true,
+    showCheckboxTypeMenu,
+    enableDragToCalendar,
+    enableDragToEisenhower,
+    eisenhowerSidebarFirst,
+    sectionsOverride: FIXED_SECTIONS,
+    cardLayout: true,
+    categoryUiSignal: listUiSignal,
+  });
 
   function updateTabLabels() {
     tabButtons.forEach((btn, i) => {
@@ -3241,6 +3318,11 @@ export function render(options = {}) {
   sectionResults.forEach(({ wrap }) => {
     const target = wrap.querySelector(".todo-cards-wrap") || wrap.querySelector("tbody");
     if (target) observer.observe(target, { childList: true });
+  });
+  listUiSignal.addEventListener("abort", () => {
+    try {
+      observer.disconnect();
+    } catch (_) {}
   });
 
   // 우클릭 컨텍스트 메뉴: 태스크를 다른 리스트로 이동 (테이블 행 + 카드 모두)

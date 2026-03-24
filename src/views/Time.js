@@ -1449,19 +1449,23 @@ function getMobileCardTrackedDisplayForRow(rowData) {
   return formatElapsedDurationForMobileCard(ms);
 }
 
-function formatClockHHMMFromDate(d) {
-  const h = String(d.getHours()).padStart(2, "0");
-  const m = String(d.getMinutes()).padStart(2, "0");
-  return `${h}:${m}`;
+/** 마감 미입력(진행 중)일 때 테이블·모바일 카드에 쓰는 표시 (실제 종료 시각으로 오해하지 않도록) */
+const TIME_LEDGER_IN_PROGRESS_LABEL = "진행중";
+
+function formatTimeLedgerEndCellDisplay(startTime, endTime) {
+  const end = String(endTime || "").trim();
+  if (end) return toDisplayTimeOnly(end) || end;
+  const start = String(startTime || "").trim();
+  return start ? TIME_LEDGER_IN_PROGRESS_LABEL : "";
 }
 
-/** 모바일 카드 시간대 줄: 완료 시 시작–마감, 진행 중이면 시작–현재 시각 */
+/** 모바일 카드 시간대 줄: 완료 시 시작–마감, 진행 중이면 시작–「진행중」(현재 시각 미표시) */
 function getMobileCardTimeRangeDisplayForRow(rowData) {
   const startStr = toDisplayTimeOnly(rowData?.startTime) || "";
   const endStr = toDisplayTimeOnly(rowData?.endTime) || "";
   if (startStr && endStr) return `${startStr} - ${endStr}`;
   if (startStr && !rowHasEndTimeForMobileCard(rowData))
-    return `${startStr} - ${formatClockHHMMFromDate(new Date())}`;
+    return `${startStr} - ${TIME_LEDGER_IN_PROGRESS_LABEL}`;
   return startStr || endStr || "";
 }
 
@@ -1701,15 +1705,74 @@ function normalizeDateForCompare(str) {
   return "";
 }
 
-/** 날짜·시작시간 기준 시간 흐름 순 정렬 (00:00→23:59) */
+/** 로컬 저장 행의 시각 문자열 → 당일 기준 분(0~1439) */
+function parseLedgerTimeStringToMinutes(s) {
+  if (!s || typeof s !== "string") return null;
+  const t = s.trim();
+  const m =
+    t.match(/[T\s](\d{1,2}):(\d{2})/) || t.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  const h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  if (!Number.isFinite(h) || !Number.isFinite(min)) return null;
+  const hh = ((h % 24) + 24) % 24;
+  const mm = ((min % 60) + 60) % 60;
+  return hh * 60 + mm;
+}
+
+/** 행당 '그날 마지막 시각': 마감 있으면 마감, 없으면 시작 */
+function rowEffectiveLastMinutesLedger(row) {
+  const endTrim = (row?.endTime || "").trim();
+  const src = endTrim ? row.endTime : row.startTime;
+  return parseLedgerTimeStringToMinutes(String(src || ""));
+}
+
+/**
+ * 과제 기록 모달용: 선택한 날짜에 저장된 기록 중 가장 늦은 시각(HH:mm).
+ * exclude: 수정 중인 행(id 또는 composite 키)은 제외.
+ */
+function getLatestLedgerHhMmForTaskLogDate(dateInputValue, exclude) {
+  const normDate =
+    normalizeDateForCompare(dateInputValue || "") ||
+    String(dateInputValue || "")
+      .trim()
+      .replace(/\//g, "-")
+      .slice(0, 10);
+  if (!normDate) return null;
+  const rows = loadTimeRows();
+  let maxM = -1;
+  for (const r of rows) {
+    const rd =
+      normalizeDateForCompare(r.date || "") ||
+      String(r.date || "")
+        .trim()
+        .replace(/\//g, "-")
+        .slice(0, 10);
+    if (rd !== normDate) continue;
+    if (exclude) {
+      const rid = String(r.id || "").trim();
+      if (exclude.id && rid && rid === exclude.id) continue;
+      const ck = `${rd}|${(r.taskName || "").trim()}|${(r.startTime || "").trim()}`;
+      if (exclude.composite && ck === exclude.composite) continue;
+    }
+    const mm = rowEffectiveLastMinutesLedger(r);
+    if (mm != null && mm > maxM) maxM = mm;
+  }
+  if (maxM < 0) return null;
+  const h = Math.floor(maxM / 60) % 24;
+  const mi = maxM % 60;
+  return `${String(h).padStart(2, "0")}:${String(mi).padStart(2, "0")}`;
+}
+
+/** 날짜·시작시간 기준 최신 먼저 (최근 날짜 위, 같은 날은 늦은 시각→이른 시각) */
 function sortRowsByDateTime(rows) {
   return [...rows].sort((a, b) => {
     const dateA = normalizeDateForCompare(a.date || "") || a.date || "";
     const dateB = normalizeDateForCompare(b.date || "") || b.date || "";
-    if (dateA !== dateB) return dateA.localeCompare(dateB);
+    if (dateA !== dateB) return dateB.localeCompare(dateA);
     const startA = parseDateTimeToHours(a.startTime) ?? 0;
     const startB = parseDateTimeToHours(b.startTime) ?? 0;
-    return startA - startB;
+    return startB - startA;
   });
 }
 
@@ -2148,7 +2211,8 @@ function createDateCell(initialValue) {
   return { wrap, input, refresh };
 }
 
-function createTagDropdown(options, initialValue, optionClass, onSelect) {
+/** @param {AbortSignal} [tabSignal] 탭 이탈 시 document 리스너 정리용 */
+function createTagDropdown(options, initialValue, optionClass, onSelect, tabSignal) {
   const wrap = document.createElement("div");
   wrap.className = "time-tag-dropdown-wrap";
   let value =
@@ -2190,23 +2254,14 @@ function createTagDropdown(options, initialValue, optionClass, onSelect) {
   function closePanel() {
     panel.hidden = true;
     trigger.setAttribute("aria-expanded", "false");
-    document.removeEventListener("keydown", onDocKeydown);
     if (panel.parentElement === document.body) {
       document.body.removeChild(panel);
       wrap.appendChild(panel);
     }
   }
 
-  const onDocKeydown = (e) => {
-    if (e.key === "Escape") {
-      closePanel();
-      trigger.focus();
-      document.removeEventListener("keydown", onDocKeydown);
-    }
-  };
   function openPanel() {
     trigger.setAttribute("aria-expanded", "true");
-    document.addEventListener("keydown", onDocKeydown);
     const rect = trigger.getBoundingClientRect();
     panel.style.position = "fixed";
     panel.style.top = `${rect.bottom + 4}px`;
@@ -2227,11 +2282,34 @@ function createTagDropdown(options, initialValue, optionClass, onSelect) {
       closePanel();
     }
   });
-  document.addEventListener("click", (e) => {
-    if (!wrap.contains(e.target) && !panel.contains(e.target)) {
-      closePanel();
-    }
-  });
+  if (tabSignal) {
+    document.addEventListener(
+      "keydown",
+      (e) => {
+        if (panel.hidden) return;
+        if (e.key === "Escape") {
+          closePanel();
+          trigger.focus();
+        }
+      },
+      { signal: tabSignal },
+    );
+    document.addEventListener(
+      "click",
+      (e) => {
+        if (!wrap.contains(e.target) && !panel.contains(e.target)) {
+          closePanel();
+        }
+      },
+      { signal: tabSignal },
+    );
+  } else {
+    document.addEventListener("click", (e) => {
+      if (!wrap.contains(e.target) && !panel.contains(e.target)) {
+        closePanel();
+      }
+    });
+  }
 
   wrap.appendChild(trigger);
   wrap.appendChild(panel);
@@ -2249,8 +2327,8 @@ function createTagDropdown(options, initialValue, optionClass, onSelect) {
 const DELETE_ICON =
   '<svg class="time-task-delete-icon" viewBox="0 0 16 16" width="16" height="16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
 
-/** 과제명 입력: 포커스 시 목록 표시, 목록에 없으면 Create 옵션 */
-function createTaskNameInput(initialValue, onTaskSelect) {
+/** 과제명 입력: 포커스 시 목록 표시, 목록에 없으면 Create 옵션 @param {AbortSignal} [tabSignal] */
+function createTaskNameInput(initialValue, onTaskSelect, tabSignal) {
   const wrap = document.createElement("div");
   wrap.className = "time-task-name-wrap";
 
@@ -2406,9 +2484,14 @@ function createTaskNameInput(initialValue, onTaskSelect) {
     }
   });
 
-  document.addEventListener("click", (e) => {
+  const docClickClose = (e) => {
     if (!wrap.contains(e.target)) closePanel();
-  });
+  };
+  if (tabSignal) {
+    document.addEventListener("click", docClickClose, { signal: tabSignal });
+  } else {
+    document.addEventListener("click", docClickClose);
+  }
 
   wrap.appendChild(inputWrap);
   wrap.appendChild(panel);
@@ -2482,9 +2565,10 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   endTimeTd.className = "time-cell time-cell-end";
   const endTimeSpan = document.createElement("span");
   endTimeSpan.className = "time-display-end";
-  endTimeSpan.textContent = rowData.endTime
-    ? toDisplayTimeOnly(rowData.endTime) || rowData.endTime
-    : "";
+  endTimeSpan.textContent = formatTimeLedgerEndCellDisplay(
+    rowData.startTime,
+    rowData.endTime,
+  );
   endTimeTd.appendChild(endTimeSpan);
 
   const timeTd = document.createElement("td");
@@ -2513,10 +2597,11 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
     else if (!hasStart) timeSpan.textContent = "";
     else timeSpan.textContent = formatHoursToHHMM(hours);
 
-    /* 데스크톱 테이블 행: 마감 없음이면 빈 칸(진행 중). 라이브 시계는 모바일 카드 전용. */
-    endTimeSpan.textContent = data.endTime
-      ? toDisplayTimeOnly(data.endTime) || data.endTime
-      : "";
+    /* 마감 없음·시작 있음 → 「진행중」(모바일 카드 시간 줄과 동일 의미) */
+    endTimeSpan.textContent = formatTimeLedgerEndCellDisplay(
+      data.startTime,
+      data.endTime,
+    );
 
     viewEl?._updateTotal?.();
   }
@@ -2977,12 +3062,12 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
     <div class="time-mobile-card-body">
       <div class="time-mobile-card-header">
         <span class="time-mobile-card-task">${taskName}</span>
-        <div class="time-mobile-card-right">
-          <span class="time-mobile-card-tracked">${tracked}</span>
-          <span class="time-mobile-card-price${priceClass}">${formatPrice(priceVal)}</span>
-        </div>
+        <span class="time-mobile-card-tracked">${tracked}</span>
       </div>
-      <div class="time-mobile-card-time">${timeRange}</div>
+      <div class="time-mobile-card-meta">
+        <span class="time-mobile-card-time">${timeRange}</span>
+        <span class="time-mobile-card-price${priceClass}">${formatPrice(priceVal)}</span>
+      </div>
       ${memo ? `<div class="time-mobile-card-memo">${memo}</div>` : ""}
     </div>
   `;
@@ -3188,6 +3273,9 @@ function createProductivitySection(
 export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content time-ledger-view";
+  const timeTabAbort = new AbortController();
+  el._lpTabAbortController = timeTabAbort;
+  const signal = timeTabAbort.signal;
 
   attachTimeLedgerTasksSaveListener();
   void hydrateTimeLedgerTasksFromCloud();
@@ -3207,6 +3295,10 @@ export function render() {
 
   const hourlyWrap = document.createElement("div");
   hourlyWrap.className = "time-hourly-wrap";
+  const hourlyAddSlot = document.createElement("div");
+  hourlyAddSlot.className = "time-hourly-add-slot";
+  const hourlyRateBlock = document.createElement("div");
+  hourlyRateBlock.className = "time-hourly-rate-block";
   const hourlyLabel = document.createElement("span");
   hourlyLabel.className = "time-hourly-label";
   hourlyLabel.textContent = "내 시급: ";
@@ -3235,7 +3327,7 @@ export function render() {
         new CustomEvent("app-switch-tab", { detail: { tabId: "idea" } }),
       );
     });
-    hourlyWrap.appendChild(setupLink);
+    hourlyRateBlock.appendChild(setupLink);
   }
   const hourlyInput = document.createElement("input");
   hourlyInput.type = "hidden";
@@ -3244,10 +3336,12 @@ export function render() {
   const hourlyHint = document.createElement("span");
   hourlyHint.className = "time-hourly-hint";
   hourlyHint.textContent = "My account에서 시급을 설정하면 금액이 계산됩니다";
-  hourlyWrap.appendChild(hourlyLabel);
-  hourlyWrap.appendChild(hourlyDisplay);
-  hourlyWrap.appendChild(hourlyInput);
-  hourlyWrap.appendChild(hourlyHint);
+  hourlyRateBlock.appendChild(hourlyLabel);
+  hourlyRateBlock.appendChild(hourlyDisplay);
+  hourlyRateBlock.appendChild(hourlyInput);
+  hourlyRateBlock.appendChild(hourlyHint);
+  hourlyWrap.appendChild(hourlyAddSlot);
+  hourlyWrap.appendChild(hourlyRateBlock);
   el.appendChild(hourlyWrap);
 
   function updateHourlyHint() {
@@ -3376,12 +3470,16 @@ export function render() {
     yearDisplay.textContent = filterYear;
     onFilterChange();
   });
-  document.addEventListener("click", (e) => {
-    if (!monthDropdownWrap?.contains(e.target)) {
-      monthPanel?.classList.remove("is-open");
-      monthDropdownWrap?.classList.remove("is-open");
-    }
-  });
+  document.addEventListener(
+    "click",
+    (e) => {
+      if (!monthDropdownWrap?.contains(e.target)) {
+        monthPanel?.classList.remove("is-open");
+        monthDropdownWrap?.classList.remove("is-open");
+      }
+    },
+    { signal },
+  );
 
   startDateInput.value = filterStartDate;
   endDateInput.value = filterEndDate;
@@ -3465,6 +3563,7 @@ export function render() {
       updateTotal();
     } else if (view === "blank") {
       clearTimeLedgerMobileElapsedTimer(el);
+      rescueTimeFilterDayNavToFilterBar();
       contentWrap.innerHTML = "";
     } else if (view === "audit") {
       renderAudit(filtered);
@@ -3491,7 +3590,7 @@ export function render() {
     mobileTabsSummary.style.display =
       isMobile && view === "all" ? "" : "none";
   }
-  window.addEventListener("resize", syncMobileTabsSummaryDisplay);
+  window.addEventListener("resize", syncMobileTabsSummaryDisplay, { signal });
   tabsFilterRow.appendChild(mobileTabsSummary);
   tabsFilterRow.appendChild(viewTabs);
   tabsFilterRow.appendChild(filterBar);
@@ -3704,6 +3803,7 @@ export function render() {
             </div>
             <div class="time-task-log-time-adjust-btns">
               <button type="button" class="time-task-log-time-adjust-btn time-task-log-time-adjust-now" data-now="true">지금</button>
+              <button type="button" class="time-task-log-time-adjust-btn time-task-log-time-adjust-last" data-last="true">마지막</button>
               <button type="button" class="time-task-log-time-adjust-btn" data-delta="-30">−30</button>
               <button type="button" class="time-task-log-time-adjust-btn" data-delta="-15">−15</button>
               <button type="button" class="time-task-log-time-adjust-btn" data-delta="15">+15</button>
@@ -4263,6 +4363,8 @@ export function render() {
     lastFocusedTimeField = "end";
   });
 
+  let taskLogEditExclude = null;
+
   taskLogModal
     .querySelectorAll(".time-task-log-time-adjust-btn")
     .forEach((btn) => {
@@ -4279,6 +4381,26 @@ export function render() {
         const fallbackTime = startHasTime
           ? startTimeVal
           : `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}`;
+
+        if (btn.dataset.last === "true") {
+          const dateVal = (taskLogDateStart?.value || "").trim();
+          const latest = getLatestLedgerHhMmForTaskLogDate(
+            dateVal,
+            taskLogEditExclude,
+          );
+          if (!latest) {
+            showToast("해당 날짜에 참고할 기록이 없습니다.", "info");
+            return;
+          }
+          if (targetIsStart) {
+            if (taskLogTimeStart) taskLogTimeStart.value = latest;
+            syncStartToHidden();
+          } else {
+            if (taskLogTimeEnd) taskLogTimeEnd.value = latest;
+            syncEndToHidden();
+          }
+          return;
+        }
 
         if (btn.dataset.now === "true") {
           const newTime = `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}`;
@@ -4598,8 +4720,14 @@ export function render() {
         panel.hidden = true;
       }
     };
-    document.addEventListener("mousedown", closePanelOnOutside, true);
-    document.addEventListener("touchstart", closePanelOnOutside, true);
+    document.addEventListener("mousedown", closePanelOnOutside, {
+      capture: true,
+      signal,
+    });
+    document.addEventListener("touchstart", closePanelOnOutside, {
+      capture: true,
+      signal,
+    });
     wrap.appendChild(trigger);
     wrap.appendChild(panel);
     wrap._getValue = () => value;
@@ -5862,6 +5990,7 @@ export function render() {
   function openTaskLogModal(addContext) {
     taskLogAddContext = addContext;
     taskLogEditTr = null;
+    taskLogEditExclude = null;
     pendingEditStartTime = "";
     taskLogTitleEl.textContent = "과제 기록";
     taskLogSubmitBtn.textContent = "기록";
@@ -5977,6 +6106,17 @@ export function render() {
 
     taskLogAddContext = null;
     taskLogEditTr = tr;
+    const recKey =
+      recordDate ||
+      normalizeDateForCompare(data.date || "") ||
+      String(data.date || "")
+        .trim()
+        .replace(/\//g, "-")
+        .slice(0, 10);
+    taskLogEditExclude = {
+      id: String(data.id || "").trim(),
+      composite: `${recKey}|${(data.taskName || "").trim()}|${(data.startTime || "").trim()}`,
+    };
     pendingEditStartTime = startTime || "";
     taskLogTitleEl.textContent = "과제 수정";
     taskLogSubmitBtn.textContent = "수정";
@@ -6053,6 +6193,7 @@ export function render() {
     document.body.style.overflow = "";
     taskLogAddContext = null;
     taskLogEditTr = null;
+    taskLogEditExclude = null;
     pendingEditStartTime = "";
   }
 
@@ -6195,9 +6336,8 @@ export function render() {
         editTr.querySelector(".time-display-start").textContent = startTime
           ? toDisplayTimeOnly(startTime) || startTime
           : "";
-        editTr.querySelector(".time-display-end").textContent = endTime
-          ? toDisplayTimeOnly(endTime) || endTime
-          : "";
+        editTr.querySelector(".time-display-end").textContent =
+          formatTimeLedgerEndCellDisplay(startTime, endTime);
         editTr.querySelector(".time-display-tracked").textContent = timeTracked;
         editTr.querySelector(".time-display-feedback").textContent = feedback;
         const memoTagCell = editTr.querySelector(
@@ -6722,16 +6862,20 @@ export function render() {
   }
   backdrop?.addEventListener("click", closeTaskSetupModal);
   closeBtn?.addEventListener("click", closeTaskSetupModal);
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      if (!taskLogPickerWrap.hidden) {
-        closeDateTimePicker();
-      } else if (!taskLogModal.hidden) {
-        closeTaskLogModal();
-      } else if (!addTaskModal.hidden) closeAddTaskModal();
-      else if (!taskSetupModal.hidden) closeTaskSetupModal();
-    }
-  });
+  document.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.key === "Escape") {
+        if (!taskLogPickerWrap.hidden) {
+          closeDateTimePicker();
+        } else if (!taskLogModal.hidden) {
+          closeTaskLogModal();
+        } else if (!addTaskModal.hidden) closeAddTaskModal();
+        else if (!taskSetupModal.hidden) closeTaskSetupModal();
+      }
+    },
+    { signal },
+  );
 
   const contentWrap = document.createElement("div");
   contentWrap.className = "time-view-content-wrap";
@@ -6933,8 +7077,6 @@ export function render() {
   table.className = "time-ledger-table";
   table.innerHTML = createTableHTML();
 
-  const tbody = table.querySelector("tbody");
-  const theadRow = table.querySelector("thead tr");
   const taskTh = table.querySelector(".time-th-task");
   const taskCol = table.querySelector(".time-col-task");
 
@@ -6973,63 +7115,22 @@ export function render() {
     requestAnimationFrame(() => updateStickyLefts(table));
   }
 
-  const addBtn = document.createElement("button");
-  addBtn.type = "button";
-  addBtn.className = "time-btn-add";
-  addBtn.innerHTML =
-    '+ 과제 기록';
-
-  const initialHandleRowDelete = (tr, rowData) => {
-    if (rowData) {
-      const k = `${rowData.date}|${rowData.taskName}|${rowData.startTime}`;
-      allRowsCache = allRowsCache.filter(
-        (c) => `${c.date}|${c.taskName}|${c.startTime}` !== k,
-      );
-      saveTimeRows(allRowsCache);
-    }
-    tr.remove();
-    updateTotal();
-  };
-  const initialHandleRowEdit = (tr, rowData) => {
-    openTaskLogModalForEdit(tr, rowData);
-  };
-
-  addBtn.addEventListener("click", () => {
-    if (openTaskLogModal) {
-      openTaskLogModal({
-        productivity: null,
-        tbody,
-        addRow: null,
-        onRowUpdate: updateTotal,
-        viewEl: el,
-        createRow,
-        handleRowDelete: initialHandleRowDelete,
-        handleRowEdit: initialHandleRowEdit,
-      });
-    } else {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().slice(0, 10);
-      const tr = createRow(
-        { date: yesterdayStr },
-        updateTotal,
-        el,
-        initialHandleRowDelete,
-        initialHandleRowEdit,
-      );
-      tbody.appendChild(tr);
-      updateTotal();
-    }
-  });
-
   updateTotal();
+
+  /** 모바일 툴바에 붙였던 일자 네비를 비우기 전 filterBar로 되돌림 (DOM 유실 방지) */
+  function rescueTimeFilterDayNavToFilterBar() {
+    const nav = contentWrap.querySelector(".time-filter-day-nav");
+    if (nav && dayWrap) dayWrap.appendChild(nav);
+  }
 
   function renderAll(rows = []) {
     clearTimeLedgerMobileElapsedTimer(el);
+    rescueTimeFilterDayNavToFilterBar();
     contentWrap.innerHTML = "";
     const isMobile = window.matchMedia("(max-width: 48rem)").matches;
 
     if (isMobile) {
+      el.querySelector(".time-hourly-add-slot")?.replaceChildren();
       const toolbar = document.createElement("div");
       toolbar.className = "time-ledger-mobile-toolbar";
       const leftWrap = document.createElement("div");
@@ -7129,6 +7230,14 @@ export function render() {
       };
       leftWrap.addEventListener("click", openAdd);
 
+      const dayNavForToolbar = filterBar.querySelector(".time-filter-day-nav");
+      if (dayNavForToolbar) {
+        const daySlot = document.createElement("div");
+        daySlot.className = "time-ledger-mobile-toolbar-day";
+        daySlot.appendChild(dayNavForToolbar);
+        toolbar.appendChild(daySlot);
+      }
+
       contentWrap.appendChild(toolbar);
       contentWrap.appendChild(dateDivider);
       contentWrap.appendChild(cardsWrap);
@@ -7156,11 +7265,6 @@ export function render() {
     tbl.className = "time-ledger-table";
     tbl.innerHTML = createTableHTML();
     const tbodyEl = tbl.querySelector("tbody");
-    const addBtnEl = document.createElement("button");
-    addBtnEl.type = "button";
-    addBtnEl.className = "time-btn-add";
-    addBtnEl.innerHTML =
-      '+ 과제 기록';
 
     const handleRowDelete = (tr, rowData) => {
       if (rowData) {
@@ -7215,7 +7319,7 @@ export function render() {
       </div>
     `;
 
-    addBtnEl.addEventListener("click", () => {
+    const openDesktopAdd = () => {
       if (openTaskLogModal) {
         openTaskLogModal({
           productivity: null,
@@ -7246,7 +7350,25 @@ export function render() {
         tbodyEl.appendChild(tr);
         updateTotal();
       }
-    });
+    };
+
+    const hourlyAddSlotEl = el.querySelector(".time-hourly-add-slot");
+    if (hourlyAddSlotEl) {
+      hourlyAddSlotEl.innerHTML = "";
+      const addInner = document.createElement("div");
+      addInner.className = "time-hourly-add-inner";
+      const addBtnEl = document.createElement("button");
+      addBtnEl.type = "button";
+      addBtnEl.className = "time-btn-add";
+      addBtnEl.textContent = "+";
+      const addLabel = document.createElement("span");
+      addLabel.className = "time-ledger-add-label";
+      addLabel.textContent = "과제 기록";
+      addInner.appendChild(addBtnEl);
+      addInner.appendChild(addLabel);
+      hourlyAddSlotEl.appendChild(addInner);
+      addInner.addEventListener("click", openDesktopAdd);
+    }
 
     const taskThEl = tbl.querySelector(".time-th-task");
     const taskColEl = tbl.querySelector(".time-col-task");
@@ -7286,10 +7408,6 @@ export function render() {
     ledgerContainer.className = "time-ledger-container";
     ledgerContainer.appendChild(summaryPanel);
     ledgerContainer.appendChild(wrap);
-    const addButtonWrap = document.createElement("div");
-    addButtonWrap.className = "time-add-button-wrap";
-    addButtonWrap.appendChild(addBtnEl);
-    ledgerContainer.appendChild(addButtonWrap);
     contentWrap.appendChild(ledgerContainer);
 
     const refreshDesktopLiveRows = () => {
@@ -7308,6 +7426,7 @@ export function render() {
 
   function renderByProductivity(rows = []) {
     clearTimeLedgerMobileElapsedTimer(el);
+    rescueTimeFilterDayNavToFilterBar();
     contentWrap.innerHTML = "";
     const type = filterType;
     const y = filterYear;
@@ -7476,6 +7595,7 @@ export function render() {
 
   function renderImprove(rows = []) {
     clearTimeLedgerMobileElapsedTimer(el);
+    rescueTimeFilterDayNavToFilterBar();
     contentWrap.innerHTML = "";
     const type = filterType;
     const y = filterYear;
@@ -7863,6 +7983,7 @@ export function render() {
 
   function renderAudit(rows = []) {
     clearTimeLedgerMobileElapsedTimer(el);
+    rescueTimeFilterDayNavToFilterBar();
     contentWrap.innerHTML = "";
     const type = filterType;
     const y = filterYear;
@@ -8440,6 +8561,7 @@ export function render() {
 
   function renderDashboard(rows = []) {
     clearTimeLedgerMobileElapsedTimer(el);
+    rescueTimeFilterDayNavToFilterBar();
     contentWrap.innerHTML = "";
     const dash = document.createElement("div");
     dash.className = "time-dashboard-view";
@@ -9161,6 +9283,7 @@ export function render() {
           saveCurrentGoal();
           onHeaderUpdateRef.current?.();
         },
+        signal,
       );
       taskTd.appendChild(taskDropdown.wrap);
       tr.appendChild(taskTd);
@@ -9440,6 +9563,15 @@ export function render() {
   }
 
   function switchView(view) {
+    el.dataset.timeContentView = view;
+    const hourlyAddSlotRoot = el.querySelector(".time-hourly-add-slot");
+    if (
+      hourlyAddSlotRoot &&
+      !window.matchMedia("(max-width: 48rem)").matches &&
+      view !== "all"
+    ) {
+      hourlyAddSlotRoot.innerHTML = "";
+    }
     const currentView = viewTabs.querySelector(".time-view-tab.active")?.dataset
       ?.view;
     if (currentView === "all") {
@@ -9458,6 +9590,7 @@ export function render() {
       renderAll(rowsToUse);
     } else if (view === "blank") {
       clearTimeLedgerMobileElapsedTimer(el);
+      rescueTimeFilterDayNavToFilterBar();
       contentWrap.innerHTML = "";
     } else if (view === "audit") {
       renderAudit(getFilteredRows(cachedRows));
@@ -9472,14 +9605,11 @@ export function render() {
     btn.addEventListener("click", () => switchView(btn.dataset.view));
   });
 
+  el.dataset.timeContentView = "all";
   tableWrap.appendChild(table);
   const ledgerContainer = document.createElement("div");
   ledgerContainer.className = "time-ledger-container";
   ledgerContainer.appendChild(tableWrap);
-  const addButtonWrap = document.createElement("div");
-  addButtonWrap.className = "time-add-button-wrap";
-  addButtonWrap.appendChild(addBtn);
-  ledgerContainer.appendChild(addButtonWrap);
   contentWrap.appendChild(ledgerContainer);
 
   onFilterChange(true);
@@ -10048,13 +10178,19 @@ export function renderTimeBudgetTablesForCalendar(
     endInput.addEventListener("input", scheduleTimetableUpdateDebounced);
 
     const opts = dropdownOptionsOverride || investTaskDropdownOptions;
-    const taskDropdown = createTagDropdown(opts, taskName || "", "cat", () => {
-      /* 과제명 선택 시 예상 시간이 이미 있으면 타임테이블 갱신 필요 */
-      saveCurrentGoal(true, true);
-      if (tbody) refreshAllGoalInputStates(tbody);
-      const block = tr.closest(".time-daily-budget-table-block");
-      if (block) updateGoalDiffDisplays(block);
-    });
+    const taskDropdown = createTagDropdown(
+      opts,
+      taskName || "",
+      "cat",
+      () => {
+        /* 과제명 선택 시 예상 시간이 이미 있으면 타임테이블 갱신 필요 */
+        saveCurrentGoal(true, true);
+        if (tbody) refreshAllGoalInputStates(tbody);
+        const block = tr.closest(".time-daily-budget-table-block");
+        if (block) updateGoalDiffDisplays(block);
+      },
+      signal,
+    );
     taskDropdown.wrap._getValue = taskDropdown.getValue;
     taskTd.appendChild(taskDropdown.wrap);
     tr.appendChild(taskTd);

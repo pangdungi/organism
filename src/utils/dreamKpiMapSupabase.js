@@ -351,9 +351,9 @@ export async function pullDreamKpiMapFromSupabase() {
   const daily = dailyRes.data || [];
   const meta = metaRes.data;
 
-  if (!hasAnyNormalizedData(categories, kpis, logs, todos, daily, meta)) return false;
-
-  const payload = buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, meta);
+  const payload = hasAnyNormalizedData(categories, kpis, logs, todos, daily, meta)
+    ? buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, meta)
+    : buildPayloadFromNormalizedRows([], [], [], [], [], null);
   try {
     localStorage.setItem(DREAM_KPI_MAP_STORAGE_KEY, JSON.stringify(payload));
   } catch (_) {}
@@ -388,43 +388,6 @@ export async function syncDreamKpiMapToSupabase() {
   } catch (e) {
     console.warn("[dream-kpi-map] sync", e?.message || e);
   }
-}
-
-function hasMeaningfulLocalData() {
-  return localPayloadHasAnythingToPersist(readLocalPayload());
-}
-
-async function serverHasAnyNormalizedRow(userId) {
-  const tables = [
-    "dream_map_categories",
-    "dream_map_kpis",
-    "dream_map_kpi_logs",
-    "dream_map_kpi_todos",
-    "dream_map_kpi_daily_todos",
-  ];
-  for (const table of tables) {
-    const { count, error } = await supabase.from(table).select("*", { count: "exact", head: true }).eq("user_id", userId);
-    if (error) continue;
-    if ((count ?? 0) > 0) return true;
-  }
-  const { data: meta, error: mErr } = await supabase
-    .from("dream_map_meta")
-    .select("kpi_order, kpi_task_sync, goals, tasks, desired_life")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (!mErr && metaRowHasData(meta)) return true;
-  return false;
-}
-
-export async function pushLocalDreamKpiMapIfServerHasNoRow() {
-  const userId = await getSessionUserId();
-  if (!userId || !supabase) return;
-
-  const hasServer = await serverHasAnyNormalizedRow(userId);
-  if (hasServer) return;
-  if (!hasMeaningfulLocalData()) return;
-
-  await syncDreamKpiMapToSupabase();
 }
 
 let _pushTimer = null;
@@ -476,7 +439,5 @@ export function attachDreamKpiMapSaveListener() {
 export async function hydrateDreamKpiMapFromCloud() {
   attachDreamKpiMapSaveListener();
   if (!supabase) return false;
-  const applied = await pullDreamKpiMapFromSupabase();
-  await pushLocalDreamKpiMapIfServerHasNoRow();
-  return applied;
+  return pullDreamKpiMapFromSupabase();
 }

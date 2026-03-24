@@ -380,9 +380,9 @@ export async function pullSideincomeKpiMapFromSupabase() {
   const daily = dailyRes.data || [];
   const meta = metaRes.data;
 
-  if (!hasAnyNormalizedData(paths, pathLogs, kpis, kpiLogs, todos, daily, meta)) return false;
-
-  const payload = buildPayloadFromRows(paths, pathLogs, kpis, kpiLogs, todos, daily, meta);
+  const payload = hasAnyNormalizedData(paths, pathLogs, kpis, kpiLogs, todos, daily, meta)
+    ? buildPayloadFromRows(paths, pathLogs, kpis, kpiLogs, todos, daily, meta)
+    : buildPayloadFromRows([], [], [], [], [], [], null);
   try {
     localStorage.setItem(SIDEINCOME_KPI_MAP_STORAGE_KEY, JSON.stringify(payload));
   } catch (_) {}
@@ -417,44 +417,6 @@ export async function syncSideincomeKpiMapToSupabase() {
   } catch (e) {
     console.warn("[sideincome-kpi-map] sync", e?.message || e);
   }
-}
-
-function hasMeaningfulLocalData() {
-  return localPayloadHasAnythingToPersist(readLocalPayload());
-}
-
-async function serverHasAnyNormalizedRow(userId) {
-  const tables = [
-    "sideincome_map_paths",
-    "sideincome_map_path_logs",
-    "sideincome_map_kpis",
-    "sideincome_map_kpi_logs",
-    "sideincome_map_kpi_todos",
-    "sideincome_map_kpi_daily_todos",
-  ];
-  for (const table of tables) {
-    const { count, error } = await supabase.from(table).select("*", { count: "exact", head: true }).eq("user_id", userId);
-    if (error) continue;
-    if ((count ?? 0) > 0) return true;
-  }
-  const { data: meta, error: mErr } = await supabase
-    .from("sideincome_map_meta")
-    .select("kpi_order, kpi_task_sync")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (!mErr && metaRowHasData(meta)) return true;
-  return false;
-}
-
-export async function pushLocalSideincomeKpiMapIfServerHasNoRow() {
-  const userId = await getSessionUserId();
-  if (!userId || !supabase) return;
-
-  const hasServer = await serverHasAnyNormalizedRow(userId);
-  if (hasServer) return;
-  if (!hasMeaningfulLocalData()) return;
-
-  await syncSideincomeKpiMapToSupabase();
 }
 
 let _pushTimer = null;
@@ -506,7 +468,5 @@ export function attachSideincomeKpiMapSaveListener() {
 export async function hydrateSideincomeKpiMapFromCloud() {
   attachSideincomeKpiMapSaveListener();
   if (!supabase) return false;
-  const applied = await pullSideincomeKpiMapFromSupabase();
-  await pushLocalSideincomeKpiMapIfServerHasNoRow();
-  return applied;
+  return pullSideincomeKpiMapFromSupabase();
 }

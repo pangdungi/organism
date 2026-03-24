@@ -33,6 +33,17 @@ function emptyPayload() {
   };
 }
 
+/** 디버그: 새로고침 직후 로컬 vs pull 후 비교용 (콘솔 필터: happiness-kpi-map][trace) */
+function happinessKpiMapTraceSnapshot(p) {
+  const n = normalizePayload(p);
+  return {
+    happinesses: n.happinesses.length,
+    kpis: n.kpis.length,
+    kpiTodos: n.kpiTodos.length,
+    kpiLogs: n.kpiLogs.length,
+  };
+}
+
 function normalizePayload(p) {
   if (!p || typeof p !== "object") return emptyPayload();
   const kpis = (Array.isArray(p.kpis) ? p.kpis : []).map((k) => ({
@@ -311,9 +322,9 @@ export async function pullHappinessKpiMapFromSupabase() {
   const daily = dailyRes.data || [];
   const meta = metaRes.data;
 
-  if (!hasAnyNormalizedData(categories, kpis, logs, todos, daily, meta)) return false;
-
-  const payload = buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, meta);
+  const payload = hasAnyNormalizedData(categories, kpis, logs, todos, daily, meta)
+    ? buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, meta)
+    : buildPayloadFromNormalizedRows([], [], [], [], [], null);
   try {
     localStorage.setItem(HAPPINESS_KPI_MAP_STORAGE_KEY, JSON.stringify(payload));
   } catch (_) {}
@@ -340,6 +351,7 @@ export async function syncHappinessKpiMapToSupabase() {
   }
 
   const p = readLocalPayload();
+  console.log("[happiness-kpi-map][trace] push: 로컬 → Supabase 전체 반영 직전", happinessKpiMapTraceSnapshot(p));
   try {
     await deleteAllNormalizedForUser(userId);
     if (
@@ -356,54 +368,6 @@ export async function syncHappinessKpiMapToSupabase() {
   } catch (e) {
     console.warn("[happiness-kpi-map] sync", e?.message || e);
   }
-}
-
-function hasMeaningfulLocalData() {
-  const p = readLocalPayload();
-  return (
-    p.happinesses.length > 0 ||
-    p.kpis.length > 0 ||
-    p.kpiLogs.length > 0 ||
-    p.kpiTodos.length > 0 ||
-    p.kpiDailyRepeatTodos.length > 0 ||
-    Object.keys(p.kpiOrder).length > 0 ||
-    Object.keys(p.kpiTaskSync).length > 0
-  );
-}
-
-async function serverHasAnyNormalizedRow(userId) {
-  const tables = [
-    "happiness_map_categories",
-    "happiness_map_kpis",
-    "happiness_map_kpi_logs",
-    "happiness_map_kpi_todos",
-    "happiness_map_kpi_daily_todos",
-  ];
-  for (const table of tables) {
-    const { count, error } = await supabase.from(table).select("*", { count: "exact", head: true }).eq("user_id", userId);
-    if (error) continue;
-    if ((count ?? 0) > 0) return true;
-  }
-  const { data: meta, error: mErr } = await supabase
-    .from("happiness_map_meta")
-    .select("kpi_order, kpi_task_sync")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (!mErr && meta && (Object.keys(meta.kpi_order || {}).length > 0 || Object.keys(meta.kpi_task_sync || {}).length > 0)) {
-    return true;
-  }
-  return false;
-}
-
-export async function pushLocalHappinessKpiMapIfServerHasNoRow() {
-  const userId = await getSessionUserId();
-  if (!userId || !supabase) return;
-
-  const hasServer = await serverHasAnyNormalizedRow(userId);
-  if (hasServer) return;
-  if (!hasMeaningfulLocalData()) return;
-
-  await syncHappinessKpiMapToSupabase();
 }
 
 let _pushTimer = null;
@@ -454,8 +418,19 @@ export function attachHappinessKpiMapSaveListener() {
 /** @returns {Promise<boolean>} pull로 로컬이 바뀌었으면 true */
 export async function hydrateHappinessKpiMapFromCloud() {
   attachHappinessKpiMapSaveListener();
+  const before = readLocalPayload();
+  console.log(
+    "[happiness-kpi-map][trace] hydrate: pull 직전 로컬 (새로고침 직후면 여기가 브라우저에 남아 있던 값)",
+    happinessKpiMapTraceSnapshot(before),
+  );
   if (!supabase) return false;
   const applied = await pullHappinessKpiMapFromSupabase();
-  await pushLocalHappinessKpiMapIfServerHasNoRow();
+  const afterPull = readLocalPayload();
+  console.log(
+    "[happiness-kpi-map][trace] hydrate: pull 이후 (applied=" +
+      applied +
+      " = pull 성공 시 true, 서버가 비어도 로컬을 빈 스냅샷으로 맞춤)",
+    happinessKpiMapTraceSnapshot(afterPull),
+  );
   return applied;
 }

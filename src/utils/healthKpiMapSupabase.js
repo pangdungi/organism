@@ -334,7 +334,10 @@ export async function pullHealthKpiMapFromSupabase() {
   }
   const legacyPayload = legacyRow?.payload;
   if (legacyPayload == null || (typeof legacyPayload === "object" && Object.keys(legacyPayload).length === 0)) {
-    return false;
+    try {
+      localStorage.setItem(HEALTH_KPI_MAP_STORAGE_KEY, JSON.stringify(emptyPayload()));
+    } catch (_) {}
+    return true;
   }
 
   applyHealthKpiMapToLocalStorage({ payload: legacyPayload });
@@ -387,51 +390,6 @@ export async function syncHealthKpiMapToSupabase() {
   }
 }
 
-function hasMeaningfulLocalData() {
-  const p = readLocalPayload();
-  return (
-    p.healths.length > 0 ||
-    p.kpis.length > 0 ||
-    p.kpiLogs.length > 0 ||
-    p.kpiTodos.length > 0 ||
-    p.kpiDailyRepeatTodos.length > 0 ||
-    Object.keys(p.kpiOrder).length > 0 ||
-    Object.keys(p.kpiTaskSync).length > 0
-  );
-}
-
-async function serverHasAnyNormalizedRow(userId) {
-  const tables = [
-    "health_map_categories",
-    "health_map_kpis",
-    "health_map_kpi_logs",
-    "health_map_kpi_todos",
-    "health_map_kpi_daily_todos",
-  ];
-  for (const table of tables) {
-    const { count, error } = await supabase.from(table).select("*", { count: "exact", head: true }).eq("user_id", userId);
-    if (error) continue;
-    if ((count ?? 0) > 0) return true;
-  }
-  const { data: meta, error: mErr } = await supabase.from("health_map_meta").select("kpi_order, kpi_task_sync").eq("user_id", userId).maybeSingle();
-  if (!mErr && meta && (Object.keys(meta.kpi_order || {}).length > 0 || Object.keys(meta.kpi_task_sync || {}).length > 0)) {
-    return true;
-  }
-  const { data: leg } = await supabase.from(LEGACY_TABLE).select("user_id").eq("user_id", userId).maybeSingle();
-  return !!leg;
-}
-
-export async function pushLocalHealthKpiMapIfServerHasNoRow() {
-  const userId = await getSessionUserId();
-  if (!userId || !supabase) return;
-
-  const hasServer = await serverHasAnyNormalizedRow(userId);
-  if (hasServer) return;
-  if (!hasMeaningfulLocalData()) return;
-
-  await syncHealthKpiMapToSupabase();
-}
-
 let _pushTimer = null;
 const PUSH_DEBOUNCE_MS = 800;
 
@@ -481,7 +439,5 @@ export function attachHealthKpiMapSaveListener() {
 export async function hydrateHealthKpiMapFromCloud() {
   attachHealthKpiMapSaveListener();
   if (!supabase) return false;
-  const applied = await pullHealthKpiMapFromSupabase();
-  await pushLocalHealthKpiMapIfServerHasNoRow();
-  return applied;
+  return pullHealthKpiMapFromSupabase();
 }
