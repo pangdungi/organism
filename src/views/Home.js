@@ -5,6 +5,7 @@
 import { getKpiTodosAsTasks, syncKpiTodoCompleted } from "../utils/kpiTodoSync.js";
 import { getCustomSections } from "../utils/todoSettings.js";
 import { getTodayTimeSummary } from "./Time.js";
+import { render1DayView } from "./Calendar.js";
 
 const SECTION_TASKS_KEY = "todo-section-tasks";
 const CUSTOM_SECTION_TASKS_KEY = "todo-custom-section-tasks";
@@ -624,6 +625,25 @@ export function render() {
   fillReminderContent(reminderContent);
   reminderHalf.appendChild(reminderContent);
   section2.appendChild(reminderHalf);
+
+  /* 모바일: 할일/일정 탭의 타임라인(오늘 해치우기)과 동일 UI — 리마인더 바로 아래 */
+  if (
+    typeof window !== "undefined" &&
+    window.matchMedia("(max-width: 48rem)").matches
+  ) {
+    const timelineSection = document.createElement("div");
+    timelineSection.className =
+      "home-1day-timeline-section home-embed-1day";
+    const timelineTitle = document.createElement("h3");
+    timelineTitle.className = "home-view-section-title";
+    timelineTitle.textContent = "타임라인";
+    timelineSection.appendChild(timelineTitle);
+    const timelineMount = document.createElement("div");
+    timelineMount.className = "home-1day-timeline-mount";
+    timelineMount.appendChild(render1DayView(null));
+    timelineSection.appendChild(timelineMount);
+    section2.appendChild(timelineSection);
+  }
 
   const section3 = document.createElement("div");
   section3.className = "home-view-section home-view-section--todo";

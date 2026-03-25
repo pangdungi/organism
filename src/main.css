@@ -2763,6 +2763,172 @@ body {
   .app-main:has(.home-view) .home-event-half .home-reminder-content {
     padding: 0.875rem 1.75rem 0.75rem !important;
   }
+  /* 이벤트·리마인더·타임라인 열 자식이 가로로 꽉 차게 */
+  .app-main:has(.home-view) .home-view-section--event {
+    align-items: stretch !important;
+  }
+  /* 모바일: 오늘 탭 — 리마인더 아래 타임라인(1일 뷰) */
+  .app-main:has(.home-view) .home-1day-timeline-section {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 auto;
+    min-height: 0;
+    width: 100%;
+    max-width: 100%;
+    align-self: stretch;
+    border-top: var(--divider-subtle);
+    overflow: visible;
+    box-sizing: border-box;
+  }
+  .app-main:has(.home-view) .home-1day-timeline-section .home-view-section-title {
+    padding: 0.875rem 1.75rem 0.5rem !important;
+    flex-shrink: 0;
+  }
+  /*
+   * 타임라인을 mount 안에서만 스크롤(max-height + overflow)하면 sticky 헤더의 기준이 mount가 되고,
+   * 사용자가 실제로는 상위(app-main/app-tab-panel)를 스크롤할 때 헤더가 통째로 올라감.
+   * → mount는 늘려 두고 페이지 스크롤 한 곳만 쓰면 예상|오늘실제 헤더가 상단에 붙음.
+   */
+  .app-main:has(.home-view) .home-1day-timeline-mount {
+    flex: 0 1 auto;
+    min-height: 18rem;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 0 1rem;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    align-self: stretch;
+  }
+  .app-main:has(.home-view) .home-1day-timeline-mount .calendar-monthly-layout {
+    min-height: min-content;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+  .app-main:has(.home-view)
+    .home-1day-timeline-mount
+    .calendar-view-top-row--1day:empty {
+    display: none !important;
+  }
+  /*
+   * 홈 스크롤 박스 안에서 1일 뷰 contentRow가 flex:1·min-height:0 이면 높이가 0으로 붕괴 —
+   * 예상/실제 타임그리드가 안 보임. 콘텐츠 기준 높이로 강제.
+   */
+  .app-main:has(.home-view) .home-1day-timeline-mount .calendar-1day-view {
+    flex: 0 1 auto !important;
+    min-height: min-content !important;
+  }
+  .app-main:has(.home-view)
+    .home-1day-timeline-mount
+    .calendar-view-1day-content-row {
+    flex: 0 1 auto !important;
+    min-height: min-content !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+  .app-main:has(.home-view) .home-1day-timeline-mount .calendar-monthly-main {
+    flex: 0 1 auto !important;
+    min-height: min-content !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    box-sizing: border-box;
+  }
+  .app-main:has(.home-view)
+    .home-1day-timeline-mount
+    .calendar-1day-time-grid.calendar-1day-split-layout {
+    flex: 0 1 auto !important;
+    min-height: min-content !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    align-self: stretch !important;
+    box-sizing: border-box;
+  }
+  /* 예산 열은 숨김 — flex-grow:0 이었던 시간 열이 가로로 안 늘어 옆이 비어 보이던 문제 */
+  .app-main:has(.home-view)
+    .home-1day-timeline-mount
+    .calendar-1day-budget-column,
+  .app-main:has(.home-view)
+    .home-1day-timeline-mount
+    .calendar-1day-divider {
+    display: none !important;
+  }
+  .app-main:has(.home-view)
+    .home-1day-timeline-mount
+    .calendar-1day-time-column {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: min-content !important;
+    box-sizing: border-box;
+  }
+  .app-main:has(.home-view)
+    .home-1day-timeline-mount
+    .calendar-1day-time-table-wrap {
+    flex: 0 1 auto !important;
+    min-height: min-content !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+    /* mount가 스크롤 컨테이너일 때: wrap의 overflow:auto가 sticky 기준을 막아 헤더가 함께 스크롤됨 */
+    overflow: visible !important;
+  }
+  /* 모바일: 1일 뷰 상단바(남은 시간 + 날짜 네비) 숨김 */
+  .calendar-1day-top-bar {
+    display: none !important;
+  }
+  .app-main:has(.home-view)
+    .home-1day-timeline-mount
+    .calendar-1day-time-table-inner {
+    flex: 0 1 auto !important;
+    min-height: min-content !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+  .app-main:has(.home-view)
+    .home-1day-timeline-mount
+    .calendar-1day-time-table--compare {
+    min-height: auto !important;
+    grid-template-rows: repeat(24, minmax(2.75rem, auto)) !important;
+  }
+  /* 홈 타임라인: 할일/일정과 동일하게 예상 블록이 슬롯 위로 오도록 */
+  .app-main:has(.home-view)
+    .home-1day-timeline-section.home-embed-1day
+    .calendar-1day-time-fill-overlay--expected,
+  .app-main:has(.home-view)
+    .home-1day-timeline-section.home-embed-1day
+    .calendar-1day-time-fill-overlay--actual {
+    z-index: 2 !important;
+  }
+  .app-main:has(.home-view)
+    .home-1day-timeline-section.home-embed-1day
+    .calendar-1day-time-slot--expected {
+    pointer-events: none !important;
+  }
+  /* 홈 타임라인: 예상|오늘실제 헤더를 mount 세로 스크롤 시 상단 고정 */
+  .app-main:has(.home-view)
+    .home-1day-timeline-section.home-embed-1day
+    .calendar-1day-time-header {
+    position: sticky !important;
+    top: 0;
+    z-index: 6 !important;
+    background: #f5f1e8 !important;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+  }
+  .app-main:has(.home-view)
+    .home-1day-timeline-section.home-embed-1day
+    .calendar-1day-time-header-cell,
+  .app-main:has(.home-view)
+    .home-1day-timeline-section.home-embed-1day
+    .calendar-1day-time-header-cell--actual-toggle {
+    background: #f5f1e8 !important;
+  }
   /* 모바일: 투두리스트 헤더 패딩 0.875rem 1.75rem 0.75rem */
   .app-main:has(.home-view) .home-view-section--todo .home-view-section-title {
     padding: 0.875rem 1.75rem 0.75rem !important;
@@ -3210,6 +3376,10 @@ body {
     display: none !important;
   }
   .calendar-view .calendar-tabs .time-view-tab[data-view="calendar"] {
+    display: none !important;
+  }
+  /* 타임라인은 오늘 탭(리마인더 아래)으로 옮김 — 할일/일정에서는 중복 탭 숨김 */
+  .calendar-view .calendar-tabs .time-view-tab[data-view="1day"] {
     display: none !important;
   }
   /* 모바일: 탭 라벨을 할일 / 캘린더로 짧게, 번호 제거 */
