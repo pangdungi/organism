@@ -75,7 +75,7 @@ export function getKpisByCategory() {
       : "—";
     let progress = 0;
     let progressText;
-    if (lowerDream) {
+    if (directionLower) {
       const latest = getLatestLogNumeric(kpi.id, logs);
       if (targetVal > 0 && latest != null) {
         progress = Math.min(100, (targetVal / Math.max(latest, 1e-9)) * 100);

@@ -3398,7 +3398,7 @@ function render3WeekView(tabsElement) {
 }
 
 /** 표→타임테이블 실시간 동기화: DOM에서 현재 입력값 직접 수집 (표 값 변경 시 즉시 반영) */
-const TT_SYNC_DEBUG = true;
+const TT_SYNC_DEBUG = false;
 if (typeof window !== "undefined") window.TT_SYNC_DEBUG = TT_SYNC_DEBUG;
 function collectLiveScheduledFromBudgetColumn(budgetColumn) {
   if (!budgetColumn) {
@@ -3950,6 +3950,7 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
 }
 
 function render1DayView(tabsElement) {
+  console.log("[할일/일정·1day] render1DayView 진입");
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout calendar-1day-view";
 
@@ -4437,18 +4438,22 @@ function render1DayView(tabsElement) {
       if (TT_SYNC_DEBUG) console.log("[TT-SYNC] onScheduledUpdate called", dateStr);
       requestAnimationFrame(() => {
         const inner = wrap.querySelector(".calendar-1day-time-table-inner");
-        const budgetCol = wrap.querySelector(".calendar-1day-budget-column");
         if (!inner || !dateStr) {
           if (TT_SYNC_DEBUG) console.log("[TT-SYNC] skip: no inner or dateStr", { inner: !!inner, dateStr });
           return;
         }
-        if (!budgetCol) {
-          if (TT_SYNC_DEBUG) console.warn("[TT-SYNC] skip: no budgetColumn in DOM");
-          return;
-        }
-        if (TT_SYNC_DEBUG) console.log("[TT-SYNC] building overlays from live DOM");
+        const budgetColOrNull =
+          wrap.querySelector(".calendar-1day-budget-column") || null;
+        if (TT_SYNC_DEBUG)
+          console.log("[TT-SYNC] building overlays", {
+            hasBudgetCol: !!budgetColOrNull,
+          });
         const actualDateKey = wrap.dataset.actualShowsYesterday === "true" ? getYesterdayKey(dateStr) : undefined;
-        const { expected, actual } = build1DayTimetableOverlays(dateStr, budgetCol, actualDateKey);
+        const { expected, actual } = build1DayTimetableOverlays(
+          dateStr,
+          budgetColOrNull,
+          actualDateKey,
+        );
         const oldExp = inner.querySelector(
           ".calendar-1day-time-fill-overlay--expected",
         );
@@ -4814,7 +4819,15 @@ function render1DayView(tabsElement) {
   ensureOneDayTimetableDocumentListeners();
   oneDayTimetableRefreshHandler = (e) => refreshTimetableOverlays(e);
 
-  renderCalendar();
+  try {
+    console.log("[할일/일정·1day] renderCalendar() 호출 직전");
+    renderCalendar();
+    console.log("[할일/일정·1day] renderCalendar() 완료");
+  } catch (err) {
+    console.error("[할일/일정·1day] renderCalendar() 실패:", err?.message, err);
+    if (err?.stack) console.error(err.stack);
+    throw err;
+  }
 
   return wrap;
 }
@@ -6447,6 +6460,7 @@ export function render() {
   let currentView = "todo";
 
   function renderContent(view) {
+    console.log("[할일/일정] renderContent", { view, 이전뷰: currentView });
     const onlySaveWhenFullTodoList = currentView === "todo" || currentView === "eisenhower";
     if (onlySaveWhenFullTodoList) {
       saveTodoListBeforeUnmount(contentWrap);
@@ -6457,17 +6471,37 @@ export function render() {
       el.insertBefore(tabs, contentWrap);
     }
     contentWrap.innerHTML = "";
-    if (view === "todo") {
-      contentWrap.appendChild(renderTodoView(tabs));
-    } else if (view === "calendar") {
-      contentWrap.appendChild(renderCalendarView(tabs));
-    } else if (view === "1day") {
-      contentWrap.appendChild(render1DayView(tabs));
-    } else if (view === "eisenhower") {
-      contentWrap.appendChild(renderEisenhowerView(tabs));
-    } else {
-      const labels = {};
-      contentWrap.appendChild(renderPlaceholderView(tabs, labels[view] || ""));
+    try {
+      if (view === "todo") {
+        console.log("[할일/일정] → renderTodoView()");
+        contentWrap.appendChild(renderTodoView(tabs));
+      } else if (view === "calendar") {
+        console.log("[할일/일정] → renderCalendarView()");
+        contentWrap.appendChild(renderCalendarView(tabs));
+      } else if (view === "1day") {
+        console.log("[할일/일정] → render1DayView() 시작 (4. 오늘 해치우기)");
+        const oneDayRoot = render1DayView(tabs);
+        console.log("[할일/일정] → render1DayView() 끝", {
+          childElementCount: oneDayRoot?.childElementCount,
+        });
+        contentWrap.appendChild(oneDayRoot);
+      } else if (view === "eisenhower") {
+        console.log("[할일/일정] → renderEisenhowerView()");
+        contentWrap.appendChild(renderEisenhowerView(tabs));
+      } else {
+        const labels = {};
+        console.log("[할일/일정] → placeholder", view);
+        contentWrap.appendChild(renderPlaceholderView(tabs, labels[view] || ""));
+      }
+    } catch (err) {
+      console.error("[할일/일정] renderContent 중 오류 — view:", view, err?.message, err);
+      if (err?.stack) console.error(err.stack);
+      const errBox = document.createElement("div");
+      errBox.className = "calendar-render-error";
+      errBox.style.cssText =
+        "padding:1rem 1.25rem;margin:1rem;color:#b91c1c;font-size:0.875rem;";
+      errBox.innerHTML = `<p><strong>이 화면을 그리는 중 오류가 났습니다.</strong></p><p>${String(err?.message || err)}</p><p style="opacity:.85">콘솔에 스택이 출력되었는지 확인해 주세요.</p>`;
+      contentWrap.appendChild(errBox);
     }
   }
 

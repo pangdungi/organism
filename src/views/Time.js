@@ -9529,33 +9529,6 @@ export function render() {
   return el;
 }
 
-/** 오늘의 할일 과제를 BUDGET_GOALS_KEY에서 제거 (투자/소비 테이블에 표시되지 않도록) */
-function removeTodayTasksFromBudgetGoals(dateStr, todoSectionEl) {
-  if (!todoSectionEl || !dateStr) return;
-  const names = [
-    ...todoSectionEl.querySelectorAll(".calendar-1day-todo-table tbody tr"),
-  ]
-    .map((r) => (r.dataset.taskName || "").trim())
-    .filter(Boolean);
-  if (names.length === 0) return;
-  try {
-    const raw = localStorage.getItem(BUDGET_GOALS_KEY);
-    const all = raw ? JSON.parse(raw) : {};
-    if (!all[dateStr]) return;
-    let modified = false;
-    names.forEach((name) => {
-      if (all[dateStr][name]) {
-        delete all[dateStr][name];
-        modified = true;
-      }
-    });
-    if (modified) {
-      localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
-      notifyTimeDailyBudgetSaved(dateStr);
-    }
-  } catch (_) {}
-}
-
 /** 캘린더 1일뷰용: 시간 투자/소비 내역 테이블만 렌더 (일간시간예산에서 사용). topBarLeft 있으면 남은시간을 그쪽에 넣고 상단 한 줄로 축소 */
 export function renderTimeBudgetTablesForCalendar(
   container,
@@ -9566,7 +9539,16 @@ export function renderTimeBudgetTablesForCalendar(
   topBarLeft,
 ) {
   const targetDateStr = dateStr || toDateStr(new Date());
-  removeTodayTasksFromBudgetGoals(targetDateStr, todoSectionEl);
+  /* 오늘 할일과 동명 과제는 왼쪽 투자·소비 표에서만 숨김 — localStorage는 지우지 않음(예상 타임라인용) */
+  const skipBudgetTableForTasks = new Set();
+  if (todoSectionEl) {
+    todoSectionEl
+      .querySelectorAll(".calendar-1day-todo-table tbody tr")
+      .forEach((r) => {
+        const n = (r.dataset.taskName || "").trim();
+        if (n) skipBudgetTableForTasks.add(n);
+      });
+  }
   const rows = loadTimeRows();
   const todayRows = rows.filter((r) => (r.date || "").trim() === targetDateStr);
 
@@ -10100,7 +10082,8 @@ export function renderTimeBudgetTablesForCalendar(
         const block = tr.closest(".time-daily-budget-table-block");
         if (block) updateGoalDiffDisplays(block);
       },
-      signal,
+      /* 캘린더 1일 뷰에는 Time 탭용 AbortSignal 없음 — 드롭다운은 그대로 동작 */
+      undefined,
     );
     taskDropdown.wrap._getValue = taskDropdown.getValue;
     taskTd.appendChild(taskDropdown.wrap);
@@ -10190,6 +10173,7 @@ export function renderTimeBudgetTablesForCalendar(
 
   tasksFromToday.forEach((t) => {
     if (excluded.has(t.task)) return;
+    if (skipBudgetTableForTasks.has(t.task)) return;
     if (isBudgetPlaceholder(t.task)) return;
     if (isBasicTask(t.task)) return; /* 수면/근무는 기본에만 */
     const data = storedGoals[t.task];
@@ -10208,6 +10192,7 @@ export function renderTimeBudgetTablesForCalendar(
   });
   Object.entries(storedGoals).forEach(([task, data]) => {
     if (excluded.has(task)) return;
+    if (skipBudgetTableForTasks.has(task)) return;
     if (isBudgetPlaceholder(task)) return;
     if (isBasicTask(task)) return; /* 수면/근무는 기본에만 */
     if (data.isInvest && !seenInvest.has(task)) {

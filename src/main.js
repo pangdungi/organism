@@ -189,7 +189,40 @@ function init() {
     showOnly("login");
     setAuthGatePanel("signup");
   }
-  showInitialPage();
+
+  async function dismissAppSplash() {
+    const splash = document.getElementById("app-splash");
+    const minVisibleMs = 720;
+    const t0 = typeof performance !== "undefined" ? performance.now() : Date.now();
+    try {
+      await showInitialPage();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      const elapsed =
+        (typeof performance !== "undefined" ? performance.now() : Date.now()) - t0;
+      const rest = Math.max(0, minVisibleMs - elapsed);
+      if (rest > 0) {
+        await new Promise((r) => setTimeout(r, rest));
+      }
+      if (!splash) return;
+      splash.classList.add("app-splash--exiting");
+      let finished = false;
+      const done = () => {
+        if (finished) return;
+        finished = true;
+        splash.removeEventListener("transitionend", onTransitionEnd);
+        splash.setAttribute("hidden", "");
+        splash.setAttribute("aria-hidden", "true");
+      };
+      const onTransitionEnd = (ev) => {
+        if (ev.target === splash && ev.propertyName === "opacity") done();
+      };
+      splash.addEventListener("transitionend", onTransitionEnd);
+      setTimeout(done, 520);
+    }
+  }
+  dismissAppSplash();
 }
 
 async function doLogin() {

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#1a1a1a" />
+    <meta name="theme-color" content="#2d3e2d" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="라이프 플래너" />
@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;500&family=Noto+Sans+KR:wght@300;400&family=Space+Grotesk:wght@500;600;700&family=Syne:wght@800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=DM+Mono:wght@300;500&family=Noto+Sans+KR:wght@300;400&family=Space+Grotesk:wght@500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
@@ -19,6 +19,39 @@
     <title>라이프 플래너</title>
   </head>
   <body>
+    <div
+      id="app-splash"
+      class="app-splash"
+      role="status"
+      aria-live="polite"
+      aria-label="앱을 불러오는 중"
+    >
+      <div class="app-splash-bg" aria-hidden="true">
+        <span class="app-splash-orb app-splash-orb--tl"></span>
+        <span class="app-splash-orb app-splash-orb--bl"></span>
+      </div>
+      <div class="app-splash-main">
+        <p class="app-splash-brand">Organism</p>
+      </div>
+      <div class="app-splash-footer">
+        <div class="app-splash-bar-track" aria-hidden="true">
+          <div class="app-splash-bar-fill"></div>
+        </div>
+        <p class="app-splash-loading-label">LOADING</p>
+        <div class="app-splash-arrow" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.2" opacity="0.4" />
+            <path
+              d="M8 10l4 4 4-4"
+              stroke="currentColor"
+              stroke-width="1.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </div>
+      </div>
+    </div>
     <!-- 태블릿(아이패드 미니 등) 세로: 가로 전환 안내 (CSS로 표시 구간 제어) -->
     <div
       id="tablet-landscape-hint"

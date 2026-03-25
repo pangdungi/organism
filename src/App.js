@@ -258,6 +258,18 @@ export function mountApp(container) {
   main.appendChild(panel);
 
   function setActiveTab(tabId) {
+    try {
+      if (
+        typeof localStorage !== "undefined" &&
+        localStorage.getItem("debug_app_nav") === "1"
+      ) {
+        const R = RENDERERS[tabId];
+        console.log("[앱 네비] setActiveTab", {
+          tabId,
+          renderer: typeof R === "function" ? R.name || "(익명)" : String(R),
+        });
+      }
+    } catch (_) {}
     currentTabId = tabId;
     nav.querySelectorAll(".app-sidebar-item").forEach((b) => {
       b.classList.toggle("active", b.dataset.tabId === tabId);
@@ -374,7 +386,8 @@ btn.dataset.tabId = tab.id;
         p.appendChild(div);
       }
     } catch (err) {
-      console.error("[renderMain]", currentTabId, err);
+      console.error("[renderMain] 탭 로드 실패:", currentTabId, err?.message, err);
+      if (err?.stack) console.error(err.stack);
       const errDiv = document.createElement("div");
       errDiv.className = "app-render-error";
       errDiv.style.cssText = "padding:1.5rem;color:#b91c1c;";

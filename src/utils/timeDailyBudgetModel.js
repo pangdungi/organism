@@ -24,7 +24,16 @@ export function mergeTimeDailyBudgetRowsFromServer(rows) {
       if (!dk) continue;
       const g = r.goals;
       if (g !== undefined && g !== null && typeof g === "object" && !Array.isArray(g)) {
-        all[dk] = JSON.parse(JSON.stringify(g));
+        const incoming = JSON.parse(JSON.stringify(g));
+        const existing =
+          all[dk] && typeof all[dk] === "object" && !Array.isArray(all[dk])
+            ? all[dk]
+            : {};
+        const incomingEmpty = Object.keys(incoming).length === 0;
+        const existingKeys = Object.keys(existing).length;
+        /* 서버에 빈 goals만 있으면 로컬(4. 오늘 해치우기 예상·목표)을 덮어쓰지 않음 */
+        if (incomingEmpty && existingKeys > 0) continue;
+        all[dk] = incoming;
         changed = true;
       }
       if (Object.prototype.hasOwnProperty.call(r, "excluded_names")) {
