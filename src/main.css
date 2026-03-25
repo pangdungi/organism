@@ -2242,8 +2242,13 @@ body {
     display: none !important;
   }
 
-  /* 하단 탭 개수 증가 대비 — 가로 스크롤 (감정·아카이브 등) */
+  /*
+   * 하단 네비 한 줄: 오늘·시간… + 꿈·행복·부수입·건강 + 나의 계정.
+   * 가로 스크롤로 전부 접근 (KPI는 나의 계정 직전에 DOM 순서로 배치됨).
+   */
   .app-bottom-nav {
+    flex-direction: row !important;
+    align-items: stretch !important;
     justify-content: flex-start !important;
     overflow-x: auto !important;
     overflow-y: hidden !important;
@@ -2257,7 +2262,17 @@ body {
   .app-bottom-nav::-webkit-scrollbar {
     display: none;
   }
-  .app-bottom-nav-item {
+  .app-bottom-nav-main {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    flex: 0 0 auto !important;
+    min-width: min-content !important;
+    gap: inherit;
+  }
+  .app-bottom-nav-main > .app-bottom-nav-item {
     flex: 0 0 auto !important;
     min-width: 3.1rem;
     padding-left: 0.35rem !important;
@@ -3121,6 +3136,15 @@ body {
   .dream-view-header {
     padding-left: 1.75rem;
     padding-right: 1.75rem;
+  }
+
+  /* 모바일: 꿈·행복·부수입·건강 탭·본문·기록 영역 — 동일 살짝 좌우 여백 */
+  .dream-view .dream-tabs-wrap,
+  .dream-view .dream-content-wrap,
+  .dream-view .dream-kpi-history-wrap {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    box-sizing: border-box;
   }
 
   /* 모바일: KPI 지표 방향 라벨 살짝 작게 (한 줄 레이아웃은 전역과 동일) */
@@ -24824,6 +24848,12 @@ body.kpi-resizing {
   border-top: none;
 }
 
+@media (max-width: 48rem) {
+  .dream-kpi-todo-header {
+    margin-top: 3.25rem;
+  }
+}
+
 .dream-kpi-todo-title {
   font-family: var(--font-heading);
   font-size: var(--fs-h2);
@@ -26103,6 +26133,17 @@ body.kpi-resizing {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
+  min-width: 0;
+}
+
+/* 날짜 2열: 그리드 자식·date 인풋 기본 min-width 때문에 모달 밖으로 삐져나감 방지 */
+.dream-kpi-row > .dream-kpi-field {
+  min-width: 0;
+}
+
+.dream-kpi-form .dream-kpi-row input[type="date"] {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .dream-desired-life-modal-actions {

@@ -281,6 +281,11 @@ export function mountApp(container) {
       });
     }
     renderMain(main);
+    if (tabId === "idea") {
+      requestAnimationFrame(() => {
+        main.scrollTop = 0;
+      });
+    }
   }
 
   nav.querySelectorAll(".app-sidebar-item").forEach((b) => {
@@ -299,6 +304,9 @@ export function mountApp(container) {
   const bottomNav = document.createElement("nav");
   bottomNav.className = "app-bottom-nav";
   bottomNav.setAttribute("aria-label", "하단 메뉴");
+  const bottomNavMain = document.createElement("div");
+  bottomNavMain.className = "app-bottom-nav-main";
+
   const mobileTabsFiltered = TABS.filter(
     (t) =>
       !HIDE_ON_MOBILE_TAB_IDS.includes(t.id) && !t.sidebarDesktopOnly,
@@ -322,7 +330,7 @@ export function mountApp(container) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "app-bottom-nav-item" + (tab.id === currentTabId ? " active" : "");
-btn.dataset.tabId = tab.id;
+    btn.dataset.tabId = tab.id;
     const navLabel = tab.mobileLabel ?? tab.label;
     btn.title = navLabel;
     btn.innerHTML = `<img src="${tab.icon}" alt="" class="app-bottom-nav-icon" width="20" height="20"><span class="app-bottom-nav-label">${navLabel}</span>`;
@@ -331,7 +339,33 @@ btn.dataset.tabId = tab.id;
       sidebar.classList.remove("is-open");
       document.querySelector(".app-sidebar-overlay")?.remove();
     });
-    bottomNav.appendChild(btn);
+    bottomNavMain.appendChild(btn);
+  });
+  /* 모바일 하단: 나의 계정 바로 앞에 꿈·행복·부수입·건강 (가로 스크롤로 모두 접근) */
+  const KPI_MOBILE_IN_MAIN_ORDER = [
+    "dream",
+    "happiness",
+    "sideincome",
+    "health",
+  ];
+  KPI_MOBILE_IN_MAIN_ORDER.forEach((id) => {
+    const tab = TABS.find((t) => t.id === id);
+    if (!tab) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className =
+      "app-bottom-nav-item app-bottom-nav-item--kpi" +
+      (tab.id === currentTabId ? " active" : "");
+    btn.dataset.tabId = tab.id;
+    const navLabel = tab.mobileLabel ?? tab.label;
+    btn.title = navLabel;
+    btn.innerHTML = `<img src="${tab.icon}" alt="" class="app-bottom-nav-icon" width="20" height="20"><span class="app-bottom-nav-label">${navLabel}</span>`;
+    btn.addEventListener("click", () => {
+      setActiveTab(tab.id);
+      sidebar.classList.remove("is-open");
+      document.querySelector(".app-sidebar-overlay")?.remove();
+    });
+    bottomNavMain.appendChild(btn);
   });
   const accountBottomBtn = document.createElement("button");
   accountBottomBtn.type = "button";
@@ -344,7 +378,9 @@ btn.dataset.tabId = tab.id;
     sidebar.classList.remove("is-open");
     document.querySelector(".app-sidebar-overlay")?.remove();
   });
-  bottomNav.appendChild(accountBottomBtn);
+  bottomNavMain.appendChild(accountBottomBtn);
+
+  bottomNav.appendChild(bottomNavMain);
 
   document.addEventListener("app-switch-tab", (e) => {
     const tabId = e.detail?.tabId;
