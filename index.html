@@ -17,6 +17,43 @@
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="apple-touch-icon" href="/icon.svg" />
     <title>라이프 플래너</title>
+    <!-- FOUC 방지: 번들·main.css 적용 전 첫 페인트에서 로그인/방향 안내가 쌓여 보이지 않게 -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        overflow-x: hidden;
+      }
+      html {
+        background: #2d3e2d;
+      }
+      body {
+        background: #2d3e2d;
+      }
+      #app {
+        display: none;
+      }
+      #app-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483646;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        background: #2d3e2d;
+        color: #f2ede0;
+      }
+      .app-tablet-landscape-hint,
+      .app-phone-portrait-hint {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        box-sizing: border-box;
+      }
+    </style>
   </head>
   <body>
     <div

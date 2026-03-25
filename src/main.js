@@ -33,6 +33,9 @@ function setAuthGatePanel(mode) {
 }
 
 function init() {
+  const app = document.getElementById("app");
+  if (app) app.style.display = "block";
+
   applyAppFont();
   applyTimeCategoryColors();
   applyTaskCategoryColors();
@@ -149,9 +152,6 @@ function init() {
       if (el) el.type = type;
     });
   });
-
-  const app = document.getElementById("app");
-  if (app) app.style.display = "block";
 
   // 모바일: 모달 열릴 때 자동 포커스(키보드) 방지 — 사용자가 입력창 탭할 때만 키보드
   (function initMobileModalNoAutoFocus() {
