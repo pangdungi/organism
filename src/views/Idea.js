@@ -143,7 +143,8 @@ export function render() {
         : "리마인더 날짜·시간은 이 기기(브라우저) 타임존 기준으로 맞춰져요. 서버에는 VAPID·Edge 함수·1분 주기 호출이 필요해요.";
     }
     if (reminderBtn) {
-      const canTry = hasWebPushSupport() && !!getVapidPublicKey();
+      /* 키는 런타임 fetch 후 채워질 수 있어, 지원만 되면 누르게 함(클릭 시 ensure + 구독) */
+      const canTry = hasWebPushSupport();
       reminderBtn.disabled = !canTry;
       reminderBtn.style.opacity = !canTry ? "0.55" : "";
       reminderBtn.style.cursor = !canTry ? "not-allowed" : "";
