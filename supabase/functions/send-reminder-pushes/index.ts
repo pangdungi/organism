@@ -280,6 +280,8 @@ Deno.serve(async (req) => {
       try {
         await webPush.sendNotification(subscription, payload, {
           TTL: 60 * 60,
+          /* 일부 모바일 게이트웨이에서 백그라운드 전달 우선순위에 영향을 줄 수 있음 */
+          urgency: "high",
         });
         sent++;
         step.pushes.push({ ok: true });
