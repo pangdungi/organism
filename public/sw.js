@@ -42,26 +42,36 @@ self.addEventListener("push", (event) => {
   };
   event.waitUntil(
     self.clients.matchAll({ type: "all", includeUncontrolled: true }).then((clientList) => {
-      console.log(LOG, "clients count", clientList.length, clientList.map((c) => c.url || c.id || "?"));
-      if (clientList.length > 0) {
-        for (const client of clientList) {
-          const msg = {
-            type: "lp-reminder",
-            title: data.title,
-            body: data.body || "",
-            url: data.url || "/",
-          };
-          try {
-            client.postMessage(msg);
-            console.log(LOG, "postMessage sent", msg, "→", client.url || client.constructor?.name);
-          } catch (e) {
-            console.warn(LOG, "postMessage failed", e);
-          }
+      const msg = {
+        type: "lp-reminder",
+        title: data.title,
+        body: data.body || "",
+        url: data.url || "/",
+      };
+      const anyVisible = clientList.some((c) => c.visibilityState === "visible");
+      console.log(
+        LOG,
+        "clients",
+        clientList.length,
+        "anyVisible",
+        anyVisible,
+        clientList.map((c) => [c.visibilityState, c.url || c.id || "?"]),
+      );
+      for (const client of clientList) {
+        try {
+          client.postMessage(msg);
+          console.log(LOG, "postMessage", client.url || client.constructor?.name);
+        } catch (e) {
+          console.warn(LOG, "postMessage failed", e);
         }
-        return;
       }
-      console.log(LOG, "no clients → system notification only");
-      return self.registration.showNotification(data.title, options);
+      /* 백그라운드(보이는 창 없음)이거나 앱 완전 종료 → OS 알림 */
+      if (!anyVisible) {
+        console.log(LOG, "→ showNotification");
+        return self.registration.showNotification(data.title, options);
+      }
+      console.log(LOG, "foreground → OS 알림 생략(앱에서 토스트)");
+      return Promise.resolve();
     }),
   );
 });
