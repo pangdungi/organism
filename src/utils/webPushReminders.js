@@ -82,7 +82,15 @@ export function hasWebPushSupport() {
   );
 }
 
+function getVapidFromHtmlBoot() {
+  if (typeof window === "undefined") return "";
+  const w = window.__LP_VAPID_HTML__;
+  return typeof w === "string" && w.trim() ? w.trim() : "";
+}
+
 export function getVapidPublicKey() {
+  const fromHtml = getVapidFromHtmlBoot();
+  if (fromHtml) return fromHtml;
   if (runtimePublicKey) return runtimePublicKey;
   return getVapidPublicKeyFromBundle();
 }
