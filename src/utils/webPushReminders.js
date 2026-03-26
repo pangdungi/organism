@@ -1,7 +1,9 @@
 /**
  * 할일 리마인더 Web Push — 탭을 닫아도 서버(cron)가 같은 분에 푸시 발송
  * 필요: VITE_VAPID_PUBLIC_KEY, Supabase 마이그레이션(user_push_subscriptions), Edge Function 배포
+ * 공개 키는 vite.config `define`으로도 주입됨(Vercel process.env 대응).
  */
+/* global __LP_VAPID_PUBLIC_KEY__ */
 import { supabase } from "../supabase.js";
 import { syncUserIanaTimezoneToSupabase } from "./userHourlySync.js";
 
@@ -37,6 +39,8 @@ export function hasWebPushSupport() {
 }
 
 export function getVapidPublicKey() {
+  const fromBuild = typeof __LP_VAPID_PUBLIC_KEY__ === "string" ? __LP_VAPID_PUBLIC_KEY__.trim() : "";
+  if (fromBuild) return fromBuild;
   const k = import.meta.env.VITE_VAPID_PUBLIC_KEY;
   return typeof k === "string" && k.trim().length > 0 ? k.trim() : "";
 }
