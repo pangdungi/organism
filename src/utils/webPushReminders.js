@@ -14,6 +14,10 @@ const TABLE = "user_push_subscriptions";
 let runtimePublicKey = "";
 let ensureVapidRuntimePromise = null;
 
+function resetEnsureVapidRuntimeFetch() {
+  ensureVapidRuntimePromise = null;
+}
+
 function getVapidPublicKeyFromBundle() {
   const fromJson = typeof vapidBuild?.publicKey === "string" ? vapidBuild.publicKey.trim() : "";
   if (fromJson) return fromJson;
@@ -107,7 +111,7 @@ export function getVapidPublicKey() {
 
 export function reminderPushStatusLabel() {
   if (!hasWebPushSupport()) return "이 기기·브라우저에서는 미지원";
-  if (!getVapidPublicKey()) return "VAPID 키 미설정 (배포 환경 확인)";
+  if (!getVapidPublicKey()) return "알림 꺼짐 — 아래 버튼으로 허용·연결해 주세요";
   switch (Notification.permission) {
     case "granted":
       return "알림 허용됨";
@@ -125,19 +129,21 @@ export async function registerReminderPushFromUserGesture() {
     if (!hasWebPushSupport()) {
       return { ok: false, msg: "이 브라우저에서는 Web Push를 쓸 수 없어요." };
     }
-    const vapid = getVapidPublicKey();
-    if (!vapid) {
-      return {
-        ok: false,
-        msg: "알림 설정(공개 키)이 빠졌어요. 사이트를 만든 쪽 환경 변수를 확인해 주세요.",
-      };
-    }
     if (!supabase) {
       return { ok: false, msg: "Supabase가 연결되지 않았어요." };
     }
     const perm = await Notification.requestPermission();
     if (perm !== "granted") {
       return { ok: false, msg: "알림 권한이 필요해요." };
+    }
+    if (!getVapidPublicKey()) resetEnsureVapidRuntimeFetch();
+    await ensureVapidRuntimeFallback();
+    const vapid = getVapidPublicKey();
+    if (!vapid) {
+      return {
+        ok: false,
+        msg: "푸시 연결 정보를 불러오지 못했어요. 새로고침 후 다시 시도해 주세요.",
+      };
     }
 
     const reg = await navigator.serviceWorker.ready;
