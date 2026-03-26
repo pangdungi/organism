@@ -31,8 +31,10 @@ export default defineConfig(({ mode }) => {
         name: "inject-vapid-html",
         transformIndexHtml(html) {
           if (!vapidForHtml) return html;
-          const tag = `<script>window.__LP_VAPID_HTML__=${JSON.stringify(vapidForHtml)};<\/script>`;
-          return html.replace("<head>", `<head>\n    ${tag}`);
+          const esc = vapidForHtml.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+          const scriptTag = `<script>window.__LP_VAPID_HTML__=${JSON.stringify(vapidForHtml)};<\/script>`;
+          const metaTag = `<meta name="lp-vapid-public-key" content="${esc}" />`;
+          return html.replace("<head>", `<head>\n    ${scriptTag}\n    ${metaTag}`);
         },
       },
     ],

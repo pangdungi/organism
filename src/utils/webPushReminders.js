@@ -30,7 +30,7 @@ function getVapidPublicKeyFromBundle() {
 export function ensureVapidRuntimeFallback() {
   if (ensureVapidRuntimePromise) return ensureVapidRuntimePromise;
   ensureVapidRuntimePromise = (async () => {
-    if (getVapidPublicKeyFromBundle()) return;
+    if (getVapidFromHtmlBoot() || getVapidPublicKeyFromBundle()) return;
     if (runtimePublicKey) return;
     try {
       const r = await fetch("/vapid-public.json", { cache: "no-store" });
@@ -85,7 +85,17 @@ export function hasWebPushSupport() {
 function getVapidFromHtmlBoot() {
   if (typeof window === "undefined") return "";
   const w = window.__LP_VAPID_HTML__;
-  return typeof w === "string" && w.trim() ? w.trim() : "";
+  if (typeof w === "string" && w.trim()) return w.trim();
+  try {
+    if (typeof document !== "undefined") {
+      const meta = document.querySelector('meta[name="lp-vapid-public-key"]');
+      const c = meta?.getAttribute("content");
+      if (c && String(c).trim()) return String(c).trim();
+    }
+  } catch {
+    /* ignore */
+  }
+  return "";
 }
 
 export function getVapidPublicKey() {
