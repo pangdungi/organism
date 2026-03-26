@@ -382,3 +382,7 @@ s3_region = "env(S3_REGION)"
 s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
+
+# cron·외부 스케줄러가 리마인더 푸시 함수 호출 시 JWT 없이 호출 가능 (x-reminder-cron-secret로 보호)
+[functions.send-reminder-pushes]
+verify_jwt = false

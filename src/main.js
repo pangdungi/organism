@@ -14,6 +14,7 @@ import { applyAppFont } from "./views/Idea.js";
 import { pullUserPrefsFromSupabase } from "./utils/userHourlySync.js";
 import { applyTimeCategoryColors, applyTaskCategoryColors } from "./utils/todoSettings.js";
 import { showToast } from "./utils/showToast.js";
+import { scheduleSilentReminderPushSync } from "./utils/webPushReminders.js";
 
 function setAuthGatePanel(mode) {
   const signupEl = document.getElementById("auth-panel-signup");
@@ -183,6 +184,7 @@ function init() {
         showOnly("signin");
         await pullUserPrefsFromSupabase();
         mountApp(document.getElementById("app-screen"));
+        scheduleSilentReminderPushSync();
         return;
       }
     }
@@ -233,6 +235,7 @@ async function doLogin() {
     showOnly("signin");
     await pullUserPrefsFromSupabase();
     mountApp(document.getElementById("app-screen"));
+    scheduleSilentReminderPushSync();
   } else {
     showToast(result.msg);
   }
@@ -261,6 +264,7 @@ async function doSignUp() {
     showOnly("signin");
     await pullUserPrefsFromSupabase();
     mountApp(document.getElementById("app-screen"));
+    scheduleSilentReminderPushSync();
     return;
   }
   showToast(

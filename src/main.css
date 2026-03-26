@@ -3015,6 +3015,7 @@ body {
   /* 모바일: 나의 계정 — 기본설정·구독·시급 위젯 좌우 패딩 제거(상하는 .time-dashboard-widget 유지) */
   .app-main:has(.idea-view) .time-dashboard-widget.idea-widget-basic-settings,
   .app-main:has(.idea-view) .time-dashboard-widget.idea-widget-subscription,
+  .app-main:has(.idea-view) .time-dashboard-widget.idea-widget-reminder-push,
   .app-main:has(.idea-view) .time-dashboard-widget.idea-widget-hourly {
     padding-left: 0 !important;
     padding-right: 0 !important;
@@ -3024,6 +3025,18 @@ body {
   .app-main:has(.idea-view) .idea-widget-subscription {
     grid-column: 1 / -1;
     padding-top: 0.25rem;
+  }
+
+  /* 모바일: 나의 계정 — 리마인더 푸시 위젯 */
+  .app-main:has(.idea-view) .idea-widget-reminder-push {
+    grid-column: 1 / -1;
+    padding-top: 0.25rem;
+  }
+  .app-main:has(.idea-view) .idea-reminder-push-hint {
+    margin: 0.5rem 0 0;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: var(--text-caption-color, #a8a290);
   }
   .app-main:has(.idea-view) .idea-subscription-pass {
     margin: 0.75rem 0 0;

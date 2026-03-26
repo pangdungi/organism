@@ -45,6 +45,22 @@ export function applyAppearanceFromServer(a) {
   document.dispatchEvent(new CustomEvent("app-colors-changed"));
 }
 
+/** 브라우저/OS 타임존 → DB (리마인더 푸시가 사용자 로컬 시각과 맞도록) */
+export async function syncUserIanaTimezoneToSupabase() {
+  if (!supabase) return;
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.user?.id) return;
+  let tz = "";
+  try {
+    tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+  } catch (_) {}
+  if (!tz) return;
+  const { error } = await supabase.rpc("set_my_iana_timezone", { p_tz: tz });
+  if (error) console.warn("[iana_timezone]", error.message);
+}
+
 /** 로그인 직후: 시급 + appearance → localStorage, UI 변수 반영 */
 export async function pullUserPrefsFromSupabase() {
   if (!supabase) return;
@@ -72,6 +88,7 @@ export async function pullUserPrefsFromSupabase() {
   }
 
   applyAppearanceFromServer(data.appearance);
+  await syncUserIanaTimezoneToSupabase();
 }
 
 /** @deprecated 이름 호환 — pullUserPrefsFromSupabase 와 동일 */

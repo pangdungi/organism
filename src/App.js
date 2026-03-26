@@ -18,6 +18,7 @@ import { render as renderDiary } from "./views/Diary.js";
 import { render as renderIdea } from "./views/Idea.js";
 import { render as renderHome } from "./views/Home.js";
 import { attachAssetExpenseTransactionsSaveListener } from "./utils/assetExpenseTransactionsSupabase.js";
+import { initPushReminderInAppPopup } from "./utils/initPushReminderInAppPopup.js";
 import { hydrateTodoSectionTasksFromCloud } from "./utils/todoSectionTasksSupabase.js";
 import { hydrateTimeDailyBudgetFromCloud } from "./utils/timeDailyBudgetSupabase.js";
 import { hydrateTimeLedgerTasksFromCloud } from "./utils/timeLedgerTasksSupabase.js";
@@ -112,6 +113,7 @@ function migrateRemoveRoutineTasks() {
 
 export function mountApp(container) {
   if (!container) return;
+  initPushReminderInAppPopup();
   migrateRemoveRoutineTasks();
   /* 가계부 미방문 시에도 시간가계부 소비 저장 → Supabase 동기화 이벤트 수신 */
   attachAssetExpenseTransactionsSaveListener();

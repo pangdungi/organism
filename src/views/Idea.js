@@ -13,6 +13,13 @@ import {
 export { USER_HOURLY_RATE_KEY };
 import { getTodoSettings, saveTodoSettings, getCustomSections, DEFAULT_SECTION_COLORS, DEFAULT_TIME_CATEGORY_COLORS, DEFAULT_TASK_CATEGORY_COLORS, applyTimeCategoryColors, applyTaskCategoryColors } from "../utils/todoSettings.js";
 import { createColorPickerRow } from "../utils/todoSettingsModal.js";
+import { showToast } from "../utils/showToast.js";
+import {
+  registerReminderPushFromUserGesture,
+  reminderPushStatusLabel,
+  hasWebPushSupport,
+  getVapidPublicKey,
+} from "../utils/webPushReminders.js";
 
 /** 한글 NEXON Lv1 고정 — 웹사이트 폰트 설정 제거됨 */
 export function applyAppFont() {
@@ -104,6 +111,49 @@ export function render() {
     </div>
   `;
   grid.appendChild(subscriptionWidget);
+
+  // ----- 할일 리마인더 Web Push (탭 종료 후에도 cron + 푸시) -----
+  const reminderPushWidget = document.createElement("div");
+  reminderPushWidget.className =
+    "time-dashboard-widget idea-widget idea-widget-reminder-push";
+  reminderPushWidget.innerHTML = `
+    <div class="time-dashboard-widget-title">할일 리마인더 알림</div>
+    <div class="idea-basic-rows">
+      <div class="idea-basic-row">
+        <span class="idea-form-label">상태</span>
+        <span class="idea-user-id-value idea-reminder-push-status" id="idea-reminder-push-status"></span>
+      </div>
+      <p class="idea-reminder-push-hint" id="idea-reminder-push-hint"></p>
+      <div class="idea-logout-row">
+        <button type="button" class="idea-btn-logout idea-btn-reminder-push-enable" id="idea-btn-reminder-push">브라우저 알림 켜기</button>
+      </div>
+    </div>
+  `;
+  grid.appendChild(reminderPushWidget);
+
+  const reminderStatusEl = reminderPushWidget.querySelector("#idea-reminder-push-status");
+  const reminderHintEl = reminderPushWidget.querySelector("#idea-reminder-push-hint");
+  const reminderBtn = reminderPushWidget.querySelector("#idea-btn-reminder-push");
+  function syncReminderPushAccountUi() {
+    if (reminderStatusEl) reminderStatusEl.textContent = reminderPushStatusLabel();
+    if (reminderHintEl) {
+      reminderHintEl.textContent = !hasWebPushSupport()
+        ? "이 브라우저·환경에서는 Web Push가 제한될 수 있어요. HTTPS의 Chrome·Edge 등을 권장해요."
+        : "리마인더 날짜·시간은 이 기기(브라우저) 타임존 기준으로 맞춰져요. 서버에는 VAPID·Edge 함수·1분 주기 호출이 필요해요.";
+    }
+    if (reminderBtn) {
+      const canTry = hasWebPushSupport() && !!getVapidPublicKey();
+      reminderBtn.disabled = !canTry;
+      reminderBtn.style.opacity = !canTry ? "0.55" : "";
+      reminderBtn.style.cursor = !canTry ? "not-allowed" : "";
+    }
+  }
+  syncReminderPushAccountUi();
+  reminderBtn?.addEventListener("click", async () => {
+    const r = await registerReminderPushFromUserGesture();
+    showToast(r.msg);
+    syncReminderPushAccountUi();
+  });
 
   if (typeof supabase !== "undefined" && supabase?.auth) {
     supabase.auth.getSession().then(({ data: { session } }) => {
