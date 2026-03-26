@@ -3,9 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "prebuild": "node scripts/write-vapid-build-json.mjs",
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/write-vapid-build-json.mjs && vite build",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -1,0 +1,4 @@
+{
+  "buildCommand": "node scripts/write-vapid-build-json.mjs && vite build",
+  "outputDirectory": "dist"
+}
