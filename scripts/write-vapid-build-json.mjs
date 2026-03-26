@@ -2,7 +2,7 @@
  * 빌드 시 env → vapid-public.build.json → Vite 번들.
  * env가 비면 저장소에 커밋된 JSON의 publicKey를 그대로 둠(Vercel에 변수가 안 넘을 때 대비).
  */
-import { writeFileSync, readFileSync, existsSync } from "fs";
+import { writeFileSync, readFileSync, existsSync, mkdirSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 
@@ -31,6 +31,10 @@ if (existsSync(out)) {
 }
 
 const key = fromEnv || fromFile;
-writeFileSync(out, JSON.stringify({ publicKey: key }, null, 0) + "\n", "utf8");
+const payload = JSON.stringify({ publicKey: key }, null, 0) + "\n";
+writeFileSync(out, payload, "utf8");
+const pubDir = resolve(root, "public");
+mkdirSync(pubDir, { recursive: true });
+writeFileSync(resolve(pubDir, "vapid-public.json"), payload, "utf8");
 const src = fromEnv ? "env" : fromFile ? "vapid-public.build.json" : "none";
 console.log("[write-vapid-build-json] publicKey length:", key.length, "source:", src);

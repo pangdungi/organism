@@ -10,6 +10,49 @@ import { syncUserIanaTimezoneToSupabase } from "./userHourlySync.js";
 
 const TABLE = "user_push_subscriptions";
 
+/** `/vapid-public.json` fetch로 채움 — 메인 JS만 캐시된 폰에서도 키 복구 */
+let runtimePublicKey = "";
+let ensureVapidRuntimePromise = null;
+
+function getVapidPublicKeyFromBundle() {
+  const fromJson = typeof vapidBuild?.publicKey === "string" ? vapidBuild.publicKey.trim() : "";
+  if (fromJson) return fromJson;
+  const fromDefine = typeof __LP_VAPID_PUBLIC_KEY__ === "string" ? __LP_VAPID_PUBLIC_KEY__.trim() : "";
+  if (fromDefine) return fromDefine;
+  const k = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+  return typeof k === "string" && k.trim().length > 0 ? k.trim() : "";
+}
+
+/**
+ * 번들에 키가 없을 때만 네트워크에서 `public/vapid-public.json` 로드.
+ * 끝나면 `lp-vapid-ready` 이벤트로 UI 갱신 가능.
+ */
+export function ensureVapidRuntimeFallback() {
+  if (ensureVapidRuntimePromise) return ensureVapidRuntimePromise;
+  ensureVapidRuntimePromise = (async () => {
+    if (getVapidPublicKeyFromBundle()) return;
+    if (runtimePublicKey) return;
+    try {
+      const r = await fetch("/vapid-public.json", { cache: "no-store" });
+      if (!r.ok) return;
+      const j = await r.json();
+      const k = String(j.publicKey || "")
+        .trim()
+        .replace(/\s+/g, "");
+      if (k) runtimePublicKey = k;
+    } catch {
+      /* ignore */
+    } finally {
+      try {
+        window.dispatchEvent(new CustomEvent("lp-vapid-ready"));
+      } catch {
+        /* ignore */
+      }
+    }
+  })();
+  return ensureVapidRuntimePromise;
+}
+
 function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -40,12 +83,8 @@ export function hasWebPushSupport() {
 }
 
 export function getVapidPublicKey() {
-  const fromJson = typeof vapidBuild?.publicKey === "string" ? vapidBuild.publicKey.trim() : "";
-  if (fromJson) return fromJson;
-  const fromDefine = typeof __LP_VAPID_PUBLIC_KEY__ === "string" ? __LP_VAPID_PUBLIC_KEY__.trim() : "";
-  if (fromDefine) return fromDefine;
-  const k = import.meta.env.VITE_VAPID_PUBLIC_KEY;
-  return typeof k === "string" && k.trim().length > 0 ? k.trim() : "";
+  if (runtimePublicKey) return runtimePublicKey;
+  return getVapidPublicKeyFromBundle();
 }
 
 export function reminderPushStatusLabel() {
@@ -64,6 +103,7 @@ export function reminderPushStatusLabel() {
 /** 사용자 제스처(버튼 클릭) 안에서 호출 */
 export async function registerReminderPushFromUserGesture() {
   try {
+    await ensureVapidRuntimeFallback();
     if (!hasWebPushSupport()) {
       return { ok: false, msg: "이 브라우저에서는 Web Push를 쓸 수 없어요." };
     }
@@ -151,6 +191,7 @@ export async function registerReminderPushFromUserGesture() {
 
 /** 이미 허용된 세션에서 구독만 서버에 맞춤 (조용히) */
 export async function trySilentReminderPushIfAlreadyGranted() {
+  await ensureVapidRuntimeFallback();
   if (!hasWebPushSupport() || Notification.permission !== "granted") return;
   const vapid = getVapidPublicKey();
   if (!vapid || !supabase) return;

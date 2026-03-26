@@ -19,6 +19,7 @@ import {
   reminderPushStatusLabel,
   hasWebPushSupport,
   getVapidPublicKey,
+  ensureVapidRuntimeFallback,
 } from "../utils/webPushReminders.js";
 
 /** 한글 NEXON Lv1 고정 — 웹사이트 폰트 설정 제거됨 */
@@ -148,6 +149,7 @@ export function render() {
       reminderBtn.style.cursor = !canTry ? "not-allowed" : "";
     }
   }
+  void ensureVapidRuntimeFallback().then(() => syncReminderPushAccountUi());
   syncReminderPushAccountUi();
   reminderBtn?.addEventListener("click", async () => {
     const r = await registerReminderPushFromUserGesture();

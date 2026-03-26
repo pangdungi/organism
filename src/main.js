@@ -14,7 +14,12 @@ import { applyAppFont } from "./views/Idea.js";
 import { pullUserPrefsFromSupabase } from "./utils/userHourlySync.js";
 import { applyTimeCategoryColors, applyTaskCategoryColors } from "./utils/todoSettings.js";
 import { showToast } from "./utils/showToast.js";
-import { scheduleSilentReminderPushSync } from "./utils/webPushReminders.js";
+import {
+  scheduleSilentReminderPushSync,
+  ensureVapidRuntimeFallback,
+} from "./utils/webPushReminders.js";
+
+void ensureVapidRuntimeFallback();
 
 function setAuthGatePanel(mode) {
   const signupEl = document.getElementById("auth-panel-signup");
