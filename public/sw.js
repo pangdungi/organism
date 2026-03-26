@@ -41,21 +41,25 @@ self.addEventListener("push", (event) => {
     data: { url: data.url || "/" },
   };
   event.waitUntil(
-    self.clients.matchAll({ type: "all", includeUncontrolled: true }).then((clientList) => {
+    self.clients.matchAll({ type: "all", includeUncontrolled: true }).then(async (clientList) => {
       const msg = {
         type: "lp-reminder",
         title: data.title,
         body: data.body || "",
         url: data.url || "/",
       };
-      const anyVisible = clientList.some((c) => c.visibilityState === "visible");
+      /* iOS PWA는 백그라운드여도 visibilityState가 visible로 남는 경우가 있어 OS 알림이 안 뜸 → focused 사용 */
+      const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      const anyFocused = windows.some((w) => "focused" in w && w.focused === true);
       console.log(
         LOG,
         "clients",
         clientList.length,
-        "anyVisible",
-        anyVisible,
-        clientList.map((c) => [c.visibilityState, c.url || c.id || "?"]),
+        "windows",
+        windows.length,
+        "anyFocused",
+        anyFocused,
+        clientList.map((c) => [c.visibilityState, "focused" in c ? c.focused : "?", c.url || "?"]),
       );
       for (const client of clientList) {
         try {
@@ -65,12 +69,11 @@ self.addEventListener("push", (event) => {
           console.warn(LOG, "postMessage failed", e);
         }
       }
-      /* 백그라운드(보이는 창 없음)이거나 앱 완전 종료 → OS 알림 */
-      if (!anyVisible) {
+      if (!anyFocused) {
         console.log(LOG, "→ showNotification");
         return self.registration.showNotification(data.title, options);
       }
-      console.log(LOG, "foreground → OS 알림 생략(앱에서 토스트)");
+      console.log(LOG, "포커스 있는 창만 있음 → OS 알림 생략");
       return Promise.resolve();
     }),
   );
