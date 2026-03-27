@@ -2279,6 +2279,33 @@ body {
     padding-right: 0.35rem !important;
   }
 
+  /*
+   * 태블릿·아이패드 등 (폰보다 넓고 48rem 이하): 하단 탭을 한 줄에 균등 분배.
+   * 좁은 폰은 위 규칙(가로 스크롤) 유지.
+   */
+  @media (min-width: 37.5rem) {
+    .app-bottom-nav {
+      justify-content: stretch !important;
+      overflow-x: hidden !important;
+      overflow-y: hidden !important;
+    }
+    .app-bottom-nav-main {
+      flex: 1 1 auto !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+      justify-content: space-between !important;
+      gap: 0.05rem;
+    }
+    .app-bottom-nav-main > .app-bottom-nav-item {
+      flex: 1 1 0 !important;
+      min-width: 0 !important;
+      max-width: none !important;
+      padding-left: 0.15rem !important;
+      padding-right: 0.15rem !important;
+    }
+  }
+
   /* 감정관리(모바일): DIARY 대제목·사이드바 없음, 서브탭 + 일기 선택 + 본문만 */
   .diary-view--mobile {
     padding-top: 0.35rem;
@@ -3044,7 +3071,7 @@ body {
     opacity: 0.92;
   }
 
-  /* 모바일: 근무기록 트래커 — 표 너비는 내용 기준(전역 width:100%·min-width:48rem 해제), 넘치면 가로 스크롤 */
+  /* 모바일: 근무기록 트래커 — 표는 내용·열 최소값 기준(넘치면 가로 스크롤) */
   .work-schedule-content-wrap .work-schedule-table-wrap {
     overflow-x: auto;
     overflow-y: visible;
@@ -3067,7 +3094,7 @@ body {
   .work-schedule-content-wrap .work-schedule-table col.work-schedule-col-start-time,
   .work-schedule-content-wrap .work-schedule-table col.work-schedule-col-end-time {
     width: auto;
-    min-width: 2.75rem;
+    min-width: 0;
   }
   .work-schedule-content-wrap .work-schedule-table col.work-schedule-col-type {
     width: auto;
@@ -3075,11 +3102,11 @@ body {
   }
   .work-schedule-content-wrap .work-schedule-table col.work-schedule-col-hours-worked {
     width: auto;
-    min-width: 3rem;
+    min-width: 0;
   }
   .work-schedule-content-wrap .work-schedule-table col.work-schedule-col-hours {
     width: auto;
-    min-width: 4rem;
+    min-width: 2.75rem;
   }
   .work-schedule-content-wrap .work-schedule-table col.work-schedule-col-memo {
     width: auto;
@@ -3121,6 +3148,11 @@ body {
   .work-schedule-content-wrap .work-schedule-table td {
     border-bottom: var(--divider-default);
     border-right: var(--divider-default);
+  }
+  /* 모바일: 근무일 sticky — 데스크톱과 동일하게 ::after 구분선만(이중 border 방지) */
+  .work-schedule-content-wrap .work-schedule-table .work-schedule-th-date,
+  .work-schedule-content-wrap .work-schedule-table .work-schedule-cell-date {
+    border-right: none !important;
   }
   /* 모바일: 필터(월별·하루·날짜선택 + 월 드롭·연도) 한 줄 — 전역 flex-wrap:wrap 덮어씀 */
   .work-schedule-content-wrap .work-schedule-filter-bar {
@@ -10192,10 +10224,12 @@ body {
 }
 
 .work-schedule-table {
-  width: 100%;
-  min-width: 48rem;
+  width: max-content;
+  max-width: 100%;
+  min-width: 0;
   border-collapse: collapse;
   font-size: 0.875rem;
+  table-layout: auto;
 }
 
 .work-schedule-table th,
@@ -10230,22 +10264,23 @@ body {
 
 .work-schedule-col-start-time,
 .work-schedule-col-end-time {
-  width: 8%;
-  min-width: 3.75rem;
+  width: auto;
+  min-width: 2.5rem;
 }
 
 .work-schedule-col-type {
-  width: 10%;
-  min-width: 5rem;
+  width: auto;
+  min-width: 2.5rem;
 }
 
 .work-schedule-col-hours-worked {
-  width: 1%;
-  min-width: 4.375rem;
+  width: auto;
+  min-width: 2.25rem;
 }
 
 .work-schedule-table .work-schedule-cell-memo {
   white-space: normal;
+  max-width: 14rem;
 }
 
 .work-schedule-cell-type {
@@ -10334,11 +10369,11 @@ body {
 }
 
 .work-schedule-col-date {
-  width: 14%;
-  min-width: 6.875rem;
+  width: auto;
+  min-width: 4.25rem;
 }
 
-/* 근무일 열만 고정 (가로 스크롤 시): sticky — 표 전체 좌·우 외곽선은 두지 않음(마지막 열과 균형) */
+/* 근무일 열만 고정 (가로 스크롤 시): sticky — 뒤 열이 겹쳐 그릴 때 border가 묻히므로 z-index + ::after로 1·2열 구분선 고정 */
 .work-schedule-table-wrap {
   overflow-x: auto;
 }
@@ -10346,12 +10381,25 @@ body {
 .work-schedule-table .work-schedule-cell-date {
   position: sticky;
   left: 0;
-  z-index: 2;
+  z-index: 5;
+  overflow: visible;
   background: var(--content-bg);
-  border-right: var(--line-l2);
+  border-right: none;
+}
+.work-schedule-table .work-schedule-th-date::after,
+.work-schedule-table .work-schedule-cell-date::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line-l2-color);
+  z-index: 1;
+  pointer-events: none;
 }
 .work-schedule-table thead .work-schedule-th-date {
-  z-index: 3;
+  z-index: 6;
 }
 .work-schedule-table tbody tr:hover .work-schedule-cell-date {
   background: var(--ui-surface-alt) !important;
@@ -10364,8 +10412,8 @@ body {
 }
 
 .work-schedule-col-hours {
-  width: 1%;
-  min-width: 11.25rem;
+  width: auto;
+  min-width: 2.75rem;
 }
 
 .work-schedule-th-hours {
@@ -10373,13 +10421,13 @@ body {
 }
 
 .work-schedule-col-memo {
-  width: 28%;
-  min-width: 7.5rem;
+  width: auto;
+  min-width: 3rem;
 }
 
 .work-schedule-col-actions {
-  width: 1%;
-  min-width: 3.625rem;
+  width: auto;
+  min-width: 2rem;
 }
 
 .work-schedule-th-actions,
@@ -10444,6 +10492,37 @@ body {
   border-bottom: none !important;
   box-shadow: none !important;
   padding: 0.2rem 0.5rem !important;
+}
+
+@media (max-width: 48rem) {
+  /* 모바일 근무표: 시작·마감 열 — 헤더 줄바꿈 + 입력 ch·패딩(전역 .work-schedule-input·#app 규칙보다 뒤에 둬 덮어씀) */
+  .work-schedule-content-wrap .work-schedule-table .work-schedule-th-start-time,
+  .work-schedule-content-wrap .work-schedule-table .work-schedule-th-end-time {
+    white-space: normal;
+    max-width: 3.5rem;
+    line-height: 1.2;
+    word-break: keep-all;
+  }
+  .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-start-time,
+  .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-end-time {
+    width: auto;
+    min-width: 5ch;
+    max-width: 6.5ch;
+    box-sizing: content-box;
+  }
+  #app .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-start-time,
+  #app .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-end-time {
+    padding: 0.2rem 0.35rem !important;
+  }
+  #app .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-start-time:focus,
+  #app .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-start-time:focus-visible,
+  #app .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-end-time:focus,
+  #app .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-end-time:focus-visible {
+    border: none !important;
+    border-bottom: none !important;
+    box-shadow: none !important;
+    padding: 0.2rem 0.35rem !important;
+  }
 }
 
 /* 표형 레이아웃 예외: 감정관리(통제일기·감정관리 탭) Q&A 블록 입력 — 밑줄 제거 */
@@ -10584,6 +10663,32 @@ body {
 .work-schedule-input-hours-worked::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+@media (max-width: 48rem) {
+  /* 모바일: Hours 열 — 숫자 입력 width:100%·col min-width 보다 뒤에서 덮어씀 */
+  .work-schedule-content-wrap .work-schedule-table .work-schedule-th-hours-worked {
+    white-space: normal;
+    max-width: 2.75rem;
+    line-height: 1.2;
+  }
+  .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-hours-worked {
+    width: auto;
+    min-width: 3ch;
+    max-width: 8ch;
+    box-sizing: content-box;
+    font-variant-numeric: tabular-nums;
+  }
+  #app .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-hours-worked {
+    padding: 0.2rem 0.35rem !important;
+  }
+  #app .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-hours-worked:focus,
+  #app .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-hours-worked:focus-visible {
+    border: none !important;
+    border-bottom: none !important;
+    box-shadow: none !important;
+    padding: 0.2rem 0.35rem !important;
+  }
 }
 
 .work-schedule-btn-delete {

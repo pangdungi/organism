@@ -3,6 +3,7 @@
  * 근무시간, 근무유형, 근무일, 시간(근무표), 메모
  */
 import { renderMonthlyContent } from "./WorkScheduleMonthly.js";
+import { supabase } from "../supabase.js";
 import { hydrateWorkScheduleFromCloud } from "../utils/workScheduleSupabase.js";
 import {
   applyWorkScheduleRowTimesFromTypes,
@@ -1456,9 +1457,8 @@ export function render(opts = {}) {
     btn.addEventListener("click", () => switchView(btn.dataset.view));
   });
 
-  // pull 반영 후 한 번만 그림. 이전 탭 인스턴스의 hydrate.finally가 늦게 끝나면 최신 화면을 덮어쓸 수 있어 세대·연결 여부로 차단.
-  contentWrap.innerHTML =
-    '<p class="work-schedule-notice work-schedule-cloud-loading" aria-live="polite">근무표를 불러오는 중…</p>';
+  /* 로컬 기준으로 즉시 표시. Supabase 사용 시 병합 후 한 번 더 그림(할일 탭과 동일, 불러오는 중 화면 없음) */
+  switchView(activeWorkScheduleView);
   const hydrateGen = ++_workScheduleHydrateGeneration;
   wsUiLog("mount hydrate start, gen=", hydrateGen);
   void hydrateWorkScheduleFromCloud()
@@ -1472,6 +1472,7 @@ export function render(opts = {}) {
         wsUiLog("hydrate.finally SKIP (panel no longer in document)");
         return;
       }
+      if (!supabase) return;
       wsUiLog("hydrate.finally OK → switchView", activeWorkScheduleView);
       switchView(activeWorkScheduleView);
     });
