@@ -182,16 +182,36 @@ function init() {
     observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["hidden"] });
   })();
 
+  const AUTH_GET_SESSION_MS = 12_000;
+
   async function showInitialPage() {
-    if (supabase) {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        showOnly("signin");
-        await pullUserPrefsFromSupabase();
-        mountApp(document.getElementById("app-screen"));
-        scheduleSilentReminderPushSync();
-        return;
-      }
+    if (!supabase) {
+      showOnly("login");
+      setAuthGatePanel("signup");
+      return;
+    }
+    let session = null;
+    try {
+      const res = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("auth_get_session_timeout")), AUTH_GET_SESSION_MS),
+        ),
+      ]);
+      session = res?.data?.session ?? null;
+    } catch (e) {
+      console.warn("[init] getSession 실패 또는 시간 초과:", e?.message || e);
+      showOnly("login");
+      setAuthGatePanel("signup");
+      return;
+    }
+    if (session) {
+      showOnly("signin");
+      /* 시급·appearance·타임존 RPC는 네트워크 지연 시 스플래시가 멈추지 않도록 비동기로만 실행 */
+      void pullUserPrefsFromSupabase().catch((err) => console.warn("[prefs]", err));
+      mountApp(document.getElementById("app-screen"));
+      scheduleSilentReminderPushSync();
+      return;
     }
     showOnly("login");
     setAuthGatePanel("signup");
@@ -238,7 +258,7 @@ async function doLogin() {
   const result = await login(id, pw);
   if (result.ok) {
     showOnly("signin");
-    await pullUserPrefsFromSupabase();
+    void pullUserPrefsFromSupabase().catch((err) => console.warn("[prefs]", err));
     mountApp(document.getElementById("app-screen"));
     scheduleSilentReminderPushSync();
   } else {
@@ -267,7 +287,7 @@ async function doSignUp() {
   const session = result.data?.session;
   if (session) {
     showOnly("signin");
-    await pullUserPrefsFromSupabase();
+    void pullUserPrefsFromSupabase().catch((err) => console.warn("[prefs]", err));
     mountApp(document.getElementById("app-screen"));
     scheduleSilentReminderPushSync();
     return;

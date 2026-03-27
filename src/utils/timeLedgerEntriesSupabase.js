@@ -116,13 +116,17 @@ export async function pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd) {
   return true;
 }
 
-/** 아카이브: 로컬 먼저 올린 뒤 해당 연·월만 pull → 병합 */
+/**
+ * 아카이브: 먼저 해당 연·월을 서버에서 받아 로컬에 반영한 뒤, 그다음 로컬→서버 동기.
+ * (push를 먼저 하면 다른 기기에서 삭제한 행이 로컬에 남아 upsert로 서버에 부활함)
+ */
 export async function hydrateTimeLedgerEntriesForArchiveMonth(year, month) {
   if (!supabase) return false;
   attachTimeLedgerEntriesSaveListener();
-  await syncTimeLedgerEntriesToSupabase();
   const { rangeStart, rangeEnd } = timeLedgerMonthRangeYmd(year, month);
-  return pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
+  const pulledOk = await pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
+  await syncTimeLedgerEntriesToSupabase();
+  return pulledOk;
 }
 
 export async function pushAllLocalTimeLedgerEntriesIfServerEmpty() {
@@ -170,8 +174,8 @@ export function attachTimeLedgerEntriesSaveListener() {
 export async function hydrateTimeLedgerEntriesFromCloud() {
   if (!supabase) return false;
   attachTimeLedgerEntriesSaveListener();
-  await syncTimeLedgerEntriesToSupabase();
   const pulled = await pullTimeLedgerEntriesFromSupabase();
   await pushAllLocalTimeLedgerEntriesIfServerEmpty();
+  await syncTimeLedgerEntriesToSupabase();
   return pulled;
 }
