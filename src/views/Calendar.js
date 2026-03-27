@@ -44,9 +44,21 @@ import { renderMonthlyContent as renderWorkScheduleMonthlyContent } from "./Work
 import {
   persistSectionTasksAndSchedule,
   persistCustomSectionTasksAndSchedule,
+  hydrateTodoSectionTasksFromCloud,
 } from "../utils/todoSectionTasksSupabase.js";
 import { SECTION_TASKS_KEY, CUSTOM_SECTION_TASKS_KEY } from "../utils/todoSectionTasksModel.js";
 const KPI_SECTION_IDS = ["braindump", "dream", "sideincome", "health", "happy"];
+
+/** 할일/일정 화면 진입 시 서버 → localStorage 병합 후 필요 시 전체 리렌더(시간가계부 pull 패턴과 동일) */
+function scheduleTodoTasksPullAndMaybeRerender() {
+  void hydrateTodoSectionTasksFromCloud().then((needRefresh) => {
+    if (needRefresh) {
+      try {
+        window.__lpRenderMain?.();
+      } catch (_) {}
+    }
+  });
+}
 
 const CALENDAR_DATE_DEBUG = false;
 function dateDebug(tag, ...args) {
@@ -5882,6 +5894,7 @@ function renderCalendarView(tabsElement) {
 
 /** 모바일 하단 '캘린더' 탭: 할일/일정의 월별·1주 뷰만 (상단 서브탭만 표시) */
 export function renderMobileScheduleCalendar() {
+  scheduleTodoTasksPullAndMaybeRerender();
   const el = document.createElement("div");
   el.className =
     "app-tab-panel-content calendar-view calendar-view--mobile-schedule";
@@ -6429,6 +6442,7 @@ function renderPlaceholderView(tabsElement, label) {
 }
 
 export function render() {
+  scheduleTodoTasksPullAndMaybeRerender();
   const el = document.createElement("div");
   el.className = "app-tab-panel-content calendar-view";
 

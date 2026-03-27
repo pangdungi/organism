@@ -436,6 +436,19 @@ export function mountApp(container) {
 
   window.__lpRenderMain = (opts) => renderMain(main, opts || {});
 
+  const TODO_TABS_FOR_CLOUD_PULL = new Set(["calendar", "schedulecalendar"]);
+  document.addEventListener(
+    "visibilitychange",
+    () => {
+      if (document.visibilityState !== "visible") return;
+      if (!TODO_TABS_FOR_CLOUD_PULL.has(currentTabId)) return;
+      void hydrateTodoSectionTasksFromCloud().then((needRefresh) => {
+        if (needRefresh) renderMain(main);
+      });
+    },
+    { passive: true },
+  );
+
   renderMain(main);
   void Promise.all([
     hydrateTodoSectionTasksFromCloud(),
