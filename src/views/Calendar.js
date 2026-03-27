@@ -5914,22 +5914,23 @@ export function renderMobileScheduleCalendar() {
     );
   }
 
+  el.appendChild(contentWrap);
+  mountCalendarSubViews();
   if (supabase) {
-    contentWrap.innerHTML =
-      '<p class="work-schedule-notice work-schedule-cloud-loading" aria-live="polite">할일을 불러오는 중…</p>';
     const hydrateGen = ++_calendarTodoHydrateGeneration;
     void hydrateTodoSectionTasksFromCloud()
       .catch((err) => console.warn("[calendar-section-tasks]", err))
-      .finally(() => {
+      .then((needRefresh) => {
         if (hydrateGen !== _calendarTodoHydrateGeneration) return;
         if (!el.isConnected) return;
-        mountCalendarSubViews();
+        if (needRefresh) {
+          try {
+            window.__lpRenderMain?.();
+          } catch (_) {}
+        }
       });
-  } else {
-    mountCalendarSubViews();
   }
 
-  el.appendChild(contentWrap);
   return el;
 }
 
@@ -6450,9 +6451,6 @@ function renderPlaceholderView(tabsElement, label) {
 }
 
 export function render() {
-  console.log(
-    "[할일/일정 탭] Calendar.render() 시작 — Supabase 사용 시 클라우드 동기화 후 할일 표시(근무표와 동일)",
-  );
   const el = document.createElement("div");
   el.className = "app-tab-panel-content calendar-view";
 
@@ -6544,25 +6542,21 @@ export function render() {
 
   el.appendChild(contentWrap);
 
+  /* 시간가계부와 동일: 화면은 즉시(localStorage 기준), Supabase는 백그라운드 병합 후 needRefresh일 때만 리렌더 */
+  renderContent("todo");
   if (supabase) {
-    contentWrap.innerHTML =
-      '<p class="work-schedule-notice work-schedule-cloud-loading" aria-live="polite">할일을 불러오는 중…</p>';
-    tabs.querySelectorAll(".time-view-tab").forEach((btn) => {
-      btn.disabled = true;
-    });
     const hydrateGen = ++_calendarTodoHydrateGeneration;
     void hydrateTodoSectionTasksFromCloud()
       .catch((err) => console.warn("[calendar-section-tasks]", err))
-      .finally(() => {
+      .then((needRefresh) => {
         if (hydrateGen !== _calendarTodoHydrateGeneration) return;
         if (!el.isConnected) return;
-        tabs.querySelectorAll(".time-view-tab").forEach((btn) => {
-          btn.disabled = false;
-        });
-        renderContent("todo");
+        if (needRefresh) {
+          try {
+            window.__lpRenderMain?.();
+          } catch (_) {}
+        }
       });
-  } else {
-    renderContent("todo");
   }
 
   return el;

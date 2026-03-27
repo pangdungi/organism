@@ -279,12 +279,6 @@ export function mountApp(container) {
         });
       }
     } catch (_) {}
-    if (tabId === "calendar") {
-      console.log("[할일/일정 탭] 클릭 → setActiveTab", {
-        tabId,
-        renderer: "render (Calendar.js)",
-      });
-    }
     currentTabId = tabId;
     nav.querySelectorAll(".app-sidebar-item").forEach((b) => {
       b.classList.toggle("active", b.dataset.tabId === tabId);
@@ -426,9 +420,6 @@ export function mountApp(container) {
     const render = RENDERERS[currentTabId];
     try {
       if (render) {
-        if (currentTabId === "calendar") {
-          console.log("[할일/일정 탭] renderMain → RENDERERS.calendar() 호출 (DOM은 localStorage·TodoList가 읽음)");
-        }
         const content = render();
         if (content) p.appendChild(content);
         if (window.matchMedia("(max-width: 48rem)").matches) {
