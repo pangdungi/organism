@@ -9,10 +9,16 @@ import {
   saveDiaryEntries,
   ensureTab3Entries,
   newDiaryEntryId,
+  isDiaryEntryUuid,
   TAB3_EMOTION_TEMPLATE,
   TAB3_EMOTION_PLACEHOLDERS,
 } from "../diaryData.js";
-import { hydrateDiaryFromCloud } from "../utils/diarySupabase.js";
+import {
+  hydrateDiaryFromCloud,
+  pullDiaryPageFromSupabase,
+  DIARY_PULL_PAGE_SIZE,
+  deleteDiaryEntryFromSupabase,
+} from "../utils/diarySupabase.js";
 
 /** 탭 2 통제일기 Q&A 템플릿 */
 const TAB2_QA_TEMPLATE = [
@@ -127,9 +133,35 @@ export function render() {
   let searchQuery = "";
   let isComposing = false;
   let sidebarCollapsed = false;
+  let diaryHasMoreRemote = false;
+  let diaryPullNextOffset = 0;
+  let diaryLoadMoreBusy = false;
   let entries = loadDiaryEntries();
 
   (function mountDiary() {
+  function notifyServerDeletedEntry(entryId) {
+    if (isDiaryEntryUuid(entryId)) {
+      void deleteDiaryEntryFromSupabase(entryId).catch((e) => console.warn("[diary]", e));
+    }
+  }
+
+  async function loadMoreDiaryRemote() {
+    if (diaryLoadMoreBusy || !diaryHasMoreRemote) return;
+    diaryLoadMoreBusy = true;
+    renderLayout();
+    try {
+      const page = await pullDiaryPageFromSupabase(diaryPullNextOffset, DIARY_PULL_PAGE_SIZE);
+      if (page.merged) entries = loadDiaryEntries();
+      diaryHasMoreRemote = page.hasMore;
+      diaryPullNextOffset += DIARY_PULL_PAGE_SIZE;
+    } catch (e) {
+      console.warn("[diary]", e);
+    } finally {
+      diaryLoadMoreBusy = false;
+      renderLayout();
+    }
+  }
+
   function ensureTabEntries(tabId) {
     if (tabId === "3") {
       ensureTab3Entries(entries);
@@ -494,7 +526,7 @@ export function render() {
       const searchInput = document.createElement("input");
       searchInput.type = "text";
       searchInput.className = "diary-search-input";
-      searchInput.placeholder = "날짜·내용 검색...";
+      searchInput.placeholder = "날짜·내용 검색 (불러온 목록 기준)…";
       searchInput.value = searchQuery;
       searchInput.addEventListener("compositionstart", () => {
         isComposing = true;
@@ -530,6 +562,16 @@ export function render() {
         });
         pageList.appendChild(btn);
       });
+
+      if (diaryHasMoreRemote) {
+        const moreBtn = document.createElement("button");
+        moreBtn.type = "button";
+        moreBtn.className = "diary-page-item diary-server-load-more";
+        moreBtn.textContent = diaryLoadMoreBusy ? "불러오는 중…" : "이전 기록 더 불러오기";
+        moreBtn.disabled = diaryLoadMoreBusy;
+        moreBtn.addEventListener("click", () => void loadMoreDiaryRemote());
+        pageList.appendChild(moreBtn);
+      }
 
       pageListScrollWrap.appendChild(pageList);
       sidebar.appendChild(pageListScrollWrap);
@@ -578,10 +620,12 @@ export function render() {
         deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
         deleteBtn.addEventListener("click", () => {
           const list = getTabEntriesRaw(currentTabId);
-          const idx = list.findIndex((x) => x.id === entry.id);
+          const deletedId = entry.id;
+          const idx = list.findIndex((x) => x.id === deletedId);
           if (idx >= 0) {
             list.splice(idx, 1);
             saveDiaryEntries(entries);
+            notifyServerDeletedEntry(deletedId);
             renderLayout();
           }
         });
@@ -660,6 +704,18 @@ export function render() {
         }
         scrollWrap.appendChild(card);
       });
+      if (diaryHasMoreRemote) {
+        const loadRow = document.createElement("div");
+        loadRow.className = "diary-feed-load-more";
+        const moreBtn = document.createElement("button");
+        moreBtn.type = "button";
+        moreBtn.className = "diary-mobile-load-more-server";
+        moreBtn.textContent = diaryLoadMoreBusy ? "불러오는 중…" : "서버에서 이전 기록 더 불러오기";
+        moreBtn.disabled = diaryLoadMoreBusy;
+        moreBtn.addEventListener("click", () => void loadMoreDiaryRemote());
+        loadRow.appendChild(moreBtn);
+        scrollWrap.appendChild(loadRow);
+      }
     } else if (mobile && fullEntryList.length === 0) {
       const empty = document.createElement("div");
       empty.className = "diary-paper diary-feed-empty";
@@ -686,10 +742,12 @@ export function render() {
       deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
       deleteBtn.addEventListener("click", () => {
         const list = getTabEntriesRaw("3");
-        const idx = list.findIndex((x) => x.id === currentEntry.id);
+        const deletedId = currentEntry.id;
+        const idx = list.findIndex((x) => x.id === deletedId);
         if (idx >= 0) {
           list.splice(idx, 1);
           saveDiaryEntries(entries);
+          notifyServerDeletedEntry(deletedId);
           currentEntryId = list.length > 0 ? list[0].id : null;
           renderLayout();
         }
@@ -748,10 +806,12 @@ export function render() {
         deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
         deleteBtn.addEventListener("click", () => {
           const list = getTabEntriesRaw(currentTabId);
-          const idx = list.findIndex((x) => x.id === currentEntry.id);
+          const deletedId = currentEntry.id;
+          const idx = list.findIndex((x) => x.id === deletedId);
           if (idx >= 0) {
             list.splice(idx, 1);
             saveDiaryEntries(entries);
+            notifyServerDeletedEntry(deletedId);
             currentEntryId = list.length > 0 ? list[0].id : null;
             renderLayout();
           }
@@ -806,10 +866,12 @@ export function render() {
         deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
         deleteBtn.addEventListener("click", () => {
           const list = getTabEntriesRaw(currentTabId);
-          const idx = list.findIndex((x) => x.id === currentEntry.id);
+          const deletedId = currentEntry.id;
+          const idx = list.findIndex((x) => x.id === deletedId);
           if (idx >= 0) {
             list.splice(idx, 1);
             saveDiaryEntries(entries);
+            notifyServerDeletedEntry(deletedId);
             currentEntryId = list.length > 0 ? list[0].id : null;
             renderLayout();
           }
@@ -859,6 +921,11 @@ export function render() {
     renderLayout();
 
     void hydrateDiaryFromCloud()
+      .then((page) => {
+        if (!page || page.merged == null || typeof page.hasMore !== "boolean") return;
+        diaryHasMoreRemote = page.hasMore;
+        diaryPullNextOffset = DIARY_PULL_PAGE_SIZE;
+      })
       .catch((err) => console.warn("[diary]", err))
       .finally(() => {
         entries = loadDiaryEntries();

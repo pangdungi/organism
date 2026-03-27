@@ -2374,6 +2374,27 @@ body {
     color: var(--text-muted);
     font-size: 0.95rem;
   }
+  .diary-feed-load-more {
+    padding: 0.5rem 0.75rem 2rem;
+    display: flex;
+    justify-content: center;
+  }
+  .diary-mobile-load-more-server {
+    width: 100%;
+    max-width: 22rem;
+    padding: 0.65rem 1rem;
+    font-size: 0.875rem;
+    font-family: var(--font-body);
+    color: var(--ui-btn-primary-fg);
+    background: var(--ui-btn-primary-bg);
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+  }
+  .diary-mobile-load-more-server:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
   .diary-feed-card .diary-paper-qa-header {
     margin-bottom: 0.5rem;
     padding: 0.5rem 0.75rem;

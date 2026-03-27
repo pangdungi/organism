@@ -1,5 +1,9 @@
 /**
  * 감정관리 일기 ↔ Supabase diary_daily_entries 동기화
+ *
+ * - 아카이브처럼 월 범위 대신: 최근 수정 순(updated_at) 페이지 pull + "더 불러오기".
+ * - pull 한 페이지만으로 로컬을 통째로 대체하지 않고, 행 id 기준 병합(mergeDiaryServerWins).
+ * - 서버 고아 삭제는 하지 않음(부분 로컬이 원격 전체를 지우는 사고 방지). 삭제는 deleteDiaryEntryFromSupabase.
  */
 
 import { supabase } from "../supabase.js";
@@ -11,6 +15,9 @@ import {
 } from "../diaryData.js";
 
 const TABLE = "diary_daily_entries";
+
+/** 탭 진입·첫 동기화 시 한 번에 가져올 행 수 */
+export const DIARY_PULL_PAGE_SIZE = 60;
 
 const TAB_TO_KIND = { "1": "free", "2": "control", "3": "emotion" };
 const KIND_TO_TAB = { free: "1", control: "2", emotion: "3" };
@@ -128,23 +135,42 @@ async function getSessionUserId() {
   return session?.user?.id || null;
 }
 
-/** 로그인 상태에서 서버에서 전부 가져와 로컬과 병합 후 저장 */
-export async function pullDiaryFromSupabase() {
+/**
+ * 서버에서 한 페이지만 가져와 로컬과 병합 후 저장.
+ * @param {number} offset — range 시작 (0부터). order: updated_at desc, id desc
+ * @returns {{ merged: object | null, hasMore: boolean, rowCount: number }}
+ */
+export async function pullDiaryPageFromSupabase(
+  offset = 0,
+  limit = DIARY_PULL_PAGE_SIZE,
+) {
   const userId = await getSessionUserId();
-  if (!userId || !supabase) return null;
+  if (!userId || !supabase) {
+    return { merged: null, hasMore: false, rowCount: 0 };
+  }
+  const lo = Math.max(0, offset);
+  const lim = Math.max(1, limit);
+  const hi = lo + lim - 1;
   const { data, error } = await supabase
     .from(TABLE)
     .select("id, diary_kind, entry_date, payload, updated_at")
     .eq("user_id", userId)
-    .order("entry_date", { ascending: false });
+    .order("updated_at", { ascending: false })
+    .order("id", { ascending: false })
+    .range(lo, hi);
   if (error) {
-    console.warn("[diary sync] pull", error.message);
-    return null;
+    console.warn("[diary sync] pull page", error.message);
+    return { merged: null, hasMore: false, rowCount: 0 };
   }
+  const rows = data || [];
   const local = loadDiaryEntries();
-  const merged = mergeDiaryServerWins(local, data || []);
+  const merged = mergeDiaryServerWins(local, rows);
   saveDiaryEntries(merged);
-  return merged;
+  return {
+    merged,
+    hasMore: rows.length === lim,
+    rowCount: rows.length,
+  };
 }
 
 /** 서버에 일기가 하나도 없을 때 로컬 전체 업로드 */
@@ -162,13 +188,12 @@ export async function pushAllLocalDiaryIfServerEmpty(entries) {
 let _pushTimer = null;
 const PUSH_DEBOUNCE_MS = 900;
 
-/** 로컬 상태를 서버에 반영 (id PK upsert + 로컬에 없는 id 삭제) */
+/** 로컬 상태를 서버에 반영 (id PK upsert만; 원격 일괄 삭제는 pull 페이지 구조와 맞지 않아 두지 않음) */
 export async function syncDiaryToSupabase(entries) {
   const userId = await getSessionUserId();
   if (!userId || !supabase || !entries || typeof entries !== "object") return;
 
   let mutatedIds = false;
-  const localIds = new Set();
   const upserts = [];
 
   for (const tabId of ["1", "2", "3"]) {
@@ -184,7 +209,6 @@ export async function syncDiaryToSupabase(entries) {
       }
       const id = String(e.id || "").trim();
       if (!id) continue;
-      localIds.add(id);
       upserts.push({
         id,
         user_id: userId,
@@ -203,20 +227,16 @@ export async function syncDiaryToSupabase(entries) {
     });
     if (error) console.warn("[diary sync] upsert", error.message);
   }
+}
 
-  const { data: remote, error: rErr } = await supabase
-    .from(TABLE)
-    .select("id")
-    .eq("user_id", userId);
-  if (rErr || !remote) return;
-
-  for (const r of remote) {
-    const rid = r.id;
-    if (rid && !localIds.has(String(rid))) {
-      const { error: dErr } = await supabase.from(TABLE).delete().eq("id", rid);
-      if (dErr) console.warn("[diary sync] delete", dErr.message);
-    }
-  }
+/** 사용자가 일기를 삭제했을 때 해당 행만 서버에서 제거 */
+export async function deleteDiaryEntryFromSupabase(entryId) {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase || !entryId) return;
+  const id = String(entryId).trim();
+  if (!isDiaryEntryUuid(id)) return;
+  const { error } = await supabase.from(TABLE).delete().eq("id", id).eq("user_id", userId);
+  if (error) console.warn("[diary sync] delete row", error.message);
 }
 
 export function scheduleDiarySyncPush(entries) {
@@ -239,11 +259,12 @@ export function attachDiarySaveListener() {
   });
 }
 
-/** 감정일기 탭 진입 시: pull → 서버 비었으면 로컬 업로드 */
+/** 감정일기 탭 진입 시: 첫 페이지 pull → 서버 비었으면 로컬 업로드 */
 export async function hydrateDiaryFromCloud() {
-  if (!supabase) return;
+  if (!supabase) return null;
   attachDiarySaveListener();
-  const pulled = await pullDiaryFromSupabase();
-  const entries = pulled ?? loadDiaryEntries();
+  const page = await pullDiaryPageFromSupabase(0, DIARY_PULL_PAGE_SIZE);
+  const entries = page.merged ?? loadDiaryEntries();
   await pushAllLocalDiaryIfServerEmpty(entries);
+  return page;
 }
