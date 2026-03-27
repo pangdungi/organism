@@ -4,7 +4,10 @@
  */
 
 import { loadTimeRows, parseTagsFromFeedback } from "./Time.js";
-import { updateTimeLedgerEntryFeedbackById } from "../utils/timeLedgerEntriesModel.js";
+import {
+  readTimeLedgerEntriesRaw,
+  updateTimeLedgerEntryFeedbackById,
+} from "../utils/timeLedgerEntriesModel.js";
 import { showToast } from "../utils/showToast.js";
 import { hydrateTimeLedgerEntriesForArchiveMonth } from "../utils/timeLedgerEntriesSupabase.js";
 
@@ -134,25 +137,77 @@ export function render() {
       });
   }
 
-  let fullRecords = buildRecords();
+  /** hydrate 완료 전에는 빈 목록 — 첫 화면부터 해당 월 Supabase 반영 후에만 채움 */
+  let fullRecords = [];
   let archiveMonthSyncGen = 0;
 
   function refreshFullRecords() {
     fullRecords = buildRecords();
   }
 
-  function syncArchiveMonthWithServer() {
+  function showArchiveListLoading() {
+    listEl.classList.add("archive-list--loading");
+    listEl.innerHTML = "";
+    const wrap = document.createElement("div");
+    wrap.className = "archive-list-loading";
+    wrap.setAttribute("aria-busy", "true");
+    wrap.setAttribute("aria-live", "polite");
+    wrap.setAttribute("aria-label", "아카이브 기록 동기화 중");
+
+    const track = document.createElement("div");
+    track.className = "archive-list-loading-track";
+    const bar = document.createElement("div");
+    bar.className = "archive-list-loading-bar";
+    track.appendChild(bar);
+
+    const label = document.createElement("p");
+    label.className = "archive-list-loading-label";
+    label.textContent = "기록 동기화 중";
+
+    const sk = document.createElement("div");
+    sk.className = "archive-list-loading-skeleton";
+    for (let i = 0; i < 3; i++) {
+      const row = document.createElement("div");
+      row.className = "archive-list-loading-card";
+      sk.appendChild(row);
+    }
+
+    wrap.appendChild(track);
+    wrap.appendChild(label);
+    wrap.appendChild(sk);
+    listEl.appendChild(wrap);
+  }
+
+  async function loadArchiveMonthThenRender() {
+    /* render() 직후에는 아직 app-tab-panel에 안 붙었을 수 있음 → 호출부는 queueMicrotask 권장 */
     if (!el.isConnected) return;
     const gen = ++archiveMonthSyncGen;
-    listEl.classList.add("archive-list--syncing");
-    void hydrateTimeLedgerEntriesForArchiveMonth(filterYear, filterMonth)
-      .catch((e) => console.warn("[archive] month sync", e))
-      .finally(() => {
-        if (gen !== archiveMonthSyncGen || !el.isConnected) return;
-        listEl.classList.remove("archive-list--syncing");
-        refreshFullRecords();
-        renderList();
+    const rawBefore = readTimeLedgerEntriesRaw().length;
+    showArchiveListLoading();
+    console.info("[archive] [데이터] 월 동기화 시작 (목록은 완료 후 표시)", {
+      무엇을: "① Supabase 해당 월 pull → 로컬 병합 ② 로컬→서버 sync",
+      선택: `${filterYear}년 ${filterMonth}월`,
+      "동기화 직전 로컬 행 수": rawBefore,
+    });
+    try {
+      await hydrateTimeLedgerEntriesForArchiveMonth(filterYear, filterMonth);
+    } catch (e) {
+      console.warn("[archive] month sync", e);
+    } finally {
+      if (gen !== archiveMonthSyncGen || !el.isConnected) return;
+      listEl.classList.remove("archive-list--loading");
+      refreshFullRecords();
+      const after = readTimeLedgerEntriesRaw().length;
+      const { records, mode } = getRecordsToDisplay();
+      console.info("[archive] [데이터] 목록 표시 (해당 월 서버 반영 후 → localStorage 읽기)", {
+        경로: "Time.loadTimeRows() → buildRecords() (메모·태그 있는 행만)",
+        "로컬 행 수": after,
+        "카드 수(월·검색 전)": fullRecords.length,
+        "화면 카드 수": records.length,
+        mode,
       });
+      renderList();
+    }
   }
 
   function openArchiveMemoModal(record) {
@@ -387,25 +442,19 @@ export function render() {
       monthPanel.querySelectorAll(".time-period-option").forEach((opt) => {
         opt.classList.toggle("is-selected", opt.dataset.value === String(filterMonth));
       });
-      renderList();
-      syncArchiveMonthWithServer();
+      void loadArchiveMonthThenRender();
     });
   });
   yearPrevBtn.addEventListener("click", () => {
     filterYear -= 1;
     yearDisplay.textContent = filterYear;
-    renderList();
-    syncArchiveMonthWithServer();
+    void loadArchiveMonthThenRender();
   });
   yearNextBtn.addEventListener("click", () => {
     filterYear += 1;
     yearDisplay.textContent = filterYear;
-    renderList();
-    syncArchiveMonthWithServer();
+    void loadArchiveMonthThenRender();
   });
-
-  renderList();
-  syncArchiveMonthWithServer();
 
   searchInput.addEventListener("input", () => {
     renderList();
@@ -421,6 +470,11 @@ export function render() {
 
   listSection.appendChild(listEl);
   el.appendChild(listSection);
+
+  /* 패널에 붙인 뒤(다음 마이크로태스크)에 hydrate — 그 전에는 el.isConnected 가 false라 목록이 안 그려짐 */
+  queueMicrotask(() => {
+    void loadArchiveMonthThenRender();
+  });
 
   return el;
 }

@@ -38,6 +38,7 @@ import {
   attachSideincomeKpiMapSaveListener,
   hydrateSideincomeKpiMapFromCloud,
 } from "./utils/sideincomeKpiMapSupabase.js";
+import { attachTimeLedgerEntriesSaveListener } from "./utils/timeLedgerEntriesSupabase.js";
 
 const TABS = [
   { id: "home", label: "오늘", icon: "/toolbaricons/dashboard.svg" },
@@ -121,6 +122,8 @@ export function mountApp(container) {
   attachHappinessKpiMapSaveListener();
   attachDreamKpiMapSaveListener();
   attachSideincomeKpiMapSaveListener();
+  /* 시간기록 행 저장 → time_ledger_entries upsert (아카이브 메모 비우기 포함) */
+  attachTimeLedgerEntriesSaveListener();
   container.innerHTML = "";
 
   const appPage = document.createElement("div");

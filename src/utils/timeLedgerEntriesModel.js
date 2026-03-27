@@ -242,12 +242,26 @@ export function updateTimeLedgerEntryFeedbackById(entryId, feedbackText) {
   });
   if (!found) return { ok: false, msg: "해당 기록을 찾을 수 없어요." };
   writeTimeLedgerEntriesRaw(next);
+  const updatedRow = next.find((r) => r && String(r.id || "").trim() === id);
+  const feedbackTrim = String(feedbackText ?? "").trim();
+  console.info("[archive] [메모→로컬] 저장됨 (행 유지, feedback만 갱신)", {
+    entryId: id,
+    feedback글자수: feedbackTrim.length,
+    메모비움: feedbackTrim.length === 0,
+    "Supabase upsert 대상 여부(timeLedgerRowIsSyncable)": updatedRow
+      ? timeLedgerRowIsSyncable(updatedRow)
+      : false,
+  });
   try {
     if (typeof document !== "undefined") {
       document.dispatchEvent(new CustomEvent("calendar-time-rows-updated", { detail: {} }));
     }
     if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("time-ledger-entries-saved"));
+      window.dispatchEvent(
+        new CustomEvent("time-ledger-entries-saved", {
+          detail: { source: "archiveMemo", entryId: id },
+        }),
+      );
     }
   } catch (_) {}
   return { ok: true };

@@ -26,7 +26,15 @@ async function getSessionUserId() {
 
 export async function syncTimeLedgerEntriesToSupabase() {
   const userId = await getSessionUserId();
-  if (!userId || !supabase) return;
+  if (!userId || !supabase) {
+    if (_lastArchiveMemoSaveDetail?.entryId) {
+      console.warn("[archive] [메모→서버] 로그인 없음 또는 Supabase 없음 — upsert 안 함", {
+        entryId: _lastArchiveMemoSaveDetail.entryId,
+      });
+      _lastArchiveMemoSaveDetail = null;
+    }
+    return;
+  }
 
   let rows = readTimeLedgerEntriesRaw();
   const ensured = ensureTimeLedgerEntryIds(rows);
@@ -45,7 +53,39 @@ export async function syncTimeLedgerEntriesToSupabase() {
     if (payloads.length > 0) {
       const { error } = await supabase.from(TABLE).upsert(payloads, { onConflict: "id" });
       if (error) console.warn("[time-ledger-entries] upsert", error.message);
+
+      const arc = _lastArchiveMemoSaveDetail;
+      if (arc?.entryId) {
+        const eid = arc.entryId;
+        const inPayload = payloads.some((p) => String(p?.id || "").trim() === eid);
+        const payloadRow = payloads.find((p) => String(p?.id || "").trim() === eid);
+        console.info("[archive] [메모→서버] upsert 결과 (행 삭제 아님, memo 필드 갱신)", {
+          entryId: eid,
+          "이번 upsert 배열에 포함됨(서버에 반영 시도됨)": inPayload,
+          upsert요청_행수: payloads.length,
+          오류: error ? String(error.message) : null,
+          서버에_보낸_memo_필드_미리보기: payloadRow
+            ? String(payloadRow.memo ?? "").slice(0, 80)
+            : "(해당 id 없음 — 동기화 대상 행에서 빠짐)",
+        });
+        if (!inPayload) {
+          console.warn(
+            "[archive] [메모→서버] 이 행은 upsert 대상이 아님. 메모만 비워서 taskName·시작시간 등이 없으면 timeLedgerRowIsSyncable 이 false가 될 수 있어요.",
+          );
+        }
+        _lastArchiveMemoSaveDetail = null;
+      }
+    } else if (_lastArchiveMemoSaveDetail?.entryId) {
+      console.warn("[archive] [메모→서버] 동기화 대상은 있으나 payload 0건 — 서버 반영 안 됨", {
+        entryId: _lastArchiveMemoSaveDetail.entryId,
+      });
+      _lastArchiveMemoSaveDetail = null;
     }
+  } else if (_lastArchiveMemoSaveDetail?.entryId) {
+    console.warn("[archive] [메모→서버] upsert할 동기화 대상 행이 0건 — 서버 반영 안 됨", {
+      entryId: _lastArchiveMemoSaveDetail.entryId,
+    });
+    _lastArchiveMemoSaveDetail = null;
   }
 
   const { data: remote, error: listErr } = await supabase
@@ -93,7 +133,12 @@ export async function pullTimeLedgerEntriesFromSupabase() {
  */
 export async function pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd) {
   const userId = await getSessionUserId();
-  if (!userId || !supabase) return false;
+  if (!userId || !supabase) {
+    console.info("[archive] [데이터] 서버 pull 생략", {
+      이유: !userId ? "로그인 없음" : "Supabase 미설정",
+    });
+    return false;
+  }
   const rs = String(rangeStart || "").trim();
   const re = String(rangeEnd || "").trim();
   if (!rs || !re) return false;
@@ -112,6 +157,11 @@ export async function pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd) {
     return false;
   }
 
+  console.info("[archive] [데이터] Supabase에서 받음", {
+    테이블: TABLE,
+    entry_date: `${rs} ~ ${re}`,
+    받은행수: (data ?? []).length,
+  });
   mergeTimeLedgerEntriesFromServerForDateRange(data ?? [], rs, re);
   return true;
 }
@@ -121,11 +171,19 @@ export async function pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd) {
  * (push를 먼저 하면 다른 기기에서 삭제한 행이 로컬에 남아 upsert로 서버에 부활함)
  */
 export async function hydrateTimeLedgerEntriesForArchiveMonth(year, month) {
-  if (!supabase) return false;
+  if (!supabase) {
+    console.info("[archive] [데이터] 월 동기화 스킵", { 이유: "Supabase 클라이언트 없음" });
+    return false;
+  }
   attachTimeLedgerEntriesSaveListener();
   const { rangeStart, rangeEnd } = timeLedgerMonthRangeYmd(year, month);
+  console.info("[archive] [데이터] 월 범위", { rangeStart, rangeEnd });
   const pulledOk = await pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
-  await syncTimeLedgerEntriesToSupabase();
+  /* 목록 표시는 pull 병합만 되면 가능 — upsert·원격 정리는 백그라운드(아카이브 로딩 체감 단축) */
+  console.info("[archive] [데이터] 로컬→서버 syncTimeLedgerEntriesToSupabase 백그라운드");
+  void syncTimeLedgerEntriesToSupabase().catch((e) =>
+    console.warn("[time-ledger-entries] archive month hydrate sync", e),
+  );
   return pulledOk;
 }
 
@@ -150,6 +208,9 @@ export async function pushAllLocalTimeLedgerEntriesIfServerEmpty() {
 let _pushTimer = null;
 const PUSH_DEBOUNCE_MS = 1200;
 
+/** 아카이브 메모 저장 직후 동기화 로그용 (detail.source === archiveMemo) */
+let _lastArchiveMemoSaveDetail = null;
+
 export function scheduleTimeLedgerEntriesSyncPush() {
   if (!supabase) return;
   if (_pushTimer) clearTimeout(_pushTimer);
@@ -166,7 +227,15 @@ let _listenerAttached = false;
 export function attachTimeLedgerEntriesSaveListener() {
   if (_listenerAttached) return;
   _listenerAttached = true;
-  window.addEventListener("time-ledger-entries-saved", () => {
+  window.addEventListener("time-ledger-entries-saved", (e) => {
+    const d = e?.detail;
+    if (d && d.source === "archiveMemo" && d.entryId) {
+      _lastArchiveMemoSaveDetail = { entryId: String(d.entryId).trim() };
+      console.info("[archive] [메모→동기화] 서버 upsert 예약", {
+        entryId: _lastArchiveMemoSaveDetail.entryId,
+        디바운스_ms: PUSH_DEBOUNCE_MS,
+      });
+    }
     scheduleTimeLedgerEntriesSyncPush();
   });
 }

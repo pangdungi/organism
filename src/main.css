@@ -32300,6 +32300,97 @@ body.kpi-resizing {
   margin: 0;
 }
 
+/* 아카이브: 해당 월 서버 동기화 전 로딩 (스플래시 바 + 카드형 스켈레톤) */
+.archive-list.archive-list--loading {
+  pointer-events: none;
+}
+.archive-list-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1rem;
+  padding: 0.5rem 0 0.25rem;
+  box-sizing: border-box;
+}
+.archive-list-loading-track {
+  width: min(12rem, 72%);
+  margin: 0 auto;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(196, 190, 168, 0.35);
+  overflow: hidden;
+}
+.archive-list-loading-bar {
+  width: 38%;
+  height: 100%;
+  background: var(--ui-btn-primary-bg, #2a3828);
+  opacity: 0.42;
+  animation: archive-list-loading-bar-slide 0.95s ease-in-out infinite;
+}
+@keyframes archive-list-loading-bar-slide {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+.archive-list-loading-label {
+  margin: 0;
+  text-align: center;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-caption-color, #a8a290);
+}
+.archive-list-loading-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.archive-list-loading-card {
+  height: 4.25rem;
+  box-sizing: border-box;
+  background: #f5f1e8;
+  border: none;
+  border-bottom: var(--line-l3);
+  border-radius: 0;
+  position: relative;
+  overflow: hidden;
+}
+.archive-list-loading-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.35) 45%,
+    transparent 90%
+  );
+  animation: archive-list-loading-shimmer 1.05s ease-in-out infinite;
+}
+@keyframes archive-list-loading-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .archive-list-loading-bar,
+  .archive-list-loading-card::after {
+    animation: none;
+  }
+  .archive-list-loading-bar {
+    width: 100%;
+    opacity: 0.22;
+    transform: none;
+  }
+}
+
 .archive-card {
   padding: 1rem 1.25rem;
   background: #f5f1e8;
