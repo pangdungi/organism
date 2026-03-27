@@ -40,6 +40,7 @@ import {
   parseTimeToHours,
 } from "./Time.js";
 import { showToast } from "../utils/showToast.js";
+import { supabase } from "../supabase.js";
 import {
   persistSectionTasksAndSchedule,
   persistCustomSectionTasksAndSchedule,
@@ -48,16 +49,8 @@ import {
 import { SECTION_TASKS_KEY, CUSTOM_SECTION_TASKS_KEY } from "../utils/todoSectionTasksModel.js";
 const KPI_SECTION_IDS = ["braindump", "dream", "sideincome", "health", "happy"];
 
-/** 할일/일정 화면 진입 시 서버 → localStorage 병합 후 필요 시 전체 리렌더(시간가계부 pull 패턴과 동일) */
-function scheduleTodoTasksPullAndMaybeRerender() {
-  void hydrateTodoSectionTasksFromCloud().then((needRefresh) => {
-    if (needRefresh) {
-      try {
-        window.__lpRenderMain?.();
-      } catch (_) {}
-    }
-  });
-}
+/** 근무표와 동일: 이전 마운트의 hydrate.finally가 늦게 끝나면 덮어쓰지 않도록 */
+let _calendarTodoHydrateGeneration = 0;
 
 const CALENDAR_DATE_DEBUG = false;
 function dateDebug(tag, ...args) {
@@ -5890,7 +5883,6 @@ function renderCalendarView(tabsElement) {
 
 /** 모바일 하단 '캘린더' 탭: 할일/일정의 월별·1주 뷰만 (상단 서브탭만 표시) */
 export function renderMobileScheduleCalendar() {
-  scheduleTodoTasksPullAndMaybeRerender();
   const el = document.createElement("div");
   el.className =
     "app-tab-panel-content calendar-view calendar-view--mobile-schedule";
@@ -5909,14 +5901,34 @@ export function renderMobileScheduleCalendar() {
 
   const contentWrap = document.createElement("div");
   contentWrap.className = "calendar-content-wrap";
-  contentWrap.appendChild(
-    createCalendarSubViewRoot(null, {
-      subViewsList: MOBILE_SCHEDULE_CAL_SUB_VIEWS,
-      storageKey: "calendar-mobile-schedule-sub-view",
-      forceInitialMonthlyOnMobile: false,
-      keepSubTabsOnTop: true,
-    }),
-  );
+
+  function mountCalendarSubViews() {
+    contentWrap.innerHTML = "";
+    contentWrap.appendChild(
+      createCalendarSubViewRoot(null, {
+        subViewsList: MOBILE_SCHEDULE_CAL_SUB_VIEWS,
+        storageKey: "calendar-mobile-schedule-sub-view",
+        forceInitialMonthlyOnMobile: false,
+        keepSubTabsOnTop: true,
+      }),
+    );
+  }
+
+  if (supabase) {
+    contentWrap.innerHTML =
+      '<p class="work-schedule-notice work-schedule-cloud-loading" aria-live="polite">할일을 불러오는 중…</p>';
+    const hydrateGen = ++_calendarTodoHydrateGeneration;
+    void hydrateTodoSectionTasksFromCloud()
+      .catch((err) => console.warn("[calendar-section-tasks]", err))
+      .finally(() => {
+        if (hydrateGen !== _calendarTodoHydrateGeneration) return;
+        if (!el.isConnected) return;
+        mountCalendarSubViews();
+      });
+  } else {
+    mountCalendarSubViews();
+  }
+
   el.appendChild(contentWrap);
   return el;
 }
@@ -6438,7 +6450,9 @@ function renderPlaceholderView(tabsElement, label) {
 }
 
 export function render() {
-  scheduleTodoTasksPullAndMaybeRerender();
+  console.log(
+    "[할일/일정 탭] Calendar.render() 시작 — Supabase 사용 시 클라우드 동기화 후 할일 표시(근무표와 동일)",
+  );
   const el = document.createElement("div");
   el.className = "app-tab-panel-content calendar-view";
 
@@ -6528,8 +6542,28 @@ export function render() {
   hideCalendarSubTabMq.addEventListener("change", exitCalendarViewOnMobile);
   exitCalendarViewOnMobile();
 
-  renderContent("todo");
   el.appendChild(contentWrap);
+
+  if (supabase) {
+    contentWrap.innerHTML =
+      '<p class="work-schedule-notice work-schedule-cloud-loading" aria-live="polite">할일을 불러오는 중…</p>';
+    tabs.querySelectorAll(".time-view-tab").forEach((btn) => {
+      btn.disabled = true;
+    });
+    const hydrateGen = ++_calendarTodoHydrateGeneration;
+    void hydrateTodoSectionTasksFromCloud()
+      .catch((err) => console.warn("[calendar-section-tasks]", err))
+      .finally(() => {
+        if (hydrateGen !== _calendarTodoHydrateGeneration) return;
+        if (!el.isConnected) return;
+        tabs.querySelectorAll(".time-view-tab").forEach((btn) => {
+          btn.disabled = false;
+        });
+        renderContent("todo");
+      });
+  } else {
+    renderContent("todo");
+  }
 
   return el;
 }

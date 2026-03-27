@@ -78,6 +78,8 @@ export async function pullTodoSectionTasksFromSupabase() {
   const userId = await getSessionUserId();
   if (!userId || !supabase) return false;
 
+  console.log("[할일/일정 탭] pullTodoSectionTasksFromSupabase → Supabase 테이블 calendar_section_tasks SELECT");
+
   const { data, error } = await supabase
     .from(TABLE)
     .select(
@@ -92,11 +94,23 @@ export async function pullTodoSectionTasksFromSupabase() {
     console.warn("[calendar-section-tasks] pull", error.message);
     return false;
   }
-  if (!data?.length) return false;
+
+  const rows = Array.isArray(data) ? data : [];
+  if (rows.length === 0) {
+    console.log(
+      "[할일/일정 탭] pull 결과: 서버 행 0개 → 로컬을 빈 목록으로 맞춤(다른 기기에서 삭제한 경우 필수)",
+    );
+  } else {
+    console.log(
+      "[할일/일정 탭] pull 결과: 서버 행",
+      rows.length,
+      "개 → mergeCalendarSectionTasksFromServer → localStorage 덮어쓰기",
+    );
+  }
 
   /* 병합 전후가 같으면 false — 무한 __lpRenderMain 루프 방지(매 pull마다 true였음) */
   const beforeSnap = `${localStorage.getItem(SECTION_TASKS_KEY) ?? ""}\n${localStorage.getItem(CUSTOM_SECTION_TASKS_KEY) ?? ""}`;
-  mergeCalendarSectionTasksFromServer(data);
+  mergeCalendarSectionTasksFromServer(rows);
   const afterSnap = `${localStorage.getItem(SECTION_TASKS_KEY) ?? ""}\n${localStorage.getItem(CUSTOM_SECTION_TASKS_KEY) ?? ""}`;
   return beforeSnap !== afterSnap;
 }
@@ -135,6 +149,7 @@ export function scheduleTodoSectionTasksSyncPush() {
 
 /** @returns {Promise<boolean>} 서버 데이터로 로컬을 덮어썼으면 true */
 export async function hydrateTodoSectionTasksFromCloud() {
+  console.log("[할일/일정 탭] hydrateTodoSectionTasksFromCloud 시작 (순서: ensureIds → pull → pushIfServerEmpty)");
   if (!supabase) return false;
   let needRefresh = false;
   const e1 = ensureCalendarSectionTaskIds();
@@ -144,5 +159,6 @@ export async function hydrateTodoSectionTasksFromCloud() {
   await pushAllLocalTodoSectionTasksIfServerEmpty();
   const e2 = ensureCalendarSectionTaskIds();
   if (e2.dirty) needRefresh = true;
+  console.log("[할일/일정 탭] hydrateTodoSectionTasksFromCloud 끝", { needRefresh });
   return needRefresh;
 }

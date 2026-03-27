@@ -3010,6 +3010,11 @@ export function render(options = {}) {
   const hasExplicitInitialTab = Object.prototype.hasOwnProperty.call(options, "initialActiveTabIndex");
   /** 사이드바 등 hideToolbar 임베드는 탭 세션과 분리(메인 할일 탭이 꿈인데 캘린더 옆바가 브레인 덤프로 열리는 혼선 방지) */
   const persistFixedListTabToSession = !hideToolbar && !hasExplicitInitialTab;
+  if (!hideToolbar) {
+    console.log(
+      "[할일/일정 탭] TodoList.render() — 할일 행은 localStorage `todo-section-tasks` / `todo-custom-section-tasks`에서 읽음 (Supabase calendar_section_tasks와 동기화)",
+    );
+  }
   const el = document.createElement("div");
   el.className = "app-tab-panel-content todo-list-view";
   const listTabAbort = new AbortController();
