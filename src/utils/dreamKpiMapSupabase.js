@@ -4,6 +4,7 @@
  */
 
 import { supabase } from "../supabase.js";
+import { kpiSyncDebugLog } from "./kpiSyncDebug.js";
 
 export const DREAM_KPI_MAP_STORAGE_KEY = "kpi-dream-map";
 
@@ -325,7 +326,13 @@ function localPayloadHasAnythingToPersist(p) {
 /** @returns {Promise<boolean>} 서버 데이터로 로컬을 갱신했으면 true */
 export async function pullDreamKpiMapFromSupabase() {
   const userId = await getSessionUserId();
-  if (!userId || !supabase) return false;
+  if (!userId || !supabase) {
+    kpiSyncDebugLog("꿈 pull", {
+      ok: false,
+      reason: !supabase ? "Supabase 클라이언트 없음" : "로그인 세션 없음(같은 계정으로 데스크탑에서도 로그인 필요)",
+    });
+    return false;
+  }
 
   const [catRes, kpiRes, logRes, todoRes, dailyRes, metaRes] = await Promise.all([
     supabase.from("dream_map_categories").select("*").eq("user_id", userId),
@@ -339,11 +346,13 @@ export async function pullDreamKpiMapFromSupabase() {
   for (const res of [catRes, kpiRes, logRes, todoRes, dailyRes]) {
     if (res.error) {
       console.warn("[dream-kpi-map] pull", res.error.message);
+      kpiSyncDebugLog("꿈 pull", { ok: false, error: res.error.message });
       return false;
     }
   }
   if (metaRes.error) {
     console.warn("[dream-kpi-map] pull meta", metaRes.error.message);
+    kpiSyncDebugLog("꿈 pull", { ok: false, error: metaRes.error.message, step: "meta" });
     return false;
   }
 
@@ -360,12 +369,26 @@ export async function pullDreamKpiMapFromSupabase() {
   try {
     localStorage.setItem(DREAM_KPI_MAP_STORAGE_KEY, JSON.stringify(payload));
   } catch (_) {}
+  kpiSyncDebugLog("꿈 pull → 완료", {
+    source: "Supabase dream_map_*",
+    localKey: DREAM_KPI_MAP_STORAGE_KEY,
+    counts: {
+      categories: categories.length,
+      kpis: kpis.length,
+      logs: logs.length,
+      todos: todos.length,
+      dailyTodos: daily.length,
+    },
+    note: "이후 화면은 loadDreamMap()이 이 localStorage 키만 읽음",
+  });
   return true;
 }
 
 export async function syncDreamKpiMapToSupabase() {
+  kpiSyncDebugLog("꿈 sync(로컬→서버) 시도", { event: "dream-kpi-map-saved 또는 탭 이탈 디바운스" });
   const userId = await getSessionUserId();
   if (!supabase) {
+    kpiSyncDebugLog("꿈 sync 중단", { reason: "Supabase 없음" });
     if (!_warnedNoSupabaseClient) {
       _warnedNoSupabaseClient = true;
       console.warn(
@@ -375,6 +398,7 @@ export async function syncDreamKpiMapToSupabase() {
     return;
   }
   if (!userId) {
+    kpiSyncDebugLog("꿈 sync 중단", { reason: "로그인 없음 — 모바일에서 저장해도 서버로 안 올라감" });
     if (!_warnedNoAuthSession) {
       _warnedNoAuthSession = true;
       console.warn("[dream-kpi-map] sync 건너뜀: 로그인 세션 없음");
@@ -388,8 +412,10 @@ export async function syncDreamKpiMapToSupabase() {
     if (localPayloadHasAnythingToPersist(p)) {
       await insertNormalizedFromPayload(userId, p);
     }
+    kpiSyncDebugLog("꿈 sync 완료", { userIdPrefix: String(userId).slice(0, 8) });
   } catch (e) {
     console.warn("[dream-kpi-map] sync", e?.message || e);
+    kpiSyncDebugLog("꿈 sync 실패", { message: e?.message || String(e) });
   }
 }
 
@@ -408,6 +434,7 @@ export function flushDreamKpiMapSyncPush() {
 export function scheduleDreamKpiMapSyncPush() {
   if (!supabase) return;
   if (_pushTimer) clearTimeout(_pushTimer);
+  kpiSyncDebugLog("꿈 서버 업로드 예약", { debounceMs: PUSH_DEBOUNCE_MS });
   _pushTimer = setTimeout(() => {
     _pushTimer = null;
     syncDreamKpiMapToSupabase().catch((e) => console.warn("[dream-kpi-map]", e));
@@ -440,7 +467,18 @@ export function attachDreamKpiMapSaveListener() {
 
 /** @returns {Promise<boolean>} pull로 로컬이 바뀌었으면 true */
 export async function hydrateDreamKpiMapFromCloud() {
+  kpiSyncDebugLog("꿈 hydrate 시작", { when: "앱 부팅 시 Promise.all 안" });
   attachDreamKpiMapSaveListener();
-  if (!supabase) return false;
-  return pullDreamKpiMapFromSupabase();
+  if (!supabase) {
+    kpiSyncDebugLog("꿈 hydrate 생략", { reason: "Supabase 없음" });
+    return false;
+  }
+  const applied = await pullDreamKpiMapFromSupabase();
+  kpiSyncDebugLog("꿈 hydrate 끝", {
+    applied,
+    meaning: applied
+      ? "서버 데이터로 localStorage(kpi-dream-map) 갱신됨 → 이후 render가 이걸 읽음"
+      : "pull 실패·세션 없음 등 — 기존 로컬 유지",
+  });
+  return applied;
 }

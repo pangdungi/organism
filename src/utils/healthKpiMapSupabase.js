@@ -5,6 +5,7 @@
  */
 
 import { supabase } from "../supabase.js";
+import { kpiSyncDebugLog } from "./kpiSyncDebug.js";
 
 export const HEALTH_KPI_MAP_STORAGE_KEY = "kpi-health-map";
 
@@ -288,7 +289,13 @@ async function insertNormalizedFromPayload(userId, p) {
 /** @returns {Promise<boolean>} 서버 데이터로 로컬을 갱신했으면 true */
 export async function pullHealthKpiMapFromSupabase() {
   const userId = await getSessionUserId();
-  if (!userId || !supabase) return false;
+  if (!userId || !supabase) {
+    kpiSyncDebugLog("건강 pull", {
+      ok: false,
+      reason: !supabase ? "Supabase 없음" : "로그인 세션 없음",
+    });
+    return false;
+  }
 
   const [catRes, kpiRes, logRes, todoRes, dailyRes, metaRes] = await Promise.all([
     supabase.from("health_map_categories").select("*").eq("user_id", userId),
@@ -302,11 +309,13 @@ export async function pullHealthKpiMapFromSupabase() {
   for (const res of [catRes, kpiRes, logRes, todoRes, dailyRes]) {
     if (res.error) {
       console.warn("[health-kpi-map] pull", res.error.message);
+      kpiSyncDebugLog("건강 pull", { ok: false, error: res.error.message });
       return false;
     }
   }
   if (metaRes.error) {
     console.warn("[health-kpi-map] pull meta", metaRes.error.message);
+    kpiSyncDebugLog("건강 pull", { ok: false, error: metaRes.error.message, step: "meta" });
     return false;
   }
 
@@ -322,6 +331,17 @@ export async function pullHealthKpiMapFromSupabase() {
     try {
       localStorage.setItem(HEALTH_KPI_MAP_STORAGE_KEY, JSON.stringify(payload));
     } catch (_) {}
+    kpiSyncDebugLog("건강 pull → 완료", {
+      source: "Supabase health_map_*",
+      localKey: HEALTH_KPI_MAP_STORAGE_KEY,
+      counts: {
+        categories: categories.length,
+        kpis: kpis.length,
+        logs: logs.length,
+        todos: todos.length,
+        dailyTodos: daily.length,
+      },
+    });
     return true;
   }
 
@@ -333,6 +353,7 @@ export async function pullHealthKpiMapFromSupabase() {
 
   if (legErr) {
     console.warn("[health-kpi-map] pull legacy", legErr.message);
+    kpiSyncDebugLog("건강 pull", { ok: false, error: legErr.message, step: "legacy" });
     return false;
   }
   const legacyPayload = legacyRow?.payload;
@@ -340,10 +361,18 @@ export async function pullHealthKpiMapFromSupabase() {
     try {
       localStorage.setItem(HEALTH_KPI_MAP_STORAGE_KEY, JSON.stringify(emptyPayload()));
     } catch (_) {}
+    kpiSyncDebugLog("건강 pull → 완료", {
+      source: "서버 정규화 데이터 없음 → 빈 로컬",
+      localKey: HEALTH_KPI_MAP_STORAGE_KEY,
+    });
     return true;
   }
 
   applyHealthKpiMapToLocalStorage({ payload: legacyPayload });
+  kpiSyncDebugLog("건강 pull", {
+    source: "레거시 테이블 health_user_kpi_map.payload → 로컬 후 정규화 마이그레이션",
+    localKey: HEALTH_KPI_MAP_STORAGE_KEY,
+  });
   try {
     await deleteAllNormalizedForUser(userId);
     await insertNormalizedFromPayload(userId, readLocalPayload());
@@ -355,6 +384,7 @@ export async function pullHealthKpiMapFromSupabase() {
 }
 
 export async function syncHealthKpiMapToSupabase() {
+  kpiSyncDebugLog("건강 sync(로컬→서버) 시도", { event: "health-kpi-map-saved 또는 탭 이탈" });
   const userId = await getSessionUserId();
   if (!supabase) {
     if (!_warnedNoSupabaseClient) {
@@ -363,9 +393,11 @@ export async function syncHealthKpiMapToSupabase() {
         "[health-kpi-map] sync 건너뜀: Supabase 클라이언트 없음(.env에 VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY 확인)",
       );
     }
+    kpiSyncDebugLog("건강 sync 중단", { reason: "Supabase 없음" });
     return;
   }
   if (!userId) {
+    kpiSyncDebugLog("건강 sync 중단", { reason: "로그인 없음" });
     if (!_warnedNoAuthSession) {
       _warnedNoAuthSession = true;
       console.warn("[health-kpi-map] sync 건너뜀: 로그인 세션 없음");
@@ -388,8 +420,10 @@ export async function syncHealthKpiMapToSupabase() {
       await insertNormalizedFromPayload(userId, p);
     }
     await supabase.from(LEGACY_TABLE).delete().eq("user_id", userId);
+    kpiSyncDebugLog("건강 sync 완료", { userIdPrefix: String(userId).slice(0, 8) });
   } catch (e) {
     console.warn("[health-kpi-map] sync", e?.message || e);
+    kpiSyncDebugLog("건강 sync 실패", { message: e?.message || String(e) });
   }
 }
 
@@ -408,6 +442,7 @@ export function flushHealthKpiMapSyncPush() {
 export function scheduleHealthKpiMapSyncPush() {
   if (!supabase) return;
   if (_pushTimer) clearTimeout(_pushTimer);
+  kpiSyncDebugLog("건강 서버 업로드 예약", { debounceMs: PUSH_DEBOUNCE_MS });
   _pushTimer = setTimeout(() => {
     _pushTimer = null;
     syncHealthKpiMapToSupabase().catch((e) => console.warn("[health-kpi-map]", e));
@@ -440,7 +475,13 @@ export function attachHealthKpiMapSaveListener() {
 
 /** @returns {Promise<boolean>} pull로 로컬이 바뀌었으면 true */
 export async function hydrateHealthKpiMapFromCloud() {
+  kpiSyncDebugLog("건강 hydrate 시작", { when: "앱 부팅 시 Promise.all 안" });
   attachHealthKpiMapSaveListener();
-  if (!supabase) return false;
-  return pullHealthKpiMapFromSupabase();
+  if (!supabase) {
+    kpiSyncDebugLog("건강 hydrate 생략", { reason: "Supabase 없음" });
+    return false;
+  }
+  const applied = await pullHealthKpiMapFromSupabase();
+  kpiSyncDebugLog("건강 hydrate 끝", { applied });
+  return applied;
 }

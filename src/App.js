@@ -39,6 +39,11 @@ import {
   hydrateSideincomeKpiMapFromCloud,
 } from "./utils/sideincomeKpiMapSupabase.js";
 import { attachTimeLedgerEntriesSaveListener } from "./utils/timeLedgerEntriesSupabase.js";
+import {
+  KPI_TAB_IDS,
+  kpiSyncDebugLog,
+  snapshotKpiLocalStorageBrief,
+} from "./utils/kpiSyncDebug.js";
 
 const TABS = [
   { id: "home", label: "오늘", icon: "/toolbaricons/dashboard.svg" },
@@ -289,7 +294,47 @@ export function mountApp(container) {
         b.classList.toggle("active", b.dataset.tabId === tabId);
       });
     }
+    if (KPI_TAB_IDS.has(tabId)) {
+      kpiSyncDebugLog("KPI 탭 클릭 → 곧 renderMain", {
+        tabId,
+        "이 시점 localStorage 요약": snapshotKpiLocalStorageBrief(),
+        "화면 데이터 출처":
+          "각 탭의 render()가 위 키(kpi-dream-map 등)만 읽음 — 서버가 아님(서버는 새로고침 직후 hydrate에서만 끌어옴)",
+      });
+    }
     renderMain(main);
+    if (KPI_TAB_IDS.has(tabId)) {
+      const tabIdForPull = tabId;
+      void (async () => {
+        try {
+          const { pullKpiTabFromCloud } = await import("./utils/kpiTabCloudRefresh.js");
+          const { pullOk, localChanged } = await pullKpiTabFromCloud(tabIdForPull);
+          if (currentTabId !== tabIdForPull) return;
+          if (pullOk && localChanged) {
+            console.info(
+              "[KPI]",
+              tabIdForPull,
+              "서버에서 받아 localStorage를 갱신했습니다. 화면을 다시 그립니다.",
+            );
+            window.__lpRenderMain?.({ skipTodoSaveBeforeUnmount: true });
+          } else if (pullOk) {
+            console.info(
+              "[KPI]",
+              tabIdForPull,
+              "서버 pull 성공 — 로컬 내용과 동일해 화면은 그대로입니다.",
+            );
+          } else {
+            console.info(
+              "[KPI]",
+              tabIdForPull,
+              "서버에서 못 가져옴(로그인·네트워크·오류). 화면은 이 브라우저에 저장된 값만 표시합니다.",
+            );
+          }
+        } catch (e) {
+          console.warn("[KPI]", tabIdForPull, "탭 동기화 실패", e?.message || e);
+        }
+      })();
+    }
     if (tabId === "idea") {
       requestAnimationFrame(() => {
         main.scrollTop = 0;
@@ -476,6 +521,16 @@ export function mountApp(container) {
       dreamKpiPulled,
       sideincomeKpiPulled,
     ]) => {
+      kpiSyncDebugLog("앱 부팅 hydrate 결과", {
+        needTodoRefresh,
+        budgetMerged,
+        healthKpiPulled,
+        happinessKpiPulled,
+        dreamKpiPulled,
+        sideincomeKpiPulled,
+        "의미(각 KPI)": "true면 방금 Supabase에서 받아 localStorage를 갱신함",
+        "이후 localStorage 요약": snapshotKpiLocalStorageBrief(),
+      });
       if (
         needTodoRefresh ||
         budgetMerged ||

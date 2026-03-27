@@ -4,6 +4,7 @@
  */
 
 import { supabase } from "../supabase.js";
+import { kpiSyncDebugLog } from "./kpiSyncDebug.js";
 
 export const SIDEINCOME_KPI_MAP_STORAGE_KEY = "kpi-sideincome-paths";
 
@@ -352,7 +353,13 @@ function localPayloadHasAnythingToPersist(p) {
 /** @returns {Promise<boolean>} */
 export async function pullSideincomeKpiMapFromSupabase() {
   const userId = await getSessionUserId();
-  if (!userId || !supabase) return false;
+  if (!userId || !supabase) {
+    kpiSyncDebugLog("부수입 pull", {
+      ok: false,
+      reason: !supabase ? "Supabase 없음" : "로그인 세션 없음",
+    });
+    return false;
+  }
 
   const [pathRes, plRes, kpiRes, klRes, todoRes, dailyRes, metaRes] = await Promise.all([
     supabase.from("sideincome_map_paths").select("*").eq("user_id", userId),
@@ -367,11 +374,13 @@ export async function pullSideincomeKpiMapFromSupabase() {
   for (const res of [pathRes, plRes, kpiRes, klRes, todoRes, dailyRes]) {
     if (res.error) {
       console.warn("[sideincome-kpi-map] pull", res.error.message);
+      kpiSyncDebugLog("부수입 pull", { ok: false, error: res.error.message });
       return false;
     }
   }
   if (metaRes.error) {
     console.warn("[sideincome-kpi-map] pull meta", metaRes.error.message);
+    kpiSyncDebugLog("부수입 pull", { ok: false, error: metaRes.error.message, step: "meta" });
     return false;
   }
 
@@ -389,10 +398,23 @@ export async function pullSideincomeKpiMapFromSupabase() {
   try {
     localStorage.setItem(SIDEINCOME_KPI_MAP_STORAGE_KEY, JSON.stringify(payload));
   } catch (_) {}
+  kpiSyncDebugLog("부수입 pull → 완료", {
+    source: "Supabase sideincome_map_*",
+    localKey: SIDEINCOME_KPI_MAP_STORAGE_KEY,
+    counts: {
+      paths: paths.length,
+      pathLogs: pathLogs.length,
+      kpis: kpis.length,
+      kpiLogs: kpiLogs.length,
+      todos: todos.length,
+      dailyTodos: daily.length,
+    },
+  });
   return true;
 }
 
 export async function syncSideincomeKpiMapToSupabase() {
+  kpiSyncDebugLog("부수입 sync(로컬→서버) 시도", { event: "sideincome-kpi-map-saved 또는 탭 이탈" });
   const userId = await getSessionUserId();
   if (!supabase) {
     if (!_warnedNoSupabaseClient) {
@@ -401,9 +423,11 @@ export async function syncSideincomeKpiMapToSupabase() {
         "[sideincome-kpi-map] sync 건너뜀: Supabase 클라이언트 없음(.env에 VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY 확인)",
       );
     }
+    kpiSyncDebugLog("부수입 sync 중단", { reason: "Supabase 없음" });
     return;
   }
   if (!userId) {
+    kpiSyncDebugLog("부수입 sync 중단", { reason: "로그인 없음" });
     if (!_warnedNoAuthSession) {
       _warnedNoAuthSession = true;
       console.warn("[sideincome-kpi-map] sync 건너뜀: 로그인 세션 없음");
@@ -417,8 +441,10 @@ export async function syncSideincomeKpiMapToSupabase() {
     if (localPayloadHasAnythingToPersist(p)) {
       await insertNormalizedFromPayload(userId, p);
     }
+    kpiSyncDebugLog("부수입 sync 완료", { userIdPrefix: String(userId).slice(0, 8) });
   } catch (e) {
     console.warn("[sideincome-kpi-map] sync", e?.message || e);
+    kpiSyncDebugLog("부수입 sync 실패", { message: e?.message || String(e) });
   }
 }
 
@@ -437,6 +463,7 @@ export function flushSideincomeKpiMapSyncPush() {
 export function scheduleSideincomeKpiMapSyncPush() {
   if (!supabase) return;
   if (_pushTimer) clearTimeout(_pushTimer);
+  kpiSyncDebugLog("부수입 서버 업로드 예약", { debounceMs: PUSH_DEBOUNCE_MS });
   _pushTimer = setTimeout(() => {
     _pushTimer = null;
     syncSideincomeKpiMapToSupabase().catch((e) => console.warn("[sideincome-kpi-map]", e));
@@ -469,7 +496,13 @@ export function attachSideincomeKpiMapSaveListener() {
 
 /** @returns {Promise<boolean>} */
 export async function hydrateSideincomeKpiMapFromCloud() {
+  kpiSyncDebugLog("부수입 hydrate 시작", { when: "앱 부팅 시 Promise.all 안" });
   attachSideincomeKpiMapSaveListener();
-  if (!supabase) return false;
-  return pullSideincomeKpiMapFromSupabase();
+  if (!supabase) {
+    kpiSyncDebugLog("부수입 hydrate 생략", { reason: "Supabase 없음" });
+    return false;
+  }
+  const applied = await pullSideincomeKpiMapFromSupabase();
+  kpiSyncDebugLog("부수입 hydrate 끝", { applied });
+  return applied;
 }

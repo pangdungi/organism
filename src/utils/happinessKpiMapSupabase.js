@@ -4,6 +4,7 @@
  */
 
 import { supabase } from "../supabase.js";
+import { kpiSyncDebugLog } from "./kpiSyncDebug.js";
 
 export const HAPPINESS_KPI_MAP_STORAGE_KEY = "kpi-happiness-map";
 
@@ -296,7 +297,13 @@ async function insertNormalizedFromPayload(userId, p) {
 /** @returns {Promise<boolean>} 서버 데이터로 로컬을 갱신했으면 true */
 export async function pullHappinessKpiMapFromSupabase() {
   const userId = await getSessionUserId();
-  if (!userId || !supabase) return false;
+  if (!userId || !supabase) {
+    kpiSyncDebugLog("행복 pull", {
+      ok: false,
+      reason: !supabase ? "Supabase 없음" : "로그인 세션 없음",
+    });
+    return false;
+  }
 
   const [catRes, kpiRes, logRes, todoRes, dailyRes, metaRes] = await Promise.all([
     supabase.from("happiness_map_categories").select("*").eq("user_id", userId),
@@ -310,11 +317,13 @@ export async function pullHappinessKpiMapFromSupabase() {
   for (const res of [catRes, kpiRes, logRes, todoRes, dailyRes]) {
     if (res.error) {
       console.warn("[happiness-kpi-map] pull", res.error.message);
+      kpiSyncDebugLog("행복 pull", { ok: false, error: res.error.message });
       return false;
     }
   }
   if (metaRes.error) {
     console.warn("[happiness-kpi-map] pull meta", metaRes.error.message);
+    kpiSyncDebugLog("행복 pull", { ok: false, error: metaRes.error.message, step: "meta" });
     return false;
   }
 
@@ -331,10 +340,22 @@ export async function pullHappinessKpiMapFromSupabase() {
   try {
     localStorage.setItem(HAPPINESS_KPI_MAP_STORAGE_KEY, JSON.stringify(payload));
   } catch (_) {}
+  kpiSyncDebugLog("행복 pull → 완료", {
+    source: "Supabase happiness_map_*",
+    localKey: HAPPINESS_KPI_MAP_STORAGE_KEY,
+    counts: {
+      categories: categories.length,
+      kpis: kpis.length,
+      logs: logs.length,
+      todos: todos.length,
+      dailyTodos: daily.length,
+    },
+  });
   return true;
 }
 
 export async function syncHappinessKpiMapToSupabase() {
+  kpiSyncDebugLog("행복 sync(로컬→서버) 시도", { event: "happiness-kpi-map-saved 또는 탭 이탈" });
   const userId = await getSessionUserId();
   if (!supabase) {
     if (!_warnedNoSupabaseClient) {
@@ -343,9 +364,11 @@ export async function syncHappinessKpiMapToSupabase() {
         "[happiness-kpi-map] sync 건너뜀: Supabase 클라이언트 없음(.env에 VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY 확인)",
       );
     }
+    kpiSyncDebugLog("행복 sync 중단", { reason: "Supabase 없음" });
     return;
   }
   if (!userId) {
+    kpiSyncDebugLog("행복 sync 중단", { reason: "로그인 없음" });
     if (!_warnedNoAuthSession) {
       _warnedNoAuthSession = true;
       console.warn("[happiness-kpi-map] sync 건너뜀: 로그인 세션 없음");
@@ -368,8 +391,10 @@ export async function syncHappinessKpiMapToSupabase() {
     ) {
       await insertNormalizedFromPayload(userId, p);
     }
+    kpiSyncDebugLog("행복 sync 완료", { userIdPrefix: String(userId).slice(0, 8) });
   } catch (e) {
     console.warn("[happiness-kpi-map] sync", e?.message || e);
+    kpiSyncDebugLog("행복 sync 실패", { message: e?.message || String(e) });
   }
 }
 
@@ -388,6 +413,7 @@ export function flushHappinessKpiMapSyncPush() {
 export function scheduleHappinessKpiMapSyncPush() {
   if (!supabase) return;
   if (_pushTimer) clearTimeout(_pushTimer);
+  kpiSyncDebugLog("행복 서버 업로드 예약", { debounceMs: PUSH_DEBOUNCE_MS });
   _pushTimer = setTimeout(() => {
     _pushTimer = null;
     syncHappinessKpiMapToSupabase().catch((e) => console.warn("[happiness-kpi-map]", e));
@@ -420,13 +446,17 @@ export function attachHappinessKpiMapSaveListener() {
 
 /** @returns {Promise<boolean>} pull로 로컬이 바뀌었으면 true */
 export async function hydrateHappinessKpiMapFromCloud() {
+  kpiSyncDebugLog("행복 hydrate 시작", { when: "앱 부팅 시 Promise.all 안" });
   attachHappinessKpiMapSaveListener();
   const before = readLocalPayload();
   console.log(
     "[happiness-kpi-map][trace] hydrate: pull 직전 로컬 (새로고침 직후면 여기가 브라우저에 남아 있던 값)",
     happinessKpiMapTraceSnapshot(before),
   );
-  if (!supabase) return false;
+  if (!supabase) {
+    kpiSyncDebugLog("행복 hydrate 생략", { reason: "Supabase 없음" });
+    return false;
+  }
   const applied = await pullHappinessKpiMapFromSupabase();
   const afterPull = readLocalPayload();
   console.log(
@@ -435,5 +465,6 @@ export async function hydrateHappinessKpiMapFromCloud() {
       " = pull 성공 시 true, 서버가 비어도 로컬을 빈 스냅샷으로 맞춤)",
     happinessKpiMapTraceSnapshot(afterPull),
   );
+  kpiSyncDebugLog("행복 hydrate 끝", { applied });
   return applied;
 }
