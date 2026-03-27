@@ -3032,11 +3032,9 @@ body {
     grid-column: 1 / -1;
     padding-top: 0.25rem;
   }
-  .app-main:has(.idea-view) .idea-reminder-push-hint {
-    margin: 0.5rem 0 0;
-    font-size: 0.875rem;
-    line-height: 1.45;
-    color: var(--text-caption-color, #a8a290);
+  .app-main:has(.idea-view) .idea-reminder-push-toggle-wrap.todo-settings-toggle-row {
+    padding: 0.5rem 0 0;
+    border-bottom: none;
   }
   .app-main:has(.idea-view) .idea-subscription-pass {
     margin: 0.75rem 0 0;
@@ -11809,22 +11807,6 @@ body {
 .todo-card.is-done .todo-card-kpi,
 .todo-card.is-done .todo-card-reminder {
   color: var(--text-placeholder);
-}
-
-.todo-card-delete {
-  flex-shrink: 0;
-  padding: 0.25rem;
-  color: var(--text-muted);
-  background: none;
-  border: none;
-  border-radius: 0.25rem !important;
-  cursor: pointer;
-  line-height: 0;
-}
-
-.todo-card-delete:hover {
-  color: #dc2626;
-  background: rgba(0, 0, 0, 0.05);
 }
 
 .todo-cards-add-wrap {

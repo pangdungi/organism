@@ -2336,30 +2336,6 @@ function createTaskCard(taskData, options = {}) {
     reminderEl.hidden = true;
   }
 
-  const delBtn = document.createElement("button");
-  delBtn.type = "button";
-  delBtn.className = "todo-task-delete-btn todo-card-delete";
-  delBtn.title = "삭제";
-  delBtn.innerHTML = TASK_DELETE_ICON;
-  delBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (isKpiTodo && kpiTodoId && storageKey) {
-      if (removeKpiTodo(kpiTodoId, storageKey)) card.remove();
-    } else if (storageSectionId && storageSectionId.startsWith("custom-")) {
-      removeTaskFromCustomSectionStorage(storageSectionId, taskId);
-      clearSubtasks(taskId);
-      card.remove();
-    } else if (storageSectionId) {
-      removeTaskFromSectionStorage(storageSectionId, taskId);
-      clearSubtasks(taskId);
-      card.remove();
-    } else {
-      card.remove();
-    }
-    updateCount();
-    scheduleSave();
-  });
-
   const contentCol = document.createElement("div");
   contentCol.className = "todo-card-content";
   contentCol.appendChild(nameWrap);
@@ -2375,7 +2351,6 @@ function createTaskCard(taskData, options = {}) {
   inner.className = "todo-card-inner";
   inner.appendChild(doneWrap);
   inner.appendChild(contentCol);
-  inner.appendChild(delBtn);
   card.appendChild(inner);
 
   if (enableDragToEisenhower) {
@@ -3522,7 +3497,7 @@ export function render(options = {}) {
       showContextMenu(e.clientX, e.clientY, sectionId || null);
       return;
     }
-    if (card && !e.target.closest(".todo-card-delete") && !e.target.closest(".todo-card-done-wrap")) {
+    if (card && !e.target.closest(".todo-card-done-wrap")) {
       e.preventDefault();
       e.stopPropagation();
       contextMenuTargetRow = null;
