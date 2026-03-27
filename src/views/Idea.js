@@ -16,9 +16,9 @@ import { createColorPickerRow } from "../utils/todoSettingsModal.js";
 import { showToast } from "../utils/showToast.js";
 import {
   registerReminderPushFromUserGesture,
+  unregisterReminderPushFromUserGesture,
   reminderPushStatusLabel,
   hasWebPushSupport,
-  getVapidPublicKey,
   ensureVapidRuntimeFallback,
 } from "../utils/webPushReminders.js";
 
@@ -124,38 +124,63 @@ export function render() {
         <span class="idea-form-label">상태</span>
         <span class="idea-user-id-value idea-reminder-push-status" id="idea-reminder-push-status"></span>
       </div>
-      <p class="idea-reminder-push-hint" id="idea-reminder-push-hint"></p>
-      <div class="idea-logout-row">
-        <button type="button" class="idea-btn-logout idea-btn-reminder-push-enable" id="idea-btn-reminder-push">브라우저 알림 켜기</button>
+      <div class="todo-settings-toggle-row idea-reminder-push-toggle-wrap">
+        <span class="todo-settings-toggle-label">브라우저 알림</span>
+        <button type="button" class="todo-settings-toggle idea-reminder-push-toggle" id="idea-reminder-push-toggle" role="switch" aria-checked="false" aria-label="브라우저 알림">
+          <span class="todo-settings-toggle-track"></span>
+          <span class="todo-settings-toggle-thumb"></span>
+        </button>
       </div>
     </div>
   `;
   grid.appendChild(reminderPushWidget);
 
   const reminderStatusEl = reminderPushWidget.querySelector("#idea-reminder-push-status");
-  const reminderHintEl = reminderPushWidget.querySelector("#idea-reminder-push-hint");
-  const reminderBtn = reminderPushWidget.querySelector("#idea-btn-reminder-push");
-  function syncReminderPushAccountUi() {
+  const reminderToggle = reminderPushWidget.querySelector("#idea-reminder-push-toggle");
+  let reminderPushUiBusy = false;
+  async function syncReminderPushAccountUi() {
     if (reminderStatusEl) reminderStatusEl.textContent = reminderPushStatusLabel();
-    if (reminderHintEl) {
-      reminderHintEl.textContent = !hasWebPushSupport()
-        ? "이 브라우저·환경에서는 Web Push가 제한될 수 있어요. HTTPS의 Chrome·Edge 등을 권장해요."
-        : "리마인더 날짜·시간은 이 기기(브라우저) 타임존 기준으로 맞춰져요. 서버에는 VAPID·Edge 함수·1분 주기 호출이 필요해요.";
+    let sub = null;
+    if (hasWebPushSupport()) {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        sub = await reg.pushManager.getSubscription();
+      } catch (_) {
+        /* ignore */
+      }
     }
-    if (reminderBtn) {
-      /* 키는 런타임 fetch 후 채워질 수 있어, 지원만 되면 누르게 함(클릭 시 ensure + 구독) */
+    const isOn = hasWebPushSupport() && Notification.permission === "granted" && !!sub;
+    if (reminderToggle) {
+      reminderToggle.classList.toggle("on", isOn);
+      reminderToggle.setAttribute("aria-checked", isOn ? "true" : "false");
       const canTry = hasWebPushSupport();
-      reminderBtn.disabled = !canTry;
-      reminderBtn.style.opacity = !canTry ? "0.55" : "";
-      reminderBtn.style.cursor = !canTry ? "not-allowed" : "";
+      reminderToggle.disabled = !canTry || reminderPushUiBusy;
+      reminderToggle.style.opacity = !canTry ? "0.55" : "";
+      reminderToggle.style.cursor = !canTry ? "not-allowed" : "";
     }
   }
   void ensureVapidRuntimeFallback().then(() => syncReminderPushAccountUi());
-  syncReminderPushAccountUi();
-  reminderBtn?.addEventListener("click", async () => {
-    const r = await registerReminderPushFromUserGesture();
-    showToast(r.msg);
-    syncReminderPushAccountUi();
+  void syncReminderPushAccountUi();
+  try {
+    window.addEventListener("lp-vapid-ready", () => void syncReminderPushAccountUi());
+  } catch (_) {
+    /* ignore */
+  }
+  reminderToggle?.addEventListener("click", async () => {
+    if (!hasWebPushSupport() || reminderPushUiBusy) return;
+    const turningOn = !reminderToggle.classList.contains("on");
+    reminderPushUiBusy = true;
+    reminderToggle.disabled = true;
+    try {
+      const r = turningOn
+        ? await registerReminderPushFromUserGesture()
+        : await unregisterReminderPushFromUserGesture();
+      showToast(r.msg);
+      await syncReminderPushAccountUi();
+    } finally {
+      reminderPushUiBusy = false;
+      await syncReminderPushAccountUi();
+    }
   });
 
   if (typeof supabase !== "undefined" && supabase?.auth) {

@@ -111,14 +111,14 @@ export function getVapidPublicKey() {
 
 export function reminderPushStatusLabel() {
   if (!hasWebPushSupport()) return "이 기기·브라우저에서는 미지원";
-  if (!getVapidPublicKey()) return "알림 꺼짐 — 아래 버튼으로 허용·연결해 주세요";
+  if (!getVapidPublicKey()) return "알림 꺼짐 — 토글로 허용·연결해 주세요";
   switch (Notification.permission) {
     case "granted":
       return "알림 허용됨";
     case "denied":
       return "알림 차단됨 — 브라우저 설정에서 허용해 주세요";
     default:
-      return "알림 꺼짐 — 아래 버튼으로 켤 수 있어요";
+      return "알림 꺼짐 — 토글로 켤 수 있어요";
   }
 }
 
@@ -210,6 +210,38 @@ export async function registerReminderPushFromUserGesture() {
     const m = e && typeof e === "object" && "message" in e ? String(e.message) : String(e);
     console.warn("[web-push]", m);
     return { ok: false, msg: "알림 켜기 중 오류: " + m.slice(0, 200) };
+  }
+}
+
+/** 사용자 제스처로 이 기기 푸시 구독 해제(토글 OFF) */
+export async function unregisterReminderPushFromUserGesture() {
+  try {
+    if (!hasWebPushSupport()) {
+      return { ok: false, msg: "이 브라우저에서는 Web Push를 쓸 수 없어요." };
+    }
+    if (!supabase) {
+      return { ok: false, msg: "Supabase가 연결되지 않았어요." };
+    }
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    const endpoint = sub?.endpoint || "";
+    if (sub) {
+      await sub.unsubscribe();
+    }
+    if (endpoint) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const uid = session?.user?.id;
+      if (uid) {
+        await supabase.from(TABLE).delete().eq("user_id", uid).eq("endpoint", endpoint);
+      }
+    }
+    return { ok: true, msg: "이 기기에서 브라우저 알림을 껐어요." };
+  } catch (e) {
+    const m = e && typeof e === "object" && "message" in e ? String(e.message) : String(e);
+    console.warn("[web-push]", m);
+    return { ok: false, msg: "알림 끄기 중 오류: " + m.slice(0, 200) };
   }
 }
 

@@ -4,6 +4,9 @@
  */
 
 import { loadTimeRows, parseTagsFromFeedback } from "./Time.js";
+import { updateTimeLedgerEntryFeedbackById } from "../utils/timeLedgerEntriesModel.js";
+import { showToast } from "../utils/showToast.js";
+import { hydrateTimeLedgerEntriesForArchiveMonth } from "../utils/timeLedgerEntriesSupabase.js";
 
 function formatArchiveDate(dateStr) {
   if (!dateStr || typeof dateStr !== "string") return "—";
@@ -115,6 +118,7 @@ export function render() {
           (Array.isArray(r.memoTags) && r.memoTags.length > 0),
       )
       .map((r) => ({
+        id: String(r.id || "").trim(),
         date: r.date || "",
         startTime: r.startTime || "",
         memo: (r.feedback || "").trim(),
@@ -130,7 +134,142 @@ export function render() {
       });
   }
 
-  const fullRecords = buildRecords();
+  let fullRecords = buildRecords();
+  let archiveMonthSyncGen = 0;
+
+  function refreshFullRecords() {
+    fullRecords = buildRecords();
+  }
+
+  function syncArchiveMonthWithServer() {
+    if (!el.isConnected) return;
+    const gen = ++archiveMonthSyncGen;
+    listEl.classList.add("archive-list--syncing");
+    void hydrateTimeLedgerEntriesForArchiveMonth(filterYear, filterMonth)
+      .catch((e) => console.warn("[archive] month sync", e))
+      .finally(() => {
+        if (gen !== archiveMonthSyncGen || !el.isConnected) return;
+        listEl.classList.remove("archive-list--syncing");
+        refreshFullRecords();
+        renderList();
+      });
+  }
+
+  function openArchiveMemoModal(record) {
+    const entryId = record.id;
+    if (!entryId) {
+      showToast("이 기록을 편집할 수 없습니다.", "저장된 행 id가 없어요.");
+      return;
+    }
+
+    const modal = document.createElement("div");
+    modal.className = "todo-list-modal archive-memo-modal";
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    modal.setAttribute("aria-labelledby", "archive-memo-modal-title");
+
+    const backdrop = document.createElement("div");
+    backdrop.className = "todo-list-modal-backdrop";
+
+    const panel = document.createElement("div");
+    panel.className = "todo-list-modal-panel";
+
+    const header = document.createElement("div");
+    header.className = "todo-list-modal-header";
+    const title = document.createElement("h3");
+    title.className = "todo-list-modal-title";
+    title.id = "archive-memo-modal-title";
+    title.textContent = "메모";
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "todo-list-modal-close";
+    closeBtn.setAttribute("aria-label", "닫기");
+    closeBtn.textContent = "×";
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+
+    const body = document.createElement("div");
+    body.className = "todo-list-modal-body";
+    const lbl = document.createElement("p");
+    lbl.className = "todo-list-modal-label";
+    lbl.textContent = `${formatArchiveDate(record.date)} · ${formatArchiveTime(record.startTime)}`;
+    const ta = document.createElement("textarea");
+    ta.className = "archive-memo-modal-textarea";
+    ta.rows = 4;
+    ta.placeholder = "메모";
+    ta.value = record.memo || "";
+    body.appendChild(lbl);
+    body.appendChild(ta);
+
+    const footer = document.createElement("div");
+    footer.className = "todo-list-modal-footer archive-memo-modal-footer";
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.className = "todo-list-modal-cancel archive-memo-modal-delete";
+    delBtn.textContent = "삭제";
+    const saveBtn = document.createElement("button");
+    saveBtn.type = "button";
+    saveBtn.className = "todo-list-modal-confirm";
+    saveBtn.textContent = "저장";
+    footer.appendChild(delBtn);
+    footer.appendChild(saveBtn);
+
+    modal.appendChild(backdrop);
+    panel.appendChild(header);
+    panel.appendChild(body);
+    panel.appendChild(footer);
+    modal.appendChild(panel);
+
+    function close() {
+      document.removeEventListener("keydown", onDocKey);
+      modal.remove();
+      el.style.overflow = "";
+    }
+
+    function onDocKey(e) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        close();
+      }
+    }
+
+    function applyResult(res) {
+      if (!res.ok) {
+        showToast(res.msg || "저장할 수 없습니다.");
+        return;
+      }
+      refreshFullRecords();
+      renderList();
+      close();
+    }
+
+    function save() {
+      applyResult(updateTimeLedgerEntryFeedbackById(entryId, ta.value));
+    }
+
+    function onDelete() {
+      applyResult(updateTimeLedgerEntryFeedbackById(entryId, ""));
+    }
+
+    backdrop.addEventListener("click", close);
+    closeBtn.addEventListener("click", close);
+    saveBtn.addEventListener("click", save);
+    delBtn.addEventListener("click", onDelete);
+    ta.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        close();
+      }
+    });
+
+    el.appendChild(modal);
+    el.style.overflow = "hidden";
+    document.addEventListener("keydown", onDocKey);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+    });
+  }
 
   function filterRecords(records, query) {
     const q = (query || "").trim().toLowerCase();
@@ -173,7 +312,10 @@ export function render() {
     }
     records.forEach((r) => {
       const card = document.createElement("article");
-      card.className = "archive-card";
+      card.className = "archive-card archive-card--interactive";
+      card.tabIndex = 0;
+      card.setAttribute("role", "button");
+      card.setAttribute("aria-label", "메모 편집");
       const dateEl = document.createElement("time");
       dateEl.className = "archive-card-date";
       dateEl.textContent = formatArchiveDate(r.date);
@@ -200,6 +342,16 @@ export function render() {
         });
         card.appendChild(tagWrap);
       }
+      function openMemo() {
+        openArchiveMemoModal(r);
+      }
+      card.addEventListener("click", openMemo);
+      card.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openMemo();
+        }
+      });
       listEl.appendChild(card);
     });
   }
@@ -236,20 +388,24 @@ export function render() {
         opt.classList.toggle("is-selected", opt.dataset.value === String(filterMonth));
       });
       renderList();
+      syncArchiveMonthWithServer();
     });
   });
   yearPrevBtn.addEventListener("click", () => {
     filterYear -= 1;
     yearDisplay.textContent = filterYear;
     renderList();
+    syncArchiveMonthWithServer();
   });
   yearNextBtn.addEventListener("click", () => {
     filterYear += 1;
     yearDisplay.textContent = filterYear;
     renderList();
+    syncArchiveMonthWithServer();
   });
 
   renderList();
+  syncArchiveMonthWithServer();
 
   searchInput.addEventListener("input", () => {
     renderList();

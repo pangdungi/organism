@@ -50,7 +50,7 @@ export function initPushReminderInAppPopup() {
     console.log(LOG, "팝업 표시 시도", taskName);
     try {
       playReminderBeep();
-      showToast(taskName, "리마인더 시간이에요.");
+      showToast(taskName);
       console.log(LOG, "showToast 호출 완료");
     } catch (e) {
       console.warn(LOG, "showToast 실패", e);

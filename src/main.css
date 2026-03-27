@@ -32286,6 +32286,12 @@ body.kpi-resizing {
   gap: 0.75rem;
 }
 
+.archive-list.archive-list--syncing {
+  opacity: 0.65;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
 .archive-empty {
   padding: 2rem 1rem;
   text-align: center;
@@ -32355,4 +32361,62 @@ body.kpi-resizing {
   background: #f5f1e8;
   border: var(--line-l3);
   border-radius: 0.25rem;
+}
+
+/* 아카이브 메모 편집 모달 (todo-list-modal 톤 유지) */
+.archive-memo-modal .todo-list-modal-panel {
+  max-width: 20rem;
+}
+
+.todo-list-modal-footer.archive-memo-modal-footer {
+  justify-content: space-between;
+}
+
+.todo-list-modal-footer.archive-memo-modal-footer .todo-list-modal-cancel,
+.todo-list-modal-footer.archive-memo-modal-footer .todo-list-modal-confirm {
+  flex: 0 1 auto;
+}
+
+.archive-memo-modal-delete {
+  color: var(--text-muted);
+}
+
+.archive-memo-modal-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  line-height: 1.8;
+  border: none;
+  border-bottom: 1px solid var(--text-placeholder, #c4bea8);
+  background: transparent;
+  font-size: var(--fs-body);
+  font-family: inherit;
+  color: var(--text-body);
+  padding: 0.5rem 0;
+  min-height: 5rem;
+}
+
+.archive-memo-modal-textarea:focus {
+  outline: none;
+  border-bottom: 1.5px solid var(--ui-btn-primary-bg, #2a3828);
+  background: rgba(42, 56, 40, 0.02);
+}
+
+.archive-memo-modal-textarea::placeholder {
+  color: var(--text-placeholder);
+}
+
+.archive-card--interactive {
+  cursor: pointer;
+}
+
+.archive-card--interactive:focus-visible {
+  outline: 2px solid var(--ui-btn-primary-bg);
+  outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+  .archive-memo-modal .todo-list-modal-panel {
+    max-width: min(20rem, 100%);
+  }
 }

@@ -7,7 +7,9 @@ import {
   ensureTimeLedgerEntryIds,
   localTimeLedgerRowToDbPayload,
   mergeTimeLedgerEntriesFromServer,
+  mergeTimeLedgerEntriesFromServerForDateRange,
   readTimeLedgerEntriesRaw,
+  timeLedgerMonthRangeYmd,
   timeLedgerRowIsSyncable,
   writeTimeLedgerEntriesRaw,
 } from "./timeLedgerEntriesModel.js";
@@ -61,15 +63,16 @@ export async function syncTimeLedgerEntriesToSupabase() {
   }
 }
 
+const LEDGER_ENTRY_SELECT =
+  "id, entry_date, task_id, task_name, start_time, end_time, productivity, category, time_tracked, focus_events, memo, memo_tags, updated_at";
+
 export async function pullTimeLedgerEntriesFromSupabase() {
   const userId = await getSessionUserId();
   if (!userId || !supabase) return false;
 
   const { data, error } = await supabase
     .from(TABLE)
-    .select(
-      "id, entry_date, task_id, task_name, start_time, end_time, productivity, category, time_tracked, focus_events, memo, memo_tags, updated_at",
-    )
+    .select(LEDGER_ENTRY_SELECT)
     .eq("user_id", userId)
     .order("entry_date", { ascending: false })
     .order("start_time", { ascending: false });
@@ -82,6 +85,44 @@ export async function pullTimeLedgerEntriesFromSupabase() {
 
   mergeTimeLedgerEntriesFromServer(data);
   return true;
+}
+
+/**
+ * entry_date가 [rangeStart, rangeEnd] (포함)인 행만 서버에서 받아 로컬에 병합.
+ * 빈 배열이면 해당 달의 syncable UUID 로컬 행은 삭제 반영.
+ */
+export async function pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd) {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+  const rs = String(rangeStart || "").trim();
+  const re = String(rangeEnd || "").trim();
+  if (!rs || !re) return false;
+
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select(LEDGER_ENTRY_SELECT)
+    .eq("user_id", userId)
+    .gte("entry_date", rs)
+    .lte("entry_date", re)
+    .order("entry_date", { ascending: false })
+    .order("start_time", { ascending: false });
+
+  if (error) {
+    console.warn("[time-ledger-entries] pull range", error.message);
+    return false;
+  }
+
+  mergeTimeLedgerEntriesFromServerForDateRange(data ?? [], rs, re);
+  return true;
+}
+
+/** 아카이브: 로컬 먼저 올린 뒤 해당 연·월만 pull → 병합 */
+export async function hydrateTimeLedgerEntriesForArchiveMonth(year, month) {
+  if (!supabase) return false;
+  attachTimeLedgerEntriesSaveListener();
+  await syncTimeLedgerEntriesToSupabase();
+  const { rangeStart, rangeEnd } = timeLedgerMonthRangeYmd(year, month);
+  return pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
 }
 
 export async function pushAllLocalTimeLedgerEntriesIfServerEmpty() {
@@ -129,6 +170,7 @@ export function attachTimeLedgerEntriesSaveListener() {
 export async function hydrateTimeLedgerEntriesFromCloud() {
   if (!supabase) return false;
   attachTimeLedgerEntriesSaveListener();
+  await syncTimeLedgerEntriesToSupabase();
   const pulled = await pullTimeLedgerEntriesFromSupabase();
   await pushAllLocalTimeLedgerEntriesIfServerEmpty();
   return pulled;
