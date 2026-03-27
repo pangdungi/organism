@@ -24,6 +24,7 @@ import {
   attachAssetNetWorthBundleSaveListener,
   hydrateAssetNetWorthBundleFromCloud,
 } from "../utils/assetNetWorthBundleSupabase.js";
+import { confirmDeleteRow } from "../utils/confirmModal.js";
 
 const DEBT_ROWS_KEY = "asset_debt_rows";
 const ASSET_ROWS_KEY = "asset_asset_rows";
@@ -2664,8 +2665,10 @@ function renderNetworthView() {
     delBtn.className = "asset-debt-btn-delete";
     delBtn.textContent = "삭제";
     delBtn.addEventListener("click", () => {
-      tr.remove();
-      onUpdate();
+      confirmDeleteRow(() => {
+        tr.remove();
+        onUpdate();
+      });
     });
     actionsTd.appendChild(delBtn);
     tr.appendChild(actionsTd);
@@ -2869,8 +2872,10 @@ function renderNetworthView() {
     delBtn.className = "asset-asset-btn-delete";
     delBtn.textContent = "삭제";
     delBtn.addEventListener("click", () => {
-      tr.remove();
-      onAssetUpdate();
+      confirmDeleteRow(() => {
+        tr.remove();
+        onAssetUpdate();
+      });
     });
     actionsTd.appendChild(delBtn);
     tr.appendChild(actionsTd);
@@ -3041,8 +3046,10 @@ function renderNetworthView() {
     delBtn.className = "asset-asset-btn-delete";
     delBtn.textContent = "삭제";
     delBtn.addEventListener("click", () => {
-      tr.remove();
-      onAssetUpdate();
+      confirmDeleteRow(() => {
+        tr.remove();
+        onAssetUpdate();
+      });
     });
     actionsTd.appendChild(delBtn);
     tr.appendChild(actionsTd);
@@ -3165,7 +3172,12 @@ function renderNetworthView() {
     delBtn.type = "button";
     delBtn.className = "asset-asset-btn-delete";
     delBtn.textContent = "삭제";
-    delBtn.addEventListener("click", () => { tr.remove(); onAssetUpdate(); });
+    delBtn.addEventListener("click", () => {
+      confirmDeleteRow(() => {
+        tr.remove();
+        onAssetUpdate();
+      });
+    });
     actionsTd.appendChild(delBtn);
     tr.appendChild(actionsTd);
     return tr;
@@ -3304,7 +3316,12 @@ function renderNetworthView() {
     delBtn.type = "button";
     delBtn.className = "asset-asset-btn-delete";
     delBtn.textContent = "삭제";
-    delBtn.addEventListener("click", () => { tr.remove(); onAssetUpdate(); });
+    delBtn.addEventListener("click", () => {
+      confirmDeleteRow(() => {
+        tr.remove();
+        onAssetUpdate();
+      });
+    });
     actionsTd.appendChild(delBtn);
     tr.appendChild(actionsTd);
     return tr;
@@ -3640,8 +3657,10 @@ function renderNetworthView() {
     delBtn.className = "asset-asset-btn-delete";
     delBtn.textContent = "삭제";
     delBtn.addEventListener("click", () => {
-      tr.remove();
-      onAssetUpdate();
+      confirmDeleteRow(() => {
+        tr.remove();
+        onAssetUpdate();
+      });
     });
     actionsTd.appendChild(delBtn);
     tr.appendChild(actionsTd);
@@ -4586,9 +4605,11 @@ function renderExpenseView(options = {}) {
     delBtn.className = "asset-expense-btn-delete";
     delBtn.textContent = "삭제";
     delBtn.addEventListener("click", () => {
-      tr.remove();
-      onTotalsUpdate?.();
-      saveExpense();
+      confirmDeleteRow(() => {
+        tr.remove();
+        onTotalsUpdate?.();
+        saveExpense();
+      });
     });
     const flowTypeValue = data.flowType ?? (data.category === "수입" ? "입금" : data.category ? "지출" : "");
     tr.innerHTML = `
@@ -5498,8 +5519,10 @@ function renderPlanView() {
       deleteBtn.className = "asset-plan-btn-delete";
       deleteBtn.textContent = "삭제";
       deleteBtn.addEventListener("click", () => {
-        tr.remove();
-        persistPlanGoals();
+        confirmDeleteRow(() => {
+          tr.remove();
+          persistPlanGoals();
+        });
       });
       const col4Content = col4Calculated
         ? `<span class="asset-plan-col4-display">-</span>`

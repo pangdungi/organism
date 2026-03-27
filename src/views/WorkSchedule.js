@@ -11,6 +11,7 @@ import {
   workDateHasTimeLedgerWork,
 } from "../utils/workScheduleEntryResolve.js";
 import { readTimeLedgerEntriesRaw } from "../utils/timeLedgerEntriesModel.js";
+import { confirmDeleteRow } from "../utils/confirmModal.js";
 
 /** localStorage `debug_work_schedule` = `1` 이면 근무표 UI/하이드레이트 진단 로그 */
 function wsUiLog(...args) {
@@ -823,8 +824,10 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
   delBtn.textContent = "삭제";
   delBtn.title = "행 삭제";
   delBtn.addEventListener("click", () => {
-    tr.remove();
-    onUpdate();
+    confirmDeleteRow(() => {
+      tr.remove();
+      onUpdate();
+    });
   });
   actionsTd.appendChild(delBtn);
 
