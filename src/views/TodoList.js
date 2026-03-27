@@ -2336,20 +2336,24 @@ function createTaskCard(taskData, options = {}) {
     reminderEl.hidden = true;
   }
 
-  const contentCol = document.createElement("div");
-  contentCol.className = "todo-card-content";
-  contentCol.appendChild(nameWrap);
-  contentCol.appendChild(kpiEl);
-  contentCol.appendChild(datesEl);
-  contentCol.appendChild(reminderEl);
-
   const doneWrap = document.createElement("div");
   doneWrap.className = "todo-card-done-wrap";
   doneWrap.appendChild(doneCheck);
 
+  const titleRow = document.createElement("div");
+  titleRow.className = "todo-card-title-row";
+  titleRow.appendChild(doneWrap);
+  titleRow.appendChild(nameWrap);
+
+  const contentCol = document.createElement("div");
+  contentCol.className = "todo-card-content";
+  contentCol.appendChild(titleRow);
+  contentCol.appendChild(kpiEl);
+  contentCol.appendChild(datesEl);
+  contentCol.appendChild(reminderEl);
+
   const inner = document.createElement("div");
   inner.className = "todo-card-inner";
-  inner.appendChild(doneWrap);
   inner.appendChild(contentCol);
   card.appendChild(inner);
 

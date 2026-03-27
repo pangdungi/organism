@@ -11672,11 +11672,24 @@ body {
 }
 
 .todo-card-inner {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  display: block;
   padding: 1rem 1.25rem;
   position: relative;
+}
+
+/* 체크박스 + 할일명 한 줄 — 전체 카드 높이 기준 세로 중앙이 아니라 제목 줄과 항상 같은 축 정렬 */
+.todo-card-title-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.todo-card-title-row .todo-card-name-wrap {
+  flex: 1;
+  min-width: 0;
 }
 
 .todo-card-done-wrap {
@@ -11684,8 +11697,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 1.25rem;
-  padding: 0.25rem 0;
+  margin-right: 0;
+  padding: 0;
 }
 
 .todo-card-done {
@@ -11699,7 +11712,6 @@ body {
 
 @media (max-width: 48rem) {
   .todo-card-done-wrap {
-    margin-right: 1rem;
     min-width: 2.5rem;
     min-height: 2.5rem;
   }
