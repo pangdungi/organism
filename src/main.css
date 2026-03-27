@@ -3107,9 +3107,9 @@ body {
     border-bottom-color: var(--gray-400, #9ca3af);
   }
   .archive-view .archive-month-filter {
-    margin-left: auto;
+    margin-left: 0;
     width: 100%;
-    justify-content: flex-end;
+    justify-content: flex-start;
     padding-top: 0.25rem;
   }
 
