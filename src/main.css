@@ -3088,6 +3088,15 @@ body {
   .archive-view .archive-header {
     padding: 0.25rem 1.75rem 1.25rem !important;
   }
+  .archive-view .archive-search-row {
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+  }
+  .archive-view .archive-month-filter {
+    margin-left: auto;
+    width: 100%;
+    justify-content: flex-end;
+  }
 
   /* 모바일: 모든 탭 뷰 좌우 패딩 제거 (화면 끝까지) */
   .app-main:has(.asset-view) .app-tab-panel > .asset-view,
@@ -32135,18 +32144,35 @@ body.kpi-resizing {
   /* 크기/굵기/색은 .dream-view-title과 통일 (2rem, 700, #1f2937) */
 }
 
-.archive-search-wrap {
+/* 검색 + 월·연도 픽커 한 줄 (가계부 time-filter-month-wrap 재사용) */
+.archive-search-row {
   margin-top: 0.75rem;
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 0.5rem;
-  /* 하단만: l3(0.5px)보다 한 단계 두꺼운 l2(1px) */
+  gap: 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
   border-bottom: var(--line-l2);
   background: transparent;
   transition: border-bottom-color 0.2s;
 }
-.archive-search-wrap:focus-within {
+.archive-search-row:focus-within {
   border-bottom-color: var(--gray-400, #9ca3af);
+}
+
+.archive-search-wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: none;
+  background: transparent;
+}
+
+.archive-month-filter {
+  flex-shrink: 0;
 }
 .archive-search-icon {
   flex-shrink: 0;
