@@ -1,13 +1,65 @@
 /**
- * 시간가계부 기록 행 — localStorage + Supabase (time_ledger_entries)
+ * 시간가계부 기록 행 — IndexedDB(주) + localStorage(미러·마이그레이션) + Supabase
  */
 
-import { isUuid } from "./timeTaskOptionsModel.js";
+import { isUuid, UUID_RE } from "./idUtils.js";
+import {
+  migrateFromLocalStorageIfNeeded,
+  readAllRowsFromIdb,
+  tryMirrorTimeLedgerToLocalStorage,
+  writeAllRowsToIdb,
+  TIME_LEDGER_STORAGE_KEY,
+} from "./timeLedgerEntriesStore.js";
 
-export const TIME_LEDGER_ENTRIES_KEY = "time_task_log_rows";
+export const TIME_LEDGER_ENTRIES_KEY = TIME_LEDGER_STORAGE_KEY;
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+/** 메모리 캐시 — readTimeLedgerEntriesRaw / writeTimeLedgerEntriesRaw 가 사용 (앱 시작 시 IDB로 채움) */
+let _ledgerRowsMem = null;
+
+/** @type {Promise<void> | null} */
+let _storageReadyPromise = null;
+
+/** IndexedDB 실패 시 true — 이후 쓰기는 localStorage 미러만 */
+let _idbDisabled = false;
+
+/**
+ * 앱 본 화면(mountApp) 전에 반드시 await. 미호출 시 read는 [].
+ */
+export function ensureTimeLedgerStorageReady() {
+  if (!_storageReadyPromise) {
+    _storageReadyPromise = (async () => {
+      try {
+        await migrateFromLocalStorageIfNeeded();
+        let rows = await readAllRowsFromIdb();
+        const { rows: fixed, dirty } = ensureTimeLedgerEntryIds(rows);
+        _ledgerRowsMem = fixed;
+        if (dirty) {
+          await writeAllRowsToIdb(fixed);
+          tryMirrorTimeLedgerToLocalStorage(fixed);
+        }
+      } catch (e) {
+        console.warn("[time-ledger-model] IndexedDB 사용 불가, localStorage로 폴백:", e);
+        _idbDisabled = true;
+        let rows = [];
+        try {
+          const raw = localStorage.getItem(TIME_LEDGER_ENTRIES_KEY);
+          if (raw) {
+            const p = JSON.parse(raw);
+            if (Array.isArray(p)) rows = p;
+          }
+        } catch (_) {}
+        const { rows: fixed, dirty } = ensureTimeLedgerEntryIds(rows);
+        _ledgerRowsMem = fixed;
+        if (dirty) {
+          try {
+            localStorage.setItem(TIME_LEDGER_ENTRIES_KEY, JSON.stringify(fixed));
+          } catch (_) {}
+        }
+      }
+    })();
+  }
+  return _storageReadyPromise;
+}
 
 /** Time.js parseFocusEvents 와 동일 (순환 import 방지) */
 export function parseFocusEventsForStorage(raw, defaultTime = "") {
@@ -141,23 +193,13 @@ function keepLocalRowNotOnServer(r, serverIds) {
 
 export function mergeTimeLedgerEntriesFromServer(dbRows) {
   if (!Array.isArray(dbRows) || dbRows.length === 0) return;
-  let local = [];
-  try {
-    const raw = localStorage.getItem(TIME_LEDGER_ENTRIES_KEY);
-    if (raw) {
-      const p = JSON.parse(raw);
-      if (Array.isArray(p)) local = p;
-    }
-  } catch (_) {}
-
+  const local = readTimeLedgerEntriesRaw();
   const { rows: localWithIds } = ensureTimeLedgerEntryIds(local);
   const serverLocals = dbRows.map((r) => dbRowToLocalTimeLedgerRow(r));
   const serverIds = new Set(serverLocals.map((r) => String(r.id || "").trim()));
   const keptLocal = localWithIds.filter((r) => keepLocalRowNotOnServer(r, serverIds));
   const merged = [...serverLocals, ...keptLocal];
-  try {
-    localStorage.setItem(TIME_LEDGER_ENTRIES_KEY, JSON.stringify(merged));
-  } catch (_) {}
+  writeTimeLedgerEntriesRaw(merged);
 }
 
 function rowEntryDateInInclusiveRange(row, startYmd, endYmd) {
@@ -184,15 +226,7 @@ export function timeLedgerMonthRangeYmd(year, month) {
 export function mergeTimeLedgerEntriesFromServerForDateRange(dbRows, rangeStart, rangeEnd) {
   if (!rangeStart || !rangeEnd) return;
   const serverRows = Array.isArray(dbRows) ? dbRows : [];
-  let local = [];
-  try {
-    const raw = localStorage.getItem(TIME_LEDGER_ENTRIES_KEY);
-    if (raw) {
-      const p = JSON.parse(raw);
-      if (Array.isArray(p)) local = p;
-    }
-  } catch (_) {}
-
+  const local = readTimeLedgerEntriesRaw();
   const { rows: localWithIds } = ensureTimeLedgerEntryIds(local);
   const serverLocals = serverRows.map((r) => dbRowToLocalTimeLedgerRow(r));
   const serverIds = new Set(serverLocals.map((r) => String(r.id || "").trim()));
@@ -204,26 +238,21 @@ export function mergeTimeLedgerEntriesFromServerForDateRange(dbRows, rangeStart,
   });
 
   const merged = [...outside, ...serverLocals, ...insideKeep];
-  try {
-    localStorage.setItem(TIME_LEDGER_ENTRIES_KEY, JSON.stringify(merged));
-  } catch (_) {}
+  writeTimeLedgerEntriesRaw(merged);
 }
 
 export function readTimeLedgerEntriesRaw() {
-  try {
-    const raw = localStorage.getItem(TIME_LEDGER_ENTRIES_KEY);
-    if (!raw) return [];
-    const p = JSON.parse(raw);
-    return Array.isArray(p) ? p : [];
-  } catch (_) {
-    return [];
-  }
+  if (!Array.isArray(_ledgerRowsMem)) return [];
+  return _ledgerRowsMem.slice();
 }
 
 export function writeTimeLedgerEntriesRaw(rows) {
-  try {
-    localStorage.setItem(TIME_LEDGER_ENTRIES_KEY, JSON.stringify(rows));
-  } catch (_) {}
+  const arr = Array.isArray(rows) ? rows.slice() : [];
+  _ledgerRowsMem = arr;
+  if (!_idbDisabled) {
+    void writeAllRowsToIdb(arr).catch((e) => console.warn("[time-ledger-store] idb write", e));
+  }
+  tryMirrorTimeLedgerToLocalStorage(arr);
 }
 
 /**

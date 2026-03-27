@@ -4,16 +4,15 @@
 
 import * as C from "./timeTaskOptionsConstants.js";
 import { getKpiSyncedTaskNames } from "./timeKpiSync.js";
+import { isUuid, UUID_RE } from "./idUtils.js";
+import {
+  readTimeLedgerEntriesRaw,
+  writeTimeLedgerEntriesRaw,
+} from "./timeLedgerEntriesModel.js";
 
+export { isUuid };
 export const TASK_OPTIONS_KEY = "time_task_options";
 export const TIME_TASK_LOG_ROWS_KEY = "time_task_log_rows";
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-export function isUuid(s) {
-  return typeof s === "string" && UUID_RE.test(s.trim());
-}
 
 /** 내장 과제명 → 코드 기준 분류 (결정적 id용) */
 const BUILTIN_BY_NAME = new Map();
@@ -239,10 +238,8 @@ export function patchTimeLogRowsOnTaskRename({ taskId, oldName, newName }) {
   const nn = (newName || "").trim();
   if (!nn || (!oid && !on)) return;
   try {
-    const raw = localStorage.getItem(TIME_TASK_LOG_ROWS_KEY);
-    if (!raw) return;
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) return;
+    const arr = readTimeLedgerEntriesRaw();
+    if (!arr.length) return;
     let changed = false;
     const next = arr.map((r) => {
       const name = (r.taskName || "").trim();
@@ -262,7 +259,7 @@ export function patchTimeLogRowsOnTaskRename({ taskId, oldName, newName }) {
       return r;
     });
     if (changed) {
-      localStorage.setItem(TIME_TASK_LOG_ROWS_KEY, JSON.stringify(next));
+      writeTimeLedgerEntriesRaw(next);
     }
   } catch (_) {}
 }
@@ -318,10 +315,8 @@ export function migrateTimeLogRowsTaskIds() {
     opts.map((o) => [(o.name || "").trim(), o]).filter(([k]) => k),
   );
   try {
-    const raw = localStorage.getItem(TIME_TASK_LOG_ROWS_KEY);
-    if (!raw) return;
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) return;
+    const arr = readTimeLedgerEntriesRaw();
+    if (!Array.isArray(arr) || arr.length === 0) return;
     let changed = false;
     const next = arr.map((r) => {
       if ((r.taskId || "").trim()) return r;
@@ -334,7 +329,7 @@ export function migrateTimeLogRowsTaskIds() {
       return r;
     });
     if (changed) {
-      localStorage.setItem(TIME_TASK_LOG_ROWS_KEY, JSON.stringify(next));
+      writeTimeLedgerEntriesRaw(next);
     }
   } catch (_) {}
 }

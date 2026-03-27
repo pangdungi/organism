@@ -18,6 +18,7 @@ import {
   scheduleSilentReminderPushSync,
   ensureVapidRuntimeFallback,
 } from "./utils/webPushReminders.js";
+import { ensureTimeLedgerStorageReady } from "./utils/timeLedgerEntriesModel.js";
 
 void ensureVapidRuntimeFallback();
 
@@ -209,6 +210,7 @@ function init() {
       showOnly("signin");
       /* 시급·appearance·타임존 RPC는 네트워크 지연 시 스플래시가 멈추지 않도록 비동기로만 실행 */
       void pullUserPrefsFromSupabase().catch((err) => console.warn("[prefs]", err));
+      await ensureTimeLedgerStorageReady();
       mountApp(document.getElementById("app-screen"));
       scheduleSilentReminderPushSync();
       return;
@@ -259,6 +261,7 @@ async function doLogin() {
   if (result.ok) {
     showOnly("signin");
     void pullUserPrefsFromSupabase().catch((err) => console.warn("[prefs]", err));
+    await ensureTimeLedgerStorageReady();
     mountApp(document.getElementById("app-screen"));
     scheduleSilentReminderPushSync();
   } else {
@@ -288,6 +291,7 @@ async function doSignUp() {
   if (session) {
     showOnly("signin");
     void pullUserPrefsFromSupabase().catch((err) => console.warn("[prefs]", err));
+    await ensureTimeLedgerStorageReady();
     mountApp(document.getElementById("app-screen"));
     scheduleSilentReminderPushSync();
     return;

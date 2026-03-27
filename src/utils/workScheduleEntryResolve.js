@@ -3,7 +3,8 @@
  * 해당 날짜에 시간가계부 "근무하기"가 있으면 그 시간은 유지.
  */
 
-const TIME_TASK_LOG_KEY = "time_task_log_rows";
+import { readTimeLedgerEntriesRaw } from "./timeLedgerEntriesModel.js";
+
 const WORK_TYPE_OPTIONS_KEY = "work_schedule_type_options";
 
 const DEFAULT_WORK_TYPE_OPTIONS = [
@@ -28,14 +29,7 @@ export function normalizeWorkDateKey(s) {
 }
 
 function loadTimeTaskRows() {
-  try {
-    const raw = localStorage.getItem(TIME_TASK_LOG_KEY);
-    if (!raw) return [];
-    const arr = JSON.parse(raw);
-    return Array.isArray(arr) ? arr : [];
-  } catch (_) {
-    return [];
-  }
+  return readTimeLedgerEntriesRaw();
 }
 
 /** 근무하기가 있는 근무일(YYYY-MM-DD) */

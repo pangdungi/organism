@@ -3,7 +3,7 @@
  * - 과제명(KPI 이름)으로 시간 기록 누적합 조회
  */
 
-const TIME_ROWS_KEY = "time_task_log_rows";
+import { readTimeLedgerEntriesRaw } from "./timeLedgerEntriesModel.js";
 
 function parseTimeToHours(str) {
   if (!str || typeof str !== "string") return 0;
@@ -16,14 +16,7 @@ function parseTimeToHours(str) {
 }
 
 function loadTimeRows() {
-  try {
-    const raw = localStorage.getItem(TIME_ROWS_KEY);
-    if (raw) {
-      const arr = JSON.parse(raw);
-      return Array.isArray(arr) ? arr : [];
-    }
-  } catch (_) {}
-  return [];
+  return readTimeLedgerEntriesRaw();
 }
 
 /**

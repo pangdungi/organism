@@ -9,6 +9,7 @@ import {
   normalizeWorkDateKey,
   workDateHasTimeLedgerWork,
 } from "../utils/workScheduleEntryResolve.js";
+import { readTimeLedgerEntriesRaw } from "../utils/timeLedgerEntriesModel.js";
 
 /** localStorage `debug_work_schedule` = `1` 이면 근무표 UI/하이드레이트 진단 로그 */
 function wsUiLog(...args) {
@@ -50,7 +51,6 @@ function notifyWorkScheduleSaved() {
 const WORK_SCHEDULE_KEY = "work_schedule_rows";
 const WORK_TYPE_OPTIONS_KEY = "work_schedule_type_options";
 const WORK_SCHEDULE_DAILY_HOURS_KEY = "work_schedule_daily_hours";
-const TIME_ROWS_KEY = "time_task_log_rows";
 /** 기본 근무유형 순서: 연차 → 휴가 → 정규근무 (연차·휴가는 00:00-00:00, 수정 불가) */
 const DEFAULT_WORK_TYPE_OPTIONS = [
   { name: "연차", start: "00:00", end: "00:00" },
@@ -255,18 +255,6 @@ function formatTimeAccumulation(diff) {
   return `- ${str}`;
 }
 
-/** 시간기록(time_task_log_rows)에서 근무하기 행만 로드 */
-function loadTimeRows() {
-  try {
-    const raw = localStorage.getItem(TIME_ROWS_KEY);
-    if (raw) {
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) return arr;
-    }
-  } catch (_) {}
-  return [];
-}
-
 /** "09:00" 또는 "2026-03-13 09:00" 형태에서 시각(0~24) 추출. 날짜의 2026 등이 시간으로 잡히지 않도록 HH:MM 패턴만 사용 */
 function parseTimeToHours(str) {
   if (!str || typeof str !== "string") return null;
@@ -297,7 +285,7 @@ function parseNameToStartEnd(name) {
 
 /** 시간기록의 근무하기 → 근무표 행 형식 (시작시간, 마감시간, Hours, 근무일, 근무유형/메모 유지) */
 function getWorkRowsFromTimeRecord() {
-  const timeRows = loadTimeRows();
+  const timeRows = readTimeLedgerEntriesRaw();
   const workTaskName = "근무하기";
   const toTimeString = (hours) => {
     if (hours == null || Number.isNaN(hours)) return "";

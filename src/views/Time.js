@@ -56,7 +56,11 @@ import {
 } from "../utils/timeImproveNotesModel.js";
 import { hydrateTimeImproveNotesFromCloud } from "../utils/timeImproveNotesSupabase.js";
 import { scheduleTimeDailyBudgetSyncPush } from "../utils/timeDailyBudgetSupabase.js";
-import { ensureTimeLedgerEntryIds } from "../utils/timeLedgerEntriesModel.js";
+import {
+  ensureTimeLedgerEntryIds,
+  readTimeLedgerEntriesRaw,
+  writeTimeLedgerEntriesRaw,
+} from "../utils/timeLedgerEntriesModel.js";
 import { hydrateTimeLedgerEntriesFromCloud } from "../utils/timeLedgerEntriesSupabase.js";
 import { persistSectionTasksAndSchedule } from "../utils/todoSectionTasksSupabase.js";
 import { SECTION_TASKS_KEY } from "../utils/todoSectionTasksModel.js";
@@ -545,7 +549,6 @@ const PRODUCTIVITY_OPTIONS = [
 
 const BUDGET_GOALS_KEY = "time_daily_budget_goals";
 const BUDGET_EXCLUDED_KEY = "time_budget_excluded";
-const TIME_ROWS_KEY = "time_task_log_rows";
 
 function notifyTimeDailyBudgetSaved(dateStr) {
   if (!(dateStr || "").trim()) return;
@@ -974,24 +977,18 @@ function saveBudgetScheduledTimesBatch(dateStr, tasksInOrder, lastEditedTask) {
   }
 }
 
-/** 과제 기록 로컬 저장 (백엔드 개발 전 임시) */
+/** 과제 기록 로컬 저장 — IndexedDB(+미러) 경로는 timeLedgerEntriesModel */
 export function loadTimeRows() {
   try {
-    const raw = localStorage.getItem(TIME_ROWS_KEY);
-    if (raw) {
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) {
-        const { rows, dirty } = ensureTimeLedgerEntryIds(arr);
-        if (dirty) {
-          try {
-            localStorage.setItem(TIME_ROWS_KEY, JSON.stringify(rows));
-          } catch (_) {}
-        }
-        return rows;
-      }
+    const arr = readTimeLedgerEntriesRaw();
+    const { rows, dirty } = ensureTimeLedgerEntryIds(arr);
+    if (dirty) {
+      writeTimeLedgerEntriesRaw(rows);
     }
-  } catch (_) {}
-  return [];
+    return rows;
+  } catch (_) {
+    return [];
+  }
 }
 
 const TIME_ROWS_SYNC_DEBUG = true;
@@ -1004,7 +1001,7 @@ function saveTimeRows(rows) {
     if (dirty) {
       /* 신규 id 부여분 반영 */
     }
-    localStorage.setItem(TIME_ROWS_KEY, JSON.stringify(toSave));
+    writeTimeLedgerEntriesRaw(toSave);
     syncHabitTrackerLogs();
     if (TIME_ROWS_SYNC_DEBUG) {
       console.log(
