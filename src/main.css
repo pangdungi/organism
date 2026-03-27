@@ -3050,6 +3050,8 @@ body {
     overflow-y: visible;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    border-top: var(--divider-default);
+    border-bottom: var(--divider-default);
   }
   .work-schedule-content-wrap .work-schedule-table-wrap::-webkit-scrollbar {
     display: none;
@@ -3114,10 +3116,11 @@ body {
     font-size: 0.8125rem;
     line-height: 1.25;
   }
-  /* 모바일: 하루 근무시간·필터 행 — 근무기록 트랙커 탭 버튼 좌패딩(12px)과 동일 */
-  .work-schedule-content-wrap .work-schedule-top-row {
-    padding-left: 0.75rem;
-    box-sizing: border-box;
+  /* 모바일: 근무기록 표 — L3(0.5px) 가로·세로 구분선이 묻힘 → 토큰 기본 구분선(L2)으로 */
+  .work-schedule-content-wrap .work-schedule-table th,
+  .work-schedule-content-wrap .work-schedule-table td {
+    border-bottom: var(--divider-default);
+    border-right: var(--divider-default);
   }
   /* 모바일: 필터(월별·하루·날짜선택 + 월 드롭·연도) 한 줄 — 전역 flex-wrap:wrap 덮어씀 */
   .work-schedule-content-wrap .work-schedule-filter-bar {
@@ -3138,6 +3141,26 @@ body {
   .work-schedule-content-wrap .work-schedule-filter-bar .time-filter-month-wrap {
     flex-shrink: 0;
     flex-wrap: nowrap;
+  }
+  /* 모바일: 날짜 선택(시작~끝) — 패딩·폭·간격 축소로 필터 한 줄에 맞춤(글자는 16px 줌 방지 유지) */
+  .work-schedule-content-wrap .work-schedule-filter-bar .time-filter-range-wrap {
+    gap: 0.2rem;
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .work-schedule-content-wrap .work-schedule-filter-bar .time-filter-range-wrap span {
+    font-size: 0.6875rem;
+    line-height: 1.2;
+  }
+  .work-schedule-content-wrap .work-schedule-filter-bar .time-filter-start-date,
+  .work-schedule-content-wrap .work-schedule-filter-bar .time-filter-end-date {
+    padding: 0.2rem 0.3rem !important;
+    max-width: 7.75rem;
+    min-width: 0;
+    box-sizing: border-box;
+    border-radius: 0.25rem;
+    line-height: 1.2;
   }
 
   /* 모바일: 근무유형 설정 모달 시간 입력 — iOS 줌 방지(16px); 모달은 #app 밖 body에 붙음 */
@@ -5767,7 +5790,7 @@ body {
   border-bottom: var(--line-l1);
 }
 
-/* 근무표 상단: 하루 근무시간(왼쪽) + 날짜 필터(오른쪽) */
+/* 근무표 상단: 하루 근무시간(왼쪽) + 합계(오른쪽) + 필터 — 좌우 패딩 동일 */
 .work-schedule-top-row {
   display: flex;
   align-items: center;
@@ -5775,9 +5798,19 @@ body {
   flex-wrap: wrap;
   gap: 0.75rem 1rem;
   margin-bottom: 1rem;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  box-sizing: border-box;
 }
 .work-schedule-top-row .work-schedule-daily-hours-wrap {
   margin-bottom: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
 }
 .work-schedule-top-row .work-schedule-filter-bar {
   margin-bottom: 0;
@@ -5787,6 +5820,32 @@ body {
 /* 근무표 필터 바 (월별/일주일/하루/날짜선택) */
 .work-schedule-daily-hours-wrap {
   margin-bottom: 0.75rem;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+}
+.work-schedule-sum-inline-wrap {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.15rem;
+  font-size: 0.8125rem;
+  font-weight: 300;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.work-schedule-sum-inline-label {
+  font-weight: 300;
+  font-size: inherit;
+  color: var(--text-muted);
+}
+.work-schedule-sum-inline {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--text-ink);
+  font-variant-numeric: tabular-nums;
 }
 .work-schedule-daily-hours-label {
   display: inline-flex;
@@ -5807,7 +5866,7 @@ body {
   background: transparent;
   font-family: var(--font-heading);
   font-weight: 600;
-  font-size: 1.25rem;
+  font-size: 0.875rem;
   line-height: 1.2;
   color: var(--text-body);
   text-align: center;
@@ -5821,7 +5880,7 @@ body {
   box-shadow: none;
 }
 .work-schedule-daily-hours-unit {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   color: var(--text-body);
   line-height: 1;
@@ -10132,12 +10191,6 @@ body {
   -webkit-overflow-scrolling: auto;
 }
 
-.work-schedule-sum {
-  margin-top: 0.75rem;
-  font-size: 0.875rem;
-  color: var(--text-muted);
-}
-
 .work-schedule-table {
   width: 100%;
   min-width: 48rem;
@@ -10173,16 +10226,6 @@ body {
 
 .work-schedule-tfoot {
   background: var(--content-bg);
-}
-.work-schedule-sum-row td {
-  background: var(--content-bg);
-  font-weight: 500;
-  color: var(--text-body);
-}
-
-.work-schedule-sum-row .work-schedule-sum-cell {
-  font-weight: 600;
-  color: var(--text-ink);
 }
 
 .work-schedule-col-start-time,
@@ -10312,9 +10355,6 @@ body {
 }
 .work-schedule-table tbody tr:hover .work-schedule-cell-date {
   background: var(--ui-surface-alt) !important;
-}
-.work-schedule-table .work-schedule-sum-row .work-schedule-cell-date {
-  background: var(--content-bg);
 }
 .work-schedule-table td.work-schedule-cell-start-time,
 .work-schedule-table td.work-schedule-cell-end-time {

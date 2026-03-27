@@ -1110,6 +1110,19 @@ export function render(opts = {}) {
     dailyHoursLabel.appendChild(hoursUnit);
     dailyHoursWrap.appendChild(dailyHoursLabel);
 
+    const sumInlineWrap = document.createElement("span");
+    sumInlineWrap.className = "work-schedule-sum-inline-wrap";
+    sumInlineWrap.appendChild(document.createTextNode(" · "));
+    const sumLabelEl = document.createElement("span");
+    sumLabelEl.className = "work-schedule-sum-inline-label";
+    sumLabelEl.textContent = "합계 ";
+    const sumInline = document.createElement("span");
+    sumInline.className = "work-schedule-sum-inline";
+    sumInline.setAttribute("aria-live", "polite");
+    sumInlineWrap.appendChild(sumLabelEl);
+    sumInlineWrap.appendChild(sumInline);
+    dailyHoursWrap.appendChild(sumInlineWrap);
+
     const filterBar = document.createElement("div");
     filterBar.className = "work-schedule-filter-bar";
     filterBar.innerHTML = `
@@ -1312,13 +1325,7 @@ export function render(opts = {}) {
         </tr>
       </thead>
       <tbody></tbody>
-      <tfoot class="work-schedule-tfoot">
-        <tr class="work-schedule-sum-row">
-          <td colspan="5"></td>
-          <td class="work-schedule-sum-cell"></td>
-          <td colspan="2"></td>
-        </tr>
-      </tfoot>
+      <tfoot class="work-schedule-tfoot"></tfoot>
     `;
 
     const tbody = table.querySelector("tbody");
@@ -1341,10 +1348,9 @@ export function render(opts = {}) {
       syncEntryIdsAfterSave(tableWrap, withIds);
     }
 
-    const sumCell = table.querySelector(".work-schedule-sum-cell");
     function updateSum() {
       const total = getHoursSum(tableWrap);
-      sumCell.textContent = formatTimeAccumulation(total) || "0";
+      sumInline.textContent = formatTimeAccumulation(total) || "0";
     }
 
     const onUpdate = () => {
