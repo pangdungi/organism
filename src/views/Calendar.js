@@ -6474,7 +6474,6 @@ export function render() {
   let currentView = "todo";
 
   function renderContent(view) {
-    console.log("[할일/일정] renderContent", { view, 이전뷰: currentView });
     const onlySaveWhenFullTodoList = currentView === "todo" || currentView === "eisenhower";
     if (onlySaveWhenFullTodoList) {
       saveTodoListBeforeUnmount(contentWrap);
@@ -6487,24 +6486,16 @@ export function render() {
     contentWrap.innerHTML = "";
     try {
       if (view === "todo") {
-        console.log("[할일/일정] → renderTodoView()");
         contentWrap.appendChild(renderTodoView(tabs));
       } else if (view === "calendar") {
-        console.log("[할일/일정] → renderCalendarView()");
         contentWrap.appendChild(renderCalendarView(tabs));
       } else if (view === "1day") {
-        console.log("[할일/일정] → render1DayView() 시작 (4. 오늘 해치우기)");
         const oneDayRoot = render1DayView(tabs);
-        console.log("[할일/일정] → render1DayView() 끝", {
-          childElementCount: oneDayRoot?.childElementCount,
-        });
         contentWrap.appendChild(oneDayRoot);
       } else if (view === "eisenhower") {
-        console.log("[할일/일정] → renderEisenhowerView()");
         contentWrap.appendChild(renderEisenhowerView(tabs));
       } else {
         const labels = {};
-        console.log("[할일/일정] → placeholder", view);
         contentWrap.appendChild(renderPlaceholderView(tabs, labels[view] || ""));
       }
     } catch (err) {

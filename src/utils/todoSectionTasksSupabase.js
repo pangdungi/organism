@@ -11,6 +11,8 @@ import {
   ensureCalendarSectionTaskIds,
   writeSectionTasksObject,
   writeCustomSectionTasksObject,
+  SECTION_TASKS_KEY,
+  CUSTOM_SECTION_TASKS_KEY,
 } from "./todoSectionTasksModel.js";
 
 const TABLE = "calendar_section_tasks";
@@ -92,8 +94,11 @@ export async function pullTodoSectionTasksFromSupabase() {
   }
   if (!data?.length) return false;
 
+  /* 병합 전후가 같으면 false — 무한 __lpRenderMain 루프 방지(매 pull마다 true였음) */
+  const beforeSnap = `${localStorage.getItem(SECTION_TASKS_KEY) ?? ""}\n${localStorage.getItem(CUSTOM_SECTION_TASKS_KEY) ?? ""}`;
   mergeCalendarSectionTasksFromServer(data);
-  return true;
+  const afterSnap = `${localStorage.getItem(SECTION_TASKS_KEY) ?? ""}\n${localStorage.getItem(CUSTOM_SECTION_TASKS_KEY) ?? ""}`;
+  return beforeSnap !== afterSnap;
 }
 
 export async function pushAllLocalTodoSectionTasksIfServerEmpty() {
