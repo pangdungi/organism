@@ -3110,7 +3110,32 @@ body {
     margin-left: 0;
     width: 100%;
     justify-content: flex-start;
-    padding-top: 0.25rem;
+    padding-top: 0.15rem;
+    gap: 0.35rem;
+  }
+  .archive-view .archive-month-filter.time-filter-month-wrap {
+    gap: 0.35rem;
+  }
+  .archive-view .archive-month-filter .asset-cashflow-trigger {
+    min-width: 3rem;
+    font-size: 0.75rem;
+    padding: 0.15rem 0.25rem 0.15rem 0;
+  }
+  .archive-view .archive-month-filter .asset-cashflow-year-nav {
+    padding: 0.2rem 0.35rem;
+    gap: 0.2rem;
+  }
+  .archive-view .archive-month-filter .asset-cashflow-year-btn {
+    font-size: 0.75rem;
+    padding: 0.08rem 0.2rem;
+  }
+  .archive-view .archive-month-filter .asset-cashflow-year-display {
+    font-size: 0.75rem;
+    min-width: 1.85rem;
+  }
+  .archive-view .archive-month-filter .asset-cashflow-panel .time-period-option {
+    font-size: 0.8125rem;
+    padding: 0.35rem 0.65rem;
   }
 
   /* 모바일: 모든 탭 뷰 좌우 패딩 제거 (화면 끝까지) */
