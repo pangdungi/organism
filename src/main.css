@@ -4089,6 +4089,11 @@ body {
     align-items: flex-start;
     row-gap: 0.2rem;
   }
+  /* 제목 행(체크박스 옆): 캘린더에서도 이름·우선순위는 체크 박스와 세로 중앙 정렬 */
+  .calendar-view-todo .todo-card-title-row .todo-card-name-wrap {
+    align-items: center;
+    min-height: 2.5rem;
+  }
   .calendar-view-todo .todo-card-content {
     gap: 0.5rem;
   }
@@ -11705,6 +11710,9 @@ body {
 .todo-card-title-row .todo-card-name-wrap {
   flex: 1;
   min-width: 0;
+  /* baseline 이면 글자가 줄박스 안에서 위로 붙어 보임 — 체크 영역 높이 안에서 세로 가운데 */
+  align-items: center;
+  min-height: 1.75rem;
 }
 
 .todo-card-done-wrap {
@@ -11733,6 +11741,9 @@ body {
   .todo-card-done {
     width: 2.25rem;
     height: 2.25rem;
+  }
+  .todo-card-title-row .todo-card-name-wrap {
+    min-height: 2.5rem;
   }
 }
 
@@ -11765,6 +11776,11 @@ body {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 체크박스 옆 한 줄: 줄간격을 살짝 줄여 글자가 줄 상자 안에서 덜 떠 보이게 */
+.todo-card-title-row .todo-card-name {
+  line-height: 1.35;
 }
 
 .todo-card.is-done .todo-card-name {
