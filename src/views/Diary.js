@@ -13,12 +13,7 @@ import {
   TAB3_EMOTION_TEMPLATE,
   TAB3_EMOTION_PLACEHOLDERS,
 } from "../diaryData.js";
-import {
-  hydrateDiaryFromCloud,
-  pullDiaryPageFromSupabase,
-  DIARY_PULL_PAGE_SIZE,
-  deleteDiaryEntryFromSupabase,
-} from "../utils/diarySupabase.js";
+import { hydrateDiaryFromCloud, deleteDiaryEntryFromSupabase } from "../utils/diarySupabase.js";
 
 /** 탭 2 통제일기 Q&A 템플릿 */
 const TAB2_QA_TEMPLATE = [
@@ -133,32 +128,12 @@ export function render() {
   let searchQuery = "";
   let isComposing = false;
   let sidebarCollapsed = false;
-  let diaryHasMoreRemote = false;
-  let diaryPullNextOffset = 0;
-  let diaryLoadMoreBusy = false;
   let entries = loadDiaryEntries();
 
   (function mountDiary() {
   function notifyServerDeletedEntry(entryId) {
     if (isDiaryEntryUuid(entryId)) {
       void deleteDiaryEntryFromSupabase(entryId).catch((e) => console.warn("[diary]", e));
-    }
-  }
-
-  async function loadMoreDiaryRemote() {
-    if (diaryLoadMoreBusy || !diaryHasMoreRemote) return;
-    diaryLoadMoreBusy = true;
-    renderLayout();
-    try {
-      const page = await pullDiaryPageFromSupabase(diaryPullNextOffset, DIARY_PULL_PAGE_SIZE);
-      if (page.merged) entries = loadDiaryEntries();
-      diaryHasMoreRemote = page.hasMore;
-      diaryPullNextOffset += DIARY_PULL_PAGE_SIZE;
-    } catch (e) {
-      console.warn("[diary]", e);
-    } finally {
-      diaryLoadMoreBusy = false;
-      renderLayout();
     }
   }
 
@@ -526,7 +501,7 @@ export function render() {
       const searchInput = document.createElement("input");
       searchInput.type = "text";
       searchInput.className = "diary-search-input";
-      searchInput.placeholder = "날짜·내용 검색 (불러온 목록 기준)…";
+      searchInput.placeholder = "날짜·내용 검색...";
       searchInput.value = searchQuery;
       searchInput.addEventListener("compositionstart", () => {
         isComposing = true;
@@ -562,16 +537,6 @@ export function render() {
         });
         pageList.appendChild(btn);
       });
-
-      if (diaryHasMoreRemote) {
-        const moreBtn = document.createElement("button");
-        moreBtn.type = "button";
-        moreBtn.className = "diary-page-item diary-server-load-more";
-        moreBtn.textContent = diaryLoadMoreBusy ? "불러오는 중…" : "이전 기록 더 불러오기";
-        moreBtn.disabled = diaryLoadMoreBusy;
-        moreBtn.addEventListener("click", () => void loadMoreDiaryRemote());
-        pageList.appendChild(moreBtn);
-      }
 
       pageListScrollWrap.appendChild(pageList);
       sidebar.appendChild(pageListScrollWrap);
@@ -704,18 +669,6 @@ export function render() {
         }
         scrollWrap.appendChild(card);
       });
-      if (diaryHasMoreRemote) {
-        const loadRow = document.createElement("div");
-        loadRow.className = "diary-feed-load-more";
-        const moreBtn = document.createElement("button");
-        moreBtn.type = "button";
-        moreBtn.className = "diary-mobile-load-more-server";
-        moreBtn.textContent = diaryLoadMoreBusy ? "불러오는 중…" : "서버에서 이전 기록 더 불러오기";
-        moreBtn.disabled = diaryLoadMoreBusy;
-        moreBtn.addEventListener("click", () => void loadMoreDiaryRemote());
-        loadRow.appendChild(moreBtn);
-        scrollWrap.appendChild(loadRow);
-      }
     } else if (mobile && fullEntryList.length === 0) {
       const empty = document.createElement("div");
       empty.className = "diary-paper diary-feed-empty";
@@ -921,11 +874,6 @@ export function render() {
     renderLayout();
 
     void hydrateDiaryFromCloud()
-      .then((page) => {
-        if (!page || page.merged == null || typeof page.hasMore !== "boolean") return;
-        diaryHasMoreRemote = page.hasMore;
-        diaryPullNextOffset = DIARY_PULL_PAGE_SIZE;
-      })
       .catch((err) => console.warn("[diary]", err))
       .finally(() => {
         entries = loadDiaryEntries();
