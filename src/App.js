@@ -52,8 +52,8 @@ const TABS = [
   {
     id: "workschedule",
     label: "근무표",
+    mobileLabel: "근무표",
     icon: "/toolbaricons/calendar-heart1.svg",
-    sidebarDesktopOnly: true,
   },
   {
     id: "schedulecalendar",
@@ -70,7 +70,11 @@ const RENDERERS = {
   home: renderHome,
   calendar: renderCalendar,
   time: renderTime,
-  workschedule: renderWorkSchedule,
+  workschedule: () =>
+    typeof window !== "undefined" &&
+    window.matchMedia("(max-width: 48rem)").matches
+      ? renderWorkSchedule({ mobile: true })
+      : renderWorkSchedule(),
   schedulecalendar: renderMobileScheduleCalendar,
   asset: renderAsset,
   dream: renderDream,
@@ -322,6 +326,7 @@ export function mountApp(container) {
     "time",
     "calendar",
     "schedulecalendar",
+    "workschedule",
     "diary",
     "archive",
   ];

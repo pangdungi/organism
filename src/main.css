@@ -3044,7 +3044,7 @@ body {
     opacity: 0.92;
   }
 
-  /* 모바일: 근무기록 트래커 테이블 줄바꿈 없이 가로 스크롤, 스크롤바 숨김 */
+  /* 모바일: 근무기록 트래커 — 표 너비는 내용 기준(전역 width:100%·min-width:48rem 해제), 넘치면 가로 스크롤 */
   .work-schedule-content-wrap .work-schedule-table-wrap {
     overflow-x: auto;
     overflow-y: visible;
@@ -3055,8 +3055,37 @@ body {
     display: none;
   }
   .work-schedule-content-wrap .work-schedule-table {
+    width: max-content;
+    min-width: unset;
+    max-width: none;
+    table-layout: auto;
     white-space: nowrap;
-    min-width: max-content;
+  }
+  /* 모바일: 열별 고정 min-width 완화 — 내용·글자 길이에 맞게 줄어들 수 있게 */
+  .work-schedule-content-wrap .work-schedule-table col.work-schedule-col-start-time,
+  .work-schedule-content-wrap .work-schedule-table col.work-schedule-col-end-time {
+    width: auto;
+    min-width: 2.75rem;
+  }
+  .work-schedule-content-wrap .work-schedule-table col.work-schedule-col-type {
+    width: auto;
+    min-width: 3.25rem;
+  }
+  .work-schedule-content-wrap .work-schedule-table col.work-schedule-col-hours-worked {
+    width: auto;
+    min-width: 3rem;
+  }
+  .work-schedule-content-wrap .work-schedule-table col.work-schedule-col-hours {
+    width: auto;
+    min-width: 4rem;
+  }
+  .work-schedule-content-wrap .work-schedule-table col.work-schedule-col-memo {
+    width: auto;
+    min-width: 3rem;
+  }
+  .work-schedule-content-wrap .work-schedule-table col.work-schedule-col-actions {
+    width: auto;
+    min-width: 2.5rem;
   }
   .work-schedule-content-wrap .work-schedule-table th,
   .work-schedule-content-wrap .work-schedule-table td {
@@ -3065,6 +3094,50 @@ body {
   .work-schedule-content-wrap .work-schedule-table .work-schedule-cell-memo {
     white-space: normal;
     max-width: 12rem;
+  }
+  /* 모바일: 근무일 열·행 — 데스크톱용 min-width(6.875rem 등)·패딩을 줄여 화면 낭비 완화 (내용은 그대로 표시) */
+  .work-schedule-content-wrap .work-schedule-table col.work-schedule-col-date {
+    min-width: 4.75rem;
+  }
+  .work-schedule-content-wrap .work-schedule-table th,
+  .work-schedule-content-wrap .work-schedule-table td {
+    padding: 0.125rem 0.45rem;
+  }
+  .work-schedule-content-wrap .work-schedule-table .work-schedule-th-date,
+  .work-schedule-content-wrap .work-schedule-table .work-schedule-cell-date {
+    min-width: 4.75rem;
+    width: auto;
+    padding: 0.1rem 0.35rem;
+  }
+  .work-schedule-content-wrap .work-schedule-date-display {
+    padding: 0.05rem 0.2rem;
+    font-size: 0.8125rem;
+    line-height: 1.25;
+  }
+  /* 모바일: 하루 근무시간·필터 행 — 근무기록 트랙커 탭 버튼 좌패딩(12px)과 동일 */
+  .work-schedule-content-wrap .work-schedule-top-row {
+    padding-left: 0.75rem;
+    box-sizing: border-box;
+  }
+  /* 모바일: 필터(월별·하루·날짜선택 + 월 드롭·연도) 한 줄 — 전역 flex-wrap:wrap 덮어씀 */
+  .work-schedule-content-wrap .work-schedule-filter-bar {
+    flex-wrap: nowrap;
+    gap: 0.35rem;
+    align-items: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .work-schedule-content-wrap .work-schedule-filter-bar::-webkit-scrollbar {
+    display: none;
+  }
+  .work-schedule-content-wrap .work-schedule-filter-bar .time-filter-tabs {
+    flex-shrink: 0;
+  }
+  .work-schedule-content-wrap .work-schedule-filter-bar .time-filter-month-wrap {
+    flex-shrink: 0;
+    flex-wrap: nowrap;
   }
 
   /* 모바일: 근무유형 설정 모달 시간 입력 — iOS 줌 방지(16px); 모달은 #app 밖 body에 붙음 */
@@ -3394,13 +3467,17 @@ body {
     color: var(--text-body) !important;
   }
 
-  /* 모바일: 할일/일정 전용 탭에서만 제목·탭 숨김 (홈 임베드·모바일 캘린더 단독 탭 제외) */
-  .calendar-view:not(.calendar-view--mobile-schedule)
+  /* 모바일: 할일/일정 전용 탭에서만 제목·탭 숨김 (홈 임베드·모바일 캘린더·근무표 단독 탭 제외) */
+  .calendar-view:not(.calendar-view--mobile-schedule):not(
+      .calendar-view--mobile-workschedule
+    )
     .calendar-view-header
     .calendar-view-title {
     display: none !important;
   }
-  .calendar-view:not(.calendar-view--mobile-schedule)
+  .calendar-view:not(.calendar-view--mobile-schedule):not(
+      .calendar-view--mobile-workschedule
+    )
     .calendar-view-header
     .dream-view-label {
     display: none !important;
@@ -3560,7 +3637,8 @@ body {
 
   /* 모바일 캘린더 탭: 월별·2주·1주 상단 탭으로 고정, 다른 탭 디자인 통일 */
   .calendar-view--mobile-schedule.calendar-view-with-subtabs
-    .calendar-sub-tabs {
+    .calendar-sub-tabs,
+  .calendar-view--mobile-workschedule .calendar-sub-tabs {
     order: 0;
     flex-shrink: 0;
     display: flex !important;
@@ -3576,7 +3654,8 @@ body {
   .calendar-view--mobile-schedule .calendar-view-top-row {
     display: none;
   }
-  .calendar-view--mobile-schedule .calendar-sub-tab {
+  .calendar-view--mobile-schedule .calendar-sub-tab,
+  .calendar-view--mobile-workschedule .calendar-sub-tab {
     flex-shrink: 0;
     padding: 0.5rem 0.75rem 0.45rem;
     font-size: 0.9rem;
@@ -3584,7 +3663,8 @@ body {
     margin-bottom: -0.0625rem;
     white-space: nowrap;
   }
-  .calendar-view--mobile-schedule .calendar-sub-tab.active {
+  .calendar-view--mobile-schedule .calendar-sub-tab.active,
+  .calendar-view--mobile-workschedule .calendar-sub-tab.active {
     border-bottom-color: var(--line-l1-color);
     margin-bottom: 0;
   }
@@ -3617,6 +3697,33 @@ body {
     .work-schedule-monthly-content--hours-only
     .work-schedule-monthly-top-row {
     flex-wrap: nowrap;
+  }
+
+  /* 모바일 근무표 탭: 월별 근무유형 캘린더 */
+  .calendar-view--mobile-workschedule .work-schedule-monthly-content {
+    width: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .calendar-view--mobile-workschedule
+    .work-schedule-monthly-content--hours-only
+    .work-schedule-monthly-top-row {
+    flex-wrap: nowrap;
+  }
+  /* 모바일 근무표 탭: 헤더 한 줄에 제목 + 설정 */
+  .work-schedule-header-inner--mobile-tab {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 0.75rem;
+    box-sizing: border-box;
+  }
+  .work-schedule-header-inner--mobile-tab .work-schedule-header-title-wrap {
+    min-width: 0;
+    flex: 1 1 auto;
   }
 
   /* 모바일: 날짜 셀 클릭 시 확대 보기 오버레이 + 넓은 카드 */

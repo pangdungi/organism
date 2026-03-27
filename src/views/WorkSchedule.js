@@ -673,7 +673,6 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
   });
   dateTd.appendChild(dateDisplay);
   dateTd.appendChild(dateInput);
-  tr.appendChild(dateTd);
 
   const { startTime: initStart, endTime: initEnd } = initialData.startTime != null && initialData.endTime != null
     ? { startTime: initialData.startTime || "", endTime: initialData.endTime || "" }
@@ -690,7 +689,6 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
   startTimeInput.title = "시간은 시간가계부의 근무하기 기록에서 수정할 수 있습니다.";
   startTimeInput.value = initStart;
   startTimeTd.appendChild(startTimeInput);
-  tr.appendChild(startTimeTd);
 
   const endTimeTd = document.createElement("td");
   endTimeTd.className = "work-schedule-cell work-schedule-cell-end-time";
@@ -703,7 +701,6 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
   endTimeInput.title = "시간은 시간가계부의 근무하기 기록에서 수정할 수 있습니다.";
   endTimeInput.value = initEnd;
   endTimeTd.appendChild(endTimeInput);
-  tr.appendChild(endTimeTd);
 
   let typeInputWrap;
   const hoursWorkedInput = document.createElement("input");
@@ -772,7 +769,6 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
   const typeTd = document.createElement("td");
   typeTd.className = "work-schedule-cell work-schedule-cell-type";
   typeTd.appendChild(typeInputWrap.wrap);
-  tr.appendChild(typeTd);
 
   const hoursWorkedTd = document.createElement("td");
   hoursWorkedTd.className = "work-schedule-cell work-schedule-cell-hours-worked";
@@ -781,13 +777,11 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
     if (e.key === "Enter" && !e.isComposing) hoursWorkedInput.blur();
   });
   hoursWorkedTd.appendChild(hoursWorkedInput);
-  tr.appendChild(hoursWorkedTd);
 
   const hoursTd = document.createElement("td");
   hoursTd.className = "work-schedule-cell work-schedule-cell-hours";
   hoursTd.appendChild(timeAccumulationDisplay);
   hoursTd.appendChild(hoursInput);
-  tr.appendChild(hoursTd);
 
   if (initStart && initEnd) syncHoursWorkedFromStartEnd();
   updateTimeAccumulationDisplay();
@@ -819,7 +813,6 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
     onUpdate();
   });
   memoTd.appendChild(memoInput);
-  tr.appendChild(memoTd);
 
   const actionsTd = document.createElement("td");
   actionsTd.className = "work-schedule-cell work-schedule-cell-actions";
@@ -833,30 +826,26 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
     onUpdate();
   });
   actionsTd.appendChild(delBtn);
+
+  tr.appendChild(dateTd);
+  tr.appendChild(typeTd);
+  tr.appendChild(startTimeTd);
+  tr.appendChild(endTimeTd);
+  tr.appendChild(hoursWorkedTd);
+  tr.appendChild(hoursTd);
+  tr.appendChild(memoTd);
   tr.appendChild(actionsTd);
 
   return tr;
 }
 
-export function render() {
+export function render(opts = {}) {
+  const mobile = !!opts.mobile;
   const el = document.createElement("div");
-  el.className = "app-tab-panel-content work-schedule-view";
+  el.className = mobile
+    ? "app-tab-panel-content work-schedule-view calendar-view calendar-view--mobile-workschedule"
+    : "app-tab-panel-content work-schedule-view";
 
-  const header = document.createElement("div");
-  header.className = "work-schedule-header dream-view-header-wrap";
-  const headerInner = document.createElement("div");
-  headerInner.className = "work-schedule-header-inner";
-  const titleWrap = document.createElement("div");
-  titleWrap.className = "work-schedule-header-title-wrap";
-  const label = document.createElement("span");
-  label.className = "dream-view-label";
-  label.textContent = "WORK SCHEDULE";
-  const h = document.createElement("h1");
-  h.className = "dream-view-title";
-  h.textContent = "근무표";
-  titleWrap.appendChild(label);
-  titleWrap.appendChild(h);
-  headerInner.appendChild(titleWrap);
   const settingsBtn = document.createElement("button");
   settingsBtn.type = "button";
   settingsBtn.className = "work-schedule-settings-btn";
@@ -864,8 +853,45 @@ export function render() {
   settingsBtn.title = "근무유형 설정";
   settingsBtn.innerHTML =
     '<img src="/toolbaricons/settings.svg" alt="" class="work-schedule-settings-icon" width="20" height="20">';
-  headerInner.appendChild(settingsBtn);
-  header.appendChild(headerInner);
+
+  const header = document.createElement("div");
+  if (mobile) {
+    header.className =
+      "calendar-view-header dream-view-header-wrap work-schedule-header work-schedule-header--mobile-tab";
+    const headerInner = document.createElement("div");
+    headerInner.className =
+      "work-schedule-header-inner work-schedule-header-inner--mobile-tab";
+    const titleWrap = document.createElement("div");
+    titleWrap.className = "work-schedule-header-title-wrap";
+    const label = document.createElement("span");
+    label.className = "dream-view-label";
+    label.textContent = "WORK";
+    const h = document.createElement("h1");
+    h.className = "dream-view-title calendar-view-title";
+    h.textContent = "근무표";
+    titleWrap.appendChild(label);
+    titleWrap.appendChild(h);
+    headerInner.appendChild(titleWrap);
+    headerInner.appendChild(settingsBtn);
+    header.appendChild(headerInner);
+  } else {
+    header.className = "work-schedule-header dream-view-header-wrap";
+    const headerInner = document.createElement("div");
+    headerInner.className = "work-schedule-header-inner";
+    const titleWrap = document.createElement("div");
+    titleWrap.className = "work-schedule-header-title-wrap";
+    const label = document.createElement("span");
+    label.className = "dream-view-label";
+    label.textContent = "WORK SCHEDULE";
+    const h = document.createElement("h1");
+    h.className = "dream-view-title";
+    h.textContent = "근무표";
+    titleWrap.appendChild(label);
+    titleWrap.appendChild(h);
+    headerInner.appendChild(titleWrap);
+    headerInner.appendChild(settingsBtn);
+    header.appendChild(headerInner);
+  }
   el.appendChild(header);
 
   function openWorkTypeSettingsModal() {
@@ -1015,15 +1041,26 @@ export function render() {
   settingsBtn.addEventListener("click", openWorkTypeSettingsModal);
 
   const viewTabs = document.createElement("div");
-  viewTabs.className = "work-schedule-view-tabs";
-  viewTabs.innerHTML = `
-    <button type="button" class="work-schedule-view-tab active" data-view="all">1. 근무기록 트래커</button>
-    <button type="button" class="work-schedule-view-tab" data-view="monthly">2. 월별보기</button>
-  `;
+  viewTabs.className = mobile ? "calendar-sub-tabs" : "work-schedule-view-tabs";
+  [
+    { id: "all", label: "1. 근무기록 트래커" },
+    { id: "monthly", label: "2. 월별보기" },
+  ].forEach((tab, i) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.dataset.view = tab.id;
+    btn.textContent = tab.label;
+    btn.className = mobile
+      ? "work-schedule-view-tab time-view-tab calendar-sub-tab" + (i === 0 ? " active" : "")
+      : "work-schedule-view-tab" + (i === 0 ? " active" : "");
+    viewTabs.appendChild(btn);
+  });
   el.appendChild(viewTabs);
 
   const contentWrap = document.createElement("div");
-  contentWrap.className = "work-schedule-content-wrap";
+  contentWrap.className = mobile
+    ? "work-schedule-content-wrap calendar-content-wrap"
+    : "work-schedule-content-wrap";
   el.appendChild(contentWrap);
 
   let activeWorkScheduleView = "all";
@@ -1254,9 +1291,9 @@ export function render() {
     table.innerHTML = `
       <colgroup>
         <col class="work-schedule-col-date">
+        <col class="work-schedule-col-type">
         <col class="work-schedule-col-start-time">
         <col class="work-schedule-col-end-time">
-        <col class="work-schedule-col-type">
         <col class="work-schedule-col-hours-worked">
         <col class="work-schedule-col-hours">
         <col class="work-schedule-col-memo">
@@ -1265,9 +1302,9 @@ export function render() {
       <thead>
         <tr>
           <th class="work-schedule-th-date">근무일</th>
+          <th class="work-schedule-th-type">근무유형</th>
           <th class="work-schedule-th-start-time">시작시간</th>
           <th class="work-schedule-th-end-time">마감시간</th>
-          <th class="work-schedule-th-type">근무유형</th>
           <th class="work-schedule-th-hours-worked">Hours</th>
           <th class="work-schedule-th-hours">시간적립</th>
           <th class="work-schedule-th-memo">메모</th>
@@ -1392,7 +1429,9 @@ export function render() {
       saveRows(getRowsToSave(tableWrap));
     }
     contentWrap.innerHTML = "";
-    contentWrap.appendChild(renderMonthlyContent());
+    contentWrap.appendChild(
+      renderMonthlyContent(mobile ? { typeOnly: true } : {}),
+    );
   }
 
   function switchView(view) {
