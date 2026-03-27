@@ -52,7 +52,7 @@ function init() {
     const el = document.getElementById("tablet-landscape-hint");
     if (!el) return;
     const mq = window.matchMedia(
-      "(orientation: portrait) and (min-width: 48.0625rem) and (max-width: 64rem)",
+      "(orientation: portrait) and (min-width: 48.0625rem) and (max-width: 64rem) and (pointer: coarse)",
     );
     const sync = () => {
       const show = mq.matches;
@@ -75,7 +75,9 @@ function init() {
   (function initPhonePortraitHintA11y() {
     const el = document.getElementById("phone-portrait-hint");
     if (!el) return;
-    const mq = window.matchMedia("(orientation: landscape) and (max-height: 33rem)");
+    const mq = window.matchMedia(
+      "(orientation: landscape) and (max-height: 33rem) and (pointer: coarse)",
+    );
     const sync = () => {
       const show = mq.matches;
       el.setAttribute("aria-hidden", show ? "false" : "true");

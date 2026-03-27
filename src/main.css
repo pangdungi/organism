@@ -479,15 +479,15 @@ body {
   line-height: 1.55;
 }
 
-/* 세로 + 넓은 태블릿만: 아이패드 미니·768폭급( compact )은 제외 → 폰과 같이 세로 사용 */
-@media (orientation: portrait) and (min-width: 48.0625rem) and (max-width: 64rem) {
+/* 세로 + 넓은 태블릿만: 마우스 위주 데스크톱은 제외(pointer:coarse = 터치 기기) */
+@media (orientation: portrait) and (min-width: 48.0625rem) and (max-width: 64rem) and (pointer: coarse) {
   .app-tablet-landscape-hint {
     display: flex;
   }
 }
 
-/* 모바일 폰 가로: 짧은 쪽 높이로 구분(태블릿 가로는 높이가 더 큼) → 세로 사용 유도 */
-@media (orientation: landscape) and (max-height: 33rem) {
+/* 모바일 폰 가로: 터치 기기만(데스크톱 창만 좁힌 경우 제외) */
+@media (orientation: landscape) and (max-height: 33rem) and (pointer: coarse) {
   .app-phone-portrait-hint {
     display: flex;
   }
