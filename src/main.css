@@ -3328,6 +3328,13 @@ body {
     box-sizing: border-box;
   }
 
+  /* 모바일: 현금흐름 월·연 선택줄 — 위 탭과 동일 좌우 패딩 */
+  .asset-cashflow-period-toolbar {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    box-sizing: border-box;
+  }
+
   /* 모바일: 꿈·행복·부수입·건강 탭·본문·기록 영역 — 동일 살짝 좌우 여백 */
   .dream-view .dream-tabs-wrap,
   .dream-view .dream-content-wrap,
@@ -7184,6 +7191,53 @@ body {
   font-size: 0.9rem;
   color: #9ca3af;
   z-index: 1;
+}
+
+/* 모바일 현금흐름: 상단 세로 카드 + 아래 월급·변동비·고정비·구독 위젯(한 줄씩 세로 스택) */
+@media (max-width: 48rem) {
+  .asset-cashflow-view .time-dashboard-view {
+    padding: 0.75rem 0.75rem 1rem;
+    min-height: 0;
+  }
+
+  .asset-cashflow-view .time-dashboard-row-chart {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+  }
+
+  .asset-cashflow-view .time-dashboard-row-chart .time-dashboard-widget {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .asset-cashflow-flow-wrap {
+    margin-bottom: 0.75rem;
+  }
+
+  .asset-cashflow-flow-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .asset-cashflow-flow-row.has-arrow {
+    margin-bottom: 1rem;
+  }
+
+  .asset-cashflow-flow-row .asset-cashflow-flow-item {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .asset-cashflow-flow-breakdown {
+    min-width: 0;
+    width: 100%;
+    flex: 1 1 auto;
+  }
 }
 
 /* 현금흐름: 월 패널이 잘리지 않도록 time-view-tabs(overflow-y:hidden) 미사용 */
