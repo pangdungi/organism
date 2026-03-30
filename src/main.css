@@ -2243,7 +2243,7 @@ body {
   }
 
   /*
-   * 하단 네비 한 줄: 오늘·시간… + 꿈·행복·부수입·건강 + 나의 계정.
+   * 하단 네비 한 줄: 오늘·시간… + 꿈·행복·부수입·건강·자산 + 나의 계정.
    * 가로 스크롤로 전부 접근 (KPI는 나의 계정 직전에 DOM 순서로 배치됨).
    */
   .app-bottom-nav {
@@ -3286,15 +3286,10 @@ body {
     width: 8.5rem !important;
     min-width: 8.5rem !important;
     max-width: none !important;
+    /* sticky 금액 열과 사이에 배경이 비는 틈 완화: 그림자를 얇게 */
+    box-shadow: 0.0625rem 0 0.12rem -0.05rem rgba(0, 0, 0, 0.07) !important;
   }
-  .asset-expense-col-amount,
-  .asset-expense-th-amount,
-  .asset-expense-cell-amount {
-    left: 8.5rem !important;
-  }
-  .asset-expense-summary-row .asset-expense-summary-total {
-    left: 8.5rem !important;
-  }
+  /* 금액 열 sticky left(8.5rem)는 전역 8.75rem보다 뒤에 선언해야 함 → 파일 하단 @media 블록 참고 */
   col.asset-expense-col-date {
     width: 8.5rem !important;
   }
@@ -3320,10 +3315,17 @@ body {
     min-width: 0;
   }
 
-  /* 모바일: dream-view 헤더 좌우 패딩 — 오늘 탭 등 다른 헤더와 통일 (1.75rem) */
+  /* 모바일: dream-view 헤더 좌우 패딩 — 꿈·건강·자산관리 등 동일 (1.75rem) */
   .dream-view-header {
     padding-left: 1.75rem;
     padding-right: 1.75rem;
+  }
+
+  /* 모바일: 자산관리 뷰 탭 — 근무표 상단(.work-schedule-top-row)과 동일 좌우 패딩(0.75rem) */
+  .asset-view-tabs {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    box-sizing: border-box;
   }
 
   /* 모바일: 꿈·행복·부수입·건강 탭·본문·기록 영역 — 동일 살짝 좌우 여백 */
@@ -6020,8 +6022,9 @@ body {
   box-sizing: border-box;
 }
 
+/* 자산관리 상단: 건강·꿈과 동일하게 header.dream-view-header 사용(하단 여백·모바일 좌우 패딩 공통) */
 .asset-header {
-  margin-bottom: 1rem;
+  margin-bottom: 0;
 }
 
 .asset-title {
@@ -6619,6 +6622,18 @@ body {
   left: 8.75rem !important;
   box-shadow: 0.25rem 0 0.35rem -0.125rem rgba(0, 0, 0, 0.1);
   border-right: var(--divider-subtle);
+}
+
+/* 모바일: 거래일 열 너비 8.5rem — 전역 sticky left(8.75rem)가 이 파일 뒤에서 이기므로 여기서 다시 맞춤 */
+@media (max-width: 48rem) {
+  .asset-expense-col-amount,
+  .asset-expense-th-amount,
+  .asset-expense-cell-amount {
+    left: 8.5rem !important;
+  }
+  .asset-expense-summary-row .asset-expense-summary-total {
+    left: 8.5rem !important;
+  }
 }
 
 .asset-expense-col-name {

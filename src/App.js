@@ -53,7 +53,7 @@ const TABS = [
   { id: "health", label: "건강", icon: "/toolbaricons/heart-rate.svg" },
   { id: "calendar", label: "할일/일정", mobileLabel: "할일", icon: "/toolbaricons/calendar-alt.svg" },
   { id: "time", label: "시간가계부", mobileLabel: "시간", icon: "/toolbaricons/timer.svg" },
-  { id: "asset", label: "자산관리", icon: "/toolbaricons/wallet.svg" },
+  { id: "asset", label: "자산관리", mobileLabel: "자산", icon: "/toolbaricons/wallet.svg" },
   {
     id: "workschedule",
     label: "근무표",
@@ -396,12 +396,13 @@ export function mountApp(container) {
     });
     bottomNavMain.appendChild(btn);
   });
-  /* 모바일 하단: 나의 계정 바로 앞에 꿈·행복·부수입·건강 (가로 스크롤로 모두 접근) */
+  /* 모바일 하단: 나의 계정 바로 앞에 꿈·행복·부수입·건강·자산 (가로 스크롤로 모두 접근) */
   const KPI_MOBILE_IN_MAIN_ORDER = [
     "dream",
     "happiness",
     "sideincome",
     "health",
+    "asset",
   ];
   KPI_MOBILE_IN_MAIN_ORDER.forEach((id) => {
     const tab = TABS.find((t) => t.id === id);

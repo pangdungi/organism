@@ -6190,8 +6190,8 @@ export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content asset-view";
 
-  const header = document.createElement("div");
-  header.className = "asset-header dream-view-header-wrap";
+  const header = document.createElement("header");
+  header.className = "dream-view-header asset-header";
   const label = document.createElement("span");
   label.className = "dream-view-label";
   label.textContent = "ASSET";
