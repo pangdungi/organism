@@ -3284,6 +3284,7 @@ function createProductivitySection(
 export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content time-ledger-view";
+  el.dataset.timeContentView = "all";
   const timeTabAbort = new AbortController();
   el._lpTabAbortController = timeTabAbort;
   const signal = timeTabAbort.signal;
@@ -9513,7 +9514,6 @@ export function render() {
     btn.addEventListener("click", () => switchView(btn.dataset.view));
   });
 
-  el.dataset.timeContentView = "all";
   tableWrap.appendChild(table);
   const ledgerContainer = document.createElement("div");
   ledgerContainer.className = "time-ledger-container";

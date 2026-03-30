@@ -4324,24 +4324,23 @@ body {
     background: var(--badge-stone-bg) !important;
   }
 
-  /* 모바일: 1. 시간기록하기에서 시간기록 테이블, 과제기록, 과제설정만 표시 */
+  /* 모바일: 시간기록 탭에서만 상단·필터 일부 숨김 — 시간 보고서·시간 사용 개선하기는 탭·날짜 필터 표시 */
   .time-ledger-view .time-ledger-header,
   .time-ledger-view .time-hourly-wrap,
-  .time-ledger-view .time-view-tabs,
-  .time-ledger-view .time-filter-bar .time-filter-tabs,
-  .time-ledger-view .time-filter-bar .time-filter-day-wrap,
-  .time-ledger-view .time-filter-bar .time-filter-month-wrap,
-  .time-ledger-view .time-filter-bar .time-filter-range-wrap,
-  .time-ledger-view .time-ledger-summary-panel {
+  .time-ledger-view[data-time-content-view="all"] .time-filter-bar .time-filter-tabs,
+  .time-ledger-view[data-time-content-view="all"] .time-filter-bar .time-filter-day-wrap,
+  .time-ledger-view[data-time-content-view="all"] .time-filter-bar .time-filter-month-wrap,
+  .time-ledger-view[data-time-content-view="all"] .time-filter-bar .time-filter-range-wrap,
+  .time-ledger-view[data-time-content-view="all"] .time-ledger-summary-panel {
     display: none !important;
   }
-  /* 과제 설정 버튼만 filter-bar에 남기기 */
+  /* 과제 설정 버튼만 filter-bar에 남기기(시간기록 탭) */
   .time-ledger-view .time-filter-bar {
     flex-wrap: nowrap;
     margin-bottom: 0.5rem;
   }
 
-  /* 모바일: 탭 행 — 총 기록 시간(왼쪽) + 과제 설정(오른쪽); 데스크탭 탭은 위에서 숨김 */
+  /* 모바일: 상단 탭(시간기록·보고서·개선) 전체 너비 → 아래 줄에 총시간·과제설정 또는 날짜 필터 */
   .time-ledger-view .time-ledger-tabs-filter-row {
     justify-content: space-between;
     align-items: center;
@@ -4349,6 +4348,12 @@ body {
     padding-left: 1.5rem;
     padding-right: 1.5rem;
     box-sizing: border-box;
+    flex-wrap: wrap;
+  }
+  .time-ledger-view .time-ledger-tabs-filter-row .time-view-tabs {
+    flex: 1 1 100%;
+    min-width: 0;
+    order: -1;
   }
   .time-ledger-view .time-ledger-mobile-tabs-summary {
     flex: 1;
@@ -21070,6 +21075,60 @@ body.kpi-resizing {
   min-height: 0;
   overflow: hidden;
 }
+
+@media (max-width: 48rem) {
+  /* 시간 사용 개선하기: 2×2 → 세로 한 줄(스크롤 시 위젯당 약 한 화면) */
+  .time-improve-view {
+    min-height: 0;
+    padding: 0.75rem;
+  }
+
+  .time-improve-quadrants {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: auto;
+    gap: 0.75rem;
+  }
+
+  .time-improve-quadrant-focus,
+  .time-improve-quadrant-reality,
+  .time-improve-quadrant-important,
+  .time-improve-quadrant-invest {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .time-improve-quadrant {
+    width: 100%;
+    min-height: min(90vh, 42rem);
+    box-sizing: border-box;
+  }
+
+  .time-improve-quadrant-important,
+  .time-improve-quadrant-invest {
+    overflow: visible;
+  }
+
+  .time-improve-quadrant-focus .time-improve-events-scroll {
+    height: auto;
+    min-height: 7.5rem;
+    max-height: 38vh;
+  }
+
+  .time-improve-quadrant-focus .time-improve-answer-scroll {
+    height: auto;
+    min-height: 5rem;
+    max-height: 28vh;
+  }
+
+  .time-improve-quadrant-reality .time-improve-answer-scroll {
+    height: auto;
+    min-height: 10rem;
+    max-height: 42vh;
+  }
+}
+
 .time-improve-invest-data-wrap {
   flex: 1 1 50%;
   min-height: 0;
@@ -27112,18 +27171,17 @@ body.kpi-resizing {
   border-bottom: var(--line-l3);
 }
 
-/* 감정관리 페이지 탭: 언더라인 형식 (시간가계부/자산관리 탭과 동일) */
+/* 감정관리 페이지 탭: 언더라인 형식 — 근무표(.work-schedule-view-tab)와 동일 굵기 */
 .diary-tab-btn {
   border: none !important;
   border-radius: 0 !important;
   margin-left: 0;
-  border-bottom: 0.1875rem solid transparent;
-  margin-bottom: -0.0625rem;
+  border-bottom: 0.125rem solid transparent;
   color: var(--text-ink);
 }
 
 .diary-tab-btn.active {
-  border-bottom: 0.1875rem solid var(--line-l1-color) !important;
+  border-bottom: var(--line-l1) !important;
   color: var(--text-ink);
 }
 
