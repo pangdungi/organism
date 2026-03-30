@@ -6100,6 +6100,15 @@ body {
   padding: 0;
 }
 
+@media (max-width: 48rem) {
+  /* 모바일: 자산관리 탭·현금흐름 월·연 줄과 동일 좌우 패딩(0.75rem) */
+  .asset-plan-view {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    box-sizing: border-box;
+  }
+}
+
 .asset-plan-section {
   margin-bottom: 2rem;
 }
