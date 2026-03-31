@@ -249,6 +249,7 @@ export function render() {
           <button type="button" class="dream-kpi-modal-close" title="닫기">×</button>
         </div>
         <form class="dream-kpi-form">
+          <div class="dream-kpi-form-body">
           <div class="dream-kpi-field">
             <label>지표 이름</label>
             <input type="text" name="name" placeholder="예) DAU, 월 수익, 전환율" />
@@ -290,7 +291,6 @@ export function render() {
             <button type="button" class="dream-kpi-today-btn">오늘</button>
             <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
             <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
-            <button type="button" class="dream-kpi-deadline-quick-btn" data-days="60">+60일</button>
           </div>
           <div class="dream-kpi-field dream-kpi-field-checkbox">
             <label class="dream-kpi-checkbox-label">
@@ -298,7 +298,10 @@ export function render() {
               <input type="checkbox" name="needHabitTracker" />
             </label>
           </div>
+          </div>
+          <div class="dream-kpi-form-actions">
           <button type="submit" class="dream-kpi-submit">KPI 등록하기</button>
+          </div>
         </form>
       </div>
     `;
@@ -373,6 +376,7 @@ export function render() {
           <button type="button" class="dream-kpi-modal-close" title="닫기">×</button>
         </div>
         <form class="dream-kpi-form">
+          <div class="dream-kpi-form-body">
           <div class="dream-kpi-field">
             <label>지표 이름</label>
             <input type="text" name="name" value="${escapeHtml(kpi.name || "")}" placeholder="예) DAU, 월 수익, 전환율" />
@@ -414,7 +418,6 @@ export function render() {
             <button type="button" class="dream-kpi-today-btn">오늘</button>
             <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
             <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
-            <button type="button" class="dream-kpi-deadline-quick-btn" data-days="60">+60일</button>
           </div>
           <div class="dream-kpi-field dream-kpi-field-checkbox">
             <label class="dream-kpi-checkbox-label">
@@ -422,10 +425,13 @@ export function render() {
               <input type="checkbox" name="needHabitTracker" ${kpi.needHabitTracker ? "checked" : ""} />
             </label>
           </div>
+          </div>
+          <div class="dream-kpi-form-actions">
           <button type="submit" class="dream-kpi-submit">수정</button>
           <div class="dream-kpi-delete-wrap">
             <p class="dream-kpi-delete-note">삭제 시 로그, 할일 목록이 모두 삭제됩니다.</p>
             <button type="button" class="dream-kpi-delete-btn">KPI 삭제하기</button>
+          </div>
           </div>
         </form>
       </div>

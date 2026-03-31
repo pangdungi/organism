@@ -1,5 +1,5 @@
 /**
- * KPI 모달 날짜 퀵 버튼(오늘, +14일, +30일, +60일) 설정
+ * KPI 모달 날짜 퀵 버튼(오늘, +14일, +30일) 설정
  * 마지막으로 포커스된 날짜 입력(시작기한/달성기한)에 적용됨
  */
 export function setupDeadlineQuickButtons(modal) {
