@@ -30404,6 +30404,17 @@ body.kpi-resizing {
   box-sizing: border-box;
 }
 
+/* 오늘 실제·짧은 막대: 호버(title)·클릭(토스트) — 손가락/마우스 모두 상호작용 표시 */
+.calendar-1day-view .calendar-1day-time-slot-fill--actual-short {
+  cursor: pointer;
+}
+
+@media (max-width: 48rem) {
+  .calendar-1day-view .calendar-1day-time-slot-fill--actual-short {
+    -webkit-tap-highlight-color: rgba(42, 56, 40, 0.12);
+  }
+}
+
 .calendar-1day-view .calendar-1day-time-slot-label-wrap {
   display: flex;
   flex-direction: column;

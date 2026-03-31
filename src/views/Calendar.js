@@ -3629,14 +3629,14 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
     }
     return { spans: normalized, maxLane: withLanes.maxLane };
   };
-  /** 겹치는 스팬에 레인 할당. 연속된 과제(이전 종료 시각 = 다음 시작 시각)는 같은 레인에 연결해 한 줄로 표시 */
+  /** 겹치는 스팬에 레인 할당. 연속(이전 종료 분 = 다음 시작 분)은 같은 레인. 겹침은 start < 이전 레인의 종료 분 */
   const assignLanesToSpans = (spans) => {
     const laneEnds = [];
     let maxLane = 0;
     for (const span of spans) {
       let lane = 0;
-      /* 이전 과제 종료 시각과 현재 과제 시작 시각이 같거나 1분 이내면 같은 레인(연속)으로 처리 */
-      while (lane < laneEnds.length && span.startMin < laneEnds[lane] - 1) lane++;
+      /* 반열린 구간 [start, end): 이전 종료(end)와 다음 시작(start)이 같으면 겹침 아님. -1은 인접·겹침 판정을 깨뜨림 */
+      while (lane < laneEnds.length && span.startMin < laneEnds[lane]) lane++;
       if (lane >= laneEnds.length) laneEnds.push(span.endMin);
       else laneEnds[lane] = span.endMin;
       span.lane = lane;
@@ -3800,6 +3800,10 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
     "health",
     "happy",
   ];
+  /** 오늘 실제: 너무 짧으면 막대가 사라져 보임 — 시각 최소(분). 모바일 탭 상세는 이보다 길어도 읽기 어려울 때만 */
+  const ACTUAL_MIN_VISUAL_MINUTES = 8;
+  const ACTUAL_TAP_TOAST_MAX_MINUTES = 18;
+
   const createOverlay = (spans, colors, isActual, maxLane = 0) => {
     if (!isActual && TT_SYNC_DEBUG) {
       console.log("[TT-SYNC] createOverlay expected spans", spans.length, spans.map((s) => ({
@@ -3825,6 +3829,10 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
       );
       const blockHeightMin = (blockEndSlot - blockStartSlot + 1) * MIN_PER_SLOT;
       const actualBlockMin = blockEndMin - blockStartMin;
+      const visualBlockMin =
+        isActual && actualBlockMin > 0
+          ? Math.max(actualBlockMin, ACTUAL_MIN_VISUAL_MINUTES)
+          : actualBlockMin;
       const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
       if (TT_SYNC_DEBUG && !isActual) {
         console.log("[TT-SYNC] blockFill", {
@@ -3857,7 +3865,18 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         blockFill.style.left = `${(lane / laneCount) * 100}%`;
         blockFill.style.width = `${100 / laneCount}%`;
         blockFill.style.top = `calc(${blockStartMin} * 100% / ${MIN_PER_DAY})`;
-        blockFill.style.height = `calc(${actualBlockMin} * 100% / ${MIN_PER_DAY})`;
+        blockFill.style.height = `calc(${isActual ? visualBlockMin : actualBlockMin} * 100% / ${MIN_PER_DAY})`;
+        if (isActual) {
+          blockFill.style.zIndex = String(100 + Math.min(blockStartMin, 2000));
+        }
+      } else if (isActual) {
+        /* 오늘 실제: 24행 grid에 걸면 인접 구간이 같은 시간 행에서 겹쳐 보일 수 있음 → 하루 전체 비율로만 배치 */
+        blockFill.style.position = "absolute";
+        blockFill.style.left = "0";
+        blockFill.style.width = "100%";
+        blockFill.style.top = `calc(${blockStartMin} * 100% / ${MIN_PER_DAY})`;
+        blockFill.style.height = `calc(${visualBlockMin} * 100% / ${MIN_PER_DAY})`;
+        blockFill.style.zIndex = String(100 + Math.min(blockStartMin, 2000));
       } else {
         blockFill.style.gridRow = `${blockStartSlot + 1} / ${blockEndSlot + 2}`;
       }
@@ -3866,8 +3885,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
           ? ((actualBlockMin / blockHeightMin) * 100).toFixed(1)
           : "100";
       blockFill.dataset.debugBlock = `${fmt(blockStartMin)}~${fmt(blockEndMin)} slot${blockStartSlot}-${blockEndSlot} h=${blockHeightMin}m actual=${actualBlockMin}m height=${heightPct}%`;
-      /* 실제 시작/종료 시간에 맞춰 색칠 (04:50 종료면 05:00까지 넘치지 않도록) - 레인 레이아웃이 아닐 때만 */
-      if (!useLaneLayout && blockHeightMin > 0) {
+      /* 실제 시작/종료 시간에 맞춰 색칠 (04:50 종료면 05:00까지 넘치지 않도록) — 예상만 grid 행 기준 보정 */
+      if (!useLaneLayout && blockHeightMin > 0 && !isActual) {
         const slotStartMin = blockStartSlot * MIN_PER_SLOT;
         const startOffset = blockStartMin - slotStartMin;
         if (startOffset > 0) {
@@ -3889,7 +3908,7 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         blockFill.style.borderRadius = "0.375rem";
         blockFill.style.border = "none";
       }
-      if (!useLaneLayout) {
+      if (!useLaneLayout && !isActual) {
         blockFill.style.position = "relative";
         blockFill.style.width = "100%";
       }
@@ -3920,7 +3939,9 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         const seg = document.createElement("div");
         seg.className = "calendar-1day-time-slot-fill-seg";
         seg.style.flex = `0 0 ${segHeightPct}%`;
-        seg.style.minHeight = "2.5rem";
+        if (!isActual) {
+          seg.style.minHeight = "2.5rem";
+        }
         seg.style.width = "100%";
         seg.style.display = "flex";
         seg.style.alignItems = "flex-start";
@@ -3942,6 +3963,24 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
       }
       if (firstBorderColor) {
         blockFill.style.borderLeft = `0.125rem solid ${firstBorderColor}`;
+      }
+      if (isActual && actualBlockMin > 0) {
+        const timeRange = `${fmt(blockStartMin)} ~ ${fmt(blockEndMin)}`;
+        blockFill.classList.add("calendar-1day-time-slot-fill--actual-block");
+        blockFill.setAttribute(
+          "title",
+          `${(first.taskName || "기록").trim()}\n${timeRange}`,
+        );
+        if (actualBlockMin < ACTUAL_MIN_VISUAL_MINUTES) {
+          blockFill.classList.add("calendar-1day-time-slot-fill--actual-short");
+        }
+        blockFill.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (typeof window === "undefined") return;
+          /* 모바일·PC 공통: 짧은 구간만(길면 막대 안에 글자가 보이므로) 토스트로 상세 */
+          if (actualBlockMin > ACTUAL_TAP_TOAST_MAX_MINUTES) return;
+          showToast((first.taskName || "기록").trim(), timeRange);
+        });
       }
       overlay.appendChild(blockFill);
     }
