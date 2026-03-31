@@ -9,6 +9,7 @@ import { toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDispl
 import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
 import { getSubtasks, addSubtask, updateSubtask, removeSubtask } from "../utils/todoSubtasks.js";
 import { setupDeadlineQuickButtons } from "../utils/deadlineQuickButtons.js";
+import { attachKpiTodoInputScrollIntoView } from "../utils/kpiTodoInputScroll.js";
 
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
@@ -1165,6 +1166,7 @@ export function render() {
         addTodoFromInput();
       }
     });
+    attachKpiTodoInputScrollIntoView(addInput);
     historyWrap.appendChild(todoList);
     historyWrap.appendChild(addRow);
 
@@ -1264,6 +1266,7 @@ export function render() {
           addDailyFromInput();
         }
       });
+      attachKpiTodoInputScrollIntoView(dailyAddInput);
       historyWrap.appendChild(dailyList);
       historyWrap.appendChild(dailyAddRow);
     }

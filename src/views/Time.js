@@ -4386,7 +4386,9 @@ export function render() {
       btn.addEventListener("click", () => {
         const endVal = (taskLogTimeEnd?.value || "").trim();
         const endHasTime = endVal && endVal.match(/\d{1,2}:\d{2}/);
-        const targetIsStart = lastFocusedTimeField === "start";
+        /* 마감이 비어 있는데 날짜/시작만 포커스된 경우 lastFocused가 "start"로 남음 → 지금/마지막/±가 시작에만 들어가던 문제 방지 */
+        const targetIsStart =
+          lastFocusedTimeField === "start" && endHasTime;
 
         const startTimeVal = normalizeHhMm(
           (taskLogTimeStart?.value || "").trim(),

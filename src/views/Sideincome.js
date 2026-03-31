@@ -8,6 +8,7 @@ import { SIDEINCOME_KPI_MAP_STORAGE_KEY } from "../utils/sideincomeKpiMapSupabas
 import { notifyTimeLedgerTasksChanged } from "../utils/timeTaskOptionsModel.js";
 import { toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay, formatDeadlineRangeCompact } from "../utils/ganttModal.js";
 import { setupDeadlineQuickButtons } from "../utils/deadlineQuickButtons.js";
+import { attachKpiTodoInputScrollIntoView } from "../utils/kpiTodoInputScroll.js";
 import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
 import { getSubtasks, addSubtask, updateSubtask, removeSubtask } from "../utils/todoSubtasks.js";
 
@@ -1307,6 +1308,7 @@ export function render() {
         addTodoFromInput();
       }
     });
+    attachKpiTodoInputScrollIntoView(addInput);
     historyWrap.appendChild(todoList);
     historyWrap.appendChild(addRow);
 
@@ -1403,6 +1405,7 @@ export function render() {
           addDailyFromInput();
         }
       });
+      attachKpiTodoInputScrollIntoView(dailyAddInput);
       historyWrap.appendChild(dailyList);
       historyWrap.appendChild(dailyAddRow);
     }

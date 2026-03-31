@@ -23,6 +23,7 @@ import {
   removeSubtask,
 } from "../utils/todoSubtasks.js";
 import { setupDeadlineQuickButtons } from "../utils/deadlineQuickButtons.js";
+import { attachKpiTodoInputScrollIntoView } from "../utils/kpiTodoInputScroll.js";
 
 const HAPPINESS_MAP_STORAGE_KEY = "kpi-happiness-map";
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
@@ -1189,6 +1190,7 @@ export function render() {
         addTodoFromInput();
       }
     });
+    attachKpiTodoInputScrollIntoView(addInput);
     historyWrap.appendChild(todoList);
     historyWrap.appendChild(addRow);
   }

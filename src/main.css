@@ -2715,6 +2715,9 @@ body {
     padding-top: calc(env(safe-area-inset-top, 0) + 2.25rem);
     padding-left: 0 !important;
     padding-right: 0 !important;
+    /* 고정 하단 탭·노치보다 넉넉히 — 꿈 등 KPI 할일 입력이 잘리지 않게 */
+    padding-bottom: calc(env(safe-area-inset-bottom, 0) + 6.25rem) !important;
+    scroll-padding-bottom: calc(env(safe-area-inset-bottom, 0) + 6.25rem);
   }
 
   /* 오늘 탭: 모바일에서 세로 드래그(스크롤)로 전체 콘텐츠 볼 수 있게 */
@@ -18122,6 +18125,32 @@ body.kpi-resizing {
 .time-task-log-datetime-input-row input[type="text"] {
   text-align: center;
 }
+
+/* 과제 기록/수정 모달(PC): 날짜·시작·마감 한 줄 고정 — wrap 끔, hh:mm은 최소 폭만 */
+@media (min-width: 48.0625rem) {
+  .time-task-log-datetime-onerow .time-task-log-datetime-input-row {
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    min-width: 0;
+  }
+  .time-task-log-datetime-onerow .time-task-log-datetime-input-row input.time-task-log-date-start,
+  .time-task-log-datetime-onerow .time-task-log-datetime-input-row input[type="date"].time-task-log-date-start {
+    flex: 1 1 auto;
+    min-width: 9.75rem;
+    max-width: none;
+  }
+  .time-task-log-datetime-onerow .time-task-log-datetime-input-row input.time-task-log-time-start,
+  .time-task-log-datetime-onerow .time-task-log-datetime-input-row input.time-task-log-time-end {
+    flex: 0 0 4.25rem;
+    width: 4.25rem;
+    min-width: 4rem;
+    max-width: 4.5rem;
+    padding-left: 0.2rem;
+    padding-right: 0.2rem;
+    box-sizing: border-box;
+  }
+}
+
 .time-task-log-datetime-sep {
   flex-shrink: 0;
   align-self: flex-end;
