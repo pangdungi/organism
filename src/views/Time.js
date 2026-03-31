@@ -3371,9 +3371,9 @@ export function render() {
   const viewTabs = document.createElement("div");
   viewTabs.className = "time-view-tabs";
   viewTabs.innerHTML = `
-    <button type="button" class="time-view-tab active" data-view="all">1. 시간기록하기</button>
-    <button type="button" class="time-view-tab" data-view="audit">2. 시간 보고서</button>
-    <button type="button" class="time-view-tab" data-view="improve">3. 시간 사용 개선하기</button>
+    <button type="button" class="time-view-tab active" data-view="all">1. 시간 기록</button>
+    <button type="button" class="time-view-tab" data-view="audit">2. 보고서</button>
+    <button type="button" class="time-view-tab" data-view="improve">3. 개선하기</button>
   `;
 
   const now = new Date();
