@@ -67,6 +67,10 @@ import { SECTION_TASKS_KEY } from "../utils/todoSectionTasksModel.js";
 
 export { getTaskOptionByName };
 
+/** 모바일 과제 기록 FAB — TodoList ADD_TASK_ICON과 동일 */
+const TIME_LEDGER_ADD_FAB_SVG =
+  '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>';
+
 /** 오딧 3. 우선순위 영역: 해당 날짜 할일 목록 로드 (Calendar getTasksForDate와 동일 데이터) */
 const SECTION_TASKS_KEY_AUDIT = "todo-section-tasks";
 const CUSTOM_SECTION_TASKS_KEY_AUDIT = "todo-custom-section-tasks";
@@ -3371,13 +3375,13 @@ export function render() {
   const viewTabs = document.createElement("div");
   viewTabs.className = "time-view-tabs";
   viewTabs.innerHTML = `
-    <button type="button" class="time-view-tab active" data-view="all">1. 시간 기록</button>
-    <button type="button" class="time-view-tab" data-view="audit">2. 보고서</button>
-    <button type="button" class="time-view-tab" data-view="improve">3. 개선하기</button>
+    <button type="button" class="time-view-tab active" data-view="all">시간 기록</button>
+    <button type="button" class="time-view-tab" data-view="audit">보고서</button>
+    <button type="button" class="time-view-tab" data-view="improve">개선하기</button>
   `;
 
   const now = new Date();
-  let filterType = "day";
+  const filterType = "range";
   let filterYear = now.getFullYear();
   let filterMonth = now.getMonth() + 1;
   let filterStartDate = toDateStr(now);
@@ -3388,172 +3392,110 @@ export function render() {
   const filterBar = document.createElement("div");
   filterBar.className = "time-filter-bar";
   filterBar.innerHTML = `
-    <button type="button" class="time-task-setup-btn" data-filter-for="all" title="과제명, 생산성, 카테고리를 한 번에 설정"><img src="/toolbaricons/settings.svg" alt="과제 설정" class="time-btn-icon" width="20" height="20"></button>
-    <div class="time-filter-tabs" data-filter-for="all">
-      <button type="button" class="time-filter-btn" data-filter="month" data-audit-hidden>월별</button>
-      <button type="button" class="time-filter-btn active" data-filter="day">오늘</button>
-      <button type="button" class="time-filter-btn" data-filter="range">날짜 선택</button>
-      <button type="button" class="time-filter-btn time-filter-task-select-btn" id="time-task-select-btn">과제 선택</button>
-    </div>
-    <div class="time-filter-day-wrap" data-filter-wrap="day">
-      <div class="time-filter-day-nav">
-        <button type="button" class="time-filter-day-prev" aria-label="이전 날짜">&lt;</button>
-        <span class="time-filter-day-display">${formatDateForDayFilter(filterStartDate)}</span>
-        <button type="button" class="time-filter-day-next" aria-label="다음 날짜">&gt;</button>
-      </div>
-    </div>
-    <div class="time-filter-month-wrap" data-filter-wrap="month" style="display:none">
-      <div class="asset-cashflow-dropdown-wrap">
-        <button type="button" class="time-period-trigger asset-cashflow-trigger" id="time-month-trigger">${filterMonth}월</button>
-        <div class="time-period-panel asset-cashflow-panel" id="time-month-panel">
-          ${Array.from({ length: 12 }, (_, i) => {
-            const m = i + 1;
-            return `<div class="time-period-option" data-value="${m}">${m}월</div>`;
-          }).join("")}
+    <div class="time-filter-nav-cluster" data-filter-for="all">
+      <div class="time-filter-range-wrap" data-filter-wrap="range">
+        <div class="time-filter-date-field">
+          <input type="date" class="time-filter-start-date" name="time-filter-start" aria-label="시작일" />
+          <span class="time-filter-date-label time-filter-date-label--start" aria-hidden="true"></span>
+          <img src="/toolbaricons/calendar-alt.svg" alt="" class="time-filter-date-cal-icon" width="14" height="14" aria-hidden="true" />
+        </div>
+        <span class="time-filter-range-sep" data-audit-range-hidden>~</span>
+        <div class="time-filter-date-field">
+          <input type="date" class="time-filter-end-date" name="time-filter-end" data-audit-range-hidden aria-label="종료일" />
+          <span class="time-filter-date-label time-filter-date-label--end" aria-hidden="true"></span>
+          <img src="/toolbaricons/calendar-alt.svg" alt="" class="time-filter-date-cal-icon" width="14" height="14" aria-hidden="true" />
         </div>
       </div>
-      <div class="asset-cashflow-year-nav">
-        <button type="button" class="asset-cashflow-year-btn" aria-label="이전 연도">&lt;</button>
-        <span class="asset-cashflow-year-display">${filterYear}</span>
-        <button type="button" class="asset-cashflow-year-btn" aria-label="다음 연도">&gt;</button>
+      <div class="time-filter-day-nav">
+        <button type="button" class="time-filter-day-prev" aria-label="이전">&lt;</button>
+        <button type="button" class="time-filter-day-next" aria-label="다음">&gt;</button>
       </div>
-    </div>
-    <div class="time-filter-range-wrap" data-filter-wrap="range" style="display:none">
-      <input type="date" class="time-filter-start-date" name="time-filter-start" />
-      <span class="time-filter-range-sep" data-audit-range-hidden>~</span>
-      <input type="date" class="time-filter-end-date" name="time-filter-end" data-audit-range-hidden />
+      <button type="button" class="time-task-setup-btn time-filter-task-select-btn" id="time-task-select-btn" title="과제 선택" aria-label="과제 선택"><img src="/toolbaricons/filter.svg" alt="" class="time-btn-icon" width="20" height="20" /></button>
     </div>
   `;
 
   const startDateInput = filterBar.querySelector(".time-filter-start-date");
   const endDateInput = filterBar.querySelector(".time-filter-end-date");
-  const dayWrap = filterBar.querySelector("[data-filter-wrap='day']");
-  const monthWrap = filterBar.querySelector("[data-filter-wrap='month']");
   const rangeWrap = filterBar.querySelector("[data-filter-wrap='range']");
-  const dayDisplay = filterBar.querySelector(".time-filter-day-display");
   const dayPrevBtn = filterBar.querySelector(".time-filter-day-prev");
   const dayNextBtn = filterBar.querySelector(".time-filter-day-next");
-  const filterTabs = filterBar.querySelector(".time-filter-tabs");
-  const taskSetupBtn = filterBar.querySelector(".time-task-setup-btn");
+  const filterNavCluster = filterBar.querySelector(".time-filter-nav-cluster");
+  const taskSetupBtn = document.createElement("button");
+  taskSetupBtn.type = "button";
+  taskSetupBtn.className = "time-task-setup-btn";
+  taskSetupBtn.dataset.filterFor = "all";
+  taskSetupBtn.title = "과제명, 생산성, 카테고리를 한 번에 설정";
+  taskSetupBtn.setAttribute("aria-label", "과제 설정");
+  taskSetupBtn.innerHTML =
+    '<img src="/toolbaricons/settings.svg" alt="" class="time-btn-icon" width="20" height="20" />';
+  taskSetupBtn.classList.add("time-ledger-tabs-settings-btn");
 
-  const monthTrigger = filterBar.querySelector("#time-month-trigger");
-  const monthPanel = filterBar.querySelector("#time-month-panel");
-  const monthDropdownWrap = filterBar.querySelector(
-    ".time-filter-month-wrap .asset-cashflow-dropdown-wrap",
-  );
-  const yearDisplay = filterBar.querySelector(".asset-cashflow-year-display");
-  const yearPrevBtn = filterBar.querySelector(
-    ".time-filter-month-wrap .asset-cashflow-year-btn:first-child",
-  );
-  const yearNextBtn = filterBar.querySelector(
-    ".time-filter-month-wrap .asset-cashflow-year-btn:last-child",
-  );
+  /** YYYY-MM-DD → "4월1일(수)" (모바일·시간 기록 탭에서만 CSS로 표시) */
+  function formatTimeFilterDateKr(dStr) {
+    if (!dStr || !/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return "";
+    const [y, mo, d] = dStr.split("-").map(Number);
+    const dt = new Date(y, mo - 1, d);
+    const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+    return `${mo}월${d}일(${weekdays[dt.getDay()]})`;
+  }
 
-  monthPanel.querySelectorAll(".time-period-option").forEach((o) => {
-    o.classList.toggle("is-selected", o.dataset.value === String(filterMonth));
-  });
-
-  monthTrigger.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    monthPanel.classList.toggle("is-open");
-    monthDropdownWrap.classList.toggle("is-open");
-  });
-  monthPanel.querySelectorAll(".time-period-option").forEach((o) => {
-    o.addEventListener("click", (e) => {
-      e.stopPropagation();
-      filterMonth = parseInt(o.dataset.value, 10);
-      monthTrigger.textContent = `${filterMonth}월`;
-      monthPanel.classList.remove("is-open");
-      monthDropdownWrap.classList.remove("is-open");
-      monthPanel.querySelectorAll(".time-period-option").forEach((opt) => {
-        opt.classList.toggle(
-          "is-selected",
-          opt.dataset.value === String(filterMonth),
-        );
-      });
-      onFilterChange();
-    });
-  });
-  yearPrevBtn.addEventListener("click", () => {
-    filterYear -= 1;
-    yearDisplay.textContent = filterYear;
-    onFilterChange();
-  });
-  yearNextBtn.addEventListener("click", () => {
-    filterYear += 1;
-    yearDisplay.textContent = filterYear;
-    onFilterChange();
-  });
-  document.addEventListener(
-    "click",
-    (e) => {
-      if (!monthDropdownWrap?.contains(e.target)) {
-        monthPanel?.classList.remove("is-open");
-        monthDropdownWrap?.classList.remove("is-open");
-      }
-    },
-    { signal },
-  );
+  function syncTimeFilterDateLabels() {
+    const startLabel = filterBar.querySelector(".time-filter-date-label--start");
+    const endLabel = filterBar.querySelector(".time-filter-date-label--end");
+    if (startLabel) {
+      startLabel.textContent = formatTimeFilterDateKr(
+        startDateInput.value || filterStartDate,
+      );
+    }
+    if (endLabel) {
+      endLabel.textContent = formatTimeFilterDateKr(
+        endDateInput.value || filterEndDate,
+      );
+    }
+  }
 
   startDateInput.value = filterStartDate;
   endDateInput.value = filterEndDate;
+  syncTimeFilterDateLabels();
 
-  function updateDayDisplay() {
-    if (dayDisplay)
-      dayDisplay.textContent = formatDateForDayFilter(filterStartDate);
-  }
-
-  function goToTodayForDayFilter() {
-    const today = toDateStr(new Date());
-    filterStartDate = filterEndDate = today;
-    startDateInput.value = today;
-    endDateInput.value = today;
-    updateDayDisplay();
+  function shiftFilterRangeByDays(delta) {
+    const s0 = startDateInput.value || filterStartDate;
+    const e0 = endDateInput.value || filterEndDate;
+    const sd = new Date(s0 + "T12:00:00");
+    const ed = new Date(e0 + "T12:00:00");
+    sd.setDate(sd.getDate() + delta);
+    ed.setDate(ed.getDate() + delta);
+    filterStartDate = toDateStr(sd);
+    filterEndDate = toDateStr(ed);
+    startDateInput.value = filterStartDate;
+    endDateInput.value = filterEndDate;
   }
 
   dayPrevBtn?.addEventListener("click", () => {
-    const d = new Date(filterStartDate + "T12:00:00");
-    d.setDate(d.getDate() - 1);
-    filterStartDate = filterEndDate = toDateStr(d);
-    startDateInput.value = filterStartDate;
-    endDateInput.value = filterEndDate;
-    updateDayDisplay();
+    shiftFilterRangeByDays(-1);
     onFilterChange();
   });
   dayNextBtn?.addEventListener("click", () => {
-    const d = new Date(filterStartDate + "T12:00:00");
-    d.setDate(d.getDate() + 1);
-    filterStartDate = filterEndDate = toDateStr(d);
-    startDateInput.value = filterStartDate;
-    endDateInput.value = filterEndDate;
-    updateDayDisplay();
+    shiftFilterRangeByDays(1);
     onFilterChange();
   });
 
-  filterBar.querySelectorAll(".time-filter-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const nextType = btn.dataset.filter;
-      if (!nextType) return; /* 과제 선택 등 data-filter 없는 탭 버튼 제외 */
-      filterType = nextType;
-      filterBar
-        .querySelectorAll(".time-filter-btn")
-        .forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      dayWrap.style.display = filterType === "day" ? "" : "none";
-      monthWrap.style.display = filterType === "month" ? "" : "none";
-      rangeWrap.style.display = filterType === "range" ? "" : "none";
-      if (filterType === "day") goToTodayForDayFilter();
-      onFilterChange();
-    });
+  startDateInput.addEventListener("change", () => {
+    const v = startDateInput.value;
+    if (v) filterStartDate = v;
+    onFilterChange();
   });
-  startDateInput.addEventListener("change", onFilterChange);
-  endDateInput.addEventListener("change", onFilterChange);
+  startDateInput.addEventListener("input", syncTimeFilterDateLabels);
+  endDateInput.addEventListener("change", () => {
+    const v = endDateInput.value;
+    if (v) filterEndDate = v;
+    onFilterChange();
+  });
+  endDateInput.addEventListener("input", syncTimeFilterDateLabels);
 
   function onFilterChange(skipMerge = false) {
     const view = viewTabs.querySelector(".time-view-tab.active")?.dataset?.view;
     const type = filterType;
-    /* 시간 보고서는 하루용: 날짜 선택 시 시작일만 사용, 종료일 동기화 */
     if (view === "audit" && type === "range") {
       const single = startDateInput.value || filterStartDate;
       endDateInput.value = single;
@@ -3578,13 +3520,14 @@ export function render() {
       updateTotal();
     } else if (view === "blank") {
       clearTimeLedgerMobileElapsedTimer(el);
-      rescueTimeFilterDayNavToFilterBar();
+      rescueTimeFilterControlsToFilterBar();
       contentWrap.innerHTML = "";
     } else if (view === "audit") {
       renderAudit(filtered);
     } else if (view === "improve") {
       renderImprove(filtered);
     }
+    syncTimeFilterDateLabels();
   }
 
   /* filterBar는 월 드롭다운 패널이 세로로 열리므로 .time-view-tabs(overflow-y:hidden) 밖에 둠 */
@@ -3606,8 +3549,16 @@ export function render() {
       isMobile && view === "all" ? "" : "none";
   }
   window.addEventListener("resize", syncMobileTabsSummaryDisplay, { signal });
+  window.addEventListener("resize", syncTimeFilterDateLabels, { signal });
+  const tabsTopMargin = document.createElement("div");
+  tabsTopMargin.className = "time-ledger-tabs-top-margin";
+  tabsTopMargin.appendChild(taskSetupBtn);
+  const tabHeaderRow = document.createElement("div");
+  tabHeaderRow.className = "time-ledger-tab-header-row";
+  tabHeaderRow.appendChild(viewTabs);
+  tabsFilterRow.appendChild(tabsTopMargin);
+  tabsFilterRow.appendChild(tabHeaderRow);
   tabsFilterRow.appendChild(mobileTabsSummary);
-  tabsFilterRow.appendChild(viewTabs);
   tabsFilterRow.appendChild(filterBar);
   el.appendChild(tabsFilterRow);
 
@@ -3653,7 +3604,6 @@ export function render() {
         <button type="button" class="time-task-setup-close" aria-label="닫기">&times;</button>
       </div>
       <div class="time-task-setup-body">
-        <p class="time-task-select-desc">표시할 과제를 선택하세요. 선택한 날짜/기간 내 해당 과제만 보입니다. (히스토리에 기록된 모든 과제가 나열됩니다)</p>
         <div class="time-task-select-actions">
           <button type="button" class="time-task-select-all-btn">전체 선택</button>
           <button type="button" class="time-task-select-none-btn">전체 해제</button>
@@ -5969,14 +5919,7 @@ export function render() {
    * 해당 날짜 기록이 없으면 그 날짜 기준 00:00.
    */
   function getDefaultStartTime() {
-    const dateStr =
-      filterType === "day"
-        ? filterStartDate
-        : (() => {
-            const y = new Date();
-            y.setDate(y.getDate() - 1);
-            return y.toISOString().slice(0, 10);
-          })();
+    const dateStr = startDateInput.value || filterStartDate;
     const latestHhMm = getLatestLedgerHhMmForTaskLogDate(dateStr, null);
     if (!latestHhMm) return `${dateStr}T00:00`;
     return `${dateStr}T${latestHhMm}`;
@@ -7143,15 +7086,16 @@ export function render() {
 
   updateTotal();
 
-  /** 모바일 툴바에 붙였던 일자 네비를 비우기 전 filterBar로 되돌림 (DOM 유실 방지) */
-  function rescueTimeFilterDayNavToFilterBar() {
-    const nav = contentWrap.querySelector(".time-filter-day-nav");
-    if (nav && dayWrap) dayWrap.appendChild(nav);
+  /** 모바일 툴바에 붙였던 날짜·네비·필터 묶음을 비우기 전 filterBar로 되돌림 (DOM 유실 방지) */
+  function rescueTimeFilterControlsToFilterBar() {
+    if (filterNavCluster && !filterBar.contains(filterNavCluster)) {
+      filterBar.appendChild(filterNavCluster);
+    }
   }
 
   function renderAll(rows = []) {
     clearTimeLedgerMobileElapsedTimer(el);
-    rescueTimeFilterDayNavToFilterBar();
+    rescueTimeFilterControlsToFilterBar();
     contentWrap.innerHTML = "";
     const isMobile = window.matchMedia("(max-width: 48rem)").matches;
 
@@ -7217,14 +7161,7 @@ export function render() {
           handleRowEdit: handleCardEdit,
         });
       } else {
-        const dateStr =
-          filterType === "day"
-            ? filterStartDate
-            : (() => {
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                return yesterday.toISOString().slice(0, 10);
-              })();
+        const dateStr = startDateInput.value || filterStartDate;
         const card = createMobileTimeCard(
           { date: dateStr },
           handleCardEdit,
@@ -7240,18 +7177,10 @@ export function render() {
     if (isMobile) {
       const toolbar = document.createElement("div");
       toolbar.className = "time-ledger-mobile-toolbar";
-      const leftWrap = document.createElement("div");
-      leftWrap.className = "time-ledger-mobile-toolbar-left";
-      const addBtnEl = document.createElement("button");
-      addBtnEl.type = "button";
-      addBtnEl.className = "time-btn-add";
-      addBtnEl.innerHTML = "+";
-      const addLabel = document.createElement("span");
-      addLabel.className = "time-ledger-add-label";
-      addLabel.textContent = "과제 기록";
-      leftWrap.appendChild(addBtnEl);
-      leftWrap.appendChild(addLabel);
-      toolbar.appendChild(leftWrap);
+      const toolbarRight = document.createElement("div");
+      toolbarRight.className = "time-ledger-mobile-toolbar-right";
+      if (filterNavCluster) toolbarRight.appendChild(filterNavCluster);
+      if (toolbarRight.childNodes.length) toolbar.appendChild(toolbarRight);
 
       const dateDivider = document.createElement("div");
       dateDivider.className = "date-divider";
@@ -7259,19 +7188,24 @@ export function render() {
       dateDivider.textContent =
         `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, "0")}.${String(today.getDate()).padStart(2, "0")}`;
 
-      leftWrap.addEventListener("click", openAdd);
-
-      const dayNavForToolbar = filterBar.querySelector(".time-filter-day-nav");
-      if (dayNavForToolbar) {
-        const daySlot = document.createElement("div");
-        daySlot.className = "time-ledger-mobile-toolbar-day";
-        daySlot.appendChild(dayNavForToolbar);
-        toolbar.appendChild(daySlot);
-      }
+      const fabWrap = document.createElement("div");
+      fabWrap.className = "time-ledger-mobile-fab-wrap";
+      const fabBtn = document.createElement("button");
+      fabBtn.type = "button";
+      fabBtn.className = "todo-cards-add-btn time-ledger-mobile-fab-btn";
+      fabBtn.title = "과제 기록";
+      fabBtn.setAttribute("aria-label", "과제 기록");
+      fabBtn.innerHTML = TIME_LEDGER_ADD_FAB_SVG;
+      fabBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openAdd();
+      });
+      fabWrap.appendChild(fabBtn);
 
       contentWrap.appendChild(toolbar);
       contentWrap.appendChild(dateDivider);
       contentWrap.appendChild(cardsWrap);
+      contentWrap.appendChild(fabWrap);
     } else {
       const summaryPanel = document.createElement("div");
       summaryPanel.className = "time-ledger-summary-panel";
@@ -7337,7 +7271,7 @@ export function render() {
 
   function renderByProductivity(rows = []) {
     clearTimeLedgerMobileElapsedTimer(el);
-    rescueTimeFilterDayNavToFilterBar();
+    rescueTimeFilterControlsToFilterBar();
     contentWrap.innerHTML = "";
     const type = filterType;
     const y = filterYear;
@@ -7506,7 +7440,7 @@ export function render() {
 
   function renderImprove(rows = []) {
     clearTimeLedgerMobileElapsedTimer(el);
-    rescueTimeFilterDayNavToFilterBar();
+    rescueTimeFilterControlsToFilterBar();
     contentWrap.innerHTML = "";
     const type = filterType;
     const y = filterYear;
@@ -7894,7 +7828,7 @@ export function render() {
 
   function renderAudit(rows = []) {
     clearTimeLedgerMobileElapsedTimer(el);
-    rescueTimeFilterDayNavToFilterBar();
+    rescueTimeFilterControlsToFilterBar();
     contentWrap.innerHTML = "";
     const type = filterType;
     const y = filterYear;
@@ -8472,7 +8406,7 @@ export function render() {
 
   function renderDashboard(rows = []) {
     clearTimeLedgerMobileElapsedTimer(el);
-    rescueTimeFilterDayNavToFilterBar();
+    rescueTimeFilterControlsToFilterBar();
     contentWrap.innerHTML = "";
     const dash = document.createElement("div");
     dash.className = "time-dashboard-view";
@@ -9405,63 +9339,30 @@ export function render() {
 
   function updateFilterBarVisibility(view) {
     if (view === "audit") {
-      filterTabs.style.display = "";
+      if (filterNavCluster) filterNavCluster.style.display = "";
       if (taskSetupBtn) taskSetupBtn.style.display = "none";
-      filterTabs.querySelectorAll("[data-audit-hidden]").forEach((b) => {
-        b.style.display = "none";
-      });
-      filterTabs
-        .querySelectorAll(".time-filter-btn:not([data-audit-hidden])")
-        .forEach((b) => {
-          b.style.display = "";
-        });
-      /* 시간 보고서는 하루용: 날짜 선택 시 기간이 아닌 단일 날짜만 표시 */
       filterBar.querySelectorAll("[data-audit-range-hidden]").forEach((el) => {
         el.style.display = "none";
       });
       if (startDateInput) startDateInput.dataset.hideDeleteBtn = "true";
-      if (filterType === "month" || filterType === "week") {
-        filterType = "day";
-        filterBar
-          .querySelectorAll(".time-filter-btn")
-          .forEach((b) => b.classList.remove("active"));
-        const dayBtn = filterBar.querySelector('[data-filter="day"]');
-        if (dayBtn) dayBtn.classList.add("active");
-        dayWrap.style.display = "";
-        monthWrap.style.display = "none";
-        rangeWrap.style.display = "none";
-        updateDayDisplay();
-      } else {
-        dayWrap.style.display = filterType === "day" ? "" : "none";
-        monthWrap.style.display = "none";
-        rangeWrap.style.display = filterType === "range" ? "" : "none";
-        if (filterType === "range") {
-          endDateInput.value = startDateInput.value || filterStartDate;
-          filterEndDate = filterStartDate =
-            startDateInput.value || filterEndDate;
-        }
+      if (endDateInput && startDateInput) {
+        const single = startDateInput.value || filterStartDate;
+        endDateInput.value = single;
+        filterStartDate = filterEndDate = single;
       }
     } else if (view === "blank") {
-      filterTabs.style.display = "none";
+      if (filterNavCluster) filterNavCluster.style.display = "none";
       if (taskSetupBtn) taskSetupBtn.style.display = "none";
-      dayWrap.style.display = "none";
-      monthWrap.style.display = "none";
-      rangeWrap.style.display = "none";
     } else {
-      filterTabs.style.display = "";
+      if (filterNavCluster) filterNavCluster.style.display = "";
       if (taskSetupBtn)
         taskSetupBtn.style.display = view === "all" ? "" : "none";
-      filterTabs.querySelectorAll("[data-audit-hidden]").forEach((b) => {
-        b.style.display = "";
-      });
       filterBar.querySelectorAll("[data-audit-range-hidden]").forEach((el) => {
         el.style.display = "";
       });
       if (startDateInput) delete startDateInput.dataset.hideDeleteBtn;
-      dayWrap.style.display = filterType === "day" ? "" : "none";
-      monthWrap.style.display = filterType === "month" ? "" : "none";
-      rangeWrap.style.display = filterType === "range" ? "" : "none";
     }
+    syncTimeFilterDateLabels();
   }
 
   function getFilteredRows(rows) {
@@ -9501,7 +9402,7 @@ export function render() {
       renderAll(rowsToUse);
     } else if (view === "blank") {
       clearTimeLedgerMobileElapsedTimer(el);
-      rescueTimeFilterDayNavToFilterBar();
+      rescueTimeFilterControlsToFilterBar();
       contentWrap.innerHTML = "";
     } else if (view === "audit") {
       renderAudit(getFilteredRows(cachedRows));
@@ -9510,6 +9411,7 @@ export function render() {
     }
     updateTotal();
     syncMobileTabsSummaryDisplay();
+    syncTimeFilterDateLabels();
   }
 
   viewTabs.querySelectorAll(".time-view-tab").forEach((btn) => {
