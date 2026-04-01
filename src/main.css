@@ -3304,16 +3304,34 @@ body {
     justify-content: flex-start;
     align-items: center;
     flex-wrap: nowrap;
-    gap: 0.2rem;
-    padding: 0.15rem 0 0;
+    gap: 0.12rem;
+    padding: 0.06rem 0 0;
     padding-left: 0;
     padding-right: 0;
     box-sizing: border-box;
     min-width: 0;
     overflow: hidden;
+    /* 2단계 축소: 글자·아이콘·높이 전반 (한 줄 유지, 16px 입력 줌 회피) */
+    zoom: 0.88;
+  }
+  @supports not (zoom: 1) {
+    .archive-view.archive-view--mobile .archive-date-range-filter {
+      zoom: unset;
+      transform: scale(0.88);
+      transform-origin: left center;
+    }
   }
   .archive-view.archive-view--mobile .archive-date-range-filter .archive-date-range-sep {
     flex-shrink: 0;
+    font-size: 0.5625rem;
+    opacity: 0.8;
+  }
+  /* 모바일 아카이브 날짜: 2단계 축소에 맞춰 세로·안쪽 여백만 추가로 타이트 */
+  #app .archive-view.archive-view--mobile .archive-date-range-filter input[type="date"],
+  #app .archive-view.archive-view--mobile .archive-date-range-filter input[type="date"]:focus,
+  #app .archive-view.archive-view--mobile .archive-date-range-filter input[type="date"]:focus-visible {
+    padding: 0 0.05rem !important;
+    line-height: 1.15;
   }
   .archive-view.archive-view--mobile .archive-date-range-filter .time-filter-start-date,
   .archive-view.archive-view--mobile .archive-date-range-filter .time-filter-end-date {
