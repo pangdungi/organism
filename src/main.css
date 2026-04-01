@@ -2311,9 +2311,9 @@ body {
     }
   }
 
-  /* 감정관리(모바일): DIARY 대제목·사이드바 없음, 서브탭 + 일기 선택 + 본문만 */
+  /* 감정관리(모바일): 상단 h1 제거 — 서브탭부터, 여백 최소화 */
   .diary-view--mobile {
-    padding-top: 0.35rem;
+    padding-top: 0;
   }
   .diary-view--mobile .diary-tabs {
     padding: 0 0.75rem;
@@ -3085,8 +3085,9 @@ body {
     overflow-y: visible;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    border-top: var(--divider-default);
-    border-bottom: var(--divider-default);
+    border-top: none;
+    /* 하단 보더 제거: FAB용 padding-bottom 아래에 표와 무관한 가로선만 보이던 문제 */
+    border-bottom: none;
   }
   .work-schedule-content-wrap .work-schedule-table-wrap::-webkit-scrollbar {
     display: none;
@@ -3102,7 +3103,7 @@ body {
   .work-schedule-content-wrap .work-schedule-table col.work-schedule-col-start-time,
   .work-schedule-content-wrap .work-schedule-table col.work-schedule-col-end-time {
     width: auto;
-    min-width: 0;
+    min-width: 4rem;
   }
   .work-schedule-content-wrap .work-schedule-table col.work-schedule-col-type {
     width: auto;
@@ -3110,7 +3111,7 @@ body {
   }
   .work-schedule-content-wrap .work-schedule-table col.work-schedule-col-hours-worked {
     width: auto;
-    min-width: 0;
+    min-width: 3.5rem;
   }
   .work-schedule-content-wrap .work-schedule-table col.work-schedule-col-hours {
     width: auto;
@@ -3138,13 +3139,13 @@ body {
   }
   .work-schedule-content-wrap .work-schedule-table th,
   .work-schedule-content-wrap .work-schedule-table td {
-    padding: 0.125rem 0.45rem;
+    padding: 0.2rem 0.5rem;
   }
   .work-schedule-content-wrap .work-schedule-table .work-schedule-th-date,
   .work-schedule-content-wrap .work-schedule-table .work-schedule-cell-date {
     min-width: 4.75rem;
     width: auto;
-    padding: 0.1rem 0.35rem;
+    padding: 0.2rem 0.45rem;
   }
   .work-schedule-content-wrap .work-schedule-date-display {
     padding: 0.05rem 0.2rem;
@@ -3162,7 +3163,7 @@ body {
   .work-schedule-content-wrap .work-schedule-table .work-schedule-cell-date {
     border-right: none !important;
   }
-  /* 모바일: 필터(월별·하루·날짜선택 + 월 드롭·연도) 한 줄 — 전역 flex-wrap:wrap 덮어씀 */
+  /* 모바일: 근무표 필터 — 날짜 선택(기간)만 */
   .work-schedule-content-wrap .work-schedule-filter-bar {
     flex-wrap: nowrap;
     gap: 0.35rem;
@@ -3175,32 +3176,42 @@ body {
   .work-schedule-content-wrap .work-schedule-filter-bar::-webkit-scrollbar {
     display: none;
   }
-  .work-schedule-content-wrap .work-schedule-filter-bar .time-filter-tabs {
+  /* 모바일: 근무표 기간만 — 테두리 없음, 날짜 전체 보이게(필요 시 가로 스크롤) */
+  .work-schedule-content-wrap .work-schedule-filter-bar .work-schedule-date-range-wrap {
+    gap: 0.35rem;
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    min-width: min(100%, 24rem);
+  }
+  .work-schedule-content-wrap .work-schedule-filter-bar .work-schedule-date-range-sep {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    font-weight: var(--fw-mono);
+    line-height: 1;
+    color: var(--text-caption-color);
     flex-shrink: 0;
+    padding: 0 0.05rem;
   }
-  .work-schedule-content-wrap .work-schedule-filter-bar .time-filter-month-wrap {
-    flex-shrink: 0;
-    flex-wrap: nowrap;
-  }
-  /* 모바일: 날짜 선택(시작~끝) — 패딩·폭·간격 축소로 필터 한 줄에 맞춤(글자는 16px 줌 방지 유지) */
-  .work-schedule-content-wrap .work-schedule-filter-bar .time-filter-range-wrap {
-    gap: 0.2rem;
-    flex-shrink: 1;
-    min-width: 0;
-    max-width: 100%;
-  }
-  .work-schedule-content-wrap .work-schedule-filter-bar .time-filter-range-wrap span {
-    font-size: 0.6875rem;
-    line-height: 1.2;
-  }
+  /* 시간가계부 time-filter-nav-cluster·툴바 날짜와 동일 톤(연한 본문색·모노·300) */
   .work-schedule-content-wrap .work-schedule-filter-bar .time-filter-start-date,
   .work-schedule-content-wrap .work-schedule-filter-bar .time-filter-end-date {
-    padding: 0.2rem 0.3rem !important;
-    max-width: 7.75rem;
-    min-width: 0;
+    padding: 0.25rem 0.15rem 0.25rem 0.35rem !important;
+    min-width: 11rem;
+    max-width: none;
+    width: auto;
     box-sizing: border-box;
-    border-radius: 0.25rem;
-    line-height: 1.2;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: 0;
+    line-height: 1.25;
+    font-family: var(--font-mono) !important;
+    font-size: 16px !important;
+    font-weight: var(--fw-mono) !important;
+    color: var(--text-muted) !important;
+    -webkit-text-fill-color: var(--text-muted);
+    text-align: center;
+    color-scheme: light;
   }
 
   /* 모바일: 근무유형 설정 모달 시간 입력 — iOS 줌 방지(16px); 모달은 #app 밖 body에 붙음 */
@@ -3224,7 +3235,15 @@ body {
   .archive-view .archive-header {
     padding: 0.25rem 1.75rem 1.25rem !important;
   }
-  /* 아카이브: 밑줄은 검색창 한 줄에만 — 월·연 픽커는 그 아래 줄 오른쪽(필터 보조 동작) */
+  /* 모바일 아카이브: 제목 없음 — 검색·날짜 줄, 좌우 여유(날짜 블록은 작게 가운데) */
+  .archive-view.archive-view--mobile .archive-header {
+    padding: 0.35rem 1.35rem 0.75rem !important;
+    margin-bottom: 0.75rem;
+  }
+  .archive-view.archive-view--mobile .archive-search-row {
+    margin-top: 0;
+  }
+  /* 아카이브: 밑줄은 검색창 한 줄에만 — 날짜 구간은 다음 줄 오른쪽 */
   .archive-view .archive-search-row {
     flex-wrap: wrap;
     gap: 0.25rem 0.75rem;
@@ -3242,36 +3261,72 @@ body {
   .archive-view .archive-search-wrap:focus-within {
     border-bottom-color: var(--gray-400, #9ca3af);
   }
-  .archive-view .archive-month-filter {
+  .archive-view .archive-date-range-filter {
     margin-left: auto;
     width: 100%;
     justify-content: flex-end;
-    padding-top: 0.15rem;
-    gap: 0.35rem;
-  }
-  .archive-view .archive-month-filter.time-filter-month-wrap {
-    gap: 0.35rem;
-  }
-  .archive-view .archive-month-filter .asset-cashflow-trigger {
-    min-width: 3rem;
-    font-size: 0.75rem;
-    padding: 0.15rem 0.25rem 0.15rem 0;
-  }
-  .archive-view .archive-month-filter .asset-cashflow-year-nav {
-    padding: 0.2rem 0.35rem;
+    padding-top: 0.1rem;
     gap: 0.2rem;
+    flex-wrap: nowrap;
+    min-width: 0;
   }
-  .archive-view .archive-month-filter .asset-cashflow-year-btn {
-    font-size: 0.75rem;
-    padding: 0.08rem 0.2rem;
+  /* 아카이브 기간: Small(11px)·캡션색 — 날짜 전체가 잘리지 않게 min-width 확보 */
+  .archive-view .archive-date-range-filter .archive-date-range-sep {
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    font-weight: var(--fw-mono);
+    color: var(--text-placeholder);
+    flex-shrink: 0;
+    opacity: 0.85;
+    line-height: 1;
   }
-  .archive-view .archive-month-filter .asset-cashflow-year-display {
-    font-size: 0.75rem;
-    min-width: 1.85rem;
+  .archive-view .archive-date-range-filter .time-filter-start-date,
+  .archive-view .archive-date-range-filter .time-filter-end-date {
+    min-width: 9.5rem;
+    max-width: none;
+    padding: 0.1rem 0.2rem !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    font-family: var(--font-mono) !important;
+    font-size: var(--fs-small) !important;
+    font-weight: var(--fw-mono) !important;
+    line-height: 1.25;
+    color: var(--text-caption-color) !important;
+    -webkit-text-fill-color: var(--text-caption-color);
+    color-scheme: light;
   }
-  .archive-view .archive-month-filter .asset-cashflow-panel .time-period-option {
-    font-size: 0.8125rem;
-    padding: 0.35rem 0.65rem;
+  .archive-view.archive-view--mobile .archive-date-range-filter {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+    justify-content: flex-start;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 0.2rem;
+    padding: 0.15rem 0 0;
+    padding-left: 0;
+    padding-right: 0;
+    box-sizing: border-box;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .archive-view.archive-view--mobile .archive-date-range-filter .archive-date-range-sep {
+    flex-shrink: 0;
+  }
+  .archive-view.archive-view--mobile .archive-date-range-filter .time-filter-start-date,
+  .archive-view.archive-view--mobile .archive-date-range-filter .time-filter-end-date {
+    flex: 1 1 0;
+    min-width: 0;
+    /* 한 줄 유지: ~ + 구분선 폭 제외 후 반반 */
+    max-width: calc(50% - 0.45rem);
+    width: auto;
+  }
+  .archive-view.archive-view--mobile .archive-list-section {
+    padding-left: 1.35rem;
+    padding-right: 1.35rem;
+    box-sizing: border-box;
   }
 
   /* 모바일: 모든 탭 뷰 좌우 패딩 제거 (화면 끝까지) */
@@ -4305,6 +4360,36 @@ body {
   .time-ledger-view[data-time-content-view="all"] .time-ledger-mobile-cards {
     padding-bottom: 4.5rem;
     box-sizing: border-box;
+  }
+
+  /* 모바일 근무기록 트래커: 행 추가 FAB — 할일·시간가계부와 동일 위치·색 */
+  .calendar-view--mobile-workschedule .work-schedule-mobile-fab-wrap {
+    position: fixed;
+    bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+    right: 1rem;
+    z-index: 30;
+    background: transparent;
+    padding: 0;
+  }
+  .calendar-view--mobile-workschedule
+    .work-schedule-mobile-fab-wrap
+    .work-schedule-mobile-fab-btn.todo-cards-add-btn {
+    color: var(--ui-btn-primary-fg);
+    background: var(--ui-btn-primary-bg);
+    border: none;
+    box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.15);
+  }
+  .calendar-view--mobile-workschedule
+    .work-schedule-mobile-fab-wrap
+    .work-schedule-mobile-fab-btn.todo-cards-add-btn:hover {
+    background: var(--ui-btn-primary-hover);
+  }
+  .calendar-view--mobile-workschedule .work-schedule-table-wrap {
+    padding-bottom: 4.5rem;
+    box-sizing: border-box;
+  }
+  .calendar-view--mobile-workschedule .work-schedule-row-add {
+    display: none !important;
   }
 
   /* 모바일: 할일 카드 — 내용만큼 늘어나고 잘리지 않음 */
@@ -6092,7 +6177,7 @@ body {
   margin-left: auto;
 }
 
-/* 근무표 필터 바 (월별/일주일/하루/날짜선택) */
+/* 근무표 필터 바 (날짜 선택: 시작~끝 기간만) */
 .work-schedule-daily-hours-wrap {
   margin-bottom: 0.75rem;
   display: flex;
@@ -6176,6 +6261,46 @@ body {
   margin-bottom: 1rem;
   flex-wrap: wrap;
   font-weight: 300;
+}
+
+.work-schedule-filter-bar--range-only {
+  gap: 0.5rem 0.75rem;
+}
+
+/* 근무표만: date 입력 테두리 없음, 한 줄에 날짜 전체 표시 */
+.work-schedule-content-wrap .work-schedule-filter-bar--range-only .work-schedule-date-range-wrap {
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.work-schedule-content-wrap .work-schedule-filter-bar--range-only .time-filter-start-date,
+.work-schedule-content-wrap .work-schedule-filter-bar--range-only .time-filter-end-date {
+  min-width: 10.75rem;
+  max-width: none;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  font-weight: var(--fw-mono);
+  line-height: 1.25;
+  color: var(--text-muted);
+  -webkit-text-fill-color: var(--text-muted);
+  text-align: center;
+  color-scheme: light;
+}
+.work-schedule-content-wrap .work-schedule-filter-bar--range-only .time-filter-start-date:focus,
+.work-schedule-content-wrap .work-schedule-filter-bar--range-only .time-filter-end-date:focus {
+  outline: none;
+  box-shadow: none;
+}
+.work-schedule-content-wrap .work-schedule-filter-bar--range-only .work-schedule-date-range-sep {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-mono);
+  color: var(--text-caption-color);
 }
 
 .work-schedule-filter-tabs {
@@ -10595,6 +10720,29 @@ body {
   max-width: 14rem;
 }
 
+/* 데스크탑: 표가 뷰 너비를 쓰도록(모바일은 아래 @media에서 max-content 유지) */
+@media (min-width: 48.0625rem) {
+  .work-schedule-view .work-schedule-content-wrap {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  .work-schedule-view .work-schedule-table-wrap {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  .work-schedule-view .work-schedule-table {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    table-layout: auto;
+  }
+  .work-schedule-view .work-schedule-table .work-schedule-cell-memo {
+    max-width: none;
+  }
+}
+
 .work-schedule-cell-type {
   overflow: visible;
 }
@@ -10811,9 +10959,12 @@ body {
   .work-schedule-content-wrap .work-schedule-table .work-schedule-th-start-time,
   .work-schedule-content-wrap .work-schedule-table .work-schedule-th-end-time {
     white-space: normal;
-    max-width: 3.5rem;
-    line-height: 1.2;
+    min-width: 4rem;
+    max-width: 6.5rem;
+    line-height: 1.25;
     word-break: keep-all;
+    padding: 0.3rem 0.55rem;
+    box-sizing: border-box;
   }
   .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-start-time,
   .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-end-time {
@@ -10824,7 +10975,7 @@ body {
   }
   #app .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-start-time,
   #app .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-end-time {
-    padding: 0.2rem 0.35rem !important;
+    padding: 0.2rem 0.45rem !important;
   }
   #app .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-start-time:focus,
   #app .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-start-time:focus-visible,
@@ -10833,7 +10984,7 @@ body {
     border: none !important;
     border-bottom: none !important;
     box-shadow: none !important;
-    padding: 0.2rem 0.35rem !important;
+    padding: 0.2rem 0.45rem !important;
   }
 }
 
@@ -10981,8 +11132,11 @@ body {
   /* 모바일: Hours 열 — 숫자 입력 width:100%·col min-width 보다 뒤에서 덮어씀 */
   .work-schedule-content-wrap .work-schedule-table .work-schedule-th-hours-worked {
     white-space: normal;
-    max-width: 2.75rem;
-    line-height: 1.2;
+    min-width: 3.25rem;
+    max-width: 4.5rem;
+    line-height: 1.25;
+    padding: 0.3rem 0.5rem;
+    box-sizing: border-box;
   }
   .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-hours-worked {
     width: auto;
@@ -10992,14 +11146,27 @@ body {
     font-variant-numeric: tabular-nums;
   }
   #app .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-hours-worked {
-    padding: 0.2rem 0.35rem !important;
+    padding: 0.2rem 0.45rem !important;
   }
   #app .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-hours-worked:focus,
   #app .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-hours-worked:focus-visible {
     border: none !important;
     border-bottom: none !important;
     box-shadow: none !important;
-    padding: 0.2rem 0.35rem !important;
+    padding: 0.2rem 0.45rem !important;
+  }
+
+  /* 모바일 근무표: 삭제 열 — X 항시 표시(호버 없음), 열제목은 JS에서 "삭제" */
+  .calendar-view--mobile-workschedule .work-schedule-btn-delete--mobile-x {
+    display: inline-flex;
+    opacity: 1 !important;
+    min-width: 2rem;
+    min-height: 2rem;
+    padding: 0.15rem;
+    font-size: 1rem;
+    line-height: 1;
+    align-items: center;
+    justify-content: center;
   }
 }
 
@@ -33216,7 +33383,7 @@ body.kpi-resizing {
   /* 크기/굵기/색은 .dream-view-title과 통일 (2rem, 700, #1f2937) */
 }
 
-/* 검색 + 월·연도 픽커 한 줄 (가계부 time-filter-month-wrap 재사용) */
+/* 검색 + 날짜 구간(시작~끝) */
 .archive-search-row {
   margin-top: 0.75rem;
   display: flex;
@@ -33243,8 +33410,48 @@ body.kpi-resizing {
   background: transparent;
 }
 
-.archive-month-filter {
+.archive-date-range-filter {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 22rem;
+}
+.archive-view .archive-date-range-filter .time-filter-start-date,
+.archive-view .archive-date-range-filter .time-filter-end-date {
+  min-width: 9.5rem;
+  max-width: none;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-mono);
+  line-height: 1.25;
+  color: var(--text-caption-color);
+  -webkit-text-fill-color: var(--text-caption-color);
+  color-scheme: light;
+}
+/* #app input[type=date]:focus 가 ID 특이도로 밑줄·패딩이 덮어씌워지지 않게 */
+#app .archive-view .archive-date-range-filter input[type="date"],
+#app .archive-view .archive-date-range-filter input[type="date"]:focus,
+#app .archive-view .archive-date-range-filter input[type="date"]:focus-visible {
+  border: none !important;
+  border-bottom: none !important;
+  outline: none;
+  box-shadow: none;
+  -webkit-appearance: none;
+  appearance: none;
+  padding: 0.1rem 0.2rem !important;
+}
+.archive-view .archive-date-range-filter .archive-date-range-sep {
+  color: var(--text-placeholder);
+  font-size: var(--fs-caption);
+  font-family: var(--font-mono);
+  font-weight: var(--fw-mono);
+  line-height: 1;
+  opacity: 0.85;
 }
 .archive-search-icon {
   flex-shrink: 0;

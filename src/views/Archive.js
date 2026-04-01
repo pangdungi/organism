@@ -1,6 +1,6 @@
 /**
  * 아카이브 - 시간기록 메모·태그 목록 (미니멀)
- * 기본: 선택한 월만 표시(부하 완화). 검색어가 있으면 월과 무관하게 전체 기록에서 검색.
+ * 기본: 선택한 날짜 구간만 표시(서버는 entry_date 범위 pull). 검색어가 있으면 구간과 무관하게 전체 기록에서 검색.
  */
 
 import { loadTimeRows, parseTagsFromFeedback } from "./Time.js";
@@ -9,7 +9,7 @@ import {
   updateTimeLedgerEntryFeedbackById,
 } from "../utils/timeLedgerEntriesModel.js";
 import { showToast } from "../utils/showToast.js";
-import { hydrateTimeLedgerEntriesForArchiveMonth } from "../utils/timeLedgerEntriesSupabase.js";
+import { hydrateTimeLedgerEntriesForArchiveRange } from "../utils/timeLedgerEntriesSupabase.js";
 
 function formatArchiveDate(dateStr) {
   if (!dateStr || typeof dateStr !== "string") return "—";
@@ -26,32 +26,42 @@ function formatArchiveTime(startTime) {
   return startTime;
 }
 
-/** YYYY-MM-DD 등 → 연·월 일치 */
-function recordInCalendarMonth(r, year, month) {
-  const s = (r.date || "").trim().replace(/\//g, "-");
-  const m = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
-  if (!m) return false;
-  return parseInt(m[1], 10) === year && parseInt(m[2], 10) === month;
+/** 기록 날짜 YYYY-MM-DD가 [startYmd, endYmd] 안에 있는지 */
+function recordInDateRange(r, startYmd, endYmd) {
+  const s = (r.date || "").trim().replace(/\//g, "-").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  return s >= startYmd && s <= endYmd;
 }
 
 export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content archive-view";
+  const mobileViewport =
+    typeof window !== "undefined" && window.matchMedia("(max-width: 48rem)").matches;
+  if (mobileViewport) {
+    el.classList.add("archive-view--mobile");
+  }
 
   const header = document.createElement("header");
   header.className = "archive-header dream-view-header-wrap";
-  const label = document.createElement("span");
-  label.className = "dream-view-label";
-  label.textContent = "ARCHIVE";
-  const h = document.createElement("h1");
-  h.className = "dream-view-title archive-title";
-  h.textContent = "아카이브";
-  header.appendChild(label);
-  header.appendChild(h);
+  if (!mobileViewport) {
+    const label = document.createElement("span");
+    label.className = "dream-view-label";
+    label.textContent = "ARCHIVE";
+    const h = document.createElement("h1");
+    h.className = "dream-view-title archive-title";
+    h.textContent = "아카이브";
+    header.appendChild(label);
+    header.appendChild(h);
+  }
 
   const now = new Date();
-  let filterYear = now.getFullYear();
-  let filterMonth = now.getMonth() + 1;
+  const y0 = now.getFullYear();
+  const mo0 = now.getMonth();
+  const pad2 = (n) => String(n).padStart(2, "0");
+  const defaultRangeStart = `${y0}-${pad2(mo0 + 1)}-01`;
+  const lastDayOfMonth = new Date(y0, mo0 + 1, 0).getDate();
+  const defaultRangeEnd = `${y0}-${pad2(mo0 + 1)}-${pad2(lastDayOfMonth)}`;
 
   const searchRow = document.createElement("div");
   searchRow.className = "archive-search-row";
@@ -71,39 +81,20 @@ export function render() {
   searchWrap.appendChild(searchIcon);
   searchWrap.appendChild(searchInput);
 
-  const monthWrap = document.createElement("div");
-  monthWrap.className = "time-filter-month-wrap archive-month-filter";
-  monthWrap.setAttribute("data-filter-wrap", "month");
-  monthWrap.innerHTML = `
-    <div class="asset-cashflow-dropdown-wrap">
-      <button type="button" class="time-period-trigger asset-cashflow-trigger" id="archive-month-trigger">${filterMonth}월</button>
-      <div class="time-period-panel asset-cashflow-panel" id="archive-month-panel">
-        ${Array.from({ length: 12 }, (_, i) => {
-          const m = i + 1;
-          return `<div class="time-period-option" data-value="${m}">${m}월</div>`;
-        }).join("")}
-      </div>
-    </div>
-    <div class="asset-cashflow-year-nav">
-      <button type="button" class="asset-cashflow-year-btn" aria-label="이전 연도">&lt;</button>
-      <span class="asset-cashflow-year-display">${filterYear}</span>
-      <button type="button" class="asset-cashflow-year-btn" aria-label="다음 연도">&gt;</button>
-    </div>
+  const rangeWrap = document.createElement("div");
+  rangeWrap.className = "time-filter-range-wrap archive-date-range-filter";
+  rangeWrap.innerHTML = `
+    <input type="date" class="time-filter-start-date" name="archive-filter-start" aria-label="시작일" />
+    <span class="archive-date-range-sep">~</span>
+    <input type="date" class="time-filter-end-date" name="archive-filter-end" aria-label="종료일" />
   `;
-
-  const monthTrigger = monthWrap.querySelector("#archive-month-trigger");
-  const monthPanel = monthWrap.querySelector("#archive-month-panel");
-  const monthDropdownWrap = monthWrap.querySelector(".asset-cashflow-dropdown-wrap");
-  const yearDisplay = monthWrap.querySelector(".asset-cashflow-year-display");
-  const yearPrevBtn = monthWrap.querySelector(".asset-cashflow-year-btn:first-child");
-  const yearNextBtn = monthWrap.querySelector(".asset-cashflow-year-btn:last-child");
-
-  monthPanel.querySelectorAll(".time-period-option").forEach((o) => {
-    o.classList.toggle("is-selected", o.dataset.value === String(filterMonth));
-  });
+  const startDateInput = rangeWrap.querySelector(".time-filter-start-date");
+  const endDateInput = rangeWrap.querySelector(".time-filter-end-date");
+  startDateInput.value = defaultRangeStart;
+  endDateInput.value = defaultRangeEnd;
 
   searchRow.appendChild(searchWrap);
-  searchRow.appendChild(monthWrap);
+  searchRow.appendChild(rangeWrap);
   header.appendChild(searchRow);
   el.appendChild(header);
 
@@ -137,9 +128,15 @@ export function render() {
       });
   }
 
-  /** hydrate 완료 전에는 빈 목록 — 첫 화면부터 해당 월 Supabase 반영 후에만 채움 */
+  /** hydrate 완료 전에는 빈 목록 — 첫 화면부터 해당 기간 Supabase 반영 후에만 채움 */
   let fullRecords = [];
-  let archiveMonthSyncGen = 0;
+  let archiveRangeSyncGen = 0;
+
+  function getFilterRangeYmd() {
+    const s = (startDateInput.value || defaultRangeStart).trim();
+    const e = (endDateInput.value || defaultRangeEnd).trim();
+    return { startYmd: s, endYmd: e };
+  }
 
   function refreshFullRecords() {
     fullRecords = buildRecords();
@@ -178,31 +175,40 @@ export function render() {
     listEl.appendChild(wrap);
   }
 
-  async function loadArchiveMonthThenRender() {
+  async function loadArchiveRangeThenRender() {
     /* render() 직후에는 아직 app-tab-panel에 안 붙었을 수 있음 → 호출부는 queueMicrotask 권장 */
     if (!el.isConnected) return;
-    const gen = ++archiveMonthSyncGen;
+    const { startYmd, endYmd } = getFilterRangeYmd();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startYmd) || !/^\d{4}-\d{2}-\d{2}$/.test(endYmd)) {
+      showToast("날짜를 확인해 주세요.");
+      return;
+    }
+    if (startYmd > endYmd) {
+      showToast("시작일이 종료일보다 늦을 수 없습니다.");
+      return;
+    }
+    const gen = ++archiveRangeSyncGen;
     const rawBefore = readTimeLedgerEntriesRaw().length;
     showArchiveListLoading();
-    console.info("[archive] [데이터] 월 동기화 시작 (목록은 완료 후 표시)", {
-      무엇을: "① Supabase 해당 월 pull → 로컬 병합 ② 로컬→서버 sync",
-      선택: `${filterYear}년 ${filterMonth}월`,
+    console.info("[archive] [데이터] 기간 동기화 시작 (목록은 완료 후 표시)", {
+      무엇을: "① Supabase entry_date 구간 pull → 로컬 병합 ② 로컬→서버 sync",
+      선택: `${startYmd} ~ ${endYmd}`,
       "동기화 직전 로컬 행 수": rawBefore,
     });
     try {
-      await hydrateTimeLedgerEntriesForArchiveMonth(filterYear, filterMonth);
+      await hydrateTimeLedgerEntriesForArchiveRange(startYmd, endYmd);
     } catch (e) {
-      console.warn("[archive] month sync", e);
+      console.warn("[archive] range sync", e);
     } finally {
-      if (gen !== archiveMonthSyncGen || !el.isConnected) return;
+      if (gen !== archiveRangeSyncGen || !el.isConnected) return;
       listEl.classList.remove("archive-list--loading");
       refreshFullRecords();
       const after = readTimeLedgerEntriesRaw().length;
       const { records, mode } = getRecordsToDisplay();
-      console.info("[archive] [데이터] 목록 표시 (해당 월 서버 반영 후 → localStorage 읽기)", {
+      console.info("[archive] [데이터] 목록 표시 (해당 기간 서버 반영 후 → localStorage 읽기)", {
         경로: "Time.loadTimeRows() → buildRecords() (메모·태그 있는 행만)",
         "로컬 행 수": after,
-        "카드 수(월·검색 전)": fullRecords.length,
+        "카드 수(기간·검색 전)": fullRecords.length,
         "화면 카드 수": records.length,
         mode,
       });
@@ -348,9 +354,10 @@ export function render() {
     if (q) {
       return { records: filterRecords(fullRecords, q), mode: "search" };
     }
+    const { startYmd, endYmd } = getFilterRangeYmd();
     return {
-      records: fullRecords.filter((r) => recordInCalendarMonth(r, filterYear, filterMonth)),
-      mode: "month",
+      records: fullRecords.filter((r) => recordInDateRange(r, startYmd, endYmd)),
+      mode: "range",
     };
   }
 
@@ -361,7 +368,7 @@ export function render() {
       const empty = document.createElement("p");
       empty.className = "archive-empty";
       empty.textContent =
-        mode === "search" ? "검색 결과가 없습니다." : "이 달에 표시할 메모가 없습니다.";
+        mode === "search" ? "검색 결과가 없습니다." : "이 기간에 표시할 메모가 없습니다.";
       listEl.appendChild(empty);
       return;
     }
@@ -411,50 +418,11 @@ export function render() {
     });
   }
 
-  function closeMonthPanel() {
-    monthPanel?.classList.remove("is-open");
-    monthDropdownWrap?.classList.remove("is-open");
-    document.removeEventListener("click", onDocClick);
+  function onDateRangeChange() {
+    void loadArchiveRangeThenRender();
   }
-
-  function onDocClick(e) {
-    if (!monthDropdownWrap?.contains(e.target)) closeMonthPanel();
-  }
-
-  monthTrigger.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const opening = !monthPanel.classList.contains("is-open");
-    monthPanel.classList.toggle("is-open");
-    monthDropdownWrap.classList.toggle("is-open");
-    if (opening) {
-      setTimeout(() => document.addEventListener("click", onDocClick), 0);
-    } else {
-      document.removeEventListener("click", onDocClick);
-    }
-  });
-  monthPanel.querySelectorAll(".time-period-option").forEach((o) => {
-    o.addEventListener("click", (e) => {
-      e.stopPropagation();
-      filterMonth = parseInt(o.dataset.value, 10);
-      monthTrigger.textContent = `${filterMonth}월`;
-      closeMonthPanel();
-      monthPanel.querySelectorAll(".time-period-option").forEach((opt) => {
-        opt.classList.toggle("is-selected", opt.dataset.value === String(filterMonth));
-      });
-      void loadArchiveMonthThenRender();
-    });
-  });
-  yearPrevBtn.addEventListener("click", () => {
-    filterYear -= 1;
-    yearDisplay.textContent = filterYear;
-    void loadArchiveMonthThenRender();
-  });
-  yearNextBtn.addEventListener("click", () => {
-    filterYear += 1;
-    yearDisplay.textContent = filterYear;
-    void loadArchiveMonthThenRender();
-  });
+  startDateInput.addEventListener("change", onDateRangeChange);
+  endDateInput.addEventListener("change", onDateRangeChange);
 
   searchInput.addEventListener("input", () => {
     renderList();
@@ -473,7 +441,7 @@ export function render() {
 
   /* 패널에 붙인 뒤(다음 마이크로태스크)에 hydrate — 그 전에는 el.isConnected 가 false라 목록이 안 그려짐 */
   queueMicrotask(() => {
-    void loadArchiveMonthThenRender();
+    void loadArchiveRangeThenRender();
   });
 
   return el;

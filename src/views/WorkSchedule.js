@@ -13,6 +13,10 @@ import {
 import { readTimeLedgerEntriesRaw } from "../utils/timeLedgerEntriesModel.js";
 import { confirmDeleteRow } from "../utils/confirmModal.js";
 
+/** 모바일 근무 행 추가 FAB — 시간가계부 과제 기록 FAB와 동일 아이콘 */
+const WORK_SCHEDULE_MOBILE_FAB_SVG =
+  '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>';
+
 /** localStorage `debug_work_schedule` = `1` 이면 근무표 UI/하이드레이트 진단 로그 */
 function wsUiLog(...args) {
   try {
@@ -23,23 +27,6 @@ function wsUiLog(...args) {
 }
 
 let _workScheduleHydrateGeneration = 0;
-
-/** renderTableView마다 document 리스너가 쌓이면 이전 인스턴스·비연결 DOM과 꼬임 → 전역 1개만 유지 */
-let _wsMonthDropdownDocCloser = null;
-function bindWorkScheduleMonthDropdownOutsideClose(monthDropdownWrap, monthPanel) {
-  if (_wsMonthDropdownDocCloser) {
-    document.removeEventListener("click", _wsMonthDropdownDocCloser);
-    _wsMonthDropdownDocCloser = null;
-  }
-  _wsMonthDropdownDocCloser = (e) => {
-    if (!monthDropdownWrap || !monthPanel) return;
-    if (!monthDropdownWrap.contains(e.target)) {
-      monthPanel.classList.remove("is-open");
-      monthDropdownWrap.classList.remove("is-open");
-    }
-  };
-  document.addEventListener("click", _wsMonthDropdownDocCloser);
-}
 
 const ENTRY_ID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -636,7 +623,7 @@ function createWorkTypeInput(initialValue, onUpdate, onTypeSelect) {
   return { wrap, input };
 }
 
-function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHours) {
+function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHours, isMobile = false) {
   const tr = document.createElement("tr");
   tr.className = "work-schedule-row";
   const initialId = initialData.id != null ? String(initialData.id).trim() : "";
@@ -821,7 +808,14 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
   const delBtn = document.createElement("button");
   delBtn.type = "button";
   delBtn.className = "work-schedule-btn-delete";
-  delBtn.textContent = "삭제";
+  if (isMobile) {
+    delBtn.textContent = "X";
+    delBtn.classList.add("work-schedule-btn-delete--mobile-x");
+    delBtn.style.opacity = "1";
+    delBtn.setAttribute("aria-label", "행 삭제");
+  } else {
+    delBtn.textContent = "삭제";
+  }
   delBtn.title = "행 삭제";
   delBtn.addEventListener("click", () => {
     confirmDeleteRow(() => {
@@ -1077,21 +1071,12 @@ export function render(opts = {}) {
       "시작·마감 시간은 시간가계부의 근무하기 기록을 기준으로 표시됩니다. 시간을 바꾸려면 시간가계부에서 수정해 주세요.";
     contentWrap.appendChild(notice);
     const now = new Date();
-    let filterType = "month";
-    let filterYear = now.getFullYear();
-    let filterMonth = now.getMonth() + 1;
-    let filterStartDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-    let filterEndDate = filterStartDate;
-
-    function formatDateForDayFilter(dateStr) {
-      if (!dateStr || dateStr.length < 10) return "";
-      const d = new Date(dateStr + "T12:00:00");
-      if (isNaN(d.getTime())) return "";
-      const month = d.getMonth() + 1;
-      const day = d.getDate();
-      const weekday = d.toLocaleDateString("ko-KR", { weekday: "short" });
-      return `${month}월 ${day}일 (${weekday})`;
-    }
+    const y0 = now.getFullYear();
+    const mo0 = now.getMonth();
+    const pad2 = (n) => String(n).padStart(2, "0");
+    const defaultRangeStart = `${y0}-${pad2(mo0 + 1)}-01`;
+    const lastDayOfMonth = new Date(y0, mo0 + 1, 0).getDate();
+    const defaultRangeEnd = `${y0}-${pad2(mo0 + 1)}-${pad2(lastDayOfMonth)}`;
 
     const dailyHoursWrap = document.createElement("div");
     dailyHoursWrap.className = "work-schedule-daily-hours-wrap";
@@ -1128,178 +1113,18 @@ export function render(opts = {}) {
     dailyHoursWrap.appendChild(sumInlineWrap);
 
     const filterBar = document.createElement("div");
-    filterBar.className = "work-schedule-filter-bar";
+    filterBar.className = "work-schedule-filter-bar work-schedule-filter-bar--range-only";
     filterBar.innerHTML = `
-      <div class="time-filter-tabs">
-        <button type="button" class="time-filter-btn active" data-filter="month">월별</button>
-        <button type="button" class="time-filter-btn" data-filter="day">하루</button>
-        <button type="button" class="time-filter-btn" data-filter="range">날짜 선택</button>
-      </div>
-      <div class="time-filter-day-wrap" data-filter-wrap="day" style="display:none">
-        <div class="time-filter-day-nav">
-          <button type="button" class="time-filter-day-prev" aria-label="이전 날짜">&lt;</button>
-          <span class="time-filter-day-display">${formatDateForDayFilter(filterStartDate)}</span>
-          <button type="button" class="time-filter-day-next" aria-label="다음 날짜">&gt;</button>
-        </div>
-      </div>
-      <div class="time-filter-month-wrap" data-filter-wrap="month">
-        <div class="asset-cashflow-dropdown-wrap">
-          <button type="button" class="time-period-trigger asset-cashflow-trigger" id="work-schedule-month-trigger">${filterMonth}월</button>
-          <div class="time-period-panel asset-cashflow-panel" id="work-schedule-month-panel">
-            ${Array.from({ length: 12 }, (_, i) => {
-              const m = i + 1;
-              return `<div class="time-period-option" data-value="${m}">${m}월</div>`;
-            }).join("")}
-          </div>
-        </div>
-        <div class="asset-cashflow-year-nav">
-          <button type="button" class="asset-cashflow-year-btn" aria-label="이전 연도">&lt;</button>
-          <span class="asset-cashflow-year-display">${filterYear}</span>
-          <button type="button" class="asset-cashflow-year-btn" aria-label="다음 연도">&gt;</button>
-        </div>
-      </div>
-      <div class="time-filter-range-wrap" data-filter-wrap="range" style="display:none">
-        <input type="date" class="time-filter-start-date" name="work-schedule-filter-start" />
-        <span>~</span>
-        <input type="date" class="time-filter-end-date" name="work-schedule-filter-end" />
+      <div class="time-filter-range-wrap work-schedule-date-range-wrap">
+        <input type="date" class="time-filter-start-date" name="work-schedule-filter-start" aria-label="시작일" />
+        <span class="work-schedule-date-range-sep">~</span>
+        <input type="date" class="time-filter-end-date" name="work-schedule-filter-end" aria-label="종료일" />
       </div>
     `;
-
-    const dayWrap = filterBar.querySelector("[data-filter-wrap='day']");
-    const monthWrap = filterBar.querySelector("[data-filter-wrap='month']");
-    const rangeWrap = filterBar.querySelector("[data-filter-wrap='range']");
-    const dayDisplay = filterBar.querySelector(".time-filter-day-display");
-    const dayPrevBtn = filterBar.querySelector(".time-filter-day-prev");
-    const dayNextBtn = filterBar.querySelector(".time-filter-day-next");
     const startDateInput = filterBar.querySelector(".time-filter-start-date");
     const endDateInput = filterBar.querySelector(".time-filter-end-date");
-    const monthTrigger = filterBar.querySelector("#work-schedule-month-trigger");
-    const monthPanel = filterBar.querySelector("#work-schedule-month-panel");
-    const monthDropdownWrap = filterBar.querySelector(".time-filter-month-wrap .asset-cashflow-dropdown-wrap");
-    const yearDisplay = filterBar.querySelector(".asset-cashflow-year-display");
-    const yearPrevBtn = filterBar.querySelector(".time-filter-month-wrap .asset-cashflow-year-btn:first-child");
-    const yearNextBtn = filterBar.querySelector(".time-filter-month-wrap .asset-cashflow-year-btn:last-child");
-
-    monthPanel.querySelectorAll(".time-period-option").forEach((o) => {
-      o.classList.toggle("is-selected", o.dataset.value === String(filterMonth));
-    });
-
-    monthTrigger.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      monthPanel.classList.toggle("is-open");
-      monthDropdownWrap.classList.toggle("is-open");
-    });
-    monthPanel.querySelectorAll(".time-period-option").forEach((o) => {
-      o.addEventListener("click", (e) => {
-        e.stopPropagation();
-        filterMonth = parseInt(o.dataset.value, 10);
-        monthTrigger.textContent = `${filterMonth}월`;
-        monthPanel.classList.remove("is-open");
-        monthDropdownWrap.classList.remove("is-open");
-        monthPanel.querySelectorAll(".time-period-option").forEach((opt) => {
-          opt.classList.toggle("is-selected", opt.dataset.value === String(filterMonth));
-        });
-        applyFilter();
-      });
-    });
-    yearPrevBtn.addEventListener("click", () => {
-      filterYear -= 1;
-      yearDisplay.textContent = filterYear;
-      applyFilter();
-    });
-    yearNextBtn.addEventListener("click", () => {
-      filterYear += 1;
-      yearDisplay.textContent = filterYear;
-      applyFilter();
-    });
-    bindWorkScheduleMonthDropdownOutsideClose(monthDropdownWrap, monthPanel);
-
-    function updateDayDisplay() {
-      if (dayDisplay) dayDisplay.textContent = formatDateForDayFilter(filterStartDate);
-    }
-
-    dayPrevBtn?.addEventListener("click", () => {
-      const d = new Date(filterStartDate + "T12:00:00");
-      d.setDate(d.getDate() - 1);
-      filterStartDate = filterEndDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      startDateInput.value = filterStartDate;
-      endDateInput.value = filterEndDate;
-      updateDayDisplay();
-      applyFilter();
-    });
-    dayNextBtn?.addEventListener("click", () => {
-      const d = new Date(filterStartDate + "T12:00:00");
-      d.setDate(d.getDate() + 1);
-      filterStartDate = filterEndDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      startDateInput.value = filterStartDate;
-      endDateInput.value = filterEndDate;
-      updateDayDisplay();
-      applyFilter();
-    });
-
-    startDateInput.value = filterStartDate;
-    endDateInput.value = filterEndDate;
-
-    function isDateInRange(dateStr, type, y, m, start, end) {
-      if (!dateStr) return true;
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return false;
-      if (type === "day" && start) {
-        const sel = new Date(start + "T12:00:00");
-        return d.getFullYear() === sel.getFullYear() && d.getMonth() === sel.getMonth() && d.getDate() === sel.getDate();
-      }
-      if (type === "week") {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const weekAgo = new Date(today);
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        d.setHours(0, 0, 0, 0);
-        return d >= weekAgo && d <= today;
-      }
-      if (type === "month") {
-        return d.getFullYear() === y && d.getMonth() === m - 1;
-      }
-      if (type === "range" && start && end) {
-        const s = new Date(start);
-        const e = new Date(end);
-        s.setHours(0, 0, 0, 0);
-        e.setHours(23, 59, 59, 999);
-        d.setHours(0, 0, 0, 0);
-        return d >= s && d <= e;
-      }
-      return true;
-    }
-
-    function applyFilter() {
-      const type = filterType;
-      const y = filterYear;
-      const m = filterMonth;
-      const start = startDateInput.value || filterStartDate;
-      const end = endDateInput.value || filterEndDate;
-      tableWrap.querySelectorAll(".work-schedule-row").forEach((tr) => {
-        const dateInput = tr.querySelector(".work-schedule-input-date");
-        const dateStr = dateInput?.value || "";
-        const show = isDateInRange(dateStr, type, y, m, start, end);
-        tr.style.display = show ? "" : "none";
-      });
-      updateSum();
-    }
-
-    filterBar.querySelectorAll(".time-filter-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        filterType = btn.dataset.filter;
-        filterBar.querySelectorAll(".time-filter-btn").forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        dayWrap.style.display = filterType === "day" ? "" : "none";
-        monthWrap.style.display = filterType === "month" ? "" : "none";
-        rangeWrap.style.display = filterType === "range" ? "" : "none";
-        if (filterType === "day") updateDayDisplay();
-        applyFilter();
-      });
-    });
-    startDateInput.addEventListener("change", applyFilter);
-    endDateInput.addEventListener("change", applyFilter);
+    startDateInput.value = defaultRangeStart;
+    endDateInput.value = defaultRangeEnd;
 
     const tableWrap = document.createElement("div");
     tableWrap.className = "work-schedule-table-wrap";
@@ -1331,6 +1156,10 @@ export function render(opts = {}) {
       <tbody></tbody>
       <tfoot class="work-schedule-tfoot"></tfoot>
     `;
+    if (mobile) {
+      const thActions = table.querySelector(".work-schedule-th-actions");
+      if (thActions) thActions.textContent = "삭제";
+    }
 
     const tbody = table.querySelector("tbody");
     const tfoot = table.querySelector("tfoot");
@@ -1356,6 +1185,33 @@ export function render(opts = {}) {
       const total = getHoursSum(tableWrap);
       sumInline.textContent = formatTimeAccumulation(total) || "0";
     }
+
+    function isRowDateInRange(dateStr, rangeStart, rangeEnd) {
+      if (!dateStr) return true;
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return false;
+      const s = new Date(rangeStart);
+      const e = new Date(rangeEnd);
+      s.setHours(0, 0, 0, 0);
+      e.setHours(23, 59, 59, 999);
+      d.setHours(0, 0, 0, 0);
+      return d >= s && d <= e;
+    }
+
+    function applyFilter() {
+      const start = startDateInput.value || defaultRangeStart;
+      const end = endDateInput.value || defaultRangeEnd;
+      tableWrap.querySelectorAll(".work-schedule-row").forEach((tr) => {
+        const dateInput = tr.querySelector(".work-schedule-input-date");
+        const dateStr = dateInput?.value || "";
+        const show = isRowDateInRange(dateStr, start, end);
+        tr.style.display = show ? "" : "none";
+      });
+      updateSum();
+    }
+
+    startDateInput.addEventListener("change", applyFilter);
+    endDateInput.addEventListener("change", applyFilter);
 
     const onUpdate = () => {
       save();
@@ -1409,16 +1265,17 @@ export function render(opts = {}) {
     const initialRows = getMergedInitialRows();
     wsUiLog("renderTableView: merged row count", initialRows.length);
     initialRows.forEach((row) => {
-      const tr = createRow(row, onUpdate, el, applyFilter, getDailyHoursFn);
+      const tr = createRow(row, onUpdate, el, applyFilter, getDailyHoursFn, mobile);
       tbody.appendChild(tr);
     });
 
-    addBtn.addEventListener("click", () => {
-      const tr = createRow({}, onUpdate, el, applyFilter, getDailyHoursFn);
+    function addNewWorkScheduleRow() {
+      const tr = createRow({}, onUpdate, el, applyFilter, getDailyHoursFn, mobile);
       tbody.appendChild(tr);
       applyFilter();
       save();
-    });
+    }
+    addBtn.addEventListener("click", addNewWorkScheduleRow);
 
     const topRow = document.createElement("div");
     topRow.className = "work-schedule-top-row";
@@ -1426,6 +1283,22 @@ export function render(opts = {}) {
     topRow.appendChild(filterBar);
     contentWrap.appendChild(topRow);
     contentWrap.appendChild(tableWrap);
+    if (mobile) {
+      const fabWrap = document.createElement("div");
+      fabWrap.className = "work-schedule-mobile-fab-wrap";
+      const fabBtn = document.createElement("button");
+      fabBtn.type = "button";
+      fabBtn.className = "todo-cards-add-btn work-schedule-mobile-fab-btn";
+      fabBtn.title = "근무 행 추가";
+      fabBtn.setAttribute("aria-label", "근무 행 추가");
+      fabBtn.innerHTML = WORK_SCHEDULE_MOBILE_FAB_SVG;
+      fabBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        addNewWorkScheduleRow();
+      });
+      fabWrap.appendChild(fabBtn);
+      contentWrap.appendChild(fabWrap);
+    }
     applyFilter();
     const visibleRows = [...tableWrap.querySelectorAll(".work-schedule-row")].filter(
       (tr) => tr.style.display !== "none",

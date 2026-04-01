@@ -94,15 +94,8 @@ export function render() {
     header.appendChild(label);
     header.appendChild(h);
     el.appendChild(header);
-  } else {
-    const header = document.createElement("header");
-    header.className = "dream-view-header diary-mobile-header";
-    const h = document.createElement("h1");
-    h.className = "dream-view-title";
-    h.textContent = "감정기록";
-    header.appendChild(h);
-    el.appendChild(header);
   }
+  /* 모바일: 상단 h1 제거 — 탭·본문 영역만(하단 탭 라벨로 구분) */
 
   const inner = document.createElement("div");
   inner.className = "diary-view-inner";
@@ -669,11 +662,6 @@ export function render() {
         }
         scrollWrap.appendChild(card);
       });
-    } else if (mobile && fullEntryList.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "diary-paper diary-feed-empty";
-      empty.textContent = "일기가 없습니다. + 버튼으로 추가하세요.";
-      scrollWrap.appendChild(empty);
     } else if (currentTabId === "3" && currentEntry) {
       paper.className = "diary-paper diary-paper-qa diary-paper-tab3";
       if (!currentEntry.q1 && currentEntry.q1 !== "") currentEntry.q1 = "";

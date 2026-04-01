@@ -187,6 +187,36 @@ export async function hydrateTimeLedgerEntriesForArchiveMonth(year, month) {
   return pulledOk;
 }
 
+/**
+ * 아카이브: 선택한 날짜 구간(YYYY-MM-DD 포함)을 서버에서 받아 로컬에 반영 후 동기.
+ * Supabase는 `pullTimeLedgerEntriesForDateRange`와 동일(entry_date gte/lte).
+ */
+export async function hydrateTimeLedgerEntriesForArchiveRange(rangeStart, rangeEnd) {
+  if (!supabase) {
+    console.info("[archive] [데이터] 기간 동기화 스킵", { 이유: "Supabase 클라이언트 없음" });
+    return false;
+  }
+  const rs = String(rangeStart || "").trim();
+  const re = String(rangeEnd || "").trim();
+  const ymd = /^\d{4}-\d{2}-\d{2}$/;
+  if (!ymd.test(rs) || !ymd.test(re)) {
+    console.warn("[archive] [데이터] 기간 형식 오류", { rangeStart: rs, rangeEnd: re });
+    return false;
+  }
+  if (rs > re) {
+    console.warn("[archive] [데이터] 시작일이 종료일보다 늦음", { rangeStart: rs, rangeEnd: re });
+    return false;
+  }
+  attachTimeLedgerEntriesSaveListener();
+  console.info("[archive] [데이터] 선택 기간", { rangeStart: rs, rangeEnd: re });
+  const pulledOk = await pullTimeLedgerEntriesForDateRange(rs, re);
+  console.info("[archive] [데이터] 로컬→서버 syncTimeLedgerEntriesToSupabase 백그라운드");
+  void syncTimeLedgerEntriesToSupabase().catch((e) =>
+    console.warn("[time-ledger-entries] archive range hydrate sync", e),
+  );
+  return pulledOk;
+}
+
 export async function pushAllLocalTimeLedgerEntriesIfServerEmpty() {
   const userId = await getSessionUserId();
   if (!userId || !supabase) return;
