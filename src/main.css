@@ -10766,8 +10766,9 @@ body {
   color: var(--text-muted);
 }
 
+/* 행 호버: 근무유형 기본칩(불투명 #d8d2c0)과 구분되게 같은 색·더 투명 */
 .work-schedule-table tbody tr:hover td {
-  background: var(--ui-surface-alt);
+  background: rgba(216, 210, 192, 0.22);
 }
 
 .work-schedule-tfoot {
@@ -10937,7 +10938,7 @@ body {
   z-index: 6;
 }
 .work-schedule-table tbody tr:hover .work-schedule-cell-date {
-  background: var(--ui-surface-alt) !important;
+  background: rgba(216, 210, 192, 0.22) !important;
 }
 .work-schedule-table td.work-schedule-cell-start-time,
 .work-schedule-table td.work-schedule-cell-end-time {
