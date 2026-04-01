@@ -1363,7 +1363,7 @@ function aggregateFocusByHour(rows) {
   return byHour;
 }
 
-/** 시간(소수)을 "Xh Ym" 형식으로 표시 */
+/** 시간(소수)을 "Xh Ym" 형식으로 표시 (단위 소문자) */
 function formatHoursDisplay(hours) {
   if (hours < 0 || !isFinite(hours)) return "0h 0m";
   const h = Math.floor(hours);
@@ -3534,11 +3534,24 @@ export function render() {
   const tabsFilterRow = document.createElement("div");
   tabsFilterRow.className = "time-ledger-tabs-filter-row";
   const mobileTabsSummary = document.createElement("div");
-  mobileTabsSummary.className = "time-ledger-mobile-tabs-summary";
+  mobileTabsSummary.className =
+    "time-ledger-mobile-tabs-summary time-ledger-summary-panel";
   mobileTabsSummary.innerHTML = `
-    <div class="time-ledger-summary-label">총 기록 시간</div>
-    <div class="time-ledger-summary-value">
-      <span class="time-ledger-summary-num time-ledger-mobile-tabs-tracked-num">0</span><span class="time-ledger-summary-unit time-ledger-mobile-tabs-tracked-unit">h 0m</span>
+    <div class="time-ledger-summary-cell">
+      <div class="time-ledger-summary-label">총 기록 시간</div>
+      <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-tracked">0</span><span class="time-ledger-summary-unit">h</span><span class="time-ledger-summary-num time-ledger-summary-tracked">0</span><span class="time-ledger-summary-unit">m</span></div>
+    </div>
+    <div class="time-ledger-summary-cell">
+      <div class="time-ledger-summary-label">생산적 시간</div>
+      <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-productive">0</span><span class="time-ledger-summary-unit">h</span><span class="time-ledger-summary-num time-ledger-summary-productive">0</span><span class="time-ledger-summary-unit">m</span></div>
+    </div>
+    <div class="time-ledger-summary-cell">
+      <div class="time-ledger-summary-label">환산 금액</div>
+      <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-price">0</span><span class="time-ledger-summary-unit">원</span></div>
+    </div>
+    <div class="time-ledger-summary-cell">
+      <div class="time-ledger-summary-label">소비한 시급</div>
+      <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-wasted">0</span><span class="time-ledger-summary-unit">원</span></div>
     </div>
   `;
   function syncMobileTabsSummaryDisplay() {
@@ -6856,18 +6869,28 @@ export function render() {
   function updateTotal() {
     updateHourlyHint();
 
-    const setHoursParts = (numEl, unitEl, hours) => {
-      if (!numEl || !unitEl) return;
+    /** 요약 칸: 시 숫자·분 숫자는 크게, H·M 글자만 단위(작게) */
+    function fillTimeSummaryHM(valueEl, hours, kind) {
+      if (!valueEl) return;
+      const role =
+        kind === "productive"
+          ? "time-ledger-summary-productive"
+          : "time-ledger-summary-tracked";
+      const num = (n) =>
+        `<span class="time-ledger-summary-num ${role}">${n}</span>`;
+      const u = (s) => `<span class="time-ledger-summary-unit">${s}</span>`;
       if (hours <= 0 || !isFinite(hours)) {
-        numEl.textContent = "0";
-        unitEl.textContent = "h 0m";
+        valueEl.innerHTML = `${num("0")}${u("h")}${num("0")}${u("m")}`;
         return;
       }
       const h = Math.floor(hours);
       const m = Math.round((hours - h) * 60);
-      numEl.textContent = String(h);
-      unitEl.textContent = m === 0 ? "h" : `h ${m}m`;
-    };
+      if (m === 0) {
+        valueEl.innerHTML = `${num(String(h))}${u("h")}`;
+        return;
+      }
+      valueEl.innerHTML = `${num(String(h))}${u("h")}${num(String(m))}${u("m")}`;
+    }
 
     /* 1. 시간기록하기: 요약 패널 + 테이블 행 또는 카드 목록 */
     const allTable = contentWrap.querySelector(
@@ -6932,22 +6955,18 @@ export function render() {
         });
       }
 
-      const trackedNum = summaryPanelEl.querySelector(
-        ".time-ledger-summary-tracked",
+      const trackedValueEl = summaryPanelEl.querySelector(
+        ".time-ledger-summary-cell:nth-child(1) .time-ledger-summary-value",
       );
-      const trackedUnit = trackedNum?.nextElementSibling;
-      setHoursParts(trackedNum, trackedUnit, totalHrs);
-      const prodNum = summaryPanelEl.querySelector(
-        ".time-ledger-summary-productive",
+      fillTimeSummaryHM(trackedValueEl, totalHrs, "tracked");
+      const productiveValueEl = summaryPanelEl.querySelector(
+        ".time-ledger-summary-cell:nth-child(2) .time-ledger-summary-value",
       );
-      const prodUnit = prodNum?.nextElementSibling;
-      setHoursParts(prodNum, prodUnit, productiveHrs);
+      fillTimeSummaryHM(productiveValueEl, productiveHrs, "productive");
       const priceNum = summaryPanelEl.querySelector(
         ".time-ledger-summary-price",
       );
-      const priceUnit = summaryPanelEl.querySelector(
-        ".time-ledger-summary-unit-block",
-      );
+      const priceUnit = priceNum?.nextElementSibling;
       if (priceNum) priceNum.textContent = formatPrice(totalPrice);
       if (priceUnit) priceUnit.textContent = "원";
       const wastedNum = summaryPanelEl.querySelector(
@@ -6956,6 +6975,17 @@ export function render() {
       const wastedUnit = wastedNum?.nextElementSibling;
       if (wastedNum) wastedNum.textContent = formatPrice(wastedValue);
       if (wastedUnit) wastedUnit.textContent = "원";
+      const mobileStrip = el.querySelector(".time-ledger-mobile-tabs-summary");
+      if (mobileStrip && summaryPanelEl) {
+        summaryPanelEl
+          .querySelectorAll(":scope > .time-ledger-summary-cell")
+          .forEach((cell, i) => {
+            const dst = mobileStrip.querySelectorAll(
+              ":scope > .time-ledger-summary-cell",
+            )[i];
+            if (dst) dst.innerHTML = cell.innerHTML;
+          });
+      }
       const overHrs = totalHrs > 24 ? totalHrs - 24 : 0;
       if (allTable && allTfoot) {
         const overRow = allTfoot.querySelector(".time-ledger-over-row");
@@ -6971,27 +7001,6 @@ export function render() {
           totalOverEl.classList.toggle("has-over", overHrs > 0);
         }
       }
-    }
-
-    const mobileTabsSummaryEl = el.querySelector(
-      ".time-ledger-mobile-tabs-summary",
-    );
-    if (mobileTabsSummaryEl) {
-      let mobileTotalHrs = 0;
-      contentWrap
-        .querySelectorAll(".time-ledger-mobile-card")
-        .forEach((card) => {
-          const rd = card._rowData;
-          if (!rd || isEmptyTimeRow(rd)) return;
-          mobileTotalHrs += getMobileCardEffectiveHoursForPrice(rd);
-        });
-      const mTrackedNum = mobileTabsSummaryEl.querySelector(
-        ".time-ledger-mobile-tabs-tracked-num",
-      );
-      const mTrackedUnit = mobileTabsSummaryEl.querySelector(
-        ".time-ledger-mobile-tabs-tracked-unit",
-      );
-      setHoursParts(mTrackedNum, mTrackedUnit, mobileTotalHrs);
     }
 
     contentWrap.querySelectorAll(".time-section").forEach((section) => {
@@ -7129,6 +7138,31 @@ export function render() {
     hiddenTableWrap.appendChild(hiddenTable);
     contentWrap.appendChild(hiddenTableWrap);
 
+    if (isMobile) {
+      const summaryPanelForTotals = document.createElement("div");
+      summaryPanelForTotals.className = "time-ledger-summary-panel";
+      summaryPanelForTotals.setAttribute("aria-hidden", "true");
+      summaryPanelForTotals.innerHTML = `
+      <div class="time-ledger-summary-cell">
+        <div class="time-ledger-summary-label">총 기록 시간</div>
+        <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-tracked">0</span><span class="time-ledger-summary-unit">h</span><span class="time-ledger-summary-num time-ledger-summary-tracked">0</span><span class="time-ledger-summary-unit">m</span></div>
+      </div>
+      <div class="time-ledger-summary-cell">
+        <div class="time-ledger-summary-label">생산적 시간</div>
+        <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-productive">0</span><span class="time-ledger-summary-unit">h</span><span class="time-ledger-summary-num time-ledger-summary-productive">0</span><span class="time-ledger-summary-unit">m</span></div>
+      </div>
+      <div class="time-ledger-summary-cell">
+        <div class="time-ledger-summary-label">환산 금액</div>
+        <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-price">0</span><span class="time-ledger-summary-unit">원</span></div>
+      </div>
+      <div class="time-ledger-summary-cell">
+        <div class="time-ledger-summary-label">소비한 시급</div>
+        <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-wasted">0</span><span class="time-ledger-summary-unit">원</span></div>
+      </div>
+    `;
+      contentWrap.appendChild(summaryPanelForTotals);
+    }
+
     const cardsWrap = document.createElement("div");
     cardsWrap.className = isMobile
       ? "time-ledger-mobile-cards"
@@ -7212,18 +7246,18 @@ export function render() {
       summaryPanel.innerHTML = `
       <div class="time-ledger-summary-cell">
         <div class="time-ledger-summary-label">총 기록 시간</div>
-        <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-tracked">0</span><span class="time-ledger-summary-unit">h 0m</span></div>
+        <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-tracked">0</span><span class="time-ledger-summary-unit">h</span><span class="time-ledger-summary-num time-ledger-summary-tracked">0</span><span class="time-ledger-summary-unit">m</span></div>
       </div>
       <div class="time-ledger-summary-cell">
         <div class="time-ledger-summary-label">생산적 시간</div>
-        <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-productive">0</span><span class="time-ledger-summary-unit">h</span></div>
+        <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-productive">0</span><span class="time-ledger-summary-unit">h</span><span class="time-ledger-summary-num time-ledger-summary-productive">0</span><span class="time-ledger-summary-unit">m</span></div>
       </div>
       <div class="time-ledger-summary-cell">
         <div class="time-ledger-summary-label">환산 금액</div>
-        <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-price">0</span><span class="time-ledger-summary-unit time-ledger-summary-unit-block">원</span></div>
+        <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-price">0</span><span class="time-ledger-summary-unit">원</span></div>
       </div>
       <div class="time-ledger-summary-cell">
-        <div class="time-ledger-summary-label">오늘 낭비한 시간의 가치</div>
+        <div class="time-ledger-summary-label">소비한 시급</div>
         <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-wasted">0</span><span class="time-ledger-summary-unit">원</span></div>
       </div>
     `;

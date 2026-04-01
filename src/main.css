@@ -2743,9 +2743,14 @@ body {
   .app-main:has(.home-view) .home-time-summary-grid {
     gap: 0.5rem;
     margin-bottom: 0.75rem;
+    /* 기본 1.75rem만 적용 — 셀에 좌우 패딩이 또 있으면 할일·이벤트(1.75rem)보다 안쪽으로 들어가 보임 */
+    padding-left: 1.75rem;
+    padding-right: 1.75rem;
+    box-sizing: border-box;
   }
   .app-main:has(.home-view) .home-time-summary-cell {
-    padding: 0.6rem 0.75rem;
+    padding: 0.55rem 0;
+    box-sizing: border-box;
   }
   .app-main:has(.home-view) .home-time-summary-value {
     font-size: 1rem;
@@ -2809,7 +2814,7 @@ body {
   .app-main:has(.home-view) .home-event-half .home-view-section-title {
     padding: 0.875rem 1.75rem 0.75rem !important;
   }
-  /* 모바일: 리마인더 본문(No reminders set. 등) 패딩 — 헤더와 동일 */
+  /* 모바일: 리마인더 본문 패딩 — 헤더와 동일 */
   .app-main:has(.home-view) .home-event-half .home-reminder-content {
     padding: 0.875rem 1.75rem 0.75rem !important;
   }
@@ -3045,6 +3050,10 @@ body {
   .app-main:has(.idea-view) .idea-view {
     padding: 0.875rem 0 1rem !important;
     box-sizing: border-box;
+  }
+  /* 모바일: 나의 계정 상단 제목 제거 시 — 본문이 너무 붙지 않게 */
+  .app-main:has(.idea-view) .idea-view.idea-view--mobile {
+    padding-top: 0.35rem !important;
   }
 
   /* 모바일: 나의 계정 — 기본설정·구독·시급 위젯 좌우 패딩 제거(상하는 .time-dashboard-widget 유지) */
@@ -3400,6 +3409,11 @@ body {
   .dream-view-header {
     padding-left: 1.75rem;
     padding-right: 1.75rem;
+  }
+
+  /* 모바일: 자산관리 상단 제목 제거 시 — 본문이 너무 붙지 않게 */
+  .asset-view--mobile {
+    padding-top: 0.35rem;
   }
 
   /* 모바일: 자산관리 뷰 탭 — 근무표 상단(.work-schedule-top-row)과 동일 좌우 패딩(0.75rem) */
@@ -4467,7 +4481,8 @@ body {
   .time-ledger-view .time-ledger-header,
   .time-ledger-view .time-hourly-wrap,
   .time-ledger-view[data-time-content-view="all"] .time-filter-bar,
-  .time-ledger-view[data-time-content-view="all"] .time-ledger-summary-panel {
+  .time-ledger-view[data-time-content-view="all"]
+    .time-ledger-summary-panel:not(.time-ledger-mobile-tabs-summary) {
     display: none !important;
   }
   .time-ledger-view .time-filter-bar {
@@ -4503,38 +4518,80 @@ body {
     flex: 1;
     min-width: 0;
   }
-  .time-ledger-view .time-ledger-mobile-tabs-summary {
-    flex: 1;
+  /* 모바일 시간 기록: 상단 스트립 — 데스크톱과 동일 4칸(총기록·생산·환산·낭비), 한 줄에 맞게 축소 */
+  .time-ledger-view .time-ledger-mobile-tabs-summary.time-ledger-summary-panel {
+    flex: 1 1 100%;
+    width: 100%;
     min-width: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+    margin-top: 0.2rem;
+    padding: 0.4rem 0.75rem 0.45rem;
+    border-top: var(--line-l3);
+    border-bottom: none;
+    margin-bottom: 0;
+    box-sizing: border-box;
+    align-items: stretch;
+  }
+  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell {
     display: flex;
     flex-direction: column;
-    gap: 0.3rem;
-    margin-top: 0.2rem;
-    padding: 0.55rem 0 0.5rem;
-    border-top: var(--line-l3);
-    box-sizing: border-box;
+    gap: 0.12rem;
+    padding: 0 0.2rem;
+    min-width: 0;
+    border-right: var(--line-l3);
+  }
+  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:last-child {
+    border-right: none;
   }
   .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-label {
-    font-size: var(--fs-caption);
-    font-weight: 500;
-    line-height: 1.3;
+    font-size: clamp(0.5rem, 2.2vw, var(--fs-caption));
+    font-weight: var(--fw-mono);
+    line-height: 1.2;
     color: var(--text-caption-color);
-    letter-spacing: 0.03em;
+    letter-spacing: 0.05em;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
   }
   .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-value {
     display: flex;
     align-items: baseline;
-    flex-wrap: wrap;
-    gap: 0.25em;
-    line-height: 1.15;
+    justify-content: center;
+    flex-wrap: nowrap;
+    gap: 0.08em;
+    line-height: 1.2;
+    min-width: 0;
   }
-  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-num,
-  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-unit {
+  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-num {
     font-family: var(--font-heading);
-    font-size: 1.25rem;
-    font-weight: 200;
-    letter-spacing: -0.01em;
+    font-size: 1.0625rem;
+    font-weight: 600;
+    letter-spacing: -0.03em;
     color: var(--text-ink);
+    line-height: 1.1;
+  }
+  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(1) .time-ledger-summary-unit,
+  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(2) .time-ledger-summary-unit {
+    font-family: var(--font-body);
+    font-size: 0.5rem;
+    font-weight: var(--fw-small);
+    letter-spacing: 0.04em;
+    color: var(--text-placeholder);
+    line-height: 1.2;
+    text-transform: lowercase;
+  }
+  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(3) .time-ledger-summary-unit,
+  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(4) .time-ledger-summary-unit {
+    font-family: var(--font-body);
+    font-size: 0.5rem;
+    font-weight: var(--fw-small);
+    letter-spacing: 0.02em;
+    color: var(--text-caption-color);
+    line-height: 1.2;
   }
   .time-ledger-view .time-ledger-tabs-filter-row .time-filter-bar {
     flex-shrink: 0;
@@ -23897,17 +23954,22 @@ body.kpi-resizing {
 }
 
 .time-ledger-summary-label {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  font-weight: 300;
-  letter-spacing: 0.14em;
+  font-size: var(--fs-caption);
+  color: var(--text-caption-color);
+  font-weight: var(--fw-mono);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .time-ledger-summary-value {
   display: flex;
   align-items: baseline;
-  flex-wrap: wrap;
-  gap: 0.2em;
+  flex-wrap: nowrap;
+  gap: 0.12em;
+  min-height: 1.35rem;
 }
 
 .time-ledger-summary-num {
@@ -23937,27 +23999,40 @@ body.kpi-resizing {
   color: var(--text-ink);
 }
 
-/* 총 기록 시간, 생산적 시간: h/mm/m 단위도 숫자와 동일 스타일·폰트사이즈 */
+/* 총 기록·생산·환산·소비한 시급: 숫자 크게 · 단위(h/m·원) 작게·연한 톤 */
 .time-ledger-summary-cell:nth-child(1) .time-ledger-summary-unit,
 .time-ledger-summary-cell:nth-child(2) .time-ledger-summary-unit {
-  font-family: var(--font-heading);
-  font-size: 1.25rem;
-  font-weight: 200;
-  letter-spacing: -0.01em;
-  color: var(--text-ink);
+  font-family: var(--font-body);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-small);
+  letter-spacing: 0.04em;
+  color: var(--text-placeholder);
+  line-height: 1.2;
+  text-transform: lowercase;
+}
+
+.time-ledger-summary-cell:nth-child(3) .time-ledger-summary-unit,
+.time-ledger-summary-cell:nth-child(4) .time-ledger-summary-unit {
+  font-family: var(--font-body);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-small);
+  letter-spacing: 0.02em;
+  color: var(--text-caption-color);
+  line-height: 1.2;
 }
 
 .time-ledger-summary-unit {
-  font-size: 0.8rem;
-  color: #9ca3af;
-  font-weight: 500;
+  font-size: var(--fs-small);
+  color: var(--text-caption-color);
+  font-weight: var(--fw-small);
 }
 
+/* 레거시: 환산 금액을 세로 블록으로 두지 않음(원은 숫자와 한 줄) */
 .time-ledger-summary-unit-block {
-  display: block;
-  font-size: 0.8rem;
-  color: #9ca3af;
-  margin-top: 0.1rem;
+  display: inline;
+  font-size: inherit;
+  color: inherit;
+  margin-top: 0;
 }
 
 .time-ledger-table-wrap {

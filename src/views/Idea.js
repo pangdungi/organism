@@ -61,17 +61,26 @@ export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content idea-view";
 
-  const header = document.createElement("header");
-  header.className = "dream-view-header";
-  const label = document.createElement("span");
-  label.className = "dream-view-label";
-  label.textContent = "MY ACCOUNT";
-  const title = document.createElement("h1");
-  title.className = "dream-view-title idea-view-title";
-  title.textContent = "나의 계정";
-  header.appendChild(label);
-  header.appendChild(title);
-  el.appendChild(header);
+  const mobileViewport =
+    typeof window !== "undefined" && window.matchMedia("(max-width: 48rem)").matches;
+  if (mobileViewport) {
+    el.classList.add("idea-view--mobile");
+  }
+
+  if (!mobileViewport) {
+    const header = document.createElement("header");
+    header.className = "dream-view-header";
+    const label = document.createElement("span");
+    label.className = "dream-view-label";
+    label.textContent = "MY ACCOUNT";
+    const title = document.createElement("h1");
+    title.className = "dream-view-title idea-view-title";
+    title.textContent = "나의 계정";
+    header.appendChild(label);
+    header.appendChild(title);
+    el.appendChild(header);
+  }
+  /* 모바일: 상단 MY ACCOUNT·나의 계정 제거 — 위젯 그리드부터 */
 
   const grid = document.createElement("div");
   grid.className = "time-dashboard-view idea-widget-grid";

@@ -340,7 +340,6 @@ function fillTodoListContent(todoListContent) {
   todoListContent.innerHTML = "";
   const tasks = getTasksDueToday();
   if (tasks.length === 0) {
-    todoListContent.innerHTML = '<p class="home-event-empty home-todo-empty">오늘 마감인 할일이 없습니다.</p>';
     return;
   }
   const table = document.createElement("table");
@@ -388,7 +387,6 @@ function fillReminderContent(reminderContent) {
   reminderContent.innerHTML = "";
   const list = getRemindersFromAllSections();
   if (list.length === 0) {
-    reminderContent.innerHTML = '<p class="home-event-empty">No reminders set.</p>';
     return;
   }
   const escapeHtml = (s) => {
@@ -554,7 +552,7 @@ export function render() {
       <span class="home-time-summary-value">${timeSummary.priceDisplay}<span class="home-time-summary-unit">원</span></span>
     </div>
     <div class="home-time-summary-cell">
-      <span class="home-time-summary-label">오늘 낭비한 시간의 가치</span>
+      <span class="home-time-summary-label">소비한 시급</span>
       <span class="home-time-summary-value">${timeSummary.wastedDisplay}<span class="home-time-summary-unit">원</span></span>
     </div>
   `;
@@ -579,9 +577,7 @@ export function render() {
   const eventList = document.createElement("div");
   eventList.className = "home-event-list home-event-list-grid";
   const events = getEventsForCurrentMonth();
-  if (events.length === 0) {
-    eventList.innerHTML = '<p class="home-event-empty">이번 달에 날짜가 배정된 이벤트가 없습니다.</p>';
-  } else {
+  if (events.length > 0) {
     const byDate = {};
     events.forEach((ev) => {
       const dateKey = (ev.dueDate || ev.startDate || "").slice(0, 10);

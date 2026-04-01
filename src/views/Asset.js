@@ -6190,17 +6190,26 @@ export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content asset-view";
 
-  const header = document.createElement("header");
-  header.className = "dream-view-header asset-header";
-  const label = document.createElement("span");
-  label.className = "dream-view-label";
-  label.textContent = "ASSET";
-  const h = document.createElement("h1");
-  h.className = "dream-view-title asset-title";
-  h.textContent = "자산관리";
-  header.appendChild(label);
-  header.appendChild(h);
-  el.appendChild(header);
+  const mobileViewport =
+    typeof window !== "undefined" && window.matchMedia("(max-width: 48rem)").matches;
+  if (mobileViewport) {
+    el.classList.add("asset-view--mobile");
+  }
+
+  if (!mobileViewport) {
+    const header = document.createElement("header");
+    header.className = "dream-view-header asset-header";
+    const label = document.createElement("span");
+    label.className = "dream-view-label";
+    label.textContent = "ASSET";
+    const h = document.createElement("h1");
+    h.className = "dream-view-title asset-title";
+    h.textContent = "자산관리";
+    header.appendChild(label);
+    header.appendChild(h);
+    el.appendChild(header);
+  }
+  /* 모바일: 상단 ASSET·자산관리 제거 — 가계부 등 탭부터 */
 
   const viewTabs = document.createElement("div");
   viewTabs.className = "asset-view-tabs";
