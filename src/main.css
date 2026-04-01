@@ -4405,19 +4405,25 @@ body {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.125rem;
-    padding: 0.35rem 0 0.45rem;
+    gap: 0.3rem;
+    margin-top: 0.2rem;
+    padding: 0.55rem 0 0.5rem;
+    border-top: var(--line-l3);
+    box-sizing: border-box;
   }
   .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-label {
-    font-size: 0.7rem;
-    line-height: 1.2;
+    font-size: var(--fs-caption);
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--text-caption-color);
+    letter-spacing: 0.03em;
   }
   .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-value {
     display: flex;
     align-items: baseline;
     flex-wrap: wrap;
-    gap: 0.2em;
-    line-height: 1.2;
+    gap: 0.25em;
+    line-height: 1.15;
   }
   .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-num,
   .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-unit {
