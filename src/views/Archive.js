@@ -81,20 +81,82 @@ export function render() {
   searchWrap.appendChild(searchIcon);
   searchWrap.appendChild(searchInput);
 
+  const dateNavCluster = document.createElement("div");
+  dateNavCluster.className = "time-filter-nav-cluster archive-date-nav-cluster";
   const rangeWrap = document.createElement("div");
   rangeWrap.className = "time-filter-range-wrap archive-date-range-filter";
+  rangeWrap.setAttribute("data-filter-wrap", "range");
   rangeWrap.innerHTML = `
-    <input type="date" class="time-filter-start-date" name="archive-filter-start" aria-label="시작일" />
-    <span class="archive-date-range-sep">~</span>
-    <input type="date" class="time-filter-end-date" name="archive-filter-end" aria-label="종료일" />
+    <div class="time-filter-date-field">
+      <input type="date" class="time-filter-start-date" name="archive-filter-start" aria-label="시작일" />
+      <span class="time-filter-date-label time-filter-date-label--start" aria-hidden="true"></span>
+      <img src="/toolbaricons/calendar-alt.svg" alt="" class="time-filter-date-cal-icon" width="14" height="14" aria-hidden="true" />
+    </div>
+    <span class="time-filter-range-sep">~</span>
+    <div class="time-filter-date-field">
+      <input type="date" class="time-filter-end-date" name="archive-filter-end" aria-label="종료일" />
+      <span class="time-filter-date-label time-filter-date-label--end" aria-hidden="true"></span>
+      <img src="/toolbaricons/calendar-alt.svg" alt="" class="time-filter-date-cal-icon" width="14" height="14" aria-hidden="true" />
+    </div>
   `;
   const startDateInput = rangeWrap.querySelector(".time-filter-start-date");
   const endDateInput = rangeWrap.querySelector(".time-filter-end-date");
+
+  /** 근무기록 트래커와 동일: YYYY-MM-DD → "2026년 4월 1일(수)" (모바일 라벨) */
+  function formatArchiveFilterDateKr(dStr) {
+    if (!dStr || !/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return "";
+    const [y, mo, d] = dStr.split("-").map(Number);
+    const dt = new Date(y, mo - 1, d);
+    const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+    return `${y}년 ${mo}월 ${d}일(${weekdays[dt.getDay()]})`;
+  }
+  function syncArchiveDateLabels() {
+    const startLabel = rangeWrap.querySelector(".time-filter-date-label--start");
+    const endLabel = rangeWrap.querySelector(".time-filter-date-label--end");
+    if (startLabel)
+      startLabel.textContent = formatArchiveFilterDateKr(
+        startDateInput.value || "",
+      );
+    if (endLabel)
+      endLabel.textContent = formatArchiveFilterDateKr(
+        endDateInput.value || "",
+      );
+  }
+
   startDateInput.value = defaultRangeStart;
   endDateInput.value = defaultRangeEnd;
+  syncArchiveDateLabels();
+  startDateInput.addEventListener("input", syncArchiveDateLabels);
+  endDateInput.addEventListener("input", syncArchiveDateLabels);
 
+  if (mobileViewport) {
+    const openArchiveRangeDate = (inp) => {
+      if (!inp) return;
+      try {
+        inp.focus({ preventScroll: true });
+      } catch (_) {
+        inp.focus();
+      }
+      if (typeof inp.showPicker === "function") {
+        try {
+          inp.showPicker();
+          return;
+        } catch (_) {}
+      }
+      inp.click();
+    };
+    rangeWrap.querySelectorAll(".time-filter-date-field").forEach((field) => {
+      const inp = field.querySelector('input[type="date"]');
+      if (!inp) return;
+      field.addEventListener("click", () => {
+        openArchiveRangeDate(inp);
+      });
+    });
+  }
+
+  dateNavCluster.appendChild(rangeWrap);
   searchRow.appendChild(searchWrap);
-  searchRow.appendChild(rangeWrap);
+  searchRow.appendChild(dateNavCluster);
   header.appendChild(searchRow);
   el.appendChild(header);
 
@@ -419,6 +481,7 @@ export function render() {
   }
 
   function onDateRangeChange() {
+    syncArchiveDateLabels();
     void loadArchiveRangeThenRender();
   }
   startDateInput.addEventListener("change", onDateRangeChange);

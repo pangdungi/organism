@@ -548,12 +548,12 @@ export function render() {
       <span class="home-time-summary-value">${timeSummary.productiveDisplay}</span>
     </div>
     <div class="home-time-summary-cell">
-      <span class="home-time-summary-label">환산 금액</span>
-      <span class="home-time-summary-value">${timeSummary.priceDisplay}<span class="home-time-summary-unit">원</span></span>
+      <span class="home-time-summary-label">투자한 시급</span>
+      <span class="home-time-summary-value home-time-summary-value--invested">${timeSummary.priceDisplay}<span class="home-time-summary-unit">원</span></span>
     </div>
     <div class="home-time-summary-cell">
       <span class="home-time-summary-label">소비한 시급</span>
-      <span class="home-time-summary-value">${timeSummary.wastedDisplay}<span class="home-time-summary-unit">원</span></span>
+      <span class="home-time-summary-value home-time-summary-value--spent">${timeSummary.wastedDisplay}<span class="home-time-summary-unit">원</span></span>
     </div>
   `;
 

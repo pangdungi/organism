@@ -1115,16 +1115,78 @@ export function render(opts = {}) {
     const filterBar = document.createElement("div");
     filterBar.className = "work-schedule-filter-bar work-schedule-filter-bar--range-only";
     filterBar.innerHTML = `
-      <div class="time-filter-range-wrap work-schedule-date-range-wrap">
-        <input type="date" class="time-filter-start-date" name="work-schedule-filter-start" aria-label="시작일" />
-        <span class="work-schedule-date-range-sep">~</span>
-        <input type="date" class="time-filter-end-date" name="work-schedule-filter-end" aria-label="종료일" />
+      <div class="time-filter-nav-cluster work-schedule-date-nav-cluster">
+        <div class="time-filter-range-wrap work-schedule-date-range-wrap" data-filter-wrap="range">
+          <div class="time-filter-date-field">
+            <input type="date" class="time-filter-start-date" name="work-schedule-filter-start" aria-label="시작일" />
+            <span class="time-filter-date-label time-filter-date-label--start" aria-hidden="true"></span>
+            <img src="/toolbaricons/calendar-alt.svg" alt="" class="time-filter-date-cal-icon" width="14" height="14" aria-hidden="true" />
+          </div>
+          <span class="time-filter-range-sep">~</span>
+          <div class="time-filter-date-field">
+            <input type="date" class="time-filter-end-date" name="work-schedule-filter-end" aria-label="종료일" />
+            <span class="time-filter-date-label time-filter-date-label--end" aria-hidden="true"></span>
+            <img src="/toolbaricons/calendar-alt.svg" alt="" class="time-filter-date-cal-icon" width="14" height="14" aria-hidden="true" />
+          </div>
+        </div>
       </div>
     `;
     const startDateInput = filterBar.querySelector(".time-filter-start-date");
     const endDateInput = filterBar.querySelector(".time-filter-end-date");
+
+    /** 근무기록 트래커: 연도 포함(모바일 라벨) — "2026년 4월 1일(수)" */
+    function formatWorkScheduleFilterDateKr(dStr) {
+      if (!dStr || !/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return "";
+      const [y, mo, d] = dStr.split("-").map(Number);
+      const dt = new Date(y, mo - 1, d);
+      const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+      return `${y}년 ${mo}월 ${d}일(${weekdays[dt.getDay()]})`;
+    }
+    function syncWorkScheduleDateLabels() {
+      const startLabel = filterBar.querySelector(".time-filter-date-label--start");
+      const endLabel = filterBar.querySelector(".time-filter-date-label--end");
+      if (startLabel)
+        startLabel.textContent = formatWorkScheduleFilterDateKr(
+          startDateInput.value || "",
+        );
+      if (endLabel)
+        endLabel.textContent = formatWorkScheduleFilterDateKr(
+          endDateInput.value || "",
+        );
+    }
+
     startDateInput.value = defaultRangeStart;
     endDateInput.value = defaultRangeEnd;
+    syncWorkScheduleDateLabels();
+    startDateInput.addEventListener("input", syncWorkScheduleDateLabels);
+    endDateInput.addEventListener("input", syncWorkScheduleDateLabels);
+
+    if (mobile) {
+      const openWorkScheduleRangeDate = (inp) => {
+        if (!inp) return;
+        try {
+          inp.focus({ preventScroll: true });
+        } catch (_) {
+          inp.focus();
+        }
+        if (typeof inp.showPicker === "function") {
+          try {
+            inp.showPicker();
+            return;
+          } catch (_) {
+            /* Safari 등에서 제한될 수 있음 → click 폴백 */
+          }
+        }
+        inp.click();
+      };
+      filterBar.querySelectorAll(".time-filter-date-field").forEach((field) => {
+        const inp = field.querySelector('input[type="date"]');
+        if (!inp) return;
+        field.addEventListener("click", () => {
+          openWorkScheduleRangeDate(inp);
+        });
+      });
+    }
 
     const tableWrap = document.createElement("div");
     tableWrap.className = "work-schedule-table-wrap";
@@ -1199,6 +1261,7 @@ export function render(opts = {}) {
     }
 
     function applyFilter() {
+      syncWorkScheduleDateLabels();
       const start = startDateInput.value || defaultRangeStart;
       const end = endDateInput.value || defaultRangeEnd;
       tableWrap.querySelectorAll(".work-schedule-row").forEach((tr) => {

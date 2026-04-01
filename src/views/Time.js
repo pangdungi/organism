@@ -2095,27 +2095,27 @@ export function getTodayTimeSummary() {
   } catch (_) {}
   let totalHrs = 0;
   let productiveHrs = 0;
-  let totalPrice = 0;
+  let investedPrice = 0;
   let wastedValue = 0;
   rows.forEach((r) => {
     const hrs = parseTimeToHours(r.timeTracked) || 0;
     totalHrs += hrs;
     const pv = (r.productivity || getProductivityFromCategory(r.category) || "").trim();
-    if (pv === "productive") productiveHrs += hrs;
-    let price = hrs * hourlyRate;
+    if (pv === "productive") {
+      productiveHrs += hrs;
+      investedPrice += hrs * hourlyRate;
+    }
     if (pv === "nonproductive") {
-      price *= -1;
       wastedValue += hrs * hourlyRate;
-    } else if (pv === "other" || pv === "그 외" || !pv) price = 0;
-    totalPrice += price;
+    }
   });
   const trackedDisplay = totalHrs <= 0 || !isFinite(totalHrs) ? "0h 0m" : formatHoursDisplay(totalHrs);
   const productiveDisplay = productiveHrs <= 0 || !isFinite(productiveHrs) ? "0h 0m" : formatHoursDisplay(productiveHrs);
   return {
     trackedDisplay,
     productiveDisplay,
-    priceDisplay: formatPrice(totalPrice),
-    wastedDisplay: formatPrice(wastedValue),
+    priceDisplay: `+${formatPrice(investedPrice)}`,
+    wastedDisplay: `-${formatPrice(wastedValue)}`,
   };
 }
 
@@ -3417,8 +3417,6 @@ export function render() {
   const startDateInput = filterBar.querySelector(".time-filter-start-date");
   const endDateInput = filterBar.querySelector(".time-filter-end-date");
   const rangeWrap = filterBar.querySelector("[data-filter-wrap='range']");
-  const dayPrevBtn = filterBar.querySelector(".time-filter-day-prev");
-  const dayNextBtn = filterBar.querySelector(".time-filter-day-next");
   const filterNavCluster = filterBar.querySelector(".time-filter-nav-cluster");
   const taskSetupBtn = document.createElement("button");
   taskSetupBtn.type = "button";
@@ -3440,8 +3438,10 @@ export function render() {
   }
 
   function syncTimeFilterDateLabels() {
-    const startLabel = filterBar.querySelector(".time-filter-date-label--start");
-    const endLabel = filterBar.querySelector(".time-filter-date-label--end");
+    /* 모바일: navCluster가 contentWrap 툴바로 옮겨져도 같은 노드 — filterBar로 찾으면 라벨이 끊김 */
+    const labelRoot = filterNavCluster || filterBar;
+    const startLabel = labelRoot?.querySelector(".time-filter-date-label--start");
+    const endLabel = labelRoot?.querySelector(".time-filter-date-label--end");
     if (startLabel) {
       startLabel.textContent = formatTimeFilterDateKr(
         startDateInput.value || filterStartDate,
@@ -3458,11 +3458,20 @@ export function render() {
   endDateInput.value = filterEndDate;
   syncTimeFilterDateLabels();
 
+  function pickYmdFromFilter(raw, fallback) {
+    const a = (raw && String(raw).trim()) || "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(a)) return a;
+    const b = (fallback && String(fallback).trim()) || "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(b)) return b;
+    return toDateStr(new Date());
+  }
+
   function shiftFilterRangeByDays(delta) {
-    const s0 = startDateInput.value || filterStartDate;
-    const e0 = endDateInput.value || filterEndDate;
-    const sd = new Date(s0 + "T12:00:00");
-    const ed = new Date(e0 + "T12:00:00");
+    const s0 = pickYmdFromFilter(startDateInput.value, filterStartDate);
+    const e0 = pickYmdFromFilter(endDateInput.value, filterEndDate);
+    const sd = new Date(`${s0}T12:00:00`);
+    const ed = new Date(`${e0}T12:00:00`);
+    if (Number.isNaN(sd.getTime()) || Number.isNaN(ed.getTime())) return;
     sd.setDate(sd.getDate() + delta);
     ed.setDate(ed.getDate() + delta);
     filterStartDate = toDateStr(sd);
@@ -3471,13 +3480,38 @@ export function render() {
     endDateInput.value = filterEndDate;
   }
 
-  dayPrevBtn?.addEventListener("click", () => {
-    shiftFilterRangeByDays(-1);
+  /* 모바일에서 툴바로 DOM만 옮겨지므로, 클러스터에 위임해 < > 탭이 항상 동일하게 동작 */
+  filterNavCluster?.addEventListener("click", (e) => {
+    const prev = e.target.closest(".time-filter-day-prev");
+    const next = e.target.closest(".time-filter-day-next");
+    if (!prev && !next) return;
+    e.preventDefault();
+    shiftFilterRangeByDays(prev ? -1 : 1);
     onFilterChange();
   });
-  dayNextBtn?.addEventListener("click", () => {
-    shiftFilterRangeByDays(1);
-    onFilterChange();
+
+  function openTimeLedgerFilterDateInput(inp) {
+    if (!inp) return;
+    try {
+      inp.focus({ preventScroll: true });
+    } catch (_) {
+      inp.focus();
+    }
+    if (typeof inp.showPicker === "function") {
+      try {
+        inp.showPicker();
+        return;
+      } catch (_) {}
+    }
+    inp.click();
+  }
+  filterNavCluster?.querySelectorAll(".time-filter-date-field").forEach((field) => {
+    const inp = field.querySelector('input[type="date"]');
+    if (!inp) return;
+    field.addEventListener("click", () => {
+      if (!window.matchMedia("(max-width: 48rem)").matches) return;
+      openTimeLedgerFilterDateInput(inp);
+    });
   });
 
   startDateInput.addEventListener("change", () => {
@@ -3546,12 +3580,12 @@ export function render() {
       <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-productive">0</span><span class="time-ledger-summary-unit">h</span><span class="time-ledger-summary-num time-ledger-summary-productive">0</span><span class="time-ledger-summary-unit">m</span></div>
     </div>
     <div class="time-ledger-summary-cell">
-      <div class="time-ledger-summary-label">환산 금액</div>
-      <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-price">0</span><span class="time-ledger-summary-unit">원</span></div>
+      <div class="time-ledger-summary-label">투자한 시급</div>
+      <div class="time-ledger-summary-value time-ledger-summary-value--invested"><span class="time-ledger-summary-num time-ledger-summary-price">+0</span><span class="time-ledger-summary-unit">원</span></div>
     </div>
     <div class="time-ledger-summary-cell">
       <div class="time-ledger-summary-label">소비한 시급</div>
-      <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-wasted">0</span><span class="time-ledger-summary-unit">원</span></div>
+      <div class="time-ledger-summary-value time-ledger-summary-value--spent"><span class="time-ledger-summary-num time-ledger-summary-wasted">-0</span><span class="time-ledger-summary-unit">원</span></div>
     </div>
   `;
   function syncMobileTabsSummaryDisplay() {
@@ -6913,7 +6947,7 @@ export function render() {
         ) || 0;
       let totalHrs = 0;
       let productiveHrs = 0;
-      let totalPrice = 0;
+      let investedPrice = 0;
       let wastedValue = 0;
 
       if (allTable) {
@@ -6926,13 +6960,13 @@ export function render() {
           const hrs = parseTimeToHours(val) || 0;
           totalHrs += hrs;
           const pv = (tr._rowData?.productivity || "").trim();
-          if (pv === "productive") productiveHrs += hrs;
-          let price = hrs * hourlyRate;
+          if (pv === "productive") {
+            productiveHrs += hrs;
+            investedPrice += hrs * hourlyRate;
+          }
           if (pv === "nonproductive") {
-            price *= -1;
             wastedValue += hrs * hourlyRate;
-          } else if (pv === "other" || pv === "그 외" || !pv) price = 0;
-          totalPrice += price;
+          }
         });
       } else {
         cardNodes.forEach((card) => {
@@ -6945,13 +6979,13 @@ export function render() {
             getProductivityFromCategory(rd.category) ||
             ""
           ).trim();
-          if (pv === "productive") productiveHrs += hrs;
-          let price = hrs * hourlyRate;
+          if (pv === "productive") {
+            productiveHrs += hrs;
+            investedPrice += hrs * hourlyRate;
+          }
           if (pv === "nonproductive") {
-            price *= -1;
             wastedValue += hrs * hourlyRate;
-          } else if (pv === "other" || pv === "그 외" || !pv) price = 0;
-          totalPrice += price;
+          }
         });
       }
 
@@ -6967,13 +7001,13 @@ export function render() {
         ".time-ledger-summary-price",
       );
       const priceUnit = priceNum?.nextElementSibling;
-      if (priceNum) priceNum.textContent = formatPrice(totalPrice);
+      if (priceNum) priceNum.textContent = `+${formatPrice(investedPrice)}`;
       if (priceUnit) priceUnit.textContent = "원";
       const wastedNum = summaryPanelEl.querySelector(
         ".time-ledger-summary-wasted",
       );
       const wastedUnit = wastedNum?.nextElementSibling;
-      if (wastedNum) wastedNum.textContent = formatPrice(wastedValue);
+      if (wastedNum) wastedNum.textContent = `-${formatPrice(wastedValue)}`;
       if (wastedUnit) wastedUnit.textContent = "원";
       const mobileStrip = el.querySelector(".time-ledger-mobile-tabs-summary");
       if (mobileStrip && summaryPanelEl) {
@@ -7152,12 +7186,12 @@ export function render() {
         <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-productive">0</span><span class="time-ledger-summary-unit">h</span><span class="time-ledger-summary-num time-ledger-summary-productive">0</span><span class="time-ledger-summary-unit">m</span></div>
       </div>
       <div class="time-ledger-summary-cell">
-        <div class="time-ledger-summary-label">환산 금액</div>
-        <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-price">0</span><span class="time-ledger-summary-unit">원</span></div>
+        <div class="time-ledger-summary-label">투자한 시급</div>
+        <div class="time-ledger-summary-value time-ledger-summary-value--invested"><span class="time-ledger-summary-num time-ledger-summary-price">+0</span><span class="time-ledger-summary-unit">원</span></div>
       </div>
       <div class="time-ledger-summary-cell">
         <div class="time-ledger-summary-label">소비한 시급</div>
-        <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-wasted">0</span><span class="time-ledger-summary-unit">원</span></div>
+        <div class="time-ledger-summary-value time-ledger-summary-value--spent"><span class="time-ledger-summary-num time-ledger-summary-wasted">-0</span><span class="time-ledger-summary-unit">원</span></div>
       </div>
     `;
       contentWrap.appendChild(summaryPanelForTotals);
@@ -7218,9 +7252,22 @@ export function render() {
 
       const dateDivider = document.createElement("div");
       dateDivider.className = "date-divider";
-      const today = new Date();
-      dateDivider.textContent =
-        `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, "0")}.${String(today.getDate()).padStart(2, "0")}`;
+      const ymdToDots = (ymd) => {
+        if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return "";
+        const [y, mo, d] = ymd.split("-");
+        return `${y}.${mo}.${d}`;
+      };
+      const startD = pickYmdFromFilter(startDateInput.value, filterStartDate);
+      const endD = pickYmdFromFilter(endDateInput.value, filterEndDate);
+      if (startD === endD) {
+        dateDivider.textContent =
+          ymdToDots(startD) || ymdToDots(toDateStr(new Date()));
+      } else {
+        const a = ymdToDots(startD);
+        const b = ymdToDots(endD);
+        dateDivider.textContent =
+          a && b ? `${a} – ${b}` : a || b || ymdToDots(toDateStr(new Date()));
+      }
 
       const fabWrap = document.createElement("div");
       fabWrap.className = "time-ledger-mobile-fab-wrap";
@@ -7253,12 +7300,12 @@ export function render() {
         <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-productive">0</span><span class="time-ledger-summary-unit">h</span><span class="time-ledger-summary-num time-ledger-summary-productive">0</span><span class="time-ledger-summary-unit">m</span></div>
       </div>
       <div class="time-ledger-summary-cell">
-        <div class="time-ledger-summary-label">환산 금액</div>
-        <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-price">0</span><span class="time-ledger-summary-unit">원</span></div>
+        <div class="time-ledger-summary-label">투자한 시급</div>
+        <div class="time-ledger-summary-value time-ledger-summary-value--invested"><span class="time-ledger-summary-num time-ledger-summary-price">+0</span><span class="time-ledger-summary-unit">원</span></div>
       </div>
       <div class="time-ledger-summary-cell">
         <div class="time-ledger-summary-label">소비한 시급</div>
-        <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-wasted">0</span><span class="time-ledger-summary-unit">원</span></div>
+        <div class="time-ledger-summary-value time-ledger-summary-value--spent"><span class="time-ledger-summary-num time-ledger-summary-wasted">-0</span><span class="time-ledger-summary-unit">원</span></div>
       </div>
     `;
 

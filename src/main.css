@@ -1776,6 +1776,16 @@ body {
   margin-left: 0.15em;
 }
 
+.home-time-summary-value.home-time-summary-value--invested,
+.home-time-summary-value.home-time-summary-value--invested .home-time-summary-unit {
+  color: #dc2626;
+}
+
+.home-time-summary-value.home-time-summary-value--spent,
+.home-time-summary-value.home-time-summary-value--spent .home-time-summary-unit {
+  color: #2563eb;
+}
+
 /* Daily(가장 자주 사용) 넓게, Event·Todo 비율 조정 */
 .home-view-three {
   display: grid;
@@ -3097,16 +3107,28 @@ body {
     border-top: none;
     /* 하단 보더 제거: FAB용 padding-bottom 아래에 표와 무관한 가로선만 보이던 문제 */
     border-bottom: none;
+    /* thead 위쪽만 둥근 모서리 — 래퍼 배경과 함께 보이도록 */
+    border-radius: 0.375rem 0.375rem 0 0;
+    -webkit-overflow-scrolling: touch;
   }
   .work-schedule-content-wrap .work-schedule-table-wrap::-webkit-scrollbar {
     display: none;
   }
+  /* thead 상단 모서리: separate + 0 간격 시 th에 radius 적용 가능 */
   .work-schedule-content-wrap .work-schedule-table {
     width: max-content;
     min-width: unset;
     max-width: none;
     table-layout: auto;
     white-space: nowrap;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  .work-schedule-content-wrap .work-schedule-table thead tr:first-child th:first-child {
+    border-top-left-radius: 0.375rem;
+  }
+  .work-schedule-content-wrap .work-schedule-table thead tr:first-child th:last-child {
+    border-top-right-radius: 0.375rem;
   }
   /* 모바일: 열별 고정 min-width 완화 — 내용·글자 길이에 맞게 줄어들 수 있게 */
   .work-schedule-content-wrap .work-schedule-table col.work-schedule-col-start-time,
@@ -3161,16 +3183,107 @@ body {
     font-size: 0.8125rem;
     line-height: 1.25;
   }
+  /* 모바일: 근무표 본문 — 근무일(0.8125rem)과 동일. 전역 #app 입력 16px !important 덮어씀 */
+  .work-schedule-content-wrap .work-schedule-table td.work-schedule-cell-start-time,
+  .work-schedule-content-wrap .work-schedule-table td.work-schedule-cell-end-time {
+    font-weight: 400;
+  }
+  #app .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-start-time,
+  #app .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-end-time,
+  #app .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-hours-worked,
+  #app .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-hours,
+  #app .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-memo,
+  #app .work-schedule-content-wrap .work-schedule-table input.time-input-task {
+    font-size: 0.8125rem !important;
+  }
+  #app .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-start-time,
+  #app .work-schedule-content-wrap .work-schedule-table input.work-schedule-input-end-time {
+    font-weight: 400 !important;
+  }
+  .work-schedule-content-wrap .work-schedule-table .work-schedule-time-accumulation-display {
+    font-size: 0.8125rem;
+  }
   /* 모바일: 근무기록 표 — L3(0.5px) 가로·세로 구분선이 묻힘 → 토큰 기본 구분선(L2)으로 */
   .work-schedule-content-wrap .work-schedule-table th,
   .work-schedule-content-wrap .work-schedule-table td {
     border-bottom: var(--divider-default);
     border-right: var(--divider-default);
   }
+  /* 모바일: thead 상단·양끝 외곽선 — 위쪽 둥근 모서리가 배경과 구분되게 */
+  .work-schedule-content-wrap .work-schedule-table thead tr:first-child th {
+    border-top: var(--divider-default);
+  }
+  .work-schedule-content-wrap .work-schedule-table thead tr:first-child th:first-child {
+    border-left: var(--divider-default);
+  }
+  .work-schedule-content-wrap .work-schedule-table thead tr:first-child th:last-child {
+    border-right: var(--divider-default);
+  }
   /* 모바일: 근무일 sticky — 데스크톱과 동일하게 ::after 구분선만(이중 border 방지) */
   .work-schedule-content-wrap .work-schedule-table .work-schedule-th-date,
   .work-schedule-content-wrap .work-schedule-table .work-schedule-cell-date {
     border-right: none !important;
+  }
+  /* 모바일: 하루 근무시간·합계 줄 ↔ 날짜 구간 사이 구분선 */
+  .work-schedule-content-wrap .work-schedule-top-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  /* 한 줄: 숫자·합계가 구분선(아래)에 붙도록 — min-height 제거, flex-end 명시 */
+  .work-schedule-content-wrap .work-schedule-top-row .work-schedule-daily-hours-wrap {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    align-items: flex-end;
+    align-content: flex-end;
+    align-self: stretch;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: var(--line-l3);
+    margin-bottom: 0;
+    min-height: 0;
+    box-sizing: border-box;
+  }
+  /* 모바일: 라벨은 작게, 숫자·h 단위는 한 덩어리로 같은 크기·베이스라인 */
+  .work-schedule-content-wrap .work-schedule-daily-hours-label {
+    font-size: clamp(0.625rem, 2.6vw, 0.6875rem);
+    letter-spacing: 0.02em;
+    align-items: baseline;
+    gap: 0.25rem;
+  }
+  .work-schedule-content-wrap .work-schedule-sum-inline-wrap {
+    font-size: clamp(0.625rem, 2.6vw, 0.6875rem);
+    align-items: flex-end;
+  }
+  /* 숫자를 h와 동일(0.8125rem). 전역 #app input 16px !important 덮어씀 — 이 칸만 작게 통일 */
+  #app .work-schedule-content-wrap .work-schedule-daily-hours-input {
+    font-size: 0.8125rem !important;
+    font-weight: 500;
+    padding: 0 0 0.06rem 0;
+    line-height: 1;
+    vertical-align: baseline;
+    min-height: 0;
+  }
+  .work-schedule-content-wrap .work-schedule-daily-hours-unit {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1;
+    padding-bottom: 0;
+  }
+  .work-schedule-content-wrap .work-schedule-sum-inline-label {
+    font-size: inherit;
+  }
+  .work-schedule-content-wrap .work-schedule-sum-inline {
+    font-size: 0.8125rem;
+  }
+  .work-schedule-content-wrap .work-schedule-top-row .work-schedule-filter-bar {
+    margin-left: 0;
+    width: 100%;
+    margin-bottom: 0;
+    padding-top: 0.15rem;
   }
   /* 모바일: 근무표 필터 — 날짜 선택(기간)만 */
   .work-schedule-content-wrap .work-schedule-filter-bar {
@@ -3181,18 +3294,32 @@ body {
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
   .work-schedule-content-wrap .work-schedule-filter-bar::-webkit-scrollbar {
     display: none;
   }
-  /* 모바일: 근무표 기간만 — 테두리 없음, 날짜 전체 보이게(필요 시 가로 스크롤) */
+  /* 날짜 구간이 부모 가로 전체를 쓰도록(오른쪽 빈 공간 활용) */
+  .work-schedule-content-wrap .work-schedule-filter-bar .work-schedule-date-nav-cluster.time-filter-nav-cluster {
+    flex: 1 1 auto;
+    flex-shrink: 1;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+  /* 모바일: 근무표 기간 — 두 칸이 동일 너비로 펼침, 연도 포함 문장도 말줄임 없이 */
   .work-schedule-content-wrap .work-schedule-filter-bar .work-schedule-date-range-wrap {
     gap: 0.35rem;
     flex: 1 1 auto;
-    justify-content: flex-end;
-    min-width: min(100%, 24rem);
+    width: 100%;
+    max-width: 100%;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    min-width: 0;
   }
-  .work-schedule-content-wrap .work-schedule-filter-bar .work-schedule-date-range-sep {
+  .work-schedule-content-wrap .work-schedule-filter-bar .time-filter-range-sep {
     font-family: var(--font-mono);
     font-size: var(--fs-caption);
     font-weight: var(--fw-mono);
@@ -3201,26 +3328,86 @@ body {
     flex-shrink: 0;
     padding: 0 0.05rem;
   }
-  /* 시간가계부 time-filter-nav-cluster·툴바 날짜와 동일 톤(연한 본문색·모노·300) */
-  .work-schedule-content-wrap .work-schedule-filter-bar .time-filter-start-date,
-  .work-schedule-content-wrap .work-schedule-filter-bar .time-filter-end-date {
-    padding: 0.25rem 0.15rem 0.25rem 0.35rem !important;
-    min-width: 11rem;
+  /* 모바일·근무표: 시간가계부와 동일 톤 — 연도 포함 문장 전체 표시, 칸당 동일 너비 */
+  .work-schedule-view .work-schedule-content-wrap .work-schedule-date-nav-cluster .time-filter-date-field {
+    position: relative;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 0.2rem;
+    min-height: 1.45rem;
+    flex: 1 1 0;
+    min-width: 0;
     max-width: none;
-    width: auto;
-    box-sizing: border-box;
-    border: none !important;
-    background: transparent !important;
-    box-shadow: none !important;
-    border-radius: 0;
+    overflow: visible;
+    isolation: isolate;
+    touch-action: manipulation;
+  }
+  .work-schedule-view .work-schedule-content-wrap .work-schedule-date-nav-cluster .time-filter-date-label {
+    display: block;
+    flex: 0 0 auto;
+    min-width: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-small);
+    font-weight: var(--fw-mono);
     line-height: 1.25;
-    font-family: var(--font-mono) !important;
-    font-size: 16px !important;
-    font-weight: var(--fw-mono) !important;
-    color: var(--text-muted) !important;
-    -webkit-text-fill-color: var(--text-muted);
-    text-align: center;
-    color-scheme: light;
+    color: var(--text-muted);
+    text-align: left;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+    pointer-events: none;
+  }
+  .work-schedule-view .work-schedule-content-wrap .work-schedule-date-nav-cluster .time-filter-date-cal-icon {
+    display: block;
+    width: 0.875rem;
+    height: 0.875rem;
+    opacity: 0.55;
+    object-fit: contain;
+    flex-shrink: 0;
+    pointer-events: none;
+  }
+  .work-schedule-view .work-schedule-content-wrap .work-schedule-date-nav-cluster .time-filter-date-field input.time-filter-start-date,
+  .work-schedule-view .work-schedule-content-wrap .work-schedule-date-nav-cluster .time-filter-date-field input.time-filter-end-date {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    opacity: 1;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    cursor: pointer;
+    z-index: 3;
+    font-size: 1rem;
+    flex: none;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    -webkit-appearance: none;
+    appearance: none;
+    touch-action: manipulation;
+  }
+  .work-schedule-view
+    .work-schedule-content-wrap
+    .work-schedule-date-nav-cluster
+    .time-filter-date-field
+    input.time-filter-start-date::-webkit-calendar-picker-indicator,
+  .work-schedule-view
+    .work-schedule-content-wrap
+    .work-schedule-date-nav-cluster
+    .time-filter-date-field
+    input.time-filter-end-date::-webkit-calendar-picker-indicator {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    cursor: pointer;
+    opacity: 0.01;
   }
 
   /* 모바일: 근무유형 설정 모달 시간 입력 — iOS 줌 방지(16px); 모달은 #app 밖 body에 붙음 */
@@ -3279,8 +3466,8 @@ body {
     flex-wrap: nowrap;
     min-width: 0;
   }
-  /* 아카이브 기간: Small(11px)·캡션색 — 날짜 전체가 잘리지 않게 min-width 확보 */
-  .archive-view .archive-date-range-filter .archive-date-range-sep {
+  /* 아카이브 기간: 근무표·시간기록과 동일 ~ 구분자 */
+  .archive-view .archive-date-range-filter .time-filter-range-sep {
     font-family: var(--font-mono);
     font-size: var(--fs-caption);
     font-weight: var(--fw-mono);
@@ -3288,6 +3475,7 @@ body {
     flex-shrink: 0;
     opacity: 0.85;
     line-height: 1;
+    padding: 0 0.05rem;
   }
   .archive-view .archive-date-range-filter .time-filter-start-date,
   .archive-view .archive-date-range-filter .time-filter-end-date {
@@ -3305,50 +3493,126 @@ body {
     -webkit-text-fill-color: var(--text-caption-color);
     color-scheme: light;
   }
+  .archive-view.archive-view--mobile .archive-date-nav-cluster.time-filter-nav-cluster {
+    width: 100%;
+    max-width: 100%;
+    flex: 1 1 auto;
+    flex-shrink: 1;
+    min-width: 0;
+    border-bottom: var(--line-l2);
+    padding-bottom: 0.55rem;
+    margin-top: 0.15rem;
+    box-sizing: border-box;
+  }
   .archive-view.archive-view--mobile .archive-date-range-filter {
     width: 100%;
     max-width: 100%;
     margin-left: 0;
     margin-right: 0;
-    justify-content: flex-start;
+    justify-content: space-between;
     align-items: center;
     flex-wrap: nowrap;
-    gap: 0.12rem;
+    gap: 0.35rem;
     padding: 0.06rem 0 0;
     padding-left: 0;
     padding-right: 0;
     box-sizing: border-box;
     min-width: 0;
-    overflow: hidden;
-    /* 2단계 축소: 글자·아이콘·높이 전반 (한 줄 유지, 16px 입력 줌 회피) */
-    zoom: 0.88;
   }
-  @supports not (zoom: 1) {
-    .archive-view.archive-view--mobile .archive-date-range-filter {
-      zoom: unset;
-      transform: scale(0.88);
-      transform-origin: left center;
-    }
-  }
-  .archive-view.archive-view--mobile .archive-date-range-filter .archive-date-range-sep {
+  .archive-view.archive-view--mobile .archive-date-range-filter .time-filter-range-sep {
     flex-shrink: 0;
-    font-size: 0.5625rem;
-    opacity: 0.8;
+    font-size: var(--fs-caption);
+    font-weight: var(--fw-mono);
+    color: var(--text-caption-color);
+    line-height: 1;
+    opacity: 0.85;
   }
-  /* 모바일 아카이브 날짜: 2단계 축소에 맞춰 세로·안쪽 여백만 추가로 타이트 */
-  #app .archive-view.archive-view--mobile .archive-date-range-filter input[type="date"],
-  #app .archive-view.archive-view--mobile .archive-date-range-filter input[type="date"]:focus,
-  #app .archive-view.archive-view--mobile .archive-date-range-filter input[type="date"]:focus-visible {
-    padding: 0 0.05rem !important;
-    line-height: 1.15;
-  }
-  .archive-view.archive-view--mobile .archive-date-range-filter .time-filter-start-date,
-  .archive-view.archive-view--mobile .archive-date-range-filter .time-filter-end-date {
+  /* 모바일 아카이브: 근무기록 트래커와 동일 — 한글 라벨 + 캘린더 아이콘, 투명 date input */
+  .archive-view.archive-view--mobile .archive-date-nav-cluster .time-filter-date-field {
+    position: relative;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 0.2rem;
+    min-height: 1.45rem;
     flex: 1 1 0;
     min-width: 0;
-    /* 한 줄 유지: ~ + 구분선 폭 제외 후 반반 */
-    max-width: calc(50% - 0.45rem);
-    width: auto;
+    max-width: none;
+    overflow: visible;
+    isolation: isolate;
+    touch-action: manipulation;
+  }
+  .archive-view.archive-view--mobile .archive-date-nav-cluster .time-filter-date-label {
+    display: block;
+    flex: 0 0 auto;
+    min-width: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-small);
+    font-weight: var(--fw-mono);
+    line-height: 1.25;
+    color: var(--text-muted);
+    text-align: left;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+    pointer-events: none;
+  }
+  .archive-view.archive-view--mobile .archive-date-nav-cluster .time-filter-date-cal-icon {
+    display: block;
+    width: 0.875rem;
+    height: 0.875rem;
+    opacity: 0.55;
+    object-fit: contain;
+    flex-shrink: 0;
+    pointer-events: none;
+  }
+  .archive-view.archive-view--mobile
+    .archive-date-nav-cluster
+    .time-filter-date-field
+    input.time-filter-start-date,
+  .archive-view.archive-view--mobile
+    .archive-date-nav-cluster
+    .time-filter-date-field
+    input.time-filter-end-date {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    min-width: 0 !important;
+    max-width: none;
+    margin: 0;
+    padding: 0 !important;
+    opacity: 1;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    cursor: pointer;
+    z-index: 3;
+    font-size: 1rem;
+    flex: none;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    -webkit-appearance: none;
+    appearance: none;
+    line-height: 1.15;
+    touch-action: manipulation;
+  }
+  .archive-view.archive-view--mobile
+    .archive-date-nav-cluster
+    .time-filter-date-field
+    input.time-filter-start-date::-webkit-calendar-picker-indicator,
+  .archive-view.archive-view--mobile
+    .archive-date-nav-cluster
+    .time-filter-date-field
+    input.time-filter-end-date::-webkit-calendar-picker-indicator {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    cursor: pointer;
+    opacity: 0.01;
   }
   .archive-view.archive-view--mobile .archive-list-section {
     padding-left: 1.35rem;
@@ -3405,6 +3669,139 @@ body {
     min-width: 0;
   }
 
+  /* 모바일: 가계부 — 월별/하루/날짜선택 탭 없이 구간 피커만(아카이브·근무표와 동일 패턴) */
+  .asset-view--mobile .asset-expense-filter-bar {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.35rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    margin-bottom: 0.65rem;
+    box-sizing: border-box;
+  }
+  .asset-view--mobile .asset-expense-filter-bar .asset-expense-date-nav-cluster.time-filter-nav-cluster {
+    width: 100%;
+    max-width: 100%;
+    flex: 1 1 auto;
+    flex-shrink: 1;
+    min-width: 0;
+  }
+  .asset-view--mobile .asset-expense-filter-bar .asset-expense-date-range-wrap {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 0.35rem;
+    padding: 0.06rem 0 0;
+    box-sizing: border-box;
+    min-width: 0;
+  }
+  .asset-view--mobile .asset-expense-filter-bar .asset-expense-date-range-wrap .time-filter-range-sep {
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-caption);
+    font-weight: var(--fw-mono);
+    color: var(--text-caption-color);
+    line-height: 1;
+    opacity: 0.85;
+  }
+  .asset-view--mobile .asset-expense-date-nav-cluster .time-filter-date-field {
+    position: relative;
+    justify-content: flex-start;
+    align-items: center;
+    display: flex;
+    gap: 0.2rem;
+    min-height: 1.45rem;
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: none;
+    overflow: visible;
+    isolation: isolate;
+    touch-action: manipulation;
+  }
+  .asset-view--mobile .asset-expense-date-nav-cluster .time-filter-date-label {
+    display: block;
+    flex: 0 0 auto;
+    min-width: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-small);
+    font-weight: var(--fw-mono);
+    line-height: 1.25;
+    color: var(--text-muted);
+    text-align: left;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+    pointer-events: none;
+  }
+  .asset-view--mobile .asset-expense-date-nav-cluster .time-filter-date-cal-icon {
+    display: block;
+    width: 0.875rem;
+    height: 0.875rem;
+    opacity: 0.55;
+    object-fit: contain;
+    flex-shrink: 0;
+    pointer-events: none;
+  }
+  .asset-view--mobile
+    .asset-expense-date-nav-cluster
+    .time-filter-date-field
+    input.time-filter-start-date,
+  .asset-view--mobile
+    .asset-expense-date-nav-cluster
+    .time-filter-date-field
+    input.time-filter-end-date {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    min-width: 0 !important;
+    max-width: none;
+    margin: 0;
+    padding: 0 !important;
+    opacity: 1;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    cursor: pointer;
+    z-index: 3;
+    font-size: 1rem;
+    flex: none;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    -webkit-appearance: none;
+    appearance: none;
+    line-height: 1.15;
+    touch-action: manipulation;
+  }
+  .asset-view--mobile
+    .asset-expense-date-nav-cluster
+    .time-filter-date-field
+    input.time-filter-start-date::-webkit-calendar-picker-indicator,
+  .asset-view--mobile
+    .asset-expense-date-nav-cluster
+    .time-filter-date-field
+    input.time-filter-end-date::-webkit-calendar-picker-indicator {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    cursor: pointer;
+    opacity: 0.01;
+  }
+  .asset-view--mobile .asset-expense-filter-bar .asset-expense-settings-btn {
+    margin-left: 0;
+    flex-shrink: 0;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+  }
+
   /* 모바일: dream-view 헤더 좌우 패딩 — 꿈·건강·자산관리 등 동일 (1.75rem) */
   .dream-view-header {
     padding-left: 1.75rem;
@@ -3445,6 +3842,107 @@ body {
   }
   .dream-kpi-direction-field .dream-kpi-direction-option > span {
     line-height: 1.35;
+  }
+
+  /* 모바일: 꿈·행복·부수입·건강 등 공통 KPI 카드 — 가로 카드·큰 숫자·추가 카드 전반 축소 */
+  .dream-view .dream-kpi-grid {
+    gap: 0.65rem;
+    padding-bottom: 0.35rem;
+  }
+  .dream-view .dream-kpi-card {
+    min-width: 10.5rem;
+    max-width: 13.25rem;
+    padding: 0.85rem 0.9rem;
+  }
+  .dream-view .dream-kpi-card-name {
+    font-size: clamp(0.95rem, 3.8vw, 1.0625rem);
+    padding-right: 2.25rem;
+    margin-bottom: 0.15rem;
+  }
+  .dream-view .dream-kpi-card-direction-badge {
+    font-size: 0.55rem;
+    padding: 0.1rem 0.28rem;
+    margin-left: 0.25rem;
+  }
+  .dream-view .dream-kpi-card-target-prefix {
+    font-size: 0.6875rem;
+  }
+  .dream-view .dream-kpi-card-current {
+    font-size: 0.72rem;
+    margin-bottom: 0.35rem;
+  }
+  .dream-view .dream-kpi-card-target-num {
+    font-size: clamp(1.125rem, 4.5vw, 1.35rem);
+    margin-top: 0.35rem;
+    margin-bottom: 0.35rem;
+    line-height: 1.15;
+  }
+  .dream-view .dream-kpi-card-target-num .dream-kpi-card-unit {
+    font-size: 0.6875rem;
+  }
+  .dream-view .dream-kpi-card-target-desc {
+    font-size: 0.8125rem;
+    margin-bottom: 0.15rem;
+  }
+  .dream-view .dream-kpi-card-deadline {
+    font-size: 0.8125rem;
+    margin-bottom: 0.5rem;
+  }
+  .dream-view .dream-kpi-card-time {
+    font-size: 0.8125rem;
+    margin-bottom: 0.5rem;
+  }
+  .dream-view .dream-kpi-card-invested {
+    font-size: 0.8125rem;
+    margin-top: 0.35rem;
+  }
+  .dream-view .dream-kpi-card-invested-value {
+    font-size: 0.875rem;
+  }
+  .dream-view .dream-kpi-card-progress {
+    margin-bottom: 0.5rem;
+  }
+  .dream-view .dream-kpi-card-progress-bar {
+    margin-bottom: 0.25rem;
+  }
+  .dream-view .dream-kpi-card-progress-text {
+    font-size: 0.8125rem;
+  }
+  .dream-view .dream-kpi-daily-repeat-wrap {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+  }
+  .dream-view .dream-kpi-time-circle-wrap {
+    margin-top: 0.5rem;
+    gap: 0.25rem;
+  }
+  .dream-view .dream-kpi-time-circle {
+    width: 3.25rem;
+    height: 3.25rem;
+  }
+  .dream-view .dream-kpi-time-circle-label {
+    font-size: 0.58rem;
+  }
+  .dream-view .dream-kpi-time-remaining {
+    font-size: 0.6875rem;
+  }
+  .dream-view .dream-kpi-card-edit {
+    font-size: 0.62rem;
+    padding: 0.1rem 0.25rem;
+  }
+  .dream-view .dream-kpi-add-card {
+    min-width: 10.5rem;
+    max-width: 10.5rem;
+    min-height: 9rem;
+    padding: 0.85rem;
+    font-size: 0.8125rem;
+  }
+  .dream-view .dream-kpi-completed-grid {
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+    gap: 0.65rem;
+  }
+  .dream-view .dream-kpi-completed-toggle {
+    font-size: 0.8125rem;
   }
 
   /* 모바일: 과제 기록/수정 모달 - 높이 확대해 아코디언 펼쳤을 때 내용 모두 볼 수 있게 */
@@ -4518,7 +5016,7 @@ body {
     flex: 1;
     min-width: 0;
   }
-  /* 모바일 시간 기록: 상단 스트립 — 데스크톱과 동일 4칸(총기록·생산·환산·낭비), 한 줄에 맞게 축소 */
+  /* 모바일 시간 기록: 상단 스트립 — 데스크톱과 동일 4칸(총기록·생산·투자한 시급·소비한 시급), 한 줄에 맞게 축소 */
   .time-ledger-view .time-ledger-mobile-tabs-summary.time-ledger-summary-panel {
     flex: 1 1 100%;
     width: 100%;
@@ -4527,7 +5025,7 @@ body {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0;
     margin-top: 0.2rem;
-    padding: 0.4rem 0.75rem 0.45rem;
+    padding: 0.45rem 0 0.5rem;
     border-top: var(--line-l3);
     border-bottom: none;
     margin-bottom: 0;
@@ -4541,6 +5039,12 @@ body {
     padding: 0 0.2rem;
     min-width: 0;
     border-right: var(--line-l3);
+  }
+  /* 금액 칸: 긴 숫자 여유 — 좌우 셀 패딩 제거 */
+  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(3),
+  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(4) {
+    padding-left: 0;
+    padding-right: 0;
   }
   .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:last-child {
     border-right: none;
@@ -4592,6 +5096,26 @@ body {
     letter-spacing: 0.02em;
     color: var(--text-caption-color);
     line-height: 1.2;
+  }
+  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(3) .time-ledger-summary-value--invested .time-ledger-summary-num,
+  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(3) .time-ledger-summary-value--invested .time-ledger-summary-unit {
+    color: #dc2626;
+  }
+  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(4) .time-ledger-summary-value--spent .time-ledger-summary-num,
+  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(4) .time-ledger-summary-value--spent .time-ledger-summary-unit {
+    color: #2563eb;
+  }
+  /* 투자·소비 금액: h/m 숫자보다 한 단계 작게(셀 꽉 참 완화) */
+  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(3) .time-ledger-summary-num.time-ledger-summary-price,
+  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(4) .time-ledger-summary-num.time-ledger-summary-wasted {
+    font-size: clamp(0.75rem, 3.4vw, 0.8125rem);
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.04em;
+  }
+  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(3) .time-ledger-summary-value--invested .time-ledger-summary-unit,
+  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(4) .time-ledger-summary-value--spent .time-ledger-summary-unit {
+    font-size: clamp(0.45rem, 2vw, 0.5rem);
   }
   .time-ledger-view .time-ledger-tabs-filter-row .time-filter-bar {
     flex-shrink: 0;
@@ -4704,6 +5228,8 @@ body {
     align-items: center;
     gap: 0.2rem;
     min-height: 1.45rem;
+    isolation: isolate;
+    touch-action: manipulation;
   }
   .time-ledger-view[data-time-content-view="all"] .time-filter-date-label {
     display: block;
@@ -4726,6 +5252,7 @@ body {
     height: 0.875rem;
     opacity: 0.55;
     object-fit: contain;
+    pointer-events: none;
   }
   .time-ledger-view[data-time-content-view="all"]
     .time-filter-date-field
@@ -4740,9 +5267,11 @@ body {
     max-width: none;
     margin: 0;
     padding: 0;
-    opacity: 0;
+    opacity: 1;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
     cursor: pointer;
-    z-index: 1;
+    z-index: 3;
     font-size: 1rem;
     flex: none;
     border: none;
@@ -4750,6 +5279,23 @@ body {
     box-shadow: none;
     -webkit-appearance: none;
     appearance: none;
+    touch-action: manipulation;
+  }
+  .time-ledger-view[data-time-content-view="all"]
+    .time-filter-date-field
+    input.time-filter-start-date::-webkit-calendar-picker-indicator,
+  .time-ledger-view[data-time-content-view="all"]
+    .time-filter-date-field
+    input.time-filter-end-date::-webkit-calendar-picker-indicator {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    cursor: pointer;
+    opacity: 0.01;
   }
   /* 모바일·보고서/개선: 네이티브 표시 + 연도 숨김(WebKit) */
   .time-ledger-view:not([data-time-content-view="all"])
@@ -6371,7 +6917,7 @@ body {
   outline: none;
   box-shadow: none;
 }
-.work-schedule-content-wrap .work-schedule-filter-bar--range-only .work-schedule-date-range-sep {
+.work-schedule-content-wrap .work-schedule-filter-bar--range-only .time-filter-range-sep {
   font-family: var(--font-mono);
   font-size: var(--fs-caption);
   font-weight: var(--fw-mono);
@@ -23930,7 +24476,7 @@ body.kpi-resizing {
   }
 }
 
-/* 시간가계부 테이블 위 요약 패널 (총 기록시간 / 생산적 시간 / 환산금액 / 낭비한 시간의 가치) */
+/* 시간가계부 테이블 위 요약 패널 (총 기록시간 / 생산적 시간 / 투자한 시급 / 소비한 시급) */
 .time-ledger-summary-panel {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -23939,7 +24485,7 @@ body.kpi-resizing {
   border: none;
   border-bottom: var(--line-l3);
   padding: 0.75rem 1rem;
-  margin-top: 0.75rem;
+  margin-top: 0;
 }
 
 .time-ledger-summary-cell {
@@ -23989,7 +24535,17 @@ body.kpi-resizing {
   font-family: var(--font-heading);
   font-weight: 200;
   letter-spacing: -0.01em;
-  color: var(--text-ink);
+}
+
+/* 투자(생산) 합계: 빨간색 / 소비 합계: 파란색 — nth-child 단위색보다 우선 */
+.time-ledger-summary-cell:nth-child(3) .time-ledger-summary-value--invested .time-ledger-summary-num,
+.time-ledger-summary-cell:nth-child(3) .time-ledger-summary-value--invested .time-ledger-summary-unit {
+  color: #dc2626;
+}
+
+.time-ledger-summary-cell:nth-child(4) .time-ledger-summary-value--spent .time-ledger-summary-num,
+.time-ledger-summary-cell:nth-child(4) .time-ledger-summary-value--spent .time-ledger-summary-unit {
+  color: #2563eb;
 }
 
 .time-ledger-summary-num.time-ledger-summary-tracked,
@@ -24000,7 +24556,7 @@ body.kpi-resizing {
   color: var(--text-ink);
 }
 
-/* 총 기록·생산·환산·소비한 시급: 숫자 크게 · 단위(h/m·원) 작게·연한 톤 */
+/* 총 기록·생산·투자한 시급·소비한 시급: 숫자 크게 · 단위(h/m·원) 작게·연한 톤 */
 .time-ledger-summary-cell:nth-child(1) .time-ledger-summary-unit,
 .time-ledger-summary-cell:nth-child(2) .time-ledger-summary-unit {
   font-family: var(--font-body);
@@ -24028,7 +24584,7 @@ body.kpi-resizing {
   font-weight: var(--fw-small);
 }
 
-/* 레거시: 환산 금액을 세로 블록으로 두지 않음(원은 숫자와 한 줄) */
+/* 레거시: 금액 칸을 세로 블록으로 두지 않음(원은 숫자와 한 줄) */
 .time-ledger-summary-unit-block {
   display: inline;
   font-size: inherit;
@@ -26884,16 +27440,17 @@ body.kpi-resizing {
   margin-top: -1.5rem;
   margin-bottom: 1rem;
   padding: 1rem 1.25rem;
-  border-bottom: var(--divider-subtle);
+  border-bottom: var(--line-l3);
 }
 
+/* 과제 설정·목표 모달 등과 동일 — H1 대신 H2 굵기(500) */
 .dream-kpi-modal-title {
   margin: 0;
   font-family: var(--font-heading);
-  font-size: var(--fs-h1);
-  font-weight: var(--fw-h1);
-  line-height: 1.25;
-  letter-spacing: -0.02em;
+  font-size: var(--fs-h2);
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
   color: var(--text-ink);
 }
 
@@ -26902,21 +27459,26 @@ body.kpi-resizing {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
+  min-width: 3rem;
+  min-height: 3rem;
   padding: 0;
   font-size: var(--modal-close-fs);
   line-height: 1;
   font-family: inherit;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-body);
   background: none;
   border: none;
+  border-radius: 0.375rem;
   cursor: pointer;
+  transition:
+    color 0.2s,
+    background 0.2s;
 }
 
 .dream-kpi-modal-close:hover {
-  color: var(--accent-viridian);
+  color: var(--text-body);
+  background: transparent !important;
 }
 
 .dream-kpi-form {
@@ -33511,6 +34073,13 @@ body.kpi-resizing {
   gap: 0.35rem;
   max-width: 22rem;
 }
+.archive-view .archive-date-nav-cluster.time-filter-nav-cluster {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 22rem;
+}
 .archive-view .archive-date-range-filter .time-filter-start-date,
 .archive-view .archive-date-range-filter .time-filter-end-date {
   min-width: 9.5rem;
@@ -33539,7 +34108,7 @@ body.kpi-resizing {
   appearance: none;
   padding: 0.1rem 0.2rem !important;
 }
-.archive-view .archive-date-range-filter .archive-date-range-sep {
+.archive-view .archive-date-range-filter .time-filter-range-sep {
   color: var(--text-placeholder);
   font-size: var(--fs-caption);
   font-family: var(--font-mono);
