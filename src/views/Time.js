@@ -2111,11 +2111,16 @@ export function getTodayTimeSummary() {
   });
   const trackedDisplay = totalHrs <= 0 || !isFinite(totalHrs) ? "0h 0m" : formatHoursDisplay(totalHrs);
   const productiveDisplay = productiveHrs <= 0 || !isFinite(productiveHrs) ? "0h 0m" : formatHoursDisplay(productiveHrs);
+  /** 홈 요약 막대: 하루 24시간 기준 채움 비율(0~100) */
+  const trackedPct24 = Math.min(100, Math.max(0, (totalHrs / 24) * 100));
+  const productivePct24 = Math.min(100, Math.max(0, (productiveHrs / 24) * 100));
   return {
     trackedDisplay,
     productiveDisplay,
     priceDisplay: `+${formatPrice(investedPrice)}`,
     wastedDisplay: `-${formatPrice(wastedValue)}`,
+    trackedPct24,
+    productivePct24,
   };
 }
 

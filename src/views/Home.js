@@ -268,6 +268,11 @@ function getTasksDueToday() {
             eisenhower: (t.eisenhower || "").trim(),
             isCustom: false,
             isKpiTodo: false,
+            dueDate: due,
+            startDate: (t.startDate || "").slice(0, 10),
+            reminderDate: (t.reminderDate || "").slice(0, 10),
+            reminderTime: (t.reminderTime || "").trim(),
+            sectionLabel: SECTION_LABELS[sectionId] || sectionId,
           });
         });
       });
@@ -291,6 +296,11 @@ function getTasksDueToday() {
             eisenhower: (t.eisenhower || "").trim(),
             isCustom: true,
             isKpiTodo: false,
+            dueDate: due,
+            startDate: (t.startDate || "").slice(0, 10),
+            reminderDate: (t.reminderDate || "").slice(0, 10),
+            reminderTime: (t.reminderTime || "").trim(),
+            sectionLabel: sec.label || sec.id,
           });
         });
       });
@@ -309,6 +319,13 @@ function getTasksDueToday() {
       isKpiTodo: true,
       kpiTodoId: t.kpiTodoId,
       storageKey: t.storageKey,
+      dueDate: due,
+      startDate: (t.startDate || "").slice(0, 10),
+      reminderDate: (t.reminderDate || "").slice(0, 10),
+      reminderTime: (t.reminderTime || "").trim(),
+      classification: (t.classification || "").trim(),
+      sectionLabel: t.sectionLabel || SECTION_LABELS[t.sectionId] || "",
+      kpiId: t.kpiId,
     });
   });
   out.sort((a, b) => (a.name || "").localeCompare(b.name || "", "ko"));
@@ -335,51 +352,163 @@ function updateHomeTaskDone(item, done) {
   } catch (_) {}
 }
 
-/** To do list 영역: 마감일 오늘 할일 + 체크박스 + 우선순위 테이블 */
+const HOME_CARD_EISENHOWER_LABELS = {
+  "urgent-important": "긴급+중요",
+  "important-not-urgent": "중요+여유",
+  "urgent-not-important": "긴급+덜중요",
+  "not-urgent-not-important": "여유+안중요",
+  "not-urgent-": "여유+안중요",
+};
+
+const HOME_TODO_REMINDER_BELL_SVG =
+  '<svg class="todo-card-reminder-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 19.001c0 2.209 1.791 4 4 4s4-1.791 4-4"/><path d="m12 5.999v6"/><path d="m9 8.999h6"/><path d="m22 19.001-3-5.25v-5.752c0-3.866-3.134-7-7-7s-7 3.134-7 7v5.751l-3 5.25h20z"/></svg>';
+
+function isHomeDueOverdue(dueStr) {
+  if (!dueStr || dueStr.length < 10) return false;
+  const parts = String(dueStr).trim().split("-");
+  if (parts.length < 3) return false;
+  const due = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  due.setHours(0, 0, 0, 0);
+  return due.getTime() < today.getTime();
+}
+
+/** 할일 탭 todo-card와 동일 규칙 (TodoList.formatCardDates) */
+function formatHomeTodoCardDates(item) {
+  const startDate = item.startDate || "";
+  const dueDate = item.dueDate || "";
+  if (dueDate && isHomeDueOverdue(dueDate)) {
+    const parts = String(dueDate).trim().split(/[-/]/);
+    if (parts.length >= 3) {
+      const due = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      due.setHours(0, 0, 0, 0);
+      const diffDays = Math.round((due.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+      if (diffDays < 0) return `${Math.abs(diffDays)}일 초과`;
+    }
+  }
+  const toMD = (str) => {
+    if (!str || !String(str).includes("-")) return "";
+    const [, m, d] = str.trim().split("-");
+    return m && d ? `${m}/${d}` : "";
+  };
+  const start = toMD(startDate);
+  const due = toMD(dueDate);
+  if (start && due) return `${start} ~ ${due}`;
+  if (due) return due;
+  if (start) return start;
+  return "";
+}
+
+function formatHomeCardReminder(reminderDate, reminderTime) {
+  if (!(reminderDate || "").trim()) return "";
+  const parts = String(reminderDate).trim().split(/[-/]/);
+  const dateStr = parts.length >= 3 ? `${parts[1]}/${parts[2]}` : reminderDate;
+  return (reminderTime || "").trim() ? `${dateStr} ${(reminderTime || "").trim()}` : dateStr;
+}
+
+/** 할일 목록 탭과 동일 todo-card 마크업 (오늘 탭 전용) */
+function createHomeTodoCard(item) {
+  const card = document.createElement("div");
+  card.className = "todo-card" + (item.done ? " is-done" : "");
+
+  const doneCheck = document.createElement("input");
+  doneCheck.type = "checkbox";
+  doneCheck.className = "todo-done-check todo-card-done";
+  doneCheck.checked = item.done;
+  doneCheck.addEventListener("change", (e) => {
+    e.stopPropagation();
+    updateHomeTaskDone(item, doneCheck.checked);
+    card.classList.toggle("is-done", doneCheck.checked);
+  });
+
+  const nameWrap = document.createElement("div");
+  nameWrap.className = "todo-card-name-wrap";
+  const nameEl = document.createElement("span");
+  nameEl.className = "todo-card-name";
+  nameEl.textContent = item.name;
+  const priorityEl = document.createElement("span");
+  priorityEl.className = "todo-card-priority";
+  priorityEl.textContent = item.eisenhower
+    ? HOME_CARD_EISENHOWER_LABELS[item.eisenhower] || item.eisenhower
+    : "";
+  priorityEl.hidden = !item.eisenhower;
+
+  nameWrap.appendChild(nameEl);
+  nameWrap.appendChild(priorityEl);
+
+  const kpiEl = document.createElement("div");
+  kpiEl.className = "todo-card-kpi";
+  const kpiText = (item.classification || "").trim();
+  kpiEl.textContent = kpiText;
+  kpiEl.hidden = !item.isKpiTodo || !kpiText;
+
+  const datesEl = document.createElement("div");
+  datesEl.className = "todo-card-dates";
+  const homeDateStr = formatHomeTodoCardDates(item);
+  datesEl.textContent = homeDateStr;
+  datesEl.hidden = !homeDateStr || !String(homeDateStr).trim();
+
+  const reminderEl = document.createElement("div");
+  reminderEl.className = "todo-card-reminder";
+  const remText = formatHomeCardReminder(item.reminderDate, item.reminderTime);
+  if (remText) {
+    reminderEl.innerHTML = `${HOME_TODO_REMINDER_BELL_SVG}<span class="todo-card-reminder-text"></span>`;
+    const remSpan = reminderEl.querySelector(".todo-card-reminder-text");
+    if (remSpan) remSpan.textContent = remText;
+    reminderEl.hidden = false;
+  } else {
+    reminderEl.hidden = true;
+  }
+
+  const metaRow = document.createElement("div");
+  metaRow.className = "todo-card-meta-row";
+  metaRow.appendChild(datesEl);
+  metaRow.appendChild(reminderEl);
+  metaRow.hidden = !!(datesEl.hidden && reminderEl.hidden);
+
+  const doneWrap = document.createElement("div");
+  doneWrap.className = "todo-card-done-wrap";
+  doneWrap.appendChild(doneCheck);
+
+  const detailStack = document.createElement("div");
+  detailStack.className = "todo-card-detail-stack";
+  detailStack.appendChild(kpiEl);
+  detailStack.appendChild(metaRow);
+
+  const titleRow = document.createElement("div");
+  titleRow.className = "todo-card-title-row";
+  titleRow.appendChild(doneWrap);
+  titleRow.appendChild(nameWrap);
+  titleRow.appendChild(detailStack);
+
+  const contentCol = document.createElement("div");
+  contentCol.className = "todo-card-content";
+  contentCol.appendChild(titleRow);
+
+  const inner = document.createElement("div");
+  inner.className = "todo-card-inner";
+  inner.appendChild(contentCol);
+  card.appendChild(inner);
+
+  return card;
+}
+
+/** To do list 영역: 마감일 오늘 할일 — 할일 탭과 동일 카드 레이아웃 */
 function fillTodoListContent(todoListContent) {
   todoListContent.innerHTML = "";
   const tasks = getTasksDueToday();
   if (tasks.length === 0) {
     return;
   }
-  const table = document.createElement("table");
-  table.className = "home-todo-list-table";
-  table.innerHTML = `
-    <thead><tr>
-      <th class="home-todo-th-check"></th>
-      <th class="home-todo-th-name">할일</th>
-      <th class="home-todo-th-priority">우선순위</th>
-    </tr></thead>
-    <tbody></tbody>
-  `;
-  const tbody = table.querySelector("tbody");
+  const wrap = document.createElement("div");
+  wrap.className = "todo-cards-wrap home-todo-cards-wrap";
   tasks.forEach((item) => {
-    const tr = document.createElement("tr");
-    tr.className = "home-todo-list-row" + (item.done ? " is-done" : "");
-    const checkTd = document.createElement("td");
-    checkTd.className = "home-todo-td-check";
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.className = "home-todo-done-check";
-    checkbox.checked = item.done;
-    checkbox.addEventListener("change", () => {
-      updateHomeTaskDone(item, checkbox.checked);
-      tr.classList.toggle("is-done", checkbox.checked);
-    });
-    checkTd.appendChild(checkbox);
-    const nameTd = document.createElement("td");
-    nameTd.className = "home-todo-td-name";
-    nameTd.textContent = item.name;
-    const priorityTd = document.createElement("td");
-    priorityTd.className = "home-todo-td-priority";
-    const EISENHOWER_LABELS = { "urgent-important": "긴급+중요", "important-not-urgent": "중요+여유", "urgent-not-important": "긴급+덜중요", "not-urgent-not-important": "여유+안중요", "not-urgent-": "여유+안중요" };
-    priorityTd.textContent = item.eisenhower ? (EISENHOWER_LABELS[item.eisenhower] || item.eisenhower) : "—";
-    tr.appendChild(checkTd);
-    tr.appendChild(nameTd);
-    tr.appendChild(priorityTd);
-    tbody.appendChild(tr);
+    wrap.appendChild(createHomeTodoCard(item));
   });
-  todoListContent.appendChild(table);
+  todoListContent.appendChild(wrap);
 }
 
 /** 리마인더 영역 채우기: 목록 + 시간 + 수정 버튼. 수정 시 모달에서 저장하면 storage 반영 후 이 함수로 갱신. */
@@ -506,52 +635,66 @@ function openReminderModalFromHome(item, onSaved) {
   document.body.appendChild(modal);
 }
 
-const HOME_DATE_TITLE_MONTH_ABBR = [
-  "JAN",
-  "FEB",
-  "MAR",
-  "APR",
-  "MAY",
-  "JUN",
-  "JUL",
-  "AUG",
-  "SEP",
-  "OCT",
-  "NOV",
-  "DEC",
-];
-
+/** 오늘 탭 대형 날짜: 한글 (예: 4월 2일) */
 function formatTodayTitle(date) {
-  const mmm = HOME_DATE_TITLE_MONTH_ABBR[date.getMonth()];
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${mmm}.${d}`;
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  return `${month}월 ${day}일`;
+}
+
+function formatTodayWeekdayKo(date) {
+  return date.toLocaleDateString("ko-KR", { weekday: "long" });
 }
 
 export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content home-view";
 
+  const today = new Date();
+  const dateBlock = document.createElement("div");
+  dateBlock.className = "home-view-date-block";
+
+  const dateKicker = document.createElement("p");
+  dateKicker.className = "home-view-date-kicker";
+  dateKicker.textContent = "ORGANISM PLANNER";
+
   const dateTitle = document.createElement("h1");
   dateTitle.className = "home-view-date-title";
-  dateTitle.textContent = formatTodayTitle(new Date());
+  dateTitle.textContent = formatTodayTitle(today);
+
+  const dateWeekday = document.createElement("p");
+  dateWeekday.className = "home-view-date-weekday";
+  dateWeekday.textContent = formatTodayWeekdayKo(today);
+
+  dateBlock.appendChild(dateKicker);
+  dateBlock.appendChild(dateTitle);
+  dateBlock.appendChild(dateWeekday);
 
   const timeSummary = getTodayTimeSummary();
+  const trackedPct = Math.min(100, Math.max(0, Number(timeSummary.trackedPct24 ?? 0)));
+  const productivePct = Math.min(100, Math.max(0, Number(timeSummary.productivePct24 ?? 0)));
   const summaryGrid = document.createElement("div");
   summaryGrid.className = "home-time-summary-grid";
   summaryGrid.innerHTML = `
-    <div class="home-time-summary-cell">
-      <span class="home-time-summary-label">총 기록 시간</span>
+    <div class="home-time-summary-cell home-time-summary-cell--tracked">
+      <span class="home-time-summary-label">총 기록</span>
       <span class="home-time-summary-value">${timeSummary.trackedDisplay}</span>
+      <div class="home-time-summary-bar" aria-hidden="true">
+        <div class="home-time-summary-bar-fill home-time-summary-bar-fill--viridian" style="width:${trackedPct}%"></div>
+      </div>
     </div>
-    <div class="home-time-summary-cell">
+    <div class="home-time-summary-cell home-time-summary-cell--productive">
       <span class="home-time-summary-label">생산적 시간</span>
       <span class="home-time-summary-value">${timeSummary.productiveDisplay}</span>
+      <div class="home-time-summary-bar" aria-hidden="true">
+        <div class="home-time-summary-bar-fill home-time-summary-bar-fill--mint" style="width:${productivePct}%"></div>
+      </div>
     </div>
-    <div class="home-time-summary-cell">
+    <div class="home-time-summary-cell home-time-summary-cell--money">
       <span class="home-time-summary-label">투자한 시급</span>
       <span class="home-time-summary-value home-time-summary-value--invested">${timeSummary.priceDisplay}<span class="home-time-summary-unit">원</span></span>
     </div>
-    <div class="home-time-summary-cell">
+    <div class="home-time-summary-cell home-time-summary-cell--money">
       <span class="home-time-summary-label">소비한 시급</span>
       <span class="home-time-summary-value home-time-summary-value--spent">${timeSummary.wastedDisplay}<span class="home-time-summary-unit">원</span></span>
     </div>
@@ -562,7 +705,7 @@ export function render() {
 
   const leftCol = document.createElement("div");
   leftCol.className = "home-view-left-col";
-  leftCol.appendChild(dateTitle);
+  leftCol.appendChild(dateBlock);
   leftCol.appendChild(summaryGrid);
 
   const section2 = document.createElement("div");

@@ -2323,7 +2323,9 @@ function createTaskCard(taskData, options = {}) {
 
   const datesEl = document.createElement("div");
   datesEl.className = "todo-card-dates";
-  datesEl.textContent = formatCardDates(taskData);
+  const initialDateStr = formatCardDates(taskData);
+  datesEl.textContent = initialDateStr;
+  datesEl.hidden = !initialDateStr || !String(initialDateStr).trim();
 
   const BELL_ICON = '<svg class="todo-card-reminder-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 19.001c0 2.209 1.791 4 4 4s4-1.791 4-4"/><path d="m12 5.999v6"/><path d="m9 8.999h6"/><path d="m22 19.001-3-5.25v-5.752c0-3.866-3.134-7-7-7s-7 3.134-7 7v5.751l-3 5.25h20z"/></svg>';
   const reminderEl = document.createElement("div");
@@ -2336,21 +2338,30 @@ function createTaskCard(taskData, options = {}) {
     reminderEl.hidden = true;
   }
 
+  const metaRow = document.createElement("div");
+  metaRow.className = "todo-card-meta-row";
+  metaRow.appendChild(datesEl);
+  metaRow.appendChild(reminderEl);
+  metaRow.hidden = !!(datesEl.hidden && reminderEl.hidden);
+
   const doneWrap = document.createElement("div");
   doneWrap.className = "todo-card-done-wrap";
   doneWrap.appendChild(doneCheck);
+
+  const detailStack = document.createElement("div");
+  detailStack.className = "todo-card-detail-stack";
+  detailStack.appendChild(kpiEl);
+  detailStack.appendChild(metaRow);
 
   const titleRow = document.createElement("div");
   titleRow.className = "todo-card-title-row";
   titleRow.appendChild(doneWrap);
   titleRow.appendChild(nameWrap);
+  titleRow.appendChild(detailStack);
 
   const contentCol = document.createElement("div");
   contentCol.className = "todo-card-content";
   contentCol.appendChild(titleRow);
-  contentCol.appendChild(kpiEl);
-  contentCol.appendChild(datesEl);
-  contentCol.appendChild(reminderEl);
 
   const inner = document.createElement("div");
   inner.className = "todo-card-inner";
@@ -2445,7 +2456,9 @@ function createTaskCard(taskData, options = {}) {
     kpiEl.textContent = kpiLabel;
     kpiEl.hidden = !kpiLabel;
     if (kpiLabel) card.dataset.kpiLabel = kpiLabel;
-    datesEl.textContent = formatCardDates(data);
+    const ds = formatCardDates(data);
+    datesEl.textContent = ds;
+    datesEl.hidden = !ds || !String(ds).trim();
     const priorityText = data.eisenhower ? (EISENHOWER_LABELS[data.eisenhower] || data.eisenhower) : "";
     priorityEl.textContent = priorityText;
     priorityEl.hidden = !priorityText;
@@ -2468,9 +2481,12 @@ function createTaskCard(taskData, options = {}) {
       reminderEl.innerHTML = "";
       reminderEl.hidden = true;
     }
+    metaRow.hidden = !!(datesEl.hidden && reminderEl.hidden);
   }
 
   contentCol.addEventListener("click", (e) => {
+    /* 체크박스(완료 토글)는 카드 편집과 분리 — preventDefault가 버블링되며 체크를 막고 모달만 열림 */
+    if (e.target.closest(".todo-card-done-wrap")) return;
     e.preventDefault();
     e.stopPropagation();
     showTodoTaskModal({
