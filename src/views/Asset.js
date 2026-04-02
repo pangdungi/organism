@@ -26,6 +26,10 @@ import {
 } from "../utils/assetNetWorthBundleSupabase.js";
 import { confirmDeleteRow } from "../utils/confirmModal.js";
 
+/** 모바일 지출입력장 거래 추가 FAB — 근무표·시간가계부와 동일 아이콘 */
+const ASSET_EXPENSE_MOBILE_FAB_SVG =
+  '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>';
+
 const DEBT_ROWS_KEY = "asset_debt_rows";
 const ASSET_ROWS_KEY = "asset_asset_rows";
 const REAL_ESTATE_ROWS_KEY = "asset_real_estate_rows";
@@ -4636,7 +4640,14 @@ function renderExpenseView(options = {}) {
   const addBtn = document.createElement("button");
   addBtn.type = "button";
   addBtn.className = "asset-expense-add-task";
-  addBtn.innerHTML = '<span class="asset-expense-add-icon">+</span>';
+  if (expenseMobile) {
+    addBtn.classList.add("todo-cards-add-btn", "asset-expense-mobile-fab-btn");
+    addBtn.innerHTML = ASSET_EXPENSE_MOBILE_FAB_SVG;
+    addBtn.title = "거래 추가";
+    addBtn.setAttribute("aria-label", "거래 추가");
+  } else {
+    addBtn.innerHTML = '<span class="asset-expense-add-icon">+</span>';
+  }
 
   function getTodayDateValue() {
     const d = new Date();
@@ -4859,10 +4870,18 @@ function renderExpenseView(options = {}) {
   const expenseTableContainer = document.createElement("div");
   expenseTableContainer.className = "asset-expense-table-container";
   expenseTableContainer.appendChild(tableWrap);
-  const expenseAddButtonWrap = document.createElement("div");
-  expenseAddButtonWrap.className = "asset-expense-add-button-wrap";
-  expenseAddButtonWrap.appendChild(addBtn);
-  expenseTableContainer.appendChild(expenseAddButtonWrap);
+  /** 모바일: + 는 테이블 아래 행이 아니라 우하단 FAB (근무표와 동일) */
+  let expenseMobileFabWrap = null;
+  if (!expenseMobile) {
+    const expenseAddButtonWrap = document.createElement("div");
+    expenseAddButtonWrap.className = "asset-expense-add-button-wrap";
+    expenseAddButtonWrap.appendChild(addBtn);
+    expenseTableContainer.appendChild(expenseAddButtonWrap);
+  } else {
+    expenseMobileFabWrap = document.createElement("div");
+    expenseMobileFabWrap.className = "asset-expense-mobile-fab-wrap";
+    expenseMobileFabWrap.appendChild(addBtn);
+  }
 
   const settingsBtn = document.createElement("button");
   settingsBtn.type = "button";
@@ -4876,6 +4895,9 @@ function renderExpenseView(options = {}) {
 
   wrap.appendChild(filterBar);
   wrap.appendChild(expenseTableContainer);
+  if (expenseMobile && expenseMobileFabWrap) {
+    wrap.appendChild(expenseMobileFabWrap);
+  }
   return wrap;
 }
 

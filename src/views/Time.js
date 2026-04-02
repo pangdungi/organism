@@ -7327,8 +7327,10 @@ export function render() {
         addInner.className = "time-hourly-add-inner";
         const addBtnEl = document.createElement("button");
         addBtnEl.type = "button";
-        addBtnEl.className = "time-btn-add";
-        addBtnEl.textContent = "+";
+        addBtnEl.className = "todo-add-btn";
+        addBtnEl.title = "과제 기록";
+        addBtnEl.setAttribute("aria-label", "과제 기록");
+        addBtnEl.innerHTML = TIME_LEDGER_ADD_FAB_SVG;
         const addLabel = document.createElement("span");
         addLabel.className = "time-ledger-add-label";
         addLabel.textContent = "과제 기록";

@@ -3541,6 +3541,14 @@ body {
     font-size: 16px !important;
   }
 
+  /* 모바일 근무표: 전역 .calendar-view .calendar-view-header { display:none } 때문에 제목·근무유형 설정 버튼이 숨겨짐 → 표시 복구 */
+  .calendar-view--mobile-workschedule .work-schedule-header.calendar-view-header {
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch;
+    flex-shrink: 0;
+  }
+
   /* 모바일: 근무표·아카이브·나의계정 헤더 패딩 통일 (오늘 탭 date-header와 동일: 0.25rem 1.75rem 1.25rem) */
   .work-schedule-view .work-schedule-header {
     padding: 0.25rem 1.75rem 1.25rem !important;
@@ -5021,6 +5029,33 @@ body {
   }
   .calendar-view--mobile-workschedule .work-schedule-row-add {
     display: none !important;
+  }
+
+  /* 모바일 자산관리 지출입력장: 거래 추가 FAB — 근무표·시간가계부와 동일 위치·색 */
+  .asset-view--mobile .asset-expense-mobile-fab-wrap {
+    position: fixed;
+    bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+    right: 1rem;
+    z-index: 30;
+    background: transparent;
+    padding: 0;
+  }
+  .asset-view--mobile
+    .asset-expense-mobile-fab-wrap
+    .asset-expense-mobile-fab-btn.todo-cards-add-btn {
+    color: var(--ui-btn-primary-fg);
+    background: var(--ui-btn-primary-bg);
+    border: none;
+    box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.15);
+  }
+  .asset-view--mobile
+    .asset-expense-mobile-fab-wrap
+    .asset-expense-mobile-fab-btn.todo-cards-add-btn:hover {
+    background: var(--ui-btn-primary-hover);
+  }
+  .asset-view--mobile .asset-expense-table-wrap {
+    padding-bottom: 4.5rem;
+    box-sizing: border-box;
   }
 
   /* 모바일: 할일 카드 — 내용만큼 늘어나고 잘리지 않음 */
@@ -24455,34 +24490,7 @@ body.kpi-resizing {
   cursor: pointer;
 }
 
-/* 모바일 툴바와 동일: 왼쪽 + 과제 기록 */
-.time-hourly-add-inner .time-btn-add {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  min-width: 2.5rem;
-  min-height: 2.5rem;
-  padding: 0;
-  font-size: 1.25rem;
-  font-family: inherit;
-  color: var(--text-muted);
-  background: var(--content-bg, #f5f1e8);
-  border: var(--line-l4);
-  box-shadow: 0 0.0625rem 0.25rem rgba(0, 0, 0, 0.06);
-  border-radius: var(--modal-radius) !important;
-  line-height: 1;
-  cursor: pointer;
-  transition:
-    color 0.15s,
-    background 0.15s;
-}
-
-.time-hourly-add-inner .time-btn-add:hover {
-  color: var(--accent-viridian);
-  background: var(--ui-surface-alt);
-}
+/* 데스크톱 과제 기록 +: 전역 .todo-add-btn(할일일정 +와 동일). 별도 덮어쓰기 없음 */
 
 .time-hourly-add-inner .time-ledger-add-label {
   color: var(--text-ink);
