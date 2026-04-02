@@ -2,7 +2,10 @@
  * Home 페이지 - 투두리스트 + 이벤트·리마인더 레이아웃
  */
 
-import { getKpiTodosAsTasks, syncKpiTodoCompleted } from "../utils/kpiTodoSync.js";
+import {
+  getKpiTodosAsTasks,
+  syncKpiTodoCompleted,
+} from "../utils/kpiTodoSync.js";
 import { getCustomSections } from "../utils/todoSettings.js";
 import { getTodayTimeSummary } from "./Time.js";
 import { render1DayView } from "./Calendar.js";
@@ -64,7 +67,7 @@ function getEventsForCurrentMonth() {
               endTime: (t.endTime || "").trim(),
               sectionLabel,
               done: !!t.done,
-              itemType: (t.itemType || "todo"),
+              itemType: t.itemType || "todo",
             }),
           );
       });
@@ -93,7 +96,7 @@ function getEventsForCurrentMonth() {
               endTime: (t.endTime || "").trim(),
               sectionLabel: sec.label || sec.id,
               done: !!t.done,
-              itemType: (t.itemType || "todo"),
+              itemType: t.itemType || "todo",
             }),
           );
       });
@@ -195,8 +198,10 @@ function getRemindersFromAllSections() {
     }
   } catch (_) {}
   out.sort((a, b) => {
-    if (a.reminderDate !== b.reminderDate) return a.reminderDate.localeCompare(b.reminderDate);
-    if (a.reminderTime !== b.reminderTime) return (a.reminderTime || "").localeCompare(b.reminderTime || "");
+    if (a.reminderDate !== b.reminderDate)
+      return a.reminderDate.localeCompare(b.reminderDate);
+    if (a.reminderTime !== b.reminderTime)
+      return (a.reminderTime || "").localeCompare(b.reminderTime || "");
     return (a.name || "").localeCompare(b.name || "", "ko");
   });
   return out;
@@ -224,7 +229,13 @@ function isReminderPast(reminderDate, reminderTime) {
   return reminderMs < Date.now();
 }
 
-function updateReminderInStorage(sectionId, taskId, reminderDate, reminderTime, isCustom) {
+function updateReminderInStorage(
+  sectionId,
+  taskId,
+  reminderDate,
+  reminderTime,
+  isCustom,
+) {
   const key = isCustom ? CUSTOM_SECTION_TASKS_KEY : SECTION_TASKS_KEY;
   try {
     const raw = localStorage.getItem(key);
@@ -367,7 +378,11 @@ function isHomeDueOverdue(dueStr) {
   if (!dueStr || dueStr.length < 10) return false;
   const parts = String(dueStr).trim().split("-");
   if (parts.length < 3) return false;
-  const due = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+  const due = new Date(
+    parseInt(parts[0], 10),
+    parseInt(parts[1], 10) - 1,
+    parseInt(parts[2], 10),
+  );
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   due.setHours(0, 0, 0, 0);
@@ -381,11 +396,17 @@ function formatHomeTodoCardDates(item) {
   if (dueDate && isHomeDueOverdue(dueDate)) {
     const parts = String(dueDate).trim().split(/[-/]/);
     if (parts.length >= 3) {
-      const due = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      const due = new Date(
+        parseInt(parts[0], 10),
+        parseInt(parts[1], 10) - 1,
+        parseInt(parts[2], 10),
+      );
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       due.setHours(0, 0, 0, 0);
-      const diffDays = Math.round((due.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+      const diffDays = Math.round(
+        (due.getTime() - today.getTime()) / (24 * 60 * 60 * 1000),
+      );
       if (diffDays < 0) return `${Math.abs(diffDays)}일 초과`;
     }
   }
@@ -406,7 +427,9 @@ function formatHomeCardReminder(reminderDate, reminderTime) {
   if (!(reminderDate || "").trim()) return "";
   const parts = String(reminderDate).trim().split(/[-/]/);
   const dateStr = parts.length >= 3 ? `${parts[1]}/${parts[2]}` : reminderDate;
-  return (reminderTime || "").trim() ? `${dateStr} ${(reminderTime || "").trim()}` : dateStr;
+  return (reminderTime || "").trim()
+    ? `${dateStr} ${(reminderTime || "").trim()}`
+    : dateStr;
 }
 
 /** 할일 목록 탭과 동일 todo-card 마크업 (오늘 탭 전용) */
@@ -526,16 +549,24 @@ function fillReminderContent(reminderContent) {
   list.forEach((item) => {
     const row = document.createElement("div");
     const isPast = isReminderPast(item.reminderDate, item.reminderTime);
-    row.className = "home-reminder-row" + (isPast ? " home-reminder-row--past" : "");
-    const displayTime = formatReminderDisplay(item.reminderDate, item.reminderTime);
+    row.className =
+      "home-reminder-row" + (isPast ? " home-reminder-row--past" : "");
+    const displayTime = formatReminderDisplay(
+      item.reminderDate,
+      item.reminderTime,
+    );
     row.innerHTML = `
       <span class="home-reminder-row-name">${escapeHtml(item.name)}</span>
       <button type="button" class="home-reminder-row-edit" title="Edit reminder">수정</button>
       <span class="home-reminder-row-time">${escapeHtml(displayTime)}</span>
     `;
-    row.querySelector(".home-reminder-row-edit").addEventListener("click", () => {
-      openReminderModalFromHome(item, () => fillReminderContent(reminderContent));
-    });
+    row
+      .querySelector(".home-reminder-row-edit")
+      .addEventListener("click", () => {
+        openReminderModalFromHome(item, () =>
+          fillReminderContent(reminderContent),
+        );
+      });
     reminderContent.appendChild(row);
   });
 }
@@ -582,7 +613,9 @@ function openReminderModalFromHome(item, onSaved) {
   `;
   const close = () => modal.remove();
   modal.querySelector(".dream-kpi-backdrop").addEventListener("click", close);
-  modal.querySelector(".dream-kpi-modal-close").addEventListener("click", close);
+  modal
+    .querySelector(".dream-kpi-modal-close")
+    .addEventListener("click", close);
   const dateInput = modal.querySelector(".todo-reminder-date");
   function toYYYYMMDD(d) {
     const y = d.getFullYear();
@@ -620,7 +653,9 @@ function openReminderModalFromHome(item, onSaved) {
     if (digits.length >= 2) timeInput.value = formatTimeInput(timeInput.value);
   });
   modal.querySelector(".todo-reminder-save").addEventListener("click", () => {
-    const dateVal = (modal.querySelector(".todo-reminder-date").value || "").trim();
+    const dateVal = (
+      modal.querySelector(".todo-reminder-date").value || ""
+    ).trim();
     let timeVal = (timeInput.value || "").trim();
     const digits = timeVal.replace(/\D/g, "");
     if (digits.length >= 2) timeVal = formatTimeInput(timeVal);
@@ -628,7 +663,13 @@ function openReminderModalFromHome(item, onSaved) {
       timeErrorEl.textContent = "시간을 입력하세요.";
       return;
     }
-    updateReminderInStorage(item.sectionId, item.taskId, dateVal, timeVal, item.isCustom);
+    updateReminderInStorage(
+      item.sectionId,
+      item.taskId,
+      dateVal,
+      timeVal,
+      item.isCustom,
+    );
     close();
     if (typeof onSaved === "function") onSaved();
   });
@@ -671,8 +712,14 @@ export function render() {
   dateBlock.appendChild(dateWeekday);
 
   const timeSummary = getTodayTimeSummary();
-  const trackedPct = Math.min(100, Math.max(0, Number(timeSummary.trackedPct24 ?? 0)));
-  const productivePct = Math.min(100, Math.max(0, Number(timeSummary.productivePct24 ?? 0)));
+  const trackedPct = Math.min(
+    100,
+    Math.max(0, Number(timeSummary.trackedPct24 ?? 0)),
+  );
+  const productivePct = Math.min(
+    100,
+    Math.max(0, Number(timeSummary.productivePct24 ?? 0)),
+  );
   const summaryGrid = document.createElement("div");
   summaryGrid.className = "home-time-summary-grid";
   summaryGrid.innerHTML = `
