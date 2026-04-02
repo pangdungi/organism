@@ -751,7 +751,6 @@ export function render() {
     });
   }
   eventHalf.appendChild(eventList);
-  section2.appendChild(eventHalf);
 
   const reminderHalf = document.createElement("div");
   reminderHalf.className = "home-event-half";
@@ -763,9 +762,14 @@ export function render() {
   reminderContent.className = "home-reminder-content";
   fillReminderContent(reminderContent);
   reminderHalf.appendChild(reminderContent);
-  section2.appendChild(reminderHalf);
 
-  /* 예상시간/실제 타임테이블(1일 뷰): 모바일은 세로 스택, 데스크탑(64rem↑)은 Event|Reminder 옆 3분할 */
+  const eventReminderStack = document.createElement("div");
+  eventReminderStack.className = "home-event-reminder-stack";
+  eventReminderStack.appendChild(eventHalf);
+  eventReminderStack.appendChild(reminderHalf);
+  section2.appendChild(eventReminderStack);
+
+  /* 예상시간/실제 타임테이블(1일 뷰): 모바일 세로 스택, 데스크탑(64rem↑)은 [Event+Reminder 한 섹션] | 타임라인 */
   const timelineSection = document.createElement("div");
   timelineSection.className = "home-1day-timeline-section home-embed-1day";
   const timelineTitle = document.createElement("h3");

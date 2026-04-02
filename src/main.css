@@ -1985,7 +1985,7 @@ body {
   }
 }
 
-/* 홈: Daily 캘린더 열 없음 → 넓은 화면(64rem 초과)에서만 투두 | (Event·Reminder·타임라인) 2열 */
+/* 홈: Daily 캘린더 열 없음 → 넓은 화면(64rem 초과)에서만 투두 | ([Event+Reminder]·타임라인) 2열 */
 @media (min-width: 64rem) {
   .home-view-three.home-view-three--no-calendar {
     grid-template-columns: minmax(0, 3fr) minmax(0, 4fr);
@@ -2920,7 +2920,7 @@ body {
     max-height: 36vh;
     overflow: hidden !important;
   }
-  .app-main:has(.home-view) .home-event-half:first-child {
+  .app-main:has(.home-view) .home-event-reminder-stack > .home-event-half:first-child {
     min-height: 13.75rem;
     max-height: 48vh;
   }
@@ -2957,7 +2957,8 @@ body {
     width: 100%;
     max-width: 100%;
     align-self: stretch;
-    border-top: var(--divider-subtle);
+    /* 이벤트·리마인더(.home-event-half) 가로 구분선과 동일 토큰 */
+    border-top: var(--line-l3);
     overflow: visible;
     box-sizing: border-box;
   }
@@ -5863,6 +5864,51 @@ body {
   background: transparent !important;
 }
 
+/*
+ * 오늘 탭 타임라인: 예전에 모바일(@media max-width 48rem) 안에만 두어
+ * 데스크탑·태블릿에서 flex min-height:0 때문에 그리드가 높이 0으로 안 보이던 문제 보완.
+ */
+.app-main:has(.home-view) .home-1day-timeline-section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.app-main:has(.home-view) .home-1day-timeline-mount {
+  flex: 1 1 auto;
+  min-height: 18rem;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.app-main:has(.home-view) .home-1day-timeline-mount .calendar-1day-view {
+  flex: 0 1 auto;
+  min-height: min-content;
+}
+.app-main:has(.home-view) .home-1day-timeline-mount .calendar-view-1day-content-row {
+  flex: 0 1 auto;
+  min-height: min-content;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.app-main:has(.home-view) .home-1day-timeline-mount .calendar-monthly-main {
+  flex: 0 1 auto;
+  min-height: min-content;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.app-main:has(.home-view)
+  .home-1day-timeline-mount
+  .calendar-1day-time-grid.calendar-1day-split-layout {
+  flex: 0 1 auto;
+  min-height: min-content;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 .home-view-section--event {
   display: flex;
   flex-direction: column;
@@ -5871,7 +5917,17 @@ body {
   height: 100%;
 }
 
-/* EVENT/REMINDER 구분선: 보조(연하게) */
+/* Event + Reminder 한 묶음(세로 50/50), 옆에 타임라인(데스크탑) */
+.home-event-reminder-stack {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* EVENT/REMINDER 구분선: 약한 구분선 토큰과 동일(세로 구분과도 무게 맞춤) */
 .home-event-half {
   flex: 0 0 50%;
   min-height: 0;
@@ -5879,7 +5935,7 @@ body {
   overflow: hidden !important;
   display: flex;
   flex-direction: column;
-  border-bottom: 0.09375rem solid rgba(0, 0, 0, 0.06);
+  border-bottom: var(--line-l3);
 }
 
 .home-event-half .home-view-section-title,
@@ -5906,18 +5962,29 @@ body {
   border-bottom: none;
 }
 
-/* 데스크탑(64rem↑): 오른쪽 열 Event | Reminder | 타임라인 가로 3분할 — .home-view-section--event 기본 column보다 뒤에 둠 */
+/* 데스크탑(64rem↑): 오른쪽 열 [Event+Reminder 한 섹션] | 타임라인 가로 2분할 */
 @media (min-width: 64rem) {
   .app-main:has(.home-view) .home-view-section--event {
     flex-direction: row;
     align-items: stretch;
   }
-  .app-main:has(.home-view) .home-view-section--event .home-event-half {
+  .app-main:has(.home-view) .home-event-reminder-stack {
     flex: 1 1 0;
     min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    /* 투두 열↔이벤트 열과 동일한 패널 구분선(1px #c8c5bc) — 세로 얇은 rgba는 거의 안 보임 */
+    border-right: var(--line-l2);
+    box-sizing: border-box;
+  }
+  .app-main:has(.home-view) .home-event-reminder-stack .home-event-half {
+    flex: 1 1 0;
+    min-height: 0;
     max-height: none;
-    border-bottom: none;
-    border-right: 0.09375rem solid rgba(0, 0, 0, 0.06);
+    min-width: 0;
+    border-right: none;
   }
   .app-main:has(.home-view) .home-view-section--event .home-1day-timeline-section {
     flex: 1 1 0;
@@ -5927,6 +5994,8 @@ body {
     flex-direction: column;
     overflow: hidden;
     border-top: none;
+    border-left: none;
+    box-sizing: border-box;
   }
   .app-main:has(.home-view)
     .home-view-section--event
@@ -5937,7 +6006,7 @@ body {
   }
   .app-main:has(.home-view) .home-view-section--event .home-1day-timeline-mount {
     flex: 1 1 0;
-    min-height: 0;
+    min-height: 18rem;
     overflow-y: auto;
     overflow-x: hidden;
     padding: 0 0.25rem 1rem 0;
