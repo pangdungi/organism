@@ -765,24 +765,18 @@ export function render() {
   reminderHalf.appendChild(reminderContent);
   section2.appendChild(reminderHalf);
 
-  /* 모바일: 할일/일정 탭의 타임라인(오늘 해치우기)과 동일 UI — 리마인더 바로 아래 */
-  if (
-    typeof window !== "undefined" &&
-    window.matchMedia("(max-width: 48rem)").matches
-  ) {
-    const timelineSection = document.createElement("div");
-    timelineSection.className =
-      "home-1day-timeline-section home-embed-1day";
-    const timelineTitle = document.createElement("h3");
-    timelineTitle.className = "home-view-section-title";
-    timelineTitle.textContent = "타임라인";
-    timelineSection.appendChild(timelineTitle);
-    const timelineMount = document.createElement("div");
-    timelineMount.className = "home-1day-timeline-mount";
-    timelineMount.appendChild(render1DayView(null));
-    timelineSection.appendChild(timelineMount);
-    section2.appendChild(timelineSection);
-  }
+  /* 예상시간/실제 타임테이블(1일 뷰): 모바일은 세로 스택, 데스크탑(64rem↑)은 Event|Reminder 옆 3분할 */
+  const timelineSection = document.createElement("div");
+  timelineSection.className = "home-1day-timeline-section home-embed-1day";
+  const timelineTitle = document.createElement("h3");
+  timelineTitle.className = "home-view-section-title";
+  timelineTitle.textContent = "타임라인";
+  timelineSection.appendChild(timelineTitle);
+  const timelineMount = document.createElement("div");
+  timelineMount.className = "home-1day-timeline-mount";
+  timelineMount.appendChild(render1DayView(null));
+  timelineSection.appendChild(timelineMount);
+  section2.appendChild(timelineSection);
 
   const section3 = document.createElement("div");
   section3.className = "home-view-section home-view-section--todo";
