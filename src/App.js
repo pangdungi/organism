@@ -39,7 +39,27 @@ import {
   hydrateSideincomeKpiMapFromCloud,
 } from "./utils/sideincomeKpiMapSupabase.js";
 import { attachTimeLedgerEntriesSaveListener } from "./utils/timeLedgerEntriesSupabase.js";
-import { kpiSyncDebugLog, snapshotKpiLocalStorageBrief } from "./utils/kpiSyncDebug.js";
+import {
+  pullAllKpiMapsFromCloud,
+  pullKpiTabFromCloud,
+} from "./utils/kpiTabCloudRefresh.js";
+import {
+  KPI_TAB_IDS,
+  kpiSyncDebugLog,
+  snapshotKpiLocalStorageBrief,
+} from "./utils/kpiSyncDebug.js";
+
+/** 브라우저 탭 포커스 시 KPI pull 후 다시 그려야 하는 앱 메뉴(오늘·할일·시간 등 KPI 데이터를 읽는 화면) */
+const TAB_IDS_REFRESH_ON_KPI_PULL = new Set([
+  "home",
+  "dream",
+  "sideincome",
+  "happiness",
+  "health",
+  "calendar",
+  "schedulecalendar",
+  "time",
+]);
 
 const TABS = [
   { id: "home", label: "오늘", icon: "/toolbaricons/dashboard.svg" },
@@ -458,6 +478,31 @@ export function mountApp(container) {
       void hydrateTodoSectionTasksFromCloud().then((needRefresh) => {
         if (needRefresh) renderMain(main);
       });
+    },
+    { passive: true },
+  );
+
+  /** 크롬에서 다른 탭을 보다가 이 사이트 탭을 다시 클릭했을 때: 서버가 원천이 되도록 네 KPI 맵을 한꺼번에 pull 후 화면 갱신 */
+  let _kpiBrowserTabVisiblePullTimer = null;
+  document.addEventListener(
+    "visibilitychange",
+    () => {
+      if (document.visibilityState !== "visible") return;
+      if (_kpiBrowserTabVisiblePullTimer) clearTimeout(_kpiBrowserTabVisiblePullTimer);
+      _kpiBrowserTabVisiblePullTimer = setTimeout(() => {
+        _kpiBrowserTabVisiblePullTimer = null;
+        void (async () => {
+          try {
+            const { anyChanged } = await pullAllKpiMapsFromCloud();
+            if (!anyChanged) return;
+            if (TAB_IDS_REFRESH_ON_KPI_PULL.has(currentTabId)) {
+              renderMain(main, { skipTodoSaveBeforeUnmount: true });
+            }
+          } catch (e) {
+            console.warn("[KPI] 브라우저 탭 포커스 후 pull 실패", e?.message || e);
+          }
+        })();
+      }, 350);
     },
     { passive: true },
   );

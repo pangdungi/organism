@@ -1,9 +1,9 @@
 /**
- * 꿈·부수입·행복·건강 KPI 맵을 서버에서 한 번 가져와 localStorage에 반영한다.
- * (예: 수동 새로고침 버튼 등에서 호출 가능)
+ * 꿈·부수입·행복·건강 KPI 맵 — 서버(Supabase)를 기준으로 localStorage에 반영한다.
  *
- * App 탭 전환 시에는 호출하지 않는다. 탭만 바꿨는데 pull이 로컬을 서버 스냅샷으로
- * 덮어쓰면 다른 탭·미푸시 편집이 날아간다. 앱 부팅 시 hydrate + 저장 시 푸시로 충분하다.
+ * - pullKpiTabFromCloud: 앱 내 메뉴로 해당 KPI 탭에 들어갈 때 1종만 pull
+ * - pullAllKpiMapsFromCloud: 크롬에서 다른 탭에 있다가 이 사이트 탭을 다시 포커스할 때
+ *   네 종을 한꺼번에 pull (옛 브라우저 탭이 옛 로컬을 서버에 올리는 문제 완화: 포커스 시 서버가 원천)
  */
 
 import {
@@ -59,4 +59,39 @@ export async function pullKpiTabFromCloud(tabId) {
   const after = key ? localStorage.getItem(key) : null;
   const localChanged = pullOk && before !== after;
   return { pullOk, localChanged };
+}
+
+const ALL_KPI_STORAGE_KEYS = [
+  DREAM_KPI_MAP_STORAGE_KEY,
+  HEALTH_KPI_MAP_STORAGE_KEY,
+  HAPPINESS_KPI_MAP_STORAGE_KEY,
+  SIDEINCOME_KPI_MAP_STORAGE_KEY,
+];
+
+/**
+ * 꿈·건강·행복·부수입 맵을 병렬 pull. 서버를 단일 원천으로 맞출 때 사용.
+ * @returns {Promise<{ anyOk: boolean, anyChanged: boolean }>}
+ */
+export async function pullAllKpiMapsFromCloud() {
+  let before = [];
+  try {
+    before = ALL_KPI_STORAGE_KEYS.map((k) => localStorage.getItem(k));
+  } catch (_) {}
+
+  const [d, h, ha, si] = await Promise.all([
+    pullDreamKpiMapFromSupabase(),
+    pullHealthKpiMapFromSupabase(),
+    pullHappinessKpiMapFromSupabase(),
+    pullSideincomeKpiMapFromSupabase(),
+  ]);
+  const anyOk = !!(d || h || ha || si);
+
+  let after = [];
+  try {
+    after = ALL_KPI_STORAGE_KEYS.map((k) => localStorage.getItem(k));
+  } catch (_) {}
+
+  const anyChanged =
+    before.length === after.length && before.some((b, i) => b !== after[i]);
+  return { anyOk, anyChanged };
 }
