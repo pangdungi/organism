@@ -203,35 +203,6 @@ function rowToDaily(r) {
   };
 }
 
-/** 로컬·서버 kpiOrder를 합치고, mergedKpis에만 있는 id도 꿈별 순서에 포함(다른 기기에서 추가한 KPI 누락 방지) */
-function mergeDreamKpiOrderField(L, S, mergedDreamIds, mergedKpiIds, mergedKpis) {
-  const kpiOrder = {};
-  const dreamKeys = new Set([
-    ...Object.keys(L.kpiOrder || {}),
-    ...Object.keys(S.kpiOrder || {}),
-    ...mergedDreamIds,
-  ]);
-  for (const pid of dreamKeys) {
-    if (!mergedDreamIds.has(String(pid))) continue;
-    const seen = new Set();
-    const order = [];
-    for (const id of [...(L.kpiOrder?.[pid] || []), ...(S.kpiOrder?.[pid] || [])].map(String)) {
-      if (!mergedKpiIds.has(id) || seen.has(id)) continue;
-      seen.add(id);
-      order.push(id);
-    }
-    for (const k of mergedKpis) {
-      if (String(k.dreamId) !== String(pid)) continue;
-      const kid = String(k.id);
-      if (!mergedKpiIds.has(kid) || seen.has(kid)) continue;
-      seen.add(kid);
-      order.push(kid);
-    }
-    if (order.length) kpiOrder[pid] = order;
-  }
-  return kpiOrder;
-}
-
 /**
  * 동기화 직전: 방금 저장한 로컬 + 서버 스냅샷을 합친다.
  * 로컬이 메타(goals 등)·삭제 목록을 우선하고, 서버에만 있는 꿈/KPI/로그는 합친다.
@@ -302,12 +273,6 @@ function mergeDreamKpiPayloadsForSync(localP, serverP) {
     .filter(Boolean);
   const mergedKpiIds = new Set(mergedKpis.map((k) => String(k.id)));
 
-  const mergedKpiOrderField = mergeDreamKpiOrderField(L, S, mergedDreamIds, mergedKpiIds, mergedKpis);
-  const mergedKpiTaskSync = { ...(S.kpiTaskSync || {}), ...(L.kpiTaskSync || {}) };
-  for (const kid of Object.keys(mergedKpiTaskSync)) {
-    if (!mergedKpiIds.has(String(kid))) delete mergedKpiTaskSync[kid];
-  }
-
   function mergeList(localArr, serverArr, drSet, idGetter, keepRow) {
     const localById = new Map(localArr.map((x) => [String(idGetter(x)), x]));
     const serverById = new Map(serverArr.map((x) => [String(idGetter(x)), x]));
@@ -373,8 +338,8 @@ function mergeDreamKpiPayloadsForSync(localP, serverP) {
     kpiLogs: mergedLogs,
     kpiTodos: mergedTodos,
     kpiDailyRepeatTodos: mergedDaily,
-    kpiOrder: mergedKpiOrderField,
-    kpiTaskSync: mergedKpiTaskSync,
+    kpiOrder: L.kpiOrder,
+    kpiTaskSync: L.kpiTaskSync,
     goals: L.goals,
     tasks: L.tasks,
     desiredLife: L.desiredLife,
@@ -875,7 +840,7 @@ export function syncDreamKpiMapToSupabase() {
 }
 
 let _pushTimer = null;
-const PUSH_DEBOUNCE_MS = 400;
+const PUSH_DEBOUNCE_MS = 800;
 
 export function flushDreamKpiMapSyncPush() {
   if (!supabase) return;
