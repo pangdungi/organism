@@ -4,7 +4,7 @@
  */
 
 import { supabase } from "../supabase.js";
-import { kpiSyncDebugLog } from "./kpiSyncDebug.js";
+import { kpiSyncDebugEnabled, kpiSyncDebugLog, kpiSyncPayloadSummary, kpiSyncTrace } from "./kpiSyncDebug.js";
 
 export const DREAM_KPI_MAP_STORAGE_KEY = "kpi-dream-map";
 
@@ -356,26 +356,86 @@ function deletedRefsFromMetaRow(meta) {
 }
 
 function buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, meta) {
-  const sortedCats = [...(categories || [])].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const dr = deletedRefsFromMetaRow(meta);
+  const rawCounts = {
+    categories: (categories || []).length,
+    kpis: (kpis || []).length,
+    logs: (logs || []).length,
+    todos: (todos || []).length,
+    daily: (daily || []).length,
+  };
+  const drCat = new Set(dr.categories);
+  const drKpi = new Set(dr.kpis);
+  const drLog = new Set(dr.kpiLogs);
+  const drTodo = new Set(dr.kpiTodos);
+  const drDaily = new Set(dr.kpiDailyRepeatTodos);
+
+  const sortedCats = [...(categories || [])]
+    .filter((c) => !drCat.has(String(c.id)))
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   const dreams = sortedCats.map((c) => ({ id: c.id, name: c.name || "" }));
+  const dreamIds = new Set(dreams.map((d) => String(d.id)));
+
+  const kpisFiltered = (kpis || []).filter((k) => {
+    if (drKpi.has(String(k.id))) return false;
+    return dreamIds.has(String(k.dream_id));
+  });
+  const kpiIds = new Set(kpisFiltered.map((k) => String(k.id)));
+
+  const logsFiltered = (logs || []).filter((l) => {
+    if (drLog.has(String(l.id))) return false;
+    return kpiIds.has(String(l.kpi_id));
+  });
+  const todosFiltered = (todos || []).filter((t) => {
+    if (drTodo.has(String(t.id))) return false;
+    return kpiIds.has(String(t.kpi_id));
+  });
+  const dailyFiltered = (daily || []).filter((t) => {
+    if (drDaily.has(String(t.id))) return false;
+    return kpiIds.has(String(t.kpi_id));
+  });
+
   const kpiOrder = meta?.kpi_order && typeof meta.kpi_order === "object" ? meta.kpi_order : {};
   const kpiTaskSync = meta?.kpi_task_sync && typeof meta.kpi_task_sync === "object" ? meta.kpi_task_sync : {};
   const goals = Array.isArray(meta?.goals) ? meta.goals : [];
   const tasks = Array.isArray(meta?.tasks) ? meta.tasks : [];
   const desiredLife = typeof meta?.desired_life === "string" ? meta.desired_life : "";
-  return normalizePayload({
+  const out = normalizePayload({
     dreams,
     goals,
     tasks,
     desiredLife,
-    kpis: (kpis || []).map(rowToKpi),
-    kpiLogs: (logs || []).map(rowToLog),
-    kpiTodos: (todos || []).map(rowToTodo),
-    kpiDailyRepeatTodos: (daily || []).map(rowToDaily),
+    kpis: kpisFiltered.map(rowToKpi),
+    kpiLogs: logsFiltered.map(rowToLog),
+    kpiTodos: todosFiltered.map(rowToTodo),
+    kpiDailyRepeatTodos: dailyFiltered.map(rowToDaily),
     kpiOrder,
     kpiTaskSync,
-    deletedRefs: deletedRefsFromMetaRow(meta),
+    deletedRefs: dr,
   });
+  if (kpiSyncDebugEnabled()) {
+    const diff =
+      rawCounts.kpis !== out.kpis.length ||
+      rawCounts.logs !== out.kpiLogs.length ||
+      rawCounts.todos !== out.kpiTodos.length ||
+      rawCounts.daily !== out.kpiDailyRepeatTodos.length ||
+      rawCounts.categories !== out.dreams.length;
+    kpiSyncTrace("dream", "buildPayload(db→앱)", {
+      metaHasDeletedRefs: !!(meta?.deleted_refs && typeof meta.deleted_refs === "object"),
+      rawDbRows: rawCounts,
+      afterDeletedRefsFilter: {
+        dreams: out.dreams.length,
+        kpis: out.kpis.length,
+        kpiLogs: out.kpiLogs.length,
+        kpiTodos: out.kpiTodos.length,
+        kpiDailyRepeatTodos: out.kpiDailyRepeatTodos.length,
+      },
+      note: diff
+        ? "DB 행 수와 필터 후 불일치 — deleted_refs로 숨김 처리됨(고아 행이 테이블에 남은 경우)"
+        : "DB 행 수와 필터 후 일치",
+    });
+  }
+  return out;
 }
 
 function metaRowHasData(meta) {
@@ -602,7 +662,9 @@ async function fetchDreamMapPayloadFromSupabase(userId) {
 /**
  * 서버에만 남은 행 삭제. toSync는 fetch 후 mergeDreamKpiPayloadsForSync 결과(전체 id 집합이 신뢰 가능할 때만 호출).
  */
+/** @returns {Record<string, number>} 테이블명 → 삭제한 행 수 */
 async function deleteOrphanRowsForUser(userId, p, allowEmptyOrphans) {
+  const deletedByTable = {};
   const tables = [
     {
       table: "dream_map_kpi_daily_todos",
@@ -624,8 +686,10 @@ async function deleteOrphanRowsForUser(userId, p, allowEmptyOrphans) {
     for (const id of toDelete) {
       const { error: dErr } = await supabase.from(table).delete().eq("user_id", userId).eq("id", id);
       if (dErr) throw new Error(`${table} orphan delete ${id}: ${dErr.message}`);
+      deletedByTable[table] = (deletedByTable[table] || 0) + 1;
     }
   }
+  return deletedByTable;
 }
 
 /** @returns {Promise<boolean>} 서버 데이터로 로컬을 갱신했으면 true */
@@ -682,6 +746,17 @@ export async function pullDreamKpiMapFromSupabase() {
         dailyTodos: daily.length,
       },
       note: "이후 화면은 loadDreamMap()이 이 localStorage 키만 읽음",
+    });
+    kpiSyncTrace("dream", "pull→localStorage", {
+      userIdPrefix: String(userId).slice(0, 8),
+      rawDbRows: {
+        categories: categories.length,
+        kpis: kpis.length,
+        logs: logs.length,
+        todos: todos.length,
+        daily: daily.length,
+      },
+      payloadSummary: kpiSyncPayloadSummary("dream", payload),
     });
     return true;
   }
@@ -760,14 +835,45 @@ async function runDreamKpiMapSyncOnce() {
   }
 
   try {
+    if (kpiSyncDebugEnabled()) {
+      kpiSyncTrace("dream", "sync:1-localRead", {
+        userIdPrefix: String(userId).slice(0, 8),
+        rawKeyMissing: rawMissing,
+        summary: kpiSyncPayloadSummary("dream", p),
+      });
+    }
     const fetched = await fetchDreamMapPayloadFromSupabase(userId);
-    const toSync = fetched.ok ? mergeDreamKpiPayloadsForSync(p, fetched.payload) : normalizePayload(p);
     const mergedFromServer = fetched.ok;
+    if (kpiSyncDebugEnabled()) {
+      kpiSyncTrace("dream", "sync:2-serverFetch", {
+        ok: fetched.ok,
+        summary: fetched.ok ? kpiSyncPayloadSummary("dream", fetched.payload) : null,
+        meaning: mergedFromServer
+          ? "서버 스냅샷과 로컬 merge 예정"
+          : "서버 조회 실패 — 로컬만으로 upsert(고아 삭제 생략 가능)",
+      });
+    }
+    const toSync = fetched.ok ? mergeDreamKpiPayloadsForSync(p, fetched.payload) : normalizePayload(p);
+    if (kpiSyncDebugEnabled()) {
+      kpiSyncTrace("dream", "sync:3-afterMerge", {
+        mergedFromServer,
+        summary: kpiSyncPayloadSummary("dream", toSync),
+      });
+    }
 
     if (localPayloadHasAnythingToPersist(toSync)) {
       await upsertNormalizedFromPayloadWithRetry(userId, toSync);
       if (mergedFromServer) {
-        await deleteOrphanRowsForUser(userId, toSync, true);
+        const orphanDel = await deleteOrphanRowsForUser(userId, toSync, true);
+        kpiSyncTrace("dream", "sync:4-orphanDelete", {
+          deletedByTable: orphanDel,
+          meaning: "서버에만 남은 id를 DB에서 제거한 개수(0이면 이미 정리됨)",
+        });
+      } else {
+        kpiSyncTrace("dream", "sync:4-orphanDelete", {
+          skipped: true,
+          reason: "서버 fetch 실패 시 고아 삭제를 하지 않음(빈 로컬로 원격 전체 삭제 방지)",
+        });
       }
     } else {
       /* 로컬이 완전히 비었을 때도 meta 한 줄을 남겨 ‘서버 최신=비움’을 pull에서 구분 (미동기화 빈 서버와 구분) */
@@ -792,7 +898,15 @@ async function runDreamKpiMapSyncOnce() {
       }
       if (metaEmptyErr) throw new Error(`dream_map_meta(empty): ${metaEmptyErr.message}`);
       if (mergedFromServer) {
-        await deleteOrphanRowsForUser(userId, toSync, true);
+        const orphanDel = await deleteOrphanRowsForUser(userId, toSync, true);
+        kpiSyncTrace("dream", "sync:4-orphanDelete(emptyPayloadBranch)", {
+          deletedByTable: orphanDel,
+        });
+      } else {
+        kpiSyncTrace("dream", "sync:4-orphanDelete", {
+          skipped: true,
+          reason: "서버 fetch 실패",
+        });
       }
     }
 

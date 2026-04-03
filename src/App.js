@@ -311,9 +311,15 @@ export function mountApp(container) {
       });
     }
     renderMain(main);
-    /* KPI 탭 진입 시 서버 pull 제거: 탭만 바꿨는데 pull이 localStorage를 통째로 갈아엎어
-     * (다른 브라우저 탭·아직 푸시 전 로컬 최신본이 서버보다 새로울 때 덮어쓰임).
-     * 동기화는 앱 시작 hydrate + 저장 시 디바운스 푸시로만 한다. */
+    /* 꿈·부수입·행복·건강: 다른 기기에서 삭제·추가한 내용을 보려면 진입 시 서버 pull 필요.
+     * localStorage 문자열이 바뀐 경우에만 한 번 더 그림(불필요한 깜빡임 감소). */
+    if (KPI_TAB_IDS.has(tabId)) {
+      void pullKpiTabFromCloud(tabId).then(({ pullOk, localChanged }) => {
+        if (pullOk && localChanged) {
+          renderMain(main, { skipTodoSaveBeforeUnmount: true });
+        }
+      });
+    }
     if (tabId === "idea") {
       requestAnimationFrame(() => {
         main.scrollTop = 0;

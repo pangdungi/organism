@@ -4,7 +4,7 @@
  */
 
 import { supabase } from "../supabase.js";
-import { kpiSyncDebugLog, kpiSyncDebugEnabled } from "./kpiSyncDebug.js";
+import { kpiSyncDebugLog, kpiSyncDebugEnabled, kpiSyncPayloadSummary, kpiSyncTrace } from "./kpiSyncDebug.js";
 
 export const HAPPINESS_KPI_MAP_STORAGE_KEY = "kpi-happiness-map";
 
@@ -212,20 +212,80 @@ function deletedRefsFromMetaRow(meta) {
 }
 
 function buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, meta) {
-  const sortedCats = [...(categories || [])].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const dr = deletedRefsFromMetaRow(meta);
+  const rawCounts = {
+    categories: (categories || []).length,
+    kpis: (kpis || []).length,
+    logs: (logs || []).length,
+    todos: (todos || []).length,
+    daily: (daily || []).length,
+  };
+  const drCat = new Set(dr.categories);
+  const drKpi = new Set(dr.kpis);
+  const drLog = new Set(dr.kpiLogs);
+  const drTodo = new Set(dr.kpiTodos);
+  const drDaily = new Set(dr.kpiDailyRepeatTodos);
+
+  const sortedCats = [...(categories || [])]
+    .filter((c) => !drCat.has(String(c.id)))
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   const happinesses = sortedCats.map((c) => ({ id: c.id, name: c.name || "" }));
+  const happinessIds = new Set(happinesses.map((h) => String(h.id)));
+
+  const kpisFiltered = (kpis || []).filter((k) => {
+    if (drKpi.has(String(k.id))) return false;
+    return happinessIds.has(String(k.happiness_id));
+  });
+  const kpiIds = new Set(kpisFiltered.map((k) => String(k.id)));
+
+  const logsFiltered = (logs || []).filter((l) => {
+    if (drLog.has(String(l.id))) return false;
+    return kpiIds.has(String(l.kpi_id));
+  });
+  const todosFiltered = (todos || []).filter((t) => {
+    if (drTodo.has(String(t.id))) return false;
+    return kpiIds.has(String(t.kpi_id));
+  });
+  const dailyFiltered = (daily || []).filter((t) => {
+    if (drDaily.has(String(t.id))) return false;
+    return kpiIds.has(String(t.kpi_id));
+  });
+
   const kpiOrder = meta?.kpi_order && typeof meta.kpi_order === "object" ? meta.kpi_order : {};
   const kpiTaskSync = meta?.kpi_task_sync && typeof meta.kpi_task_sync === "object" ? meta.kpi_task_sync : {};
-  return normalizePayload({
+  const out = normalizePayload({
     happinesses,
-    kpis: (kpis || []).map(rowToKpi),
-    kpiLogs: (logs || []).map(rowToLog),
-    kpiTodos: (todos || []).map(rowToTodo),
-    kpiDailyRepeatTodos: (daily || []).map(rowToDaily),
+    kpis: kpisFiltered.map(rowToKpi),
+    kpiLogs: logsFiltered.map(rowToLog),
+    kpiTodos: todosFiltered.map(rowToTodo),
+    kpiDailyRepeatTodos: dailyFiltered.map(rowToDaily),
     kpiOrder,
     kpiTaskSync,
-    deletedRefs: deletedRefsFromMetaRow(meta),
+    deletedRefs: dr,
   });
+  if (kpiSyncDebugEnabled()) {
+    const diff =
+      rawCounts.kpis !== out.kpis.length ||
+      rawCounts.logs !== out.kpiLogs.length ||
+      rawCounts.todos !== out.kpiTodos.length ||
+      rawCounts.daily !== out.kpiDailyRepeatTodos.length ||
+      rawCounts.categories !== out.happinesses.length;
+    kpiSyncTrace("happiness", "buildPayload(db→앱)", {
+      metaHasDeletedRefs: !!(meta?.deleted_refs && typeof meta.deleted_refs === "object"),
+      rawDbRows: rawCounts,
+      afterDeletedRefsFilter: {
+        happinesses: out.happinesses.length,
+        kpis: out.kpis.length,
+        kpiLogs: out.kpiLogs.length,
+        kpiTodos: out.kpiTodos.length,
+        kpiDailyRepeatTodos: out.kpiDailyRepeatTodos.length,
+      },
+      note: diff
+        ? "DB 행 수와 필터 후 불일치 — deleted_refs로 숨김 처리됨"
+        : "DB 행 수와 필터 후 일치",
+    });
+  }
+  return out;
 }
 
 function metaRowHasData(meta) {
@@ -573,6 +633,7 @@ async function fetchHappinessMapPayloadFromSupabase(userId) {
 }
 
 async function deleteOrphanRowsForUser(userId, p, allowEmptyOrphans) {
+  const deletedByTable = {};
   const tables = [
     {
       table: "happiness_map_kpi_daily_todos",
@@ -594,8 +655,10 @@ async function deleteOrphanRowsForUser(userId, p, allowEmptyOrphans) {
     for (const id of toDelete) {
       const { error: dErr } = await supabase.from(table).delete().eq("user_id", userId).eq("id", id);
       if (dErr) throw new Error(`${table} orphan delete ${id}: ${dErr.message}`);
+      deletedByTable[table] = (deletedByTable[table] || 0) + 1;
     }
   }
+  return deletedByTable;
 }
 
 /** @returns {Promise<boolean>} 서버 데이터로 로컬을 갱신했으면 true */
@@ -655,6 +718,17 @@ export async function pullHappinessKpiMapFromSupabase() {
       dailyTodos: daily.length,
     },
   });
+  kpiSyncTrace("happiness", "pull→localStorage", {
+    userIdPrefix: String(userId).slice(0, 8),
+    rawDbRows: {
+      categories: categories.length,
+      kpis: kpis.length,
+      logs: logs.length,
+      todos: todos.length,
+      daily: daily.length,
+    },
+    payloadSummary: kpiSyncPayloadSummary("happiness", payload),
+  });
   return true;
 }
 
@@ -700,14 +774,45 @@ async function runHappinessKpiMapSyncOnce() {
   }
 
   try {
+    if (kpiSyncDebugEnabled()) {
+      kpiSyncTrace("happiness", "sync:1-localRead", {
+        userIdPrefix: String(userId).slice(0, 8),
+        rawKeyMissing: rawMissing,
+        summary: kpiSyncPayloadSummary("happiness", p),
+      });
+    }
     const fetched = await fetchHappinessMapPayloadFromSupabase(userId);
-    const toSync = fetched.ok ? mergeHappinessKpiPayloadsForSync(p, fetched.payload) : normalizePayload(p);
     const mergedFromServer = fetched.ok;
+    if (kpiSyncDebugEnabled()) {
+      kpiSyncTrace("happiness", "sync:2-serverFetch", {
+        ok: fetched.ok,
+        summary: fetched.ok ? kpiSyncPayloadSummary("happiness", fetched.payload) : null,
+        meaning: mergedFromServer
+          ? "서버 스냅샷과 로컬 merge 예정"
+          : "서버 조회 실패 — 로컬만으로 upsert(고아 삭제 생략 가능)",
+      });
+    }
+    const toSync = fetched.ok ? mergeHappinessKpiPayloadsForSync(p, fetched.payload) : normalizePayload(p);
+    if (kpiSyncDebugEnabled()) {
+      kpiSyncTrace("happiness", "sync:3-afterMerge", {
+        mergedFromServer,
+        summary: kpiSyncPayloadSummary("happiness", toSync),
+      });
+    }
 
     if (localPayloadHasAnythingToPersist(toSync)) {
       await upsertNormalizedFromPayloadWithRetry(userId, toSync);
       if (mergedFromServer) {
-        await deleteOrphanRowsForUser(userId, toSync, true);
+        const orphanDel = await deleteOrphanRowsForUser(userId, toSync, true);
+        kpiSyncTrace("happiness", "sync:4-orphanDelete", {
+          deletedByTable: orphanDel,
+          meaning: "서버에만 남은 id를 DB에서 제거한 개수",
+        });
+      } else {
+        kpiSyncTrace("happiness", "sync:4-orphanDelete", {
+          skipped: true,
+          reason: "서버 fetch 실패 시 고아 삭제 안 함",
+        });
       }
     } else {
       let metaEmptyErr = null;
@@ -728,7 +833,10 @@ async function runHappinessKpiMapSyncOnce() {
       }
       if (metaEmptyErr) throw new Error(`happiness_map_meta(empty): ${metaEmptyErr.message}`);
       if (mergedFromServer) {
-        await deleteOrphanRowsForUser(userId, toSync, true);
+        const orphanDel = await deleteOrphanRowsForUser(userId, toSync, true);
+        kpiSyncTrace("happiness", "sync:4-orphanDelete(emptyPayloadBranch)", { deletedByTable: orphanDel });
+      } else {
+        kpiSyncTrace("happiness", "sync:4-orphanDelete", { skipped: true, reason: "서버 fetch 실패" });
       }
     }
 
