@@ -6238,9 +6238,24 @@ export function render() {
     pendingEditStartTime = "";
   }
 
-  taskLogSubmitBtn.addEventListener("click", () => {
+  /** 기록 버튼: blur 없이 바로 누르면 숫자만 입력된 시각이 hidden에 반영되지 않을 수 있음 → blur와 동일 포맷 후 동기화 */
+  function flushTaskLogTimeInputsBeforeSubmit() {
+    if (taskLogTimeStart) {
+      const raw = taskLogTimeStart.value || "";
+      const preformatted = autoFormatDigitsToHhMm(raw) || raw;
+      taskLogTimeStart.value = normalizeHhMm(preformatted) || preformatted;
+    }
+    if (taskLogTimeEnd) {
+      const raw = taskLogTimeEnd.value || "";
+      const preformatted = autoFormatDigitsToHhMm(raw) || raw;
+      taskLogTimeEnd.value = normalizeHhMm(preformatted) || preformatted;
+    }
     syncStartToHidden();
     syncEndToHidden();
+  }
+
+  taskLogSubmitBtn.addEventListener("click", () => {
+    flushTaskLogTimeInputsBeforeSubmit();
 
     const editTr = taskLogEditTr;
     const addCtx = taskLogAddContext;
@@ -7969,6 +7984,19 @@ export function render() {
     clearTimeLedgerMobileElapsedTimer(el);
     rescueTimeFilterControlsToFilterBar();
     contentWrap.innerHTML = "";
+    const isMobile = window.matchMedia("(max-width: 48rem)").matches;
+
+    function appendMobileAuditToolbar() {
+      if (!isMobile || !filterNavCluster) return;
+      const toolbar = document.createElement("div");
+      toolbar.className = "time-ledger-mobile-toolbar";
+      const toolbarRight = document.createElement("div");
+      toolbarRight.className = "time-ledger-mobile-toolbar-right";
+      toolbarRight.appendChild(filterNavCluster);
+      toolbar.appendChild(toolbarRight);
+      contentWrap.appendChild(toolbar);
+    }
+
     const type = filterType;
     const y = filterYear;
     const m = filterMonth;
@@ -7997,6 +8025,7 @@ export function render() {
           <div class="time-audit-empty-desc">해당 날짜의 시간기록을 입력하면 오딧에 표시됩니다.</div>
         </div>
       `;
+      appendMobileAuditToolbar();
       contentWrap.appendChild(wrap);
       return;
     }
@@ -8197,9 +8226,10 @@ export function render() {
           )
           .join("");
 
+        /* 시간 기록 모바일 .date-divider 와 동일 YYYY.MM.DD 표기 */
         const dateLabel =
           dateStr && dateStr.length >= 10
-            ? `${dateStr.slice(0, 4)}년 ${parseInt(dateStr.slice(5, 7), 10)}월 ${parseInt(dateStr.slice(8, 10), 10)}일`
+            ? `${dateStr.slice(0, 4)}.${dateStr.slice(5, 7)}.${dateStr.slice(8, 10)}`
             : dateStr;
 
         const block = document.createElement("div");
@@ -8540,6 +8570,7 @@ export function render() {
         }
       });
 
+    appendMobileAuditToolbar();
     contentWrap.appendChild(wrap);
   }
 
@@ -9477,11 +9508,18 @@ export function render() {
   }
 
   function updateFilterBarVisibility(view) {
+    /* 모바일에서 navCluster가 contentWrap 툴바로 붙으면 버튼이 filterBar 밖에 있음 */
+    const taskSelectBtn = el.querySelector("#time-task-select-btn");
     if (view === "audit") {
       if (filterNavCluster) filterNavCluster.style.display = "";
       if (taskSetupBtn) taskSetupBtn.style.display = "none";
+      if (taskSelectBtn) {
+        taskSelectBtn.style.display = "none";
+        taskSelectBtn.classList.remove("is-active");
+      }
+      selectedTaskNamesForFilter = null;
       filterBar.querySelectorAll("[data-audit-range-hidden]").forEach((el) => {
-        el.style.display = "none";
+        el.style.display = "";
       });
       if (startDateInput) startDateInput.dataset.hideDeleteBtn = "true";
       if (endDateInput && startDateInput) {
@@ -9492,10 +9530,12 @@ export function render() {
     } else if (view === "blank") {
       if (filterNavCluster) filterNavCluster.style.display = "none";
       if (taskSetupBtn) taskSetupBtn.style.display = "none";
+      if (taskSelectBtn) taskSelectBtn.style.display = "none";
     } else {
       if (filterNavCluster) filterNavCluster.style.display = "";
       if (taskSetupBtn)
         taskSetupBtn.style.display = view === "all" ? "" : "none";
+      if (taskSelectBtn) taskSelectBtn.style.display = "";
       filterBar.querySelectorAll("[data-audit-range-hidden]").forEach((el) => {
         el.style.display = "";
       });

@@ -353,9 +353,13 @@ export function mountApp(container) {
   const bottomNavMain = document.createElement("div");
   bottomNavMain.className = "app-bottom-nav-main";
 
+  /** 하단 탭에 넣지 않음(사이드바에서만) — 근무표는 모바일 하단에 강제 노출하지 않음 */
+  const EXCLUDE_FROM_MOBILE_BOTTOM_NAV = ["workschedule"];
   const mobileTabsFiltered = TABS.filter(
     (t) =>
-      !HIDE_ON_MOBILE_TAB_IDS.includes(t.id) && !t.sidebarDesktopOnly,
+      !HIDE_ON_MOBILE_TAB_IDS.includes(t.id) &&
+      !t.sidebarDesktopOnly &&
+      !EXCLUDE_FROM_MOBILE_BOTTOM_NAV.includes(t.id),
   );
   /** 모바일 하단 탭 순서: 오늘 → 시간 → 할일 → 나머지 */
   const MOBILE_BOTTOM_NAV_ORDER = [
@@ -363,7 +367,6 @@ export function mountApp(container) {
     "time",
     "calendar",
     "schedulecalendar",
-    "workschedule",
     "diary",
     "archive",
   ];

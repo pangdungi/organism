@@ -4245,7 +4245,12 @@ body {
   .app-tab-panel-content.calendar-view {
     padding: 0 !important;
   }
-  /* 모바일: 상단 제목(SCHEDULE·할일/일정)만 탭 줄과 동일 좌우 여백 */
+  /* 모바일: 할일/일정·하단 캘린더 탭 — KPI 제외 정책: 상단 SCHEDULE/제목 숨김(탭·본문만). 근무표는 아래 별도로 제목만 숨김 */
+  .app-tab-panel-content.calendar-view:not(.calendar-view--mobile-workschedule)
+    > .calendar-view-header.dream-view-header-wrap {
+    display: none !important;
+  }
+  /* 모바일: 상단 제목을 쓰는 경우에만(데스크톱 등) 탭 줄과 동일 좌우 여백 — 숨김 시 미적용 */
   .app-tab-panel-content.calendar-view > .calendar-view-header {
     padding-left: 1.5rem;
     padding-right: 1.5rem;
@@ -4481,6 +4486,17 @@ body {
   .work-schedule-header-inner--mobile-tab .work-schedule-header-title-wrap {
     min-width: 0;
     flex: 1 1 auto;
+  }
+  /* 모바일 근무표: WORK/제목 숨김 — 근무유형 설정만 우측(할일·캘린더와 동일하게 제목 생략) */
+  .calendar-view--mobile-workschedule .work-schedule-header-title-wrap {
+    display: none !important;
+  }
+  .calendar-view--mobile-workschedule .work-schedule-header-inner--mobile-tab {
+    justify-content: flex-end;
+  }
+  .calendar-view--mobile-workschedule.work-schedule-view .work-schedule-header {
+    padding-top: 0.35rem;
+    padding-bottom: 0.65rem !important;
   }
 
   /* 모바일: 날짜 셀 클릭 시 확대 보기 오버레이 + 넓은 카드 */
@@ -5101,6 +5117,7 @@ body {
   .time-ledger-view .time-ledger-header,
   .time-ledger-view .time-hourly-wrap,
   .time-ledger-view[data-time-content-view="all"] .time-ledger-filter-add-row,
+  .time-ledger-view[data-time-content-view="audit"] .time-ledger-filter-add-row,
   .time-ledger-view[data-time-content-view="all"]
     .time-ledger-summary-panel:not(.time-ledger-mobile-tabs-summary) {
     display: none !important;
@@ -5152,8 +5169,9 @@ body {
     margin-top: 0.2rem;
     padding: 0.45rem 0 0.5rem;
     border-top: var(--line-l3);
-    border-bottom: none;
-    margin-bottom: 0;
+    border-bottom: var(--line-l3);
+    /* 패널 아래선과 날짜 툴바 상단선이 겹쳐 보이지 않게: 선 아래 여백만 (툴바는 border-top 없음) */
+    margin-bottom: 0.5rem;
     box-sizing: border-box;
     align-items: stretch;
   }
@@ -5271,6 +5289,8 @@ body {
     gap: 0.35rem;
     padding: 0.45rem 0.75rem;
     margin-bottom: 0;
+    /* 상단 보더 제거: 요약 패널 하단선과 이중선·겹침 방지 (구분은 패널 border-bottom + margin만) */
+    border-top: none;
     border-bottom: var(--line-l3);
     border-right: none;
     flex-shrink: 0;
@@ -5349,8 +5369,9 @@ body {
     padding: 0;
     color: var(--text-muted);
   }
-  /* 모바일·시간 기록: "4월1일(수)" + 캘린더 아이콘(네이티브 아이콘은 투명 input 때문에 숨겨져 별도 표시) */
-  .time-ledger-view[data-time-content-view="all"] .time-filter-date-field {
+  /* 모바일·시간 기록·보고서: "4월1일(수)" + 캘린더 아이콘 — 보고서는 툴바로 DOM 이동해 동일 레이아웃 */
+  .time-ledger-view:is([data-time-content-view="all"], [data-time-content-view="audit"])
+    .time-filter-date-field {
     position: relative;
     justify-content: center;
     align-items: center;
@@ -5359,7 +5380,8 @@ body {
     isolation: isolate;
     touch-action: manipulation;
   }
-  .time-ledger-view[data-time-content-view="all"] .time-filter-date-label {
+  .time-ledger-view:is([data-time-content-view="all"], [data-time-content-view="audit"])
+    .time-filter-date-label {
     display: block;
     flex: 0 1 auto;
     min-width: 0;
@@ -5374,7 +5396,8 @@ body {
     text-overflow: ellipsis;
     pointer-events: none;
   }
-  .time-ledger-view[data-time-content-view="all"] .time-filter-date-cal-icon {
+  .time-ledger-view:is([data-time-content-view="all"], [data-time-content-view="audit"])
+    .time-filter-date-cal-icon {
     display: block;
     width: 0.875rem;
     height: 0.875rem;
@@ -5382,10 +5405,10 @@ body {
     object-fit: contain;
     pointer-events: none;
   }
-  .time-ledger-view[data-time-content-view="all"]
+  .time-ledger-view:is([data-time-content-view="all"], [data-time-content-view="audit"])
     .time-filter-date-field
     input.time-filter-start-date,
-  .time-ledger-view[data-time-content-view="all"]
+  .time-ledger-view:is([data-time-content-view="all"], [data-time-content-view="audit"])
     .time-filter-date-field
     input.time-filter-end-date {
     position: absolute;
@@ -5409,10 +5432,10 @@ body {
     appearance: none;
     touch-action: manipulation;
   }
-  .time-ledger-view[data-time-content-view="all"]
+  .time-ledger-view:is([data-time-content-view="all"], [data-time-content-view="audit"])
     .time-filter-date-field
     input.time-filter-start-date::-webkit-calendar-picker-indicator,
-  .time-ledger-view[data-time-content-view="all"]
+  .time-ledger-view:is([data-time-content-view="all"], [data-time-content-view="audit"])
     .time-filter-date-field
     input.time-filter-end-date::-webkit-calendar-picker-indicator {
     position: absolute;
@@ -5425,29 +5448,38 @@ body {
     cursor: pointer;
     opacity: 0.01;
   }
-  /* 모바일·보고서/개선: 네이티브 표시 + 연도 숨김(WebKit) */
-  .time-ledger-view:not([data-time-content-view="all"])
+  /* 보고서: 탭 아래 요약 띠 없음 — 시간 기록과 맞추려 상단 구분선만 */
+  .time-ledger-view[data-time-content-view="audit"] .time-ledger-mobile-toolbar {
+    border-top: var(--line-l3);
+  }
+  /* 보고서: 과제 필터(깔때기)만 숨김 — 툴바로 DOM 이동 시에도 적용 */
+  .time-ledger-view[data-time-content-view="audit"] #time-task-select-btn {
+    display: none !important;
+  }
+
+  /* 모바일·보고서/개선: 네이티브 표시 + 연도 숨김(WebKit) — 보고서(audit)는 위에서 시간 기록과 동일 오버레이 */
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"])
     .time-filter-nav-cluster
     input.time-filter-start-date::-webkit-datetime-edit-year-field,
-  .time-ledger-view:not([data-time-content-view="all"])
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"])
     .time-filter-nav-cluster
     input.time-filter-end-date::-webkit-datetime-edit-year-field {
     -webkit-appearance: none;
     display: none;
   }
-  .time-ledger-view:not([data-time-content-view="all"])
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"])
     .time-filter-nav-cluster
     input.time-filter-start-date::-webkit-datetime-edit-text,
-  .time-ledger-view:not([data-time-content-view="all"])
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"])
     .time-filter-nav-cluster
     input.time-filter-end-date::-webkit-datetime-edit-text {
     -webkit-padding-start: 0;
   }
-  .time-ledger-view:not([data-time-content-view="all"])
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"])
     .time-ledger-mobile-toolbar-right
     .time-filter-nav-cluster
     input.time-filter-start-date::-webkit-datetime-edit-fields-wrapper,
-  .time-ledger-view:not([data-time-content-view="all"])
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"])
     .time-ledger-mobile-toolbar-right
     .time-filter-nav-cluster
     input.time-filter-end-date::-webkit-datetime-edit-fields-wrapper {
@@ -5457,21 +5489,21 @@ body {
     gap: 0.1em;
     min-width: 0;
   }
-  .time-ledger-view:not([data-time-content-view="all"])
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"])
     .time-ledger-mobile-toolbar-right
     .time-filter-nav-cluster
     input.time-filter-start-date::-webkit-datetime-edit-text,
-  .time-ledger-view:not([data-time-content-view="all"])
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"])
     .time-ledger-mobile-toolbar-right
     .time-filter-nav-cluster
     input.time-filter-end-date::-webkit-datetime-edit-text {
     display: none;
   }
-  .time-ledger-view:not([data-time-content-view="all"])
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"])
     .time-ledger-mobile-toolbar-right
     .time-filter-range-wrap
     .time-filter-start-date,
-  .time-ledger-view:not([data-time-content-view="all"])
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"])
     .time-ledger-mobile-toolbar-right
     .time-filter-range-wrap
     .time-filter-end-date {
@@ -22174,8 +22206,13 @@ body.kpi-resizing {
     gap: 0.65rem;
   }
 
+  /* 보고서 일자 헤더 — 시간 기록 .date-divider 와 통일 (캡션·뮤트 톤) */
   .time-audit-day-label {
-    font-size: 1.125rem;
+    font-size: var(--fs-caption);
+    font-family: var(--font-body);
+    font-weight: var(--fw-body);
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
   }
 
   .time-audit-row {
@@ -23010,11 +23047,13 @@ body.kpi-resizing {
   border: none;
 }
 
-.time-audit-day-label {
-  font-size: 1.375rem;
-  font-family: var(--font-heading);
-  font-weight: 200;
-  color: var(--text-ink);
+@media (min-width: 48.0625rem) {
+  .time-audit-day-label {
+    font-size: 1.375rem;
+    font-family: var(--font-heading);
+    font-weight: 200;
+    color: var(--text-ink);
+  }
 }
 
 .time-audit-svg .time-audit-bar-inner-label {
