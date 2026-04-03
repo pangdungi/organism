@@ -44,6 +44,7 @@ import {
   pullKpiTabFromCloud,
 } from "./utils/kpiTabCloudRefresh.js";
 import { pullAllTimeLedgerFromCloud } from "./utils/timeLedgerCloudRefresh.js";
+import { pullAllAssetFromCloud } from "./utils/assetCloudRefresh.js";
 import {
   KPI_TAB_IDS,
   kpiSyncDebugLog,
@@ -61,6 +62,7 @@ const TAB_IDS_REFRESH_ON_KPI_PULL = new Set([
   "calendar",
   "schedulecalendar",
   "time",
+  "asset",
 ]);
 
 const TABS = [
@@ -495,7 +497,7 @@ export function mountApp(container) {
     { passive: true },
   );
 
-  /** 다른 브라우저 탭을 보다가 이 사이트로 돌아올 때: KPI·시간가계부를 서버 기준으로 pull 후 필요 시 화면 갱신 */
+  /** 다른 브라우저 탭을 보다가 이 사이트로 돌아올 때: KPI·시간가계부·자산을 서버 기준으로 pull 후 필요 시 화면 갱신 */
   let _kpiBrowserTabVisiblePullTimer = null;
   document.addEventListener(
     "visibilitychange",
@@ -508,12 +510,13 @@ export function mountApp(container) {
           try {
             const { anyChanged: kpiChanged } = await pullAllKpiMapsFromCloud();
             const { anyChanged: timeChanged } = await pullAllTimeLedgerFromCloud();
-            if (!kpiChanged && !timeChanged) return;
+            const { anyChanged: assetChanged } = await pullAllAssetFromCloud();
+            if (!kpiChanged && !timeChanged && !assetChanged) return;
             if (TAB_IDS_REFRESH_ON_KPI_PULL.has(currentTabId)) {
               renderMain(main, { skipTodoSaveBeforeUnmount: true });
             }
           } catch (e) {
-            console.warn("[KPI·시간가계부] 브라우저 탭 포커스 후 pull 실패", e?.message || e);
+            console.warn("[KPI·시간가계부·자산] 브라우저 탭 포커스 후 pull 실패", e?.message || e);
           }
         })();
       }, 350);

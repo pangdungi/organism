@@ -7,6 +7,7 @@ import { supabase } from "../supabase.js";
 import { hydrateTodoSectionTasksFromCloud } from "./todoSectionTasksSupabase.js";
 import { pullAllKpiMapsFromCloud } from "./kpiTabCloudRefresh.js";
 import { pullAllTimeLedgerFromCloud } from "./timeLedgerCloudRefresh.js";
+import { pullAllAssetFromCloud } from "./assetCloudRefresh.js";
 
 /** App.js 의 TAB_IDS_REFRESH_ON_KPI_PULL 과 동일 — 이 탭일 때만 pull 후 화면 갱신 */
 const REFRESH_MAIN_AFTER_CLOUD_PULL = new Set([
@@ -18,6 +19,7 @@ const REFRESH_MAIN_AFTER_CLOUD_PULL = new Set([
   "calendar",
   "schedulecalendar",
   "time",
+  "asset",
 ]);
 
 const KPI_REALTIME_TABLES = [
@@ -42,6 +44,17 @@ const TIME_LEDGER_REALTIME_TABLES = [
   "time_daily_budget_days",
 ];
 
+/** 자산관리 — 가계부·순자산·설정 등 */
+const ASSET_REALTIME_TABLES = [
+  "asset_user_expense_transactions",
+  "asset_user_expense_classifications",
+  "asset_user_payment_options",
+  "asset_user_net_worth_bundle",
+  "asset_user_net_worth_goal",
+  "asset_user_plan_monthly_goals",
+  "asset_user_stock_category_options",
+];
+
 let _channel = null;
 let _debounceTimer = null;
 let _generation = 0;
@@ -56,8 +69,9 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
         const needTodo = await hydrateTodoSectionTasksFromCloud();
         const { anyChanged } = await pullAllKpiMapsFromCloud();
         const { anyChanged: timeLedgerChanged } = await pullAllTimeLedgerFromCloud();
+        const { anyChanged: assetChanged } = await pullAllAssetFromCloud();
         if (gen !== _generation) return;
-        if (!needTodo && !anyChanged && !timeLedgerChanged) return;
+        if (!needTodo && !anyChanged && !timeLedgerChanged && !assetChanged) return;
         const tab = getCurrentTabId();
         if (!REFRESH_MAIN_AFTER_CLOUD_PULL.has(tab)) return;
         renderMain({ skipTodoSaveBeforeUnmount: true });
@@ -119,6 +133,19 @@ export function initSupabaseRealtimeSync(opts) {
     }
 
     for (const table of TIME_LEDGER_REALTIME_TABLES) {
+      ch = ch.on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table,
+          filter: `user_id=eq.${uid}`,
+        },
+        onEvent,
+      );
+    }
+
+    for (const table of ASSET_REALTIME_TABLES) {
       ch = ch.on(
         "postgres_changes",
         {
