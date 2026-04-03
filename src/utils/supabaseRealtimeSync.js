@@ -8,6 +8,7 @@ import { hydrateTodoSectionTasksFromCloud } from "./todoSectionTasksSupabase.js"
 import { pullAllKpiMapsFromCloud } from "./kpiTabCloudRefresh.js";
 import { pullAllTimeLedgerFromCloud } from "./timeLedgerCloudRefresh.js";
 import { pullAllAssetFromCloud } from "./assetCloudRefresh.js";
+import { pullAllDiaryFromCloud } from "./diaryCloudRefresh.js";
 
 /** App.js 의 TAB_IDS_REFRESH_ON_KPI_PULL 과 동일 — 이 탭일 때만 pull 후 화면 갱신 */
 const REFRESH_MAIN_AFTER_CLOUD_PULL = new Set([
@@ -20,6 +21,8 @@ const REFRESH_MAIN_AFTER_CLOUD_PULL = new Set([
   "schedulecalendar",
   "time",
   "asset",
+  "diary",
+  "archive",
 ]);
 
 const KPI_REALTIME_TABLES = [
@@ -55,6 +58,8 @@ const ASSET_REALTIME_TABLES = [
   "asset_user_stock_category_options",
 ];
 
+const DIARY_REALTIME_TABLES = ["diary_daily_entries"];
+
 let _channel = null;
 let _debounceTimer = null;
 let _generation = 0;
@@ -70,8 +75,16 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
         const { anyChanged } = await pullAllKpiMapsFromCloud();
         const { anyChanged: timeLedgerChanged } = await pullAllTimeLedgerFromCloud();
         const { anyChanged: assetChanged } = await pullAllAssetFromCloud();
+        const { anyChanged: diaryChanged } = await pullAllDiaryFromCloud();
         if (gen !== _generation) return;
-        if (!needTodo && !anyChanged && !timeLedgerChanged && !assetChanged) return;
+        if (
+          !needTodo &&
+          !anyChanged &&
+          !timeLedgerChanged &&
+          !assetChanged &&
+          !diaryChanged
+        )
+          return;
         const tab = getCurrentTabId();
         if (!REFRESH_MAIN_AFTER_CLOUD_PULL.has(tab)) return;
         renderMain({ skipTodoSaveBeforeUnmount: true });
@@ -146,6 +159,19 @@ export function initSupabaseRealtimeSync(opts) {
     }
 
     for (const table of ASSET_REALTIME_TABLES) {
+      ch = ch.on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table,
+          filter: `user_id=eq.${uid}`,
+        },
+        onEvent,
+      );
+    }
+
+    for (const table of DIARY_REALTIME_TABLES) {
       ch = ch.on(
         "postgres_changes",
         {
