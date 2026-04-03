@@ -890,7 +890,9 @@ export function attachDreamKpiMapSaveListener() {
   attachDreamKpiMapFlushOnLeave();
   window.addEventListener("dream-kpi-map-saved", (e) => {
     if (e.detail?.fromServerMerge) return;
-    scheduleDreamKpiMapSyncPush();
+    syncDreamKpiMapToSupabase().catch((err) => {
+      dreamKpiUploadLog("error", { phase: "immediate_push", message: err?.message || String(err) });
+    });
   });
 }
 

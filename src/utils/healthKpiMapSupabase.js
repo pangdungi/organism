@@ -867,7 +867,9 @@ export function attachHealthKpiMapSaveListener() {
   attachHealthKpiMapFlushOnLeave();
   window.addEventListener("health-kpi-map-saved", (e) => {
     if (e.detail?.fromServerMerge) return;
-    scheduleHealthKpiMapSyncPush();
+    syncHealthKpiMapToSupabase().catch((err) => {
+      healthKpiUploadLog("error", { phase: "immediate_push", message: err?.message || String(err) });
+    });
   });
 }
 

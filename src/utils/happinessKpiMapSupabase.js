@@ -824,7 +824,9 @@ export function attachHappinessKpiMapSaveListener() {
   attachHappinessKpiMapFlushOnLeave();
   window.addEventListener("happiness-kpi-map-saved", (e) => {
     if (e.detail?.fromServerMerge) return;
-    scheduleHappinessKpiMapSyncPush();
+    syncHappinessKpiMapToSupabase().catch((err) => {
+      happinessKpiUploadLog("error", { phase: "immediate_push", message: err?.message || String(err) });
+    });
   });
 }
 

@@ -889,7 +889,9 @@ export function attachSideincomeKpiMapSaveListener() {
   attachSideincomeKpiMapFlushOnLeave();
   window.addEventListener("sideincome-kpi-map-saved", (e) => {
     if (e.detail?.fromServerMerge) return;
-    scheduleSideincomeKpiMapSyncPush();
+    syncSideincomeKpiMapToSupabase().catch((err) => {
+      sideincomeKpiUploadLog("error", { phase: "immediate_push", message: err?.message || String(err) });
+    });
   });
 }
 
