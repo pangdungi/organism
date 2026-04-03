@@ -140,6 +140,54 @@ export function mergeCalendarSectionTasksFromServer(rows) {
   writeCustomSectionTasksObject(custom);
 }
 
+/**
+ * 다른 기기에서 추가된 행만 로컬에 합친다(덮어쓰기 아님).
+ * 오래된 브라우저가 sync 시 서버 id를 모른 채 고아 삭제로 지우는 것을 막기 위해 sync 직전에 호출한다.
+ */
+export function mergeAdditiveServerRowsIntoLocal(serverRows) {
+  const fixed = readSectionTasksObject();
+  const custom = readCustomSectionTasksObject();
+  const seen = new Set();
+
+  function collectIds(obj) {
+    Object.keys(obj || {}).forEach((k) => {
+      const arr = Array.isArray(obj[k]) ? obj[k] : [];
+      arr.forEach((t) => {
+        const id = String(t?.taskId || t?.id || "").trim();
+        if (id) seen.add(id);
+      });
+    });
+  }
+  collectIds(fixed);
+  collectIds(custom);
+
+  const sorted = [...(serverRows || [])].sort((a, b) => {
+    const sk = String(a.section_key || "").localeCompare(String(b.section_key || ""));
+    if (sk !== 0) return sk;
+    return (a.sort_order || 0) - (b.sort_order || 0);
+  });
+
+  sorted.forEach((row) => {
+    const id = String(row.id || "").trim();
+    if (!id || seen.has(id)) return;
+    const task = dbRowToLocalTask(row);
+    const key = String(row.section_key || "").trim();
+    const isCustom = !!row.is_custom_section;
+    if (!key) return;
+    if (isCustom) {
+      if (!custom[key]) custom[key] = [];
+      custom[key].push(task);
+    } else {
+      if (!fixed[key]) fixed[key] = [];
+      fixed[key].push(task);
+    }
+    seen.add(id);
+  });
+
+  writeSectionTasksObject(fixed);
+  writeCustomSectionTasksObject(custom);
+}
+
 function ensureTaskIdsInList(arr) {
   let dirty = false;
   const out = (Array.isArray(arr) ? arr : []).map((t) => {

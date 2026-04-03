@@ -48,6 +48,7 @@ import {
   kpiSyncDebugLog,
   snapshotKpiLocalStorageBrief,
 } from "./utils/kpiSyncDebug.js";
+import { initSupabaseRealtimeSync } from "./utils/supabaseRealtimeSync.js";
 
 /** 브라우저 탭 포커스 시 KPI pull 후 다시 그려야 하는 앱 메뉴(오늘·할일·시간 등 KPI 데이터를 읽는 화면) */
 const TAB_IDS_REFRESH_ON_KPI_PULL = new Set([
@@ -474,6 +475,11 @@ export function mountApp(container) {
   }
 
   window.__lpRenderMain = (opts) => renderMain(main, opts || {});
+
+  initSupabaseRealtimeSync({
+    getCurrentTabId: () => currentTabId,
+    renderMain: (opts) => renderMain(main, opts || {}),
+  });
 
   const TODO_TABS_FOR_CLOUD_PULL = new Set(["calendar", "schedulecalendar"]);
   document.addEventListener(

@@ -6,6 +6,7 @@ import { supabase } from "../supabase.js";
 import {
   flattenCalendarTasksForSync,
   mergeCalendarSectionTasksFromServer,
+  mergeAdditiveServerRowsIntoLocal,
   readSectionTasksObject,
   readCustomSectionTasksObject,
   ensureCalendarSectionTaskIds,
@@ -48,6 +49,21 @@ export async function syncTodoSectionTasksToSupabase() {
   if (!userId || !supabase) return;
 
   const ensured = ensureCalendarSectionTaskIds();
+
+  /* 다른 기기에서 추가된 행 id를 로컬에 먼저 합친 뒤 wantIds를 계산 — 고아 삭제가 타 기기 신규 행을 지우지 않게 함 */
+  const { data: serverSnapshot, error: snapErr } = await supabase
+    .from(TABLE)
+    .select(
+      "id, section_key, is_custom_section, sort_order, name, start_date, due_date, start_time, end_time, reminder_date, reminder_time, eisenhower, done, item_type, updated_at",
+    )
+    .eq("user_id", userId)
+    .order("section_key", { ascending: true })
+    .order("is_custom_section", { ascending: true })
+    .order("sort_order", { ascending: true });
+  if (!snapErr && Array.isArray(serverSnapshot) && serverSnapshot.length > 0) {
+    mergeAdditiveServerRowsIntoLocal(serverSnapshot);
+  }
+
   const payloads = flattenCalendarTasksForSync(userId);
   const wantIds = new Set(payloads.map((p) => p.id));
 
