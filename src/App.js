@@ -39,11 +39,7 @@ import {
   hydrateSideincomeKpiMapFromCloud,
 } from "./utils/sideincomeKpiMapSupabase.js";
 import { attachTimeLedgerEntriesSaveListener } from "./utils/timeLedgerEntriesSupabase.js";
-import {
-  KPI_TAB_IDS,
-  kpiSyncDebugLog,
-  snapshotKpiLocalStorageBrief,
-} from "./utils/kpiSyncDebug.js";
+import { kpiSyncDebugLog, snapshotKpiLocalStorageBrief } from "./utils/kpiSyncDebug.js";
 
 const TABS = [
   { id: "home", label: "오늘", icon: "/toolbaricons/dashboard.svg" },
@@ -295,21 +291,9 @@ export function mountApp(container) {
       });
     }
     renderMain(main);
-    if (KPI_TAB_IDS.has(tabId)) {
-      const tabIdForPull = tabId;
-      void (async () => {
-        try {
-          const { pullKpiTabFromCloud } = await import("./utils/kpiTabCloudRefresh.js");
-          const { pullOk, localChanged } = await pullKpiTabFromCloud(tabIdForPull);
-          if (currentTabId !== tabIdForPull) return;
-          if (pullOk && localChanged) {
-            window.__lpRenderMain?.({ skipTodoSaveBeforeUnmount: true });
-          }
-        } catch (e) {
-          console.warn("[KPI]", tabIdForPull, "탭 동기화 실패", e?.message || e);
-        }
-      })();
-    }
+    /* KPI 탭 진입 시 서버 pull 제거: 탭만 바꿨는데 pull이 localStorage를 통째로 갈아엎어
+     * (다른 브라우저 탭·아직 푸시 전 로컬 최신본이 서버보다 새로울 때 덮어쓰임).
+     * 동기화는 앱 시작 hydrate + 저장 시 디바운스 푸시로만 한다. */
     if (tabId === "idea") {
       requestAnimationFrame(() => {
         main.scrollTop = 0;
