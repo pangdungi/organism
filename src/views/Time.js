@@ -79,6 +79,9 @@ function isBudgetOverlapDebug() {
   }
 }
 
+/** false: 시간가계부 상단「개선하기」탭 비표시. 다시 쓰려면 true 로 변경. */
+const TIME_LEDGER_SHOW_IMPROVE_TAB = false;
+
 /** 모바일 과제 기록 FAB — TodoList ADD_TASK_ICON과 동일 */
 const TIME_LEDGER_ADD_FAB_SVG =
   '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>';
@@ -3400,10 +3403,13 @@ export function render() {
 
   const viewTabs = document.createElement("div");
   viewTabs.className = "time-view-tabs";
+  const improveTabHtml = TIME_LEDGER_SHOW_IMPROVE_TAB
+    ? '<button type="button" class="time-view-tab" data-view="improve">개선하기</button>'
+    : "";
   viewTabs.innerHTML = `
     <button type="button" class="time-view-tab active" data-view="all">시간 기록</button>
     <button type="button" class="time-view-tab" data-view="audit">보고서</button>
-    <button type="button" class="time-view-tab" data-view="improve">개선하기</button>
+    ${improveTabHtml}
   `;
 
   const now = new Date();
@@ -3554,7 +3560,13 @@ export function render() {
   endDateInput.addEventListener("input", syncTimeFilterDateLabels);
 
   function onFilterChange(skipMerge = false) {
-    const view = viewTabs.querySelector(".time-view-tab.active")?.dataset?.view;
+    let view = viewTabs.querySelector(".time-view-tab.active")?.dataset?.view;
+    if (!TIME_LEDGER_SHOW_IMPROVE_TAB && view === "improve") {
+      view = "all";
+      viewTabs.querySelectorAll(".time-view-tab").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.view === "all");
+      });
+    }
     const type = filterType;
     if (view === "audit" && type === "range") {
       const single = startDateInput.value || filterStartDate;
@@ -3584,7 +3596,7 @@ export function render() {
       contentWrap.innerHTML = "";
     } else if (view === "audit") {
       renderAudit(filtered);
-    } else if (view === "improve") {
+    } else if (view === "improve" && TIME_LEDGER_SHOW_IMPROVE_TAB) {
       renderImprove(filtered);
     }
     syncTimeFilterDateLabels();
@@ -9502,6 +9514,7 @@ export function render() {
   }
 
   function switchView(view) {
+    if (!TIME_LEDGER_SHOW_IMPROVE_TAB && view === "improve") view = "all";
     el.dataset.timeContentView = view;
     const hourlyAddSlotRoot = el.querySelector(".time-hourly-add-slot");
     if (
@@ -9518,7 +9531,9 @@ export function render() {
       cachedRows = getFullRowsForFilter(true);
     }
     const rowsToUse =
-      view === "blank" || view === "audit" || view === "improve"
+      view === "blank" ||
+      view === "audit" ||
+      (view === "improve" && TIME_LEDGER_SHOW_IMPROVE_TAB)
         ? cachedRows
         : getFilteredRows(cachedRows);
     viewTabs.querySelectorAll(".time-view-tab").forEach((btn) => {
@@ -9533,7 +9548,7 @@ export function render() {
       contentWrap.innerHTML = "";
     } else if (view === "audit") {
       renderAudit(getFilteredRows(cachedRows));
-    } else if (view === "improve") {
+    } else if (view === "improve" && TIME_LEDGER_SHOW_IMPROVE_TAB) {
       renderImprove(getFilteredRows(cachedRows));
     }
     updateTotal();
