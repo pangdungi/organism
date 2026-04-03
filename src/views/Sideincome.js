@@ -15,6 +15,26 @@ import { getSubtasks, addSubtask, updateSubtask, removeSubtask } from "../utils/
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
 
+function defaultDeletedRefs() {
+  return {
+    categories: [],
+    pathLogs: [],
+    kpis: [],
+    kpiLogs: [],
+    kpiTodos: [],
+    kpiDailyRepeatTodos: [],
+  };
+}
+
+function appendDeletedRef(data, kind, id) {
+  if (!id) return;
+  data.deletedRefs = data.deletedRefs || defaultDeletedRefs();
+  const s = String(id);
+  const arr = data.deletedRefs[kind] || [];
+  if (!arr.includes(s)) arr.push(s);
+  data.deletedRefs[kind] = arr;
+}
+
 function loadSideincomeMap() {
   try {
     const raw = localStorage.getItem(SIDEINCOME_KPI_MAP_STORAGE_KEY);
@@ -34,10 +54,21 @@ function loadSideincomeMap() {
         kpiOrder: parsed.kpiOrder || {},
         kpiTaskSync: parsed.kpiTaskSync || {},
         pathLogs: parsed.pathLogs || [],
+        deletedRefs: parsed.deletedRefs && typeof parsed.deletedRefs === "object" ? parsed.deletedRefs : defaultDeletedRefs(),
       };
     }
   } catch (_) {}
-  return { paths: [], kpis: [], kpiLogs: [], kpiTodos: [], kpiDailyRepeatTodos: [], kpiOrder: {}, kpiTaskSync: {}, pathLogs: [] };
+  return {
+    paths: [],
+    kpis: [],
+    kpiLogs: [],
+    kpiTodos: [],
+    kpiDailyRepeatTodos: [],
+    kpiOrder: {},
+    kpiTaskSync: {},
+    pathLogs: [],
+    deletedRefs: defaultDeletedRefs(),
+  };
 }
 
 function getTimeTaskOptionsRaw() {
@@ -72,7 +103,7 @@ function syncKpiToTimeTask(kpi, action, oldName) {
     saveSideincomeMap(data);
     notifyTimeLedgerTasksChanged();
   } else if (action === "remove") {
-    const name = data.kpiTaskSync[kpi.id];
+    const name = (data.kpiTaskSync[kpi.id] || kpi.name || "").trim();
     if (name) {
       opts = opts.filter((o) => getTaskName(o) !== name);
       delete data.kpiTaskSync[kpi.id];
@@ -433,6 +464,7 @@ export function render() {
     modal.querySelector(".dream-kpi-delete-btn").addEventListener("click", () => {
       syncKpiToTimeTask(kpi, "remove");
       const data = loadSideincomeMap();
+      appendDeletedRef(data, "kpis", kpi.id);
       data.kpis = (data.kpis || []).filter((k) => k.id !== kpi.id);
       data.kpiLogs = (data.kpiLogs || []).filter((l) => l.kpiId !== kpi.id);
       data.kpiTodos = (data.kpiTodos || []).filter((t) => t.kpiId !== kpi.id);
@@ -844,6 +876,7 @@ export function render() {
         item.querySelector(".dream-kpi-path-log-edit").addEventListener("click", () => showPathLogModal(path, log));
         item.querySelector(".dream-kpi-path-log-del").addEventListener("click", () => {
           const d = loadSideincomeMap();
+          appendDeletedRef(d, "pathLogs", log.id);
           d.pathLogs = (d.pathLogs || []).filter((l) => l.id !== log.id);
           saveSideincomeMap(d);
           renderKpiList();
@@ -1149,6 +1182,7 @@ export function render() {
         item.querySelector(".dream-kpi-history-edit").addEventListener("click", () => showKpiLogModal(kpi, log));
         item.querySelector(".dream-kpi-history-delete").addEventListener("click", () => {
           const d = loadSideincomeMap();
+          appendDeletedRef(d, "kpiLogs", log.id);
           d.kpiLogs = (d.kpiLogs || []).filter((l) => l.id !== log.id);
           saveSideincomeMap(d);
           renderKpiList();
@@ -1198,6 +1232,7 @@ export function render() {
       });
       item.querySelector(".dream-kpi-todo-del").addEventListener("click", () => {
         const d = loadSideincomeMap();
+        appendDeletedRef(d, "kpiTodos", todo.id);
         d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
         saveSideincomeMap(d);
         renderKpiHistory();
@@ -1375,6 +1410,7 @@ export function render() {
         delBtn.textContent = "×";
         delBtn.addEventListener("click", () => {
           const d = loadSideincomeMap();
+          appendDeletedRef(d, "kpiDailyRepeatTodos", todo.id);
           d.kpiDailyRepeatTodos = (d.kpiDailyRepeatTodos || []).filter((x) => x.id !== todo.id);
           saveSideincomeMap(d);
           renderKpiHistory();
@@ -1441,9 +1477,13 @@ export function render() {
     modal.querySelector(".dream-delete-confirm-submit").addEventListener("click", () => {
       close();
       const d = loadSideincomeMap();
+      appendDeletedRef(d, "categories", pathId);
       const pathKpis = (d.kpis || []).filter((k) => k.pathId === pathId);
       const kpiIds = pathKpis.map((k) => k.id);
-      pathKpis.forEach((k) => syncKpiToTimeTask(k, "remove"));
+      pathKpis.forEach((k) => {
+        appendDeletedRef(d, "kpis", k.id);
+        syncKpiToTimeTask(k, "remove");
+      });
       d.paths = (d.paths || []).filter((x) => x.id !== pathId);
       d.kpis = (d.kpis || []).filter((k) => k.pathId !== pathId);
       d.kpiLogs = (d.kpiLogs || []).filter((l) => !kpiIds.includes(l.kpiId));
@@ -1626,6 +1666,18 @@ export function render() {
       contentWrap.hidden = true;
     }
   }
+
+  const onMergedSync = (e) => {
+    if (!e.detail?.fromServerMerge || !el.isConnected) return;
+    const data = loadSideincomeMap();
+    if (!data.paths.some((p) => p.id === activePathId)) {
+      activePathId = data.paths[0]?.id || null;
+      selectedKpiId = null;
+    }
+    renderTabs();
+    updateTitleAndContent();
+  };
+  window.addEventListener("sideincome-kpi-map-saved", onMergedSync);
 
   return el;
 }

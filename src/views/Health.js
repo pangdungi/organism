@@ -15,6 +15,25 @@ const HEALTH_MAP_STORAGE_KEY = "kpi-health-map";
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
 
+function defaultDeletedRefs() {
+  return {
+    categories: [],
+    kpis: [],
+    kpiLogs: [],
+    kpiTodos: [],
+    kpiDailyRepeatTodos: [],
+  };
+}
+
+function appendDeletedRef(data, kind, id) {
+  if (!id) return;
+  data.deletedRefs = data.deletedRefs || defaultDeletedRefs();
+  const s = String(id);
+  const arr = data.deletedRefs[kind] || [];
+  if (!arr.includes(s)) arr.push(s);
+  data.deletedRefs[kind] = arr;
+}
+
 function loadHealthMap() {
   try {
     const raw = localStorage.getItem(HEALTH_MAP_STORAGE_KEY);
@@ -33,10 +52,20 @@ function loadHealthMap() {
         kpiDailyRepeatTodos: parsed.kpiDailyRepeatTodos || [],
         kpiOrder: parsed.kpiOrder || {},
         kpiTaskSync: parsed.kpiTaskSync || {},
+        deletedRefs: parsed.deletedRefs && typeof parsed.deletedRefs === "object" ? parsed.deletedRefs : defaultDeletedRefs(),
       };
     }
   } catch (_) {}
-  return { healths: [], kpis: [], kpiLogs: [], kpiTodos: [], kpiDailyRepeatTodos: [], kpiOrder: {}, kpiTaskSync: {} };
+  return {
+    healths: [],
+    kpis: [],
+    kpiLogs: [],
+    kpiTodos: [],
+    kpiDailyRepeatTodos: [],
+    kpiOrder: {},
+    kpiTaskSync: {},
+    deletedRefs: defaultDeletedRefs(),
+  };
 }
 
 function getTimeTaskOptionsRaw() {
@@ -71,7 +100,7 @@ function syncKpiToTimeTask(kpi, action, oldName) {
     saveHealthMap(data);
     notifyTimeLedgerTasksChanged();
   } else if (action === "remove") {
-    const name = data.kpiTaskSync[kpi.id];
+    const name = (data.kpiTaskSync[kpi.id] || kpi.name || "").trim();
     if (name) {
       opts = opts.filter((o) => getTaskName(o) !== name);
       delete data.kpiTaskSync[kpi.id];
@@ -432,6 +461,7 @@ export function render() {
     modal.querySelector(".dream-kpi-delete-btn").addEventListener("click", () => {
       syncKpiToTimeTask(kpi, "remove");
       const data = loadHealthMap();
+      appendDeletedRef(data, "kpis", kpi.id);
       data.kpis = (data.kpis || []).filter((k) => k.id !== kpi.id);
       data.kpiLogs = (data.kpiLogs || []).filter((l) => l.kpiId !== kpi.id);
       data.kpiTodos = (data.kpiTodos || []).filter((t) => t.kpiId !== kpi.id);
@@ -995,6 +1025,7 @@ export function render() {
         item.querySelector(".dream-kpi-history-edit").addEventListener("click", () => showKpiLogModal(kpi, log));
         item.querySelector(".dream-kpi-history-delete").addEventListener("click", () => {
           const d = loadHealthMap();
+          appendDeletedRef(d, "kpiLogs", log.id);
           d.kpiLogs = (d.kpiLogs || []).filter((l) => l.id !== log.id);
           saveHealthMap(d);
           renderKpiList();
@@ -1044,6 +1075,7 @@ export function render() {
       });
       item.querySelector(".dream-kpi-todo-del").addEventListener("click", () => {
         const d = loadHealthMap();
+        appendDeletedRef(d, "kpiTodos", todo.id);
         d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
         saveHealthMap(d);
         renderKpiHistory();
@@ -1221,6 +1253,7 @@ export function render() {
         delBtn.textContent = "×";
         delBtn.addEventListener("click", () => {
           const d = loadHealthMap();
+          appendDeletedRef(d, "kpiDailyRepeatTodos", todo.id);
           d.kpiDailyRepeatTodos = (d.kpiDailyRepeatTodos || []).filter((x) => x.id !== todo.id);
           saveHealthMap(d);
           renderKpiHistory();
@@ -1332,9 +1365,13 @@ export function render() {
     modal.querySelector(".dream-delete-confirm-submit").addEventListener("click", () => {
       close();
       const d = loadHealthMap();
+      appendDeletedRef(d, "categories", healthId);
       const healthKpis = (d.kpis || []).filter((k) => k.healthId === healthId);
       const kpiIds = healthKpis.map((k) => k.id);
-      healthKpis.forEach((k) => syncKpiToTimeTask(k, "remove"));
+      healthKpis.forEach((k) => {
+        appendDeletedRef(d, "kpis", k.id);
+        syncKpiToTimeTask(k, "remove");
+      });
       d.healths = (d.healths || []).filter((x) => x.id !== healthId);
       d.kpis = (d.kpis || []).filter((k) => k.healthId !== healthId);
       d.kpiLogs = (d.kpiLogs || []).filter((l) => !kpiIds.includes(l.kpiId));
@@ -1448,6 +1485,18 @@ export function render() {
       contentWrap.hidden = true;
     }
   }
+
+  const onMergedSync = (e) => {
+    if (!e.detail?.fromServerMerge || !el.isConnected) return;
+    const data = loadHealthMap();
+    if (!data.healths.some((h) => h.id === activeHealthId)) {
+      activeHealthId = data.healths[0]?.id || null;
+      selectedKpiId = null;
+    }
+    renderTabs();
+    updateTitleAndContent();
+  };
+  window.addEventListener("health-kpi-map-saved", onMergedSync);
 
   return el;
 }

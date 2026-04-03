@@ -14,6 +14,25 @@ import { attachKpiTodoInputScrollIntoView } from "../utils/kpiTodoInputScroll.js
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
 
+function defaultDeletedRefs() {
+  return {
+    categories: [],
+    kpis: [],
+    kpiLogs: [],
+    kpiTodos: [],
+    kpiDailyRepeatTodos: [],
+  };
+}
+
+function appendDeletedRef(data, kind, id) {
+  if (!id) return;
+  data.deletedRefs = data.deletedRefs || defaultDeletedRefs();
+  const s = String(id);
+  const arr = data.deletedRefs[kind] || [];
+  if (!arr.includes(s)) arr.push(s);
+  data.deletedRefs[kind] = arr;
+}
+
 function loadHappinessMap() {
   try {
     const raw = localStorage.getItem(HAPPINESS_KPI_MAP_STORAGE_KEY);
@@ -32,10 +51,20 @@ function loadHappinessMap() {
         kpiDailyRepeatTodos: parsed.kpiDailyRepeatTodos || [],
         kpiOrder: parsed.kpiOrder || {},
         kpiTaskSync: parsed.kpiTaskSync || {},
+        deletedRefs: parsed.deletedRefs && typeof parsed.deletedRefs === "object" ? parsed.deletedRefs : defaultDeletedRefs(),
       };
     }
   } catch (_) {}
-  return { happinesses: [], kpis: [], kpiLogs: [], kpiTodos: [], kpiDailyRepeatTodos: [], kpiOrder: {}, kpiTaskSync: {} };
+  return {
+    happinesses: [],
+    kpis: [],
+    kpiLogs: [],
+    kpiTodos: [],
+    kpiDailyRepeatTodos: [],
+    kpiOrder: {},
+    kpiTaskSync: {},
+    deletedRefs: defaultDeletedRefs(),
+  };
 }
 
 function getTimeTaskOptionsRaw() {
@@ -70,7 +99,7 @@ function syncKpiToTimeTask(kpi, action, oldName) {
     saveHappinessMap(data);
     notifyTimeLedgerTasksChanged();
   } else if (action === "remove") {
-    const name = data.kpiTaskSync[kpi.id];
+    const name = (data.kpiTaskSync[kpi.id] || kpi.name || "").trim();
     if (name) {
       opts = opts.filter((o) => getTaskName(o) !== name);
       delete data.kpiTaskSync[kpi.id];
@@ -431,6 +460,7 @@ export function render() {
     modal.querySelector(".dream-kpi-delete-btn").addEventListener("click", () => {
       syncKpiToTimeTask(kpi, "remove");
       const data = loadHappinessMap();
+      appendDeletedRef(data, "kpis", kpi.id);
       data.kpis = (data.kpis || []).filter((k) => k.id !== kpi.id);
       data.kpiLogs = (data.kpiLogs || []).filter((l) => l.kpiId !== kpi.id);
       data.kpiTodos = (data.kpiTodos || []).filter((t) => t.kpiId !== kpi.id);
@@ -987,6 +1017,7 @@ export function render() {
         item.querySelector(".dream-kpi-history-edit").addEventListener("click", () => showKpiLogModal(kpi, log));
         item.querySelector(".dream-kpi-history-delete").addEventListener("click", () => {
           const d = loadHappinessMap();
+          appendDeletedRef(d, "kpiLogs", log.id);
           d.kpiLogs = (d.kpiLogs || []).filter((l) => l.id !== log.id);
           saveHappinessMap(d);
           renderKpiList();
@@ -1036,6 +1067,7 @@ export function render() {
       });
       item.querySelector(".dream-kpi-todo-del").addEventListener("click", () => {
         const d = loadHappinessMap();
+        appendDeletedRef(d, "kpiTodos", todo.id);
         d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
         saveHappinessMap(d);
         renderKpiHistory();
@@ -1213,6 +1245,7 @@ export function render() {
         delBtn.textContent = "×";
         delBtn.addEventListener("click", () => {
           const d = loadHappinessMap();
+          appendDeletedRef(d, "kpiDailyRepeatTodos", todo.id);
           d.kpiDailyRepeatTodos = (d.kpiDailyRepeatTodos || []).filter((x) => x.id !== todo.id);
           saveHappinessMap(d);
           renderKpiHistory();
@@ -1324,9 +1357,13 @@ export function render() {
     modal.querySelector(".dream-delete-confirm-submit").addEventListener("click", () => {
       close();
       const d = loadHappinessMap();
+      appendDeletedRef(d, "categories", happinessId);
       const happinessKpis = (d.kpis || []).filter((k) => k.happinessId === happinessId);
       const kpiIds = happinessKpis.map((k) => k.id);
-      happinessKpis.forEach((k) => syncKpiToTimeTask(k, "remove"));
+      happinessKpis.forEach((k) => {
+        appendDeletedRef(d, "kpis", k.id);
+        syncKpiToTimeTask(k, "remove");
+      });
       d.happinesses = (d.happinesses || []).filter((x) => x.id !== happinessId);
       d.kpis = (d.kpis || []).filter((k) => k.happinessId !== happinessId);
       d.kpiLogs = (d.kpiLogs || []).filter((l) => !kpiIds.includes(l.kpiId));
@@ -1440,6 +1477,18 @@ export function render() {
       contentWrap.hidden = true;
     }
   }
+
+  const onMergedSync = (e) => {
+    if (!e.detail?.fromServerMerge || !el.isConnected) return;
+    const data = loadHappinessMap();
+    if (!data.happinesses.some((h) => h.id === activeHappinessId)) {
+      activeHappinessId = data.happinesses[0]?.id || null;
+      selectedKpiId = null;
+    }
+    renderTabs();
+    updateTitleAndContent();
+  };
+  window.addEventListener("happiness-kpi-map-saved", onMergedSync);
 
   return el;
 }

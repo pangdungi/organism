@@ -3541,7 +3541,7 @@ body {
     font-size: 16px !important;
   }
 
-  /* 모바일 근무표: 전역 .calendar-view .calendar-view-header { display:none } 때문에 제목·근무유형 설정 버튼이 숨겨짐 → 표시 복구 */
+  /* 모바일 근무표: 헤더(제목·근무유형 설정) 레이아웃 */
   .calendar-view--mobile-workschedule .work-schedule-header.calendar-view-header {
     display: flex !important;
     flex-direction: column;
@@ -4233,21 +4233,6 @@ body {
     padding-right: 0;
   }
 
-  /* 모바일: 할일/일정 전용 탭에서만 제목·탭 숨김 (홈 임베드·모바일 캘린더·근무표 단독 탭 제외) */
-  .calendar-view:not(.calendar-view--mobile-schedule):not(
-      .calendar-view--mobile-workschedule
-    )
-    .calendar-view-header
-    .calendar-view-title {
-    display: none !important;
-  }
-  .calendar-view:not(.calendar-view--mobile-schedule):not(
-      .calendar-view--mobile-workschedule
-    )
-    .calendar-view-header
-    .dream-view-label {
-    display: none !important;
-  }
   .calendar-view .calendar-monthly-tabs-wrap {
     display: none !important;
   }
@@ -4259,6 +4244,12 @@ body {
   /* 모바일: 할일/일정 탭 패널 패딩 제거 (화면 끝까지) */
   .app-tab-panel-content.calendar-view {
     padding: 0 !important;
+  }
+  /* 모바일: 상단 제목(SCHEDULE·할일/일정)만 탭 줄과 동일 좌우 여백 */
+  .app-tab-panel-content.calendar-view > .calendar-view-header {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    box-sizing: border-box;
   }
   /* 모바일: 월 네비(MAR·연도 / 오늘·화살표) 좌우 살짝 여백 */
   .calendar-monthly-layout .calendar-monthly-nav {
@@ -5106,10 +5097,10 @@ body {
     background: var(--badge-stone-bg) !important;
   }
 
-  /* 모바일: 시간기록 탭에서만 상단·필터 일부 숨김 — 날짜 묶음은 툴바로, 과제 설정은 상단 여백 띠 */
+  /* 모바일: 시간기록 탭에서만 상단·필터 일부 숨김 — 날짜 묶음은 툴바로, 과제 설정은 상단 여백 띠; 과제 기록은 FAB */
   .time-ledger-view .time-ledger-header,
   .time-ledger-view .time-hourly-wrap,
-  .time-ledger-view[data-time-content-view="all"] .time-filter-bar,
+  .time-ledger-view[data-time-content-view="all"] .time-ledger-filter-add-row,
   .time-ledger-view[data-time-content-view="all"]
     .time-ledger-summary-panel:not(.time-ledger-mobile-tabs-summary) {
     display: none !important;
@@ -5132,6 +5123,9 @@ body {
   /* 과제 설정 아이콘 주변만: 래퍼·버튼 패딩 제거 (.time-ledger-tabs-top-margin / .time-ledger-tabs-settings-btn) */
   .time-ledger-view .time-ledger-tabs-filter-row .time-ledger-tabs-top-margin {
     padding: 0 !important;
+    width: 100%;
+    flex: 1 1 100%;
+    flex-shrink: 0;
   }
   .time-ledger-view .time-ledger-tabs-filter-row .time-ledger-tabs-settings-btn {
     padding: 0 !important;
@@ -5246,7 +5240,12 @@ body {
   .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(4) .time-ledger-summary-value--spent .time-ledger-summary-unit {
     font-size: clamp(0.45rem, 2vw, 0.5rem);
   }
-  .time-ledger-view .time-ledger-tabs-filter-row .time-filter-bar {
+  .time-ledger-view .time-ledger-filter-add-row {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    box-sizing: border-box;
+  }
+  .time-ledger-view .time-ledger-filter-add-row .time-filter-bar {
     flex-shrink: 0;
     margin-bottom: 0;
   }
@@ -17037,7 +17036,7 @@ body.kpi-resizing {
   margin-bottom: 1rem;
 }
 
-/* 탭 + 필터 한 줄: 필터 안 드롭다운이 .time-view-tabs overflow-y에 잘리지 않도록 분리 */
+/* 1행: 탭만 — 자산관리 .asset-view-tabs와 동일하게 전체 폭 밑줄 + 탭 아래 여백 */
 .time-ledger-tabs-filter-row {
   display: flex;
   align-items: center;
@@ -17045,19 +17044,51 @@ body.kpi-resizing {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  border-bottom: var(--line-l3);
+  border-bottom: none;
   font-family: var(--font-body);
   position: relative;
 }
 
-/* 상단 여백 띠: 탭과 분리, 설정만 우측 정렬 */
+/* 2행: 과제 기록(왼쪽)+필터바(오른쪽) — 세로는 하단 정렬(필터 입력·밑줄과 맞춤) */
+.time-ledger-filter-add-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  flex-wrap: nowrap;
+  border-bottom: var(--line-l3);
+  padding-bottom: 0.35rem;
+  margin-bottom: 1rem;
+  box-sizing: border-box;
+  font-family: var(--font-body);
+}
+
+.time-ledger-filter-add-row .time-filter-bar {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: auto;
+}
+
+.time-ledger-filter-add-row .time-hourly-add-slot:not(:empty) {
+  display: flex;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+/* 과제 설정(톱니): 오른쪽 세로 보더 제거 — 날짜 구간과 붙어 보이게 */
+.time-ledger-filter-add-row .time-filter-bar > .time-task-setup-btn.time-ledger-tabs-settings-btn {
+  border-right: none;
+}
+
+/* 상단 여백 띠: 설정 버튼만 — 데스크톱 한 줄에서는 100% 폭·flex-basis 100%면 탭 행이 잘림(부모 overflow:hidden) */
 .time-ledger-tabs-top-margin {
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  width: 100%;
-  flex: 1 1 100%;
-  flex-shrink: 0;
+  width: auto;
+  flex: 0 0 auto;
   box-sizing: border-box;
   padding: 0.2rem 0 0.15rem;
   min-height: 0;
@@ -17076,10 +17107,12 @@ body.kpi-resizing {
   align-items: center;
   box-sizing: border-box;
 }
+/* 자산관리 탭줄과 동일: border-bottom + margin-bottom (가계부·현금흐름 등 아래 긴 선) */
 .time-ledger-tabs-filter-row .time-ledger-tab-header-row .time-view-tabs {
   flex: 1;
   min-width: 0;
-  border-bottom: none;
+  border-bottom: var(--line-l3);
+  margin-bottom: 1rem;
 }
 
 .time-view-tabs {
@@ -29712,10 +29745,6 @@ body.kpi-resizing {
 .calendar-view-header {
   flex-shrink: 0;
   margin-bottom: 1rem;
-}
-/* 할일/일정 탭에서만 제목(SCHEDULE, 할일/일정) 영역 숨김 */
-.calendar-view .calendar-view-header {
-  display: none;
 }
 .calendar-view-header .calendar-view-title {
   margin: 0;

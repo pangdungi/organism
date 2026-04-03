@@ -302,11 +302,14 @@ export function updateTaskOption(oldName, task) {
   return opts;
 }
 
+/** @returns {boolean} true면 목록에서 실제로 제거됨(KPI 연동 등 잠금이면 false) */
 export function removeTaskOption(name) {
-  if (getLockedTaskNamesStatic().has(name)) return getFullTaskOptions();
-  const opts = getFullTaskOptions().filter((o) => o.name !== name);
+  const n = (name || "").trim();
+  if (!n) return false;
+  if (getLockedTaskNamesStatic().has(n)) return false;
+  const opts = getFullTaskOptions().filter((o) => o.name !== n);
   saveMergedList(opts);
-  return opts;
+  return true;
 }
 
 export function migrateTimeLogRowsTaskIds() {

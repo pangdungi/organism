@@ -88,19 +88,12 @@ export async function syncTimeLedgerEntriesToSupabase() {
     _lastArchiveMemoSaveDetail = null;
   }
 
-  const { data: remote, error: listErr } = await supabase
-    .from(TABLE)
-    .select("id")
-    .eq("user_id", userId);
-  if (listErr || !remote) return;
-
-  for (const r of remote) {
-    const id = String(r.id || "").trim();
-    if (id && !wantIds.has(id)) {
-      const { error: dErr } = await supabase.from(TABLE).delete().eq("id", id).eq("user_id", userId);
-      if (dErr) console.warn("[time-ledger-entries] delete", dErr.message);
-    }
-  }
+  /*
+   * 서버에만 있는 행을 여기서 삭제하지 않음.
+   * 다른 기기·탭이 아직 pull 전이거나 로컬이 오래된 경우 wantIds가 불완전해
+   * 모바일에서 올린 서버 행까지 삭제하는 사고가 난다(데이터 유실).
+   * 삭제는 pull 병합 후 로컬에서 빠진 id를 반영하는 별도 흐름으로만 다룬다.
+   */
 }
 
 const LEDGER_ENTRY_SELECT =

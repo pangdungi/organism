@@ -70,7 +70,7 @@ const KPI_STORAGE_KEYS = [
 
 /**
  * KPI에서 추가된 과제명 집합 (꿈/부수입/행복/건강)
- * 과제설정창에서 수정·삭제 불가
+ * 시간가계부 과제 설정에서 삭제·이름 수정 불가 — 해당 KPI를 KPI 화면에서 삭제할 때만 과제 목록에서 제거
  * @returns {Set<string>}
  */
 export function getKpiSyncedTaskNames() {

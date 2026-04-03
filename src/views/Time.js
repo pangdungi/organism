@@ -67,6 +67,18 @@ import { SECTION_TASKS_KEY } from "../utils/todoSectionTasksModel.js";
 
 export { getTaskOptionByName };
 
+/** 예산 겹침 디버그: localStorage.setItem('debug_budget_overlap','1') 후 새로고침 */
+function isBudgetOverlapDebug() {
+  try {
+    return (
+      typeof localStorage !== "undefined" &&
+      localStorage.getItem("debug_budget_overlap") === "1"
+    );
+  } catch (_) {
+    return false;
+  }
+}
+
 /** 모바일 과제 기록 FAB — TodoList ADD_TASK_ICON과 동일 */
 const TIME_LEDGER_ADD_FAB_SVG =
   '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>';
@@ -617,6 +629,10 @@ function getLockedForSetupDisplay() {
   ]);
 }
 
+/** KPI에서 만든 과제 — 시간가계부 과제 설정에서 삭제 불가 안내 */
+const MSG_TIME_TASK_KPI_LINKED =
+  "KPI와 연결된 과제입니다. 시간가계부에서는 삭제할 수 없고, KPI 화면에서 해당 KPI를 삭제하면 과제 목록에서도 함께 제거됩니다.";
+
 const PRODUCTIVE_CATEGORIES = [
   { value: "dream", label: "꿈", color: "cat-dream" },
   { value: "sideincome", label: "부수입", color: "cat-sideincome" },
@@ -823,7 +839,7 @@ function clearOverlappingScheduledTimes(all, dateStr, taskName, newSlots) {
     const parsed = parseScheduledSlotToMinutes(slot);
     if (!parsed) continue;
     const { startMin, endMin } = parsed;
-    if (typeof window !== "undefined" && BUDGET_OVERLAP_DEBUG) {
+    if (typeof window !== "undefined" && isBudgetOverlapDebug()) {
       console.log("[BUDGET-OVERLAP] clearOverlappingScheduledTimes slot", {
         taskName: key,
         slot,
@@ -838,7 +854,7 @@ function clearOverlappingScheduledTimes(all, dateStr, taskName, newSlots) {
       const otherSlots = getScheduledTimesArray(other);
       if (otherSlots.length === 0) continue;
       const remaining = removeOverlapFromSlots(otherSlots, startMin, endMin);
-      if (typeof window !== "undefined" && BUDGET_OVERLAP_DEBUG) {
+      if (typeof window !== "undefined" && isBudgetOverlapDebug()) {
         console.log("[BUDGET-OVERLAP] clearOverlap other", {
           otherKey,
           otherSlots: [...otherSlots],
@@ -943,7 +959,7 @@ function saveBudgetScheduledTimesBatch(dateStr, tasksInOrder, lastEditedTask) {
     const toProcess = lastKey
       ? ordered.filter((t) => (t.task || "").trim() === lastKey)
       : ordered;
-    if (BUDGET_OVERLAP_DEBUG) {
+    if (isBudgetOverlapDebug()) {
       console.log("[BUDGET-OVERLAP] saveBudgetScheduledTimesBatch", {
         lastEditedTask,
         lastKey,
@@ -964,7 +980,7 @@ function saveBudgetScheduledTimesBatch(dateStr, tasksInOrder, lastEditedTask) {
       arr = resolveOverlapsWithinSlots(arr);
       if (arr.length > 0) {
         dateData[key] = { ...existing, scheduledTimes: arr, isInvest };
-        if (BUDGET_OVERLAP_DEBUG) {
+        if (isBudgetOverlapDebug()) {
           console.log("[BUDGET-OVERLAP] saved", { key, scheduledTimes: arr });
         }
       } else {
@@ -995,8 +1011,7 @@ export function loadTimeRows() {
   }
 }
 
-const TIME_ROWS_SYNC_DEBUG = true;
-const BUDGET_OVERLAP_DEBUG = true; /* 수면/요가 겹침 해결 디버그 */
+const TIME_ROWS_SYNC_DEBUG = false;
 function saveTimeRows(rows) {
   try {
     const arr = Array.isArray(rows) ? rows : [];
@@ -2404,7 +2419,14 @@ function createTaskNameInput(initialValue, onTaskSelect, tabSignal) {
       if (delBtn) {
         delBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          removeTaskOption(name);
+          if (getLockedTaskNames().has(name)) {
+            alert(MSG_TIME_TASK_KPI_LINKED);
+            return;
+          }
+          if (!removeTaskOption(name)) {
+            alert(MSG_TIME_TASK_KPI_LINKED);
+            return;
+          }
           renderPanel(input.value);
         });
       }
@@ -3364,7 +3386,6 @@ export function render() {
   hourlyRateValues.appendChild(hourlyInput);
   hourlyRateBlock.appendChild(hourlyHint);
   hourlyRateBlock.appendChild(hourlyRateValues);
-  hourlyWrap.appendChild(hourlyAddSlot);
   hourlyWrap.appendChild(hourlyRateBlock);
   el.appendChild(hourlyWrap);
 
@@ -3604,15 +3625,33 @@ export function render() {
   window.addEventListener("resize", syncTimeFilterDateLabels, { signal });
   const tabsTopMargin = document.createElement("div");
   tabsTopMargin.className = "time-ledger-tabs-top-margin";
-  tabsTopMargin.appendChild(taskSetupBtn);
   const tabHeaderRow = document.createElement("div");
   tabHeaderRow.className = "time-ledger-tab-header-row";
   tabHeaderRow.appendChild(viewTabs);
   tabsFilterRow.appendChild(tabsTopMargin);
   tabsFilterRow.appendChild(tabHeaderRow);
   tabsFilterRow.appendChild(mobileTabsSummary);
-  tabsFilterRow.appendChild(filterBar);
+
+  /* 자산관리와 같이 1행=탭만, 2행=과제 기록(왼쪽)+필터바(오른쪽) */
+  const filterAddRow = document.createElement("div");
+  filterAddRow.className = "time-ledger-filter-add-row";
+  filterAddRow.appendChild(hourlyAddSlot);
+  filterAddRow.appendChild(filterBar);
+
   el.appendChild(tabsFilterRow);
+  el.appendChild(filterAddRow);
+
+  /** 데스크톱: 과제 설정을 날짜 구간 바로 왼쪽(.time-filter-bar 선두). 모바일: 필터 바 숨김 시에도 보이도록 상단 띠에 둠 */
+  function placeTaskSetupBtn() {
+    const isMobile = window.matchMedia("(max-width: 48rem)").matches;
+    if (isMobile) {
+      tabsTopMargin.appendChild(taskSetupBtn);
+    } else {
+      filterBar.insertBefore(taskSetupBtn, filterBar.firstChild);
+    }
+  }
+  placeTaskSetupBtn();
+  window.addEventListener("resize", placeTaskSetupBtn, { signal });
 
   const taskSetupModal = document.createElement("div");
   taskSetupModal.className = "time-task-setup-modal";
@@ -6654,9 +6693,7 @@ export function render() {
           row.tabIndex = 0;
           row.addEventListener("click", () => {
             if (getLockedTaskNames().has(t.name)) {
-              alert(
-                "이 과제는 KPI와 연동되어 있어 과제 설정에서 수정할 수 없습니다.",
-              );
+              alert(MSG_TIME_TASK_KPI_LINKED);
               return;
             }
             openAddTaskModal(t);
@@ -6698,7 +6735,9 @@ export function render() {
     }
     addTaskSubmitBtn.textContent = isEdit ? "저장" : "추가";
     if (addTaskDeleteBtn) {
-      addTaskDeleteBtn.hidden = !isEdit;
+      const lockedEdit =
+        editTask && getLockedTaskNames().has((editTask.name || "").trim());
+      addTaskDeleteBtn.hidden = !isEdit || lockedEdit;
     }
     addTaskNameInput.value = editTask ? editTask.name : "";
     addTaskNameInput.dataset.editName = editTask ? editTask.name : "";
@@ -6805,12 +6844,13 @@ export function render() {
     const editName = (addTaskNameInput.dataset.editName || "").trim();
     if (!editName) return;
     if (getLockedTaskNames().has(editName)) {
-      alert(
-        "이 과제는 KPI와 연동되어 있어 여기서 삭제할 수 없습니다. 해당 메뉴에서 수정해주세요.",
-      );
+      alert(MSG_TIME_TASK_KPI_LINKED);
       return;
     }
-    removeTaskOption(editName);
+    if (!removeTaskOption(editName)) {
+      alert(MSG_TIME_TASK_KPI_LINKED);
+      return;
+    }
     closeAddTaskModal();
   });
 
@@ -6874,8 +6914,7 @@ export function render() {
   let allRowsCache = loadTimeRows();
   let cachedRows = [];
 
-  void hydrateTimeLedgerEntriesFromCloud().then((pulled) => {
-    if (!pulled) return;
+  void hydrateTimeLedgerEntriesFromCloud().then(() => {
     allRowsCache = loadTimeRows();
     cachedRows = getFullRowsForFilter(true);
     const active =
@@ -9724,7 +9763,7 @@ export function renderTimeBudgetTablesForCalendar(
       if (!name || isBudgetPlaceholder(name)) return;
       const start = (row.dataset.scheduledStart || "").trim();
       const end = (row.dataset.scheduledEnd || "").trim();
-      if (BUDGET_OVERLAP_DEBUG) {
+      if (isBudgetOverlapDebug()) {
         const inputs = row.querySelectorAll(".time-budget-scheduled-input");
         console.log("[BUDGET-OVERLAP] collect row", {
           name,
@@ -9820,7 +9859,7 @@ export function renderTimeBudgetTablesForCalendar(
       if (Array.isArray(allTbodies)) {
         allTbodies.forEach(([tb, ar, isInv]) => {
           const collected = collectScheduledTimesByTask(tb, ar);
-          if (BUDGET_OVERLAP_DEBUG) {
+          if (isBudgetOverlapDebug()) {
             console.log("[BUDGET-OVERLAP] collect from tbody", {
               isInvest: isInv,
               collected: Object.fromEntries(
@@ -9838,7 +9877,7 @@ export function renderTimeBudgetTablesForCalendar(
           tasksInOrder.push({ task, times, isInvest });
         });
       }
-      if (BUDGET_OVERLAP_DEBUG) {
+      if (isBudgetOverlapDebug()) {
         console.log("[BUDGET-OVERLAP] saveAllScheduledTimesForTimetable", {
           lastEditedTask,
           targetDateStr,
@@ -9930,7 +9969,7 @@ export function renderTimeBudgetTablesForCalendar(
         const scheduledTime =
           start && end ? `${start}-${end}` : start || end || "";
         if (tbody && addRow) {
-          if (BUDGET_OVERLAP_DEBUG) {
+          if (isBudgetOverlapDebug()) {
             console.log("[BUDGET-OVERLAP] saveCurrentGoal before save", {
               name,
               startInputValue: startInput.value,

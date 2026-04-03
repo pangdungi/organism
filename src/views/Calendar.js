@@ -3993,7 +3993,6 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
 }
 
 function render1DayView(tabsElement) {
-  console.log("[할일/일정·1day] render1DayView 진입");
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout calendar-1day-view";
 
@@ -4863,12 +4862,17 @@ function render1DayView(tabsElement) {
   oneDayTimetableRefreshHandler = (e) => refreshTimetableOverlays(e);
 
   try {
-    console.log("[할일/일정·1day] renderCalendar() 호출 직전");
     renderCalendar();
-    console.log("[할일/일정·1day] renderCalendar() 완료");
   } catch (err) {
-    console.error("[할일/일정·1day] renderCalendar() 실패:", err?.message, err);
-    if (err?.stack) console.error(err.stack);
+    try {
+      if (
+        typeof localStorage !== "undefined" &&
+        localStorage.getItem("debug_calendar_1day") === "1"
+      ) {
+        console.error("[할일/일정·1day] renderCalendar() 실패:", err?.message, err);
+        if (err?.stack) console.error(err.stack);
+      }
+    } catch (_) {}
     throw err;
   }
 
