@@ -19,6 +19,10 @@ import {
   ensureVapidRuntimeFallback,
 } from "./utils/webPushReminders.js";
 import { ensureTimeLedgerStorageReady } from "./utils/timeLedgerEntriesModel.js";
+import {
+  enforceSubscriptionAccessOrSignOut,
+  SUBSCRIPTION_EXPIRED_MESSAGE,
+} from "./utils/subscriptionAccess.js";
 
 void ensureVapidRuntimeFallback();
 
@@ -209,6 +213,13 @@ function init() {
       return;
     }
     if (session) {
+      const blockedBySubscription = await enforceSubscriptionAccessOrSignOut();
+      if (blockedBySubscription) {
+        window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
+        showOnly("login");
+        setAuthGatePanel("signup");
+        return;
+      }
       showOnly("signin");
       /* 시급·appearance·타임존 RPC는 네트워크 지연 시 스플래시가 멈추지 않도록 비동기로만 실행 */
       void pullUserPrefsFromSupabase().catch((err) => console.warn("[prefs]", err));
@@ -261,6 +272,13 @@ async function doLogin() {
   const pw = document.getElementById("login-pw")?.value || "";
   const result = await login(id, pw);
   if (result.ok) {
+    const blockedBySubscription = await enforceSubscriptionAccessOrSignOut();
+    if (blockedBySubscription) {
+      window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
+      showOnly("login");
+      setAuthGatePanel("login");
+      return;
+    }
     showOnly("signin");
     void pullUserPrefsFromSupabase().catch((err) => console.warn("[prefs]", err));
     await ensureTimeLedgerStorageReady();
@@ -291,6 +309,13 @@ async function doSignUp() {
   // 이메일 확인(Confirm email)이 켜져 있으면 signUp 직후 session 은 null → 메일 안내
   const session = result.data?.session;
   if (session) {
+    const blockedBySubscription = await enforceSubscriptionAccessOrSignOut();
+    if (blockedBySubscription) {
+      window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
+      showOnly("login");
+      setAuthGatePanel("signup");
+      return;
+    }
     showOnly("signin");
     void pullUserPrefsFromSupabase().catch((err) => console.warn("[prefs]", err));
     await ensureTimeLedgerStorageReady();
