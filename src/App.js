@@ -39,6 +39,7 @@ import {
   hydrateSideincomeKpiMapFromCloud,
 } from "./utils/sideincomeKpiMapSupabase.js";
 import { attachTimeLedgerEntriesSaveListener } from "./utils/timeLedgerEntriesSupabase.js";
+import { attachTodoSectionTasksPushFlushOnHideOnce } from "./utils/todoSectionTasksSupabase.js";
 import {
   pullAllKpiMapsFromCloud,
   pullKpiTabFromCloud,
@@ -155,6 +156,7 @@ export function mountApp(container) {
   attachSideincomeKpiMapSaveListener();
   /* 시간기록 행 저장 → time_ledger_entries upsert (아카이브 메모 비우기 포함) */
   attachTimeLedgerEntriesSaveListener();
+  attachTodoSectionTasksPushFlushOnHideOnce();
   container.innerHTML = "";
 
   const appPage = document.createElement("div");

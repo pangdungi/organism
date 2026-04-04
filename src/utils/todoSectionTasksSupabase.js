@@ -141,8 +141,38 @@ export async function pushAllLocalTodoSectionTasksIfServerEmpty() {
 let _pushTimer = null;
 const PUSH_DEBOUNCE_MS = 900;
 
+/** 디바운스 생략 — 탭 전환·백그라운드 직전 삭제·편집이 서버에 반영되도록 */
+export function flushTodoSectionTasksSyncPush() {
+  if (_pushTimer) {
+    clearTimeout(_pushTimer);
+    _pushTimer = null;
+  }
+  return syncTodoSectionTasksToSupabase();
+}
+
+let _flushOnHideAttached = false;
+export function attachTodoSectionTasksPushFlushOnHideOnce() {
+  if (_flushOnHideAttached || typeof document === "undefined") return;
+  _flushOnHideAttached = true;
+  const run = () => {
+    if (!supabase) return;
+    void flushTodoSectionTasksSyncPush().catch((e) =>
+      console.warn("[calendar-section-tasks] flush", e),
+    );
+  };
+  document.addEventListener(
+    "visibilitychange",
+    () => {
+      if (document.visibilityState === "hidden") run();
+    },
+    { passive: true },
+  );
+  window.addEventListener("pagehide", run, { passive: true });
+}
+
 export function scheduleTodoSectionTasksSyncPush() {
   if (!supabase) return;
+  attachTodoSectionTasksPushFlushOnHideOnce();
   if (_pushTimer) clearTimeout(_pushTimer);
   _pushTimer = setTimeout(() => {
     _pushTimer = null;

@@ -104,10 +104,142 @@ function dbRowToLocalTask(row) {
     itemType: row.item_type ?? "todo",
     reminderDate: row.reminder_date ? String(row.reminder_date).slice(0, 10) : "",
     reminderTime: row.reminder_time ?? "",
+    serverUpdatedAt:
+      row.updated_at != null && row.updated_at !== ""
+        ? String(row.updated_at)
+        : "",
   };
 }
 
-/** 서버 행 목록 → 두 개의 localStorage 객체 */
+/** 동기화 메타 제외 후 비교 (localModifiedAt·serverUpdatedAt) */
+export function stripTodoTaskSyncMetaForCompare(t) {
+  if (!t || typeof t !== "object") return "";
+  const { localModifiedAt, serverUpdatedAt, ...rest } = t;
+  try {
+    return JSON.stringify(rest);
+  } catch (_) {
+    return "";
+  }
+}
+
+/** 로컬에서 삭제했는데 서버에 아직 남아 있을 때 pull이 부활시키지 않도록 */
+const SECTION_TASK_TOMBSTONES_KEY = "todo-section-task-deletion-tombstones";
+
+function readTodoDeletionTombstones() {
+  try {
+    const raw = localStorage.getItem(SECTION_TASK_TOMBSTONES_KEY);
+    if (!raw) return {};
+    const o = JSON.parse(raw);
+    return o && typeof o === "object" ? o : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function writeTodoDeletionTombstones(obj) {
+  try {
+    localStorage.setItem(SECTION_TASK_TOMBSTONES_KEY, JSON.stringify(obj || {}));
+  } catch (_) {}
+}
+
+/** 할 일 행 삭제 시 호출 — 서버 반영 전까지 동일 id는 pull에서 무시 */
+export function recordTodoSectionTaskDeletion(taskId) {
+  const id = String(taskId || "").trim();
+  if (!id || !UUID_RE.test(id)) return;
+  const tomb = readTodoDeletionTombstones();
+  tomb[id] = Date.now();
+  writeTodoDeletionTombstones(tomb);
+}
+
+/** 서버 스냅샷에 해당 id가 없으면(삭제 확인) tombstone 제거 */
+export function pruneTodoDeletionTombstones(serverIdsPresent) {
+  const set =
+    serverIdsPresent instanceof Set
+      ? serverIdsPresent
+      : new Set(Array.isArray(serverIdsPresent) ? serverIdsPresent : []);
+  const tomb = readTodoDeletionTombstones();
+  let changed = false;
+  for (const id of Object.keys(tomb)) {
+    if (!set.has(id)) {
+      delete tomb[id];
+      changed = true;
+    }
+  }
+  if (changed) writeTodoDeletionTombstones(tomb);
+}
+
+function parseIsoMs(iso) {
+  if (iso == null || iso === "") return 0;
+  const t = Date.parse(String(iso));
+  return Number.isFinite(t) ? t : 0;
+}
+
+function pickTodoTaskByLastWrite(localTask, serverRow) {
+  const serverT = parseIsoMs(serverRow.updated_at);
+  const localMod =
+    typeof localTask.localModifiedAt === "number" &&
+    Number.isFinite(localTask.localModifiedAt)
+      ? localTask.localModifiedAt
+      : 0;
+  if (localMod > serverT) {
+    return { ...localTask };
+  }
+  return dbRowToLocalTask(serverRow);
+}
+
+function collectLocalTasksFlat(fixedIn, customIn) {
+  const map = new Map();
+  function visit(obj, isCustom) {
+    if (!obj) return;
+    Object.keys(obj).forEach((sectionKey) => {
+      const arr = Array.isArray(obj[sectionKey]) ? obj[sectionKey] : [];
+      arr.forEach((t, idx) => {
+        const id = String(t?.taskId || t?.id || "").trim();
+        if (!id) return;
+        map.set(id, {
+          task: { ...t },
+          sectionKey,
+          isCustom,
+          sortOrder: idx,
+        });
+      });
+    });
+  }
+  visit(fixedIn, false);
+  visit(customIn, true);
+  return map;
+}
+
+function rebuildMergedMapsFromFlatMap(map, fixed, custom) {
+  const byKey = new Map();
+  for (const { task, sectionKey, isCustom, sortOrder } of map.values()) {
+    const key = `${isCustom ? "c" : "f"}:${sectionKey}`;
+    if (!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key).push({ task, sortOrder: sortOrder ?? 0 });
+  }
+  for (const [key, items] of byKey) {
+    items.sort((a, b) => a.sortOrder - b.sortOrder);
+    const sep = key.indexOf(":");
+    const type = key.slice(0, sep);
+    const sk = key.slice(sep + 1);
+    const arr = items.map((i) => i.task);
+    if (type === "f") {
+      fixed[sk] = arr;
+    } else {
+      custom[sk] = arr;
+    }
+  }
+  CALENDAR_FIXED_SECTION_IDS.forEach((k) => {
+    if (!fixed[k]) fixed[k] = [];
+  });
+}
+
+/**
+ * 서버 스냅샷을 로컬과 병합 (통째 덮어쓰기 아님).
+ * - 로컬만 있는 행(아직 push 안 됨) 유지
+ * - 동일 id: localModifiedAt vs 서버 updated_at last-write-wins
+ * - 로컬에서 삭제한 id는 tombstone 동안 서버 행을 적용하지 않음(부활 방지)
+ */
 export function mergeCalendarSectionTasksFromServer(rows) {
   const fixed = {};
   const custom = {};
@@ -115,27 +247,40 @@ export function mergeCalendarSectionTasksFromServer(rows) {
     fixed[k] = [];
   });
 
-  const sorted = [...(rows || [])].sort((a, b) => {
-    const sk = String(a.section_key || "").localeCompare(String(b.section_key || ""));
-    if (sk !== 0) return sk;
-    const o = (a.sort_order || 0) - (b.sort_order || 0);
-    return o;
-  });
+  const localFixed = readSectionTasksObject();
+  const localCustom = readCustomSectionTasksObject();
+  const map = collectLocalTasksFlat(localFixed, localCustom);
+  const tomb = readTodoDeletionTombstones();
+  const serverRows = Array.isArray(rows) ? rows : [];
+  const serverIds = new Set(
+    serverRows.map((r) => String(r.id || "").trim()).filter(Boolean),
+  );
 
-  sorted.forEach((row) => {
-    const task = dbRowToLocalTask(row);
-    const key = String(row.section_key || "").trim();
+  for (const row of serverRows) {
+    const id = String(row.id || "").trim();
+    if (!id) continue;
+    if (tomb[id]) continue;
+    const localEntry = map.get(id);
+    const mergedTask = localEntry
+      ? pickTodoTaskByLastWrite(localEntry.task, row)
+      : dbRowToLocalTask(row);
+    const sectionKey = String(row.section_key || "").trim();
     const isCustom = !!row.is_custom_section;
-    if (!key) return;
-    if (isCustom) {
-      if (!custom[key]) custom[key] = [];
-      custom[key].push(task);
-    } else {
-      if (!fixed[key]) fixed[key] = [];
-      fixed[key].push(task);
-    }
-  });
+    const sortOrder = row.sort_order ?? 0;
+    if (!sectionKey) continue;
+    map.set(id, {
+      task: mergedTask,
+      sectionKey,
+      isCustom,
+      sortOrder,
+    });
+  }
 
+  pruneTodoDeletionTombstones(serverIds);
+  rebuildMergedMapsFromFlatMap(map, fixed, custom);
+  for (const k of Object.keys(localCustom)) {
+    if (!custom[k]) custom[k] = [];
+  }
   writeSectionTasksObject(fixed);
   writeCustomSectionTasksObject(custom);
 }
@@ -161,6 +306,8 @@ export function mergeAdditiveServerRowsIntoLocal(serverRows) {
   collectIds(fixed);
   collectIds(custom);
 
+  const tomb = readTodoDeletionTombstones();
+
   const sorted = [...(serverRows || [])].sort((a, b) => {
     const sk = String(a.section_key || "").localeCompare(String(b.section_key || ""));
     if (sk !== 0) return sk;
@@ -170,6 +317,7 @@ export function mergeAdditiveServerRowsIntoLocal(serverRows) {
   sorted.forEach((row) => {
     const id = String(row.id || "").trim();
     if (!id || seen.has(id)) return;
+    if (tomb[id]) return;
     const task = dbRowToLocalTask(row);
     const key = String(row.section_key || "").trim();
     const isCustom = !!row.is_custom_section;

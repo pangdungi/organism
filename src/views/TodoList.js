@@ -46,6 +46,8 @@ import {
   SECTION_TASKS_KEY,
   CUSTOM_SECTION_TASKS_KEY,
   purgeAllCompletedSectionAndCustomTasks,
+  recordTodoSectionTaskDeletion,
+  stripTodoTaskSyncMetaForCompare,
 } from "../utils/todoSectionTasksModel.js";
 export const DRAG_TYPE_TODO_TO_CALENDAR = "todo-task-to-calendar";
 export const DRAG_TYPE_TODO_TO_EISENHOWER = "todo-task-to-eisenhower";
@@ -146,6 +148,9 @@ function saveSectionTasks(sectionId, tasks) {
     const raw = localStorage.getItem(SECTION_TASKS_KEY);
     const obj = raw ? JSON.parse(raw) : {};
     const existingList = obj[sectionId] || [];
+    const prevById = new Map(
+      existingList.map((t) => [String(t.taskId || "").trim(), t]),
+    );
     const domByTaskId = new Map(
       tasks
         .filter((t) => (t.name || "").trim() !== "")
@@ -215,19 +220,54 @@ function saveSectionTasks(sectionId, tasks) {
       ...mergeDedup.values(),
     ]);
     const toSave = mergedUnique
-      .map(({ taskId, name, startDate, dueDate, startTime, endTime, eisenhower, done, itemType, reminderDate, reminderTime }) => ({
-        taskId: taskId || "",
-        name: (name || "").trim(),
-        startDate: (startDate || "").slice(0, 10) || "",
-        dueDate: (dueDate || "").slice(0, 10) || "",
-        startTime: startTime || "",
-        endTime: endTime || "",
-        eisenhower: eisenhower || "",
-        done: !!done,
-        itemType: itemType || "todo",
-        reminderDate: (reminderDate || "").slice(0, 10) || "",
-        reminderTime: reminderTime || "",
-      }))
+      .map(
+        ({
+          taskId,
+          name,
+          startDate,
+          dueDate,
+          startTime,
+          endTime,
+          eisenhower,
+          done,
+          itemType,
+          reminderDate,
+          reminderTime,
+        }) => {
+          const tid = String(taskId || "").trim();
+          const candidate = {
+            taskId: taskId || "",
+            name: (name || "").trim(),
+            startDate: (startDate || "").slice(0, 10) || "",
+            dueDate: (dueDate || "").slice(0, 10) || "",
+            startTime: startTime || "",
+            endTime: endTime || "",
+            eisenhower: eisenhower || "",
+            done: !!done,
+            itemType: itemType || "todo",
+            reminderDate: (reminderDate || "").slice(0, 10) || "",
+            reminderTime: reminderTime || "",
+          };
+          const prevRow = tid ? prevById.get(tid) : null;
+          if (!prevRow) {
+            return { ...candidate, localModifiedAt: Date.now() };
+          }
+          const same =
+            stripTodoTaskSyncMetaForCompare(prevRow) ===
+            stripTodoTaskSyncMetaForCompare(candidate);
+          if (same) {
+            return {
+              ...candidate,
+              localModifiedAt: prevRow.localModifiedAt,
+              serverUpdatedAt:
+                prevRow.serverUpdatedAt !== undefined && prevRow.serverUpdatedAt !== ""
+                  ? prevRow.serverUpdatedAt
+                  : candidate.serverUpdatedAt,
+            };
+          }
+          return { ...candidate, localModifiedAt: Date.now() };
+        },
+      )
       .filter((t) => t.name !== "");
     obj[sectionId] = toSave;
     persistSectionTasksAndSchedule(obj);
@@ -257,6 +297,7 @@ function moveSectionTaskToSection(fromSectionId, taskId, targetSectionId, taskDa
       itemType: taskData.itemType || "todo",
       reminderDate: (taskData.reminderDate || "").slice(0, 10) || "",
       reminderTime: taskData.reminderTime || "",
+      localModifiedAt: Date.now(),
     });
     persistSectionTasksAndSchedule(obj);
     return true;
@@ -287,6 +328,7 @@ function moveCustomSectionTaskToSection(fromSectionId, taskId, targetSectionId, 
       itemType: taskData.itemType || "todo",
       reminderDate: (taskData.reminderDate || "").slice(0, 10) || "",
       reminderTime: taskData.reminderTime || "",
+      localModifiedAt: Date.now(),
     });
     persistCustomSectionTasksAndSchedule(obj);
     return true;
@@ -319,18 +361,55 @@ function saveCustomSectionTasks(sectionId, tasks) {
   try {
     const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
     const obj = raw ? JSON.parse(raw) : {};
+    const existingList = obj[sectionId] || [];
+    const prevById = new Map(
+      existingList.map((t) => [String(t.taskId || "").trim(), t]),
+    );
     const toSave = tasks
-      .map(({ taskId, name, startDate, dueDate, startTime, endTime, eisenhower, done, itemType }) => ({
-        taskId,
-        name: (name || "").trim(),
-        startDate: startDate || "",
-        dueDate: dueDate || "",
-        startTime: startTime || "",
-        endTime: endTime || "",
-        eisenhower: eisenhower || "",
-        done: !!done,
-        itemType: itemType || "todo",
-      }))
+      .map(
+        ({
+          taskId,
+          name,
+          startDate,
+          dueDate,
+          startTime,
+          endTime,
+          eisenhower,
+          done,
+          itemType,
+        }) => {
+          const candidate = {
+            taskId,
+            name: (name || "").trim(),
+            startDate: startDate || "",
+            dueDate: dueDate || "",
+            startTime: startTime || "",
+            endTime: endTime || "",
+            eisenhower: eisenhower || "",
+            done: !!done,
+            itemType: itemType || "todo",
+          };
+          const tid = String(taskId || "").trim();
+          const prevRow = tid ? prevById.get(tid) : null;
+          if (!prevRow) {
+            return { ...candidate, localModifiedAt: Date.now() };
+          }
+          const same =
+            stripTodoTaskSyncMetaForCompare(prevRow) ===
+            stripTodoTaskSyncMetaForCompare(candidate);
+          if (same) {
+            return {
+              ...candidate,
+              localModifiedAt: prevRow.localModifiedAt,
+              serverUpdatedAt:
+                prevRow.serverUpdatedAt !== undefined && prevRow.serverUpdatedAt !== ""
+                  ? prevRow.serverUpdatedAt
+                  : candidate.serverUpdatedAt,
+            };
+          }
+          return { ...candidate, localModifiedAt: Date.now() };
+        },
+      )
       .filter((t) => t.name !== "");
     obj[sectionId] = toSave;
     persistCustomSectionTasksAndSchedule(obj);
@@ -355,6 +434,7 @@ function removeTaskFromSectionStorage(sectionId, taskId) {
     const arr = obj[sectionId];
     if (!Array.isArray(arr)) return false;
     obj[sectionId] = arr.filter((t) => (t.taskId || "") !== taskId);
+    recordTodoSectionTaskDeletion(taskId);
     persistSectionTasksAndSchedule(obj);
     return true;
   } catch (_) {}
@@ -369,6 +449,7 @@ function removeTaskFromCustomSectionStorage(sectionId, taskId) {
     const arr = obj[sectionId];
     if (!Array.isArray(arr)) return false;
     obj[sectionId] = arr.filter((t) => (t.taskId || "") !== taskId);
+    recordTodoSectionTaskDeletion(taskId);
     persistCustomSectionTasksAndSchedule(obj);
     return true;
   } catch (_) {}
