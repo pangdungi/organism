@@ -440,6 +440,56 @@ export function mountApp(container) {
     if (tabId) setActiveTab(tabId);
   });
 
+  /** 입력·모달 포커스 중에는 전체 탭 갱신을 미룸 — 포커스가 빠진 뒤 한 번 더 시도 */
+  let _pendingDeferredRender = null;
+  let _deferredRenderListenersAttached = false;
+
+  function clearDeferredRenderMain() {
+    _pendingDeferredRender = null;
+    if (!_deferredRenderListenersAttached) return;
+    _deferredRenderListenersAttached = false;
+    document.removeEventListener("focusout", _onDeferredFlush, true);
+    document.removeEventListener("pointerdown", _onDeferredFlush, true);
+  }
+
+  function isFocusBlockingRender(mainEl) {
+    const a = document.activeElement;
+    if (!a || a === document.body) return false;
+    if (a.closest?.("dialog[open]")) return true;
+    const dlg = a.closest?.('[role="dialog"]');
+    if (dlg && dlg.getAttribute("aria-hidden") !== "true") return true;
+    const panel = mainEl?.querySelector(".app-tab-panel");
+    if (
+      panel &&
+      panel.contains(a) &&
+      typeof a.matches === "function" &&
+      a.matches("input, textarea, select, [contenteditable='true']")
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  function _tryFlushDeferredRender() {
+    if (!_pendingDeferredRender) return;
+    const { mainEl, opts } = _pendingDeferredRender;
+    if (isFocusBlockingRender(mainEl)) return;
+    clearDeferredRenderMain();
+    renderMain(mainEl, { ...opts, force: false });
+  }
+
+  function _onDeferredFlush() {
+    queueMicrotask(() => _tryFlushDeferredRender());
+  }
+
+  function scheduleDeferredRenderMain(mainEl, opts) {
+    _pendingDeferredRender = { mainEl, opts };
+    if (_deferredRenderListenersAttached) return;
+    _deferredRenderListenersAttached = true;
+    document.addEventListener("focusout", _onDeferredFlush, true);
+    document.addEventListener("pointerdown", _onDeferredFlush, true);
+  }
+
   /**
    * @param {HTMLElement} mainEl
    * @param {{ skipTodoSaveBeforeUnmount?: boolean, force?: boolean }} [opts]
@@ -449,18 +499,12 @@ export function mountApp(container) {
    */
   function renderMain(mainEl, opts = {}) {
     if (!opts.force) {
-      const a = document.activeElement;
-      const panel = mainEl?.querySelector(".app-tab-panel");
-      if (
-        panel &&
-        a &&
-        panel.contains(a) &&
-        typeof a.matches === "function" &&
-        a.matches("input, textarea, select, [contenteditable='true']")
-      ) {
+      if (isFocusBlockingRender(mainEl)) {
+        scheduleDeferredRenderMain(mainEl, opts);
         return;
       }
     }
+    clearDeferredRenderMain();
     const p = mainEl?.querySelector(".app-tab-panel");
     if (!p) return;
     if (!opts.skipTodoSaveBeforeUnmount) {
@@ -507,34 +551,41 @@ export function mountApp(container) {
   });
 
   const TODO_TABS_FOR_CLOUD_PULL = new Set(["calendar", "schedulecalendar"]);
-  document.addEventListener(
-    "visibilitychange",
-    () => {
-      if (document.visibilityState !== "visible") return;
-      if (!TODO_TABS_FOR_CLOUD_PULL.has(currentTabId)) return;
-      void hydrateTodoSectionTasksFromCloud().then((needRefresh) => {
-        if (needRefresh) renderMain(main);
-      });
-    },
-    { passive: true },
-  );
 
-  /** 다른 브라우저 탭을 보다가 이 사이트로 돌아올 때: KPI·시간가계부·자산·감정일기 pull 후 필요 시 화면 갱신 (아카이브는 시간기록 pull에 포함) */
-  let _kpiBrowserTabVisiblePullTimer = null;
+  /** 브라우저 탭 포커스 복귀 시: 할일 pull + KPI·시간·자산·일기 pull을 한 번에 돌리고 renderMain은 최대 1회 */
+  let _browserTabVisiblePullTimer = null;
   document.addEventListener(
     "visibilitychange",
     () => {
       if (document.visibilityState !== "visible") return;
-      if (_kpiBrowserTabVisiblePullTimer) clearTimeout(_kpiBrowserTabVisiblePullTimer);
-      _kpiBrowserTabVisiblePullTimer = setTimeout(() => {
-        _kpiBrowserTabVisiblePullTimer = null;
+      if (_browserTabVisiblePullTimer) clearTimeout(_browserTabVisiblePullTimer);
+      _browserTabVisiblePullTimer = setTimeout(() => {
+        _browserTabVisiblePullTimer = null;
         void (async () => {
           try {
-            const { anyChanged: kpiChanged } = await pullAllKpiMapsFromCloud();
-            const { anyChanged: timeChanged } = await pullAllTimeLedgerFromCloud();
-            const { anyChanged: assetChanged } = await pullAllAssetFromCloud();
-            const { anyChanged: diaryChanged } = await pullAllDiaryFromCloud();
-            if (!kpiChanged && !timeChanged && !assetChanged && !diaryChanged) return;
+            const todoPullPromise = TODO_TABS_FOR_CLOUD_PULL.has(currentTabId)
+              ? hydrateTodoSectionTasksFromCloud()
+              : Promise.resolve(false);
+            const [needTodoRefresh, kpiR, timeR, assetR, diaryR] =
+              await Promise.all([
+                todoPullPromise,
+                pullAllKpiMapsFromCloud(),
+                pullAllTimeLedgerFromCloud(),
+                pullAllAssetFromCloud(),
+                pullAllDiaryFromCloud(),
+              ]);
+            const kpiChanged = kpiR.anyChanged;
+            const timeChanged = timeR.anyChanged;
+            const assetChanged = assetR.anyChanged;
+            const diaryChanged = diaryR.anyChanged;
+            if (
+              !needTodoRefresh &&
+              !kpiChanged &&
+              !timeChanged &&
+              !assetChanged &&
+              !diaryChanged
+            )
+              return;
             if (currentTabId === "time") {
               if (timeChanged) {
                 try {
@@ -545,11 +596,19 @@ export function mountApp(container) {
               }
               return;
             }
-            if (TAB_IDS_REFRESH_ON_KPI_PULL.has(currentTabId)) {
+            const needMainFromTodo =
+              TODO_TABS_FOR_CLOUD_PULL.has(currentTabId) && needTodoRefresh;
+            const needMainFromOther =
+              TAB_IDS_REFRESH_ON_KPI_PULL.has(currentTabId) &&
+              (kpiChanged || assetChanged || diaryChanged);
+            if (needMainFromTodo || needMainFromOther) {
               renderMain(main, { skipTodoSaveBeforeUnmount: true });
             }
           } catch (e) {
-            console.warn("[KPI·시간가계부·자산·감정일기] 브라우저 탭 포커스 후 pull 실패", e?.message || e);
+            console.warn(
+              "[브라우저 탭 포커스 후 pull]",
+              e?.message || e,
+            );
           }
         })();
       }, 350);
