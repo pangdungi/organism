@@ -108,6 +108,15 @@ function assignIdsToMergedList(merged) {
   return out;
 }
 
+/** 로그아웃 시 — 과제 목록도 계정에 묶이지 않은 localStorage만 쓰므로 비움 후 pull로 채움 */
+export function clearTimeLedgerTaskOptionsLocalStorage() {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem(TASK_OPTIONS_KEY);
+    }
+  } catch (_) {}
+}
+
 export function getFullTaskOptions() {
   let arr = [];
   try {

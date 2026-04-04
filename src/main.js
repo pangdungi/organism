@@ -7,6 +7,7 @@ import {
   changePassword,
   resetPasswordRequest,
   updatePasswordForRecovery,
+  purgeTimeLedgerLocalOnSignOut,
 } from "./auth.js";
 import { mountApp } from "./App.js";
 import { supabase } from "./supabase.js";
@@ -25,6 +26,36 @@ import {
 } from "./utils/subscriptionAccess.js";
 
 void ensureVapidRuntimeFallback();
+
+/**
+ * IndexedDB 시간기록은 user_id가 없어 계정과 묶이지 않음.
+ * 이전에 sessionStorage에 남은 계정 id와 현재 세션이 다르면 로컬을 비운 뒤 로드한다.
+ */
+async function prepareTimeLedgerStorageForCurrentSession() {
+  if (!supabase) {
+    await ensureTimeLedgerStorageReady();
+    return;
+  }
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const uid = session?.user?.id;
+  if (!uid) {
+    await ensureTimeLedgerStorageReady();
+    return;
+  }
+  let prev = "";
+  try {
+    prev = sessionStorage.getItem("lp_ledger_uid") || "";
+  } catch (_) {}
+  if (prev && prev !== uid) {
+    await purgeTimeLedgerLocalOnSignOut();
+  }
+  try {
+    sessionStorage.setItem("lp_ledger_uid", uid);
+  } catch (_) {}
+  await ensureTimeLedgerStorageReady();
+}
 
 function setAuthGatePanel(mode) {
   const signupEl = document.getElementById("auth-panel-signup");
@@ -128,6 +159,7 @@ function init() {
       return;
     }
     if (event === "SIGNED_OUT") {
+      void purgeTimeLedgerLocalOnSignOut();
       document.getElementById("app-screen").innerHTML = "";
       showOnly("login");
       setAuthGatePanel("signup");
@@ -223,7 +255,7 @@ function init() {
       showOnly("signin");
       /* 시급·appearance·타임존 RPC는 네트워크 지연 시 스플래시가 멈추지 않도록 비동기로만 실행 */
       void pullUserPrefsFromSupabase().catch((err) => console.warn("[prefs]", err));
-      await ensureTimeLedgerStorageReady();
+      await prepareTimeLedgerStorageForCurrentSession();
       mountApp(document.getElementById("app-screen"));
       scheduleSilentReminderPushSync();
       return;
@@ -281,7 +313,7 @@ async function doLogin() {
     }
     showOnly("signin");
     void pullUserPrefsFromSupabase().catch((err) => console.warn("[prefs]", err));
-    await ensureTimeLedgerStorageReady();
+    await prepareTimeLedgerStorageForCurrentSession();
     mountApp(document.getElementById("app-screen"));
     scheduleSilentReminderPushSync();
   } else {
@@ -318,7 +350,7 @@ async function doSignUp() {
     }
     showOnly("signin");
     void pullUserPrefsFromSupabase().catch((err) => console.warn("[prefs]", err));
-    await ensureTimeLedgerStorageReady();
+    await prepareTimeLedgerStorageForCurrentSession();
     mountApp(document.getElementById("app-screen"));
     scheduleSilentReminderPushSync();
     return;

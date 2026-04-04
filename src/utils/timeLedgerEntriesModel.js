@@ -11,6 +11,23 @@ import {
   TIME_LEDGER_STORAGE_KEY,
 } from "./timeLedgerEntriesStore.js";
 
+/**
+ * 로그아웃·계정 전환 시 호출. IndexedDB·localStorage에 쌓인 시간기록은 user_id가 없어
+ * 다음 로그인 계정 화면에 그대로 노출될 수 있음(서버 RLS와 무관).
+ */
+export async function purgeTimeLedgerLocalData() {
+  try {
+    await writeAllRowsToIdb([]);
+  } catch (e) {
+    console.warn("[time-ledger] purge IDB", e);
+  }
+  try {
+    tryMirrorTimeLedgerToLocalStorage([]);
+  } catch (_) {}
+  _ledgerRowsMem = [];
+  _storageReadyPromise = null;
+}
+
 export const TIME_LEDGER_ENTRIES_KEY = TIME_LEDGER_STORAGE_KEY;
 
 /** 메모리 캐시 — readTimeLedgerEntriesRaw / writeTimeLedgerEntriesRaw 가 사용 (앱 시작 시 IDB로 채움) */

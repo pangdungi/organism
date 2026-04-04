@@ -1,5 +1,16 @@
 import { supabase } from "./supabase.js";
 import { showOnly } from "./pages.js";
+import { purgeTimeLedgerLocalData } from "./utils/timeLedgerEntriesModel.js";
+import { clearTimeLedgerTaskOptionsLocalStorage } from "./utils/timeTaskOptionsModel.js";
+
+/** 로그아웃·세션 만료·구독 만료 signOut 시 로컬 시간가계부·과제 캐시 제거 (다른 계정과 섞임 방지) */
+export async function purgeTimeLedgerLocalOnSignOut() {
+  await purgeTimeLedgerLocalData();
+  clearTimeLedgerTaskOptionsLocalStorage();
+  try {
+    sessionStorage.removeItem("lp_ledger_uid");
+  } catch (_) {}
+}
 
 /** Supabase Auth 가 넘기는 영문 메시지를 사용자용 한국어로 */
 function toKoAuthError(raw) {
@@ -73,6 +84,7 @@ export async function login(email, password) {
 
 export async function signOut() {
   if (supabase) await supabase.auth.signOut();
+  await purgeTimeLedgerLocalOnSignOut();
   document.getElementById("app-screen").innerHTML = "";
   showOnly("login");
 }
