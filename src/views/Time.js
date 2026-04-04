@@ -3418,6 +3418,21 @@ export function render() {
   let filterMonth = now.getMonth() + 1;
   let filterStartDate = toDateStr(now);
   let filterEndDate = toDateStr(now);
+  try {
+    const ss = sessionStorage.getItem("lp_time_filter_start");
+    const se = sessionStorage.getItem("lp_time_filter_end");
+    if (ss && /^\d{4}-\d{2}-\d{2}$/.test(ss)) {
+      filterStartDate = ss;
+      filterEndDate = se && /^\d{4}-\d{2}-\d{2}$/.test(se) ? se : ss;
+    }
+  } catch (_) {}
+
+  function persistTimeFilterToSession() {
+    try {
+      sessionStorage.setItem("lp_time_filter_start", filterStartDate);
+      sessionStorage.setItem("lp_time_filter_end", filterEndDate);
+    } catch (_) {}
+  }
   /** 과제 필터: null = 전체, string[] = 선택한 과제만 표시 (히스토리 기준) */
   let selectedTaskNamesForFilter = null;
 
@@ -3510,6 +3525,7 @@ export function render() {
     filterEndDate = toDateStr(ed);
     startDateInput.value = filterStartDate;
     endDateInput.value = filterEndDate;
+    persistTimeFilterToSession();
   }
 
   /* 모바일에서 툴바로 DOM만 옮겨지므로, 클러스터에 위임해 < > 탭이 항상 동일하게 동작 */
@@ -3600,6 +3616,7 @@ export function render() {
       renderImprove(filtered);
     }
     syncTimeFilterDateLabels();
+    persistTimeFilterToSession();
   }
 
   /* filterBar는 월 드롭다운 패널이 세로로 열리므로 .time-view-tabs(overflow-y:hidden) 밖에 둠 */
@@ -9608,6 +9625,21 @@ export function render() {
 
   onFilterChange(true);
   syncMobileTabsSummaryDisplay();
+
+  function refreshTimeLedgerFromRemotePull() {
+    if (!el.isConnected) return;
+    allRowsCache = loadTimeRows();
+    cachedRows = getFullRowsForFilter(true);
+    const active =
+      viewTabs.querySelector(".time-view-tab.active")?.dataset?.view || "all";
+    switchView(active);
+  }
+
+  document.addEventListener(
+    "lp-time-ledger-remote-updated",
+    refreshTimeLedgerFromRemotePull,
+    { signal },
+  );
 
   return el;
 }

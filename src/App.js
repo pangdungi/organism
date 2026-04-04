@@ -62,7 +62,6 @@ const TAB_IDS_REFRESH_ON_KPI_PULL = new Set([
   "health",
   "calendar",
   "schedulecalendar",
-  "time",
   "asset",
   "diary",
   "archive",
@@ -317,13 +316,16 @@ export function mountApp(container) {
         b.classList.toggle("active", b.dataset.tabId === tabId);
       });
     }
-    renderMain(main);
+    renderMain(main, { force: true });
     /* 꿈·부수입·행복·건강: 다른 기기에서 삭제·추가한 내용을 보려면 진입 시 서버 pull 필요.
      * localStorage 문자열이 바뀐 경우에만 한 번 더 그림(불필요한 깜빡임 감소). */
     if (KPI_TAB_IDS.has(tabId)) {
       void pullKpiTabFromCloud(tabId).then(({ pullOk, localChanged }) => {
         if (pullOk && localChanged) {
-          renderMain(main, { skipTodoSaveBeforeUnmount: true });
+          renderMain(main, {
+            skipTodoSaveBeforeUnmount: true,
+            force: true,
+          });
         }
       });
     }
@@ -440,11 +442,25 @@ export function mountApp(container) {
 
   /**
    * @param {HTMLElement} mainEl
-   * @param {{ skipTodoSaveBeforeUnmount?: boolean }} [opts]
+   * @param {{ skipTodoSaveBeforeUnmount?: boolean, force?: boolean }} [opts]
    * - skipTodoSaveBeforeUnmount: 저장소를 이미 갱신한 뒤(예: 완료 일괄 제거) DOM이 옛 상태일 때 true.
    *   그렇지 않으면 save가 DOM을 다시 저장해 퍼지 결과를 덮어쓴다.
+   * - force: true일 때만 입력 중이어도 탭을 다시 그림(사이드/하단 메뉴로 화면 전환 시).
    */
   function renderMain(mainEl, opts = {}) {
+    if (!opts.force) {
+      const a = document.activeElement;
+      const panel = mainEl?.querySelector(".app-tab-panel");
+      if (
+        panel &&
+        a &&
+        panel.contains(a) &&
+        typeof a.matches === "function" &&
+        a.matches("input, textarea, select, [contenteditable='true']")
+      ) {
+        return;
+      }
+    }
     const p = mainEl?.querySelector(".app-tab-panel");
     if (!p) return;
     if (!opts.skipTodoSaveBeforeUnmount) {
@@ -519,6 +535,16 @@ export function mountApp(container) {
             const { anyChanged: assetChanged } = await pullAllAssetFromCloud();
             const { anyChanged: diaryChanged } = await pullAllDiaryFromCloud();
             if (!kpiChanged && !timeChanged && !assetChanged && !diaryChanged) return;
+            if (currentTabId === "time") {
+              if (timeChanged) {
+                try {
+                  document.dispatchEvent(
+                    new CustomEvent("lp-time-ledger-remote-updated"),
+                  );
+                } catch (_) {}
+              }
+              return;
+            }
             if (TAB_IDS_REFRESH_ON_KPI_PULL.has(currentTabId)) {
               renderMain(main, { skipTodoSaveBeforeUnmount: true });
             }
@@ -567,8 +593,17 @@ export function mountApp(container) {
         happinessKpiPulled ||
         dreamKpiPulled ||
         sideincomeKpiPulled
-      )
-        renderMain(main);
+      ) {
+        if (currentTabId === "time") {
+          try {
+            document.dispatchEvent(
+              new CustomEvent("lp-time-ledger-remote-updated"),
+            );
+          } catch (_) {}
+        } else {
+          renderMain(main);
+        }
+      }
     }
   );
   appScreen.appendChild(main);

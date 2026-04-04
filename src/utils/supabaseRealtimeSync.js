@@ -10,7 +10,7 @@ import { pullAllTimeLedgerFromCloud } from "./timeLedgerCloudRefresh.js";
 import { pullAllAssetFromCloud } from "./assetCloudRefresh.js";
 import { pullAllDiaryFromCloud } from "./diaryCloudRefresh.js";
 
-/** App.js 의 TAB_IDS_REFRESH_ON_KPI_PULL 과 동일 — 이 탭일 때만 pull 후 화면 갱신 */
+/** App.js 의 TAB_IDS_REFRESH_ON_KPI_PULL 과 동일 — 이 탭일 때만 pull 후 화면 갱신 (time 은 전체 renderMain 대신 이벤트로 부분 갱신) */
 const REFRESH_MAIN_AFTER_CLOUD_PULL = new Set([
   "home",
   "dream",
@@ -19,7 +19,6 @@ const REFRESH_MAIN_AFTER_CLOUD_PULL = new Set([
   "health",
   "calendar",
   "schedulecalendar",
-  "time",
   "asset",
   "diary",
   "archive",
@@ -86,6 +85,15 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
         )
           return;
         const tab = getCurrentTabId();
+        if (timeLedgerChanged && tab === "time") {
+          try {
+            document.dispatchEvent(
+              new CustomEvent("lp-time-ledger-remote-updated"),
+            );
+          } catch (_) {}
+          if (!needTodo && !anyChanged && !assetChanged && !diaryChanged)
+            return;
+        }
         if (!REFRESH_MAIN_AFTER_CLOUD_PULL.has(tab)) return;
         renderMain({ skipTodoSaveBeforeUnmount: true });
       } catch (e) {
