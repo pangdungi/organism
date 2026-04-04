@@ -59,6 +59,7 @@ import { scheduleTimeDailyBudgetSyncPush } from "../utils/timeDailyBudgetSupabas
 import {
   ensureTimeLedgerEntryIds,
   readTimeLedgerEntriesRaw,
+  stripTimeLedgerSyncMetaForCompare,
   writeTimeLedgerEntriesRaw,
 } from "../utils/timeLedgerEntriesModel.js";
 import { hydrateTimeLedgerEntriesFromCloud } from "../utils/timeLedgerEntriesSupabase.js";
@@ -1017,9 +1018,40 @@ export function loadTimeRows() {
 const TIME_ROWS_SYNC_DEBUG = false;
 function saveTimeRows(rows) {
   try {
+    const prevSnap = readTimeLedgerEntriesRaw();
+    const prevById = new Map(
+      (Array.isArray(prevSnap) ? prevSnap : []).map((r) => [
+        String(r?.id || "").trim(),
+        r,
+      ]),
+    );
     const arr = Array.isArray(rows) ? rows : [];
     const { rows: withIds, dirty } = ensureTimeLedgerEntryIds(arr);
-    const toSave = withIds;
+    const toSave = withIds.map((r) => {
+      const id = String(r?.id || "").trim();
+      const prevRow = id ? prevById.get(id) : null;
+      if (!prevRow) {
+        const lm =
+          typeof r.localModifiedAt === "number" && Number.isFinite(r.localModifiedAt)
+            ? r.localModifiedAt
+            : Date.now();
+        return { ...r, localModifiedAt: lm };
+      }
+      const same =
+        stripTimeLedgerSyncMetaForCompare(prevRow) ===
+        stripTimeLedgerSyncMetaForCompare(r);
+      if (same) {
+        return {
+          ...r,
+          localModifiedAt: prevRow.localModifiedAt,
+          serverUpdatedAt:
+            prevRow.serverUpdatedAt !== undefined && prevRow.serverUpdatedAt !== ""
+              ? prevRow.serverUpdatedAt
+              : r.serverUpdatedAt,
+        };
+      }
+      return { ...r, localModifiedAt: Date.now() };
+    });
     if (dirty) {
       /* 신규 id 부여분 반영 */
     }

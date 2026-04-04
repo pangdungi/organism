@@ -245,11 +245,41 @@ export function scheduleTimeLedgerEntriesSyncPush() {
   }, PUSH_DEBOUNCE_MS);
 }
 
+/** 디바운스 생략하고 즉시 서버 upsert — 탭 전환·앱 백그라운드 시 유실 방지 */
+export function flushTimeLedgerEntriesSyncPush() {
+  if (_pushTimer) {
+    clearTimeout(_pushTimer);
+    _pushTimer = null;
+  }
+  return syncTimeLedgerEntriesToSupabase();
+}
+
+let _flushOnHideAttached = false;
+function attachTimeLedgerPushFlushOnHideOnce() {
+  if (_flushOnHideAttached || typeof document === "undefined") return;
+  _flushOnHideAttached = true;
+  const run = () => {
+    if (!supabase) return;
+    void flushTimeLedgerEntriesSyncPush().catch((e) =>
+      console.warn("[time-ledger-entries] flush", e),
+    );
+  };
+  document.addEventListener(
+    "visibilitychange",
+    () => {
+      if (document.visibilityState === "hidden") run();
+    },
+    { passive: true },
+  );
+  window.addEventListener("pagehide", run, { passive: true });
+}
+
 let _listenerAttached = false;
 
 export function attachTimeLedgerEntriesSaveListener() {
   if (_listenerAttached) return;
   _listenerAttached = true;
+  attachTimeLedgerPushFlushOnHideOnce();
   window.addEventListener("time-ledger-entries-saved", (e) => {
     const d = e?.detail;
     if (d && d.source === "archiveMemo" && d.entryId) {

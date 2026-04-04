@@ -174,21 +174,94 @@ export function dbRowToLocalTimeLedgerRow(db) {
     focus,
     feedback: String(db.memo || "").trim(),
     memoTags: memo_tags,
+    /** Supabase updated_at — 병합 시 last-write-wins */
+    serverUpdatedAt:
+      db.updated_at != null && db.updated_at !== ""
+        ? String(db.updated_at)
+        : "",
   };
 }
 
+/** 동기화 메타 제외 후 JSON 비교용 (저장 시 내용 변경 여부) */
+export function stripTimeLedgerSyncMetaForCompare(row) {
+  if (!row || typeof row !== "object") return "";
+  const { localModifiedAt, serverUpdatedAt, ...rest } = row;
+  try {
+    return JSON.stringify(rest);
+  } catch (_) {
+    return "";
+  }
+}
+
+function parseIsoMs(iso) {
+  if (iso == null || iso === "") return 0;
+  const t = Date.parse(String(iso));
+  return Number.isFinite(t) ? t : 0;
+}
+
 /**
- * 서버에서 받은 행으로 로컬 배열 병합: 서버 id 목록은 서버 스냅샷으로 대체,
- * 서버에 없는 로컬 전용 id(오프라인 추가 등)는 유지.
+ * 같은 id: 서버 updated_at vs 로컬 편집 시각(localModifiedAt, ms).
+ * localModifiedAt > server updated_at 이면 로컬(아직 push 반영 전 편집) 우선.
  */
-/** 서버에 없는 로컬 행을 유지할지: syncable UUID는 서버에 없으면 삭제된 것으로 간주(동기화 후 pull 전제). */
+function pickRowByLastWrite(localRow, serverRow) {
+  const serverT = parseIsoMs(serverRow.serverUpdatedAt);
+  const localMod =
+    typeof localRow.localModifiedAt === "number" &&
+    Number.isFinite(localRow.localModifiedAt)
+      ? localRow.localModifiedAt
+      : 0;
+  if (localMod > serverT) {
+    return { ...localRow };
+  }
+  return { ...serverRow };
+}
+
+/**
+ * 서버 스냅샷 + 로컬 전체 병합 (동일 id는 last-write-wins).
+ */
+function mergeLocalAndServerRows(localWithIds, serverLocals) {
+  const serverIds = new Set(
+    serverLocals.map((r) => String(r.id || "").trim()).filter(Boolean),
+  );
+  const localById = new Map(
+    localWithIds.map((r) => [String(r.id || "").trim(), r]).filter(([id]) => id),
+  );
+  const mergedById = new Map();
+
+  for (const srv of serverLocals) {
+    const id = String(srv.id || "").trim();
+    if (!id) continue;
+    const loc = localById.get(id);
+    if (!loc) {
+      mergedById.set(id, srv);
+      continue;
+    }
+    mergedById.set(id, pickRowByLastWrite(loc, srv));
+  }
+
+  for (const loc of localWithIds) {
+    const id = String(loc?.id || "").trim();
+    if (!id || mergedById.has(id)) continue;
+    if (!keepLocalRowNotOnServer(loc, serverIds)) continue;
+    mergedById.set(id, loc);
+  }
+
+  return [...mergedById.values()];
+}
+
+/**
+ * 서버에 없는 로컬 행을 유지할지.
+ * syncable UUID인데 서버 스냅샷에 id가 없으면, (1) 아직 push 전인 새 행 (2) 타 기기에서 삭제됨 — 구분 불가.
+ * 예전에는 (1)을 삭제로 처리해 pull 직후 로컬만 유실되는 버그가 있었음 → 서버에 없는 UUID는 로컬 유지(업로드 대기).
+ * 삭제 반영은 서버에 행이 없어진 뒤 push·pull·Realtime 병합으로 점진 정리(유령 행은 수동 삭제 가능).
+ */
 function keepLocalRowNotOnServer(r, serverIds) {
   const id = String(r?.id || "").trim();
   if (!id) return false;
   if (serverIds.has(id)) return false;
   if (!UUID_RE.test(id)) return true;
   if (!timeLedgerRowIsSyncable(r)) return true;
-  return false;
+  return true;
 }
 
 export function mergeTimeLedgerEntriesFromServer(dbRows) {
@@ -196,9 +269,7 @@ export function mergeTimeLedgerEntriesFromServer(dbRows) {
   const local = readTimeLedgerEntriesRaw();
   const { rows: localWithIds } = ensureTimeLedgerEntryIds(local);
   const serverLocals = dbRows.map((r) => dbRowToLocalTimeLedgerRow(r));
-  const serverIds = new Set(serverLocals.map((r) => String(r.id || "").trim()));
-  const keptLocal = localWithIds.filter((r) => keepLocalRowNotOnServer(r, serverIds));
-  const merged = [...serverLocals, ...keptLocal];
+  const merged = mergeLocalAndServerRows(localWithIds, serverLocals);
   writeTimeLedgerEntriesRaw(merged);
 }
 
@@ -220,8 +291,8 @@ export function timeLedgerMonthRangeYmd(year, month) {
 }
 
 /**
- * [rangeStart, rangeEnd] 안의 행은 서버 스냅샷으로 맞추고, 그 밖은 유지.
- * 그 달에 서버에 없는 syncable UUID는 삭제(다른 기기에서 삭제 반영).
+ * [rangeStart, rangeEnd] 안: 서버 구간 pull + 로컬 동일 구간을 last-write-wins 병합.
+ * 그 밖 날짜 행은 그대로 유지.
  */
 export function mergeTimeLedgerEntriesFromServerForDateRange(dbRows, rangeStart, rangeEnd) {
   if (!rangeStart || !rangeEnd) return;
@@ -229,15 +300,15 @@ export function mergeTimeLedgerEntriesFromServerForDateRange(dbRows, rangeStart,
   const local = readTimeLedgerEntriesRaw();
   const { rows: localWithIds } = ensureTimeLedgerEntryIds(local);
   const serverLocals = serverRows.map((r) => dbRowToLocalTimeLedgerRow(r));
-  const serverIds = new Set(serverLocals.map((r) => String(r.id || "").trim()));
 
-  const outside = localWithIds.filter((r) => !rowEntryDateInInclusiveRange(r, rangeStart, rangeEnd));
-  const insideKeep = localWithIds.filter((r) => {
-    if (!rowEntryDateInInclusiveRange(r, rangeStart, rangeEnd)) return false;
-    return keepLocalRowNotOnServer(r, serverIds);
-  });
-
-  const merged = [...outside, ...serverLocals, ...insideKeep];
+  const outside = localWithIds.filter(
+    (r) => !rowEntryDateInInclusiveRange(r, rangeStart, rangeEnd),
+  );
+  const insideLocals = localWithIds.filter((r) =>
+    rowEntryDateInInclusiveRange(r, rangeStart, rangeEnd),
+  );
+  const mergedInside = mergeLocalAndServerRows(insideLocals, serverLocals);
+  const merged = [...outside, ...mergedInside];
   writeTimeLedgerEntriesRaw(merged);
 }
 
