@@ -78,6 +78,28 @@ function saveMergedList(list) {
   } catch (_) {}
 }
 
+function writeTaskOptionListLocal(list) {
+  try {
+    localStorage.setItem(TASK_OPTIONS_KEY, JSON.stringify(list));
+  } catch (_) {}
+}
+
+/**
+ * 과제 행 삭제 시: 로컬 저장 후 서버 time_ledger_tasks 삭제가 끝난 뒤에만 sync 이벤트.
+ * (삭제 전에 notify → pull이 서버에 남은 행으로 과제를 다시 채우는 문제 방지)
+ */
+function notifyAfterServerDeleteIfNeeded(removedId) {
+  const id = String(removedId || "").trim();
+  if (!id || !isUuid(id)) {
+    notifySaved();
+    return;
+  }
+  void import("./timeLedgerTasksSupabase.js")
+    .then((m) => m.deleteTimeLedgerTaskRowForCurrentUser(id))
+    .then(() => notifySaved())
+    .catch(() => notifySaved());
+}
+
 function assignIdsToMergedList(merged) {
   let dirty = false;
   const out = merged.map((t) => {
@@ -298,8 +320,8 @@ export function updateTaskOption(oldName, task) {
   if (name !== oldName && opts.some((o, i) => i !== idx && o.name === name)) {
     const removedId = opts[idx].id;
     opts.splice(idx, 1);
-    saveMergedList(opts);
-    scheduleDeleteTimeLedgerTaskOnServer(removedId);
+    writeTaskOptionListLocal(opts);
+    notifyAfterServerDeleteIfNeeded(removedId);
     return opts;
   }
   opts[idx] = {
@@ -311,15 +333,6 @@ export function updateTaskOption(oldName, task) {
   };
   saveMergedList(opts);
   return opts;
-}
-
-/** 로컬에서 제거된 과제 id를 Supabase time_ledger_tasks 에서도 삭제 (동적 import로 순환 참조 방지) */
-function scheduleDeleteTimeLedgerTaskOnServer(id) {
-  const rid = String(id || "").trim();
-  if (!isUuid(rid)) return;
-  void import("./timeLedgerTasksSupabase.js").then((m) => {
-    m.deleteTimeLedgerTaskRowForCurrentUser(rid).catch(() => {});
-  });
 }
 
 /**
@@ -337,8 +350,8 @@ export function removeTimeLedgerTaskOptionByNameForKpi(name) {
       ? String(target.id).trim()
       : "";
   const next = opts.filter((o) => (o.name || "").trim() !== n);
-  saveMergedList(next);
-  if (removedId) scheduleDeleteTimeLedgerTaskOnServer(removedId);
+  writeTaskOptionListLocal(next);
+  notifyAfterServerDeleteIfNeeded(removedId);
 }
 
 /** @returns {boolean} true면 목록에서 실제로 제거됨(KPI 연동 등 잠금이면 false) */
@@ -353,8 +366,8 @@ export function removeTaskOption(name) {
       ? String(target.id).trim()
       : "";
   const next = opts.filter((o) => o.name !== n);
-  saveMergedList(next);
-  if (removedId) scheduleDeleteTimeLedgerTaskOnServer(removedId);
+  writeTaskOptionListLocal(next);
+  notifyAfterServerDeleteIfNeeded(removedId);
   return true;
 }
 

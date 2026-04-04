@@ -116,7 +116,6 @@ function syncKpiToTimeTask(kpi, action, oldName) {
       delete data.kpiTaskSync[kpi.id];
       saveDreamMap(data);
       removeTimeLedgerTaskOptionByNameForKpi(name);
-      notifyTimeLedgerTasksChanged();
     }
   } else if (action === "update" && oldName) {
     const newName = (kpi.name || "").trim();

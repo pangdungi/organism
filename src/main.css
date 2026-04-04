@@ -31641,9 +31641,10 @@ body.kpi-resizing {
   background: #f5f1e8;
 }
 
-/* 예상|오늘실제 열 구분: 세로 구분선 */
-.calendar-1day-view .calendar-1day-time-header-cell:not(:first-child) {
-  border-left: var(--line-l2);
+/* 헤더: 타임라인(시간 열)과 예상 사이 세로선 없음 — 예상 오른쪽(예상↔오늘실제)만 구분선 */
+.calendar-1day-view .calendar-1day-time-header > .calendar-1day-time-header-cell:nth-child(2) {
+  border-right: var(--line-l2);
+  box-sizing: border-box;
 }
 
 /* 오늘실제 (클릭 가능 유지) */
