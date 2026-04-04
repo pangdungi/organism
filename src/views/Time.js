@@ -1749,11 +1749,36 @@ function rowEffectiveLastMinutesLedger(row) {
   return parseLedgerTimeStringToMinutes(String(src || ""));
 }
 
+/** loadTimeRows와 화면 캐시(allRowsCache) 병합 — 동일 id·동일 복합키는 캐시가 우선 */
+function mergeLedgerRowsForDedupe(diskRows, cacheRows) {
+  const map = new Map();
+  const keyOf = (r) => {
+    if (!r || typeof r !== "object") return "";
+    const id = String(r.id || "").trim();
+    if (id) return `id:${id}`;
+    const d =
+      normalizeDateForCompare(r.date || "") ||
+      String(r.date || "")
+        .trim()
+        .replace(/\//g, "-")
+        .slice(0, 10);
+    return `c:${d}|${(r.taskName || "").trim()}|${(r.startTime || "").trim()}`;
+  };
+  for (const r of diskRows || []) {
+    if (r) map.set(keyOf(r), r);
+  }
+  for (const r of cacheRows || []) {
+    if (r) map.set(keyOf(r), r);
+  }
+  return [...map.values()];
+}
+
 /**
  * 과제 기록 모달용: 선택한 날짜에 저장된 기록 중 가장 늦은 시각(HH:mm).
  * exclude: 수정 중인 행(id 또는 composite 키)은 제외.
+ * rowsOverride: 넘기면 loadTimeRows 대신 사용(디스크+캐시 병합본 등).
  */
-function getLatestLedgerHhMmForTaskLogDate(dateInputValue, exclude) {
+function getLatestLedgerHhMmForTaskLogDate(dateInputValue, exclude, rowsOverride) {
   const normDate =
     normalizeDateForCompare(dateInputValue || "") ||
     String(dateInputValue || "")
@@ -1761,7 +1786,10 @@ function getLatestLedgerHhMmForTaskLogDate(dateInputValue, exclude) {
       .replace(/\//g, "-")
       .slice(0, 10);
   if (!normDate) return null;
-  const rows = loadTimeRows();
+  const rows =
+    rowsOverride !== undefined && rowsOverride !== null
+      ? rowsOverride
+      : loadTimeRows();
   let maxM = -1;
   for (const r of rows) {
     const rd =
@@ -4471,9 +4499,14 @@ export function render() {
 
         if (btn.dataset.last === "true") {
           const dateVal = (taskLogDateStart?.value || "").trim();
+          const mergedRows = mergeLedgerRowsForDedupe(
+            loadTimeRows(),
+            Array.isArray(allRowsCache) ? allRowsCache : [],
+          );
           const latest = getLatestLedgerHhMmForTaskLogDate(
             dateVal,
             taskLogEditExclude,
+            mergedRows,
           );
           if (!latest) {
             showToast("해당 날짜에 참고할 기록이 없습니다.", "info");
@@ -6032,12 +6065,20 @@ export function render() {
 
   /**
    * 신규 과제 기록 모달: 시작 시각 = 해당 날짜 저장본 중 가장 늦은 시각(종료 있으면 종료, 없으면 시작).
-   * '마지막' 버튼과 동일 로직(getLatestLedgerHhMmForTaskLogDate + loadTimeRows).
+   * '마지막' 버튼과 동일 로직(getLatestLedgerHhMmForTaskLogDate + 디스크·캐시 병합).
    * 해당 날짜 기록이 없으면 그 날짜 기준 00:00.
    */
   function getDefaultStartTime() {
-    const dateStr = startDateInput.value || filterStartDate;
-    const latestHhMm = getLatestLedgerHhMmForTaskLogDate(dateStr, null);
+    const dateStr = pickYmdFromFilter(startDateInput.value, filterStartDate);
+    const mergedRows = mergeLedgerRowsForDedupe(
+      loadTimeRows(),
+      Array.isArray(allRowsCache) ? allRowsCache : [],
+    );
+    const latestHhMm = getLatestLedgerHhMmForTaskLogDate(
+      dateStr,
+      null,
+      mergedRows,
+    );
     if (!latestHhMm) return `${dateStr}T00:00`;
     return `${dateStr}T${latestHhMm}`;
   }
