@@ -4632,9 +4632,6 @@ export function render() {
     ".time-task-log-daily-todos-list",
   );
   const taskLogSubmitBtn = taskLogModal.querySelector(".time-task-log-submit");
-  const taskLogBackdrop = taskLogModal.querySelector(
-    ".time-task-setup-backdrop",
-  );
   const taskLogCloseBtn = taskLogModal.querySelector(
     ".time-task-setup-panel .time-task-setup-close",
   );
@@ -6576,7 +6573,7 @@ export function render() {
     el._updateTotal?.();
   });
 
-  taskLogBackdrop?.addEventListener("click", closeTaskLogModal);
+  /* 배경 탭으로 닫지 않음 — 실수로 터치 시 저장 없이 닫혀 기록이 안 남는 문제 방지 (닫기는 ×·Esc만) */
   taskLogCloseBtn?.addEventListener("click", closeTaskLogModal);
 
   const taskLogDeleteBtn = taskLogModal.querySelector(
@@ -6590,7 +6587,6 @@ export function render() {
     closeTaskLogModal();
   });
 
-  const backdrop = taskSetupModal.querySelector(".time-task-setup-backdrop");
   const closeBtn = taskSetupModal.querySelector(".time-task-setup-close");
   const addTaskBtn = taskSetupModal.querySelector(".time-task-add-btn");
   const setupTabs = taskSetupModal.querySelectorAll(".time-task-setup-tab");
@@ -6606,9 +6602,6 @@ export function render() {
   );
   const setupSubcatBar = taskSetupModal.querySelector("[data-subcat-bar]");
 
-  const addTaskBackdrop = addTaskModal.querySelector(
-    ".time-task-setup-backdrop",
-  );
   const addTaskCloseBtn = addTaskModal.querySelector(".time-task-setup-close");
   const addTaskNameInput = addTaskModal.querySelector(".time-add-task-name");
   const addTaskProdRadios = addTaskModal.querySelectorAll(
@@ -6901,7 +6894,7 @@ export function render() {
   syncAddTaskSubmitState();
 
   addTaskBtn?.addEventListener("click", () => openAddTaskModal(null));
-  addTaskBackdrop?.addEventListener("click", closeAddTaskModal);
+  /* 과제 추가/수정 모달도 배경 탭으로 닫지 않음(저장 전 이탈 방지) */
   addTaskCloseBtn?.addEventListener("click", closeAddTaskModal);
 
   setupTabs.forEach((tab) => {
@@ -6934,7 +6927,7 @@ export function render() {
     document.body.style.overflow = "";
     closeAddTaskModal();
   }
-  backdrop?.addEventListener("click", closeTaskSetupModal);
+  /* 과제 설정 모달: 배경 탭으로 닫지 않음 */
   closeBtn?.addEventListener("click", closeTaskSetupModal);
   document.addEventListener(
     "keydown",

@@ -4079,6 +4079,22 @@ body {
     padding-bottom: 3rem;
   }
 
+  /* 모바일: 과제 기록 하단 '기록' 버튼 — 터치 영역·가독 확대 */
+  .time-task-log-modal .time-task-log-submit {
+    min-height: 3rem;
+    padding: 0.85rem 1.25rem;
+    font-size: 1.0625rem;
+    font-weight: 600;
+  }
+
+  /* 모바일: 과제 추가 모달 저장 버튼 동일 */
+  .time-add-task-modal .time-add-task-submit {
+    min-height: 3rem;
+    padding: 0.85rem 1.25rem;
+    font-size: 1.0625rem;
+    font-weight: 600;
+  }
+
   /* 모바일: 과제 기록 안 + 로 열리는 중첩 모달 — 패널·하단 CTA 모서리 통일 */
   .time-task-log-focus-inner-panel,
   .time-task-log-todo-inner-panel,
