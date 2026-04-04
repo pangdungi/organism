@@ -16,7 +16,6 @@ import { toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDispl
 import { setupDeadlineQuickButtons } from "../utils/deadlineQuickButtons.js";
 import { attachKpiTodoInputScrollIntoView } from "../utils/kpiTodoInputScroll.js";
 import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
-import { getSubtasks, addSubtask, updateSubtask, removeSubtask } from "../utils/todoSubtasks.js";
 
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
@@ -1216,9 +1215,6 @@ export function render() {
     const todoList = document.createElement("div");
     todoList.className = "dream-kpi-todo-list";
     todos.forEach((todo) => {
-      const taskId = `kpi-${todo.id}-${SIDEINCOME_KPI_MAP_STORAGE_KEY}`;
-      const subtasks = getSubtasks(taskId);
-
       const item = document.createElement("div");
       const completed = !!todo.completed;
       item.className = "dream-kpi-todo-item" + (completed ? " is-completed" : "");
@@ -1228,7 +1224,6 @@ export function render() {
           <input type="checkbox" class="dream-kpi-todo-check" ${completed ? "checked" : ""} />
         </label>
         <span class="dream-kpi-todo-text">${escapeHtml(todo.text)}</span>
-        <button type="button" class="dream-kpi-todo-sub-add" title="세부 할일 추가">+</button>
         <button type="button" class="dream-kpi-todo-del" title="삭제">×</button>
       `;
       const check = item.querySelector(".dream-kpi-todo-check");
@@ -1248,84 +1243,7 @@ export function render() {
         saveSideincomeMap(d);
         renderKpiHistory();
       });
-      item.querySelector(".dream-kpi-todo-sub-add").addEventListener("click", () => {
-        const subs = addSubtask(taskId, { name: "", done: false });
-        const newSt = subs[subs.length - 1];
-        const subItem = document.createElement("div");
-        subItem.className = "dream-kpi-todo-subitem";
-        subItem.dataset.subtaskId = newSt.id;
-        subItem.innerHTML = `
-          <span class="dream-kpi-todo-subitem-spacer"></span>
-          <label class="dream-kpi-todo-check-wrap">
-            <input type="checkbox" class="dream-kpi-todo-check" />
-          </label>
-          <input type="text" class="dream-kpi-todo-subitem-input" placeholder="세부 할일 입력" value="" />
-          <button type="button" class="dream-kpi-todo-del" title="삭제">×</button>
-        `;
-        const subInput = subItem.querySelector(".dream-kpi-todo-subitem-input");
-        subInput.focus();
-        subInput.addEventListener("blur", () => {
-          const val = (subInput.value || "").trim();
-          if (val === "") {
-            removeSubtask(taskId, newSt.id);
-            subItem.remove();
-          } else {
-            updateSubtask(taskId, newSt.id, { name: val });
-            const span = document.createElement("span");
-            span.className = "dream-kpi-todo-text dream-kpi-todo-subitem-text";
-            span.textContent = val;
-            subInput.replaceWith(span);
-          }
-        });
-        subInput.addEventListener("keydown", (e) => {
-          if (e.key === "Enter" && !e.isComposing) {
-            e.preventDefault();
-            subInput.blur();
-          }
-        });
-        subItem.querySelector(".dream-kpi-todo-check").addEventListener("change", (e) => {
-          updateSubtask(taskId, newSt.id, { done: e.target.checked });
-          subItem.classList.toggle("is-completed", e.target.checked);
-        });
-        subItem.querySelector(".dream-kpi-todo-del").addEventListener("click", () => {
-          removeSubtask(taskId, newSt.id);
-          subItem.remove();
-        });
-        let insertBefore = item.nextElementSibling;
-        while (insertBefore && insertBefore.classList.contains("dream-kpi-todo-subitem")) {
-          insertBefore = insertBefore.nextElementSibling;
-        }
-        if (insertBefore) {
-          todoList.insertBefore(subItem, insertBefore);
-        } else {
-          todoList.appendChild(subItem);
-        }
-      });
       todoList.appendChild(item);
-
-      subtasks.forEach((st) => {
-        const subItem = document.createElement("div");
-        subItem.className = "dream-kpi-todo-subitem" + (st.done ? " is-completed" : "");
-        subItem.dataset.subtaskId = st.id;
-        subItem.innerHTML = `
-          <span class="dream-kpi-todo-subitem-spacer"></span>
-          <label class="dream-kpi-todo-check-wrap">
-            <input type="checkbox" class="dream-kpi-todo-check" ${st.done ? "checked" : ""} />
-          </label>
-          <span class="dream-kpi-todo-text dream-kpi-todo-subitem-text">${escapeHtml(st.name)}</span>
-          <button type="button" class="dream-kpi-todo-del" title="삭제">×</button>
-        `;
-        const subCheck = subItem.querySelector(".dream-kpi-todo-check");
-        subCheck.addEventListener("change", () => {
-          updateSubtask(taskId, st.id, { done: subCheck.checked });
-          subItem.classList.toggle("is-completed", subCheck.checked);
-        });
-        subItem.querySelector(".dream-kpi-todo-del").addEventListener("click", () => {
-          removeSubtask(taskId, st.id);
-          subItem.remove();
-        });
-        todoList.appendChild(subItem);
-      });
     });
 
     const addRow = document.createElement("div");
