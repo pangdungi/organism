@@ -3515,10 +3515,10 @@ export function render() {
       </div>
       <div class="time-filter-day-nav">
         <button type="button" class="time-filter-day-prev" aria-label="이전 날짜">
-          <img src="/toolbaricons/caret-left-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="24" height="24" aria-hidden="true" />
+          <img src="/toolbaricons/caret-left-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
         </button>
         <button type="button" class="time-filter-day-next" aria-label="다음 날짜">
-          <img src="/toolbaricons/caret-right-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="24" height="24" aria-hidden="true" />
+          <img src="/toolbaricons/caret-right-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
         </button>
       </div>
       <button type="button" class="time-task-setup-btn time-filter-task-select-btn" id="time-task-select-btn" title="과제 선택" aria-label="과제 선택"><img src="/toolbaricons/filter.svg" alt="" class="time-btn-icon" width="20" height="20" /></button>

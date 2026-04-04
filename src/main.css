@@ -21606,6 +21606,43 @@ body.kpi-resizing {
   color: #7a7a7a;
 }
 
+/* 시간가계부 데스크톱: < > 는 설정·필터(라인 아이콘)와 톤 맞춤 — 원형 배경 제거·크기 정렬 */
+@media (min-width: 48.0625rem) {
+  .time-ledger-view .time-filter-nav-cluster .time-filter-day-prev,
+  .time-ledger-view .time-filter-nav-cluster .time-filter-day-next {
+    width: auto;
+    height: auto;
+    min-width: 0;
+    min-height: 0;
+    padding: 0.1rem 0.12rem;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-sizing: border-box;
+  }
+  .time-ledger-view .time-filter-nav-cluster .time-filter-day-prev:hover,
+  .time-ledger-view .time-filter-nav-cluster .time-filter-day-next:hover {
+    background: transparent;
+    color: var(--text-muted);
+    opacity: 0.88;
+  }
+  .time-ledger-view .time-filter-nav-cluster .time-filter-day-prev .time-btn-icon,
+  .time-ledger-view .time-filter-nav-cluster .time-filter-day-next .time-btn-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    opacity: 0.95;
+    filter: brightness(0) saturate(100%) invert(26%) sepia(10%) saturate(1200%)
+      hue-rotate(115deg);
+  }
+  .time-ledger-view .time-filter-nav-cluster .time-filter-day-prev:hover .time-btn-icon,
+  .time-ledger-view .time-filter-nav-cluster .time-filter-day-next:hover .time-btn-icon {
+    opacity: 1;
+    filter: brightness(0) saturate(100%) invert(26%) sepia(10%) saturate(1200%)
+      hue-rotate(115deg);
+  }
+}
+
 .time-filter-month-wrap span,
 .time-filter-range-wrap span {
   font-size: 0.8125rem;
