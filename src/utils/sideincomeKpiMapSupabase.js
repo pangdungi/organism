@@ -5,6 +5,13 @@
 
 import { supabase } from "../supabase.js";
 import { kpiSyncDebugEnabled, kpiSyncDebugLog, kpiSyncPayloadSummary, kpiSyncTrace } from "./kpiSyncDebug.js";
+import {
+  parseIsoMs,
+  buildIdToUpdatedMsMap,
+  mergeRowsByLwwWithServerOrder,
+  bumpEntityArrayLocalModified,
+  serverUpdatedAtFromRow,
+} from "./kpiMapLwwMerge.js";
 
 export const SIDEINCOME_KPI_MAP_STORAGE_KEY = "kpi-sideincome-paths";
 
@@ -95,6 +102,8 @@ function emptyPayload() {
     kpiOrder: {},
     kpiTaskSync: {},
     deletedRefs: defaultDeletedRefs(),
+    metaServerUpdatedAt: "",
+    localMetaModifiedAt: undefined,
   };
 }
 
@@ -115,6 +124,12 @@ function normalizePayload(p) {
     kpiOrder: p.kpiOrder && typeof p.kpiOrder === "object" ? p.kpiOrder : {},
     kpiTaskSync: p.kpiTaskSync && typeof p.kpiTaskSync === "object" ? p.kpiTaskSync : {},
     deletedRefs: normalizeDeletedRefs(p.deletedRefs),
+    metaServerUpdatedAt:
+      typeof p.metaServerUpdatedAt === "string" ? p.metaServerUpdatedAt : "",
+    localMetaModifiedAt:
+      typeof p.localMetaModifiedAt === "number" && Number.isFinite(p.localMetaModifiedAt)
+        ? p.localMetaModifiedAt
+        : undefined,
   };
 }
 
@@ -149,6 +164,7 @@ function rowToPath(r) {
     name: r.name || "",
     targetAmount: r.target_amount ?? "",
     unit: r.unit || "",
+    serverUpdatedAt: serverUpdatedAtFromRow(r),
   };
 }
 
@@ -161,6 +177,7 @@ function rowToPathLog(r) {
     value: r.value ?? "",
     status: r.status || "",
     memo: r.memo || "",
+    serverUpdatedAt: serverUpdatedAtFromRow(r),
   };
 }
 
@@ -176,6 +193,7 @@ function rowToKpi(r) {
     targetTimeRequired: r.target_time_required ?? "",
     needHabitTracker: !!r.need_habit_tracker,
     direction: r.direction === "lower" ? "lower" : "higher",
+    serverUpdatedAt: serverUpdatedAtFromRow(r),
   };
 }
 
@@ -193,6 +211,7 @@ function rowToKpiLog(r) {
     memo: r.memo || "",
     dailyCompleted: Array.isArray(dc) ? dc : [],
     dailyIncomplete: Array.isArray(di) ? di : [],
+    serverUpdatedAt: serverUpdatedAtFromRow(r),
   };
 }
 
@@ -204,6 +223,7 @@ function rowToTodo(r) {
     text: r.text || "",
     completed: !!r.completed,
     ...ex,
+    serverUpdatedAt: serverUpdatedAtFromRow(r),
   };
 }
 
@@ -213,6 +233,7 @@ function rowToDaily(r) {
     kpiId: r.kpi_id,
     text: r.text || "",
     completed: !!r.completed,
+    serverUpdatedAt: serverUpdatedAtFromRow(r),
   };
 }
 
@@ -283,6 +304,7 @@ function buildPayloadFromRows(pathRows, pathLogRows, kpiRows, kpiLogRows, todoRo
     kpiOrder,
     kpiTaskSync,
     deletedRefs: dr,
+    metaServerUpdatedAt: serverUpdatedAtFromRow(meta) || "",
   });
   if (kpiSyncDebugEnabled()) {
     const diff =
@@ -719,6 +741,105 @@ function localPayloadHasAnythingToPersist(p) {
   );
 }
 
+function mergeSideincomeKpiPullWithLocal(L0, S0, raw) {
+  const L = normalizePayload(L0);
+  const S = normalizePayload(S0);
+  const pathTs = buildIdToUpdatedMsMap(raw.paths);
+  const pathLogTs = buildIdToUpdatedMsMap(raw.pathLogs);
+  const kpiTs = buildIdToUpdatedMsMap(raw.kpis);
+  const kpiLogTs = buildIdToUpdatedMsMap(raw.kpiLogs);
+  const todoTs = buildIdToUpdatedMsMap(raw.todos);
+  const dailyTs = buildIdToUpdatedMsMap(raw.daily);
+  const mergedPaths = mergeRowsByLwwWithServerOrder({
+    localArr: L.paths,
+    serverArr: S.paths,
+    serverTsMap: pathTs,
+    getId: (x) => x.id,
+  });
+  const mergedPathLogs = mergeRowsByLwwWithServerOrder({
+    localArr: L.pathLogs,
+    serverArr: S.pathLogs,
+    serverTsMap: pathLogTs,
+    getId: (x) => x.id,
+  });
+  const mergedKpis = mergeRowsByLwwWithServerOrder({
+    localArr: L.kpis,
+    serverArr: S.kpis,
+    serverTsMap: kpiTs,
+    getId: (x) => x.id,
+  });
+  const mergedKpiLogs = mergeRowsByLwwWithServerOrder({
+    localArr: L.kpiLogs,
+    serverArr: S.kpiLogs,
+    serverTsMap: kpiLogTs,
+    getId: (x) => x.id,
+  });
+  const mergedTodos = mergeRowsByLwwWithServerOrder({
+    localArr: L.kpiTodos,
+    serverArr: S.kpiTodos,
+    serverTsMap: todoTs,
+    getId: (x) => x.id,
+  });
+  const mergedDaily = mergeRowsByLwwWithServerOrder({
+    localArr: L.kpiDailyRepeatTodos,
+    serverArr: S.kpiDailyRepeatTodos,
+    serverTsMap: dailyTs,
+    getId: (x) => x.id,
+  });
+  const meta = raw.meta;
+  const metaT = meta ? parseIsoMs(meta.updated_at) : 0;
+  const localMetaT = Math.max(
+    parseIsoMs(L.localMetaModifiedAt),
+    parseIsoMs(L.metaServerUpdatedAt),
+  );
+  let kpiOrder = L.kpiOrder;
+  let kpiTaskSync = L.kpiTaskSync;
+  let deletedRefs = L.deletedRefs;
+  if (localMetaT > metaT) {
+    /* 로컬 메타 우선 */
+  } else if (metaT > localMetaT) {
+    kpiOrder = S.kpiOrder;
+    kpiTaskSync = S.kpiTaskSync;
+    deletedRefs = S.deletedRefs;
+  }
+  return normalizePayload({
+    paths: mergedPaths,
+    pathLogs: mergedPathLogs,
+    kpis: mergedKpis,
+    kpiLogs: mergedKpiLogs,
+    kpiTodos: mergedTodos,
+    kpiDailyRepeatTodos: mergedDaily,
+    kpiOrder,
+    kpiTaskSync,
+    deletedRefs,
+    metaServerUpdatedAt:
+      meta?.updated_at != null ? String(meta.updated_at) : L.metaServerUpdatedAt || "",
+    localMetaModifiedAt: L.localMetaModifiedAt,
+  });
+}
+
+export function applySideincomeKpiTimestampsOnSave(prev, next) {
+  const out = { ...normalizePayload(next) };
+  const prevN = prev ? normalizePayload(prev) : emptyPayload();
+  out.paths = bumpEntityArrayLocalModified(prevN.paths, out.paths, (x) => x.id);
+  out.pathLogs = bumpEntityArrayLocalModified(prevN.pathLogs, out.pathLogs, (x) => x.id);
+  out.kpis = bumpEntityArrayLocalModified(prevN.kpis, out.kpis, (x) => x.id);
+  out.kpiLogs = bumpEntityArrayLocalModified(prevN.kpiLogs, out.kpiLogs, (x) => x.id);
+  out.kpiTodos = bumpEntityArrayLocalModified(prevN.kpiTodos, out.kpiTodos, (x) => x.id);
+  out.kpiDailyRepeatTodos = bumpEntityArrayLocalModified(
+    prevN.kpiDailyRepeatTodos,
+    out.kpiDailyRepeatTodos,
+    (x) => x.id,
+  );
+  const metaChanged =
+    JSON.stringify(prevN.kpiOrder) !== JSON.stringify(out.kpiOrder) ||
+    JSON.stringify(prevN.kpiTaskSync) !== JSON.stringify(out.kpiTaskSync) ||
+    JSON.stringify(prevN.deletedRefs) !== JSON.stringify(out.deletedRefs);
+  if (metaChanged) out.localMetaModifiedAt = Date.now();
+  else out.localMetaModifiedAt = prevN.localMetaModifiedAt;
+  return normalizePayload(out);
+}
+
 /** @returns {Promise<boolean>} */
 export async function pullSideincomeKpiMapFromSupabase() {
   const userId = await getSessionUserId();
@@ -761,9 +882,18 @@ export async function pullSideincomeKpiMapFromSupabase() {
   const daily = dailyRes.data || [];
   const meta = metaRes.data;
 
-  const payload = hasAnyNormalizedData(paths, pathLogs, kpis, kpiLogs, todos, daily, meta)
+  const serverPayload = hasAnyNormalizedData(paths, pathLogs, kpis, kpiLogs, todos, daily, meta)
     ? buildPayloadFromRows(paths, pathLogs, kpis, kpiLogs, todos, daily, meta)
     : buildPayloadFromRows([], [], [], [], [], [], null);
+  const payload = mergeSideincomeKpiPullWithLocal(readLocalPayload(), serverPayload, {
+    paths,
+    pathLogs,
+    kpis,
+    kpiLogs,
+    todos,
+    daily,
+    meta,
+  });
   try {
     localStorage.setItem(SIDEINCOME_KPI_MAP_STORAGE_KEY, JSON.stringify(payload));
   } catch (_) {}

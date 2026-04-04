@@ -3,8 +3,14 @@
  * 행복 추가 시 탭 형성, KPI 카드, 로그, 할일
  */
 
-import { HAPPINESS_KPI_MAP_STORAGE_KEY } from "../utils/happinessKpiMapSupabase.js";
-import { notifyTimeLedgerTasksChanged } from "../utils/timeTaskOptionsModel.js";
+import {
+  HAPPINESS_KPI_MAP_STORAGE_KEY,
+  applyHappinessKpiTimestampsOnSave,
+} from "../utils/happinessKpiMapSupabase.js";
+import {
+  notifyTimeLedgerTasksChanged,
+  removeTimeLedgerTaskOptionByNameForKpi,
+} from "../utils/timeTaskOptionsModel.js";
 import { toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay, formatDeadlineRangeCompact } from "../utils/ganttModal.js";
 import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
 import { getSubtasks, addSubtask, updateSubtask, removeSubtask } from "../utils/todoSubtasks.js";
@@ -101,12 +107,9 @@ function syncKpiToTimeTask(kpi, action, oldName) {
   } else if (action === "remove") {
     const name = (data.kpiTaskSync[kpi.id] || kpi.name || "").trim();
     if (name) {
-      opts = opts.filter((o) => getTaskName(o) !== name);
       delete data.kpiTaskSync[kpi.id];
-      try {
-        localStorage.setItem(TIME_TASK_OPTIONS_KEY, JSON.stringify(opts));
-      } catch (_) {}
       saveHappinessMap(data);
+      removeTimeLedgerTaskOptionByNameForKpi(name);
       notifyTimeLedgerTasksChanged();
     }
   } else if (action === "update" && oldName) {
@@ -131,6 +134,13 @@ function syncKpiToTimeTask(kpi, action, oldName) {
 
 function saveHappinessMap(data) {
   try {
+    let prev = null;
+    try {
+      const raw = localStorage.getItem(HAPPINESS_KPI_MAP_STORAGE_KEY);
+      prev = raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      prev = null;
+    }
     const toSave = { ...data };
     if (toSave.kpiTodos && Array.isArray(toSave.kpiTodos)) {
       toSave.kpiTodos = toSave.kpiTodos.filter((t) => (t.text || "").trim() !== "");
@@ -138,7 +148,8 @@ function saveHappinessMap(data) {
     if (toSave.kpiDailyRepeatTodos && Array.isArray(toSave.kpiDailyRepeatTodos)) {
       toSave.kpiDailyRepeatTodos = toSave.kpiDailyRepeatTodos.filter((t) => (t.text || "").trim() !== "");
     }
-    localStorage.setItem(HAPPINESS_KPI_MAP_STORAGE_KEY, JSON.stringify(toSave));
+    const stamped = applyHappinessKpiTimestampsOnSave(prev, toSave);
+    localStorage.setItem(HAPPINESS_KPI_MAP_STORAGE_KEY, JSON.stringify(stamped));
     try {
       window.dispatchEvent(new CustomEvent("happiness-kpi-map-saved"));
     } catch (_) {}

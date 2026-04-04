@@ -36,6 +36,8 @@ export const FIXED_PRODUCTIVE_TASKS = [
   { name: "구강케어", category: "health", productivity: "productive" },
   { name: "샤워 및 씻기", category: "health", productivity: "productive" },
   { name: "바디케어", category: "health", productivity: "productive" },
+  { name: "건강한 식사", category: "health", productivity: "productive" },
+  { name: "건강한 식사 준비", category: "health", productivity: "productive" },
   { name: "감정 기록하기", category: "happiness", productivity: "productive" },
   {
     name: "의미 있는 영상 시청",

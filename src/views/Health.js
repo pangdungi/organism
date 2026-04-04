@@ -3,15 +3,20 @@
  * 건강 추가 시 탭 형성, KPI 카드, 로그, 할일
  */
 
-import { HEALTH_KPI_MAP_STORAGE_KEY } from "../utils/healthKpiMapSupabase.js";
-import { notifyTimeLedgerTasksChanged } from "../utils/timeTaskOptionsModel.js";
+import {
+  HEALTH_KPI_MAP_STORAGE_KEY,
+  applyHealthKpiTimestampsOnSave,
+} from "../utils/healthKpiMapSupabase.js";
+import {
+  notifyTimeLedgerTasksChanged,
+  removeTimeLedgerTaskOptionByNameForKpi,
+} from "../utils/timeTaskOptionsModel.js";
 import { toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay, formatDeadlineRangeCompact } from "../utils/ganttModal.js";
 import { setupDeadlineQuickButtons } from "../utils/deadlineQuickButtons.js";
 import { attachKpiTodoInputScrollIntoView } from "../utils/kpiTodoInputScroll.js";
 import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
 import { getSubtasks, addSubtask, updateSubtask, removeSubtask } from "../utils/todoSubtasks.js";
 
-const HEALTH_MAP_STORAGE_KEY = "kpi-health-map";
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
 
@@ -36,7 +41,7 @@ function appendDeletedRef(data, kind, id) {
 
 function loadHealthMap() {
   try {
-    const raw = localStorage.getItem(HEALTH_MAP_STORAGE_KEY);
+    const raw = localStorage.getItem(HEALTH_KPI_MAP_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       const kpis = (parsed.kpis || []).map((k) => ({
@@ -102,12 +107,9 @@ function syncKpiToTimeTask(kpi, action, oldName) {
   } else if (action === "remove") {
     const name = (data.kpiTaskSync[kpi.id] || kpi.name || "").trim();
     if (name) {
-      opts = opts.filter((o) => getTaskName(o) !== name);
       delete data.kpiTaskSync[kpi.id];
-      try {
-        localStorage.setItem(TIME_TASK_OPTIONS_KEY, JSON.stringify(opts));
-      } catch (_) {}
       saveHealthMap(data);
+      removeTimeLedgerTaskOptionByNameForKpi(name);
       notifyTimeLedgerTasksChanged();
     }
   } else if (action === "update" && oldName) {
@@ -132,6 +134,13 @@ function syncKpiToTimeTask(kpi, action, oldName) {
 
 function saveHealthMap(data) {
   try {
+    let prev = null;
+    try {
+      const raw = localStorage.getItem(HEALTH_KPI_MAP_STORAGE_KEY);
+      prev = raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      prev = null;
+    }
     const toSave = { ...data };
     if (toSave.kpiTodos && Array.isArray(toSave.kpiTodos)) {
       toSave.kpiTodos = toSave.kpiTodos.filter((t) => (t.text || "").trim() !== "");
@@ -139,7 +148,8 @@ function saveHealthMap(data) {
     if (toSave.kpiDailyRepeatTodos && Array.isArray(toSave.kpiDailyRepeatTodos)) {
       toSave.kpiDailyRepeatTodos = toSave.kpiDailyRepeatTodos.filter((t) => (t.text || "").trim() !== "");
     }
-    localStorage.setItem(HEALTH_MAP_STORAGE_KEY, JSON.stringify(toSave));
+    const stamped = applyHealthKpiTimestampsOnSave(prev, toSave);
+    localStorage.setItem(HEALTH_KPI_MAP_STORAGE_KEY, JSON.stringify(stamped));
     try {
       window.dispatchEvent(new CustomEvent("health-kpi-map-saved"));
     } catch (_) {}
@@ -1048,7 +1058,7 @@ export function render() {
     const todoList = document.createElement("div");
     todoList.className = "dream-kpi-todo-list";
     todos.forEach((todo) => {
-      const taskId = `kpi-${todo.id}-${HEALTH_MAP_STORAGE_KEY}`;
+      const taskId = `kpi-${todo.id}-${HEALTH_KPI_MAP_STORAGE_KEY}`;
       const subtasks = getSubtasks(taskId);
 
       const item = document.createElement("div");

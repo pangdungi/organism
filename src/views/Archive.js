@@ -35,6 +35,8 @@ function recordInDateRange(r, startYmd, endYmd) {
 
 export function render() {
   const el = document.createElement("div");
+  const archiveTabAbort = new AbortController();
+  el._lpTabAbortController = archiveTabAbort;
   el.className = "app-tab-panel-content archive-view";
   const mobileViewport =
     typeof window !== "undefined" && window.matchMedia("(max-width: 48rem)").matches;
@@ -506,6 +508,20 @@ export function render() {
   queueMicrotask(() => {
     void loadArchiveRangeThenRender();
   });
+
+  /*
+   * Realtime: App 쪽에서 이미 pullAllTimeLedgerFromCloud 로 로컬이 갱신된 뒤 이벤트가 옴.
+   * 여기서 다시 hydrate(구간 pull + syncTimeLedgerEntriesToSupabase) 하면 upsert → Realtime → 무한 루프·로그 반복.
+   */
+  document.addEventListener(
+    "lp-time-ledger-remote-updated",
+    () => {
+      if (!el.isConnected) return;
+      refreshFullRecords();
+      renderList();
+    },
+    { signal: archiveTabAbort.signal },
+  );
 
   return el;
 }

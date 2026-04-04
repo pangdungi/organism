@@ -94,6 +94,16 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
           if (!needTodo && !anyChanged && !assetChanged && !diaryChanged)
             return;
         }
+        /* 아카이브: 전체 renderMain 하면 탭이 통째로 다시 그려져 로딩 스켈레톤이 ~수초마다 깜빡임 */
+        if (timeLedgerChanged && tab === "archive") {
+          try {
+            document.dispatchEvent(
+              new CustomEvent("lp-time-ledger-remote-updated"),
+            );
+          } catch (_) {}
+          if (!needTodo && !anyChanged && !assetChanged && !diaryChanged)
+            return;
+        }
         if (!REFRESH_MAIN_AFTER_CLOUD_PULL.has(tab)) return;
         renderMain({ skipTodoSaveBeforeUnmount: true });
       } catch (e) {

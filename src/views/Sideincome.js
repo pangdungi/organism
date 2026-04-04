@@ -4,8 +4,14 @@
  * 탭 우클릭 시 이름 수정/삭제 모달
  */
 
-import { SIDEINCOME_KPI_MAP_STORAGE_KEY } from "../utils/sideincomeKpiMapSupabase.js";
-import { notifyTimeLedgerTasksChanged } from "../utils/timeTaskOptionsModel.js";
+import {
+  SIDEINCOME_KPI_MAP_STORAGE_KEY,
+  applySideincomeKpiTimestampsOnSave,
+} from "../utils/sideincomeKpiMapSupabase.js";
+import {
+  notifyTimeLedgerTasksChanged,
+  removeTimeLedgerTaskOptionByNameForKpi,
+} from "../utils/timeTaskOptionsModel.js";
 import { toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay, formatDeadlineRangeCompact } from "../utils/ganttModal.js";
 import { setupDeadlineQuickButtons } from "../utils/deadlineQuickButtons.js";
 import { attachKpiTodoInputScrollIntoView } from "../utils/kpiTodoInputScroll.js";
@@ -105,12 +111,9 @@ function syncKpiToTimeTask(kpi, action, oldName) {
   } else if (action === "remove") {
     const name = (data.kpiTaskSync[kpi.id] || kpi.name || "").trim();
     if (name) {
-      opts = opts.filter((o) => getTaskName(o) !== name);
       delete data.kpiTaskSync[kpi.id];
-      try {
-        localStorage.setItem(TIME_TASK_OPTIONS_KEY, JSON.stringify(opts));
-      } catch (_) {}
       saveSideincomeMap(data);
+      removeTimeLedgerTaskOptionByNameForKpi(name);
       notifyTimeLedgerTasksChanged();
     }
   } else if (action === "update" && oldName) {
@@ -135,6 +138,13 @@ function syncKpiToTimeTask(kpi, action, oldName) {
 
 function saveSideincomeMap(data) {
   try {
+    let prev = null;
+    try {
+      const raw = localStorage.getItem(SIDEINCOME_KPI_MAP_STORAGE_KEY);
+      prev = raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      prev = null;
+    }
     const toSave = { ...data };
     if (toSave.kpiTodos && Array.isArray(toSave.kpiTodos)) {
       toSave.kpiTodos = toSave.kpiTodos.filter((t) => (t.text || "").trim() !== "");
@@ -142,7 +152,8 @@ function saveSideincomeMap(data) {
     if (toSave.kpiDailyRepeatTodos && Array.isArray(toSave.kpiDailyRepeatTodos)) {
       toSave.kpiDailyRepeatTodos = toSave.kpiDailyRepeatTodos.filter((t) => (t.text || "").trim() !== "");
     }
-    localStorage.setItem(SIDEINCOME_KPI_MAP_STORAGE_KEY, JSON.stringify(toSave));
+    const stamped = applySideincomeKpiTimestampsOnSave(prev, toSave);
+    localStorage.setItem(SIDEINCOME_KPI_MAP_STORAGE_KEY, JSON.stringify(stamped));
     try {
       window.dispatchEvent(new CustomEvent("sideincome-kpi-map-saved"));
     } catch (_) {}

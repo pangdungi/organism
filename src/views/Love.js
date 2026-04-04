@@ -3,7 +3,14 @@
  * 행복 추가 시 탭 형성, KPI 카드, 로그, 할일
  */
 
-import { notifyTimeLedgerTasksChanged } from "../utils/timeTaskOptionsModel.js";
+import {
+  notifyTimeLedgerTasksChanged,
+  removeTimeLedgerTaskOptionByNameForKpi,
+} from "../utils/timeTaskOptionsModel.js";
+import {
+  HAPPINESS_KPI_MAP_STORAGE_KEY,
+  applyHappinessKpiTimestampsOnSave,
+} from "../utils/happinessKpiMapSupabase.js";
 import {
   toDateInputValue,
   formatDeadlineForDisplay,
@@ -25,7 +32,6 @@ import {
 import { setupDeadlineQuickButtons } from "../utils/deadlineQuickButtons.js";
 import { attachKpiTodoInputScrollIntoView } from "../utils/kpiTodoInputScroll.js";
 
-const HAPPINESS_MAP_STORAGE_KEY = "kpi-happiness-map";
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
 
@@ -50,7 +56,7 @@ function appendDeletedRef(data, kind, id) {
 
 function loadHappinessMap() {
   try {
-    const raw = localStorage.getItem(HAPPINESS_MAP_STORAGE_KEY);
+    const raw = localStorage.getItem(HAPPINESS_KPI_MAP_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       return {
@@ -116,12 +122,9 @@ function syncKpiToTimeTask(kpi, action, oldName) {
   } else if (action === "remove") {
     const name = (data.kpiTaskSync[kpi.id] || kpi.name || "").trim();
     if (name) {
-      opts = opts.filter((o) => getTaskName(o) !== name);
       delete data.kpiTaskSync[kpi.id];
-      try {
-        localStorage.setItem(TIME_TASK_OPTIONS_KEY, JSON.stringify(opts));
-      } catch (_) {}
       saveHappinessMap(data);
+      removeTimeLedgerTaskOptionByNameForKpi(name);
       notifyTimeLedgerTasksChanged();
     }
   } else if (action === "update" && oldName) {
@@ -146,6 +149,13 @@ function syncKpiToTimeTask(kpi, action, oldName) {
 
 function saveHappinessMap(data) {
   try {
+    let prev = null;
+    try {
+      const raw = localStorage.getItem(HAPPINESS_KPI_MAP_STORAGE_KEY);
+      prev = raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      prev = null;
+    }
     const toSave = { ...data };
     if (toSave.kpiTodos && Array.isArray(toSave.kpiTodos)) {
       toSave.kpiTodos = toSave.kpiTodos.filter(
@@ -157,7 +167,8 @@ function saveHappinessMap(data) {
         (t) => (t.text || "").trim() !== "",
       );
     }
-    localStorage.setItem(HAPPINESS_MAP_STORAGE_KEY, JSON.stringify(toSave));
+    const stamped = applyHappinessKpiTimestampsOnSave(prev, toSave);
+    localStorage.setItem(HAPPINESS_KPI_MAP_STORAGE_KEY, JSON.stringify(stamped));
     try {
       window.dispatchEvent(new CustomEvent("happiness-kpi-map-saved"));
     } catch (_) {}
@@ -1063,7 +1074,7 @@ export function render() {
     const todoList = document.createElement("div");
     todoList.className = "dream-kpi-todo-list";
     todos.forEach((todo) => {
-      const taskId = `kpi-${todo.id}-${HAPPINESS_MAP_STORAGE_KEY}`;
+      const taskId = `kpi-${todo.id}-${HAPPINESS_KPI_MAP_STORAGE_KEY}`;
       const subtasks = getSubtasks(taskId);
 
       const item = document.createElement("div");

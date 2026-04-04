@@ -69,6 +69,22 @@ async function getSessionUserId() {
   return session?.user?.id || null;
 }
 
+/**
+ * 과제설정에서 삭제한 행을 서버에서도 제거 (upsert만으로는 서버 행이 남아 pull·Realtime 시 부활함)
+ */
+export async function deleteTimeLedgerTaskRowForCurrentUser(taskId) {
+  const id = String(taskId || "").trim();
+  if (!supabase || !isUuid(id)) return;
+  const userId = await getSessionUserId();
+  if (!userId) return;
+  const { error } = await supabase
+    .from(TABLE)
+    .delete()
+    .eq("user_id", userId)
+    .eq("id", id);
+  if (error) console.warn("[time-ledger-tasks] delete", error.message);
+}
+
 export async function syncTimeLedgerTasksToSupabase() {
   const userId = await getSessionUserId();
   if (!userId || !supabase) return;
@@ -83,8 +99,9 @@ export async function syncTimeLedgerTasksToSupabase() {
   }
 
   /*
-   * 서버에만 있는 과제 행을 로컬 목록에 없다고 삭제하지 않음.
-   * 다른 기기에서 추가한 과제가 오래된 로컬 동기화 한 번에 서버에서 지워지는 것을 방지.
+   * 로컬에서 지운 과제는 removeTaskOption → deleteTimeLedgerTaskRowForCurrentUser 로 서버 행 삭제.
+   * 여기 upsert만으로는 삭제 반영이 안 되므로, 동기화 배치에서 고아 행을 일괄 삭제하지 않음
+   * (다른 기기에서 추가만 하고 아직 이 기기에 pull 안 된 id를 잘못 지우는 것 방지).
    */
 
   await logTimeLedgerTaskInventory("동기화 완료 후");

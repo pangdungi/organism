@@ -5,6 +5,13 @@
 
 import { supabase } from "../supabase.js";
 import { kpiSyncDebugEnabled, kpiSyncDebugLog, kpiSyncPayloadSummary, kpiSyncTrace } from "./kpiSyncDebug.js";
+import {
+  parseIsoMs,
+  buildIdToUpdatedMsMap,
+  mergeRowsByLwwWithServerOrder,
+  bumpEntityArrayLocalModified,
+  serverUpdatedAtFromRow,
+} from "./kpiMapLwwMerge.js";
 
 export const DREAM_KPI_MAP_STORAGE_KEY = "kpi-dream-map";
 
@@ -101,6 +108,8 @@ function emptyPayload() {
     kpiTaskSync: {},
     desiredLife: "",
     deletedRefs: defaultDeletedRefs(),
+    metaServerUpdatedAt: "",
+    localMetaModifiedAt: undefined,
   };
 }
 
@@ -123,6 +132,12 @@ function normalizePayload(p) {
     kpiTaskSync: p.kpiTaskSync && typeof p.kpiTaskSync === "object" ? p.kpiTaskSync : {},
     desiredLife: typeof p.desiredLife === "string" ? p.desiredLife : "",
     deletedRefs: normalizeDeletedRefs(p.deletedRefs),
+    metaServerUpdatedAt:
+      typeof p.metaServerUpdatedAt === "string" ? p.metaServerUpdatedAt : "",
+    localMetaModifiedAt:
+      typeof p.localMetaModifiedAt === "number" && Number.isFinite(p.localMetaModifiedAt)
+        ? p.localMetaModifiedAt
+        : undefined,
   };
 }
 
@@ -163,6 +178,7 @@ function rowToKpi(r) {
     targetTimeRequired: r.target_time_required ?? "",
     needHabitTracker: !!r.need_habit_tracker,
     direction: r.direction === "lower" ? "lower" : "higher",
+    serverUpdatedAt: serverUpdatedAtFromRow(r),
   };
 }
 
@@ -180,6 +196,7 @@ function rowToLog(r) {
     memo: r.memo || "",
     dailyCompleted: Array.isArray(dc) ? dc : [],
     dailyIncomplete: Array.isArray(di) ? di : [],
+    serverUpdatedAt: serverUpdatedAtFromRow(r),
   };
 }
 
@@ -191,6 +208,7 @@ function rowToTodo(r) {
     text: r.text || "",
     completed: !!r.completed,
     ...ex,
+    serverUpdatedAt: serverUpdatedAtFromRow(r),
   };
 }
 
@@ -200,6 +218,7 @@ function rowToDaily(r) {
     kpiId: r.kpi_id,
     text: r.text || "",
     completed: !!r.completed,
+    serverUpdatedAt: serverUpdatedAtFromRow(r),
   };
 }
 
@@ -373,7 +392,11 @@ function buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, me
   const sortedCats = [...(categories || [])]
     .filter((c) => !drCat.has(String(c.id)))
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
-  const dreams = sortedCats.map((c) => ({ id: c.id, name: c.name || "" }));
+  const dreams = sortedCats.map((c) => ({
+    id: c.id,
+    name: c.name || "",
+    serverUpdatedAt: serverUpdatedAtFromRow(c),
+  }));
   const dreamIds = new Set(dreams.map((d) => String(d.id)));
 
   const kpisFiltered = (kpis || []).filter((k) => {
@@ -412,6 +435,7 @@ function buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, me
     kpiOrder,
     kpiTaskSync,
     deletedRefs: dr,
+    metaServerUpdatedAt: serverUpdatedAtFromRow(meta) || "",
   });
   if (kpiSyncDebugEnabled()) {
     const diff =
@@ -692,6 +716,110 @@ async function deleteOrphanRowsForUser(userId, p, allowEmptyOrphans) {
   return deletedByTable;
 }
 
+/** pull: 서버 스냅샷과 로컬을 행 단위 LWW 병합 (통째 덮어쓰기 방지) */
+function mergeDreamKpiPullWithLocal(L0, S0, raw) {
+  const L = normalizePayload(L0);
+  const S = normalizePayload(S0);
+  const catTs = buildIdToUpdatedMsMap(raw.categories);
+  const kpiTs = buildIdToUpdatedMsMap(raw.kpis);
+  const logTs = buildIdToUpdatedMsMap(raw.logs);
+  const todoTs = buildIdToUpdatedMsMap(raw.todos);
+  const dailyTs = buildIdToUpdatedMsMap(raw.daily);
+  const mergedDreams = mergeRowsByLwwWithServerOrder({
+    localArr: L.dreams,
+    serverArr: S.dreams,
+    serverTsMap: catTs,
+    getId: (x) => x.id,
+  });
+  const mergedKpis = mergeRowsByLwwWithServerOrder({
+    localArr: L.kpis,
+    serverArr: S.kpis,
+    serverTsMap: kpiTs,
+    getId: (x) => x.id,
+  });
+  const mergedLogs = mergeRowsByLwwWithServerOrder({
+    localArr: L.kpiLogs,
+    serverArr: S.kpiLogs,
+    serverTsMap: logTs,
+    getId: (x) => x.id,
+  });
+  const mergedTodos = mergeRowsByLwwWithServerOrder({
+    localArr: L.kpiTodos,
+    serverArr: S.kpiTodos,
+    serverTsMap: todoTs,
+    getId: (x) => x.id,
+  });
+  const mergedDaily = mergeRowsByLwwWithServerOrder({
+    localArr: L.kpiDailyRepeatTodos,
+    serverArr: S.kpiDailyRepeatTodos,
+    serverTsMap: dailyTs,
+    getId: (x) => x.id,
+  });
+  const meta = raw.meta;
+  const metaT = meta ? parseIsoMs(meta.updated_at) : 0;
+  const localMetaT = Math.max(
+    parseIsoMs(L.localMetaModifiedAt),
+    parseIsoMs(L.metaServerUpdatedAt),
+  );
+  let goals = L.goals;
+  let tasks = L.tasks;
+  let desiredLife = L.desiredLife;
+  let kpiOrder = L.kpiOrder;
+  let kpiTaskSync = L.kpiTaskSync;
+  let deletedRefs = L.deletedRefs;
+  if (localMetaT > metaT) {
+    /* 로컬 메타가 더 최신 */
+  } else if (metaT > localMetaT) {
+    goals = S.goals;
+    tasks = S.tasks;
+    desiredLife = S.desiredLife;
+    kpiOrder = S.kpiOrder;
+    kpiTaskSync = S.kpiTaskSync;
+    deletedRefs = S.deletedRefs;
+  }
+  return normalizePayload({
+    dreams: mergedDreams,
+    goals,
+    tasks,
+    desiredLife,
+    kpis: mergedKpis,
+    kpiLogs: mergedLogs,
+    kpiTodos: mergedTodos,
+    kpiDailyRepeatTodos: mergedDaily,
+    kpiOrder,
+    kpiTaskSync,
+    deletedRefs,
+    metaServerUpdatedAt:
+      meta?.updated_at != null ? String(meta.updated_at) : L.metaServerUpdatedAt || "",
+    localMetaModifiedAt: L.localMetaModifiedAt,
+  });
+}
+
+/** 저장 시 변경된 행에만 localModifiedAt, 메타 변경 시 localMetaModifiedAt */
+export function applyDreamKpiTimestampsOnSave(prev, next) {
+  const out = { ...normalizePayload(next) };
+  const prevN = prev ? normalizePayload(prev) : emptyPayload();
+  out.dreams = bumpEntityArrayLocalModified(prevN.dreams, out.dreams, (x) => x.id);
+  out.kpis = bumpEntityArrayLocalModified(prevN.kpis, out.kpis, (x) => x.id);
+  out.kpiLogs = bumpEntityArrayLocalModified(prevN.kpiLogs, out.kpiLogs, (x) => x.id);
+  out.kpiTodos = bumpEntityArrayLocalModified(prevN.kpiTodos, out.kpiTodos, (x) => x.id);
+  out.kpiDailyRepeatTodos = bumpEntityArrayLocalModified(
+    prevN.kpiDailyRepeatTodos,
+    out.kpiDailyRepeatTodos,
+    (x) => x.id,
+  );
+  const metaChanged =
+    JSON.stringify(prevN.goals) !== JSON.stringify(out.goals) ||
+    JSON.stringify(prevN.tasks) !== JSON.stringify(out.tasks) ||
+    (prevN.desiredLife || "") !== (out.desiredLife || "") ||
+    JSON.stringify(prevN.kpiOrder) !== JSON.stringify(out.kpiOrder) ||
+    JSON.stringify(prevN.kpiTaskSync) !== JSON.stringify(out.kpiTaskSync) ||
+    JSON.stringify(prevN.deletedRefs) !== JSON.stringify(out.deletedRefs);
+  if (metaChanged) out.localMetaModifiedAt = Date.now();
+  else out.localMetaModifiedAt = prevN.localMetaModifiedAt;
+  return normalizePayload(out);
+}
+
 /** @returns {Promise<boolean>} 서버 데이터로 로컬을 갱신했으면 true */
 export async function pullDreamKpiMapFromSupabase() {
   const userId = await getSessionUserId();
@@ -731,7 +859,23 @@ export async function pullDreamKpiMapFromSupabase() {
   const meta = metaRes.data;
 
   if (hasAnyNormalizedData(categories, kpis, logs, todos, daily, meta)) {
-    const payload = buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, meta);
+    const localBefore = readLocalPayload();
+    const serverPayload = buildPayloadFromNormalizedRows(
+      categories,
+      kpis,
+      logs,
+      todos,
+      daily,
+      meta,
+    );
+    const payload = mergeDreamKpiPullWithLocal(localBefore, serverPayload, {
+      categories,
+      kpis,
+      logs,
+      todos,
+      daily,
+      meta,
+    });
     try {
       localStorage.setItem(DREAM_KPI_MAP_STORAGE_KEY, JSON.stringify(payload));
     } catch (_) {}

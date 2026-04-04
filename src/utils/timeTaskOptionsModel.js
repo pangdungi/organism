@@ -287,8 +287,10 @@ export function updateTaskOption(oldName, task) {
     });
   }
   if (name !== oldName && opts.some((o, i) => i !== idx && o.name === name)) {
+    const removedId = opts[idx].id;
     opts.splice(idx, 1);
     saveMergedList(opts);
+    scheduleDeleteTimeLedgerTaskOnServer(removedId);
     return opts;
   }
   opts[idx] = {
@@ -302,13 +304,48 @@ export function updateTaskOption(oldName, task) {
   return opts;
 }
 
+/** 로컬에서 제거된 과제 id를 Supabase time_ledger_tasks 에서도 삭제 (동적 import로 순환 참조 방지) */
+function scheduleDeleteTimeLedgerTaskOnServer(id) {
+  const rid = String(id || "").trim();
+  if (!isUuid(rid)) return;
+  void import("./timeLedgerTasksSupabase.js").then((m) => {
+    m.deleteTimeLedgerTaskRowForCurrentUser(rid).catch(() => {});
+  });
+}
+
+/**
+ * KPI 삭제·탭 삭제로 연동이 끊길 때 시간가계부 과제 목록에서 이름 제거.
+ * `removeTaskOption`은 KPI에서 붙인 과제명이 잠겨 있어 삭제에 실패하므로 별도 경로.
+ * 서버 `time_ledger_tasks` 행도 삭제해 pull·Realtime 시 부활 방지.
+ */
+export function removeTimeLedgerTaskOptionByNameForKpi(name) {
+  const n = (name || "").trim();
+  if (!n) return;
+  const opts = getFullTaskOptions();
+  const target = opts.find((o) => (o.name || "").trim() === n);
+  const removedId =
+    target && isUuid(String(target.id || "").trim())
+      ? String(target.id).trim()
+      : "";
+  const next = opts.filter((o) => (o.name || "").trim() !== n);
+  saveMergedList(next);
+  if (removedId) scheduleDeleteTimeLedgerTaskOnServer(removedId);
+}
+
 /** @returns {boolean} true면 목록에서 실제로 제거됨(KPI 연동 등 잠금이면 false) */
 export function removeTaskOption(name) {
   const n = (name || "").trim();
   if (!n) return false;
   if (getLockedTaskNamesStatic().has(n)) return false;
-  const opts = getFullTaskOptions().filter((o) => o.name !== n);
-  saveMergedList(opts);
+  const opts = getFullTaskOptions();
+  const target = opts.find((o) => o.name === n);
+  const removedId =
+    target && isUuid(String(target.id || "").trim())
+      ? String(target.id).trim()
+      : "";
+  const next = opts.filter((o) => o.name !== n);
+  saveMergedList(next);
+  if (removedId) scheduleDeleteTimeLedgerTaskOnServer(removedId);
   return true;
 }
 
