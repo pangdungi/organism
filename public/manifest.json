@@ -1,6 +1,6 @@
 {
-  "name": "라이프 플래너",
-  "short_name": "라이프 플래너",
+  "name": "오가니즘플래너",
+  "short_name": "오가니즘플래너",
   "description": "인생 KPI, 시간가계부, 감정일기, 자산관리까지 한 곳에서",
   "id": "/",
   "start_url": "/",
