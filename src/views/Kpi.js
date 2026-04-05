@@ -85,6 +85,7 @@ function showConfirmModal(message) {
       <div class="kpi-confirm-backdrop"></div>
       <div class="kpi-confirm-panel">
         <p class="kpi-confirm-message">${message}</p>
+        <p class="kpi-confirm-warn">삭제 시 복구 불가</p>
         <div class="kpi-confirm-actions">
           <button type="button" class="kpi-confirm-cancel">취소</button>
           <button type="button" class="kpi-confirm-ok">삭제</button>

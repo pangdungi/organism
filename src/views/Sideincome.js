@@ -286,8 +286,8 @@ export function render() {
         <form class="dream-kpi-form">
           <div class="dream-kpi-form-body">
           <div class="dream-kpi-field">
-            <label>지표 이름</label>
-            <input type="text" name="name" placeholder="예) DAU, 월 수익, 전환율" />
+            <label>행동 이름</label>
+            <input type="text" name="name" placeholder="예) 인스타 게시물 포스팅하기" />
           </div>
           <div class="dream-kpi-field dream-kpi-direction-field">
             <span class="dream-kpi-field-label">지표 방향</span>
@@ -305,11 +305,11 @@ export function render() {
           <div class="dream-kpi-row">
             <div class="dream-kpi-field">
               <label><span class="dream-kpi-target-label-text">목표값</span></label>
-              <input type="text" name="targetValue" placeholder="예) 1000" inputmode="numeric" />
+              <input type="text" name="targetValue" placeholder="목표값 예) 100" inputmode="numeric" />
             </div>
             <div class="dream-kpi-field">
               <label>단위</label>
-              <input type="text" name="unit" placeholder="예) 명, 만원, %" />
+              <input type="text" name="unit" placeholder="예) 게시물" />
             </div>
           </div>
           <div class="dream-kpi-row">
@@ -354,7 +354,7 @@ export function render() {
       const kpi = {
         id: nextId(),
         pathId: activePathId,
-        name: (form.name.value || "").trim() || "지표",
+        name: (form.name.value || "").trim() || "행동",
         unit: (form.unit.value || "").trim() || "",
         targetValue: sanitizeNumericInput(form.targetValue.value) || "",
         targetStartDate: (form.targetStartDate?.value || "").trim() || "",
@@ -390,7 +390,7 @@ export function render() {
       const lower =
         form.querySelector('input[name="direction"]:checked')?.value === "lower";
       if (labelSpan) labelSpan.textContent = lower ? "허용 상한" : "목표값";
-      if (targetInput) targetInput.placeholder = lower ? "예) 5" : "예) 1000";
+      if (targetInput) targetInput.placeholder = lower ? "목표값 예) 5" : "목표값 예) 100";
     };
     radios.forEach((r) => r.addEventListener("change", sync));
     sync();
@@ -409,8 +409,8 @@ export function render() {
         <form class="dream-kpi-form">
           <div class="dream-kpi-form-body">
           <div class="dream-kpi-field">
-            <label>지표 이름</label>
-            <input type="text" name="name" value="${escapeHtml(kpi.name || "")}" placeholder="예) DAU, 월 수익, 전환율" />
+            <label>행동 이름</label>
+            <input type="text" name="name" value="${escapeHtml(kpi.name || "")}" placeholder="예) 인스타 게시물 포스팅하기" />
           </div>
           <div class="dream-kpi-field dream-kpi-direction-field">
             <span class="dream-kpi-field-label">지표 방향</span>
@@ -428,11 +428,11 @@ export function render() {
           <div class="dream-kpi-row">
             <div class="dream-kpi-field">
               <label><span class="dream-kpi-target-label-text">목표값</span></label>
-              <input type="text" name="targetValue" value="${escapeHtml(sanitizeNumericInput(kpi.targetValue))}" placeholder="예) 1000" inputmode="numeric" />
+              <input type="text" name="targetValue" value="${escapeHtml(sanitizeNumericInput(kpi.targetValue))}" placeholder="목표값 예) 100" inputmode="numeric" />
             </div>
             <div class="dream-kpi-field">
               <label>단위</label>
-              <input type="text" name="unit" value="${escapeHtml(kpi.unit || "")}" placeholder="예) 명, 만원, %" />
+              <input type="text" name="unit" value="${escapeHtml(kpi.unit || "")}" placeholder="예) 게시물" />
             </div>
           </div>
           <div class="dream-kpi-row">
@@ -460,7 +460,7 @@ export function render() {
           <div class="dream-kpi-form-actions">
           <button type="submit" class="dream-kpi-submit">수정</button>
           <div class="dream-kpi-delete-wrap">
-            <p class="dream-kpi-delete-note">삭제 시 로그, 할일 목록이 모두 삭제됩니다.</p>
+            <p class="dream-kpi-delete-note">삭제 시 복구 불가</p>
             <button type="button" class="dream-kpi-delete-btn">KPI 삭제하기</button>
           </div>
           </div>
@@ -493,7 +493,7 @@ export function render() {
       const target = data.kpis.find((k) => k.id === kpi.id);
       if (target) {
         const oldName = target.name;
-        target.name = (form.name.value || "").trim() || "지표";
+        target.name = (form.name.value || "").trim() || "행동";
         target.unit = (form.unit.value || "").trim() || "";
         target.targetValue = sanitizeNumericInput(form.targetValue.value) || "";
         target.targetStartDate = (form.targetStartDate?.value || "").trim() || "";
@@ -1392,7 +1392,7 @@ export function render() {
       <div class="dream-kpi-panel dream-delete-confirm-panel">
         <h3 class="dream-delete-confirm-title">부수입 경로 삭제</h3>
         <p class="dream-delete-confirm-msg">"${escapeHtml(pathName)}"을(를) 정말 삭제하시겠습니까?</p>
-        <p class="dream-delete-confirm-warn">삭제하면 복구할 수 없으며, 내부 KPI·로그·할일이 모두 삭제됩니다.</p>
+        <p class="dream-delete-confirm-warn">삭제 시 복구 불가</p>
         <div class="dream-delete-confirm-actions">
           <button type="button" class="dream-delete-confirm-cancel">취소</button>
           <button type="button" class="dream-delete-confirm-submit">삭제</button>
@@ -1445,7 +1445,7 @@ export function render() {
         <form class="dream-kpi-form dream-path-edit-form">
           <div class="dream-kpi-field">
             <label>경로 이름</label>
-            <input type="text" name="name" value="${escapeHtml(path.name || "")}" placeholder="부수입 경로 이름" />
+            <input type="text" name="name" value="${escapeHtml(path.name || "")}" placeholder="홈페이지 디자인 외주" />
           </div>
           <div class="dream-kpi-row">
             <div class="dream-kpi-field">
@@ -1542,7 +1542,7 @@ export function render() {
         <form class="dream-kpi-form">
           <div class="dream-kpi-field">
             <label>부수입 경로 이름</label>
-            <input type="text" name="name" placeholder="예) ADHD 인생관리 웹서비스 판매" />
+            <input type="text" name="name" placeholder="홈페이지 디자인 외주" />
           </div>
           <div class="dream-kpi-row">
             <div class="dream-kpi-field">

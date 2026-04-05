@@ -15574,10 +15574,18 @@ svg.todo-card-reminder-icon {
 }
 
 .kpi-confirm-message {
-  margin: 0 0 1.25rem;
+  margin: 0 0 0.35rem;
   font-size: 0.95rem;
   line-height: 1.5;
   color: var(--text-body);
+}
+
+.kpi-confirm-warn {
+  margin: 0 0 1.25rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  line-height: 1.45;
 }
 
 .kpi-confirm-actions {
@@ -28493,7 +28501,7 @@ body.kpi-resizing {
 
 .dream-kpi-delete-note {
   margin: 0 0 0.5rem;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 400;
   color: var(--text-muted);
 }
@@ -28539,9 +28547,9 @@ body.kpi-resizing {
 
 .dream-delete-confirm-warn {
   margin: 0 0 1.25rem;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
 .dream-delete-confirm-actions {
