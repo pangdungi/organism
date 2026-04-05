@@ -108,7 +108,7 @@ html {
 }
 
 :root {
-  /* 폰트: 한글 NEXON Lv1 Gothic · 영문 Display/Heading Space Grotesk · 숫자·날짜·레이블 DM Mono */
+  /* 폰트: 한글·숫자·날짜 UI NEXON Lv1 Gothic(body) · 영문 Display/Heading Space Grotesk · 보조 숫자 레이블 등 DM Mono */
   --font-display: "Space Grotesk", "NEXON Lv1 Gothic", sans-serif;
   --font-heading: "Space Grotesk", "NEXON Lv1 Gothic", sans-serif;
   /* Organism 텍스트 로고·오늘 탭 대형 날짜: Archivo(로컬), 실패 시 Space Grotesk·NEXON */
@@ -3437,9 +3437,9 @@ body {
     min-width: 0;
   }
   .work-schedule-content-wrap .work-schedule-filter-bar .time-filter-range-sep {
-    font-family: var(--font-mono);
+    font-family: var(--font-body);
     font-size: var(--fs-caption);
-    font-weight: var(--fw-mono);
+    font-weight: var(--fw-body);
     line-height: 1;
     color: var(--text-caption-color);
     flex-shrink: 0;
@@ -3463,9 +3463,9 @@ body {
     display: block;
     flex: 0 0 auto;
     min-width: 0;
-    font-family: var(--font-mono);
+    font-family: var(--font-body);
     font-size: var(--fs-small);
-    font-weight: var(--fw-mono);
+    font-weight: var(--fw-body);
     line-height: 1.25;
     color: var(--text-muted);
     text-align: left;
@@ -3593,9 +3593,9 @@ body {
   }
   /* 아카이브 기간: 근무표·시간기록과 동일 ~ 구분자 */
   .archive-view .archive-date-range-filter .time-filter-range-sep {
-    font-family: var(--font-mono);
+    font-family: var(--font-body);
     font-size: var(--fs-caption);
-    font-weight: var(--fw-mono);
+    font-weight: var(--fw-body);
     color: var(--text-placeholder);
     flex-shrink: 0;
     opacity: 0.85;
@@ -3610,9 +3610,9 @@ body {
     border: none !important;
     background: transparent !important;
     box-shadow: none !important;
-    font-family: var(--font-mono) !important;
+    font-family: var(--font-body) !important;
     font-size: var(--fs-small) !important;
-    font-weight: var(--fw-mono) !important;
+    font-weight: var(--fw-body) !important;
     line-height: 1.25;
     color: var(--text-caption-color) !important;
     -webkit-text-fill-color: var(--text-caption-color);
@@ -3646,8 +3646,9 @@ body {
   }
   .archive-view.archive-view--mobile .archive-date-range-filter .time-filter-range-sep {
     flex-shrink: 0;
+    font-family: var(--font-body);
     font-size: var(--fs-caption);
-    font-weight: var(--fw-mono);
+    font-weight: var(--fw-body);
     color: var(--text-caption-color);
     line-height: 1;
     opacity: 0.85;
@@ -3670,9 +3671,9 @@ body {
     display: block;
     flex: 0 0 auto;
     min-width: 0;
-    font-family: var(--font-mono);
+    font-family: var(--font-body);
     font-size: var(--fs-small);
-    font-weight: var(--fw-mono);
+    font-weight: var(--fw-body);
     line-height: 1.25;
     color: var(--text-muted);
     text-align: left;
@@ -3826,9 +3827,9 @@ body {
   }
   .asset-view--mobile .asset-expense-filter-bar .asset-expense-date-range-wrap .time-filter-range-sep {
     flex-shrink: 0;
-    font-family: var(--font-mono);
+    font-family: var(--font-body);
     font-size: var(--fs-caption);
-    font-weight: var(--fw-mono);
+    font-weight: var(--fw-body);
     color: var(--text-caption-color);
     line-height: 1;
     opacity: 0.85;
@@ -3851,9 +3852,9 @@ body {
     display: block;
     flex: 0 0 auto;
     min-width: 0;
-    font-family: var(--font-mono);
+    font-family: var(--font-body);
     font-size: var(--fs-small);
-    font-weight: var(--fw-mono);
+    font-weight: var(--fw-body);
     line-height: 1.25;
     color: var(--text-muted);
     text-align: left;
@@ -4510,9 +4511,19 @@ body {
   .calendar-view--mobile-workschedule .work-schedule-header-inner--mobile-tab {
     justify-content: flex-end;
   }
+  /* 설정 한 줄만: 전역 margin-bottom(1rem)·과한 패딩 제거 → 본문·월별 캘린더 세로 확보 */
   .calendar-view--mobile-workschedule.work-schedule-view .work-schedule-header {
-    padding-top: 0.35rem;
-    padding-bottom: 0.65rem !important;
+    margin-bottom: 0 !important;
+    padding: 0.25rem 1.75rem 0.35rem !important;
+  }
+
+  /* 모바일 근무표 월별: 상단 네비·탭 아래 간격 살짝 축소, 그리드 마지막 줄이 하단 메뉴에 덜 가리도록 */
+  .calendar-view--mobile-workschedule .work-schedule-monthly-top-row {
+    margin-bottom: 0.5rem;
+  }
+  .calendar-view--mobile-workschedule .work-schedule-monthly-calendar {
+    padding-bottom: 0.75rem;
+    box-sizing: border-box;
   }
 
   /* 모바일: 날짜 셀 클릭 시 확대 보기 오버레이 + 넓은 카드 */
@@ -5050,9 +5061,6 @@ body {
     padding-bottom: 4.5rem;
     box-sizing: border-box;
   }
-  .calendar-view--mobile-workschedule .work-schedule-row-add {
-    display: none !important;
-  }
 
   /* 모바일 자산관리 지출입력장: 거래 추가 FAB — 근무표·시간가계부와 동일 위치·색 */
   .asset-view--mobile .asset-expense-mobile-fab-wrap {
@@ -5360,9 +5368,9 @@ body {
   }
   .time-ledger-mobile-toolbar-right .time-filter-range-sep {
     flex-shrink: 0;
-    font-family: var(--font-mono);
+    font-family: var(--font-body);
     font-size: var(--fs-caption);
-    font-weight: var(--fw-mono);
+    font-weight: var(--fw-body);
     line-height: 1;
     color: var(--text-caption-color);
     padding: 0 0.05rem;
@@ -5421,9 +5429,9 @@ body {
     display: block;
     flex: 0 1 auto;
     min-width: 0;
-    font-family: var(--font-mono);
+    font-family: var(--font-body);
     font-size: var(--fs-small);
-    font-weight: var(--fw-mono);
+    font-weight: var(--fw-body);
     line-height: 1.25;
     color: var(--text-muted);
     text-align: center;
@@ -5549,9 +5557,9 @@ body {
     width: 0;
     min-width: 0;
     max-width: 100%;
-    font-family: var(--font-mono);
+    font-family: var(--font-body);
     font-size: var(--fs-caption);
-    font-weight: var(--fw-mono);
+    font-weight: var(--fw-body);
     padding: 0.04rem 0.06rem;
     line-height: 1.2;
     color: var(--text-muted);
@@ -7142,7 +7150,7 @@ body {
   color: var(--text-muted);
 }
 .work-schedule-sum-inline {
-  font-family: var(--font-heading);
+  font-family: var(--font-body);
   font-weight: 600;
   font-size: 0.875rem;
   color: var(--text-ink);
@@ -7223,9 +7231,9 @@ body {
   background: transparent;
   box-shadow: none;
   border-radius: 0;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: var(--fs-mono);
-  font-weight: var(--fw-mono);
+  font-weight: var(--fw-body);
   line-height: 1.25;
   color: var(--text-muted);
   -webkit-text-fill-color: var(--text-muted);
@@ -7238,9 +7246,9 @@ body {
   box-shadow: none;
 }
 .work-schedule-content-wrap .work-schedule-filter-bar--range-only .time-filter-range-sep {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: var(--fs-caption);
-  font-weight: var(--fw-mono);
+  font-weight: var(--fw-body);
   color: var(--text-caption-color);
 }
 
@@ -7777,6 +7785,17 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+/* 월(4월) 드롭다운 · 연도(< 2026 >) 박스 테두리 제거 — 본문 폰트·색은 기존 상속 */
+.asset-expense-filter-bar .time-filter-month-wrap .time-period-trigger,
+.asset-expense-filter-bar .time-filter-month-wrap .time-period-trigger:hover,
+.asset-expense-filter-bar .time-filter-month-wrap .time-period-trigger:focus,
+.asset-expense-filter-bar .time-filter-month-wrap .time-period-trigger:focus-visible,
+.asset-expense-filter-bar .time-filter-month-wrap .asset-cashflow-year-nav {
+  border: none;
+  box-shadow: none;
+  outline: none;
 }
 
 .asset-expense-filter-month-wrap span,
@@ -8584,6 +8603,57 @@ body {
   background: #f5f1e8;
   border: var(--line-l3);
   border-radius: 0.5rem;
+}
+
+/* 현금흐름 월·연도: 가계부(지출입력장) .time-filter-month-wrap 줄과 동일 톤 — 테두리 없음, 투명 배경, 보조색 글자 */
+.asset-cashflow-period-toolbar .time-period-trigger,
+.asset-cashflow-period-toolbar .asset-cashflow-year-nav {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+}
+
+.asset-cashflow-period-toolbar .time-period-trigger:hover,
+.asset-cashflow-period-toolbar .time-period-trigger:focus,
+.asset-cashflow-period-toolbar .time-period-trigger:focus-visible {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.asset-cashflow-period-toolbar .time-period-trigger,
+.asset-cashflow-period-toolbar .asset-cashflow-year-display,
+.asset-cashflow-period-toolbar .asset-cashflow-year-btn {
+  color: var(--text-muted);
+}
+
+.asset-cashflow-period-toolbar .time-period-trigger::after {
+  border-top-color: var(--text-muted);
+}
+
+.asset-cashflow-period-toolbar .time-period-trigger {
+  font-size: 0.8125rem;
+  padding: 0.35rem 0.5rem;
+  gap: 0.25rem;
+}
+
+.asset-cashflow-period-toolbar .asset-cashflow-year-display {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.asset-cashflow-period-toolbar .asset-cashflow-year-btn {
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.asset-cashflow-period-toolbar .asset-cashflow-year-btn:hover {
+  color: var(--text-body);
+  background: var(--ui-surface-alt);
+  border-radius: 0.25rem;
 }
 
 .asset-cashflow-year-btn {
@@ -11637,6 +11707,13 @@ body {
   background: rgba(216, 210, 192, 0.22);
 }
 
+/* 데스크톱: 표 밖 + 버튼 (테이블 tfoot 행 제거 후) */
+.work-schedule-desktop-add-wrap {
+  margin-top: 0.35rem;
+  display: flex;
+  align-items: center;
+}
+
 .work-schedule-tfoot {
   background: var(--content-bg);
 }
@@ -11682,6 +11759,85 @@ body {
   }
   .work-schedule-view .work-schedule-table .work-schedule-cell-memo {
     max-width: none;
+  }
+
+  /* 데스크탑 근무표 기간: 네이티브 "2026. 04. 01." 대신 라벨만 표시(일 뒤 쓸데없는 . 제거) */
+  .work-schedule-view .work-schedule-content-wrap .work-schedule-date-nav-cluster .time-filter-date-field {
+    position: relative;
+    justify-content: flex-start;
+    gap: 0.35rem;
+    min-height: 1.75rem;
+    padding: 0.15rem 0.25rem;
+    box-sizing: border-box;
+  }
+  .work-schedule-view .work-schedule-content-wrap .work-schedule-date-nav-cluster .time-filter-date-label {
+    display: block !important;
+    flex: 0 1 auto;
+    min-width: 0;
+    font-family: var(--font-body);
+    font-size: var(--fs-small);
+    font-weight: var(--fw-body);
+    line-height: 1.25;
+    color: var(--text-body);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .work-schedule-view .work-schedule-content-wrap .work-schedule-date-nav-cluster .time-filter-date-cal-icon {
+    display: block !important;
+    width: 0.875rem;
+    height: 0.875rem;
+    flex-shrink: 0;
+    opacity: 0.55;
+    object-fit: contain;
+    pointer-events: none;
+  }
+  .work-schedule-view
+    .work-schedule-content-wrap
+    .work-schedule-date-nav-cluster
+    .time-filter-date-field
+    input.time-filter-start-date,
+  .work-schedule-view
+    .work-schedule-content-wrap
+    .work-schedule-date-nav-cluster
+    .time-filter-date-field
+    input.time-filter-end-date {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    opacity: 1;
+    color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+    cursor: pointer;
+    z-index: 2;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: 0;
+    font-size: 1rem;
+    flex: none;
+  }
+  .work-schedule-view
+    .work-schedule-content-wrap
+    .work-schedule-date-nav-cluster
+    .time-filter-date-field
+    input.time-filter-start-date::-webkit-calendar-picker-indicator,
+  .work-schedule-view
+    .work-schedule-content-wrap
+    .work-schedule-date-nav-cluster
+    .time-filter-date-field
+    input.time-filter-end-date::-webkit-calendar-picker-indicator {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    cursor: pointer;
+    opacity: 0.01;
   }
 }
 
@@ -11785,7 +11941,8 @@ body {
   left: 0;
   z-index: 5;
   overflow: visible;
-  background: var(--content-bg);
+  /* 가로 스크롤 시 뒤 열이 비치지 않도록 반드시 불투명 배경 */
+  background-color: var(--content-bg, #f5f1e8) !important;
   border-right: none;
 }
 .work-schedule-table .work-schedule-th-date::after,
@@ -11803,8 +11960,9 @@ body {
 .work-schedule-table thead .work-schedule-th-date {
   z-index: 6;
 }
+/* sticky 열은 rgba 호버를 쓰면 뒤 열이 비침 → 동일 톤의 불투명색 */
 .work-schedule-table tbody tr:hover .work-schedule-cell-date {
-  background: rgba(216, 210, 192, 0.22) !important;
+  background-color: #ebe8df !important;
 }
 .work-schedule-table td.work-schedule-cell-start-time,
 .work-schedule-table td.work-schedule-cell-end-time {
@@ -11961,10 +12119,10 @@ body {
 .work-schedule-cell-date {
   cursor: pointer;
   text-align: left;
-  background: var(--content-bg) !important;
+  background-color: var(--content-bg, #f5f1e8) !important;
 }
 .work-schedule-cell-date:focus-within {
-  background: var(--ui-surface-alt) !important;
+  background-color: var(--ui-surface-alt, #d8d2c0) !important;
 }
 
 .work-schedule-cell-date .work-schedule-input-date,
@@ -12141,31 +12299,6 @@ body {
 .work-schedule-cell-add {
   padding: 0.25rem 0.75rem;
   border-bottom: none;
-}
-
-.work-schedule-btn-add {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  padding: 0;
-  font-size: 1.125rem;
-  color: #9ca3af;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.work-schedule-btn-add:hover {
-  color: var(--text-muted);
-}
-
-.work-schedule-add-icon {
-  font-size: 1.25rem;
-  font-weight: 300;
-  line-height: 1;
 }
 
 /* ----- 근무표 먼슬리 (내부 탭) ----- */
@@ -21575,6 +21708,11 @@ body.kpi-resizing {
   gap: 0.5rem;
 }
 
+/* 기간 필터(시작~끝): 숫자·한글 라벨 모두 body(NEXON 우선)로 통일 */
+.time-filter-range-wrap {
+  font-family: var(--font-body);
+}
+
 .time-filter-day-wrap {
   gap: 0.4rem;
 }
@@ -21649,6 +21787,149 @@ body.kpi-resizing {
     filter: brightness(0) saturate(100%) invert(26%) sepia(10%) saturate(1200%)
       hue-rotate(115deg);
   }
+
+  /* 데스크탑 시간가계부: 네이티브 "2026. 04. 04." 대신 라벨로 "2026. 04. 04(토)" */
+  .time-ledger-view .time-filter-nav-cluster .time-filter-date-field {
+    position: relative;
+    justify-content: flex-start;
+    gap: 0.35rem;
+    min-height: 1.75rem;
+    padding: 0.15rem 0.25rem;
+    box-sizing: border-box;
+  }
+  .time-ledger-view .time-filter-nav-cluster .time-filter-date-label {
+    display: block !important;
+    flex: 0 1 auto;
+    min-width: 0;
+    font-family: var(--font-body);
+    font-size: var(--fs-small);
+    font-weight: var(--fw-body);
+    line-height: 1.25;
+    color: var(--text-body);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .time-ledger-view .time-filter-nav-cluster .time-filter-date-cal-icon {
+    display: block !important;
+    width: 0.875rem;
+    height: 0.875rem;
+    flex-shrink: 0;
+    opacity: 0.55;
+    object-fit: contain;
+    pointer-events: none;
+  }
+  .time-ledger-view .time-filter-nav-cluster .time-filter-date-field input.time-filter-start-date,
+  .time-ledger-view .time-filter-nav-cluster .time-filter-date-field input.time-filter-end-date {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    opacity: 1;
+    color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+    cursor: pointer;
+    z-index: 2;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: 0;
+    font-size: 1rem;
+    flex: none;
+  }
+  .time-ledger-view
+    .time-filter-nav-cluster
+    .time-filter-date-field
+    input.time-filter-start-date::-webkit-calendar-picker-indicator,
+  .time-ledger-view
+    .time-filter-nav-cluster
+    .time-filter-date-field
+    input.time-filter-end-date::-webkit-calendar-picker-indicator {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    cursor: pointer;
+    opacity: 0.01;
+  }
+
+  /* 아카이브 데스크톱: 네이티브 "2026. 04. 01." 대신 라벨로 점 형식 + 요일(시간가계부 필터와 동일) */
+  .archive-view .archive-date-nav-cluster .time-filter-date-field {
+    position: relative;
+    justify-content: flex-start;
+    gap: 0.35rem;
+    min-height: 1.75rem;
+    padding: 0.15rem 0.25rem;
+    box-sizing: border-box;
+  }
+  .archive-view .archive-date-nav-cluster .time-filter-date-label {
+    display: block !important;
+    flex: 0 1 auto;
+    min-width: 0;
+    font-family: var(--font-body);
+    font-size: var(--fs-small);
+    font-weight: var(--fw-body);
+    line-height: 1.25;
+    color: var(--text-body);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .archive-view .archive-date-nav-cluster .time-filter-date-cal-icon {
+    display: block !important;
+    width: 0.875rem;
+    height: 0.875rem;
+    flex-shrink: 0;
+    opacity: 0.55;
+    object-fit: contain;
+    pointer-events: none;
+  }
+  .archive-view .archive-date-nav-cluster .time-filter-date-field input.time-filter-start-date,
+  .archive-view .archive-date-nav-cluster .time-filter-date-field input.time-filter-end-date {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    opacity: 1;
+    color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+    cursor: pointer;
+    z-index: 2;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: 0;
+    font-size: 1rem;
+    flex: none;
+  }
+  .archive-view
+    .archive-date-nav-cluster
+    .time-filter-date-field
+    input.time-filter-start-date::-webkit-calendar-picker-indicator,
+  .archive-view
+    .archive-date-nav-cluster
+    .time-filter-date-field
+    input.time-filter-end-date::-webkit-calendar-picker-indicator {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    cursor: pointer;
+    opacity: 0.01;
+  }
+  #app .archive-view .archive-date-nav-cluster .archive-date-range-filter input[type="date"],
+  #app .archive-view .archive-date-nav-cluster .archive-date-range-filter input[type="date"]:focus,
+  #app .archive-view .archive-date-nav-cluster .archive-date-range-filter input[type="date"]:focus-visible {
+    padding: 0 !important;
+  }
 }
 
 .time-filter-month-wrap span,
@@ -21663,11 +21944,14 @@ body.kpi-resizing {
   border: none;
   background: transparent;
   border-radius: 0;
+  box-shadow: none;
+  outline: none;
 }
 
 .time-filter-month-wrap .time-period-trigger:hover {
   border: none;
   background: transparent;
+  box-shadow: none;
 }
 
 .time-filter-month-wrap .time-period-trigger,
@@ -34491,9 +34775,9 @@ body.kpi-resizing {
   background: transparent;
   box-shadow: none;
   border-radius: 0;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: var(--fs-small);
-  font-weight: var(--fw-mono);
+  font-weight: var(--fw-body);
   line-height: 1.25;
   color: var(--text-caption-color);
   -webkit-text-fill-color: var(--text-caption-color);
@@ -34514,8 +34798,8 @@ body.kpi-resizing {
 .archive-view .archive-date-range-filter .time-filter-range-sep {
   color: var(--text-placeholder);
   font-size: var(--fs-caption);
-  font-family: var(--font-mono);
-  font-weight: var(--fw-mono);
+  font-family: var(--font-body);
+  font-weight: var(--fw-body);
   line-height: 1;
   opacity: 0.85;
 }

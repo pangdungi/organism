@@ -1142,17 +1142,28 @@ export function render(opts = {}) {
       const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
       return `${y}년 ${mo}월 ${d}일(${weekdays[dt.getDay()]})`;
     }
+    /** 데스크탑 라벨: "2026. 04. 01(토)" — 일 뒤 불필요한 마침표 없음(네이티브 표시와 구분) */
+    function formatWorkScheduleFilterDateDotsWithWeekday(dStr) {
+      if (!dStr || !/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return "";
+      const [y, mo, d] = dStr.split("-").map(Number);
+      const dt = new Date(y, mo - 1, d);
+      const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+      const yy = String(y);
+      const mm = String(mo).padStart(2, "0");
+      const dd = String(d).padStart(2, "0");
+      return `${yy}. ${mm}. ${dd}(${weekdays[dt.getDay()]})`;
+    }
     function syncWorkScheduleDateLabels() {
+      const isDesktop =
+        typeof window !== "undefined" &&
+        window.matchMedia("(min-width: 48.0625rem)").matches;
+      const fmt = isDesktop
+        ? formatWorkScheduleFilterDateDotsWithWeekday
+        : formatWorkScheduleFilterDateKr;
       const startLabel = filterBar.querySelector(".time-filter-date-label--start");
       const endLabel = filterBar.querySelector(".time-filter-date-label--end");
-      if (startLabel)
-        startLabel.textContent = formatWorkScheduleFilterDateKr(
-          startDateInput.value || "",
-        );
-      if (endLabel)
-        endLabel.textContent = formatWorkScheduleFilterDateKr(
-          endDateInput.value || "",
-        );
+      if (startLabel) startLabel.textContent = fmt(startDateInput.value || "");
+      if (endLabel) endLabel.textContent = fmt(endDateInput.value || "");
     }
 
     startDateInput.value = defaultRangeStart;
@@ -1216,7 +1227,6 @@ export function render(opts = {}) {
         </tr>
       </thead>
       <tbody></tbody>
-      <tfoot class="work-schedule-tfoot"></tfoot>
     `;
     if (mobile) {
       const thActions = table.querySelector(".work-schedule-th-actions");
@@ -1224,19 +1234,6 @@ export function render(opts = {}) {
     }
 
     const tbody = table.querySelector("tbody");
-    const tfoot = table.querySelector("tfoot");
-    const addRow = document.createElement("tr");
-    addRow.className = "work-schedule-row-add";
-    const addCell = document.createElement("td");
-    addCell.colSpan = 8;
-    addCell.className = "work-schedule-cell-add";
-    const addBtn = document.createElement("button");
-    addBtn.type = "button";
-    addBtn.className = "work-schedule-btn-add";
-    addBtn.innerHTML = '<span class="work-schedule-add-icon">+</span>';
-    addCell.appendChild(addBtn);
-    addRow.appendChild(addCell);
-    tfoot.appendChild(addRow);
 
     function save() {
       const withIds = saveRows(getRowsToSave(tableWrap));
@@ -1248,15 +1245,14 @@ export function render(opts = {}) {
       sumInline.textContent = formatTimeAccumulation(total) || "0";
     }
 
+    /** YYYY-MM-DD(또는 슬래시)만 문자열 비교 — Date 파싱은 브라우저·타임존에 따라 말일 등이 틀어짐 */
     function isRowDateInRange(dateStr, rangeStart, rangeEnd) {
       if (!dateStr) return true;
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return false;
-      const s = new Date(rangeStart);
-      const e = new Date(rangeEnd);
-      s.setHours(0, 0, 0, 0);
-      e.setHours(23, 59, 59, 999);
-      d.setHours(0, 0, 0, 0);
+      const d = normalizeWorkDateKey(dateStr);
+      if (!d || d.length < 10) return false;
+      const s = normalizeWorkDateKey(rangeStart);
+      const e = normalizeWorkDateKey(rangeEnd);
+      if (!s || !e || s.length < 10 || e.length < 10) return false;
       return d >= s && d <= e;
     }
 
@@ -1338,7 +1334,6 @@ export function render(opts = {}) {
       applyFilter();
       save();
     }
-    addBtn.addEventListener("click", addNewWorkScheduleRow);
 
     const topRow = document.createElement("div");
     topRow.className = "work-schedule-top-row";
@@ -1346,6 +1341,21 @@ export function render(opts = {}) {
     topRow.appendChild(filterBar);
     contentWrap.appendChild(topRow);
     contentWrap.appendChild(tableWrap);
+    /* 데스크톱: 테이블 안 tfoot + 행 대신 표 아래 단일 + (모바일은 하단 FAB만 사용) */
+    if (!mobile) {
+      const addWrap = document.createElement("div");
+      addWrap.className = "work-schedule-desktop-add-wrap";
+      const addBtn = document.createElement("button");
+      addBtn.type = "button";
+      /* 데스크톱: 시간가계부「과제 기록」+와 동일 (.todo-add-btn + TIME_LEDGER와 동일 SVG) */
+      addBtn.className = "todo-add-btn";
+      addBtn.title = "근무 행 추가";
+      addBtn.setAttribute("aria-label", "근무 행 추가");
+      addBtn.innerHTML = WORK_SCHEDULE_MOBILE_FAB_SVG;
+      addBtn.addEventListener("click", addNewWorkScheduleRow);
+      addWrap.appendChild(addBtn);
+      contentWrap.appendChild(addWrap);
+    }
     if (mobile) {
       const fabWrap = document.createElement("div");
       fabWrap.className = "work-schedule-mobile-fab-wrap";

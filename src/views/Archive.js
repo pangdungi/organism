@@ -15,8 +15,16 @@ function formatArchiveDate(dateStr) {
   if (!dateStr || typeof dateStr !== "string") return "—";
   const s = dateStr.trim().replace(/\//g, "-");
   const m = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
-  if (m) return `${m[1]}. ${parseInt(m[2], 10)}. ${parseInt(m[3], 10)}.`;
-  return s;
+  if (!m) return s;
+  const y = parseInt(m[1], 10);
+  const mo = parseInt(m[2], 10);
+  const d = parseInt(m[3], 10);
+  const dt = new Date(y, mo - 1, d);
+  const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+  const yy = String(y);
+  const mm = String(mo).padStart(2, "0");
+  const dd = String(d).padStart(2, "0");
+  return `${yy}. ${mm}. ${dd}(${weekdays[dt.getDay()]})`;
 }
 
 function formatArchiveTime(startTime) {
@@ -104,7 +112,7 @@ export function render() {
   const startDateInput = rangeWrap.querySelector(".time-filter-start-date");
   const endDateInput = rangeWrap.querySelector(".time-filter-end-date");
 
-  /** 근무기록 트래커와 동일: YYYY-MM-DD → "2026년 4월 1일(수)" (모바일 라벨) */
+  /** 모바일: YYYY-MM-DD → "2026년 4월 1일(수)" */
   function formatArchiveFilterDateKr(dStr) {
     if (!dStr || !/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return "";
     const [y, mo, d] = dStr.split("-").map(Number);
@@ -112,17 +120,28 @@ export function render() {
     const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
     return `${y}년 ${mo}월 ${d}일(${weekdays[dt.getDay()]})`;
   }
+  /** 데스크톱: 시간가계부 필터와 동일 — "2026. 04. 04(토)" (끝 마침표 없음) */
+  function formatArchiveFilterDateDotsWithWeekday(dStr) {
+    if (!dStr || !/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return "";
+    const [y, mo, d] = dStr.split("-").map(Number);
+    const dt = new Date(y, mo - 1, d);
+    const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+    const yy = String(y);
+    const mm = String(mo).padStart(2, "0");
+    const dd = String(d).padStart(2, "0");
+    return `${yy}. ${mm}. ${dd}(${weekdays[dt.getDay()]})`;
+  }
   function syncArchiveDateLabels() {
     const startLabel = rangeWrap.querySelector(".time-filter-date-label--start");
     const endLabel = rangeWrap.querySelector(".time-filter-date-label--end");
-    if (startLabel)
-      startLabel.textContent = formatArchiveFilterDateKr(
-        startDateInput.value || "",
-      );
-    if (endLabel)
-      endLabel.textContent = formatArchiveFilterDateKr(
-        endDateInput.value || "",
-      );
+    const isDesktop =
+      typeof window !== "undefined" &&
+      window.matchMedia("(min-width: 48.0625rem)").matches;
+    const fmt = isDesktop
+      ? formatArchiveFilterDateDotsWithWeekday
+      : formatArchiveFilterDateKr;
+    if (startLabel) startLabel.textContent = fmt(startDateInput.value || "");
+    if (endLabel) endLabel.textContent = fmt(endDateInput.value || "");
   }
 
   startDateInput.value = defaultRangeStart;
@@ -130,6 +149,9 @@ export function render() {
   syncArchiveDateLabels();
   startDateInput.addEventListener("input", syncArchiveDateLabels);
   endDateInput.addEventListener("input", syncArchiveDateLabels);
+  window.addEventListener("resize", syncArchiveDateLabels, {
+    signal: archiveTabAbort.signal,
+  });
 
   if (mobileViewport) {
     const openArchiveRangeDate = (inp) => {
