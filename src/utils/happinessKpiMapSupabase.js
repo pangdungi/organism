@@ -739,24 +739,34 @@ function mergeHappinessKpiPullWithLocal(L0, S0, raw) {
     kpiTaskSync = S.kpiTaskSync;
     deletedRefs = S.deletedRefs;
   }
-  /* 삭제된 KPI ID를 kpiTaskSync에서 제거 (부활 방지) */
-  const allDeletedKpiIds = new Set([
-    ...(L.deletedRefs?.kpis || []),
-    ...(S.deletedRefs?.kpis || []),
-  ]);
-  if (allDeletedKpiIds.size > 0 && kpiTaskSync && typeof kpiTaskSync === "object") {
+  /* 삭제된 항목 필터링 (부활 방지) */
+  const drCat = new Set([...(L.deletedRefs?.categories || []), ...(S.deletedRefs?.categories || [])]);
+  const drKpi = new Set([...(L.deletedRefs?.kpis || []), ...(S.deletedRefs?.kpis || [])]);
+  const drLog = new Set([...(L.deletedRefs?.kpiLogs || []), ...(S.deletedRefs?.kpiLogs || [])]);
+  const drTodo = new Set([...(L.deletedRefs?.kpiTodos || []), ...(S.deletedRefs?.kpiTodos || [])]);
+  const drDaily = new Set([...(L.deletedRefs?.kpiDailyRepeatTodos || []), ...(S.deletedRefs?.kpiDailyRepeatTodos || [])]);
+
+  const filteredHappinesses = mergedHappinesses.filter((h) => !drCat.has(String(h.id)));
+  const filteredKpis = mergedKpis.filter((k) => !drKpi.has(String(k.id)) && !drCat.has(String(k.happinessId)));
+  const validKpiIds = new Set(filteredKpis.map((k) => String(k.id)));
+  const filteredLogs = mergedLogs.filter((l) => !drLog.has(String(l.id)) && validKpiIds.has(String(l.kpiId)));
+  const filteredTodos = mergedTodos.filter((t) => !drTodo.has(String(t.id)) && validKpiIds.has(String(t.kpiId)));
+  const filteredDaily = mergedDaily.filter((t) => !drDaily.has(String(t.id)) && validKpiIds.has(String(t.kpiId)));
+
+  /* 삭제된 KPI ID를 kpiTaskSync에서 제거 */
+  if (drKpi.size > 0 && kpiTaskSync && typeof kpiTaskSync === "object") {
     const cleaned = { ...kpiTaskSync };
-    for (const id of allDeletedKpiIds) {
+    for (const id of drKpi) {
       delete cleaned[id];
     }
     kpiTaskSync = cleaned;
   }
   return normalizePayload({
-    happinesses: mergedHappinesses,
-    kpis: mergedKpis,
-    kpiLogs: mergedLogs,
-    kpiTodos: mergedTodos,
-    kpiDailyRepeatTodos: mergedDaily,
+    happinesses: filteredHappinesses,
+    kpis: filteredKpis,
+    kpiLogs: filteredLogs,
+    kpiTodos: filteredTodos,
+    kpiDailyRepeatTodos: filteredDaily,
     kpiOrder,
     kpiTaskSync,
     deletedRefs,
@@ -984,7 +994,7 @@ async function runHappinessKpiMapSyncOnce() {
         const nextRaw = JSON.stringify(toSync);
         if (prevRaw !== nextRaw) {
           localStorage.setItem(HAPPINESS_KPI_MAP_STORAGE_KEY, nextRaw);
-          window.dispatchEvent(new CustomEvent("happiness-kpi-map-saved", { detail: { fromServerMerge: true } }));
+          window.dispatchEvent(new CustomEvent("happiness-kpi-map-saved", { detail: { fromServerMerge: true, fromPush: true } }));
         }
       } catch (_) {}
     }

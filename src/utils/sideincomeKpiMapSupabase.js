@@ -802,25 +802,38 @@ function mergeSideincomeKpiPullWithLocal(L0, S0, raw) {
     kpiTaskSync = S.kpiTaskSync;
     deletedRefs = S.deletedRefs;
   }
-  /* 삭제된 KPI ID를 kpiTaskSync에서 제거 (부활 방지) */
-  const allDeletedKpiIds = new Set([
-    ...(L.deletedRefs?.kpis || []),
-    ...(S.deletedRefs?.kpis || []),
-  ]);
-  if (allDeletedKpiIds.size > 0 && kpiTaskSync && typeof kpiTaskSync === "object") {
+  /* 삭제된 항목 필터링 (부활 방지) */
+  const drCat = new Set([...(L.deletedRefs?.categories || []), ...(S.deletedRefs?.categories || [])]);
+  const drPathLog = new Set([...(L.deletedRefs?.pathLogs || []), ...(S.deletedRefs?.pathLogs || [])]);
+  const drKpi = new Set([...(L.deletedRefs?.kpis || []), ...(S.deletedRefs?.kpis || [])]);
+  const drLog = new Set([...(L.deletedRefs?.kpiLogs || []), ...(S.deletedRefs?.kpiLogs || [])]);
+  const drTodo = new Set([...(L.deletedRefs?.kpiTodos || []), ...(S.deletedRefs?.kpiTodos || [])]);
+  const drDaily = new Set([...(L.deletedRefs?.kpiDailyRepeatTodos || []), ...(S.deletedRefs?.kpiDailyRepeatTodos || [])]);
+
+  const filteredPaths = mergedPaths.filter((p) => !drCat.has(String(p.id)));
+  const validPathIds = new Set(filteredPaths.map((p) => String(p.id)));
+  const filteredPathLogs = mergedPathLogs.filter((l) => !drPathLog.has(String(l.id)) && validPathIds.has(String(l.pathId)));
+  const filteredKpis = mergedKpis.filter((k) => !drKpi.has(String(k.id)) && validPathIds.has(String(k.pathId)));
+  const validKpiIds = new Set(filteredKpis.map((k) => String(k.id)));
+  const filteredKpiLogs = mergedKpiLogs.filter((l) => !drLog.has(String(l.id)) && validKpiIds.has(String(l.kpiId)));
+  const filteredTodos = mergedTodos.filter((t) => !drTodo.has(String(t.id)) && validKpiIds.has(String(t.kpiId)));
+  const filteredDaily = mergedDaily.filter((t) => !drDaily.has(String(t.id)) && validKpiIds.has(String(t.kpiId)));
+
+  /* 삭제된 KPI ID를 kpiTaskSync에서 제거 */
+  if (drKpi.size > 0 && kpiTaskSync && typeof kpiTaskSync === "object") {
     const cleaned = { ...kpiTaskSync };
-    for (const id of allDeletedKpiIds) {
+    for (const id of drKpi) {
       delete cleaned[id];
     }
     kpiTaskSync = cleaned;
   }
   return normalizePayload({
-    paths: mergedPaths,
-    pathLogs: mergedPathLogs,
-    kpis: mergedKpis,
-    kpiLogs: mergedKpiLogs,
-    kpiTodos: mergedTodos,
-    kpiDailyRepeatTodos: mergedDaily,
+    paths: filteredPaths,
+    pathLogs: filteredPathLogs,
+    kpis: filteredKpis,
+    kpiLogs: filteredKpiLogs,
+    kpiTodos: filteredTodos,
+    kpiDailyRepeatTodos: filteredDaily,
     kpiOrder,
     kpiTaskSync,
     deletedRefs,
@@ -1057,7 +1070,7 @@ async function runSideincomeKpiMapSyncOnce() {
         const nextRaw = JSON.stringify(toSync);
         if (prevRaw !== nextRaw) {
           localStorage.setItem(SIDEINCOME_KPI_MAP_STORAGE_KEY, nextRaw);
-          window.dispatchEvent(new CustomEvent("sideincome-kpi-map-saved", { detail: { fromServerMerge: true } }));
+          window.dispatchEvent(new CustomEvent("sideincome-kpi-map-saved", { detail: { fromServerMerge: true, fromPush: true } }));
         }
       } catch (_) {}
     }

@@ -933,7 +933,13 @@ export function render() {
     filterBar.querySelectorAll(".dream-kpi-filter-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         kpiFilter = btn.dataset.filter;
+        /* 필터 변경 시 선택된 KPI가 새 필터에 없으면 선택 해제 */
+        const listAfterFilter = kpiFilter === "active" ? activeKpis : kpiFilter === "completed" ? completedKpis : pathKpis;
+        if (selectedKpiId && !listAfterFilter.some((k) => k.id === selectedKpiId)) {
+          selectedKpiId = null;
+        }
         renderKpiList();
+        renderKpiHistory();
       });
     });
     contentWrap.appendChild(filterBar);
@@ -1638,6 +1644,8 @@ export function render() {
 
   const onMergedSync = (e) => {
     if (!e.detail?.fromServerMerge || !el.isConnected) return;
+    /* push 시에는 화면 갱신 불필요 (로컬 변경을 서버에 올린 것이므로) */
+    if (e.detail?.fromPush) return;
     const data = loadSideincomeMap();
     if (!data.paths.some((p) => p.id === activePathId)) {
       activePathId = data.paths[0]?.id || null;
