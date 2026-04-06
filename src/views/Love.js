@@ -776,26 +776,12 @@ export function render() {
           )
         : "—";
       const progressText = `${currentStr} / ${targetStr}${unitSuffix}`;
-      const remainingMins = Math.max(0, targetMins - accumulatedMins);
-      const timeCircleHtml =
-        targetMins > 0
-          ? `
-          <div class="dream-kpi-time-circle-wrap">
-            <div class="dream-kpi-time-circle" role="progressbar" aria-valuenow="${timeProgress}" aria-valuemin="0" aria-valuemax="100">
-              <svg viewBox="0 0 36 36">
-                <path class="dream-kpi-time-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                <path class="dream-kpi-time-circle-fill" stroke-dasharray="${timeProgress}, ${100 - timeProgress}" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-              </svg>
-              <div class="dream-kpi-time-circle-label">
-                <span class="dream-kpi-time-accumulated">${minutesToHhMm(accumulatedMins)}</span>
-                <span class="dream-kpi-time-sep">/</span>
-                <span class="dream-kpi-time-target">${escapeHtml(kpi.targetTimeRequired)}</span>
-              </div>
-            </div>
-            <div class="dream-kpi-time-remaining">남은 ${minutesToHhMm(remainingMins)}</div>
-          </div>
-        `
-          : "";
+      const targetTimeDisplay = kpi.targetTimeRequired
+        ? minutesToHhMm(String(kpi.targetTimeRequired).includes(":") ? hhMmToMinutes(kpi.targetTimeRequired) : (parseInt(kpi.targetTimeRequired, 10) || 0))
+        : "";
+      const investedTimeHtml = targetTimeDisplay
+        ? `지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span> / <span class="dream-kpi-card-invested-value">${targetTimeDisplay}</span>`
+        : `지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span>`;
       const card = document.createElement("div");
       card.className =
         "dream-kpi-card" + (selectedKpiId === kpi.id ? " is-selected" : "");
@@ -811,8 +797,7 @@ export function render() {
             <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${progress}%"></div></div>
             <div class="dream-kpi-card-progress-text">${escapeHtml(progressText)}</div>
           </div>
-          <div class="dream-kpi-card-invested">지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span></div>
-          ${timeCircleHtml}
+          <div class="dream-kpi-card-invested">${investedTimeHtml}</div>
         </div>
       `;
       card
@@ -923,24 +908,12 @@ export function render() {
             )
           : "—";
         const progressText = `${currentStr} / ${targetStr}${unitSuffix}`;
-        const timeCircleHtml =
-          targetMins > 0
-            ? `
-          <div class="dream-kpi-time-circle-wrap">
-            <div class="dream-kpi-time-circle" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
-              <svg viewBox="0 0 36 36">
-                <path class="dream-kpi-time-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                <path class="dream-kpi-time-circle-fill" stroke-dasharray="100, 0" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-              </svg>
-              <div class="dream-kpi-time-circle-label">
-                <span class="dream-kpi-time-accumulated">${minutesToHhMm(accumulatedMins)}</span>
-                <span class="dream-kpi-time-sep">/</span>
-                <span class="dream-kpi-time-target">${escapeHtml(kpi.targetTimeRequired)}</span>
-              </div>
-            </div>
-          </div>
-        `
-            : "";
+        const targetTimeDisplayCompleted = kpi.targetTimeRequired
+          ? minutesToHhMm(String(kpi.targetTimeRequired).includes(":") ? hhMmToMinutes(kpi.targetTimeRequired) : (parseInt(kpi.targetTimeRequired, 10) || 0))
+          : "";
+        const investedTimeHtmlCompleted = targetTimeDisplayCompleted
+          ? `지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span> / <span class="dream-kpi-card-invested-value">${targetTimeDisplayCompleted}</span>`
+          : `지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span>`;
         const card = document.createElement("div");
         card.className =
           "dream-kpi-card dream-kpi-card-completed" +
@@ -956,8 +929,7 @@ export function render() {
               <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:100%"></div></div>
               <div class="dream-kpi-card-progress-text">${escapeHtml(progressText)} ✓</div>
             </div>
-            <div class="dream-kpi-card-invested">지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span></div>
-            ${timeCircleHtml}
+            <div class="dream-kpi-card-invested">${investedTimeHtmlCompleted}</div>
           </div>
         `;
         card
@@ -1072,14 +1044,58 @@ export function render() {
       item.className =
         "dream-kpi-todo-item" + (completed ? " is-completed" : "");
       item.dataset.todoId = todo.id;
-      item.innerHTML = `
-        <label class="dream-kpi-todo-check-wrap">
-          <input type="checkbox" class="dream-kpi-todo-check" ${completed ? "checked" : ""} />
-        </label>
-        <span class="dream-kpi-todo-text">${escapeHtml(todo.text)}</span>
-        <button type="button" class="dream-kpi-todo-del" title="삭제">×</button>
-      `;
-      const check = item.querySelector(".dream-kpi-todo-check");
+
+      const label = document.createElement("label");
+      label.className = "dream-kpi-todo-check-wrap";
+      const check = document.createElement("input");
+      check.type = "checkbox";
+      check.className = "dream-kpi-todo-check";
+      check.checked = completed;
+      label.appendChild(check);
+
+      const textInput = document.createElement("input");
+      textInput.type = "text";
+      textInput.className = "dream-kpi-todo-text dream-kpi-todo-edit-input";
+      textInput.value = todo.text || "";
+      textInput.title = "할 일 내용 수정";
+      textInput.autocomplete = "off";
+      textInput.style.cssText =
+        "flex:1;min-width:0;border:none;background:transparent;font:inherit;color:inherit;padding:0;margin:0;box-sizing:border-box;";
+      const saveTodoText = () => {
+        const d = loadHappinessMap();
+        const arr = d.kpiTodos || [];
+        const row = arr.find((x) => x.id === todo.id);
+        if (!row) return;
+        const val = textInput.value.trim();
+        if (!val) {
+          textInput.value = row.text || "";
+          return;
+        }
+        if (row.text === val) return;
+        row.text = val;
+        saveHappinessMap(d);
+      };
+      textInput.addEventListener("blur", saveTodoText);
+      textInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.isComposing) {
+          e.preventDefault();
+          textInput.blur();
+        }
+      });
+
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "dream-kpi-todo-del";
+      delBtn.title = "삭제";
+      delBtn.textContent = "×";
+      delBtn.addEventListener("click", () => {
+        const d = loadHappinessMap();
+        appendDeletedRef(d, "kpiTodos", todo.id);
+        d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
+        saveHappinessMap(d);
+        renderKpiHistory();
+      });
+
       check.addEventListener("change", () => {
         const d = loadHappinessMap();
         const t = d.kpiTodos.find((x) => x.id === todo.id);
@@ -1089,15 +1105,10 @@ export function render() {
           item.classList.toggle("is-completed", t.completed);
         }
       });
-      item
-        .querySelector(".dream-kpi-todo-del")
-        .addEventListener("click", () => {
-          const d = loadHappinessMap();
-          appendDeletedRef(d, "kpiTodos", todo.id);
-          d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
-          saveHappinessMap(d);
-          renderKpiHistory();
-        });
+
+      item.appendChild(label);
+      item.appendChild(textInput);
+      item.appendChild(delBtn);
       todoList.appendChild(item);
     });
 
@@ -1364,8 +1375,20 @@ export function render() {
       activeHappinessId = data.happinesses[0]?.id || null;
       selectedKpiId = null;
     }
+    /* 선택된 KPI가 삭제됐으면 선택 해제 */
+    if (selectedKpiId && !data.kpis.some((k) => k.id === selectedKpiId)) {
+      selectedKpiId = null;
+    }
     renderTabs();
-    updateTitleAndContent();
+    /* 서버 동기화 시에는 selectedKpiId를 유지하면서 화면만 갱신 */
+    const happiness = data.happinesses.find((h) => h.id === activeHappinessId);
+    if (happiness) {
+      contentWrap.hidden = false;
+      renderKpiList();
+      renderKpiHistory();
+    } else {
+      contentWrap.hidden = true;
+    }
   };
   window.addEventListener("happiness-kpi-map-saved", onMergedSync);
 

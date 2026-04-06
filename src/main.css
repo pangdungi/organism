@@ -3294,6 +3294,13 @@ body {
     min-width: 4.75rem;
     width: auto;
     padding: 0.2rem 0.45rem;
+    /* 모바일: date input이 셀 밖으로 넘어가 유형 셀 터치 영역을 가리지 않도록 */
+    overflow: hidden;
+  }
+  /* 모바일: 유형 셀 터치 영역이 날짜 셀 위에 오도록 z-index 확보 */
+  .work-schedule-content-wrap .work-schedule-table .work-schedule-cell-type {
+    position: relative;
+    z-index: 6;
   }
   .work-schedule-content-wrap .work-schedule-date-display {
     padding: 0.05rem 0.2rem;
@@ -5400,7 +5407,7 @@ body {
   }
   .time-ledger-mobile-toolbar-right .time-filter-day-prev:hover,
   .time-ledger-mobile-toolbar-right .time-filter-day-next:hover {
-    background: var(--ui-surface-alt);
+    background: transparent;
   }
   .time-ledger-mobile-toolbar-right .time-filter-day-prev .time-btn-icon,
   .time-ledger-mobile-toolbar-right .time-filter-day-next .time-btn-icon {
@@ -12383,7 +12390,7 @@ body {
   padding: 0.4rem 0.75rem;
   font-size: 1.1rem;
   color: var(--text-muted);
-  background: #f5f1e8;
+  background: transparent;
   border: none;
   border-radius: 0;
   cursor: pointer;
@@ -12394,7 +12401,7 @@ body {
 
 .work-schedule-monthly-nav-btn:hover {
   color: var(--text-ink);
-  background: var(--ui-surface-alt);
+  background: transparent;
 }
 
 .work-schedule-monthly-label {
@@ -21739,17 +21746,17 @@ body.kpi-resizing {
   padding: 0;
   font-size: 0.9rem;
   color: #7a7a7a;
-  background: #f5f1e8;
+  background: transparent;
   border: none;
-  border-radius: 50%;
+  border-radius: 0;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .time-filter-day-prev:hover,
 .time-filter-day-next:hover {
-  background: #f5f1e8;
-  color: #7a7a7a;
+  background: transparent;
+  color: #5a5a5a;
 }
 
 /* 시간가계부 데스크톱: < > 는 설정·필터(라인 아이콘)와 톤 맞춤 — 원형 배경 제거·크기 정렬 */
@@ -26998,6 +27005,7 @@ body.kpi-resizing {
 }
 
 .dream-kpi-card-target-num .dream-kpi-card-unit {
+  font-family: var(--font-body);
   font-size: 0.8rem;
   font-weight: 300;
   color: var(--text-muted);
@@ -28210,7 +28218,26 @@ body.kpi-resizing {
   padding: 1rem 1.5rem 1rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
+}
+
+/* KPI 모달 섹션 그룹 (타이포 계층 강화) */
+.dream-kpi-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dream-kpi-section-title {
+  margin: 0;
+  padding-bottom: 0.35rem;
+  font-family: var(--font-heading);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--line-l3-color, #e5e2d9);
 }
 
 .dream-kpi-form-actions {
@@ -30617,8 +30644,8 @@ body.kpi-resizing {
 .calendar-nav-prev:hover,
 .calendar-nav-next:hover {
   color: #111827;
-  background: var(--ui-surface-alt);
-  border-radius: 0.25rem;
+  background: transparent;
+  border-radius: 0;
 }
 
 .calendar-nav-today {

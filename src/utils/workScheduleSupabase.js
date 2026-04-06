@@ -134,9 +134,21 @@ function mergeEntriesLocalAndServer(localRows, serverRows) {
   return out;
 }
 
+function formatLocalYmdFromDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function serverEntryToLocal(row) {
   const d = row.work_date;
-  const workDate = typeof d === "string" ? d.slice(0, 10) : d instanceof Date ? d.toISOString().slice(0, 10) : String(d || "").slice(0, 10);
+  const workDate =
+    typeof d === "string"
+      ? d.slice(0, 10)
+      : d instanceof Date
+        ? formatLocalYmdFromDate(d)
+        : String(d || "").slice(0, 10);
   return {
     id: row.id,
     startTime: row.start_time != null ? String(row.start_time) : "",

@@ -59,6 +59,16 @@ const ASSET_REALTIME_TABLES = [
 
 const DIARY_REALTIME_TABLES = ["diary_daily_entries"];
 
+/** 사용자가 입력 중인지 확인 (입력 중이면 화면 갱신 건너뜀) */
+function isUserTyping() {
+  const el = document.activeElement;
+  if (!el) return false;
+  const tag = el.tagName?.toLowerCase();
+  if (tag === "input" || tag === "textarea") return true;
+  if (el.isContentEditable) return true;
+  return false;
+}
+
 let _channel = null;
 let _debounceTimer = null;
 let _generation = 0;
@@ -105,6 +115,7 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
             return;
         }
         if (!REFRESH_MAIN_AFTER_CLOUD_PULL.has(tab)) return;
+        if (isUserTyping()) return; /* 입력 중이면 화면 갱신 건너뜀 */
         renderMain({ skipTodoSaveBeforeUnmount: true });
       } catch (e) {
         console.warn("[realtime] 병합·갱신", e?.message || e);

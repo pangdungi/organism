@@ -80,8 +80,12 @@ function getCalendarGrid(year, month) {
   return grid;
 }
 
+/** 로컬 달력 날짜(그리드 셀 Date) → YYYY-MM-DD. UTC(toISOString) 쓰면 타임존에서 하루 어긋남 */
 function formatDateKey(date) {
-  return date.toISOString().slice(0, 10);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 const DAY_NAMES = ["월", "화", "수", "목", "금", "토", "일"];

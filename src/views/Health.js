@@ -281,57 +281,70 @@ export function render() {
         </div>
         <form class="dream-kpi-form">
           <div class="dream-kpi-form-body">
-          <div class="dream-kpi-field">
-            <label>행동 이름</label>
-            <input type="text" name="name" placeholder="예) 30분이상의 유산소 운동하기" />
-          </div>
-          <div class="dream-kpi-field dream-kpi-direction-field">
-            <span class="dream-kpi-field-label">지표 방향</span>
-            <div class="dream-kpi-direction-options">
-              <label class="dream-kpi-direction-option">
-                <input type="radio" name="direction" value="higher" checked />
-                <span>높을수록 좋음</span>
+            <div class="dream-kpi-section">
+              <h4 class="dream-kpi-section-title">기본</h4>
+              <div class="dream-kpi-field">
+                <label>행동 이름</label>
+                <input type="text" name="name" placeholder="예) 30분이상의 유산소 운동하기" />
+              </div>
+            </div>
+            <div class="dream-kpi-section">
+              <h4 class="dream-kpi-section-title">목표</h4>
+              <div class="dream-kpi-field dream-kpi-direction-field">
+                <span class="dream-kpi-field-label">지표 방향</span>
+                <div class="dream-kpi-direction-options">
+                  <label class="dream-kpi-direction-option">
+                    <input type="radio" name="direction" value="higher" checked />
+                    <span>높을수록 좋음</span>
+                  </label>
+                  <label class="dream-kpi-direction-option">
+                    <input type="radio" name="direction" value="lower" />
+                    <span>낮을수록 좋음</span>
+                  </label>
+                </div>
+              </div>
+              <div class="dream-kpi-row">
+                <div class="dream-kpi-field">
+                  <label><span class="dream-kpi-target-label-text">목표값</span></label>
+                  <input type="text" name="targetValue" placeholder="30" inputmode="numeric" />
+                </div>
+                <div class="dream-kpi-field">
+                  <label>단위</label>
+                  <input type="text" name="unit" placeholder="일" />
+                </div>
+              </div>
+              <div class="dream-kpi-field">
+                <label>필요시간</label>
+                <input type="text" name="targetTimeRequired" placeholder="예) 25:00" />
+              </div>
+            </div>
+            <div class="dream-kpi-section">
+              <h4 class="dream-kpi-section-title">기간</h4>
+              <div class="dream-kpi-row">
+                <div class="dream-kpi-field">
+                  <label>시작기한</label>
+                  <input type="date" name="targetStartDate" />
+                </div>
+                <div class="dream-kpi-field">
+                  <label>달성기한</label>
+                  <input type="date" name="targetDeadline" />
+                </div>
+              </div>
+              <div class="dream-kpi-deadline-quick">
+                <button type="button" class="dream-kpi-today-btn">오늘</button>
+                <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
+                <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
+              </div>
+            </div>
+            <div class="dream-kpi-field dream-kpi-field-checkbox">
+              <label class="dream-kpi-checkbox-label">
+                매일 반복
+                <input type="checkbox" name="needHabitTracker" />
               </label>
-              <label class="dream-kpi-direction-option">
-                <input type="radio" name="direction" value="lower" />
-                <span>낮을수록 좋음</span>
-              </label>
             </div>
-          </div>
-          <div class="dream-kpi-row">
-            <div class="dream-kpi-field">
-              <label><span class="dream-kpi-target-label-text">목표값</span></label>
-              <input type="text" name="targetValue" placeholder="30" inputmode="numeric" />
-            </div>
-            <div class="dream-kpi-field">
-              <label>단위</label>
-              <input type="text" name="unit" placeholder="일" />
-            </div>
-          </div>
-          <div class="dream-kpi-row">
-            <div class="dream-kpi-field">
-              <label>시작기한</label>
-              <input type="date" name="targetStartDate" />
-            </div>
-            <div class="dream-kpi-field">
-              <label>달성기한</label>
-              <input type="date" name="targetDeadline" />
-            </div>
-          </div>
-          <div class="dream-kpi-deadline-quick">
-            <button type="button" class="dream-kpi-today-btn">오늘</button>
-            <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
-            <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
-          </div>
-          <div class="dream-kpi-field dream-kpi-field-checkbox">
-            <label class="dream-kpi-checkbox-label">
-              매일 반복
-              <input type="checkbox" name="needHabitTracker" />
-            </label>
-          </div>
           </div>
           <div class="dream-kpi-form-actions">
-          <button type="submit" class="dream-kpi-submit">KPI 등록하기</button>
+            <button type="submit" class="dream-kpi-submit">KPI 등록하기</button>
           </div>
         </form>
       </div>
@@ -353,6 +366,7 @@ export function render() {
         name: (form.name.value || "").trim() || "행동",
         unit: (form.unit.value || "").trim() || "",
         targetValue: sanitizeNumericInput(form.targetValue.value) || "",
+        targetTimeRequired: (form.targetTimeRequired?.value || "").trim() || "",
         targetStartDate: (form.targetStartDate?.value || "").trim() || "",
         targetDeadline: (form.targetDeadline.value || "").trim() || "",
         needHabitTracker: needHabitChecked,
@@ -404,61 +418,74 @@ export function render() {
         </div>
         <form class="dream-kpi-form">
           <div class="dream-kpi-form-body">
-          <div class="dream-kpi-field">
-            <label>행동 이름</label>
-            <input type="text" name="name" value="${escapeHtml(kpi.name || "")}" placeholder="예) 30분이상의 유산소 운동하기" />
-          </div>
-          <div class="dream-kpi-field dream-kpi-direction-field">
-            <span class="dream-kpi-field-label">지표 방향</span>
-            <div class="dream-kpi-direction-options">
-              <label class="dream-kpi-direction-option">
-                <input type="radio" name="direction" value="higher" ${kpi.direction !== "lower" ? "checked" : ""} />
-                <span>높을수록 좋음</span>
+            <div class="dream-kpi-section">
+              <h4 class="dream-kpi-section-title">기본</h4>
+              <div class="dream-kpi-field">
+                <label>행동 이름</label>
+                <input type="text" name="name" value="${escapeHtml(kpi.name || "")}" placeholder="예) 30분이상의 유산소 운동하기" />
+              </div>
+            </div>
+            <div class="dream-kpi-section">
+              <h4 class="dream-kpi-section-title">목표</h4>
+              <div class="dream-kpi-field dream-kpi-direction-field">
+                <span class="dream-kpi-field-label">지표 방향</span>
+                <div class="dream-kpi-direction-options">
+                  <label class="dream-kpi-direction-option">
+                    <input type="radio" name="direction" value="higher" ${kpi.direction !== "lower" ? "checked" : ""} />
+                    <span>높을수록 좋음</span>
+                  </label>
+                  <label class="dream-kpi-direction-option">
+                    <input type="radio" name="direction" value="lower" ${kpi.direction === "lower" ? "checked" : ""} />
+                    <span>낮을수록 좋음</span>
+                  </label>
+                </div>
+              </div>
+              <div class="dream-kpi-row">
+                <div class="dream-kpi-field">
+                  <label><span class="dream-kpi-target-label-text">목표값</span></label>
+                  <input type="text" name="targetValue" value="${escapeHtml(sanitizeNumericInput(kpi.targetValue))}" placeholder="30" inputmode="numeric" />
+                </div>
+                <div class="dream-kpi-field">
+                  <label>단위</label>
+                  <input type="text" name="unit" value="${escapeHtml(kpi.unit || "")}" placeholder="일" />
+                </div>
+              </div>
+              <div class="dream-kpi-field">
+                <label>필요시간</label>
+                <input type="text" name="targetTimeRequired" value="${escapeHtml(kpi.targetTimeRequired || "")}" placeholder="예) 25:00" />
+              </div>
+            </div>
+            <div class="dream-kpi-section">
+              <h4 class="dream-kpi-section-title">기간</h4>
+              <div class="dream-kpi-row">
+                <div class="dream-kpi-field">
+                  <label>시작기한</label>
+                  <input type="date" name="targetStartDate" value="${escapeHtml(toDateInputValue(kpi.targetStartDate))}" />
+                </div>
+                <div class="dream-kpi-field">
+                  <label>달성기한</label>
+                  <input type="date" name="targetDeadline" value="${escapeHtml(toDateInputValue(kpi.targetDeadline))}" />
+                </div>
+              </div>
+              <div class="dream-kpi-deadline-quick">
+                <button type="button" class="dream-kpi-today-btn">오늘</button>
+                <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
+                <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
+              </div>
+            </div>
+            <div class="dream-kpi-field dream-kpi-field-checkbox">
+              <label class="dream-kpi-checkbox-label">
+                매일 반복
+                <input type="checkbox" name="needHabitTracker" ${kpi.needHabitTracker ? "checked" : ""} />
               </label>
-              <label class="dream-kpi-direction-option">
-                <input type="radio" name="direction" value="lower" ${kpi.direction === "lower" ? "checked" : ""} />
-                <span>낮을수록 좋음</span>
-              </label>
             </div>
-          </div>
-          <div class="dream-kpi-row">
-            <div class="dream-kpi-field">
-              <label><span class="dream-kpi-target-label-text">목표값</span></label>
-              <input type="text" name="targetValue" value="${escapeHtml(sanitizeNumericInput(kpi.targetValue))}" placeholder="30" inputmode="numeric" />
-            </div>
-            <div class="dream-kpi-field">
-              <label>단위</label>
-              <input type="text" name="unit" value="${escapeHtml(kpi.unit || "")}" placeholder="일" />
-            </div>
-          </div>
-          <div class="dream-kpi-row">
-            <div class="dream-kpi-field">
-              <label>시작기한</label>
-              <input type="date" name="targetStartDate" value="${escapeHtml(toDateInputValue(kpi.targetStartDate))}" />
-            </div>
-            <div class="dream-kpi-field">
-              <label>달성기한</label>
-              <input type="date" name="targetDeadline" value="${escapeHtml(toDateInputValue(kpi.targetDeadline))}" />
-            </div>
-          </div>
-          <div class="dream-kpi-deadline-quick">
-            <button type="button" class="dream-kpi-today-btn">오늘</button>
-            <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
-            <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
-          </div>
-          <div class="dream-kpi-field dream-kpi-field-checkbox">
-            <label class="dream-kpi-checkbox-label">
-              매일 반복
-              <input type="checkbox" name="needHabitTracker" ${kpi.needHabitTracker ? "checked" : ""} />
-            </label>
-          </div>
           </div>
           <div class="dream-kpi-form-actions">
-          <button type="submit" class="dream-kpi-submit">수정</button>
-          <div class="dream-kpi-delete-wrap">
-            <p class="dream-kpi-delete-note">삭제 시 복구 불가</p>
-            <button type="button" class="dream-kpi-delete-btn">KPI 삭제하기</button>
-          </div>
+            <button type="submit" class="dream-kpi-submit">수정</button>
+            <div class="dream-kpi-delete-wrap">
+              <p class="dream-kpi-delete-note">삭제 시 복구 불가</p>
+              <button type="button" class="dream-kpi-delete-btn">KPI 삭제하기</button>
+            </div>
           </div>
         </form>
       </div>
@@ -492,6 +519,7 @@ export function render() {
         target.name = (form.name.value || "").trim() || "행동";
         target.unit = (form.unit.value || "").trim() || "";
         target.targetValue = sanitizeNumericInput(form.targetValue.value) || "";
+        target.targetTimeRequired = (form.targetTimeRequired?.value || "").trim() || "";
         target.targetStartDate = (form.targetStartDate?.value || "").trim() || "";
         target.targetDeadline = (form.targetDeadline.value || "").trim() || "";
         target.needHabitTracker = !!form.querySelector('input[name="needHabitTracker"]')?.checked;
@@ -775,26 +803,12 @@ export function render() {
       const progressText = lowerBetter
         ? `최근 ${currentStr} / 상한 ${targetStr}${unitSuffix}`
         : `${currentStr} / ${targetStr}${unitSuffix}`;
-      const remainingMins = Math.max(0, targetMins - accumulatedMins);
-      const timeCircleHtml =
-        targetMins > 0
-          ? `
-          <div class="dream-kpi-time-circle-wrap">
-            <div class="dream-kpi-time-circle" role="progressbar" aria-valuenow="${timeProgress}" aria-valuemin="0" aria-valuemax="100">
-              <svg viewBox="0 0 36 36">
-                <path class="dream-kpi-time-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                <path class="dream-kpi-time-circle-fill" stroke-dasharray="${timeProgress}, ${100 - timeProgress}" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-              </svg>
-              <div class="dream-kpi-time-circle-label">
-                <span class="dream-kpi-time-accumulated">${minutesToHhMm(accumulatedMins)}</span>
-                <span class="dream-kpi-time-sep">/</span>
-                <span class="dream-kpi-time-target">${escapeHtml(kpi.targetTimeRequired)}</span>
-              </div>
-            </div>
-            <div class="dream-kpi-time-remaining">남은 ${minutesToHhMm(remainingMins)}</div>
-          </div>
-        `
-          : "";
+      const targetTimeDisplay = kpi.targetTimeRequired
+        ? minutesToHhMm(String(kpi.targetTimeRequired).includes(":") ? hhMmToMinutes(kpi.targetTimeRequired) : (parseInt(kpi.targetTimeRequired, 10) || 0))
+        : "";
+      const investedTimeHtml = targetTimeDisplay
+        ? `지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span> / <span class="dream-kpi-card-invested-value">${targetTimeDisplay}</span>`
+        : `지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span>`;
       const card = document.createElement("div");
       card.className =
         "dream-kpi-card" +
@@ -812,8 +826,7 @@ export function render() {
             <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${progress}%"></div></div>
             <div class="dream-kpi-card-progress-text">${escapeHtml(progressText)}</div>
           </div>
-          <div class="dream-kpi-card-invested">지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span></div>
-          ${timeCircleHtml}
+          <div class="dream-kpi-card-invested">${investedTimeHtml}</div>
         </div>
       `;
       card.querySelector(".dream-kpi-card-edit").addEventListener("click", (e) => {
@@ -909,24 +922,12 @@ export function render() {
         const progressText = lowerBetter
           ? `최근 ${currentStr} / 상한 ${targetStr}${unitSuffix}`
           : `${currentStr} / ${targetStr}${unitSuffix}`;
-        const timeCircleHtml =
-          targetMins > 0
-            ? `
-          <div class="dream-kpi-time-circle-wrap">
-            <div class="dream-kpi-time-circle" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
-              <svg viewBox="0 0 36 36">
-                <path class="dream-kpi-time-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                <path class="dream-kpi-time-circle-fill" stroke-dasharray="100, 0" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-              </svg>
-              <div class="dream-kpi-time-circle-label">
-                <span class="dream-kpi-time-accumulated">${minutesToHhMm(accumulatedMins)}</span>
-                <span class="dream-kpi-time-sep">/</span>
-                <span class="dream-kpi-time-target">${escapeHtml(kpi.targetTimeRequired)}</span>
-              </div>
-            </div>
-          </div>
-        `
-            : "";
+        const targetTimeDisplayCompleted = kpi.targetTimeRequired
+          ? minutesToHhMm(String(kpi.targetTimeRequired).includes(":") ? hhMmToMinutes(kpi.targetTimeRequired) : (parseInt(kpi.targetTimeRequired, 10) || 0))
+          : "";
+        const investedTimeHtmlCompleted = targetTimeDisplayCompleted
+          ? `지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span> / <span class="dream-kpi-card-invested-value">${targetTimeDisplayCompleted}</span>`
+          : `지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span>`;
         const card = document.createElement("div");
         card.className =
           "dream-kpi-card dream-kpi-card-completed" +
@@ -943,8 +944,7 @@ export function render() {
               <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:100%"></div></div>
               <div class="dream-kpi-card-progress-text">${escapeHtml(progressText)} ✓</div>
             </div>
-            <div class="dream-kpi-card-invested">지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span></div>
-            ${timeCircleHtml}
+            <div class="dream-kpi-card-invested">${investedTimeHtmlCompleted}</div>
           </div>
         `;
         card.querySelector(".dream-kpi-card-edit").addEventListener("click", (e) => {
@@ -1060,14 +1060,58 @@ export function render() {
       const completed = !!todo.completed;
       item.className = "dream-kpi-todo-item" + (completed ? " is-completed" : "");
       item.dataset.todoId = todo.id;
-      item.innerHTML = `
-        <label class="dream-kpi-todo-check-wrap">
-          <input type="checkbox" class="dream-kpi-todo-check" ${completed ? "checked" : ""} />
-        </label>
-        <span class="dream-kpi-todo-text">${escapeHtml(todo.text)}</span>
-        <button type="button" class="dream-kpi-todo-del" title="삭제">×</button>
-      `;
-      const check = item.querySelector(".dream-kpi-todo-check");
+
+      const label = document.createElement("label");
+      label.className = "dream-kpi-todo-check-wrap";
+      const check = document.createElement("input");
+      check.type = "checkbox";
+      check.className = "dream-kpi-todo-check";
+      check.checked = completed;
+      label.appendChild(check);
+
+      const textInput = document.createElement("input");
+      textInput.type = "text";
+      textInput.className = "dream-kpi-todo-text dream-kpi-todo-edit-input";
+      textInput.value = todo.text || "";
+      textInput.title = "할 일 내용 수정";
+      textInput.autocomplete = "off";
+      textInput.style.cssText =
+        "flex:1;min-width:0;border:none;background:transparent;font:inherit;color:inherit;padding:0;margin:0;box-sizing:border-box;";
+      const saveTodoText = () => {
+        const d = loadHealthMap();
+        const arr = d.kpiTodos || [];
+        const row = arr.find((x) => x.id === todo.id);
+        if (!row) return;
+        const val = textInput.value.trim();
+        if (!val) {
+          textInput.value = row.text || "";
+          return;
+        }
+        if (row.text === val) return;
+        row.text = val;
+        saveHealthMap(d);
+      };
+      textInput.addEventListener("blur", saveTodoText);
+      textInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.isComposing) {
+          e.preventDefault();
+          textInput.blur();
+        }
+      });
+
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "dream-kpi-todo-del";
+      delBtn.title = "삭제";
+      delBtn.textContent = "×";
+      delBtn.addEventListener("click", () => {
+        const d = loadHealthMap();
+        appendDeletedRef(d, "kpiTodos", todo.id);
+        d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
+        saveHealthMap(d);
+        renderKpiHistory();
+      });
+
       check.addEventListener("change", () => {
         const d = loadHealthMap();
         const t = d.kpiTodos.find((x) => x.id === todo.id);
@@ -1077,13 +1121,10 @@ export function render() {
           item.classList.toggle("is-completed", t.completed);
         }
       });
-      item.querySelector(".dream-kpi-todo-del").addEventListener("click", () => {
-        const d = loadHealthMap();
-        appendDeletedRef(d, "kpiTodos", todo.id);
-        d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
-        saveHealthMap(d);
-        renderKpiHistory();
-      });
+
+      item.appendChild(label);
+      item.appendChild(textInput);
+      item.appendChild(delBtn);
       todoList.appendChild(item);
     });
 
@@ -1420,8 +1461,20 @@ export function render() {
       activeHealthId = data.healths[0]?.id || null;
       selectedKpiId = null;
     }
+    /* 선택된 KPI가 삭제됐으면 선택 해제 */
+    if (selectedKpiId && !data.kpis.some((k) => k.id === selectedKpiId)) {
+      selectedKpiId = null;
+    }
     renderTabs();
-    updateTitleAndContent();
+    /* 서버 동기화 시에는 selectedKpiId를 유지하면서 화면만 갱신 */
+    const health = data.healths.find((h) => h.id === activeHealthId);
+    if (health) {
+      contentWrap.hidden = false;
+      renderKpiList();
+      renderKpiHistory();
+    } else {
+      contentWrap.hidden = true;
+    }
   };
   window.addEventListener("health-kpi-map-saved", onMergedSync);
 

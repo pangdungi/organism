@@ -366,6 +366,18 @@ function mergeHealthKpiPullWithLocal(L0, S0, raw) {
     kpiTaskSync = S.kpiTaskSync;
     deletedRefs = S.deletedRefs;
   }
+  /* 삭제된 KPI ID를 kpiTaskSync에서 제거 (부활 방지) */
+  const allDeletedKpiIds = new Set([
+    ...(L.deletedRefs?.kpis || []),
+    ...(S.deletedRefs?.kpis || []),
+  ]);
+  if (allDeletedKpiIds.size > 0 && kpiTaskSync && typeof kpiTaskSync === "object") {
+    const cleaned = { ...kpiTaskSync };
+    for (const id of allDeletedKpiIds) {
+      delete cleaned[id];
+    }
+    kpiTaskSync = cleaned;
+  }
   return normalizePayload({
     healths: mergedHealths,
     kpis: mergedKpis,

@@ -3548,20 +3548,32 @@ export function render() {
     return `${mo}월${d}일(${weekdays[dt.getDay()]})`;
   }
 
+  /** YYYY-MM-DD → "2026. 04. 04(토)" — 데스크탑 필터(마침표 없이 일 뒤에 요일) */
+  function formatTimeFilterDateDotsWithWeekday(dStr) {
+    if (!dStr || !/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return "";
+    const [y, mo, d] = dStr.split("-").map(Number);
+    const dt = new Date(y, mo - 1, d);
+    const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+    const yy = String(y);
+    const mm = String(mo).padStart(2, "0");
+    const dd = String(d).padStart(2, "0");
+    return `${yy}. ${mm}. ${dd}(${weekdays[dt.getDay()]})`;
+  }
+
   function syncTimeFilterDateLabels() {
     /* 모바일: navCluster가 contentWrap 툴바로 옮겨져도 같은 노드 — filterBar로 찾으면 라벨이 끊김 */
     const labelRoot = filterNavCluster || filterBar;
     const startLabel = labelRoot?.querySelector(".time-filter-date-label--start");
     const endLabel = labelRoot?.querySelector(".time-filter-date-label--end");
+    const isDesktop =
+      typeof window !== "undefined" &&
+      window.matchMedia("(min-width: 48.0625rem)").matches;
+    const fmt = isDesktop ? formatTimeFilterDateDotsWithWeekday : formatTimeFilterDateKr;
     if (startLabel) {
-      startLabel.textContent = formatTimeFilterDateKr(
-        startDateInput.value || filterStartDate,
-      );
+      startLabel.textContent = fmt(startDateInput.value || filterStartDate);
     }
     if (endLabel) {
-      endLabel.textContent = formatTimeFilterDateKr(
-        endDateInput.value || filterEndDate,
-      );
+      endLabel.textContent = fmt(endDateInput.value || filterEndDate);
     }
   }
 

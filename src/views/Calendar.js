@@ -49,6 +49,25 @@ import {
 import { SECTION_TASKS_KEY, CUSTOM_SECTION_TASKS_KEY } from "../utils/todoSectionTasksModel.js";
 const KPI_SECTION_IDS = ["braindump", "dream", "sideincome", "health", "happy"];
 
+/** 할일/일정 상단 1~4번 탭 — 앱 리렌더·Supabase 동기 후 __lpRenderMain 으로 다시 그려질 때 항상 1번으로 돌아가는 문제 방지 */
+const CALENDAR_MAIN_VIEW_STORAGE_KEY = "lp-calendar-main-subview";
+const VALID_CALENDAR_MAIN_VIEWS = new Set(["todo", "eisenhower", "calendar", "1day"]);
+
+function getSavedCalendarMainView() {
+  try {
+    const v = localStorage.getItem(CALENDAR_MAIN_VIEW_STORAGE_KEY);
+    if (v && VALID_CALENDAR_MAIN_VIEWS.has(v)) return v;
+  } catch (_) {}
+  return "todo";
+}
+
+function persistCalendarMainViewIfValid(view) {
+  if (!view || !VALID_CALENDAR_MAIN_VIEWS.has(view)) return;
+  try {
+    localStorage.setItem(CALENDAR_MAIN_VIEW_STORAGE_KEY, view);
+  } catch (_) {}
+}
+
 /** 근무표와 동일: 이전 마운트의 hydrate.finally가 늦게 끝나면 덮어쓰지 않도록 */
 let _calendarTodoHydrateGeneration = 0;
 
@@ -3997,6 +4016,8 @@ function render1DayView(tabsElement) {
   wrap.className = "calendar-monthly-layout calendar-1day-view";
 
   let dayOffset = 0;
+  /** Date#getDay() 용 (0=일) — 네비 날짜 옆 요일 표기 */
+  const NAV_WEEKDAYS_SUN0 = ["일", "월", "화", "수", "목", "금", "토"];
 
   /* 1번 레이아웃: 탭을 최상단 전체 영역에 배치 */
   const topRow = document.createElement("div");
@@ -4075,27 +4096,13 @@ function render1DayView(tabsElement) {
           targetMins > 0
             ? Math.min(100, (accumulatedMins / targetMins) * 100)
             : 0;
-        const remainingMins = Math.max(0, targetMins - accumulatedMins);
-        const timeCircleHtml =
-          targetMins > 0
-            ? `
-          <div class="dream-kpi-time-circle-wrap">
-            <div class="dream-kpi-time-circle" role="progressbar" aria-valuenow="${timeProgress}" aria-valuemin="0" aria-valuemax="100">
-              <svg viewBox="0 0 36 36">
-                <path class="dream-kpi-time-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                <path class="dream-kpi-time-circle-fill" stroke-dasharray="${timeProgress}, ${100 - timeProgress}" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-              </svg>
-              <div class="dream-kpi-time-circle-label">
-                <span class="dream-kpi-time-accumulated">${minutesToHhMm(accumulatedMins)}</span>
-                <span class="dream-kpi-time-sep">/</span>
-                <span class="dream-kpi-time-target">${escapeHtml(k.targetTimeRequired)}</span>
-              </div>
-            </div>
-            <div class="dream-kpi-time-remaining">남은 ${minutesToHhMm(remainingMins)}</div>
-          </div>
-        `
-            : "";
-        const hasTimeTarget = targetMins > 0;
+        const targetTimeDisplay = k.targetTimeRequired
+          ? minutesToHhMm(String(k.targetTimeRequired).includes(":") ? hhMmToMinutes(k.targetTimeRequired) : (parseInt(k.targetTimeRequired, 10) || 0))
+          : "";
+        const investedTimeHtml = targetTimeDisplay
+          ? `지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span> / <span class="dream-kpi-card-invested-value">${targetTimeDisplay}</span>`
+          : `지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span>`;
+        const hasTimeTarget = !!k.targetTimeRequired;
         const lower = !!k.directionLower;
         return `
         <div class="kpi-view-card dream-kpi-card calendar-kpi-card ${!hasTimeTarget ? "calendar-kpi-card-no-time" : ""}${lower ? " dream-kpi-card--lower-better" : ""}" data-kpi-id="${escapeHtml(kpiId)}" data-storage-key="${escapeHtml(storageKey)}">
@@ -4107,8 +4114,7 @@ function render1DayView(tabsElement) {
               <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${k.progress}%"></div></div>
               <div class="dream-kpi-card-progress-text">${escapeHtml(k.progressText)}</div>
             </div>
-            <div class="dream-kpi-card-invested">지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span></div>
-            ${timeCircleHtml}
+            <div class="dream-kpi-card-invested">${investedTimeHtml}</div>
           </div>
           <button type="button" class="calendar-kpi-card-todos-toggle">할일 (${todoCount}개)</button>
           <div class="calendar-kpi-card-todos"></div>
@@ -4282,7 +4288,8 @@ function render1DayView(tabsElement) {
       const y = targetDate.getFullYear();
       const m = targetDate.getMonth() + 1;
       const d = targetDate.getDate();
-      todayBtn.textContent = `${y}. ${m}. ${d}.`;
+      const w = NAV_WEEKDAYS_SUN0[targetDate.getDay()] || "";
+      todayBtn.textContent = `${y}. ${m}. ${d}(${w})`;
       todayBtn.title = dayOffset === 0 ? "오늘" : `${y}년 ${m}월 ${d}일`;
     }
 
@@ -6549,6 +6556,7 @@ export function render() {
         const labels = {};
         contentWrap.appendChild(renderPlaceholderView(tabs, labels[view] || ""));
       }
+      persistCalendarMainViewIfValid(view);
     } catch (err) {
       console.error("[할일/일정] renderContent 중 오류 — view:", view, err?.message, err);
       if (err?.stack) console.error(err.stack);
@@ -6581,12 +6589,21 @@ export function render() {
     if (todoBtn) todoBtn.click();
   }
   hideCalendarSubTabMq.addEventListener("change", exitCalendarViewOnMobile);
-  exitCalendarViewOnMobile();
 
   el.appendChild(contentWrap);
 
+  /* 모바일은 상단 '날짜 정하기'가 숨겨져 있어 저장값이 calendar면 할일로만 조정(초기 mount에서 todoBtn.click() 금지 — 이중 render·레이스 방지) */
+  let initialMainView = getSavedCalendarMainView();
+  if (hideCalendarSubTabMq.matches && initialMainView === "calendar") {
+    initialMainView = "todo";
+  }
+  tabs.querySelectorAll(".time-view-tab").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.view === initialMainView);
+  });
+  /* 초기 탭: 저장값(4. 오늘 해치우기 등) — __lpRenderMain·Supabase 동기 후에도 동일 키로 복원 */
+  renderContent(initialMainView);
+
   /* 시간가계부와 동일: 화면은 즉시(localStorage 기준), Supabase는 백그라운드 병합 후 needRefresh일 때만 리렌더 */
-  renderContent("todo");
   if (supabase) {
     const hydrateGen = ++_calendarTodoHydrateGeneration;
     void hydrateTodoSectionTasksFromCloud()

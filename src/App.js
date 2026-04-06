@@ -54,6 +54,16 @@ import {
 } from "./utils/kpiSyncDebug.js";
 import { initSupabaseRealtimeSync } from "./utils/supabaseRealtimeSync.js";
 
+/** 사용자가 입력 중인지 확인 (입력 중이면 화면 갱신 건너뜀) */
+function isUserTypingInApp() {
+  const el = document.activeElement;
+  if (!el) return false;
+  const tag = el.tagName?.toLowerCase();
+  if (tag === "input" || tag === "textarea") return true;
+  if (el.isContentEditable) return true;
+  return false;
+}
+
 /** 브라우저 탭 포커스 시 KPI pull 후 다시 그려야 하는 앱 메뉴(오늘·할일·시간 등 KPI 데이터를 읽는 화면) */
 const TAB_IDS_REFRESH_ON_KPI_PULL = new Set([
   "home",
@@ -78,17 +88,17 @@ const TABS = [
   { id: "time", label: "시간가계부", mobileLabel: "시간", icon: "/toolbaricons/timer.svg" },
   { id: "asset", label: "자산관리", mobileLabel: "자산", icon: "/toolbaricons/wallet.svg" },
   {
-    id: "workschedule",
-    label: "근무표",
-    mobileLabel: "근무표",
-    icon: "/toolbaricons/calendar-heart1.svg",
-  },
-  {
     id: "schedulecalendar",
     label: "캘린더",
     mobileLabel: "캘린더",
     icon: "/toolbaricons/calendar-heart1.svg",
     sidebarMobileOnly: true,
+  },
+  {
+    id: "workschedule",
+    label: "근무표",
+    mobileLabel: "근무표",
+    icon: "/toolbaricons/calendar-heart1.svg",
   },
   { id: "diary", label: "감정일기", mobileLabel: "감정일기", icon: "/toolbaricons/chat-bubbles.svg" },
   { id: "archive", label: "아카이브", icon: "/toolbaricons/harddrive.svg" },
@@ -320,10 +330,11 @@ export function mountApp(container) {
     }
     renderMain(main, { force: true });
     /* 꿈·부수입·행복·건강: 다른 기기에서 삭제·추가한 내용을 보려면 진입 시 서버 pull 필요.
-     * localStorage 문자열이 바뀐 경우에만 한 번 더 그림(불필요한 깜빡임 감소). */
+     * localStorage 문자열이 바뀐 경우에만 한 번 더 그림(불필요한 깜빡임 감소).
+     * 단, 사용자가 입력 중이면 갱신을 건너뜀(입력 도중 화면 날아감 방지). */
     if (KPI_TAB_IDS.has(tabId)) {
       void pullKpiTabFromCloud(tabId).then(({ pullOk, localChanged }) => {
-        if (pullOk && localChanged) {
+        if (pullOk && localChanged && !isUserTypingInApp()) {
           renderMain(main, {
             skipTodoSaveBeforeUnmount: true,
             force: true,
@@ -362,13 +373,13 @@ export function mountApp(container) {
       !HIDE_ON_MOBILE_TAB_IDS.includes(t.id) &&
       !t.sidebarDesktopOnly,
   );
-  /** 모바일 하단 탭 순서: 오늘 → 시간 → 할일 → 근무표 → 캘린더 → … */
+  /** 모바일 하단 탭 순서: 오늘 → 시간 → 할일 → 캘린더 → 근무표 → … */
   const MOBILE_BOTTOM_NAV_ORDER = [
     "home",
     "time",
     "calendar",
-    "workschedule",
     "schedulecalendar",
+    "workschedule",
     "diary",
     "archive",
   ];
@@ -601,7 +612,7 @@ export function mountApp(container) {
             const needMainFromOther =
               TAB_IDS_REFRESH_ON_KPI_PULL.has(currentTabId) &&
               (kpiChanged || assetChanged || diaryChanged);
-            if (needMainFromTodo || needMainFromOther) {
+            if ((needMainFromTodo || needMainFromOther) && !isUserTypingInApp()) {
               renderMain(main, { skipTodoSaveBeforeUnmount: true });
             }
           } catch (e) {
