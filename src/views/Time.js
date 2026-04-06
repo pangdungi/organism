@@ -62,7 +62,10 @@ import {
   stripTimeLedgerSyncMetaForCompare,
   writeTimeLedgerEntriesRaw,
 } from "../utils/timeLedgerEntriesModel.js";
-import { hydrateTimeLedgerEntriesFromCloud } from "../utils/timeLedgerEntriesSupabase.js";
+import {
+  deleteTimeLedgerEntryFromSupabase,
+  hydrateTimeLedgerEntriesFromCloud,
+} from "../utils/timeLedgerEntriesSupabase.js";
 import { persistSectionTasksAndSchedule } from "../utils/todoSectionTasksSupabase.js";
 import { SECTION_TASKS_KEY } from "../utils/todoSectionTasksModel.js";
 
@@ -3319,6 +3322,13 @@ function createProductivitySection(
   const handleRowDelete = (tr, rowData) => {
     tr.remove();
     onRowUpdate();
+    /* 서버에서도 삭제 (부활 방지) */
+    const entryId = String(rowData?.id || "").trim();
+    if (entryId) {
+      deleteTimeLedgerEntryFromSupabase(entryId).catch((e) =>
+        console.warn("[time-ledger] server delete failed", e),
+      );
+    }
   };
 
   const handleRowEdit = (tr, rowData) => {
@@ -6565,6 +6575,8 @@ export function render() {
       );
       if (ctx.addRow) ctx.tbody.insertBefore(tr, ctx.addRow);
       else ctx.tbody.appendChild(tr);
+      /* 새 기록을 allRowsCache에 추가 (저장 누락 방지) */
+      allRowsCache.push(newRowData);
       ctx.onRowUpdate?.();
     }
 
@@ -7323,6 +7335,13 @@ export function render() {
           (c) => `${c.date}|${c.taskName}|${c.startTime}` !== k,
         );
         saveTimeRows(allRowsCache);
+        /* 서버에서도 삭제 (부활 방지) */
+        const entryId = String(rowData.id || "").trim();
+        if (entryId) {
+          deleteTimeLedgerEntryFromSupabase(entryId).catch((e) =>
+            console.warn("[time-ledger] server delete failed", e),
+          );
+        }
       }
       card.remove();
       updateTotal();

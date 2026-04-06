@@ -24,6 +24,31 @@ async function getSessionUserId() {
   return session?.user?.id || null;
 }
 
+/**
+ * 서버에서 시간 기록 행 삭제 (id 기준)
+ * @param {string} entryId - 삭제할 행의 UUID
+ * @returns {Promise<boolean>} 성공 여부
+ */
+export async function deleteTimeLedgerEntryFromSupabase(entryId) {
+  const id = String(entryId || "").trim();
+  if (!id) return false;
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+
+  const { error } = await supabase
+    .from(TABLE)
+    .delete()
+    .eq("id", id)
+    .eq("user_id", userId);
+
+  if (error) {
+    console.warn("[time-ledger-entries] delete", error.message);
+    return false;
+  }
+  console.info("[time-ledger-entries] deleted from server", { id });
+  return true;
+}
+
 export async function syncTimeLedgerEntriesToSupabase() {
   const userId = await getSessionUserId();
   if (!userId || !supabase) {
