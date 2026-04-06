@@ -549,9 +549,7 @@ function createWorkTypeInput(initialValue, onUpdate, onTypeSelect) {
       panel.appendChild(createRow);
     }
 
-    highlightedIndex = 0;
-    const opts = panel.querySelectorAll(".time-task-name-option");
-    if (opts[0]) opts[0].classList.add("is-highlighted");
+    highlightedIndex = -1;
     updatePanelPosition();
     panel.hidden = false;
   }

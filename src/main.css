@@ -3297,10 +3297,15 @@ body {
     /* 모바일: date input이 셀 밖으로 넘어가 유형 셀 터치 영역을 가리지 않도록 */
     overflow: hidden;
   }
-  /* 모바일: 유형 셀 터치 영역이 날짜 셀 위에 오도록 z-index 확보 */
+  /* 모바일: 유형 셀 — sticky 근무일 열 아래로 (스크롤 시 겹침 방지) */
   .work-schedule-content-wrap .work-schedule-table .work-schedule-cell-type {
-    position: relative;
-    z-index: 6;
+    position: static;
+    z-index: auto;
+  }
+  .work-schedule-content-wrap .work-schedule-table .work-schedule-type-wrap,
+  .work-schedule-content-wrap .work-schedule-table .work-schedule-type-display {
+    position: static;
+    z-index: auto;
   }
   .work-schedule-content-wrap .work-schedule-date-display {
     padding: 0.05rem 0.2rem;
@@ -11949,7 +11954,7 @@ body {
   z-index: 5;
   overflow: visible;
   /* 가로 스크롤 시 뒤 열이 비치지 않도록 반드시 불투명 배경 */
-  background-color: var(--content-bg, #f5f1e8) !important;
+  background-color: #f5f1e8 !important;
   border-right: none;
 }
 .work-schedule-table .work-schedule-th-date::after,
@@ -25663,7 +25668,6 @@ body.kpi-resizing {
   border-bottom: none;
 }
 
-.time-task-name-option:hover,
 .time-task-name-option.is-highlighted {
   background: var(--ui-surface-alt);
 }
@@ -35238,5 +35242,15 @@ body.kpi-resizing {
     text-align: right !important;
     align-self: auto !important;
     white-space: nowrap;
+  }
+}
+
+/* 모바일: 드롭다운 옵션 hover 효과 제거 (선택/호버 구분 혼란 방지) */
+@media (pointer: coarse) {
+  .time-task-name-option:hover {
+    background: transparent;
+  }
+  .time-task-name-option.is-highlighted {
+    background: var(--ui-surface-alt);
   }
 }
