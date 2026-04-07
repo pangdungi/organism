@@ -192,6 +192,7 @@ export function dbRowToLocalTimeLedgerRow(db) {
     feedback: String(db.memo || "").trim(),
     memoTags: memo_tags,
     /** Supabase updated_at — 병합 시 last-write-wins */
+    /** Supabase updated_at — 서버 스냅샷·동기화 표시용 */
     serverUpdatedAt:
       db.updated_at != null && db.updated_at !== ""
         ? String(db.updated_at)
@@ -208,86 +209,6 @@ export function stripTimeLedgerSyncMetaForCompare(row) {
   } catch (_) {
     return "";
   }
-}
-
-function parseIsoMs(iso) {
-  if (iso == null || iso === "") return 0;
-  const t = Date.parse(String(iso));
-  return Number.isFinite(t) ? t : 0;
-}
-
-/**
- * 같은 id: 서버 updated_at vs 로컬 편집 시각(localModifiedAt, ms).
- * localModifiedAt > server updated_at 이면 로컬(아직 push 반영 전 편집) 우선.
- */
-function pickRowByLastWrite(localRow, serverRow) {
-  const serverT = parseIsoMs(serverRow.serverUpdatedAt);
-  const localMod =
-    typeof localRow.localModifiedAt === "number" &&
-    Number.isFinite(localRow.localModifiedAt)
-      ? localRow.localModifiedAt
-      : 0;
-  if (localMod > serverT) {
-    return { ...localRow };
-  }
-  return { ...serverRow };
-}
-
-/**
- * 서버 스냅샷 + 로컬 전체 병합 (동일 id는 last-write-wins).
- */
-function mergeLocalAndServerRows(localWithIds, serverLocals) {
-  const serverIds = new Set(
-    serverLocals.map((r) => String(r.id || "").trim()).filter(Boolean),
-  );
-  const localById = new Map(
-    localWithIds.map((r) => [String(r.id || "").trim(), r]).filter(([id]) => id),
-  );
-  const mergedById = new Map();
-
-  for (const srv of serverLocals) {
-    const id = String(srv.id || "").trim();
-    if (!id) continue;
-    const loc = localById.get(id);
-    if (!loc) {
-      mergedById.set(id, srv);
-      continue;
-    }
-    mergedById.set(id, pickRowByLastWrite(loc, srv));
-  }
-
-  for (const loc of localWithIds) {
-    const id = String(loc?.id || "").trim();
-    if (!id || mergedById.has(id)) continue;
-    if (!keepLocalRowNotOnServer(loc, serverIds)) continue;
-    mergedById.set(id, loc);
-  }
-
-  return [...mergedById.values()];
-}
-
-/**
- * 서버에 없는 로컬 행을 유지할지.
- * syncable UUID인데 서버 스냅샷에 id가 없으면, (1) 아직 push 전인 새 행 (2) 타 기기에서 삭제됨 — 구분 불가.
- * 예전에는 (1)을 삭제로 처리해 pull 직후 로컬만 유실되는 버그가 있었음 → 서버에 없는 UUID는 로컬 유지(업로드 대기).
- * 삭제 반영은 서버에 행이 없어진 뒤 push·pull·Realtime 병합으로 점진 정리(유령 행은 수동 삭제 가능).
- */
-function keepLocalRowNotOnServer(r, serverIds) {
-  const id = String(r?.id || "").trim();
-  if (!id) return false;
-  if (serverIds.has(id)) return false;
-  if (!UUID_RE.test(id)) return true;
-  if (!timeLedgerRowIsSyncable(r)) return true;
-  return true;
-}
-
-export function mergeTimeLedgerEntriesFromServer(dbRows) {
-  if (!Array.isArray(dbRows) || dbRows.length === 0) return;
-  const local = readTimeLedgerEntriesRaw();
-  const { rows: localWithIds } = ensureTimeLedgerEntryIds(local);
-  const serverLocals = dbRows.map((r) => dbRowToLocalTimeLedgerRow(r));
-  const merged = mergeLocalAndServerRows(localWithIds, serverLocals);
-  writeTimeLedgerEntriesRaw(merged);
 }
 
 function rowEntryDateInInclusiveRange(row, startYmd, endYmd) {
@@ -308,24 +229,29 @@ export function timeLedgerMonthRangeYmd(year, month) {
 }
 
 /**
- * [rangeStart, rangeEnd] 안: 서버 구간 pull + 로컬 동일 구간을 last-write-wins 병합.
- * 그 밖 날짜 행은 그대로 유지.
+ * 서버에서 받은 행만으로 로컬 시간기록 전체를 교체 (로컬·서버 병합 없음).
+ * 성공 응답이 빈 배열이면 로컬도 비움.
  */
-export function mergeTimeLedgerEntriesFromServerForDateRange(dbRows, rangeStart, rangeEnd) {
-  if (!rangeStart || !rangeEnd) return;
-  const serverRows = Array.isArray(dbRows) ? dbRows : [];
-  const local = readTimeLedgerEntriesRaw();
-  const { rows: localWithIds } = ensureTimeLedgerEntryIds(local);
-  const serverLocals = serverRows.map((r) => dbRowToLocalTimeLedgerRow(r));
+export function applyTimeLedgerServerFullSnapshot(dbRows) {
+  const arr = Array.isArray(dbRows) ? dbRows : [];
+  const locals = arr.map((r) => dbRowToLocalTimeLedgerRow(r));
+  const { rows: withIds } = ensureTimeLedgerEntryIds(locals);
+  writeTimeLedgerEntriesRaw(withIds);
+}
 
-  const outside = localWithIds.filter(
-    (r) => !rowEntryDateInInclusiveRange(r, rangeStart, rangeEnd),
-  );
-  const insideLocals = localWithIds.filter((r) =>
-    rowEntryDateInInclusiveRange(r, rangeStart, rangeEnd),
-  );
-  const mergedInside = mergeLocalAndServerRows(insideLocals, serverLocals);
-  const merged = [...outside, ...mergedInside];
+/**
+ * entry_date가 [rangeStart, rangeEnd] (포함)인 구간만 서버 스냅샷으로 교체. 그 외 날짜 행은 유지.
+ */
+export function applyTimeLedgerServerRangeSnapshot(dbRows, rangeStart, rangeEnd) {
+  const rs = String(rangeStart || "").trim();
+  const re = String(rangeEnd || "").trim();
+  if (!rs || !re) return;
+  const serverRows = Array.isArray(dbRows) ? dbRows : [];
+  const serverLocals = serverRows.map((r) => dbRowToLocalTimeLedgerRow(r));
+  const { rows: insideFromServer } = ensureTimeLedgerEntryIds(serverLocals);
+  const { rows: localWithIds } = ensureTimeLedgerEntryIds(readTimeLedgerEntriesRaw());
+  const outside = localWithIds.filter((r) => !rowEntryDateInInclusiveRange(r, rs, re));
+  const merged = [...outside, ...insideFromServer];
   writeTimeLedgerEntriesRaw(merged);
 }
 
@@ -359,16 +285,6 @@ export function updateTimeLedgerEntryFeedbackById(entryId, feedbackText) {
   });
   if (!found) return { ok: false, msg: "해당 기록을 찾을 수 없어요." };
   writeTimeLedgerEntriesRaw(next);
-  const updatedRow = next.find((r) => r && String(r.id || "").trim() === id);
-  const feedbackTrim = String(feedbackText ?? "").trim();
-  console.info("[archive] [메모→로컬] 저장됨 (행 유지, feedback만 갱신)", {
-    entryId: id,
-    feedback글자수: feedbackTrim.length,
-    메모비움: feedbackTrim.length === 0,
-    "Supabase upsert 대상 여부(timeLedgerRowIsSyncable)": updatedRow
-      ? timeLedgerRowIsSyncable(updatedRow)
-      : false,
-  });
   try {
     if (typeof document !== "undefined") {
       document.dispatchEvent(new CustomEvent("calendar-time-rows-updated", { detail: {} }));

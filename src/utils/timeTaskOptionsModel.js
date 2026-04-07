@@ -63,18 +63,24 @@ function getLockedTaskNamesStatic() {
   ]);
 }
 
-function notifySaved() {
+function notifySaved(detail = {}) {
   try {
     if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("time-ledger-tasks-saved"));
+      window.dispatchEvent(
+        new CustomEvent("time-ledger-tasks-saved", {
+          detail: { bumpPullSkip: true, ...detail },
+        }),
+      );
     }
   } catch (_) {}
 }
 
-function saveMergedList(list) {
+/** @param {{ bumpPullSkip?: boolean }} [opts] — pull 덮어쓰기 방지: 서버 병합·UUID만 부여할 때는 false */
+function saveMergedList(list, opts = {}) {
+  const { bumpPullSkip = true } = opts;
   try {
     localStorage.setItem(TASK_OPTIONS_KEY, JSON.stringify(list));
-    notifySaved();
+    notifySaved({ bumpPullSkip });
   } catch (_) {}
 }
 
@@ -126,7 +132,7 @@ function assignIdsToMergedList(merged) {
         : `t-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
     return { ...t, memo: t.memo || "", id: uid };
   });
-  if (dirty) saveMergedList(out);
+  if (dirty) saveMergedList(out, { bumpPullSkip: false });
   return out;
 }
 
@@ -490,7 +496,7 @@ export function applyTimeLedgerTasksFromServer(serverRows) {
     serverRows.map((r, i) => [String(r.id || "").trim(), r.sort_order ?? i]),
   );
   out.sort((a, b) => (order.get(a.id) ?? 9999) - (order.get(b.id) ?? 9999));
-  saveMergedList(out);
+  saveMergedList(out, { bumpPullSkip: false });
   return true;
 }
 

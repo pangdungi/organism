@@ -65,6 +65,8 @@ import {
 import {
   deleteTimeLedgerEntryFromSupabase,
   hydrateTimeLedgerEntriesFromCloud,
+  pullTimeLedgerEntriesForDateRange,
+  readTimeLedgerSessionFilterRangeYmd,
 } from "../utils/timeLedgerEntriesSupabase.js";
 import { persistSectionTasksAndSchedule } from "../utils/todoSectionTasksSupabase.js";
 import { SECTION_TASKS_KEY } from "../utils/todoSectionTasksModel.js";
@@ -1809,6 +1811,58 @@ function mergeLedgerRowsForDedupe(diskRows, cacheRows) {
 }
 
 /**
+ * 로컬 배열에서 시간기록 행 제거.
+ * - id(UUID)가 있으면 id만으로 제거(시작시간 표기 yyyy/mm/dd HH:mm vs HH:mm 불일치로 캐시에서 안 지워지던 문제 방지).
+ * - id가 없으면 날짜·과제명·시작시간 복합키(여러 표기 변형)로 시도.
+ * @returns {{ next: typeof rows, removed: number }}
+ */
+function removeTimeLedgerRowFromRows(rows, rowData) {
+  const arr = Array.isArray(rows) ? rows.slice() : [];
+  if (!rowData || typeof rowData !== "object") {
+    return { next: arr, removed: 0 };
+  }
+  const entryId = String(rowData.id || "").trim();
+  if (entryId) {
+    const before = arr.length;
+    const next = arr.filter((c) => String(c?.id || "").trim() !== entryId);
+    return { next, removed: before - next.length };
+  }
+  const d =
+    normalizeDateForCompare(rowData.date || "") ||
+    String(rowData.date || "").trim().replace(/\//g, "-").slice(0, 10);
+  const task = String(rowData.taskName || "").trim();
+  const stRaw = String(rowData.startTime || "").trim();
+  const stNorm = formatDateTimeInput(stRaw) || stRaw;
+  const dateVariants = new Set([d]);
+  const rawDate = String(rowData.date || "").trim();
+  if (rawDate) {
+    dateVariants.add(rawDate.replace(/\//g, "-").slice(0, 10));
+  }
+  const keySet = new Set();
+  for (const dv of dateVariants) {
+    if (!dv) continue;
+    keySet.add(`${dv}|${task}|${stRaw}`);
+    keySet.add(`${dv}|${task}|${stNorm}`);
+  }
+  const before = arr.length;
+  const next = arr.filter((c) => {
+    const cd =
+      normalizeDateForCompare(c.date || "") ||
+      String(c.date || "").trim().replace(/\//g, "-").slice(0, 10);
+    const cn = String(c.taskName || "").trim();
+    const stc = String(c.startTime || "").trim();
+    const cNorm = formatDateTimeInput(stc) || stc;
+    const c1 = `${cd}|${cn}|${stc}`;
+    const c2 = `${cd}|${cn}|${cNorm}`;
+    for (const k of keySet) {
+      if (k === c1 || k === c2) return false;
+    }
+    return true;
+  });
+  return { next, removed: before - next.length };
+}
+
+/**
  * 과제 기록 모달용: 선택한 날짜에 저장된 기록 중 가장 늦은 시각(HH:mm).
  * exclude: 수정 중인 행(id 또는 composite 키)은 제외.
  * rowsOverride: 넘기면 loadTimeRows 대신 사용(디스크+캐시 병합본 등).
@@ -3320,15 +3374,15 @@ function createProductivitySection(
   };
 
   const handleRowDelete = (tr, rowData) => {
+    const entryId = String(rowData?.id || "").trim();
     tr.remove();
     onRowUpdate();
-    /* 서버에서도 삭제 (부활 방지) */
-    const entryId = String(rowData?.id || "").trim();
-    if (entryId) {
-      deleteTimeLedgerEntryFromSupabase(entryId).catch((e) =>
-        console.warn("[time-ledger] server delete failed", e),
-      );
+    if (rowData) {
+      const diskBefore = loadTimeRows();
+      const { next } = removeTimeLedgerRowFromRows(diskBefore, rowData);
+      saveTimeRows(next);
     }
+    if (entryId) void deleteTimeLedgerEntryFromSupabase(entryId);
   };
 
   const handleRowEdit = (tr, rowData) => {
@@ -3599,6 +3653,14 @@ export function render() {
     return toDateStr(new Date());
   }
 
+  /** 날짜 피커 구간 키(정규화) — 과제 필터만 바뀌면 같게 유지 */
+  function computePickerRangeKeyForPull() {
+    const a = pickYmdFromFilter(startDateInput.value, filterStartDate);
+    const b = pickYmdFromFilter(endDateInput.value, filterEndDate);
+    return a <= b ? `${a}|${b}` : `${b}|${a}`;
+  }
+  let _pickerRangeKeyAtLastPullIntent = computePickerRangeKeyForPull();
+
   function shiftFilterRangeByDays(delta) {
     const s0 = pickYmdFromFilter(startDateInput.value, filterStartDate);
     const e0 = pickYmdFromFilter(endDateInput.value, filterEndDate);
@@ -3703,6 +3765,11 @@ export function render() {
     }
     syncTimeFilterDateLabels();
     persistTimeFilterToSession();
+    const pickerKeyNow = computePickerRangeKeyForPull();
+    if (pickerKeyNow !== _pickerRangeKeyAtLastPullIntent) {
+      _pickerRangeKeyAtLastPullIntent = pickerKeyNow;
+      schedulePullTimeLedgerForPickerRange();
+    }
   }
 
   /* filterBar는 월 드롭다운 패널이 세로로 열리므로 .time-view-tabs(overflow-y:hidden) 밖에 둠 */
@@ -6618,10 +6685,11 @@ export function render() {
 
     if (editTr || addCtx) {
       if (editTr && oldRowDataToRemove) {
-        const oldKey = `${oldRowDataToRemove.date}|${oldRowDataToRemove.taskName}|${oldRowDataToRemove.startTime}`;
-        allRowsCache = allRowsCache.filter(
-          (c) => `${c.date}|${c.taskName}|${c.startTime}` !== oldKey,
+        const { next } = removeTimeLedgerRowFromRows(
+          allRowsCache,
+          oldRowDataToRemove,
         );
+        allRowsCache = next;
         const isMobileCardEdit = editTr.classList?.contains(
           "time-ledger-mobile-card",
         );
@@ -7051,8 +7119,16 @@ export function render() {
 
   let allRowsCache = loadTimeRows();
   let cachedRows = [];
+  /** 마지막으로 서버에서 채운 피커 구간 — 같은 구간이면 pull 생략 */
+  let _timeLedgerPulledRangeKey = "";
+  let _timeLedgerFilterPullTimer = null;
 
   void hydrateTimeLedgerEntriesFromCloud().then(() => {
+    try {
+      const r = readTimeLedgerSessionFilterRangeYmd();
+      _timeLedgerPulledRangeKey = `${r.rangeStart}|${r.rangeEnd}`;
+      _pickerRangeKeyAtLastPullIntent = computePickerRangeKeyForPull();
+    } catch (_) {}
     allRowsCache = loadTimeRows();
     cachedRows = getFullRowsForFilter(true);
     const active =
@@ -7329,19 +7405,12 @@ export function render() {
     }
 
     const handleCardDelete = (card, rowData) => {
+      const entryId = String(rowData?.id || "").trim();
       if (rowData) {
-        const k = `${rowData.date}|${rowData.taskName}|${rowData.startTime}`;
-        allRowsCache = allRowsCache.filter(
-          (c) => `${c.date}|${c.taskName}|${c.startTime}` !== k,
-        );
+        const { next } = removeTimeLedgerRowFromRows(allRowsCache, rowData);
+        allRowsCache = next;
         saveTimeRows(allRowsCache);
-        /* 서버에서도 삭제 (부활 방지) */
-        const entryId = String(rowData.id || "").trim();
-        if (entryId) {
-          deleteTimeLedgerEntryFromSupabase(entryId).catch((e) =>
-            console.warn("[time-ledger] server delete failed", e),
-          );
-        }
+        if (entryId) void deleteTimeLedgerEntryFromSupabase(entryId);
       }
       card.remove();
       updateTotal();
@@ -7671,15 +7740,15 @@ export function render() {
       }
     }
     const handleRowDelete = (tr, rowData) => {
+      const entryId = String(rowData?.id || "").trim();
       if (rowData) {
-        const k = `${rowData.date}|${rowData.taskName}|${rowData.startTime}`;
-        allRowsCache = allRowsCache.filter(
-          (c) => `${c.date}|${c.taskName}|${c.startTime}` !== k,
-        );
+        const { next } = removeTimeLedgerRowFromRows(allRowsCache, rowData);
+        allRowsCache = next;
         saveTimeRows(allRowsCache);
       }
       tr.remove();
       updateTotal();
+      if (entryId) void deleteTimeLedgerEntryFromSupabase(entryId);
     };
     PRODUCTIVITY_VIEW_ORDER.forEach((prod) => {
       const sectionRows = rows.filter((r) => r.productivity === prod.value);
@@ -9645,6 +9714,12 @@ export function render() {
         endDateInput.value = single;
         filterStartDate = filterEndDate = single;
       }
+      persistTimeFilterToSession();
+      const prkAudit = computePickerRangeKeyForPull();
+      if (prkAudit !== _pickerRangeKeyAtLastPullIntent) {
+        _pickerRangeKeyAtLastPullIntent = prkAudit;
+        schedulePullTimeLedgerForPickerRange();
+      }
     } else if (view === "blank") {
       if (filterNavCluster) filterNavCluster.style.display = "none";
       if (taskSetupBtn) taskSetupBtn.style.display = "none";
@@ -9741,6 +9816,22 @@ export function render() {
     refreshTimeLedgerFromRemotePull,
     { signal },
   );
+
+  function schedulePullTimeLedgerForPickerRange() {
+    if (_timeLedgerFilterPullTimer) clearTimeout(_timeLedgerFilterPullTimer);
+    _timeLedgerFilterPullTimer = setTimeout(async () => {
+      _timeLedgerFilterPullTimer = null;
+      if (!el.isConnected) return;
+      const { rangeStart, rangeEnd } = readTimeLedgerSessionFilterRangeYmd();
+      const key = `${rangeStart}|${rangeEnd}`;
+      if (key === _timeLedgerPulledRangeKey) return;
+      const ok = await pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
+      if (ok && el.isConnected) {
+        _timeLedgerPulledRangeKey = key;
+        refreshTimeLedgerFromRemotePull();
+      }
+    }, 400);
+  }
 
   return el;
 }

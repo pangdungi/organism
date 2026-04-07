@@ -14,6 +14,17 @@ import {
 const TABLE = "time_ledger_tasks";
 const DEBUG_TIME_LEDGER_TASKS_FLAG = "debug_time_ledger_tasks";
 
+/**
+ * 로컬 과제 저장 후 잠깐: tasks pull이 서버 옛 목록(예: 71행)으로 덮어 새 과제를 지우는 레이스 방지.
+ * upsert 성공 시 즉시 해제해 다른 기기 변경 반영 가능.
+ */
+let _tasksPullSkipUntil = 0;
+const TASKS_PULL_SKIP_AFTER_LOCAL_MS = 2800;
+
+function bumpTasksPullSkipAfterLocalChange() {
+  _tasksPullSkipUntil = Date.now() + TASKS_PULL_SKIP_AFTER_LOCAL_MS;
+}
+
 function timeLedgerTasksInventoryDebugEnabled() {
   try {
     return (
@@ -82,7 +93,7 @@ export async function deleteTimeLedgerTaskRowForCurrentUser(taskId) {
     .delete()
     .eq("user_id", userId)
     .eq("id", id);
-  if (error) console.warn("[time-ledger-tasks] delete", error.message);
+  if (error) return;
 }
 
 export async function syncTimeLedgerTasksToSupabase() {
@@ -95,7 +106,7 @@ export async function syncTimeLedgerTasksToSupabase() {
     const { error } = await supabase.from(TABLE).upsert(payloads, {
       onConflict: "id",
     });
-    if (error) console.warn("[time-ledger-tasks] upsert", error.message);
+    if (!error) _tasksPullSkipUntil = 0;
   }
 
   /*
@@ -112,6 +123,10 @@ export async function pullTimeLedgerTasksFromSupabase() {
   const userId = await getSessionUserId();
   if (!userId || !supabase) return false;
 
+  if (Date.now() < _tasksPullSkipUntil) {
+    return false;
+  }
+
   const { data, error } = await supabase
     .from(TABLE)
     .select(
@@ -121,10 +136,12 @@ export async function pullTimeLedgerTasksFromSupabase() {
     .order("sort_order", { ascending: true });
 
   if (error) {
-    console.warn("[time-ledger-tasks] pull", error.message);
     return false;
   }
-  if (!data?.length) return false;
+  const n = Array.isArray(data) ? data.length : 0;
+  if (!n) {
+    return false;
+  }
 
   const ok = applyTimeLedgerTasksFromServer(data);
   if (ok) migrateTimeLogRowsTaskIds();
@@ -155,9 +172,7 @@ export function scheduleTimeLedgerTasksSyncPush() {
   if (_pushTimer) clearTimeout(_pushTimer);
   _pushTimer = setTimeout(() => {
     _pushTimer = null;
-    syncTimeLedgerTasksToSupabase().catch((e) =>
-      console.warn("[time-ledger-tasks]", e),
-    );
+    syncTimeLedgerTasksToSupabase().catch(() => {});
   }, PUSH_DEBOUNCE_MS);
 }
 
@@ -166,7 +181,9 @@ let _listenerAttached = false;
 export function attachTimeLedgerTasksSaveListener() {
   if (_listenerAttached) return;
   _listenerAttached = true;
-  window.addEventListener("time-ledger-tasks-saved", () => {
+  window.addEventListener("time-ledger-tasks-saved", (e) => {
+    const bump = e.detail?.bumpPullSkip !== false;
+    if (bump) bumpTasksPullSkipAfterLocalChange();
     scheduleTimeLedgerTasksSyncPush();
   });
 }

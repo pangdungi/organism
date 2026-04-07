@@ -7,6 +7,7 @@ import { supabase } from "../supabase.js";
 import { hydrateTodoSectionTasksFromCloud } from "./todoSectionTasksSupabase.js";
 import { pullAllKpiMapsFromCloud } from "./kpiTabCloudRefresh.js";
 import { pullAllTimeLedgerFromCloud } from "./timeLedgerCloudRefresh.js";
+import { timeLedgerEntryPayloadTouchesSessionPicker } from "./timeLedgerEntriesSupabase.js";
 import { pullAllAssetFromCloud } from "./assetCloudRefresh.js";
 import { pullAllDiaryFromCloud } from "./diaryCloudRefresh.js";
 
@@ -73,22 +74,64 @@ let _channel = null;
 let _debounceTimer = null;
 let _generation = 0;
 
+/** 이번 디바운스 윈도에 쌓인 시간가계부 Realtime 이벤트 (배치 끝에서 초기화). */
+let _timeLedgerRtBatch = {
+  touchedTables: /** @type {Set<string>} */ (new Set()),
+  entryTouchesPicker: false,
+};
+
+function recordTimeLedgerRealtimePayload(payload) {
+  const table = payload?.table;
+  if (!TIME_LEDGER_REALTIME_TABLES.includes(table)) return;
+  _timeLedgerRtBatch.touchedTables.add(table);
+  if (table === "time_ledger_entries") {
+    if (timeLedgerEntryPayloadTouchesSessionPicker(payload)) {
+      _timeLedgerRtBatch.entryTouchesPicker = true;
+    }
+  }
+}
+
 function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
   clearTimeout(_debounceTimer);
   _debounceTimer = setTimeout(() => {
     _debounceTimer = null;
     const gen = ++_generation;
+    const timeBatch = {
+      touchedTables: new Set(_timeLedgerRtBatch.touchedTables),
+      entryTouchesPicker: _timeLedgerRtBatch.entryTouchesPicker,
+    };
+    _timeLedgerRtBatch.touchedTables.clear();
+    _timeLedgerRtBatch.entryTouchesPicker = false;
+
     void (async () => {
       try {
         const needTodo = await hydrateTodoSectionTasksFromCloud();
-        const { anyChanged } = await pullAllKpiMapsFromCloud();
-        const { anyChanged: timeLedgerChanged } = await pullAllTimeLedgerFromCloud();
+        const { anyChanged: kpiMapsChanged } = await pullAllKpiMapsFromCloud();
+        const hasTimeRealtime = timeBatch.touchedTables.size > 0;
+        /* 기록(time_ledger_entries)이 피커 구간에 닿는 이벤트가 있을 때만 항목 pull. 과제·예산만 변했으면 생략. */
+        const skipEntries =
+          hasTimeRealtime &&
+          !(
+            timeBatch.touchedTables.has("time_ledger_entries") &&
+            timeBatch.entryTouchesPicker
+          );
+        let timeLedgerChanged = hasTimeRealtime
+          ? (await pullAllTimeLedgerFromCloud({ skipEntries })).anyChanged
+          : false;
+        /*
+         * KPI 맵만 Realtime으로 바뀐 경우에도: 과제 목록은 time_ledger_tasks pull 시 KPI 연동 이름을 합침.
+         * (시간「기록」행은 건드리지 않음 — skipEntries: true)
+         */
+        if (!hasTimeRealtime && kpiMapsChanged) {
+          const t = await pullAllTimeLedgerFromCloud({ skipEntries: true });
+          timeLedgerChanged = timeLedgerChanged || t.anyChanged;
+        }
         const { anyChanged: assetChanged } = await pullAllAssetFromCloud();
         const { anyChanged: diaryChanged } = await pullAllDiaryFromCloud();
         if (gen !== _generation) return;
         if (
           !needTodo &&
-          !anyChanged &&
+          !kpiMapsChanged &&
           !timeLedgerChanged &&
           !assetChanged &&
           !diaryChanged
@@ -101,7 +144,7 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
               new CustomEvent("lp-time-ledger-remote-updated"),
             );
           } catch (_) {}
-          if (!needTodo && !anyChanged && !assetChanged && !diaryChanged)
+          if (!needTodo && !kpiMapsChanged && !assetChanged && !diaryChanged)
             return;
         }
         /* 아카이브: 전체 renderMain 하면 탭이 통째로 다시 그려져 로딩 스켈레톤이 ~수초마다 깜빡임 */
@@ -111,7 +154,7 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
               new CustomEvent("lp-time-ledger-remote-updated"),
             );
           } catch (_) {}
-          if (!needTodo && !anyChanged && !assetChanged && !diaryChanged)
+          if (!needTodo && !kpiMapsChanged && !assetChanged && !diaryChanged)
             return;
         }
         if (!REFRESH_MAIN_AFTER_CLOUD_PULL.has(tab)) return;
@@ -144,7 +187,10 @@ export function initSupabaseRealtimeSync(opts) {
 
   const bind = (uid) => {
     void teardown();
-    const onEvent = () => debouncedRealtimeRefresh(getCurrentTabId, renderMain);
+    const onEvent = (payload) => {
+      recordTimeLedgerRealtimePayload(payload);
+      debouncedRealtimeRefresh(getCurrentTabId, renderMain);
+    };
 
     let ch = supabase.channel(`lp-multi-${uid}`, {
       config: { broadcast: { self: false } },

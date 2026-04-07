@@ -32,16 +32,18 @@ function snapshotTimeLedgerLocalStorage() {
 
 /**
  * 기록 행·과제 마스터·일간 예산을 서버에서 받아 로컬에 병합.
+ * @param {{ skipEntries?: boolean }} [opts] — true면 시간「기록」행 pull 생략(과제·일간 예산만).
  * @returns {Promise<{ anyChanged: boolean }>}
  */
-export async function pullAllTimeLedgerFromCloud() {
+export async function pullAllTimeLedgerFromCloud(opts = {}) {
+  const { skipEntries = false } = opts;
   await ensureTimeLedgerStorageReady();
   const before = snapshotTimeLedgerLocalStorage();
-  await Promise.all([
-    pullTimeLedgerEntriesFromSupabase(),
-    pullTimeLedgerTasksFromSupabase(),
-    pullTimeDailyBudgetFromSupabase(),
-  ]);
+  const jobs = [];
+  if (!skipEntries) jobs.push(pullTimeLedgerEntriesFromSupabase());
+  jobs.push(pullTimeLedgerTasksFromSupabase());
+  jobs.push(pullTimeDailyBudgetFromSupabase());
+  await Promise.all(jobs);
   const after = snapshotTimeLedgerLocalStorage();
   const anyChanged = before !== after;
   return { anyChanged };
