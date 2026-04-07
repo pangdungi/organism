@@ -12,7 +12,6 @@ import {
 } from "./timeTaskOptionsModel.js";
 
 const TABLE = "time_ledger_tasks";
-const DEBUG_TIME_LEDGER_TASKS_FLAG = "debug_time_ledger_tasks";
 
 /**
  * 로컬 과제 저장 후 잠깐: tasks pull이 서버 옛 목록(예: 71행)으로 덮어 새 과제를 지우는 레이스 방지.
@@ -25,51 +24,12 @@ function bumpTasksPullSkipAfterLocalChange() {
   _tasksPullSkipUntil = Date.now() + TASKS_PULL_SKIP_AFTER_LOCAL_MS;
 }
 
-function timeLedgerTasksInventoryDebugEnabled() {
+/** 과제 목록(time_ledger_tasks) 서버 반영 확인용 — 추가·수정은 upsert 한 종류로 로그 */
+function logTaskListServer(payload) {
   try {
-    return (
-      typeof localStorage !== "undefined" &&
-      localStorage.getItem(DEBUG_TIME_LEDGER_TASKS_FLAG) === "1"
-    );
-  } catch (_) {
-    return false;
-  }
-}
-
-/** 로컬·upsert·서버 행 수 비교 (누락·UUID 제외 진단용) — debug_time_ledger_tasks=1 일 때만 콘솔 */
-async function logTimeLedgerTaskInventory(context) {
-  if (!timeLedgerTasksInventoryDebugEnabled()) return;
-  const userId = await getSessionUserId();
-  if (!userId || !supabase) return;
-
-  const list = getFullTaskOptions();
-  const payloads = buildTimeLedgerTasksUpsertPayloads(userId);
-  const { count, error } = await supabase
-    .from(TABLE)
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", userId);
-
-  const remoteCount = error ? null : count;
-  const skipped = list.filter((t) => !isUuid(String(t.id || "").trim()));
-  const match =
-    remoteCount != null &&
-    skipped.length === 0 &&
-    list.length === remoteCount &&
-    remoteCount === payloads.length;
-
-  console.info(`[time-ledger-tasks] ${context}`, {
-    로컬_과제수: list.length,
-    DB에_올릴_과제수_UUID만: payloads.length,
-    서버_time_ledger_tasks_행수: remoteCount,
-    로컬과_DB_일치: match,
-    ...(skipped.length
-      ? {
-          UUID아님으로_DB제외: skipped.length,
-          제외된_이름: skipped.map((t) => t.name),
-        }
-      : {}),
-  });
-  if (error) console.warn("[time-ledger-tasks] count 조회 실패", error.message);
+    if (payload?.ok === false) console.warn("[task-list-server]", payload);
+    else console.info("[task-list-server]", payload);
+  } catch (_) {}
 }
 
 async function getSessionUserId() {
@@ -93,7 +53,16 @@ export async function deleteTimeLedgerTaskRowForCurrentUser(taskId) {
     .delete()
     .eq("user_id", userId)
     .eq("id", id);
-  if (error) return;
+  if (error) {
+    logTaskListServer({
+      op: "delete",
+      taskId: id,
+      ok: false,
+      reason: String(error.message || error),
+    });
+    return;
+  }
+  logTaskListServer({ op: "delete", taskId: id, ok: true });
 }
 
 export async function syncTimeLedgerTasksToSupabase() {
@@ -106,6 +75,12 @@ export async function syncTimeLedgerTasksToSupabase() {
     const { error } = await supabase.from(TABLE).upsert(payloads, {
       onConflict: "id",
     });
+    logTaskListServer({
+      op: "upsert",
+      rowCount: payloads.length,
+      ok: !error,
+      reason: error ? String(error.message || error) : undefined,
+    });
     if (!error) _tasksPullSkipUntil = 0;
   }
 
@@ -114,8 +89,6 @@ export async function syncTimeLedgerTasksToSupabase() {
    * 여기 upsert만으로는 삭제 반영이 안 되므로, 동기화 배치에서 고아 행을 일괄 삭제하지 않음
    * (다른 기기에서 추가만 하고 아직 이 기기에 pull 안 된 id를 잘못 지우는 것 방지).
    */
-
-  await logTimeLedgerTaskInventory("동기화 완료 후");
 }
 
 /** 서버에 행이 있으면 로컬 과제 목록 병합 반영 */
@@ -136,16 +109,34 @@ export async function pullTimeLedgerTasksFromSupabase() {
     .order("sort_order", { ascending: true });
 
   if (error) {
+    logTaskListServer({
+      op: "pull",
+      rowCount: 0,
+      ok: false,
+      reason: String(error.message || error),
+    });
     return false;
   }
   const n = Array.isArray(data) ? data.length : 0;
   if (!n) {
+    logTaskListServer({
+      op: "pull",
+      rowCount: 0,
+      ok: true,
+      note: "서버에 과제 행 없음",
+    });
     return false;
   }
 
-  const ok = applyTimeLedgerTasksFromServer(data);
-  if (ok) migrateTimeLogRowsTaskIds();
-  return ok;
+  const applied = applyTimeLedgerTasksFromServer(data);
+  logTaskListServer({
+    op: "pull",
+    rowCount: n,
+    ok: true,
+    applied,
+  });
+  if (applied) migrateTimeLogRowsTaskIds();
+  return applied;
 }
 
 export async function pushTimeLedgerTasksIfServerEmpty() {
@@ -172,7 +163,14 @@ export function scheduleTimeLedgerTasksSyncPush() {
   if (_pushTimer) clearTimeout(_pushTimer);
   _pushTimer = setTimeout(() => {
     _pushTimer = null;
-    syncTimeLedgerTasksToSupabase().catch(() => {});
+    syncTimeLedgerTasksToSupabase().catch((e) =>
+      logTaskListServer({
+        op: "upsert",
+        rowCount: 0,
+        ok: false,
+        reason: String(e?.message || e),
+      }),
+    );
   }, PUSH_DEBOUNCE_MS);
 }
 
@@ -182,9 +180,9 @@ export function attachTimeLedgerTasksSaveListener() {
   if (_listenerAttached) return;
   _listenerAttached = true;
   window.addEventListener("time-ledger-tasks-saved", (e) => {
-    const bump = e.detail?.bumpPullSkip !== false;
-    if (bump) bumpTasksPullSkipAfterLocalChange();
-    scheduleTimeLedgerTasksSyncPush();
+    const d = e.detail || {};
+    if (d.bumpPullSkip !== false) bumpTasksPullSkipAfterLocalChange();
+    if (d.scheduleSyncPush !== false) scheduleTimeLedgerTasksSyncPush();
   });
 }
 
@@ -197,5 +195,4 @@ export async function hydrateTimeLedgerTasksFromCloud() {
     getFullTaskOptions();
     migrateTimeLogRowsTaskIds();
   }
-  await logTimeLedgerTaskInventory("시간가계부 로드 후");
 }

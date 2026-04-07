@@ -68,19 +68,27 @@ function notifySaved(detail = {}) {
     if (typeof window !== "undefined") {
       window.dispatchEvent(
         new CustomEvent("time-ledger-tasks-saved", {
-          detail: { bumpPullSkip: true, ...detail },
+          detail: {
+            bumpPullSkip: true,
+            scheduleSyncPush: true,
+            ...detail,
+          },
         }),
       );
     }
   } catch (_) {}
 }
 
-/** @param {{ bumpPullSkip?: boolean }} [opts] — pull 덮어쓰기 방지: 서버 병합·UUID만 부여할 때는 false */
+/**
+ * @param {{ bumpPullSkip?: boolean, scheduleSyncPush?: boolean }} [opts]
+ * - bumpPullSkip: 서버 pull 직후 덮어쓰기 레이스 방지(로컬 의도 저장일 때만 true 권장)
+ * - scheduleSyncPush: false면 서버에서 막 받아 적은 직후 upsert 예약 안 함(Realtime 루프 방지)
+ */
 function saveMergedList(list, opts = {}) {
-  const { bumpPullSkip = true } = opts;
+  const { bumpPullSkip = true, scheduleSyncPush = true } = opts;
   try {
     localStorage.setItem(TASK_OPTIONS_KEY, JSON.stringify(list));
-    notifySaved({ bumpPullSkip });
+    notifySaved({ bumpPullSkip, scheduleSyncPush });
   } catch (_) {}
 }
 
@@ -132,7 +140,7 @@ function assignIdsToMergedList(merged) {
         : `t-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
     return { ...t, memo: t.memo || "", id: uid };
   });
-  if (dirty) saveMergedList(out, { bumpPullSkip: false });
+  if (dirty) saveMergedList(out, { bumpPullSkip: false, scheduleSyncPush: true });
   return out;
 }
 
@@ -496,7 +504,7 @@ export function applyTimeLedgerTasksFromServer(serverRows) {
     serverRows.map((r, i) => [String(r.id || "").trim(), r.sort_order ?? i]),
   );
   out.sort((a, b) => (order.get(a.id) ?? 9999) - (order.get(b.id) ?? 9999));
-  saveMergedList(out, { bumpPullSkip: false });
+  saveMergedList(out, { bumpPullSkip: false, scheduleSyncPush: false });
   return true;
 }
 
