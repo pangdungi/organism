@@ -5,21 +5,16 @@
 
 import { supabase } from "../supabase.js";
 import { kpiSyncDebugEnabled, kpiSyncDebugLog, kpiSyncPayloadSummary, kpiSyncTrace } from "./kpiSyncDebug.js";
-import {
-  parseIsoMs,
-  buildIdToUpdatedMsMap,
-  mergeRowsByLwwWithServerOrder,
-  bumpEntityArrayLocalModified,
-  serverUpdatedAtFromRow,
-} from "./kpiMapLwwMerge.js";
+import { logKpiServerSnapshot } from "./kpiServerAuditLog.js";
+import { bumpEntityArrayLocalModified, serverUpdatedAtFromRow } from "./kpiMapLwwMerge.js";
 
 export const DREAM_KPI_MAP_STORAGE_KEY = "kpi-dream-map";
 
-/** 꿈 KPI 서버 업로드 결과만 항상 콘솔에 표시(디버그 플래그 불필요) */
+/** 꿈 KPI 로컬→서버 push 단계 — ok / error 만 감사 로그(skip 제외) */
 function dreamKpiUploadLog(phase, detail) {
-  try {
-    console.info("[dream-kpi-upload]", phase, detail != null ? detail : "");
-  } catch (_) {}
+  if (phase !== "ok" && phase !== "error") return;
+  const extra = detail && typeof detail === "object" ? { ...detail } : detail != null ? { note: detail } : {};
+  logKpiServerSnapshot("dream", { op: "push", phase, ...extra });
 }
 
 let _warnedNoSupabaseClient = false;
@@ -160,7 +155,12 @@ async function getSessionUserId() {
     error,
   } = await supabase.auth.getUser();
   if (error) {
-    console.warn("[dream-kpi-map] getUser", error.message);
+    logKpiServerSnapshot("dream", {
+      phase: "error",
+      step: "getUser",
+      ok: false,
+      message: error.message,
+    });
     return null;
   }
   return user?.id ?? null;
@@ -716,107 +716,6 @@ async function deleteOrphanRowsForUser(userId, p, allowEmptyOrphans) {
   return deletedByTable;
 }
 
-/** pull: 서버 스냅샷과 로컬을 행 단위 LWW 병합 (통째 덮어쓰기 방지) */
-function mergeDreamKpiPullWithLocal(L0, S0, raw) {
-  const L = normalizePayload(L0);
-  const S = normalizePayload(S0);
-  const catTs = buildIdToUpdatedMsMap(raw.categories);
-  const kpiTs = buildIdToUpdatedMsMap(raw.kpis);
-  const logTs = buildIdToUpdatedMsMap(raw.logs);
-  const todoTs = buildIdToUpdatedMsMap(raw.todos);
-  const dailyTs = buildIdToUpdatedMsMap(raw.daily);
-  const mergedDreams = mergeRowsByLwwWithServerOrder({
-    localArr: L.dreams,
-    serverArr: S.dreams,
-    serverTsMap: catTs,
-    getId: (x) => x.id,
-  });
-  const mergedKpis = mergeRowsByLwwWithServerOrder({
-    localArr: L.kpis,
-    serverArr: S.kpis,
-    serverTsMap: kpiTs,
-    getId: (x) => x.id,
-  });
-  const mergedLogs = mergeRowsByLwwWithServerOrder({
-    localArr: L.kpiLogs,
-    serverArr: S.kpiLogs,
-    serverTsMap: logTs,
-    getId: (x) => x.id,
-  });
-  const mergedTodos = mergeRowsByLwwWithServerOrder({
-    localArr: L.kpiTodos,
-    serverArr: S.kpiTodos,
-    serverTsMap: todoTs,
-    getId: (x) => x.id,
-  });
-  const mergedDaily = mergeRowsByLwwWithServerOrder({
-    localArr: L.kpiDailyRepeatTodos,
-    serverArr: S.kpiDailyRepeatTodos,
-    serverTsMap: dailyTs,
-    getId: (x) => x.id,
-  });
-  const meta = raw.meta;
-  const metaT = meta ? parseIsoMs(meta.updated_at) : 0;
-  const localMetaT = Math.max(
-    parseIsoMs(L.localMetaModifiedAt),
-    parseIsoMs(L.metaServerUpdatedAt),
-  );
-  let goals = L.goals;
-  let tasks = L.tasks;
-  let desiredLife = L.desiredLife;
-  let kpiOrder = L.kpiOrder;
-  let kpiTaskSync = L.kpiTaskSync;
-  let deletedRefs = L.deletedRefs;
-  if (localMetaT > metaT) {
-    /* 로컬 메타가 더 최신 */
-  } else if (metaT > localMetaT) {
-    goals = S.goals;
-    tasks = S.tasks;
-    desiredLife = S.desiredLife;
-    kpiOrder = S.kpiOrder;
-    kpiTaskSync = S.kpiTaskSync;
-    deletedRefs = S.deletedRefs;
-  }
-  /* 삭제된 항목 필터링 (부활 방지) */
-  const drCat = new Set([...(L.deletedRefs?.categories || []), ...(S.deletedRefs?.categories || [])]);
-  const drKpi = new Set([...(L.deletedRefs?.kpis || []), ...(S.deletedRefs?.kpis || [])]);
-  const drLog = new Set([...(L.deletedRefs?.kpiLogs || []), ...(S.deletedRefs?.kpiLogs || [])]);
-  const drTodo = new Set([...(L.deletedRefs?.kpiTodos || []), ...(S.deletedRefs?.kpiTodos || [])]);
-  const drDaily = new Set([...(L.deletedRefs?.kpiDailyRepeatTodos || []), ...(S.deletedRefs?.kpiDailyRepeatTodos || [])]);
-
-  const filteredDreams = mergedDreams.filter((d) => !drCat.has(String(d.id)));
-  const filteredKpis = mergedKpis.filter((k) => !drKpi.has(String(k.id)) && !drCat.has(String(k.dreamId)));
-  const validKpiIds = new Set(filteredKpis.map((k) => String(k.id)));
-  const filteredLogs = mergedLogs.filter((l) => !drLog.has(String(l.id)) && validKpiIds.has(String(l.kpiId)));
-  const filteredTodos = mergedTodos.filter((t) => !drTodo.has(String(t.id)) && validKpiIds.has(String(t.kpiId)));
-  const filteredDaily = mergedDaily.filter((t) => !drDaily.has(String(t.id)) && validKpiIds.has(String(t.kpiId)));
-
-  /* 삭제된 KPI ID를 kpiTaskSync에서 제거 */
-  if (drKpi.size > 0 && kpiTaskSync && typeof kpiTaskSync === "object") {
-    const cleaned = { ...kpiTaskSync };
-    for (const id of drKpi) {
-      delete cleaned[id];
-    }
-    kpiTaskSync = cleaned;
-  }
-  return normalizePayload({
-    dreams: filteredDreams,
-    goals,
-    tasks,
-    desiredLife,
-    kpis: filteredKpis,
-    kpiLogs: filteredLogs,
-    kpiTodos: filteredTodos,
-    kpiDailyRepeatTodos: filteredDaily,
-    kpiOrder,
-    kpiTaskSync,
-    deletedRefs,
-    metaServerUpdatedAt:
-      meta?.updated_at != null ? String(meta.updated_at) : L.metaServerUpdatedAt || "",
-    localMetaModifiedAt: L.localMetaModifiedAt,
-  });
-}
-
 /** 저장 시 변경된 행에만 localModifiedAt, 메타 변경 시 localMetaModifiedAt */
 export function applyDreamKpiTimestampsOnSave(prev, next) {
   const out = { ...normalizePayload(next) };
@@ -842,10 +741,23 @@ export function applyDreamKpiTimestampsOnSave(prev, next) {
   return normalizePayload(out);
 }
 
+/** dream_map_* pull·sync 직렬화 — 업로드(merge·upsert) 도중 pull이 끼면 옛 서버 스냅샷으로 로컬이 덮일 수 있음 */
+let _dreamKpiServerChain = Promise.resolve();
+function runSerializedDreamKpiServerOp(fn) {
+  const next = _dreamKpiServerChain.then(fn, fn);
+  _dreamKpiServerChain = next.catch(() => {});
+  return next;
+}
+
 /** @returns {Promise<boolean>} 서버 데이터로 로컬을 갱신했으면 true */
-export async function pullDreamKpiMapFromSupabase() {
+async function pullDreamKpiMapFromSupabaseImpl() {
   const userId = await getSessionUserId();
   if (!userId || !supabase) {
+    logKpiServerSnapshot("dream", {
+      op: "pull",
+      ok: false,
+      reason: !supabase ? "no_supabase" : "no_session",
+    });
     kpiSyncDebugLog("꿈 pull", {
       ok: false,
       reason: !supabase ? "Supabase 클라이언트 없음" : "로그인 세션 없음(같은 계정으로 데스크탑에서도 로그인 필요)",
@@ -864,11 +776,13 @@ export async function pullDreamKpiMapFromSupabase() {
 
   for (const res of [catRes, kpiRes, logRes, todoRes, dailyRes]) {
     if (res.error) {
+      logKpiServerSnapshot("dream", { op: "pull", ok: false, error: res.error.message, step: "table" });
       kpiSyncDebugLog("꿈 pull", { ok: false, error: res.error.message });
       return false;
     }
   }
   if (metaRes.error) {
+    logKpiServerSnapshot("dream", { op: "pull", ok: false, error: metaRes.error.message, step: "meta" });
     kpiSyncDebugLog("꿈 pull", { ok: false, error: metaRes.error.message, step: "meta" });
     return false;
   }
@@ -881,8 +795,7 @@ export async function pullDreamKpiMapFromSupabase() {
   const meta = metaRes.data;
 
   if (hasAnyNormalizedData(categories, kpis, logs, todos, daily, meta)) {
-    const localBefore = readLocalPayload();
-    const serverPayload = buildPayloadFromNormalizedRows(
+    const payload = buildPayloadFromNormalizedRows(
       categories,
       kpis,
       logs,
@@ -890,19 +803,11 @@ export async function pullDreamKpiMapFromSupabase() {
       daily,
       meta,
     );
-    const payload = mergeDreamKpiPullWithLocal(localBefore, serverPayload, {
-      categories,
-      kpis,
-      logs,
-      todos,
-      daily,
-      meta,
-    });
     try {
       localStorage.setItem(DREAM_KPI_MAP_STORAGE_KEY, JSON.stringify(payload));
     } catch (_) {}
     kpiSyncDebugLog("꿈 pull → 완료", {
-      source: "Supabase dream_map_*",
+      source: "Supabase dream_map_* (서버 스냅샷만)",
       localKey: DREAM_KPI_MAP_STORAGE_KEY,
       counts: {
         categories: categories.length,
@@ -923,6 +828,18 @@ export async function pullDreamKpiMapFromSupabase() {
         daily: daily.length,
       },
       payloadSummary: kpiSyncPayloadSummary("dream", payload),
+    });
+    logKpiServerSnapshot("dream", {
+      op: "pull",
+      ok: true,
+      policy: "server_snapshot_only",
+      dbRowCounts: {
+        categories: categories.length,
+        kpis: kpis.length,
+        logs: logs.length,
+        todos: todos.length,
+        dailyTodos: daily.length,
+      },
     });
     return true;
   }
@@ -954,13 +871,22 @@ export async function pullDreamKpiMapFromSupabase() {
     counts: { categories: 0, kpis: 0, logs: 0, todos: 0, dailyTodos: 0 },
     note: "서버·로컬 모두 비어 있음 → 빈 payload로 통일",
   });
+  logKpiServerSnapshot("dream", {
+    op: "pull",
+    ok: true,
+    policy: "server_snapshot_only",
+    note: "empty_server_and_local",
+    dbRowCounts: { categories: 0, kpis: 0, logs: 0, todos: 0, dailyTodos: 0 },
+  });
   return true;
+}
+
+export function pullDreamKpiMapFromSupabase() {
+  return runSerializedDreamKpiServerOp(() => pullDreamKpiMapFromSupabaseImpl());
 }
 
 /** 서버에 반영해야 할 로컬 변경이 남아 있음(디바운스 대기 포함) */
 let _dreamKpiPushDirty = false;
-/** 동시에 sync가 두 번 돌지 않도록 */
-let _dreamKpiSyncInFlight = null;
 
 async function runDreamKpiMapSyncOnce() {
   const userId = await getSessionUserId();
@@ -1112,11 +1038,7 @@ async function runDreamKpiMapSyncOnce() {
 
 /** @returns {Promise<void>} */
 export function syncDreamKpiMapToSupabase() {
-  if (_dreamKpiSyncInFlight) return _dreamKpiSyncInFlight;
-  _dreamKpiSyncInFlight = runDreamKpiMapSyncOnce().finally(() => {
-    _dreamKpiSyncInFlight = null;
-  });
-  return _dreamKpiSyncInFlight;
+  return runSerializedDreamKpiServerOp(() => runDreamKpiMapSyncOnce());
 }
 
 let _pushTimer = null;
@@ -1131,7 +1053,6 @@ export function flushDreamKpiMapSyncPush() {
   }
   /* 방금 디바운스로 올린 직후 탭만 바꾼 경우: 대기 작업 없고 이미 반영됨 → 한 번 더 업로드·ok 로그 방지 */
   if (!hadPending && !_dreamKpiPushDirty) return;
-  if (_dreamKpiSyncInFlight) return _dreamKpiSyncInFlight;
   return syncDreamKpiMapToSupabase().catch((e) => {
     dreamKpiUploadLog("error", { phase: "flush", message: e?.message || String(e) });
   });

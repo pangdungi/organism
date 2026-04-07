@@ -5,13 +5,8 @@
 
 import { supabase } from "../supabase.js";
 import { kpiSyncDebugLog, kpiSyncDebugEnabled, kpiSyncPayloadSummary, kpiSyncTrace } from "./kpiSyncDebug.js";
-import {
-  parseIsoMs,
-  buildIdToUpdatedMsMap,
-  mergeRowsByLwwWithServerOrder,
-  bumpEntityArrayLocalModified,
-  serverUpdatedAtFromRow,
-} from "./kpiMapLwwMerge.js";
+import { logKpiServerSnapshot } from "./kpiServerAuditLog.js";
+import { bumpEntityArrayLocalModified, serverUpdatedAtFromRow } from "./kpiMapLwwMerge.js";
 
 export const HEALTH_KPI_MAP_STORAGE_KEY = "kpi-health-map";
 
@@ -59,9 +54,9 @@ function hasDeletedRefsPayload(p) {
 }
 
 function healthKpiUploadLog(phase, detail) {
-  try {
-    console.info("[health-kpi-upload]", phase, detail != null ? detail : "");
-  } catch (_) {}
+  if (phase !== "ok" && phase !== "error") return;
+  const extra = detail && typeof detail === "object" ? { ...detail } : detail != null ? { note: detail } : {};
+  logKpiServerSnapshot("health", { op: "push", phase, ...extra });
 }
 
 function readLocalPayload() {
@@ -104,17 +99,6 @@ function emptyPayload() {
     deletedRefs: defaultDeletedRefs(),
     metaServerUpdatedAt: "",
     localMetaModifiedAt: undefined,
-  };
-}
-
-/** 디버그: 새로고침 직후 로컬 vs pull 후 비교용 (콘솔 필터: health-kpi-map][trace) */
-function healthKpiMapTraceSnapshot(p) {
-  const n = normalizePayload(p);
-  return {
-    healths: n.healths.length,
-    kpis: n.kpis.length,
-    kpiTodos: n.kpiTodos.length,
-    kpiLogs: n.kpiLogs.length,
   };
 }
 
@@ -162,7 +146,7 @@ async function getSessionUserId() {
     error,
   } = await supabase.auth.getUser();
   if (error) {
-    console.warn("[health-kpi-map] getUser", error.message);
+    logKpiServerSnapshot("health", { phase: "error", step: "getUser", ok: false, message: error.message });
     return null;
   }
   return user?.id ?? null;
@@ -310,97 +294,6 @@ function buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, me
     });
   }
   return out;
-}
-
-function mergeHealthKpiPullWithLocal(L0, S0, raw) {
-  const L = normalizePayload(L0);
-  const S = normalizePayload(S0);
-  const catTs = buildIdToUpdatedMsMap(raw.categories);
-  const kpiTs = buildIdToUpdatedMsMap(raw.kpis);
-  const logTs = buildIdToUpdatedMsMap(raw.logs);
-  const todoTs = buildIdToUpdatedMsMap(raw.todos);
-  const dailyTs = buildIdToUpdatedMsMap(raw.daily);
-  const mergedHealths = mergeRowsByLwwWithServerOrder({
-    localArr: L.healths,
-    serverArr: S.healths,
-    serverTsMap: catTs,
-    getId: (x) => x.id,
-  });
-  const mergedKpis = mergeRowsByLwwWithServerOrder({
-    localArr: L.kpis,
-    serverArr: S.kpis,
-    serverTsMap: kpiTs,
-    getId: (x) => x.id,
-  });
-  const mergedLogs = mergeRowsByLwwWithServerOrder({
-    localArr: L.kpiLogs,
-    serverArr: S.kpiLogs,
-    serverTsMap: logTs,
-    getId: (x) => x.id,
-  });
-  const mergedTodos = mergeRowsByLwwWithServerOrder({
-    localArr: L.kpiTodos,
-    serverArr: S.kpiTodos,
-    serverTsMap: todoTs,
-    getId: (x) => x.id,
-  });
-  const mergedDaily = mergeRowsByLwwWithServerOrder({
-    localArr: L.kpiDailyRepeatTodos,
-    serverArr: S.kpiDailyRepeatTodos,
-    serverTsMap: dailyTs,
-    getId: (x) => x.id,
-  });
-  const meta = raw.meta;
-  const metaT = meta ? parseIsoMs(meta.updated_at) : 0;
-  const localMetaT = Math.max(
-    parseIsoMs(L.localMetaModifiedAt),
-    parseIsoMs(L.metaServerUpdatedAt),
-  );
-  let kpiOrder = L.kpiOrder;
-  let kpiTaskSync = L.kpiTaskSync;
-  let deletedRefs = L.deletedRefs;
-  if (localMetaT > metaT) {
-    /* 로컬 메타 우선 */
-  } else if (metaT > localMetaT) {
-    kpiOrder = S.kpiOrder;
-    kpiTaskSync = S.kpiTaskSync;
-    deletedRefs = S.deletedRefs;
-  }
-  /* 삭제된 항목 필터링 (부활 방지) */
-  const drCat = new Set([...(L.deletedRefs?.categories || []), ...(S.deletedRefs?.categories || [])]);
-  const drKpi = new Set([...(L.deletedRefs?.kpis || []), ...(S.deletedRefs?.kpis || [])]);
-  const drLog = new Set([...(L.deletedRefs?.kpiLogs || []), ...(S.deletedRefs?.kpiLogs || [])]);
-  const drTodo = new Set([...(L.deletedRefs?.kpiTodos || []), ...(S.deletedRefs?.kpiTodos || [])]);
-  const drDaily = new Set([...(L.deletedRefs?.kpiDailyRepeatTodos || []), ...(S.deletedRefs?.kpiDailyRepeatTodos || [])]);
-
-  const filteredHealths = mergedHealths.filter((h) => !drCat.has(String(h.id)));
-  const filteredKpis = mergedKpis.filter((k) => !drKpi.has(String(k.id)) && !drCat.has(String(k.healthId)));
-  const validKpiIds = new Set(filteredKpis.map((k) => String(k.id)));
-  const filteredLogs = mergedLogs.filter((l) => !drLog.has(String(l.id)) && validKpiIds.has(String(l.kpiId)));
-  const filteredTodos = mergedTodos.filter((t) => !drTodo.has(String(t.id)) && validKpiIds.has(String(t.kpiId)));
-  const filteredDaily = mergedDaily.filter((t) => !drDaily.has(String(t.id)) && validKpiIds.has(String(t.kpiId)));
-
-  /* 삭제된 KPI ID를 kpiTaskSync에서 제거 */
-  if (drKpi.size > 0 && kpiTaskSync && typeof kpiTaskSync === "object") {
-    const cleaned = { ...kpiTaskSync };
-    for (const id of drKpi) {
-      delete cleaned[id];
-    }
-    kpiTaskSync = cleaned;
-  }
-  return normalizePayload({
-    healths: filteredHealths,
-    kpis: filteredKpis,
-    kpiLogs: filteredLogs,
-    kpiTodos: filteredTodos,
-    kpiDailyRepeatTodos: filteredDaily,
-    kpiOrder,
-    kpiTaskSync,
-    deletedRefs,
-    metaServerUpdatedAt:
-      meta?.updated_at != null ? String(meta.updated_at) : L.metaServerUpdatedAt || "",
-    localMetaModifiedAt: L.localMetaModifiedAt,
-  });
 }
 
 export function applyHealthKpiTimestampsOnSave(prev, next) {
@@ -797,10 +690,23 @@ async function deleteOrphanRowsForUser(userId, p, allowEmptyOrphans) {
   return deletedByTable;
 }
 
+/** health_map_* pull·sync 직렬화 */
+let _healthKpiServerChain = Promise.resolve();
+function runSerializedHealthKpiServerOp(fn) {
+  const next = _healthKpiServerChain.then(fn, fn);
+  _healthKpiServerChain = next.catch(() => {});
+  return next;
+}
+
 /** @returns {Promise<boolean>} 서버 데이터로 로컬을 갱신했으면 true */
-export async function pullHealthKpiMapFromSupabase() {
+async function pullHealthKpiMapFromSupabaseImpl() {
   const userId = await getSessionUserId();
   if (!userId || !supabase) {
+    logKpiServerSnapshot("health", {
+      op: "pull",
+      ok: false,
+      reason: !supabase ? "no_supabase" : "no_session",
+    });
     kpiSyncDebugLog("건강 pull", {
       ok: false,
       reason: !supabase ? "Supabase 없음" : "로그인 세션 없음",
@@ -819,13 +725,13 @@ export async function pullHealthKpiMapFromSupabase() {
 
   for (const res of [catRes, kpiRes, logRes, todoRes, dailyRes]) {
     if (res.error) {
-      console.warn("[health-kpi-map] pull", res.error.message);
+      logKpiServerSnapshot("health", { op: "pull", ok: false, error: res.error.message, step: "table" });
       kpiSyncDebugLog("건강 pull", { ok: false, error: res.error.message });
       return false;
     }
   }
   if (metaRes.error) {
-    console.warn("[health-kpi-map] pull meta", metaRes.error.message);
+    logKpiServerSnapshot("health", { op: "pull", ok: false, error: metaRes.error.message, step: "meta" });
     kpiSyncDebugLog("건강 pull", { ok: false, error: metaRes.error.message, step: "meta" });
     return false;
   }
@@ -838,27 +744,12 @@ export async function pullHealthKpiMapFromSupabase() {
   const meta = metaRes.data;
 
   if (hasAnyNormalizedData(categories, kpis, logs, todos, daily, meta)) {
-    const serverPayload = buildPayloadFromNormalizedRows(
-      categories,
-      kpis,
-      logs,
-      todos,
-      daily,
-      meta,
-    );
-    const payload = mergeHealthKpiPullWithLocal(readLocalPayload(), serverPayload, {
-      categories,
-      kpis,
-      logs,
-      todos,
-      daily,
-      meta,
-    });
+    const payload = buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, meta);
     try {
       localStorage.setItem(HEALTH_KPI_MAP_STORAGE_KEY, JSON.stringify(payload));
     } catch (_) {}
     kpiSyncDebugLog("건강 pull → 완료", {
-      source: "Supabase health_map_*",
+      source: "Supabase health_map_* (서버 스냅샷만)",
       localKey: HEALTH_KPI_MAP_STORAGE_KEY,
       counts: {
         categories: categories.length,
@@ -879,7 +770,30 @@ export async function pullHealthKpiMapFromSupabase() {
       },
       payloadSummary: kpiSyncPayloadSummary("health", payload),
     });
+    logKpiServerSnapshot("health", {
+      op: "pull",
+      ok: true,
+      policy: "server_snapshot_only",
+      source: "normalized_tables",
+      dbRowCounts: {
+        categories: categories.length,
+        kpis: kpis.length,
+        logs: logs.length,
+        todos: todos.length,
+        dailyTodos: daily.length,
+      },
+    });
     return true;
+  }
+
+  const localOnly = readLocalPayload();
+  if (localPayloadHasAnythingToPersist(localOnly)) {
+    kpiSyncDebugLog("건강 pull", {
+      ok: false,
+      skipped: "정규화 테이블 스냅샷 없음 — 로컬 유지 후 업로드 예약",
+    });
+    scheduleHealthKpiMapSyncPush();
+    return false;
   }
 
   const { data: legacyRow, error: legErr } = await supabase
@@ -889,7 +803,7 @@ export async function pullHealthKpiMapFromSupabase() {
     .maybeSingle();
 
   if (legErr) {
-    console.warn("[health-kpi-map] pull legacy", legErr.message);
+    logKpiServerSnapshot("health", { op: "pull", ok: false, error: legErr.message, step: "legacy" });
     kpiSyncDebugLog("건강 pull", { ok: false, error: legErr.message, step: "legacy" });
     return false;
   }
@@ -901,6 +815,12 @@ export async function pullHealthKpiMapFromSupabase() {
     kpiSyncDebugLog("건강 pull → 완료", {
       source: "서버 정규화 데이터 없음 → 빈 로컬",
       localKey: HEALTH_KPI_MAP_STORAGE_KEY,
+    });
+    logKpiServerSnapshot("health", {
+      op: "pull",
+      ok: true,
+      policy: "server_snapshot_only",
+      source: "no_normalized_empty_local",
     });
     return true;
   }
@@ -915,15 +835,30 @@ export async function pullHealthKpiMapFromSupabase() {
     await upsertNormalizedFromPayloadWithRetry(userId, p);
     await deleteOrphanRowsForUser(userId, p, true);
     await supabase.from(LEGACY_TABLE).delete().eq("user_id", userId);
+    logKpiServerSnapshot("health", {
+      op: "pull",
+      ok: true,
+      policy: "server_snapshot_only",
+      source: "legacy_migrated_to_normalized",
+    });
   } catch (e) {
-    console.warn("[health-kpi-map] migrate legacy → normalized", e?.message || e);
+    logKpiServerSnapshot("health", {
+      op: "pull",
+      ok: false,
+      phase: "error",
+      step: "legacy_migrate",
+      message: e?.message || String(e),
+    });
   }
   return true;
 }
 
+export function pullHealthKpiMapFromSupabase() {
+  return runSerializedHealthKpiServerOp(() => pullHealthKpiMapFromSupabaseImpl());
+}
+
 /** 서버에 반영해야 할 로컬 변경이 남아 있음(디바운스 대기 포함) */
 let _healthKpiPushDirty = false;
-let _healthKpiSyncInFlight = null;
 
 async function runHealthKpiMapSyncOnce() {
   const userId = await getSessionUserId();
@@ -1067,11 +1002,7 @@ async function runHealthKpiMapSyncOnce() {
 
 /** @returns {Promise<void>} */
 export function syncHealthKpiMapToSupabase() {
-  if (_healthKpiSyncInFlight) return _healthKpiSyncInFlight;
-  _healthKpiSyncInFlight = runHealthKpiMapSyncOnce().finally(() => {
-    _healthKpiSyncInFlight = null;
-  });
-  return _healthKpiSyncInFlight;
+  return runSerializedHealthKpiServerOp(() => runHealthKpiMapSyncOnce());
 }
 
 let _pushTimer = null;
@@ -1085,7 +1016,6 @@ export function flushHealthKpiMapSyncPush() {
     _pushTimer = null;
   }
   if (!hadPending && !_healthKpiPushDirty) return;
-  if (_healthKpiSyncInFlight) return _healthKpiSyncInFlight;
   return syncHealthKpiMapToSupabase().catch((e) => {
     healthKpiUploadLog("error", { phase: "flush", message: e?.message || String(e) });
   });
@@ -1134,27 +1064,11 @@ export function attachHealthKpiMapSaveListener() {
 export async function hydrateHealthKpiMapFromCloud() {
   kpiSyncDebugLog("건강 hydrate 시작", { when: "앱 부팅 시 Promise.all 안" });
   attachHealthKpiMapSaveListener();
-  const before = readLocalPayload();
-  if (kpiSyncDebugEnabled()) {
-    console.log(
-      "[health-kpi-map][trace] hydrate: pull 직전 로컬 (새로고침 직후면 여기가 브라우저에 남아 있던 값)",
-      healthKpiMapTraceSnapshot(before),
-    );
-  }
   if (!supabase) {
     kpiSyncDebugLog("건강 hydrate 생략", { reason: "Supabase 없음" });
     return false;
   }
   const applied = await pullHealthKpiMapFromSupabase();
-  const afterPull = readLocalPayload();
-  if (kpiSyncDebugEnabled()) {
-    console.log(
-      "[health-kpi-map][trace] hydrate: pull 이후 (applied=" +
-        applied +
-        " = pull 성공 시 true, 서버가 비어도 로컬을 빈 스냅샷으로 맞춤)",
-      healthKpiMapTraceSnapshot(afterPull),
-    );
-  }
   kpiSyncDebugLog("건강 hydrate 끝", { applied });
   return applied;
 }

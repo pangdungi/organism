@@ -37,12 +37,9 @@ export async function syncTimeImproveNoteDateToSupabase(dateKey) {
   const d = String(dateKey).replace(/\//g, "-").slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
   const entry = getStoredImproveNotes(d);
-  const { error } = await supabase
-    .from(TABLE)
-    .upsert(rowToUpsert(userId, d, entry), {
-      onConflict: "user_id,entry_date",
-    });
-  if (error) console.warn("[time-improve-notes] upsert", error.message);
+  await supabase.from(TABLE).upsert(rowToUpsert(userId, d, entry), {
+    onConflict: "user_id,entry_date",
+  });
 }
 
 export async function pullTimeImproveNotesFromSupabase() {
@@ -57,10 +54,7 @@ export async function pullTimeImproveNotesFromSupabase() {
     .eq("user_id", userId)
     .order("entry_date", { ascending: false });
 
-  if (error) {
-    console.warn("[time-improve-notes] pull", error.message);
-    return;
-  }
+  if (error) return;
   if (data?.length) mergeImproveNotesFromServerRows(data);
 }
 
@@ -82,10 +76,9 @@ export async function pushAllLocalTimeImproveNotesIfServerEmpty() {
   const payloads = locals.map((row) =>
     rowToUpsert(userId, row.dateKey, row),
   );
-  const { error: upErr } = await supabase.from(TABLE).upsert(payloads, {
+  await supabase.from(TABLE).upsert(payloads, {
     onConflict: "user_id,entry_date",
   });
-  if (upErr) console.warn("[time-improve-notes] bulk upsert", upErr.message);
 }
 
 let _pushTimer = null;
@@ -98,9 +91,7 @@ export function scheduleTimeImproveNotesSyncPush(dateKey) {
   if (_pushTimer) clearTimeout(_pushTimer);
   _pushTimer = setTimeout(() => {
     _pushTimer = null;
-    syncTimeImproveNoteDateToSupabase(d).catch((e) =>
-      console.warn("[time-improve-notes]", e),
-    );
+    syncTimeImproveNoteDateToSupabase(d).catch(() => {});
   }, PUSH_DEBOUNCE_MS);
 }
 

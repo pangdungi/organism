@@ -55,12 +55,9 @@ export async function syncTimeDailyBudgetDateToSupabase(dateKey) {
       excluded_names = er.map((x) => String(x || "").trim()).filter(Boolean);
     }
   } catch (_) {}
-  const { error } = await supabase
-    .from(TABLE)
-    .upsert(rowToUpsert(userId, dk, goals, excluded_names), {
-      onConflict: "user_id,plan_date",
-    });
-  if (error) console.warn("[time-daily-budget] upsert", error.message);
+  await supabase.from(TABLE).upsert(rowToUpsert(userId, dk, goals, excluded_names), {
+    onConflict: "user_id,plan_date",
+  });
 }
 
 export async function pullTimeDailyBudgetFromSupabase() {
@@ -73,10 +70,7 @@ export async function pullTimeDailyBudgetFromSupabase() {
     .eq("user_id", userId)
     .order("plan_date", { ascending: false });
 
-  if (error) {
-    console.warn("[time-daily-budget] pull", error.message);
-    return false;
-  }
+  if (error) return false;
   if (!data?.length) return false;
   return mergeTimeDailyBudgetRowsFromServer(data);
 }
@@ -99,10 +93,9 @@ export async function pushAllLocalTimeDailyBudgetIfServerEmpty() {
   const payloads = locals.map((row) =>
     rowToUpsert(userId, row.dateKey, row.goals, row.excluded_names),
   );
-  const { error: upErr } = await supabase.from(TABLE).upsert(payloads, {
+  await supabase.from(TABLE).upsert(payloads, {
     onConflict: "user_id,plan_date",
   });
-  if (upErr) console.warn("[time-daily-budget] bulk upsert", upErr.message);
 }
 
 let _pushTimer = null;
@@ -115,9 +108,7 @@ export function scheduleTimeDailyBudgetSyncPush(dateKey) {
   if (_pushTimer) clearTimeout(_pushTimer);
   _pushTimer = setTimeout(() => {
     _pushTimer = null;
-    syncTimeDailyBudgetDateToSupabase(dk).catch((e) =>
-      console.warn("[time-daily-budget]", e),
-    );
+    syncTimeDailyBudgetDateToSupabase(dk).catch(() => {});
   }, PUSH_DEBOUNCE_MS);
 }
 

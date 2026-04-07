@@ -24,14 +24,6 @@ function bumpTasksPullSkipAfterLocalChange() {
   _tasksPullSkipUntil = Date.now() + TASKS_PULL_SKIP_AFTER_LOCAL_MS;
 }
 
-/** 과제 목록(time_ledger_tasks) 서버 반영 확인용 — 추가·수정은 upsert 한 종류로 로그 */
-function logTaskListServer(payload) {
-  try {
-    if (payload?.ok === false) console.warn("[task-list-server]", payload);
-    else console.info("[task-list-server]", payload);
-  } catch (_) {}
-}
-
 async function getSessionUserId() {
   if (!supabase) return null;
   const {
@@ -53,16 +45,7 @@ export async function deleteTimeLedgerTaskRowForCurrentUser(taskId) {
     .delete()
     .eq("user_id", userId)
     .eq("id", id);
-  if (error) {
-    logTaskListServer({
-      op: "delete",
-      taskId: id,
-      ok: false,
-      reason: String(error.message || error),
-    });
-    return;
-  }
-  logTaskListServer({ op: "delete", taskId: id, ok: true });
+  if (error) return;
 }
 
 export async function syncTimeLedgerTasksToSupabase() {
@@ -74,12 +57,6 @@ export async function syncTimeLedgerTasksToSupabase() {
   if (payloads.length > 0) {
     const { error } = await supabase.from(TABLE).upsert(payloads, {
       onConflict: "id",
-    });
-    logTaskListServer({
-      op: "upsert",
-      rowCount: payloads.length,
-      ok: !error,
-      reason: error ? String(error.message || error) : undefined,
     });
     if (!error) _tasksPullSkipUntil = 0;
   }
@@ -108,33 +85,11 @@ export async function pullTimeLedgerTasksFromSupabase() {
     .eq("user_id", userId)
     .order("sort_order", { ascending: true });
 
-  if (error) {
-    logTaskListServer({
-      op: "pull",
-      rowCount: 0,
-      ok: false,
-      reason: String(error.message || error),
-    });
-    return false;
-  }
+  if (error) return false;
   const n = Array.isArray(data) ? data.length : 0;
-  if (!n) {
-    logTaskListServer({
-      op: "pull",
-      rowCount: 0,
-      ok: true,
-      note: "서버에 과제 행 없음",
-    });
-    return false;
-  }
+  if (!n) return false;
 
   const applied = applyTimeLedgerTasksFromServer(data);
-  logTaskListServer({
-    op: "pull",
-    rowCount: n,
-    ok: true,
-    applied,
-  });
   if (applied) migrateTimeLogRowsTaskIds();
   return applied;
 }
@@ -163,14 +118,7 @@ export function scheduleTimeLedgerTasksSyncPush() {
   if (_pushTimer) clearTimeout(_pushTimer);
   _pushTimer = setTimeout(() => {
     _pushTimer = null;
-    syncTimeLedgerTasksToSupabase().catch((e) =>
-      logTaskListServer({
-        op: "upsert",
-        rowCount: 0,
-        ok: false,
-        reason: String(e?.message || e),
-      }),
-    );
+    syncTimeLedgerTasksToSupabase().catch(() => {});
   }, PUSH_DEBOUNCE_MS);
 }
 

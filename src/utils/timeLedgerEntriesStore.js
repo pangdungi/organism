@@ -127,17 +127,7 @@ export function tryMirrorTimeLedgerToLocalStorage(rows) {
   try {
     if (typeof localStorage === "undefined") return;
     localStorage.setItem(TIME_LEDGER_STORAGE_KEY, JSON.stringify(rows));
-  } catch (e) {
-    if (!_lsMirrorWarned) {
-      _lsMirrorWarned = true;
-      const name = e && e.name;
-      if (name === "QuotaExceededError" || name === "NS_ERROR_DOM_QUOTA_REACHED") {
-        console.warn(
-          "[time-ledger-store] localStorage 미러 생략(용량 초과). IndexedDB에만 저장됩니다.",
-        );
-      } else {
-        console.warn("[time-ledger-store] localStorage 미러 실패:", e?.message || e);
-      }
-    }
+  } catch (_) {
+    if (!_lsMirrorWarned) _lsMirrorWarned = true;
   }
 }

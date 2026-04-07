@@ -18,9 +18,7 @@ import {
 export async function purgeTimeLedgerLocalData() {
   try {
     await writeAllRowsToIdb([]);
-  } catch (e) {
-    console.warn("[time-ledger] purge IDB", e);
-  }
+  } catch (_) {}
   try {
     tryMirrorTimeLedgerToLocalStorage([]);
   } catch (_) {}
@@ -54,8 +52,7 @@ export function ensureTimeLedgerStorageReady() {
           await writeAllRowsToIdb(fixed);
           tryMirrorTimeLedgerToLocalStorage(fixed);
         }
-      } catch (e) {
-        console.warn("[time-ledger-model] IndexedDB 사용 불가, localStorage로 폴백:", e);
+      } catch (_) {
         _idbDisabled = true;
         let rows = [];
         try {
@@ -123,7 +120,11 @@ export function ensureTimeLedgerEntryIds(rows) {
     const id = String(r.id || "").trim();
     if (isUuid(id)) return { ...r, id };
     dirty = true;
-    return { ...r, id: newRowId() };
+    const lm =
+      typeof r.localModifiedAt === "number" && Number.isFinite(r.localModifiedAt)
+        ? r.localModifiedAt
+        : Date.now();
+    return { ...r, id: newRowId(), localModifiedAt: lm };
   });
   return { rows: out, dirty };
 }
@@ -144,6 +145,42 @@ export function timeLedgerRowIsSyncable(r) {
   const feedback = (r.feedback || "").trim();
   const start = (r.startTime || "").trim();
   return !!(taskName || timeTracked || feedback || start);
+}
+
+/**
+ * 이 기기에서 사용자가 수정·추가한 행만 서버로 보냄.
+ * (끌어오기만 한 행은 serverUpdatedAt만 있고 localModifiedAt 없음 → upsert 생략 → 다른 기기 기록 덮어쓰기 방지)
+ */
+export function timeLedgerRowNeedsPush(r) {
+  if (!timeLedgerRowIsSyncable(r)) return false;
+  const lm = r.localModifiedAt;
+  const hasLm = typeof lm === "number" && Number.isFinite(lm);
+  if (!hasLm) return false;
+  const s = String(r.serverUpdatedAt || "").trim();
+  if (!s) return true;
+  const serverMs = Date.parse(s);
+  if (!Number.isFinite(serverMs)) return true;
+  return lm > serverMs;
+}
+
+/** upsert 응답의 updated_at으로 로컰 메타 정리(다음 푸시에서 중복 업서트 방지) */
+export function mergeTimeLedgerEntriesPushedServerTimes(dbRows) {
+  const arr = Array.isArray(dbRows) ? dbRows : [];
+  if (arr.length === 0) return;
+  const respById = new Map(arr.map((db) => [String(db.id || "").trim(), db]));
+  const rows = readTimeLedgerEntriesRaw();
+  let changed = false;
+  const next = rows.map((row) => {
+    const id = String(row?.id || "").trim();
+    const db = respById.get(id);
+    if (!db) return row;
+    const su =
+      db.updated_at != null && db.updated_at !== "" ? String(db.updated_at) : String(row.serverUpdatedAt || "").trim();
+    const { localModifiedAt: _drop, ...rest } = row;
+    changed = true;
+    return { ...rest, serverUpdatedAt: su };
+  });
+  if (changed) writeTimeLedgerEntriesRaw(next);
 }
 
 export function localTimeLedgerRowToDbPayload(userId, row) {
@@ -264,13 +301,13 @@ export function writeTimeLedgerEntriesRaw(rows) {
   const arr = Array.isArray(rows) ? rows.slice() : [];
   _ledgerRowsMem = arr;
   if (!_idbDisabled) {
-    void writeAllRowsToIdb(arr).catch((e) => console.warn("[time-ledger-store] idb write", e));
+    void writeAllRowsToIdb(arr).catch(() => {});
   }
   tryMirrorTimeLedgerToLocalStorage(arr);
 }
 
 /**
- * 시간기록 행의 메모(feedback)만 갱신. 행 삭제 없음. Supabase 동기는 time-ledger-entries-saved 로 트리거.
+ * 시간기록 행의 메모(feedback)만 갱신. 행 삭제 없음. 호출 쪽에서 Supabase 반영(pushDirty) 필요.
  * @returns {{ ok: boolean, msg?: string }}
  */
 export function updateTimeLedgerEntryFeedbackById(entryId, feedbackText) {
@@ -278,23 +315,22 @@ export function updateTimeLedgerEntryFeedbackById(entryId, feedbackText) {
   if (!id) return { ok: false, msg: "기록 id가 없어요." };
   const rows = readTimeLedgerEntriesRaw();
   let found = false;
+  let changed = false;
+  const newFb = String(feedbackText ?? "").trim();
   const next = rows.map((r) => {
     if (!r || String(r.id || "").trim() !== id) return r;
     found = true;
-    return { ...r, feedback: String(feedbackText ?? "").trim() };
+    const prevFb = String(r.feedback ?? "").trim();
+    if (newFb === prevFb) return r;
+    changed = true;
+    return { ...r, feedback: newFb, localModifiedAt: Date.now() };
   });
   if (!found) return { ok: false, msg: "해당 기록을 찾을 수 없어요." };
+  if (!changed) return { ok: true };
   writeTimeLedgerEntriesRaw(next);
   try {
     if (typeof document !== "undefined") {
       document.dispatchEvent(new CustomEvent("calendar-time-rows-updated", { detail: {} }));
-    }
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(
-        new CustomEvent("time-ledger-entries-saved", {
-          detail: { source: "archiveMemo", entryId: id },
-        }),
-      );
     }
   } catch (_) {}
   return { ok: true };

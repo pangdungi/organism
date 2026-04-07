@@ -9,7 +9,10 @@ import {
   updateTimeLedgerEntryFeedbackById,
 } from "../utils/timeLedgerEntriesModel.js";
 import { showToast } from "../utils/showToast.js";
-import { hydrateTimeLedgerEntriesForArchiveRange } from "../utils/timeLedgerEntriesSupabase.js";
+import {
+  hydrateTimeLedgerEntriesForArchiveRange,
+  pushDirtyTimeLedgerEntriesToSupabase,
+} from "../utils/timeLedgerEntriesSupabase.js";
 
 function formatArchiveDate(dateStr) {
   if (!dateStr || typeof dateStr !== "string") return "—";
@@ -277,7 +280,7 @@ export function render() {
     const rawBefore = readTimeLedgerEntriesRaw().length;
     showArchiveListLoading();
     console.info("[archive] [데이터] 기간 동기화 시작 (목록은 완료 후 표시)", {
-      무엇을: "① Supabase entry_date 구간 pull → 로컬 병합 ② 로컬→서버 sync",
+      무엇을: "Supabase entry_date 구간만 서버에서 받아 로컬에 반영",
       선택: `${startYmd} ~ ${endYmd}`,
       "동기화 직전 로컬 행 수": rawBefore,
     });
@@ -385,9 +388,18 @@ export function render() {
         showToast(res.msg || "저장할 수 없습니다.");
         return;
       }
-      refreshFullRecords();
-      renderList();
-      close();
+      const { startYmd, endYmd } = getFilterRangeYmd();
+      void (async () => {
+        try {
+          await pushDirtyTimeLedgerEntriesToSupabase({
+            rangeStart: startYmd,
+            rangeEnd: endYmd,
+          });
+        } catch (_) {}
+        refreshFullRecords();
+        renderList();
+        close();
+      })();
     }
 
     function save() {
@@ -533,7 +545,7 @@ export function render() {
 
   /*
    * Realtime: App 쪽에서 이미 pullAllTimeLedgerFromCloud 로 로컬이 갱신된 뒤 이벤트가 옴.
-   * 여기서 다시 hydrate(구간 pull + syncTimeLedgerEntriesToSupabase) 하면 upsert → Realtime → 무한 루프·로그 반복.
+   * 여기서 구간 hydrate를 반복 호출하면 Realtime·pull이 겹쳐 불필요한 갱신이 날 수 있음.
    */
   document.addEventListener(
     "lp-time-ledger-remote-updated",

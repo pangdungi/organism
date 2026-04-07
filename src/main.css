@@ -4974,6 +4974,56 @@ body {
     font-size: 0.8125rem;
     font-weight: 300;
   }
+  .calendar-view-todo
+    .calendar-todo-content
+    .todo-table
+    tbody
+    tr.todo-task-row
+    td.todo-cell-name
+    .todo-cell-name-wrap,
+  .todo-list-view
+    .todo-table
+    tbody
+    tr.todo-task-row
+    td.todo-cell-name
+    .todo-cell-name-wrap {
+    align-items: flex-start;
+  }
+  .calendar-view-todo
+    .calendar-todo-content
+    .todo-table
+    tbody
+    tr.todo-task-row
+    td.todo-cell-name
+    textarea.todo-task-name-field,
+  .todo-list-view
+    .todo-table
+    tbody
+    tr.todo-task-row
+    td.todo-cell-name
+    textarea.todo-task-name-field {
+    font-size: 0.8125rem;
+    font-weight: 300;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    max-height: 12rem;
+    box-sizing: border-box;
+  }
+  .calendar-view-todo
+    .calendar-todo-content
+    .todo-table
+    tbody
+    tr.todo-task-row
+    td.todo-cell-name,
+  .todo-list-view
+    .todo-table
+    tbody
+    tr.todo-task-row
+    td.todo-cell-name {
+    overflow: visible;
+    vertical-align: top;
+  }
   /* 모바일: 할일 카드 영역 — 뷰포트 기준 높이로 스크롤 확실히 동작 */
   .calendar-view-todo .calendar-todo-content .todo-cards-wrap {
     flex: 1 1 0;
@@ -12887,7 +12937,8 @@ body {
 }
 
 /* 일정 아이템은 취소선 없음 (체크박스가 없으므로) */
-.todo-task-row[data-item-type="schedule"] .todo-cell-name input {
+.todo-task-row[data-item-type="schedule"] .todo-cell-name input,
+.todo-task-row[data-item-type="schedule"] .todo-cell-name textarea.todo-task-name-field {
   text-decoration: none !important;
   color: inherit !important;
 }
@@ -14268,7 +14319,8 @@ svg.todo-card-reminder-icon {
 }
 
 /* 체크 시 취소선 */
-.todo-task-row:has(.todo-done-check:checked) .todo-cell-name input {
+.todo-task-row:has(.todo-done-check:checked) .todo-cell-name input,
+.todo-task-row:has(.todo-done-check:checked) .todo-cell-name textarea.todo-task-name-field {
   text-decoration: line-through;
   color: #9ca3af !important;
 }
@@ -14380,6 +14432,7 @@ svg.todo-card-reminder-icon {
   color: #8b5c3a;
 }
 .todo-task-row.todo-row-overdue .todo-cell-name input,
+.todo-task-row.todo-row-overdue .todo-cell-name textarea.todo-task-name-field,
 .todo-task-row.todo-row-overdue .todo-subtask-input {
   color: #8b5c3a;
 }
@@ -14581,7 +14634,8 @@ svg.todo-card-reminder-icon {
   min-width: 0;
 }
 
-.todo-cell-name-wrap input {
+.todo-cell-name-wrap input,
+.todo-cell-name-wrap textarea.todo-task-name-field {
   flex: 1;
   min-width: 0;
 }
@@ -14769,7 +14823,8 @@ svg.todo-card-reminder-icon {
   color: var(--text-placeholder);
 }
 
-.todo-cell-name input:not(.todo-done-check) {
+.todo-cell-name input:not(.todo-done-check),
+.todo-cell-name textarea.todo-task-name-field {
   width: 100%;
   min-width: 0;
   border: none;
@@ -14780,11 +14835,20 @@ svg.todo-card-reminder-icon {
   color: #4b5563 !important;
 }
 
-.todo-cell-name input:not(.todo-done-check):focus {
+.todo-cell-name textarea.todo-task-name-field {
+  resize: none;
+  overflow: hidden;
+  line-height: 1.45;
+  vertical-align: top;
+}
+
+.todo-cell-name input:not(.todo-done-check):focus,
+.todo-cell-name textarea.todo-task-name-field:focus {
   outline: none;
 }
 
-.todo-cell-name input:not(.todo-done-check)::placeholder {
+.todo-cell-name input:not(.todo-done-check)::placeholder,
+.todo-cell-name textarea.todo-task-name-field::placeholder {
   color: var(--text-placeholder);
 }
 
@@ -27327,6 +27391,24 @@ body.kpi-resizing {
   .dream-kpi-todo-header {
     margin-top: 3.25rem;
   }
+  /* KPI 패널 할 일: 긴 제목 줄바꿈 */
+  .dream-kpi-todo-item {
+    align-items: flex-start;
+  }
+  .dream-kpi-todo-check-wrap {
+    margin-top: 0.2rem;
+  }
+  .dream-kpi-todo-text.dream-kpi-todo-edit-input,
+  .dream-kpi-todo-text.dream-kpi-daily-repeat-edit-input {
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    max-height: 12rem;
+  }
+  .dream-kpi-todo-item .dream-kpi-todo-del {
+    align-self: flex-start;
+    margin-top: 0.15rem;
+  }
 }
 
 .dream-kpi-todo-title {
@@ -33815,7 +33897,8 @@ body.kpi-resizing {
   word-break: break-word;
 }
 
-.calendar-todo-sidebar-body .todo-table .todo-cell-name input {
+.calendar-todo-sidebar-body .todo-table .todo-cell-name input,
+.calendar-todo-sidebar-body .todo-table .todo-cell-name textarea.todo-task-name-field {
   font-size: 0.8rem;
   font-family: var(--font-body);
   color: var(--gray-600, #4b5563);
@@ -33827,7 +33910,11 @@ body.kpi-resizing {
 .calendar-todo-sidebar-body
   .todo-task-row[data-has-dates="false"]
   .todo-cell-name
-  input {
+  input,
+.calendar-todo-sidebar-body
+  .todo-task-row[data-has-dates="false"]
+  .todo-cell-name
+  textarea.todo-task-name-field {
   color: #1f2937;
 }
 
@@ -33838,14 +33925,19 @@ body.kpi-resizing {
   padding-left: calc(0.35rem - 0.1875rem);
 }
 
-.calendar-todo-sidebar-body .todo-table .todo-cell-name input::placeholder {
+.calendar-todo-sidebar-body .todo-table .todo-cell-name input::placeholder,
+.calendar-todo-sidebar-body .todo-table .todo-cell-name textarea.todo-task-name-field::placeholder {
   color: var(--text-placeholder);
 }
 
 .calendar-todo-sidebar-body
   .todo-task-row:has(.todo-done-check:checked)
   .todo-cell-name
-  input {
+  input,
+.calendar-todo-sidebar-body
+  .todo-task-row:has(.todo-done-check:checked)
+  .todo-cell-name
+  textarea.todo-task-name-field {
   color: #9ca3af;
 }
 

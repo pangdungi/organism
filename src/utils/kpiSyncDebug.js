@@ -1,14 +1,7 @@
 /**
- * KPI(꿈·부수입·행복·건강) 동기화 추적용 — 기본은 조용함.
- * 켜기: localStorage.setItem('debug_kpi_sync', '1') 후 새로고침
- * 끄기: localStorage.removeItem('debug_kpi_sync')
- *
- * 콘솔에 단계별로 찍히는 항목(원인 파악용):
- * - sync: 로컬 → 서버 fetch → merge → 고아 행 삭제(테이블별 삭제 개수)
- * - pull: DB에서 읽은 행 수 vs deleted_refs 필터 적용 후 payload 요약
- * - build: DB 행 수 대비 필터 후 개수(고아 행이 meta에만 반영된 경우 차이 발생)
- *
- * 저장소 키는 각 *KpiMapSupabase.js 의 export와 동일한 문자열을 유지합니다.
+ * KPI(꿈·부수입·행복·건강) 동기화 — 콘솔 출력 없음.
+ * kpiSyncDebugLog / kpiSyncTrace 는 호환용 no-op.
+ * payload·로컬 스냅샷 요약 유틸만 유지.
  */
 
 const KPI_LOCAL_KEYS = {
@@ -31,10 +24,7 @@ export function kpiSyncDebugEnabled() {
   }
 }
 
-export function kpiSyncDebugLog(...args) {
-  if (!kpiSyncDebugEnabled()) return;
-  console.log("[kpi-sync]", ...args);
-}
+export function kpiSyncDebugLog(..._args) {}
 
 /**
  * 단계 구분용 — grep: [kpi-sync][dream]
@@ -42,12 +32,7 @@ export function kpiSyncDebugLog(...args) {
  * @param {string} step
  * @param {Record<string, unknown>} detail
  */
-export function kpiSyncTrace(tab, step, detail) {
-  if (!kpiSyncDebugEnabled()) return;
-  try {
-    console.log(`[kpi-sync][${tab}] ${step}`, detail != null ? detail : "");
-  } catch (_) {}
-}
+export function kpiSyncTrace(_tab, _step, _detail) {}
 
 /** deleted_refs 각 배열 길이 + KPI id 샘플(최대 5개) */
 export function kpiSyncDeletedRefsBrief(dr) {

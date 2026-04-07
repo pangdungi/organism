@@ -460,7 +460,7 @@ function collectCustomSectionFromDOM(sectionsEl, sectionId) {
   const tasks = [];
   const sec = sectionsEl?.querySelector(`.todo-section[data-section="${sectionId}"]`);
   sec?.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").forEach((row) => {
-    const nameInput = row.querySelector(".todo-cell-name input");
+    const nameInput = row.querySelector(".todo-task-name-field");
     const startInput = row.querySelector(".todo-start-input-hidden");
     const dueInput = row.querySelector(".todo-due-input-hidden");
     const eisenhowerSelect = row.querySelector(".todo-eisenhower-select");
@@ -511,7 +511,7 @@ function syncSectionDomTaskIdsFromStorage(sectionId, sec) {
       if (uuid && cur !== uuid) card.dataset.taskId = uuid;
     });
     sec.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").forEach((row) => {
-      const nameInput = row.querySelector(".todo-cell-name input");
+      const nameInput = row.querySelector(".todo-task-name-field");
       const n = (nameInput?.value || "").trim();
       const uuid = nameToUuid.get(n);
       const cur = (row.dataset.taskId || "").trim();
@@ -615,7 +615,7 @@ function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
       });
     } else {
       sec.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").forEach((row) => {
-        const nameInput = row.querySelector(".todo-cell-name input");
+        const nameInput = row.querySelector(".todo-task-name-field");
         const startInput = row.querySelector(".todo-start-input-hidden");
         const dueInput = row.querySelector(".todo-due-input-hidden");
         const eisenhowerSelect = row.querySelector(".todo-eisenhower-select");
@@ -1640,10 +1640,20 @@ function createTaskRow(taskData = {}, options = {}) {
   nameTd.className = "todo-cell-name" + (isSubtask ? " todo-cell-name-subtask" : "");
   const nameWrap = document.createElement("div");
   nameWrap.className = "todo-cell-name-wrap";
-  const nameInput = document.createElement("input");
-  nameInput.type = "text";
+  const nameInput = document.createElement("textarea");
   nameInput.name = "todo-task-name";
+  nameInput.className = "todo-task-name-field";
+  nameInput.rows = 1;
+  nameInput.setAttribute("maxlength", "500");
+  nameInput.spellcheck = false;
+  nameInput.autocomplete = "off";
   nameInput.value = name;
+  const fitTodoTaskNameHeight = () => {
+    nameInput.style.height = "0";
+    nameInput.style.height = `${nameInput.scrollHeight}px`;
+  };
+  nameInput.addEventListener("input", fitTodoTaskNameHeight);
+  requestAnimationFrame(fitTodoTaskNameHeight);
   let dateAreaClicked = false;
   if (isKpiTodo && kpiTodoId && storageKey) {
     nameInput.addEventListener("blur", (e) => {
@@ -1717,7 +1727,7 @@ function createTaskRow(taskData = {}, options = {}) {
     });
   }
   nameInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.isComposing) {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
       e.preventDefault();
       nameInput.blur();
     }
@@ -2214,7 +2224,7 @@ function createTaskRow(taskData = {}, options = {}) {
     if (!isSubtask) {
       tr.draggable = true;
       tr.addEventListener("dragstart", (e) => {
-        const nameInput = tr.querySelector(".todo-cell-name input");
+        const nameInput = tr.querySelector(".todo-task-name-field");
         const startInput = tr.querySelector(".todo-start-input-hidden");
         const dueInput = tr.querySelector(".todo-due-input-hidden");
         const doneCheck = tr.querySelector(".todo-done-check");
@@ -2937,7 +2947,7 @@ function createSection(section, options = {}) {
       tbody.insertBefore(tr, addRow.nextSibling);
       updateCount();
       console.log("[DEBUG todo-row] + clicked, new row created", { taskId, sectionId: section.id });
-      const nameInput = tr.querySelector(".todo-cell-name input");
+      const nameInput = tr.querySelector(".todo-task-name-field");
       if (nameInput) {
         nameInput.focus();
       }
@@ -3002,7 +3012,7 @@ function collectTasksFromDOM(sectionsEl) {
       return;
     }
     sec.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").forEach((row) => {
-      const nameInput = row.querySelector(".todo-cell-name input");
+      const nameInput = row.querySelector(".todo-task-name-field");
       const startInput = row.querySelector(".todo-start-input-hidden");
       const dueInput = row.querySelector(".todo-due-input-hidden");
       const eisenhowerSelect = row.querySelector(".todo-eisenhower-select");
@@ -3418,7 +3428,7 @@ export function render(options = {}) {
 
     let name, startDate, dueDate, startTime, endTime, eisenhower, done, itemType, reminderDate, reminderTime, kpiTodoId, storageKey;
     if (row) {
-      const nameInput = row.querySelector(".todo-cell-name input");
+      const nameInput = row.querySelector(".todo-task-name-field");
       const startInput = row.querySelector(".todo-start-input-hidden");
       const dueInput = row.querySelector(".todo-due-input-hidden");
       const doneCheck = row.querySelector(".todo-done-check");

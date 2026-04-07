@@ -25,6 +25,10 @@ import {
 } from "../utils/timeKpiSync.js";
 import { setupDeadlineQuickButtons } from "../utils/deadlineQuickButtons.js";
 import { attachKpiTodoInputScrollIntoView } from "../utils/kpiTodoInputScroll.js";
+import {
+  bindKpiTodoTextareaKeydown,
+  setupKpiTodoInlineTextarea,
+} from "../utils/kpiTodoInlineTextarea.js";
 
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
@@ -1059,14 +1063,16 @@ export function render() {
       check.checked = completed;
       label.appendChild(check);
 
-      const textInput = document.createElement("input");
-      textInput.type = "text";
+      const textInput = document.createElement("textarea");
       textInput.className = "dream-kpi-todo-text dream-kpi-todo-edit-input";
       textInput.value = todo.text || "";
       textInput.title = "할 일 내용 수정";
       textInput.autocomplete = "off";
+      textInput.spellcheck = false;
       textInput.style.cssText =
-        "flex:1;min-width:0;border:none;background:transparent;font:inherit;color:inherit;padding:0;margin:0;box-sizing:border-box;";
+        "flex:1;min-width:0;border:none;background:transparent;font:inherit;color:inherit;padding:0;margin:0;box-sizing:border-box;resize:none;overflow:hidden;line-height:1.45;";
+      setupKpiTodoInlineTextarea(textInput);
+      bindKpiTodoTextareaKeydown(textInput);
       const saveTodoText = () => {
         const d = loadHappinessMap();
         const arr = d.kpiTodos || [];
@@ -1082,12 +1088,6 @@ export function render() {
         saveHappinessMap(d);
       };
       textInput.addEventListener("blur", saveTodoText);
-      textInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" && !e.isComposing) {
-          e.preventDefault();
-          textInput.blur();
-        }
-      });
 
       const delBtn = document.createElement("button");
       delBtn.type = "button";

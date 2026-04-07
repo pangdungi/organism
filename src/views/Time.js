@@ -66,24 +66,14 @@ import {
   deleteTimeLedgerEntryFromSupabase,
   hydrateTimeLedgerEntriesFromCloud,
   pullTimeLedgerEntriesForDateRange,
+  pushDirtyTimeLedgerEntriesToSupabase,
   readTimeLedgerSessionFilterRangeYmd,
 } from "../utils/timeLedgerEntriesSupabase.js";
+import { timeLedgerSyncLog } from "../utils/timeLedgerSyncDebug.js";
 import { persistSectionTasksAndSchedule } from "../utils/todoSectionTasksSupabase.js";
 import { SECTION_TASKS_KEY } from "../utils/todoSectionTasksModel.js";
 
 export { getTaskOptionByName };
-
-/** 예산 겹침 디버그: localStorage.setItem('debug_budget_overlap','1') 후 새로고침 */
-function isBudgetOverlapDebug() {
-  try {
-    return (
-      typeof localStorage !== "undefined" &&
-      localStorage.getItem("debug_budget_overlap") === "1"
-    );
-  } catch (_) {
-    return false;
-  }
-}
 
 /** false: 시간가계부 상단「개선하기」탭 비표시. 다시 쓰려면 true 로 변경. */
 const TIME_LEDGER_SHOW_IMPROVE_TAB = false;
@@ -848,28 +838,12 @@ function clearOverlappingScheduledTimes(all, dateStr, taskName, newSlots) {
     const parsed = parseScheduledSlotToMinutes(slot);
     if (!parsed) continue;
     const { startMin, endMin } = parsed;
-    if (typeof window !== "undefined" && isBudgetOverlapDebug()) {
-      console.log("[BUDGET-OVERLAP] clearOverlappingScheduledTimes slot", {
-        taskName: key,
-        slot,
-        startMin,
-        endMin,
-        slotDisplay: `${minutesToHhMm(startMin)}-${minutesToHhMm(endMin)}`,
-      });
-    }
     for (const otherKey of Object.keys(dateData)) {
       if (otherKey === key) continue;
       const other = dateData[otherKey];
       const otherSlots = getScheduledTimesArray(other);
       if (otherSlots.length === 0) continue;
       const remaining = removeOverlapFromSlots(otherSlots, startMin, endMin);
-      if (typeof window !== "undefined" && isBudgetOverlapDebug()) {
-        console.log("[BUDGET-OVERLAP] clearOverlap other", {
-          otherKey,
-          otherSlots: [...otherSlots],
-          remaining: [...remaining],
-        });
-      }
       const sameContent =
         remaining.length === otherSlots.length &&
         remaining.every(
@@ -968,16 +942,6 @@ function saveBudgetScheduledTimesBatch(dateStr, tasksInOrder, lastEditedTask) {
     const toProcess = lastKey
       ? ordered.filter((t) => (t.task || "").trim() === lastKey)
       : ordered;
-    if (isBudgetOverlapDebug()) {
-      console.log("[BUDGET-OVERLAP] saveBudgetScheduledTimesBatch", {
-        lastEditedTask,
-        lastKey,
-        toProcess: toProcess.map((t) => ({
-          task: t.task,
-          times: [...(t.times || [])],
-        })),
-      });
-    }
     for (const { task, times, isInvest } of toProcess) {
       const key = (task || "").trim();
       if (!key) continue;
@@ -989,9 +953,6 @@ function saveBudgetScheduledTimesBatch(dateStr, tasksInOrder, lastEditedTask) {
       arr = resolveOverlapsWithinSlots(arr);
       if (arr.length > 0) {
         dateData[key] = { ...existing, scheduledTimes: arr, isInvest };
-        if (isBudgetOverlapDebug()) {
-          console.log("[BUDGET-OVERLAP] saved", { key, scheduledTimes: arr });
-        }
       } else {
         const { scheduledTime: _st, scheduledTimes: _sts, ...rest } = existing;
         dateData[key] = Object.keys(rest).length ? rest : undefined;
@@ -1020,7 +981,6 @@ export function loadTimeRows() {
   }
 }
 
-const TIME_ROWS_SYNC_DEBUG = false;
 function saveTimeRows(rows) {
   try {
     const prevSnap = readTimeLedgerEntriesRaw();
@@ -1061,22 +1021,11 @@ function saveTimeRows(rows) {
       /* 신규 id 부여분 반영 */
     }
     writeTimeLedgerEntriesRaw(toSave);
+    timeLedgerSyncLog("local_rows_saved", {
+      totalRows: toSave.length,
+      note: "로컬 저장 완료 → 곧 서버 반영(push) 시도",
+    });
     syncHabitTrackerLogs();
-    if (TIME_ROWS_SYNC_DEBUG) {
-      console.log(
-        "[시간가계부→캘린더] saveTimeRows 완료, calendar-time-rows-updated dispatch 직전",
-        {
-          totalRows: toSave.length,
-          sample: toSave
-            .slice(0, 2)
-            .map((r) => ({
-              task: r.taskName,
-              start: r.startTime,
-              end: r.endTime,
-            })),
-        },
-      );
-    }
     if (typeof document !== "undefined") {
       document.dispatchEvent(
         new CustomEvent("calendar-time-rows-updated", { detail: {} }),
@@ -1084,7 +1033,7 @@ function saveTimeRows(rows) {
     }
     try {
       if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("time-ledger-entries-saved"));
+        void pushDirtyTimeLedgerEntriesToSupabase();
       }
     } catch (_) {}
   } catch (_) {}
@@ -3377,12 +3326,19 @@ function createProductivitySection(
     const entryId = String(rowData?.id || "").trim();
     tr.remove();
     onRowUpdate();
-    if (rowData) {
+    if (!rowData) return;
+    void (async () => {
+      /* saveTimeRows → pushDirty → pull 이 delete 보다 먼저 끝나면 서버에 행이 남아 다시 부활함 */
+      if (entryId) {
+        timeLedgerSyncLog("ui_time_row_delete", {
+          idPreview: `${entryId.slice(0, 8)}…`,
+        });
+        await deleteTimeLedgerEntryFromSupabase(entryId);
+      }
       const diskBefore = loadTimeRows();
       const { next } = removeTimeLedgerRowFromRows(diskBefore, rowData);
       saveTimeRows(next);
-    }
-    if (entryId) void deleteTimeLedgerEntryFromSupabase(entryId);
+    })();
   };
 
   const handleRowEdit = (tr, rowData) => {
@@ -7405,15 +7361,21 @@ export function render() {
     }
 
     const handleCardDelete = (card, rowData) => {
+      card.remove();
+      updateTotal();
+      if (!rowData) return;
       const entryId = String(rowData?.id || "").trim();
-      if (rowData) {
+      void (async () => {
+        if (entryId) {
+          timeLedgerSyncLog("ui_time_row_delete", {
+            idPreview: `${entryId.slice(0, 8)}…`,
+          });
+          await deleteTimeLedgerEntryFromSupabase(entryId);
+        }
         const { next } = removeTimeLedgerRowFromRows(allRowsCache, rowData);
         allRowsCache = next;
         saveTimeRows(allRowsCache);
-        if (entryId) void deleteTimeLedgerEntryFromSupabase(entryId);
-      }
-      card.remove();
-      updateTotal();
+      })();
     };
     const handleCardEdit = (card, rowData) => {
       openTaskLogModalForEdit(card, rowData);
@@ -7740,15 +7702,21 @@ export function render() {
       }
     }
     const handleRowDelete = (tr, rowData) => {
+      tr.remove();
+      updateTotal();
+      if (!rowData) return;
       const entryId = String(rowData?.id || "").trim();
-      if (rowData) {
+      void (async () => {
+        if (entryId) {
+          timeLedgerSyncLog("ui_time_row_delete", {
+            idPreview: `${entryId.slice(0, 8)}…`,
+          });
+          await deleteTimeLedgerEntryFromSupabase(entryId);
+        }
         const { next } = removeTimeLedgerRowFromRows(allRowsCache, rowData);
         allRowsCache = next;
         saveTimeRows(allRowsCache);
-      }
-      tr.remove();
-      updateTotal();
-      if (entryId) void deleteTimeLedgerEntryFromSupabase(entryId);
+      })();
     };
     PRODUCTIVITY_VIEW_ORDER.forEach((prod) => {
       const sectionRows = rows.filter((r) => r.productivity === prod.value);
@@ -8853,8 +8821,7 @@ export function render() {
               .join("")
           : '<div class="time-dash-empty">기록이 없습니다</div>';
       widgetTop7.innerHTML = `<div class="time-dashboard-widget-title">시간 TOP 3 활동</div><div class="time-dash-top7-exclude">근무/수면 제외</div><div class="time-dash-top7-list">${top7Html}</div>`;
-    } catch (e) {
-      console.error("TOP 7 위젯 오류:", e);
+    } catch (_) {
       widgetTop7 = document.createElement("div");
       widgetTop7.className = "time-dashboard-widget time-dashboard-widget-top7";
       widgetTop7.innerHTML =
@@ -10042,15 +10009,6 @@ export function renderTimeBudgetTablesForCalendar(
       if (!name || isBudgetPlaceholder(name)) return;
       const start = (row.dataset.scheduledStart || "").trim();
       const end = (row.dataset.scheduledEnd || "").trim();
-      if (isBudgetOverlapDebug()) {
-        const inputs = row.querySelectorAll(".time-budget-scheduled-input");
-        console.log("[BUDGET-OVERLAP] collect row", {
-          name,
-          datasetStart: start,
-          datasetEnd: end,
-          inputValues: [...inputs].map((i) => i.value),
-        });
-      }
       if (start && end && !isValidStartEnd(start, end)) return;
       const st = start && end ? `${start}-${end}` : start || end || "";
       if (st) {
@@ -10138,14 +10096,6 @@ export function renderTimeBudgetTablesForCalendar(
       if (Array.isArray(allTbodies)) {
         allTbodies.forEach(([tb, ar, isInv]) => {
           const collected = collectScheduledTimesByTask(tb, ar);
-          if (isBudgetOverlapDebug()) {
-            console.log("[BUDGET-OVERLAP] collect from tbody", {
-              isInvest: isInv,
-              collected: Object.fromEntries(
-                Object.entries(collected).map(([k, v]) => [k, [...v]]),
-              ),
-            });
-          }
           Object.entries(collected).forEach(([task, times]) => {
             tasksInOrder.push({ task, times, isInvest: isInv });
           });
@@ -10154,16 +10104,6 @@ export function renderTimeBudgetTablesForCalendar(
         const collected = collectScheduledTimesByTask(tbody, addRow);
         Object.entries(collected).forEach(([task, times]) => {
           tasksInOrder.push({ task, times, isInvest });
-        });
-      }
-      if (isBudgetOverlapDebug()) {
-        console.log("[BUDGET-OVERLAP] saveAllScheduledTimesForTimetable", {
-          lastEditedTask,
-          targetDateStr,
-          tasksInOrder: tasksInOrder.map((t) => ({
-            task: t.task,
-            times: [...(t.times || [])],
-          })),
         });
       }
       const result = saveBudgetScheduledTimesBatch(
@@ -10248,18 +10188,6 @@ export function renderTimeBudgetTablesForCalendar(
         const scheduledTime =
           start && end ? `${start}-${end}` : start || end || "";
         if (tbody && addRow) {
-          if (isBudgetOverlapDebug()) {
-            console.log("[BUDGET-OVERLAP] saveCurrentGoal before save", {
-              name,
-              startInputValue: startInput.value,
-              endInputValue: endInput.value,
-              datasetAfterUpdate: {
-                taskName: tr.dataset.taskName,
-                scheduledStart: tr.dataset.scheduledStart,
-                scheduledEnd: tr.dataset.scheduledEnd,
-              },
-            });
-          }
           saveAllScheduledTimesForTimetable(name);
         } else {
           if (
@@ -10320,15 +10248,6 @@ export function renderTimeBudgetTablesForCalendar(
       const name = (taskDropdown.getValue() || "").trim();
       if (!name) return;
       updateRowDataset();
-      if (typeof window !== "undefined" && window.TT_SYNC_DEBUG) {
-        console.log("[TT-SYNC] scheduleTimetableUpdate", {
-          name: (taskDropdown.getValue() || "").trim(),
-          start: startInput.value,
-          end: endInput.value,
-          datasetStart: tr.dataset.scheduledStart,
-          datasetEnd: tr.dataset.scheduledEnd,
-        });
-      }
       if (tbody && addRow) {
         saveAllScheduledTimesForTimetable(name);
         const block = tr.closest(".time-daily-budget-table-block");
@@ -10358,9 +10277,6 @@ export function renderTimeBudgetTablesForCalendar(
         }
       }
       if (typeof onScheduledUpdate === "function") {
-        if (typeof window !== "undefined" && window.TT_SYNC_DEBUG) {
-          console.log("[TT-SYNC] calling onScheduledUpdate", targetDateStr);
-        }
         onScheduledUpdate(targetDateStr);
       }
     };

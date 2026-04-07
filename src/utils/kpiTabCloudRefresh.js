@@ -22,7 +22,6 @@ import {
   SIDEINCOME_KPI_MAP_STORAGE_KEY,
   pullSideincomeKpiMapFromSupabase,
 } from "./sideincomeKpiMapSupabase.js";
-
 const KPI_LOCAL_STORAGE_KEYS = {
   dream: DREAM_KPI_MAP_STORAGE_KEY,
   health: HEALTH_KPI_MAP_STORAGE_KEY,
