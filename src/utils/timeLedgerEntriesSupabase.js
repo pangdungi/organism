@@ -1,8 +1,9 @@
 /**
  * 시간가계부 기록 행 ↔ Supabase (time_ledger_entries)
  *
- * 정책: 화면에 보이는 구간은 서버 조회 결과로 맞춤. 서버 쓰기는 사용자가 저장한 뒤
- * «이번에 바뀐 행»만 upsert (통째로 로컬 스냅샷을 올리지 않음).
+ * 정책: 화면에 보이는 날짜 구간은 서버 조회 결과가 기준(로컬은 캐시·오프라인용).
+ * 올리기: 사용자 저장으로 바뀐 행만 upsert · 삭제는 delete API (통째 업로드 없음).
+ * upsert 직후 해당 피커 구간을 pull 해 서버와 화면을 맞춤. 다른 기기·Realtime·날짜 변경도 같은 pull로 반영.
  */
 
 import { supabase } from "../supabase.js";
@@ -12,6 +13,7 @@ import {
   localTimeLedgerRowToDbPayload,
   mergeTimeLedgerEntriesPushedServerTimes,
   readTimeLedgerEntriesRaw,
+  recordTimeLedgerDeletionTombstone,
   timeLedgerMonthRangeYmd,
   timeLedgerRowIsSyncable,
   timeLedgerRowNeedsPush,
@@ -175,13 +177,13 @@ export async function deleteTimeLedgerEntryFromSupabase(entryId) {
     const deleted = Array.isArray(data) ? data.length : 0;
     const ok = deleted > 0;
     timeLedgerSyncLog("server_delete_done", { ok, deletedRows: deleted });
+    if (ok) recordTimeLedgerDeletionTombstone(id);
     return ok;
   });
 }
 
 /**
- * 로컬에서 «이번에 사용자가 저장해 바뀐 행»만 서버 upsert 후, 서버 기준으로 해당 날짜 구간만 다시 받음.
- * @param {{ rangeStart?: string, rangeEnd?: string }} [opts] — 아카이브 등에서 구간 지정. 없으면 시간 탭 피커(session) 구간.
+ * 로컬에서 «이번에 사용자가 저장해 바뀐 행»만 서버 upsert 후, 피커 구간을 서버 기준으로 pull.
  */
 export async function pushDirtyTimeLedgerEntriesToSupabase(opts = {}) {
   return runSerializedLedgerServerOp(async () => {

@@ -1,75 +1,89 @@
 /**
- * 시간가계부 기록 행 — IndexedDB(주) + localStorage(미러·마이그레이션) + Supabase
+ * 시간가계부 기록 행 — 이 모듈은 프로세스 메모리만 유지. 영속 복구는 Supabase pull.
+ * (구버전 IndexedDB·localStorage 잔여물은 기동·purge 시 비움)
  */
 
 import { isUuid, UUID_RE } from "./idUtils.js";
-import {
-  migrateFromLocalStorageIfNeeded,
-  readAllRowsFromIdb,
-  tryMirrorTimeLedgerToLocalStorage,
-  writeAllRowsToIdb,
-  TIME_LEDGER_STORAGE_KEY,
-} from "./timeLedgerEntriesStore.js";
+import { writeAllRowsToIdb, TIME_LEDGER_STORAGE_KEY } from "./timeLedgerEntriesStore.js";
 
 /**
- * 로그아웃·계정 전환 시 호출. IndexedDB·localStorage에 쌓인 시간기록은 user_id가 없어
- * 다음 로그인 계정 화면에 그대로 노출될 수 있음(서버 RLS와 무관).
+ * 로그아웃·계정 전환 시 호출. 구버전 로컬 저장소 잔여를 비우고 메모리를 초기화합니다.
  */
 export async function purgeTimeLedgerLocalData() {
   try {
     await writeAllRowsToIdb([]);
   } catch (_) {}
   try {
-    tryMirrorTimeLedgerToLocalStorage([]);
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem(TIME_LEDGER_STORAGE_KEY);
+      localStorage.removeItem(TIME_LEDGER_DELETE_TOMBSTONES_LS_LEGACY_KEY);
+    }
   } catch (_) {}
+  _deletionTombstonesObj = {};
   _ledgerRowsMem = [];
   _storageReadyPromise = null;
 }
 
 export const TIME_LEDGER_ENTRIES_KEY = TIME_LEDGER_STORAGE_KEY;
 
-/** 메모리 캐시 — readTimeLedgerEntriesRaw / writeTimeLedgerEntriesRaw 가 사용 (앱 시작 시 IDB로 채움) */
+/** 구버전 tombstone 키 — 남아 있으면 한 번 제거 */
+const TIME_LEDGER_DELETE_TOMBSTONES_LS_LEGACY_KEY = "lp-time-ledger-entry-tombstones";
+const TIME_LEDGER_TOMBSTONE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** 세션 메모리만 — 새로고침 시 초기화 */
+let _deletionTombstonesObj = {};
+
+/**
+ * 만료된 항목 제거 후 id → 기록 시각(ms) 맵
+ */
+function getActiveDeletionTombstones() {
+  const raw = _deletionTombstonesObj;
+  const now = Date.now();
+  const out = {};
+  for (const [id, ts] of Object.entries(raw)) {
+    if (!UUID_RE.test(String(id || ""))) continue;
+    const t = Number(ts);
+    if (!Number.isFinite(t) || now - t > TIME_LEDGER_TOMBSTONE_MAX_AGE_MS) continue;
+    out[id] = t;
+  }
+  if (Object.keys(out).length !== Object.keys(raw).length) {
+    _deletionTombstonesObj = out;
+  }
+  return out;
+}
+
+/**
+ * Supabase에서 해당 id 삭제가 성공했을 때만 호출. 이후 구간 pull이 같은 id를 실어도 메모리에 재삽입하지 않음(같은 탭 세션 한정).
+ */
+export function recordTimeLedgerDeletionTombstone(entryId) {
+  const id = String(entryId || "").trim();
+  if (!id || !UUID_RE.test(id)) return;
+  const tomb = { ...getActiveDeletionTombstones(), [id]: Date.now() };
+  _deletionTombstonesObj = tomb;
+}
+
+/** 메모리 캐시 — readTimeLedgerEntriesRaw / writeTimeLedgerEntriesRaw */
 let _ledgerRowsMem = null;
 
 /** @type {Promise<void> | null} */
 let _storageReadyPromise = null;
 
-/** IndexedDB 실패 시 true — 이후 쓰기는 localStorage 미러만 */
-let _idbDisabled = false;
-
 /**
- * 앱 본 화면(mountApp) 전에 반드시 await. 미호출 시 read는 [].
+ * 앱 본 화면(mountApp) 전에 반드시 await. 메모리는 빈 배열로 시작합니다.
  */
 export function ensureTimeLedgerStorageReady() {
   if (!_storageReadyPromise) {
     _storageReadyPromise = (async () => {
+      _ledgerRowsMem = [];
       try {
-        await migrateFromLocalStorageIfNeeded();
-        let rows = await readAllRowsFromIdb();
-        const { rows: fixed, dirty } = ensureTimeLedgerEntryIds(rows);
-        _ledgerRowsMem = fixed;
-        if (dirty) {
-          await writeAllRowsToIdb(fixed);
-          tryMirrorTimeLedgerToLocalStorage(fixed);
+        await writeAllRowsToIdb([]);
+      } catch (_) {}
+      try {
+        if (typeof localStorage !== "undefined") {
+          localStorage.removeItem(TIME_LEDGER_STORAGE_KEY);
+          localStorage.removeItem(TIME_LEDGER_DELETE_TOMBSTONES_LS_LEGACY_KEY);
         }
-      } catch (_) {
-        _idbDisabled = true;
-        let rows = [];
-        try {
-          const raw = localStorage.getItem(TIME_LEDGER_ENTRIES_KEY);
-          if (raw) {
-            const p = JSON.parse(raw);
-            if (Array.isArray(p)) rows = p;
-          }
-        } catch (_) {}
-        const { rows: fixed, dirty } = ensureTimeLedgerEntryIds(rows);
-        _ledgerRowsMem = fixed;
-        if (dirty) {
-          try {
-            localStorage.setItem(TIME_LEDGER_ENTRIES_KEY, JSON.stringify(fixed));
-          } catch (_) {}
-        }
-      }
+      } catch (_) {}
     })();
   }
   return _storageReadyPromise;
@@ -271,7 +285,15 @@ export function timeLedgerMonthRangeYmd(year, month) {
  */
 export function applyTimeLedgerServerFullSnapshot(dbRows) {
   const arr = Array.isArray(dbRows) ? dbRows : [];
-  const locals = arr.map((r) => dbRowToLocalTimeLedgerRow(r));
+  const tombIds = new Set(Object.keys(getActiveDeletionTombstones()));
+  const filtered =
+    tombIds.size > 0
+      ? arr.filter((r) => {
+          const id = String(r?.id || "").trim();
+          return !id || !tombIds.has(id);
+        })
+      : arr;
+  const locals = filtered.map((r) => dbRowToLocalTimeLedgerRow(r));
   const { rows: withIds } = ensureTimeLedgerEntryIds(locals);
   writeTimeLedgerEntriesRaw(withIds);
 }
@@ -284,7 +306,14 @@ export function applyTimeLedgerServerRangeSnapshot(dbRows, rangeStart, rangeEnd)
   const re = String(rangeEnd || "").trim();
   if (!rs || !re) return;
   const serverRows = Array.isArray(dbRows) ? dbRows : [];
-  const serverLocals = serverRows.map((r) => dbRowToLocalTimeLedgerRow(r));
+  const tombIds = new Set(Object.keys(getActiveDeletionTombstones()));
+  const serverRowsFiltered = tombIds.size
+    ? serverRows.filter((r) => {
+        const id = String(r?.id || "").trim();
+        return !id || !tombIds.has(id);
+      })
+    : serverRows;
+  const serverLocals = serverRowsFiltered.map((r) => dbRowToLocalTimeLedgerRow(r));
   const { rows: insideFromServer } = ensureTimeLedgerEntryIds(serverLocals);
   const { rows: localWithIds } = ensureTimeLedgerEntryIds(readTimeLedgerEntriesRaw());
   const outside = localWithIds.filter((r) => !rowEntryDateInInclusiveRange(r, rs, re));
@@ -300,10 +329,6 @@ export function readTimeLedgerEntriesRaw() {
 export function writeTimeLedgerEntriesRaw(rows) {
   const arr = Array.isArray(rows) ? rows.slice() : [];
   _ledgerRowsMem = arr;
-  if (!_idbDisabled) {
-    void writeAllRowsToIdb(arr).catch(() => {});
-  }
-  tryMirrorTimeLedgerToLocalStorage(arr);
 }
 
 /**

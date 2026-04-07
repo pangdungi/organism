@@ -3338,6 +3338,9 @@ function createProductivitySection(
       const diskBefore = loadTimeRows();
       const { next } = removeTimeLedgerRowFromRows(diskBefore, rowData);
       saveTimeRows(next);
+      try {
+        document.dispatchEvent(new CustomEvent("lp-time-ledger-pull-picker-range"));
+      } catch (_) {}
     })();
   };
 
@@ -3609,13 +3612,25 @@ export function render() {
     return toDateStr(new Date());
   }
 
-  /** 날짜 피커 구간 키(정규화) — 과제 필터만 바뀌면 같게 유지 */
+  /** 날짜 피커 구간이 바뀌면 서버에서 그 구간만 다시 받기 */
   function computePickerRangeKeyForPull() {
     const a = pickYmdFromFilter(startDateInput.value, filterStartDate);
     const b = pickYmdFromFilter(endDateInput.value, filterEndDate);
     return a <= b ? `${a}|${b}` : `${b}|${a}`;
   }
   let _pickerRangeKeyAtLastPullIntent = computePickerRangeKeyForPull();
+  let _timeLedgerFilterPullTimer = null;
+
+  function schedulePullTimeLedgerForPickerRange() {
+    if (_timeLedgerFilterPullTimer) clearTimeout(_timeLedgerFilterPullTimer);
+    _timeLedgerFilterPullTimer = setTimeout(async () => {
+      _timeLedgerFilterPullTimer = null;
+      if (!el.isConnected) return;
+      const { rangeStart, rangeEnd } = readTimeLedgerSessionFilterRangeYmd();
+      const ok = await pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
+      if (ok && el.isConnected) refreshTimeLedgerFromRemotePull();
+    }, 400);
+  }
 
   function shiftFilterRangeByDays(delta) {
     const s0 = pickYmdFromFilter(startDateInput.value, filterStartDate);
@@ -7075,14 +7090,9 @@ export function render() {
 
   let allRowsCache = loadTimeRows();
   let cachedRows = [];
-  /** 마지막으로 서버에서 채운 피커 구간 — 같은 구간이면 pull 생략 */
-  let _timeLedgerPulledRangeKey = "";
-  let _timeLedgerFilterPullTimer = null;
 
   void hydrateTimeLedgerEntriesFromCloud().then(() => {
     try {
-      const r = readTimeLedgerSessionFilterRangeYmd();
-      _timeLedgerPulledRangeKey = `${r.rangeStart}|${r.rangeEnd}`;
       _pickerRangeKeyAtLastPullIntent = computePickerRangeKeyForPull();
     } catch (_) {}
     allRowsCache = loadTimeRows();
@@ -7375,6 +7385,9 @@ export function render() {
         const { next } = removeTimeLedgerRowFromRows(allRowsCache, rowData);
         allRowsCache = next;
         saveTimeRows(allRowsCache);
+        try {
+          document.dispatchEvent(new CustomEvent("lp-time-ledger-pull-picker-range"));
+        } catch (_) {}
       })();
     };
     const handleCardEdit = (card, rowData) => {
@@ -7716,6 +7729,9 @@ export function render() {
         const { next } = removeTimeLedgerRowFromRows(allRowsCache, rowData);
         allRowsCache = next;
         saveTimeRows(allRowsCache);
+        try {
+          document.dispatchEvent(new CustomEvent("lp-time-ledger-pull-picker-range"));
+        } catch (_) {}
       })();
     };
     PRODUCTIVITY_VIEW_ORDER.forEach((prod) => {
@@ -9784,21 +9800,18 @@ export function render() {
     { signal },
   );
 
-  function schedulePullTimeLedgerForPickerRange() {
-    if (_timeLedgerFilterPullTimer) clearTimeout(_timeLedgerFilterPullTimer);
-    _timeLedgerFilterPullTimer = setTimeout(async () => {
-      _timeLedgerFilterPullTimer = null;
-      if (!el.isConnected) return;
-      const { rangeStart, rangeEnd } = readTimeLedgerSessionFilterRangeYmd();
-      const key = `${rangeStart}|${rangeEnd}`;
-      if (key === _timeLedgerPulledRangeKey) return;
-      const ok = await pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
-      if (ok && el.isConnected) {
-        _timeLedgerPulledRangeKey = key;
-        refreshTimeLedgerFromRemotePull();
-      }
-    }, 400);
-  }
+  document.addEventListener(
+    "lp-time-ledger-pull-picker-range",
+    () => {
+      void (async () => {
+        if (!el.isConnected) return;
+        const { rangeStart, rangeEnd } = readTimeLedgerSessionFilterRangeYmd();
+        const ok = await pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
+        if (ok && el.isConnected) refreshTimeLedgerFromRemotePull();
+      })();
+    },
+    { signal },
+  );
 
   return el;
 }
