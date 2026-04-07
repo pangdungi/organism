@@ -43,8 +43,8 @@ import {
   syncTodoSectionTasksToSupabase,
 } from "../utils/todoSectionTasksSupabase.js";
 import {
-  SECTION_TASKS_KEY,
-  CUSTOM_SECTION_TASKS_KEY,
+  readSectionTasksObject,
+  readCustomSectionTasksObject,
   purgeAllCompletedSectionAndCustomTasks,
   recordTodoSectionTaskDeletion,
   stripTodoTaskSyncMetaForCompare,
@@ -103,24 +103,21 @@ window.addEventListener("app-colors-changed", () => {
 
 function loadSectionTasks(sectionId) {
   try {
-    const raw = localStorage.getItem(SECTION_TASKS_KEY);
-    if (raw) {
-      const obj = JSON.parse(raw);
-      const arr = obj[sectionId];
-      if (Array.isArray(arr)) {
-        const sectionLabel = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복", braindump: "브레인 덤프" }[sectionId] || sectionId;
-        const out = arr
-          .filter((t) => (t.name || "").trim() !== "")
-          .map((t) => ({
-            ...t,
-            sectionId,
-            sectionLabel,
-            itemType: t.itemType || "todo",
-            isKpiTodo: false,
-          }));
-        todoDebug("loadSectionTasks", sectionId, "count", out.length);
-        return out;
-      }
+    const obj = readSectionTasksObject();
+    const arr = obj[sectionId];
+    if (Array.isArray(arr)) {
+      const sectionLabel = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복", braindump: "브레인 덤프" }[sectionId] || sectionId;
+      const out = arr
+        .filter((t) => (t.name || "").trim() !== "")
+        .map((t) => ({
+          ...t,
+          sectionId,
+          sectionLabel,
+          itemType: t.itemType || "todo",
+          isKpiTodo: false,
+        }));
+      todoDebug("loadSectionTasks", sectionId, "count", out.length);
+      return out;
     }
   } catch (_) {}
   return [];
@@ -128,9 +125,7 @@ function loadSectionTasks(sectionId) {
 
 function updateSectionTaskDone(sectionId, taskId, done) {
   try {
-    const raw = localStorage.getItem(SECTION_TASKS_KEY);
-    if (!raw) return false;
-    const obj = JSON.parse(raw);
+    const obj = readSectionTasksObject();
     const arr = obj[sectionId];
     if (!Array.isArray(arr)) return false;
     const t = arr.find((x) => (x.taskId || "") === taskId);
@@ -145,8 +140,7 @@ function updateSectionTaskDone(sectionId, taskId, done) {
 
 function saveSectionTasks(sectionId, tasks) {
   try {
-    const raw = localStorage.getItem(SECTION_TASKS_KEY);
-    const obj = raw ? JSON.parse(raw) : {};
+    const obj = readSectionTasksObject();
     const existingList = obj[sectionId] || [];
     const prevById = new Map(
       existingList.map((t) => [String(t.taskId || "").trim(), t]),
@@ -276,9 +270,7 @@ function saveSectionTasks(sectionId, tasks) {
 
 function moveSectionTaskToSection(fromSectionId, taskId, targetSectionId, taskData) {
   try {
-    const raw = localStorage.getItem(SECTION_TASKS_KEY);
-    if (!raw) return false;
-    const obj = JSON.parse(raw);
+    const obj = readSectionTasksObject();
     const fromArr = obj[fromSectionId];
     if (!Array.isArray(fromArr)) return false;
     const idx = fromArr.findIndex((x) => (x.taskId || "") === taskId);
@@ -307,9 +299,7 @@ function moveSectionTaskToSection(fromSectionId, taskId, targetSectionId, taskDa
 
 function moveCustomSectionTaskToSection(fromSectionId, taskId, targetSectionId, taskData) {
   try {
-    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
-    if (!raw) return false;
-    const obj = JSON.parse(raw);
+    const obj = readCustomSectionTasksObject();
     const fromArr = obj[fromSectionId];
     if (!Array.isArray(fromArr)) return false;
     const idx = fromArr.findIndex((x) => (x.taskId || "") === taskId);
@@ -338,20 +328,17 @@ function moveCustomSectionTaskToSection(fromSectionId, taskId, targetSectionId, 
 
 function loadCustomSectionTasks(sectionId) {
   try {
-    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
-    if (raw) {
-      const obj = JSON.parse(raw);
-      const arr = obj[sectionId];
-      if (Array.isArray(arr)) {
-        return arr
-          .filter((t) => (t.name || "").trim() !== "")
-          .map((t) => ({
-            ...t,
-            sectionId,
-            sectionLabel: getCustomSections().find((s) => s.id === sectionId)?.label || sectionId,
-            itemType: t.itemType || "todo",
-          }));
-      }
+    const obj = readCustomSectionTasksObject();
+    const arr = obj[sectionId];
+    if (Array.isArray(arr)) {
+      return arr
+        .filter((t) => (t.name || "").trim() !== "")
+        .map((t) => ({
+          ...t,
+          sectionId,
+          sectionLabel: getCustomSections().find((s) => s.id === sectionId)?.label || sectionId,
+          itemType: t.itemType || "todo",
+        }));
     }
   } catch (_) {}
   return [];
@@ -359,8 +346,7 @@ function loadCustomSectionTasks(sectionId) {
 
 function saveCustomSectionTasks(sectionId, tasks) {
   try {
-    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
-    const obj = raw ? JSON.parse(raw) : {};
+    const obj = readCustomSectionTasksObject();
     const existingList = obj[sectionId] || [];
     const prevById = new Map(
       existingList.map((t) => [String(t.taskId || "").trim(), t]),
@@ -418,9 +404,7 @@ function saveCustomSectionTasks(sectionId, tasks) {
 
 function removeCustomSectionTasks(sectionId) {
   try {
-    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
-    if (!raw) return;
-    const obj = JSON.parse(raw);
+    const obj = readCustomSectionTasksObject();
     delete obj[sectionId];
     persistCustomSectionTasksAndSchedule(obj);
   } catch (_) {}
@@ -428,9 +412,7 @@ function removeCustomSectionTasks(sectionId) {
 
 function removeTaskFromSectionStorage(sectionId, taskId) {
   try {
-    const raw = localStorage.getItem(SECTION_TASKS_KEY);
-    if (!raw) return false;
-    const obj = JSON.parse(raw);
+    const obj = readSectionTasksObject();
     const arr = obj[sectionId];
     if (!Array.isArray(arr)) return false;
     obj[sectionId] = arr.filter((t) => (t.taskId || "") !== taskId);
@@ -443,9 +425,7 @@ function removeTaskFromSectionStorage(sectionId, taskId) {
 
 function removeTaskFromCustomSectionStorage(sectionId, taskId) {
   try {
-    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
-    if (!raw) return false;
-    const obj = JSON.parse(raw);
+    const obj = readCustomSectionTasksObject();
     const arr = obj[sectionId];
     if (!Array.isArray(arr)) return false;
     obj[sectionId] = arr.filter((t) => (t.taskId || "") !== taskId);
@@ -493,8 +473,7 @@ const TASK_ID_UUID_RE =
 function syncSectionDomTaskIdsFromStorage(sectionId, sec) {
   if (!sec || !sectionId) return;
   try {
-    const raw = localStorage.getItem(SECTION_TASKS_KEY);
-    const obj = raw ? JSON.parse(raw) : {};
+    const obj = readSectionTasksObject();
     const arr = obj[sectionId];
     if (!Array.isArray(arr)) return;
     const nameToUuid = new Map();
@@ -659,11 +638,10 @@ function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
     saveSectionTasks(sectionId, sectionTasks);
   });
   try {
-    const raw = localStorage.getItem(SECTION_TASKS_KEY);
-    const obj = raw ? JSON.parse(raw) : {};
+    const obj = readSectionTasksObject();
     const counts = {};
     Object.keys(obj || {}).forEach((k) => { counts[k] = (obj[k] || []).length; });
-    todoDebug("collectAndSave: after save localStorage", SECTION_TASKS_KEY, counts);
+    todoDebug("collectAndSave: after save mem snapshot", counts);
   } catch (_) {}
 }
 
@@ -3470,8 +3448,7 @@ export function render(options = {}) {
         const moved = removeKpiTodo(kpiTodoId, storageKey);
         if (moved) {
           try {
-            const customRaw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
-            const customObj = customRaw ? JSON.parse(customRaw) : {};
+            const customObj = readCustomSectionTasksObject();
             if (!customObj[targetSectionId]) customObj[targetSectionId] = [];
             customObj[targetSectionId].push({ ...taskPayload, taskId: oldTaskId });
             persistCustomSectionTasksAndSchedule(customObj);
@@ -3497,17 +3474,14 @@ export function render(options = {}) {
       } else if (fromUsesSectionStorage && targetIsCustom) {
         moved = (() => {
           try {
-            const raw = localStorage.getItem(SECTION_TASKS_KEY);
-            if (!raw) return false;
-            const obj = JSON.parse(raw);
+            const obj = readSectionTasksObject();
             const fromArr = obj[fromSectionId];
             if (!Array.isArray(fromArr)) return false;
             const idx = fromArr.findIndex((x) => (x.taskId || "") === oldTaskId);
             if (idx < 0) return false;
             fromArr.splice(idx, 1);
             persistSectionTasksAndSchedule(obj);
-            const customRaw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
-            const customObj = customRaw ? JSON.parse(customRaw) : {};
+            const customObj = readCustomSectionTasksObject();
             if (!customObj[targetSectionId]) customObj[targetSectionId] = [];
             customObj[targetSectionId].push({ ...taskPayload, taskId: oldTaskId });
             persistCustomSectionTasksAndSchedule(customObj);
@@ -3518,17 +3492,14 @@ export function render(options = {}) {
       } else if (fromIsCustom && targetUsesSectionStorage) {
         moved = (() => {
           try {
-            const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
-            if (!raw) return false;
-            const obj = JSON.parse(raw);
+            const obj = readCustomSectionTasksObject();
             const fromArr = obj[fromSectionId];
             if (!Array.isArray(fromArr)) return false;
             const idx = fromArr.findIndex((x) => (x.taskId || "") === oldTaskId);
             if (idx < 0) return false;
             fromArr.splice(idx, 1);
             persistCustomSectionTasksAndSchedule(obj);
-            const sectionRaw = localStorage.getItem(SECTION_TASKS_KEY);
-            const sectionObj = sectionRaw ? JSON.parse(sectionRaw) : {};
+            const sectionObj = readSectionTasksObject();
             if (!sectionObj[targetSectionId]) sectionObj[targetSectionId] = [];
             sectionObj[targetSectionId].push({ ...taskPayload, taskId: oldTaskId });
             persistSectionTasksAndSchedule(sectionObj);

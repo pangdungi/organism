@@ -580,9 +580,9 @@ export function mountApp(container) {
             const [needTodoRefresh, kpiR, timeR, assetR, diaryR] =
               await Promise.all([
                 todoPullPromise,
-                pullAllKpiMapsFromCloud(),
+                pullAllKpiMapsFromCloud(() => currentTabId),
                 pullAllTimeLedgerFromCloud(),
-                pullAllAssetFromCloud(),
+                pullAllAssetFromCloud(() => currentTabId),
                 pullAllDiaryFromCloud(),
               ]);
             const kpiChanged = kpiR.anyChanged;

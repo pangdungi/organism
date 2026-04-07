@@ -286,7 +286,7 @@ export async function pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd) {
 }
 
 /**
- * 아카이브: 해당 연·월만 서버에서 받아 로컬에 반영.
+ * 아카이브: 해당 연·월만 서버에서 받아 세션 메모리에 반영.
  */
 export async function hydrateTimeLedgerEntriesForArchiveMonth(year, month) {
   if (!supabase) return false;
@@ -295,7 +295,7 @@ export async function hydrateTimeLedgerEntriesForArchiveMonth(year, month) {
 }
 
 /**
- * 아카이브: 선택한 날짜 구간(YYYY-MM-DD 포함)을 서버에서 받아 로컬에 반영.
+ * 아카이브: 선택한 날짜 구간(YYYY-MM-DD 포함)을 서버에서 받아 세션 메모리에 반영.
  */
 export async function hydrateTimeLedgerEntriesForArchiveRange(rangeStart, rangeEnd) {
   if (!supabase) return false;

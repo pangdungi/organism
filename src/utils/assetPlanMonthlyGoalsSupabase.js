@@ -1,12 +1,46 @@
 /**
  * 자산관리계획 월 목표 행 ↔ Supabase (asset_user_plan_monthly_goals)
- * 로컬: JSON 배열 [{ section, category, classification, monthlyGoalStr, sortOrder }]
+ * — 세션 메모리(서버 pull·sync 후 재조회).
  */
 
 import { supabase } from "../supabase.js";
+import { runAssetSerialized } from "./assetServerSyncSerial.js";
 
 const TABLE = "asset_user_plan_monthly_goals";
 export const PLAN_MONTHLY_GOALS_STORAGE_KEY = "asset_plan_monthly_goals_v1";
+
+/** @type {unknown[]|undefined} */
+let _planRowsMem = undefined;
+let _planMigrated = false;
+
+function migratePlanFromLocalStorageOnce() {
+  if (_planMigrated) return;
+  _planMigrated = true;
+  try {
+    if (typeof localStorage === "undefined") return;
+    const raw = localStorage.getItem(PLAN_MONTHLY_GOALS_STORAGE_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      _planRowsMem = Array.isArray(arr) ? arr : [];
+    } else {
+      _planRowsMem = undefined;
+    }
+    localStorage.removeItem(PLAN_MONTHLY_GOALS_STORAGE_KEY);
+  } catch (_) {
+    _planRowsMem = undefined;
+  }
+}
+
+export function getPlanMonthlyGoalsRowsMem() {
+  migratePlanFromLocalStorageOnce();
+  if (!Array.isArray(_planRowsMem)) return [];
+  return _planRowsMem.slice();
+}
+
+export function setPlanMonthlyGoalsRowsMem(rows) {
+  migratePlanFromLocalStorageOnce();
+  _planRowsMem = Array.isArray(rows) ? rows.slice() : [];
+}
 
 function parseNum(val) {
   const n = parseFloat(String(val || "").replace(/,/g, ""));
@@ -27,10 +61,7 @@ function dbRowsToLocalPayload(rows) {
 }
 
 export function applyPlanMonthlyGoalsServerRowsToLocalStorage(dbRows) {
-  const payload = dbRowsToLocalPayload(dbRows);
-  try {
-    localStorage.setItem(PLAN_MONTHLY_GOALS_STORAGE_KEY, JSON.stringify(payload));
-  } catch (_) {}
+  setPlanMonthlyGoalsRowsMem(dbRowsToLocalPayload(dbRows));
 }
 
 async function getSessionUserId() {
@@ -41,8 +72,7 @@ async function getSessionUserId() {
   return session?.user?.id || null;
 }
 
-/** @returns {Promise<boolean>} 서버에서 읽어 로컬을 갱신했으면 true(빈 배열 포함) */
-export async function pullAssetPlanMonthlyGoalsFromSupabase() {
+export async function pullAssetPlanMonthlyGoalsFromSupabaseImpl() {
   const userId = await getSessionUserId();
   if (!userId || !supabase) return false;
 
@@ -59,26 +89,21 @@ export async function pullAssetPlanMonthlyGoalsFromSupabase() {
   }
 
   const rows = data || [];
-  /* 서버에 한 건도 없으면 로컬을 덮어쓰지 않음(미동기화·첫 로그인 시 로컬 유지). 행이 있을 때만 클라우드 기준으로 맞춤 */
   if (rows.length === 0) return false;
 
   applyPlanMonthlyGoalsServerRowsToLocalStorage(rows);
   return true;
 }
 
-function readLocalRows() {
-  try {
-    const raw = localStorage.getItem(PLAN_MONTHLY_GOALS_STORAGE_KEY);
-    if (!raw) return [];
-    const arr = JSON.parse(raw);
-    return Array.isArray(arr) ? arr : [];
-  } catch (_) {
-    return [];
-  }
+export function pullAssetPlanMonthlyGoalsFromSupabase() {
+  return runAssetSerialized(() => pullAssetPlanMonthlyGoalsFromSupabaseImpl());
 }
 
-/** 유효한 목표만 업서트 (분류·금액 있는 행) */
-export async function syncAssetPlanMonthlyGoalsToSupabase() {
+function readLocalRows() {
+  return getPlanMonthlyGoalsRowsMem();
+}
+
+export async function syncAssetPlanMonthlyGoalsToSupabaseImpl() {
   const userId = await getSessionUserId();
   if (!userId || !supabase) return;
 
@@ -106,10 +131,28 @@ export async function syncAssetPlanMonthlyGoalsToSupabase() {
     console.warn("[asset-plan-goals] delete", delErr.message);
     return;
   }
-  if (insertPayload.length === 0) return;
+  if (insertPayload.length > 0) {
+    const { error: insErr } = await supabase.from(TABLE).insert(insertPayload);
+    if (insErr) console.warn("[asset-plan-goals] insert", insErr.message);
+  }
 
-  const { error: insErr } = await supabase.from(TABLE).insert(insertPayload);
-  if (insErr) console.warn("[asset-plan-goals] insert", insErr.message);
+  const { data: again, error: pullErr } = await supabase
+    .from(TABLE)
+    .select("plan_section, category, classification, monthly_goal_amount, sort_order")
+    .eq("user_id", userId)
+    .order("plan_section", { ascending: true })
+    .order("sort_order", { ascending: true });
+
+  if (!pullErr && again) {
+    applyPlanMonthlyGoalsServerRowsToLocalStorage(again);
+  }
+  try {
+    window.dispatchEvent(new CustomEvent("asset-plan-monthly-goals-saved", { detail: { fromServerMerge: true } }));
+  } catch (_) {}
+}
+
+export function syncAssetPlanMonthlyGoalsToSupabase() {
+  return runAssetSerialized(() => syncAssetPlanMonthlyGoalsToSupabaseImpl());
 }
 
 export async function pushLocalPlanGoalsIfServerEmpty() {
@@ -147,16 +190,25 @@ let _listenerAttached = false;
 export function attachAssetPlanMonthlyGoalsSaveListener() {
   if (_listenerAttached) return;
   _listenerAttached = true;
-  window.addEventListener("asset-plan-monthly-goals-saved", () => {
+  window.addEventListener("asset-plan-monthly-goals-saved", (e) => {
+    if (e.detail?.fromServerMerge) return;
     scheduleAssetPlanMonthlyGoalsSyncPush();
   });
 }
 
-/** @returns {Promise<boolean>} pull로 로컬이 바뀌었으면 true */
 export async function hydrateAssetPlanMonthlyGoalsFromCloud() {
   attachAssetPlanMonthlyGoalsSaveListener();
   if (!supabase) return false;
   const applied = await pullAssetPlanMonthlyGoalsFromSupabase();
   await pushLocalPlanGoalsIfServerEmpty();
   return applied;
+}
+
+export function clearPlanMonthlyGoalsMemAndLegacy() {
+  _planRowsMem = undefined;
+  _planMigrated = false;
+  try {
+    if (typeof localStorage === "undefined") return;
+    localStorage.removeItem(PLAN_MONTHLY_GOALS_STORAGE_KEY);
+  } catch (_) {}
 }

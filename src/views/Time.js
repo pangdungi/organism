@@ -70,8 +70,14 @@ import {
   readTimeLedgerSessionFilterRangeYmd,
 } from "../utils/timeLedgerEntriesSupabase.js";
 import { timeLedgerSyncLog } from "../utils/timeLedgerSyncDebug.js";
-import { persistSectionTasksAndSchedule } from "../utils/todoSectionTasksSupabase.js";
-import { SECTION_TASKS_KEY } from "../utils/todoSectionTasksModel.js";
+import {
+  persistSectionTasksAndSchedule,
+  persistCustomSectionTasksAndSchedule,
+} from "../utils/todoSectionTasksSupabase.js";
+import {
+  readSectionTasksObject,
+  readCustomSectionTasksObject,
+} from "../utils/todoSectionTasksModel.js";
 
 export { getTaskOptionByName };
 
@@ -83,8 +89,6 @@ const TIME_LEDGER_ADD_FAB_SVG =
   '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>';
 
 /** 오딧 3. 우선순위 영역: 해당 날짜 할일 목록 로드 (Calendar getTasksForDate와 동일 데이터) */
-const SECTION_TASKS_KEY_AUDIT = "todo-section-tasks";
-const CUSTOM_SECTION_TASKS_KEY_AUDIT = "todo-custom-section-tasks";
 const KPI_SECTION_IDS_AUDIT = [
   "braindump",
   "dream",
@@ -110,54 +114,48 @@ function getTasksForAuditDate(dateKey) {
         storageKey: t.storageKey,
       }),
     );
-    const raw = localStorage.getItem(SECTION_TASKS_KEY_AUDIT);
-    if (raw) {
-      const obj = JSON.parse(raw);
-      KPI_SECTION_IDS_AUDIT.forEach((sectionId) => {
-        const arr = obj[sectionId];
-        if (!Array.isArray(arr)) return;
-        arr
-          .filter(
-            (t) =>
-              (t.name || "").trim() !== "" &&
-              (t.dueDate || "").slice(0, 10) === dateKey,
-          )
-          .forEach((t) =>
-            out.push({
-              name: (t.name || "").trim(),
-              done: !!t.done,
-              eisenhower: (t.eisenhower || "").trim() || "",
-              classification: "",
-              sectionId,
-              taskId: t.taskId || "",
-            }),
-          );
-      });
-    }
-    const customRaw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY_AUDIT);
-    if (customRaw) {
-      const obj = JSON.parse(customRaw);
-      getCustomSections().forEach((sec) => {
-        const arr = obj[sec.id];
-        if (!Array.isArray(arr)) return;
-        arr
-          .filter(
-            (t) =>
-              (t.name || "").trim() !== "" &&
-              (t.dueDate || "").slice(0, 10) === dateKey,
-          )
-          .forEach((t) =>
-            out.push({
-              name: (t.name || "").trim(),
-              done: !!t.done,
-              eisenhower: (t.eisenhower || "").trim() || "",
-              classification: "",
-              sectionId: sec.id,
-              taskId: t.taskId || "",
-            }),
-          );
-      });
-    }
+    const obj = readSectionTasksObject();
+    KPI_SECTION_IDS_AUDIT.forEach((sectionId) => {
+      const arr = obj[sectionId];
+      if (!Array.isArray(arr)) return;
+      arr
+        .filter(
+          (t) =>
+            (t.name || "").trim() !== "" &&
+            (t.dueDate || "").slice(0, 10) === dateKey,
+        )
+        .forEach((t) =>
+          out.push({
+            name: (t.name || "").trim(),
+            done: !!t.done,
+            eisenhower: (t.eisenhower || "").trim() || "",
+            classification: "",
+            sectionId,
+            taskId: t.taskId || "",
+          }),
+        );
+    });
+    const cobj = readCustomSectionTasksObject();
+    getCustomSections().forEach((sec) => {
+      const arr = cobj[sec.id];
+      if (!Array.isArray(arr)) return;
+      arr
+        .filter(
+          (t) =>
+            (t.name || "").trim() !== "" &&
+            (t.dueDate || "").slice(0, 10) === dateKey,
+        )
+        .forEach((t) =>
+          out.push({
+            name: (t.name || "").trim(),
+            done: !!t.done,
+            eisenhower: (t.eisenhower || "").trim() || "",
+            classification: "",
+            sectionId: sec.id,
+            taskId: t.taskId || "",
+          }),
+        );
+    });
   } catch (_) {}
   return out;
 }
@@ -168,18 +166,15 @@ function setAuditTaskDone(sectionId, taskId, kpiTodoId, storageKey, done) {
     return;
   }
   try {
-    const key = (sectionId || "").startsWith("custom-")
-      ? CUSTOM_SECTION_TASKS_KEY_AUDIT
-      : SECTION_TASKS_KEY_AUDIT;
-    const raw = localStorage.getItem(key);
-    if (!raw) return;
-    const obj = JSON.parse(raw);
+    const isCustom = (sectionId || "").startsWith("custom-");
+    const obj = isCustom ? readCustomSectionTasksObject() : readSectionTasksObject();
     const arr = obj[sectionId];
     if (!Array.isArray(arr)) return;
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
       t.done = !!done;
-      localStorage.setItem(key, JSON.stringify(obj));
+      if (isCustom) persistCustomSectionTasksAndSchedule(obj);
+      else persistSectionTasksAndSchedule(obj);
     }
   } catch (_) {}
 }
@@ -5849,8 +5844,7 @@ export function render() {
     ];
     if (!VALID_SECTIONS.includes(sectionId)) return false;
     try {
-      const raw = localStorage.getItem(SECTION_TASKS_KEY);
-      const obj = raw ? JSON.parse(raw) : {};
+      const obj = readSectionTasksObject();
       const arr = Array.isArray(obj[sectionId]) ? obj[sectionId] : [];
       const taskId =
         typeof crypto !== "undefined" && crypto.randomUUID

@@ -2,11 +2,35 @@ import { supabase } from "./supabase.js";
 import { showOnly } from "./pages.js";
 import { purgeTimeLedgerLocalData } from "./utils/timeLedgerEntriesModel.js";
 import { clearTimeLedgerTaskOptionsLocalStorage } from "./utils/timeTaskOptionsModel.js";
+import { clearAssetExpenseTransactionsMemAndLegacy } from "./utils/assetExpenseTransactionsSupabase.js";
+import { clearNetWorthBundleMemAndLegacy } from "./utils/assetNetWorthBundleSupabase.js";
+import { clearNetWorthTargetMemAndLegacy } from "./utils/assetNetWorthTargetSupabase.js";
+import { clearAssetExpensePrefsMemAndLegacy } from "./utils/assetExpensePrefsSupabase.js";
+import { clearPlanMonthlyGoalsMemAndLegacy } from "./utils/assetPlanMonthlyGoalsSupabase.js";
+import { clearStockCategoryMemAndLegacy } from "./utils/assetStockCategorySupabase.js";
+import { clearAssetUiSessionMem } from "./utils/assetUiSessionMem.js";
+import { clearWorkScheduleMemAndLegacy } from "./utils/workScheduleModel.js";
+import { clearDiaryMemAndLegacy } from "./diaryData.js";
+import { clearTodoSectionTasksMemAndLegacy } from "./utils/todoSectionTasksModel.js";
+import { clearTodoSubtasksMemAndLegacy } from "./utils/todoSubtasks.js";
+import { clearTodoSettingsAndCustomSectionsOnSignOut } from "./utils/todoSettings.js";
 
 /** 로그아웃·세션 만료·구독 만료 signOut 시 로컬 시간가계부·과제 캐시 제거 (다른 계정과 섞임 방지) */
 export async function purgeTimeLedgerLocalOnSignOut() {
   await purgeTimeLedgerLocalData();
   clearTimeLedgerTaskOptionsLocalStorage();
+  clearAssetExpenseTransactionsMemAndLegacy();
+  clearNetWorthBundleMemAndLegacy();
+  clearNetWorthTargetMemAndLegacy();
+  clearAssetExpensePrefsMemAndLegacy();
+  clearPlanMonthlyGoalsMemAndLegacy();
+  clearStockCategoryMemAndLegacy();
+  clearAssetUiSessionMem();
+  clearWorkScheduleMemAndLegacy();
+  clearDiaryMemAndLegacy();
+  clearTodoSectionTasksMemAndLegacy();
+  clearTodoSubtasksMemAndLegacy();
+  clearTodoSettingsAndCustomSectionsOnSignOut();
   try {
     sessionStorage.removeItem("lp_ledger_uid");
   } catch (_) {}

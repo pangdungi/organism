@@ -7,14 +7,10 @@ import {
   flattenCalendarTasksForSync,
   mergeCalendarSectionTasksFromServer,
   mergeAdditiveServerRowsIntoLocal,
-  readSectionTasksObject,
-  readCustomSectionTasksObject,
   ensureCalendarSectionTaskIds,
-  writeSectionTasksObject,
-  writeCustomSectionTasksObject,
-  SECTION_TASKS_KEY,
-  CUSTOM_SECTION_TASKS_KEY,
+  snapshotSectionTasksForPullCompare,
 } from "./todoSectionTasksModel.js";
+import { runTodoSectionTasksSerialized } from "./todoSectionTasksServerSyncSerial.js";
 
 const TABLE = "calendar_section_tasks";
 
@@ -38,13 +34,15 @@ export function persistCustomSectionTasksAndSchedule(obj) {
 
 /** 완료 항목 일괄 제거 시: 서버에 남아 있는 done=true 행을 직접 삭제(upsert만으로는 로컬에 id가 남으면 계속 재업로드될 수 있음) */
 export async function deleteCompletedCalendarSectionTasksFromSupabase() {
-  const userId = await getSessionUserId();
-  if (!userId || !supabase) return;
-  const { error } = await supabase.from(TABLE).delete().eq("user_id", userId).eq("done", true);
-  if (error) console.warn("[calendar-section-tasks] delete completed rows", error.message);
+  return runTodoSectionTasksSerialized(async () => {
+    const userId = await getSessionUserId();
+    if (!userId || !supabase) return;
+    const { error } = await supabase.from(TABLE).delete().eq("user_id", userId).eq("done", true);
+    if (error) console.warn("[calendar-section-tasks] delete completed rows", error.message);
+  });
 }
 
-export async function syncTodoSectionTasksToSupabase() {
+async function syncTodoSectionTasksToSupabaseImpl() {
   const userId = await getSessionUserId();
   if (!userId || !supabase) return;
 
@@ -90,7 +88,11 @@ export async function syncTodoSectionTasksToSupabase() {
   }
 }
 
-export async function pullTodoSectionTasksFromSupabase() {
+export async function syncTodoSectionTasksToSupabase() {
+  return runTodoSectionTasksSerialized(() => syncTodoSectionTasksToSupabaseImpl());
+}
+
+async function pullTodoSectionTasksFromSupabaseImpl() {
   const userId = await getSessionUserId();
   if (!userId || !supabase) return false;
 
@@ -112,13 +114,17 @@ export async function pullTodoSectionTasksFromSupabase() {
   const rows = Array.isArray(data) ? data : [];
 
   /* 병합 전후가 같으면 false — 무한 __lpRenderMain 루프 방지(매 pull마다 true였음) */
-  const beforeSnap = `${localStorage.getItem(SECTION_TASKS_KEY) ?? ""}\n${localStorage.getItem(CUSTOM_SECTION_TASKS_KEY) ?? ""}`;
+  const beforeSnap = snapshotSectionTasksForPullCompare();
   mergeCalendarSectionTasksFromServer(rows);
-  const afterSnap = `${localStorage.getItem(SECTION_TASKS_KEY) ?? ""}\n${localStorage.getItem(CUSTOM_SECTION_TASKS_KEY) ?? ""}`;
+  const afterSnap = snapshotSectionTasksForPullCompare();
   return beforeSnap !== afterSnap;
 }
 
-export async function pushAllLocalTodoSectionTasksIfServerEmpty() {
+export async function pullTodoSectionTasksFromSupabase() {
+  return runTodoSectionTasksSerialized(() => pullTodoSectionTasksFromSupabaseImpl());
+}
+
+async function pushAllLocalTodoSectionTasksIfServerEmptyImpl() {
   const userId = await getSessionUserId();
   if (!userId || !supabase) return;
 
@@ -136,6 +142,10 @@ export async function pushAllLocalTodoSectionTasksIfServerEmpty() {
 
   const { error: upErr } = await supabase.from(TABLE).upsert(payloads, { onConflict: "id" });
   if (upErr) console.warn("[calendar-section-tasks] push empty server", upErr.message);
+}
+
+export async function pushAllLocalTodoSectionTasksIfServerEmpty() {
+  return runTodoSectionTasksSerialized(() => pushAllLocalTodoSectionTasksIfServerEmptyImpl());
 }
 
 let _pushTimer = null;

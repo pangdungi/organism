@@ -12,12 +12,11 @@ import {
   saveDiaryEntries,
   ensureDiaryEntryUuid,
   isDiaryEntryUuid,
+  getDiaryServerHadRowsFlag,
+  setDiaryServerHadRowsFlag,
 } from "../diaryData.js";
 
 const TABLE = "diary_daily_entries";
-
-/** 서버에 일기가 있었던 적이 있으면 빈 pull 때도 병합(전부 삭제 반영). 신규 계정은 건너뜀 */
-const DIARY_SERVER_HAD_ROWS_KEY = "diary_server_had_rows_v1";
 
 const TAB_TO_KIND = { "1": "free", "2": "control", "3": "emotion" };
 const KIND_TO_TAB = { free: "1", control: "2", emotion: "3" };
@@ -200,10 +199,7 @@ export async function pullDiaryFromSupabase() {
     return null;
   }
   const local = loadDiaryEntries();
-  let hadRowsFlag = false;
-  try {
-    hadRowsFlag = localStorage.getItem(DIARY_SERVER_HAD_ROWS_KEY) === "1";
-  } catch (_) {}
+  const hadRowsFlag = getDiaryServerHadRowsFlag();
 
   if (!Array.isArray(data) || data.length === 0) {
     if (hadRowsFlag) {
@@ -214,9 +210,7 @@ export async function pullDiaryFromSupabase() {
     return null;
   }
 
-  try {
-    localStorage.setItem(DIARY_SERVER_HAD_ROWS_KEY, "1");
-  } catch (_) {}
+  setDiaryServerHadRowsFlag(true);
 
   const merged = mergeDiaryFromServerSnapshot(local, data);
   saveDiaryEntries(merged);

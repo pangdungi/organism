@@ -12,6 +12,14 @@ import {
 } from "../utils/workScheduleEntryResolve.js";
 import { readTimeLedgerEntriesRaw } from "../utils/timeLedgerEntriesModel.js";
 import { confirmDeleteRow } from "../utils/confirmModal.js";
+import {
+  readWorkScheduleRowsFromMem,
+  writeWorkScheduleRowsToMem,
+  readWorkScheduleTypeOptionsRawFromMem,
+  writeWorkScheduleTypeOptionsRawToMem,
+  readWorkScheduleDailyHoursFromMem,
+  writeWorkScheduleDailyHoursToMem,
+} from "../utils/workScheduleModel.js";
 
 /** 모바일 근무 행 추가 FAB — 시간가계부 과제 기록 FAB와 동일 아이콘 */
 const WORK_SCHEDULE_MOBILE_FAB_SVG =
@@ -37,9 +45,6 @@ function notifyWorkScheduleSaved() {
   } catch (_) {}
 }
 
-const WORK_SCHEDULE_KEY = "work_schedule_rows";
-const WORK_TYPE_OPTIONS_KEY = "work_schedule_type_options";
-const WORK_SCHEDULE_DAILY_HOURS_KEY = "work_schedule_daily_hours";
 /** 기본 근무유형 순서: 연차 → 휴가 → 정규근무 (연차·휴가는 00:00-00:00, 수정 불가) */
 const DEFAULT_WORK_TYPE_OPTIONS = [
   { name: "연차", start: "00:00", end: "00:00" },
@@ -69,33 +74,30 @@ const ALLOWED_WORK_TYPE_NAMES = new Set(DEFAULT_WORK_TYPE_OPTIONS.map((o) => o.n
 function getWorkTypeOptionsFull() {
   const defaultFull = DEFAULT_WORK_TYPE_OPTIONS.map((o) => ({ name: o.name, start: o.start || "", end: o.end || "" }));
   try {
-    const raw = localStorage.getItem(WORK_TYPE_OPTIONS_KEY);
-    if (raw) {
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr) && arr.length > 0) {
-        const normalized = arr.map(normalizeTypeEntry).filter((o) => o.name);
-        const seen = new Set();
-        const merged = [];
-        for (const d of defaultFull) {
-          const fromStorage = normalized.find((o) => o.name === d.name);
-          merged.push(fromStorage ? { name: d.name, start: fromStorage.start || d.start, end: fromStorage.end || d.end } : d);
-          seen.add(d.name);
-        }
-        for (const o of normalized) {
-          if (seen.has(o.name)) continue;
-          merged.push({ name: o.name, start: o.start || "", end: o.end || "" });
-          seen.add(o.name);
-        }
-        merged.sort((a, b) => {
-          const i = WORK_TYPE_DISPLAY_ORDER.indexOf(a.name);
-          const j = WORK_TYPE_DISPLAY_ORDER.indexOf(b.name);
-          if (i < 0 && j < 0) return 0;
-          if (i < 0) return 1;
-          if (j < 0) return -1;
-          return i - j;
-        });
-        return merged;
+    const arr = readWorkScheduleTypeOptionsRawFromMem();
+    if (Array.isArray(arr) && arr.length > 0) {
+      const normalized = arr.map(normalizeTypeEntry).filter((o) => o.name);
+      const seen = new Set();
+      const merged = [];
+      for (const d of defaultFull) {
+        const fromStorage = normalized.find((o) => o.name === d.name);
+        merged.push(fromStorage ? { name: d.name, start: fromStorage.start || d.start, end: fromStorage.end || d.end } : d);
+        seen.add(d.name);
       }
+      for (const o of normalized) {
+        if (seen.has(o.name)) continue;
+        merged.push({ name: o.name, start: o.start || "", end: o.end || "" });
+        seen.add(o.name);
+      }
+      merged.sort((a, b) => {
+        const i = WORK_TYPE_DISPLAY_ORDER.indexOf(a.name);
+        const j = WORK_TYPE_DISPLAY_ORDER.indexOf(b.name);
+        if (i < 0 && j < 0) return 0;
+        if (i < 0) return 1;
+        if (j < 0) return -1;
+        return i - j;
+      });
+      return merged;
     }
   } catch (_) {}
   return defaultFull;
@@ -112,9 +114,7 @@ function addWorkTypeOption(name, start, end) {
   if (full.some((o) => o.name === trimmed)) return full;
   const newEntry = { name: trimmed, start: (start != null ? String(start) : "").trim(), end: (end != null ? String(end) : "").trim() };
   full.unshift(newEntry);
-  try {
-    localStorage.setItem(WORK_TYPE_OPTIONS_KEY, JSON.stringify(full));
-  } catch (_) {}
+  writeWorkScheduleTypeOptionsRawToMem(full);
   notifyWorkScheduleSaved();
   return full;
 }
@@ -125,9 +125,7 @@ function updateWorkTypeOption(name, start, end) {
   const idx = full.findIndex((o) => o.name === name);
   if (idx < 0) return full;
   full[idx] = { name, start: (start != null ? String(start) : "").trim(), end: (end != null ? String(end) : "").trim() };
-  try {
-    localStorage.setItem(WORK_TYPE_OPTIONS_KEY, JSON.stringify(full));
-  } catch (_) {}
+  writeWorkScheduleTypeOptionsRawToMem(full);
   notifyWorkScheduleSaved();
   return full;
 }
@@ -135,9 +133,7 @@ function updateWorkTypeOption(name, start, end) {
 function removeWorkTypeOption(name) {
   if (PROTECTED_WORK_TYPES.includes(name)) return getWorkTypeOptionsFull();
   const full = getWorkTypeOptionsFull().filter((o) => o.name !== name);
-  try {
-    localStorage.setItem(WORK_TYPE_OPTIONS_KEY, JSON.stringify(full));
-  } catch (_) {}
+  writeWorkScheduleTypeOptionsRawToMem(full);
   notifyWorkScheduleSaved();
   return full;
 }
@@ -150,39 +146,11 @@ function getDefaultStartEndForType(workTypeName) {
 }
 
 function loadRows() {
-  try {
-    const raw = localStorage.getItem(WORK_SCHEDULE_KEY);
-    if (raw) {
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) {
-        let dirty = false;
-        const out = arr.map((r) => {
-          const id = r.id != null ? String(r.id).trim() : "";
-          if (id && ENTRY_ID_RE.test(id)) return r;
-          dirty = true;
-          return { ...r, id: crypto.randomUUID() };
-        });
-        if (dirty) {
-          try {
-            localStorage.setItem(WORK_SCHEDULE_KEY, JSON.stringify(out));
-          } catch (_) {}
-        }
-        return out;
-      }
-    }
-  } catch (_) {}
-  return [];
+  return readWorkScheduleRowsFromMem();
 }
 
 function saveRows(rows) {
-  const withIds = rows.map((r) => {
-    const id = r.id != null ? String(r.id).trim() : "";
-    if (id && ENTRY_ID_RE.test(id)) return r;
-    return { ...r, id: crypto.randomUUID() };
-  });
-  try {
-    localStorage.setItem(WORK_SCHEDULE_KEY, JSON.stringify(withIds));
-  } catch (_) {}
+  const withIds = writeWorkScheduleRowsToMem(rows);
   notifyWorkScheduleSaved();
   return withIds;
 }
@@ -212,22 +180,15 @@ function syncEntryIdsAfterSave(tableWrap, rowsWithIds) {
 }
 
 function getDailyHours() {
-  try {
-    const v = localStorage.getItem(WORK_SCHEDULE_DAILY_HOURS_KEY);
-    if (v != null && v !== "") {
-      const n = parseFloat(v);
-      if (!Number.isNaN(n) && n >= 0) return n;
-    }
-  } catch (_) {}
+  const mem = readWorkScheduleDailyHoursFromMem();
+  if (mem != null && !Number.isNaN(mem) && mem >= 0) return mem;
   return 8.5;
 }
 
 function setDailyHours(val) {
   const n = parseFloat(val);
   if (Number.isNaN(n) || n < 0) return;
-  try {
-    localStorage.setItem(WORK_SCHEDULE_DAILY_HOURS_KEY, String(n));
-  } catch (_) {}
+  writeWorkScheduleDailyHoursToMem(n);
   notifyWorkScheduleSaved();
 }
 
@@ -336,6 +297,21 @@ function stableSessionIdForTimeRow(t) {
   }
 }
 
+/** 근무일·시작시간 기준 오름차순(날짜 필터와 동일 — 오래된 날이 위) */
+function compareWorkScheduleRowsByDateTimeAsc(a, b) {
+  const da = normalizeWorkDateKey(a?.workDate || "");
+  const db = normalizeWorkDateKey(b?.workDate || "");
+  const aOk = da.length >= 10;
+  const bOk = db.length >= 10;
+  if (aOk && bOk && da !== db) return da.localeCompare(db);
+  if (aOk && !bOk) return -1;
+  if (!aOk && bOk) return 1;
+  const sa = String(a?.startTime || "").trim();
+  const sb = String(b?.startTime || "").trim();
+  if (sa !== sb) return sa.localeCompare(sb);
+  return String(a?.endTime || "").localeCompare(String(b?.endTime || ""));
+}
+
 /** 근무표 = 시간기록 "근무하기" + 저장된 수동 행. 같은 날짜에 시간기록이 있으면 실제 기록으로 덮어쓰고, 없을 때만 저장된 행 표시 */
 function getMergedInitialRows() {
   const fromTime = getWorkRowsFromTimeRecord();
@@ -354,7 +330,9 @@ function getMergedInitialRows() {
   const savedOnly = saved
     .map(normalizeRowStartEnd)
     .filter((s) => !timeRecordDates.has(normalizeWorkDateKey(s.workDate)));
-  return applyWorkScheduleRowTimesFromTypes([...mergedFromTime, ...savedOnly]);
+  const merged = applyWorkScheduleRowTimesFromTypes([...mergedFromTime, ...savedOnly]);
+  merged.sort(compareWorkScheduleRowsByDateTimeAsc);
+  return merged;
 }
 
 function getHoursSum(tableEl) {

@@ -106,7 +106,7 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
     void (async () => {
       try {
         const needTodo = await hydrateTodoSectionTasksFromCloud();
-        const { anyChanged: kpiMapsChanged } = await pullAllKpiMapsFromCloud();
+        const { anyChanged: kpiMapsChanged } = await pullAllKpiMapsFromCloud(getCurrentTabId);
         const hasTimeRealtime = timeBatch.touchedTables.size > 0;
         /* 기록(time_ledger_entries)이 피커 구간에 닿는 이벤트가 있을 때만 항목 pull. 과제·예산만 변했으면 생략. */
         const skipEntries =
@@ -126,7 +126,7 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
           const t = await pullAllTimeLedgerFromCloud({ skipEntries: true });
           timeLedgerChanged = timeLedgerChanged || t.anyChanged;
         }
-        const { anyChanged: assetChanged } = await pullAllAssetFromCloud();
+        const { anyChanged: assetChanged } = await pullAllAssetFromCloud(getCurrentTabId);
         const { anyChanged: diaryChanged } = await pullAllDiaryFromCloud();
         if (gen !== _generation) return;
         if (

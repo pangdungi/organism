@@ -1,12 +1,19 @@
 /**
  * 감정일기 데이터 - Diary.js와 Time.js에서 공유
  * 탭3: 날짜별 q1~q4 (같은 날짜 여러 항목 가능)
+ * 세션 메모리만 유지. 영속 복구는 Supabase pull. 구버전 localStorage는 최초 접근 시 읽은 뒤 제거합니다.
  */
 
 const DIARY_ENTRIES_KEY = "diary_entries";
+const DIARY_SERVER_HAD_ROWS_KEY = "diary_server_had_rows_v1";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+let _diaryInited = false;
+/** @type {Record<string, unknown>} */
+let _diaryEntriesMem = {};
+let _diaryServerHadRows = false;
 
 export function isDiaryEntryUuid(id) {
   return UUID_RE.test(String(id || "").trim());
@@ -60,7 +67,10 @@ function stripLegacyTab3EmotionCatalog(data) {
   if (Object.prototype.hasOwnProperty.call(tab, "emotions")) delete tab.emotions;
 }
 
-export function loadDiaryEntries() {
+function migrateDiaryFromLegacyOnce() {
+  if (_diaryInited) return;
+  _diaryInited = true;
+  _diaryEntriesMem = {};
   try {
     const raw = localStorage.getItem(DIARY_ENTRIES_KEY);
     if (raw) {
@@ -68,20 +78,70 @@ export function loadDiaryEntries() {
       if (parsed && typeof parsed === "object") {
         stripUpdatedAtFromDiaryEntries(parsed);
         stripLegacyTab3EmotionCatalog(parsed);
-        return parsed;
+        _diaryEntriesMem = parsed;
       }
     }
+    _diaryServerHadRows = localStorage.getItem(DIARY_SERVER_HAD_ROWS_KEY) === "1";
+  } catch (_) {
+    _diaryEntriesMem = {};
+  }
+  try {
+    localStorage.removeItem(DIARY_ENTRIES_KEY);
+    localStorage.removeItem(DIARY_SERVER_HAD_ROWS_KEY);
   } catch (_) {}
-  return {};
+}
+
+export function loadDiaryEntries() {
+  migrateDiaryFromLegacyOnce();
+  return _diaryEntriesMem;
 }
 
 export function saveDiaryEntries(data) {
+  migrateDiaryFromLegacyOnce();
+  _diaryEntriesMem = data && typeof data === "object" ? data : {};
   try {
-    localStorage.setItem(DIARY_ENTRIES_KEY, JSON.stringify(data));
+    localStorage.removeItem(DIARY_ENTRIES_KEY);
+    localStorage.removeItem(DIARY_SERVER_HAD_ROWS_KEY);
   } catch (_) {}
   try {
-    window.dispatchEvent(new CustomEvent("diary-entries-saved", { detail: { data } }));
+    window.dispatchEvent(
+      new CustomEvent("diary-entries-saved", { detail: { data: _diaryEntriesMem } }),
+    );
   } catch (_) {}
+}
+
+/** diarySupabase: 서버에 일기가 있었는지(빈 pull 시 전체 삭제 반영 여부) */
+export function getDiaryServerHadRowsFlag() {
+  migrateDiaryFromLegacyOnce();
+  return _diaryServerHadRows;
+}
+
+export function setDiaryServerHadRowsFlag(on) {
+  migrateDiaryFromLegacyOnce();
+  _diaryServerHadRows = !!on;
+}
+
+/** diaryCloudRefresh: 변경 감지용 스냅샷 */
+export function snapshotDiarySessionForRefresh() {
+  try {
+    migrateDiaryFromLegacyOnce();
+    return `${JSON.stringify(_diaryEntriesMem)}\n${_diaryServerHadRows ? "1" : ""}`;
+  } catch (_) {
+    return "";
+  }
+}
+
+/**
+ * 로그아웃·계정 전환 시: 메모리 초기화 및 구버전 LS 키 제거
+ */
+export function clearDiaryMemAndLegacy() {
+  try {
+    localStorage.removeItem(DIARY_ENTRIES_KEY);
+    localStorage.removeItem(DIARY_SERVER_HAD_ROWS_KEY);
+  } catch (_) {}
+  _diaryInited = false;
+  _diaryEntriesMem = {};
+  _diaryServerHadRows = false;
 }
 
 /** 탭3 감정일기: 항상 새 항목 추가 (같은 날짜 여러 개 가능, Time.js 과제 모달 등) */

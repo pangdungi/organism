@@ -2,28 +2,54 @@
  * 자산관리 - 순자산(총 부채), 지출입력장, 현금흐름, 자산관리계획
  */
 
-import { hydrateAssetExpensePrefsFromCloud } from "../utils/assetExpensePrefsSupabase.js";
+import {
+  attachAssetExpensePrefsSaveListener,
+  hydrateAssetExpensePrefsFromCloud,
+  readExpenseClassificationSavedMem,
+  writeExpenseClassificationSavedMem,
+  readExpensePaymentOptionsListMem,
+  writeExpensePaymentOptionsListMem,
+} from "../utils/assetExpensePrefsSupabase.js";
 import {
   attachAssetExpenseTransactionsSaveListener,
+  getExpenseRowsMem,
   hydrateAssetExpenseTransactionsFromCloud,
+  pullAssetExpenseTransactionsFromSupabase,
+  pullAssetExpenseTransactionsForDateRange,
+  setExpenseRowsMem,
 } from "../utils/assetExpenseTransactionsSupabase.js";
 import {
   attachAssetNetWorthGoalSaveListener,
   hydrateAssetNetWorthGoalFromCloud,
+  getNetWorthTargetDisplayStrMem,
+  setNetWorthTargetDisplayStrMem,
 } from "../utils/assetNetWorthTargetSupabase.js";
 import {
   attachAssetStockCategoryOptionsSaveListener,
   hydrateAssetStockCategoryOptionsFromCloud,
+  readStockCategoryCustomLabelsMem,
+  writeStockCategoryCustomLabelsMem,
 } from "../utils/assetStockCategorySupabase.js";
 import {
-  PLAN_MONTHLY_GOALS_STORAGE_KEY,
   attachAssetPlanMonthlyGoalsSaveListener,
+  getPlanMonthlyGoalsRowsMem,
   hydrateAssetPlanMonthlyGoalsFromCloud,
+  setPlanMonthlyGoalsRowsMem,
 } from "../utils/assetPlanMonthlyGoalsSupabase.js";
 import {
   attachAssetNetWorthBundleSaveListener,
   hydrateAssetNetWorthBundleFromCloud,
+  readNetWorthBundleKey,
+  writeNetWorthBundleKey,
 } from "../utils/assetNetWorthBundleSupabase.js";
+import {
+  readExpenseCategoryOptionsMemRaw,
+  writeExpenseCategoryOptionsMemRaw,
+  readSavingsGoalOptionsMemRaw,
+  writeSavingsGoalOptionsMemRaw,
+  readInsuranceKindOptionsMemRaw,
+  writeInsuranceKindOptionsMemRaw,
+} from "../utils/assetUiSessionMem.js";
 import { confirmDeleteRow } from "../utils/confirmModal.js";
 
 /** 모바일 지출입력장 거래 추가 FAB — 근무표·시간가계부와 동일 아이콘 */
@@ -38,19 +64,13 @@ const INSURANCE_ROWS_KEY = "asset_insurance_rows";
 const ANNUITY_ROWS_KEY = "asset_annuity_rows";
 
 const DEFAULT_STOCK_CATEGORY_OPTIONS = ["미국주식", "국내주식", "ETF", "코인", "현물", "선물"];
-const STOCK_CATEGORY_OPTIONS_KEY = "asset_stock_category_options";
 
 function getStockCategoryOptions() {
   const defaults = [...DEFAULT_STOCK_CATEGORY_OPTIONS];
-  try {
-    const raw = localStorage.getItem(STOCK_CATEGORY_OPTIONS_KEY);
-    if (raw) {
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr) && arr.length > 0) {
-        return [...defaults, ...arr.filter((s) => typeof s === "string" && s.trim() && !defaults.includes(s.trim()))];
-      }
-    }
-  } catch (_) {}
+  const custom = readStockCategoryCustomLabelsMem();
+  if (custom.length > 0) {
+    return [...defaults, ...custom.filter((s) => typeof s === "string" && s.trim() && !defaults.includes(s.trim()))];
+  }
   return defaults;
 }
 
@@ -60,20 +80,9 @@ function addStockCategoryOption(name) {
   if (!trimmed || defaults.includes(trimmed)) return getStockCategoryOptions();
   const opts = getStockCategoryOptions();
   if (opts.includes(trimmed)) return opts;
-  let custom = [];
-  try {
-    const raw = localStorage.getItem(STOCK_CATEGORY_OPTIONS_KEY);
-    if (raw) {
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) {
-        custom = arr.filter((s) => typeof s === "string" && s.trim() && !defaults.includes(s.trim()));
-      }
-    }
-  } catch (_) {}
+  let custom = readStockCategoryCustomLabelsMem().slice();
   if (!custom.includes(trimmed)) custom.push(trimmed);
-  try {
-    localStorage.setItem(STOCK_CATEGORY_OPTIONS_KEY, JSON.stringify(custom));
-  } catch (_) {}
+  writeStockCategoryCustomLabelsMem(custom);
   window.dispatchEvent(new CustomEvent("asset-stock-category-options-saved"));
   return getStockCategoryOptions();
 }
@@ -82,9 +91,7 @@ function removeStockCategoryOption(name) {
   if (!name || DEFAULT_STOCK_CATEGORY_OPTIONS.includes(name)) return getStockCategoryOptions();
   const defaults = DEFAULT_STOCK_CATEGORY_OPTIONS;
   const custom = getStockCategoryOptions().filter((o) => !defaults.includes(o) && o !== name);
-  try {
-    localStorage.setItem(STOCK_CATEGORY_OPTIONS_KEY, JSON.stringify(custom));
-  } catch (_) {}
+  writeStockCategoryCustomLabelsMem(custom.filter((o) => !defaults.includes(o)));
   window.dispatchEvent(new CustomEvent("asset-stock-category-options-saved"));
   return getStockCategoryOptions();
 }
@@ -103,19 +110,12 @@ const DEFAULT_INSURANCE_KIND_OPTIONS = [
   { label: "암보험", color: "asset-insurance-kind-purple" },
   { label: "CI보험", color: "asset-insurance-kind-purple" },
 ];
-const INSURANCE_KIND_OPTIONS_KEY = "asset_insurance_kind_options";
-
 function getInsuranceKindOptions() {
   const defaults = DEFAULT_INSURANCE_KIND_OPTIONS.map((o) => o.label);
-  try {
-    const raw = localStorage.getItem(INSURANCE_KIND_OPTIONS_KEY);
-    if (raw) {
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr) && arr.length > 0) {
-        return [...defaults, ...arr.filter((s) => typeof s === "string" && s.trim() && !defaults.includes(s.trim()))];
-      }
-    }
-  } catch (_) {}
+  const raw = readInsuranceKindOptionsMemRaw();
+  if (Array.isArray(raw) && raw.length > 0) {
+    return [...defaults, ...raw.filter((s) => typeof s === "string" && s.trim() && !defaults.includes(s.trim()))];
+  }
   return defaults;
 }
 
@@ -126,9 +126,7 @@ function addInsuranceKindOption(name) {
   if (!trimmed || opts.includes(trimmed)) return opts;
   const custom = opts.filter((o) => !defaults.includes(o));
   custom.push(trimmed);
-  try {
-    localStorage.setItem(INSURANCE_KIND_OPTIONS_KEY, JSON.stringify(custom));
-  } catch (_) {}
+  writeInsuranceKindOptionsMemRaw(custom);
   return getInsuranceKindOptions();
 }
 
@@ -136,9 +134,7 @@ function removeInsuranceKindOption(name) {
   if (!name || DEFAULT_INSURANCE_KIND_OPTIONS.some((o) => o.label === name)) return getInsuranceKindOptions();
   const defaults = DEFAULT_INSURANCE_KIND_OPTIONS.map((o) => o.label);
   const custom = getInsuranceKindOptions().filter((o) => !defaults.includes(o) && o !== name);
-  try {
-    localStorage.setItem(INSURANCE_KIND_OPTIONS_KEY, JSON.stringify(custom));
-  } catch (_) {}
+  writeInsuranceKindOptionsMemRaw(custom.filter((o) => !defaults.includes(o)));
   return getInsuranceKindOptions();
 }
 
@@ -151,8 +147,6 @@ function getInsuranceKindColor(label) {
   return opt ? opt.color : "asset-insurance-kind-gray";
 }
 
-const NET_WORTH_TARGET_KEY = "asset_networth_target";
-const EXPENSE_ROWS_KEY = "asset_expense_rows";
 const DEFAULT_DEBT_ROWS_COUNT = 5;
 const DEFAULT_ASSET_ROWS_COUNT = 5;
 const DEBT_TYPE_OPTIONS = [
@@ -212,9 +206,6 @@ function getAssetGroup(assetType) {
   }
   return "예금";
 }
-
-const EXPENSE_CATEGORY_OPTIONS_KEY = "asset_expense_category_options";
-const EXPENSE_CLASSIFICATION_KEY = "asset_expense_classification_by_category";
 
 const DEFAULT_EXPENSE_CATEGORY_OPTIONS = [
   { label: "고정비", color: "expense-cat-teal" },
@@ -278,27 +269,20 @@ const DEFAULT_EXPENSE_CLASSIFICATION_BY_CATEGORY = {
 };
 
 function getExpenseCategoryOptions() {
-  try {
-    const raw = localStorage.getItem(EXPENSE_CATEGORY_OPTIONS_KEY);
-    if (raw) {
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr) && arr.length > 0) return arr;
-    }
-  } catch (_) {}
+  const raw = readExpenseCategoryOptionsMemRaw();
+  if (Array.isArray(raw) && raw.length > 0) return raw.map((o) => ({ ...o }));
   return DEFAULT_EXPENSE_CATEGORY_OPTIONS.map((o) => ({ ...o }));
 }
 
 function saveExpenseCategoryOptions(arr) {
-  try {
-    localStorage.setItem(EXPENSE_CATEGORY_OPTIONS_KEY, JSON.stringify(arr));
-  } catch (_) {}
+  writeExpenseCategoryOptionsMemRaw(Array.isArray(arr) ? arr : []);
 }
 
 function getExpenseClassificationByCategory() {
   const out = {};
   try {
-    const raw = localStorage.getItem(EXPENSE_CLASSIFICATION_KEY);
-    const saved = raw ? JSON.parse(raw) : null;
+    const savedRaw = readExpenseClassificationSavedMem();
+    const saved = savedRaw && typeof savedRaw === "object" ? savedRaw : null;
     const allCats = new Set([
       ...Object.keys(DEFAULT_EXPENSE_CLASSIFICATION_BY_CATEGORY),
       ...(saved && typeof saved === "object" ? Object.keys(saved) : []),
@@ -337,33 +321,22 @@ function getExpenseClassificationByCategory() {
 }
 
 function saveExpenseClassificationByCategory(obj) {
-  try {
-    localStorage.setItem(EXPENSE_CLASSIFICATION_KEY, JSON.stringify(obj));
-  } catch (_) {}
+  writeExpenseClassificationSavedMem(obj && typeof obj === "object" ? obj : {});
 }
 
-const SAVINGS_GOAL_OPTIONS_KEY = "asset_savings_goal_options";
 const DEFAULT_SAVINGS_GOAL_OPTIONS = ["전세자금", "여행자금", "결혼자금", "목돈마련", "통장잔고", "현금보관", "생활비", "예비자금", "비상금", "그 외"];
 
-const EXPENSE_PAYMENT_OPTIONS_KEY = "asset_expense_payment_options";
 const DEFAULT_PAYMENT_OPTIONS = ["신용카드", "체크카드", "현금"];
 function getSavingsGoalOptions() {
-  try {
-    const raw = localStorage.getItem(SAVINGS_GOAL_OPTIONS_KEY);
-    if (raw) {
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr) && arr.length > 0) return arr.map((o) => (typeof o === "string" ? o : o.name));
-    }
-  } catch (_) {}
+  const raw = readSavingsGoalOptionsMemRaw();
+  if (Array.isArray(raw) && raw.length > 0) return raw.map((o) => (typeof o === "string" ? o : o.name));
   return [...DEFAULT_SAVINGS_GOAL_OPTIONS];
 }
 
 function removeSavingsGoalOption(name) {
   if (!name || DEFAULT_SAVINGS_GOAL_OPTIONS.includes(name)) return getSavingsGoalOptions();
   const opts = getSavingsGoalOptions().filter((o) => o !== name);
-  try {
-    localStorage.setItem(SAVINGS_GOAL_OPTIONS_KEY, JSON.stringify(opts));
-  } catch (_) {}
+  writeSavingsGoalOptionsMemRaw(opts);
   return opts;
 }
 
@@ -372,15 +345,10 @@ function isDefaultSavingsGoal(name) {
 }
 
 function getPaymentOptions() {
-  try {
-    const raw = localStorage.getItem(EXPENSE_PAYMENT_OPTIONS_KEY);
-    if (raw) {
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr) && arr.length > 0) {
-        return arr.map((o) => (typeof o === "string" ? o : o.name));
-      }
-    }
-  } catch (_) {}
+  const arr = readExpensePaymentOptionsListMem();
+  if (Array.isArray(arr) && arr.length > 0) {
+    return arr.map((o) => (typeof o === "string" ? o : o.name));
+  }
   return [...DEFAULT_PAYMENT_OPTIONS];
 }
 
@@ -389,25 +357,19 @@ function addPaymentOption(name) {
   const trimmed = (name || "").trim();
   if (!trimmed || opts.includes(trimmed)) return opts;
   opts.unshift(trimmed);
-  try {
-    localStorage.setItem(EXPENSE_PAYMENT_OPTIONS_KEY, JSON.stringify(opts));
-  } catch (_) {}
+  writeExpensePaymentOptionsListMem(opts);
   return opts;
 }
 
 function removePaymentOption(name) {
   const opts = getPaymentOptions().filter((o) => o !== name);
-  try {
-    localStorage.setItem(EXPENSE_PAYMENT_OPTIONS_KEY, JSON.stringify(opts));
-  } catch (_) {}
+  writeExpensePaymentOptionsListMem(opts);
   return opts;
 }
 
 function savePaymentOptions(opts) {
   const arr = Array.isArray(opts) ? opts.filter((o) => (o || "").trim()) : [];
-  try {
-    localStorage.setItem(EXPENSE_PAYMENT_OPTIONS_KEY, JSON.stringify(arr));
-  } catch (_) {}
+  writeExpensePaymentOptionsListMem(arr);
   return arr;
 }
 
@@ -448,9 +410,8 @@ function getClassificationsByFlowType(flowType) {
 
 function loadDebtRows() {
   try {
-    const raw = localStorage.getItem(DEBT_ROWS_KEY);
-    if (raw) {
-      const arr = JSON.parse(raw);
+    const arr = readNetWorthBundleKey(DEBT_ROWS_KEY);
+    if (arr !== undefined) {
       /* 빈 배열 [] 도 “대출 없음”으로 유지 (이전: length>0 아니면 기본 5행 → 삭제 후에도 5행 부활) */
       if (Array.isArray(arr)) {
         if (arr.length === 0) return [];
@@ -483,9 +444,7 @@ function loadDebtRows() {
 }
 
 function saveDebtRows(rows) {
-  try {
-    localStorage.setItem(DEBT_ROWS_KEY, JSON.stringify(rows));
-  } catch (_) {}
+  writeNetWorthBundleKey(DEBT_ROWS_KEY, rows);
 }
 
 function collectDebtRowsFromDOM(tableEl) {
@@ -519,24 +478,21 @@ function collectDebtRowsFromDOM(tableEl) {
 
 function loadAssetRows() {
   try {
-    const raw = localStorage.getItem(ASSET_ROWS_KEY);
-    if (raw) {
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) {
-        if (arr.length === 0) return [];
-        return arr.map((r) => ({
-          ...r,
-          assetType: r.assetType ?? "",
-          assetCategory: r.assetCategory ?? "",
-          principal: r.principal ?? "",
-          monthly: r.monthly ?? "",
-          rate: r.rate ?? "",
-          months: r.months ?? "",
-          openDate: r.openDate ?? "",
-          maturityDate: r.maturityDate ?? "",
-          matured: r.matured === true,
-        }));
-      }
+    const arr = readNetWorthBundleKey(ASSET_ROWS_KEY);
+    if (arr !== undefined && Array.isArray(arr)) {
+      if (arr.length === 0) return [];
+      return arr.map((r) => ({
+        ...r,
+        assetType: r.assetType ?? "",
+        assetCategory: r.assetCategory ?? "",
+        principal: r.principal ?? "",
+        monthly: r.monthly ?? "",
+        rate: r.rate ?? "",
+        months: r.months ?? "",
+        openDate: r.openDate ?? "",
+        maturityDate: r.maturityDate ?? "",
+        matured: r.matured === true,
+      }));
     }
   } catch (_) {}
   return Array.from({ length: DEFAULT_ASSET_ROWS_COUNT }, () => ({
@@ -554,71 +510,51 @@ function loadAssetRows() {
 }
 
 function saveAssetRows(rows) {
-  try {
-    localStorage.setItem(ASSET_ROWS_KEY, JSON.stringify(rows));
-  } catch (_) {}
+  writeNetWorthBundleKey(ASSET_ROWS_KEY, rows);
 }
 
 function loadRealEstateRows() {
   try {
-    const raw = localStorage.getItem(REAL_ESTATE_ROWS_KEY);
-    if (raw) {
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) return arr;
-    }
+    const arr = readNetWorthBundleKey(REAL_ESTATE_ROWS_KEY);
+    if (Array.isArray(arr)) return arr;
   } catch (_) {}
   return [];
 }
 
 function loadStockRows() {
   try {
-    const raw = localStorage.getItem(STOCK_ROWS_KEY);
-    if (raw) {
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) return arr;
-    }
+    const arr = readNetWorthBundleKey(STOCK_ROWS_KEY);
+    if (Array.isArray(arr)) return arr;
   } catch (_) {}
   return [];
 }
 
 function saveStockRows(rows) {
-  try {
-    localStorage.setItem(STOCK_ROWS_KEY, JSON.stringify(rows));
-  } catch (_) {}
+  writeNetWorthBundleKey(STOCK_ROWS_KEY, rows);
 }
 
 function loadInsuranceRows() {
   try {
-    const raw = localStorage.getItem(INSURANCE_ROWS_KEY);
-    if (raw) {
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) return arr;
-    }
+    const arr = readNetWorthBundleKey(INSURANCE_ROWS_KEY);
+    if (Array.isArray(arr)) return arr;
   } catch (_) {}
   return [];
 }
 
 function saveInsuranceRows(rows) {
-  try {
-    localStorage.setItem(INSURANCE_ROWS_KEY, JSON.stringify(rows));
-  } catch (_) {}
+  writeNetWorthBundleKey(INSURANCE_ROWS_KEY, rows);
 }
 
 function loadAnnuityRows() {
   try {
-    const raw = localStorage.getItem(ANNUITY_ROWS_KEY);
-    if (raw) {
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) return arr;
-    }
+    const arr = readNetWorthBundleKey(ANNUITY_ROWS_KEY);
+    if (Array.isArray(arr)) return arr;
   } catch (_) {}
   return [];
 }
 
 function saveAnnuityRows(rows) {
-  try {
-    localStorage.setItem(ANNUITY_ROWS_KEY, JSON.stringify(rows));
-  } catch (_) {}
+  writeNetWorthBundleKey(ANNUITY_ROWS_KEY, rows);
 }
 
 function collectStockRowsFromDOM(tableEl) {
@@ -675,23 +611,15 @@ function collectAnnuityRowsFromDOM(tableEl) {
 }
 
 function saveRealEstateRows(rows) {
-  try {
-    localStorage.setItem(REAL_ESTATE_ROWS_KEY, JSON.stringify(rows));
-  } catch (_) {}
+  writeNetWorthBundleKey(REAL_ESTATE_ROWS_KEY, rows);
 }
 
 function loadNetWorthTarget() {
-  try {
-    const raw = localStorage.getItem(NET_WORTH_TARGET_KEY);
-    return raw ?? "";
-  } catch (_) {}
-  return "";
+  return getNetWorthTargetDisplayStrMem();
 }
 
 function saveNetWorthTarget(value) {
-  try {
-    localStorage.setItem(NET_WORTH_TARGET_KEY, String(value ?? ""));
-  } catch (_) {}
+  setNetWorthTargetDisplayStrMem(value);
   window.dispatchEvent(new CustomEvent("asset-networth-target-saved"));
 }
 
@@ -700,35 +628,31 @@ function newExpenseRowId() {
 }
 
 function loadExpenseRows() {
-  try {
-    const raw = localStorage.getItem(EXPENSE_ROWS_KEY);
-    if (raw) {
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) {
-        const uuidRe =
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-        let needSave = false;
-        const out = arr.map((r) => {
-          if (typeof r !== "object" || !r) return r;
-          const id = String(r.id || "").trim();
-          if (!id || !uuidRe.test(id)) {
-            needSave = true;
-            return { ...r, id: newExpenseRowId() };
-          }
-          return r;
-        });
-        if (needSave) saveExpenseRows(out);
-        return out;
-      }
+  const uuidRe =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const arr = getExpenseRowsMem();
+  if (arr.length === 0) return [];
+  let needSave = false;
+  const out = arr.map((r) => {
+    if (typeof r !== "object" || !r) return r;
+    const id = String(r.id || "").trim();
+    if (!id || !uuidRe.test(id)) {
+      needSave = true;
+      return { ...r, id: newExpenseRowId() };
     }
-  } catch (_) {}
-  return [];
+    return r;
+  });
+  if (needSave) {
+    setExpenseRowsMem(out);
+    try {
+      window.dispatchEvent(new CustomEvent("asset-expense-transactions-saved"));
+    } catch (_) {}
+  }
+  return out;
 }
 
 function saveExpenseRows(rows) {
-  try {
-    localStorage.setItem(EXPENSE_ROWS_KEY, JSON.stringify(rows));
-  } catch (_) {}
+  setExpenseRowsMem(rows);
 }
 
 function collectExpenseRowsFromDOM(tableEl) {
@@ -4334,6 +4258,10 @@ function renderExpenseView(options = {}) {
   let filterStartDate = getTodayDateStr();
   let filterEndDate = getTodayDateStr();
 
+  let expenseFilterPullTimer = null;
+  /** 날짜·월 필터에 맞는 구간만 서버에서 받아 표 갱신 */
+  let scheduleExpenseMemPullFromServer = () => {};
+
   function getTodayDateStr() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -4453,17 +4381,20 @@ function renderExpenseView(options = {}) {
           opt.classList.toggle("is-selected", opt.dataset.value === String(filterMonth));
         });
         applyExpenseFilter();
+        scheduleExpenseMemPullFromServer();
       });
     });
     yearPrevBtn?.addEventListener("click", () => {
       filterYear -= 1;
       if (yearDisplay) yearDisplay.textContent = filterYear;
       applyExpenseFilter();
+      scheduleExpenseMemPullFromServer();
     });
     yearNextBtn?.addEventListener("click", () => {
       filterYear += 1;
       if (yearDisplay) yearDisplay.textContent = filterYear;
       applyExpenseFilter();
+      scheduleExpenseMemPullFromServer();
     });
     document.addEventListener("click", (e) => {
       if (!monthDropdownWrap.contains(e.target)) {
@@ -4485,6 +4416,7 @@ function renderExpenseView(options = {}) {
     endDateInput.value = filterEndDate;
     updateDayDisplay();
     applyExpenseFilter();
+    scheduleExpenseMemPullFromServer();
   });
   dayNextBtn?.addEventListener("click", () => {
     const d = new Date(filterStartDate + "T12:00:00");
@@ -4494,6 +4426,7 @@ function renderExpenseView(options = {}) {
     endDateInput.value = filterEndDate;
     updateDayDisplay();
     applyExpenseFilter();
+    scheduleExpenseMemPullFromServer();
   });
 
   startDateInput.value = filterStartDate;
@@ -4608,6 +4541,24 @@ function renderExpenseView(options = {}) {
     return true;
   }
 
+  /** Supabase transaction_date 범위 질의용 YYYY-MM-DD (월/일/구간 탭 공통) */
+  function getExpensePickerSqlBounds() {
+    if (filterType === "day") {
+      const d = (filterStartDate || "").slice(0, 10);
+      return { from: d, to: d };
+    }
+    if (filterType === "month") {
+      const last = new Date(filterYear, filterMonth, 0).getDate();
+      const from = `${filterYear}-${String(filterMonth).padStart(2, "0")}-01`;
+      const to = `${filterYear}-${String(filterMonth).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
+      return { from, to };
+    }
+    let s = (startDateInput?.value || filterStartDate || "").slice(0, 10);
+    let e = (endDateInput?.value || filterEndDate || "").slice(0, 10);
+    if (s && e && s > e) [s, e] = [e, s];
+    return { from: s, to: e };
+  }
+
   function applyExpenseFilter() {
     const type = filterType;
     const y = filterYear;
@@ -4665,8 +4616,22 @@ function renderExpenseView(options = {}) {
   }
 
   function saveExpense() {
-    const rows = collectExpenseRowsFromDOM(table);
-    saveExpenseRows(rows);
+    const domRows = collectExpenseRowsFromDOM(table);
+    const domIds = new Set(domRows.map((r) => String(r.id || "").trim()).filter(Boolean));
+    const prev = loadExpenseRows();
+    const { from: pf, to: pt } = getExpensePickerSqlBounds();
+    const inPicker = (dateStr) => {
+      const d = String(dateStr || "").slice(0, 10);
+      return pf && pt && d >= pf.slice(0, 10) && d <= pt.slice(0, 10);
+    };
+    const kept = prev.filter((r) => {
+      const id = String(r?.id || "").trim();
+      if (!id) return true;
+      if (domIds.has(id)) return false;
+      if (inPicker(r.date)) return false;
+      return true;
+    });
+    saveExpenseRows([...kept, ...domRows]);
     window.dispatchEvent(new CustomEvent("asset-expense-transactions-saved"));
   }
 
@@ -4829,6 +4794,35 @@ function renderExpenseView(options = {}) {
     return tr;
   }
 
+  scheduleExpenseMemPullFromServer = () => {
+    if (expenseFilterPullTimer) clearTimeout(expenseFilterPullTimer);
+    expenseFilterPullTimer = setTimeout(() => {
+      expenseFilterPullTimer = null;
+      void (async () => {
+        if (!wrap.isConnected) return;
+        const { from, to } = getExpensePickerSqlBounds();
+        if (!from || !to) return;
+        const ok = await pullAssetExpenseTransactionsForDateRange(from, to);
+        if (!wrap.isConnected) return;
+        tbody.replaceChildren();
+        const start = startDateInput.value || filterStartDate;
+        const end = endDateInput.value || filterEndDate;
+        const rows = loadExpenseRows().filter((data) =>
+          isDateInRange(data.date, filterType, filterYear, filterMonth, start, end),
+        );
+        rows.forEach((data) => {
+          tbody.appendChild(createExpenseRow(data, updateExpenseTotals, applyExpenseFilter));
+        });
+        try {
+          if (typeof localStorage !== "undefined" && localStorage.getItem("debug_asset_expense") === "1") {
+            console.info("[asset-expense] 구간 서버 pull 후 tbody", { from, to, rowCount: rows.length, ok });
+          }
+        } catch (_) {}
+        applyExpenseFilter();
+      })();
+    }, 400);
+  };
+
   addBtn.addEventListener("click", () => {
     const tr = createExpenseRow({}, updateExpenseTotals, applyExpenseFilter);
     tbody.appendChild(tr);
@@ -4846,23 +4840,34 @@ function renderExpenseView(options = {}) {
       rangeWrap.style.display = filterType === "range" ? "" : "none";
       if (filterType === "day") updateDayDisplay();
       applyExpenseFilter();
+      scheduleExpenseMemPullFromServer();
     });
   });
-  startDateInput.addEventListener("change", applyExpenseFilter);
-  endDateInput.addEventListener("change", applyExpenseFilter);
+  startDateInput.addEventListener("change", () => {
+    applyExpenseFilter();
+    scheduleExpenseMemPullFromServer();
+  });
+  endDateInput.addEventListener("change", () => {
+    applyExpenseFilter();
+    scheduleExpenseMemPullFromServer();
+  });
 
-  const initialRows = loadExpenseRows();
+  const startForInit = startDateInput.value || filterStartDate;
+  const endForInit = endDateInput.value || filterEndDate;
+  const initialRows = loadExpenseRows().filter((data) =>
+    isDateInRange(data.date, filterType, filterYear, filterMonth, startForInit, endForInit),
+  );
   if (initialRows.length > 0) {
     initialRows.forEach((data) => {
       const tr = createExpenseRow(data, updateExpenseTotals, applyExpenseFilter);
       tbody.appendChild(tr);
     });
-  } else {
-    [1, 2, 3].forEach(() => {
-      const tr = createExpenseRow({}, updateExpenseTotals, applyExpenseFilter);
-      tbody.appendChild(tr);
-    });
   }
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("debug_asset_expense") === "1") {
+      console.info("[asset-expense] 초기 렌더", { rowCount: initialRows.length, noPlaceholderTemplate: true });
+    }
+  } catch (_) {}
   applyExpenseFilter();
 
   tableWrap.appendChild(table);
@@ -5518,18 +5523,14 @@ function savePlanMonthlyGoalsFromPlanView(planRoot) {
       });
     });
   });
-  try {
-    localStorage.setItem(PLAN_MONTHLY_GOALS_STORAGE_KEY, JSON.stringify(out));
-  } catch (_) {}
+  setPlanMonthlyGoalsRowsMem(out);
   window.dispatchEvent(new CustomEvent("asset-plan-monthly-goals-saved"));
 }
 
 function loadSavedPlanRowsForTableType(tableType) {
   const key = planTableTypeToStorageSection(tableType);
   try {
-    const raw = localStorage.getItem(PLAN_MONTHLY_GOALS_STORAGE_KEY);
-    if (!raw) return [];
-    const arr = JSON.parse(raw);
+    const arr = getPlanMonthlyGoalsRowsMem();
     if (!Array.isArray(arr)) return [];
     return arr.filter((r) => r.section === key).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   } catch (_) {
@@ -6366,6 +6367,7 @@ export function render() {
   });
 
   attachAssetExpenseTransactionsSaveListener();
+  attachAssetExpensePrefsSaveListener();
   attachAssetNetWorthGoalSaveListener();
   attachAssetStockCategoryOptionsSaveListener();
   attachAssetPlanMonthlyGoalsSaveListener();

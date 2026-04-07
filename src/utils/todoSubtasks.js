@@ -1,15 +1,46 @@
 /**
- * 할일목록 세부(하위) 태스크 저장
+ * 할일목록 세부(하위) 태스크 — 세션 메모리. 구버전 LS는 최초 접근 시 이관 후 제거.
  * 최상위 → 하위 2단계만 지원
  */
+
 const TODO_SUBTASKS_KEY = "todo-subtasks";
 
-function loadAll() {
+let _legacyMigrated = false;
+/** @type {Record<string, unknown[]>} */
+let _subtasksMem = {};
+
+function migrateLegacyOnce() {
+  if (_legacyMigrated) return;
+  _legacyMigrated = true;
+  _subtasksMem = {};
   try {
     const raw = localStorage.getItem(TODO_SUBTASKS_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const o = JSON.parse(raw);
+      if (o && typeof o === "object") _subtasksMem = o;
+    }
   } catch (_) {}
-  return {};
+  try {
+    localStorage.removeItem(TODO_SUBTASKS_KEY);
+  } catch (_) {}
+}
+
+function cloneDeep(obj) {
+  try {
+    return JSON.parse(JSON.stringify(obj == null ? {} : obj));
+  } catch (_) {
+    return {};
+  }
+}
+
+function loadAll() {
+  migrateLegacyOnce();
+  return cloneDeep(_subtasksMem);
+}
+
+function persistAll(all) {
+  migrateLegacyOnce();
+  _subtasksMem = cloneDeep(all || {});
 }
 
 export function getSubtasks(taskId) {
@@ -26,9 +57,7 @@ export function setSubtasks(taskId, items) {
   } else {
     all[taskId] = valid;
   }
-  try {
-    localStorage.setItem(TODO_SUBTASKS_KEY, JSON.stringify(all));
-  } catch (_) {}
+  persistAll(all);
 }
 
 function genId() {
@@ -50,7 +79,7 @@ export function updateSubtask(taskId, subtaskId, updates) {
   const idx = items.findIndex((it) => it.id === subtaskId);
   if (idx >= 0) {
     items = items.map((it) =>
-      it.id === subtaskId ? { ...it, ...updates } : it
+      it.id === subtaskId ? { ...it, ...updates } : it,
     );
   } else if ((updates.name || "").trim()) {
     items = [
@@ -89,10 +118,17 @@ export function removeAllCompletedSubtasksFromStore() {
       else all[taskId] = next;
     }
   }
-  if (changed) {
-    try {
-      localStorage.setItem(TODO_SUBTASKS_KEY, JSON.stringify(all));
-    } catch (_) {}
-  }
+  if (changed) persistAll(all);
   return changed;
+}
+
+/**
+ * 로그아웃·계정 전환 시
+ */
+export function clearTodoSubtasksMemAndLegacy() {
+  try {
+    localStorage.removeItem(TODO_SUBTASKS_KEY);
+  } catch (_) {}
+  _legacyMigrated = true;
+  _subtasksMem = {};
 }

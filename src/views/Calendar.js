@@ -46,7 +46,10 @@ import {
   persistCustomSectionTasksAndSchedule,
   hydrateTodoSectionTasksFromCloud,
 } from "../utils/todoSectionTasksSupabase.js";
-import { SECTION_TASKS_KEY, CUSTOM_SECTION_TASKS_KEY } from "../utils/todoSectionTasksModel.js";
+import {
+  readSectionTasksObject,
+  readCustomSectionTasksObject,
+} from "../utils/todoSectionTasksModel.js";
 const KPI_SECTION_IDS = ["braindump", "dream", "sideincome", "health", "happy"];
 
 /** 할일/일정 상단 1~4번 탭 — 앱 리렌더·Supabase 동기 후 __lpRenderMain 으로 다시 그려질 때 항상 1번으로 돌아가는 문제 방지 */
@@ -93,9 +96,7 @@ function ensureOneDayTimetableDocumentListeners() {
 function getSectionTasksForDate(dateKey) {
   const out = [];
   try {
-    const raw = localStorage.getItem(SECTION_TASKS_KEY);
-    if (!raw) return out;
-    const obj = JSON.parse(raw);
+    const obj = readSectionTasksObject();
     KPI_SECTION_IDS.forEach((sectionId) => {
       const arr = obj[sectionId];
       if (!Array.isArray(arr)) return;
@@ -139,9 +140,7 @@ function getSectionTasksForDate(dateKey) {
 function getSectionTasksWithDateRange() {
   const out = [];
   try {
-    const raw = localStorage.getItem(SECTION_TASKS_KEY);
-    if (!raw) return out;
-    const obj = JSON.parse(raw);
+    const obj = readSectionTasksObject();
     KPI_SECTION_IDS.forEach((sectionId) => {
       const arr = obj[sectionId];
       if (!Array.isArray(arr)) return;
@@ -193,12 +192,7 @@ function updateSectionTaskDates(
   const { recordCalendarSidebarRevert = false } = opts;
   dateDebug("updateSectionTaskDates IN", { sectionId, taskId, startDate, dueDate });
   try {
-    const raw = localStorage.getItem(SECTION_TASKS_KEY);
-    if (!raw) {
-      dateDebug("updateSectionTaskDates: no localStorage");
-      return false;
-    }
-    const obj = JSON.parse(raw);
+    const obj = readSectionTasksObject();
     const arr = obj[sectionId];
     if (!Array.isArray(arr)) {
       dateDebug("updateSectionTaskDates: no arr for", sectionId);
@@ -226,9 +220,7 @@ function updateSectionTaskDates(
 
 function updateSectionTaskTimes(sectionId, taskId, startTime, endTime) {
   try {
-    const raw = localStorage.getItem(SECTION_TASKS_KEY);
-    if (!raw) return false;
-    const obj = JSON.parse(raw);
+    const obj = readSectionTasksObject();
     const arr = obj[sectionId];
     if (!Array.isArray(arr)) return false;
     const t = arr.find((x) => (x.taskId || "") === taskId);
@@ -244,9 +236,7 @@ function updateSectionTaskTimes(sectionId, taskId, startTime, endTime) {
 
 function updateSectionTaskDone(sectionId, taskId, done) {
   try {
-    const raw = localStorage.getItem(SECTION_TASKS_KEY);
-    if (!raw) return false;
-    const obj = JSON.parse(raw);
+    const obj = readSectionTasksObject();
     const arr = obj[sectionId];
     if (!Array.isArray(arr)) return false;
     const t = arr.find((x) => (x.taskId || "") === taskId);
@@ -261,9 +251,7 @@ function updateSectionTaskDone(sectionId, taskId, done) {
 
 function updateSectionTaskEisenhower(sectionId, taskId, eisenhower) {
   try {
-    const raw = localStorage.getItem(SECTION_TASKS_KEY);
-    if (!raw) return false;
-    const obj = JSON.parse(raw);
+    const obj = readSectionTasksObject();
     const arr = obj[sectionId];
     if (!Array.isArray(arr)) return false;
     const t = arr.find((x) => (x.taskId || "") === taskId);
@@ -278,9 +266,7 @@ function updateSectionTaskEisenhower(sectionId, taskId, eisenhower) {
 
 function updateCustomSectionTaskEisenhower(sectionId, taskId, eisenhower) {
   try {
-    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
-    if (!raw) return false;
-    const obj = JSON.parse(raw);
+    const obj = readCustomSectionTasksObject();
     const arr = obj[sectionId];
     if (!Array.isArray(arr)) return false;
     const t = arr.find((x) => (x.taskId || "") === taskId);
@@ -295,8 +281,7 @@ function updateCustomSectionTaskEisenhower(sectionId, taskId, eisenhower) {
 
 function addSectionTaskToCalendar(sectionId, taskData) {
   try {
-    const raw = localStorage.getItem(SECTION_TASKS_KEY);
-    const obj = raw ? JSON.parse(raw) : {};
+    const obj = readSectionTasksObject();
     if (!obj[sectionId]) obj[sectionId] = [];
     const arr = obj[sectionId];
     const taskId =
@@ -489,9 +474,7 @@ const CALENDAR_CATEGORIES = [
 
 function updateCustomSectionTaskDone(sectionId, taskId, done) {
   try {
-    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
-    if (!raw) return;
-    const obj = JSON.parse(raw);
+    const obj = readCustomSectionTasksObject();
     const arr = obj[sectionId];
     if (!Array.isArray(arr)) return;
     const t = arr.find((x) => (x.taskId || "") === taskId);
@@ -511,9 +494,7 @@ function updateCustomSectionTaskDates(
 ) {
   const { recordCalendarSidebarRevert = false } = opts;
   try {
-    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
-    if (!raw) return false;
-    const obj = JSON.parse(raw);
+    const obj = readCustomSectionTasksObject();
     const arr = obj[sectionId];
     if (!Array.isArray(arr)) return false;
     const t = arr.find((x) => (x.taskId || "") === taskId);
@@ -533,9 +514,7 @@ function updateCustomSectionTaskDates(
 
 function updateCustomSectionTaskTimes(sectionId, taskId, startTime, endTime) {
   try {
-    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
-    if (!raw) return false;
-    const obj = JSON.parse(raw);
+    const obj = readCustomSectionTasksObject();
     const arr = obj[sectionId];
     if (!Array.isArray(arr)) return false;
     const t = arr.find((x) => (x.taskId || "") === taskId);
@@ -551,8 +530,7 @@ function updateCustomSectionTaskTimes(sectionId, taskId, startTime, endTime) {
 
 function addCalendarTodoToCustomSection(sectionId, taskData) {
   try {
-    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
-    const obj = raw ? JSON.parse(raw) : {};
+    const obj = readCustomSectionTasksObject();
     if (!obj[sectionId]) obj[sectionId] = [];
     const arr = obj[sectionId];
     const taskId =
@@ -584,9 +562,7 @@ function addDaysToDateKey(dateKey, days) {
 
 function clearSectionTaskCalendarRevertSnapshot(sectionId, taskId) {
   try {
-    const raw = localStorage.getItem(SECTION_TASKS_KEY);
-    if (!raw) return;
-    const obj = JSON.parse(raw);
+    const obj = readSectionTasksObject();
     const arr = obj[sectionId];
     const t = arr?.find((x) => (x.taskId || "") === taskId);
     if (!t) return;
@@ -598,9 +574,7 @@ function clearSectionTaskCalendarRevertSnapshot(sectionId, taskId) {
 
 function clearCustomSectionTaskCalendarRevertSnapshot(sectionId, taskId) {
   try {
-    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
-    if (!raw) return;
-    const obj = JSON.parse(raw);
+    const obj = readCustomSectionTasksObject();
     const arr = obj[sectionId];
     const t = arr?.find((x) => (x.taskId || "") === taskId);
     if (!t) return;
@@ -818,9 +792,7 @@ function applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar, opts = {}) {
 function getCustomSectionTasksForDate(dateKey) {
   const out = [];
   try {
-    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
-    if (!raw) return out;
-    const obj = JSON.parse(raw);
+    const obj = readCustomSectionTasksObject();
     getCustomSections().forEach((sec) => {
       const arr = obj[sec.id];
       if (!Array.isArray(arr)) return;
@@ -891,39 +863,36 @@ function getAllTasksWithDateRange() {
   const sectionRange = getSectionTasksWithDateRange();
   const customRange = [];
   try {
-    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
-    if (raw) {
-      const obj = JSON.parse(raw);
-      getCustomSections().forEach((sec) => {
-        const arr = obj[sec.id];
-        if (!Array.isArray(arr)) return;
-        arr
-          .filter(
-            (t) =>
-              (t.name || "").trim() !== "" &&
-              (t.startDate || "").slice(0, 10) &&
-              (t.dueDate || "").slice(0, 10),
-          )
-          .forEach((t) =>
-            customRange.push({
-              name: t.name,
-              startDate: (t.startDate || "").slice(0, 10),
-              dueDate: (t.dueDate || "").slice(0, 10),
-              startTime: t.startTime || "",
-              endTime: t.endTime || "",
-              sectionId: sec.id,
-              sectionLabel: sec.label || sec.id,
-              itemType: t.itemType || "todo",
-              done: !!t.done,
-              taskId: t.taskId || "",
-              eisenhower: (t.eisenhower || "").trim() || "",
-              classification: "",
-              _calPrevStart: ((t._calPrevStart || "").toString().slice(0, 10) || ""),
-              _calPrevDue: ((t._calPrevDue || "").toString().slice(0, 10) || ""),
-            }),
-          );
-      });
-    }
+    const obj = readCustomSectionTasksObject();
+    getCustomSections().forEach((sec) => {
+      const arr = obj[sec.id];
+      if (!Array.isArray(arr)) return;
+      arr
+        .filter(
+          (t) =>
+            (t.name || "").trim() !== "" &&
+            (t.startDate || "").slice(0, 10) &&
+            (t.dueDate || "").slice(0, 10),
+        )
+        .forEach((t) =>
+          customRange.push({
+            name: t.name,
+            startDate: (t.startDate || "").slice(0, 10),
+            dueDate: (t.dueDate || "").slice(0, 10),
+            startTime: t.startTime || "",
+            endTime: t.endTime || "",
+            sectionId: sec.id,
+            sectionLabel: sec.label || sec.id,
+            itemType: t.itemType || "todo",
+            done: !!t.done,
+            taskId: t.taskId || "",
+            eisenhower: (t.eisenhower || "").trim() || "",
+            classification: "",
+            _calPrevStart: ((t._calPrevStart || "").toString().slice(0, 10) || ""),
+            _calPrevDue: ((t._calPrevDue || "").toString().slice(0, 10) || ""),
+          }),
+        );
+    });
   } catch (_) {}
   const kpiWithRange = kpi
     .filter(
@@ -6138,52 +6107,46 @@ function renderEisenhowerView(tabsElement) {
       tasks.push({ ...t, taskId: t.kpiTodoId || t.taskId || "" }),
     );
     try {
-      const sectionRaw = localStorage.getItem(SECTION_TASKS_KEY);
-      if (sectionRaw) {
-        const obj = JSON.parse(sectionRaw);
-        KPI_SECTION_IDS.forEach((sectionId) => {
-          const arr = obj[sectionId];
-          if (!Array.isArray(arr)) return;
-          const sectionLabel =
-            {
-              dream: "꿈",
-              sideincome: "부수입",
-              health: "건강",
-              happy: "행복",
-              braindump: "브레인 덤프",
-            }[sectionId] || sectionId;
-          arr
-            .filter((t) => (t.name || "").trim() !== "")
-            .forEach((t) =>
-              tasks.push({
-                ...t,
-                sectionId,
-                sectionLabel,
-                taskId: t.taskId || "",
-                isKpiTodo: false,
-              }),
-            );
-        });
-      }
-      const customRaw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
-      if (customRaw) {
-        const obj = JSON.parse(customRaw);
-        getCustomSections().forEach((s) => {
-          const arr = obj[s.id];
-          if (!Array.isArray(arr)) return;
-          arr
-            .filter((t) => (t.name || "").trim() !== "")
-            .forEach((t) =>
-              tasks.push({
-                ...t,
-                sectionId: s.id,
-                sectionLabel: s.label || s.id,
-                taskId: t.taskId || "",
-                isKpiTodo: false,
-              }),
-            );
-        });
-      }
+      const obj = readSectionTasksObject();
+      KPI_SECTION_IDS.forEach((sectionId) => {
+        const arr = obj[sectionId];
+        if (!Array.isArray(arr)) return;
+        const sectionLabel =
+          {
+            dream: "꿈",
+            sideincome: "부수입",
+            health: "건강",
+            happy: "행복",
+            braindump: "브레인 덤프",
+          }[sectionId] || sectionId;
+        arr
+          .filter((t) => (t.name || "").trim() !== "")
+          .forEach((t) =>
+            tasks.push({
+              ...t,
+              sectionId,
+              sectionLabel,
+              taskId: t.taskId || "",
+              isKpiTodo: false,
+            }),
+          );
+      });
+      const cobj = readCustomSectionTasksObject();
+      getCustomSections().forEach((s) => {
+        const arr = cobj[s.id];
+        if (!Array.isArray(arr)) return;
+        arr
+          .filter((t) => (t.name || "").trim() !== "")
+          .forEach((t) =>
+            tasks.push({
+              ...t,
+              sectionId: s.id,
+              sectionLabel: s.label || s.id,
+              taskId: t.taskId || "",
+              isKpiTodo: false,
+            }),
+          );
+      });
     } catch (_) {}
     return tasks;
   }

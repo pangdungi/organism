@@ -4,6 +4,15 @@
 
 import { supabase } from "../supabase.js";
 import { applyWorkScheduleRowTimesFromTypes } from "./workScheduleEntryResolve.js";
+import {
+  readWorkScheduleRowsFromMem,
+  writeWorkScheduleRowsToMem,
+  readWorkScheduleTypeOptionsRawFromMem,
+  writeWorkScheduleTypeOptionsRawToMem,
+  readWorkScheduleDailyHoursFromMem,
+  writeWorkScheduleDailyHoursToMem,
+} from "./workScheduleModel.js";
+import { runWorkScheduleSerialized } from "./workScheduleServerSyncSerial.js";
 
 /** localStorage `debug_work_schedule` = `1` 이면 동기화 진단 로그 */
 function wsSyncLog(...args) {
@@ -17,10 +26,6 @@ function wsSyncLog(...args) {
 const SETTINGS_TABLE = "work_schedule_settings";
 const TYPES_TABLE = "work_schedule_types";
 const ENTRIES_TABLE = "work_schedule_entries";
-
-const WORK_SCHEDULE_KEY = "work_schedule_rows";
-const WORK_TYPE_OPTIONS_KEY = "work_schedule_type_options";
-const WORK_SCHEDULE_DAILY_HOURS_KEY = "work_schedule_daily_hours";
 
 const DEFAULT_TYPE_SEED = [
   { name: "연차", start: "00:00", end: "00:00" },
@@ -43,14 +48,8 @@ function rowKey(r) {
 }
 
 function parseLocalTypes() {
-  try {
-    const raw = localStorage.getItem(WORK_TYPE_OPTIONS_KEY);
-    if (!raw) return [];
-    const arr = JSON.parse(raw);
-    return Array.isArray(arr) ? arr : [];
-  } catch (_) {
-    return [];
-  }
+  const raw = readWorkScheduleTypeOptionsRawFromMem();
+  return Array.isArray(raw) ? raw : [];
 }
 
 function normalizeTypeEntry(o) {
@@ -103,14 +102,7 @@ function mergeTypeOptionsLocalServer(localArr, serverRows) {
 }
 
 function loadLocalRows() {
-  try {
-    const raw = localStorage.getItem(WORK_SCHEDULE_KEY);
-    if (!raw) return [];
-    const arr = JSON.parse(raw);
-    return Array.isArray(arr) ? arr : [];
-  } catch (_) {
-    return [];
-  }
+  return readWorkScheduleRowsFromMem();
 }
 
 function mergeEntriesLocalAndServer(localRows, serverRows) {
@@ -189,15 +181,14 @@ async function getSessionUserId() {
   return session?.user?.id || null;
 }
 
-/** 로그인 시 서버 → 로컬 병합 저장 */
-export async function pullWorkScheduleFromSupabase() {
+async function pullWorkScheduleFromSupabaseImpl() {
   const userId = await getSessionUserId();
   if (!userId || !supabase) return null;
 
   const [settingsRes, typesRes, entriesRes] = await Promise.all([
     supabase.from(SETTINGS_TABLE).select("daily_work_hours").eq("user_id", userId).maybeSingle(),
     supabase.from(TYPES_TABLE).select("name, start_time, end_time, sort_order").eq("user_id", userId).order("sort_order", { ascending: true }).order("name", { ascending: true }),
-    supabase.from(ENTRIES_TABLE).select("id, work_date, start_time, end_time, work_type, memo, hours, hours_worked").eq("user_id", userId).order("work_date", { ascending: false }),
+    supabase.from(ENTRIES_TABLE).select("id, work_date, start_time, end_time, work_type, memo, hours, hours_worked").eq("user_id", userId).order("work_date", { ascending: true }).order("start_time", { ascending: true }),
   ]);
 
   if (settingsRes.error) console.warn("[work-schedule sync] pull settings", settingsRes.error.message);
@@ -209,9 +200,7 @@ export async function pullWorkScheduleFromSupabase() {
   const serverTypeRows = typesRes.data || [];
   if (serverTypeRows.length > 0) {
     const mergedTypes = mergeTypeOptionsLocalServer(localTypes, serverTypeRows);
-    try {
-      localStorage.setItem(WORK_TYPE_OPTIONS_KEY, JSON.stringify(mergedTypes));
-    } catch (_) {}
+    writeWorkScheduleTypeOptionsRawToMem(mergedTypes);
   }
 
   const mergedRows = mergeEntriesLocalAndServer(localRows, entriesRes.data || []);
@@ -221,34 +210,32 @@ export async function pullWorkScheduleFromSupabase() {
     localRows.length,
     "server",
     (entriesRes.data || []).length,
-    "merged→localStorage",
+    "merged→mem",
     resolvedRows.length,
   );
 
-  try {
-    localStorage.setItem(WORK_SCHEDULE_KEY, JSON.stringify(resolvedRows));
-  } catch (_) {}
+  writeWorkScheduleRowsToMem(resolvedRows);
 
   const serverHours = settingsRes.data?.daily_work_hours;
   if (serverHours != null && !Number.isNaN(Number(serverHours))) {
-    try {
-      localStorage.setItem(WORK_SCHEDULE_DAILY_HOURS_KEY, String(Number(serverHours)));
-    } catch (_) {}
+    writeWorkScheduleDailyHoursToMem(Number(serverHours));
   }
 
   return { rows: resolvedRows };
 }
 
-/** 로컬 전체를 서버에 반영 */
-export async function syncWorkScheduleToSupabase() {
+/** 로그인 시 서버 → 세션 메모리 병합 */
+export async function pullWorkScheduleFromSupabase() {
+  return runWorkScheduleSerialized(() => pullWorkScheduleFromSupabaseImpl());
+}
+
+async function syncWorkScheduleToSupabaseImpl() {
   const userId = await getSessionUserId();
   if (!userId || !supabase) return;
 
   let dailyStr = "8.5";
-  try {
-    const v = localStorage.getItem(WORK_SCHEDULE_DAILY_HOURS_KEY);
-    if (v != null && v !== "") dailyStr = v;
-  } catch (_) {}
+  const dhMem = readWorkScheduleDailyHoursFromMem();
+  if (dhMem != null && !Number.isNaN(dhMem)) dailyStr = String(dhMem);
   const dailyNum = parseFloat(dailyStr);
   const daily_work_hours = !Number.isNaN(dailyNum) && dailyNum >= 0 ? dailyNum : 8.5;
 
@@ -265,9 +252,7 @@ export async function syncWorkScheduleToSupabase() {
     return { ...r, id: crypto.randomUUID() };
   });
   rows = applyWorkScheduleRowTimesFromTypes(rows);
-  try {
-    localStorage.setItem(WORK_SCHEDULE_KEY, JSON.stringify(rows));
-  } catch (_) {}
+  writeWorkScheduleRowsToMem(rows);
 
   const idsStillInLocal = new Set(rows.map((r) => String(r.id || "").trim()).filter((id) => isUuid(id)));
 
@@ -338,6 +323,11 @@ export async function syncWorkScheduleToSupabase() {
   } else if (!reErr && remoteEntries?.length && entryPayloads.length === 0) {
     wsSyncLog("push: SKIP orphan entry delete (entryPayloads empty), rows", rows.length);
   }
+}
+
+/** 세션 메모리 전체를 서버에 반영 (직렬 큐) */
+export async function syncWorkScheduleToSupabase() {
+  return runWorkScheduleSerialized(() => syncWorkScheduleToSupabaseImpl());
 }
 
 let _pushTimer = null;

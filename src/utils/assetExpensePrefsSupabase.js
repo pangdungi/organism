@@ -1,9 +1,10 @@
 /**
  * 가계부 설정: 사용자 추가 소비/수입 분류 · 결제수단 ↔ Supabase
- * 기본 목록은 Asset.js 코드; DB에는 사용자 추가분만 저장.
+ * — 세션 메모리(서버 pull·sync 후 재조회) + 자산 전역 직렬 큐.
  */
 
 import { supabase } from "../supabase.js";
+import { runAssetSerialized } from "./assetServerSyncSerial.js";
 
 const CLS_TABLE = "asset_user_expense_classifications";
 const PAY_TABLE = "asset_user_payment_options";
@@ -49,6 +50,68 @@ const DEFAULT_CLASSIFICATION_LABELS_BY_CAT = {
 
 const DEFAULT_CLS_CATEGORIES = Object.keys(DEFAULT_CLASSIFICATION_LABELS_BY_CAT);
 
+/** @type {Record<string, unknown>|undefined} */
+let _clsSavedMem = undefined;
+/** @type {unknown[]|undefined} */
+let _payListMem = undefined;
+let _prefsMigrated = false;
+
+function migratePrefsFromLocalStorageOnce() {
+  if (_prefsMigrated) return;
+  _prefsMigrated = true;
+  try {
+    if (typeof localStorage === "undefined") return;
+    const rawCls = localStorage.getItem(EXPENSE_CLASSIFICATION_KEY);
+    if (rawCls) {
+      try {
+        const o = JSON.parse(rawCls);
+        _clsSavedMem = o && typeof o === "object" ? o : {};
+      } catch (_) {
+        _clsSavedMem = {};
+      }
+    } else {
+      _clsSavedMem = undefined;
+    }
+    const rawPay = localStorage.getItem(EXPENSE_PAYMENT_OPTIONS_KEY);
+    if (rawPay) {
+      try {
+        const p = JSON.parse(rawPay);
+        _payListMem = Array.isArray(p) ? p : undefined;
+      } catch (_) {
+        _payListMem = undefined;
+      }
+    } else {
+      _payListMem = undefined;
+    }
+    localStorage.removeItem(EXPENSE_CLASSIFICATION_KEY);
+    localStorage.removeItem(EXPENSE_PAYMENT_OPTIONS_KEY);
+  } catch (_) {}
+}
+
+/** Asset.js getExpenseClassificationByCategory 에서 쓰는 저장 분류 객체(없으면 {}) */
+export function readExpenseClassificationSavedMem() {
+  migratePrefsFromLocalStorageOnce();
+  if (_clsSavedMem === undefined) return {};
+  return typeof _clsSavedMem === "object" && _clsSavedMem ? { ..._clsSavedMem } : {};
+}
+
+export function writeExpenseClassificationSavedMem(obj) {
+  migratePrefsFromLocalStorageOnce();
+  _clsSavedMem = obj && typeof obj === "object" ? JSON.parse(JSON.stringify(obj)) : {};
+}
+
+/** 결제수단 전체 목록(문자열 또는 {name}) — 기본+사용자 추가 병합본과 동일 */
+export function readExpensePaymentOptionsListMem() {
+  migratePrefsFromLocalStorageOnce();
+  if (!Array.isArray(_payListMem)) return [];
+  return _payListMem.slice();
+}
+
+export function writeExpensePaymentOptionsListMem(arr) {
+  migratePrefsFromLocalStorageOnce();
+  _payListMem = Array.isArray(arr) ? arr.slice() : [];
+}
+
 function defaultLabelSetForCategory(cat) {
   return DEFAULT_CLASSIFICATION_LABELS_BY_CAT[cat] || new Set();
 }
@@ -58,14 +121,7 @@ function isDefaultPaymentLabel(label) {
 }
 
 function loadRawClassificationSaved() {
-  try {
-    const raw = localStorage.getItem(EXPENSE_CLASSIFICATION_KEY);
-    if (!raw) return {};
-    const o = JSON.parse(raw);
-    return o && typeof o === "object" ? o : {};
-  } catch (_) {
-    return {};
-  }
+  return readExpenseClassificationSavedMem();
 }
 
 /** 로컬에 저장된 객체에서 시스템 기본이 아닌 분류만 추출 → upsert 페이로드 */
@@ -92,14 +148,8 @@ function buildClassificationPayloadsFromLocal(userId) {
 }
 
 function buildPaymentPayloadsFromLocal(userId) {
-  let arr = [];
-  try {
-    const raw = localStorage.getItem(EXPENSE_PAYMENT_OPTIONS_KEY);
-    if (raw) {
-      const p = JSON.parse(raw);
-      if (Array.isArray(p)) arr = p.map((o) => (typeof o === "string" ? o : o?.name)).filter(Boolean);
-    }
-  } catch (_) {}
+  const arrRaw = readExpensePaymentOptionsListMem();
+  const arr = arrRaw.map((o) => (typeof o === "string" ? o : o?.name)).filter(Boolean);
   const extras = [];
   const seen = new Set();
   for (const s of arr) {
@@ -112,8 +162,7 @@ function buildPaymentPayloadsFromLocal(userId) {
   return extras.map((label, sort_order) => ({ user_id: userId, label, sort_order }));
 }
 
-/** 서버에서 받은 분류만 담은 객체 → localStorage (getExpenseClassificationByCategory가 기본과 머지) */
-function applyClassificationUserOnlyToLocalStorage(rows) {
+function applyClassificationUserOnlyToMem(rows) {
   const byKey = new Map();
   for (const r of rows || []) {
     const cat = String(r.expense_category || "").trim();
@@ -129,21 +178,35 @@ function applyClassificationUserOnlyToLocalStorage(rows) {
       color: String(r.color || "expense-cls-teal").trim(),
     }));
   }
-  try {
-    localStorage.setItem(EXPENSE_CLASSIFICATION_KEY, JSON.stringify(byCat));
-  } catch (_) {}
+  writeExpenseClassificationSavedMem(byCat);
 }
 
-function applyPaymentExtrasToLocalStorage(rows) {
+function applyPaymentExtrasToMem(rows) {
   const labels = (rows || [])
     .slice()
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
     .map((r) => String(r.label || "").trim())
     .filter(Boolean);
   const merged = [...DEFAULT_PAYMENT_LABELS, ...labels.filter((l) => !isDefaultPaymentLabel(l))];
-  try {
-    localStorage.setItem(EXPENSE_PAYMENT_OPTIONS_KEY, JSON.stringify(merged));
-  } catch (_) {}
+  writeExpensePaymentOptionsListMem(merged);
+}
+
+async function refetchPrefsIntoMem(userId) {
+  const [clsRes, payRes] = await Promise.all([
+    supabase
+      .from(CLS_TABLE)
+      .select("expense_category, label, color, sort_order")
+      .eq("user_id", userId)
+      .order("expense_category", { ascending: true })
+      .order("sort_order", { ascending: true }),
+    supabase.from(PAY_TABLE).select("label, sort_order").eq("user_id", userId).order("sort_order", { ascending: true }),
+  ]);
+
+  if (clsRes.error) console.warn("[asset-expense-prefs] refetch classifications", clsRes.error.message);
+  if (payRes.error) console.warn("[asset-expense-prefs] refetch payments", payRes.error.message);
+
+  if (!clsRes.error) applyClassificationUserOnlyToMem(clsRes.data || []);
+  if (!payRes.error) applyPaymentExtrasToMem(payRes.data || []);
 }
 
 async function getSessionUserId() {
@@ -154,7 +217,7 @@ async function getSessionUserId() {
   return session?.user?.id || null;
 }
 
-export async function pullAssetExpensePrefsFromSupabase() {
+export async function pullAssetExpensePrefsFromSupabaseImpl() {
   const userId = await getSessionUserId();
   if (!userId || !supabase) return null;
 
@@ -165,28 +228,27 @@ export async function pullAssetExpensePrefsFromSupabase() {
       .eq("user_id", userId)
       .order("expense_category", { ascending: true })
       .order("sort_order", { ascending: true }),
-    supabase
-      .from(PAY_TABLE)
-      .select("label, sort_order")
-      .eq("user_id", userId)
-      .order("sort_order", { ascending: true }),
+    supabase.from(PAY_TABLE).select("label, sort_order").eq("user_id", userId).order("sort_order", { ascending: true }),
   ]);
 
   if (clsRes.error) console.warn("[asset-expense-prefs] pull classifications", clsRes.error.message);
   if (payRes.error) console.warn("[asset-expense-prefs] pull payments", payRes.error.message);
 
-  /* 서버에 행이 하나도 없으면 로컬을 비우지 않음(미동기화·빈 DB가 로컬 사용자 분류를 날리는 것 방지) */
   if (!clsRes.error && clsRes.data?.length > 0) {
-    applyClassificationUserOnlyToLocalStorage(clsRes.data);
+    applyClassificationUserOnlyToMem(clsRes.data);
   }
   if (!payRes.error && payRes.data?.length > 0) {
-    applyPaymentExtrasToLocalStorage(payRes.data);
+    applyPaymentExtrasToMem(payRes.data);
   }
 
   return { classifications: clsRes.data || [], payments: payRes.data || [] };
 }
 
-export async function syncAssetExpensePrefsToSupabase() {
+export function pullAssetExpensePrefsFromSupabase() {
+  return runAssetSerialized(() => pullAssetExpensePrefsFromSupabaseImpl());
+}
+
+export async function syncAssetExpensePrefsToSupabaseImpl() {
   const userId = await getSessionUserId();
   if (!userId || !supabase) return;
 
@@ -216,16 +278,11 @@ export async function syncAssetExpensePrefsToSupabase() {
   }
 
   if (payPayloads.length > 0) {
-    const { error } = await supabase.from(PAY_TABLE).upsert(payPayloads, {
-      onConflict: "user_id,label",
-    });
+    const { error } = await supabase.from(PAY_TABLE).upsert(payPayloads, { onConflict: "user_id,label" });
     if (error) console.warn("[asset-expense-prefs] upsert payments", error.message);
   }
 
-  const { data: remotePay, error: rpErr } = await supabase
-    .from(PAY_TABLE)
-    .select("id, label")
-    .eq("user_id", userId);
+  const { data: remotePay, error: rpErr } = await supabase.from(PAY_TABLE).select("id, label").eq("user_id", userId);
   if (!rpErr && remotePay) {
     const want = new Set(payPayloads.map((p) => p.label));
     for (const r of remotePay) {
@@ -235,6 +292,15 @@ export async function syncAssetExpensePrefsToSupabase() {
       }
     }
   }
+
+  await refetchPrefsIntoMem(userId);
+  try {
+    window.dispatchEvent(new CustomEvent("asset-expense-prefs-saved", { detail: { fromServerMerge: true } }));
+  } catch (_) {}
+}
+
+export function syncAssetExpensePrefsToSupabase() {
+  return runAssetSerialized(() => syncAssetExpensePrefsToSupabaseImpl());
 }
 
 export async function pushAllLocalAssetExpensePrefsIfServerEmpty() {
@@ -270,15 +336,26 @@ let _listenerAttached = false;
 export function attachAssetExpensePrefsSaveListener() {
   if (_listenerAttached) return;
   _listenerAttached = true;
-  window.addEventListener("asset-expense-prefs-saved", () => {
+  window.addEventListener("asset-expense-prefs-saved", (e) => {
+    if (e.detail?.fromServerMerge) return;
     scheduleAssetExpensePrefsSyncPush();
   });
 }
 
-/** 자산 탭 진입 시: pull(서버에 데이터 있을 때만 로컬 반영) → 양쪽 테이블 모두 비었으면 로컬 업로드 */
 export async function hydrateAssetExpensePrefsFromCloud() {
   attachAssetExpensePrefsSaveListener();
   if (!supabase) return;
   await pullAssetExpensePrefsFromSupabase();
   await pushAllLocalAssetExpensePrefsIfServerEmpty();
+}
+
+export function clearAssetExpensePrefsMemAndLegacy() {
+  _clsSavedMem = undefined;
+  _payListMem = undefined;
+  _prefsMigrated = false;
+  try {
+    if (typeof localStorage === "undefined") return;
+    localStorage.removeItem(EXPENSE_CLASSIFICATION_KEY);
+    localStorage.removeItem(EXPENSE_PAYMENT_OPTIONS_KEY);
+  } catch (_) {}
 }

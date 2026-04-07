@@ -965,14 +965,18 @@ async function runHealthKpiMapSyncOnce() {
     }
 
     if (mergedFromServer) {
-      try {
-        const prevRaw = localStorage.getItem(HEALTH_KPI_MAP_STORAGE_KEY);
-        const nextRaw = JSON.stringify(toSync);
-        if (prevRaw !== nextRaw) {
-          localStorage.setItem(HEALTH_KPI_MAP_STORAGE_KEY, nextRaw);
-          window.dispatchEvent(new CustomEvent("health-kpi-map-saved", { detail: { fromServerMerge: true, fromPush: true } }));
-        }
-      } catch (_) {}
+      const afterSync = await fetchHealthMapPayloadFromSupabase(userId);
+      if (afterSync.ok) {
+        try {
+          const snap = normalizePayload(afterSync.payload);
+          const nextRaw = JSON.stringify(snap);
+          const prevRaw = localStorage.getItem(HEALTH_KPI_MAP_STORAGE_KEY);
+          if (prevRaw !== nextRaw) {
+            localStorage.setItem(HEALTH_KPI_MAP_STORAGE_KEY, nextRaw);
+            window.dispatchEvent(new CustomEvent("health-kpi-map-saved", { detail: { fromServerMerge: true, fromPush: true } }));
+          }
+        } catch (_) {}
+      }
     }
 
     const hasData = localPayloadHasAnythingToPersist(toSync);

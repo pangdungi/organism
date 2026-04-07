@@ -929,14 +929,18 @@ async function runHappinessKpiMapSyncOnce() {
     }
 
     if (mergedFromServer) {
-      try {
-        const prevRaw = localStorage.getItem(HAPPINESS_KPI_MAP_STORAGE_KEY);
-        const nextRaw = JSON.stringify(toSync);
-        if (prevRaw !== nextRaw) {
-          localStorage.setItem(HAPPINESS_KPI_MAP_STORAGE_KEY, nextRaw);
-          window.dispatchEvent(new CustomEvent("happiness-kpi-map-saved", { detail: { fromServerMerge: true, fromPush: true } }));
-        }
-      } catch (_) {}
+      const afterSync = await fetchHappinessMapPayloadFromSupabase(userId);
+      if (afterSync.ok) {
+        try {
+          const snap = normalizePayload(afterSync.payload);
+          const nextRaw = JSON.stringify(snap);
+          const prevRaw = localStorage.getItem(HAPPINESS_KPI_MAP_STORAGE_KEY);
+          if (prevRaw !== nextRaw) {
+            localStorage.setItem(HAPPINESS_KPI_MAP_STORAGE_KEY, nextRaw);
+            window.dispatchEvent(new CustomEvent("happiness-kpi-map-saved", { detail: { fromServerMerge: true, fromPush: true } }));
+          }
+        } catch (_) {}
+      }
     }
 
     const hasData = localPayloadHasAnythingToPersist(toSync);

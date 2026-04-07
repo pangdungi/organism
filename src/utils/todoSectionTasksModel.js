@@ -1,5 +1,6 @@
 /**
- * 할일/일정 localStorage (todo-section-tasks / todo-custom-section-tasks) — KPI 제외
+ * 할일/일정 섹션 할 일 — 세션 메모리가 본진. 영속 복구는 Supabase(calendar_section_tasks).
+ * 구버전 localStorage는 최초 접근 시 한 번 읽은 뒤 제거합니다.
  */
 
 import { clearSubtasks } from "./todoSubtasks.js";
@@ -18,6 +19,58 @@ export const CALENDAR_FIXED_SECTION_IDS = [
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+/** 구버전 tombstone 키 — 마이그레이션 후 제거 */
+const SECTION_TASK_TOMBSTONES_KEY = "todo-section-task-deletion-tombstones";
+
+let _legacyMigrated = false;
+/** @type {Record<string, unknown>} */
+let _sectionTasksMem = {};
+/** @type {Record<string, unknown>} */
+let _customSectionTasksMem = {};
+/** @type {Record<string, number>} */
+let _todoDeletionTombstonesMem = {};
+
+function cloneDeep(obj) {
+  try {
+    return JSON.parse(JSON.stringify(obj == null ? {} : obj));
+  } catch (_) {
+    return {};
+  }
+}
+
+function migrateLegacyLocalStorageOnce() {
+  if (_legacyMigrated) return;
+  _legacyMigrated = true;
+  _sectionTasksMem = {};
+  _customSectionTasksMem = {};
+  _todoDeletionTombstonesMem = {};
+  try {
+    const rawS = localStorage.getItem(SECTION_TASKS_KEY);
+    if (rawS) {
+      const o = JSON.parse(rawS);
+      if (o && typeof o === "object") _sectionTasksMem = o;
+    }
+    const rawC = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
+    if (rawC) {
+      const o = JSON.parse(rawC);
+      if (o && typeof o === "object") _customSectionTasksMem = o;
+    }
+    const rawT = localStorage.getItem(SECTION_TASK_TOMBSTONES_KEY);
+    if (rawT) {
+      const o = JSON.parse(rawT);
+      if (o && typeof o === "object") _todoDeletionTombstonesMem = o;
+    }
+  } catch (_) {}
+  CALENDAR_FIXED_SECTION_IDS.forEach((k) => {
+    if (!Array.isArray(_sectionTasksMem[k])) _sectionTasksMem[k] = [];
+  });
+  try {
+    localStorage.removeItem(SECTION_TASKS_KEY);
+    localStorage.removeItem(CUSTOM_SECTION_TASKS_KEY);
+    localStorage.removeItem(SECTION_TASK_TOMBSTONES_KEY);
+  } catch (_) {}
+}
+
 function newTaskId() {
   return typeof crypto !== "undefined" && crypto.randomUUID
     ? crypto.randomUUID()
@@ -25,37 +78,55 @@ function newTaskId() {
 }
 
 export function readSectionTasksObject() {
-  try {
-    const raw = localStorage.getItem(SECTION_TASKS_KEY);
-    if (!raw) return {};
-    const obj = JSON.parse(raw);
-    return obj && typeof obj === "object" ? obj : {};
-  } catch (_) {
-    return {};
-  }
+  migrateLegacyLocalStorageOnce();
+  const o = cloneDeep(_sectionTasksMem);
+  CALENDAR_FIXED_SECTION_IDS.forEach((k) => {
+    if (!Array.isArray(o[k])) o[k] = [];
+  });
+  return o;
 }
 
 export function readCustomSectionTasksObject() {
-  try {
-    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
-    if (!raw) return {};
-    const obj = JSON.parse(raw);
-    return obj && typeof obj === "object" ? obj : {};
-  } catch (_) {
-    return {};
-  }
+  migrateLegacyLocalStorageOnce();
+  return cloneDeep(_customSectionTasksMem);
 }
 
 export function writeSectionTasksObject(obj) {
-  try {
-    localStorage.setItem(SECTION_TASKS_KEY, JSON.stringify(obj || {}));
-  } catch (_) {}
+  migrateLegacyLocalStorageOnce();
+  const next = cloneDeep(obj || {});
+  CALENDAR_FIXED_SECTION_IDS.forEach((k) => {
+    if (!Array.isArray(next[k])) next[k] = [];
+  });
+  _sectionTasksMem = next;
 }
 
 export function writeCustomSectionTasksObject(obj) {
+  migrateLegacyLocalStorageOnce();
+  _customSectionTasksMem = cloneDeep(obj || {});
+}
+
+/** pull 전후 변경 감지(무한 리렌더 방지) */
+export function snapshotSectionTasksForPullCompare() {
+  migrateLegacyLocalStorageOnce();
+  return `${JSON.stringify(_sectionTasksMem)}\n${JSON.stringify(_customSectionTasksMem)}`;
+}
+
+/**
+ * 로그아웃·계정 전환 시: 섹션 할 일·tombstone 메모리 초기화 및 구버전 LS 제거
+ */
+export function clearTodoSectionTasksMemAndLegacy() {
   try {
-    localStorage.setItem(CUSTOM_SECTION_TASKS_KEY, JSON.stringify(obj || {}));
+    localStorage.removeItem(SECTION_TASKS_KEY);
+    localStorage.removeItem(CUSTOM_SECTION_TASKS_KEY);
+    localStorage.removeItem(SECTION_TASK_TOMBSTONES_KEY);
   } catch (_) {}
+  _legacyMigrated = true;
+  _sectionTasksMem = {};
+  _customSectionTasksMem = {};
+  _todoDeletionTombstonesMem = {};
+  CALENDAR_FIXED_SECTION_IDS.forEach((k) => {
+    _sectionTasksMem[k] = [];
+  });
 }
 
 function normalizeDate(val) {
@@ -122,24 +193,14 @@ export function stripTodoTaskSyncMetaForCompare(t) {
   }
 }
 
-/** 로컬에서 삭제했는데 서버에 아직 남아 있을 때 pull이 부활시키지 않도록 */
-const SECTION_TASK_TOMBSTONES_KEY = "todo-section-task-deletion-tombstones";
-
 function readTodoDeletionTombstones() {
-  try {
-    const raw = localStorage.getItem(SECTION_TASK_TOMBSTONES_KEY);
-    if (!raw) return {};
-    const o = JSON.parse(raw);
-    return o && typeof o === "object" ? o : {};
-  } catch (_) {
-    return {};
-  }
+  migrateLegacyLocalStorageOnce();
+  return cloneDeep(_todoDeletionTombstonesMem);
 }
 
 function writeTodoDeletionTombstones(obj) {
-  try {
-    localStorage.setItem(SECTION_TASK_TOMBSTONES_KEY, JSON.stringify(obj || {}));
-  } catch (_) {}
+  migrateLegacyLocalStorageOnce();
+  _todoDeletionTombstonesMem = cloneDeep(obj || {});
 }
 
 /** 할 일 행 삭제 시 호출 — 서버 반영 전까지 동일 id는 pull에서 무시 */

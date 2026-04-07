@@ -521,3 +521,13 @@ export function applyTaskCategoryColors() {
   }).filter(Boolean);
   styleEl.textContent = rules.join("\n");
 }
+
+/** 로그아웃·계정 전환 — 할일 환경설정·커스텀 리스트·분류 칩 캐시가 다른 계정과 섞이지 않게 */
+export function clearTodoSettingsAndCustomSectionsOnSignOut() {
+  try {
+    localStorage.removeItem(TODO_SETTINGS_KEY);
+    localStorage.removeItem(CUSTOM_SECTIONS_KEY);
+    localStorage.removeItem("todo_category_options");
+    localStorage.removeItem("lp-todo-main-fixed-tab-index");
+  } catch (_) {}
+}

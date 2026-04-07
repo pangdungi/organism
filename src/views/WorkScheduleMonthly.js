@@ -3,16 +3,12 @@
  */
 
 import { applyWorkScheduleRowTimesFromTypes } from "../utils/workScheduleEntryResolve.js";
-
-const WORK_SCHEDULE_KEY = "work_schedule_rows";
+import { readWorkScheduleRowsFromMem } from "../utils/workScheduleModel.js";
 
 function loadWorkScheduleRows() {
   try {
-    const raw = localStorage.getItem(WORK_SCHEDULE_KEY);
-    if (raw) {
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) return applyWorkScheduleRowTimesFromTypes(arr);
-    }
+    const arr = readWorkScheduleRowsFromMem();
+    if (Array.isArray(arr)) return applyWorkScheduleRowTimesFromTypes(arr);
   } catch (_) {}
   return [];
 }

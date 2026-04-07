@@ -7,11 +7,17 @@ import {
   syncKpiTodoCompleted,
 } from "../utils/kpiTodoSync.js";
 import { getCustomSections } from "../utils/todoSettings.js";
+import {
+  readSectionTasksObject,
+  readCustomSectionTasksObject,
+} from "../utils/todoSectionTasksModel.js";
+import {
+  persistSectionTasksAndSchedule,
+  persistCustomSectionTasksAndSchedule,
+} from "../utils/todoSectionTasksSupabase.js";
 import { getTodayTimeSummary } from "./Time.js";
 import { render1DayView } from "./Calendar.js";
 
-const SECTION_TASKS_KEY = "todo-section-tasks";
-const CUSTOM_SECTION_TASKS_KEY = "todo-custom-section-tasks";
 const KPI_SECTION_IDS = ["braindump", "dream", "sideincome", "health", "happy"];
 const SECTION_LABELS = {
   dream: "꿈",
@@ -45,62 +51,56 @@ function getEventsForCurrentMonth() {
     });
 
   try {
-    const raw = localStorage.getItem(SECTION_TASKS_KEY);
-    if (raw) {
-      const obj = JSON.parse(raw);
-      KPI_SECTION_IDS.forEach((sectionId) => {
-        const arr = obj[sectionId];
-        if (!Array.isArray(arr)) return;
-        const sectionLabel = SECTION_LABELS[sectionId] || sectionId;
-        arr
-          .filter(
-            (t) =>
-              (t.name || "").trim() !== "" &&
-              (inMonth(t.dueDate) || inMonth(t.startDate)),
-          )
-          .forEach((t) =>
-            out.push({
-              name: (t.name || "").trim(),
-              dueDate: (t.dueDate || "").slice(0, 10),
-              startDate: (t.startDate || "").slice(0, 10),
-              startTime: (t.startTime || "").trim(),
-              endTime: (t.endTime || "").trim(),
-              sectionLabel,
-              done: !!t.done,
-              itemType: t.itemType || "todo",
-            }),
-          );
-      });
-    }
+    const obj = readSectionTasksObject();
+    KPI_SECTION_IDS.forEach((sectionId) => {
+      const arr = obj[sectionId];
+      if (!Array.isArray(arr)) return;
+      const sectionLabel = SECTION_LABELS[sectionId] || sectionId;
+      arr
+        .filter(
+          (t) =>
+            (t.name || "").trim() !== "" &&
+            (inMonth(t.dueDate) || inMonth(t.startDate)),
+        )
+        .forEach((t) =>
+          out.push({
+            name: (t.name || "").trim(),
+            dueDate: (t.dueDate || "").slice(0, 10),
+            startDate: (t.startDate || "").slice(0, 10),
+            startTime: (t.startTime || "").trim(),
+            endTime: (t.endTime || "").trim(),
+            sectionLabel,
+            done: !!t.done,
+            itemType: t.itemType || "todo",
+          }),
+        );
+    });
   } catch (_) {}
 
   try {
-    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
-    if (raw) {
-      const obj = JSON.parse(raw);
-      getCustomSections().forEach((sec) => {
-        const arr = obj[sec.id];
-        if (!Array.isArray(arr)) return;
-        arr
-          .filter(
-            (t) =>
-              (t.name || "").trim() !== "" &&
-              (inMonth(t.dueDate) || inMonth(t.startDate)),
-          )
-          .forEach((t) =>
-            out.push({
-              name: (t.name || "").trim(),
-              dueDate: (t.dueDate || "").slice(0, 10),
-              startDate: (t.startDate || "").slice(0, 10),
-              startTime: (t.startTime || "").trim(),
-              endTime: (t.endTime || "").trim(),
-              sectionLabel: sec.label || sec.id,
-              done: !!t.done,
-              itemType: t.itemType || "todo",
-            }),
-          );
-      });
-    }
+    const obj = readCustomSectionTasksObject();
+    getCustomSections().forEach((sec) => {
+      const arr = obj[sec.id];
+      if (!Array.isArray(arr)) return;
+      arr
+        .filter(
+          (t) =>
+            (t.name || "").trim() !== "" &&
+            (inMonth(t.dueDate) || inMonth(t.startDate)),
+        )
+        .forEach((t) =>
+          out.push({
+            name: (t.name || "").trim(),
+            dueDate: (t.dueDate || "").slice(0, 10),
+            startDate: (t.startDate || "").slice(0, 10),
+            startTime: (t.startTime || "").trim(),
+            endTime: (t.endTime || "").trim(),
+            sectionLabel: sec.label || sec.id,
+            done: !!t.done,
+            itemType: t.itemType || "todo",
+          }),
+        );
+    });
   } catch (_) {}
 
   out.sort((a, b) => {
@@ -154,48 +154,42 @@ function isToday(dateStr) {
 function getRemindersFromAllSections() {
   const out = [];
   try {
-    const raw = localStorage.getItem(SECTION_TASKS_KEY);
-    if (raw) {
-      const obj = JSON.parse(raw);
-      KPI_SECTION_IDS.forEach((sectionId) => {
-        const arr = obj[sectionId];
-        if (!Array.isArray(arr)) return;
-        arr.forEach((t) => {
-          const rDate = (t.reminderDate || "").trim();
-          if (!rDate) return;
-          out.push({
-            sectionId,
-            taskId: t.taskId || "",
-            name: (t.name || "").trim() || "(과제명 없음)",
-            reminderDate: rDate.slice(0, 10),
-            reminderTime: (t.reminderTime || "").trim(),
-            isCustom: false,
-          });
+    const obj = readSectionTasksObject();
+    KPI_SECTION_IDS.forEach((sectionId) => {
+      const arr = obj[sectionId];
+      if (!Array.isArray(arr)) return;
+      arr.forEach((t) => {
+        const rDate = (t.reminderDate || "").trim();
+        if (!rDate) return;
+        out.push({
+          sectionId,
+          taskId: t.taskId || "",
+          name: (t.name || "").trim() || "(과제명 없음)",
+          reminderDate: rDate.slice(0, 10),
+          reminderTime: (t.reminderTime || "").trim(),
+          isCustom: false,
         });
       });
-    }
+    });
   } catch (_) {}
   try {
-    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
-    if (raw) {
-      const obj = JSON.parse(raw);
-      getCustomSections().forEach((sec) => {
-        const arr = obj[sec.id];
-        if (!Array.isArray(arr)) return;
-        arr.forEach((t) => {
-          const rDate = (t.reminderDate || "").trim();
-          if (!rDate) return;
-          out.push({
-            sectionId: sec.id,
-            taskId: t.taskId || "",
-            name: (t.name || "").trim() || "(과제명 없음)",
-            reminderDate: rDate.slice(0, 10),
-            reminderTime: (t.reminderTime || "").trim(),
-            isCustom: true,
-          });
+    const obj = readCustomSectionTasksObject();
+    getCustomSections().forEach((sec) => {
+      const arr = obj[sec.id];
+      if (!Array.isArray(arr)) return;
+      arr.forEach((t) => {
+        const rDate = (t.reminderDate || "").trim();
+        if (!rDate) return;
+        out.push({
+          sectionId: sec.id,
+          taskId: t.taskId || "",
+          name: (t.name || "").trim() || "(과제명 없음)",
+          reminderDate: rDate.slice(0, 10),
+          reminderTime: (t.reminderTime || "").trim(),
+          isCustom: true,
         });
       });
-    }
+    });
   } catch (_) {}
   out.sort((a, b) => {
     if (a.reminderDate !== b.reminderDate)
@@ -236,18 +230,16 @@ function updateReminderInStorage(
   reminderTime,
   isCustom,
 ) {
-  const key = isCustom ? CUSTOM_SECTION_TASKS_KEY : SECTION_TASKS_KEY;
   try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return;
-    const obj = JSON.parse(raw);
+    const obj = isCustom ? readCustomSectionTasksObject() : readSectionTasksObject();
     const arr = obj[sectionId];
     if (!Array.isArray(arr)) return;
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (!t) return;
     t.reminderDate = (reminderDate || "").slice(0, 10) || "";
     t.reminderTime = (reminderTime || "").trim() || "";
-    localStorage.setItem(key, JSON.stringify(obj));
+    if (isCustom) persistCustomSectionTasksAndSchedule(obj);
+    else persistSectionTasksAndSchedule(obj);
   } catch (_) {}
 }
 
@@ -262,60 +254,54 @@ function getTasksDueToday() {
   const today = getTodayDateKey();
   const out = [];
   try {
-    const raw = localStorage.getItem(SECTION_TASKS_KEY);
-    if (raw) {
-      const obj = JSON.parse(raw);
-      KPI_SECTION_IDS.forEach((sectionId) => {
-        const arr = obj[sectionId];
-        if (!Array.isArray(arr)) return;
-        arr.forEach((t) => {
-          const due = (t.dueDate || "").slice(0, 10);
-          if (due !== today) return;
-          out.push({
-            sectionId,
-            taskId: t.taskId || "",
-            name: (t.name || "").trim() || "(과제명 없음)",
-            done: !!t.done,
-            eisenhower: (t.eisenhower || "").trim(),
-            isCustom: false,
-            isKpiTodo: false,
-            dueDate: due,
-            startDate: (t.startDate || "").slice(0, 10),
-            reminderDate: (t.reminderDate || "").slice(0, 10),
-            reminderTime: (t.reminderTime || "").trim(),
-            sectionLabel: SECTION_LABELS[sectionId] || sectionId,
-          });
+    const obj = readSectionTasksObject();
+    KPI_SECTION_IDS.forEach((sectionId) => {
+      const arr = obj[sectionId];
+      if (!Array.isArray(arr)) return;
+      arr.forEach((t) => {
+        const due = (t.dueDate || "").slice(0, 10);
+        if (due !== today) return;
+        out.push({
+          sectionId,
+          taskId: t.taskId || "",
+          name: (t.name || "").trim() || "(과제명 없음)",
+          done: !!t.done,
+          eisenhower: (t.eisenhower || "").trim(),
+          isCustom: false,
+          isKpiTodo: false,
+          dueDate: due,
+          startDate: (t.startDate || "").slice(0, 10),
+          reminderDate: (t.reminderDate || "").slice(0, 10),
+          reminderTime: (t.reminderTime || "").trim(),
+          sectionLabel: SECTION_LABELS[sectionId] || sectionId,
         });
       });
-    }
+    });
   } catch (_) {}
   try {
-    const raw = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
-    if (raw) {
-      const obj = JSON.parse(raw);
-      getCustomSections().forEach((sec) => {
-        const arr = obj[sec.id];
-        if (!Array.isArray(arr)) return;
-        arr.forEach((t) => {
-          const due = (t.dueDate || "").slice(0, 10);
-          if (due !== today) return;
-          out.push({
-            sectionId: sec.id,
-            taskId: t.taskId || "",
-            name: (t.name || "").trim() || "(과제명 없음)",
-            done: !!t.done,
-            eisenhower: (t.eisenhower || "").trim(),
-            isCustom: true,
-            isKpiTodo: false,
-            dueDate: due,
-            startDate: (t.startDate || "").slice(0, 10),
-            reminderDate: (t.reminderDate || "").slice(0, 10),
-            reminderTime: (t.reminderTime || "").trim(),
-            sectionLabel: sec.label || sec.id,
-          });
+    const obj = readCustomSectionTasksObject();
+    getCustomSections().forEach((sec) => {
+      const arr = obj[sec.id];
+      if (!Array.isArray(arr)) return;
+      arr.forEach((t) => {
+        const due = (t.dueDate || "").slice(0, 10);
+        if (due !== today) return;
+        out.push({
+          sectionId: sec.id,
+          taskId: t.taskId || "",
+          name: (t.name || "").trim() || "(과제명 없음)",
+          done: !!t.done,
+          eisenhower: (t.eisenhower || "").trim(),
+          isCustom: true,
+          isKpiTodo: false,
+          dueDate: due,
+          startDate: (t.startDate || "").slice(0, 10),
+          reminderDate: (t.reminderDate || "").slice(0, 10),
+          reminderTime: (t.reminderTime || "").trim(),
+          sectionLabel: sec.label || sec.id,
         });
       });
-    }
+    });
   } catch (_) {}
   getKpiTodosAsTasks().forEach((t) => {
     const due = (t.dueDate || "").slice(0, 10);
@@ -348,17 +334,15 @@ function updateHomeTaskDone(item, done) {
     syncKpiTodoCompleted(item.kpiTodoId, item.storageKey, done);
     return;
   }
-  const key = item.isCustom ? CUSTOM_SECTION_TASKS_KEY : SECTION_TASKS_KEY;
   try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return;
-    const obj = JSON.parse(raw);
+    const obj = item.isCustom ? readCustomSectionTasksObject() : readSectionTasksObject();
     const arr = obj[item.sectionId];
     if (!Array.isArray(arr)) return;
     const t = arr.find((x) => (x.taskId || "") === item.taskId);
     if (t) {
       t.done = !!done;
-      localStorage.setItem(key, JSON.stringify(obj));
+      if (item.isCustom) persistCustomSectionTasksAndSchedule(obj);
+      else persistSectionTasksAndSchedule(obj);
     }
   } catch (_) {}
 }
