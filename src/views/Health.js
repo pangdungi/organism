@@ -19,6 +19,12 @@ import {
   setupKpiTodoInlineTextarea,
 } from "../utils/kpiTodoInlineTextarea.js";
 import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
+import {
+  KPI_UI_SESSION_KEYS,
+  readKpiUiSession,
+  writeKpiUiSession,
+  restoreKpiTabFromSession,
+} from "../utils/kpiViewUiSession.js";
 
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
@@ -271,6 +277,25 @@ export function render() {
   let kpiFilter = "all";
   let completedSectionCollapsed = true;
   let healthAddModalJustClosed = false;
+
+  const _healthUiSession = readKpiUiSession(KPI_UI_SESSION_KEYS.health);
+  const _healthInitData = loadHealthMap();
+  const _healthRestored = restoreKpiTabFromSession(_healthUiSession, {
+    categoryIds: _healthInitData.healths || [],
+    kpis: _healthInitData.kpis || [],
+    foreignKey: "healthId",
+  });
+  if (_healthRestored.tabId) activeHealthId = _healthRestored.tabId;
+  selectedKpiId = _healthRestored.selectedKpiId;
+  kpiFilter = _healthRestored.kpiFilter;
+
+  function persistKpiUiState() {
+    writeKpiUiSession(KPI_UI_SESSION_KEYS.health, {
+      tabId: activeHealthId,
+      selectedKpiId,
+      kpiFilter,
+    });
+  }
 
   function showKpiModal() {
     if (!activeHealthId) return;
@@ -750,7 +775,10 @@ export function render() {
   function renderKpiList() {
     syncHabitTrackerLogs();
     contentWrap.innerHTML = "";
-    if (!activeHealthId) return;
+    if (!activeHealthId) {
+      persistKpiUiState();
+      return;
+    }
     const data = loadHealthMap();
     let healthKpis = (data.kpis || []).filter((k) => k.healthId === activeHealthId);
     const order = (data.kpiOrder || {})[activeHealthId];
@@ -971,6 +999,7 @@ export function render() {
       });
       contentWrap.appendChild(completedSection);
     }
+    persistKpiUiState();
   }
 
   function renderKpiHistory() {
@@ -1297,6 +1326,7 @@ export function render() {
       data.healths.push(health);
       saveHealthMap(data);
       activeHealthId = health.id;
+      selectedKpiId = null;
       healthAddModalJustClosed = true;
       close();
       renderTabs();
@@ -1416,6 +1446,9 @@ export function render() {
       tab.dataset.healthId = health.id;
       tab.innerHTML = `<span class="dream-tab-text">${escapeHtml(health.name || "건강 이름")}</span>`;
       tab.addEventListener("click", () => {
+        if (activeHealthId !== health.id) {
+          selectedKpiId = null;
+        }
         activeHealthId = health.id;
         renderTabs();
         updateTitleAndContent();
@@ -1434,11 +1467,11 @@ export function render() {
     const health = data.healths.find((h) => h.id === activeHealthId);
     if (health) {
       contentWrap.hidden = false;
-      selectedKpiId = null;
       renderKpiList();
       renderKpiHistory();
     } else {
       contentWrap.hidden = true;
+      persistKpiUiState();
     }
   }
 
@@ -1446,14 +1479,7 @@ export function render() {
   if (activeHealthId) {
     updateTitleAndContent();
   } else {
-    const data = loadHealthMap();
-    if (data.healths.length > 0) {
-      activeHealthId = data.healths[0].id;
-      renderTabs();
-      updateTitleAndContent();
-    } else {
-      contentWrap.hidden = true;
-    }
+    contentWrap.hidden = true;
   }
 
   const onMergedSync = (e) => {
@@ -1479,6 +1505,7 @@ export function render() {
     } else {
       contentWrap.hidden = true;
     }
+    persistKpiUiState();
   };
   window.addEventListener("health-kpi-map-saved", onMergedSync);
 

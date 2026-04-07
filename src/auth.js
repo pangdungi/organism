@@ -14,6 +14,7 @@ import { clearDiaryMemAndLegacy } from "./diaryData.js";
 import { clearTodoSectionTasksMemAndLegacy } from "./utils/todoSectionTasksModel.js";
 import { clearTodoSubtasksMemAndLegacy } from "./utils/todoSubtasks.js";
 import { clearTodoSettingsAndCustomSectionsOnSignOut } from "./utils/todoSettings.js";
+import { clearAllKpiUiSessions } from "./utils/kpiViewUiSession.js";
 
 /** 로그아웃·세션 만료·구독 만료 signOut 시 로컬 시간가계부·과제 캐시 제거 (다른 계정과 섞임 방지) */
 export async function purgeTimeLedgerLocalOnSignOut() {
@@ -31,6 +32,7 @@ export async function purgeTimeLedgerLocalOnSignOut() {
   clearTodoSectionTasksMemAndLegacy();
   clearTodoSubtasksMemAndLegacy();
   clearTodoSettingsAndCustomSectionsOnSignOut();
+  clearAllKpiUiSessions();
   try {
     sessionStorage.removeItem("lp_ledger_uid");
   } catch (_) {}

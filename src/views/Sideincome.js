@@ -20,6 +20,12 @@ import {
   setupKpiTodoInlineTextarea,
 } from "../utils/kpiTodoInlineTextarea.js";
 import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
+import {
+  KPI_UI_SESSION_KEYS,
+  readKpiUiSession,
+  writeKpiUiSession,
+  restoreKpiTabFromSession,
+} from "../utils/kpiViewUiSession.js";
 
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
@@ -275,6 +281,25 @@ export function render() {
   let kpiFilter = "all";
   let completedSectionCollapsed = true;
   let pathAddModalJustClosed = false;
+
+  const _sideincomeUiSession = readKpiUiSession(KPI_UI_SESSION_KEYS.sideincome);
+  const _sideincomeInitData = loadSideincomeMap();
+  const _sideincomeRestored = restoreKpiTabFromSession(_sideincomeUiSession, {
+    categoryIds: _sideincomeInitData.paths || [],
+    kpis: _sideincomeInitData.kpis || [],
+    foreignKey: "pathId",
+  });
+  if (_sideincomeRestored.tabId) activePathId = _sideincomeRestored.tabId;
+  selectedKpiId = _sideincomeRestored.selectedKpiId;
+  kpiFilter = _sideincomeRestored.kpiFilter;
+
+  function persistKpiUiState() {
+    writeKpiUiSession(KPI_UI_SESSION_KEYS.sideincome, {
+      tabId: activePathId,
+      selectedKpiId,
+      kpiFilter,
+    });
+  }
 
   function showKpiModal() {
     if (!activePathId) return;
@@ -854,7 +879,10 @@ export function render() {
   function renderKpiList() {
     syncHabitTrackerLogs();
     contentWrap.innerHTML = "";
-    if (!activePathId) return;
+    if (!activePathId) {
+      persistKpiUiState();
+      return;
+    }
     const data = loadSideincomeMap();
     let pathKpis = (data.kpis || []).filter((k) => k.pathId === activePathId);
     const order = (data.kpiOrder || {})[activePathId];
@@ -1129,6 +1157,7 @@ export function render() {
       });
       contentWrap.appendChild(completedSection);
     }
+    persistKpiUiState();
   }
 
   function renderKpiHistory() {
@@ -1546,6 +1575,9 @@ export function render() {
       tab.dataset.pathId = path.id;
       tab.innerHTML = `<span class="dream-tab-text">${escapeHtml(path.name || "새 경로")}</span>`;
       tab.addEventListener("click", () => {
+        if (activePathId !== path.id) {
+          selectedKpiId = null;
+        }
         activePathId = path.id;
         renderTabs();
         updateTitleAndContent();
@@ -1564,11 +1596,11 @@ export function render() {
     const path = data.paths.find((d) => d.id === activePathId);
     if (path) {
       contentWrap.hidden = false;
-      selectedKpiId = null;
       renderKpiList();
       renderKpiHistory();
     } else {
       contentWrap.hidden = true;
+      persistKpiUiState();
     }
   }
 
@@ -1614,6 +1646,7 @@ export function render() {
       data.paths.push(path);
       saveSideincomeMap(data);
       activePathId = path.id;
+      selectedKpiId = null;
       pathAddModalJustClosed = true;
       close();
       renderTabs();
@@ -1628,14 +1661,7 @@ export function render() {
   if (activePathId) {
     updateTitleAndContent();
   } else {
-    const data = loadSideincomeMap();
-    if (data.paths.length > 0) {
-      activePathId = data.paths[0].id;
-      renderTabs();
-      updateTitleAndContent();
-    } else {
-      contentWrap.hidden = true;
-    }
+    contentWrap.hidden = true;
   }
 
   const onMergedSync = (e) => {
@@ -1661,6 +1687,7 @@ export function render() {
     } else {
       contentWrap.hidden = true;
     }
+    persistKpiUiState();
   };
   window.addEventListener("sideincome-kpi-map-saved", onMergedSync);
 

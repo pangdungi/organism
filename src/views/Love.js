@@ -29,6 +29,12 @@ import {
   bindKpiTodoTextareaKeydown,
   setupKpiTodoInlineTextarea,
 } from "../utils/kpiTodoInlineTextarea.js";
+import {
+  KPI_UI_SESSION_KEYS,
+  readKpiUiSession,
+  writeKpiUiSession,
+  restoreKpiTabFromSession,
+} from "../utils/kpiViewUiSession.js";
 
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
@@ -291,6 +297,25 @@ export function render() {
   let kpiFilter = "all";
   let completedSectionCollapsed = true;
   let happinessAddModalJustClosed = false;
+
+  const _loveUiSession = readKpiUiSession(KPI_UI_SESSION_KEYS.love);
+  const _loveInitData = loadHappinessMap();
+  const _loveRestored = restoreKpiTabFromSession(_loveUiSession, {
+    categoryIds: _loveInitData.happinesses || [],
+    kpis: _loveInitData.kpis || [],
+    foreignKey: "happinessId",
+  });
+  if (_loveRestored.tabId) activeHappinessId = _loveRestored.tabId;
+  selectedKpiId = _loveRestored.selectedKpiId;
+  kpiFilter = _loveRestored.kpiFilter;
+
+  function persistKpiUiState() {
+    writeKpiUiSession(KPI_UI_SESSION_KEYS.love, {
+      tabId: activeHappinessId,
+      selectedKpiId,
+      kpiFilter,
+    });
+  }
 
   function showKpiModal() {
     if (!activeHappinessId) return;
@@ -708,7 +733,10 @@ export function render() {
   function renderKpiList() {
     syncHabitTrackerLogs();
     contentWrap.innerHTML = "";
-    if (!activeHappinessId) return;
+    if (!activeHappinessId) {
+      persistKpiUiState();
+      return;
+    }
     const data = loadHappinessMap();
     let happinessKpis = (data.kpis || []).filter(
       (k) => k.happinessId === activeHappinessId,
@@ -958,6 +986,7 @@ export function render() {
       });
       contentWrap.appendChild(completedSection);
     }
+    persistKpiUiState();
   }
 
   function renderKpiHistory() {
@@ -1196,6 +1225,7 @@ export function render() {
       data.happinesses.push(happiness);
       saveHappinessMap(data);
       activeHappinessId = happiness.id;
+      selectedKpiId = null;
       happinessAddModalJustClosed = true;
       close();
       renderTabs();
@@ -1334,6 +1364,9 @@ export function render() {
       tab.dataset.happinessId = happiness.id;
       tab.innerHTML = `<span class="dream-tab-text">${escapeHtml(happiness.name || "행복 이름")}</span>`;
       tab.addEventListener("click", () => {
+        if (activeHappinessId !== happiness.id) {
+          selectedKpiId = null;
+        }
         activeHappinessId = happiness.id;
         renderTabs();
         updateTitleAndContent();
@@ -1352,11 +1385,11 @@ export function render() {
     const happiness = data.happinesses.find((h) => h.id === activeHappinessId);
     if (happiness) {
       contentWrap.hidden = false;
-      selectedKpiId = null;
       renderKpiList();
       renderKpiHistory();
     } else {
       contentWrap.hidden = true;
+      persistKpiUiState();
     }
   }
 
@@ -1364,14 +1397,7 @@ export function render() {
   if (activeHappinessId) {
     updateTitleAndContent();
   } else {
-    const data = loadHappinessMap();
-    if (data.happinesses.length > 0) {
-      activeHappinessId = data.happinesses[0].id;
-      renderTabs();
-      updateTitleAndContent();
-    } else {
-      contentWrap.hidden = true;
-    }
+    contentWrap.hidden = true;
   }
 
   const onMergedSync = (e) => {
@@ -1397,6 +1423,7 @@ export function render() {
     } else {
       contentWrap.hidden = true;
     }
+    persistKpiUiState();
   };
   window.addEventListener("happiness-kpi-map-saved", onMergedSync);
 

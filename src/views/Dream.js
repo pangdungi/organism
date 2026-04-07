@@ -19,6 +19,12 @@ import {
   bindKpiTodoTextareaKeydown,
   setupKpiTodoInlineTextarea,
 } from "../utils/kpiTodoInlineTextarea.js";
+import {
+  KPI_UI_SESSION_KEYS,
+  readKpiUiSession,
+  writeKpiUiSession,
+  restoreKpiTabFromSession,
+} from "../utils/kpiViewUiSession.js";
 
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
@@ -283,6 +289,25 @@ export function render() {
   let kpiFilter = "all"; // "all" | "active" | "completed"
   let completedSectionCollapsed = true;
   let dreamAddModalJustClosed = false;
+
+  const _dreamUiSession = readKpiUiSession(KPI_UI_SESSION_KEYS.dream);
+  const _dreamInitData = loadDreamMap();
+  const _dreamRestored = restoreKpiTabFromSession(_dreamUiSession, {
+    categoryIds: _dreamInitData.dreams || [],
+    kpis: _dreamInitData.kpis || [],
+    foreignKey: "dreamId",
+  });
+  if (_dreamRestored.tabId) activeDreamId = _dreamRestored.tabId;
+  selectedKpiId = _dreamRestored.selectedKpiId;
+  kpiFilter = _dreamRestored.kpiFilter;
+
+  function persistKpiUiState() {
+    writeKpiUiSession(KPI_UI_SESSION_KEYS.dream, {
+      tabId: activeDreamId,
+      selectedKpiId,
+      kpiFilter,
+    });
+  }
 
   function showKpiModal() {
     if (!activeDreamId) return;
@@ -757,7 +782,10 @@ export function render() {
   function renderKpiList() {
     syncHabitTrackerLogs();
     contentWrap.innerHTML = "";
-    if (!activeDreamId) return;
+    if (!activeDreamId) {
+      persistKpiUiState();
+      return;
+    }
     const data = loadDreamMap();
     let dreamKpis = (data.kpis || []).filter((k) => k.dreamId === activeDreamId);
     const order = (data.kpiOrder || {})[activeDreamId];
@@ -981,6 +1009,7 @@ export function render() {
       });
       contentWrap.appendChild(completedSection);
     }
+    persistKpiUiState();
   }
 
   function renderKpiHistory() {
@@ -1312,6 +1341,7 @@ export function render() {
       data.dreams.push(dream);
       saveDreamMap(data);
       activeDreamId = dream.id;
+      selectedKpiId = null;
       dreamAddModalJustClosed = true;
       close();
       renderTabs();
@@ -1485,6 +1515,9 @@ export function render() {
       tab.dataset.dreamId = dream.id;
       tab.innerHTML = `<span class="dream-tab-text">${escapeHtml(dream.name || "꿈 이름")}</span>`;
       tab.addEventListener("click", () => {
+        if (activeDreamId !== dream.id) {
+          selectedKpiId = null;
+        }
         activeDreamId = dream.id;
         renderTabs();
         updateTitleAndContent();
@@ -1503,11 +1536,11 @@ export function render() {
     const dream = data.dreams.find((d) => d.id === activeDreamId);
     if (dream) {
       contentWrap.hidden = false;
-      selectedKpiId = null;
       renderKpiList();
       renderKpiHistory();
     } else {
       contentWrap.hidden = true;
+      persistKpiUiState();
     }
   }
 
@@ -1516,14 +1549,7 @@ export function render() {
   if (activeDreamId) {
     updateTitleAndContent();
   } else {
-    const data = loadDreamMap();
-    if (data.dreams.length > 0) {
-      activeDreamId = data.dreams[0].id;
-      renderTabs();
-      updateTitleAndContent();
-    } else {
-      contentWrap.hidden = true;
-    }
+    contentWrap.hidden = true;
   }
 
   const onMergedSync = (e) => {
@@ -1550,6 +1576,7 @@ export function render() {
       contentWrap.hidden = true;
     }
     updateDesiredLifeDisplay();
+    persistKpiUiState();
   };
   window.addEventListener("dream-kpi-map-saved", onMergedSync);
 
