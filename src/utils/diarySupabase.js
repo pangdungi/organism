@@ -3,7 +3,7 @@
  *
  * - 아카이브(time_ledger 월 pull)와 같은 원칙: 서버에서 받은 스냅샷이 진실(삭제·수정 반영).
  * - 날짜 피커 대신 월 범위가 아니라 "유저 전체 행" 한 번에 pull (일기량이 텍스트 위주라 통째 조회).
- * - 서버 응답이 빈 배열이면 병합하지 않음 — mergeTimeLedgerEntriesFromServer 와 동일(빈 로컬로 덮지 않음).
+ * - 서버 응답이 빈 배열이면 병합하지 않음 — 빈 서버로 로컬 일기를 지우지 않음(time_ledger와 정책 다름).
  */
 
 import { supabase } from "../supabase.js";
