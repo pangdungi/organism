@@ -5,11 +5,8 @@
 import { renderMonthlyContent } from "./WorkScheduleMonthly.js";
 import { supabase } from "../supabase.js";
 import { hydrateWorkScheduleFromCloud } from "../utils/workScheduleSupabase.js";
-import {
-  applyWorkScheduleRowTimesFromTypes,
-  normalizeWorkDateKey,
-  workDateHasTimeLedgerWork,
-} from "../utils/workScheduleEntryResolve.js";
+import { pullTimeLedgerEntriesForDateRange } from "../utils/timeLedgerEntriesSupabase.js";
+import { applyWorkScheduleRowTimesFromTypes, normalizeWorkDateKey } from "../utils/workScheduleEntryResolve.js";
 import { readTimeLedgerEntriesRaw } from "../utils/timeLedgerEntriesModel.js";
 import { confirmDeleteRow } from "../utils/confirmModal.js";
 import {
@@ -136,13 +133,6 @@ function removeWorkTypeOption(name) {
   writeWorkScheduleTypeOptionsRawToMem(full);
   notifyWorkScheduleSaved();
   return full;
-}
-
-function getDefaultStartEndForType(workTypeName) {
-  const full = getWorkTypeOptionsFull();
-  const entry = full.find((o) => o.name === workTypeName);
-  if (!entry) return { start: "", end: "" };
-  return { start: entry.start || "", end: entry.end || "" };
 }
 
 function loadRows() {
@@ -394,7 +384,7 @@ function getRowsToSave(tableEl) {
   return collectRowsFromDOM(tableEl).filter((r) => rowHasPersistableContent(r));
 }
 
-/** 근무유형 입력: 과제명처럼 Create/삭제 가능. onTypeSelect(workType)는 유형 선택 시 호출(기본 시작/마감 채우기용) */
+/** 근무유형 입력: 과제명처럼 Create/삭제 가능. onTypeSelect는 더 이상 시작·마감을 채우지 않음(시간은 시간가계부 근무하기 기록 기준). */
 function createWorkTypeInput(initialValue, onUpdate, onTypeSelect) {
   const wrap = document.createElement("div");
   wrap.className = "time-task-name-wrap work-schedule-type-wrap";
@@ -464,10 +454,18 @@ function createWorkTypeInput(initialValue, onUpdate, onTypeSelect) {
 
   function updatePanelPosition() {
     const rect = input.getBoundingClientRect();
+    const pad = 8;
+    const maxView = window.innerWidth - pad * 2;
+    const widthPx = Math.min(Math.max(rect.width, 120), maxView);
+    let left = rect.left;
+    if (left + widthPx > window.innerWidth - pad) left = Math.max(pad, window.innerWidth - pad - widthPx);
+    if (left < pad) left = pad;
     panel.style.top = `${rect.bottom + 2}px`;
-    panel.style.left = `${rect.left}px`;
-    panel.style.width = "max-content";
-    panel.style.minWidth = `${rect.width}px`;
+    panel.style.left = `${left}px`;
+    panel.style.width = `${widthPx}px`;
+    panel.style.maxWidth = `${maxView}px`;
+    panel.style.minWidth = "0";
+    panel.style.boxSizing = "border-box";
   }
 
   function renderPanel(query) {
@@ -599,7 +597,8 @@ function createWorkTypeInput(initialValue, onUpdate, onTypeSelect) {
   return { wrap, input };
 }
 
-function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHours, isMobile = false) {
+function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHours, isMobile = false, rowOpts = {}) {
+  const deferNotify = !!rowOpts.deferNotify;
   const tr = document.createElement("tr");
   tr.className = "work-schedule-row";
   const initialId = initialData.id != null ? String(initialData.id).trim() : "";
@@ -701,7 +700,7 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
 
   const rowOnUpdate = () => {
     updateTimeAccumulationDisplay();
-    onUpdate();
+    if (!deferNotify) onUpdate();
   };
 
   function syncHoursWorkedFromStartEnd() {
@@ -716,20 +715,7 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
     rowOnUpdate();
   }
 
-  const fillDefaultStartEnd = (workTypeName) => {
-    if (!(workTypeName || "").trim()) return;
-    const d = normalizeWorkDateKey(dateInput.value);
-    if (workDateHasTimeLedgerWork(d)) {
-      rowOnUpdate();
-      return;
-    }
-    const def = getDefaultStartEndForType(workTypeName);
-    if (def.start) startTimeInput.value = def.start;
-    if (def.end) endTimeInput.value = def.end;
-    syncHoursWorkedFromStartEnd();
-    rowOnUpdate();
-  };
-  typeInputWrap = createWorkTypeInput(initialData.workType || "", rowOnUpdate, fillDefaultStartEnd);
+  typeInputWrap = createWorkTypeInput(initialData.workType || "", rowOnUpdate, null);
 
   const typeTd = document.createElement("td");
   typeTd.className = "work-schedule-cell work-schedule-cell-type";
@@ -880,50 +866,25 @@ export function render(opts = {}) {
     modal.setAttribute("aria-labelledby", "work-schedule-type-settings-title");
     modal.innerHTML = `
       <div class="work-schedule-type-settings-backdrop"></div>
-      <div class="work-schedule-type-settings-panel">
+      <div class="work-schedule-type-settings-panel work-schedule-type-settings-panel--name-only">
         <div class="work-schedule-type-settings-header">
           <h3 class="work-schedule-type-settings-title" id="work-schedule-type-settings-title">근무유형 설정</h3>
           <button type="button" class="work-schedule-type-settings-close" aria-label="닫기">&times;</button>
         </div>
-        <div class="work-schedule-type-settings-list-head">
-          <span class="work-schedule-type-settings-th-start">시작</span>
-          <span class="work-schedule-type-settings-th-end">마감</span>
+        <div class="work-schedule-type-settings-list-head work-schedule-type-settings-list-head--name-only">
           <span class="work-schedule-type-settings-th-name">근무유형</span>
-          <span class="work-schedule-type-settings-th-action"></span>
+          <span class="work-schedule-type-settings-th-action" aria-hidden="true"></span>
         </div>
         <div class="work-schedule-type-settings-list" data-type-list></div>
-        <div class="work-schedule-type-settings-add">
-          <input type="text" class="work-schedule-type-settings-add-start work-schedule-time-input" placeholder="hh:mm" maxlength="5" title="시작시간" inputmode="numeric" autocomplete="off" />
-          <input type="text" class="work-schedule-type-settings-add-end work-schedule-time-input" placeholder="hh:mm" maxlength="5" title="마감시간" inputmode="numeric" autocomplete="off" />
-          <input type="text" class="work-schedule-type-settings-input" placeholder="근무유형 입력" maxlength="50" />
+        <div class="work-schedule-type-settings-add work-schedule-type-settings-add--name-only">
+          <input type="text" class="work-schedule-type-settings-input" placeholder="근무유형 입력" maxlength="50" autocomplete="off" />
           <button type="button" class="work-schedule-type-settings-add-btn">추가</button>
         </div>
       </div>
     `;
     const listEl = modal.querySelector("[data-type-list]");
-    const addStartInput = modal.querySelector(".work-schedule-type-settings-add-start");
-    const addEndInput = modal.querySelector(".work-schedule-type-settings-add-end");
     const addInput = modal.querySelector(".work-schedule-type-settings-input");
     const addBtn = modal.querySelector(".work-schedule-type-settings-add-btn");
-
-    function formatTimeInputField(el) {
-      if (!el || !el.matches(".work-schedule-time-input")) return;
-      const raw = (el.value || "").replace(/\D/g, "").slice(0, 4);
-      if (raw.length <= 2) {
-        el.value = raw;
-        return;
-      }
-      el.value = raw.slice(0, -2) + ":" + raw.slice(-2);
-    }
-    modal.addEventListener("input", (e) => {
-      if (e.target.matches(".work-schedule-time-input")) formatTimeInputField(e.target);
-    });
-    modal.addEventListener("keydown", (e) => {
-      if (!e.target.matches(".work-schedule-time-input")) return;
-      const key = e.key;
-      if (key === "Backspace" || key === "Delete" || key === "Tab" || key === "ArrowLeft" || key === "ArrowRight" || key === ":" || e.ctrlKey || e.metaKey) return;
-      if (!/^\d$/.test(key)) e.preventDefault();
-    });
 
     function renderTypeList() {
       const full = getWorkTypeOptionsFull();
@@ -940,39 +901,16 @@ export function render(opts = {}) {
         const isReadonly = READONLY_WORK_TYPES.includes(entry.name);
         const row = document.createElement("div");
         row.className = "work-schedule-type-settings-row" + (isReadonly ? " is-protected" : "");
-        const startVal = escapeHtml(entry.start);
-        const endVal = escapeHtml(entry.end);
         if (isReadonly) {
-          const showTime = entry.start || entry.end;
-          const startDisplay = showTime ? (entry.start || "00:00") : "—";
-          const endDisplay = showTime ? (entry.end || "00:00") : "—";
           row.innerHTML =
-            `<span class="work-schedule-type-settings-row-no-time" aria-hidden="true">${escapeHtml(startDisplay)}</span>` +
-            `<span class="work-schedule-type-settings-row-no-time" aria-hidden="true">${escapeHtml(endDisplay)}</span>` +
             `<span class="work-schedule-type-settings-name">${escapeHtml(entry.name)}</span>` +
-            `<span class="work-schedule-type-settings-row-action"></span>`;
+            `<span class="work-schedule-type-settings-row-action" aria-hidden="true"></span>`;
         } else {
           row.innerHTML =
-            `<input type="text" class="work-schedule-type-settings-row-start work-schedule-time-input" placeholder="hh:mm" value="${startVal}" maxlength="5" inputmode="numeric" autocomplete="off" />` +
-            `<input type="text" class="work-schedule-type-settings-row-end work-schedule-time-input" placeholder="hh:mm" value="${endVal}" maxlength="5" inputmode="numeric" autocomplete="off" />` +
             `<span class="work-schedule-type-settings-name">${escapeHtml(entry.name)}</span>` +
-            `<button type="button" class="work-schedule-type-settings-del" title="삭제">${DELETE_ICON}</button>`;
-          const startInp = row.querySelector(".work-schedule-type-settings-row-start");
-          const endInp = row.querySelector(".work-schedule-type-settings-row-end");
-          const saveRow = () => {
-            updateWorkTypeOption(entry.name, startInp.value.trim(), endInp.value.trim());
-          };
-          let saveRowTimer = null;
-          const saveRowDebounced = () => {
-            if (saveRowTimer) clearTimeout(saveRowTimer);
-            saveRowTimer = setTimeout(saveRow, 300);
-          };
-          startInp.addEventListener("blur", saveRow);
-          endInp.addEventListener("blur", saveRow);
-          startInp.addEventListener("change", saveRow);
-          endInp.addEventListener("change", saveRow);
-          startInp.addEventListener("input", saveRowDebounced);
-          endInp.addEventListener("input", saveRowDebounced);
+            `<span class="work-schedule-type-settings-row-action">` +
+            `<button type="button" class="work-schedule-type-settings-del" title="삭제">${DELETE_ICON}</button>` +
+            `</span>`;
           const delBtn = row.querySelector(".work-schedule-type-settings-del");
           if (delBtn) {
             delBtn.addEventListener("click", () => {
@@ -988,11 +926,7 @@ export function render(opts = {}) {
     addBtn.addEventListener("click", () => {
       const name = (addInput.value || "").trim();
       if (!name) return;
-      const start = (addStartInput.value || "").trim();
-      const end = (addEndInput.value || "").trim();
-      addWorkTypeOption(name, start, end);
-      addStartInput.value = "";
-      addEndInput.value = "";
+      addWorkTypeOption(name, "", "");
       addInput.value = "";
       renderTypeList();
     });
@@ -1038,14 +972,13 @@ export function render(opts = {}) {
   el.appendChild(contentWrap);
 
   let activeWorkScheduleView = "all";
+  let renderTableViewSeq = 0;
 
-  function renderTableView() {
-    contentWrap.innerHTML = "";
-    const notice = document.createElement("p");
-    notice.className = "work-schedule-notice";
-    notice.textContent =
-      "시작·마감 시간은 시간가계부의 근무하기 기록을 기준으로 표시됩니다. 시간을 바꾸려면 시간가계부에서 수정해 주세요.";
-    contentWrap.appendChild(notice);
+  /**
+   * 근무표에 쓰는 시간가계부 행은 «피커 구간»이 서버에서 먼저 당겨져 있어야 함(시간 탭과 구간이 다르면 빈 메모리로 보일 수 있음).
+   * @param {{ filterStart?: string, filterEnd?: string, skipLedgerPull?: boolean }} [scheduleOpts]
+   */
+  async function renderTableView(scheduleOpts = {}) {
     const now = new Date();
     const y0 = now.getFullYear();
     const mo0 = now.getMonth();
@@ -1053,6 +986,28 @@ export function render(opts = {}) {
     const defaultRangeStart = `${y0}-${pad2(mo0 + 1)}-01`;
     const lastDayOfMonth = new Date(y0, mo0 + 1, 0).getDate();
     const defaultRangeEnd = `${y0}-${pad2(mo0 + 1)}-${pad2(lastDayOfMonth)}`;
+    const ymdRe = /^\d{4}-\d{2}-\d{2}$/;
+    const initialRangeStart =
+      scheduleOpts.filterStart && ymdRe.test(scheduleOpts.filterStart) ? scheduleOpts.filterStart : defaultRangeStart;
+    const initialRangeEnd =
+      scheduleOpts.filterEnd && ymdRe.test(scheduleOpts.filterEnd) ? scheduleOpts.filterEnd : defaultRangeEnd;
+
+    const mySeq = ++renderTableViewSeq;
+    if (!scheduleOpts.skipLedgerPull && supabase) {
+      try {
+        await pullTimeLedgerEntriesForDateRange(initialRangeStart, initialRangeEnd);
+      } catch (e) {
+        console.warn("[work-schedule] 시간가계부 기간 불러오기", e);
+      }
+    }
+    if (mySeq !== renderTableViewSeq) return;
+
+    contentWrap.innerHTML = "";
+    const notice = document.createElement("p");
+    notice.className = "work-schedule-notice";
+    notice.textContent =
+      "시작·마감 시간은 시간가계부의 근무하기 기록을 기준으로 표시됩니다. 시간을 바꾸려면 시간가계부에서 수정해 주세요.";
+    contentWrap.appendChild(notice);
 
     const dailyHoursWrap = document.createElement("div");
     dailyHoursWrap.className = "work-schedule-daily-hours-wrap";
@@ -1142,8 +1097,8 @@ export function render(opts = {}) {
       if (endLabel) endLabel.textContent = fmt(endDateInput.value || "");
     }
 
-    startDateInput.value = defaultRangeStart;
-    endDateInput.value = defaultRangeEnd;
+    startDateInput.value = initialRangeStart;
+    endDateInput.value = initialRangeEnd;
     syncWorkScheduleDateLabels();
     startDateInput.addEventListener("input", syncWorkScheduleDateLabels);
     endDateInput.addEventListener("input", syncWorkScheduleDateLabels);
@@ -1234,8 +1189,8 @@ export function render(opts = {}) {
 
     function applyFilter() {
       syncWorkScheduleDateLabels();
-      const start = startDateInput.value || defaultRangeStart;
-      const end = endDateInput.value || defaultRangeEnd;
+      const start = startDateInput.value || initialRangeStart;
+      const end = endDateInput.value || initialRangeEnd;
       tableWrap.querySelectorAll(".work-schedule-row").forEach((tr) => {
         const dateInput = tr.querySelector(".work-schedule-input-date");
         const dateStr = dateInput?.value || "";
@@ -1245,8 +1200,21 @@ export function render(opts = {}) {
       updateSum();
     }
 
-    startDateInput.addEventListener("change", applyFilter);
-    endDateInput.addEventListener("change", applyFilter);
+    async function onWorkScheduleFilterRangeChanged() {
+      const start = startDateInput.value || initialRangeStart;
+      const end = endDateInput.value || initialRangeEnd;
+      if (supabase) {
+        try {
+          await pullTimeLedgerEntriesForDateRange(start, end);
+        } catch (e) {
+          console.warn("[work-schedule] 시간가계부 기간 불러오기", e);
+        }
+      }
+      if (!el.isConnected) return;
+      await renderTableView({ filterStart: start, filterEnd: end, skipLedgerPull: true });
+    }
+    startDateInput.addEventListener("change", onWorkScheduleFilterRangeChanged);
+    endDateInput.addEventListener("change", onWorkScheduleFilterRangeChanged);
 
     const onUpdate = () => {
       save();
@@ -1300,9 +1268,11 @@ export function render(opts = {}) {
     const initialRows = getMergedInitialRows();
     wsUiLog("renderTableView: merged row count", initialRows.length);
     initialRows.forEach((row) => {
-      const tr = createRow(row, onUpdate, el, applyFilter, getDailyHoursFn, mobile);
+      const tr = createRow(row, onUpdate, el, applyFilter, getDailyHoursFn, mobile, { deferNotify: true });
       tbody.appendChild(tr);
     });
+    save();
+    updateSum();
 
     function addNewWorkScheduleRow() {
       const tr = createRow({}, onUpdate, el, applyFilter, getDailyHoursFn, mobile);
@@ -1372,7 +1342,7 @@ export function render(opts = {}) {
       btn.classList.toggle("active", btn.dataset.view === activeWorkScheduleView);
     });
     if (activeWorkScheduleView === "all") {
-      renderTableView();
+      void renderTableView().catch((e) => console.warn("[work-schedule] renderTableView", e));
     } else {
       renderMonthlyView();
     }

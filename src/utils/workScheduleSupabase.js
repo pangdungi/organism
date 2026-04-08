@@ -323,6 +323,11 @@ async function syncWorkScheduleToSupabaseImpl() {
   } else if (!reErr && remoteEntries?.length && entryPayloads.length === 0) {
     wsSyncLog("push: SKIP orphan entry delete (entryPayloads empty), rows", rows.length);
   }
+
+  // 푸시 완료 직후 서버 기준으로 다시 병합(직렬 큐에서 sync 안에서 pull을 await 하면 교착이 나므로 마이크로태스크로 예약)
+  queueMicrotask(() => {
+    pullWorkScheduleFromSupabase().catch((e) => console.warn("[work-schedule sync] pull after push", e));
+  });
 }
 
 /** 세션 메모리 전체를 서버에 반영 (직렬 큐) */

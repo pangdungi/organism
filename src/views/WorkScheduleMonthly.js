@@ -152,14 +152,8 @@ export function renderMonthlyContent(opts = {}) {
     btnType.className = "work-schedule-monthly-filter-btn";
     btnType.dataset.mode = "type";
     btnType.textContent = "근무유형";
-    const btnBalance = document.createElement("button");
-    btnBalance.type = "button";
-    btnBalance.className = "work-schedule-monthly-filter-btn";
-    btnBalance.dataset.mode = "balance";
-    btnBalance.textContent = "밸런스";
     filterRow.appendChild(btnHours);
     filterRow.appendChild(btnType);
-    filterRow.appendChild(btnBalance);
   }
   topRow.appendChild(nav);
   if (!noFilter) topRow.appendChild(filterRow);
@@ -252,10 +246,6 @@ export function renderMonthlyContent(opts = {}) {
                 item.appendChild(pill);
               });
             }
-          } else {
-            const totalBalance = entries.reduce((s, e) => s + (parseFloat(e.hours) || 0), 0);
-            const sign = totalBalance > 0 ? "+ " : totalBalance < 0 ? "" : "";
-            item.innerHTML = `<span class="work-schedule-monthly-hours">${totalBalance !== 0 ? sign + totalBalance + "h" : "0h"}</span>`;
           }
           entriesEl.appendChild(item);
         }

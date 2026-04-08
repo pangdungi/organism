@@ -3254,8 +3254,9 @@ body {
     min-width: 4rem;
   }
   .work-schedule-content-wrap .work-schedule-table col.work-schedule-col-type {
-    width: auto;
-    min-width: 3.25rem;
+    width: 6.5rem;
+    min-width: 6.5rem;
+    max-width: 6.5rem;
   }
   .work-schedule-content-wrap .work-schedule-table col.work-schedule-col-hours-worked {
     width: auto;
@@ -3297,15 +3298,40 @@ body {
     /* 모바일: date input이 셀 밖으로 넘어가 유형 셀 터치 영역을 가리지 않도록 */
     overflow: hidden;
   }
-  /* 모바일: 유형 셀 — sticky 근무일 열 아래로 (스크롤 시 겹침 방지) */
+  /* 모바일: 유형 셀 — sticky 근무일 열 아래로 + 열 너비 고정(편집·드롭다운 시 표 흔들림 방지) */
   .work-schedule-content-wrap .work-schedule-table .work-schedule-cell-type {
     position: static;
     z-index: auto;
+    width: 6.5rem;
+    min-width: 6.5rem;
+    max-width: 6.5rem;
+    box-sizing: border-box;
+    overflow: hidden;
   }
   .work-schedule-content-wrap .work-schedule-table .work-schedule-type-wrap,
   .work-schedule-content-wrap .work-schedule-table .work-schedule-type-display {
     position: static;
     z-index: auto;
+  }
+  .work-schedule-content-wrap .work-schedule-table .work-schedule-type-wrap {
+    max-width: 100%;
+    min-width: 0;
+  }
+  .work-schedule-content-wrap .work-schedule-table .work-schedule-type-wrap .time-task-input-wrap {
+    min-width: 0 !important;
+    max-width: 100%;
+  }
+  .work-schedule-content-wrap .work-schedule-table .work-schedule-type-wrap.is-editing .time-task-input-wrap {
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box;
+  }
+  .work-schedule-content-wrap .work-schedule-table .work-schedule-type-display {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    box-sizing: border-box;
   }
   .work-schedule-content-wrap .work-schedule-date-display {
     padding: 0.05rem 0.2rem;
@@ -3539,18 +3565,12 @@ body {
     opacity: 0.01;
   }
 
-  /* 모바일: 근무유형 설정 모달 시간 입력 — iOS 줌 방지(16px); 모달은 #app 밖 body에 붙음 */
-  .work-schedule-type-settings-modal input.work-schedule-time-input,
-  .work-schedule-type-settings-modal .work-schedule-type-settings-row-start,
-  .work-schedule-type-settings-modal .work-schedule-type-settings-row-end,
-  .work-schedule-type-settings-modal .work-schedule-type-settings-add-start,
-  .work-schedule-type-settings-modal .work-schedule-type-settings-add-end,
-  .work-schedule-type-settings-modal .work-schedule-type-settings-default-start,
-  .work-schedule-type-settings-modal .work-schedule-type-settings-default-end {
+  /* 모바일: 근무유형 설정 모달 — iOS 줌 방지(16px); 모달은 #app 밖 body에 붙음 */
+  .work-schedule-type-settings-modal .work-schedule-type-settings-input {
     font-size: 16px !important;
   }
-  .work-schedule-type-settings-modal .work-schedule-type-settings-row-no-time {
-    font-size: 16px !important;
+  .work-schedule-type-settings-modal .work-schedule-type-settings-row .work-schedule-type-settings-del {
+    opacity: 0.72;
   }
 
   /* 모바일 근무표: 헤더(제목·근무유형 설정) 레이아웃 */
@@ -6970,6 +6990,10 @@ body {
   flex-shrink: 0;
 }
 
+.work-schedule-type-settings-add--name-only {
+  align-items: center;
+}
+
 .work-schedule-type-settings-input {
   flex: 1;
   min-width: 0;
@@ -7026,6 +7050,10 @@ body {
   font-size: 0.75rem;
   color: var(--text-muted);
   border-bottom: 1px solid var(--line-l3-color);
+}
+
+.work-schedule-type-settings-list-head--name-only {
+  justify-content: space-between;
 }
 
 .work-schedule-type-settings-th-start,
@@ -11920,6 +11948,42 @@ body {
   overflow: visible;
 }
 
+/* 데스크탑: 근무유형 열 너비 고정 — 유형 편집·드롭다운 시 표가 좌우로 흔들리지 않도록 */
+@media (min-width: 48.0625rem) {
+  .work-schedule-view .work-schedule-table col.work-schedule-col-type {
+    width: 8.5rem;
+    min-width: 8.5rem;
+    max-width: 8.5rem;
+  }
+  .work-schedule-view .work-schedule-table .work-schedule-cell-type {
+    width: 8.5rem;
+    min-width: 8.5rem;
+    max-width: 8.5rem;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  .work-schedule-view .work-schedule-table .work-schedule-type-wrap {
+    max-width: 100%;
+    min-width: 0;
+  }
+  .work-schedule-view .work-schedule-table .work-schedule-type-wrap .time-task-input-wrap {
+    min-width: 0 !important;
+    max-width: 100%;
+  }
+  .work-schedule-view .work-schedule-table .work-schedule-type-wrap.is-editing .time-task-input-wrap {
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box;
+  }
+  .work-schedule-view .work-schedule-table .work-schedule-type-display {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    box-sizing: border-box;
+  }
+}
+
 .work-schedule-type-wrap .time-input-task {
   border: none;
   background: transparent;
@@ -11982,9 +12046,11 @@ body {
 }
 
 .work-schedule-type-panel .time-task-name-option .time-task-tag {
-  flex: none;
-  width: fit-content;
-  max-width: fit-content;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .work-schedule-type-panel .time-task-delete-btn {
@@ -27231,7 +27297,7 @@ body.kpi-resizing {
 .dream-kpi-history-title {
   margin: 0;
   font-family: var(--font-heading);
-  font-size: var(--fs-h2);
+  font-size: 1rem;
   font-weight: 500;
   letter-spacing: -0.01em;
   color: var(--text-ink);
@@ -27426,10 +27492,17 @@ body.kpi-resizing {
 
 .dream-kpi-todo-title {
   font-family: var(--font-heading);
-  font-size: var(--fs-h2);
+  font-size: 1.0625rem;
   font-weight: 500;
   letter-spacing: -0.01em;
   color: var(--text-ink);
+}
+
+/* 모바일: 할일 목록 입력은 16px 고정(iOS 줌 방지) — 섹션 제목만 한 단계 더 크게 */
+@media (max-width: 48rem) {
+  .dream-kpi-todo-title {
+    font-size: 1.125rem;
+  }
 }
 
 .dream-kpi-todo-add-row {
@@ -27447,9 +27520,9 @@ body.kpi-resizing {
 .dream-kpi-todo-add-input {
   flex: 1;
   padding: 0.4rem 0;
-  font-size: 0.9rem;
+  font-size: var(--fs-body);
   font-family: inherit;
-  color: #1a1a2e;
+  color: var(--text-body);
   background: transparent;
   border: none;
   border-bottom: var(--line-l3);
@@ -27475,6 +27548,15 @@ body.kpi-resizing {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  margin: 0 -0.5rem;
+  border-radius: 0.25rem;
+  box-sizing: border-box;
+  transition: background-color 0.15s ease;
+}
+/* 근무표 tbody tr:hover td 와 동일 톤 */
+.dream-kpi-todo-item:hover {
+  background: rgba(216, 210, 192, 0.22);
 }
 
 .dream-kpi-todo-check-wrap {
@@ -27513,8 +27595,8 @@ body.kpi-resizing {
 
 .dream-kpi-todo-text {
   flex: 1;
-  font-size: 0.9rem;
-  color: #1a1a2e;
+  font-size: var(--fs-body);
+  color: var(--text-body);
 }
 
 .dream-kpi-todo-item.is-completed .dream-kpi-todo-text {
@@ -27576,6 +27658,10 @@ body.kpi-resizing {
   background: #f8fafc;
   border-radius: 0.25rem;
   min-height: 2rem;
+  transition: background-color 0.15s ease;
+}
+.dream-kpi-todo-subitem:hover {
+  background: rgba(216, 210, 192, 0.28);
 }
 .dream-kpi-todo-subitem-spacer {
   width: 0;
@@ -33559,8 +33645,15 @@ body.kpi-resizing {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.3rem 0;
+  padding: 0.35rem 0.45rem;
+  margin: 0 -0.45rem;
   font-size: 0.85rem;
+  border-radius: 0.25rem;
+  box-sizing: border-box;
+  transition: background-color 0.15s ease;
+}
+.calendar-kpi-todo-item:hover {
+  background: rgba(216, 210, 192, 0.22);
 }
 
 .calendar-kpi-todo-item.is-completed .calendar-kpi-todo-text {
