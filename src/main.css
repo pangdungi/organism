@@ -5044,9 +5044,9 @@ body {
     .todo-cards-wrap
     .todo-cards-add-wrap {
     position: fixed;
-    bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+    bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
     right: 1rem;
-    z-index: 30;
+    z-index: 55;
     background: transparent;
     padding: 0;
     flex-shrink: 0;
@@ -5072,9 +5072,9 @@ body {
   /* 모바일 시간가계부(시간 기록): 과제 기록 FAB — 할일 +와 동일 위치·색 */
   .time-ledger-view[data-time-content-view="all"] .time-ledger-mobile-fab-wrap {
     position: fixed;
-    bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+    bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
     right: 1rem;
-    z-index: 30;
+    z-index: 55;
     background: transparent;
     padding: 0;
     flex-shrink: 0;
@@ -5100,9 +5100,9 @@ body {
   /* 모바일 근무기록 트래커: 행 추가 FAB — 할일·시간가계부와 동일 위치·색 */
   .calendar-view--mobile-workschedule .work-schedule-mobile-fab-wrap {
     position: fixed;
-    bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+    bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
     right: 1rem;
-    z-index: 30;
+    z-index: 55;
     background: transparent;
     padding: 0;
   }
@@ -5127,9 +5127,9 @@ body {
   /* 모바일 자산관리 지출입력장: 거래 추가 FAB — 근무표·시간가계부와 동일 위치·색 */
   .asset-view--mobile .asset-expense-mobile-fab-wrap {
     position: fixed;
-    bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+    bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
     right: 1rem;
-    z-index: 30;
+    z-index: 55;
     background: transparent;
     padding: 0;
   }
