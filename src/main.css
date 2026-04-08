@@ -5038,10 +5038,22 @@ body {
     gap: 0.875rem;
   }
 
+  /*
+   * 할일 + 버튼: todo-cards-add-wrap 은 스크롤 영역 밖(.todo-section 직계)에 둠.
+   * (예전: todo-cards-wrap 안 + overflow:auto → iOS/WebKit에서 fixed 가 반쯤 잘림)
+   */
+  .calendar-view-todo .calendar-todo-content .todo-sections-wrap.todo-tab-panels {
+    overflow: visible;
+  }
+  .calendar-view-todo
+    .calendar-todo-content
+    .todo-section.todo-section-tab-panel.is-active {
+    overflow: visible;
+  }
   /* 모바일: 할일 목록 + 버튼 우측 하단 고정, 영역 배경 투명 */
   .calendar-view-todo
     .calendar-todo-content
-    .todo-cards-wrap
+    .todo-section
     .todo-cards-add-wrap {
     position: fixed;
     bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
@@ -5053,7 +5065,7 @@ body {
   }
   .calendar-view-todo
     .calendar-todo-content
-    .todo-cards-wrap
+    .todo-section
     .todo-cards-add-wrap
     .todo-cards-add-btn {
     color: var(--ui-btn-primary-fg);
@@ -5063,7 +5075,7 @@ body {
   }
   .calendar-view-todo
     .calendar-todo-content
-    .todo-cards-wrap
+    .todo-section
     .todo-cards-add-wrap
     .todo-cards-add-btn:hover {
     background: var(--ui-btn-primary-hover);

@@ -2589,12 +2589,15 @@ function createTaskCard(taskData, options = {}) {
             removeTaskFromSectionStorage(storageSectionId, taskId);
             clearSubtasks(taskId);
           }
-          const targetWrap = sectionsWrap?.querySelector(`.todo-section[data-section="${newSectionId}"] .todo-cards-wrap`);
+          const sectionEl = sectionsWrap?.querySelector(`.todo-section[data-section="${newSectionId}"]`);
+          const targetWrap = sectionEl?.querySelector(".todo-cards-wrap");
           if (targetWrap) {
-            const addWrap = targetWrap.querySelector(".todo-cards-add-wrap");
             card.remove();
-            if (addWrap) targetWrap.insertBefore(card, addWrap);
-            else targetWrap.appendChild(card);
+            if (targetWrap.firstChild) {
+              targetWrap.insertBefore(card, targetWrap.firstChild);
+            } else {
+              targetWrap.appendChild(card);
+            }
           }
           card.dataset.sectionId = newSectionId;
         }
@@ -2710,16 +2713,21 @@ function createSection(section, options = {}) {
           const taskId = getTaskId(payload);
           const newTask = { ...payload, taskId, done: false };
           const card = createTaskCard(newTask, { updateCount, sectionsWrap, scheduleSave, enableDragToEisenhower, enableDragToCalendar, enableDragOverdueToCalendar });
-          cardsWrap.insertBefore(card, addWrap.nextSibling);
+          if (cardsWrap.firstChild) {
+            cardsWrap.insertBefore(card, cardsWrap.firstChild);
+          } else {
+            cardsWrap.appendChild(card);
+          }
           updateCount();
           scheduleSave();
         },
       });
     });
     addWrap.appendChild(addBtn);
-    if (section.id !== "overdue") cardsWrap.insertBefore(addWrap, cardsWrap.firstChild);
     if (header) wrap.appendChild(header);
     wrap.appendChild(cardsWrap);
+    /* + 버튼은 스크롤 박스(todo-cards-wrap) 밖에 둠 — 모바일에서 fixed가 overflow:auto에 잘리는 것 방지 */
+    if (section.id !== "overdue") wrap.appendChild(addWrap);
     updateCount();
     return { wrap, updateCount };
   }
@@ -3524,11 +3532,14 @@ export function render(options = {}) {
         const targetTbody = targetResult.wrap.querySelector("tbody");
 
         if (targetCardsWrap) {
-          const addWrap = targetCardsWrap.querySelector(".todo-cards-add-wrap");
           const scheduleSave = () => scheduleSaveSectionTasksFromDOM(sectionsWrap);
           const updateCount = targetResult.updateCount || (() => {});
           const card = createTaskCard(taskData, { updateCount, sectionsWrap, scheduleSave });
-          targetCardsWrap.insertBefore(card, addWrap ? addWrap.nextSibling : null);
+          if (targetCardsWrap.firstChild) {
+            targetCardsWrap.insertBefore(card, targetCardsWrap.firstChild);
+          } else {
+            targetCardsWrap.appendChild(card);
+          }
           updateCount();
           scheduleSave();
         } else if (targetTbody) {
