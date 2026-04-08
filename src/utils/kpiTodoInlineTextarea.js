@@ -8,7 +8,7 @@ export function setupKpiTodoInlineTextarea(textarea, options = {}) {
   textarea.rows = 1;
   textarea.setAttribute("maxlength", String(maxLength));
   const fit = () => {
-    textarea.style.height = "0";
+    textarea.style.height = "auto";
     textarea.style.height = `${textarea.scrollHeight}px`;
   };
   textarea.addEventListener("input", fit);

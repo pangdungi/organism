@@ -27471,22 +27471,12 @@ body.kpi-resizing {
     margin-top: 3.25rem;
   }
   /* KPI 패널 할 일: 긴 제목 줄바꿈 */
-  .dream-kpi-todo-item {
-    align-items: flex-start;
-  }
-  .dream-kpi-todo-check-wrap {
-    margin-top: 0.2rem;
-  }
   .dream-kpi-todo-text.dream-kpi-todo-edit-input,
   .dream-kpi-todo-text.dream-kpi-daily-repeat-edit-input {
     white-space: pre-wrap;
     word-break: break-word;
     overflow-wrap: break-word;
     max-height: 12rem;
-  }
-  .dream-kpi-todo-item .dream-kpi-todo-del {
-    align-self: flex-start;
-    margin-top: 0.15rem;
   }
 }
 
@@ -27546,7 +27536,7 @@ body.kpi-resizing {
 
 .dream-kpi-todo-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.5rem;
   padding: 0.35rem 0.5rem;
   margin: 0 -0.5rem;
@@ -27562,7 +27552,29 @@ body.kpi-resizing {
 .dream-kpi-todo-check-wrap {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
   cursor: pointer;
+  /* 줄 여러 줄이어도 체크는 첫 줄 옆 — 행은 flex-start + 첫 줄 세로중앙에 맞춤(뷰 textarea line-height 1.45) */
+  margin-top: calc((1.45 * var(--fs-body) - var(--cb-size)) / 2);
+}
+
+@media (min-width: 48.0625rem) {
+  .dream-kpi-todo-check-wrap {
+    margin-top: calc(0.22rem + (1.45 * var(--fs-body)) / 2 - var(--cb-size) / 2 - 1px);
+  }
+  .dream-kpi-todo-item > .dream-kpi-todo-del {
+    margin-top: calc(0.22rem + (1.45 * var(--fs-body)) / 2 - var(--cb-size) / 2 - 1px);
+  }
+}
+
+@media (max-width: 48rem) {
+  .dream-kpi-todo-check-wrap {
+    /* 모바일 textarea 글자 16px(iOS) 기준 첫 줄과 맞춤 */
+    margin-top: calc((1.45 * 1rem - var(--cb-size)) / 2);
+  }
+  .dream-kpi-todo-item > .dream-kpi-todo-del {
+    margin-top: calc((1.45 * 1rem - var(--cb-size)) / 2);
+  }
 }
 
 .dream-kpi-todo-check {
@@ -27595,8 +27607,21 @@ body.kpi-resizing {
 
 .dream-kpi-todo-text {
   flex: 1;
+  min-width: 0;
   font-size: var(--fs-body);
   color: var(--text-body);
+}
+
+/* 데스크톱: 첫 줄·체크 세로 맞춤 (너무 내리면 padding-top·아래 calc값 함께 줄일 것) */
+@media (min-width: 48.0625rem) {
+  #app textarea.dream-kpi-todo-text,
+  #app textarea.dream-kpi-todo-text:focus,
+  #app textarea.dream-kpi-todo-text:focus-visible {
+    padding-top: 0.22rem !important;
+    padding-bottom: 0.16rem !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
 }
 
 .dream-kpi-todo-item.is-completed .dream-kpi-todo-text {
@@ -27639,6 +27664,11 @@ body.kpi-resizing {
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.15s;
+}
+
+.dream-kpi-todo-item > .dream-kpi-todo-del {
+  align-self: flex-start;
+  margin-top: calc((1.45 * var(--fs-body) - var(--cb-size)) / 2);
 }
 
 .dream-kpi-todo-item:hover .dream-kpi-todo-del,
@@ -32478,7 +32508,7 @@ body.kpi-resizing {
 
 .calendar-1day-view .calendar-1day-time-slot-label-name,
 .calendar-1day-view .calendar-1day-time-slot-label-time {
-  font-size: 0.8rem;
+  font-size: 0.56rem;
   line-height: 1.25;
   color: var(--text-body);
   max-width: 100%;
@@ -32499,7 +32529,7 @@ body.kpi-resizing {
 }
 
 .calendar-1day-view .calendar-1day-time-slot-label {
-  font-size: 0.8rem;
+  font-size: 0.56rem;
   line-height: 1.2;
   color: var(--text-body);
   white-space: nowrap;
