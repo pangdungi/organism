@@ -5051,26 +5051,13 @@ body {
     overflow: visible;
   }
 
-  /* 할일 목록(캘린더 할일 탭)만: 패널 overflow 체인이 position:fixed + 를 잘라내지 않게 */
-  .app-main:has(.calendar-view-todo) .app-tab-panel,
-  .app-main:has(.calendar-view-todo) .app-tab-panel > .calendar-view {
-    overflow: visible;
-  }
-  .calendar-content-wrap:has(.calendar-view-todo) {
-    overflow: visible;
-  }
-  .calendar-view-todo .calendar-todo-content,
-  .calendar-view-todo .calendar-todo-content .todo-list-view {
-    overflow: visible;
-  }
-
-  /* 모바일: 할일 목록 + 버튼만 — 하단 탭(z-index:50) 위·탭 높이 여유 */
+  /* 모바일 할일 + 버튼: bottom/right 는 시간가계부·근무표 FAB 와 동일 — 가려짐만 z-index 로 방지 */
   .calendar-view-todo
     .calendar-todo-content
     .todo-section
     .todo-cards-add-wrap {
     position: fixed;
-    bottom: calc(8rem + env(safe-area-inset-bottom, 0px));
+    bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
     right: 1rem;
     z-index: 10001;
     background: transparent;
