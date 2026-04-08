@@ -4875,7 +4875,11 @@ function renderTodoView(tabsElement) {
 
   const todoContent = document.createElement("div");
   todoContent.className = "calendar-todo-content";
-  const todoListEl = renderTodoList({ hideHeader: true, settingsSlot: topRow });
+  const todoListEl = renderTodoList({
+    hideHeader: true,
+    settingsSlot: topRow,
+    omitKpiTodos: true,
+  });
   todoContent.appendChild(todoListEl);
   todoMain.appendChild(todoContent);
 

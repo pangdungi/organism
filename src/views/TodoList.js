@@ -3099,6 +3099,8 @@ export function render(options = {}) {
     eisenhowerSidebarFirst = false,
     /** 우선순위 정렬·날짜 정하기 등: 완료된 할일은 목록에 넣지 않음 */
     hideDoneTasks = false,
+    /** true: KPI 화면에서 동기된 할일을 이 목록에 합치지 않음(할일/일정 탭 시도용 — 끄려면 false) */
+    omitKpiTodos = false,
   } = options;
   const hasExplicitInitialTab = Object.prototype.hasOwnProperty.call(options, "initialActiveTabIndex");
   /** 사이드바 등 hideToolbar 임베드는 탭 세션과 분리(메인 할일 탭이 꿈인데 캘린더 옆바가 브레인 덤프로 열리는 혼선 방지) */
@@ -3303,7 +3305,7 @@ export function render(options = {}) {
   checkboxTypeMenu.hidden = true;
   el.appendChild(checkboxTypeMenu);
 
-  const kpiTasks = getKpiTodosAsTasks();
+  const kpiTasks = omitKpiTodos ? [] : getKpiTodosAsTasks();
   const sectionTasks = FIXED_SECTION_IDS_FOR_STORAGE.flatMap((sid) => loadSectionTasks(sid));
   const customTasks = getCustomSections().flatMap((s) => loadCustomSectionTasks(s.id));
   let allTasks = [...kpiTasks, ...sectionTasks, ...customTasks];
