@@ -1,35 +1,9 @@
 /**
- * 근무표 행: 시작·마감은 시간가계부「근무하기」기록 또는 저장된 행 값을 사용.
- * 근무유형 이름만 바꿔도 시작·마감을 자동 채우지 않음(유형별 기본 시간 적용 없음).
+ * 근무표 행: 시작·마감은 저장된 행 값과 근무유형 설정을 사용.
  */
-
-import { readTimeLedgerEntriesRaw } from "./timeLedgerEntriesModel.js";
 
 export function normalizeWorkDateKey(s) {
   return String(s || "").trim().replace(/\//g, "-").slice(0, 10);
-}
-
-function loadTimeTaskRows() {
-  return readTimeLedgerEntriesRaw();
-}
-
-/** 근무하기가 있는 근무일(YYYY-MM-DD) */
-export function getTimeLedgerWorkDatesSet() {
-  const workTaskName = "근무하기";
-  const dates = new Set();
-  for (const r of loadTimeTaskRows()) {
-    if ((r.taskName || "").trim() !== workTaskName) continue;
-    if (!r.startTime || !r.endTime || !r.date) continue;
-    const d = normalizeWorkDateKey(r.date);
-    if (d.length >= 10) dates.add(d);
-  }
-  return dates;
-}
-
-export function workDateHasTimeLedgerWork(workDateKey) {
-  const d = normalizeWorkDateKey(workDateKey);
-  if (!d || d.length < 10) return false;
-  return getTimeLedgerWorkDatesSet().has(d);
 }
 
 function parseNameToStartEnd(name) {

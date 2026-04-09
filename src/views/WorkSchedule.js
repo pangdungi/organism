@@ -5,9 +5,7 @@
 import { renderMonthlyContent } from "./WorkScheduleMonthly.js";
 import { supabase } from "../supabase.js";
 import { hydrateWorkScheduleFromCloud } from "../utils/workScheduleSupabase.js";
-import { pullTimeLedgerEntriesForDateRange } from "../utils/timeLedgerEntriesSupabase.js";
 import { applyWorkScheduleRowTimesFromTypes, normalizeWorkDateKey } from "../utils/workScheduleEntryResolve.js";
-import { readTimeLedgerEntriesRaw } from "../utils/timeLedgerEntriesModel.js";
 import { confirmDeleteRow } from "../utils/confirmModal.js";
 import {
   readWorkScheduleRowsFromMem,
@@ -223,40 +221,6 @@ function parseNameToStartEnd(name) {
   return { startTime: start, endTime: end };
 }
 
-/** 시간기록의 근무하기 → 근무표 행 형식 (시작시간, 마감시간, Hours, 근무일, 근무유형/메모 유지) */
-function getWorkRowsFromTimeRecord() {
-  const timeRows = readTimeLedgerEntriesRaw();
-  const workTaskName = "근무하기";
-  const toTimeString = (hours) => {
-    if (hours == null || Number.isNaN(hours)) return "";
-    const h = Math.floor(hours) % 24;
-    const m = Math.round((hours - Math.floor(hours)) * 60);
-    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-  };
-  const rows = timeRows
-    .filter((r) => (r.taskName || "").trim() === workTaskName)
-    .filter((r) => r.startTime && r.endTime && r.date)
-    .map((r) => {
-      const startH = parseTimeToHours(r.startTime);
-      const endH = parseTimeToHours(r.endTime);
-      if (startH == null || endH == null) return null;
-      const duration = endH > startH ? endH - startH : 24 - startH + endH;
-      const startStr = toTimeString(startH);
-      const endStr = toTimeString(endH);
-      const dateStr = String(r.date || "").trim().replace(/\//g, "-").slice(0, 10);
-      return {
-        startTime: startStr,
-        endTime: endStr,
-        hoursWorked: duration > 0 ? String(Math.round(duration * 100) / 100) : "",
-        workDate: dateStr,
-        workType: "",
-        memo: "",
-      };
-    })
-    .filter(Boolean);
-  return rows;
-}
-
 /** 저장된 행에서 시작/마감 추출 (name "09:00~18:00" 하위 호환) */
 function normalizeRowStartEnd(row) {
   if (row.startTime != null && row.endTime != null && row.startTime !== "" && row.endTime !== "") {
@@ -264,27 +228,6 @@ function normalizeRowStartEnd(row) {
   }
   const { startTime, endTime } = parseNameToStartEnd(row.name || "");
   return { ...row, startTime, endTime };
-}
-
-/** 행 일치 키: 근무일|시작|마감 */
-function rowKey(r) {
-  const n = normalizeRowStartEnd(r);
-  return `${n.workDate || ""}|${n.startTime || ""}|${n.endTime || ""}`;
-}
-
-/** 시간기록에서만 온 행: 저장본과 매칭 전까지 탭 전환·리렌더 시에도 동일 id 유지 */
-function stableSessionIdForTimeRow(t) {
-  const k = rowKey(t);
-  const sessKey = `work_schedule_row_id_${k}`;
-  try {
-    let id = sessionStorage.getItem(sessKey);
-    if (id && ENTRY_ID_RE.test(id)) return id;
-    id = crypto.randomUUID();
-    sessionStorage.setItem(sessKey, id);
-    return id;
-  } catch (_) {
-    return crypto.randomUUID();
-  }
 }
 
 /** 근무일·시작시간 기준 오름차순(날짜 필터와 동일 — 오래된 날이 위) */
@@ -302,25 +245,10 @@ function compareWorkScheduleRowsByDateTimeAsc(a, b) {
   return String(a?.endTime || "").localeCompare(String(b?.endTime || ""));
 }
 
-/** 근무표 = 시간기록 "근무하기" + 저장된 수동 행. 같은 날짜에 시간기록이 있으면 실제 기록으로 덮어쓰고, 없을 때만 저장된 행 표시 */
+/** 근무표 초기 행: 저장된 데이터만(시간가계부 근무하기 자동 반영 없음) */
 function getMergedInitialRows() {
-  const fromTime = getWorkRowsFromTimeRecord();
-  const saved = loadRows();
-  const keyFromTime = (t) => rowKey(t);
-  const mergedFromTime = fromTime.map((t) => {
-    const match = saved.find((s) => rowKey(normalizeRowStartEnd(s)) === keyFromTime(t));
-    return {
-      ...t,
-      id: match?.id || (t.id && ENTRY_ID_RE.test(String(t.id).trim()) ? String(t.id).trim() : stableSessionIdForTimeRow(t)),
-      workType: match?.workType ?? t.workType,
-      memo: match?.memo ?? t.memo,
-    };
-  });
-  const timeRecordDates = new Set(fromTime.map((ft) => normalizeWorkDateKey(ft.workDate)).filter((d) => d.length >= 10));
-  const savedOnly = saved
-    .map(normalizeRowStartEnd)
-    .filter((s) => !timeRecordDates.has(normalizeWorkDateKey(s.workDate)));
-  const merged = applyWorkScheduleRowTimesFromTypes([...mergedFromTime, ...savedOnly]);
+  const saved = loadRows().map(normalizeRowStartEnd);
+  const merged = applyWorkScheduleRowTimesFromTypes(saved);
   merged.sort(compareWorkScheduleRowsByDateTimeAsc);
   return merged;
 }
@@ -384,7 +312,7 @@ function getRowsToSave(tableEl) {
   return collectRowsFromDOM(tableEl).filter((r) => rowHasPersistableContent(r));
 }
 
-/** 근무유형 입력: 과제명처럼 Create/삭제 가능. onTypeSelect는 더 이상 시작·마감을 채우지 않음(시간은 시간가계부 근무하기 기록 기준). */
+/** 근무유형 입력: Create/삭제 가능. 유형 선택 시 onTypeSelect로 해당 유형의 기본 시작·마감을 행에 반영 */
 function createWorkTypeInput(initialValue, onUpdate, onTypeSelect) {
   const wrap = document.createElement("div");
   wrap.className = "time-task-name-wrap work-schedule-type-wrap";
@@ -646,11 +574,8 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
   startTimeTd.className = "work-schedule-cell work-schedule-cell-start-time";
   const startTimeInput = document.createElement("input");
   startTimeInput.type = "text";
-  startTimeInput.className = "work-schedule-input-start-time work-schedule-time-readonly";
-  startTimeInput.readOnly = true;
-  startTimeInput.tabIndex = -1;
-  startTimeInput.setAttribute("aria-readonly", "true");
-  startTimeInput.title = "시간은 시간가계부의 근무하기 기록에서 수정할 수 있습니다.";
+  startTimeInput.className = "work-schedule-input-start-time";
+  startTimeInput.placeholder = "09:00";
   startTimeInput.value = initStart;
   startTimeTd.appendChild(startTimeInput);
 
@@ -658,11 +583,8 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
   endTimeTd.className = "work-schedule-cell work-schedule-cell-end-time";
   const endTimeInput = document.createElement("input");
   endTimeInput.type = "text";
-  endTimeInput.className = "work-schedule-input-end-time work-schedule-time-readonly";
-  endTimeInput.readOnly = true;
-  endTimeInput.tabIndex = -1;
-  endTimeInput.setAttribute("aria-readonly", "true");
-  endTimeInput.title = "시간은 시간가계부의 근무하기 기록에서 수정할 수 있습니다.";
+  endTimeInput.className = "work-schedule-input-end-time";
+  endTimeInput.placeholder = "18:00";
   endTimeInput.value = initEnd;
   endTimeTd.appendChild(endTimeInput);
 
@@ -715,7 +637,55 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
     rowOnUpdate();
   }
 
-  typeInputWrap = createWorkTypeInput(initialData.workType || "", rowOnUpdate, null);
+  function getWorkTypeInputEl() {
+    return tr.querySelector(".work-schedule-input-type");
+  }
+
+  function syncReadonlyForWorkType() {
+    const wt = (getWorkTypeInputEl()?.value || "").trim();
+    const ro = READONLY_WORK_TYPES.includes(wt);
+    startTimeInput.readOnly = ro;
+    endTimeInput.readOnly = ro;
+    startTimeInput.classList.toggle("work-schedule-time-readonly", ro);
+    endTimeInput.classList.toggle("work-schedule-time-readonly", ro);
+    if (ro) {
+      startTimeInput.value = "00:00";
+      endTimeInput.value = "00:00";
+    }
+  }
+
+  function handleTypeSelect(optName) {
+    const full = getWorkTypeOptionsFull();
+    const entry = full.find((o) => o.name === optName);
+    if (!entry) return;
+    if (READONLY_WORK_TYPES.includes(optName)) {
+      startTimeInput.value = "00:00";
+      endTimeInput.value = "00:00";
+    } else {
+      const st = (entry.start || "").trim();
+      const et = (entry.end || "").trim();
+      if (st) startTimeInput.value = st;
+      if (et) endTimeInput.value = et;
+    }
+    syncReadonlyForWorkType();
+    syncHoursWorkedFromStartEnd();
+    if (!deferNotify) onUpdate();
+  }
+
+  startTimeInput.addEventListener("input", () => {
+    syncHoursWorkedFromStartEnd();
+  });
+  startTimeInput.addEventListener("blur", () => {
+    if (!deferNotify) onUpdate();
+  });
+  endTimeInput.addEventListener("input", () => {
+    syncHoursWorkedFromStartEnd();
+  });
+  endTimeInput.addEventListener("blur", () => {
+    if (!deferNotify) onUpdate();
+  });
+
+  typeInputWrap = createWorkTypeInput(initialData.workType || "", rowOnUpdate, handleTypeSelect);
 
   const typeTd = document.createElement("td");
   typeTd.className = "work-schedule-cell work-schedule-cell-type";
@@ -796,6 +766,8 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
   tr.appendChild(memoTd);
   tr.appendChild(actionsTd);
 
+  syncReadonlyForWorkType();
+
   return tr;
 }
 
@@ -866,24 +838,30 @@ export function render(opts = {}) {
     modal.setAttribute("aria-labelledby", "work-schedule-type-settings-title");
     modal.innerHTML = `
       <div class="work-schedule-type-settings-backdrop"></div>
-      <div class="work-schedule-type-settings-panel work-schedule-type-settings-panel--name-only">
+      <div class="work-schedule-type-settings-panel">
         <div class="work-schedule-type-settings-header">
           <h3 class="work-schedule-type-settings-title" id="work-schedule-type-settings-title">근무유형 설정</h3>
           <button type="button" class="work-schedule-type-settings-close" aria-label="닫기">&times;</button>
         </div>
-        <div class="work-schedule-type-settings-list-head work-schedule-type-settings-list-head--name-only">
+        <div class="work-schedule-type-settings-list-head">
           <span class="work-schedule-type-settings-th-name">근무유형</span>
+          <span class="work-schedule-type-settings-th-start">시작</span>
+          <span class="work-schedule-type-settings-th-end">마감</span>
           <span class="work-schedule-type-settings-th-action" aria-hidden="true"></span>
         </div>
         <div class="work-schedule-type-settings-list" data-type-list></div>
-        <div class="work-schedule-type-settings-add work-schedule-type-settings-add--name-only">
-          <input type="text" class="work-schedule-type-settings-input" placeholder="근무유형 입력" maxlength="50" autocomplete="off" />
+        <div class="work-schedule-type-settings-add">
+          <input type="text" class="work-schedule-type-settings-input" placeholder="근무유형" maxlength="50" autocomplete="off" />
+          <input type="text" class="work-schedule-type-settings-add-start" placeholder="시작" maxlength="8" autocomplete="off" />
+          <input type="text" class="work-schedule-type-settings-add-end" placeholder="마감" maxlength="8" autocomplete="off" />
           <button type="button" class="work-schedule-type-settings-add-btn">추가</button>
         </div>
       </div>
     `;
     const listEl = modal.querySelector("[data-type-list]");
     const addInput = modal.querySelector(".work-schedule-type-settings-input");
+    const addStartInput = modal.querySelector(".work-schedule-type-settings-add-start");
+    const addEndInput = modal.querySelector(".work-schedule-type-settings-add-end");
     const addBtn = modal.querySelector(".work-schedule-type-settings-add-btn");
 
     function renderTypeList() {
@@ -904,13 +882,24 @@ export function render(opts = {}) {
         if (isReadonly) {
           row.innerHTML =
             `<span class="work-schedule-type-settings-name">${escapeHtml(entry.name)}</span>` +
+            `<span class="work-schedule-type-settings-row-no-time">${escapeHtml(entry.start || "00:00")}</span>` +
+            `<span class="work-schedule-type-settings-row-no-time">${escapeHtml(entry.end || "00:00")}</span>` +
             `<span class="work-schedule-type-settings-row-action" aria-hidden="true"></span>`;
         } else {
           row.innerHTML =
             `<span class="work-schedule-type-settings-name">${escapeHtml(entry.name)}</span>` +
+            `<input type="text" class="work-schedule-type-settings-row-start" value="${escapeHtml(entry.start || "")}" />` +
+            `<input type="text" class="work-schedule-type-settings-row-end" value="${escapeHtml(entry.end || "")}" />` +
             `<span class="work-schedule-type-settings-row-action">` +
             `<button type="button" class="work-schedule-type-settings-del" title="삭제">${DELETE_ICON}</button>` +
             `</span>`;
+          const startInp = row.querySelector(".work-schedule-type-settings-row-start");
+          const endInp = row.querySelector(".work-schedule-type-settings-row-end");
+          const commit = () => {
+            updateWorkTypeOption(entry.name, startInp?.value ?? "", endInp?.value ?? "");
+          };
+          startInp?.addEventListener("blur", commit);
+          endInp?.addEventListener("blur", commit);
           const delBtn = row.querySelector(".work-schedule-type-settings-del");
           if (delBtn) {
             delBtn.addEventListener("click", () => {
@@ -926,8 +915,14 @@ export function render(opts = {}) {
     addBtn.addEventListener("click", () => {
       const name = (addInput.value || "").trim();
       if (!name) return;
-      addWorkTypeOption(name, "", "");
+      addWorkTypeOption(
+        name,
+        (addStartInput?.value || "").trim(),
+        (addEndInput?.value || "").trim(),
+      );
       addInput.value = "";
+      if (addStartInput) addStartInput.value = "";
+      if (addEndInput) addEndInput.value = "";
       renderTypeList();
     });
     addInput.addEventListener("keydown", (e) => {
@@ -975,8 +970,7 @@ export function render(opts = {}) {
   let renderTableViewSeq = 0;
 
   /**
-   * 근무표에 쓰는 시간가계부 행은 «피커 구간»이 서버에서 먼저 당겨져 있어야 함(시간 탭과 구간이 다르면 빈 메모리로 보일 수 있음).
-   * @param {{ filterStart?: string, filterEnd?: string, skipLedgerPull?: boolean }} [scheduleOpts]
+   * @param {{ filterStart?: string, filterEnd?: string }} [scheduleOpts]
    */
   async function renderTableView(scheduleOpts = {}) {
     const now = new Date();
@@ -993,20 +987,13 @@ export function render(opts = {}) {
       scheduleOpts.filterEnd && ymdRe.test(scheduleOpts.filterEnd) ? scheduleOpts.filterEnd : defaultRangeEnd;
 
     const mySeq = ++renderTableViewSeq;
-    if (!scheduleOpts.skipLedgerPull && supabase) {
-      try {
-        await pullTimeLedgerEntriesForDateRange(initialRangeStart, initialRangeEnd);
-      } catch (e) {
-        console.warn("[work-schedule] 시간가계부 기간 불러오기", e);
-      }
-    }
     if (mySeq !== renderTableViewSeq) return;
 
     contentWrap.innerHTML = "";
     const notice = document.createElement("p");
     notice.className = "work-schedule-notice";
     notice.textContent =
-      "시작·마감 시간은 시간가계부의 근무하기 기록을 기준으로 표시됩니다. 시간을 바꾸려면 시간가계부에서 수정해 주세요.";
+      "시작·마감은 각 행에서 입력합니다. 근무유형별 기본 시간은 톱니(근무유형 설정)에서 바꿀 수 있습니다.";
     contentWrap.appendChild(notice);
 
     const dailyHoursWrap = document.createElement("div");
@@ -1203,15 +1190,8 @@ export function render(opts = {}) {
     async function onWorkScheduleFilterRangeChanged() {
       const start = startDateInput.value || initialRangeStart;
       const end = endDateInput.value || initialRangeEnd;
-      if (supabase) {
-        try {
-          await pullTimeLedgerEntriesForDateRange(start, end);
-        } catch (e) {
-          console.warn("[work-schedule] 시간가계부 기간 불러오기", e);
-        }
-      }
       if (!el.isConnected) return;
-      await renderTableView({ filterStart: start, filterEnd: end, skipLedgerPull: true });
+      await renderTableView({ filterStart: start, filterEnd: end });
     }
     startDateInput.addEventListener("change", onWorkScheduleFilterRangeChanged);
     endDateInput.addEventListener("change", onWorkScheduleFilterRangeChanged);
@@ -1332,7 +1312,7 @@ export function render(opts = {}) {
     }
     contentWrap.innerHTML = "";
     contentWrap.appendChild(
-      renderMonthlyContent(mobile ? { typeOnly: true } : {}),
+      renderMonthlyContent({ typeOnly: true }),
     );
   }
 

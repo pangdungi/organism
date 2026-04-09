@@ -98,7 +98,7 @@ const MONTH_NAMES_SHORT = [
  * 근무표 내부에서 사용하는 먼슬리 캘린더 콘텐츠
  * @param {{ hoursOnly?: boolean, typeOnly?: boolean }} opts
  *   - hoursOnly: true면 근무시간만 표시(필터 버튼 숨김)
- *   - typeOnly: true면 근무유형만 표시(필터 버튼 숨김, 모바일 캘린더 탭용)
+ *   - typeOnly: true면 근무유형만 표시(필터 버튼 숨김). 근무표 「2. 월별보기」는 항상 이 모드
  */
 export function renderMonthlyContent(opts = {}) {
   const hoursOnly = !!opts.hoursOnly;
@@ -141,7 +141,7 @@ export function renderMonthlyContent(opts = {}) {
 
   const filterRow = document.createElement("div");
   filterRow.className = "work-schedule-monthly-filter";
-  if (!hoursOnly) {
+  if (!noFilter) {
     const btnHours = document.createElement("button");
     btnHours.type = "button";
     btnHours.className = "work-schedule-monthly-filter-btn active";
