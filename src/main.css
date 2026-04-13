@@ -2089,6 +2089,19 @@ body {
     justify-content: center;
     -webkit-tap-highlight-color: transparent;
   }
+  .todo-mobile-date-modal .todo-list-modal-close:focus,
+  .todo-mobile-date-modal .todo-list-modal-close:focus-visible {
+    outline: none;
+  }
+
+  /* 모바일: 할일 추가/수정 모달 X — Safari 기본 포커스 링(파란 테두리) 제거 */
+  .todo-task-edit-modal .todo-list-modal-close {
+    -webkit-tap-highlight-color: transparent;
+  }
+  .todo-task-edit-modal .todo-list-modal-close:focus,
+  .todo-task-edit-modal .todo-list-modal-close:focus-visible {
+    outline: none;
+  }
 
   /* 모바일: 모달 열 때 자동 확대/이동 방지 — 입력창은 탭할 때만 키보드, 한 곳에 고정 */
   [class$="modal"] {

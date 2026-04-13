@@ -1362,23 +1362,12 @@ export function render(opts = {}) {
     btn.addEventListener("click", () => switchView(btn.dataset.view, "tab-click"));
   });
 
-  function showWorkScheduleLoadingShell() {
-    contentWrap.innerHTML = "";
-    const ph = document.createElement("p");
-    ph.className = "work-schedule-loading-msg";
-    ph.textContent = "근무표를 불러오는 중…";
-    ph.setAttribute("aria-live", "polite");
-    ph.setAttribute("aria-busy", "true");
-    ph.style.cssText =
-      "margin:0;padding:1.5rem 1.25rem;font-size:0.9375rem;color:var(--text-caption-color,#A8A290);";
-    contentWrap.appendChild(ph);
-  }
-
   const hydrateGen = ++_workScheduleHydrateGeneration;
-  /* Supabase 있음: 빈 표를 먼저 그리면 곧바로 pull로 또 그려 깜빡임 → hydrate 끝난 뒤 표를 1회만 그림 */
+  /* Supabase: 로딩 문구로 본문을 비우면 탭 전환마다 ‘불러오는 중’이 반복됨 → 메모리 기준으로 먼저 표시,
+   * hydrate 완료 후 1회 갱신(App 부팅 시에도 hydrateWorkScheduleFromCloud 가 돌아 있음). */
   if (supabase) {
-    showWorkScheduleLoadingShell();
-    wsUiLog("mount: hydrate 선행 (빈 표·이중 switchView 생략), gen=", hydrateGen);
+    wsUiLog("mount: 즉시 표시 + hydrate, gen=", hydrateGen);
+    switchView(activeWorkScheduleView, "mount-initial-supabase");
     void hydrateWorkScheduleFromCloud()
       .catch((err) => {
         console.warn("[work-schedule]", err);

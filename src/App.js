@@ -53,6 +53,7 @@ import {
   snapshotKpiLocalStorageBrief,
 } from "./utils/kpiSyncDebug.js";
 import { initSupabaseRealtimeSync } from "./utils/supabaseRealtimeSync.js";
+import { hydrateWorkScheduleFromCloud } from "./utils/workScheduleSupabase.js";
 import { logLpRender, logLpRenderStack } from "./utils/lpRenderDebugLog.js";
 
 /** 사용자가 입력 중인지 확인 (입력 중이면 화면 갱신 건너뜀) */
@@ -672,6 +673,8 @@ export function mountApp(container) {
     hydrateDreamKpiMapFromCloud(),
     hydrateSideincomeKpiMapFromCloud(),
     pullAllTimeLedgerFromCloud(),
+    /* 근무표: 탭 진입 전에 메모리를 서버와 맞춰 두면 ‘불러오는 중’ 체감·이중 로딩이 줄어듦 */
+    hydrateWorkScheduleFromCloud(),
   ]).then(
     ([
       needTodoRefresh,
@@ -682,6 +685,7 @@ export function mountApp(container) {
       dreamKpiPulled,
       sideincomeKpiPulled,
       timeLedgerPullR,
+      ,
     ]) => {
       const timeLedgerRowsMerged = !!(timeLedgerPullR && timeLedgerPullR.anyChanged);
       kpiSyncDebugLog("앱 부팅 hydrate 결과", {
@@ -711,8 +715,8 @@ export function mountApp(container) {
             );
           } catch (_) {}
         } else if (currentTabId === "workschedule") {
-          /* 근무표는 탭 마운트 시 hydrateWorkScheduleFromCloud만 씀. 부팅 pull 직후 renderMain 하면
-           * 패널이 통째로 다시 그려져 같은 탭이 두 번 열리는 것처럼 깜빡임 */
+          /* 근무표는 부팅 시 Promise.all 에서 이미 hydrate 함. 여기서 renderMain 하면 패널 전체가
+           * 다시 그려져 깜빡이므로 생략(탭 마운트 시 동기화). */
         } else {
           logLpRender("App:초기 hydrate·Promise.all 완료 후 재렌더", {
             needTodoRefresh,

@@ -1434,7 +1434,8 @@ function showTodoTaskModal(options) {
     });
   }
 
-  requestAnimationFrame(() => closeBtn?.focus());
+  /* X에 포커스 두면 iOS PWA에서 파란 포커스 링이 생김 → 할일 이름 입력으로 */
+  requestAnimationFrame(() => nameInput?.focus());
 }
 
 function getSections() {

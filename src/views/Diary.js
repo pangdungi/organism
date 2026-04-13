@@ -262,19 +262,12 @@ export function render() {
       return "자유일기";
     }
 
-    function getTabIdsWithEntries() {
-      const ids = [];
-      ["3", "2", "1"].forEach((id) => {
-        ensureTabEntries(id);
-        const list = id === "3" ? (entries["3"]?.entries || []) : (entries[id]?.entries || []);
-        if (list.length > 0) ids.push(id);
-      });
-      return ids.length ? ids : ["3", "2", "1"];
-    }
+    /** 모바일 서브탭은 항상 3개(감정·통제·자유). 예전에는 항목 있는 탭만 표시해 통제만 쓰면 나머지 탭이 사라짐 */
+    const DIARY_MOBILE_TAB_ORDER = ["3", "2", "1"];
 
     function updateMobileTabs() {
       if (!isDiaryMobileViewport()) return;
-      const tabIds = getTabIdsWithEntries();
+      const tabIds = DIARY_MOBILE_TAB_ORDER;
       if (!tabIds.includes(currentTabId)) {
         currentTabId = tabIds[0];
         const list = ensureTabEntries(currentTabId);
