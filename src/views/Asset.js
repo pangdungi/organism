@@ -6386,41 +6386,36 @@ export function render() {
   attachAssetPlanMonthlyGoalsSaveListener();
   attachAssetNetWorthBundleSaveListener();
 
-  renderView("expense");
+  const hasCachedExpenseRows = getExpenseRowsMem().length > 0;
+  if (hasCachedExpenseRows) {
+    renderView("expense");
+  } else {
+    const assetInitialLoading = document.createElement("p");
+    assetInitialLoading.className = "asset-placeholder";
+    assetInitialLoading.textContent = "불러오는 중…";
+    contentWrap.appendChild(assetInitialLoading);
+  }
 
   setupScrollClosePanels();
 
   void (async () => {
     try {
       await hydrateAssetExpensePrefsFromCloud();
-      const [expenseDataReplaced, networthDataReplaced, stockCatReplaced, planGoalsReplaced, nwBundleReplaced] =
-        await Promise.all([
-          hydrateAssetExpenseTransactionsFromCloud(),
-          hydrateAssetNetWorthGoalFromCloud(),
-          hydrateAssetStockCategoryOptionsFromCloud(),
-          hydrateAssetPlanMonthlyGoalsFromCloud(),
-          hydrateAssetNetWorthBundleFromCloud(),
-        ]);
-      if (expenseDataReplaced) {
-        const activeTab = viewTabs.querySelector(".asset-view-tab.active");
-        if (activeTab?.dataset?.view === "expense") {
-          renderView("expense");
-        }
-      }
-      if (networthDataReplaced || stockCatReplaced || nwBundleReplaced) {
-        const activeTab = viewTabs.querySelector(".asset-view-tab.active");
-        if (activeTab?.dataset?.view === "networth") {
-          renderView("networth");
-        }
-      }
-      if (planGoalsReplaced) {
-        const activeTab = viewTabs.querySelector(".asset-view-tab.active");
-        if (activeTab?.dataset?.view === "plan") {
-          renderView("plan");
-        }
-      }
+      await Promise.all([
+        hydrateAssetExpenseTransactionsFromCloud(),
+        hydrateAssetNetWorthGoalFromCloud(),
+        hydrateAssetStockCategoryOptionsFromCloud(),
+        hydrateAssetPlanMonthlyGoalsFromCloud(),
+        hydrateAssetNetWorthBundleFromCloud(),
+      ]);
+      const activeTab = viewTabs.querySelector(".asset-view-tab.active");
+      const view = activeTab?.dataset?.view || "expense";
+      renderView(view);
     } catch (e) {
       console.warn("[asset-expense-cloud]", e);
+      const activeTab = viewTabs.querySelector(".asset-view-tab.active");
+      const view = activeTab?.dataset?.view || "expense";
+      renderView(view);
     }
   })();
 

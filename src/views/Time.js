@@ -69,6 +69,7 @@ import {
   pushDirtyTimeLedgerEntriesToSupabase,
   readTimeLedgerSessionFilterRangeYmd,
 } from "../utils/timeLedgerEntriesSupabase.js";
+import { hydrateAssetExpenseTransactionsFromCloud } from "../utils/assetExpenseTransactionsSupabase.js";
 import { timeLedgerSyncLog } from "../utils/timeLedgerSyncDebug.js";
 import { lpSaveDebug } from "../utils/lpSaveDebug.js";
 import {
@@ -7344,7 +7345,11 @@ export function render() {
   let allRowsCache = loadTimeRows();
   let cachedRows = [];
 
-  void hydrateTimeLedgerEntriesFromCloud().then(() => {
+  void Promise.all([
+    hydrateTimeLedgerEntriesFromCloud(),
+    hydrateAssetExpenseTransactionsFromCloud(),
+  ]).then(() => {
+    if (!el.isConnected) return;
     try {
       _pickerRangeKeyAtLastPullIntent = computePickerRangeKeyForPull();
     } catch (_) {}
@@ -7353,6 +7358,7 @@ export function render() {
     const active =
       viewTabs.querySelector(".time-view-tab.active")?.dataset?.view || "all";
     switchView(active);
+    refreshMobileTimeCardExpenseSnippetsIn(contentWrap);
   });
 
   function mergeRowsIntoCache() {
