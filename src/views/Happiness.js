@@ -14,7 +14,10 @@ import {
 import { toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay, formatDeadlineRangeCompact } from "../utils/ganttModal.js";
 import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
 import { setupDeadlineQuickButtons } from "../utils/deadlineQuickButtons.js";
-import { attachKpiTodoInputScrollIntoView } from "../utils/kpiTodoInputScroll.js";
+import {
+  afterKpiTodoListMutationScroll,
+  attachKpiTodoInputScrollIntoView,
+} from "../utils/kpiTodoInputScroll.js";
 import {
   bindKpiTodoTextareaKeydown,
   setupKpiTodoInlineTextarea,
@@ -995,7 +998,8 @@ export function render() {
     persistKpiUiState();
   }
 
-  function renderKpiHistory() {
+  function renderKpiHistory(opts = {}) {
+    const { scrollTodoAfterMutation = false } = opts;
     historyWrap.innerHTML = "";
     if (!selectedKpiId) {
       historyWrap.hidden = true;
@@ -1111,6 +1115,7 @@ export function render() {
         "flex:1;min-width:0;border:none;background:transparent;font:inherit;color:inherit;padding:0;margin:0;box-sizing:border-box;resize:none;overflow:hidden;line-height:1.45;";
       setupKpiTodoInlineTextarea(textInput);
       bindKpiTodoTextareaKeydown(textInput);
+      attachKpiTodoInputScrollIntoView(textInput);
       const saveTodoText = () => {
         const d = loadHappinessMap();
         const arr = d.kpiTodos || [];
@@ -1137,7 +1142,7 @@ export function render() {
         appendDeletedRef(d, "kpiTodos", todo.id);
         d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
         saveHappinessMap(d);
-        renderKpiHistory();
+        renderKpiHistory({ scrollTodoAfterMutation: true });
       });
 
       check.addEventListener("change", () => {
@@ -1172,7 +1177,7 @@ export function render() {
       data.kpiTodos.push(todo);
       saveHappinessMap(data);
       addInput.value = "";
-      renderKpiHistory();
+      renderKpiHistory({ scrollTodoAfterMutation: true });
       setTimeout(() => historyWrap.querySelector(".dream-kpi-todo-add-input")?.focus(), 0);
     };
     addInput.addEventListener("blur", () => addTodoFromInput());
@@ -1223,6 +1228,7 @@ export function render() {
           "flex:1;min-width:0;border:none;background:transparent;font:inherit;color:inherit;padding:0;margin:0;box-sizing:border-box;resize:none;overflow:hidden;line-height:1.45;";
         setupKpiTodoInlineTextarea(textInput);
         bindKpiTodoTextareaKeydown(textInput);
+        attachKpiTodoInputScrollIntoView(textInput);
         const saveDailyRepeatText = () => {
           const d = loadHappinessMap();
           const arr = d.kpiDailyRepeatTodos || [];
@@ -1248,7 +1254,7 @@ export function render() {
           appendDeletedRef(d, "kpiDailyRepeatTodos", todo.id);
           d.kpiDailyRepeatTodos = (d.kpiDailyRepeatTodos || []).filter((x) => x.id !== todo.id);
           saveHappinessMap(d);
-          renderKpiHistory();
+          renderKpiHistory({ scrollTodoAfterMutation: true });
         });
         item.appendChild(label);
         item.appendChild(textInput);
@@ -1267,7 +1273,7 @@ export function render() {
         d.kpiDailyRepeatTodos.push({ id: nextId(), kpiId: selKpi, text: val, completed: false });
         saveHappinessMap(d);
         dailyAddInput.value = "";
-        renderKpiHistory();
+        renderKpiHistory({ scrollTodoAfterMutation: true });
       };
       dailyAddInput.addEventListener("blur", () => addDailyFromInput());
       dailyAddInput.addEventListener("keydown", (e) => {
@@ -1279,6 +1285,9 @@ export function render() {
       attachKpiTodoInputScrollIntoView(dailyAddInput);
       historyWrap.appendChild(dailyList);
       historyWrap.appendChild(dailyAddRow);
+    }
+    if (scrollTodoAfterMutation) {
+      afterKpiTodoListMutationScroll(historyWrap);
     }
   }
 
