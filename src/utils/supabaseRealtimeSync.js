@@ -142,7 +142,14 @@ function shouldRenderMainForRealtimePull(tab, flags) {
 }
 
 /** Realtime 이벤트 폭주 시 pull·render 연속 호출 완화 (push 디바운스와 비슷한 체감) */
-const REALTIME_REFRESH_DEBOUNCE_MS = 900;
+const REALTIME_REFRESH_DEBOUNCE_MS = 1800;
+
+/**
+ * 전체 renderMain 직후 짧은 간격에 시간가계부 Realtime만 또 오면(PWA·모바일에서 마치 초마다 새로고침) 화면이 깜빡임.
+ * 할일·KPI·자산·일기 변경은 즉시 반영하고, 시간/예산 등만 연속일 때만 쿨다운.
+ */
+let _lastRealtimeRenderMainAt = 0;
+const REALTIME_RENDER_MAIN_COOLDOWN_MS = 4500;
 
 function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
   clearTimeout(_debounceTimer);
@@ -234,6 +241,25 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
           });
           return;
         }
+        const nowMs = Date.now();
+        const timeLedgerOnlyChurn =
+          !needTodo &&
+          timeLedgerChanged &&
+          !kpiMapsChanged &&
+          !assetChanged &&
+          !diaryChanged;
+        if (
+          timeLedgerOnlyChurn &&
+          nowMs - _lastRealtimeRenderMainAt < REALTIME_RENDER_MAIN_COOLDOWN_MS
+        ) {
+          logLpRender("realtime:renderMain 쿨다운(시간·예산 등만 연속 변경)", {
+            tab,
+            waitMs:
+              REALTIME_RENDER_MAIN_COOLDOWN_MS -
+              (nowMs - _lastRealtimeRenderMainAt),
+          });
+          return;
+        }
         logLpRender("realtime:debouncedRealtimeRefresh → renderMain", {
           tab,
           needTodo,
@@ -242,6 +268,7 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
           assetChanged,
           diaryChanged,
         });
+        _lastRealtimeRenderMainAt = nowMs;
         renderMain({ skipTodoSaveBeforeUnmount: true });
       } catch (e) {
         console.warn("[realtime] 병합·갱신", e?.message || e);

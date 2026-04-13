@@ -910,7 +910,6 @@ function getAllTasksWithDateRange() {
 }
 
 function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
-  if (document.querySelector(".calendar-monthly-layout.calendar-1week-view")) return null;
   const isMobile = window.matchMedia("(max-width: 48rem)").matches;
   document
     .querySelectorAll(".calendar-event-bubble, .calendar-day-expand-overlay")

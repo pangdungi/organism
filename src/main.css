@@ -32897,6 +32897,18 @@ body.kpi-resizing {
   content: none;
 }
 
+/* 1주 뷰만: 오늘은 숫자 옆 점(•)으로 구분 — 행 배경색은 쓰지 않음(모바일·데스크탑 공통) */
+.calendar-1week-view .calendar-monthly-day.today,
+.calendar-1week-view .calendar-monthly-day.other-month.today {
+  background: transparent;
+}
+.calendar-1week-view .calendar-monthly-day.today:hover:not(.empty) {
+  background: var(--ui-surface-alt);
+}
+.calendar-1week-view .calendar-monthly-day.other-month.today:hover {
+  background: #eceadf;
+}
+
 .calendar-monthly-day.calendar-day-focused {
   background: var(--ui-surface-alt);
   box-shadow: inset 0 0 0 0.125rem rgba(0, 0, 0, 0.15);
