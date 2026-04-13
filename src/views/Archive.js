@@ -44,6 +44,19 @@ function recordInDateRange(r, startYmd, endYmd) {
   return s >= startYmd && s <= endYmd;
 }
 
+/** 시간가계부–가계부 연결용(동기화), 사용자 메모 아님 → 아카이브에 표시하지 않음 */
+const LP_LEDGER_EXPENSE_TAG_PREFIX = "lp-expense:";
+
+function isLedgerExpenseRefMemoTag(tag) {
+  return String(tag || "").trim().startsWith(LP_LEDGER_EXPENSE_TAG_PREFIX);
+}
+
+/** memo_tags에서 사용자에게 보일 태그만 */
+function filterArchiveVisibleTags(memoTags) {
+  if (!Array.isArray(memoTags)) return [];
+  return memoTags.filter((t) => !isLedgerExpenseRefMemoTag(t));
+}
+
 export function render() {
   const el = document.createElement("div");
   const archiveTabAbort = new AbortController();
@@ -195,21 +208,23 @@ export function render() {
   function buildRecords() {
     const rows = loadTimeRows();
     return rows
-      .filter(
-        (r) =>
-          (r.feedback || "").trim() !== "" ||
-          (Array.isArray(r.memoTags) && r.memoTags.length > 0),
-      )
-      .map((r) => ({
-        id: String(r.id || "").trim(),
-        date: r.date || "",
-        startTime: r.startTime || "",
-        memo: (r.feedback || "").trim(),
-        tags:
-          Array.isArray(r.memoTags) && r.memoTags.length > 0
-            ? r.memoTags
-            : parseTagsFromFeedback(r.feedback || ""),
-      }))
+      .map((r) => {
+        const memo = (r.feedback || "").trim();
+        const fromFeedbackTags = parseTagsFromFeedback(r.feedback || "");
+        const visibleFromMemoTags = filterArchiveVisibleTags(r.memoTags);
+        const tags =
+          visibleFromMemoTags.length > 0
+            ? visibleFromMemoTags
+            : fromFeedbackTags;
+        return {
+          id: String(r.id || "").trim(),
+          date: r.date || "",
+          startTime: r.startTime || "",
+          memo,
+          tags,
+        };
+      })
+      .filter((item) => item.memo !== "" || item.tags.length > 0)
       .sort((a, b) => {
         const da = a.date + (a.startTime || "");
         const db = b.date + (b.startTime || "");
@@ -277,13 +292,7 @@ export function render() {
       return;
     }
     const gen = ++archiveRangeSyncGen;
-    const rawBefore = readTimeLedgerEntriesRaw().length;
     showArchiveListLoading();
-    console.info("[archive] [데이터] 기간 동기화 시작 (목록은 완료 후 표시)", {
-      무엇을: "Supabase entry_date 구간만 서버에서 받아 로컬에 반영",
-      선택: `${startYmd} ~ ${endYmd}`,
-      "동기화 직전 로컬 행 수": rawBefore,
-    });
     try {
       await hydrateTimeLedgerEntriesForArchiveRange(startYmd, endYmd);
     } catch (e) {
@@ -292,15 +301,6 @@ export function render() {
       if (gen !== archiveRangeSyncGen || !el.isConnected) return;
       listEl.classList.remove("archive-list--loading");
       refreshFullRecords();
-      const after = readTimeLedgerEntriesRaw().length;
-      const { records, mode } = getRecordsToDisplay();
-      console.info("[archive] [데이터] 목록 표시 (해당 기간 서버 반영 후 → localStorage 읽기)", {
-        경로: "Time.loadTimeRows() → buildRecords() (메모·태그 있는 행만)",
-        "로컬 행 수": after,
-        "카드 수(기간·검색 전)": fullRecords.length,
-        "화면 카드 수": records.length,
-        mode,
-      });
       renderList();
     }
   }

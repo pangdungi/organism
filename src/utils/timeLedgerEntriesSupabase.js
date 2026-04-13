@@ -7,6 +7,7 @@
  */
 
 import { supabase } from "../supabase.js";
+import { lpSaveDebug } from "./lpSaveDebug.js";
 import {
   applyTimeLedgerServerRangeSnapshot,
   ensureTimeLedgerEntryIds,
@@ -26,7 +27,7 @@ const TABLE = "time_ledger_entries";
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const LEDGER_ENTRY_SELECT =
-  "id, entry_date, task_id, task_name, start_time, end_time, productivity, category, time_tracked, focus_events, memo, memo_tags, updated_at";
+  "id, entry_date, task_id, task_name, start_time, end_time, productivity, category, time_tracked, focus_events, memo, memo_tags, linked_expense_ids, updated_at";
 
 /** 로컬 달력 기준 오늘 YYYY-MM-DD */
 export function timeLedgerLocalTodayYmd() {
@@ -233,6 +234,7 @@ export async function pushDirtyTimeLedgerEntriesToSupabase(opts = {}) {
 
     if (error) {
       timeLedgerSyncLog("server_upsert_done", { ok: false, message: error.message });
+      lpSaveDebug("시간행 upsert 실패", { message: error.message, code: error.code, hint: error.hint });
       return;
     }
 
@@ -251,6 +253,7 @@ export async function pushDirtyTimeLedgerEntriesToSupabase(opts = {}) {
       ok: true,
       returnedRowCount: Array.isArray(data) ? data.length : 0,
     });
+    lpSaveDebug("시간행 upsert 성공", { rowCount: toUpload.length, returned: Array.isArray(data) ? data.length : 0 });
 
     if (opts.skipPull) {
       timeLedgerSyncLog("pull_after_push_skipped", { reason: "skipPull_option" });

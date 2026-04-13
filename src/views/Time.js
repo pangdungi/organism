@@ -70,6 +70,7 @@ import {
   readTimeLedgerSessionFilterRangeYmd,
 } from "../utils/timeLedgerEntriesSupabase.js";
 import { timeLedgerSyncLog } from "../utils/timeLedgerSyncDebug.js";
+import { lpSaveDebug } from "../utils/lpSaveDebug.js";
 import {
   persistSectionTasksAndSchedule,
   persistCustomSectionTasksAndSchedule,
@@ -2626,6 +2627,9 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
     date: initialData?.date || "",
     feedback: initialData?.feedback || "",
     memoTags: Array.isArray(initialData?.memoTags) ? initialData.memoTags : [],
+    linkedExpenseIds: Array.isArray(initialData?.linkedExpenseIds)
+      ? initialData.linkedExpenseIds.map((id) => String(id || "").trim()).filter(Boolean)
+      : [],
     focus: String(initialData?.focus || "").trim(),
   };
   tr._rowData = rowData;
@@ -2805,17 +2809,11 @@ export function parseTagsFromFeedback(feedbackStr) {
   return [...new Set(matches.map((m) => m.slice(1).trim()).filter(Boolean))];
 }
 
-/** 시간기록 memo_tags에 저장하는 가계부 지출 id 참조 (동기화 후에도 행–지출 연결 유지) */
+/** 구버전 memo_tags에 섞여 있던 가계부 지출 참조 접두사 — pull 시 linkedExpenseIds로 이전 */
 const LP_LEDGER_EXPENSE_TAG_PREFIX = "lp-expense:";
 
 function isLedgerExpenseRefTag(tag) {
   return String(tag || "").trim().startsWith(LP_LEDGER_EXPENSE_TAG_PREFIX);
-}
-
-function ledgerExpenseMemoTagForId(expenseId) {
-  const id = String(expenseId || "").trim();
-  if (!id) return "";
-  return `${LP_LEDGER_EXPENSE_TAG_PREFIX}${id}`;
 }
 
 function expenseIdFromLedgerMemoTag(tag) {
@@ -2841,23 +2839,30 @@ function splitLedgerMemoTags(memoTags) {
   return { userTags, expenseIds };
 }
 
-function buildLedgerMemoTagsForSubmit(userTags, todoTags, expenseAddedItems) {
+/** 사용자 메모 태그·투두만 memo_tags에 넣음. 가계부 지출 id는 linkedExpenseIds(서버 컬럼)로 별도 저장 */
+function buildLedgerMemoTagsForSubmit(userTags, todoTags) {
   const base = [
     ...(Array.isArray(userTags) ? userTags : []),
     ...(Array.isArray(todoTags) ? todoTags : []),
   ];
-  const refs = (Array.isArray(expenseAddedItems) ? expenseAddedItems : [])
-    .map((it) => ledgerExpenseMemoTagForId(it?.id))
-    .filter(Boolean);
   const seen = new Set();
   const out = [];
-  for (const x of [...base, ...refs]) {
+  for (const x of base) {
     const k = String(x).trim();
     if (!k || seen.has(k)) continue;
     seen.add(k);
     out.push(k);
   }
   return out;
+}
+
+/** 연결된 지출 id: 필드 + 구버전 memo_tags 내 lp-expense: (로컬만 남은 행 호환) */
+function getLedgerLinkedExpenseIds(row) {
+  const fromField = Array.isArray(row?.linkedExpenseIds)
+    ? row.linkedExpenseIds.map((id) => String(id || "").trim()).filter(Boolean)
+    : [];
+  const fromMemo = splitLedgerMemoTags(row?.memoTags || []).expenseIds;
+  return [...new Set([...fromField, ...fromMemo])];
 }
 
 function ledgerExpenseAddedItemsFromIds(expenseIds) {
@@ -2878,55 +2883,77 @@ function ledgerExpenseAddedItemsFromIds(expenseIds) {
   return out;
 }
 
+/** 가계부 지출 행 → 한 줄 표시용 (이름·분류·금액·카테고리) — 테이블·모바일 카드 공통 */
+function formatExpenseLineForMobileCard(row) {
+  if (!row || typeof row !== "object") return "";
+  const name = String(row.name || "").trim();
+  const amt = String(row.amount || "").trim();
+  const cls = String(row.classification || "").trim();
+  const cat = String(row.category || "").trim();
+  if (name) return [name, amt].filter(Boolean).join(" | ");
+  const clsAmt = [cls, amt].filter(Boolean).join(" | ");
+  if (clsAmt) return clsAmt;
+  if (cat && amt) return `${cat} | ${amt}`;
+  if (amt) return amt;
+  if (cls) return cls;
+  if (cat) return cat;
+  return "";
+}
+
 /** 테이블 메모 태그 열: 사용자 태그 + 소비 요약(가계부 행 기준) */
 function getMemoTagDisplayTextsForLedgerRow(rowData) {
   const raw =
     rowData?.memoTags?.length > 0
       ? rowData.memoTags
       : parseTagsFromFeedback(rowData?.feedback || "");
-  const { userTags, expenseIds } = splitLedgerMemoTags(
-    Array.isArray(raw) ? raw : [],
-  );
+  const { userTags } = splitLedgerMemoTags(Array.isArray(raw) ? raw : []);
+  const expenseIds = getLedgerLinkedExpenseIds(rowData);
   const texts = [...userTags];
   const allExp = loadExpenseRows();
   for (const eid of expenseIds) {
     const row = allExp.find((r) => String(r?.id || "").trim() === eid);
-    const label = row
-      ? [row.classification || "", row.amount || ""].filter(Boolean).join(" | ") ||
-        (row.name || "").trim() ||
-        "소비"
-      : "소비 기록";
-    texts.push(label);
+    if (!row) continue;
+    const label = formatExpenseLineForMobileCard(row);
+    if (label) texts.push(label);
   }
   return texts;
 }
 
 /** 모바일 카드: 방해기록과 동일 레이아웃으로 연결된 소비 요약 (lp-expense 태그 기준) */
 function buildMobileCardExpenseBlockHtml(rowData) {
-  const raw = Array.isArray(rowData?.memoTags) ? rowData.memoTags : [];
-  const { expenseIds } = splitLedgerMemoTags(raw);
+  const expenseIds = getLedgerLinkedExpenseIds(rowData);
   if (expenseIds.length === 0) return "";
   const allExp = loadExpenseRows();
   const parts = [];
   for (const eid of expenseIds) {
     const row = allExp.find((r) => String(r?.id || "").trim() === eid);
-    const line = row
-      ? (() => {
-          const name = String(row.name || "").trim();
-          const amt = String(row.amount || "").trim();
-          const cls = String(row.classification || "").trim();
-          /* 카드: 소비명 우선, 없을 때만 분류 */
-          return name
-            ? [name, amt].filter(Boolean).join(" | ")
-            : [cls, amt].filter(Boolean).join(" | ") || "소비";
-        })()
-      : "";
-    const safe = String(line || "소비").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    if (safe) parts.push(safe);
+    if (!row) continue;
+    const line = formatExpenseLineForMobileCard(row);
+    if (!line) continue;
+    const safe = line.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    parts.push(safe);
   }
   if (parts.length === 0) return "";
   const text = parts.join(" · ");
   return `<div class="time-mobile-card-focus time-mobile-card-expense-snippet"><span class="time-mobile-card-focus-label">소비</span><span class="time-mobile-card-focus-text">${text}</span></div>`;
+}
+
+/**
+ * 가계부 지출이 늦게 메모리에 올 때 카드는 이미 그려져 '소비'만 보이던 문제 → 동기화·탭 복귀 후 소비 줄만 다시 그림
+ */
+function refreshMobileTimeCardExpenseSnippetsIn(container) {
+  if (!container?.querySelectorAll) return;
+  container.querySelectorAll(".time-ledger-mobile-card").forEach((card) => {
+    const rd = card._rowData;
+    if (!rd || getLedgerLinkedExpenseIds(rd).length === 0) return;
+    const body = card.querySelector(".time-mobile-card-body");
+    if (!body) return;
+    body.querySelectorAll(".time-mobile-card-expense-snippet").forEach((n) =>
+      n.remove(),
+    );
+    const html = buildMobileCardExpenseBlockHtml(rd);
+    if (html) body.insertAdjacentHTML("beforeend", html);
+  });
 }
 
 /** contenteditable 메모 영역 직렬화: 텍스트 + #태그명 → 한 줄 문자열 */
@@ -3220,6 +3247,7 @@ function collectRowFromTR(tr) {
     feedback: feedbackInput?.value || "",
     focus: (tr.querySelector(".time-display-focus")?.textContent || "").trim(),
     memoTags: [],
+    linkedExpenseIds: [],
   };
 }
 
@@ -6254,6 +6282,13 @@ export function render() {
     const existingRows = loadExpenseRows();
     existingRows.push(row);
     saveExpenseRows(existingRows);
+    lpSaveDebug("방해기록 소비 모달 → 가계부 메모리 추가", {
+      expenseId: id,
+      date: row.date,
+      flowType: row.flowType,
+      amount: row.amount,
+      memTotal: existingRows.length,
+    });
     window.dispatchEvent(new CustomEvent("asset-expense-transactions-saved"));
     updateExpenseInnerList();
     taskLogExpenseNameInput.value = "";
@@ -6455,7 +6490,11 @@ export function render() {
     const splitEdit = splitLedgerMemoTags(rawMemoTagsForEdit);
     taskLogMemoTags = splitEdit.userTags;
     renderTaskLogTagPills();
-    taskLogExpenseAddedItems = ledgerExpenseAddedItemsFromIds(splitEdit.expenseIds);
+    const fromLinkedField = Array.isArray(data.linkedExpenseIds) ? data.linkedExpenseIds : [];
+    const mergedExpenseIds = [
+      ...new Set([...splitEdit.expenseIds, ...fromLinkedField].map((id) => String(id || "").trim())),
+    ].filter(Boolean);
+    taskLogExpenseAddedItems = ledgerExpenseAddedItemsFromIds(mergedExpenseIds);
     updateExpensePills();
     taskLogTodoAddedItems = [];
     if (typeof updateTodoPills === "function") updateTodoPills();
@@ -6531,8 +6570,9 @@ export function render() {
 
     const editTr = taskLogEditTr;
     const addCtx = taskLogAddContext;
+    let addLedgerTr = null;
     let oldRowDataToRemove = null;
-    /** 메인 폼에서 만든 지출 id → 저장 직전에 memo_tags에 lp-expense: 연결 */
+    /** 메인 폼에서 만든 지출 id → linkedExpenseIds에 합침 (memo_tags와 분리) */
     let mainFormExpenseId = null;
     let submittedLedgerRowForExpenseLink = null;
 
@@ -6552,11 +6592,10 @@ export function render() {
     const todoTags = taskLogTodoAddedItems
       .map((t) => [t.categoryLabel, t.todoName].filter(Boolean).join(" | "))
       .filter(Boolean);
-    const memoTags = buildLedgerMemoTagsForSubmit(
-      taskLogMemoTags,
-      todoTags,
-      taskLogExpenseAddedItems,
-    );
+    const linkedFromModal = taskLogExpenseAddedItems
+      .map((it) => String(it?.id || "").trim())
+      .filter(Boolean);
+    const memoTags = buildLedgerMemoTagsForSubmit(taskLogMemoTags, todoTags);
     const timeTracked = (() => {
       if (startTime && endTime) {
         const toIso = (str) => {
@@ -6645,6 +6684,7 @@ export function render() {
         date: dateStr,
         feedback,
         memoTags,
+        linkedExpenseIds: [...linkedFromModal],
         focus: focusValue,
       };
       editTr._rowData = newRowData;
@@ -6730,6 +6770,7 @@ export function render() {
         date: dateStr,
         feedback,
         memoTags,
+        linkedExpenseIds: [...linkedFromModal],
         focus: focusValue,
       };
       const tr = createRow(
@@ -6739,6 +6780,7 @@ export function render() {
         ctx.handleRowDelete,
         ctx.handleRowEdit,
       );
+      addLedgerTr = tr;
       if (ctx.addRow) ctx.tbody.insertBefore(tr, ctx.addRow);
       else ctx.tbody.appendChild(tr);
       /* 새 기록을 allRowsCache에 추가 (저장 누락 방지) */
@@ -6776,17 +6818,37 @@ export function render() {
           memo: "",
         });
         saveExpenseRows(existingRows);
+        lpSaveDebug("과제모달 메인폼 소비 → 가계부 메모리 추가", {
+          expenseId: expId,
+          date: dateForExpense,
+          amount: amountFormatted,
+          memTotal: existingRows.length,
+        });
         window.dispatchEvent(new CustomEvent("asset-expense-transactions-saved"));
+      } else if (hasExpenseContent) {
+        lpSaveDebug("메인폼 소비 스킵(expId 없음)", { hasExpenseContent, expId: expId || null });
       }
     }
 
     if (mainFormExpenseId && submittedLedgerRowForExpenseLink) {
-      const ref = ledgerExpenseMemoTagForId(mainFormExpenseId);
-      const m = [...(submittedLedgerRowForExpenseLink.memoTags || [])];
-      if (ref && !m.includes(ref)) m.push(ref);
-      submittedLedgerRowForExpenseLink.memoTags = m;
-      if (editTr && !editTr.classList?.contains("time-ledger-mobile-card")) {
-        const memoTagCell = editTr.querySelector(
+      const cur = new Set(
+        Array.isArray(submittedLedgerRowForExpenseLink.linkedExpenseIds)
+          ? submittedLedgerRowForExpenseLink.linkedExpenseIds.map(String)
+          : [],
+      );
+      cur.add(mainFormExpenseId);
+      submittedLedgerRowForExpenseLink.linkedExpenseIds = [...cur];
+      lpSaveDebug("시간행에 linkedExpenseIds 반영", {
+        ids: submittedLedgerRowForExpenseLink.linkedExpenseIds,
+        rowId: String(submittedLedgerRowForExpenseLink.id || "").slice(0, 8),
+      });
+      const syncTr = editTr || addLedgerTr;
+      if (syncTr?._rowData) {
+        syncTr._rowData.linkedExpenseIds =
+          submittedLedgerRowForExpenseLink.linkedExpenseIds;
+      }
+      if (syncTr && !syncTr.classList?.contains("time-ledger-mobile-card")) {
+        const memoTagCell = syncTr.querySelector(
           ".time-cell-memo-tag .time-display-memo-tags",
         );
         if (memoTagCell) {
@@ -7225,13 +7287,51 @@ export function render() {
   document.addEventListener(
     "keydown",
     (e) => {
-      if (e.key === "Escape") {
-        if (!taskLogPickerWrap.hidden) {
-          closeDateTimePicker();
-        } else if (!taskLogModal.hidden) {
-          closeTaskLogModal();
-        } else if (!addTaskModal.hidden) closeAddTaskModal();
-        else if (!taskSetupModal.hidden) closeTaskSetupModal();
+      if (e.key !== "Escape") return;
+      if (!taskLogPickerWrap.hidden) {
+        closeDateTimePicker();
+        e.preventDefault();
+        return;
+      }
+      /* 과제 기록 모달 안 중첩 UI가 열려 있으면 Esc/백키로 메인까지 닫지 않고 해당 레이어만 닫음 */
+      if (!taskLogModal.hidden) {
+        if (taskLogExpenseInnerModal && !taskLogExpenseInnerModal.hidden) {
+          closeExpenseInnerModal();
+          e.preventDefault();
+          return;
+        }
+        if (focusModal && !focusModal.hidden) {
+          closeFocusModal();
+          e.preventDefault();
+          return;
+        }
+        if (taskLogTodoInnerModal && !taskLogTodoInnerModal.hidden) {
+          closeTodoInnerModal();
+          e.preventDefault();
+          return;
+        }
+        if (taskLogEmotionInnerModal && !taskLogEmotionInnerModal.hidden) {
+          closeEmotionInnerModal();
+          e.preventDefault();
+          return;
+        }
+        if (taskLogMemoInnerModal && !taskLogMemoInnerModal.hidden) {
+          closeMemoInnerModal();
+          e.preventDefault();
+          return;
+        }
+        closeTaskLogModal();
+        e.preventDefault();
+        return;
+      }
+      if (!addTaskModal.hidden) {
+        closeAddTaskModal();
+        e.preventDefault();
+        return;
+      }
+      if (!taskSetupModal.hidden) {
+        closeTaskSetupModal();
+        e.preventDefault();
       }
     },
     { signal },
@@ -9950,6 +10050,24 @@ export function render() {
   document.addEventListener(
     "lp-time-ledger-remote-updated",
     refreshTimeLedgerFromRemotePull,
+    { signal },
+  );
+
+  /* 가계부 지출 메모리가 늦게 채워져도 모바일 카드 소비 줄이 실제 명·금액으로 갱신되게 */
+  function scheduleRefreshMobileExpenseSnippets() {
+    queueMicrotask(() => {
+      if (!el.isConnected) return;
+      refreshMobileTimeCardExpenseSnippetsIn(contentWrap);
+    });
+  }
+  window.addEventListener("asset-expense-transactions-saved", scheduleRefreshMobileExpenseSnippets, {
+    signal,
+  });
+  document.addEventListener(
+    "visibilitychange",
+    () => {
+      if (document.visibilityState === "visible") scheduleRefreshMobileExpenseSnippets();
+    },
     { signal },
   );
 

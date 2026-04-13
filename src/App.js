@@ -316,18 +316,6 @@ export function mountApp(container) {
   main.appendChild(panel);
 
   function setActiveTab(tabId) {
-    try {
-      if (
-        typeof localStorage !== "undefined" &&
-        localStorage.getItem("debug_app_nav") === "1"
-      ) {
-        const R = RENDERERS[tabId];
-        console.log("[앱 네비] setActiveTab", {
-          tabId,
-          renderer: typeof R === "function" ? R.name || "(익명)" : String(R),
-        });
-      }
-    } catch (_) {}
     currentTabId = tabId;
     nav.querySelectorAll(".app-sidebar-item").forEach((b) => {
       b.classList.toggle("active", b.dataset.tabId === tabId);

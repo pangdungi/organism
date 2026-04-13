@@ -4,6 +4,7 @@
  */
 
 import { isUuid, UUID_RE } from "./idUtils.js";
+import { lpSaveDebug } from "./lpSaveDebug.js";
 import { writeAllRowsToIdb, TIME_LEDGER_STORAGE_KEY } from "./timeLedgerEntriesStore.js";
 
 /**
@@ -197,6 +198,24 @@ export function mergeTimeLedgerEntriesPushedServerTimes(dbRows) {
   if (changed) writeTimeLedgerEntriesRaw(next);
 }
 
+/** 구버전: memo_tags 안에 lp-expense:uuid 가 섞여 있던 경우 — DB에는 분리 저장 */
+const LEDGER_EXPENSE_TAG_PREFIX = "lp-expense:";
+
+function partitionMemoTagsAndLegacyExpenseIds(memoTags) {
+  const clean = [];
+  const legacyIds = [];
+  for (const t of Array.isArray(memoTags) ? memoTags : []) {
+    const s = String(t ?? "").trim();
+    if (s.startsWith(LEDGER_EXPENSE_TAG_PREFIX)) {
+      const id = s.slice(LEDGER_EXPENSE_TAG_PREFIX.length).trim();
+      if (id) legacyIds.push(id);
+    } else {
+      clean.push(t);
+    }
+  }
+  return { clean, legacyIds };
+}
+
 export function localTimeLedgerRowToDbPayload(userId, row) {
   const entry_date = normalizeEntryDate(row.date);
   if (!entry_date) return null;
@@ -205,8 +224,21 @@ export function localTimeLedgerRowToDbPayload(userId, row) {
     time: e.time || "",
     type: e.type || "",
   }));
-  const memoTags = Array.isArray(row.memoTags) ? row.memoTags : [];
+  const rowLinked = Array.isArray(row.linkedExpenseIds)
+    ? row.linkedExpenseIds.map((id) => String(id || "").trim()).filter(Boolean)
+    : [];
+  const { clean: memoTagsClean, legacyIds: fromMemoStray } = partitionMemoTagsAndLegacyExpenseIds(
+    row.memoTags,
+  );
+  const linked_expense_ids = [...new Set([...rowLinked, ...fromMemoStray])];
   const tid = String(row.taskId || "").trim();
+  if (linked_expense_ids.length > 0) {
+    lpSaveDebug("time_ledger payload(지출 연결 있음)", {
+      id: String(row.id || "").trim().slice(0, 8),
+      linked_expense_ids,
+      memo_tags_len: memoTagsClean.length,
+    });
+  }
   return {
     id: String(row.id || "").trim(),
     user_id: userId,
@@ -220,7 +252,8 @@ export function localTimeLedgerRowToDbPayload(userId, row) {
     time_tracked: String(row.timeTracked || "").trim(),
     focus_events,
     memo: String(row.feedback || "").trim(),
-    memo_tags: memoTags,
+    memo_tags: memoTagsClean,
+    linked_expense_ids,
   };
 }
 
@@ -228,7 +261,14 @@ export function dbRowToLocalTimeLedgerRow(db) {
   const focus = focusEventsToRaw(
     Array.isArray(db.focus_events) ? db.focus_events : [],
   );
-  const memo_tags = Array.isArray(db.memo_tags) ? db.memo_tags : [];
+  const raw_memo_tags = Array.isArray(db.memo_tags) ? db.memo_tags : [];
+  const fromDbLinked = Array.isArray(db.linked_expense_ids) ? db.linked_expense_ids : [];
+  const dbLinkedIds = fromDbLinked
+    .map((id) => String(id ?? "").trim())
+    .filter(Boolean);
+  const { clean: memoTagsClean, legacyIds: legacyFromMemo } =
+    partitionMemoTagsAndLegacyExpenseIds(raw_memo_tags);
+  const linkedExpenseIds = [...new Set([...dbLinkedIds, ...legacyFromMemo])];
   return {
     id: String(db.id || "").trim(),
     date: normalizeEntryDate(db.entry_date) || String(db.entry_date || "").slice(0, 10),
@@ -241,7 +281,8 @@ export function dbRowToLocalTimeLedgerRow(db) {
     timeTracked: String(db.time_tracked || "").trim(),
     focus,
     feedback: String(db.memo || "").trim(),
-    memoTags: memo_tags,
+    memoTags: memoTagsClean,
+    linkedExpenseIds,
     /** Supabase updated_at — 병합 시 last-write-wins */
     /** Supabase updated_at — 서버 스냅샷·동기화 표시용 */
     serverUpdatedAt:

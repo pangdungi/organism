@@ -12,6 +12,7 @@ import {
 } from "../utils/assetExpensePrefsSupabase.js";
 import {
   attachAssetExpenseTransactionsSaveListener,
+  deleteAssetExpenseTransactionsFromSupabase,
   getExpenseRowsMem,
   hydrateAssetExpenseTransactionsFromCloud,
   pullAssetExpenseTransactionsFromSupabase,
@@ -627,9 +628,11 @@ function newExpenseRowId() {
   return typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "";
 }
 
+const EXPENSE_ROW_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function loadExpenseRows() {
-  const uuidRe =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const uuidRe = EXPENSE_ROW_UUID_RE;
   const arr = getExpenseRowsMem();
   if (arr.length === 0) return [];
   let needSave = false;
@@ -4631,7 +4634,17 @@ function renderExpenseView(options = {}) {
       if (inPicker(r.date)) return false;
       return true;
     });
-    saveExpenseRows([...kept, ...domRows]);
+    const merged = [...kept, ...domRows];
+    const nextIds = new Set(merged.map((r) => String(r?.id || "").trim()).filter(Boolean));
+    const removedServerIds = prev
+      .map((r) => String(r?.id || "").trim())
+      .filter((id) => EXPENSE_ROW_UUID_RE.test(id) && !nextIds.has(id));
+    saveExpenseRows(merged);
+    if (removedServerIds.length) {
+      void deleteAssetExpenseTransactionsFromSupabase(removedServerIds).catch((e) =>
+        console.warn("[asset-expense-tx]", e),
+      );
+    }
     window.dispatchEvent(new CustomEvent("asset-expense-transactions-saved"));
   }
 
@@ -4813,11 +4826,6 @@ function renderExpenseView(options = {}) {
         rows.forEach((data) => {
           tbody.appendChild(createExpenseRow(data, updateExpenseTotals, applyExpenseFilter));
         });
-        try {
-          if (typeof localStorage !== "undefined" && localStorage.getItem("debug_asset_expense") === "1") {
-            console.info("[asset-expense] 구간 서버 pull 후 tbody", { from, to, rowCount: rows.length, ok });
-          }
-        } catch (_) {}
         applyExpenseFilter();
       })();
     }, 400);
@@ -4863,11 +4871,6 @@ function renderExpenseView(options = {}) {
       tbody.appendChild(tr);
     });
   }
-  try {
-    if (typeof localStorage !== "undefined" && localStorage.getItem("debug_asset_expense") === "1") {
-      console.info("[asset-expense] 초기 렌더", { rowCount: initialRows.length, noPlaceholderTemplate: true });
-    }
-  } catch (_) {}
   applyExpenseFilter();
 
   tableWrap.appendChild(table);
@@ -6332,8 +6335,18 @@ export function render() {
     if (view !== "expense") {
       const table = contentWrap.querySelector(".asset-expense-table");
       if (table) {
+        const prevRows = loadExpenseRows();
         const rows = collectExpenseRowsFromDOM(table);
+        const nextIds = new Set(rows.map((r) => String(r?.id || "").trim()).filter(Boolean));
+        const removedServerIds = prevRows
+          .map((r) => String(r?.id || "").trim())
+          .filter((id) => EXPENSE_ROW_UUID_RE.test(id) && !nextIds.has(id));
         saveExpenseRows(rows);
+        if (removedServerIds.length) {
+          void deleteAssetExpenseTransactionsFromSupabase(removedServerIds).catch((e) =>
+            console.warn("[asset-expense-tx]", e),
+          );
+        }
       }
     }
     const prevPlan = contentWrap.querySelector(".asset-plan-view");

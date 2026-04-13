@@ -5,6 +5,7 @@
 
 import { supabase } from "../supabase.js";
 import { runAssetSerialized } from "./assetServerSyncSerial.js";
+import { lpSaveDebug } from "./lpSaveDebug.js";
 
 const TABLE = "asset_user_expense_transactions";
 export const EXPENSE_ROWS_STORAGE_KEY = "asset_expense_rows";
@@ -209,11 +210,18 @@ function mergeExpenseMemWithServerRange(fetchedRows, dateFrom, dateTo) {
 export async function pullAssetExpenseTransactionsFromSupabaseImpl() {
   migrateLegacyLocalStorageToMemOnce();
   const userId = await getSessionUserId();
-  if (!userId || !supabase) return false;
+  if (!userId || !supabase) {
+    lpSaveDebug("pull 스킵", { reason: !supabase ? "no_supabase" : "no_userId" });
+    return false;
+  }
 
   const hadMemBeforeFetch = _expenseRowsMem.length > 0;
   const res = await fetchAllExpenseTxFromDb(userId);
-  if (!res.ok) return false;
+  if (!res.ok) {
+    lpSaveDebug("pull fetch 실패");
+    return false;
+  }
+  lpSaveDebug("pull 결과", { serverRows: res.rows.length, hadMemBeforeFetch });
 
   if (res.rows.length > 0) {
     setExpenseRowsMem(res.rows);
@@ -253,19 +261,46 @@ export function pullAssetExpenseTransactionsFromSupabase() {
 
 export async function syncAssetExpenseTransactionsToSupabaseImpl() {
   const userId = await getSessionUserId();
-  if (!userId || !supabase) return;
+  if (!userId || !supabase) {
+    lpSaveDebug("sync 스킵", { reason: !supabase ? "no_supabase" : "no_userId" });
+    return;
+  }
 
   const rows = loadExpenseRowsRaw();
   const substantive = rows.filter((r) => r?.id && UUID_RE.test(String(r.id)) && expenseRowIsSubstantive(r));
   const wantIds = new Set(substantive.map((r) => r.id));
 
+  lpSaveDebug("sync 시작", {
+    memRows: rows.length,
+    substantive: substantive.length,
+    fullSnapshot: _expenseMemHasFullSnapshot,
+    sampleIds: substantive.slice(0, 3).map((r) => String(r.id).slice(0, 8)),
+  });
+  if (substantive.length === 0 && rows.length > 0) {
+    lpSaveDebug("실질행 0건 샘플(비실질 이유 확인)", {
+      samples: rows.slice(0, 5).map((r) => ({
+        id: String(r?.id || "").slice(0, 8),
+        ok: expenseRowIsSubstantive(r),
+        date: r?.date,
+        flowType: r?.flowType,
+        amount: r?.amount,
+      })),
+    });
+  }
+
   if (substantive.length > 0) {
     const payloads = substantive.map((r) => localRowToDbPayload(userId, r));
     const { error } = await supabase.from(TABLE).upsert(payloads, { onConflict: "id" });
-    if (error) console.warn("[asset-expense-tx] upsert", error.message);
+    if (error) {
+      console.warn("[asset-expense-tx] upsert", error.message);
+      lpSaveDebug("가계부 upsert 실패", { message: error.message, code: error.code });
+    } else {
+      lpSaveDebug("가계부 upsert 성공", { count: payloads.length });
+    }
   }
 
   if (!_expenseMemHasFullSnapshot) {
+    lpSaveDebug("전체 스냅샷 아님 → pull 후 조기 return", { substantivePushed: substantive.length });
     const refetch = await fetchAllExpenseTxFromDb(userId);
     if (refetch.ok) {
       setExpenseRowsMem(refetch.rows);
@@ -280,12 +315,18 @@ export async function syncAssetExpenseTransactionsToSupabaseImpl() {
   }
 
   const { data: remote, error: listErr } = await supabase.from(TABLE).select("id").eq("user_id", userId);
-  if (listErr || !remote) return;
+  if (listErr || !remote) {
+    lpSaveDebug("원격 id 목록 실패·스킵", { message: listErr?.message });
+    return;
+  }
 
-  for (const r of remote) {
-    if (!wantIds.has(r.id)) {
-      const { error: dErr } = await supabase.from(TABLE).delete().eq("id", r.id).eq("user_id", userId);
-      if (dErr) console.warn("[asset-expense-tx] delete", dErr.message);
+  /* 빈 로컬·비실질 행만 있을 때 wantIds 가 비면 고아 삭제로 서버 전량 삭제되는 것을 막음 (데이터 유실 방지) */
+  if (substantive.length > 0) {
+    for (const r of remote) {
+      if (!wantIds.has(r.id)) {
+        const { error: dErr } = await supabase.from(TABLE).delete().eq("id", r.id).eq("user_id", userId);
+        if (dErr) console.warn("[asset-expense-tx] delete", dErr.message);
+      }
     }
   }
 
@@ -303,6 +344,23 @@ export async function syncAssetExpenseTransactionsToSupabaseImpl() {
 
 export function syncAssetExpenseTransactionsToSupabase() {
   return runAssetSerialized(() => syncAssetExpenseTransactionsToSupabaseImpl());
+}
+
+async function deleteAssetExpenseTransactionsFromSupabaseImpl(ids) {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase || !Array.isArray(ids) || ids.length === 0) return;
+  const uniq = [
+    ...new Set(ids.map((id) => String(id || "").trim()).filter((id) => UUID_RE.test(id))),
+  ];
+  for (const id of uniq) {
+    const { error } = await supabase.from(TABLE).delete().eq("id", id).eq("user_id", userId);
+    if (error) console.warn("[asset-expense-tx] delete row", error.message);
+  }
+}
+
+/** UI에서 제거된 행 id — 서버에서 삭제(마지막 행 삭제 시 고아 삭제 가드와 함께 동작) */
+export function deleteAssetExpenseTransactionsFromSupabase(ids) {
+  return runAssetSerialized(() => deleteAssetExpenseTransactionsFromSupabaseImpl(ids));
 }
 
 export async function pushAllLocalAssetExpenseTransactionsIfServerEmpty() {
@@ -327,11 +385,18 @@ let _pushTimer = null;
 const PUSH_DEBOUNCE_MS = 900;
 
 export function scheduleAssetExpenseTransactionsSyncPush() {
-  if (!supabase) return;
+  if (!supabase) {
+    lpSaveDebug("scheduleAssetExpensePush 스킵: supabase 없음");
+    return;
+  }
   if (_pushTimer) clearTimeout(_pushTimer);
+  lpSaveDebug("가계부 동기화 예약", { debounceMs: PUSH_DEBOUNCE_MS });
   _pushTimer = setTimeout(() => {
     _pushTimer = null;
-    syncAssetExpenseTransactionsToSupabase().catch((e) => console.warn("[asset-expense-tx]", e));
+    syncAssetExpenseTransactionsToSupabase().catch((e) => {
+      console.warn("[asset-expense-tx]", e);
+      lpSaveDebug("sync 예외", { err: String(e?.message || e) });
+    });
   }, PUSH_DEBOUNCE_MS);
 }
 
@@ -341,7 +406,11 @@ export function attachAssetExpenseTransactionsSaveListener() {
   if (_listenerAttached) return;
   _listenerAttached = true;
   window.addEventListener("asset-expense-transactions-saved", (e) => {
-    if (e.detail?.fromServerMerge) return;
+    if (e.detail?.fromServerMerge) {
+      lpSaveDebug("이벤트 무시(fromServerMerge)");
+      return;
+    }
+    lpSaveDebug("이벤트: asset-expense-transactions-saved → 동기화 예약");
     scheduleAssetExpenseTransactionsSyncPush();
   });
 }
