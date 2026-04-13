@@ -10,6 +10,7 @@ import { pullAllTimeLedgerFromCloud } from "./timeLedgerCloudRefresh.js";
 import { timeLedgerEntryPayloadTouchesSessionPicker } from "./timeLedgerEntriesSupabase.js";
 import { pullAllAssetFromCloud } from "./assetCloudRefresh.js";
 import { pullAllDiaryFromCloud } from "./diaryCloudRefresh.js";
+import { logLpRender } from "./lpRenderDebugLog.js";
 
 /** App.js 의 TAB_IDS_REFRESH_ON_KPI_PULL 과 동일 — 이 탭일 때만 pull 후 화면 갱신 (time 은 전체 renderMain 대신 이벤트로 부분 갱신) */
 const REFRESH_MAIN_AFTER_CLOUD_PULL = new Set([
@@ -157,6 +158,7 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
 
     void (async () => {
       try {
+        logLpRender("realtime:debounced 틱 시작", { gen });
         const needTodo = await hydrateTodoSectionTasksFromCloud();
         const { anyChanged: kpiMapsChanged } = await pullAllKpiMapsFromCloud(getCurrentTabId);
         const hasTimeRealtime = timeBatch.touchedTables.size > 0;
@@ -187,8 +189,10 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
           !timeLedgerChanged &&
           !assetChanged &&
           !diaryChanged
-        )
+        ) {
+          logLpRender("realtime:pull 결과 변경 없음·renderMain 안 함", { gen });
           return;
+        }
         const tab = getCurrentTabId();
         if (timeLedgerChanged && tab === "time") {
           try {
@@ -220,8 +224,24 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
             diaryChanged,
           })
         ) {
+          logLpRender("realtime:현재 탭에선 renderMain 스킵(shouldRenderMainForRealtimePull)", {
+            tab,
+            needTodo,
+            kpiMapsChanged,
+            timeLedgerChanged,
+            assetChanged,
+            diaryChanged,
+          });
           return;
         }
+        logLpRender("realtime:debouncedRealtimeRefresh → renderMain", {
+          tab,
+          needTodo,
+          kpiMapsChanged,
+          timeLedgerChanged,
+          assetChanged,
+          diaryChanged,
+        });
         renderMain({ skipTodoSaveBeforeUnmount: true });
       } catch (e) {
         console.warn("[realtime] 병합·갱신", e?.message || e);

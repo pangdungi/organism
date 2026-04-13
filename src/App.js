@@ -53,6 +53,7 @@ import {
   snapshotKpiLocalStorageBrief,
 } from "./utils/kpiSyncDebug.js";
 import { initSupabaseRealtimeSync } from "./utils/supabaseRealtimeSync.js";
+import { logLpRender, logLpRenderStack } from "./utils/lpRenderDebugLog.js";
 
 /** 사용자가 입력 중인지 확인 (입력 중이면 화면 갱신 건너뜀) */
 function isUserTypingInApp() {
@@ -335,6 +336,11 @@ export function mountApp(container) {
     if (KPI_TAB_IDS.has(tabId)) {
       void pullKpiTabFromCloud(tabId).then(({ pullOk, localChanged }) => {
         if (pullOk && localChanged && !isUserTypingInApp()) {
+          logLpRender("App:setActiveTab·KPI pull 후 재렌더", {
+            tabId,
+            pullOk,
+            localChanged,
+          });
           renderMain(main, {
             skipTodoSaveBeforeUnmount: true,
             force: true,
@@ -486,6 +492,7 @@ export function mountApp(container) {
     const { mainEl, opts } = _pendingDeferredRender;
     if (isFocusBlockingRender(mainEl)) return;
     clearDeferredRenderMain();
+    logLpRender("App:deferredRender·포커스 해제 후 실행", { opts });
     renderMain(mainEl, { ...opts, force: false });
   }
 
@@ -494,6 +501,7 @@ export function mountApp(container) {
   }
 
   function scheduleDeferredRenderMain(mainEl, opts) {
+    logLpRender("App:deferredRender·예약(입력 중이라 나중에)", { opts });
     _pendingDeferredRender = { mainEl, opts };
     if (_deferredRenderListenersAttached) return;
     _deferredRenderListenersAttached = true;
@@ -509,6 +517,7 @@ export function mountApp(container) {
    * - force: true일 때만 입력 중이어도 탭을 다시 그림(사이드/하단 메뉴로 화면 전환 시).
    */
   function renderMain(mainEl, opts = {}) {
+    logLpRenderStack("renderMain 진입", { tab: currentTabId, opts });
     if (!opts.force) {
       if (isFocusBlockingRender(mainEl)) {
         scheduleDeferredRenderMain(mainEl, opts);
@@ -613,6 +622,16 @@ export function mountApp(container) {
               TAB_IDS_REFRESH_ON_KPI_PULL.has(currentTabId) &&
               (kpiChanged || assetChanged || diaryChanged);
             if ((needMainFromTodo || needMainFromOther) && !isUserTypingInApp()) {
+              logLpRender("App:visibilitychange·탭 포커스 복귀 후 pull", {
+                currentTabId,
+                needTodoRefresh,
+                kpiChanged,
+                timeChanged,
+                assetChanged,
+                diaryChanged,
+                needMainFromTodo,
+                needMainFromOther,
+              });
               renderMain(main, { skipTodoSaveBeforeUnmount: true });
             }
           } catch (e) {
@@ -671,6 +690,14 @@ export function mountApp(container) {
             );
           } catch (_) {}
         } else {
+          logLpRender("App:초기 hydrate·Promise.all 완료 후 재렌더", {
+            needTodoRefresh,
+            budgetMerged,
+            healthKpiPulled,
+            happinessKpiPulled,
+            dreamKpiPulled,
+            sideincomeKpiPulled,
+          });
           renderMain(main);
         }
       }

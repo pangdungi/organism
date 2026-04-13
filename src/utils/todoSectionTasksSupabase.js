@@ -13,6 +13,7 @@ import {
   writeCustomSectionTasksObject,
 } from "./todoSectionTasksModel.js";
 import { runTodoSectionTasksSerialized } from "./todoSectionTasksServerSyncSerial.js";
+import { logLpRender } from "./lpRenderDebugLog.js";
 
 const TABLE = "calendar_section_tasks";
 
@@ -105,11 +106,18 @@ async function syncTodoSectionTasksToSupabaseImpl() {
     .order("sort_order", { ascending: true });
   let replacedFromServer = false;
   if (!canErr && Array.isArray(canonicalRows)) {
+    /* pull과 동일: 덮어쓴 뒤 실제로 로컬 문자열이 바뀐 경우에만 true — 무조건 true면 매 sync마다 __lpRenderMain → 모바일에서 입력·저장이 잦아 무한에 가깝게 깜빡임 */
+    const beforeSnap = snapshotSectionTasksForPullCompare();
     replaceSectionTasksFromServerRows(canonicalRows);
-    replacedFromServer = true;
+    const afterSnap = snapshotSectionTasksForPullCompare();
+    replacedFromServer = beforeSnap !== afterSnap;
   }
 
   if (ensured.dirty || replacedFromServer) {
+    logLpRender("todo:syncTodoSectionTasksToSupabase 완료 → __lpRenderMain", {
+      ensuredDirty: ensured.dirty,
+      replacedFromServer,
+    });
     try {
       window.__lpRenderMain?.();
     } catch (_) {}

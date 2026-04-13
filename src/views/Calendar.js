@@ -50,6 +50,7 @@ import {
   readSectionTasksObject,
   readCustomSectionTasksObject,
 } from "../utils/todoSectionTasksModel.js";
+import { logLpRender } from "../utils/lpRenderDebugLog.js";
 const KPI_SECTION_IDS = ["braindump", "dream", "sideincome", "health", "happy"];
 
 /** 할일/일정 상단 1~4번 탭 — 앱 리렌더·Supabase 동기 후 __lpRenderMain 으로 다시 그려질 때 항상 1번으로 돌아가는 문제 방지 */
@@ -5946,6 +5947,9 @@ export function renderMobileScheduleCalendar() {
         if (hydrateGen !== _calendarTodoHydrateGeneration) return;
         if (!el.isConnected) return;
         if (needRefresh) {
+          logLpRender("Calendar:renderMobileScheduleCalendar·hydrate 후 __lpRenderMain", {
+            needRefresh,
+          });
           try {
             window.__lpRenderMain?.();
           } catch (_) {}
@@ -6578,6 +6582,9 @@ export function render() {
         if (hydrateGen !== _calendarTodoHydrateGeneration) return;
         if (!el.isConnected) return;
         if (needRefresh) {
+          logLpRender("Calendar:render(할일/일정)·hydrate 후 __lpRenderMain", {
+            needRefresh,
+          });
           try {
             window.__lpRenderMain?.();
           } catch (_) {}

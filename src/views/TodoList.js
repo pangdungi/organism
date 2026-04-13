@@ -42,6 +42,7 @@ import {
   deleteCompletedCalendarSectionTasksFromSupabase,
   syncTodoSectionTasksToSupabase,
 } from "../utils/todoSectionTasksSupabase.js";
+import { logLpRender } from "../utils/lpRenderDebugLog.js";
 import {
   readSectionTasksObject,
   readCustomSectionTasksObject,
@@ -3161,6 +3162,7 @@ export function render(options = {}) {
     } catch (_) {}
     try {
       /* DOM은 아직 완료 카드가 남아 있음; save 생략하지 않으면 renderMain이 그 DOM으로 localStorage를 다시 덮어씀 */
+      logLpRender("TodoList:완료 일괄 제거 후 __lpRenderMain", {});
       window.__lpRenderMain?.({ skipTodoSaveBeforeUnmount: true });
     } catch (_) {}
   }
