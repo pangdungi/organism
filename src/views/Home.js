@@ -2,10 +2,7 @@
  * Home 페이지 - 투두리스트 + 이벤트·리마인더 레이아웃
  */
 
-import {
-  getKpiTodosAsTasks,
-  syncKpiTodoCompleted,
-} from "../utils/kpiTodoSync.js";
+import { syncKpiTodoCompleted } from "../utils/kpiTodoSync.js";
 import { getCustomSections } from "../utils/todoSettings.js";
 import {
   readSectionTasksObject,
@@ -34,21 +31,6 @@ function getEventsForCurrentMonth() {
   const out = [];
 
   const inMonth = (dateStr) => (dateStr || "").slice(0, 7) === yearMonth;
-
-  getKpiTodosAsTasks()
-    .filter((t) => inMonth(t.dueDate) || inMonth(t.startDate))
-    .forEach((t) => {
-      out.push({
-        name: (t.name || "").trim(),
-        dueDate: (t.dueDate || "").slice(0, 10),
-        startDate: (t.startDate || "").slice(0, 10),
-        startTime: (t.startTime || "").trim(),
-        endTime: (t.endTime || "").trim(),
-        sectionLabel: t.sectionLabel || "",
-        done: !!t.done,
-        itemType: t.itemType || "todo",
-      });
-    });
 
   try {
     const obj = readSectionTasksObject();
@@ -249,7 +231,7 @@ function getTodayDateKey() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/** 마감일이 오늘인 모든 할일 수집 (섹션 + 커스텀 + KPI) */
+/** 마감일이 오늘인 모든 할일 수집 (고정·커스텀 섹션만 — KPI 할일 제외) */
 function getTasksDueToday() {
   const today = getTodayDateKey();
   const out = [];
@@ -303,28 +285,6 @@ function getTasksDueToday() {
       });
     });
   } catch (_) {}
-  getKpiTodosAsTasks().forEach((t) => {
-    const due = (t.dueDate || "").slice(0, 10);
-    if (due !== today) return;
-    out.push({
-      sectionId: t.sectionId || "",
-      taskId: t.kpiTodoId || "",
-      name: (t.name || "").trim() || "(과제명 없음)",
-      done: !!t.done,
-      eisenhower: (t.eisenhower || "").trim(),
-      isCustom: false,
-      isKpiTodo: true,
-      kpiTodoId: t.kpiTodoId,
-      storageKey: t.storageKey,
-      dueDate: due,
-      startDate: (t.startDate || "").slice(0, 10),
-      reminderDate: (t.reminderDate || "").slice(0, 10),
-      reminderTime: (t.reminderTime || "").trim(),
-      classification: (t.classification || "").trim(),
-      sectionLabel: t.sectionLabel || SECTION_LABELS[t.sectionId] || "",
-      kpiId: t.kpiId,
-    });
-  });
   out.sort((a, b) => (a.name || "").localeCompare(b.name || "", "ko"));
   return out;
 }

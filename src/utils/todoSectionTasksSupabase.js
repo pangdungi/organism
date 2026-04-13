@@ -5,14 +5,19 @@
 import { supabase } from "../supabase.js";
 import {
   flattenCalendarTasksForSync,
-  mergeCalendarSectionTasksFromServer,
   mergeAdditiveServerRowsIntoLocal,
   ensureCalendarSectionTaskIds,
   snapshotSectionTasksForPullCompare,
+  replaceSectionTasksFromServerRows,
+  writeSectionTasksObject,
+  writeCustomSectionTasksObject,
 } from "./todoSectionTasksModel.js";
 import { runTodoSectionTasksSerialized } from "./todoSectionTasksServerSyncSerial.js";
 
 const TABLE = "calendar_section_tasks";
+
+const SECTION_TASK_ROW_SELECT =
+  "id, section_key, is_custom_section, sort_order, name, start_date, due_date, start_time, end_time, reminder_date, reminder_time, eisenhower, done, item_type, updated_at";
 
 async function getSessionUserId() {
   if (!supabase) return null;
@@ -51,9 +56,7 @@ async function syncTodoSectionTasksToSupabaseImpl() {
   /* 다른 기기에서 추가된 행 id를 로컬에 먼저 합친 뒤 wantIds를 계산 — 고아 삭제가 타 기기 신규 행을 지우지 않게 함 */
   const { data: serverSnapshot, error: snapErr } = await supabase
     .from(TABLE)
-    .select(
-      "id, section_key, is_custom_section, sort_order, name, start_date, due_date, start_time, end_time, reminder_date, reminder_time, eisenhower, done, item_type, updated_at",
-    )
+    .select(SECTION_TASK_ROW_SELECT)
     .eq("user_id", userId)
     .order("section_key", { ascending: true })
     .order("is_custom_section", { ascending: true })
@@ -67,7 +70,19 @@ async function syncTodoSectionTasksToSupabaseImpl() {
 
   if (payloads.length > 0) {
     const { error } = await supabase.from(TABLE).upsert(payloads, { onConflict: "id" });
-    if (error) console.warn("[calendar-section-tasks] upsert", error.message);
+    if (error) {
+      console.warn("[calendar-section-tasks] upsert", error.message);
+      return;
+    }
+  }
+
+  /*
+   * 스냅샷 조회 실패 시 mergeAdditive가 생략되고 payloads가 비면 wantIds가 비어,
+   * 아래 고아 삭제에서 서버 행이 전부 지워질 수 있음(빈 로컬로 원격 삭제 금지).
+   * upsert만 반영하고 다음 성공 스냅샷까지 고아 삭제는 하지 않음.
+   */
+  if (snapErr) {
+    return;
   }
 
   const { data: remote, error: listErr } = await supabase.from(TABLE).select("id").eq("user_id", userId);
@@ -81,7 +96,20 @@ async function syncTodoSectionTasksToSupabaseImpl() {
     }
   }
 
-  if (ensured.dirty) {
+  const { data: canonicalRows, error: canErr } = await supabase
+    .from(TABLE)
+    .select(SECTION_TASK_ROW_SELECT)
+    .eq("user_id", userId)
+    .order("section_key", { ascending: true })
+    .order("is_custom_section", { ascending: true })
+    .order("sort_order", { ascending: true });
+  let replacedFromServer = false;
+  if (!canErr && Array.isArray(canonicalRows)) {
+    replaceSectionTasksFromServerRows(canonicalRows);
+    replacedFromServer = true;
+  }
+
+  if (ensured.dirty || replacedFromServer) {
     try {
       window.__lpRenderMain?.();
     } catch (_) {}
@@ -98,9 +126,7 @@ async function pullTodoSectionTasksFromSupabaseImpl() {
 
   const { data, error } = await supabase
     .from(TABLE)
-    .select(
-      "id, section_key, is_custom_section, sort_order, name, start_date, due_date, start_time, end_time, reminder_date, reminder_time, eisenhower, done, item_type, updated_at",
-    )
+    .select(SECTION_TASK_ROW_SELECT)
     .eq("user_id", userId)
     .order("section_key", { ascending: true })
     .order("is_custom_section", { ascending: true })
@@ -113,9 +139,9 @@ async function pullTodoSectionTasksFromSupabaseImpl() {
 
   const rows = Array.isArray(data) ? data : [];
 
-  /* 병합 전후가 같으면 false — 무한 __lpRenderMain 루프 방지(매 pull마다 true였음) */
+  /* 서버 스냅샷으로만 덮어씀 — 병합 전후가 같으면 false */
   const beforeSnap = snapshotSectionTasksForPullCompare();
-  mergeCalendarSectionTasksFromServer(rows);
+  replaceSectionTasksFromServerRows(rows);
   const afterSnap = snapshotSectionTasksForPullCompare();
   return beforeSnap !== afterSnap;
 }
@@ -141,7 +167,20 @@ async function pushAllLocalTodoSectionTasksIfServerEmptyImpl() {
   if (payloads.length === 0) return;
 
   const { error: upErr } = await supabase.from(TABLE).upsert(payloads, { onConflict: "id" });
-  if (upErr) console.warn("[calendar-section-tasks] push empty server", upErr.message);
+  if (upErr) {
+    console.warn("[calendar-section-tasks] push empty server", upErr.message);
+    return;
+  }
+  const { data: rows, error: pullErr } = await supabase
+    .from(TABLE)
+    .select(SECTION_TASK_ROW_SELECT)
+    .eq("user_id", userId)
+    .order("section_key", { ascending: true })
+    .order("is_custom_section", { ascending: true })
+    .order("sort_order", { ascending: true });
+  if (!pullErr && Array.isArray(rows)) {
+    replaceSectionTasksFromServerRows(rows);
+  }
 }
 
 export async function pushAllLocalTodoSectionTasksIfServerEmpty() {

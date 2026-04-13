@@ -35482,3 +35482,129 @@ body.kpi-resizing {
     background: var(--ui-surface-alt);
   }
 }
+
+/* ----- 오프라인 전면 안내 (신규 · 앱 전역) ----- */
+#lp-offline-gate.lp-offline-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  box-sizing: border-box;
+  font-family: "Noto Sans KR", system-ui, sans-serif;
+  background: #e8e8ea;
+  color: #1a1a1a;
+}
+
+#lp-offline-gate.lp-offline-gate[hidden] {
+  display: none !important;
+}
+
+.lp-offline-gate__banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  background: #b71c1c;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.lp-offline-gate__banner-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 0.2rem;
+  background: rgba(255, 255, 255, 0.25);
+  font-weight: 800;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.lp-offline-gate__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem 1rem 2rem;
+  gap: 1.25rem;
+  min-height: 0;
+}
+
+.lp-offline-gate__art {
+  flex: 0 0 auto;
+}
+
+.lp-offline-gate__svg {
+  display: block;
+  width: min(200px, 70vw);
+  height: auto;
+}
+
+.lp-offline-gate__card {
+  width: 100%;
+  max-width: 22rem;
+  padding: 1.1rem 1rem 1rem;
+  background: #fff;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+}
+
+.lp-offline-gate__card-text {
+  margin: 0 0 1rem;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: #333;
+}
+
+.lp-offline-gate__card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.lp-offline-gate__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.lp-offline-gate__btn--primary {
+  background: #e60023;
+  color: #fff;
+}
+
+.lp-offline-gate__btn--primary:active {
+  opacity: 0.92;
+}
+
+@media (max-width: 48rem) {
+  .lp-offline-gate.lp-offline-gate--pwa .lp-offline-gate__banner {
+    padding-top: max(0.65rem, env(safe-area-inset-top, 0px));
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  }
+
+  .lp-offline-gate.lp-offline-gate--pwa .lp-offline-gate__body {
+    padding-bottom: max(2rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  .lp-offline-gate.lp-offline-gate--pwa .lp-offline-gate__svg {
+    width: min(220px, 78vw);
+  }
+}

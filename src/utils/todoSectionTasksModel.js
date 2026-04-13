@@ -296,6 +296,51 @@ function rebuildMergedMapsFromFlatMap(map, fixed, custom) {
 }
 
 /**
+ * 서버 SELECT 결과만으로 섹션 할 일 메모리를 통째로 덮어씀(서버 = 진실, 화면은 서버 스냅샷 반영).
+ * pull 직후·sync(upsert+고아삭제) 성공 후에 호출한다.
+ */
+export function replaceSectionTasksFromServerRows(rows) {
+  migrateLegacyLocalStorageOnce();
+  const fixed = {};
+  CALENDAR_FIXED_SECTION_IDS.forEach((k) => {
+    fixed[k] = [];
+  });
+  const custom = {};
+
+  const sorted = [...(Array.isArray(rows) ? rows : [])].sort((a, b) => {
+    const sk = String(a.section_key || "").localeCompare(String(b.section_key || ""));
+    if (sk !== 0) return sk;
+    const ic = (a.is_custom_section ? 1 : 0) - (b.is_custom_section ? 1 : 0);
+    if (ic !== 0) return ic;
+    return (a.sort_order || 0) - (b.sort_order || 0);
+  });
+
+  const serverIds = new Set();
+  for (const row of sorted) {
+    const id = String(row.id || "").trim();
+    if (!id) continue;
+    serverIds.add(id);
+    const task = dbRowToLocalTask(row);
+    const key = String(row.section_key || "").trim();
+    const isCustom = !!row.is_custom_section;
+    if (!key) continue;
+    if (isCustom) {
+      if (!custom[key]) custom[key] = [];
+      custom[key].push(task);
+    } else {
+      if (!fixed[key]) fixed[key] = [];
+      fixed[key].push(task);
+    }
+  }
+  CALENDAR_FIXED_SECTION_IDS.forEach((k) => {
+    if (!fixed[k]) fixed[k] = [];
+  });
+  pruneTodoDeletionTombstones(serverIds);
+  writeSectionTasksObject(fixed);
+  writeCustomSectionTasksObject(custom);
+}
+
+/**
  * 서버 스냅샷을 로컬과 병합 (통째 덮어쓰기 아님).
  * - 로컬만 있는 행(아직 push 안 됨) 유지
  * - 동일 id: localModifiedAt vs 서버 updated_at last-write-wins

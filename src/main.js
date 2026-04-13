@@ -10,6 +10,7 @@ import {
   purgeTimeLedgerLocalOnSignOut,
 } from "./auth.js";
 import { mountApp } from "./App.js";
+import { initOfflineAppGate } from "./utils/offlineAppGate.js";
 import { supabase } from "./supabase.js";
 import { applyAppFont } from "./views/Idea.js";
 import { pullUserPrefsFromSupabase } from "./utils/userHourlySync.js";
@@ -77,6 +78,8 @@ function setAuthGatePanel(mode) {
 function init() {
   const app = document.getElementById("app");
   if (app) app.style.display = "block";
+
+  initOfflineAppGate();
 
   applyAppFont();
   applyTimeCategoryColors();

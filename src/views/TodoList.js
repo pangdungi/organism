@@ -3099,8 +3099,8 @@ export function render(options = {}) {
     eisenhowerSidebarFirst = false,
     /** 우선순위 정렬·날짜 정하기 등: 완료된 할일은 목록에 넣지 않음 */
     hideDoneTasks = false,
-    /** true: KPI 화면에서 동기된 할일을 이 목록에 합치지 않음(할일/일정 탭 시도용 — 끄려면 false) */
-    omitKpiTodos = false,
+    /** true: KPI에서 만든 할일을 이 목록에 넣지 않음(기본). KPI 할일은 KPI 화면에서만 다룸 */
+    omitKpiTodos = true,
   } = options;
   const hasExplicitInitialTab = Object.prototype.hasOwnProperty.call(options, "initialActiveTabIndex");
   /** 사이드바 등 hideToolbar 임베드는 탭 세션과 분리(메인 할일 탭이 꿈인데 캘린더 옆바가 브레인 덤프로 열리는 혼선 방지) */
@@ -3617,10 +3617,9 @@ export function renderTodoListForEisenhowerSidebar(options = {}) {
   });
   mainList.classList.add("todo-list-eisenhower-sidebar");
 
-  const kpiTasks = getKpiTodosAsTasks();
   const sectionTasks = FIXED_SECTION_IDS_FOR_STORAGE.flatMap((sid) => loadSectionTasks(sid));
   const customTasks = getCustomSections().flatMap((s) => loadCustomSectionTasks(s.id));
-  const allTasks = [...kpiTasks, ...sectionTasks, ...customTasks];
+  const allTasks = [...sectionTasks, ...customTasks];
   const overdueTasks = allTasks
     .filter((t) => isOverdue(t.dueDate) && !t.done)
     .map((t) => ({ ...t, sourceSectionId: t.sectionId, sectionId: "overdue" }));
@@ -3642,10 +3641,9 @@ export function renderTodoListForEisenhowerSidebar(options = {}) {
 /** 날짜 정하기 사이드바용: 기한 초과 섹션만 반환 (할일 목록 60% / 기한 초과 40% 분할 시 아래 40%에 넣음) */
 export function renderOverdueSection(options = {}) {
   const { enableDragToCalendar = true } = options;
-  const kpiTasks = getKpiTodosAsTasks();
   const sectionTasks = FIXED_SECTION_IDS_FOR_STORAGE.flatMap((sid) => loadSectionTasks(sid));
   const customTasks = getCustomSections().flatMap((s) => loadCustomSectionTasks(s.id));
-  const allTasks = [...kpiTasks, ...sectionTasks, ...customTasks];
+  const allTasks = [...sectionTasks, ...customTasks];
   const overdueTasks = allTasks
     .filter((t) => isOverdue(t.dueDate) && !t.done)
     .map((t) => ({ ...t, sourceSectionId: t.sectionId, sectionId: "overdue" }));

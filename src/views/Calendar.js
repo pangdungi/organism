@@ -4878,7 +4878,6 @@ function renderTodoView(tabsElement) {
   const todoListEl = renderTodoList({
     hideHeader: true,
     settingsSlot: topRow,
-    omitKpiTodos: true,
   });
   todoContent.appendChild(todoListEl);
   todoMain.appendChild(todoContent);
