@@ -6,7 +6,12 @@
 import { supabase } from "../supabase.js";
 import { kpiSyncDebugEnabled, kpiSyncDebugLog, kpiSyncPayloadSummary, kpiSyncTrace } from "./kpiSyncDebug.js";
 import { logKpiServerSnapshot } from "./kpiServerAuditLog.js";
-import { bumpEntityArrayLocalModified, serverUpdatedAtFromRow } from "./kpiMapLwwMerge.js";
+import {
+  bumpEntityArrayLocalModified,
+  parseIsoMs,
+  pickNewerRowServerWinsTie,
+  serverUpdatedAtFromRow,
+} from "./kpiMapLwwMerge.js";
 
 export const SIDEINCOME_KPI_MAP_STORAGE_KEY = "kpi-sideincome-paths";
 
@@ -367,7 +372,7 @@ function shouldInsertMetaRow(p) {
   );
 }
 
-/** 서버 스냅샷 + 로컬 병합 (행복·꿈 KPI와 동일 패턴, 경로= categories 키) */
+/** 동기화 직전 병합: 동일 id는 타임스탬프·동률은 서버, 메타는 metaServerUpdatedAt 우선 */
 function mergeSideincomeKpiPayloadsForSync(localP, serverP) {
   const L = normalizePayload(localP);
   const S = normalizePayload(serverP);
@@ -398,7 +403,9 @@ function mergeSideincomeKpiPayloadsForSync(localP, serverP) {
     mergedPathOrder.push(id);
     seenPath.add(id);
   }
-  const mergedPaths = mergedPathOrder.map((id) => localPathById.get(id) || serverPathById.get(id)).filter(Boolean);
+  const mergedPaths = mergedPathOrder
+    .map((id) => pickNewerRowServerWinsTie(localPathById.get(id), serverPathById.get(id)))
+    .filter(Boolean);
   const mergedPathIds = new Set(mergedPaths.map((p) => String(p.id)));
 
   const localKpiById = new Map(L.kpis.map((k) => [String(k.id), k]));
@@ -428,7 +435,9 @@ function mergeSideincomeKpiPayloadsForSync(localP, serverP) {
     mergedKpiOrder.push(id);
     seenKpi.add(id);
   }
-  const mergedKpis = mergedKpiOrder.map((id) => localKpiById.get(id) || serverKpiById.get(id)).filter(Boolean);
+  const mergedKpis = mergedKpiOrder
+    .map((id) => pickNewerRowServerWinsTie(localKpiById.get(id), serverKpiById.get(id)))
+    .filter(Boolean);
   const mergedKpiIds = new Set(mergedKpis.map((k) => String(k.id)));
 
   function mergeList(localArr, serverArr, drSet, idGetter, keepRow) {
@@ -453,7 +462,9 @@ function mergeSideincomeKpiPayloadsForSync(localP, serverP) {
       order.push(id);
       seen.add(id);
     }
-    return order.map((id) => localById.get(id) || serverById.get(id)).filter(Boolean);
+    return order
+      .map((id) => pickNewerRowServerWinsTie(localById.get(id), serverById.get(id)))
+      .filter(Boolean);
   }
 
   const mergedPathLogs = mergeList(
@@ -501,6 +512,13 @@ function mergeSideincomeKpiPayloadsForSync(localP, serverP) {
     },
   );
 
+  const sMetaMs = parseIsoMs(S.metaServerUpdatedAt);
+  const lMetaMs =
+    typeof L.localMetaModifiedAt === "number" && Number.isFinite(L.localMetaModifiedAt)
+      ? L.localMetaModifiedAt
+      : 0;
+  const serverMetaNewerOrEqual = sMetaMs >= lMetaMs;
+
   return normalizePayload({
     paths: mergedPaths,
     pathLogs: mergedPathLogs,
@@ -508,8 +526,8 @@ function mergeSideincomeKpiPayloadsForSync(localP, serverP) {
     kpiLogs: mergedLogs,
     kpiTodos: mergedTodos,
     kpiDailyRepeatTodos: mergedDaily,
-    kpiOrder: L.kpiOrder,
-    kpiTaskSync: L.kpiTaskSync,
+    kpiOrder: serverMetaNewerOrEqual ? S.kpiOrder : L.kpiOrder,
+    kpiTaskSync: serverMetaNewerOrEqual ? S.kpiTaskSync : L.kpiTaskSync,
     deletedRefs: dr,
   });
 }

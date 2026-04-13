@@ -3215,7 +3215,7 @@ body {
     opacity: 0.92;
   }
 
-  /* 모바일: 근무기록 트래커 — 표는 내용·열 최소값 기준(넘치면 가로 스크롤) */
+  /* 모바일: 근무표(목록) — 표는 내용·열 최소값 기준(넘치면 가로 스크롤) */
   .work-schedule-content-wrap .work-schedule-table-wrap {
     overflow-x: auto;
     overflow-y: visible;
@@ -3685,7 +3685,7 @@ body {
     line-height: 1;
     opacity: 0.85;
   }
-  /* 모바일 아카이브: 근무기록 트래커와 동일 — 한글 라벨 + 캘린더 아이콘, 투명 date input */
+  /* 모바일 아카이브: 근무표(목록) 날짜 필터와 동일 — 한글 라벨 + 캘린더 아이콘, 투명 date input */
   .archive-view.archive-view--mobile .archive-date-nav-cluster .time-filter-date-field {
     position: relative;
     justify-content: flex-start;
@@ -4558,6 +4558,56 @@ body {
     box-sizing: border-box;
   }
 
+  /* 모바일 근무표 월별: 7열 너비를 내용 길이에 따라 바꾸지 않음(grid minmax(0,1fr) + 셀 overflow) */
+  .calendar-view--mobile-workschedule .work-schedule-monthly-weekdays,
+  .calendar-view--mobile-workschedule .work-schedule-monthly-week {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+  .calendar-view--mobile-workschedule .work-schedule-monthly-weekday,
+  .calendar-view--mobile-workschedule .work-schedule-monthly-day {
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .calendar-view--mobile-workschedule .work-schedule-monthly-day-entries {
+    width: 100%;
+    max-width: 100%;
+    align-items: stretch;
+    box-sizing: border-box;
+  }
+  .calendar-view--mobile-workschedule .work-schedule-monthly-entry,
+  .calendar-view--mobile-workschedule .work-schedule-monthly-entry--pills {
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .calendar-view--mobile-workschedule .work-schedule-monthly-type-pill {
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.6rem;
+    padding: 0.12rem 0.28rem;
+    line-height: 1.25;
+  }
+  .calendar-view--mobile-workschedule .work-schedule-monthly-hours {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.6rem;
+  }
+
+  /* 모바일 월별: 행·pill 왼쪽 강조선 제거(너비 확보) */
+  .calendar-view--mobile-workschedule .work-schedule-monthly-entry {
+    border-left: none;
+    padding-left: 0;
+    gap: 0.25rem;
+  }
+  .calendar-view--mobile-workschedule .work-schedule-monthly-type-pill.is-default {
+    border-left: none;
+  }
+
   /* 모바일: 날짜 셀 클릭 시 확대 보기 오버레이 + 넓은 카드 */
   .calendar-day-expand-overlay {
     position: fixed;
@@ -4724,7 +4774,7 @@ body {
   .calendar-1week-view .calendar-monthly-week {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0;
   }
   .calendar-1week-view .calendar-monthly-day {
     width: 100%;
@@ -5130,7 +5180,7 @@ body {
     box-sizing: border-box;
   }
 
-  /* 모바일 근무기록 트래커: 행 추가 FAB — 할일·시간가계부와 동일 위치·색 */
+  /* 모바일 근무표(목록): 행 추가 FAB — 할일·시간가계부와 동일 위치·색 */
   .calendar-view--mobile-workschedule .work-schedule-mobile-fab-wrap {
     position: fixed;
     bottom: calc(6rem + env(safe-area-inset-bottom, 0px));

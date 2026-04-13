@@ -6,7 +6,12 @@
 import { supabase } from "../supabase.js";
 import { kpiSyncDebugEnabled, kpiSyncDebugLog, kpiSyncPayloadSummary, kpiSyncTrace } from "./kpiSyncDebug.js";
 import { logKpiServerSnapshot } from "./kpiServerAuditLog.js";
-import { bumpEntityArrayLocalModified, serverUpdatedAtFromRow } from "./kpiMapLwwMerge.js";
+import {
+  bumpEntityArrayLocalModified,
+  parseIsoMs,
+  pickNewerRowServerWinsTie,
+  serverUpdatedAtFromRow,
+} from "./kpiMapLwwMerge.js";
 
 export const DREAM_KPI_MAP_STORAGE_KEY = "kpi-dream-map";
 
@@ -223,8 +228,9 @@ function rowToDaily(r) {
 }
 
 /**
- * 동기화 직전: 방금 저장한 로컬 + 서버 스냅샷을 합친다.
- * 로컬이 메타(goals 등)·삭제 목록을 우선하고, 서버에만 있는 꿈/KPI/로그는 합친다.
+ * 동기화 직전: 서버 fetch 성공 시 기준으로 병합.
+ * 동일 id는 localModifiedAt vs serverUpdatedAt 비교, 동률은 서버 행.
+ * 메타(goals·kpiOrder 등)는 metaServerUpdatedAt vs localMetaModifiedAt으로 서버 우선(동률 포함).
  */
 function mergeDreamKpiPayloadsForSync(localP, serverP) {
   const L = normalizePayload(localP);
@@ -256,7 +262,9 @@ function mergeDreamKpiPayloadsForSync(localP, serverP) {
     seenDream.add(id);
   }
   const mergedDreams = mergedDreamIdsOrder
-    .map((id) => localDreamById.get(id) || serverDreamById.get(id))
+    .map((id) =>
+      pickNewerRowServerWinsTie(localDreamById.get(id), serverDreamById.get(id)),
+    )
     .filter(Boolean);
   const mergedDreamIds = new Set(mergedDreams.map((d) => String(d.id)));
 
@@ -288,7 +296,7 @@ function mergeDreamKpiPayloadsForSync(localP, serverP) {
     seenKpi.add(id);
   }
   const mergedKpis = mergedKpiOrder
-    .map((id) => localKpiById.get(id) || serverKpiById.get(id))
+    .map((id) => pickNewerRowServerWinsTie(localKpiById.get(id), serverKpiById.get(id)))
     .filter(Boolean);
   const mergedKpiIds = new Set(mergedKpis.map((k) => String(k.id)));
 
@@ -314,7 +322,9 @@ function mergeDreamKpiPayloadsForSync(localP, serverP) {
       order.push(id);
       seen.add(id);
     }
-    return order.map((id) => localById.get(id) || serverById.get(id)).filter(Boolean);
+    return order
+      .map((id) => pickNewerRowServerWinsTie(localById.get(id), serverById.get(id)))
+      .filter(Boolean);
   }
 
   const mergedLogs = mergeList(
@@ -351,17 +361,24 @@ function mergeDreamKpiPayloadsForSync(localP, serverP) {
     },
   );
 
+  const sMetaMs = parseIsoMs(S.metaServerUpdatedAt);
+  const lMetaMs =
+    typeof L.localMetaModifiedAt === "number" && Number.isFinite(L.localMetaModifiedAt)
+      ? L.localMetaModifiedAt
+      : 0;
+  const serverMetaNewerOrEqual = sMetaMs >= lMetaMs;
+
   return normalizePayload({
     dreams: mergedDreams,
     kpis: mergedKpis,
     kpiLogs: mergedLogs,
     kpiTodos: mergedTodos,
     kpiDailyRepeatTodos: mergedDaily,
-    kpiOrder: L.kpiOrder,
-    kpiTaskSync: L.kpiTaskSync,
-    goals: L.goals,
-    tasks: L.tasks,
-    desiredLife: L.desiredLife,
+    kpiOrder: serverMetaNewerOrEqual ? S.kpiOrder : L.kpiOrder,
+    kpiTaskSync: serverMetaNewerOrEqual ? S.kpiTaskSync : L.kpiTaskSync,
+    goals: serverMetaNewerOrEqual ? S.goals : L.goals,
+    tasks: serverMetaNewerOrEqual ? S.tasks : L.tasks,
+    desiredLife: serverMetaNewerOrEqual ? S.desiredLife : L.desiredLife,
     deletedRefs: dr,
   });
 }

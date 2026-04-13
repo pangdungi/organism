@@ -1,5 +1,6 @@
 /**
- * 근무표 ↔ Supabase (settings / types / entries) 동기화
+ * 근무표 ↔ Supabase (settings / types / entries)
+ * pull 시 메모리는 서버 스냅샷만 반영(로컬·서버 병합 없음). 조회 실패 시 해당 구역은 기존 메모리 유지.
  */
 
 import { supabase } from "../supabase.js";
@@ -38,13 +39,6 @@ const UUID_RE =
 
 function isUuid(s) {
   return typeof s === "string" && UUID_RE.test(s.trim());
-}
-
-function rowKey(r) {
-  const w = String(r.workDate || "").trim();
-  const s = String(r.startTime || "").trim();
-  const e = String(r.endTime || "").trim();
-  return `${w}|${s}|${e}`;
 }
 
 function parseLocalTypes() {
@@ -91,39 +85,8 @@ function typeOptionsFromServerRows(serverRows) {
   return [...out, ...rest];
 }
 
-function mergeTypeOptionsLocalServer(localArr, serverRows) {
-  const serverList = typeOptionsFromServerRows(serverRows);
-  const serverNames = new Set(serverList.map((t) => t.name));
-  const extra = (localArr || [])
-    .map(normalizeTypeEntry)
-    .filter((t) => t.name && !serverNames.has(t.name))
-    .map((t) => ({ name: t.name, start: t.start, end: t.end }));
-  return [...serverList, ...extra];
-}
-
 function loadLocalRows() {
   return readWorkScheduleRowsFromMem();
-}
-
-function mergeEntriesLocalAndServer(localRows, serverRows) {
-  const serverLocal = (Array.isArray(serverRows) ? serverRows : []).map(serverEntryToLocal);
-  const serverIds = new Set(serverLocal.map((r) => r.id).filter(Boolean));
-  const serverKeys = new Set(serverLocal.map((r) => rowKey(r)));
-
-  const out = [...serverLocal];
-  for (const L of localRows) {
-    const id = L.id != null ? String(L.id).trim() : "";
-    if (id && serverIds.has(id)) continue;
-    if (id && !serverIds.has(id)) {
-      out.push({ ...L });
-      continue;
-    }
-    if (!id) {
-      if (serverKeys.has(rowKey(L))) continue;
-      out.push({ ...L });
-    }
-  }
-  return out;
 }
 
 function formatLocalYmdFromDate(d) {
@@ -195,36 +158,38 @@ async function pullWorkScheduleFromSupabaseImpl() {
   if (typesRes.error) console.warn("[work-schedule sync] pull types", typesRes.error.message);
   if (entriesRes.error) console.warn("[work-schedule sync] pull entries", entriesRes.error.message);
 
-  const localRows = loadLocalRows();
-  const localTypes = parseLocalTypes();
-  const serverTypeRows = typesRes.data || [];
-  if (serverTypeRows.length > 0) {
-    const mergedTypes = mergeTypeOptionsLocalServer(localTypes, serverTypeRows);
-    writeWorkScheduleTypeOptionsRawToMem(mergedTypes);
+  if (!typesRes.error) {
+    const typesForMem = typeOptionsFromServerRows(typesRes.data || []);
+    writeWorkScheduleTypeOptionsRawToMem(typesForMem);
   }
 
-  const mergedRows = mergeEntriesLocalAndServer(localRows, entriesRes.data || []);
-  const resolvedRows = applyWorkScheduleRowTimesFromTypes(mergedRows);
-  wsSyncLog(
-    "pull: localRows",
-    localRows.length,
-    "server",
-    (entriesRes.data || []).length,
-    "merged→mem",
-    resolvedRows.length,
-  );
+  let resolvedRows = loadLocalRows();
+  if (!entriesRes.error) {
+    const rowsFromServer = (entriesRes.data || []).map(serverEntryToLocal);
+    resolvedRows = applyWorkScheduleRowTimesFromTypes(rowsFromServer);
+    writeWorkScheduleRowsToMem(resolvedRows);
+    wsSyncLog(
+      "pull: server snapshot → mem",
+      "entries",
+      (entriesRes.data || []).length,
+      "resolved",
+      resolvedRows.length,
+    );
+  } else {
+    wsSyncLog("pull: entries error — rows mem unchanged", loadLocalRows().length);
+  }
 
-  writeWorkScheduleRowsToMem(resolvedRows);
-
-  const serverHours = settingsRes.data?.daily_work_hours;
-  if (serverHours != null && !Number.isNaN(Number(serverHours))) {
-    writeWorkScheduleDailyHoursToMem(Number(serverHours));
+  if (!settingsRes.error) {
+    const serverHours = settingsRes.data?.daily_work_hours;
+    if (serverHours != null && !Number.isNaN(Number(serverHours))) {
+      writeWorkScheduleDailyHoursToMem(Number(serverHours));
+    }
   }
 
   return { rows: resolvedRows };
 }
 
-/** 로그인 시 서버 → 세션 메모리 병합 */
+/** 로그인 시 서버 스냅샷 → 세션 메모리 */
 export async function pullWorkScheduleFromSupabase() {
   return runWorkScheduleSerialized(() => pullWorkScheduleFromSupabaseImpl());
 }
@@ -365,10 +330,13 @@ export async function pushAllLocalWorkScheduleIfServerEmpty() {
   await syncWorkScheduleToSupabase();
 }
 
-/** 근무표 탭 진입 시: pull → 서버 행 없으면 로컬 업로드 (표는 이 Promise 이후 한 번만 그리는 것을 권장) */
+/**
+ * 근무표 탭 진입 시: 서버가 비어 있고 로컬에만 있던 내용은 먼저 올린 뒤 pull로 서버 스냅샷만 메모리에 맞춤.
+ * (pull만 먼저 하면 빈 서버에 맞춰 메모리가 비어 첫 업로드가 사라질 수 있음)
+ */
 export async function hydrateWorkScheduleFromCloud() {
   attachWorkScheduleSaveListener();
   if (!supabase) return;
-  await pullWorkScheduleFromSupabase();
   await pushAllLocalWorkScheduleIfServerEmpty();
+  await pullWorkScheduleFromSupabase();
 }

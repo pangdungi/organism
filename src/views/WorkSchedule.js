@@ -31,6 +31,29 @@ function wsUiLog(...args) {
 
 let _workScheduleHydrateGeneration = 0;
 
+/**
+ * renderMain·__lpRenderMain 으로 근무표 DOM이 다시 그려질 때 서브탭이 항상 1번(근무표 목록)으로 초기화되는 것을 막기 위해 저장.
+ * (할일 동기화 등이 백그라운드에서 전체 탭을 다시 그릴 때 동일)
+ */
+const SESSION_WORK_SCHEDULE_SUBVIEW_KEY = "lp-work-schedule-subview";
+
+function readSavedWorkScheduleSubview() {
+  try {
+    if (typeof sessionStorage === "undefined") return "all";
+    const v = sessionStorage.getItem(SESSION_WORK_SCHEDULE_SUBVIEW_KEY);
+    if (v === "monthly" || v === "all") return v;
+  } catch (_) {}
+  return "all";
+}
+
+function persistWorkScheduleSubview(view) {
+  try {
+    if (typeof sessionStorage !== "undefined" && (view === "monthly" || view === "all")) {
+      sessionStorage.setItem(SESSION_WORK_SCHEDULE_SUBVIEW_KEY, view);
+    }
+  } catch (_) {}
+}
+
 const ENTRY_ID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -945,17 +968,19 @@ export function render(opts = {}) {
 
   const viewTabs = document.createElement("div");
   viewTabs.className = mobile ? "calendar-sub-tabs" : "work-schedule-view-tabs";
+  const initialSubview = readSavedWorkScheduleSubview();
   [
-    { id: "all", label: "1. 근무기록 트래커" },
+    { id: "all", label: "1. 근무표" },
     { id: "monthly", label: "2. 월별보기" },
-  ].forEach((tab, i) => {
+  ].forEach((tab) => {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.dataset.view = tab.id;
     btn.textContent = tab.label;
+    const isActive = tab.id === initialSubview;
     btn.className = mobile
-      ? "work-schedule-view-tab time-view-tab calendar-sub-tab" + (i === 0 ? " active" : "")
-      : "work-schedule-view-tab" + (i === 0 ? " active" : "");
+      ? "work-schedule-view-tab time-view-tab calendar-sub-tab" + (isActive ? " active" : "")
+      : "work-schedule-view-tab" + (isActive ? " active" : "");
     viewTabs.appendChild(btn);
   });
   el.appendChild(viewTabs);
@@ -966,7 +991,7 @@ export function render(opts = {}) {
     : "work-schedule-content-wrap";
   el.appendChild(contentWrap);
 
-  let activeWorkScheduleView = "all";
+  let activeWorkScheduleView = initialSubview;
   let renderTableViewSeq = 0;
 
   /**
@@ -1052,7 +1077,7 @@ export function render(opts = {}) {
     const startDateInput = filterBar.querySelector(".time-filter-start-date");
     const endDateInput = filterBar.querySelector(".time-filter-end-date");
 
-    /** 근무기록 트래커: 연도 포함(모바일 라벨) — "2026년 4월 1일(수)" */
+    /** 근무표(목록) 날짜 필터: 연도 포함(모바일 라벨) — "2026년 4월 1일(수)" */
     function formatWorkScheduleFilterDateKr(dStr) {
       if (!dStr || !/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return "";
       const [y, mo, d] = dStr.split("-").map(Number);
@@ -1318,6 +1343,7 @@ export function render(opts = {}) {
 
   function switchView(view) {
     activeWorkScheduleView = view || "all";
+    persistWorkScheduleSubview(activeWorkScheduleView);
     viewTabs.querySelectorAll(".work-schedule-view-tab").forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.view === activeWorkScheduleView);
     });

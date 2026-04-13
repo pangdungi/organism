@@ -1,9 +1,10 @@
 /**
- * 꿈·부수입·행복·건강 KPI 맵 — 서버(Supabase)를 기준으로 localStorage에 반영한다.
+ * 꿈·부수입·행복·건강 KPI 맵 — Supabase가 단일 진실, pull 시 localStorage는 서버 스냅샷으로 덮음.
+ * push(동기화) 시에도 fetch한 서버와 병합할 때 동일 id는 타임스탬프 비교·동률은 서버 행 우선(kpiMapLwwMerge·각 merge*KpiPayloadsForSync).
  *
- * - pullKpiTabFromCloud: 앱 내 메뉴로 해당 KPI 탭에 들어갈 때 1종만 pull
- * - pullAllKpiMapsFromCloud: Realtime·브라우저 탭 포커스 등에서 네 종 pull.
- *   꿈·건강·행복·부수입 탭에 포커스가 있고 입력 중이면 해당 도메인만 pull 생략(저장소가 먼저 바뀌고 화면은 예전 값인 불일치 방지).
+ * - pullKpiTabFromCloud: 해당 KPI 탭 진입 시 1종만 pull
+ * - pullAllKpiMapsFromCloud: Realtime·탭 포커스 등에서 네 종 pull.
+ *   해당 탭에서 입력 중이면 그 도메인 pull만 잠시 생략(저장소·화면 불일치 방지).
  */
 
 import {

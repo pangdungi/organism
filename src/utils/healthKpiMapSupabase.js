@@ -6,7 +6,12 @@
 import { supabase } from "../supabase.js";
 import { kpiSyncDebugLog, kpiSyncDebugEnabled, kpiSyncPayloadSummary, kpiSyncTrace } from "./kpiSyncDebug.js";
 import { logKpiServerSnapshot } from "./kpiServerAuditLog.js";
-import { bumpEntityArrayLocalModified, serverUpdatedAtFromRow } from "./kpiMapLwwMerge.js";
+import {
+  bumpEntityArrayLocalModified,
+  parseIsoMs,
+  pickNewerRowServerWinsTie,
+  serverUpdatedAtFromRow,
+} from "./kpiMapLwwMerge.js";
 
 export const HEALTH_KPI_MAP_STORAGE_KEY = "kpi-health-map";
 
@@ -352,7 +357,7 @@ function shouldInsertMetaRow(p) {
   );
 }
 
-/** 서버 스냅샷 + 방금 저장한 로컬 병합 (꿈 KPI와 동일 패턴) */
+/** 동기화 직전 병합: 동일 id는 타임스탬프 비교·동률은 서버, 메타는 metaServerUpdatedAt 우선(꿈 KPI와 동일 원칙) */
 function mergeHealthKpiPayloadsForSync(localP, serverP) {
   const L = normalizePayload(localP);
   const S = normalizePayload(serverP);
@@ -383,7 +388,7 @@ function mergeHealthKpiPayloadsForSync(localP, serverP) {
     seenH.add(id);
   }
   const mergedHealths = mergedHOrder
-    .map((id) => localHById.get(id) || serverHById.get(id))
+    .map((id) => pickNewerRowServerWinsTie(localHById.get(id), serverHById.get(id)))
     .filter(Boolean);
   const mergedHealthIds = new Set(mergedHealths.map((h) => String(h.id)));
 
@@ -415,7 +420,7 @@ function mergeHealthKpiPayloadsForSync(localP, serverP) {
     seenKpi.add(id);
   }
   const mergedKpis = mergedKpiOrder
-    .map((id) => localKpiById.get(id) || serverKpiById.get(id))
+    .map((id) => pickNewerRowServerWinsTie(localKpiById.get(id), serverKpiById.get(id)))
     .filter(Boolean);
   const mergedKpiIds = new Set(mergedKpis.map((k) => String(k.id)));
 
@@ -441,7 +446,9 @@ function mergeHealthKpiPayloadsForSync(localP, serverP) {
       order.push(id);
       seen.add(id);
     }
-    return order.map((id) => localById.get(id) || serverById.get(id)).filter(Boolean);
+    return order
+      .map((id) => pickNewerRowServerWinsTie(localById.get(id), serverById.get(id)))
+      .filter(Boolean);
   }
 
   const mergedLogs = mergeList(
@@ -478,14 +485,21 @@ function mergeHealthKpiPayloadsForSync(localP, serverP) {
     },
   );
 
+  const sMetaMs = parseIsoMs(S.metaServerUpdatedAt);
+  const lMetaMs =
+    typeof L.localMetaModifiedAt === "number" && Number.isFinite(L.localMetaModifiedAt)
+      ? L.localMetaModifiedAt
+      : 0;
+  const serverMetaNewerOrEqual = sMetaMs >= lMetaMs;
+
   return normalizePayload({
     healths: mergedHealths,
     kpis: mergedKpis,
     kpiLogs: mergedLogs,
     kpiTodos: mergedTodos,
     kpiDailyRepeatTodos: mergedDaily,
-    kpiOrder: L.kpiOrder,
-    kpiTaskSync: L.kpiTaskSync,
+    kpiOrder: serverMetaNewerOrEqual ? S.kpiOrder : L.kpiOrder,
+    kpiTaskSync: serverMetaNewerOrEqual ? S.kpiTaskSync : L.kpiTaskSync,
     deletedRefs: dr,
   });
 }

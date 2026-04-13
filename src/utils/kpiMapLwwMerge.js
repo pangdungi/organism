@@ -42,8 +42,20 @@ export function stripKpiRowSyncMeta(obj) {
 }
 
 /**
+ * 동일 id에서 로컬·서버 행이 모두 있을 때: 로컬 수정 시각이 서버 updated_at보다 크면 로컬, 아니면 서버(동률 포함 → 서버 우선).
+ */
+export function pickNewerRowServerWinsTie(localRow, serverRow) {
+  if (!localRow) return serverRow;
+  if (!serverRow) return localRow;
+  const tLoc = localEntityTimeMs(localRow);
+  const tSrv = parseIsoMs(serverRow.serverUpdatedAt);
+  if (tLoc > tSrv) return { ...localRow };
+  return { ...serverRow };
+}
+
+/**
  * 서버 배열 순서를 유지하며, 동일 id는 updated_at vs 로컬 시각으로 승자 선택.
- * 동률(tLoc === tSrv)은 로컬(미반영 편집) 우선.
+ * 동률(tLoc === tSrv)은 서버 우선(단일 진실 소스에 맞춤).
  */
 export function mergeRowsByLwwWithServerOrder({
   localArr,
@@ -76,8 +88,7 @@ export function mergeRowsByLwwWithServerOrder({
     }
     const tLoc = localEntityTimeMs(loc);
     if (tLoc > tSrv) out.push({ ...loc });
-    else if (tSrv > tLoc) out.push({ ...srv });
-    else out.push({ ...loc });
+    else out.push({ ...srv });
     seen.add(id);
   }
   for (const [id, loc] of localById) {

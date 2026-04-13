@@ -91,6 +91,58 @@ function recordTimeLedgerRealtimePayload(payload) {
   }
 }
 
+/**
+ * pull 결과로 전체 renderMain 할지 — 현재 탭과 무관한 도메인만 바뀐 경우 할일/캘린더·KPI 화면이 불필요하게 깜빡이지 않게 함.
+ * @param {string} tab
+ * @param {{ needTodo: boolean, kpiMapsChanged: boolean, timeLedgerChanged: boolean, assetChanged: boolean, diaryChanged: boolean }} flags
+ */
+function shouldRenderMainForRealtimePull(tab, flags) {
+  const {
+    needTodo,
+    kpiMapsChanged,
+    timeLedgerChanged,
+    assetChanged,
+    diaryChanged,
+  } = flags;
+  switch (tab) {
+    case "calendar":
+    case "schedulecalendar":
+      return needTodo;
+    case "asset":
+      return assetChanged;
+    case "diary":
+      return diaryChanged;
+    case "dream":
+    case "health":
+    case "happiness":
+    case "sideincome":
+      return kpiMapsChanged;
+    case "home":
+      return (
+        needTodo ||
+        kpiMapsChanged ||
+        timeLedgerChanged ||
+        assetChanged ||
+        diaryChanged
+      );
+    case "archive":
+      return (
+        needTodo || kpiMapsChanged || assetChanged || diaryChanged
+      );
+    default:
+      return (
+        needTodo ||
+        kpiMapsChanged ||
+        timeLedgerChanged ||
+        assetChanged ||
+        diaryChanged
+      );
+  }
+}
+
+/** Realtime 이벤트 폭주 시 pull·render 연속 호출 완화 (push 디바운스와 비슷한 체감) */
+const REALTIME_REFRESH_DEBOUNCE_MS = 900;
+
 function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
   clearTimeout(_debounceTimer);
   _debounceTimer = setTimeout(() => {
@@ -159,12 +211,23 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
         }
         if (!REFRESH_MAIN_AFTER_CLOUD_PULL.has(tab)) return;
         if (isUserTyping()) return; /* 입력 중이면 화면 갱신 건너뜀 */
+        if (
+          !shouldRenderMainForRealtimePull(tab, {
+            needTodo,
+            kpiMapsChanged,
+            timeLedgerChanged,
+            assetChanged,
+            diaryChanged,
+          })
+        ) {
+          return;
+        }
         renderMain({ skipTodoSaveBeforeUnmount: true });
       } catch (e) {
         console.warn("[realtime] 병합·갱신", e?.message || e);
       }
     })();
-  }, 450);
+  }, REALTIME_REFRESH_DEBOUNCE_MS);
 }
 
 /**
