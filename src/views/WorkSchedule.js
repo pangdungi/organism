@@ -5,6 +5,7 @@
 import { renderMonthlyContent } from "./WorkScheduleMonthly.js";
 import { supabase } from "../supabase.js";
 import { hydrateWorkScheduleFromCloud } from "../utils/workScheduleSupabase.js";
+import { workScheduleDiagLog } from "../utils/workScheduleDiag.js";
 import { applyWorkScheduleRowTimesFromTypes, normalizeWorkDateKey } from "../utils/workScheduleEntryResolve.js";
 import { confirmDeleteRow } from "../utils/confirmModal.js";
 import {
@@ -20,13 +21,8 @@ import {
 const WORK_SCHEDULE_MOBILE_FAB_SVG =
   '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>';
 
-/** localStorage `debug_work_schedule` = `1` 이면 근무표 UI/하이드레이트 진단 로그 */
 function wsUiLog(...args) {
-  try {
-    if (localStorage.getItem("debug_work_schedule") === "1") {
-      console.log("[work-schedule-ui]", ...args);
-    }
-  } catch (_) {}
+  workScheduleDiagLog("[ui]", ...args);
 }
 
 let _workScheduleHydrateGeneration = 0;
@@ -796,6 +792,7 @@ function createRow(initialData = {}, onUpdate, viewEl, onFilterApply, getDailyHo
 
 export function render(opts = {}) {
   const mobile = !!opts.mobile;
+  wsUiLog("render() enter", { mobile, savedSubview: readSavedWorkScheduleSubview() });
   const el = document.createElement("div");
   el.className = mobile
     ? "app-tab-panel-content work-schedule-view calendar-view calendar-view--mobile-workschedule"
@@ -1013,6 +1010,12 @@ export function render(opts = {}) {
 
     const mySeq = ++renderTableViewSeq;
     if (mySeq !== renderTableViewSeq) return;
+
+    wsUiLog("renderTableView: start", {
+      seq: mySeq,
+      scheduleOpts,
+      range: `${initialRangeStart}..${initialRangeEnd}`,
+    });
 
     contentWrap.innerHTML = "";
     const notice = document.createElement("p");
@@ -1341,9 +1344,10 @@ export function render(opts = {}) {
     );
   }
 
-  function switchView(view) {
+  function switchView(view, reason = "") {
     activeWorkScheduleView = view || "all";
     persistWorkScheduleSubview(activeWorkScheduleView);
+    wsUiLog("switchView", { view: activeWorkScheduleView, reason });
     viewTabs.querySelectorAll(".work-schedule-view-tab").forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.view === activeWorkScheduleView);
     });
@@ -1355,27 +1359,31 @@ export function render(opts = {}) {
   }
 
   viewTabs.querySelectorAll(".work-schedule-view-tab").forEach((btn) => {
-    btn.addEventListener("click", () => switchView(btn.dataset.view));
+    btn.addEventListener("click", () => switchView(btn.dataset.view, "tab-click"));
   });
 
   /* 로컬 기준으로 즉시 표시. Supabase 사용 시 병합 후 한 번 더 그림(할일 탭과 동일, 불러오는 중 화면 없음) */
-  switchView(activeWorkScheduleView);
+  switchView(activeWorkScheduleView, "mount-initial");
   const hydrateGen = ++_workScheduleHydrateGeneration;
   wsUiLog("mount hydrate start, gen=", hydrateGen);
   void hydrateWorkScheduleFromCloud()
     .catch((err) => console.warn("[work-schedule]", err))
-    .finally(() => {
+    .then((hydrateResult) => {
       if (hydrateGen !== _workScheduleHydrateGeneration) {
-        wsUiLog("hydrate.finally SKIP (superseded by newer mount)", hydrateGen, "current=", _workScheduleHydrateGeneration);
+        wsUiLog("hydrate SKIP (superseded by newer mount)", hydrateGen, "current=", _workScheduleHydrateGeneration);
         return;
       }
       if (!el.isConnected) {
-        wsUiLog("hydrate.finally SKIP (panel no longer in document)");
+        wsUiLog("hydrate SKIP (panel no longer in document)");
         return;
       }
       if (!supabase) return;
-      wsUiLog("hydrate.finally OK → switchView", activeWorkScheduleView);
-      switchView(activeWorkScheduleView);
+      if (!hydrateResult?.anyChanged) {
+        wsUiLog("hydrate: 2번째 switchView 생략 (서버 pull 후 메모리 동일 → 깜빡임 1회 감소)");
+        return;
+      }
+      wsUiLog("hydrate OK → switchView (서버·로컬 차이 반영)", activeWorkScheduleView);
+      switchView(activeWorkScheduleView, "hydrate-finally");
     });
 
   return el;

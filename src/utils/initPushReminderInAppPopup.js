@@ -8,6 +8,14 @@ let listenerInstalled = false;
 
 const LOG = "[lp-reminder-app]";
 
+function reminderDebugLog(...args) {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("debug_lp_reminder") === "1") {
+      console.log(LOG, ...args);
+    }
+  } catch (_) {}
+}
+
 /** 앱이 켜진 상태(시스템 알림 대신 팝업만 뜰 때)용 짧은 알림음 */
 function playReminderBeep() {
   try {
@@ -41,17 +49,21 @@ export function initPushReminderInAppPopup() {
   if (typeof navigator === "undefined" || !navigator.serviceWorker?.addEventListener) return;
   listenerInstalled = true;
   const ctrl = navigator.serviceWorker.controller;
-  console.log(LOG, "리스너 설치됨", "controller:", ctrl ? ctrl.scriptURL : "(없음 — SW가 이 페이지를 아직 안 잡았을 수 있음)");
+  reminderDebugLog(
+    "리스너 설치됨",
+    "controller:",
+    ctrl ? ctrl.scriptURL : "(없음 — SW가 이 페이지를 아직 안 잡았을 수 있음)",
+  );
   navigator.serviceWorker.addEventListener("message", (event) => {
     const d = event.data;
-    console.log(LOG, "message 수신", d);
+    reminderDebugLog("message 수신", d);
     if (!d || d.type !== "lp-reminder") return;
     const taskName = String(d.body || "").trim() || "할일";
-    console.log(LOG, "팝업 표시 시도", taskName);
+    reminderDebugLog("팝업 표시 시도", taskName);
     try {
       playReminderBeep();
       showToast(taskName);
-      console.log(LOG, "showToast 호출 완료");
+      reminderDebugLog("showToast 호출 완료");
     } catch (e) {
       console.warn(LOG, "showToast 실패", e);
     }

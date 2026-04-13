@@ -1639,25 +1639,27 @@ function createTaskRow(taskData = {}, options = {}) {
       const val = (nameInput.value || "").trim();
       const relatedTarget = e.relatedTarget;
       const focusStaysInRowSync = relatedTarget && tr.contains(relatedTarget);
-      console.log("[DEBUG todo-row] nameInput blur (KPI)", {
-        val,
-        relatedTarget: relatedTarget?.className || relatedTarget?.tagName,
-      });
+      if (TODO_DEBUG)
+        console.log("[DEBUG todo-row] nameInput blur (KPI)", {
+          val,
+          relatedTarget: relatedTarget?.className || relatedTarget?.tagName,
+        });
       setTimeout(() => {
         const activeEl = document.activeElement;
         const hadDateAreaClick = dateAreaClicked;
         if (dateAreaClicked) dateAreaClicked = false;
         const focusStaysInRow = tr.contains(activeEl) || focusStaysInRowSync || hadDateAreaClick;
-        console.log("[DEBUG todo-row] nameInput blur (KPI deferred)", {
-          val,
-          focusStaysInRow,
-          hadDateAreaClick,
-          activeEl: activeEl?.className || activeEl?.tagName,
-          willRemove: val === "" && !focusStaysInRow,
-        });
+        if (TODO_DEBUG)
+          console.log("[DEBUG todo-row] nameInput blur (KPI deferred)", {
+            val,
+            focusStaysInRow,
+            hadDateAreaClick,
+            activeEl: activeEl?.className || activeEl?.tagName,
+            willRemove: val === "" && !focusStaysInRow,
+          });
         if (val === "" && !focusStaysInRow) {
           if (removeKpiTodo(kpiTodoId, storageKey)) {
-            console.log("[DEBUG todo-row] REMOVING KPI row (name empty, focus left row)");
+            if (TODO_DEBUG) console.log("[DEBUG todo-row] REMOVING KPI row (name empty, focus left row)");
             clearSubtasks(taskId);
             tr.remove();
             const section = tr.closest(".todo-section");
@@ -1675,24 +1677,26 @@ function createTaskRow(taskData = {}, options = {}) {
       const val = (nameInput.value || "").trim();
       const relatedTarget = e.relatedTarget;
       const focusStaysInRowSync = relatedTarget && tr.contains(relatedTarget);
-      console.log("[DEBUG todo-row] nameInput blur", {
-        val,
-        relatedTarget: relatedTarget?.className || relatedTarget?.tagName,
-      });
+      if (TODO_DEBUG)
+        console.log("[DEBUG todo-row] nameInput blur", {
+          val,
+          relatedTarget: relatedTarget?.className || relatedTarget?.tagName,
+        });
       setTimeout(() => {
         const activeEl = document.activeElement;
         const hadDateAreaClick = dateAreaClicked;
         if (dateAreaClicked) dateAreaClicked = false;
         const focusStaysInRow = tr.contains(activeEl) || focusStaysInRowSync || hadDateAreaClick;
-        console.log("[DEBUG todo-row] nameInput blur (deferred)", {
-          val,
-          focusStaysInRow,
-          hadDateAreaClick,
-          activeEl: activeEl?.className || activeEl?.tagName,
-          willRemove: val === "" && !focusStaysInRow,
-        });
+        if (TODO_DEBUG)
+          console.log("[DEBUG todo-row] nameInput blur (deferred)", {
+            val,
+            focusStaysInRow,
+            hadDateAreaClick,
+            activeEl: activeEl?.className || activeEl?.tagName,
+            willRemove: val === "" && !focusStaysInRow,
+          });
         if (val === "" && !focusStaysInRow) {
-          console.log("[DEBUG todo-row] REMOVING row (name empty, focus left row)");
+          if (TODO_DEBUG) console.log("[DEBUG todo-row] REMOVING row (name empty, focus left row)");
           clearSubtasks(taskId);
           tr.remove();
           const section = tr.closest(".todo-section");
@@ -2933,7 +2937,7 @@ function createSection(section, options = {}) {
       });
       tbody.insertBefore(tr, addRow.nextSibling);
       updateCount();
-      console.log("[DEBUG todo-row] + clicked, new row created", { taskId, sectionId: section.id });
+      if (TODO_DEBUG) console.log("[DEBUG todo-row] + clicked, new row created", { taskId, sectionId: section.id });
       const nameInput = tr.querySelector(".todo-task-name-field");
       if (nameInput) {
         nameInput.focus();

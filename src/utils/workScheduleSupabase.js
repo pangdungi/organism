@@ -14,14 +14,22 @@ import {
   writeWorkScheduleDailyHoursToMem,
 } from "./workScheduleModel.js";
 import { runWorkScheduleSerialized } from "./workScheduleServerSyncSerial.js";
+import { workScheduleDiagLog } from "./workScheduleDiag.js";
 
-/** localStorage `debug_work_schedule` = `1` 이면 동기화 진단 로그 */
 function wsSyncLog(...args) {
+  workScheduleDiagLog("[sync]", ...args);
+}
+
+function snapshotWorkScheduleMemForCompare() {
   try {
-    if (localStorage.getItem("debug_work_schedule") === "1") {
-      console.log("[work-schedule sync]", ...args);
-    }
-  } catch (_) {}
+    return JSON.stringify({
+      rows: readWorkScheduleRowsFromMem(),
+      types: readWorkScheduleTypeOptionsRawFromMem(),
+      dh: readWorkScheduleDailyHoursFromMem(),
+    });
+  } catch (_) {
+    return "";
+  }
 }
 
 const SETTINGS_TABLE = "work_schedule_settings";
@@ -334,9 +342,22 @@ export async function pushAllLocalWorkScheduleIfServerEmpty() {
  * 근무표 탭 진입 시: 서버가 비어 있고 로컬에만 있던 내용은 먼저 올린 뒤 pull로 서버 스냅샷만 메모리에 맞춤.
  * (pull만 먼저 하면 빈 서버에 맞춰 메모리가 비어 첫 업로드가 사라질 수 있음)
  */
+/**
+ * @returns {Promise<{ anyChanged: boolean }>}
+ */
 export async function hydrateWorkScheduleFromCloud() {
+  wsSyncLog("hydrate: enter");
   attachWorkScheduleSaveListener();
-  if (!supabase) return;
+  if (!supabase) {
+    wsSyncLog("hydrate: skip (no supabase)");
+    return { anyChanged: false };
+  }
+  const beforeSnap = snapshotWorkScheduleMemForCompare();
   await pushAllLocalWorkScheduleIfServerEmpty();
+  wsSyncLog("hydrate: after pushIfServerEmpty");
   await pullWorkScheduleFromSupabase();
+  const afterSnap = snapshotWorkScheduleMemForCompare();
+  const anyChanged = beforeSnap !== afterSnap;
+  wsSyncLog("hydrate: after pull (done)", { anyChanged });
+  return { anyChanged };
 }
