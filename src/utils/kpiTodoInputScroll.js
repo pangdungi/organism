@@ -1,51 +1,48 @@
 /**
- * 모바일 KPI 할일: 키보드·내부 스크롤 영역에서 입력 필드가 가려지지 않도록 보정
- * (.app-main 등 부모 overflow 스크롤 + iOS visualViewport)
+ * 모바일 KPI 할일: 키보드·하단 고정 탭에 입력이 가려지지 않도록 보정
+ * — App 전역에서 --vv-keyboard 로 .app-main 패딩을 늘리고, 여기서는 .app-main 을 직접 스크롤
  */
 
-function getScrollableAncestors(el) {
-  const out = [];
-  let p = el?.parentElement;
-  while (p && p !== document.body) {
-    const st = getComputedStyle(p);
-    const oy = st.overflowY;
-    if ((oy === "auto" || oy === "scroll" || oy === "overlay") && p.scrollHeight > p.clientHeight + 1) {
-      out.push(p);
-    }
-    p = p.parentElement;
-  }
-  return out;
-}
+import { syncVisualViewportKeyboardInset } from "./mobileViewportKeyboard.js";
 
 /**
  * @param {Element} fieldEl
  */
 export function scrollKpiFieldIntoView(fieldEl) {
   if (!fieldEl || typeof fieldEl.getBoundingClientRect !== "function") return;
+  syncVisualViewportKeyboardInset();
+
   const vv = window.visualViewport;
-  const marginTop = 10;
-  const marginBottom = 28;
+  const marginTop = 12;
+  const marginBottom = 24;
   const topBound = vv ? vv.offsetTop + marginTop : marginTop;
   const bottomBound = vv ? vv.offsetTop + vv.height - marginBottom : window.innerHeight - marginBottom;
+
   const rect = fieldEl.getBoundingClientRect();
   let delta = 0;
   if (rect.bottom > bottomBound) {
-    delta = rect.bottom - bottomBound;
+    delta = rect.bottom - bottomBound + 6;
   } else if (rect.top < topBound) {
-    delta = rect.top - topBound;
+    delta = rect.top - topBound - 4;
   }
-  if (Math.abs(delta) < 1) return;
 
-  const chain = getScrollableAncestors(fieldEl);
-  if (chain.length > 0) {
-    chain[0].scrollTop += delta;
-  } else {
+  const main = fieldEl.closest?.(".app-main");
+  if (main && Math.abs(delta) >= 1) {
+    main.scrollTop += delta;
+  } else if (Math.abs(delta) >= 1) {
     try {
       window.scrollBy({ top: delta, left: 0, behavior: "auto" });
     } catch {
       window.scrollBy(0, delta);
     }
   }
+
+  requestAnimationFrame(() => {
+    syncVisualViewportKeyboardInset();
+    try {
+      fieldEl.scrollIntoView({ block: "nearest", inline: "nearest" });
+    } catch (_) {}
+  });
 }
 
 /**
@@ -74,11 +71,13 @@ export function attachKpiTodoInputScrollIntoView(inputEl) {
   let vvHandler = null;
   const scroll = () => scrollKpiFieldIntoView(inputEl);
   const onFocus = () => {
+    syncVisualViewportKeyboardInset();
     requestAnimationFrame(scroll);
-    setTimeout(scroll, 50);
-    setTimeout(scroll, 160);
-    setTimeout(scroll, 400);
-    setTimeout(scroll, 700);
+    setTimeout(scroll, 30);
+    setTimeout(scroll, 90);
+    setTimeout(scroll, 200);
+    setTimeout(scroll, 450);
+    setTimeout(scroll, 750);
     if (window.visualViewport && !vvHandler) {
       vvHandler = () => scroll();
       window.visualViewport.addEventListener("resize", vvHandler);

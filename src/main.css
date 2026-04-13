@@ -2367,8 +2367,15 @@ body {
     filter: brightness(0) invert(1) opacity(1);
   }
 
+  /* 하단 탭(4.5rem) + 키보드 가림(--vv-keyboard, App·visualViewport에서 갱신) */
   .app-main {
-    padding-bottom: 4.5rem;
+    padding-bottom: calc(4.5rem + var(--vv-keyboard, 0px));
+  }
+
+  /* iOS PWA: 레이아웃 높이를 동적 뷰포트에 맞춰 중간에 탭·키보드가 끼는 현상 완화 */
+  #app-screen {
+    max-height: 100dvh;
+    height: 100dvh;
   }
 
   .app-sidebar-item--hide-on-mobile {

@@ -55,6 +55,7 @@ import {
 import { initSupabaseRealtimeSync } from "./utils/supabaseRealtimeSync.js";
 import { hydrateWorkScheduleFromCloud } from "./utils/workScheduleSupabase.js";
 import { logLpRender, logLpRenderStack } from "./utils/lpRenderDebugLog.js";
+import { initMobileVisualViewportKeyboardInset } from "./utils/mobileViewportKeyboard.js";
 
 /** 사용자가 입력 중인지 확인 (입력 중이면 화면 갱신 건너뜀) */
 function isUserTypingInApp() {
@@ -736,6 +737,9 @@ export function mountApp(container) {
   appPage.appendChild(appScreen);
   appPage.appendChild(bottomNav);
   container.appendChild(appPage);
+  if (window.matchMedia("(max-width: 48rem)").matches) {
+    initMobileVisualViewportKeyboardInset();
+  }
   if (!window.matchMedia("(max-width: 48rem)").matches) {
     observeDatePickerInit(panel);
   }
