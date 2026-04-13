@@ -27597,6 +27597,24 @@ body.kpi-resizing {
   border-bottom-color: var(--accent-viridian);
 }
 
+/* 모바일: KPI 할일 추가 줄 — iOS에서 캐럿이 밑줄 아래로 내려가 보이는 현상 완화(line-height·높이 고정) */
+@media (max-width: 48rem) {
+  .dream-kpi-todo-add-row {
+    align-items: flex-end;
+  }
+  .dream-kpi-todo-add-input {
+    font-size: 1rem;
+    line-height: 1.5rem;
+    height: 2.75rem;
+    padding: 0.35rem 0 0.4rem;
+    margin: 0;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 0;
+  }
+}
+
 .dream-kpi-todo-list {
   display: flex;
   flex-direction: column;
