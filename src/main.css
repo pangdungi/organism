@@ -35493,8 +35493,8 @@ body.kpi-resizing {
   align-items: stretch;
   box-sizing: border-box;
   font-family: "Noto Sans KR", system-ui, sans-serif;
-  background: #e8e8ea;
-  color: #1a1a1a;
+  background: #e8ebe4;
+  color: var(--text-ink);
 }
 
 #lp-offline-gate.lp-offline-gate[hidden] {
@@ -35506,11 +35506,11 @@ body.kpi-resizing {
   align-items: center;
   gap: 0.5rem;
   padding: 0.65rem 1rem;
-  background: #b71c1c;
-  color: #fff;
+  background: var(--ui-btn-primary-bg);
+  color: var(--ui-btn-primary-fg);
   font-size: 0.9rem;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 8px rgba(42, 56, 40, 0.18);
 }
 
 .lp-offline-gate__banner-icon {
@@ -35520,7 +35520,7 @@ body.kpi-resizing {
   width: 1.35rem;
   height: 1.35rem;
   border-radius: 0.2rem;
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(242, 237, 224, 0.22);
   font-weight: 800;
   font-size: 0.85rem;
   line-height: 1;
@@ -35561,7 +35561,7 @@ body.kpi-resizing {
   margin: 0 0 1rem;
   font-size: 0.92rem;
   line-height: 1.55;
-  color: #333;
+  color: var(--text-body);
 }
 
 .lp-offline-gate__card-actions {
@@ -35585,12 +35585,17 @@ body.kpi-resizing {
 }
 
 .lp-offline-gate__btn--primary {
-  background: #e60023;
-  color: #fff;
+  background: var(--ui-btn-primary-bg);
+  color: var(--ui-btn-primary-fg);
+}
+
+.lp-offline-gate__btn--primary:hover {
+  background: var(--ui-btn-primary-hover);
 }
 
 .lp-offline-gate__btn--primary:active {
-  opacity: 0.92;
+  background: var(--ui-btn-primary-hover);
+  opacity: 0.96;
 }
 
 @media (max-width: 48rem) {
