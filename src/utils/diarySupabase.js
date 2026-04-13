@@ -15,6 +15,7 @@ import {
   getDiaryServerHadRowsFlag,
   setDiaryServerHadRowsFlag,
 } from "../diaryData.js";
+import { lpPullDebug } from "./lpPullDebug.js";
 
 const TABLE = "diary_daily_entries";
 
@@ -305,6 +306,7 @@ export function attachDiarySaveListener() {
 
 /** 감정일기 탭 진입 시: 전체 pull(서버 진실 병합) → 서버 비었으면 로컬 시드 */
 export async function hydrateDiaryFromCloud() {
+  lpPullDebug("hydrateDiaryFromCloud", {});
   if (!supabase) return null;
   attachDiarySaveListener();
   const merged = await pullDiaryFromSupabase();

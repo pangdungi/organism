@@ -6,6 +6,7 @@
 import { supabase } from "../supabase.js";
 import { runAssetSerialized } from "./assetServerSyncSerial.js";
 import { lpSaveDebug } from "./lpSaveDebug.js";
+import { lpPullDebug } from "./lpPullDebug.js";
 
 const TABLE = "asset_user_expense_transactions";
 export const EXPENSE_ROWS_STORAGE_KEY = "asset_expense_rows";
@@ -207,12 +208,88 @@ function mergeExpenseMemWithServerRange(fetchedRows, dateFrom, dateTo) {
   setExpenseRowsMem([...byId.values()]);
 }
 
-export async function pullAssetExpenseTransactionsFromSupabaseImpl() {
+const SS_EXPENSE_PULL_FROM = "lp_asset_expense_pull_from";
+const SS_EXPENSE_PULL_TO = "lp_asset_expense_pull_to";
+
+/** 가계부 화면에서 마지막으로 본 날짜 구간 — Realtime·자산 탭 pull이 전체 fetch 대신 이 구간만 쓰게 함 */
+export function persistAssetExpensePullBounds(from, to) {
+  try {
+    if (typeof sessionStorage === "undefined") return;
+    const f = String(from || "").slice(0, 10);
+    const t = String(to || "").slice(0, 10);
+    if (f.length !== 10 || t.length !== 10) return;
+    const a = f <= t ? f : t;
+    const b = f <= t ? t : f;
+    sessionStorage.setItem(SS_EXPENSE_PULL_FROM, a);
+    sessionStorage.setItem(SS_EXPENSE_PULL_TO, b);
+  } catch (_) {}
+}
+
+function readExpensePullBoundsForCloud() {
+  try {
+    if (typeof sessionStorage !== "undefined") {
+      const f = sessionStorage.getItem(SS_EXPENSE_PULL_FROM);
+      const t = sessionStorage.getItem(SS_EXPENSE_PULL_TO);
+      if (f && t && f.length === 10 && t.length === 10) {
+        return f <= t ? { from: f, to: t } : { from: t, to: f };
+      }
+    }
+  } catch (_) {}
+  return getDefaultExpensePullBounds();
+}
+
+/** 가계부 필터 UI 기본과 맞춤: 데스크톱≈당월, 모바일≈오늘 하루 */
+function getDefaultExpensePullBounds() {
+  const mobile =
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(max-width: 48rem)").matches;
+  const d = new Date();
+  if (mobile) {
+    const x = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return { from: x, to: x };
+  }
+  const y = d.getFullYear();
+  const m = d.getMonth() + 1;
+  const last = new Date(y, m, 0).getDate();
+  return {
+    from: `${y}-${String(m).padStart(2, "0")}-01`,
+    to: `${y}-${String(m).padStart(2, "0")}-${String(last).padStart(2, "0")}`,
+  };
+}
+
+/**
+ * @param {{ mode?: "full" | "range" }} [opts]
+ * - `range`: 가계부 날짜 필터 구간만 서버에서 가져와 병합(Realtime·pullAllAssetFromCloud 용, 체감 속도)
+ * - `full`(기본): 전체 행 스냅샷(시간 탭 hydrate 등)
+ */
+export async function pullAssetExpenseTransactionsFromSupabaseImpl(opts = {}) {
+  const rangeMode = opts.mode === "range";
   migrateLegacyLocalStorageToMemOnce();
   const userId = await getSessionUserId();
   if (!userId || !supabase) {
     lpSaveDebug("pull 스킵", { reason: !supabase ? "no_supabase" : "no_userId" });
     return false;
+  }
+
+  if (rangeMode) {
+    const { from, to } = readExpensePullBoundsForCloud();
+    const hadMemBeforeFetch = _expenseRowsMem.length > 0;
+    const res = await fetchExpenseTxFromDbInRange(userId, from, to);
+    if (!res.ok) {
+      lpSaveDebug("pull fetch 실패(range)");
+      return false;
+    }
+    lpSaveDebug("pull 결과", {
+      mode: "range",
+      serverRows: res.rows.length,
+      from,
+      to,
+      hadMemBeforeFetch,
+    });
+    mergeExpenseMemWithServerRange(res.rows, from, to);
+    _expenseMemHasFullSnapshot = false;
+    return true;
   }
 
   const hadMemBeforeFetch = _expenseRowsMem.length > 0;
@@ -221,7 +298,7 @@ export async function pullAssetExpenseTransactionsFromSupabaseImpl() {
     lpSaveDebug("pull fetch 실패");
     return false;
   }
-  lpSaveDebug("pull 결과", { serverRows: res.rows.length, hadMemBeforeFetch });
+  lpSaveDebug("pull 결과", { mode: "full", serverRows: res.rows.length, hadMemBeforeFetch });
 
   if (res.rows.length > 0) {
     setExpenseRowsMem(res.rows);
@@ -256,7 +333,7 @@ export function pullAssetExpenseTransactionsForDateRange(dateFrom, dateTo) {
 
 /** 서버 전체 스냅샷 → 메모리. @returns {Promise<boolean>} */
 export function pullAssetExpenseTransactionsFromSupabase() {
-  return runAssetSerialized(() => pullAssetExpenseTransactionsFromSupabaseImpl());
+  return runAssetSerialized(() => pullAssetExpenseTransactionsFromSupabaseImpl({ mode: "full" }));
 }
 
 export async function syncAssetExpenseTransactionsToSupabaseImpl() {
@@ -417,6 +494,7 @@ export function attachAssetExpenseTransactionsSaveListener() {
 
 /** @returns {Promise<boolean>} 서버에서 거래 목록을 받아 메모리를 갱신했으면 true */
 export async function hydrateAssetExpenseTransactionsFromCloud() {
+  lpPullDebug("hydrateAssetExpenseTransactionsFromCloud", {});
   attachAssetExpenseTransactionsSaveListener();
   if (!supabase) return false;
   const applied = await pullAssetExpenseTransactionsFromSupabase();

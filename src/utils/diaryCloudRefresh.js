@@ -3,12 +3,14 @@
  */
 
 import { pullDiaryFromSupabase } from "./diarySupabase.js";
+import { lpPullDebug } from "./lpPullDebug.js";
 import { snapshotDiarySessionForRefresh } from "../diaryData.js";
 
 /**
  * @returns {Promise<{ anyChanged: boolean }>}
  */
 export async function pullAllDiaryFromCloud() {
+  lpPullDebug("pullAllDiaryFromCloud", {});
   const before = snapshotDiarySessionForRefresh();
   await pullDiaryFromSupabase();
   const after = snapshotDiarySessionForRefresh();

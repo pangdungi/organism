@@ -12,6 +12,7 @@ import {
   pickNewerRowServerWinsTie,
   serverUpdatedAtFromRow,
 } from "./kpiMapLwwMerge.js";
+import { lpPullDebug } from "./lpPullDebug.js";
 
 export const HEALTH_KPI_MAP_STORAGE_KEY = "kpi-health-map";
 
@@ -1080,6 +1081,7 @@ export function attachHealthKpiMapSaveListener() {
 
 /** @returns {Promise<boolean>} pull로 로컬이 바뀌었으면 true */
 export async function hydrateHealthKpiMapFromCloud() {
+  lpPullDebug("hydrateHealthKpiMapFromCloud", {});
   kpiSyncDebugLog("건강 hydrate 시작", { when: "앱 부팅 시 Promise.all 안" });
   attachHealthKpiMapSaveListener();
   if (!supabase) {

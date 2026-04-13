@@ -9,6 +9,7 @@ import {
   mergeTimeDailyBudgetRowsFromServer,
   buildAllLocalTimeDailyBudgetPayloadsForSync,
 } from "./timeDailyBudgetModel.js";
+import { lpPullDebug } from "./lpPullDebug.js";
 
 const TABLE = "time_daily_budget_days";
 
@@ -113,6 +114,7 @@ export function scheduleTimeDailyBudgetSyncPush(dateKey) {
 }
 
 export async function hydrateTimeDailyBudgetFromCloud() {
+  lpPullDebug("hydrateTimeDailyBudgetFromCloud", {});
   if (!supabase) return false;
   const pulled = await pullTimeDailyBudgetFromSupabase();
   await pushAllLocalTimeDailyBudgetIfServerEmpty();

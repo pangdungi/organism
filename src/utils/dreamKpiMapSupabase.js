@@ -12,6 +12,7 @@ import {
   pickNewerRowServerWinsTie,
   serverUpdatedAtFromRow,
 } from "./kpiMapLwwMerge.js";
+import { lpPullDebug } from "./lpPullDebug.js";
 
 export const DREAM_KPI_MAP_STORAGE_KEY = "kpi-dream-map";
 
@@ -1120,6 +1121,7 @@ export function attachDreamKpiMapSaveListener() {
 
 /** @returns {Promise<boolean>} pull로 로컬이 바뀌었으면 true */
 export async function hydrateDreamKpiMapFromCloud() {
+  lpPullDebug("hydrateDreamKpiMapFromCloud", {});
   kpiSyncDebugLog("꿈 hydrate 시작", { when: "앱 부팅 시 Promise.all 안" });
   attachDreamKpiMapSaveListener();
   if (!supabase) {

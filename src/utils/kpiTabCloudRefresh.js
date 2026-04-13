@@ -24,6 +24,7 @@ import {
   pullSideincomeKpiMapFromSupabase,
 } from "./sideincomeKpiMapSupabase.js";
 import { shouldDeferKpiPullForDomain } from "./kpiPullTypingGuard.js";
+import { lpPullDebug } from "./lpPullDebug.js";
 const KPI_LOCAL_STORAGE_KEYS = {
   dream: DREAM_KPI_MAP_STORAGE_KEY,
   health: HEALTH_KPI_MAP_STORAGE_KEY,
@@ -36,6 +37,7 @@ const KPI_LOCAL_STORAGE_KEYS = {
  * @returns {Promise<{ pullOk: boolean, localChanged: boolean }>}
  */
 export async function pullKpiTabFromCloud(tabId) {
+  lpPullDebug("pullKpiTabFromCloud", { tabId });
   const key = KPI_LOCAL_STORAGE_KEYS[tabId];
   const before = key ? localStorage.getItem(key) : null;
 
@@ -75,6 +77,9 @@ const ALL_KPI_STORAGE_KEYS = [
  * @returns {Promise<{ anyOk: boolean, anyChanged: boolean }>}
  */
 export async function pullAllKpiMapsFromCloud(getCurrentTabId) {
+  lpPullDebug("pullAllKpiMapsFromCloud", {
+    tab: typeof getCurrentTabId === "function" ? getCurrentTabId() : "",
+  });
   let before = [];
   try {
     before = ALL_KPI_STORAGE_KEYS.map((k) => localStorage.getItem(k));

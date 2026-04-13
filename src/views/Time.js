@@ -72,6 +72,7 @@ import {
 import { hydrateAssetExpenseTransactionsFromCloud } from "../utils/assetExpenseTransactionsSupabase.js";
 import { timeLedgerSyncLog } from "../utils/timeLedgerSyncDebug.js";
 import { lpSaveDebug } from "../utils/lpSaveDebug.js";
+import { logTabSync } from "../utils/lpTabSyncDebug.js";
 import {
   persistSectionTasksAndSchedule,
   persistCustomSectionTasksAndSchedule,
@@ -7345,6 +7346,7 @@ export function render() {
   let allRowsCache = loadTimeRows();
   let cachedRows = [];
 
+  logTabSync("time_tab_hydrate", {});
   void Promise.all([
     hydrateTimeLedgerEntriesFromCloud(),
     hydrateAssetExpenseTransactionsFromCloud(),

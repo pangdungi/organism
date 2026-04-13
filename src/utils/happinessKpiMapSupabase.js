@@ -12,6 +12,7 @@ import {
   pickNewerRowServerWinsTie,
   serverUpdatedAtFromRow,
 } from "./kpiMapLwwMerge.js";
+import { lpPullDebug } from "./lpPullDebug.js";
 
 export const HAPPINESS_KPI_MAP_STORAGE_KEY = "kpi-happiness-map";
 
@@ -1041,6 +1042,7 @@ export function attachHappinessKpiMapSaveListener() {
 
 /** @returns {Promise<boolean>} pull로 로컬이 바뀌었으면 true */
 export async function hydrateHappinessKpiMapFromCloud() {
+  lpPullDebug("hydrateHappinessKpiMapFromCloud", {});
   kpiSyncDebugLog("행복 hydrate 시작", { when: "앱 부팅 시 Promise.all 안" });
   attachHappinessKpiMapSaveListener();
   if (!supabase) {

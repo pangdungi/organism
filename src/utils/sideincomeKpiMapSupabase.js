@@ -12,6 +12,7 @@ import {
   pickNewerRowServerWinsTie,
   serverUpdatedAtFromRow,
 } from "./kpiMapLwwMerge.js";
+import { lpPullDebug } from "./lpPullDebug.js";
 
 export const SIDEINCOME_KPI_MAP_STORAGE_KEY = "kpi-sideincome-paths";
 
@@ -1120,6 +1121,7 @@ export function attachSideincomeKpiMapSaveListener() {
 
 /** @returns {Promise<boolean>} */
 export async function hydrateSideincomeKpiMapFromCloud() {
+  lpPullDebug("hydrateSideincomeKpiMapFromCloud", {});
   kpiSyncDebugLog("부수입 hydrate 시작", { when: "앱 부팅 시 Promise.all 안" });
   attachSideincomeKpiMapSaveListener();
   if (!supabase) {

@@ -109,7 +109,7 @@ function loadSectionTasks(sectionId) {
     if (Array.isArray(arr)) {
       const sectionLabel = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복", braindump: "브레인 덤프" }[sectionId] || sectionId;
       const out = arr
-        .filter((t) => (t.name || "").trim() !== "")
+        .filter((t) => keepTaskInSectionStorage(t))
         .map((t) => ({
           ...t,
           sectionId,
@@ -148,7 +148,7 @@ function saveSectionTasks(sectionId, tasks) {
     );
     const domByTaskId = new Map(
       tasks
-        .filter((t) => (t.name || "").trim() !== "")
+        .filter((t) => keepTaskInSectionStorage(t))
         .map((t) => [
           t.taskId || "",
           {
@@ -263,7 +263,7 @@ function saveSectionTasks(sectionId, tasks) {
           return { ...candidate, localModifiedAt: Date.now() };
         },
       )
-      .filter((t) => t.name !== "");
+      .filter((t) => keepTaskInSectionStorage(t));
     obj[sectionId] = toSave;
     persistSectionTasksAndSchedule(obj);
   } catch (_) {}
@@ -333,7 +333,7 @@ function loadCustomSectionTasks(sectionId) {
     const arr = obj[sectionId];
     if (Array.isArray(arr)) {
       return arr
-        .filter((t) => (t.name || "").trim() !== "")
+        .filter((t) => keepTaskInSectionStorage(t))
         .map((t) => ({
           ...t,
           sectionId,
@@ -397,7 +397,7 @@ function saveCustomSectionTasks(sectionId, tasks) {
           return { ...candidate, localModifiedAt: Date.now() };
         },
       )
-      .filter((t) => t.name !== "");
+      .filter((t) => keepTaskInSectionStorage(t));
     obj[sectionId] = toSave;
     persistCustomSectionTasksAndSchedule(obj);
   } catch (_) {}
@@ -471,6 +471,16 @@ const FIXED_SECTION_IDS_FOR_STORAGE = ["braindump", ...KPI_SECTION_IDS];
 const TASK_ID_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+/** 제목 없는 새 줄(추가 직후)도 식별자가 있으면 저장·복원해 전체 리렌더 시 사라지지 않게 함(UUID 또는 getTaskId()의 task-타임스탬프-…) */
+function keepTaskInSectionStorage(t) {
+  const n = (t.name || "").trim();
+  if (n !== "") return true;
+  const tid = String(t.taskId || "").trim();
+  if (!tid) return false;
+  if (TASK_ID_UUID_RE.test(tid)) return true;
+  return /^task-\d+-/.test(tid);
+}
+
 function syncSectionDomTaskIdsFromStorage(sectionId, sec) {
   if (!sec || !sectionId) return;
   try {
@@ -541,6 +551,20 @@ function scheduleSaveSectionTasksFromDOM(sectionsWrap) {
     _saveSectionTasksTimer = null;
     collectAndSaveKpiTasksFromDOM(sectionsWrap);
   }, 300);
+}
+
+/** 추가 직후 초안 행이 저장소에 바로 들어가게 함(전체 리렌더·탭 전환과 경쟁) */
+function flushSaveSectionTasksFromDOM(sectionsWrap) {
+  if (!sectionsWrap) return;
+  if (_saveSectionTasksTimer) {
+    clearTimeout(_saveSectionTasksTimer);
+    _saveSectionTasksTimer = null;
+  }
+  collectAndSaveKpiTasksFromDOM(sectionsWrap);
+  getCustomSections().forEach((s) => {
+    const sec = sectionsWrap.querySelector(`.todo-section[data-section="${s.id}"]`);
+    if (sec) saveCustomSectionTasks(s.id, collectCustomSectionFromDOM(sectionsWrap, s.id));
+  });
 }
 
 function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
@@ -631,6 +655,23 @@ function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
             reminderDate: row.dataset.reminderDate || "",
             reminderTime: row.dataset.reminderTime || "",
           });
+        } else {
+          const tid = String(row.dataset.taskId || "").trim();
+          if (keepTaskInSectionStorage({ name: "", taskId: tid })) {
+            sectionTasks.push({
+              taskId: tid,
+              name: "",
+              startDate,
+              dueDate,
+              startTime,
+              endTime,
+              eisenhower,
+              done,
+              itemType,
+              reminderDate: row.dataset.reminderDate || "",
+              reminderTime: row.dataset.reminderTime || "",
+            });
+          }
         }
       });
     }
@@ -2943,6 +2984,8 @@ function createSection(section, options = {}) {
       if (nameInput) {
         nameInput.focus();
       }
+      const sectionsWrap = tbody.closest(".todo-sections-wrap");
+      if (sectionsWrap) flushSaveSectionTasksFromDOM(sectionsWrap);
     });
   }
 

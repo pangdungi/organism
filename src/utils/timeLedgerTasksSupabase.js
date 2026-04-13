@@ -10,6 +10,7 @@ import {
   isUuid,
   migrateTimeLogRowsTaskIds,
 } from "./timeTaskOptionsModel.js";
+import { lpPullDebug } from "./lpPullDebug.js";
 
 const TABLE = "time_ledger_tasks";
 
@@ -135,6 +136,7 @@ export function attachTimeLedgerTasksSaveListener() {
 }
 
 export async function hydrateTimeLedgerTasksFromCloud() {
+  lpPullDebug("hydrateTimeLedgerTasksFromCloud", {});
   if (!supabase) return;
   attachTimeLedgerTasksSaveListener();
   await pushTimeLedgerTasksIfServerEmpty();

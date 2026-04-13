@@ -8,6 +8,7 @@
 
 import { supabase } from "../supabase.js";
 import { lpSaveDebug } from "./lpSaveDebug.js";
+import { lpPullDebug } from "./lpPullDebug.js";
 import {
   applyTimeLedgerServerRangeSnapshot,
   ensureTimeLedgerEntryIds,
@@ -292,6 +293,7 @@ export async function pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd) {
  * 아카이브: 해당 연·월만 서버에서 받아 세션 메모리에 반영.
  */
 export async function hydrateTimeLedgerEntriesForArchiveMonth(year, month) {
+  lpPullDebug("hydrateTimeLedgerEntriesForArchiveMonth", { year, month });
   if (!supabase) return false;
   const { rangeStart, rangeEnd } = timeLedgerMonthRangeYmd(year, month);
   return pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
@@ -301,6 +303,7 @@ export async function hydrateTimeLedgerEntriesForArchiveMonth(year, month) {
  * 아카이브: 선택한 날짜 구간(YYYY-MM-DD 포함)을 서버에서 받아 세션 메모리에 반영.
  */
 export async function hydrateTimeLedgerEntriesForArchiveRange(rangeStart, rangeEnd) {
+  lpPullDebug("hydrateTimeLedgerEntriesForArchiveRange", { rangeStart, rangeEnd });
   if (!supabase) return false;
   const rs = String(rangeStart || "").trim();
   const re = String(rangeEnd || "").trim();
@@ -318,6 +321,7 @@ export function attachTimeLedgerEntriesSaveListener() {
 }
 
 export async function hydrateTimeLedgerEntriesFromCloud() {
+  lpPullDebug("hydrateTimeLedgerEntriesFromCloud", {});
   if (!supabase) return false;
   attachTimeLedgerEntriesSaveListener();
   return pullTimeLedgerEntriesFromSupabase();

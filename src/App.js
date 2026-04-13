@@ -53,6 +53,8 @@ import {
   snapshotKpiLocalStorageBrief,
 } from "./utils/kpiSyncDebug.js";
 import { initSupabaseRealtimeSync } from "./utils/supabaseRealtimeSync.js";
+import { getTabSyncCounts, logTabSync } from "./utils/lpTabSyncDebug.js";
+import { lpPullDebug } from "./utils/lpPullDebug.js";
 import { hydrateWorkScheduleFromCloud } from "./utils/workScheduleSupabase.js";
 import { logLpRender, logLpRenderStack } from "./utils/lpRenderDebugLog.js";
 import { initMobileVisualViewportKeyboardInset } from "./utils/mobileViewportKeyboard.js";
@@ -316,7 +318,9 @@ export function mountApp(container) {
   main.appendChild(panel);
 
   function setActiveTab(tabId) {
+    const fromTab = currentTabId;
     currentTabId = tabId;
+    logTabSync("tab_switch", { from: fromTab, to: tabId });
     nav.querySelectorAll(".app-sidebar-item").forEach((b) => {
       b.classList.toggle("active", b.dataset.tabId === tabId);
     });
@@ -332,6 +336,7 @@ export function mountApp(container) {
      * 단, 사용자가 입력 중이면 갱신을 건너뜀(입력 도중 화면 날아감 방지). */
     if (KPI_TAB_IDS.has(tabId)) {
       void pullKpiTabFromCloud(tabId).then(({ pullOk, localChanged }) => {
+        logTabSync("kpi_tab_pull", { tabId, pullOk, localChanged });
         if (pullOk && localChanged && !isUserTypingInApp()) {
           logLpRender("App:setActiveTab·KPI pull 후 재렌더", {
             tabId,
@@ -580,6 +585,8 @@ export function mountApp(container) {
         _browserTabVisiblePullTimer = null;
         void (async () => {
           try {
+            logTabSync("visibility_pull", { tab: currentTabId });
+            lpPullDebug("app_visibility_focus_pull_bundle", { tab: currentTabId });
             const todoPullPromise = TODO_TABS_FOR_CLOUD_PULL.has(currentTabId)
               ? hydrateTodoSectionTasksFromCloud()
               : Promise.resolve(false);
@@ -653,6 +660,7 @@ export function mountApp(container) {
   );
 
   renderMain(main);
+  logTabSync("boot_hydrate", { phase: "Promise.all" });
   void Promise.all([
     hydrateTodoSectionTasksFromCloud(),
     hydrateTimeDailyBudgetFromCloud(),
@@ -731,4 +739,7 @@ export function mountApp(container) {
   if (!window.matchMedia("(max-width: 48rem)").matches) {
     observeDatePickerInit(panel);
   }
+  try {
+    window.__lpTabSyncCounts = getTabSyncCounts;
+  } catch (_) {}
 }

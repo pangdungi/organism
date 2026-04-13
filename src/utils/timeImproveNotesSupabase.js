@@ -8,6 +8,7 @@ import {
   getStoredImproveNotes,
   mergeImproveNotesFromServerRows,
 } from "./timeImproveNotesModel.js";
+import { lpPullDebug } from "./lpPullDebug.js";
 
 const TABLE = "time_improve_daily_notes";
 
@@ -107,6 +108,7 @@ export function attachTimeImproveNotesSaveListener() {
 }
 
 export async function hydrateTimeImproveNotesFromCloud() {
+  lpPullDebug("hydrateTimeImproveNotesFromCloud", {});
   if (!supabase) return;
   attachTimeImproveNotesSaveListener();
   await pullTimeImproveNotesFromSupabase();

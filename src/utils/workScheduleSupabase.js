@@ -15,6 +15,7 @@ import {
 } from "./workScheduleModel.js";
 import { runWorkScheduleSerialized } from "./workScheduleServerSyncSerial.js";
 import { workScheduleDiagLog } from "./workScheduleDiag.js";
+import { lpPullDebug } from "./lpPullDebug.js";
 
 function wsSyncLog(...args) {
   workScheduleDiagLog("[sync]", ...args);
@@ -352,6 +353,7 @@ export async function pushAllLocalWorkScheduleIfServerEmpty() {
  * @returns {Promise<{ anyChanged: boolean }>}
  */
 export async function hydrateWorkScheduleFromCloud() {
+  lpPullDebug("hydrateWorkScheduleFromCloud", {});
   wsSyncLog("hydrate: enter");
   attachWorkScheduleSaveListener();
   if (!supabase) {

@@ -4,7 +4,7 @@
 
 import {
   attachAssetExpensePrefsSaveListener,
-  hydrateAssetExpensePrefsFromCloud,
+  pushAllLocalAssetExpensePrefsIfServerEmpty,
   readExpenseClassificationSavedMem,
   writeExpenseClassificationSavedMem,
   readExpensePaymentOptionsListMem,
@@ -14,32 +14,35 @@ import {
   attachAssetExpenseTransactionsSaveListener,
   deleteAssetExpenseTransactionsFromSupabase,
   getExpenseRowsMem,
-  hydrateAssetExpenseTransactionsFromCloud,
+  persistAssetExpensePullBounds,
+  pushAllLocalAssetExpenseTransactionsIfServerEmpty,
   pullAssetExpenseTransactionsFromSupabase,
   pullAssetExpenseTransactionsForDateRange,
   setExpenseRowsMem,
 } from "../utils/assetExpenseTransactionsSupabase.js";
+import { pullAllAssetFromCloud } from "../utils/assetCloudRefresh.js";
+import { logTabSync } from "../utils/lpTabSyncDebug.js";
 import {
   attachAssetNetWorthGoalSaveListener,
-  hydrateAssetNetWorthGoalFromCloud,
+  pushLocalNetWorthTargetIfServerHasNoRow,
   getNetWorthTargetDisplayStrMem,
   setNetWorthTargetDisplayStrMem,
 } from "../utils/assetNetWorthTargetSupabase.js";
 import {
   attachAssetStockCategoryOptionsSaveListener,
-  hydrateAssetStockCategoryOptionsFromCloud,
+  pushAllLocalStockCategoryOptionsIfServerEmpty,
   readStockCategoryCustomLabelsMem,
   writeStockCategoryCustomLabelsMem,
 } from "../utils/assetStockCategorySupabase.js";
 import {
   attachAssetPlanMonthlyGoalsSaveListener,
   getPlanMonthlyGoalsRowsMem,
-  hydrateAssetPlanMonthlyGoalsFromCloud,
+  pushLocalPlanGoalsIfServerEmpty,
   setPlanMonthlyGoalsRowsMem,
 } from "../utils/assetPlanMonthlyGoalsSupabase.js";
 import {
   attachAssetNetWorthBundleSaveListener,
-  hydrateAssetNetWorthBundleFromCloud,
+  pushLocalNetWorthBundleIfServerHasNoRow,
   readNetWorthBundleKey,
   writeNetWorthBundleKey,
 } from "../utils/assetNetWorthBundleSupabase.js";
@@ -63,6 +66,29 @@ const REAL_ESTATE_ROWS_KEY = "asset_real_estate_rows";
 const STOCK_ROWS_KEY = "asset_stock_rows";
 const INSURANCE_ROWS_KEY = "asset_insurance_rows";
 const ANNUITY_ROWS_KEY = "asset_annuity_rows";
+
+/** renderMain으로 패널이 다시 그려져도 가계부/현금흐름 등 하위 탭 유지 (근무표 `lp_work_schedule_subview` 와 동일 패턴) */
+const SESSION_ASSET_SUBVIEW_KEY = "lp_asset_subview";
+const ASSET_SUBVIEWS = new Set(["expense", "cashflow", "networth", "plan"]);
+/** Realtime·renderMain 로 연속 remount 시 pull·[LP-SAVE] 로그 폭주 완화 */
+let _lastAssetTabFullPullAt = 0;
+const ASSET_TAB_FULL_PULL_COOLDOWN_MS = 2500;
+
+function readSavedAssetSubView() {
+  try {
+    if (typeof sessionStorage === "undefined") return null;
+    const v = sessionStorage.getItem(SESSION_ASSET_SUBVIEW_KEY);
+    if (ASSET_SUBVIEWS.has(v)) return v;
+  } catch (_) {}
+  return null;
+}
+
+function saveAssetSubView(v) {
+  if (!ASSET_SUBVIEWS.has(v)) return;
+  try {
+    if (typeof sessionStorage !== "undefined") sessionStorage.setItem(SESSION_ASSET_SUBVIEW_KEY, v);
+  } catch (_) {}
+}
 
 const DEFAULT_STOCK_CATEGORY_OPTIONS = ["미국주식", "국내주식", "ETF", "코인", "현물", "선물"];
 
@@ -4815,6 +4841,7 @@ function renderExpenseView(options = {}) {
         if (!wrap.isConnected) return;
         const { from, to } = getExpensePickerSqlBounds();
         if (!from || !to) return;
+        persistAssetExpensePullBounds(from, to);
         const ok = await pullAssetExpenseTransactionsForDateRange(from, to);
         if (!wrap.isConnected) return;
         tbody.replaceChildren();
@@ -4872,6 +4899,10 @@ function renderExpenseView(options = {}) {
     });
   }
   applyExpenseFilter();
+  {
+    const b = getExpensePickerSqlBounds();
+    if (b.from && b.to) persistAssetExpensePullBounds(b.from, b.to);
+  }
 
   tableWrap.appendChild(table);
 
@@ -6269,6 +6300,14 @@ function renderCashflowView() {
   }
 
   renderChart();
+  /* 현금흐름은 연·월별 집계에 전체 거래가 필요함 — 가계부는 구간 pull만 해 두었을 수 있어 보조로 전체 스냅샷 1회 */
+  void pullAssetExpenseTransactionsFromSupabase()
+    .then(() => {
+      if (!wrap.isConnected) return;
+      renderChart();
+    })
+    .catch((e) => console.warn("[asset-cashflow] expense pull", e));
+
   return wrap;
 }
 
@@ -6312,11 +6351,15 @@ export function render() {
   const viewTabs = document.createElement("div");
   viewTabs.className = "asset-view-tabs";
   viewTabs.innerHTML = `
-    <button type="button" class="asset-view-tab active" data-view="expense">가계부</button>
+    <button type="button" class="asset-view-tab" data-view="expense">가계부</button>
     <button type="button" class="asset-view-tab" data-view="cashflow">현금흐름</button>
     <button type="button" class="asset-view-tab" data-view="networth">순자산</button>
     <button type="button" class="asset-view-tab" data-view="plan">자산관리계획</button>
   `;
+  const initialView = readSavedAssetSubView() || "expense";
+  viewTabs.querySelectorAll(".asset-view-tab").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.view === initialView);
+  });
   el.appendChild(viewTabs);
 
   const contentWrap = document.createElement("div");
@@ -6372,6 +6415,7 @@ export function render() {
     viewTabs.querySelectorAll(".asset-view-tab").forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.view === view);
     });
+    saveAssetSubView(view);
     renderView(view);
   }
 
@@ -6388,7 +6432,7 @@ export function render() {
 
   const hasCachedExpenseRows = getExpenseRowsMem().length > 0;
   if (hasCachedExpenseRows) {
-    renderView("expense");
+    renderView(initialView);
   } else {
     const assetInitialLoading = document.createElement("p");
     assetInitialLoading.className = "asset-placeholder";
@@ -6400,21 +6444,30 @@ export function render() {
 
   void (async () => {
     try {
-      await hydrateAssetExpensePrefsFromCloud();
-      await Promise.all([
-        hydrateAssetExpenseTransactionsFromCloud(),
-        hydrateAssetNetWorthGoalFromCloud(),
-        hydrateAssetStockCategoryOptionsFromCloud(),
-        hydrateAssetPlanMonthlyGoalsFromCloud(),
-        hydrateAssetNetWorthBundleFromCloud(),
-      ]);
+      logTabSync("asset_tab_hydrate", {});
+      const now = Date.now();
+      const shouldFullPull =
+        _lastAssetTabFullPullAt === 0 ||
+        now - _lastAssetTabFullPullAt >= ASSET_TAB_FULL_PULL_COOLDOWN_MS;
+      if (shouldFullPull) {
+        _lastAssetTabFullPullAt = Date.now();
+        await pullAllAssetFromCloud(() => "asset", { forceExpensePull: true });
+        await Promise.all([
+          pushAllLocalAssetExpenseTransactionsIfServerEmpty(),
+          pushAllLocalAssetExpensePrefsIfServerEmpty(),
+          pushLocalNetWorthBundleIfServerHasNoRow(),
+          pushLocalNetWorthTargetIfServerHasNoRow(),
+          pushLocalPlanGoalsIfServerEmpty(),
+          pushAllLocalStockCategoryOptionsIfServerEmpty(),
+        ]);
+      }
       const activeTab = viewTabs.querySelector(".asset-view-tab.active");
-      const view = activeTab?.dataset?.view || "expense";
+      const view = activeTab?.dataset?.view || initialView;
       renderView(view);
     } catch (e) {
       console.warn("[asset-expense-cloud]", e);
       const activeTab = viewTabs.querySelector(".asset-view-tab.active");
-      const view = activeTab?.dataset?.view || "expense";
+      const view = activeTab?.dataset?.view || initialView;
       renderView(view);
     }
   })();

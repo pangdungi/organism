@@ -14,6 +14,7 @@ import {
 } from "./todoSectionTasksModel.js";
 import { runTodoSectionTasksSerialized } from "./todoSectionTasksServerSyncSerial.js";
 import { logLpRender } from "./lpRenderDebugLog.js";
+import { lpPullDebug } from "./lpPullDebug.js";
 
 const TABLE = "calendar_section_tasks";
 
@@ -239,6 +240,7 @@ export function scheduleTodoSectionTasksSyncPush() {
 
 /** @returns {Promise<boolean>} 서버 데이터로 로컬을 덮어썼으면 true */
 export async function hydrateTodoSectionTasksFromCloud() {
+  lpPullDebug("hydrateTodoSectionTasksFromCloud", {});
   if (!supabase) return false;
   let needRefresh = false;
   const e1 = ensureCalendarSectionTaskIds();

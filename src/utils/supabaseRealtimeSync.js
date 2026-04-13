@@ -11,6 +11,8 @@ import { timeLedgerEntryPayloadTouchesSessionPicker } from "./timeLedgerEntriesS
 import { pullAllAssetFromCloud } from "./assetCloudRefresh.js";
 import { pullAllDiaryFromCloud } from "./diaryCloudRefresh.js";
 import { logLpRender } from "./lpRenderDebugLog.js";
+import { logTabSync } from "./lpTabSyncDebug.js";
+import { lpPullDebug } from "./lpPullDebug.js";
 
 /** App.js 의 TAB_IDS_REFRESH_ON_KPI_PULL 과 동일 — 이 탭일 때만 pull 후 화면 갱신 (time 은 전체 renderMain 대신 이벤트로 부분 갱신) */
 const REFRESH_MAIN_AFTER_CLOUD_PULL = new Set([
@@ -80,6 +82,9 @@ let _timeLedgerRtBatch = {
   touchedTables: /** @type {Set<string>} */ (new Set()),
   entryTouchesPicker: false,
 };
+
+/** 디바운스 윈도 동안 postgres_changes 로 건드린 테이블명 (가계부 pull 스킵 판별용). */
+let _realtimeAllTablesBatch = /** @type {Set<string>} */ (new Set());
 
 function recordTimeLedgerRealtimePayload(payload) {
   const table = payload?.table;
@@ -162,9 +167,18 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
     };
     _timeLedgerRtBatch.touchedTables.clear();
     _timeLedgerRtBatch.entryTouchesPicker = false;
+    const realtimeTouchedTables = new Set(_realtimeAllTablesBatch);
+    _realtimeAllTablesBatch.clear();
 
     void (async () => {
       try {
+        logTabSync("realtime_debounced_pull", { gen });
+        lpPullDebug("realtime_debounced_pull_bundle", {
+          gen,
+          tab: getCurrentTabId(),
+          realtimeTouchedTables: [...realtimeTouchedTables],
+          timeLedgerRtTables: [...timeBatch.touchedTables],
+        });
         logLpRender("realtime:debounced 틱 시작", { gen });
         const needTodo = await hydrateTodoSectionTasksFromCloud();
         const { anyChanged: kpiMapsChanged } = await pullAllKpiMapsFromCloud(getCurrentTabId);
@@ -187,7 +201,9 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
           const t = await pullAllTimeLedgerFromCloud({ skipEntries: true });
           timeLedgerChanged = timeLedgerChanged || t.anyChanged;
         }
-        const { anyChanged: assetChanged } = await pullAllAssetFromCloud(getCurrentTabId);
+        const { anyChanged: assetChanged } = await pullAllAssetFromCloud(getCurrentTabId, {
+          realtimeTouchedTables,
+        });
         const { anyChanged: diaryChanged } = await pullAllDiaryFromCloud();
         if (gen !== _generation) return;
         if (
@@ -298,6 +314,8 @@ export function initSupabaseRealtimeSync(opts) {
   const bind = (uid) => {
     void teardown();
     const onEvent = (payload) => {
+      const tbl = payload?.table;
+      if (tbl) _realtimeAllTablesBatch.add(tbl);
       recordTimeLedgerRealtimePayload(payload);
       debouncedRealtimeRefresh(getCurrentTabId, renderMain);
     };

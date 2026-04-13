@@ -15,6 +15,7 @@ import {
   TIME_DAILY_BUDGET_GOALS_KEY,
   TIME_BUDGET_EXCLUDED_KEY,
 } from "./timeDailyBudgetModel.js";
+import { lpPullDebug } from "./lpPullDebug.js";
 
 function snapshotTimeLedgerLocalStorage() {
   try {
@@ -37,6 +38,7 @@ function snapshotTimeLedgerLocalStorage() {
  */
 export async function pullAllTimeLedgerFromCloud(opts = {}) {
   const { skipEntries = false } = opts;
+  lpPullDebug("pullAllTimeLedgerFromCloud", { skipEntries });
   await ensureTimeLedgerStorageReady();
   const before = snapshotTimeLedgerLocalStorage();
   const jobs = [];
