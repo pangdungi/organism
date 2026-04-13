@@ -2766,13 +2766,10 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
 
   const memoTagTd = document.createElement("td");
   memoTagTd.className = "time-cell time-cell-memo-tag";
-  const memoTagList =
-    rowData.memoTags?.length > 0
-      ? rowData.memoTags
-      : parseTagsFromFeedback(rowData.feedback || "");
+  const memoTagDisplayTexts = getMemoTagDisplayTextsForLedgerRow(rowData);
   const memoTagWrap = document.createElement("span");
   memoTagWrap.className = "time-display-memo-tags";
-  memoTagList.forEach((tag) => {
+  memoTagDisplayTexts.forEach((tag) => {
     const pill = document.createElement("span");
     pill.className = "time-memo-tag-pill";
     pill.textContent = tag;
@@ -2806,6 +2803,123 @@ export function parseTagsFromFeedback(feedbackStr) {
   if (!feedbackStr || typeof feedbackStr !== "string") return [];
   const matches = feedbackStr.match(/#([^\s#]+)/g) || [];
   return [...new Set(matches.map((m) => m.slice(1).trim()).filter(Boolean))];
+}
+
+/** 시간기록 memo_tags에 저장하는 가계부 지출 id 참조 (동기화 후에도 행–지출 연결 유지) */
+const LP_LEDGER_EXPENSE_TAG_PREFIX = "lp-expense:";
+
+function isLedgerExpenseRefTag(tag) {
+  return String(tag || "").trim().startsWith(LP_LEDGER_EXPENSE_TAG_PREFIX);
+}
+
+function ledgerExpenseMemoTagForId(expenseId) {
+  const id = String(expenseId || "").trim();
+  if (!id) return "";
+  return `${LP_LEDGER_EXPENSE_TAG_PREFIX}${id}`;
+}
+
+function expenseIdFromLedgerMemoTag(tag) {
+  const s = String(tag || "").trim();
+  if (!isLedgerExpenseRefTag(s)) return "";
+  return s.slice(LP_LEDGER_EXPENSE_TAG_PREFIX.length).trim();
+}
+
+/**
+ * memo_tags에서 사용자 표시 태그와 소비 거래 id 목록 분리
+ * @returns {{ userTags: string[], expenseIds: string[] }}
+ */
+function splitLedgerMemoTags(memoTags) {
+  const userTags = [];
+  const expenseIds = [];
+  for (const t of Array.isArray(memoTags) ? memoTags : []) {
+    const s = String(t ?? "").trim();
+    if (!s) continue;
+    const eid = expenseIdFromLedgerMemoTag(s);
+    if (eid) expenseIds.push(eid);
+    else userTags.push(s);
+  }
+  return { userTags, expenseIds };
+}
+
+function buildLedgerMemoTagsForSubmit(userTags, todoTags, expenseAddedItems) {
+  const base = [
+    ...(Array.isArray(userTags) ? userTags : []),
+    ...(Array.isArray(todoTags) ? todoTags : []),
+  ];
+  const refs = (Array.isArray(expenseAddedItems) ? expenseAddedItems : [])
+    .map((it) => ledgerExpenseMemoTagForId(it?.id))
+    .filter(Boolean);
+  const seen = new Set();
+  const out = [];
+  for (const x of [...base, ...refs]) {
+    const k = String(x).trim();
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    out.push(k);
+  }
+  return out;
+}
+
+function ledgerExpenseAddedItemsFromIds(expenseIds) {
+  const ids = Array.isArray(expenseIds) ? expenseIds : [];
+  if (ids.length === 0) return [];
+  const all = loadExpenseRows();
+  const out = [];
+  for (const eid of ids) {
+    const row = all.find((r) => String(r?.id || "").trim() === String(eid).trim());
+    if (!row || row.flowType !== "지출") continue;
+    out.push({
+      id: row.id,
+      name: row.name || "",
+      classification: row.classification || "",
+      amountFormatted: row.amount || "",
+    });
+  }
+  return out;
+}
+
+/** 테이블 메모 태그 열: 사용자 태그 + 소비 요약(가계부 행 기준) */
+function getMemoTagDisplayTextsForLedgerRow(rowData) {
+  const raw =
+    rowData?.memoTags?.length > 0
+      ? rowData.memoTags
+      : parseTagsFromFeedback(rowData?.feedback || "");
+  const { userTags, expenseIds } = splitLedgerMemoTags(
+    Array.isArray(raw) ? raw : [],
+  );
+  const texts = [...userTags];
+  const allExp = loadExpenseRows();
+  for (const eid of expenseIds) {
+    const row = allExp.find((r) => String(r?.id || "").trim() === eid);
+    const label = row
+      ? [row.classification || "", row.amount || ""].filter(Boolean).join(" | ") ||
+        (row.name || "").trim() ||
+        "소비"
+      : "소비 기록";
+    texts.push(label);
+  }
+  return texts;
+}
+
+/** 모바일 카드: 방해기록과 동일 레이아웃으로 연결된 소비 요약 (lp-expense 태그 기준) */
+function buildMobileCardExpenseBlockHtml(rowData) {
+  const raw = Array.isArray(rowData?.memoTags) ? rowData.memoTags : [];
+  const { expenseIds } = splitLedgerMemoTags(raw);
+  if (expenseIds.length === 0) return "";
+  const allExp = loadExpenseRows();
+  const parts = [];
+  for (const eid of expenseIds) {
+    const row = allExp.find((r) => String(r?.id || "").trim() === eid);
+    const line = row
+      ? [row.classification || "", row.amount || ""].filter(Boolean).join(" | ") ||
+        String(row.name || "").trim()
+      : "";
+    const safe = String(line || "소비").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    if (safe) parts.push(safe);
+  }
+  if (parts.length === 0) return "";
+  const text = parts.join(" · ");
+  return `<div class="time-mobile-card-focus time-mobile-card-expense-snippet"><span class="time-mobile-card-focus-label">소비</span><span class="time-mobile-card-focus-text">${text}</span></div>`;
 }
 
 /** contenteditable 메모 영역 직렬화: 텍스트 + #태그명 → 한 줄 문자열 */
@@ -3152,6 +3266,7 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   const focusBlock = focusText
     ? `<div class="time-mobile-card-focus"><span class="time-mobile-card-focus-label">방해기록</span><span class="time-mobile-card-focus-text">${focusText}</span></div>`
     : "";
+  const expenseBlock = buildMobileCardExpenseBlockHtml(rowData);
 
   const card = document.createElement("div");
   card.className =
@@ -3175,6 +3290,7 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
       </div>
       ${memo ? `<div class="time-mobile-card-memo">${memo}</div>` : ""}
       ${focusBlock}
+      ${expenseBlock}
     </div>
   `;
   card.addEventListener("click", (e) => {
@@ -6326,10 +6442,14 @@ export function render() {
     const feedbackRaw = data.feedback || "";
     const memoOnly = feedbackRaw.replace(/#[^\s#]+/g, "").trim();
     if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
-    taskLogMemoTags = Array.isArray(data.memoTags)
+    const rawMemoTagsForEdit = Array.isArray(data.memoTags)
       ? [...data.memoTags]
       : parseTagsFromFeedback(feedbackRaw);
+    const splitEdit = splitLedgerMemoTags(rawMemoTagsForEdit);
+    taskLogMemoTags = splitEdit.userTags;
     renderTaskLogTagPills();
+    taskLogExpenseAddedItems = ledgerExpenseAddedItemsFromIds(splitEdit.expenseIds);
+    updateExpensePills();
     taskLogTodoAddedItems = [];
     if (typeof updateTodoPills === "function") updateTodoPills();
     if (taskLogTagInput) taskLogTagInput.value = "";
@@ -6405,6 +6525,9 @@ export function render() {
     const editTr = taskLogEditTr;
     const addCtx = taskLogAddContext;
     let oldRowDataToRemove = null;
+    /** 메인 폼에서 만든 지출 id → 저장 직전에 memo_tags에 lp-expense: 연결 */
+    let mainFormExpenseId = null;
+    let submittedLedgerRowForExpenseLink = null;
 
     const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
     const startRaw = (taskLogStartInput.value || "").trim();
@@ -6422,7 +6545,11 @@ export function render() {
     const todoTags = taskLogTodoAddedItems
       .map((t) => [t.categoryLabel, t.todoName].filter(Boolean).join(" | "))
       .filter(Boolean);
-    const memoTags = [...taskLogMemoTags, ...todoTags];
+    const memoTags = buildLedgerMemoTagsForSubmit(
+      taskLogMemoTags,
+      todoTags,
+      taskLogExpenseAddedItems,
+    );
     const timeTracked = (() => {
       if (startTime && endTime) {
         const toIso = (str) => {
@@ -6514,6 +6641,7 @@ export function render() {
         focus: focusValue,
       };
       editTr._rowData = newRowData;
+      submittedLedgerRowForExpenseLink = newRowData;
       const isMobileCard = editTr.classList?.contains(
         "time-ledger-mobile-card",
       );
@@ -6546,8 +6674,7 @@ export function render() {
         );
         if (memoTagCell) {
           memoTagCell.innerHTML = "";
-          const editTags = memoTags;
-          editTags.forEach((tag) => {
+          getMemoTagDisplayTextsForLedgerRow(newRowData).forEach((tag) => {
             const pill = document.createElement("span");
             pill.className = "time-memo-tag-pill";
             pill.textContent = tag;
@@ -6609,6 +6736,7 @@ export function render() {
       else ctx.tbody.appendChild(tr);
       /* 새 기록을 allRowsCache에 추가 (저장 누락 방지) */
       allRowsCache.push(newRowData);
+      submittedLedgerRowForExpenseLink = newRowData;
       ctx.onRowUpdate?.();
     }
 
@@ -6628,6 +6756,7 @@ export function render() {
       ).replace(/\//g, "-");
       const expId = newExpenseRowId();
       if (expId) {
+        mainFormExpenseId = expId;
         existingRows.push({
           id: expId,
           name: expenseName || "",
@@ -6641,6 +6770,29 @@ export function render() {
         });
         saveExpenseRows(existingRows);
         window.dispatchEvent(new CustomEvent("asset-expense-transactions-saved"));
+      }
+    }
+
+    if (mainFormExpenseId && submittedLedgerRowForExpenseLink) {
+      const ref = ledgerExpenseMemoTagForId(mainFormExpenseId);
+      const m = [...(submittedLedgerRowForExpenseLink.memoTags || [])];
+      if (ref && !m.includes(ref)) m.push(ref);
+      submittedLedgerRowForExpenseLink.memoTags = m;
+      if (editTr && !editTr.classList?.contains("time-ledger-mobile-card")) {
+        const memoTagCell = editTr.querySelector(
+          ".time-cell-memo-tag .time-display-memo-tags",
+        );
+        if (memoTagCell) {
+          memoTagCell.innerHTML = "";
+          getMemoTagDisplayTextsForLedgerRow(
+            submittedLedgerRowForExpenseLink,
+          ).forEach((tag) => {
+            const pill = document.createElement("span");
+            pill.className = "time-memo-tag-pill";
+            pill.textContent = tag;
+            memoTagCell.appendChild(pill);
+          });
+        }
       }
     }
 

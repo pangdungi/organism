@@ -5941,6 +5941,11 @@ body {
     line-height: 1.45;
     word-break: break-word;
   }
+  /* 소비: 방해기록과 동일 블록, 본문만 한 단계 작게 */
+  .time-mobile-card-expense-snippet .time-mobile-card-focus-text {
+    font-size: 0.65rem;
+    line-height: 1.4;
+  }
   .time-ledger-mobile-hidden-table {
     position: absolute !important;
     left: -624.9375rem !important;

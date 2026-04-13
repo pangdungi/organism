@@ -186,9 +186,16 @@ function mergeExpenseMemWithServerRange(fetchedRows, dateFrom, dateTo) {
     const d = String(ds || "").slice(0, 10);
     return d >= from && d <= to;
   };
-  const kept = getExpenseRowsMem().filter((r) => !inWin(r?.date));
+  const prevMem = getExpenseRowsMem();
+  const kept = prevMem.filter((r) => !inWin(r?.date));
+  const inWinLocal = prevMem.filter((r) => inWin(r?.date));
   const byId = new Map();
   for (const r of kept) {
+    const id = String(r?.id || "").trim();
+    if (id) byId.set(id, r);
+  }
+  /* 구간 안 로컬 행(아직 서버에 없는 upsert 대기)을 먼저 넣고, fetch 결과로 같은 id는 덮어씀 */
+  for (const r of inWinLocal) {
     const id = String(r?.id || "").trim();
     if (id) byId.set(id, r);
   }
