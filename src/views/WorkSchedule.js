@@ -1362,29 +1362,44 @@ export function render(opts = {}) {
     btn.addEventListener("click", () => switchView(btn.dataset.view, "tab-click"));
   });
 
-  /* 로컬 기준으로 즉시 표시. Supabase 사용 시 병합 후 한 번 더 그림(할일 탭과 동일, 불러오는 중 화면 없음) */
-  switchView(activeWorkScheduleView, "mount-initial");
+  function showWorkScheduleLoadingShell() {
+    contentWrap.innerHTML = "";
+    const ph = document.createElement("p");
+    ph.className = "work-schedule-loading-msg";
+    ph.textContent = "근무표를 불러오는 중…";
+    ph.setAttribute("aria-live", "polite");
+    ph.setAttribute("aria-busy", "true");
+    ph.style.cssText =
+      "margin:0;padding:1.5rem 1.25rem;font-size:0.9375rem;color:var(--text-caption-color,#A8A290);";
+    contentWrap.appendChild(ph);
+  }
+
   const hydrateGen = ++_workScheduleHydrateGeneration;
-  wsUiLog("mount hydrate start, gen=", hydrateGen);
-  void hydrateWorkScheduleFromCloud()
-    .catch((err) => console.warn("[work-schedule]", err))
-    .then((hydrateResult) => {
-      if (hydrateGen !== _workScheduleHydrateGeneration) {
-        wsUiLog("hydrate SKIP (superseded by newer mount)", hydrateGen, "current=", _workScheduleHydrateGeneration);
-        return;
-      }
-      if (!el.isConnected) {
-        wsUiLog("hydrate SKIP (panel no longer in document)");
-        return;
-      }
-      if (!supabase) return;
-      if (!hydrateResult?.anyChanged) {
-        wsUiLog("hydrate: 2번째 switchView 생략 (서버 pull 후 메모리 동일 → 깜빡임 1회 감소)");
-        return;
-      }
-      wsUiLog("hydrate OK → switchView (서버·로컬 차이 반영)", activeWorkScheduleView);
-      switchView(activeWorkScheduleView, "hydrate-finally");
-    });
+  /* Supabase 있음: 빈 표를 먼저 그리면 곧바로 pull로 또 그려 깜빡임 → hydrate 끝난 뒤 표를 1회만 그림 */
+  if (supabase) {
+    showWorkScheduleLoadingShell();
+    wsUiLog("mount: hydrate 선행 (빈 표·이중 switchView 생략), gen=", hydrateGen);
+    void hydrateWorkScheduleFromCloud()
+      .catch((err) => {
+        console.warn("[work-schedule]", err);
+        return { anyChanged: false };
+      })
+      .then((hydrateResult) => {
+        if (hydrateGen !== _workScheduleHydrateGeneration) {
+          wsUiLog("hydrate SKIP (superseded by newer mount)", hydrateGen, "current=", _workScheduleHydrateGeneration);
+          return;
+        }
+        if (!el.isConnected) {
+          wsUiLog("hydrate SKIP (panel no longer in document)");
+          return;
+        }
+        wsUiLog("hydrate 완료 → switchView 1회", hydrateResult);
+        switchView(activeWorkScheduleView, "after-hydrate");
+      });
+  } else {
+    wsUiLog("mount: Supabase 없음 → 로컬만 즉시 표시", hydrateGen);
+    switchView(activeWorkScheduleView, "mount-initial-no-supabase");
+  }
 
   return el;
 }

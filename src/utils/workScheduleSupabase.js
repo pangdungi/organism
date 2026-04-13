@@ -22,8 +22,14 @@ function wsSyncLog(...args) {
 
 function snapshotWorkScheduleMemForCompare() {
   try {
+    const rowsRaw = readWorkScheduleRowsFromMem();
+    const rows = Array.isArray(rowsRaw)
+      ? [...rowsRaw].sort((a, b) =>
+          String(a?.id || "").localeCompare(String(b?.id || "")),
+        )
+      : rowsRaw;
     return JSON.stringify({
-      rows: readWorkScheduleRowsFromMem(),
+      rows,
       types: readWorkScheduleTypeOptionsRawFromMem(),
       dh: readWorkScheduleDailyHoursFromMem(),
     });

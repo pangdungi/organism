@@ -710,6 +710,9 @@ export function mountApp(container) {
               new CustomEvent("lp-time-ledger-remote-updated"),
             );
           } catch (_) {}
+        } else if (currentTabId === "workschedule") {
+          /* 근무표는 탭 마운트 시 hydrateWorkScheduleFromCloud만 씀. 부팅 pull 직후 renderMain 하면
+           * 패널이 통째로 다시 그려져 같은 탭이 두 번 열리는 것처럼 깜빡임 */
         } else {
           logLpRender("App:초기 hydrate·Promise.all 완료 후 재렌더", {
             needTodoRefresh,
