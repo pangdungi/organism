@@ -99,7 +99,8 @@
   src: url("/fonts/Archivo-Bold.ttf") format("truetype");
   font-weight: 700;
   font-style: normal;
-  font-display: swap;
+  /* 로고(700): swap 시 시스템 폰트 → Archivo 전환 깜빡임 방지. preload와 함께 쓰면 첫 페인트에 맞춤 */
+  font-display: block;
 }
 
 /* 기준 16px = 1rem — 타이포·텍스트 스타일 명세 통일 */
