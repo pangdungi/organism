@@ -2911,8 +2911,15 @@ function buildMobileCardExpenseBlockHtml(rowData) {
   for (const eid of expenseIds) {
     const row = allExp.find((r) => String(r?.id || "").trim() === eid);
     const line = row
-      ? [row.classification || "", row.amount || ""].filter(Boolean).join(" | ") ||
-        String(row.name || "").trim()
+      ? (() => {
+          const name = String(row.name || "").trim();
+          const amt = String(row.amount || "").trim();
+          const cls = String(row.classification || "").trim();
+          /* 카드: 소비명 우선, 없을 때만 분류 */
+          return name
+            ? [name, amt].filter(Boolean).join(" | ")
+            : [cls, amt].filter(Boolean).join(" | ") || "소비";
+        })()
       : "";
     const safe = String(line || "소비").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     if (safe) parts.push(safe);
