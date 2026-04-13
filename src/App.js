@@ -79,6 +79,13 @@ const TAB_IDS_REFRESH_ON_KPI_PULL = new Set([
   "archive",
 ]);
 
+/** 시간 기록 행 pull 후 다시 그려야 하는 탭(loadTimeRows·getTodayTimeSummary 등 사용) */
+const TAB_IDS_REFRESH_ON_TIME_LEDGER_ROWS = new Set([
+  "home",
+  "calendar",
+  "schedulecalendar",
+]);
+
 const TABS = [
   { id: "home", label: "오늘", icon: "/toolbaricons/dashboard.svg" },
   { id: "dream", label: "꿈", icon: "/toolbaricons/star.svg" },
@@ -621,7 +628,15 @@ export function mountApp(container) {
             const needMainFromOther =
               TAB_IDS_REFRESH_ON_KPI_PULL.has(currentTabId) &&
               (kpiChanged || assetChanged || diaryChanged);
-            if ((needMainFromTodo || needMainFromOther) && !isUserTypingInApp()) {
+            const needMainFromTimeRows =
+              timeChanged &&
+              TAB_IDS_REFRESH_ON_TIME_LEDGER_ROWS.has(currentTabId);
+            if (
+              (needMainFromTodo ||
+                needMainFromOther ||
+                needMainFromTimeRows) &&
+              !isUserTypingInApp()
+            ) {
               logLpRender("App:visibilitychange·탭 포커스 복귀 후 pull", {
                 currentTabId,
                 needTodoRefresh,
@@ -631,6 +646,7 @@ export function mountApp(container) {
                 diaryChanged,
                 needMainFromTodo,
                 needMainFromOther,
+                needMainFromTimeRows,
               });
               renderMain(main, { skipTodoSaveBeforeUnmount: true });
             }
@@ -655,6 +671,7 @@ export function mountApp(container) {
     hydrateHappinessKpiMapFromCloud(),
     hydrateDreamKpiMapFromCloud(),
     hydrateSideincomeKpiMapFromCloud(),
+    pullAllTimeLedgerFromCloud(),
   ]).then(
     ([
       needTodoRefresh,
@@ -664,7 +681,9 @@ export function mountApp(container) {
       happinessKpiPulled,
       dreamKpiPulled,
       sideincomeKpiPulled,
+      timeLedgerPullR,
     ]) => {
+      const timeLedgerRowsMerged = !!(timeLedgerPullR && timeLedgerPullR.anyChanged);
       kpiSyncDebugLog("앱 부팅 hydrate 결과", {
         needTodoRefresh,
         budgetMerged,
@@ -672,12 +691,14 @@ export function mountApp(container) {
         happinessKpiPulled,
         dreamKpiPulled,
         sideincomeKpiPulled,
+        timeLedgerRowsMerged,
         "의미(각 KPI)": "true면 방금 Supabase에서 받아 localStorage를 갱신함",
         "이후 localStorage 요약": snapshotKpiLocalStorageBrief(),
       });
       if (
         needTodoRefresh ||
         budgetMerged ||
+        timeLedgerRowsMerged ||
         healthKpiPulled ||
         happinessKpiPulled ||
         dreamKpiPulled ||
@@ -693,6 +714,7 @@ export function mountApp(container) {
           logLpRender("App:초기 hydrate·Promise.all 완료 후 재렌더", {
             needTodoRefresh,
             budgetMerged,
+            timeLedgerRowsMerged,
             healthKpiPulled,
             happinessKpiPulled,
             dreamKpiPulled,
