@@ -6103,6 +6103,14 @@ body {
 .home-embed-1day .calendar-nav {
   display: none !important;
 }
+
+/* 홈 오늘 탭 타임라인: 데스크탑에서만 상단「남은 시간」제거(모바일은 기존 규칙으로 top-bar 자체 숨김) */
+@media (min-width: 64rem) {
+  .home-embed-1day .calendar-1day-top-bar-left {
+    display: none !important;
+  }
+}
+
 .home-embed-1day .calendar-1day-time-header {
   background: transparent !important;
 }

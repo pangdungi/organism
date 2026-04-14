@@ -3791,8 +3791,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   /** 오늘 실제: 너무 짧으면 막대가 사라져 보임 — 시각 최소(분). 모바일 탭 상세는 이보다 길어도 읽기 어려울 때만 */
   const ACTUAL_MIN_VISUAL_MINUTES = 8;
   const ACTUAL_TAP_TOAST_MAX_MINUTES = 18;
-  /** 이 분 이하(포함) 구간은 타임테이블에 과제명·시간 라벨을 그리지 않음(짧은 과제가 겹쳐 전부 안 보이는 문제 완화) */
-  const TIMETABLE_SUPPRESS_LABEL_MAX_MINUTES = 30;
+  /** 오늘실제만: 이 분 미만 구간은 과제명·시간 라벨 생략(짧은 막대가 겹쳐 읽을 수 없을 때) */
+  const ACTUAL_MIN_MINUTES_TO_SHOW_LABEL = 30;
 
   const createOverlay = (spans, colors, isActual, maxLane = 0) => {
     if (!isActual && TT_SYNC_DEBUG) {
@@ -3939,7 +3939,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         seg.style.backgroundColor = c.bg;
         seg.style.boxSizing = "border-box";
         const segDurationMin = Math.max(0, (sp.endMin ?? 0) - (sp.startMin ?? 0));
-        const showTimetableLabel = segDurationMin > TIMETABLE_SUPPRESS_LABEL_MAX_MINUTES;
+        const showTimetableLabel =
+          !isActual || segDurationMin >= ACTUAL_MIN_MINUTES_TO_SHOW_LABEL;
         if (showTimetableLabel) {
           const labelWrap = document.createElement("div");
           labelWrap.className = "calendar-1day-time-slot-label-wrap";
