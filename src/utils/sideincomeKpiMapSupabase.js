@@ -8,6 +8,14 @@ import { kpiSyncDebugEnabled, kpiSyncDebugLog, kpiSyncPayloadSummary, kpiSyncTra
 import { logKpiServerSnapshot } from "./kpiServerAuditLog.js";
 import { bumpEntityArrayLocalModified, serverUpdatedAtFromRow } from "./kpiMapLwwMerge.js";
 import { lpPullDebug } from "./lpPullDebug.js";
+import {
+  deletedRefsKpiTodosLen,
+  kpiTodoLifecycleLog,
+  kpiTodoLifecyclePullCompare,
+  kpiTodoSnapshotBrief,
+  kpiTodosCompletionBrief,
+} from "./kpiTodoLifecycleDebug.js";
+import { sortNormalizedKpiTodoRows } from "./kpiMapTodoListOrder.js";
 
 export const SIDEINCOME_KPI_MAP_STORAGE_KEY = "kpi-sideincome-paths";
 
@@ -290,7 +298,7 @@ function buildPayloadFromRows(pathRows, pathLogRows, kpiRows, kpiLogRows, todoRo
     pathLogs: pathLogsFiltered.map(rowToPathLog),
     kpis: kpisFiltered.map(rowToKpi),
     kpiLogs: kpiLogsFiltered.map(rowToKpiLog),
-    kpiTodos: todosFiltered.map(rowToTodo),
+    kpiTodos: sortNormalizedKpiTodoRows(todosFiltered).map(rowToTodo),
     kpiDailyRepeatTodos: dailyFiltered.map(rowToDaily),
     kpiOrder,
     kpiTaskSync,
@@ -414,7 +422,7 @@ function kpiLogToRow(userId, l) {
   };
 }
 
-function todoToRow(userId, t) {
+function todoToRow(userId, t, sortIndex) {
   const id = String(t.id);
   const kpiId = String(t.kpiId);
   const text = (t.text || "").trim();
@@ -432,7 +440,7 @@ function todoToRow(userId, t) {
     kpi_id: kpiId,
     text,
     completed,
-    extra: Object.keys(rest).length ? rest : {},
+    extra: { ...rest, sortOrder: sortIndex },
   };
 }
 
@@ -491,7 +499,10 @@ async function upsertNormalizedFromPayload(userId, p) {
   if (p.kpiTodos.length) {
     const { error } = await supabase
       .from("sideincome_map_kpi_todos")
-      .upsert(p.kpiTodos.map((t) => todoToRow(userId, t)), { onConflict: UPSERT_CONFLICT_ROW });
+      .upsert(
+        p.kpiTodos.map((t, sortIndex) => todoToRow(userId, t, sortIndex)),
+        { onConflict: UPSERT_CONFLICT_ROW },
+      );
     if (error) throw new Error(`sideincome_map_kpi_todos: ${error.message}`);
   }
   if (p.kpiDailyRepeatTodos.length) {
@@ -615,8 +626,20 @@ function runSerializedSideincomeKpiServerOp(fn) {
   return next;
 }
 
+let _sideincomeKpiPushDirty = false;
+let _sideincomeKpiSyncInFlight = false;
+let _pushTimer = null;
+
+function shouldDeferSideincomeKpiPullWhileLocalUpdatePending() {
+  if (_sideincomeKpiSyncInFlight) return true;
+  if (_sideincomeKpiPushDirty) return true;
+  if (_pushTimer) return true;
+  return false;
+}
+
 /** @returns {Promise<boolean>} */
-async function pullSideincomeKpiMapFromSupabaseImpl() {
+async function pullSideincomeKpiMapFromSupabaseImpl(force = false) {
+  if (!force && shouldDeferSideincomeKpiPullWhileLocalUpdatePending()) return false;
   const userId = await getSessionUserId();
   if (!userId || !supabase) {
     logKpiServerSnapshot("sideincome", {
@@ -661,10 +684,15 @@ async function pullSideincomeKpiMapFromSupabaseImpl() {
   const todos = todoRes.data || [];
   const daily = dailyRes.data || [];
   const meta = metaRes.data;
+  const localBeforePull = readLocalPayload();
 
   if (!hasAnyNormalizedData(paths, pathLogs, kpis, kpiLogs, todos, daily, meta)) {
-    const localOnly = readLocalPayload();
+    const localOnly = localBeforePull;
     if (localPayloadHasAnythingToPersist(localOnly)) {
+      kpiTodoLifecycleLog("sideincome_pull_스킵_서버스냅샷없음_로컬유지", {
+        localTodos: kpiTodoSnapshotBrief(localOnly),
+        localDr: deletedRefsKpiTodosLen(localOnly),
+      });
       kpiSyncDebugLog("부수입 pull", {
         ok: false,
         skipped: "서버에 sideincome_map 스냅샷 없음 — 로컬 유지 후 업로드 예약",
@@ -673,6 +701,9 @@ async function pullSideincomeKpiMapFromSupabaseImpl() {
       return false;
     }
     const emptyPayload = buildPayloadFromRows([], [], [], [], [], [], null);
+    kpiTodoLifecycleLog("sideincome_pull_빈서버빈로컬", {
+      emptyTodos: kpiTodoSnapshotBrief(emptyPayload),
+    });
     try {
       localStorage.setItem(SIDEINCOME_KPI_MAP_STORAGE_KEY, JSON.stringify(emptyPayload));
     } catch (_) {}
@@ -688,6 +719,14 @@ async function pullSideincomeKpiMapFromSupabaseImpl() {
 
   const serverPayload = buildPayloadFromRows(paths, pathLogs, kpis, kpiLogs, todos, daily, meta);
   const snapshot = normalizePayload(serverPayload);
+  kpiTodoLifecyclePullCompare(
+    "sideincome",
+    SIDEINCOME_KPI_MAP_STORAGE_KEY,
+    localBeforePull,
+    snapshot,
+    "서버스냅샷_setItem직전",
+    { dbKpiTodoRows: todos.length },
+  );
   try {
     localStorage.setItem(SIDEINCOME_KPI_MAP_STORAGE_KEY, JSON.stringify(snapshot));
   } catch (_) {}
@@ -731,14 +770,15 @@ async function pullSideincomeKpiMapFromSupabaseImpl() {
   return true;
 }
 
-export function pullSideincomeKpiMapFromSupabase() {
-  return runSerializedSideincomeKpiServerOp(() => pullSideincomeKpiMapFromSupabaseImpl());
+/** @param {{ force?: boolean }} [opts] */
+export function pullSideincomeKpiMapFromSupabase(opts) {
+  const force = !!(opts && opts.force);
+  return runSerializedSideincomeKpiServerOp(() => pullSideincomeKpiMapFromSupabaseImpl(force));
 }
 
-/** 서버에 반영해야 할 로컬 변경이 남아 있음(디바운스 대기 포함) */
-let _sideincomeKpiPushDirty = false;
-
 async function runSideincomeKpiMapSyncOnce() {
+  _sideincomeKpiSyncInFlight = true;
+  try {
   kpiSyncDebugLog("부수입 sync(로컬→서버) 시도", { event: "sideincome-kpi-map-saved 또는 탭 이탈" });
   const userId = await getSessionUserId();
   if (!supabase) {
@@ -771,6 +811,12 @@ async function runSideincomeKpiMapSyncOnce() {
     return;
   }
   const { payload: p, rawMissing } = checked;
+  kpiTodoLifecycleLog("sideincome_sync_로컬읽음", {
+    rawMissing,
+    todos: kpiTodoSnapshotBrief(p),
+    completion: kpiTodosCompletionBrief(p, 35),
+    dr: deletedRefsKpiTodosLen(p),
+  });
   if (rawMissing && !localPayloadHasAnythingToPersist(p)) {
     sideincomeKpiUploadLog("skip", {
       reason: "브라우저에 부수입 KPI 데이터 키 없음 — 서버 삭제·덮어쓰기 안 함",
@@ -798,6 +844,12 @@ async function runSideincomeKpiMapSyncOnce() {
       });
     }
     const toSync = normalizePayload(p);
+    kpiTodoLifecycleLog("sideincome_sync_toSync_업서트직전", {
+      mergedFromServer,
+      todos: kpiTodoSnapshotBrief(toSync),
+      completion: kpiTodosCompletionBrief(toSync, 35),
+      dr: deletedRefsKpiTodosLen(toSync),
+    });
     if (kpiSyncDebugEnabled()) {
       kpiSyncTrace("sideincome", "sync:3-toSyncLocal", {
         mergedFromServer,
@@ -850,12 +902,11 @@ async function runSideincomeKpiMapSyncOnce() {
       if (afterSync.ok) {
         try {
           const finalPayload = normalizePayload(afterSync.payload);
-          const nextRaw = JSON.stringify(finalPayload);
-          const prevRaw = localStorage.getItem(SIDEINCOME_KPI_MAP_STORAGE_KEY);
-          if (prevRaw !== nextRaw) {
-            localStorage.setItem(SIDEINCOME_KPI_MAP_STORAGE_KEY, nextRaw);
-            window.dispatchEvent(new CustomEvent("sideincome-kpi-map-saved", { detail: { fromServerMerge: true, fromPush: true } }));
-          }
+          kpiTodoLifecycleLog("sideincome_sync_서버재조회_검증만", {
+            finalTodos: kpiTodoSnapshotBrief(finalPayload),
+            finalCompletion: kpiTodosCompletionBrief(finalPayload, 35),
+            finalDr: deletedRefsKpiTodosLen(finalPayload),
+          });
         } catch (_) {}
       }
     }
@@ -882,6 +933,9 @@ async function runSideincomeKpiMapSyncOnce() {
     kpiSyncDebugLog("부수입 sync 실패", { message: msg });
     sideincomeKpiUploadLog("error", { message: msg });
   }
+  } finally {
+    _sideincomeKpiSyncInFlight = false;
+  }
 }
 
 /** @returns {Promise<void>} */
@@ -889,7 +943,6 @@ export function syncSideincomeKpiMapToSupabase() {
   return runSerializedSideincomeKpiServerOp(() => runSideincomeKpiMapSyncOnce());
 }
 
-let _pushTimer = null;
 const PUSH_DEBOUNCE_MS = 800;
 
 export function flushSideincomeKpiMapSyncPush() {
@@ -954,7 +1007,7 @@ export async function hydrateSideincomeKpiMapFromCloud() {
     kpiSyncDebugLog("부수입 hydrate 생략", { reason: "Supabase 없음" });
     return false;
   }
-  const applied = await pullSideincomeKpiMapFromSupabase();
+  const applied = await pullSideincomeKpiMapFromSupabase({ force: true });
   kpiSyncDebugLog("부수입 hydrate 끝", { applied });
   return applied;
 }

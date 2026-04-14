@@ -3,30 +3,40 @@
  * pull은 서버 스냅샷만 브라우저 저장소에 반영하고, 로컬·서버 페이로드 병합은 하지 않음.
  * push는 사용자가 저장한 로컬 값만 upsert한 뒤, 재조회한 서버 스냅샷으로 로컬을 맞춤.
  *
- * - pullKpiTabFromCloud: 해당 KPI 탭 진입 시 1종만 pull
- * - pullAllKpiMapsFromCloud: Realtime·탭 포커스 등에서 네 종 pull.
- *   해당 탭에서 입력 중이면 그 도메인 pull만 잠시 생략(저장소·화면 불일치 방지).
+ * - pullKpiTabFromCloud: 해당 KPI 탭 진입 시 — 대기 중인 로컬→서버 반영을 먼저 flush 한 뒤 force pull(서버 최종본).
+ * - pullAllKpiMapsFromCloud: Realtime·탭 포커스 등 — 현재 보고 있는 KPI 탭 도메인은 건너뜀(로컬 CRUD 유지).
+ *   입력 중이면 해당 도메인도 생략.
+ * - 로컬→서버 디바운스·sync 중에는 일반 pull이 localStorage를 덮지 않음(force 제외).
  */
 
 import {
   DREAM_KPI_MAP_STORAGE_KEY,
+  flushDreamKpiMapSyncPush,
   pullDreamKpiMapFromSupabase,
 } from "./dreamKpiMapSupabase.js";
 import {
   HEALTH_KPI_MAP_STORAGE_KEY,
+  flushHealthKpiMapSyncPush,
   pullHealthKpiMapFromSupabase,
 } from "./healthKpiMapSupabase.js";
 import {
   HAPPINESS_KPI_MAP_STORAGE_KEY,
+  flushHappinessKpiMapSyncPush,
   pullHappinessKpiMapFromSupabase,
 } from "./happinessKpiMapSupabase.js";
 import {
   SIDEINCOME_KPI_MAP_STORAGE_KEY,
+  flushSideincomeKpiMapSyncPush,
   pullSideincomeKpiMapFromSupabase,
 } from "./sideincomeKpiMapSupabase.js";
-import { shouldDeferKpiPullForDomain } from "./kpiPullTypingGuard.js";
+import {
+  shouldDeferKpiPullForDomain,
+  shouldSkipKpiDomainForBackgroundPullAll,
+} from "./kpiPullTypingGuard.js";
 import { lpPullDebug } from "./lpPullDebug.js";
 import { syncWatchLog } from "./syncWatchLog.js";
+import { kpiTodoCountInStorage, kpiTodoLifecycleOn, kpiTodoLifecycleLog } from "./kpiTodoLifecycleDebug.js";
+import { kpiTodoFineTrace } from "./kpiTodoFineTrace.js";
 const KPI_LOCAL_STORAGE_KEYS = {
   dream: DREAM_KPI_MAP_STORAGE_KEY,
   health: HEALTH_KPI_MAP_STORAGE_KEY,
@@ -39,6 +49,7 @@ const KPI_LOCAL_STORAGE_KEYS = {
  * @returns {Promise<{ pullOk: boolean, localChanged: boolean }>}
  */
 export async function pullKpiTabFromCloud(tabId) {
+  kpiTodoFineTrace("cloud.pullKpiTab:시작", { tabId });
   lpPullDebug("pullKpiTabFromCloud", { tabId });
   const key = KPI_LOCAL_STORAGE_KEYS[tabId];
   const before = key ? localStorage.getItem(key) : null;
@@ -46,16 +57,20 @@ export async function pullKpiTabFromCloud(tabId) {
   let pullOk = false;
   switch (tabId) {
     case "dream":
-      pullOk = await pullDreamKpiMapFromSupabase();
+      await flushDreamKpiMapSyncPush();
+      pullOk = await pullDreamKpiMapFromSupabase({ force: true });
       break;
     case "health":
-      pullOk = await pullHealthKpiMapFromSupabase();
+      await flushHealthKpiMapSyncPush();
+      pullOk = await pullHealthKpiMapFromSupabase({ force: true });
       break;
     case "happiness":
-      pullOk = await pullHappinessKpiMapFromSupabase();
+      await flushHappinessKpiMapSyncPush();
+      pullOk = await pullHappinessKpiMapFromSupabase({ force: true });
       break;
     case "sideincome":
-      pullOk = await pullSideincomeKpiMapFromSupabase();
+      await flushSideincomeKpiMapSyncPush();
+      pullOk = await pullSideincomeKpiMapFromSupabase({ force: true });
       break;
     default:
       return { pullOk: false, localChanged: false };
@@ -63,6 +78,15 @@ export async function pullKpiTabFromCloud(tabId) {
 
   const after = key ? localStorage.getItem(key) : null;
   const localChanged = pullOk && before !== after;
+  kpiTodoFineTrace("cloud.pullKpiTab:끝", { tabId, pullOk, localChanged });
+  if (kpiTodoLifecycleOn() && key) {
+    kpiTodoLifecycleLog("cloud_pullKpiTab_완료", {
+      tabId,
+      pullOk,
+      localChanged,
+      todoCountAfter: kpiTodoCountInStorage(key),
+    });
+  }
   syncWatchLog("pullKpiTab_완료", {
     tabId,
     pullOk,
@@ -85,6 +109,9 @@ const ALL_KPI_STORAGE_KEYS = [
  * @returns {Promise<{ anyOk: boolean, anyChanged: boolean }>}
  */
 export async function pullAllKpiMapsFromCloud(getCurrentTabId) {
+  kpiTodoFineTrace("cloud.pullAll:시작", {
+    tab: typeof getCurrentTabId === "function" ? getCurrentTabId() : "",
+  });
   lpPullDebug("pullAllKpiMapsFromCloud", {
     tab: typeof getCurrentTabId === "function" ? getCurrentTabId() : "",
   });
@@ -93,10 +120,18 @@ export async function pullAllKpiMapsFromCloud(getCurrentTabId) {
     before = ALL_KPI_STORAGE_KEYS.map((k) => localStorage.getItem(k));
   } catch (_) {}
 
-  const skipDream = shouldDeferKpiPullForDomain("dream", getCurrentTabId);
-  const skipHealth = shouldDeferKpiPullForDomain("health", getCurrentTabId);
-  const skipHappiness = shouldDeferKpiPullForDomain("happiness", getCurrentTabId);
-  const skipSideincome = shouldDeferKpiPullForDomain("sideincome", getCurrentTabId);
+  const skipDream =
+    shouldDeferKpiPullForDomain("dream", getCurrentTabId) ||
+    shouldSkipKpiDomainForBackgroundPullAll("dream", getCurrentTabId);
+  const skipHealth =
+    shouldDeferKpiPullForDomain("health", getCurrentTabId) ||
+    shouldSkipKpiDomainForBackgroundPullAll("health", getCurrentTabId);
+  const skipHappiness =
+    shouldDeferKpiPullForDomain("happiness", getCurrentTabId) ||
+    shouldSkipKpiDomainForBackgroundPullAll("happiness", getCurrentTabId);
+  const skipSideincome =
+    shouldDeferKpiPullForDomain("sideincome", getCurrentTabId) ||
+    shouldSkipKpiDomainForBackgroundPullAll("sideincome", getCurrentTabId);
 
   const [d, h, ha, si] = await Promise.all([
     skipDream ? Promise.resolve(false) : pullDreamKpiMapFromSupabase(),
@@ -113,6 +148,23 @@ export async function pullAllKpiMapsFromCloud(getCurrentTabId) {
 
   const anyChanged =
     before.length === after.length && before.some((b, i) => b !== after[i]);
+  kpiTodoFineTrace("cloud.pullAll:끝", { anyOk, anyChanged, skipDream, skipHealth, skipHappiness, skipSideincome });
+  if (kpiTodoLifecycleOn()) {
+    kpiTodoLifecycleLog("cloud_pullAllKpiMaps_완료", {
+      anyOk,
+      anyChanged,
+      skipDream,
+      skipHealth,
+      skipHappiness,
+      skipSideincome,
+      todoCountsAfter: {
+        dream: kpiTodoCountInStorage(DREAM_KPI_MAP_STORAGE_KEY),
+        health: kpiTodoCountInStorage(HEALTH_KPI_MAP_STORAGE_KEY),
+        happiness: kpiTodoCountInStorage(HAPPINESS_KPI_MAP_STORAGE_KEY),
+        sideincome: kpiTodoCountInStorage(SIDEINCOME_KPI_MAP_STORAGE_KEY),
+      },
+    });
+  }
   syncWatchLog("pullAllKpiMaps_완료", {
     anyOk,
     anyChanged,

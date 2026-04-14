@@ -6,13 +6,21 @@
  * - 마감일: 없음
  */
 
+import {
+  deletedRefsKpiTodosLen,
+  kpiTodoLifecycleLog,
+  kpiTodoSnapshotBrief,
+  kpiTodosCompletionBrief,
+} from "./kpiTodoLifecycleDebug.js";
+import { kpiTodoFineTrace } from "./kpiTodoFineTrace.js";
+
 const DREAM_MAP_KEY = "kpi-dream-map";
 const SIDEINCOME_KEY = "kpi-sideincome-paths";
 const HAPPINESS_KEY = "kpi-happiness-map";
 const HEALTH_KEY = "kpi-health-map";
 
 /** KPI 맵 저장 후 Supabase 동기화 리스너가 기대하는 이벤트 (뷰 saveDreamMap 등과 동일) */
-function dispatchKpiMapSavedAfterLocalWrite(storageKey) {
+function dispatchKpiMapSavedAfterLocalWrite(storageKey, reason = "local_write") {
   if (typeof window === "undefined") return;
   const name =
     storageKey === DREAM_MAP_KEY
@@ -24,7 +32,12 @@ function dispatchKpiMapSavedAfterLocalWrite(storageKey) {
           : storageKey === HEALTH_KEY
             ? "health-kpi-map-saved"
             : null;
-  if (name) window.dispatchEvent(new CustomEvent(name));
+  kpiTodoFineTrace("dispatch:이벤트준비", { storageKey, reason, eventName: name || "(없음)" });
+  if (name) {
+    kpiTodoLifecycleLog("KPI맵_동기화이벤트", { event: name, storageKey, reason });
+    window.dispatchEvent(new CustomEvent(name));
+    kpiTodoFineTrace("dispatch:CustomEvent발송완료", { event: name, reason });
+  }
 }
 
 function ensureDeletedRefsShell(data, storageKey) {
@@ -241,13 +254,21 @@ export function getKpiDisplayNameForTodo(kpiTodoId, storageKey) {
  * @returns {boolean}
  */
 export function updateKpiTodo(kpiTodoId, storageKey, updates) {
+  kpiTodoFineTrace("updateKpiTodo:진입", {
+    kpiTodoId: String(kpiTodoId),
+    storageKey,
+    updateKeys: updates ? Object.keys(updates) : [],
+  });
   try {
     const raw = localStorage.getItem(storageKey);
     if (!raw) return false;
     const data = JSON.parse(raw);
     data.kpiTodos = data.kpiTodos || [];
-    const todo = data.kpiTodos.find((t) => t.id === kpiTodoId);
-    if (!todo) return false;
+    const todo = data.kpiTodos.find((t) => String(t.id) === String(kpiTodoId));
+    if (!todo) {
+      kpiTodoFineTrace("updateKpiTodo:할일없음", { kpiTodoId: String(kpiTodoId), storageKey });
+      return false;
+    }
     if (updates && updates.recordCalendarSidebarRevert) {
       todo._calPrevStart =
         (todo.startDate || "").toString().trim().slice(0, 10) || "";
@@ -274,8 +295,26 @@ export function updateKpiTodo(kpiTodoId, storageKey, updates) {
       todo.itemType = updates.itemType === "schedule" ? "schedule" : "todo";
     if (updates.completed !== undefined) todo.completed = !!updates.completed;
     localStorage.setItem(storageKey, JSON.stringify(data));
+    kpiTodoFineTrace("updateKpiTodo:localStorage저장후", {
+      kpiTodoId: String(kpiTodoId),
+      storageKey,
+      completed: !!todo.completed,
+    });
+    if (updates.completed !== undefined) {
+      kpiTodoLifecycleLog("할일목록_updateKpiTodo_완료반영", {
+        kpiTodoId: String(kpiTodoId),
+        storageKey,
+        completed: !!todo.completed,
+      });
+    }
+    dispatchKpiMapSavedAfterLocalWrite(
+      storageKey,
+      updates.completed !== undefined ? "updateKpiTodo.completed" : "updateKpiTodo",
+    );
+    kpiTodoFineTrace("updateKpiTodo:종료_true", { kpiTodoId: String(kpiTodoId), storageKey });
     return true;
   } catch (_) {}
+  kpiTodoFineTrace("updateKpiTodo:종료_false(예외)", { kpiTodoId: String(kpiTodoId), storageKey });
   return false;
 }
 
@@ -300,17 +339,60 @@ export function clearKpiTodoCalendarRevertSnapshot(kpiTodoId, storageKey) {
  * KPI 할일 완료 상태 동기화
  */
 export function syncKpiTodoCompleted(kpiTodoId, storageKey, completed) {
+  kpiTodoFineTrace("syncKpiTodoCompleted:진입", {
+    kpiTodoId: String(kpiTodoId),
+    storageKey,
+    completed: !!completed,
+  });
   try {
     const raw = localStorage.getItem(storageKey);
-    if (!raw) return;
+    if (!raw) {
+      kpiTodoLifecycleLog("할일목록_syncKpiTodoCompleted_실패", {
+        reason: "저장키없음",
+        kpiTodoId: String(kpiTodoId),
+        storageKey,
+      });
+      return;
+    }
     const data = JSON.parse(raw);
     data.kpiTodos = data.kpiTodos || [];
-    const todo = data.kpiTodos.find((t) => t.id === kpiTodoId);
-    if (todo) {
-      todo.completed = !!completed;
-      localStorage.setItem(storageKey, JSON.stringify(data));
+    const todo = data.kpiTodos.find(
+      (t) => String(t.id) === String(kpiTodoId),
+    );
+    if (!todo) {
+      kpiTodoLifecycleLog("할일목록_syncKpiTodoCompleted_실패", {
+        reason: "할일id없음",
+        kpiTodoId: String(kpiTodoId),
+        storageKey,
+        기존ids: data.kpiTodos.slice(0, 15).map((t) => String(t.id)),
+      });
+      return;
     }
-  } catch (_) {}
+    const before = !!todo.completed;
+    todo.completed = !!completed;
+    localStorage.setItem(storageKey, JSON.stringify(data));
+    kpiTodoFineTrace("syncKpiTodoCompleted:저장직후", {
+      kpiTodoId: String(kpiTodoId),
+      storageKey,
+      before,
+      after: !!todo.completed,
+    });
+    kpiTodoLifecycleLog("할일목록_syncKpiTodoCompleted_저장", {
+      kpiTodoId: String(kpiTodoId),
+      storageKey,
+      before,
+      after: !!todo.completed,
+      note: "체크 후 서버 반영은 KPI맵_동기화이벤트 로그로 이어져야 함",
+      completionBrief: kpiTodosCompletionBrief(data, 25),
+    });
+    dispatchKpiMapSavedAfterLocalWrite(storageKey, "syncKpiTodoCompleted");
+  } catch (e) {
+    kpiTodoLifecycleLog("할일목록_syncKpiTodoCompleted_예외", {
+      kpiTodoId: String(kpiTodoId),
+      storageKey,
+      message: e?.message || String(e),
+    });
+  }
 }
 
 const STORAGE_KEYS = [DREAM_MAP_KEY, SIDEINCOME_KEY, HAPPINESS_KEY, HEALTH_KEY];
@@ -399,21 +481,61 @@ export function syncKpiDailyRepeatTodoCompleted(todoId, storageKey, completed) {
  * @returns {boolean} 제거 성공 여부
  */
 export function removeKpiTodo(kpiTodoId, storageKey) {
+  kpiTodoFineTrace("removeKpiTodo:진입", { kpiTodoId: String(kpiTodoId ?? ""), storageKey });
   const idNorm = String(kpiTodoId ?? "").trim();
-  if (!idNorm) return false;
+  if (!idNorm) {
+    kpiTodoLifecycleLog("할일목록_removeKpiTodo_실패", { reason: "id비어있음", storageKey });
+    return false;
+  }
   try {
     const raw = localStorage.getItem(storageKey);
-    if (!raw) return false;
+    if (!raw) {
+      kpiTodoLifecycleLog("할일목록_removeKpiTodo_실패", { reason: "저장키없음", idNorm, storageKey });
+      return false;
+    }
     const data = JSON.parse(raw);
     data.kpiTodos = data.kpiTodos || [];
     const idx = data.kpiTodos.findIndex((t) => String(t.id) === idNorm);
-    if (idx < 0) return false;
+    if (idx < 0) {
+      kpiTodoLifecycleLog("할일목록_removeKpiTodo_실패", {
+        reason: "id미매칭",
+        idNorm,
+        storageKey,
+        현재할일ids: data.kpiTodos.slice(0, 15).map((t) => String(t.id)),
+      });
+      return false;
+    }
+    kpiTodoLifecycleLog("할일목록_removeKpiTodo_시작", {
+      idNorm,
+      storageKey,
+      삭제전: kpiTodoSnapshotBrief(data),
+      삭제전dr: deletedRefsKpiTodosLen(data),
+    });
     appendDeletedKpiTodoRef(data, storageKey, idNorm);
+    kpiTodoFineTrace("removeKpiTodo:deletedRefs추가후", {
+      idNorm,
+      drKpiTodosLen: (data.deletedRefs?.kpiTodos || []).length,
+    });
     data.kpiTodos.splice(idx, 1);
     localStorage.setItem(storageKey, JSON.stringify(data));
-    dispatchKpiMapSavedAfterLocalWrite(storageKey);
+    kpiTodoFineTrace("removeKpiTodo:splice및저장완료", {
+      idNorm,
+      남은할일수: data.kpiTodos.length,
+    });
+    kpiTodoLifecycleLog("할일목록_removeKpiTodo_저장완료", {
+      idNorm,
+      storageKey,
+      삭제후: kpiTodoSnapshotBrief(data),
+      삭제후dr: deletedRefsKpiTodosLen(data),
+    });
+    dispatchKpiMapSavedAfterLocalWrite(storageKey, "removeKpiTodo");
     return true;
-  } catch (_) {
+  } catch (e) {
+    kpiTodoLifecycleLog("할일목록_removeKpiTodo_예외", {
+      idNorm,
+      storageKey,
+      message: e?.message || String(e),
+    });
     return false;
   }
 }
@@ -467,14 +589,20 @@ export function removeAllCompletedKpiTodos() {
       const after = data.kpiTodos.length;
       removed += before - after;
       if (before > after) {
+        kpiTodoLifecycleLog("할일목록_removeAllCompleted_키별", {
+          key,
+          제거된완료건수: before - after,
+          ids: completedRows.slice(0, 20).map((r) => String(r.id)),
+        });
         for (const row of completedRows) {
           appendDeletedKpiTodoRef(data, key, row.id);
         }
       }
       localStorage.setItem(key, JSON.stringify(data));
-      if (before > after) dispatchKpiMapSavedAfterLocalWrite(key);
+      if (before > after) dispatchKpiMapSavedAfterLocalWrite(key, "removeAllCompletedKpiTodos");
     } catch (_) {}
   });
+  if (removed > 0) kpiTodoLifecycleLog("할일목록_removeAllCompleted_합계", { removed });
   return removed;
 }
 

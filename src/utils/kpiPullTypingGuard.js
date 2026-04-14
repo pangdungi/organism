@@ -28,6 +28,15 @@ export function shouldDeferKpiPullForDomain(domain, getCurrentTabId) {
   return false;
 }
 
+/**
+ * Realtime 등 배경 pullAll — 지금 그 KPI 탭을 보고 있으면 해당 도메인은 건너뜀.
+ * CRUD 중 로컬이 서버 스냅샷으로 덮이지 않게 함. 서버 최종본은 탭 진입(pullKpiTabFromCloud·force)에서만 맞춤.
+ */
+export function shouldSkipKpiDomainForBackgroundPullAll(domain, getCurrentTabId) {
+  const tab = typeof getCurrentTabId === "function" ? getCurrentTabId() : "";
+  return tab === domain;
+}
+
 /** 자산관리 탭에서 입력 중이면 가계부 거래 full pull 만 잠시 생략 */
 export function shouldDeferAssetExpensePull(getCurrentTabId) {
   if (!isDomTypingActive()) return false;

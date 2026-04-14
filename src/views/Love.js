@@ -38,6 +38,12 @@ import {
   writeKpiUiSession,
   restoreKpiTabFromSession,
 } from "../utils/kpiViewUiSession.js";
+import {
+  deletedRefsKpiTodosLen,
+  kpiTodoLifecycleLog,
+  kpiTodoSnapshotBrief,
+  kpiTodosCompletionBrief,
+} from "../utils/kpiTodoLifecycleDebug.js";
 import { KPI_TAB_EDIT_PENCIL_HTML } from "../utils/kpiTabNameEditIcon.js";
 import { sortKpiLogsNewestFirst } from "../utils/kpiLogsSort.js";
 
@@ -1123,9 +1129,20 @@ export function render() {
       delBtn.textContent = "×";
       delBtn.addEventListener("click", () => {
         const d = loadHappinessMap();
+        kpiTodoLifecycleLog("러브KPI탭_×삭제_클릭", {
+          todoId: String(todo.id),
+          삭제전: kpiTodoSnapshotBrief(d),
+          삭제전dr: deletedRefsKpiTodosLen(d),
+        });
         appendDeletedRef(d, "kpiTodos", todo.id);
         d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
         saveHappinessMap(d);
+        const after = loadHappinessMap();
+        kpiTodoLifecycleLog("러브KPI탭_×삭제_saveHappinessMap후", {
+          todoId: String(todo.id),
+          삭제후: kpiTodoSnapshotBrief(after),
+          삭제후dr: deletedRefsKpiTodosLen(after),
+        });
         renderKpiHistory({ scrollTodoAfterMutation: true });
       });
 
@@ -1133,8 +1150,17 @@ export function render() {
         const d = loadHappinessMap();
         const t = d.kpiTodos.find((x) => x.id === todo.id);
         if (t) {
+          kpiTodoLifecycleLog("러브KPI탭_체크_완료토글", {
+            todoId: String(todo.id),
+            이전완료: !!t.completed,
+            요청완료: !!check.checked,
+          });
           t.completed = !!check.checked;
           saveHappinessMap(d);
+          kpiTodoLifecycleLog("러브KPI탭_체크_save후", {
+            todoId: String(todo.id),
+            completion: kpiTodosCompletionBrief(loadHappinessMap(), 20),
+          });
           item.classList.toggle("is-completed", t.completed);
         }
       });

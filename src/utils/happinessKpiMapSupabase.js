@@ -8,6 +8,14 @@ import { kpiSyncDebugLog, kpiSyncDebugEnabled, kpiSyncPayloadSummary, kpiSyncTra
 import { logKpiServerSnapshot } from "./kpiServerAuditLog.js";
 import { bumpEntityArrayLocalModified, serverUpdatedAtFromRow } from "./kpiMapLwwMerge.js";
 import { lpPullDebug } from "./lpPullDebug.js";
+import {
+  deletedRefsKpiTodosLen,
+  kpiTodoLifecycleLog,
+  kpiTodoLifecyclePullCompare,
+  kpiTodoSnapshotBrief,
+  kpiTodosCompletionBrief,
+} from "./kpiTodoLifecycleDebug.js";
+import { sortNormalizedKpiTodoRows } from "./kpiMapTodoListOrder.js";
 
 export const HAPPINESS_KPI_MAP_STORAGE_KEY = "kpi-happiness-map";
 
@@ -260,7 +268,7 @@ function buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, me
     happinesses,
     kpis: kpisFiltered.map(rowToKpi),
     kpiLogs: logsFiltered.map(rowToLog),
-    kpiTodos: todosFiltered.map(rowToTodo),
+    kpiTodos: sortNormalizedKpiTodoRows(todosFiltered).map(rowToTodo),
     kpiDailyRepeatTodos: dailyFiltered.map(rowToDaily),
     kpiOrder,
     kpiTaskSync,
@@ -359,7 +367,7 @@ function logToRow(userId, l) {
   };
 }
 
-function todoToRow(userId, t) {
+function todoToRow(userId, t, sortIndex) {
   const id = String(t.id);
   const kpiId = String(t.kpiId);
   const text = (t.text || "").trim();
@@ -377,7 +385,7 @@ function todoToRow(userId, t) {
     kpi_id: kpiId,
     text,
     completed,
-    extra: Object.keys(rest).length ? rest : {},
+    extra: { ...rest, sortOrder: sortIndex },
   };
 }
 
@@ -437,7 +445,10 @@ async function upsertNormalizedFromPayload(userId, p) {
   if (p.kpiTodos.length) {
     const { error } = await supabase
       .from("happiness_map_kpi_todos")
-      .upsert(p.kpiTodos.map((t) => todoToRow(userId, t)), { onConflict: UPSERT_CONFLICT_ROW });
+      .upsert(
+        p.kpiTodos.map((t, sortIndex) => todoToRow(userId, t, sortIndex)),
+        { onConflict: UPSERT_CONFLICT_ROW },
+      );
     if (error) throw new Error(`happiness_map_kpi_todos: ${error.message}`);
   }
   if (p.kpiDailyRepeatTodos.length) {
@@ -560,8 +571,20 @@ function runSerializedHappinessKpiServerOp(fn) {
   return next;
 }
 
+let _happinessKpiPushDirty = false;
+let _happinessKpiSyncInFlight = false;
+let _pushTimer = null;
+
+function shouldDeferHappinessKpiPullWhileLocalUpdatePending() {
+  if (_happinessKpiSyncInFlight) return true;
+  if (_happinessKpiPushDirty) return true;
+  if (_pushTimer) return true;
+  return false;
+}
+
 /** @returns {Promise<boolean>} 서버 데이터로 로컬을 갱신했으면 true */
-async function pullHappinessKpiMapFromSupabaseImpl() {
+async function pullHappinessKpiMapFromSupabaseImpl(force = false) {
+  if (!force && shouldDeferHappinessKpiPullWhileLocalUpdatePending()) return false;
   const userId = await getSessionUserId();
   if (!userId || !supabase) {
     logKpiServerSnapshot("happiness", {
@@ -604,10 +627,15 @@ async function pullHappinessKpiMapFromSupabaseImpl() {
   const todos = todoRes.data || [];
   const daily = dailyRes.data || [];
   const meta = metaRes.data;
+  const localBeforePull = readLocalPayload();
 
   if (!hasAnyNormalizedData(categories, kpis, logs, todos, daily, meta)) {
-    const localOnly = readLocalPayload();
+    const localOnly = localBeforePull;
     if (localPayloadHasAnythingToPersist(localOnly)) {
+      kpiTodoLifecycleLog("happiness_pull_스킵_서버스냅샷없음_로컬유지", {
+        localTodos: kpiTodoSnapshotBrief(localOnly),
+        localDr: deletedRefsKpiTodosLen(localOnly),
+      });
       kpiSyncDebugLog("행복 pull", {
         ok: false,
         skipped: "서버에 happiness_map 스냅샷 없음 — 로컬 유지 후 업로드 예약",
@@ -616,6 +644,9 @@ async function pullHappinessKpiMapFromSupabaseImpl() {
       return false;
     }
     const emptyPayload = buildPayloadFromNormalizedRows([], [], [], [], [], null);
+    kpiTodoLifecycleLog("happiness_pull_빈서버빈로컬", {
+      emptyTodos: kpiTodoSnapshotBrief(emptyPayload),
+    });
     try {
       localStorage.setItem(HAPPINESS_KPI_MAP_STORAGE_KEY, JSON.stringify(emptyPayload));
     } catch (_) {}
@@ -631,6 +662,14 @@ async function pullHappinessKpiMapFromSupabaseImpl() {
 
   const serverPayload = buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, meta);
   const snapshot = normalizePayload(serverPayload);
+  kpiTodoLifecyclePullCompare(
+    "happiness",
+    HAPPINESS_KPI_MAP_STORAGE_KEY,
+    localBeforePull,
+    snapshot,
+    "서버스냅샷_setItem직전",
+    { dbKpiTodoRows: todos.length },
+  );
   try {
     localStorage.setItem(HAPPINESS_KPI_MAP_STORAGE_KEY, JSON.stringify(snapshot));
   } catch (_) {}
@@ -671,14 +710,15 @@ async function pullHappinessKpiMapFromSupabaseImpl() {
   return true;
 }
 
-export function pullHappinessKpiMapFromSupabase() {
-  return runSerializedHappinessKpiServerOp(() => pullHappinessKpiMapFromSupabaseImpl());
+/** @param {{ force?: boolean }} [opts] */
+export function pullHappinessKpiMapFromSupabase(opts) {
+  const force = !!(opts && opts.force);
+  return runSerializedHappinessKpiServerOp(() => pullHappinessKpiMapFromSupabaseImpl(force));
 }
 
-/** 서버에 반영해야 할 로컬 변경이 남아 있음(디바운스 대기 포함) */
-let _happinessKpiPushDirty = false;
-
 async function runHappinessKpiMapSyncOnce() {
+  _happinessKpiSyncInFlight = true;
+  try {
   const userId = await getSessionUserId();
   if (!supabase) {
     if (!_warnedNoSupabaseClient) {
@@ -708,6 +748,12 @@ async function runHappinessKpiMapSyncOnce() {
     return;
   }
   const { payload: p, rawMissing } = checked;
+  kpiTodoLifecycleLog("happiness_sync_로컬읽음", {
+    rawMissing,
+    todos: kpiTodoSnapshotBrief(p),
+    completion: kpiTodosCompletionBrief(p, 35),
+    dr: deletedRefsKpiTodosLen(p),
+  });
   if (rawMissing && !localPayloadHasAnythingToPersist(p)) {
     happinessKpiUploadLog("skip", {
       reason: "브라우저에 행복 KPI 데이터 키 없음 — 서버 삭제·덮어쓰기 안 함",
@@ -735,6 +781,12 @@ async function runHappinessKpiMapSyncOnce() {
       });
     }
     const toSync = normalizePayload(p);
+    kpiTodoLifecycleLog("happiness_sync_toSync_업서트직전", {
+      mergedFromServer,
+      todos: kpiTodoSnapshotBrief(toSync),
+      completion: kpiTodosCompletionBrief(toSync, 35),
+      dr: deletedRefsKpiTodosLen(toSync),
+    });
     if (kpiSyncDebugEnabled()) {
       kpiSyncTrace("happiness", "sync:3-toSyncLocal", {
         mergedFromServer,
@@ -787,12 +839,11 @@ async function runHappinessKpiMapSyncOnce() {
       if (afterSync.ok) {
         try {
           const finalPayload = normalizePayload(afterSync.payload);
-          const nextRaw = JSON.stringify(finalPayload);
-          const prevRaw = localStorage.getItem(HAPPINESS_KPI_MAP_STORAGE_KEY);
-          if (prevRaw !== nextRaw) {
-            localStorage.setItem(HAPPINESS_KPI_MAP_STORAGE_KEY, nextRaw);
-            window.dispatchEvent(new CustomEvent("happiness-kpi-map-saved", { detail: { fromServerMerge: true, fromPush: true } }));
-          }
+          kpiTodoLifecycleLog("happiness_sync_서버재조회_검증만", {
+            finalTodos: kpiTodoSnapshotBrief(finalPayload),
+            finalCompletion: kpiTodosCompletionBrief(finalPayload, 35),
+            finalDr: deletedRefsKpiTodosLen(finalPayload),
+          });
         } catch (_) {}
       }
     }
@@ -817,6 +868,9 @@ async function runHappinessKpiMapSyncOnce() {
     happinessKpiUploadLog("error", { message: msg });
     kpiSyncDebugLog("행복 sync 실패", { message: msg });
   }
+  } finally {
+    _happinessKpiSyncInFlight = false;
+  }
 }
 
 /** @returns {Promise<void>} */
@@ -824,7 +878,6 @@ export function syncHappinessKpiMapToSupabase() {
   return runSerializedHappinessKpiServerOp(() => runHappinessKpiMapSyncOnce());
 }
 
-let _pushTimer = null;
 const PUSH_DEBOUNCE_MS = 800;
 
 export function flushHappinessKpiMapSyncPush() {
@@ -888,7 +941,7 @@ export async function hydrateHappinessKpiMapFromCloud() {
     kpiSyncDebugLog("행복 hydrate 생략", { reason: "Supabase 없음" });
     return false;
   }
-  const applied = await pullHappinessKpiMapFromSupabase();
+  const applied = await pullHappinessKpiMapFromSupabase({ force: true });
   kpiSyncDebugLog("행복 hydrate 끝", { applied });
   return applied;
 }

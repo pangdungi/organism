@@ -30,6 +30,13 @@ import {
 } from "../utils/kpiViewUiSession.js";
 import { KPI_TAB_EDIT_PENCIL_HTML } from "../utils/kpiTabNameEditIcon.js";
 import { sortKpiLogsNewestFirst } from "../utils/kpiLogsSort.js";
+import {
+  deletedRefsKpiTodosLen,
+  kpiTodoLifecycleLog,
+  kpiTodoSnapshotBrief,
+  kpiTodosCompletionBrief,
+} from "../utils/kpiTodoLifecycleDebug.js";
+import { kpiTodoFineTrace } from "../utils/kpiTodoFineTrace.js";
 
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
@@ -169,9 +176,14 @@ function saveDreamMap(data) {
       toSave.kpiDailyRepeatTodos = toSave.kpiDailyRepeatTodos.filter((t) => (t.text || "").trim() !== "");
     }
     const stamped = applyDreamKpiTimestampsOnSave(prev, toSave);
+    kpiTodoFineTrace("Dream.saveDreamMap:저장직전요약", {
+      kpiTodos: (stamped.kpiTodos || []).length,
+      idsSample: (stamped.kpiTodos || []).slice(0, 8).map((t) => ({ id: t.id, c: !!t.completed })),
+    });
     localStorage.setItem(DREAM_KPI_MAP_STORAGE_KEY, JSON.stringify(stamped));
     try {
       window.dispatchEvent(new CustomEvent("dream-kpi-map-saved"));
+      kpiTodoFineTrace("Dream.saveDreamMap:dream-kpi-map-saved_발송");
     } catch (_) {}
   } catch (_) {}
 }
@@ -1154,9 +1166,20 @@ export function render() {
       delBtn.textContent = "×";
         delBtn.addEventListener("click", () => {
         const d = loadDreamMap();
+        kpiTodoLifecycleLog("꿈KPI탭_×삭제_클릭", {
+          todoId: String(todo.id),
+          삭제전: kpiTodoSnapshotBrief(d),
+          삭제전dr: deletedRefsKpiTodosLen(d),
+        });
         appendDeletedRef(d, "kpiTodos", todo.id);
         d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
         saveDreamMap(d);
+        const after = loadDreamMap();
+        kpiTodoLifecycleLog("꿈KPI탭_×삭제_saveDreamMap후", {
+          todoId: String(todo.id),
+          삭제후: kpiTodoSnapshotBrief(after),
+          삭제후dr: deletedRefsKpiTodosLen(after),
+        });
         renderKpiHistory({ scrollTodoAfterMutation: true });
       });
 
@@ -1164,8 +1187,17 @@ export function render() {
         const d = loadDreamMap();
         const t = d.kpiTodos.find((x) => x.id === todo.id);
         if (t) {
+          kpiTodoLifecycleLog("꿈KPI탭_체크_완료토글", {
+            todoId: String(todo.id),
+            이전완료: !!t.completed,
+            요청완료: !!check.checked,
+          });
           t.completed = !!check.checked;
           saveDreamMap(d);
+          kpiTodoLifecycleLog("꿈KPI탭_체크_saveDreamMap후", {
+            todoId: String(todo.id),
+            completion: kpiTodosCompletionBrief(loadDreamMap(), 20),
+          });
           item.classList.toggle("is-completed", t.completed);
         }
       });

@@ -3791,6 +3791,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   /** 오늘 실제: 너무 짧으면 막대가 사라져 보임 — 시각 최소(분). 모바일 탭 상세는 이보다 길어도 읽기 어려울 때만 */
   const ACTUAL_MIN_VISUAL_MINUTES = 8;
   const ACTUAL_TAP_TOAST_MAX_MINUTES = 18;
+  /** 이 분 이하(포함) 구간은 타임테이블에 과제명·시간 라벨을 그리지 않음(짧은 과제가 겹쳐 전부 안 보이는 문제 완화) */
+  const TIMETABLE_SUPPRESS_LABEL_MAX_MINUTES = 30;
 
   const createOverlay = (spans, colors, isActual, maxLane = 0) => {
     if (!isActual && TT_SYNC_DEBUG) {
@@ -3936,17 +3938,21 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         seg.style.padding = "0.25rem 0.375rem 0.25rem 0.5rem";
         seg.style.backgroundColor = c.bg;
         seg.style.boxSizing = "border-box";
-        const labelWrap = document.createElement("div");
-        labelWrap.className = "calendar-1day-time-slot-label-wrap";
-        const labelName = document.createElement("span");
-        labelName.className = "calendar-1day-time-slot-label-name";
-        labelName.textContent = sp.taskName || "";
-        const labelTime = document.createElement("span");
-        labelTime.className = "calendar-1day-time-slot-label-time";
-        labelTime.textContent = `${sp.startDisplay} ~ ${sp.endDisplay}`;
-        labelWrap.appendChild(labelName);
-        labelWrap.appendChild(labelTime);
-        seg.appendChild(labelWrap);
+        const segDurationMin = Math.max(0, (sp.endMin ?? 0) - (sp.startMin ?? 0));
+        const showTimetableLabel = segDurationMin > TIMETABLE_SUPPRESS_LABEL_MAX_MINUTES;
+        if (showTimetableLabel) {
+          const labelWrap = document.createElement("div");
+          labelWrap.className = "calendar-1day-time-slot-label-wrap";
+          const labelName = document.createElement("span");
+          labelName.className = "calendar-1day-time-slot-label-name";
+          labelName.textContent = sp.taskName || "";
+          const labelTime = document.createElement("span");
+          labelTime.className = "calendar-1day-time-slot-label-time";
+          labelTime.textContent = `${sp.startDisplay} ~ ${sp.endDisplay}`;
+          labelWrap.appendChild(labelName);
+          labelWrap.appendChild(labelTime);
+          seg.appendChild(labelWrap);
+        }
         blockFill.appendChild(seg);
       }
       if (firstBorderColor) {

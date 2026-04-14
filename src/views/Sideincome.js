@@ -31,6 +31,12 @@ import {
 } from "../utils/kpiViewUiSession.js";
 import { KPI_TAB_EDIT_PENCIL_HTML } from "../utils/kpiTabNameEditIcon.js";
 import { sortKpiLogsNewestFirst } from "../utils/kpiLogsSort.js";
+import {
+  deletedRefsKpiTodosLen,
+  kpiTodoLifecycleLog,
+  kpiTodoSnapshotBrief,
+  kpiTodosCompletionBrief,
+} from "../utils/kpiTodoLifecycleDebug.js";
 
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
@@ -1300,9 +1306,20 @@ export function render() {
       delBtn.textContent = "×";
       delBtn.addEventListener("click", () => {
         const d = loadSideincomeMap();
+        kpiTodoLifecycleLog("부수입KPI탭_×삭제_클릭", {
+          todoId: String(todo.id),
+          삭제전: kpiTodoSnapshotBrief(d),
+          삭제전dr: deletedRefsKpiTodosLen(d),
+        });
         appendDeletedRef(d, "kpiTodos", todo.id);
         d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
         saveSideincomeMap(d);
+        const after = loadSideincomeMap();
+        kpiTodoLifecycleLog("부수입KPI탭_×삭제_saveSideincomeMap후", {
+          todoId: String(todo.id),
+          삭제후: kpiTodoSnapshotBrief(after),
+          삭제후dr: deletedRefsKpiTodosLen(after),
+        });
         renderKpiHistory({ scrollTodoAfterMutation: true });
       });
 
@@ -1310,8 +1327,17 @@ export function render() {
         const d = loadSideincomeMap();
         const t = d.kpiTodos.find((x) => x.id === todo.id);
         if (t) {
+          kpiTodoLifecycleLog("부수입KPI탭_체크_완료토글", {
+            todoId: String(todo.id),
+            이전완료: !!t.completed,
+            요청완료: !!check.checked,
+          });
           t.completed = !!check.checked;
           saveSideincomeMap(d);
+          kpiTodoLifecycleLog("부수입KPI탭_체크_save후", {
+            todoId: String(todo.id),
+            completion: kpiTodosCompletionBrief(loadSideincomeMap(), 20),
+          });
           item.classList.toggle("is-completed", t.completed);
         }
       });

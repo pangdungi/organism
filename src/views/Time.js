@@ -31,6 +31,7 @@ import {
   getKpiDailyRepeatInfoByKpiName,
   syncKpiDailyRepeatTodoCompleted,
 } from "../utils/kpiTodoSync.js";
+import { kpiTodoFineTrace } from "../utils/kpiTodoFineTrace.js";
 import { getCustomSections, getCategoryColorForReport } from "../utils/todoSettings.js";
 import { showToast } from "../utils/showToast.js";
 import { USER_HOURLY_RATE_KEY } from "../utils/userHourlySync.js";
@@ -5730,6 +5731,11 @@ export function render() {
         label.appendChild(checkbox);
         label.appendChild(span);
         checkbox.addEventListener("change", () => {
+          kpiTodoFineTrace("Time.과제기록모달:KPI할일체크", {
+            todoId: String(todo.id),
+            storageKey,
+            checked: checkbox.checked,
+          });
           syncKpiTodoCompleted(todo.id, storageKey, checkbox.checked);
           span.classList.toggle("is-done", checkbox.checked);
         });
