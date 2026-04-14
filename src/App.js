@@ -53,6 +53,7 @@ import {
   snapshotKpiLocalStorageBrief,
 } from "./utils/kpiSyncDebug.js";
 import { initSupabaseRealtimeSync } from "./utils/supabaseRealtimeSync.js";
+import { printSyncWatchHelp, syncWatchLog } from "./utils/syncWatchLog.js";
 import { getTabSyncCounts, logTabSync } from "./utils/lpTabSyncDebug.js";
 import { lpPullDebug } from "./utils/lpPullDebug.js";
 import { hydrateWorkScheduleFromCloud } from "./utils/workScheduleSupabase.js";
@@ -571,6 +572,9 @@ export function mountApp(container) {
     getCurrentTabId: () => currentTabId,
     renderMain: (opts) => renderMain(main, opts || {}),
   });
+  if (typeof window !== "undefined") {
+    window.__lpSyncWatchHelp = printSyncWatchHelp;
+  }
 
   const TODO_TABS_FOR_CLOUD_PULL = new Set(["calendar", "schedulecalendar"]);
 
@@ -581,6 +585,11 @@ export function mountApp(container) {
     () => {
       if (document.visibilityState !== "visible") return;
       if (_browserTabVisiblePullTimer) clearTimeout(_browserTabVisiblePullTimer);
+      syncWatchLog("visibility_스케줄", {
+        tab: currentTabId,
+        delayMs: 350,
+        note: "탭 다시 보이기 후 350ms 뒤 pull 묶음(폭주 방지)",
+      });
       _browserTabVisiblePullTimer = setTimeout(() => {
         _browserTabVisiblePullTimer = null;
         void (async () => {
@@ -602,6 +611,14 @@ export function mountApp(container) {
             const timeChanged = timeR.anyChanged;
             const assetChanged = assetR.anyChanged;
             const diaryChanged = diaryR.anyChanged;
+            syncWatchLog("visibility_pull_결과", {
+              tab: currentTabId,
+              needTodoRefresh,
+              kpiChanged,
+              timeChanged,
+              assetChanged,
+              diaryChanged,
+            });
             if (
               !needTodoRefresh &&
               !kpiChanged &&

@@ -26,6 +26,7 @@ import {
 } from "./sideincomeKpiMapSupabase.js";
 import { shouldDeferKpiPullForDomain } from "./kpiPullTypingGuard.js";
 import { lpPullDebug } from "./lpPullDebug.js";
+import { syncWatchLog } from "./syncWatchLog.js";
 const KPI_LOCAL_STORAGE_KEYS = {
   dream: DREAM_KPI_MAP_STORAGE_KEY,
   health: HEALTH_KPI_MAP_STORAGE_KEY,
@@ -62,6 +63,12 @@ export async function pullKpiTabFromCloud(tabId) {
 
   const after = key ? localStorage.getItem(key) : null;
   const localChanged = pullOk && before !== after;
+  syncWatchLog("pullKpiTab_완료", {
+    tabId,
+    pullOk,
+    localChanged,
+    note: "서버 스냅샷만 반영(로컬·서버 페이로드 merge 없음)",
+  });
   return { pullOk, localChanged };
 }
 
@@ -106,5 +113,14 @@ export async function pullAllKpiMapsFromCloud(getCurrentTabId) {
 
   const anyChanged =
     before.length === after.length && before.some((b, i) => b !== after[i]);
+  syncWatchLog("pullAllKpiMaps_완료", {
+    anyOk,
+    anyChanged,
+    skipDream,
+    skipHealth,
+    skipHappiness,
+    skipSideincome,
+    note: "네 도메인 병렬 pull. 입력 중이면 해당 도메인만 건너뜀",
+  });
   return { anyOk, anyChanged };
 }

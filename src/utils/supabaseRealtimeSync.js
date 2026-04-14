@@ -13,6 +13,7 @@ import { pullAllDiaryFromCloud } from "./diaryCloudRefresh.js";
 import { logLpRender } from "./lpRenderDebugLog.js";
 import { logTabSync } from "./lpTabSyncDebug.js";
 import { lpPullDebug } from "./lpPullDebug.js";
+import { syncWatchLog } from "./syncWatchLog.js";
 
 /** App.js 의 TAB_IDS_REFRESH_ON_KPI_PULL 과 동일 — 이 탭일 때만 pull 후 화면 갱신 (time 은 전체 renderMain 대신 이벤트로 부분 갱신) */
 const REFRESH_MAIN_AFTER_CLOUD_PULL = new Set([
@@ -172,6 +173,12 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
 
     void (async () => {
       try {
+        syncWatchLog("realtime_디바운스끝_ pull실행", {
+          gen,
+          debounceMs: REALTIME_REFRESH_DEBOUNCE_MS,
+          postgres_changes테이블: [...realtimeTouchedTables],
+          note: "이벤트마다 타이머만 재설정·연속이면 한 번에 묶음. 1초 폴링 아님",
+        });
         logTabSync("realtime_debounced_pull", { gen });
         lpPullDebug("realtime_debounced_pull_bundle", {
           gen,
@@ -287,7 +294,7 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
         _lastRealtimeRenderMainAt = nowMs;
         renderMain({ skipTodoSaveBeforeUnmount: true });
       } catch (e) {
-        console.warn("[realtime] 병합·갱신", e?.message || e);
+        console.warn("[realtime] pull/render 오류", e?.message || e);
       }
     })();
   }, REALTIME_REFRESH_DEBOUNCE_MS);

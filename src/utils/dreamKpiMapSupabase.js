@@ -783,6 +783,7 @@ async function runDreamKpiMapSyncOnce() {
       });
     }
     const fetched = await fetchDreamMapPayloadFromSupabase(userId);
+    /* 이름만 merged* — 로컬·서버 페이로드 병합 아님. 서버 조회 성공 여부(고아 삭제·재조회 가능) */
     const mergedFromServer = fetched.ok;
     if (kpiSyncDebugEnabled()) {
       kpiSyncTrace("dream", "sync:2-serverFetch", {
