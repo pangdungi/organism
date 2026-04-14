@@ -11,6 +11,42 @@ const SIDEINCOME_KEY = "kpi-sideincome-paths";
 const HAPPINESS_KEY = "kpi-happiness-map";
 const HEALTH_KEY = "kpi-health-map";
 
+/** KPI 맵 저장 후 Supabase 동기화 리스너가 기대하는 이벤트 (뷰 saveDreamMap 등과 동일) */
+function dispatchKpiMapSavedAfterLocalWrite(storageKey) {
+  if (typeof window === "undefined") return;
+  const name =
+    storageKey === DREAM_MAP_KEY
+      ? "dream-kpi-map-saved"
+      : storageKey === SIDEINCOME_KEY
+        ? "sideincome-kpi-map-saved"
+        : storageKey === HAPPINESS_KEY
+          ? "happiness-kpi-map-saved"
+          : storageKey === HEALTH_KEY
+            ? "health-kpi-map-saved"
+            : null;
+  if (name) window.dispatchEvent(new CustomEvent(name));
+}
+
+function ensureDeletedRefsShell(data, storageKey) {
+  if (!data.deletedRefs || typeof data.deletedRefs !== "object") data.deletedRefs = {};
+  const dr = data.deletedRefs;
+  const keys =
+    storageKey === SIDEINCOME_KEY
+      ? ["categories", "pathLogs", "kpis", "kpiLogs", "kpiTodos", "kpiDailyRepeatTodos"]
+      : ["categories", "kpis", "kpiLogs", "kpiTodos", "kpiDailyRepeatTodos"];
+  for (const k of keys) {
+    if (!Array.isArray(dr[k])) dr[k] = [];
+  }
+}
+
+function appendDeletedKpiTodoRef(data, storageKey, todoId) {
+  const sid = String(todoId ?? "").trim();
+  if (!sid) return;
+  ensureDeletedRefsShell(data, storageKey);
+  const arr = data.deletedRefs.kpiTodos;
+  if (!arr.includes(sid)) arr.push(sid);
+}
+
 function loadJson(key, fallback = {}) {
   try {
     const raw = localStorage.getItem(key);
@@ -363,19 +399,23 @@ export function syncKpiDailyRepeatTodoCompleted(todoId, storageKey, completed) {
  * @returns {boolean} 제거 성공 여부
  */
 export function removeKpiTodo(kpiTodoId, storageKey) {
+  const idNorm = String(kpiTodoId ?? "").trim();
+  if (!idNorm) return false;
   try {
     const raw = localStorage.getItem(storageKey);
     if (!raw) return false;
     const data = JSON.parse(raw);
     data.kpiTodos = data.kpiTodos || [];
-    const before = data.kpiTodos.length;
-    data.kpiTodos = data.kpiTodos.filter((t) => t.id !== kpiTodoId);
-    if (data.kpiTodos.length < before) {
-      localStorage.setItem(storageKey, JSON.stringify(data));
-      return true;
-    }
-  } catch (_) {}
-  return false;
+    const idx = data.kpiTodos.findIndex((t) => String(t.id) === idNorm);
+    if (idx < 0) return false;
+    appendDeletedKpiTodoRef(data, storageKey, idNorm);
+    data.kpiTodos.splice(idx, 1);
+    localStorage.setItem(storageKey, JSON.stringify(data));
+    dispatchKpiMapSavedAfterLocalWrite(storageKey);
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
 
 /**
@@ -422,10 +462,17 @@ export function removeAllCompletedKpiTodos() {
       const data = JSON.parse(raw);
       data.kpiTodos = data.kpiTodos || [];
       const before = data.kpiTodos.length;
+      const completedRows = data.kpiTodos.filter((t) => t.completed);
       data.kpiTodos = data.kpiTodos.filter((t) => !t.completed);
       const after = data.kpiTodos.length;
       removed += before - after;
+      if (before > after) {
+        for (const row of completedRows) {
+          appendDeletedKpiTodoRef(data, key, row.id);
+        }
+      }
       localStorage.setItem(key, JSON.stringify(data));
+      if (before > after) dispatchKpiMapSavedAfterLocalWrite(key);
     } catch (_) {}
   });
   return removed;
