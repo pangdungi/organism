@@ -6,12 +6,7 @@
 import { supabase } from "../supabase.js";
 import { kpiSyncDebugLog, kpiSyncDebugEnabled, kpiSyncPayloadSummary, kpiSyncTrace } from "./kpiSyncDebug.js";
 import { logKpiServerSnapshot } from "./kpiServerAuditLog.js";
-import {
-  bumpEntityArrayLocalModified,
-  parseIsoMs,
-  pickNewerRowServerWinsTie,
-  serverUpdatedAtFromRow,
-} from "./kpiMapLwwMerge.js";
+import { bumpEntityArrayLocalModified, serverUpdatedAtFromRow } from "./kpiMapLwwMerge.js";
 import { lpPullDebug } from "./lpPullDebug.js";
 
 export const HEALTH_KPI_MAP_STORAGE_KEY = "kpi-health-map";
@@ -39,16 +34,6 @@ function normalizeDeletedRefs(dr) {
   for (const k of DELETED_REF_KEYS) {
     const arr = Array.isArray(dr[k]) ? dr[k] : [];
     out[k] = [...new Set(arr.map(String))];
-  }
-  return out;
-}
-
-function unionDeletedRefs(a, b) {
-  const A = normalizeDeletedRefs(a);
-  const B = normalizeDeletedRefs(b);
-  const out = {};
-  for (const k of DELETED_REF_KEYS) {
-    out[k] = [...new Set([...(A[k] || []), ...(B[k] || [])].map(String))];
   }
   return out;
 }
@@ -358,153 +343,6 @@ function shouldInsertMetaRow(p) {
   );
 }
 
-/** 동기화 직전 병합: 동일 id는 타임스탬프 비교·동률은 서버, 메타는 metaServerUpdatedAt 우선(꿈 KPI와 동일 원칙) */
-function mergeHealthKpiPayloadsForSync(localP, serverP) {
-  const L = normalizePayload(localP);
-  const S = normalizePayload(serverP);
-  const dr = unionDeletedRefs(L.deletedRefs, S.deletedRefs);
-  const drCat = new Set(dr.categories);
-  const drKpi = new Set(dr.kpis);
-  const drLog = new Set(dr.kpiLogs);
-  const drTodo = new Set(dr.kpiTodos);
-  const drDaily = new Set(dr.kpiDailyRepeatTodos);
-
-  const localHById = new Map(L.healths.map((h) => [String(h.id), h]));
-  const serverHById = new Map(S.healths.map((h) => [String(h.id), h]));
-  const localHIds = new Set(localHById.keys());
-
-  const mergedHOrder = [];
-  const seenH = new Set();
-  for (const h of L.healths) {
-    const id = String(h.id);
-    if (drCat.has(id)) continue;
-    mergedHOrder.push(id);
-    seenH.add(id);
-  }
-  for (const h of S.healths) {
-    const id = String(h.id);
-    if (drCat.has(id) || seenH.has(id)) continue;
-    if (localHIds.has(id)) continue;
-    mergedHOrder.push(id);
-    seenH.add(id);
-  }
-  const mergedHealths = mergedHOrder
-    .map((id) => pickNewerRowServerWinsTie(localHById.get(id), serverHById.get(id)))
-    .filter(Boolean);
-  const mergedHealthIds = new Set(mergedHealths.map((h) => String(h.id)));
-
-  const localKpiById = new Map(L.kpis.map((k) => [String(k.id), k]));
-  const serverKpiById = new Map(S.kpis.map((k) => [String(k.id), k]));
-  const allKpiIds = new Set([...localKpiById.keys(), ...serverKpiById.keys()]);
-  const kpiSet = new Set(
-    [...allKpiIds].filter((id) => {
-      if (drKpi.has(id)) return false;
-      const k = localKpiById.get(id) || serverKpiById.get(id);
-      if (!k) return false;
-      if (drCat.has(String(k.healthId))) return false;
-      return mergedHealthIds.has(String(k.healthId));
-    }),
-  );
-
-  const mergedKpiOrder = [];
-  const seenKpi = new Set();
-  for (const k of L.kpis) {
-    const id = String(k.id);
-    if (!kpiSet.has(id)) continue;
-    mergedKpiOrder.push(id);
-    seenKpi.add(id);
-  }
-  for (const k of S.kpis) {
-    const id = String(k.id);
-    if (!kpiSet.has(id) || seenKpi.has(id)) continue;
-    mergedKpiOrder.push(id);
-    seenKpi.add(id);
-  }
-  const mergedKpis = mergedKpiOrder
-    .map((id) => pickNewerRowServerWinsTie(localKpiById.get(id), serverKpiById.get(id)))
-    .filter(Boolean);
-  const mergedKpiIds = new Set(mergedKpis.map((k) => String(k.id)));
-
-  function mergeList(localArr, serverArr, drSet, idGetter, keepRow) {
-    const localById = new Map(localArr.map((x) => [String(idGetter(x)), x]));
-    const serverById = new Map(serverArr.map((x) => [String(idGetter(x)), x]));
-    const allIds = new Set([...localById.keys(), ...serverById.keys()]);
-    const ids = [...allIds].filter((id) => {
-      if (drSet.has(id)) return false;
-      return keepRow(id, localById, serverById);
-    });
-    const idSet = new Set(ids);
-    const order = [];
-    const seen = new Set();
-    for (const x of localArr) {
-      const id = String(idGetter(x));
-      if (!idSet.has(id)) continue;
-      order.push(id);
-      seen.add(id);
-    }
-    for (const id of ids) {
-      if (seen.has(id)) continue;
-      order.push(id);
-      seen.add(id);
-    }
-    return order
-      .map((id) => pickNewerRowServerWinsTie(localById.get(id), serverById.get(id)))
-      .filter(Boolean);
-  }
-
-  const mergedLogs = mergeList(
-    L.kpiLogs,
-    S.kpiLogs,
-    drLog,
-    (l) => l.id,
-    (id, lb, sb) => {
-      const row = lb.get(id) || sb.get(id);
-      if (!row) return false;
-      return mergedKpiIds.has(String(row.kpiId));
-    },
-  );
-  const mergedTodos = mergeList(
-    L.kpiTodos,
-    S.kpiTodos,
-    drTodo,
-    (t) => t.id,
-    (id, lb, sb) => {
-      const row = lb.get(id) || sb.get(id);
-      if (!row) return false;
-      return mergedKpiIds.has(String(row.kpiId));
-    },
-  );
-  const mergedDaily = mergeList(
-    L.kpiDailyRepeatTodos,
-    S.kpiDailyRepeatTodos,
-    drDaily,
-    (t) => t.id,
-    (id, lb, sb) => {
-      const row = lb.get(id) || sb.get(id);
-      if (!row) return false;
-      return mergedKpiIds.has(String(row.kpiId));
-    },
-  );
-
-  const sMetaMs = parseIsoMs(S.metaServerUpdatedAt);
-  const lMetaMs =
-    typeof L.localMetaModifiedAt === "number" && Number.isFinite(L.localMetaModifiedAt)
-      ? L.localMetaModifiedAt
-      : 0;
-  const serverMetaNewerOrEqual = sMetaMs >= lMetaMs;
-
-  return normalizePayload({
-    healths: mergedHealths,
-    kpis: mergedKpis,
-    kpiLogs: mergedLogs,
-    kpiTodos: mergedTodos,
-    kpiDailyRepeatTodos: mergedDaily,
-    kpiOrder: serverMetaNewerOrEqual ? S.kpiOrder : L.kpiOrder,
-    kpiTaskSync: serverMetaNewerOrEqual ? S.kpiTaskSync : L.kpiTaskSync,
-    deletedRefs: dr,
-  });
-}
-
 function kpiToRow(userId, k) {
   return {
     user_id: userId,
@@ -760,12 +598,12 @@ async function pullHealthKpiMapFromSupabaseImpl() {
 
   if (hasAnyNormalizedData(categories, kpis, logs, todos, daily, meta)) {
     const serverPayload = buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, meta);
-    const merged = mergeHealthKpiPayloadsForSync(readLocalPayload(), serverPayload);
+    const snapshot = normalizePayload(serverPayload);
     try {
-      localStorage.setItem(HEALTH_KPI_MAP_STORAGE_KEY, JSON.stringify(merged));
+      localStorage.setItem(HEALTH_KPI_MAP_STORAGE_KEY, JSON.stringify(snapshot));
     } catch (_) {}
     kpiSyncDebugLog("건강 pull → 완료", {
-      source: "Supabase health_map_* (서버+로컬 merge)",
+      source: "Supabase health_map_* (서버 스냅샷만 반영)",
       localKey: HEALTH_KPI_MAP_STORAGE_KEY,
       counts: {
         categories: categories.length,
@@ -784,12 +622,12 @@ async function pullHealthKpiMapFromSupabaseImpl() {
         todos: todos.length,
         daily: daily.length,
       },
-      payloadSummary: kpiSyncPayloadSummary("health", merged),
+      payloadSummary: kpiSyncPayloadSummary("health", snapshot),
     });
     logKpiServerSnapshot("health", {
       op: "pull",
       ok: true,
-      policy: "local_server_merge",
+      policy: "server_snapshot_only",
       source: "normalized_tables",
       dbRowCounts: {
         categories: categories.length,
@@ -928,13 +766,13 @@ async function runHealthKpiMapSyncOnce() {
         ok: fetched.ok,
         summary: fetched.ok ? kpiSyncPayloadSummary("health", fetched.payload) : null,
         meaning: mergedFromServer
-          ? "서버 스냅샷과 로컬 merge 예정"
+          ? "고아 삭제·업로드 후 재조회용; upsert에는 로컬(저장값)만 사용"
           : "서버 조회 실패 — 로컬만으로 upsert(고아 삭제 생략 가능)",
       });
     }
-    const toSync = fetched.ok ? mergeHealthKpiPayloadsForSync(p, fetched.payload) : normalizePayload(p);
+    const toSync = normalizePayload(p);
     if (kpiSyncDebugEnabled()) {
-      kpiSyncTrace("health", "sync:3-afterMerge", {
+      kpiSyncTrace("health", "sync:3-toSyncLocal", {
         mergedFromServer,
         summary: kpiSyncPayloadSummary("health", toSync),
       });
@@ -984,8 +822,7 @@ async function runHealthKpiMapSyncOnce() {
       const afterSync = await fetchHealthMapPayloadFromSupabase(userId);
       if (afterSync.ok) {
         try {
-          const snap = normalizePayload(afterSync.payload);
-          const finalPayload = mergeHealthKpiPayloadsForSync(toSync, snap);
+          const finalPayload = normalizePayload(afterSync.payload);
           const nextRaw = JSON.stringify(finalPayload);
           const prevRaw = localStorage.getItem(HEALTH_KPI_MAP_STORAGE_KEY);
           if (prevRaw !== nextRaw) {

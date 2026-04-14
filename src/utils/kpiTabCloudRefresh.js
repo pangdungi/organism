@@ -1,6 +1,7 @@
 /**
- * 꿈·부수입·행복·건강 KPI 맵 — push(동기화)는 fetch한 서버와 merge*KpiPayloadsForSync로 병합.
- * pull도 동일 merge를 써서, 아직 서버에 안 올린 삭제(deletedRefs)가 pull 한 번에 지워지며 로그가 부활하지 않게 함.
+ * 꿈·부수입·행복·건강 KPI 맵 — 서버가 단일 진실(single source of truth).
+ * pull은 서버 스냅샷만 브라우저 저장소에 반영하고, 로컬·서버 페이로드 병합은 하지 않음.
+ * push는 사용자가 저장한 로컬 값만 upsert한 뒤, 재조회한 서버 스냅샷으로 로컬을 맞춤.
  *
  * - pullKpiTabFromCloud: 해당 KPI 탭 진입 시 1종만 pull
  * - pullAllKpiMapsFromCloud: Realtime·탭 포커스 등에서 네 종 pull.
