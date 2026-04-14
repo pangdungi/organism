@@ -1,6 +1,6 @@
 /**
- * 꿈·부수입·행복·건강 KPI 맵 — Supabase가 단일 진실, pull 시 localStorage는 서버 스냅샷으로 덮음.
- * push(동기화) 시에도 fetch한 서버와 병합할 때 동일 id는 타임스탬프 비교·동률은 서버 행 우선(kpiMapLwwMerge·각 merge*KpiPayloadsForSync).
+ * 꿈·부수입·행복·건강 KPI 맵 — push(동기화)는 fetch한 서버와 merge*KpiPayloadsForSync로 병합.
+ * pull도 동일 merge를 써서, 아직 서버에 안 올린 삭제(deletedRefs)가 pull 한 번에 지워지며 로그가 부활하지 않게 함.
  *
  * - pullKpiTabFromCloud: 해당 KPI 탭 진입 시 1종만 pull
  * - pullAllKpiMapsFromCloud: Realtime·탭 포커스 등에서 네 종 pull.

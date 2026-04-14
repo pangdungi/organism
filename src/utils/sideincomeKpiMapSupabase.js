@@ -861,12 +861,13 @@ async function pullSideincomeKpiMapFromSupabaseImpl() {
     return true;
   }
 
-  const payload = buildPayloadFromRows(paths, pathLogs, kpis, kpiLogs, todos, daily, meta);
+  const serverPayload = buildPayloadFromRows(paths, pathLogs, kpis, kpiLogs, todos, daily, meta);
+  const merged = mergeSideincomeKpiPayloadsForSync(readLocalPayload(), serverPayload);
   try {
-    localStorage.setItem(SIDEINCOME_KPI_MAP_STORAGE_KEY, JSON.stringify(payload));
+    localStorage.setItem(SIDEINCOME_KPI_MAP_STORAGE_KEY, JSON.stringify(merged));
   } catch (_) {}
   kpiSyncDebugLog("부수입 pull → 완료", {
-    source: "Supabase sideincome_map_* (서버 스냅샷만)",
+    source: "Supabase sideincome_map_* (서버+로컬 merge)",
     localKey: SIDEINCOME_KPI_MAP_STORAGE_KEY,
     counts: {
       paths: paths.length,
@@ -887,12 +888,12 @@ async function pullSideincomeKpiMapFromSupabaseImpl() {
       todos: todos.length,
       daily: daily.length,
     },
-    payloadSummary: kpiSyncPayloadSummary("sideincome", payload),
+    payloadSummary: kpiSyncPayloadSummary("sideincome", merged),
   });
   logKpiServerSnapshot("sideincome", {
     op: "pull",
     ok: true,
-    policy: "server_snapshot_only",
+    policy: "local_server_merge",
     dbRowCounts: {
       paths: paths.length,
       pathLogs: pathLogs.length,
@@ -1024,7 +1025,8 @@ async function runSideincomeKpiMapSyncOnce() {
       if (afterSync.ok) {
         try {
           const snap = normalizePayload(afterSync.payload);
-          const nextRaw = JSON.stringify(snap);
+          const finalPayload = mergeSideincomeKpiPayloadsForSync(toSync, snap);
+          const nextRaw = JSON.stringify(finalPayload);
           const prevRaw = localStorage.getItem(SIDEINCOME_KPI_MAP_STORAGE_KEY);
           if (prevRaw !== nextRaw) {
             localStorage.setItem(SIDEINCOME_KPI_MAP_STORAGE_KEY, nextRaw);

@@ -813,7 +813,7 @@ async function pullDreamKpiMapFromSupabaseImpl() {
   const meta = metaRes.data;
 
   if (hasAnyNormalizedData(categories, kpis, logs, todos, daily, meta)) {
-    const payload = buildPayloadFromNormalizedRows(
+    const serverPayload = buildPayloadFromNormalizedRows(
       categories,
       kpis,
       logs,
@@ -821,11 +821,13 @@ async function pullDreamKpiMapFromSupabaseImpl() {
       daily,
       meta,
     );
+    /* 서버 스냅샷만 쓰면, 아직 push 안 된 삭제(deletedRefs)가 로컬에서 사라져 로그 행이 부활함 → 동기화 merge와 동일하게 로컬과 합침 */
+    const merged = mergeDreamKpiPayloadsForSync(readLocalPayload(), serverPayload);
     try {
-      localStorage.setItem(DREAM_KPI_MAP_STORAGE_KEY, JSON.stringify(payload));
+      localStorage.setItem(DREAM_KPI_MAP_STORAGE_KEY, JSON.stringify(merged));
     } catch (_) {}
     kpiSyncDebugLog("꿈 pull → 완료", {
-      source: "Supabase dream_map_* (서버 스냅샷만)",
+      source: "Supabase dream_map_* (서버+로컬 merge)",
       localKey: DREAM_KPI_MAP_STORAGE_KEY,
       counts: {
         categories: categories.length,
@@ -845,12 +847,12 @@ async function pullDreamKpiMapFromSupabaseImpl() {
         todos: todos.length,
         daily: daily.length,
       },
-      payloadSummary: kpiSyncPayloadSummary("dream", payload),
+      payloadSummary: kpiSyncPayloadSummary("dream", merged),
     });
     logKpiServerSnapshot("dream", {
       op: "pull",
       ok: true,
-      policy: "server_snapshot_only",
+      policy: "local_server_merge",
       dbRowCounts: {
         categories: categories.length,
         kpis: kpis.length,
@@ -1025,7 +1027,9 @@ async function runDreamKpiMapSyncOnce() {
       if (afterSync.ok) {
         try {
           const snap = normalizePayload(afterSync.payload);
-          const nextRaw = JSON.stringify(snap);
+          /* 서버 스냅샷만 쓰면 방금 upsert한 toSync의 deletedRefs·할일/로그 삭제가 덮여 부활할 수 있음 */
+          const finalPayload = mergeDreamKpiPayloadsForSync(toSync, snap);
+          const nextRaw = JSON.stringify(finalPayload);
           const prevRaw = localStorage.getItem(DREAM_KPI_MAP_STORAGE_KEY);
           if (prevRaw !== nextRaw) {
             localStorage.setItem(DREAM_KPI_MAP_STORAGE_KEY, nextRaw);

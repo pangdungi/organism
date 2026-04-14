@@ -791,12 +791,13 @@ async function pullHappinessKpiMapFromSupabaseImpl() {
     return true;
   }
 
-  const payload = buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, meta);
+  const serverPayload = buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, meta);
+  const merged = mergeHappinessKpiPayloadsForSync(readLocalPayload(), serverPayload);
   try {
-    localStorage.setItem(HAPPINESS_KPI_MAP_STORAGE_KEY, JSON.stringify(payload));
+    localStorage.setItem(HAPPINESS_KPI_MAP_STORAGE_KEY, JSON.stringify(merged));
   } catch (_) {}
   kpiSyncDebugLog("행복 pull → 완료", {
-    source: "Supabase happiness_map_* (서버 스냅샷만)",
+    source: "Supabase happiness_map_* (서버+로컬 merge)",
     localKey: HAPPINESS_KPI_MAP_STORAGE_KEY,
     counts: {
       categories: categories.length,
@@ -815,12 +816,12 @@ async function pullHappinessKpiMapFromSupabaseImpl() {
       todos: todos.length,
       daily: daily.length,
     },
-    payloadSummary: kpiSyncPayloadSummary("happiness", payload),
+    payloadSummary: kpiSyncPayloadSummary("happiness", merged),
   });
   logKpiServerSnapshot("happiness", {
     op: "pull",
     ok: true,
-    policy: "server_snapshot_only",
+    policy: "local_server_merge",
     dbRowCounts: {
       categories: categories.length,
       kpis: kpis.length,
@@ -948,7 +949,8 @@ async function runHappinessKpiMapSyncOnce() {
       if (afterSync.ok) {
         try {
           const snap = normalizePayload(afterSync.payload);
-          const nextRaw = JSON.stringify(snap);
+          const finalPayload = mergeHappinessKpiPayloadsForSync(toSync, snap);
+          const nextRaw = JSON.stringify(finalPayload);
           const prevRaw = localStorage.getItem(HAPPINESS_KPI_MAP_STORAGE_KEY);
           if (prevRaw !== nextRaw) {
             localStorage.setItem(HAPPINESS_KPI_MAP_STORAGE_KEY, nextRaw);

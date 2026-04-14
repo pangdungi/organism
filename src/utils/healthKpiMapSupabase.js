@@ -759,12 +759,13 @@ async function pullHealthKpiMapFromSupabaseImpl() {
   const meta = metaRes.data;
 
   if (hasAnyNormalizedData(categories, kpis, logs, todos, daily, meta)) {
-    const payload = buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, meta);
+    const serverPayload = buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, meta);
+    const merged = mergeHealthKpiPayloadsForSync(readLocalPayload(), serverPayload);
     try {
-      localStorage.setItem(HEALTH_KPI_MAP_STORAGE_KEY, JSON.stringify(payload));
+      localStorage.setItem(HEALTH_KPI_MAP_STORAGE_KEY, JSON.stringify(merged));
     } catch (_) {}
     kpiSyncDebugLog("건강 pull → 완료", {
-      source: "Supabase health_map_* (서버 스냅샷만)",
+      source: "Supabase health_map_* (서버+로컬 merge)",
       localKey: HEALTH_KPI_MAP_STORAGE_KEY,
       counts: {
         categories: categories.length,
@@ -783,12 +784,12 @@ async function pullHealthKpiMapFromSupabaseImpl() {
         todos: todos.length,
         daily: daily.length,
       },
-      payloadSummary: kpiSyncPayloadSummary("health", payload),
+      payloadSummary: kpiSyncPayloadSummary("health", merged),
     });
     logKpiServerSnapshot("health", {
       op: "pull",
       ok: true,
-      policy: "server_snapshot_only",
+      policy: "local_server_merge",
       source: "normalized_tables",
       dbRowCounts: {
         categories: categories.length,
@@ -984,7 +985,8 @@ async function runHealthKpiMapSyncOnce() {
       if (afterSync.ok) {
         try {
           const snap = normalizePayload(afterSync.payload);
-          const nextRaw = JSON.stringify(snap);
+          const finalPayload = mergeHealthKpiPayloadsForSync(toSync, snap);
+          const nextRaw = JSON.stringify(finalPayload);
           const prevRaw = localStorage.getItem(HEALTH_KPI_MAP_STORAGE_KEY);
           if (prevRaw !== nextRaw) {
             localStorage.setItem(HEALTH_KPI_MAP_STORAGE_KEY, nextRaw);
