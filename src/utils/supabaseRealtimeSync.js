@@ -32,17 +32,33 @@ const REFRESH_MAIN_AFTER_CLOUD_PULL = new Set([
 const KPI_REALTIME_TABLES = [
   "dream_map_categories",
   "dream_map_kpis",
+  "dream_map_kpi_logs",
+  "dream_map_kpi_todos",
+  "dream_map_kpi_daily_todos",
   "dream_map_meta",
   "happiness_map_categories",
   "happiness_map_kpis",
+  "happiness_map_kpi_logs",
+  "happiness_map_kpi_todos",
+  "happiness_map_kpi_daily_todos",
   "happiness_map_meta",
   "health_map_categories",
   "health_map_kpis",
+  "health_map_kpi_logs",
+  "health_map_kpi_todos",
+  "health_map_kpi_daily_todos",
   "health_map_meta",
   "sideincome_map_paths",
+  "sideincome_map_path_logs",
   "sideincome_map_kpis",
+  "sideincome_map_kpi_logs",
+  "sideincome_map_kpi_todos",
+  "sideincome_map_kpi_daily_todos",
   "sideincome_map_meta",
 ];
+
+/** postgres_changes 배치에 이 중 하나라도 있을 때만 pullAllKpiMapsFromCloud 실행 */
+const KPI_REALTIME_TABLES_SET = new Set(KPI_REALTIME_TABLES);
 
 /** 시간가계부 기록·과제·일간 예산 — KPI·할일과 동일하게 postgres_changes 로 병합 */
 const TIME_LEDGER_REALTIME_TABLES = [
@@ -188,7 +204,20 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
         });
         logLpRender("realtime:debounced 틱 시작", { gen });
         const needTodo = await hydrateTodoSectionTasksFromCloud();
-        const { anyChanged: kpiMapsChanged } = await pullAllKpiMapsFromCloud(getCurrentTabId);
+        /* calendar_section_tasks·시간가계부 등만 바뀐 배치에서 KPI pull까지 돌리면 dream.pull·setItem이 불필요하게 반복됨 */
+        const needsKpiMapPull = [...realtimeTouchedTables].some((t) =>
+          KPI_REALTIME_TABLES_SET.has(t),
+        );
+        const { anyChanged: kpiMapsChanged } = needsKpiMapPull
+          ? await pullAllKpiMapsFromCloud(getCurrentTabId)
+          : { anyOk: false, anyChanged: false };
+        if (!needsKpiMapPull) {
+          syncWatchLog("realtime_KPI_pull_스킵", {
+            gen,
+            touchedOnly: [...realtimeTouchedTables],
+            note: "이번 배치에 KPI 맵 테이블 없음 — pullAllKpiMapsFromCloud 생략",
+          });
+        }
         const hasTimeRealtime = timeBatch.touchedTables.size > 0;
         /* 기록(time_ledger_entries)이 피커 구간에 닿는 이벤트가 있을 때만 항목 pull. 과제·예산만 변했으면 생략. */
         const skipEntries =

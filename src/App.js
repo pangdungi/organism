@@ -57,7 +57,12 @@ import { printSyncWatchHelp, syncWatchLog } from "./utils/syncWatchLog.js";
 import { getTabSyncCounts, logTabSync } from "./utils/lpTabSyncDebug.js";
 import { lpPullDebug } from "./utils/lpPullDebug.js";
 import { hydrateWorkScheduleFromCloud } from "./utils/workScheduleSupabase.js";
-import { logLpRender, logLpRenderStack } from "./utils/lpRenderDebugLog.js";
+import {
+  logLpRender,
+  logLpRenderStack,
+  lpRenderTraceOn,
+} from "./utils/lpRenderDebugLog.js";
+import { initDomPulseDebug } from "./utils/domPulseDebug.js";
 import { initMobileVisualViewportKeyboardInset } from "./utils/mobileViewportKeyboard.js";
 
 /** 사용자가 입력 중인지 확인 (입력 중이면 화면 갱신 건너뜀) */
@@ -521,6 +526,11 @@ export function mountApp(container) {
    */
   function renderMain(mainEl, opts = {}) {
     logLpRenderStack("renderMain 진입", { tab: currentTabId, opts });
+    if (lpRenderTraceOn()) {
+      try {
+        console.trace("[lp-render] renderMain", currentTabId, opts);
+      } catch (_) {}
+    }
     if (!opts.force) {
       if (isFocusBlockingRender(mainEl)) {
         scheduleDeferredRenderMain(mainEl, opts);
@@ -759,4 +769,5 @@ export function mountApp(container) {
   try {
     window.__lpTabSyncCounts = getTabSyncCounts;
   } catch (_) {}
+  initDomPulseDebug();
 }
