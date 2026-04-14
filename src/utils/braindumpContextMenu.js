@@ -18,10 +18,23 @@ function getAllSectionOptions() {
   return [...KPI_OPTIONS, ...custom];
 }
 
+/** 이전에 만든 메뉴(DOM + document 리스너) — 할일 뷰가 다시 그려질 때마다 새로 생기면 누적됨 */
+let disposePreviousBraindumpMenu = null;
+
+export function disposeBraindumpContextMenu() {
+  if (typeof disposePreviousBraindumpMenu !== "function") return;
+  try {
+    disposePreviousBraindumpMenu();
+  } catch (_) {}
+  disposePreviousBraindumpMenu = null;
+}
+
 /**
  * @param {Function} onSelect - (targetSectionId) => void
  */
 export function createBraindumpContextMenu(onSelect) {
+  disposeBraindumpContextMenu();
+
   const menu = document.createElement("div");
   menu.className = "todo-braindump-context-menu";
   menu.hidden = true;
@@ -70,5 +83,11 @@ export function createBraindumpContextMenu(onSelect) {
   document.addEventListener("click", closeHandler);
   document.addEventListener("contextmenu", closeHandler);
 
-  return { menu, show, hide };
+  disposePreviousBraindumpMenu = () => {
+    document.removeEventListener("click", closeHandler);
+    document.removeEventListener("contextmenu", closeHandler);
+    menu.remove();
+  };
+
+  return { menu, show, hide, dispose: disposePreviousBraindumpMenu };
 }
