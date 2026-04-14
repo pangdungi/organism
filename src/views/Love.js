@@ -38,6 +38,7 @@ import {
   writeKpiUiSession,
   restoreKpiTabFromSession,
 } from "../utils/kpiViewUiSession.js";
+import { KPI_TAB_EDIT_PENCIL_HTML } from "../utils/kpiTabNameEditIcon.js";
 
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
@@ -1367,10 +1368,19 @@ export function render() {
     tabs.innerHTML = "";
     data.happinesses.forEach((happiness) => {
       const tab = document.createElement("div");
-      tab.className =
-        "dream-tab" + (happiness.id === activeHappinessId ? " active" : "");
+      const isActive = happiness.id === activeHappinessId;
+      tab.className = "dream-tab" + (isActive ? " active" : "");
       tab.dataset.happinessId = happiness.id;
-      tab.innerHTML = `<span class="dream-tab-text">${escapeHtml(happiness.name || "행복 이름")}</span>`;
+      tab.innerHTML = `<span class="dream-tab-text">${escapeHtml(happiness.name || "행복 이름")}</span>${
+        isActive ? KPI_TAB_EDIT_PENCIL_HTML : ""
+      }`;
+      if (isActive) {
+        tab.querySelector(".dream-tab-edit")?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          showHappinessContextModal(happiness, tab);
+        });
+      }
       tab.addEventListener("click", () => {
         if (activeHappinessId !== happiness.id) {
           selectedKpiId = null;
@@ -1378,10 +1388,6 @@ export function render() {
         activeHappinessId = happiness.id;
         renderTabs();
         updateTitleAndContent();
-      });
-      tab.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-        showHappinessContextModal(happiness, tab);
       });
       tabs.appendChild(tab);
     });

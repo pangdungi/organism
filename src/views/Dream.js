@@ -28,6 +28,7 @@ import {
   writeKpiUiSession,
   restoreKpiTabFromSession,
 } from "../utils/kpiViewUiSession.js";
+import { KPI_TAB_EDIT_PENCIL_HTML } from "../utils/kpiTabNameEditIcon.js";
 
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
@@ -1520,9 +1521,19 @@ export function render() {
     tabs.innerHTML = "";
     data.dreams.forEach((dream) => {
       const tab = document.createElement("div");
-      tab.className = "dream-tab" + (dream.id === activeDreamId ? " active" : "");
+      const isActive = dream.id === activeDreamId;
+      tab.className = "dream-tab" + (isActive ? " active" : "");
       tab.dataset.dreamId = dream.id;
-      tab.innerHTML = `<span class="dream-tab-text">${escapeHtml(dream.name || "꿈 이름")}</span>`;
+      tab.innerHTML = `<span class="dream-tab-text">${escapeHtml(dream.name || "꿈 이름")}</span>${
+        isActive ? KPI_TAB_EDIT_PENCIL_HTML : ""
+      }`;
+      if (isActive) {
+        tab.querySelector(".dream-tab-edit")?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          showDreamContextModal(dream, tab);
+        });
+      }
       tab.addEventListener("click", () => {
         if (activeDreamId !== dream.id) {
           selectedKpiId = null;
@@ -1530,10 +1541,6 @@ export function render() {
         activeDreamId = dream.id;
         renderTabs();
         updateTitleAndContent();
-      });
-      tab.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-        showDreamContextModal(dream, tab);
       });
       tabs.appendChild(tab);
     });

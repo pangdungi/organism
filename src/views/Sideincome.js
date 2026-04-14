@@ -1,7 +1,7 @@
 /**
  * 부수입 페이지 - 꿈 페이지와 동일 구조
  * 부수입 목표 추가 모달 → 확인 시 탭 형성, KPI 카드, 로그, 할일
- * 탭 우클릭 시 이름 수정/삭제 모달
+ * 활성 탭 연필 버튼으로 이름·목표 수정/삭제 모달
  */
 
 import {
@@ -29,6 +29,7 @@ import {
   writeKpiUiSession,
   restoreKpiTabFromSession,
 } from "../utils/kpiViewUiSession.js";
+import { KPI_TAB_EDIT_PENCIL_HTML } from "../utils/kpiTabNameEditIcon.js";
 
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
@@ -1580,9 +1581,19 @@ export function render() {
     tabs.innerHTML = "";
     data.paths.forEach((path) => {
       const tab = document.createElement("div");
-      tab.className = "dream-tab" + (path.id === activePathId ? " active" : "");
+      const isActive = path.id === activePathId;
+      tab.className = "dream-tab" + (isActive ? " active" : "");
       tab.dataset.pathId = path.id;
-      tab.innerHTML = `<span class="dream-tab-text">${escapeHtml(path.name || "새 경로")}</span>`;
+      tab.innerHTML = `<span class="dream-tab-text">${escapeHtml(path.name || "새 경로")}</span>${
+        isActive ? KPI_TAB_EDIT_PENCIL_HTML : ""
+      }`;
+      if (isActive) {
+        tab.querySelector(".dream-tab-edit")?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          showPathContextModal(path, tab);
+        });
+      }
       tab.addEventListener("click", () => {
         if (activePathId !== path.id) {
           selectedKpiId = null;
@@ -1590,10 +1601,6 @@ export function render() {
         activePathId = path.id;
         renderTabs();
         updateTitleAndContent();
-      });
-      tab.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-        showPathContextModal(path, tab);
       });
       tabs.appendChild(tab);
     });
