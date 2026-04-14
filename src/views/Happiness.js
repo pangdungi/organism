@@ -29,6 +29,7 @@ import {
   restoreKpiTabFromSession,
 } from "../utils/kpiViewUiSession.js";
 import { KPI_TAB_EDIT_PENCIL_HTML } from "../utils/kpiTabNameEditIcon.js";
+import { sortKpiLogsNewestFirst } from "../utils/kpiLogsSort.js";
 
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
@@ -686,23 +687,14 @@ export function render() {
     const data = loadHappinessMap();
     const logs = (data.kpiLogs || []).filter((l) => l.kpiId === kpiId);
     if (logs.length === 0) return null;
-    logs.sort((a, b) => {
-      const da = a.dateRaw || a.date || "";
-      const db = b.dateRaw || b.date || "";
-      return db.localeCompare(da);
-    });
-    return logs[0];
+    const sorted = sortKpiLogsNewestFirst(logs, data.kpiLogs);
+    return sorted[0];
   }
 
   function getKpiLogs(kpiId) {
     const data = loadHappinessMap();
     const logs = (data.kpiLogs || []).filter((l) => l.kpiId === kpiId);
-    logs.sort((a, b) => {
-      const da = a.dateRaw || a.date || "";
-      const db = b.dateRaw || b.date || "";
-      return db.localeCompare(da);
-    });
-    return logs;
+    return sortKpiLogsNewestFirst(logs, data.kpiLogs);
   }
 
   function parseNum(str) {
@@ -731,9 +723,13 @@ export function render() {
     if (lower) {
       currentVal =
         latestLog != null ? parseNum(latestLog.value) : null;
-      if (targetVal > 0 && latestLog != null && currentVal != null) {
-        const c = Math.max(currentVal, 1e-9);
-        progress = Math.min(100, (targetVal / c) * 100);
+      if (latestLog != null && currentVal != null) {
+        if (targetVal > 0) {
+          const c = Math.max(currentVal, 1e-9);
+          progress = Math.min(100, (targetVal / c) * 100);
+        } else if (targetVal === 0) {
+          progress = currentVal <= 0 ? 100 : 0;
+        }
       }
     } else {
       currentVal = getAccumulatedKpiValue(kpi.id);
@@ -744,8 +740,7 @@ export function render() {
     const accumulatedMins = targetMins > 0 ? getAccumulatedMinutes(kpi.name) : 0;
     const timeProgress = targetMins > 0 ? Math.min(100, (accumulatedMins / targetMins) * 100) : 0;
     const valueComplete = lower
-      ? targetVal > 0 &&
-        latestLog != null &&
+      ? latestLog != null &&
         currentVal != null &&
         currentVal <= targetVal
       : progress >= 100;

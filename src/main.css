@@ -27463,8 +27463,10 @@ body.kpi-resizing {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  max-height: 8.5rem;
+  /* 기본 약 2개 항목 높이만 보이게 고정, 추가 로그는 이 안에서만 세로 스크롤 */
+  max-height: 13.5rem;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }

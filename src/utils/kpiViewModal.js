@@ -77,8 +77,12 @@ export function getKpisByCategory() {
     let progressText;
     if (directionLower) {
       const latest = getLatestLogNumeric(kpi.id, logs);
-      if (targetVal > 0 && latest != null) {
-        progress = Math.min(100, (targetVal / Math.max(latest, 1e-9)) * 100);
+      if (latest != null) {
+        if (targetVal > 0) {
+          progress = Math.min(100, (targetVal / Math.max(latest, 1e-9)) * 100);
+        } else if (targetVal === 0) {
+          progress = latest <= 0 ? 100 : 0;
+        }
       }
       progressText = `최근 ${formatNum(latest)} / 상한 ${targetStr}${unitSuffix}`;
     } else {
