@@ -342,6 +342,18 @@ export function mountApp(container) {
       });
     }
     renderMain(main, { force: true });
+    /* 할일/일정·캘린더 상위 탭 진입 시 서버에서 calendar_section_tasks pull (KPI 탭과 동일하게 setActiveTab에서 명시) */
+    if (tabId === "calendar" || tabId === "schedulecalendar") {
+      void hydrateTodoSectionTasksFromCloud(`app_setActiveTab_${tabId}`)
+        .catch(() => {})
+        .then((needRefresh) => {
+          if (needRefresh && !isUserTypingInApp()) {
+            try {
+              window.__lpRenderMain?.({ skipTodoSaveBeforeUnmount: true });
+            } catch (_) {}
+          }
+        });
+    }
     /* 꿈·부수입·행복·건강: 다른 기기에서 삭제·추가한 내용을 보려면 진입 시 서버 pull 필요.
      * localStorage 문자열이 바뀐 경우에만 한 번 더 그림(불필요한 깜빡임 감소).
      * 단, 사용자가 입력 중이면 갱신을 건너뜀(입력 도중 화면 날아감 방지). */
@@ -591,9 +603,7 @@ export function mountApp(container) {
     window.__lpSyncWatchHelp = printSyncWatchHelp;
   }
 
-  const TODO_TABS_FOR_CLOUD_PULL = new Set(["calendar", "schedulecalendar"]);
-
-  /** 브라우저 탭 포커스 복귀 시: 할일 pull + KPI·시간·자산·일기 pull을 한 번에 돌리고 renderMain은 최대 1회 */
+  /** 브라우저 탭 포커스 복귀 시: KPI·시간·자산·일기 pull (할일 calendar_section_tasks는 탭 클릭 시에만 pull) */
   let _browserTabVisiblePullTimer = null;
   document.addEventListener(
     "visibilitychange",
@@ -611,11 +621,7 @@ export function mountApp(container) {
           try {
             logTabSync("visibility_pull", { tab: currentTabId });
             lpPullDebug("app_visibility_focus_pull_bundle", { tab: currentTabId });
-            const todoPullPromise = TODO_TABS_FOR_CLOUD_PULL.has(currentTabId)
-              ? hydrateTodoSectionTasksFromCloud(
-                  `browser_tab_visible:${currentTabId}`,
-                )
-              : Promise.resolve(false);
+            const todoPullPromise = Promise.resolve(false);
             const [needTodoRefresh, kpiR, timeR, assetR, diaryR] =
               await Promise.all([
                 todoPullPromise,
@@ -654,8 +660,7 @@ export function mountApp(container) {
               }
               return;
             }
-            const needMainFromTodo =
-              TODO_TABS_FOR_CLOUD_PULL.has(currentTabId) && needTodoRefresh;
+            const needMainFromTodo = false;
             const needMainFromOther =
               TAB_IDS_REFRESH_ON_KPI_PULL.has(currentTabId) &&
               (kpiChanged || assetChanged || diaryChanged);

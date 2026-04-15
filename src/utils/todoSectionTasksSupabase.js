@@ -14,6 +14,7 @@ import {
   writeSectionTasksObject,
   writeCustomSectionTasksObject,
   taskIdHasDeletionTombstone,
+  countTodoSectionTasksInStorage,
 } from "./todoSectionTasksModel.js";
 import { runTodoSectionTasksSerialized } from "./todoSectionTasksServerSyncSerial.js";
 import { logLpRender } from "./lpRenderDebugLog.js";
@@ -367,10 +368,29 @@ export function scheduleTodoSectionTasksSyncPush() {
 }
 
 /**
+ * 할일/일정 상위 탭 + 서브탭이 같은 순간에 각각 hydrate를 호출하면 pull이 연달아 돌고
+ * 서버 스냅샷으로 로컬이 두 번 덮이며(sync·다른 기기 상태와 레이스) 개수가 되살아나는 문제가 있음 → 한 묶음으로만 pull.
+ */
+function shouldCoalesceCalendarTodoHydrate(reason) {
+  const r = String(reason || "");
+  return (
+    r.startsWith("app_setActiveTab_calendar") ||
+    r.startsWith("app_setActiveTab_schedulecalendar") ||
+    r.startsWith("calendar_subtab_") ||
+    r.includes("calendar_mobile_schedule")
+  );
+}
+
+let _calendarTodoHydrateCoalesceTimer = null;
+let _calendarTodoHydrateCoalesceLastReason = "unknown";
+/** 동일 150ms 창에서 여러 번 await 해도 모두 같은 결과로 끝나게 */
+let _calendarTodoHydrateCoalesceWaiters = [];
+
+/**
  * @param {string} [reason] 호출 지점 구분(콘솔 [할일일정-pull] 필터용)
  * @returns {Promise<boolean>} 서버 데이터로 로컬을 덮어썼거나 id 보정 등으로 화면 갱신이 필요하면 true
  */
-export async function hydrateTodoSectionTasksFromCloud(reason = "unknown") {
+async function hydrateTodoSectionTasksFromCloudImpl(reason = "unknown") {
   lpPullDebug("hydrateTodoSectionTasksFromCloud", { reason });
   todoSectionSyncLog("hydrate:시작(서버에서받기)", { reason, t: Date.now() });
   todoSchedulePullTrace("hydrate:시작", { reason, t: Date.now() });
@@ -400,5 +420,46 @@ export async function hydrateTodoSectionTasksFromCloud(reason = "unknown") {
     pull로로컬변경: pulled,
     id보정만: e1.dirty || e2.dirty,
   });
+  /* 탭 진입 직후가 아니라 pull 완료 후 — 이때 메모리 개수가 화면과 맞음 */
+  const r = String(reason || "");
+  if (/calendar_subtab|calendar_mobile_schedule|app_setActiveTab_|calendar_coalesced←/.test(r)) {
+    try {
+      console.info("[할일개수] 탭·서버반영 후", {
+        이유: reason,
+        목록개수: countTodoSectionTasksInStorage(),
+      });
+    } catch (_) {}
+  }
   return needRefresh;
+}
+
+const CALENDAR_HYDRATE_COALESCE_MS = 150;
+
+export async function hydrateTodoSectionTasksFromCloud(reason = "unknown") {
+  if (!shouldCoalesceCalendarTodoHydrate(reason)) {
+    if (_calendarTodoHydrateCoalesceTimer) {
+      clearTimeout(_calendarTodoHydrateCoalesceTimer);
+      _calendarTodoHydrateCoalesceTimer = null;
+    }
+    return hydrateTodoSectionTasksFromCloudImpl(reason);
+  }
+  _calendarTodoHydrateCoalesceLastReason = reason;
+  return new Promise((resolve, reject) => {
+    _calendarTodoHydrateCoalesceWaiters.push({ resolve, reject });
+    if (_calendarTodoHydrateCoalesceTimer) clearTimeout(_calendarTodoHydrateCoalesceTimer);
+    _calendarTodoHydrateCoalesceTimer = setTimeout(() => {
+      _calendarTodoHydrateCoalesceTimer = null;
+      const merged = _calendarTodoHydrateCoalesceLastReason;
+      const coalescedReason = `calendar_coalesced←${merged}`;
+      const waiters = _calendarTodoHydrateCoalesceWaiters;
+      _calendarTodoHydrateCoalesceWaiters = [];
+      hydrateTodoSectionTasksFromCloudImpl(coalescedReason)
+        .then((out) => {
+          waiters.forEach((w) => w.resolve(out));
+        })
+        .catch((err) => {
+          waiters.forEach((w) => w.reject(err));
+        });
+    }, CALENDAR_HYDRATE_COALESCE_MS);
+  });
 }

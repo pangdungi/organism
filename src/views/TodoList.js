@@ -55,6 +55,7 @@ import {
   recordTodoSectionTaskDeletion,
   stripTodoTaskSyncMetaForCompare,
   taskIdHasDeletionTombstone,
+  countTodoSectionTasksInStorage,
 } from "../utils/todoSectionTasksModel.js";
 import { patchTodoDomTaskIdsForSectionElement } from "../utils/todoDomTaskIdPatch.js";
 export const DRAG_TYPE_TODO_TO_CALENDAR = "todo-task-to-calendar";
@@ -442,6 +443,9 @@ function removeTaskFromSectionStorage(sectionId, taskId) {
     recordTodoSectionTaskDeletion(taskId);
     cancelScheduleSaveSectionTasksFromDOM();
     void persistFixedSectionTasksAndSyncNow(obj).catch(() => {});
+    try {
+      console.info("[할일개수] 삭제 후", { 목록개수: countTodoSectionTasksInStorage() });
+    } catch (_) {}
     return true;
   } catch (_) {}
   return false;
@@ -456,6 +460,9 @@ function removeTaskFromCustomSectionStorage(sectionId, taskId) {
     recordTodoSectionTaskDeletion(taskId);
     cancelScheduleSaveSectionTasksFromDOM();
     void persistCustomSectionTasksAndSyncNow(obj).catch(() => {});
+    try {
+      console.info("[할일개수] 삭제 후", { 목록개수: countTodoSectionTasksInStorage() });
+    } catch (_) {}
     return true;
   } catch (_) {}
   return false;

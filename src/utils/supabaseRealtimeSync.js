@@ -4,7 +4,6 @@
  */
 
 import { supabase } from "../supabase.js";
-import { hydrateTodoSectionTasksFromCloud } from "./todoSectionTasksSupabase.js";
 import { pullAllKpiMapsFromCloud } from "./kpiTabCloudRefresh.js";
 import { pullAllTimeLedgerFromCloud } from "./timeLedgerCloudRefresh.js";
 import { timeLedgerEntryPayloadTouchesSessionPicker } from "./timeLedgerEntriesSupabase.js";
@@ -203,15 +202,8 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
           timeLedgerRtTables: [...timeBatch.touchedTables],
         });
         logLpRender("realtime:debounced 틱 시작", { gen });
-        const tabForTodoHydrate = getCurrentTabId();
-        const todoTableTouched = realtimeTouchedTables.has("calendar_section_tasks");
-        const needTodo =
-          todoTableTouched &&
-          (tabForTodoHydrate === "calendar" || tabForTodoHydrate === "schedulecalendar")
-            ? await hydrateTodoSectionTasksFromCloud(
-                "realtime_postgres_changes_debounced",
-              )
-            : false;
+        /* calendar_section_tasks: 할일 pull은 앱에서 할일/일정·캘린더 탭 클릭 시에만(hydrate) — Realtime으로 자동 pull 안 함 */
+        const needTodo = false;
         /* calendar_section_tasks·시간가계부 등만 바뀐 배치에서 KPI pull까지 돌리면 dream.pull·setItem이 불필요하게 반복됨 */
         const needsKpiMapPull = [...realtimeTouchedTables].some((t) =>
           KPI_REALTIME_TABLES_SET.has(t),

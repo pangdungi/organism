@@ -91,6 +91,20 @@ export function readCustomSectionTasksObject() {
   return cloneDeep(_customSectionTasksMem);
 }
 
+/** 고정·커스텀 섹션 할 일 행 개수(콘솔 디버그용) */
+export function countTodoSectionTasksInStorage() {
+  const fixed = readSectionTasksObject();
+  const custom = readCustomSectionTasksObject();
+  let n = 0;
+  Object.values(fixed).forEach((arr) => {
+    if (Array.isArray(arr)) n += arr.length;
+  });
+  Object.values(custom).forEach((arr) => {
+    if (Array.isArray(arr)) n += arr.length;
+  });
+  return n;
+}
+
 export function writeSectionTasksObject(obj) {
   migrateLegacyLocalStorageOnce();
   const next = cloneDeep(obj || {});
