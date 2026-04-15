@@ -7,7 +7,7 @@ import {
   flattenCalendarTasksForSync,
   mergeAdditiveServerRowsIntoLocal,
   ensureCalendarSectionTaskIds,
-  snapshotSectionTasksForPullCompare,
+  snapshotSectionTasksSemanticForCompare,
   replaceSectionTasksFromServerRows,
   writeSectionTasksObject,
   writeCustomSectionTasksObject,
@@ -125,10 +125,10 @@ async function syncTodoSectionTasksToSupabaseImpl() {
     .order("sort_order", { ascending: true });
   let replacedFromServer = false;
   if (!canErr && Array.isArray(canonicalRows)) {
-    /* pull과 동일: 덮어쓴 뒤 실제로 로컬 문자열이 바뀐 경우에만 true — 무조건 true면 매 sync마다 __lpRenderMain → 모바일에서 입력·저장이 잦아 무한에 가깝게 깜빡임 */
-    const beforeSnap = snapshotSectionTasksForPullCompare();
+    /* 의미 있는 필드만 비교 — updated_at 메타만 바뀐 경우 전체 리렌더하지 않음 */
+    const beforeSnap = snapshotSectionTasksSemanticForCompare();
     replaceSectionTasksFromServerRows(canonicalRows);
-    const afterSnap = snapshotSectionTasksForPullCompare();
+    const afterSnap = snapshotSectionTasksSemanticForCompare();
     replacedFromServer = beforeSnap !== afterSnap;
   }
 
@@ -185,10 +185,10 @@ async function pullTodoSectionTasksFromSupabaseImpl(reason = "pull") {
 
   const rows = Array.isArray(data) ? data : [];
 
-  /* 서버 스냅샷으로만 덮어씀 — 병합 전후가 같으면 false */
-  const beforeSnap = snapshotSectionTasksForPullCompare();
+  /* 서버 스냅샷으로만 덮어씀 — 메타만 다른 경우 needRefresh·연쇄 hydrate 방지 */
+  const beforeSnap = snapshotSectionTasksSemanticForCompare();
   replaceSectionTasksFromServerRows(rows);
-  const afterSnap = snapshotSectionTasksForPullCompare();
+  const afterSnap = snapshotSectionTasksSemanticForCompare();
   const localChanged = beforeSnap !== afterSnap;
   todoSchedulePullTrace("pull:서버스냅샷반영", {
     reason,

@@ -59,6 +59,15 @@ function todoDebug(...args) {
   if (TODO_DEBUG && typeof console !== "undefined" && console.log) console.log("[TODO-DEBUG]", ...args);
 }
 
+/** 모바일(≤48rem): 할일 계열 모달은 백드롭 탭으로 닫지 않음(취소·×만) — 데스크탑은 기존 유지 */
+function isTodoListMobileModalViewport() {
+  try {
+    return window.matchMedia("(max-width: 48rem)").matches;
+  } catch (_) {
+    return false;
+  }
+}
+
 /** 커스텀 리스트 탭 우클릭 메뉴: document dismiss 리스너 1회만 (render 반복 시 누적 방지) */
 let todoListTabContextMenuActive = null;
 let todoListTabContextTargetActive = null;
@@ -1071,7 +1080,10 @@ function showAddListModal(options = {}) {
   confirmBtn.addEventListener("click", doConfirm);
   cancelBtn.addEventListener("click", close);
   closeBtn.addEventListener("click", close);
-  backdrop.addEventListener("click", close);
+  backdrop.addEventListener("click", () => {
+    if (isTodoListMobileModalViewport()) return;
+    close();
+  });
 
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
@@ -1165,7 +1177,10 @@ function showConfirmModal(options = {}) {
   });
   cancelBtn.addEventListener("click", close);
   closeBtn.addEventListener("click", close);
-  backdrop.addEventListener("click", close);
+  backdrop.addEventListener("click", () => {
+    if (isTodoListMobileModalViewport()) return;
+    close();
+  });
 
   modal.addEventListener("keydown", (e) => {
     if (e.key === "Escape") close();
@@ -1224,7 +1239,10 @@ function showMobileDateModal(options) {
     e.preventDefault();
     close();
   });
-  backdrop.addEventListener("click", close);
+  backdrop.addEventListener("click", () => {
+    if (isTodoListMobileModalViewport()) return;
+    close();
+  });
   modal.addEventListener("keydown", (e) => {
     if (e.key === "Escape") close();
   });
@@ -1393,6 +1411,7 @@ function showTodoTaskModal(options) {
   }, 100);
   backdrop?.addEventListener("click", (e) => {
     if (e.target !== backdrop || !allowBackdropClose) return;
+    if (isTodoListMobileModalViewport()) return;
     close();
   });
   if (mode === "edit" && onDelete && deleteBtn) {
@@ -2736,11 +2755,7 @@ function createSection(section, options = {}) {
           const taskId = getTaskId(payload);
           const newTask = { ...payload, taskId, done: false };
           const card = createTaskCard(newTask, { updateCount, sectionsWrap, scheduleSave, enableDragToEisenhower, enableDragToCalendar, enableDragOverdueToCalendar });
-          if (cardsWrap.firstChild) {
-            cardsWrap.insertBefore(card, cardsWrap.firstChild);
-          } else {
-            cardsWrap.appendChild(card);
-          }
+          cardsWrap.appendChild(card);
           updateCount();
           scheduleSave();
         },
@@ -2953,7 +2968,7 @@ function createSection(section, options = {}) {
         eisenhowerSidebarFirst,
         categoryUiSignal,
       });
-      tbody.insertBefore(tr, addRow.nextSibling);
+      tbody.appendChild(tr);
       updateCount();
       if (TODO_DEBUG) console.log("[DEBUG todo-row] + clicked, new row created", { taskId, sectionId: section.id });
       const nameInput = tr.querySelector(".todo-task-name-field");

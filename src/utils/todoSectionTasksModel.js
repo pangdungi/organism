@@ -112,6 +112,30 @@ export function snapshotSectionTasksForPullCompare() {
 }
 
 /**
+ * sync/pull 직후 비교용 — serverUpdatedAt·localModifiedAt 만 바뀐 경우는 동일로 본다.
+ * (서버 round-trip 후 타임스탬프만 갱신돼도 전체 리렌더·hydrate 연쇄가 나지 않게)
+ */
+export function snapshotSectionTasksSemanticForCompare() {
+  const fixed = readSectionTasksObject();
+  const custom = readCustomSectionTasksObject();
+  function stripContainer(container) {
+    const out = {};
+    for (const k of Object.keys(container || {})) {
+      const arr = container[k];
+      out[k] = Array.isArray(arr)
+        ? arr.map((t) => {
+            if (!t || typeof t !== "object") return t;
+            const { localModifiedAt, serverUpdatedAt, ...rest } = t;
+            return rest;
+          })
+        : arr;
+    }
+    return out;
+  }
+  return `${JSON.stringify(stripContainer(fixed))}\n${JSON.stringify(stripContainer(custom))}`;
+}
+
+/**
  * 로그아웃·계정 전환 시: 섹션 할 일·tombstone 메모리 초기화 및 구버전 LS 제거
  */
 export function clearTodoSectionTasksMemAndLegacy() {
@@ -203,10 +227,12 @@ function writeTodoDeletionTombstones(obj) {
   _todoDeletionTombstonesMem = cloneDeep(obj || {});
 }
 
-/** 할 일 행 삭제 시 호출 — 서버 반영 전까지 동일 id는 pull에서 무시 */
+/** 할 일 행 삭제 시 호출 — 서버 반영 전까지 동일 id는 pull·통째 덮기에서 무시 */
 export function recordTodoSectionTaskDeletion(taskId) {
   const id = String(taskId || "").trim();
-  if (!id || !UUID_RE.test(id)) return;
+  if (!id) return;
+  /* 서버 id(UUID) + 클라 임시 id(task-타임스탬프-) — 임시 id는 mergeAdditive 쪽과 직접 매칭되진 않으나 기록해 둠 */
+  if (!UUID_RE.test(id) && !/^task-\d+-/.test(id)) return;
   const tomb = readTodoDeletionTombstones();
   tomb[id] = Date.now();
   writeTodoDeletionTombstones(tomb);
@@ -315,11 +341,19 @@ export function replaceSectionTasksFromServerRows(rows) {
     return (a.sort_order || 0) - (b.sort_order || 0);
   });
 
-  const serverIds = new Set();
+  const tomb = readTodoDeletionTombstones();
+  /** 서버 응답에 실제로 포함된 id — tombstone 정리용(삭제 대기 행은 응답에 남아 있어도 로컬에 다시 넣지 않음) */
+  const allServerRowIds = new Set();
+  for (const row of sorted) {
+    const id = String(row.id || "").trim();
+    if (id) allServerRowIds.add(id);
+  }
+
   for (const row of sorted) {
     const id = String(row.id || "").trim();
     if (!id) continue;
-    serverIds.add(id);
+    /* 로컬에서 삭제했는데 서버 반영이 아직이거나 지연된 경우 — 통째 덮기로 부활 방지 */
+    if (tomb[id]) continue;
     const task = dbRowToLocalTask(row);
     const key = String(row.section_key || "").trim();
     const isCustom = !!row.is_custom_section;
@@ -335,7 +369,7 @@ export function replaceSectionTasksFromServerRows(rows) {
   CALENDAR_FIXED_SECTION_IDS.forEach((k) => {
     if (!fixed[k]) fixed[k] = [];
   });
-  pruneTodoDeletionTombstones(serverIds);
+  pruneTodoDeletionTombstones(allServerRowIds);
   writeSectionTasksObject(fixed);
   writeCustomSectionTasksObject(custom);
 }
