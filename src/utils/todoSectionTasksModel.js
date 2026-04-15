@@ -238,6 +238,13 @@ export function recordTodoSectionTaskDeletion(taskId) {
   writeTodoDeletionTombstones(tomb);
 }
 
+/** DOM 저장 병합 등에서 삭제 직후 행이 다시 끼는 것 방지 */
+export function taskIdHasDeletionTombstone(taskId) {
+  const id = String(taskId || "").trim();
+  if (!id) return false;
+  return !!readTodoDeletionTombstones()[id];
+}
+
 /** 서버 스냅샷에 해당 id가 없으면(삭제 확인) tombstone 제거 */
 export function pruneTodoDeletionTombstones(serverIdsPresent) {
   const set =
@@ -536,6 +543,60 @@ export function flattenCalendarTasksForSync(userId) {
   });
 
   return payloads;
+}
+
+/**
+ * 사용자가 이 기기에서 수정한 행만 upsert — DOM/메모리 전체를 서버에 덮어쓰지 않음(localModifiedAt 있음).
+ */
+export function flattenCalendarTasksForSyncDirtyOnly(userId) {
+  const fixed = readSectionTasksObject();
+  const custom = readCustomSectionTasksObject();
+  const payloads = [];
+
+  function walk(sectionKey, isCustom, arr) {
+    if (!Array.isArray(arr)) return;
+    arr.forEach((t, idx) => {
+      if (!t || typeof t !== "object") return;
+      if (typeof t.localModifiedAt !== "number" || !Number.isFinite(t.localModifiedAt)) return;
+      const p = localTaskToDbPayload(userId, sectionKey, isCustom, idx, t);
+      if (p && taskRowIsSubstantive({ ...t, taskId: p.id })) payloads.push(p);
+    });
+  }
+
+  Object.keys(fixed).forEach((sectionKey) => walk(sectionKey, false, fixed[sectionKey]));
+  Object.keys(custom).forEach((sectionKey) => walk(sectionKey, true, custom[sectionKey]));
+
+  return payloads;
+}
+
+/** upsert 성공 후 같은 id는 다시 안 올리도록 플래그 제거 */
+export function clearLocalModifiedAtForSyncedTaskIds(syncedIds) {
+  migrateLegacyLocalStorageOnce();
+  const set = new Set(
+    (Array.isArray(syncedIds) ? syncedIds : [])
+      .map((id) => String(id || "").trim())
+      .filter(Boolean),
+  );
+  if (set.size === 0) return;
+  const fixed = readSectionTasksObject();
+  const custom = readCustomSectionTasksObject();
+  let changed = false;
+  function walk(arr) {
+    if (!Array.isArray(arr)) return;
+    for (const t of arr) {
+      if (!t || typeof t !== "object") continue;
+      const id = String(t.taskId || "").trim();
+      if (id && set.has(id) && t.localModifiedAt != null) {
+        delete t.localModifiedAt;
+        changed = true;
+      }
+    }
+  }
+  Object.values(fixed).forEach(walk);
+  Object.values(custom).forEach(walk);
+  if (!changed) return;
+  writeSectionTasksObject(fixed);
+  writeCustomSectionTasksObject(custom);
 }
 
 function taskRowMarkedDone(t) {

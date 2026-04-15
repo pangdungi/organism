@@ -33640,11 +33640,45 @@ body.kpi-resizing {
 .calendar-todo-sidebar-main {
   flex: 0 0 60%;
   min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   scrollbar-width: none;
   -ms-overflow-style: none;
   padding: 0.75rem 0.6rem;
+}
+
+/* 날짜 정하기 상단 할일: 목록이 비어 있어도 +는 항상 패널 하단 */
+.calendar-todo-sidebar-main .todo-list-in-sidebar {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.calendar-todo-sidebar-main .todo-list-in-sidebar .todo-list-toolbar-row {
+  flex-shrink: 0;
+}
+.calendar-todo-sidebar-main .todo-list-in-sidebar .todo-sections-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 날짜 정하기: 전역 탭 패널 display:block → flex 로 바꿔 목록만 스크롤·+는 하단 고정 */
+.todo-list-in-sidebar .todo-section.todo-section-tab-panel.is-active {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.todo-list-in-sidebar .todo-section.todo-section-tab-panel.is-active > .todo-cards-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .calendar-todo-sidebar-main::-webkit-scrollbar {
@@ -34420,23 +34454,55 @@ body.kpi-resizing {
   background: var(--content-bg);
 }
 
-/* 아이젠하워 사이드바: 카드 레이아웃 시 카드가 잘리지 않고 유동적으로 늘어나도록 */
-.todo-list-eisenhower-sidebar .todo-section-tab-panel .todo-section {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+/* 아이젠하워 사이드바: tab패널=섹션 동일 요소 — 목록 영역만 늘리고 +는 항상 패널 하단 */
+.todo-list-eisenhower-sidebar .todo-list-toolbar-row {
+  flex-shrink: 0;
 }
-.todo-list-eisenhower-sidebar
-  .todo-section-tab-panel
-  .todo-section
-  .todo-cards-wrap {
+.todo-list-eisenhower-sidebar .todo-section.todo-section-tab-panel.is-active > .todo-cards-wrap {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
 }
+
+/* 우선순위 정렬 사이드바: + 를 오른쪽·초록(모바일 할일 FAB) — 왼쪽 완료 체크와 겹침 방지 */
+.todo-list-eisenhower-sidebar .todo-cards-add-wrap {
+  flex-shrink: 0;
+  justify-content: flex-end;
+  box-sizing: border-box;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+.todo-list-eisenhower-sidebar .todo-cards-add-btn {
+  color: var(--ui-btn-primary-fg);
+  background: var(--ui-btn-primary-bg);
+  border: none !important;
+  box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.15);
+}
+.todo-list-eisenhower-sidebar .todo-cards-add-btn:hover {
+  background: var(--ui-btn-primary-hover);
+  color: var(--ui-btn-primary-fg);
+}
+
+/* 날짜 정하기 사이드바(날짜 잡아서 해야 할일): + 를 오른쪽·초록 — 우선순위 사이드바와 동일 */
+.todo-list-in-sidebar .todo-cards-add-wrap {
+  flex-shrink: 0;
+  justify-content: flex-end;
+  box-sizing: border-box;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+.todo-list-in-sidebar .todo-cards-add-btn {
+  color: var(--ui-btn-primary-fg);
+  background: var(--ui-btn-primary-bg);
+  border: none !important;
+  box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.15);
+}
+.todo-list-in-sidebar .todo-cards-add-btn:hover {
+  background: var(--ui-btn-primary-hover);
+  color: var(--ui-btn-primary-fg);
+}
+
 .todo-list-eisenhower-sidebar .todo-card {
   overflow: visible;
   flex-shrink: 0;

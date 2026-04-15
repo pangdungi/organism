@@ -2,14 +2,13 @@
  * 할일 섹션 저장·서버 동기화 호출 추적 — 동작 변경 없음.
  * 콘솔 필터: [할일동기]
  *
- * 켜짐: Vite 개발 모드 | localStorage.setItem('debug_todo_section_sync','1') | window.__TODO_SECTION_SYNC_DEBUG__ = true
+ * 켜짐: localStorage.setItem('debug_todo_section_sync','1') | window.__TODO_SECTION_SYNC_DEBUG__ = true
  */
 
 const LS_KEY = "debug_todo_section_sync";
 
 export function todoSectionSyncDebugEnabled() {
   try {
-    if (typeof import.meta !== "undefined" && import.meta.env?.DEV) return true;
     if (typeof window !== "undefined" && window.__TODO_SECTION_SYNC_DEBUG__ === true) return true;
     if (typeof localStorage !== "undefined" && localStorage.getItem(LS_KEY) === "1") return true;
   } catch (_) {}

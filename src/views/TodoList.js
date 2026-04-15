@@ -39,6 +39,9 @@ import { createTodoCheckboxTypeMenu } from "../utils/todoCheckboxTypeMenu.js";
 import {
   persistSectionTasksAndSchedule,
   persistCustomSectionTasksAndSchedule,
+  persistFixedSectionTasksAndSyncNow,
+  persistCustomSectionTasksAndSyncNow,
+  scheduleTodoSectionTasksSyncPush,
   deleteCompletedCalendarSectionTasksFromSupabase,
   syncTodoSectionTasksToSupabase,
 } from "../utils/todoSectionTasksSupabase.js";
@@ -46,9 +49,12 @@ import { logLpRender } from "../utils/lpRenderDebugLog.js";
 import {
   readSectionTasksObject,
   readCustomSectionTasksObject,
+  writeSectionTasksObject,
+  writeCustomSectionTasksObject,
   purgeAllCompletedSectionAndCustomTasks,
   recordTodoSectionTaskDeletion,
   stripTodoTaskSyncMetaForCompare,
+  taskIdHasDeletionTombstone,
 } from "../utils/todoSectionTasksModel.js";
 import { patchTodoDomTaskIdsForSectionElement } from "../utils/todoDomTaskIdPatch.js";
 export const DRAG_TYPE_TODO_TO_CALENDAR = "todo-task-to-calendar";
@@ -142,6 +148,7 @@ function updateSectionTaskDone(sectionId, taskId, done) {
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
       t.done = !!done;
+      t.localModifiedAt = Date.now();
       persistSectionTasksAndSchedule(obj);
       return true;
     }
@@ -196,11 +203,14 @@ function saveSectionTasks(sectionId, tasks) {
           reminderTime: (fromDom.reminderTime || "").trim() || "",
         });
         domByTaskId.delete(tid);
-      } else {
+      } else if (!taskIdHasDeletionTombstone(tid)) {
+        /* DOM에 없고 삭제 tombstone도 없을 때만 메모리 유지(탭·지연 저장 경쟁 시 삭제 행 재저장 방지) */
         merged.push(ex);
       }
     });
     domByTaskId.forEach((t) => {
+      const domTid = String(t.taskId || "").trim();
+      if (taskIdHasDeletionTombstone(domTid)) return;
       merged.push({
         taskId: t.taskId,
         name: t.name,
@@ -223,7 +233,7 @@ function saveSectionTasks(sectionId, tasks) {
     });
     const mergedUnique = dedupeMergedSectionTasksByNamePreferUuid([
       ...mergeDedup.values(),
-    ]);
+    ]).filter((t) => !taskIdHasDeletionTombstone(t.taskId));
     const toSave = mergedUnique
       .map(
         ({
@@ -275,7 +285,8 @@ function saveSectionTasks(sectionId, tasks) {
       )
       .filter((t) => keepTaskInSectionStorage(t));
     obj[sectionId] = toSave;
-    persistSectionTasksAndSchedule(obj);
+    /* DOM 수집 경로는 메모리만 — 서버 upsert는 collect 완료 후 한 번만(사용자 편집 플래그) */
+    writeSectionTasksObject(obj);
   } catch (_) {}
 }
 
@@ -407,9 +418,10 @@ function saveCustomSectionTasks(sectionId, tasks) {
           return { ...candidate, localModifiedAt: Date.now() };
         },
       )
-      .filter((t) => keepTaskInSectionStorage(t));
+      .filter((t) => keepTaskInSectionStorage(t))
+      .filter((t) => !taskIdHasDeletionTombstone(t.taskId));
     obj[sectionId] = toSave;
-    persistCustomSectionTasksAndSchedule(obj);
+    writeCustomSectionTasksObject(obj);
   } catch (_) {}
 }
 
@@ -428,7 +440,8 @@ function removeTaskFromSectionStorage(sectionId, taskId) {
     if (!Array.isArray(arr)) return false;
     obj[sectionId] = arr.filter((t) => (t.taskId || "") !== taskId);
     recordTodoSectionTaskDeletion(taskId);
-    persistSectionTasksAndSchedule(obj);
+    cancelScheduleSaveSectionTasksFromDOM();
+    void persistFixedSectionTasksAndSyncNow(obj).catch(() => {});
     return true;
   } catch (_) {}
   return false;
@@ -441,7 +454,8 @@ function removeTaskFromCustomSectionStorage(sectionId, taskId) {
     if (!Array.isArray(arr)) return false;
     obj[sectionId] = arr.filter((t) => (t.taskId || "") !== taskId);
     recordTodoSectionTaskDeletion(taskId);
-    persistCustomSectionTasksAndSchedule(obj);
+    cancelScheduleSaveSectionTasksFromDOM();
+    void persistCustomSectionTasksAndSyncNow(obj).catch(() => {});
     return true;
   } catch (_) {}
   return false;
@@ -528,13 +542,22 @@ function dedupeMergedSectionTasksByNamePreferUuid(merged) {
 }
 
 let _saveSectionTasksTimer = null;
+
+/** 삭제 직후 예약된 DOM→저장(300ms)이 옛 목록으로 덮어쓰지 않게 취소 */
+function cancelScheduleSaveSectionTasksFromDOM() {
+  if (_saveSectionTasksTimer) {
+    clearTimeout(_saveSectionTasksTimer);
+    _saveSectionTasksTimer = null;
+  }
+}
+
 function scheduleSaveSectionTasksFromDOM(sectionsWrap) {
   todoDebug("scheduleSaveSectionTasksFromDOM", { hasWrap: !!sectionsWrap });
   if (!sectionsWrap) return;
   if (_saveSectionTasksTimer) clearTimeout(_saveSectionTasksTimer);
   _saveSectionTasksTimer = setTimeout(() => {
     _saveSectionTasksTimer = null;
-    collectAndSaveKpiTasksFromDOM(sectionsWrap);
+    collectAndSaveKpiTasksFromDOM(sectionsWrap, { scheduleServerSync: true });
   }, 300);
 }
 
@@ -545,15 +568,16 @@ function flushSaveSectionTasksFromDOM(sectionsWrap) {
     clearTimeout(_saveSectionTasksTimer);
     _saveSectionTasksTimer = null;
   }
-  collectAndSaveKpiTasksFromDOM(sectionsWrap);
-  getCustomSections().forEach((s) => {
-    const sec = sectionsWrap.querySelector(`.todo-section[data-section="${s.id}"]`);
-    if (sec) saveCustomSectionTasks(s.id, collectCustomSectionFromDOM(sectionsWrap, s.id));
-  });
+  collectAndSaveKpiTasksFromDOM(sectionsWrap, { scheduleServerSync: true, withCustomSections: true });
 }
 
-function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
-  todoDebug("collectAndSaveKpiTasksFromDOM", { hasWrap: !!sectionsWrap });
+/**
+ * @param {{ scheduleServerSync?: boolean, withCustomSections?: boolean }} [opts]
+ * - scheduleServerSync: 사용자 편집·저장 흐름에서만 true — DOM→메모리 후 서버 동기 0.9초 예약(한 번)
+ */
+function collectAndSaveKpiTasksFromDOM(sectionsWrap, opts = {}) {
+  const { scheduleServerSync = false, withCustomSections = false } = opts;
+  todoDebug("collectAndSaveKpiTasksFromDOM", { hasWrap: !!sectionsWrap, scheduleServerSync, withCustomSections });
   if (!sectionsWrap) return;
   FIXED_SECTION_IDS_FOR_STORAGE.forEach((sectionId) => {
     const sec = sectionsWrap.querySelector(`.todo-section[data-section="${sectionId}"]`);
@@ -670,6 +694,15 @@ function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
     Object.keys(obj || {}).forEach((k) => { counts[k] = (obj[k] || []).length; });
     todoDebug("collectAndSave: after save mem snapshot", counts);
   } catch (_) {}
+  if (withCustomSections) {
+    getCustomSections().forEach((s) => {
+      const sec = sectionsWrap.querySelector(`.todo-section[data-section="${s.id}"]`);
+      if (sec) saveCustomSectionTasks(s.id, collectCustomSectionFromDOM(sectionsWrap, s.id));
+    });
+  }
+  if (scheduleServerSync) {
+    scheduleTodoSectionTasksSyncPush();
+  }
 }
 
 export function saveTodoListBeforeUnmount(container) {
@@ -682,11 +715,7 @@ export function saveTodoListBeforeUnmount(container) {
     containerChildren: container?.children?.length,
   });
   if (sectionsWrap) {
-    collectAndSaveKpiTasksFromDOM(sectionsWrap);
-    getCustomSections().forEach((s) => {
-      const sec = sectionsWrap.querySelector(`.todo-section[data-section="${s.id}"]`);
-      if (sec) saveCustomSectionTasks(s.id, collectCustomSectionFromDOM(sectionsWrap, s.id));
-    });
+    collectAndSaveKpiTasksFromDOM(sectionsWrap, { scheduleServerSync: true, withCustomSections: true });
   } else {
     todoDebug("saveTodoListBeforeUnmount: no .todo-sections-wrap in container, save skipped");
   }
@@ -3501,7 +3530,11 @@ export function render(options = {}) {
           try {
             const customObj = readCustomSectionTasksObject();
             if (!customObj[targetSectionId]) customObj[targetSectionId] = [];
-            customObj[targetSectionId].push({ ...taskPayload, taskId: oldTaskId });
+            customObj[targetSectionId].push({
+              ...taskPayload,
+              taskId: oldTaskId,
+              localModifiedAt: Date.now(),
+            });
             persistCustomSectionTasksAndSchedule(customObj);
             result = { success: true, task: { name, startDate, dueDate, startTime, endTime, eisenhower, done, sectionId: targetSectionId, sectionLabel: getTargetLabel(targetSectionId), itemType, isKpiTodo: false, taskId: oldTaskId, reminderDate, reminderTime } };
           } catch (_) {}
@@ -3534,7 +3567,11 @@ export function render(options = {}) {
             persistSectionTasksAndSchedule(obj);
             const customObj = readCustomSectionTasksObject();
             if (!customObj[targetSectionId]) customObj[targetSectionId] = [];
-            customObj[targetSectionId].push({ ...taskPayload, taskId: oldTaskId });
+            customObj[targetSectionId].push({
+              ...taskPayload,
+              taskId: oldTaskId,
+              localModifiedAt: Date.now(),
+            });
             persistCustomSectionTasksAndSchedule(customObj);
             return true;
           } catch (_) {}
@@ -3552,7 +3589,11 @@ export function render(options = {}) {
             persistCustomSectionTasksAndSchedule(obj);
             const sectionObj = readSectionTasksObject();
             if (!sectionObj[targetSectionId]) sectionObj[targetSectionId] = [];
-            sectionObj[targetSectionId].push({ ...taskPayload, taskId: oldTaskId });
+            sectionObj[targetSectionId].push({
+              ...taskPayload,
+              taskId: oldTaskId,
+              localModifiedAt: Date.now(),
+            });
             persistSectionTasksAndSchedule(sectionObj);
             return true;
           } catch (_) {}

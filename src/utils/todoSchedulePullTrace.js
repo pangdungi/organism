@@ -3,7 +3,6 @@
  * 콘솔 필터: [할일일정-pull]
  *
  * 켜짐(하나만 만족):
- * - Vite 개발 모드(import.meta.env.DEV)
  * - localStorage.setItem('debug_todo_schedule_pull','1') 후 새로고침
  * - window.__TODO_SCHEDULE_PULL_TRACE__ = true
  */
@@ -14,7 +13,6 @@ let _seq = 0;
 
 export function todoSchedulePullTraceEnabled() {
   try {
-    if (typeof import.meta !== "undefined" && import.meta.env?.DEV) return true;
     if (typeof window !== "undefined" && window.__TODO_SCHEDULE_PULL_TRACE__ === true) return true;
     if (typeof localStorage !== "undefined" && localStorage.getItem(LS_KEY) === "1") return true;
   } catch (_) {}

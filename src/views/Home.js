@@ -220,6 +220,7 @@ function updateReminderInStorage(
     if (!t) return;
     t.reminderDate = (reminderDate || "").slice(0, 10) || "";
     t.reminderTime = (reminderTime || "").trim() || "";
+    t.localModifiedAt = Date.now();
     if (isCustom) persistCustomSectionTasksAndSchedule(obj);
     else persistSectionTasksAndSchedule(obj);
   } catch (_) {}
@@ -301,6 +302,7 @@ function updateHomeTaskDone(item, done) {
     const t = arr.find((x) => (x.taskId || "") === item.taskId);
     if (t) {
       t.done = !!done;
+      t.localModifiedAt = Date.now();
       if (item.isCustom) persistCustomSectionTasksAndSchedule(obj);
       else persistSectionTasksAndSchedule(obj);
     }

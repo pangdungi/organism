@@ -5,12 +5,15 @@
 import { supabase } from "../supabase.js";
 import {
   flattenCalendarTasksForSync,
+  flattenCalendarTasksForSyncDirtyOnly,
+  clearLocalModifiedAtForSyncedTaskIds,
   mergeAdditiveServerRowsIntoLocal,
   ensureCalendarSectionTaskIds,
   snapshotSectionTasksSemanticForCompare,
   replaceSectionTasksFromServerRows,
   writeSectionTasksObject,
   writeCustomSectionTasksObject,
+  taskIdHasDeletionTombstone,
 } from "./todoSectionTasksModel.js";
 import { runTodoSectionTasksSerialized } from "./todoSectionTasksServerSyncSerial.js";
 import { logLpRender } from "./lpRenderDebugLog.js";
@@ -23,6 +26,19 @@ const TABLE = "calendar_section_tasks";
 
 const SECTION_TASK_ROW_SELECT =
   "id, section_key, is_custom_section, sort_order, name, start_date, due_date, start_time, end_time, reminder_date, reminder_time, eisenhower, done, item_type, updated_at";
+
+/** 콘솔 필터: [할일서버삭제비교] — 서버에서 행 삭제 직전·직후 스냅샷만 */
+function compactIdListForLog(ids) {
+  const a = [...new Set(ids)].filter(Boolean).sort();
+  if (a.length <= 40) return a;
+  return { 앞40개: a.slice(0, 40), 총개수: a.length };
+}
+
+function logTodoServerDeleteCompare(phase, payload) {
+  try {
+    console.info("[할일서버삭제비교]", phase, { t: Date.now(), ...payload });
+  } catch (_) {}
+}
 
 async function getSessionUserId() {
   if (!supabase) return null;
@@ -53,8 +69,30 @@ export async function deleteCompletedCalendarSectionTasksFromSupabase() {
   return runTodoSectionTasksSerialized(async () => {
     const userId = await getSessionUserId();
     if (!userId || !supabase) return;
-    const { error } = await supabase.from(TABLE).delete().eq("user_id", userId).eq("done", true);
-    if (error) console.warn("[calendar-section-tasks] delete completed rows", error.message);
+    const { data: beforeRows, error: beforeErr } = await supabase
+      .from(TABLE)
+      .select("id, done, name")
+      .eq("user_id", userId)
+      .eq("done", true);
+    const beforeIds = Array.isArray(beforeRows)
+      ? beforeRows.map((r) => String(r.id || "").trim()).filter(Boolean)
+      : [];
+    logTodoServerDeleteCompare("완료일괄삭제·삭제전", {
+      done_true_행수: beforeIds.length,
+      id_목록: compactIdListForLog(beforeIds),
+      조회에러: beforeErr?.message || null,
+    });
+    await supabase.from(TABLE).delete().eq("user_id", userId).eq("done", true);
+    const { data: afterRows } = await supabase
+      .from(TABLE)
+      .select("id")
+      .eq("user_id", userId)
+      .eq("done", true);
+    const afterCount = Array.isArray(afterRows) ? afterRows.length : 0;
+    logTodoServerDeleteCompare("완료일괄삭제·삭제후", {
+      done_true_남은행수: afterCount,
+      삭제시도건수: beforeIds.length,
+    });
   });
 }
 
@@ -76,44 +114,56 @@ async function syncTodoSectionTasksToSupabaseImpl() {
     .order("section_key", { ascending: true })
     .order("is_custom_section", { ascending: true })
     .order("sort_order", { ascending: true });
-  if (!snapErr && Array.isArray(serverSnapshot) && serverSnapshot.length > 0) {
+
+  if (snapErr) {
+    todoSectionSyncLog("syncImpl:중단", { 이유: "서버스냅샷조회실패" });
+    return;
+  }
+
+  if (Array.isArray(serverSnapshot) && serverSnapshot.length > 0) {
     mergeAdditiveServerRowsIntoLocal(serverSnapshot);
   }
 
-  const payloads = flattenCalendarTasksForSync(userId);
-  const wantIds = new Set(payloads.map((p) => p.id));
+  const allForWant = flattenCalendarTasksForSync(userId);
+  const wantIds = new Set(allForWant.map((p) => p.id));
+  const dirtyPayloads = flattenCalendarTasksForSyncDirtyOnly(userId).filter(
+    (p) => p && !taskIdHasDeletionTombstone(p.id),
+  );
 
-  if (payloads.length > 0) {
-    const { error } = await supabase.from(TABLE).upsert(payloads, { onConflict: "id" });
+  /* 첫 스냅샷 기준: 로컬이 유지하지 않는 id는 먼저 서버에서 삭제 — upsert보다 먼저 해야 삭제 행이 다시 올라가는 레이스를 막음 */
+  const remoteIdsBefore = Array.isArray(serverSnapshot)
+    ? serverSnapshot.map((r) => String(r.id || "").trim()).filter(Boolean)
+    : [];
+  const toDeleteIds = remoteIdsBefore.filter((id) => !wantIds.has(id));
+  logTodoServerDeleteCompare("sync·고아삭제·삭제전", {
+    서버_전체_id_개수: remoteIdsBefore.length,
+    로컬이_유지하는_id_개수: wantIds.size,
+    이번에_서버에서_지울_id_개수: toDeleteIds.length,
+    서버에만있어서_지울_id_목록: compactIdListForLog(toDeleteIds),
+    로컬이_유지하는_id_목록_샘플: compactIdListForLog([...wantIds]),
+  });
+
+  for (const id of toDeleteIds) {
+    await supabase.from(TABLE).delete().eq("id", id).eq("user_id", userId);
+  }
+
+  const { data: remoteAfter } = await supabase.from(TABLE).select("id").eq("user_id", userId);
+  const remoteIdsAfter = Array.isArray(remoteAfter)
+    ? remoteAfter.map((r) => String(r.id || "").trim()).filter(Boolean)
+    : [];
+  logTodoServerDeleteCompare("sync·고아삭제·삭제후", {
+    서버_전체_id_개수: remoteIdsAfter.length,
+    이전대비_개수변화: remoteIdsAfter.length - remoteIdsBefore.length,
+    서버에남은_id_목록: compactIdListForLog(remoteIdsAfter),
+  });
+
+  if (dirtyPayloads.length > 0) {
+    const { error } = await supabase.from(TABLE).upsert(dirtyPayloads, { onConflict: "id" });
     if (error) {
-      console.warn("[calendar-section-tasks] upsert", error.message);
       todoSectionSyncLog("syncImpl:upsert실패", { message: error.message });
       return;
     }
-  }
-
-  /*
-   * 스냅샷 조회 실패 시 mergeAdditive가 생략되고 payloads가 비면 wantIds가 비어,
-   * 아래 고아 삭제에서 서버 행이 전부 지워질 수 있음(빈 로컬로 원격 삭제 금지).
-   * upsert만 반영하고 다음 성공 스냅샷까지 고아 삭제는 하지 않음.
-   */
-  if (snapErr) {
-    todoSectionSyncLog("syncImpl:중단", { 이유: "서버스냅샷조회실패_고아삭제생략" });
-    return;
-  }
-
-  const { data: remote, error: listErr } = await supabase.from(TABLE).select("id").eq("user_id", userId);
-  if (listErr || !remote) {
-    todoSectionSyncLog("syncImpl:중단", { 이유: "원격id목록실패" });
-    return;
-  }
-
-  for (const r of remote) {
-    const id = String(r.id || "").trim();
-    if (id && !wantIds.has(id)) {
-      const { error: dErr } = await supabase.from(TABLE).delete().eq("id", id).eq("user_id", userId);
-      if (dErr) console.warn("[calendar-section-tasks] delete", dErr.message);
-    }
+    clearLocalModifiedAtForSyncedTaskIds(dirtyPayloads.map((p) => p.id));
   }
 
   const { data: canonicalRows, error: canErr } = await supabase
@@ -137,11 +187,13 @@ async function syncTodoSectionTasksToSupabaseImpl() {
     todoSectionSyncLog("syncImpl:끝→전체화면갱신", {
       ensuredDirty: ensured.dirty,
       replacedFromServer,
-      payload수: payloads.length,
+      로컬전체행수: allForWant.length,
+      dirtyUpsert수: dirtyPayloads.length,
     });
     logLpRender("todo:syncTodoSectionTasksToSupabase 완료 → __lpRenderMain", {
       ensuredDirty: ensured.dirty,
       replacedFromServer,
+      dirtyUpsertCount: dirtyPayloads.length,
     });
     try {
       window.__lpRenderMain?.({ skipTodoSaveBeforeUnmount: true });
@@ -153,7 +205,8 @@ async function syncTodoSectionTasksToSupabaseImpl() {
     todoSectionSyncLog("syncImpl:끝(리렌더없음)", {
       ensuredDirty: ensured.dirty,
       replacedFromServer,
-      payload수: payloads.length,
+      로컬전체행수: allForWant.length,
+      dirtyUpsert수: dirtyPayloads.length,
     });
   }
 }
@@ -169,6 +222,8 @@ async function pullTodoSectionTasksFromSupabaseImpl(reason = "pull") {
     return false;
   }
 
+  cancelTodoSectionTasksSyncPushSchedule();
+
   const { data, error } = await supabase
     .from(TABLE)
     .select(SECTION_TASK_ROW_SELECT)
@@ -178,7 +233,6 @@ async function pullTodoSectionTasksFromSupabaseImpl(reason = "pull") {
     .order("sort_order", { ascending: true });
 
   if (error) {
-    console.warn("[calendar-section-tasks] pull", error.message);
     todoSchedulePullTrace("pull:에러", { reason, message: error.message });
     return false;
   }
@@ -219,10 +273,7 @@ async function pushAllLocalTodoSectionTasksIfServerEmptyImpl() {
   if (payloads.length === 0) return;
 
   const { error: upErr } = await supabase.from(TABLE).upsert(payloads, { onConflict: "id" });
-  if (upErr) {
-    console.warn("[calendar-section-tasks] push empty server", upErr.message);
-    return;
-  }
+  if (upErr) return;
   const { data: rows, error: pullErr } = await supabase
     .from(TABLE)
     .select(SECTION_TASK_ROW_SELECT)
@@ -242,6 +293,14 @@ export async function pushAllLocalTodoSectionTasksIfServerEmpty() {
 let _pushTimer = null;
 const PUSH_DEBOUNCE_MS = 900;
 
+/** 서버 pull/hydrate 직전: 예약만 된 로컬→서버 upsert가 오래된 메모리로 도는 것 방지 */
+export function cancelTodoSectionTasksSyncPushSchedule() {
+  if (_pushTimer) {
+    clearTimeout(_pushTimer);
+    _pushTimer = null;
+  }
+}
+
 /** 디바운스 생략 — 탭 전환·백그라운드 직전 삭제·편집이 서버에 반영되도록 */
 export function flushTodoSectionTasksSyncPush() {
   todoSectionSyncLogWithStack("flush:디바운스취소_즉시sync");
@@ -252,6 +311,23 @@ export function flushTodoSectionTasksSyncPush() {
   return syncTodoSectionTasksToSupabase();
 }
 
+/** 삭제·즉시 반영: 디바운스 없이 sync(끝에서 서버 SELECT로 로컬 확정) */
+export function persistFixedSectionTasksAndSyncNow(obj) {
+  todoSectionSyncLogWithStack("persist:고정섹션_즉시sync", {
+    섹션키개수: obj && typeof obj === "object" ? Object.keys(obj).length : 0,
+  });
+  writeSectionTasksObject(obj);
+  return flushTodoSectionTasksSyncPush();
+}
+
+export function persistCustomSectionTasksAndSyncNow(obj) {
+  todoSectionSyncLogWithStack("persist:커스텀섹션_즉시sync", {
+    섹션키개수: obj && typeof obj === "object" ? Object.keys(obj).length : 0,
+  });
+  writeCustomSectionTasksObject(obj);
+  return flushTodoSectionTasksSyncPush();
+}
+
 let _flushOnHideAttached = false;
 export function attachTodoSectionTasksPushFlushOnHideOnce() {
   if (_flushOnHideAttached || typeof document === "undefined") return;
@@ -259,9 +335,7 @@ export function attachTodoSectionTasksPushFlushOnHideOnce() {
   const run = () => {
     if (!supabase) return;
     todoSectionSyncLog("탭숨김·나가기:대기중_sync_즉시전송시도");
-    void flushTodoSectionTasksSyncPush().catch((e) =>
-      console.warn("[calendar-section-tasks] flush", e),
-    );
+    void flushTodoSectionTasksSyncPush().catch(() => {});
   };
   document.addEventListener(
     "visibilitychange",
@@ -288,7 +362,7 @@ export function scheduleTodoSectionTasksSyncPush() {
   _pushTimer = setTimeout(() => {
     _pushTimer = null;
     todoSectionSyncLog("schedule:타이머만료→sync실행");
-    syncTodoSectionTasksToSupabase().catch((e) => console.warn("[calendar-section-tasks]", e));
+    syncTodoSectionTasksToSupabase().catch(() => {});
   }, PUSH_DEBOUNCE_MS);
 }
 
@@ -304,6 +378,7 @@ export async function hydrateTodoSectionTasksFromCloud(reason = "unknown") {
     todoSchedulePullTrace("hydrate:끝", { reason, needRefresh: false, why: "no_supabase" });
     return false;
   }
+  cancelTodoSectionTasksSyncPushSchedule();
   let needRefresh = false;
   const e1 = ensureCalendarSectionTaskIds();
   if (e1.dirty) patchAllTodoDomTaskIdsFromStorage();

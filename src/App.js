@@ -102,7 +102,14 @@ const TABS = [
   { id: "sideincome", label: "부수입", icon: "/toolbaricons/money-circle.svg" },
   { id: "happiness", label: "행복", icon: "/toolbaricons/plug-electric.svg" },
   { id: "health", label: "건강", icon: "/toolbaricons/heart-rate.svg" },
-  { id: "calendar", label: "할일/일정", mobileLabel: "할일", icon: "/toolbaricons/calendar-alt.svg" },
+  {
+    id: "calendar",
+    label: "할일/일정",
+    mobileLabel: "할일",
+    icon: "/toolbaricons/calendar-alt.svg",
+    /** 데스크톱 왼쪽 사이드바 전용 — 모바일 하단 탭은 `icon` 유지 */
+    iconDesktop: "/toolbaricons/todolist.svg",
+  },
   { id: "time", label: "시간가계부", mobileLabel: "시간", icon: "/toolbaricons/timer.svg" },
   { id: "asset", label: "자산관리", mobileLabel: "자산", icon: "/toolbaricons/wallet.svg" },
   {
@@ -247,7 +254,7 @@ export function mountApp(container) {
     }
     btn.dataset.tabId = tab.id;
     btn.title = tab.label;
-    appendSidebarIcon(btn, tab.icon);
+    appendSidebarIcon(btn, tab.iconDesktop ?? tab.icon);
     const label = document.createElement("span");
     label.className = "app-sidebar-item-label";
     label.textContent = tab.label;
@@ -691,7 +698,8 @@ export function mountApp(container) {
   renderMain(main);
   logTabSync("boot_hydrate", { phase: "Promise.all" });
   void Promise.all([
-    hydrateTodoSectionTasksFromCloud("app_boot_Promise_all"),
+    /* 할일 섹션: calendar_section_tasks는 할일/일정 서브탭 전환 시에만 pull — 부팅 시 pull 제거 */
+    Promise.resolve(false),
     hydrateTimeDailyBudgetFromCloud(),
     hydrateTimeLedgerTasksFromCloud(),
     hydrateHealthKpiMapFromCloud(),

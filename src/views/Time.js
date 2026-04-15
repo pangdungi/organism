@@ -177,6 +177,7 @@ function setAuditTaskDone(sectionId, taskId, kpiTodoId, storageKey, done) {
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
       t.done = !!done;
+      t.localModifiedAt = Date.now();
       if (isCustom) persistCustomSectionTasksAndSchedule(obj);
       else persistSectionTasksAndSchedule(obj);
     }
@@ -6020,6 +6021,7 @@ export function render() {
         eisenhower: "",
         done: false,
         itemType: "todo",
+        localModifiedAt: Date.now(),
       });
       obj[sectionId] = arr;
       persistSectionTasksAndSchedule(obj);

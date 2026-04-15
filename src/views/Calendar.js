@@ -75,6 +75,23 @@ function persistCalendarMainViewIfValid(view) {
 /** 근무표와 동일: 이전 마운트의 hydrate.finally가 늦게 끝나면 덮어쓰지 않도록 */
 let _calendarTodoHydrateGeneration = 0;
 
+/** 할일 calendar_section_tasks: 부팅·마운트가 아니라 서브탭 전환 시에만 서버 pull */
+function scheduleHydrateTodoSectionTasksAfterCalendarSubtab(reason, mountEl) {
+  if (!supabase) return;
+  const hydrateGen = ++_calendarTodoHydrateGeneration;
+  void hydrateTodoSectionTasksFromCloud(reason)
+    .catch(() => {})
+    .then((needRefresh) => {
+      if (hydrateGen !== _calendarTodoHydrateGeneration) return;
+      if (!mountEl?.isConnected) return;
+      if (needRefresh) {
+        try {
+          window.__lpRenderMain?.({ skipTodoSaveBeforeUnmount: true });
+        } catch (_) {}
+      }
+    });
+}
+
 const CALENDAR_DATE_DEBUG = false;
 function dateDebug(tag, ...args) {
   if (CALENDAR_DATE_DEBUG && typeof console !== "undefined" && console.log) {
@@ -210,6 +227,7 @@ function updateSectionTaskDates(
     }
     t.startDate = (startDate || "").slice(0, 10) || "";
     t.dueDate = (dueDate || "").slice(0, 10) || "";
+    t.localModifiedAt = Date.now();
     persistSectionTasksAndSchedule(obj);
     dateDebug("updateSectionTaskDates OK", { sectionId, taskId, savedDueDate: t.dueDate });
     return true;
@@ -228,6 +246,7 @@ function updateSectionTaskTimes(sectionId, taskId, startTime, endTime) {
     if (t) {
       t.startTime = (startTime || "").trim() || "";
       t.endTime = (endTime || "").trim() || "";
+      t.localModifiedAt = Date.now();
       persistSectionTasksAndSchedule(obj);
       return true;
     }
@@ -243,6 +262,7 @@ function updateSectionTaskDone(sectionId, taskId, done) {
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
       t.done = !!done;
+      t.localModifiedAt = Date.now();
       persistSectionTasksAndSchedule(obj);
       return true;
     }
@@ -258,6 +278,7 @@ function updateSectionTaskEisenhower(sectionId, taskId, eisenhower) {
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
       t.eisenhower = (eisenhower || "").trim() || "";
+      t.localModifiedAt = Date.now();
       persistSectionTasksAndSchedule(obj);
       return true;
     }
@@ -273,6 +294,7 @@ function updateCustomSectionTaskEisenhower(sectionId, taskId, eisenhower) {
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
       t.eisenhower = (eisenhower || "").trim() || "";
+      t.localModifiedAt = Date.now();
       persistCustomSectionTasksAndSchedule(obj);
       return true;
     }
@@ -299,6 +321,7 @@ function addSectionTaskToCalendar(sectionId, taskData) {
       itemType: taskData.itemType || "todo",
       _calPrevStart: ((taskData._calPrevStart || "").toString().slice(0, 10) || ""),
       _calPrevDue: ((taskData._calPrevDue || "").toString().slice(0, 10) || ""),
+      localModifiedAt: Date.now(),
     });
     persistSectionTasksAndSchedule(obj);
     return true;
@@ -481,6 +504,7 @@ function updateCustomSectionTaskDone(sectionId, taskId, done) {
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
       t.done = !!done;
+      t.localModifiedAt = Date.now();
       persistCustomSectionTasksAndSchedule(obj);
     }
   } catch (_) {}
@@ -506,6 +530,7 @@ function updateCustomSectionTaskDates(
       }
       t.startDate = (startDate || "").slice(0, 10) || "";
       t.dueDate = (dueDate || "").slice(0, 10) || "";
+      t.localModifiedAt = Date.now();
       persistCustomSectionTasksAndSchedule(obj);
       return true;
     }
@@ -522,6 +547,7 @@ function updateCustomSectionTaskTimes(sectionId, taskId, startTime, endTime) {
     if (t) {
       t.startTime = (startTime || "").trim() || "";
       t.endTime = (endTime || "").trim() || "";
+      t.localModifiedAt = Date.now();
       persistCustomSectionTasksAndSchedule(obj);
       return true;
     }
@@ -548,6 +574,7 @@ function addCalendarTodoToCustomSection(sectionId, taskData) {
       itemType: taskData.itemType || "todo",
       _calPrevStart: ((taskData._calPrevStart || "").toString().slice(0, 10) || ""),
       _calPrevDue: ((taskData._calPrevDue || "").toString().slice(0, 10) || ""),
+      localModifiedAt: Date.now(),
     });
     persistCustomSectionTasksAndSchedule(obj);
     return true;
@@ -569,6 +596,7 @@ function clearSectionTaskCalendarRevertSnapshot(sectionId, taskId) {
     if (!t) return;
     delete t._calPrevStart;
     delete t._calPrevDue;
+    t.localModifiedAt = Date.now();
     persistSectionTasksAndSchedule(obj);
   } catch (_) {}
 }
@@ -581,6 +609,7 @@ function clearCustomSectionTaskCalendarRevertSnapshot(sectionId, taskId) {
     if (!t) return;
     delete t._calPrevStart;
     delete t._calPrevDue;
+    t.localModifiedAt = Date.now();
     persistCustomSectionTasksAndSchedule(obj);
   } catch (_) {}
 }
@@ -5945,23 +5974,7 @@ export function renderMobileScheduleCalendar() {
 
   el.appendChild(contentWrap);
   mountCalendarSubViews();
-  if (supabase) {
-    const hydrateGen = ++_calendarTodoHydrateGeneration;
-    void hydrateTodoSectionTasksFromCloud("calendar_mobile_schedule_mount")
-      .catch((err) => console.warn("[calendar-section-tasks]", err))
-      .then((needRefresh) => {
-        if (hydrateGen !== _calendarTodoHydrateGeneration) return;
-        if (!el.isConnected) return;
-        if (needRefresh) {
-          logLpRender("Calendar:renderMobileScheduleCalendar·hydrate 후 __lpRenderMain", {
-            needRefresh,
-          });
-          try {
-            window.__lpRenderMain?.();
-          } catch (_) {}
-        }
-      });
-  }
+  scheduleHydrateTodoSectionTasksAfterCalendarSubtab("calendar_mobile_schedule_mount", el);
 
   return el;
 }
@@ -6533,6 +6546,9 @@ export function render() {
         contentWrap.appendChild(renderPlaceholderView(tabs, labels[view] || ""));
       }
       persistCalendarMainViewIfValid(view);
+      if (["todo", "eisenhower", "calendar", "1day"].includes(view)) {
+        scheduleHydrateTodoSectionTasksAfterCalendarSubtab(`calendar_subtab_${view}`, el);
+      }
     } catch (err) {
       console.error("[할일/일정] renderContent 중 오류 — view:", view, err?.message, err);
       if (err?.stack) console.error(err.stack);
@@ -6576,27 +6592,8 @@ export function render() {
   tabs.querySelectorAll(".time-view-tab").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.view === initialMainView);
   });
-  /* 초기 탭: 저장값(4. 오늘 해치우기 등) — __lpRenderMain·Supabase 동기 후에도 동일 키로 복원 */
+  /* 초기 탭: 저장값(4. 오늘 해치우기 등) — 서버 pull은 renderContent 안에서 서브탭별로만 */
   renderContent(initialMainView);
-
-  /* 시간가계부와 동일: 화면은 즉시(localStorage 기준), Supabase는 백그라운드 병합 후 needRefresh일 때만 리렌더 */
-  if (supabase) {
-    const hydrateGen = ++_calendarTodoHydrateGeneration;
-    void hydrateTodoSectionTasksFromCloud("calendar_todo_schedule_mount")
-      .catch((err) => console.warn("[calendar-section-tasks]", err))
-      .then((needRefresh) => {
-        if (hydrateGen !== _calendarTodoHydrateGeneration) return;
-        if (!el.isConnected) return;
-        if (needRefresh) {
-          logLpRender("Calendar:render(할일/일정)·hydrate 후 __lpRenderMain", {
-            needRefresh,
-          });
-          try {
-            window.__lpRenderMain?.();
-          } catch (_) {}
-        }
-      });
-  }
 
   return el;
 }
