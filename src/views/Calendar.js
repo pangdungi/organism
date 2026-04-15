@@ -75,7 +75,7 @@ function persistCalendarMainViewIfValid(view) {
 /** 근무표와 동일: 이전 마운트의 hydrate.finally가 늦게 끝나면 덮어쓰지 않도록 */
 let _calendarTodoHydrateGeneration = 0;
 
-/** 할일 calendar_section_tasks: 부팅·마운트가 아니라 서브탭 전환 시에만 서버 pull */
+/** 할일 calendar_section_tasks: 사용자가 1~4 서브탭 버튼을 눌렀을 때만 서버 pull( renderContent·재렌더마다 호출하면 삭제 중 pull 레이스) */
 function scheduleHydrateTodoSectionTasksAfterCalendarSubtab(reason, mountEl) {
   if (!supabase) return;
   const hydrateGen = ++_calendarTodoHydrateGeneration;
@@ -5974,7 +5974,6 @@ export function renderMobileScheduleCalendar() {
 
   el.appendChild(contentWrap);
   mountCalendarSubViews();
-  scheduleHydrateTodoSectionTasksAfterCalendarSubtab("calendar_mobile_schedule_mount", el);
 
   return el;
 }
@@ -6546,9 +6545,6 @@ export function render() {
         contentWrap.appendChild(renderPlaceholderView(tabs, labels[view] || ""));
       }
       persistCalendarMainViewIfValid(view);
-      if (["todo", "eisenhower", "calendar", "1day"].includes(view)) {
-        scheduleHydrateTodoSectionTasksAfterCalendarSubtab(`calendar_subtab_${view}`, el);
-      }
     } catch (err) {
       console.error("[할일/일정] renderContent 중 오류 — view:", view, err?.message, err);
       if (err?.stack) console.error(err.stack);
@@ -6567,7 +6563,11 @@ export function render() {
         .querySelectorAll(".time-view-tab")
         .forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
-      renderContent(btn.dataset.view);
+      const v = btn.dataset.view;
+      renderContent(v);
+      if (["todo", "eisenhower", "calendar", "1day"].includes(v)) {
+        scheduleHydrateTodoSectionTasksAfterCalendarSubtab(`calendar_subtab_${v}`, el);
+      }
     });
   });
 

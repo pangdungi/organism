@@ -809,12 +809,7 @@ export function render() {
         return ia - ib;
       });
     }
-    dreamKpis.forEach((kpi) => {
-      const { isCompleted } = getKpiProgress(kpi);
-      if (isCompleted && data.kpiTaskSync?.[kpi.id]) {
-        syncKpiToTimeTask(kpi, "remove");
-      }
-    });
+    /* KPI 완료 시 과제 목록에서 제거하지 않음 — 사용자가 KPI를 삭제할 때만 remove (syncKpiToTimeTask remove) */
     const completedKpis = dreamKpis.filter((k) => getKpiProgress(k).isCompleted);
     const activeKpis = dreamKpis.filter((k) => !getKpiProgress(k).isCompleted);
 

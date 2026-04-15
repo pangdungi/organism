@@ -1,5 +1,8 @@
 /**
  * 할일/일정 섹션 할 일 ↔ Supabase (calendar_section_tasks). KPI JSON 미포함.
+ *
+ * 진실 원천: Supabase 테이블만. 이 기기 메모리/저장은 sync·pull 직후 서버 SELECT로 덮어쓴 캐시일 뿐
+ * (mergeAdditive로 서버 행을 로컬에 먼저 섞지 않음 — 부활·불일치 방지).
  */
 
 import { supabase } from "../supabase.js";
@@ -7,7 +10,6 @@ import {
   flattenCalendarTasksForSync,
   flattenCalendarTasksForSyncDirtyOnly,
   clearLocalModifiedAtForSyncedTaskIds,
-  mergeAdditiveServerRowsIntoLocal,
   ensureCalendarSectionTaskIds,
   snapshotSectionTasksSemanticForCompare,
   replaceSectionTasksFromServerRows,
@@ -107,7 +109,10 @@ async function syncTodoSectionTasksToSupabaseImpl() {
 
   const ensured = ensureCalendarSectionTaskIds();
 
-  /* 다른 기기에서 추가된 행 id를 로컬에 먼저 합친 뒤 wantIds를 계산 — 고아 삭제가 타 기기 신규 행을 지우지 않게 함 */
+  /*
+   * 서버 단일 루트: tombstone 기준으로 서버에서만 행 삭제 → dirty upsert → 마지막에 서버 SELECT로 로컬 전체 덮기.
+   * mergeAdditive 없음(타 기기 신규 행은 hydrate pull 때만 반영).
+   */
   const { data: serverSnapshot, error: snapErr } = await supabase
     .from(TABLE)
     .select(SECTION_TASK_ROW_SELECT)
@@ -121,27 +126,31 @@ async function syncTodoSectionTasksToSupabaseImpl() {
     return;
   }
 
-  if (Array.isArray(serverSnapshot) && serverSnapshot.length > 0) {
-    mergeAdditiveServerRowsIntoLocal(serverSnapshot);
-  }
-
-  const allForWant = flattenCalendarTasksForSync(userId);
-  const wantIds = new Set(allForWant.map((p) => p.id));
-  const dirtyPayloads = flattenCalendarTasksForSyncDirtyOnly(userId).filter(
-    (p) => p && !taskIdHasDeletionTombstone(p.id),
+  const allForWantPreMerge = flattenCalendarTasksForSync(userId);
+  const wantIdsPreMerge = new Set(
+    allForWantPreMerge.map((p) => String(p?.id || "").trim()).filter(Boolean),
   );
+  /* 로컬 목록에 없는 id는 upsert 금지 — 삭제 직후 남은 dirty 메타가 서버에 행을 되살리는 것 방지 */
+  const dirtyPayloads = flattenCalendarTasksForSyncDirtyOnly(userId).filter((p) => {
+    if (!p) return false;
+    const pid = String(p.id || "").trim();
+    if (!pid || !wantIdsPreMerge.has(pid)) return false;
+    if (taskIdHasDeletionTombstone(pid)) return false;
+    return true;
+  });
 
-  /* 첫 스냅샷 기준: 로컬이 유지하지 않는 id는 먼저 서버에서 삭제 — upsert보다 먼저 해야 삭제 행이 다시 올라가는 레이스를 막음 */
   const remoteIdsBefore = Array.isArray(serverSnapshot)
     ? serverSnapshot.map((r) => String(r.id || "").trim()).filter(Boolean)
     : [];
-  const toDeleteIds = remoteIdsBefore.filter((id) => !wantIds.has(id));
+  const toDeleteIds = remoteIdsBefore.filter(
+    (id) => !wantIdsPreMerge.has(id) && taskIdHasDeletionTombstone(id),
+  );
   logTodoServerDeleteCompare("sync·고아삭제·삭제전", {
     서버_전체_id_개수: remoteIdsBefore.length,
-    로컬이_유지하는_id_개수: wantIds.size,
+    merge전_로컬이_유지하는_id_개수: wantIdsPreMerge.size,
     이번에_서버에서_지울_id_개수: toDeleteIds.length,
     서버에만있어서_지울_id_목록: compactIdListForLog(toDeleteIds),
-    로컬이_유지하는_id_목록_샘플: compactIdListForLog([...wantIds]),
+    로컬이_유지하는_id_목록_샘플: compactIdListForLog([...wantIdsPreMerge]),
   });
 
   for (const id of toDeleteIds) {
@@ -182,6 +191,8 @@ async function syncTodoSectionTasksToSupabaseImpl() {
     const afterSnap = snapshotSectionTasksSemanticForCompare();
     replacedFromServer = beforeSnap !== afterSnap;
   }
+
+  const allForWant = flattenCalendarTasksForSync(userId);
 
   /* 서버 스냅샷으로 로컬 문자열이 바뀐 경우만 전체 탭 리렌더. UUID만 맞춘 경우는 DOM data-task-id 만 패치(스크롤 유지). */
   if (replacedFromServer) {
@@ -254,6 +265,8 @@ async function pullTodoSectionTasksFromSupabaseImpl(reason = "pull") {
 }
 
 export async function pullTodoSectionTasksFromSupabase(reason = "pull") {
+  /* 직렬 큐 안에서 flush를 또 타면 순서가 꼬일 수 있어, pull 전에 대기 중 sync를 먼저 보냄 */
+  await flushTodoSectionTasksSyncPush().catch(() => {});
   return runTodoSectionTasksSerialized(() => pullTodoSectionTasksFromSupabaseImpl(reason));
 }
 
@@ -383,8 +396,10 @@ function shouldCoalesceCalendarTodoHydrate(reason) {
 
 let _calendarTodoHydrateCoalesceTimer = null;
 let _calendarTodoHydrateCoalesceLastReason = "unknown";
-/** 동일 150ms 창에서 여러 번 await 해도 모두 같은 결과로 끝나게 */
+/** 동일 디바운스 창에서 여러 번 await 해도 모두 같은 결과로 끝나게 */
 let _calendarTodoHydrateCoalesceWaiters = [];
+/** 병합 배치끼리 겹치지 않게 — 이전 pull이 끝난 뒤에만 다음 pull 실행 */
+let _calendarCoalescedImplChain = Promise.resolve();
 
 /**
  * @param {string} [reason] 호출 지점 구분(콘솔 [할일일정-pull] 필터용)
@@ -398,7 +413,6 @@ async function hydrateTodoSectionTasksFromCloudImpl(reason = "unknown") {
     todoSchedulePullTrace("hydrate:끝", { reason, needRefresh: false, why: "no_supabase" });
     return false;
   }
-  cancelTodoSectionTasksSyncPushSchedule();
   let needRefresh = false;
   const e1 = ensureCalendarSectionTaskIds();
   if (e1.dirty) patchAllTodoDomTaskIdsFromStorage();

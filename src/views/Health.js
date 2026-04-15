@@ -795,12 +795,7 @@ export function render() {
         return ia - ib;
       });
     }
-    healthKpis.forEach((kpi) => {
-      const { isCompleted } = getKpiProgress(kpi);
-      if (isCompleted && data.kpiTaskSync?.[kpi.id]) {
-        syncKpiToTimeTask(kpi, "remove");
-      }
-    });
+    /* KPI 완료 시 과제 목록에서 제거하지 않음 — KPI 삭제 시에만 remove */
     const activeKpis = healthKpis.filter((k) => getKpiProgress(k).isInProgress);
     const completedKpis = healthKpis.filter((k) => getKpiProgress(k).isCompleted);
 

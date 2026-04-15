@@ -360,16 +360,7 @@ export function initSupabaseRealtimeSync(opts) {
       config: { broadcast: { self: false } },
     });
 
-    ch = ch.on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "calendar_section_tasks",
-        filter: `user_id=eq.${uid}`,
-      },
-      onEvent,
-    );
+    /* calendar_section_tasks: Realtime으로 묶음 pull 안 함 — 할일/일정·캘린더 상위 탭 클릭 시 hydrate만 */
 
     for (const table of KPI_REALTIME_TABLES) {
       ch = ch.on(

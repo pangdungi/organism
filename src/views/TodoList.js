@@ -429,6 +429,13 @@ function saveCustomSectionTasks(sectionId, tasks) {
 function removeCustomSectionTasks(sectionId) {
   try {
     const obj = readCustomSectionTasksObject();
+    const arr = obj[sectionId];
+    if (Array.isArray(arr)) {
+      for (const t of arr) {
+        const tid = String(t?.taskId || "").trim();
+        if (tid) recordTodoSectionTaskDeletion(tid);
+      }
+    }
     delete obj[sectionId];
     persistCustomSectionTasksAndSchedule(obj);
   } catch (_) {}

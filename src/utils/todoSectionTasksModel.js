@@ -1,6 +1,7 @@
 /**
- * 할일/일정 섹션 할 일 — 세션 메모리가 본진. 영속 복구는 Supabase(calendar_section_tasks).
- * 구버전 localStorage는 최초 접근 시 한 번 읽은 뒤 제거합니다.
+ * 할일/일정 섹션 할 일 — 진실 원천은 Supabase(calendar_section_tasks).
+ * 아래 메모리는 이 탭에서만 쓰는 편집·표시용 캐시이며, 디스크에서 목록을 읽어 본진으로 쓰지 않음.
+ * 구버전 localStorage 키는 읽지 않고 제거만(예전 디스크 데이터는 채택하지 않음).
  */
 
 import { clearSubtasks } from "./todoSubtasks.js";
@@ -44,26 +45,10 @@ function migrateLegacyLocalStorageOnce() {
   _sectionTasksMem = {};
   _customSectionTasksMem = {};
   _todoDeletionTombstonesMem = {};
-  try {
-    const rawS = localStorage.getItem(SECTION_TASKS_KEY);
-    if (rawS) {
-      const o = JSON.parse(rawS);
-      if (o && typeof o === "object") _sectionTasksMem = o;
-    }
-    const rawC = localStorage.getItem(CUSTOM_SECTION_TASKS_KEY);
-    if (rawC) {
-      const o = JSON.parse(rawC);
-      if (o && typeof o === "object") _customSectionTasksMem = o;
-    }
-    const rawT = localStorage.getItem(SECTION_TASK_TOMBSTONES_KEY);
-    if (rawT) {
-      const o = JSON.parse(rawT);
-      if (o && typeof o === "object") _todoDeletionTombstonesMem = o;
-    }
-  } catch (_) {}
   CALENDAR_FIXED_SECTION_IDS.forEach((k) => {
-    if (!Array.isArray(_sectionTasksMem[k])) _sectionTasksMem[k] = [];
+    _sectionTasksMem[k] = [];
   });
+  /* 디스크에서 할 일 목록을 읽어 오지 않음 — 키만 제거(서버 pull로만 채움) */
   try {
     localStorage.removeItem(SECTION_TASKS_KEY);
     localStorage.removeItem(CUSTOM_SECTION_TASKS_KEY);
@@ -245,8 +230,7 @@ function writeTodoDeletionTombstones(obj) {
 export function recordTodoSectionTaskDeletion(taskId) {
   const id = String(taskId || "").trim();
   if (!id) return;
-  /* 서버 id(UUID) + 클라 임시 id(task-타임스탬프-) — 임시 id는 mergeAdditive 쪽과 직접 매칭되진 않으나 기록해 둠 */
-  if (!UUID_RE.test(id) && !/^task-\d+-/.test(id)) return;
+  /* UUID·task- 접두 외 id도 기록 — 형식 필터로 건너뛰면 고아삭제·pull 부활 방지가 깨짐 */
   const tomb = readTodoDeletionTombstones();
   tomb[id] = Date.now();
   writeTodoDeletionTombstones(tomb);
@@ -446,57 +430,6 @@ export function mergeCalendarSectionTasksFromServer(rows) {
   writeCustomSectionTasksObject(custom);
 }
 
-/**
- * 다른 기기에서 추가된 행만 로컬에 합친다(덮어쓰기 아님).
- * 오래된 브라우저가 sync 시 서버 id를 모른 채 고아 삭제로 지우는 것을 막기 위해 sync 직전에 호출한다.
- */
-export function mergeAdditiveServerRowsIntoLocal(serverRows) {
-  const fixed = readSectionTasksObject();
-  const custom = readCustomSectionTasksObject();
-  const seen = new Set();
-
-  function collectIds(obj) {
-    Object.keys(obj || {}).forEach((k) => {
-      const arr = Array.isArray(obj[k]) ? obj[k] : [];
-      arr.forEach((t) => {
-        const id = String(t?.taskId || t?.id || "").trim();
-        if (id) seen.add(id);
-      });
-    });
-  }
-  collectIds(fixed);
-  collectIds(custom);
-
-  const tomb = readTodoDeletionTombstones();
-
-  const sorted = [...(serverRows || [])].sort((a, b) => {
-    const sk = String(a.section_key || "").localeCompare(String(b.section_key || ""));
-    if (sk !== 0) return sk;
-    return (a.sort_order || 0) - (b.sort_order || 0);
-  });
-
-  sorted.forEach((row) => {
-    const id = String(row.id || "").trim();
-    if (!id || seen.has(id)) return;
-    if (tomb[id]) return;
-    const task = dbRowToLocalTask(row);
-    const key = String(row.section_key || "").trim();
-    const isCustom = !!row.is_custom_section;
-    if (!key) return;
-    if (isCustom) {
-      if (!custom[key]) custom[key] = [];
-      custom[key].push(task);
-    } else {
-      if (!fixed[key]) fixed[key] = [];
-      fixed[key].push(task);
-    }
-    seen.add(id);
-  });
-
-  writeSectionTasksObject(fixed);
-  writeCustomSectionTasksObject(custom);
-}
-
 function ensureTaskIdsInList(arr) {
   let dirty = false;
   const out = (Array.isArray(arr) ? arr : []).map((t) => {
@@ -692,6 +625,7 @@ export function purgeAllCompletedSectionAndCustomTasks() {
   stripDoneRows(custom);
 
   for (const id of new Set(removedParentIds)) {
+    recordTodoSectionTaskDeletion(id);
     clearSubtasks(id);
   }
 
