@@ -106,19 +106,17 @@ const TABS = [
     id: "calendar",
     label: "할일/일정",
     mobileLabel: "할일",
-    icon: "/toolbaricons/calendar-alt.svg",
-    /** 데스크톱 왼쪽 사이드바 전용 — 모바일 하단 탭은 `icon` 유지 */
-    iconDesktop: "/toolbaricons/todolist.svg",
+    /** 모바일 하단·데스크톱 사이드바 동일 — 할일 목록 아이콘 */
+    icon: "/toolbaricons/todolist.svg",
   },
-  { id: "time", label: "시간가계부", mobileLabel: "시간", icon: "/toolbaricons/timer.svg" },
-  { id: "asset", label: "자산관리", mobileLabel: "자산", icon: "/toolbaricons/wallet.svg" },
   {
     id: "schedulecalendar",
     label: "캘린더",
     mobileLabel: "캘린더",
     icon: "/toolbaricons/calendar-heart1.svg",
-    sidebarMobileOnly: true,
   },
+  { id: "time", label: "시간가계부", mobileLabel: "시간", icon: "/toolbaricons/timer.svg" },
+  { id: "asset", label: "자산관리", mobileLabel: "자산", icon: "/toolbaricons/wallet.svg" },
   {
     id: "workschedule",
     label: "근무표",

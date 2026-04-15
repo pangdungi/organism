@@ -30813,6 +30813,15 @@ body.kpi-resizing {
   flex-direction: column;
   min-height: 0;
 }
+
+/* 독립 '캘린더' 탭·날짜정하기: 할일 1~4 탭이 없을 때 빈 상단 줄 제거(데스크톱·모바일 공통) */
+.calendar-view--mobile-schedule > .calendar-view-top-row:empty {
+  display: none;
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+}
+
 .calendar-view-top-row {
   display: flex;
   flex-direction: column;
