@@ -607,7 +607,9 @@ export function mountApp(container) {
             logTabSync("visibility_pull", { tab: currentTabId });
             lpPullDebug("app_visibility_focus_pull_bundle", { tab: currentTabId });
             const todoPullPromise = TODO_TABS_FOR_CLOUD_PULL.has(currentTabId)
-              ? hydrateTodoSectionTasksFromCloud()
+              ? hydrateTodoSectionTasksFromCloud(
+                  `browser_tab_visible:${currentTabId}`,
+                )
               : Promise.resolve(false);
             const [needTodoRefresh, kpiR, timeR, assetR, diaryR] =
               await Promise.all([
@@ -689,7 +691,7 @@ export function mountApp(container) {
   renderMain(main);
   logTabSync("boot_hydrate", { phase: "Promise.all" });
   void Promise.all([
-    hydrateTodoSectionTasksFromCloud(),
+    hydrateTodoSectionTasksFromCloud("app_boot_Promise_all"),
     hydrateTimeDailyBudgetFromCloud(),
     hydrateTimeLedgerTasksFromCloud(),
     hydrateHealthKpiMapFromCloud(),

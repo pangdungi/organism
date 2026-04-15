@@ -50,6 +50,7 @@ import {
   recordTodoSectionTaskDeletion,
   stripTodoTaskSyncMetaForCompare,
 } from "../utils/todoSectionTasksModel.js";
+import { patchTodoDomTaskIdsForSectionElement } from "../utils/todoDomTaskIdPatch.js";
 export const DRAG_TYPE_TODO_TO_CALENDAR = "todo-task-to-calendar";
 export const DRAG_TYPE_TODO_TO_EISENHOWER = "todo-task-to-eisenhower";
 
@@ -482,32 +483,7 @@ function keepTaskInSectionStorage(t) {
 }
 
 function syncSectionDomTaskIdsFromStorage(sectionId, sec) {
-  if (!sec || !sectionId) return;
-  try {
-    const obj = readSectionTasksObject();
-    const arr = obj[sectionId];
-    if (!Array.isArray(arr)) return;
-    const nameToUuid = new Map();
-    arr.forEach((t) => {
-      const n = (t.name || "").trim();
-      const tid = String(t.taskId || "").trim();
-      if (!n || !TASK_ID_UUID_RE.test(tid)) return;
-      if (!nameToUuid.has(n)) nameToUuid.set(n, tid);
-    });
-    sec.querySelectorAll(".todo-card").forEach((card) => {
-      const n = (card.dataset.name || "").trim();
-      const uuid = nameToUuid.get(n);
-      const cur = (card.dataset.taskId || "").trim();
-      if (uuid && cur !== uuid) card.dataset.taskId = uuid;
-    });
-    sec.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").forEach((row) => {
-      const nameInput = row.querySelector(".todo-task-name-field");
-      const n = (nameInput?.value || "").trim();
-      const uuid = nameToUuid.get(n);
-      const cur = (row.dataset.taskId || "").trim();
-      if (uuid && cur !== uuid) row.dataset.taskId = uuid;
-    });
-  } catch (_) {}
+  patchTodoDomTaskIdsForSectionElement(sectionId, sec);
 }
 
 /**

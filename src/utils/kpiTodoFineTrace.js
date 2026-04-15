@@ -7,20 +7,13 @@
  * - 배포: 콘솔에서 `localStorage.setItem('kpi_todo_fine','1')` 후 새로고침
  * - 또는 `window.__KPI_TODO_FINE__ = true` (새로고침 없이 다음 동작부터)
  *
- * 콘솔 필터에 `KPI-TODO-STEP` 입력하면 걸러 보기 쉬움.
+ * (현재 비활성) 다시 켤 때는 `kpiTodoFineTraceEnabled` 구현을 수정하세요.
  */
-
-const LS_KEY = "kpi_todo_fine";
 
 let _seq = 0;
 
 export function kpiTodoFineTraceEnabled() {
-  try {
-    if (typeof import.meta !== "undefined" && import.meta.env?.DEV) return true;
-    if (typeof window !== "undefined" && window.__KPI_TODO_FINE__ === true) return true;
-    if (typeof localStorage !== "undefined" && localStorage.getItem(LS_KEY) === "1")
-      return true;
-  } catch (_) {}
+  /* KPI 미세 단계 로그는 기본 비활성. 다시 켜려면 아래를 true로 두거나 별도 플래그를 추가하세요. */
   return false;
 }
 

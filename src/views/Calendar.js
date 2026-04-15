@@ -5947,7 +5947,7 @@ export function renderMobileScheduleCalendar() {
   mountCalendarSubViews();
   if (supabase) {
     const hydrateGen = ++_calendarTodoHydrateGeneration;
-    void hydrateTodoSectionTasksFromCloud()
+    void hydrateTodoSectionTasksFromCloud("calendar_mobile_schedule_mount")
       .catch((err) => console.warn("[calendar-section-tasks]", err))
       .then((needRefresh) => {
         if (hydrateGen !== _calendarTodoHydrateGeneration) return;
@@ -6582,7 +6582,7 @@ export function render() {
   /* 시간가계부와 동일: 화면은 즉시(localStorage 기준), Supabase는 백그라운드 병합 후 needRefresh일 때만 리렌더 */
   if (supabase) {
     const hydrateGen = ++_calendarTodoHydrateGeneration;
-    void hydrateTodoSectionTasksFromCloud()
+    void hydrateTodoSectionTasksFromCloud("calendar_todo_schedule_mount")
       .catch((err) => console.warn("[calendar-section-tasks]", err))
       .then((needRefresh) => {
         if (hydrateGen !== _calendarTodoHydrateGeneration) return;

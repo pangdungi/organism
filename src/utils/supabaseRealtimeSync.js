@@ -203,7 +203,9 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
           timeLedgerRtTables: [...timeBatch.touchedTables],
         });
         logLpRender("realtime:debounced 틱 시작", { gen });
-        const needTodo = await hydrateTodoSectionTasksFromCloud();
+        const needTodo = await hydrateTodoSectionTasksFromCloud(
+          "realtime_postgres_changes_debounced",
+        );
         /* calendar_section_tasks·시간가계부 등만 바뀐 배치에서 KPI pull까지 돌리면 dream.pull·setItem이 불필요하게 반복됨 */
         const needsKpiMapPull = [...realtimeTouchedTables].some((t) =>
           KPI_REALTIME_TABLES_SET.has(t),
