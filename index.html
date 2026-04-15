@@ -8,6 +8,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="오가니즘플래너" />
     <meta name="application-name" content="오가니즘플래너" />
+    <title>오가니즘플래너</title>
     <!-- manifest 캐시로 예전 앱 이름이 남는 경우 방지: 쿼리 변경 시 브라우저가 다시 받음 -->
     <link rel="manifest" href="/manifest.json?v=organism-2026" />
     <!-- 스플래시·로고(Organism)용 Archivo Bold — swap 깜빡임 방지: main.css 파싱 전에 우선 로드 -->
@@ -20,15 +21,30 @@
     />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
-    <!-- CSS를 JS보다 먼저 로드해서 스플래시 스타일 즉시 적용 -->
-    <link rel="stylesheet" href="/src/main.css" />
-    <title>오가니즘플래너</title>
-    <!-- FOUC 방지: 번들·main.css 적용 전 첫 페인트에서 로그인/방향 안내가 쌓여 보이지 않게 -->
+    <!-- iOS 홈 화면에서 탭 직후 WebView가 뜨기 전 시스템이 보여 주는 구간을 녹색으로 맞춤 (기기별) -->
+    <link
+      rel="apple-touch-startup-image"
+      media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)"
+      href="/apple-touch-startup-1125x2436.png"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)"
+      href="/apple-touch-startup-1170x2532.png"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)"
+      href="/apple-touch-startup-1284x2778.png"
+    />
+    <!-- FOUC 방지 + main.css 도착 전에도 스플래시가 완전한 모습으로 첫 페인트되도록 인라인에 전부 포함 -->
     <style>
       html,
       body {
         margin: 0;
         overflow-x: hidden;
+        min-height: 100vh;
+        min-height: 100dvh;
       }
       html {
         background: #2d3e2d;
@@ -39,7 +55,9 @@
       #app {
         display: none;
       }
-      #app-splash {
+      .app-splash {
+        --app-splash-green: #2d3e2d;
+        --app-splash-cream: #f2ede0;
         position: fixed;
         inset: 0;
         z-index: 2147483646;
@@ -47,9 +65,136 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
+        padding: max(1.5rem, env(safe-area-inset-top, 0)) 1.5rem max(2rem, env(safe-area-inset-bottom, 0));
         box-sizing: border-box;
-        background: #2d3e2d;
-        color: #f2ede0;
+        background: var(--app-splash-green);
+        color: var(--app-splash-cream);
+        text-align: center;
+        -webkit-tap-highlight-color: transparent;
+        transition: opacity 0.38s ease;
+      }
+      .app-splash--exiting {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .app-splash-bg {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        pointer-events: none;
+      }
+      .app-splash-orb {
+        position: absolute;
+        width: min(72vw, 20rem);
+        height: min(72vw, 20rem);
+        background: rgba(255, 255, 255, 0.055);
+        clip-path: circle(50% at 50% 50%);
+        animation: app-splash-orb-drift 9s ease-in-out infinite;
+      }
+      .app-splash-orb--tl {
+        top: -18%;
+        left: -22%;
+        animation-delay: 0s;
+      }
+      .app-splash-orb--bl {
+        bottom: -28%;
+        left: -18%;
+        animation-delay: -4.5s;
+      }
+      @keyframes app-splash-orb-drift {
+        0%,
+        100% {
+          transform: translate(0, 0) scale(1);
+        }
+        50% {
+          transform: translate(14px, 10px) scale(1.03);
+        }
+      }
+      .app-splash-main {
+        position: relative;
+        z-index: 1;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      .app-splash-brand {
+        margin: 0;
+        font-family: "Archivo", "Space Grotesk", "NEXON Lv1 Gothic", sans-serif;
+        font-weight: 700;
+        font-size: clamp(2.75rem, 13vw, 4.75rem);
+        line-height: 1.15;
+        letter-spacing: -0.03em;
+        color: var(--app-splash-cream);
+      }
+      .app-splash-footer {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.65rem;
+        padding-bottom: 0.25rem;
+      }
+      .app-splash-bar-track {
+        width: min(32vw, 8rem);
+        height: 2px;
+        background: rgba(242, 237, 224, 0.22);
+        overflow: hidden;
+      }
+      .app-splash-bar-fill {
+        width: 38%;
+        height: 100%;
+        background: var(--app-splash-cream);
+        animation: app-splash-bar-slide 1.35s ease-in-out infinite;
+      }
+      @keyframes app-splash-bar-slide {
+        0% {
+          transform: translateX(-120%);
+        }
+        100% {
+          transform: translateX(320%);
+        }
+      }
+      .app-splash-loading-label {
+        margin: 0;
+        font-family: "DM Mono", ui-monospace, monospace;
+        font-size: 0.5625rem;
+        font-weight: 500;
+        letter-spacing: 0.28em;
+        text-indent: 0.28em;
+        color: var(--app-splash-cream);
+        opacity: 0.75;
+      }
+      .app-splash-arrow {
+        color: var(--app-splash-cream);
+        opacity: 0.5;
+        animation: app-splash-arrow-nudge 2.2s ease-in-out infinite;
+      }
+      @keyframes app-splash-arrow-nudge {
+        0%,
+        100% {
+          transform: translateY(0);
+          opacity: 0.45;
+        }
+        50% {
+          transform: translateY(4px);
+          opacity: 0.65;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .app-splash-orb,
+        .app-splash-bar-fill,
+        .app-splash-arrow {
+          animation: none;
+        }
+        .app-splash-bar-fill {
+          width: 100%;
+          transform: none;
+          opacity: 0.85;
+          animation: none;
+        }
       }
       .app-tablet-landscape-hint,
       .app-phone-portrait-hint {
@@ -60,6 +205,7 @@
         box-sizing: border-box;
       }
     </style>
+    <link rel="stylesheet" href="/src/main.css" />
   </head>
   <body>
     <div
