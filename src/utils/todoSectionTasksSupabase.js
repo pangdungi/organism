@@ -1,47 +1,144 @@
 /**
  * 할일/일정 섹션 할 일 ↔ Supabase (calendar_section_tasks). KPI JSON 미포함.
  *
- * 진실 원천: Supabase 테이블만. 이 기기 메모리/저장은 sync·pull 직후 서버 SELECT로 덮어쓴 캐시일 뿐
- * (mergeAdditive로 서버 행을 로컬에 먼저 섞지 않음 — 부활·불일치 방지).
+ * 진실 원천: Supabase만. 이 기기 메모리는 표시용 버퍼이며, 서버 SELECT로 덮어쓴 뒤가 기준이다.
+ * - 편집·저장 직후에만: 메모리 행 일괄 upsert → 서버 SELECT로 메모리 확정(디바운스·탭 숨김 flush 없음).
+ * - pull(탭·hydrate): SELECT만 — 메모리 upsert 선행 없음.
+ * - 카드 삭제: 로컬 저장 목록에서 해당 줄을 먼저 제거한 뒤 Supabase DELETE(순서 바꾸면 대기 중인 sync가 옛 목록으로 upsert 해 부활시킬 수 있음). 전체 맞춤은 탭 pull.
  */
 
 import { supabase } from "../supabase.js";
 import {
   flattenCalendarTasksForSync,
-  flattenCalendarTasksForSyncDirtyOnly,
-  clearLocalModifiedAtForSyncedTaskIds,
   ensureCalendarSectionTaskIds,
   snapshotSectionTasksSemanticForCompare,
   replaceSectionTasksFromServerRows,
   writeSectionTasksObject,
   writeCustomSectionTasksObject,
-  taskIdHasDeletionTombstone,
-  countTodoSectionTasksInStorage,
 } from "./todoSectionTasksModel.js";
 import { runTodoSectionTasksSerialized } from "./todoSectionTasksServerSyncSerial.js";
-import { logLpRender } from "./lpRenderDebugLog.js";
-import { lpPullDebug } from "./lpPullDebug.js";
-import { todoSchedulePullTrace } from "./todoSchedulePullTrace.js";
 import { patchAllTodoDomTaskIdsFromStorage } from "./todoDomTaskIdPatch.js";
-import { todoSectionSyncLog, todoSectionSyncLogWithStack } from "./todoSectionSyncDebug.js";
+import { consumeTodoAddPendingServerLog, logTodoScheduleAddStep3 } from "./lpTabDataSourceLog.js";
 
 const TABLE = "calendar_section_tasks";
 
+/** 서버(calendar_section_tasks)에 행이 있을 수 있는 id — UUID만 */
+const SERVER_TASK_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * 사용자 삭제 시 1차로 호출: 해당 행을 Supabase에서 바로 제거한다.
+ * - UUID가 아니면(아직 서버에 없는 임시 줄) 네트워크 호출 없이 성공으로 간주.
+ * - 직렬 큐 안에서 실행되어 편집 upsert·sync와 순서가 꼬이지 않게 함.
+ * @returns {Promise<{ ok: boolean, reason?: string, localOnlyId?: boolean, alreadyGone?: boolean, deleteRows?: number, serverVerify?: Record<string, unknown> }>}
+ */
+export async function deleteCalendarSectionTaskRowById(taskId) {
+  const out = await runTodoSectionTasksSerialized(async () => {
+    const id = String(taskId || "").trim();
+    if (!id) return { ok: false, reason: "no_id", serverVerify: null };
+
+    async function selectExists() {
+      const { data: row, error: selErr } = await supabase
+        .from(TABLE)
+        .select("id")
+        .eq("id", id)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (selErr) return { error: selErr.message, 서버에행있음: null };
+      return { error: null, 서버에행있음: !!row?.id };
+    }
+
+    if (!SERVER_TASK_UUID_RE.test(id)) {
+      return {
+        ok: true,
+        localOnlyId: true,
+        serverVerify: { 비UUID: true, note: "서버 calendar_section_tasks 조회 생략" },
+      };
+    }
+    const userId = await getSessionUserId();
+    if (!userId || !supabase) return { ok: false, reason: !supabase ? "no_supabase" : "no_session", serverVerify: null };
+
+    const { error, count } = await supabase
+      .from(TABLE)
+      .delete({ count: "exact" })
+      .eq("id", id)
+      .eq("user_id", userId);
+    if (error) {
+      return { ok: false, reason: error.message || "delete_failed", serverVerify: { 단계: "DELETE요청실패", message: error.message } };
+    }
+    const n = typeof count === "number" ? count : 0;
+
+    let v = await selectExists();
+    if (v.error) {
+      return {
+        ok: false,
+        reason: "delete후_확인SELECT실패",
+        serverVerify: { DELETE영향행수: n, 확인SELECT에러: v.error },
+      };
+    }
+
+    if (n === 0) {
+      if (v.서버에행있음) {
+        return {
+          ok: false,
+          reason: "delete_affected_0_rows",
+          serverVerify: { DELETE영향행수: 0, 서버확인: "행아직있음" },
+        };
+      }
+      return {
+        ok: true,
+        alreadyGone: true,
+        serverVerify: { DELETE영향행수: 0, 서버확인: "행없음_이미삭제됐거나없음" },
+      };
+    }
+
+    /*
+     * DELETE 영향 행이 있는데 곧바로 확인 SELECT에 행이 남아 보이는 경우:
+     * - 읽기 경로 지연(복제 지연 등)으로 삭제 직후 스냅샷이 잠깐 옛 상태일 수 있음
+     * → 짧은 간격으로 확인 SELECT만 몇 번 더 함
+     */
+    let verifyRetries = 0;
+    const maxVerifyRetries = 8;
+    const verifyDelayMs = 75;
+    while (v.서버에행있음 && verifyRetries < maxVerifyRetries) {
+      verifyRetries += 1;
+      await new Promise((resolve) => setTimeout(resolve, verifyDelayMs));
+      v = await selectExists();
+      if (v.error) {
+        return {
+          ok: false,
+          reason: "delete후_확인SELECT실패",
+          serverVerify: { DELETE영향행수: n, 확인SELECT에러: v.error, 확인재시도횟수: verifyRetries },
+        };
+      }
+    }
+
+    if (v.서버에행있음) {
+      return {
+        ok: false,
+        reason: "delete후_서버에행남음",
+        serverVerify: {
+          DELETE영향행수: n,
+          서버확인: "삭제했는데SELECT에남음",
+          확인재시도횟수: verifyRetries,
+        },
+      };
+    }
+    return {
+      ok: true,
+      deleteRows: n,
+      serverVerify: {
+        DELETE영향행수: n,
+        서버확인: "삭제후SELECT로없음",
+        확인재시도횟수: verifyRetries,
+      },
+    };
+  });
+  return out;
+}
+
 const SECTION_TASK_ROW_SELECT =
   "id, section_key, is_custom_section, sort_order, name, start_date, due_date, start_time, end_time, reminder_date, reminder_time, eisenhower, done, item_type, updated_at";
-
-/** 콘솔 필터: [할일서버삭제비교] — 서버에서 행 삭제 직전·직후 스냅샷만 */
-function compactIdListForLog(ids) {
-  const a = [...new Set(ids)].filter(Boolean).sort();
-  if (a.length <= 40) return a;
-  return { 앞40개: a.slice(0, 40), 총개수: a.length };
-}
-
-function logTodoServerDeleteCompare(phase, payload) {
-  try {
-    console.info("[할일서버삭제비교]", phase, { t: Date.now(), ...payload });
-  } catch (_) {}
-}
 
 async function getSessionUserId() {
   if (!supabase) return null;
@@ -51,130 +148,58 @@ async function getSessionUserId() {
   return session?.user?.id || null;
 }
 
+/**
+ * 메모리에 있는 실질 행을 서버에 반영(localModifiedAt·tombstone 없이 일괄 upsert).
+ * @returns {Promise<{ upserted: number }>}
+ */
+async function upsertCalendarSectionTaskRowsFromMemory() {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) {
+    return { upserted: 0 };
+  }
+
+  ensureCalendarSectionTaskIds();
+
+  const payloads = flattenCalendarTasksForSync(userId).filter((p) => !!p);
+  if (payloads.length === 0) {
+    return { upserted: 0 };
+  }
+
+  const { error } = await supabase.from(TABLE).upsert(payloads, { onConflict: "id" });
+  if (error) {
+    return { upserted: 0 };
+  }
+  return { upserted: payloads.length };
+}
+
 export function persistSectionTasksAndSchedule(obj) {
-  todoSectionSyncLogWithStack("persist:고정섹션_메모리저장_후_sync예약", {
-    섹션키개수: obj && typeof obj === "object" ? Object.keys(obj).length : 0,
-  });
   writeSectionTasksObject(obj);
-  scheduleTodoSectionTasksSyncPush();
+  void syncTodoSectionTasksToSupabase().catch(() => {});
 }
 
 export function persistCustomSectionTasksAndSchedule(obj) {
-  todoSectionSyncLogWithStack("persist:커스텀섹션_메모리저장_후_sync예약", {
-    섹션키개수: obj && typeof obj === "object" ? Object.keys(obj).length : 0,
-  });
   writeCustomSectionTasksObject(obj);
-  scheduleTodoSectionTasksSyncPush();
+  void syncTodoSectionTasksToSupabase().catch(() => {});
 }
 
 /** 완료 항목 일괄 제거 시: 서버에 남아 있는 done=true 행을 직접 삭제(upsert만으로는 로컬에 id가 남으면 계속 재업로드될 수 있음) */
 export async function deleteCompletedCalendarSectionTasksFromSupabase() {
   return runTodoSectionTasksSerialized(async () => {
     const userId = await getSessionUserId();
-    if (!userId || !supabase) return;
-    const { data: beforeRows, error: beforeErr } = await supabase
-      .from(TABLE)
-      .select("id, done, name")
-      .eq("user_id", userId)
-      .eq("done", true);
-    const beforeIds = Array.isArray(beforeRows)
-      ? beforeRows.map((r) => String(r.id || "").trim()).filter(Boolean)
-      : [];
-    logTodoServerDeleteCompare("완료일괄삭제·삭제전", {
-      done_true_행수: beforeIds.length,
-      id_목록: compactIdListForLog(beforeIds),
-      조회에러: beforeErr?.message || null,
-    });
+    if (!userId || !supabase) {
+      return;
+    }
     await supabase.from(TABLE).delete().eq("user_id", userId).eq("done", true);
-    const { data: afterRows } = await supabase
-      .from(TABLE)
-      .select("id")
-      .eq("user_id", userId)
-      .eq("done", true);
-    const afterCount = Array.isArray(afterRows) ? afterRows.length : 0;
-    logTodoServerDeleteCompare("완료일괄삭제·삭제후", {
-      done_true_남은행수: afterCount,
-      삭제시도건수: beforeIds.length,
-    });
   });
 }
 
-async function syncTodoSectionTasksToSupabaseImpl() {
-  todoSectionSyncLogWithStack("syncImpl:시작(서버와맞춤)");
+async function syncTodoSectionTasksToSupabaseImpl(replaceLabel = "sync") {
   const userId = await getSessionUserId();
   if (!userId || !supabase) {
-    todoSectionSyncLog("syncImpl:중단", { 이유: !supabase ? "supabase없음" : "로그인없음" });
     return;
   }
 
   const ensured = ensureCalendarSectionTaskIds();
-
-  /*
-   * 서버 단일 루트: tombstone 기준으로 서버에서만 행 삭제 → dirty upsert → 마지막에 서버 SELECT로 로컬 전체 덮기.
-   * mergeAdditive 없음(타 기기 신규 행은 hydrate pull 때만 반영).
-   */
-  const { data: serverSnapshot, error: snapErr } = await supabase
-    .from(TABLE)
-    .select(SECTION_TASK_ROW_SELECT)
-    .eq("user_id", userId)
-    .order("section_key", { ascending: true })
-    .order("is_custom_section", { ascending: true })
-    .order("sort_order", { ascending: true });
-
-  if (snapErr) {
-    todoSectionSyncLog("syncImpl:중단", { 이유: "서버스냅샷조회실패" });
-    return;
-  }
-
-  const allForWantPreMerge = flattenCalendarTasksForSync(userId);
-  const wantIdsPreMerge = new Set(
-    allForWantPreMerge.map((p) => String(p?.id || "").trim()).filter(Boolean),
-  );
-  /* 로컬 목록에 없는 id는 upsert 금지 — 삭제 직후 남은 dirty 메타가 서버에 행을 되살리는 것 방지 */
-  const dirtyPayloads = flattenCalendarTasksForSyncDirtyOnly(userId).filter((p) => {
-    if (!p) return false;
-    const pid = String(p.id || "").trim();
-    if (!pid || !wantIdsPreMerge.has(pid)) return false;
-    if (taskIdHasDeletionTombstone(pid)) return false;
-    return true;
-  });
-
-  const remoteIdsBefore = Array.isArray(serverSnapshot)
-    ? serverSnapshot.map((r) => String(r.id || "").trim()).filter(Boolean)
-    : [];
-  const toDeleteIds = remoteIdsBefore.filter(
-    (id) => !wantIdsPreMerge.has(id) && taskIdHasDeletionTombstone(id),
-  );
-  logTodoServerDeleteCompare("sync·고아삭제·삭제전", {
-    서버_전체_id_개수: remoteIdsBefore.length,
-    merge전_로컬이_유지하는_id_개수: wantIdsPreMerge.size,
-    이번에_서버에서_지울_id_개수: toDeleteIds.length,
-    서버에만있어서_지울_id_목록: compactIdListForLog(toDeleteIds),
-    로컬이_유지하는_id_목록_샘플: compactIdListForLog([...wantIdsPreMerge]),
-  });
-
-  for (const id of toDeleteIds) {
-    await supabase.from(TABLE).delete().eq("id", id).eq("user_id", userId);
-  }
-
-  const { data: remoteAfter } = await supabase.from(TABLE).select("id").eq("user_id", userId);
-  const remoteIdsAfter = Array.isArray(remoteAfter)
-    ? remoteAfter.map((r) => String(r.id || "").trim()).filter(Boolean)
-    : [];
-  logTodoServerDeleteCompare("sync·고아삭제·삭제후", {
-    서버_전체_id_개수: remoteIdsAfter.length,
-    이전대비_개수변화: remoteIdsAfter.length - remoteIdsBefore.length,
-    서버에남은_id_목록: compactIdListForLog(remoteIdsAfter),
-  });
-
-  if (dirtyPayloads.length > 0) {
-    const { error } = await supabase.from(TABLE).upsert(dirtyPayloads, { onConflict: "id" });
-    if (error) {
-      todoSectionSyncLog("syncImpl:upsert실패", { message: error.message });
-      return;
-    }
-    clearLocalModifiedAtForSyncedTaskIds(dirtyPayloads.map((p) => p.id));
-  }
 
   const { data: canonicalRows, error: canErr } = await supabase
     .from(TABLE)
@@ -185,52 +210,44 @@ async function syncTodoSectionTasksToSupabaseImpl() {
     .order("sort_order", { ascending: true });
   let replacedFromServer = false;
   if (!canErr && Array.isArray(canonicalRows)) {
-    /* 의미 있는 필드만 비교 — updated_at 메타만 바뀐 경우 전체 리렌더하지 않음 */
     const beforeSnap = snapshotSectionTasksSemanticForCompare();
-    replaceSectionTasksFromServerRows(canonicalRows);
+    replaceSectionTasksFromServerRows(canonicalRows, replaceLabel);
     const afterSnap = snapshotSectionTasksSemanticForCompare();
     replacedFromServer = beforeSnap !== afterSnap;
   }
 
-  const allForWant = flattenCalendarTasksForSync(userId);
-
-  /* 서버 스냅샷으로 로컬 문자열이 바뀐 경우만 전체 탭 리렌더. UUID만 맞춘 경우는 DOM data-task-id 만 패치(스크롤 유지). */
   if (replacedFromServer) {
-    todoSectionSyncLog("syncImpl:끝→전체화면갱신", {
-      ensuredDirty: ensured.dirty,
-      replacedFromServer,
-      로컬전체행수: allForWant.length,
-      dirtyUpsert수: dirtyPayloads.length,
-    });
-    logLpRender("todo:syncTodoSectionTasksToSupabase 완료 → __lpRenderMain", {
-      ensuredDirty: ensured.dirty,
-      replacedFromServer,
-      dirtyUpsertCount: dirtyPayloads.length,
-    });
     try {
       window.__lpRenderMain?.({ skipTodoSaveBeforeUnmount: true });
     } catch (_) {}
   } else if (ensured.dirty) {
-    todoSectionSyncLog("syncImpl:끝→DOM_taskId만패치", { ensuredDirty: true, replacedFromServer });
     patchAllTodoDomTaskIdsFromStorage();
-  } else {
-    todoSectionSyncLog("syncImpl:끝(리렌더없음)", {
-      ensuredDirty: ensured.dirty,
-      replacedFromServer,
-      로컬전체행수: allForWant.length,
-      dirtyUpsert수: dirtyPayloads.length,
-    });
   }
 }
 
 export async function syncTodoSectionTasksToSupabase() {
-  return runTodoSectionTasksSerialized(() => syncTodoSectionTasksToSupabaseImpl());
+  return runTodoSectionTasksSerialized(async () => {
+    await upsertCalendarSectionTaskRowsFromMemory();
+    await syncTodoSectionTasksToSupabaseImpl("sync");
+    const addMeta = consumeTodoAddPendingServerLog();
+    if (addMeta) logTodoScheduleAddStep3(addMeta);
+  });
+}
+
+/**
+ * (선택) 삭제 직후 서버 SELECT로 메모리 통째 교체 — TodoList 카드 삭제 경로에서는 호출하지 않음(탭 pull로 맞춤).
+ * 행 삭제(DELETE) 직후: 메모리→서버 upsert 없이 SELECT만.
+ */
+export async function replaceTodoSectionTasksFromServerAfterDelete(reason = "delete") {
+  cancelTodoSectionTasksSyncPushSchedule();
+  return runTodoSectionTasksSerialized(async () => {
+    await syncTodoSectionTasksToSupabaseImpl("delete-refresh");
+  });
 }
 
 async function pullTodoSectionTasksFromSupabaseImpl(reason = "pull") {
   const userId = await getSessionUserId();
   if (!userId || !supabase) {
-    todoSchedulePullTrace("pull:스킵", { reason, why: !supabase ? "no_supabase" : "no_session" });
     return false;
   }
 
@@ -245,139 +262,49 @@ async function pullTodoSectionTasksFromSupabaseImpl(reason = "pull") {
     .order("sort_order", { ascending: true });
 
   if (error) {
-    todoSchedulePullTrace("pull:에러", { reason, message: error.message });
     return false;
   }
 
   const rows = Array.isArray(data) ? data : [];
 
-  /* 서버 스냅샷으로만 덮어씀 — 메타만 다른 경우 needRefresh·연쇄 hydrate 방지 */
   const beforeSnap = snapshotSectionTasksSemanticForCompare();
-  replaceSectionTasksFromServerRows(rows);
+  replaceSectionTasksFromServerRows(rows, "pull");
   const afterSnap = snapshotSectionTasksSemanticForCompare();
-  const localChanged = beforeSnap !== afterSnap;
-  todoSchedulePullTrace("pull:서버스냅샷반영", {
-    reason,
-    서버행수: rows.length,
-    로컬내용변경: localChanged,
-  });
-  return localChanged;
+  const changed = beforeSnap !== afterSnap;
+  return changed;
 }
 
-export async function pullTodoSectionTasksFromSupabase(reason = "pull") {
-  /* 직렬 큐 안에서 flush를 또 타면 순서가 꼬일 수 있어, pull 전에 대기 중 sync를 먼저 보냄 */
-  await flushTodoSectionTasksSyncPush().catch(() => {});
+export async function pullTodoSectionTasksFromSupabase(_reason = "pull") {
+  const reason = String(_reason || "pull");
+  /* pull 직전 flush(메모리→서버 upsert) 금지 — 탭에서 받아오기는 SELECT만 */
+  cancelTodoSectionTasksSyncPushSchedule();
   return runTodoSectionTasksSerialized(() => pullTodoSectionTasksFromSupabaseImpl(reason));
 }
 
 async function pushAllLocalTodoSectionTasksIfServerEmptyImpl() {
-  const userId = await getSessionUserId();
-  if (!userId || !supabase) return;
-
-  const { count, error } = await supabase
-    .from(TABLE)
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", userId);
-
-  if (error) return;
-  if (count != null && count > 0) return;
-
-  ensureCalendarSectionTaskIds();
-  const payloads = flattenCalendarTasksForSync(userId);
-  if (payloads.length === 0) return;
-
-  const { error: upErr } = await supabase.from(TABLE).upsert(payloads, { onConflict: "id" });
-  if (upErr) return;
-  const { data: rows, error: pullErr } = await supabase
-    .from(TABLE)
-    .select(SECTION_TASK_ROW_SELECT)
-    .eq("user_id", userId)
-    .order("section_key", { ascending: true })
-    .order("is_custom_section", { ascending: true })
-    .order("sort_order", { ascending: true });
-  if (!pullErr && Array.isArray(rows)) {
-    replaceSectionTasksFromServerRows(rows);
-  }
+  /* 예전: 서버 행 0일 때 통째 캐시 upsert — 폐기. */
 }
 
 export async function pushAllLocalTodoSectionTasksIfServerEmpty() {
   return runTodoSectionTasksSerialized(() => pushAllLocalTodoSectionTasksIfServerEmptyImpl());
 }
 
-let _pushTimer = null;
-const PUSH_DEBOUNCE_MS = 900;
+/** 예전 디바운스 예약 취소용 — 호환만 유지(예약 없음) */
+export function cancelTodoSectionTasksSyncPushSchedule() {}
 
-/** 서버 pull/hydrate 직전: 예약만 된 로컬→서버 upsert가 오래된 메모리로 도는 것 방지 */
-export function cancelTodoSectionTasksSyncPushSchedule() {
-  if (_pushTimer) {
-    clearTimeout(_pushTimer);
-    _pushTimer = null;
-  }
-}
-
-/** 디바운스 생략 — 탭 전환·백그라운드 직전 삭제·편집이 서버에 반영되도록 */
 export function flushTodoSectionTasksSyncPush() {
-  todoSectionSyncLogWithStack("flush:디바운스취소_즉시sync");
-  if (_pushTimer) {
-    clearTimeout(_pushTimer);
-    _pushTimer = null;
-  }
   return syncTodoSectionTasksToSupabase();
 }
 
 /** 삭제·즉시 반영: 디바운스 없이 sync(끝에서 서버 SELECT로 로컬 확정) */
 export function persistFixedSectionTasksAndSyncNow(obj) {
-  todoSectionSyncLogWithStack("persist:고정섹션_즉시sync", {
-    섹션키개수: obj && typeof obj === "object" ? Object.keys(obj).length : 0,
-  });
   writeSectionTasksObject(obj);
   return flushTodoSectionTasksSyncPush();
 }
 
 export function persistCustomSectionTasksAndSyncNow(obj) {
-  todoSectionSyncLogWithStack("persist:커스텀섹션_즉시sync", {
-    섹션키개수: obj && typeof obj === "object" ? Object.keys(obj).length : 0,
-  });
   writeCustomSectionTasksObject(obj);
   return flushTodoSectionTasksSyncPush();
-}
-
-let _flushOnHideAttached = false;
-export function attachTodoSectionTasksPushFlushOnHideOnce() {
-  if (_flushOnHideAttached || typeof document === "undefined") return;
-  _flushOnHideAttached = true;
-  const run = () => {
-    if (!supabase) return;
-    todoSectionSyncLog("탭숨김·나가기:대기중_sync_즉시전송시도");
-    void flushTodoSectionTasksSyncPush().catch(() => {});
-  };
-  document.addEventListener(
-    "visibilitychange",
-    () => {
-      if (document.visibilityState === "hidden") run();
-    },
-    { passive: true },
-  );
-  window.addEventListener("pagehide", run, { passive: true });
-}
-
-export function scheduleTodoSectionTasksSyncPush() {
-  if (!supabase) {
-    todoSectionSyncLog("schedule:스킵", { 이유: "supabase없음" });
-    return;
-  }
-  attachTodoSectionTasksPushFlushOnHideOnce();
-  const hadTimer = !!_pushTimer;
-  if (_pushTimer) clearTimeout(_pushTimer);
-  todoSectionSyncLog("schedule:약0.9초뒤_sync예약", {
-    debounceMs: PUSH_DEBOUNCE_MS,
-    이전타이머취소: hadTimer,
-  });
-  _pushTimer = setTimeout(() => {
-    _pushTimer = null;
-    todoSectionSyncLog("schedule:타이머만료→sync실행");
-    syncTodoSectionTasksToSupabase().catch(() => {});
-  }, PUSH_DEBOUNCE_MS);
 }
 
 /**
@@ -396,21 +323,13 @@ function shouldCoalesceCalendarTodoHydrate(reason) {
 
 let _calendarTodoHydrateCoalesceTimer = null;
 let _calendarTodoHydrateCoalesceLastReason = "unknown";
-/** 동일 디바운스 창에서 여러 번 await 해도 모두 같은 결과로 끝나게 */
 let _calendarTodoHydrateCoalesceWaiters = [];
-/** 병합 배치끼리 겹치지 않게 — 이전 pull이 끝난 뒤에만 다음 pull 실행 */
-let _calendarCoalescedImplChain = Promise.resolve();
 
 /**
- * @param {string} [reason] 호출 지점 구분(콘솔 [할일일정-pull] 필터용)
  * @returns {Promise<boolean>} 서버 데이터로 로컬을 덮어썼거나 id 보정 등으로 화면 갱신이 필요하면 true
  */
 async function hydrateTodoSectionTasksFromCloudImpl(reason = "unknown") {
-  lpPullDebug("hydrateTodoSectionTasksFromCloud", { reason });
-  todoSectionSyncLog("hydrate:시작(서버에서받기)", { reason, t: Date.now() });
-  todoSchedulePullTrace("hydrate:시작", { reason, t: Date.now() });
   if (!supabase) {
-    todoSchedulePullTrace("hydrate:끝", { reason, needRefresh: false, why: "no_supabase" });
     return false;
   }
   let needRefresh = false;
@@ -421,29 +340,6 @@ async function hydrateTodoSectionTasksFromCloudImpl(reason = "unknown") {
   await pushAllLocalTodoSectionTasksIfServerEmpty();
   const e2 = ensureCalendarSectionTaskIds();
   if (e2.dirty) patchAllTodoDomTaskIdsFromStorage();
-  todoSchedulePullTrace("hydrate:끝", {
-    reason,
-    needRefresh,
-    pull로로컬변경: pulled,
-    id보정1: e1.dirty,
-    id보정2: e2.dirty,
-  });
-  todoSectionSyncLog("hydrate:끝(앱다시그릴지)", {
-    reason,
-    needRefresh,
-    pull로로컬변경: pulled,
-    id보정만: e1.dirty || e2.dirty,
-  });
-  /* 탭 진입 직후가 아니라 pull 완료 후 — 이때 메모리 개수가 화면과 맞음 */
-  const r = String(reason || "");
-  if (/calendar_subtab|calendar_mobile_schedule|app_setActiveTab_|calendar_coalesced←/.test(r)) {
-    try {
-      console.info("[할일개수] 탭·서버반영 후", {
-        이유: reason,
-        목록개수: countTodoSectionTasksInStorage(),
-      });
-    } catch (_) {}
-  }
   return needRefresh;
 }
 

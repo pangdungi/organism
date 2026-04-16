@@ -41,21 +41,24 @@ import {
   persistCustomSectionTasksAndSchedule,
   persistFixedSectionTasksAndSyncNow,
   persistCustomSectionTasksAndSyncNow,
-  scheduleTodoSectionTasksSyncPush,
   deleteCompletedCalendarSectionTasksFromSupabase,
+  deleteCalendarSectionTaskRowById,
+  cancelTodoSectionTasksSyncPushSchedule,
   syncTodoSectionTasksToSupabase,
 } from "../utils/todoSectionTasksSupabase.js";
 import { logLpRender } from "../utils/lpRenderDebugLog.js";
+import {
+  logTodoScheduleAddStep1,
+  logTodoScheduleAddStep2,
+  markTodoAddPendingServerLog,
+} from "../utils/lpTabDataSourceLog.js";
 import {
   readSectionTasksObject,
   readCustomSectionTasksObject,
   writeSectionTasksObject,
   writeCustomSectionTasksObject,
   purgeAllCompletedSectionAndCustomTasks,
-  recordTodoSectionTaskDeletion,
   stripTodoTaskSyncMetaForCompare,
-  taskIdHasDeletionTombstone,
-  countTodoSectionTasksInStorage,
 } from "../utils/todoSectionTasksModel.js";
 import { patchTodoDomTaskIdsForSectionElement } from "../utils/todoDomTaskIdPatch.js";
 export const DRAG_TYPE_TODO_TO_CALENDAR = "todo-task-to-calendar";
@@ -149,7 +152,6 @@ function updateSectionTaskDone(sectionId, taskId, done) {
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
       t.done = !!done;
-      t.localModifiedAt = Date.now();
       persistSectionTasksAndSchedule(obj);
       return true;
     }
@@ -204,14 +206,12 @@ function saveSectionTasks(sectionId, tasks) {
           reminderTime: (fromDom.reminderTime || "").trim() || "",
         });
         domByTaskId.delete(tid);
-      } else if (!taskIdHasDeletionTombstone(tid)) {
-        /* DOM에 없고 삭제 tombstone도 없을 때만 메모리 유지(탭·지연 저장 경쟁 시 삭제 행 재저장 방지) */
+      } else {
+        /* DOM에 아직 없을 때(지연 렌더) 기존 메모리 행 유지 */
         merged.push(ex);
       }
     });
     domByTaskId.forEach((t) => {
-      const domTid = String(t.taskId || "").trim();
-      if (taskIdHasDeletionTombstone(domTid)) return;
       merged.push({
         taskId: t.taskId,
         name: t.name,
@@ -232,9 +232,7 @@ function saveSectionTasks(sectionId, tasks) {
       const id = (t.taskId || "").trim();
       mergeDedup.set(id || `_noid_${idx}`, t);
     });
-    const mergedUnique = dedupeMergedSectionTasksByNamePreferUuid([
-      ...mergeDedup.values(),
-    ]).filter((t) => !taskIdHasDeletionTombstone(t.taskId));
+    const mergedUnique = dedupeMergedSectionTasksByNamePreferUuid([...mergeDedup.values()]);
     const toSave = mergedUnique
       .map(
         ({
@@ -266,7 +264,7 @@ function saveSectionTasks(sectionId, tasks) {
           };
           const prevRow = tid ? prevById.get(tid) : null;
           if (!prevRow) {
-            return { ...candidate, localModifiedAt: Date.now() };
+            return { ...candidate };
           }
           const same =
             stripTodoTaskSyncMetaForCompare(prevRow) ===
@@ -274,19 +272,18 @@ function saveSectionTasks(sectionId, tasks) {
           if (same) {
             return {
               ...candidate,
-              localModifiedAt: prevRow.localModifiedAt,
               serverUpdatedAt:
                 prevRow.serverUpdatedAt !== undefined && prevRow.serverUpdatedAt !== ""
                   ? prevRow.serverUpdatedAt
                   : candidate.serverUpdatedAt,
             };
           }
-          return { ...candidate, localModifiedAt: Date.now() };
+          return { ...candidate };
         },
       )
       .filter((t) => keepTaskInSectionStorage(t));
     obj[sectionId] = toSave;
-    /* DOM 수집 경로는 메모리만 — 서버 upsert는 collect 완료 후 한 번만(사용자 편집 플래그) */
+    /* DOM 수집 경로는 메모리만 — 서버 upsert는 sync에서 일괄 */
     writeSectionTasksObject(obj);
   } catch (_) {}
 }
@@ -312,7 +309,6 @@ function moveSectionTaskToSection(fromSectionId, taskId, targetSectionId, taskDa
       itemType: taskData.itemType || "todo",
       reminderDate: (taskData.reminderDate || "").slice(0, 10) || "",
       reminderTime: taskData.reminderTime || "",
-      localModifiedAt: Date.now(),
     });
     persistSectionTasksAndSchedule(obj);
     return true;
@@ -341,7 +337,6 @@ function moveCustomSectionTaskToSection(fromSectionId, taskId, targetSectionId, 
       itemType: taskData.itemType || "todo",
       reminderDate: (taskData.reminderDate || "").slice(0, 10) || "",
       reminderTime: taskData.reminderTime || "",
-      localModifiedAt: Date.now(),
     });
     persistCustomSectionTasksAndSchedule(obj);
     return true;
@@ -401,7 +396,7 @@ function saveCustomSectionTasks(sectionId, tasks) {
           const tid = String(taskId || "").trim();
           const prevRow = tid ? prevById.get(tid) : null;
           if (!prevRow) {
-            return { ...candidate, localModifiedAt: Date.now() };
+            return { ...candidate };
           }
           const same =
             stripTodoTaskSyncMetaForCompare(prevRow) ===
@@ -409,67 +404,118 @@ function saveCustomSectionTasks(sectionId, tasks) {
           if (same) {
             return {
               ...candidate,
-              localModifiedAt: prevRow.localModifiedAt,
               serverUpdatedAt:
                 prevRow.serverUpdatedAt !== undefined && prevRow.serverUpdatedAt !== ""
                   ? prevRow.serverUpdatedAt
                   : candidate.serverUpdatedAt,
             };
           }
-          return { ...candidate, localModifiedAt: Date.now() };
+          return { ...candidate };
         },
       )
-      .filter((t) => keepTaskInSectionStorage(t))
-      .filter((t) => !taskIdHasDeletionTombstone(t.taskId));
+      .filter((t) => keepTaskInSectionStorage(t));
     obj[sectionId] = toSave;
     writeCustomSectionTasksObject(obj);
   } catch (_) {}
 }
 
-function removeCustomSectionTasks(sectionId) {
+async function removeCustomSectionTasks(sectionId) {
   try {
     const obj = readCustomSectionTasksObject();
     const arr = obj[sectionId];
-    if (Array.isArray(arr)) {
-      for (const t of arr) {
-        const tid = String(t?.taskId || "").trim();
-        if (tid) recordTodoSectionTaskDeletion(tid);
-      }
-    }
+    const ids = Array.isArray(arr)
+      ? arr.map((t) => String(t?.taskId || "").trim()).filter(Boolean)
+      : [];
     delete obj[sectionId];
+    /* 섹션 통째 삭제도 로컬 먼저 비움 — 루프 도중 sync가 옛 행을 다시 upsert 하는 것 방지 */
+    writeCustomSectionTasksObject(obj);
+    for (const tid of ids) {
+      await deleteCalendarSectionTaskRowById(tid);
+    }
     persistCustomSectionTasksAndSchedule(obj);
   } catch (_) {}
 }
 
-function removeTaskFromSectionStorage(sectionId, taskId) {
+async function removeTaskFromSectionStorage(sectionId, taskId) {
+  try {
+    cancelScheduleSaveSectionTasksFromDOM();
+    cancelTodoSectionTasksSyncPushSchedule();
+    const obj = readSectionTasksObject();
+    const arr = obj[sectionId];
+    if (!Array.isArray(arr)) return { ok: false, serverDelete: null };
+    const tid = String(taskId || "").trim();
+    const snapshot = arr.find((t) => String(t.taskId || "").trim() === tid);
+    obj[sectionId] = arr.filter((t) => (t.taskId || "") !== taskId);
+    /*
+     * 로컬을 먼저 지운 뒤 서버 DELETE(await) — 직렬 큐에서 대기하던 sync(메모리→upsert)가
+     * 삭제 전 스냅샷으로 행을 서버에 다시 올려 부활시키는 레이스를 막음.
+     */
+    writeSectionTasksObject(obj);
+    const del = await deleteCalendarSectionTaskRowById(taskId);
+    if (!del.ok) {
+      if (snapshot) {
+        const o2 = readSectionTasksObject();
+        const cur = Array.isArray(o2[sectionId]) ? o2[sectionId] : [];
+        const has = cur.some((t) => String(t.taskId || "").trim() === tid);
+        if (!has) o2[sectionId] = [...cur, { ...snapshot }];
+        writeSectionTasksObject(o2);
+      }
+      return { ok: false, serverDelete: del };
+    }
+    return { ok: true, serverDelete: del };
+  } catch (_) {}
+  return { ok: false, serverDelete: null };
+}
+
+async function removeTaskFromCustomSectionStorage(sectionId, taskId) {
+  try {
+    cancelScheduleSaveSectionTasksFromDOM();
+    cancelTodoSectionTasksSyncPushSchedule();
+    const obj = readCustomSectionTasksObject();
+    const arr = obj[sectionId];
+    if (!Array.isArray(arr)) return { ok: false, serverDelete: null };
+    const tid = String(taskId || "").trim();
+    const snapshot = arr.find((t) => String(t.taskId || "").trim() === tid);
+    obj[sectionId] = arr.filter((t) => (t.taskId || "") !== taskId);
+    writeCustomSectionTasksObject(obj);
+    const del = await deleteCalendarSectionTaskRowById(taskId);
+    if (!del.ok) {
+      if (snapshot) {
+        const o2 = readCustomSectionTasksObject();
+        const cur = Array.isArray(o2[sectionId]) ? o2[sectionId] : [];
+        const has = cur.some((t) => String(t.taskId || "").trim() === tid);
+        if (!has) o2[sectionId] = [...cur, { ...snapshot }];
+        writeCustomSectionTasksObject(o2);
+      }
+      return { ok: false, serverDelete: del };
+    }
+    return { ok: true, serverDelete: del };
+  } catch (_) {}
+  return { ok: false, serverDelete: null };
+}
+
+/** 섹션 변경(이동)만 — 서버 DELETE 없음, 같은 taskId로 다른 섹션에 다시 저장됨 */
+function moveTaskOutOfSectionStorageOnly(sectionId, taskId) {
   try {
     const obj = readSectionTasksObject();
     const arr = obj[sectionId];
     if (!Array.isArray(arr)) return false;
     obj[sectionId] = arr.filter((t) => (t.taskId || "") !== taskId);
-    recordTodoSectionTaskDeletion(taskId);
     cancelScheduleSaveSectionTasksFromDOM();
     void persistFixedSectionTasksAndSyncNow(obj).catch(() => {});
-    try {
-      console.info("[할일개수] 삭제 후", { 목록개수: countTodoSectionTasksInStorage() });
-    } catch (_) {}
     return true;
   } catch (_) {}
   return false;
 }
 
-function removeTaskFromCustomSectionStorage(sectionId, taskId) {
+function moveTaskOutOfCustomSectionStorageOnly(sectionId, taskId) {
   try {
     const obj = readCustomSectionTasksObject();
     const arr = obj[sectionId];
     if (!Array.isArray(arr)) return false;
     obj[sectionId] = arr.filter((t) => (t.taskId || "") !== taskId);
-    recordTodoSectionTaskDeletion(taskId);
     cancelScheduleSaveSectionTasksFromDOM();
     void persistCustomSectionTasksAndSyncNow(obj).catch(() => {});
-    try {
-      console.info("[할일개수] 삭제 후", { 목록개수: countTodoSectionTasksInStorage() });
-    } catch (_) {}
     return true;
   } catch (_) {}
   return false;
@@ -557,7 +603,7 @@ function dedupeMergedSectionTasksByNamePreferUuid(merged) {
 
 let _saveSectionTasksTimer = null;
 
-/** 삭제 직후 예약된 DOM→저장(300ms)이 옛 목록으로 덮어쓰지 않게 취소 */
+/** 삭제 직전에 호출: 예약된 DOM→메모리(300ms)·즉시 동기화가 삭제·서버 SELECT보다 늦게 돌아 옛 목록을 올리지 않게 함 */
 function cancelScheduleSaveSectionTasksFromDOM() {
   if (_saveSectionTasksTimer) {
     clearTimeout(_saveSectionTasksTimer);
@@ -565,13 +611,16 @@ function cancelScheduleSaveSectionTasksFromDOM() {
   }
 }
 
-function scheduleSaveSectionTasksFromDOM(sectionsWrap) {
+function scheduleSaveSectionTasksFromDOM(sectionsWrap, extraOpts = {}) {
   todoDebug("scheduleSaveSectionTasksFromDOM", { hasWrap: !!sectionsWrap });
   if (!sectionsWrap) return;
   if (_saveSectionTasksTimer) clearTimeout(_saveSectionTasksTimer);
   _saveSectionTasksTimer = setTimeout(() => {
     _saveSectionTasksTimer = null;
-    collectAndSaveKpiTasksFromDOM(sectionsWrap, { scheduleServerSync: true });
+    collectAndSaveKpiTasksFromDOM(sectionsWrap, {
+      scheduleServerSync: true,
+      addLog: extraOpts.addLog,
+    });
   }, 300);
 }
 
@@ -586,11 +635,12 @@ function flushSaveSectionTasksFromDOM(sectionsWrap) {
 }
 
 /**
- * @param {{ scheduleServerSync?: boolean, withCustomSections?: boolean }} [opts]
- * - scheduleServerSync: 사용자 편집·저장 흐름에서만 true — DOM→메모리 후 서버 동기 0.9초 예약(한 번)
+ * @param {{ scheduleServerSync?: boolean, withCustomSections?: boolean, addLog?: { taskId?: string, sectionId?: string } }} [opts]
+ * - scheduleServerSync: 사용자 편집·저장 흐름에서만 true — DOM→메모리 후 즉시 서버 동기(일괄 upsert+SELECT)
+ * - addLog: 「할 일 추가」모달 저장 직후 한 번만 — 콘솔 [할일일정·추가] ②·③
  */
 function collectAndSaveKpiTasksFromDOM(sectionsWrap, opts = {}) {
-  const { scheduleServerSync = false, withCustomSections = false } = opts;
+  const { scheduleServerSync = false, withCustomSections = false, addLog } = opts;
   todoDebug("collectAndSaveKpiTasksFromDOM", { hasWrap: !!sectionsWrap, scheduleServerSync, withCustomSections });
   if (!sectionsWrap) return;
   FIXED_SECTION_IDS_FOR_STORAGE.forEach((sectionId) => {
@@ -714,8 +764,16 @@ function collectAndSaveKpiTasksFromDOM(sectionsWrap, opts = {}) {
       if (sec) saveCustomSectionTasks(s.id, collectCustomSectionFromDOM(sectionsWrap, s.id));
     });
   }
+  if (addLog && scheduleServerSync) {
+    const meta = {
+      taskId: String(addLog.taskId || "").trim(),
+      section: String(addLog.sectionId || "").trim(),
+    };
+    logTodoScheduleAddStep2(meta);
+    markTodoAddPendingServerLog(meta);
+  }
   if (scheduleServerSync) {
-    scheduleTodoSectionTasksSyncPush();
+    void syncTodoSectionTasksToSupabase().catch(() => {});
   }
 }
 
@@ -1719,27 +1777,13 @@ function createTaskRow(taskData = {}, options = {}) {
       const val = (nameInput.value || "").trim();
       const relatedTarget = e.relatedTarget;
       const focusStaysInRowSync = relatedTarget && tr.contains(relatedTarget);
-      if (TODO_DEBUG)
-        console.log("[DEBUG todo-row] nameInput blur (KPI)", {
-          val,
-          relatedTarget: relatedTarget?.className || relatedTarget?.tagName,
-        });
       setTimeout(() => {
         const activeEl = document.activeElement;
         const hadDateAreaClick = dateAreaClicked;
         if (dateAreaClicked) dateAreaClicked = false;
         const focusStaysInRow = tr.contains(activeEl) || focusStaysInRowSync || hadDateAreaClick;
-        if (TODO_DEBUG)
-          console.log("[DEBUG todo-row] nameInput blur (KPI deferred)", {
-            val,
-            focusStaysInRow,
-            hadDateAreaClick,
-            activeEl: activeEl?.className || activeEl?.tagName,
-            willRemove: val === "" && !focusStaysInRow,
-          });
         if (val === "" && !focusStaysInRow) {
           if (removeKpiTodo(kpiTodoId, storageKey)) {
-            if (TODO_DEBUG) console.log("[DEBUG todo-row] REMOVING KPI row (name empty, focus left row)");
             clearSubtasks(taskId);
             tr.remove();
             const section = tr.closest(".todo-section");
@@ -1757,26 +1801,12 @@ function createTaskRow(taskData = {}, options = {}) {
       const val = (nameInput.value || "").trim();
       const relatedTarget = e.relatedTarget;
       const focusStaysInRowSync = relatedTarget && tr.contains(relatedTarget);
-      if (TODO_DEBUG)
-        console.log("[DEBUG todo-row] nameInput blur", {
-          val,
-          relatedTarget: relatedTarget?.className || relatedTarget?.tagName,
-        });
       setTimeout(() => {
         const activeEl = document.activeElement;
         const hadDateAreaClick = dateAreaClicked;
         if (dateAreaClicked) dateAreaClicked = false;
         const focusStaysInRow = tr.contains(activeEl) || focusStaysInRowSync || hadDateAreaClick;
-        if (TODO_DEBUG)
-          console.log("[DEBUG todo-row] nameInput blur (deferred)", {
-            val,
-            focusStaysInRow,
-            hadDateAreaClick,
-            activeEl: activeEl?.className || activeEl?.tagName,
-            willRemove: val === "" && !focusStaysInRow,
-          });
         if (val === "" && !focusStaysInRow) {
-          if (TODO_DEBUG) console.log("[DEBUG todo-row] REMOVING row (name empty, focus left row)");
           clearSubtasks(taskId);
           tr.remove();
           const section = tr.closest(".todo-section");
@@ -2197,7 +2227,7 @@ function createTaskRow(taskData = {}, options = {}) {
   delBtn.className = "todo-task-delete-btn";
   delBtn.title = "삭제";
   delBtn.innerHTML = TASK_DELETE_ICON;
-  delBtn.addEventListener("click", (e) => {
+  delBtn.addEventListener("click", async (e) => {
     e.stopPropagation();
     const section = tr.closest(".todo-section");
     const tbody = tr.parentElement;
@@ -2206,11 +2236,10 @@ function createTaskRow(taskData = {}, options = {}) {
     if (isKpiTodo && kpiTodoId && storageKey) {
       if (removeKpiTodo(kpiTodoId, storageKey)) tr.remove();
     } else if (sectionId && rowTaskId) {
-      if (sectionId.startsWith("custom-")) {
-        removeTaskFromCustomSectionStorage(sectionId, rowTaskId);
-      } else {
-        removeTaskFromSectionStorage(sectionId, rowTaskId);
-      }
+      const out = sectionId.startsWith("custom-")
+        ? await removeTaskFromCustomSectionStorage(sectionId, rowTaskId)
+        : await removeTaskFromSectionStorage(sectionId, rowTaskId);
+      if (!out?.ok) return;
       clearSubtasks(rowTaskId);
       tr.remove();
     } else {
@@ -2668,12 +2697,11 @@ function createTaskCard(taskData, options = {}) {
         const newSectionId = (payload.sectionId || "").trim();
         if (newSectionId && newSectionId !== storageSectionId) {
           if (storageSectionId && storageSectionId.startsWith("custom-")) {
-            removeTaskFromCustomSectionStorage(storageSectionId, taskId);
-            clearSubtasks(taskId);
+            moveTaskOutOfCustomSectionStorageOnly(storageSectionId, taskId);
           } else if (storageSectionId) {
-            removeTaskFromSectionStorage(storageSectionId, taskId);
-            clearSubtasks(taskId);
+            moveTaskOutOfSectionStorageOnly(storageSectionId, taskId);
           }
+          clearSubtasks(taskId);
           const sectionEl = sectionsWrap?.querySelector(`.todo-section[data-section="${newSectionId}"]`);
           const targetWrap = sectionEl?.querySelector(".todo-cards-wrap");
           if (targetWrap) {
@@ -2690,20 +2718,31 @@ function createTaskCard(taskData, options = {}) {
         updateCount();
         scheduleSave();
       },
-      onDelete: () => {
+      onDelete: async () => {
         if (isKpiTodo && kpiTodoId && storageKey) {
           if (removeKpiTodo(kpiTodoId, storageKey)) card.remove();
-        } else if (storageSectionId && storageSectionId.startsWith("custom-")) {
-          removeTaskFromCustomSectionStorage(storageSectionId, taskId);
-          clearSubtasks(taskId);
-          card.remove();
-        } else if (storageSectionId) {
-          removeTaskFromSectionStorage(storageSectionId, taskId);
-          clearSubtasks(taskId);
-          card.remove();
-        } else {
-          card.remove();
+          updateCount();
+          scheduleSave();
+          return;
         }
+        if (storageSectionId && storageSectionId.startsWith("custom-")) {
+          const out = await removeTaskFromCustomSectionStorage(storageSectionId, taskId);
+          if (!out?.ok) return;
+          clearSubtasks(taskId);
+          card.remove();
+          updateCount();
+          /* 서버 DELETE + 목록 다시 읽기까지 끝남 — DOM 저장으로 전체 upsert 다시 돌리지 않음 */
+          return;
+        }
+        if (storageSectionId) {
+          const out = await removeTaskFromSectionStorage(storageSectionId, taskId);
+          if (!out?.ok) return;
+          clearSubtasks(taskId);
+          card.remove();
+          updateCount();
+          return;
+        }
+        card.remove();
         updateCount();
         scheduleSave();
       },
@@ -2766,8 +2805,10 @@ function createSection(section, options = {}) {
     const cardsWrap = document.createElement("div");
     cardsWrap.className = "todo-cards-wrap";
     const sectionsWrap = options.sectionsWrap || wrap.closest(".todo-sections-wrap");
-    function scheduleSave() {
-      if (sectionsWrap) scheduleSaveSectionTasksFromDOM(sectionsWrap);
+    function scheduleSave(opts) {
+      if (!sectionsWrap) return;
+      const addLog = opts && typeof opts === "object" && opts.addLog ? opts.addLog : undefined;
+      scheduleSaveSectionTasksFromDOM(sectionsWrap, addLog ? { addLog } : {});
     }
     function updateCount() {
       const el = countEl();
@@ -2800,7 +2841,14 @@ function createSection(section, options = {}) {
           const card = createTaskCard(newTask, { updateCount, sectionsWrap, scheduleSave, enableDragToEisenhower, enableDragToCalendar, enableDragOverdueToCalendar });
           cardsWrap.appendChild(card);
           updateCount();
-          scheduleSave();
+          logTodoScheduleAddStep1({
+            taskId,
+            sectionId,
+            title: (payload.name || newTask.name || "").trim(),
+          });
+          scheduleSave({
+            addLog: { taskId, sectionId },
+          });
         },
       });
     });
@@ -3013,7 +3061,6 @@ function createSection(section, options = {}) {
       });
       tbody.appendChild(tr);
       updateCount();
-      if (TODO_DEBUG) console.log("[DEBUG todo-row] + clicked, new row created", { taskId, sectionId: section.id });
       const nameInput = tr.querySelector(".todo-task-name-field");
       if (nameInput) {
         nameInput.focus();
@@ -3350,10 +3397,10 @@ export function render(options = {}) {
       message: `"${section.label}" 리스트를 삭제하시겠습니까?`,
       confirmText: "삭제",
       cancelText: "취소",
-      onConfirm: () => {
+      onConfirm: async () => {
         const tabIndex = tabButtons.indexOf(tabToRemove);
         removeCustomSection(sectionId);
-        removeCustomSectionTasks(sectionId);
+        await removeCustomSectionTasks(sectionId);
         const panelResult = sectionResults.find((r) => r.wrap.dataset.section === sectionId);
         if (panelResult) {
           panelResult.wrap.remove();
@@ -3547,7 +3594,6 @@ export function render(options = {}) {
             customObj[targetSectionId].push({
               ...taskPayload,
               taskId: oldTaskId,
-              localModifiedAt: Date.now(),
             });
             persistCustomSectionTasksAndSchedule(customObj);
             result = { success: true, task: { name, startDate, dueDate, startTime, endTime, eisenhower, done, sectionId: targetSectionId, sectionLabel: getTargetLabel(targetSectionId), itemType, isKpiTodo: false, taskId: oldTaskId, reminderDate, reminderTime } };
@@ -3584,7 +3630,6 @@ export function render(options = {}) {
             customObj[targetSectionId].push({
               ...taskPayload,
               taskId: oldTaskId,
-              localModifiedAt: Date.now(),
             });
             persistCustomSectionTasksAndSchedule(customObj);
             return true;
@@ -3606,7 +3651,6 @@ export function render(options = {}) {
             sectionObj[targetSectionId].push({
               ...taskPayload,
               taskId: oldTaskId,
-              localModifiedAt: Date.now(),
             });
             persistSectionTasksAndSchedule(sectionObj);
             return true;

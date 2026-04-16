@@ -3,6 +3,9 @@
  * 콘솔 필터: [할일동기]
  *
  * 켜짐: localStorage.setItem('debug_todo_section_sync','1') | window.__TODO_SECTION_SYNC_DEBUG__ = true
+ *
+ * 삭제 항목 부활·서버 개수 불일치 추적은 별도:
+ *   localStorage.setItem('debug_todo_resurrection','1') → 콘솔 필터 [할일부활추적]
  */
 
 const LS_KEY = "debug_todo_section_sync";

@@ -227,7 +227,6 @@ function updateSectionTaskDates(
     }
     t.startDate = (startDate || "").slice(0, 10) || "";
     t.dueDate = (dueDate || "").slice(0, 10) || "";
-    t.localModifiedAt = Date.now();
     persistSectionTasksAndSchedule(obj);
     dateDebug("updateSectionTaskDates OK", { sectionId, taskId, savedDueDate: t.dueDate });
     return true;
@@ -246,7 +245,6 @@ function updateSectionTaskTimes(sectionId, taskId, startTime, endTime) {
     if (t) {
       t.startTime = (startTime || "").trim() || "";
       t.endTime = (endTime || "").trim() || "";
-      t.localModifiedAt = Date.now();
       persistSectionTasksAndSchedule(obj);
       return true;
     }
@@ -262,7 +260,6 @@ function updateSectionTaskDone(sectionId, taskId, done) {
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
       t.done = !!done;
-      t.localModifiedAt = Date.now();
       persistSectionTasksAndSchedule(obj);
       return true;
     }
@@ -278,7 +275,6 @@ function updateSectionTaskEisenhower(sectionId, taskId, eisenhower) {
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
       t.eisenhower = (eisenhower || "").trim() || "";
-      t.localModifiedAt = Date.now();
       persistSectionTasksAndSchedule(obj);
       return true;
     }
@@ -294,7 +290,6 @@ function updateCustomSectionTaskEisenhower(sectionId, taskId, eisenhower) {
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
       t.eisenhower = (eisenhower || "").trim() || "";
-      t.localModifiedAt = Date.now();
       persistCustomSectionTasksAndSchedule(obj);
       return true;
     }
@@ -321,7 +316,6 @@ function addSectionTaskToCalendar(sectionId, taskData) {
       itemType: taskData.itemType || "todo",
       _calPrevStart: ((taskData._calPrevStart || "").toString().slice(0, 10) || ""),
       _calPrevDue: ((taskData._calPrevDue || "").toString().slice(0, 10) || ""),
-      localModifiedAt: Date.now(),
     });
     persistSectionTasksAndSchedule(obj);
     return true;
@@ -504,7 +498,6 @@ function updateCustomSectionTaskDone(sectionId, taskId, done) {
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
       t.done = !!done;
-      t.localModifiedAt = Date.now();
       persistCustomSectionTasksAndSchedule(obj);
     }
   } catch (_) {}
@@ -530,7 +523,6 @@ function updateCustomSectionTaskDates(
       }
       t.startDate = (startDate || "").slice(0, 10) || "";
       t.dueDate = (dueDate || "").slice(0, 10) || "";
-      t.localModifiedAt = Date.now();
       persistCustomSectionTasksAndSchedule(obj);
       return true;
     }
@@ -547,7 +539,6 @@ function updateCustomSectionTaskTimes(sectionId, taskId, startTime, endTime) {
     if (t) {
       t.startTime = (startTime || "").trim() || "";
       t.endTime = (endTime || "").trim() || "";
-      t.localModifiedAt = Date.now();
       persistCustomSectionTasksAndSchedule(obj);
       return true;
     }
@@ -574,7 +565,6 @@ function addCalendarTodoToCustomSection(sectionId, taskData) {
       itemType: taskData.itemType || "todo",
       _calPrevStart: ((taskData._calPrevStart || "").toString().slice(0, 10) || ""),
       _calPrevDue: ((taskData._calPrevDue || "").toString().slice(0, 10) || ""),
-      localModifiedAt: Date.now(),
     });
     persistCustomSectionTasksAndSchedule(obj);
     return true;
@@ -596,7 +586,6 @@ function clearSectionTaskCalendarRevertSnapshot(sectionId, taskId) {
     if (!t) return;
     delete t._calPrevStart;
     delete t._calPrevDue;
-    t.localModifiedAt = Date.now();
     persistSectionTasksAndSchedule(obj);
   } catch (_) {}
 }
@@ -609,7 +598,6 @@ function clearCustomSectionTaskCalendarRevertSnapshot(sectionId, taskId) {
     if (!t) return;
     delete t._calPrevStart;
     delete t._calPrevDue;
-    t.localModifiedAt = Date.now();
     persistCustomSectionTasksAndSchedule(obj);
   } catch (_) {}
 }

@@ -39,7 +39,6 @@ import {
   hydrateSideincomeKpiMapFromCloud,
 } from "./utils/sideincomeKpiMapSupabase.js";
 import { attachTimeLedgerEntriesSaveListener } from "./utils/timeLedgerEntriesSupabase.js";
-import { attachTodoSectionTasksPushFlushOnHideOnce } from "./utils/todoSectionTasksSupabase.js";
 import {
   pullAllKpiMapsFromCloud,
   pullKpiTabFromCloud,
@@ -64,6 +63,7 @@ import {
 } from "./utils/lpRenderDebugLog.js";
 import { initDomPulseDebug } from "./utils/domPulseDebug.js";
 import { initMobileVisualViewportKeyboardInset } from "./utils/mobileViewportKeyboard.js";
+import { logTodoScheduleTabOnNavigate } from "./utils/lpTabDataSourceLog.js";
 
 /** 사용자가 입력 중인지 확인 (입력 중이면 화면 갱신 건너뜀) */
 function isUserTypingInApp() {
@@ -189,7 +189,6 @@ export function mountApp(container) {
   attachSideincomeKpiMapSaveListener();
   /* 시간기록 행 저장 → time_ledger_entries upsert (아카이브 메모 비우기 포함) */
   attachTimeLedgerEntriesSaveListener();
-  attachTodoSectionTasksPushFlushOnHideOnce();
   container.innerHTML = "";
 
   const appPage = document.createElement("div");
@@ -331,6 +330,7 @@ export function mountApp(container) {
   function setActiveTab(tabId) {
     const fromTab = currentTabId;
     currentTabId = tabId;
+    logTodoScheduleTabOnNavigate(tabId, fromTab);
     logTabSync("tab_switch", { from: fromTab, to: tabId });
     nav.querySelectorAll(".app-sidebar-item").forEach((b) => {
       b.classList.toggle("active", b.dataset.tabId === tabId);
@@ -574,6 +574,12 @@ export function mountApp(container) {
     clearDeferredRenderMain();
     const p = mainEl?.querySelector(".app-tab-panel");
     if (!p) return;
+    /* 같은 탭만 내용 다시 그릴 때(할일 sync 등): 통째로 비우면 .app-main 스크롤이 0으로 돌아가는 문제 방지.
+     * 탭 전환은 setActiveTab → force:true 로 오므로 여기서는 저장하지 않음 */
+    let preserveScrollTop = null;
+    if (!opts.force && mainEl && typeof mainEl.scrollTop === "number") {
+      preserveScrollTop = mainEl.scrollTop;
+    }
     if (!opts.skipTodoSaveBeforeUnmount) {
       saveTodoListBeforeUnmount(p);
     }
@@ -607,6 +613,17 @@ export function mountApp(container) {
       errDiv.style.cssText = "padding:1.5rem;color:#b91c1c;";
       errDiv.innerHTML = `<p><strong>${TABS.find((t) => t.id === currentTabId)?.label || currentTabId} 로드 중 오류</strong></p><p>${String(err?.message || err)}</p>`;
       p.appendChild(errDiv);
+    }
+    if (preserveScrollTop != null && mainEl) {
+      const y = preserveScrollTop;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          try {
+            const max = Math.max(0, mainEl.scrollHeight - mainEl.clientHeight);
+            mainEl.scrollTop = Math.max(0, Math.min(y, max));
+          } catch (_) {}
+        });
+      });
     }
   }
 
