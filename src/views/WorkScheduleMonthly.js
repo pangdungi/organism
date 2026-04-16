@@ -1,9 +1,66 @@
 /**
  * 근무표 먼슬리 뷰 - 근무일별 근무유형과 Hours를 캘린더에 표시
+ *
+ * @param {{ hoursOnly?: boolean, typeOnly?: boolean, onDayClick?: (dateKey: string) => void, onMonthLabelClick?: (ctx: { year: number, month: number }) => void }} opts
+ *   - onDayClick: 날짜 셀 클릭 시 YYYY-MM-DD 전달(근무 등록 모달 등)
+ *   - onMonthLabelClick: 상단 월 라벨 클릭 시 해당 달 연·월 전달
  */
 
 import { applyWorkScheduleRowTimesFromTypes } from "../utils/workScheduleEntryResolve.js";
 import { readWorkScheduleRowsFromMem } from "../utils/workScheduleModel.js";
+import { workScheduleDiagLog } from "../utils/workScheduleDiag.js";
+
+/** 근무표 월별보기에서 보고 있던 연·월 — 모달·탭 갱신 후에도 유지 (localStorage: 세션보다 안정적) */
+const WS_MONTHLY_VIEW_YM_KEY = "lp-work-schedule-monthly-ym";
+
+/** renderMain 등으로 번들은 유지·DOM만 바뀔 때 localStorage 타이밍보다 안전한 메모리 백업 */
+let _monthlyViewCursorMem = /** @type {{ y: number; m: number } | null} */ (null);
+
+function readStoredMonthlyYm() {
+  try {
+    if (typeof localStorage !== "undefined") {
+      const raw = localStorage.getItem(WS_MONTHLY_VIEW_YM_KEY);
+      if (raw) {
+        const o = JSON.parse(raw);
+        const y = Number(o.y);
+        const m = Number(o.m);
+        if (Number.isFinite(y) && y >= 1970 && y <= 2100 && Number.isFinite(m) && m >= 0 && m <= 11) {
+          _monthlyViewCursorMem = { y, m };
+          workScheduleDiagLog("월별 커서: localStorage", _monthlyViewCursorMem);
+          return { y, m };
+        }
+      }
+    }
+  } catch (e) {
+    workScheduleDiagLog("월별 커서: localStorage 읽기 실패", e?.message || e);
+  }
+  if (_monthlyViewCursorMem) {
+    workScheduleDiagLog("월별 커서: 메모리 폴백", _monthlyViewCursorMem);
+    return _monthlyViewCursorMem;
+  }
+  workScheduleDiagLog("월별 커서: 없음 → 이번 달");
+  return null;
+}
+
+function storeMonthlyYm(y, m) {
+  _monthlyViewCursorMem = { y, m };
+  try {
+    if (typeof localStorage === "undefined") return;
+    localStorage.setItem(WS_MONTHLY_VIEW_YM_KEY, JSON.stringify({ y, m }));
+    workScheduleDiagLog("월별 커서: 저장", { y, m });
+  } catch (e) {
+    workScheduleDiagLog("월별 커서: localStorage 저장 실패(메모리만 유지)", e?.message || e);
+  }
+}
+
+/** 근무표 밖(저장 모달 등)에서 호출: 월별보기를 이 연·월로 맞춤 */
+export function setWorkScheduleMonthlyViewCursor(year, monthIndex0) {
+  const y = Number(year);
+  const m = Number(monthIndex0);
+  if (!Number.isFinite(y) || y < 1970 || y > 2100) return;
+  if (!Number.isFinite(m) || m < 0 || m > 11) return;
+  storeMonthlyYm(y, m);
+}
 
 function loadWorkScheduleRows() {
   try {
@@ -96,7 +153,7 @@ const MONTH_NAMES_SHORT = [
 
 /**
  * 근무표 내부에서 사용하는 먼슬리 캘린더 콘텐츠
- * @param {{ hoursOnly?: boolean, typeOnly?: boolean }} opts
+ * @param {{ hoursOnly?: boolean, typeOnly?: boolean, onDayClick?: (dateKey: string) => void, onMonthLabelClick?: (ctx: { year: number, month: number }) => void }} opts
  *   - hoursOnly: true면 근무시간만 표시(필터 버튼 숨김)
  *   - typeOnly: true면 근무유형만 표시(필터 버튼 숨김). 근무표 「2. 월별보기」는 항상 이 모드
  */
@@ -104,6 +161,8 @@ export function renderMonthlyContent(opts = {}) {
   const hoursOnly = !!opts.hoursOnly;
   const typeOnly = !!opts.typeOnly;
   const noFilter = hoursOnly || typeOnly;
+  const onDayClick = typeof opts.onDayClick === "function" ? opts.onDayClick : null;
+  const onMonthLabelClick = typeof opts.onMonthLabelClick === "function" ? opts.onMonthLabelClick : null;
   const el = document.createElement("div");
   el.className = "work-schedule-monthly-content" + (noFilter ? " work-schedule-monthly-content--hours-only" : "");
 
@@ -124,6 +183,12 @@ export function renderMonthlyContent(opts = {}) {
 
   const monthLabel = document.createElement("span");
   monthLabel.className = "work-schedule-monthly-label";
+  if (onMonthLabelClick) {
+    monthLabel.setAttribute("role", "button");
+    monthLabel.tabIndex = 0;
+    monthLabel.style.cursor = "pointer";
+    monthLabel.title = "이 달의 날짜를 골라 근무를 등록합니다";
+  }
 
   const nextBtn = document.createElement("button");
   nextBtn.type = "button";
@@ -162,8 +227,10 @@ export function renderMonthlyContent(opts = {}) {
   const calendarWrap = document.createElement("div");
   calendarWrap.className = "work-schedule-monthly-calendar";
 
-  let currentYear = new Date().getFullYear();
-  let currentMonth = new Date().getMonth();
+  const nowInit = new Date();
+  const storedYm = readStoredMonthlyYm();
+  let currentYear = storedYm ? storedYm.y : nowInit.getFullYear();
+  let currentMonth = storedYm ? storedYm.m : nowInit.getMonth();
   let displayMode = typeOnly ? "type" : "hours";
 
   if (!noFilter) {
@@ -174,6 +241,21 @@ export function renderMonthlyContent(opts = {}) {
         btn.classList.add("active");
         renderCalendar();
       });
+    });
+  }
+
+  if (onMonthLabelClick) {
+    const fire = () => onMonthLabelClick({ year: currentYear, month: currentMonth });
+    monthLabel.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      fire();
+    });
+    monthLabel.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        fire();
+      }
     });
   }
 
@@ -224,6 +306,18 @@ export function renderMonthlyContent(opts = {}) {
         if (date.getDay() === 6) cell.classList.add("sat");
         cell.appendChild(dayNum);
 
+        if (onDayClick) {
+          cell.style.cursor = "pointer";
+          cell.title = "탭하여 이 날짜에 근무 등록";
+          cell.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            /* 회색 칸(전·다음 달 날짜)을 눌렀을 때도 그 달이 열리도록, 클릭한 날짜의 연·월을 저장 */
+            storeMonthlyYm(date.getFullYear(), date.getMonth());
+            onDayClick(key);
+          });
+        }
+
         const entries = byDate[key] || [];
         const entriesEl = document.createElement("div");
         entriesEl.className = "work-schedule-monthly-day-entries";
@@ -254,6 +348,7 @@ export function renderMonthlyContent(opts = {}) {
       });
       calendarWrap.appendChild(weekRow);
     });
+    storeMonthlyYm(currentYear, currentMonth);
   }
 
   todayBtn.addEventListener("click", () => {

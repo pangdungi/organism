@@ -6918,6 +6918,57 @@ body {
   box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.12);
 }
 
+/* 월별보기 → 근무일·근무유형 등록 모달 */
+.work-schedule-day-entry-modal .work-schedule-day-entry-modal-panel {
+  max-height: min(90vh, 28rem);
+}
+
+.work-schedule-day-entry-body {
+  padding: 1rem 1.25rem 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow: auto;
+}
+
+.work-schedule-day-entry-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.work-schedule-day-entry-label-text {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.work-schedule-day-entry-date,
+.work-schedule-day-entry-select {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0.45rem 0;
+  font-size: 0.95rem;
+  border: none;
+  border-bottom: 1px solid var(--text-placeholder, #c4bea8);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-body);
+  font-family: inherit;
+}
+
+.work-schedule-day-entry-date:focus,
+.work-schedule-day-entry-select:focus {
+  outline: none;
+  border-bottom-width: 1.5px;
+  border-bottom-color: var(--ui-btn-primary-bg, #2a3828);
+}
+
+.work-schedule-day-entry-footer {
+  flex-shrink: 0;
+  margin-top: 0.5rem;
+}
+
 .work-schedule-type-settings-header {
   display: flex;
   align-items: center;

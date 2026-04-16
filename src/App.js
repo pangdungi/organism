@@ -495,6 +495,12 @@ export function mountApp(container) {
   }
 
   function isFocusBlockingRender(mainEl) {
+    /* 근무표 모달은 body에만 붙음. 네이티브 <select> 펼칠 때 포커스가 다이얼로그 밖으로 나가
+     * isFocusBlockingRender 가 false가 되어 지연된 renderMain 이 돌면 월별보기가 오늘 달로 초기화될 수 있음 */
+    try {
+      if (document.querySelector("body > .work-schedule-day-entry-modal[role='dialog']")) return true;
+      if (document.querySelector("body > .work-schedule-type-settings-modal[role='dialog']")) return true;
+    } catch (_) {}
     const a = document.activeElement;
     if (!a || a === document.body) return false;
     if (a.closest?.("dialog[open]")) return true;
@@ -547,6 +553,17 @@ export function mountApp(container) {
       try {
         console.trace("[lp-render] renderMain", currentTabId, opts);
       } catch (_) {}
+    }
+    /* 근무표 등록/유형설정 모달은 body 직하위 — force:true(탭 전환 등)여도 여기서 통째로 지우면 월별보기 달이 초기화됨 */
+    let wsBodyModal = null;
+    try {
+      wsBodyModal =
+        document.querySelector("body > .work-schedule-day-entry-modal[role='dialog']") ||
+        document.querySelector("body > .work-schedule-type-settings-modal[role='dialog']");
+    } catch (_) {}
+    if (opts.force && wsBodyModal) {
+      scheduleDeferredRenderMain(mainEl, { ...opts, force: false });
+      return;
     }
     if (!opts.force) {
       if (isFocusBlockingRender(mainEl)) {

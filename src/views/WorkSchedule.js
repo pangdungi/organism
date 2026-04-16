@@ -2,7 +2,7 @@
  * 근무표 - 근무 일정 관리
  * 근무시간, 근무유형, 근무일, 시간(근무표), 메모
  */
-import { renderMonthlyContent } from "./WorkScheduleMonthly.js";
+import { renderMonthlyContent, setWorkScheduleMonthlyViewCursor } from "./WorkScheduleMonthly.js";
 import { supabase } from "../supabase.js";
 import { hydrateWorkScheduleFromCloud } from "../utils/workScheduleSupabase.js";
 import { workScheduleDiagLog } from "../utils/workScheduleDiag.js";
@@ -57,6 +57,24 @@ function notifyWorkScheduleSaved() {
   try {
     window.dispatchEvent(new CustomEvent("work-schedule-saved"));
   } catch (_) {}
+}
+
+/** 로컬 Date → YYYY-MM-DD (월별 캘린더와 동일 규칙) */
+function formatLocalYmd(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** 월 라벨 클릭 시 기본 근무일: 보는 달이 이번 달이면 오늘, 아니면 그 달 1일 */
+function defaultDateKeyForCalendarMonth(year, monthIndex0) {
+  const now = new Date();
+  if (now.getFullYear() === year && now.getMonth() === monthIndex0) {
+    return formatLocalYmd(now);
+  }
+  const m = String(monthIndex0 + 1).padStart(2, "0");
+  return `${year}-${m}-01`;
 }
 
 /** 기본 근무유형 순서: 연차 → 휴가 → 정규근무 (연차·휴가는 00:00-00:00, 수정 불가) */
@@ -1333,6 +1351,190 @@ export function render(opts = {}) {
     wsUiLog("renderTableView: after filter, visible data rows", visibleRows, "/", initialRows.length);
   }
 
+  /** 월별보기: 날짜·근무유형 선택 → 근무표에 행 추가(시작·마감은 유형 기본값) */
+  function openMonthlyDayEntryModal(initialDateKey) {
+    const dateKey = normalizeWorkDateKey(initialDateKey || "") || formatLocalYmd(new Date());
+    document.querySelectorAll(".work-schedule-day-entry-modal").forEach((n) => n.remove());
+
+    const modal = document.createElement("div");
+    modal.className = "work-schedule-type-settings-modal work-schedule-day-entry-modal";
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    modal.setAttribute("aria-labelledby", "work-schedule-day-entry-title");
+
+    const backdrop = document.createElement("div");
+    backdrop.className = "work-schedule-type-settings-backdrop";
+
+    const panel = document.createElement("div");
+    panel.className = "work-schedule-type-settings-panel work-schedule-day-entry-modal-panel";
+
+    const header = document.createElement("div");
+    header.className = "work-schedule-type-settings-header";
+    const title = document.createElement("h3");
+    title.id = "work-schedule-day-entry-title";
+    title.className = "work-schedule-type-settings-title";
+    title.textContent = "근무 등록";
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "work-schedule-type-settings-close";
+    closeBtn.setAttribute("aria-label", "닫기");
+    closeBtn.innerHTML = "&times;";
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+
+    const body = document.createElement("div");
+    body.className = "work-schedule-day-entry-body";
+
+    const labelDate = document.createElement("label");
+    labelDate.className = "work-schedule-day-entry-label";
+    const spanDate = document.createElement("span");
+    spanDate.className = "work-schedule-day-entry-label-text";
+    spanDate.textContent = "근무일";
+    const dateInput = document.createElement("input");
+    dateInput.type = "date";
+    dateInput.className = "work-schedule-day-entry-date";
+    dateInput.value = dateKey;
+    labelDate.appendChild(spanDate);
+    labelDate.appendChild(dateInput);
+
+    const labelType = document.createElement("label");
+    labelType.className = "work-schedule-day-entry-label";
+    const spanType = document.createElement("span");
+    spanType.className = "work-schedule-day-entry-label-text";
+    spanType.textContent = "근무유형";
+    const select = document.createElement("select");
+    select.className = "work-schedule-day-entry-select";
+    select.setAttribute("aria-label", "근무유형");
+    const opt0 = document.createElement("option");
+    opt0.value = "";
+    opt0.textContent = "선택";
+    select.appendChild(opt0);
+    const seenTypeNames = new Set();
+    getWorkTypeOptions().forEach((name) => {
+      const n = (name || "").trim();
+      if (!n || seenTypeNames.has(n)) return;
+      seenTypeNames.add(n);
+      const o = document.createElement("option");
+      o.value = n;
+      o.textContent = n;
+      select.appendChild(o);
+    });
+    const existingForDay = getMergedInitialRows().filter(
+      (r) => normalizeWorkDateKey(r.workDate || "") === dateKey,
+    );
+    const preloadType = existingForDay.length ? (existingForDay[0].workType || "").trim() : "";
+    if (preloadType && [...select.options].some((op) => op.value === preloadType)) {
+      select.value = preloadType;
+    }
+    labelType.appendChild(spanType);
+    labelType.appendChild(select);
+
+    body.appendChild(labelDate);
+    body.appendChild(labelType);
+
+    const footer = document.createElement("div");
+    footer.className = "todo-list-modal-footer work-schedule-day-entry-footer";
+    const cancelBtn = document.createElement("button");
+    cancelBtn.type = "button";
+    cancelBtn.className = "todo-list-modal-cancel work-schedule-day-entry-cancel";
+    cancelBtn.textContent = "취소";
+    const saveBtn = document.createElement("button");
+    saveBtn.type = "button";
+    saveBtn.className = "todo-list-modal-confirm work-schedule-day-entry-save";
+    saveBtn.textContent = "저장";
+    footer.appendChild(cancelBtn);
+    footer.appendChild(saveBtn);
+
+    panel.appendChild(header);
+    panel.appendChild(body);
+    panel.appendChild(footer);
+    modal.appendChild(backdrop);
+    modal.appendChild(panel);
+
+    function closeModal() {
+      try {
+        document.removeEventListener("keydown", onKeyDown);
+      } catch (_) {}
+      modal.remove();
+    }
+
+    function onKeyDown(e) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeModal();
+      }
+    }
+
+    function onSave() {
+      const wd = normalizeWorkDateKey(dateInput.value || "");
+      const typeName = (select.value || "").trim();
+      if (!wd || wd.length < 10) {
+        window.alert("근무일을 선택해 주세요.");
+        return;
+      }
+      if (!typeName) {
+        window.alert("근무유형을 선택해 주세요.");
+        return;
+      }
+      const full = getWorkTypeOptionsFull();
+      const entry = full.find((o) => o.name === typeName);
+      let startTime = "";
+      let endTime = "";
+      if (READONLY_WORK_TYPES.includes(typeName)) {
+        startTime = "00:00";
+        endTime = "00:00";
+      } else if (entry) {
+        startTime = (entry.start || "").trim();
+        endTime = (entry.end || "").trim();
+      }
+      let hoursWorked = "";
+      if (startTime && endTime) {
+        const dur = durationFromStartEnd(startTime, endTime);
+        if (dur != null && dur > 0) hoursWorked = String(Math.round(dur * 100) / 100);
+      }
+      const newRow = {
+        id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : undefined,
+        workDate: wd,
+        workType: typeName,
+        startTime,
+        endTime,
+        hoursWorked,
+        hours: "",
+        memo: "",
+      };
+      /* 같은 근무일에 행이 여러 줄 쌓이지 않도록: 해당 날짜 기존 행은 모두 제거 후 한 줄로 덮어씀 */
+      const rows = getMergedInitialRows().filter((r) => normalizeWorkDateKey(r.workDate || "") !== wd);
+      rows.push(newRow);
+      rows.sort(compareWorkScheduleRowsByDateTimeAsc);
+      saveRows(rows);
+      /* 저장한 근무일이 속한 달로 커서 고정 — 모달 직후 월별보기가 오늘 달로 돌아가는 현상 방지 */
+      const dp = wd.split("-");
+      if (dp.length === 3) {
+        const cy = parseInt(dp[0], 10);
+        const cm = parseInt(dp[1], 10) - 1;
+        if (Number.isFinite(cy) && Number.isFinite(cm) && cm >= 0 && cm <= 11) {
+          setWorkScheduleMonthlyViewCursor(cy, cm);
+        }
+      }
+      closeModal();
+
+      if (activeWorkScheduleView === "monthly") {
+        renderMonthlyView();
+      }
+    }
+
+    backdrop.addEventListener("click", closeModal);
+    closeBtn.addEventListener("click", closeModal);
+    cancelBtn.addEventListener("click", closeModal);
+    saveBtn.addEventListener("click", onSave);
+    document.addEventListener("keydown", onKeyDown);
+
+    document.body.appendChild(modal);
+    requestAnimationFrame(() => {
+      select.focus();
+    });
+  }
+
   function renderMonthlyView() {
     const tableWrap = contentWrap.querySelector(".work-schedule-table-wrap");
     if (tableWrap) {
@@ -1340,7 +1542,12 @@ export function render(opts = {}) {
     }
     contentWrap.innerHTML = "";
     contentWrap.appendChild(
-      renderMonthlyContent({ typeOnly: true }),
+      renderMonthlyContent({
+        typeOnly: true,
+        onDayClick: (key) => openMonthlyDayEntryModal(key),
+        onMonthLabelClick: ({ year, month }) =>
+          openMonthlyDayEntryModal(defaultDateKeyForCalendarMonth(year, month)),
+      }),
     );
   }
 
