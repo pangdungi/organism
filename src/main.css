@@ -4534,6 +4534,8 @@ body {
   /* 모바일 근무표 탭: 월별 근무유형 캘린더 */
   .calendar-view--mobile-workschedule .work-schedule-monthly-content {
     width: 100%;
+    min-width: 0;
+    max-width: 100%;
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -4574,35 +4576,60 @@ body {
   .calendar-view--mobile-workschedule .work-schedule-monthly-top-row {
     margin-bottom: 0.5rem;
   }
+  .calendar-view--mobile-workschedule .work-schedule-content-wrap {
+    min-width: 0;
+    max-width: 100%;
+  }
   .calendar-view--mobile-workschedule .work-schedule-monthly-calendar {
     padding-bottom: 0.75rem;
     box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
   }
 
-  /* 모바일 근무표 월별: 7열 너비를 내용 길이에 따라 바꾸지 않음(grid minmax(0,1fr) + 셀 overflow) */
+  /* 모바일 근무표 월별: 7열 동일 너비(내용이 열을 밀지 않음) + 셀·자식 min-width 0 + 넘치면 말줄임 */
   .calendar-view--mobile-workschedule .work-schedule-monthly-weekdays,
   .calendar-view--mobile-workschedule .work-schedule-monthly-week {
     grid-template-columns: repeat(7, minmax(0, 1fr));
+    width: 100%;
   }
   .calendar-view--mobile-workschedule .work-schedule-monthly-weekday,
   .calendar-view--mobile-workschedule .work-schedule-monthly-day {
     min-width: 0;
+    max-width: 100%;
     box-sizing: border-box;
+    overflow: hidden;
   }
   .calendar-view--mobile-workschedule .work-schedule-monthly-day-entries {
     width: 100%;
     max-width: 100%;
+    min-width: 0;
     align-items: stretch;
     box-sizing: border-box;
+    overflow: hidden;
   }
   .calendar-view--mobile-workschedule .work-schedule-monthly-entry,
   .calendar-view--mobile-workschedule .work-schedule-monthly-entry--pills {
     max-width: 100%;
     min-width: 0;
+    width: 100%;
     box-sizing: border-box;
   }
+  /* 여러 pill이 가로로 늘어서 열을 넓히지 않도록 세로로 쌓고 각 줄 전체 너비에서 말줄임 */
+  .calendar-view--mobile-workschedule .work-schedule-monthly-entry--pills {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    align-self: stretch;
+  }
   .calendar-view--mobile-workschedule .work-schedule-monthly-type-pill {
+    display: block;
+    width: 100%;
     max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -4612,7 +4639,10 @@ body {
   }
   .calendar-view--mobile-workschedule .work-schedule-monthly-hours {
     display: block;
+    width: 100%;
     max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -5459,11 +5489,6 @@ body {
   }
   .time-ledger-view .time-filter-bar .time-task-setup-btn {
     border-right: none;
-  }
-
-  /* 모바일: 근무표에서 월별보기 탭 제거 */
-  .work-schedule-view-tabs .work-schedule-view-tab[data-view="monthly"] {
-    display: none !important;
   }
 
   /* 모바일: 근무표 안내 멘트 숨김 */
@@ -12795,8 +12820,7 @@ body {
   align-items: center;
   gap: 0.35rem;
   font-size: 0.6875rem;
-  border-left: 0.0938rem solid var(--line-l3-color);
-  padding-left: 0.35rem;
+  padding-left: 0;
 }
 
 .work-schedule-monthly-type {
