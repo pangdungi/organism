@@ -9,7 +9,7 @@
  * - Realtime은 postgres_changes 수신 후 디바운스(ms는 supabaseRealtimeSync 상수) 뒤에 pull 묶음 실행 — 1초 setInterval 폴링 아님.
  * - KPI Realtime 구독 테이블은 meta/categories/kpis 중심이며, dream_map_kpi_todos 등 할일 전용 테이블은 목록에 없을 수 있음.
  *   → 다른 기기에서 할일 행만 바뀐 경우 즉시 Realtime으로 안 잡힐 수 있고, 포커스 복귀·수동 새로고침·메타 변경 시 pull로 맞춤.
- * - 할일 목록(섹션별 calendar_section_tasks 등)은 todoSectionTasksSupabase 쪽 별도 로직.
+ * - 할 일 목록(calendar_section_tasks): 할일/일정 탭·내부 서브탭 클릭 시 1회 SELECT 후 표시 — 모달 저장/삭제는 별도 upsert/delete.
  */
 
 const KEY = "debug_sync_watch";

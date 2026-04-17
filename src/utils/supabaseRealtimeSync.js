@@ -202,7 +202,7 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
           timeLedgerRtTables: [...timeBatch.touchedTables],
         });
         logLpRender("realtime:debounced 틱 시작", { gen });
-        /* calendar_section_tasks: 할일 pull은 앱에서 할일/일정·캘린더 탭 클릭 시에만(hydrate) — Realtime으로 자동 pull 안 함 */
+        /* calendar_section_tasks: 탭 클릭 시에만 pull — Realtime 묶음 fetch에 포함 안 함 */
         const needTodo = false;
         /* calendar_section_tasks·시간가계부 등만 바뀐 배치에서 KPI pull까지 돌리면 dream.pull·setItem이 불필요하게 반복됨 */
         const needsKpiMapPull = [...realtimeTouchedTables].some((t) =>
@@ -360,7 +360,7 @@ export function initSupabaseRealtimeSync(opts) {
       config: { broadcast: { self: false } },
     });
 
-    /* calendar_section_tasks: Realtime으로 묶음 pull 안 함 — 할일/일정·캘린더 상위 탭 클릭 시 hydrate만 */
+    /* calendar_section_tasks: Realtime으로 자동 목록 갱신 안 함(탭 진입 시 SELECT) */
 
     for (const table of KPI_REALTIME_TABLES) {
       ch = ch.on(

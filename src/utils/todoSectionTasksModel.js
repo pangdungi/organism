@@ -1,13 +1,13 @@
 /**
- * 할일/일정 섹션 할 일 — 진실 원천은 Supabase(calendar_section_tasks).
- * 아래 메모리는 서버 SELECT 직후에만 채워지는 표시용 버퍼이며, tombstone·localModifiedAt 같은
- * 별도 “로컬 진실” 메타는 두지 않는다. 동기화 시 upsert는 메모리에 있는 전 실질 행 일괄 반영 후
- * 다시 서버 스냅샷으로 덮는다.
- * 구버전 localStorage 키는 읽지 않고 제거만(예전 디스크 데이터는 채택하지 않음).
+ * 할일/일정 섹션 할 일 — 이 탭 세션 안에서만 쓰는 메모리 객체 + DB 행 모양(`localTaskToDbPayload`).
+ *
+ * 서버(Supabase)가 저장의 단일 원본이다. 이 메모리는 화면/탭 동안의 스냅샷일 뿐이며,
+ * 여기서 모아서 서버에 올리는 일괄 동기화는 하지 않는다. 서버 쓰기는 사용자 확정
+ * 경로(모달 저장·삭제 등)에서만 수행한다.
+ * 디스크(localStorage)에는 섹션 할 일 행을 쓰지 않음(구버전 키만 제거).
  */
 
 import { clearSubtasks } from "./todoSubtasks.js";
-import { logTodoResurrection } from "./todoResurrectionDebug.js";
 
 export const SECTION_TASKS_KEY = "todo-section-tasks";
 export const CUSTOM_SECTION_TASKS_KEY = "todo-custom-section-tasks";
@@ -45,7 +45,6 @@ function migrateLegacyLocalStorageOnce() {
   CALENDAR_FIXED_SECTION_IDS.forEach((k) => {
     _sectionTasksMem[k] = [];
   });
-  /* 디스크에서 할 일 목록을 읽어 오지 않음 — 키만 제거(서버 pull로만 채움) */
   try {
     localStorage.removeItem(SECTION_TASKS_KEY);
     localStorage.removeItem(CUSTOM_SECTION_TASKS_KEY);
@@ -73,7 +72,6 @@ export function readCustomSectionTasksObject() {
   return cloneDeep(_customSectionTasksMem);
 }
 
-/** 고정·커스텀 섹션 할 일 행 개수(콘솔 디버그용) */
 export function countTodoSectionTasksInStorage() {
   const fixed = readSectionTasksObject();
   const custom = readCustomSectionTasksObject();
@@ -101,16 +99,11 @@ export function writeCustomSectionTasksObject(obj) {
   _customSectionTasksMem = cloneDeep(obj || {});
 }
 
-/** pull 전후 변경 감지(무한 리렌더 방지) */
 export function snapshotSectionTasksForPullCompare() {
   migrateLegacyLocalStorageOnce();
   return `${JSON.stringify(_sectionTasksMem)}\n${JSON.stringify(_customSectionTasksMem)}`;
 }
 
-/**
- * sync/pull 직후 비교용 — serverUpdatedAt 만 바뀐 경우는 동일로 본다.
- * (서버 round-trip 후 타임스탬프만 갱신돼도 전체 리렌더·hydrate 연쇄가 나지 않게)
- */
 export function snapshotSectionTasksSemanticForCompare() {
   const fixed = readSectionTasksObject();
   const custom = readCustomSectionTasksObject();
@@ -131,9 +124,6 @@ export function snapshotSectionTasksSemanticForCompare() {
   return `${JSON.stringify(stripContainer(fixed))}\n${JSON.stringify(stripContainer(custom))}`;
 }
 
-/**
- * 로그아웃·계정 전환 시: 섹션 할 일 메모리 초기화 및 구버전 LS 제거
- */
 export function clearTodoSectionTasksMemAndLegacy() {
   try {
     localStorage.removeItem(SECTION_TASKS_KEY);
@@ -158,7 +148,6 @@ function taskRowIsSubstantive(t) {
   return !!(t && String(t.name || "").trim() && UUID_RE.test(id));
 }
 
-/** 로컬 task → DB upsert payload (id는 클라이언트 생성 UUID) */
 export function localTaskToDbPayload(userId, sectionKey, isCustom, sortOrder, t) {
   const id = String(t.taskId || t.id || "").trim();
   if (!UUID_RE.test(id)) return null;
@@ -181,27 +170,6 @@ export function localTaskToDbPayload(userId, sectionKey, isCustom, sortOrder, t)
   };
 }
 
-function dbRowToLocalTask(row) {
-  return {
-    taskId: row.id,
-    name: row.name ?? "",
-    startDate: row.start_date ? String(row.start_date).slice(0, 10) : "",
-    dueDate: row.due_date ? String(row.due_date).slice(0, 10) : "",
-    startTime: row.start_time ?? "",
-    endTime: row.end_time ?? "",
-    eisenhower: row.eisenhower ?? "",
-    done: !!row.done,
-    itemType: row.item_type ?? "todo",
-    reminderDate: row.reminder_date ? String(row.reminder_date).slice(0, 10) : "",
-    reminderTime: row.reminder_time ?? "",
-    serverUpdatedAt:
-      row.updated_at != null && row.updated_at !== ""
-        ? String(row.updated_at)
-        : "",
-  };
-}
-
-/** 동기화 메타 제외 후 비교 (serverUpdatedAt) */
 export function stripTodoTaskSyncMetaForCompare(t) {
   if (!t || typeof t !== "object") return "";
   const { serverUpdatedAt, ...rest } = t;
@@ -213,53 +181,80 @@ export function stripTodoTaskSyncMetaForCompare(t) {
 }
 
 /**
- * 서버 SELECT 결과만으로 섹션 할 일 메모리를 통째로 덮어씀(서버 = 진실, 화면은 서버 스냅샷 반영).
- * pull 직후·sync 성공 후에 호출한다.
+ * 서버 `calendar_section_tasks` SELECT 결과만으로 세션 메모리를 덮어씀(병합·로컬 우선 없음).
  * @param {unknown[]} rows
- * @param {string} [caller] 콘솔 출처 표시용 — "pull" | "sync" 등
+ * @param {string[]} knownCustomSectionIds `getCustomSections()`의 id 목록(빈 리스트도 유지)
  */
-export function replaceSectionTasksFromServerRows(rows, caller = "") {
+export function applyCalendarSectionTasksServerSnapshot(rows, knownCustomSectionIds = []) {
   migrateLegacyLocalStorageOnce();
-  const fixed = {};
+  const list = Array.isArray(rows) ? rows : [];
+
+  /** @type {Record<string, { sort: number, task: Record<string, unknown> }[]>} */
+  const tempFixed = {};
   CALENDAR_FIXED_SECTION_IDS.forEach((k) => {
-    fixed[k] = [];
+    tempFixed[k] = [];
   });
-  const custom = {};
+  /** @type {Record<string, { sort: number, task: Record<string, unknown> }[]>} */
+  const tempCustom = {};
+  const known = new Set((knownCustomSectionIds || []).map((id) => String(id).trim()).filter(Boolean));
 
-  const sorted = [...(Array.isArray(rows) ? rows : [])].sort((a, b) => {
-    const sk = String(a.section_key || "").localeCompare(String(b.section_key || ""));
-    if (sk !== 0) return sk;
-    const ic = (a.is_custom_section ? 1 : 0) - (b.is_custom_section ? 1 : 0);
-    if (ic !== 0) return ic;
-    return (a.sort_order || 0) - (b.sort_order || 0);
-  });
+  for (const id of known) {
+    tempCustom[id] = [];
+  }
 
-  let _dbgApplied = 0;
-  for (const row of sorted) {
-    const id = String(row.id || "").trim();
-    if (!id) continue;
-    const task = dbRowToLocalTask(row);
-    const key = String(row.section_key || "").trim();
-    const isCustom = !!row.is_custom_section;
-    if (!key) continue;
-    _dbgApplied++;
+  function rowToTask(row) {
+    const r = row && typeof row === "object" ? row : {};
+    const id = String(r.id || "").trim();
+    return {
+      taskId: id,
+      name: String(r.name != null ? r.name : "").trim(),
+      startDate: r.start_date ? String(r.start_date).slice(0, 10) : "",
+      dueDate: r.due_date ? String(r.due_date).slice(0, 10) : "",
+      startTime: String(r.start_time != null ? r.start_time : "").trim(),
+      endTime: String(r.end_time != null ? r.end_time : "").trim(),
+      reminderDate: r.reminder_date ? String(r.reminder_date).slice(0, 10) : "",
+      reminderTime: String(r.reminder_time != null ? r.reminder_time : "").trim(),
+      eisenhower: String(r.eisenhower != null ? r.eisenhower : "").trim(),
+      done: !!r.done,
+      itemType: String(r.item_type != null ? r.item_type : "todo").trim() || "todo",
+      serverUpdatedAt: r.updated_at != null ? String(r.updated_at) : "",
+    };
+  }
+
+  for (const row of list) {
+    const r = row && typeof row === "object" ? row : {};
+    const sk = String(r.section_key || "").trim();
+    if (!sk) continue;
+    const sort = typeof r.sort_order === "number" ? r.sort_order : Number(r.sort_order) || 0;
+    const task = rowToTask(r);
+    const isCustom = !!r.is_custom_section || sk.startsWith("custom-");
     if (isCustom) {
-      if (!custom[key]) custom[key] = [];
-      custom[key].push(task);
-    } else {
-      if (!fixed[key]) fixed[key] = [];
-      fixed[key].push(task);
+      if (!tempCustom[sk]) tempCustom[sk] = [];
+      tempCustom[sk].push({ sort, task });
+    } else if (Object.prototype.hasOwnProperty.call(tempFixed, sk)) {
+      tempFixed[sk].push({ sort, task });
     }
   }
+
+  const fixedOut = {};
   CALENDAR_FIXED_SECTION_IDS.forEach((k) => {
-    if (!fixed[k]) fixed[k] = [];
+    const arr = (tempFixed[k] || []).slice().sort((a, b) => a.sort - b.sort);
+    fixedOut[k] = arr.map((x) => x.task);
   });
-  writeSectionTasksObject(fixed);
-  writeCustomSectionTasksObject(custom);
-  logTodoResurrection("replaceSectionTasksFromServerRows_끝", {
-    서버행_총: sorted.length,
-    로컬에_쓴_행수: _dbgApplied,
-  });
+
+  const customOut = {};
+  for (const k of Object.keys(tempCustom)) {
+    const arr = tempCustom[k].slice().sort((a, b) => a.sort - b.sort);
+    customOut[k] = arr.map((x) => x.task);
+  }
+
+  writeSectionTasksObject(fixedOut);
+  writeCustomSectionTasksObject(customOut);
+}
+
+/** @deprecated applyCalendarSectionTasksServerSnapshot 사용 */
+export function replaceSectionTasksFromServerRows(rows, _caller = "") {
+  applyCalendarSectionTasksServerSnapshot(rows, []);
 }
 
 function ensureTaskIdsInList(arr) {
@@ -276,7 +271,6 @@ function ensureTaskIdsInList(arr) {
   return { list: out, dirty };
 }
 
-/** 모든 섹션 taskId를 UUID로 보정 @returns {{ dirty: boolean }} */
 export function ensureCalendarSectionTaskIds() {
   const fixed = readSectionTasksObject();
   const custom = readCustomSectionTasksObject();
@@ -332,11 +326,6 @@ function taskRowMarkedDone(t) {
   return false;
 }
 
-/**
- * 고정·커스텀 섹션 저장소에서 완료된 할 일을 모두 제거 후 Supabase 동기 시 삭제되도록 반환.
- * - 화면: 카드 data-done / 테이블 todo 행 체크 기준 taskId 제거(저장소 done 과 불일치해도 삭제)
- * - 저장소: done 플래그 true 인 행 제거(다른 기기·탭에만 있던 완료분)
- */
 export function purgeAllCompletedSectionAndCustomTasks() {
   const fixed = readSectionTasksObject();
   const custom = readCustomSectionTasksObject();

@@ -44,7 +44,7 @@ import { supabase } from "../supabase.js";
 import {
   persistSectionTasksAndSchedule,
   persistCustomSectionTasksAndSchedule,
-  hydrateTodoSectionTasksFromCloud,
+  pullCalendarSectionTasksFromSupabase,
 } from "../utils/todoSectionTasksSupabase.js";
 import {
   readSectionTasksObject,
@@ -70,26 +70,6 @@ function persistCalendarMainViewIfValid(view) {
   try {
     localStorage.setItem(CALENDAR_MAIN_VIEW_STORAGE_KEY, view);
   } catch (_) {}
-}
-
-/** 근무표와 동일: 이전 마운트의 hydrate.finally가 늦게 끝나면 덮어쓰지 않도록 */
-let _calendarTodoHydrateGeneration = 0;
-
-/** 할일 calendar_section_tasks: 사용자가 1~4 서브탭 버튼을 눌렀을 때만 서버 pull( renderContent·재렌더마다 호출하면 삭제 중 pull 레이스) */
-function scheduleHydrateTodoSectionTasksAfterCalendarSubtab(reason, mountEl) {
-  if (!supabase) return;
-  const hydrateGen = ++_calendarTodoHydrateGeneration;
-  void hydrateTodoSectionTasksFromCloud(reason)
-    .catch(() => {})
-    .then((needRefresh) => {
-      if (hydrateGen !== _calendarTodoHydrateGeneration) return;
-      if (!mountEl?.isConnected) return;
-      if (needRefresh) {
-        try {
-          window.__lpRenderMain?.({ skipTodoSaveBeforeUnmount: true });
-        } catch (_) {}
-      }
-    });
 }
 
 const CALENDAR_DATE_DEBUG = false;
@@ -5870,14 +5850,24 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
     }
   }
 
-  function renderSubView(subViewId) {
-    if (subTabs.parentNode) subTabs.remove();
-    contentArea.innerHTML = "";
+  let _nestedSubViewGen = 0;
+
+  async function renderSubView(subViewId) {
+    const gen = ++_nestedSubViewGen;
     dateDebug("renderSubView: saving before switch", {
       subViewId,
       hasSidebar: !!contentArea.querySelector(".calendar-todo-sidebar-body"),
     });
     saveTodoListBeforeUnmount(contentArea);
+    try {
+      await pullCalendarSectionTasksFromSupabase({
+        reason: `calendar_nested_${subViewId}`,
+        subView: "calendar",
+      });
+    } catch (_) {}
+    if (gen !== _nestedSubViewGen) return;
+    if (subTabs.parentNode) subTabs.remove();
+    contentArea.innerHTML = "";
     if (subViewId === "monthly") {
       contentArea.appendChild(renderMonthlyView(null));
     } else if (subViewId === "2week") {
@@ -5901,7 +5891,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
         .querySelectorAll(".calendar-sub-tab")
         .forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
-      renderSubView(btn.dataset.subView);
+      void renderSubView(btn.dataset.subView);
     });
   });
 
@@ -5914,7 +5904,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
       .forEach((b) => b.classList.remove("active"));
     activeBtn.classList.add("active");
   }
-  renderSubView(initialSubView);
+  void renderSubView(initialSubView);
 
   return wrap;
 }
@@ -6506,13 +6496,22 @@ export function render() {
   contentWrap.className = "calendar-content-wrap";
 
   let currentView = "todo";
+  let _renderContentGen = 0;
 
-  function renderContent(view) {
+  async function renderContent(view) {
     const onlySaveWhenFullTodoList = currentView === "todo" || currentView === "eisenhower";
     if (onlySaveWhenFullTodoList) {
       saveTodoListBeforeUnmount(contentWrap);
     }
     registerEisenhowerQuadrantsRefresh(null);
+    const gen = ++_renderContentGen;
+    try {
+      await pullCalendarSectionTasksFromSupabase({
+        reason: "calendar_main_subtab",
+        subView: view,
+      });
+    } catch (_) {}
+    if (gen !== _renderContentGen) return;
     currentView = view;
     if (contentWrap.contains(tabs)) {
       el.insertBefore(tabs, contentWrap);
@@ -6552,10 +6551,7 @@ export function render() {
         .forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
       const v = btn.dataset.view;
-      renderContent(v);
-      if (["todo", "eisenhower", "calendar", "1day"].includes(v)) {
-        scheduleHydrateTodoSectionTasksAfterCalendarSubtab(`calendar_subtab_${v}`, el);
-      }
+      void renderContent(v);
     });
   });
 
@@ -6580,8 +6576,8 @@ export function render() {
   tabs.querySelectorAll(".time-view-tab").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.view === initialMainView);
   });
-  /* 초기 탭: 저장값(4. 오늘 해치우기 등) — 서버 pull은 renderContent 안에서 서브탭별로만 */
-  renderContent(initialMainView);
+  /* 초기 탭: 저장값(4. 오늘 해치우기 등) — 클릭과 동일하게 1회 서버 SELECT 후 그림 */
+  void renderContent(initialMainView);
 
   return el;
 }

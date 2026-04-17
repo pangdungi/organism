@@ -17,9 +17,9 @@ import { render as renderArchive } from "./views/Archive.js";
 import { render as renderDiary } from "./views/Diary.js";
 import { render as renderIdea } from "./views/Idea.js";
 import { render as renderHome } from "./views/Home.js";
+import { pullCalendarSectionTasksFromSupabase } from "./utils/todoSectionTasksSupabase.js";
 import { attachAssetExpenseTransactionsSaveListener } from "./utils/assetExpenseTransactionsSupabase.js";
 import { initPushReminderInAppPopup } from "./utils/initPushReminderInAppPopup.js";
-import { hydrateTodoSectionTasksFromCloud } from "./utils/todoSectionTasksSupabase.js";
 import { hydrateTimeDailyBudgetFromCloud } from "./utils/timeDailyBudgetSupabase.js";
 import { hydrateTimeLedgerTasksFromCloud } from "./utils/timeLedgerTasksSupabase.js";
 import {
@@ -341,18 +341,17 @@ export function mountApp(container) {
         b.classList.toggle("active", b.dataset.tabId === tabId);
       });
     }
-    renderMain(main, { force: true });
-    /* 할일/일정·캘린더 상위 탭 진입 시 서버에서 calendar_section_tasks pull (KPI 탭과 동일하게 setActiveTab에서 명시) */
     if (tabId === "calendar" || tabId === "schedulecalendar") {
-      void hydrateTodoSectionTasksFromCloud(`app_setActiveTab_${tabId}`)
-        .catch(() => {})
-        .then((needRefresh) => {
-          if (needRefresh && !isUserTypingInApp()) {
-            try {
-              window.__lpRenderMain?.({ skipTodoSaveBeforeUnmount: true });
-            } catch (_) {}
-          }
-        });
+      void (async () => {
+        try {
+          await pullCalendarSectionTasksFromSupabase({
+            reason: `app_setActiveTab_${tabId}`,
+          });
+        } catch (_) {}
+        renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
+      })();
+    } else {
+      renderMain(main, { force: true });
     }
     /* 꿈·부수입·행복·건강: 다른 기기에서 삭제·추가한 내용을 보려면 진입 시 서버 pull 필요.
      * localStorage 문자열이 바뀐 경우에만 한 번 더 그림(불필요한 깜빡임 감소).
@@ -637,7 +636,7 @@ export function mountApp(container) {
     window.__lpSyncWatchHelp = printSyncWatchHelp;
   }
 
-  /** 브라우저 탭 포커스 복귀 시: KPI·시간·자산·일기 pull (할일 calendar_section_tasks는 탭 클릭 시에만 pull) */
+  /** 브라우저 탭 포커스 복귀 시: KPI·시간·자산·일기 pull (할 일 목록은 서버에서 목록 안 받음) */
   let _browserTabVisiblePullTimer = null;
   document.addEventListener(
     "visibilitychange",
@@ -735,7 +734,7 @@ export function mountApp(container) {
   renderMain(main);
   logTabSync("boot_hydrate", { phase: "Promise.all" });
   void Promise.all([
-    /* 할일 섹션: calendar_section_tasks는 할일/일정 서브탭 전환 시에만 pull — 부팅 시 pull 제거 */
+    /* 할 일 목록: 탭 진입 시 pull은 setActiveTab 안에서 처리 — 여기서는 자리만 */
     Promise.resolve(false),
     hydrateTimeDailyBudgetFromCloud(),
     hydrateTimeLedgerTasksFromCloud(),
