@@ -1,5 +1,5 @@
 /**
- * 근무표 진단 로그 — localStorage 또는 sessionStorage `debug_work_schedule` === "1" 일 때만.
+ * 근무표 진단 (콘솔 비활성)
  */
 
 export function workScheduleDiagEnabled() {
@@ -14,9 +14,4 @@ export function workScheduleDiagEnabled() {
   return false;
 }
 
-export function workScheduleDiagLog(...args) {
-  if (!workScheduleDiagEnabled()) return;
-  try {
-    console.log("[work-schedule]", { t: Date.now() }, ...args);
-  } catch (_) {}
-}
+export function workScheduleDiagLog(..._args) {}

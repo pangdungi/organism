@@ -126,7 +126,7 @@ export function render() {
   (function mountDiary() {
   function notifyServerDeletedEntry(entryId) {
     if (isDiaryEntryUuid(entryId)) {
-      void deleteDiaryEntryFromSupabase(entryId).catch((e) => console.warn("[diary]", e));
+      void deleteDiaryEntryFromSupabase(entryId).catch(() => {});
     }
   }
 
@@ -855,7 +855,7 @@ export function render() {
     renderLayout();
 
     void hydrateDiaryFromCloud()
-      .catch((err) => console.warn("[diary]", err))
+      .catch(() => {})
       .finally(() => {
         entries = loadDiaryEntries();
         const alist = ensureTabEntries(currentTabId);

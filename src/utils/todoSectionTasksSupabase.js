@@ -273,14 +273,6 @@ export async function pullCalendarSectionTasksFromSupabase(opts = {}) {
   return runTodoSectionTasksSerialized(async () => {
     const userId = await getSessionUserId();
     if (!userId || !supabase) {
-      try {
-        console.info("[할일·pull]", "건너뜀", {
-          출처: "Supabase 테이블 없음 또는 로그인 없음",
-          이유: !supabase ? "no_supabase" : "no_session",
-          reason: String(reason || ""),
-          subView: subView != null ? String(subView) : "",
-        });
-      } catch (_) {}
       return { ok: false, reason: !supabase ? "no_supabase" : "no_session", rowCount: 0 };
     }
 
@@ -291,29 +283,12 @@ export async function pullCalendarSectionTasksFromSupabase(opts = {}) {
       .order("sort_order", { ascending: true });
 
     if (error) {
-      try {
-        console.info("[할일·pull]", "실패", {
-          출처: `Supabase public.${TABLE} (SELECT)`,
-          message: error.message || "select_failed",
-          reason: String(reason || ""),
-          subView: subView != null ? String(subView) : "",
-        });
-      } catch (_) {}
       return { ok: false, reason: error.message || "select_failed", rowCount: 0 };
     }
 
     const rows = Array.isArray(data) ? data : [];
     const knownCustomSectionIds = getCustomSections().map((s) => s.id).filter(Boolean);
     applyCalendarSectionTasksServerSnapshot(rows, knownCustomSectionIds);
-
-    try {
-      console.info("[할일·pull]", "불러옴", {
-        출처: `Supabase public.${TABLE} (SELECT, user_id 일치 행만)`,
-        할일개수: rows.length,
-        reason: String(reason || ""),
-        subView: subView != null ? String(subView) : "",
-      });
-    } catch (_) {}
 
     logTodoServerCrud("PULL", {
       reason: String(reason || ""),

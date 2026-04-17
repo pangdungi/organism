@@ -73,10 +73,8 @@ function persistCalendarMainViewIfValid(view) {
 }
 
 const CALENDAR_DATE_DEBUG = false;
-function dateDebug(tag, ...args) {
-  if (CALENDAR_DATE_DEBUG && typeof console !== "undefined" && console.log) {
-    console.log("[DATE-DEBUG] " + tag, ...args);
-  }
+function dateDebug(_tag, ..._args) {
+  void CALENDAR_DATE_DEBUG;
 }
 
 /** 1일 뷰: document 리스너는 한 번만 — 탭 전환·재진입 시 핸들러만 교체 (누적 방지) */
@@ -3391,14 +3389,12 @@ const TT_SYNC_DEBUG = false;
 if (typeof window !== "undefined") window.TT_SYNC_DEBUG = TT_SYNC_DEBUG;
 function collectLiveScheduledFromBudgetColumn(budgetColumn) {
   if (!budgetColumn) {
-    if (TT_SYNC_DEBUG) console.log("[TT-SYNC] collectLiveScheduled: no budgetColumn");
     return {};
   }
   const byTask = {};
   const rows = budgetColumn.querySelectorAll(
     ".time-daily-budget-table-block tbody tr, .calendar-1day-todo-table tbody tr",
   );
-  if (TT_SYNC_DEBUG) console.log("[TT-SYNC] collectLiveScheduled: rows found", rows.length);
   rows.forEach((row, idx) => {
     if (row.classList.contains("time-row-add")) return;
     const name = (row.dataset.taskName || "").trim();
@@ -3408,15 +3404,12 @@ function collectLiveScheduledFromBudgetColumn(budgetColumn) {
     const endRaw = inputs[1]?.value ?? row.dataset.scheduledEnd ?? "";
     const start = String(startRaw).trim();
     const end = String(endRaw).trim();
-    if (TT_SYNC_DEBUG && (start || end)) {
-      console.log(`[TT-SYNC] row ${idx} ${name}: start="${start}" end="${end}" (input[0]=${inputs[0]?.value ?? "?"} input[1]=${inputs[1]?.value ?? "?"})`);
-    }
+    void idx;
     if (!start || !end) return;
     const st = `${start}-${end}`;
     if (!byTask[name]) byTask[name] = [];
     byTask[name].push(st);
   });
-  if (TT_SYNC_DEBUG) console.log("[TT-SYNC] collectLiveScheduled result", JSON.stringify(byTask));
   return byTask;
 }
 
@@ -3438,15 +3431,6 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   Object.entries(liveFromDom).forEach(([task, times]) => {
     budgetGoals[task] = { ...(budgetGoals[task] || {}), scheduledTimes: times };
   });
-  if (TT_SYNC_DEBUG) {
-    console.log("[TT-SYNC] build1DayTimetableOverlays", {
-      targetKey,
-      liveFromDom,
-      merged: Object.fromEntries(
-        Object.entries(budgetGoals).map(([k, v]) => [k, v?.scheduledTimes ?? v?.scheduledTime]),
-      ),
-    });
-  }
   const allTimeRows = loadTimeRows();
   const tasks = getAllTasksForDateDisplay(targetKey);
   const parseDateFromTimeStr = (str) => {
@@ -3461,15 +3445,6 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   const actualRows = allTimeRows.filter(
     (r) => normDate(r.date || parseDateFromTimeStr(r.startTime)) === actualFilterKey,
   );
-  if (TT_SYNC_DEBUG) {
-    console.log("[시간가계부→캘린더] build1DayTimetableOverlays actualRows", {
-      targetKey,
-      actualFilterKey,
-      totalFromStorage: allTimeRows.length,
-      filteredForDate: actualRows.length,
-      rows: actualRows.map((r) => ({ task: r.taskName, start: r.startTime, end: r.endTime })),
-    });
-  }
   const parseHhMmToMinutes = (s) => {
     if (!s || !s.trim()) return null;
     const str = String(s).trim();
@@ -3588,15 +3563,6 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
       });
     }
     const sorted = spans.sort((a, b) => a.startMin - b.startMin);
-    if (TT_SYNC_DEBUG) {
-      console.log("[TT-SYNC] buildExpectedSpansFromTasks raw", sorted.length, sorted.map((s) => ({
-        task: s.taskName,
-        start: s.startDisplay,
-        end: s.endDisplay,
-        startMin: s.startMin,
-        endMin: s.endMin,
-      })));
-    }
     const validSorted = sorted.filter((s) => s.endMin > s.startMin);
     const withLanes = assignLanesToSpans(validSorted);
     const normalized = withLanes.spans.map((s) => ({
@@ -3604,14 +3570,6 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
       startDisplay: fmt(s.startMin),
       endDisplay: fmt(s.endMin),
     }));
-    if (TT_SYNC_DEBUG) {
-      console.log("[TT-SYNC] assignLanesToSpans result", normalized.length, "maxLane:", withLanes.maxLane, normalized.map((s) => ({
-        task: s.taskName,
-        start: s.startDisplay,
-        end: s.endDisplay,
-        lane: s.lane,
-      })));
-    }
     return { spans: normalized, maxLane: withLanes.maxLane };
   };
   /** 겹치는 스팬에 레인 할당. 연속(이전 종료 분 = 다음 시작 분)은 같은 레인. 겹침은 start < 이전 레인의 종료 분 */
@@ -3792,14 +3750,6 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   const ACTUAL_MIN_MINUTES_TO_SHOW_LABEL = 30;
 
   const createOverlay = (spans, colors, isActual, maxLane = 0) => {
-    if (!isActual && TT_SYNC_DEBUG) {
-      console.log("[TT-SYNC] createOverlay expected spans", spans.length, spans.map((s) => ({
-        task: s.taskName,
-        start: s.startDisplay,
-        end: s.endDisplay,
-        lane: s.lane,
-      })));
-    }
     const overlay = document.createElement("div");
     overlay.className = `calendar-1day-time-fill-overlay calendar-1day-time-fill-overlay--${isActual ? "actual" : "expected"}`;
     const laneCount = Math.max(1, maxLane + 1);
@@ -3821,24 +3771,6 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
           ? Math.max(actualBlockMin, ACTUAL_MIN_VISUAL_MINUTES)
           : actualBlockMin;
       const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-      if (TT_SYNC_DEBUG && !isActual) {
-        console.log("[TT-SYNC] blockFill", {
-          tasks: group.map((s) => `${s.taskName} ${s.startDisplay}~${s.endDisplay}`),
-          blockStartMin,
-          blockEndMin,
-          blockStartMinFmt: fmt(blockStartMin),
-          blockEndMinFmt: fmt(blockEndMin),
-          blockStartSlot,
-          blockEndSlot,
-          blockHeightMin,
-          actualBlockMin,
-          heightPct: blockHeightMin > 0 && actualBlockMin < blockHeightMin
-            ? ((actualBlockMin / blockHeightMin) * 100).toFixed(1) + "%"
-            : "100%",
-          slotStartMin: blockStartSlot * MIN_PER_SLOT,
-          startOffset: blockStartMin - blockStartSlot * MIN_PER_SLOT,
-        });
-      }
       const useLaneLayout = laneCount > 1;
       const blockFill = document.createElement("div");
       blockFill.className =
@@ -4457,19 +4389,13 @@ function render1DayView(tabsElement) {
     });
 
     const onScheduledUpdate = (dateStr) => {
-      if (TT_SYNC_DEBUG) console.log("[TT-SYNC] onScheduledUpdate called", dateStr);
       requestAnimationFrame(() => {
         const inner = wrap.querySelector(".calendar-1day-time-table-inner");
         if (!inner || !dateStr) {
-          if (TT_SYNC_DEBUG) console.log("[TT-SYNC] skip: no inner or dateStr", { inner: !!inner, dateStr });
           return;
         }
         const budgetColOrNull =
           wrap.querySelector(".calendar-1day-budget-column") || null;
-        if (TT_SYNC_DEBUG)
-          console.log("[TT-SYNC] building overlays", {
-            hasBudgetCol: !!budgetColOrNull,
-          });
         const actualDateKey = wrap.dataset.actualShowsYesterday === "true" ? getYesterdayKey(dateStr) : undefined;
         const { expected, actual } = build1DayTimetableOverlays(
           dateStr,
@@ -4486,8 +4412,6 @@ function render1DayView(tabsElement) {
         else inner.appendChild(expected);
         if (oldAct) oldAct.replaceWith(actual);
         else inner.appendChild(actual);
-        const labels = [...expected.querySelectorAll(".calendar-1day-time-slot-label")].map((e) => e.textContent);
-        if (TT_SYNC_DEBUG) console.log("[TT-SYNC] overlay replaced, labels:", labels);
       });
     };
     const onOverlapCleared = () => {
@@ -4809,15 +4733,7 @@ function render1DayView(tabsElement) {
     const timeTableInner = wrap.querySelector(
       ".calendar-1day-time-table-inner",
     );
-    if (TT_SYNC_DEBUG) {
-      console.log("[시간가계부→캘린더] refreshTimetableOverlays", {
-        source,
-        wrapInDoc,
-        dateStr,
-        hasTimeTableInner: !!timeTableInner,
-        willRefresh: wrapInDoc && timeTableInner && dateStr,
-      });
-    }
+    void source;
     if (!wrapInDoc) return;
     if (timeTableInner && dateStr) {
       const budgetCol = wrap.querySelector(".calendar-1day-budget-column");
@@ -4844,15 +4760,6 @@ function render1DayView(tabsElement) {
   try {
     renderCalendar();
   } catch (err) {
-    try {
-      if (
-        typeof localStorage !== "undefined" &&
-        localStorage.getItem("debug_calendar_1day") === "1"
-      ) {
-        console.error("[할일/일정·1day] renderCalendar() 실패:", err?.message, err);
-        if (err?.stack) console.error(err.stack);
-      }
-    } catch (_) {}
     throw err;
   }
 
@@ -6533,13 +6440,11 @@ export function render() {
       }
       persistCalendarMainViewIfValid(view);
     } catch (err) {
-      console.error("[할일/일정] renderContent 중 오류 — view:", view, err?.message, err);
-      if (err?.stack) console.error(err.stack);
       const errBox = document.createElement("div");
       errBox.className = "calendar-render-error";
       errBox.style.cssText =
         "padding:1rem 1.25rem;margin:1rem;color:#b91c1c;font-size:0.875rem;";
-      errBox.innerHTML = `<p><strong>이 화면을 그리는 중 오류가 났습니다.</strong></p><p>${String(err?.message || err)}</p><p style="opacity:.85">콘솔에 스택이 출력되었는지 확인해 주세요.</p>`;
+      errBox.innerHTML = `<p><strong>이 화면을 그리는 중 오류가 났습니다.</strong></p><p>${String(err?.message || err)}</p>`;
       contentWrap.appendChild(errBox);
     }
   }

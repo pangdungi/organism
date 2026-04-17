@@ -1,10 +1,5 @@
 /**
- * 아무 조작 없이도 DOM이 자주 바뀌는지 확인용 (개발자 도구 깜빡임 원인 후보).
- *
- * 켜기: localStorage.setItem("debug_dom_pulse", "1"); 후 로그인·앱 로드(또는 새로고침)
- * 끄기: localStorage.removeItem("debug_dom_pulse"); 후 새로고침
- *
- * 주의: subtree 관찰은 비용이 있으니 원인 확인 후 반드시 끕니다.
+ * DOM 변화 관찰 (콘솔 비활성, 플래그 시에만 observer 부착)
  */
 
 let _attached = false;
@@ -40,15 +35,7 @@ export function initDomPulseDebug() {
     const copy = batch;
     batch = [];
     if (copy.length === 0) return;
-    const byType = { childList: 0, attributes: 0, characterData: 0 };
-    for (const x of copy) {
-      if (x.type in byType) byType[x.type]++;
-    }
-    console.warn("[dom-pulse] body subtree 변화 (600ms 묶음)", {
-      total: copy.length,
-      byType,
-      sample: copy.slice(0, 40),
-    });
+    void copy;
   };
 
   const obs = new MutationObserver((records) => {
@@ -69,8 +56,4 @@ export function initDomPulseDebug() {
     attributes: true,
     attributeFilter: ["class", "hidden", "aria-hidden", "style", "data-date-str"],
   });
-
-  console.info(
-    "[dom-pulse] 관찰 시작 — 끄기: localStorage.removeItem(\"debug_dom_pulse\") 후 새로고침",
-  );
 }

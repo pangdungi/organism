@@ -58,7 +58,6 @@ export async function syncUserIanaTimezoneToSupabase() {
   } catch (_) {}
   if (!tz) return;
   const { error } = await supabase.rpc("set_my_iana_timezone", { p_tz: tz });
-  if (error) console.warn("[iana_timezone]", error.message);
 }
 
 /** 로그인 직후: 시급 + appearance → localStorage, UI 변수 반영 */
@@ -112,5 +111,4 @@ export async function pushAppearanceToSupabase() {
       hideCompleted: !!s.hideCompleted,
     },
   });
-  if (error) console.warn("[set_my_appearance]", error.message);
 }

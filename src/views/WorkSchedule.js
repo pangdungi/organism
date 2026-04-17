@@ -600,7 +600,6 @@ export function render(opts = {}) {
     refreshMonthlyView("mount-initial-supabase");
     void hydrateWorkScheduleFromCloud()
       .catch((err) => {
-        console.warn("[work-schedule]", err);
         return { anyChanged: false };
       })
       .then((hydrateResult) => {

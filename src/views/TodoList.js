@@ -64,8 +64,8 @@ export const DRAG_TYPE_TODO_TO_CALENDAR = "todo-task-to-calendar";
 export const DRAG_TYPE_TODO_TO_EISENHOWER = "todo-task-to-eisenhower";
 
 const TODO_DEBUG = false;
-function todoDebug(...args) {
-  if (TODO_DEBUG && typeof console !== "undefined" && console.log) console.log("[TODO-DEBUG]", ...args);
+function todoDebug(..._args) {
+  void TODO_DEBUG;
 }
 
 /** 모바일(≤48rem): 할일 계열 모달은 백드롭 탭으로 닫지 않음(취소·×만) — 데스크탑은 기존 유지 */
@@ -452,17 +452,6 @@ async function removeTaskFromSectionStorage(sectionId, taskId, via = "") {
      */
     writeSectionTasksObject(obj);
     const del = await deleteCalendarSectionTaskRowById(taskId);
-    try {
-      console.info("[할일·서버반영]", del.ok ? "Supabase DELETE 처리됨" : "Supabase DELETE 실패", {
-        via: via || "삭제",
-        taskId: tid,
-        sectionId,
-        ok: del.ok,
-        reason: del.reason,
-        localOnlyId: del.localOnlyId,
-        serverVerify: del.serverVerify,
-      });
-    } catch (_) {}
     if (!del.ok) {
       if (snapshot) {
         const o2 = readSectionTasksObject();
@@ -491,17 +480,6 @@ async function removeTaskFromCustomSectionStorage(sectionId, taskId, via = "") {
     obj[sectionId] = arr.filter((t) => (t.taskId || "") !== taskId);
     writeCustomSectionTasksObject(obj);
     const del = await deleteCalendarSectionTaskRowById(taskId);
-    try {
-      console.info("[할일·서버반영]", del.ok ? "Supabase DELETE 처리됨" : "Supabase DELETE 실패", {
-        via: via || "삭제",
-        taskId: tid,
-        sectionId,
-        ok: del.ok,
-        reason: del.reason,
-        localOnlyId: del.localOnlyId,
-        serverVerify: del.serverVerify,
-      });
-    } catch (_) {}
     if (!del.ok) {
       if (snapshot) {
         const o2 = readCustomSectionTasksObject();
@@ -625,28 +603,7 @@ function pushCalendarSectionTaskDirectToServer(sectionId, card, taskRecord, via 
     sectionKey: sid,
     isCustom,
     sortOrder: sortOrder < 0 ? 0 : sortOrder,
-  })
-    .then((r) => {
-      try {
-        console.info("[할일·서버반영]", r?.ok ? "Supabase upsert 성공" : "Supabase upsert 실패", {
-          via: via || "저장",
-          taskId: taskRecord?.taskId,
-          sectionId: sid,
-          ok: !!r?.ok,
-          reason: r?.reason,
-        });
-      } catch (_) {}
-    })
-    .catch((err) => {
-      try {
-        console.info("[할일·서버반영]", "Supabase upsert 예외", {
-          via: via || "저장",
-          taskId: taskRecord?.taskId,
-          sectionId: sid,
-          message: err?.message || String(err),
-        });
-      } catch (_) {}
-    });
+  }).catch(() => {});
 }
 
 /**

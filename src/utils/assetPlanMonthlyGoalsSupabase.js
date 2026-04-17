@@ -84,7 +84,6 @@ export async function pullAssetPlanMonthlyGoalsFromSupabaseImpl() {
     .order("sort_order", { ascending: true });
 
   if (error) {
-    console.warn("[asset-plan-goals] pull", error.message);
     return false;
   }
 
@@ -128,12 +127,10 @@ export async function syncAssetPlanMonthlyGoalsToSupabaseImpl() {
 
   const { error: delErr } = await supabase.from(TABLE).delete().eq("user_id", userId);
   if (delErr) {
-    console.warn("[asset-plan-goals] delete", delErr.message);
     return;
   }
   if (insertPayload.length > 0) {
     const { error: insErr } = await supabase.from(TABLE).insert(insertPayload);
-    if (insErr) console.warn("[asset-plan-goals] insert", insErr.message);
   }
 
   const { data: again, error: pullErr } = await supabase
@@ -181,7 +178,7 @@ export function scheduleAssetPlanMonthlyGoalsSyncPush() {
   if (_pushTimer) clearTimeout(_pushTimer);
   _pushTimer = setTimeout(() => {
     _pushTimer = null;
-    syncAssetPlanMonthlyGoalsToSupabase().catch((e) => console.warn("[asset-plan-goals]", e));
+    syncAssetPlanMonthlyGoalsToSupabase().catch(() => {});
   }, PUSH_DEBOUNCE_MS);
 }
 

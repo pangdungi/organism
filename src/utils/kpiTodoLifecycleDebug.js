@@ -108,21 +108,12 @@ export function kpiTodoCountInStorage(storageKey) {
  */
 export function kpiTodoLifecycleLog(tag, detail) {
   if (!kpiTodoLifecycleOn()) return;
-  try {
-    const n = ++_seq;
-    if (detail != null && typeof detail === "object") {
-      console.info("[KPI할일추적]", `#${n}`, tag, detail);
-    } else {
-      console.info("[KPI할일추적]", `#${n}`, tag);
-    }
-  } catch (_) {}
+  void ++_seq;
+  void tag;
+  void detail;
 }
 
-export function printKpiTodoLifecycleHelp() {
-  console.info(
-    `[KPI할일추적] 켜기: localStorage.setItem('${KEY}','1') 후 새로고침  |  또는 window.__KPI_TODO_DEBUG__=true  |  콘솔 필터에 [KPI할일추적] 입력`,
-  );
-}
+export function printKpiTodoLifecycleHelp() {}
 
 /**
  * pull 직전 로컬 vs 적용 직후 서버 스냅샷 — 서버에만 있으면 pull로 "부활" 가능

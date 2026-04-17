@@ -105,7 +105,6 @@ Deno.serve(async (req) => {
     .not("reminder_date", "is", null);
 
   if (taskErr) {
-    console.error("[send-reminder-pushes] tasks", taskErr.message);
     return new Response(JSON.stringify({ error: taskErr.message }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
@@ -122,9 +121,7 @@ Deno.serve(async (req) => {
       .select("user_id, iana_timezone")
       .in("user_id", userIds);
 
-    if (subTzErr) {
-      console.error("[send-reminder-pushes] user tz", subTzErr.message);
-    } else {
+    if (!subTzErr) {
       for (const r of subsRows || []) {
         const uid = r.user_id as string;
         const raw = String((r as { iana_timezone?: string }).iana_timezone || "").trim();
@@ -163,17 +160,6 @@ Deno.serve(async (req) => {
       });
     }
   }
-
-  console.log(
-    "[send-reminder-pushes] tick",
-    now.toISOString(),
-    "rowsWithReminderDate",
-    list.length,
-    "matchedDue",
-    due.length,
-    "nearMissSameDay",
-    nearMiss.length,
-  );
 
   let sent = 0;
   let skipped = 0;
@@ -224,12 +210,10 @@ Deno.serve(async (req) => {
       ) {
         step.log = "duplicate_skip_already_sent_this_slot";
         skipped++;
-        console.log("[send-reminder-pushes] duplicate slot", sk, t.id);
         steps.push(step);
         continue;
       }
       step.log = "log_insert_error:" + logErr.message;
-      console.error("[send-reminder-pushes] log insert", logErr.message);
       failed++;
       steps.push(step);
       continue;
@@ -250,14 +234,12 @@ Deno.serve(async (req) => {
     if (subErr) {
       step.log += ";subs_error:" + subErr.message;
       skipped++;
-      console.error("[send-reminder-pushes] subs", subErr.message);
       steps.push(step);
       continue;
     }
     if (!subs?.length) {
       step.log += ";no_push_subscriptions_for_user";
       skipped++;
-      console.log("[send-reminder-pushes] no subs user", uid, t.id);
       steps.push(step);
       continue;
     }
@@ -285,14 +267,12 @@ Deno.serve(async (req) => {
         });
         sent++;
         step.pushes.push({ ok: true });
-        console.log("[send-reminder-pushes] push ok", t.id, s.id);
       } catch (e: unknown) {
         const st = (e as { statusCode?: number })?.statusCode;
         const msg = e instanceof Error ? e.message : String(e);
         if (st === 404 || st === 410) {
           await supabase.from("user_push_subscriptions").delete().eq("id", s.id);
         }
-        console.error("[send-reminder-pushes] push fail", t.id, st, msg);
         failed++;
         step.pushes.push({ ok: false, status: st, err: msg.slice(0, 200) });
       }

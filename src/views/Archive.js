@@ -296,7 +296,6 @@ export function render() {
     try {
       await hydrateTimeLedgerEntriesForArchiveRange(startYmd, endYmd);
     } catch (e) {
-      console.warn("[archive] range sync", e);
     } finally {
       if (gen !== archiveRangeSyncGen || !el.isConnected) return;
       listEl.classList.remove("archive-list--loading");

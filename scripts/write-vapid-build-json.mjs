@@ -36,5 +36,3 @@ writeFileSync(out, payload, "utf8");
 const pubDir = resolve(root, "public");
 mkdirSync(pubDir, { recursive: true });
 writeFileSync(resolve(pubDir, "vapid-public.json"), payload, "utf8");
-const src = fromEnv ? "env" : fromFile ? "vapid-public.build.json" : "none";
-console.log("[write-vapid-build-json] publicKey length:", key.length, "source:", src);

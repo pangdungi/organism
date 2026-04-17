@@ -1,11 +1,5 @@
 /**
- * 할일이 삭제 후 다시 늘어나는(서버 pull·sync) 경로 추적용 로그.
- * 기본 비활성 — 켜기:
- *   localStorage.setItem('debug_todo_resurrection', '1')
- *   또는 window.__TODO_RESURRECTION_DEBUG__ = true
- * 끄기: localStorage.removeItem('debug_todo_resurrection') 후 새로고침
- *
- * 콘솔 필터: [할일부활추적]
+ * 할일 삭제 후 재등장 경로 (콘솔 비활성)
  */
 
 const LS_KEY = "debug_todo_resurrection";
@@ -32,20 +26,12 @@ function shortStack(maxLines = 8) {
   }
 }
 
-/**
- * @param {string} tag
- * @param {Record<string, unknown>} [detail]
- */
-export function logTodoResurrection(tag, detail = {}) {
+/** @param {string} _tag @param {Record<string, unknown>} [detail] */
+export function logTodoResurrection(_tag, detail = {}) {
   if (!todoResurrectionDebugEnabled()) return;
-  try {
-    console.info("[할일부활추적]", tag, { t: Date.now(), ...detail });
-  } catch (_) {
-    console.info("[할일부활추적]", tag);
-  }
+  void detail;
 }
 
-/** sync·schedule·flush 등 ‘누가 불렀는지’ 볼 때 */
 export function logTodoResurrectionWithStack(tag, detail = {}, maxLines = 8) {
   if (!todoResurrectionDebugEnabled()) return;
   logTodoResurrection(tag, { ...detail, 호출스택요약: shortStack(maxLines) });

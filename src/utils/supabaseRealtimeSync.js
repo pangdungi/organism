@@ -322,9 +322,7 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
         });
         _lastRealtimeRenderMainAt = nowMs;
         renderMain({ skipTodoSaveBeforeUnmount: true });
-      } catch (e) {
-        console.warn("[realtime] pull/render 오류", e?.message || e);
-      }
+      } catch (_e) {}
     })();
   }, REALTIME_REFRESH_DEBOUNCE_MS);
 }
@@ -414,11 +412,7 @@ export function initSupabaseRealtimeSync(opts) {
       );
     }
 
-    _channel = ch.subscribe((status, err) => {
-      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-        console.warn("[realtime] 채널 상태", status, err?.message || err || "");
-      }
-    });
+    _channel = ch.subscribe((_status, _err) => {});
   };
 
   supabase.auth.onAuthStateChange((event, session) => {

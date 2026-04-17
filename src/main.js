@@ -241,8 +241,7 @@ function init() {
         ),
       ]);
       session = res?.data?.session ?? null;
-    } catch (e) {
-      console.warn("[init] getSession 실패 또는 시간 초과:", e?.message || e);
+    } catch (_e) {
       showOnly("login");
       setAuthGatePanel("signup");
       return;
@@ -257,7 +256,7 @@ function init() {
       }
       showOnly("signin");
       /* 시급·appearance·타임존 RPC는 네트워크 지연 시 스플래시가 멈추지 않도록 비동기로만 실행 */
-      void pullUserPrefsFromSupabase().catch((err) => console.warn("[prefs]", err));
+      void pullUserPrefsFromSupabase().catch(() => {});
       await prepareTimeLedgerStorageForCurrentSession();
       mountApp(document.getElementById("app-screen"));
       scheduleSilentReminderPushSync();
@@ -273,8 +272,7 @@ function init() {
     const t0 = typeof performance !== "undefined" ? performance.now() : Date.now();
     try {
       await showInitialPage();
-    } catch (e) {
-      console.error(e);
+    } catch (_e) {
     } finally {
       const elapsed =
         (typeof performance !== "undefined" ? performance.now() : Date.now()) - t0;
@@ -315,7 +313,7 @@ async function doLogin() {
       return;
     }
     showOnly("signin");
-    void pullUserPrefsFromSupabase().catch((err) => console.warn("[prefs]", err));
+    void pullUserPrefsFromSupabase().catch(() => {});
     await prepareTimeLedgerStorageForCurrentSession();
     mountApp(document.getElementById("app-screen"));
     scheduleSilentReminderPushSync();
@@ -352,7 +350,7 @@ async function doSignUp() {
       return;
     }
     showOnly("signin");
-    void pullUserPrefsFromSupabase().catch((err) => console.warn("[prefs]", err));
+    void pullUserPrefsFromSupabase().catch(() => {});
     await prepareTimeLedgerStorageForCurrentSession();
     mountApp(document.getElementById("app-screen"));
     scheduleSilentReminderPushSync();

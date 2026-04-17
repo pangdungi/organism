@@ -90,7 +90,6 @@ export async function pullAssetStockCategoryOptionsFromSupabaseImpl() {
     .order("sort_order", { ascending: true });
 
   if (error) {
-    console.warn("[asset-stock-cat] pull", error.message);
     return false;
   }
   if (!data?.length) return false;
@@ -115,7 +114,6 @@ export async function syncAssetStockCategoryOptionsToSupabaseImpl() {
 
   if (payloads.length > 0) {
     const { error } = await supabase.from(TABLE).upsert(payloads, { onConflict: "user_id,label" });
-    if (error) console.warn("[asset-stock-cat] upsert", error.message);
   }
 
   const { data: remote, error: listErr } = await supabase.from(TABLE).select("id, label").eq("user_id", userId);
@@ -124,7 +122,6 @@ export async function syncAssetStockCategoryOptionsToSupabaseImpl() {
   for (const r of remote) {
     if (!want.has(r.label)) {
       const { error: dErr } = await supabase.from(TABLE).delete().eq("id", r.id);
-      if (dErr) console.warn("[asset-stock-cat] delete", dErr.message);
     }
   }
 
@@ -177,7 +174,7 @@ export function scheduleAssetStockCategoryOptionsSyncPush() {
   if (_pushTimer) clearTimeout(_pushTimer);
   _pushTimer = setTimeout(() => {
     _pushTimer = null;
-    syncAssetStockCategoryOptionsToSupabase().catch((e) => console.warn("[asset-stock-cat]", e));
+    syncAssetStockCategoryOptionsToSupabase().catch(() => {});
   }, PUSH_DEBOUNCE_MS);
 }
 

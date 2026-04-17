@@ -156,7 +156,6 @@ export async function registerReminderPushFromUserGesture() {
         });
       } catch (e) {
         const m = e && typeof e === "object" && "message" in e ? String(e.message) : String(e);
-        console.warn("[web-push] subscribe", m);
         return {
           ok: false,
           msg:
@@ -195,7 +194,6 @@ export async function registerReminderPushFromUserGesture() {
       onConflict: "user_id,endpoint",
     });
     if (error) {
-      console.warn("[web-push]", error.message);
       return {
         ok: false,
         msg: "서버에 알림 주소를 저장하지 못했어요: " + (error.message || "알 수 없음"),
@@ -208,7 +206,6 @@ export async function registerReminderPushFromUserGesture() {
     };
   } catch (e) {
     const m = e && typeof e === "object" && "message" in e ? String(e.message) : String(e);
-    console.warn("[web-push]", m);
     return { ok: false, msg: "알림 켜기 중 오류: " + m.slice(0, 200) };
   }
 }
@@ -240,7 +237,6 @@ export async function unregisterReminderPushFromUserGesture() {
     return { ok: true, msg: "이 기기에서 브라우저 알림을 껐어요." };
   } catch (e) {
     const m = e && typeof e === "object" && "message" in e ? String(e.message) : String(e);
-    console.warn("[web-push]", m);
     return { ok: false, msg: "알림 끄기 중 오류: " + m.slice(0, 200) };
   }
 }

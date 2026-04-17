@@ -169,9 +169,6 @@ async function pullWorkScheduleFromSupabaseImpl() {
     supabase.from(ENTRIES_TABLE).select("id, work_date, start_time, end_time, work_type, memo, hours, hours_worked").eq("user_id", userId).order("work_date", { ascending: true }).order("start_time", { ascending: true }),
   ]);
 
-  if (settingsRes.error) console.warn("[work-schedule sync] pull settings", settingsRes.error.message);
-  if (typesRes.error) console.warn("[work-schedule sync] pull types", typesRes.error.message);
-  if (entriesRes.error) console.warn("[work-schedule sync] pull entries", entriesRes.error.message);
 
   if (!typesRes.error) {
     const typesForMem = typeOptionsFromServerRows(typesRes.data || []);
@@ -260,7 +257,6 @@ async function syncWorkScheduleToSupabaseImpl() {
     { user_id: userId, daily_work_hours },
     { onConflict: "user_id" }
   );
-  if (setErr) console.warn("[work-schedule sync] settings upsert", setErr.message);
 
   const typeUpserts = typeList.map((t, i) => ({
     user_id: userId,
@@ -271,7 +267,6 @@ async function syncWorkScheduleToSupabaseImpl() {
   }));
   if (typeUpserts.length > 0) {
     const { error: tErr } = await supabase.from(TYPES_TABLE).upsert(typeUpserts, { onConflict: "user_id,name" });
-    if (tErr) console.warn("[work-schedule sync] types upsert", tErr.message);
   }
 
   const typeNames = new Set(typeList.map((t) => t.name));
@@ -280,14 +275,12 @@ async function syncWorkScheduleToSupabaseImpl() {
     for (const r of remoteTypes) {
       if (!typeNames.has(r.name)) {
         const { error: dErr } = await supabase.from(TYPES_TABLE).delete().eq("user_id", userId).eq("name", r.name);
-        if (dErr) console.warn("[work-schedule sync] type delete", dErr.message);
       }
     }
   }
 
   if (entryPayloads.length > 0) {
     const { error: eErr } = await supabase.from(ENTRIES_TABLE).upsert(entryPayloads, { onConflict: "id" });
-    if (eErr) console.warn("[work-schedule sync] entries upsert", eErr.message);
   }
 
   // 이번 라운드에 유효한 행 upsert가 없으면 서버 고아 삭제를 하지 않음(빈 로컬/일시 오류로 전체 삭제되는 것 방지).
@@ -297,7 +290,6 @@ async function syncWorkScheduleToSupabaseImpl() {
     for (const r of remoteEntries) {
       if (!idsStillInLocal.has(r.id)) {
         const { error: dErr } = await supabase.from(ENTRIES_TABLE).delete().eq("user_id", userId).eq("id", r.id);
-        if (dErr) console.warn("[work-schedule sync] entry delete", dErr.message);
       }
     }
   } else if (!reErr && remoteEntries?.length && entryPayloads.length === 0) {
@@ -306,7 +298,7 @@ async function syncWorkScheduleToSupabaseImpl() {
 
   // 푸시 완료 직후 서버 기준으로 다시 병합(직렬 큐에서 sync 안에서 pull을 await 하면 교착이 나므로 마이크로태스크로 예약)
   queueMicrotask(() => {
-    pullWorkScheduleFromSupabase().catch((e) => console.warn("[work-schedule sync] pull after push", e));
+    pullWorkScheduleFromSupabase().catch(() => {});
   });
 }
 
@@ -323,7 +315,7 @@ export function scheduleWorkScheduleSyncPush() {
   if (_pushTimer) clearTimeout(_pushTimer);
   _pushTimer = setTimeout(() => {
     _pushTimer = null;
-    syncWorkScheduleToSupabase().catch((e) => console.warn("[work-schedule sync]", e));
+    syncWorkScheduleToSupabase().catch(() => {});
   }, PUSH_DEBOUNCE_MS);
 }
 

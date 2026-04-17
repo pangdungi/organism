@@ -4667,9 +4667,7 @@ function renderExpenseView(options = {}) {
       .filter((id) => EXPENSE_ROW_UUID_RE.test(id) && !nextIds.has(id));
     saveExpenseRows(merged);
     if (removedServerIds.length) {
-      void deleteAssetExpenseTransactionsFromSupabase(removedServerIds).catch((e) =>
-        console.warn("[asset-expense-tx]", e),
-      );
+      void deleteAssetExpenseTransactionsFromSupabase(removedServerIds).catch(() => {});
     }
     window.dispatchEvent(new CustomEvent("asset-expense-transactions-saved"));
   }
@@ -6306,7 +6304,7 @@ function renderCashflowView() {
       if (!wrap.isConnected) return;
       renderChart();
     })
-    .catch((e) => console.warn("[asset-cashflow] expense pull", e));
+    .catch(() => {});
 
   return wrap;
 }
@@ -6386,9 +6384,7 @@ export function render() {
           .filter((id) => EXPENSE_ROW_UUID_RE.test(id) && !nextIds.has(id));
         saveExpenseRows(rows);
         if (removedServerIds.length) {
-          void deleteAssetExpenseTransactionsFromSupabase(removedServerIds).catch((e) =>
-            console.warn("[asset-expense-tx]", e),
-          );
+          void deleteAssetExpenseTransactionsFromSupabase(removedServerIds).catch(() => {});
         }
       }
     }
@@ -6465,7 +6461,6 @@ export function render() {
       const view = activeTab?.dataset?.view || initialView;
       renderView(view);
     } catch (e) {
-      console.warn("[asset-expense-cloud]", e);
       const activeTab = viewTabs.querySelector(".asset-view-tab.active");
       const view = activeTab?.dataset?.view || initialView;
       renderView(view);

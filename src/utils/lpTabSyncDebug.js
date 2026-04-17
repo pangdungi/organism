@@ -1,7 +1,5 @@
 /**
- * 탭 전환·동기화(pull) 횟수 추적 — 콘솔 필터: [LP-SYNC]
- * 켜기: localStorage.setItem("debug_tab_sync", "1"); 위치 새로고침
- * 끄기: localStorage.removeItem("debug_tab_sync"); 또는 "0"
+ * 탭 전환·동기화 횟수 (콘솔 비활성, 카운트만 유지)
  */
 
 const COUNTS = {
@@ -23,18 +21,14 @@ export function tabSyncDebugOn() {
 
 /**
  * @param {keyof typeof COUNTS | string} kind
- * @param {Record<string, unknown>} [detail]
+ * @param {Record<string, unknown>} [_detail]
  */
-export function logTabSync(kind, detail = {}) {
+export function logTabSync(kind, _detail = {}) {
   if (!tabSyncDebugOn()) return;
   const k = String(kind);
   COUNTS[k] = (COUNTS[k] || 0) + 1;
-  try {
-    console.info("[LP-SYNC]", k, { n: COUNTS[k], t: Date.now(), ...detail });
-  } catch (_) {}
 }
 
-/** 콘솔에서 window.__lpTabSyncCounts() 로 누적 확인 */
 export function getTabSyncCounts() {
   return { ...COUNTS };
 }

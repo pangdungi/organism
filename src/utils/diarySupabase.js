@@ -196,7 +196,6 @@ export async function pullDiaryFromSupabase() {
     .order("updated_at", { ascending: false })
     .order("id", { ascending: false });
   if (error) {
-    console.warn("[diary sync] pull", error.message);
     return null;
   }
   const local = loadDiaryEntries();
@@ -270,7 +269,6 @@ export async function syncDiaryToSupabase(entries) {
     const { error } = await supabase.from(TABLE).upsert(upserts, {
       onConflict: "id",
     });
-    if (error) console.warn("[diary sync] upsert", error.message);
   }
 }
 
@@ -281,7 +279,6 @@ export async function deleteDiaryEntryFromSupabase(entryId) {
   const id = String(entryId).trim();
   if (!isDiaryEntryUuid(id)) return;
   const { error } = await supabase.from(TABLE).delete().eq("id", id).eq("user_id", userId);
-  if (error) console.warn("[diary sync] delete row", error.message);
 }
 
 export function scheduleDiarySyncPush(entries) {
@@ -289,7 +286,7 @@ export function scheduleDiarySyncPush(entries) {
   if (_pushTimer) clearTimeout(_pushTimer);
   _pushTimer = setTimeout(() => {
     _pushTimer = null;
-    syncDiaryToSupabase(entries).catch((e) => console.warn("[diary sync]", e));
+    syncDiaryToSupabase(entries).catch(() => {});
   }, PUSH_DEBOUNCE_MS);
 }
 

@@ -202,8 +202,6 @@ async function refetchPrefsIntoMem(userId) {
     supabase.from(PAY_TABLE).select("label, sort_order").eq("user_id", userId).order("sort_order", { ascending: true }),
   ]);
 
-  if (clsRes.error) console.warn("[asset-expense-prefs] refetch classifications", clsRes.error.message);
-  if (payRes.error) console.warn("[asset-expense-prefs] refetch payments", payRes.error.message);
 
   if (!clsRes.error) applyClassificationUserOnlyToMem(clsRes.data || []);
   if (!payRes.error) applyPaymentExtrasToMem(payRes.data || []);
@@ -231,8 +229,6 @@ export async function pullAssetExpensePrefsFromSupabaseImpl() {
     supabase.from(PAY_TABLE).select("label, sort_order").eq("user_id", userId).order("sort_order", { ascending: true }),
   ]);
 
-  if (clsRes.error) console.warn("[asset-expense-prefs] pull classifications", clsRes.error.message);
-  if (payRes.error) console.warn("[asset-expense-prefs] pull payments", payRes.error.message);
 
   if (!clsRes.error && clsRes.data?.length > 0) {
     applyClassificationUserOnlyToMem(clsRes.data);
@@ -259,7 +255,6 @@ export async function syncAssetExpensePrefsToSupabaseImpl() {
     const { error } = await supabase.from(CLS_TABLE).upsert(clsPayloads, {
       onConflict: "user_id,expense_category,label",
     });
-    if (error) console.warn("[asset-expense-prefs] upsert classifications", error.message);
   }
 
   const { data: remoteCls, error: rcErr } = await supabase
@@ -272,14 +267,12 @@ export async function syncAssetExpensePrefsToSupabaseImpl() {
       const k = `${r.expense_category}\t${r.label}`;
       if (!want.has(k)) {
         const { error: dErr } = await supabase.from(CLS_TABLE).delete().eq("id", r.id);
-        if (dErr) console.warn("[asset-expense-prefs] delete classification", dErr.message);
       }
     }
   }
 
   if (payPayloads.length > 0) {
     const { error } = await supabase.from(PAY_TABLE).upsert(payPayloads, { onConflict: "user_id,label" });
-    if (error) console.warn("[asset-expense-prefs] upsert payments", error.message);
   }
 
   const { data: remotePay, error: rpErr } = await supabase.from(PAY_TABLE).select("id, label").eq("user_id", userId);
@@ -288,7 +281,6 @@ export async function syncAssetExpensePrefsToSupabaseImpl() {
     for (const r of remotePay) {
       if (!want.has(r.label)) {
         const { error: dErr } = await supabase.from(PAY_TABLE).delete().eq("id", r.id);
-        if (dErr) console.warn("[asset-expense-prefs] delete payment", dErr.message);
       }
     }
   }
@@ -327,7 +319,7 @@ export function scheduleAssetExpensePrefsSyncPush() {
   if (_pushTimer) clearTimeout(_pushTimer);
   _pushTimer = setTimeout(() => {
     _pushTimer = null;
-    syncAssetExpensePrefsToSupabase().catch((e) => console.warn("[asset-expense-prefs]", e));
+    syncAssetExpensePrefsToSupabase().catch(() => {});
   }, PUSH_DEBOUNCE_MS);
 }
 

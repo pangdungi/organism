@@ -110,7 +110,6 @@ async function getSessionUserId() {
     error,
   } = await supabase.auth.getUser();
   if (error) {
-    console.warn("[asset-networth-bundle] getUser", error.message);
     return null;
   }
   return user?.id ?? null;
@@ -123,7 +122,6 @@ export async function pullAssetNetWorthBundleFromSupabaseImpl() {
   const { data, error } = await supabase.from(TABLE).select("*").eq("user_id", userId).maybeSingle();
 
   if (error) {
-    console.warn("[asset-networth-bundle] pull", error.message);
     return false;
   }
   if (data == null) return false;
@@ -185,14 +183,12 @@ export async function syncAssetNetWorthBundleToSupabaseImpl() {
   if (!supabase) {
     if (!_warnedNoSupabaseClient) {
       _warnedNoSupabaseClient = true;
-      console.warn("[asset-networth-bundle] sync 건너뜀: Supabase 클라이언트 없음");
     }
     return;
   }
   if (!userId) {
     if (!_warnedNoAuthSession) {
       _warnedNoAuthSession = true;
-      console.warn("[asset-networth-bundle] sync 건너뜀: 로그인 세션 없음");
     }
     return;
   }
@@ -202,7 +198,6 @@ export async function syncAssetNetWorthBundleToSupabaseImpl() {
   const payload = await buildBundleUpsertPayload(userId);
   const { error } = await supabase.from(TABLE).upsert(payload, { onConflict: "user_id" });
   if (error) {
-    console.warn("[asset-networth-bundle] upsert", error.message);
     return;
   }
 
@@ -238,7 +233,7 @@ export function flushAssetNetWorthBundleSyncPush() {
     clearTimeout(_pushTimer);
     _pushTimer = null;
   }
-  return syncAssetNetWorthBundleToSupabase().catch((e) => console.warn("[asset-networth-bundle]", e));
+  return syncAssetNetWorthBundleToSupabase().catch(() => {});
 }
 
 export function scheduleAssetNetWorthBundleSyncPush() {
@@ -246,7 +241,7 @@ export function scheduleAssetNetWorthBundleSyncPush() {
   if (_pushTimer) clearTimeout(_pushTimer);
   _pushTimer = setTimeout(() => {
     _pushTimer = null;
-    syncAssetNetWorthBundleToSupabase().catch((e) => console.warn("[asset-networth-bundle]", e));
+    syncAssetNetWorthBundleToSupabase().catch(() => {});
   }, PUSH_DEBOUNCE_MS);
 }
 

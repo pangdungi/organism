@@ -501,7 +501,6 @@ export function render() {
     );
     if (!supabase) return;
     const { error } = await supabase.rpc("set_my_hourly_rate", { p_rate: hourly });
-    if (error) console.warn("[set_my_hourly_rate]", error.message);
   }
 
   function calculateHourly() {

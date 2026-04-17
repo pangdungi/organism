@@ -1,11 +1,5 @@
 /**
- * 할일 섹션 저장·서버 동기화 호출 추적 — 동작 변경 없음.
- * 콘솔 필터: [할일동기]
- *
- * 켜짐: localStorage.setItem('debug_todo_section_sync','1') | window.__TODO_SECTION_SYNC_DEBUG__ = true
- *
- * 삭제 항목 부활·서버 개수 불일치 추적은 별도:
- *   localStorage.setItem('debug_todo_resurrection','1') → 콘솔 필터 [할일부활추적]
+ * 할일 섹션 저장·서버 동기화 (콘솔 비활성)
  */
 
 const LS_KEY = "debug_todo_section_sync";
@@ -34,21 +28,14 @@ function shortStack(maxLines = 5) {
   }
 }
 
-/**
- * @param {string} tag
- * @param {Record<string, unknown>} [detail]
- */
-export function todoSectionSyncLog(tag, detail = {}) {
+/** @param {string} _tag @param {Record<string, unknown>} [detail] */
+export function todoSectionSyncLog(_tag, detail = {}) {
   if (!todoSectionSyncDebugEnabled()) return;
-  try {
-    const n = ++_seq;
-    console.info(`[할일동기 #${n}]`, tag, { t: Date.now(), ...detail });
-  } catch (_) {
-    console.info("[할일동기]", tag);
-  }
+  void ++_seq;
+  void detail;
 }
 
-/** persist / schedule 등 ‘누가 불렀는지’ 볼 때만 — 스택 포함 */
+/** persist / schedule 등 호출 스택 포함 */
 export function todoSectionSyncLogWithStack(tag, detail = {}) {
   if (!todoSectionSyncDebugEnabled()) return;
   todoSectionSyncLog(tag, { ...detail, 호출스택요약: shortStack(6) });

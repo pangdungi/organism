@@ -1,6 +1,5 @@
 /**
- * 시간가계부(time_ledger_entries) 서버 반영·pull 추적 — 기본 꺼짐.
- * 켜기: localStorage.setItem('debug_time_ledger_sync', '1') 후 새로고침
+ * 시간가계부 서버 반영·pull (콘솔 비활성)
  */
 
 export const TIME_LEDGER_SYNC_DEBUG_FLAG = "debug_time_ledger_sync";
@@ -14,13 +13,5 @@ export function timeLedgerSyncDebugEnabled() {
   }
 }
 
-/**
- * @param {string} phase
- * @param {Record<string, unknown> | string | number | null | undefined} [detail]
- */
-export function timeLedgerSyncLog(phase, detail) {
-  if (!timeLedgerSyncDebugEnabled()) return;
-  try {
-    console.info("[time-ledger-sync]", phase, detail != null ? detail : "");
-  } catch (_) {}
-}
+/** @param {string} _phase @param {unknown} [_detail] */
+export function timeLedgerSyncLog(_phase, _detail) {}

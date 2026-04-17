@@ -56,11 +56,7 @@ import { printSyncWatchHelp, syncWatchLog } from "./utils/syncWatchLog.js";
 import { getTabSyncCounts, logTabSync } from "./utils/lpTabSyncDebug.js";
 import { lpPullDebug } from "./utils/lpPullDebug.js";
 import { hydrateWorkScheduleFromCloud } from "./utils/workScheduleSupabase.js";
-import {
-  logLpRender,
-  logLpRenderStack,
-  lpRenderTraceOn,
-} from "./utils/lpRenderDebugLog.js";
+import { logLpRender, logLpRenderStack } from "./utils/lpRenderDebugLog.js";
 import { initDomPulseDebug } from "./utils/domPulseDebug.js";
 import { initMobileVisualViewportKeyboardInset } from "./utils/mobileViewportKeyboard.js";
 import { logTodoScheduleTabOnNavigate } from "./utils/lpTabDataSourceLog.js";
@@ -548,11 +544,6 @@ export function mountApp(container) {
    */
   function renderMain(mainEl, opts = {}) {
     logLpRenderStack("renderMain 진입", { tab: currentTabId, opts });
-    if (lpRenderTraceOn()) {
-      try {
-        console.trace("[lp-render] renderMain", currentTabId, opts);
-      } catch (_) {}
-    }
     /* 근무표 등록/유형설정 모달은 body 직하위 — force:true(탭 전환 등)여도 여기서 통째로 지우면 월별보기 달이 초기화됨 */
     let wsBodyModal = null;
     try {
@@ -605,8 +596,6 @@ export function mountApp(container) {
         p.appendChild(div);
       }
     } catch (err) {
-      console.error("[renderMain] 탭 로드 실패:", currentTabId, err?.message, err);
-      if (err?.stack) console.error(err.stack);
       const errDiv = document.createElement("div");
       errDiv.className = "app-render-error";
       errDiv.style.cssText = "padding:1.5rem;color:#b91c1c;";
@@ -719,12 +708,7 @@ export function mountApp(container) {
               });
               renderMain(main, { skipTodoSaveBeforeUnmount: true });
             }
-          } catch (e) {
-            console.warn(
-              "[브라우저 탭 포커스 후 pull]",
-              e?.message || e,
-            );
-          }
+          } catch (_e) {}
         })();
       }, 350);
     },

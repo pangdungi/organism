@@ -6,15 +6,7 @@ import { showToast } from "./showToast.js";
 
 let listenerInstalled = false;
 
-const LOG = "[lp-reminder-app]";
-
-function reminderDebugLog(...args) {
-  try {
-    if (typeof localStorage !== "undefined" && localStorage.getItem("debug_lp_reminder") === "1") {
-      console.log(LOG, ...args);
-    }
-  } catch (_) {}
-}
+function reminderDebugLog(..._args) {}
 
 /** 앱이 켜진 상태(시스템 알림 대신 팝업만 뜰 때)용 짧은 알림음 */
 function playReminderBeep() {
@@ -64,8 +56,6 @@ export function initPushReminderInAppPopup() {
       playReminderBeep();
       showToast(taskName);
       reminderDebugLog("showToast 호출 완료");
-    } catch (e) {
-      console.warn(LOG, "showToast 실패", e);
-    }
+    } catch (_) {}
   });
 }

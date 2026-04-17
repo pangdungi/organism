@@ -149,7 +149,6 @@ async function fetchAllExpenseTxFromDb(userId) {
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.warn("[asset-expense-tx] fetch", error.message);
     return { ok: false, rows: [] };
   }
   return { ok: true, rows: (data || []).map(dbRowToLocal) };
@@ -172,7 +171,6 @@ async function fetchExpenseTxFromDbInRange(userId, dateFrom, dateTo) {
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.warn("[asset-expense-tx] fetch range", error.message);
     return { ok: false, rows: [] };
   }
   return { ok: true, rows: (data || []).map(dbRowToLocal) };
@@ -369,7 +367,6 @@ export async function syncAssetExpenseTransactionsToSupabaseImpl() {
     const payloads = substantive.map((r) => localRowToDbPayload(userId, r));
     const { error } = await supabase.from(TABLE).upsert(payloads, { onConflict: "id" });
     if (error) {
-      console.warn("[asset-expense-tx] upsert", error.message);
       lpSaveDebug("가계부 upsert 실패", { message: error.message, code: error.code });
     } else {
       lpSaveDebug("가계부 upsert 성공", { count: payloads.length });
@@ -402,7 +399,6 @@ export async function syncAssetExpenseTransactionsToSupabaseImpl() {
     for (const r of remote) {
       if (!wantIds.has(r.id)) {
         const { error: dErr } = await supabase.from(TABLE).delete().eq("id", r.id).eq("user_id", userId);
-        if (dErr) console.warn("[asset-expense-tx] delete", dErr.message);
       }
     }
   }
@@ -431,7 +427,6 @@ async function deleteAssetExpenseTransactionsFromSupabaseImpl(ids) {
   ];
   for (const id of uniq) {
     const { error } = await supabase.from(TABLE).delete().eq("id", id).eq("user_id", userId);
-    if (error) console.warn("[asset-expense-tx] delete row", error.message);
   }
 }
 
@@ -471,7 +466,6 @@ export function scheduleAssetExpenseTransactionsSyncPush() {
   _pushTimer = setTimeout(() => {
     _pushTimer = null;
     syncAssetExpenseTransactionsToSupabase().catch((e) => {
-      console.warn("[asset-expense-tx]", e);
       lpSaveDebug("sync 예외", { err: String(e?.message || e) });
     });
   }, PUSH_DEBOUNCE_MS);
