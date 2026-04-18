@@ -2491,13 +2491,28 @@ body {
   }
   .diary-mobile-entry-bar {
     display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 0.5rem;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0.35rem;
     padding: 0.35rem 0.75rem;
     flex-shrink: 0;
     border-bottom: var(--line-l3);
     background: var(--content-bg);
+  }
+  .diary-mobile-search-row {
+    padding: 0;
+    border-bottom: none;
+  }
+  .diary-mobile-search-row .diary-search-input {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .diary-mobile-entry-bar-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    width: 100%;
   }
   .diary-mobile-entry-select {
     flex: 1;

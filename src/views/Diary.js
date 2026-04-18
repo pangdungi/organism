@@ -231,6 +231,12 @@ export function render() {
       return s.toLowerCase();
     };
 
+    const qTrim = (searchQuery || "").trim().toLowerCase();
+    const mobileFeedEntries =
+      mobile && qTrim
+        ? fullEntryList.filter((e) => getEntrySearchText(e).includes(qTrim))
+        : fullEntryList;
+
     const addPageHandler = () => {
       const today = toDateStr(new Date());
       ensureTabEntries(currentTabId);
@@ -531,6 +537,30 @@ export function render() {
     } else {
       const bar = document.createElement("div");
       bar.className = "diary-mobile-entry-bar";
+      const searchRow = document.createElement("div");
+      searchRow.className = "diary-search-row diary-mobile-search-row";
+      const searchInput = document.createElement("input");
+      searchInput.type = "text";
+      searchInput.className = "diary-search-input";
+      searchInput.placeholder = "날짜·내용 검색...";
+      searchInput.setAttribute("aria-label", "날짜·내용 검색");
+      searchInput.value = searchQuery;
+      searchInput.addEventListener("compositionstart", () => {
+        isComposing = true;
+      });
+      searchInput.addEventListener("compositionend", (e) => {
+        isComposing = false;
+        searchQuery = e.target.value;
+        renderLayout();
+      });
+      searchInput.addEventListener("input", () => {
+        searchQuery = searchInput.value;
+        if (!isComposing) renderLayout();
+      });
+      searchRow.appendChild(searchInput);
+      bar.appendChild(searchRow);
+      const actionsRow = document.createElement("div");
+      actionsRow.className = "diary-mobile-entry-bar-actions";
       const addBtn = document.createElement("button");
       addBtn.type = "button";
       addBtn.className = "diary-mobile-add-btn diary-mobile-add-btn-primary";
@@ -539,7 +569,8 @@ export function render() {
       addBtn.innerHTML =
         '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>';
       addBtn.addEventListener("click", openAddModal);
-      bar.appendChild(addBtn);
+      actionsRow.appendChild(addBtn);
+      bar.appendChild(actionsRow);
       layout.appendChild(bar);
     }
 
@@ -552,8 +583,16 @@ export function render() {
     paper.className = "diary-paper";
     const currentEntry = currentEntryId ? getEntryById(currentTabId, currentEntryId) : null;
 
-    if (mobile && fullEntryList.length > 0) {
-      fullEntryList.forEach((entry) => {
+    const mobileFeedMode = mobile && fullEntryList.length > 0;
+
+    if (mobileFeedMode) {
+      if (qTrim && mobileFeedEntries.length === 0) {
+        const noResult = document.createElement("div");
+        noResult.className = "diary-search-no-result";
+        noResult.textContent = "검색 결과가 없습니다.";
+        scrollWrap.appendChild(noResult);
+      } else {
+      mobileFeedEntries.forEach((entry) => {
         const card = document.createElement("div");
         card.className = "diary-paper diary-paper-qa diary-feed-card" + (currentTabId === "3" ? " diary-paper-tab3" : "");
         const qaHeader = document.createElement("div");
@@ -655,6 +694,7 @@ export function render() {
         }
         scrollWrap.appendChild(card);
       });
+      }
     } else if (currentTabId === "3" && currentEntry) {
       paper.className = "diary-paper diary-paper-qa diary-paper-tab3";
       if (!currentEntry.q1 && currentEntry.q1 !== "") currentEntry.q1 = "";
@@ -830,7 +870,9 @@ export function render() {
       }
     }
 
-    scrollWrap.appendChild(paper);
+    if (!mobileFeedMode) {
+      scrollWrap.appendChild(paper);
+    }
     contentArea.appendChild(scrollWrap);
     layout.appendChild(contentArea);
     layoutWrap.appendChild(layout);
