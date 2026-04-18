@@ -34,6 +34,7 @@ import {
 } from "./utils/sideincomeKpiMapSupabase.js";
 import {
   attachTimeLedgerEntriesSaveListener,
+  hydrateTimeLedgerEntriesForArchiveMonth,
   pullTimeLedgerEntriesForDateRange,
   resetTimeLedgerSessionFilterToToday,
   timeLedgerLocalTodayYmd,
@@ -172,7 +173,14 @@ async function pullDataForActiveTab(tabId, opts = {}) {
     case "idea":
       await pullUserPrefsFromSupabase().catch(() => {});
       break;
-    case "archive":
+    case "archive": {
+      const now = new Date();
+      await hydrateTimeLedgerEntriesForArchiveMonth(
+        now.getFullYear(),
+        now.getMonth() + 1,
+      );
+      break;
+    }
     default:
       break;
   }
@@ -374,7 +382,16 @@ export function mountApp(container) {
     }
     void (async () => {
       const targetTabId = tabId;
-      /* pull 대기 중에도 본문을 바로 갈아끼움 — 시간가계부 등 무거운 pull이 1~2초 걸릴 때 하단 탭만 바뀌고 화면이 남는 현상 방지 */
+      /* 아카이브: 입력 없이 보기 전용 — 서버 구간 pull 후에만 본문 렌더(로컬만 먼저 보이지 않음) */
+      if (targetTabId === "archive") {
+        try {
+          await pullDataForActiveTab(targetTabId, { fromBoot: false });
+        } catch (_) {}
+        if (currentTabId !== targetTabId) return;
+        renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
+        return;
+      }
+      /* 그 외 탭: pull 대기 중에도 본문을 바로 갈아끼움 — 무거운 pull이 1~2초 걸릴 때 하단 탭만 바뀌고 화면이 남는 현상 방지 */
       renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
       try {
         await pullDataForActiveTab(targetTabId, { fromBoot: false });

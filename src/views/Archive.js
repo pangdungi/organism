@@ -232,7 +232,7 @@ export function render() {
       });
   }
 
-  /** hydrate 완료 전에는 빈 목록 — 첫 화면부터 해당 기간 Supabase 반영 후에만 채움 */
+  /** loadTimeRows 기준 목록 — 표시는 선택 구간 서버 pull 이후에만 채움(보기 전용 탭) */
   let fullRecords = [];
   let archiveRangeSyncGen = 0;
 
@@ -244,39 +244,6 @@ export function render() {
 
   function refreshFullRecords() {
     fullRecords = buildRecords();
-  }
-
-  function showArchiveListLoading() {
-    listEl.classList.add("archive-list--loading");
-    listEl.innerHTML = "";
-    const wrap = document.createElement("div");
-    wrap.className = "archive-list-loading";
-    wrap.setAttribute("aria-busy", "true");
-    wrap.setAttribute("aria-live", "polite");
-    wrap.setAttribute("aria-label", "아카이브 기록 동기화 중");
-
-    const track = document.createElement("div");
-    track.className = "archive-list-loading-track";
-    const bar = document.createElement("div");
-    bar.className = "archive-list-loading-bar";
-    track.appendChild(bar);
-
-    const label = document.createElement("p");
-    label.className = "archive-list-loading-label";
-    label.textContent = "기록 동기화 중";
-
-    const sk = document.createElement("div");
-    sk.className = "archive-list-loading-skeleton";
-    for (let i = 0; i < 3; i++) {
-      const row = document.createElement("div");
-      row.className = "archive-list-loading-card";
-      sk.appendChild(row);
-    }
-
-    wrap.appendChild(track);
-    wrap.appendChild(label);
-    wrap.appendChild(sk);
-    listEl.appendChild(wrap);
   }
 
   async function loadArchiveRangeThenRender() {
@@ -292,13 +259,11 @@ export function render() {
       return;
     }
     const gen = ++archiveRangeSyncGen;
-    showArchiveListLoading();
     try {
       await hydrateTimeLedgerEntriesForArchiveRange(startYmd, endYmd);
     } catch (e) {
     } finally {
       if (gen !== archiveRangeSyncGen || !el.isConnected) return;
-      listEl.classList.remove("archive-list--loading");
       refreshFullRecords();
       renderList();
     }
