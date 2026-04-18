@@ -162,6 +162,9 @@ function init() {
       return;
     }
     if (event === "SIGNED_OUT") {
+      try {
+        sessionStorage.removeItem("lp_active_tab_id");
+      } catch (_) {}
       void purgeTimeLedgerLocalOnSignOut();
       document.getElementById("app-screen").innerHTML = "";
       showOnly("login");

@@ -147,6 +147,41 @@ const RENDERERS = {
 
 let currentTabId = "home";
 
+/** 세션 유지 중 마지막으로 보던 탭(새로고침·PWA 재진입 시 복원). 로그아웃 시 main.js 에서 제거 */
+export const LP_LAST_TAB_SESSION_KEY = "lp_active_tab_id";
+
+function validAppTabIdSet() {
+  return new Set([...TABS.map((t) => t.id), "idea"]);
+}
+
+function applyPersistedTabIdFromSessionStorage() {
+  try {
+    const raw = sessionStorage.getItem(LP_LAST_TAB_SESSION_KEY);
+    if (raw && validAppTabIdSet().has(raw)) currentTabId = raw;
+  } catch (_) {}
+}
+
+function persistActiveTabId(tabId) {
+  try {
+    sessionStorage.setItem(LP_LAST_TAB_SESSION_KEY, tabId);
+  } catch (_) {}
+}
+
+/** 첫 페인트 후에 네트워크 hydrate 등 무거운 작업 실행 */
+function scheduleAfterFirstPaint(fn) {
+  if (typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        try {
+          fn();
+        } catch (_e) {}
+      });
+    });
+  } else {
+    setTimeout(fn, 0);
+  }
+}
+
 const ROUTINE_REMOVED_KEY = "app-routine-removed-v1";
 const SIDEBAR_COLLAPSED_KEY = "app-sidebar-collapsed-v1";
 
@@ -177,6 +212,7 @@ function migrateRemoveRoutineTasks() {
 
 export function mountApp(container) {
   if (!container) return;
+  applyPersistedTabIdFromSessionStorage();
   initPushReminderInAppPopup();
   migrateRemoveRoutineTasks();
   /* 가계부 미방문 시에도 시간가계부 소비 저장 → Supabase 동기화 이벤트 수신 */
@@ -328,6 +364,7 @@ export function mountApp(container) {
   function setActiveTab(tabId) {
     const fromTab = currentTabId;
     currentTabId = tabId;
+    persistActiveTabId(tabId);
     logTodoScheduleTabOnNavigate(tabId, fromTab);
     logTabSync("tab_switch", { from: fromTab, to: tabId });
     nav.querySelectorAll(".app-sidebar-item").forEach((b) => {
@@ -726,77 +763,95 @@ export function mountApp(container) {
   );
 
   renderMain(main);
-  logTabSync("boot_hydrate", { phase: "Promise.all" });
-  void Promise.all([
-    /* 할 일 목록: 탭 진입 시 pull은 setActiveTab 안에서 처리 — 여기서는 자리만 */
-    Promise.resolve(false),
-    hydrateTimeDailyBudgetFromCloud(),
-    /* 시간 과제 pull 은 시간 탭 진입 시 pullTimeLedgerTabEnterFromCloud 에서만 */
-    Promise.resolve(null),
-    hydrateHealthKpiMapFromCloud(),
-    hydrateHappinessKpiMapFromCloud(),
-    hydrateDreamKpiMapFromCloud(),
-    hydrateSideincomeKpiMapFromCloud(),
-    Promise.resolve({ anyChanged: false }),
-    /* 근무표: 탭 진입 전에 메모리를 서버와 맞춰 두면 ‘불러오는 중’ 체감·이중 로딩이 줄어듦 */
-    hydrateWorkScheduleFromCloud(),
-  ]).then(
-    ([
-      needTodoRefresh,
-      budgetMerged,
-      ,
-      healthKpiPulled,
-      happinessKpiPulled,
-      dreamKpiPulled,
-      sideincomeKpiPulled,
-      timeLedgerPullR,
-      ,
-    ]) => {
-      const timeLedgerRowsMerged = !!(timeLedgerPullR && timeLedgerPullR.anyChanged);
-      kpiSyncDebugLog("앱 부팅 hydrate 결과", {
+  logTabSync("boot_hydrate", { phase: "first_paint_then_deferred" });
+  scheduleAfterFirstPaint(() => {
+    logTabSync("boot_hydrate", { phase: "Promise.all" });
+    void Promise.all([
+      /* 할 일 목록: 탭 진입 시 pull은 setActiveTab 안에서 처리 — 여기서는 자리만 */
+      Promise.resolve(false),
+      hydrateTimeDailyBudgetFromCloud(),
+      /* 시간 과제 pull 은 시간 탭 진입 시 pullTimeLedgerTabEnterFromCloud 에서만 */
+      Promise.resolve(null),
+      hydrateHealthKpiMapFromCloud(),
+      hydrateHappinessKpiMapFromCloud(),
+      hydrateDreamKpiMapFromCloud(),
+      hydrateSideincomeKpiMapFromCloud(),
+      Promise.resolve({ anyChanged: false }),
+      /* 근무표: 탭 진입 전에 메모리를 서버와 맞춰 두면 ‘불러오는 중’ 체감·이중 로딩이 줄어듦 */
+      hydrateWorkScheduleFromCloud(),
+    ]).then(
+      async ([
         needTodoRefresh,
         budgetMerged,
+        ,
         healthKpiPulled,
         happinessKpiPulled,
         dreamKpiPulled,
         sideincomeKpiPulled,
-        timeLedgerRowsMerged,
-        "의미(각 KPI)": "true면 방금 Supabase에서 받아 localStorage를 갱신함",
-        "이후 localStorage 요약": snapshotKpiLocalStorageBrief(),
-      });
-      if (
-        needTodoRefresh ||
-        budgetMerged ||
-        timeLedgerRowsMerged ||
-        healthKpiPulled ||
-        happinessKpiPulled ||
-        dreamKpiPulled ||
-        sideincomeKpiPulled
-      ) {
-        if (currentTabId === "time") {
-          try {
-            document.dispatchEvent(
-              new CustomEvent("lp-time-ledger-remote-updated"),
-            );
-          } catch (_) {}
-        } else if (currentTabId === "workschedule") {
-          /* 근무표는 부팅 시 Promise.all 에서 이미 hydrate 함. 여기서 renderMain 하면 패널 전체가
-           * 다시 그려져 깜빡이므로 생략(탭 마운트 시 동기화). */
-        } else {
-          logLpRender("App:초기 hydrate·Promise.all 완료 후 재렌더", {
-            needTodoRefresh,
-            budgetMerged,
-            timeLedgerRowsMerged,
-            healthKpiPulled,
-            happinessKpiPulled,
-            dreamKpiPulled,
-            sideincomeKpiPulled,
-          });
-          renderMain(main);
+        timeLedgerPullR,
+        ,
+      ]) => {
+        const timeLedgerRowsMerged = !!(timeLedgerPullR && timeLedgerPullR.anyChanged);
+        kpiSyncDebugLog("앱 부팅 hydrate 결과", {
+          needTodoRefresh,
+          budgetMerged,
+          healthKpiPulled,
+          happinessKpiPulled,
+          dreamKpiPulled,
+          sideincomeKpiPulled,
+          timeLedgerRowsMerged,
+          "의미(각 KPI)": "true면 방금 Supabase에서 받아 localStorage를 갱신함",
+          "이후 localStorage 요약": snapshotKpiLocalStorageBrief(),
+        });
+        if (
+          needTodoRefresh ||
+          budgetMerged ||
+          timeLedgerRowsMerged ||
+          healthKpiPulled ||
+          happinessKpiPulled ||
+          dreamKpiPulled ||
+          sideincomeKpiPulled
+        ) {
+          if (currentTabId === "time") {
+            /* 시간 탭은 아래 pullTimeLedgerTabEnterFromCloud 에서 한 번에 갱신 */
+          } else if (currentTabId === "workschedule") {
+            /* 근무표는 부팅 시 Promise.all 에서 이미 hydrate 함. 여기서 renderMain 하면 패널 전체가
+             * 다시 그려져 깜빡이므로 생략(탭 마운트 시 동기화). */
+          } else {
+            logLpRender("App:초기 hydrate·Promise.all 완료 후 재렌더", {
+              needTodoRefresh,
+              budgetMerged,
+              timeLedgerRowsMerged,
+              healthKpiPulled,
+              happinessKpiPulled,
+              dreamKpiPulled,
+              sideincomeKpiPulled,
+            });
+            renderMain(main);
+          }
         }
-      }
-    }
-  );
+
+        const t = currentTabId;
+        if (t === "time") {
+          try {
+            await pullTimeLedgerTabEnterFromCloud();
+          } catch (_) {}
+          try {
+            renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
+          } catch (_) {}
+        } else if (t === "calendar" || t === "schedulecalendar") {
+          try {
+            await pullCalendarSectionTasksFromSupabase({
+              reason: `app_boot_restore_${t}`,
+            });
+          } catch (_) {}
+          try {
+            renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
+          } catch (_) {}
+        }
+      },
+    );
+  });
   appScreen.appendChild(main);
   appPage.appendChild(appScreen);
   appPage.appendChild(bottomNav);
