@@ -47,15 +47,12 @@ import {
   migrateTimeLogRowsTaskIds,
   isUuid,
 } from "../utils/timeTaskOptionsModel.js";
-import {
-  hydrateTimeLedgerTasksFromCloud,
-  attachTimeLedgerTasksSaveListener,
-} from "../utils/timeLedgerTasksSupabase.js";
+import { attachTimeLedgerTasksSaveListener } from "../utils/timeLedgerTasksSupabase.js";
 import {
   getStoredImproveNotes,
   setStoredImproveNote,
 } from "../utils/timeImproveNotesModel.js";
-import { hydrateTimeImproveNotesFromCloud } from "../utils/timeImproveNotesSupabase.js";
+import { attachTimeImproveNotesSaveListener } from "../utils/timeImproveNotesSupabase.js";
 import { scheduleTimeDailyBudgetSyncPush } from "../utils/timeDailyBudgetSupabase.js";
 import {
   ensureTimeLedgerEntryIds,
@@ -65,12 +62,12 @@ import {
 } from "../utils/timeLedgerEntriesModel.js";
 import {
   deleteTimeLedgerEntryFromSupabase,
-  hydrateTimeLedgerEntriesFromCloud,
   pullTimeLedgerEntriesForDateRange,
   pushDirtyTimeLedgerEntriesToSupabase,
   readTimeLedgerSessionFilterRangeYmd,
 } from "../utils/timeLedgerEntriesSupabase.js";
 import { hydrateAssetExpenseTransactionsFromCloud } from "../utils/assetExpenseTransactionsSupabase.js";
+import { pullTimeLedgerTabEnterFromCloud } from "../utils/timeLedgerCloudRefresh.js";
 import { timeLedgerSyncLog } from "../utils/timeLedgerSyncDebug.js";
 import { lpSaveDebug } from "../utils/lpSaveDebug.js";
 import { logTabSync } from "../utils/lpTabSyncDebug.js";
@@ -1032,7 +1029,7 @@ function saveTimeRows(rows) {
     }
     try {
       if (typeof window !== "undefined") {
-        void pushDirtyTimeLedgerEntriesToSupabase();
+        void pushDirtyTimeLedgerEntriesToSupabase({ skipPull: true });
       }
     } catch (_) {}
   } catch (_) {}
@@ -3487,9 +3484,6 @@ function createProductivitySection(
       const diskBefore = loadTimeRows();
       const { next } = removeTimeLedgerRowFromRows(diskBefore, rowData);
       saveTimeRows(next);
-      try {
-        document.dispatchEvent(new CustomEvent("lp-time-ledger-pull-picker-range"));
-      } catch (_) {}
     })();
   };
 
@@ -3556,8 +3550,7 @@ export function render() {
   const signal = timeTabAbort.signal;
 
   attachTimeLedgerTasksSaveListener();
-  void hydrateTimeLedgerTasksFromCloud();
-  void hydrateTimeImproveNotesFromCloud();
+  attachTimeImproveNotesSaveListener();
 
   const header = document.createElement("div");
   header.className = "time-ledger-header dream-view-header-wrap";
@@ -7353,10 +7346,7 @@ export function render() {
   let cachedRows = [];
 
   logTabSync("time_tab_hydrate", {});
-  void Promise.all([
-    hydrateTimeLedgerEntriesFromCloud(),
-    hydrateAssetExpenseTransactionsFromCloud(),
-  ]).then(() => {
+  void Promise.all([hydrateAssetExpenseTransactionsFromCloud()]).then(() => {
     if (!el.isConnected) return;
     try {
       _pickerRangeKeyAtLastPullIntent = computePickerRangeKeyForPull();
@@ -7652,9 +7642,6 @@ export function render() {
         const { next } = removeTimeLedgerRowFromRows(allRowsCache, rowData);
         allRowsCache = next;
         saveTimeRows(allRowsCache);
-        try {
-          document.dispatchEvent(new CustomEvent("lp-time-ledger-pull-picker-range"));
-        } catch (_) {}
       })();
     };
     const handleCardEdit = (card, rowData) => {
@@ -7996,9 +7983,6 @@ export function render() {
         const { next } = removeTimeLedgerRowFromRows(allRowsCache, rowData);
         allRowsCache = next;
         saveTimeRows(allRowsCache);
-        try {
-          document.dispatchEvent(new CustomEvent("lp-time-ledger-pull-picker-range"));
-        } catch (_) {}
       })();
     };
     PRODUCTIVITY_VIEW_ORDER.forEach((prod) => {
@@ -9965,11 +9949,6 @@ export function render() {
         filterStartDate = filterEndDate = single;
       }
       persistTimeFilterToSession();
-      const prkAudit = computePickerRangeKeyForPull();
-      if (prkAudit !== _pickerRangeKeyAtLastPullIntent) {
-        _pickerRangeKeyAtLastPullIntent = prkAudit;
-        schedulePullTimeLedgerForPickerRange();
-      }
     } else if (view === "blank") {
       if (filterNavCluster) filterNavCluster.style.display = "none";
       if (taskSetupBtn) taskSetupBtn.style.display = "none";
@@ -9996,7 +9975,8 @@ export function render() {
     return filterRowsByFilterType(rows, type, y, m, start, end);
   }
 
-  function switchView(view) {
+  function switchView(view, opts = {}) {
+    const userSubTabClick = !!opts.userSubTabClick;
     if (!TIME_LEDGER_SHOW_IMPROVE_TAB && view === "improve") view = "all";
     el.dataset.timeContentView = view;
     const hourlyAddSlotRoot = el.querySelector(".time-hourly-add-slot");
@@ -10037,10 +10017,24 @@ export function render() {
     updateTotal();
     syncMobileTabsSummaryDisplay();
     syncTimeFilterDateLabels();
+    /* 상위 시간가계부 탭 진입 시 App 에서 pull 함. 내부「시간 기록」「보고서」클릭 시에만 여기서 한 번 더 pull */
+    if (userSubTabClick && (view === "all" || view === "audit")) {
+      const gen = (el._lpTimeSubTabPullGen =
+        (el._lpTimeSubTabPullGen || 0) + 1);
+      void (async () => {
+        try {
+          await pullTimeLedgerTabEnterFromCloud();
+        } catch (_) {}
+        if (!el.isConnected || gen !== el._lpTimeSubTabPullGen) return;
+        refreshTimeLedgerFromRemotePull();
+      })();
+    }
   }
 
   viewTabs.querySelectorAll(".time-view-tab").forEach((btn) => {
-    btn.addEventListener("click", () => switchView(btn.dataset.view));
+    btn.addEventListener("click", () =>
+      switchView(btn.dataset.view, { userSubTabClick: true }),
+    );
   });
 
   tableWrap.appendChild(table);
@@ -10081,19 +10075,6 @@ export function render() {
     "visibilitychange",
     () => {
       if (document.visibilityState === "visible") scheduleRefreshMobileExpenseSnippets();
-    },
-    { signal },
-  );
-
-  document.addEventListener(
-    "lp-time-ledger-pull-picker-range",
-    () => {
-      void (async () => {
-        if (!el.isConnected) return;
-        const { rangeStart, rangeEnd } = readTimeLedgerSessionFilterRangeYmd();
-        const ok = await pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
-        if (ok && el.isConnected) refreshTimeLedgerFromRemotePull();
-      })();
     },
     { signal },
   );

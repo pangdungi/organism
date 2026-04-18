@@ -393,6 +393,7 @@ export function render() {
           await pushDirtyTimeLedgerEntriesToSupabase({
             rangeStart: startYmd,
             rangeEnd: endYmd,
+            skipPull: true,
           });
         } catch (_) {}
         refreshFullRecords();
@@ -543,7 +544,7 @@ export function render() {
   });
 
   /*
-   * Realtime: App 쪽에서 이미 pullAllTimeLedgerFromCloud 로 로컬이 갱신된 뒤 이벤트가 옴.
+   * Realtime: 시간가계부 자동 pull 은 사용하지 않음 — 시간 탭 진입 시 동기화.
    * 여기서 구간 hydrate를 반복 호출하면 Realtime·pull이 겹쳐 불필요한 갱신이 날 수 있음.
    */
   document.addEventListener(

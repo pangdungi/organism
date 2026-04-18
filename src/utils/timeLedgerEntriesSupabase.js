@@ -3,7 +3,8 @@
  *
  * 정책: 화면에 보이는 날짜 구간은 서버 조회 결과가 기준(로컬은 캐시·오프라인용).
  * 올리기: 사용자 저장으로 바뀐 행만 upsert · 삭제는 delete API (통째 업로드 없음).
- * upsert 직후 해당 피커 구간을 pull 해 서버와 화면을 맞춤. 다른 기기·Realtime·날짜 변경도 같은 pull로 반영.
+ * 기본(skipPull 미지정 시): upsert 직후 피커 구간 pull — 저장 직후 덮어쓰기가 나면 skipPull: true 로 호출.
+ * 서버 쓰기는 사용자가 기록·모달에서 저장·삭제할 때만(pushDirty·delete API).
  */
 
 import { supabase } from "../supabase.js";
@@ -35,6 +36,16 @@ export function timeLedgerLocalTodayYmd() {
   const d = new Date();
   const pad = (n) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** 상위 '시간' 탭 클릭 시 — 피커를 오늘 하루로 맞춤(이후 사용자가 날짜 변경 가능). */
+export function resetTimeLedgerSessionFilterToToday() {
+  try {
+    if (typeof sessionStorage === "undefined") return;
+    const t = timeLedgerLocalTodayYmd();
+    sessionStorage.setItem("lp_time_filter_start", t);
+    sessionStorage.setItem("lp_time_filter_end", t);
+  } catch (_) {}
 }
 
 /**

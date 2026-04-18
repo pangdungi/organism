@@ -5,7 +5,6 @@
 
 import { supabase } from "../supabase.js";
 import { pullAllKpiMapsFromCloud } from "./kpiTabCloudRefresh.js";
-import { pullAllTimeLedgerFromCloud } from "./timeLedgerCloudRefresh.js";
 import { timeLedgerEntryPayloadTouchesSessionPicker } from "./timeLedgerEntriesSupabase.js";
 import { pullAllAssetFromCloud } from "./assetCloudRefresh.js";
 import { pullAllDiaryFromCloud } from "./diaryCloudRefresh.js";
@@ -218,25 +217,8 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
             note: "이번 배치에 KPI 맵 테이블 없음 — pullAllKpiMapsFromCloud 생략",
           });
         }
-        const hasTimeRealtime = timeBatch.touchedTables.size > 0;
-        /* 기록(time_ledger_entries)이 피커 구간에 닿는 이벤트가 있을 때만 항목 pull. 과제·예산만 변했으면 생략. */
-        const skipEntries =
-          hasTimeRealtime &&
-          !(
-            timeBatch.touchedTables.has("time_ledger_entries") &&
-            timeBatch.entryTouchesPicker
-          );
-        let timeLedgerChanged = hasTimeRealtime
-          ? (await pullAllTimeLedgerFromCloud({ skipEntries })).anyChanged
-          : false;
-        /*
-         * KPI 맵만 Realtime으로 바뀐 경우에도: 과제 목록은 time_ledger_tasks pull 시 KPI 연동 이름을 합침.
-         * (시간「기록」행은 건드리지 않음 — skipEntries: true)
-         */
-        if (!hasTimeRealtime && kpiMapsChanged) {
-          const t = await pullAllTimeLedgerFromCloud({ skipEntries: true });
-          timeLedgerChanged = timeLedgerChanged || t.anyChanged;
-        }
+        /* 시간가계부: Realtime 으로 자동 pull 하지 않음 — 시간 탭 클릭 시에만 서버와 맞춤 */
+        const timeLedgerChanged = false;
         const { anyChanged: assetChanged } = await pullAllAssetFromCloud(getCurrentTabId, {
           realtimeTouchedTables,
         });

@@ -21,7 +21,6 @@ import { pullCalendarSectionTasksFromSupabase } from "./utils/todoSectionTasksSu
 import { attachAssetExpenseTransactionsSaveListener } from "./utils/assetExpenseTransactionsSupabase.js";
 import { initPushReminderInAppPopup } from "./utils/initPushReminderInAppPopup.js";
 import { hydrateTimeDailyBudgetFromCloud } from "./utils/timeDailyBudgetSupabase.js";
-import { hydrateTimeLedgerTasksFromCloud } from "./utils/timeLedgerTasksSupabase.js";
 import {
   attachHealthKpiMapSaveListener,
   hydrateHealthKpiMapFromCloud,
@@ -38,12 +37,15 @@ import {
   attachSideincomeKpiMapSaveListener,
   hydrateSideincomeKpiMapFromCloud,
 } from "./utils/sideincomeKpiMapSupabase.js";
-import { attachTimeLedgerEntriesSaveListener } from "./utils/timeLedgerEntriesSupabase.js";
+import {
+  attachTimeLedgerEntriesSaveListener,
+  resetTimeLedgerSessionFilterToToday,
+} from "./utils/timeLedgerEntriesSupabase.js";
 import {
   pullAllKpiMapsFromCloud,
   pullKpiTabFromCloud,
 } from "./utils/kpiTabCloudRefresh.js";
-import { pullAllTimeLedgerFromCloud } from "./utils/timeLedgerCloudRefresh.js";
+import { pullTimeLedgerTabEnterFromCloud } from "./utils/timeLedgerCloudRefresh.js";
 import { pullAllAssetFromCloud } from "./utils/assetCloudRefresh.js";
 import { pullAllDiaryFromCloud } from "./utils/diaryCloudRefresh.js";
 import {
@@ -343,6 +345,14 @@ export function mountApp(container) {
           await pullCalendarSectionTasksFromSupabase({
             reason: `app_setActiveTab_${tabId}`,
           });
+        } catch (_) {}
+        renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
+      })();
+    } else if (tabId === "time") {
+      void (async () => {
+        try {
+          resetTimeLedgerSessionFilterToToday();
+          await pullTimeLedgerTabEnterFromCloud();
         } catch (_) {}
         renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
       })();
@@ -648,7 +658,7 @@ export function mountApp(container) {
               await Promise.all([
                 todoPullPromise,
                 pullAllKpiMapsFromCloud(() => currentTabId),
-                pullAllTimeLedgerFromCloud(),
+                Promise.resolve({ anyChanged: false }),
                 pullAllAssetFromCloud(() => currentTabId),
                 pullAllDiaryFromCloud(),
               ]);
@@ -721,12 +731,13 @@ export function mountApp(container) {
     /* 할 일 목록: 탭 진입 시 pull은 setActiveTab 안에서 처리 — 여기서는 자리만 */
     Promise.resolve(false),
     hydrateTimeDailyBudgetFromCloud(),
-    hydrateTimeLedgerTasksFromCloud(),
+    /* 시간 과제 pull 은 시간 탭 진입 시 pullTimeLedgerTabEnterFromCloud 에서만 */
+    Promise.resolve(null),
     hydrateHealthKpiMapFromCloud(),
     hydrateHappinessKpiMapFromCloud(),
     hydrateDreamKpiMapFromCloud(),
     hydrateSideincomeKpiMapFromCloud(),
-    pullAllTimeLedgerFromCloud(),
+    Promise.resolve({ anyChanged: false }),
     /* 근무표: 탭 진입 전에 메모리를 서버와 맞춰 두면 ‘불러오는 중’ 체감·이중 로딩이 줄어듦 */
     hydrateWorkScheduleFromCloud(),
   ]).then(
