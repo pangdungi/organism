@@ -373,11 +373,15 @@ export function mountApp(container) {
       });
     }
     void (async () => {
-      try {
-        await pullDataForActiveTab(tabId, { fromBoot: false });
-      } catch (_) {}
+      const targetTabId = tabId;
+      /* pull 대기 중에도 본문을 바로 갈아끼움 — 시간가계부 등 무거운 pull이 1~2초 걸릴 때 하단 탭만 바뀌고 화면이 남는 현상 방지 */
       renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
-      if (tabId === "idea") {
+      try {
+        await pullDataForActiveTab(targetTabId, { fromBoot: false });
+      } catch (_) {}
+      if (currentTabId !== targetTabId) return;
+      renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
+      if (targetTabId === "idea") {
         requestAnimationFrame(() => {
           main.scrollTop = 0;
         });
