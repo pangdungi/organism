@@ -5758,6 +5758,8 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
   }
 
   let _nestedSubViewGen = 0;
+  /* 상위 탭(App) 또는 직전 renderContent 가 이미 pull 한 직후 첫 nested 만 중복 네트워크 생략 */
+  let _nestedSubViewFirstPullSkip = true;
 
   async function renderSubView(subViewId) {
     const gen = ++_nestedSubViewGen;
@@ -5766,12 +5768,16 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
       hasSidebar: !!contentArea.querySelector(".calendar-todo-sidebar-body"),
     });
     saveTodoListBeforeUnmount(contentArea);
-    try {
-      await pullCalendarSectionTasksFromSupabase({
-        reason: `calendar_nested_${subViewId}`,
-        subView: "calendar",
-      });
-    } catch (_) {}
+    if (_nestedSubViewFirstPullSkip) {
+      _nestedSubViewFirstPullSkip = false;
+    } else {
+      try {
+        await pullCalendarSectionTasksFromSupabase({
+          reason: `calendar_nested_${subViewId}`,
+          subView: "calendar",
+        });
+      } catch (_) {}
+    }
     if (gen !== _nestedSubViewGen) return;
     if (subTabs.parentNode) subTabs.remove();
     contentArea.innerHTML = "";
@@ -6404,6 +6410,9 @@ export function render() {
 
   let currentView = "todo";
   let _renderContentGen = 0;
+  /* App.setActiveTab(calendar) 에서 이미 pull 했으면 첫 renderContent 의 중복 await 가
+   * 빈 본문 한 번 깜빡이는 원인 — 첫 1회만 서브탭 pull 생략 */
+  let _calendarMainSubtabPullPrimedByApp = true;
 
   async function renderContent(view) {
     const onlySaveWhenFullTodoList = currentView === "todo" || currentView === "eisenhower";
@@ -6412,12 +6421,16 @@ export function render() {
     }
     registerEisenhowerQuadrantsRefresh(null);
     const gen = ++_renderContentGen;
-    try {
-      await pullCalendarSectionTasksFromSupabase({
-        reason: "calendar_main_subtab",
-        subView: view,
-      });
-    } catch (_) {}
+    if (_calendarMainSubtabPullPrimedByApp) {
+      _calendarMainSubtabPullPrimedByApp = false;
+    } else {
+      try {
+        await pullCalendarSectionTasksFromSupabase({
+          reason: "calendar_main_subtab",
+          subView: view,
+        });
+      } catch (_) {}
+    }
     if (gen !== _renderContentGen) return;
     currentView = view;
     if (contentWrap.contains(tabs)) {
