@@ -4350,16 +4350,12 @@ function renderExpenseView(options = {}) {
       </div>
     </div>
     <div class="time-filter-month-wrap" data-filter-wrap="month">
-      <div class="asset-cashflow-dropdown-wrap">
-        <button type="button" class="time-period-trigger asset-cashflow-trigger" id="asset-expense-month-trigger">${filterMonth}월</button>
-        <div class="time-period-panel asset-cashflow-panel" id="asset-expense-month-panel">
-          ${Array.from({ length: 12 }, (_, i) => {
-            const m = i + 1;
-            return `<div class="time-period-option" data-value="${m}">${m}월</div>`;
-          }).join("")}
-        </div>
+      <div class="asset-cashflow-month-nav" aria-label="월 선택">
+        <button type="button" class="asset-cashflow-year-btn asset-expense-month-prev" aria-label="이전 달">&lt;</button>
+        <span class="asset-cashflow-month-display" id="asset-expense-month-display">${filterMonth}월</span>
+        <button type="button" class="asset-cashflow-year-btn asset-expense-month-next" aria-label="다음 달">&gt;</button>
       </div>
-      <div class="asset-cashflow-year-nav">
+      <div class="asset-cashflow-year-nav" aria-label="연도 선택">
         <button type="button" class="asset-cashflow-year-btn" aria-label="이전 연도">&lt;</button>
         <span class="asset-cashflow-year-display">${filterYear}</span>
         <button type="button" class="asset-cashflow-year-btn" aria-label="다음 연도">&gt;</button>
@@ -4381,55 +4377,50 @@ function renderExpenseView(options = {}) {
   const dayNextBtn = filterBar.querySelector(".time-filter-day-next");
   const startDateInput = filterBar.querySelector(".time-filter-start-date");
   const endDateInput = filterBar.querySelector(".time-filter-end-date");
-  const monthTrigger = filterBar.querySelector("#asset-expense-month-trigger");
-  const monthPanel = filterBar.querySelector("#asset-expense-month-panel");
-  const monthDropdownWrap = filterBar.querySelector(".time-filter-month-wrap .asset-cashflow-dropdown-wrap");
-  const yearDisplay = filterBar.querySelector(".asset-cashflow-year-display");
-  const yearPrevBtn = filterBar.querySelector(".time-filter-month-wrap .asset-cashflow-year-btn:first-child");
-  const yearNextBtn = filterBar.querySelector(".time-filter-month-wrap .asset-cashflow-year-btn:last-child");
+  const monthDisplayEl = filterBar.querySelector("#asset-expense-month-display");
+  const monthPrevBtn = filterBar.querySelector(".asset-expense-month-prev");
+  const monthNextBtn = filterBar.querySelector(".asset-expense-month-next");
+  const yearDisplay = filterBar.querySelector(".time-filter-month-wrap .asset-cashflow-year-display");
+  const yearPrevBtn = filterBar.querySelector(".time-filter-month-wrap .asset-cashflow-year-nav .asset-cashflow-year-btn:first-child");
+  const yearNextBtn = filterBar.querySelector(".time-filter-month-wrap .asset-cashflow-year-nav .asset-cashflow-year-btn:last-child");
 
-  if (!expenseMobile && monthPanel && monthTrigger && monthDropdownWrap) {
-    monthPanel.querySelectorAll(".time-period-option").forEach((o) => {
-      o.classList.toggle("is-selected", o.dataset.value === String(filterMonth));
-    });
+  function syncExpenseMonthYearLabels() {
+    if (monthDisplayEl) monthDisplayEl.textContent = `${filterMonth}월`;
+    if (yearDisplay) yearDisplay.textContent = String(filterYear);
+  }
 
-    monthTrigger.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      monthPanel.classList.toggle("is-open");
-      monthDropdownWrap.classList.toggle("is-open");
+  if (!expenseMobile && monthWrap) {
+    monthPrevBtn?.addEventListener("click", () => {
+      filterMonth -= 1;
+      if (filterMonth < 1) {
+        filterMonth = 12;
+        filterYear -= 1;
+      }
+      syncExpenseMonthYearLabels();
+      applyExpenseFilter();
+      scheduleExpenseMemPullFromServer();
     });
-    monthPanel.querySelectorAll(".time-period-option").forEach((o) => {
-      o.addEventListener("click", (e) => {
-        e.stopPropagation();
-        filterMonth = parseInt(o.dataset.value, 10);
-        monthTrigger.textContent = `${filterMonth}월`;
-        monthPanel.classList.remove("is-open");
-        monthDropdownWrap.classList.remove("is-open");
-        monthPanel.querySelectorAll(".time-period-option").forEach((opt) => {
-          opt.classList.toggle("is-selected", opt.dataset.value === String(filterMonth));
-        });
-        applyExpenseFilter();
-        scheduleExpenseMemPullFromServer();
-      });
+    monthNextBtn?.addEventListener("click", () => {
+      filterMonth += 1;
+      if (filterMonth > 12) {
+        filterMonth = 1;
+        filterYear += 1;
+      }
+      syncExpenseMonthYearLabels();
+      applyExpenseFilter();
+      scheduleExpenseMemPullFromServer();
     });
     yearPrevBtn?.addEventListener("click", () => {
       filterYear -= 1;
-      if (yearDisplay) yearDisplay.textContent = filterYear;
+      syncExpenseMonthYearLabels();
       applyExpenseFilter();
       scheduleExpenseMemPullFromServer();
     });
     yearNextBtn?.addEventListener("click", () => {
       filterYear += 1;
-      if (yearDisplay) yearDisplay.textContent = filterYear;
+      syncExpenseMonthYearLabels();
       applyExpenseFilter();
       scheduleExpenseMemPullFromServer();
-    });
-    document.addEventListener("click", (e) => {
-      if (!monthDropdownWrap.contains(e.target)) {
-        monthPanel.classList.remove("is-open");
-        monthDropdownWrap.classList.remove("is-open");
-      }
     });
   }
 
@@ -5780,22 +5771,20 @@ function renderCashflowView() {
   periodWrap.className = "asset-cashflow-period-wrap";
 
   const monthWrap = document.createElement("div");
-  monthWrap.className = "asset-cashflow-dropdown-wrap";
-  const monthTrigger = document.createElement("button");
-  monthTrigger.type = "button";
-  monthTrigger.className = "time-period-trigger asset-cashflow-trigger";
-  monthTrigger.textContent = `${selectedMonth}월`;
-  const monthPanel = document.createElement("div");
-  monthPanel.className = "time-period-panel asset-cashflow-panel";
-  monthPanel.innerHTML = Array.from({ length: 12 }, (_, i) => {
-    const m = i + 1;
-    return `<div class="time-period-option" data-value="${m}">${m}월</div>`;
-  }).join("");
-  monthWrap.appendChild(monthTrigger);
-  monthWrap.appendChild(monthPanel);
+  monthWrap.className = "asset-cashflow-month-nav";
+  monthWrap.setAttribute("aria-label", "월 선택");
+  monthWrap.innerHTML = `
+    <button type="button" class="asset-cashflow-year-btn asset-cashflow-month-prev" aria-label="이전 달">&lt;</button>
+    <span class="asset-cashflow-month-display">${selectedMonth}월</span>
+    <button type="button" class="asset-cashflow-year-btn asset-cashflow-month-next" aria-label="다음 달">&gt;</button>
+  `;
+  const monthDisplayCashflow = monthWrap.querySelector(".asset-cashflow-month-display");
+  const monthPrevCashflow = monthWrap.querySelector(".asset-cashflow-month-prev");
+  const monthNextCashflow = monthWrap.querySelector(".asset-cashflow-month-next");
 
   const yearWrap = document.createElement("div");
   yearWrap.className = "asset-cashflow-year-nav";
+  yearWrap.setAttribute("aria-label", "연도 선택");
   yearWrap.innerHTML = `
     <button type="button" class="asset-cashflow-year-btn" aria-label="이전 연도">&lt;</button>
     <span class="asset-cashflow-year-display">${selectedYear}</span>
@@ -5813,46 +5802,39 @@ function renderCashflowView() {
   const dashboard = document.createElement("div");
   dashboard.className = "time-dashboard-view";
 
-  monthTrigger.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    monthPanel.classList.toggle("is-open");
-    monthWrap.classList.toggle("is-open");
+  function syncCashflowPeriodLabels() {
+    if (monthDisplayCashflow) monthDisplayCashflow.textContent = `${selectedMonth}월`;
+    if (yearDisplay) yearDisplay.textContent = String(selectedYear);
+  }
+
+  monthPrevCashflow.addEventListener("click", () => {
+    selectedMonth -= 1;
+    if (selectedMonth < 1) {
+      selectedMonth = 12;
+      selectedYear -= 1;
+    }
+    syncCashflowPeriodLabels();
+    renderChart();
   });
-  monthPanel.querySelectorAll(".time-period-option").forEach((o) => {
-    o.addEventListener("click", (e) => {
-      e.stopPropagation();
-      selectedMonth = parseInt(o.dataset.value, 10);
-      monthTrigger.textContent = `${selectedMonth}월`;
-      monthPanel.classList.remove("is-open");
-      monthWrap.classList.remove("is-open");
-      monthPanel.querySelectorAll(".time-period-option").forEach((opt) => {
-        opt.classList.toggle("is-selected", opt.dataset.value === String(selectedMonth));
-      });
-      renderChart();
-    });
+  monthNextCashflow.addEventListener("click", () => {
+    selectedMonth += 1;
+    if (selectedMonth > 12) {
+      selectedMonth = 1;
+      selectedYear += 1;
+    }
+    syncCashflowPeriodLabels();
+    renderChart();
   });
 
   yearPrevBtn.addEventListener("click", () => {
     selectedYear -= 1;
-    yearDisplay.textContent = selectedYear;
+    syncCashflowPeriodLabels();
     renderChart();
   });
   yearNextBtn.addEventListener("click", () => {
     selectedYear += 1;
-    yearDisplay.textContent = selectedYear;
+    syncCashflowPeriodLabels();
     renderChart();
-  });
-
-  monthPanel.addEventListener("click", (e) => e.stopPropagation());
-  document.addEventListener("click", (e) => {
-    if (periodWrap.contains(e.target)) return;
-    monthPanel.classList.remove("is-open");
-    monthWrap.classList.remove("is-open");
-  });
-
-  monthPanel.querySelectorAll(".time-period-option").forEach((o) => {
-    o.classList.toggle("is-selected", o.dataset.value === String(selectedMonth));
   });
 
   wrap.appendChild(dashboard);
@@ -6426,15 +6408,8 @@ export function render() {
   attachAssetPlanMonthlyGoalsSaveListener();
   attachAssetNetWorthBundleSaveListener();
 
-  const hasCachedExpenseRows = getExpenseRowsMem().length > 0;
-  if (hasCachedExpenseRows) {
-    renderView(initialView);
-  } else {
-    const assetInitialLoading = document.createElement("p");
-    assetInitialLoading.className = "asset-placeholder";
-    assetInitialLoading.textContent = "불러오는 중…";
-    contentWrap.appendChild(assetInitialLoading);
-  }
+  /* 행이 0건이어도 «불러오는 중»을 띄우지 않음 — 빈 가계부는 미리 로드된 상태와 구분 불가했고, 상위 탭 전환 시 App에서 이미 pull 후 렌더되는 경우가 많음 */
+  renderView(initialView);
 
   setupScrollClosePanels();
 
