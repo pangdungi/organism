@@ -20,79 +20,39 @@ import { render as renderHome } from "./views/Home.js";
 import { pullCalendarSectionTasksFromSupabase } from "./utils/todoSectionTasksSupabase.js";
 import { attachAssetExpenseTransactionsSaveListener } from "./utils/assetExpenseTransactionsSupabase.js";
 import { initPushReminderInAppPopup } from "./utils/initPushReminderInAppPopup.js";
-import { hydrateTimeDailyBudgetFromCloud } from "./utils/timeDailyBudgetSupabase.js";
 import {
   attachHealthKpiMapSaveListener,
-  hydrateHealthKpiMapFromCloud,
 } from "./utils/healthKpiMapSupabase.js";
 import {
   attachHappinessKpiMapSaveListener,
-  hydrateHappinessKpiMapFromCloud,
 } from "./utils/happinessKpiMapSupabase.js";
 import {
   attachDreamKpiMapSaveListener,
-  hydrateDreamKpiMapFromCloud,
 } from "./utils/dreamKpiMapSupabase.js";
 import {
   attachSideincomeKpiMapSaveListener,
-  hydrateSideincomeKpiMapFromCloud,
 } from "./utils/sideincomeKpiMapSupabase.js";
 import {
   attachTimeLedgerEntriesSaveListener,
+  pullTimeLedgerEntriesForDateRange,
   resetTimeLedgerSessionFilterToToday,
+  timeLedgerLocalTodayYmd,
 } from "./utils/timeLedgerEntriesSupabase.js";
-import {
-  pullAllKpiMapsFromCloud,
-  pullKpiTabFromCloud,
-} from "./utils/kpiTabCloudRefresh.js";
+import { pullKpiTabFromCloud } from "./utils/kpiTabCloudRefresh.js";
 import { pullTimeLedgerTabEnterFromCloud } from "./utils/timeLedgerCloudRefresh.js";
+import { pullTimeLedgerTasksFromSupabase } from "./utils/timeLedgerTasksSupabase.js";
+import { pullTimeDailyBudgetFromSupabase } from "./utils/timeDailyBudgetSupabase.js";
 import { pullAllAssetFromCloud } from "./utils/assetCloudRefresh.js";
 import { pullAllDiaryFromCloud } from "./utils/diaryCloudRefresh.js";
-import {
-  KPI_TAB_IDS,
-  kpiSyncDebugLog,
-  snapshotKpiLocalStorageBrief,
-} from "./utils/kpiSyncDebug.js";
+import { pullUserPrefsFromSupabase } from "./utils/userHourlySync.js";
 import { initSupabaseRealtimeSync } from "./utils/supabaseRealtimeSync.js";
-import { printSyncWatchHelp, syncWatchLog } from "./utils/syncWatchLog.js";
+import { printSyncWatchHelp } from "./utils/syncWatchLog.js";
 import { getTabSyncCounts, logTabSync } from "./utils/lpTabSyncDebug.js";
-import { lpPullDebug } from "./utils/lpPullDebug.js";
 import { hydrateWorkScheduleFromCloud } from "./utils/workScheduleSupabase.js";
 import { logLpRender, logLpRenderStack } from "./utils/lpRenderDebugLog.js";
 import { initDomPulseDebug } from "./utils/domPulseDebug.js";
 import { initMobileVisualViewportKeyboardInset } from "./utils/mobileViewportKeyboard.js";
 import { logTodoScheduleTabOnNavigate } from "./utils/lpTabDataSourceLog.js";
-
-/** 사용자가 입력 중인지 확인 (입력 중이면 화면 갱신 건너뜀) */
-function isUserTypingInApp() {
-  const el = document.activeElement;
-  if (!el) return false;
-  const tag = el.tagName?.toLowerCase();
-  if (tag === "input" || tag === "textarea") return true;
-  if (el.isContentEditable) return true;
-  return false;
-}
-
-/** 브라우저 탭 포커스 시 KPI pull 후 다시 그려야 하는 앱 메뉴(오늘·할일·시간 등 KPI 데이터를 읽는 화면) */
-const TAB_IDS_REFRESH_ON_KPI_PULL = new Set([
-  "home",
-  "dream",
-  "sideincome",
-  "happiness",
-  "health",
-  "calendar",
-  "schedulecalendar",
-  "asset",
-  "diary",
-  "archive",
-]);
-
-/** 시간 기록 행 pull 후 다시 그려야 하는 탭(loadTimeRows·getTodayTimeSummary 등 사용) */
-const TAB_IDS_REFRESH_ON_TIME_LEDGER_ROWS = new Set([
-  "home",
-  "calendar",
-  "schedulecalendar",
-]);
 
 const TABS = [
   { id: "home", label: "오늘", icon: "/toolbaricons/dashboard.svg" },
@@ -167,18 +127,54 @@ function persistActiveTabId(tabId) {
   } catch (_) {}
 }
 
-/** 첫 페인트 후에 네트워크 hydrate 등 무거운 작업 실행 */
-function scheduleAfterFirstPaint(fn) {
-  if (typeof requestAnimationFrame === "function") {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        try {
-          fn();
-        } catch (_e) {}
+/**
+ * 상위 탭 전환(및 앱 최초 진입 시 현재 탭)에서만 서버와 맞춤. 그 외 경로에서는 pull 하지 않음.
+ * @param {{ fromBoot?: boolean }} [opts] — true면 세션에 남은 시간가계부 날짜 필터를 유지(복원 진입).
+ */
+async function pullDataForActiveTab(tabId, opts = {}) {
+  const fromBoot = !!opts.fromBoot;
+  switch (tabId) {
+    case "home": {
+      await pullCalendarSectionTasksFromSupabase({ reason: "app_tab_home" });
+      const ymd = timeLedgerLocalTodayYmd();
+      await Promise.all([
+        pullTimeLedgerEntriesForDateRange(ymd, ymd),
+        pullTimeLedgerTasksFromSupabase(),
+        pullTimeDailyBudgetFromSupabase(),
+      ]);
+      break;
+    }
+    case "calendar":
+    case "schedulecalendar":
+      await pullCalendarSectionTasksFromSupabase({
+        reason: `app_setActiveTab_${tabId}`,
       });
-    });
-  } else {
-    setTimeout(fn, 0);
+      break;
+    case "time":
+      if (!fromBoot) resetTimeLedgerSessionFilterToToday();
+      await pullTimeLedgerTabEnterFromCloud();
+      break;
+    case "dream":
+    case "health":
+    case "happiness":
+    case "sideincome":
+      await pullKpiTabFromCloud(tabId);
+      break;
+    case "asset":
+      await pullAllAssetFromCloud(() => tabId, { forceExpensePull: true });
+      break;
+    case "diary":
+      await pullAllDiaryFromCloud();
+      break;
+    case "workschedule":
+      await hydrateWorkScheduleFromCloud();
+      break;
+    case "idea":
+      await pullUserPrefsFromSupabase().catch(() => {});
+      break;
+    case "archive":
+    default:
+      break;
   }
 }
 
@@ -376,50 +372,17 @@ export function mountApp(container) {
         b.classList.toggle("active", b.dataset.tabId === tabId);
       });
     }
-    if (tabId === "calendar" || tabId === "schedulecalendar") {
-      void (async () => {
-        try {
-          await pullCalendarSectionTasksFromSupabase({
-            reason: `app_setActiveTab_${tabId}`,
-          });
-        } catch (_) {}
-        renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
-      })();
-    } else if (tabId === "time") {
-      void (async () => {
-        try {
-          resetTimeLedgerSessionFilterToToday();
-          await pullTimeLedgerTabEnterFromCloud();
-        } catch (_) {}
-        renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
-      })();
-    } else {
-      renderMain(main, { force: true });
-    }
-    /* 꿈·부수입·행복·건강: 다른 기기에서 삭제·추가한 내용을 보려면 진입 시 서버 pull 필요.
-     * localStorage 문자열이 바뀐 경우에만 한 번 더 그림(불필요한 깜빡임 감소).
-     * 단, 사용자가 입력 중이면 갱신을 건너뜀(입력 도중 화면 날아감 방지). */
-    if (KPI_TAB_IDS.has(tabId)) {
-      void pullKpiTabFromCloud(tabId).then(({ pullOk, localChanged }) => {
-        logTabSync("kpi_tab_pull", { tabId, pullOk, localChanged });
-        if (pullOk && localChanged && !isUserTypingInApp()) {
-          logLpRender("App:setActiveTab·KPI pull 후 재렌더", {
-            tabId,
-            pullOk,
-            localChanged,
-          });
-          renderMain(main, {
-            skipTodoSaveBeforeUnmount: true,
-            force: true,
-          });
-        }
-      });
-    }
-    if (tabId === "idea") {
-      requestAnimationFrame(() => {
-        main.scrollTop = 0;
-      });
-    }
+    void (async () => {
+      try {
+        await pullDataForActiveTab(tabId, { fromBoot: false });
+      } catch (_) {}
+      renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
+      if (tabId === "idea") {
+        requestAnimationFrame(() => {
+          main.scrollTop = 0;
+        });
+      }
+    })();
   }
 
   nav.querySelectorAll(".app-sidebar-item").forEach((b) => {
@@ -672,186 +635,15 @@ export function mountApp(container) {
     window.__lpSyncWatchHelp = printSyncWatchHelp;
   }
 
-  /** 브라우저 탭 포커스 복귀 시: KPI·시간·자산·일기 pull (할 일 목록은 서버에서 목록 안 받음) */
-  let _browserTabVisiblePullTimer = null;
-  document.addEventListener(
-    "visibilitychange",
-    () => {
-      if (document.visibilityState !== "visible") return;
-      if (_browserTabVisiblePullTimer) clearTimeout(_browserTabVisiblePullTimer);
-      syncWatchLog("visibility_스케줄", {
-        tab: currentTabId,
-        delayMs: 350,
-        note: "탭 다시 보이기 후 350ms 뒤 pull 묶음(폭주 방지)",
-      });
-      _browserTabVisiblePullTimer = setTimeout(() => {
-        _browserTabVisiblePullTimer = null;
-        void (async () => {
-          try {
-            logTabSync("visibility_pull", { tab: currentTabId });
-            lpPullDebug("app_visibility_focus_pull_bundle", { tab: currentTabId });
-            const todoPullPromise = Promise.resolve(false);
-            const [needTodoRefresh, kpiR, timeR, assetR, diaryR] =
-              await Promise.all([
-                todoPullPromise,
-                pullAllKpiMapsFromCloud(() => currentTabId),
-                Promise.resolve({ anyChanged: false }),
-                pullAllAssetFromCloud(() => currentTabId),
-                pullAllDiaryFromCloud(),
-              ]);
-            const kpiChanged = kpiR.anyChanged;
-            const timeChanged = timeR.anyChanged;
-            const assetChanged = assetR.anyChanged;
-            const diaryChanged = diaryR.anyChanged;
-            syncWatchLog("visibility_pull_결과", {
-              tab: currentTabId,
-              needTodoRefresh,
-              kpiChanged,
-              timeChanged,
-              assetChanged,
-              diaryChanged,
-            });
-            if (
-              !needTodoRefresh &&
-              !kpiChanged &&
-              !timeChanged &&
-              !assetChanged &&
-              !diaryChanged
-            )
-              return;
-            if (currentTabId === "time") {
-              if (timeChanged) {
-                try {
-                  document.dispatchEvent(
-                    new CustomEvent("lp-time-ledger-remote-updated"),
-                  );
-                } catch (_) {}
-              }
-              return;
-            }
-            const needMainFromTodo = false;
-            const needMainFromOther =
-              TAB_IDS_REFRESH_ON_KPI_PULL.has(currentTabId) &&
-              (kpiChanged || assetChanged || diaryChanged);
-            const needMainFromTimeRows =
-              timeChanged &&
-              TAB_IDS_REFRESH_ON_TIME_LEDGER_ROWS.has(currentTabId);
-            if (
-              (needMainFromTodo ||
-                needMainFromOther ||
-                needMainFromTimeRows) &&
-              !isUserTypingInApp()
-            ) {
-              logLpRender("App:visibilitychange·탭 포커스 복귀 후 pull", {
-                currentTabId,
-                needTodoRefresh,
-                kpiChanged,
-                timeChanged,
-                assetChanged,
-                diaryChanged,
-                needMainFromTodo,
-                needMainFromOther,
-                needMainFromTimeRows,
-              });
-              renderMain(main, { skipTodoSaveBeforeUnmount: true });
-            }
-          } catch (_e) {}
-        })();
-      }, 350);
-    },
-    { passive: true },
-  );
+  /* 서버 pull 은 상위 탭 전환(setActiveTab)·최초 진입 시에만 수행. 포커스 복귀 등에서는 pull 하지 않음. */
 
-  renderMain(main);
-  logTabSync("boot_hydrate", { phase: "first_paint_then_deferred" });
-  scheduleAfterFirstPaint(() => {
-    logTabSync("boot_hydrate", { phase: "Promise.all" });
-    void Promise.all([
-      /* 할 일 목록: 탭 진입 시 pull은 setActiveTab 안에서 처리 — 여기서는 자리만 */
-      Promise.resolve(false),
-      hydrateTimeDailyBudgetFromCloud(),
-      /* 시간 과제 pull 은 시간 탭 진입 시 pullTimeLedgerTabEnterFromCloud 에서만 */
-      Promise.resolve(null),
-      hydrateHealthKpiMapFromCloud(),
-      hydrateHappinessKpiMapFromCloud(),
-      hydrateDreamKpiMapFromCloud(),
-      hydrateSideincomeKpiMapFromCloud(),
-      Promise.resolve({ anyChanged: false }),
-      /* 근무표: 탭 진입 전에 메모리를 서버와 맞춰 두면 ‘불러오는 중’ 체감·이중 로딩이 줄어듦 */
-      hydrateWorkScheduleFromCloud(),
-    ]).then(
-      async ([
-        needTodoRefresh,
-        budgetMerged,
-        ,
-        healthKpiPulled,
-        happinessKpiPulled,
-        dreamKpiPulled,
-        sideincomeKpiPulled,
-        timeLedgerPullR,
-        ,
-      ]) => {
-        const timeLedgerRowsMerged = !!(timeLedgerPullR && timeLedgerPullR.anyChanged);
-        kpiSyncDebugLog("앱 부팅 hydrate 결과", {
-          needTodoRefresh,
-          budgetMerged,
-          healthKpiPulled,
-          happinessKpiPulled,
-          dreamKpiPulled,
-          sideincomeKpiPulled,
-          timeLedgerRowsMerged,
-          "의미(각 KPI)": "true면 방금 Supabase에서 받아 localStorage를 갱신함",
-          "이후 localStorage 요약": snapshotKpiLocalStorageBrief(),
-        });
-        if (
-          needTodoRefresh ||
-          budgetMerged ||
-          timeLedgerRowsMerged ||
-          healthKpiPulled ||
-          happinessKpiPulled ||
-          dreamKpiPulled ||
-          sideincomeKpiPulled
-        ) {
-          if (currentTabId === "time") {
-            /* 시간 탭은 아래 pullTimeLedgerTabEnterFromCloud 에서 한 번에 갱신 */
-          } else if (currentTabId === "workschedule") {
-            /* 근무표는 부팅 시 Promise.all 에서 이미 hydrate 함. 여기서 renderMain 하면 패널 전체가
-             * 다시 그려져 깜빡이므로 생략(탭 마운트 시 동기화). */
-          } else {
-            logLpRender("App:초기 hydrate·Promise.all 완료 후 재렌더", {
-              needTodoRefresh,
-              budgetMerged,
-              timeLedgerRowsMerged,
-              healthKpiPulled,
-              happinessKpiPulled,
-              dreamKpiPulled,
-              sideincomeKpiPulled,
-            });
-            renderMain(main);
-          }
-        }
-
-        const t = currentTabId;
-        if (t === "time") {
-          try {
-            await pullTimeLedgerTabEnterFromCloud();
-          } catch (_) {}
-          try {
-            renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
-          } catch (_) {}
-        } else if (t === "calendar" || t === "schedulecalendar") {
-          try {
-            await pullCalendarSectionTasksFromSupabase({
-              reason: `app_boot_restore_${t}`,
-            });
-          } catch (_) {}
-          try {
-            renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
-          } catch (_) {}
-        }
-      },
-    );
-  });
+  logTabSync("boot", { tab: currentTabId, phase: "pull_then_first_render" });
+  void (async () => {
+    try {
+      await pullDataForActiveTab(currentTabId, { fromBoot: true });
+    } catch (_) {}
+    renderMain(main);
+  })();
   appScreen.appendChild(main);
   appPage.appendChild(appScreen);
   appPage.appendChild(bottomNav);

@@ -4,28 +4,11 @@
  */
 
 import { supabase } from "../supabase.js";
-import { pullAllKpiMapsFromCloud } from "./kpiTabCloudRefresh.js";
 import { timeLedgerEntryPayloadTouchesSessionPicker } from "./timeLedgerEntriesSupabase.js";
-import { pullAllAssetFromCloud } from "./assetCloudRefresh.js";
-import { pullAllDiaryFromCloud } from "./diaryCloudRefresh.js";
 import { logLpRender } from "./lpRenderDebugLog.js";
 import { logTabSync } from "./lpTabSyncDebug.js";
 import { lpPullDebug } from "./lpPullDebug.js";
 import { syncWatchLog } from "./syncWatchLog.js";
-
-/** App.js 의 TAB_IDS_REFRESH_ON_KPI_PULL 과 동일 — 이 탭일 때만 pull 후 화면 갱신 (time 은 전체 renderMain 대신 이벤트로 부분 갱신) */
-const REFRESH_MAIN_AFTER_CLOUD_PULL = new Set([
-  "home",
-  "dream",
-  "sideincome",
-  "happiness",
-  "health",
-  "calendar",
-  "schedulecalendar",
-  "asset",
-  "diary",
-  "archive",
-]);
 
 const KPI_REALTIME_TABLES = [
   "dream_map_categories",
@@ -78,16 +61,6 @@ const ASSET_REALTIME_TABLES = [
 
 const DIARY_REALTIME_TABLES = ["diary_daily_entries"];
 
-/** 사용자가 입력 중인지 확인 (입력 중이면 화면 갱신 건너뜀) */
-function isUserTyping() {
-  const el = document.activeElement;
-  if (!el) return false;
-  const tag = el.tagName?.toLowerCase();
-  if (tag === "input" || tag === "textarea") return true;
-  if (el.isContentEditable) return true;
-  return false;
-}
-
 let _channel = null;
 let _debounceTimer = null;
 let _generation = 0;
@@ -112,64 +85,8 @@ function recordTimeLedgerRealtimePayload(payload) {
   }
 }
 
-/**
- * pull 결과로 전체 renderMain 할지 — 현재 탭과 무관한 도메인만 바뀐 경우 할일/캘린더·KPI 화면이 불필요하게 깜빡이지 않게 함.
- * @param {string} tab
- * @param {{ needTodo: boolean, kpiMapsChanged: boolean, timeLedgerChanged: boolean, assetChanged: boolean, diaryChanged: boolean }} flags
- */
-function shouldRenderMainForRealtimePull(tab, flags) {
-  const {
-    needTodo,
-    kpiMapsChanged,
-    timeLedgerChanged,
-    assetChanged,
-    diaryChanged,
-  } = flags;
-  switch (tab) {
-    case "calendar":
-    case "schedulecalendar":
-      return needTodo;
-    case "asset":
-      return assetChanged;
-    case "diary":
-      return diaryChanged;
-    case "dream":
-    case "health":
-    case "happiness":
-    case "sideincome":
-      return kpiMapsChanged;
-    case "home":
-      return (
-        needTodo ||
-        kpiMapsChanged ||
-        timeLedgerChanged ||
-        assetChanged ||
-        diaryChanged
-      );
-    case "archive":
-      return (
-        needTodo || kpiMapsChanged || assetChanged || diaryChanged
-      );
-    default:
-      return (
-        needTodo ||
-        kpiMapsChanged ||
-        timeLedgerChanged ||
-        assetChanged ||
-        diaryChanged
-      );
-  }
-}
-
-/** Realtime 이벤트 폭주 시 pull·render 연속 호출 완화 (push 디바운스와 비슷한 체감) */
+/** Realtime 이벤트 디바운스(로그용). 서버 pull 은 App 상위 탭 전환 시에만 수행 */
 const REALTIME_REFRESH_DEBOUNCE_MS = 1800;
-
-/**
- * 전체 renderMain 직후 짧은 간격에 시간가계부 Realtime만 또 오면(PWA·모바일에서 마치 초마다 새로고침) 화면이 깜빡임.
- * 할일·KPI·자산·일기 변경은 즉시 반영하고, 시간/예산 등만 연속일 때만 쿨다운.
- */
-let _lastRealtimeRenderMainAt = 0;
-const REALTIME_RENDER_MAIN_COOLDOWN_MS = 4500;
 
 function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
   clearTimeout(_debounceTimer);
@@ -187,123 +104,20 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
 
     void (async () => {
       try {
-        syncWatchLog("realtime_디바운스끝_ pull실행", {
+        syncWatchLog("realtime_디바운스끝", {
           gen,
           debounceMs: REALTIME_REFRESH_DEBOUNCE_MS,
           postgres_changes테이블: [...realtimeTouchedTables],
-          note: "이벤트마다 타이머만 재설정·연속이면 한 번에 묶음. 1초 폴링 아님",
+          note: "서버 pull 은 상위 탭 전환 시에만 — Realtime 으로는 자동 fetch 안 함",
         });
-        logTabSync("realtime_debounced_pull", { gen });
+        logTabSync("realtime_debounced_no_pull", { gen });
         lpPullDebug("realtime_debounced_pull_bundle", {
           gen,
           tab: getCurrentTabId(),
           realtimeTouchedTables: [...realtimeTouchedTables],
           timeLedgerRtTables: [...timeBatch.touchedTables],
         });
-        logLpRender("realtime:debounced 틱 시작", { gen });
-        /* calendar_section_tasks: 탭 클릭 시에만 pull — Realtime 묶음 fetch에 포함 안 함 */
-        const needTodo = false;
-        /* calendar_section_tasks·시간가계부 등만 바뀐 배치에서 KPI pull까지 돌리면 dream.pull·setItem이 불필요하게 반복됨 */
-        const needsKpiMapPull = [...realtimeTouchedTables].some((t) =>
-          KPI_REALTIME_TABLES_SET.has(t),
-        );
-        const { anyChanged: kpiMapsChanged } = needsKpiMapPull
-          ? await pullAllKpiMapsFromCloud(getCurrentTabId)
-          : { anyOk: false, anyChanged: false };
-        if (!needsKpiMapPull) {
-          syncWatchLog("realtime_KPI_pull_스킵", {
-            gen,
-            touchedOnly: [...realtimeTouchedTables],
-            note: "이번 배치에 KPI 맵 테이블 없음 — pullAllKpiMapsFromCloud 생략",
-          });
-        }
-        /* 시간가계부: Realtime 으로 자동 pull 하지 않음 — 시간 탭 클릭 시에만 서버와 맞춤 */
-        const timeLedgerChanged = false;
-        const { anyChanged: assetChanged } = await pullAllAssetFromCloud(getCurrentTabId, {
-          realtimeTouchedTables,
-        });
-        const { anyChanged: diaryChanged } = await pullAllDiaryFromCloud();
-        if (gen !== _generation) return;
-        if (
-          !needTodo &&
-          !kpiMapsChanged &&
-          !timeLedgerChanged &&
-          !assetChanged &&
-          !diaryChanged
-        ) {
-          logLpRender("realtime:pull 결과 변경 없음·renderMain 안 함", { gen });
-          return;
-        }
-        const tab = getCurrentTabId();
-        if (timeLedgerChanged && tab === "time") {
-          try {
-            document.dispatchEvent(
-              new CustomEvent("lp-time-ledger-remote-updated"),
-            );
-          } catch (_) {}
-          if (!needTodo && !kpiMapsChanged && !assetChanged && !diaryChanged)
-            return;
-        }
-        /* 아카이브: 전체 renderMain 하면 탭이 통째로 다시 그려져 로딩 스켈레톤이 ~수초마다 깜빡임 */
-        if (timeLedgerChanged && tab === "archive") {
-          try {
-            document.dispatchEvent(
-              new CustomEvent("lp-time-ledger-remote-updated"),
-            );
-          } catch (_) {}
-          if (!needTodo && !kpiMapsChanged && !assetChanged && !diaryChanged)
-            return;
-        }
-        if (!REFRESH_MAIN_AFTER_CLOUD_PULL.has(tab)) return;
-        if (isUserTyping()) return; /* 입력 중이면 화면 갱신 건너뜀 */
-        if (
-          !shouldRenderMainForRealtimePull(tab, {
-            needTodo,
-            kpiMapsChanged,
-            timeLedgerChanged,
-            assetChanged,
-            diaryChanged,
-          })
-        ) {
-          logLpRender("realtime:현재 탭에선 renderMain 스킵(shouldRenderMainForRealtimePull)", {
-            tab,
-            needTodo,
-            kpiMapsChanged,
-            timeLedgerChanged,
-            assetChanged,
-            diaryChanged,
-          });
-          return;
-        }
-        const nowMs = Date.now();
-        const timeLedgerOnlyChurn =
-          !needTodo &&
-          timeLedgerChanged &&
-          !kpiMapsChanged &&
-          !assetChanged &&
-          !diaryChanged;
-        if (
-          timeLedgerOnlyChurn &&
-          nowMs - _lastRealtimeRenderMainAt < REALTIME_RENDER_MAIN_COOLDOWN_MS
-        ) {
-          logLpRender("realtime:renderMain 쿨다운(시간·예산 등만 연속 변경)", {
-            tab,
-            waitMs:
-              REALTIME_RENDER_MAIN_COOLDOWN_MS -
-              (nowMs - _lastRealtimeRenderMainAt),
-          });
-          return;
-        }
-        logLpRender("realtime:debouncedRealtimeRefresh → renderMain", {
-          tab,
-          needTodo,
-          kpiMapsChanged,
-          timeLedgerChanged,
-          assetChanged,
-          diaryChanged,
-        });
-        _lastRealtimeRenderMainAt = nowMs;
-        renderMain({ skipTodoSaveBeforeUnmount: true });
+        logLpRender("realtime:자동 pull 비활성(탭 전환 시에만 동기화)", { gen });
       } catch (_e) {}
     })();
   }, REALTIME_REFRESH_DEBOUNCE_MS);
