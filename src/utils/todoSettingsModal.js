@@ -16,11 +16,11 @@ import {
 import { pushAppearanceToSupabase } from "./userHourlySync.js";
 
 const FIXED_SECTIONS = [
-  { id: "braindump", label: "브레인 덤프" },
   { id: "dream", label: "꿈" },
   { id: "sideincome", label: "부수입" },
   { id: "health", label: "건강" },
   { id: "happy", label: "행복" },
+  { id: "braindump", label: "브레인 덤프" },
 ];
 
 function getSections() {

@@ -77,6 +77,55 @@ function dateDebug(_tag, ..._args) {
   void CALENDAR_DATE_DEBUG;
 }
 
+/** 날짜 정하기 사이드바: 한 사분면(중요+여유)만 vs 사이드 메뉴 캘린더=우선순위 탭과 동일 전체 목록 */
+const LP_CAL_TODO_SIDEBAR_QUADRANT = "quadrant";
+const LP_CAL_TODO_SIDEBAR_FULL = "full";
+
+function lpCalendarTodoSidebarExpandedTitle(sidebarMode) {
+  return sidebarMode === LP_CAL_TODO_SIDEBAR_FULL
+    ? "할일"
+    : "날짜 잡아서 해야 할일";
+}
+
+function lpCalendarDateSidebarTodoListOpts(sidebarMode, extra = {}) {
+  const base = {
+    hideToolbar: true,
+    enableDragToCalendar: true,
+    hideDoneTasks: true,
+    ...extra,
+  };
+  if (sidebarMode === LP_CAL_TODO_SIDEBAR_FULL) {
+    return {
+      ...base,
+      enableDragToEisenhower: false,
+      eisenhowerSidebarFirst: true,
+    };
+  }
+  return {
+    ...base,
+    eisenhowerFilter: "important-not-urgent",
+  };
+}
+
+function lpBindCalendarDateTodoSidebarCollapse(todoSidebar, sidebarMode) {
+  let sidebarCollapsed = true;
+  const collapseBtn = todoSidebar.querySelector(".calendar-todo-sidebar-collapse");
+  const titleEl = todoSidebar.querySelector(".calendar-todo-sidebar-title");
+  const collapseTextEl = todoSidebar.querySelector(".calendar-todo-sidebar-collapse-text");
+  if (!collapseBtn || !titleEl) return;
+  collapseBtn.addEventListener("click", () => {
+    sidebarCollapsed = !sidebarCollapsed;
+    todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
+    collapseBtn.title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+    if (sidebarMode === LP_CAL_TODO_SIDEBAR_FULL) {
+      titleEl.textContent = "할일";
+    } else {
+      titleEl.textContent = sidebarCollapsed ? "할일" : "날짜 잡아서 해야 할일";
+    }
+    if (collapseTextEl) collapseTextEl.textContent = sidebarCollapsed ? "할일" : "접기";
+  });
+}
+
 /** 1일 뷰: document 리스너는 한 번만 — 탭 전환·재진입 시 핸들러만 교체 (누적 방지) */
 let oneDayTimetableRefreshHandler = null;
 function ensureOneDayTimetableDocumentListeners() {
@@ -756,13 +805,13 @@ function refreshCalendarDateTodoSidebar(layoutWrap) {
     }
     oldList.remove();
   }
-  const newList = renderTodoList({
-    hideToolbar: true,
-    enableDragToCalendar: true,
-    initialActiveTabIndex: activeIndex,
-    eisenhowerFilter: "important-not-urgent",
-    hideDoneTasks: true,
-  });
+  const sidebarMode =
+    layoutWrap.dataset.lpCalTodoSidebar || LP_CAL_TODO_SIDEBAR_QUADRANT;
+  const newList = renderTodoList(
+    lpCalendarDateSidebarTodoListOpts(sidebarMode, {
+      initialActiveTabIndex: activeIndex,
+    }),
+  );
   newList.classList.add("todo-list-in-sidebar");
   mainWrap.appendChild(newList);
   if (overdueWrap) {
@@ -1349,9 +1398,13 @@ function createCalendarBarDateEditBubble(
   return bubble;
 }
 
-function renderMonthlyView(tabsElement) {
+function renderMonthlyView(
+  tabsElement,
+  sidebarMode = LP_CAL_TODO_SIDEBAR_QUADRANT,
+) {
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout";
+  wrap.dataset.lpCalTodoSidebar = sidebarMode;
 
   let currentYear = new Date().getFullYear();
   let currentMonth = new Date().getMonth();
@@ -1980,10 +2033,10 @@ function renderMonthlyView(tabsElement) {
 
   const todoSidebar = document.createElement("aside");
   todoSidebar.className = "calendar-todo-sidebar";
-  let sidebarCollapsed = true;
+  const sidebarTitleExpanded = lpCalendarTodoSidebarExpandedTitle(sidebarMode);
   todoSidebar.innerHTML = `
     <div class="calendar-todo-sidebar-header">
-      <span class="calendar-todo-sidebar-title">날짜 잡아서 해야 할일</span>
+      <span class="calendar-todo-sidebar-title">${sidebarTitleExpanded}</span>
       <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
         <span class="calendar-todo-sidebar-collapse-text">접기</span>
       </button>
@@ -1996,27 +2049,13 @@ function renderMonthlyView(tabsElement) {
   const body = todoSidebar.querySelector(".calendar-todo-sidebar-body");
   const mainWrap = body.querySelector(".calendar-todo-sidebar-main");
   const overdueWrapEl = body.querySelector(".calendar-todo-sidebar-overdue");
-  const todoListEl = renderTodoList({
-    hideToolbar: true,
-    enableDragToCalendar: true,
-    eisenhowerFilter: "important-not-urgent",
-    hideDoneTasks: true,
-  });
+  const todoListEl = renderTodoList(
+    lpCalendarDateSidebarTodoListOpts(sidebarMode),
+  );
   todoListEl.classList.add("todo-list-in-sidebar");
   mainWrap.appendChild(todoListEl);
   overdueWrapEl.appendChild(renderOverdueSection({ enableDragToCalendar: true }));
-  (() => {
-    const collapseBtn = todoSidebar.querySelector(".calendar-todo-sidebar-collapse");
-    const titleEl = todoSidebar.querySelector(".calendar-todo-sidebar-title");
-    const collapseTextEl = todoSidebar.querySelector(".calendar-todo-sidebar-collapse-text");
-    collapseBtn.addEventListener("click", () => {
-      sidebarCollapsed = !sidebarCollapsed;
-      todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
-      collapseBtn.title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
-      titleEl.textContent = sidebarCollapsed ? "할일" : "날짜 잡아서 해야 할일";
-      if (collapseTextEl) collapseTextEl.textContent = sidebarCollapsed ? "할일" : "접기";
-    });
-  })();
+  lpBindCalendarDateTodoSidebarCollapse(todoSidebar, sidebarMode);
   applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
   wrap.appendChild(todoSidebar);
   attachCalendarTodoSidebarSpanRevertDrop(body, () => renderCalendar(), () =>
@@ -2034,9 +2073,13 @@ function renderMonthlyView(tabsElement) {
   return wrap;
 }
 
-function render2WeekView(tabsElement) {
+function render2WeekView(
+  tabsElement,
+  sidebarMode = LP_CAL_TODO_SIDEBAR_QUADRANT,
+) {
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout";
+  wrap.dataset.lpCalTodoSidebar = sidebarMode;
 
   let weekOffset = 0;
 
@@ -2642,10 +2685,10 @@ function render2WeekView(tabsElement) {
 
   const todoSidebar = document.createElement("aside");
   todoSidebar.className = "calendar-todo-sidebar";
-  let sidebarCollapsed = true;
+  const sidebarTitleExpanded = lpCalendarTodoSidebarExpandedTitle(sidebarMode);
   todoSidebar.innerHTML = `
     <div class="calendar-todo-sidebar-header">
-      <span class="calendar-todo-sidebar-title">날짜 잡아서 해야 할일</span>
+      <span class="calendar-todo-sidebar-title">${sidebarTitleExpanded}</span>
       <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
         <span class="calendar-todo-sidebar-collapse-text">접기</span>
       </button>
@@ -2658,27 +2701,13 @@ function render2WeekView(tabsElement) {
   const body = todoSidebar.querySelector(".calendar-todo-sidebar-body");
   const mainWrap = body.querySelector(".calendar-todo-sidebar-main");
   const overdueWrapEl = body.querySelector(".calendar-todo-sidebar-overdue");
-  const todoListEl = renderTodoList({
-    hideToolbar: true,
-    enableDragToCalendar: true,
-    eisenhowerFilter: "important-not-urgent",
-    hideDoneTasks: true,
-  });
+  const todoListEl = renderTodoList(
+    lpCalendarDateSidebarTodoListOpts(sidebarMode),
+  );
   todoListEl.classList.add("todo-list-in-sidebar");
   mainWrap.appendChild(todoListEl);
   overdueWrapEl.appendChild(renderOverdueSection({ enableDragToCalendar: true }));
-  (() => {
-    const collapseBtn = todoSidebar.querySelector(".calendar-todo-sidebar-collapse");
-    const titleEl = todoSidebar.querySelector(".calendar-todo-sidebar-title");
-    const collapseTextEl = todoSidebar.querySelector(".calendar-todo-sidebar-collapse-text");
-    collapseBtn.addEventListener("click", () => {
-      sidebarCollapsed = !sidebarCollapsed;
-      todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
-      collapseBtn.title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
-      titleEl.textContent = sidebarCollapsed ? "할일" : "날짜 잡아서 해야 할일";
-      if (collapseTextEl) collapseTextEl.textContent = sidebarCollapsed ? "할일" : "접기";
-    });
-  })();
+  lpBindCalendarDateTodoSidebarCollapse(todoSidebar, sidebarMode);
   applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
   wrap.appendChild(todoSidebar);
   attachCalendarTodoSidebarSpanRevertDrop(body, () => renderCalendar(), () =>
@@ -2696,9 +2725,13 @@ function render2WeekView(tabsElement) {
   return wrap;
 }
 
-function render3WeekView(tabsElement) {
+function render3WeekView(
+  tabsElement,
+  sidebarMode = LP_CAL_TODO_SIDEBAR_QUADRANT,
+) {
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout";
+  wrap.dataset.lpCalTodoSidebar = sidebarMode;
 
   let weekOffset = 0;
 
@@ -3330,10 +3363,10 @@ function render3WeekView(tabsElement) {
 
   const todoSidebar = document.createElement("aside");
   todoSidebar.className = "calendar-todo-sidebar";
-  let sidebarCollapsed = true;
+  const sidebarTitleExpanded = lpCalendarTodoSidebarExpandedTitle(sidebarMode);
   todoSidebar.innerHTML = `
     <div class="calendar-todo-sidebar-header">
-      <span class="calendar-todo-sidebar-title">날짜 잡아서 해야 할일</span>
+      <span class="calendar-todo-sidebar-title">${sidebarTitleExpanded}</span>
       <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
         <span class="calendar-todo-sidebar-collapse-text">접기</span>
       </button>
@@ -3346,27 +3379,13 @@ function render3WeekView(tabsElement) {
   const body = todoSidebar.querySelector(".calendar-todo-sidebar-body");
   const mainWrap = body.querySelector(".calendar-todo-sidebar-main");
   const overdueWrapEl = body.querySelector(".calendar-todo-sidebar-overdue");
-  const todoListEl = renderTodoList({
-    hideToolbar: true,
-    enableDragToCalendar: true,
-    eisenhowerFilter: "important-not-urgent",
-    hideDoneTasks: true,
-  });
+  const todoListEl = renderTodoList(
+    lpCalendarDateSidebarTodoListOpts(sidebarMode),
+  );
   todoListEl.classList.add("todo-list-in-sidebar");
   mainWrap.appendChild(todoListEl);
   overdueWrapEl.appendChild(renderOverdueSection({ enableDragToCalendar: true }));
-  (() => {
-    const collapseBtn = todoSidebar.querySelector(".calendar-todo-sidebar-collapse");
-    const titleEl = todoSidebar.querySelector(".calendar-todo-sidebar-title");
-    const collapseTextEl = todoSidebar.querySelector(".calendar-todo-sidebar-collapse-text");
-    collapseBtn.addEventListener("click", () => {
-      sidebarCollapsed = !sidebarCollapsed;
-      todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
-      collapseBtn.title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
-      titleEl.textContent = sidebarCollapsed ? "할일" : "날짜 잡아서 해야 할일";
-      if (collapseTextEl) collapseTextEl.textContent = sidebarCollapsed ? "할일" : "접기";
-    });
-  })();
+  lpBindCalendarDateTodoSidebarCollapse(todoSidebar, sidebarMode);
   applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
   wrap.appendChild(todoSidebar);
   attachCalendarTodoSidebarSpanRevertDrop(body, () => renderCalendar(), () =>
@@ -4798,9 +4817,13 @@ function renderTodoView(tabsElement) {
   return wrap;
 }
 
-function render1WeekView(tabsElement) {
+function render1WeekView(
+  tabsElement,
+  sidebarMode = LP_CAL_TODO_SIDEBAR_QUADRANT,
+) {
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout calendar-1week-view";
+  wrap.dataset.lpCalTodoSidebar = sidebarMode;
 
   let weekOffset = 0;
 
@@ -5518,10 +5541,10 @@ function render1WeekView(tabsElement) {
 
   const todoSidebar = document.createElement("aside");
   todoSidebar.className = "calendar-todo-sidebar";
-  let sidebarCollapsed = true;
+  const sidebarTitleExpanded = lpCalendarTodoSidebarExpandedTitle(sidebarMode);
   todoSidebar.innerHTML = `
     <div class="calendar-todo-sidebar-header">
-      <span class="calendar-todo-sidebar-title">날짜 잡아서 해야 할일</span>
+      <span class="calendar-todo-sidebar-title">${sidebarTitleExpanded}</span>
       <button type="button" class="calendar-todo-sidebar-collapse" title="사이드바 접기">
         <span class="calendar-todo-sidebar-collapse-text">접기</span>
       </button>
@@ -5534,27 +5557,13 @@ function render1WeekView(tabsElement) {
   const body = todoSidebar.querySelector(".calendar-todo-sidebar-body");
   const mainWrap = body.querySelector(".calendar-todo-sidebar-main");
   const overdueWrapEl = body.querySelector(".calendar-todo-sidebar-overdue");
-  const todoListEl = renderTodoList({
-    hideToolbar: true,
-    enableDragToCalendar: true,
-    eisenhowerFilter: "important-not-urgent",
-    hideDoneTasks: true,
-  });
+  const todoListEl = renderTodoList(
+    lpCalendarDateSidebarTodoListOpts(sidebarMode),
+  );
   todoListEl.classList.add("todo-list-in-sidebar");
   mainWrap.appendChild(todoListEl);
   overdueWrapEl.appendChild(renderOverdueSection({ enableDragToCalendar: true }));
-  (() => {
-    const collapseBtn = todoSidebar.querySelector(".calendar-todo-sidebar-collapse");
-    const titleEl = todoSidebar.querySelector(".calendar-todo-sidebar-title");
-    const collapseTextEl = todoSidebar.querySelector(".calendar-todo-sidebar-collapse-text");
-    collapseBtn.addEventListener("click", () => {
-      sidebarCollapsed = !sidebarCollapsed;
-      todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
-      collapseBtn.title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
-      titleEl.textContent = sidebarCollapsed ? "할일" : "날짜 잡아서 해야 할일";
-      if (collapseTextEl) collapseTextEl.textContent = sidebarCollapsed ? "할일" : "접기";
-    });
-  })();
+  lpBindCalendarDateTodoSidebarCollapse(todoSidebar, sidebarMode);
   applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
   wrap.appendChild(todoSidebar);
   attachCalendarTodoSidebarSpanRevertDrop(body, () => renderCalendar(), () =>
@@ -5692,7 +5701,8 @@ const MOBILE_SCHEDULE_CAL_SUB_VIEWS = [
 /**
  * 할일/일정 > 날짜 정하기 하위 뷰(월별·2주·1주·연간) 공통 셸
  * @param {HTMLElement|null} tabsElement 상단 할일/일정 1~4번 탭(없으면 null)
- * @param {{ subViewsList?: {id:string,label:string}[], storageKey?: string, forceInitialMonthlyOnMobile?: boolean, keepSubTabsOnTop?: boolean }} opts
+ * @param {{ subViewsList?: {id:string,label:string}[], storageKey?: string, forceInitialMonthlyOnMobile?: boolean, keepSubTabsOnTop?: boolean, todoSidebarMode?: string }} opts
+ * todoSidebarMode: 사이드 메뉴 단독 캘린더는 LP_CAL_TODO_SIDEBAR_FULL(우선순위 탭과 동일 전체 할일)
  */
 function createCalendarSubViewRoot(tabsElement, opts = {}) {
   const isMobile = window.matchMedia("(max-width: 48rem)").matches;
@@ -5703,6 +5713,8 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
   const storageKey = opts.storageKey || "calendar-sub-view";
   const forceInitialMonthlyOnMobile = !!opts.forceInitialMonthlyOnMobile;
   const keepSubTabsOnTop = !!opts.keepSubTabsOnTop;
+  const todoSidebarMode =
+    opts.todoSidebarMode ?? LP_CAL_TODO_SIDEBAR_QUADRANT;
 
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout calendar-view-with-subtabs";
@@ -5782,11 +5794,11 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
     if (subTabs.parentNode) subTabs.remove();
     contentArea.innerHTML = "";
     if (subViewId === "monthly") {
-      contentArea.appendChild(renderMonthlyView(null));
+      contentArea.appendChild(renderMonthlyView(null, todoSidebarMode));
     } else if (subViewId === "2week") {
-      contentArea.appendChild(render2WeekView(null));
+      contentArea.appendChild(render2WeekView(null, todoSidebarMode));
     } else if (subViewId === "1week") {
-      contentArea.appendChild(render1WeekView(null));
+      contentArea.appendChild(render1WeekView(null, todoSidebarMode));
     } else if (subViewId === "annual") {
       contentArea.appendChild(renderAnnualView(null));
     }
@@ -5827,6 +5839,7 @@ function renderCalendarView(tabsElement) {
     subViewsList: CALENDAR_SUB_VIEWS,
     storageKey: "calendar-sub-view",
     forceInitialMonthlyOnMobile: true,
+    todoSidebarMode: LP_CAL_TODO_SIDEBAR_QUADRANT,
   });
 }
 
@@ -5859,6 +5872,7 @@ export function renderMobileScheduleCalendar() {
         storageKey: "calendar-mobile-schedule-sub-view",
         forceInitialMonthlyOnMobile: false,
         keepSubTabsOnTop: true,
+        todoSidebarMode: LP_CAL_TODO_SIDEBAR_FULL,
       }),
     );
   }

@@ -320,11 +320,11 @@ export function render() {
 
   // ----- 색상 설정 위젯 -----
   const FIXED_SECTIONS = [
-    { id: "braindump", label: "브레인 덤프" },
     { id: "dream", label: "꿈" },
     { id: "sideincome", label: "부수입" },
     { id: "health", label: "건강" },
     { id: "happy", label: "행복" },
+    { id: "braindump", label: "브레인 덤프" },
   ];
   const TIME_CATEGORY_SECTIONS = [
     { id: "productive", label: "생산" },

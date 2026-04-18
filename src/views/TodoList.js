@@ -549,7 +549,7 @@ function collectCustomSectionFromDOM(sectionsEl, sectionId) {
   return tasks;
 }
 
-const KPI_SECTION_IDS = ["dream", "sideincome", "happy", "health"];
+const KPI_SECTION_IDS = ["dream", "sideincome", "health", "happy"];
 const FIXED_SECTION_IDS_FOR_STORAGE = ["braindump", ...KPI_SECTION_IDS];
 
 /** ensureCalendarSectionTaskIds 등으로 저장소 taskId만 UUID로 바뀐 뒤 DOM은 task-* 인 불일치 방지 */
@@ -816,7 +816,7 @@ export function saveTodoListBeforeUnmount(container) {
   }
 }
 
-/** 할일/일정 메인 화면(탭 바 있는 전체 뷰)에서 마지막으로 본 고정 리스트 탭 — Supabase 동기 후 __lpRenderMain()으로 전체가 다시 그려질 때 브레인 덤프(0)로만 초기화되는 문제 방지 */
+/** 할일/일정 메인 화면(탭 바 있는 전체 뷰)에서 마지막으로 본 고정 리스트 탭 — Supabase 동기 후 __lpRenderMain()으로 전체가 다시 그려질 때 첫 탭(꿈)으로만 초기화되는 문제 방지 */
 const SESSION_TODO_FIXED_TAB_INDEX = "lp-todo-main-fixed-tab-index";
 
 const TODO_CATEGORY_OPTIONS_KEY = "todo_category_options";
@@ -1143,11 +1143,11 @@ function createCategoryDropdown(initialValue, onUpdate, tabSignal) {
 }
 
 const FIXED_SECTIONS = [
-  { id: "braindump", label: "브레인 덤프" },
   { id: "dream", label: "꿈" },
   { id: "sideincome", label: "부수입" },
   { id: "health", label: "건강" },
   { id: "happy", label: "행복" },
+  { id: "braindump", label: "브레인 덤프" },
 ];
 
 function showAddListModal(options = {}) {
@@ -3390,7 +3390,7 @@ export function render(options = {}) {
     /* 리스트 탭 컬러 테두리 제거 - 탭 스타일은 CSS로 통일 */
   }
 
-  /* 할일/일정: 고정 5개 탭만 표시 (브레인덤프, 꿈, 부수입, 건강, 행복), 리스트 추가 비노출 */
+  /* 할일/일정: 고정 5개 탭만 표시 (꿈, 부수입, 건강, 행복, 브레인 덤프), 리스트 추가 비노출 */
   FIXED_SECTIONS.forEach((section) => {
     const btn = document.createElement("button");
     btn.type = "button";
