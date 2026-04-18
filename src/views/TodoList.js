@@ -1387,6 +1387,17 @@ const EISENHOWER_OPTIONS = [
   { value: "not-urgent-not-important", label: "여유+안중요" },
 ];
 
+/** 수정 모달이 열려 있을 때 목록에서 해당 할일 카드·행 강조 */
+const TODO_ITEM_MODAL_ACTIVE_CLASS = "todo-item-modal-active";
+
+function clearTodoItemModalSelection() {
+  try {
+    document.querySelectorAll("." + TODO_ITEM_MODAL_ACTIVE_CLASS).forEach((el) => {
+      el.classList.remove(TODO_ITEM_MODAL_ACTIVE_CLASS);
+    });
+  } catch (_) {}
+}
+
 /** 할일 추가/수정 통합 모달. 카드 레이아웃에서 사용. onSave(폼값 객체), onDelete(수정 시만) */
 function showTodoTaskModal(options) {
   const {
@@ -1396,6 +1407,7 @@ function showTodoTaskModal(options) {
     mode = "add",
     onSave,
     onDelete,
+    selectionEl = null,
   } = options;
   const {
     name = "",
@@ -1414,6 +1426,11 @@ function showTodoTaskModal(options) {
     d.textContent = s ?? "";
     return d.innerHTML;
   };
+
+  clearTodoItemModalSelection();
+  if (selectionEl?.classList) {
+    selectionEl.classList.add(TODO_ITEM_MODAL_ACTIVE_CLASS);
+  }
 
   const modal = document.createElement("div");
   modal.className = "todo-list-modal todo-task-edit-modal";
@@ -1485,6 +1502,11 @@ function showTodoTaskModal(options) {
   const sectionSelect = modal.querySelector(".todo-task-edit-section");
 
   function close() {
+    try {
+      if (selectionEl?.classList && selectionEl.isConnected) {
+        selectionEl.classList.remove(TODO_ITEM_MODAL_ACTIVE_CLASS);
+      }
+    } catch (_) {}
     modal.remove();
     document.body.style.overflow = "";
   }
@@ -2716,6 +2738,7 @@ function createTaskCard(taskData, options = {}) {
       sectionId: storageSectionId,
       sectionLabel,
       mode: "edit",
+      selectionEl: card,
       onSave: (payload) => {
         const newSectionId = (payload.sectionId || "").trim();
         if (newSectionId && newSectionId !== storageSectionId) {

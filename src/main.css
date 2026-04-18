@@ -13789,6 +13789,32 @@ body {
   opacity: 0.7;
 }
 
+/* 할 일 수정 모달이 열려 있을 때 — 선택된 카드(브랜드 세이지) */
+.todo-card.todo-item-modal-active {
+  border-color: var(--ui-btn-primary-bg, #2a3828) !important;
+  box-shadow:
+    0 0 0 1px rgba(42, 56, 40, 0.28),
+    0 0.25rem 0.85rem rgba(42, 56, 40, 0.16);
+  background: linear-gradient(
+    155deg,
+    rgba(42, 56, 40, 0.09) 0%,
+    var(--content-bg, #f5f1e8) 52%,
+    rgba(42, 56, 40, 0.04) 100%
+  ) !important;
+}
+
+.todo-eisenhower-overdue-section .todo-card.todo-item-modal-active {
+  border-color: var(--ui-btn-primary-bg, #2a3828) !important;
+  box-shadow:
+    0 0 0 1px rgba(42, 56, 40, 0.32),
+    0 0.25rem 0.85rem rgba(42, 56, 40, 0.14);
+  background: linear-gradient(
+    155deg,
+    rgba(42, 56, 40, 0.12) 0%,
+    rgba(139, 92, 58, 0.14) 100%
+  ) !important;
+}
+
 /* 이미 중요도 배정된 카드: 드래그 불가 + 비활성 스타일 */
 .todo-card--priority-assigned {
   background: #e8e2d2 !important;
