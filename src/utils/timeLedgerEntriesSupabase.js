@@ -38,6 +38,14 @@ export function timeLedgerLocalTodayYmd() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+/** 로컬 달력 기준 어제 YYYY-MM-DD (1일 뷰「어제 실제」토글·탭 진입 시 pull 범위용) */
+export function timeLedgerLocalYesterdayYmd() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 /** 상위 '시간' 탭 클릭 시 — 피커를 오늘 하루로 맞춤(이후 사용자가 날짜 변경 가능). */
 export function resetTimeLedgerSessionFilterToToday() {
   try {

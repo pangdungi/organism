@@ -38,6 +38,7 @@ import {
   pullTimeLedgerEntriesForDateRange,
   resetTimeLedgerSessionFilterToToday,
   timeLedgerLocalTodayYmd,
+  timeLedgerLocalYesterdayYmd,
 } from "./utils/timeLedgerEntriesSupabase.js";
 import { pullKpiTabFromCloud } from "./utils/kpiTabCloudRefresh.js";
 import { pullTimeLedgerTabEnterFromCloud } from "./utils/timeLedgerCloudRefresh.js";
@@ -167,10 +168,11 @@ async function pullDataForActiveTab(tabId, opts = {}) {
       await pullCalendarSectionTasksFromSupabase({
         reason: `app_setActiveTab_${tabId}`,
       });
-      /* 오늘 해치우기(1일 뷰)의 「오늘 실제」는 loadTimeRows() — 시간 탭을 안 거쳐도 보이도록 홈과 같이 당일 기록 pull */
-      const ymd = timeLedgerLocalTodayYmd();
+      /* 1일 뷰「오늘/어제 실제」: 어제~오늘 entry + 과제명(시간 탭 미방문 시에도 맞춤) */
+      const yEnd = timeLedgerLocalTodayYmd();
+      const yStart = timeLedgerLocalYesterdayYmd();
       await Promise.all([
-        pullTimeLedgerEntriesForDateRange(ymd, ymd),
+        pullTimeLedgerEntriesForDateRange(yStart, yEnd),
         pullTimeLedgerTasksFromSupabase(),
       ]);
       break;
