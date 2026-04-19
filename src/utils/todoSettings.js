@@ -428,16 +428,16 @@ export function getTimeCategoryColorsForTimetable() {
   };
 }
 
-/** 타임테이블 '예상' 컬럼용 (조금 더 연한 배경) */
+/** 타임테이블 '예상' 컬럼용 (실제보다 연하되, 0.06대는 그리드와 구분이 안 되어 막대가 '비어 있음'처럼 보임) */
 export function getTimeCategoryColorsForTimetableExpected() {
   const s = getTodoSettings();
   const productive = s.timeCategoryColors?.productive || DEFAULT_TIME_CATEGORY_COLORS.productive;
   const nonproductive = s.timeCategoryColors?.nonproductive || DEFAULT_TIME_CATEGORY_COLORS.nonproductive;
   const other = s.timeCategoryColors?.other || DEFAULT_TIME_CATEGORY_COLORS.other;
   return {
-    productive: rgbaToTimetableColors(productive, 0.06, 0.5),
-    nonproductive: rgbaToTimetableColors(nonproductive, 0.06, 0.5),
-    other: rgbaToTimetableColors(other, 0.06, 0.5),
+    productive: rgbaToTimetableColors(productive, 0.14, 0.55),
+    nonproductive: rgbaToTimetableColors(nonproductive, 0.14, 0.55),
+    other: rgbaToTimetableColors(other, 0.14, 0.55),
   };
 }
 
