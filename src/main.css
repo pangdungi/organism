@@ -5348,7 +5348,7 @@ body {
     background: var(--badge-stone-bg) !important;
   }
 
-  /* 모바일: 시간기록 탭에서만 상단·필터 일부 숨김 — 날짜 묶음은 툴바로, 과제 설정은 상단 여백 띠; 과제 기록은 FAB */
+  /* 모바일: 시간기록 탭에서만 상단·필터 일부 숨김 — 날짜 묶음은 툴바로, 과제 설정은 탭 행 오른쪽(할일과 동일); 과제 기록은 FAB */
   .time-ledger-view .time-ledger-header,
   .time-ledger-view .time-hourly-wrap,
   .time-ledger-view[data-time-content-view="all"] .time-ledger-filter-add-row,
@@ -5362,7 +5362,7 @@ body {
     margin-bottom: 0.5rem;
   }
 
-  /* 모바일: 상단 여백 띠(설정) → 탭 → 총시간·필터 */
+  /* 모바일: 탭+설정 한 줄 → 총시간·필터 */
   .time-ledger-view .time-ledger-tabs-filter-row {
     justify-content: flex-start;
     align-items: stretch;
@@ -5372,12 +5372,9 @@ body {
     box-sizing: border-box;
     flex-wrap: wrap;
   }
-  /* 과제 설정 아이콘 주변만: 래퍼·버튼 패딩 제거 (.time-ledger-tabs-top-margin / .time-ledger-tabs-settings-btn) */
+  /* 예전: 설정만 위쪽 띠에 둠 — 이제 탭 행으로 옮겨 빈 래퍼는 숨김 */
   .time-ledger-view .time-ledger-tabs-filter-row .time-ledger-tabs-top-margin {
-    padding: 0 !important;
-    width: 100%;
-    flex: 1 1 100%;
-    flex-shrink: 0;
+    display: none !important;
   }
   .time-ledger-view .time-ledger-tabs-filter-row .time-ledger-tabs-settings-btn {
     padding: 0 !important;
@@ -5387,11 +5384,22 @@ body {
     width: 100%;
     min-width: 0;
     display: flex;
+    flex-direction: row;
     align-items: center;
+    gap: 0.5rem;
   }
   .time-ledger-view .time-ledger-tabs-filter-row .time-ledger-tab-header-row .time-view-tabs {
     flex: 1;
     min-width: 0;
+  }
+  /* 할일(.calendar-view-top-row--with-settings)과 동일: 톱니 오른쪽·탭과 같은 베이스라인 */
+  .time-ledger-view
+    .time-ledger-tabs-filter-row
+    .time-ledger-tab-header-row
+    .time-ledger-tabs-settings-btn {
+    flex-shrink: 0;
+    margin-left: auto;
+    align-self: center;
   }
   /* 모바일 시간 기록: 상단 스트립 — 데스크톱과 동일 4칸(총기록·생산·투자한 시급·소비한 시급), 한 줄에 맞게 축소 */
   .time-ledger-view .time-ledger-mobile-tabs-summary.time-ledger-summary-panel {

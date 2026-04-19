@@ -3936,11 +3936,11 @@ export function render() {
   el.appendChild(tabsFilterRow);
   el.appendChild(filterAddRow);
 
-  /** 데스크톱: 과제 설정을 날짜 구간 바로 왼쪽(.time-filter-bar 선두). 모바일: 필터 바 숨김 시에도 보이도록 상단 띠에 둠 */
+  /** 데스크톱: 과제 설정을 날짜 구간 바로 왼쪽(.time-filter-bar 선두). 모바일: 할일 상단과 같이「시간 기록|보고서」탭과 같은 줄 오른쪽 */
   function placeTaskSetupBtn() {
     const isMobile = window.matchMedia("(max-width: 48rem)").matches;
     if (isMobile) {
-      tabsTopMargin.appendChild(taskSetupBtn);
+      tabHeaderRow.appendChild(taskSetupBtn);
     } else {
       filterBar.insertBefore(taskSetupBtn, filterBar.firstChild);
     }
