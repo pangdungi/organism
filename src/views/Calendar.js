@@ -3411,14 +3411,19 @@ function collectLiveScheduledFromBudgetColumn(budgetColumn) {
     return {};
   }
   const byTask = {};
+  /*
+   * 투두 표(.calendar-1day-todo-table)는 time-budget-scheduled-input 이 없어도
+   * dataset·DOM 구조 때문에 잘못 짝지어지면 다른 과제 시간이 섞일 수 있음.
+   * 예상 타임라인 동기화는 "투자/소비" 예산 블록 행만 읽는다.
+   */
   const rows = budgetColumn.querySelectorAll(
-    ".time-daily-budget-table-block tbody tr, .calendar-1day-todo-table tbody tr",
+    ".time-daily-budget-table-block tbody tr:not(.time-row-add)",
   );
   rows.forEach((row, idx) => {
-    if (row.classList.contains("time-row-add")) return;
     const name = (row.dataset.taskName || "").trim();
     if (!name) return;
     const inputs = row.querySelectorAll(".time-budget-scheduled-input");
+    if (inputs.length < 2) return;
     const startRaw = inputs[0]?.value ?? row.dataset.scheduledStart ?? "";
     const endRaw = inputs[1]?.value ?? row.dataset.scheduledEnd ?? "";
     const start = String(startRaw).trim();
@@ -3427,7 +3432,7 @@ function collectLiveScheduledFromBudgetColumn(budgetColumn) {
     if (!start || !end) return;
     const st = `${start}-${end}`;
     if (!byTask[name]) byTask[name] = [];
-    byTask[name].push(st);
+    if (!byTask[name].includes(st)) byTask[name].push(st);
   });
   return byTask;
 }
@@ -3517,6 +3522,79 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   };
   const fmt = (m) =>
     `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  /** 겹침 길이(분). [start,end) 반열린 구간 — 문자열/NaN이면 0 */
+  const overlapMinutesBetween = (a, b) => {
+    const sa = Number(a?.startMin);
+    const ea = Number(a?.endMin);
+    const sb = Number(b?.startMin);
+    const eb = Number(b?.endMin);
+    if (![sa, ea, sb, eb].every((n) => Number.isFinite(n))) return 0;
+    const o = Math.min(ea, eb) - Math.max(sa, sb);
+    return o > 0 ? o : 0;
+  };
+  /**
+   * 동시(반열) 판정: 겹침이 1분 이하면 이어진 일정. 2분 이상이면 동시 작업으로 나란히.
+   */
+  const SIMULTANEOUS_LANE_MIN_OVERLAP_MIN = 1;
+  const assignLanesToSpans = (spans) => {
+    const laneLastSpan = [];
+    let maxLane = 0;
+    for (const span of spans) {
+      let lane = 0;
+      while (
+        lane < laneLastSpan.length &&
+        overlapMinutesBetween(span, laneLastSpan[lane]) >
+          SIMULTANEOUS_LANE_MIN_OVERLAP_MIN
+      ) {
+        lane++;
+      }
+      if (lane >= laneLastSpan.length) laneLastSpan.push(span);
+      else laneLastSpan[lane] = span;
+      span.lane = lane;
+      maxLane = Math.max(maxLane, lane);
+    }
+    return { spans, maxLane };
+  };
+  /**
+   * 같은 과제명으로 예산표·할일에 겹치게 들어간 구간(수면 등)은 하나로 합쳐 반열 오판 방지
+   */
+  const mergeOverlappingSameNameSpans = (spans) => {
+    let arr = spans.map((s) => ({ ...s }));
+    let changed = true;
+    while (changed) {
+      changed = false;
+      outer: for (let i = 0; i < arr.length; i++) {
+        for (let j = i + 1; j < arr.length; j++) {
+          const a = arr[i];
+          const b = arr[j];
+          if (String(a.taskName || "").trim() !== String(b.taskName || "").trim())
+            continue;
+          if (overlapMinutesBetween(a, b) <= 0) continue;
+          const startMin = Math.min(a.startMin, b.startMin);
+          const endMin = Math.max(a.endMin, b.endMin);
+          const startSlot = Math.floor(startMin / MIN_PER_SLOT);
+          const endSlot = Math.min(
+            SLOTS_PER_DAY - 1,
+            Math.floor((endMin - 1) / MIN_PER_SLOT),
+          );
+          const merged = {
+            ...a,
+            startMin,
+            endMin,
+            startSlot,
+            endSlot: Math.max(endSlot, startSlot),
+            startDisplay: fmt(startMin),
+            endDisplay: fmt(endMin),
+          };
+          arr = arr.filter((_, k) => k !== i && k !== j);
+          arr.push(merged);
+          changed = true;
+          break outer;
+        }
+      }
+    }
+    return arr;
+  };
   /** 과제별로 스팬 직접 생성 - 슬롯 경계에 갇히지 않고 실제 시작/마감 시간 사용 */
   const buildExpectedSpansFromTasks = () => {
     const spans = [];
@@ -3567,7 +3645,7 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         Math.floor((endMin - 1) / MIN_PER_SLOT),
       );
       const prod = getTaskOptionByName(t.name)?.productivity || "other";
-      spans.push({
+        spans.push({
         startSlot,
         endSlot: Math.max(endSlot, startSlot),
         startMin,
@@ -3581,30 +3659,50 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         _taskKey: t.kpiTodoId || t.taskId || t.name,
       });
     }
-    const sorted = spans.sort((a, b) => a.startMin - b.startMin);
-    const validSorted = sorted.filter((s) => s.endMin > s.startMin);
-    const withLanes = assignLanesToSpans(validSorted);
+    /* 예산표 scheduledTimes 와 할일 start/end 가 같은 구간이면 스팬이 두 번 들어가 레인이 갈라짐 → 한 번만 */
+    const spanDedupeKey = (s) =>
+      `${String(s.taskName || "").trim()}\0${s.startMin}\0${s.endMin}`;
+    const seenSpanKeys = new Set();
+    const dedupedSpans = [];
+    for (const s of spans) {
+      const k = spanDedupeKey(s);
+      if (seenSpanKeys.has(k)) continue;
+      seenSpanKeys.add(k);
+      dedupedSpans.push(s);
+    }
+    const mergedSameName = mergeOverlappingSameNameSpans(dedupedSpans);
+    const sorted = mergedSameName.sort((a, b) => a.startMin - b.startMin);
+    const clamped = sorted
+      .map((s) => {
+        const sm = Number(s.startMin);
+        const em = Number(s.endMin);
+        if (!Number.isFinite(sm) || !Number.isFinite(em) || em <= sm) return null;
+        const startMin = Math.max(0, sm);
+        const endMin = Math.min(24 * 60, em);
+        if (endMin <= startMin) return null;
+        const startSlot = Math.floor(startMin / MIN_PER_SLOT);
+        const endSlot = Math.min(
+          SLOTS_PER_DAY - 1,
+          Math.floor((endMin - 1) / MIN_PER_SLOT),
+        );
+        return {
+          ...s,
+          startMin,
+          endMin,
+          startSlot,
+          endSlot: Math.max(endSlot, startSlot),
+          startDisplay: fmt(startMin),
+          endDisplay: fmt(endMin),
+        };
+      })
+      .filter(Boolean);
+    const withLanes = assignLanesToSpans(clamped);
     const normalized = withLanes.spans.map((s) => ({
       ...s,
       startDisplay: fmt(s.startMin),
       endDisplay: fmt(s.endMin),
     }));
     return { spans: normalized, maxLane: withLanes.maxLane };
-  };
-  /** 겹치는 스팬에 레인 할당. 연속(이전 종료 분 = 다음 시작 분)은 같은 레인. 겹침은 start < 이전 레인의 종료 분 */
-  const assignLanesToSpans = (spans) => {
-    const laneEnds = [];
-    let maxLane = 0;
-    for (const span of spans) {
-      let lane = 0;
-      /* 반열린 구간 [start, end): 이전 종료(end)와 다음 시작(start)이 같으면 겹침 아님. -1은 인접·겹침 판정을 깨뜨림 */
-      while (lane < laneEnds.length && span.startMin < laneEnds[lane]) lane++;
-      if (lane >= laneEnds.length) laneEnds.push(span.endMin);
-      else laneEnds[lane] = span.endMin;
-      span.lane = lane;
-      maxLane = Math.max(maxLane, lane);
-    }
-    return { spans, maxLane };
   };
   const getSlotExpected = (slotIndex) => {
     const slotStartMin = slotIndex * MIN_PER_SLOT;
@@ -3768,10 +3866,21 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   /** 오늘실제만: 이 분 미만 구간은 과제명·시간 라벨 생략(짧은 막대가 겹쳐 읽을 수 없을 때) */
   const ACTUAL_MIN_MINUTES_TO_SHOW_LABEL = 30;
 
-  const createOverlay = (spans, colors, isActual, maxLane = 0) => {
+  const createOverlay = (spans, colors, isActual, _maxLane = 0) => {
     const overlay = document.createElement("div");
     overlay.className = `calendar-1day-time-fill-overlay calendar-1day-time-fill-overlay--${isActual ? "actual" : "expected"}`;
-    const laneCount = Math.max(1, maxLane + 1);
+    const spansOverlapForSimultaneousLanes = (a, b) =>
+      overlapMinutesBetween(a, b) > SIMULTANEOUS_LANE_MIN_OVERLAP_MIN;
+    /**
+     * 이 블록과 2분 이상 직접 겹치는 스팬만 묶음.
+     * (이전 BFS는 A↔B↔C 연쇄로, 수면과 오후 일이 안 겹쳐도 한 무리가 되어 전부 반열로 깎였음.)
+     */
+    const cohortDirectlyOverlapping = (seed) => {
+      const rest = spans.filter(
+        (o) => o !== seed && spansOverlapForSimultaneousLanes(seed, o),
+      );
+      return [seed, ...rest];
+    };
     const groups = isActual ? spans.map((s) => [s]) : spans.map((s) => [s]);
     for (const group of groups) {
       const first = group[0];
@@ -3790,65 +3899,74 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
           ? Math.max(actualBlockMin, ACTUAL_MIN_VISUAL_MINUTES)
           : actualBlockMin;
       const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-      const useLaneLayout = laneCount > 1;
+      const cohort = cohortDirectlyOverlapping(first);
+      /*
+       * 예상(Planned) 열은 반열(50% 등)을 쓰지 않는다. 겹침 판정·DOM 동기화 조합에서
+       * 시간이 안 겹쳐도 전 구간이 반으로 깎이는 사례가 계속 발생함.
+       * 나란히 분할은 오늘 실제(actual) 열에서만 유지한다.
+       */
+      const useLaneLayout = isActual && cohort.length > 1;
+      let laneCountLocal = 1;
+      let laneLocal = first.lane ?? 0;
+      if (useLaneLayout) {
+        const sortedCluster = [...cohort].sort((a, b) => a.startMin - b.startMin);
+        const copies = sortedCluster.map((s) => ({ ...s }));
+        const { maxLane: clusterMaxLane } = assignLanesToSpans(copies);
+        laneCountLocal = Math.max(1, clusterMaxLane + 1);
+        const twin = copies.find(
+          (c) =>
+            c.startMin === first.startMin &&
+            c.endMin === first.endMin &&
+            String(c.taskName || "") === String(first.taskName || ""),
+        );
+        laneLocal = twin?.lane ?? 0;
+      }
       const blockFill = document.createElement("div");
       blockFill.className =
         "calendar-1day-time-slot-fill calendar-1day-time-slot-fill--block calendar-1day-time-slot-fill--span" +
         (useLaneLayout ? " calendar-1day-time-slot-fill--lane" : "");
       const MIN_PER_DAY = 24 * 60;
       if (useLaneLayout) {
-        /* position: absolute로 겹치는 블록을 오버레이 기준 나란히 배치 (이미지처럼) */
-        const lane = first.lane ?? 0;
+        /* 오늘 실제만: 겹침 시 나란히 (예상은 useLaneLayout 항상 false) */
         blockFill.style.position = "absolute";
-        blockFill.style.left = `${(lane / laneCount) * 100}%`;
-        blockFill.style.width = `${100 / laneCount}%`;
-        blockFill.style.top = `calc(${blockStartMin} * 100% / ${MIN_PER_DAY})`;
-        blockFill.style.height = `calc(${isActual ? visualBlockMin : actualBlockMin} * 100% / ${MIN_PER_DAY})`;
-        if (isActual) {
-          blockFill.style.zIndex = String(100 + Math.min(blockStartMin, 2000));
-        }
-      } else if (isActual) {
-        /* 오늘 실제: 24행 grid에 걸면 인접 구간이 같은 시간 행에서 겹쳐 보일 수 있음 → 하루 전체 비율로만 배치 */
-        blockFill.style.position = "absolute";
-        blockFill.style.left = "0";
-        blockFill.style.width = "100%";
+        blockFill.style.left = `${(laneLocal / laneCountLocal) * 100}%`;
+        blockFill.style.width = `${100 / laneCountLocal}%`;
         blockFill.style.top = `calc(${blockStartMin} * 100% / ${MIN_PER_DAY})`;
         blockFill.style.height = `calc(${visualBlockMin} * 100% / ${MIN_PER_DAY})`;
         blockFill.style.zIndex = String(100 + Math.min(blockStartMin, 2000));
       } else {
-        blockFill.style.gridRow = `${blockStartSlot + 1} / ${blockEndSlot + 2}`;
+        /*
+         * 예상·실제 공통: 하루 전체 높이 대비 % 배치 + 전폭.
+         * (예상만 쓰던 grid-row+relative 조합이 그리드 셀 안에서 가로가 반으로 깎여 보이는 경우가 있어 실제와 동일 방식으로 통일)
+         */
+        blockFill.style.position = "absolute";
+        blockFill.style.left = "0";
+        blockFill.style.width = "100%";
+        blockFill.style.top = `calc(${blockStartMin} * 100% / ${MIN_PER_DAY})`;
+        const blockH = isActual ? visualBlockMin : actualBlockMin;
+        blockFill.style.height = `calc(${blockH} * 100% / ${MIN_PER_DAY})`;
+        blockFill.style.zIndex = String(100 + Math.min(blockStartMin, 2000));
       }
       const heightPct =
         blockHeightMin > 0 && actualBlockMin < blockHeightMin
           ? ((actualBlockMin / blockHeightMin) * 100).toFixed(1)
           : "100";
       blockFill.dataset.debugBlock = `${fmt(blockStartMin)}~${fmt(blockEndMin)} slot${blockStartSlot}-${blockEndSlot} h=${blockHeightMin}m actual=${actualBlockMin}m height=${heightPct}%`;
-      /* 실제 시작/종료 시간에 맞춰 색칠 (04:50 종료면 05:00까지 넘치지 않도록) — 예상만 grid 행 기준 보정 */
-      if (!useLaneLayout && blockHeightMin > 0 && !isActual) {
-        const slotStartMin = blockStartSlot * MIN_PER_SLOT;
-        const startOffset = blockStartMin - slotStartMin;
-        if (startOffset > 0) {
-          blockFill.style.top = `${(startOffset / blockHeightMin) * 100}%`;
-        }
-        if (actualBlockMin < blockHeightMin) {
-          blockFill.style.height = `${(actualBlockMin / blockHeightMin) * 100}%`;
-        }
-      }
       blockFill.style.display = "flex";
       blockFill.style.flexDirection = "column";
       blockFill.style.gap = "0";
       blockFill.style.padding = "0";
       blockFill.style.overflow = "hidden";
       if (useLaneLayout) {
-        const lane = first.lane ?? 0;
-        blockFill.style.borderRadius = lane === 0 ? "0.375rem 0 0 0.375rem" : lane === laneCount - 1 ? "0 0.375rem 0.375rem 0" : "0";
+        blockFill.style.borderRadius =
+          laneLocal === 0
+            ? "0.375rem 0 0 0.375rem"
+            : laneLocal === laneCountLocal - 1
+              ? "0 0.375rem 0.375rem 0"
+              : "0";
       } else {
         blockFill.style.borderRadius = "0.375rem";
         blockFill.style.border = "none";
-      }
-      if (!useLaneLayout && !isActual) {
-        blockFill.style.position = "relative";
-        blockFill.style.width = "100%";
       }
       blockFill.style.boxSizing = "border-box";
       /* 타임박스: 왼쪽 진한 실선, 살짝 둥근 모서리, 투명 컬러 채움 */
@@ -4273,7 +4391,7 @@ function render1DayView(tabsElement) {
     const todoTable = document.createElement("table");
     todoTable.className = "calendar-1day-todo-table time-daily-budget-table";
     todoTable.innerHTML = `
-      <thead><tr><th>오늘의 할일</th><th>KPI</th><th>우선순위</th></tr></thead>
+      <thead><tr><th>오늘의 할일</th><th>우선순위</th></tr></thead>
       <tbody></tbody>
     `;
     const todoTbody = todoTable.querySelector("tbody");
@@ -4367,10 +4485,6 @@ function render1DayView(tabsElement) {
       const nameTd = document.createElement("td");
       nameTd.appendChild(bar);
       tr.appendChild(nameTd);
-      const kpiTd = document.createElement("td");
-      kpiTd.className = "calendar-1day-todo-kpi-cell";
-      kpiTd.textContent = (t.classification || "").trim() || "";
-      tr.appendChild(kpiTd);
       const priorityTd = document.createElement("td");
       priorityTd.className = "calendar-1day-todo-priority-cell";
       priorityTd.textContent = (t.eisenhower || "").trim()

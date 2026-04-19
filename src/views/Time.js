@@ -1249,11 +1249,12 @@ export function parseTimeToHours(str) {
   return h + m / 60;
 }
 
-/** 목표 대비 배치 차이 포맷: (-1h) / (+1h25m) / (-30m) / "" */
+/** 목표 대비 배치 차이 포맷: (-1h) / (+1h25m) / (-30m) / "" — 초과 +, 부족 - */
 export function formatGoalDiff(diffHours) {
   if (diffHours === 0 || !isFinite(diffHours) || Math.abs(diffHours) < 1 / 60)
     return "";
-  const sign = diffHours > 0 ? "+" : "";
+  const sign =
+    diffHours > 0 ? "+" : diffHours < 0 ? "-" : "";
   const absH = Math.abs(diffHours);
   const h = Math.floor(absH);
   const m = Math.round((absH - h) * 60);

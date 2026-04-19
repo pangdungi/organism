@@ -31512,7 +31512,7 @@ body.kpi-resizing {
   min-height: 2.5rem;
 }
 
-/* 오늘의 할일 테이블 - 오늘의 할일/KPI/우선순위 3열 (수면·근무시간 배치 표처럼 좌우 테두리 없음) */
+/* 오늘의 할일 테이블 - 오늘의 할일/우선순위 2열 (수면·근무시간 배치 표처럼 좌우 테두리 없음) */
 /* thead th에 border-top 줄 경우 1,2,3,4번 첫 열에 이중 보더 발생 → 테이블 자체에만 상단선 */
 .calendar-1day-budget-column .calendar-1day-todo-table {
   border-bottom: var(--line-l3);
@@ -31522,18 +31522,12 @@ body.kpi-resizing {
 
 .calendar-1day-budget-column .calendar-1day-todo-table thead th:first-child,
 .calendar-1day-budget-column .calendar-1day-todo-table tbody td:first-child {
-  width: 45%;
+  width: 58%;
 }
 
 .calendar-1day-budget-column .calendar-1day-todo-table thead th:nth-child(2),
 .calendar-1day-budget-column .calendar-1day-todo-table tbody td:nth-child(2) {
-  width: 30%;
-  min-width: 3rem;
-}
-
-.calendar-1day-budget-column .calendar-1day-todo-table thead th:nth-child(3),
-.calendar-1day-budget-column .calendar-1day-todo-table tbody td:nth-child(3) {
-  width: 25%;
+  width: 42%;
   min-width: 4rem;
 }
 
@@ -31576,8 +31570,7 @@ body.kpi-resizing {
   background: #f5f1e8;
 }
 
-.calendar-1day-budget-column .calendar-1day-todo-table thead th:nth-child(2),
-.calendar-1day-budget-column .calendar-1day-todo-table thead th:nth-child(3) {
+.calendar-1day-budget-column .calendar-1day-todo-table thead th:nth-child(2) {
   text-align: left;
 }
 
@@ -32090,10 +32083,15 @@ body.kpi-resizing {
   max-width: 100%;
 }
 
+/* 목표시간: hh:mm만 — input 은 width:auto도 기본 칸(~72px)이 남음 → ch 로 글자폭에 맞춤 */
 .calendar-1day-budget-column .time-budget-goal-wrap .time-budget-time-input {
-  padding-right: 0.15rem;
-  min-width: 0;
-  flex: 0 1 auto;
+  width: 5ch !important;
+  min-width: 4.25ch !important;
+  max-width: 5.5ch !important;
+  box-sizing: border-box !important;
+  flex: 0 0 auto !important;
+  padding-left: 0.1rem !important;
+  padding-right: 0.1rem !important;
 }
 
 .calendar-1day-budget-column .time-budget-goal-diff {
@@ -32102,10 +32100,12 @@ body.kpi-resizing {
   flex-shrink: 0;
 }
 
+/* 배치합이 목표보다 적음: - · 파랑 */
 .calendar-1day-budget-column .time-budget-goal-diff--short {
-  color: #d97706;
+  color: #2563eb;
 }
 
+/* 배치합이 목표보다 많음: + · 빨강 */
 .calendar-1day-budget-column .time-budget-goal-diff--over {
   color: #dc2626;
 }

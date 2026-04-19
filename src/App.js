@@ -163,11 +163,18 @@ async function pullDataForActiveTab(tabId, opts = {}) {
       break;
     }
     case "calendar":
-    case "schedulecalendar":
+    case "schedulecalendar": {
       await pullCalendarSectionTasksFromSupabase({
         reason: `app_setActiveTab_${tabId}`,
       });
+      /* 오늘 해치우기(1일 뷰)의 「오늘 실제」는 loadTimeRows() — 시간 탭을 안 거쳐도 보이도록 홈과 같이 당일 기록 pull */
+      const ymd = timeLedgerLocalTodayYmd();
+      await Promise.all([
+        pullTimeLedgerEntriesForDateRange(ymd, ymd),
+        pullTimeLedgerTasksFromSupabase(),
+      ]);
       break;
+    }
     case "time":
       if (!fromBoot) resetTimeLedgerSessionFilterToToday();
       await pullTimeLedgerTabEnterFromCloud();
