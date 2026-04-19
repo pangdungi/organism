@@ -99,13 +99,12 @@ function ensureTodoListTabGlobalDismiss() {
   });
 }
 
-// 나의 계정에서 리스트 색상 저장 시 탭 버튼 색상 즉시 반영
+// 나의 계정에서 색상 저장 시 탭 버튼 테두리 즉시 반영
 window.addEventListener("app-colors-changed", () => {
   const container = document.querySelector(".todo-category-tabs");
   if (!container) return;
-  const sectionColors = getTodoSettings().sectionColors;
   container.querySelectorAll(".todo-category-tab[data-section]").forEach((btn) => {
-    const c = sectionColors?.[btn.dataset.section];
+    const c = getSectionColor(btn.dataset.section);
     if (c) {
       btn.style.borderLeft = `0.0625rem solid ${c}`;
       btn.style.borderTop = `0.0625rem solid ${c}`;

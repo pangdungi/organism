@@ -205,6 +205,14 @@ const TASK_SUBCATEGORY_PRESET_VERSION = 1;
 /** 커스텀 리스트용 기본 색상 풀 (프리셋 전체) */
 const CUSTOM_SECTION_COLOR_POOL = APP_PRESET_RGBA_LIST;
 
+/** 고정 5리스트는 앱 기본색, 커스텀 리스트는 id 기준 안정 해시로만 배정(사용자 지정 없음) */
+function resolveSectionListColor(sectionId) {
+  const id = String(sectionId || "");
+  const fixed = DEFAULT_SECTION_COLORS[id];
+  if (fixed) return fixed;
+  return CUSTOM_SECTION_COLOR_POOL[Math.abs(hashCode(id)) % CUSTOM_SECTION_COLOR_POOL.length];
+}
+
 export function getCustomSections() {
   try {
     const raw = localStorage.getItem(CUSTOM_SECTIONS_KEY);
@@ -226,9 +234,6 @@ export function addCustomSection(label) {
   existing.push(newSection);
   try {
     localStorage.setItem(CUSTOM_SECTIONS_KEY, JSON.stringify(existing));
-    const settings = getTodoSettings();
-    const color = pickRandomPresetRgba(0.6);
-    saveTodoSettings({ ...settings, sectionColors: { ...settings.sectionColors, [id]: color } });
   } catch (_) {
     return null;
   }
@@ -260,8 +265,7 @@ export function updateCustomSectionLabel(sectionId, newLabel) {
 }
 
 export function getCustomSectionColor(sectionId) {
-  const settings = getTodoSettings();
-  return settings.sectionColors[sectionId] || CUSTOM_SECTION_COLOR_POOL[Math.abs(hashCode(sectionId)) % CUSTOM_SECTION_COLOR_POOL.length];
+  return resolveSectionListColor(sectionId);
 }
 
 /** @deprecated 팔레트 선택용 - APP_PRESET_RGBA_LIST 사용 */
@@ -355,26 +359,15 @@ export function saveTodoSettings(settings) {
 }
 
 /**
- * 리스트(섹션) 색상 조회. 월별 캘린더 태스크 색상은 이 값만 사용한다.
- * 나의 계정 → 리스트 색상에서 고른 컬러(todoSettings.sectionColors) 및 기본값(DEFAULT_SECTION_COLORS),
- * 미지정 시 앱 컬러팔레트(APP_PRESET)에서만 fallback.
+ * 리스트(섹션) 색상 — 고정 5종은 DEFAULT_SECTION_COLORS, 커스텀은 id 해시로만 결정(저장·선택 없음).
+ * 월 캘린더·탭 강조 등은 이 값을 쓴다.
  */
 export function getSectionColor(sectionId) {
-  const s = getTodoSettings();
-  return (
-    s.sectionColors[sectionId] ||
-    DEFAULT_SECTION_COLORS[sectionId] ||
-    CUSTOM_SECTION_COLOR_POOL[Math.abs(hashCode(String(sectionId || ""))) % CUSTOM_SECTION_COLOR_POOL.length]
-  );
+  return resolveSectionListColor(sectionId);
 }
 
 export function getTimeCategoryColor(key) {
-  const s = getTodoSettings();
-  return (
-    s.timeCategoryColors?.[key] ||
-    DEFAULT_TIME_CATEGORY_COLORS[key] ||
-    hexToRgba(APP_PRESET_COLORS[0].hex, 0.9)
-  );
+  return DEFAULT_TIME_CATEGORY_COLORS[key] || hexToRgba(APP_PRESET_COLORS[0].hex, 0.9);
 }
 
 /** 작업(세부) 카테고리 색상 조회 - 쾌락충족·꿈방해·불행·비건강·돈잃는일·근무·수면 등만 작업 카테고리 설정 사용 */
@@ -417,10 +410,9 @@ function rgbaToTimetableColors(rgbaStr, bgAlpha = 0.15, borderAlpha = 0.5) {
 
 /** 타임테이블(예상/오늘 실제) 블록용 생산·비생산·기타 색상 { productive, nonproductive, other } 각 { bg, border } */
 export function getTimeCategoryColorsForTimetable() {
-  const s = getTodoSettings();
-  const productive = s.timeCategoryColors?.productive || DEFAULT_TIME_CATEGORY_COLORS.productive;
-  const nonproductive = s.timeCategoryColors?.nonproductive || DEFAULT_TIME_CATEGORY_COLORS.nonproductive;
-  const other = s.timeCategoryColors?.other || DEFAULT_TIME_CATEGORY_COLORS.other;
+  const productive = DEFAULT_TIME_CATEGORY_COLORS.productive;
+  const nonproductive = DEFAULT_TIME_CATEGORY_COLORS.nonproductive;
+  const other = DEFAULT_TIME_CATEGORY_COLORS.other;
   return {
     productive: rgbaToTimetableColors(productive, 0.1, 0.7),
     nonproductive: rgbaToTimetableColors(nonproductive, 0.1, 0.7),
@@ -430,10 +422,9 @@ export function getTimeCategoryColorsForTimetable() {
 
 /** 타임테이블 '예상' 컬럼용 (실제보다 연하되, 0.06대는 그리드와 구분이 안 되어 막대가 '비어 있음'처럼 보임) */
 export function getTimeCategoryColorsForTimetableExpected() {
-  const s = getTodoSettings();
-  const productive = s.timeCategoryColors?.productive || DEFAULT_TIME_CATEGORY_COLORS.productive;
-  const nonproductive = s.timeCategoryColors?.nonproductive || DEFAULT_TIME_CATEGORY_COLORS.nonproductive;
-  const other = s.timeCategoryColors?.other || DEFAULT_TIME_CATEGORY_COLORS.other;
+  const productive = DEFAULT_TIME_CATEGORY_COLORS.productive;
+  const nonproductive = DEFAULT_TIME_CATEGORY_COLORS.nonproductive;
+  const other = DEFAULT_TIME_CATEGORY_COLORS.other;
   return {
     productive: rgbaToTimetableColors(productive, 0.14, 0.55),
     nonproductive: rgbaToTimetableColors(nonproductive, 0.14, 0.55),
@@ -441,12 +432,11 @@ export function getTimeCategoryColorsForTimetableExpected() {
   };
 }
 
-/** 저장된 시간가계부 생산/비생산/기타 색상을 DOM에 적용 */
+/** 시간가계부 생산/비생산/기타 색상을 DOM에 적용(앱 기본만) */
 export function applyTimeCategoryColors() {
-  const s = getTodoSettings();
-  const productive = s.timeCategoryColors?.productive || DEFAULT_TIME_CATEGORY_COLORS.productive;
-  const nonproductive = s.timeCategoryColors?.nonproductive || DEFAULT_TIME_CATEGORY_COLORS.nonproductive;
-  const other = s.timeCategoryColors?.other || DEFAULT_TIME_CATEGORY_COLORS.other;
+  const productive = DEFAULT_TIME_CATEGORY_COLORS.productive;
+  const nonproductive = DEFAULT_TIME_CATEGORY_COLORS.nonproductive;
+  const other = DEFAULT_TIME_CATEGORY_COLORS.other;
   let styleEl = document.getElementById("time-category-colors-style");
   if (!styleEl) {
     styleEl = document.createElement("style");
@@ -499,11 +489,8 @@ const TASK_CATEGORY_TO_SECTION = {
   health: "health",
 };
 
-/** 저장된 작업(세부) 카테고리 색상을 DOM에 적용. 꿈/부수입/행복/건강은 리스트 색상, 나머지는 작업 카테고리 설정 */
+/** 작업(세부) 카테고리 색상을 DOM에 적용. 꿈/부수입/행복/건강은 리스트 팔레트, 나머지는 기본 팔레트 */
 export function applyTaskCategoryColors() {
-  const s = getTodoSettings();
-  const taskColors = s.taskCategoryColors || DEFAULT_TASK_CATEGORY_COLORS;
-  const sectionColors = s.sectionColors || {};
   let styleEl = document.getElementById("task-category-colors-style");
   if (!styleEl) {
     styleEl = document.createElement("style");
@@ -513,8 +500,8 @@ export function applyTaskCategoryColors() {
   const rules = TASK_CATEGORY_CSS_MAP.map(({ key, class: cls }) => {
     const bg =
       TASK_CATEGORY_TO_SECTION[key] != null
-        ? sectionColors[TASK_CATEGORY_TO_SECTION[key]] ?? DEFAULT_TASK_CATEGORY_COLORS[key]
-        : taskColors[key] ?? DEFAULT_TASK_CATEGORY_COLORS[key];
+        ? getSectionColor(TASK_CATEGORY_TO_SECTION[key])
+        : DEFAULT_TASK_CATEGORY_COLORS[key];
     if (!bg) return "";
     const fg = pillTextColorForRgbaBg(bg);
     return `.time-tag-pill.${cls}, .time-dash-bar-fill.${cls} { background: ${bg} !important; color: ${fg} !important; }`;

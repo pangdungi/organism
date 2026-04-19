@@ -89,7 +89,7 @@ const TIME_LEDGER_SHOW_IMPROVE_TAB = false;
 const TIME_LEDGER_ADD_FAB_SVG =
   '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>';
 
-/** 오딧 3. 우선순위 영역: 해당 날짜 할일 목록 로드 (Calendar getTasksForDate와 동일 데이터) */
+/** 개선하기·기타: 해당 날짜 할일 목록 (Calendar getTasksForDate와 동일 데이터) */
 const KPI_SECTION_IDS_AUDIT = [
   "braindump",
   "dream",
@@ -161,127 +161,7 @@ function getTasksForAuditDate(dateKey) {
   return out;
 }
 
-function setAuditTaskDone(sectionId, taskId, kpiTodoId, storageKey, done) {
-  if (kpiTodoId && storageKey) {
-    syncKpiTodoCompleted(kpiTodoId, storageKey, done);
-    return;
-  }
-  try {
-    const isCustom = (sectionId || "").startsWith("custom-");
-    const obj = isCustom ? readCustomSectionTasksObject() : readSectionTasksObject();
-    const arr = obj[sectionId];
-    if (!Array.isArray(arr)) return;
-    const t = arr.find((x) => (x.taskId || "") === taskId);
-    if (t) {
-      t.done = !!done;
-      if (isCustom) persistCustomSectionTasksAndSchedule(obj);
-      else persistSectionTasksAndSchedule(obj);
-    }
-  } catch (_) {}
-}
-
-const EISENHOWER_LABELS_AUDIT = {
-  "urgent-important": "긴급+중요",
-  "important-not-urgent": "중요+여유",
-  "urgent-not-important": "긴급+덜 중요",
-  "not-urgent-not-important": "여유+안 중요",
-};
-/** 오딧 우선순위별 완료 파이 전용 – 볼드하지 않은 색 */
-const PRIORITY_PIE_COLORS_AUDIT = {
-  "urgent-important": "#d4a5a5",
-  "important-not-urgent": "#9cb89c",
-  "urgent-not-important": "#d4c4a0",
-  "not-urgent-not-important": "#9ca3af",
-};
-/** KPI별 완료 파이: sectionId(꿈/부수입/행복/건강) 기준 카테고리 컬러 */
-const KPI_SECTION_TO_CATEGORY = {
-  dream: "dream",
-  sideincome: "sideincome",
-  happy: "happiness",
-  health: "health",
-};
-function getKpiPieColorBySection(sectionId) {
-  const key = KPI_SECTION_TO_CATEGORY[sectionId] ?? "";
-  return CATEGORY_GRAPH_COLORS[key] ?? CATEGORY_GRAPH_COLORS[""];
-}
-function getAuditPriorityPieHtml(dateStr) {
-  const tasks = getTasksForAuditDate(dateStr);
-  const completed = tasks.filter((t) => t.done);
-  const byPriority = {};
-  completed.forEach((t) => {
-    const k = (t.eisenhower || "").trim() || "(없음)";
-    byPriority[k] = (byPriority[k] || 0) + 1;
-  });
-  const byKpi = {};
-  completed.forEach((t) => {
-    const k = (t.classification || "").trim() || "(없음)";
-    if (!byKpi[k]) byKpi[k] = { count: 0, sectionId: t.sectionId || "" };
-    byKpi[k].count += 1;
-  });
-  const esc = (s) =>
-    String(s ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  const makePie = (entries, title, getColor) => {
-    const total = entries.reduce((s, e) => s + e.count, 0);
-    if (total === 0)
-      return `<div class="time-audit-pie-box"><div class="time-audit-pie-title">${esc(title)}</div><div class="time-audit-pie-empty">완료 없음</div></div>`;
-    let acc = 0;
-    const cx = 50;
-    const cy = 50;
-    const r = 40;
-    const segs = entries
-      .map((e, i) => {
-        const color = getColor(e, i);
-        const pct = e.count / total;
-        if (pct >= 0.9999)
-          return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" title="${esc(e.label)}: ${e.count} (100%)"/>`;
-        const a0 = (acc / total) * 2 * Math.PI - Math.PI / 2;
-        acc += e.count;
-        const a1 = (acc / total) * 2 * Math.PI - Math.PI / 2;
-        const x0 = cx + r * Math.cos(a0);
-        const y0 = cy + r * Math.sin(a0);
-        const x1 = cx + r * Math.cos(a1);
-        const y1 = cy + r * Math.sin(a1);
-        const large = pct > 0.5 ? 1 : 0;
-        const d = `M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z`;
-        return `<path d="${d}" fill="${color}" title="${esc(e.label)}: ${e.count}"/>`;
-      })
-      .join("");
-    const legend = entries
-      .map((e, i) => {
-        const color = getColor(e, i);
-        const pct = total > 0 ? Math.round((e.count / total) * 100) : 0;
-        const pctText =
-          entries.length === 1 ? " 100%" : ` ${e.count} (${pct}%)`;
-        return `<span class="time-audit-pie-legend-item" style="--pie-color:${color}">${esc(e.label)}${pctText}</span>`;
-      })
-      .join("");
-    return `<div class="time-audit-pie-box"><div class="time-audit-pie-title">${esc(title)}</div><div class="time-audit-pie-svg-wrap"><svg viewBox="0 0 100 100" class="time-audit-pie-svg">${segs}</svg></div><div class="time-audit-pie-legend">${legend}</div></div>`;
-  };
-  const priorityEntries = Object.entries(byPriority).map(([k, count]) => ({
-    key: k,
-    label: EISENHOWER_LABELS_AUDIT[k] || k,
-    count,
-  }));
-  const kpiEntries = Object.entries(byKpi).map(([label, data]) => ({
-    label,
-    count: data.count,
-    sectionId: data.sectionId || "",
-  }));
-  const priorityColor = (e, i) =>
-    PRIORITY_PIE_COLORS_AUDIT[e.key] ??
-    ["#d4a5a5", "#9cb89c", "#d4c4a0", "#9ca3af"][i % 4];
-  const kpiColor = (e, i) => getKpiPieColorBySection(e.sectionId);
-  return (
-    makePie(priorityEntries, "우선순위별 완료", priorityColor) +
-    makePie(kpiEntries, "KPI별 완료", kpiColor)
-  );
-}
-
-/** 오딧 4. 시간낭비내역: 비생산적 카테고리 파이 (회색 계열) */
+/** 오딧 시간낭비내역: 비생산적 카테고리 파이 (회색 계열) */
 /** 비생산적 시간 비율 파이 – 파란색 계열, 볼드하지 않게 */
 const TIME_THIEF_PIE_COLORS = [
   "#93c5fd",
@@ -1670,7 +1550,14 @@ function getDateRangeForFilterType(type, year, month, start, end) {
     return { start: toDateStr(startDate), end: toDateStr(endDate) };
   }
   if (type === "range" && start && end) {
-    return { start, end };
+    let s = start;
+    let e = end;
+    if (s > e) {
+      const t = s;
+      s = e;
+      e = t;
+    }
+    return { start: s, end: e };
   }
   return { start: null, end: null };
 }
@@ -3846,11 +3733,6 @@ export function render() {
       });
     }
     const type = filterType;
-    if (view === "audit" && type === "range") {
-      const single = startDateInput.value || filterStartDate;
-      endDateInput.value = single;
-      filterStartDate = filterEndDate = single;
-    }
     const rows = getFullRowsForFilter(skipMerge);
     cachedRows = rows;
     const y = filterYear;
@@ -8734,31 +8616,6 @@ export function render() {
             scheduleRows.sort(
               (a, b) => a.section - b.section || a.task.localeCompare(b.task),
             );
-            const fmtGap = (goalTime, actualHrs) => {
-              if (!goalTime?.trim() || actualHrs <= 0) return "—";
-              const goalHrs = parseTimeToHours(goalTime);
-              const diff = actualHrs - goalHrs;
-              if (Math.abs(diff) < 1 / 60) return "0";
-              const sign = diff > 0 ? "+" : "-";
-              const absH = Math.abs(diff);
-              const h = Math.floor(absH);
-              const m = Math.round((absH - h) * 60);
-              if (h === 0) return `${sign}${m}m`;
-              if (m === 0) return `${sign}${h}h`;
-              return `${sign}${h}h ${m}m`;
-            };
-            const tableHtml =
-              scheduleRows.length > 0
-                ? (() => {
-                    const rowsHtml = scheduleRows
-                      .map(
-                        (r) =>
-                          `<tr><td class="time-audit-schedule-task">${r.task}</td><td class="time-audit-schedule-goal">${r.goalTime || "—"}</td><td class="time-audit-schedule-actual">${r.actualHrs > 0 ? formatHoursToHHMM(r.actualHrs) : "—"}</td><td class="time-audit-schedule-gap">${fmtGap(r.goalTime, r.actualHrs)}</td></tr>`,
-                      )
-                      .join("");
-                    return `<div class="time-audit-section-1"><div class="time-audit-schedule-table-wrap"><table class="time-audit-schedule-table"><thead><tr><th>과제명</th><th>목표 시간</th><th>실제시간</th><th>시간 갭</th></tr></thead><tbody>${rowsHtml}</tbody></table></div></div>`;
-                  })()
-                : "";
             const barRows = scheduleRows.map((r) => {
               let cat = "";
               if (r.task === "근무하기") cat = "work";
@@ -8814,59 +8671,11 @@ export function render() {
                   </div>
                 </div>`
                 : `<div class="time-audit-bar-chart time-audit-bar-chart-empty"><div class="time-audit-pie-empty">목표 없음</div></div>`;
-            return `<div class="time-audit-below-section">${tableHtml || ""}${barChartHtml}</div>`;
-          })()}
-          </div>
-          <div class="time-audit-region time-audit-region-priority">
-            <div class="time-audit-region-title">4. 우선순위</div>
-          ${(() => {
-            const tasks = getTasksForAuditDate(dateStr);
-            const EISENHOWER_ORDER = [
-              "urgent-important",
-              "important-not-urgent",
-              "urgent-not-important",
-              "not-urgent-not-important",
-            ];
-            const EISENHOWER_LABELS = {
-              "urgent-important": "긴급+중요",
-              "important-not-urgent": "중요+여유",
-              "urgent-not-important": "긴급+덜 중요",
-              "not-urgent-not-important": "여유+안 중요",
-            };
-            const esc = (s) =>
-              String(s ?? "")
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;");
-            const sorted = [...tasks].sort((a, b) => {
-              const ai = EISENHOWER_ORDER.indexOf((a.eisenhower || "").trim());
-              const bi = EISENHOWER_ORDER.indexOf((b.eisenhower || "").trim());
-              return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
-            });
-            const tableRows = sorted
-              .map((t) => {
-                const label = (t.name || "").trim() || "—";
-                const kpi = (t.classification || "").trim() || "—";
-                const priority = (t.eisenhower || "").trim()
-                  ? EISENHOWER_LABELS[(t.eisenhower || "").trim()] ||
-                    (t.eisenhower || "").trim()
-                  : "—";
-                const checked = t.done ? " checked" : "";
-                const sid = esc(t.sectionId || "");
-                const tid = esc(t.taskId || "");
-                const kid = esc(t.kpiTodoId || "");
-                const sk = esc(t.storageKey || "");
-                const dk = esc(dateStr);
-                return `<tr data-section-id="${sid}" data-task-id="${tid}" data-kpi-todo-id="${kid}" data-storage-key="${sk}" data-date-key="${dk}"><td class="time-audit-priority-todo-cell"><label class="time-audit-priority-todo-row"><input type="checkbox"${checked}><span>${esc(label)}</span></label></td><td>${esc(kpi)}</td><td>${esc(priority)}</td></tr>`;
-              })
-              .join("");
-            const tableHtml = `<div class="time-audit-priority-table-wrap"><table class="time-audit-priority-table"><thead><tr><th>오늘의 할일</th><th>KPI</th><th>우선순위</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
-            return `<div class="time-audit-priority-content"><div class="time-audit-priority-left">${tableHtml}</div><div class="time-audit-priority-right">${getAuditPriorityPieHtml(dateStr)}</div></div>`;
+            return `<div class="time-audit-below-section time-audit-below-section--gap-chart-only">${barChartHtml}</div>`;
           })()}
           </div>
           <div class="time-audit-region time-audit-region-time-thief">
-            <div class="time-audit-region-title">5. 시간낭비내역</div>
+            <div class="time-audit-region-title">4. 시간낭비내역</div>
           ${(() => {
             const hourlyRate =
               parseFloat(
@@ -8878,7 +8687,7 @@ export function render() {
           })()}
           </div>
           <div class="time-audit-region time-audit-region-time-investment">
-            <div class="time-audit-region-title">6. 시간 투자 내역</div>
+            <div class="time-audit-region-title">5. 시간 투자 내역</div>
           ${(() => {
             const hourlyRate =
               parseFloat(
@@ -8890,7 +8699,7 @@ export function render() {
           })()}
           </div>
           <div class="time-audit-region time-audit-region-achievement">
-            <div class="time-audit-region-title">7. 오늘 내 하루 한눈에 보기</div>
+            <div class="time-audit-region-title">6. 오늘 내 하루 한눈에 보기</div>
             ${(() => {
               const concTop = padTop;
               const concBottom = padTop + plotH;
@@ -8967,30 +8776,6 @@ export function render() {
           </div>
         `;
         wrap.appendChild(block);
-        const tableWrap = block.querySelector(
-          ".time-audit-priority-table-wrap",
-        );
-        if (tableWrap) {
-          tableWrap.addEventListener("change", (e) => {
-            if (!e.target.matches("input[type=checkbox]")) return;
-            const tr = e.target.closest("tr");
-            if (!tr) return;
-            const sectionId = tr.dataset.sectionId || "";
-            const taskId = tr.dataset.taskId || "";
-            const kpiTodoId = tr.dataset.kpiTodoId || "";
-            const storageKey = tr.dataset.storageKey || "";
-            const dateKey = tr.dataset.dateKey || "";
-            setAuditTaskDone(
-              sectionId,
-              taskId,
-              kpiTodoId || null,
-              storageKey || null,
-              e.target.checked,
-            );
-            const right = block.querySelector(".time-audit-priority-right");
-            if (right) right.innerHTML = getAuditPriorityPieHtml(dateKey);
-          });
-        }
       });
 
     appendMobileAuditToolbar();
@@ -9944,11 +9729,6 @@ export function render() {
         el.style.display = "";
       });
       if (startDateInput) startDateInput.dataset.hideDeleteBtn = "true";
-      if (endDateInput && startDateInput) {
-        const single = startDateInput.value || filterStartDate;
-        endDateInput.value = single;
-        filterStartDate = filterEndDate = single;
-      }
       persistTimeFilterToSession();
     } else if (view === "blank") {
       if (filterNavCluster) filterNavCluster.style.display = "none";

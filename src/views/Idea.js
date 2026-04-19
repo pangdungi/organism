@@ -1,18 +1,12 @@
 /**
- * My account - 기본정보, 나의 시급계산하기, 색상 설정
+ * My account - 기본정보, 나의 시급 계산
  */
 
 import { signOut } from "../auth.js";
 import { supabase } from "../supabase.js";
-import {
-  USER_HOURLY_RATE_KEY,
-  pushAppearanceToSupabase,
-  applyAppearanceFromServer,
-} from "../utils/userHourlySync.js";
+import { USER_HOURLY_RATE_KEY, applyAppearanceFromServer } from "../utils/userHourlySync.js";
 
 export { USER_HOURLY_RATE_KEY };
-import { getTodoSettings, saveTodoSettings, getCustomSections, DEFAULT_SECTION_COLORS, DEFAULT_TIME_CATEGORY_COLORS, DEFAULT_TASK_CATEGORY_COLORS, applyTimeCategoryColors, applyTaskCategoryColors } from "../utils/todoSettings.js";
-import { createColorPickerRow } from "../utils/todoSettingsModal.js";
 import { showToast } from "../utils/showToast.js";
 import {
   registerReminderPushFromUserGesture,
@@ -317,107 +311,6 @@ export function render() {
     </form>
   `;
   grid.appendChild(hourlyWidget);
-
-  // ----- 색상 설정 위젯 -----
-  const FIXED_SECTIONS = [
-    { id: "dream", label: "꿈" },
-    { id: "sideincome", label: "부수입" },
-    { id: "health", label: "건강" },
-    { id: "happy", label: "행복" },
-    { id: "braindump", label: "브레인 덤프" },
-  ];
-  const TIME_CATEGORY_SECTIONS = [
-    { id: "productive", label: "생산" },
-    { id: "nonproductive", label: "비생산" },
-    { id: "other", label: "기타" },
-  ];
-  /** 시간가계부 작업(세부) 카테고리 - 꿈/부수입/행복/건강은 리스트 색상과 통일이라 제외 */
-  const TASK_CATEGORY_SECTIONS = [
-    { id: "", label: "그외" },
-    { id: "pleasure", label: "쾌락충족" },
-    { id: "dreamblocking", label: "꿈을 방해하는 일" },
-    { id: "unhappiness", label: "불행" },
-    { id: "unhealthy", label: "비건강" },
-    { id: "moneylosing", label: "돈을 잃는 일" },
-    { id: "work", label: "근무" },
-    { id: "sleep", label: "수면" },
-  ];
-  function getSections() {
-    return [...FIXED_SECTIONS, ...getCustomSections()];
-  }
-
-  const settings = getTodoSettings();
-  let sectionColors = { ...settings.sectionColors };
-  let timeCategoryColors = { ...settings.timeCategoryColors };
-  let taskCategoryColors = { ...(settings.taskCategoryColors || DEFAULT_TASK_CATEGORY_COLORS) };
-
-  const colorWidget = document.createElement("div");
-  colorWidget.className = "time-dashboard-widget idea-widget idea-widget-colors hide-on-mobile";
-  colorWidget.innerHTML = `
-    <div class="todo-settings-block idea-colors-block">
-      <div class="idea-colors-columns">
-        <div class="idea-colors-col">
-          <h4 class="todo-settings-block-title">리스트 색상</h4>
-          <div class="idea-colors-rows idea-colors-rows-list"></div>
-        </div>
-        <div class="idea-colors-col">
-          <h4 class="todo-settings-block-title">생산성(시간가계부)</h4>
-          <div class="idea-colors-rows idea-colors-rows-time"></div>
-        </div>
-        <div class="idea-colors-col idea-colors-col-task">
-          <h4 class="todo-settings-block-title">작업 카테고리(세부)</h4>
-          <div class="idea-colors-task-cols">
-            <div class="idea-colors-rows idea-colors-rows-task-left"></div>
-            <div class="idea-colors-rows idea-colors-rows-task-right"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-  const listRowsEl = colorWidget.querySelector(".idea-colors-rows-list");
-  const timeRowsEl = colorWidget.querySelector(".idea-colors-rows-time");
-  const taskRowsLeftEl = colorWidget.querySelector(".idea-colors-rows-task-left");
-  const taskRowsRightEl = colorWidget.querySelector(".idea-colors-rows-task-right");
-
-  function saveColors() {
-    saveTodoSettings({
-      ...getTodoSettings(),
-      sectionColors,
-      timeCategoryColors,
-      taskCategoryColors,
-    });
-    applyTimeCategoryColors();
-    applyTaskCategoryColors();
-    document.dispatchEvent(new CustomEvent("app-colors-changed"));
-    void pushAppearanceToSupabase();
-  }
-
-  getSections().forEach((sec) => {
-    const row = createColorPickerRow(sec.id, sec.label, sectionColors[sec.id], (color) => {
-      sectionColors[sec.id] = color;
-      saveColors();
-    });
-    listRowsEl.appendChild(row);
-  });
-  TIME_CATEGORY_SECTIONS.forEach((sec) => {
-    const defaultColor = DEFAULT_TIME_CATEGORY_COLORS[sec.id];
-    const row = createColorPickerRow(sec.id, sec.label, timeCategoryColors[sec.id] || defaultColor, (color) => {
-      timeCategoryColors[sec.id] = color;
-      saveColors();
-    });
-    timeRowsEl.appendChild(row);
-  });
-  TASK_CATEGORY_SECTIONS.forEach((sec, idx) => {
-    const defaultColor = DEFAULT_TASK_CATEGORY_COLORS[sec.id];
-    const row = createColorPickerRow(sec.id, sec.label, taskCategoryColors[sec.id] ?? defaultColor, (color) => {
-      taskCategoryColors[sec.id] = color;
-      saveColors();
-    });
-    if (idx < 5) taskRowsLeftEl.appendChild(row);
-    else taskRowsRightEl.appendChild(row);
-  });
-
-  grid.appendChild(colorWidget);
   el.appendChild(grid);
 
   // 시급 계산 로직

@@ -1,31 +1,21 @@
 /**
  * 할 일 목록 환경 설정 모달
  * - 완료 항목 숨기기/제거 토글
- * - 리스트별 색상 설정 (22가지 프리셋, HEX 입력 제거)
  */
 
 import {
   getTodoSettings,
   saveTodoSettings,
+  applyTimeCategoryColors,
+  applyTaskCategoryColors,
   DEFAULT_SECTION_COLORS,
-  getCustomSections,
+  DEFAULT_TIME_CATEGORY_COLORS,
+  DEFAULT_TASK_CATEGORY_COLORS,
   getCustomSectionColor,
   APP_PRESET_COLORS,
   hexToRgba,
 } from "./todoSettings.js";
 import { pushAppearanceToSupabase } from "./userHourlySync.js";
-
-const FIXED_SECTIONS = [
-  { id: "dream", label: "꿈" },
-  { id: "sideincome", label: "부수입" },
-  { id: "health", label: "건강" },
-  { id: "happy", label: "행복" },
-  { id: "braindump", label: "브레인 덤프" },
-];
-
-function getSections() {
-  return [...FIXED_SECTIONS, ...getCustomSections()];
-}
 
 function getAlphaFromRgba(rgba) {
   const m = rgba?.match(/rgba?\([^,]+,[^,]+,[^,]+,\s*([\d.]+)/);
@@ -229,10 +219,14 @@ export function createTodoSettingsModal(options = {}) {
     const current = getTodoSettings();
     saveTodoSettings({
       hideCompleted,
-      sectionColors: current.sectionColors,
-      timeCategoryColors: current.timeCategoryColors,
-      taskCategoryColors: current.taskCategoryColors,
+      sectionColors: { ...DEFAULT_SECTION_COLORS },
+      timeCategoryColors: { ...DEFAULT_TIME_CATEGORY_COLORS },
+      taskCategoryColors: { ...DEFAULT_TASK_CATEGORY_COLORS },
     });
+    applyTimeCategoryColors();
+    applyTaskCategoryColors();
+    document.dispatchEvent(new CustomEvent("app-colors-changed"));
+    onColorsChange?.();
     await pushAppearanceToSupabase();
     onHideCompletedChange?.(hideCompleted);
     close();

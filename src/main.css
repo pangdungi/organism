@@ -23869,6 +23869,16 @@ body.kpi-resizing {
   align-items: stretch;
 }
 
+/* 3. 시간갭: 표 없이 막대만 */
+.time-audit-below-section--gap-chart-only {
+  flex-wrap: nowrap;
+}
+.time-audit-below-section--gap-chart-only .time-audit-bar-chart {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+}
+
 .time-audit-section-1 {
   flex: 1;
   min-width: 17.5rem;
@@ -23880,7 +23890,7 @@ body.kpi-resizing {
   padding-top: 0;
 }
 
-/* 시간갭 가로 막대 차트 - 표와 동일하게 양옆 모서리 제거 */
+/* 시간갭 가로 막대 차트 */
 .time-audit-bar-chart {
   flex: 1 1 20rem;
   min-width: 17.5rem;
@@ -23987,7 +23997,7 @@ body.kpi-resizing {
   color: #9ca3af;
 }
 
-/* 오딧 3. 우선순위 영역: 투두리스트 표 + 우선순위/KPI 파이차트 (시간갭 표와 너비 맞춤) */
+/* 오딧 4. 우선순위: 투두 표 + KPI 파이차트 */
 .time-audit-region-priority {
   margin-top: 1rem;
   border-top: none;
@@ -24003,7 +24013,6 @@ body.kpi-resizing {
   min-height: 13.75rem;
 }
 
-/* 시간갭 .time-audit-section-1과 동일한 flex로 표 너비 일치 */
 .time-audit-priority-left {
   flex: 1;
   min-width: 17.5rem;
@@ -26541,7 +26550,7 @@ body.kpi-resizing {
   grid-column: 1 / -1;
 }
 
-/* 색상 설정: 리스트 | 생산성 | 작업카테고리 옆으로 3단 배치 */
+/* 색상 설정: 생산성 | 작업카테고리 옆으로 배치 */
 .idea-colors-block {
   display: flex;
   flex-direction: column;
