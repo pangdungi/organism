@@ -1,5 +1,8 @@
 import { signOut } from "./auth.js";
-import { observeDatePickerInit, initDatePickersIn } from "./utils/datePickerInit.js";
+import {
+  observeDatePickerInit,
+  initDatePickersIn,
+} from "./utils/datePickerInit.js";
 import { getRoutineSyncedTaskNames } from "./utils/routineTimeSync.js";
 import {
   render as renderCalendar,
@@ -20,18 +23,10 @@ import { render as renderHome } from "./views/Home.js";
 import { pullCalendarSectionTasksFromSupabase } from "./utils/todoSectionTasksSupabase.js";
 import { attachAssetExpenseTransactionsSaveListener } from "./utils/assetExpenseTransactionsSupabase.js";
 import { initPushReminderInAppPopup } from "./utils/initPushReminderInAppPopup.js";
-import {
-  attachHealthKpiMapSaveListener,
-} from "./utils/healthKpiMapSupabase.js";
-import {
-  attachHappinessKpiMapSaveListener,
-} from "./utils/happinessKpiMapSupabase.js";
-import {
-  attachDreamKpiMapSaveListener,
-} from "./utils/dreamKpiMapSupabase.js";
-import {
-  attachSideincomeKpiMapSaveListener,
-} from "./utils/sideincomeKpiMapSupabase.js";
+import { attachHealthKpiMapSaveListener } from "./utils/healthKpiMapSupabase.js";
+import { attachHappinessKpiMapSaveListener } from "./utils/happinessKpiMapSupabase.js";
+import { attachDreamKpiMapSaveListener } from "./utils/dreamKpiMapSupabase.js";
+import { attachSideincomeKpiMapSaveListener } from "./utils/sideincomeKpiMapSupabase.js";
 import {
   attachTimeLedgerEntriesSaveListener,
   hydrateTimeLedgerEntriesForArchiveMonth,
@@ -75,15 +70,30 @@ const TABS = [
     mobileLabel: "캘린더",
     icon: "/toolbaricons/calendar-heart1.svg",
   },
-  { id: "time", label: "시간가계부", mobileLabel: "시간", icon: "/toolbaricons/timer.svg" },
-  { id: "asset", label: "자산관리", mobileLabel: "자산", icon: "/toolbaricons/wallet.svg" },
+  {
+    id: "time",
+    label: "시간가계부",
+    mobileLabel: "시간",
+    icon: "/toolbaricons/timer.svg",
+  },
+  {
+    id: "asset",
+    label: "자산관리",
+    mobileLabel: "자산",
+    icon: "/toolbaricons/wallet.svg",
+  },
   {
     id: "workschedule",
     label: "근무표",
     mobileLabel: "근무표",
     icon: "/toolbaricons/calendar-heart1.svg",
   },
-  { id: "diary", label: "감정일기", mobileLabel: "감정일기", icon: "/toolbaricons/chat-bubbles.svg" },
+  {
+    id: "diary",
+    label: "감정일기",
+    mobileLabel: "감정일기",
+    icon: "/toolbaricons/chat-bubbles.svg",
+  },
   { id: "archive", label: "아카이브", icon: "/toolbaricons/harddrive.svg" },
 ];
 
@@ -284,7 +294,13 @@ export function mountApp(container) {
   const nav = document.createElement("nav");
   nav.className = "app-sidebar-nav";
 
-  const HIDE_ON_MOBILE_TAB_IDS = ["dream", "sideincome", "happiness", "health", "asset"];
+  const HIDE_ON_MOBILE_TAB_IDS = [
+    "dream",
+    "sideincome",
+    "happiness",
+    "health",
+    "asset",
+  ];
 
   function appendSidebarIcon(btn, iconSrc) {
     const iconWrap = document.createElement("span");
@@ -467,9 +483,7 @@ export function mountApp(container) {
   bottomNavMain.className = "app-bottom-nav-main";
 
   const mobileTabsFiltered = TABS.filter(
-    (t) =>
-      !HIDE_ON_MOBILE_TAB_IDS.includes(t.id) &&
-      !t.sidebarDesktopOnly,
+    (t) => !HIDE_ON_MOBILE_TAB_IDS.includes(t.id) && !t.sidebarDesktopOnly,
   );
   /** 모바일 하단 탭 순서: 오늘 → 시간 → 할일 → 캘린더 → 근무표 → … */
   const MOBILE_BOTTOM_NAV_ORDER = [
@@ -485,12 +499,15 @@ export function mountApp(container) {
     ...MOBILE_BOTTOM_NAV_ORDER.map((id) =>
       mobileTabsFiltered.find((t) => t.id === id),
     ).filter(Boolean),
-    ...mobileTabsFiltered.filter((t) => !MOBILE_BOTTOM_NAV_ORDER.includes(t.id)),
+    ...mobileTabsFiltered.filter(
+      (t) => !MOBILE_BOTTOM_NAV_ORDER.includes(t.id),
+    ),
   ];
   mobileTabs.forEach((tab) => {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "app-bottom-nav-item" + (tab.id === currentTabId ? " active" : "");
+    btn.className =
+      "app-bottom-nav-item" + (tab.id === currentTabId ? " active" : "");
     btn.dataset.tabId = tab.id;
     const navLabel = tab.mobileLabel ?? tab.label;
     btn.title = navLabel;
@@ -531,10 +548,12 @@ export function mountApp(container) {
   });
   const accountBottomBtn = document.createElement("button");
   accountBottomBtn.type = "button";
-  accountBottomBtn.className = "app-bottom-nav-item" + (currentTabId === "idea" ? " active" : "");
+  accountBottomBtn.className =
+    "app-bottom-nav-item" + (currentTabId === "idea" ? " active" : "");
   accountBottomBtn.dataset.tabId = "idea";
   accountBottomBtn.title = "나의 계정";
-  accountBottomBtn.innerHTML = '<img src="/toolbaricons/user-square.svg" alt="" class="app-bottom-nav-icon" width="20" height="20"><span class="app-bottom-nav-label">나의 계정</span>';
+  accountBottomBtn.innerHTML =
+    '<img src="/toolbaricons/user-square.svg" alt="" class="app-bottom-nav-icon" width="20" height="20"><span class="app-bottom-nav-label">나의 계정</span>';
   accountBottomBtn.addEventListener("click", () => {
     setActiveTab("idea");
     sidebar.classList.remove("is-open");
@@ -565,8 +584,18 @@ export function mountApp(container) {
     /* 근무표 모달은 body에만 붙음. 네이티브 <select> 펼칠 때 포커스가 다이얼로그 밖으로 나가
      * isFocusBlockingRender 가 false가 되어 지연된 renderMain 이 돌면 월별보기가 오늘 달로 초기화될 수 있음 */
     try {
-      if (document.querySelector("body > .work-schedule-day-entry-modal[role='dialog']")) return true;
-      if (document.querySelector("body > .work-schedule-type-settings-modal[role='dialog']")) return true;
+      if (
+        document.querySelector(
+          "body > .work-schedule-day-entry-modal[role='dialog']",
+        )
+      )
+        return true;
+      if (
+        document.querySelector(
+          "body > .work-schedule-type-settings-modal[role='dialog']",
+        )
+      )
+        return true;
     } catch (_) {}
     const a = document.activeElement;
     if (!a || a === document.body) return false;
@@ -620,8 +649,12 @@ export function mountApp(container) {
     let wsBodyModal = null;
     try {
       wsBodyModal =
-        document.querySelector("body > .work-schedule-day-entry-modal[role='dialog']") ||
-        document.querySelector("body > .work-schedule-type-settings-modal[role='dialog']");
+        document.querySelector(
+          "body > .work-schedule-day-entry-modal[role='dialog']",
+        ) ||
+        document.querySelector(
+          "body > .work-schedule-type-settings-modal[role='dialog']",
+        );
     } catch (_) {}
     if (opts.force && wsBodyModal) {
       scheduleDeferredRenderMain(mainEl, { ...opts, force: false });

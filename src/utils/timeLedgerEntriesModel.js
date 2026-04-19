@@ -5,7 +5,10 @@
 
 import { isUuid, UUID_RE } from "./idUtils.js";
 import { lpSaveDebug } from "./lpSaveDebug.js";
-import { writeAllRowsToIdb, TIME_LEDGER_STORAGE_KEY } from "./timeLedgerEntriesStore.js";
+import {
+  writeAllRowsToIdb,
+  TIME_LEDGER_STORAGE_KEY,
+} from "./timeLedgerEntriesStore.js";
 
 /**
  * 로그아웃·계정 전환 시 호출. 구버전 로컬 저장소 잔여를 비우고 메모리를 초기화합니다.
@@ -28,7 +31,8 @@ export async function purgeTimeLedgerLocalData() {
 export const TIME_LEDGER_ENTRIES_KEY = TIME_LEDGER_STORAGE_KEY;
 
 /** 구버전 tombstone 키 — 남아 있으면 한 번 제거 */
-const TIME_LEDGER_DELETE_TOMBSTONES_LS_LEGACY_KEY = "lp-time-ledger-entry-tombstones";
+const TIME_LEDGER_DELETE_TOMBSTONES_LS_LEGACY_KEY =
+  "lp-time-ledger-entry-tombstones";
 const TIME_LEDGER_TOMBSTONE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 /** 세션 메모리만 — 새로고침 시 초기화 */
@@ -44,7 +48,8 @@ function getActiveDeletionTombstones() {
   for (const [id, ts] of Object.entries(raw)) {
     if (!UUID_RE.test(String(id || ""))) continue;
     const t = Number(ts);
-    if (!Number.isFinite(t) || now - t > TIME_LEDGER_TOMBSTONE_MAX_AGE_MS) continue;
+    if (!Number.isFinite(t) || now - t > TIME_LEDGER_TOMBSTONE_MAX_AGE_MS)
+      continue;
     out[id] = t;
   }
   if (Object.keys(out).length !== Object.keys(raw).length) {
@@ -123,7 +128,8 @@ export function focusEventsToRaw(events) {
 }
 
 function newRowId() {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  if (typeof crypto !== "undefined" && crypto.randomUUID)
+    return crypto.randomUUID();
   return `t-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
 
@@ -136,7 +142,8 @@ export function ensureTimeLedgerEntryIds(rows) {
     if (isUuid(id)) return { ...r, id };
     dirty = true;
     const lm =
-      typeof r.localModifiedAt === "number" && Number.isFinite(r.localModifiedAt)
+      typeof r.localModifiedAt === "number" &&
+      Number.isFinite(r.localModifiedAt)
         ? r.localModifiedAt
         : Date.now();
     return { ...r, id: newRowId(), localModifiedAt: lm };
@@ -190,7 +197,9 @@ export function mergeTimeLedgerEntriesPushedServerTimes(dbRows) {
     const db = respById.get(id);
     if (!db) return row;
     const su =
-      db.updated_at != null && db.updated_at !== "" ? String(db.updated_at) : String(row.serverUpdatedAt || "").trim();
+      db.updated_at != null && db.updated_at !== ""
+        ? String(db.updated_at)
+        : String(row.serverUpdatedAt || "").trim();
     const { localModifiedAt: _drop, ...rest } = row;
     changed = true;
     return { ...rest, serverUpdatedAt: su };
@@ -227,14 +236,15 @@ export function localTimeLedgerRowToDbPayload(userId, row) {
   const rowLinked = Array.isArray(row.linkedExpenseIds)
     ? row.linkedExpenseIds.map((id) => String(id || "").trim()).filter(Boolean)
     : [];
-  const { clean: memoTagsClean, legacyIds: fromMemoStray } = partitionMemoTagsAndLegacyExpenseIds(
-    row.memoTags,
-  );
+  const { clean: memoTagsClean, legacyIds: fromMemoStray } =
+    partitionMemoTagsAndLegacyExpenseIds(row.memoTags);
   const linked_expense_ids = [...new Set([...rowLinked, ...fromMemoStray])];
   const tid = String(row.taskId || "").trim();
   if (linked_expense_ids.length > 0) {
     lpSaveDebug("time_ledger payload(지출 연결 있음)", {
-      id: String(row.id || "").trim().slice(0, 8),
+      id: String(row.id || "")
+        .trim()
+        .slice(0, 8),
       linked_expense_ids,
       memo_tags_len: memoTagsClean.length,
     });
@@ -262,7 +272,9 @@ export function dbRowToLocalTimeLedgerRow(db) {
     Array.isArray(db.focus_events) ? db.focus_events : [],
   );
   const raw_memo_tags = Array.isArray(db.memo_tags) ? db.memo_tags : [];
-  const fromDbLinked = Array.isArray(db.linked_expense_ids) ? db.linked_expense_ids : [];
+  const fromDbLinked = Array.isArray(db.linked_expense_ids)
+    ? db.linked_expense_ids
+    : [];
   const dbLinkedIds = fromDbLinked
     .map((id) => String(id ?? "").trim())
     .filter(Boolean);
@@ -271,7 +283,9 @@ export function dbRowToLocalTimeLedgerRow(db) {
   const linkedExpenseIds = [...new Set([...dbLinkedIds, ...legacyFromMemo])];
   return {
     id: String(db.id || "").trim(),
-    date: normalizeEntryDate(db.entry_date) || String(db.entry_date || "").slice(0, 10),
+    date:
+      normalizeEntryDate(db.entry_date) ||
+      String(db.entry_date || "").slice(0, 10),
     taskName: String(db.task_name || "").trim(),
     taskId: db.task_id ? String(db.task_id).trim() : "",
     startTime: String(db.start_time || "").trim(),
@@ -342,7 +356,11 @@ export function applyTimeLedgerServerFullSnapshot(dbRows) {
 /**
  * entry_date가 [rangeStart, rangeEnd] (포함)인 구간만 서버 스냅샷으로 교체. 그 외 날짜 행은 유지.
  */
-export function applyTimeLedgerServerRangeSnapshot(dbRows, rangeStart, rangeEnd) {
+export function applyTimeLedgerServerRangeSnapshot(
+  dbRows,
+  rangeStart,
+  rangeEnd,
+) {
   const rs = String(rangeStart || "").trim();
   const re = String(rangeEnd || "").trim();
   if (!rs || !re) return;
@@ -354,10 +372,16 @@ export function applyTimeLedgerServerRangeSnapshot(dbRows, rangeStart, rangeEnd)
         return !id || !tombIds.has(id);
       })
     : serverRows;
-  const serverLocals = serverRowsFiltered.map((r) => dbRowToLocalTimeLedgerRow(r));
+  const serverLocals = serverRowsFiltered.map((r) =>
+    dbRowToLocalTimeLedgerRow(r),
+  );
   const { rows: insideFromServer } = ensureTimeLedgerEntryIds(serverLocals);
-  const { rows: localWithIds } = ensureTimeLedgerEntryIds(readTimeLedgerEntriesRaw());
-  const outside = localWithIds.filter((r) => !rowEntryDateInInclusiveRange(r, rs, re));
+  const { rows: localWithIds } = ensureTimeLedgerEntryIds(
+    readTimeLedgerEntriesRaw(),
+  );
+  const outside = localWithIds.filter(
+    (r) => !rowEntryDateInInclusiveRange(r, rs, re),
+  );
   const merged = [...outside, ...insideFromServer];
   writeTimeLedgerEntriesRaw(merged);
 }
@@ -396,7 +420,9 @@ export function updateTimeLedgerEntryFeedbackById(entryId, feedbackText) {
   writeTimeLedgerEntriesRaw(next);
   try {
     if (typeof document !== "undefined") {
-      document.dispatchEvent(new CustomEvent("calendar-time-rows-updated", { detail: {} }));
+      document.dispatchEvent(
+        new CustomEvent("calendar-time-rows-updated", { detail: {} }),
+      );
     }
   } catch (_) {}
   return { ok: true };

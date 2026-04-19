@@ -20,10 +20,18 @@ import {
   removeKpiTodo,
   clearKpiTodoCalendarRevertSnapshot,
 } from "../utils/kpiTodoSync.js";
-import { getSectionColor, getCustomSections, getTimeCategoryColorsForTimetable, getTimeCategoryColorsForTimetableExpected } from "../utils/todoSettings.js";
+import {
+  getSectionColor,
+  getCustomSections,
+  getTimeCategoryColorsForTimetable,
+  getTimeCategoryColorsForTimetableExpected,
+} from "../utils/todoSettings.js";
 import { registerEisenhowerQuadrantsRefresh } from "../utils/eisenhowerQuadrantsBridge.js";
 import { getKpisByCategory } from "../utils/kpiViewModal.js";
-import { formatDeadlineRangeForDisplay, formatDeadlineRangeCompact } from "../utils/ganttModal.js";
+import {
+  formatDeadlineRangeForDisplay,
+  formatDeadlineRangeCompact,
+} from "../utils/ganttModal.js";
 import {
   getAccumulatedMinutes,
   minutesToHhMm,
@@ -61,7 +69,12 @@ const KPI_SECTION_IDS = ["braindump", "dream", "sideincome", "health", "happy"];
 
 /** 할일/일정 상단 1~4번 탭 — 앱 리렌더·Supabase 동기 후 __lpRenderMain 으로 다시 그려질 때 항상 1번으로 돌아가는 문제 방지 */
 const CALENDAR_MAIN_VIEW_STORAGE_KEY = "lp-calendar-main-subview";
-const VALID_CALENDAR_MAIN_VIEWS = new Set(["todo", "eisenhower", "calendar", "1day"]);
+const VALID_CALENDAR_MAIN_VIEWS = new Set([
+  "todo",
+  "eisenhower",
+  "calendar",
+  "1day",
+]);
 
 function getSavedCalendarMainView() {
   try {
@@ -115,9 +128,13 @@ function lpCalendarDateSidebarTodoListOpts(sidebarMode, extra = {}) {
 
 function lpBindCalendarDateTodoSidebarCollapse(todoSidebar, sidebarMode) {
   let sidebarCollapsed = true;
-  const collapseBtn = todoSidebar.querySelector(".calendar-todo-sidebar-collapse");
+  const collapseBtn = todoSidebar.querySelector(
+    ".calendar-todo-sidebar-collapse",
+  );
   const titleEl = todoSidebar.querySelector(".calendar-todo-sidebar-title");
-  const collapseTextEl = todoSidebar.querySelector(".calendar-todo-sidebar-collapse-text");
+  const collapseTextEl = todoSidebar.querySelector(
+    ".calendar-todo-sidebar-collapse-text",
+  );
   if (!collapseBtn || !titleEl) return;
   collapseBtn.addEventListener("click", () => {
     sidebarCollapsed = !sidebarCollapsed;
@@ -128,7 +145,8 @@ function lpBindCalendarDateTodoSidebarCollapse(todoSidebar, sidebarMode) {
     } else {
       titleEl.textContent = sidebarCollapsed ? "할일" : "날짜 잡아서 해야 할일";
     }
-    if (collapseTextEl) collapseTextEl.textContent = sidebarCollapsed ? "할일" : "접기";
+    if (collapseTextEl)
+      collapseTextEl.textContent = sidebarCollapsed ? "할일" : "접기";
   });
 }
 
@@ -179,8 +197,9 @@ function getSectionTasksForDate(dateKey) {
             taskId: t.taskId || "",
             eisenhower: (t.eisenhower || "").trim() || "",
             classification: "",
-            _calPrevStart: ((t._calPrevStart || "").toString().slice(0, 10) || ""),
-            _calPrevDue: ((t._calPrevDue || "").toString().slice(0, 10) || ""),
+            _calPrevStart:
+              (t._calPrevStart || "").toString().slice(0, 10) || "",
+            _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
           }),
         );
     });
@@ -224,8 +243,9 @@ function getSectionTasksWithDateRange() {
             taskId: t.taskId || "",
             eisenhower: (t.eisenhower || "").trim() || "",
             classification: "",
-            _calPrevStart: ((t._calPrevStart || "").toString().slice(0, 10) || ""),
-            _calPrevDue: ((t._calPrevDue || "").toString().slice(0, 10) || ""),
+            _calPrevStart:
+              (t._calPrevStart || "").toString().slice(0, 10) || "",
+            _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
           }),
         );
     });
@@ -241,7 +261,12 @@ function updateSectionTaskDates(
   opts = {},
 ) {
   const { recordCalendarSidebarRevert = false } = opts;
-  dateDebug("updateSectionTaskDates IN", { sectionId, taskId, startDate, dueDate });
+  dateDebug("updateSectionTaskDates IN", {
+    sectionId,
+    taskId,
+    startDate,
+    dueDate,
+  });
   try {
     const obj = readSectionTasksObject();
     const arr = obj[sectionId];
@@ -251,17 +276,25 @@ function updateSectionTaskDates(
     }
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (!t) {
-      dateDebug("updateSectionTaskDates: task not found", { sectionId, taskId, taskIds: arr.map((x) => x.taskId) });
+      dateDebug("updateSectionTaskDates: task not found", {
+        sectionId,
+        taskId,
+        taskIds: arr.map((x) => x.taskId),
+      });
       return false;
     }
     if (recordCalendarSidebarRevert) {
-      t._calPrevStart = ((t.startDate || "").slice(0, 10) || "");
-      t._calPrevDue = ((t.dueDate || "").slice(0, 10) || "");
+      t._calPrevStart = (t.startDate || "").slice(0, 10) || "";
+      t._calPrevDue = (t.dueDate || "").slice(0, 10) || "";
     }
     t.startDate = (startDate || "").slice(0, 10) || "";
     t.dueDate = (dueDate || "").slice(0, 10) || "";
     persistSectionTasksAndSchedule(obj);
-    dateDebug("updateSectionTaskDates OK", { sectionId, taskId, savedDueDate: t.dueDate });
+    dateDebug("updateSectionTaskDates OK", {
+      sectionId,
+      taskId,
+      savedDueDate: t.dueDate,
+    });
     return true;
   } catch (err) {
     dateDebug("updateSectionTaskDates catch", err);
@@ -347,8 +380,9 @@ function addSectionTaskToCalendar(sectionId, taskData) {
       endTime: taskData.endTime || "",
       done: !!taskData.done,
       itemType: taskData.itemType || "todo",
-      _calPrevStart: ((taskData._calPrevStart || "").toString().slice(0, 10) || ""),
-      _calPrevDue: ((taskData._calPrevDue || "").toString().slice(0, 10) || ""),
+      _calPrevStart:
+        (taskData._calPrevStart || "").toString().slice(0, 10) || "",
+      _calPrevDue: (taskData._calPrevDue || "").toString().slice(0, 10) || "",
     });
     persistSectionTasksAndSchedule(obj);
     return true;
@@ -378,8 +412,18 @@ const MONTH_NAMES = [
   "12월",
 ];
 const MONTH_NAMES_EN = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
 ];
 
 /** 월요일 시작 (0=월, 6=일) */
@@ -551,8 +595,8 @@ function updateCustomSectionTaskDates(
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
       if (recordCalendarSidebarRevert) {
-        t._calPrevStart = ((t.startDate || "").slice(0, 10) || "");
-        t._calPrevDue = ((t.dueDate || "").slice(0, 10) || "");
+        t._calPrevStart = (t.startDate || "").slice(0, 10) || "";
+        t._calPrevDue = (t.dueDate || "").slice(0, 10) || "";
       }
       t.startDate = (startDate || "").slice(0, 10) || "";
       t.dueDate = (dueDate || "").slice(0, 10) || "";
@@ -596,8 +640,9 @@ function addCalendarTodoToCustomSection(sectionId, taskData) {
       endTime: taskData.endTime || "",
       done: !!taskData.done,
       itemType: taskData.itemType || "todo",
-      _calPrevStart: ((taskData._calPrevStart || "").toString().slice(0, 10) || ""),
-      _calPrevDue: ((taskData._calPrevDue || "").toString().slice(0, 10) || ""),
+      _calPrevStart:
+        (taskData._calPrevStart || "").toString().slice(0, 10) || "",
+      _calPrevDue: (taskData._calPrevDue || "").toString().slice(0, 10) || "",
     });
     persistCustomSectionTasksAndSchedule(obj);
     return true;
@@ -640,22 +685,16 @@ function clearCustomSectionTaskCalendarRevertSnapshot(sectionId, taskId) {
  * 없으면 시작·마감 비움(날짜 미배정).
  */
 function revertTaskToTodoList(barData) {
-  const revS = (
-    barData.revertStartDate ||
-    barData._calPrevStart ||
-    ""
-  )
-    .toString()
-    .trim()
-    .slice(0, 10) || "";
-  const revD = (
-    barData.revertDueDate ||
-    barData._calPrevDue ||
-    ""
-  )
-    .toString()
-    .trim()
-    .slice(0, 10) || "";
+  const revS =
+    (barData.revertStartDate || barData._calPrevStart || "")
+      .toString()
+      .trim()
+      .slice(0, 10) || "";
+  const revD =
+    (barData.revertDueDate || barData._calPrevDue || "")
+      .toString()
+      .trim()
+      .slice(0, 10) || "";
   let ok = false;
   if (barData.kpiTodoId && barData.storageKey) {
     ok = updateKpiTodo(barData.kpiTodoId, barData.storageKey, {
@@ -663,10 +702,7 @@ function revertTaskToTodoList(barData) {
       dueDate: revD,
     });
     if (ok) {
-      clearKpiTodoCalendarRevertSnapshot(
-        barData.kpiTodoId,
-        barData.storageKey,
-      );
+      clearKpiTodoCalendarRevertSnapshot(barData.kpiTodoId, barData.storageKey);
     }
   } else if (
     KPI_SECTION_IDS.includes(barData.sectionId) &&
@@ -674,10 +710,7 @@ function revertTaskToTodoList(barData) {
   ) {
     ok = updateSectionTaskDates(barData.sectionId, barData.taskId, revS, revD);
     if (ok) {
-      clearSectionTaskCalendarRevertSnapshot(
-        barData.sectionId,
-        barData.taskId,
-      );
+      clearSectionTaskCalendarRevertSnapshot(barData.sectionId, barData.taskId);
     }
   } else if (barData.sectionId?.startsWith("custom-")) {
     ok = updateCustomSectionTaskDates(
@@ -725,7 +758,8 @@ function calendarSpanBarPayloadJson(b) {
 
 function bindCalendarSpanBarDragHandlers(bar, b) {
   const canDrag =
-    (b.isSingleDay && b.dueDate) || (!b.isSingleDay && b.startDate && b.dueDate);
+    (b.isSingleDay && b.dueDate) ||
+    (!b.isSingleDay && b.startDate && b.dueDate);
   if (!canDrag) return;
   bar.draggable = true;
   bar.classList.add("calendar-monthly-span-bar--draggable");
@@ -832,9 +866,13 @@ function applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar, opts = {}) {
   const { clearInlineWidth = false } = opts;
   todoSidebar.classList.add("collapsed");
   if (clearInlineWidth) todoSidebar.style.width = "";
-  const collapseBtn = todoSidebar.querySelector(".calendar-todo-sidebar-collapse");
+  const collapseBtn = todoSidebar.querySelector(
+    ".calendar-todo-sidebar-collapse",
+  );
   const titleEl = todoSidebar.querySelector(".calendar-todo-sidebar-title");
-  const collapseTextEl = todoSidebar.querySelector(".calendar-todo-sidebar-collapse-text");
+  const collapseTextEl = todoSidebar.querySelector(
+    ".calendar-todo-sidebar-collapse-text",
+  );
   if (collapseBtn) collapseBtn.title = "사이드바 펼치기";
   if (titleEl) titleEl.textContent = "할일";
   if (collapseTextEl) collapseTextEl.textContent = "할일";
@@ -867,8 +905,9 @@ function getCustomSectionTasksForDate(dateKey) {
             taskId: t.taskId || "",
             eisenhower: (t.eisenhower || "").trim() || "",
             classification: "",
-            _calPrevStart: ((t._calPrevStart || "").toString().slice(0, 10) || ""),
-            _calPrevDue: ((t._calPrevDue || "").toString().slice(0, 10) || ""),
+            _calPrevStart:
+              (t._calPrevStart || "").toString().slice(0, 10) || "",
+            _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
           }),
         );
     });
@@ -939,8 +978,9 @@ function getAllTasksWithDateRange() {
             taskId: t.taskId || "",
             eisenhower: (t.eisenhower || "").trim() || "",
             classification: "",
-            _calPrevStart: ((t._calPrevStart || "").toString().slice(0, 10) || ""),
-            _calPrevDue: ((t._calPrevDue || "").toString().slice(0, 10) || ""),
+            _calPrevStart:
+              (t._calPrevStart || "").toString().slice(0, 10) || "",
+            _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
           }),
         );
     });
@@ -953,8 +993,8 @@ function getAllTasksWithDateRange() {
       ...t,
       startDate: (t.startDate || "").slice(0, 10),
       dueDate: (t.dueDate || "").slice(0, 10),
-      _calPrevStart: ((t._calPrevStart || "").toString().slice(0, 10) || ""),
-      _calPrevDue: ((t._calPrevDue || "").toString().slice(0, 10) || ""),
+      _calPrevStart: (t._calPrevStart || "").toString().slice(0, 10) || "",
+      _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
     }));
   return [...kpiWithRange, ...sectionRange, ...customRange];
 }
@@ -971,7 +1011,9 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
     document.body.appendChild(overlayEl);
   }
   const bubble = document.createElement("div");
-  bubble.className = "calendar-event-bubble" + (isMobile ? " calendar-event-bubble--mobile" : "");
+  bubble.className =
+    "calendar-event-bubble" +
+    (isMobile ? " calendar-event-bubble--mobile" : "");
   bubble.innerHTML = `
     <div class="calendar-event-bubble-tail"></div>
     <div class="calendar-event-bubble-body">
@@ -1073,7 +1115,10 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
 
   if (!isMobile) {
     const bubbleHeight = bubble.getBoundingClientRect().height;
-    if (cellRect.bottom + 4 + bubbleHeight > window.innerHeight - BUBBLE_PADDING) {
+    if (
+      cellRect.bottom + 4 + bubbleHeight >
+      window.innerHeight - BUBBLE_PADDING
+    ) {
       bubble.style.top = `${cellRect.top - bubbleHeight - 4}px`;
       bubble.classList.add("calendar-event-bubble--above");
     }
@@ -1086,7 +1131,13 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
 /** 기본 행 높이는 이 개수(3개) 분량, 그 이상이면 행을 늘려 전부 표시 */
 const MAX_VISIBLE_BARS_PER_DAY = 3;
 
-function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose, options = {}) {
+function createCalendarDayExpandBubble(
+  cellRect,
+  dateKey,
+  tasks,
+  onClose,
+  options = {},
+) {
   const { positionBelow = false, onAdd = null } = options;
   const isMobile = window.matchMedia("(max-width: 48rem)").matches;
   document
@@ -1099,7 +1150,9 @@ function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose, option
     document.body.appendChild(overlayEl);
   }
   const bubble = document.createElement("div");
-  bubble.className = "calendar-event-bubble calendar-day-expand-bubble" + (isMobile ? " calendar-day-expand-bubble--mobile" : "");
+  bubble.className =
+    "calendar-event-bubble calendar-day-expand-bubble" +
+    (isMobile ? " calendar-day-expand-bubble--mobile" : "");
   const taskItems = tasks
     .map(
       (t) => `
@@ -1111,7 +1164,9 @@ function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose, option
   `,
     )
     .join("");
-  const addBtnHtml = onAdd ? '<button type="button" class="calendar-day-expand-add-btn">할일 추가</button>' : "";
+  const addBtnHtml = onAdd
+    ? '<button type="button" class="calendar-day-expand-add-btn">할일 추가</button>'
+    : "";
   bubble.innerHTML = `
     <div class="calendar-event-bubble-body">
       <div class="calendar-event-bubble-header">
@@ -1138,10 +1193,16 @@ function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose, option
         updateCustomSectionTaskDone(t.sectionId, t.taskId, newDone);
       }
       itemEl.dataset.done = newDone;
-      itemEl.querySelector(".calendar-day-expand-checkbox")?.classList.toggle("checked", newDone);
+      itemEl
+        .querySelector(".calendar-day-expand-checkbox")
+        ?.classList.toggle("checked", newDone);
     };
     itemEl.addEventListener("click", (e) => {
-      if (e.target.closest(".calendar-event-bubble-close") || e.target.closest(".calendar-day-expand-add-btn")) return;
+      if (
+        e.target.closest(".calendar-event-bubble-close") ||
+        e.target.closest(".calendar-day-expand-add-btn")
+      )
+        return;
       toggleDone(e);
     });
   });
@@ -1158,14 +1219,19 @@ function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose, option
     .querySelector(".calendar-event-bubble-close")
     .addEventListener("click", close);
   if (onAdd) {
-    bubble.querySelector(".calendar-day-expand-add-btn")?.addEventListener("click", () => {
-      close();
-      onAdd();
-    });
+    bubble
+      .querySelector(".calendar-day-expand-add-btn")
+      ?.addEventListener("click", () => {
+        close();
+        onAdd();
+      });
   }
   setTimeout(() => {
     document.addEventListener("click", function outside(e) {
-      if (!bubble.contains(e.target) && !(overlayEl && overlayEl.contains(e.target))) {
+      if (
+        !bubble.contains(e.target) &&
+        !(overlayEl && overlayEl.contains(e.target))
+      ) {
         document.removeEventListener("click", outside);
         close();
       }
@@ -1187,7 +1253,10 @@ function createCalendarDayExpandBubble(cellRect, dateKey, tasks, onClose, option
 
   if (positionBelow) {
     const bubbleHeight = bubble.getBoundingClientRect().height;
-    if (cellRect.bottom + 4 + bubbleHeight > window.innerHeight - BUBBLE_PADDING) {
+    if (
+      cellRect.bottom + 4 + bubbleHeight >
+      window.innerHeight - BUBBLE_PADDING
+    ) {
       bubble.style.top = `${cellRect.top - bubbleHeight - 4}px`;
     }
   }
@@ -1507,7 +1576,10 @@ function renderMonthlyView(
         cell.addEventListener(
           "click",
           (e) => {
-            if (window.matchMedia("(max-width: 48rem)").matches && cell.contains(e.target)) {
+            if (
+              window.matchMedia("(max-width: 48rem)").matches &&
+              cell.contains(e.target)
+            ) {
               e.stopPropagation();
               e.preventDefault();
               const rect = cell.getBoundingClientRect();
@@ -1515,10 +1587,15 @@ function renderMonthlyView(
               createCalendarDayExpandBubble(rect, key, tasks, () => {}, {
                 positionBelow: true,
                 onAdd: () => {
-                  createCalendarEventBubble(rect, key, () => {
-                    renderCalendar();
-                    refreshTodoList();
-                  }, () => {});
+                  createCalendarEventBubble(
+                    rect,
+                    key,
+                    () => {
+                      renderCalendar();
+                      refreshTodoList();
+                    },
+                    () => {},
+                  );
                 },
               });
               return;
@@ -1641,7 +1718,15 @@ function renderMonthlyView(
                 });
             }
           }
-          dateDebug("drop on day", { targetDate: key, name: payload?.name, sectionId: payload?.sectionId, taskId: payload?.taskId, newStart, newDue, ok });
+          dateDebug("drop on day", {
+            targetDate: key,
+            name: payload?.name,
+            sectionId: payload?.sectionId,
+            taskId: payload?.taskId,
+            newStart,
+            newDue,
+            ok,
+          });
           if (ok) {
             renderCalendar();
             refreshTodoList();
@@ -1652,7 +1737,9 @@ function renderMonthlyView(
 
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
-      const BAR_HEIGHT = window.matchMedia("(max-width: 48rem)").matches ? 1.35 : 2.05;
+      const BAR_HEIGHT = window.matchMedia("(max-width: 48rem)").matches
+        ? 1.35
+        : 2.05;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
@@ -1712,7 +1799,8 @@ function renderMonthlyView(
             startDate: t.startDate || "",
             dueDate: t.dueDate || dateKey,
             isOverdueBar: calendarBarTaskIsOverdueTodo(t),
-            _calPrevStart: (t._calPrevStart || "").toString().slice(0, 10) || "",
+            _calPrevStart:
+              (t._calPrevStart || "").toString().slice(0, 10) || "",
             _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
           });
         });
@@ -1734,9 +1822,13 @@ function renderMonthlyView(
       allBars.forEach((b) => {
         b.isOverflow = false;
       });
-      const maxRow = allBars.length ? Math.max(...allBars.map((b) => b.row), 0) : 0;
+      const maxRow = allBars.length
+        ? Math.max(...allBars.map((b) => b.row), 0)
+        : 0;
       const rowsNeeded = maxRow + 1;
-      const BARS_TOP = window.matchMedia("(max-width: 48rem)").matches ? 1.35 : 1.75;
+      const BARS_TOP = window.matchMedia("(max-width: 48rem)").matches
+        ? 1.35
+        : 1.75;
       const BOTTOM_PAD = 0.6;
       const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 3 * BAR_HEIGHT + BOTTOM_PAD;
       const requiredHeight = BARS_TOP + rowsNeeded * BAR_HEIGHT + BOTTOM_PAD;
@@ -1801,10 +1893,11 @@ function renderMonthlyView(
               ?.classList.toggle("checked", newDone);
             refreshTodoList();
           };
-          if (!window.matchMedia("(max-width: 48rem)").matches) bar.addEventListener("click", toggleDone);
+          if (!window.matchMedia("(max-width: 48rem)").matches)
+            bar.addEventListener("click", toggleDone);
         }
         if (!b.isSingleDay && b.startDate && b.dueDate) {
-            bar.addEventListener("contextmenu", (e) => {
+          bar.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             e.stopPropagation();
             createCalendarBarDateEditBubble(
@@ -2060,12 +2153,16 @@ function renderMonthlyView(
   );
   todoListEl.classList.add("todo-list-in-sidebar");
   mainWrap.appendChild(todoListEl);
-  overdueWrapEl.appendChild(renderOverdueSection({ enableDragToCalendar: true }));
+  overdueWrapEl.appendChild(
+    renderOverdueSection({ enableDragToCalendar: true }),
+  );
   lpBindCalendarDateTodoSidebarCollapse(todoSidebar, sidebarMode);
   applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
   wrap.appendChild(todoSidebar);
-  attachCalendarTodoSidebarSpanRevertDrop(body, () => renderCalendar(), () =>
-    refreshTodoList(),
+  attachCalendarTodoSidebarSpanRevertDrop(
+    body,
+    () => renderCalendar(),
+    () => refreshTodoList(),
   );
 
   wrap.addEventListener("dragend", () => {
@@ -2305,7 +2402,15 @@ function render2WeekView(
                 });
             }
           }
-          dateDebug("drop on day", { targetDate: key, name: payload?.name, sectionId: payload?.sectionId, taskId: payload?.taskId, newStart, newDue, ok });
+          dateDebug("drop on day", {
+            targetDate: key,
+            name: payload?.name,
+            sectionId: payload?.sectionId,
+            taskId: payload?.taskId,
+            newStart,
+            newDue,
+            ok,
+          });
           if (ok) {
             renderCalendar();
             refreshTodoList();
@@ -2316,7 +2421,9 @@ function render2WeekView(
 
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
-      const BAR_HEIGHT = window.matchMedia("(max-width: 48rem)").matches ? 1.35 : 2.05;
+      const BAR_HEIGHT = window.matchMedia("(max-width: 48rem)").matches
+        ? 1.35
+        : 2.05;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
@@ -2376,7 +2483,8 @@ function render2WeekView(
             startDate: t.startDate || "",
             dueDate: t.dueDate || dateKey,
             isOverdueBar: calendarBarTaskIsOverdueTodo(t),
-            _calPrevStart: (t._calPrevStart || "").toString().slice(0, 10) || "",
+            _calPrevStart:
+              (t._calPrevStart || "").toString().slice(0, 10) || "",
             _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
           });
         });
@@ -2398,9 +2506,13 @@ function render2WeekView(
       allBars.forEach((b) => {
         b.isOverflow = false;
       });
-      const maxRow = allBars.length ? Math.max(...allBars.map((b) => b.row), 0) : 0;
+      const maxRow = allBars.length
+        ? Math.max(...allBars.map((b) => b.row), 0)
+        : 0;
       const rowsNeeded = maxRow + 1;
-      const BARS_TOP = window.matchMedia("(max-width: 48rem)").matches ? 1.35 : 1.75;
+      const BARS_TOP = window.matchMedia("(max-width: 48rem)").matches
+        ? 1.35
+        : 1.75;
       const BOTTOM_PAD = 0.6;
       const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 3 * BAR_HEIGHT + BOTTOM_PAD;
       const requiredHeight = BARS_TOP + rowsNeeded * BAR_HEIGHT + BOTTOM_PAD;
@@ -2463,10 +2575,11 @@ function render2WeekView(
               ?.classList.toggle("checked", newDone);
             refreshTodoList();
           };
-          if (!window.matchMedia("(max-width: 48rem)").matches) bar.addEventListener("click", toggleDone);
+          if (!window.matchMedia("(max-width: 48rem)").matches)
+            bar.addEventListener("click", toggleDone);
         }
         if (!b.isSingleDay && b.startDate && b.dueDate) {
-            bar.addEventListener("contextmenu", (e) => {
+          bar.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             e.stopPropagation();
             createCalendarBarDateEditBubble(
@@ -2712,12 +2825,16 @@ function render2WeekView(
   );
   todoListEl.classList.add("todo-list-in-sidebar");
   mainWrap.appendChild(todoListEl);
-  overdueWrapEl.appendChild(renderOverdueSection({ enableDragToCalendar: true }));
+  overdueWrapEl.appendChild(
+    renderOverdueSection({ enableDragToCalendar: true }),
+  );
   lpBindCalendarDateTodoSidebarCollapse(todoSidebar, sidebarMode);
   applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
   wrap.appendChild(todoSidebar);
-  attachCalendarTodoSidebarSpanRevertDrop(body, () => renderCalendar(), () =>
-    refreshTodoList(),
+  attachCalendarTodoSidebarSpanRevertDrop(
+    body,
+    () => renderCalendar(),
+    () => refreshTodoList(),
   );
 
   wrap.addEventListener("dragend", () => {
@@ -2957,7 +3074,15 @@ function render3WeekView(
                 });
             }
           }
-          dateDebug("drop on day", { targetDate: key, name: payload?.name, sectionId: payload?.sectionId, taskId: payload?.taskId, newStart, newDue, ok });
+          dateDebug("drop on day", {
+            targetDate: key,
+            name: payload?.name,
+            sectionId: payload?.sectionId,
+            taskId: payload?.taskId,
+            newStart,
+            newDue,
+            ok,
+          });
           if (ok) {
             renderCalendar();
             refreshTodoList();
@@ -2968,7 +3093,9 @@ function render3WeekView(
 
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
-      const BAR_HEIGHT = window.matchMedia("(max-width: 48rem)").matches ? 1.35 : 2.05;
+      const BAR_HEIGHT = window.matchMedia("(max-width: 48rem)").matches
+        ? 1.35
+        : 2.05;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
@@ -3028,7 +3155,8 @@ function render3WeekView(
             startDate: t.startDate || "",
             dueDate: t.dueDate || dateKey,
             isOverdueBar: calendarBarTaskIsOverdueTodo(t),
-            _calPrevStart: (t._calPrevStart || "").toString().slice(0, 10) || "",
+            _calPrevStart:
+              (t._calPrevStart || "").toString().slice(0, 10) || "",
             _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
           });
         });
@@ -3050,9 +3178,13 @@ function render3WeekView(
       allBars.forEach((b) => {
         b.isOverflow = false;
       });
-      const maxRow = allBars.length ? Math.max(...allBars.map((b) => b.row), 0) : 0;
+      const maxRow = allBars.length
+        ? Math.max(...allBars.map((b) => b.row), 0)
+        : 0;
       const rowsNeeded = maxRow + 1;
-      const BARS_TOP = window.matchMedia("(max-width: 48rem)").matches ? 1.35 : 1.75;
+      const BARS_TOP = window.matchMedia("(max-width: 48rem)").matches
+        ? 1.35
+        : 1.75;
       const BOTTOM_PAD = 0.6;
       const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 3 * BAR_HEIGHT + BOTTOM_PAD;
       const requiredHeight = BARS_TOP + rowsNeeded * BAR_HEIGHT + BOTTOM_PAD;
@@ -3104,14 +3236,17 @@ function render3WeekView(
             renderCalendar();
             refreshTodoList();
           };
-          if (!window.matchMedia("(max-width: 48rem)").matches) bar.addEventListener("click", toggleDone);
+          if (!window.matchMedia("(max-width: 48rem)").matches)
+            bar.addEventListener("click", toggleDone);
         } else {
           if (isTodo) {
             bar.innerHTML = showCheckbox
               ? `<span class="calendar-monthly-span-bar-checkbox" style="border-color:${b.color}"><span class="calendar-monthly-span-bar-checkbox-inner"></span></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
               : "";
           } else {
-            bar.innerHTML = b.isFirstSegment ? `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>` : "";
+            bar.innerHTML = b.isFirstSegment
+              ? `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
+              : "";
           }
           if (isTodo && b.done) {
             bar.classList.add("is-completed");
@@ -3390,12 +3525,16 @@ function render3WeekView(
   );
   todoListEl.classList.add("todo-list-in-sidebar");
   mainWrap.appendChild(todoListEl);
-  overdueWrapEl.appendChild(renderOverdueSection({ enableDragToCalendar: true }));
+  overdueWrapEl.appendChild(
+    renderOverdueSection({ enableDragToCalendar: true }),
+  );
   lpBindCalendarDateTodoSidebarCollapse(todoSidebar, sidebarMode);
   applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
   wrap.appendChild(todoSidebar);
-  attachCalendarTodoSidebarSpanRevertDrop(body, () => renderCalendar(), () =>
-    refreshTodoList(),
+  attachCalendarTodoSidebarSpanRevertDrop(
+    body,
+    () => renderCalendar(),
+    () => refreshTodoList(),
   );
 
   wrap.addEventListener("dragend", () => {
@@ -3446,7 +3585,10 @@ function collectLiveScheduledFromBudgetColumn(budgetColumn) {
 /** dateStr(YYYY-MM-DD) 기준 전날 키 반환 */
 function getYesterdayKey(dateStr) {
   if (!dateStr || typeof dateStr !== "string") return "";
-  const parts = dateStr.trim().split(/[\/\-]/).map(Number);
+  const parts = dateStr
+    .trim()
+    .split(/[\/\-]/)
+    .map(Number);
   if (parts.length < 3) return "";
   const dt = new Date(parts[0], parts[1] - 1, parts[2]);
   dt.setDate(dt.getDate() - 1);
@@ -3473,7 +3615,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   const normDate = (s) => (s || "").replace(/\//g, "-").trim().slice(0, 10);
   const actualFilterKey = actualDateKey || targetKey;
   const actualRows = allTimeRows.filter(
-    (r) => normDate(r.date || parseDateFromTimeStr(r.startTime)) === actualFilterKey,
+    (r) =>
+      normDate(r.date || parseDateFromTimeStr(r.startTime)) === actualFilterKey,
   );
   const parseHhMmToMinutes = (s) => {
     if (!s || !s.trim()) return null;
@@ -3483,7 +3626,10 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
     const m4 = str.match(/^(\d{3,4})$/);
     if (m4) {
       const digits = m4[1];
-      const h = digits.length === 4 ? parseInt(digits.slice(0, 2), 10) : parseInt(digits.slice(0, 1), 10);
+      const h =
+        digits.length === 4
+          ? parseInt(digits.slice(0, 2), 10)
+          : parseInt(digits.slice(0, 1), 10);
       const min = parseInt(digits.slice(-2), 10) || 0;
       return (h || 0) * 60 + Math.min(59, min);
     }
@@ -3573,7 +3719,9 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         for (let j = i + 1; j < arr.length; j++) {
           const a = arr[i];
           const b = arr[j];
-          if (String(a.taskName || "").trim() !== String(b.taskName || "").trim())
+          if (
+            String(a.taskName || "").trim() !== String(b.taskName || "").trim()
+          )
             continue;
           if (overlapMinutesBetween(a, b) <= 0) continue;
           const startMin = Math.min(a.startMin, b.startMin);
@@ -3606,7 +3754,9 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
     const spans = [];
     for (const [taskName, data] of Object.entries(budgetGoals)) {
       const times = getScheduledTimesForTask(data);
-      const taskFromList = tasks.find((t) => (t.name || "").trim() === taskName);
+      const taskFromList = tasks.find(
+        (t) => (t.name || "").trim() === taskName,
+      );
       for (const st of times) {
         if (!st.trim()) continue;
         const parts = st.trim().split("-");
@@ -3633,7 +3783,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         if (taskFromList) {
           span.sectionId = taskFromList.sectionId;
           span._task = taskFromList;
-          span._taskKey = taskFromList.kpiTodoId || taskFromList.taskId || taskFromList.name;
+          span._taskKey =
+            taskFromList.kpiTodoId || taskFromList.taskId || taskFromList.name;
         }
         spans.push(span);
       }
@@ -3651,7 +3802,7 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         Math.floor((endMin - 1) / MIN_PER_SLOT),
       );
       const prod = getTaskOptionByName(t.name)?.productivity || "other";
-        spans.push({
+      spans.push({
         startSlot,
         endSlot: Math.max(endSlot, startSlot),
         startMin,
@@ -3682,7 +3833,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
       .map((s) => {
         const sm = Number(s.startMin);
         const em = Number(s.endMin);
-        if (!Number.isFinite(sm) || !Number.isFinite(em) || em <= sm) return null;
+        if (!Number.isFinite(sm) || !Number.isFinite(em) || em <= sm)
+          return null;
         const startMin = Math.max(0, sm);
         const endMin = Math.min(24 * 60, em);
         if (endMin <= startMin) return null;
@@ -3828,12 +3980,16 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   const expectedMaxLane = expectedResult.maxLane;
   const buildActualSpansFromRows = () => {
     const spans = [];
-    const toMinutes = (str) => parseDateTimeToMinutes(str) ?? parseHhMmToMinutes(str);
+    const toMinutes = (str) =>
+      parseDateTimeToMinutes(str) ?? parseHhMmToMinutes(str);
     for (const r of actualRows) {
       const startMin = toMinutes(r.startTime);
       const endMin = toMinutes(r.endTime);
       if (startMin == null || endMin == null || endMin <= startMin) continue;
-      const prod = r.productivity || getTaskOptionByName(r.taskName)?.productivity || "other";
+      const prod =
+        r.productivity ||
+        getTaskOptionByName(r.taskName)?.productivity ||
+        "other";
       spans.push({
         startMin,
         endMin,
@@ -3849,7 +4005,10 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
       spans: withLanes.spans.map((s) => ({
         ...s,
         startSlot: Math.floor(s.startMin / MIN_PER_SLOT),
-        endSlot: Math.min(SLOTS_PER_DAY - 1, Math.floor((s.endMin - 1) / MIN_PER_SLOT)),
+        endSlot: Math.min(
+          SLOTS_PER_DAY - 1,
+          Math.floor((s.endMin - 1) / MIN_PER_SLOT),
+        ),
         startDisplay: fmt(s.startMin),
         endDisplay: fmt(s.endMin),
       })),
@@ -3904,14 +4063,17 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         isActual && actualBlockMin > 0
           ? Math.max(actualBlockMin, ACTUAL_MIN_VISUAL_MINUTES)
           : actualBlockMin;
-      const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+      const fmt = (m) =>
+        `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
       const cohort = cohortDirectlyOverlapping(first);
       /* 이 블록과 2분 이상 직접 겹치는 일이 있을 때만 반열(나란히). 코호트는 직접 겹침만 포함 */
       const useLaneLayout = cohort.length > 1;
       let laneCountLocal = 1;
       let laneLocal = first.lane ?? 0;
       if (useLaneLayout) {
-        const sortedCluster = [...cohort].sort((a, b) => a.startMin - b.startMin);
+        const sortedCluster = [...cohort].sort(
+          (a, b) => a.startMin - b.startMin,
+        );
         const copies = sortedCluster.map((s) => ({ ...s }));
         const { maxLane: clusterMaxLane } = assignLanesToSpans(copies);
         laneCountLocal = Math.max(1, clusterMaxLane + 1);
@@ -4028,7 +4190,9 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         if (!firstBorderColor) firstBorderColor = c.border;
         /* actualBlockMin 기준으로 세그먼트 비율 계산 - 블록 높이 축소 시에도 세그먼트가 블록 전체를 채우도록 */
         const segHeightPct =
-          actualBlockMin > 0 ? ((sp.endMin - sp.startMin) / actualBlockMin) * 100 : 0;
+          actualBlockMin > 0
+            ? ((sp.endMin - sp.startMin) / actualBlockMin) * 100
+            : 0;
         const seg = document.createElement("div");
         seg.className = "calendar-1day-time-slot-fill-seg";
         /*
@@ -4039,7 +4203,9 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
           seg.style.flex = "none";
           seg.style.height = "100%";
           seg.style.minHeight =
-            !isActual && actualBlockMin > 0 && actualBlockMin < 40 ? "2.5rem" : "0";
+            !isActual && actualBlockMin > 0 && actualBlockMin < 40
+              ? "2.5rem"
+              : "0";
         } else {
           seg.style.flex = `0 0 ${segHeightPct}%`;
           if (!isActual) {
@@ -4055,7 +4221,10 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         if (!isActual) {
           seg.style.overflow = "visible";
         }
-        const segDurationMin = Math.max(0, (sp.endMin ?? 0) - (sp.startMin ?? 0));
+        const segDurationMin = Math.max(
+          0,
+          (sp.endMin ?? 0) - (sp.startMin ?? 0),
+        );
         const showTimetableLabel =
           !isActual || segDurationMin >= ACTUAL_MIN_MINUTES_TO_SHOW_LABEL;
         if (showTimetableLabel) {
@@ -4099,7 +4268,12 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
     return overlay;
   };
   return {
-    expected: createOverlay(expectedSpans, prodColorsExpected, false, expectedMaxLane),
+    expected: createOverlay(
+      expectedSpans,
+      prodColorsExpected,
+      false,
+      expectedMaxLane,
+    ),
     actual: createOverlay(actualSpans, prodColorsActual, true, actualMaxLane),
   };
 }
@@ -4190,7 +4364,11 @@ function render1DayView(tabsElement) {
             ? Math.min(100, (accumulatedMins / targetMins) * 100)
             : 0;
         const targetTimeDisplay = k.targetTimeRequired
-          ? minutesToHhMm(String(k.targetTimeRequired).includes(":") ? hhMmToMinutes(k.targetTimeRequired) : (parseInt(k.targetTimeRequired, 10) || 0))
+          ? minutesToHhMm(
+              String(k.targetTimeRequired).includes(":")
+                ? hhMmToMinutes(k.targetTimeRequired)
+                : parseInt(k.targetTimeRequired, 10) || 0,
+            )
           : "";
         const investedTimeHtml = targetTimeDisplay
           ? `지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span> / <span class="dream-kpi-card-invested-value">${targetTimeDisplay}</span>`
@@ -4438,7 +4616,12 @@ function render1DayView(tabsElement) {
       "not-urgent-not-important": "여유+안중요",
       "not-urgent-": "여유+안중요",
     };
-    const EISENHOWER_KEY_BY_LABEL_1DAY = { "긴급+중요": "urgent-important", "중요+여유": "important-not-urgent", "긴급+덜중요": "urgent-not-important", "여유+안중요": "not-urgent-not-important" };
+    const EISENHOWER_KEY_BY_LABEL_1DAY = {
+      "긴급+중요": "urgent-important",
+      "중요+여유": "important-not-urgent",
+      "긴급+덜중요": "urgent-not-important",
+      "여유+안중요": "not-urgent-not-important",
+    };
     const todoTable = document.createElement("table");
     todoTable.className = "calendar-1day-todo-table time-daily-budget-table";
     todoTable.innerHTML = `
@@ -4447,7 +4630,12 @@ function render1DayView(tabsElement) {
     `;
     const todoTbody = todoTable.querySelector("tbody");
 
-    const EISENHOWER_ORDER = ["urgent-important", "important-not-urgent", "urgent-not-important", "not-urgent-not-important"];
+    const EISENHOWER_ORDER = [
+      "urgent-important",
+      "important-not-urgent",
+      "urgent-not-important",
+      "not-urgent-not-important",
+    ];
     const sortedTasks = [...tasks].sort((a, b) => {
       const aq = (a.eisenhower || "").trim();
       const bq = (b.eisenhower || "").trim();
@@ -4464,7 +4652,9 @@ function render1DayView(tabsElement) {
       bar.className =
         "calendar-monthly-span-bar calendar-monthly-span-bar--todo" +
         (isTodo ? " calendar-monthly-span-bar--has-checkbox" : "") +
-        (calendarBarTaskIsOverdueTodo(t) ? " calendar-monthly-span-bar--overdue" : "");
+        (calendarBarTaskIsOverdueTodo(t)
+          ? " calendar-monthly-span-bar--overdue"
+          : "");
       bar.title = t.name;
       bar.style.cssText = `--bar-bg:${color}`;
       if (isTodo) {
@@ -4539,7 +4729,8 @@ function render1DayView(tabsElement) {
       const priorityTd = document.createElement("td");
       priorityTd.className = "calendar-1day-todo-priority-cell";
       priorityTd.textContent = (t.eisenhower || "").trim()
-        ? (EISENHOWER_LABELS_1DAY[(t.eisenhower || "").trim()] || (t.eisenhower || "").trim())
+        ? EISENHOWER_LABELS_1DAY[(t.eisenhower || "").trim()] ||
+          (t.eisenhower || "").trim()
         : "";
       tr.appendChild(priorityTd);
       todoTbody.appendChild(tr);
@@ -4580,7 +4771,10 @@ function render1DayView(tabsElement) {
         }
         const budgetColOrNull =
           wrap.querySelector(".calendar-1day-budget-column") || null;
-        const actualDateKey = wrap.dataset.actualShowsYesterday === "true" ? getYesterdayKey(dateStr) : undefined;
+        const actualDateKey =
+          wrap.dataset.actualShowsYesterday === "true"
+            ? getYesterdayKey(dateStr)
+            : undefined;
         const { expected, actual } = build1DayTimetableOverlays(
           dateStr,
           budgetColOrNull,
@@ -4809,7 +5003,8 @@ function render1DayView(tabsElement) {
     headerExpected.className = "calendar-1day-time-header-cell";
     headerExpected.textContent = "예상";
     const headerActual = document.createElement("div");
-    headerActual.className = "calendar-1day-time-header-cell calendar-1day-time-header-cell--actual-toggle";
+    headerActual.className =
+      "calendar-1day-time-header-cell calendar-1day-time-header-cell--actual-toggle";
     headerActual.style.cursor = "pointer";
     headerActual.title = "클릭하여 오늘/어제 실제 데이터 전환";
     const updateActualHeaderLabel = () => {
@@ -4850,7 +5045,10 @@ function render1DayView(tabsElement) {
       slotActual.style.gridRow = `${i + 1}`;
       timeTable.appendChild(slotActual);
     }
-    const actualDateKeyForInit = wrap.dataset.actualShowsYesterday === "true" ? getYesterdayKey(targetKey) : undefined;
+    const actualDateKeyForInit =
+      wrap.dataset.actualShowsYesterday === "true"
+        ? getYesterdayKey(targetKey)
+        : undefined;
     const { expected: fillOverlayExpected, actual: fillOverlayActual } =
       build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKeyForInit);
     const timeTableWrap = document.createElement("div");
@@ -4921,8 +5119,15 @@ function render1DayView(tabsElement) {
     if (!wrapInDoc) return;
     if (timeTableInner && dateStr) {
       const budgetCol = wrap.querySelector(".calendar-1day-budget-column");
-      const actualDateKey = wrap.dataset.actualShowsYesterday === "true" ? getYesterdayKey(dateStr) : undefined;
-      const { expected, actual } = build1DayTimetableOverlays(dateStr, budgetCol, actualDateKey);
+      const actualDateKey =
+        wrap.dataset.actualShowsYesterday === "true"
+          ? getYesterdayKey(dateStr)
+          : undefined;
+      const { expected, actual } = build1DayTimetableOverlays(
+        dateStr,
+        budgetCol,
+        actualDateKey,
+      );
       const oldExpected = timeTableInner.querySelector(
         ".calendar-1day-time-fill-overlay--expected",
       );
@@ -4956,7 +5161,8 @@ function renderTodoView(tabsElement) {
 
   /* 1번 레이아웃: 탭 | 플러스 버튼 | 설정 버튼 한 줄에 배치 */
   const topRow = document.createElement("div");
-  topRow.className = "calendar-view-top-row calendar-view-top-row--todo calendar-view-top-row--with-settings";
+  topRow.className =
+    "calendar-view-top-row calendar-view-top-row--todo calendar-view-top-row--with-settings";
   if (tabsElement) {
     const tabsWrapper = document.createElement("div");
     tabsWrapper.className = "calendar-monthly-tabs-wrap";
@@ -5218,21 +5424,25 @@ function render1WeekView(
 
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
-      const BAR_HEIGHT = window.matchMedia("(max-width: 48rem)").matches ? 1.35 : 2.05;
+      const BAR_HEIGHT = window.matchMedia("(max-width: 48rem)").matches
+        ? 1.35
+        : 2.05;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
       const CELL_GAP = 3.5;
       if (!is1WeekView) {
         rangeTasks.forEach((t) => {
-          const barStart = t.startDate > firstDayKey ? t.startDate : firstDayKey;
+          const barStart =
+            t.startDate > firstDayKey ? t.startDate : firstDayKey;
           const barEnd = t.dueDate < lastDayKey ? t.dueDate : lastDayKey;
           if (barStart > barEnd) return;
           const startIdx = weekDateKeys.indexOf(barStart);
           const endIdx = weekDateKeys.indexOf(barEnd);
           if (startIdx < 0 || endIdx < 0) return;
           const left = (startIdx / 7) * 100 + CELL_GAP / 7;
-          const width = ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
+          const width =
+            ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
           const baseColor = getSectionColor(t.sectionId);
           const color = withMoreTransparency(baseColor);
           const isFirstSegment = barStart === t.startDate;
@@ -5252,7 +5462,8 @@ function render1WeekView(
             startDate: t.startDate,
             dueDate: t.dueDate,
             isOverdueBar: calendarBarTaskIsOverdueTodo(t),
-            _calPrevStart: (t._calPrevStart || "").toString().slice(0, 10) || "",
+            _calPrevStart:
+              (t._calPrevStart || "").toString().slice(0, 10) || "",
             _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
           });
         });
@@ -5280,7 +5491,8 @@ function render1WeekView(
             startDate: t.startDate || "",
             dueDate: t.dueDate || dateKey,
             isOverdueBar: calendarBarTaskIsOverdueTodo(t),
-            _calPrevStart: (t._calPrevStart || "").toString().slice(0, 10) || "",
+            _calPrevStart:
+              (t._calPrevStart || "").toString().slice(0, 10) || "",
             _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
           });
         });
@@ -5302,9 +5514,13 @@ function render1WeekView(
       allBars.forEach((b) => {
         b.isOverflow = false;
       });
-      const maxRow = allBars.length ? Math.max(...allBars.map((b) => b.row), 0) : 0;
+      const maxRow = allBars.length
+        ? Math.max(...allBars.map((b) => b.row), 0)
+        : 0;
       const rowsNeeded = maxRow + 1;
-      const BARS_TOP = window.matchMedia("(max-width: 48rem)").matches ? 1.35 : 1.75;
+      const BARS_TOP = window.matchMedia("(max-width: 48rem)").matches
+        ? 1.35
+        : 1.75;
       const BOTTOM_PAD = 0.6;
       const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 3 * BAR_HEIGHT + BOTTOM_PAD;
       const requiredHeight = BARS_TOP + rowsNeeded * BAR_HEIGHT + BOTTOM_PAD;
@@ -5314,7 +5530,9 @@ function render1WeekView(
       if (stackBarsInCells) {
         barsEl.style.display = "none";
         weekRowEl
-          .querySelectorAll(".calendar-monthly-day:not(.empty) .calendar-monthly-day-entries")
+          .querySelectorAll(
+            ".calendar-monthly-day:not(.empty) .calendar-monthly-day-entries",
+          )
           .forEach((ent) => {
             ent.innerHTML = "";
             ent.style.position = "relative";
@@ -5374,19 +5592,30 @@ function render1WeekView(
             const attachToggle = (el) => {
               if (!el) return;
               el.addEventListener("click", toggleDone);
-              el.addEventListener("touchend", (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                toggleDone(e);
-              }, { passive: false });
-              el.addEventListener("touchstart", (e) => {
-                e.stopPropagation();
-              }, { passive: true });
+              el.addEventListener(
+                "touchend",
+                (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toggleDone(e);
+                },
+                { passive: false },
+              );
+              el.addEventListener(
+                "touchstart",
+                (e) => {
+                  e.stopPropagation();
+                },
+                { passive: true },
+              );
             };
             attachToggle(bar);
             const cb = bar.querySelector(".calendar-monthly-span-bar-checkbox");
             attachToggle(cb);
-            if (cb) attachToggle(cb.querySelector(".calendar-monthly-span-bar-checkbox-inner"));
+            if (cb)
+              attachToggle(
+                cb.querySelector(".calendar-monthly-span-bar-checkbox-inner"),
+              );
           }
         } else {
           if (isTodo) {
@@ -5394,7 +5623,9 @@ function render1WeekView(
               ? `<span class="calendar-monthly-span-bar-checkbox" style="border-color:${b.color}"><span class="calendar-monthly-span-bar-checkbox-inner"></span></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
               : "";
           } else {
-            bar.innerHTML = b.isFirstSegment ? `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>` : "";
+            bar.innerHTML = b.isFirstSegment
+              ? `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
+              : "";
           }
           if (isTodo && b.done) {
             bar.classList.add("is-completed");
@@ -5402,7 +5633,8 @@ function render1WeekView(
               .querySelector(".calendar-monthly-span-bar-checkbox-inner")
               ?.classList.add("checked");
           }
-          const isMobileRangeBar = window.matchMedia("(max-width: 48rem)").matches;
+          const isMobileRangeBar =
+            window.matchMedia("(max-width: 48rem)").matches;
           if (isTodo && (!isMobileRangeBar || is1WeekView)) {
             const rangeToggleDone = (e) => {
               e.preventDefault();
@@ -5428,19 +5660,34 @@ function render1WeekView(
             const attachRangeToggle = (el) => {
               if (!el) return;
               el.addEventListener("click", rangeToggleDone);
-              el.addEventListener("touchend", (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                rangeToggleDone(e);
-              }, { passive: false });
-              el.addEventListener("touchstart", (e) => {
-                e.stopPropagation();
-              }, { passive: true });
+              el.addEventListener(
+                "touchend",
+                (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  rangeToggleDone(e);
+                },
+                { passive: false },
+              );
+              el.addEventListener(
+                "touchstart",
+                (e) => {
+                  e.stopPropagation();
+                },
+                { passive: true },
+              );
             };
             attachRangeToggle(bar);
-            const cbRange = bar.querySelector(".calendar-monthly-span-bar-checkbox");
+            const cbRange = bar.querySelector(
+              ".calendar-monthly-span-bar-checkbox",
+            );
             attachRangeToggle(cbRange);
-            if (cbRange) attachRangeToggle(cbRange.querySelector(".calendar-monthly-span-bar-checkbox-inner"));
+            if (cbRange)
+              attachRangeToggle(
+                cbRange.querySelector(
+                  ".calendar-monthly-span-bar-checkbox-inner",
+                ),
+              );
           }
         }
         if (!b.isSingleDay && b.startDate && b.dueDate) {
@@ -5481,7 +5728,9 @@ function render1WeekView(
             const cell = weekRowEl.querySelector(
               `.calendar-monthly-day[data-date="${b.dateKey}"]`,
             );
-            const entries = cell?.querySelector(".calendar-monthly-day-entries");
+            const entries = cell?.querySelector(
+              ".calendar-monthly-day-entries",
+            );
             if (entries) {
               const daySingles = allBars.filter(
                 (x) => x.isSingleDay && x.dateKey === b.dateKey,
@@ -5492,13 +5741,20 @@ function render1WeekView(
               entries.style.minHeight = `${0.1 + daySingles.length * BAR_HEIGHT + 0.35}rem`;
               return;
             }
-          } else if (!is1WeekView && !b.isSingleDay && b.startDate && b.dueDate) {
+          } else if (
+            !is1WeekView &&
+            !b.isSingleDay &&
+            b.startDate &&
+            b.dueDate
+          ) {
             const anchorKey =
               b.startDate < firstDayKey ? firstDayKey : b.startDate;
             const cell = weekRowEl.querySelector(
               `.calendar-monthly-day[data-date="${anchorKey}"]`,
             );
-            const entries = cell?.querySelector(".calendar-monthly-day-entries");
+            const entries = cell?.querySelector(
+              ".calendar-monthly-day-entries",
+            );
             if (entries) {
               bar.style.cssText = `left:0;right:0;width:100%;max-width:100%;box-sizing:border-box;--bar-bg:${b.color};top:${0.1 + b.row * BAR_HEIGHT}rem;`;
               entries.appendChild(bar);
@@ -5727,12 +5983,16 @@ function render1WeekView(
   );
   todoListEl.classList.add("todo-list-in-sidebar");
   mainWrap.appendChild(todoListEl);
-  overdueWrapEl.appendChild(renderOverdueSection({ enableDragToCalendar: true }));
+  overdueWrapEl.appendChild(
+    renderOverdueSection({ enableDragToCalendar: true }),
+  );
   lpBindCalendarDateTodoSidebarCollapse(todoSidebar, sidebarMode);
   applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
   wrap.appendChild(todoSidebar);
-  attachCalendarTodoSidebarSpanRevertDrop(body, () => renderCalendar(), () =>
-    refreshTodoList(),
+  attachCalendarTodoSidebarSpanRevertDrop(
+    body,
+    () => renderCalendar(),
+    () => refreshTodoList(),
   );
 
   wrap.addEventListener("dragend", () => {
@@ -5878,8 +6138,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
   const storageKey = opts.storageKey || "calendar-sub-view";
   const forceInitialMonthlyOnMobile = !!opts.forceInitialMonthlyOnMobile;
   const keepSubTabsOnTop = !!opts.keepSubTabsOnTop;
-  const todoSidebarMode =
-    opts.todoSidebarMode ?? LP_CAL_TODO_SIDEBAR_QUADRANT;
+  const todoSidebarMode = opts.todoSidebarMode ?? LP_CAL_TODO_SIDEBAR_QUADRANT;
 
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout calendar-view-with-subtabs";
@@ -6161,14 +6420,17 @@ function renderEisenhowerView(tabsElement) {
     .querySelector(".calendar-todo-sidebar-body")
     .appendChild(todoListEl);
   const titleEl = todoSidebar.querySelector(".calendar-todo-sidebar-title");
-  const collapseTextEl = todoSidebar.querySelector(".calendar-todo-sidebar-collapse-text");
+  const collapseTextEl = todoSidebar.querySelector(
+    ".calendar-todo-sidebar-collapse-text",
+  );
   todoSidebar
     .querySelector(".calendar-todo-sidebar-collapse")
     .addEventListener("click", () => {
       sidebarCollapsed = !sidebarCollapsed;
       todoSidebar.classList.toggle("collapsed", sidebarCollapsed);
       titleEl.textContent = "할일";
-      if (collapseTextEl) collapseTextEl.textContent = sidebarCollapsed ? "할일" : "접기";
+      if (collapseTextEl)
+        collapseTextEl.textContent = sidebarCollapsed ? "할일" : "접기";
       if (sidebarCollapsed) {
         todoSidebar.style.width = "";
       } else {
@@ -6183,7 +6445,9 @@ function renderEisenhowerView(tabsElement) {
       todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title =
         sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
     });
-  applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar, { clearInlineWidth: true });
+  applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar, {
+    clearInlineWidth: true,
+  });
   contentRow.appendChild(todoSidebar);
   wrap.appendChild(contentRow);
 
@@ -6420,7 +6684,9 @@ function renderEisenhowerView(tabsElement) {
           }
         }
       } else {
-        const card = todoListEl.querySelector(`.todo-card[data-task-id="${taskId}"]`);
+        const card = todoListEl.querySelector(
+          `.todo-card[data-task-id="${taskId}"]`,
+        );
         if (card) {
           card.dataset.eisenhower = label;
           card.classList.add("todo-card--priority-assigned");
@@ -6477,7 +6743,9 @@ function renderEisenhowerView(tabsElement) {
         const displaySpan = row.querySelector(".todo-eisenhower-display");
         if (displaySpan) displaySpan.textContent = "";
       } else {
-        const card = todoListEl.querySelector(`.todo-card[data-task-id="${taskId}"]`);
+        const card = todoListEl.querySelector(
+          `.todo-card[data-task-id="${taskId}"]`,
+        );
         if (card) {
           card.dataset.eisenhower = "";
           card.classList.remove("todo-card--priority-assigned");
@@ -6613,7 +6881,8 @@ export function render() {
 
   async function renderContent(view, opts = {}) {
     const skipSubtabPull = !!opts.skipSubtabPull;
-    const onlySaveWhenFullTodoList = currentView === "todo" || currentView === "eisenhower";
+    const onlySaveWhenFullTodoList =
+      currentView === "todo" || currentView === "eisenhower";
     if (onlySaveWhenFullTodoList) {
       saveTodoListBeforeUnmount(contentWrap);
     }
@@ -6652,14 +6921,15 @@ export function render() {
     ) {
       const existingTodo = contentWrap.querySelector(".calendar-view-todo");
       const topRow =
-        existingTodo.querySelector(
-          ".calendar-view-top-row--with-settings",
-        ) || existingTodo.querySelector(".calendar-view-top-row--todo");
+        existingTodo.querySelector(".calendar-view-top-row--with-settings") ||
+        existingTodo.querySelector(".calendar-view-top-row--todo");
       const todoMain = existingTodo.querySelector(".calendar-todo-main");
       const reuseBtn = topRow?.querySelector(".todo-list-settings-btn");
       if (topRow && todoMain) {
         try {
-          todoMain.querySelector(".todo-list-view")?._lpTabAbortController?.abort?.();
+          todoMain
+            .querySelector(".todo-list-view")
+            ?._lpTabAbortController?.abort?.();
         } catch (_) {}
         todoMain.querySelector(".calendar-todo-content")?.remove();
         const todoContent = document.createElement("div");
@@ -6712,7 +6982,9 @@ export function render() {
         contentWrap.appendChild(renderEisenhowerView(tabs));
       } else {
         const labels = {};
-        contentWrap.appendChild(renderPlaceholderView(tabs, labels[view] || ""));
+        contentWrap.appendChild(
+          renderPlaceholderView(tabs, labels[view] || ""),
+        );
       }
       persistCalendarMainViewIfValid(view);
     } catch (err) {
@@ -6764,8 +7036,7 @@ export function render() {
   window.__lpCalendarSoftRefresh = () => {
     if (!el.isConnected) return;
     const active =
-      tabs.querySelector(".time-view-tab.active")?.dataset?.view ||
-      currentView;
+      tabs.querySelector(".time-view-tab.active")?.dataset?.view || currentView;
     /* App.setActiveTab 에서 방금 pull 했으므로 서브탭 pull 중복 생략 */
     void renderContent(active, { skipSubtabPull: true });
   };

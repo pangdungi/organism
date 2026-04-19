@@ -85,7 +85,9 @@ export function readTimeLedgerSessionFilterRangeYmd() {
 export function timeLedgerEntryPayloadTouchesSessionPicker(payload) {
   if (!payload || payload.table !== "time_ledger_entries") return true;
   const row =
-    payload.new && typeof payload.new === "object" && Object.keys(payload.new).length
+    payload.new &&
+    typeof payload.new === "object" &&
+    Object.keys(payload.new).length
       ? payload.new
       : payload.old;
   if (!row || row.entry_date == null || row.entry_date === "") return true;
@@ -118,13 +120,21 @@ function runSerializedLedgerServerOp(fn) {
 /**
  * @param {{ trigger?: string }} [meta] — 콘솔 디버그용 (direct: 당기기만, after_push: 올린 직후 구간 동기화)
  */
-async function pullTimeLedgerEntriesForDateRangeCore(rangeStart, rangeEnd, meta = {}) {
+async function pullTimeLedgerEntriesForDateRangeCore(
+  rangeStart,
+  rangeEnd,
+  meta = {},
+) {
   const userId = await getSessionUserId();
   const rs = String(rangeStart || "").trim();
   const re = String(rangeEnd || "").trim();
   const trigger = meta.trigger ?? "direct";
   if (!userId || !supabase) {
-    timeLedgerSyncLog("pull_skipped", { reason: "no_session", range: `${rs}..${re}`, trigger });
+    timeLedgerSyncLog("pull_skipped", {
+      reason: "no_session",
+      range: `${rs}..${re}`,
+      trigger,
+    });
     return false;
   }
   if (!rs || !re) {
@@ -178,11 +188,16 @@ export async function deleteTimeLedgerEntryFromSupabase(entryId) {
     }
     const userId = await getSessionUserId();
     if (!userId || !supabase) {
-      timeLedgerSyncLog("server_delete_skipped", { reason: "no_session", idPreview: id.slice(0, 8) });
+      timeLedgerSyncLog("server_delete_skipped", {
+        reason: "no_session",
+        idPreview: id.slice(0, 8),
+      });
       return false;
     }
 
-    timeLedgerSyncLog("server_delete_start", { idPreview: `${id.slice(0, 8)}…` });
+    timeLedgerSyncLog("server_delete_start", {
+      idPreview: `${id.slice(0, 8)}…`,
+    });
 
     const { error, data } = await supabase
       .from(TABLE)
@@ -192,7 +207,10 @@ export async function deleteTimeLedgerEntryFromSupabase(entryId) {
       .select();
 
     if (error) {
-      timeLedgerSyncLog("server_delete_done", { ok: false, message: error.message });
+      timeLedgerSyncLog("server_delete_done", {
+        ok: false,
+        message: error.message,
+      });
       return false;
     }
     const deleted = Array.isArray(data) ? data.length : 0;
@@ -253,8 +271,15 @@ export async function pushDirtyTimeLedgerEntriesToSupabase(opts = {}) {
       .select(LEDGER_ENTRY_SELECT);
 
     if (error) {
-      timeLedgerSyncLog("server_upsert_done", { ok: false, message: error.message });
-      lpSaveDebug("시간행 upsert 실패", { message: error.message, code: error.code, hint: error.hint });
+      timeLedgerSyncLog("server_upsert_done", {
+        ok: false,
+        message: error.message,
+      });
+      lpSaveDebug("시간행 upsert 실패", {
+        message: error.message,
+        code: error.code,
+        hint: error.hint,
+      });
       return;
     }
 
@@ -273,17 +298,24 @@ export async function pushDirtyTimeLedgerEntriesToSupabase(opts = {}) {
       ok: true,
       returnedRowCount: Array.isArray(data) ? data.length : 0,
     });
-    lpSaveDebug("시간행 upsert 성공", { rowCount: toUpload.length, returned: Array.isArray(data) ? data.length : 0 });
+    lpSaveDebug("시간행 upsert 성공", {
+      rowCount: toUpload.length,
+      returned: Array.isArray(data) ? data.length : 0,
+    });
 
     if (opts.skipPull) {
-      timeLedgerSyncLog("pull_after_push_skipped", { reason: "skipPull_option" });
+      timeLedgerSyncLog("pull_after_push_skipped", {
+        reason: "skipPull_option",
+      });
       return;
     }
 
     const rs = opts.rangeStart;
     const re = opts.rangeEnd;
     if (rs && re && YMD_RE.test(rs) && YMD_RE.test(re)) {
-      await pullTimeLedgerEntriesForDateRangeCore(rs, re, { trigger: "after_push" });
+      await pullTimeLedgerEntriesForDateRangeCore(rs, re, {
+        trigger: "after_push",
+      });
     } else {
       const { rangeStart, rangeEnd } = readTimeLedgerSessionFilterRangeYmd();
       await pullTimeLedgerEntriesForDateRangeCore(rangeStart, rangeEnd, {
@@ -304,7 +336,9 @@ export async function pullTimeLedgerEntriesFromSupabase() {
  */
 export async function pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd) {
   return runSerializedLedgerServerOp(() =>
-    pullTimeLedgerEntriesForDateRangeCore(rangeStart, rangeEnd, { trigger: "direct" }),
+    pullTimeLedgerEntriesForDateRangeCore(rangeStart, rangeEnd, {
+      trigger: "direct",
+    }),
   );
 }
 
@@ -321,8 +355,14 @@ export async function hydrateTimeLedgerEntriesForArchiveMonth(year, month) {
 /**
  * 아카이브: 선택한 날짜 구간(YYYY-MM-DD 포함)을 서버에서 받아 세션 메모리에 반영.
  */
-export async function hydrateTimeLedgerEntriesForArchiveRange(rangeStart, rangeEnd) {
-  lpPullDebug("hydrateTimeLedgerEntriesForArchiveRange", { rangeStart, rangeEnd });
+export async function hydrateTimeLedgerEntriesForArchiveRange(
+  rangeStart,
+  rangeEnd,
+) {
+  lpPullDebug("hydrateTimeLedgerEntriesForArchiveRange", {
+    rangeStart,
+    rangeEnd,
+  });
   if (!supabase) return false;
   const rs = String(rangeStart || "").trim();
   const re = String(rangeEnd || "").trim();
