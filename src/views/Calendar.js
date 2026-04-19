@@ -3931,16 +3931,24 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         blockFill.style.gridColumn = "1 / -1";
         blockFill.style.gridRow = "1 / -1";
       };
-      const dayFracH = `calc(${visualBlockMin} * 100% / ${MIN_PER_DAY})`;
+      /** top+height% 대신 top+bottom으로 잡으면 절대배치 높이가 더 안정적 */
+      const applyDayVerticalExtents = () => {
+        const endMinForLayout = Math.min(
+          MIN_PER_DAY,
+          isActual ? blockStartMin + visualBlockMin : blockEndMin,
+        );
+        blockFill.style.top = `calc(${blockStartMin} * 100% / ${MIN_PER_DAY})`;
+        blockFill.style.bottom = `calc(${Math.max(0, MIN_PER_DAY - endMinForLayout)} * 100% / ${MIN_PER_DAY})`;
+        blockFill.style.height = "";
+        blockFill.style.minHeight = "";
+      };
       if (useLaneLayout) {
         /* 겹침 구간: 하루 비율 absolute + 가로 분할 (예상·실제 동일) */
         spanFullOverlayGridForAbs();
         blockFill.style.position = "absolute";
         blockFill.style.left = `${(laneLocal / laneCountLocal) * 100}%`;
         blockFill.style.width = `${100 / laneCountLocal}%`;
-        blockFill.style.top = `calc(${blockStartMin} * 100% / ${MIN_PER_DAY})`;
-        blockFill.style.height = dayFracH;
-        blockFill.style.minHeight = dayFracH;
+        applyDayVerticalExtents();
         blockFill.style.zIndex = String(100 + Math.min(blockStartMin, 2000));
       } else if (isActual) {
         /* 오늘 실제: 전폭 absolute (그리드 행에 걸면 인접 구간 겹침) */
@@ -3948,9 +3956,7 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         blockFill.style.position = "absolute";
         blockFill.style.left = "0";
         blockFill.style.width = "100%";
-        blockFill.style.top = `calc(${blockStartMin} * 100% / ${MIN_PER_DAY})`;
-        blockFill.style.height = dayFracH;
-        blockFill.style.minHeight = dayFracH;
+        applyDayVerticalExtents();
         blockFill.style.zIndex = String(100 + Math.min(blockStartMin, 2000));
       } else {
         /*
@@ -3961,18 +3967,23 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         blockFill.style.position = "absolute";
         blockFill.style.left = "0";
         blockFill.style.width = "100%";
-        blockFill.style.top = `calc(${blockStartMin} * 100% / ${MIN_PER_DAY})`;
-        blockFill.style.height = dayFracH;
-        blockFill.style.minHeight = dayFracH;
+        applyDayVerticalExtents();
         blockFill.style.zIndex = String(100 + Math.min(blockStartMin, 2000));
       }
+      /* .time-slot-fill { right:0 } 과 width:100%가 겹치면 가로·세로 계산이 흔들릴 수 있음 */
+      blockFill.style.right = "auto";
       const heightPct =
         blockHeightMin > 0 && actualBlockMin < blockHeightMin
           ? ((actualBlockMin / blockHeightMin) * 100).toFixed(1)
           : "100";
       blockFill.dataset.debugBlock = `${fmt(blockStartMin)}~${fmt(blockEndMin)} slot${blockStartSlot}-${blockEndSlot} h=${blockHeightMin}m actual=${actualBlockMin}m height=${heightPct}%`;
-      blockFill.style.display = "flex";
-      blockFill.style.flexDirection = "column";
+      /* 단일 스팬: main.css의 .time-slot-fill(display:flex)가 세로 채움을 막는 경우가 있어 block으로 둠 */
+      if (group.length === 1) {
+        blockFill.style.display = "block";
+      } else {
+        blockFill.style.display = "flex";
+        blockFill.style.flexDirection = "column";
+      }
       blockFill.style.gap = "0";
       blockFill.style.padding = "0";
       blockFill.style.overflow = "hidden";
@@ -4018,7 +4029,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
          * 그룹이 한 스팬이면 flex-grow로 부모를 채움.
          */
         if (group.length === 1) {
-          seg.style.flex = "1 1 0";
+          seg.style.flex = "none";
+          seg.style.height = "100%";
           seg.style.minHeight =
             !isActual && actualBlockMin > 0 && actualBlockMin < 40 ? "2.5rem" : "0";
         } else {
