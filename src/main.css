@@ -32831,6 +32831,31 @@ body.kpi-resizing {
   word-break: keep-all;
 }
 
+/* 오늘 실제: 15~30분 구간 — 과제명·시간 한 줄 */
+.calendar-1day-view .calendar-1day-time-slot-label-wrap--actual-one-line {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  gap: 0.2rem;
+}
+
+.calendar-1day-view .calendar-1day-time-slot-label-name--one-line {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: unset;
+}
+
+.calendar-1day-view .calendar-1day-time-slot-label-time--one-line {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
 .calendar-1day-view .calendar-1day-time-slot-label {
   font-size: 0.56rem;
   line-height: 1.2;

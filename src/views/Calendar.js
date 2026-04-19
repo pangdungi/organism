@@ -91,6 +91,15 @@ function persistCalendarMainViewIfValid(view) {
   } catch (_) {}
 }
 
+/** 오늘 실제 세그먼트 상·하 구분선 — 생산성 테두리 색(rgb) + 낮은 알파로 연하게 */
+function rgbaToSoftHorizontalEdge(borderRgba, alpha = 0.28) {
+  const m = String(borderRgba || "").match(
+    /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i,
+  );
+  if (!m) return `rgba(61, 74, 62, ${alpha})`;
+  return `rgba(${m[1]}, ${m[2]}, ${m[3]}, ${alpha})`;
+}
+
 const CALENDAR_DATE_DEBUG = false;
 function dateDebug(_tag, ..._args) {
   void CALENDAR_DATE_DEBUG;
@@ -4028,8 +4037,10 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   /** 오늘 실제: 너무 짧으면 막대가 사라져 보임 — 시각 최소(분). 모바일 탭 상세는 이보다 길어도 읽기 어려울 때만 */
   const ACTUAL_MIN_VISUAL_MINUTES = 8;
   const ACTUAL_TAP_TOAST_MAX_MINUTES = 18;
-  /** 오늘실제만: 이 분 미만 구간은 과제명·시간 라벨 생략(짧은 막대가 겹쳐 읽을 수 없을 때) */
-  const ACTUAL_MIN_MINUTES_TO_SHOW_LABEL = 30;
+  /** 오늘실제만: 이 분 미만은 라벨 생략 */
+  const ACTUAL_MIN_MINUTES_TO_SHOW_LABEL = 15;
+  /** 오늘실제만: 이 분 이하(포함)는 과제명·시간 한 줄, 초과는 두 줄(기존) */
+  const ACTUAL_MAX_MINUTES_ONE_LINE_LABEL = 30;
 
   const createOverlay = (spans, colors, isActual, _maxLane = 0) => {
     const overlay = document.createElement("div");
@@ -4184,7 +4195,7 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
             border: withMoreTransparency(baseColor, 0.55),
           };
         } else {
-          c = colors[sp.prod];
+          c = colors[sp.prod] ?? colors.other;
         }
         if (!c) continue;
         if (!firstBorderColor) firstBorderColor = c.border;
@@ -4218,6 +4229,11 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         seg.style.padding = "0.25rem 0.375rem 0.25rem 0.5rem";
         seg.style.backgroundColor = c.bg;
         seg.style.boxSizing = "border-box";
+        if (isActual && c.border) {
+          const edge = rgbaToSoftHorizontalEdge(c.border, 0.26);
+          seg.style.borderTop = `0.5px solid ${edge}`;
+          seg.style.borderBottom = `0.5px solid ${edge}`;
+        }
         if (!isActual) {
           seg.style.overflow = "visible";
         }
@@ -4229,15 +4245,34 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
           !isActual || segDurationMin >= ACTUAL_MIN_MINUTES_TO_SHOW_LABEL;
         if (showTimetableLabel) {
           const labelWrap = document.createElement("div");
-          labelWrap.className = "calendar-1day-time-slot-label-wrap";
-          const labelName = document.createElement("span");
-          labelName.className = "calendar-1day-time-slot-label-name";
-          labelName.textContent = sp.taskName || "";
-          const labelTime = document.createElement("span");
-          labelTime.className = "calendar-1day-time-slot-label-time";
-          labelTime.textContent = `${sp.startDisplay} ~ ${sp.endDisplay}`;
-          labelWrap.appendChild(labelName);
-          labelWrap.appendChild(labelTime);
+          const useActualOneLine =
+            isActual &&
+            segDurationMin >= ACTUAL_MIN_MINUTES_TO_SHOW_LABEL &&
+            segDurationMin <= ACTUAL_MAX_MINUTES_ONE_LINE_LABEL;
+          if (useActualOneLine) {
+            labelWrap.className =
+              "calendar-1day-time-slot-label-wrap calendar-1day-time-slot-label-wrap--actual-one-line";
+            const labelName = document.createElement("span");
+            labelName.className =
+              "calendar-1day-time-slot-label-name calendar-1day-time-slot-label-name--one-line";
+            labelName.textContent = sp.taskName || "";
+            const labelTime = document.createElement("span");
+            labelTime.className =
+              "calendar-1day-time-slot-label-time calendar-1day-time-slot-label-time--one-line";
+            labelTime.textContent = `${sp.startDisplay} ~ ${sp.endDisplay}`;
+            labelWrap.appendChild(labelName);
+            labelWrap.appendChild(labelTime);
+          } else {
+            labelWrap.className = "calendar-1day-time-slot-label-wrap";
+            const labelName = document.createElement("span");
+            labelName.className = "calendar-1day-time-slot-label-name";
+            labelName.textContent = sp.taskName || "";
+            const labelTime = document.createElement("span");
+            labelTime.className = "calendar-1day-time-slot-label-time";
+            labelTime.textContent = `${sp.startDisplay} ~ ${sp.endDisplay}`;
+            labelWrap.appendChild(labelName);
+            labelWrap.appendChild(labelTime);
+          }
           seg.appendChild(labelWrap);
         }
         blockFill.appendChild(seg);
