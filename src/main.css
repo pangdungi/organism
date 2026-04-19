@@ -31720,9 +31720,28 @@ body.kpi-resizing {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
+  /* 수면·근무 / 생산적 / 소비 표가 같은 과제명 열 비율을 쓰도록 (내용 길이별 들쭉날쭉 방지) */
+  table-layout: fixed;
 }
 
-/* 투자/소비 테이블 - 줄바꿈 방지, 과제명 열 고정 */
+/* 5열 합계 100% — 남는 폭이 삭제열로 몰리지 않게 함 */
+.calendar-1day-budget-column .time-daily-budget-table col.time-budget-col-task {
+  width: 40%;
+}
+.calendar-1day-budget-column .time-daily-budget-table col.time-budget-col-goal {
+  width: 26%;
+}
+.calendar-1day-budget-column .time-daily-budget-table col.time-budget-col-start {
+  width: 12%;
+}
+.calendar-1day-budget-column .time-daily-budget-table col.time-budget-col-end {
+  width: 12%;
+}
+.calendar-1day-budget-column .time-daily-budget-table col.time-budget-col-delete {
+  width: 2%;
+}
+
+/* 투자/소비 테이블 - 시간·목표 열은 한 줄, 과제명 열은 고정 폭 안에서 줄바꿈 */
 .calendar-1day-budget-column .time-daily-budget-table thead th,
 .calendar-1day-budget-column .time-daily-budget-table tbody td {
   white-space: nowrap;
@@ -31735,12 +31754,23 @@ body.kpi-resizing {
   z-index: 2;
   background: #f5f1e8;
   box-shadow: 0.0625rem 0 0 #e5e7eb;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .calendar-1day-budget-column .time-daily-budget-table thead th:first-child {
   z-index: 6;
   background: #f5f1e8;
   text-align: left;
+}
+
+/* 목표 시간: 차이 표시(-6m 등) 한 줄·잘림 방지 */
+.calendar-1day-budget-column .time-daily-budget-table thead th:nth-child(2),
+.calendar-1day-budget-column .time-daily-budget-table tbody td:nth-child(2) {
+  white-space: normal;
+  overflow: visible;
+  word-break: break-word;
 }
 
 .calendar-1day-budget-column .time-daily-budget-table thead {
@@ -31797,7 +31827,7 @@ body.kpi-resizing {
   border-bottom: none;
 }
 
-/* 투자/소비 테이블만 - 삭제열 최소 1.5rem, 셀 패딩만 축소 (전체 열 너비 고정 X → 5열 모두 보이도록) */
+/* 삭제열: 최대한 좁게(×만), 2% col + 최소 터치 폭만 보장 */
 .calendar-1day-budget-column
   .time-daily-budget-table-block
   .time-daily-budget-table
@@ -31806,11 +31836,14 @@ body.kpi-resizing {
   .time-daily-budget-table-block
   .time-daily-budget-table
   td:last-child {
-  min-width: 1.5rem;
-  width: 1.5rem;
-  padding: 0.2rem;
+  width: 2%;
+  min-width: 1.125rem;
+  max-width: 1.75rem;
+  padding: 0.1rem 0.05rem;
   vertical-align: middle;
   box-sizing: border-box;
+  overflow: hidden;
+  text-align: center;
 }
 
 .calendar-1day-budget-column .time-budget-btn-delete {
