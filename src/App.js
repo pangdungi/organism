@@ -397,7 +397,14 @@ export function mountApp(container) {
         await pullDataForActiveTab(targetTabId, { fromBoot: false });
       } catch (_) {}
       if (currentTabId !== targetTabId) return;
-      renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
+      /* 시간가계부: pull 뒤 통째 renderMain 하면 화면이 한 번 비워졌다 다시 그려져 깜빡임 — 같은 인스턴스에서만 소프트 갱신 */
+      if (targetTabId === "time") {
+        try {
+          window.__lpTimeLedgerSoftRefresh?.();
+        } catch (_) {}
+      } else {
+        renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
+      }
       if (targetTabId === "idea") {
         requestAnimationFrame(() => {
           main.scrollTop = 0;

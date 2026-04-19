@@ -10048,12 +10048,34 @@ export function render() {
 
   function refreshTimeLedgerFromRemotePull() {
     if (!el.isConnected) return;
+    /* App 탭 진입 pull 직후 session 만 오늘 등으로 바뀌고 DOM 날짜는 옛값일 수 있음 → 통째로 renderMain 하지 않고 갱신할 때 맞춤 */
+    try {
+      const { rangeStart, rangeEnd } = readTimeLedgerSessionFilterRangeYmd();
+      filterStartDate = rangeStart;
+      filterEndDate = rangeEnd;
+      if (startDateInput) startDateInput.value = rangeStart;
+      if (endDateInput) endDateInput.value = rangeEnd;
+      syncTimeFilterDateLabels();
+      _pickerRangeKeyAtLastPullIntent = computePickerRangeKeyForPull();
+    } catch (_) {}
     allRowsCache = loadTimeRows();
     cachedRows = getFullRowsForFilter(true);
     const active =
       viewTabs.querySelector(".time-view-tab.active")?.dataset?.view || "all";
     switchView(active);
   }
+
+  /** App.setActiveTab 에서 pull 후 두 번째 renderMain 대신 호출 — 패널 통째 교체 없이 위 갱신만 */
+  window.__lpTimeLedgerSoftRefresh = refreshTimeLedgerFromRemotePull;
+  signal.addEventListener(
+    "abort",
+    () => {
+      if (window.__lpTimeLedgerSoftRefresh === refreshTimeLedgerFromRemotePull) {
+        delete window.__lpTimeLedgerSoftRefresh;
+      }
+    },
+    { once: true },
+  );
 
   document.addEventListener(
     "lp-time-ledger-remote-updated",
