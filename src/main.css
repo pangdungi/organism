@@ -3135,7 +3135,7 @@ body {
     .calendar-1day-time-header {
     position: sticky !important;
     top: 0;
-    z-index: 6 !important;
+    z-index: 24 !important;
     background: #f5f1e8 !important;
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
   }
@@ -32483,7 +32483,8 @@ body.kpi-resizing {
   flex-shrink: 0;
   position: sticky;
   top: 0;
-  z-index: 4;
+  /* 막대(z-index 100+)가 스크롤 시 헤더 위로 올라오지 않도록 inner(0)보다 충분히 높게 */
+  z-index: 20;
   border-bottom: var(--line-l2);
   min-height: 2.25rem;
 }
@@ -32539,7 +32540,7 @@ body.kpi-resizing {
 }
 
 .calendar-1day-view .calendar-1day-time-header-cell--actual-toggle:hover {
-  background: transparent;
+  background: #ebe6d8;
   color: #9a9a9a;
 }
 
@@ -32639,6 +32640,8 @@ body.kpi-resizing {
 
 .calendar-1day-view .calendar-1day-time-table-inner {
   position: relative;
+  z-index: 0;
+  isolation: isolate;
   flex: 1;
   min-height: 0;
   display: flex;
