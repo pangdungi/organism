@@ -32672,8 +32672,9 @@ body.kpi-resizing {
   left: 4rem;
   width: calc((100% - 4rem) / 2);
   pointer-events: auto;
-  z-index: 0;
-  overflow: hidden;
+  /* 슬롯(.time-slot position:relative)보다 위에 그려야 채색 막대가 가려지지 않음 */
+  z-index: 2;
+  overflow: visible;
 }
 
 .calendar-1day-view
@@ -32685,7 +32686,8 @@ body.kpi-resizing {
 .calendar-1day-view .calendar-1day-time-fill-overlay--actual {
   left: calc(4rem + (100% - 4rem) / 2);
   width: calc((100% - 4rem) / 2);
-  overflow: hidden;
+  z-index: 2;
+  overflow: visible;
 }
 
 /* 타임라인 행: 가로 구분선 모두 옅은 선으로 통일 */
@@ -32716,6 +32718,7 @@ body.kpi-resizing {
   min-width: 0;
   background: #f5f1e8;
   position: relative;
+  z-index: 0;
   border-bottom: 0.09375rem solid rgba(0, 0, 0, 0.05);
 }
 
@@ -32752,6 +32755,13 @@ body.kpi-resizing {
   flex-shrink: 0;
   overflow: hidden;
   min-height: 2.5rem;
+}
+
+/* 예상 막대: 세그먼트 overflow로 라벨·배경이 잘리지 않게 (오늘실제 짧은 막대는 기존 hidden 유지) */
+.calendar-1day-view
+  .calendar-1day-time-fill-overlay--expected
+  .calendar-1day-time-slot-fill-seg {
+  overflow: visible;
 }
 
 /* 타임박스: 살짝 둥근 모서리, 투명 채움(그리드선 비침) */

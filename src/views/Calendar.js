@@ -3986,7 +3986,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
       }
       blockFill.style.gap = "0";
       blockFill.style.padding = "0";
-      blockFill.style.overflow = "hidden";
+      /* 예상: main.css .time-slot-fill{overflow:hidden} + 여기 hidden이 긴 막대·라벨을 세로로 잘라 냄 */
+      blockFill.style.overflow = isActual ? "hidden" : "visible";
       if (useLaneLayout) {
         blockFill.style.borderRadius =
           laneLocal === 0
@@ -4045,6 +4046,9 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         seg.style.padding = "0.25rem 0.375rem 0.25rem 0.5rem";
         seg.style.backgroundColor = c.bg;
         seg.style.boxSizing = "border-box";
+        if (!isActual) {
+          seg.style.overflow = "visible";
+        }
         const segDurationMin = Math.max(0, (sp.endMin ?? 0) - (sp.startMin ?? 0));
         const showTimetableLabel =
           !isActual || segDurationMin >= ACTUAL_MIN_MINUTES_TO_SHOW_LABEL;
