@@ -5378,7 +5378,9 @@ body {
   }
   .time-ledger-view .time-ledger-tabs-filter-row .time-ledger-tabs-settings-btn {
     padding: 0 !important;
+    border-right: none !important;
   }
+  /* 할일 .calendar-view-top-row--todo 와 동일: 상단 패딩·한 줄 전체 하단선(divider-subtle), 톱니는 선 위 오른쪽 */
   .time-ledger-view .time-ledger-tabs-filter-row .time-ledger-tab-header-row {
     flex: 1 1 100%;
     width: 100%;
@@ -5387,12 +5389,18 @@ body {
     flex-direction: row;
     align-items: center;
     gap: 0.5rem;
+    padding: 0.875rem 0 0;
+    margin-bottom: 0.25rem;
+    border-bottom: var(--divider-subtle);
+    box-sizing: border-box;
   }
   .time-ledger-view .time-ledger-tabs-filter-row .time-ledger-tab-header-row .time-view-tabs {
     flex: 1;
     min-width: 0;
+    border-bottom: none !important;
+    margin-bottom: 0 !important;
   }
-  /* 할일(.calendar-view-top-row--with-settings)과 동일: 톱니 오른쪽·탭과 같은 베이스라인 */
+  /* 할일 설정 버튼과 동일: 행 오른쪽·세로 가운데 */
   .time-ledger-view
     .time-ledger-tabs-filter-row
     .time-ledger-tab-header-row
