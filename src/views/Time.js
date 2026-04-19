@@ -161,8 +161,7 @@ function getTasksForAuditDate(dateKey) {
   return out;
 }
 
-/** 오딧 시간낭비내역: 비생산적 카테고리 파이 (회색 계열) */
-/** 비생산적 시간 비율 파이 – 파란색 계열, 볼드하지 않게 */
+/** 비생산적 시간 비율 파이 – 파란색 계열 */
 const TIME_THIEF_PIE_COLORS = [
   "#93c5fd",
   "#bfdbfe",
@@ -173,12 +172,33 @@ const TIME_THIEF_PIE_COLORS = [
   "#818cf8",
   "#a78bfa",
 ];
-function getAuditTimeThiefHtml(dateStr, filtered, hourlyRate) {
-  const dateRows = filtered.filter(
-    (r) =>
-      (normalizeDateForCompare(r.date || "") || (r.date || "").trim()) ===
-      dateStr,
-  );
+
+/** 보고서 파이차트: 전체 대비 이 비율(%) 미만 조각은 「기타」로 합침 */
+const AUDIT_PIE_MIN_DISPLAY_PCT = 3;
+function mergeSmallAuditPieSlices(entries, minPct = AUDIT_PIE_MIN_DISPLAY_PCT) {
+  const total = entries.reduce((s, e) => s + e.hours, 0);
+  if (total <= 0) return [];
+  const majors = [];
+  let otherH = 0;
+  for (const e of entries) {
+    const pct100 = (e.hours / total) * 100;
+    if (pct100 >= minPct)
+      majors.push({ taskName: e.taskName, hours: e.hours });
+    else otherH += e.hours;
+  }
+  if (otherH > 0) majors.push({ taskName: "기타", hours: otherH });
+  return majors;
+}
+
+function getAuditTimeThiefHtml(dateStr, filtered, hourlyRate, periodMode) {
+  const dateRows =
+    dateStr == null
+      ? filtered
+      : filtered.filter(
+          (r) =>
+            (normalizeDateForCompare(r.date || "") || (r.date || "").trim()) ===
+            dateStr,
+        );
   const nonproductiveRows = dateRows.filter(
     (r) => String(r.productivity || "").trim() === "nonproductive",
   );
@@ -212,16 +232,17 @@ function getAuditTimeThiefHtml(dateStr, filtered, hourlyRate) {
             .join("");
           return `<div class="time-audit-thief-table-wrap"><table class="time-audit-thief-table"><thead><tr><th>과제명</th><th>실제 보낸 시간</th><th>시간의 가치</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
         })()
-      : `<div class="time-audit-thief-empty">해당 날짜 비생산적 기록 없음</div>`;
+      : `<div class="time-audit-thief-empty">${periodMode ? "해당 기간 비생산적 기록 없음" : "해당 날짜 비생산적 기록 없음"}</div>`;
   const makePieByHours = (entries, title) => {
-    const total = entries.reduce((s, e) => s + e.hours, 0);
+    const merged = mergeSmallAuditPieSlices(entries);
+    const total = merged.reduce((s, e) => s + e.hours, 0);
     if (total <= 0)
       return `<div class="time-audit-pie-box"><div class="time-audit-pie-title">${esc(title)}</div><div class="time-audit-pie-empty">데이터 없음</div></div>`;
     let acc = 0;
     const cx = 50;
     const cy = 50;
     const r = 40;
-    const segs = entries
+    const segs = merged
       .map((e, i) => {
         const color = TIME_THIEF_PIE_COLORS[i % TIME_THIEF_PIE_COLORS.length];
         const pct = e.hours / total;
@@ -239,7 +260,7 @@ function getAuditTimeThiefHtml(dateStr, filtered, hourlyRate) {
         return `<path d="${d}" fill="${color}" title="${esc(e.taskName)}: ${Math.round(pct * 100)}%"/>`;
       })
       .join("");
-    const legend = entries
+    const legend = merged
       .map((e, i) => {
         const color = TIME_THIEF_PIE_COLORS[i % TIME_THIEF_PIE_COLORS.length];
         const pct = total > 0 ? Math.round((e.hours / total) * 100) : 0;
@@ -254,12 +275,12 @@ function getAuditTimeThiefHtml(dateStr, filtered, hourlyRate) {
       : `<div class="time-audit-pie-box"><div class="time-audit-pie-title">비생산적 시간 비율</div><div class="time-audit-pie-empty">데이터 없음</div></div>`;
   const timeBoxHtml = `
     <div class="time-audit-thief-summary time-audit-thief-summary-time">
-      <div class="time-audit-thief-summary-label">오늘 낭비한 시간</div>
+      <div class="time-audit-thief-summary-label">낭비한 시간</div>
       <div class="time-audit-thief-summary-num">${formatHoursToReadable(totalWastedHours)}</div>
     </div>`;
   const valueBoxHtml = `
     <div class="time-audit-thief-summary time-audit-thief-summary-value">
-      <div class="time-audit-thief-summary-label">오늘 낭비한 돈</div>
+      <div class="time-audit-thief-summary-label">낭비로 잃은 시간의 가치</div>
       <div class="time-audit-thief-summary-num">${formatPrice(totalWastedValue)}원</div>
     </div>`;
   const rightHalf = `<div class="time-audit-thief-right-half"><div class="time-audit-thief-center">${pieHtml}</div><div class="time-audit-thief-summaries"><div class="time-audit-thief-right time-audit-thief-time-wrap">${timeBoxHtml}</div><div class="time-audit-thief-right time-audit-thief-value-wrap">${valueBoxHtml}</div></div></div>`;
@@ -277,12 +298,15 @@ const TIME_INVESTMENT_PIE_COLORS = [
   "#fb7185",
   "#f9a8d4",
 ];
-function getAuditTimeInvestmentHtml(dateStr, filtered, hourlyRate) {
-  const dateRows = filtered.filter(
-    (r) =>
-      (normalizeDateForCompare(r.date || "") || (r.date || "").trim()) ===
-      dateStr,
-  );
+function getAuditTimeInvestmentHtml(dateStr, filtered, hourlyRate, periodMode) {
+  const dateRows =
+    dateStr == null
+      ? filtered
+      : filtered.filter(
+          (r) =>
+            (normalizeDateForCompare(r.date || "") || (r.date || "").trim()) ===
+            dateStr,
+        );
   const productiveRows = dateRows.filter(
     (r) => String(r.productivity || "").trim() === "productive",
   );
@@ -316,16 +340,17 @@ function getAuditTimeInvestmentHtml(dateStr, filtered, hourlyRate) {
             .join("");
           return `<div class="time-audit-thief-table-wrap"><table class="time-audit-thief-table"><thead><tr><th>과제명</th><th>실제 보낸 시간</th><th>시간의 가치</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
         })()
-      : `<div class="time-audit-thief-empty">해당 날짜 생산적 기록 없음</div>`;
+      : `<div class="time-audit-thief-empty">${periodMode ? "해당 기간 생산적 기록 없음" : "해당 날짜 생산적 기록 없음"}</div>`;
   const makePieByHours = (entries, title) => {
-    const total = entries.reduce((s, e) => s + e.hours, 0);
+    const merged = mergeSmallAuditPieSlices(entries);
+    const total = merged.reduce((s, e) => s + e.hours, 0);
     if (total <= 0)
       return `<div class="time-audit-pie-box"><div class="time-audit-pie-title">${esc(title)}</div><div class="time-audit-pie-empty">데이터 없음</div></div>`;
     let acc = 0;
     const cx = 50;
     const cy = 50;
     const r = 40;
-    const segs = entries
+    const segs = merged
       .map((e, i) => {
         const color =
           TIME_INVESTMENT_PIE_COLORS[i % TIME_INVESTMENT_PIE_COLORS.length];
@@ -344,7 +369,7 @@ function getAuditTimeInvestmentHtml(dateStr, filtered, hourlyRate) {
         return `<path d="${d}" fill="${color}" title="${esc(e.taskName)}: ${Math.round(pct * 100)}%"/>`;
       })
       .join("");
-    const legend = entries
+    const legend = merged
       .map((e, i) => {
         const color =
           TIME_INVESTMENT_PIE_COLORS[i % TIME_INVESTMENT_PIE_COLORS.length];
@@ -360,12 +385,12 @@ function getAuditTimeInvestmentHtml(dateStr, filtered, hourlyRate) {
       : `<div class="time-audit-pie-box"><div class="time-audit-pie-title">생산적 시간 비율</div><div class="time-audit-pie-empty">데이터 없음</div></div>`;
   const timeBoxHtml = `
     <div class="time-audit-thief-summary time-audit-thief-summary-time">
-      <div class="time-audit-thief-summary-label">오늘 투자한 시간</div>
+      <div class="time-audit-thief-summary-label">투자한 시간</div>
       <div class="time-audit-thief-summary-num">${formatHoursToReadable(totalInvestedHours)}</div>
     </div>`;
   const valueBoxHtml = `
     <div class="time-audit-thief-summary time-audit-thief-summary-value time-audit-investment-earned">
-      <div class="time-audit-thief-summary-label">오늘 번 돈</div>
+      <div class="time-audit-thief-summary-label">투자한 시간의 가치</div>
       <div class="time-audit-thief-summary-num">${formatPrice(totalEarned)}원</div>
     </div>`;
   const rightHalf = `<div class="time-audit-thief-right-half"><div class="time-audit-thief-center">${pieHtml}</div><div class="time-audit-thief-summaries"><div class="time-audit-thief-right time-audit-thief-time-wrap">${timeBoxHtml}</div><div class="time-audit-thief-right time-audit-thief-value-wrap">${valueBoxHtml}</div></div></div>`;
@@ -373,31 +398,67 @@ function getAuditTimeInvestmentHtml(dateStr, filtered, hourlyRate) {
 }
 
 /** 오딧 6. 가용시간: 24 - 근무 - 수면, 오늘 하루의 가치(낭비+번돈 합), 총 수면/총 근무 – 4열 동일 너비 */
-function getAuditAvailableTimeHtml(dateStr, filtered, hourlyRate) {
-  const dateRows = filtered.filter(
-    (r) =>
-      (normalizeDateForCompare(r.date || "") || (r.date || "").trim()) ===
-      dateStr,
-  );
+function getAuditAvailableTimeHtml(dateStr, filtered, hourlyRate, periodMode) {
   const hourly = parseFloat(String(hourlyRate || "0").replace(/,/g, "")) || 0;
   let workHours = 0;
   let sleepHours = 0;
   let totalWastedValue = 0;
   let totalEarned = 0;
-  dateRows.forEach((r) => {
-    const hrs = parseTimeToHours(r.timeTracked) || 0;
-    const cat = (
-      r.category ||
-      getTaskOptionByName(r.taskName)?.category ||
-      ""
-    ).trim();
-    if (cat === "work") workHours += hrs;
-    else if (cat === "sleep") sleepHours += hrs;
-    const p = (r.productivity || getProductivityFromCategory(cat) || "").trim();
-    if (p === "nonproductive") totalWastedValue += hrs * hourly * -1;
-    else if (p === "productive") totalEarned += hrs * hourly;
-  });
-  const availableHours = Math.max(0, 24 - workHours - sleepHours);
+  let availableHours = 0;
+
+  if (periodMode) {
+    const byDay = {};
+    filtered.forEach((r) => {
+      const d =
+        normalizeDateForCompare(r.date || "") ||
+        String(r.date || "")
+          .trim()
+          .replace(/\//g, "-")
+          .slice(0, 10);
+      if (!d) return;
+      if (!byDay[d])
+        byDay[d] = { work: 0, sleep: 0, wasted: 0, earned: 0 };
+      const hrs = parseTimeToHours(r.timeTracked) || 0;
+      const cat = (
+        r.category ||
+        getTaskOptionByName(r.taskName)?.category ||
+        ""
+      ).trim();
+      if (cat === "work") byDay[d].work += hrs;
+      else if (cat === "sleep") byDay[d].sleep += hrs;
+      const p = (r.productivity || getProductivityFromCategory(cat) || "").trim();
+      if (p === "nonproductive") byDay[d].wasted += hrs * hourly * -1;
+      else if (p === "productive") byDay[d].earned += hrs * hourly;
+    });
+    Object.values(byDay).forEach((x) => {
+      availableHours += Math.max(0, 24 - x.work - x.sleep);
+      workHours += x.work;
+      sleepHours += x.sleep;
+      totalWastedValue += x.wasted;
+      totalEarned += x.earned;
+    });
+  } else {
+    const dateRows = filtered.filter(
+      (r) =>
+        (normalizeDateForCompare(r.date || "") || (r.date || "").trim()) ===
+        dateStr,
+    );
+    dateRows.forEach((r) => {
+      const hrs = parseTimeToHours(r.timeTracked) || 0;
+      const cat = (
+        r.category ||
+        getTaskOptionByName(r.taskName)?.category ||
+        ""
+      ).trim();
+      if (cat === "work") workHours += hrs;
+      else if (cat === "sleep") sleepHours += hrs;
+      const p = (r.productivity || getProductivityFromCategory(cat) || "").trim();
+      if (p === "nonproductive") totalWastedValue += hrs * hourly * -1;
+      else if (p === "productive") totalEarned += hrs * hourly;
+    });
+    availableHours = Math.max(0, 24 - workHours - sleepHours);
+  }
+
   const dayValue = totalEarned + totalWastedValue;
   const valueSign = dayValue >= 0 ? "+" : "";
   const valueText = `${valueSign}${formatPrice(dayValue)}원`;
@@ -407,18 +468,22 @@ function getAuditAvailableTimeHtml(dateStr, filtered, hourlyRate) {
       : "time-audit-available-box-value time-audit-available-value-minus";
   const boxes = [
     {
-      label: "가용시간",
+      label: periodMode ? "가용시간 합계" : "가용시간",
       value: formatHoursToReadable(availableHours),
       class: "time-audit-available-box-available",
     },
-    { label: "오늘 하루의 가치", value: valueText, class: valueClass },
     {
-      label: "총 근무시간",
+      label: periodMode ? "기간 동안의 가치" : "오늘 하루의 가치",
+      value: valueText,
+      class: valueClass,
+    },
+    {
+      label: periodMode ? "근무시간 합계" : "총 근무시간",
       value: formatHoursToReadable(workHours),
       class: "time-audit-available-box-work",
     },
     {
-      label: "총 수면시간",
+      label: periodMode ? "수면시간 합계" : "총 수면시간",
       value: formatHoursToReadable(sleepHours),
       class: "time-audit-available-box-sleep",
     },
@@ -1492,6 +1557,17 @@ function toDateStr(d) {
   return `${y}-${m}-${day}`;
 }
 
+/** YYYY-MM-DD 구간(포함)마다 콜백 (로컬 정오 기준) */
+function eachDateStrInInclusiveRange(normStart, normEnd, fn) {
+  if (!normStart || !normEnd || normStart > normEnd) return;
+  const cur = new Date(normStart + "T12:00:00");
+  const endAt = new Date(normEnd + "T12:00:00");
+  while (cur <= endAt) {
+    fn(toDateStr(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+}
+
 /** 기간에 따른 날짜 범위 반환 (YYYY-MM-DD, 로컬 기준) - 레거시 period 문자열용 */
 function getDateRangeForPeriod(period) {
   const today = new Date();
@@ -1766,6 +1842,37 @@ function filterRowsByFilterType(rows, type, year, month, start, end) {
     return d >= normStart && d <= normEnd;
   });
   return sortRowsByDateTime(filtered);
+}
+
+/** 오딧 타임라인: 해당 날짜·시작·끝 시각이 있는 행만 */
+function buildAuditTimelineRowsForDate(dateStr, filtered) {
+  const out = [];
+  filtered.forEach((row) => {
+    const d = normalizeDateForCompare(row.date || "") || row.date || "";
+    if (d !== dateStr) return;
+    const startH = parseDateTimeToHours(row.startTime);
+    const endH = parseDateTimeToHours(row.endTime);
+    if (startH == null || endH == null) return;
+    const achRaw = (row.achievement || "")
+      .toString()
+      .trim()
+      .replace(/%/g, "");
+    const achNum =
+      achRaw === ""
+        ? null
+        : (() => {
+            const n = parseInt(achRaw, 10);
+            return Number.isNaN(n) ? null : Math.max(0, Math.min(150, n));
+          })();
+    out.push({
+      taskName: (row.taskName || "").trim() || "—",
+      startH,
+      endH,
+      category: (row.category || "").trim() || "",
+      achievement: achNum,
+    });
+  });
+  return out;
 }
 
 /** 과제명별 시간 집계 { taskName: hours } */
@@ -2640,14 +2747,6 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   priceTd.appendChild(priceDisplay);
   tr.appendChild(priceTd);
 
-  const focusTd = document.createElement("td");
-  focusTd.className = "time-cell time-cell-focus";
-  const focusSpan = document.createElement("span");
-  focusSpan.className = "time-display-focus";
-  focusSpan.textContent = formatFocusForDisplay(rowData.focus);
-  focusTd.appendChild(focusSpan);
-  tr.appendChild(focusTd);
-
   const feedbackTd = document.createElement("td");
   feedbackTd.className = "time-cell time-cell-feedback";
   const feedbackSpan = document.createElement("span");
@@ -3133,7 +3232,7 @@ function collectRowFromTR(tr) {
     category: opt?.category || "",
     date: dateInput?.value || "",
     feedback: feedbackInput?.value || "",
-    focus: (tr.querySelector(".time-display-focus")?.textContent || "").trim(),
+    focus: (tr._rowData?.focus || "").trim(),
     memoTags: [],
     linkedExpenseIds: [],
   };
@@ -3183,12 +3282,6 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   const memo = (rowData.feedback || "")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
-  const focusText = formatFocusForDisplay(rowData.focus || "")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-  const focusBlock = focusText
-    ? `<div class="time-mobile-card-focus"><span class="time-mobile-card-focus-label">방해기록</span><span class="time-mobile-card-focus-text">${focusText}</span></div>`
-    : "";
   const expenseBlock = buildMobileCardExpenseBlockHtml(rowData);
 
   const card = document.createElement("div");
@@ -3212,7 +3305,6 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
         <span class="time-mobile-card-price${priceClass}">${formatPrice(priceVal)}</span>
       </div>
       ${memo ? `<div class="time-mobile-card-memo">${memo}</div>` : ""}
-      ${focusBlock}
       ${expenseBlock}
     </div>
   `;
@@ -3250,7 +3342,6 @@ function createTableHTML() {
       <col class="time-col-productivity">
       <col class="time-col-date">
       <col class="time-col-price">
-      <col class="time-col-focus">
       <col class="time-col-feedback">
       <col class="time-col-memo-tag">
     </colgroup>
@@ -3264,7 +3355,6 @@ function createTableHTML() {
         <th class="time-th-productivity">생산성</th>
         <th class="time-th-date">기록 날짜</th>
         <th class="time-th-price">행동의 가치</th>
-        <th class="time-th-focus">방해기록</th>
         <th class="time-th-feedback">과제 메모</th>
         <th class="time-th-memo-tag">메모 태그</th>
       </tr>
@@ -3311,7 +3401,7 @@ function createProductivitySection(
       <td class="time-cell time-cell-tracked time-section-summary-tracked"></td>
       <td class="time-cell time-cell-category" colspan="3"></td>
       <td class="time-cell time-cell-price"><span class="time-section-summary-price"></span></td>
-      <td class="time-cell time-cell-focus" colspan="4"></td>
+      <td class="time-cell time-cell-feedback" colspan="3"></td>
     </tr>
   `;
   table.appendChild(tfoot);
@@ -4069,11 +4159,6 @@ export function render() {
             </div>
           </div>
         </div>
-        <div class="time-task-log-focus-row">
-          <span class="time-task-log-focus-label">방해기록</span>
-          <button type="button" class="time-task-log-focus-add-btn" aria-label="방해기록 추가">+</button>
-          <div class="time-task-log-focus-events-pills"></div>
-        </div>
         <div class="time-task-log-todo-row">
           <span class="time-task-log-todo-label">투두 리스트</span>
           <button type="button" class="time-task-log-todo-add-btn" aria-label="할일 추가">+</button>
@@ -4119,23 +4204,6 @@ export function render() {
           <div class="time-datetime-picker-column" data-col="ampm"></div>
           <div class="time-datetime-picker-column" data-col="hour"></div>
           <div class="time-datetime-picker-column" data-col="minute"></div>
-        </div>
-      </div>
-    </div>
-    <div class="time-task-log-focus-inner-modal" hidden>
-      <div class="time-task-log-focus-inner-backdrop"></div>
-      <div class="time-task-log-focus-inner-panel">
-        <div class="time-task-log-focus-inner-header">
-          <span class="time-task-log-focus-inner-header-label">방해기록</span>
-          <button type="button" class="time-task-log-focus-inner-close" aria-label="닫기">&times;</button>
-        </div>
-        <div class="time-task-log-focus-inner-body">
-          <div class="time-task-log-focus-inner-type-wrap"></div>
-          <div class="time-task-log-focus-inner-input-row">
-            <input type="text" class="time-task-log-focus-inner-time-input" placeholder="hh:mm" maxlength="5"  />
-            <button type="button" class="time-task-log-focus-inner-add">추가</button>
-            <button type="button" class="time-task-log-focus-inner-now-btn">지금</button>
-          </div>
         </div>
       </div>
     </div>
@@ -4683,12 +4751,6 @@ export function render() {
       });
     });
 
-  const taskLogFocusSection = taskLogModal.querySelector(
-    ".time-task-log-focus-section",
-  );
-  const taskLogFocusFields = taskLogModal.querySelector(
-    ".time-task-log-focus-fields",
-  );
   const taskLogExpenseAddBtn = taskLogModal.querySelector(
     ".time-task-log-expense-add-btn",
   );
@@ -5493,63 +5555,6 @@ export function render() {
     return wrap;
   }
 
-  const FOCUS_TYPE_ICONS = [
-    {
-      type: "영상매체",
-      svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m15.007 20h-12.014c-1.101 0-1.993-.892-1.993-1.993v-12.014c0-1.101.892-1.993 1.993-1.993h12.015c1.1 0 1.992.892 1.992 1.993v12.015c0 1.1-.892 1.992-1.993 1.992z"/><path d="m17 9 6-3v12l-6-3"/></g></svg>',
-    },
-    {
-      type: "스마트폰",
-      svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m11.716 20.201 8.485-8.485"/><path d="m3.799 12.284 8.485-8.485"/><path d="m13.13 21.615-10.745-10.745c-.781-.781-.781-2.047 0-2.828l5.657-5.657c.781-.781 2.047-.781 2.828 0l10.745 10.745c.781.781.781 2.047 0 2.828l-5.657 5.657c-.781.781-2.047.781-2.828 0z"/><path d="m8 23c-3.866 0-7-3.134-7-7"/><path d="m16 1c3.866 0 7 3.134 7 7"/></g></svg>',
-    },
-    {
-      type: "잡생각",
-      svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 1h-5c-4.694 0-8.5 3.806-8.5 8.5 0 4.182 3.022 7.65 7 8.36v4.14l6-4h.5c4.694 0 8.5-3.806 8.5-8.5s-3.806-8.5-8.5-8.5z"/><path d="m12 10v-4"/><path d="m12 13v-.01"/></g></svg>',
-    },
-    {
-      type: "배고픔",
-      svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 1v6"/><path d="m2 1v8c0 1.105.895 2 2 2v10c0 1.105.895 2 2 2s2-.895 2-2v-10c1.105 0 2-.895 2-2v-8"/><path d="m22 7c0-3.314-1.791-6-4-6s-4 2.686-4 6c0 2.22.806 4.153 2 5.191v8.809c0 1.105.895 2 2 2s2-.895 2-2v-8.809c1.194-1.038 2-2.971 2-5.191z"/></g></svg>',
-    },
-    {
-      type: "피곤함",
-      svg: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="3.5" r="2.5"/><path d="m4 10h5 6 5"/><path d="m15 17h-6"/><path d="m6 23 3-6v-6.586"/><path d="m15 10.414v6.586l3 6"/></g></svg>',
-    },
-  ];
-  function buildFocusTypeIconButtons(initialValue) {
-    const wrap = document.createElement("div");
-    wrap.className = "time-task-log-focus-type-icons";
-    let value = (initialValue || "").trim();
-    FOCUS_TYPE_ICONS.forEach(({ type, svg }) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "time-task-log-focus-type-icon-btn";
-      btn.dataset.type = type;
-      btn.title = type;
-      const label = type === "피곤함" ? "피곤" : type;
-      btn.innerHTML = `${svg}<span class="time-task-log-focus-type-icon-btn-label">${label}</span>`;
-      btn.addEventListener("click", () => {
-        value = value === type ? "" : type;
-        wrap
-          .querySelectorAll(".time-task-log-focus-type-icon-btn")
-          .forEach((b) =>
-            b.classList.toggle("selected", b.dataset.type === value),
-          );
-      });
-      if (value === type) btn.classList.add("selected");
-      wrap.appendChild(btn);
-    });
-    wrap._getValue = () => value;
-    wrap._setValue = (v) => {
-      value = (v || "").trim();
-      wrap
-        .querySelectorAll(".time-task-log-focus-type-icon-btn")
-        .forEach((b) =>
-          b.classList.toggle("selected", b.dataset.type === value),
-        );
-    };
-    return wrap;
-  }
-
   /* 소비 기록 모달: 항상 지출만 기록, 큰분류 선택 없음 */
   const expenseClassificationButtons = buildExpenseClassificationByFlowTypeButtons(
     () => "지출",
@@ -5558,14 +5563,6 @@ export function render() {
   );
 
   taskLogExpenseClassificationWrap?.appendChild(expenseClassificationButtons);
-
-  const taskLogFocusInnerTypeWrap = taskLogModal.querySelector(
-    ".time-task-log-focus-inner-type-wrap",
-  );
-  const focusTypeDropdown = buildFocusTypeIconButtons("");
-  if (taskLogFocusInnerTypeWrap) {
-    taskLogFocusInnerTypeWrap.appendChild(focusTypeDropdown);
-  }
 
   function onTaskSelectedForLog(taskName) {
     refreshKpiTodosInLogModal(taskName);
@@ -5673,184 +5670,6 @@ export function render() {
       });
     });
   }
-  let taskLogFocusEvents = [];
-  const focusRowEventsPills = taskLogModal.querySelector(
-    ".time-task-log-focus-events-pills",
-  );
-  const focusModalEventsList = taskLogModal.querySelector(
-    ".time-task-log-focus-inner-events-list",
-  );
-  const focusModalNowBtn = taskLogModal.querySelector(
-    ".time-task-log-focus-inner-now-btn",
-  );
-  const focusModalTimeInput = taskLogModal.querySelector(
-    ".time-task-log-focus-inner-time-input",
-  );
-  const focusModal = taskLogModal.querySelector(
-    ".time-task-log-focus-inner-modal",
-  );
-  const focusModalBackdrop = taskLogModal.querySelector(
-    ".time-task-log-focus-inner-backdrop",
-  );
-  const focusModalClose = taskLogModal.querySelector(
-    ".time-task-log-focus-inner-close",
-  );
-  const focusModalAdd = taskLogModal.querySelector(
-    ".time-task-log-focus-inner-add",
-  );
-  const focusRow = taskLogModal.querySelector(".time-task-log-focus-row");
-  const focusAddBtn = taskLogModal.querySelector(".time-task-log-focus-add-btn");
-  let taskLogFocusModalEvents = [];
-  let taskLogFocusTypeValue = "";
-
-  function isValidHhMm(val) {
-    if (!val || typeof val !== "string") return false;
-    const m = val.trim().match(/^(\d{1,2}):(\d{1,2})$/);
-    if (!m) return false;
-    const h = parseInt(m[1], 10);
-    const min = parseInt(m[2], 10);
-    return h >= 0 && h <= 23 && min >= 0 && min <= 59;
-  }
-
-  function formatToHhMm(val) {
-    if (!val || typeof val !== "string") return "";
-    const s = val.trim().replace(/[^\d:]/g, "");
-    if (s.length <= 2) return s;
-    const parts = s.split(":");
-    if (parts.length === 1 && s.length >= 3) {
-      return s.slice(0, 2) + ":" + s.slice(2, 4);
-    }
-    if (parts.length === 2) {
-      const h = parts[0].slice(0, 2);
-      const m = parts[1].slice(0, 2);
-      return h + ":" + m;
-    }
-    return s.slice(0, 5);
-  }
-
-  function getCurrentHHMM() {
-    const now = new Date();
-    return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-  }
-
-  function buildFocusValueFromEvents(events) {
-    if (!events.length) return "";
-    return events
-      .map((e) => `${e.time || ""}|${e.type || ""}`.trim())
-      .filter(Boolean)
-      .join(";");
-  }
-
-  function updateFocusRowPills() {
-    if (!focusRowEventsPills) return;
-    focusRowEventsPills.innerHTML = "";
-    taskLogFocusEvents.forEach((e, idx) => {
-      const pill = document.createElement("span");
-      pill.className = "time-task-log-focus-event-pill time-memo-tag-chip";
-      const label = [e.type, e.time].filter(Boolean).join(" | ") || "";
-      pill.innerHTML = `<span class="time-memo-tag-chip-text">${escapeHtml(label)}</span><button type="button" class="time-memo-tag-chip-remove" aria-label="삭제">&times;</button>`;
-      pill
-        .querySelector(".time-memo-tag-chip-remove")
-        ?.addEventListener("click", (ev) => {
-          ev.preventDefault();
-          taskLogFocusEvents.splice(idx, 1);
-          updateFocusRowPills();
-        });
-      focusRowEventsPills.appendChild(pill);
-    });
-  }
-
-  function updateFocusModalEventsList() {
-    if (!focusModalEventsList) return;
-    focusModalEventsList.innerHTML = "";
-    taskLogFocusModalEvents.forEach((e, idx) => {
-      const item = document.createElement("div");
-      item.className = "time-task-log-focus-event-item";
-      const label = document.createElement("span");
-      label.className = "time-task-log-focus-event-label";
-      label.textContent = [e.type, e.time].filter(Boolean).join(" ") || "";
-      const delBtn = document.createElement("button");
-      delBtn.type = "button";
-      delBtn.className = "time-task-log-focus-event-del";
-      delBtn.textContent = "×";
-      delBtn.title = "삭제";
-      delBtn.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        taskLogFocusModalEvents.splice(idx, 1);
-        updateFocusModalEventsList();
-      });
-      item.appendChild(label);
-      item.appendChild(delBtn);
-      focusModalEventsList.appendChild(item);
-    });
-  }
-
-  function openFocusModal() {
-    taskLogFocusModalEvents = taskLogFocusEvents.slice();
-    updateFocusModalEventsList();
-    if (focusModal) focusModal.hidden = false;
-    if (focusModalTimeInput) focusModalTimeInput.value = "";
-    if (taskLogFocusModalEvents.length > 0) {
-      const last = taskLogFocusModalEvents[taskLogFocusModalEvents.length - 1];
-      focusTypeDropdown?._setValue?.(last.type || "");
-    }
-    focusModalTimeInput?.focus();
-  }
-
-  function closeFocusModal() {
-    if (focusModal) focusModal.hidden = true;
-  }
-
-  focusAddBtn?.addEventListener("click", () => openFocusModal());
-  focusModalBackdrop?.addEventListener("click", closeFocusModal);
-  focusModalClose?.addEventListener("click", closeFocusModal);
-
-  focusModalAdd?.addEventListener("click", () => {
-    // 추가 클릭 시, 시간 입력란에 유효한 값이 있으면 아직 리스트에 없는 경우 먼저 추가
-    const timeVal = (focusModalTimeInput?.value || "").trim();
-    if (isValidHhMm(timeVal)) {
-      const [h, m] = timeVal.split(":").map((x) => parseInt(x, 10) || 0);
-      const normalized = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-      if (!taskLogFocusModalEvents.some((ev) => ev.time === normalized)) {
-        const type = (focusTypeDropdown?._getValue?.() || "").trim();
-        taskLogFocusModalEvents.push({ time: normalized, type });
-      }
-    }
-
-    taskLogFocusEvents = taskLogFocusModalEvents.slice();
-    updateFocusRowPills();
-    closeFocusModal(); // 추가 시 모달 닫기
-  });
-
-  focusModalNowBtn?.addEventListener("click", (ev) => {
-    ev.preventDefault();
-    const nowTime = getCurrentHHMM();
-    if (focusModalTimeInput) {
-      focusModalTimeInput.value = nowTime;
-      focusModalTimeInput.focus();
-    }
-  });
-
-  focusModalTimeInput?.addEventListener("input", (e) => {
-    const formatted = formatToHhMm(e.target.value);
-    if (formatted !== e.target.value) e.target.value = formatted;
-  });
-  focusModalTimeInput?.addEventListener("keydown", (e) => {
-    if (e.key !== "Enter") return;
-    e.preventDefault();
-    const type = (focusTypeDropdown?._getValue?.() || "").trim();
-    const timeVal = (focusModalTimeInput?.value || "").trim();
-    if (!isValidHhMm(timeVal)) {
-      alert("hh:mm 형식으로 입력해주세요 (예: 09:30).");
-      return;
-    }
-    const [h, m] = timeVal.split(":").map((x) => parseInt(x, 10) || 0);
-    const normalized = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-    if (taskLogFocusModalEvents.some((ev) => ev.time === normalized)) return;
-    taskLogFocusModalEvents.push({ time: normalized, type });
-    updateFocusModalEventsList();
-    focusModalTimeInput.value = "";
-  });
   function updateScoreBtnStates(container, value) {
     if (!container) return;
     container.querySelectorAll(".time-task-log-score-btn").forEach((b) => {
@@ -6292,11 +6111,6 @@ export function render() {
     if (taskLogEmotionInnerModal) taskLogEmotionInnerModal.hidden = true;
     if (taskLogKpiTodosSection) taskLogKpiTodosSection.hidden = true;
     if (taskLogKpiTodosList) taskLogKpiTodosList.innerHTML = "";
-    taskLogFocusEvents = [];
-    taskLogFocusTypeValue = "";
-    if (focusModalTimeInput) focusModalTimeInput.value = "";
-    focusTypeDropdown?._setValue?.("");
-    updateFocusRowPills();
   }
 
   function openTaskLogModalForEdit(tr, rowData) {
@@ -6403,18 +6217,6 @@ export function render() {
       data.q4 ||
       data.taskName === EMOTION_TASK_POSITIVE ||
       data.taskName === EMOTION_TASK_NEGATIVE;
-    const focusRaw = String(data.focus || "").trim();
-    const defaultTime = (() => {
-      const m = (data.startTime || "").match(/[T\s](\d{1,2}):(\d{2})/);
-      return m ? `${String(m[1]).padStart(2, "0")}:${m[2]}` : "";
-    })();
-    taskLogFocusEvents = parseFocusEvents(focusRaw, defaultTime);
-    taskLogFocusTypeValue =
-      taskLogFocusEvents.length > 0
-        ? taskLogFocusEvents[taskLogFocusEvents.length - 1].type
-        : "";
-    if (focusRaw) updateFocusRowPills();
-    focusTypeDropdown?._setValue?.(taskLogFocusTypeValue || "");
   }
 
   function closeTaskLogModal() {
@@ -6520,10 +6322,7 @@ export function render() {
       ? (classificationToCategory[expenseClassification] || "")
       : "";
 
-    const focusValue =
-      taskLogFocusEvents.length > 0
-        ? buildFocusValueFromEvents(taskLogFocusEvents)
-        : "";
+    const focusValue = "";
 
     const hasExpenseContent =
       expenseName || expenseClassification || expenseAmount;
@@ -6628,11 +6427,6 @@ export function render() {
         editTr.querySelector(".time-display-date").textContent = dateStr
           ? formatDateDisplay(dateStr)
           : "";
-        const focusDisplay = editTr.querySelector(
-          ".time-cell-focus .time-display-focus",
-        );
-        if (focusDisplay)
-          focusDisplay.textContent = formatFocusForDisplay(focusValue);
         editTr._updatePrice?.();
       }
     } else if (addCtx) {
@@ -8285,358 +8079,100 @@ export function render() {
     contentWrap.appendChild(wrap);
   }
 
-  function renderAudit(rows = []) {
-    clearTimeLedgerMobileElapsedTimer(el);
-    rescueTimeFilterControlsToFilterBar();
-    contentWrap.innerHTML = "";
-    const isMobile = window.matchMedia("(max-width: 48rem)").matches;
+  /** 오딧 2. 시간갭: 목표 vs 실제 막대 (하루 / 기간 합산 목표) */
+  function getAuditTimeGapBarSectionInnerHtml(
+    dateStr,
+    filtered,
+    periodMode,
+    normStart,
+    normEnd,
+  ) {
+    const BASIC_TASKS = ["수면하기", "근무하기"];
+    const dateRows = periodMode
+      ? filtered
+      : filtered.filter(
+          (r) =>
+            (normalizeDateForCompare(r.date || "") || r.date || "") === dateStr,
+        );
+    const actualByTask = aggregateHoursByTask(dateRows);
+    const scheduleRows = [];
 
-    function appendMobileAuditToolbar() {
-      if (!isMobile || !filterNavCluster) return;
-      const toolbar = document.createElement("div");
-      toolbar.className = "time-ledger-mobile-toolbar";
-      const toolbarRight = document.createElement("div");
-      toolbarRight.className = "time-ledger-mobile-toolbar-right";
-      toolbarRight.appendChild(filterNavCluster);
-      toolbar.appendChild(toolbarRight);
-      contentWrap.appendChild(toolbar);
-    }
-
-    const type = filterType;
-    const y = filterYear;
-    const m = filterMonth;
-    const start = startDateInput.value || filterStartDate;
-    const end = endDateInput.value || filterEndDate;
-    const periodLabel = getFilterPeriodLabel(type, y, m, start, end);
-    const filtered = filterRowsByFilterType(rows, type, y, m, start, end);
-    const defaultTimeFromStart = (st) => {
-      const m = (st || "").match(/[T\s](\d{1,2}):(\d{2})/);
-      return m ? `${String(m[1]).padStart(2, "0")}:${m[2]}` : "";
-    };
-    const timeStrToHours = (t) => {
-      if (!t || typeof t !== "string") return null;
-      const m = t.trim().match(/^(\d{1,2}):?(\d{2})?/);
-      if (!m) return null;
-      return parseInt(m[1], 10) + (parseInt(m[2], 10) || 0) / 60;
-    };
-
-    const wrap = document.createElement("div");
-    wrap.className = "time-audit-view";
-
-    if (filtered.length === 0) {
-      wrap.innerHTML = `
-        <div class="time-audit-empty">
-          <div class="time-audit-empty-title">${periodLabel} 시간기록이 없습니다</div>
-          <div class="time-audit-empty-desc">해당 날짜의 시간기록을 입력하면 오딧에 표시됩니다.</div>
-        </div>
-      `;
-      appendMobileAuditToolbar();
-      contentWrap.appendChild(wrap);
-      return;
-    }
-
-    const chartW = 600;
-    const chartH = 180;
-    const padLeft = 44;
-    const padRight = 16;
-    const padTop = 28;
-    const padBottom = 44;
-    const plotW = chartW - padLeft - padRight;
-    const plotH = chartH - padTop - padBottom;
-    const toX = (hours) =>
-      padLeft + (Math.max(0, Math.min(hours, 24)) / 24) * plotW;
-
-    const byDate = {};
-    filtered.forEach((row) => {
-      const d = normalizeDateForCompare(row.date || "") || row.date || "";
-      if (!d) return;
-      if (!byDate[d]) byDate[d] = { rows: [], events: [] };
-      const startH = parseDateTimeToHours(row.startTime);
-      const endH = parseDateTimeToHours(row.endTime);
-      const defTime = defaultTimeFromStart(row.startTime);
-      const events = parseFocusEvents(row.focus, defTime);
-      if (startH == null || endH == null) return;
-      const eventsWithHours = events
-        .map((e) => ({
-          ...e,
-          hours: e.time ? timeStrToHours(e.time) : null,
-        }))
-        .filter((e) => e.hours != null && e.hours >= 0 && e.hours < 24);
-      const hasFocus = eventsWithHours.length > 0;
-      const achRaw = (row.achievement || "")
-        .toString()
-        .trim()
-        .replace(/%/g, "");
-      const achNum =
-        achRaw === ""
-          ? null
-          : (() => {
-              const n = parseInt(achRaw, 10);
-              return Number.isNaN(n) ? null : Math.max(0, Math.min(150, n));
-            })();
-      byDate[d].rows.push({
-        taskName: (row.taskName || "").trim() || "—",
-        startH,
-        endH,
-        events: eventsWithHours,
-        hasFocus,
-        category: (row.category || "").trim() || "",
-        achievement: achNum,
-      });
-      eventsWithHours.forEach((ev) => {
-        byDate[d].events.push({ hours: ev.hours, type: ev.type || "" });
-      });
-    });
-
-    Object.keys(byDate)
-      .sort()
-      .forEach((dateStr) => {
-        const day = byDate[dateStr];
-        const dayRows = day.rows;
-        if (dayRows.length === 0) return;
-
-        const allEvents = day.events
-          .slice()
-          .sort((a, b) => (a.hours || 0) - (b.hours || 0));
-        const eventTimes = [
-          ...new Set(allEvents.map((e) => e.hours).filter((h) => h != null)),
-        ].sort((a, b) => a - b);
-        const RECOVERY_MINUTES = 6;
-        const recoveryTimes = eventTimes.map((t) => t + RECOVERY_MINUTES / 60);
-        const taskBounds = dayRows.flatMap((r) => [r.startH, r.endH]);
-        const breakpoints = [
-          ...new Set([0, 24, ...eventTimes, ...recoveryTimes, ...taskBounds]),
-        ].sort((a, b) => a - b);
-
-        const concTop = padTop;
-        const concBottom = padTop + plotH;
-
-        const isInAnyTask = (h) =>
-          dayRows.some((r) => h >= r.startH && h < r.endH);
-        const hasFocusInRange = (h) =>
-          dayRows.some((r) => h >= r.startH && h < r.endH && r.hasFocus);
-        const isInRecovery = (h) =>
-          hasFocusInRange(h) &&
-          eventTimes.some((t) => h >= t && h < t + RECOVERY_MINUTES / 60);
-
-        /* 톱니바퀴: 방해 시 수직 하락 → 6분간 바닥 유지 → 점진적 상승. 초기: 방해 없으면 상단 */
-        const concPathStr2 = (() => {
-          const firstSegStart = breakpoints[0];
-          const firstSegEnd = breakpoints[1];
-          const firstMidX = (firstSegStart + firstSegEnd) / 2;
-          const firstInTask = isInAnyTask(firstMidX);
-          const firstInRecovery = isInRecovery(firstMidX);
-          const startAtTop = firstInTask && !firstInRecovery;
-          const pts = [{ x: padLeft, y: startAtTop ? concTop : concBottom }];
-          let currentY = startAtTop ? concTop : concBottom;
-          for (let i = 0; i < breakpoints.length - 1; i++) {
-            const segStart = breakpoints[i];
-            const segEnd = breakpoints[i + 1];
-            const midX = (segStart + segEnd) / 2;
-            const nextInTask = isInAnyTask(midX);
-            const nextInRecovery = isInRecovery(midX);
-            const x1 = toX(segStart);
-            const x2 = toX(segEnd);
-            if (eventTimes.includes(segStart) && currentY === concTop) {
-              pts.push({ x: x1, y: concBottom });
-              currentY = concBottom;
-            }
-            if (!nextInTask && currentY === concTop) {
-              pts.push({ x: x1, y: concBottom });
-              currentY = concBottom;
-            }
-            if (nextInRecovery || !nextInTask) {
-              pts.push({ x: x2, y: concBottom });
-              currentY = concBottom;
-            } else {
-              pts.push({ x: x2, y: concTop });
-              currentY = concTop;
-            }
-            if (eventTimes.includes(segEnd) && nextInTask && !nextInRecovery) {
-              pts.push({ x: x2, y: concBottom });
-              currentY = concBottom;
-            }
-          }
-          pts.push({ x: padLeft + plotW, y: currentY });
-          pts.push({ x: padLeft + plotW, y: concBottom });
-          let d = `M ${pts[0].x} ${pts[0].y}`;
-          for (let i = 1; i < pts.length; i++) {
-            d += ` L ${pts[i].x} ${pts[i].y}`;
-          }
-          const fillPath = d + " Z";
-          let strokeD = "";
-          for (let i = 0; i < pts.length - 1; i++) {
-            const a = pts[i];
-            const b = pts[i + 1];
-            const segAtBottom =
-              a.y === concBottom && b.y === concBottom && a.x !== b.x;
-            if (segAtBottom) {
-              if (strokeD) strokeD += ` M ${b.x} ${b.y}`;
-              continue;
-            }
-            if (!strokeD) strokeD = `M ${a.x} ${a.y}`;
-            strokeD += ` L ${b.x} ${b.y}`;
-          }
-          return { fillPath, strokePath: strokeD };
-        })();
-
-        const xLabels = [];
-        for (let h = 0; h <= 24; h += 1) {
-          xLabels.push({
-            x: toX(h),
-            label: `${String(h).padStart(2, "0")}:00`,
-          });
-        }
-
-        const getCategoryColor = (cat) => getCategoryColorForReport(cat);
-        const minBarWidthForLabel = plotW * (1.5 / 24);
-        const esc = (s) =>
-          String(s)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/"/g, "&quot;");
-        const taskRectsAndLabels = dayRows.map((r) => {
-          const x1 = toX(r.startH);
-          const x2 = toX(r.endH);
-          const w = Math.max(2, x2 - x1);
-          const color = getCategoryColor(r.category);
-          const rectStr = `<rect x="${x1}" y="${padTop}" width="${w}" height="${plotH}" fill="${color}" stroke="rgba(0,0,0,0.06)" stroke-width="0.5"/>`;
-          const fitLabel = w >= minBarWidthForLabel;
-          const labelX = x1 + 5;
-          const labelY = padTop + plotH / 2;
-          const textStr = fitLabel
-            ? `<text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" font-size="6" fill="#7a7a7a" class="time-audit-bar-inner-label" transform="rotate(-90, ${labelX}, ${labelY})">${esc(r.taskName)}</text>`
-            : "";
-          return { rectStr, textStr, fitLabel, r };
+    if (periodMode && normStart && normEnd) {
+      const excludedUnion = new Set();
+      const goalAcc = {};
+      eachDateStrInInclusiveRange(normStart, normEnd, (d) => {
+        getBudgetExcluded(d).forEach((t) => excludedUnion.add(t));
+        const g = getBudgetGoals(d);
+        Object.entries(g).forEach(([task, data]) => {
+          if (isBudgetPlaceholder(task)) return;
+          const gh = parseTimeToHours(data?.goalTime) || 0;
+          if (!goalAcc[task])
+            goalAcc[task] = { goalHrsSum: 0, isInvest: data?.isInvest };
+          goalAcc[task].goalHrsSum += gh;
+          if (data?.isInvest === true) goalAcc[task].isInvest = true;
+          else if (data?.isInvest === false) goalAcc[task].isInvest = false;
         });
-        const taskRects = taskRectsAndLabels
-          .map((o) => o.rectStr + o.textStr)
-          .join("");
-        const narrowLegendItems = taskRectsAndLabels
-          .filter((o) => !o.fitLabel)
-          .map(
-            (o) =>
-              `<span class="time-audit-legend-item" style="--legend-color:${getCategoryColor(o.r.category)}">${esc(o.r.taskName)} (${String(Math.floor(o.r.startH)).padStart(2, "0")}:${String(Math.round((o.r.startH % 1) * 60)).padStart(2, "0")}~${String(Math.floor(o.r.endH)).padStart(2, "0")}:${String(Math.round((o.r.endH % 1) * 60)).padStart(2, "0")})</span>`,
-          )
-          .join("");
+      });
+      Object.entries(goalAcc).forEach(([task, data]) => {
+        if (excludedUnion.has(task) || isBudgetPlaceholder(task)) return;
+        const isBasic = BASIC_TASKS.includes(task);
+        const isInvest = data?.isInvest === true;
+        const isConsume = data?.isInvest === false;
+        if (!isBasic && !isInvest && !isConsume) return;
+        const actualHrs = actualByTask[task] || 0;
+        const section = isBasic ? 1 : isInvest ? 3 : 4;
+        scheduleRows.push({
+          task,
+          goalHrs: data.goalHrsSum || 0,
+          actualHrs,
+          section,
+        });
+      });
+    } else {
+      const storedGoals = getBudgetGoals(dateStr);
+      const excluded = getBudgetExcluded(dateStr);
+      Object.entries(storedGoals).forEach(([task, data]) => {
+        if (excluded.has(task) || isBudgetPlaceholder(task)) return;
+        const isBasic = BASIC_TASKS.includes(task);
+        const isInvest = data?.isInvest === true;
+        const isConsume = data?.isInvest === false;
+        if (!isBasic && !isInvest && !isConsume) return;
+        const goalTime = data?.goalTime || "";
+        const actualHrs = actualByTask[task] || 0;
+        const section = isBasic ? 1 : isInvest ? 3 : 4;
+        scheduleRows.push({ task, goalTime, actualHrs, section });
+      });
+    }
 
-        const fmtHhMm = (h) =>
-          h != null
-            ? `${String(Math.floor(h)).padStart(2, "0")}:${String(Math.round((h % 1) * 60)).padStart(2, "0")}`
-            : "";
-        const listItemsHtml = allEvents
-          .map(
-            (e) =>
-              `<div class="time-audit-event-item">${fmtHhMm(e.hours)} ${e.type || ""}</div>`,
-          )
-          .join("");
-
-        /* 시간 기록 모바일 .date-divider 와 동일 YYYY.MM.DD 표기 */
-        const dateLabel =
-          dateStr && dateStr.length >= 10
-            ? `${dateStr.slice(0, 4)}.${dateStr.slice(5, 7)}.${dateStr.slice(8, 10)}`
-            : dateStr;
-
-        const block = document.createElement("div");
-        block.className = "time-audit-block time-audit-block-integrated";
-        block.innerHTML = `
-          <div class="time-audit-day-header">
-            <span class="time-audit-day-label">${dateLabel}</span>
-          </div>
-          <div class="time-audit-region time-audit-region-available">
-            <div class="time-audit-region-title">1. 가용시간</div>
-          ${(() => {
-            const hourlyRate =
-              parseFloat(
-                String(
-                  el.querySelector(".time-hourly-input")?.value || "0",
-                ).replace(/,/g, ""),
-              ) || 0;
-            return getAuditAvailableTimeHtml(dateStr, filtered, hourlyRate);
-          })()}
-          </div>
-          <div class="time-audit-region time-audit-region-concentration">
-            <div class="time-audit-region-title">2. 집중력</div>
-          <div class="time-audit-row">
-            <div class="time-audit-charts">
-              <div class="time-audit-chart-wrap">
-                <svg class="time-audit-svg" viewBox="0 0 ${chartW} ${chartH}" preserveAspectRatio="xMidYMid meet">
-                  <defs><clipPath id="time-audit-conc-clip-${String(dateStr).replace(/[^a-z0-9-]/gi, "-")}"><rect x="${padLeft}" y="${padTop}" width="${plotW}" height="${plotH}"/></clipPath></defs>
-                  ${Array.from({ length: 25 }, (_, i) => {
-                    const x = toX(i);
-                    return `<line x1="${x}" y1="${padTop}" x2="${x}" y2="${concBottom}" stroke="#e5e7eb" stroke-width="0.25" stroke-dasharray="4,3"/>`;
-                  }).join("")}
-                  <line x1="${padLeft}" y1="${concBottom}" x2="${padLeft + plotW}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
-                  <line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
-                  <text class="time-audit-conc-y-label" x="${padLeft - 12}" y="${(padTop + concBottom) / 2}" text-anchor="middle" font-size="7" fill="#B8B8B8" transform="rotate(-90, ${padLeft - 12}, ${(padTop + concBottom) / 2})">집중력</text>
-                  <g clip-path="url(#time-audit-conc-clip-${String(dateStr).replace(/[^a-z0-9-]/gi, "-")})">${taskRects}</g>
-                  <path d="${concPathStr2.fillPath}" fill="none" stroke="none"/>
-                  ${concPathStr2.strokePath ? `<path d="${concPathStr2.strokePath}" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>` : ""}
-                  ${xLabels
-                    .filter((_, i) => i % 2 === 0 || i === xLabels.length - 1)
-                    .map(
-                      (l) =>
-                        `<text x="${l.x}" y="${concBottom + 10}" text-anchor="middle" font-size="6" fill="#b8b8b8">${l.label}</text>`,
-                    )
-                    .join("")}
-                </svg>
-              </div>
-              ${narrowLegendItems ? `<div class="time-audit-task-legend">${narrowLegendItems}</div>` : ""}
-            </div>
-            <div class="time-audit-event-list">
-              <div class="time-audit-event-list-title">방해 기록</div>
-              <div class="time-audit-event-items">${listItemsHtml || '<div class="time-audit-event-empty">기록 없음</div>'}</div>
-            </div>
-          </div>
-          </div>
-          <div class="time-audit-region time-audit-region-time-gap">
-            <div class="time-audit-region-title">3. 시간갭</div>
-          ${(() => {
-            const BASIC_TASKS = ["수면하기", "근무하기"];
-            const storedGoals = getBudgetGoals(dateStr);
-            const excluded = getBudgetExcluded(dateStr);
-            const dateRows = filtered.filter(
-              (r) =>
-                (normalizeDateForCompare(r.date || "") || r.date || "") ===
-                dateStr,
-            );
-            const actualByTask = aggregateHoursByTask(dateRows);
-            const scheduleRows = [];
-            Object.entries(storedGoals).forEach(([task, data]) => {
-              if (excluded.has(task) || isBudgetPlaceholder(task)) return;
-              const isBasic = BASIC_TASKS.includes(task);
-              const isInvest = data?.isInvest === true;
-              const isConsume = data?.isInvest === false;
-              if (!isBasic && !isInvest && !isConsume) return;
-              const goalTime = data?.goalTime || "";
-              const actualHrs = actualByTask[task] || 0;
-              const section = isBasic ? 1 : isInvest ? 3 : 4;
-              scheduleRows.push({ task, goalTime, actualHrs, section });
-            });
-            scheduleRows.sort(
-              (a, b) => a.section - b.section || a.task.localeCompare(b.task),
-            );
-            const barRows = scheduleRows.map((r) => {
-              let cat = "";
-              if (r.task === "근무하기") cat = "work";
-              else if (r.task === "수면하기") cat = "sleep";
-              else cat = getDominantCategoryForTask(dateRows, r.task);
-              const color = getCategoryColorForReport(cat);
-              return {
-                task: r.task,
-                goalHrs: parseTimeToHours(r.goalTime),
-                actualHrs: r.actualHrs,
-                color,
-              };
-            });
-            const maxHrs = Math.max(
-              1,
-              ...barRows.flatMap((r) => [r.goalHrs, r.actualHrs]),
-            );
-            const barChartHtml =
-              barRows.length > 0
-                ? `<div class="time-audit-bar-chart">
-                  <div class="time-audit-bar-chart-title">목표 vs 실제</div>
+    scheduleRows.sort(
+      (a, b) => a.section - b.section || a.task.localeCompare(b.task),
+    );
+    const barRows = scheduleRows.map((r) => {
+      let cat = "";
+      if (r.task === "근무하기") cat = "work";
+      else if (r.task === "수면하기") cat = "sleep";
+      else cat = getDominantCategoryForTask(dateRows, r.task);
+      const color = getCategoryColorForReport(cat);
+      const goalHrs =
+        typeof r.goalHrs === "number"
+          ? r.goalHrs
+          : parseTimeToHours(r.goalTime);
+      return {
+        task: r.task,
+        goalHrs,
+        actualHrs: r.actualHrs,
+        color,
+      };
+    });
+    const maxHrs = Math.max(
+      1,
+      ...barRows.flatMap((r) => [r.goalHrs, r.actualHrs]),
+    );
+    const barChartTitle = periodMode ? "목표 합계 vs 실제" : "목표 vs 실제";
+    const barChartHtml =
+      barRows.length > 0
+        ? `<div class="time-audit-bar-chart">
+                  <div class="time-audit-bar-chart-title">${barChartTitle}</div>
                   <div class="time-audit-bar-rows">
                     ${barRows
                       .map((r) => {
@@ -8670,12 +8206,95 @@ export function render() {
                       .join("")}
                   </div>
                 </div>`
-                : `<div class="time-audit-bar-chart time-audit-bar-chart-empty"><div class="time-audit-pie-empty">목표 없음</div></div>`;
-            return `<div class="time-audit-below-section time-audit-below-section--gap-chart-only">${barChartHtml}</div>`;
-          })()}
+        : `<div class="time-audit-bar-chart time-audit-bar-chart-empty"><div class="time-audit-pie-empty">목표 없음</div></div>`;
+    return `<div class="time-audit-below-section time-audit-below-section--gap-chart-only">${barChartHtml}</div>`;
+  }
+
+  function renderAudit(rows = []) {
+    clearTimeLedgerMobileElapsedTimer(el);
+    rescueTimeFilterControlsToFilterBar();
+    contentWrap.innerHTML = "";
+    const isMobile = window.matchMedia("(max-width: 48rem)").matches;
+
+    function appendMobileAuditToolbar() {
+      if (!isMobile || !filterNavCluster) return;
+      const toolbar = document.createElement("div");
+      toolbar.className = "time-ledger-mobile-toolbar";
+      const toolbarRight = document.createElement("div");
+      toolbarRight.className = "time-ledger-mobile-toolbar-right";
+      toolbarRight.appendChild(filterNavCluster);
+      toolbar.appendChild(toolbarRight);
+      contentWrap.appendChild(toolbar);
+    }
+
+    const type = filterType;
+    const y = filterYear;
+    const m = filterMonth;
+    const start = startDateInput.value || filterStartDate;
+    const end = endDateInput.value || filterEndDate;
+    const periodLabel = getFilterPeriodLabel(type, y, m, start, end);
+    const filtered = filterRowsByFilterType(rows, type, y, m, start, end);
+
+    const wrap = document.createElement("div");
+    wrap.className = "time-audit-view";
+
+    if (filtered.length === 0) {
+      wrap.innerHTML = `
+        <div class="time-audit-empty">
+          <div class="time-audit-empty-title">${periodLabel} 시간기록이 없습니다</div>
+          <div class="time-audit-empty-desc">해당 날짜의 시간기록을 입력하면 오딧에 표시됩니다.</div>
+        </div>
+      `;
+      appendMobileAuditToolbar();
+      contentWrap.appendChild(wrap);
+      return;
+    }
+
+    const { start: rangeRawStart, end: rangeRawEnd } = getDateRangeForFilterType(
+      type,
+      y,
+      m,
+      start,
+      end,
+    );
+    const normStart =
+      normalizeDateForCompare(rangeRawStart || "") || rangeRawStart || "";
+    const normEnd =
+      normalizeDateForCompare(rangeRawEnd || "") || rangeRawEnd || "";
+    const isPeriodSummary = Boolean(
+      normStart && normEnd && String(normStart) < String(normEnd),
+    );
+
+    const blockTitleLabel = isPeriodSummary
+      ? periodLabel
+      : normStart && normStart.length >= 10
+        ? `${normStart.slice(0, 4)}.${normStart.slice(5, 7)}.${normStart.slice(8, 10)}`
+        : periodLabel;
+
+    const auditDayKey = isPeriodSummary ? null : normStart;
+    const dayRows = isPeriodSummary
+      ? []
+      : buildAuditTimelineRowsForDate(normStart, filtered);
+
+    const chartW = 600;
+    const chartH = 180;
+    const padLeft = 44;
+    const padRight = 16;
+    const padTop = 28;
+    const padBottom = 44;
+    const plotW = chartW - padLeft - padRight;
+    const plotH = chartH - padTop - padBottom;
+    const toX = (hours) =>
+      padLeft + (Math.max(0, Math.min(hours, 24)) / 24) * plotW;
+
+    const block = document.createElement("div");
+    block.className = "time-audit-block time-audit-block-integrated";
+    block.innerHTML = `
+          <div class="time-audit-day-header">
+            <span class="time-audit-day-label">${blockTitleLabel}</span>
           </div>
-          <div class="time-audit-region time-audit-region-time-thief">
-            <div class="time-audit-region-title">4. 시간낭비내역</div>
+          <div class="time-audit-region time-audit-region-available">
+            <div class="time-audit-region-title">1. 가용시간</div>
           ${(() => {
             const hourlyRate =
               parseFloat(
@@ -8683,11 +8302,43 @@ export function render() {
                   el.querySelector(".time-hourly-input")?.value || "0",
                 ).replace(/,/g, ""),
               ) || 0;
-            return getAuditTimeThiefHtml(dateStr, filtered, hourlyRate);
+            return getAuditAvailableTimeHtml(
+              auditDayKey,
+              filtered,
+              hourlyRate,
+              isPeriodSummary,
+            );
+          })()}
+          </div>
+          <div class="time-audit-region time-audit-region-time-gap">
+            <div class="time-audit-region-title">2. 시간갭</div>
+          ${getAuditTimeGapBarSectionInnerHtml(
+            auditDayKey || normStart,
+            filtered,
+            isPeriodSummary,
+            normStart,
+            normEnd,
+          )}
+          </div>
+          <div class="time-audit-region time-audit-region-time-thief">
+            <div class="time-audit-region-title">3. 시간낭비내역</div>
+          ${(() => {
+            const hourlyRate =
+              parseFloat(
+                String(
+                  el.querySelector(".time-hourly-input")?.value || "0",
+                ).replace(/,/g, ""),
+              ) || 0;
+            return getAuditTimeThiefHtml(
+              auditDayKey,
+              filtered,
+              hourlyRate,
+              isPeriodSummary,
+            );
           })()}
           </div>
           <div class="time-audit-region time-audit-region-time-investment">
-            <div class="time-audit-region-title">5. 시간 투자 내역</div>
+            <div class="time-audit-region-title">4. 시간 투자 내역</div>
           ${(() => {
             const hourlyRate =
               parseFloat(
@@ -8695,12 +8346,20 @@ export function render() {
                   el.querySelector(".time-hourly-input")?.value || "0",
                 ).replace(/,/g, ""),
               ) || 0;
-            return getAuditTimeInvestmentHtml(dateStr, filtered, hourlyRate);
+            return getAuditTimeInvestmentHtml(
+              auditDayKey,
+              filtered,
+              hourlyRate,
+              isPeriodSummary,
+            );
           })()}
           </div>
           <div class="time-audit-region time-audit-region-achievement">
-            <div class="time-audit-region-title">6. 오늘 내 하루 한눈에 보기</div>
+            <div class="time-audit-region-title">${isPeriodSummary ? "5. 하루 타임라인" : "5. 오늘 내 하루 한눈에 보기"}</div>
             ${(() => {
+              if (isPeriodSummary) {
+                return `<div class="time-audit-achievement-content"><div class="time-audit-achievement-empty">여러 날짜를 선택한 경우에는 24시간 타임라인 대신 위 표·그래프로 기간 전체를 보여 드립니다. 하루만 고르면 이 구역에서 그날 타임라인을 볼 수 있습니다.</div></div>`;
+              }
               const concTop = padTop;
               const concBottom = padTop + plotH;
               const esc = (s) =>
@@ -8710,15 +8369,13 @@ export function render() {
                   .replace(/"/g, "&quot;");
               const clipId =
                 "time-audit-ach-clip-" +
-                String(dateStr).replace(/[^a-z0-9-]/gi, "-");
+                String(auditDayKey || "day").replace(/[^a-z0-9-]/gi, "-");
               const minBarWidthForLabel = plotW * (1.5 / 24);
               const taskRectsAndLabels = dayRows.map((r) => {
                 const x1 = toX(r.startH);
                 const x2 = toX(r.endH);
                 const w = Math.max(2, x2 - x1);
-                const color = getCategoryColor
-                  ? getCategoryColor(r.category)
-                  : "#94a3b8";
+                const color = getCategoryColorForReport(r.category);
                 const rectStr = `<rect x="${x1}" y="${padTop}" width="${w}" height="${plotH}" fill="${color}" stroke="rgba(0,0,0,0.06)" stroke-width="0.5"/>`;
                 const fitLabel = w >= minBarWidthForLabel;
                 const labelX = x1 + 5;
@@ -8737,7 +8394,7 @@ export function render() {
                 .filter((o) => !o.fitLabel)
                 .map(
                   (o) =>
-                    `<span class="time-audit-legend-item" style="--legend-color:${getCategoryColor ? getCategoryColor(o.r.category) : "#94a3b8"}">${esc(o.r.taskName)} (${o.timeRange})</span>`,
+                    `<span class="time-audit-legend-item" style="--legend-color:${getCategoryColorForReport(o.r.category)}">${esc(o.r.taskName)} (${o.timeRange})</span>`,
                 )
                 .join("");
               const xLabels = [];
@@ -8775,8 +8432,7 @@ export function render() {
             })()}
           </div>
         `;
-        wrap.appendChild(block);
-      });
+    wrap.appendChild(block);
 
     appendMobileAuditToolbar();
     contentWrap.appendChild(wrap);
