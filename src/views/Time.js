@@ -190,6 +190,76 @@ function mergeSmallAuditPieSlices(entries, minPct = AUDIT_PIE_MIN_DISPLAY_PCT) {
   return majors;
 }
 
+/** 건강 오딧: 내장 과제 중 식사 2종만 포함, 그 외 내장 건강·비건강 과제는 제외 */
+const AUDIT_HEALTHY_MEAL_TASK_NAMES = new Set(["건강한 식사"]);
+const AUDIT_UNHEALTHY_MEAL_TASK_NAMES = new Set(["건강하지 않은 식사"]);
+const AUDIT_HEALTH_SECTION_BUILTIN_NAMES = new Set(
+  TTC.DEFAULT_TASK_OPTIONS.map((t) => String(t.name || "").trim()).filter(Boolean),
+);
+
+/** 식사 2행: 원래 오딧과 동일 톤 */
+const AUDIT_MEAL_TIMELINE_FILL_HEALTHY = "rgba(245, 170, 178, 0.78)";
+const AUDIT_MEAL_TIMELINE_FILL_UNHEALTHY = "rgba(175, 195, 230, 0.78)";
+
+/** 날짜 플래그 배열에서 연속 true 구간 [시작인덱스, 끝인덱스] */
+function findAuditBooleanRuns(flags) {
+  const runs = [];
+  let start = null;
+  for (let i = 0; i <= flags.length; i++) {
+    const on = i < flags.length && flags[i];
+    if (on) {
+      if (start === null) start = i;
+    } else if (start !== null) {
+      runs.push([start, i - 1]);
+      start = null;
+    }
+  }
+  return runs;
+}
+
+function getAuditHealthTimelineRowDateKey(r) {
+  return (
+    normalizeDateForCompare(r.date || "") ||
+    String(r.date || "")
+      .trim()
+      .replace(/\//g, "-")
+      .slice(0, 10)
+  );
+}
+
+function isHealthyQuadrantTaskName(taskName) {
+  const name = (taskName || "").trim();
+  if (!name) return false;
+  if (AUDIT_HEALTHY_MEAL_TASK_NAMES.has(name)) return true;
+  if (AUDIT_UNHEALTHY_MEAL_TASK_NAMES.has(name)) return false;
+  const opt = getTaskOptionByName(name);
+  let cat = String(opt?.category || "").trim();
+  let prod = String(opt?.productivity || "").trim();
+  if (!prod && cat) prod = getProductivityFromCategory(cat) || "";
+  return cat === "health" && prod === "productive";
+}
+
+function isUnhealthyQuadrantTaskName(taskName) {
+  const name = (taskName || "").trim();
+  if (!name) return false;
+  if (AUDIT_UNHEALTHY_MEAL_TASK_NAMES.has(name)) return true;
+  if (AUDIT_HEALTHY_MEAL_TASK_NAMES.has(name)) return false;
+  const opt = getTaskOptionByName(name);
+  let cat = String(opt?.category || "").trim();
+  let prod = String(opt?.productivity || "").trim();
+  if (!prod && cat) prod = getProductivityFromCategory(cat) || "";
+  return cat === "unhealthy" && prod === "nonproductive";
+}
+
+function getAuditHealthTimelineFillForTask(taskName) {
+  if (AUDIT_HEALTHY_MEAL_TASK_NAMES.has(taskName)) return AUDIT_MEAL_TIMELINE_FILL_HEALTHY;
+  if (AUDIT_UNHEALTHY_MEAL_TASK_NAMES.has(taskName))
+    return AUDIT_MEAL_TIMELINE_FILL_UNHEALTHY;
+  if (isHealthyQuadrantTaskName(taskName))
+    return getCategoryColorForReport("health");
+  return getCategoryColorForReport("unhealthy");
+}
+
 function getAuditTimeThiefHtml(dateStr, filtered, hourlyRate, periodMode) {
   const dateRows =
     dateStr == null
@@ -1072,6 +1142,299 @@ function getNapCategoryProductivity(timeTracked) {
   return { category: "health", productivity: "productive" };
 }
 
+function resolveRowCategoryProductivityForAudit(r) {
+  const taskName = (r.taskName || "").trim();
+  if (!taskName) return { category: "", productivity: "" };
+  const opt = getTaskOptionByName(taskName);
+  let productivity = String(r.productivity || "").trim() || opt?.productivity || "";
+  let category = String(r.category || "").trim() || opt?.category || "";
+  if (taskName === "낮잠" && r.timeTracked) {
+    const nap = getNapCategoryProductivity(r.timeTracked);
+    category = nap.category;
+    productivity = nap.productivity;
+  }
+  if (!productivity && category)
+    productivity = getProductivityFromCategory(category) || productivity;
+  return { category, productivity };
+}
+
+/** 생산적·건강 / 비생산적·비건강 사분면 중, 내장은 식사 2과제만·나머지는 사용자 추가 과제만 */
+function rowMatchesAuditHealthCategoryReport(r) {
+  const taskName = (r.taskName || "").trim();
+  if (!taskName) return false;
+  const { category, productivity } = resolveRowCategoryProductivityForAudit(r);
+  const inHealthy = category === "health" && productivity === "productive";
+  const inUnhealthy = category === "unhealthy" && productivity === "nonproductive";
+  if (!inHealthy && !inUnhealthy) return false;
+  if (
+    AUDIT_HEALTHY_MEAL_TASK_NAMES.has(taskName) ||
+    AUDIT_UNHEALTHY_MEAL_TASK_NAMES.has(taskName)
+  )
+    return true;
+  if (AUDIT_HEALTH_SECTION_BUILTIN_NAMES.has(taskName)) return false;
+  return true;
+}
+
+/** 오딧 4. 건강 카테고리: 날짜축 일별 유무 막대(원래 식사 2행) + 추가 건강·비건강 과제 행, 하단 표는 시간 합산 */
+function getAuditHealthDietTimelineHtml(filtered, normStart, normEnd) {
+  const esc = (s) =>
+    String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+
+  if (!normStart || !normEnd) {
+    return `<div class="time-audit-achievement-empty">날짜 범위를 확인할 수 없습니다.</div>`;
+  }
+
+  const dates = [];
+  eachDateStrInInclusiveRange(normStart, normEnd, (d) => dates.push(d));
+  if (dates.length === 0) {
+    return `<div class="time-audit-achievement-empty">표시할 날짜가 없습니다.</div>`;
+  }
+
+  const relevant = filtered.filter(rowMatchesAuditHealthCategoryReport);
+  const inPeriodNames = new Set();
+  relevant.forEach((r) => {
+    const name = (r.taskName || "").trim();
+    if (!name) return;
+    if ((parseTimeToHours(r.timeTracked) || 0) <= 0) return;
+    const dk = getAuditHealthTimelineRowDateKey(r);
+    if (!dates.includes(dk)) return;
+    inPeriodNames.add(name);
+  });
+
+  const timelineTasks = [];
+  if (inPeriodNames.has("건강한 식사")) timelineTasks.push("건강한 식사");
+  const healthyOther = [...inPeriodNames]
+    .filter((n) => isHealthyQuadrantTaskName(n) && n !== "건강한 식사")
+    .sort((a, b) => a.localeCompare(b, "ko"));
+  timelineTasks.push(...healthyOther);
+  if (inPeriodNames.has("건강하지 않은 식사"))
+    timelineTasks.push("건강하지 않은 식사");
+  const unhealthyOther = [...inPeriodNames]
+    .filter((n) => isUnhealthyQuadrantTaskName(n) && n !== "건강하지 않은 식사")
+    .sort((a, b) => a.localeCompare(b, "ko"));
+  timelineTasks.push(...unhealthyOther);
+
+  const byTask = {};
+  relevant.forEach((r) => {
+    const name = (r.taskName || "").trim();
+    if (!name) return;
+    const hrs = parseTimeToHours(r.timeTracked) || 0;
+    if (hrs <= 0) return;
+    const { category, productivity } = resolveRowCategoryProductivityForAudit(r);
+    const isHealthy = category === "health" && productivity === "productive";
+    const kindLabel = isHealthy ? "건강" : "비건강";
+    const sortGroup = isHealthy ? 0 : 1;
+    if (!byTask[name]) {
+      byTask[name] = {
+        taskName: name,
+        hours: 0,
+        kindLabel,
+        sortGroup,
+      };
+    }
+    byTask[name].hours += hrs;
+  });
+  const tableRows = Object.values(byTask).sort(
+    (a, b) =>
+      a.sortGroup - b.sortGroup ||
+      b.hours - a.hours ||
+      a.taskName.localeCompare(b.taskName),
+  );
+
+  if (timelineTasks.length === 0) {
+    return `<div class="time-audit-achievement-empty">선택한 기간에 해당하는 건강·비건강 과제 기록이 없습니다. (내장 과제는 건강한 식사·건강하지 않은 식사만 집계합니다.)</div>`;
+  }
+
+  const n = dates.length;
+  const padL = 2;
+  const padR = 8;
+  const padT = 14;
+  const padB = 26;
+  const rowPitch = 28;
+  const barH = 13;
+  const nRows = timelineTasks.length;
+  const axisY = padT + rowPitch * nRows + 6;
+  const chartH = axisY + padB;
+  const plotW = Math.min(920, Math.max(340, n * 26));
+  const chartW = padL + plotW + padR;
+  const slotW = plotW / n;
+  const inset = 0.35;
+
+  let rects = "";
+  timelineTasks.forEach((taskName, rowIdx) => {
+    const y = padT + rowPitch * (rowIdx + 0.5);
+    const fill = getAuditHealthTimelineFillForTask(taskName);
+    const flags = dates.map((d) =>
+      relevant.some(
+        (r) =>
+          getAuditHealthTimelineRowDateKey(r) === d &&
+          (r.taskName || "").trim() === taskName &&
+          (parseTimeToHours(r.timeTracked) || 0) > 0,
+      ),
+    );
+    for (const [i0, i1] of findAuditBooleanRuns(flags)) {
+      const x = padL + i0 * slotW + inset;
+      const w = (i1 - i0 + 1) * slotW - inset * 2;
+      rects += `<rect x="${x}" y="${y - barH / 2}" width="${Math.max(w, 1)}" height="${barH}" rx="2" fill="${fill}" stroke="rgba(255,255,255,0.35)" stroke-width="0.4"/>`;
+    }
+  });
+
+  let gridV = "";
+  for (let i = 0; i <= n; i++) {
+    const gx = padL + i * slotW;
+    gridV += `<line x1="${gx}" y1="${padT - 2}" x2="${gx}" y2="${axisY - 2}" stroke="#e8e4dc" stroke-width="0.4" stroke-dasharray="2,3"/>`;
+  }
+
+  const labelStep = n <= 24 ? 1 : Math.max(1, Math.ceil(n / 14));
+  let xlabels = "";
+  for (let i = 0; i < n; i += labelStep) {
+    const cx = padL + i * slotW + slotW / 2;
+    const d = dates[i];
+    const label =
+      d && d.length >= 10 ? `${d.slice(5, 7)}/${d.slice(8, 10)}` : d || "";
+    xlabels += `<text x="${cx}" y="${chartH - 5}" text-anchor="middle" font-size="6.5" fill="#9ca3af">${label}</text>`;
+  }
+  if (n > 1 && (n - 1) % labelStep !== 0) {
+    const i = n - 1;
+    const cx = padL + i * slotW + slotW / 2;
+    const d = dates[i];
+    const label =
+      d && d.length >= 10 ? `${d.slice(5, 7)}/${d.slice(8, 10)}` : d || "";
+    xlabels += `<text x="${cx}" y="${chartH - 5}" text-anchor="middle" font-size="6.5" fill="#9ca3af">${label}</text>`;
+  }
+
+  const legendItems = timelineTasks
+    .map((t) => {
+      const c = getAuditHealthTimelineFillForTask(t);
+      return `<span class="time-audit-legend-item" style="--legend-color:${c}">${esc(t)}</span>`;
+    })
+    .join("");
+  const legend = `<div class="time-audit-health-diet-legend time-audit-health-diet-legend--compact">${legendItems}</div>`;
+
+  const svgBlock = `<div class="time-audit-chart-wrap time-audit-health-diet-scroll">
+        <svg class="time-audit-svg time-audit-health-diet-svg" viewBox="0 0 ${chartW} ${chartH}" preserveAspectRatio="xMinYMid meet" xmlns="http://www.w3.org/2000/svg">
+          ${gridV}
+          <line x1="${padL}" y1="${axisY}" x2="${padL + plotW}" y2="${axisY}" stroke="#d1d5db" stroke-width="1"/>
+          <line x1="${padL}" y1="${padT - 2}" x2="${padL}" y2="${axisY}" stroke="#d1d5db" stroke-width="1"/>
+          ${rects}
+          ${xlabels}
+        </svg>
+      </div>`;
+
+  const rowsHtml = tableRows
+    .map(
+      (r) =>
+        `<tr><td class="time-audit-thief-task">${esc(r.kindLabel)}</td><td class="time-audit-thief-task">${esc(r.taskName)}</td><td class="time-audit-thief-time">${formatHoursToHHMM(r.hours)}</td></tr>`,
+    )
+    .join("");
+  const tableBlock = `<div class="time-audit-thief-table-wrap time-audit-health-table-wrap"><table class="time-audit-thief-table"><thead><tr><th>구분</th><th>과제명</th><th>시간</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+
+  return `<div class="time-audit-health-diet-wrap">
+    ${legend}
+    ${svgBlock}
+    ${tableBlock}
+  </div>`;
+}
+
+/** 오딧 5. 미디어: 쾌락 4종·꿈방해 2종 항상 표시 + 해당 카테고리 사용자 추가 과제 (시간 합산 막대) */
+const AUDIT_MEDIA_ALWAYS_SHOW = [
+  "쇼츠/릴스 피드 보기",
+  "무의식적 SNS",
+  "단순 쾌락형 영상 시청",
+  "쾌락성 모임 참석",
+  "무의식적 폰 사용",
+  "무의식적 검색",
+];
+const AUDIT_MEDIA_ALWAYS_SHOW_SET = new Set(AUDIT_MEDIA_ALWAYS_SHOW);
+
+function rowMatchesAuditMediaSection(r) {
+  const name = (r.taskName || "").trim();
+  if (!name) return false;
+  const { category, productivity } = resolveRowCategoryProductivityForAudit(r);
+  if (String(productivity || "").trim() !== "nonproductive") return false;
+  const cat = String(category || "").trim();
+  if (cat !== "pleasure" && cat !== "dreamblocking") return false;
+  if (AUDIT_MEDIA_ALWAYS_SHOW_SET.has(name)) return true;
+  if (AUDIT_HEALTH_SECTION_BUILTIN_NAMES.has(name)) return false;
+  return true;
+}
+
+function getAuditMediaBarCategoryKey(taskName) {
+  const n = (taskName || "").trim();
+  if (n === "무의식적 폰 사용" || n === "무의식적 검색")
+    return "dreamblocking";
+  if (AUDIT_MEDIA_ALWAYS_SHOW_SET.has(n)) return "pleasure";
+  const opt = getTaskOptionByName(n);
+  return String(opt?.category || "").trim() === "dreamblocking"
+    ? "dreamblocking"
+    : "pleasure";
+}
+
+function getAuditMediaWatchHoursHtml(filtered) {
+  const esc = (s) =>
+    String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+
+  const hoursByTask = {};
+  filtered.filter(rowMatchesAuditMediaSection).forEach((r) => {
+    const name = (r.taskName || "").trim();
+    if (!name) return;
+    const hrs = parseTimeToHours(r.timeTracked) || 0;
+    hoursByTask[name] = (hoursByTask[name] || 0) + hrs;
+  });
+
+  const allNames = new Set([...AUDIT_MEDIA_ALWAYS_SHOW, ...Object.keys(hoursByTask)]);
+  const orderIdx = new Map(AUDIT_MEDIA_ALWAYS_SHOW.map((n, i) => [n, i]));
+  const barRows = [...allNames].map((task) => ({
+    task,
+    hours: hoursByTask[task] || 0,
+    color: getCategoryColorForReport(getAuditMediaBarCategoryKey(task)),
+  }));
+  barRows.sort((a, b) => {
+    if (b.hours !== a.hours) return b.hours - a.hours;
+    const ia = orderIdx.has(a.task) ? orderIdx.get(a.task) : 1000;
+    const ib = orderIdx.has(b.task) ? orderIdx.get(b.task) : 1000;
+    if (ia !== ib) return ia - ib;
+    return a.task.localeCompare(b.task, "ko");
+  });
+
+  const maxHrs = Math.max(0.01, ...barRows.map((x) => x.hours));
+  const barRowsHtml = barRows
+    .map((r) => {
+      const pct = (r.hours / maxHrs) * 100;
+      const timeLabel =
+        r.hours > 0 ? formatHoursToHHMM(r.hours) : "—";
+      return `<div class="time-audit-bar-row">
+        <div class="time-audit-bar-label" title="${esc(r.task)}">${esc(r.task)}</div>
+        <div class="time-audit-bar-track">
+          <div class="time-audit-bar-slot" style="flex:1 1 auto;min-width:0">
+            <div class="time-audit-bar-actual-wrap">
+              <div class="time-audit-bar-actual" style="width:${pct}%;--bar-color:${r.color}" title="합계: ${timeLabel}"></div>
+            </div>
+          </div>
+        </div>
+        <div class="time-audit-bar-values">
+          <span class="time-audit-bar-goal-val"> </span>
+          <span class="time-audit-bar-actual-val">${timeLabel}</span>
+        </div>
+      </div>`;
+    })
+    .join("");
+
+  return `<div class="time-audit-media-watch-wrap">
+    <div class="time-audit-bar-chart time-audit-media-watch-bars">
+      <div class="time-audit-bar-rows">${barRowsHtml}</div>
+    </div>
+  </div>`;
+}
+
 function formatDateDisplay(val) {
   if (!val || val.length < 10) return "";
   const [y, m, d] = val.split("-");
@@ -1842,37 +2205,6 @@ function filterRowsByFilterType(rows, type, year, month, start, end) {
     return d >= normStart && d <= normEnd;
   });
   return sortRowsByDateTime(filtered);
-}
-
-/** 오딧 타임라인: 해당 날짜·시작·끝 시각이 있는 행만 */
-function buildAuditTimelineRowsForDate(dateStr, filtered) {
-  const out = [];
-  filtered.forEach((row) => {
-    const d = normalizeDateForCompare(row.date || "") || row.date || "";
-    if (d !== dateStr) return;
-    const startH = parseDateTimeToHours(row.startTime);
-    const endH = parseDateTimeToHours(row.endTime);
-    if (startH == null || endH == null) return;
-    const achRaw = (row.achievement || "")
-      .toString()
-      .trim()
-      .replace(/%/g, "");
-    const achNum =
-      achRaw === ""
-        ? null
-        : (() => {
-            const n = parseInt(achRaw, 10);
-            return Number.isNaN(n) ? null : Math.max(0, Math.min(150, n));
-          })();
-    out.push({
-      taskName: (row.taskName || "").trim() || "—",
-      startH,
-      endH,
-      category: (row.category || "").trim() || "",
-      achievement: achNum,
-    });
-  });
-  return out;
 }
 
 /** 과제명별 시간 집계 { taskName: hours } */
@@ -8079,137 +8411,6 @@ export function render() {
     contentWrap.appendChild(wrap);
   }
 
-  /** 오딧 2. 시간갭: 목표 vs 실제 막대 (하루 / 기간 합산 목표) */
-  function getAuditTimeGapBarSectionInnerHtml(
-    dateStr,
-    filtered,
-    periodMode,
-    normStart,
-    normEnd,
-  ) {
-    const BASIC_TASKS = ["수면하기", "근무하기"];
-    const dateRows = periodMode
-      ? filtered
-      : filtered.filter(
-          (r) =>
-            (normalizeDateForCompare(r.date || "") || r.date || "") === dateStr,
-        );
-    const actualByTask = aggregateHoursByTask(dateRows);
-    const scheduleRows = [];
-
-    if (periodMode && normStart && normEnd) {
-      const excludedUnion = new Set();
-      const goalAcc = {};
-      eachDateStrInInclusiveRange(normStart, normEnd, (d) => {
-        getBudgetExcluded(d).forEach((t) => excludedUnion.add(t));
-        const g = getBudgetGoals(d);
-        Object.entries(g).forEach(([task, data]) => {
-          if (isBudgetPlaceholder(task)) return;
-          const gh = parseTimeToHours(data?.goalTime) || 0;
-          if (!goalAcc[task])
-            goalAcc[task] = { goalHrsSum: 0, isInvest: data?.isInvest };
-          goalAcc[task].goalHrsSum += gh;
-          if (data?.isInvest === true) goalAcc[task].isInvest = true;
-          else if (data?.isInvest === false) goalAcc[task].isInvest = false;
-        });
-      });
-      Object.entries(goalAcc).forEach(([task, data]) => {
-        if (excludedUnion.has(task) || isBudgetPlaceholder(task)) return;
-        const isBasic = BASIC_TASKS.includes(task);
-        const isInvest = data?.isInvest === true;
-        const isConsume = data?.isInvest === false;
-        if (!isBasic && !isInvest && !isConsume) return;
-        const actualHrs = actualByTask[task] || 0;
-        const section = isBasic ? 1 : isInvest ? 3 : 4;
-        scheduleRows.push({
-          task,
-          goalHrs: data.goalHrsSum || 0,
-          actualHrs,
-          section,
-        });
-      });
-    } else {
-      const storedGoals = getBudgetGoals(dateStr);
-      const excluded = getBudgetExcluded(dateStr);
-      Object.entries(storedGoals).forEach(([task, data]) => {
-        if (excluded.has(task) || isBudgetPlaceholder(task)) return;
-        const isBasic = BASIC_TASKS.includes(task);
-        const isInvest = data?.isInvest === true;
-        const isConsume = data?.isInvest === false;
-        if (!isBasic && !isInvest && !isConsume) return;
-        const goalTime = data?.goalTime || "";
-        const actualHrs = actualByTask[task] || 0;
-        const section = isBasic ? 1 : isInvest ? 3 : 4;
-        scheduleRows.push({ task, goalTime, actualHrs, section });
-      });
-    }
-
-    scheduleRows.sort(
-      (a, b) => a.section - b.section || a.task.localeCompare(b.task),
-    );
-    const barRows = scheduleRows.map((r) => {
-      let cat = "";
-      if (r.task === "근무하기") cat = "work";
-      else if (r.task === "수면하기") cat = "sleep";
-      else cat = getDominantCategoryForTask(dateRows, r.task);
-      const color = getCategoryColorForReport(cat);
-      const goalHrs =
-        typeof r.goalHrs === "number"
-          ? r.goalHrs
-          : parseTimeToHours(r.goalTime);
-      return {
-        task: r.task,
-        goalHrs,
-        actualHrs: r.actualHrs,
-        color,
-      };
-    });
-    const maxHrs = Math.max(
-      1,
-      ...barRows.flatMap((r) => [r.goalHrs, r.actualHrs]),
-    );
-    const barChartTitle = periodMode ? "목표 합계 vs 실제" : "목표 vs 실제";
-    const barChartHtml =
-      barRows.length > 0
-        ? `<div class="time-audit-bar-chart">
-                  <div class="time-audit-bar-chart-title">${barChartTitle}</div>
-                  <div class="time-audit-bar-rows">
-                    ${barRows
-                      .map((r) => {
-                        const rowMax = Math.max(r.goalHrs, r.actualHrs, 0.01);
-                        const slotPct =
-                          maxHrs > 0 ? (rowMax / maxHrs) * 100 : 0;
-                        const barPct =
-                          rowMax > 0 ? (r.actualHrs / rowMax) * 100 : 0;
-                        const goalMarkerPct =
-                          r.actualHrs > 0 &&
-                          r.goalHrs > 0 &&
-                          r.actualHrs > r.goalHrs
-                            ? (r.goalHrs / r.actualHrs) * 100
-                            : null;
-                        return `<div class="time-audit-bar-row">
-                        <div class="time-audit-bar-label" title="${r.task}">${r.task}</div>
-                        <div class="time-audit-bar-track">
-                          <div class="time-audit-bar-slot" style="flex: 0 0 ${slotPct}%">
-                            <div class="time-audit-bar-actual-wrap">
-                              <div class="time-audit-bar-actual" style="width:${barPct}%;--bar-color:${r.color}" title="실제: ${r.actualHrs > 0 ? formatHoursToHHMM(r.actualHrs) : "—"}"></div>
-                              ${goalMarkerPct != null ? `<div class="time-audit-bar-goal-marker" style="left:${goalMarkerPct}%" title="목표: ${formatHoursToHHMM(r.goalHrs)}"></div>` : ""}
-                            </div>
-                          </div>
-                        </div>
-                        <div class="time-audit-bar-values">
-                          <span class="time-audit-bar-goal-val">${r.goalHrs > 0 ? formatHoursToHHMM(r.goalHrs) : "—"}</span>
-                          <span class="time-audit-bar-actual-val">${r.actualHrs > 0 ? formatHoursToHHMM(r.actualHrs) : "—"}</span>
-                        </div>
-                      </div>`;
-                      })
-                      .join("")}
-                  </div>
-                </div>`
-        : `<div class="time-audit-bar-chart time-audit-bar-chart-empty"><div class="time-audit-pie-empty">목표 없음</div></div>`;
-    return `<div class="time-audit-below-section time-audit-below-section--gap-chart-only">${barChartHtml}</div>`;
-  }
-
   function renderAudit(rows = []) {
     clearTimeLedgerMobileElapsedTimer(el);
     rescueTimeFilterControlsToFilterBar();
@@ -8272,20 +8473,6 @@ export function render() {
         : periodLabel;
 
     const auditDayKey = isPeriodSummary ? null : normStart;
-    const dayRows = isPeriodSummary
-      ? []
-      : buildAuditTimelineRowsForDate(normStart, filtered);
-
-    const chartW = 600;
-    const chartH = 180;
-    const padLeft = 44;
-    const padRight = 16;
-    const padTop = 28;
-    const padBottom = 44;
-    const plotW = chartW - padLeft - padRight;
-    const plotH = chartH - padTop - padBottom;
-    const toX = (hours) =>
-      padLeft + (Math.max(0, Math.min(hours, 24)) / 24) * plotW;
 
     const block = document.createElement("div");
     block.className = "time-audit-block time-audit-block-integrated";
@@ -8310,18 +8497,8 @@ export function render() {
             );
           })()}
           </div>
-          <div class="time-audit-region time-audit-region-time-gap">
-            <div class="time-audit-region-title">2. 시간갭</div>
-          ${getAuditTimeGapBarSectionInnerHtml(
-            auditDayKey || normStart,
-            filtered,
-            isPeriodSummary,
-            normStart,
-            normEnd,
-          )}
-          </div>
           <div class="time-audit-region time-audit-region-time-thief">
-            <div class="time-audit-region-title">3. 시간낭비내역</div>
+            <div class="time-audit-region-title">2. 시간낭비내역</div>
           ${(() => {
             const hourlyRate =
               parseFloat(
@@ -8338,7 +8515,7 @@ export function render() {
           })()}
           </div>
           <div class="time-audit-region time-audit-region-time-investment">
-            <div class="time-audit-region-title">4. 시간 투자 내역</div>
+            <div class="time-audit-region-title">3. 시간 투자 내역</div>
           ${(() => {
             const hourlyRate =
               parseFloat(
@@ -8355,81 +8532,18 @@ export function render() {
           })()}
           </div>
           <div class="time-audit-region time-audit-region-achievement">
-            <div class="time-audit-region-title">${isPeriodSummary ? "5. 하루 타임라인" : "5. 오늘 내 하루 한눈에 보기"}</div>
-            ${(() => {
-              if (isPeriodSummary) {
-                return `<div class="time-audit-achievement-content"><div class="time-audit-achievement-empty">여러 날짜를 선택한 경우에는 24시간 타임라인 대신 위 표·그래프로 기간 전체를 보여 드립니다. 하루만 고르면 이 구역에서 그날 타임라인을 볼 수 있습니다.</div></div>`;
-              }
-              const concTop = padTop;
-              const concBottom = padTop + plotH;
-              const esc = (s) =>
-                String(s ?? "")
-                  .replace(/&/g, "&amp;")
-                  .replace(/</g, "&lt;")
-                  .replace(/"/g, "&quot;");
-              const clipId =
-                "time-audit-ach-clip-" +
-                String(auditDayKey || "day").replace(/[^a-z0-9-]/gi, "-");
-              const minBarWidthForLabel = plotW * (1.5 / 24);
-              const taskRectsAndLabels = dayRows.map((r) => {
-                const x1 = toX(r.startH);
-                const x2 = toX(r.endH);
-                const w = Math.max(2, x2 - x1);
-                const color = getCategoryColorForReport(r.category);
-                const rectStr = `<rect x="${x1}" y="${padTop}" width="${w}" height="${plotH}" fill="${color}" stroke="rgba(0,0,0,0.06)" stroke-width="0.5"/>`;
-                const fitLabel = w >= minBarWidthForLabel;
-                const labelX = x1 + 5;
-                const labelY = padTop + plotH / 2;
-                const timeRange = `${String(Math.floor(r.startH)).padStart(2, "0")}:${String(Math.round((r.startH % 1) * 60)).padStart(2, "0")}~${String(Math.floor(r.endH)).padStart(2, "0")}:${String(Math.round((r.endH % 1) * 60)).padStart(2, "0")}`;
-                const labelText = `${esc(r.taskName)} (${timeRange})`;
-                const textStr = fitLabel
-                  ? `<text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" font-size="6" fill="#7a7a7a" class="time-audit-bar-inner-label" transform="rotate(-90, ${labelX}, ${labelY})">${labelText}</text>`
-                  : "";
-                return { rectStr, textStr, fitLabel, r, timeRange };
-              });
-              const barRects = taskRectsAndLabels
-                .map((o) => o.rectStr + o.textStr)
-                .join("");
-              const achievementLegendItems = taskRectsAndLabels
-                .filter((o) => !o.fitLabel)
-                .map(
-                  (o) =>
-                    `<span class="time-audit-legend-item" style="--legend-color:${getCategoryColorForReport(o.r.category)}">${esc(o.r.taskName)} (${o.timeRange})</span>`,
-                )
-                .join("");
-              const xLabels = [];
-              for (let h = 0; h <= 24; h += 2) {
-                xLabels.push({
-                  x: toX(h),
-                  label: `${String(h).padStart(2, "0")}:00`,
-                });
-              }
-              const xLabelStr = xLabels
-                .map(
-                  (l) =>
-                    `<text x="${l.x}" y="${concBottom + 10}" text-anchor="middle" font-size="6" fill="#b8b8b8">${l.label}</text>`,
-                )
-                .join("");
-              if (dayRows.length === 0) {
-                return `<div class="time-audit-achievement-content"><div class="time-audit-achievement-empty">해당 날짜 기록이 없습니다.</div></div>`;
-              }
-              return `<div class="time-audit-achievement-content">
-                <div class="time-audit-chart-wrap">
-                  <svg class="time-audit-svg time-audit-achievement-svg" viewBox="0 0 ${chartW} ${chartH}" preserveAspectRatio="xMidYMid meet">
-                    <defs><clipPath id="${clipId}"><rect x="${padLeft}" y="${padTop}" width="${plotW}" height="${plotH}"/></clipPath></defs>
-                    ${Array.from({ length: 25 }, (_, i) => {
-                      const x = toX(i);
-                      return `<line x1="${x}" y1="${padTop}" x2="${x}" y2="${concBottom}" stroke="#e5e7eb" stroke-width="0.25" stroke-dasharray="4,3"/>`;
-                    }).join("")}
-                    <line x1="${padLeft}" y1="${concBottom}" x2="${padLeft + plotW}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
-                    <line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${concBottom}" stroke="#d1d5db" stroke-width="1"/>
-                    <g clip-path="url(#${clipId})">${barRects}</g>
-                    ${xLabelStr}
-                  </svg>
-                </div>
-                ${achievementLegendItems ? `<div class="time-audit-task-legend">${achievementLegendItems}</div>` : ""}
-              </div>`;
-            })()}
+            <div class="time-audit-region-title">4. 건강 카테고리</div>
+            <div class="time-audit-health-category-inner">
+              <div class="time-audit-achievement-content">
+                ${getAuditHealthDietTimelineHtml(filtered, normStart, normEnd)}
+              </div>
+            </div>
+          </div>
+          <div class="time-audit-region time-audit-region-media-watch">
+            <div class="time-audit-region-title">5. 미디어 시청시간</div>
+            <div class="time-audit-media-watch-inner">
+              ${getAuditMediaWatchHoursHtml(filtered)}
+            </div>
           </div>
         `;
     wrap.appendChild(block);
