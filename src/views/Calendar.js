@@ -3900,12 +3900,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
           : actualBlockMin;
       const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
       const cohort = cohortDirectlyOverlapping(first);
-      /*
-       * 예상(Planned) 열은 반열(50% 등)을 쓰지 않는다. 겹침 판정·DOM 동기화 조합에서
-       * 시간이 안 겹쳐도 전 구간이 반으로 깎이는 사례가 계속 발생함.
-       * 나란히 분할은 오늘 실제(actual) 열에서만 유지한다.
-       */
-      const useLaneLayout = isActual && cohort.length > 1;
+      /* 이 블록과 2분 이상 직접 겹치는 일이 있을 때만 반열(나란히). 코호트는 직접 겹침만 포함 */
+      const useLaneLayout = cohort.length > 1;
       let laneCountLocal = 1;
       let laneLocal = first.lane ?? 0;
       if (useLaneLayout) {
@@ -3927,31 +3923,45 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         (useLaneLayout ? " calendar-1day-time-slot-fill--lane" : "");
       const MIN_PER_DAY = 24 * 60;
       if (useLaneLayout) {
-        /* 오늘 실제만: 겹침 시 나란히 (예상은 useLaneLayout 항상 false) */
+        /* 겹침 구간: 하루 비율 absolute + 가로 분할 (예상·실제 동일) */
         blockFill.style.position = "absolute";
         blockFill.style.left = `${(laneLocal / laneCountLocal) * 100}%`;
         blockFill.style.width = `${100 / laneCountLocal}%`;
         blockFill.style.top = `calc(${blockStartMin} * 100% / ${MIN_PER_DAY})`;
         blockFill.style.height = `calc(${visualBlockMin} * 100% / ${MIN_PER_DAY})`;
         blockFill.style.zIndex = String(100 + Math.min(blockStartMin, 2000));
-      } else {
-        /*
-         * 예상·실제 공통: 하루 전체 높이 대비 % 배치 + 전폭.
-         * (예상만 쓰던 grid-row+relative 조합이 그리드 셀 안에서 가로가 반으로 깎여 보이는 경우가 있어 실제와 동일 방식으로 통일)
-         */
+      } else if (isActual) {
+        /* 오늘 실제: 전폭 absolute (그리드 행에 걸면 인접 구간 겹침) */
         blockFill.style.position = "absolute";
         blockFill.style.left = "0";
         blockFill.style.width = "100%";
         blockFill.style.top = `calc(${blockStartMin} * 100% / ${MIN_PER_DAY})`;
-        const blockH = isActual ? visualBlockMin : actualBlockMin;
-        blockFill.style.height = `calc(${blockH} * 100% / ${MIN_PER_DAY})`;
+        blockFill.style.height = `calc(${visualBlockMin} * 100% / ${MIN_PER_DAY})`;
         blockFill.style.zIndex = String(100 + Math.min(blockStartMin, 2000));
+      } else {
+        /*
+         * 예상·겹침 없음: 오버레이 24행 그리드에 맞춤(in-flow).
+         * 예상을 전부 absolute로 두면 in-flow가 없어 행/1fr 높이가 깨져 시간축과 안 맞음.
+         */
+        blockFill.style.gridColumn = "1 / -1";
+        blockFill.style.gridRow = `${blockStartSlot + 1} / ${blockEndSlot + 2}`;
       }
       const heightPct =
         blockHeightMin > 0 && actualBlockMin < blockHeightMin
           ? ((actualBlockMin / blockHeightMin) * 100).toFixed(1)
           : "100";
       blockFill.dataset.debugBlock = `${fmt(blockStartMin)}~${fmt(blockEndMin)} slot${blockStartSlot}-${blockEndSlot} h=${blockHeightMin}m actual=${actualBlockMin}m height=${heightPct}%`;
+      /* 예상·그리드: 시간 행 안에서 분·길이 보정 (04:50 종료 등) */
+      if (!useLaneLayout && blockHeightMin > 0 && !isActual) {
+        const slotStartMin = blockStartSlot * MIN_PER_SLOT;
+        const startOffset = blockStartMin - slotStartMin;
+        if (startOffset > 0) {
+          blockFill.style.top = `${(startOffset / blockHeightMin) * 100}%`;
+        }
+        if (actualBlockMin < blockHeightMin) {
+          blockFill.style.height = `${(actualBlockMin / blockHeightMin) * 100}%`;
+        }
+      }
       blockFill.style.display = "flex";
       blockFill.style.flexDirection = "column";
       blockFill.style.gap = "0";
@@ -3967,6 +3977,10 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
       } else {
         blockFill.style.borderRadius = "0.375rem";
         blockFill.style.border = "none";
+      }
+      if (!useLaneLayout && !isActual) {
+        blockFill.style.position = "relative";
+        blockFill.style.width = "100%";
       }
       blockFill.style.boxSizing = "border-box";
       /* 타임박스: 왼쪽 진한 실선, 살짝 둥근 모서리, 투명 컬러 채움 */
