@@ -9,7 +9,7 @@ import {
   updatePasswordForRecovery,
   purgeTimeLedgerLocalOnSignOut,
 } from "./auth.js";
-import { mountApp } from "./App.js";
+import { mountApp, LP_LAST_TAB_LOCAL_KEY, LP_LAST_TAB_SESSION_KEY } from "./App.js";
 import { initOfflineAppGate } from "./utils/offlineAppGate.js";
 import { supabase } from "./supabase.js";
 import { applyAppFont } from "./views/Idea.js";
@@ -163,7 +163,8 @@ function init() {
     }
     if (event === "SIGNED_OUT") {
       try {
-        sessionStorage.removeItem("lp_active_tab_id");
+        sessionStorage.removeItem(LP_LAST_TAB_SESSION_KEY);
+        localStorage.removeItem(LP_LAST_TAB_LOCAL_KEY);
       } catch (_) {}
       void purgeTimeLedgerLocalOnSignOut();
       document.getElementById("app-screen").innerHTML = "";

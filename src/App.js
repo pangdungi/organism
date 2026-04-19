@@ -108,8 +108,10 @@ const RENDERERS = {
 
 let currentTabId = "home";
 
-/** 세션 유지 중 마지막으로 보던 탭(새로고침·PWA 재진입 시 복원). 로그아웃 시 main.js 에서 제거 */
+/** 세션 유지 중 마지막 탭(백그라운드 복귀 시 유지). 로그아웃 시 main.js 에서 제거 */
 export const LP_LAST_TAB_SESSION_KEY = "lp_active_tab_id";
+/** PWA cold start·탭 프로세스 종료 후에도 마지막 화면 복원(동일 기기·로그인 유지 시) */
+export const LP_LAST_TAB_LOCAL_KEY = "lp_active_tab_id_persist";
 
 function validAppTabIdSet() {
   return new Set([...TABS.map((t) => t.id), "idea"]);
@@ -117,14 +119,29 @@ function validAppTabIdSet() {
 
 function applyPersistedTabIdFromSessionStorage() {
   try {
-    const raw = sessionStorage.getItem(LP_LAST_TAB_SESSION_KEY);
-    if (raw && validAppTabIdSet().has(raw)) currentTabId = raw;
+    const fromSession = sessionStorage.getItem(LP_LAST_TAB_SESSION_KEY);
+    if (fromSession && validAppTabIdSet().has(fromSession)) {
+      currentTabId = fromSession;
+      return;
+    }
+  } catch (_) {}
+  try {
+    const fromLocal = localStorage.getItem(LP_LAST_TAB_LOCAL_KEY);
+    if (fromLocal && validAppTabIdSet().has(fromLocal)) {
+      currentTabId = fromLocal;
+      try {
+        sessionStorage.setItem(LP_LAST_TAB_SESSION_KEY, fromLocal);
+      } catch (_) {}
+    }
   } catch (_) {}
 }
 
 function persistActiveTabId(tabId) {
   try {
     sessionStorage.setItem(LP_LAST_TAB_SESSION_KEY, tabId);
+  } catch (_) {}
+  try {
+    localStorage.setItem(LP_LAST_TAB_LOCAL_KEY, tabId);
   } catch (_) {}
 }
 
