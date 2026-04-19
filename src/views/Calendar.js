@@ -6452,6 +6452,43 @@ export function render() {
       } catch (_) {}
     }
     if (gen !== _renderContentGen) return;
+
+    /* App pull 직후(skipSubtabPull): contentWrap 통째 비우면 상단 탭·설정 줄이 잠깐 사라져 깜빡임 — 할일 서브뷰는 상단 유지 후 목록만 교체 */
+    if (
+      skipSubtabPull &&
+      view === "todo" &&
+      contentWrap.querySelector(".calendar-view-todo")
+    ) {
+      const existingTodo = contentWrap.querySelector(".calendar-view-todo");
+      const topRow =
+        existingTodo.querySelector(
+          ".calendar-view-top-row--with-settings",
+        ) || existingTodo.querySelector(".calendar-view-top-row--todo");
+      const todoMain = existingTodo.querySelector(".calendar-todo-main");
+      const reuseBtn = topRow?.querySelector(".todo-list-settings-btn");
+      if (topRow && todoMain) {
+        try {
+          todoMain.querySelector(".todo-list-view")?._lpTabAbortController?.abort?.();
+        } catch (_) {}
+        todoMain.querySelector(".calendar-todo-content")?.remove();
+        const todoContent = document.createElement("div");
+        todoContent.className = "calendar-todo-content";
+        todoContent.appendChild(
+          renderTodoList({
+            hideHeader: true,
+            settingsSlot: topRow,
+            ...(reuseBtn?.isConnected
+              ? { reuseSettingsButtonEl: reuseBtn }
+              : {}),
+          }),
+        );
+        todoMain.appendChild(todoContent);
+        currentView = view;
+        persistCalendarMainViewIfValid(view);
+        return;
+      }
+    }
+
     currentView = view;
     if (contentWrap.contains(tabs)) {
       el.insertBefore(tabs, contentWrap);

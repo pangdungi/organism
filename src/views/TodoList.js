@@ -3287,6 +3287,8 @@ export function render(options = {}) {
     hideDoneTasks = false,
     /** true: KPI에서 만든 할일을 이 목록에 넣지 않음(기본). KPI 할일은 KPI 화면에서만 다룸 */
     omitKpiTodos = true,
+    /** 할일/일정 상단 줄(settingsSlot)의 설정 버튼 DOM을 그대로 쓰고 새로 만들지 않음(탭 진입 후 pull 소프트 갱신 시 아이콘 깜빡임 방지) */
+    reuseSettingsButtonEl = null,
   } = options;
   const hasExplicitInitialTab = Object.prototype.hasOwnProperty.call(options, "initialActiveTabIndex");
   /** 사이드바 등 hideToolbar 임베드는 탭 세션과 분리(메인 할일 탭이 꿈인데 캘린더 옆바가 브레인 덤프로 열리는 혼선 방지) */
@@ -3309,11 +3311,21 @@ export function render(options = {}) {
   const toolbar = document.createElement("div");
   toolbar.className = "todo-list-toolbar";
   toolbar.hidden = hideToolbar;
-  const settingsBtn = document.createElement("button");
-  settingsBtn.type = "button";
-  settingsBtn.className = "todo-list-toolbar-btn todo-list-settings-btn";
-  settingsBtn.title = "할 일 환경 설정";
-  settingsBtn.innerHTML = '<img src="/toolbaricons/settings.svg" alt="" class="todo-list-settings-icon" width="20" height="20">';
+  const reusedSettings =
+    reuseSettingsButtonEl &&
+    reuseSettingsButtonEl.isConnected &&
+    reuseSettingsButtonEl.classList?.contains("todo-list-settings-btn");
+  const settingsBtn = reusedSettings
+    ? reuseSettingsButtonEl
+    : (() => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "todo-list-toolbar-btn todo-list-settings-btn";
+        b.title = "할 일 환경 설정";
+        b.innerHTML =
+          '<img src="/toolbaricons/settings.svg" alt="" class="todo-list-settings-icon" width="20" height="20">';
+        return b;
+      })();
 
   const initialSettings = getTodoSettings();
   let hideCompleted = initialSettings.hideCompleted;
@@ -3359,21 +3371,25 @@ export function render(options = {}) {
     });
   }
 
-  settingsBtn.addEventListener("click", () => {
-    createTodoSettingsModal({
-      onHideCompletedChange: (v) => {
-        hideCompleted = v;
-        el.classList.toggle("hide-completed", hideCompleted);
-      },
-      onClearCompleted: promptClearCompleted,
-      onColorsChange: () => {
-        applyTabColors();
-      },
+  if (!reusedSettings) {
+    settingsBtn.addEventListener("click", () => {
+      createTodoSettingsModal({
+        onHideCompletedChange: (v) => {
+          hideCompleted = v;
+          el.classList.toggle("hide-completed", hideCompleted);
+        },
+        onClearCompleted: promptClearCompleted,
+        onColorsChange: () => {
+          applyTabColors();
+        },
+      });
     });
-  });
+  }
 
   if (settingsSlot) {
-    settingsSlot.appendChild(settingsBtn);
+    if (!settingsSlot.contains(settingsBtn)) {
+      settingsSlot.appendChild(settingsBtn);
+    }
   } else {
     toolbar.appendChild(settingsBtn);
   }
