@@ -5880,6 +5880,11 @@ export function renderMobileScheduleCalendar() {
   el.appendChild(contentWrap);
   mountCalendarSubViews();
 
+  window.__lpCalendarSoftRefresh = () => {
+    if (!el.isConnected) return;
+    mountCalendarSubViews();
+  };
+
   return el;
 }
 
@@ -6428,7 +6433,8 @@ export function render() {
    * 빈 본문 한 번 깜빡이는 원인 — 첫 1회만 서브탭 pull 생략 */
   let _calendarMainSubtabPullPrimedByApp = true;
 
-  async function renderContent(view) {
+  async function renderContent(view, opts = {}) {
+    const skipSubtabPull = !!opts.skipSubtabPull;
     const onlySaveWhenFullTodoList = currentView === "todo" || currentView === "eisenhower";
     if (onlySaveWhenFullTodoList) {
       saveTodoListBeforeUnmount(contentWrap);
@@ -6437,7 +6443,7 @@ export function render() {
     const gen = ++_renderContentGen;
     if (_calendarMainSubtabPullPrimedByApp) {
       _calendarMainSubtabPullPrimedByApp = false;
-    } else {
+    } else if (!skipSubtabPull) {
       try {
         await pullCalendarSectionTasksFromSupabase({
           reason: "calendar_main_subtab",
@@ -6510,6 +6516,16 @@ export function render() {
   });
   /* 초기 탭: 저장값(4. 오늘 해치우기 등) — 클릭과 동일하게 1회 서버 SELECT 후 그림 */
   void renderContent(initialMainView);
+
+  /** App.setActiveTab 에서 pull 후 두 번째 renderMain 대신 — 같은 el 안에서만 현재 서브뷰 다시 그림 */
+  window.__lpCalendarSoftRefresh = () => {
+    if (!el.isConnected) return;
+    const active =
+      tabs.querySelector(".time-view-tab.active")?.dataset?.view ||
+      currentView;
+    /* App.setActiveTab 에서 방금 pull 했으므로 서브탭 pull 중복 생략 */
+    void renderContent(active, { skipSubtabPull: true });
+  };
 
   return el;
 }

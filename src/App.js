@@ -402,6 +402,14 @@ export function mountApp(container) {
         try {
           window.__lpTimeLedgerSoftRefresh?.();
         } catch (_) {}
+      } else if (
+        targetTabId === "calendar" ||
+        targetTabId === "schedulecalendar"
+      ) {
+        /* 할일/일정·사이드 캘린더: 두 번째 renderMain 시 상단 탭·설정 아이콘이 통째로 다시 붙으며 깜빡임 — 패널 유지 후 본문만 갱신 */
+        try {
+          window.__lpCalendarSoftRefresh?.();
+        } catch (_) {}
       } else {
         renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
       }
