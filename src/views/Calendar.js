@@ -3922,8 +3922,18 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         "calendar-1day-time-slot-fill calendar-1day-time-slot-fill--block calendar-1day-time-slot-fill--span" +
         (useLaneLayout ? " calendar-1day-time-slot-fill--lane" : "");
       const MIN_PER_DAY = 24 * 60;
+      /*
+       * 오버레이가 display:grid일 때 absolute 자식의 % top/height는
+       * 자동 배치된 '한 시간 칸' 높이 기준이 되어 하루와 어긋남.
+       * 그리드 영역을 1~끝 행·열로 잡아 포함 블록을 하루 전체로 맞춘다.
+       */
+      const spanFullOverlayGridForAbs = () => {
+        blockFill.style.gridColumn = "1 / -1";
+        blockFill.style.gridRow = "1 / -1";
+      };
       if (useLaneLayout) {
         /* 겹침 구간: 하루 비율 absolute + 가로 분할 (예상·실제 동일) */
+        spanFullOverlayGridForAbs();
         blockFill.style.position = "absolute";
         blockFill.style.left = `${(laneLocal / laneCountLocal) * 100}%`;
         blockFill.style.width = `${100 / laneCountLocal}%`;
@@ -3932,6 +3942,7 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         blockFill.style.zIndex = String(100 + Math.min(blockStartMin, 2000));
       } else if (isActual) {
         /* 오늘 실제: 전폭 absolute (그리드 행에 걸면 인접 구간 겹침) */
+        spanFullOverlayGridForAbs();
         blockFill.style.position = "absolute";
         blockFill.style.left = "0";
         blockFill.style.width = "100%";
