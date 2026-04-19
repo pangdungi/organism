@@ -3931,6 +3931,7 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         blockFill.style.gridColumn = "1 / -1";
         blockFill.style.gridRow = "1 / -1";
       };
+      const dayFracH = `calc(${visualBlockMin} * 100% / ${MIN_PER_DAY})`;
       if (useLaneLayout) {
         /* 겹침 구간: 하루 비율 absolute + 가로 분할 (예상·실제 동일) */
         spanFullOverlayGridForAbs();
@@ -3938,7 +3939,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         blockFill.style.left = `${(laneLocal / laneCountLocal) * 100}%`;
         blockFill.style.width = `${100 / laneCountLocal}%`;
         blockFill.style.top = `calc(${blockStartMin} * 100% / ${MIN_PER_DAY})`;
-        blockFill.style.height = `calc(${visualBlockMin} * 100% / ${MIN_PER_DAY})`;
+        blockFill.style.height = dayFracH;
+        blockFill.style.minHeight = dayFracH;
         blockFill.style.zIndex = String(100 + Math.min(blockStartMin, 2000));
       } else if (isActual) {
         /* 오늘 실제: 전폭 absolute (그리드 행에 걸면 인접 구간 겹침) */
@@ -3947,7 +3949,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         blockFill.style.left = "0";
         blockFill.style.width = "100%";
         blockFill.style.top = `calc(${blockStartMin} * 100% / ${MIN_PER_DAY})`;
-        blockFill.style.height = `calc(${visualBlockMin} * 100% / ${MIN_PER_DAY})`;
+        blockFill.style.height = dayFracH;
+        blockFill.style.minHeight = dayFracH;
         blockFill.style.zIndex = String(100 + Math.min(blockStartMin, 2000));
       } else {
         /*
@@ -3959,7 +3962,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         blockFill.style.left = "0";
         blockFill.style.width = "100%";
         blockFill.style.top = `calc(${blockStartMin} * 100% / ${MIN_PER_DAY})`;
-        blockFill.style.height = `calc(${visualBlockMin} * 100% / ${MIN_PER_DAY})`;
+        blockFill.style.height = dayFracH;
+        blockFill.style.minHeight = dayFracH;
         blockFill.style.zIndex = String(100 + Math.min(blockStartMin, 2000));
       }
       const heightPct =
@@ -4009,9 +4013,19 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
           actualBlockMin > 0 ? ((sp.endMin - sp.startMin) / actualBlockMin) * 100 : 0;
         const seg = document.createElement("div");
         seg.className = "calendar-1day-time-slot-fill-seg";
-        seg.style.flex = `0 0 ${segHeightPct}%`;
-        if (!isActual) {
-          seg.style.minHeight = "2.5rem";
+        /*
+         * 부모 높이가 %인 flex 컨테이너에서 자식 flex-basis %가 0으로 무너지는 경우가 있음(장시간 막대가 얇게 보임).
+         * 그룹이 한 스팬이면 flex-grow로 부모를 채움.
+         */
+        if (group.length === 1) {
+          seg.style.flex = "1 1 0";
+          seg.style.minHeight =
+            !isActual && actualBlockMin > 0 && actualBlockMin < 40 ? "2.5rem" : "0";
+        } else {
+          seg.style.flex = `0 0 ${segHeightPct}%`;
+          if (!isActual) {
+            seg.style.minHeight = "2.5rem";
+          }
         }
         seg.style.width = "100%";
         seg.style.display = "flex";
