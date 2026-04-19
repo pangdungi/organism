@@ -5772,8 +5772,11 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
   let _nestedSubViewGen = 0;
   /* 상위 탭(App) 또는 직전 renderContent 가 이미 pull 한 직후 첫 nested 만 중복 네트워크 생략 */
   let _nestedSubViewFirstPullSkip = true;
+  let activeSubViewId = initialSubView;
 
-  async function renderSubView(subViewId) {
+  async function renderSubView(subViewId, subOpts = {}) {
+    const skipPull = !!subOpts.skipPull;
+    activeSubViewId = subViewId;
     const gen = ++_nestedSubViewGen;
     dateDebug("renderSubView: saving before switch", {
       subViewId,
@@ -5782,7 +5785,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
     saveTodoListBeforeUnmount(contentArea);
     if (_nestedSubViewFirstPullSkip) {
       _nestedSubViewFirstPullSkip = false;
-    } else {
+    } else if (!skipPull) {
       try {
         await pullCalendarSectionTasksFromSupabase({
           reason: `calendar_nested_${subViewId}`,
@@ -5830,6 +5833,11 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
     activeBtn.classList.add("active");
   }
   void renderSubView(initialSubView);
+
+  /** App.setActiveTab 에서 이미 pull 한 뒤 — contentWrap 통째 remount 대신 현재 월별/주 뷰만 다시 그림(상단·서브탭 DOM 유지) */
+  wrap._lpCalendarSoftPullRefresh = () => {
+    void renderSubView(activeSubViewId, { skipPull: true });
+  };
 
   return wrap;
 }
@@ -5882,6 +5890,11 @@ export function renderMobileScheduleCalendar() {
 
   window.__lpCalendarSoftRefresh = () => {
     if (!el.isConnected) return;
+    const wrap = contentWrap.querySelector(".calendar-view-with-subtabs");
+    if (wrap && typeof wrap._lpCalendarSoftPullRefresh === "function") {
+      wrap._lpCalendarSoftPullRefresh();
+      return;
+    }
     mountCalendarSubViews();
   };
 
@@ -6483,6 +6496,21 @@ export function render() {
           }),
         );
         todoMain.appendChild(todoContent);
+        currentView = view;
+        persistCalendarMainViewIfValid(view);
+        return;
+      }
+    }
+
+    /* 날짜 정하기(중첩 월별·주): App pull 직후 — contentWrap 비우지 않고 중첩 루트만 재렌더(상단 1~4 탭·서브탭 유지) */
+    if (
+      skipSubtabPull &&
+      view === "calendar" &&
+      contentWrap.querySelector(".calendar-view-with-subtabs")
+    ) {
+      const nested = contentWrap.querySelector(".calendar-view-with-subtabs");
+      if (typeof nested._lpCalendarSoftPullRefresh === "function") {
+        nested._lpCalendarSoftPullRefresh();
         currentView = view;
         persistCalendarMainViewIfValid(view);
         return;
