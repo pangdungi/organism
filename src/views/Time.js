@@ -4509,7 +4509,7 @@ export function render() {
       </div>
       <div class="time-task-log-footer" data-task-log-footer>
         <button type="button" class="time-task-log-submit">기록</button>
-        <button type="button" class="time-task-log-delete-btn" hidden>과제 삭제</button>
+        <button type="button" class="time-task-log-delete-btn" hidden>이 시간기록 삭제</button>
       </div>
       <div class="time-datetime-picker-wrap time-datetime-picker-bottom" hidden>
         <div class="time-datetime-picker-buttons-wrap">

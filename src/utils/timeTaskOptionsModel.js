@@ -53,6 +53,56 @@ function normalizeProductivity(p) {
   return "productive";
 }
 
+function applyBuiltinNameMigrationsToStoredRows(rows) {
+  const migs = C.BUILTIN_NAME_MIGRATIONS || [];
+  if (!Array.isArray(rows) || rows.length === 0 || !migs.length)
+    return { rows, dirty: false };
+  let dirty = false;
+  const next = rows.map((o) => {
+    const name = (o.name || "").trim();
+    const mig = migs.find((m) => m.from === name);
+    if (!mig) return o;
+    dirty = true;
+    const prod =
+      String(o.productivity || "").trim() || mig.productivity;
+    const cat = String(o.category || "").trim() || mig.category;
+    return {
+      ...o,
+      name: mig.to,
+      id: deterministicTaskId(mig.to, prod, cat),
+    };
+  });
+  return { rows: next, dirty };
+}
+
+function patchTimeLedgerForBuiltinNameMigrations() {
+  const migs = C.BUILTIN_NAME_MIGRATIONS || [];
+  if (!migs.length) return;
+  try {
+    const arr = readTimeLedgerEntriesRaw();
+    if (!Array.isArray(arr) || arr.length === 0) return;
+    let changed = false;
+    const next = arr.map((r) => {
+      const name = (r.taskName || "").trim();
+      const rid = (r.taskId || "").trim();
+      for (const m of migs) {
+        const oldId = deterministicTaskId(
+          m.from,
+          m.productivity,
+          m.category,
+        );
+        const newId = deterministicTaskId(m.to, m.productivity, m.category);
+        if (name === m.from || (rid && rid === oldId)) {
+          changed = true;
+          return { ...r, taskName: m.to, taskId: newId };
+        }
+      }
+      return r;
+    });
+    if (changed) writeTimeLedgerEntriesRaw(next);
+  } catch (_) {}
+}
+
 function getLockedTaskNamesStatic() {
   return new Set([
     ...C.FIXED_OTHER_TASKS.map((t) => t.name),
@@ -181,6 +231,14 @@ export function getFullTaskOptions() {
     }
   } catch (_) {}
 
+  const nameMig = applyBuiltinNameMigrationsToStoredRows(arr);
+  if (nameMig.dirty) {
+    arr = nameMig.rows;
+    try {
+      localStorage.setItem(TASK_OPTIONS_KEY, JSON.stringify(arr));
+    } catch (_) {}
+  }
+
   let merged;
   if (arr.length === 0) {
     merged = C.getBuiltinTaskTemplates().map((t) => ({ ...t, memo: "" }));
@@ -216,6 +274,7 @@ export function getFullTaskOptions() {
       ...others,
     ];
   }
+  patchTimeLedgerForBuiltinNameMigrations();
   return assignIdsToMergedList(merged);
 }
 

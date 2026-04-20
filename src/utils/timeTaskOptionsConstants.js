@@ -68,7 +68,7 @@ export const FIXED_PRODUCTIVE_TASKS = [
   { name: "집안일 및 청소", category: "happiness", productivity: "productive" },
   { name: "빨래 및 옷 정리", category: "happiness", productivity: "productive" },
   { name: "화장 및 헤어", category: "happiness", productivity: "productive" },
-  { name: "나갈 준비", category: "happiness", productivity: "productive" },
+  { name: "외출 준비", category: "happiness", productivity: "productive" },
 ];
 
 export const FIXED_NONPRODUCTIVE_TASKS = [
@@ -158,6 +158,16 @@ export const FIXED_NONPRODUCTIVE_TASKS = [
 ];
 
 export const REPLACED_TASK_NAMES = ["감정적이기"];
+
+/** 내장 과제 표시명 변경 시 구 이름 → 로컬 목록·시간기록 이전 */
+export const BUILTIN_NAME_MIGRATIONS = [
+  {
+    from: "나갈 준비",
+    to: "외출 준비",
+    productivity: "productive",
+    category: "happiness",
+  },
+];
 
 export const TASKS_LOCKED_FOR_EDIT = ["낮잠"];
 
