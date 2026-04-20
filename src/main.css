@@ -4614,27 +4614,42 @@ body {
     width: 100%;
     max-width: 100%;
     min-width: 0;
-    overflow-x: hidden;
+    overflow-x: clip;
+    contain: inline-size;
   }
 
   /* 모바일 근무표 월별: 7열 동일 너비(내용이 열을 밀지 않음) + 셀·자식 min-width 0 + 넘치면 말줄임 */
   .calendar-view--mobile-workschedule .work-schedule-monthly-weekdays,
   .calendar-view--mobile-workschedule .work-schedule-monthly-week {
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
     width: 100%;
+    min-width: 0;
   }
   .calendar-view--mobile-workschedule .work-schedule-monthly-weekday,
   .calendar-view--mobile-workschedule .work-schedule-monthly-day {
-    min-width: 0;
+    min-width: 0 !important;
     max-width: 100%;
+    width: 100%;
     box-sizing: border-box;
     overflow: hidden;
+  }
+  /* 셀을 세로 flex로 묶어 자식이 가로 intrinsic 폭으로 열을 넓히지 않게 함 */
+  .calendar-view--mobile-workschedule .work-schedule-monthly-day {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .calendar-view--mobile-workschedule .work-schedule-monthly-day-num {
+    align-self: flex-end;
+    max-width: 100%;
   }
   .calendar-view--mobile-workschedule .work-schedule-monthly-day-entries {
     width: 100%;
     max-width: 100%;
     min-width: 0;
+    flex: 1 1 auto;
     align-items: stretch;
+    align-self: stretch;
     box-sizing: border-box;
     overflow: hidden;
   }
@@ -4645,11 +4660,26 @@ body {
     width: 100%;
     box-sizing: border-box;
   }
+  /* 시간 칩 가로 나열: 셀 밖으로 밀지 않고 줄바꿈·말줄임 */
+  .calendar-view--mobile-workschedule .work-schedule-monthly-entry--segments {
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: 100%;
+    min-width: 0;
+  }
+  .calendar-view--mobile-workschedule
+    .work-schedule-monthly-entry--segments
+    .work-schedule-monthly-hours {
+    flex: 0 1 auto;
+    max-width: 100%;
+    min-width: 0;
+  }
   /* 여러 pill이 가로로 늘어서 열을 넓히지 않도록 세로로 쌓고 각 줄 전체 너비에서 말줄임 */
   .calendar-view--mobile-workschedule .work-schedule-monthly-entry--pills {
     flex-direction: column;
     flex-wrap: nowrap;
-    align-items: stretch;
+    align-items: stretch !important;
     align-self: stretch;
   }
   .calendar-view--mobile-workschedule .work-schedule-monthly-type-pill {
@@ -4661,9 +4691,33 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-size: 0.6rem;
-    padding: 0.12rem 0.28rem;
-    line-height: 1.25;
+    font-size: 0.52rem;
+    padding: 0.1rem 0.22rem;
+    line-height: 1.2;
+  }
+  .calendar-view--mobile-workschedule
+    .work-schedule-monthly-type-pill.work-schedule-monthly-type-pill--with-meal-check {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    overflow: hidden;
+    min-width: 0;
+  }
+  .calendar-view--mobile-workschedule
+    .work-schedule-monthly-type-pill--with-meal-check
+    .work-schedule-monthly-meal-done-check {
+    width: 0.62rem;
+    height: 0.62rem;
+    flex-shrink: 0;
+  }
+  .calendar-view--mobile-workschedule
+    .work-schedule-monthly-type-pill--with-meal-check
+    .work-schedule-monthly-type-pill-label {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .calendar-view--mobile-workschedule .work-schedule-monthly-hours {
     display: block;
@@ -4674,7 +4728,7 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 0.6rem;
+    font-size: 0.52rem;
   }
 
   /* 모바일 월별: 행·pill 왼쪽 강조선 제거(너비 확보) */
@@ -4682,6 +4736,7 @@ body {
     border-left: none;
     padding-left: 0;
     gap: 0.25rem;
+    align-items: stretch;
   }
   .calendar-view--mobile-workschedule .work-schedule-monthly-type-pill.is-default {
     border-left: none;
@@ -13035,6 +13090,32 @@ body {
   align-items: center;
 }
 
+/* 식단 칩 안: 시간가계부 기록 확인 체크 */
+.work-schedule-monthly-type-pill.work-schedule-monthly-type-pill--with-meal-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.work-schedule-monthly-type-pill--with-meal-check .work-schedule-monthly-meal-done-check {
+  width: 0.85rem;
+  height: 0.85rem;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--ui-btn-primary-bg, #2a3828);
+  cursor: default;
+  pointer-events: none;
+}
+
+.work-schedule-monthly-type-pill--with-meal-check .work-schedule-monthly-type-pill-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* 같은 날 여러 근무: 시간 칩 나열 */
 .work-schedule-monthly-entry--segments {
   display: flex;
@@ -13078,9 +13159,9 @@ body {
 }
 
 .work-schedule-monthly-type-pill.is-ws-pill-diet {
-  background: #d6f0e0;
-  color: #2d5a40;
-  border: 1px solid rgba(90, 168, 120, 0.4);
+  background: #d0dfd7;
+  color: #2e4a3a;
+  border: 1px solid rgba(46, 90, 68, 0.32);
 }
 
 .work-schedule-monthly-type-pill.is-ws-pill-default {

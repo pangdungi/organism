@@ -84,6 +84,11 @@ import {
   getMealChecklistState,
   setMealChecklistItem,
 } from "../utils/mealTaskChecklistStorage.js";
+import {
+  dietNameFromLedgerMemoTag,
+  isWorkScheduleDietLedgerMemoTag,
+  makeWorkScheduleDietLedgerMemoTag,
+} from "../utils/workScheduleDietLedgerTags.js";
 
 export { getTaskOptionByName };
 
@@ -3242,7 +3247,7 @@ function getMemoTagDisplayTextsForLedgerRow(rowData) {
       : parseTagsFromFeedback(rowData?.feedback || "");
   const { userTags } = splitLedgerMemoTags(Array.isArray(raw) ? raw : []);
   const expenseIds = getLedgerLinkedExpenseIds(rowData);
-  const texts = [...userTags];
+  const texts = userTags.filter((t) => !isWorkScheduleDietLedgerMemoTag(t));
   const allExp = loadExpenseRows();
   for (const eid of expenseIds) {
     const row = allExp.find((r) => String(r?.id || "").trim() === eid);
@@ -6596,7 +6601,16 @@ export function render() {
       ? [...data.memoTags]
       : parseTagsFromFeedback(feedbackRaw);
     const splitEdit = splitLedgerMemoTags(rawMemoTagsForEdit);
-    taskLogMemoTags = splitEdit.userTags;
+    const mealNamesFromRow = [];
+    taskLogMemoTags = splitEdit.userTags.filter((t) => {
+      const s = String(t ?? "").trim();
+      if (isWorkScheduleDietLedgerMemoTag(s)) {
+        const n = dietNameFromLedgerMemoTag(s);
+        if (n) mealNamesFromRow.push(n);
+        return false;
+      }
+      return true;
+    });
     renderTaskLogTagPills();
     const fromLinkedField = Array.isArray(data.linkedExpenseIds) ? data.linkedExpenseIds : [];
     const mergedExpenseIds = [
@@ -6615,18 +6629,19 @@ export function render() {
     if (taskLogEmotionQ2) taskLogEmotionQ2.value = "";
     if (taskLogEmotionQ3) taskLogEmotionQ3.value = "";
     if (taskLogEmotionQ4) taskLogEmotionQ4.value = "";
-    const taskNameForAccordion = (data.taskName || "").trim();
-    const hasExpenseData =
-      (taskLogExpenseNameInput?.value || "").trim() ||
-      (expenseClassificationButtons?._getValue?.() || "").trim() ||
-      (taskLogExpenseAmountInput?.value || "").trim();
-    const hasEmotionData =
-      data.q1 ||
-      data.q2 ||
-      data.q3 ||
-      data.q4 ||
-      data.taskName === EMOTION_TASK_POSITIVE ||
-      data.taskName === EMOTION_TASK_NEGATIVE;
+    const ymdEdit = String(recKey || "")
+      .trim()
+      .replace(/\//g, "-")
+      .slice(0, 10);
+    const tnSync = (data.taskName || "").trim();
+    if (isMealChecklistTaskName(tnSync) && ymdEdit.length >= 10) {
+      const dietList = listWorkScheduleDietTypeNamesFromMem();
+      const picked = new Set(mealNamesFromRow);
+      for (const d of dietList) {
+        setMealChecklistItem(ymdEdit, tnSync, d, picked.has(d));
+      }
+    }
+    refreshKpiTodosInLogModal(tnSync);
   }
 
   function closeTaskLogModal() {
@@ -6691,7 +6706,27 @@ export function render() {
     const linkedFromModal = taskLogExpenseAddedItems
       .map((it) => String(it?.id || "").trim())
       .filter(Boolean);
-    const memoTags = buildLedgerMemoTagsForSubmit(taskLogMemoTags, todoTags);
+    const userTagsNoMeal = (Array.isArray(taskLogMemoTags) ? taskLogMemoTags : [])
+      .map((t) => String(t ?? "").trim())
+      .filter((t) => t && !isWorkScheduleDietLedgerMemoTag(t));
+    const mealMemoTags = [];
+    if (isMealChecklistTaskName(taskName) && taskLogDailyTodosList) {
+      taskLogDailyTodosList
+        .querySelectorAll("label[data-meal-checklist='1']")
+        .forEach((lab) => {
+          const cb = lab.querySelector('input[type="checkbox"]');
+          const span = lab.querySelector(".time-task-log-kpi-todo-text");
+          const dietName = (span?.textContent || "").trim();
+          if (cb?.checked && dietName) {
+            const tag = makeWorkScheduleDietLedgerMemoTag(dietName);
+            if (tag) mealMemoTags.push(tag);
+          }
+        });
+    }
+    const memoTags = buildLedgerMemoTagsForSubmit(
+      [...userTagsNoMeal, ...mealMemoTags],
+      todoTags,
+    );
     const timeTracked = (() => {
       if (startTime && endTime) {
         const toIso = (str) => {

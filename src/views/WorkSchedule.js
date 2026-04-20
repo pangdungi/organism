@@ -2,9 +2,17 @@
  * 근무-식단표 - 근무 일정 관리
  * 근무시간, 근무유형, 근무일, 시간, 메모
  */
-import { renderMonthlyContent, setWorkScheduleMonthlyViewCursor } from "./WorkScheduleMonthly.js";
+import {
+  renderMonthlyContent,
+  setWorkScheduleMonthlyLiveRerender,
+  setWorkScheduleMonthlyViewCursor,
+} from "./WorkScheduleMonthly.js";
 import { supabase } from "../supabase.js";
-import { hydrateWorkScheduleFromCloud } from "../utils/workScheduleSupabase.js";
+import {
+  attachWorkScheduleSaveListener,
+  hydrateWorkScheduleFromCloud,
+  pullWorkScheduleFromSupabase,
+} from "../utils/workScheduleSupabase.js";
 import { workScheduleDiagLog } from "../utils/workScheduleDiag.js";
 import { applyWorkScheduleRowTimesFromTypes, normalizeWorkDateKey } from "../utils/workScheduleEntryResolve.js";
 import {
@@ -20,9 +28,11 @@ function wsUiLog(...args) {
 
 let _workScheduleHydrateGeneration = 0;
 
-function notifyWorkScheduleSaved() {
+function notifyWorkScheduleSaved(detail) {
   try {
-    window.dispatchEvent(new CustomEvent("work-schedule-saved"));
+    window.dispatchEvent(
+      new CustomEvent("work-schedule-saved", { detail: detail || {} }),
+    );
   } catch (_) {}
 }
 
@@ -189,7 +199,7 @@ function addWorkTypeOption(name, kind) {
   };
   const next = sortTypeOptionsList([...full, newEntry]);
   writeWorkScheduleTypeOptionsRawToMem(next);
-  notifyWorkScheduleSaved();
+  notifyWorkScheduleSaved({ types: true });
   return next;
 }
 
@@ -197,7 +207,7 @@ function removeWorkTypeOption(name) {
   if (DEFAULT_TYPE_NAMES.has(name)) return getWorkTypeOptionsFull();
   const full = getWorkTypeOptionsFull().filter((o) => o.name !== name);
   writeWorkScheduleTypeOptionsRawToMem(full);
-  notifyWorkScheduleSaved();
+  notifyWorkScheduleSaved({ types: true });
   return full;
 }
 
@@ -207,7 +217,7 @@ function loadRows() {
 
 function saveRows(rows) {
   const withIds = writeWorkScheduleRowsToMem(rows);
-  notifyWorkScheduleSaved();
+  notifyWorkScheduleSaved({ entries: true });
   return withIds;
 }
 
@@ -256,6 +266,7 @@ function getMergedInitialRows() {
 }
 
 export function render(opts = {}) {
+  attachWorkScheduleSaveListener();
   const mobile = !!opts.mobile;
   wsUiLog("render() enter", { mobile });
   const el = document.createElement("div");
@@ -311,7 +322,10 @@ export function render(opts = {}) {
   }
   el.appendChild(header);
 
-  function openWorkTypeSettingsModal() {
+  async function openWorkTypeSettingsModal() {
+    try {
+      await pullWorkScheduleFromSupabase({ includeTypes: true });
+    } catch (_) {}
     function escapeHtml(s) {
       const div = document.createElement("div");
       div.textContent = s == null ? "" : String(s);
@@ -776,6 +790,7 @@ export function render(opts = {}) {
   }
 
   function renderMonthlyView() {
+    setWorkScheduleMonthlyLiveRerender(renderMonthlyView);
     contentWrap.innerHTML = "";
     contentWrap.appendChild(
       renderMonthlyContent({

@@ -7,6 +7,33 @@ export const WORK_SCHEDULE_ROWS_LS_LEGACY_KEY = "work_schedule_rows";
 export const WORK_SCHEDULE_TYPE_OPTIONS_LS_LEGACY_KEY = "work_schedule_type_options";
 export const WORK_SCHEDULE_DAILY_HOURS_LS_LEGACY_KEY = "work_schedule_daily_hours";
 
+/** 새로고침 후에도 유형 목록 유지(설정 모달·서버 풀 전까지). 로그아웃 시 삭제. */
+const WORK_SCHEDULE_TYPES_MIRROR_KEY = "lp_work_schedule_types_mirror_v1";
+
+function readTypesMirrorFromStorage() {
+  try {
+    if (typeof localStorage === "undefined") return null;
+    const raw = localStorage.getItem(WORK_SCHEDULE_TYPES_MIRROR_KEY);
+    if (!raw) return null;
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr) || arr.length === 0) return null;
+    return arr;
+  } catch (_) {
+    return null;
+  }
+}
+
+function persistWorkScheduleTypesMirror(arr) {
+  try {
+    if (typeof localStorage === "undefined") return;
+    if (!Array.isArray(arr) || arr.length === 0) {
+      localStorage.removeItem(WORK_SCHEDULE_TYPES_MIRROR_KEY);
+      return;
+    }
+    localStorage.setItem(WORK_SCHEDULE_TYPES_MIRROR_KEY, JSON.stringify(arr));
+  } catch (_) {}
+}
+
 /** WorkSchedule.js ENTRY_ID_RE 와 동일 */
 const ENTRY_ID_FULL_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -77,16 +104,20 @@ export function writeWorkScheduleRowsToMem(rows) {
 
 export function readWorkScheduleTypeOptionsRawFromMem() {
   migrateFromLegacyLocalStorageOnce();
+  if (_typeOptionsMem == null) {
+    const mirrored = readTypesMirrorFromStorage();
+    if (mirrored) _typeOptionsMem = mirrored;
+  }
   return _typeOptionsMem;
 }
 
 /** 근무-식단표 설정에서 kind가 식단인 유형 이름만 (과제 기록 체크리스트용) */
 export function listWorkScheduleDietTypeNamesFromMem() {
-  migrateFromLegacyLocalStorageOnce();
-  if (!Array.isArray(_typeOptionsMem) || _typeOptionsMem.length === 0) return [];
+  const mem = readWorkScheduleTypeOptionsRawFromMem();
+  if (!Array.isArray(mem) || mem.length === 0) return [];
   const out = [];
   const seen = new Set();
-  for (const raw of _typeOptionsMem) {
+  for (const raw of mem) {
     const name =
       typeof raw === "string"
         ? String(raw || "").trim()
@@ -108,8 +139,13 @@ export function listWorkScheduleDietTypeNamesFromMem() {
 
 export function writeWorkScheduleTypeOptionsRawToMem(arr) {
   migrateFromLegacyLocalStorageOnce();
-  if (!Array.isArray(arr) || arr.length === 0) _typeOptionsMem = null;
-  else _typeOptionsMem = arr;
+  if (!Array.isArray(arr) || arr.length === 0) {
+    _typeOptionsMem = null;
+    persistWorkScheduleTypesMirror([]);
+    return;
+  }
+  _typeOptionsMem = arr;
+  persistWorkScheduleTypesMirror(arr);
 }
 
 export function readWorkScheduleDailyHoursFromMem() {
@@ -135,6 +171,7 @@ export function clearWorkScheduleMemAndLegacy() {
     localStorage.removeItem(WORK_SCHEDULE_ROWS_LS_LEGACY_KEY);
     localStorage.removeItem(WORK_SCHEDULE_TYPE_OPTIONS_LS_LEGACY_KEY);
     localStorage.removeItem(WORK_SCHEDULE_DAILY_HOURS_LS_LEGACY_KEY);
+    localStorage.removeItem(WORK_SCHEDULE_TYPES_MIRROR_KEY);
   } catch (_) {}
   _legacyMigrated = false;
   _rowsMem = [];

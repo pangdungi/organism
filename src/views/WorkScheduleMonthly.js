@@ -8,8 +8,78 @@
  */
 
 import { applyWorkScheduleRowTimesFromTypes } from "../utils/workScheduleEntryResolve.js";
-import { readWorkScheduleRowsFromMem } from "../utils/workScheduleModel.js";
+import {
+  readWorkScheduleRowsFromMem,
+  listWorkScheduleDietTypeNamesFromMem,
+} from "../utils/workScheduleModel.js";
+import { readTimeLedgerEntriesRaw } from "../utils/timeLedgerEntriesModel.js";
+import { collectDietNamesFromLedgerForDate } from "../utils/workScheduleDietLedgerTags.js";
 import { workScheduleDiagLog } from "../utils/workScheduleDiag.js";
+
+let _calendarRowsListenerAttached = false;
+let _workScheduleMonthlyRerender = null;
+
+/** 근무표 월별 콘텐츠가 마운트된 뒤, 시간가계부 저장 시 달력을 다시 그립니다. */
+export function setWorkScheduleMonthlyLiveRerender(fn) {
+  _workScheduleMonthlyRerender = typeof fn === "function" ? fn : null;
+}
+
+/**
+ * 같은 날 같은 식단명: 근무표 행 + 시간가계부 기록을 한 칩으로 합침.
+ * @returns {{ items: Array<{ workType: string, rowId: string | null, mealLoggedInLedger: boolean, sortStart: string, sortKey: string }>, dietTypeSet: Set<string> }}
+ */
+function buildMonthlyTypeModePillItems(sortedWorkRows, dateKey) {
+  const ledgerRows = readTimeLedgerEntriesRaw();
+  const ledgerDietSet = collectDietNamesFromLedgerForDate(ledgerRows, dateKey);
+  const dietTypeSet = new Set(listWorkScheduleDietTypeNamesFromMem());
+
+  const nonDietRows = [];
+  const dietByName = new Map();
+  for (const e of sortedWorkRows) {
+    const wt = String(e.workType || "").trim();
+    if (!wt) continue;
+    if (!dietTypeSet.has(wt)) {
+      nonDietRows.push(e);
+      continue;
+    }
+    if (!dietByName.has(wt)) dietByName.set(wt, []);
+    dietByName.get(wt).push(e);
+  }
+
+  const mergedNames = new Set([...dietByName.keys(), ...ledgerDietSet]);
+  const dietDisplays = [];
+  for (const name of Array.from(mergedNames).sort((a, b) =>
+    a.localeCompare(b, "ko"),
+  )) {
+    const rows = dietByName.get(name) || [];
+    const primary = rows[0] || null;
+    dietDisplays.push({
+      workType: name,
+      rowId: primary ? String(primary.id) : null,
+      mealLoggedInLedger: ledgerDietSet.has(name),
+      sortStart: String(primary?.startTime || "").trim(),
+      sortKey: primary ? String(primary.id) : `ledger:${name}`,
+    });
+  }
+
+  const nonDietDisplays = nonDietRows.map((e) => ({
+    workType: String(e.workType || "").trim(),
+    rowId: String(e.id),
+    mealLoggedInLedger: false,
+    sortStart: String(e.startTime || "").trim(),
+    sortKey: String(e.id),
+  }));
+
+  const all = [...nonDietDisplays, ...dietDisplays];
+  all.sort((a, b) => {
+    if (a.sortStart !== b.sortStart)
+      return a.sortStart.localeCompare(b.sortStart);
+    if (a.workType !== b.workType)
+      return a.workType.localeCompare(b.workType, "ko");
+    return a.sortKey.localeCompare(b.sortKey);
+  });
+  return { items: all, dietTypeSet };
+}
 
 /** 근무표 월별보기에서 보고 있던 연·월 — 모달·탭 갱신 후에도 유지 (localStorage: 세션보다 안정적) */
 const WS_MONTHLY_VIEW_YM_KEY = "lp-work-schedule-monthly-ym";
@@ -159,6 +229,15 @@ const MONTH_NAMES_SHORT = [
  *   - typeOnly: true면 근무유형만 표시(필터 버튼 숨김). 근무표 「2. 월별보기」는 항상 이 모드
  */
 export function renderMonthlyContent(opts = {}) {
+  if (!_calendarRowsListenerAttached && typeof document !== "undefined") {
+    _calendarRowsListenerAttached = true;
+    document.addEventListener("calendar-time-rows-updated", () => {
+      try {
+        _workScheduleMonthlyRerender?.();
+      } catch (_) {}
+    });
+  }
+
   const hoursOnly = !!opts.hoursOnly;
   const typeOnly = !!opts.typeOnly;
   const noFilter = hoursOnly || typeOnly;
@@ -338,7 +417,18 @@ export function renderMonthlyContent(opts = {}) {
         const entries = sortEntriesForDay(byDate[key] || []);
         const entriesEl = document.createElement("div");
         entriesEl.className = "work-schedule-monthly-day-entries";
-        if (entries.length > 0) {
+        const ledgerDietCountForDay =
+          displayMode === "type"
+            ? collectDietNamesFromLedgerForDate(
+                readTimeLedgerEntriesRaw(),
+                key,
+              ).size
+            : 0;
+        const shouldRenderEntryBlock =
+          (displayMode === "hours" && entries.length > 0) ||
+          (displayMode === "type" &&
+            (entries.length > 0 || ledgerDietCountForDay > 0));
+        if (shouldRenderEntryBlock) {
           const item = document.createElement("div");
           item.className = "work-schedule-monthly-entry";
           if (displayMode === "hours") {
@@ -363,15 +453,21 @@ export function renderMonthlyContent(opts = {}) {
           } else if (displayMode === "type") {
             item.className =
               "work-schedule-monthly-entry work-schedule-monthly-entry--pills";
-            const hasAnyType = entries.some((e) => (e.workType || "").trim());
+            const { items: pillItems, dietTypeSet } = buildMonthlyTypeModePillItems(
+              entries,
+              key,
+            );
+            const hasAnyType = pillItems.some((p) => (p.workType || "").trim());
             if (!hasAnyType) {
               const ph = document.createElement("span");
               ph.className = "work-schedule-monthly-type-pill is-placeholder";
               ph.textContent = "-";
               item.appendChild(ph);
             } else {
-              entries.forEach((e) => {
-                const t = (e.workType || "").trim() || "-";
+              pillItems.forEach((p) => {
+                const t = (p.workType || "").trim() || "-";
+                const showMealCheck =
+                  p.mealLoggedInLedger && dietTypeSet.has(t);
                 const pill = document.createElement("span");
                 const pillKind =
                   typePillClassForName && t !== "-"
@@ -380,15 +476,40 @@ export function renderMonthlyContent(opts = {}) {
                 pill.className =
                   "work-schedule-monthly-type-pill " +
                   (pillKind || "is-default");
-                pill.textContent = t;
-                if (onEntryClick && e.id) {
+                if (showMealCheck) {
+                  pill.classList.add(
+                    "work-schedule-monthly-type-pill--with-meal-check",
+                  );
+                  const cb = document.createElement("input");
+                  cb.type = "checkbox";
+                  cb.className = "work-schedule-monthly-meal-done-check";
+                  cb.checked = true;
+                  cb.disabled = true;
+                  cb.title = "시간가계부에 식사를 기록함";
+                  cb.setAttribute(
+                    "aria-label",
+                    "시간가계부에 이 식단을 기록함",
+                  );
+                  cb.addEventListener("click", (ev) => ev.stopPropagation());
+                  pill.appendChild(cb);
+                  const lab = document.createElement("span");
+                  lab.className = "work-schedule-monthly-type-pill-label";
+                  lab.textContent = t;
+                  pill.appendChild(lab);
+                } else {
+                  pill.textContent = t;
+                }
+                if (onEntryClick && p.rowId) {
                   pill.style.cursor = "pointer";
                   pill.title = "탭하여 이 근무 수정·삭제";
                   pill.addEventListener("click", (ev) => {
                     ev.preventDefault();
                     ev.stopPropagation();
-                    onEntryClick({ dateKey: key, rowId: String(e.id) });
+                    onEntryClick({ dateKey: key, rowId: String(p.rowId) });
                   });
+                } else if (!p.rowId) {
+                  pill.title =
+                    "근무-식단표에만 없는 항목입니다. 시간가계부에서 기록되었습니다.";
                 }
                 item.appendChild(pill);
               });
