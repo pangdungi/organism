@@ -80,6 +80,32 @@ export function readWorkScheduleTypeOptionsRawFromMem() {
   return _typeOptionsMem;
 }
 
+/** 근무-식단표 설정에서 kind가 식단인 유형 이름만 (과제 기록 체크리스트용) */
+export function listWorkScheduleDietTypeNamesFromMem() {
+  migrateFromLegacyLocalStorageOnce();
+  if (!Array.isArray(_typeOptionsMem) || _typeOptionsMem.length === 0) return [];
+  const out = [];
+  const seen = new Set();
+  for (const raw of _typeOptionsMem) {
+    const name =
+      typeof raw === "string"
+        ? String(raw || "").trim()
+        : String(raw?.name || "").trim();
+    const kind =
+      typeof raw === "object" &&
+      raw &&
+      String(raw.kind || "").trim() === "diet"
+        ? "diet"
+        : "work";
+    if (!name || kind !== "diet") continue;
+    if (seen.has(name)) continue;
+    seen.add(name);
+    out.push(name);
+  }
+  out.sort((a, b) => a.localeCompare(b, "ko"));
+  return out;
+}
+
 export function writeWorkScheduleTypeOptionsRawToMem(arr) {
   migrateFromLegacyLocalStorageOnce();
   if (!Array.isArray(arr) || arr.length === 0) _typeOptionsMem = null;

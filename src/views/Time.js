@@ -79,6 +79,11 @@ import {
   readSectionTasksObject,
   readCustomSectionTasksObject,
 } from "../utils/todoSectionTasksModel.js";
+import { listWorkScheduleDietTypeNamesFromMem } from "../utils/workScheduleModel.js";
+import {
+  getMealChecklistState,
+  setMealChecklistItem,
+} from "../utils/mealTaskChecklistStorage.js";
 
 export { getTaskOptionByName };
 
@@ -196,6 +201,16 @@ const AUDIT_UNHEALTHY_MEAL_TASK_NAMES = new Set(["건강하지 않은 식사"]);
 const AUDIT_HEALTH_SECTION_BUILTIN_NAMES = new Set(
   TTC.DEFAULT_TASK_OPTIONS.map((t) => String(t.name || "").trim()).filter(Boolean),
 );
+
+/** 과제 기록 — 근무-식단표 식단 체크리스트 (건강한 식사·식사 준비) */
+const MEAL_CHECKLIST_TASK_NAMES = new Set([
+  "건강한 식사",
+  "건강한 식사 준비",
+  "건강한 식사준비",
+]);
+function isMealChecklistTaskName(n) {
+  return MEAL_CHECKLIST_TASK_NAMES.has((n || "").trim());
+}
 
 /** 식사 2행: 원래 오딧과 동일 톤 */
 const AUDIT_MEAL_TIMELINE_FILL_HEALTHY = "rgba(245, 170, 178, 0.78)";
@@ -4961,6 +4976,8 @@ export function render() {
     el?.addEventListener("change", () => {
       syncStartToHidden();
       syncEndToHidden();
+      const tn = taskLogTaskDropdown?._getValue?.() || "";
+      if (tn) refreshKpiTodosInLogModal(tn);
     });
     el?.addEventListener("blur", () => {
       if (el === taskLogTimeStart) {
@@ -5949,41 +5966,102 @@ export function render() {
     }
 
     if (!taskLogDailyTodosSection || !taskLogDailyTodosList) return;
+    const taskLogDailyTodosTitle = taskLogModal.querySelector(
+      ".time-task-log-daily-todos-title",
+    );
+    const DEFAULT_DAILY_TODOS_TITLE = "매일 할일 목록";
+
+    function normalizeTaskLogPickerDateYmd() {
+      const raw = (taskLogDateStart?.value || "").trim();
+      if (!raw) return "";
+      const m = raw.match(/(\d{4})[.\-\s/]*(\d{1,2})[.\-\s/]*(\d{1,2})/);
+      if (m)
+        return `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`;
+      return raw.replace(/\//g, "-").slice(0, 10);
+    }
+
+    const dateYmd = normalizeTaskLogPickerDateYmd();
     const dailyInfo = getKpiDailyRepeatInfoByKpiName(name);
-    if (!dailyInfo || !dailyInfo.needHabitTracker) {
-      taskLogDailyTodosSection.hidden = true;
+    const dietNames = listWorkScheduleDietTypeNamesFromMem();
+
+    if (dailyInfo && dailyInfo.needHabitTracker) {
+      if (taskLogDailyTodosTitle)
+        taskLogDailyTodosTitle.textContent = DEFAULT_DAILY_TODOS_TITLE;
+      taskLogDailyTodosSection.hidden = false;
       taskLogDailyTodosList.innerHTML = "";
+      const { storageKey: dailyStorageKey, dailyTodos } = dailyInfo;
+      dailyTodos.forEach((todo) => {
+        const label = document.createElement("label");
+        label.className =
+          "time-task-log-kpi-todo-row time-task-log-daily-todo-row";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = !!todo.completed;
+        checkbox.dataset.todoId = todo.id;
+        checkbox.dataset.storageKey = dailyStorageKey;
+        const span = document.createElement("span");
+        span.className = "time-task-log-kpi-todo-text";
+        span.textContent = todo.text || "";
+        if (todo.completed) span.classList.add("is-done");
+        label.appendChild(checkbox);
+        label.appendChild(span);
+        checkbox.addEventListener("change", () => {
+          syncKpiDailyRepeatTodoCompleted(
+            todo.id,
+            dailyStorageKey,
+            checkbox.checked,
+          );
+          span.classList.toggle("is-done", checkbox.checked);
+        });
+        taskLogDailyTodosList.appendChild(label);
+      });
       return;
     }
-    taskLogDailyTodosSection.hidden = false;
-    taskLogDailyTodosList.innerHTML = "";
-    const { storageKey: dailyStorageKey, dailyTodos } = dailyInfo;
-    dailyTodos.forEach((todo) => {
-      const label = document.createElement("label");
-      label.className =
-        "time-task-log-kpi-todo-row time-task-log-daily-todo-row";
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.checked = !!todo.completed;
-      checkbox.dataset.todoId = todo.id;
-      checkbox.dataset.storageKey = dailyStorageKey;
-      const span = document.createElement("span");
-      span.className = "time-task-log-kpi-todo-text";
-      span.textContent = todo.text || "";
-      if (todo.completed) span.classList.add("is-done");
-      label.appendChild(checkbox);
-      label.appendChild(span);
-      checkbox.addEventListener("change", () => {
-        syncKpiDailyRepeatTodoCompleted(
-          todo.id,
-          dailyStorageKey,
-          checkbox.checked,
-        );
-        span.classList.toggle("is-done", checkbox.checked);
+
+    if (
+      isMealChecklistTaskName(name) &&
+      dateYmd.length >= 10 &&
+      dietNames.length > 0
+    ) {
+      if (taskLogDailyTodosTitle)
+        taskLogDailyTodosTitle.textContent = "등록한 식단";
+      taskLogDailyTodosSection.hidden = false;
+      taskLogDailyTodosList.innerHTML = "";
+      const saved = getMealChecklistState(dateYmd, name);
+      dietNames.forEach((dietLabel) => {
+        const label = document.createElement("label");
+        label.className =
+          "time-task-log-kpi-todo-row time-task-log-daily-todo-row";
+        label.dataset.mealChecklist = "1";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = !!saved[dietLabel];
+        const span = document.createElement("span");
+        span.className = "time-task-log-kpi-todo-text";
+        span.textContent = dietLabel;
+        if (checkbox.checked) span.classList.add("is-done");
+        label.appendChild(checkbox);
+        label.appendChild(span);
+        checkbox.addEventListener("change", () => {
+          setMealChecklistItem(dateYmd, name, dietLabel, checkbox.checked);
+          span.classList.toggle("is-done", checkbox.checked);
+        });
+        taskLogDailyTodosList.appendChild(label);
       });
-      taskLogDailyTodosList.appendChild(label);
-    });
+      return;
+    }
+
+    taskLogDailyTodosSection.hidden = true;
+    taskLogDailyTodosList.innerHTML = "";
+    if (taskLogDailyTodosTitle)
+      taskLogDailyTodosTitle.textContent = DEFAULT_DAILY_TODOS_TITLE;
   }
+
+  window.addEventListener("work-schedule-saved", () => {
+    if (!taskLogModal || taskLogModal.hidden) return;
+    const tn = taskLogTaskDropdown?._getValue?.() || "";
+    if (tn) refreshKpiTodosInLogModal(tn);
+  });
 
   function setupScoreButtons(container, getValue, setValue) {
     if (!container) return;
