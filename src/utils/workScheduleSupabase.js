@@ -194,8 +194,42 @@ async function pullWorkScheduleFromSupabaseImpl() {
 
 
   if (!typesRes.error) {
-    const typesForMem = typeOptionsFromServerRows(typesRes.data || []);
-    writeWorkScheduleTypeOptionsRawToMem(typesForMem);
+    const serverRows = Array.isArray(typesRes.data) ? typesRes.data : [];
+    const serverCustomCount = serverRows.filter(
+      (r) =>
+        r &&
+        r.name &&
+        !DEFAULT_TYPE_SEED.some((d) => d.name === r.name),
+    ).length;
+    const localRaw = readWorkScheduleTypeOptionsRawFromMem();
+    const hasLocalCustom =
+      Array.isArray(localRaw) &&
+      localRaw.some((entry) => {
+        const name =
+          typeof entry === "string"
+            ? String(entry || "").trim()
+            : String(entry?.name || "").trim();
+        if (!name) return false;
+        return !DEFAULT_TYPE_SEED.some((d) => d.name === name);
+      });
+    if (serverCustomCount === 0 && hasLocalCustom) {
+      wsSyncLog(
+        "pull: work_schedule_types — 서버에 커스텀 없음·세션에 있음 → 유형 메모 덮어쓰기 생략(푸시 실패·마이그레이션 미적용 대비)",
+      );
+    } else {
+      const typesForMem = typeOptionsFromServerRows(serverRows);
+      writeWorkScheduleTypeOptionsRawToMem(typesForMem);
+      wsSyncLog("pull: types → mem", serverRows.length, "custom", serverCustomCount);
+    }
+  } else {
+    wsSyncLog("pull: work_schedule_types 조회 오류 — 유형 메모 유지", typesRes.error);
+    try {
+      console.warn(
+        "[근무-식단표 동기화] 유형 불러오기 실패:",
+        typesRes.error?.message || typesRes.error,
+        "(kind 컬럼 없으면 마이그레이션 적용 필요)",
+      );
+    } catch (_) {}
   }
 
   let resolvedRows = loadLocalRows();
@@ -291,6 +325,21 @@ async function syncWorkScheduleToSupabaseImpl() {
   }));
   if (typeUpserts.length > 0) {
     const { error: tErr } = await supabase.from(TYPES_TABLE).upsert(typeUpserts, { onConflict: "user_id,name" });
+    if (tErr) {
+      wsSyncLog(
+        "push: work_schedule_types upsert 실패 — Supabase에 kind 컬럼·RLS·네트워크 확인",
+        tErr.message || String(tErr),
+      );
+      try {
+        console.warn(
+          "[근무-식단표 동기화] 유형 저장 실패:",
+          tErr.message || tErr,
+          "(원격 DB에 migrations/20260420120000_work_schedule_types_kind.sql 적용 여부 확인)",
+        );
+      } catch (_) {}
+    } else {
+      wsSyncLog("push: work_schedule_types upsert OK", typeUpserts.length);
+    }
   }
 
   const typeNames = new Set(typeList.map((t) => t.name));

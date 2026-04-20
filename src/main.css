@@ -7442,6 +7442,14 @@ body {
 }
 .work-schedule-type-settings-row--simple {
   border-bottom: 1px solid var(--line-l3-color);
+  width: 100%;
+  box-sizing: border-box;
+}
+.work-schedule-type-settings-panel--dual
+  .work-schedule-type-settings-col
+  .work-schedule-type-settings-list {
+  width: 100%;
+  align-self: stretch;
 }
 .work-schedule-type-settings-row.is-diet-row .work-schedule-type-settings-name {
   color: var(--text-body);
