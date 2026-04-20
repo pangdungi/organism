@@ -84,8 +84,8 @@ const TABS = [
   },
   {
     id: "workschedule",
-    label: "근무표",
-    mobileLabel: "근무표",
+    label: "근무-식단표",
+    mobileLabel: "근무-식단표",
     icon: "/toolbaricons/calendar-heart1.svg",
   },
   {

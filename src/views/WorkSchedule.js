@@ -1,6 +1,6 @@
 /**
- * 근무표 - 근무 일정 관리
- * 근무시간, 근무유형, 근무일, 시간(근무표), 메모
+ * 근무-식단표 - 근무 일정 관리
+ * 근무시간, 근무유형, 근무일, 시간, 메모
  */
 import { renderMonthlyContent, setWorkScheduleMonthlyViewCursor } from "./WorkScheduleMonthly.js";
 import { supabase } from "../supabase.js";
@@ -245,7 +245,7 @@ export function render(opts = {}) {
     label.textContent = "WORK";
     const h = document.createElement("h1");
     h.className = "dream-view-title calendar-view-title";
-    h.textContent = "근무표";
+    h.textContent = "근무-식단표";
     titleWrap.appendChild(label);
     titleWrap.appendChild(h);
     headerInner.appendChild(titleWrap);
@@ -262,7 +262,7 @@ export function render(opts = {}) {
     label.textContent = "WORK SCHEDULE";
     const h = document.createElement("h1");
     h.className = "dream-view-title";
-    h.textContent = "근무표";
+    h.textContent = "근무-식단표";
     titleWrap.appendChild(label);
     titleWrap.appendChild(h);
     headerInner.appendChild(titleWrap);
