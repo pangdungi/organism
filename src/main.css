@@ -12878,6 +12878,15 @@ body {
   align-items: center;
 }
 
+/* 같은 날 여러 근무: 시간 칩 나열 */
+.work-schedule-monthly-entry--segments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.35rem;
+  align-items: center;
+  justify-content: center;
+}
+
 .work-schedule-monthly-type-pill {
   display: inline-block;
   padding: 0.2rem 0.45rem;

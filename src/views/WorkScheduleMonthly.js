@@ -1,8 +1,9 @@
 /**
  * 근무표 먼슬리 뷰 - 근무일별 근무유형과 Hours를 캘린더에 표시
  *
- * @param {{ hoursOnly?: boolean, typeOnly?: boolean, onDayClick?: (dateKey: string) => void, onMonthLabelClick?: (ctx: { year: number, month: number }) => void }} opts
- *   - onDayClick: 날짜 셀 클릭 시 YYYY-MM-DD 전달(근무 등록 모달 등)
+ * @param {{ hoursOnly?: boolean, typeOnly?: boolean, onDayClick?: (dateKey: string) => void, onEntryClick?: (ctx: { dateKey: string, rowId: string }) => void, onMonthLabelClick?: (ctx: { year: number, month: number }) => void }} opts
+ *   - onDayClick: 날짜 셀 클릭 시 YYYY-MM-DD 전달(새 근무 추가)
+ *   - onEntryClick: 캘린더에 찍힌 근무 칩 클릭 시 해당 행 id로 수정·삭제 모달
  *   - onMonthLabelClick: 상단 월 라벨 클릭 시 해당 달 연·월 전달
  */
 
@@ -153,7 +154,7 @@ const MONTH_NAMES_SHORT = [
 
 /**
  * 근무표 내부에서 사용하는 먼슬리 캘린더 콘텐츠
- * @param {{ hoursOnly?: boolean, typeOnly?: boolean, onDayClick?: (dateKey: string) => void, onMonthLabelClick?: (ctx: { year: number, month: number }) => void }} opts
+ * @param {{ hoursOnly?: boolean, typeOnly?: boolean, onDayClick?: (dateKey: string) => void, onEntryClick?: (ctx: { dateKey: string, rowId: string }) => void, onMonthLabelClick?: (ctx: { year: number, month: number }) => void }} opts
  *   - hoursOnly: true면 근무시간만 표시(필터 버튼 숨김)
  *   - typeOnly: true면 근무유형만 표시(필터 버튼 숨김). 근무표 「2. 월별보기」는 항상 이 모드
  */
@@ -162,6 +163,8 @@ export function renderMonthlyContent(opts = {}) {
   const typeOnly = !!opts.typeOnly;
   const noFilter = hoursOnly || typeOnly;
   const onDayClick = typeof opts.onDayClick === "function" ? opts.onDayClick : null;
+  const onEntryClick =
+    typeof opts.onEntryClick === "function" ? opts.onEntryClick : null;
   const onMonthLabelClick = typeof opts.onMonthLabelClick === "function" ? opts.onMonthLabelClick : null;
   const el = document.createElement("div");
   el.className = "work-schedule-monthly-content" + (noFilter ? " work-schedule-monthly-content--hours-only" : "");
@@ -259,6 +262,18 @@ export function renderMonthlyContent(opts = {}) {
     });
   }
 
+  function sortEntriesForDay(list) {
+    return list.slice().sort((a, b) => {
+      const sa = String(a?.startTime || "").trim();
+      const sb = String(b?.startTime || "").trim();
+      if (sa !== sb) return sa.localeCompare(sb);
+      const ta = String(a?.workType || "").trim();
+      const tb = String(b?.workType || "").trim();
+      if (ta !== tb) return ta.localeCompare(tb);
+      return String(a?.id || "").localeCompare(String(b?.id || ""));
+    });
+  }
+
   function renderCalendar() {
     const rows = loadWorkScheduleRows();
     const byDate = groupByDate(rows);
@@ -318,25 +333,55 @@ export function renderMonthlyContent(opts = {}) {
           });
         }
 
-        const entries = byDate[key] || [];
+        const entries = sortEntriesForDay(byDate[key] || []);
         const entriesEl = document.createElement("div");
         entriesEl.className = "work-schedule-monthly-day-entries";
         if (entries.length > 0) {
           const item = document.createElement("div");
           item.className = "work-schedule-monthly-entry";
           if (displayMode === "hours") {
-            const total = entries.reduce((s, e) => s + (parseFloat(e.hoursWorked) || 0), 0);
-            item.innerHTML = `<span class="work-schedule-monthly-hours">${total ? total + "h" : "-"}</span>`;
+            item.classList.add("work-schedule-monthly-entry--segments");
+            entries.forEach((e) => {
+              const h = parseFloat(e.hoursWorked);
+              const span = document.createElement("span");
+              span.className = "work-schedule-monthly-hours";
+              span.textContent =
+                h && !Number.isNaN(h) ? `${h}h` : "-";
+              if (onEntryClick && e.id) {
+                span.style.cursor = "pointer";
+                span.title = "탭하여 이 근무 수정·삭제";
+                span.addEventListener("click", (ev) => {
+                  ev.preventDefault();
+                  ev.stopPropagation();
+                  onEntryClick({ dateKey: key, rowId: String(e.id) });
+                });
+              }
+              item.appendChild(span);
+            });
           } else if (displayMode === "type") {
-            const types = [...new Set(entries.map((e) => (e.workType || "").trim()).filter(Boolean))];
-            if (types.length === 0) {
-              item.innerHTML = '<span class="work-schedule-monthly-type-pill is-placeholder">-</span>';
+            item.className =
+              "work-schedule-monthly-entry work-schedule-monthly-entry--pills";
+            const hasAnyType = entries.some((e) => (e.workType || "").trim());
+            if (!hasAnyType) {
+              const ph = document.createElement("span");
+              ph.className = "work-schedule-monthly-type-pill is-placeholder";
+              ph.textContent = "-";
+              item.appendChild(ph);
             } else {
-              item.className = "work-schedule-monthly-entry work-schedule-monthly-entry--pills";
-              types.forEach((t) => {
+              entries.forEach((e) => {
+                const t = (e.workType || "").trim() || "-";
                 const pill = document.createElement("span");
                 pill.className = "work-schedule-monthly-type-pill is-default";
                 pill.textContent = t;
+                if (onEntryClick && e.id) {
+                  pill.style.cursor = "pointer";
+                  pill.title = "탭하여 이 근무 수정·삭제";
+                  pill.addEventListener("click", (ev) => {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    onEntryClick({ dateKey: key, rowId: String(e.id) });
+                  });
+                }
                 item.appendChild(pill);
               });
             }

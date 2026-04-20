@@ -394,9 +394,19 @@ export function render(opts = {}) {
     : "work-schedule-content-wrap";
   el.appendChild(contentWrap);
 
-  /** 월별보기: 날짜·근무유형 선택 → 근무표에 행 추가(시작·마감은 유형 기본값) */
-  function openMonthlyDayEntryModal(initialDateKey) {
-    const dateKey = normalizeWorkDateKey(initialDateKey || "") || formatLocalYmd(new Date());
+  /** 월별보기: 날짜 셀 → 새 행 추가 / 근무 칩 → 해당 행 수정·삭제 */
+  function openMonthlyDayEntryModal(initialDateKey, editRowId = null) {
+    const rowsAll = getMergedInitialRows();
+    const existingRow =
+      editRowId != null && String(editRowId).trim()
+        ? rowsAll.find((r) => String(r.id) === String(editRowId).trim())
+        : null;
+    const resolvedEditId = existingRow ? String(existingRow.id) : null;
+
+    const dateKey =
+      normalizeWorkDateKey(
+        existingRow?.workDate || initialDateKey || "",
+      ) || formatLocalYmd(new Date());
     document.querySelectorAll(".work-schedule-day-entry-modal").forEach((n) => n.remove());
 
     const modal = document.createElement("div");
@@ -416,7 +426,7 @@ export function render(opts = {}) {
     const title = document.createElement("h3");
     title.id = "work-schedule-day-entry-title";
     title.className = "work-schedule-type-settings-title";
-    title.textContent = "근무 등록";
+    title.textContent = resolvedEditId ? "근무 수정" : "근무 등록";
     const closeBtn = document.createElement("button");
     closeBtn.type = "button";
     closeBtn.className = "work-schedule-type-settings-close";
@@ -462,12 +472,11 @@ export function render(opts = {}) {
       o.textContent = n;
       select.appendChild(o);
     });
-    const existingForDay = getMergedInitialRows().filter(
-      (r) => normalizeWorkDateKey(r.workDate || "") === dateKey,
-    );
-    const preloadType = existingForDay.length ? (existingForDay[0].workType || "").trim() : "";
-    if (preloadType && [...select.options].some((op) => op.value === preloadType)) {
-      select.value = preloadType;
+    if (resolvedEditId && existingRow) {
+      const wt = (existingRow.workType || "").trim();
+      if (wt && [...select.options].some((op) => op.value === wt)) {
+        select.value = wt;
+      }
     }
     labelType.appendChild(spanType);
     labelType.appendChild(select);
@@ -477,15 +486,16 @@ export function render(opts = {}) {
 
     const footer = document.createElement("div");
     footer.className = "todo-list-modal-footer work-schedule-day-entry-footer";
-    const cancelBtn = document.createElement("button");
-    cancelBtn.type = "button";
-    cancelBtn.className = "todo-list-modal-cancel work-schedule-day-entry-cancel";
-    cancelBtn.textContent = "취소";
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "todo-list-modal-cancel work-schedule-day-entry-delete";
+    deleteBtn.textContent = "삭제";
+    deleteBtn.hidden = !resolvedEditId;
     const saveBtn = document.createElement("button");
     saveBtn.type = "button";
     saveBtn.className = "todo-list-modal-confirm work-schedule-day-entry-save";
     saveBtn.textContent = "저장";
-    footer.appendChild(cancelBtn);
+    footer.appendChild(deleteBtn);
     footer.appendChild(saveBtn);
 
     panel.appendChild(header);
@@ -535,20 +545,39 @@ export function render(opts = {}) {
         const dur = durationFromStartEnd(startTime, endTime);
         if (dur != null && dur > 0) hoursWorked = String(Math.round(dur * 100) / 100);
       }
-      const newRow = {
-        id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : undefined,
+      const baseFields = {
         workDate: wd,
         workType: typeName,
         startTime,
         endTime,
         hoursWorked,
-        hours: "",
-        memo: "",
       };
-      /* 같은 근무일에 행이 여러 줄 쌓이지 않도록: 해당 날짜 기존 행은 모두 제거 후 한 줄로 덮어씀 */
-      const rows = getMergedInitialRows().filter((r) => normalizeWorkDateKey(r.workDate || "") !== wd);
-      rows.push(newRow);
-      rows.sort(compareWorkScheduleRowsByDateTimeAsc);
+      let rows;
+      if (resolvedEditId && existingRow) {
+        rows = getMergedInitialRows().map((r) =>
+          String(r.id) === resolvedEditId
+            ? {
+                ...r,
+                ...baseFields,
+                id: r.id,
+                hours: r.hours != null ? r.hours : "",
+                memo: r.memo != null ? r.memo : "",
+              }
+            : r,
+        );
+      } else {
+        const newRow = {
+          id:
+            typeof crypto !== "undefined" && crypto.randomUUID
+              ? crypto.randomUUID()
+              : undefined,
+          ...baseFields,
+          hours: "",
+          memo: "",
+        };
+        rows = [...getMergedInitialRows(), newRow];
+        rows.sort(compareWorkScheduleRowsByDateTimeAsc);
+      }
       saveRows(rows);
       /* 저장한 근무일이 속한 달로 커서 고정 — 모달 직후 월별보기가 오늘 달로 돌아가는 현상 방지 */
       const dp = wd.split("-");
@@ -566,7 +595,27 @@ export function render(opts = {}) {
 
     backdrop.addEventListener("click", closeModal);
     closeBtn.addEventListener("click", closeModal);
-    cancelBtn.addEventListener("click", closeModal);
+    deleteBtn.addEventListener("click", () => {
+      if (!resolvedEditId) return;
+      const rows = getMergedInitialRows().filter(
+        (r) => String(r.id) !== resolvedEditId,
+      );
+      saveRows(rows);
+      const keepWd =
+        normalizeWorkDateKey(dateInput.value || "") ||
+        normalizeWorkDateKey(initialDateKey || "") ||
+        dateKey;
+      const dp = keepWd.split("-");
+      if (dp.length === 3) {
+        const cy = parseInt(dp[0], 10);
+        const cm = parseInt(dp[1], 10) - 1;
+        if (Number.isFinite(cy) && Number.isFinite(cm) && cm >= 0 && cm <= 11) {
+          setWorkScheduleMonthlyViewCursor(cy, cm);
+        }
+      }
+      closeModal();
+      renderMonthlyView();
+    });
     saveBtn.addEventListener("click", onSave);
     document.addEventListener("keydown", onKeyDown);
 
@@ -581,9 +630,11 @@ export function render(opts = {}) {
     contentWrap.appendChild(
       renderMonthlyContent({
         typeOnly: true,
-        onDayClick: (key) => openMonthlyDayEntryModal(key),
+        onDayClick: (key) => openMonthlyDayEntryModal(key, null),
+        onEntryClick: ({ dateKey: dk, rowId }) =>
+          openMonthlyDayEntryModal(dk, rowId),
         onMonthLabelClick: ({ year, month }) =>
-          openMonthlyDayEntryModal(defaultDateKeyForCalendarMonth(year, month)),
+          openMonthlyDayEntryModal(defaultDateKeyForCalendarMonth(year, month), null),
       }),
     );
   }
