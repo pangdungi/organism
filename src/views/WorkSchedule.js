@@ -44,13 +44,18 @@ function defaultDateKeyForCalendarMonth(year, monthIndex0) {
   return `${year}-${m}-01`;
 }
 
-/** 기본 근무유형 순서: 연차 → 휴가 → 정규근무 (연차·휴가는 00:00-00:00, 수정 불가) */
+/** 기본 근무유형 순서: 연차 → 휴가 → 정규근무 (시간 없음·표시만) */
+const TYPE_KIND_WORK = "work";
+const TYPE_KIND_DIET = "diet";
 const DEFAULT_WORK_TYPE_OPTIONS = [
-  { name: "연차", start: "00:00", end: "00:00" },
-  { name: "휴가", start: "00:00", end: "00:00" },
-  { name: "정규근무", start: "", end: "" },
+  { name: "연차", start: "", end: "", kind: TYPE_KIND_WORK },
+  { name: "휴가", start: "", end: "", kind: TYPE_KIND_WORK },
+  { name: "정규근무", start: "", end: "", kind: TYPE_KIND_WORK },
 ];
-/** 수정·삭제 불가 (UI에서 시작/마감 입력 없음, 삭제 버튼 없음) */
+const DEFAULT_TYPE_NAMES = new Set(
+  DEFAULT_WORK_TYPE_OPTIONS.map((o) => o.name),
+);
+/** 수정·삭제 불가 (기본 행) */
 const READONLY_WORK_TYPES = ["연차", "휴가"];
 const CALC_PROTECTED_WORK_TYPES = [];
 const PROTECTED_WORK_TYPES = READONLY_WORK_TYPES;
@@ -60,18 +65,69 @@ const DELETE_ICON =
   '<svg class="time-task-delete-icon" viewBox="0 0 16 16" width="16" height="16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
 
 function normalizeTypeEntry(o) {
-  if (typeof o === "string") return { name: (o || "").trim(), start: "", end: "" };
+  if (typeof o === "string")
+    return {
+      name: (o || "").trim(),
+      start: "",
+      end: "",
+      kind: TYPE_KIND_WORK,
+      addedAt: 0,
+    };
+  const kind =
+    String(o.kind || "").trim() === TYPE_KIND_DIET
+      ? TYPE_KIND_DIET
+      : TYPE_KIND_WORK;
+  const ar = o.addedAt;
+  const addedAt =
+    typeof ar === "number" && Number.isFinite(ar) ? ar : 0;
   return {
     name: (o.name || "").trim(),
     start: (o.start != null ? String(o.start) : "").trim(),
     end: (o.end != null ? String(o.end) : "").trim(),
+    kind,
+    addedAt,
   };
 }
 
-const ALLOWED_WORK_TYPE_NAMES = new Set(DEFAULT_WORK_TYPE_OPTIONS.map((o) => o.name));
+/** addedAt 큰 값(최근 추가)이 앞에 오도록 */
+function compareByAddedAtDescThenName(a, b) {
+  const ta =
+    typeof a.addedAt === "number" && Number.isFinite(a.addedAt) ? a.addedAt : 0;
+  const tb =
+    typeof b.addedAt === "number" && Number.isFinite(b.addedAt) ? b.addedAt : 0;
+  if (ta !== tb) return tb - ta;
+  return a.name.localeCompare(b.name, "ko");
+}
+
+/**
+ * 저장·표시 순서: 근무(사용자 추가·최신이 위) → 연차·휴가·정규근무 → 식단(최신이 위)
+ * — 추가 직후 바로 보이도록 커스텀을 기본 3종 위에 둠
+ */
+function compareTypeEntriesForPersist(a, b) {
+  const aDiet = a.kind === TYPE_KIND_DIET;
+  const bDiet = b.kind === TYPE_KIND_DIET;
+  if (aDiet !== bDiet) return aDiet ? 1 : -1;
+
+  if (aDiet && bDiet) return compareByAddedAtDescThenName(a, b);
+
+  const aDef = DEFAULT_TYPE_NAMES.has(a.name);
+  const bDef = DEFAULT_TYPE_NAMES.has(b.name);
+  if (aDef !== bDef) return aDef ? 1 : -1;
+
+  if (!aDef && !bDef) return compareByAddedAtDescThenName(a, b);
+
+  const i = WORK_TYPE_DISPLAY_ORDER.indexOf(a.name);
+  const j = WORK_TYPE_DISPLAY_ORDER.indexOf(b.name);
+  return i - j;
+}
 
 function getWorkTypeOptionsFull() {
-  const defaultFull = DEFAULT_WORK_TYPE_OPTIONS.map((o) => ({ name: o.name, start: o.start || "", end: o.end || "" }));
+  const defaultFull = DEFAULT_WORK_TYPE_OPTIONS.map((o) => ({
+    name: o.name,
+    start: o.start || "",
+    end: o.end || "",
+    kind: TYPE_KIND_WORK,
+  }));
   try {
     const arr = readWorkScheduleTypeOptionsRawFromMem();
     if (Array.isArray(arr) && arr.length > 0) {
@@ -80,57 +136,65 @@ function getWorkTypeOptionsFull() {
       const merged = [];
       for (const d of defaultFull) {
         const fromStorage = normalized.find((o) => o.name === d.name);
-        merged.push(fromStorage ? { name: d.name, start: fromStorage.start || d.start, end: fromStorage.end || d.end } : d);
+        merged.push(
+          fromStorage
+            ? {
+                name: d.name,
+                start: fromStorage.start || d.start,
+                end: fromStorage.end || d.end,
+                kind: TYPE_KIND_WORK,
+              }
+            : { ...d },
+        );
         seen.add(d.name);
       }
       for (const o of normalized) {
         if (seen.has(o.name)) continue;
-        merged.push({ name: o.name, start: o.start || "", end: o.end || "" });
+        merged.push({
+          name: o.name,
+          start: o.start || "",
+          end: o.end || "",
+          kind: o.kind === TYPE_KIND_DIET ? TYPE_KIND_DIET : TYPE_KIND_WORK,
+          addedAt:
+            typeof o.addedAt === "number" && Number.isFinite(o.addedAt)
+              ? o.addedAt
+              : 0,
+        });
         seen.add(o.name);
       }
-      merged.sort((a, b) => {
-        const i = WORK_TYPE_DISPLAY_ORDER.indexOf(a.name);
-        const j = WORK_TYPE_DISPLAY_ORDER.indexOf(b.name);
-        if (i < 0 && j < 0) return 0;
-        if (i < 0) return 1;
-        if (j < 0) return -1;
-        return i - j;
-      });
+      merged.sort(compareTypeEntriesForPersist);
       return merged;
     }
   } catch (_) {}
   return defaultFull;
 }
 
-function getWorkTypeOptions() {
-  return getWorkTypeOptionsFull().map((o) => o.name);
+function sortTypeOptionsList(list) {
+  return list.slice().sort(compareTypeEntriesForPersist);
 }
 
-function addWorkTypeOption(name, start, end) {
+function addWorkTypeOption(name, kind) {
   const full = getWorkTypeOptionsFull();
   const trimmed = (name || "").trim();
   if (!trimmed) return full;
   if (full.some((o) => o.name === trimmed)) return full;
-  const newEntry = { name: trimmed, start: (start != null ? String(start) : "").trim(), end: (end != null ? String(end) : "").trim() };
-  full.unshift(newEntry);
-  writeWorkScheduleTypeOptionsRawToMem(full);
+  if (DEFAULT_TYPE_NAMES.has(trimmed)) return full;
+  const k = kind === TYPE_KIND_DIET ? TYPE_KIND_DIET : TYPE_KIND_WORK;
+  const newEntry = {
+    name: trimmed,
+    start: "",
+    end: "",
+    kind: k,
+    addedAt: Date.now(),
+  };
+  const next = sortTypeOptionsList([...full, newEntry]);
+  writeWorkScheduleTypeOptionsRawToMem(next);
   notifyWorkScheduleSaved();
-  return full;
-}
-
-function updateWorkTypeOption(name, start, end) {
-  if (READONLY_WORK_TYPES.includes(name)) return getWorkTypeOptionsFull();
-  const full = getWorkTypeOptionsFull();
-  const idx = full.findIndex((o) => o.name === name);
-  if (idx < 0) return full;
-  full[idx] = { name, start: (start != null ? String(start) : "").trim(), end: (end != null ? String(end) : "").trim() };
-  writeWorkScheduleTypeOptionsRawToMem(full);
-  notifyWorkScheduleSaved();
-  return full;
+  return next;
 }
 
 function removeWorkTypeOption(name) {
-  if (PROTECTED_WORK_TYPES.includes(name)) return getWorkTypeOptionsFull();
+  if (DEFAULT_TYPE_NAMES.has(name)) return getWorkTypeOptionsFull();
   const full = getWorkTypeOptionsFull().filter((o) => o.name !== name);
   writeWorkScheduleTypeOptionsRawToMem(full);
   notifyWorkScheduleSaved();
@@ -145,25 +209,6 @@ function saveRows(rows) {
   const withIds = writeWorkScheduleRowsToMem(rows);
   notifyWorkScheduleSaved();
   return withIds;
-}
-
-/** "09:00" 또는 "2026-03-13 09:00" 형태에서 시각(0~24) 추출. 날짜의 2026 등이 시간으로 잡히지 않도록 HH:MM 패턴만 사용 */
-function parseTimeToHours(str) {
-  if (!str || typeof str !== "string") return null;
-  const s = str.trim();
-  const withColon = s.match(/(\d{1,2}):(\d{2})\s*$/);
-  if (withColon) {
-    const h = parseInt(withColon[1], 10) || 0;
-    const m = parseInt(withColon[2], 10) || 0;
-    if (h >= 0 && h <= 24 && m >= 0 && m < 60) return h + m / 60;
-  }
-  const timeOnly = s.match(/^(\d{1,2}):(\d{2})$/);
-  if (timeOnly) {
-    const h = parseInt(timeOnly[1], 10) || 0;
-    const m = parseInt(timeOnly[2], 10) || 0;
-    if (h >= 0 && h <= 24 && m >= 0 && m < 60) return h + m / 60;
-  }
-  return null;
 }
 
 /** "09:00~18:00" 형태에서 [시작, 마감] 파싱. 하위 호환용 */
@@ -196,7 +241,10 @@ function compareWorkScheduleRowsByDateTimeAsc(a, b) {
   const sa = String(a?.startTime || "").trim();
   const sb = String(b?.startTime || "").trim();
   if (sa !== sb) return sa.localeCompare(sb);
-  return String(a?.endTime || "").localeCompare(String(b?.endTime || ""));
+  const ta = String(a?.workType || "").trim();
+  const tb = String(b?.workType || "").trim();
+  if (ta !== tb) return ta.localeCompare(tb);
+  return String(a?.id || "").localeCompare(String(b?.id || ""));
 }
 
 /** 근무표 초기 행: 저장된 데이터만(시간가계부 근무하기 자동 반영 없음) */
@@ -205,14 +253,6 @@ function getMergedInitialRows() {
   const merged = applyWorkScheduleRowTimesFromTypes(saved);
   merged.sort(compareWorkScheduleRowsByDateTimeAsc);
   return merged;
-}
-
-/** 시작/마감 문자열(HH:MM)으로 근무 시간(hours) 계산 */
-function durationFromStartEnd(startStr, endStr) {
-  const startH = parseTimeToHours(startStr);
-  const endH = parseTimeToHours(endStr);
-  if (startH == null || endH == null) return null;
-  return endH > startH ? endH - startH : 24 - startH + endH;
 }
 
 export function render(opts = {}) {
@@ -226,8 +266,8 @@ export function render(opts = {}) {
   const settingsBtn = document.createElement("button");
   settingsBtn.type = "button";
   settingsBtn.className = "work-schedule-settings-btn";
-  settingsBtn.setAttribute("aria-label", "근무유형 설정");
-  settingsBtn.title = "근무유형 설정";
+  settingsBtn.setAttribute("aria-label", "근무-식단 유형 설정");
+  settingsBtn.title = "근무-식단 유형 설정";
   settingsBtn.innerHTML =
     '<img src="/toolbaricons/settings.svg" alt="" class="work-schedule-settings-icon" width="20" height="20">';
 
@@ -242,7 +282,7 @@ export function render(opts = {}) {
     titleWrap.className = "work-schedule-header-title-wrap";
     const label = document.createElement("span");
     label.className = "dream-view-label";
-    label.textContent = "WORK";
+    label.textContent = "WORK · MEALS";
     const h = document.createElement("h1");
     h.className = "dream-view-title calendar-view-title";
     h.textContent = "근무-식단표";
@@ -259,7 +299,7 @@ export function render(opts = {}) {
     titleWrap.className = "work-schedule-header-title-wrap";
     const label = document.createElement("span");
     label.className = "dream-view-label";
-    label.textContent = "WORK SCHEDULE";
+    label.textContent = "WORK & MEAL PLAN";
     const h = document.createElement("h1");
     h.className = "dream-view-title";
     h.textContent = "근무-식단표";
@@ -283,98 +323,133 @@ export function render(opts = {}) {
     modal.setAttribute("aria-labelledby", "work-schedule-type-settings-title");
     modal.innerHTML = `
       <div class="work-schedule-type-settings-backdrop"></div>
-      <div class="work-schedule-type-settings-panel">
+      <div class="work-schedule-type-settings-panel work-schedule-type-settings-panel--dual">
         <div class="work-schedule-type-settings-header">
-          <h3 class="work-schedule-type-settings-title" id="work-schedule-type-settings-title">근무유형 설정</h3>
+          <h3 class="work-schedule-type-settings-title" id="work-schedule-type-settings-title">근무-식단 유형 설정</h3>
           <button type="button" class="work-schedule-type-settings-close" aria-label="닫기">&times;</button>
         </div>
-        <div class="work-schedule-type-settings-list-head">
-          <span class="work-schedule-type-settings-th-name">근무유형</span>
-          <span class="work-schedule-type-settings-th-start">시작</span>
-          <span class="work-schedule-type-settings-th-end">마감</span>
-          <span class="work-schedule-type-settings-th-action" aria-hidden="true"></span>
-        </div>
-        <div class="work-schedule-type-settings-list" data-type-list></div>
-        <div class="work-schedule-type-settings-add">
-          <input type="text" class="work-schedule-type-settings-input" placeholder="근무유형" maxlength="50" autocomplete="off" />
-          <input type="text" class="work-schedule-type-settings-add-start" placeholder="시작" maxlength="8" autocomplete="off" />
-          <input type="text" class="work-schedule-type-settings-add-end" placeholder="마감" maxlength="8" autocomplete="off" />
-          <button type="button" class="work-schedule-type-settings-add-btn">추가</button>
+        <div class="work-schedule-type-settings-body-dual">
+          <div class="work-schedule-type-settings-add-block">
+            <div class="work-schedule-type-settings-kind-row">
+              <label class="work-schedule-type-settings-radio"><input type="radio" name="ws-add-kind" value="work" checked /> 근무유형</label>
+              <label class="work-schedule-type-settings-radio"><input type="radio" name="ws-add-kind" value="diet" /> 식단</label>
+            </div>
+            <div class="work-schedule-type-settings-add-one">
+              <input type="text" class="work-schedule-type-settings-input-name" placeholder="이름" maxlength="50" autocomplete="off" />
+              <button type="button" class="work-schedule-type-settings-add-btn">추가</button>
+            </div>
+          </div>
+          <div class="work-schedule-type-settings-dual-cols">
+            <div class="work-schedule-type-settings-col work-schedule-type-settings-col--work">
+              <div class="work-schedule-type-settings-col-head">근무유형</div>
+              <div class="work-schedule-type-settings-list" data-work-list></div>
+            </div>
+            <div class="work-schedule-type-settings-col work-schedule-type-settings-col--diet">
+              <div class="work-schedule-type-settings-col-head">식단</div>
+              <div class="work-schedule-type-settings-list" data-diet-list></div>
+            </div>
+          </div>
         </div>
       </div>
     `;
-    const listEl = modal.querySelector("[data-type-list]");
-    const addInput = modal.querySelector(".work-schedule-type-settings-input");
-    const addStartInput = modal.querySelector(".work-schedule-type-settings-add-start");
-    const addEndInput = modal.querySelector(".work-schedule-type-settings-add-end");
+    const workListEl = modal.querySelector("[data-work-list]");
+    const dietListEl = modal.querySelector("[data-diet-list]");
+    const addInput = modal.querySelector(".work-schedule-type-settings-input-name");
     const addBtn = modal.querySelector(".work-schedule-type-settings-add-btn");
 
     function renderTypeList() {
       const full = getWorkTypeOptionsFull();
-      const sorted = [...full].sort((a, b) => {
-        const i = WORK_TYPE_DISPLAY_ORDER.indexOf(a.name);
-        const j = WORK_TYPE_DISPLAY_ORDER.indexOf(b.name);
-        if (i < 0 && j < 0) return 0;
-        if (i < 0) return 1;
-        if (j < 0) return -1;
-        return i - j;
-      });
-      listEl.innerHTML = "";
-      sorted.forEach((entry) => {
-        const isReadonly = READONLY_WORK_TYPES.includes(entry.name);
+      const workRows = full.filter((o) => o.kind !== TYPE_KIND_DIET);
+      const dietRows = full.filter((o) => o.kind === TYPE_KIND_DIET);
+
+      workListEl.innerHTML = "";
+      workRows.forEach((entry) => {
+        const isProtected = DEFAULT_TYPE_NAMES.has(entry.name);
         const row = document.createElement("div");
-        row.className = "work-schedule-type-settings-row" + (isReadonly ? " is-protected" : "");
-        if (isReadonly) {
+        row.className =
+          "work-schedule-type-settings-row work-schedule-type-settings-row--simple" +
+          (isProtected ? " is-protected" : "");
+        if (isProtected) {
           row.innerHTML =
             `<span class="work-schedule-type-settings-name">${escapeHtml(entry.name)}</span>` +
-            `<span class="work-schedule-type-settings-row-no-time">${escapeHtml(entry.start || "00:00")}</span>` +
-            `<span class="work-schedule-type-settings-row-no-time">${escapeHtml(entry.end || "00:00")}</span>` +
             `<span class="work-schedule-type-settings-row-action" aria-hidden="true"></span>`;
         } else {
           row.innerHTML =
             `<span class="work-schedule-type-settings-name">${escapeHtml(entry.name)}</span>` +
-            `<input type="text" class="work-schedule-type-settings-row-start" value="${escapeHtml(entry.start || "")}" />` +
-            `<input type="text" class="work-schedule-type-settings-row-end" value="${escapeHtml(entry.end || "")}" />` +
             `<span class="work-schedule-type-settings-row-action">` +
             `<button type="button" class="work-schedule-type-settings-del" title="삭제">${DELETE_ICON}</button>` +
             `</span>`;
-          const startInp = row.querySelector(".work-schedule-type-settings-row-start");
-          const endInp = row.querySelector(".work-schedule-type-settings-row-end");
-          const commit = () => {
-            updateWorkTypeOption(entry.name, startInp?.value ?? "", endInp?.value ?? "");
-          };
-          startInp?.addEventListener("blur", commit);
-          endInp?.addEventListener("blur", commit);
-          const delBtn = row.querySelector(".work-schedule-type-settings-del");
-          if (delBtn) {
-            delBtn.addEventListener("click", () => {
+          row
+            .querySelector(".work-schedule-type-settings-del")
+            ?.addEventListener("click", () => {
               removeWorkTypeOption(entry.name);
               renderTypeList();
             });
-          }
         }
-        listEl.appendChild(row);
+        workListEl.appendChild(row);
+      });
+
+      dietListEl.innerHTML = "";
+      dietRows.forEach((entry) => {
+        const row = document.createElement("div");
+        row.className =
+          "work-schedule-type-settings-row work-schedule-type-settings-row--simple is-diet-row";
+        row.innerHTML =
+          `<span class="work-schedule-type-settings-name">${escapeHtml(entry.name)}</span>` +
+          `<span class="work-schedule-type-settings-row-action">` +
+          `<button type="button" class="work-schedule-type-settings-del" title="삭제">${DELETE_ICON}</button>` +
+          `</span>`;
+        row
+          .querySelector(".work-schedule-type-settings-del")
+          ?.addEventListener("click", () => {
+            removeWorkTypeOption(entry.name);
+            renderTypeList();
+          });
+        dietListEl.appendChild(row);
+      });
+    }
+
+    function getSelectedAddKind() {
+      const r = modal.querySelector('input[name="ws-add-kind"]:checked');
+      return r && r.value === "diet" ? TYPE_KIND_DIET : TYPE_KIND_WORK;
+    }
+
+    /* 한글 IME: Enter가 조합 확정과 겹치면 값이 둘로 나뉘어 저장되는 경우가 있어 조합 중·229는 무시 */
+    let addInputImeComposing = false;
+    addInput.addEventListener("compositionstart", () => {
+      addInputImeComposing = true;
+    });
+    addInput.addEventListener("compositionend", () => {
+      addInputImeComposing = false;
+    });
+
+    function commitAddFromInput() {
+      if (addInputImeComposing) return;
+      const name = (addInput.value || "").trim();
+      if (!name) return;
+      const kindAdded = getSelectedAddKind();
+      addWorkTypeOption(name, kindAdded);
+      addInput.value = "";
+      addInput.blur();
+      renderTypeList();
+      const listEl =
+        kindAdded === TYPE_KIND_DIET ? dietListEl : workListEl;
+      listEl.scrollTop = 0;
+      requestAnimationFrame(() => {
+        try {
+          addInput.focus();
+        } catch (_) {}
       });
     }
 
     addBtn.addEventListener("click", () => {
-      const name = (addInput.value || "").trim();
-      if (!name) return;
-      addWorkTypeOption(
-        name,
-        (addStartInput?.value || "").trim(),
-        (addEndInput?.value || "").trim(),
-      );
-      addInput.value = "";
-      if (addStartInput) addStartInput.value = "";
-      if (addEndInput) addEndInput.value = "";
-      renderTypeList();
+      commitAddFromInput();
     });
     addInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        addBtn.click();
-      }
+      if (e.key !== "Enter") return;
+      if (e.isComposing || e.keyCode === 229 || addInputImeComposing) return;
+      e.preventDefault();
+      commitAddFromInput();
     });
 
     const close = () => modal.remove();
@@ -384,6 +459,16 @@ export function render(opts = {}) {
     renderTypeList();
     document.body.appendChild(modal);
     addInput.focus();
+  }
+
+  function workTypePillClassForName(typeName) {
+    const n = (typeName || "").trim();
+    if (!n) return "";
+    const entry = getWorkTypeOptionsFull().find((o) => o.name === n);
+    if (!entry) return "is-ws-pill-default";
+    if (entry.kind === TYPE_KIND_DIET) return "is-ws-pill-diet";
+    if (DEFAULT_TYPE_NAMES.has(n)) return "is-ws-pill-builtin";
+    return "is-ws-pill-work";
   }
 
   settingsBtn.addEventListener("click", openWorkTypeSettingsModal);
@@ -426,7 +511,7 @@ export function render(opts = {}) {
     const title = document.createElement("h3");
     title.id = "work-schedule-day-entry-title";
     title.className = "work-schedule-type-settings-title";
-    title.textContent = resolvedEditId ? "근무 수정" : "근무 등록";
+    title.textContent = resolvedEditId ? "근무·식단 수정" : "근무·식단 등록";
     const closeBtn = document.createElement("button");
     closeBtn.type = "button";
     closeBtn.className = "work-schedule-type-settings-close";
@@ -442,7 +527,7 @@ export function render(opts = {}) {
     labelDate.className = "work-schedule-day-entry-label";
     const spanDate = document.createElement("span");
     spanDate.className = "work-schedule-day-entry-label-text";
-    spanDate.textContent = "근무일";
+    spanDate.textContent = "일자";
     const dateInput = document.createElement("input");
     dateInput.type = "date";
     dateInput.className = "work-schedule-day-entry-date";
@@ -450,38 +535,115 @@ export function render(opts = {}) {
     labelDate.appendChild(spanDate);
     labelDate.appendChild(dateInput);
 
+    const kindRow = document.createElement("div");
+    kindRow.className =
+      "work-schedule-type-settings-kind-row work-schedule-day-entry-kind-row";
+    const labelRadioWork = document.createElement("label");
+    labelRadioWork.className = "work-schedule-type-settings-radio";
+    const radioWork = document.createElement("input");
+    radioWork.type = "radio";
+    radioWork.name = "ws-day-entry-kind";
+    radioWork.value = "work";
+    const spanRw = document.createElement("span");
+    spanRw.textContent = "근무유형";
+    labelRadioWork.appendChild(radioWork);
+    labelRadioWork.appendChild(spanRw);
+    const labelRadioDiet = document.createElement("label");
+    labelRadioDiet.className = "work-schedule-type-settings-radio";
+    const radioDiet = document.createElement("input");
+    radioDiet.type = "radio";
+    radioDiet.name = "ws-day-entry-kind";
+    radioDiet.value = "diet";
+    const spanRd = document.createElement("span");
+    spanRd.textContent = "식단";
+    labelRadioDiet.appendChild(radioDiet);
+    labelRadioDiet.appendChild(spanRd);
+    kindRow.appendChild(labelRadioWork);
+    kindRow.appendChild(labelRadioDiet);
+
     const labelType = document.createElement("label");
     labelType.className = "work-schedule-day-entry-label";
     const spanType = document.createElement("span");
     spanType.className = "work-schedule-day-entry-label-text";
-    spanType.textContent = "근무유형";
     const select = document.createElement("select");
     select.className = "work-schedule-day-entry-select";
-    select.setAttribute("aria-label", "근무유형");
-    const opt0 = document.createElement("option");
-    opt0.value = "";
-    opt0.textContent = "선택";
-    select.appendChild(opt0);
-    const seenTypeNames = new Set();
-    getWorkTypeOptions().forEach((name) => {
-      const n = (name || "").trim();
-      if (!n || seenTypeNames.has(n)) return;
-      seenTypeNames.add(n);
-      const o = document.createElement("option");
-      o.value = n;
-      o.textContent = n;
-      select.appendChild(o);
-    });
-    if (resolvedEditId && existingRow) {
-      const wt = (existingRow.workType || "").trim();
-      if (wt && [...select.options].some((op) => op.value === wt)) {
-        select.value = wt;
+
+    function getDayEntrySelectedKind() {
+      return radioDiet.checked ? TYPE_KIND_DIET : TYPE_KIND_WORK;
+    }
+
+    function typeNamesForDayEntryKind(kind) {
+      const full = getWorkTypeOptionsFull();
+      const list =
+        kind === TYPE_KIND_DIET
+          ? full.filter((o) => o.kind === TYPE_KIND_DIET)
+          : full.filter((o) => o.kind !== TYPE_KIND_DIET);
+      const out = [];
+      const seen = new Set();
+      list.forEach((o) => {
+        const n = (o.name || "").trim();
+        if (!n || seen.has(n)) return;
+        seen.add(n);
+        out.push(n);
+      });
+      return out;
+    }
+
+    function fillDayEntrySelect(kind, preserveValue) {
+      const labelText = kind === TYPE_KIND_DIET ? "식단" : "근무유형";
+      spanType.textContent = labelText;
+      select.setAttribute("aria-label", labelText);
+      select.innerHTML = "";
+      const opt0 = document.createElement("option");
+      opt0.value = "";
+      opt0.textContent = "선택";
+      select.appendChild(opt0);
+      typeNamesForDayEntryKind(kind).forEach((n) => {
+        const o = document.createElement("option");
+        o.value = n;
+        o.textContent = n;
+        select.appendChild(o);
+      });
+      const pv = (preserveValue || "").trim();
+      if (pv && [...select.options].some((op) => op.value === pv)) {
+        select.value = pv;
+      } else {
+        select.value = "";
       }
     }
+
+    let initialKind = TYPE_KIND_WORK;
+    if (resolvedEditId && existingRow) {
+      const wt0 = (existingRow.workType || "").trim();
+      const ent0 = getWorkTypeOptionsFull().find((o) => o.name === wt0);
+      if (ent0 && ent0.kind === TYPE_KIND_DIET) initialKind = TYPE_KIND_DIET;
+    }
+    if (initialKind === TYPE_KIND_DIET) {
+      radioDiet.checked = true;
+      radioWork.checked = false;
+    } else {
+      radioWork.checked = true;
+      radioDiet.checked = false;
+    }
+    fillDayEntrySelect(
+      initialKind,
+      resolvedEditId && existingRow
+        ? (existingRow.workType || "").trim()
+        : "",
+    );
+
+    radioWork.addEventListener("change", () => {
+      if (radioWork.checked) fillDayEntrySelect(TYPE_KIND_WORK, "");
+    });
+    radioDiet.addEventListener("change", () => {
+      if (radioDiet.checked) fillDayEntrySelect(TYPE_KIND_DIET, "");
+    });
+
     labelType.appendChild(spanType);
     labelType.appendChild(select);
 
     body.appendChild(labelDate);
+    body.appendChild(kindRow);
     body.appendChild(labelType);
 
     const footer = document.createElement("div");
@@ -522,35 +684,23 @@ export function render(opts = {}) {
       const wd = normalizeWorkDateKey(dateInput.value || "");
       const typeName = (select.value || "").trim();
       if (!wd || wd.length < 10) {
-        window.alert("근무일을 선택해 주세요.");
+        window.alert("일자를 선택해 주세요.");
         return;
       }
       if (!typeName) {
-        window.alert("근무유형을 선택해 주세요.");
+        window.alert(
+          getDayEntrySelectedKind() === TYPE_KIND_DIET
+            ? "식단 유형을 선택해 주세요."
+            : "근무유형을 선택해 주세요.",
+        );
         return;
-      }
-      const full = getWorkTypeOptionsFull();
-      const entry = full.find((o) => o.name === typeName);
-      let startTime = "";
-      let endTime = "";
-      if (READONLY_WORK_TYPES.includes(typeName)) {
-        startTime = "00:00";
-        endTime = "00:00";
-      } else if (entry) {
-        startTime = (entry.start || "").trim();
-        endTime = (entry.end || "").trim();
-      }
-      let hoursWorked = "";
-      if (startTime && endTime) {
-        const dur = durationFromStartEnd(startTime, endTime);
-        if (dur != null && dur > 0) hoursWorked = String(Math.round(dur * 100) / 100);
       }
       const baseFields = {
         workDate: wd,
         workType: typeName,
-        startTime,
-        endTime,
-        hoursWorked,
+        startTime: "",
+        endTime: "",
+        hoursWorked: "",
       };
       let rows;
       if (resolvedEditId && existingRow) {
@@ -630,6 +780,7 @@ export function render(opts = {}) {
     contentWrap.appendChild(
       renderMonthlyContent({
         typeOnly: true,
+        typePillClassForName: workTypePillClassForName,
         onDayClick: (key) => openMonthlyDayEntryModal(key, null),
         onEntryClick: ({ dateKey: dk, rowId }) =>
           openMonthlyDayEntryModal(dk, rowId),

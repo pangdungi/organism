@@ -3602,8 +3602,21 @@ body {
   }
 
   /* 모바일: 근무유형 설정 모달 — iOS 줌 방지(16px); 모달은 #app 밖 body에 붙음 */
-  .work-schedule-type-settings-modal .work-schedule-type-settings-input {
+  .work-schedule-type-settings-modal .work-schedule-type-settings-input,
+  .work-schedule-type-settings-modal .work-schedule-type-settings-input-name {
     font-size: 16px !important;
+  }
+  .work-schedule-type-settings-panel.work-schedule-type-settings-panel--dual {
+    max-height: min(92vh, 40rem);
+  }
+  .work-schedule-type-settings-dual-cols {
+    gap: 0.65rem 0;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  .work-schedule-type-settings-col--diet {
+    margin-left: 0.5rem;
+    padding-left: 0.75rem;
   }
   .work-schedule-type-settings-modal .work-schedule-type-settings-row .work-schedule-type-settings-del {
     opacity: 0.72;
@@ -6972,6 +6985,8 @@ body {
   border: var(--line-l3);
   border-radius: var(--modal-radius);
   box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.12);
+  /* 모달이 #app 밖 body에 붙어 기본 폰트가 적용되는 것 방지 */
+  font-family: var(--font-body);
 }
 
 /* 월별보기 → 근무일·근무유형 등록 모달 */
@@ -7010,7 +7025,7 @@ body {
   border-radius: 0;
   background: transparent;
   color: var(--text-body);
-  font-family: inherit;
+  font-family: var(--font-body);
 }
 
 .work-schedule-day-entry-date:focus,
@@ -7190,6 +7205,7 @@ body {
   min-width: 0;
   padding: 0.5rem 0;
   font-size: 0.9rem;
+  font-family: var(--font-body);
   border: none;
   border-bottom: var(--input-border-idle);
   border-radius: 0;
@@ -7296,6 +7312,139 @@ body {
   flex-shrink: 0;
   font-size: 0.9rem;
   color: var(--text-muted);
+}
+
+/* 근무-식단 유형 설정 모달(2열·이름만) */
+.work-schedule-type-settings-panel.work-schedule-type-settings-panel--dual {
+  max-width: 34rem;
+  max-height: min(90vh, 32rem);
+}
+.work-schedule-type-settings-panel--dual .work-schedule-type-settings-list {
+  padding: 0.35rem 0 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+.work-schedule-type-settings-body-dual {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+.work-schedule-type-settings-add-block {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--line-l3-color);
+  flex-shrink: 0;
+}
+.work-schedule-type-settings-kind-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.65rem;
+  font-size: 0.85rem;
+  color: var(--text-body);
+}
+.work-schedule-type-settings-kind-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-right: 0.25rem;
+}
+.work-schedule-type-settings-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.work-schedule-type-settings-radio input {
+  accent-color: var(--ui-btn-primary-bg);
+}
+.work-schedule-type-settings-add-one {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.work-schedule-type-settings-input-name {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+  font-family: var(--font-body);
+  border: none;
+  border-bottom: var(--input-border-idle);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-body);
+}
+.work-schedule-type-settings-input-name::placeholder {
+  color: var(--text-placeholder);
+  font-weight: 300;
+}
+.work-schedule-type-settings-input-name:focus,
+.work-schedule-type-settings-input-name:focus-visible {
+  outline: none;
+  box-shadow: none;
+  border-bottom: var(--input-border-focus);
+  color: var(--text-ink);
+}
+.work-schedule-type-settings-dual-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0;
+  column-gap: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0.5rem 1.25rem 1rem;
+  align-items: stretch;
+}
+.work-schedule-type-settings-col--diet {
+  border-left: 1px solid var(--line-l3-color);
+  padding-left: 1rem;
+  margin-left: 0.65rem;
+  min-height: 0;
+}
+.work-schedule-type-settings-col {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.work-schedule-type-settings-col-head,
+.work-schedule-type-settings-col-sub {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.work-schedule-type-settings-col-sub {
+  margin-top: 0.35rem;
+}
+.work-schedule-type-settings-builtins {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.work-schedule-type-settings-builtin-chip {
+  display: inline-block;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.72rem;
+  border-radius: 0.35rem;
+  background: rgba(196, 190, 168, 0.25);
+  color: var(--text-caption-color, #6b7280);
+  border: 1px solid var(--line-l3-color);
+}
+.work-schedule-type-settings-row--simple {
+  border-bottom: 1px solid var(--line-l3-color);
+}
+.work-schedule-type-settings-row.is-diet-row .work-schedule-type-settings-name {
+  color: var(--text-body);
 }
 
 .work-schedule-type-settings-add-start,
@@ -12903,6 +13052,30 @@ body {
 }
 
 .work-schedule-monthly-type-pill.is-default {
+  background: var(--ui-surface-alt);
+  color: var(--text-body);
+  border: 1px solid var(--line-l3-color);
+}
+
+.work-schedule-monthly-type-pill.is-ws-pill-builtin {
+  background: #eef4e8;
+  color: #3d5340;
+  border: 1px solid rgba(61, 83, 64, 0.22);
+}
+
+.work-schedule-monthly-type-pill.is-ws-pill-work {
+  background: #e9ece6;
+  color: #4a5346;
+  border: 1px solid rgba(74, 83, 70, 0.22);
+}
+
+.work-schedule-monthly-type-pill.is-ws-pill-diet {
+  background: #d6f0e0;
+  color: #2d5a40;
+  border: 1px solid rgba(90, 168, 120, 0.4);
+}
+
+.work-schedule-monthly-type-pill.is-ws-pill-default {
   background: var(--ui-surface-alt);
   color: var(--text-body);
   border: 1px solid var(--line-l3-color);

@@ -44,9 +44,9 @@ const TYPES_TABLE = "work_schedule_types";
 const ENTRIES_TABLE = "work_schedule_entries";
 
 const DEFAULT_TYPE_SEED = [
-  { name: "연차", start: "00:00", end: "00:00" },
-  { name: "휴가", start: "00:00", end: "00:00" },
-  { name: "정규근무", start: "", end: "" },
+  { name: "연차", start: "", end: "", kind: "work" },
+  { name: "휴가", start: "", end: "", kind: "work" },
+  { name: "정규근무", start: "", end: "", kind: "work" },
 ];
 
 const UUID_RE =
@@ -62,11 +62,14 @@ function parseLocalTypes() {
 }
 
 function normalizeTypeEntry(o) {
-  if (typeof o === "string") return { name: (o || "").trim(), start: "", end: "" };
+  if (typeof o === "string")
+    return { name: (o || "").trim(), start: "", end: "", kind: "work" };
+  const kind = String(o.kind || "").trim() === "diet" ? "diet" : "work";
   return {
     name: (o.name || "").trim(),
     start: (o.start != null ? String(o.start) : "").trim(),
     end: (o.end != null ? String(o.end) : "").trim(),
+    kind,
   };
 }
 
@@ -76,13 +79,27 @@ function typeOptionsFromServerRows(serverRows) {
   const byName = new Map(
     rows.map((r) => [
       r.name,
-      { name: r.name, start: (r.start_time != null ? String(r.start_time) : "").trim(), end: (r.end_time != null ? String(r.end_time) : "").trim() },
-    ])
+      {
+        name: r.name,
+        start: (r.start_time != null ? String(r.start_time) : "").trim(),
+        end: (r.end_time != null ? String(r.end_time) : "").trim(),
+        kind: String(r.kind || "").trim() === "diet" ? "diet" : "work",
+      },
+    ]),
   );
   const out = [];
   for (const d of DEFAULT_TYPE_SEED) {
     const s = byName.get(d.name);
-    out.push(s ? { name: d.name, start: s.start, end: s.end } : { name: d.name, start: d.start, end: d.end });
+    out.push(
+      s
+        ? {
+            name: d.name,
+            start: s.start,
+            end: s.end,
+            kind: s.kind === "diet" ? "diet" : "work",
+          }
+        : { name: d.name, start: d.start, end: d.end, kind: d.kind || "work" },
+    );
     byName.delete(d.name);
   }
   const rest = [...rows]
@@ -96,6 +113,7 @@ function typeOptionsFromServerRows(serverRows) {
       name: r.name,
       start: (r.start_time != null ? String(r.start_time) : "").trim(),
       end: (r.end_time != null ? String(r.end_time) : "").trim(),
+      kind: String(r.kind || "").trim() === "diet" ? "diet" : "work",
     }));
   return [...out, ...rest];
 }
@@ -165,7 +183,12 @@ async function pullWorkScheduleFromSupabaseImpl() {
 
   const [settingsRes, typesRes, entriesRes] = await Promise.all([
     supabase.from(SETTINGS_TABLE).select("daily_work_hours").eq("user_id", userId).maybeSingle(),
-    supabase.from(TYPES_TABLE).select("name, start_time, end_time, sort_order").eq("user_id", userId).order("sort_order", { ascending: true }).order("name", { ascending: true }),
+    supabase
+      .from(TYPES_TABLE)
+      .select("name, start_time, end_time, sort_order, kind")
+      .eq("user_id", userId)
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true }),
     supabase.from(ENTRIES_TABLE).select("id, work_date, start_time, end_time, work_type, memo, hours, hours_worked").eq("user_id", userId).order("work_date", { ascending: true }).order("start_time", { ascending: true }),
   ]);
 
@@ -263,6 +286,7 @@ async function syncWorkScheduleToSupabaseImpl() {
     name: t.name,
     start_time: t.start || "",
     end_time: t.end || "",
+    kind: t.kind === "diet" ? "diet" : "work",
     sort_order: i,
   }));
   if (typeUpserts.length > 0) {

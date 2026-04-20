@@ -1,7 +1,7 @@
 /**
  * 근무표 먼슬리 뷰 - 근무일별 근무유형과 Hours를 캘린더에 표시
  *
- * @param {{ hoursOnly?: boolean, typeOnly?: boolean, onDayClick?: (dateKey: string) => void, onEntryClick?: (ctx: { dateKey: string, rowId: string }) => void, onMonthLabelClick?: (ctx: { year: number, month: number }) => void }} opts
+ * @param {{ hoursOnly?: boolean, typeOnly?: boolean, typePillClassForName?: (typeName: string) => string, onDayClick?: (dateKey: string) => void, onEntryClick?: (ctx: { dateKey: string, rowId: string }) => void, onMonthLabelClick?: (ctx: { year: number, month: number }) => void }} opts
  *   - onDayClick: 날짜 셀 클릭 시 YYYY-MM-DD 전달(새 근무 추가)
  *   - onEntryClick: 캘린더에 찍힌 근무 칩 클릭 시 해당 행 id로 수정·삭제 모달
  *   - onMonthLabelClick: 상단 월 라벨 클릭 시 해당 달 연·월 전달
@@ -154,7 +154,7 @@ const MONTH_NAMES_SHORT = [
 
 /**
  * 근무표 내부에서 사용하는 먼슬리 캘린더 콘텐츠
- * @param {{ hoursOnly?: boolean, typeOnly?: boolean, onDayClick?: (dateKey: string) => void, onEntryClick?: (ctx: { dateKey: string, rowId: string }) => void, onMonthLabelClick?: (ctx: { year: number, month: number }) => void }} opts
+ * @param {{ hoursOnly?: boolean, typeOnly?: boolean, typePillClassForName?: (typeName: string) => string, onDayClick?: (dateKey: string) => void, onEntryClick?: (ctx: { dateKey: string, rowId: string }) => void, onMonthLabelClick?: (ctx: { year: number, month: number }) => void }} opts
  *   - hoursOnly: true면 근무시간만 표시(필터 버튼 숨김)
  *   - typeOnly: true면 근무유형만 표시(필터 버튼 숨김). 근무표 「2. 월별보기」는 항상 이 모드
  */
@@ -166,6 +166,8 @@ export function renderMonthlyContent(opts = {}) {
   const onEntryClick =
     typeof opts.onEntryClick === "function" ? opts.onEntryClick : null;
   const onMonthLabelClick = typeof opts.onMonthLabelClick === "function" ? opts.onMonthLabelClick : null;
+  const typePillClassForName =
+    typeof opts.typePillClassForName === "function" ? opts.typePillClassForName : null;
   const el = document.createElement("div");
   el.className = "work-schedule-monthly-content" + (noFilter ? " work-schedule-monthly-content--hours-only" : "");
 
@@ -371,7 +373,13 @@ export function renderMonthlyContent(opts = {}) {
               entries.forEach((e) => {
                 const t = (e.workType || "").trim() || "-";
                 const pill = document.createElement("span");
-                pill.className = "work-schedule-monthly-type-pill is-default";
+                const pillKind =
+                  typePillClassForName && t !== "-"
+                    ? (typePillClassForName(t) || "").trim()
+                    : "";
+                pill.className =
+                  "work-schedule-monthly-type-pill " +
+                  (pillKind || "is-default");
                 pill.textContent = t;
                 if (onEntryClick && e.id) {
                   pill.style.cursor = "pointer";
