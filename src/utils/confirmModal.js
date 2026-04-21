@@ -88,3 +88,14 @@ export function confirmDeleteRow(onConfirm) {
     if (ok) onConfirm();
   });
 }
+
+/** KPI 카드「할 일 목록」× 클릭 — 실수 삭제 방지 */
+export function confirmKpiTodoDelete() {
+  return showConfirmModal({
+    title: "할 일 삭제",
+    message: "이 할 일을 삭제할까요?",
+    confirmText: "삭제",
+    cancelText: "취소",
+    confirmDanger: true,
+  });
+}

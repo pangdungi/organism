@@ -28,6 +28,7 @@ import {
   writeKpiUiSession,
   restoreKpiTabFromSession,
 } from "../utils/kpiViewUiSession.js";
+import { confirmKpiTodoDelete } from "../utils/confirmModal.js";
 import { KPI_TAB_EDIT_PENCIL_HTML } from "../utils/kpiTabNameEditIcon.js";
 import { sortKpiLogsNewestFirst } from "../utils/kpiLogsSort.js";
 import {
@@ -1159,7 +1160,10 @@ export function render() {
       delBtn.className = "dream-kpi-todo-del";
       delBtn.title = "삭제";
       delBtn.textContent = "×";
-        delBtn.addEventListener("click", () => {
+        delBtn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!(await confirmKpiTodoDelete())) return;
         const d = loadDreamMap();
         kpiTodoLifecycleLog("꿈KPI탭_×삭제_클릭", {
           todoId: String(todo.id),
@@ -1291,7 +1295,10 @@ export function render() {
         delBtn.className = "dream-kpi-todo-del";
         delBtn.title = "삭제";
         delBtn.textContent = "×";
-        delBtn.addEventListener("click", () => {
+        delBtn.addEventListener("click", async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!(await confirmKpiTodoDelete())) return;
           const d = loadDreamMap();
           appendDeletedRef(d, "kpiDailyRepeatTodos", todo.id);
           d.kpiDailyRepeatTodos = (d.kpiDailyRepeatTodos || []).filter((x) => x.id !== todo.id);

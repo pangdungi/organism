@@ -20,6 +20,7 @@ import {
   removeKpiTodo,
   clearKpiTodoCalendarRevertSnapshot,
 } from "../utils/kpiTodoSync.js";
+import { confirmKpiTodoDelete } from "../utils/confirmModal.js";
 import {
   getSectionColor,
   getCustomSections,
@@ -4504,8 +4505,10 @@ function render1DayView(tabsElement) {
       });
     });
     todosEl.querySelectorAll(".calendar-kpi-todo-del").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
+      btn.addEventListener("click", async (e) => {
+        e.preventDefault();
         e.stopPropagation();
+        if (!(await confirmKpiTodoDelete())) return;
         const item = btn.closest(".calendar-kpi-todo-item");
         const kpiTodoId = item?.dataset?.kpiTodoId;
         if (kpiTodoId && removeKpiTodo(kpiTodoId, storageKey)) {

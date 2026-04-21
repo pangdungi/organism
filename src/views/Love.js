@@ -44,6 +44,7 @@ import {
   kpiTodoSnapshotBrief,
   kpiTodosCompletionBrief,
 } from "../utils/kpiTodoLifecycleDebug.js";
+import { confirmKpiTodoDelete } from "../utils/confirmModal.js";
 import { KPI_TAB_EDIT_PENCIL_HTML } from "../utils/kpiTabNameEditIcon.js";
 import { sortKpiLogsNewestFirst } from "../utils/kpiLogsSort.js";
 
@@ -1122,7 +1123,10 @@ export function render() {
       delBtn.className = "dream-kpi-todo-del";
       delBtn.title = "삭제";
       delBtn.textContent = "×";
-      delBtn.addEventListener("click", () => {
+      delBtn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!(await confirmKpiTodoDelete())) return;
         const d = loadHappinessMap();
         kpiTodoLifecycleLog("러브KPI탭_×삭제_클릭", {
           todoId: String(todo.id),

@@ -28095,13 +28095,8 @@ body.kpi-resizing {
   .dream-kpi-todo-header {
     margin-top: 1.625rem;
   }
-  /* 로그 보조글과 동일 크기·색; 편집 포커스 때만 16px로 iOS 자동줌 완화 */
   .dream-kpi-todo-text {
     font-size: 0.85rem;
-  }
-  #app textarea.dream-kpi-todo-text:focus,
-  #app textarea.dream-kpi-todo-text:focus-visible {
-    font-size: 16px;
   }
   /* KPI 패널 할 일: 긴 제목 줄바꿈 */
   .dream-kpi-todo-text.dream-kpi-todo-edit-input,
@@ -28279,10 +28274,14 @@ body.kpi-resizing {
 }
 #app textarea.dream-kpi-todo-text:focus,
 #app textarea.dream-kpi-todo-text:focus-visible {
-  color: var(--text-body);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+  padding: 0;
   border-bottom: none;
   box-shadow: none;
   outline: none;
+  background: transparent;
 }
 
 /* 데스크톱: 첫 줄·체크 세로 맞춤 (너무 내리면 padding-top·아래 calc값 함께 줄일 것) */
