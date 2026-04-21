@@ -1116,7 +1116,7 @@ export function render() {
       textInput.autocomplete = "off";
       textInput.spellcheck = false;
       textInput.style.cssText =
-        "flex:1;min-width:0;border:none;background:transparent;font:inherit;color:inherit;padding:0;margin:0;box-sizing:border-box;resize:none;overflow:hidden;line-height:1.45;";
+        "flex:1;min-width:0;border:none;background:transparent;padding:0;margin:0;box-sizing:border-box;resize:none;overflow:hidden;line-height:1.45;";
       setupKpiTodoInlineTextarea(textInput);
       bindKpiTodoTextareaKeydown(textInput);
       attachKpiTodoInputScrollIntoView(textInput);
@@ -1249,7 +1249,7 @@ export function render() {
         textInput.autocomplete = "off";
         textInput.spellcheck = false;
         textInput.style.cssText =
-          "flex:1;min-width:0;border:none;background:transparent;font:inherit;color:inherit;padding:0;margin:0;box-sizing:border-box;resize:none;overflow:hidden;line-height:1.45;";
+          "flex:1;min-width:0;border:none;background:transparent;padding:0;margin:0;box-sizing:border-box;resize:none;overflow:hidden;line-height:1.45;";
         setupKpiTodoInlineTextarea(textInput);
         bindKpiTodoTextareaKeydown(textInput);
         attachKpiTodoInputScrollIntoView(textInput);

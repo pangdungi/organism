@@ -2864,7 +2864,7 @@ body {
   #app input[type="date"],
   #app input[type="search"],
   #app input[type="tel"],
-  #app textarea,
+  #app textarea:not(.dream-kpi-todo-text),
   #app select {
     font-size: 16px !important;
   }
@@ -28079,19 +28079,29 @@ body.kpi-resizing {
   color: var(--text-body);
 }
 
+/* 로그 제목행(.dream-kpi-history-header)과 동일: 가로 패딩 없음. 들여쓰기는 목록(.dream-kpi-todo-list)만 */
 .dream-kpi-todo-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-top: 6.5rem;
-  padding-top: 3rem;
+  margin-top: 3.25rem;
+  padding: 1.5rem 0 0;
+  box-sizing: border-box;
   border-top: none;
 }
 
 @media (max-width: 48rem) {
   .dream-kpi-todo-header {
-    margin-top: 3.25rem;
+    margin-top: 1.625rem;
+  }
+  /* 로그 보조글과 동일 크기·색; 편집 포커스 때만 16px로 iOS 자동줌 완화 */
+  .dream-kpi-todo-text {
+    font-size: 0.85rem;
+  }
+  #app textarea.dream-kpi-todo-text:focus,
+  #app textarea.dream-kpi-todo-text:focus-visible {
+    font-size: 16px;
   }
   /* KPI 패널 할 일: 긴 제목 줄바꿈 */
   .dream-kpi-todo-text.dream-kpi-todo-edit-input,
@@ -28103,19 +28113,14 @@ body.kpi-resizing {
   }
 }
 
+/* 로그 영역 .dream-kpi-history-title 과 동일 계층 */
 .dream-kpi-todo-title {
+  margin: 0;
   font-family: var(--font-heading);
-  font-size: 1.0625rem;
+  font-size: 1rem;
   font-weight: 500;
   letter-spacing: -0.01em;
   color: var(--text-ink);
-}
-
-/* 모바일: 할일 목록 입력은 16px 고정(iOS 줌 방지) — 섹션 제목만 한 단계 더 크게 */
-@media (max-width: 48rem) {
-  .dream-kpi-todo-title {
-    font-size: 1.125rem;
-  }
 }
 
 .dream-kpi-todo-add-row {
@@ -28123,6 +28128,9 @@ body.kpi-resizing {
   align-items: center;
   gap: 0.5rem;
   margin-top: 0.5rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  box-sizing: border-box;
 }
 
 .dream-kpi-todo-add-spacer {
@@ -28133,9 +28141,9 @@ body.kpi-resizing {
 .dream-kpi-todo-add-input {
   flex: 1;
   padding: 0.4rem 0;
-  font-size: var(--fs-body);
+  font-size: 0.85rem;
   font-family: inherit;
-  color: var(--text-body);
+  color: var(--text-muted);
   background: transparent;
   border: none;
   border-bottom: var(--line-l3);
@@ -28147,6 +28155,7 @@ body.kpi-resizing {
 
 .dream-kpi-todo-add-input:focus {
   outline: none;
+  color: var(--text-body);
   border-bottom-color: var(--accent-viridian);
 }
 
@@ -28157,6 +28166,7 @@ body.kpi-resizing {
   }
   .dream-kpi-todo-add-input {
     font-size: 1rem;
+    color: var(--text-muted);
     line-height: 1.5rem;
     height: 2.75rem;
     padding: 0.35rem 0 0.4rem;
@@ -28173,14 +28183,17 @@ body.kpi-resizing {
   flex-direction: column;
   gap: 0.25rem;
   margin-top: 0.75rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  box-sizing: border-box;
 }
 
 .dream-kpi-todo-item {
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
-  padding: 0.35rem 0.5rem;
-  margin: 0 -0.5rem;
+  padding: 0.35rem 0;
+  margin: 0;
   border-radius: 0.25rem;
   box-sizing: border-box;
   transition: background-color 0.15s ease;
@@ -28195,26 +28208,25 @@ body.kpi-resizing {
   align-items: center;
   flex-shrink: 0;
   cursor: pointer;
-  /* 줄 여러 줄이어도 체크는 첫 줄 옆 — 행은 flex-start + 첫 줄 세로중앙에 맞춤(뷰 textarea line-height 1.45) */
-  margin-top: calc((1.45 * var(--fs-body) - var(--cb-size)) / 2);
+  /* 줄 여러 줄이어도 체크는 첫 줄 옆 — 본문 0.85rem(데스크톱) / 1rem(모바일) 기준 */
+  margin-top: calc((1.45 * 0.85rem - var(--cb-size)) / 2);
 }
 
 @media (min-width: 48.0625rem) {
   .dream-kpi-todo-check-wrap {
-    margin-top: calc(0.22rem + (1.45 * var(--fs-body)) / 2 - var(--cb-size) / 2 - 1px);
+    margin-top: calc(0.22rem + (1.45 * 0.85rem) / 2 - var(--cb-size) / 2 - 1px);
   }
   .dream-kpi-todo-item > .dream-kpi-todo-del {
-    margin-top: calc(0.22rem + (1.45 * var(--fs-body)) / 2 - var(--cb-size) / 2 - 1px);
+    margin-top: calc(0.22rem + (1.45 * 0.85rem) / 2 - var(--cb-size) / 2 - 1px);
   }
 }
 
 @media (max-width: 48rem) {
   .dream-kpi-todo-check-wrap {
-    /* 모바일 textarea 글자 16px(iOS) 기준 첫 줄과 맞춤 */
-    margin-top: calc((1.45 * 1rem - var(--cb-size)) / 2);
+    margin-top: calc((1.45 * 0.85rem - var(--cb-size)) / 2);
   }
   .dream-kpi-todo-item > .dream-kpi-todo-del {
-    margin-top: calc((1.45 * 1rem - var(--cb-size)) / 2);
+    margin-top: calc((1.45 * 0.85rem - var(--cb-size)) / 2);
   }
 }
 
@@ -28246,11 +28258,31 @@ body.kpi-resizing {
   cursor: default;
 }
 
+/* 로그 .dream-kpi-history-date / .dream-kpi-history-memo 와 동일 톤 */
 .dream-kpi-todo-text {
   flex: 1;
   min-width: 0;
-  font-size: var(--fs-body);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+/* 전역 #app textarea(본문색·밑줄·패딩·모바일 16px !important)보다 우선 */
+#app textarea.dream-kpi-todo-text {
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+  border-bottom: none;
+  padding: 0;
+  box-shadow: none;
+  background: transparent;
+}
+#app textarea.dream-kpi-todo-text:focus,
+#app textarea.dream-kpi-todo-text:focus-visible {
   color: var(--text-body);
+  border-bottom: none;
+  box-shadow: none;
+  outline: none;
 }
 
 /* 데스크톱: 첫 줄·체크 세로 맞춤 (너무 내리면 padding-top·아래 calc값 함께 줄일 것) */
@@ -28265,7 +28297,8 @@ body.kpi-resizing {
   }
 }
 
-.dream-kpi-todo-item.is-completed .dream-kpi-todo-text {
+.dream-kpi-todo-item.is-completed .dream-kpi-todo-text,
+#app .dream-kpi-todo-item.is-completed textarea.dream-kpi-todo-text {
   text-decoration: line-through;
   color: #9ca3af;
 }
@@ -28344,13 +28377,13 @@ body.kpi-resizing {
 }
 .dream-kpi-todo-subitem-text {
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--text-muted);
 }
 .dream-kpi-todo-subitem-input {
   flex: 1;
   min-width: 5rem;
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--text-muted);
   background: none;
   border: none;
   border-bottom: var(--line-l3);
