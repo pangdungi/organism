@@ -3427,6 +3427,14 @@ export function render(options = {}) {
           }
           updateCount();
           scheduleSave();
+          if (!taskData.isKpiTodo) {
+            pushCalendarSectionTaskDirectToServer(
+              targetSectionId,
+              card,
+              taskRecordFromCardForServer(card),
+              "컨텍스트_리스트이동",
+            );
+          }
         } else if (targetTbody) {
           const newTr = createTaskRow(taskData, {
             hideCategoryCol: true,
@@ -3449,6 +3457,29 @@ export function render(options = {}) {
             const item = createSubtaskItem(taskId, st, updateCount);
             if (container) container.appendChild(item);
           });
+          if (!taskData.isKpiTodo) {
+            const sortOrder = Array.from(
+              targetTbody.querySelectorAll(".todo-task-row:not(.todo-subtask-row)"),
+            ).indexOf(newTr);
+            void upsertCalendarSectionTaskDirectFromModal({
+              task: {
+                taskId: taskData.taskId || taskId,
+                name: taskData.name || "",
+                startDate: taskData.startDate || "",
+                dueDate: taskData.dueDate || "",
+                startTime: taskData.startTime || "",
+                endTime: taskData.endTime || "",
+                eisenhower: taskData.eisenhower || "",
+                done: !!taskData.done,
+                itemType: taskData.itemType || "todo",
+                reminderDate: taskData.reminderDate || "",
+                reminderTime: taskData.reminderTime || "",
+              },
+              sectionKey: targetSectionId,
+              isCustom: targetSectionId.startsWith("custom-"),
+              sortOrder: sortOrder < 0 ? 0 : sortOrder,
+            }).catch(() => {});
+          }
         }
 
         setSubtasks(taskId, subtasksToMove);
