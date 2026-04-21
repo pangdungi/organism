@@ -13,11 +13,35 @@ import {
   kpiTodosCompletionBrief,
 } from "./kpiTodoLifecycleDebug.js";
 import { kpiTodoFineTrace } from "./kpiTodoFineTrace.js";
+import { applyDreamKpiTimestampsOnSave } from "./dreamKpiMapSupabase.js";
+import { applySideincomeKpiTimestampsOnSave } from "./sideincomeKpiMapSupabase.js";
+import { applyHappinessKpiTimestampsOnSave } from "./happinessKpiMapSupabase.js";
+import { applyHealthKpiTimestampsOnSave } from "./healthKpiMapSupabase.js";
 
 const DREAM_MAP_KEY = "kpi-dream-map";
 const SIDEINCOME_KEY = "kpi-sideincome-paths";
 const HAPPINESS_KEY = "kpi-happiness-map";
 const HEALTH_KEY = "kpi-health-map";
+
+const TIMESTAMP_APPLY_BY_STORAGE_KEY = {
+  [DREAM_MAP_KEY]: applyDreamKpiTimestampsOnSave,
+  [SIDEINCOME_KEY]: applySideincomeKpiTimestampsOnSave,
+  [HAPPINESS_KEY]: applyHappinessKpiTimestampsOnSave,
+  [HEALTH_KEY]: applyHealthKpiTimestampsOnSave,
+};
+
+/**
+ * KPI 맵 JSON을 localStorage에 쓸 때 반드시 거침: 행별 localModifiedAt + dream-kpi-map-saved 등 이벤트
+ * (직접 setItem만 하면 서버 푸시·동기화가 안 되고 새로고침 시 서버 값으로 덮임)
+ */
+export function stampAndPersistKpiMap(storageKey, prevSnapshot, nextData) {
+  try {
+    const applyFn = TIMESTAMP_APPLY_BY_STORAGE_KEY[storageKey];
+    const stamped = applyFn ? applyFn(prevSnapshot, nextData) : nextData;
+    localStorage.setItem(storageKey, JSON.stringify(stamped));
+    dispatchKpiMapSavedAfterLocalWrite(storageKey, "stamp-and-persist");
+  } catch (_) {}
+}
 
 /** KPI 맵 저장 후 Supabase 동기화 리스너가 기대하는 이벤트 (뷰 saveDreamMap 등과 동일) */
 function dispatchKpiMapSavedAfterLocalWrite(storageKey, reason = "local_write") {
@@ -464,12 +488,13 @@ export function syncKpiDailyRepeatTodoCompleted(todoId, storageKey, completed) {
   try {
     const raw = localStorage.getItem(storageKey);
     if (!raw) return;
+    const prev = JSON.parse(raw);
     const data = JSON.parse(raw);
     data.kpiDailyRepeatTodos = data.kpiDailyRepeatTodos || [];
     const t = data.kpiDailyRepeatTodos.find((x) => x.id === todoId);
     if (t) {
       t.completed = !!completed;
-      localStorage.setItem(storageKey, JSON.stringify(data));
+      stampAndPersistKpiMap(storageKey, prev, data);
     }
   } catch (_) {}
 }

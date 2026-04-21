@@ -7024,7 +7024,6 @@ export function render() {
         const dailyInfo = getKpiDailyRepeatInfoByKpiName(taskName);
         if (dailyInfo && dailyInfo.needHabitTracker && taskLogDailyTodosList) {
           const completed = [];
-          const incomplete = [];
           taskLogDailyTodosList
             .querySelectorAll("label.time-task-log-daily-todo-row")
             .forEach((label) => {
@@ -7036,7 +7035,6 @@ export function render() {
                 span && span.textContent ? span.textContent.trim() : "";
               if (!id) return;
               if (cb && cb.checked) completed.push({ id, text });
-              else incomplete.push({ id, text });
             });
           const dateRawStr = (dateStr || "")
             .toString()
@@ -7053,7 +7051,7 @@ export function render() {
               dailyInfo.storageKey,
               dailyInfo.kpiId,
               normalizedDateRaw,
-              { completed, incomplete },
+              { completed },
             );
           }
         }

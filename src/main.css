@@ -28106,6 +28106,13 @@ body.kpi-resizing {
     overflow-wrap: break-word;
     max-height: 12rem;
   }
+  /* KPI 로그: 해당 날짜에 체크한 매일 할 일만 한 줄(작게) */
+  .dream-kpi-history-daily.dream-kpi-history-daily--checked-only {
+    font-size: 0.72rem;
+    line-height: 1.35;
+    margin-top: 0.15rem;
+    color: var(--text-caption-color, var(--text-muted));
+  }
 }
 
 /* 로그 영역 .dream-kpi-history-title 과 동일 계층 */

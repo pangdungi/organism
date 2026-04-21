@@ -4,6 +4,7 @@
  */
 
 import { readTimeLedgerEntriesRaw } from "./timeLedgerEntriesModel.js";
+import { stampAndPersistKpiMap } from "./kpiTodoSync.js";
 
 function parseTimeToHours(str) {
   if (!str || typeof str !== "string") return 0;
@@ -110,6 +111,38 @@ function nextLogId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
 
+/** 매일 반복 할 일 중 체크된 항목만 KPI 로그에 남김(dailyCompleted) */
+function snapshotDailyCompletedForKpi(data, kpiId) {
+  const todos = (data.kpiDailyRepeatTodos || []).filter(
+    (t) => String(t.kpiId) === String(kpiId) && (t.text || "").trim() !== "",
+  );
+  return todos
+    .filter((t) => t.completed)
+    .map((t) => ({
+      id: String(t.id),
+      text: (t.text || "").trim(),
+    }));
+}
+
+/** 같은 날짜·같은 KPI 로그에 여러 번 시간기록할 때 체크 항목 합집합(id 우선, 없으면 텍스트) */
+function mergeDailyCompletedLists(prev, next) {
+  const seen = new Set();
+  const out = [];
+  const add = (t) => {
+    if (!t || typeof t !== "object") return;
+    const id = String(t.id || "").trim();
+    const text = String(t.text || "").trim();
+    const key = id || `text:${text}`;
+    if (!id && !text) return;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ id: id || key, text: text || id });
+  };
+  for (const t of prev || []) add(t);
+  for (const t of next || []) add(t);
+  return out;
+}
+
 const STORAGE_CONFIG = [
   { key: "kpi-dream-map", kpiKey: "dreamId", idKey: "dreamId" },
   { key: "kpi-sideincome-paths", kpiKey: "pathId", idKey: "pathId" },
@@ -118,17 +151,18 @@ const STORAGE_CONFIG = [
 ];
 
 /**
- * 매일 반복 KPI: 과제 기록 시 해당 날짜 로그에 매일 할일 완료/미완료 상태 저장 (시간기록 모달에서만 체크 반영)
+ * 매일 반복 KPI: 과제 기록 시 해당 날짜 로그에 체크한 매일 할 일만 저장(시간기록 모달)
  * @param {string} storageKey
  * @param {string} kpiId
  * @param {string} dateRaw - YYYY-MM-DD
- * @param {{ completed: Array<{id:string,text:string}>, incomplete: Array<{id:string,text:string}> }} dailyState
+ * @param {{ completed: Array<{id:string,text:string}> }} dailyState — 체크된 매일 할 일만(미체크는 저장하지 않음)
  */
 export function upsertHabitTrackerLogWithDailyState(storageKey, kpiId, dateRaw, dailyState) {
   if (!storageKey || !kpiId || !dateRaw || dateRaw.length < 10) return;
   try {
     const raw = localStorage.getItem(storageKey);
     if (!raw) return;
+    const prev = JSON.parse(raw);
     const data = JSON.parse(raw);
     const kpis = data.kpis || [];
     const kpi = kpis.find((k) => k.id === kpiId);
@@ -144,13 +178,17 @@ export function upsertHabitTrackerLogWithDailyState(storageKey, kpiId, dateRaw, 
       (l) => l.kpiId === kpiId && normalizeLogDate(l.dateRaw || l.date || "") === normDate,
     );
 
-    const dailyCompleted = Array.isArray(dailyState?.completed) ? dailyState.completed : [];
-    const dailyIncomplete = Array.isArray(dailyState?.incomplete) ? dailyState.incomplete : [];
+    const dailyCompleted = Array.isArray(dailyState?.completed)
+      ? dailyState.completed
+      : [];
     const dateDisplay = toDisplayDate(dateRaw);
 
     if (existingIdx >= 0) {
-      logs[existingIdx].dailyCompleted = dailyCompleted;
-      logs[existingIdx].dailyIncomplete = dailyIncomplete;
+      logs[existingIdx].dailyCompleted = mergeDailyCompletedLists(
+        logs[existingIdx].dailyCompleted || [],
+        dailyCompleted,
+      );
+      logs[existingIdx].dailyIncomplete = [];
       logs[existingIdx].value = "1";
       logs[existingIdx].status = "순항";
     } else {
@@ -163,12 +201,12 @@ export function upsertHabitTrackerLogWithDailyState(storageKey, kpiId, dateRaw, 
         value: "1",
         status: "순항",
         memo: "",
-        dailyCompleted,
-        dailyIncomplete,
+        dailyCompleted: mergeDailyCompletedLists([], dailyCompleted),
+        dailyIncomplete: [],
       });
     }
     data.kpiLogs = logs;
-    localStorage.setItem(storageKey, JSON.stringify(data));
+    stampAndPersistKpiMap(storageKey, prev, data);
   } catch (_) {}
 }
 
@@ -192,6 +230,7 @@ export function syncHabitTrackerLogs() {
     try {
       const raw = localStorage.getItem(key);
       if (!raw) return;
+      const prev = JSON.parse(raw);
       const data = JSON.parse(raw);
       const kpis = data.kpis || [];
       const logs = data.kpiLogs || [];
@@ -204,19 +243,44 @@ export function syncHabitTrackerLogs() {
         const matchingKpis = kpis.filter((k) => (k.name || "").trim() === taskName);
         matchingKpis.forEach((kpi) => {
         if (!kpi.needHabitTracker) return;
-        const logKey = `${kpi.id}|${dateRaw}`;
-        if (existingLogKeys.has(logKey)) return;
+        const nd = normalizeLogDate(dateRaw);
+        const logKey = `${kpi.id}|${nd}`;
+        const snap = snapshotDailyCompletedForKpi(data, kpi.id);
 
-        const dateDisplay = toDisplayDate(dateRaw);
+        if (existingLogKeys.has(logKey)) {
+          const idx = logs.findIndex(
+            (l) =>
+              l.kpiId === kpi.id &&
+              normalizeLogDate(l.dateRaw || l.date || "") === nd,
+          );
+          if (idx >= 0) {
+            const merged = mergeDailyCompletedLists(
+              logs[idx].dailyCompleted || [],
+              snap,
+            );
+            const prevS = JSON.stringify(logs[idx].dailyCompleted || []);
+            const nextS = JSON.stringify(merged);
+            if (prevS !== nextS) {
+              logs[idx].dailyCompleted = merged;
+              logs[idx].dailyIncomplete = [];
+              changed = true;
+            }
+          }
+          return;
+        }
+
+        const dateDisplay = toDisplayDate(nd);
         logs.push({
           id: nextLogId(),
           kpiId: kpi.id,
           [idKey]: kpi[kpiKey],
           date: dateDisplay,
-          dateRaw,
+          dateRaw: nd,
           value: "1",
           status: "순항",
           memo: "",
+          dailyCompleted: mergeDailyCompletedLists([], snap),
+          dailyIncomplete: [],
         });
         existingLogKeys.add(logKey);
         changed = true;
@@ -225,7 +289,7 @@ export function syncHabitTrackerLogs() {
 
       if (changed) {
         data.kpiLogs = logs;
-        localStorage.setItem(key, JSON.stringify(data));
+        stampAndPersistKpiMap(key, prev, data);
       }
     } catch (_) {}
   });

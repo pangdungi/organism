@@ -1042,14 +1042,11 @@ export function render() {
         item.className = "dream-kpi-history-item";
         const unitSuffix = kpi.unit ? " " + kpi.unit : "";
         const completed = log.dailyCompleted || [];
-        const incomplete = log.dailyIncomplete || [];
-        let dailyLine = "";
-        if (completed.length || incomplete.length) {
-          const completedNames = completed.map((t) => (t.text || "").trim()).filter(Boolean).join(", ");
-          const incompleteNames = incomplete.map((t) => (t.text || "").trim()).filter(Boolean).join(", ");
-          if (completedNames) dailyLine = `${completedNames} 완료`;
-          if (incompleteNames) dailyLine += (dailyLine ? " / " : "") + `미완료: ${incompleteNames}`;
-        }
+        const completedNames = completed
+          .map((t) => (t.text || "").trim())
+          .filter(Boolean);
+        const dailyLine =
+          completedNames.length > 0 ? completedNames.join(" · ") : "";
         item.innerHTML = `
           <div class="dream-kpi-history-item-body">
             <div class="dream-kpi-history-item-main">
@@ -1057,7 +1054,7 @@ export function render() {
               <span class="dream-kpi-history-value">${escapeHtml(log.value || "—")}${unitSuffix}</span>
             </div>
             ${log.memo ? `<div class="dream-kpi-history-memo">${escapeHtml(log.memo)}</div>` : ""}
-            ${dailyLine ? `<div class="dream-kpi-history-daily">${escapeHtml(dailyLine)}</div>` : ""}
+            ${dailyLine ? `<div class="dream-kpi-history-daily dream-kpi-history-daily--checked-only">${escapeHtml(dailyLine)}</div>` : ""}
           </div>
           <div class="dream-kpi-history-actions">
             <button type="button" class="dream-kpi-history-edit">수정</button>
@@ -1227,17 +1224,17 @@ export function render() {
         (t) => String(t.kpiId) === selKpi && (t.text || "").trim() !== "",
       );
       dailyTodos.forEach((todo) => {
-        const completed = !!todo.completed;
         const item = document.createElement("div");
-        item.className = "dream-kpi-todo-item" + (completed ? " is-completed" : "");
+        item.className = "dream-kpi-todo-item dream-kpi-daily-repeat-ref";
         const label = document.createElement("label");
         label.className = "dream-kpi-todo-check-wrap";
         const check = document.createElement("input");
         check.type = "checkbox";
         check.className = "dream-kpi-todo-check";
         check.disabled = true;
-        check.checked = completed;
-        check.title = "매일 할일 체크는 시간기록(과제 기록)에서만 가능합니다";
+        check.checked = false;
+        check.title =
+          "KPI 화면에서는 체크 상태를 보여 주지 않습니다. 완료는 시간기록(과제 기록)에서만 체크하세요.";
         label.appendChild(check);
         const textInput = document.createElement("textarea");
         textInput.className = "dream-kpi-todo-text dream-kpi-daily-repeat-edit-input";

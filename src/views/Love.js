@@ -1034,6 +1034,12 @@ export function render() {
         const item = document.createElement("div");
         item.className = "dream-kpi-history-item";
         const unitSuffix = kpi.unit ? " " + kpi.unit : "";
+        const completed = log.dailyCompleted || [];
+        const completedNames = completed
+          .map((t) => (t.text || "").trim())
+          .filter(Boolean);
+        const dailyLine =
+          completedNames.length > 0 ? completedNames.join(" · ") : "";
         item.innerHTML = `
           <div class="dream-kpi-history-item-body">
             <div class="dream-kpi-history-item-main">
@@ -1041,6 +1047,7 @@ export function render() {
               <span class="dream-kpi-history-value">${escapeHtml(log.value || "—")}${unitSuffix}</span>
             </div>
             ${log.memo ? `<div class="dream-kpi-history-memo">${escapeHtml(log.memo)}</div>` : ""}
+            ${dailyLine ? `<div class="dream-kpi-history-daily dream-kpi-history-daily--checked-only">${escapeHtml(dailyLine)}</div>` : ""}
           </div>
           <div class="dream-kpi-history-actions">
             <button type="button" class="dream-kpi-history-edit">수정</button>
