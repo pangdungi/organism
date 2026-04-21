@@ -15,10 +15,6 @@ import {
 import { createTodoSettingsModal } from "../utils/todoSettingsModal.js";
 import {
   getTodoSettings,
-  getCustomSections,
-  addCustomSection,
-  removeCustomSection,
-  updateCustomSectionLabel,
   getSectionColor,
   snapRgbaToNearestPreset,
   pickRandomPresetRgba,
@@ -75,28 +71,6 @@ function isTodoListMobileModalViewport() {
   } catch (_) {
     return false;
   }
-}
-
-/** 커스텀 리스트 탭 우클릭 메뉴: document dismiss 리스너 1회만 (render 반복 시 누적 방지) */
-let todoListTabContextMenuActive = null;
-let todoListTabContextTargetActive = null;
-function ensureTodoListTabGlobalDismiss() {
-  if (ensureTodoListTabGlobalDismiss._ok) return;
-  ensureTodoListTabGlobalDismiss._ok = true;
-  document.addEventListener("click", (e) => {
-    const menu = todoListTabContextMenuActive;
-    if (!menu || menu.hidden) return;
-    if (menu.contains(e.target)) return;
-    menu.hidden = true;
-    todoListTabContextTargetActive = null;
-  });
-  document.addEventListener("contextmenu", (e) => {
-    const menu = todoListTabContextMenuActive;
-    if (!menu || menu.hidden) return;
-    if (menu.contains(e.target)) return;
-    menu.hidden = true;
-    todoListTabContextTargetActive = null;
-  });
 }
 
 // 나의 계정에서 색상 저장 시 탭 버튼 테두리 즉시 반영
@@ -342,98 +316,6 @@ function moveCustomSectionTaskToSection(fromSectionId, taskId, targetSectionId, 
   return false;
 }
 
-function loadCustomSectionTasks(sectionId) {
-  try {
-    const obj = readCustomSectionTasksObject();
-    const arr = obj[sectionId];
-    if (Array.isArray(arr)) {
-      return arr
-        .filter((t) => keepTaskInSectionStorage(t))
-        .map((t) => ({
-          ...t,
-          sectionId,
-          sectionLabel: getCustomSections().find((s) => s.id === sectionId)?.label || sectionId,
-          itemType: t.itemType || "todo",
-        }));
-    }
-  } catch (_) {}
-  return [];
-}
-
-function saveCustomSectionTasks(sectionId, tasks) {
-  try {
-    const obj = readCustomSectionTasksObject();
-    const existingList = obj[sectionId] || [];
-    const prevById = new Map(
-      existingList.map((t) => [String(t.taskId || "").trim(), t]),
-    );
-    const toSave = tasks
-      .map(
-        ({
-          taskId,
-          name,
-          startDate,
-          dueDate,
-          startTime,
-          endTime,
-          eisenhower,
-          done,
-          itemType,
-        }) => {
-          const candidate = {
-            taskId,
-            name: (name || "").trim(),
-            startDate: startDate || "",
-            dueDate: dueDate || "",
-            startTime: startTime || "",
-            endTime: endTime || "",
-            eisenhower: eisenhower || "",
-            done: !!done,
-            itemType: itemType || "todo",
-          };
-          const tid = String(taskId || "").trim();
-          const prevRow = tid ? prevById.get(tid) : null;
-          if (!prevRow) {
-            return { ...candidate };
-          }
-          const same =
-            stripTodoTaskSyncMetaForCompare(prevRow) ===
-            stripTodoTaskSyncMetaForCompare(candidate);
-          if (same) {
-            return {
-              ...candidate,
-              serverUpdatedAt:
-                prevRow.serverUpdatedAt !== undefined && prevRow.serverUpdatedAt !== ""
-                  ? prevRow.serverUpdatedAt
-                  : candidate.serverUpdatedAt,
-            };
-          }
-          return { ...candidate };
-        },
-      )
-      .filter((t) => keepTaskInSectionStorage(t));
-    obj[sectionId] = toSave;
-    writeCustomSectionTasksObject(obj);
-  } catch (_) {}
-}
-
-async function removeCustomSectionTasks(sectionId) {
-  try {
-    const obj = readCustomSectionTasksObject();
-    const arr = obj[sectionId];
-    const ids = Array.isArray(arr)
-      ? arr.map((t) => String(t?.taskId || "").trim()).filter(Boolean)
-      : [];
-    delete obj[sectionId];
-    /* 섹션 통째 삭제도 로컬 먼저 비움 — 루프 도중 sync가 옛 행을 다시 upsert 하는 것 방지 */
-    writeCustomSectionTasksObject(obj);
-    for (const tid of ids) {
-      await deleteCalendarSectionTaskRowById(tid);
-    }
-    persistCustomSectionTasksAndSchedule(obj);
-  } catch (_) {}
-}
-
 /** @param {string} [via] 콘솔 구분용: 수정모달_삭제 | 표_삭제버튼 */
 async function removeTaskFromSectionStorage(sectionId, taskId, via = "") {
   try {
@@ -519,33 +401,6 @@ function moveTaskOutOfCustomSectionStorageOnly(sectionId, taskId) {
     return true;
   } catch (_) {}
   return false;
-}
-
-function collectCustomSectionFromDOM(sectionsEl, sectionId) {
-  const tasks = [];
-  const sec = sectionsEl?.querySelector(`.todo-section[data-section="${sectionId}"]`);
-  sec?.querySelectorAll(".todo-task-row:not(.todo-subtask-row)").forEach((row) => {
-    const nameInput = row.querySelector(".todo-task-name-field");
-    const startInput = row.querySelector(".todo-start-input-hidden");
-    const dueInput = row.querySelector(".todo-due-input-hidden");
-    const eisenhowerSelect = row.querySelector(".todo-eisenhower-select");
-    const doneCheck = row.querySelector(".todo-done-check");
-    const itemType = row.dataset.itemType || "todo";
-    tasks.push({
-      taskId: row.dataset.taskId || "",
-      name: (nameInput?.value || "").trim(),
-      startDate: startInput?.value || "",
-      dueDate: dueInput?.value || "",
-      startTime: row.dataset.startTime || "",
-      endTime: row.dataset.endTime || "",
-      eisenhower: eisenhowerSelect?.value || row.dataset.eisenhower || "",
-      done: itemType === "todo" ? (doneCheck?.checked || false) : false,
-      itemType,
-      reminderDate: row.dataset.reminderDate || "",
-      reminderTime: row.dataset.reminderTime || "",
-    });
-  });
-  return tasks;
 }
 
 const KPI_SECTION_IDS = ["dream", "sideincome", "health", "happy"];
@@ -654,7 +509,7 @@ function scheduleSaveSectionTasksFromDOM(sectionsWrap) {
   if (_saveSectionTasksTimer) clearTimeout(_saveSectionTasksTimer);
   _saveSectionTasksTimer = setTimeout(() => {
     _saveSectionTasksTimer = null;
-    collectAndSaveKpiTasksFromDOM(sectionsWrap, { withCustomSections: false });
+    collectAndSaveKpiTasksFromDOM(sectionsWrap);
   }, 300);
 }
 
@@ -665,16 +520,12 @@ function flushSaveSectionTasksFromDOM(sectionsWrap) {
     clearTimeout(_saveSectionTasksTimer);
     _saveSectionTasksTimer = null;
   }
-  collectAndSaveKpiTasksFromDOM(sectionsWrap, { withCustomSections: true });
+  collectAndSaveKpiTasksFromDOM(sectionsWrap);
 }
 
-/**
- * @param {{ withCustomSections?: boolean }} [opts]
- * KPI 저장소 + 고정 섹션 카드/행을 DOM에서 읽어 세션 메모리만 갱신. 서버 호출 없음.
- */
-function collectAndSaveKpiTasksFromDOM(sectionsWrap, opts = {}) {
-  const { withCustomSections = false } = opts;
-  todoDebug("collectAndSaveKpiTasksFromDOM", { hasWrap: !!sectionsWrap, withCustomSections });
+/** KPI 저장소 + 고정 섹션 카드/행을 DOM에서 읽어 세션 메모리만 갱신. 서버 호출 없음. */
+function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
+  todoDebug("collectAndSaveKpiTasksFromDOM", { hasWrap: !!sectionsWrap });
   if (!sectionsWrap) return;
   FIXED_SECTION_IDS_FOR_STORAGE.forEach((sectionId) => {
     const sec = sectionsWrap.querySelector(`.todo-section[data-section="${sectionId}"]`);
@@ -791,12 +642,6 @@ function collectAndSaveKpiTasksFromDOM(sectionsWrap, opts = {}) {
     Object.keys(obj || {}).forEach((k) => { counts[k] = (obj[k] || []).length; });
     todoDebug("collectAndSave: after save mem snapshot", counts);
   } catch (_) {}
-  if (withCustomSections) {
-    getCustomSections().forEach((s) => {
-      const sec = sectionsWrap.querySelector(`.todo-section[data-section="${s.id}"]`);
-      if (sec) saveCustomSectionTasks(s.id, collectCustomSectionFromDOM(sectionsWrap, s.id));
-    });
-  }
 }
 
 export function saveTodoListBeforeUnmount(container) {
@@ -809,7 +654,7 @@ export function saveTodoListBeforeUnmount(container) {
     containerChildren: container?.children?.length,
   });
   if (sectionsWrap) {
-    collectAndSaveKpiTasksFromDOM(sectionsWrap, { withCustomSections: true });
+    collectAndSaveKpiTasksFromDOM(sectionsWrap);
   } else {
     todoDebug("saveTodoListBeforeUnmount: no .todo-sections-wrap in container, save skipped");
   }
@@ -1148,100 +993,6 @@ const FIXED_SECTIONS = [
   { id: "happy", label: "행복" },
   { id: "braindump", label: "브레인 덤프" },
 ];
-
-function showAddListModal(options = {}) {
-  const { validate, onSuccess, title = "새 리스트 추가", label = "새 리스트 이름을 입력하세요", initialValue = "" } = options;
-  const modal = document.createElement("div");
-  modal.className = "todo-list-modal";
-  modal.innerHTML = `
-    <div class="todo-list-modal-backdrop"></div>
-    <div class="todo-list-modal-panel">
-      <div class="todo-list-modal-header">
-        <h3 class="todo-list-modal-title">${title}</h3>
-        <button type="button" class="todo-list-modal-close" aria-label="닫기">×</button>
-      </div>
-      <div class="todo-list-modal-body">
-        <p class="todo-list-modal-label">${label}</p>
-        <input type="text" name="todo-list-modal-name" class="todo-list-modal-input" placeholder="리스트 이름" maxlength="50" />
-        <p class="todo-list-modal-error" role="alert"></p>
-      </div>
-      <div class="todo-list-modal-footer">
-        <button type="button" class="todo-list-modal-cancel">취소</button>
-        <button type="button" class="todo-list-modal-confirm">확인</button>
-      </div>
-    </div>
-  `;
-
-  const backdrop = modal.querySelector(".todo-list-modal-backdrop");
-  const closeBtn = modal.querySelector(".todo-list-modal-close");
-  const input = modal.querySelector(".todo-list-modal-input");
-  const errorEl = modal.querySelector(".todo-list-modal-error");
-  const cancelBtn = modal.querySelector(".todo-list-modal-cancel");
-  const confirmBtn = modal.querySelector(".todo-list-modal-confirm");
-
-  function close() {
-    modal.remove();
-    document.body.style.overflow = "";
-  }
-
-  function showError(msg) {
-    errorEl.textContent = msg || "";
-  }
-
-  function doConfirm() {
-    const val = (input.value || "").trim();
-    const err = validate ? validate(val) : null;
-    if (err) {
-      showError(err);
-      return;
-    }
-    showError("");
-    close();
-    onSuccess?.(val);
-  }
-
-  confirmBtn.addEventListener("click", doConfirm);
-  cancelBtn.addEventListener("click", close);
-  closeBtn.addEventListener("click", close);
-  backdrop.addEventListener("click", () => {
-    if (isTodoListMobileModalViewport()) return;
-    close();
-  });
-
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      doConfirm();
-    }
-    if (e.key === "Escape") {
-      e.preventDefault();
-      close();
-    }
-  });
-
-  document.body.appendChild(modal);
-  document.body.style.overflow = "hidden";
-  if (initialValue) input.value = initialValue;
-  input.focus();
-}
-
-function showEditListModal(options = {}) {
-  const { sectionId, currentLabel, onSuccess } = options;
-  showAddListModal({
-    title: "리스트 이름 편집",
-    label: "리스트 이름을 입력하세요",
-    initialValue: currentLabel || "",
-    validate: (name) => {
-      if (!name || !name.trim()) return "리스트 이름을 입력하세요.";
-      if (getCustomSections().some((s) => s.label === name.trim() && s.id !== sectionId)) return "같은 이름의 리스트가 이미 있습니다.";
-      return null;
-    },
-    onSuccess: (name) => {
-      const updated = updateCustomSectionLabel(sectionId, name.trim());
-      if (updated) onSuccess?.(updated);
-    },
-  });
-}
 
 function escapeConfirmHtml(s) {
   return String(s || "")
@@ -1620,7 +1371,7 @@ function showTodoTaskModal(options) {
 }
 
 function getSections() {
-  return [...FIXED_SECTIONS, ...getCustomSections()];
+  return [...FIXED_SECTIONS];
 }
 
 function getTaskId(taskData) {
@@ -3421,81 +3172,6 @@ export function render(options = {}) {
     toolbarRow.appendChild(toolbar);
   }
 
-  const listTabContextMenu = document.createElement("div");
-  listTabContextMenu.className = "todo-list-tab-context-menu";
-  listTabContextMenu.hidden = true;
-  listTabContextMenu.innerHTML = `
-    <button type="button" class="todo-list-tab-context-menu-item" data-action="edit">편집</button>
-    <button type="button" class="todo-list-tab-context-menu-item" data-action="delete">삭제</button>
-  `;
-  el.appendChild(listTabContextMenu);
-  todoListTabContextMenuActive = listTabContextMenu;
-  ensureTodoListTabGlobalDismiss();
-
-  const hideListTabMenu = () => {
-    listTabContextMenu.hidden = true;
-    todoListTabContextTargetActive = null;
-  };
-  listTabContextMenu.querySelector('[data-action="edit"]').addEventListener("click", () => {
-    if (!todoListTabContextTargetActive) return;
-    const tabEl = todoListTabContextTargetActive;
-    const sectionId = tabEl.dataset.section;
-    const section = getCustomSections().find((s) => s.id === sectionId);
-    if (!section) return;
-    hideListTabMenu();
-    showEditListModal({
-      sectionId,
-      currentLabel: section.label,
-      onSuccess: (updated) => {
-        const labelEl = tabEl.querySelector(".todo-category-tab-label");
-        if (labelEl) labelEl.textContent = updated.label;
-      },
-    });
-  });
-  listTabContextMenu.querySelector('[data-action="delete"]').addEventListener("click", () => {
-    if (!todoListTabContextTargetActive) return;
-    const tabToRemove = todoListTabContextTargetActive;
-    const sectionId = tabToRemove.dataset.section;
-    const section = getCustomSections().find((s) => s.id === sectionId);
-    if (!section) return;
-    hideListTabMenu();
-    showConfirmModal({
-      title: "리스트 삭제",
-      message: `"${section.label}" 리스트를 삭제하시겠습니까?`,
-      confirmText: "삭제",
-      cancelText: "취소",
-      onConfirm: async () => {
-        const tabIndex = tabButtons.indexOf(tabToRemove);
-        removeCustomSection(sectionId);
-        await removeCustomSectionTasks(sectionId);
-        const panelResult = sectionResults.find((r) => r.wrap.dataset.section === sectionId);
-        if (panelResult) {
-          panelResult.wrap.remove();
-          sectionResults.splice(sectionResults.indexOf(panelResult), 1);
-        }
-        tabToRemove.remove();
-        tabButtons.splice(tabIndex, 1);
-        if (activeSectionIndex >= tabIndex) activeSectionIndex = Math.max(0, activeSectionIndex - 1);
-        if (activeSectionIndex >= tabButtons.length) activeSectionIndex = tabButtons.length - 1;
-        tabButtons.forEach((b, i) => b.classList.toggle("active", i === activeSectionIndex));
-        sectionResults.forEach((r, i) => r.wrap.classList.toggle("is-active", i === activeSectionIndex));
-        updateTabLabels();
-      },
-    });
-  });
-  categoryTabs.addEventListener("contextmenu", (e) => {
-    const tab = e.target.closest(".todo-category-tab:not(.todo-category-tab-add)");
-    if (!tab) return;
-    const sectionId = tab.dataset.section;
-    if (!sectionId || !sectionId.startsWith("custom-")) return;
-    e.preventDefault();
-    e.stopPropagation();
-    todoListTabContextTargetActive = tab;
-    listTabContextMenu.hidden = false;
-    listTabContextMenu.style.left = `${e.clientX}px`;
-    listTabContextMenu.style.top = `${e.clientY}px`;
-  });
-
   const sectionsWrap = document.createElement("div");
   sectionsWrap.className = "todo-sections-wrap todo-tab-panels";
 
@@ -3505,8 +3181,7 @@ export function render(options = {}) {
 
   const kpiTasks = omitKpiTodos ? [] : getKpiTodosAsTasks();
   const sectionTasks = FIXED_SECTION_IDS_FOR_STORAGE.flatMap((sid) => loadSectionTasks(sid));
-  const customTasks = getCustomSections().flatMap((s) => loadCustomSectionTasks(s.id));
-  let allTasks = [...kpiTasks, ...sectionTasks, ...customTasks];
+  let allTasks = [...kpiTasks, ...sectionTasks];
   if ((eisenhowerFilter || "").trim()) {
     const q = (eisenhowerFilter || "").trim();
     const EISENHOWER_LABELS = { "urgent-important": "긴급+중요", "important-not-urgent": "중요+여유", "urgent-not-important": "긴급+덜중요", "not-urgent-not-important": "여유+안중요" };
@@ -3649,7 +3324,8 @@ export function render(options = {}) {
     let result = { success: false };
     const taskPayload = { taskId: oldTaskId, name, startDate, dueDate, startTime, endTime, eisenhower, done, itemType, reminderDate, reminderTime };
     const sectionLabelMap = { dream: "꿈", sideincome: "부수입", health: "건강", happy: "행복", braindump: "브레인 덤프" };
-    const getTargetLabel = (id) => sectionLabelMap[id] || getCustomSections().find((s) => s.id === id)?.label || id;
+    const getTargetLabel = (id) =>
+      sectionLabelMap[id] || FIXED_SECTIONS.find((s) => s.id === id)?.label || id;
 
     if (kpiTodoId && storageKey) {
       if (targetSectionId.startsWith("custom-")) {
@@ -3825,9 +3501,7 @@ export function renderTodoListForEisenhowerSidebar(options = {}) {
   mainList.classList.add("todo-list-eisenhower-sidebar");
 
   const sectionTasks = FIXED_SECTION_IDS_FOR_STORAGE.flatMap((sid) => loadSectionTasks(sid));
-  const customTasks = getCustomSections().flatMap((s) => loadCustomSectionTasks(s.id));
-  const allTasks = [...sectionTasks, ...customTasks];
-  const overdueTasks = allTasks
+  const overdueTasks = sectionTasks
     .filter((t) => isOverdue(t.dueDate) && !t.done)
     .map((t) => ({ ...t, sourceSectionId: t.sectionId, sectionId: "overdue" }));
 
@@ -3849,9 +3523,7 @@ export function renderTodoListForEisenhowerSidebar(options = {}) {
 export function renderOverdueSection(options = {}) {
   const { enableDragToCalendar = true } = options;
   const sectionTasks = FIXED_SECTION_IDS_FOR_STORAGE.flatMap((sid) => loadSectionTasks(sid));
-  const customTasks = getCustomSections().flatMap((s) => loadCustomSectionTasks(s.id));
-  const allTasks = [...sectionTasks, ...customTasks];
-  const overdueTasks = allTasks
+  const overdueTasks = sectionTasks
     .filter((t) => isOverdue(t.dueDate) && !t.done)
     .map((t) => ({ ...t, sourceSectionId: t.sectionId, sectionId: "overdue" }));
 
