@@ -24,7 +24,6 @@ export const FIXED_PRODUCTIVE_TASKS = [
   { name: "독서 노트", category: "dream", productivity: "productive" },
   { name: "시간기록", category: "dream", productivity: "productive" },
   { name: "시간기록 점검", category: "dream", productivity: "productive" },
-  { name: "건강 검진", category: "health", productivity: "productive" },
   { name: "병원 방문", category: "health", productivity: "productive" },
   { name: "마사지", category: "health", productivity: "productive" },
   { name: "스킨케어", category: "health", productivity: "productive" },
