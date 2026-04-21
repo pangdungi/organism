@@ -5477,7 +5477,7 @@ body {
     margin-left: auto;
     align-self: center;
   }
-  /* 모바일 시간 기록: 상단 스트립 — 데스크톱과 동일 4칸(총기록·생산·투자한 시급·소비한 시급), 한 줄에 맞게 축소 */
+  /* 모바일 시간 기록: 상단 스트립 — 4칸(총기록·생산·낭비한 시급·오늘 하루의 가치), 투자 시급 없음 */
   .time-ledger-view .time-ledger-mobile-tabs-summary.time-ledger-summary-panel {
     flex: 1 1 100%;
     width: 100%;
@@ -5502,7 +5502,7 @@ body {
     min-width: 0;
     border-right: var(--line-l3);
   }
-  /* 금액 칸: 긴 숫자 여유 — 좌우 셀 패딩 제거 */
+  /* 금액·가치 칸: 좌우 셀 패딩 제거 */
   .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(3),
   .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(4) {
     padding-left: 0;
@@ -5559,23 +5559,42 @@ body {
     color: var(--text-caption-color);
     line-height: 1.2;
   }
-  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(3) .time-ledger-summary-value--invested .time-ledger-summary-num,
-  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(3) .time-ledger-summary-value--invested .time-ledger-summary-unit,
-  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(4) .time-ledger-summary-value--spent .time-ledger-summary-num,
-  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(4) .time-ledger-summary-value--spent .time-ledger-summary-unit {
+  .time-ledger-view
+    .time-ledger-mobile-tabs-summary
+    .time-ledger-summary-cell:nth-child(3)
+    .time-ledger-summary-value--spent
+    .time-ledger-summary-num,
+  .time-ledger-view
+    .time-ledger-mobile-tabs-summary
+    .time-ledger-summary-cell:nth-child(3)
+    .time-ledger-summary-value--spent
+    .time-ledger-summary-unit,
+  .time-ledger-view
+    .time-ledger-mobile-tabs-summary
+    .time-ledger-summary-cell:nth-child(4)
+    .time-ledger-summary-value--day-net
+    .time-ledger-summary-num,
+  .time-ledger-view
+    .time-ledger-mobile-tabs-summary
+    .time-ledger-summary-cell:nth-child(4)
+    .time-ledger-summary-value--day-net
+    .time-ledger-summary-unit {
     color: var(--text-ink);
   }
-  /* 투자·소비 금액: h/m 숫자보다 한 단계 작게(셀 꽉 참 완화) */
-  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(3) .time-ledger-summary-num.time-ledger-summary-price,
-  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(4) .time-ledger-summary-num.time-ledger-summary-wasted {
-    font-size: clamp(0.75rem, 3.4vw, 0.8125rem);
+  .time-ledger-view
+    .time-ledger-mobile-tabs-summary
+    .time-ledger-summary-cell:nth-child(3)
+    .time-ledger-summary-value--spent
+    .time-ledger-summary-num,
+  .time-ledger-view
+    .time-ledger-mobile-tabs-summary
+    .time-ledger-summary-cell:nth-child(4)
+    .time-ledger-summary-value--day-net
+    .time-ledger-summary-num {
+    font-size: clamp(0.72rem, 3.2vw, 0.8125rem);
     font-weight: 600;
     line-height: 1.15;
     letter-spacing: -0.04em;
-  }
-  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(3) .time-ledger-summary-value--invested .time-ledger-summary-unit,
-  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell:nth-child(4) .time-ledger-summary-value--spent .time-ledger-summary-unit {
-    font-size: clamp(0.45rem, 2vw, 0.5rem);
   }
   .time-ledger-view .time-ledger-filter-add-row {
     padding-left: 1.5rem;
@@ -25897,10 +25916,10 @@ body.kpi-resizing {
   }
 }
 
-/* 시간가계부 테이블 위 요약 패널 (총 기록시간 / 생산적 시간 / 투자한 시급 / 소비한 시급) */
+/* 시간가계부 테이블 위 요약 패널 (총 기록·생산·투자·소비·오늘 하루의 가치) — 모바일 탭 스트립은 4칸으로 덮어씀 */
 .time-ledger-summary-panel {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 0;
   background: transparent;
   border: none;
@@ -25958,11 +25977,19 @@ body.kpi-resizing {
   letter-spacing: -0.01em;
 }
 
-/* 투자·소비 시급 합계: 브랜드 검은 계열(본문 강조와 동일) */
+.time-ledger-summary-num.time-ledger-summary-day-net {
+  font-family: var(--font-heading);
+  font-weight: 200;
+  letter-spacing: -0.01em;
+}
+
+/* 투자·낭비 시급·오늘 가치: 본문 강조 톤 */
 .time-ledger-summary-cell:nth-child(3) .time-ledger-summary-value--invested .time-ledger-summary-num,
 .time-ledger-summary-cell:nth-child(3) .time-ledger-summary-value--invested .time-ledger-summary-unit,
 .time-ledger-summary-cell:nth-child(4) .time-ledger-summary-value--spent .time-ledger-summary-num,
-.time-ledger-summary-cell:nth-child(4) .time-ledger-summary-value--spent .time-ledger-summary-unit {
+.time-ledger-summary-cell:nth-child(4) .time-ledger-summary-value--spent .time-ledger-summary-unit,
+.time-ledger-summary-cell:nth-child(5) .time-ledger-summary-value--day-net .time-ledger-summary-num,
+.time-ledger-summary-cell:nth-child(5) .time-ledger-summary-value--day-net .time-ledger-summary-unit {
   color: var(--text-ink);
 }
 
@@ -25974,7 +26001,7 @@ body.kpi-resizing {
   color: var(--text-ink);
 }
 
-/* 총 기록·생산·투자한 시급·소비한 시급: 숫자 크게 · 단위(h/m·원) 작게·연한 톤 */
+/* 총 기록·생산·투자·낭비·오늘 가치: 숫자 크게 · 단위(h/m·원) 작게·연한 톤 */
 .time-ledger-summary-cell:nth-child(1) .time-ledger-summary-unit,
 .time-ledger-summary-cell:nth-child(2) .time-ledger-summary-unit {
   font-family: var(--font-body);
@@ -25987,7 +26014,8 @@ body.kpi-resizing {
 }
 
 .time-ledger-summary-cell:nth-child(3) .time-ledger-summary-unit,
-.time-ledger-summary-cell:nth-child(4) .time-ledger-summary-unit {
+.time-ledger-summary-cell:nth-child(4) .time-ledger-summary-unit,
+.time-ledger-summary-cell:nth-child(5) .time-ledger-summary-unit {
   font-family: var(--font-body);
   font-size: var(--fs-small);
   font-weight: var(--fw-small);

@@ -686,7 +686,7 @@ export function render() {
       <span class="home-time-summary-value home-time-summary-value--invested">${timeSummary.priceDisplay}<span class="home-time-summary-unit">원</span></span>
     </div>
     <div class="home-time-summary-cell home-time-summary-cell--money">
-      <span class="home-time-summary-label">소비한 시급</span>
+      <span class="home-time-summary-label">낭비한 시급</span>
       <span class="home-time-summary-value home-time-summary-value--spent">${timeSummary.wastedDisplay}<span class="home-time-summary-unit">원</span></span>
     </div>
   `;

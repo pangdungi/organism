@@ -1,5 +1,19 @@
 /** 시간가계부 과제 고정 목록 (Time.js UI와 동일 소스) */
 
+/** 내장 낮잠 과제: 기록 시간 30분 초과 시 쾌락/비생산으로 분류 */
+export const NAP_TASK_NAME = "낮잠(30분 이내)";
+
+const NAP_TASK_NAMES_FOR_RULE = new Set([
+  NAP_TASK_NAME,
+  "낮잠 (30분 이상은 수면으로 기록)",
+  "낮잠",
+]);
+
+/** 시간·오딧에서 30분 규칙 적용 대상(과거 표기·마이그레이션 전 데이터 포함) */
+export function isNapBuiltinTaskName(name) {
+  return NAP_TASK_NAMES_FOR_RULE.has(String(name || "").trim());
+}
+
 export const FIXED_OTHER_TASKS = [
   { name: "수면하기", category: "sleep", productivity: "other" },
   { name: "근무하기", category: "work", productivity: "other" },
@@ -21,14 +35,14 @@ export const FIXED_PRODUCTIVE_TASKS = [
   { name: "경력 개발", category: "sideincome", productivity: "productive" },
   { name: "아이디어 작업하기", category: "dream", productivity: "productive" },
   { name: "독서하기", category: "dream", productivity: "productive" },
-  { name: "독서 노트", category: "dream", productivity: "productive" },
+  { name: "독서노트 작성", category: "dream", productivity: "productive" },
   { name: "시간기록", category: "dream", productivity: "productive" },
   { name: "시간기록 점검", category: "dream", productivity: "productive" },
   { name: "병원 방문", category: "health", productivity: "productive" },
   { name: "마사지", category: "health", productivity: "productive" },
   { name: "스킨케어", category: "health", productivity: "productive" },
   {
-    name: "낮잠 (30분 이상은 수면으로 기록)",
+    name: NAP_TASK_NAME,
     category: "health",
     productivity: "productive",
   },
@@ -61,7 +75,6 @@ export const FIXED_PRODUCTIVE_TASKS = [
     productivity: "productive",
   },
   { name: "커피 마시기", category: "happiness", productivity: "productive" },
-  { name: "덕질하기", category: "happiness", productivity: "productive" },
   { name: "다이어리 쓰기", category: "happiness", productivity: "productive" },
   { name: "메모하기", category: "happiness", productivity: "productive" },
   { name: "집안일 및 청소", category: "happiness", productivity: "productive" },
@@ -106,7 +119,7 @@ export const FIXED_NONPRODUCTIVE_TASKS = [
     productivity: "nonproductive",
   },
   {
-    name: "의미 없는 대화 (험담, 불평, 단순 대화)",
+    name: "의미 없는 대화",
     category: "unhappiness",
     productivity: "nonproductive",
   },
@@ -139,11 +152,6 @@ export const FIXED_NONPRODUCTIVE_TASKS = [
     productivity: "nonproductive",
   },
   {
-    name: "알람 끄고 침대에 누워 있기",
-    category: "pleasure",
-    productivity: "nonproductive",
-  },
-  {
     name: "쾌락성 모임 참석",
     category: "pleasure",
     productivity: "nonproductive",
@@ -167,15 +175,13 @@ export const BUILTIN_NAME_MIGRATIONS = [
   },
 ];
 
-export const TASKS_LOCKED_FOR_EDIT = ["낮잠"];
+export const TASKS_LOCKED_FOR_EDIT = [NAP_TASK_NAME];
 
 export const DEFAULT_TASK_OPTIONS = [
   ...FIXED_OTHER_TASKS,
   ...FIXED_PRODUCTIVE_TASKS,
   ...FIXED_NONPRODUCTIVE_TASKS,
-  { name: "전화통화", category: "dream", productivity: "productive" },
   { name: "영상편집", category: "sideincome", productivity: "productive" },
-  { name: "러닝하기", category: "health", productivity: "productive" },
 ];
 
 /** 내장 과제(앱 코드) 목록 — 서버 병합·결정적 id용 */
