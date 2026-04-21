@@ -724,6 +724,20 @@ export function saveBudgetGoal(dateStr, taskName, goalTime, isInvest) {
   } catch (_) {}
 }
 
+/** 일간 예산 과제 드롭다운: 빈 값 옵션(—)은 위에 두고, 과제명은 한글 가나다순 */
+function sortDailyBudgetTaskDropdownOptions(opts) {
+  if (!Array.isArray(opts)) return opts;
+  const empty = opts.filter((o) => !String(o.value || "").trim());
+  const named = opts.filter((o) => String(o.value || "").trim());
+  named.sort((a, b) =>
+    String(a.label || a.value || "").localeCompare(
+      String(b.label || b.value || ""),
+      "ko",
+    ),
+  );
+  return [...empty, ...named];
+}
+
 /** 새 행 플레이스홀더 (재렌더 시 행 유지용) */
 const BUDGET_PLACEHOLDER_PREFIX = "(과제 선택)·";
 function isBudgetPlaceholder(key) {
@@ -9216,7 +9230,7 @@ export function render() {
     const tasksFromToday = getTasksFromTodayRows();
     const emptyOpt = { value: "", label: "—", color: "cat-empty" };
     /** 투자내역: 생산적 태그 과제만 + 카테고리 컬러 */
-    const investTaskDropdownOptions = [
+    const investTaskDropdownOptions = sortDailyBudgetTaskDropdownOptions([
       emptyOpt,
       ...fullTaskOpts
         .filter((o) => (o.productivity || "").toLowerCase() === "productive")
@@ -9225,9 +9239,9 @@ export function render() {
           label: o.name,
           color: getTaskColorForDropdown(o, true),
         })),
-    ];
+    ]);
     /** 소비내역: 비생산적 태그 과제만 + 카테고리 컬러 */
-    const consumeTaskDropdownOptions = [
+    const consumeTaskDropdownOptions = sortDailyBudgetTaskDropdownOptions([
       emptyOpt,
       ...fullTaskOpts
         .filter((o) => (o.productivity || "").toLowerCase() === "nonproductive")
@@ -9236,14 +9250,17 @@ export function render() {
           label: o.name,
           color: getTaskColorForDropdown(o, false),
         })),
-    ];
+    ]);
     function ensureTaskInOptions(opts, taskName, isInvest) {
       if (!(taskName || "").trim()) return opts;
       const name = String(taskName).trim();
       if (opts.some((o) => o.value === name)) return opts;
       const taskOpt = getTaskOptionByName(name);
       const color = getTaskColorForDropdown(taskOpt, isInvest);
-      return [...opts, { value: name, label: name, color }];
+      return sortDailyBudgetTaskDropdownOptions([
+        ...opts,
+        { value: name, label: name, color },
+      ]);
     }
 
     /** 해당 날짜·과제명에 해당하는 전체 탭 실제 사용시간 합계 */
@@ -9812,7 +9829,7 @@ export function renderTimeBudgetTablesForCalendar(
   /* 캘린더 1일뷰: 과제설정 목록만 표시, 여기서 추가 불가 */
   const emptyOpt = { value: "", label: "—", color: "cat-empty" };
   /** 투자내역: 생산적 태그 과제만 + 카테고리 컬러 */
-  const investTaskDropdownOptions = [
+  const investTaskDropdownOptions = sortDailyBudgetTaskDropdownOptions([
     emptyOpt,
     ...fullTaskOpts
       .filter((o) => (o.productivity || "").toLowerCase() === "productive")
@@ -9821,9 +9838,9 @@ export function renderTimeBudgetTablesForCalendar(
         label: o.name,
         color: getTaskColorForDropdown(o, true),
       })),
-  ];
+  ]);
   /** 소비내역: 비생산적 태그 과제만 + 카테고리 컬러 */
-  const consumeTaskDropdownOptions = [
+  const consumeTaskDropdownOptions = sortDailyBudgetTaskDropdownOptions([
     emptyOpt,
     ...fullTaskOpts
       .filter((o) => (o.productivity || "").toLowerCase() === "nonproductive")
@@ -9832,7 +9849,7 @@ export function renderTimeBudgetTablesForCalendar(
         label: o.name,
         color: getTaskColorForDropdown(o, false),
       })),
-  ];
+  ]);
   /** 현재 행의 과제가 필터 목록에 없으면 추가 (기존 데이터 편집용) */
   function ensureTaskInOptions(opts, taskName, isInvest) {
     if (!(taskName || "").trim()) return opts;
@@ -9840,7 +9857,10 @@ export function renderTimeBudgetTablesForCalendar(
     if (opts.some((o) => o.value === name)) return opts;
     const taskOpt = getTaskOptionByName(name);
     const color = getTaskColorForDropdown(taskOpt, isInvest);
-    return [...opts, { value: name, label: name, color }];
+    return sortDailyBudgetTaskDropdownOptions([
+      ...opts,
+      { value: name, label: name, color },
+    ]);
   }
 
   /** 목표 시간 - 문자만 막고, 숫자+백스페이스 자유, Enter로 입력완료 */

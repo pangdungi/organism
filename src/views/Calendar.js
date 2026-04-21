@@ -53,7 +53,7 @@ import {
   persistSectionTasksAndSchedule,
   persistCustomSectionTasksAndSchedule,
   pullCalendarSectionTasksFromSupabase,
-  upsertCalendarSectionTaskDirectFromModal,
+  upsertCalendarSectionTaskRowFromSessionMemory,
 } from "../utils/todoSectionTasksSupabase.js";
 import {
   pullTimeLedgerEntriesForDateRange,
@@ -375,62 +375,7 @@ function updateCustomSectionTaskEisenhower(sectionId, taskId, eisenhower) {
 
 /** calendar_section_tasks Supabase upsert — kpiTodoId+storageKey 전용 저장 경로 제외 */
 function syncCalendarSectionTaskRowToSupabase(sectionId, taskId, listRootEl) {
-  const sid = String(sectionId || "").trim();
-  const tid = String(taskId || "").trim();
-  if (!sid || !tid || sid === "overdue") return;
-  if (!sid.startsWith("custom-") && !KPI_SECTION_IDS.includes(sid)) return;
-
-  const isCustom = sid.startsWith("custom-");
-  const obj = isCustom ? readCustomSectionTasksObject() : readSectionTasksObject();
-  const arr = obj[sid];
-  const t = Array.isArray(arr) ? arr.find((x) => String(x.taskId || "") === tid) : null;
-  if (!t || !(String(t.name || "").trim())) return;
-
-  let sortOrder = 0;
-  let domIdx = -1;
-  const secEl = listRootEl?.querySelector?.(`.todo-section[data-section="${sid}"]`);
-  if (secEl) {
-    const cardsWrap = secEl.querySelector(".todo-cards-wrap");
-    if (cardsWrap) {
-      const cards = Array.from(cardsWrap.querySelectorAll(".todo-card"));
-      const idx = cards.findIndex((c) => (c.dataset.taskId || "") === tid);
-      if (idx >= 0) domIdx = idx;
-    } else {
-      const tbody = secEl.querySelector("tbody");
-      if (tbody) {
-        const rows = Array.from(
-          tbody.querySelectorAll(".todo-task-row:not(.todo-subtask-row)"),
-        );
-        const idx = rows.findIndex((r) => (r.dataset.taskId || "") === tid);
-        if (idx >= 0) domIdx = idx;
-      }
-    }
-  }
-  if (domIdx >= 0) {
-    sortOrder = domIdx;
-  } else if (Array.isArray(arr)) {
-    const idxFromStorage = arr.findIndex((x) => String(x.taskId || "") === tid);
-    if (idxFromStorage >= 0) sortOrder = idxFromStorage;
-  }
-
-  void upsertCalendarSectionTaskDirectFromModal({
-    task: {
-      taskId: tid,
-      name: String(t.name || "").trim(),
-      startDate: (t.startDate || "").slice(0, 10) || "",
-      dueDate: (t.dueDate || "").slice(0, 10) || "",
-      startTime: String(t.startTime || "").trim(),
-      endTime: String(t.endTime || "").trim(),
-      eisenhower: String(t.eisenhower || "").trim(),
-      done: !!t.done,
-      itemType: String(t.itemType || "todo").trim() || "todo",
-      reminderDate: (t.reminderDate || "").slice(0, 10) || "",
-      reminderTime: String(t.reminderTime || "").trim(),
-    },
-    sectionKey: sid,
-    isCustom,
-    sortOrder,
-  }).catch(() => {});
+  upsertCalendarSectionTaskRowFromSessionMemory(sectionId, taskId, listRootEl);
 }
 
 /** 캘린더 날짜 셀·주 행에 드롭해 기한을 바꾼 뒤 서버 반영 — KPI 전용 저장(kpiTodoId+storageKey) 제외 */

@@ -40,6 +40,7 @@ import {
   deleteCalendarSectionTaskRowById,
   cancelTodoSectionTasksSyncPushSchedule,
   upsertCalendarSectionTaskDirectFromModal,
+  upsertCalendarSectionTaskRowFromSessionMemory,
 } from "../utils/todoSectionTasksSupabase.js";
 import { logLpRender } from "../utils/lpRenderDebugLog.js";
 import {
@@ -125,6 +126,21 @@ function updateSectionTaskDone(sectionId, taskId, done) {
     if (t) {
       t.done = !!done;
       persistSectionTasksAndSchedule(obj);
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
+
+function updateCustomSectionTaskDone(sectionId, taskId, done) {
+  try {
+    const obj = readCustomSectionTasksObject();
+    const arr = obj[sectionId];
+    if (!Array.isArray(arr)) return false;
+    const t = arr.find((x) => (x.taskId || "") === taskId);
+    if (t) {
+      t.done = !!done;
+      persistCustomSectionTasksAndSchedule(obj);
       return true;
     }
   } catch (_) {}
@@ -1507,8 +1523,18 @@ function createTaskRow(taskData = {}, options = {}) {
       syncKpiTodoCompleted(kpiTodoId, storageKey, doneCheck.checked);
     } else if (!isKpiTodo && (taskData.sectionId || "")) {
       const secId = taskData.sectionId || tr.closest(".todo-section")?.dataset?.section || "";
-      if (FIXED_SECTION_IDS_FOR_STORAGE.includes(secId)) {
-        updateSectionTaskDone(secId, taskId, doneCheck.checked);
+      let persisted = false;
+      if (secId.startsWith("custom-")) {
+        persisted = updateCustomSectionTaskDone(secId, taskId, doneCheck.checked);
+      } else if (FIXED_SECTION_IDS_FOR_STORAGE.includes(secId)) {
+        persisted = updateSectionTaskDone(secId, taskId, doneCheck.checked);
+      }
+      if (persisted) {
+        upsertCalendarSectionTaskRowFromSessionMemory(
+          secId,
+          taskId,
+          tr.closest(".todo-sections-wrap"),
+        );
       }
     }
     syncOverdueDisplay?.();
@@ -2268,8 +2294,20 @@ function createTaskCard(taskData, options = {}) {
     card.dataset.done = newDone ? "true" : "false";
     card.classList.toggle("is-done", newDone);
     if (isKpiTodo && kpiTodoId && storageKey) syncKpiTodoCompleted(kpiTodoId, storageKey, newDone);
-    else if (!isKpiTodo && storageSectionId && FIXED_SECTION_IDS_FOR_STORAGE.includes(storageSectionId)) {
-      updateSectionTaskDone(storageSectionId, taskId, newDone);
+    else if (!isKpiTodo && storageSectionId) {
+      let persisted = false;
+      if (storageSectionId.startsWith("custom-")) {
+        persisted = updateCustomSectionTaskDone(storageSectionId, taskId, newDone);
+      } else if (FIXED_SECTION_IDS_FOR_STORAGE.includes(storageSectionId)) {
+        persisted = updateSectionTaskDone(storageSectionId, taskId, newDone);
+      }
+      if (persisted) {
+        upsertCalendarSectionTaskRowFromSessionMemory(
+          storageSectionId,
+          taskId,
+          card.closest(".todo-sections-wrap"),
+        );
+      }
     }
     scheduleSave();
     if (newDone && card.closest(".todo-list-eisenhower-sidebar, .todo-list-in-sidebar")) {
