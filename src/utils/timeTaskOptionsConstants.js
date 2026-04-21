@@ -67,7 +67,6 @@ export const FIXED_PRODUCTIVE_TASKS = [
   { name: "집안일 및 청소", category: "happiness", productivity: "productive" },
   { name: "빨래 및 옷 정리", category: "happiness", productivity: "productive" },
   { name: "화장 및 헤어", category: "happiness", productivity: "productive" },
-  { name: "외출 준비", category: "happiness", productivity: "productive" },
 ];
 
 export const FIXED_NONPRODUCTIVE_TASKS = [
