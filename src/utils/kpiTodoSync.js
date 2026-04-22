@@ -471,7 +471,8 @@ export function getKpiDailyRepeatInfoByKpiName(kpiName) {
       .map((t) => ({
         id: t.id,
         text: (t.text || "").trim(),
-        completed: !!t.completed,
+        /* 체크 표시는 kpiLogs 해당 날짜 dailyCompleted만 사용 (템플릿 completed 미사용) */
+        completed: false,
       }));
     return { storageKey, kpiId: kpi.id, needHabitTracker, dailyTodos };
   }

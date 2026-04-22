@@ -111,17 +111,21 @@ function nextLogId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
 
-/** 매일 반복 할 일 중 체크된 항목만 KPI 로그에 남김(dailyCompleted) */
-function snapshotDailyCompletedForKpi(data, kpiId) {
-  const todos = (data.kpiDailyRepeatTodos || []).filter(
-    (t) => String(t.kpiId) === String(kpiId) && (t.text || "").trim() !== "",
-  );
-  return todos
-    .filter((t) => t.completed)
-    .map((t) => ({
-      id: String(t.id),
-      text: (t.text || "").trim(),
-    }));
+/** dailyCompleted 배열 id·텍스트 기준 중복 제거 */
+function dedupeDailyCompletedList(arr) {
+  const seen = new Set();
+  const out = [];
+  for (const t of arr || []) {
+    if (!t || typeof t !== "object") continue;
+    const id = String(t.id || "").trim();
+    const text = String(t.text || "").trim();
+    const key = id || `text:${text}`;
+    if (!id && !text) continue;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ id: id || key, text: text || id });
+  }
+  return out;
 }
 
 /** 같은 날짜·같은 KPI 로그에 여러 번 시간기록할 때 체크 항목 합집합(id 우선, 없으면 텍스트) */
@@ -141,6 +145,83 @@ function mergeDailyCompletedLists(prev, next) {
   for (const t of prev || []) add(t);
   for (const t of next || []) add(t);
   return out;
+}
+
+/**
+ * 해당 날짜 KPI 로그에 저장된 매일 할 일 체크 목록 (과제 기록 모달 표시용)
+ */
+export function getHabitTrackerDailyCompletedForDate(storageKey, kpiId, dateRaw) {
+  if (!storageKey || !kpiId || !dateRaw || String(dateRaw).length < 10) return [];
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return [];
+    const data = JSON.parse(raw);
+    const normDate = normalizeLogDate(dateRaw);
+    const logs = data.kpiLogs || [];
+    const log = logs.find(
+      (l) =>
+        l.kpiId === kpiId &&
+        normalizeLogDate(l.dateRaw || l.date || "") === normDate,
+    );
+    return Array.isArray(log?.dailyCompleted) ? dedupeDailyCompletedList(log.dailyCompleted) : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+/**
+ * 해당 날짜 KPI 로그의 dailyCompleted를 모달 체크 상태와 동일하게 덮어씀 (템플릿 kpiDailyRepeatTodos.completed 미사용)
+ */
+export function replaceHabitTrackerLogDailyCompleted(storageKey, kpiId, dateRaw, completed) {
+  if (!storageKey || !kpiId || !dateRaw || dateRaw.length < 10) return;
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return;
+    const prev = JSON.parse(raw);
+    const data = JSON.parse(raw);
+    const kpis = data.kpis || [];
+    const kpi = kpis.find((k) => k.id === kpiId);
+    if (!kpi || !kpi.needHabitTracker) return;
+    const config = STORAGE_CONFIG.find((c) => c.key === storageKey);
+    if (!config) return;
+
+    const idKey = config.idKey;
+    const idValue = kpi[config.kpiKey];
+    const logs = data.kpiLogs || [];
+    const normDate = normalizeLogDate(dateRaw);
+    const existingIdx = logs.findIndex(
+      (l) => l.kpiId === kpiId && normalizeLogDate(l.dateRaw || l.date || "") === normDate,
+    );
+
+    const list = dedupeDailyCompletedList(
+      Array.isArray(completed) ? completed : [],
+    );
+    const dateDisplay = toDisplayDate(dateRaw);
+
+    if (existingIdx >= 0) {
+      logs[existingIdx].dailyCompleted = list;
+      logs[existingIdx].dailyIncomplete = [];
+      logs[existingIdx].value = logs[existingIdx].value || "1";
+      logs[existingIdx].status = logs[existingIdx].status || "순항";
+    } else if (list.length > 0) {
+      logs.push({
+        id: nextLogId(),
+        kpiId,
+        [idKey]: idValue,
+        date: dateDisplay,
+        dateRaw,
+        value: "1",
+        status: "순항",
+        memo: "",
+        dailyCompleted: list,
+        dailyIncomplete: [],
+      });
+    } else {
+      return;
+    }
+    data.kpiLogs = logs;
+    stampAndPersistKpiMap(storageKey, prev, data);
+  } catch (_) {}
 }
 
 const STORAGE_CONFIG = [
@@ -245,27 +326,7 @@ export function syncHabitTrackerLogs() {
         if (!kpi.needHabitTracker) return;
         const nd = normalizeLogDate(dateRaw);
         const logKey = `${kpi.id}|${nd}`;
-        const snap = snapshotDailyCompletedForKpi(data, kpi.id);
-
         if (existingLogKeys.has(logKey)) {
-          const idx = logs.findIndex(
-            (l) =>
-              l.kpiId === kpi.id &&
-              normalizeLogDate(l.dateRaw || l.date || "") === nd,
-          );
-          if (idx >= 0) {
-            const merged = mergeDailyCompletedLists(
-              logs[idx].dailyCompleted || [],
-              snap,
-            );
-            const prevS = JSON.stringify(logs[idx].dailyCompleted || []);
-            const nextS = JSON.stringify(merged);
-            if (prevS !== nextS) {
-              logs[idx].dailyCompleted = merged;
-              logs[idx].dailyIncomplete = [];
-              changed = true;
-            }
-          }
           return;
         }
 
@@ -279,7 +340,7 @@ export function syncHabitTrackerLogs() {
           value: "1",
           status: "순항",
           memo: "",
-          dailyCompleted: mergeDailyCompletedLists([], snap),
+          dailyCompleted: [],
           dailyIncomplete: [],
         });
         existingLogKeys.add(logKey);

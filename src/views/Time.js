@@ -23,13 +23,14 @@ import {
   getKpiSyncedTaskNames,
   syncHabitTrackerLogs,
   upsertHabitTrackerLogWithDailyState,
+  getHabitTrackerDailyCompletedForDate,
+  replaceHabitTrackerLogDailyCompleted,
 } from "../utils/timeKpiSync.js";
 import {
   getKpiTodosAsTasks,
   syncKpiTodoCompleted,
   getKpiTodosByKpiName,
   getKpiDailyRepeatInfoByKpiName,
-  syncKpiDailyRepeatTodoCompleted,
 } from "../utils/kpiTodoSync.js";
 import { kpiTodoFineTrace } from "../utils/kpiTodoFineTrace.js";
 import { getCustomSections, getCategoryColorForReport } from "../utils/todoSettings.js";
@@ -6052,27 +6053,57 @@ export function render() {
         taskLogDailyTodosTitle.textContent = DEFAULT_DAILY_TODOS_TITLE;
       taskLogDailyTodosSection.hidden = false;
       taskLogDailyTodosList.innerHTML = "";
-      const { storageKey: dailyStorageKey, dailyTodos } = dailyInfo;
+      const { storageKey: dailyStorageKey, kpiId: dailyKpiId, dailyTodos } =
+        dailyInfo;
+      const fromLog =
+        dateYmd.length >= 10
+          ? getHabitTrackerDailyCompletedForDate(
+              dailyStorageKey,
+              dailyKpiId,
+              dateYmd,
+            )
+          : [];
+      const logCheckedIds = new Set(
+        fromLog.map((x) => String(x.id || "").trim()).filter(Boolean),
+      );
       dailyTodos.forEach((todo) => {
         const label = document.createElement("label");
         label.className =
           "time-task-log-kpi-todo-row time-task-log-daily-todo-row";
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
-        checkbox.checked = !!todo.completed;
+        checkbox.checked = logCheckedIds.has(String(todo.id || "").trim());
         checkbox.dataset.todoId = todo.id;
-        checkbox.dataset.storageKey = dailyStorageKey;
         const span = document.createElement("span");
         span.className = "time-task-log-kpi-todo-text";
         span.textContent = todo.text || "";
-        if (todo.completed) span.classList.add("is-done");
+        if (checkbox.checked) span.classList.add("is-done");
         label.appendChild(checkbox);
         label.appendChild(span);
         checkbox.addEventListener("change", () => {
-          syncKpiDailyRepeatTodoCompleted(
-            todo.id,
+          kpiTodoFineTrace("Time.과제기록모달:매일할일체크→kpiLogs", {
+            todoId: String(todo.id),
+            storageKey: dailyStorageKey,
+            checked: checkbox.checked,
+          });
+          const ymd = normalizeTaskLogPickerDateYmd();
+          if (ymd.length < 10) return;
+          const completed = [];
+          taskLogDailyTodosList
+            .querySelectorAll("label.time-task-log-daily-todo-row")
+            .forEach((row) => {
+              const cb = row.querySelector('input[type="checkbox"]');
+              const sp = row.querySelector(".time-task-log-kpi-todo-text");
+              const id = cb?.dataset?.todoId ? String(cb.dataset.todoId) : "";
+              const text = (sp?.textContent || "").trim();
+              if (!id) return;
+              if (cb?.checked) completed.push({ id, text });
+            });
+          replaceHabitTrackerLogDailyCompleted(
             dailyStorageKey,
-            checkbox.checked,
+            dailyKpiId,
+            ymd,
+            completed,
           );
           span.classList.toggle("is-done", checkbox.checked);
         });
@@ -7064,40 +7095,44 @@ export function render() {
           allRowsCache.push(editTr._rowData);
         }
       }
-      if (timeTracked) {
-        const dailyInfo = getKpiDailyRepeatInfoByKpiName(taskName);
-        if (dailyInfo && dailyInfo.needHabitTracker && taskLogDailyTodosList) {
-          const completed = [];
-          taskLogDailyTodosList
-            .querySelectorAll("label.time-task-log-daily-todo-row")
-            .forEach((label) => {
-              const cb = label.querySelector('input[type="checkbox"]');
-              const span = label.querySelector(".time-task-log-kpi-todo-text");
-              const id =
-                cb && cb.dataset && cb.dataset.todoId ? cb.dataset.todoId : "";
-              const text =
-                span && span.textContent ? span.textContent.trim() : "";
-              if (!id) return;
-              if (cb && cb.checked) completed.push({ id, text });
-            });
-          const dateRawStr = (dateStr || "")
-            .toString()
-            .replace(/\//g, "-")
-            .replace(/\s/g, "");
-          const m = dateRawStr.match(
-            /(\d{4})[.\-\s]*(\d{1,2})[.\-\s]*(\d{1,2})/,
+      const dailyInfoSubmit = getKpiDailyRepeatInfoByKpiName(taskName);
+      if (
+        dailyInfoSubmit?.needHabitTracker &&
+        taskLogDailyTodosList &&
+        ((timeTracked || "").trim() || taskLogDailyTodosList.querySelector(
+          'label.time-task-log-daily-todo-row input[type="checkbox"]:checked',
+        ))
+      ) {
+        const completed = [];
+        taskLogDailyTodosList
+          .querySelectorAll("label.time-task-log-daily-todo-row")
+          .forEach((label) => {
+            const cb = label.querySelector('input[type="checkbox"]');
+            const span = label.querySelector(".time-task-log-kpi-todo-text");
+            const id =
+              cb && cb.dataset && cb.dataset.todoId ? cb.dataset.todoId : "";
+            const text =
+              span && span.textContent ? span.textContent.trim() : "";
+            if (!id) return;
+            if (cb && cb.checked) completed.push({ id, text });
+          });
+        const dateRawStr = (dateStr || "")
+          .toString()
+          .replace(/\//g, "-")
+          .replace(/\s/g, "");
+        const m = dateRawStr.match(
+          /(\d{4})[.\-\s]*(\d{1,2})[.\-\s]*(\d{1,2})/,
+        );
+        const normalizedDateRaw = m
+          ? `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`
+          : dateRawStr.slice(0, 10);
+        if (normalizedDateRaw.length >= 10) {
+          upsertHabitTrackerLogWithDailyState(
+            dailyInfoSubmit.storageKey,
+            dailyInfoSubmit.kpiId,
+            normalizedDateRaw,
+            { completed },
           );
-          const normalizedDateRaw = m
-            ? `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`
-            : dateRawStr.slice(0, 10);
-          if (normalizedDateRaw.length >= 10) {
-            upsertHabitTrackerLogWithDailyState(
-              dailyInfo.storageKey,
-              dailyInfo.kpiId,
-              normalizedDateRaw,
-              { completed },
-            );
-          }
         }
       }
       onFilterChange();
