@@ -4,7 +4,7 @@
  * 단일 저장 원본은 서버(Supabase)이다. 로컬·세션 메모리·DOM 스냅샷·캐시는
  * 서버에 일괄 반영하지 않는다.
  *
- * - Supabase INSERT/UPDATE/DELETE: 모달 저장·삭제 확정, 우클릭 리스트 이동, 캘린더 우선순위(아이젠하워) 사분면, 캘린더 날짜 드롭, 할일 목록 완료 체크 등.
+ * - Supabase INSERT/UPDATE/DELETE: 모달 저장·삭제 확정, 우클릭 리스트 이동, 캘린더 우선순위(아이젠하워) 사분면, 캘린더 날짜 드롭, 날짜 정하기·캘린더 뷰 날짜 셀 할일 추가 버블, 할일 목록 완료 체크 등.
  * - 할일/일정 상위 탭·내부 서브탭 클릭 시: `pullCalendarSectionTasksFromSupabase` 한 번으로
  *   해당 사용자의 `calendar_section_tasks` 전체를 SELECT 해 세션 메모리를 교체(그 시점 서버 스냅샷).
  * - persist*ToSessionMemOnly: 앱 안 임시 목록만 갱신 — 서버 호출 없음.

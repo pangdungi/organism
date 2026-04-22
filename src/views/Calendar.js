@@ -14,7 +14,6 @@ import {
 } from "./TodoList.js";
 import {
   getKpiTodosAsTasks,
-  addCalendarTodoToSection,
   syncKpiTodoCompleted,
   updateKpiTodo,
   removeKpiTodo,
@@ -54,6 +53,7 @@ import {
   persistSectionTasksAndSchedule,
   persistCustomSectionTasksAndSchedule,
   pullCalendarSectionTasksFromSupabase,
+  upsertCalendarSectionTaskDirectFromModal,
   upsertCalendarSectionTaskRowFromSessionMemory,
 } from "../utils/todoSectionTasksSupabase.js";
 import {
@@ -66,6 +66,7 @@ import {
   readSectionTasksObject,
   readCustomSectionTasksObject,
 } from "../utils/todoSectionTasksModel.js";
+import { markTodoAddPendingServerLog } from "../utils/lpTabDataSourceLog.js";
 import { logLpRender } from "../utils/lpRenderDebugLog.js";
 const KPI_SECTION_IDS = ["braindump", "dream", "sideincome", "health", "happy"];
 
@@ -1022,6 +1023,61 @@ function getAllTasksWithDateRange() {
   return [...kpiWithRange, ...sectionRange, ...customRange];
 }
 
+/**
+ * 할일/일정 카드「+」와 동일 저장 경로: 세션 섹션 할일 + `calendar_section_tasks` upsert.
+ * KPI 맵(kpi-*-map)에는 넣지 않음 — 캘린더·날짜 정하기 버블 전용.
+ */
+function addSectionTodoFromCalendarBubble(sectionId, dueYmd, name) {
+  const sid = String(sectionId || "").trim();
+  const due = String(dueYmd || "").trim().slice(0, 10);
+  const todoName = String(name || "").trim();
+  if (!sid || !due || !todoName || !KPI_SECTION_IDS.includes(sid)) return false;
+  const taskId =
+    typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : "";
+  if (!taskId) return false;
+  try {
+    const obj = readSectionTasksObject();
+    if (!obj[sid]) obj[sid] = [];
+    const arr = obj[sid];
+    const sortOrder = arr.length;
+    arr.push({
+      taskId,
+      name: todoName,
+      startDate: "",
+      dueDate: due,
+      startTime: "",
+      endTime: "",
+      done: false,
+      itemType: "todo",
+    });
+    persistSectionTasksAndSchedule(obj);
+    const task = {
+      taskId,
+      name: todoName,
+      startDate: "",
+      dueDate: due,
+      startTime: "",
+      endTime: "",
+      eisenhower: "",
+      done: false,
+      itemType: "todo",
+      reminderDate: "",
+      reminderTime: "",
+    };
+    markTodoAddPendingServerLog({ taskId, sectionId: sid });
+    void upsertCalendarSectionTaskDirectFromModal({
+      task,
+      sectionKey: sid,
+      isCustom: false,
+      sortOrder,
+    }).catch(() => {});
+    return true;
+  } catch (_) {}
+  return false;
+}
+
 function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
   const isMobile = window.matchMedia("(max-width: 48rem)").matches;
   document
@@ -1085,38 +1141,17 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
         ".calendar-event-bubble-select",
       ).value;
       if (!name) return;
-      let result = addCalendarTodoToSection(categoryId, {
-        text: name,
+      if (!addSectionTodoFromCalendarBubble(categoryId, dateKey, name)) {
+        alert("할 일을 추가하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        return;
+      }
+      onSave?.({
+        name,
         dueDate: dateKey,
+        sectionId: categoryId,
         itemType: "todo",
       });
-      if (!result.success && KPI_SECTION_IDS.includes(categoryId)) {
-        const ok = addSectionTaskToCalendar(categoryId, {
-          name,
-          dueDate: dateKey,
-          itemType: "todo",
-        });
-        if (ok) {
-          result = {
-            success: true,
-            task: {
-              name,
-              dueDate: dateKey,
-              sectionId: categoryId,
-              itemType: "todo",
-            },
-          };
-        }
-      }
-      if (result.success) {
-        onSave?.(result.task);
-        close();
-      } else {
-        const label =
-          CALENDAR_CATEGORIES.find((c) => c.id === categoryId)?.label ||
-          categoryId;
-        alert(`${label} 카테고리에 KPI를 먼저 추가해주세요.`);
-      }
+      close();
     });
 
   bubble
