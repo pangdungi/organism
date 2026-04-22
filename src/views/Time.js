@@ -4895,6 +4895,18 @@ export function render() {
     return val.trim();
   };
 
+  /**
+   * 기록일 YYYY-MM-DD — 모바일·PWA(WebKit)에서 type=date 값이 비는 경우가 있어
+   * 숨은 시작값에서 날짜를 복구해 마감 hidden 이 비지 않게 함.
+   */
+  function taskLogResolveYmdForSync() {
+    const fromDateInput = (taskLogDateStart?.value || "").trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(fromDateInput)) return fromDateInput;
+    return (
+      parseDateFromDateTime(String(taskLogStartInput?.value || "").trim()) || ""
+    );
+  }
+
   function syncStartToHidden() {
     const date = (taskLogDateStart?.value || "").trim();
     const time = normalizeHhMm(taskLogTimeStart?.value || "");
@@ -4908,10 +4920,17 @@ export function render() {
   }
 
   function syncEndToHidden() {
-    const date = (taskLogDateStart?.value || "").trim();
+    const date = taskLogResolveYmdForSync();
     const time = normalizeHhMm(taskLogTimeEnd?.value || "");
     if (date && time) {
       taskLogEndInput.value = `${date}T${time}`;
+      if (
+        taskLogDateStart &&
+        !(String(taskLogDateStart.value || "").trim()) &&
+        /^\d{4}-\d{2}-\d{2}$/.test(date)
+      ) {
+        taskLogDateStart.value = date;
+      }
     } else {
       taskLogEndInput.value = "";
     }
