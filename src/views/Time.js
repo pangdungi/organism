@@ -7792,6 +7792,54 @@ export function render() {
     }
   }
 
+  /** 시간 기록(전체) 카드 목록: 행 기준일 YYYY-MM-DD */
+  function timeLedgerRowYmd(r) {
+    const y = normalizeDateForCompare(r?.date || "");
+    if (y) return y;
+    const raw = String(r?.date || "")
+      .trim()
+      .replace(/\//g, "-")
+      .slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : "";
+  }
+
+  function timeLedgerFilterSpansMultipleDays() {
+    const a = pickYmdFromFilter(startDateInput.value, filterStartDate);
+    const b = pickYmdFromFilter(endDateInput.value, filterEndDate);
+    return !!(a && b && a !== b);
+  }
+
+  /** 날짜 구간이 이틀 이상이거나, 화면에 실제로 이틀 이상의 기록이 있을 때 일자 헤더 표시 */
+  function timeLedgerShouldShowDayGroups(rows) {
+    if (!rows.length) return false;
+    if (timeLedgerFilterSpansMultipleDays()) return true;
+    const set = new Set();
+    for (const r of rows) {
+      const y = timeLedgerRowYmd(r);
+      if (y) set.add(y);
+    }
+    return set.size > 1;
+  }
+
+  function timeLedgerGroupRowsByDay(sortedRows) {
+    const groups = [];
+    for (const r of sortedRows) {
+      const key = timeLedgerRowYmd(r) || "_nodate";
+      const last = groups[groups.length - 1];
+      if (last && last.key === key) last.rows.push(r);
+      else groups.push({ key, rows: [r] });
+    }
+    return groups;
+  }
+
+  function sumTimeLedgerDayHours(dayRows) {
+    let s = 0;
+    for (const r of dayRows) {
+      s += getMobileCardEffectiveHoursForPrice(r);
+    }
+    return s;
+  }
+
   function renderAll(rows = []) {
     clearTimeLedgerMobileElapsedTimer(el);
     rescueTimeFilterControlsToFilterBar();
@@ -7847,7 +7895,8 @@ export function render() {
       ? "time-ledger-mobile-cards"
       : "time-ledger-mobile-cards time-ledger-desktop-cards";
 
-    rows.forEach((d) => {
+    const showDayGroups = timeLedgerShouldShowDayGroups(rows);
+    const appendCard = (d) => {
       const card = createMobileTimeCard(
         d,
         handleCardEdit,
@@ -7856,7 +7905,36 @@ export function render() {
       );
       card._onRowDelete = handleCardDelete;
       cardsWrap.appendChild(card);
-    });
+    };
+    if (showDayGroups) {
+      const groups = timeLedgerGroupRowsByDay(rows);
+      const desktopHeaderFmt =
+        typeof window !== "undefined" &&
+        window.matchMedia("(min-width: 48.0625rem)").matches;
+      for (const g of groups) {
+        if (g.key !== "_nodate") {
+          const header = document.createElement("div");
+          header.className = "time-ledger-day-group-header";
+          header.setAttribute("role", "presentation");
+          const label = document.createElement("span");
+          label.className = "time-ledger-day-group-date";
+          label.textContent = desktopHeaderFmt
+            ? formatTimeFilterDateDotsWithWeekday(g.key)
+            : formatTimeFilterDateKr(g.key);
+          const totalEl = document.createElement("span");
+          totalEl.className = "time-ledger-day-group-total";
+          totalEl.textContent = formatHoursDisplay(
+            sumTimeLedgerDayHours(g.rows),
+          );
+          header.appendChild(label);
+          header.appendChild(totalEl);
+          cardsWrap.appendChild(header);
+        }
+        for (const d of g.rows) appendCard(d);
+      }
+    } else {
+      rows.forEach(appendCard);
+    }
 
     const openAdd = () => {
       if (openTaskLogModal) {
