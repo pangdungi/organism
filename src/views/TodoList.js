@@ -477,6 +477,82 @@ function pushCalendarSectionTaskDirectToServer(sectionId, card, taskRecord, via 
 }
 
 /**
+ * 「기한 초과」블록에만 있는 카드는 탭 섹션 DOM에 없어 collectAndSave가 해당 행을 못 읽음 → 원본 섹션 메모리를 직접 갱신
+ */
+function persistOverdueListCardEditToStorage(
+  sourceSecId,
+  taskId,
+  payload,
+  card,
+  hadSectionMove,
+) {
+  const tid = String(taskId || "").trim();
+  if (!tid || !card) return;
+  if (hadSectionMove) return;
+  if (card.dataset.isKpiTodo === "true") {
+    const kid = card.dataset.kpiTodoId || "";
+    const sk = card.dataset.kpiStorageKey || "";
+    if (!kid || !sk) return;
+    updateKpiTodo(kid, sk, {
+      text: (payload.name ?? card.dataset.name ?? "").trim(),
+      startDate:
+        (payload.startDate ?? card.dataset.startDate ?? "").slice(0, 10) || "",
+      dueDate: (payload.dueDate ?? card.dataset.dueDate ?? "").slice(0, 10) || "",
+      eisenhower: payload.eisenhower ?? card.dataset.eisenhower ?? "",
+      itemType: card.dataset.itemType || "todo",
+      completed: card.dataset.done === "true",
+    });
+    return;
+  }
+  const sid = String(sourceSecId || "").trim();
+  if (!sid || sid === "overdue") return;
+  const name = (payload.name ?? card.dataset.name ?? "").trim();
+  const startDate =
+    (payload.startDate ?? card.dataset.startDate ?? "").slice(0, 10) || "";
+  const dueDate =
+    (payload.dueDate ?? card.dataset.dueDate ?? "").slice(0, 10) || "";
+  const eisenhower = payload.eisenhower ?? card.dataset.eisenhower ?? "";
+  const reminderDate =
+    (payload.reminderDate ?? card.dataset.reminderDate ?? "").slice(0, 10) ||
+    "";
+  const reminderTime =
+    (payload.reminderTime ?? card.dataset.reminderTime ?? "").trim() || "";
+
+  if (sid.startsWith("custom-")) {
+    try {
+      const obj = readCustomSectionTasksObject();
+      const arr = obj[sid];
+      if (!Array.isArray(arr)) return;
+      const t = arr.find((x) => String(x.taskId || "").trim() === tid);
+      if (!t) return;
+      t.name = name;
+      t.startDate = startDate;
+      t.dueDate = dueDate;
+      t.eisenhower = eisenhower;
+      t.reminderDate = reminderDate;
+      t.reminderTime = reminderTime;
+      persistCustomSectionTasksAndSchedule(obj);
+    } catch (_) {}
+    return;
+  }
+  if (!FIXED_SECTION_IDS_FOR_STORAGE.includes(sid)) return;
+  try {
+    const obj = readSectionTasksObject();
+    const arr = obj[sid];
+    if (!Array.isArray(arr)) return;
+    const t = arr.find((x) => String(x.taskId || "").trim() === tid);
+    if (!t) return;
+    t.name = name;
+    t.startDate = startDate;
+    t.dueDate = dueDate;
+    t.eisenhower = eisenhower;
+    t.reminderDate = reminderDate;
+    t.reminderTime = reminderTime;
+    persistSectionTasksAndSchedule(obj);
+  } catch (_) {}
+}
+
+/**
  * 동일 섹션·동일 과제명으로 여러 행이 쌓인 경우(저장소 UUID vs DOM task-* 병합 실수)만 정리한다.
  * 과제명이 같아도 서로 다른 UUID 할 일은 그대로 둔다(이전 로직은 이름만 같으면 1개로 합쳐
  * 로컬에서 행이 사라지고, 다음 Supabase 동기화 시 wantIds 밖 id가 원격에서 삭제되는 문제가 있었음).
@@ -670,7 +746,8 @@ export function saveTodoListBeforeUnmount(container) {
     containerChildren: container?.children?.length,
   });
   if (sectionsWrap) {
-    collectAndSaveKpiTasksFromDOM(sectionsWrap);
+    /* 디바운스 저장과 겹치면 탭 전환 직후 pull 이 옛 DOM 스냅샷을 올릴 수 있음 → 즉시 플러시 */
+    flushSaveSectionTasksFromDOM(sectionsWrap);
   } else {
     todoDebug("saveTodoListBeforeUnmount: no .todo-sections-wrap in container, save skipped");
   }
@@ -1205,12 +1282,31 @@ function showTodoTaskModal(options) {
     <div class="todo-list-modal-panel todo-task-edit-panel">
       <div class="todo-list-modal-header">
         <h3 class="todo-list-modal-title">${title}</h3>
-        <button type="button" class="todo-list-modal-close" aria-label="닫기">×</button>
+        <div class="todo-task-edit-header-actions">
+          ${
+            mode === "edit"
+              ? `<button type="button" class="todo-task-edit-header-delete" aria-label="할 일 삭제">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+            </svg>
+          </button>`
+              : ""
+          }
+          <button type="button" class="todo-list-modal-close" aria-label="닫기">×</button>
+        </div>
       </div>
       <div class="todo-list-modal-body todo-task-edit-body">
-        <div class="todo-task-edit-field">
-          <label class="todo-task-edit-label">할일 이름</label>
-          <input type="text" class="todo-task-edit-name" placeholder="할 일 입력" value="${escapeHtml(name)}" maxlength="500" />
+        <div class="todo-task-edit-row-name-priority">
+          <div class="todo-task-edit-field todo-task-edit-field--name">
+            <label class="todo-task-edit-label">할일 이름</label>
+            <input type="text" class="todo-task-edit-name" placeholder="할 일 입력" value="${escapeHtml(name)}" maxlength="500" />
+          </div>
+          <div class="todo-task-edit-field todo-task-edit-field--eisenhower">
+            <label class="todo-task-edit-label">우선순위</label>
+            <select class="todo-task-edit-eisenhower">
+              ${EISENHOWER_OPTIONS.map((o) => `<option value="${escapeHtml(o.value)}" ${o.value === eisenhower ? "selected" : ""}>${escapeHtml(o.label)}</option>`).join("")}
+            </select>
+          </div>
         </div>
         <div class="todo-task-edit-field">
           <label class="todo-task-edit-label">시작일</label>
@@ -1232,12 +1328,6 @@ function showTodoTaskModal(options) {
           </div>
         </div>
         <div class="todo-task-edit-field">
-          <label class="todo-task-edit-label">우선순위</label>
-          <select class="todo-task-edit-eisenhower">
-            ${EISENHOWER_OPTIONS.map((o) => `<option value="${escapeHtml(o.value)}" ${o.value === eisenhower ? "selected" : ""}>${escapeHtml(o.label)}</option>`).join("")}
-          </select>
-        </div>
-        <div class="todo-task-edit-field">
           <label class="todo-task-edit-label">리스트</label>
           <select class="todo-task-edit-section" aria-label="다른 리스트로 이동">
             ${sections.map((s) => `<option value="${escapeHtml(s.id)}" ${s.id === currentSectionId ? "selected" : ""}>${escapeHtml(s.label)}</option>`).join("")}
@@ -1245,7 +1335,6 @@ function showTodoTaskModal(options) {
         </div>
       </div>
       <div class="todo-list-modal-footer todo-task-edit-footer">
-        ${mode === "edit" ? '<button type="button" class="todo-task-edit-delete">삭제</button>' : ""}
         <button type="button" class="todo-list-modal-cancel">취소</button>
         <button type="button" class="todo-list-modal-confirm">확인</button>
       </div>
@@ -1256,7 +1345,7 @@ function showTodoTaskModal(options) {
   const closeBtn = modal.querySelector(".todo-list-modal-close");
   const cancelBtn = modal.querySelector(".todo-list-modal-cancel");
   const confirmBtn = modal.querySelector(".todo-list-modal-confirm");
-  const deleteBtn = modal.querySelector(".todo-task-edit-delete");
+  const deleteBtn = modal.querySelector(".todo-task-edit-header-delete");
   const nameInput = modal.querySelector(".todo-task-edit-name");
   const startInput = modal.querySelector(".todo-task-edit-start");
   const dueInput = modal.querySelector(".todo-task-edit-due");
@@ -1327,7 +1416,8 @@ function showTodoTaskModal(options) {
     close();
   });
   if (mode === "edit" && onDelete && deleteBtn) {
-    deleteBtn.addEventListener("click", () => {
+    deleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
       onDelete?.();
       close();
     });
@@ -2225,6 +2315,25 @@ function formatCardReminder(reminderDate = "", reminderTime = "") {
 
 const EISENHOWER_LABELS = { "urgent-important": "긴급+중요", "important-not-urgent": "중요+여유", "urgent-not-important": "긴급+덜중요", "not-urgent-not-important": "여유+안중요" };
 
+/** 캘린더 할일 사이드바: 마감·삭제 등 후 탭/기한초과 목록을 다시 그리도록 알림 */
+function requestCalendarTodoSidebarRebuildFromCard(card) {
+  if (
+    !card ||
+    typeof card.dispatchEvent !== "function" ||
+    (!card.closest(".todo-list-eisenhower-sidebar") &&
+      !card.closest(".todo-list-in-sidebar"))
+  ) {
+    return;
+  }
+  requestAnimationFrame(() => {
+    try {
+      card.dispatchEvent(
+        new CustomEvent("lp-todo-dates-changed", { bubbles: true }),
+      );
+    } catch (_) {}
+  });
+}
+
 /** 카드 레이아웃용 할일 카드 한 개. 클릭 시 모달로 수정, 체크박스로 완료 토글 */
 function createTaskCard(taskData, options = {}) {
   const {
@@ -2312,6 +2421,7 @@ function createTaskCard(taskData, options = {}) {
     scheduleSave();
     if (newDone && card.closest(".todo-list-eisenhower-sidebar, .todo-list-in-sidebar")) {
       refreshEisenhowerQuadrantsIfActive();
+      requestCalendarTodoSidebarRebuildFromCard(card);
       card.remove();
     }
     updateCount();
@@ -2529,7 +2639,9 @@ function createTaskCard(taskData, options = {}) {
       selectionEl: card,
       onSave: (payload) => {
         const newSectionId = (payload.sectionId || "").trim();
+        let hadSectionMove = false;
         if (newSectionId && newSectionId !== storageSectionId) {
+          hadSectionMove = true;
           if (storageSectionId && storageSectionId.startsWith("custom-")) {
             moveTaskOutOfCustomSectionStorageOnly(storageSectionId, taskId);
           } else if (storageSectionId) {
@@ -2550,25 +2662,48 @@ function createTaskCard(taskData, options = {}) {
         }
         updateCardFromData(payload);
         updateCount();
+        if (sectionId === "overdue") {
+          persistOverdueListCardEditToStorage(
+            storageSectionId,
+            taskId,
+            payload,
+            card,
+            hadSectionMove,
+          );
+        }
         if (isKpiTodo && kpiTodoId && storageKey) {
           scheduleSave();
         } else {
-          const sid = (card.dataset.sectionId || storageSectionId || "").trim();
-          pushCalendarSectionTaskDirectToServer(sid, card, taskRecordFromCardForServer(card), "수정모달_저장");
+          const domSid = (card.dataset.sectionId || "").trim();
+          const sidForPush =
+            domSid === "overdue"
+              ? storageSectionId
+              : (domSid || storageSectionId || "").trim();
+          pushCalendarSectionTaskDirectToServer(
+            sidForPush,
+            card,
+            taskRecordFromCardForServer(card),
+            "수정모달_저장",
+          );
           scheduleSave();
         }
+        requestCalendarTodoSidebarRebuildFromCard(card);
       },
       onDelete: async () => {
         if (isKpiTodo && kpiTodoId && storageKey) {
-          if (removeKpiTodo(kpiTodoId, storageKey)) card.remove();
-          updateCount();
-          scheduleSave();
+          if (removeKpiTodo(kpiTodoId, storageKey)) {
+            requestCalendarTodoSidebarRebuildFromCard(card);
+            card.remove();
+            updateCount();
+            scheduleSave();
+          }
           return;
         }
         if (storageSectionId && storageSectionId.startsWith("custom-")) {
           const out = await removeTaskFromCustomSectionStorage(storageSectionId, taskId, "수정모달_삭제");
           if (!out?.ok) return;
           clearSubtasks(taskId);
+          requestCalendarTodoSidebarRebuildFromCard(card);
           card.remove();
           updateCount();
           /* 서버 DELETE + 목록 다시 읽기까지 끝남 — DOM 저장으로 전체 upsert 다시 돌리지 않음 */
@@ -2578,10 +2713,12 @@ function createTaskCard(taskData, options = {}) {
           const out = await removeTaskFromSectionStorage(storageSectionId, taskId, "수정모달_삭제");
           if (!out?.ok) return;
           clearSubtasks(taskId);
+          requestCalendarTodoSidebarRebuildFromCard(card);
           card.remove();
           updateCount();
           return;
         }
+        requestCalendarTodoSidebarRebuildFromCard(card);
         card.remove();
         updateCount();
         scheduleSave();
@@ -2693,6 +2830,7 @@ function createSection(section, options = {}) {
           markTodoAddPendingServerLog({ taskId, sectionId });
           pushCalendarSectionTaskDirectToServer(sectionId, card, newTask, "할일추가_확인");
           scheduleSave();
+          requestCalendarTodoSidebarRebuildFromCard(card);
         },
       });
     });
@@ -3050,6 +3188,15 @@ function renderSections(container, tasksData = [], options = {}) {
   return results;
 }
 
+/** 할일 목록(1번 탭)과 동일 소스: KPI + 섹션 메모리 → 미완료·기한 지난 것만 */
+function buildOverdueTasksForSidebar() {
+  const kpiTasks = getKpiTodosAsTasks();
+  const sectionTasks = FIXED_SECTION_IDS_FOR_STORAGE.flatMap((sid) => loadSectionTasks(sid));
+  return [...kpiTasks, ...sectionTasks]
+    .filter((t) => isOverdue(t.dueDate) && !t.done)
+    .map((t) => ({ ...t, sourceSectionId: t.sectionId, sectionId: "overdue" }));
+}
+
 function isOverdue(dueStr) {
   if (!dueStr || !dueStr.trim()) return false;
   const parts = String(dueStr).trim().split(/[-/]/);
@@ -3073,6 +3220,10 @@ export function render(options = {}) {
     eisenhowerSidebarFirst = false,
     /** 우선순위 정렬·날짜 정하기 등: 완료된 할일은 목록에 넣지 않음 */
     hideDoneTasks = false,
+    /**
+     * 캘린더·아이젠하워 사이드바: 마감 지난 미완료는 카테고리 탭에서 빼고 아래 「기한 초과」에만 표시
+     */
+    hideOverdueFromCategoryTabs = false,
     /** true: KPI에서 만든 할일을 이 목록에 넣지 않음(기본). KPI 할일은 KPI 화면에서만 다룸 */
     omitKpiTodos = true,
     /** 할일/일정 상단 줄(settingsSlot)의 설정 버튼 DOM을 그대로 쓰고 새로 만들지 않음(탭 진입 후 pull 소프트 갱신 시 아이콘 깜빡임 방지) */
@@ -3231,6 +3382,11 @@ export function render(options = {}) {
   }
   if (hideDoneTasks) {
     allTasks = allTasks.filter((t) => !t.done);
+  }
+  if (hideOverdueFromCategoryTabs) {
+    allTasks = allTasks.filter(
+      (t) => !(isOverdue(t.dueDate) && !t.done),
+    );
   }
   const sectionResults = renderSections(sectionsWrap, allTasks, {
     tabMode: true,
@@ -3566,13 +3722,11 @@ export function renderTodoListForEisenhowerSidebar(options = {}) {
     enableDragToEisenhower,
     eisenhowerSidebarFirst: true,
     hideDoneTasks: true,
+    hideOverdueFromCategoryTabs: true,
   });
   mainList.classList.add("todo-list-eisenhower-sidebar");
 
-  const sectionTasks = FIXED_SECTION_IDS_FOR_STORAGE.flatMap((sid) => loadSectionTasks(sid));
-  const overdueTasks = sectionTasks
-    .filter((t) => isOverdue(t.dueDate) && !t.done)
-    .map((t) => ({ ...t, sourceSectionId: t.sectionId, sectionId: "overdue" }));
+  const overdueTasks = buildOverdueTasksForSidebar();
 
   const overdueWrap = document.createElement("div");
   overdueWrap.className = "todo-eisenhower-overdue-section";
@@ -3591,10 +3745,7 @@ export function renderTodoListForEisenhowerSidebar(options = {}) {
 /** 날짜 정하기 사이드바용: 기한 초과 섹션만 반환 (할일 목록 60% / 기한 초과 40% 분할 시 아래 40%에 넣음) */
 export function renderOverdueSection(options = {}) {
   const { enableDragToCalendar = true } = options;
-  const sectionTasks = FIXED_SECTION_IDS_FOR_STORAGE.flatMap((sid) => loadSectionTasks(sid));
-  const overdueTasks = sectionTasks
-    .filter((t) => isOverdue(t.dueDate) && !t.done)
-    .map((t) => ({ ...t, sourceSectionId: t.sectionId, sectionId: "overdue" }));
+  const overdueTasks = buildOverdueTasksForSidebar();
 
   const overdueWrap = document.createElement("div");
   overdueWrap.className = "todo-eisenhower-overdue-section todo-overdue-in-date-sidebar";

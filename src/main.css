@@ -2104,6 +2104,11 @@ body {
     outline: none;
   }
 
+  .todo-task-edit-modal .todo-task-edit-header-delete:focus,
+  .todo-task-edit-modal .todo-task-edit-header-delete:focus-visible {
+    outline: none;
+  }
+
   /* 모바일: 모달 열 때 자동 확대/이동 방지 — 입력창은 탭할 때만 키보드, 한 곳에 고정 */
   [class$="modal"] {
     position: fixed !important;
@@ -2138,6 +2143,26 @@ body {
   }
   .todo-task-edit-modal .todo-task-edit-field {
     max-width: 100%;
+  }
+  .todo-task-edit-modal .todo-task-edit-row-name-priority {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 0.5rem;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .todo-task-edit-modal .todo-task-edit-row-name-priority .todo-task-edit-field--name {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    width: auto !important;
+    max-width: 100% !important;
+  }
+  .todo-task-edit-modal .todo-task-edit-row-name-priority .todo-task-edit-field--eisenhower {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    max-width: 7.75rem !important;
+    min-width: 5.25rem !important;
   }
   .todo-task-edit-modal .todo-task-edit-name,
   .todo-task-edit-modal .todo-task-edit-start,
@@ -14439,6 +14464,39 @@ svg.todo-card-reminder-icon {
   color: var(--accent-viridian);
 }
 
+/* 할 일 수정: 삭제는 닫기(X) 왼쪽 휴지통 — 취소와 인접 실수 방지 */
+.todo-task-edit-modal .todo-task-edit-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  flex-shrink: 0;
+}
+
+.todo-task-edit-modal .todo-task-edit-header-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #dc2626;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.todo-task-edit-modal .todo-task-edit-header-delete:hover {
+  color: #b91c1c;
+}
+
+.todo-task-edit-modal .todo-task-edit-header-delete svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  display: block;
+}
+
 .todo-task-edit-body {
   flex: 1 1 0;
   min-height: 18rem;
@@ -14462,6 +14520,28 @@ svg.todo-card-reminder-icon {
   gap: 0.35rem;
   min-width: 0;
   max-width: 100%;
+}
+
+/* 할일 이름(긴 입력) + 우선순위(짧은 옵션) 한 줄 — 우선순위 열은 최소 폭만 */
+.todo-task-edit-row-name-priority {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 0.75rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.todo-task-edit-row-name-priority .todo-task-edit-field--name {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.todo-task-edit-row-name-priority .todo-task-edit-field--eisenhower {
+  flex: 0 0 auto;
+  width: auto;
+  max-width: 7.75rem;
+  min-width: 5.5rem;
 }
 
 .todo-task-edit-label {
@@ -34400,6 +34480,15 @@ body.kpi-resizing {
   overflow: visible; /* overflow:hidden이 헤더 음수 마진을 잘라서 보더가 띄워 보였음 */
 }
 
+/* 날짜 정하기 사이드바 하단 기한 초과: 스크롤 시 제목 줄 고정 */
+.calendar-todo-sidebar-overdue
+  .todo-section-header.todo-section-header--no-collapse {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: var(--content-bg);
+}
+
 /* 1일 뷰 KPI 사이드바 */
 .calendar-kpi-sidebar-body {
   flex: 1;
@@ -35101,6 +35190,16 @@ body.kpi-resizing {
 .todo-list-eisenhower-sidebar
   .todo-eisenhower-overdue-section::-webkit-scrollbar {
   display: none;
+}
+
+/* 우선순위 정렬 사이드바: 기한 초과 목록 스크롤 시 «기한 초과» 제목 줄 상단 고정 */
+.todo-list-eisenhower-sidebar
+  .todo-eisenhower-overdue-section
+  .todo-section-header.todo-section-header--no-collapse {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: var(--content-bg);
 }
 
 .todo-list-eisenhower-sidebar

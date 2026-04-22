@@ -26,7 +26,10 @@ import {
   getTimeCategoryColorsForTimetable,
   getTimeCategoryColorsForTimetableExpected,
 } from "../utils/todoSettings.js";
-import { registerEisenhowerQuadrantsRefresh } from "../utils/eisenhowerQuadrantsBridge.js";
+import {
+  registerEisenhowerQuadrantsRefresh,
+  refreshEisenhowerQuadrantsIfActive,
+} from "../utils/eisenhowerQuadrantsBridge.js";
 import { getKpisByCategory } from "../utils/kpiViewModal.js";
 import {
   formatDeadlineRangeForDisplay,
@@ -94,6 +97,39 @@ function persistCalendarMainViewIfValid(view) {
   } catch (_) {}
 }
 
+/** 할일 사이드바(우선순위·날짜 뷰)에서 마감 등 수정 후 목록·기한초과 블록을 다시 그림 */
+let _lpTodoDatesChangedListenerAttached = false;
+function lpEnsureTodoDatesChangedListener() {
+  if (_lpTodoDatesChangedListenerAttached) return;
+  _lpTodoDatesChangedListenerAttached = true;
+  document.addEventListener("lp-todo-dates-changed", (ev) => {
+    const t = ev.target;
+    if (!t || typeof t.closest !== "function") return;
+    if (
+      !t.closest(".todo-list-eisenhower-sidebar") &&
+      !t.closest(".todo-list-in-sidebar")
+    ) {
+      return;
+    }
+    const eisenRoot = t.closest(".calendar-view-eisenhower");
+    if (
+      eisenRoot &&
+      typeof eisenRoot._lpRefreshEisenhowerTodoSidebar === "function"
+    ) {
+      eisenRoot._lpRefreshEisenhowerTodoSidebar();
+      return;
+    }
+    const listIn = t.closest(".todo-list-in-sidebar");
+    if (listIn) {
+      const layout = listIn.closest(".calendar-monthly-layout");
+      if (layout && typeof layout._lpRefreshDateTodoSidebar === "function") {
+        layout._lpRefreshDateTodoSidebar();
+      }
+    }
+  });
+}
+lpEnsureTodoDatesChangedListener();
+
 /** 오늘 실제 세그먼트 상·하 구분선 — 생산성 테두리 색(rgb) + 낮은 알파로 연하게 */
 function rgbaToSoftHorizontalEdge(borderRgba, alpha = 0.28) {
   const m = String(borderRgba || "").match(
@@ -123,6 +159,7 @@ function lpCalendarDateSidebarTodoListOpts(sidebarMode, extra = {}) {
     hideToolbar: true,
     enableDragToCalendar: true,
     hideDoneTasks: true,
+    hideOverdueFromCategoryTabs: true,
     ...extra,
   };
   if (sidebarMode === LP_CAL_TODO_SIDEBAR_FULL) {
@@ -2233,6 +2270,8 @@ function renderMonthlyView(
 
   renderCalendar();
 
+  wrap._lpRefreshDateTodoSidebar = refreshTodoList;
+
   return wrap;
 }
 
@@ -2906,6 +2945,8 @@ function render2WeekView(
   });
 
   renderCalendar();
+
+  wrap._lpRefreshDateTodoSidebar = refreshTodoList;
 
   return wrap;
 }
@@ -3608,6 +3649,8 @@ function render3WeekView(
   });
 
   renderCalendar();
+
+  wrap._lpRefreshDateTodoSidebar = refreshTodoList;
 
   return wrap;
 }
@@ -6097,6 +6140,8 @@ function render1WeekView(
 
   renderCalendar();
 
+  wrap._lpRefreshDateTodoSidebar = refreshTodoList;
+
   return wrap;
 }
 
@@ -6507,7 +6552,7 @@ function renderEisenhowerView(tabsElement) {
     </div>
     <div class="calendar-todo-sidebar-body" title="우선순위 취소: 사분면 항목을 여기로 드래그"></div>
   `;
-  const todoListEl = renderTodoListForEisenhowerSidebar({
+  let todoListEl = renderTodoListForEisenhowerSidebar({
     enableDragToEisenhower: true,
   });
   todoSidebar
@@ -6910,6 +6955,38 @@ function renderEisenhowerView(tabsElement) {
     });
     sidebarBody.addEventListener("drop", handleSidebarDropClearEisenhower);
   }
+
+  function rebuildEisenhowerTodoSidebar() {
+    const body = todoSidebar.querySelector(".calendar-todo-sidebar-body");
+    const old = body?.querySelector(".todo-list-eisenhower-sidebar");
+    if (!body || !old) return;
+    let activeIndex = 0;
+    const activeTab = old.querySelector(".todo-category-tab.active");
+    const tabs = old.querySelectorAll(
+      ".todo-category-tab:not(.todo-category-tab-add)",
+    );
+    if (activeTab && tabs.length) {
+      const idx = Array.from(tabs).indexOf(activeTab);
+      if (idx >= 0) activeIndex = idx;
+    }
+    old.remove();
+    const next = renderTodoListForEisenhowerSidebar({
+      enableDragToEisenhower: true,
+    });
+    body.appendChild(next);
+    todoListEl = next;
+    const newTabs = next.querySelectorAll(
+      ".todo-category-tab:not(.todo-category-tab-add)",
+    );
+    if (newTabs[activeIndex]) {
+      newTabs[activeIndex].click();
+    } else if (newTabs[0]) {
+      newTabs[0].click();
+    }
+    updateQuadrants();
+    refreshEisenhowerQuadrantsIfActive();
+  }
+  wrap._lpRefreshEisenhowerTodoSidebar = rebuildEisenhowerTodoSidebar;
 
   updateQuadrants();
   registerEisenhowerQuadrantsRefresh(updateQuadrants);
