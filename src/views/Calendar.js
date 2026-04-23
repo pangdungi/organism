@@ -3792,23 +3792,23 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
     return o > 0 ? o : 0;
   };
   /**
-   * 동시(반열) 판정: 겹침이 1분 이하면 이어진 일정. 2분 이상이면 동시 작업으로 나란히.
+   * 동시(반열): 시간이 1분이라도 겹치면 나란히 배치. (끝=다음 시작은 겹침 아님)
    */
-  const SIMULTANEOUS_LANE_MIN_OVERLAP_MIN = 1;
   const assignLanesToSpans = (spans) => {
-    const laneLastSpan = [];
+    const laneOccupants = [];
     let maxLane = 0;
     for (const span of spans) {
       let lane = 0;
-      while (
-        lane < laneLastSpan.length &&
-        overlapMinutesBetween(span, laneLastSpan[lane]) >
-          SIMULTANEOUS_LANE_MIN_OVERLAP_MIN
-      ) {
+      while (lane < laneOccupants.length) {
+        const inLane = laneOccupants[lane];
+        const conflicts = inLane.some(
+          (s) => overlapMinutesBetween(span, s) > 0,
+        );
+        if (!conflicts) break;
         lane++;
       }
-      if (lane >= laneLastSpan.length) laneLastSpan.push(span);
-      else laneLastSpan[lane] = span;
+      if (lane >= laneOccupants.length) laneOccupants.push([]);
+      laneOccupants[lane].push(span);
       span.lane = lane;
       maxLane = Math.max(maxLane, lane);
     }
@@ -4144,9 +4144,9 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
     const overlay = document.createElement("div");
     overlay.className = `calendar-1day-time-fill-overlay calendar-1day-time-fill-overlay--${isActual ? "actual" : "expected"}`;
     const spansOverlapForSimultaneousLanes = (a, b) =>
-      overlapMinutesBetween(a, b) > SIMULTANEOUS_LANE_MIN_OVERLAP_MIN;
+      overlapMinutesBetween(a, b) > 0;
     /**
-     * 이 블록과 2분 이상 직접 겹치는 스팬만 묶음.
+     * 이 블록과 시간이 직접 겹치는 스팬만 묶음.
      * (이전 BFS는 A↔B↔C 연쇄로, 수면과 오후 일이 안 겹쳐도 한 무리가 되어 전부 반열로 깎였음.)
      */
     const cohortDirectlyOverlapping = (seed) => {
@@ -4175,24 +4175,25 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
       const fmt = (m) =>
         `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
       const cohort = cohortDirectlyOverlapping(first);
-      /* 이 블록과 2분 이상 직접 겹치는 일이 있을 때만 반열(나란히). 코호트는 직접 겹침만 포함 */
+      /* 직접 겹치는 일이 2개 이상이면 반열(나란히). 코호트는 직접 겹침만 포함 */
       const useLaneLayout = cohort.length > 1;
       let laneCountLocal = 1;
       let laneLocal = first.lane ?? 0;
       if (useLaneLayout) {
         const sortedCluster = [...cohort].sort(
-          (a, b) => a.startMin - b.startMin,
+          (a, b) =>
+            a.startMin - b.startMin ||
+            String(a.taskName || "").localeCompare(
+              String(b.taskName || ""),
+              "ko",
+            ),
         );
         const copies = sortedCluster.map((s) => ({ ...s }));
         const { maxLane: clusterMaxLane } = assignLanesToSpans(copies);
         laneCountLocal = Math.max(1, clusterMaxLane + 1);
-        const twin = copies.find(
-          (c) =>
-            c.startMin === first.startMin &&
-            c.endMin === first.endMin &&
-            String(c.taskName || "") === String(first.taskName || ""),
-        );
-        laneLocal = twin?.lane ?? 0;
+        const seedIdx = sortedCluster.findIndex((s) => s === first);
+        laneLocal =
+          seedIdx >= 0 ? (copies[seedIdx]?.lane ?? 0) : (first.lane ?? 0);
       }
       const blockFill = document.createElement("div");
       blockFill.className =
