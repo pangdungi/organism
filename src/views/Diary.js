@@ -326,7 +326,7 @@ export function render() {
       const close = () => {
         modal.remove();
       };
-      modal.querySelector(".diary-add-modal-backdrop").addEventListener("click", close);
+      /* 백드롭 탭으로 닫지 않음 — 입력 중 오탭으로 모달이 사라지는 것 방지 */
       modal.querySelector(".diary-add-modal-close").addEventListener("click", close);
       modal.querySelector(".diary-add-modal-confirm").addEventListener("click", () => {
         const typeRadio = modal.querySelector('input[name="diary-type"]:checked');
@@ -435,7 +435,6 @@ export function render() {
           answers[key] = ta.value;
         });
         modal.querySelector(".diary-step-modal-close").addEventListener("click", () => modal.remove());
-        modal.querySelector(".diary-step-modal-backdrop").addEventListener("click", () => modal.remove());
 
         modal.querySelector(".diary-step-modal-prev").addEventListener("click", () => {
           if (step === 0) return;
