@@ -26806,6 +26806,41 @@ body.kpi-resizing {
   z-index: 10000;
 }
 
+/* 과제 드롭다운: 맨 위 "—" 줄 대신 검색칸만, 아래는 기존과 동일 목록 (flex+auto높이는 목록 0px 되어 안 보이던 문제) */
+.time-tag-panel.time-tag-panel--with-filter {
+  max-height: 12.5rem;
+  overflow: hidden;
+  padding: 0;
+}
+.time-tag-panel-filter {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.45rem 0.75rem;
+  border: none;
+  border-bottom: 1px solid var(--text-placeholder, #c4bea8);
+  border-radius: 0;
+  font-size: 0.875rem;
+  background: var(--content-bg);
+  color: var(--text-body);
+}
+.time-tag-panel-filter::placeholder {
+  color: var(--text-placeholder, #c4bea8);
+}
+.time-tag-panel-filter:focus {
+  outline: none;
+  border-bottom: 1.5px solid var(--ui-btn-primary-bg, #2a3828);
+}
+.time-tag-panel--with-filter .time-tag-panel-list {
+  max-height: calc(12.5rem - 2.75rem);
+  overflow-y: auto;
+}
+
+/* --with-filter 의 display:flex 가 [hidden] 기본 display:none 보다 우선해, 닫힌 패널·검색칸이 표 셀에 남던 문제 */
+.time-tag-panel[hidden] {
+  display: none !important;
+}
+
 /* 드롭다운 옵션: 배경 없이 컬러바+텍스트 (2번 그림처럼) */
 .time-tag-panel .time-tag-option .time-tag-pill {
   background: transparent !important;

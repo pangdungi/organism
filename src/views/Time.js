@@ -2662,14 +2662,26 @@ function createDateCell(initialValue) {
   return { wrap, input, refresh };
 }
 
-/** @param {AbortSignal} [tabSignal] 탭 이탈 시 document 리스너 정리용 */
-function createTagDropdown(options, initialValue, optionClass, onSelect, tabSignal) {
+/**
+ * @param {AbortSignal} [tabSignal] 탭 이탈 시 document 리스너 정리용
+ * @param {boolean} [enablePanelFilter] true면 열린 패널 맨 위 입력칸으로 목록만 필터 (표·트리거 스타일 변경 없음)
+ */
+function createTagDropdown(
+  options,
+  initialValue,
+  optionClass,
+  onSelect,
+  tabSignal,
+  enablePanelFilter = false,
+) {
   const wrap = document.createElement("div");
   wrap.className = "time-tag-dropdown-wrap";
   let value =
     initialValue !== undefined && initialValue !== null
-      ? initialValue
-      : (options[0]?.value ?? "");
+      ? String(initialValue)
+      : options[0]?.value !== undefined && options[0]?.value !== null
+        ? String(options[0].value)
+        : "";
 
   const trigger = document.createElement("button");
   trigger.type = "button";
@@ -2686,21 +2698,89 @@ function createTagDropdown(options, initialValue, optionClass, onSelect, tabSign
   updateTrigger();
 
   const panel = document.createElement("div");
-  panel.className = "time-tag-panel";
+  panel.className =
+    "time-tag-panel" +
+    (enablePanelFilter ? " time-tag-panel--with-filter" : "");
   panel.hidden = true;
-  options.forEach((o) => {
+
+  /** @type {HTMLInputElement | null} */
+  let filterInput = null;
+  let listRoot = panel;
+
+  if (enablePanelFilter) {
+    filterInput = document.createElement("input");
+    filterInput.type = "text";
+    filterInput.className = "time-tag-panel-filter";
+    filterInput.setAttribute("aria-label", "과제 검색");
+    filterInput.placeholder = "과제 검색…";
+    filterInput.autocomplete = "off";
+    listRoot = document.createElement("div");
+    listRoot.className = "time-tag-panel-list";
+    panel.appendChild(filterInput);
+    panel.appendChild(listRoot);
+
+    function applyFilter() {
+      const q = (filterInput.value || "").trim().toLowerCase();
+      listRoot.querySelectorAll(".time-tag-option").forEach((el) => {
+        const label = (el.dataset.filterLabel || "").toLowerCase();
+        const show = !q || label.includes(q);
+        el.hidden = !show;
+      });
+    }
+    filterInput.addEventListener("input", applyFilter);
+    filterInput.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        closePanel();
+        trigger.focus();
+      }
+    });
+  }
+
+  function appendOption(o) {
     const opt = document.createElement("div");
     opt.className =
-      "time-tag-option" + (o.value === value ? " is-selected" : "");
+      "time-tag-option" +
+      (String(o.value ?? "") === String(value ?? "") ? " is-selected" : "");
     opt.innerHTML = `<span class="time-tag-pill ${o.color || ""}">${o.label}</span>`;
+    opt.setAttribute(
+      "data-option-value",
+      o.value === undefined || o.value === null ? "" : String(o.value),
+    );
+    if (enablePanelFilter) {
+      opt.dataset.filterLabel = String(o.label ?? o.value ?? "");
+    }
     opt.addEventListener("click", () => {
-      value = o.value;
+      value = o.value === undefined || o.value === null ? "" : String(o.value);
       updateTrigger();
       closePanel();
       onSelect?.(value);
     });
-    panel.appendChild(opt);
-  });
+    listRoot.appendChild(opt);
+  }
+  if (enablePanelFilter) {
+    const hadEmpty = options.some((o) => o.value === "");
+    options
+      .filter((o) => o.value !== "")
+      .forEach(appendOption);
+    if (hadEmpty) {
+      appendOption({
+        value: "",
+        label: "선택 안 함",
+        color: "cat-empty",
+      });
+    }
+  } else {
+    options.forEach(appendOption);
+  }
+
+  function resetPanelFilter() {
+    if (!enablePanelFilter || !filterInput) return;
+    filterInput.value = "";
+    listRoot.querySelectorAll(".time-tag-option").forEach((el) => {
+      el.hidden = false;
+    });
+  }
 
   function closePanel() {
     panel.hidden = true;
@@ -2709,6 +2789,7 @@ function createTagDropdown(options, initialValue, optionClass, onSelect, tabSign
       document.body.removeChild(panel);
       wrap.appendChild(panel);
     }
+    resetPanelFilter();
   }
 
   function openPanel() {
@@ -2724,6 +2805,10 @@ function createTagDropdown(options, initialValue, optionClass, onSelect, tabSign
       document.body.appendChild(panel);
     }
     panel.hidden = false;
+    resetPanelFilter();
+    if (enablePanelFilter && filterInput) {
+      requestAnimationFrame(() => filterInput.focus());
+    }
   }
 
   trigger.addEventListener("click", () => {
@@ -2766,10 +2851,11 @@ function createTagDropdown(options, initialValue, optionClass, onSelect, tabSign
   wrap.appendChild(panel);
   wrap._getValue = () => value;
   wrap._setValue = (v) => {
-    value = v;
+    value = v !== undefined && v !== null ? String(v) : "";
     updateTrigger();
-    panel.querySelectorAll(".time-tag-option").forEach((opt, i) => {
-      opt.classList.toggle("is-selected", options[i]?.value === value);
+    panel.querySelectorAll(".time-tag-option").forEach((optEl) => {
+      const ov = optEl.getAttribute("data-option-value");
+      optEl.classList.toggle("is-selected", ov === value);
     });
   };
   return { wrap, getValue: () => value };
@@ -9543,6 +9629,7 @@ export function render() {
           onHeaderUpdateRef.current?.();
         },
         signal,
+        true,
       );
       taskTd.appendChild(taskDropdown.wrap);
       tr.appendChild(taskTd);
@@ -10429,6 +10516,7 @@ export function renderTimeBudgetTablesForCalendar(
       },
       /* 캘린더 1일 뷰에는 Time 탭용 AbortSignal 없음 — 드롭다운은 그대로 동작 */
       undefined,
+      true,
     );
     taskDropdown.wrap._getValue = taskDropdown.getValue;
     taskTd.appendChild(taskDropdown.wrap);
