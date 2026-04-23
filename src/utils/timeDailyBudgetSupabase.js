@@ -99,18 +99,40 @@ export async function pushAllLocalTimeDailyBudgetIfServerEmpty() {
   });
 }
 
-let _pushTimer = null;
+/** 날짜별 디바운스 — 타이머를 하나만 쓰면 다른 날짜만 편집했을 때 이전 날짜가 서버에 안 올라가던 문제 방지 */
+const _pushTimersByDate = new Map();
 const PUSH_DEBOUNCE_MS = 900;
+
+/** 대기 중인 날짜별 푸시를 모두 즉시 실행(탭 이탈·화면 전환 시 유실 방지) */
+export function flushAllPendingTimeDailyBudgetSync() {
+  if (_pushTimersByDate.size === 0) return;
+  const entries = [..._pushTimersByDate.entries()];
+  _pushTimersByDate.clear();
+  for (const [, t] of entries) clearTimeout(t);
+  const uniqueDks = [...new Set(entries.map(([dk]) => dk))];
+  for (const dk of uniqueDks) {
+    syncTimeDailyBudgetDateToSupabase(dk).catch(() => {});
+  }
+}
 
 export function scheduleTimeDailyBudgetSyncPush(dateKey) {
   if (!supabase || !dateKey) return;
   const dk = normalizeDateKey(dateKey);
   if (!dk) return;
-  if (_pushTimer) clearTimeout(_pushTimer);
-  _pushTimer = setTimeout(() => {
-    _pushTimer = null;
+  const prev = _pushTimersByDate.get(dk);
+  if (prev) clearTimeout(prev);
+  const t = setTimeout(() => {
+    _pushTimersByDate.delete(dk);
     syncTimeDailyBudgetDateToSupabase(dk).catch(() => {});
   }, PUSH_DEBOUNCE_MS);
+  _pushTimersByDate.set(dk, t);
+}
+
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushAllPendingTimeDailyBudgetSync();
+  });
+  window.addEventListener("pagehide", () => flushAllPendingTimeDailyBudgetSync());
 }
 
 export async function hydrateTimeDailyBudgetFromCloud() {

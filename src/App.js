@@ -38,7 +38,10 @@ import {
 import { pullKpiTabFromCloud } from "./utils/kpiTabCloudRefresh.js";
 import { pullTimeLedgerTabEnterFromCloud } from "./utils/timeLedgerCloudRefresh.js";
 import { pullTimeLedgerTasksFromSupabase } from "./utils/timeLedgerTasksSupabase.js";
-import { pullTimeDailyBudgetFromSupabase } from "./utils/timeDailyBudgetSupabase.js";
+import {
+  pullTimeDailyBudgetFromSupabase,
+  flushAllPendingTimeDailyBudgetSync,
+} from "./utils/timeDailyBudgetSupabase.js";
 import { pullAllAssetFromCloud } from "./utils/assetCloudRefresh.js";
 import { pullAllDiaryFromCloud } from "./utils/diaryCloudRefresh.js";
 import { pullUserPrefsFromSupabase } from "./utils/userHourlySync.js";
@@ -409,6 +412,7 @@ export function mountApp(container) {
 
   function setActiveTab(tabId) {
     const fromTab = currentTabId;
+    if (fromTab !== tabId) flushAllPendingTimeDailyBudgetSync();
     currentTabId = tabId;
     persistActiveTabId(tabId);
     logTodoScheduleTabOnNavigate(tabId, fromTab);

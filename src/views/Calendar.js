@@ -70,6 +70,7 @@ import {
   readCustomSectionTasksObject,
 } from "../utils/todoSectionTasksModel.js";
 import { markTodoAddPendingServerLog } from "../utils/lpTabDataSourceLog.js";
+import { flushAllPendingTimeDailyBudgetSync } from "../utils/timeDailyBudgetSupabase.js";
 import { logLpRender } from "../utils/lpRenderDebugLog.js";
 const KPI_SECTION_IDS = ["braindump", "dream", "sideincome", "health", "happy"];
 
@@ -7062,6 +7063,9 @@ export function render() {
   let _calendarMainSubtabPullPrimedByApp = true;
 
   async function renderContent(view, opts = {}) {
+    if (currentView === "1day" && view !== "1day") {
+      flushAllPendingTimeDailyBudgetSync();
+    }
     const skipSubtabPull = !!opts.skipSubtabPull;
     const onlySaveWhenFullTodoList =
       currentView === "todo" || currentView === "eisenhower";
