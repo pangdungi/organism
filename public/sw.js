@@ -1,14 +1,76 @@
 /* PWA 서비스 워커 — 앱 설치·오프라인 + Web Push(할일 리마인더) */
+/** 번들·아이콘 등 캐시 버전 (전략 바꿀 때만 올리면 이전 캐시 정리됨) */
+const ASSET_CACHE = "organism-assets-v2";
+
 self.addEventListener("install", (event) => {
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(
+        keys
+          .filter((k) => k.startsWith("organism-assets-") && k !== ASSET_CACHE)
+          .map((k) => caches.delete(k)),
+      );
+      await self.clients.claim();
+    })(),
+  );
 });
 
+function shouldUseAssetCache(url) {
+  const p = url.pathname;
+  if (p === "/sw.js") return false;
+  if (p.startsWith("/assets/") && (p.endsWith(".js") || p.endsWith(".css"))) return true;
+  if (/\.(png|jpe?g|webp|gif|svg|ico|woff2?|ttf|eot)(\?.*)?$/i.test(p)) return true;
+  if (p === "/manifest.json" || p.startsWith("/manifest.json")) return true;
+  return false;
+}
+
+/** 캐시 먼저로 재방문·홈화면 실행 시 큰 JS/CSS 즉시 응답, 백그라운드에서 네트워크로 갱신 */
+async function staleWhileRevalidate(event, request) {
+  const cache = await caches.open(ASSET_CACHE);
+  const cached = await cache.match(request);
+  const networkPromise = fetch(request)
+    .then((response) => {
+      if (response && response.ok) {
+        try {
+          cache.put(request, response.clone());
+        } catch (_e) {}
+      }
+      return response;
+    })
+    .catch(() => undefined);
+
+  if (cached) {
+    event.waitUntil(networkPromise);
+    return cached;
+  }
+  const live = await networkPromise;
+  if (live) return live;
+  return new Response("", { status: 504, statusText: "Offline" });
+}
+
 self.addEventListener("fetch", (event) => {
-  event.respondWith(fetch(event.request));
+  const req = event.request;
+  if (req.method !== "GET") {
+    event.respondWith(fetch(req));
+    return;
+  }
+  let url;
+  try {
+    url = new URL(req.url);
+  } catch (_e) {
+    event.respondWith(fetch(req));
+    return;
+  }
+  if (url.origin !== self.location.origin || !shouldUseAssetCache(url)) {
+    event.respondWith(fetch(req));
+    return;
+  }
+  event.respondWith(staleWhileRevalidate(event, req));
 });
 
 self.addEventListener("push", (event) => {

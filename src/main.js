@@ -272,7 +272,8 @@ function init() {
 
   async function dismissAppSplash() {
     const splash = document.getElementById("app-splash");
-    const minVisibleMs = 720;
+    /* 너무 짧으면 스플래시가 깜빡이고, 너무 길면 PWA 재실행이 답답해짐 */
+    const minVisibleMs = 380;
     const t0 = typeof performance !== "undefined" ? performance.now() : Date.now();
     try {
       await showInitialPage();
