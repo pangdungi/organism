@@ -33361,6 +33361,8 @@ body.kpi-resizing {
   .calendar-1day-time-fill-overlay--expected
   .calendar-1day-time-slot-fill-seg {
   overflow: visible;
+  /* 공통 .time-slot-fill-seg 의 min-height:2.5rem 은 10분 등 짧은 예상 구간을 1시간처럼 보이게 함 */
+  min-height: 0;
 }
 
 /* 타임박스: 살짝 둥근 모서리, 투명 채움(그리드선 비침) */
@@ -33430,7 +33432,7 @@ body.kpi-resizing {
   word-break: keep-all;
 }
 
-/* 오늘 실제: 15~30분 구간 — 과제명·시간 한 줄 */
+/* 예상·실제: 21~30분 구간 — 과제명 왼쪽·시간 오른쪽 한 줄 */
 .calendar-1day-view .calendar-1day-time-slot-label-wrap--actual-one-line {
   flex-direction: row;
   flex-wrap: nowrap;

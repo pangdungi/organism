@@ -4135,8 +4135,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   /** 오늘 실제: 너무 짧으면 막대가 사라져 보임 — 시각 최소(분). 모바일 탭 상세는 이보다 길어도 읽기 어려울 때만 */
   const ACTUAL_MIN_VISUAL_MINUTES = 8;
   const ACTUAL_TAP_TOAST_MAX_MINUTES = 18;
-  /** 오늘실제만: 이 분 미만은 라벨 생략 */
-  const ACTUAL_MIN_MINUTES_TO_SHOW_LABEL = 15;
+  /** 예상·실제 공통: 이 분 이하(포함)는 과제명·시간 라벨 생략 — 20분까지는 표시하지 않음 */
+  const TIMETABLE_MAX_MINUTES_TO_HIDE_LABEL = 20;
   /** 오늘실제만: 이 분 이하(포함)는 과제명·시간 한 줄, 초과는 두 줄(기존) */
   const ACTUAL_MAX_MINUTES_ONE_LINE_LABEL = 30;
 
@@ -4208,15 +4208,16 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         blockFill.style.gridColumn = "1 / -1";
         blockFill.style.gridRow = "1 / -1";
       };
-      /** top+height% 대신 top+bottom으로 잡으면 절대배치 높이가 더 안정적 */
+      /** 하루 1440분 대비 top + height % (bottom 동시 지정은 일부 환경에서 높이가 어긋날 수 있음) */
       const applyDayVerticalExtents = () => {
-        const endMinForLayout = Math.min(
-          MIN_PER_DAY,
-          isActual ? blockStartMin + visualBlockMin : blockEndMin,
+        const durationMin = Math.min(
+          MIN_PER_DAY - blockStartMin,
+          isActual ? visualBlockMin : blockEndMin - blockStartMin,
         );
+        const h = Math.max(0, durationMin);
         blockFill.style.top = `calc(${blockStartMin} * 100% / ${MIN_PER_DAY})`;
-        blockFill.style.bottom = `calc(${Math.max(0, MIN_PER_DAY - endMinForLayout)} * 100% / ${MIN_PER_DAY})`;
-        blockFill.style.height = "";
+        blockFill.style.height = `calc(${h} * 100% / ${MIN_PER_DAY})`;
+        blockFill.style.bottom = "auto";
         blockFill.style.minHeight = "";
       };
       if (useLaneLayout) {
@@ -4311,15 +4312,14 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         if (group.length === 1) {
           seg.style.flex = "none";
           seg.style.height = "100%";
+          /* 예상 막대: 짧은 구간에 min-height 주면 1시간 칸만큼 칠해지는 것처럼 보임 */
           seg.style.minHeight =
-            !isActual && actualBlockMin > 0 && actualBlockMin < 40
+            isActual && actualBlockMin > 0 && actualBlockMin < 40
               ? "2.5rem"
               : "0";
         } else {
           seg.style.flex = `0 0 ${segHeightPct}%`;
-          if (!isActual) {
-            seg.style.minHeight = "2.5rem";
-          }
+          seg.style.minHeight = isActual ? "2.5rem" : "0";
         }
         seg.style.width = "100%";
         seg.style.display = "flex";
@@ -4327,7 +4327,7 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         seg.style.padding = "0.25rem 0.375rem 0.25rem 0.5rem";
         seg.style.backgroundColor = c.bg;
         seg.style.boxSizing = "border-box";
-        if (isActual && c.border) {
+        if (c.border) {
           const edge = rgbaToSoftHorizontalEdge(c.border, 0.26);
           seg.style.borderTop = `0.5px solid ${edge}`;
           seg.style.borderBottom = `0.5px solid ${edge}`;
@@ -4340,14 +4340,14 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
           (sp.endMin ?? 0) - (sp.startMin ?? 0),
         );
         const showTimetableLabel =
-          !isActual || segDurationMin >= ACTUAL_MIN_MINUTES_TO_SHOW_LABEL;
+          segDurationMin > TIMETABLE_MAX_MINUTES_TO_HIDE_LABEL;
         if (showTimetableLabel) {
           const labelWrap = document.createElement("div");
-          const useActualOneLine =
-            isActual &&
-            segDurationMin >= ACTUAL_MIN_MINUTES_TO_SHOW_LABEL &&
+          /* 짧은 구간(21~30분): 예상·실제 공통 — 과제명 왼쪽, 시간 오른쪽 한 줄(넘침 시 이름만 …) */
+          const useCompactOneLineLabel =
+            segDurationMin > TIMETABLE_MAX_MINUTES_TO_HIDE_LABEL &&
             segDurationMin <= ACTUAL_MAX_MINUTES_ONE_LINE_LABEL;
-          if (useActualOneLine) {
+          if (useCompactOneLineLabel) {
             labelWrap.className =
               "calendar-1day-time-slot-label-wrap calendar-1day-time-slot-label-wrap--actual-one-line";
             const labelName = document.createElement("span");
