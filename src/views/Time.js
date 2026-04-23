@@ -10029,25 +10029,7 @@ export function renderTimeBudgetTablesForCalendar(
         if (n) skipBudgetTableForTasks.add(n);
       });
   }
-  const rows = loadTimeRows();
-  const todayRows = rows.filter((r) => (r.date || "").trim() === targetDateStr);
-
-  function getTasksFromTodayRows() {
-    const byTask = {};
-    todayRows.forEach((r) => {
-      const task = (r.taskName || "").trim();
-      if (!task) return;
-      const p = r.productivity || getProductivityFromCategory(r.category);
-      const hrs = parseTimeToHours(r.timeTracked);
-      if (hrs <= 0) return;
-      if (!byTask[task])
-        byTask[task] = { task, hrs: 0, isNonproductive: false };
-      byTask[task].hrs += hrs;
-      if (p === "nonproductive") byTask[task].isNonproductive = true;
-    });
-    return Object.values(byTask);
-  }
-
+  /* 캘린더 1일 오늘 해치우기: 시간기록으로 행을 채우지 않음 — 저장된 예산(storedGoals) + 사용자 추가 행만 */
   const fullTaskOpts = getFullTaskOptions();
   const storedGoals = getBudgetGoals(targetDateStr);
   /* 캘린더 1일뷰: 과제설정 목록만 표시, 여기서 추가 불가 */
@@ -10585,7 +10567,6 @@ export function renderTimeBudgetTablesForCalendar(
     return tr;
   }
 
-  const tasksFromToday = getTasksFromTodayRows();
   const excluded = getBudgetExcluded(targetDateStr);
   const investTasks = [];
   const consumeTasks = [];
@@ -10604,25 +10585,6 @@ export function renderTimeBudgetTablesForCalendar(
   const BASIC_TASKS = ["수면하기", "근무하기"];
   const isBasicTask = (task) => BASIC_TASKS.includes((task || "").trim());
 
-  tasksFromToday.forEach((t) => {
-    if (excluded.has(t.task)) return;
-    if (skipBudgetTableForTasks.has(t.task)) return;
-    if (isBudgetPlaceholder(t.task)) return;
-    if (isBasicTask(t.task)) return; /* 수면/근무는 기본에만 */
-    const data = storedGoals[t.task];
-    const entries = expandByScheduledTimes(
-      t.task,
-      data,
-      !t.isNonproductive,
-      t.hrs,
-    );
-    const target = t.isNonproductive ? consumeTasks : investTasks;
-    const seen = t.isNonproductive ? seenConsume : seenInvest;
-    entries.forEach((e) => {
-      target.push(e);
-      seen.add(t.task);
-    });
-  });
   Object.entries(storedGoals).forEach(([task, data]) => {
     if (excluded.has(task)) return;
     if (skipBudgetTableForTasks.has(task)) return;
@@ -10642,15 +10604,6 @@ export function renderTimeBudgetTablesForCalendar(
   });
   const basicTasks = [];
   const seenBasic = new Set();
-  tasksFromToday.forEach((t) => {
-    if (!BASIC_TASKS.includes(t.task)) return;
-    const data = storedGoals[t.task];
-    const entries = expandByScheduledTimes(t.task, data, true, t.hrs);
-    entries.forEach((e) => {
-      basicTasks.push(e);
-      seenBasic.add(t.task);
-    });
-  });
   BASIC_TASKS.forEach((task) => {
     if (seenBasic.has(task)) return;
     const data = storedGoals[task];
