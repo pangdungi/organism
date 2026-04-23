@@ -32121,15 +32121,21 @@ body.kpi-resizing {
   table-layout: fixed;
 }
 
-.calendar-1day-budget-column .calendar-1day-todo-table thead th:first-child,
-.calendar-1day-budget-column .calendar-1day-todo-table tbody td:first-child {
-  width: 58%;
+/* 할일: 남는 폭 / 우선순위: 비어 있어도 글자~5자(긴급+중요)·헤더 폭 유지 */
+.calendar-1day-budget-column .calendar-1day-todo-table col.calendar-1day-todo-col-task {
+  width: auto;
+}
+
+.calendar-1day-budget-column .calendar-1day-todo-table col.calendar-1day-todo-col-priority {
+  width: 1%;
+  min-width: 5.75rem;
 }
 
 .calendar-1day-budget-column .calendar-1day-todo-table thead th:nth-child(2),
 .calendar-1day-budget-column .calendar-1day-todo-table tbody td:nth-child(2) {
-  width: 42%;
-  min-width: 4rem;
+  width: 1%;
+  min-width: 5.75rem;
+  box-sizing: border-box;
 }
 
 .calendar-1day-budget-column .calendar-1day-todo-table thead th,
@@ -32189,7 +32195,9 @@ body.kpi-resizing {
   .calendar-1day-todo-table
   tbody
   td:not(:first-child) {
-  text-align: center;
+  text-align: left;
+  padding: 0.35rem 0.5rem;
+  vertical-align: middle;
 }
 
 .calendar-1day-budget-column

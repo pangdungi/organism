@@ -4761,6 +4761,10 @@ function render1DayView(tabsElement) {
     const todoTable = document.createElement("table");
     todoTable.className = "calendar-1day-todo-table time-daily-budget-table";
     todoTable.innerHTML = `
+      <colgroup>
+        <col class="calendar-1day-todo-col-task" />
+        <col class="calendar-1day-todo-col-priority" />
+      </colgroup>
       <thead><tr><th>오늘의 할일</th><th>우선순위</th></tr></thead>
       <tbody></tbody>
     `;
