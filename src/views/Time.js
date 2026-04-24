@@ -1585,6 +1585,13 @@ export function parseTimeToHours(str) {
   return h + m / 60;
 }
 
+/**
+ * 오늘 해치우기 등 시계 예약 합산용 하루 길이(시간).
+ * 24:00은 다음날 00:00과 겹치므로 마감은 23:59 — 00:00~23:59 구간은 23h59m이며,
+ * 남은 시간은 이 값에서 예약 합을 뺀다(예약만 24h로 두면 1분이 항상 남던 문제 제거).
+ */
+const DAY_WALL_CLOCK_HOURS_FOR_BUDGET = 24 - 1 / 60;
+
 /** 목표 대비 배치 차이 포맷: (-1h) / (+1h25m) / (-30m) / "" — 초과 +, 부족 - */
 export function formatGoalDiff(diffHours) {
   if (diffHours === 0 || !isFinite(diffHours) || Math.abs(diffHours) < 1 / 60)
@@ -10385,7 +10392,7 @@ export function renderTimeBudgetTablesForCalendar(
   remainingTitleRow.appendChild(remainingTitle);
   const remainingValueEl = document.createElement("div");
   remainingValueEl.className = "time-budget-calendar-remaining-value";
-  remainingValueEl.textContent = "24:00";
+  remainingValueEl.textContent = "23:59";
   remainingHeader.appendChild(remainingTitleRow);
   remainingHeader.appendChild(remainingValueEl);
 
@@ -10670,7 +10677,7 @@ export function renderTimeBudgetTablesForCalendar(
         plannedSum += scheduledRowHours(tr);
       });
     });
-    const remaining = Math.max(0, 24 - plannedSum);
+    const remaining = Math.max(0, DAY_WALL_CLOCK_HOURS_FOR_BUDGET - plannedSum);
     if (remainingValueEl)
       remainingValueEl.textContent = formatHoursToHHMM(remaining);
   }
