@@ -259,6 +259,186 @@ export function render() {
     if (!isDiaryMobileViewport() || !textEl) return;
   }
 
+  /** 본문·데스크톱 작성 모달 공통: 날짜·Q&A·자유일기 레이아웃 */
+  function mountDiaryPaperForm(paper, entry, tabId, opts = {}) {
+    const { onDelete, showDelete = true } = opts;
+    if (tabId === "3") {
+      paper.className = "diary-paper diary-paper-qa diary-paper-tab3";
+      if (!entry.q1 && entry.q1 !== "") entry.q1 = "";
+      if (!entry.q2 && entry.q2 !== "") entry.q2 = "";
+      if (!entry.q3 && entry.q3 !== "") entry.q3 = "";
+      if (!entry.q4 && entry.q4 !== "") entry.q4 = "";
+      const qaHeader = document.createElement("div");
+      qaHeader.className = "diary-paper-qa-header";
+      qaHeader.appendChild(createDiaryDateEditor(entry, tabId, "qa-header"));
+      if (showDelete && typeof onDelete === "function") {
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "diary-paper-delete-btn diary-paper-delete-btn-qa";
+        deleteBtn.title = "해당 기록 삭제";
+        deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
+        deleteBtn.addEventListener("click", onDelete);
+        qaHeader.appendChild(deleteBtn);
+      }
+      paper.appendChild(qaHeader);
+      TAB3_EMOTION_TEMPLATE.forEach((label, i) => {
+        const key = "q" + (i + 1);
+        const block = document.createElement("div");
+        block.className = "diary-qa-block";
+        const qHead = document.createElement("div");
+        qHead.className = "diary-qa-question";
+        qHead.textContent = label;
+        block.appendChild(qHead);
+        const ansArea = document.createElement("textarea");
+        ansArea.className = "diary-qa-answer";
+        ansArea.placeholder = TAB3_EMOTION_PLACEHOLDERS[i] || "";
+        ansArea.value = entry[key] != null ? entry[key] : "";
+        const adjustHeight = () => {
+          ansArea.style.height = "auto";
+          ansArea.style.height = Math.max(60, ansArea.scrollHeight) + "px";
+        };
+        ansArea.addEventListener("input", () => {
+          entry[key] = ansArea.value;
+          saveDiaryEntries(entries);
+          adjustHeight();
+        });
+        adjustHeight();
+        block.appendChild(ansArea);
+        attachMobileTapToEdit(ansArea);
+        paper.appendChild(block);
+      });
+      return;
+    }
+    if (tabId === "2") {
+      if (!entry.qa || typeof entry.qa !== "object") {
+        entry.qa = Object.fromEntries(TAB2_QA_TEMPLATE.map((_, i) => [String(i), ""]));
+        saveDiaryEntries(entries);
+      }
+      paper.className = "diary-paper diary-paper-qa";
+      const qaHeader = document.createElement("div");
+      qaHeader.className = "diary-paper-qa-header";
+      qaHeader.appendChild(createDiaryDateEditor(entry, tabId, "qa-header"));
+      if (showDelete && typeof onDelete === "function") {
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "diary-paper-delete-btn diary-paper-delete-btn-qa";
+        deleteBtn.title = "해당 기록 삭제";
+        deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
+        deleteBtn.addEventListener("click", onDelete);
+        qaHeader.appendChild(deleteBtn);
+      }
+      paper.appendChild(qaHeader);
+      TAB2_QA_TEMPLATE.forEach((question, i) => {
+        const block = document.createElement("div");
+        block.className = "diary-qa-block";
+        const qHead = document.createElement("div");
+        qHead.className = "diary-qa-question";
+        qHead.textContent = question;
+        block.appendChild(qHead);
+        const ansArea = document.createElement("textarea");
+        ansArea.className = "diary-qa-answer";
+        ansArea.placeholder = "";
+        ansArea.value = (entry.qa && entry.qa[String(i)]) || "";
+        const adjustHeight = () => {
+          ansArea.style.height = "auto";
+          ansArea.style.height = Math.max(60, ansArea.scrollHeight) + "px";
+        };
+        ansArea.addEventListener("input", () => {
+          if (!entry.qa) entry.qa = {};
+          entry.qa[String(i)] = ansArea.value;
+          saveDiaryEntries(entries);
+          adjustHeight();
+        });
+        adjustHeight();
+        block.appendChild(ansArea);
+        attachMobileTapToEdit(ansArea);
+        paper.appendChild(block);
+      });
+      return;
+    }
+    if (tabId === "1") {
+      paper.className = "diary-paper";
+      const titleRow = document.createElement("div");
+      titleRow.className = "diary-paper-title-row";
+      titleRow.appendChild(createDiaryDateEditor(entry, tabId, "free"));
+      if (showDelete && typeof onDelete === "function") {
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "diary-paper-delete-btn";
+        deleteBtn.title = "해당 기록 삭제";
+        deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
+        deleteBtn.addEventListener("click", onDelete);
+        titleRow.appendChild(deleteBtn);
+      }
+      paper.appendChild(titleRow);
+      const textarea = document.createElement("textarea");
+      textarea.className = "diary-paper-text";
+      textarea.placeholder = "start writing";
+      textarea.value = entry.content || "";
+      textarea.addEventListener("input", () => {
+        entry.content = textarea.value;
+        saveDiaryEntries(entries);
+      });
+      attachMobileTapToEdit(textarea);
+      paper.appendChild(textarea);
+    }
+  }
+
+  function openDesktopComposeModal(entryId, tabId) {
+    if (isDiaryMobileViewport()) return;
+    const entry = getTabEntriesRaw(tabId).find((e) => e.id === entryId);
+    if (!entry) return;
+    document.querySelectorAll(".diary-desktop-compose-modal").forEach((m) => m.remove());
+    const modal = document.createElement("div");
+    modal.className = "diary-desktop-compose-modal";
+    const backdrop = document.createElement("div");
+    backdrop.className = "diary-desktop-compose-modal-backdrop";
+    const panel = document.createElement("div");
+    panel.className = "diary-desktop-compose-modal-panel";
+    const modalHeader = document.createElement("div");
+    modalHeader.className = "diary-desktop-compose-modal-header";
+    const closeModalOnly = () => {
+      modal.remove();
+      renderLayout();
+    };
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "diary-desktop-compose-modal-close";
+    closeBtn.setAttribute("aria-label", "닫기");
+    closeBtn.title = "닫기";
+    closeBtn.textContent = "×";
+    closeBtn.addEventListener("click", closeModalOnly);
+    modalHeader.appendChild(closeBtn);
+    const scroll = document.createElement("div");
+    scroll.className = "diary-desktop-compose-modal-scroll";
+    const paper = document.createElement("div");
+    mountDiaryPaperForm(paper, entry, tabId, { showDelete: false });
+    scroll.appendChild(paper);
+    const footer = document.createElement("div");
+    footer.className = "diary-desktop-compose-modal-footer";
+    const confirmBtn = document.createElement("button");
+    confirmBtn.type = "button";
+    confirmBtn.className = "diary-desktop-compose-modal-confirm";
+    confirmBtn.textContent = "추가";
+    confirmBtn.addEventListener("click", () => {
+      currentEntryId = entryId;
+      currentTabId = tabId;
+      modal.remove();
+      renderLayout();
+      requestAnimationFrame(() => {
+        const hit = layoutWrap.querySelector(`[data-entry-id="${entryId}"]`);
+        if (hit) hit.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      });
+    });
+    footer.appendChild(confirmBtn);
+    panel.appendChild(modalHeader);
+    panel.appendChild(scroll);
+    panel.appendChild(footer);
+    modal.appendChild(backdrop);
+    modal.appendChild(panel);
+    document.body.appendChild(modal);
+  }
+
   function renderLayout() {
     layoutWrap.innerHTML = "";
     const mobile = isDiaryMobileViewport();
@@ -295,6 +475,10 @@ export function render() {
         : fullEntryList;
 
     const addPageHandler = () => {
+      if (isDiaryMobileViewport()) {
+        openAddModal();
+        return;
+      }
       const today = toDateStr(new Date());
       ensureTabEntries(currentTabId);
       const rawList = getTabEntriesRaw(currentTabId);
@@ -311,12 +495,8 @@ export function render() {
             };
       rawList.push(newEntry);
       saveDiaryEntries(entries);
-      currentEntryId = id;
       renderLayout();
-      requestAnimationFrame(() => {
-        const hit = layoutWrap.querySelector(`[data-entry-id="${id}"]`);
-        if (hit) hit.scrollIntoView({ block: "nearest", behavior: "smooth" });
-      });
+      openDesktopComposeModal(id, currentTabId);
     };
 
     function getTabLabel(tabId) {
@@ -365,7 +545,7 @@ export function render() {
         <div class="diary-add-modal-panel">
           <div class="diary-add-modal-header">
             <h3 class="diary-add-modal-title">일기 추가</h3>
-            <button type="button" class="diary-add-modal-close" aria-label="닫기">×</button>
+            <button type="button" class="diary-add-modal-close" aria-label="닫기" title="닫기">×</button>
           </div>
           <div class="diary-add-modal-body">
             <p class="diary-add-modal-label">유형</p>
@@ -487,7 +667,7 @@ export function render() {
           <div class="diary-step-modal-panel">
             <div class="diary-step-modal-header">
               <span class="diary-step-modal-progress">${step + 1} / ${total}</span>
-              <button type="button" class="diary-step-modal-close" aria-label="닫기">×</button>
+              <button type="button" class="diary-step-modal-close" aria-label="닫기" title="닫기">×</button>
             </div>
             <div class="diary-step-modal-body">
               <p class="diary-step-modal-question">${q}</p>
@@ -550,7 +730,7 @@ export function render() {
           <button type="button" class="diary-sidebar-collapse diary-sidebar-collapse-btn">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
-          <button type="button" class="diary-sidebar-add-btn" title="오늘 날짜 일기">
+          <button type="button" class="diary-sidebar-add-btn" title="새 일기 작성">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           </button>
         </div>
@@ -765,79 +945,23 @@ export function render() {
       });
       }
     } else if (currentTabId === "3" && currentEntry) {
-      paper.className = "diary-paper diary-paper-qa diary-paper-tab3";
-      if (!currentEntry.q1 && currentEntry.q1 !== "") currentEntry.q1 = "";
-      if (!currentEntry.q2 && currentEntry.q2 !== "") currentEntry.q2 = "";
-      if (!currentEntry.q3 && currentEntry.q3 !== "") currentEntry.q3 = "";
-      if (!currentEntry.q4 && currentEntry.q4 !== "") currentEntry.q4 = "";
-      const qaHeader = document.createElement("div");
-      qaHeader.className = "diary-paper-qa-header";
-      qaHeader.appendChild(createDiaryDateEditor(currentEntry, currentTabId, "qa-header"));
-      const deleteBtn = document.createElement("button");
-      deleteBtn.type = "button";
-      deleteBtn.className = "diary-paper-delete-btn diary-paper-delete-btn-qa";
-      deleteBtn.title = "해당 기록 삭제";
-      deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
-      deleteBtn.addEventListener("click", () => {
-        const list = getTabEntriesRaw("3");
-        const deletedId = currentEntry.id;
-        const idx = list.findIndex((x) => x.id === deletedId);
-        if (idx >= 0) {
-          list.splice(idx, 1);
-          saveDiaryEntries(entries);
-          notifyServerDeletedEntry(deletedId);
-          currentEntryId = list.length > 0 ? list[0].id : null;
-          renderLayout();
-        }
-      });
-      qaHeader.appendChild(deleteBtn);
-      paper.appendChild(qaHeader);
-      TAB3_EMOTION_TEMPLATE.forEach((label, i) => {
-        const key = "q" + (i + 1);
-        const block = document.createElement("div");
-        block.className = "diary-qa-block";
-        const qHead = document.createElement("div");
-        qHead.className = "diary-qa-question";
-        qHead.textContent = label;
-        block.appendChild(qHead);
-        const ansArea = document.createElement("textarea");
-        ansArea.className = "diary-qa-answer";
-        ansArea.placeholder = TAB3_EMOTION_PLACEHOLDERS[i] || "";
-        ansArea.value = currentEntry[key] != null ? currentEntry[key] : "";
-        const adjustHeight = () => {
-          ansArea.style.height = "auto";
-          ansArea.style.height = Math.max(60, ansArea.scrollHeight) + "px";
-        };
-        ansArea.addEventListener("input", () => {
-          const t = getEntryById(currentTabId, currentEntryId);
-          if (t) {
-            t[key] = ansArea.value;
+      mountDiaryPaperForm(paper, currentEntry, "3", {
+        onDelete: () => {
+          const list = getTabEntriesRaw("3");
+          const deletedId = currentEntry.id;
+          const idx = list.findIndex((x) => x.id === deletedId);
+          if (idx >= 0) {
+            list.splice(idx, 1);
             saveDiaryEntries(entries);
+            notifyServerDeletedEntry(deletedId);
+            currentEntryId = list.length > 0 ? list[0].id : null;
+            renderLayout();
           }
-          adjustHeight();
-        });
-        adjustHeight();
-        block.appendChild(ansArea);
-        attachMobileTapToEdit(ansArea);
-        paper.appendChild(block);
+        },
       });
-    } else if (currentTabId !== "3") {
-      if (currentEntry) {
-      if (currentTabId === "2") {
-        if (!currentEntry.qa || typeof currentEntry.qa !== "object") {
-          currentEntry.qa = Object.fromEntries(TAB2_QA_TEMPLATE.map((_, i) => [String(i), ""]));
-          saveDiaryEntries(entries);
-        }
-        paper.className = "diary-paper diary-paper-qa";
-        const qaHeader = document.createElement("div");
-        qaHeader.className = "diary-paper-qa-header";
-        qaHeader.appendChild(createDiaryDateEditor(currentEntry, currentTabId, "qa-header"));
-        const deleteBtn = document.createElement("button");
-        deleteBtn.type = "button";
-        deleteBtn.className = "diary-paper-delete-btn diary-paper-delete-btn-qa";
-        deleteBtn.title = "해당 기록 삭제";
-        deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
-        deleteBtn.addEventListener("click", () => {
+    } else if (currentTabId === "2" && currentEntry) {
+      mountDiaryPaperForm(paper, currentEntry, "2", {
+        onDelete: () => {
           const list = getTabEntriesRaw(currentTabId);
           const deletedId = currentEntry.id;
           const idx = list.findIndex((x) => x.id === deletedId);
@@ -848,48 +972,11 @@ export function render() {
             currentEntryId = list.length > 0 ? list[0].id : null;
             renderLayout();
           }
-        });
-        qaHeader.appendChild(deleteBtn);
-        paper.appendChild(qaHeader);
-        TAB2_QA_TEMPLATE.forEach((question, i) => {
-          const block = document.createElement("div");
-          block.className = "diary-qa-block";
-          const qHead = document.createElement("div");
-          qHead.className = "diary-qa-question";
-          qHead.textContent = question;
-          block.appendChild(qHead);
-          const ansArea = document.createElement("textarea");
-          ansArea.className = "diary-qa-answer";
-          ansArea.placeholder = "";
-          ansArea.value = (currentEntry.qa && currentEntry.qa[String(i)]) || "";
-          const adjustHeight = () => {
-            ansArea.style.height = "auto";
-            ansArea.style.height = Math.max(60, ansArea.scrollHeight) + "px";
-          };
-          ansArea.addEventListener("input", () => {
-            const t = getEntryById(currentTabId, currentEntryId);
-            if (t) {
-              if (!t.qa) t.qa = {};
-              t.qa[String(i)] = ansArea.value;
-              saveDiaryEntries(entries);
-            }
-            adjustHeight();
-          });
-          adjustHeight();
-          block.appendChild(ansArea);
-          attachMobileTapToEdit(ansArea);
-          paper.appendChild(block);
-        });
-      } else {
-        const titleRow = document.createElement("div");
-        titleRow.className = "diary-paper-title-row";
-        titleRow.appendChild(createDiaryDateEditor(currentEntry, currentTabId, "free"));
-        const deleteBtn = document.createElement("button");
-        deleteBtn.type = "button";
-        deleteBtn.className = "diary-paper-delete-btn";
-        deleteBtn.title = "해당 기록 삭제";
-        deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
-        deleteBtn.addEventListener("click", () => {
+        },
+      });
+    } else if (currentTabId === "1" && currentEntry) {
+      mountDiaryPaperForm(paper, currentEntry, "1", {
+        onDelete: () => {
           const list = getTabEntriesRaw(currentTabId);
           const deletedId = currentEntry.id;
           const idx = list.findIndex((x) => x.id === deletedId);
@@ -900,25 +987,8 @@ export function render() {
             currentEntryId = list.length > 0 ? list[0].id : null;
             renderLayout();
           }
-        });
-        titleRow.appendChild(deleteBtn);
-        paper.appendChild(titleRow);
-
-        const textarea = document.createElement("textarea");
-        textarea.className = "diary-paper-text";
-        textarea.placeholder = "start writing";
-        textarea.value = currentEntry.content || "";
-        textarea.addEventListener("input", () => {
-          const t = getEntryById(currentTabId, currentEntryId);
-          if (t) {
-            t.content = textarea.value;
-            saveDiaryEntries(entries);
-          }
-        });
-        attachMobileTapToEdit(textarea);
-        paper.appendChild(textarea);
-      }
-      }
+        },
+      });
     }
 
     if (!mobileFeedMode) {

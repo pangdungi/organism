@@ -2376,15 +2376,16 @@ body {
   min-width: 2.5rem;
   min-height: 2.5rem;
   padding: 0;
-  font-size: 1.5rem;
+  font-size: 1.625rem;
   line-height: 1;
-  color: var(--text-muted);
+  font-weight: 500;
+  color: var(--text-body);
   background: none;
   border: none;
   cursor: pointer;
 }
 .diary-add-modal-close:hover {
-  color: var(--text-body);
+  color: var(--text-ink);
 }
 .diary-add-modal-body {
   padding: 1.25rem;
@@ -2497,15 +2498,16 @@ body {
   min-width: 2.5rem;
   min-height: 2.5rem;
   padding: 0;
-  font-size: 1.5rem;
+  font-size: 1.625rem;
   line-height: 1;
-  color: var(--text-muted);
+  font-weight: 500;
+  color: var(--text-body);
   background: none;
   border: none;
   cursor: pointer;
 }
 .diary-step-modal-close:hover {
-  color: var(--text-body);
+  color: var(--text-ink);
 }
 .diary-step-modal-body {
   padding: 1rem 1.25rem;
@@ -2653,6 +2655,156 @@ body {
 .diary-feed-card .diary-paper-qa-header .diary-date-edit-display {
   flex: 0 1 auto;
   min-width: 0;
+}
+
+/* 데스크톱: + 클릭 시 본문과 동일 diary-paper UI를 모달로 */
+.diary-desktop-compose-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem 1.5rem;
+  box-sizing: border-box;
+}
+.diary-desktop-compose-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+}
+.diary-desktop-compose-modal-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 52rem;
+  max-height: min(92vh, 56rem);
+  background: var(--content-bg);
+  border: var(--line-l2);
+  border-radius: var(--modal-radius) !important;
+  box-shadow: 0 0.75rem 3rem rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+.diary-desktop-compose-modal-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0.35rem 0.5rem 0.35rem 1rem;
+  border-bottom: var(--line-l3);
+  background: var(--content-bg);
+}
+.diary-desktop-compose-modal-close {
+  flex-shrink: 0;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0;
+  font-size: 1.625rem;
+  line-height: 1;
+  font-weight: 400;
+  color: var(--text-body);
+  background: none;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+.diary-desktop-compose-modal-close:hover {
+  color: var(--text-ink);
+  background: var(--ui-surface-alt);
+}
+.diary-desktop-compose-modal-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.diary-desktop-compose-modal-scroll .diary-paper {
+  min-height: auto;
+}
+.diary-desktop-compose-modal-footer {
+  flex-shrink: 0;
+  padding: 1rem 1.5rem 1.25rem;
+  border-top: var(--line-l3);
+  background: var(--content-bg);
+}
+.diary-desktop-compose-modal-confirm {
+  display: block;
+  width: 100%;
+  max-width: 16rem;
+  margin: 0 auto;
+  padding: 0.65rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--ui-btn-primary-fg);
+  background: var(--ui-btn-primary-bg);
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+}
+.diary-desktop-compose-modal-confirm:hover {
+  background: var(--ui-btn-primary-hover);
+}
+
+/* 모달은 #app 밖에 붙음 — 본문과 같은 일기 입력 스타일을 여기서 맞춤 */
+.diary-desktop-compose-modal .diary-paper .diary-qa-answer,
+.diary-desktop-compose-modal .diary-paper .diary-paper-text {
+  border: none !important;
+  border-bottom: none !important;
+}
+.diary-desktop-compose-modal .diary-paper .diary-qa-answer:focus,
+.diary-desktop-compose-modal .diary-paper .diary-qa-answer:focus-visible,
+.diary-desktop-compose-modal .diary-paper .diary-paper-text:focus,
+.diary-desktop-compose-modal .diary-paper .diary-paper-text:focus-visible {
+  border: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+}
+.diary-desktop-compose-modal .diary-qa-answer {
+  width: 100%;
+  min-height: 3.75rem;
+  padding: 1rem 1.25rem;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-body);
+  line-height: 1.6;
+  color: var(--text-body);
+  border: none;
+  resize: none;
+  overflow-y: auto;
+  background: var(--content-bg);
+  font-family: var(--font-body);
+  display: block;
+  box-sizing: border-box;
+}
+.diary-desktop-compose-modal .diary-qa-answer:focus {
+  outline: none;
+}
+.diary-desktop-compose-modal .diary-qa-answer::placeholder {
+  color: var(--text-placeholder);
+}
+.diary-desktop-compose-modal .diary-paper-text {
+  width: 100%;
+  min-height: 12rem;
+  padding: 1rem 1.25rem;
+  margin: 0;
+  background: var(--content-bg);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-body);
+  line-height: 1.75;
+  color: var(--text-body);
+  border: none;
+  resize: none;
+  font-family: var(--font-body);
+  box-sizing: border-box;
+}
+.diary-desktop-compose-modal .diary-paper-text:focus {
+  outline: none;
+}
+.diary-desktop-compose-modal .diary-paper-text::placeholder {
+  color: var(--text-placeholder);
 }
 
 /* 48rem 이하: 하단 가로 탭(모바일). 아이패드 미니 세로(744·768 CSS px) 포함 */
@@ -30997,7 +31149,9 @@ body.kpi-resizing {
 .diary-paper-title-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
+  width: 100%;
   margin-bottom: 0;
 }
 
