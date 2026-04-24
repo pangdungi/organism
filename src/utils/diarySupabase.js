@@ -204,7 +204,7 @@ export async function pullDiaryFromSupabase() {
   if (!Array.isArray(data) || data.length === 0) {
     if (hadRowsFlag) {
       const merged = mergeDiaryFromServerSnapshot(local, []);
-      saveDiaryEntries(merged);
+      saveDiaryEntries(merged, { skipCloud: true });
       return merged;
     }
     return null;
@@ -213,7 +213,7 @@ export async function pullDiaryFromSupabase() {
   setDiaryServerHadRowsFlag(true);
 
   const merged = mergeDiaryFromServerSnapshot(local, data);
-  saveDiaryEntries(merged);
+  saveDiaryEntries(merged, { skipCloud: true });
   return merged;
 }
 
@@ -263,7 +263,7 @@ export async function syncDiaryToSupabase(entries) {
     }
   }
 
-  if (mutatedIds) saveDiaryEntries(entries);
+  if (mutatedIds) saveDiaryEntries(entries, { skipCloud: true });
 
   if (upserts.length > 0) {
     const { error } = await supabase.from(TABLE).upsert(upserts, {

@@ -3091,6 +3091,24 @@ body {
     color: var(--text-placeholder);
   }
 
+  .diary-feed-card .diary-paper-qa-header .diary-feed-card-title {
+    flex: 0 1 auto;
+  }
+  .diary-feed-card .diary-paper-title-row .diary-feed-card-title {
+    flex: 0 1 auto;
+  }
+  .diary-feed-card .diary-paper-text-readonly {
+    min-height: 3rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .diary-desktop-compose-modal {
+    padding: 0.5rem;
+  }
+  .diary-desktop-compose-modal-panel {
+    max-width: 100%;
+  }
+
   .diary-date-cal-btn {
     padding: 0.12rem;
   }
@@ -4398,10 +4416,10 @@ body {
     font-size: 0.8125rem;
   }
 
-  /* 모바일: 과제 기록/수정 모달 - 높이 확대해 아코디언 펼쳤을 때 내용 모두 볼 수 있게 */
+  /* 모바일: 과제 기록/수정 모달 - 짧을 땐 컴팩트, 길 때만 화면 높이까지·스크롤 */
   .time-task-log-modal .time-task-log-panel {
-    height: 95vh;
-    max-height: none;
+    height: auto;
+    max-height: 95vh;
   }
   .time-task-log-modal .time-task-log-scroll-area {
     padding-bottom: 3rem;
@@ -18914,13 +18932,15 @@ body.kpi-resizing {
   background: #fef2f2;
 }
 
-/* 과제 기록 모달 - 통일 디자인: 크림 배경, 세이지 버튼 */
+/* 과제 기록 모달 - 통일 디자인: 크림 배경, 세이지 버튼 (내용 높이에 맞춤, 길 때만 상한·스크롤) */
 .time-task-log-modal .time-task-log-panel {
   max-width: 26.25rem;
-  height: 90vh;
-  max-height: 45rem;
+  width: 100%;
+  height: auto;
+  max-height: min(90vh, 45rem);
   background: var(--content-bg);
   border-radius: var(--modal-radius);
+  overflow: hidden;
 }
 
 .time-task-log-modal .time-task-log-body {
@@ -31194,6 +31214,25 @@ body.kpi-resizing {
   color: var(--text-ink);
 }
 
+.diary-paper-edit-btn {
+  flex-shrink: 0;
+  padding: 0.35rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 0.25rem;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+.diary-paper-edit-btn:hover {
+  color: var(--text-ink);
+}
+.diary-paper-edit-btn-qa {
+  flex-shrink: 0;
+}
+
 .diary-paper-date {
   margin: 0 0 0.25rem;
   font-size: 1.75rem;
@@ -31233,6 +31272,21 @@ body.kpi-resizing {
 
 .diary-paper-text::placeholder {
   color: var(--text-placeholder);
+}
+
+.diary-paper-text-readonly {
+  width: 100%;
+  min-height: calc(100vh - 22rem);
+  padding: 1rem 1.25rem;
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-body);
+  line-height: 1.75;
+  color: var(--text-body);
+  font-family: var(--font-body);
+  box-sizing: border-box;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* 통제일기 Q&A 템플릿 */
@@ -31323,6 +31377,16 @@ body.kpi-resizing {
 
 #app .diary-qa-answer::placeholder {
   color: var(--text-placeholder);
+}
+
+#app .diary-paper .diary-qa-answer-readonly,
+#app .diary-qa-answer-readonly {
+  cursor: default;
+  background: transparent;
+  resize: none;
+}
+#app .diary-paper .diary-qa-answer-readonly:focus {
+  outline: none;
 }
 
 /* 감정관리 피드 */

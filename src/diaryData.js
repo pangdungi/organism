@@ -96,13 +96,18 @@ export function loadDiaryEntries() {
   return _diaryEntriesMem;
 }
 
-export function saveDiaryEntries(data) {
+/**
+ * @param {object} data
+ * @param {{ skipCloud?: boolean }} [opts] — true면 세션 메모리만 갱신하고 Supabase 푸시(디바운스)를 예약하지 않음
+ */
+export function saveDiaryEntries(data, opts = {}) {
   migrateDiaryFromLegacyOnce();
   _diaryEntriesMem = data && typeof data === "object" ? data : {};
   try {
     localStorage.removeItem(DIARY_ENTRIES_KEY);
     localStorage.removeItem(DIARY_SERVER_HAD_ROWS_KEY);
   } catch (_) {}
+  if (opts.skipCloud) return;
   try {
     window.dispatchEvent(
       new CustomEvent("diary-entries-saved", { detail: { data: _diaryEntriesMem } }),

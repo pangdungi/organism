@@ -13,13 +13,6 @@ import {
 } from "./Asset.js";
 import { EXPENSE_MODAL_CLASSIFICATIONS } from "../expenseModalClassifications.js";
 import {
-  TAB3_EMOTION_TEMPLATE,
-  TAB3_EMOTION_PLACEHOLDERS,
-  appendTab3Entry,
-  loadDiaryEntries,
-  saveDiaryEntries,
-} from "../diaryData.js";
-import {
   getKpiSyncedTaskNames,
   syncHabitTrackerLogs,
   upsertHabitTrackerLogWithDailyState,
@@ -4647,10 +4640,6 @@ export function render() {
           <button type="button" class="time-task-log-expense-add-btn" aria-label="소비 기록 추가">+</button>
           <div class="time-task-log-expense-pills"></div>
         </div>
-        <div class="time-task-log-emotion-row">
-          <span class="time-task-log-emotion-label">감정 기록</span>
-          <button type="button" class="time-task-log-emotion-add-btn" aria-label="감정 기록 추가">+</button>
-        </div>
         </div>
       </div>
       <div class="time-task-log-footer" data-task-log-footer>
@@ -4736,38 +4725,6 @@ export function render() {
             <button type="button" class="time-task-log-expense-inner-add-btn">추가</button>
           </div>
           <div class="time-task-log-expense-added-list"></div>
-        </div>
-      </div>
-    </div>
-    <div class="time-task-log-emotion-inner-modal" hidden>
-      <div class="time-task-log-emotion-inner-backdrop"></div>
-      <div class="time-task-log-emotion-inner-panel">
-        <div class="time-task-log-emotion-inner-header">
-          <span class="time-task-log-emotion-inner-header-label">감정 기록</span>
-          <button type="button" class="time-task-log-emotion-inner-close" aria-label="닫기">&times;</button>
-        </div>
-        <div class="time-task-log-emotion-inner-body">
-          <div class="time-task-log-emotion-fields">
-            <div class="time-task-log-field">
-              <label>${TAB3_EMOTION_TEMPLATE[0]}</label>
-              <textarea class="time-task-log-emotion-q1" placeholder="${TAB3_EMOTION_PLACEHOLDERS[0]}" rows="2"></textarea>
-            </div>
-            <div class="time-task-log-field">
-              <label>${TAB3_EMOTION_TEMPLATE[1]}</label>
-              <textarea class="time-task-log-emotion-q2" placeholder="${TAB3_EMOTION_PLACEHOLDERS[1]}" rows="2"></textarea>
-            </div>
-            <div class="time-task-log-field">
-              <label>${TAB3_EMOTION_TEMPLATE[2]}</label>
-              <textarea class="time-task-log-emotion-q3" placeholder="${TAB3_EMOTION_PLACEHOLDERS[2]}" rows="2"></textarea>
-            </div>
-            <div class="time-task-log-field">
-              <label>${TAB3_EMOTION_TEMPLATE[3]}</label>
-              <textarea class="time-task-log-emotion-q4" placeholder="${TAB3_EMOTION_PLACEHOLDERS[3]}" rows="2"></textarea>
-            </div>
-          </div>
-        </div>
-        <div class="time-task-log-emotion-inner-footer">
-          <button type="button" class="time-task-log-emotion-inner-save-btn">저장</button>
         </div>
       </div>
     </div>
@@ -5282,33 +5239,6 @@ export function render() {
   );
   const taskLogExpenseInnerClose = taskLogModal.querySelector(
     ".time-task-log-expense-inner-close",
-  );
-  const taskLogEmotionAddBtn = taskLogModal.querySelector(
-    ".time-task-log-emotion-add-btn",
-  );
-  const taskLogEmotionInnerModal = taskLogModal.querySelector(
-    ".time-task-log-emotion-inner-modal",
-  );
-  const taskLogEmotionInnerBackdrop = taskLogModal.querySelector(
-    ".time-task-log-emotion-inner-backdrop",
-  );
-  const taskLogEmotionInnerSaveBtn = taskLogModal.querySelector(
-    ".time-task-log-emotion-inner-save-btn",
-  );
-  const taskLogEmotionInnerClose = taskLogModal.querySelector(
-    ".time-task-log-emotion-inner-close",
-  );
-  const taskLogEmotionQ1 = taskLogModal.querySelector(
-    ".time-task-log-emotion-q1",
-  );
-  const taskLogEmotionQ2 = taskLogModal.querySelector(
-    ".time-task-log-emotion-q2",
-  );
-  const taskLogEmotionQ3 = taskLogModal.querySelector(
-    ".time-task-log-emotion-q3",
-  );
-  const taskLogEmotionQ4 = taskLogModal.querySelector(
-    ".time-task-log-emotion-q4",
   );
   const taskLogTodoAddBtn = taskLogModal.querySelector(
     ".time-task-log-todo-add-btn",
@@ -6067,15 +5997,6 @@ export function render() {
     refreshKpiTodosInLogModal(taskName);
   }
 
-  function openEmotionInnerModal() {
-    if (taskLogEmotionInnerModal) taskLogEmotionInnerModal.hidden = false;
-    taskLogEmotionQ1?.focus();
-  }
-
-  function closeEmotionInnerModal() {
-    if (taskLogEmotionInnerModal) taskLogEmotionInnerModal.hidden = true;
-  }
-
   function refreshKpiTodosInLogModal(taskName) {
     const name = (taskName || "").trim();
     if (!taskLogKpiTodosSection || !taskLogKpiTodosList) return;
@@ -6472,51 +6393,6 @@ export function render() {
   );
   taskLogExpenseInnerClose?.addEventListener("click", closeExpenseInnerModal);
 
-  taskLogEmotionAddBtn?.addEventListener("click", openEmotionInnerModal);
-  taskLogEmotionInnerBackdrop?.addEventListener(
-    "click",
-    closeEmotionInnerModal,
-  );
-  taskLogEmotionInnerClose?.addEventListener("click", closeEmotionInnerModal);
-  // 이벤트 위임: 직접 핸들러가 동작하지 않는 경우 대비 (capture 단계에서 먼저 처리)
-  taskLogEmotionInnerModal?.addEventListener(
-    "click",
-    (e) => {
-      if (
-        e.target?.closest?.(".time-task-log-emotion-inner-close") ||
-        e.target?.closest?.(".time-task-log-emotion-inner-backdrop")
-      ) {
-        e.preventDefault();
-        e.stopPropagation();
-        closeEmotionInnerModal();
-      }
-    },
-    true,
-  );
-  taskLogEmotionInnerSaveBtn?.addEventListener("click", () => {
-    const q1 = (taskLogEmotionQ1?.value || "").trim();
-    const q2 = (taskLogEmotionQ2?.value || "").trim();
-    const q3 = (taskLogEmotionQ3?.value || "").trim();
-    const q4 = (taskLogEmotionQ4?.value || "").trim();
-    if (!q1 && !q2 && !q3 && !q4) {
-      showToast("감정 기록에 내용을 한 줄이라도 입력해 주세요.", "warn");
-      return;
-    }
-    const dateStr = getExpenseModalDate();
-    const diary = loadDiaryEntries();
-    appendTab3Entry(diary, dateStr, q1, q2, q3, q4);
-    saveDiaryEntries(diary);
-    if (taskLogEmotionQ1) taskLogEmotionQ1.value = "";
-    if (taskLogEmotionQ2) taskLogEmotionQ2.value = "";
-    if (taskLogEmotionQ3) taskLogEmotionQ3.value = "";
-    if (taskLogEmotionQ4) taskLogEmotionQ4.value = "";
-    showToast(
-      "감정일기에 저장했습니다.",
-      "감정일기 탭에서 같은 양식으로 확인할 수 있습니다.",
-    );
-    closeEmotionInnerModal();
-  });
-
   taskLogExpenseInnerAdd?.addEventListener("click", () => {
     const name = (taskLogExpenseNameInput?.value || "").trim();
     const amountRaw = (taskLogExpenseAmountInput?.value || "")
@@ -6671,10 +6547,6 @@ export function render() {
       taskLogExpenseErrorEl.textContent = "";
       taskLogExpenseErrorEl.hidden = true;
     }
-    if (taskLogEmotionQ1) taskLogEmotionQ1.value = "";
-    if (taskLogEmotionQ2) taskLogEmotionQ2.value = "";
-    if (taskLogEmotionQ3) taskLogEmotionQ3.value = "";
-    if (taskLogEmotionQ4) taskLogEmotionQ4.value = "";
     taskLogModal
       .querySelectorAll(".time-task-log-accordion-item")
       .forEach((item) => {
@@ -6698,7 +6570,6 @@ export function render() {
     if (taskLogExpenseInnerList) taskLogExpenseInnerList.innerHTML = "";
     updateExpensePills();
     if (taskLogExpenseInnerModal) taskLogExpenseInnerModal.hidden = true;
-    if (taskLogEmotionInnerModal) taskLogEmotionInnerModal.hidden = true;
     if (taskLogKpiTodosSection) taskLogKpiTodosSection.hidden = true;
     if (taskLogKpiTodosList) taskLogKpiTodosList.innerHTML = "";
   }
@@ -6800,10 +6671,6 @@ export function render() {
     expenseClassificationButtons._setValue?.("");
     expenseClassificationButtons._setFlowType?.();
     taskLogExpenseAmountInput.value = "";
-    if (taskLogEmotionQ1) taskLogEmotionQ1.value = "";
-    if (taskLogEmotionQ2) taskLogEmotionQ2.value = "";
-    if (taskLogEmotionQ3) taskLogEmotionQ3.value = "";
-    if (taskLogEmotionQ4) taskLogEmotionQ4.value = "";
     const ymdEdit = String(recKey || "")
       .trim()
       .replace(/\//g, "-")
@@ -7162,8 +7029,6 @@ export function render() {
         }
       }
     }
-
-    /* 감정 기록은 내장 모달 저장 시 diary_entries(감정일기)에 별도 반영됨 */
 
     /* 투두는 + 버튼 모달에서 카테고리 선택 후 추가 시 저장됨 */
 
@@ -7607,11 +7472,6 @@ export function render() {
         }
         if (taskLogTodoInnerModal && !taskLogTodoInnerModal.hidden) {
           closeTodoInnerModal();
-          e.preventDefault();
-          return;
-        }
-        if (taskLogEmotionInnerModal && !taskLogEmotionInnerModal.hidden) {
-          closeEmotionInnerModal();
           e.preventDefault();
           return;
         }
