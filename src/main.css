@@ -6328,6 +6328,8 @@ body {
     color: #9ca3af;
     line-height: 1.4;
     margin-top: 0.2rem;
+    white-space: pre-wrap;
+    word-break: break-word;
   }
   .time-mobile-card-focus {
     display: flex;
@@ -26270,6 +26272,8 @@ body.kpi-resizing {
     color: #9ca3af;
     line-height: 1.45;
     margin-top: 0.25rem;
+    white-space: pre-wrap;
+    word-break: break-word;
   }
 
   .time-ledger-container .time-ledger-desktop-cards .time-mobile-card-focus {
@@ -26688,6 +26692,11 @@ body.kpi-resizing {
 .time-ledger-table .time-th-feedback {
   width: 8.75rem;
   min-width: 8.75rem;
+}
+
+.time-ledger-table .time-display-feedback {
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* 메모 태그 열: 남은 공간 모두 사용 (삭제 열 제거로 확보된 공간) */
