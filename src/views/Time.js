@@ -10145,52 +10145,6 @@ export function renderTimeBudgetTablesForCalendar(
     return parseTimeToHours(end) > parseTimeToHours(start);
   }
 
-  /** scheduled "start-end" 배열을 합산 시간(시간 단위)으로 변환 */
-  function sumScheduledHours(times) {
-    if (!Array.isArray(times) || times.length === 0) return 0;
-    let total = 0;
-    times.forEach((s) => {
-      const { start, end } = parseScheduledTime(s);
-      if (!start || !end) return;
-      let startH = parseTimeToHours(start);
-      let endH = parseTimeToHours(end);
-      if (endH <= startH) endH += 24;
-      total += endH - startH;
-    });
-    return total;
-  }
-
-  function updateGoalDiffDisplays(block) {
-    if (!block) return;
-    const tbody = block.querySelector("tbody");
-    const addRow = block.querySelector(".time-row-add");
-    if (!tbody || !addRow) return;
-    const byTask = collectScheduledTimesByTask(tbody, addRow);
-    const counted = new Set();
-    tbody.querySelectorAll("tr:not(.time-row-add)").forEach((row) => {
-      const taskName = (row.dataset.taskName || "").trim();
-      if (!taskName || counted.has(taskName)) return;
-      counted.add(taskName);
-      const goalInp = row.querySelector(".time-budget-time-input");
-      const diffSpan = row.querySelector(".time-budget-goal-diff");
-      if (!goalInp || !diffSpan) return;
-      if (goalInp.disabled) return;
-      const goalHrs = parseTimeToHours(goalInp.value);
-      const scheduledHrs = sumScheduledHours(byTask[taskName] || []);
-      const diff = scheduledHrs - goalHrs;
-      const text = formatGoalDiff(diff);
-      diffSpan.textContent = text;
-      diffSpan.className = "time-budget-goal-diff";
-      if (diff > 0) diffSpan.classList.add("time-budget-goal-diff--over");
-      else if (diff < 0) diffSpan.classList.add("time-budget-goal-diff--short");
-      else
-        diffSpan.classList.remove(
-          "time-budget-goal-diff--over",
-          "time-budget-goal-diff--short",
-        );
-    });
-  }
-
   /** tbody에서 과제별 scheduledTimes 수집 (addRow 제외, tr.dataset 사용) */
   function collectScheduledTimesByTask(tbody, addRow) {
     const byTask = {};
@@ -10208,40 +10162,6 @@ export function renderTimeBudgetTablesForCalendar(
       }
     });
     return byTask;
-  }
-
-  /** 같은 과제명 중 첫 행만 목표시간 편집 가능, 2번째부터 비활성화+빈값 */
-  function isFirstRowForTask(taskName, currentRow, tbodyEl) {
-    if (!taskName || !tbodyEl) return true;
-    const rows = tbodyEl.querySelectorAll("tr:not(.time-row-add)");
-    for (const row of rows) {
-      const n = (row.dataset.taskName || "").trim();
-      if (n === taskName) {
-        return row === currentRow;
-      }
-    }
-    return true;
-  }
-
-  function applyGoalInputState(goalInp, taskName, currentRow, tbodyEl) {
-    const disable = !isFirstRowForTask(taskName, currentRow, tbodyEl);
-    goalInp.disabled = disable;
-    goalInp.title = disable
-      ? "이미 같은 과제의 목표 시간이 설정되어 있습니다."
-      : "";
-    goalInp.placeholder = disable ? "" : "hh:mm";
-    if (disable) {
-      goalInp.value = "";
-    }
-  }
-
-  function refreshAllGoalInputStates(tbodyEl) {
-    if (!tbodyEl) return;
-    tbodyEl.querySelectorAll("tr:not(.time-row-add)").forEach((row) => {
-      const inp = row.querySelector(".time-budget-time-input");
-      const task = (row.dataset.taskName || "").trim();
-      if (inp && task) applyGoalInputState(inp, task, row, tbodyEl);
-    });
   }
 
   /* 예상 타임테이블 색상 규칙과 통일: 기타=prod-green, 생산성=prod-pink, 비생산=prod-blue */
@@ -10262,8 +10182,6 @@ export function renderTimeBudgetTablesForCalendar(
     const { tbody, addRow, onOverlapCleared, onScheduledUpdate, allTbodies } =
       tbodyAndAddRow || {};
     const taskTd = document.createElement("td");
-    const goalInput = createBudgetTimeInput();
-    if (initialGoalTime) goalInput.value = initialGoalTime;
 
     const { start: initialStart, end: initialEnd } =
       parseScheduledTime(initialScheduledTime);
@@ -10367,7 +10285,8 @@ export function renderTimeBudgetTablesForCalendar(
           deleteBudgetGoalEntry(targetDateStr, previousKey);
         }
         previousKey = name;
-        saveBudgetGoal(targetDateStr, name, goalInput.value, isInvest);
+        /* 캘린더 1일뷰: 목표 시간 열 없음 — 예상 구간만 저장(goalTime 제거) */
+        saveBudgetGoal(targetDateStr, name, "", isInvest);
         updateRowDataset();
         let start = startInput.value.trim();
         let end = endInput.value.trim();
@@ -10413,14 +10332,9 @@ export function renderTimeBudgetTablesForCalendar(
         if (skipReRender && typeof updateRemaining === "function") {
           updateRemaining();
         }
-        if (tbody && addRow) {
-          const block = tr.closest(".time-daily-budget-table-block");
-          if (block) updateGoalDiffDisplays(block);
-        }
       }
     }
 
-    goalInput.addEventListener("blur", () => saveCurrentGoal(true, false));
     startInput.addEventListener("blur", () => {
       if (scheduleTimetableUpdateDebounce) {
         clearTimeout(scheduleTimetableUpdateDebounce);
@@ -10441,8 +10355,6 @@ export function renderTimeBudgetTablesForCalendar(
       updateRowDataset();
       if (tbody && addRow) {
         saveAllScheduledTimesForTimetable(name);
-        const block = tr.closest(".time-daily-budget-table-block");
-        if (block) updateGoalDiffDisplays(block);
       } else {
         const start = startInput.value.trim();
         let end = endInput.value.trim();
@@ -10470,6 +10382,7 @@ export function renderTimeBudgetTablesForCalendar(
       if (typeof onScheduledUpdate === "function") {
         onScheduledUpdate(targetDateStr);
       }
+      if (typeof updateRemaining === "function") updateRemaining();
     };
     /* 입력 중간(예: "03"만 입력)에 저장되면 03:00으로 잘리는 문제 방지 - 디바운스 400ms */
     let scheduleTimetableUpdateDebounce = null;
@@ -10492,9 +10405,7 @@ export function renderTimeBudgetTablesForCalendar(
       () => {
         /* 과제명 선택 시 예상 시간이 이미 있으면 타임테이블 갱신 필요 */
         saveCurrentGoal(true, true);
-        if (tbody) refreshAllGoalInputStates(tbody);
-        const block = tr.closest(".time-daily-budget-table-block");
-        if (block) updateGoalDiffDisplays(block);
+        if (typeof updateRemaining === "function") updateRemaining();
       },
       /* 캘린더 1일 뷰에는 Time 탭용 AbortSignal 없음 — 드롭다운은 그대로 동작 */
       undefined,
@@ -10507,17 +10418,6 @@ export function renderTimeBudgetTablesForCalendar(
     tr.dataset.scheduledStart = initialStart || "";
     tr.dataset.scheduledEnd = initialEnd || "";
 
-    applyGoalInputState(goalInput, (taskName || "").trim(), tr, tbody);
-
-    const goalTimeTd = document.createElement("td");
-    const goalWrap = document.createElement("span");
-    goalWrap.className = "time-budget-goal-wrap";
-    goalWrap.appendChild(goalInput);
-    const diffSpan = document.createElement("span");
-    diffSpan.className = "time-budget-goal-diff";
-    goalWrap.appendChild(diffSpan);
-    goalTimeTd.appendChild(goalWrap);
-    tr.appendChild(goalTimeTd);
     const startTimeTd = document.createElement("td");
     startTimeTd.appendChild(startInput);
     tr.appendChild(startTimeTd);
@@ -10543,13 +10443,6 @@ export function renderTimeBudgetTablesForCalendar(
         Object.entries(byTask).forEach(([task, times]) => {
           saveBudgetScheduledTimes(targetDateStr, task, times, isInvest);
         });
-        tbody.querySelectorAll("tr:not(.time-row-add)").forEach((row) => {
-          const inp = row.querySelector(".time-budget-time-input");
-          const task = (row.dataset.taskName || "").trim();
-          if (inp && task) applyGoalInputState(inp, task, row, tbody);
-        });
-        const block = tbody.closest(".time-daily-budget-table-block");
-        if (block) updateGoalDiffDisplays(block);
       }
       if (typeof onScheduledUpdate === "function") {
         onScheduledUpdate(targetDateStr);
@@ -10560,6 +10453,7 @@ export function renderTimeBudgetTablesForCalendar(
           }),
         );
       }
+      if (typeof updateRemaining === "function") updateRemaining();
     });
     deleteTd.appendChild(deleteBtn);
     tr.appendChild(deleteTd);
@@ -10646,7 +10540,7 @@ export function renderTimeBudgetTablesForCalendar(
 
   const basicAddRow = document.createElement("tr");
   basicAddRow.className = "time-row-add time-row-add--placeholder";
-  basicAddRow.innerHTML = '<td colspan="5"></td>';
+  basicAddRow.innerHTML = '<td colspan="4"></td>';
 
   const basicBlock = document.createElement("div");
   basicBlock.className =
@@ -10658,7 +10552,6 @@ export function renderTimeBudgetTablesForCalendar(
   basicTable.innerHTML = `
     <colgroup>
       <col class="time-budget-col-task">
-      <col class="time-budget-col-goal">
       <col class="time-budget-col-start">
       <col class="time-budget-col-end">
       <col class="time-budget-col-delete">
@@ -10666,7 +10559,6 @@ export function renderTimeBudgetTablesForCalendar(
     <thead>
       <tr>
         <th>과제명</th>
-        <th class="time-budget-col-goal">목표 시간</th>
         <th>예상 시작 시간</th>
         <th>예상 마감 시간</th>
         <th class="time-budget-col-delete"></th>
@@ -10699,7 +10591,6 @@ export function renderTimeBudgetTablesForCalendar(
   basicTbody.appendChild(basicAddRow);
   basicTableWrap.appendChild(basicTable);
   basicBlock.appendChild(basicTableWrap);
-  updateGoalDiffDisplays(basicBlock);
 
   const investBlock = document.createElement("div");
   investBlock.className =
@@ -10711,7 +10602,6 @@ export function renderTimeBudgetTablesForCalendar(
   investTable.innerHTML = `
     <colgroup>
       <col class="time-budget-col-task">
-      <col class="time-budget-col-goal">
       <col class="time-budget-col-start">
       <col class="time-budget-col-end">
       <col class="time-budget-col-delete">
@@ -10719,7 +10609,6 @@ export function renderTimeBudgetTablesForCalendar(
     <thead>
       <tr>
         <th>과제명</th>
-        <th class="time-budget-col-goal">목표 시간</th>
         <th>예상 시작 시간</th>
         <th>예상 마감 시간</th>
         <th class="time-budget-col-delete"></th>
@@ -10729,7 +10618,7 @@ export function renderTimeBudgetTablesForCalendar(
   `;
   const investAddRow = document.createElement("tr");
   investAddRow.className = "time-row-add time-row-add--placeholder";
-  investAddRow.innerHTML = '<td colspan="5"></td>';
+  investAddRow.innerHTML = '<td colspan="4"></td>';
 
   const investTbody = investTable.querySelector("tbody");
   const investCtx = {
@@ -10757,11 +10646,10 @@ export function renderTimeBudgetTablesForCalendar(
   investTbody.appendChild(investAddRow);
   investTableWrap.appendChild(investTable);
   investBlock.appendChild(investTableWrap);
-  updateGoalDiffDisplays(investBlock);
 
   const consumeAddRow = document.createElement("tr");
   consumeAddRow.className = "time-row-add time-row-add--placeholder";
-  consumeAddRow.innerHTML = '<td colspan="5"></td>';
+  consumeAddRow.innerHTML = '<td colspan="4"></td>';
 
   const consumeBlock = document.createElement("div");
   consumeBlock.className =
@@ -10773,7 +10661,6 @@ export function renderTimeBudgetTablesForCalendar(
   consumeTable.innerHTML = `
     <colgroup>
       <col class="time-budget-col-task">
-      <col class="time-budget-col-goal">
       <col class="time-budget-col-start">
       <col class="time-budget-col-end">
       <col class="time-budget-col-delete">
@@ -10781,7 +10668,6 @@ export function renderTimeBudgetTablesForCalendar(
     <thead>
       <tr>
         <th>과제명</th>
-        <th class="time-budget-col-goal">목표 시간</th>
         <th>예상 시작 시간</th>
         <th>예상 마감 시간</th>
         <th class="time-budget-col-delete"></th>
@@ -10823,7 +10709,6 @@ export function renderTimeBudgetTablesForCalendar(
   consumeTbody.appendChild(consumeAddRow);
   consumeTableWrap.appendChild(consumeTable);
   consumeBlock.appendChild(consumeTableWrap);
-  updateGoalDiffDisplays(consumeBlock);
 
   function createSectionHeader(title, onAdd) {
     const header = document.createElement("div");
@@ -10868,7 +10753,6 @@ export function renderTimeBudgetTablesForCalendar(
         basicTaskDropdownOptions,
       );
       basicTbody.insertBefore(tr, basicAddRow);
-      updateGoalDiffDisplays(basicBlock);
       updateRemaining();
     },
   );
@@ -10885,7 +10769,6 @@ export function renderTimeBudgetTablesForCalendar(
         investTaskDropdownOptions,
       );
       investTbody.insertBefore(tr, investAddRow);
-      updateGoalDiffDisplays(investBlock);
       updateRemaining();
     },
   );
@@ -10902,56 +10785,53 @@ export function renderTimeBudgetTablesForCalendar(
         consumeTaskDropdownOptions,
       );
       consumeTbody.insertBefore(tr, consumeAddRow);
-      updateGoalDiffDisplays(consumeBlock);
       updateRemaining();
     },
   );
 
+  function scheduledRowHours(tr) {
+    if (!tr || tr.classList.contains("time-row-add")) return 0;
+    const start = (tr.dataset.scheduledStart || "").trim();
+    const end = (tr.dataset.scheduledEnd || "").trim();
+    /* 입력 중 숫자만 있는 값은 제외 — blur 후 hh:mm 만 합산 */
+    const hhmmRe = /^\d{1,2}:\d{2}$/;
+    if (!hhmmRe.test(start) || !hhmmRe.test(end) || !isValidStartEnd(start, end))
+      return 0;
+    let startH = parseTimeToHours(start);
+    let endH = parseTimeToHours(end);
+    if (endH <= startH) endH += 24;
+    return endH - startH;
+  }
+
   function updateRemaining() {
-    let goalSum = 0;
-    const seenTasks = new Set();
-    const addGoalFromInput = (inp) => {
-      const row = inp.closest("tr");
-      const taskName = row ? (row.dataset.taskName || "").trim() : "";
-      if (taskName && seenTasks.has(taskName)) return;
-      if (taskName) seenTasks.add(taskName);
-      goalSum += parseTimeToHours(inp.value);
-    };
+    let plannedSum = 0;
     [basicBlock, investBlock, consumeBlock].forEach((block) => {
-      block
-        .querySelectorAll(".time-budget-goal-wrap .time-budget-time-input")
-        .forEach(addGoalFromInput);
+      block.querySelectorAll("tbody tr").forEach((tr) => {
+        plannedSum += scheduledRowHours(tr);
+      });
     });
-    if (todoSectionEl) {
-      todoSectionEl
-        .querySelectorAll(".time-budget-goal-wrap .time-budget-time-input")
-        .forEach(addGoalFromInput);
-    }
-    const remaining = Math.max(0, 24 - goalSum);
+    const remaining = Math.max(0, 24 - plannedSum);
     if (remainingValueEl)
       remainingValueEl.textContent = formatHoursToHHMM(remaining);
   }
 
   [basicBlock, investBlock, consumeBlock].forEach((block) => {
     block.addEventListener("input", (e) => {
-      if (e.target.classList.contains("time-budget-time-input"))
+      if (e.target.classList.contains("time-budget-scheduled-input")) {
+        const tr = e.target.closest("tr");
+        if (tr) {
+          const inputs = tr.querySelectorAll(".time-budget-scheduled-input");
+          tr.dataset.scheduledStart = (inputs[0]?.value || "").trim();
+          tr.dataset.scheduledEnd = (inputs[1]?.value || "").trim();
+        }
         updateRemaining();
+      }
     });
     block.addEventListener("blur", (e) => {
-      if (e.target.classList.contains("time-budget-time-input"))
+      if (e.target.classList.contains("time-budget-scheduled-input"))
         updateRemaining();
     });
   });
-  if (todoSectionEl) {
-    todoSectionEl.addEventListener("input", (e) => {
-      if (e.target.classList.contains("time-budget-time-input"))
-        updateRemaining();
-    });
-    todoSectionEl.addEventListener("blur", (e) => {
-      if (e.target.classList.contains("time-budget-time-input"))
-        updateRemaining();
-    });
-  }
   updateRemaining();
 
   const fourPanels = document.createElement("div");
