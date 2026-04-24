@@ -27443,6 +27443,144 @@ body.kpi-resizing {
   border-top: none;
 }
 
+/* 회원 탈퇴 (나의 계정) */
+.idea-delete-account-block {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 0.09375rem solid rgba(220, 220, 218, 0.5);
+}
+.idea-btn-delete-account {
+  font-family: var(--font-heading);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #8b5c3a;
+  background: transparent;
+  border: 1px solid #8b5c3a;
+  border-radius: 0;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.idea-btn-delete-account:hover {
+  background: rgba(139, 92, 58, 0.08);
+}
+.idea-delete-account-hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 300;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+.idea-delete-account-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+.idea-delete-account-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+}
+.idea-delete-account-modal-panel {
+  position: relative;
+  width: 100%;
+  max-width: 22rem;
+  background: var(--content-bg);
+  border: var(--line-l2);
+  border-radius: var(--modal-radius) !important;
+  box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.12);
+}
+.idea-delete-account-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: var(--line-l3);
+}
+.idea-delete-account-modal-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: var(--text-body);
+}
+.idea-delete-account-modal-close {
+  flex-shrink: 0;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.idea-delete-account-modal-close:hover {
+  color: var(--text-body);
+}
+.idea-delete-account-modal-body {
+  padding: 1.25rem;
+}
+.idea-delete-account-modal-warn {
+  margin: 0 0 1rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--text-body);
+}
+.idea-delete-account-modal-label {
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+.idea-delete-account-modal-pw {
+  width: 100%;
+  box-sizing: border-box;
+}
+.idea-delete-account-modal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  padding: 1rem 1.25rem;
+  border-top: var(--line-l3);
+}
+.idea-delete-account-modal-cancel {
+  font-family: var(--font-heading);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ui-btn-secondary-color);
+  background: transparent;
+  border: var(--ui-btn-secondary-border);
+  border-radius: 0;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+.idea-delete-account-modal-submit {
+  font-family: var(--font-heading);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #fff;
+  background: #8b5c3a;
+  border: none;
+  border-radius: 0;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+.idea-delete-account-modal-submit:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+.idea-delete-account-modal-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .idea-hourly-result-wrap {
   padding-top: 0.5rem;
   border-top: none;

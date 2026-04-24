@@ -386,3 +386,7 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # cron·외부 스케줄러가 리마인더 푸시 함수 호출 시 JWT 없이 호출 가능 (x-reminder-cron-secret로 보호)
 [functions.send-reminder-pushes]
 verify_jwt = false
+
+# 로그인 사용자 JWT 필수 (게이트웨이에서 먼저 검증)
+[functions.delete-my-account]
+verify_jwt = true
