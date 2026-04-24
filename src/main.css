@@ -2333,6 +2333,328 @@ body {
   text-align: center;
 }
 
+/* 일기 추가·단계 모달 — 데스크탑 + 모바일 공통 */
+.diary-add-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+.diary-add-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+}
+.diary-add-modal-panel {
+  position: relative;
+  width: 100%;
+  max-width: 22rem;
+  background: var(--content-bg);
+  border: var(--line-l2);
+  border-radius: var(--modal-radius) !important;
+  box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.12);
+}
+.diary-add-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: var(--line-l3);
+}
+.diary-add-modal-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: var(--text-body);
+}
+.diary-add-modal-close {
+  flex-shrink: 0;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.diary-add-modal-close:hover {
+  color: var(--text-body);
+}
+.diary-add-modal-body {
+  padding: 1.25rem;
+}
+.diary-add-modal-label {
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+.diary-add-modal-label + .diary-add-modal-radios,
+.diary-add-modal-label + .diary-add-modal-date {
+  margin-top: 0;
+}
+.diary-add-modal-radios {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.diary-add-modal-radio {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  color: var(--text-body);
+  cursor: pointer;
+}
+.diary-add-modal-radio input {
+  margin: 0;
+  accent-color: var(--ui-btn-primary-bg);
+}
+.diary-add-modal-date {
+  width: 100%;
+  padding: 0.5rem 0 0.6rem;
+  font-size: 1rem;
+  font-family: inherit;
+  color: var(--text-body);
+  background: transparent;
+  border: none;
+  border-bottom: var(--input-border-idle);
+  border-radius: 0;
+  box-sizing: border-box;
+}
+.diary-add-modal-date:focus {
+  outline: none;
+  border-bottom: var(--input-border-focus);
+  background: var(--input-focus-bg);
+}
+.diary-add-modal-date::placeholder {
+  color: var(--text-placeholder);
+}
+.diary-add-modal-footer {
+  padding: 1rem 1.25rem;
+  border-top: var(--line-l3);
+}
+.diary-add-modal-confirm {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  font-size: 1rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--ui-btn-primary-fg);
+  background: var(--ui-btn-primary-bg);
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+}
+.diary-add-modal-confirm:hover {
+  background: var(--ui-btn-primary-hover);
+}
+
+.diary-step-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+.diary-step-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+}
+.diary-step-modal-panel {
+  position: relative;
+  width: 100%;
+  max-width: 22rem;
+  background: var(--content-bg);
+  border: var(--line-l2);
+  border-radius: var(--modal-radius) !important;
+  box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.12);
+}
+.diary-step-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: var(--line-l3);
+}
+.diary-step-modal-progress {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+.diary-step-modal-close {
+  flex-shrink: 0;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.diary-step-modal-close:hover {
+  color: var(--text-body);
+}
+.diary-step-modal-body {
+  padding: 1rem 1.25rem;
+}
+.diary-step-modal-question {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-body);
+}
+.diary-step-modal-answer {
+  width: 100%;
+  min-height: 5rem;
+  padding: 0.5rem 0 0.75rem;
+  font-size: 1rem;
+  font-family: inherit;
+  line-height: 1.8;
+  color: var(--text-body);
+  background: transparent;
+  border: none;
+  border-bottom: var(--input-border-idle);
+  border-radius: 0;
+  resize: none;
+  box-sizing: border-box;
+}
+.diary-step-modal-answer:focus {
+  outline: none;
+  border-bottom: var(--input-border-focus);
+  background: var(--input-focus-bg);
+}
+.diary-step-modal-answer::placeholder {
+  color: var(--text-placeholder);
+}
+.diary-step-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-top: var(--line-l3);
+}
+.diary-step-modal-prev {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  color: var(--ui-btn-secondary-color);
+  background: transparent;
+  border: var(--ui-btn-secondary-border);
+  cursor: pointer;
+}
+.diary-step-modal-prev:hover:not(:disabled) {
+  opacity: 0.9;
+}
+.diary-step-modal-prev:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.diary-step-modal-prev svg {
+  display: block;
+}
+.diary-step-modal-next {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.6rem 1rem;
+  font-size: 1rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--ui-btn-primary-fg);
+  background: var(--ui-btn-primary-bg);
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+}
+.diary-step-modal-next:hover {
+  background: var(--ui-btn-primary-hover);
+}
+.diary-step-modal-next svg {
+  display: block;
+}
+
+.diary-step-modal-date-row {
+  padding: 0.35rem 1rem 0.65rem;
+  border-bottom: var(--line-l3);
+}
+.diary-step-modal-date-display {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.diary-date-edit-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+}
+.diary-date-edit-display {
+  flex: 1;
+  min-width: 0;
+}
+.diary-date-cal-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 0.25rem;
+}
+.diary-date-cal-btn:hover {
+  color: var(--text-body);
+}
+.diary-date-edit-input-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  opacity: 0;
+}
+
+/* 날짜 옆에 달력만 붙이기 — display에 flex:1이면 달력이 행 끝(휴지통 옆)으로 밀림 */
+.diary-paper-qa-header .diary-date-edit-row,
+.diary-paper-title-row .diary-date-edit-row,
+.diary-feed-card .diary-paper-qa-header .diary-date-edit-row {
+  flex: 0 1 auto;
+}
+.diary-paper-qa-header .diary-date-edit-display,
+.diary-paper-title-row .diary-date-edit-display,
+.diary-feed-card .diary-paper-qa-header .diary-date-edit-display {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
 /* 48rem 이하: 하단 가로 탭(모바일). 아이패드 미니 세로(744·768 CSS px) 포함 */
 @media (max-width: 48rem) {
   .auth-gate-body {
@@ -2617,265 +2939,12 @@ body {
     color: var(--text-placeholder);
   }
 
-  /* 일기 추가 모달 (모바일) */
-  .diary-add-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-    box-sizing: border-box;
+  .diary-date-cal-btn {
+    padding: 0.12rem;
   }
-  .diary-add-modal-backdrop {
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.4);
-  }
-  .diary-add-modal-panel {
-    position: relative;
-    width: 100%;
-    max-width: 22rem;
-    background: var(--content-bg);
-    border: var(--line-l2);
-    border-radius: var(--modal-radius) !important;
-    box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.12);
-  }
-  .diary-add-modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1rem 1.25rem;
-    border-bottom: var(--line-l3);
-  }
-  .diary-add-modal-title {
-    margin: 0;
-    font-size: 1.125rem;
-    font-weight: 500;
-    color: var(--text-body);
-  }
-  .diary-add-modal-close {
-    flex-shrink: 0;
-    min-width: 2.5rem;
-    min-height: 2.5rem;
-    padding: 0;
-    font-size: 1.5rem;
-    line-height: 1;
-    color: var(--text-muted);
-    background: none;
-    border: none;
-    cursor: pointer;
-  }
-  .diary-add-modal-close:hover {
-    color: var(--text-body);
-  }
-  .diary-add-modal-body {
-    padding: 1.25rem;
-  }
-  .diary-add-modal-label {
-    margin: 0 0 0.5rem;
-    font-size: 0.875rem;
-    color: var(--text-muted);
-  }
-  .diary-add-modal-label + .diary-add-modal-radios,
-  .diary-add-modal-label + .diary-add-modal-date {
-    margin-top: 0;
-  }
-  .diary-add-modal-radios {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-  }
-  .diary-add-modal-radio {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 1rem;
-    color: var(--text-body);
-    cursor: pointer;
-  }
-  .diary-add-modal-radio input {
-    margin: 0;
-    accent-color: var(--ui-btn-primary-bg);
-  }
-  .diary-add-modal-date {
-    width: 100%;
-    padding: 0.5rem 0 0.6rem;
-    font-size: 1rem;
-    font-family: inherit;
-    color: var(--text-body);
-    background: transparent;
-    border: none;
-    border-bottom: var(--input-border-idle);
-    border-radius: 0;
-    box-sizing: border-box;
-  }
-  .diary-add-modal-date:focus {
-    outline: none;
-    border-bottom: var(--input-border-focus);
-    background: var(--input-focus-bg);
-  }
-  .diary-add-modal-date::placeholder {
-    color: var(--text-placeholder);
-  }
-  .diary-add-modal-footer {
-    padding: 1rem 1.25rem;
-    border-top: var(--line-l3);
-  }
-  .diary-add-modal-confirm {
-    width: 100%;
-    padding: 0.6rem 1rem;
-    font-size: 1rem;
-    font-weight: 500;
-    font-family: inherit;
-    color: var(--ui-btn-primary-fg);
-    background: var(--ui-btn-primary-bg);
-    border: none;
-    border-radius: 0;
-    cursor: pointer;
-  }
-  .diary-add-modal-confirm:hover {
-    background: var(--ui-btn-primary-hover);
-  }
-
-  /* 일기 단계별 질문 모달 (모바일) */
-  .diary-step-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 10000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-    box-sizing: border-box;
-  }
-  .diary-step-modal-backdrop {
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.4);
-  }
-  .diary-step-modal-panel {
-    position: relative;
-    width: 100%;
-    max-width: 22rem;
-    background: var(--content-bg);
-    border: var(--line-l2);
-    border-radius: var(--modal-radius) !important;
-    box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.12);
-  }
-  .diary-step-modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.75rem 1rem;
-    border-bottom: var(--line-l3);
-  }
-  .diary-step-modal-progress {
-    margin: 0;
-    font-size: 0.875rem;
-    color: var(--text-muted);
-  }
-  .diary-step-modal-close {
-    flex-shrink: 0;
-    min-width: 2.5rem;
-    min-height: 2.5rem;
-    padding: 0;
-    font-size: 1.5rem;
-    line-height: 1;
-    color: var(--text-muted);
-    background: none;
-    border: none;
-    cursor: pointer;
-  }
-  .diary-step-modal-close:hover {
-    color: var(--text-body);
-  }
-  .diary-step-modal-body {
-    padding: 1rem 1.25rem;
-  }
-  .diary-step-modal-question {
-    margin: 0 0 0.75rem;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-body);
-  }
-  .diary-step-modal-answer {
-    width: 100%;
-    min-height: 5rem;
-    padding: 0.5rem 0 0.75rem;
-    font-size: 1rem;
-    font-family: inherit;
-    line-height: 1.8;
-    color: var(--text-body);
-    background: transparent;
-    border: none;
-    border-bottom: var(--input-border-idle);
-    border-radius: 0;
-    resize: none;
-    box-sizing: border-box;
-  }
-  .diary-step-modal-answer:focus {
-    outline: none;
-    border-bottom: var(--input-border-focus);
-    background: var(--input-focus-bg);
-  }
-  .diary-step-modal-answer::placeholder {
-    color: var(--text-placeholder);
-  }
-  .diary-step-modal-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 1rem 1.25rem;
-    border-top: var(--line-l3);
-  }
-  .diary-step-modal-prev {
-    flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.75rem;
-    height: 2.75rem;
-    padding: 0;
-    color: var(--ui-btn-secondary-color);
-    background: transparent;
-    border: var(--ui-btn-secondary-border);
-    cursor: pointer;
-  }
-  .diary-step-modal-prev:hover:not(:disabled) {
-    opacity: 0.9;
-  }
-  .diary-step-modal-prev:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-  .diary-step-modal-prev svg {
-    display: block;
-  }
-  .diary-step-modal-next {
-    flex: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 2.75rem;
-    padding: 0.6rem 1rem;
-    font-size: 1rem;
-    font-weight: 500;
-    font-family: inherit;
-    color: var(--ui-btn-primary-fg);
-    background: var(--ui-btn-primary-bg);
-    border: none;
-    border-radius: 0;
-    cursor: pointer;
-  }
-  .diary-step-modal-next:hover {
-    background: var(--ui-btn-primary-hover);
-  }
-  .diary-step-modal-next svg {
-    display: block;
+  .diary-date-cal-btn svg {
+    width: 16px;
+    height: 16px;
   }
 }
 

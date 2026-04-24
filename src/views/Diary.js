@@ -167,6 +167,63 @@ export function render() {
     return d ? formatDateDisplay(d) : formatDateDisplay(entry.date) || "";
   }
 
+  /** 날짜 표시 + 숨김 date 입력 + 달력 버튼(데스크톱·모바일 공통) */
+  function createDiaryDateEditor(entry, _tabId, variant) {
+    void _tabId;
+    const row = document.createElement("div");
+    row.className = "diary-date-edit-row";
+    const norm = (s) => normalizeDiaryDateStr(s) || toDateStr(new Date());
+    const inp = document.createElement("input");
+    inp.type = "date";
+    inp.className = "diary-date-edit-input-native";
+    inp.setAttribute("aria-hidden", "true");
+    inp.tabIndex = -1;
+    inp.value = norm(entry.date);
+    const display = document.createElement("span");
+    display.className = "diary-date-edit-display";
+    if (variant === "qa-header") {
+      display.classList.add("diary-paper-meta", "diary-paper-qa-header-title");
+    } else if (variant === "feed") {
+      display.classList.add("diary-feed-card-title");
+      display.setAttribute("aria-label", "일기 날짜");
+    } else if (variant === "free") {
+      display.classList.add("diary-paper-date");
+      display.setAttribute("aria-label", "일기 날짜");
+      display.style.marginBottom = "0";
+    } else if (variant === "step") {
+      display.classList.add("diary-step-modal-date-display");
+    }
+    display.textContent = formatDateDisplay(inp.value);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "diary-date-cal-btn";
+    btn.title = "날짜 변경";
+    btn.setAttribute("aria-label", "날짜 선택");
+    btn.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';
+    btn.addEventListener("click", () => {
+      try {
+        if (typeof inp.showPicker === "function") inp.showPicker();
+        else inp.click();
+      } catch (_) {
+        inp.click();
+      }
+    });
+    inp.addEventListener("change", () => {
+      const v = inp.value;
+      if (!v) return;
+      display.textContent = formatDateDisplay(v);
+      if (norm(entry.date) === v) return;
+      entry.date = v;
+      saveDiaryEntries(entries);
+      renderLayout();
+    });
+    row.appendChild(display);
+    row.appendChild(btn);
+    row.appendChild(inp);
+    return row;
+  }
+
   function filterPageListInPlace(query) {
     const pageList = layoutWrap.querySelector(".diary-page-list");
     if (!pageList) return;
@@ -299,8 +356,10 @@ export function render() {
 
     function openAddModal() {
       const today = toDateStr(new Date());
+      const defaultType = ["1", "2", "3"].includes(currentTabId) ? currentTabId : "2";
       const modal = document.createElement("div");
       modal.className = "diary-add-modal";
+      const ck = (v) => (defaultType === v ? " checked" : "");
       modal.innerHTML = `
         <div class="diary-add-modal-backdrop"></div>
         <div class="diary-add-modal-panel">
@@ -311,9 +370,9 @@ export function render() {
           <div class="diary-add-modal-body">
             <p class="diary-add-modal-label">유형</p>
             <div class="diary-add-modal-radios">
-              <label class="diary-add-modal-radio"><input type="radio" name="diary-type" value="3" /> 감정일기</label>
-              <label class="diary-add-modal-radio"><input type="radio" name="diary-type" value="2" checked /> 통제일기</label>
-              <label class="diary-add-modal-radio"><input type="radio" name="diary-type" value="1" /> 자유일기</label>
+              <label class="diary-add-modal-radio"><input type="radio" name="diary-type" value="3"${ck("3")} /> 감정일기</label>
+              <label class="diary-add-modal-radio"><input type="radio" name="diary-type" value="2"${ck("2")} /> 통제일기</label>
+              <label class="diary-add-modal-radio"><input type="radio" name="diary-type" value="1"${ck("1")} /> 자유일기</label>
             </div>
             <p class="diary-add-modal-label">날짜</p>
             <input type="date" class="diary-add-modal-date" value="${today}" />
@@ -351,7 +410,17 @@ export function render() {
               : { id, date: dateStr, title: "제목없음", content: "" };
         rawList.push(newEntry);
         saveDiaryEntries(entries);
-        openStepModal(newEntry, tabId);
+        if (isDiaryMobileViewport()) {
+          openStepModal(newEntry, tabId);
+        } else {
+          currentTabId = tabId;
+          currentEntryId = id;
+          renderLayout();
+          requestAnimationFrame(() => {
+            const hit = layoutWrap.querySelector(`[data-entry-id="${id}"]`);
+            if (hit) hit.scrollIntoView({ block: "nearest", behavior: "smooth" });
+          });
+        }
       });
       document.body.appendChild(modal);
     }
@@ -434,6 +503,12 @@ export function render() {
         ta.addEventListener("input", () => {
           answers[key] = ta.value;
         });
+        const hdr = modal.querySelector(".diary-step-modal-header");
+        if (hdr) {
+          const dateRow = createDiaryDateEditor(entry, tabId, "step");
+          dateRow.classList.add("diary-step-modal-date-row");
+          hdr.insertAdjacentElement("afterend", dateRow);
+        }
         modal.querySelector(".diary-step-modal-close").addEventListener("click", () => modal.remove());
 
         modal.querySelector(".diary-step-modal-prev").addEventListener("click", () => {
@@ -596,12 +671,7 @@ export function render() {
         card.className = "diary-paper diary-paper-qa diary-feed-card" + (currentTabId === "3" ? " diary-paper-tab3" : "");
         const qaHeader = document.createElement("div");
         qaHeader.className = "diary-paper-qa-header";
-        const dateLabel = document.createElement("span");
-        dateLabel.className = "diary-paper-meta diary-feed-card-title";
-        dateLabel.setAttribute("aria-label", "일기 날짜");
-        const dNorm = normalizeDiaryDateStr(entry.date) || entry.date;
-        dateLabel.textContent = formatDateDisplay(dNorm) || formatDateDisplay(toDateStr(new Date()));
-        qaHeader.appendChild(dateLabel);
+        qaHeader.appendChild(createDiaryDateEditor(entry, currentTabId, "feed"));
         const deleteBtn = document.createElement("button");
         deleteBtn.type = "button";
         deleteBtn.className = "diary-paper-delete-btn diary-paper-delete-btn-qa";
@@ -702,12 +772,7 @@ export function render() {
       if (!currentEntry.q4 && currentEntry.q4 !== "") currentEntry.q4 = "";
       const qaHeader = document.createElement("div");
       qaHeader.className = "diary-paper-qa-header";
-      const dateLabel3 = document.createElement("span");
-      dateLabel3.className = "diary-paper-meta diary-paper-qa-header-title";
-      dateLabel3.setAttribute("aria-label", "일기 날짜");
-      const d3 = normalizeDiaryDateStr(currentEntry.date) || currentEntry.date;
-      dateLabel3.textContent = formatDateDisplay(d3) || formatDateDisplay(toDateStr(new Date()));
-      qaHeader.appendChild(dateLabel3);
+      qaHeader.appendChild(createDiaryDateEditor(currentEntry, currentTabId, "qa-header"));
       const deleteBtn = document.createElement("button");
       deleteBtn.type = "button";
       deleteBtn.className = "diary-paper-delete-btn diary-paper-delete-btn-qa";
@@ -766,12 +831,7 @@ export function render() {
         paper.className = "diary-paper diary-paper-qa";
         const qaHeader = document.createElement("div");
         qaHeader.className = "diary-paper-qa-header";
-        const dateLabel2 = document.createElement("span");
-        dateLabel2.className = "diary-paper-meta diary-paper-qa-header-title";
-        dateLabel2.setAttribute("aria-label", "일기 날짜");
-        const d2 = normalizeDiaryDateStr(currentEntry.date) || currentEntry.date;
-        dateLabel2.textContent = formatDateDisplay(d2) || formatDateDisplay(toDateStr(new Date()));
-        qaHeader.appendChild(dateLabel2);
+        qaHeader.appendChild(createDiaryDateEditor(currentEntry, currentTabId, "qa-header"));
         const deleteBtn = document.createElement("button");
         deleteBtn.type = "button";
         deleteBtn.className = "diary-paper-delete-btn diary-paper-delete-btn-qa";
@@ -823,15 +883,7 @@ export function render() {
       } else {
         const titleRow = document.createElement("div");
         titleRow.className = "diary-paper-title-row";
-        const dateLabelFree = document.createElement("span");
-        dateLabelFree.className = "diary-paper-date";
-        dateLabelFree.setAttribute("aria-label", "일기 날짜");
-        dateLabelFree.style.flex = "1";
-        dateLabelFree.style.minWidth = "0";
-        dateLabelFree.style.marginBottom = "0";
-        const d1 = normalizeDiaryDateStr(currentEntry.date) || currentEntry.date;
-        dateLabelFree.textContent = formatDateDisplay(d1) || formatDateDisplay(toDateStr(new Date()));
-        titleRow.appendChild(dateLabelFree);
+        titleRow.appendChild(createDiaryDateEditor(currentEntry, currentTabId, "free"));
         const deleteBtn = document.createElement("button");
         deleteBtn.type = "button";
         deleteBtn.className = "diary-paper-delete-btn";
@@ -877,7 +929,13 @@ export function render() {
     layoutWrap.appendChild(layout);
 
     filterPageListInPlace(searchQuery);
-    if (mobile) updateMobileTabs();
+    if (mobile) {
+      updateMobileTabs();
+    } else {
+      tabs.querySelectorAll(".diary-tab-btn").forEach((b) => {
+        b.classList.toggle("active", b.dataset.tab === currentTabId);
+      });
+    }
   }
 
   tabs.querySelectorAll(".diary-tab-btn").forEach((btn) => {
