@@ -232,6 +232,130 @@ const STORAGE_CONFIG = [
 ];
 
 /**
+ * 시간가계부 행에 기록한 스냅샷(해당 기록이 KPI daily_completed에 합친 todo id)만큼 제거
+ */
+export function removeKpiHabitCheckTimeLedgerSnapshot(snap) {
+  if (!snap || typeof snap !== "object") return;
+  const storageKey = String(snap.storageKey || "").trim();
+  const kpiId = String(snap.kpiId || "").trim();
+  const dateRaw = String(snap.dateRaw || "")
+    .trim()
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  const ids = Array.isArray(snap.completedTodoIds)
+    ? snap.completedTodoIds
+    : Array.isArray(snap.completed_todo_ids)
+      ? snap.completed_todo_ids
+      : [];
+  removeHabitTrackerDailyCompletedByTodoIds(storageKey, kpiId, dateRaw, ids);
+}
+
+function removeHabitTrackerDailyCompletedByTodoIds(
+  storageKey,
+  kpiId,
+  dateRaw,
+  todoIds,
+) {
+  if (!storageKey || !kpiId || !dateRaw) return;
+  const normDate = normalizeLogDate(dateRaw);
+  if (normDate.length < 10) return;
+  const idSet = new Set(
+    (Array.isArray(todoIds) ? todoIds : [])
+      .map((t) => String(t || "").trim())
+      .filter(Boolean),
+  );
+  if (idSet.size === 0) return;
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return;
+    const prev = JSON.parse(raw);
+    const data = JSON.parse(raw);
+    const kpis = data.kpis || [];
+    const kpi = kpis.find((k) => k.id === kpiId);
+    if (!kpi || !kpi.needHabitTracker) return;
+    const config = STORAGE_CONFIG.find((c) => c.key === storageKey);
+    if (!config) return;
+    const logs = data.kpiLogs || [];
+    const existingIdx = logs.findIndex(
+      (l) => l.kpiId === kpiId && normalizeLogDate(l.dateRaw || l.date || "") === normDate,
+    );
+    if (existingIdx < 0) return;
+    const cur = Array.isArray(logs[existingIdx].dailyCompleted)
+      ? logs[existingIdx].dailyCompleted
+      : [];
+    const next = cur.filter((t) => {
+      const id = String(t?.id || "").trim();
+      if (!id) return true;
+      return !idSet.has(id);
+    });
+    if (next.length === cur.length) return;
+    logs[existingIdx].dailyCompleted = next;
+    logs[existingIdx].dailyIncomplete = [];
+    data.kpiLogs = logs;
+    stampAndPersistKpiMap(storageKey, prev, data);
+  } catch (_) {}
+}
+
+/**
+ * 해당 과제명·날짜에 사용시간이 남은 시간가계부 행이 없으면, 매일할일(needHabitTracker) KPI의 그날 **로그 행 전체** 제거.
+ * (dailyCompleted만 비우면 value·'1일'이 남는 문제를 막기 위함. 삭제된 행 기준 `rowsOverride` 권장)
+ * @param {string} taskName
+ * @param {string|undefined} dateRaw
+ * @param {unknown[]|undefined} rowsOverride - 삭제 직후 배열(미주입 시 readTimeLedgerEntriesRaw)
+ */
+export function pruneHabitKpiDayLogsIfNoTimeEntryForTaskDate(
+  taskName,
+  dateRaw,
+  rowsOverride,
+) {
+  const name = (taskName || "").trim();
+  if (!name) return;
+  const norm = normalizeLogDate(
+    String(dateRaw || "")
+      .trim()
+      .replace(/\//g, "-"),
+  );
+  if (norm.length < 10) return;
+  const rows = Array.isArray(rowsOverride)
+    ? rowsOverride
+    : readTimeLedgerEntriesRaw();
+  const hasTime = rows.some((r) => {
+    if (!r || typeof r !== "object") return false;
+    if ((r.taskName || "").trim() !== name) return false;
+    const d = (r.date || "").toString();
+    if (normalizeLogDate(d) !== norm) return false;
+    return !!((r.timeTracked || "").trim());
+  });
+  if (hasTime) return;
+
+  STORAGE_CONFIG.forEach(({ key }) => {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      const prev = JSON.parse(raw);
+      const data = JSON.parse(raw);
+      const kpis = data.kpis || [];
+      const kpiIds = new Set();
+      for (const k of kpis) {
+        if (!k || !k.needHabitTracker) continue;
+        if ((k.name || "").trim() !== name) continue;
+        kpiIds.add(k.id);
+      }
+      if (kpiIds.size === 0) return;
+      const logs = data.kpiLogs || [];
+      const next = logs.filter((l) => {
+        if (!kpiIds.has(l.kpiId)) return true;
+        const ld = normalizeLogDate(l.dateRaw || l.date || "");
+        return ld !== norm;
+      });
+      if (next.length === logs.length) return;
+      data.kpiLogs = next;
+      stampAndPersistKpiMap(key, prev, data);
+    } catch (_) {}
+  });
+}
+
+/**
  * 매일 반복 KPI: 과제 기록 시 해당 날짜 로그에 체크한 매일 할 일만 저장(시간기록 모달)
  * @param {string} storageKey
  * @param {string} kpiId

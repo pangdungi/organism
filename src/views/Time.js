@@ -18,6 +18,8 @@ import {
   upsertHabitTrackerLogWithDailyState,
   getHabitTrackerDailyCompletedForDate,
   replaceHabitTrackerLogDailyCompleted,
+  removeKpiHabitCheckTimeLedgerSnapshot,
+  pruneHabitKpiDayLogsIfNoTimeEntryForTaskDate,
 } from "../utils/timeKpiSync.js";
 import {
   getKpiTodosAsTasks,
@@ -2195,6 +2197,14 @@ function removeTimeLedgerRowFromRows(rows, rowData) {
   return { next, removed: before - next.length };
 }
 
+function clearKpiHabitOnTimeLedgerRowDelete(rowData) {
+  try {
+    const s = rowData?.kpiHabitCheckSnapshot;
+    if (s && typeof s === "object")
+      removeKpiHabitCheckTimeLedgerSnapshot(s);
+  } catch (_) {}
+}
+
 /**
  * 과제 기록 모달용: 선택한 날짜에 저장된 기록 중 가장 늦은 시각(HH:mm).
  * exclude: 수정 중인 행(id 또는 composite 키)은 제외.
@@ -3968,6 +3978,7 @@ function createProductivitySection(
   };
 
   const handleRowDelete = (tr, rowData) => {
+    if (rowData) clearKpiHabitOnTimeLedgerRowDelete(rowData);
     const entryId = String(rowData?.id || "").trim();
     tr.remove();
     onRowUpdate();
@@ -3982,6 +3993,11 @@ function createProductivitySection(
       }
       const diskBefore = loadTimeRows();
       const { next } = removeTimeLedgerRowFromRows(diskBefore, rowData);
+      pruneHabitKpiDayLogsIfNoTimeEntryForTaskDate(
+        rowData.taskName,
+        rowData.date,
+        next,
+      );
       saveTimeRows(next);
     })();
   };
@@ -7066,6 +7082,11 @@ export function render() {
     /* 투두는 + 버튼 모달에서 카테고리 선택 후 추가 시 저장됨 */
 
     if (editTr || addCtx) {
+      if (oldRowDataToRemove?.kpiHabitCheckSnapshot) {
+        removeKpiHabitCheckTimeLedgerSnapshot(
+          oldRowDataToRemove.kpiHabitCheckSnapshot,
+        );
+      }
       if (editTr && oldRowDataToRemove) {
         const { next } = removeTimeLedgerRowFromRows(
           allRowsCache,
@@ -7117,6 +7138,26 @@ export function render() {
             normalizedDateRaw,
             { completed },
           );
+          if (editTr?._rowData || addLedgerTr?._rowData) {
+            if (completed.length > 0) {
+              const snap = {
+                storageKey: dailyInfoSubmit.storageKey,
+                kpiId: dailyInfoSubmit.kpiId,
+                dateRaw: normalizedDateRaw,
+                completedTodoIds: completed
+                  .map((c) => String(c.id || "").trim())
+                  .filter(Boolean),
+              };
+              if (editTr?._rowData) editTr._rowData.kpiHabitCheckSnapshot = snap;
+              if (addLedgerTr?._rowData)
+                addLedgerTr._rowData.kpiHabitCheckSnapshot = snap;
+            } else {
+              if (editTr?._rowData)
+                delete editTr._rowData.kpiHabitCheckSnapshot;
+              if (addLedgerTr?._rowData)
+                delete addLedgerTr._rowData.kpiHabitCheckSnapshot;
+            }
+          }
         }
       }
       onFilterChange();
@@ -7917,6 +7958,7 @@ export function render() {
     }
 
     const handleCardDelete = (card, rowData) => {
+      if (rowData) clearKpiHabitOnTimeLedgerRowDelete(rowData);
       card.remove();
       updateTotal();
       if (!rowData) return;
@@ -7930,6 +7972,11 @@ export function render() {
         }
         const { next } = removeTimeLedgerRowFromRows(allRowsCache, rowData);
         allRowsCache = next;
+        pruneHabitKpiDayLogsIfNoTimeEntryForTaskDate(
+          rowData.taskName,
+          rowData.date,
+          next,
+        );
         saveTimeRows(allRowsCache);
       })();
     };
@@ -8254,6 +8301,7 @@ export function render() {
       }
     }
     const handleRowDelete = (tr, rowData) => {
+      if (rowData) clearKpiHabitOnTimeLedgerRowDelete(rowData);
       tr.remove();
       updateTotal();
       if (!rowData) return;
@@ -8267,6 +8315,11 @@ export function render() {
         }
         const { next } = removeTimeLedgerRowFromRows(allRowsCache, rowData);
         allRowsCache = next;
+        pruneHabitKpiDayLogsIfNoTimeEntryForTaskDate(
+          rowData.taskName,
+          rowData.date,
+          next,
+        );
         saveTimeRows(allRowsCache);
       })();
     };

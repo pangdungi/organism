@@ -249,6 +249,29 @@ export function localTimeLedgerRowToDbPayload(userId, row) {
       memo_tags_len: memoTagsClean.length,
     });
   }
+  const snap = row.kpiHabitCheckSnapshot;
+  let kpi_habit_check_snapshot = null;
+  if (snap && typeof snap === "object") {
+    const sk = String(snap.storageKey || "").trim();
+    const kid = String(snap.kpiId || "").trim();
+    const dr = String(snap.dateRaw || "")
+      .replace(/\//g, "-")
+      .trim()
+      .slice(0, 10);
+    const cids = Array.isArray(snap.completedTodoIds)
+      ? snap.completedTodoIds
+          .map((x) => String(x || "").trim())
+          .filter(Boolean)
+      : [];
+    if (sk && kid && dr.length >= 10 && cids.length > 0) {
+      kpi_habit_check_snapshot = {
+        storageKey: sk,
+        kpiId: kid,
+        dateRaw: dr,
+        completedTodoIds: cids,
+      };
+    }
+  }
   return {
     id: String(row.id || "").trim(),
     user_id: userId,
@@ -264,6 +287,7 @@ export function localTimeLedgerRowToDbPayload(userId, row) {
     memo: String(row.feedback || "").trim(),
     memo_tags: memoTagsClean,
     linked_expense_ids,
+    kpi_habit_check_snapshot,
   };
 }
 
@@ -281,6 +305,32 @@ export function dbRowToLocalTimeLedgerRow(db) {
   const { clean: memoTagsClean, legacyIds: legacyFromMemo } =
     partitionMemoTagsAndLegacyExpenseIds(raw_memo_tags);
   const linkedExpenseIds = [...new Set([...dbLinkedIds, ...legacyFromMemo])];
+  const rawKpiSnap = db.kpi_habit_check_snapshot;
+  let kpiHabitCheckSnapshot;
+  if (rawKpiSnap && typeof rawKpiSnap === "object") {
+    const sk = String(rawKpiSnap.storageKey || "").trim();
+    const kid = String(rawKpiSnap.kpiId || "").trim();
+    const dr = String(rawKpiSnap.dateRaw || rawKpiSnap.date_raw || "")
+      .replace(/\//g, "-")
+      .trim()
+      .slice(0, 10);
+    const cids = Array.isArray(rawKpiSnap.completedTodoIds)
+      ? rawKpiSnap.completedTodoIds
+      : Array.isArray(rawKpiSnap.completed_todo_ids)
+        ? rawKpiSnap.completed_todo_ids
+        : [];
+    const ids = cids
+      .map((x) => String(x || "").trim())
+      .filter(Boolean);
+    if (sk && kid && dr.length >= 10 && ids.length > 0) {
+      kpiHabitCheckSnapshot = {
+        storageKey: sk,
+        kpiId: kid,
+        dateRaw: dr,
+        completedTodoIds: ids,
+      };
+    }
+  }
   return {
     id: String(db.id || "").trim(),
     date:
@@ -297,6 +347,9 @@ export function dbRowToLocalTimeLedgerRow(db) {
     feedback: String(db.memo || "").trim(),
     memoTags: memoTagsClean,
     linkedExpenseIds,
+    ...(kpiHabitCheckSnapshot
+      ? { kpiHabitCheckSnapshot }
+      : {}),
     /** Supabase updated_at — 병합 시 last-write-wins */
     /** Supabase updated_at — 서버 스냅샷·동기화 표시용 */
     serverUpdatedAt:
