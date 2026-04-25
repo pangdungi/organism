@@ -67,13 +67,15 @@ export async function pullTimeDailyBudgetFromSupabase() {
 
   const { data, error } = await supabase
     .from(TABLE)
-    .select("plan_date, goals, excluded_names, updated_at")
+    .select("user_id, plan_date, goals, excluded_names, updated_at")
     .eq("user_id", userId)
     .order("plan_date", { ascending: false });
 
   if (error) return false;
   if (!data?.length) return false;
-  return mergeTimeDailyBudgetRowsFromServer(data);
+  const selfRows = data.filter((r) => r && r.user_id === userId);
+  if (selfRows.length === 0) return false;
+  return mergeTimeDailyBudgetRowsFromServer(selfRows);
 }
 
 export async function pushAllLocalTimeDailyBudgetIfServerEmpty() {

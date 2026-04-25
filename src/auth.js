@@ -15,6 +15,20 @@ import { clearTodoSectionTasksMemAndLegacy } from "./utils/todoSectionTasksModel
 import { clearTodoSubtasksMemAndLegacy } from "./utils/todoSubtasks.js";
 import { clearTodoSettingsAndCustomSectionsOnSignOut } from "./utils/todoSettings.js";
 import { clearAllKpiUiSessions } from "./utils/kpiViewUiSession.js";
+import { flushAllPendingTimeDailyBudgetSync } from "./utils/timeDailyBudgetSupabase.js";
+
+/**
+ * 로그아웃 시 sessionStorage·localStorage 전부 비움(키 누락으로 이전 사용자 데이터가 남는 것 방지).
+ * 반드시 IndexedDB purge(시간가계부)·모듈별 mem 정리 뒤 마지막에 호출할 것.
+ */
+function nukeClientWebStorageOnSignOut() {
+  try {
+    sessionStorage.clear();
+  } catch (_) {}
+  try {
+    localStorage.clear();
+  } catch (_) {}
+}
 
 /** 로그아웃·세션 만료·구독 만료 signOut 시 로컬 시간가계부·과제 캐시 제거 (다른 계정과 섞임 방지) */
 export async function purgeTimeLedgerLocalOnSignOut() {
@@ -33,9 +47,7 @@ export async function purgeTimeLedgerLocalOnSignOut() {
   clearTodoSubtasksMemAndLegacy();
   clearTodoSettingsAndCustomSectionsOnSignOut();
   clearAllKpiUiSessions();
-  try {
-    sessionStorage.removeItem("lp_ledger_uid");
-  } catch (_) {}
+  nukeClientWebStorageOnSignOut();
 }
 
 /** Supabase Auth 가 넘기는 영문 메시지를 사용자용 한국어로 */
@@ -109,10 +121,16 @@ export async function login(email, password) {
 }
 
 export async function signOut() {
+  try {
+    flushAllPendingTimeDailyBudgetSync();
+  } catch (_) {}
+  try {
+    const el = document.getElementById("app-screen");
+    if (el) el.innerHTML = "";
+  } catch (_) {}
+  showOnly("login");
   if (supabase) await supabase.auth.signOut();
   await purgeTimeLedgerLocalOnSignOut();
-  document.getElementById("app-screen").innerHTML = "";
-  showOnly("login");
 }
 
 /** 비밀번호 재설정 메일 요청 (가입 이메일로 링크 발송) */

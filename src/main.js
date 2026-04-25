@@ -21,6 +21,7 @@ import {
   ensureVapidRuntimeFallback,
 } from "./utils/webPushReminders.js";
 import { ensureTimeLedgerStorageReady } from "./utils/timeLedgerEntriesModel.js";
+import { flushAllPendingTimeDailyBudgetSync } from "./utils/timeDailyBudgetSupabase.js";
 import {
   enforceSubscriptionAccessOrSignOut,
   SUBSCRIPTION_EXPIRED_MESSAGE,
@@ -166,10 +167,20 @@ function init() {
         sessionStorage.removeItem(LP_LAST_TAB_SESSION_KEY);
         localStorage.removeItem(LP_LAST_TAB_LOCAL_KEY);
       } catch (_) {}
-      void purgeTimeLedgerLocalOnSignOut();
-      document.getElementById("app-screen").innerHTML = "";
-      showOnly("login");
-      setAuthGatePanel("signup");
+      void (async () => {
+        try {
+          flushAllPendingTimeDailyBudgetSync();
+        } catch (_) {}
+        try {
+          const el = document.getElementById("app-screen");
+          if (el) el.innerHTML = "";
+        } catch (_) {}
+        showOnly("login");
+        setAuthGatePanel("signup");
+        try {
+          await purgeTimeLedgerLocalOnSignOut();
+        } catch (_) {}
+      })();
     }
   });
 

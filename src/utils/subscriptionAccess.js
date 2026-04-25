@@ -1,6 +1,7 @@
 /**
  * user_subscriptions: inactive + access_until 경과 시 앱 이용 불가 (클라이언트 게이트)
  */
+import { signOut } from "../auth.js";
 import { supabase } from "../supabase.js";
 
 export const SUBSCRIPTION_EXPIRED_MESSAGE = "이용기간이 종료되었습니다.";
@@ -35,6 +36,6 @@ export async function enforceSubscriptionAccessOrSignOut() {
 
   if (Date.now() <= endMs) return false;
 
-  await supabase.auth.signOut();
+  await signOut();
   return true;
 }

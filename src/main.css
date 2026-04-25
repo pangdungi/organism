@@ -2109,9 +2109,12 @@ body {
     outline: none;
   }
 
-  .todo-task-edit-modal .todo-task-edit-header-delete:focus,
-  .todo-task-edit-modal .todo-task-edit-header-delete:focus-visible {
+  .todo-task-edit-modal .todo-task-edit-footer-delete:focus,
+  .todo-task-edit-modal .todo-task-edit-footer-delete:focus-visible {
     outline: none;
+  }
+  .todo-task-edit-modal .todo-task-edit-delete-below {
+    padding: 0.5rem 1rem 0.5rem;
   }
 
   /* 모바일: 모달 열 때 자동 확대/이동 방지 — 입력창은 탭할 때만 키보드, 한 곳에 고정 */
@@ -14783,7 +14786,7 @@ svg.todo-card-reminder-icon {
   color: var(--accent-viridian);
 }
 
-/* 할 일 수정: 삭제는 닫기(X) 왼쪽 휴지통 — 취소와 인접 실수 방지 */
+/* 할 일 수정: 닫기(X) — 삭제는 본문·푸터 사이(할 일 삭제) */
 .todo-task-edit-modal .todo-task-edit-header-actions {
   display: flex;
   align-items: center;
@@ -14791,28 +14794,47 @@ svg.todo-card-reminder-icon {
   flex-shrink: 0;
 }
 
-.todo-task-edit-modal .todo-task-edit-header-delete {
-  display: inline-flex;
+.todo-task-edit-modal .todo-task-edit-delete-below {
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 1.25rem 0.5rem;
+  border-top: var(--line-l3);
+  background: var(--app-bg, transparent);
+}
+
+.todo-task-edit-modal .todo-task-edit-footer-delete {
+  display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
-  padding: 0;
+  gap: 0.35rem;
+  width: 100%;
+  min-width: 0;
   margin: 0;
-  border: none;
-  background: none;
-  cursor: pointer;
+  padding: 0.5rem 1rem;
+  box-sizing: border-box;
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  border-radius: 0;
+  background: transparent;
   color: #dc2626;
+  font-size: var(--fs-body);
+  font-weight: 500;
+  font-family: inherit;
+  line-height: 1.2;
+  cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
-.todo-task-edit-modal .todo-task-edit-header-delete:hover {
+.todo-task-edit-modal .todo-task-edit-footer-delete:hover {
   color: #b91c1c;
+  border-color: rgba(185, 28, 28, 0.5);
+  opacity: 0.95;
 }
 
-.todo-task-edit-modal .todo-task-edit-header-delete svg {
-  width: 1.25rem;
-  height: 1.25rem;
+.todo-task-edit-modal .todo-task-edit-footer-delete-icon {
+  width: 1.0625rem;
+  height: 1.0625rem;
+  flex-shrink: 0;
   display: block;
 }
 
