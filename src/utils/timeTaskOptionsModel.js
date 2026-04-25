@@ -395,38 +395,6 @@ export function addTaskOptionFull(task) {
   return next;
 }
 
-export function patchTimeLogRowsOnTaskRename({ taskId, oldName, newName }) {
-  const oid = (taskId || "").trim();
-  const on = (oldName || "").trim();
-  const nn = (newName || "").trim();
-  if (!nn || (!oid && !on)) return;
-  try {
-    const arr = readTimeLedgerEntriesRaw();
-    if (!arr.length) return;
-    let changed = false;
-    const next = arr.map((r) => {
-      const name = (r.taskName || "").trim();
-      const rid = (r.taskId || "").trim();
-      if (oid && rid === oid) {
-        changed = true;
-        return { ...r, taskName: nn, taskId: oid };
-      }
-      if (oid && !rid && on && name === on) {
-        changed = true;
-        return { ...r, taskName: nn, taskId: oid };
-      }
-      if (!oid && on && name === on) {
-        changed = true;
-        return { ...r, taskName: nn };
-      }
-      return r;
-    });
-    if (changed) {
-      writeTimeLedgerEntriesRaw(next);
-    }
-  } catch (_) {}
-}
-
 export function updateTaskOption(oldName, task) {
   if (getLockedTaskNamesStatic().has(oldName)) return getFullTaskOptions();
   const opts = getFullTaskOptions();
@@ -441,13 +409,6 @@ export function updateTaskOption(oldName, task) {
       typeof crypto !== "undefined" && crypto.randomUUID
         ? crypto.randomUUID()
         : `t-${Date.now()}`;
-  }
-  if (name !== oldName) {
-    patchTimeLogRowsOnTaskRename({
-      taskId: String(nextId).trim(),
-      oldName,
-      newName: name,
-    });
   }
   if (name !== oldName && opts.some((o, i) => i !== idx && o.name === name)) {
     const removedId = opts[idx].id;
@@ -527,14 +488,6 @@ export function kpiTimeTaskRename(kpi, oldNameFromKpi) {
   const row = opts[idx];
   const on = (row.name || "").trim();
   if (on === newName) return;
-  const rowId = String(row.id || "").trim();
-  if (isUuid(rowId)) {
-    patchTimeLogRowsOnTaskRename({
-      taskId: rowId,
-      oldName: on,
-      newName,
-    });
-  }
   const next = [...opts];
   next[idx] = { ...row, name: newName };
   saveMergedList(next, { bumpPullSkip: true, scheduleSyncPush: true });
