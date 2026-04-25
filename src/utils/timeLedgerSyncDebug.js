@@ -13,5 +13,15 @@ export function timeLedgerSyncDebugEnabled() {
   }
 }
 
-/** @param {string} _phase @param {unknown} [_detail] */
-export function timeLedgerSyncLog(_phase, _detail) {}
+/**
+ * @param {string} phase
+ * @param {unknown} [detail]
+ */
+export function timeLedgerSyncLog(phase, detail) {
+  if (!timeLedgerSyncDebugEnabled()) return;
+  try {
+    if (typeof console !== "undefined" && console.log) {
+      console.log(`[lp-time-ledger-sync] ${phase}`, detail);
+    }
+  } catch (_) {}
+}

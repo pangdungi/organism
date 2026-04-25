@@ -28,34 +28,8 @@ const TABLE = "time_ledger_entries";
 
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-const KPI_HABIT_SNAPSHOT_COL = "kpi_habit_check_snapshot";
-/** Supabase: 마이그레이션 이전 DB와 호환 — 기본 select에는 KPI 스냅샷 컬럼 제외(존재하지 않으면 pull 전체 실패) */
-const LEDGER_ENTRY_SELECT_BASE =
+const LEDGER_ENTRY_SELECT =
   "id, entry_date, task_id, task_name, start_time, end_time, productivity, category, time_tracked, focus_events, memo, memo_tags, linked_expense_ids, updated_at";
-const LEDGER_ENTRY_SELECT_WITH_KPI = `${LEDGER_ENTRY_SELECT_BASE}, ${KPI_HABIT_SNAPSHOT_COL}`;
-
-/** @deprecated - 외부·기존 동작: 베이스 열만(동일 문자열) */
-const LEDGER_ENTRY_SELECT = LEDGER_ENTRY_SELECT_BASE;
-
-function isKpiHabitWriteOrSelectSchemaError(err) {
-  if (!err) return false;
-  const m = String(
-    err.message || err.details || err.hint || err.code || "",
-  ).toLowerCase();
-  if (!m) return false;
-  if (m.includes("kpi_habit")) return true;
-  if (m.includes("pgrst204")) return true;
-  if (m.includes("column") && m.includes("does not exist")) return true;
-  if (m.includes("schema cache")) return true;
-  return false;
-}
-
-function stripKpiHabitFromPayload(p) {
-  if (!p || typeof p !== "object") return p;
-  if (!("kpi_habit_check_snapshot" in p)) return p;
-  const { kpi_habit_check_snapshot: _d, ...rest } = p;
-  return rest;
-}
 
 /** 로컬 달력 기준 오늘 YYYY-MM-DD */
 export function timeLedgerLocalTodayYmd() {
@@ -170,32 +144,14 @@ async function pullTimeLedgerEntriesForDateRangeCore(
 
   timeLedgerSyncLog("pull_start", { range: `${rs}..${re}`, trigger });
 
-  let { data, error } = await supabase
+  const { data, error } = await supabase
     .from(TABLE)
-    .select(LEDGER_ENTRY_SELECT_WITH_KPI)
+    .select(LEDGER_ENTRY_SELECT)
     .eq("user_id", userId)
     .gte("entry_date", rs)
     .lte("entry_date", re)
     .order("entry_date", { ascending: false })
     .order("start_time", { ascending: false });
-
-  if (error && isKpiHabitWriteOrSelectSchemaError(error)) {
-    const fallback = await supabase
-      .from(TABLE)
-      .select(LEDGER_ENTRY_SELECT_BASE)
-      .eq("user_id", userId)
-      .gte("entry_date", rs)
-      .lte("entry_date", re)
-      .order("entry_date", { ascending: false })
-      .order("start_time", { ascending: false });
-    data = fallback.data;
-    error = fallback.error;
-    timeLedgerSyncLog("pull_kpi_col_fallback", {
-      range: `${rs}..${re}`,
-      trigger,
-      note: "kpi_habit_check_snapshot 없음·구스키마",
-    });
-  }
 
   if (error) {
     timeLedgerSyncLog("pull_done", {
@@ -312,14 +268,9 @@ export async function pushDirtyTimeLedgerEntriesToSupabase(opts = {}) {
     const { data, error } = await supabase
       .from(TABLE)
       .upsert(payloads, { onConflict: "id" })
-      .select(LEDGER_ENTRY_SELECT_BASE);
+      .select(LEDGER_ENTRY_SELECT);
 
-    const hasKpiInPayloads = (payloads || []).some(
-      (p) => p && p.kpi_habit_check_snapshot != null,
-    );
-    const needKpiStripRetry =
-      error && hasKpiInPayloads && isKpiHabitWriteOrSelectSchemaError(error);
-    if (error && !needKpiStripRetry) {
+    if (error) {
       timeLedgerSyncLog("server_upsert_done", {
         ok: false,
         message: error.message,
@@ -329,61 +280,6 @@ export async function pushDirtyTimeLedgerEntriesToSupabase(opts = {}) {
         code: error.code,
         hint: error.hint,
       });
-      return;
-    }
-    if (error && needKpiStripRetry) {
-      const retryPayloads = payloads.map((p) => stripKpiHabitFromPayload(p));
-      const r2 = await supabase
-        .from(TABLE)
-        .upsert(retryPayloads, { onConflict: "id" })
-        .select(LEDGER_ENTRY_SELECT_BASE);
-      if (r2.error) {
-        timeLedgerSyncLog("server_upsert_done", {
-          ok: false,
-          message: r2.error.message,
-        });
-        lpSaveDebug("시간행 upsert 실패(스냅샷 제거 재시도 후)", {
-          message: r2.error.message,
-          code: r2.error.code,
-        });
-        return;
-      }
-      if (Array.isArray(r2.data) && r2.data.length > 0) {
-        mergeTimeLedgerEntriesPushedServerTimes(r2.data);
-      } else {
-        mergeTimeLedgerEntriesPushedServerTimes(
-          toUpload.map((r) => ({
-            id: String(r.id || "").trim(),
-            updated_at: new Date().toISOString(),
-          })),
-        );
-      }
-      timeLedgerSyncLog("server_upsert_done", {
-        ok: true,
-        returnedRowCount: Array.isArray(r2.data) ? r2.data.length : 0,
-        note: "kpi_habit_check_snapshot 열 없이 재업서트",
-      });
-      lpSaveDebug("시간행 upsert 성공(스냅샷 제외·구스키마)", {
-        rowCount: toUpload.length,
-      });
-      if (opts.skipPull) {
-        timeLedgerSyncLog("pull_after_push_skipped", {
-          reason: "skipPull_option",
-        });
-        return;
-      }
-      const rs0 = opts.rangeStart;
-      const re0 = opts.rangeEnd;
-      if (rs0 && re0 && YMD_RE.test(rs0) && YMD_RE.test(re0)) {
-        await pullTimeLedgerEntriesForDateRangeCore(rs0, re0, {
-          trigger: "after_push",
-        });
-      } else {
-        const { rangeStart, rangeEnd } = readTimeLedgerSessionFilterRangeYmd();
-        await pullTimeLedgerEntriesForDateRangeCore(rangeStart, rangeEnd, {
-          trigger: "after_push",
-        });
-      }
       return;
     }
 

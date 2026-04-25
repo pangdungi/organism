@@ -37,7 +37,10 @@ import {
 } from "./utils/timeLedgerEntriesSupabase.js";
 import { pullKpiTabFromCloud } from "./utils/kpiTabCloudRefresh.js";
 import { pullTimeLedgerTabEnterFromCloud } from "./utils/timeLedgerCloudRefresh.js";
-import { pullTimeLedgerTasksFromSupabase } from "./utils/timeLedgerTasksSupabase.js";
+import {
+  attachTimeLedgerTasksSaveListener,
+  pullTimeLedgerTasksFromSupabase,
+} from "./utils/timeLedgerTasksSupabase.js";
 import {
   pullTimeDailyBudgetFromSupabase,
   flushAllPendingTimeDailyBudgetSync,
@@ -266,6 +269,8 @@ export function mountApp(container) {
   attachSideincomeKpiMapSaveListener();
   /* 시간기록 행 저장 → time_ledger_entries upsert (아카이브 메모 비우기 포함) */
   attachTimeLedgerEntriesSaveListener();
+  /* TIME 탭 미진입이어도 과제(마스터) 저장 → time_ledger_tasks upsert 수신 */
+  attachTimeLedgerTasksSaveListener();
   container.innerHTML = "";
 
   const appPage = document.createElement("div");

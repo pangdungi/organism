@@ -2104,8 +2104,8 @@ body {
     outline: none;
   }
 
-  .todo-task-edit-modal .todo-task-edit-footer-delete:focus,
-  .todo-task-edit-modal .todo-task-edit-footer-delete:focus-visible {
+  .todo-task-edit-modal .todo-task-edit-header-delete:focus,
+  .todo-task-edit-modal .todo-task-edit-header-delete:focus-visible {
     outline: none;
   }
 
@@ -2140,9 +2140,6 @@ body {
     padding: 0.875rem 1rem;
     overflow-x: hidden;
     box-sizing: border-box;
-  }
-  .todo-task-edit-modal .todo-task-edit-delete-wrap {
-    padding: 0.75rem 1rem 0.25rem;
   }
   .todo-task-edit-modal .todo-task-edit-field {
     max-width: 100%;
@@ -3363,10 +3360,8 @@ body {
     /* mount가 스크롤 컨테이너일 때: wrap의 overflow:auto가 sticky 기준을 막아 헤더가 함께 스크롤됨 */
     overflow: visible !important;
   }
-  /* 모바일: 홈 오늘 탭 안 타임라인만 상단바 숨김 — 할일/캘린더 1일 뷰에서는 남은 시간·네비 유지 */
-  .app-main:has(.home-view)
-    .home-1day-timeline-mount
-    .calendar-1day-top-bar {
+  /* 모바일: 1일 뷰 상단바(남은 시간 + 날짜 네비) 숨김 */
+  .calendar-1day-top-bar {
     display: none !important;
   }
   .app-main:has(.home-view)
@@ -4683,26 +4678,6 @@ body {
     line-height: normal;
   }
 
-  /* 모바일: author display:flex 가 [hidden] 보다 우선할 때 패널·탭이 같이 보이는 문제 방지 */
-  .calendar-view-todo
-    .calendar-todo-content
-    .todo-list-view
-    .todo-list-list-pane[hidden],
-  .calendar-view-todo
-    .calendar-todo-content
-    .todo-list-view
-    .todo-list-today-pane[hidden] {
-    display: none !important;
-  }
-  .calendar-view
-    .calendar-tabs
-    .time-view-tab.calendar-todo-header-today-tab[hidden] {
-    display: none !important;
-  }
-  .calendar-view .calendar-tabs .calendar-todo-header-today-tab {
-    touch-action: manipulation;
-  }
-
   /* 모바일: 3. 날짜 정하기 - 월별·1주 등 서브탭 표시 (탭 전환 가능), 사이드바만 숨김 */
   .calendar-view-with-subtabs .calendar-sub-tabs {
     display: flex !important;
@@ -5243,32 +5218,22 @@ body {
     min-height: 0;
   }
 
-  /* 모바일: 메인 「4. 오늘 해치우기」(contentWrap 직계 1일 뷰)만 예산 열 숨기고 시간축만 — 할일 탭 안 임베드는 예산 1~4 포함 */
+  /* 모바일: 타임라인(오늘 해치우기) 탭 - 패딩 제거, 시간 컬럼만 보이게 */
   .calendar-view .calendar-monthly-main:has(.calendar-1day-view) {
     padding: 0 !important;
   }
-  .calendar-view
-    .calendar-content-wrap
-    > .calendar-1day-view
-    .calendar-1day-budget-column,
-  .calendar-view
-    .calendar-content-wrap
-    > .calendar-1day-view
-    .calendar-1day-divider {
+  .calendar-view .calendar-1day-view .calendar-1day-budget-column,
+  .calendar-view .calendar-1day-view .calendar-1day-divider {
     display: none !important;
   }
-  .calendar-view
-    .calendar-content-wrap
-    > .calendar-1day-view
-    .calendar-1day-split-layout {
+  .calendar-view .calendar-1day-view .calendar-1day-split-layout {
     display: flex;
     flex: 1 1 0;
     min-height: 0;
     width: 100%;
   }
   .calendar-view
-    .calendar-content-wrap
-    > .calendar-1day-view
+    .calendar-1day-view
     .calendar-1day-split-layout
     .calendar-1day-time-column {
     flex: 1 1 100%;
@@ -5313,127 +5278,6 @@ body {
     min-height: 0;
     overflow: hidden;
     padding: 0 !important;
-  }
-  .calendar-view-todo .calendar-todo-content .todo-list-view .todo-list-list-pane:not([hidden]) {
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 0;
-    min-height: 0;
-    overflow: hidden;
-  }
-  .calendar-view-todo .calendar-todo-content .todo-list-view .todo-list-today-pane:not([hidden]) {
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 0;
-    min-height: 0;
-    overflow: hidden;
-  }
-  .calendar-view-todo
-    .calendar-todo-content
-    .todo-list-view
-    .todo-list-today-pane
-    .calendar-1day-view {
-    flex: 1 1 0;
-    min-height: 0;
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
-    display: flex;
-    flex-direction: column;
-  }
-  .calendar-view-todo
-    .calendar-todo-content
-    .todo-list-view
-    .todo-list-today-pane
-    .calendar-view-1day-content-row {
-    flex: 0 1 auto;
-    min-height: min-content;
-    overflow: visible;
-    display: flex;
-    flex-direction: column;
-  }
-  .calendar-view-todo
-    .calendar-todo-content
-    .todo-list-view
-    .todo-list-today-pane
-    .calendar-monthly-main {
-    flex: 0 1 auto;
-    min-height: min-content;
-    overflow: visible;
-    display: flex;
-    flex-direction: column;
-  }
-  .calendar-view-todo
-    .calendar-todo-content
-    .todo-list-view
-    .todo-list-today-pane
-    .calendar-1day-split-layout {
-    flex: 0 1 auto;
-    min-height: min-content;
-    overflow: visible;
-    flex-direction: column;
-    -webkit-overflow-scrolling: touch;
-  }
-  .calendar-view-todo
-    .calendar-todo-content
-    .todo-list-view
-    .todo-list-today-pane
-    .calendar-1day-budget-column {
-    display: flex !important;
-    flex: 0 0 auto;
-    min-height: 0;
-    border-right: none;
-    border-bottom: var(--line-l3);
-  }
-  .calendar-view-todo
-    .calendar-todo-content
-    .todo-list-view
-    .todo-list-today-pane
-    .calendar-1day-divider {
-    display: none !important;
-  }
-  .calendar-view-todo
-    .calendar-todo-content
-    .todo-list-view
-    .todo-list-today-pane
-    .calendar-1day-time-column {
-    flex: 0 1 auto !important;
-    min-height: min-content !important;
-    min-width: 0;
-    width: 100%;
-    max-width: none;
-    display: flex;
-    flex-direction: column;
-  }
-  .calendar-view-todo
-    .calendar-todo-content
-    .todo-list-view
-    .todo-list-today-pane
-    .calendar-1day-time-table-wrap {
-    flex: 0 1 auto !important;
-    min-height: min-content !important;
-    overflow: visible !important;
-  }
-  .calendar-view-todo
-    .calendar-todo-content
-    .todo-list-view
-    .todo-list-today-pane
-    .calendar-1day-time-table-inner {
-    flex: 0 1 auto !important;
-    min-height: min-content !important;
-  }
-  .calendar-view-todo
-    .calendar-todo-content
-    .todo-list-view
-    .todo-list-today-pane
-    .calendar-1day-time-table--compare {
-    min-height: auto !important;
-    grid-template-rows: repeat(24, minmax(2.75rem, auto)) !important;
-  }
-  .calendar-view-todo
-    .todo-list-view.todo-list-view--today-mode
-    .todo-section
-    .todo-cards-add-wrap {
-    display: none !important;
   }
   .calendar-view-todo .calendar-todo-content .todo-list-toolbar-row {
     flex-shrink: 0;
@@ -14861,40 +14705,37 @@ svg.todo-card-reminder-icon {
   color: var(--accent-viridian);
 }
 
-/* 할 일 수정: 하단(리스트 아래)에서만 삭제 — X와 떨어뜨림 */
+/* 할 일 수정: 삭제는 닫기(X) 왼쪽 휴지통 — 취소와 인접 실수 방지 */
 .todo-task-edit-modal .todo-task-edit-header-actions {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.125rem;
   flex-shrink: 0;
 }
 
-.todo-task-edit-modal .todo-task-edit-delete-wrap {
-  flex-shrink: 0;
-  padding: 0.75rem 1.25rem 0.25rem;
-  border-top: var(--line-l3);
-}
-
-.todo-task-edit-modal .todo-task-edit-footer-delete {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.5rem 1rem;
-  font-family: var(--font-body);
-  font-size: var(--fs-body);
-  font-weight: 500;
-  border: var(--line-l2);
-  background: transparent;
-  color: var(--text-muted);
-  border-radius: 0;
+.todo-task-edit-modal .todo-task-edit-header-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
   cursor: pointer;
+  color: #dc2626;
   -webkit-tap-highlight-color: transparent;
 }
 
-.todo-task-edit-modal .todo-task-edit-footer-delete:hover {
-  color: var(--ui-btn-secondary-color);
-  background: rgba(42, 56, 40, 0.05);
-  border-color: var(--line-l2-color);
+.todo-task-edit-modal .todo-task-edit-header-delete:hover {
+  color: #b91c1c;
+}
+
+.todo-task-edit-modal .todo-task-edit-header-delete svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  display: block;
 }
 
 .todo-task-edit-body {

@@ -8,7 +8,11 @@ import {
   SIDEINCOME_KPI_MAP_STORAGE_KEY,
   applySideincomeKpiTimestampsOnSave,
 } from "../utils/sideincomeKpiMapSupabase.js";
-import { syncKpiToTimeTaskOption } from "../utils/timeTaskOptionsModel.js";
+import {
+  kpiTimeTaskAdd,
+  kpiTimeTaskRemove,
+  kpiTimeTaskRename,
+} from "../utils/timeTaskOptionsModel.js";
 import { toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay, formatDeadlineRangeCompact } from "../utils/ganttModal.js";
 import { setupDeadlineQuickButtons } from "../utils/deadlineQuickButtons.js";
 import {
@@ -36,6 +40,7 @@ import {
   kpiTodosCompletionBrief,
 } from "../utils/kpiTodoLifecycleDebug.js";
 
+const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
 
 function defaultDeletedRefs() {
@@ -94,16 +99,49 @@ function loadSideincomeMap() {
   };
 }
 
+function getTimeTaskOptionsRaw() {
+  try {
+    const raw = localStorage.getItem(TIME_TASK_OPTIONS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (_) {}
+  return null;
+}
+
+function getTaskName(o) {
+  return typeof o === "string" ? o : (o?.name || "");
+}
+
 function syncKpiToTimeTask(kpi, action, oldName) {
-  syncKpiToTimeTaskOption({
-    kpi,
-    action,
-    oldName,
-    kpiMapStorageKey: SIDEINCOME_KPI_MAP_STORAGE_KEY,
-    taskCategory: "sideincome",
-    loadKpiData: loadSideincomeMap,
-    saveKpiData: saveSideincomeMap,
-  });
+  const data = loadSideincomeMap();
+  data.kpiTaskSync = data.kpiTaskSync || {};
+  if (action === "add") {
+    const name = (kpi.name || "").trim();
+    if (!name) return;
+    const raw = getTimeTaskOptionsRaw();
+    const opts = raw || [];
+    if (opts.some((o) => getTaskName(o) === name)) return;
+    data.kpiTaskSync[kpi.id] = name;
+    saveSideincomeMap(data);
+    kpiTimeTaskAdd(kpi, "sideincome");
+  } else if (action === "remove") {
+    const syncName = (data.kpiTaskSync[kpi.id] || kpi.name || "").trim();
+    if (syncName) {
+      delete data.kpiTaskSync[kpi.id];
+      saveSideincomeMap(data);
+      kpiTimeTaskRemove(kpi, syncName);
+    }
+  } else if (action === "update" && oldName) {
+    const newName = (kpi.name || "").trim();
+    const prevName = data.kpiTaskSync[kpi.id];
+    if (prevName && newName && prevName !== newName) {
+      data.kpiTaskSync[kpi.id] = newName;
+      saveSideincomeMap(data);
+      kpiTimeTaskRename(kpi, oldName);
+    }
+  }
 }
 
 function saveSideincomeMap(data) {

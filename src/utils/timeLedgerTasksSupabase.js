@@ -11,8 +11,24 @@ import {
   migrateTimeLogRowsTaskIds,
 } from "./timeTaskOptionsModel.js";
 import { lpPullDebug } from "./lpPullDebug.js";
+import {
+  timeLedgerSyncDebugEnabled,
+  timeLedgerSyncLog,
+} from "./timeLedgerSyncDebug.js";
 
 const TABLE = "time_ledger_tasks";
+const LP_TL = "[lp-time-ledger-tasks]";
+
+/**
+ * 과제 Supabase upsert·pull 디버그 (콘솔). 추가 버튼 경로는 Time.js·addTaskOptionFull·여기가 한 줄.
+ */
+function logTl(phase, detail) {
+  try {
+    if (typeof console !== "undefined" && console.log) {
+      console.log(`${LP_TL} ${phase}`, detail);
+    }
+  } catch (_) {}
+}
 
 /**
  * 로컬 과제 저장 후 잠깐: tasks pull이 서버 옛 목록(예: 71행)으로 덮어 새 과제를 지우는 레이스 방지.
@@ -51,15 +67,77 @@ export async function deleteTimeLedgerTaskRowForCurrentUser(taskId) {
 
 export async function syncTimeLedgerTasksToSupabase() {
   const userId = await getSessionUserId();
-  if (!userId || !supabase) return;
+  if (!supabase) {
+    logTl("sync:skip (Supabase 클라이언트 없음)", {
+      table: `public.${TABLE}`,
+      path: "src/supabase.js — VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY",
+    });
+    if (timeLedgerSyncDebugEnabled()) {
+      timeLedgerSyncLog("syncTimeLedgerTasksToSupabase:skip", {
+        reason: "no_supabase_client",
+      });
+    }
+    return;
+  }
+  if (!userId) {
+    logTl("sync:skip (로그인 세션 없음)", {
+      table: `public.${TABLE}`,
+      op: "from(table).upsert(…, { onConflict: 'id' })",
+    });
+    if (timeLedgerSyncDebugEnabled()) {
+      timeLedgerSyncLog("syncTimeLedgerTasksToSupabase:skip", {
+        reason: "not_logged_in",
+      });
+    }
+    return;
+  }
 
+  const list = getFullTaskOptions();
+  const droppedNonUuid = list
+    .map((t) => ({ name: (t.name || "").trim(), id: (t.id || "").trim() }))
+    .filter((r) => !r.id || !isUuid(r.id));
   const payloads = buildTimeLedgerTasksUpsertPayloads(userId);
+  logTl("sync:준비", {
+    table: `public.${TABLE}`,
+    op: "upsert",
+    onConflict: "id",
+    userIdPrefix: `${String(userId).slice(0, 8)}…`,
+    로컬_과제_행수: list.length,
+    upsert_대상_행수: payloads.length,
+    uuid_아닌_id_로_빠진_행: droppedNonUuid.length
+      ? droppedNonUuid.slice(0, 6)
+      : "없음",
+  });
+  if (timeLedgerSyncDebugEnabled()) {
+    timeLedgerSyncLog("syncTimeLedgerTasksToSupabase:upsert", {
+      rowCount: payloads.length,
+    });
+  }
 
   if (payloads.length > 0) {
     const { error } = await supabase.from(TABLE).upsert(payloads, {
       onConflict: "id",
     });
-    if (!error) _tasksPullSkipUntil = 0;
+    if (error) {
+      logTl("sync:upsert 실패", {
+        table: `public.${TABLE}`,
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      });
+      timeLedgerSyncLog("syncTimeLedgerTasksToSupabase:upsert_error", {
+        message: error.message,
+        code: error.code,
+      });
+    } else {
+      _tasksPullSkipUntil = 0;
+      logTl("sync:upsert 성공", { table: `public.${TABLE}`, rows: payloads.length });
+    }
+  } else {
+    logTl("sync:upsert 생략 (upsert payload 0 — uuid 유효한 행이 없음)", {
+      table: `public.${TABLE}`,
+    });
   }
 
   /*
@@ -111,16 +189,17 @@ export async function pushTimeLedgerTasksIfServerEmpty() {
   await syncTimeLedgerTasksToSupabase();
 }
 
-let _pushTimer = null;
-const PUSH_DEBOUNCE_MS = 900;
-
 export function scheduleTimeLedgerTasksSyncPush() {
   if (!supabase) return;
-  if (_pushTimer) clearTimeout(_pushTimer);
-  _pushTimer = setTimeout(() => {
-    _pushTimer = null;
-    syncTimeLedgerTasksToSupabase().catch(() => {});
-  }, PUSH_DEBOUNCE_MS);
+  void syncTimeLedgerTasksToSupabase().catch((err) => {
+    try {
+      console.error(
+        "[lp-time-ledger-tasks] schedule:sync 실패",
+        err && (err.message || err),
+        err,
+      );
+    } catch (_) {}
+  });
 }
 
 let _listenerAttached = false;
@@ -130,8 +209,7 @@ export function attachTimeLedgerTasksSaveListener() {
   _listenerAttached = true;
   window.addEventListener("time-ledger-tasks-saved", (e) => {
     const d = e.detail || {};
-    if (d.bumpPullSkip !== false) bumpTasksPullSkipAfterLocalChange();
-    if (d.scheduleSyncPush !== false) scheduleTimeLedgerTasksSyncPush();
+    if (d.bumpPullSkip) bumpTasksPullSkipAfterLocalChange();
   });
 }
 
