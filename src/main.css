@@ -4603,6 +4603,38 @@ body {
     display: flex !important;
   }
 
+  /* 모바일·오늘 해치우기(1day): 잘린 박스 스크롤 X — 화면을 아래로 쭉 스크롤하며 전부(예산+24h) */
+  .app-main:has(.calendar-view) .app-tab-panel:has(.calendar-1day-view) {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .app-main:has(.calendar-view) .app-tab-panel:has(.calendar-1day-view) > .calendar-view {
+    overflow: visible !important;
+    flex: 0 0 auto;
+    min-height: min-content;
+  }
+  .app-main:has(.calendar-view) .app-tab-panel:has(.calendar-1day-view) .calendar-content-wrap {
+    overflow: visible !important;
+    flex: 0 0 auto;
+    min-height: min-content;
+  }
+  .app-main:has(.calendar-view)
+    .app-tab-panel:has(.calendar-1day-view)
+    .calendar-content-wrap
+    > .calendar-monthly-layout {
+    flex: 0 0 auto !important;
+    min-height: min-content;
+  }
+  .app-main:has(.calendar-view)
+    .app-tab-panel:has(.calendar-1day-view)
+    .calendar-view-1day-content-row,
+  .app-main:has(.calendar-view)
+    .app-tab-panel:has(.calendar-1day-view)
+    .calendar-monthly-layout.calendar-1day-view {
+    flex: 0 0 auto !important;
+    min-height: min-content;
+  }
+
   /* 모바일: 할일/일정 탭 패널 패딩 제거 (화면 끝까지) */
   .app-tab-panel-content.calendar-view {
     padding: 0 !important;
@@ -4656,17 +4688,14 @@ body {
     border-bottom: none !important;
   }
 
-  /* 모바일: 우선순위 정렬 숨김. 날짜 정하기(캘린더)는 하단 캘린더 탭 전용이라 여기서도 숨김 */
+  /* 모바일: 우선순위·날짜 정하기만 숨김. 오늘 해치우기(1day)는 할일 옆에 표시 */
   .calendar-view .calendar-tabs .time-view-tab[data-view="eisenhower"] {
     display: none !important;
   }
   .calendar-view .calendar-tabs .time-view-tab[data-view="calendar"] {
     display: none !important;
   }
-  /* 타임라인은 오늘 탭(리마인더 아래)으로 옮김 — 할일/일정에서는 중복 탭 숨김 */
-  .calendar-view .calendar-tabs .time-view-tab[data-view="1day"] {
-    display: none !important;
-  }
+  /* (구) 1day 탭은 숨기던 규칙 제거 — 아래 5221~ 에서 본문 레이아웃만 제어 */
   /* 모바일: 탭 라벨을 할일 / 캘린더로 짧게, 번호 제거 */
   .calendar-view .calendar-tabs .time-view-tab[data-mobile-label] {
     font-size: 0;
@@ -4676,6 +4705,18 @@ body {
     content: attr(data-mobile-label);
     font-size: 0.9rem;
     line-height: normal;
+  }
+  .calendar-view .time-view-tabs.calendar-tabs {
+    display: flex;
+    width: 100%;
+  }
+  .calendar-view .calendar-tabs .time-view-tab[data-mobile-label] {
+    flex: 1 1 0;
+    min-width: 0;
+    text-align: center;
+  }
+  .calendar-view .calendar-tabs .time-view-tab[data-view="1day"]::after {
+    font-size: 0.8rem;
   }
 
   /* 모바일: 3. 날짜 정하기 - 월별·1주 등 서브탭 표시 (탭 전환 가능), 사이드바만 숨김 */
@@ -5217,26 +5258,48 @@ body {
     flex: 1 1 0;
     min-height: 0;
   }
+  .calendar-view .calendar-content-wrap:has(> .calendar-monthly-layout.calendar-1day-view) {
+    flex: 0 0 auto;
+    min-height: min-content;
+    overflow: visible !important;
+  }
+  .calendar-view
+    .calendar-content-wrap:has(> .calendar-monthly-layout.calendar-1day-view)
+    > .calendar-monthly-layout {
+    flex: 0 0 auto !important;
+    min-height: min-content;
+  }
 
-  /* 모바일: 타임라인(오늘 해치우기) 탭 - 패딩 제거, 시간 컬럼만 보이게 */
-  .calendar-view .calendar-monthly-main:has(.calendar-1day-view) {
+  /* 모바일: 오늘 해치우기(세로) — 콘텐츠 전체 길이로 펼침(아래로 스크롤은 .app-tab-panel) */
+  .calendar-view .calendar-1day-view .calendar-monthly-main {
     padding: 0 !important;
   }
-  .calendar-view .calendar-1day-view .calendar-1day-budget-column,
+  .calendar-view .calendar-1day-view .calendar-1day-time-grid.calendar-1day-split-layout {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 auto;
+    min-height: min-content;
+    width: 100%;
+    gap: 0;
+  }
+  .calendar-view .calendar-1day-view .calendar-1day-budget-column {
+    display: flex !important;
+    flex: 0 0 auto;
+    max-height: none;
+    width: 100% !important;
+    max-width: none;
+    border-right: none;
+    border-bottom: var(--divider-subtle, 0.0313rem solid rgba(42, 56, 40, 0.12));
+    box-sizing: border-box;
+  }
   .calendar-view .calendar-1day-view .calendar-1day-divider {
     display: none !important;
-  }
-  .calendar-view .calendar-1day-view .calendar-1day-split-layout {
-    display: flex;
-    flex: 1 1 0;
-    min-height: 0;
-    width: 100%;
   }
   .calendar-view
     .calendar-1day-view
     .calendar-1day-split-layout
     .calendar-1day-time-column {
-    flex: 1 1 100%;
+    flex: 0 0 auto;
     width: 100%;
     min-width: 0;
     max-width: none;
@@ -5244,10 +5307,15 @@ body {
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
+  }
+  .calendar-view .calendar-1day-view .calendar-1day-time-table-wrap,
+  .calendar-view .calendar-1day-view .calendar-1day-time-table-inner {
+    flex: 0 0 auto;
+    overflow: visible;
     min-height: 0;
   }
 
-  /* 4. 오늘 해치우기: 예상·실제 색 블록이 슬롯 배경 아래로 깔려 안 보이던 경우 */
+  /* 4. 오늘 해치우기(모바일): 예상·실제 색 블록 z-index */
   .calendar-view
     .calendar-1day-view
     .calendar-1day-time-fill-overlay--expected,
