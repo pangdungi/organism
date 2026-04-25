@@ -19,7 +19,11 @@ import { render as renderHealth } from "./views/Health.js";
 import { render as renderArchive } from "./views/Archive.js";
 import { render as renderDiary } from "./views/Diary.js";
 import { render as renderIdea } from "./views/Idea.js";
+import { render as renderAdmin } from "./views/Admin.js";
 import { render as renderHome } from "./views/Home.js";
+import { supabase } from "./supabase.js";
+import { isAppAdminUser } from "./utils/adminAccess.js";
+import { showToast } from "./utils/showToast.js";
 import { pullCalendarSectionTasksFromSupabase } from "./utils/todoSectionTasksSupabase.js";
 import { attachAssetExpenseTransactionsSaveListener } from "./utils/assetExpenseTransactionsSupabase.js";
 import { initPushReminderInAppPopup } from "./utils/initPushReminderInAppPopup.js";
@@ -121,6 +125,7 @@ const RENDERERS = {
   archive: renderArchive,
   diary: renderDiary,
   idea: renderIdea,
+  admin: renderAdmin,
 };
 
 let currentTabId = "home";
@@ -131,7 +136,7 @@ export const LP_LAST_TAB_SESSION_KEY = "lp_active_tab_id";
 export const LP_LAST_TAB_LOCAL_KEY = "lp_active_tab_id_persist";
 
 function validAppTabIdSet() {
-  return new Set([...TABS.map((t) => t.id), "idea"]);
+  return new Set([...TABS.map((t) => t.id), "idea", "admin"]);
 }
 
 function applyPersistedTabIdFromSessionStorage() {
@@ -215,6 +220,8 @@ async function pullDataForActiveTab(tabId, opts = {}) {
     case "idea":
       await pullUserPrefsFromSupabase().catch(() => {});
       break;
+    case "admin":
+      break;
     case "archive": {
       const now = new Date();
       await hydrateTimeLedgerEntriesForArchiveMonth(
@@ -256,9 +263,25 @@ function migrateRemoveRoutineTasks() {
   } catch (_) {}
 }
 
-export function mountApp(container) {
+export async function mountApp(container) {
   if (!container) return;
   applyPersistedTabIdFromSessionStorage();
+  if (currentTabId === "admin" && supabase) {
+    try {
+      const { data: { session } = {} } = await supabase.auth.getSession();
+      if (!isAppAdminUser(session?.user)) {
+        currentTabId = "home";
+        try {
+          sessionStorage.setItem(LP_LAST_TAB_SESSION_KEY, "home");
+          localStorage.setItem(LP_LAST_TAB_LOCAL_KEY, "home");
+        } catch (_) {}
+      }
+    } catch (_) {
+      currentTabId = "home";
+    }
+  } else if (currentTabId === "admin" && !supabase) {
+    currentTabId = "home";
+  }
   initPushReminderInAppPopup();
   migrateRemoveRoutineTasks();
   /* 가계부 미방문 시에도 시간가계부 소비 저장 → Supabase 동기화 이벤트 수신 */
@@ -358,6 +381,33 @@ export function mountApp(container) {
   accountLabel.textContent = "나의 계정";
   accountBtn.appendChild(accountLabel);
   nav.appendChild(accountBtn);
+
+  const adminNavBtn = document.createElement("button");
+  adminNavBtn.type = "button";
+  adminNavBtn.className = "app-sidebar-item app-sidebar-item--admin-only";
+  adminNavBtn.hidden = true;
+  adminNavBtn.title = "관리자전용";
+  adminNavBtn.dataset.tabId = "admin";
+  appendSidebarIcon(adminNavBtn, "/toolbaricons/settings.svg");
+  const adminNavLabel = document.createElement("span");
+  adminNavLabel.className = "app-sidebar-item-label";
+  adminNavLabel.textContent = "관리자전용";
+  adminNavBtn.appendChild(adminNavLabel);
+  nav.appendChild(adminNavBtn);
+
+  let adminBottomBtn = null;
+
+  async function syncAdminMenuVisibility() {
+    let show = false;
+    if (supabase) {
+      try {
+        const { data: { session } = {} } = await supabase.auth.getSession();
+        show = isAppAdminUser(session?.user);
+      } catch (_) {}
+    }
+    adminNavBtn.hidden = !show;
+    if (adminBottomBtn) adminBottomBtn.hidden = !show;
+  }
   const sidebarBody = document.createElement("div");
   sidebarBody.className = "app-sidebar-body";
   sidebarBody.appendChild(nav);
@@ -416,6 +466,26 @@ export function mountApp(container) {
   main.appendChild(panel);
 
   function setActiveTab(tabId) {
+    if (tabId === "admin") {
+      void (async () => {
+        if (!supabase) return;
+        try {
+          const { data: { session } = {} } = await supabase.auth.getSession();
+          if (!isAppAdminUser(session?.user)) {
+            showToast("관리자만 접근할 수 있어요.");
+            return;
+          }
+        } catch (_) {
+          return;
+        }
+        applySetActiveTab("admin");
+      })();
+      return;
+    }
+    applySetActiveTab(tabId);
+  }
+
+  function applySetActiveTab(tabId) {
     const fromTab = currentTabId;
     if (fromTab !== tabId) flushAllPendingTimeDailyBudgetSync();
     currentTabId = tabId;
@@ -464,7 +534,7 @@ export function mountApp(container) {
       } else {
         renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
       }
-      if (targetTabId === "idea") {
+      if (targetTabId === "idea" || targetTabId === "admin") {
         requestAnimationFrame(() => {
           main.scrollTop = 0;
         });
@@ -569,6 +639,23 @@ export function mountApp(container) {
     document.querySelector(".app-sidebar-overlay")?.remove();
   });
   bottomNavMain.appendChild(accountBottomBtn);
+
+  adminBottomBtn = document.createElement("button");
+  adminBottomBtn.type = "button";
+  adminBottomBtn.className =
+    "app-bottom-nav-item app-bottom-nav-item--admin-only" +
+    (currentTabId === "admin" ? " active" : "");
+  adminBottomBtn.dataset.tabId = "admin";
+  adminBottomBtn.title = "관리자전용";
+  adminBottomBtn.hidden = true;
+  adminBottomBtn.innerHTML =
+    '<img src="/toolbaricons/settings.svg" alt="" class="app-bottom-nav-icon" width="20" height="20"><span class="app-bottom-nav-label">관리자전용</span>';
+  adminBottomBtn.addEventListener("click", () => {
+    setActiveTab("admin");
+    sidebar.classList.remove("is-open");
+    document.querySelector(".app-sidebar-overlay")?.remove();
+  });
+  bottomNavMain.appendChild(adminBottomBtn);
 
   bottomNav.appendChild(bottomNavMain);
 
@@ -706,14 +793,16 @@ export function mountApp(container) {
       } else {
         const div = document.createElement("p");
         div.textContent =
-          TABS.find((t) => t.id === currentTabId)?.label || "준비 중";
+          currentTabId === "admin"
+            ? "관리자전용"
+            : TABS.find((t) => t.id === currentTabId)?.label || "준비 중";
         p.appendChild(div);
       }
     } catch (err) {
       const errDiv = document.createElement("div");
       errDiv.className = "app-render-error";
       errDiv.style.cssText = "padding:1.5rem;color:#b91c1c;";
-      errDiv.innerHTML = `<p><strong>${TABS.find((t) => t.id === currentTabId)?.label || currentTabId} 로드 중 오류</strong></p><p>${String(err?.message || err)}</p>`;
+      errDiv.innerHTML = `<p><strong>${currentTabId === "admin" ? "관리자전용" : TABS.find((t) => t.id === currentTabId)?.label || currentTabId} 로드 중 오류</strong></p><p>${String(err?.message || err)}</p>`;
       p.appendChild(errDiv);
     }
     if (preserveScrollTop != null && mainEl) {
@@ -735,6 +824,17 @@ export function mountApp(container) {
     getCurrentTabId: () => currentTabId,
     renderMain: (opts) => renderMain(main, opts || {}),
   });
+  if (supabase?.auth?.onAuthStateChange) {
+    supabase.auth.onAuthStateChange((_event, session) => {
+      void (async () => {
+        await syncAdminMenuVisibility();
+        if (currentTabId === "admin" && !isAppAdminUser(session?.user)) {
+          applySetActiveTab("home");
+        }
+      })();
+    });
+  }
+  void syncAdminMenuVisibility();
   if (typeof window !== "undefined") {
     window.__lpSyncWatchHelp = printSyncWatchHelp;
   }
@@ -743,6 +843,7 @@ export function mountApp(container) {
 
   logTabSync("boot", { tab: currentTabId, phase: "pull_then_first_render" });
   void (async () => {
+    await syncAdminMenuVisibility();
     try {
       await pullDataForActiveTab(currentTabId, { fromBoot: true });
     } catch (_) {}

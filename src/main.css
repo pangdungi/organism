@@ -1425,6 +1425,11 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* display:flex가 native [hidden]보다 우선해 비관리자도 관리자 메뉴가 보이던 문제 방지 */
+.app-sidebar-item[hidden] {
+  display: none !important;
+}
+
 .app-sidebar-item-icon {
   flex-shrink: 0;
   display: flex;
@@ -2267,6 +2272,11 @@ body {
     color 0.15s,
     filter 0.15s;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* display:flex가 native [hidden]보다 우선 — 관리자전용(비관리자 hidden) */
+.app-bottom-nav-item[hidden] {
+  display: none !important;
 }
 
 .app-bottom-nav-item:hover,
@@ -37081,5 +37091,15 @@ body.kpi-resizing {
 
   .lp-offline-gate.lp-offline-gate--pwa .lp-offline-gate__svg {
     width: min(220px, 78vw);
+  }
+
+  .admin-view {
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  }
+
+  .admin-view-hint {
+    line-height: 1.7;
+    color: var(--text-body, #3d4a3e);
   }
 }
