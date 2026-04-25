@@ -37092,14 +37092,256 @@ body.kpi-resizing {
   .lp-offline-gate.lp-offline-gate--pwa .lp-offline-gate__svg {
     width: min(220px, 78vw);
   }
+}
 
-  .admin-view {
-    padding-left: max(1rem, env(safe-area-inset-left, 0px));
-    padding-right: max(1rem, env(safe-area-inset-right, 0px));
-  }
+/* ━━ 관리자·구독(이용권) 탭: 모든 뷰포트. 예전엔 48rem 이하에만 있어서 넓은 화면에서 스타일이 빠졌음. */
+.admin-view {
+  padding-left: max(1rem, env(safe-area-inset-left, 0px));
+  padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+}
 
-  .admin-view-hint {
-    line-height: 1.7;
-    color: var(--text-body, #3d4a3e);
-  }
+.admin-view-header.dream-view-header-wrap {
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #c8c2b4;
+}
+
+.admin-view-title {
+  color: #1a2218;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.admin-subs-page {
+  max-width: min(70rem, 100%);
+  margin: 0 auto;
+}
+
+.admin-view-hint {
+  margin: 0 0 0.65rem 0;
+  padding: 0;
+  line-height: 1.5;
+  font-size: 0.78rem;
+  color: #5a5f5a;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+
+.admin-subs-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.admin-subs-toolbar-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #2a3828;
+}
+
+.admin-subs-refresh,
+.admin-subs-btn {
+  min-height: 2.25rem;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  font-family: inherit;
+  border-radius: 0.2rem;
+  border: 1px solid #8a9188;
+  background: #fff;
+  color: #1a2218;
+  cursor: pointer;
+  box-shadow: none;
+  transition: background 0.12s ease;
+}
+
+.admin-subs-refresh:hover,
+.admin-subs-btn:hover {
+  background: #f2f0ea;
+}
+
+.admin-subs-refresh:active,
+.admin-subs-btn:active {
+  background: #e8e6e0;
+}
+
+.admin-subs-refresh:disabled,
+.admin-subs-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.admin-subs-btn--year {
+  border-color: var(--ui-btn-primary-bg, #2a3828);
+  background: var(--ui-btn-primary-bg, #2a3828);
+  color: var(--ui-btn-primary-fg, #f2ede0);
+}
+
+.admin-subs-btn--year:hover {
+  background: var(--ui-btn-primary-hover, #233022);
+}
+
+.admin-subs-btn--save {
+  border-color: #6b7569;
+  background: #fff;
+  color: #1a2218;
+}
+
+.admin-subs-statusline {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #6b6b6b;
+  margin: 0 0 0.4rem 0;
+  padding: 0;
+}
+
+.admin-subs-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  background: #fff;
+  border: 1px solid #9a9488;
+  border-radius: 0.15rem;
+  padding: 0;
+}
+
+.admin-subs-table {
+  width: 100%;
+  min-width: 40rem;
+  border-collapse: collapse;
+  border-spacing: 0;
+  font-size: 0.75rem;
+  table-layout: fixed;
+}
+
+.admin-subs-table col[data-col="email"] {
+  width: 22%;
+}
+.admin-subs-table col[data-col="uid"] {
+  width: 9%;
+}
+.admin-subs-table col[data-col="signup"] {
+  width: 16%;
+}
+.admin-subs-table col[data-col="status"] {
+  width: 12%;
+}
+.admin-subs-table col[data-col="until"] {
+  width: 19%;
+}
+.admin-subs-table col[data-col="act"] {
+  width: 22%;
+}
+
+.admin-subs-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.5rem 0.35rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.68rem;
+  line-height: 1.2;
+  color: #1a1a18;
+  background: #e4e0d6;
+  border: 1px solid #9a9488;
+  border-bottom: 2px solid #6e685c;
+  white-space: nowrap;
+}
+
+.admin-subs-table td {
+  border: 1px solid #c8c2b4;
+  padding: 0.4rem 0.3rem;
+  text-align: left;
+  vertical-align: middle;
+  background: #fff;
+}
+
+.admin-subs-table tbody tr:nth-child(even) td {
+  background: #fbfaf8;
+}
+
+.admin-subs-table tbody tr:hover td {
+  background: #f0f4f0;
+}
+
+.admin-subs-td--email {
+  word-break: break-all;
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.admin-subs-td--uid {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.68rem;
+  color: #3d4a3e;
+}
+
+.admin-subs-td--dt {
+  font-size: 0.7rem;
+  color: #2a2f2a;
+  white-space: nowrap;
+}
+
+.admin-subs-td--form {
+  vertical-align: middle;
+}
+
+.admin-subs-td--actions {
+  vertical-align: middle;
+}
+
+.admin-subs-action-btns {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.admin-subs-action-btns .admin-subs-btn {
+  width: auto;
+  flex: 1 1 auto;
+  min-width: 5.2rem;
+}
+
+.admin-subs-status,
+.admin-subs-until {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 2rem;
+  max-width: none;
+  margin: 0;
+  padding: 0.3rem 0.28rem;
+  font: inherit;
+  font-size: 0.72rem;
+  line-height: 1.3;
+  color: #1a2218;
+  background: #fff;
+  border: 1px solid #a6a08f;
+  border-radius: 0.15rem;
+}
+
+.admin-subs-until {
+  min-width: 0;
+}
+
+.admin-subs-err {
+  color: #8b5c3a;
+  font-size: 0.8rem;
+}
+
+.admin-subs-err code {
+  font-size: 0.68rem;
+  padding: 0.05rem 0.2rem;
+  background: #f5eee8;
+  border: 1px solid #e0d4c8;
+  border-radius: 0.12rem;
 }
