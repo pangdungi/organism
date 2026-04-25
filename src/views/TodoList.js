@@ -755,6 +755,8 @@ export function saveTodoListBeforeUnmount(container) {
 
 /** 할일/일정 메인 화면(탭 바 있는 전체 뷰)에서 마지막으로 본 고정 리스트 탭 — Supabase 동기 후 __lpRenderMain()으로 전체가 다시 그려질 때 첫 탭(꿈)으로만 초기화되는 문제 방지 */
 const SESSION_TODO_FIXED_TAB_INDEX = "lp-todo-main-fixed-tab-index";
+/** 캘린더 할일 상단 「오늘 해치우기」 ↔ 목록 */
+const SESSION_TODO_MOBILE_PRIMARY_MODE = "lp-todo-mobile-primary-mode";
 
 const TODO_CATEGORY_OPTIONS_KEY = "todo_category_options";
 const DEFAULT_CATEGORIES = ["학업", "잡무", "사이드프로젝트", "회사"];
@@ -3228,10 +3230,18 @@ export function render(options = {}) {
     omitKpiTodos = true,
     /** 할일/일정 상단 줄(settingsSlot)의 설정 버튼 DOM을 그대로 쓰고 새로 만들지 않음(탭 진입 후 pull 소프트 갱신 시 아이콘 깜빡임 방지) */
     reuseSettingsButtonEl = null,
+    /** 캘린더 할일: 상단 탭 줄에 붙인 「오늘 해치우기」 버튼(renderTodoView에서 생성) */
+    headerTodayCrushTab = null,
   } = options;
   const hasExplicitInitialTab = Object.prototype.hasOwnProperty.call(options, "initialActiveTabIndex");
   /** 사이드바 등 hideToolbar 임베드는 탭 세션과 분리(메인 할일 탭이 꿈인데 캘린더 옆바가 브레인 덤프로 열리는 혼선 방지) */
   const persistFixedListTabToSession = !hideToolbar && !hasExplicitInitialTab;
+  const useHeaderTodayCrush =
+    !!headerTodayCrushTab && !hideToolbar && headerTodayCrushTab instanceof HTMLElement;
+  const mqMobile =
+    typeof window !== "undefined"
+      ? window.matchMedia("(max-width: 48rem)")
+      : { matches: false, addEventListener: () => {}, removeEventListener: () => {} };
   const el = document.createElement("div");
   el.className = "app-tab-panel-content todo-list-view";
   const listTabAbort = new AbortController();
@@ -3335,7 +3345,18 @@ export function render(options = {}) {
 
   const toolbarRow = document.createElement("div");
   toolbarRow.className = "todo-list-toolbar-row";
-  el.appendChild(toolbarRow);
+  const listPane = useHeaderTodayCrush ? document.createElement("div") : null;
+  const todayPane = useHeaderTodayCrush ? document.createElement("div") : null;
+  if (listPane) {
+    listPane.className = "todo-list-list-pane";
+    todayPane.className = "todo-list-today-pane";
+    todayPane.hidden = true;
+    listPane.appendChild(toolbarRow);
+    el.appendChild(listPane);
+    el.appendChild(todayPane);
+  } else {
+    el.appendChild(toolbarRow);
+  }
 
   const categoryTabs = document.createElement("div");
   categoryTabs.className = "todo-category-tabs";
@@ -3366,7 +3387,7 @@ export function render(options = {}) {
 
   const { menu: checkboxTypeMenu, show: showCheckboxTypeMenu } = createTodoCheckboxTypeMenu();
   checkboxTypeMenu.hidden = true;
-  el.appendChild(checkboxTypeMenu);
+  (listPane || el).appendChild(checkboxTypeMenu);
 
   const kpiTasks = omitKpiTodos ? [] : getKpiTodosAsTasks();
   const sectionTasks = FIXED_SECTION_IDS_FOR_STORAGE.flatMap((sid) => loadSectionTasks(sid));
@@ -3451,7 +3472,125 @@ export function render(options = {}) {
   });
   tabButtons.forEach((b, i) => b.classList.toggle("active", i === safeIndex));
 
-  el.appendChild(sectionsWrap);
+  (listPane || el).appendChild(sectionsWrap);
+
+  let todayCrushRoot = null;
+  function ensureTodayCrushRoot() {
+    if (todayCrushRoot?.isConnected) return Promise.resolve(todayCrushRoot);
+    return import("./Calendar.js")
+      .then(({ render1DayView }) => {
+        todayCrushRoot = render1DayView(null, { skipCalendarTabsTopRow: true });
+        todayPane.appendChild(todayCrushRoot);
+        return todayCrushRoot;
+      })
+      .catch(() => null);
+  }
+
+  function applyTodoTodayCrushMode(mode) {
+    if (!useHeaderTodayCrush) return;
+    const isToday = mode === "today";
+    listPane.hidden = isToday;
+    todayPane.hidden = !isToday;
+    el.classList.toggle("todo-list-view--today-mode", isToday);
+    const todoMainTab = headerTodayCrushTab
+      .closest(".calendar-view-todo")
+      ?.querySelector('.time-view-tab[data-view="todo"]');
+    if (todoMainTab) {
+      todoMainTab.classList.toggle("active", !isToday);
+    }
+    headerTodayCrushTab.classList.toggle("active", isToday);
+    headerTodayCrushTab.setAttribute("aria-pressed", isToday ? "true" : "false");
+    if (mqMobile.matches) {
+      try {
+        sessionStorage.setItem(
+          SESSION_TODO_MOBILE_PRIMARY_MODE,
+          isToday ? "today" : "list",
+        );
+      } catch (_) {}
+    }
+    if (isToday) void ensureTodayCrushRoot();
+  }
+
+  function syncHeaderTodayCrushUi() {
+    if (!useHeaderTodayCrush) return;
+    const showBtn = mqMobile.matches;
+    headerTodayCrushTab.hidden = !showBtn;
+    if (!showBtn) {
+      listPane.hidden = false;
+      todayPane.hidden = true;
+      el.classList.remove("todo-list-view--today-mode");
+      const todoMainTab = headerTodayCrushTab
+        .closest(".calendar-view-todo")
+        ?.querySelector('.time-view-tab[data-view="todo"]');
+      todoMainTab?.classList.add("active");
+      headerTodayCrushTab.classList.remove("active");
+      headerTodayCrushTab.setAttribute("aria-pressed", "false");
+      return;
+    }
+    let mode = "list";
+    try {
+      if (sessionStorage.getItem(SESSION_TODO_MOBILE_PRIMARY_MODE) === "today") {
+        mode = "today";
+      }
+    } catch (_) {}
+    applyTodoTodayCrushMode(mode);
+  }
+
+  if (useHeaderTodayCrush) {
+    syncHeaderTodayCrushUi();
+    const onMq = () => syncHeaderTodayCrushUi();
+    try {
+      mqMobile.addEventListener("change", onMq, { signal: listUiSignal });
+    } catch (_) {
+      mqMobile.addEventListener("change", onMq);
+      listUiSignal.addEventListener("abort", () => {
+        try {
+          mqMobile.removeEventListener("change", onMq);
+        } catch (_) {}
+      });
+    }
+    function onHeaderTodayCrushActivate() {
+      if (headerTodayCrushTab.hidden) return;
+      applyTodoTodayCrushMode(
+        headerTodayCrushTab.classList.contains("active") ? "list" : "today",
+      );
+    }
+    el._lpTodayCrushToggle = onHeaderTodayCrushActivate;
+    listUiSignal.addEventListener(
+      "abort",
+      () => {
+        try {
+          delete el._lpTodayCrushToggle;
+        } catch (_) {}
+      },
+      { once: true },
+    );
+    const calRoot = headerTodayCrushTab.closest(".calendar-view-todo");
+    const todoMainTab = calRoot?.querySelector(
+      '.time-view-tab[data-view="todo"]',
+    );
+    function onTodoMainTabClick() {
+      if (!headerTodayCrushTab.hidden) applyTodoTodayCrushMode("list");
+    }
+    if (todoMainTab) {
+      try {
+        todoMainTab.addEventListener("click", onTodoMainTabClick, {
+          signal: listUiSignal,
+        });
+      } catch (_) {
+        todoMainTab.addEventListener("click", onTodoMainTabClick);
+        listUiSignal.addEventListener(
+          "abort",
+          () => {
+            try {
+              todoMainTab.removeEventListener("click", onTodoMainTabClick);
+            } catch (_) {}
+          },
+          { once: true },
+        );
+      }
+    }
+  }
 
   const observer = new MutationObserver(() => {
     updateTabLabels();

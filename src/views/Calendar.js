@@ -4413,7 +4413,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   };
 }
 
-function render1DayView(tabsElement) {
+function render1DayView(tabsElement, embedOpts = {}) {
+  const { skipCalendarTabsTopRow = false } = embedOpts;
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout calendar-1day-view";
 
@@ -4421,16 +4422,18 @@ function render1DayView(tabsElement) {
   /** Date#getDay() 용 (0=일) — 네비 날짜 옆 요일 표기 */
   const NAV_WEEKDAYS_SUN0 = ["일", "월", "화", "수", "목", "금", "토"];
 
-  /* 1번 레이아웃: 탭을 최상단 전체 영역에 배치 */
-  const topRow = document.createElement("div");
-  topRow.className = "calendar-view-top-row calendar-view-top-row--1day";
-  if (tabsElement) {
-    const tabsWrapper = document.createElement("div");
-    tabsWrapper.className = "calendar-monthly-tabs-wrap";
-    tabsWrapper.appendChild(tabsElement);
-    topRow.appendChild(tabsWrapper);
+  /* 1번 레이아웃: 탭을 최상단 전체 영역에 배치 (할일 화면에만 넣을 때는 빈 줄 생략) */
+  if (!skipCalendarTabsTopRow) {
+    const topRow = document.createElement("div");
+    topRow.className = "calendar-view-top-row calendar-view-top-row--1day";
+    if (tabsElement) {
+      const tabsWrapper = document.createElement("div");
+      tabsWrapper.className = "calendar-monthly-tabs-wrap";
+      tabsWrapper.appendChild(tabsElement);
+      topRow.appendChild(tabsWrapper);
+    }
+    wrap.appendChild(topRow);
   }
-  wrap.appendChild(topRow);
 
   const contentRow = document.createElement("div");
   contentRow.className = "calendar-view-1day-content-row";
@@ -5304,11 +5307,30 @@ function renderTodoView(tabsElement) {
   const topRow = document.createElement("div");
   topRow.className =
     "calendar-view-top-row calendar-view-top-row--todo calendar-view-top-row--with-settings";
+  let headerTodayCrushTab = null;
   if (tabsElement) {
     const tabsWrapper = document.createElement("div");
     tabsWrapper.className = "calendar-monthly-tabs-wrap";
     tabsWrapper.appendChild(tabsElement);
     topRow.appendChild(tabsWrapper);
+    /* 같은 tabs 노드가 할일↔1일 등 전환마다 재사용되므로 버튼을 매번 append 하면 「오늘 해치우기」가 누적됨 */
+    tabsElement
+      .querySelectorAll(".calendar-todo-header-today-tab")
+      .forEach((node, i) => {
+        if (i > 0) node.remove();
+      });
+    headerTodayCrushTab = tabsElement.querySelector(
+      ".calendar-todo-header-today-tab",
+    );
+    if (!headerTodayCrushTab) {
+      headerTodayCrushTab = document.createElement("button");
+      headerTodayCrushTab.type = "button";
+      headerTodayCrushTab.className =
+        "time-view-tab calendar-todo-header-today-tab";
+      headerTodayCrushTab.setAttribute("data-mobile-label", "오늘 해치우기");
+      headerTodayCrushTab.setAttribute("aria-pressed", "false");
+      tabsElement.appendChild(headerTodayCrushTab);
+    }
   }
   wrap.appendChild(topRow);
 
@@ -5320,6 +5342,7 @@ function renderTodoView(tabsElement) {
   const todoListEl = renderTodoList({
     hideHeader: true,
     settingsSlot: topRow,
+    ...(headerTodayCrushTab ? { headerTodayCrushTab } : {}),
   });
   todoContent.appendChild(todoListEl);
   todoMain.appendChild(todoContent);
@@ -7111,6 +7134,9 @@ export function render() {
         existingTodo.querySelector(".calendar-view-top-row--todo");
       const todoMain = existingTodo.querySelector(".calendar-todo-main");
       const reuseBtn = topRow?.querySelector(".todo-list-settings-btn");
+      const reuseTodayTab = topRow?.querySelector(
+        ".calendar-todo-header-today-tab",
+      );
       if (topRow && todoMain) {
         try {
           todoMain
@@ -7124,6 +7150,9 @@ export function render() {
           renderTodoList({
             hideHeader: true,
             settingsSlot: topRow,
+            ...(reuseTodayTab?.isConnected
+              ? { headerTodayCrushTab: reuseTodayTab }
+              : {}),
             ...(reuseBtn?.isConnected
               ? { reuseSettingsButtonEl: reuseBtn }
               : {}),
@@ -7183,15 +7212,29 @@ export function render() {
     }
   }
 
-  tabs.querySelectorAll(".time-view-tab").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      tabs
-        .querySelectorAll(".time-view-tab")
-        .forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      const v = btn.dataset.view;
-      void renderContent(v);
-    });
+  /* 할일 탭 안 「오늘 해치우기」: 버튼에 직접 붙인 리스너가 일부 환경에서 누락될 수 있어 탭 위임에서 확실히 연결 */
+  tabs.addEventListener("click", (e) => {
+    const crush = e.target.closest(".calendar-todo-header-today-tab");
+    if (crush && tabs.contains(crush)) {
+      const todoWrap = crush.closest(".calendar-view-todo");
+      const listView = todoWrap?.querySelector(".todo-list-view");
+      const toggle = listView?._lpTodayCrushToggle;
+      if (typeof toggle === "function") {
+        e.preventDefault();
+        toggle();
+      }
+      return;
+    }
+    const btn = e.target.closest(".time-view-tab");
+    if (!btn || !tabs.contains(btn)) return;
+    if (!btn.hasAttribute("data-view")) return;
+    const v = btn.dataset.view;
+    if (!v) return;
+    tabs
+      .querySelectorAll(".time-view-tab")
+      .forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    void renderContent(v);
   });
 
   /* 모바일: 상단에서 '날짜 정하기' 탭 숨김(하단 캘린더 탭과 중복). 좁혀졌을 때 캘린더 뷰면 할일로 전환 */

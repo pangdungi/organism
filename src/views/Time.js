@@ -2093,7 +2093,7 @@ function rowEffectiveLastMinutesLedger(row) {
   return parseLedgerTimeStringToMinutes(String(src || ""));
 }
 
-/** loadTimeRows와 화면 캐시(allRowsCache) 병합 — 동일 id·동일 복합키는 캐시가 우선 */
+/** loadTimeRows(디스크)와 캐시 병합 — 동일 id·동일 복합키: **캐시가 우선**(모달·미저장 편집). 시트만 그린 `allRowsCache` 전용은 mergeTimeLedgerCacheWithDisk */
 function mergeLedgerRowsForDedupe(diskRows, cacheRows) {
   const map = new Map();
   const keyOf = (r) => {
@@ -2113,6 +2113,32 @@ function mergeLedgerRowsForDedupe(diskRows, cacheRows) {
   }
   for (const r of cacheRows || []) {
     if (r) map.set(keyOf(r), r);
+  }
+  return [...map.values()];
+}
+
+/** allRowsCache 재수화: KPI/과제명 변경 후 디스크 쪽 taskName·taskId가 먼저 갱신되므로 id 행은 **디스크를 우선** */
+function mergeTimeLedgerCacheWithDisk(diskRows, cacheRows) {
+  const map = new Map();
+  const keyOf = (r) => {
+    if (!r || typeof r !== "object") return "";
+    const id = String(r.id || "").trim();
+    if (id) return `id:${id}`;
+    const d =
+      normalizeDateForCompare(r.date || "") ||
+      String(r.date || "")
+        .trim()
+        .replace(/\//g, "-")
+        .slice(0, 10);
+    return `c:${d}|${(r.taskName || "").trim()}|${(r.startTime || "").trim()}`;
+  };
+  for (const r of diskRows || []) {
+    if (r) map.set(keyOf(r), r);
+  }
+  for (const r of cacheRows || []) {
+    if (!r) continue;
+    const k = keyOf(r);
+    if (!map.has(k)) map.set(k, r);
   }
   return [...map.values()];
 }
@@ -7530,17 +7556,50 @@ export function render() {
     const seen = new Set();
     fromDom.forEach((r) => {
       if (isEmptyTimeRow(r)) return;
+      const entryId = String(r.id || "").trim();
+      if (entryId) {
+        if (seen.has(`id:${entryId}`)) return;
+        seen.add(`id:${entryId}`);
+        const idx = allRowsCache.findIndex(
+          (c) => String(c.id || "").trim() === entryId,
+        );
+        if (idx >= 0) {
+          allRowsCache[idx] = r;
+        } else {
+          allRowsCache.push(r);
+        }
+        return;
+      }
       const k = `${r.date}|${r.taskName}|${r.startTime}`;
       const idx = allRowsCache.findIndex(
         (c) => `${c.date}|${c.taskName}|${c.startTime}` === k,
       );
-      if (idx >= 0) allRowsCache[idx] = r;
-      else if (!seen.has(k)) {
+      if (idx >= 0) {
+        allRowsCache[idx] = r;
+      } else if (!seen.has(k)) {
         seen.add(k);
         allRowsCache.push(r);
       }
     });
   }
+
+  function rehydrateTimeLedgerAllRowsCacheFromDisk() {
+    allRowsCache = mergeTimeLedgerCacheWithDisk(
+      loadTimeRows(),
+      Array.isArray(allRowsCache) ? allRowsCache : [],
+    );
+  }
+
+  function onTimeLedgerDiskOrTaskListTouched() {
+    if (!el.isConnected) return;
+    rehydrateTimeLedgerAllRowsCacheFromDisk();
+    cachedRows = getFullRowsForFilter(true);
+    onFilterChange(true);
+  }
+  if (typeof window !== "undefined") {
+    window.addEventListener("time-ledger-tasks-saved", onTimeLedgerDiskOrTaskListTouched, { signal });
+  }
+  document.addEventListener("calendar-time-rows-updated", onTimeLedgerDiskOrTaskListTouched, { signal });
 
   function getFullRowsForFilter(skipMerge = false) {
     if (!skipMerge) mergeRowsIntoCache();

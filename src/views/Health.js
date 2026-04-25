@@ -7,10 +7,7 @@ import {
   HEALTH_KPI_MAP_STORAGE_KEY,
   applyHealthKpiTimestampsOnSave,
 } from "../utils/healthKpiMapSupabase.js";
-import {
-  notifyTimeLedgerTasksChanged,
-  removeTimeLedgerTaskOptionByNameForKpi,
-} from "../utils/timeTaskOptionsModel.js";
+import { syncKpiToTimeTaskOption } from "../utils/timeTaskOptionsModel.js";
 import { toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay, formatDeadlineRangeCompact } from "../utils/ganttModal.js";
 import { setupDeadlineQuickButtons } from "../utils/deadlineQuickButtons.js";
 import {
@@ -38,7 +35,6 @@ import {
   kpiTodosCompletionBrief,
 } from "../utils/kpiTodoLifecycleDebug.js";
 
-const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
 
 function defaultDeletedRefs() {
@@ -94,62 +90,16 @@ function loadHealthMap() {
   };
 }
 
-function getTimeTaskOptionsRaw() {
-  try {
-    const raw = localStorage.getItem(TIME_TASK_OPTIONS_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
-    }
-  } catch (_) {}
-  return null;
-}
-
-function getTaskName(o) {
-  return typeof o === "string" ? o : (o?.name || "");
-}
-
 function syncKpiToTimeTask(kpi, action, oldName) {
-  const data = loadHealthMap();
-  data.kpiTaskSync = data.kpiTaskSync || {};
-  let opts = getTimeTaskOptionsRaw();
-  if (opts === null) opts = [];
-
-  if (action === "add") {
-    const name = (kpi.name || "").trim();
-    if (!name || opts.some((o) => getTaskName(o) === name)) return;
-    data.kpiTaskSync[kpi.id] = name;
-    opts.unshift({ name, category: "health", productivity: "productive", memo: "" });
-    try {
-      localStorage.setItem(TIME_TASK_OPTIONS_KEY, JSON.stringify(opts));
-    } catch (_) {}
-    saveHealthMap(data);
-    notifyTimeLedgerTasksChanged();
-  } else if (action === "remove") {
-    const name = (data.kpiTaskSync[kpi.id] || kpi.name || "").trim();
-    if (name) {
-      delete data.kpiTaskSync[kpi.id];
-      saveHealthMap(data);
-      removeTimeLedgerTaskOptionByNameForKpi(name);
-    }
-  } else if (action === "update" && oldName) {
-    const newName = (kpi.name || "").trim();
-    const prevName = data.kpiTaskSync[kpi.id];
-    if (prevName && newName && prevName !== newName) {
-      opts = opts.map((o) => {
-        if (getTaskName(o) === prevName) {
-          return typeof o === "string" ? newName : { ...o, name: newName };
-        }
-        return o;
-      });
-      data.kpiTaskSync[kpi.id] = newName;
-      try {
-        localStorage.setItem(TIME_TASK_OPTIONS_KEY, JSON.stringify(opts));
-      } catch (_) {}
-      saveHealthMap(data);
-      notifyTimeLedgerTasksChanged();
-    }
-  }
+  syncKpiToTimeTaskOption({
+    kpi,
+    action,
+    oldName,
+    kpiMapStorageKey: HEALTH_KPI_MAP_STORAGE_KEY,
+    taskCategory: "health",
+    loadKpiData: loadHealthMap,
+    saveKpiData: saveHealthMap,
+  });
 }
 
 function saveHealthMap(data) {

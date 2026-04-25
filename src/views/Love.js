@@ -3,10 +3,7 @@
  * 행복 추가 시 탭 형성, KPI 카드, 로그, 할일
  */
 
-import {
-  notifyTimeLedgerTasksChanged,
-  removeTimeLedgerTaskOptionByNameForKpi,
-} from "../utils/timeTaskOptionsModel.js";
+import { syncKpiToTimeTaskOption } from "../utils/timeTaskOptionsModel.js";
 import {
   HAPPINESS_KPI_MAP_STORAGE_KEY,
   applyHappinessKpiTimestampsOnSave,
@@ -48,7 +45,6 @@ import { confirmKpiTodoDelete } from "../utils/confirmModal.js";
 import { KPI_TAB_EDIT_PENCIL_HTML } from "../utils/kpiTabNameEditIcon.js";
 import { sortKpiLogsNewestFirst } from "../utils/kpiLogsSort.js";
 
-const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
 
 function defaultDeletedRefs() {
@@ -99,67 +95,16 @@ function loadHappinessMap() {
   };
 }
 
-function getTimeTaskOptionsRaw() {
-  try {
-    const raw = localStorage.getItem(TIME_TASK_OPTIONS_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
-    }
-  } catch (_) {}
-  return null;
-}
-
-function getTaskName(o) {
-  return typeof o === "string" ? o : o?.name || "";
-}
-
 function syncKpiToTimeTask(kpi, action, oldName) {
-  const data = loadHappinessMap();
-  data.kpiTaskSync = data.kpiTaskSync || {};
-  let opts = getTimeTaskOptionsRaw();
-  if (opts === null) opts = [];
-
-  if (action === "add") {
-    const name = (kpi.name || "").trim();
-    if (!name || opts.some((o) => getTaskName(o) === name)) return;
-    data.kpiTaskSync[kpi.id] = name;
-    opts.unshift({
-      name,
-      category: "happiness",
-      productivity: "productive",
-      memo: "",
-    });
-    try {
-      localStorage.setItem(TIME_TASK_OPTIONS_KEY, JSON.stringify(opts));
-    } catch (_) {}
-    saveHappinessMap(data);
-    notifyTimeLedgerTasksChanged();
-  } else if (action === "remove") {
-    const name = (data.kpiTaskSync[kpi.id] || kpi.name || "").trim();
-    if (name) {
-      delete data.kpiTaskSync[kpi.id];
-      saveHappinessMap(data);
-      removeTimeLedgerTaskOptionByNameForKpi(name);
-    }
-  } else if (action === "update" && oldName) {
-    const newName = (kpi.name || "").trim();
-    const prevName = data.kpiTaskSync[kpi.id];
-    if (prevName && newName && prevName !== newName) {
-      opts = opts.map((o) => {
-        if (getTaskName(o) === prevName) {
-          return typeof o === "string" ? newName : { ...o, name: newName };
-        }
-        return o;
-      });
-      data.kpiTaskSync[kpi.id] = newName;
-      try {
-        localStorage.setItem(TIME_TASK_OPTIONS_KEY, JSON.stringify(opts));
-      } catch (_) {}
-      saveHappinessMap(data);
-      notifyTimeLedgerTasksChanged();
-    }
-  }
+  syncKpiToTimeTaskOption({
+    kpi,
+    action,
+    oldName,
+    kpiMapStorageKey: HAPPINESS_KPI_MAP_STORAGE_KEY,
+    taskCategory: "happiness",
+    loadKpiData: loadHappinessMap,
+    saveKpiData: saveHappinessMap,
+  });
 }
 
 function saveHappinessMap(data) {

@@ -218,6 +218,8 @@ export function getFullTaskOptions() {
                 productivity: "productive",
                 memo: "",
                 id: "",
+                kpiId: "",
+                kpiMapKey: "",
               }
             : {
                 name: o.name || "",
@@ -225,6 +227,8 @@ export function getFullTaskOptions() {
                 productivity: o.productivity || "productive",
                 memo: o.memo || "",
                 id: o.id || "",
+                kpiId: o.kpiId != null ? String(o.kpiId).trim() : "",
+                kpiMapKey: (o.kpiMapKey || "").trim(),
               },
         );
       }
@@ -364,6 +368,13 @@ export function patchTimeLogRowsOnTaskRename({ taskId, oldName, newName }) {
     });
     if (changed) {
       writeTimeLedgerEntriesRaw(next);
+      try {
+        if (typeof document !== "undefined") {
+          document.dispatchEvent(
+            new CustomEvent("calendar-time-rows-updated", { detail: {} }),
+          );
+        }
+      } catch (_) {}
     }
   } catch (_) {}
 }
@@ -408,21 +419,199 @@ export function updateTaskOption(oldName, task) {
   return opts;
 }
 
+function getTimeTaskOptionsRaw() {
+  try {
+    const raw = localStorage.getItem(TASK_OPTIONS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (_) {}
+  return null;
+}
+
+function getTaskNameFromRow(o) {
+  return typeof o === "string" ? o : o?.name || "";
+}
+
+function rowKpiIdPart(o) {
+  if (typeof o === "string") return "";
+  return String(o.kpiId || "").trim();
+}
+
+function rowKpiMapKeyPart(o) {
+  if (typeof o === "string") return "";
+  return (o.kpiMapKey || "").trim();
+}
+
+/**
+ * KPI ↔ 시간가계부 과제: KPI id·어느 맵(저장 키)에 속하는지로 같은 줄을 찾고, 제목이 바뀌면
+ * 가계부 기록의 과제명·taskId도 `patchTimeLogRowsOnTaskRename`으로 맞춤.
+ */
+export function syncKpiToTimeTaskOption({
+  kpi,
+  action,
+  oldName,
+  kpiMapStorageKey,
+  taskCategory,
+  loadKpiData,
+  saveKpiData,
+}) {
+  const kpiMapKey = (kpiMapStorageKey || "").trim();
+  if (!kpiMapKey) return;
+  const data = loadKpiData();
+  if (!data || typeof data !== "object") return;
+  data.kpiTaskSync = data.kpiTaskSync || {};
+  let opts = getTimeTaskOptionsRaw();
+  if (opts === null) opts = [];
+
+  if (action === "add") {
+    const name = (kpi.name || "").trim();
+    if (!name) return;
+    if (
+      opts.some(
+        (o) =>
+          rowKpiIdPart(o) === String(kpi.id) && rowKpiMapKeyPart(o) === kpiMapKey,
+      )
+    ) {
+      return;
+    }
+    if (opts.some((o) => (getTaskNameFromRow(o) || "").trim() === name)) return;
+    data.kpiTaskSync[kpi.id] = name;
+    opts.unshift({
+      name,
+      category: (taskCategory || "").trim(),
+      productivity: "productive",
+      memo: "",
+      kpiId: kpi.id,
+      kpiMapKey: kpiMapKey,
+    });
+    try {
+      localStorage.setItem(TASK_OPTIONS_KEY, JSON.stringify(opts));
+    } catch (_) {}
+    saveKpiData(data);
+    notifyTimeLedgerTasksChanged();
+    return;
+  }
+
+  if (action === "remove") {
+    const syncName = (data.kpiTaskSync[kpi.id] || kpi.name || "").trim();
+    if (kpi.id != null) delete data.kpiTaskSync[kpi.id];
+    saveKpiData(data);
+    removeTimeLedgerTaskOptionByNameForKpi(syncName, kpi.id, kpiMapKey);
+    return;
+  }
+
+  if (action === "update") {
+    const newName = (kpi.name || "").trim();
+    if (!newName) return;
+    const oldNameTrim = (oldName != null && oldName) ? String(oldName).trim() : "";
+    let idx = opts.findIndex(
+      (o) =>
+        rowKpiIdPart(o) === String(kpi.id) && rowKpiMapKeyPart(o) === kpiMapKey,
+    );
+    if (idx < 0) {
+      const fromSync = (data.kpiTaskSync[kpi.id] || "").trim();
+      if (fromSync) {
+        idx = opts.findIndex(
+          (o) => (getTaskNameFromRow(o) || "").trim() === fromSync,
+        );
+      }
+    }
+    if (idx < 0 && oldNameTrim) {
+      idx = opts.findIndex(
+        (o) => (getTaskNameFromRow(o) || "").trim() === oldNameTrim,
+      );
+    }
+    if (idx < 0) {
+      data.kpiTaskSync[kpi.id] = newName;
+      saveKpiData(data);
+      return;
+    }
+    const cur = opts[idx];
+    const prevDisplayName = (getTaskNameFromRow(cur) || "").trim();
+    if (prevDisplayName === newName) {
+      const next =
+        typeof cur === "string"
+          ? { name: newName, kpiId: kpi.id, kpiMapKey: kpiMapKey }
+          : {
+              ...cur,
+              name: newName,
+              kpiId: kpi.id,
+              kpiMapKey: kpiMapKey,
+            };
+      opts[idx] = next;
+      data.kpiTaskSync[kpi.id] = newName;
+      try {
+        localStorage.setItem(TASK_OPTIONS_KEY, JSON.stringify(opts));
+      } catch (_) {}
+      saveKpiData(data);
+      return;
+    }
+    const idStr =
+      typeof cur === "string"
+        ? ""
+        : (cur.id && isUuid(String(cur.id).trim()) ? String(cur.id).trim() : "");
+    if (idStr) {
+      patchTimeLogRowsOnTaskRename({
+        taskId: idStr,
+        oldName: prevDisplayName,
+        newName,
+      });
+    } else {
+      patchTimeLogRowsOnTaskRename({
+        taskId: "",
+        oldName: prevDisplayName,
+        newName,
+      });
+    }
+    const next =
+      typeof cur === "string"
+        ? { name: newName, kpiId: kpi.id, kpiMapKey: kpiMapKey }
+        : {
+            ...cur,
+            name: newName,
+            kpiId: kpi.id,
+            kpiMapKey: kpiMapKey,
+            id: idStr || cur.id || "",
+          };
+    opts[idx] = next;
+    data.kpiTaskSync[kpi.id] = newName;
+    try {
+      localStorage.setItem(TASK_OPTIONS_KEY, JSON.stringify(opts));
+    } catch (_) {}
+    saveKpiData(data);
+    notifyTimeLedgerTasksChanged();
+  }
+}
+
 /**
  * KPI 삭제·탭 삭제로 연동이 끊길 때 시간가계부 과제 목록에서 이름 제거.
  * `removeTaskOption`은 KPI에서 붙인 과제명이 잠겨 있어 삭제에 실패하므로 별도 경로.
  * 서버 `time_ledger_tasks` 행도 삭제해 pull·Realtime 시 부활 방지.
  */
-export function removeTimeLedgerTaskOptionByNameForKpi(name) {
+export function removeTimeLedgerTaskOptionByNameForKpi(
+  name,
+  kpiId = null,
+  kpiMapKey = null,
+) {
   const n = (name || "").trim();
-  if (!n) return;
+  const kid = kpiId != null ? String(kpiId) : "";
+  const kmk = (kpiMapKey || "").trim();
+  if (!kid && !kmk && !n) return;
   const opts = getFullTaskOptions();
-  const target = opts.find((o) => (o.name || "").trim() === n);
-  const removedId =
-    target && isUuid(String(target.id || "").trim())
-      ? String(target.id).trim()
-      : "";
-  const next = opts.filter((o) => (o.name || "").trim() !== n);
+  const removeRow = (o) => {
+    if (kid && kmk) {
+      return String(o.kpiId || "") === kid && (o.kpiMapKey || "") === kmk;
+    }
+    return n && (o.name || "").trim() === n;
+  };
+  const target = opts.find((o) => removeRow(o));
+  if (!target) return;
+  const removedId = isUuid(String(target.id || "").trim())
+    ? String(target.id).trim()
+    : "";
+  const next = opts.filter((o) => !removeRow(o));
   writeTaskOptionListLocal(next);
   notifyAfterServerDeleteIfNeeded(removedId);
 }
@@ -477,17 +666,39 @@ function readStoredTaskOptionRows() {
     if (!Array.isArray(parsed)) return [];
     return parsed.map((o) =>
       typeof o === "string"
-        ? { name: o, category: "", productivity: "productive", memo: "", id: "" }
+        ? {
+            name: o,
+            category: "",
+            productivity: "productive",
+            memo: "",
+            id: "",
+            kpiId: "",
+            kpiMapKey: "",
+          }
         : {
             name: (o?.name || "").trim(),
             category: (o?.category || "").trim(),
             productivity: o?.productivity || "productive",
             memo: (o?.memo || "").trim(),
             id: (o?.id || "").trim(),
+            kpiId: o.kpiId != null ? String(o.kpiId).trim() : "",
+            kpiMapKey: (o?.kpiMapKey || "").trim(),
           },
     );
   } catch (_) {
     return [];
+  }
+}
+
+function getKpiCanonicalNameInMap(kpiMapKey, kpiId) {
+  try {
+    const raw = localStorage.getItem(kpiMapKey);
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    const s = p?.kpiTaskSync?.[kpiId];
+    return typeof s === "string" && s.trim() ? s.trim() : null;
+  } catch (_) {
+    return null;
   }
 }
 
@@ -538,26 +749,35 @@ export function applyTimeLedgerTasksFromServer(serverRows) {
     out.map((t) => (t.name || "").trim()).filter(Boolean),
   );
   const kpiSyncedNames = getKpiSyncedTaskNames();
-  if (kpiSyncedNames.size > 0) {
-    for (const row of readStoredTaskOptionRows()) {
-      const n = (row.name || "").trim();
-      if (!n || !kpiSyncedNames.has(n) || namesInOut.has(n)) continue;
-      let rid = String(row.id || "").trim();
-      if (!isUuid(rid)) {
-        rid =
-          typeof crypto !== "undefined" && crypto.randomUUID
-            ? crypto.randomUUID()
-            : `t-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-      }
-      out.push({
-        id: rid,
-        name: n,
-        category: (row.category || "").trim(),
-        productivity: normalizeProductivity(row.productivity),
-        memo: (row.memo || "").trim(),
-      });
-      namesInOut.add(n);
+  for (const row of readStoredTaskOptionRows()) {
+    const kid = (row.kpiId || "").trim();
+    const kmk = (row.kpiMapKey || "").trim();
+    let n = (row.name || "").trim();
+    if (kid && kmk) {
+      const canonical = getKpiCanonicalNameInMap(kmk, kid);
+      if (!canonical) continue;
+      n = canonical;
+    } else {
+      if (kpiSyncedNames.size === 0) continue;
+      if (!kpiSyncedNames.has(n) || namesInOut.has(n)) continue;
     }
+    if (namesInOut.has(n)) continue;
+    let rid = String(row.id || "").trim();
+    if (!isUuid(rid)) {
+      rid =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `t-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    }
+    out.push({
+      id: rid,
+      name: n,
+      category: (row.category || "").trim(),
+      productivity: normalizeProductivity(row.productivity),
+      memo: (row.memo || "").trim(),
+      ...(kid && kmk ? { kpiId: kid, kpiMapKey: kmk } : {}),
+    });
+    namesInOut.add(n);
   }
   const order = new Map(
     serverRows.map((r, i) => [String(r.id || "").trim(), r.sort_order ?? i]),
