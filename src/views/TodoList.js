@@ -138,6 +138,7 @@ function updateSectionTaskDone(sectionId, taskId, done) {
     if (t) {
       t.done = !!done;
       persistSectionTasksAndSchedule(obj);
+      upsertCalendarSectionTaskRowFromSessionMemory(sectionId, taskId, null);
       return true;
     }
   } catch (_) {}
@@ -153,6 +154,7 @@ function updateCustomSectionTaskDone(sectionId, taskId, done) {
     if (t) {
       t.done = !!done;
       persistCustomSectionTasksAndSchedule(obj);
+      upsertCalendarSectionTaskRowFromSessionMemory(sectionId, taskId, null);
       return true;
     }
   } catch (_) {}

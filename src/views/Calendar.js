@@ -376,6 +376,7 @@ function updateSectionTaskDone(sectionId, taskId, done) {
     if (t) {
       t.done = !!done;
       persistSectionTasksAndSchedule(obj);
+      upsertCalendarSectionTaskRowFromSessionMemory(sectionId, taskId, null);
       return true;
     }
   } catch (_) {}
@@ -637,6 +638,7 @@ function updateCustomSectionTaskDone(sectionId, taskId, done) {
     if (t) {
       t.done = !!done;
       persistCustomSectionTasksAndSchedule(obj);
+      upsertCalendarSectionTaskRowFromSessionMemory(sectionId, taskId, null);
     }
   } catch (_) {}
 }
@@ -1957,13 +1959,13 @@ function renderMonthlyView(
           if (isTodo) {
             bar.innerHTML = showCheckbox
               ? `<span class="calendar-monthly-span-bar-checkbox" style="border-color:${b.color}"><span class="calendar-monthly-span-bar-checkbox-inner"></span></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
-              : "";
+              : `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
           } else {
             if (b.isFirstSegment) {
               bar.style.setProperty("--schedule-icon-color", b.color);
               bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" style="border-color:${b.color}"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
             } else {
-              bar.innerHTML = "";
+              bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
             }
           }
         }
@@ -2645,13 +2647,13 @@ function render2WeekView(
           if (isTodo) {
             bar.innerHTML = showCheckbox
               ? `<span class="calendar-monthly-span-bar-checkbox" style="border-color:${b.color}"><span class="calendar-monthly-span-bar-checkbox-inner"></span></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
-              : "";
+              : `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
           } else {
             if (b.isFirstSegment) {
               bar.style.setProperty("--schedule-icon-color", b.color);
               bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" style="border-color:${b.color}"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
             } else {
-              bar.innerHTML = "";
+              bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
             }
           }
         }
@@ -3323,6 +3325,12 @@ function render3WeekView(
           bar.dataset.storageKey = b.storageKey || "";
           bar.dataset.done = b.done ? "true" : "false";
           bar.dataset.itemType = b.itemType || "todo";
+          if (isTodo && b.done) {
+            bar.classList.add("is-completed");
+            bar
+              .querySelector(".calendar-monthly-span-bar-checkbox-inner")
+              ?.classList.add("checked");
+          }
           const toggleDone = () => {
             let newDone = !bar.dataset.done;
             if (b.kpiTodoId && b.storageKey) {
@@ -3348,11 +3356,9 @@ function render3WeekView(
           if (isTodo) {
             bar.innerHTML = showCheckbox
               ? `<span class="calendar-monthly-span-bar-checkbox" style="border-color:${b.color}"><span class="calendar-monthly-span-bar-checkbox-inner"></span></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
-              : "";
+              : `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
           } else {
-            bar.innerHTML = b.isFirstSegment
-              ? `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
-              : "";
+            bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
           }
           if (isTodo && b.done) {
             bar.classList.add("is-completed");
@@ -5574,43 +5580,72 @@ function render1WeekView(
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
       const CELL_GAP = 3.5;
-      if (!is1WeekView) {
-        rangeTasks.forEach((t) => {
-          const barStart =
-            t.startDate > firstDayKey ? t.startDate : firstDayKey;
-          const barEnd = t.dueDate < lastDayKey ? t.dueDate : lastDayKey;
-          if (barStart > barEnd) return;
-          const startIdx = weekDateKeys.indexOf(barStart);
-          const endIdx = weekDateKeys.indexOf(barEnd);
-          if (startIdx < 0 || endIdx < 0) return;
-          const left = (startIdx / 7) * 100 + CELL_GAP / 7;
-          const width =
-            ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
-          const baseColor = getSectionColor(t.sectionId);
-          const color = withMoreTransparency(baseColor);
-          const isFirstSegment = barStart === t.startDate;
-          allBars.push({
-            left,
-            width,
-            name: t.name,
-            color,
-            isSingleDay: false,
-            isFirstSegment,
-            itemType: t.itemType || "todo",
-            done: !!t.done,
-            kpiTodoId: t.kpiTodoId,
-            storageKey: t.storageKey,
-            taskId: t.taskId,
-            sectionId: t.sectionId,
-            startDate: t.startDate,
-            dueDate: t.dueDate,
-            isOverdueBar: calendarBarTaskIsOverdueTodo(t),
-            _calPrevStart:
-              (t._calPrevStart || "").toString().slice(0, 10) || "",
-            _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
+      /* 1주도 월별과 동일: 기간(시작+마감) 할일은 rangeTasks — 빼면 getTasksForDate(…,true)가 기간을 제외해
+       * 서버·세션 done 과 다른 표시(또는 누락)가 난다. */
+      rangeTasks.forEach((t) => {
+        const barStart = t.startDate > firstDayKey ? t.startDate : firstDayKey;
+        const barEnd = t.dueDate < lastDayKey ? t.dueDate : lastDayKey;
+        if (barStart > barEnd) return;
+        const startIdx = weekDateKeys.indexOf(barStart);
+        const endIdx = weekDateKeys.indexOf(barEnd);
+        if (startIdx < 0 || endIdx < 0) return;
+        if (is1WeekView) {
+          weekDateKeys.forEach((dayKey, dayIdx) => {
+            if (!dayKey) return;
+            if (t.startDate > dayKey || t.dueDate < dayKey) return;
+            const left = (dayIdx / 7) * 100 + CELL_GAP / 7;
+            const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
+            const baseColor = getSectionColor(t.sectionId);
+            const color = withMoreTransparency(baseColor);
+            allBars.push({
+              left,
+              width,
+              name: t.name,
+              color,
+              isSingleDay: true,
+              dayIdx,
+              dateKey: dayKey,
+              itemType: t.itemType || "todo",
+              done: !!t.done,
+              kpiTodoId: t.kpiTodoId,
+              storageKey: t.storageKey,
+              taskId: t.taskId,
+              sectionId: t.sectionId,
+              startDate: t.startDate,
+              dueDate: t.dueDate,
+              isOverdueBar: calendarBarTaskIsOverdueTodo(t),
+              _calPrevStart:
+                (t._calPrevStart || "").toString().slice(0, 10) || "",
+              _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
+            });
           });
+          return;
+        }
+        const left = (startIdx / 7) * 100 + CELL_GAP / 7;
+        const width = ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
+        const baseColor = getSectionColor(t.sectionId);
+        const color = withMoreTransparency(baseColor);
+        const isFirstSegment = barStart === t.startDate;
+        allBars.push({
+          left,
+          width,
+          name: t.name,
+          color,
+          isSingleDay: false,
+          isFirstSegment,
+          itemType: t.itemType || "todo",
+          done: !!t.done,
+          kpiTodoId: t.kpiTodoId,
+          storageKey: t.storageKey,
+          taskId: t.taskId,
+          sectionId: t.sectionId,
+          startDate: t.startDate,
+          dueDate: t.dueDate,
+          isOverdueBar: calendarBarTaskIsOverdueTodo(t),
+          _calPrevStart: (t._calPrevStart || "").toString().slice(0, 10) || "",
+          _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
         });
-      }
+      });
       weekDateKeys.forEach((dateKey, dayIdx) => {
         getTasksForDate(dateKey, true).forEach((t) => {
           const left = (dayIdx / 7) * 100 + CELL_GAP / 7;
@@ -5710,6 +5745,12 @@ function render1WeekView(
           bar.dataset.storageKey = b.storageKey || "";
           bar.dataset.done = b.done ? "true" : "false";
           bar.dataset.itemType = b.itemType || "todo";
+          if (isTodo && b.done) {
+            bar.classList.add("is-completed");
+            bar
+              .querySelector(".calendar-monthly-span-bar-checkbox-inner")
+              ?.classList.add("checked");
+          }
           const toggleDone = (e) => {
             if (e) e.stopPropagation();
             const newDone = bar.dataset.done !== "true";
@@ -5764,11 +5805,9 @@ function render1WeekView(
           if (isTodo) {
             bar.innerHTML = showCheckbox
               ? `<span class="calendar-monthly-span-bar-checkbox" style="border-color:${b.color}"><span class="calendar-monthly-span-bar-checkbox-inner"></span></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
-              : "";
+              : `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
           } else {
-            bar.innerHTML = b.isFirstSegment
-              ? `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
-              : "";
+            bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
           }
           if (isTodo && b.done) {
             bar.classList.add("is-completed");
@@ -5884,12 +5923,7 @@ function render1WeekView(
               entries.style.minHeight = `${0.1 + daySingles.length * BAR_HEIGHT + 0.35}rem`;
               return;
             }
-          } else if (
-            !is1WeekView &&
-            !b.isSingleDay &&
-            b.startDate &&
-            b.dueDate
-          ) {
+          } else if (!b.isSingleDay && b.startDate && b.dueDate) {
             const anchorKey =
               b.startDate < firstDayKey ? firstDayKey : b.startDate;
             const cell = weekRowEl.querySelector(
@@ -6340,10 +6374,12 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
   }
 
   let _nestedSubViewGen = 0;
-  /* 상위 탭(App) 또는 직전 renderContent 가 이미 pull 한 직후 첫 nested 만 중복 네트워크 생략 */
-  let _nestedSubViewFirstPullSkip = true;
   let activeSubViewId = initialSubView;
 
+  /**
+   * 월별·1주 등 서브탭 전환 시마다( skipPull 아닐 때) Supabase `calendar_section_tasks` pull 후 렌더.
+   * 클릭 시점의 서버 스냅샷을 세션에 반영한 뒤 `getAllTasksWithDateRange` 등이 그린다.
+   */
   async function renderSubView(subViewId, subOpts = {}) {
     const skipPull = !!subOpts.skipPull;
     activeSubViewId = subViewId;
@@ -6353,9 +6389,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
       hasSidebar: !!contentArea.querySelector(".calendar-todo-sidebar-body"),
     });
     saveTodoListBeforeUnmount(contentArea);
-    if (_nestedSubViewFirstPullSkip) {
-      _nestedSubViewFirstPullSkip = false;
-    } else if (!skipPull) {
+    if (!skipPull) {
       try {
         await pullCalendarSectionTasksFromSupabase({
           reason: `calendar_nested_${subViewId}`,

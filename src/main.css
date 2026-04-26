@@ -5138,51 +5138,10 @@ body {
     padding-left: 0.4rem !important;
   }
 
-  /* 모바일: 1주 뷰 — 한 줄에 한 날짜씩 7행으로 표시 */
+  /* 모바일: 1주 뷰 — 한 줄에 한 날짜씩 7행으로 표시 (할일 막대·완료 표시는 월별과 동일 클래스 → 전역 .calendar-monthly-span-bar 규칙만 사용) */
   .calendar-1week-view .calendar-monthly-grid {
     display: flex;
     flex-direction: column;
-  }
-  /* 모바일 1주 뷰: 태스크에 체크박스 표시 + 우리 스타일 적용 */
-  .calendar-1week-view
-    .calendar-monthly-span-bar--has-checkbox
-    .calendar-monthly-span-bar-checkbox {
-    display: flex !important;
-    width: var(--cb-size);
-    height: var(--cb-size);
-    min-width: var(--cb-size);
-    min-height: var(--cb-size);
-    border: var(--cb-border);
-    border-radius: 0;
-    background: var(--cb-bg);
-    align-items: center;
-    justify-content: center;
-    box-sizing: border-box;
-  }
-  .calendar-1week-view .calendar-monthly-span-bar-checkbox:hover {
-    background: var(--cb-bg-hover);
-  }
-  .calendar-1week-view .calendar-monthly-span-bar-checkbox.checked,
-  .calendar-1week-view
-    .calendar-monthly-span-bar.is-completed
-    .calendar-monthly-span-bar-checkbox {
-    background: var(--cb-bg-checked);
-    border: var(--cb-border);
-  }
-  .calendar-1week-view .calendar-monthly-span-bar-checkbox-inner {
-    width: 0.35rem;
-    height: 0.5rem;
-    border-right: 0.125rem solid #f2ede0;
-    border-bottom: 0.125rem solid #f2ede0;
-    transform: rotate(45deg) translateY(-0.05rem);
-    opacity: 0;
-  }
-  .calendar-1week-view .calendar-monthly-span-bar-checkbox-inner.checked {
-    opacity: 1;
-  }
-  .calendar-1week-view .calendar-monthly-span-bar--has-checkbox {
-    gap: 0.35rem !important;
-    padding-left: 0.4rem !important;
   }
   /* 모바일 1주 뷰: entries·바·체크박스 터치 가능 (부모가 none이면 자식도 히트 안 됨 → entries도 auto) */
   .calendar-1week-view .calendar-monthly-day .calendar-monthly-day-entries,
@@ -35401,11 +35360,16 @@ body.kpi-resizing {
 .calendar-1week-view .calendar-monthly-day.other-month.today {
   background: transparent;
 }
-.calendar-1week-view .calendar-monthly-day.today:hover:not(.empty) {
-  background: var(--ui-surface-alt);
+/* 1주: 행 호버 — 전역 셀(--ui-surface-alt #d8…)보다 옅게 */
+.calendar-1week-view .calendar-monthly-day:hover:not(.empty) {
+  background: color-mix(in srgb, var(--ui-surface-alt) 12%, #faf6ef 88%);
 }
+.calendar-1week-view .calendar-monthly-day.today:hover:not(.empty) {
+  background: color-mix(in srgb, var(--ui-surface-alt) 10%, #faf6ef 90%);
+}
+.calendar-1week-view .calendar-monthly-day.other-month:hover,
 .calendar-1week-view .calendar-monthly-day.other-month.today:hover {
-  background: #eceadf;
+  background: color-mix(in srgb, #eceadf 70%, #faf6ef 30%);
 }
 
 .calendar-monthly-day.calendar-day-focused {
