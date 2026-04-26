@@ -42,7 +42,11 @@ import {
   migrateTimeLogRowsTaskIds,
   isUuid,
 } from "../utils/timeTaskOptionsModel.js";
-import { attachTimeLedgerTasksSaveListener } from "../utils/timeLedgerTasksSupabase.js";
+import {
+  attachTimeLedgerTasksSaveListener,
+  pullTimeLedgerTasksFromSupabase,
+  syncTimeLedgerTasksToSupabase,
+} from "../utils/timeLedgerTasksSupabase.js";
 import {
   getStoredImproveNotes,
   setStoredImproveNote,
@@ -6545,7 +6549,29 @@ export function render() {
     return `${dateStr}T${latestHhMm}`;
   }
 
+  /** 과제 기록·과제 설정·과제 추가 모달: (1) 직전 저장분 upsert (2) 서버 기준 pull. pull만 하면 방금 추가한 행이 사라질 수 있어 순서 고정. */
+  async function pullServerTaskListForModal() {
+    try {
+      await syncTimeLedgerTasksToSupabase();
+    } catch (_) {}
+    try {
+      await pullTimeLedgerTasksFromSupabase({ force: true });
+    } catch (_) {}
+    try {
+      getFullTaskOptions();
+      migrateTimeLogRowsTaskIds();
+    } catch (_) {}
+  }
+
   function openTaskLogModal(addContext) {
+    void (async () => {
+      await pullServerTaskListForModal();
+      if (!el.isConnected) return;
+      openTaskLogModalAfterPull(addContext);
+    })();
+  }
+
+  function openTaskLogModalAfterPull(addContext) {
     taskLogAddContext = addContext;
     taskLogEditTr = null;
     taskLogEditExclude = null;
@@ -6623,7 +6649,9 @@ export function render() {
     if (firstTask) onTaskSelectedForLog(firstTask);
   }
 
-  function openTaskLogModalForEdit(tr, rowData) {
+  async function openTaskLogModalForEdit(tr, rowData) {
+    await pullServerTaskListForModal();
+    if (!el.isConnected) return;
     const data =
       tr?._rowData && typeof tr._rowData === "object" ? tr._rowData : rowData;
     let startTime = data.startTime || "";
@@ -7334,7 +7362,7 @@ export function render() {
               alert(MSG_TIME_TASK_KPI_LINKED);
               return;
             }
-            openAddTaskModal(t);
+            void openAddTaskModal(t);
           });
           row.addEventListener("keydown", (e) => {
             if (e.key === "Enter" || e.key === " ") {
@@ -7363,7 +7391,9 @@ export function render() {
     const name = (addTaskNameInput.value || "").trim();
     addTaskSubmitBtn.disabled = !(name && selectedCategory);
   }
-  function openAddTaskModal(editTask) {
+  async function openAddTaskModal(editTask) {
+    await pullServerTaskListForModal();
+    if (!el.isConnected) return;
     addTaskModal.hidden = false;
     addTaskModal.style.zIndex = "1001";
     setupListSelectedTaskName = editTask ? editTask.name : "";
@@ -7529,7 +7559,7 @@ export function render() {
 
   syncAddTaskSubmitState();
 
-  addTaskBtn?.addEventListener("click", () => openAddTaskModal(null));
+  addTaskBtn?.addEventListener("click", () => void openAddTaskModal(null));
   /* 과제 추가/수정 모달도 배경 탭으로 닫지 않음(저장 전 이탈 방지) */
   addTaskCloseBtn?.addEventListener("click", closeAddTaskModal);
 
@@ -7549,14 +7579,18 @@ export function render() {
   });
 
   taskSetupBtn?.addEventListener("click", () => {
-    taskSetupModal.hidden = false;
-    document.body.style.overflow = "hidden";
-    activeSetupTab =
-      taskSetupModal.querySelector(".time-task-setup-tab.active")?.dataset
-        ?.tab || "all";
-    selectedSubcat = "";
-    renderSubcatButtons(activeSetupTab);
-    renderTaskSetupList();
+    void (async () => {
+      await pullServerTaskListForModal();
+      if (!el.isConnected) return;
+      taskSetupModal.hidden = false;
+      document.body.style.overflow = "hidden";
+      activeSetupTab =
+        taskSetupModal.querySelector(".time-task-setup-tab.active")?.dataset
+          ?.tab || "all";
+      selectedSubcat = "";
+      renderSubcatButtons(activeSetupTab);
+      renderTaskSetupList();
+    })();
   });
   function closeTaskSetupModal() {
     taskSetupModal.hidden = true;

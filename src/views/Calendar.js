@@ -64,7 +64,10 @@ import {
   timeLedgerLocalTodayYmd,
   timeLedgerLocalYesterdayYmd,
 } from "../utils/timeLedgerEntriesSupabase.js";
-import { pullTimeLedgerTasksFromSupabase } from "../utils/timeLedgerTasksSupabase.js";
+import {
+  pullTimeLedgerTasksFromSupabase,
+  syncTimeLedgerTasksToSupabase,
+} from "../utils/timeLedgerTasksSupabase.js";
 import {
   readSectionTasksObject,
   readCustomSectionTasksObject,
@@ -7093,6 +7096,9 @@ export function render() {
       try {
         const yEnd = timeLedgerLocalTodayYmd();
         const yStart = timeLedgerLocalYesterdayYmd();
+        try {
+          await syncTimeLedgerTasksToSupabase();
+        } catch (_) {}
         await Promise.all([
           pullTimeLedgerEntriesForDateRange(yStart, yEnd),
           pullTimeLedgerTasksFromSupabase(),

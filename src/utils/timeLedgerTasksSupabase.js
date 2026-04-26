@@ -147,12 +147,16 @@ export async function syncTimeLedgerTasksToSupabase() {
    */
 }
 
-/** 서버에 행이 있으면 로컬 과제 목록 병합 반영 */
-export async function pullTimeLedgerTasksFromSupabase() {
+/**
+ * 서버에 행이 있으면 로컬 과제 목록 병합 반영
+ * @param {{ force?: boolean }} [opts] — true면 로컬 저장 직후 pull 스킵 윈도우를 무시(모달 열 때 서버 기준으로 맞출 때)
+ */
+export async function pullTimeLedgerTasksFromSupabase(opts = {}) {
+  const force = opts.force === true;
   const userId = await getSessionUserId();
   if (!userId || !supabase) return false;
 
-  if (Date.now() < _tasksPullSkipUntil) {
+  if (!force && Date.now() < _tasksPullSkipUntil) {
     return false;
   }
 
@@ -218,6 +222,9 @@ export async function hydrateTimeLedgerTasksFromCloud() {
   if (!supabase) return;
   attachTimeLedgerTasksSaveListener();
   await pushTimeLedgerTasksIfServerEmpty();
+  try {
+    await syncTimeLedgerTasksToSupabase();
+  } catch (_) {}
   const pulled = await pullTimeLedgerTasksFromSupabase();
   if (!pulled) {
     getFullTaskOptions();

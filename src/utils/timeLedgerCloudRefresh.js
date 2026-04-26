@@ -1,5 +1,5 @@
 /**
- * 시간가계부 — 서버에서 로컬로 병합.
+ * 시간가계부 — 서버 pull / 로컬 저장·upsert 경로 분리.
  * 전체 묶음(pullAllTimeLedgerFromCloud)은 레거시·테스트용; 앱에서는 시간 탭 진입 시 pullTimeLedgerTabEnterFromCloud 만 사용.
  */
 
@@ -13,6 +13,7 @@ import {
 import {
   pullTimeLedgerTasksFromSupabase,
   pushTimeLedgerTasksIfServerEmpty,
+  syncTimeLedgerTasksToSupabase,
 } from "./timeLedgerTasksSupabase.js";
 import { pullTimeDailyBudgetFromSupabase } from "./timeDailyBudgetSupabase.js";
 import {
@@ -49,6 +50,9 @@ export async function pullAllTimeLedgerFromCloud(opts = {}) {
   const { skipEntries = false } = opts;
   lpPullDebug("pullAllTimeLedgerFromCloud", { skipEntries });
   await ensureTimeLedgerStorageReady();
+  try {
+    await syncTimeLedgerTasksToSupabase();
+  } catch (_) {}
   const before = snapshotTimeLedgerLocalStorage();
   const jobs = [];
   if (!skipEntries) jobs.push(pullTimeLedgerEntriesFromSupabase());
@@ -62,13 +66,16 @@ export async function pullAllTimeLedgerFromCloud(opts = {}) {
 
 /**
  * 시간가계부 상위 탭 클릭 시에만 호출 — sessionStorage 날짜 구간 + 과제 마스터 + 일간 예산.
- * (부팅·브라우저 포커스·Realtime에서는 호출하지 않음 — 저장 직후 pull 로 덮어쓰기 방지)
+ * 과제: 대기 upsert 후 pull(로컬 전용 잔존 + 서버 권한 방지; 서버가 과제 마스터의 기준).
  */
 export async function pullTimeLedgerTabEnterFromCloud() {
   lpPullDebug("pullTimeLedgerTabEnterFromCloud", {});
   await ensureTimeLedgerStorageReady();
   /* 예전 Time.render 안 hydrate 가 하던 일: 서버가 비었을 때 로컬 과제를 한 번 올림 */
   await pushTimeLedgerTasksIfServerEmpty();
+  try {
+    await syncTimeLedgerTasksToSupabase();
+  } catch (_) {}
   const before = snapshotTimeLedgerLocalStorage();
   await Promise.all([
     pullTimeLedgerEntriesFromSupabase(),

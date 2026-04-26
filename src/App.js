@@ -44,6 +44,7 @@ import { pullTimeLedgerTabEnterFromCloud } from "./utils/timeLedgerCloudRefresh.
 import {
   attachTimeLedgerTasksSaveListener,
   pullTimeLedgerTasksFromSupabase,
+  syncTimeLedgerTasksToSupabase,
 } from "./utils/timeLedgerTasksSupabase.js";
 import {
   pullTimeDailyBudgetFromSupabase,
@@ -177,6 +178,9 @@ async function pullDataForActiveTab(tabId, opts = {}) {
     case "home": {
       await pullCalendarSectionTasksFromSupabase({ reason: "app_tab_home" });
       const ymd = timeLedgerLocalTodayYmd();
+      try {
+        await syncTimeLedgerTasksToSupabase();
+      } catch (_) {}
       await Promise.all([
         pullTimeLedgerEntriesForDateRange(ymd, ymd),
         pullTimeLedgerTasksFromSupabase(),
@@ -192,6 +196,9 @@ async function pullDataForActiveTab(tabId, opts = {}) {
       /* 1일 뷰「오늘/어제 실제」: 어제~오늘 entry + 과제명(시간 탭 미방문 시에도 맞춤) */
       const yEnd = timeLedgerLocalTodayYmd();
       const yStart = timeLedgerLocalYesterdayYmd();
+      try {
+        await syncTimeLedgerTasksToSupabase();
+      } catch (_) {}
       await Promise.all([
         pullTimeLedgerEntriesForDateRange(yStart, yEnd),
         pullTimeLedgerTasksFromSupabase(),

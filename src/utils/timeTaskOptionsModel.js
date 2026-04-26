@@ -3,7 +3,7 @@
  */
 
 import * as C from "./timeTaskOptionsConstants.js";
-import { getKpiSyncActiveKpiIds, getKpiSyncedTaskNames } from "./timeKpiSync.js";
+import { getKpiSyncedTaskNames } from "./timeKpiSync.js";
 import { isUuid, UUID_RE } from "./idUtils.js";
 import {
   readTimeLedgerEntriesRaw,
@@ -567,7 +567,7 @@ function readStoredTaskOptionRows() {
   }
 }
 
-/** 서버에서 내려받은 행으로 로컬 과제 목록 덮기·병합 */
+/** 서버 time_ledger_tasks 행으로 로컬 과제 목록 재구성(서버가 진실). 내장 과제 + 서버 비내장 행; 동일 uuid에 대해 kpiId만 로컬에 있으면 유지(DB에 컬럼 없음). */
 export function applyTimeLedgerTasksFromServer(serverRows) {
   if (!Array.isArray(serverRows) || serverRows.length === 0) return false;
   const byId = new Map(
@@ -616,40 +616,6 @@ export function applyTimeLedgerTasksFromServer(serverRows) {
       memo: (r.memo || "").trim(),
       kpiId: kid,
     });
-  }
-  /* KPI·과제: 서버에 아직 없는 id · kpiId 연동 row 는 pull 이 지우지 않음 */
-  const namesInOut = new Set(
-    out.map((t) => (t.name || "").trim()).filter(Boolean),
-  );
-  const idsInOut = new Set(out.map((t) => String(t.id || "").trim()).filter(Boolean));
-  const kpiSyncedNames = getKpiSyncedTaskNames();
-  const activeKpiIds = getKpiSyncActiveKpiIds();
-  for (const row of localRows) {
-    const n = (row.name || "").trim();
-    if (!n) continue;
-    let rid = String(row.id || "").trim();
-    const kpiK = (row.kpiId || "").trim();
-    const keepKpi = kpiK && activeKpiIds.has(kpiK);
-    const keepLegacy = !kpiK && kpiSyncedNames.has(n);
-    if (!keepKpi && !keepLegacy) continue;
-    if (rid && idsInOut.has(rid)) continue;
-    if (namesInOut.has(n)) continue;
-    if (!isUuid(rid)) {
-      rid =
-        typeof crypto !== "undefined" && crypto.randomUUID
-          ? crypto.randomUUID()
-          : `t-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-    }
-    out.push({
-      id: rid,
-      name: n,
-      category: (row.category || "").trim(),
-      productivity: normalizeProductivity(row.productivity),
-      memo: (row.memo || "").trim(),
-      kpiId: kpiK,
-    });
-    namesInOut.add(n);
-    idsInOut.add(rid);
   }
   const order = new Map(
     serverRows.map((r, i) => [String(r.id || "").trim(), r.sort_order ?? i]),
