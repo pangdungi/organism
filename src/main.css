@@ -33658,7 +33658,7 @@ body.kpi-resizing {
   transition: background 0.15s ease;
 }
 .calendar-annual-cell:hover {
-  background: var(--ui-surface-alt);
+  background: color-mix(in srgb, var(--ui-surface-alt) 50%, #f5f1e8 50%);
   outline: var(--line-l3);
   outline-offset: -0.0625rem;
   z-index: 1;
@@ -35635,7 +35635,8 @@ body.kpi-resizing {
 }
 
 .calendar-monthly-day:hover:not(.empty) {
-  background: var(--ui-surface-alt);
+  /* 기본은 진한 surface-alt — 호버만 content-bg와 섞어 약하게 */
+  background: color-mix(in srgb, var(--ui-surface-alt) 50%, var(--content-bg) 50%);
 }
 
 .calendar-monthly-day.empty {
@@ -35695,11 +35696,11 @@ body.kpi-resizing {
 }
 /* 1주: 날짜 칸·막대 모두 눈에 띄는 호버(막대는 셀 배경이 보이지 않으므로 막대·칸 둘 다) */
 .calendar-1week-view .calendar-monthly-day:hover:not(.empty) {
-  background: var(--ui-surface-alt);
+  background: color-mix(in srgb, var(--ui-surface-alt) 50%, var(--content-bg) 50%);
 }
-/* 1주 오늘: 기본은 투명 — 호버 시에만 셀 틴트 */
+/* 1주 오늘: 기본은 투명 — 호버 시에만 옅은 틴트 */
 .calendar-1week-view .calendar-monthly-day.today:hover:not(.empty) {
-  background: color-mix(in srgb, var(--ui-surface-alt) 55%, #faf6ef 45%);
+  background: color-mix(in srgb, var(--ui-surface-alt) 30%, var(--content-bg) 70%);
 }
 .calendar-1week-view .calendar-monthly-day.other-month:hover,
 .calendar-1week-view .calendar-monthly-day.other-month.today:hover {
