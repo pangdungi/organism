@@ -591,28 +591,9 @@ function formatDateKey(date) {
   return `${y}-${m}-${d}`;
 }
 
-/** 날짜 정하기: 마감이 오늘 이전이면 기한 초과 (미완료만) */
-function calendarTodoDueIsOverdue(dueStr, done) {
-  if (done) return false;
-  const key = (dueStr || "").toString().trim().slice(0, 10);
-  if (!key) return false;
-  const parts = key.split(/[-/]/);
-  if (parts.length < 3) return false;
-  const due = new Date(
-    parseInt(parts[0], 10),
-    parseInt(parts[1], 10) - 1,
-    parseInt(parts[2], 10),
-  );
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  due.setHours(0, 0, 0, 0);
-  return due.getTime() < today.getTime();
-}
-
-function calendarBarTaskIsOverdueTodo(task) {
-  const isTodo = (task.itemType || "todo").toLowerCase() === "todo";
-  if (!isTodo) return false;
-  return calendarTodoDueIsOverdue(task.dueDate, !!task.done);
+/** 캘린더 막대 왼쪽 기한초과 강조 — UI에서 쓰지 않음 */
+function calendarBarTaskIsOverdueTodo(_task) {
+  return false;
 }
 
 function escapeHtml(s) {
