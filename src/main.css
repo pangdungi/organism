@@ -23205,49 +23205,6 @@ body.kpi-resizing {
   gap: 0.35rem;
 }
 
-/* KPI: 높을수록 좋음 + 목표값·단위가 있을 때만 — 과제 기록 모달에서 수치 입력(할일 목록 대신) */
-.time-task-log-kpi-measure-section {
-  margin-bottom: 1rem;
-  padding: 0.75rem;
-  background: var(--app-bg);
-  border: var(--line-l3);
-  border-radius: 0.5rem;
-}
-.time-task-log-kpi-measure-heading {
-  margin: 0 0 0.5rem 0;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--text-body);
-}
-.time-task-log-kpi-measure-section .time-task-log-field {
-  margin-bottom: 0;
-}
-.time-task-log-kpi-measure-label {
-  display: block;
-  margin-bottom: 0.35rem;
-  font-size: 0.8rem;
-  color: var(--text-caption);
-}
-.time-task-log-kpi-measure-input-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.5rem 0.65rem;
-}
-.time-task-log-kpi-measure-input {
-  flex: 1 1 auto;
-  min-width: 6rem;
-  max-width: 12rem;
-  box-sizing: border-box;
-  font-size: 0.9375rem;
-}
-.time-task-log-kpi-measure-unit-suffix {
-  flex-shrink: 0;
-  font-size: 0.9375rem;
-  color: var(--text-body);
-  line-height: 1.3;
-}
-
 .time-task-log-kpi-todo-row input[type="checkbox"] {
   flex-shrink: 0;
   width: var(--cb-size);
