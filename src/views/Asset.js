@@ -475,31 +475,38 @@ function saveDebtRows(rows) {
   writeNetWorthBundleKey(DEBT_ROWS_KEY, rows);
 }
 
+function readDebtDataFromTr(tr) {
+  const nameInput = tr.querySelector(".asset-debt-input-name");
+  const debtTypeInput = tr.querySelector(".asset-debt-input-type");
+  const repaymentInput = tr.querySelector(".asset-debt-input-repayment");
+  const periodInput = tr.querySelector(".asset-debt-input-period");
+  const rateInput = tr.querySelector(".asset-debt-input-rate");
+  const principalInput = tr.querySelector(".asset-debt-input-principal");
+  const startDateInput = tr.querySelector(".asset-debt-input-start-date");
+  const endDateInput = tr.querySelector(".asset-debt-input-end-date");
+  const paidDisplay = tr.querySelector(".asset-debt-paid-display");
+  const extraPaidInput = tr.querySelector(".asset-debt-input-extra-paid");
+  return {
+    name: nameInput?.value || "",
+    debtType: debtTypeInput?.value || "",
+    repayment: repaymentInput?.value || "",
+    periodYears: periodInput?.value || "",
+    interestRate: rateInput?.value || "",
+    principal: principalInput?.value || "",
+    startDate: startDateInput?.value || "",
+    endDate: endDateInput?.value || "",
+    paid: paidDisplay?.textContent?.trim() && paidDisplay.textContent !== "-" ? paidDisplay.textContent.trim() : "",
+    extraPaid: extraPaidInput?.value || "",
+  };
+}
+
 function collectDebtRowsFromDOM(tableEl) {
   const rows = [];
-  tableEl?.querySelectorAll(".asset-debt-row").forEach((tr) => {
-    const nameInput = tr.querySelector(".asset-debt-input-name");
-    const debtTypeInput = tr.querySelector(".asset-debt-input-type");
-    const repaymentInput = tr.querySelector(".asset-debt-input-repayment");
-    const periodInput = tr.querySelector(".asset-debt-input-period");
-    const rateInput = tr.querySelector(".asset-debt-input-rate");
-    const principalInput = tr.querySelector(".asset-debt-input-principal");
-    const startDateInput = tr.querySelector(".asset-debt-input-start-date");
-    const endDateInput = tr.querySelector(".asset-debt-input-end-date");
-    const paidDisplay = tr.querySelector(".asset-debt-paid-display");
-    const extraPaidInput = tr.querySelector(".asset-debt-input-extra-paid");
-    rows.push({
-      name: nameInput?.value || "",
-      debtType: debtTypeInput?.value || "",
-      repayment: repaymentInput?.value || "",
-      periodYears: periodInput?.value || "",
-      interestRate: rateInput?.value || "",
-      principal: principalInput?.value || "",
-      startDate: startDateInput?.value || "",
-      endDate: endDateInput?.value || "",
-      paid: paidDisplay?.textContent?.trim() && paidDisplay.textContent !== "-" ? paidDisplay.textContent.trim() : "",
-      extraPaid: extraPaidInput?.value || "",
-    });
+  const tbl = tableEl?.querySelector?.("table") || tableEl;
+  if (!tbl) return rows;
+  tbl.querySelectorAll("tbody > tr.asset-debt-row").forEach((tr) => {
+    if (tr.classList.contains("asset-debt-row--draft")) return;
+    rows.push(readDebtDataFromTr(tr));
   });
   return rows;
 }
@@ -704,17 +711,22 @@ function collectExpenseRowsFromDOM(tableEl) {
   return rows;
 }
 
+function readRealEstateDataFromTr(tr) {
+  const contractInput = tr.querySelector(".asset-asset-input-contract");
+  const salePriceInput = tr.querySelector(".asset-asset-input-sale-price");
+  const loanInput = tr.querySelector(".asset-asset-input-loan");
+  return {
+    contract: contractInput?.value || "",
+    salePrice: salePriceInput?.value || "",
+    loan: loanInput?.value || "",
+  };
+}
+
 function collectRealEstateRowsFromDOM(tableEl) {
   const rows = [];
   tableEl?.querySelectorAll(".asset-asset-row-real-estate").forEach((tr) => {
-    const contractInput = tr.querySelector(".asset-asset-input-contract");
-    const salePriceInput = tr.querySelector(".asset-asset-input-sale-price");
-    const loanInput = tr.querySelector(".asset-asset-input-loan");
-    rows.push({
-      contract: contractInput?.value || "",
-      salePrice: salePriceInput?.value || "",
-      loan: loanInput?.value || "",
-    });
+    if (tr.classList.contains("asset-asset-row--draft")) return;
+    rows.push(readRealEstateDataFromTr(tr));
   });
   return rows;
 }
@@ -2324,34 +2336,120 @@ function renderNetworthView() {
   addTaskBtn.innerHTML = '<span class="asset-debt-add-icon">+</span>';
   tbody.appendChild(totalsRow);
 
-  function createDebtRow(data = {}, onUpdate) {
+  function createDebtRow(data = {}, onUpdate, options = {}) {
+    const mode = options.mode != null ? options.mode : "view";
+    const isView = mode === "view";
+    const isDraft = mode === "draft";
+    const isEdit = mode === "edit";
+    const memSnapshot = isEdit
+      ? options.memSnapshot
+        ? { ...options.memSnapshot }
+        : { ...data }
+      : null;
+    const inPanel = isDraft || isEdit;
+    const inRowUpdate = isView ? () => {} : onUpdate;
+
     const tr = document.createElement("tr");
     tr.className = "asset-debt-row";
+    if (isView) {
+      tr.classList.add("asset-debt-row--view");
+    }
+    if (inPanel) {
+      tr.classList.add("asset-debt-row--inner-panel");
+      if (isDraft) tr.classList.add("asset-debt-row--draft");
+      if (isEdit) tr.classList.add("asset-debt-row--editing");
+    }
 
-    const nameTd = document.createElement("td");
-    nameTd.className = "asset-debt-cell-name";
+    let dataRowTarget;
+    let panelFooter = null;
+    let xBtn = null;
+    if (inPanel) {
+      const panelTitle = isDraft ? "새 대출" : "대출 수정";
+      tr.innerHTML =
+        '<td colspan="15" class="asset-debt-cell-panel">' +
+        '<div class="asset-expense-inline-panel asset-debt-inline-panel">' +
+        '<div class="asset-expense-inline-panel-top">' +
+        '<span class="asset-expense-inline-panel-title">' +
+        panelTitle +
+        "</span>" +
+        '<button type="button" class="asset-expense-inline-panel-x" aria-label="닫기">×</button>' +
+        "</div>" +
+        '<div class="asset-expense-inline-panel-body"></div>' +
+        '<div class="asset-expense-inline-panel-bottom" aria-label="확인 작업"></div>' +
+        "</div></td>";
+      const panelBody = tr.querySelector(".asset-expense-inline-panel-body");
+      panelFooter = tr.querySelector(".asset-expense-inline-panel-bottom");
+      xBtn = tr.querySelector(".asset-expense-inline-panel-x");
+      const formStack = document.createElement("div");
+      formStack.className = "asset-expense-form-stack";
+      formStack.setAttribute("role", "group");
+      formStack.setAttribute("aria-label", "대출 입력");
+      panelBody.appendChild(formStack);
+      dataRowTarget = formStack;
+    } else {
+      dataRowTarget = tr;
+    }
+
+    function appendToRow(label, tdClass, node) {
+      if (inPanel) {
+        const row = document.createElement("div");
+        row.className = "asset-expense-form-row";
+        const lab = document.createElement("span");
+        lab.className = "asset-expense-form-label";
+        lab.textContent = label;
+        const control = document.createElement("div");
+        control.className = "asset-expense-form-control asset-expense-form-control--field" + (tdClass ? " " + tdClass : "");
+        if (node) control.appendChild(node);
+        row.appendChild(lab);
+        row.appendChild(control);
+        dataRowTarget.appendChild(row);
+        return control;
+      }
+      const td = document.createElement("td");
+      if (tdClass) td.className = tdClass;
+      if (node) td.appendChild(node);
+      dataRowTarget.appendChild(td);
+      return td;
+    }
+    function appendManyToRow(label, tdClass, ...nodes) {
+      if (inPanel) {
+        const row = document.createElement("div");
+        row.className = "asset-expense-form-row";
+        const lab = document.createElement("span");
+        lab.className = "asset-expense-form-label";
+        lab.textContent = label;
+        const control = document.createElement("div");
+        control.className = "asset-expense-form-control asset-expense-form-control--field" + (tdClass ? " " + tdClass : "");
+        nodes.forEach((n) => {
+          if (n) control.appendChild(n);
+        });
+        row.appendChild(lab);
+        row.appendChild(control);
+        dataRowTarget.appendChild(row);
+        return control;
+      }
+      const td = document.createElement("td");
+      if (tdClass) td.className = tdClass;
+      nodes.forEach((n) => {
+        if (n) td.appendChild(n);
+      });
+      dataRowTarget.appendChild(td);
+      return td;
+    }
     const nameInput = document.createElement("input");
     nameInput.type = "text";
     nameInput.className = "asset-debt-input-name";
     nameInput.value = data.name || "";
     nameInput.placeholder = "";
-    bindNetWorthTextInput(nameInput, onUpdate);
+    bindNetWorthTextInput(nameInput, inRowUpdate);
     nameInput.addEventListener("keydown", (e) => e.key === "Enter" && !e.isComposing && nameInput.blur());
-    nameTd.appendChild(nameInput);
-    tr.appendChild(nameTd);
+    appendToRow("대출 이름", "asset-debt-cell-name", nameInput);
 
-    const debtTypeTd = document.createElement("td");
-    debtTypeTd.className = "asset-debt-cell-type";
-    debtTypeTd.appendChild(createDebtTypeDropdown(data.debtType || "", onUpdate));
-    tr.appendChild(debtTypeTd);
+    appendToRow("부채유형", "asset-debt-cell-type", createDebtTypeDropdown(data.debtType || "", inRowUpdate));
 
-    const repaymentTd = document.createElement("td");
-    repaymentTd.className = "asset-debt-cell-repayment";
-    repaymentTd.appendChild(createDebtRepaymentDropdown(data.repayment || "", onUpdate));
-    tr.appendChild(repaymentTd);
+    let repaymentHost;
+    repaymentHost = appendToRow("상환방식", "asset-debt-cell-repayment", null);
 
-    const periodTd = document.createElement("td");
-    periodTd.className = "asset-debt-cell-period";
     const periodInput = document.createElement("input");
     periodInput.type = "text";
     periodInput.className = "asset-debt-input-period";
@@ -2359,11 +2457,8 @@ function renderNetworthView() {
     periodInput.placeholder = "-";
     periodInput.addEventListener("input", (e) => filterNumericInput(periodInput, false, e));
     periodInput.addEventListener("keydown", (e) => e.key === "Enter" && periodInput.blur());
-    periodTd.appendChild(periodInput);
-    tr.appendChild(periodTd);
+    appendToRow("약정 개월", "asset-debt-cell-period", periodInput);
 
-    const rateTd = document.createElement("td");
-    rateTd.className = "asset-debt-cell-rate";
     const rateInput = document.createElement("input");
     rateInput.type = "text";
     rateInput.className = "asset-debt-input-rate";
@@ -2372,11 +2467,8 @@ function renderNetworthView() {
     rateInput.title = "연 금리, 퍼센트 숫자만 (4.2 = 4.2%, % 생략 가능)";
     rateInput.addEventListener("input", (e) => filterNumericInput(rateInput, true, e));
     rateInput.addEventListener("keydown", (e) => e.key === "Enter" && rateInput.blur());
-    rateTd.appendChild(rateInput);
-    tr.appendChild(rateTd);
+    appendToRow("금리(%)", "asset-debt-cell-rate", rateInput);
 
-    const principalTd = document.createElement("td");
-    principalTd.className = "asset-debt-cell-principal";
     const principalInput = document.createElement("input");
     principalInput.type = "text";
     principalInput.className = "asset-debt-input-principal";
@@ -2388,16 +2480,13 @@ function renderNetworthView() {
       if (formatted !== "") principalInput.value = formatted;
     });
     principalInput.addEventListener("keydown", (e) => e.key === "Enter" && principalInput.blur());
-    principalTd.appendChild(principalInput);
-    tr.appendChild(principalTd);
+    appendToRow("대출 원금", "asset-debt-cell-principal", principalInput);
 
-    const interestTd = document.createElement("td");
-    interestTd.className = "asset-debt-cell-interest";
     const interestSpan = document.createElement("span");
     interestSpan.className = "asset-debt-interest-display";
 
     function updateInterest() {
-      const repaymentInput = repaymentTd.querySelector(".asset-debt-input-repayment");
+      const repaymentInput = tr.querySelector(".asset-debt-input-repayment");
       const interest = calcTotalLoanInterest(
         principalInput.value,
         rateInput.value,
@@ -2415,26 +2504,21 @@ function renderNetworthView() {
       updateMonthlyBreakdownRef?.();
       updatePaidFromDatesRef?.();
       updateBalanceRef?.();
-      onUpdate();
+      inRowUpdate();
     };
-    repaymentTd.innerHTML = "";
-    repaymentTd.appendChild(createDebtRepaymentDropdown(data.repayment || "", repaymentOnUpdate));
+    repaymentHost.replaceChildren();
+    repaymentHost.appendChild(createDebtRepaymentDropdown(data.repayment || "", repaymentOnUpdate));
     updateInterest();
-    interestTd.appendChild(interestSpan);
-    tr.appendChild(interestTd);
+    appendToRow("총 대출 이자", "asset-debt-cell-interest", interestSpan);
 
-    const monthlyPrincipalTd = document.createElement("td");
-    monthlyPrincipalTd.className = "asset-debt-cell-monthly-principal";
     const monthlyPrincipalSpan = document.createElement("span");
     monthlyPrincipalSpan.className = "asset-debt-monthly-principal-display";
 
-    const monthlyInterestTd = document.createElement("td");
-    monthlyInterestTd.className = "asset-debt-cell-monthly-interest";
     const monthlyInterestSpan = document.createElement("span");
     monthlyInterestSpan.className = "asset-debt-monthly-interest-display";
 
     function updateMonthlyBreakdown() {
-      const repaymentInput = repaymentTd.querySelector(".asset-debt-input-repayment");
+      const repaymentInput = tr.querySelector(".asset-debt-input-repayment");
       const result = calcMonthlyPrincipalAndInterest(
         principalInput.value,
         rateInput.value,
@@ -2450,15 +2534,11 @@ function renderNetworthView() {
       }
     }
 
-    monthlyPrincipalTd.appendChild(monthlyPrincipalSpan);
-    monthlyInterestTd.appendChild(monthlyInterestSpan);
-    tr.appendChild(monthlyPrincipalTd);
-    tr.appendChild(monthlyInterestTd);
+    appendToRow("월 원금", "asset-debt-cell-monthly-principal", monthlyPrincipalSpan);
+    appendToRow("월 이자", "asset-debt-cell-monthly-interest", monthlyInterestSpan);
     updateMonthlyBreakdownRef = updateMonthlyBreakdown;
     updateMonthlyBreakdown();
 
-    const startDateTd = document.createElement("td");
-    startDateTd.className = "asset-debt-cell-start-date asset-debt-date-cell";
     const startDateDisplay = document.createElement("span");
     startDateDisplay.className = "asset-debt-date-display";
     const startDateInput = document.createElement("input");
@@ -2468,6 +2548,17 @@ function renderNetworthView() {
 
     function updateStartDateDisplay() {
       startDateDisplay.textContent = startDateInput.value ? formatDateYYMMDD(startDateInput.value) : "-";
+    }
+
+    const endDateDisplay = document.createElement("span");
+    endDateDisplay.className = "asset-debt-date-display";
+    const endDateInput = document.createElement("input");
+    endDateInput.type = "date";
+    endDateInput.className = "asset-debt-input-end-date";
+    endDateInput.value = data.endDate ?? "";
+
+    function updateEndDateDisplay() {
+      endDateDisplay.textContent = endDateInput.value ? formatDateYYMMDD(endDateInput.value) : "-";
     }
 
     function updateEndDateFromStartDate() {
@@ -2488,55 +2579,36 @@ function renderNetworthView() {
       updateStartDateDisplay();
       updateEndDateFromStartDate();
       updatePaidFromDates();
-      onUpdate();
+      inRowUpdate();
     });
-    startDateTd.addEventListener("click", (e) => {
+    const startHost = appendManyToRow("가입일", "asset-debt-cell-start-date asset-debt-date-cell", startDateDisplay, startDateInput);
+    startHost.addEventListener("click", (e) => {
       e.preventDefault();
       startDateInput.focus();
       if (typeof startDateInput.showPicker === "function") startDateInput.showPicker();
     });
-    startDateTd.appendChild(startDateDisplay);
-    startDateTd.appendChild(startDateInput);
-    tr.appendChild(startDateTd);
-
-    const endDateTd = document.createElement("td");
-    endDateTd.className = "asset-debt-cell-end-date asset-debt-date-cell";
-    const endDateDisplay = document.createElement("span");
-    endDateDisplay.className = "asset-debt-date-display";
-    const endDateInput = document.createElement("input");
-    endDateInput.type = "date";
-    endDateInput.className = "asset-debt-input-end-date";
-    endDateInput.value = data.endDate ?? "";
-
-    function updateEndDateDisplay() {
-      endDateDisplay.textContent = endDateInput.value ? formatDateYYMMDD(endDateInput.value) : "-";
-    }
 
     endDateInput.addEventListener("change", () => {
       updateEndDateDisplay();
       updatePaidFromDates();
-      onUpdate();
+      inRowUpdate();
     });
-    endDateTd.addEventListener("click", (e) => {
+    const endHost = appendManyToRow("만기일", "asset-debt-cell-end-date asset-debt-date-cell", endDateDisplay, endDateInput);
+    endHost.addEventListener("click", (e) => {
       e.preventDefault();
       endDateInput.focus();
       if (typeof endDateInput.showPicker === "function") endDateInput.showPicker();
     });
-    endDateTd.appendChild(endDateDisplay);
-    endDateTd.appendChild(endDateInput);
-    tr.appendChild(endDateTd);
 
     updateStartDateDisplay();
     updateEndDateDisplay();
 
-    const paidTd = document.createElement("td");
-    paidTd.className = "asset-debt-cell-paid";
     const paidSpan = document.createElement("span");
     paidSpan.className = "asset-debt-paid-display";
     paidSpan.title = "가입일~오늘 기준 자동 계산 (입력 불가)";
 
     function updatePaidFromDates() {
-      const repaymentInput = repaymentTd.querySelector(".asset-debt-input-repayment");
+      const repaymentInput = tr.querySelector(".asset-debt-input-repayment");
       const calc = calcRepaidAmountFromDates(
         principalInput.value,
         rateInput.value,
@@ -2547,7 +2619,7 @@ function renderNetworthView() {
       );
       paidSpan.textContent = calc !== null ? formatNum(calc) : "-";
       updateBalanceRef?.();
-      onUpdate();
+      inRowUpdate();
     }
     updatePaidFromDatesRef = updatePaidFromDates;
 
@@ -2555,26 +2627,23 @@ function renderNetworthView() {
       updateInterest();
       updateMonthlyBreakdown();
       updatePaidFromDates();
-      onUpdate();
+      inRowUpdate();
     });
     periodInput.addEventListener("input", () => {
       updateInterest();
       updateEndDateFromStartDate();
       updateMonthlyBreakdown();
       updatePaidFromDates();
-      onUpdate();
+      inRowUpdate();
     });
     principalInput.addEventListener("input", () => {
       updateInterest();
       updateMonthlyBreakdown();
       updatePaidFromDates();
-      onUpdate();
+      inRowUpdate();
     });
-    paidTd.appendChild(paidSpan);
-    tr.appendChild(paidTd);
+    appendToRow("상환금액", "asset-debt-cell-paid", paidSpan);
 
-    const extraPaidTd = document.createElement("td");
-    extraPaidTd.className = "asset-debt-cell-extra-paid";
     const extraPaidInput = document.createElement("input");
     extraPaidInput.type = "text";
     extraPaidInput.className = "asset-debt-input-extra-paid";
@@ -2582,24 +2651,21 @@ function renderNetworthView() {
     extraPaidInput.placeholder = "-";
     extraPaidInput.title = "중도상환 금액 (수수료 제외)";
     extraPaidInput.addEventListener("input", (e) => filterNumericInput(extraPaidInput, false, e));
-    extraPaidInput.addEventListener("input", onUpdate);
+    extraPaidInput.addEventListener("input", inRowUpdate);
     extraPaidInput.addEventListener("blur", () => {
       const formatted = formatNum(extraPaidInput.value);
       if (formatted !== "") extraPaidInput.value = formatted;
       updateBalance();
     });
     extraPaidInput.addEventListener("keydown", (e) => e.key === "Enter" && extraPaidInput.blur());
-    extraPaidTd.appendChild(extraPaidInput);
-    tr.appendChild(extraPaidTd);
+    appendToRow("중도상환(수수료 제외)", "asset-debt-cell-extra-paid", extraPaidInput);
 
-    const balanceTd = document.createElement("td");
-    balanceTd.className = "asset-debt-cell-balance";
     const balanceSpan = document.createElement("span");
     balanceSpan.className = "asset-debt-balance-display";
 
     function updateBalance() {
       const p = parseNum(principalInput.value);
-      const repaymentInput = repaymentTd.querySelector(".asset-debt-input-repayment");
+      const repaymentInput = tr.querySelector(".asset-debt-input-repayment");
       const method = repaymentInput?.value?.trim() || "";
       const extraPaid = parseNum(extraPaidInput.value) ?? 0;
 
@@ -2634,8 +2700,7 @@ function renderNetworthView() {
     endDateInput.addEventListener("change", updateBalance);
     updateBalance();
 
-    balanceTd.appendChild(balanceSpan);
-    tr.appendChild(balanceTd);
+    appendToRow("잔여 원금", "asset-debt-cell-balance", balanceSpan);
 
     if (startDateInput.value && !endDateInput.value) {
       updateEndDateFromStartDate();
@@ -2644,20 +2709,87 @@ function renderNetworthView() {
       updatePaidFromDates();
     }
 
-    const actionsTd = document.createElement("td");
-    actionsTd.className = "asset-debt-cell-actions";
-    const delBtn = document.createElement("button");
-    delBtn.type = "button";
-    delBtn.className = "asset-debt-btn-delete";
-    delBtn.textContent = "삭제";
-    delBtn.addEventListener("click", () => {
-      confirmDeleteRow(() => {
-        tr.remove();
+
+    if (inPanel) {
+      const doCancel = (e) => {
+        e?.stopPropagation?.();
+        if (isDraft) {
+          tr.remove();
+          onUpdate();
+          return;
+        }
+        if (isEdit) {
+          if (memSnapshot) {
+            tr.replaceWith(createDebtRow(memSnapshot, onUpdate, { mode: "view" }));
+          } else {
+            tr.remove();
+          }
+          onUpdate();
+        }
+      };
+      if (xBtn) xBtn.addEventListener("click", doCancel);
+      if (panelFooter) {
+        panelFooter.textContent = "";
+        if (isDraft) {
+          const saveBtn = document.createElement("button");
+          saveBtn.type = "button";
+          saveBtn.className = "asset-expense-inline-panel-btn asset-expense-inline-panel-btn--primary";
+          saveBtn.textContent = "저장";
+          saveBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const d = readDebtDataFromTr(tr);
+            tr.replaceWith(createDebtRow(d, onUpdate, { mode: "view" }));
+            onUpdate();
+          });
+          const footInner = document.createElement("div");
+          footInner.className = "asset-expense-inline-panel-bottom-inner";
+          footInner.appendChild(saveBtn);
+          panelFooter.appendChild(footInner);
+        } else if (isEdit) {
+          const delBtn2 = document.createElement("button");
+          delBtn2.type = "button";
+          delBtn2.className = "asset-expense-inline-panel-btn asset-expense-inline-panel-btn--danger";
+          delBtn2.textContent = "삭제";
+          const applyBtn = document.createElement("button");
+          applyBtn.type = "button";
+          applyBtn.className = "asset-expense-inline-panel-btn asset-expense-inline-panel-btn--primary";
+          applyBtn.textContent = "수정";
+          delBtn2.addEventListener("click", (e) => {
+            e.stopPropagation();
+            confirmDeleteRow(() => {
+              tr.remove();
+              onUpdate();
+            });
+          });
+          applyBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const d = readDebtDataFromTr(tr);
+            tr.replaceWith(createDebtRow(d, onUpdate, { mode: "view" }));
+            onUpdate();
+          });
+          const footInner = document.createElement("div");
+          footInner.className = "asset-expense-inline-panel-bottom-inner";
+          footInner.appendChild(delBtn2);
+          footInner.appendChild(applyBtn);
+          panelFooter.appendChild(footInner);
+        }
+      }
+    } else {
+      const actionsTd = document.createElement("td");
+      actionsTd.className = "asset-debt-cell-actions";
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "asset-expense-btn-row";
+      editBtn.textContent = "수정";
+      editBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const d = readDebtDataFromTr(tr);
+        tr.replaceWith(createDebtRow(d, onUpdate, { mode: "edit", memSnapshot: d }));
         onUpdate();
       });
-    });
-    actionsTd.appendChild(delBtn);
-    tr.appendChild(actionsTd);
+      actionsTd.appendChild(editBtn);
+      dataRowTarget.appendChild(actionsTd);
+    }
 
     return tr;
   }
@@ -2723,12 +2855,16 @@ function renderNetworthView() {
 
   const initialRows = loadDebtRows();
   initialRows.forEach((row) => {
-    const tr = createDebtRow(row, onUpdate);
+    const tr = createDebtRow(row, onUpdate, { mode: "view" });
     tbody.insertBefore(tr, totalsRow);
   });
 
   addTaskBtn.addEventListener("click", () => {
-    const tr = createDebtRow({}, onUpdate);
+    if (tbody.querySelector(".asset-debt-row--draft")) {
+      showToast("입력을 저장하거나 취소한 뒤에 새 항목을 추가해 주세요.", "");
+      return;
+    }
+    const tr = createDebtRow({}, onUpdate, { mode: "draft" });
     tbody.insertBefore(tr, totalsRow);
     onUpdate();
   });
@@ -2775,10 +2911,63 @@ function renderNetworthView() {
 
   const subsectionElements = {};
 
-  function createRealEstateRow(data = {}, onAssetUpdate) {
+  function createRealEstateRow(data = {}, onAssetUpdate, options = {}) {
+    const mode = options.mode != null ? options.mode : "view";
+    const isView = mode === "view";
+    const isDraft = mode === "draft";
+    const isEdit = mode === "edit";
+    const memSnapshot = isEdit
+      ? options.memSnapshot
+        ? { ...options.memSnapshot }
+        : { ...data }
+      : null;
+    const inPanel = isDraft || isEdit;
+    const inRowUpdate = isView ? () => {} : onAssetUpdate;
+    const RE_COL = 5;
+
     const tr = document.createElement("tr");
     tr.className = "asset-asset-row asset-asset-row-real-estate";
     tr.dataset.realEstate = "true";
+    if (isView) {
+      tr.classList.add("asset-asset-row--view");
+    }
+    if (inPanel) {
+      tr.classList.add("asset-asset-row--inner-panel");
+      if (isDraft) tr.classList.add("asset-asset-row--draft");
+      if (isEdit) tr.classList.add("asset-asset-row--editing");
+    }
+
+    let dataRowTarget;
+    let panelFooter = null;
+    let xBtn = null;
+    if (inPanel) {
+      const panelTitle = isDraft ? "새 부동산" : "부동산 수정";
+      tr.innerHTML =
+        '<td colspan="' +
+        RE_COL +
+        '" class="asset-asset-cell-panel">' +
+        '<div class="asset-expense-inline-panel asset-networth-inline-panel">' +
+        '<div class="asset-expense-inline-panel-top">' +
+        '<span class="asset-expense-inline-panel-title">' +
+        panelTitle +
+        "</span>" +
+        '<button type="button" class="asset-expense-inline-panel-x" aria-label="닫기">×</button>' +
+        "</div>" +
+        '<div class="asset-expense-inline-panel-body"></div>' +
+        '<div class="asset-expense-inline-panel-bottom" aria-label="확인 작업"></div>' +
+        "</div></td>";
+      const panelBody = tr.querySelector(".asset-expense-inline-panel-body");
+      panelFooter = tr.querySelector(".asset-expense-inline-panel-bottom");
+      xBtn = tr.querySelector(".asset-expense-inline-panel-x");
+      const subTable = document.createElement("table");
+      subTable.className = "asset-debt-inline-data-table";
+      const innerTr = document.createElement("tr");
+      subTable.appendChild(innerTr);
+      panelBody.appendChild(subTable);
+      dataRowTarget = innerTr;
+    } else {
+      dataRowTarget = tr;
+    }
 
     const contractTd = document.createElement("td");
     contractTd.className = "asset-asset-cell-contract";
@@ -2787,10 +2976,10 @@ function renderNetworthView() {
     contractInput.className = "asset-asset-input-contract";
     contractInput.value = data.contract || "";
     contractInput.placeholder = "";
-    bindNetWorthTextInput(contractInput, onAssetUpdate);
+    bindNetWorthTextInput(contractInput, inRowUpdate);
     contractInput.addEventListener("keydown", (e) => e.key === "Enter" && !e.isComposing && contractInput.blur());
     contractTd.appendChild(contractInput);
-    tr.appendChild(contractTd);
+    dataRowTarget.appendChild(contractTd);
 
     const salePriceTd = document.createElement("td");
     salePriceTd.className = "asset-asset-cell-sale-price";
@@ -2802,17 +2991,17 @@ function renderNetworthView() {
     salePriceInput.addEventListener("input", (e) => filterNumericInput(salePriceInput, false, e));
     salePriceInput.addEventListener("input", () => {
       updateAssetValueDisplay();
-      onAssetUpdate();
+      inRowUpdate();
     });
     salePriceInput.addEventListener("blur", () => {
       const formatted = formatNum(salePriceInput.value);
       if (formatted !== "") salePriceInput.value = formatted;
       updateAssetValueDisplay();
-      onAssetUpdate();
+      inRowUpdate();
     });
     salePriceInput.addEventListener("keydown", (e) => e.key === "Enter" && salePriceInput.blur());
     salePriceTd.appendChild(salePriceInput);
-    tr.appendChild(salePriceTd);
+    dataRowTarget.appendChild(salePriceTd);
 
     const loanTd = document.createElement("td");
     loanTd.className = "asset-asset-cell-loan";
@@ -2824,17 +3013,17 @@ function renderNetworthView() {
     loanInput.addEventListener("input", (e) => filterNumericInput(loanInput, false, e));
     loanInput.addEventListener("input", () => {
       updateAssetValueDisplay();
-      onAssetUpdate();
+      inRowUpdate();
     });
     loanInput.addEventListener("blur", () => {
       const formatted = formatNum(loanInput.value);
       if (formatted !== "") loanInput.value = formatted;
       updateAssetValueDisplay();
-      onAssetUpdate();
+      inRowUpdate();
     });
     loanInput.addEventListener("keydown", (e) => e.key === "Enter" && loanInput.blur());
     loanTd.appendChild(loanInput);
-    tr.appendChild(loanTd);
+    dataRowTarget.appendChild(loanTd);
 
     const assetValueTd = document.createElement("td");
     assetValueTd.className = "asset-asset-cell-asset-value";
@@ -2849,22 +3038,88 @@ function renderNetworthView() {
       assetValueDisplay.textContent = val !== null ? formatNum(val) : "";
     }
     updateAssetValueDisplay();
-    tr.appendChild(assetValueTd);
+    dataRowTarget.appendChild(assetValueTd);
 
-    const actionsTd = document.createElement("td");
-    actionsTd.className = "asset-asset-cell-actions";
-    const delBtn = document.createElement("button");
-    delBtn.type = "button";
-    delBtn.className = "asset-asset-btn-delete";
-    delBtn.textContent = "삭제";
-    delBtn.addEventListener("click", () => {
-      confirmDeleteRow(() => {
-        tr.remove();
+    if (inPanel) {
+      const doCancel = (e) => {
+        e?.stopPropagation?.();
+        if (isDraft) {
+          tr.remove();
+          onAssetUpdate();
+          return;
+        }
+        if (isEdit) {
+          if (memSnapshot) {
+            tr.replaceWith(createRealEstateRow(memSnapshot, onAssetUpdate, { mode: "view" }));
+          } else {
+            tr.remove();
+          }
+          onAssetUpdate();
+        }
+      };
+      if (xBtn) xBtn.addEventListener("click", doCancel);
+      if (panelFooter) {
+        panelFooter.textContent = "";
+        if (isDraft) {
+          const saveBtn = document.createElement("button");
+          saveBtn.type = "button";
+          saveBtn.className = "asset-expense-inline-panel-btn asset-expense-inline-panel-btn--primary";
+          saveBtn.textContent = "저장";
+          saveBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const d = readRealEstateDataFromTr(tr);
+            tr.replaceWith(createRealEstateRow(d, onAssetUpdate, { mode: "view" }));
+            onAssetUpdate();
+          });
+          const footInner = document.createElement("div");
+          footInner.className = "asset-expense-inline-panel-bottom-inner";
+          footInner.appendChild(saveBtn);
+          panelFooter.appendChild(footInner);
+        } else if (isEdit) {
+          const delBtn2 = document.createElement("button");
+          delBtn2.type = "button";
+          delBtn2.className = "asset-expense-inline-panel-btn asset-expense-inline-panel-btn--danger";
+          delBtn2.textContent = "삭제";
+          const applyBtn = document.createElement("button");
+          applyBtn.type = "button";
+          applyBtn.className = "asset-expense-inline-panel-btn asset-expense-inline-panel-btn--primary";
+          applyBtn.textContent = "수정";
+          delBtn2.addEventListener("click", (e) => {
+            e.stopPropagation();
+            confirmDeleteRow(() => {
+              tr.remove();
+              onAssetUpdate();
+            });
+          });
+          applyBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const d = readRealEstateDataFromTr(tr);
+            tr.replaceWith(createRealEstateRow(d, onAssetUpdate, { mode: "view" }));
+            onAssetUpdate();
+          });
+          const footInner = document.createElement("div");
+          footInner.className = "asset-expense-inline-panel-bottom-inner";
+          footInner.appendChild(delBtn2);
+          footInner.appendChild(applyBtn);
+          panelFooter.appendChild(footInner);
+        }
+      }
+    } else {
+      const actionsTd = document.createElement("td");
+      actionsTd.className = "asset-asset-cell-actions";
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "asset-expense-btn-row";
+      editBtn.textContent = "수정";
+      editBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const d = readRealEstateDataFromTr(tr);
+        tr.replaceWith(createRealEstateRow(d, onAssetUpdate, { mode: "edit", memSnapshot: d }));
         onAssetUpdate();
       });
-    });
-    actionsTd.appendChild(delBtn);
-    tr.appendChild(actionsTd);
+      actionsTd.appendChild(editBtn);
+      dataRowTarget.appendChild(actionsTd);
+    }
 
     return tr;
   }
@@ -4168,7 +4423,11 @@ function renderNetworthView() {
         const tr = createStockRow({}, onAssetUpdate);
         subTbody.insertBefore(tr, subTotalsRow);
       } else if (isRealEstate) {
-        const tr = createRealEstateRow({}, onAssetUpdate);
+        if (subTbody.querySelector(".asset-asset-row-real-estate.asset-asset-row--draft")) {
+          showToast("입력을 저장하거나 취소한 뒤에 새 항목을 추가해 주세요.", "");
+          return;
+        }
+        const tr = createRealEstateRow({}, onAssetUpdate, { mode: "draft" });
         subTbody.insertBefore(tr, subTotalsRow);
       } else if (isInsurance) {
         const tr = createInsuranceRow({}, onAssetUpdate);
@@ -4264,7 +4523,7 @@ function renderNetworthView() {
   if (realEstateEl) {
     const initialRealEstateRows = loadRealEstateRows();
     initialRealEstateRows.forEach((row) => {
-      const tr = createRealEstateRow(row, onAssetUpdate);
+      const tr = createRealEstateRow(row, onAssetUpdate, { mode: "view" });
       realEstateEl.tbody.insertBefore(tr, realEstateEl.totalsRow);
     });
   }

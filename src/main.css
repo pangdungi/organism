@@ -8603,9 +8603,12 @@ body {
   color: var(--text-muted);
 }
 
-/* ----- 자산관리계획 ----- */
+/* ----- 자산관리계획 (총부채와 동일: 뷰/표·입력 인셋) ----- */
 .asset-plan-view {
   padding: 0;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 @media (max-width: 48rem) {
@@ -8614,6 +8617,8 @@ body {
     padding-left: 0.75rem;
     padding-right: 0.75rem;
     box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
   }
 }
 
@@ -8632,6 +8637,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .asset-plan-table-wrap {
@@ -8641,6 +8649,9 @@ body {
   background: var(--content-bg);
   overscroll-behavior-x: none;
   -webkit-overflow-scrolling: auto;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .asset-plan-add-button-wrap {
@@ -8787,7 +8798,7 @@ body {
 
 .asset-plan-input {
   width: 100%;
-  padding: 0.2rem 0;
+  padding: 0.2rem 0.4rem 0.2rem 0.55rem;
   font-size: 0.85rem;
   border: none;
   border-bottom: var(--input-border-idle);
@@ -8795,6 +8806,7 @@ body {
   background: transparent;
   font-family: inherit;
   color: var(--text-body);
+  box-sizing: border-box;
 }
 
 .asset-plan-input:focus {
@@ -8802,6 +8814,17 @@ body {
   box-shadow: none;
   border-bottom: var(--input-border-focus);
   color: var(--text-ink);
+}
+
+/* 읽기 전용 합계·4열·목표 숫자: 입력란과 동일한 안쪽 정렬(행 높이도 비슷하게) */
+.asset-plan-table tbody .asset-plan-total-display,
+.asset-plan-table tbody .asset-plan-col4-display,
+.asset-plan-table tbody .asset-plan-goal-display {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0.2rem 0.4rem 0.2rem 0.55rem;
 }
 
 .asset-plan-cell-col4-calc {
@@ -11221,6 +11244,122 @@ col.asset-expense-col-amount,
 }
 
 /* ----- 순자산 > 총 부채 ----- */
+/* 읽기 행: 인라인 수정만 클릭 (가계부와 동일) */
+.asset-debt-row--view,
+.asset-asset-row--view {
+  pointer-events: none;
+}
+.asset-debt-row--view .asset-debt-cell-actions,
+.asset-asset-row--view .asset-asset-cell-actions,
+.asset-debt-row--view .asset-expense-btn-row,
+.asset-asset-row--view .asset-expense-btn-row {
+  pointer-events: auto;
+}
+
+.asset-debt-cell-panel,
+.asset-asset-cell-panel {
+  padding: 0.45rem 0.7rem 0.55rem;
+  vertical-align: top;
+  border: none;
+  background: transparent;
+}
+
+.asset-debt-table tr.asset-debt-row--inner-panel .asset-expense-inline-panel,
+.asset-asset-table tr.asset-asset-row--inner-panel .asset-expense-inline-panel {
+  overflow: visible;
+}
+
+.asset-debt-inline-data-table {
+  width: 100%;
+  max-width: 100%;
+  border-collapse: collapse;
+}
+
+/* 총부채 편집 패널: 표·폼이 뷰밖으로 퍼지며 잘리는 것 방지 (데스크탑·모바일 공통, 편집 행 열릴 때만) */
+.asset-networth-view {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.asset-networth-view .asset-debt-table-container,
+.asset-networth-view .asset-debt-table-wrap {
+  min-width: 0;
+  max-width: 100%;
+}
+.asset-networth-view .asset-debt-table:has(tr.asset-debt-row--inner-panel) {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed;
+}
+.asset-networth-view .asset-debt-table:has(tr.asset-debt-row--inner-panel) th,
+.asset-networth-view .asset-debt-table:has(tr.asset-debt-row--inner-panel) td {
+  min-width: 0 !important;
+  white-space: normal;
+}
+.asset-debt-table tr.asset-debt-row--inner-panel > .asset-debt-cell-panel {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+.asset-debt-row--inner-panel .asset-expense-inline-panel {
+  max-width: 100%;
+  min-width: 0;
+}
+.asset-debt-row--inner-panel .asset-expense-inline-panel-body {
+  min-width: 0;
+  max-width: 100%;
+}
+.asset-debt-row--inner-panel .asset-expense-form-stack {
+  min-width: 0;
+  max-width: 100%;
+}
+.asset-debt-row--inner-panel .asset-expense-form-row {
+  min-width: 0;
+  grid-template-columns: minmax(0, 5.25rem) minmax(0, 1fr) !important;
+}
+@media (min-width: 769px) {
+  /* 1열: 모든 행 동일 너비(최장 레이블 '중도상환(수수료 제외)' 한 줄) */
+  .asset-debt-row--inner-panel .asset-expense-form-row {
+    grid-template-columns: 14.5rem minmax(0, 1fr) !important;
+  }
+  .asset-debt-row--inner-panel .asset-expense-form-label {
+    white-space: nowrap;
+    min-width: 0;
+  }
+}
+.asset-debt-row--inner-panel .asset-expense-form-control,
+.asset-debt-row--inner-panel .asset-expense-form-control--field {
+  min-width: 0 !important;
+  max-width: 100%;
+}
+.asset-debt-row--inner-panel .asset-debt-type-wrap,
+.asset-debt-row--inner-panel .asset-debt-repayment-wrap {
+  max-width: 100%;
+  min-width: 0;
+}
+.asset-debt-row--inner-panel input[type="text"],
+.asset-debt-row--inner-panel input[type="date"] {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+/* 편집 패널: 드롭다운(선택)과 동일한 안쪽 정렬 — 직접 쓰는 텍스트·날짜 칸(표시) 전부 (hidden·드롭다운 제외) */
+.asset-debt-row--inner-panel .asset-debt-input-name,
+.asset-debt-row--inner-panel .asset-debt-input-period,
+.asset-debt-row--inner-panel .asset-debt-input-rate,
+.asset-debt-row--inner-panel .asset-debt-input-principal,
+.asset-debt-row--inner-panel .asset-debt-input-extra-paid {
+  padding: 0.2rem 0.4rem 0.2rem 0.55rem !important;
+}
+.asset-debt-row--inner-panel .asset-debt-date-cell .asset-debt-date-display {
+  padding: 0.2rem 0.4rem 0.2rem 0.55rem !important;
+}
+@media (max-width: 48rem) {
+  .asset-networth-view .asset-debt-table:has(tr.asset-debt-row--inner-panel) th {
+    font-size: 0.7rem;
+    line-height: 1.2;
+  }
+}
 .asset-networth-view {
   padding: 0;
 }
