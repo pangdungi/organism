@@ -311,31 +311,13 @@ export async function pushAllLocalAssetExpensePrefsIfServerEmpty() {
   await syncAssetExpensePrefsToSupabase();
 }
 
-let _pushTimer = null;
-const PUSH_DEBOUNCE_MS = 900;
-
-export function scheduleAssetExpensePrefsSyncPush() {
-  if (!supabase) return;
-  if (_pushTimer) clearTimeout(_pushTimer);
-  _pushTimer = setTimeout(() => {
-    _pushTimer = null;
-    syncAssetExpensePrefsToSupabase().catch(() => {});
-  }, PUSH_DEBOUNCE_MS);
-}
-
-let _listenerAttached = false;
+/** 가계부 설정 서버 쓰기: 가계부 설정 모달에서 «저장» 클릭 시에만 `syncAssetExpensePrefsToSupabase` 를 호출한다(이벤트로 자동 푸시 없음). */
 
 export function attachAssetExpensePrefsSaveListener() {
-  if (_listenerAttached) return;
-  _listenerAttached = true;
-  window.addEventListener("asset-expense-prefs-saved", (e) => {
-    if (e.detail?.fromServerMerge) return;
-    scheduleAssetExpensePrefsSyncPush();
-  });
+  /* noop — 예전: asset-expense-prefs-saved 시 자동 푸시. 모달 «저장»에서만 서버 반영. */
 }
 
 export async function hydrateAssetExpensePrefsFromCloud() {
-  attachAssetExpensePrefsSaveListener();
   if (!supabase) return;
   await pullAssetExpensePrefsFromSupabase();
   await pushAllLocalAssetExpensePrefsIfServerEmpty();

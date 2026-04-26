@@ -4,7 +4,9 @@
 
 import {
   attachAssetExpensePrefsSaveListener,
+  pullAssetExpensePrefsFromSupabase,
   readExpenseClassificationSavedMem,
+  syncAssetExpensePrefsToSupabase,
   writeExpenseClassificationSavedMem,
   readExpensePaymentOptionsListMem,
   writeExpensePaymentOptionsListMem,
@@ -5602,7 +5604,6 @@ function createAssetSettingsModal(onSave) {
           if (cats.length === 0) modal._selectedIdx = null;
           renderCategories(cats);
           renderClassifications(cats, byCat);
-          performSave();
         });
       }
       row.addEventListener("click", (e) => {
@@ -5656,7 +5657,6 @@ function createAssetSettingsModal(onSave) {
           byCat[c.label].splice(clsIdx, 1);
           renderClassifications(cats, byCat);
           modal._byCat = byCat;
-          performSave();
         });
       }
       classificationList.appendChild(row);
@@ -5787,9 +5787,7 @@ function createAssetSettingsModal(onSave) {
       });
       savePaymentOptions(payments.length > 0 ? payments : DEFAULT_PAYMENT_OPTIONS);
     }
-    try {
-      window.dispatchEvent(new CustomEvent("asset-expense-prefs-saved"));
-    } catch (_) {}
+    void syncAssetExpensePrefsToSupabase().catch(() => {});
   }
 
   saveBtn.addEventListener("click", () => {
@@ -5804,8 +5802,13 @@ function createAssetSettingsModal(onSave) {
   return {
     modal,
     open() {
-      loadAndRender();
-      modal.hidden = false;
+      void (async () => {
+        try {
+          await pullAssetExpensePrefsFromSupabase();
+        } catch (_) {}
+        loadAndRender();
+        modal.hidden = false;
+      })();
     },
   };
 }
