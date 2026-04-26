@@ -39,6 +39,7 @@ import {
   kpiTodosCompletionBrief,
 } from "../utils/kpiTodoLifecycleDebug.js";
 import { kpiTodoFineTrace } from "../utils/kpiTodoFineTrace.js";
+import { pullKpiMapSubViewFromCloud } from "../utils/kpiTabCloudRefresh.js";
 
 const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
@@ -875,8 +876,10 @@ export function render() {
         e.stopPropagation();
         showKpiEditModal(kpi);
       });
-      card.addEventListener("click", (e) => {
+      card.addEventListener("click", async (e) => {
         if (e.target.closest(".dream-kpi-card-edit")) return;
+        await pullKpiMapSubViewFromCloud("dream");
+        if (!el.isConnected) return;
         selectedKpiId = selectedKpiId === kpi.id ? null : kpi.id;
         renderKpiList();
         renderKpiHistory();
@@ -995,8 +998,10 @@ export function render() {
           e.stopPropagation();
           showKpiEditModal(kpi);
         });
-        card.addEventListener("click", (e) => {
+        card.addEventListener("click", async (e) => {
           if (e.target.closest(".dream-kpi-card-edit")) return;
+          await pullKpiMapSubViewFromCloud("dream");
+          if (!el.isConnected) return;
           selectedKpiId = selectedKpiId === kpi.id ? null : kpi.id;
           renderKpiList();
           renderKpiHistory();
@@ -1549,9 +1554,12 @@ export function render() {
           showDreamContextModal(dream, tab);
         });
       }
-      tab.addEventListener("click", () => {
-        if (activeDreamId !== dream.id) {
+      tab.addEventListener("click", async () => {
+        const switching = activeDreamId !== dream.id;
+        if (switching) {
           selectedKpiId = null;
+          await pullKpiMapSubViewFromCloud("dream");
+          if (!el.isConnected) return;
         }
         activeDreamId = dream.id;
         renderTabs();

@@ -680,9 +680,8 @@ async function pullHealthKpiMapFromSupabaseImpl(force = false) {
     });
     kpiSyncDebugLog("건강 pull", {
       ok: false,
-      skipped: "정규화 테이블 스냅샷 없음 — 로컬 유지 후 업로드 예약",
+      skipped: "정규화 테이블 스냅샷 없음 — 로컬 유지(자동 push 예약 없음)",
     });
-    scheduleHealthKpiMapSyncPush();
     return false;
   }
 
@@ -942,24 +941,10 @@ export function scheduleHealthKpiMapSyncPush() {
 }
 
 let _listenerAttached = false;
-let _flushListenersAttached = false;
-
-function attachHealthKpiMapFlushOnLeave() {
-  if (_flushListenersAttached) return;
-  _flushListenersAttached = true;
-  const run = () => {
-    void flushHealthKpiMapSyncPush();
-  };
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") run();
-  });
-  window.addEventListener("pagehide", run);
-}
 
 export function attachHealthKpiMapSaveListener() {
   if (_listenerAttached) return;
   _listenerAttached = true;
-  attachHealthKpiMapFlushOnLeave();
   window.addEventListener("health-kpi-map-saved", (e) => {
     if (e.detail?.fromServerMerge) return;
     syncHealthKpiMapToSupabase().catch((err) => {

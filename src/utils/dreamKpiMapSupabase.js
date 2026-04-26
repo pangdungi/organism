@@ -770,14 +770,13 @@ async function pullDreamKpiMapFromSupabaseImpl(force = false) {
     kpiSyncDebugLog("꿈 pull", {
       ok: false,
       skipped:
-        "서버에 스냅샷(dream_map_meta) 없음 — 미동기화로 보고 로컬 유지 후 업로드 예약",
+        "서버에 스냅샷(dream_map_meta) 없음 — 미동기화로 보고 로컬 유지(자동 push 예약 없음, 저장 시에만 서버 반영)",
       localCounts: {
         dreams: localBeforePull.dreams.length,
         kpis: localBeforePull.kpis.length,
         kpiLogs: localBeforePull.kpiLogs.length,
       },
     });
-    scheduleDreamKpiMapSyncPush();
     return false;
   }
 
@@ -1030,24 +1029,10 @@ export function scheduleDreamKpiMapSyncPush() {
 }
 
 let _listenerAttached = false;
-let _flushListenersAttached = false;
-
-function attachDreamKpiMapFlushOnLeave() {
-  if (_flushListenersAttached) return;
-  _flushListenersAttached = true;
-  const run = () => {
-    void flushDreamKpiMapSyncPush();
-  };
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") run();
-  });
-  window.addEventListener("pagehide", run);
-}
 
 export function attachDreamKpiMapSaveListener() {
   if (_listenerAttached) return;
   _listenerAttached = true;
-  attachDreamKpiMapFlushOnLeave();
   window.addEventListener("dream-kpi-map-saved", (e) => {
     kpiTodoFineTrace("dream.listener:dream-kpi-map-saved", {
       fromServerMerge: !!e.detail?.fromServerMerge,

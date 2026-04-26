@@ -8,7 +8,9 @@
  *
  * 스키마: supabase/migrations/20260419120000_work_schedule_meal_schema.sql (Supabase SQL Editor에 실행)
  *
- * pull: 행·설정은 hydrate 시; 유형은 설정 모달에서만 풀(서버+로컬 미러 병합).
+ * pull(읽기): App 탭 전환(근무-식단표) 시, 그리고 유형 설정 모달을 열 때만.
+ * **서버에 쓰기(push)는** `work-schedule-saved` 이벤트로만 — 일정 저장/삭제, 유형 추가/삭제에서만 dispatch.
+ * 탭에서 로컬을 서버에 임의로 올리거나, 푸시 직후 자동 pull로 덮어쓰지 않음.
  */
 
 import { supabase } from "../supabase.js";
@@ -471,25 +473,40 @@ async function syncWorkScheduleToSupabaseImpl(opts = {}) {
     await supabase.from(ENTRIES_TABLE).upsert(entryPayloads, { onConflict: "id" });
   }
 
-  // 이번 라운드에 유효한 행 upsert가 없으면 서버 고아 삭제를 하지 않음(빈 로컬/일시 오류로 전체 삭제되는 것 방지).
+  /* 원격에만 있는 work_schedule_entries 삭제(로컬 id 집합과 diff).
+   * 예전: entryPayloads.length > 0 일 때만 돌렸는데, 전부 지운 경우(로컬 [])는 payload가 비어
+   * 고아 삭제가 스킵되어, 직후 pull이 삭제한 행을 “부활”시킬 수 있음. */
   if (syncEntries) {
-    const { data: remoteEntries, error: reErr } = await supabase.from(ENTRIES_TABLE).select("id").eq("user_id", userId);
-    if (!reErr && remoteEntries && entryPayloads.length > 0) {
-      wsSyncLog("push: orphan entry delete check, remote", remoteEntries.length, "local ids", idsStillInLocal.size);
+    const { data: remoteEntries, error: reErr } = await supabase
+      .from(ENTRIES_TABLE)
+      .select("id")
+      .eq("user_id", userId);
+    const allowOrphanEntryDelete =
+      !reErr &&
+      Array.isArray(remoteEntries) &&
+      (entryPayloads.length > 0 ||
+        (rows.length === 0 && idsStillInLocal.size === 0) ||
+        (idsStillInLocal.size > 0 && entryPayloads.length === 0));
+    if (allowOrphanEntryDelete) {
+      wsSyncLog(
+        "push: orphan entry delete check, remote",
+        remoteEntries.length,
+        "local ids",
+        idsStillInLocal.size,
+        "entryPayloads",
+        entryPayloads.length,
+      );
       for (const r of remoteEntries) {
         if (!idsStillInLocal.has(r.id)) {
           await supabase.from(ENTRIES_TABLE).delete().eq("user_id", userId).eq("id", r.id);
         }
       }
-    } else if (!reErr && remoteEntries?.length && entryPayloads.length === 0) {
-      wsSyncLog("push: SKIP orphan entry delete (entryPayloads empty), rows", rows.length);
+    } else if (!reErr && remoteEntries?.length) {
+      wsSyncLog("push: SKIP orphan entry delete (safety), rows", rows.length, "entries", entryPayloads.length);
     }
   }
 
-  // 푸시 직후: 유형은 다시 당기지 않음(모달 열 때만). 행·설정만 서버와 맞춤.
-  queueMicrotask(() => {
-    pullWorkScheduleFromSupabase({ includeTypes: false }).catch(() => {});
-  });
+  /* 푸시 직후 자동 pull 제거: 서버 쓰기는 위에서 끝난 것이고, pull은 탭/모달에서만(읽기). */
 }
 
 /** 세션 메모리를 서버에 반영 (직렬 큐). opts 생략 시 types+entries 모두 (초기 빈 서버 업로드 등) */
@@ -501,79 +518,36 @@ export async function syncWorkScheduleToSupabase(opts) {
   return runWorkScheduleSerialized(() => syncWorkScheduleToSupabaseImpl(o));
 }
 
-let _pushTimer = null;
-const PUSH_DEBOUNCE_MS = 900;
-
-/** 디바운스 타이머가 울릴 때까지 누적되는 동기화 종류 */
-let _pendingSyncKinds = { syncTypes: false, syncEntries: false };
-
-export function scheduleWorkScheduleSyncPush() {
-  if (!supabase) return;
-  if (_pushTimer) clearTimeout(_pushTimer);
-  _pushTimer = setTimeout(() => {
-    _pushTimer = null;
-    const kinds = { ..._pendingSyncKinds };
-    _pendingSyncKinds = { syncTypes: false, syncEntries: false };
-    if (!kinds.syncTypes && !kinds.syncEntries) return;
-    syncWorkScheduleToSupabase(kinds).catch(() => {});
-  }, PUSH_DEBOUNCE_MS);
-}
-
 let _listenerAttached = false;
 
 export function attachWorkScheduleSaveListener() {
   if (_listenerAttached) return;
   _listenerAttached = true;
+  /* 근무-식단표: 서버에 반영은 이 이벤트로만(일정 저장·삭제, 유형 추가·삭제). */
   window.addEventListener("work-schedule-saved", (e) => {
     const d = (e && e.detail) || {};
-    if (d.types) _pendingSyncKinds.syncTypes = true;
-    if (d.entries) _pendingSyncKinds.syncEntries = true;
-    /* 유형 추가/삭제는 바로 서버 반영(테이블 확인 지연·hydrate 전 이벤트 유실 방지) */
-    if (d.types) {
-      if (_pushTimer) {
-        clearTimeout(_pushTimer);
-        _pushTimer = null;
-      }
-      const kinds = { ..._pendingSyncKinds };
-      _pendingSyncKinds = { syncTypes: false, syncEntries: false };
-      if (kinds.syncTypes || kinds.syncEntries) {
-        syncWorkScheduleToSupabase(kinds).catch(() => {});
-      }
-      return;
-    }
-    scheduleWorkScheduleSyncPush();
+    const syncTypes = !!d.types;
+    const syncEntries = !!d.entries;
+    if (!syncTypes && !syncEntries) return;
+    syncWorkScheduleToSupabase({ syncTypes, syncEntries }).catch(() => {});
   });
 }
 
-export async function pushAllLocalWorkScheduleIfServerEmpty() {
-  const userId = await getSessionUserId();
-  if (!userId || !supabase) return;
-  const { count, error } = await supabase.from(ENTRIES_TABLE).select("*", { count: "exact", head: true }).eq("user_id", userId);
-  if (error || (count != null && count > 0)) return;
-  await syncWorkScheduleToSupabase({ syncEntries: true, syncTypes: false });
-}
-
 /**
- * 근무표 탭 진입 시: 서버가 비어 있고 로컬에만 있던 내용은 먼저 올린 뒤 pull로 서버 스냅샷만 메모리에 맞춤.
- * (pull만 먼저 하면 빈 서버에 맞춰 메모리가 비어 첫 업로드가 사라질 수 있음)
- */
-/**
+ * App 근무-식단표 탭: 서버 **읽기**만(자동 push 없음). 메모·UI는 이후에 저장 시에만 서버에 올라감.
  * @returns {Promise<{ anyChanged: boolean }>}
  */
 export async function hydrateWorkScheduleFromCloud() {
   lpPullDebug("hydrateWorkScheduleFromCloud", {});
-  wsSyncLog("hydrate: enter");
+  wsSyncLog("tab: pull work_schedule (read only, no auto-push)");
   attachWorkScheduleSaveListener();
   if (!supabase) {
-    wsSyncLog("hydrate: skip (no supabase)");
     return { anyChanged: false };
   }
   const beforeSnap = snapshotWorkScheduleMemForCompare();
-  await pushAllLocalWorkScheduleIfServerEmpty();
-  wsSyncLog("hydrate: after pushIfServerEmpty");
   await pullWorkScheduleFromSupabase({ includeTypes: false });
   const afterSnap = snapshotWorkScheduleMemForCompare();
   const anyChanged = beforeSnap !== afterSnap;
-  wsSyncLog("hydrate: after pull (done)", { anyChanged });
+  wsSyncLog("tab: pull done", { anyChanged });
   return { anyChanged };
 }

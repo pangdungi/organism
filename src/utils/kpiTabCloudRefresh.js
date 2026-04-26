@@ -1,32 +1,25 @@
 /**
- * 꿈·부수입·행복·건강 KPI 맵 — 서버가 단일 진실(single source of truth).
- * pull은 서버 스냅샷만 브라우저 저장소에 반영하고, 로컬·서버 페이로드 병합은 하지 않음.
- * push는 사용자가 저장한 로컬 값만 upsert한 뒤, 재조회한 서버 스냅샷으로 로컬을 맞춤.
- *
- * - pullKpiTabFromCloud: 해당 KPI 탭 진입 시 — 대기 중인 로컬→서버 반영을 먼저 flush 한 뒤 force pull(서버 최종본).
- * - pullAllKpiMapsFromCloud: Realtime·탭 포커스 등 — 현재 보고 있는 KPI 탭 도메인은 건너뜀(로컬 CRUD 유지).
- *   입력 중이면 해당 도메인도 생략.
- * - 로컬→서버 디바운스·sync 중에는 일반 pull이 localStorage를 덮지 않음(force 제외).
+ * 꿈·부수입·행복·건강 KPI 맵
+ * - pull(읽기): `pullKpiTabFromCloud` — 꿈/건강/행복/부수입 **상위 탭**을 눌렀을 때만,
+ *   그리고 `pullKpiMapSubViewFromCloud` — **탭 내부**에서 꿈·경로·건강 루트, KPI/목표를 클릭했을 때만.
+ * - push(쓰기): `saveDreamMap` 등으로 저장·dispatch된 경우에만(즉시 sync 리스너). 탭 이탈·가시성으로 푸시하지 않음.
+ * - pull로 서버 스냅샷이 없을 때 **자동**으로 로컬을 서버에 올리는 예약 push 없음(명시적 저장으로만).
  */
 
 import {
   DREAM_KPI_MAP_STORAGE_KEY,
-  flushDreamKpiMapSyncPush,
   pullDreamKpiMapFromSupabase,
 } from "./dreamKpiMapSupabase.js";
 import {
   HEALTH_KPI_MAP_STORAGE_KEY,
-  flushHealthKpiMapSyncPush,
   pullHealthKpiMapFromSupabase,
 } from "./healthKpiMapSupabase.js";
 import {
   HAPPINESS_KPI_MAP_STORAGE_KEY,
-  flushHappinessKpiMapSyncPush,
   pullHappinessKpiMapFromSupabase,
 } from "./happinessKpiMapSupabase.js";
 import {
   SIDEINCOME_KPI_MAP_STORAGE_KEY,
-  flushSideincomeKpiMapSyncPush,
   pullSideincomeKpiMapFromSupabase,
 } from "./sideincomeKpiMapSupabase.js";
 import {
@@ -57,19 +50,15 @@ export async function pullKpiTabFromCloud(tabId) {
   let pullOk = false;
   switch (tabId) {
     case "dream":
-      await flushDreamKpiMapSyncPush();
       pullOk = await pullDreamKpiMapFromSupabase({ force: true });
       break;
     case "health":
-      await flushHealthKpiMapSyncPush();
       pullOk = await pullHealthKpiMapFromSupabase({ force: true });
       break;
     case "happiness":
-      await flushHappinessKpiMapSyncPush();
       pullOk = await pullHappinessKpiMapFromSupabase({ force: true });
       break;
     case "sideincome":
-      await flushSideincomeKpiMapSyncPush();
       pullOk = await pullSideincomeKpiMapFromSupabase({ force: true });
       break;
     default:
@@ -94,6 +83,37 @@ export async function pullKpiTabFromCloud(tabId) {
     note: "서버 스냅샷만 반영(로컬·서버 페이로드 merge 없음)",
   });
   return { pullOk, localChanged };
+}
+
+/**
+ * 꿈/건강/행복/부수입 **탭 안**에서 목표(상단 탭)·KPI 카드 등을 클릭했을 때만 서버에서 당깁니다(읽기).
+ * (상위 앱 탭은 `pullKpiTabFromCloud` — flush 없이 pull만)
+ * @param {"dream" | "health" | "happiness" | "sideincome"} tabId
+ * @returns {Promise<boolean>}
+ */
+export async function pullKpiMapSubViewFromCloud(tabId) {
+  kpiTodoFineTrace("cloud.pullKpiSubView:시작", { tabId });
+  lpPullDebug("pullKpiMapSubViewFromCloud", { tabId });
+  let pullOk = false;
+  switch (tabId) {
+    case "dream":
+      pullOk = await pullDreamKpiMapFromSupabase({ force: true });
+      break;
+    case "health":
+      pullOk = await pullHealthKpiMapFromSupabase({ force: true });
+      break;
+    case "happiness":
+      pullOk = await pullHappinessKpiMapFromSupabase({ force: true });
+      break;
+    case "sideincome":
+      pullOk = await pullSideincomeKpiMapFromSupabase({ force: true });
+      break;
+    default:
+      return false;
+  }
+  kpiTodoFineTrace("cloud.pullKpiSubView:끝", { tabId, pullOk });
+  syncWatchLog("pullKpiMapSubView_완료", { tabId, pullOk });
+  return pullOk;
 }
 
 const ALL_KPI_STORAGE_KEYS = [

@@ -638,9 +638,8 @@ async function pullHappinessKpiMapFromSupabaseImpl(force = false) {
       });
       kpiSyncDebugLog("행복 pull", {
         ok: false,
-        skipped: "서버에 happiness_map 스냅샷 없음 — 로컬 유지 후 업로드 예약",
+        skipped: "서버에 happiness_map 스냅샷 없음 — 로컬 유지(자동 push 예약 없음)",
       });
-      scheduleHappinessKpiMapSyncPush();
       return false;
     }
     const emptyPayload = buildPayloadFromNormalizedRows([], [], [], [], [], null);
@@ -906,24 +905,10 @@ export function scheduleHappinessKpiMapSyncPush() {
 }
 
 let _listenerAttached = false;
-let _flushListenersAttached = false;
-
-function attachHappinessKpiMapFlushOnLeave() {
-  if (_flushListenersAttached) return;
-  _flushListenersAttached = true;
-  const run = () => {
-    void flushHappinessKpiMapSyncPush();
-  };
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") run();
-  });
-  window.addEventListener("pagehide", run);
-}
 
 export function attachHappinessKpiMapSaveListener() {
   if (_listenerAttached) return;
   _listenerAttached = true;
-  attachHappinessKpiMapFlushOnLeave();
   window.addEventListener("happiness-kpi-map-saved", (e) => {
     if (e.detail?.fromServerMerge) return;
     syncHappinessKpiMapToSupabase().catch((err) => {

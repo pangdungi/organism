@@ -10,7 +10,6 @@ import {
 import { supabase } from "../supabase.js";
 import {
   attachWorkScheduleSaveListener,
-  hydrateWorkScheduleFromCloud,
   pullWorkScheduleFromSupabase,
 } from "../utils/workScheduleSupabase.js";
 import { workScheduleDiagLog } from "../utils/workScheduleDiag.js";
@@ -25,8 +24,6 @@ import {
 function wsUiLog(...args) {
   workScheduleDiagLog("[ui]", ...args);
 }
-
-let _workScheduleHydrateGeneration = 0;
 
 function notifyWorkScheduleSaved(detail) {
   try {
@@ -810,29 +807,10 @@ export function render(opts = {}) {
     renderMonthlyView();
   }
 
-  const hydrateGen = ++_workScheduleHydrateGeneration;
-  /* Supabase: hydrate 완료 후 1회 갱신(App 부팅 시에도 hydrateWorkScheduleFromCloud 가 돌아 있음). */
+  /* 서버 pull 은 App 탭 전환(hydrateWorkScheduleFromCloud) 시에만. 본화면은 mem·DOM만, 서버 쓰기는 저장/삭제/유형 변경. */
   if (supabase) {
-    wsUiLog("mount: 즉시 표시 + hydrate, gen=", hydrateGen);
     refreshMonthlyView("mount-initial-supabase");
-    void hydrateWorkScheduleFromCloud()
-      .catch((err) => {
-        return { anyChanged: false };
-      })
-      .then((hydrateResult) => {
-        if (hydrateGen !== _workScheduleHydrateGeneration) {
-          wsUiLog("hydrate SKIP (superseded by newer mount)", hydrateGen, "current=", _workScheduleHydrateGeneration);
-          return;
-        }
-        if (!el.isConnected) {
-          wsUiLog("hydrate SKIP (panel no longer in document)");
-          return;
-        }
-        wsUiLog("hydrate 완료 → 월별 캘린더 1회 갱신", hydrateResult);
-        refreshMonthlyView("after-hydrate");
-      });
   } else {
-    wsUiLog("mount: Supabase 없음 → 로컬만 즉시 표시", hydrateGen);
     refreshMonthlyView("mount-initial-no-supabase");
   }
 
