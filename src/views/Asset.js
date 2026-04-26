@@ -2326,6 +2326,27 @@ function renderNetworthView() {
   addTaskBtn.innerHTML = '<span class="asset-debt-add-icon">+</span>';
   tbody.appendChild(totalsRow);
 
+  /** 넓은 표에서 '수정'이 오른쪽 끝에 있을 때: 편집 패널이 가로 스크롤 래퍼 안 앞쪽(왼쪽)에 오도록 */
+  function bringDebtRowPanelIntoView(tr) {
+    if (!tr) return;
+    const run = () => {
+      const panel = tr.querySelector(".asset-expense-inline-panel");
+      const wrap = tr.closest(".asset-debt-table-wrap");
+      if (!wrap) return;
+      const el = panel || tr;
+      if (el.scrollIntoView) {
+        el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+      }
+      requestAnimationFrame(() => {
+        const pr = el.getBoundingClientRect();
+        const wr = wrap.getBoundingClientRect();
+        if (pr.left < wr.left) wrap.scrollLeft += pr.left - wr.left;
+        if (pr.right > wr.right) wrap.scrollLeft += pr.right - wr.right;
+      });
+    };
+    requestAnimationFrame(() => requestAnimationFrame(run));
+  }
+
   function createDebtRow(data = {}, onUpdate, options = {}) {
     const mode = options.mode != null ? options.mode : "view";
     const isView = mode === "view";
@@ -2380,7 +2401,8 @@ function renderNetworthView() {
       dataRowTarget = tr;
     }
 
-    function appendToRow(label, tdClass, node) {
+    function appendToRow(label, tdClass, node, options = {}) {
+      const isComputedPanel = inPanel && options.computed === true;
       if (inPanel) {
         const row = document.createElement("div");
         row.className = "asset-expense-form-row";
@@ -2388,7 +2410,13 @@ function renderNetworthView() {
         lab.className = "asset-expense-form-label";
         lab.textContent = label;
         const control = document.createElement("div");
-        control.className = "asset-expense-form-control asset-expense-form-control--field" + (tdClass ? " " + tdClass : "");
+        control.className =
+          "asset-expense-form-control asset-expense-form-control--field" +
+          (isComputedPanel ? " asset-debt-panel-value--computed" : "") +
+          (tdClass ? " " + tdClass : "");
+        if (isComputedPanel) {
+          control.setAttribute("data-debt-value-kind", "computed");
+        }
         if (node) control.appendChild(node);
         row.appendChild(lab);
         row.appendChild(control);
@@ -2499,7 +2527,7 @@ function renderNetworthView() {
     repaymentHost.replaceChildren();
     repaymentHost.appendChild(createDebtRepaymentDropdown(data.repayment || "", repaymentOnUpdate));
     updateInterest();
-    appendToRow("총 대출 이자", "asset-debt-cell-interest", interestSpan);
+    appendToRow("총 대출 이자", "asset-debt-cell-interest", interestSpan, { computed: true });
 
     const monthlyPrincipalSpan = document.createElement("span");
     monthlyPrincipalSpan.className = "asset-debt-monthly-principal-display";
@@ -2524,8 +2552,8 @@ function renderNetworthView() {
       }
     }
 
-    appendToRow("월 원금", "asset-debt-cell-monthly-principal", monthlyPrincipalSpan);
-    appendToRow("월 이자", "asset-debt-cell-monthly-interest", monthlyInterestSpan);
+    appendToRow("월 원금", "asset-debt-cell-monthly-principal", monthlyPrincipalSpan, { computed: true });
+    appendToRow("월 이자", "asset-debt-cell-monthly-interest", monthlyInterestSpan, { computed: true });
     updateMonthlyBreakdownRef = updateMonthlyBreakdown;
     updateMonthlyBreakdown();
 
@@ -2632,7 +2660,7 @@ function renderNetworthView() {
       updatePaidFromDates();
       inRowUpdate();
     });
-    appendToRow("상환금액", "asset-debt-cell-paid", paidSpan);
+    appendToRow("상환금액", "asset-debt-cell-paid", paidSpan, { computed: true });
 
     const extraPaidInput = document.createElement("input");
     extraPaidInput.type = "text";
@@ -2690,7 +2718,7 @@ function renderNetworthView() {
     endDateInput.addEventListener("change", updateBalance);
     updateBalance();
 
-    appendToRow("잔여 원금", "asset-debt-cell-balance", balanceSpan);
+    appendToRow("잔여 원금", "asset-debt-cell-balance", balanceSpan, { computed: true });
 
     if (startDateInput.value && !endDateInput.value) {
       updateEndDateFromStartDate();
@@ -2774,8 +2802,10 @@ function renderNetworthView() {
       editBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         const d = readDebtDataFromTr(tr);
-        tr.replaceWith(createDebtRow(d, onUpdate, { mode: "edit", memSnapshot: d }));
+        const newTr = createDebtRow(d, onUpdate, { mode: "edit", memSnapshot: d });
+        tr.replaceWith(newTr);
         onUpdate();
+        bringDebtRowPanelIntoView(newTr);
       });
       actionsTd.appendChild(editBtn);
       dataRowTarget.appendChild(actionsTd);
@@ -2857,6 +2887,7 @@ function renderNetworthView() {
     const tr = createDebtRow({}, onUpdate, { mode: "draft" });
     tbody.insertBefore(tr, totalsRow);
     onUpdate();
+    bringDebtRowPanelIntoView(tr);
   });
 
   updateCount();

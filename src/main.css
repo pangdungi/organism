@@ -11403,7 +11403,6 @@ col.asset-expense-col-amount,
   background: transparent;
 }
 
-.asset-debt-table tr.asset-debt-row--inner-panel .asset-expense-inline-panel,
 .asset-asset-table tr.asset-asset-row--inner-panel .asset-expense-inline-panel {
   overflow: visible;
 }
@@ -11425,24 +11424,48 @@ col.asset-expense-col-amount,
   min-width: 0;
   max-width: 100%;
 }
-.asset-networth-view .asset-debt-table:has(tr.asset-debt-row--inner-panel) {
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  table-layout: fixed;
+/* 편집 폼: app-tab-panel overflow-x hidden 대비, 100vw가 아닌 «이 박스» 너비(cqi)로 맞춤 */
+.asset-networth-view .asset-debt-table-container:has(tr.asset-debt-row--inner-panel) {
+  container-type: inline-size;
+  container-name: networth-debt-form;
 }
-.asset-networth-view .asset-debt-table:has(tr.asset-debt-row--inner-panel) th,
-.asset-networth-view .asset-debt-table:has(tr.asset-debt-row--inner-panel) td {
-  min-width: 0 !important;
-  white-space: normal;
+/* 총부채: 가로 스크롤(넓은 열)은 래퍼에 두고, 편집 패널은 container(cqi) 너비로 잘림 방지 */
+.asset-networth-view .asset-debt-table-wrap:has(tr.asset-debt-row--inner-panel) {
+  overflow-x: auto;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+.asset-debt-table tr.asset-debt-row--inner-panel {
+  position: relative;
+  vertical-align: top;
 }
 .asset-debt-table tr.asset-debt-row--inner-panel > .asset-debt-cell-panel {
   min-width: 0 !important;
   max-width: 100% !important;
+  position: relative;
+  padding: 0.5rem 0.65rem 0.55rem;
 }
+/* colspan 셀은 표 전체 만큼 넓어짐 → 패널은 부채 테이블 컨테이너(cqi) 너비에 맞춤(100vw+overflow:hidden 잘림 방지) */
 .asset-debt-row--inner-panel .asset-expense-inline-panel {
-  max-width: 100%;
+  position: relative;
+  left: 0;
+  z-index: 2;
+  width: 100%;
   min-width: 0;
+  max-width: 100cqi;
+  box-sizing: border-box;
+  margin-left: 0;
+  margin-right: auto;
+  background: var(--content-bg, #f5f1e8);
+  border-radius: 0.35rem;
+  box-shadow: 0 0.06rem 0.25rem rgba(0, 0, 0, 0.07);
+  overflow: visible;
+}
+@supports not (max-width: 1cqi) {
+  .asset-debt-row--inner-panel .asset-expense-inline-panel {
+    max-width: min(100%, calc(100vmax - 2rem));
+  }
 }
 .asset-debt-row--inner-panel .asset-expense-inline-panel-body {
   min-width: 0;
@@ -11454,7 +11477,8 @@ col.asset-expense-col-amount,
 }
 .asset-debt-row--inner-panel .asset-expense-form-row {
   min-width: 0;
-  grid-template-columns: minmax(0, 5.25rem) minmax(0, 1fr) !important;
+  /* 라벨 열은 0으로 줄지 않게(모바일에서 라벨 텍스트가 통째로 사라지는 문제 방지) */
+  grid-template-columns: minmax(8.25rem, 12rem) minmax(0, 1fr) !important;
 }
 @media (min-width: 769px) {
   /* 1열: 모든 행 동일 너비(최장 레이블 '중도상환(수수료 제외)' 한 줄) */
@@ -11466,10 +11490,45 @@ col.asset-expense-col-amount,
     min-width: 0;
   }
 }
+/* 매우 좁은 폭: 2열을 포기하고 라벨→값 세로 쌓기(라벨이 항상 보이게) */
+@media (max-width: 28rem) {
+  .asset-debt-row--inner-panel .asset-expense-form-row {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .asset-debt-row--inner-panel .asset-expense-form-label {
+    border-right: none;
+    border-bottom: 1px solid var(--line-l2-color);
+    padding: 0.4rem 0.45rem 0.35rem 0.5rem;
+  }
+  .asset-debt-row--inner-panel .asset-expense-form-control--field,
+  .asset-debt-row--inner-panel .asset-expense-form-control {
+    min-height: 2.25rem;
+  }
+}
+.asset-debt-row--inner-panel .asset-expense-form-label {
+  color: var(--text-ink, var(--text-body));
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
 .asset-debt-row--inner-panel .asset-expense-form-control,
 .asset-debt-row--inner-panel .asset-expense-form-control--field {
   min-width: 0 !important;
   max-width: 100%;
+}
+/* 대출 편집: 직접 입력·선택 = 라벨 열과 동일 톤 / 자동계산 = 회색 톤으로 구분 */
+.asset-debt-row--inner-panel .asset-expense-form-control--field:not(.asset-debt-panel-value--computed) {
+  background: rgba(42, 56, 40, 0.05);
+}
+.asset-debt-row--inner-panel .asset-debt-panel-value--computed {
+  background: rgba(72, 70, 64, 0.11);
+  color: var(--text-muted);
+}
+.asset-debt-row--inner-panel .asset-debt-panel-value--computed .asset-debt-interest-display,
+.asset-debt-row--inner-panel .asset-debt-panel-value--computed .asset-debt-monthly-principal-display,
+.asset-debt-row--inner-panel .asset-debt-panel-value--computed .asset-debt-monthly-interest-display,
+.asset-debt-row--inner-panel .asset-debt-panel-value--computed .asset-debt-paid-display,
+.asset-debt-row--inner-panel .asset-debt-panel-value--computed .asset-debt-balance-display {
+  color: var(--text-muted);
 }
 .asset-debt-row--inner-panel .asset-debt-type-wrap,
 .asset-debt-row--inner-panel .asset-debt-repayment-wrap {
