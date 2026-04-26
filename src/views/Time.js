@@ -6491,12 +6491,28 @@ export function render() {
     } catch (_) {}
   }
 
+  /** 기록 모달이 이미 열린 뒤 서버 과제 목록이 도착했을 때 드롭다운·KPI 연동만 맞춤(즉시 열기용). */
+  function afterTaskListSyncForTaskLogAddModal() {
+    if (!el.isConnected || taskLogModal?.hidden) return;
+    const v = (taskLogTaskDropdown?._getValue?.() || "").trim();
+    if (v) onTaskSelectedForLog(v);
+    else {
+      const mainTasks = getFullTaskOptions().filter(
+        (t) => !(t.name || "").includes(" > "),
+      );
+      const first = mainTasks[0]?.name || "";
+      if (first) {
+        taskLogTaskDropdown?._setValue?.(first);
+        onTaskSelectedForLog(first);
+      }
+    }
+  }
+
   function openTaskLogModal(addContext) {
-    void (async () => {
-      await pullServerTaskListForModal();
-      if (!el.isConnected) return;
-      openTaskLogModalAfterPull(addContext);
-    })();
+    openTaskLogModalAfterPull(addContext);
+    void pullServerTaskListForModal().then(() => {
+      afterTaskListSyncForTaskLogAddModal();
+    });
   }
 
   function openTaskLogModalAfterPull(addContext) {
@@ -6574,9 +6590,7 @@ export function render() {
     if (firstTask) onTaskSelectedForLog(firstTask);
   }
 
-  async function openTaskLogModalForEdit(tr, rowData) {
-    await pullServerTaskListForModal();
-    if (!el.isConnected) return;
+  function openTaskLogModalForEdit(tr, rowData) {
     const data =
       tr?._rowData && typeof tr._rowData === "object" ? tr._rowData : rowData;
     let startTime = data.startTime || "";
@@ -6686,6 +6700,14 @@ export function render() {
       }
     }
     refreshKpiTodosInLogModal(tnSync);
+    const lockedName = (data.taskName || "").trim();
+    void pullServerTaskListForModal().then(() => {
+      if (!el.isConnected || taskLogModal.hidden) return;
+      if (taskLogTaskDropdown && lockedName) {
+        taskLogTaskDropdown._setValue?.(lockedName);
+        refreshKpiTodosInLogModal(lockedName);
+      }
+    });
   }
 
   function closeTaskLogModal() {
