@@ -861,10 +861,8 @@ export function render() {
         e.stopPropagation();
         showKpiEditModal(kpi);
       });
-      card.addEventListener("click", async (e) => {
+      card.addEventListener("click", (e) => {
         if (e.target.closest(".dream-kpi-card-edit")) return;
-        await pullKpiMapSubViewFromCloud("health");
-        if (!el.isConnected) return;
         selectedKpiId = selectedKpiId === kpi.id ? null : kpi.id;
         renderKpiList();
         renderKpiHistory();
@@ -981,10 +979,8 @@ export function render() {
           e.stopPropagation();
           showKpiEditModal(kpi);
         });
-        card.addEventListener("click", async (e) => {
+        card.addEventListener("click", (e) => {
           if (e.target.closest(".dream-kpi-card-edit")) return;
-          await pullKpiMapSubViewFromCloud("health");
-          if (!el.isConnected) return;
           selectedKpiId = selectedKpiId === kpi.id ? null : kpi.id;
           renderKpiList();
           renderKpiHistory();
@@ -1478,16 +1474,22 @@ export function render() {
           showHealthContextModal(health, tab);
         });
       }
-      tab.addEventListener("click", async () => {
+      tab.addEventListener("click", () => {
         const switching = activeHealthId !== health.id;
         if (switching) {
           selectedKpiId = null;
-          await pullKpiMapSubViewFromCloud("health");
-          if (!el.isConnected) return;
         }
         activeHealthId = health.id;
         renderTabs();
         updateTitleAndContent();
+        if (switching) {
+          void pullKpiMapSubViewFromCloud("health").then((pullOk) => {
+            if (pullOk && el.isConnected) {
+              renderTabs();
+              updateTitleAndContent();
+            }
+          });
+        }
       });
       tabs.appendChild(tab);
     });

@@ -854,10 +854,8 @@ export function render() {
         e.stopPropagation();
         showKpiEditModal(kpi);
       });
-      card.addEventListener("click", async (e) => {
+      card.addEventListener("click", (e) => {
         if (e.target.closest(".dream-kpi-card-edit")) return;
-        await pullKpiMapSubViewFromCloud("happiness");
-        if (!el.isConnected) return;
         selectedKpiId = selectedKpiId === kpi.id ? null : kpi.id;
         renderKpiList();
         renderKpiHistory();
@@ -974,10 +972,8 @@ export function render() {
           e.stopPropagation();
           showKpiEditModal(kpi);
         });
-        card.addEventListener("click", async (e) => {
+        card.addEventListener("click", (e) => {
           if (e.target.closest(".dream-kpi-card-edit")) return;
-          await pullKpiMapSubViewFromCloud("happiness");
-          if (!el.isConnected) return;
           selectedKpiId = selectedKpiId === kpi.id ? null : kpi.id;
           renderKpiList();
           renderKpiHistory();
@@ -1471,16 +1467,22 @@ export function render() {
           showHappinessContextModal(happiness, tab);
         });
       }
-      tab.addEventListener("click", async () => {
+      tab.addEventListener("click", () => {
         const switching = activeHappinessId !== happiness.id;
         if (switching) {
           selectedKpiId = null;
-          await pullKpiMapSubViewFromCloud("happiness");
-          if (!el.isConnected) return;
         }
         activeHappinessId = happiness.id;
         renderTabs();
         updateTitleAndContent();
+        if (switching) {
+          void pullKpiMapSubViewFromCloud("happiness").then((pullOk) => {
+            if (pullOk && el.isConnected) {
+              renderTabs();
+              updateTitleAndContent();
+            }
+          });
+        }
       });
       tabs.appendChild(tab);
     });

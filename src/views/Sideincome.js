@@ -1017,10 +1017,8 @@ export function render() {
         e.stopPropagation();
         showKpiEditModal(kpi);
       });
-      card.addEventListener("click", async (e) => {
+      card.addEventListener("click", (e) => {
         if (e.target.closest(".dream-kpi-card-edit")) return;
-        await pullKpiMapSubViewFromCloud("sideincome");
-        if (!el.isConnected) return;
         selectedKpiId = selectedKpiId === kpi.id ? null : kpi.id;
         renderKpiList();
         renderKpiHistory();
@@ -1139,10 +1137,8 @@ export function render() {
           e.stopPropagation();
           showKpiEditModal(kpi);
         });
-        card.addEventListener("click", async (e) => {
+        card.addEventListener("click", (e) => {
           if (e.target.closest(".dream-kpi-card-edit")) return;
-          await pullKpiMapSubViewFromCloud("sideincome");
-          if (!el.isConnected) return;
           selectedKpiId = selectedKpiId === kpi.id ? null : kpi.id;
           renderKpiList();
           renderKpiHistory();
@@ -1607,16 +1603,22 @@ export function render() {
           showPathContextModal(path, tab);
         });
       }
-      tab.addEventListener("click", async () => {
+      tab.addEventListener("click", () => {
         const switching = activePathId !== path.id;
         if (switching) {
           selectedKpiId = null;
-          await pullKpiMapSubViewFromCloud("sideincome");
-          if (!el.isConnected) return;
         }
         activePathId = path.id;
         renderTabs();
         updateTitleAndContent();
+        if (switching) {
+          void pullKpiMapSubViewFromCloud("sideincome").then((pullOk) => {
+            if (pullOk && el.isConnected) {
+              renderTabs();
+              updateTitleAndContent();
+            }
+          });
+        }
       });
       tabs.appendChild(tab);
     });

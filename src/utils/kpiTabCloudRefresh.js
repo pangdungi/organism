@@ -1,9 +1,10 @@
 /**
  * 꿈·부수입·행복·건강 KPI 맵
- * - pull(읽기): `pullKpiTabFromCloud` — 꿈/건강/행복/부수입 **상위 탭**을 눌렀을 때만,
- *   그리고 `pullKpiMapSubViewFromCloud` — **탭 내부**에서 꿈·경로·건강 루트, KPI/목표를 클릭했을 때만.
- * - push(쓰기): `saveDreamMap` 등으로 저장·dispatch된 경우에만(즉시 sync 리스너). 탭 이탈·가시성으로 푸시하지 않음.
- * - pull로 서버 스냅샷이 없을 때 **자동**으로 로컬을 서버에 올리는 예약 push 없음(명시적 저장으로만).
+ * - 고정 pull(읽기): `pullKpiTabFromCloud` — 꿈/건강/행복/부수입 **상위 앱 탭** 클릭 시 `force: true`.
+ * - 서브 pull: `pullKpiMapSubViewFromCloud` — 탭 **내부**에서 꿈/경로/건강 **루트(상단 목표) 전환** 시만.
+ *   `force: false`로 sync 진행 중이면 생략(삭제·수정 직후 낡은 서버로 덮임 방지). KPI 카드 클릭에서는 pull 안 함.
+ * - push: `saveDreamMap` 등 저장 후 즉시 sync 리스너. 가시성만으로는 푸시 안 함.
+ * - pull로 서버가 비어 있을 때 자동 push 예약 없음(저장 시에만 서버 반영).
  */
 
 import {
@@ -86,8 +87,9 @@ export async function pullKpiTabFromCloud(tabId) {
 }
 
 /**
- * 꿈/건강/행복/부수입 **탭 안**에서 목표(상단 탭)·KPI 카드 등을 클릭했을 때만 서버에서 당깁니다(읽기).
- * (상위 앱 탭은 `pullKpiTabFromCloud` — flush 없이 pull만)
+ * 꿈/건강/행복/부수입 **탭 안**에서 루트 목표(상단 탭)를 전환할 때만 서버에서 당깁니다.
+ * `force: false` — 로컬 sync 진행 중이면 생략(삭제·수정 직후 스냅샷 충돌 방지).
+ * (상위 앱 탭은 `pullKpiTabFromCloud` — `force: true`)
  * @param {"dream" | "health" | "happiness" | "sideincome"} tabId
  * @returns {Promise<boolean>}
  */
@@ -97,16 +99,16 @@ export async function pullKpiMapSubViewFromCloud(tabId) {
   let pullOk = false;
   switch (tabId) {
     case "dream":
-      pullOk = await pullDreamKpiMapFromSupabase({ force: true });
+      pullOk = await pullDreamKpiMapFromSupabase({ force: false });
       break;
     case "health":
-      pullOk = await pullHealthKpiMapFromSupabase({ force: true });
+      pullOk = await pullHealthKpiMapFromSupabase({ force: false });
       break;
     case "happiness":
-      pullOk = await pullHappinessKpiMapFromSupabase({ force: true });
+      pullOk = await pullHappinessKpiMapFromSupabase({ force: false });
       break;
     case "sideincome":
-      pullOk = await pullSideincomeKpiMapFromSupabase({ force: true });
+      pullOk = await pullSideincomeKpiMapFromSupabase({ force: false });
       break;
     default:
       return false;
