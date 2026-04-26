@@ -374,6 +374,8 @@ function updateSectionTaskDone(sectionId, taskId, done) {
     if (!Array.isArray(arr)) return false;
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
+      if (String(t.itemType || "todo").toLowerCase() === "schedule")
+        return false;
       t.done = !!done;
       persistSectionTasksAndSchedule(obj);
       upsertCalendarSectionTaskRowFromSessionMemory(sectionId, taskId, null);
@@ -617,6 +619,8 @@ function updateCustomSectionTaskDone(sectionId, taskId, done) {
     if (!Array.isArray(arr)) return;
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
+      if (String(t.itemType || "todo").toLowerCase() === "schedule")
+        return;
       t.done = !!done;
       persistCustomSectionTasksAndSchedule(obj);
       upsertCalendarSectionTaskRowFromSessionMemory(sectionId, taskId, null);
@@ -1926,7 +1930,10 @@ function renderMonthlyView(
             : " calendar-monthly-span-bar--range") +
           (showCheckbox ? " calendar-monthly-span-bar--has-checkbox" : "") +
           (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "") +
-          (b.isOverdueBar ? " calendar-monthly-span-bar--overdue" : "");
+          (b.isOverdueBar ? " calendar-monthly-span-bar--overdue" : "") +
+          ((b.itemType || "todo").toLowerCase() !== "todo"
+            ? " calendar-monthly-span-bar--schedule-strip"
+            : "");
         bar.title = b.name;
         bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.15 + b.row * BAR_HEIGHT}rem`;
         if (b.isSingleDay) {
@@ -2614,7 +2621,10 @@ function render2WeekView(
             : " calendar-monthly-span-bar--range") +
           (showCheckbox ? " calendar-monthly-span-bar--has-checkbox" : "") +
           (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "") +
-          (b.isOverdueBar ? " calendar-monthly-span-bar--overdue" : "");
+          (b.isOverdueBar ? " calendar-monthly-span-bar--overdue" : "") +
+          ((b.itemType || "todo").toLowerCase() !== "todo"
+            ? " calendar-monthly-span-bar--schedule-strip"
+            : "");
         bar.title = b.name;
         bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.15 + b.row * BAR_HEIGHT}rem`;
         if (b.isSingleDay) {
@@ -3290,7 +3300,10 @@ function render3WeekView(
             : " calendar-monthly-span-bar--range") +
           (showCheckbox ? " calendar-monthly-span-bar--has-checkbox" : "") +
           (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "") +
-          (b.isOverdueBar ? " calendar-monthly-span-bar--overdue" : "");
+          (b.isOverdueBar ? " calendar-monthly-span-bar--overdue" : "") +
+          ((b.itemType || "todo").toLowerCase() !== "todo"
+            ? " calendar-monthly-span-bar--schedule-strip"
+            : "");
         bar.title = b.name;
         bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.15 + b.row * BAR_HEIGHT}rem`;
         if (b.isSingleDay) {
@@ -5710,7 +5723,10 @@ function render1WeekView(
             : " calendar-monthly-span-bar--range") +
           (showCheckbox ? " calendar-monthly-span-bar--has-checkbox" : "") +
           (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "") +
-          (b.isOverdueBar ? " calendar-monthly-span-bar--overdue" : "");
+          (b.isOverdueBar ? " calendar-monthly-span-bar--overdue" : "") +
+          ((b.itemType || "todo").toLowerCase() !== "todo"
+            ? " calendar-monthly-span-bar--schedule-strip"
+            : "");
         bar.title = b.name;
         bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.15 + b.row * BAR_HEIGHT}rem`;
         if (b.isSingleDay) {

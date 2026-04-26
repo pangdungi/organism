@@ -1,5 +1,9 @@
 import { supabase } from "../supabase.js";
-import { getTodoSettings, saveTodoSettings } from "./todoSettings.js";
+import {
+  getTodoSettings,
+  saveTodoSettings,
+  normalizeSectionTaskListFilter,
+} from "./todoSettings.js";
 
 export const USER_HOURLY_RATE_KEY = "user_hourly_rate";
 
@@ -9,12 +13,20 @@ export const USER_HOURLY_RATE_KEY = "user_hourly_rate";
  */
 export function applyAppearanceFromServer(a) {
   if (!a || typeof a !== "object") return;
-  if (typeof a.hideCompleted !== "boolean") return;
   const cur = getTodoSettings();
-  saveTodoSettings({
-    ...cur,
-    hideCompleted: a.hideCompleted,
-  });
+  const next = { ...cur };
+  let changed = false;
+  if (typeof a.hideCompleted === "boolean") {
+    next.hideCompleted = a.hideCompleted;
+    changed = true;
+  }
+  if (a.sectionTaskListFilter != null) {
+    next.sectionTaskListFilter = normalizeSectionTaskListFilter(
+      a.sectionTaskListFilter,
+    );
+    changed = true;
+  }
+  if (changed) saveTodoSettings(next);
 }
 
 /** 브라우저/OS 타임존 → DB (리마인더 푸시가 사용자 로컬 시각과 맞도록) */
@@ -67,7 +79,7 @@ export async function pullHourlyRateToLocalStorage() {
   await pullUserPrefsFromSupabase();
 }
 
-/** 할 일 '완료 항목 숨기기'만 서버 appearance에 저장 (색상 필드 없음) */
+/** 할 일 목록 appearance: 완료 숨기기 + 할 일/일정 표시 필터 (색상 필드 없음) */
 export async function pushAppearanceToSupabase() {
   if (!supabase) return;
   const {
@@ -78,6 +90,9 @@ export async function pushAppearanceToSupabase() {
   const { error } = await supabase.rpc("set_my_appearance", {
     p_appearance: {
       hideCompleted: !!s.hideCompleted,
+      sectionTaskListFilter: normalizeSectionTaskListFilter(
+        s.sectionTaskListFilter,
+      ),
     },
   });
 }

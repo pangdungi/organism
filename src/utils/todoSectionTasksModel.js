@@ -165,7 +165,10 @@ export function localTaskToDbPayload(userId, sectionKey, isCustom, sortOrder, t)
     reminder_date: normalizeDate(t.reminderDate),
     reminder_time: String(t.reminderTime || "").trim(),
     eisenhower: String(t.eisenhower || "").trim(),
-    done: !!t.done,
+    done:
+      String(t.itemType || "todo").toLowerCase() === "schedule"
+        ? false
+        : !!t.done,
     item_type: String(t.itemType || "todo").trim() || "todo",
   };
 }
@@ -353,6 +356,8 @@ export function purgeAllCompletedSectionAndCustomTasks() {
       if (!sid || sid === "overdue") return;
       const idSet = new Set();
       sec.querySelectorAll(".todo-card").forEach((card) => {
+        if ((card.dataset.itemType || "todo").toLowerCase() === "schedule")
+          return;
         if (card.dataset.done !== "true") return;
         const id = (card.dataset.taskId || "").trim();
         if (id) idSet.add(id);
@@ -378,6 +383,10 @@ export function purgeAllCompletedSectionAndCustomTasks() {
       const arr = Array.isArray(obj[k]) ? obj[k] : [];
       const next = [];
       for (const t of arr) {
+        if (String(t.itemType || "todo").toLowerCase() === "schedule") {
+          next.push(t);
+          continue;
+        }
         if (taskRowMarkedDone(t)) {
           const id = String(t.taskId || "").trim();
           if (id) removedParentIds.push(id);

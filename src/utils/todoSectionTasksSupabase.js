@@ -319,13 +319,14 @@ export async function deleteCompletedCalendarSectionTasksFromSupabase() {
     }
     logTodoServerCrud("DELETE", {
       일괄: "done_true",
-      안내: "calendar_section_tasks eq user_id eq done DELETE",
+      안내: "calendar_section_tasks done=true & item_type≠schedule DELETE",
     });
     const { error, count } = await supabase
       .from(TABLE)
       .delete({ count: "exact" })
       .eq("user_id", userId)
-      .eq("done", true);
+      .eq("done", true)
+      .neq("item_type", "schedule");
     if (error) {
       logTodoServerCrud("DELETE", {
         결과: "실패",

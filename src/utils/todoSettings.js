@@ -48,6 +48,12 @@ export const APP_PRESET_RGBA_LIST = APP_PRESET_COLORS.map((c) => hexToRgba(c.hex
 /** 프리셋 rgba (시간가계부 생산성용 alpha 0.9) */
 export const APP_PRESET_RGBA_TIME = APP_PRESET_COLORS.map((c) => hexToRgba(c.hex, 0.9));
 
+/** 메인 할 일/일정 탭: 표시 범위 */
+export function normalizeSectionTaskListFilter(v) {
+  if (v === "todo_only" || v === "schedule_only") return v;
+  return "all";
+}
+
 function hashCode(str) {
   let h = 0;
   for (let i = 0; i < str.length; i++) h = (h << 5) - h + str.charCodeAt(i);
@@ -304,6 +310,9 @@ export function getTodoSettings() {
 
       const merged = {
         hideCompleted: !!parsed.hideCompleted,
+        sectionTaskListFilter: normalizeSectionTaskListFilter(
+          parsed.sectionTaskListFilter,
+        ),
         sectionColors,
         timeCategoryColors,
         taskCategoryColors,
@@ -323,6 +332,7 @@ export function getTodoSettings() {
             TODO_SETTINGS_KEY,
             JSON.stringify({
               hideCompleted: settings.hideCompleted,
+              sectionTaskListFilter: settings.sectionTaskListFilter,
               sectionColors: settings.sectionColors,
               timeCategoryColors: settings.timeCategoryColors,
               taskCategoryColors: settings.taskCategoryColors,
@@ -338,6 +348,7 @@ export function getTodoSettings() {
   } catch (_) {}
   return {
     hideCompleted: false,
+    sectionTaskListFilter: "all",
     sectionColors: { ...DEFAULT_SECTION_COLORS },
     timeCategoryColors: { ...DEFAULT_TIME_CATEGORY_COLORS },
     taskCategoryColors: { ...DEFAULT_TASK_CATEGORY_COLORS },

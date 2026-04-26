@@ -1,11 +1,12 @@
 /**
  * 할 일 목록 환경 설정 모달
- * - 완료 항목 숨기기/제거 토글
+ * - 할 일만 / 일정만 보기, 완료 항목 숨기기, 완료 일괄 제거
  */
 
 import {
   getTodoSettings,
   saveTodoSettings,
+  normalizeSectionTaskListFilter,
   DEFAULT_SECTION_COLORS,
   DEFAULT_TIME_CATEGORY_COLORS,
   DEFAULT_TASK_CATEGORY_COLORS,
@@ -153,17 +154,26 @@ function createToggleRow(label, checked, onChange) {
     </button>
   `;
   const toggle = row.querySelector(".todo-settings-toggle");
-  if (checked) toggle.classList.add("on");
+  function setOn(on) {
+    toggle.classList.toggle("on", !!on);
+    toggle.setAttribute("aria-checked", on ? "true" : "false");
+  }
+  setOn(!!checked);
   toggle.addEventListener("click", () => {
-    const isOn = toggle.classList.toggle("on");
-    toggle.setAttribute("aria-checked", isOn ? "true" : "false");
+    const isOn = !toggle.classList.contains("on");
+    setOn(isOn);
     onChange(isOn);
   });
-  return row;
+  return {
+    row,
+    setOn,
+    getOn: () => toggle.classList.contains("on"),
+  };
 }
 
 export function createTodoSettingsModal(options = {}) {
-  const { onHideCompletedChange, onClearCompleted } = options;
+  const { onHideCompletedChange, onSectionTaskListFilterChange, onClearCompleted } =
+    options;
   const settings = getTodoSettings();
 
   const modal = document.createElement("div");
@@ -188,6 +198,47 @@ export function createTodoSettingsModal(options = {}) {
   const backdrop = modal.querySelector(".todo-settings-backdrop");
 
   let hideCompleted = settings.hideCompleted;
+  let sectionTaskListFilter = normalizeSectionTaskListFilter(
+    settings.sectionTaskListFilter,
+  );
+
+  function persistSectionTaskListFilter() {
+    const cur = getTodoSettings();
+    saveTodoSettings({ ...cur, sectionTaskListFilter });
+    onSectionTaskListFilterChange?.(sectionTaskListFilter);
+    void pushAppearanceToSupabase();
+  }
+
+  const todoOnlyToggle = createToggleRow(
+    "할 일만 보기",
+    sectionTaskListFilter === "todo_only",
+    (on) => {
+      if (on) {
+        scheduleOnlyToggle.setOn(false);
+        sectionTaskListFilter = "todo_only";
+      } else {
+        sectionTaskListFilter = scheduleOnlyToggle.getOn()
+          ? "schedule_only"
+          : "all";
+      }
+      persistSectionTaskListFilter();
+    },
+  );
+  const scheduleOnlyToggle = createToggleRow(
+    "일정만 보기",
+    sectionTaskListFilter === "schedule_only",
+    (on) => {
+      if (on) {
+        todoOnlyToggle.setOn(false);
+        sectionTaskListFilter = "schedule_only";
+      } else {
+        sectionTaskListFilter = todoOnlyToggle.getOn() ? "todo_only" : "all";
+      }
+      persistSectionTaskListFilter();
+    },
+  );
+  togglesEl.appendChild(todoOnlyToggle.row);
+  togglesEl.appendChild(scheduleOnlyToggle.row);
 
   const hideToggle = createToggleRow("완료 항목 숨기기", hideCompleted, (v) => {
     hideCompleted = v;
@@ -196,7 +247,7 @@ export function createTodoSettingsModal(options = {}) {
     onHideCompletedChange?.(v);
     void pushAppearanceToSupabase();
   });
-  togglesEl.appendChild(hideToggle);
+  togglesEl.appendChild(hideToggle.row);
 
   const clearBtnRow = document.createElement("div");
   clearBtnRow.className = "todo-settings-clear-row";
