@@ -8664,7 +8664,7 @@ body {
 .asset-plan-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   table-layout: fixed;
 }
 
@@ -8700,7 +8700,7 @@ body {
 
 .asset-plan-table th,
 .asset-plan-table td {
-  padding: 0.25rem 0.5rem;
+  padding: 0.3rem 0.6rem;
   border-bottom: var(--line-l3);
   border-right: var(--line-l3);
   text-align: left;
@@ -8713,7 +8713,7 @@ body {
 
 .asset-plan-table th:nth-child(5),
 .asset-plan-table td:nth-child(5) {
-  text-align: center;
+  text-align: left;
   min-width: 0;
   max-width: none;
   word-break: keep-all;
@@ -8759,9 +8759,11 @@ body {
   transform: translate(-50%, -50%);
 }
 
+/* 가계부·순자산 테이블 th와 동일: 배경·본문 폰트 크기 (thead만 0.8125rem) */
 .asset-plan-table th {
-  background: var(--ui-surface-alt);
+  background: var(--content-bg);
   font-weight: 500;
+  font-size: 0.8125rem;
   color: var(--text-muted);
 }
 
@@ -8787,7 +8789,7 @@ body {
 }
 
 .asset-plan-cell-add {
-  padding: 0.25rem 0.5rem;
+  padding: 0.3rem 0.6rem;
   border-bottom: none;
 }
 
