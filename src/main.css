@@ -8668,22 +8668,34 @@ body {
   table-layout: fixed;
 }
 
+/* 열 합 = 정확히 100% (고정 2rem + 나머지 5열). 안 맞으면 엔진이 마지막 열을 늘려 ~100px+ 됨. */
+.asset-plan-col-action {
+  width: 2rem;
+  min-width: 2rem;
+  max-width: 2rem;
+}
+
 .asset-plan-col-category {
-  width: 28%;
+  width: calc((100% - 2rem) * 25 / 88);
+  min-width: 0;
 }
 
 .asset-plan-col-amount {
-  width: 18%;
+  width: calc((100% - 2rem) * 17 / 88);
+  min-width: 0;
 }
 
 .asset-plan-col-goal {
-  width: 7%;
-  min-width: 3.4375rem;
+  width: calc((100% - 2rem) * 12 / 88);
+  min-width: 0;
 }
 
-.asset-plan-col-delete {
-  width: 2%;
-  min-width: 2.25rem;
+.asset-plan-th-action {
+  width: 2rem;
+  min-width: 2rem;
+  max-width: 2rem;
+  box-sizing: border-box;
+  padding: 0.2rem 0.06rem;
 }
 
 .asset-plan-table th,
@@ -8702,12 +8714,38 @@ body {
 .asset-plan-table th:nth-child(5),
 .asset-plan-table td:nth-child(5) {
   text-align: center;
+  min-width: 0;
+  max-width: none;
+  word-break: keep-all;
 }
 
+/* 공통 th,td padding(좌우 0.5rem) 덮어써서 실제 열 너비 고정 */
 .asset-plan-table th:nth-child(6),
 .asset-plan-table td:nth-child(6) {
   text-align: center;
   vertical-align: middle;
+  box-sizing: border-box;
+  width: 2rem;
+  min-width: 2rem;
+  max-width: 2rem;
+  padding: 0.2rem 0.06rem;
+}
+
+.asset-plan-table .asset-plan-cell-action {
+  width: 2rem;
+  min-width: 2rem;
+  max-width: 2rem;
+  box-sizing: border-box;
+  padding: 0.2rem 0.06rem;
+}
+
+.asset-plan-table .asset-plan-action-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: auto;
+  max-width: 100%;
+  margin: 0 auto;
 }
 
 .asset-plan-cell-delete {
@@ -8789,6 +8827,37 @@ body {
 
 .asset-plan-btn-add:hover {
   color: var(--text-body);
+}
+
+/* 목록 행「수정」: 기본 버튼 테두리 제거(가계부·+행과 톤 맞춤) */
+.asset-plan-btn-edit {
+  padding: 0.2rem 0.35rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 0.2rem;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.asset-plan-btn-edit:hover {
+  color: var(--text-body);
+}
+
+.asset-plan-cell-action .asset-plan-btn-edit {
+  padding: 0.08rem 0.1rem;
+  font-size: 0.7rem;
+}
+
+/* 자산관리계획 뷰 행: 「수정」은 호버·포커스 시에만 */
+.asset-plan-row--view .asset-plan-btn-edit {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.asset-plan-row--view:hover .asset-plan-btn-edit,
+.asset-plan-row--view:focus-within .asset-plan-btn-edit {
+  opacity: 1;
 }
 
 .asset-plan-add-icon {
@@ -8937,6 +9006,58 @@ body {
 .asset-plan-cell-total .asset-plan-total-display {
   font-variant-numeric: tabular-nums;
   color: var(--text-body);
+}
+
+/* 자산관리계획: + / 수정 — 가계부·총부채와 같은 내부 패널 (모바일) */
+@media (max-width: 48rem) {
+  .asset-plan-table tr.asset-plan-row--inner-panel > td,
+  .asset-plan-table tr.asset-plan-row--inner-panel > th {
+    overflow: visible !important;
+  }
+  .asset-plan-row--inner-panel .asset-plan-cell-panel {
+    padding: 0.45rem 0.7rem 0.55rem;
+    vertical-align: top;
+    border: none;
+    background: transparent;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .asset-plan-table tr.asset-plan-row--inner-panel .asset-expense-inline-panel {
+    overflow: visible;
+    max-width: 100%;
+    min-width: 0;
+  }
+  .asset-plan-row--inner-panel .asset-expense-inline-panel-body {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .asset-plan-row--inner-panel .asset-expense-form-stack {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .asset-plan-row--inner-panel .asset-expense-form-row {
+    min-width: 0;
+    grid-template-columns: minmax(0, 5.25rem) minmax(0, 1fr) !important;
+  }
+  .asset-plan-table-wrap:has(tr.asset-plan-row--inner-panel) {
+    min-width: 0;
+  }
+  .asset-plan-table:has(tr.asset-plan-row--inner-panel) {
+    width: 100% !important;
+    table-layout: fixed;
+  }
+  .asset-plan-table:has(tr.asset-plan-row--inner-panel) th,
+  .asset-plan-table:has(tr.asset-plan-row--inner-panel) td {
+    min-width: 0 !important;
+    white-space: normal;
+  }
+  .asset-plan-table:has(tr.asset-plan-row--inner-panel) th:nth-child(6),
+  .asset-plan-table:has(tr.asset-plan-row--inner-panel) td:nth-child(6) {
+    width: 2rem !important;
+    min-width: 2rem !important;
+    max-width: 2rem !important;
+    box-sizing: border-box;
+  }
 }
 
 /* ----- 지출입력장 (가계부) ----- */
@@ -10829,6 +10950,22 @@ col.asset-expense-col-amount,
   cursor: pointer;
   font-family: inherit;
   white-space: nowrap;
+}
+
+/* 가계부·순자산 읽기 행: 「수정」은 호버·포커스 시에만 (삭제 버튼과 동일 톤) */
+.asset-expense-row--view .asset-expense-btn-row,
+.asset-debt-row--view .asset-expense-btn-row,
+.asset-asset-row--view .asset-expense-btn-row {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.asset-expense-row--view:hover .asset-expense-btn-row,
+.asset-expense-row--view:focus-within .asset-expense-btn-row,
+.asset-debt-row--view:hover .asset-expense-btn-row,
+.asset-debt-row--view:focus-within .asset-expense-btn-row,
+.asset-asset-row--view:hover .asset-expense-btn-row,
+.asset-asset-row--view:focus-within .asset-expense-btn-row {
+  opacity: 1;
 }
 
 .asset-expense-table .asset-expense-cell--locked {
@@ -13383,10 +13520,16 @@ col.asset-expense-col-amount,
   color: var(--text-muted);
 }
 
-/* 모바일: 호버 없음 → 삭제 버튼이 투명(opacity:0)이면 탭이 안 되는 것처럼 보임 */
+/* 모바일: 호버 없음 → 삭제·수정 버튼이 투명이면 탭이 안 되는 것처럼 보임 */
 @media (max-width: 48rem) {
   .asset-asset-btn-delete,
   .asset-debt-btn-delete {
+    opacity: 1;
+  }
+  .asset-expense-row--view .asset-expense-btn-row,
+  .asset-debt-row--view .asset-expense-btn-row,
+  .asset-asset-row--view .asset-expense-btn-row,
+  .asset-plan-row--view .asset-plan-btn-edit {
     opacity: 1;
   }
 }

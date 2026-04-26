@@ -6057,11 +6057,10 @@ function savePlanMonthlyGoalsFromPlanView(planRoot) {
     const sectionKey = planTableTypeToStorageSection(tt);
     const tbody = section.querySelector("tbody");
     if (!tbody) return;
-    tbody.querySelectorAll("tr.asset-plan-row").forEach((tr, idx) => {
+    tbody.querySelectorAll("tr.asset-plan-row--view").forEach((tr, idx) => {
       const cat = (tr.dataset.planCategory || "").trim();
       const cls = (tr.dataset.planClassification || "").trim();
-      const goalInput = tr.querySelector("td:nth-child(2) input");
-      const monthlyGoalStr = (goalInput?.value || "").trim();
+      const monthlyGoalStr = (tr.dataset.monthlyGoalStr || "").trim();
       if (!cls) return;
       out.push({
         section: sectionKey,
@@ -6095,6 +6094,8 @@ function renderPlanView() {
     const section = document.createElement("div");
     section.className = "asset-plan-section";
     section.dataset.planTableType = tableType;
+    section.setAttribute("role", "group");
+    section.setAttribute("aria-label", title);
     const h3 = document.createElement("h3");
     h3.className = "asset-plan-section-title";
     h3.textContent = title;
@@ -6104,10 +6105,13 @@ function renderPlanView() {
     const table = document.createElement("table");
     table.className = "asset-plan-table";
     const colgroup = document.createElement("colgroup");
-    colgroup.innerHTML = `<col class="asset-plan-col-category" /><col class="asset-plan-col-amount" /><col class="asset-plan-col-amount" /><col class="asset-plan-col-amount" /><col class="asset-plan-col-goal" /><col class="asset-plan-col-delete" />`;
+    colgroup.innerHTML =
+      '<col class="asset-plan-col-category" /><col class="asset-plan-col-amount" /><col class="asset-plan-col-amount" />' +
+      '<col class="asset-plan-col-amount" /><col class="asset-plan-col-goal" />' +
+      '<col class="asset-plan-col-action" style="width:2rem;min-width:2rem;max-width:2rem" />';
     table.appendChild(colgroup);
     const thead = document.createElement("thead");
-    thead.innerHTML = `<tr><th>${col1Label}</th><th>월목표 금액</th><th>이번달 합계</th><th>${col4Label}</th><th>목표달성</th><th></th></tr>`;
+    thead.innerHTML = `<tr><th>${col1Label}</th><th>월목표 금액</th><th>이번달 합계</th><th>${col4Label}</th><th>목표달성</th><th scope="col" class="asset-plan-th-action" aria-label="행 작업"></th></tr>`;
     const tbody = document.createElement("tbody");
 
     const addBtn = document.createElement("button");
@@ -6115,151 +6119,382 @@ function renderPlanView() {
     addBtn.className = "asset-plan-btn-add";
     addBtn.innerHTML = '<span class="asset-plan-add-icon">+</span>';
 
-    function updateCol4AndGoal(tr) {
-      const goalInput = tr.querySelector("td:nth-child(2) input");
-      const totalInput = tr.querySelector("td:nth-child(3) input");
-      const totalDisplay = tr.querySelector(".asset-plan-total-display");
-      let goal = parseNum(goalInput?.value);
-      let total = null;
-      if ((tableType === "income" || tableType === "investSavings" || tableType === "expense") && totalDisplay) {
-        total = parseNum(totalDisplay.textContent);
-      } else if (totalInput) {
-        total = parseNum(totalInput?.value);
-      }
-      if (col4Calculated) {
-        const displayEl = tr.querySelector(".asset-plan-col4-display");
-        if (displayEl && goalInput && (totalInput || totalDisplay)) {
-          let diff = null;
-          if (goal !== null && total !== null) {
-            diff = goal - total;
-            if (goalType === "min" || goalType === "max") diff = Math.max(0, diff);
-          }
-          displayEl.textContent = diff !== null ? formatNum(diff) : "-";
-        }
-      }
-      const goalDisplayEl = tr.querySelector(".asset-plan-goal-display");
-      if (goalDisplayEl) {
-        const hasValues = goal !== null && total !== null;
-        const achieved = hasValues && (goalType === "min" ? total >= goal : total <= goal);
-        goalDisplayEl.textContent = hasValues ? (achieved ? "🎉 달성" : "실패") : "-";
-        goalDisplayEl.className = "asset-plan-goal-display" + (achieved ? " is-achieved" : hasValues ? " is-failed" : "");
-      }
-    }
-
     function persistPlanGoals() {
       savePlanMonthlyGoalsFromPlanView(wrap);
     }
 
-    function appendPlanRow(savedRow) {
-      const tr = document.createElement("tr");
-      tr.className = "asset-plan-row";
-      const savedCls = (savedRow?.classification || "").trim();
-      const savedCat = (savedRow?.category || "").trim();
-      if (savedCls) tr.dataset.planClassification = savedCls;
-      if (savedCat) tr.dataset.planCategory = savedCat;
-
-      const deleteBtn = document.createElement("button");
-      deleteBtn.type = "button";
-      deleteBtn.className = "asset-plan-btn-delete";
-      deleteBtn.textContent = "삭제";
-      deleteBtn.addEventListener("click", () => {
-        confirmDeleteRow(() => {
-          tr.remove();
-          persistPlanGoals();
-        });
-      });
-      const col4Content = col4Calculated
-        ? `<span class="asset-plan-col4-display">-</span>`
-        : `<input type="text" class="asset-plan-input" placeholder="" />`;
-      const col4Class = col4Calculated ? "asset-plan-cell-col4-calc" : "";
-      const col1Content =
-        tableType === "income" || tableType === "investSavings" || tableType === "expense"
-          ? `<td class="asset-plan-cell-category"></td>`
-          : `<td><input type="text" class="asset-plan-input" placeholder="" /></td>`;
-      const col3Content =
-        tableType === "income" || tableType === "investSavings" || tableType === "expense"
-          ? `<td class="asset-plan-cell-total"><span class="asset-plan-total-display">-</span></td>`
-          : `<td><input type="text" class="asset-plan-input asset-plan-input-amount" inputmode="numeric" placeholder="" /></td>`;
-      tr.innerHTML = `${col1Content}<td><input type="text" class="asset-plan-input asset-plan-input-amount" inputmode="numeric" placeholder="" /></td>${col3Content}<td class="${col4Class}">${col4Content}</td><td class="asset-plan-cell-goal"><span class="asset-plan-goal-display">-</span></td><td class="asset-plan-cell-delete"><div class="asset-plan-delete-wrap"></div></td>`;
-      tr.querySelector(".asset-plan-delete-wrap").appendChild(deleteBtn);
-      const goalInput = tr.querySelector("td:nth-child(2) input");
-      const totalInput = tr.querySelector("td:nth-child(3) input");
-      const totalDisplay = tr.querySelector(".asset-plan-total-display");
-      const categoryCell = tr.querySelector(".asset-plan-cell-category");
-      if (savedRow?.monthlyGoalStr) goalInput.value = savedRow.monthlyGoalStr;
-
-      if (tableType === "income" && categoryCell) {
-        const dropdown = createPlanIncomeCategoryDropdown(savedCls || "", (classification) => {
-          tr.dataset.planCategory = "수입";
-          tr.dataset.planClassification = classification;
-          const sum = getExpenseSumByIncomeClassification(classification);
-          if (totalDisplay) totalDisplay.textContent = sum > 0 ? formatNum(sum) : "-";
-          updateCol4AndGoal(tr);
-          persistPlanGoals();
-        });
-        categoryCell.appendChild(dropdown.wrap);
-      } else if (tableType === "investSavings" && categoryCell) {
-        const dropdown = createPlanInvestSavingsCategoryDropdown(savedCls || "", (category, classification) => {
-          tr.dataset.planCategory = category;
-          tr.dataset.planClassification = classification;
-          const sum = getExpenseSumByInvestSavingsClassification(category, classification);
-          if (totalDisplay) totalDisplay.textContent = sum > 0 ? formatNum(sum) : "-";
-          updateCol4AndGoal(tr);
-          persistPlanGoals();
-        });
-        categoryCell.appendChild(dropdown.wrap);
-      } else if (tableType === "expense" && categoryCell) {
-        const dropdown = createPlanExpenseCategoryDropdown(savedCls || "", (category, classification) => {
-          tr.dataset.planCategory = category;
-          tr.dataset.planClassification = classification;
-          const sum = getExpenseSumByExpenseClassification(category, classification);
-          if (totalDisplay) totalDisplay.textContent = sum > 0 ? formatNum(sum) : "-";
-          updateCol4AndGoal(tr);
-          persistPlanGoals();
-        });
-        categoryCell.appendChild(dropdown.wrap);
-      }
-      if (categoryCell) {
-        categoryCell.addEventListener("click", (e) => {
-          if (e.target.closest(".asset-plan-category-display")) return;
-        });
-      }
-      const formatAmount = (input, alsoPersist) => {
-        input.addEventListener("blur", () => {
-          const formatted = formatNum(input.value);
-          if (formatted !== "") input.value = formatted;
-          updateCol4AndGoal(tr);
-          if (alsoPersist) persistPlanGoals();
-        });
-        input.addEventListener("keydown", (e) => e.key === "Enter" && input.blur());
-      };
-      const onGoalAmountInput = (e) => {
-        filterNumericInput(goalInput, false, e);
-        updateCol4AndGoal(tr);
-      };
-      goalInput.addEventListener("input", onGoalAmountInput);
-      formatAmount(goalInput, true);
-      if (totalInput) {
-        formatAmount(totalInput, false);
-        totalInput.addEventListener("input", (e) => {
-          filterNumericInput(totalInput, false, e);
-          updateCol4AndGoal(tr);
-        });
-      }
-      tbody.appendChild(tr);
-      if (savedCls && totalDisplay && (tableType === "income" || tableType === "investSavings" || tableType === "expense")) {
-        let sum = 0;
-        if (tableType === "income") sum = getExpenseSumByIncomeClassification(savedCls);
-        else if (tableType === "investSavings" && savedCat)
-          sum = getExpenseSumByInvestSavingsClassification(savedCat, savedCls);
-        else if (tableType === "expense" && savedCat) sum = getExpenseSumByExpenseClassification(savedCat, savedCls);
-        totalDisplay.textContent = sum > 0 ? formatNum(sum) : "-";
-      }
-      updateCol4AndGoal(tr);
+    function getMonthTotalForRow(cat, cls) {
+      if (tableType === "income" && cls) return getExpenseSumByIncomeClassification(cls);
+      if (tableType === "investSavings" && cat && cls)
+        return getExpenseSumByInvestSavingsClassification(cat, cls);
+      if (tableType === "expense" && cat && cls) return getExpenseSumByExpenseClassification(cat, cls);
+      return 0;
     }
 
-    loadSavedPlanRowsForTableType(tableType).forEach((r) => appendPlanRow(r));
-    addBtn.addEventListener("click", () => appendPlanRow(null));
+    function updateDerivedInPanel(etr) {
+      const gIn = etr.querySelector(".asset-plan-goal-in");
+      const tot = etr.querySelector(".asset-plan-total-display");
+      const d4 = etr.querySelector(".asset-plan-col4-display");
+      const dAch = etr.querySelector(".asset-plan-goal-display");
+      if (!gIn || !tot || !d4 || !dAch) return;
+      const goal = parseNum(gIn.value);
+      const tNum = parseNum(tot.textContent);
+      if (col4Calculated) {
+        let diff = null;
+        if (goal !== null && tNum !== null) {
+          diff = goal - tNum;
+          if (goalType === "min" || goalType === "max") diff = Math.max(0, diff);
+        }
+        d4.textContent = diff !== null ? formatNum(diff) : "-";
+      } else d4.textContent = "-";
+      const hasV = goal !== null && tNum !== null;
+      const achieved = hasV && (goalType === "min" ? tNum >= goal : tNum <= goal);
+      dAch.textContent = hasV ? (achieved ? "🎉 달성" : "실패") : "-";
+      dAch.className = "asset-plan-goal-display" + (achieved ? " is-achieved" : hasV ? " is-failed" : "");
+    }
+
+    function viewRowHtml(col1CellHtml, goalDisplay, totDisplay, c4, achElClass) {
+      return `<tr class="asset-plan-row asset-plan-row--view">` +
+        `<td class="asset-plan-col-view1">${col1CellHtml}</td>` +
+        `<td>${goalDisplay || "-"}</td>` +
+        `<td class="asset-plan-cell-total"><span class="asset-plan-total-display">${totDisplay || "-"}</span></td>` +
+        `<td class="asset-plan-cell-col4-calc"><span class="asset-plan-col4-display">${c4}</span></td>` +
+        `<td class="asset-plan-cell-goal"><span class="asset-plan-goal-display ${achElClass}">-</span></td>` +
+        `<td class="asset-plan-cell-action"><div class="asset-plan-action-wrap"><button type="button" class="asset-plan-btn-edit" aria-label="이 목표 수정">수정</button></div></td>` +
+        `</tr>`;
+    }
+
+    function afterViewRowPaint(tr) {
+      const gStr = (tr.dataset.monthlyGoalStr || "").trim();
+      const tot = tr.querySelector(".asset-plan-total-display");
+      const gNum = parseNum(gStr);
+      const tNum = tot ? parseNum(tot.textContent) : null;
+      const d4 = tr.querySelector(".asset-plan-col4-display");
+      const dAch = tr.querySelector(".asset-plan-goal-display");
+      if (d4 && col4Calculated && gNum !== null && tNum !== null) {
+        let diff = gNum - tNum;
+        if (goalType === "min" || goalType === "max") diff = Math.max(0, diff);
+        d4.textContent = formatNum(diff);
+      } else if (d4) d4.textContent = "-";
+      if (dAch) {
+        const hasV = gNum !== null && tNum !== null;
+        const achieved = hasV && (goalType === "min" ? tNum >= gNum : tNum <= gNum);
+        dAch.textContent = hasV ? (achieved ? "🎉 달성" : "실패") : "-";
+        dAch.className = "asset-plan-goal-display" + (achieved ? " is-achieved" : hasV ? " is-failed" : "");
+      }
+    }
+
+    function col1ViewHtmlForRow(cat, cls) {
+      if (tableType === "income" && cls) {
+        return `<span class="asset-plan-category-tag expense-cls-gray">${cls}</span>`;
+      }
+      if (tableType === "investSavings" && cat && cls) {
+        return (
+          `<span class="asset-plan-category-view-name">${cat}</span> ` +
+          `<span class="asset-plan-category-tag expense-cls-gray">${cls}</span>`
+        );
+      }
+      if (tableType === "expense" && cat && cls) {
+        return (
+          `<span class="asset-plan-category-view-name">${cat}</span> ` +
+          `<span class="asset-plan-category-tag expense-cls-gray">${cls}</span>`
+        );
+      }
+      return "-";
+    }
+
+    function appendToForm(fstack, label, classExtra, el) {
+      const row = document.createElement("div");
+      row.className = "asset-expense-form-row";
+      const lab = document.createElement("span");
+      lab.className = "asset-expense-form-label";
+      lab.textContent = label;
+      const control = document.createElement("div");
+      control.className = "asset-expense-form-control asset-expense-form-control--field" + (classExtra ? " " + classExtra : "");
+      if (el) control.appendChild(el);
+      row.appendChild(lab);
+      row.appendChild(control);
+      fstack.appendChild(row);
+      return control;
+    }
+
+    function readPanel(etr) {
+      const gIn = etr.querySelector(".asset-plan-goal-in");
+      return {
+        category: (etr.dataset.planCategory || "").trim(),
+        classification: (etr.dataset.planClassification || "").trim(),
+        monthlyGoalStr: (gIn?.value || "").trim(),
+      };
+    }
+
+    function buildPlanEntryEditor(mode, mem) {
+      const isDraft = mode === "draft";
+      const tr = document.createElement("tr");
+      tr.className = "asset-plan-row asset-plan-row--editing asset-expense-row--inner-panel";
+      tr.innerHTML =
+        '<td colspan="6" class="asset-plan-cell-panel">' +
+        '<div class="asset-expense-inline-panel asset-plan-inline-panel">' +
+        '<div class="asset-expense-inline-panel-top">' +
+        '<span class="asset-expense-inline-panel-title">' +
+        (isDraft ? "새 목표" : "목표 수정") +
+        "</span>" +
+        '<button type="button" class="asset-expense-inline-panel-x" aria-label="닫기">×</button>' +
+        "</div>" +
+        '<div class="asset-expense-inline-panel-body"></div>' +
+        '<div class="asset-expense-inline-panel-bottom" aria-label="확인 작업"></div>' +
+        "</div></td>";
+      const memSnap = !isDraft && mem
+        ? { ...mem, category: (mem.category || "").trim(), classification: (mem.classification || "").trim(), monthlyGoalStr: (mem.monthlyGoalStr || "").trim() }
+        : null;
+      const body = tr.querySelector(".asset-expense-inline-panel-body");
+      const foot = tr.querySelector(".asset-expense-inline-panel-bottom");
+      const xBtn = tr.querySelector(".asset-expense-inline-panel-x");
+      const formStack = document.createElement("div");
+      formStack.className = "asset-expense-form-stack";
+      formStack.setAttribute("role", "group");
+      formStack.setAttribute("aria-label", isDraft ? "새 목표 입력" : "목표 편집");
+      body.appendChild(formStack);
+
+      let saveBtn;
+      const totalSp = document.createElement("span");
+      totalSp.className = "asset-plan-total-display";
+      totalSp.textContent = "-";
+      const d4 = document.createElement("span");
+      d4.className = "asset-plan-col4-display";
+      d4.textContent = "-";
+      const dAch = document.createElement("span");
+      dAch.className = "asset-plan-goal-display";
+      dAch.textContent = "-";
+
+      const setTotalsFromData = (cat, cls) => {
+        if (!cls) {
+          tr.dataset.planCategory = cat || "";
+          tr.dataset.planClassification = "";
+          totalSp.textContent = "-";
+          return;
+        }
+        tr.dataset.planCategory = tableType === "income" ? "수입" : cat || "";
+        tr.dataset.planClassification = cls;
+        const s =
+          tableType === "income"
+            ? getExpenseSumByIncomeClassification(cls)
+            : tableType === "investSavings" && cat
+              ? getExpenseSumByInvestSavingsClassification(cat, cls)
+              : tableType === "expense" && cat
+                ? getExpenseSumByExpenseClassification(cat, cls)
+                : 0;
+        totalSp.textContent = s > 0 ? formatNum(s) : "-";
+        updateDerivedInPanel(tr);
+      };
+
+      if (tableType === "income") {
+        tr.dataset.planCategory = "수입";
+        const dd = createPlanIncomeCategoryDropdown(isDraft ? "" : (memSnap?.classification || ""), (classification) => {
+          if (!classification) return;
+          tr.dataset.planCategory = "수입";
+          tr.dataset.planClassification = classification;
+          setTotalsFromData("수입", classification);
+        });
+        const host = appendToForm(formStack, col1Label, "asset-plan-cell-cat", dd.wrap);
+        void host;
+      } else if (tableType === "investSavings") {
+        const dd = createPlanInvestSavingsCategoryDropdown(
+          isDraft ? "" : (memSnap?.classification || memSnap?.category || ""),
+          (category, classification) => {
+            tr.dataset.planCategory = category;
+            tr.dataset.planClassification = classification;
+            setTotalsFromData(category, classification);
+          }
+        );
+        const host = appendToForm(formStack, col1Label, "asset-plan-cell-cat", dd.wrap);
+        void host;
+        if (memSnap && !isDraft && memSnap.category && memSnap.classification) {
+          tr.dataset.planCategory = memSnap.category;
+          tr.dataset.planClassification = memSnap.classification;
+        }
+      } else {
+        const dd = createPlanExpenseCategoryDropdown(
+          isDraft ? "" : (memSnap?.classification || memSnap?.category || ""),
+          (category, classification) => {
+            tr.dataset.planCategory = category;
+            tr.dataset.planClassification = classification;
+            setTotalsFromData(category, classification);
+          }
+        );
+        const host = appendToForm(formStack, col1Label, "asset-plan-cell-cat", dd.wrap);
+        void host;
+        if (memSnap && !isDraft && memSnap.category && memSnap.classification) {
+          tr.dataset.planCategory = memSnap.category;
+          tr.dataset.planClassification = memSnap.classification;
+        }
+      }
+
+      const goalIn = document.createElement("input");
+      goalIn.type = "text";
+      goalIn.className = "asset-plan-input asset-plan-goal-in";
+      goalIn.inputMode = "numeric";
+      goalIn.setAttribute("inputmode", "numeric");
+      goalIn.value = memSnap ? memSnap.monthlyGoalStr : "";
+      goalIn.placeholder = "숫자";
+      const goalCtrl = appendToForm(formStack, "월목표 금액", "asset-plan-cell-goalp", goalIn);
+      void goalCtrl;
+      goalIn.addEventListener("input", (e) => {
+        filterNumericInput(goalIn, false, e);
+        updateDerivedInPanel(tr);
+      });
+      goalIn.addEventListener("blur", () => {
+        const f = formatNum(goalIn.value);
+        if (f !== "") goalIn.value = f;
+        updateDerivedInPanel(tr);
+      });
+      goalIn.addEventListener("keydown", (e) => e.key === "Enter" && goalIn.blur());
+
+      appendToForm(formStack, "이번달 합계", "asset-plan-total", totalSp);
+      appendToForm(formStack, col4Label, "asset-plan-d4", d4);
+      appendToForm(formStack, "목표달성", "asset-plan-ach", dAch);
+
+      if (!isDraft && memSnap) {
+        if (tableType === "income" && memSnap.classification) setTotalsFromData("수입", memSnap.classification);
+        if (tableType === "investSavings" && memSnap.category && memSnap.classification)
+          setTotalsFromData(memSnap.category, memSnap.classification);
+        if (tableType === "expense" && memSnap.category && memSnap.classification)
+          setTotalsFromData(memSnap.category, memSnap.classification);
+      }
+      updateDerivedInPanel(tr);
+
+      const runCancel = () => {
+        if (isDraft) {
+          tr.remove();
+          return;
+        }
+        if (memSnap) {
+          const n = buildPlanViewRowElement(memSnap);
+          if (n) tr.replaceWith(n);
+          else tr.remove();
+        } else {
+          tr.remove();
+        }
+      };
+      if (xBtn) {
+        xBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          runCancel();
+        });
+      }
+      if (isDraft) {
+        saveBtn = document.createElement("button");
+        saveBtn.type = "button";
+        saveBtn.className = "asset-expense-inline-panel-btn asset-expense-inline-panel-btn--primary";
+        saveBtn.textContent = "저장";
+        const cxl = document.createElement("button");
+        cxl.type = "button";
+        cxl.className = "asset-expense-inline-panel-btn";
+        cxl.textContent = "취소";
+        cxl.addEventListener("click", (e) => {
+          e.stopPropagation();
+          runCancel();
+        });
+        const fin = document.createElement("div");
+        fin.className = "asset-expense-inline-panel-bottom-inner";
+        fin.appendChild(cxl);
+        fin.appendChild(saveBtn);
+        foot.appendChild(fin);
+        saveBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const p = readPanel(tr);
+          if (!p.classification) return;
+          p.category = p.category || (tableType === "income" ? "수입" : p.category);
+          if (tableType === "income") p.category = "수입";
+          const next = { category: p.category, classification: p.classification, monthlyGoalStr: p.monthlyGoalStr };
+          const n = buildPlanViewRowElement(next);
+          if (n) tr.replaceWith(n);
+          else tr.remove();
+          persistPlanGoals();
+        });
+      } else {
+        saveBtn = document.createElement("button");
+        saveBtn.type = "button";
+        saveBtn.className = "asset-expense-inline-panel-btn asset-expense-inline-panel-btn--primary";
+        saveBtn.textContent = "수정";
+        const cxl = document.createElement("button");
+        cxl.type = "button";
+        cxl.className = "asset-expense-inline-panel-btn";
+        cxl.textContent = "취소";
+        cxl.addEventListener("click", (e) => {
+          e.stopPropagation();
+          runCancel();
+        });
+        const fin = document.createElement("div");
+        fin.className = "asset-expense-inline-panel-bottom-inner";
+        fin.appendChild(cxl);
+        fin.appendChild(saveBtn);
+        foot.appendChild(fin);
+        saveBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const p = readPanel(tr);
+          if (!p.classification) return;
+          if (tableType === "income") p.category = "수입";
+          const n = buildPlanViewRowElement({
+            category: p.category,
+            classification: p.classification,
+            monthlyGoalStr: p.monthlyGoalStr,
+          });
+          if (n) tr.replaceWith(n);
+          else tr.remove();
+          persistPlanGoals();
+        });
+      }
+
+      return tr;
+    }
+
+    function buildPlanViewRowElement(d) {
+      if (!(d && (d.classification || "").trim())) return null;
+      const t = document.createElement("tr");
+      const cat = (d.category || "").trim();
+      const cls = (d.classification || "").trim();
+      const mStr = (d.monthlyGoalStr || "").trim();
+      t.className = "asset-plan-row asset-plan-row--view";
+      if (cat) t.dataset.planCategory = cat;
+      if (cls) t.dataset.planClassification = cls;
+      if (mStr) t.dataset.monthlyGoalStr = mStr;
+      const gDisp = mStr
+        ? parseNum(mStr) !== null
+          ? formatNum(mStr)
+          : mStr
+        : "-";
+      const monTot = getMonthTotalForRow(cat, cls);
+      const totDisp = monTot > 0 ? formatNum(monTot) : "-";
+      const c4 = col4Calculated
+        ? (() => {
+            const gN = parseNum(mStr);
+            if (gN === null) return "-";
+            const tN = monTot;
+            let diff = gN - tN;
+            if (goalType === "min" || goalType === "max") diff = Math.max(0, diff);
+            return formatNum(diff);
+          })()
+        : "-";
+      t.innerHTML = viewRowHtml(col1ViewHtmlForRow(cat, cls), gDisp, totDisp, c4, "");
+      afterViewRowPaint(t);
+      const ed = t.querySelector(".asset-plan-btn-edit");
+      const mem2 = { category: cat, classification: cls, monthlyGoalStr: mStr };
+      ed.addEventListener("click", (e) => {
+        e.stopPropagation();
+        t.replaceWith(buildPlanEntryEditor("edit", mem2));
+      });
+      return t;
+    }
+
+    loadSavedPlanRowsForTableType(tableType).forEach((r) => {
+      if ((r.classification || "").trim()) {
+        const t = buildPlanViewRowElement(r);
+        if (t) tbody.appendChild(t);
+      }
+    });
+    addBtn.addEventListener("click", () => {
+      tbody.appendChild(buildPlanEntryEditor("draft", null));
+    });
 
     table.appendChild(thead);
     table.appendChild(tbody);
