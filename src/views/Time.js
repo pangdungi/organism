@@ -10111,7 +10111,7 @@ export function renderTimeBudgetTablesForCalendar(
     return parseTimeToHours(end) > parseTimeToHours(start);
   }
 
-  /** 시작~마감 차이를 소요 시간 hh:mm (표시만, 서버 미저장 · 자정 넘김은 +24h) */
+  /** 시작~마감 차이를 「N시간 M분」표기(표시만, 서버 미저장 · 자정 넘김은 +24h) */
   function formatBudgetSlotDurationHhMm(start, end) {
     const s = (start || "").trim();
     const e = (end || "").trim();
@@ -10122,9 +10122,12 @@ export function renderTimeBudgetTablesForCalendar(
     let endH = parseTimeToHours(e);
     if (endH <= startH) endH += 24;
     const totalMins = Math.round((endH - startH) * 60);
+    if (totalMins <= 0) return "";
     const h = Math.floor(totalMins / 60);
     const m = totalMins % 60;
-    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    if (h === 0) return `${m}분`;
+    if (m === 0) return `${h}시간`;
+    return `${h}시간 ${m}분`;
   }
 
   function updateBudgetRowDurationCell(tr) {
