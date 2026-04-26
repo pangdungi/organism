@@ -34060,7 +34060,7 @@ body.kpi-resizing {
 .calendar-1day-budget-column
   .time-daily-budget-table
   th.time-budget-col-duration {
-  text-align: center;
+  text-align: left;
   font-variant-numeric: tabular-nums;
   white-space: normal;
   line-height: 1.2;
@@ -34069,7 +34069,7 @@ body.kpi-resizing {
 .calendar-1day-budget-column
   .time-daily-budget-table
   td.time-budget-cell-duration {
-  text-align: center;
+  text-align: left;
   font-variant-numeric: tabular-nums;
   white-space: normal;
   line-height: 1.25;
@@ -34189,6 +34189,8 @@ body.kpi-resizing {
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-left: auto;
+  margin-right: auto;
   font-size: 0.85rem;
   line-height: 1;
   color: #9ca3af;
