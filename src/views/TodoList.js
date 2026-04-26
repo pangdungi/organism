@@ -38,6 +38,8 @@ import {
   persistFixedSectionTasksToSessionMemOnly,
   persistCustomSectionTasksToSessionMemOnly,
   deleteCalendarSectionTaskRowById,
+  deleteCompletedCalendarSectionTasksFromSupabase,
+  pullCalendarSectionTasksFromSupabase,
   cancelTodoSectionTasksSyncPushSchedule,
   upsertCalendarSectionTaskDirectFromModal,
   upsertCalendarSectionTaskRowFromSessionMemory,
@@ -3596,13 +3598,23 @@ export function render(options = {}) {
     } catch (_) {}
     removeAllCompletedKpiTodos();
     removeAllCompletedSubtasksFromStore();
-    const { fixed, custom, changed } = purgeAllCompletedSectionAndCustomTasks();
-    if (changed) {
-      persistSectionTasksAndSchedule(fixed);
-      persistCustomSectionTasksAndSchedule(custom);
+    /* calendar_section_tasks: 서버에서 done=true 행만 DELETE → SELECT 로 세션 메모리 일치. 실패 시 기존 로컬 제거 */
+    let syncedFromServer = false;
+    try {
+      const del = await deleteCompletedCalendarSectionTasksFromSupabase();
+      if (del?.ok) {
+        await pullCalendarSectionTasksFromSupabase({ reason: "clear_completed" });
+        syncedFromServer = true;
+      }
+    } catch (_) {}
+    if (!syncedFromServer) {
+      const { fixed, custom, changed } = purgeAllCompletedSectionAndCustomTasks();
+      if (changed) {
+        persistSectionTasksAndSchedule(fixed);
+        persistCustomSectionTasksAndSchedule(custom);
+      }
     }
     try {
-      /* DOM은 아직 완료 카드가 남아 있음; save 생략하지 않으면 renderMain이 그 DOM으로 localStorage를 다시 덮어씀 */
       logLpRender("TodoList:완료 일괄 제거 후 __lpRenderMain", {});
       window.__lpRenderMain?.({ skipTodoSaveBeforeUnmount: true });
     } catch (_) {}
@@ -3627,9 +3639,6 @@ export function render(options = {}) {
           el.classList.toggle("hide-completed", hideCompleted);
         },
         onClearCompleted: promptClearCompleted,
-        onColorsChange: () => {
-          applyTabColors();
-        },
       });
     });
   }
@@ -3649,10 +3658,6 @@ export function render(options = {}) {
   const categoryTabs = document.createElement("div");
   categoryTabs.className = "todo-category-tabs";
   const tabButtons = [];
-
-  function applyTabColors() {
-    /* 리스트 탭 컬러 테두리 제거 - 탭 스타일은 CSS로 통일 */
-  }
 
   /* 할일/일정: 고정 5개 탭만 표시 (꿈, 부수입, 건강, 행복, 브레인 덤프), 리스트 추가 비노출 */
   FIXED_SECTIONS.forEach((section) => {

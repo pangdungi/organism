@@ -4,7 +4,7 @@
  * 단일 저장 원본은 서버(Supabase)이다. 로컬·세션 메모리·DOM 스냅샷·캐시는
  * 서버에 일괄 반영하지 않는다.
  *
- * - Supabase INSERT/UPDATE/DELETE: 모달 저장·삭제 확정, 우클릭 리스트 이동, 캘린더 우선순위(아이젠하워) 사분면, 캘린더 날짜 드롭, 날짜 정하기·캘린더 뷰 날짜 셀 할일 추가 버블, 할일 목록 완료 체크 등.
+ * - Supabase INSERT/UPDATE/DELETE: 모달 저장·삭제 확정, 우클릭 리스트 이동, … 완료 일괄 제거 시 done=true 행 DELETE.
  * - 할일/일정 상위 탭·내부 서브탭 클릭 시: `pullCalendarSectionTasksFromSupabase` 한 번으로
  *   해당 사용자의 `calendar_section_tasks` 전체를 SELECT 해 세션 메모리를 교체(그 시점 서버 스냅샷).
  * - persist*ToSessionMemOnly: 앱 안 임시 목록만 갱신 — 서버 호출 없음.
@@ -302,8 +302,44 @@ export function persistCustomSectionTasksAndSchedule(obj) {
   writeCustomSectionTasksObject(obj);
 }
 
-/** 완료 일괄 제거 등 — 서버 일괄 삭제는 모달 전용 정책과 충돌할 수 있어 비활성 */
-export async function deleteCompletedCalendarSectionTasksFromSupabase() {}
+/** 완료 일괄 제거(할일 설정 모달) — 서버에서 done=true 행만 삭제 후 pull 권장 */
+export async function deleteCompletedCalendarSectionTasksFromSupabase() {
+  return runTodoSectionTasksSerialized(async () => {
+    const userId = await getSessionUserId();
+    if (!userId || !supabase) {
+      logTodoServerCrud("SKIP", {
+        이유: !supabase ? "no_supabase" : "no_session",
+        안내: "완료 일괄 DELETE 생략",
+      });
+      return {
+        ok: false,
+        reason: !supabase ? "no_supabase" : "no_session",
+        deleted: 0,
+      };
+    }
+    logTodoServerCrud("DELETE", {
+      일괄: "done_true",
+      안내: "calendar_section_tasks eq user_id eq done DELETE",
+    });
+    const { error, count } = await supabase
+      .from(TABLE)
+      .delete({ count: "exact" })
+      .eq("user_id", userId)
+      .eq("done", true);
+    if (error) {
+      logTodoServerCrud("DELETE", {
+        결과: "실패",
+        message: error.message || "delete_failed",
+      });
+      return { ok: false, reason: error.message || "delete_failed", deleted: 0 };
+    }
+    logTodoServerCrud("DELETE", {
+      결과: "성공",
+      DELETE행수: count,
+    });
+    return { ok: true, deleted: typeof count === "number" ? count : -1 };
+  });
+}
 
 /** 일괄 sync 없음 */
 export async function syncTodoSectionTasksToSupabase() {

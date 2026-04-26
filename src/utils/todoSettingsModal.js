@@ -6,8 +6,6 @@
 import {
   getTodoSettings,
   saveTodoSettings,
-  applyTimeCategoryColors,
-  applyTaskCategoryColors,
   DEFAULT_SECTION_COLORS,
   DEFAULT_TIME_CATEGORY_COLORS,
   DEFAULT_TASK_CATEGORY_COLORS,
@@ -158,13 +156,14 @@ function createToggleRow(label, checked, onChange) {
   if (checked) toggle.classList.add("on");
   toggle.addEventListener("click", () => {
     const isOn = toggle.classList.toggle("on");
+    toggle.setAttribute("aria-checked", isOn ? "true" : "false");
     onChange(isOn);
   });
   return row;
 }
 
 export function createTodoSettingsModal(options = {}) {
-  const { onHideCompletedChange, onClearCompleted, onColorsChange } = options;
+  const { onHideCompletedChange, onClearCompleted } = options;
   const settings = getTodoSettings();
 
   const modal = document.createElement("div");
@@ -181,14 +180,10 @@ export function createTodoSettingsModal(options = {}) {
           <div class="todo-settings-toggles"></div>
         </div>
       </div>
-      <div class="todo-settings-footer">
-        <button type="button" class="todo-settings-save">저장</button>
-      </div>
     </div>
   `;
 
   const togglesEl = modal.querySelector(".todo-settings-toggles");
-  const saveBtn = modal.querySelector(".todo-settings-save");
   const closeBtn = modal.querySelector(".todo-settings-close");
   const backdrop = modal.querySelector(".todo-settings-backdrop");
 
@@ -196,6 +191,10 @@ export function createTodoSettingsModal(options = {}) {
 
   const hideToggle = createToggleRow("완료 항목 숨기기", hideCompleted, (v) => {
     hideCompleted = v;
+    const cur = getTodoSettings();
+    saveTodoSettings({ ...cur, hideCompleted: v });
+    onHideCompletedChange?.(v);
+    void pushAppearanceToSupabase();
   });
   togglesEl.appendChild(hideToggle);
 
@@ -215,24 +214,6 @@ export function createTodoSettingsModal(options = {}) {
     document.body.style.overflow = "";
   }
 
-  async function save() {
-    const current = getTodoSettings();
-    saveTodoSettings({
-      hideCompleted,
-      sectionColors: { ...DEFAULT_SECTION_COLORS },
-      timeCategoryColors: { ...DEFAULT_TIME_CATEGORY_COLORS },
-      taskCategoryColors: { ...DEFAULT_TASK_CATEGORY_COLORS },
-    });
-    applyTimeCategoryColors();
-    applyTaskCategoryColors();
-    document.dispatchEvent(new CustomEvent("app-colors-changed"));
-    onColorsChange?.();
-    await pushAppearanceToSupabase();
-    onHideCompletedChange?.(hideCompleted);
-    close();
-  }
-
-  saveBtn.addEventListener("click", () => void save());
   closeBtn.addEventListener("click", close);
   backdrop.addEventListener("click", close);
 
