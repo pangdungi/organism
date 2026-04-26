@@ -2784,7 +2784,27 @@ function createTagDropdown(
     });
   }
 
+  /** body 고정 패널을 트리거 위치에 맞춤 (스크롤·리사이즈 후에도 깨짐 방지) */
+  let panelScrollSyncAc = null;
+  function syncPanelToTrigger() {
+    if (panel.hidden) return;
+    const rect = trigger.getBoundingClientRect();
+    const margin = 4;
+    panel.style.position = "fixed";
+    panel.style.top = `${rect.bottom + margin}px`;
+    panel.style.left = `${rect.left}px`;
+    panel.style.minWidth = `${Math.max(rect.width, 140)}px`;
+    panel.style.zIndex = "999999";
+    const vw = window.innerWidth;
+    const estW = Math.max(panel.offsetWidth, Math.max(rect.width, 140));
+    let left = rect.left;
+    if (left + estW > vw - 8) left = Math.max(8, vw - estW - 8);
+    panel.style.left = `${left}px`;
+  }
+
   function closePanel() {
+    panelScrollSyncAc?.abort();
+    panelScrollSyncAc = null;
     panel.hidden = true;
     trigger.setAttribute("aria-expanded", "false");
     if (panel.parentElement === document.body) {
@@ -2796,17 +2816,26 @@ function createTagDropdown(
 
   function openPanel() {
     trigger.setAttribute("aria-expanded", "true");
-    const rect = trigger.getBoundingClientRect();
-    panel.style.position = "fixed";
-    panel.style.top = `${rect.bottom + 4}px`;
-    panel.style.left = `${rect.left}px`;
-    panel.style.minWidth = `${Math.max(rect.width, 140)}px`;
-    panel.style.zIndex = "999999";
+    panelScrollSyncAc?.abort();
+    panelScrollSyncAc = new AbortController();
+    const { signal } = panelScrollSyncAc;
+    const reposition = () => {
+      syncPanelToTrigger();
+    };
+    /* 캘린더 1일뷰 등: 부모 overflow 스크롤 시에도 트리거와 맞춤 */
+    document.addEventListener("scroll", reposition, { capture: true, signal });
+    window.addEventListener("resize", reposition, { signal });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", reposition, { signal });
+      window.visualViewport.addEventListener("scroll", reposition, { signal });
+    }
     if (panel.parentElement !== document.body) {
       wrap.removeChild(panel);
       document.body.appendChild(panel);
     }
     panel.hidden = false;
+    syncPanelToTrigger();
+    requestAnimationFrame(() => syncPanelToTrigger());
     resetPanelFilter();
     if (enablePanelFilter && filterInput) {
       requestAnimationFrame(() => filterInput.focus());
@@ -2821,6 +2850,13 @@ function createTagDropdown(
     }
   });
   if (tabSignal) {
+    tabSignal.addEventListener(
+      "abort",
+      () => {
+        closePanel();
+      },
+      { once: true },
+    );
     document.addEventListener(
       "keydown",
       (e) => {
