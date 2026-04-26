@@ -6735,6 +6735,7 @@ export function render() {
     /** 메인 폼에서 만든 지출 id → linkedExpenseIds에 합침 (memo_tags와 분리) */
     let mainFormExpenseId = null;
     let submittedLedgerRowForExpenseLink = null;
+    let didAddMainFormExpense = false;
 
     const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
     const startRaw = (taskLogStartInput.value || "").trim();
@@ -6996,7 +6997,7 @@ export function render() {
           amount: amountFormatted,
           memTotal: existingRows.length,
         });
-        window.dispatchEvent(new CustomEvent("asset-expense-transactions-saved"));
+        didAddMainFormExpense = true;
       } else if (hasExpenseContent) {
         lpSaveDebug("메인폼 소비 스킵(expId 없음)", { hasExpenseContent, expId: expId || null });
       }
@@ -7035,6 +7036,10 @@ export function render() {
           });
         }
       }
+    }
+
+    if (didAddMainFormExpense) {
+      window.dispatchEvent(new CustomEvent("asset-expense-transactions-saved"));
     }
 
     /* 투두는 + 버튼 모달에서 카테고리 선택 후 추가 시 저장됨 */
