@@ -15753,6 +15753,38 @@ col.asset-expense-col-amount,
   color: #a8a290 !important;
 }
 
+/* 메인 메뉴 「캘린더」(날짜 정하기 탭 아님): 마감/시작일 있어도 카드 배경·글자 톤을 일반 목록과 동일하게 */
+.calendar-view--mobile-schedule .calendar-todo-sidebar-main .todo-card--has-due {
+  background: var(--content-bg, #f5f1e8) !important;
+  box-shadow: 0 0.0625rem 0.25rem rgba(0, 0, 0, 0.06);
+  cursor: default;
+}
+.calendar-view--mobile-schedule .calendar-todo-sidebar-main .todo-card--has-due:not(.is-done) .todo-card-name {
+  color: var(--text-ink) !important;
+}
+.calendar-view--mobile-schedule .calendar-todo-sidebar-main .todo-card--has-due:not(.is-done) .todo-card-dates {
+  color: var(--text-caption-color) !important;
+}
+.calendar-view--mobile-schedule .calendar-todo-sidebar-main .todo-card--has-due:not(.is-done) .todo-card-priority {
+  color: var(--text-muted) !important;
+}
+.calendar-view--mobile-schedule .calendar-todo-sidebar-main .todo-card--has-due:not(.is-done) .todo-card-kpi {
+  color: var(--text-muted) !important;
+}
+.calendar-view--mobile-schedule .calendar-todo-sidebar-main .todo-card--has-due:not(.is-done) .todo-card-reminder,
+.calendar-view--mobile-schedule .calendar-todo-sidebar-main .todo-card--has-due:not(.is-done) .todo-card-reminder-icon {
+  color: var(--text-muted) !important;
+}
+.calendar-view--mobile-schedule .calendar-todo-sidebar-main .todo-card--has-due.is-done .todo-card-name {
+  color: var(--text-muted) !important;
+}
+.calendar-view--mobile-schedule .calendar-todo-sidebar-main .todo-card--has-due.is-done .todo-card-priority,
+.calendar-view--mobile-schedule .calendar-todo-sidebar-main .todo-card--has-due.is-done .todo-card-dates,
+.calendar-view--mobile-schedule .calendar-todo-sidebar-main .todo-card--has-due.is-done .todo-card-kpi,
+.calendar-view--mobile-schedule .calendar-todo-sidebar-main .todo-card--has-due.is-done .todo-card-reminder {
+  color: var(--text-placeholder) !important;
+}
+
 /* 기한 초과 목록 카드(할일 쏟아내기·아이젠하워 하단 / 날짜정하기 사이드바) — 캘린더 기한초과 막대와 통일 */
 .todo-eisenhower-overdue-section .todo-card {
   background: rgba(139, 92, 58, 0.12) !important;
