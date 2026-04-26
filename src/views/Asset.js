@@ -6334,13 +6334,20 @@ function renderPlanView() {
       goalIn.className = "asset-plan-input asset-plan-goal-in";
       goalIn.inputMode = "numeric";
       goalIn.setAttribute("inputmode", "numeric");
+      goalIn.autocomplete = "off";
       goalIn.value = memSnap ? memSnap.monthlyGoalStr : "";
-      goalIn.placeholder = "숫자";
       const goalCtrl = appendToForm(formStack, "월목표 금액", "asset-plan-cell-goalp", goalIn);
       void goalCtrl;
+      const applyGoalNumericFilter = () => {
+        filterNumericInput(goalIn, false, null);
+        updateDerivedInPanel(tr);
+      };
       goalIn.addEventListener("input", (e) => {
         filterNumericInput(goalIn, false, e);
         updateDerivedInPanel(tr);
+      });
+      goalIn.addEventListener("paste", () => {
+        requestAnimationFrame(applyGoalNumericFilter);
       });
       goalIn.addEventListener("blur", () => {
         const f = formatNum(goalIn.value);
