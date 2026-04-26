@@ -10075,6 +10075,32 @@ export function renderTimeBudgetTablesForCalendar(
     return parseTimeToHours(end) > parseTimeToHours(start);
   }
 
+  /** 시작~마감 차이를 소요 시간 hh:mm (표시만, 서버 미저장 · 자정 넘김은 +24h) */
+  function formatBudgetSlotDurationHhMm(start, end) {
+    const s = (start || "").trim();
+    const e = (end || "").trim();
+    const hhmmRe = /^\d{1,2}:\d{2}$/;
+    if (!hhmmRe.test(s) || !hhmmRe.test(e)) return "";
+    if (!isValidStartEnd(s, e)) return "";
+    let startH = parseTimeToHours(s);
+    let endH = parseTimeToHours(e);
+    if (endH <= startH) endH += 24;
+    const totalMins = Math.round((endH - startH) * 60);
+    const h = Math.floor(totalMins / 60);
+    const m = totalMins % 60;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  }
+
+  function updateBudgetRowDurationCell(tr) {
+    if (!tr || tr.classList.contains("time-row-add")) return;
+    const el = tr.querySelector(".time-budget-duration-value");
+    if (!el) return;
+    const inputs = tr.querySelectorAll(".time-budget-scheduled-input");
+    const start = (inputs[0]?.value || "").trim();
+    const end = (inputs[1]?.value || "").trim();
+    el.textContent = formatBudgetSlotDurationHhMm(start, end);
+  }
+
   /** tbody에서 과제별 scheduledTimes 수집 (addRow 제외, tr.dataset 사용) */
   function collectScheduledTimesByTask(tbody, addRow) {
     const byTask = {};
@@ -10128,6 +10154,7 @@ export function renderTimeBudgetTablesForCalendar(
       tr.dataset.taskName = name;
       tr.dataset.scheduledStart = start;
       tr.dataset.scheduledEnd = end;
+      updateBudgetRowDurationCell(tr);
     }
     function saveAllScheduledTimesForTimetable(lastEditedTask) {
       if (!tbody || !addRow) return;
@@ -10188,6 +10215,7 @@ export function renderTimeBudgetTablesForCalendar(
                 if (inputs[1]) inputs[1].value = end;
                 row.dataset.scheduledStart = start;
                 row.dataset.scheduledEnd = end;
+                updateBudgetRowDurationCell(row);
               });
             });
           }
@@ -10355,6 +10383,14 @@ export function renderTimeBudgetTablesForCalendar(
     endTimeTd.appendChild(endInput);
     tr.appendChild(endTimeTd);
 
+    const durationTd = document.createElement("td");
+    durationTd.className = "time-budget-cell-duration";
+    const durationSpan = document.createElement("span");
+    durationSpan.className = "time-budget-duration-value";
+    durationTd.appendChild(durationSpan);
+    tr.appendChild(durationTd);
+    updateBudgetRowDurationCell(tr);
+
     const deleteTd = document.createElement("td");
     deleteTd.className = "time-budget-cell-delete";
     const deleteBtn = document.createElement("button");
@@ -10470,7 +10506,7 @@ export function renderTimeBudgetTablesForCalendar(
 
   const basicAddRow = document.createElement("tr");
   basicAddRow.className = "time-row-add time-row-add--placeholder";
-  basicAddRow.innerHTML = '<td colspan="4"></td>';
+  basicAddRow.innerHTML = '<td colspan="5"></td>';
 
   const basicBlock = document.createElement("div");
   basicBlock.className =
@@ -10484,6 +10520,7 @@ export function renderTimeBudgetTablesForCalendar(
       <col class="time-budget-col-task">
       <col class="time-budget-col-start">
       <col class="time-budget-col-end">
+      <col class="time-budget-col-duration">
       <col class="time-budget-col-delete">
     </colgroup>
     <thead>
@@ -10491,6 +10528,7 @@ export function renderTimeBudgetTablesForCalendar(
         <th>과제명</th>
         <th>예상 시작 시간</th>
         <th>예상 마감 시간</th>
+        <th class="time-budget-col-duration">소요 시간</th>
         <th class="time-budget-col-delete"></th>
       </tr>
     </thead>
@@ -10534,6 +10572,7 @@ export function renderTimeBudgetTablesForCalendar(
       <col class="time-budget-col-task">
       <col class="time-budget-col-start">
       <col class="time-budget-col-end">
+      <col class="time-budget-col-duration">
       <col class="time-budget-col-delete">
     </colgroup>
     <thead>
@@ -10541,6 +10580,7 @@ export function renderTimeBudgetTablesForCalendar(
         <th>과제명</th>
         <th>예상 시작 시간</th>
         <th>예상 마감 시간</th>
+        <th class="time-budget-col-duration">소요 시간</th>
         <th class="time-budget-col-delete"></th>
       </tr>
     </thead>
@@ -10548,7 +10588,7 @@ export function renderTimeBudgetTablesForCalendar(
   `;
   const investAddRow = document.createElement("tr");
   investAddRow.className = "time-row-add time-row-add--placeholder";
-  investAddRow.innerHTML = '<td colspan="4"></td>';
+  investAddRow.innerHTML = '<td colspan="5"></td>';
 
   const investTbody = investTable.querySelector("tbody");
   const investCtx = {
@@ -10579,7 +10619,7 @@ export function renderTimeBudgetTablesForCalendar(
 
   const consumeAddRow = document.createElement("tr");
   consumeAddRow.className = "time-row-add time-row-add--placeholder";
-  consumeAddRow.innerHTML = '<td colspan="4"></td>';
+  consumeAddRow.innerHTML = '<td colspan="5"></td>';
 
   const consumeBlock = document.createElement("div");
   consumeBlock.className =
@@ -10593,6 +10633,7 @@ export function renderTimeBudgetTablesForCalendar(
       <col class="time-budget-col-task">
       <col class="time-budget-col-start">
       <col class="time-budget-col-end">
+      <col class="time-budget-col-duration">
       <col class="time-budget-col-delete">
     </colgroup>
     <thead>
@@ -10600,6 +10641,7 @@ export function renderTimeBudgetTablesForCalendar(
         <th>과제명</th>
         <th>예상 시작 시간</th>
         <th>예상 마감 시간</th>
+        <th class="time-budget-col-duration">소요 시간</th>
         <th class="time-budget-col-delete"></th>
       </tr>
     </thead>

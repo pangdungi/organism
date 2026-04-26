@@ -34040,18 +34040,38 @@ body.kpi-resizing {
   table-layout: fixed;
 }
 
-/* 4열 합계 100% — 과제명·시작·마감·삭제 (캘린더 1일뷰는 목표 시간 열 없음) */
+/* 5열 합계 100% — 과제명·시작·마감·소요(표시만)·삭제 */
 .calendar-1day-budget-column .time-daily-budget-table col.time-budget-col-task {
-  width: 42%;
+  width: 36%;
 }
 .calendar-1day-budget-column .time-daily-budget-table col.time-budget-col-start {
-  width: 26%;
+  width: 22%;
 }
 .calendar-1day-budget-column .time-daily-budget-table col.time-budget-col-end {
-  width: 26%;
+  width: 22%;
+}
+.calendar-1day-budget-column .time-daily-budget-table col.time-budget-col-duration {
+  width: 14%;
 }
 .calendar-1day-budget-column .time-daily-budget-table col.time-budget-col-delete {
   width: 6%;
+}
+
+.calendar-1day-budget-column
+  .time-daily-budget-table
+  th.time-budget-col-duration,
+.calendar-1day-budget-column
+  .time-daily-budget-table
+  td.time-budget-cell-duration {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.calendar-1day-budget-column
+  .time-daily-budget-table
+  .time-budget-duration-value {
+  color: #6b7280;
+  font-size: 0.8125rem;
 }
 
 /* 투자/소비 테이블 - 시간·목표 열은 한 줄, 과제명 열은 고정 폭 안에서 줄바꿈 */
