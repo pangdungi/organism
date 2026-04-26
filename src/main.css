@@ -5189,7 +5189,8 @@ body {
   }
   .calendar-1week-view .calendar-monthly-day {
     width: 100%;
-    min-height: 4.5rem;
+    /* 내용 높이에 맞춤 — min-height 4.5rem 시 할일이 적을 때 셀 하단이 비어 흰 여백으로 보이던 것 방지 */
+    min-height: 0;
     flex: 0 0 auto;
     box-sizing: border-box;
     border: var(--divider-default);
@@ -5197,7 +5198,7 @@ body {
     border-right: none;
     border-bottom: none;
     border-radius: 0 !important;
-    padding: 0.5rem !important;
+    padding: 0.4rem 0.5rem 0.3rem !important;
   }
   .calendar-1week-view .calendar-monthly-day.empty {
     display: none;
@@ -5209,7 +5210,10 @@ body {
     text-align: left;
   }
   .calendar-1week-view .calendar-monthly-day-entries {
-    min-height: 2rem;
+    min-height: 0;
+    /* 전역 .calendar-monthly-day-entries { flex:1 } — 1주 세로행에서 맨 아래로 빈 면 늘어나는 것 방지 */
+    flex: 0 0 auto;
+    width: 100%;
   }
 
   /* 모바일: 월별 캘린더만 좌우 패딩 제거 (화면 끝까지) */
@@ -34568,7 +34572,7 @@ body.kpi-resizing {
 }
 .calendar-1week-view .calendar-monthly-day {
   width: 100%;
-  min-height: 4.5rem;
+  min-height: 0;
   flex: 0 0 auto;
   box-sizing: border-box;
   border: var(--divider-default);
@@ -34588,7 +34592,9 @@ body.kpi-resizing {
   text-align: left;
 }
 .calendar-1week-view .calendar-monthly-day-entries {
-  min-height: 2rem;
+  min-height: 0;
+  flex: 0 0 auto;
+  width: 100%;
 }
 .calendar-1week-view .calendar-monthly-day-entries .calendar-monthly-span-bar {
   left: 0 !important;
@@ -35360,16 +35366,32 @@ body.kpi-resizing {
 .calendar-1week-view .calendar-monthly-day.other-month.today {
   background: transparent;
 }
-/* 1주: 행 호버 — 전역 셀(--ui-surface-alt #d8…)보다 옅게 */
+/* 1주: 날짜 칸·막대 모두 눈에 띄는 호버(막대는 셀 배경이 보이지 않으므로 막대·칸 둘 다) */
 .calendar-1week-view .calendar-monthly-day:hover:not(.empty) {
-  background: color-mix(in srgb, var(--ui-surface-alt) 12%, #faf6ef 88%);
+  background: var(--ui-surface-alt);
 }
+/* 1주 오늘: 기본은 투명 — 호버 시에만 셀 틴트 */
 .calendar-1week-view .calendar-monthly-day.today:hover:not(.empty) {
-  background: color-mix(in srgb, var(--ui-surface-alt) 10%, #faf6ef 90%);
+  background: color-mix(in srgb, var(--ui-surface-alt) 55%, #faf6ef 45%);
 }
 .calendar-1week-view .calendar-monthly-day.other-month:hover,
 .calendar-1week-view .calendar-monthly-day.other-month.today:hover {
-  background: color-mix(in srgb, #eceadf 70%, #faf6ef 30%);
+  background: color-mix(in srgb, #eceadf 50%, #d8d2c0 50%);
+}
+
+/* 막대 위에 올릴 때(할일막대가 셀 배경을 가림 → 막대 쪽 틴트+테두리로 표시) */
+.calendar-1week-view
+  .calendar-monthly-day-entries
+  .calendar-monthly-span-bar--todo:hover,
+.calendar-1week-view
+  .calendar-monthly-day-entries
+  .calendar-monthly-span-bar--range:hover {
+  background: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--bar-bg) 36%, rgb(125 125 125 / 0.05)) 58%,
+    var(--ui-surface-alt) 42%
+  ) !important;
+  box-shadow: inset 0 0 0 1px rgba(42, 56, 40, 0.12) !important;
 }
 
 .calendar-monthly-day.calendar-day-focused {
