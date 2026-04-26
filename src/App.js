@@ -43,7 +43,6 @@ import { pullKpiTabFromCloud } from "./utils/kpiTabCloudRefresh.js";
 import { pullTimeLedgerTabEnterFromCloud } from "./utils/timeLedgerCloudRefresh.js";
 import {
   attachTimeLedgerTasksSaveListener,
-  pullTimeLedgerTasksFromSupabase,
   syncTimeLedgerTasksToSupabase,
 } from "./utils/timeLedgerTasksSupabase.js";
 import {
@@ -169,7 +168,8 @@ function persistActiveTabId(tabId) {
 }
 
 /**
- * 상위 탭 전환(및 앱 최초 진입 시 현재 탭)에서만 서버와 맞춤. 그 외 경로에서는 pull 하지 않음.
+ * 상위 탭 전환(및 앱 최초 진입 시 현재 탭)에서 서버와 맞춤.
+ * 시간가계부 **과제 마스터**(time_ledger_tasks)는 여기서 pull 하지 않음 — 시간기록/수정/과제설정 모달 열 때만.
  * @param {{ fromBoot?: boolean }} [opts] — true면 세션에 남은 시간가계부 날짜 필터를 유지(복원 진입).
  */
 async function pullDataForActiveTab(tabId, opts = {}) {
@@ -183,7 +183,6 @@ async function pullDataForActiveTab(tabId, opts = {}) {
       } catch (_) {}
       await Promise.all([
         pullTimeLedgerEntriesForDateRange(ymd, ymd),
-        pullTimeLedgerTasksFromSupabase(),
         pullTimeDailyBudgetFromSupabase(),
       ]);
       break;
@@ -199,10 +198,7 @@ async function pullDataForActiveTab(tabId, opts = {}) {
       try {
         await syncTimeLedgerTasksToSupabase();
       } catch (_) {}
-      await Promise.all([
-        pullTimeLedgerEntriesForDateRange(yStart, yEnd),
-        pullTimeLedgerTasksFromSupabase(),
-      ]);
+      await Promise.all([pullTimeLedgerEntriesForDateRange(yStart, yEnd)]);
       break;
     }
     case "time":

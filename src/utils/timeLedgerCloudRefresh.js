@@ -1,6 +1,7 @@
 /**
  * 시간가계부 — 서버 pull / 로컬 저장·upsert 경로 분리.
  * 전체 묶음(pullAllTimeLedgerFromCloud)은 레거시·테스트용; 앱에서는 시간 탭 진입 시 pullTimeLedgerTabEnterFromCloud 만 사용.
+ * **과제 마스터(time_ledger_tasks)** 는 Time 뷰에서 기록/수정/과제설정 모달을 열 때만 pull(그 외 경로 pull 금지).
  */
 
 import {
@@ -10,11 +11,7 @@ import {
 import {
   pullTimeLedgerEntriesFromSupabase,
 } from "./timeLedgerEntriesSupabase.js";
-import {
-  pullTimeLedgerTasksFromSupabase,
-  pushTimeLedgerTasksIfServerEmpty,
-  syncTimeLedgerTasksToSupabase,
-} from "./timeLedgerTasksSupabase.js";
+import { syncTimeLedgerTasksToSupabase } from "./timeLedgerTasksSupabase.js";
 import { pullTimeDailyBudgetFromSupabase } from "./timeDailyBudgetSupabase.js";
 import {
   pullTimeImproveNotesFromSupabase,
@@ -56,7 +53,6 @@ export async function pullAllTimeLedgerFromCloud(opts = {}) {
   const before = snapshotTimeLedgerLocalStorage();
   const jobs = [];
   if (!skipEntries) jobs.push(pullTimeLedgerEntriesFromSupabase());
-  jobs.push(pullTimeLedgerTasksFromSupabase());
   jobs.push(pullTimeDailyBudgetFromSupabase());
   await Promise.all(jobs);
   const after = snapshotTimeLedgerLocalStorage();
@@ -65,21 +61,15 @@ export async function pullAllTimeLedgerFromCloud(opts = {}) {
 }
 
 /**
- * 시간가계부 상위 탭 클릭 시에만 호출 — sessionStorage 날짜 구간 + 과제 마스터 + 일간 예산.
- * 과제: 대기 upsert 후 pull(로컬 전용 잔존 + 서버 권한 방지; 서버가 과제 마스터의 기준).
+ * 시간가계부 상위 탭 클릭 시 — sessionStorage 날짜 구간, 기록 행·일간 예산·개선노트.
+ * 과제 마스터(time_ledger_tasks)는 Time 뷰에서 기록/수정/과제설정 모달을 열 때만 pull.
  */
 export async function pullTimeLedgerTabEnterFromCloud() {
   lpPullDebug("pullTimeLedgerTabEnterFromCloud", {});
   await ensureTimeLedgerStorageReady();
-  /* 예전 Time.render 안 hydrate 가 하던 일: 서버가 비었을 때 로컬 과제를 한 번 올림 */
-  await pushTimeLedgerTasksIfServerEmpty();
-  try {
-    await syncTimeLedgerTasksToSupabase();
-  } catch (_) {}
   const before = snapshotTimeLedgerLocalStorage();
   await Promise.all([
     pullTimeLedgerEntriesFromSupabase(),
-    pullTimeLedgerTasksFromSupabase(),
     pullTimeDailyBudgetFromSupabase(),
     pullTimeImproveNotesFromSupabase(),
   ]);

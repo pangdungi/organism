@@ -65,10 +65,6 @@ import {
   timeLedgerLocalYesterdayYmd,
 } from "../utils/timeLedgerEntriesSupabase.js";
 import {
-  pullTimeLedgerTasksFromSupabase,
-  syncTimeLedgerTasksToSupabase,
-} from "../utils/timeLedgerTasksSupabase.js";
-import {
   readSectionTasksObject,
   readCustomSectionTasksObject,
 } from "../utils/todoSectionTasksModel.js";
@@ -7089,9 +7085,8 @@ export function render() {
         });
       } catch (_) {}
       /*
-       * 사이드바「할일/일정」진입 시(App.pullDataForActiveTab)와 같이 시간기록·과제명도 맞춤.
-       * 상단 1~4 탭만 눌렀을 때는 기존에 section_tasks 만 pull 해 「오늘 실제」가 비는 경우가 있음.
-       * 어제~오늘: 4. 오늘 해치우기에서「어제」실제 토글에도 로컬이 비지 않게.
+       * 사이드바「할일/일정」진입: 시간 *기록* 행만 pull. 과제 마스터는 App/Calendar에서 끌지 않고
+       * 시간기록·수정·과제설정 모달 열 때만 Time.js 에서 pull.
        */
       try {
         const yEnd = timeLedgerLocalTodayYmd();
@@ -7101,7 +7096,6 @@ export function render() {
         } catch (_) {}
         await Promise.all([
           pullTimeLedgerEntriesForDateRange(yStart, yEnd),
-          pullTimeLedgerTasksFromSupabase(),
         ]);
       } catch (_) {}
     }
