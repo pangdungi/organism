@@ -69,7 +69,10 @@ import {
   readCustomSectionTasksObject,
 } from "../utils/todoSectionTasksModel.js";
 import { markTodoAddPendingServerLog } from "../utils/lpTabDataSourceLog.js";
-import { flushAllPendingTimeDailyBudgetSync } from "../utils/timeDailyBudgetSupabase.js";
+import {
+  flushAllPendingTimeDailyBudgetSync,
+  pullTimeDailyBudgetFromSupabase,
+} from "../utils/timeDailyBudgetSupabase.js";
 import { logLpRender } from "../utils/lpRenderDebugLog.js";
 const KPI_SECTION_IDS = ["braindump", "dream", "sideincome", "health", "happy"];
 
@@ -7127,6 +7130,7 @@ export function render() {
         } catch (_) {}
         await Promise.all([
           pullTimeLedgerEntriesForDateRange(yStart, yEnd),
+          pullTimeDailyBudgetFromSupabase(),
         ]);
       } catch (_) {}
     }

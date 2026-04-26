@@ -198,7 +198,10 @@ async function pullDataForActiveTab(tabId, opts = {}) {
       try {
         await syncTimeLedgerTasksToSupabase();
       } catch (_) {}
-      await Promise.all([pullTimeLedgerEntriesForDateRange(yStart, yEnd)]);
+      await Promise.all([
+        pullTimeLedgerEntriesForDateRange(yStart, yEnd),
+        pullTimeDailyBudgetFromSupabase(),
+      ]);
       break;
     }
     case "time":
