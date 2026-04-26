@@ -576,8 +576,96 @@ export function render(opts = {}) {
     labelType.className = "work-schedule-day-entry-label";
     const spanType = document.createElement("span");
     spanType.className = "work-schedule-day-entry-label-text";
-    const select = document.createElement("select");
-    select.className = "work-schedule-day-entry-select";
+
+    const selectWrap = document.createElement("div");
+    selectWrap.className = "work-schedule-day-entry-custom-select";
+    const triggerBtn = document.createElement("button");
+    triggerBtn.type = "button";
+    triggerBtn.className = "work-schedule-day-entry-custom-select-trigger";
+    triggerBtn.id = "work-schedule-day-entry-type-trigger";
+    triggerBtn.setAttribute("aria-haspopup", "listbox");
+    triggerBtn.setAttribute("aria-expanded", "false");
+    const listEl = document.createElement("ul");
+    listEl.className = "work-schedule-day-entry-custom-select-list";
+    listEl.id = "work-schedule-day-entry-type-list";
+    listEl.setAttribute("role", "listbox");
+    listEl.setAttribute("aria-labelledby", triggerBtn.id);
+    triggerBtn.setAttribute("aria-controls", listEl.id);
+    listEl.hidden = true;
+
+    let dayEntryTypeOptions = [];
+    let dayEntryTypeValue = "";
+    let dayEntrySelectListOpen = false;
+
+    function closeDayEntrySelectList() {
+      if (!dayEntrySelectListOpen) return;
+      dayEntrySelectListOpen = false;
+      listEl.hidden = true;
+      triggerBtn.setAttribute("aria-expanded", "false");
+      try {
+        document.removeEventListener("pointerdown", onDayEntrySelectDocDown, true);
+      } catch (_) {}
+    }
+
+    function openDayEntrySelectList() {
+      if (dayEntrySelectListOpen) return;
+      dayEntrySelectListOpen = true;
+      listEl.hidden = false;
+      triggerBtn.setAttribute("aria-expanded", "true");
+      document.addEventListener("pointerdown", onDayEntrySelectDocDown, true);
+    }
+
+    function toggleDayEntrySelectList() {
+      if (dayEntrySelectListOpen) closeDayEntrySelectList();
+      else openDayEntrySelectList();
+    }
+
+    function onDayEntrySelectDocDown(ev) {
+      if (!selectWrap.contains(ev.target)) closeDayEntrySelectList();
+    }
+
+    function updateDayEntryTriggerLabel() {
+      const opt = dayEntryTypeOptions.find((o) => o.value === dayEntryTypeValue);
+      triggerBtn.textContent = opt ? opt.label : "선택";
+      triggerBtn.classList.toggle("is-placeholder-choice", !dayEntryTypeValue);
+    }
+
+    function renderDayEntryTypeListOptions() {
+      listEl.innerHTML = "";
+      dayEntryTypeOptions.forEach((opt) => {
+        const li = document.createElement("li");
+        li.setAttribute("role", "option");
+        li.setAttribute(
+          "aria-selected",
+          opt.value === dayEntryTypeValue ? "true" : "false",
+        );
+        li.className = "work-schedule-day-entry-custom-select-option";
+        if (!opt.value) li.classList.add("is-placeholder");
+        li.dataset.value = opt.value;
+        li.textContent = opt.label;
+        li.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dayEntryTypeValue = opt.value;
+          closeDayEntrySelectList();
+          renderDayEntryTypeListOptions();
+          updateDayEntryTriggerLabel();
+        });
+        listEl.appendChild(li);
+      });
+    }
+
+    function getDayEntryTypeSelectValue() {
+      return dayEntryTypeValue;
+    }
+
+    triggerBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      toggleDayEntrySelectList();
+    });
+
+    selectWrap.appendChild(triggerBtn);
+    selectWrap.appendChild(listEl);
 
     function getDayEntrySelectedKind() {
       return radioDiet.checked ? TYPE_KIND_DIET : TYPE_KIND_WORK;
@@ -601,26 +689,19 @@ export function render(opts = {}) {
     }
 
     function fillDayEntrySelect(kind, preserveValue) {
+      closeDayEntrySelectList();
       const labelText = kind === TYPE_KIND_DIET ? "식단" : "근무유형";
       spanType.textContent = labelText;
-      select.setAttribute("aria-label", labelText);
-      select.innerHTML = "";
-      const opt0 = document.createElement("option");
-      opt0.value = "";
-      opt0.textContent = "선택";
-      select.appendChild(opt0);
-      typeNamesForDayEntryKind(kind).forEach((n) => {
-        const o = document.createElement("option");
-        o.value = n;
-        o.textContent = n;
-        select.appendChild(o);
-      });
+      triggerBtn.setAttribute("aria-label", labelText);
+      const names = typeNamesForDayEntryKind(kind);
+      dayEntryTypeOptions = [
+        { value: "", label: "선택" },
+        ...names.map((n) => ({ value: n, label: n })),
+      ];
       const pv = (preserveValue || "").trim();
-      if (pv && [...select.options].some((op) => op.value === pv)) {
-        select.value = pv;
-      } else {
-        select.value = "";
-      }
+      dayEntryTypeValue = pv && names.includes(pv) ? pv : "";
+      renderDayEntryTypeListOptions();
+      updateDayEntryTriggerLabel();
     }
 
     let initialKind = TYPE_KIND_WORK;
@@ -651,7 +732,7 @@ export function render(opts = {}) {
     });
 
     labelType.appendChild(spanType);
-    labelType.appendChild(select);
+    labelType.appendChild(selectWrap);
 
     body.appendChild(labelDate);
     body.appendChild(kindRow);
@@ -659,17 +740,24 @@ export function render(opts = {}) {
 
     const footer = document.createElement("div");
     footer.className = "todo-list-modal-footer work-schedule-day-entry-footer";
-    const deleteBtn = document.createElement("button");
-    deleteBtn.type = "button";
-    deleteBtn.className = "todo-list-modal-cancel work-schedule-day-entry-delete";
-    deleteBtn.textContent = "삭제";
-    deleteBtn.hidden = !resolvedEditId;
+    const footerPrimary = document.createElement("div");
+    footerPrimary.className = "work-schedule-day-entry-footer-primary";
     const saveBtn = document.createElement("button");
     saveBtn.type = "button";
     saveBtn.className = "todo-list-modal-confirm work-schedule-day-entry-save";
     saveBtn.textContent = "저장";
-    footer.appendChild(deleteBtn);
-    footer.appendChild(saveBtn);
+    footerPrimary.appendChild(saveBtn);
+    const deleteWrap = document.createElement("div");
+    deleteWrap.className = "work-schedule-day-entry-delete-wrap";
+    deleteWrap.hidden = !resolvedEditId;
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "work-schedule-day-entry-delete-link";
+    deleteBtn.textContent = "삭제";
+    deleteBtn.setAttribute("aria-label", "이 근무·식단 일정 삭제");
+    deleteWrap.appendChild(deleteBtn);
+    footer.appendChild(footerPrimary);
+    footer.appendChild(deleteWrap);
 
     panel.appendChild(header);
     panel.appendChild(body);
@@ -678,6 +766,7 @@ export function render(opts = {}) {
     modal.appendChild(panel);
 
     function closeModal() {
+      closeDayEntrySelectList();
       try {
         document.removeEventListener("keydown", onKeyDown);
       } catch (_) {}
@@ -687,13 +776,17 @@ export function render(opts = {}) {
     function onKeyDown(e) {
       if (e.key === "Escape") {
         e.preventDefault();
+        if (dayEntrySelectListOpen) {
+          closeDayEntrySelectList();
+          return;
+        }
         closeModal();
       }
     }
 
     function onSave() {
       const wd = normalizeWorkDateKey(dateInput.value || "");
-      const typeName = (select.value || "").trim();
+      const typeName = (getDayEntryTypeSelectValue() || "").trim();
       if (!wd || wd.length < 10) {
         window.alert("일자를 선택해 주세요.");
         return;
@@ -782,7 +875,7 @@ export function render(opts = {}) {
 
     document.body.appendChild(modal);
     requestAnimationFrame(() => {
-      select.focus();
+      triggerBtn.focus();
     });
   }
 

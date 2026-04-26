@@ -542,6 +542,11 @@ export async function mountApp(container) {
         try {
           window.__lpCalendarSoftRefresh?.();
         } catch (_) {}
+      } else if (targetTabId === "idea") {
+        /* 나의 계정: pull(시급·appearance) 후 통째 renderMain 하면 화면이 두 번 새로고침되는 것처럼 보임 */
+        try {
+          window.__lpIdeaSoftRefresh?.();
+        } catch (_) {}
       } else {
         renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
       }

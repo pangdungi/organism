@@ -3883,6 +3883,9 @@ body {
   .work-schedule-type-settings-modal .work-schedule-type-settings-input-name {
     font-size: 16px !important;
   }
+  .work-schedule-type-settings-modal .work-schedule-day-entry-custom-select-trigger {
+    font-size: 16px !important;
+  }
   .work-schedule-type-settings-panel.work-schedule-type-settings-panel--dual {
     max-height: min(92vh, 40rem);
   }
@@ -7704,6 +7707,51 @@ body {
 /* 월별보기 → 근무일·근무유형 등록 모달 */
 .work-schedule-day-entry-modal .work-schedule-day-entry-modal-panel {
   max-height: min(90vh, 28rem);
+  border-radius: 0 !important;
+}
+
+.work-schedule-day-entry-modal .todo-list-modal-footer {
+  background: var(--content-bg);
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.work-schedule-day-entry-footer-primary {
+  display: flex;
+  width: 100%;
+}
+
+.work-schedule-day-entry-footer-primary .work-schedule-day-entry-save {
+  flex: 1;
+}
+
+.work-schedule-day-entry-delete-wrap {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.work-schedule-day-entry-delete-link {
+  margin: 0;
+  padding: 0.25rem 0.5rem 0.15rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  font-family: var(--font-body);
+  color: var(--text-caption-color, #a8a290);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.work-schedule-day-entry-delete-link:hover,
+.work-schedule-day-entry-delete-link:focus-visible {
+  color: var(--text-muted);
+  text-decoration: underline;
+  outline: none;
 }
 
 .work-schedule-day-entry-body {
@@ -7712,6 +7760,10 @@ body {
   flex-direction: column;
   gap: 1rem;
   overflow: auto;
+}
+
+.work-schedule-day-entry-modal .work-schedule-day-entry-body {
+  overflow: visible;
 }
 
 .work-schedule-day-entry-label {
@@ -7725,8 +7777,7 @@ body {
   color: var(--text-muted);
 }
 
-.work-schedule-day-entry-date,
-.work-schedule-day-entry-select {
+.work-schedule-day-entry-date {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
@@ -7740,16 +7791,121 @@ body {
   font-family: var(--font-body);
 }
 
-.work-schedule-day-entry-date:focus,
-.work-schedule-day-entry-select:focus {
+.work-schedule-day-entry-date:focus {
   outline: none;
   border-bottom-width: 1.5px;
   border-bottom-color: var(--ui-btn-primary-bg, #2a3828);
 }
 
+/* 근무·식단 등록/수정 — 네이티브 select 대신 모달 톤에 맞춘 커스텀 목록 */
+.work-schedule-day-entry-custom-select {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.work-schedule-day-entry-custom-select-trigger {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.45rem 1.65rem 0.45rem 0;
+  position: relative;
+  display: block;
+  text-align: left;
+  font-size: 0.95rem;
+  font-family: var(--font-body);
+  color: var(--text-body);
+  border: none;
+  border-bottom: 1px solid var(--text-placeholder, #c4bea8);
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.work-schedule-day-entry-custom-select-trigger.is-placeholder-choice {
+  color: var(--text-placeholder, #c4bea8);
+}
+
+.work-schedule-day-entry-custom-select-trigger::after {
+  content: "";
+  position: absolute;
+  right: 0.1rem;
+  top: 50%;
+  width: 0.4rem;
+  height: 0.4rem;
+  margin-top: -0.2rem;
+  border-right: 1.5px solid var(--text-muted, #a8a290);
+  border-bottom: 1.5px solid var(--text-muted, #a8a290);
+  transform: rotate(45deg);
+  pointer-events: none;
+  transition: transform 0.12s ease;
+}
+
+.work-schedule-day-entry-custom-select-trigger[aria-expanded="true"]::after {
+  margin-top: 0.05rem;
+  transform: rotate(-135deg);
+}
+
+.work-schedule-day-entry-custom-select-trigger:hover {
+  border-bottom-color: var(--text-caption-color, #a8a290);
+}
+
+.work-schedule-day-entry-custom-select-trigger:focus,
+.work-schedule-day-entry-custom-select-trigger:focus-visible {
+  outline: none;
+  border-bottom-width: 1.5px;
+  border-bottom-color: var(--ui-btn-primary-bg, #2a3828);
+}
+
+.work-schedule-day-entry-custom-select-list {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 20;
+  max-height: 14rem;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.35rem 0;
+  list-style: none;
+  box-sizing: border-box;
+  background: var(--content-bg);
+  border: var(--line-l3);
+  border-radius: var(--modal-radius, 10px);
+  box-shadow: 0 0.35rem 1.1rem rgba(0, 0, 0, 0.1);
+}
+
+.work-schedule-day-entry-custom-select-option {
+  padding: 0.5rem 0.85rem;
+  font-size: 0.95rem;
+  font-family: var(--font-body);
+  color: var(--text-body);
+  cursor: pointer;
+  line-height: 1.35;
+}
+
+.work-schedule-day-entry-custom-select-option.is-placeholder {
+  color: var(--text-placeholder, #c4bea8);
+}
+
+.work-schedule-day-entry-custom-select-option:hover,
+.work-schedule-day-entry-custom-select-option:focus {
+  outline: none;
+  background: rgba(42, 56, 40, 0.06);
+}
+
+.work-schedule-day-entry-custom-select-option[aria-selected="true"] {
+  color: var(--ui-btn-primary-bg, #2a3828);
+  font-weight: 600;
+}
+
 .work-schedule-day-entry-footer {
   flex-shrink: 0;
-  margin-top: 0.5rem;
+  margin-top: 0.35rem;
 }
 
 .work-schedule-type-settings-header {

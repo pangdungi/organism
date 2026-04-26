@@ -532,5 +532,28 @@ export function render() {
     }
   });
 
+  window.__lpIdeaSoftRefresh = () => {
+    try {
+      if (!el.isConnected) return;
+      const saved = localStorage.getItem(USER_HOURLY_RATE_KEY);
+      const rv = el.querySelector(".idea-hourly-result-value");
+      const ru = el.querySelector(".idea-hourly-result-unit");
+      if (!rv) return;
+      if (saved) {
+        const n = parseFloat(saved);
+        if (!Number.isNaN(n) && n > 0) {
+          rv.textContent = new Intl.NumberFormat("ko-KR").format(Math.round(n));
+          if (ru) {
+            ru.textContent = "원";
+            ru.style.visibility = "";
+          }
+          return;
+        }
+      }
+      rv.textContent = "—";
+      if (ru) ru.style.visibility = "hidden";
+    } catch (_) {}
+  };
+
   return el;
 }

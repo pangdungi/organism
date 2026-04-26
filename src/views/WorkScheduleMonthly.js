@@ -408,8 +408,8 @@ export function renderMonthlyContent(opts = {}) {
           cell.addEventListener("click", (e) => {
             e.preventDefault();
             e.stopPropagation();
-            /* 회색 칸(전·다음 달 날짜)을 눌렀을 때도 그 달이 열리도록, 클릭한 날짜의 연·월을 저장 */
-            storeMonthlyYm(date.getFullYear(), date.getMonth());
+            /* 저장된 달(상단 APR/MAY)은 prev/next/Today·저장 후에만 바꿈. 회색 칸(인접 달)을 눌러
+             * 등록만 할 때는 로컬 커서를 건드리지 않음 — 실수로 5월로 고정되는 현상 방지 */
             onDayClick(key);
           });
         }
