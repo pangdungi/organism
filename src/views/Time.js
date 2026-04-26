@@ -21,9 +21,10 @@ import {
 } from "../utils/timeKpiSync.js";
 import {
   getKpiTodosAsTasks,
-  syncKpiTodoCompleted,
-  getKpiTodosByKpiName,
+  appendKpiValueLogFromTimeLedger,
   getKpiDailyRepeatInfoByKpiName,
+  getKpiRecordByTaskName,
+  kpiShowTimeLedgerMeasureField,
 } from "../utils/kpiTodoSync.js";
 import { kpiTodoFineTrace } from "../utils/kpiTodoFineTrace.js";
 import { getCustomSections, getCategoryColorForReport } from "../utils/todoSettings.js";
@@ -4623,6 +4624,16 @@ export function render() {
           <h4 class="time-task-log-daily-todos-title">매일 할일 목록</h4>
           <div class="time-task-log-daily-todos-list"></div>
         </div>
+        <div class="time-task-log-kpi-measure-section" hidden>
+          <h4 class="time-task-log-kpi-measure-heading">KPI 수치</h4>
+          <div class="time-task-log-field">
+            <label class="time-task-log-kpi-measure-label">오늘 측정값</label>
+            <div class="time-task-log-kpi-measure-input-row">
+              <input type="text" class="time-task-log-kpi-measure-input" inputmode="decimal" placeholder="" autocomplete="off" />
+              <span class="time-task-log-kpi-measure-unit-suffix"></span>
+            </div>
+          </div>
+        </div>
         <div class="time-task-log-memo-section">
           <h4 class="time-task-log-memo-title">메모</h4>
           <div class="time-task-log-memo-fields">
@@ -5282,6 +5293,18 @@ export function render() {
   );
   const taskLogDailyTodosList = taskLogModal.querySelector(
     ".time-task-log-daily-todos-list",
+  );
+  const taskLogKpiMeasureSection = taskLogModal.querySelector(
+    ".time-task-log-kpi-measure-section",
+  );
+  const taskLogKpiMeasureLabel = taskLogModal.querySelector(
+    ".time-task-log-kpi-measure-label",
+  );
+  const taskLogKpiMeasureInput = taskLogModal.querySelector(
+    ".time-task-log-kpi-measure-input",
+  );
+  const taskLogKpiMeasureUnitSuffix = taskLogModal.querySelector(
+    ".time-task-log-kpi-measure-unit-suffix",
   );
   const taskLogSubmitBtn = taskLogModal.querySelector(".time-task-log-submit");
   const taskLogCloseBtn = taskLogModal.querySelector(
@@ -6000,47 +6023,62 @@ export function render() {
 
   taskLogExpenseClassificationWrap?.appendChild(expenseClassificationButtons);
 
+  if (taskLogKpiMeasureInput) {
+    taskLogKpiMeasureInput.addEventListener("input", () => {
+      const pos = taskLogKpiMeasureInput.selectionStart;
+      const s = String(taskLogKpiMeasureInput.value || "").replace(
+        /[^\d.,\-]/g,
+        "",
+      );
+      if (taskLogKpiMeasureInput.value !== s) {
+        taskLogKpiMeasureInput.value = s;
+        if (pos != null)
+          taskLogKpiMeasureInput.setSelectionRange(
+            Math.min(pos, s.length),
+            Math.min(pos, s.length),
+          );
+      }
+    });
+  }
+
   function onTaskSelectedForLog(taskName) {
     refreshKpiTodosInLogModal(taskName);
   }
 
   function refreshKpiTodosInLogModal(taskName) {
     const name = (taskName || "").trim();
-    if (!taskLogKpiTodosSection || !taskLogKpiTodosList) return;
-
-    const data = getKpiTodosByKpiName(name);
-    if (!data || data.todos.length === 0) {
+    if (taskLogKpiTodosSection) {
       taskLogKpiTodosSection.hidden = true;
-      taskLogKpiTodosList.innerHTML = "";
-    } else {
-      taskLogKpiTodosSection.hidden = false;
-      taskLogKpiTodosList.innerHTML = "";
-      const { storageKey, todos } = data;
-      todos.forEach((todo) => {
-        const label = document.createElement("label");
-        label.className = "time-task-log-kpi-todo-row";
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.checked = !!todo.completed;
-        checkbox.dataset.todoId = todo.id;
-        checkbox.dataset.storageKey = storageKey;
-        const span = document.createElement("span");
-        span.className = "time-task-log-kpi-todo-text";
-        span.textContent = todo.text || "";
-        if (todo.completed) span.classList.add("is-done");
-        label.appendChild(checkbox);
-        label.appendChild(span);
-        checkbox.addEventListener("change", () => {
-          kpiTodoFineTrace("Time.과제기록모달:KPI할일체크", {
-            todoId: String(todo.id),
-            storageKey,
-            checked: checkbox.checked,
-          });
-          syncKpiTodoCompleted(todo.id, storageKey, checkbox.checked);
-          span.classList.toggle("is-done", checkbox.checked);
-        });
-        taskLogKpiTodosList.appendChild(label);
-      });
+      if (taskLogKpiTodosList) taskLogKpiTodosList.innerHTML = "";
+    }
+
+    if (taskLogKpiMeasureSection && taskLogKpiMeasureInput && taskLogKpiMeasureLabel) {
+      if (taskLogEditTr) {
+        taskLogKpiMeasureSection.hidden = true;
+        taskLogKpiMeasureInput.value = "";
+        if (taskLogKpiMeasureUnitSuffix) taskLogKpiMeasureUnitSuffix.textContent = "";
+      } else {
+        const rec = getKpiRecordByTaskName(name);
+        const k = rec?.kpi;
+        if (rec && k && kpiShowTimeLedgerMeasureField(k)) {
+          taskLogKpiMeasureLabel.textContent = "오늘 측정값";
+          const unit = String(k.unit || "").trim();
+          const targetStr = String(k.targetValue ?? "").trim();
+          taskLogKpiMeasureInput.placeholder = targetStr
+            ? `목표 ${targetStr}`
+            : "숫자 입력";
+          if (taskLogKpiMeasureUnitSuffix) {
+            taskLogKpiMeasureUnitSuffix.textContent = unit;
+          }
+          taskLogKpiMeasureSection.hidden = false;
+        } else {
+          taskLogKpiMeasureSection.hidden = true;
+          taskLogKpiMeasureInput.value = "";
+          if (taskLogKpiMeasureUnitSuffix) {
+            taskLogKpiMeasureUnitSuffix.textContent = "";
+          }
+        }
+      }
     }
 
     if (!taskLogDailyTodosSection || !taskLogDailyTodosList) return;
@@ -6579,6 +6617,10 @@ export function render() {
     if (taskLogExpenseInnerModal) taskLogExpenseInnerModal.hidden = true;
     if (taskLogKpiTodosSection) taskLogKpiTodosSection.hidden = true;
     if (taskLogKpiTodosList) taskLogKpiTodosList.innerHTML = "";
+    if (taskLogKpiMeasureInput) taskLogKpiMeasureInput.value = "";
+    if (taskLogKpiMeasureSection) taskLogKpiMeasureSection.hidden = true;
+    if (taskLogKpiMeasureUnitSuffix) taskLogKpiMeasureUnitSuffix.textContent = "";
+    if (firstTask) onTaskSelectedForLog(firstTask);
   }
 
   function openTaskLogModalForEdit(tr, rowData) {
@@ -7096,6 +7138,33 @@ export function render() {
             normalizedDateRaw,
             { completed },
           );
+        }
+      }
+      if (
+        !editTr &&
+        taskLogKpiMeasureSection &&
+        !taskLogKpiMeasureSection.hidden &&
+        (taskLogKpiMeasureInput?.value || "").trim()
+      ) {
+        const rawMeasure = (taskLogKpiMeasureInput.value || "").trim();
+        const dateYmd = (() => {
+          const dv = (taskLogDateStart?.value || "").trim();
+          if (dv && dv.length >= 10) return dv.slice(0, 10);
+          const ds = (dateStr || "").toString().replace(/\//g, "-");
+          const m = ds.match(
+            /(\d{4})[.\-\s]*(\d{1,2})[.\-\s]*(\d{1,2})/,
+          );
+          if (m) {
+            return `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`;
+          }
+          return ds.replace(/\s/g, "").slice(0, 10);
+        })();
+        if (dateYmd.length >= 10) {
+          appendKpiValueLogFromTimeLedger(taskName, {
+            dateRaw: dateYmd,
+            value: rawMeasure,
+            memo: feedback,
+          });
         }
       }
       onFilterChange();

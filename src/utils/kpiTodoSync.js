@@ -421,6 +421,82 @@ export function syncKpiTodoCompleted(kpiTodoId, storageKey, completed) {
 
 const STORAGE_KEYS = [DREAM_MAP_KEY, SIDEINCOME_KEY, HAPPINESS_KEY, HEALTH_KEY];
 
+function nextKpiLogId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+function sanitizeNumericForKpiLog(val) {
+  return String(val || "").replace(/[^\d.-]/g, "");
+}
+
+/**
+ * KPI 이름으로 꿈/부수입/행복/건강 맵에서 KPI 한 건 조회
+ * @returns {{ storageKey: string, kpi: object } | null}
+ */
+export function getKpiRecordByTaskName(kpiName) {
+  const name = (kpiName || "").trim();
+  if (!name) return null;
+  for (const storageKey of STORAGE_KEYS) {
+    const data = loadJson(storageKey, { kpis: [] });
+    const kpi = (data.kpis || []).find((k) => (k.name || "").trim() === name);
+    if (kpi) return { storageKey, kpi };
+  }
+  return null;
+}
+
+/** 목표값·단위가 모두 있는지 */
+export function kpiHasTargetValueAndUnit(kpi) {
+  if (!kpi) return false;
+  const tv = String(kpi.targetValue ?? "").trim();
+  const u = String(kpi.unit ?? "").trim();
+  return tv !== "" && u !== "";
+}
+
+/** 높을수록 좋음(direction !== lower)이고 목표값·단위가 있을 때만 시간가계부에 수치 입력란 표시 */
+export function kpiShowTimeLedgerMeasureField(kpi) {
+  if (!kpi) return false;
+  if (kpi.direction === "lower") return false;
+  return kpiHasTargetValueAndUnit(kpi);
+}
+
+/**
+ * 시간가계부 과제 기록 저장 시 KPI 일지에 수치 1건 추가 (KPI 화면 «오늘의 수치 기록»과 동일 데이터)
+ * @returns {boolean} 저장 여부
+ */
+export function appendKpiValueLogFromTimeLedger(taskName, { dateRaw, value, memo }) {
+  const name = (taskName || "").trim();
+  const v = sanitizeNumericForKpiLog(value);
+  if (!name || !dateRaw || String(dateRaw).trim().length < 10 || v === "") return false;
+  const rec = getKpiRecordByTaskName(name);
+  if (!rec || !kpiShowTimeLedgerMeasureField(rec.kpi)) return false;
+  const { storageKey, kpi } = rec;
+  const prev = loadJson(storageKey, {});
+  const data = JSON.parse(JSON.stringify(prev));
+  data.kpiLogs = data.kpiLogs || [];
+  const dr = String(dateRaw).trim().replace(/\//g, "-").slice(0, 10);
+  const parts = dr.split("-");
+  const dateStr =
+    parts.length >= 3
+      ? `${parts[0]}. ${String(parts[1]).padStart(2, "0")}. ${String(parts[2]).padStart(2, "0")}.`
+      : "";
+  const log = {
+    id: nextKpiLogId(),
+    kpiId: kpi.id,
+    date: dateStr,
+    dateRaw: dr,
+    value: v,
+    status: "순항",
+    memo: (memo || "").trim(),
+  };
+  if (storageKey === DREAM_MAP_KEY) log.dreamId = kpi.dreamId;
+  else if (storageKey === SIDEINCOME_KEY) log.pathId = kpi.pathId;
+  else if (storageKey === HAPPINESS_KEY) log.happinessId = kpi.happinessId;
+  else if (storageKey === HEALTH_KEY) log.healthId = kpi.healthId;
+  data.kpiLogs.push(log);
+  stampAndPersistKpiMap(storageKey, prev, data);
+  return true;
+}
+
 /**
  * KPI 이름으로 해당 KPI의 할일 목록 반환 (과제 기록 모달 등에서 사용)
  * @param {string} kpiName - KPI 이름 (예: "요가")
