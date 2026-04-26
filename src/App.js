@@ -208,9 +208,17 @@ async function pullDataForActiveTab(tabId, opts = {}) {
     case "sideincome":
       await pullKpiTabFromCloud(tabId);
       break;
-    case "asset":
+    case "asset": {
+      /* 기동 직후 자산 탭: 상위 App pull 생략 → Asset mount 시 1회만 pull(쓰기 없음) */
+      if (opts.fromBoot) {
+        try {
+          if (typeof window !== "undefined") window.__lpAssetNeedDeferredInitialPull = true;
+        } catch (_) {}
+        break;
+      }
       await pullAllAssetFromCloud(() => tabId, { forceExpensePull: true });
       break;
+    }
     case "diary":
       await pullAllDiaryFromCloud();
       break;

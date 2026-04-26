@@ -246,24 +246,10 @@ export function scheduleAssetNetWorthBundleSyncPush() {
 }
 
 let _listenerAttached = false;
-let _flushListenersAttached = false;
-
-function attachNetWorthBundleFlushOnLeave() {
-  if (_flushListenersAttached) return;
-  _flushListenersAttached = true;
-  const run = () => {
-    void flushAssetNetWorthBundleSyncPush();
-  };
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") run();
-  });
-  window.addEventListener("pagehide", run);
-}
 
 export function attachAssetNetWorthBundleSaveListener() {
   if (_listenerAttached) return;
   _listenerAttached = true;
-  attachNetWorthBundleFlushOnLeave();
   window.addEventListener("asset-networth-bundle-saved", (e) => {
     if (e.detail?.fromServerMerge) return;
     scheduleAssetNetWorthBundleSyncPush();

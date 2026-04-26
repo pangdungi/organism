@@ -4,7 +4,6 @@
 
 import {
   attachAssetExpensePrefsSaveListener,
-  pushAllLocalAssetExpensePrefsIfServerEmpty,
   readExpenseClassificationSavedMem,
   writeExpenseClassificationSavedMem,
   readExpensePaymentOptionsListMem,
@@ -15,34 +14,28 @@ import {
   deleteAssetExpenseTransactionsFromSupabase,
   getExpenseRowsMem,
   persistAssetExpensePullBounds,
-  pushAllLocalAssetExpenseTransactionsIfServerEmpty,
   pullAssetExpenseTransactionsFromSupabase,
   pullAssetExpenseTransactionsForDateRange,
   setExpenseRowsMem,
 } from "../utils/assetExpenseTransactionsSupabase.js";
 import { pullAllAssetFromCloud } from "../utils/assetCloudRefresh.js";
-import { logTabSync } from "../utils/lpTabSyncDebug.js";
 import {
   attachAssetNetWorthGoalSaveListener,
-  pushLocalNetWorthTargetIfServerHasNoRow,
   getNetWorthTargetDisplayStrMem,
   setNetWorthTargetDisplayStrMem,
 } from "../utils/assetNetWorthTargetSupabase.js";
 import {
   attachAssetStockCategoryOptionsSaveListener,
-  pushAllLocalStockCategoryOptionsIfServerEmpty,
   readStockCategoryCustomLabelsMem,
   writeStockCategoryCustomLabelsMem,
 } from "../utils/assetStockCategorySupabase.js";
 import {
   attachAssetPlanMonthlyGoalsSaveListener,
   getPlanMonthlyGoalsRowsMem,
-  pushLocalPlanGoalsIfServerEmpty,
   setPlanMonthlyGoalsRowsMem,
 } from "../utils/assetPlanMonthlyGoalsSupabase.js";
 import {
   attachAssetNetWorthBundleSaveListener,
-  pushLocalNetWorthBundleIfServerHasNoRow,
   readNetWorthBundleKey,
   writeNetWorthBundleKey,
 } from "../utils/assetNetWorthBundleSupabase.js";
@@ -71,9 +64,6 @@ const ANNUITY_ROWS_KEY = "asset_annuity_rows";
 /** renderMain으로 패널이 다시 그려져도 가계부/현금흐름 등 하위 탭 유지 (근무표 `lp_work_schedule_subview` 와 동일 패턴) */
 const SESSION_ASSET_SUBVIEW_KEY = "lp_asset_subview";
 const ASSET_SUBVIEWS = new Set(["expense", "cashflow", "networth", "plan"]);
-/** Realtime·renderMain 로 연속 remount 시 pull·[LP-SAVE] 로그 폭주 완화 */
-let _lastAssetTabFullPullAt = 0;
-const ASSET_TAB_FULL_PULL_COOLDOWN_MS = 2500;
 
 function readSavedAssetSubView() {
   try {
@@ -7163,6 +7153,14 @@ export function render() {
     });
     saveAssetSubView(view);
     renderView(view);
+    void (async () => {
+      try {
+        await pullAllAssetFromCloud(() => "asset", { forceExpensePull: true });
+      } catch (_) {}
+      if (!contentWrap.isConnected) return;
+      const still = viewTabs.querySelector(".asset-view-tab.active")?.dataset?.view;
+      if (still === view) renderView(view);
+    })();
   }
 
   viewTabs.querySelectorAll(".asset-view-tab").forEach((btn) => {
@@ -7179,36 +7177,21 @@ export function render() {
   /* 행이 0건이어도 «불러오는 중»을 띄우지 않음 — 빈 가계부는 미리 로드된 상태와 구분 불가했고, 상위 탭 전환 시 App에서 이미 pull 후 렌더되는 경우가 많음 */
   renderView(initialView);
 
-  setupScrollClosePanels();
-
-  void (async () => {
+  if (typeof window !== "undefined" && window.__lpAssetNeedDeferredInitialPull) {
     try {
-      logTabSync("asset_tab_hydrate", {});
-      const now = Date.now();
-      const shouldFullPull =
-        _lastAssetTabFullPullAt === 0 ||
-        now - _lastAssetTabFullPullAt >= ASSET_TAB_FULL_PULL_COOLDOWN_MS;
-      if (shouldFullPull) {
-        _lastAssetTabFullPullAt = Date.now();
+      window.__lpAssetNeedDeferredInitialPull = false;
+    } catch (_) {}
+    void (async () => {
+      try {
         await pullAllAssetFromCloud(() => "asset", { forceExpensePull: true });
-        await Promise.all([
-          pushAllLocalAssetExpenseTransactionsIfServerEmpty(),
-          pushAllLocalAssetExpensePrefsIfServerEmpty(),
-          pushLocalNetWorthBundleIfServerHasNoRow(),
-          pushLocalNetWorthTargetIfServerHasNoRow(),
-          pushLocalPlanGoalsIfServerEmpty(),
-          pushAllLocalStockCategoryOptionsIfServerEmpty(),
-        ]);
-      }
-      const activeTab = viewTabs.querySelector(".asset-view-tab.active");
-      const view = activeTab?.dataset?.view || initialView;
-      renderView(view);
-    } catch (e) {
-      const activeTab = viewTabs.querySelector(".asset-view-tab.active");
-      const view = activeTab?.dataset?.view || initialView;
-      renderView(view);
-    }
-  })();
+      } catch (_) {}
+      if (!contentWrap.isConnected) return;
+      const v = viewTabs.querySelector(".asset-view-tab.active")?.dataset?.view || initialView;
+      renderView(v);
+    })();
+  }
+
+  setupScrollClosePanels();
 
   return el;
 }

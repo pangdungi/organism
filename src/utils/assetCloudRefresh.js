@@ -6,13 +6,11 @@ import { runAssetSerialized } from "./assetServerSyncSerial.js";
 import { getExpenseRowsMem, pullAssetExpenseTransactionsFromSupabaseImpl } from "./assetExpenseTransactionsSupabase.js";
 import { pullAssetExpensePrefsFromSupabaseImpl, readExpenseClassificationSavedMem, readExpensePaymentOptionsListMem } from "./assetExpensePrefsSupabase.js";
 import {
-  syncAssetNetWorthBundleToSupabaseImpl,
   pullAssetNetWorthBundleFromSupabaseImpl,
   NET_WORTH_BUNDLE_LOCAL_KEYS,
   readNetWorthBundleKey,
 } from "./assetNetWorthBundleSupabase.js";
 import {
-  syncAssetNetWorthTargetToSupabaseImpl,
   getNetWorthTargetDisplayStrMem,
   pullAssetNetWorthTargetFromSupabaseImpl,
 } from "./assetNetWorthTargetSupabase.js";
@@ -78,10 +76,7 @@ export async function pullAllAssetFromCloud(getCurrentTabId, opts = {}) {
         : undefined,
   });
   await runAssetSerialized(async () => {
-    /* 로컬에서 지운 행이 서버 반영 전에 pull 되면 예전 행이 되살아남 → 먼저 pending upsert */
-    await syncAssetNetWorthBundleToSupabaseImpl();
-    await syncAssetNetWorthTargetToSupabaseImpl();
-    /* 서로 다른 테이블만 읽음 → 순차 대기 대신 병렬로 RTT·총 체감 시간 단축 */
+    /* 풀은 읽기 전용. 로컬→서버 쓰기는 저장/확인/삭제 이벤트에서만(덮어쓰기·탭 이탈 flush 없음) */
     await Promise.all([
       skipExpense ? Promise.resolve() : pullAssetExpenseTransactionsFromSupabaseImpl({ mode: "range" }),
       pullAssetExpensePrefsFromSupabaseImpl(),

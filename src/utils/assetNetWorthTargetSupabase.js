@@ -173,24 +173,10 @@ export function scheduleAssetNetWorthTargetSyncPush() {
 }
 
 let _listenerAttached = false;
-let _flushListenersAttached = false;
-
-function attachNetWorthTargetFlushOnLeave() {
-  if (_flushListenersAttached) return;
-  _flushListenersAttached = true;
-  const run = () => {
-    void flushAssetNetWorthTargetSyncPush();
-  };
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") run();
-  });
-  window.addEventListener("pagehide", run);
-}
 
 export function attachAssetNetWorthTargetSaveListener() {
   if (_listenerAttached) return;
   _listenerAttached = true;
-  attachNetWorthTargetFlushOnLeave();
   window.addEventListener("asset-networth-target-saved", (e) => {
     if (e.detail?.fromServerMerge) return;
     scheduleAssetNetWorthTargetSyncPush();
