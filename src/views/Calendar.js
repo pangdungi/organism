@@ -6212,7 +6212,7 @@ function renderAnnualView(tabsElement) {
     </span>
     <div class="calendar-nav-controls">
       <button type="button" class="calendar-nav-prev" title="이전 해">&lt;</button>
-      <button type="button" class="calendar-nav-today" title="올해">오늘</button>
+      <button type="button" class="calendar-nav-today" title="올해로 이동">${currentYear}</button>
       <button type="button" class="calendar-nav-next" title="다음 해">&gt;</button>
     </div>
   `;
@@ -6225,6 +6225,8 @@ function renderAnnualView(tabsElement) {
 
   function renderYear() {
     nav.querySelector(".calendar-nav-year").textContent = String(currentYear);
+    const yearJumpBtn = nav.querySelector(".calendar-nav-today");
+    if (yearJumpBtn) yearJumpBtn.textContent = String(currentYear);
     table.innerHTML = "";
 
     for (let month = 0; month < 12; month++) {
