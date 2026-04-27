@@ -35659,14 +35659,23 @@ body.kpi-resizing {
   color: var(--text-muted);
 }
 
-/* 오늘: 근무표와 동일 — 셀 배경 + 숫자 옆 동그라미 점 */
+/* 오늘: 숫자 옆 점만 — 셀 배경은 달력 격자(일반 날)와 동일 */
 .calendar-monthly-day.today {
-  background: #e8e2d2;
+  background: transparent;
   position: relative;
 }
 
 .calendar-monthly-day.today:hover {
-  background: #e8e2d2;
+  background: color-mix(in srgb, var(--ui-surface-alt) 50%, var(--content-bg) 50%);
+}
+
+/* 다른 달에 보이는 '오늘'은 other-month 배경만 유지 */
+.calendar-monthly-day.other-month.today {
+  background: #eceadf;
+}
+
+.calendar-monthly-day.other-month.today:hover {
+  background: #eceadf;
 }
 
 .calendar-monthly-day.today .calendar-monthly-day-num {
