@@ -4816,7 +4816,7 @@ body {
     padding-left: 0.5rem !important;
   }
 
-  /* 모바일 캘린더 탭: 월별·2주·1주 상단 탭으로 고정, 다른 탭 디자인 통일 */
+  /* 모바일 캘린더 탭: 월별·1주·연간 상단 탭으로 고정, 다른 탭 디자인 통일 */
   .calendar-view--mobile-schedule.calendar-view-with-subtabs
     .calendar-sub-tabs,
   .calendar-view--mobile-workschedule .calendar-sub-tabs {
