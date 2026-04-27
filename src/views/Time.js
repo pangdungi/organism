@@ -4991,14 +4991,28 @@ export function render() {
   function taskLogResolveYmdForSync() {
     const fromDateInput = (taskLogDateStart?.value || "").trim();
     if (/^\d{4}-\d{2}-\d{2}$/.test(fromDateInput)) return fromDateInput;
-    return (
-      parseDateFromDateTime(String(taskLogStartInput?.value || "").trim()) || ""
+    const fromStartHidden = parseDateFromDateTime(
+      String(taskLogStartInput?.value || "").trim(),
     );
+    if (fromStartHidden) return fromStartHidden;
+    /* 모바일 WebKit: date 인풋 value가 비어도 마감 시각만 맞추려면 필터 구간 기준일이라도 필요 */
+    return pickYmdFromFilter(startDateInput.value, filterStartDate);
   }
 
   function syncStartToHidden() {
-    const date = (taskLogDateStart?.value || "").trim();
+    let date = (taskLogDateStart?.value || "").trim();
     const time = normalizeHhMm(taskLogTimeStart?.value || "");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      const prevHidden = String(taskLogStartInput?.value || "").trim();
+      date =
+        parseDateFromDateTime(prevHidden) ||
+        (time
+          ? pickYmdFromFilter(startDateInput.value, filterStartDate)
+          : "");
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date) && taskLogDateStart) {
+        taskLogDateStart.value = date;
+      }
+    }
     if (date && time) {
       taskLogStartInput.value = `${date}T${time}`;
     } else if (date) {
