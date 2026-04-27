@@ -35873,6 +35873,10 @@ body.kpi-resizing {
   color: var(--text-muted);
 }
 
+.calendar-day-expand-bubble--no-close .calendar-event-bubble-header {
+  justify-content: flex-start;
+}
+
 .calendar-event-bubble-close {
   display: inline-flex;
   align-items: center;

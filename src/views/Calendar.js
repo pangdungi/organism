@@ -1218,6 +1218,9 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
 /** 기본 행 높이는 이 개수(3개) 분량, 그 이상이면 행을 늘려 전부 표시 */
 const MAX_VISIBLE_BARS_PER_DAY = 3;
 
+/** 이전 날짜 확대 버블의 document 클릭 리스너 제거(연간 연속 호버 등으로 close 미경유 DOM 제거 시 누수 방지) */
+let _calendarDayExpandOutsideHandler = null;
+
 function createCalendarDayExpandBubble(
   cellRect,
   dateKey,
@@ -1225,13 +1228,26 @@ function createCalendarDayExpandBubble(
   onClose,
   options = {},
 ) {
-  const { positionBelow = false, onAdd = null } = options;
+  const {
+    positionBelow = false,
+    onAdd = null,
+    /** 연간 뷰 등: × 숨김 */
+    hideCloseButton = false,
+    /** false면 바깥 클릭으로 닫지 않음(호버 전용) */
+    dismissOnOutsideClick = true,
+    /** 연간 호버 시 모바일 전체 오버레이 생략 */
+    useMobileOverlay = true,
+  } = options;
   const isMobile = window.matchMedia("(max-width: 48rem)").matches;
+  if (_calendarDayExpandOutsideHandler) {
+    document.removeEventListener("click", _calendarDayExpandOutsideHandler);
+    _calendarDayExpandOutsideHandler = null;
+  }
   document
     .querySelectorAll(".calendar-event-bubble, .calendar-day-expand-overlay")
     .forEach((el) => el.remove());
   let overlayEl = null;
-  if (isMobile) {
+  if (isMobile && useMobileOverlay) {
     overlayEl = document.createElement("div");
     overlayEl.className = "calendar-day-expand-overlay";
     document.body.appendChild(overlayEl);
@@ -1239,7 +1255,8 @@ function createCalendarDayExpandBubble(
   const bubble = document.createElement("div");
   bubble.className =
     "calendar-event-bubble calendar-day-expand-bubble" +
-    (isMobile ? " calendar-day-expand-bubble--mobile" : "");
+    (isMobile ? " calendar-day-expand-bubble--mobile" : "") +
+    (hideCloseButton ? " calendar-day-expand-bubble--no-close" : "");
   const taskItems = tasks
     .map((t) => {
       const isSchedule =
@@ -1259,11 +1276,14 @@ function createCalendarDayExpandBubble(
   const addBtnHtml = onAdd
     ? '<button type="button" class="calendar-day-expand-add-btn">할일 추가</button>'
     : "";
+  const closeBtnHtml = hideCloseButton
+    ? ""
+    : '<button type="button" class="calendar-event-bubble-close" title="닫기">×</button>';
   bubble.innerHTML = `
     <div class="calendar-event-bubble-body">
       <div class="calendar-event-bubble-header">
         <span class="calendar-event-bubble-date">${dateKey.replace(/-/g, ". ")}</span>
-        <button type="button" class="calendar-event-bubble-close" title="닫기">×</button>
+        ${closeBtnHtml}
       </div>
       <div class="calendar-day-expand-list">${taskItems || "<div class='calendar-day-expand-empty'>할일 없음</div>"}</div>
       ${addBtnHtml}
@@ -1300,7 +1320,13 @@ function createCalendarDayExpandBubble(
     });
   });
 
+  let outsideClickHandler = null;
   const close = () => {
+    if (outsideClickHandler) {
+      document.removeEventListener("click", outsideClickHandler);
+      outsideClickHandler = null;
+      _calendarDayExpandOutsideHandler = null;
+    }
     bubble.remove();
     if (overlayEl) overlayEl.remove();
     onClose?.();
@@ -1308,9 +1334,11 @@ function createCalendarDayExpandBubble(
 
   if (overlayEl) overlayEl.addEventListener("click", close);
 
-  bubble
-    .querySelector(".calendar-event-bubble-close")
-    .addEventListener("click", close);
+  if (!hideCloseButton) {
+    bubble
+      .querySelector(".calendar-event-bubble-close")
+      ?.addEventListener("click", close);
+  }
   if (onAdd) {
     bubble
       .querySelector(".calendar-day-expand-add-btn")
@@ -1319,17 +1347,23 @@ function createCalendarDayExpandBubble(
         onAdd();
       });
   }
-  setTimeout(() => {
-    document.addEventListener("click", function outside(e) {
-      if (
-        !bubble.contains(e.target) &&
-        !(overlayEl && overlayEl.contains(e.target))
-      ) {
-        document.removeEventListener("click", outside);
-        close();
-      }
-    });
-  }, 0);
+  if (dismissOnOutsideClick) {
+    setTimeout(() => {
+      outsideClickHandler = function outside(e) {
+        if (
+          !bubble.contains(e.target) &&
+          !(overlayEl && overlayEl.contains(e.target))
+        ) {
+          document.removeEventListener("click", outsideClickHandler);
+          outsideClickHandler = null;
+          _calendarDayExpandOutsideHandler = null;
+          close();
+        }
+      };
+      _calendarDayExpandOutsideHandler = outsideClickHandler;
+      document.addEventListener("click", outsideClickHandler);
+    }, 0);
+  }
 
   const BUBBLE_PADDING = 16;
   let top = positionBelow
@@ -1354,7 +1388,7 @@ function createCalendarDayExpandBubble(
     }
   }
 
-  return bubble;
+  return { bubble, close };
 }
 
 function createCalendarBarRevertBubble(
@@ -6192,7 +6226,28 @@ function render1WeekView(
   return wrap;
 }
 
-/** 연간 뷰: 왼쪽 월 라벨, 오른쪽 해당 월 날짜 셀 한 행 (Year Planner 구조), 요일 미표시, 클릭 시 할일 목록 버블 */
+/** 연간 뷰: 날짜 칸 호버 버블 — 칸 간 이동 시 닫힘 타이머 충돌 방지 */
+let _annualDayExpandHideTimer = null;
+let _annualDayExpandClose = null;
+function cancelAnnualDayExpandHideTimer() {
+  if (_annualDayExpandHideTimer != null) {
+    clearTimeout(_annualDayExpandHideTimer);
+    _annualDayExpandHideTimer = null;
+  }
+}
+function scheduleAnnualDayExpandHide() {
+  cancelAnnualDayExpandHideTimer();
+  _annualDayExpandHideTimer = window.setTimeout(() => {
+    _annualDayExpandHideTimer = null;
+    try {
+      _annualDayExpandClose?.();
+    } finally {
+      _annualDayExpandClose = null;
+    }
+  }, 220);
+}
+
+/** 연간 뷰: 왼쪽 월 라벨, 오른쪽 해당 월 날짜 셀 한 행 (Year Planner 구조), 요일 미표시, 호버 시 할일 목록 버블 */
 function renderAnnualView(tabsElement) {
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout calendar-annual-view";
@@ -6230,6 +6285,11 @@ function renderAnnualView(tabsElement) {
   table.className = "calendar-annual-table";
 
   function renderYear() {
+    cancelAnnualDayExpandHideTimer();
+    try {
+      _annualDayExpandClose?.();
+    } catch (_) {}
+    _annualDayExpandClose = null;
     nav.querySelector(".calendar-nav-year").textContent = String(currentYear);
     const yearJumpBtn = nav.querySelector(".calendar-nav-today");
     if (yearJumpBtn) yearJumpBtn.textContent = String(currentYear);
@@ -6266,11 +6326,59 @@ function renderAnnualView(tabsElement) {
           dot.className = "calendar-annual-cell-dot";
           cell.appendChild(dot);
         }
-        cell.addEventListener("click", () => {
+        const prefersHover =
+          typeof window.matchMedia !== "undefined" &&
+          window.matchMedia("(hover: hover)").matches;
+
+        const openAnnualDayBubble = () => {
+          cancelAnnualDayExpandHideTimer();
           const rect = cell.getBoundingClientRect();
           const tasks = getAllTasksForDateDisplay(key);
-          createCalendarDayExpandBubble(rect, key, tasks, () => {});
-        });
+          const { bubble, close } = createCalendarDayExpandBubble(
+            rect,
+            key,
+            tasks,
+            () => {
+              _annualDayExpandClose = null;
+            },
+            {
+              hideCloseButton: true,
+              dismissOnOutsideClick: false,
+              useMobileOverlay: false,
+              positionBelow: true,
+            },
+          );
+          _annualDayExpandClose = close;
+          bubble.addEventListener("mouseenter", cancelAnnualDayExpandHideTimer);
+          bubble.addEventListener("mouseleave", scheduleAnnualDayExpandHide);
+        };
+
+        if (prefersHover) {
+          cell.addEventListener("mouseenter", openAnnualDayBubble);
+          cell.addEventListener("mouseleave", scheduleAnnualDayExpandHide);
+        } else {
+          cell.addEventListener("click", () => {
+            cancelAnnualDayExpandHideTimer();
+            const rect = cell.getBoundingClientRect();
+            const tasks = getAllTasksForDateDisplay(key);
+            const narrow = window.matchMedia("(max-width: 48rem)").matches;
+            const { close } = createCalendarDayExpandBubble(
+              rect,
+              key,
+              tasks,
+              () => {
+                _annualDayExpandClose = null;
+              },
+              {
+                hideCloseButton: true,
+                dismissOnOutsideClick: true,
+                useMobileOverlay: narrow,
+                positionBelow: true,
+              },
+            );
+            _annualDayExpandClose = close;
+          });
+        }
         daysRow.appendChild(cell);
       }
       row.appendChild(daysRow);
