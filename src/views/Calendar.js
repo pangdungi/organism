@@ -1241,15 +1241,20 @@ function createCalendarDayExpandBubble(
     "calendar-event-bubble calendar-day-expand-bubble" +
     (isMobile ? " calendar-day-expand-bubble--mobile" : "");
   const taskItems = tasks
-    .map(
-      (t) => `
-    <div class="calendar-day-expand-item" data-done="${!!t.done}">
-      <span class="calendar-day-expand-checkbox ${t.done ? "checked" : ""}"></span>
+    .map((t) => {
+      const isSchedule =
+        String(t.itemType || "todo").toLowerCase() === "schedule";
+      const marker = isSchedule
+        ? '<span class="calendar-day-expand-schedule-dot" aria-hidden="true"></span>'
+        : `<span class="calendar-day-expand-checkbox ${t.done ? "checked" : ""}"></span>`;
+      return `
+    <div class="calendar-day-expand-item${isSchedule ? " calendar-day-expand-item--schedule" : ""}" data-done="${!!t.done}" data-item-type="${isSchedule ? "schedule" : "todo"}">
+      ${marker}
       <span class="calendar-day-expand-text">${escapeHtml(t.name || "")}</span>
       ${t.startTime || t.endTime ? `<span class="calendar-day-expand-time">${[t.startTime, t.endTime].filter(Boolean).join(" ~ ")}</span>` : ""}
     </div>
-  `,
-    )
+  `;
+    })
     .join("");
   const addBtnHtml = onAdd
     ? '<button type="button" class="calendar-day-expand-add-btn">할일 추가</button>'
@@ -1268,6 +1273,7 @@ function createCalendarDayExpandBubble(
   tasks.forEach((t, i) => {
     const itemEl = bubble.querySelectorAll(".calendar-day-expand-item")[i];
     if (!itemEl) return;
+    if (itemEl.dataset.itemType === "schedule") return;
     const toggleDone = (e) => {
       e.stopPropagation();
       const newDone = !t.done;

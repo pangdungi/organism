@@ -36128,6 +36128,28 @@ body.kpi-resizing {
   content: none;
 }
 
+/* 일정(schedule): 할일 체크박스 대신 동그라미 */
+.calendar-day-expand-item--schedule {
+  cursor: default;
+}
+.calendar-day-expand-schedule-dot {
+  flex-shrink: 0;
+  width: var(--cb-size);
+  height: var(--cb-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+.calendar-day-expand-schedule-dot::after {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--text-body);
+  opacity: 0.72;
+}
+
 .calendar-day-expand-text {
   flex: 1;
   min-width: 0;
