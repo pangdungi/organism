@@ -35984,6 +35984,30 @@ body.kpi-resizing {
   background: var(--input-focus-bg);
 }
 
+.calendar-event-bubble-schedule-check {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+  font-size: var(--fs-caption);
+  font-family: var(--font-body);
+  font-weight: var(--fw-secondary);
+  color: var(--text-caption-color);
+  cursor: pointer;
+  user-select: none;
+}
+.calendar-event-bubble-schedule-check:hover {
+  color: var(--text-body);
+}
+.calendar-event-bubble-schedule-checkbox {
+  width: 0.9rem;
+  height: 0.9rem;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--ui-btn-primary-bg);
+  cursor: pointer;
+}
+
 .calendar-event-bubble-save {
   width: 100%;
   padding: 0.5rem 0.75rem;

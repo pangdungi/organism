@@ -1054,13 +1054,15 @@ function getAllTasksWithDateRange() {
  * 할일/일정 카드「+」와 동일 저장 경로: 세션 섹션 할일 + `calendar_section_tasks` upsert.
  * KPI 맵(kpi-*-map)에는 넣지 않음 — 캘린더·날짜 정하기 버블 전용.
  */
-function addSectionTodoFromCalendarBubble(sectionId, dueYmd, name) {
+function addSectionTodoFromCalendarBubble(sectionId, dueYmd, name, itemType = "todo") {
   const sid = String(sectionId || "").trim();
   const due = String(dueYmd || "")
     .trim()
     .slice(0, 10);
   const todoName = String(name || "").trim();
   if (!sid || !due || !todoName || !KPI_SECTION_IDS.includes(sid)) return false;
+  const it =
+    String(itemType || "todo").toLowerCase() === "schedule" ? "schedule" : "todo";
   const taskId =
     typeof crypto !== "undefined" && crypto.randomUUID
       ? crypto.randomUUID()
@@ -1079,7 +1081,7 @@ function addSectionTodoFromCalendarBubble(sectionId, dueYmd, name) {
       startTime: "",
       endTime: "",
       done: false,
-      itemType: "todo",
+      itemType: it,
     });
     persistSectionTasksAndSchedule(obj);
     const task = {
@@ -1091,7 +1093,7 @@ function addSectionTodoFromCalendarBubble(sectionId, dueYmd, name) {
       endTime: "",
       eisenhower: "",
       done: false,
-      itemType: "todo",
+      itemType: it,
       reminderDate: "",
       reminderTime: "",
     };
@@ -1137,6 +1139,10 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
       </div>
       <div class="calendar-event-bubble-name">
         <input type="text" name="calendar-event-name" class="calendar-event-bubble-input" placeholder="할일을 입력하세요" />
+        <label class="calendar-event-bubble-schedule-check">
+          <input type="checkbox" class="calendar-event-bubble-schedule-checkbox" />
+          <span>일정으로 변경</span>
+        </label>
       </div>
       <button type="button" class="calendar-event-bubble-save">추가</button>
     </div>
@@ -1160,6 +1166,10 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
     });
   }, 0);
 
+  const scheduleCheckbox = bubble.querySelector(
+    ".calendar-event-bubble-schedule-checkbox",
+  );
+
   bubble
     .querySelector(".calendar-event-bubble-save")
     .addEventListener("click", () => {
@@ -1170,7 +1180,9 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
         ".calendar-event-bubble-select",
       ).value;
       if (!name) return;
-      if (!addSectionTodoFromCalendarBubble(categoryId, dateKey, name)) {
+      const asSchedule = !!scheduleCheckbox?.checked;
+      const itemType = asSchedule ? "schedule" : "todo";
+      if (!addSectionTodoFromCalendarBubble(categoryId, dateKey, name, itemType)) {
         alert("할 일을 추가하지 못했습니다. 잠시 후 다시 시도해 주세요.");
         return;
       }
@@ -1178,7 +1190,7 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
         name,
         dueDate: dateKey,
         sectionId: categoryId,
-        itemType: "todo",
+        itemType,
       });
       close();
     });
@@ -6353,31 +6365,33 @@ function renderAnnualView(tabsElement) {
           bubble.addEventListener("mouseleave", scheduleAnnualDayExpandHide);
         };
 
+        const openAnnualQuickAddModal = (e) => {
+          if (e.target.closest(".calendar-event-bubble")) return;
+          e.stopPropagation();
+          cancelAnnualDayExpandHideTimer();
+          try {
+            _annualDayExpandClose?.();
+          } catch (_) {}
+          _annualDayExpandClose = null;
+          const rect = cell.getBoundingClientRect();
+          createCalendarEventBubble(
+            rect,
+            key,
+            () => {
+              renderYear();
+              refreshTodoList();
+            },
+            () => {},
+          );
+        };
+
+        cell.style.cursor = "pointer";
         if (prefersHover) {
           cell.addEventListener("mouseenter", openAnnualDayBubble);
           cell.addEventListener("mouseleave", scheduleAnnualDayExpandHide);
+          cell.addEventListener("click", openAnnualQuickAddModal);
         } else {
-          cell.addEventListener("click", () => {
-            cancelAnnualDayExpandHideTimer();
-            const rect = cell.getBoundingClientRect();
-            const tasks = getAllTasksForDateDisplay(key);
-            const narrow = window.matchMedia("(max-width: 48rem)").matches;
-            const { close } = createCalendarDayExpandBubble(
-              rect,
-              key,
-              tasks,
-              () => {
-                _annualDayExpandClose = null;
-              },
-              {
-                hideCloseButton: true,
-                dismissOnOutsideClick: true,
-                useMobileOverlay: narrow,
-                positionBelow: true,
-              },
-            );
-            _annualDayExpandClose = close;
-          });
+          cell.addEventListener("click", openAnnualQuickAddModal);
         }
         daysRow.appendChild(cell);
       }
