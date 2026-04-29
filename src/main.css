@@ -6904,6 +6904,7 @@ body {
   pointer-events: none;
   background: transparent !important;
   border: none !important;
+  border-left: var(--line-l2) !important;
   padding: 0.4rem 0.5rem;
   font-family: var(--font-mono) !important;
   font-weight: 300;
@@ -6914,6 +6915,7 @@ body {
 .home-embed-1day .calendar-1day-time-header-cell--actual-toggle:hover {
   background: transparent !important;
   border: none !important;
+  border-left: var(--line-l2) !important;
 }
 .home-embed-1day .calendar-1day-time-header-cell,
 .home-embed-1day .calendar-1day-time-header-cell--actual-toggle {
@@ -34982,18 +34984,13 @@ body.kpi-resizing {
   background: #f5f1e8;
 }
 
-/* 헤더: 타임라인(시간 열)과 예상 사이 세로선 없음 — 예상 오른쪽(예상↔오늘실제)만 구분선 */
-.calendar-1day-view .calendar-1day-time-header > .calendar-1day-time-header-cell:nth-child(2) {
-  border-right: var(--line-l2);
-  box-sizing: border-box;
-}
-
-/* 오늘실제 (클릭 가능 유지) */
+/* 헤더·본문 동일: 오늘 실제 열 왼쪽만 세로선 (.calendar-1day-time-slot--actual border-left 와 같은 이음새) */
 .calendar-1day-view .calendar-1day-time-header-cell--actual-toggle {
   margin: 0;
   padding: 0.35rem 0.5rem;
   background: #f5f1e8;
   border: none;
+  border-left: var(--line-l2);
   border-radius: 0;
   font-weight: 300;
   letter-spacing: 0.16em;
