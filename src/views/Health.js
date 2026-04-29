@@ -11,6 +11,7 @@ import {
   kpiTimeTaskAdd,
   kpiTimeTaskRemove,
   kpiTimeTaskRename,
+  getFullTaskOptions,
 } from "../utils/timeTaskOptionsModel.js";
 import { toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay, formatDeadlineRangeCompact } from "../utils/ganttModal.js";
 import { setupDeadlineQuickButtons } from "../utils/deadlineQuickButtons.js";
@@ -40,7 +41,6 @@ import {
 } from "../utils/kpiTodoLifecycleDebug.js";
 import { pullKpiMapSubViewFromCloud } from "../utils/kpiTabCloudRefresh.js";
 
-const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
 
 function defaultDeletedRefs() {
@@ -96,17 +96,6 @@ function loadHealthMap() {
   };
 }
 
-function getTimeTaskOptionsRaw() {
-  try {
-    const raw = localStorage.getItem(TIME_TASK_OPTIONS_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
-    }
-  } catch (_) {}
-  return null;
-}
-
 function getTaskName(o) {
   return typeof o === "string" ? o : (o?.name || "");
 }
@@ -117,8 +106,7 @@ function syncKpiToTimeTask(kpi, action, oldName) {
   if (action === "add") {
     const name = (kpi.name || "").trim();
     if (!name) return;
-    const raw = getTimeTaskOptionsRaw();
-    const opts = raw || [];
+    const opts = getFullTaskOptions();
     if (opts.some((o) => getTaskName(o) === name)) return;
     data.kpiTaskSync[kpi.id] = name;
     saveHealthMap(data);
@@ -132,12 +120,11 @@ function syncKpiToTimeTask(kpi, action, oldName) {
     }
   } else if (action === "update" && oldName) {
     const newName = (kpi.name || "").trim();
-    const prevName = data.kpiTaskSync[kpi.id];
-    if (prevName && newName && prevName !== newName) {
-      data.kpiTaskSync[kpi.id] = newName;
-      saveHealthMap(data);
-      kpiTimeTaskRename(kpi, oldName);
-    }
+    const oldNm = (oldName || "").trim();
+    if (!newName || oldNm === newName) return;
+    data.kpiTaskSync[kpi.id] = newName;
+    saveHealthMap(data);
+    void kpiTimeTaskRename(kpi, oldNm);
   }
 }
 

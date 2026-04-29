@@ -64,6 +64,7 @@ import {
   timeLedgerLocalTodayYmd,
   timeLedgerLocalYesterdayYmd,
 } from "../utils/timeLedgerEntriesSupabase.js";
+import { pullTimeLedgerTasksFromSupabase } from "../utils/timeLedgerTasksSupabase.js";
 import {
   readSectionTasksObject,
   readCustomSectionTasksObject,
@@ -7266,6 +7267,12 @@ export function render() {
     }
     registerEisenhowerQuadrantsRefresh(null);
     const gen = ++_renderContentGen;
+    /* 4. 오늘 해치우기: 예상 시간 등 과제명 입력을 위해 클릭 시점 서버 과제 목록 pull */
+    if (view === "1day" && !skipSubtabPull) {
+      try {
+        await pullTimeLedgerTasksFromSupabase();
+      } catch (_) {}
+    }
     if (_calendarMainSubtabPullPrimedByApp) {
       _calendarMainSubtabPullPrimedByApp = false;
     } else if (!skipSubtabPull) {
@@ -7276,15 +7283,11 @@ export function render() {
         });
       } catch (_) {}
       /*
-       * 사이드바「할일/일정」진입: 시간 *기록* 행만 pull. 과제 마스터는 App/Calendar에서 끌지 않고
-       * 시간기록·수정·과제설정 모달 열 때만 Time.js 에서 pull.
+       * 사이드바「할일/일정」서브탭: 시간 기록 행·예산 pull. 4. 오늘 해치우기(1day)는 위에서 과제 마스터 pull 함.
        */
       try {
         const yEnd = timeLedgerLocalTodayYmd();
         const yStart = timeLedgerLocalYesterdayYmd();
-        try {
-          await syncTimeLedgerTasksToSupabase();
-        } catch (_) {}
         await Promise.all([
           pullTimeLedgerEntriesForDateRange(yStart, yEnd),
           pullTimeDailyBudgetFromSupabase(),

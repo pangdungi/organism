@@ -44,8 +44,12 @@ import { pullKpiTabFromCloud } from "./utils/kpiTabCloudRefresh.js";
 import { pullTimeLedgerTabEnterFromCloud } from "./utils/timeLedgerCloudRefresh.js";
 import {
   attachTimeLedgerTasksSaveListener,
-  syncTimeLedgerTasksToSupabase,
+  pullTimeLedgerTasksFromSupabase,
 } from "./utils/timeLedgerTasksSupabase.js";
+import {
+  getFullTaskOptions,
+  saveLedgerTaskList,
+} from "./utils/timeTaskOptionsModel.js";
 import {
   pullTimeDailyBudgetFromSupabase,
   flushAllPendingTimeDailyBudgetSync,
@@ -170,7 +174,8 @@ function persistActiveTabId(tabId) {
 
 /**
  * 상위 탭 전환(및 앱 최초 진입 시 현재 탭)에서 서버와 맞춤.
- * 시간가계부 **과제 마스터**(time_ledger_tasks)는 여기서 pull 하지 않음 — 시간기록/수정/과제설정 모달 열 때만.
+ * 시간가계부 **과제 목록**(time_ledger_tasks) pull: (1) 앱 상위 **시간가계부 탭** 클릭 시 `App.js`에서만
+ * (2) 시간가계부 안 **과제설정** 모달 열 때 `Time.js`에서만.
  * @param {{ fromBoot?: boolean }} [opts] — true면 세션에 남은 시간가계부 날짜 필터를 유지(복원 진입).
  */
 async function pullDataForActiveTab(tabId, opts = {}) {
@@ -179,9 +184,6 @@ async function pullDataForActiveTab(tabId, opts = {}) {
     case "home": {
       await pullCalendarSectionTasksFromSupabase({ reason: "app_tab_home" });
       const ymd = timeLedgerLocalTodayYmd();
-      try {
-        await syncTimeLedgerTasksToSupabase();
-      } catch (_) {}
       await Promise.all([
         pullTimeLedgerEntriesForDateRange(ymd, ymd),
         pullTimeDailyBudgetFromSupabase(),
@@ -196,9 +198,6 @@ async function pullDataForActiveTab(tabId, opts = {}) {
       /* 1일 뷰「오늘/어제 실제」: 어제~오늘 entry + 과제명(시간 탭 미방문 시에도 맞춤) */
       const yEnd = timeLedgerLocalTodayYmd();
       const yStart = timeLedgerLocalYesterdayYmd();
-      try {
-        await syncTimeLedgerTasksToSupabase();
-      } catch (_) {}
       await Promise.all([
         pullTimeLedgerEntriesForDateRange(yStart, yEnd),
         pullTimeDailyBudgetFromSupabase(),
@@ -208,6 +207,9 @@ async function pullDataForActiveTab(tabId, opts = {}) {
     case "time":
       if (!fromBoot) resetTimeLedgerSessionFilterToToday();
       await pullTimeLedgerTabEnterFromCloud();
+      try {
+        await pullTimeLedgerTasksFromSupabase();
+      } catch (_) {}
       break;
     case "dream":
     case "health":
@@ -262,17 +264,15 @@ function migrateRemoveRoutineTasks() {
       localStorage.setItem(ROUTINE_REMOVED_KEY, "1");
       return;
     }
-    const raw = localStorage.getItem("time_task_options");
-    if (raw) {
-      const opts = JSON.parse(raw);
-      if (Array.isArray(opts)) {
-        const filtered = opts.filter((o) => {
-          const name = (typeof o === "string" ? o : o?.name || "").trim();
-          return !routineNames.has(name);
-        });
-        localStorage.setItem("time_task_options", JSON.stringify(filtered));
-      }
-    }
+    const opts = getFullTaskOptions();
+    const filtered = opts.filter((o) => {
+      const name = (o?.name || "").trim();
+      return !routineNames.has(name);
+    });
+    saveLedgerTaskList(filtered, {
+      bumpPullSkip: true,
+      scheduleSyncPush: false,
+    });
     localStorage.removeItem("routine-track-list");
     localStorage.setItem(ROUTINE_REMOVED_KEY, "1");
   } catch (_) {}
@@ -299,6 +299,14 @@ export async function mountApp(container) {
   }
   initPushReminderInAppPopup();
   migrateRemoveRoutineTasks();
+  try {
+    if (supabase) {
+      const {
+        data: { session } = {},
+      } = await supabase.auth.getSession();
+      if (session?.user?.id) await pullTimeLedgerTasksFromSupabase();
+    }
+  } catch (_) {}
   /* 가계부 미방문 시에도 시간가계부 소비 저장 → Supabase 동기화 이벤트 수신 */
   attachAssetExpenseTransactionsSaveListener();
   attachHealthKpiMapSaveListener();

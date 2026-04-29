@@ -82,8 +82,16 @@ export function getKpiSyncedTaskNames() {
       if (!raw) return;
       const parsed = JSON.parse(raw);
       const sync = parsed?.kpiTaskSync || {};
-      Object.values(sync).forEach((name) => {
-        if (name && typeof name === "string") names.add(String(name).trim());
+      const kpis = parsed?.kpis || [];
+      const byId = new Map(
+        kpis.map((k) => [String(k?.id || "").trim(), k]).filter(([id]) => id),
+      );
+      Object.keys(sync).forEach((kid) => {
+        const id = String(kid || "").trim();
+        if (!id) return;
+        const row = byId.get(id);
+        const n = (row && String(row.name || "").trim()) || String(sync[kid] || "").trim();
+        if (n) names.add(n);
       });
     } catch (_) {}
   });

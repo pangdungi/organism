@@ -42,7 +42,6 @@ import {
 import {
   attachTimeLedgerTasksSaveListener,
   pullTimeLedgerTasksFromSupabase,
-  syncTimeLedgerTasksToSupabase,
 } from "../utils/timeLedgerTasksSupabase.js";
 import {
   getStoredImproveNotes,
@@ -2976,13 +2975,13 @@ function createTaskNameInput(initialValue, onTaskSelect, tabSignal) {
         onTaskSelect?.(name);
       });
       if (delBtn) {
-        delBtn.addEventListener("click", (e) => {
+        delBtn.addEventListener("click", async (e) => {
           e.stopPropagation();
           if (getLockedTaskNames().has(name)) {
             alert(MSG_TIME_TASK_KPI_LINKED);
             return;
           }
-          if (!removeTaskOption(name)) {
+          if (!(await removeTaskOption(name))) {
             alert(MSG_TIME_TASK_KPI_LINKED);
             return;
           }
@@ -6551,13 +6550,10 @@ export function render() {
     return `${dateStr}T${latestHhMm}`;
   }
 
-  /** 과제 기록·과제 설정·과제 추가 모달: (1) 직전 저장분 upsert (2) 서버 기준 pull. pull만 하면 방금 추가한 행이 사라질 수 있어 순서 고정. */
-  async function pullServerTaskListForModal() {
+  /** 과제설정 모달: 서버 과제 목록만 pull (업서트 없음). 시간 탭 진입 시에도 tabEnter 에서 pull. */
+  async function pullTimeLedgerTasksWhenSetupModalOpens() {
     try {
-      await syncTimeLedgerTasksToSupabase();
-    } catch (_) {}
-    try {
-      await pullTimeLedgerTasksFromSupabase({ force: true });
+      await pullTimeLedgerTasksFromSupabase();
     } catch (_) {}
     try {
       getFullTaskOptions();
@@ -6584,9 +6580,7 @@ export function render() {
 
   function openTaskLogModal(addContext) {
     openTaskLogModalAfterPull(addContext);
-    void pullServerTaskListForModal().then(() => {
-      afterTaskListSyncForTaskLogAddModal();
-    });
+    afterTaskListSyncForTaskLogAddModal();
   }
 
   function openTaskLogModalAfterPull(addContext) {
@@ -6775,13 +6769,10 @@ export function render() {
     }
     refreshKpiTodosInLogModal(tnSync);
     const lockedName = (data.taskName || "").trim();
-    void pullServerTaskListForModal().then(() => {
-      if (!el.isConnected || taskLogModal.hidden) return;
-      if (taskLogTaskDropdown && lockedName) {
-        taskLogTaskDropdown._setValue?.(lockedName);
-        refreshKpiTodosInLogModal(lockedName);
-      }
-    });
+    if (taskLogTaskDropdown && lockedName) {
+      taskLogTaskDropdown._setValue?.(lockedName);
+      refreshKpiTodosInLogModal(lockedName);
+    }
   }
 
   function closeTaskLogModal() {
@@ -7413,8 +7404,7 @@ export function render() {
     const name = (addTaskNameInput.value || "").trim();
     addTaskSubmitBtn.disabled = !(name && selectedCategory);
   }
-  async function openAddTaskModal(editTask) {
-    await pullServerTaskListForModal();
+  function openAddTaskModal(editTask) {
     if (!el.isConnected) return;
     addTaskModal.hidden = false;
     addTaskModal.style.zIndex = "1001";
@@ -7538,8 +7528,8 @@ export function render() {
         productivity: prod,
         흐름: [
           "1) addTaskOptionFull (localStorage: time_task_options)",
-          "2) saveMergedList + notifySaved(scheduleSyncPush)",
-          "3) syncTimeLedgerTasksToSupabase → public.time_ledger_tasks upsert",
+          "2) saveMergedList + 행 단위 upsertTimeLedgerTaskRowsFromLocalByIds",
+          "3) public.time_ledger_tasks (해당 id 만)",
         ],
       });
       const result = addTaskOptionFull({
@@ -7556,7 +7546,7 @@ export function render() {
     closeAddTaskModal();
   });
 
-  addTaskDeleteBtn?.addEventListener("click", () => {
+  addTaskDeleteBtn?.addEventListener("click", async () => {
     const editName = (addTaskNameInput.dataset.editName || "").trim();
     if (!editName) {
       console.log("[lp-time-task-modal] 삭제 스킵: editName 없음");
@@ -7568,7 +7558,7 @@ export function render() {
       return;
     }
     console.log("[lp-time-task-modal] 삭제 클릭", { editName });
-    if (!removeTaskOption(editName)) {
+    if (!(await removeTaskOption(editName))) {
       console.log("[lp-time-task-modal] removeTaskOption 실패(잠금 등)", {
         editName,
       });
@@ -7602,7 +7592,7 @@ export function render() {
 
   taskSetupBtn?.addEventListener("click", () => {
     void (async () => {
-      await pullServerTaskListForModal();
+      await pullTimeLedgerTasksWhenSetupModalOpens();
       if (!el.isConnected) return;
       taskSetupModal.hidden = false;
       document.body.style.overflow = "hidden";
@@ -9954,7 +9944,7 @@ export function render() {
     updateTotal();
     syncMobileTabsSummaryDisplay();
     syncTimeFilterDateLabels();
-    /* 상위 시간가계부 탭 진입 시 App 에서 pull 함. 내부「시간 기록」「보고서」클릭 시에만 여기서 한 번 더 pull */
+    /* 상위 시간가계부 탭은 App에서 기록·예산 pull + 과제 목록 pull. 내부「시간 기록」「보고서」는 기록·예산·노트만(과제 pull 없음). */
     if (userSubTabClick && (view === "all" || view === "audit")) {
       const gen = (el._lpTimeSubTabPullGen =
         (el._lpTimeSubTabPullGen || 0) + 1);

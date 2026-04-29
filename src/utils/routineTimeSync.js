@@ -5,35 +5,28 @@
  * - 수정/삭제는 루틴/해빗트랙커에서만 가능
  */
 
-const TASK_OPTIONS_KEY = "time_task_options";
+import {
+  getFullTaskOptions,
+  saveLedgerTaskList,
+  isUuid,
+} from "./timeTaskOptionsModel.js";
+
 const ROUTINE_STORAGE_KEY = "routine-track-list";
 
-function getFullTaskOptions() {
-  try {
-    const raw = localStorage.getItem(TASK_OPTIONS_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map((o) =>
-          typeof o === "string"
-            ? { name: o, category: "", productivity: "productive", memo: "" }
-            : {
-                name: o.name || "",
-                category: o.category || "",
-                productivity: o.productivity || "productive",
-                memo: o.memo || "",
-              }
-        );
-      }
-    }
-  } catch (_) {}
-  return [];
-}
-
-function saveTaskOptions(opts) {
-  try {
-    localStorage.setItem(TASK_OPTIONS_KEY, JSON.stringify(opts));
-  } catch (_) {}
+function saveRoutineTimeTaskList(next, prev) {
+  const prevIds = new Set(
+    (prev || [])
+      .map((o) => String(o?.id || "").trim())
+      .filter((id) => isUuid(id)),
+  );
+  const upsertIds = next
+    .map((o) => String(o?.id || "").trim())
+    .filter((id) => isUuid(id) && !prevIds.has(id));
+  saveLedgerTaskList(next, {
+    bumpPullSkip: true,
+    scheduleSyncPush: upsertIds.length > 0,
+    upsertTaskIds: upsertIds.length ? upsertIds : null,
+  });
 }
 
 /**
@@ -69,6 +62,7 @@ export function syncRoutineToTimeTasks(routine) {
       category: "happiness",
       productivity: "productive",
       memo: "",
+      kpiId: "",
       id: newId(),
     });
     existingNames.add(mainName);
@@ -84,6 +78,7 @@ export function syncRoutineToTimeTasks(routine) {
         category: "happiness",
         productivity: "productive",
         memo: "",
+        kpiId: "",
         id: newId(),
       });
       existingNames.add(fullName);
@@ -91,7 +86,8 @@ export function syncRoutineToTimeTasks(routine) {
   });
 
   if (toAdd.length > 0 || filtered.length !== opts.length) {
-    saveTaskOptions([...toAdd, ...filtered]);
+    const next = [...toAdd, ...filtered];
+    saveRoutineTimeTaskList(next, opts);
   }
 }
 
@@ -112,7 +108,10 @@ export function removeRoutineFromTimeTasks(routine) {
 
   const filtered = opts.filter((o) => !toRemove.has(o.name));
   if (filtered.length !== opts.length) {
-    saveTaskOptions(filtered);
+    saveLedgerTaskList(filtered, {
+      bumpPullSkip: true,
+      scheduleSyncPush: false,
+    });
   }
 }
 
@@ -139,7 +138,16 @@ export function syncRoutineRenameToTimeTasks(oldRoutine, newRoutine) {
     }
     return o;
   });
-  if (changed) saveTaskOptions(newOpts);
+  if (changed) {
+    const upsertIds = newOpts
+      .map((o) => String(o.id || "").trim())
+      .filter((id) => isUuid(id));
+    saveLedgerTaskList(newOpts, {
+      bumpPullSkip: true,
+      scheduleSyncPush: upsertIds.length > 0,
+      upsertTaskIds: upsertIds.length ? upsertIds : null,
+    });
+  }
 }
 
 /**

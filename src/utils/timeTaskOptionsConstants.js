@@ -163,18 +163,6 @@ export const FIXED_NONPRODUCTIVE_TASKS = [
   },
 ];
 
-export const REPLACED_TASK_NAMES = ["감정적이기"];
-
-/** 내장 과제 표시명 변경 시 구 이름 → 로컬 목록·시간기록 이전 */
-export const BUILTIN_NAME_MIGRATIONS = [
-  {
-    from: "나갈 준비",
-    to: "외출 준비",
-    productivity: "productive",
-    category: "happiness",
-  },
-];
-
 export const TASKS_LOCKED_FOR_EDIT = [NAP_TASK_NAME];
 
 export const DEFAULT_TASK_OPTIONS = [

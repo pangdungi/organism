@@ -7,6 +7,7 @@ import {
   kpiTimeTaskAdd,
   kpiTimeTaskRemove,
   kpiTimeTaskRename,
+  getFullTaskOptions,
 } from "../utils/timeTaskOptionsModel.js";
 import {
   HAPPINESS_KPI_MAP_STORAGE_KEY,
@@ -49,7 +50,6 @@ import { confirmKpiTodoDelete } from "../utils/confirmModal.js";
 import { KPI_TAB_EDIT_PENCIL_HTML } from "../utils/kpiTabNameEditIcon.js";
 import { sortKpiLogsNewestFirst } from "../utils/kpiLogsSort.js";
 
-const TIME_TASK_OPTIONS_KEY = "time_task_options";
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
 
 function defaultDeletedRefs() {
@@ -100,17 +100,6 @@ function loadHappinessMap() {
   };
 }
 
-function getTimeTaskOptionsRaw() {
-  try {
-    const raw = localStorage.getItem(TIME_TASK_OPTIONS_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
-    }
-  } catch (_) {}
-  return null;
-}
-
 function getTaskName(o) {
   return typeof o === "string" ? o : o?.name || "";
 }
@@ -121,8 +110,7 @@ function syncKpiToTimeTask(kpi, action, oldName) {
   if (action === "add") {
     const name = (kpi.name || "").trim();
     if (!name) return;
-    const raw = getTimeTaskOptionsRaw();
-    const opts = raw || [];
+    const opts = getFullTaskOptions();
     if (opts.some((o) => getTaskName(o) === name)) return;
     data.kpiTaskSync[kpi.id] = name;
     saveHappinessMap(data);
@@ -136,12 +124,11 @@ function syncKpiToTimeTask(kpi, action, oldName) {
     }
   } else if (action === "update" && oldName) {
     const newName = (kpi.name || "").trim();
-    const prevName = data.kpiTaskSync[kpi.id];
-    if (prevName && newName && prevName !== newName) {
-      data.kpiTaskSync[kpi.id] = newName;
-      saveHappinessMap(data);
-      kpiTimeTaskRename(kpi, oldName);
-    }
+    const oldNm = (oldName || "").trim();
+    if (!newName || oldNm === newName) return;
+    data.kpiTaskSync[kpi.id] = newName;
+    saveHappinessMap(data);
+    void kpiTimeTaskRename(kpi, oldNm);
   }
 }
 
