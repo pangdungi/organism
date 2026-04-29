@@ -6259,6 +6259,27 @@ function scheduleAnnualDayExpandHide() {
   }, 220);
 }
 
+/** 날짜 칸 확장 버블(연간 호버 등): body에 붙음 — 캘린더 DOM만 지우면 mouseleave 없이 고아가 됨 */
+export function dismissCalendarDayExpandUI() {
+  cancelAnnualDayExpandHideTimer();
+  try {
+    _annualDayExpandClose?.();
+  } catch (_) {}
+  _annualDayExpandClose = null;
+  if (_calendarDayExpandOutsideHandler) {
+    try {
+      document.removeEventListener("click", _calendarDayExpandOutsideHandler);
+    } catch (_) {}
+    _calendarDayExpandOutsideHandler = null;
+  }
+  document
+    .querySelectorAll(".calendar-day-expand-bubble")
+    .forEach((el) => el.remove());
+  document
+    .querySelectorAll(".calendar-day-expand-overlay")
+    .forEach((el) => el.remove());
+}
+
 /** 연간 뷰: 왼쪽 월 라벨, 오른쪽 해당 월 날짜 셀 한 행 (Year Planner 구조), 요일 미표시, 호버 시 할일 목록 버블 */
 function renderAnnualView(tabsElement) {
   const wrap = document.createElement("div");
@@ -6514,6 +6535,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
   async function renderSubView(subViewId, subOpts = {}) {
     const skipPull = !!subOpts.skipPull;
     activeSubViewId = subViewId;
+    dismissCalendarDayExpandUI();
     const gen = ++_nestedSubViewGen;
     dateDebug("renderSubView: saving before switch", {
       subViewId,
@@ -6608,6 +6630,7 @@ export function renderMobileScheduleCalendar() {
   contentWrap.className = "calendar-content-wrap";
 
   function mountCalendarSubViews() {
+    dismissCalendarDayExpandUI();
     contentWrap.innerHTML = "";
     contentWrap.appendChild(
       createCalendarSubViewRoot(null, {
@@ -7231,6 +7254,9 @@ export function render() {
   async function renderContent(view, opts = {}) {
     if (currentView === "1day" && view !== "1day") {
       flushAllPendingTimeDailyBudgetSync();
+    }
+    if (view !== currentView) {
+      dismissCalendarDayExpandUI();
     }
     const skipSubtabPull = !!opts.skipSubtabPull;
     const onlySaveWhenFullTodoList =

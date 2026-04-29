@@ -7,6 +7,7 @@ import { getRoutineSyncedTaskNames } from "./utils/routineTimeSync.js";
 import {
   render as renderCalendar,
   renderMobileScheduleCalendar,
+  dismissCalendarDayExpandUI,
 } from "./views/Calendar.js";
 import { saveTodoListBeforeUnmount } from "./views/TodoList.js";
 import { render as renderTime } from "./views/Time.js";
@@ -793,6 +794,7 @@ export async function mountApp(container) {
     if (!opts.skipTodoSaveBeforeUnmount) {
       saveTodoListBeforeUnmount(p);
     }
+    dismissCalendarDayExpandUI();
     const prevRoot = p.firstElementChild;
     if (prevRoot?._lpTabAbortController) {
       try {
