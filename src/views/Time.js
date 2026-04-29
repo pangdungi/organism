@@ -1560,6 +1560,14 @@ function formatDateTimeInput(val) {
     const [, y, mo, d, h, min] = m3;
     return `${y}/${mo}/${d} ${h}:${min}`;
   }
+  /* 숨은값·외부 데이터에 2026-4-5T9:05 식 한 자리 월/일·시가 섞인 경우 */
+  const m3lax = s.match(
+    /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})T(\d{1,2}):(\d{2})/,
+  );
+  if (m3lax) {
+    const [, y, mo, d, h, min] = m3lax;
+    return `${y}/${String(mo).padStart(2, "0")}/${String(d).padStart(2, "0")} ${String(h).padStart(2, "0")}:${min}`;
+  }
   return "";
 }
 
@@ -4648,6 +4656,7 @@ export function render() {
               <button type="button" class="time-task-log-time-adjust-btn" data-delta="-15">−15</button>
               <button type="button" class="time-task-log-time-adjust-btn" data-delta="15">+15</button>
               <button type="button" class="time-task-log-time-adjust-btn" data-delta="30">+30</button>
+              <button type="button" class="time-task-log-time-adjust-btn" data-day-end="true">하루끝</button>
             </div>
             <input type="hidden" class="time-task-log-start" />
             <input type="hidden" class="time-task-log-end" />
@@ -5138,6 +5147,9 @@ export function render() {
     input.setSelectionRange(start + pasted.length, start + pasted.length);
   };
 
+  const taskLogFocusOutTargetIsTimeAdjustBtn = (ev) =>
+    !!ev.relatedTarget?.closest?.(".time-task-log-time-adjust-btns");
+
   [taskLogDateStart, taskLogTimeStart].forEach((el) => {
     el?.addEventListener("change", () => {
       syncStartToHidden();
@@ -5145,7 +5157,8 @@ export function render() {
       const tn = taskLogTaskDropdown?._getValue?.() || "";
       if (tn) refreshKpiTodosInLogModal(tn);
     });
-    el?.addEventListener("blur", () => {
+    el?.addEventListener("focusout", (ev) => {
+      const skipEndSync = taskLogFocusOutTargetIsTimeAdjustBtn(ev);
       if (el === taskLogTimeStart) {
         const preformatted =
           autoFormatDigitsToHhMm(taskLogTimeStart.value) ||
@@ -5153,14 +5166,15 @@ export function render() {
         taskLogTimeStart.value = normalizeHhMm(preformatted) || preformatted;
       }
       syncStartToHidden();
-      syncEndToHidden();
+      if (!skipEndSync) syncEndToHidden();
     });
   });
   taskLogTimeStart?.addEventListener("keydown", restrictToTimeChars);
   taskLogTimeStart?.addEventListener("paste", filterPastedTime);
 
   taskLogTimeEnd?.addEventListener("change", syncEndToHidden);
-  taskLogTimeEnd?.addEventListener("blur", () => {
+  taskLogTimeEnd?.addEventListener("focusout", (ev) => {
+    if (taskLogFocusOutTargetIsTimeAdjustBtn(ev)) return;
     const preformatted =
       autoFormatDigitsToHhMm(taskLogTimeEnd.value) || taskLogTimeEnd.value;
     taskLogTimeEnd.value = normalizeHhMm(preformatted) || preformatted;
@@ -5185,6 +5199,10 @@ export function render() {
   taskLogModal
     .querySelectorAll(".time-task-log-time-adjust-btn")
     .forEach((btn) => {
+      /* 데스크탑: 버튼으로 포커스가 빠지며 blur→syncEndToHidden이 먼저 돌아 마감 hidden이 비는 순서 경합 방지 */
+      btn.addEventListener("mousedown", (e) => {
+        if (e.button === 0) e.preventDefault();
+      });
       btn.addEventListener("click", () => {
         const endVal = (taskLogTimeEnd?.value || "").trim();
         const endHasTime = endVal && endVal.match(/\d{1,2}:\d{2}/);
@@ -5223,6 +5241,12 @@ export function render() {
             if (taskLogTimeEnd) taskLogTimeEnd.value = latest;
             syncEndToHidden();
           }
+          return;
+        }
+
+        if (btn.dataset.dayEnd === "true") {
+          if (taskLogTimeEnd) taskLogTimeEnd.value = "23:59";
+          syncEndToHidden();
           return;
         }
 
@@ -6790,6 +6814,13 @@ export function render() {
     }
     syncStartToHidden();
     syncEndToHidden();
+    const endVisNorm = normalizeHhMm(
+      (taskLogTimeEnd?.value || "").trim(),
+    ).trim();
+    const endHid = (taskLogEndInput?.value || "").trim();
+    if (endVisNorm && /^\d{1,2}:\d{2}$/.test(endVisNorm) && !endHid) {
+      syncEndToHidden();
+    }
   }
 
   taskLogSubmitBtn.addEventListener("click", () => {
@@ -6806,7 +6837,17 @@ export function render() {
 
     const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
     const startRaw = (taskLogStartInput.value || "").trim();
-    const endRaw = (taskLogEndInput.value || "").trim();
+    let endRaw = (taskLogEndInput.value || "").trim();
+    const endVisibleGuard =
+      normalizeHhMm((taskLogTimeEnd?.value || "").trim()) || "";
+    if (
+      !endRaw &&
+      endVisibleGuard &&
+      /^\d{1,2}:\d{2}$/.test(endVisibleGuard)
+    ) {
+      syncEndToHidden();
+      endRaw = (taskLogEndInput.value || "").trim();
+    }
     if (!taskName || !startRaw) {
       alert("과제 선택과 시작 시간을 입력해 주세요.");
       return;
@@ -6815,6 +6856,17 @@ export function render() {
     let endTime = formatDateTimeInput(endRaw) || endRaw;
     if (startTime && endTime) {
       endTime = mergeEndTimeWithStartDate(startTime, endTime) || endTime;
+    }
+    if (
+      endVisibleGuard &&
+      /^\d{1,2}:\d{2}$/.test(endVisibleGuard) &&
+      !String(endTime || "").trim()
+    ) {
+      showToast(
+        "마감 시간이 반영되지 않았습니다. 「지금」을 한 번 더 누른 뒤 저장해 주세요.",
+        "warn",
+      );
+      return;
     }
     const feedback = (taskLogFeedbackInput?.value || "").trim();
     const todoTags = taskLogTodoAddedItems
