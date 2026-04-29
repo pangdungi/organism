@@ -1516,6 +1516,16 @@ function showTodoTaskModal(options) {
       startInput.max = dueVal;
       dueInput.min = startVal;
       dueInput.max = "";
+    } else {
+      /* 시작만 비운 경우 등: 이전 세션의 min/max가 남으면 Safari 등에서 값·유효성이 꼬일 수 있음 */
+      if (startInput) {
+        startInput.min = "";
+        startInput.max = "";
+      }
+      if (dueInput) {
+        dueInput.min = "";
+        dueInput.max = "";
+      }
     }
     let reminderTimeVal = (reminderTimeInput?.value || "").trim();
     const digits = reminderTimeVal.replace(/\D/g, "");
@@ -1545,8 +1555,14 @@ function showTodoTaskModal(options) {
   }
 
   confirmBtn?.addEventListener("click", () => {
-    const payload = { ...taskData, ...gatherForm() };
-    onSave?.(payload);
+    try {
+      const payload = { ...taskData, ...gatherForm() };
+      onSave?.(payload);
+    } catch (err) {
+      console.error("todo task modal onSave", err);
+      alert("저장 중 문제가 생겼습니다. 잠시 후 다시 시도해 주세요.");
+      return;
+    }
     close();
   });
   cancelBtn?.addEventListener("click", close);
