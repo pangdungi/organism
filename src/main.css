@@ -34353,6 +34353,25 @@ body.kpi-resizing {
   padding-left: 0.5rem;
   border-left: 0.1875rem solid var(--line-l2-color);
   color: #1f2937 !important;
+  /* 전역 .time-tag-pill { white-space: nowrap } 무력화 — 좁은 폭에서 옆 열 침범 방지 */
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  display: block;
+  box-sizing: border-box;
+}
+
+/* table-layout:fixed + col 폭 준수해 과제명 셀이 늘어나지 않게 */
+.calendar-1day-budget-column
+  .time-daily-budget-table
+  tbody
+  td:first-child,
+.time-daily-budget-four-panels
+  .time-daily-budget-table
+  tbody
+  td:first-child {
+  max-width: 0;
 }
 .calendar-1day-budget-column
   .time-daily-budget-table
