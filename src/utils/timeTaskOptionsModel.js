@@ -62,21 +62,44 @@ function patchKpiLinkedTasksFromKpiMaps() {
       seenKpi.add(kid);
       next.push(row);
     }
+    const nameByKpiKeeper = new Map();
+    for (const row of next) {
+      const kid = String(row.kpiId || "").trim();
+      if (!kid) continue;
+      const n = (row.name || "").trim();
+      if (n) nameByKpiKeeper.set(n, row);
+    }
+    const nextSansNameDup = [];
+    for (const row of next) {
+      const kid = String(row.kpiId || "").trim();
+      if (kid) {
+        nextSansNameDup.push(row);
+        continue;
+      }
+      const n = (row.name || "").trim();
+      if (n && nameByKpiKeeper.has(n)) {
+        const oid = String(row.id || "").trim();
+        const keepId = String(nameByKpiKeeper.get(n).id || "").trim();
+        if (isUuid(oid) && oid !== keepId) dupIds.push(oid);
+        continue;
+      }
+      nextSansNameDup.push(row);
+    }
     if (
       dupIds.length === 0 &&
-      taskRowsIdentitySig(next) === taskRowsIdentitySig(_ledgerTasksMem)
+      taskRowsIdentitySig(nextSansNameDup) === taskRowsIdentitySig(_ledgerTasksMem)
     ) {
       return;
     }
     const upsertIds = [
       ...new Set(
-        next
+        nextSansNameDup
           .filter((o) => String(o.kpiId || "").trim())
           .map((o) => String(o.id || "").trim())
           .filter((id) => isUuid(id)),
       ),
     ];
-    saveLedgerTaskList(next, {
+    saveLedgerTaskList(nextSansNameDup, {
       bumpPullSkip: true,
       scheduleSyncPush: upsertIds.length > 0,
       upsertTaskIds: upsertIds.length ? upsertIds : null,
@@ -848,16 +871,17 @@ export function applyTimeLedgerTasksFromServer(
     const lid = String(loc.id || "").trim();
     if (!lid || !isUuid(lid) || builtInIdSet.has(lid) || serverIdSet.has(lid))
       continue;
+    const locKid = String(loc.kpiId || "").trim();
     const locName0 = (loc.name || "").trim();
     const locCat0 = (loc.category || "").trim();
-    const mergedLoc = resolveFromKpiLink(kid, locName0, locCat0);
+    const mergedLoc = resolveFromKpiLink(locKid, locName0, locCat0);
     out.push({
       id: lid,
       name: mergedLoc.name,
       category: mergedLoc.category,
       productivity: normalizeProductivity(loc.productivity),
       memo: (loc.memo || "").trim(),
-      kpiId: kid,
+      kpiId: locKid,
     });
   }
   const order = new Map(
@@ -879,8 +903,32 @@ export function applyTimeLedgerTasksFromServer(
     }
     deduped.push(r);
   }
-  const upsertSyncIds = [];
+  /** kpi_id 있는 행(트리거 등)과 동일 표시명인 옛 행(kpi_id 빈 클라 산물) 제거 */
+  const nameByKpiKeeper = new Map();
   for (const r of deduped) {
+    const kid = String(r.kpiId || "").trim();
+    if (!kid) continue;
+    const n = (r.name || "").trim();
+    if (n) nameByKpiKeeper.set(n, r);
+  }
+  const dedupedSansOrphanNameDup = [];
+  for (const r of deduped) {
+    const kid = String(r.kpiId || "").trim();
+    if (kid) {
+      dedupedSansOrphanNameDup.push(r);
+      continue;
+    }
+    const n = (r.name || "").trim();
+    if (n && nameByKpiKeeper.has(n)) {
+      const rid = String(r.id || "").trim();
+      const keepId = String(nameByKpiKeeper.get(n).id || "").trim();
+      if (isUuid(rid) && rid !== keepId) dupIdsToDelete.push(rid);
+      continue;
+    }
+    dedupedSansOrphanNameDup.push(r);
+  }
+  const upsertSyncIds = [];
+  for (const r of dedupedSansOrphanNameDup) {
     const id = String(r.id || "").trim();
     if (!isUuid(id) || builtInIdSet.has(id)) continue;
     const sr = byId.get(id);
@@ -903,18 +951,18 @@ export function applyTimeLedgerTasksFromServer(
       ),
     );
   }
-  saveMergedList(deduped, {
+  saveMergedList(dedupedSansOrphanNameDup, {
     bumpPullSkip: false,
     scheduleSyncPush: upsertSyncIds.length > 0,
     upsertTaskIds: upsertSyncIds.length ? upsertSyncIds : null,
   });
   try {
     if (typeof console !== "undefined" && console.log) {
-      const customOut = deduped.filter(
+      const customOut = dedupedSansOrphanNameDup.filter(
         (o) => !builtInIdSet.has(String(o.id || "").trim()),
       );
       console.log("[lp-time-ledger-tasks] trace:apply 끝·메모리 저장 후", {
-        mergedLen: deduped.length,
+        mergedLen: dedupedSansOrphanNameDup.length,
         nonBuiltinLen: customOut.length,
         dupKpiRowsQueuedDelete: dupIdsToDelete.length,
         nonBuiltinNameSample: customOut.slice(0, 12).map((o) =>

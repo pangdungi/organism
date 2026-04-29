@@ -633,6 +633,18 @@ const EMOTION_LIST_NEGATIVE = [
   "원망",
 ];
 
+function collectKpiLinkedNamesFromFullTaskOptions() {
+  const s = new Set();
+  try {
+    for (const o of getFullTaskOptions()) {
+      const kid = String(o.kpiId || "").trim();
+      const n = String(o.name || "").trim();
+      if (kid && n) s.add(n);
+    }
+  } catch (_) {}
+  return s;
+}
+
 function getLockedTaskNames() {
   return new Set([
     ...TTC.FIXED_OTHER_TASKS.map((t) => t.name),
@@ -640,23 +652,23 @@ function getLockedTaskNames() {
     ...TTC.FIXED_NONPRODUCTIVE_TASKS.map((t) => t.name),
     ...TTC.TASKS_LOCKED_FOR_EDIT,
     ...getKpiSyncedTaskNames(),
+    ...collectKpiLinkedNamesFromFullTaskOptions(),
   ]);
 }
 
 /** 과제 설정 모달에서 수정/삭제 버튼 숨김 대상 (고정 과제 + KPI 연동) */
 function getLockedForSetupDisplay() {
-  return new Set([
-    ...TTC.FIXED_OTHER_TASKS.map((t) => t.name),
-    ...TTC.FIXED_PRODUCTIVE_TASKS.map((t) => t.name),
-    ...TTC.FIXED_NONPRODUCTIVE_TASKS.map((t) => t.name),
-    ...TTC.TASKS_LOCKED_FOR_EDIT,
-    ...getKpiSyncedTaskNames(),
-  ]);
+  return getLockedTaskNames();
+}
+
+/** KPI 맵에서 연동된 과제 — 서버 time_ledger_tasks.kpi_id 기준 */
+function isTimeTaskKpiLinked(task) {
+  return Boolean(task && String(task.kpiId || "").trim());
 }
 
 /** KPI에서 만든 과제 — 시간가계부 과제 설정에서 삭제 불가 안내 */
 const MSG_TIME_TASK_KPI_LINKED =
-  "KPI와 연결된 과제입니다. 시간가계부에서는 삭제할 수 없고, KPI 화면에서 해당 KPI를 삭제하면 과제 목록에서도 함께 제거됩니다.";
+  "KPI와 연결된 과제입니다. 과제 설정에서는 삭제할 수 없습니다. 꿈·건강·행복·부수입 등 KPI 화면에서 해당 KPI를 삭제하면 서버와 과제 목록에서 함께 제거됩니다.";
 
 const PRODUCTIVE_CATEGORIES = [
   { value: "dream", label: "꿈", color: "cat-dream" },
@@ -4535,10 +4547,18 @@ export function render() {
           ? null
           : new Set(selectedTaskNamesForFilter);
       taskSelectList.innerHTML = names
-        .map(
-          (name) =>
-            `<label class="time-task-select-item"><input type="checkbox" class="time-task-select-cb" data-task-name="${String(name).replace(/"/g, "&quot;")}" ${selectedSet === null || selectedSet.has(name) ? "checked" : ""} /><span>${String(name).replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span></label>`,
-        )
+        .map((name) => {
+          const attrEsc = String(name).replace(/"/g, "&quot;");
+          const nameHtml = String(name)
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+          const opt = getTaskOptionByName(name);
+          const kpiMark =
+            opt && isTimeTaskKpiLinked(opt)
+              ? '<span class="time-task-kpi-badge" title="KPI(맵)에서 연결된 과제입니다">KPI</span>'
+              : "";
+          return `<label class="time-task-select-item"><input type="checkbox" class="time-task-select-cb" data-task-name="${attrEsc}" ${selectedSet === null || selectedSet.has(name) ? "checked" : ""} /><span class="time-task-select-item-text"><span class="time-task-select-item-name-part">${nameHtml}</span>${kpiMark}</span></label>`;
+        })
         .join("");
       if (names.length === 0)
         taskSelectList.innerHTML =
@@ -5470,11 +5490,21 @@ export function render() {
         const bar = document.createElement("span");
         bar.className = barClass;
         bar.setAttribute("aria-hidden", "true");
+        const textWrap = document.createElement("span");
+        textWrap.className = "time-task-log-task-dropdown-option-text";
         const label = document.createElement("span");
         label.className = "time-task-log-task-dropdown-option-label";
         label.textContent = t.name || "";
+        textWrap.appendChild(label);
+        if (isTimeTaskKpiLinked(t)) {
+          const kb = document.createElement("span");
+          kb.className = "time-task-kpi-badge";
+          kb.textContent = "KPI";
+          kb.title = "KPI(맵)에서 연결된 과제입니다";
+          textWrap.appendChild(kb);
+        }
         row.appendChild(bar);
-        row.appendChild(label);
+        row.appendChild(textWrap);
         const closePanelAndSelect = () => {
           value = t.name || "";
           trigger.textContent = value || "과제를 선택하세요";
@@ -7351,7 +7381,8 @@ export function render() {
     function renderList(container, list) {
       container.innerHTML = "";
       list.forEach((t) => {
-        const isLocked = lockedForDisplay.has(t.name);
+        const fromKpi = isTimeTaskKpiLinked(t);
+        const isLocked = fromKpi || lockedForDisplay.has(t.name);
         const catLabel = getCatLabel(t.category);
         const row = document.createElement("div");
         const isRowSelected =
@@ -7363,15 +7394,22 @@ export function render() {
             ? " time-task-setup-item--locked"
             : " time-task-setup-item--editable") +
           (isRowSelected ? " time-task-setup-item--selected" : "");
+        const nameEsc = (t.name || "").replace(/</g, "&lt;");
+        const kpiBadge = fromKpi
+          ? `<span class="time-task-kpi-badge" title="KPI(맵)에서 연결된 과제입니다">KPI</span>`
+          : "";
         row.innerHTML = `
-          <span class="time-task-setup-item-name">${(t.name || "").replace(/</g, "&lt;")}</span>
+          <span class="time-task-setup-item-title">
+            <span class="time-task-setup-item-name">${nameEsc}</span>
+            ${kpiBadge}
+          </span>
           <span class="time-task-setup-item-cat">${catLabel}</span>
         `;
         if (!isLocked) {
           row.setAttribute("role", "button");
           row.tabIndex = 0;
           row.addEventListener("click", () => {
-            if (getLockedTaskNames().has(t.name)) {
+            if (getLockedTaskNames().has(t.name) || isTimeTaskKpiLinked(t)) {
               alert(MSG_TIME_TASK_KPI_LINKED);
               return;
             }
@@ -7416,7 +7454,9 @@ export function render() {
     addTaskSubmitBtn.textContent = isEdit ? "저장" : "추가";
     if (addTaskDeleteBtn) {
       const lockedEdit =
-        editTask && getLockedTaskNames().has((editTask.name || "").trim());
+        editTask &&
+        (getLockedTaskNames().has((editTask.name || "").trim()) ||
+          isTimeTaskKpiLinked(editTask));
       addTaskDeleteBtn.hidden = !isEdit || lockedEdit;
     }
     addTaskNameInput.value = editTask ? editTask.name : "";
