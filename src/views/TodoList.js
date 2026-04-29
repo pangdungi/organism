@@ -2922,7 +2922,7 @@ function createTaskCard(taskData, options = {}) {
     const kid = card.dataset.kpiTodoId || "";
     const sk = card.dataset.kpiStorageKey || "";
     let kpiLabel = "";
-    if (isKpiCard && kid && sk) {
+    if (isKpiTodo && kid && sk) {
       kpiLabel =
         (data.classification || "").trim() || getKpiDisplayNameForTodo(kid, sk);
     }
