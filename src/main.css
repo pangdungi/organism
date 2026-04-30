@@ -3373,8 +3373,10 @@ body {
     /* mount가 스크롤 컨테이너일 때: wrap의 overflow:auto가 sticky 기준을 막아 헤더가 함께 스크롤됨 */
     overflow: visible !important;
   }
-  /* 모바일: 1일 뷰 상단바(남은 시간 + 날짜 네비) 숨김 */
-  .calendar-1day-top-bar {
+  /* 모바일 홈 타임라인: 시간축만 쓸 때 상단바(남은시간·날짜) 숨김 — 할일「오늘 해치우기」는 제외 */
+  .app-main:has(.home-view)
+    .home-1day-timeline-mount
+    .calendar-1day-top-bar {
     display: none !important;
   }
   .app-main:has(.home-view)
@@ -5247,6 +5249,236 @@ body {
     > .calendar-monthly-layout {
     flex: 0 0 auto !important;
     min-height: min-content;
+  }
+
+  /* 모바일·오늘 해치우기: 남은 시간 + 날짜 이동 한 줄 */
+  .calendar-view .calendar-1day-view .calendar-1day-top-bar {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.35rem;
+    flex-wrap: nowrap;
+    padding: 0.5rem 0.75rem;
+    box-sizing: border-box;
+    width: 100%;
+    margin-bottom: 0.35rem;
+  }
+  .calendar-view .calendar-1day-view .calendar-1day-top-bar-left {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+  .calendar-view .calendar-1day-view .calendar-1day-top-bar-right {
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-top-bar
+    .time-budget-calendar-remaining {
+    padding: 0.35rem 0.45rem;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: baseline;
+    gap: 0.35rem;
+    box-shadow: none;
+    border: none;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-top-bar
+    .time-budget-calendar-remaining-title {
+    font-size: 0.65rem;
+    white-space: nowrap;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-top-bar
+    .time-budget-calendar-remaining-value {
+    font-size: 0.95rem;
+  }
+  .calendar-view .calendar-1day-view .calendar-1day-nav {
+    justify-content: flex-end;
+    margin-bottom: 0;
+  }
+  .calendar-view .calendar-1day-view .calendar-nav-prev,
+  .calendar-view .calendar-1day-view .calendar-nav-next {
+    padding: 0.2rem 0.35rem;
+    font-size: 0.95rem;
+  }
+  .calendar-view .calendar-1day-view .calendar-nav-today {
+    min-width: 0;
+    max-width: min(12rem, 48vw);
+    padding: 0.2rem 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 500;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* 예산·투두 표: 모바일에서 폰트·패딩 축소 (헤더 줄바꿈 완화) */
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-daily-budget-table
+    thead
+    th {
+    font-size: 0.5rem;
+    padding: 0.22rem 0.12rem;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+  /* 본문 셀만 축소 (입력·과제명 pill은 아래에서 별도 지정) */
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-daily-budget-table
+    tbody
+    td {
+    padding: 0.25rem 0.12rem;
+    font-size: 0.65rem;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-daily-budget-table
+    thead
+    th.time-budget-col-duration {
+    white-space: nowrap;
+    line-height: 1.15;
+  }
+  /* 시간 칸: 고정 rem 폭은 좁은 열에서 숫자 잘림 → 열 너비 100% + 탭 숫자 */
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-budget-scheduled-input,
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-budget-time-input {
+    font-size: 0.5625rem !important;
+    font-variant-numeric: tabular-nums;
+    padding: 0.1rem 0.12rem !important;
+    width: 100% !important;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-daily-budget-table
+    tbody
+    td:has(.time-budget-scheduled-input),
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-daily-budget-table
+    tbody
+    td:has(.time-budget-time-input) {
+    padding-left: 0.08rem;
+    padding-right: 0.08rem;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-daily-budget-table
+    .time-tag-trigger {
+    min-height: 1.35rem;
+    padding: 0.12rem 0.3rem;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-daily-budget-table
+    .time-tag-trigger
+    .time-tag-pill {
+    font-size: 0.62rem;
+    padding-left: 0.35rem;
+    line-height: 1.2;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-daily-budget-table
+    .time-budget-duration-value {
+    font-size: 0.6rem;
+    line-height: 1.3;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-daily-budget-table
+    .time-budget-btn-delete {
+    font-size: 0.72rem;
+    width: 1rem;
+    height: 1rem;
+  }
+  /* 과제명 열 조금 넓히고 시간 열은 칸폭에 맞춤 */
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-daily-budget-table
+    col.time-budget-col-task {
+    width: 36%;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-daily-budget-table
+    col.time-budget-col-start,
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-daily-budget-table
+    col.time-budget-col-end {
+    width: 19%;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-daily-budget-table
+    col.time-budget-col-duration {
+    width: 14%;
+  }
+  .calendar-view .calendar-1day-view .calendar-1day-todo-table thead th {
+    font-size: 0.55rem;
+    padding: 0.25rem 0.2rem;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+  .calendar-view .calendar-1day-view .calendar-1day-todo-table tbody td {
+    font-size: 0.65rem;
+    padding: 0.28rem 0.18rem;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-todo-table
+    .calendar-monthly-span-bar {
+    font-size: 0.62rem;
+    min-height: 1.3rem;
+    padding: 0.08rem 0.32rem;
+    gap: 0.18rem;
+    line-height: 1.25;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-todo-table
+    .calendar-monthly-span-bar--has-checkbox {
+    --cb-size: 11px;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-todo-table
+    .calendar-monthly-span-bar--todo
+    .calendar-monthly-span-bar-text,
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-todo-table
+    .calendar-monthly-span-bar--has-checkbox
+    .calendar-monthly-span-bar-text {
+    line-height: 1.25;
+    font-size: inherit;
   }
 
   /* 모바일: 오늘 해치우기(세로) — 콘텐츠 전체 길이로 펼침(아래로 스크롤은 .app-tab-panel) */
