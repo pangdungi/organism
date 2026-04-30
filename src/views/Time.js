@@ -1287,7 +1287,7 @@ function getAuditHealthDietTimelineHtml(filtered, normStart, normEnd) {
   );
 
   if (timelineTasks.length === 0) {
-    return `<div class="time-audit-achievement-empty">선택한 기간에 해당하는 건강·비건강 과제 기록이 없습니다. (내장 과제는 건강한 식사·건강하지 않은 식사만 집계합니다.)</div>`;
+    return `<div class="time-audit-achievement-empty">선택한 기간에 해당하는 건강·비건강 과제 기록이 없습니다.</div>`;
   }
 
   const n = dates.length;

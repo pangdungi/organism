@@ -220,6 +220,7 @@ export function render() {
           id: String(r.id || "").trim(),
           date: r.date || "",
           startTime: r.startTime || "",
+          taskName: (r.taskName || "").trim(),
           memo,
           tags,
         };
@@ -306,7 +307,10 @@ export function render() {
     body.className = "todo-list-modal-body";
     const lbl = document.createElement("p");
     lbl.className = "todo-list-modal-label";
-    lbl.textContent = `${formatArchiveDate(record.date)} · ${formatArchiveTime(record.startTime)}`;
+    const timePart = `${formatArchiveDate(record.date)} · ${formatArchiveTime(record.startTime)}`;
+    lbl.textContent = record.taskName
+      ? `${timePart} · ${record.taskName}`
+      : timePart;
     const ta = document.createElement("textarea");
     ta.className = "archive-memo-modal-textarea";
     ta.rows = 4;
@@ -403,11 +407,13 @@ export function render() {
       const timeStr = formatArchiveTime(r.startTime).toLowerCase();
       const memo = (r.memo || "").toLowerCase();
       const tagsStr = (r.tags || []).join(" ").toLowerCase();
+      const taskStr = (r.taskName || "").toLowerCase();
       return (
         dateStr.includes(q) ||
         timeStr.includes(q) ||
         memo.includes(q) ||
-        tagsStr.includes(q)
+        tagsStr.includes(q) ||
+        taskStr.includes(q)
       );
     });
   }
@@ -450,7 +456,17 @@ export function render() {
       const meta = document.createElement("div");
       meta.className = "archive-card-meta";
       meta.appendChild(dateEl);
-      meta.appendChild(timeEl);
+      const timeRow = document.createElement("div");
+      timeRow.className = "archive-card-time-row";
+      timeRow.appendChild(timeEl);
+      if (r.taskName) {
+        const taskEl = document.createElement("span");
+        taskEl.className = "archive-card-task";
+        taskEl.textContent = r.taskName;
+        taskEl.title = r.taskName;
+        timeRow.appendChild(taskEl);
+      }
+      meta.appendChild(timeRow);
       const memoEl = document.createElement("p");
       memoEl.className = "archive-card-memo";
       memoEl.textContent = r.memo || "";

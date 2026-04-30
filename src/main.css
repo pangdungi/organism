@@ -38454,6 +38454,26 @@ body.kpi-resizing {
   font-size: 0.8rem;
   font-weight: inherit;
   color: inherit;
+  flex-shrink: 0;
+}
+
+.archive-card-time-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.45rem;
+  min-width: 0;
+}
+
+.archive-card-task {
+  font-size: 0.68rem;
+  font-family: var(--font-body);
+  font-weight: 400;
+  color: var(--text-caption-color, #a8a290);
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .archive-card-memo {

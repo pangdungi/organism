@@ -57,7 +57,7 @@ export const FIXED_PRODUCTIVE_TASKS = [
     category: "happiness",
     productivity: "productive",
   },
-  { name: "의미 있는 대화", category: "happiness", productivity: "productive" },
+  { name: "생산적 대화", category: "happiness", productivity: "productive" },
   {
     name: "의미 있는 모임 참석",
     category: "happiness",
@@ -119,7 +119,7 @@ export const FIXED_NONPRODUCTIVE_TASKS = [
     productivity: "nonproductive",
   },
   {
-    name: "의미 없는 대화",
+    name: "비생산적 대화",
     category: "unhappiness",
     productivity: "nonproductive",
   },
