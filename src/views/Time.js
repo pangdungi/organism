@@ -17,7 +17,6 @@ import {
   syncHabitTrackerLogs,
   upsertHabitTrackerLogWithDailyState,
   getHabitTrackerDailyCompletedForDate,
-  replaceHabitTrackerLogDailyCompleted,
   removeKpiHabitLogsForTimeLedgerEntry,
 } from "../utils/timeKpiSync.js";
 import {
@@ -6170,33 +6169,14 @@ export function render() {
         label.appendChild(checkbox);
         label.appendChild(span);
         checkbox.addEventListener("change", () => {
-          kpiTodoFineTrace("Time.과제기록모달:매일할일체크→kpiLogs", {
+          kpiTodoFineTrace("Time.과제기록모달:매일할일체크(저장은 기록 버튼)", {
             todoId: String(todo.id),
             storageKey: dailyStorageKey,
             checked: checkbox.checked,
           });
           const ymd = normalizeTaskLogPickerDateYmd();
           if (ymd.length < 10) return;
-          const completed = [];
-          taskLogDailyTodosList
-            .querySelectorAll("label.time-task-log-daily-todo-row")
-            .forEach((row) => {
-              const cb = row.querySelector('input[type="checkbox"]');
-              const sp = row.querySelector(".time-task-log-kpi-todo-text");
-              const id = cb?.dataset?.todoId ? String(cb.dataset.todoId) : "";
-              const text = (sp?.textContent || "").trim();
-              if (!id) return;
-              if (cb?.checked) completed.push({ id, text });
-            });
-          replaceHabitTrackerLogDailyCompleted(
-            dailyStorageKey,
-            dailyKpiId,
-            ymd,
-            completed,
-            isUuid(String(taskLogEditTr?._rowData?.id || "").trim())
-              ? String(taskLogEditTr._rowData.id).trim()
-              : undefined,
-          );
+          /* KPI 맵은 「기록」 저장 시에만 반영 — X로 닫으면 체크만 무효 */
           span.classList.toggle("is-done", checkbox.checked);
         });
         taskLogDailyTodosList.appendChild(label);
