@@ -28,6 +28,10 @@ import { defaultManualKpiLogMeta, kpiLogSourceBadgeHtml } from "../utils/kpiLogF
 import { createKpiHabitGridElement } from "../utils/kpiHabitTrackerGrid.js";
 import { wireKpiHistoryHabitTabs } from "../utils/kpiHistoryHabitTabs.js";
 import {
+  applyKpiGridScrollRestore,
+  readKpiGridScrollToRestore,
+} from "../utils/kpiGridScrollRestore.js";
+import {
   KPI_UI_SESSION_KEYS,
   readKpiUiSession,
   writeKpiUiSession,
@@ -266,6 +270,8 @@ export function render() {
   let activeHealthId = null;
   let selectedKpiId = null;
   let kpiFilter = "all";
+  let kpiGridScrollPrevFilter = null;
+  let kpiGridScrollPrevScopeId = null;
   let completedSectionCollapsed = true;
   let healthAddModalJustClosed = false;
 
@@ -760,8 +766,18 @@ export function render() {
 
   function renderKpiList() {
     syncHabitTrackerLogs();
+    const scopeId = activeHealthId;
+    const savedGridScroll = readKpiGridScrollToRestore(
+      contentWrap,
+      kpiFilter,
+      scopeId,
+      kpiGridScrollPrevFilter,
+      kpiGridScrollPrevScopeId,
+    );
     contentWrap.innerHTML = "";
     if (!activeHealthId) {
+      kpiGridScrollPrevFilter = null;
+      kpiGridScrollPrevScopeId = null;
       persistKpiUiState();
       return;
     }
@@ -980,6 +996,9 @@ export function render() {
       });
       contentWrap.appendChild(completedSection);
     }
+    applyKpiGridScrollRestore(contentWrap, savedGridScroll);
+    kpiGridScrollPrevFilter = kpiFilter;
+    kpiGridScrollPrevScopeId = scopeId;
     persistKpiUiState();
   }
 

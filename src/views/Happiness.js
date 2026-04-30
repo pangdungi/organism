@@ -18,6 +18,10 @@ import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes, syncHabitTrackerLo
 import { defaultManualKpiLogMeta, kpiLogSourceBadgeHtml } from "../utils/kpiLogFields.js";
 import { createKpiHabitGridElement } from "../utils/kpiHabitTrackerGrid.js";
 import { wireKpiHistoryHabitTabs } from "../utils/kpiHistoryHabitTabs.js";
+import {
+  applyKpiGridScrollRestore,
+  readKpiGridScrollToRestore,
+} from "../utils/kpiGridScrollRestore.js";
 import { setupDeadlineQuickButtons } from "../utils/deadlineQuickButtons.js";
 import {
   afterKpiTodoListMutationScroll,
@@ -266,6 +270,8 @@ export function render() {
   let activeHappinessId = null;
   let selectedKpiId = null;
   let kpiFilter = "all";
+  let kpiGridScrollPrevFilter = null;
+  let kpiGridScrollPrevScopeId = null;
   let completedSectionCollapsed = true;
   let happinessAddModalJustClosed = false;
 
@@ -753,8 +759,18 @@ export function render() {
 
   function renderKpiList() {
     syncHabitTrackerLogs();
+    const scopeId = activeHappinessId;
+    const savedGridScroll = readKpiGridScrollToRestore(
+      contentWrap,
+      kpiFilter,
+      scopeId,
+      kpiGridScrollPrevFilter,
+      kpiGridScrollPrevScopeId,
+    );
     contentWrap.innerHTML = "";
     if (!activeHappinessId) {
+      kpiGridScrollPrevFilter = null;
+      kpiGridScrollPrevScopeId = null;
       persistKpiUiState();
       return;
     }
@@ -973,6 +989,9 @@ export function render() {
       });
       contentWrap.appendChild(completedSection);
     }
+    applyKpiGridScrollRestore(contentWrap, savedGridScroll);
+    kpiGridScrollPrevFilter = kpiFilter;
+    kpiGridScrollPrevScopeId = scopeId;
     persistKpiUiState();
   }
 
