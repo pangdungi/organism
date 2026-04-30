@@ -30245,6 +30245,76 @@ body.kpi-resizing {
   background: rgba(42, 56, 40, 0.1);
 }
 
+.dream-kpi-habit-grid-divider {
+  margin-top: 0.35rem;
+}
+
+/* 일지 영역 — 로그/트랙커: 상단 전체·진행중·완료와 동일한 필터 탭 스타일 */
+.dream-kpi-history-habit-subtabs.dream-kpi-filter-bar {
+  margin-top: 0.25rem;
+  margin-bottom: 0.65rem;
+  gap: 1.25rem;
+}
+
+/* 「○○ 기록」제목 줄 바로 아래 로그/트랙커 탭: 미디어쿼리·:has 없이 항상 구분선 + 여백 (형제 선택자) */
+.dream-kpi-history-header + .dream-kpi-history-habit-subtabs.dream-kpi-filter-bar {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: var(--line-l3);
+}
+
+.dream-kpi-history-tab-panel[hidden] {
+  display: none !important;
+}
+
+.dream-kpi-habit-grid-wrap {
+  margin: 0 0 1rem;
+}
+
+.dream-kpi-habit-grid-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-body);
+  margin-bottom: 0.4rem;
+}
+
+.dream-kpi-habit-grid-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+
+.dream-kpi-habit-grid-table {
+  border-collapse: collapse;
+  font-size: 0.72rem;
+  width: max-content;
+  max-width: 100%;
+}
+
+.dream-kpi-habit-grid-th,
+.dream-kpi-habit-grid-td {
+  border: 1px solid var(--line-l3, #e8e2d2);
+  padding: 0.3rem 0.35rem;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.dream-kpi-habit-grid-th--task,
+.dream-kpi-habit-grid-td--task {
+  text-align: left;
+  max-width: 9rem;
+  position: sticky;
+  left: 0;
+  background: var(--ui-surface-alt, #faf8f3);
+  z-index: 1;
+}
+
+.dream-kpi-habit-cell--ok,
+.dream-kpi-habit-cell--miss {
+  color: #c62828;
+  font-weight: 700;
+}
+
 .dream-kpi-history-value {
   font-size: var(--fs-body);
   font-weight: 600;

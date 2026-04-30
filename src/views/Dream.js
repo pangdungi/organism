@@ -16,6 +16,8 @@ import {
 import { toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay, formatDeadlineRangeCompact } from "../utils/ganttModal.js";
 import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
 import { defaultManualKpiLogMeta, kpiLogSourceBadgeHtml } from "../utils/kpiLogFields.js";
+import { createKpiHabitGridElement } from "../utils/kpiHabitTrackerGrid.js";
+import { wireKpiHistoryHabitTabs } from "../utils/kpiHistoryHabitTabs.js";
 import { setupDeadlineQuickButtons } from "../utils/deadlineQuickButtons.js";
 import {
   afterKpiTodoListMutationScroll,
@@ -1028,29 +1030,36 @@ export function render() {
     headerRow.querySelector(".dream-kpi-history-log-btn").addEventListener("click", () => showKpiLogModal(kpi));
     historyWrap.appendChild(headerRow);
 
-    const divider = document.createElement("div");
-    divider.className = "dream-kpi-history-divider";
-    historyWrap.appendChild(divider);
+    const dailyTodosForGrid = needHabitTracker
+      ? (data.kpiDailyRepeatTodos || []).filter(
+          (t) => String(t.kpiId) === selKpi && (t.text || "").trim() !== "",
+        )
+      : [];
+    const useHabitTabs = needHabitTracker && dailyTodosForGrid.length > 0;
 
-    if (logs.length === 0) {
-      const empty = document.createElement("p");
-      empty.className = "dream-kpi-history-empty";
-      empty.textContent = "아직 기록이 없습니다.";
-      historyWrap.appendChild(empty);
-    } else {
-      const list = document.createElement("div");
-      list.className = "dream-kpi-history-list";
-      logs.forEach((log) => {
-        const item = document.createElement("div");
-        item.className = "dream-kpi-history-item";
-        const unitSuffix = kpi.unit ? " " + kpi.unit : "";
-        const completed = log.dailyCompleted || [];
-        const completedNames = completed
-          .map((t) => (t.text || "").trim())
-          .filter(Boolean);
-        const dailyLine =
-          completedNames.length > 0 ? completedNames.join(" · ") : "";
-        item.innerHTML = `
+    const appendKpiDailyLogBlock = (parentEl) => {
+      const div = document.createElement("div");
+      div.className = "dream-kpi-history-divider";
+      parentEl.appendChild(div);
+      if (logs.length === 0) {
+        const empty = document.createElement("p");
+        empty.className = "dream-kpi-history-empty";
+        empty.textContent = "아직 기록이 없습니다.";
+        parentEl.appendChild(empty);
+      } else {
+        const list = document.createElement("div");
+        list.className = "dream-kpi-history-list";
+        logs.forEach((log) => {
+          const item = document.createElement("div");
+          item.className = "dream-kpi-history-item";
+          const unitSuffix = kpi.unit ? " " + kpi.unit : "";
+          const completed = log.dailyCompleted || [];
+          const completedNames = completed
+            .map((t) => (t.text || "").trim())
+            .filter(Boolean);
+          const dailyLine =
+            completedNames.length > 0 ? completedNames.join(" · ") : "";
+          item.innerHTML = `
           <div class="dream-kpi-history-item-body">
             <div class="dream-kpi-history-item-main">
               <span class="dream-kpi-history-date">${escapeHtml(log.date)}</span>
@@ -1065,18 +1074,55 @@ export function render() {
             <button type="button" class="dream-kpi-history-delete">삭제</button>
           </div>
         `;
-        item.querySelector(".dream-kpi-history-edit").addEventListener("click", () => showKpiLogModal(kpi, log));
-        item.querySelector(".dream-kpi-history-delete").addEventListener("click", () => {
-          const d = loadDreamMap();
-          appendDeletedRef(d, "kpiLogs", log.id);
-          d.kpiLogs = (d.kpiLogs || []).filter((l) => l.id !== log.id);
-          saveDreamMap(d);
-          renderKpiList();
-          renderKpiHistory();
+          item.querySelector(".dream-kpi-history-edit").addEventListener("click", () => showKpiLogModal(kpi, log));
+          item.querySelector(".dream-kpi-history-delete").addEventListener("click", () => {
+            const d = loadDreamMap();
+            appendDeletedRef(d, "kpiLogs", log.id);
+            d.kpiLogs = (d.kpiLogs || []).filter((l) => l.id !== log.id);
+            saveDreamMap(d);
+            renderKpiList();
+            renderKpiHistory();
+          });
+          list.appendChild(item);
         });
-        list.appendChild(item);
-      });
-      historyWrap.appendChild(list);
+        parentEl.appendChild(list);
+      }
+    };
+
+    if (useHabitTabs) {
+      const tabsRow = document.createElement("div");
+      tabsRow.className = "dream-kpi-filter-bar dream-kpi-history-habit-subtabs";
+      tabsRow.setAttribute("role", "tablist");
+      const btnLog = document.createElement("button");
+      btnLog.type = "button";
+      btnLog.className = "dream-kpi-filter-btn";
+      btnLog.textContent = "로그보기";
+      btnLog.setAttribute("role", "tab");
+      const btnTr = document.createElement("button");
+      btnTr.type = "button";
+      btnTr.className = "dream-kpi-filter-btn";
+      btnTr.textContent = "트랙커보기";
+      btnTr.setAttribute("role", "tab");
+      tabsRow.appendChild(btnLog);
+      tabsRow.appendChild(btnTr);
+      historyWrap.appendChild(tabsRow);
+
+      const panelLog = document.createElement("div");
+      panelLog.className = "dream-kpi-history-tab-panel dream-kpi-history-tab-panel--log";
+      panelLog.setAttribute("role", "tabpanel");
+      const panelTr = document.createElement("div");
+      panelTr.className = "dream-kpi-history-tab-panel dream-kpi-history-tab-panel--tracker";
+      panelTr.setAttribute("role", "tabpanel");
+
+      appendKpiDailyLogBlock(panelLog);
+      const gridEl = createKpiHabitGridElement(selKpi, dailyTodosForGrid, data.kpiLogs || []);
+      if (gridEl) panelTr.appendChild(gridEl);
+
+      wireKpiHistoryHabitTabs("dream", selectedKpiId, btnLog, btnTr, panelLog, panelTr);
+      historyWrap.appendChild(panelLog);
+      historyWrap.appendChild(panelTr);
+    } else {
+      appendKpiDailyLogBlock(historyWrap);
     }
 
     const todoHeader = document.createElement("div");
