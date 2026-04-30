@@ -16,6 +16,7 @@ import {
   kpiTodosCompletionBrief,
 } from "./kpiTodoLifecycleDebug.js";
 import { sortNormalizedKpiTodoRows } from "./kpiMapTodoListOrder.js";
+import { KPI_LOG_SOURCE_MANUAL, KPI_LOG_SOURCE_TIME_LEDGER, kpiLogMetaFromDbRow } from "./kpiLogFields.js";
 
 export const SIDEINCOME_KPI_MAP_STORAGE_KEY = "kpi-sideincome-paths";
 
@@ -211,6 +212,7 @@ function rowToKpiLog(r) {
     dailyCompleted: Array.isArray(dc) ? dc : [],
     dailyIncomplete: Array.isArray(di) ? di : [],
     serverUpdatedAt: serverUpdatedAtFromRow(r),
+    ...kpiLogMetaFromDbRow(r),
   };
 }
 
@@ -419,6 +421,13 @@ function kpiLogToRow(userId, l) {
     memo: (l.memo || "").trim(),
     daily_completed: Array.isArray(l.dailyCompleted) ? l.dailyCompleted : [],
     daily_incomplete: Array.isArray(l.dailyIncomplete) ? l.dailyIncomplete : [],
+    kpi_log_source:
+      l.kpiLogSource === KPI_LOG_SOURCE_TIME_LEDGER
+        ? KPI_LOG_SOURCE_TIME_LEDGER
+        : KPI_LOG_SOURCE_MANUAL,
+    time_ledger_entry_ids: Array.isArray(l.timeLedgerEntryIds)
+      ? l.timeLedgerEntryIds
+      : [],
   };
 }
 

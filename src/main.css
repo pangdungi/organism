@@ -30228,6 +30228,23 @@ body.kpi-resizing {
   color: var(--text-muted);
 }
 
+.dream-kpi-log-source {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.12rem 0.4rem;
+  border-radius: 0.25rem;
+  line-height: 1.2;
+  color: var(--text-caption-color, #a8a290);
+  background: rgba(42, 56, 40, 0.06);
+}
+
+.dream-kpi-log-source--time {
+  color: var(--ui-btn-primary-bg, #2a3828);
+  background: rgba(42, 56, 40, 0.1);
+}
+
 .dream-kpi-history-value {
   font-size: var(--fs-body);
   font-weight: 600;

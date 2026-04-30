@@ -25,6 +25,7 @@ import {
   hhMmToMinutes,
   syncHabitTrackerLogs,
 } from "../utils/timeKpiSync.js";
+import { defaultManualKpiLogMeta, kpiLogSourceBadgeHtml } from "../utils/kpiLogFields.js";
 import { setupDeadlineQuickButtons } from "../utils/deadlineQuickButtons.js";
 import {
   afterKpiTodoListMutationScroll,
@@ -624,6 +625,7 @@ export function render() {
             value: sanitizeNumericInput(form.value.value) || "",
             status: "순항",
             memo: (form.memo.value || "").trim(),
+            ...defaultManualKpiLogMeta(),
           };
           data.kpiLogs = data.kpiLogs || [];
           data.kpiLogs.push(log);
@@ -1014,6 +1016,7 @@ export function render() {
           <div class="dream-kpi-history-item-body">
             <div class="dream-kpi-history-item-main">
               <span class="dream-kpi-history-date">${escapeHtml(log.date)}</span>
+              ${kpiLogSourceBadgeHtml(log)}
               <span class="dream-kpi-history-value">${escapeHtml(log.value || "—")}${unitSuffix}</span>
             </div>
             ${log.memo ? `<div class="dream-kpi-history-memo">${escapeHtml(log.memo)}</div>` : ""}

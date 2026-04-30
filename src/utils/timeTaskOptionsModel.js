@@ -3,7 +3,7 @@
  */
 
 import * as C from "./timeTaskOptionsConstants.js";
-import { getKpiSyncedTaskNames } from "./timeKpiSync.js";
+import { getKpiSyncedTaskNames } from "./kpiMapLocalStorage.js";
 import { isUuid, UUID_RE } from "./idUtils.js";
 import {
   readTimeLedgerEntriesRaw,

@@ -18,6 +18,7 @@ import {
   upsertHabitTrackerLogWithDailyState,
   getHabitTrackerDailyCompletedForDate,
   replaceHabitTrackerLogDailyCompleted,
+  removeKpiHabitLogsForTimeLedgerEntry,
 } from "../utils/timeKpiSync.js";
 import {
   getKpiTodosAsTasks,
@@ -4006,6 +4007,7 @@ function createProductivitySection(
     void (async () => {
       /* saveTimeRows → pushDirty → pull 이 delete 보다 먼저 끝나면 서버에 행이 남아 다시 부활함 */
       if (entryId) {
+        removeKpiHabitLogsForTimeLedgerEntry(entryId);
         timeLedgerSyncLog("ui_time_row_delete", {
           idPreview: `${entryId.slice(0, 8)}…`,
         });
@@ -6191,6 +6193,9 @@ export function render() {
             dailyKpiId,
             ymd,
             completed,
+            isUuid(String(taskLogEditTr?._rowData?.id || "").trim())
+              ? String(taskLogEditTr._rowData.id).trim()
+              : undefined,
           );
           span.classList.toggle("is-done", checkbox.checked);
         });
@@ -7230,11 +7235,15 @@ export function render() {
           ? `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`
           : dateRawStr.slice(0, 10);
         if (normalizedDateRaw.length >= 10) {
+          const habitLedgerId = String(
+            (editTr?._rowData?.id || addLedgerTr?._rowData?.id || "").trim(),
+          );
           upsertHabitTrackerLogWithDailyState(
             dailyInfoSubmit.storageKey,
             dailyInfoSubmit.kpiId,
             normalizedDateRaw,
             { completed },
+            isUuid(habitLedgerId) ? habitLedgerId : undefined,
           );
         }
       }
@@ -8059,6 +8068,7 @@ export function render() {
       const entryId = String(rowData?.id || "").trim();
       void (async () => {
         if (entryId) {
+          removeKpiHabitLogsForTimeLedgerEntry(entryId);
           timeLedgerSyncLog("ui_time_row_delete", {
             idPreview: `${entryId.slice(0, 8)}…`,
           });
@@ -8396,6 +8406,7 @@ export function render() {
       const entryId = String(rowData?.id || "").trim();
       void (async () => {
         if (entryId) {
+          removeKpiHabitLogsForTimeLedgerEntry(entryId);
           timeLedgerSyncLog("ui_time_row_delete", {
             idPreview: `${entryId.slice(0, 8)}…`,
           });
