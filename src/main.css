@@ -2220,17 +2220,6 @@ body {
     max-width: none !important;
     min-width: 4rem !important;
   }
-  .todo-task-edit-modal .todo-task-edit-reminder-clear-date {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .todo-task-edit-modal .todo-task-edit-reminder-clear-all-label--long {
-    display: none;
-  }
-  .todo-task-edit-modal .todo-task-edit-reminder-clear-all-label--short {
-    display: inline;
-  }
 }
 
 /* 모바일: 하단 탭 배경 #2A3828 / 활성 아이콘·텍스트 #FFFFFF / 활성 인디케이터 2px #7A9E8A */
@@ -16520,14 +16509,6 @@ svg.todo-card-reminder-icon {
 .todo-task-edit-reminder-btn:hover {
   color: var(--text-body);
   border-color: var(--accent-viridian);
-}
-
-.todo-task-edit-reminder-clear-date {
-  display: none;
-}
-
-.todo-task-edit-reminder-clear-all-label--short {
-  display: none;
 }
 
 /* 날짜 입력이 모달 밖으로 나가지 않도록 */
