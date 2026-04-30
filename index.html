@@ -8,7 +8,32 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="오가니즘플래너" />
     <meta name="application-name" content="오가니즘플래너" />
-    <title>오가니즘플래너</title>
+    <meta
+      name="description"
+      content="오가니즘 플래너(Organism Planner)는 KPI·목표 추적, 시간 기록, 일정·가계부·일지를 한곳에서 다루는 생산성 웹 서비스입니다. organismplanner.com에서 회원가입 후 데이터를 클라우드에 동기화할 수 있습니다."
+    />
+    <meta
+      name="keywords"
+      content="플래너, KPI, 시간관리, 일정, 생산성, 가계부, 오가니즘, Organism Planner, organismplanner"
+    />
+    <link rel="canonical" href="https://organismplanner.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="오가니즘 플래너" />
+    <meta property="og:title" content="오가니즘 플래너 | Organism Planner" />
+    <meta
+      property="og:description"
+      content="KPI·목표·시간 기록·일정·가계부를 연결하는 생산성 플래너 웹 서비스입니다."
+    />
+    <meta property="og:url" content="https://organismplanner.com/" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:image" content="https://organismplanner.com/icon-512.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="오가니즘 플래너 | Organism Planner" />
+    <meta
+      name="twitter:description"
+      content="KPI·목표·시간 기록·일정을 한곳에서 관리하는 웹 서비스입니다."
+    />
+    <title>오가니즘 플래너 | Organism Planner</title>
     <!-- manifest 캐시로 예전 앱 이름이 남는 경우 방지: 쿼리 변경 시 브라우저가 다시 받음 -->
     <link rel="manifest" href="/manifest.json?v=organism-2026" />
     <!-- 스플래시·로고(Organism)용 Archivo Bold — swap 깜빡임 방지: main.css 파싱 전에 우선 로드 -->
@@ -128,6 +153,20 @@
         letter-spacing: -0.03em;
         color: var(--app-splash-cream);
       }
+      /* 기업 웹필터·크롤러가 볼 수 있도록 스플래시에도 정적 설명 문구(숨김 #app 보완) */
+      .app-splash-tagline {
+        margin: 0.75rem 0 0;
+        max-width: 22rem;
+        padding: 0 1rem;
+        box-sizing: border-box;
+        font-family: "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+        font-size: clamp(0.75rem, 3.2vw, 0.875rem);
+        font-weight: 400;
+        line-height: 1.55;
+        letter-spacing: -0.02em;
+        color: var(--app-splash-cream);
+        opacity: 0.9;
+      }
       .app-splash-footer {
         position: relative;
         z-index: 1;
@@ -208,6 +247,28 @@
     <link rel="stylesheet" href="/src/main.css" />
   </head>
   <body>
+    <noscript>
+      <div
+        style="
+          padding: 1.5rem;
+          max-width: 40rem;
+          margin: 0 auto;
+          font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif;
+          line-height: 1.65;
+          color: #1a2218;
+          background: #f2ede0;
+        "
+      >
+        <h1 style="font-size: 1.35rem; margin: 0 0 0.75rem">오가니즘 플래너 (Organism Planner)</h1>
+        <p style="margin: 0 0 0.75rem">
+          KPI·목표 관리, 시간 기반 기록, 일정·가계부·일지·습관 트래커를 하나의 웹 앱에서 사용하는 생산성 서비스입니다.
+        </p>
+        <p style="margin: 0 0 0.75rem">
+          이 페이지를 이용하려면 브라우저에서 JavaScript를 켜 주세요. 모바일·데스크톱에서 회원가입·로그인 후 데이터가 동기화됩니다.
+        </p>
+        <p style="margin: 0; font-size: 0.875rem; color: #3d4a3e">공식 주소: organismplanner.com</p>
+      </div>
+    </noscript>
     <div
       id="app-splash"
       class="app-splash"
@@ -221,6 +282,9 @@
       </div>
       <div class="app-splash-main">
         <p class="app-splash-brand">Organism</p>
+        <p class="app-splash-tagline">
+          KPI·시간·일정·가계부를 잇는 생산성 플래너 웹 서비스 — organismplanner.com
+        </p>
       </div>
       <div class="app-splash-footer">
         <div class="app-splash-bar-track" aria-hidden="true">
