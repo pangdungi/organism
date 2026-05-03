@@ -922,6 +922,10 @@ const TASK_DELETE_ICON =
 const ADD_TASK_ICON =
   '<svg viewBox="0 0 24 24" width="24" height="24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>';
 
+/** 할일/일정 카테고리 줄 우측 — 빠른 추가(+) */
+const CALENDAR_TOOLBAR_QUICK_ADD_ICON =
+  '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+
 const LIST_ICON =
   '<img src="/toolbaricons/list.svg" alt="세부 할 일" class="todo-list-icon" width="20" height="20">';
 
@@ -1390,14 +1394,18 @@ function showTodoTaskModal(options) {
       <div class="todo-list-modal-body todo-task-edit-body">
         <div class="todo-task-edit-row-name-priority">
           <div class="todo-task-edit-field todo-task-edit-field--name">
-            <label class="todo-task-edit-label">할일 이름</label>
-            <input type="text" class="todo-task-edit-name" placeholder="할 일 입력" value="${escapeHtml(name)}" maxlength="500" />
+            <label class="todo-task-edit-label">할 일 이름</label>
+            <div class="todo-task-edit-input-shell">
+              <input type="text" class="todo-task-edit-name" placeholder="할 일 입력" value="${escapeHtml(name)}" maxlength="500" />
+            </div>
           </div>
           <div class="todo-task-edit-field todo-task-edit-field--eisenhower">
             <label class="todo-task-edit-label">우선순위</label>
-            <select class="todo-task-edit-eisenhower">
+            <div class="todo-task-edit-input-shell todo-task-edit-input-shell--select">
+              <select class="todo-task-edit-eisenhower">
               ${EISENHOWER_OPTIONS.map((o) => `<option value="${escapeHtml(o.value)}" ${o.value === eisenhower ? "selected" : ""}>${escapeHtml(o.label)}</option>`).join("")}
-            </select>
+              </select>
+            </div>
           </div>
         </div>
         ${
@@ -1414,27 +1422,35 @@ function showTodoTaskModal(options) {
         }
         <div class="todo-task-edit-field">
           <label class="todo-task-edit-label">시작일</label>
-          <input type="date" class="todo-task-edit-start" value="${escapeHtml((startDate || "").slice(0, 10))}" />
+          <div class="todo-task-edit-input-shell todo-task-edit-input-shell--date">
+            <input type="date" class="todo-task-edit-start" value="${escapeHtml((startDate || "").slice(0, 10))}" />
+          </div>
         </div>
         <div class="todo-task-edit-field">
           <label class="todo-task-edit-label">마감일</label>
-          <input type="date" class="todo-task-edit-due" value="${escapeHtml((dueDate || "").slice(0, 10))}" />
+          <div class="todo-task-edit-input-shell todo-task-edit-input-shell--date">
+            <input type="date" class="todo-task-edit-due" value="${escapeHtml((dueDate || "").slice(0, 10))}" />
+          </div>
         </div>
         <div class="todo-task-edit-field">
           <label class="todo-task-edit-label">리마인더</label>
-          <div class="todo-task-edit-reminder-row">
-            <input type="date" class="todo-task-edit-reminder-date" value="${escapeHtml((reminderDate || "").slice(0, 10))}" />
-            <div class="todo-task-edit-reminder-time-actions">
-              <input type="text" class="todo-task-edit-reminder-time" placeholder="14:30" value="${escapeHtml(reminderTime)}" maxlength="5" />
-              <button type="button" class="todo-task-edit-reminder-btn todo-task-edit-reminder-clear-all" aria-label="리마인더 날짜·시간 지우기">리마인더 삭제</button>
+          <div class="todo-task-edit-reminder-box">
+            <div class="todo-task-edit-input-shell todo-task-edit-input-shell--clock">
+              <div class="todo-task-edit-reminder-row">
+                <input type="date" class="todo-task-edit-reminder-date" value="${escapeHtml((reminderDate || "").slice(0, 10))}" />
+                <input type="text" class="todo-task-edit-reminder-time" placeholder="시간" value="${escapeHtml(reminderTime)}" maxlength="5" />
+              </div>
             </div>
+            <button type="button" class="todo-task-edit-reminder-btn todo-task-edit-reminder-clear-all" aria-label="리마인더 날짜·시간 지우기">삭제</button>
           </div>
         </div>
         <div class="todo-task-edit-field">
           <label class="todo-task-edit-label">리스트</label>
-          <select class="todo-task-edit-section" aria-label="다른 리스트로 이동">
+          <div class="todo-task-edit-input-shell todo-task-edit-input-shell--select">
+            <select class="todo-task-edit-section" aria-label="다른 리스트로 이동">
             ${sections.map((s) => `<option value="${escapeHtml(s.id)}" ${s.id === currentSectionId ? "selected" : ""}>${escapeHtml(s.label)}</option>`).join("")}
-          </select>
+            </select>
+          </div>
         </div>
       </div>
       ${
@@ -1449,7 +1465,7 @@ function showTodoTaskModal(options) {
       </div>`
           : ""
       }
-      <div class="todo-list-modal-footer todo-task-edit-footer">
+      <div class="todo-list-modal-footer todo-task-edit-footer todo-task-edit-footer--actions">
         <button type="button" class="todo-list-modal-cancel">취소</button>
         <button type="button" class="todo-list-modal-confirm">확인</button>
       </div>
@@ -1688,6 +1704,12 @@ function createSubtaskItem(parentTaskId, subtaskData, onRemove) {
   return wrap;
 }
 
+/** 캘린더 드롭: 일정(schedule)은 항상 허용, 할 일(todo)은 완료 체크된 것만 제외 */
+function taskAllowsCalendarDrag(itemType, doneFlag) {
+  if (String(itemType || "todo").toLowerCase() === "schedule") return true;
+  return !doneFlag;
+}
+
 function createTaskRow(taskData = {}, options = {}) {
   const {
     name = "",
@@ -1782,6 +1804,12 @@ function createTaskRow(taskData = {}, options = {}) {
       }
     }
     syncOverdueDisplay?.();
+    if (!isSubtask && (enableDragToCalendar || enableDragToEisenhower)) {
+      const calDrag =
+        enableDragToCalendar &&
+        taskAllowsCalendarDrag(tr.dataset.itemType, doneCheck.checked);
+      tr.draggable = calDrag || enableDragToEisenhower;
+    }
   });
 
   const scheduleDot = document.createElement("span");
@@ -2453,15 +2481,11 @@ function createTaskRow(taskData = {}, options = {}) {
   syncDateLine();
 
   const canDragToCalendar =
-    enableDragToCalendar &&
-    (!hasDates ||
-      (enableDragOverdueToCalendar &&
-        !!(dueDate || "").trim() &&
-        isOverdue(dueDate)));
+    enableDragToCalendar && taskAllowsCalendarDrag(itemType, done);
 
   if (canDragToCalendar || enableDragToEisenhower) {
     if (!isSubtask) {
-      tr.draggable = true;
+      tr.draggable = canDragToCalendar || enableDragToEisenhower;
       tr.addEventListener("dragstart", (e) => {
         const nameInput = tr.querySelector(".todo-task-name-field");
         const startInput = tr.querySelector(".todo-start-input-hidden");
@@ -2508,12 +2532,21 @@ function createTaskRow(taskData = {}, options = {}) {
             JSON.stringify(payload),
           );
         }
-        if (canDragToCalendar) {
+        const liveAllowCal =
+          enableDragToCalendar &&
+          taskAllowsCalendarDrag(tr.dataset.itemType, !!doneCheck?.checked);
+        if (liveAllowCal) {
           window.__calendarDragDuration = durationMin;
           e.dataTransfer.setData(
             DRAG_TYPE_TODO_TO_CALENDAR,
             JSON.stringify(payload),
           );
+          try {
+            e.dataTransfer.setData(
+              "text/plain",
+              ((nameInput?.value || "").trim() || "(할 일)").slice(0, 400),
+            );
+          } catch (_) {}
         }
         e.dataTransfer.effectAllowed = "move";
       });
@@ -2685,13 +2718,26 @@ function createTaskCard(taskData, options = {}) {
       }
     }
     scheduleSave();
+    const listRoot = card.closest(".todo-list-view");
+    const hideCompletedUi = listRoot?.classList.contains("hide-completed");
+    if (enableDragToCalendar) {
+      const allow = taskAllowsCalendarDrag(card.dataset.itemType, newDone);
+      if (enableDragToEisenhower) {
+        const hasP = (card.dataset.eisenhower || "").trim() !== "";
+        card.draggable = allow || !hasP;
+      } else {
+        card.draggable = allow;
+      }
+    }
     if (
       newDone &&
       card.closest(".todo-list-eisenhower-sidebar, .todo-list-in-sidebar")
     ) {
       refreshEisenhowerQuadrantsIfActive();
       requestCalendarTodoSidebarRebuildFromCard(card);
-      card.remove();
+      if (hideCompletedUi) {
+        card.remove();
+      }
     }
     updateCount();
   });
@@ -2829,11 +2875,7 @@ function createTaskCard(taskData, options = {}) {
     });
   }
 
-  const allowCalendarDrag =
-    !hasDueDate ||
-    (enableDragOverdueToCalendar &&
-      (dueDate || "").trim() !== "" &&
-      isOverdue(dueDate));
+  const allowCalendarDrag = taskAllowsCalendarDrag(itemType, done);
 
   if (enableDragToCalendar) {
     if (enableDragToEisenhower) {
@@ -2844,7 +2886,11 @@ function createTaskCard(taskData, options = {}) {
     }
     if (hasDueDate) card.classList.add("todo-card--has-due");
     card.addEventListener("dragstart", (e) => {
-      if (!allowCalendarDrag) return;
+      const liveAllowCal = taskAllowsCalendarDrag(
+        card.dataset.itemType,
+        card.dataset.done === "true",
+      );
+      if (!liveAllowCal) return;
       e.stopPropagation();
       const payload = {
         taskId,
@@ -2863,6 +2909,12 @@ function createTaskCard(taskData, options = {}) {
         DRAG_TYPE_TODO_TO_CALENDAR,
         JSON.stringify(payload),
       );
+      try {
+        e.dataTransfer.setData(
+          "text/plain",
+          ((name || "").trim() || "(할 일)").slice(0, 400),
+        );
+      } catch (_) {}
       e.dataTransfer.effectAllowed = "move";
       if (typeof window !== "undefined") window.__calendarDragDuration = 30;
       card.classList.add("todo-card-dragging");
@@ -2914,9 +2966,23 @@ function createTaskCard(taskData, options = {}) {
       card.closest(".todo-list-in-sidebar") &&
       !card.closest(".todo-list-eisenhower-sidebar")
     ) {
-      const hasDue = (data.dueDate || data.startDate || "").trim() !== "";
-      card.classList.toggle("todo-card--has-due", hasDue);
-      card.draggable = !hasDue;
+      const hasDueDate =
+        (data.dueDate || data.startDate || "").trim() !== "";
+      card.classList.toggle("todo-card--has-due", hasDueDate);
+      const allowCalendarDragSidebar = taskAllowsCalendarDrag(
+        data.itemType,
+        !!data.done,
+      );
+      if (enableDragToCalendar) {
+        if (enableDragToEisenhower) {
+          const hasP = (data.eisenhower || "").trim() !== "";
+          card.draggable = allowCalendarDragSidebar || !hasP;
+        } else {
+          card.draggable = !!allowCalendarDragSidebar;
+        }
+      } else {
+        card.draggable = !hasDueDate;
+      }
     }
     const remText = formatCardReminder(data.reminderDate, data.reminderTime);
     if (remText) {
@@ -3613,6 +3679,7 @@ export function render(options = {}) {
   const {
     hideToolbar = false,
     hideHeader = false,
+    /** null 이어도 됨 — categoryToolbarRightActions 면 카테고리 줄 우측에 설정 배치 */
     settingsSlot = null,
     enableDragToCalendar = false,
     enableDragToEisenhower = false,
@@ -3629,6 +3696,8 @@ export function render(options = {}) {
     omitKpiTodos = true,
     /** 할일/일정 상단 줄(settingsSlot)의 설정 버튼 DOM을 그대로 쓰고 새로 만들지 않음(탭 진입 후 pull 소프트 갱신 시 아이콘 깜빡임 방지) */
     reuseSettingsButtonEl = null,
+    /** 할일/일정: 꿈·부수입 탭 줄 우측에 + / 설정 */
+    categoryToolbarRightActions = false,
   } = options;
   const hasExplicitInitialTab = Object.prototype.hasOwnProperty.call(
     options,
@@ -3746,16 +3815,18 @@ export function render(options = {}) {
     });
   }
 
-  if (settingsSlot) {
+  if (settingsSlot && !categoryToolbarRightActions) {
     if (!settingsSlot.contains(settingsBtn)) {
       settingsSlot.appendChild(settingsBtn);
     }
-  } else {
+  } else if (!settingsSlot && !categoryToolbarRightActions) {
     toolbar.appendChild(settingsBtn);
   }
 
   const toolbarRow = document.createElement("div");
-  toolbarRow.className = "todo-list-toolbar-row";
+  toolbarRow.className =
+    "todo-list-toolbar-row" +
+    (categoryToolbarRightActions ? " todo-list-toolbar-row--calendar-actions" : "");
   el.appendChild(toolbarRow);
 
   const categoryTabs = document.createElement("div");
@@ -3774,7 +3845,26 @@ export function render(options = {}) {
   });
 
   toolbarRow.appendChild(categoryTabs);
-  if (!settingsSlot) {
+  if (categoryToolbarRightActions) {
+    const actionsEnd = document.createElement("div");
+    actionsEnd.className = "todo-list-toolbar-actions-end";
+    const quickAddBtn = document.createElement("button");
+    quickAddBtn.type = "button";
+    quickAddBtn.className = "todo-list-toolbar-quick-add";
+    quickAddBtn.title = "할 일 추가";
+    quickAddBtn.innerHTML = CALENDAR_TOOLBAR_QUICK_ADD_ICON;
+    quickAddBtn.addEventListener("click", () => {
+      const panel = el.querySelector(
+        ".todo-section.todo-section-tab-panel.is-active",
+      );
+      panel
+        ?.querySelector(".todo-cards-add-wrap .todo-cards-add-btn")
+        ?.click();
+    });
+    actionsEnd.appendChild(quickAddBtn);
+    actionsEnd.appendChild(settingsBtn);
+    toolbarRow.appendChild(actionsEnd);
+  } else if (!settingsSlot) {
     toolbarRow.appendChild(toolbar);
   }
 
@@ -4279,7 +4369,6 @@ export function renderTodoListForEisenhowerSidebar(options = {}) {
     hideToolbar: true,
     enableDragToEisenhower,
     eisenhowerSidebarFirst: true,
-    hideDoneTasks: true,
     hideOverdueFromCategoryTabs: true,
   });
   mainList.classList.add("todo-list-eisenhower-sidebar");

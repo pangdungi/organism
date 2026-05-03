@@ -7,7 +7,6 @@
 import {
   render as renderTodoList,
   renderTodoListForEisenhowerSidebar,
-  renderOverdueSection,
   saveTodoListBeforeUnmount,
   DRAG_TYPE_TODO_TO_CALENDAR,
   DRAG_TYPE_TODO_TO_EISENHOWER,
@@ -77,22 +76,9 @@ import {
 import { logLpRender } from "../utils/lpRenderDebugLog.js";
 const KPI_SECTION_IDS = ["braindump", "dream", "sideincome", "health", "happy"];
 
-/** 할일/일정 상단 1~4번 탭 — 앱 리렌더·Supabase 동기 후 __lpRenderMain 으로 다시 그려질 때 항상 1번으로 돌아가는 문제 방지 */
+/** 할일/일정 패널은 할일만 표시 — 저장값으로 빈 화면·탭 초기화 방지 */
 const CALENDAR_MAIN_VIEW_STORAGE_KEY = "lp-calendar-main-subview";
-const VALID_CALENDAR_MAIN_VIEWS = new Set([
-  "todo",
-  "eisenhower",
-  "calendar",
-  "1day",
-]);
-
-function getSavedCalendarMainView() {
-  try {
-    const v = localStorage.getItem(CALENDAR_MAIN_VIEW_STORAGE_KEY);
-    if (v && VALID_CALENDAR_MAIN_VIEWS.has(v)) return v;
-  } catch (_) {}
-  return "todo";
-}
+const VALID_CALENDAR_MAIN_VIEWS = new Set(["todo"]);
 
 function persistCalendarMainViewIfValid(view) {
   if (!view || !VALID_CALENDAR_MAIN_VIEWS.has(view)) return;
@@ -158,12 +144,23 @@ function lpCalendarTodoSidebarExpandedTitle(sidebarMode) {
     : "날짜 잡아서 해야 할일";
 }
 
+/** 할일 일정 메인 탭과 동일 CSS 스코프: .calendar-view-todo > .calendar-todo-content */
+function lpWrapCalendarTodoSidebarListEl(todoListEl) {
+  todoListEl.classList.add("todo-list-in-sidebar");
+  const root = document.createElement("div");
+  root.className = "calendar-view-todo calendar-todo-sidebar-parity";
+  const content = document.createElement("div");
+  content.className = "calendar-todo-content";
+  root.appendChild(content);
+  content.appendChild(todoListEl);
+  return root;
+}
+
 function lpCalendarDateSidebarTodoListOpts(sidebarMode, extra = {}) {
   const base = {
-    hideToolbar: true,
+    hideHeader: true,
+    categoryToolbarRightActions: true,
     enableDragToCalendar: true,
-    hideDoneTasks: true,
-    hideOverdueFromCategoryTabs: true,
     ...extra,
   };
   if (sidebarMode === LP_CAL_TODO_SIDEBAR_FULL) {
@@ -798,6 +795,27 @@ function dataTransferHasType(dataTransfer, type) {
   return Array.from(types).includes(type);
 }
 
+/** 날짜 셀 dragover: 브라우저별 types 차이·막대 이동(application/json) 포함 */
+function calendarDragTransferTypesAllowDrop(dataTransfer) {
+  return (
+    dataTransferHasType(dataTransfer, DRAG_TYPE_TODO_TO_CALENDAR) ||
+    dataTransferHasType(dataTransfer, DRAG_TYPE_CALENDAR_SPAN) ||
+    dataTransferHasType(dataTransfer, "application/json") ||
+    dataTransferHasType(dataTransfer, "text/plain")
+  );
+}
+
+/** drop: 사이드바 할일·캘린더 막대(DnD MIME이 다름) 동일 페이로드로 처리 */
+function readCalendarDropPayloadJson(dataTransfer) {
+  if (!dataTransfer) return "";
+  return (
+    dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR) ||
+    dataTransfer.getData(DRAG_TYPE_CALENDAR_SPAN) ||
+    dataTransfer.getData("application/json") ||
+    ""
+  );
+}
+
 function calendarSpanBarPayloadJson(b) {
   const revS = (b._calPrevStart || "").toString().slice(0, 10) || "";
   const revD = (b._calPrevDue || "").toString().slice(0, 10) || "";
@@ -884,13 +902,15 @@ function attachCalendarTodoSidebarSpanRevertDrop(
   });
 }
 
-/** 날짜 정하기 사이드바: 메인 탭(날짜 미배정) + 기한 초과 영역을 저장소 기준으로 다시 그림 */
+/** 날짜 정하기 사이드바: 할일 일정 탭과 동일 목록을 저장소 기준으로 다시 그림 */
 function refreshCalendarDateTodoSidebar(layoutWrap) {
   const body = layoutWrap.querySelector(".calendar-todo-sidebar-body");
   if (!body) return;
   const mainWrap = body.querySelector(".calendar-todo-sidebar-main") || body;
-  const overdueWrap = body.querySelector(".calendar-todo-sidebar-overdue");
-  const oldList = mainWrap.querySelector(".todo-list-in-sidebar");
+  const oldParity = mainWrap.querySelector(".calendar-todo-sidebar-parity");
+  const oldList =
+    oldParity?.querySelector(".todo-list-in-sidebar") ??
+    mainWrap.querySelector(".todo-list-in-sidebar");
   let activeIndex = 0;
   if (oldList) {
     const activeTab = oldList.querySelector(
@@ -903,7 +923,8 @@ function refreshCalendarDateTodoSidebar(layoutWrap) {
       const idx = Array.from(tabs).indexOf(activeTab);
       if (idx >= 0) activeIndex = idx;
     }
-    oldList.remove();
+    if (oldParity) oldParity.remove();
+    else oldList.remove();
   }
   const sidebarMode =
     layoutWrap.dataset.lpCalTodoSidebar || LP_CAL_TODO_SIDEBAR_QUADRANT;
@@ -912,13 +933,7 @@ function refreshCalendarDateTodoSidebar(layoutWrap) {
       initialActiveTabIndex: activeIndex,
     }),
   );
-  newList.classList.add("todo-list-in-sidebar");
-  mainWrap.appendChild(newList);
-  if (overdueWrap) {
-    overdueWrap.replaceChildren(
-      renderOverdueSection({ enableDragToCalendar: true }),
-    );
-  }
+  mainWrap.appendChild(lpWrapCalendarTodoSidebarListEl(newList));
 }
 
 /** 캘린더·우선순위 뷰: 할일 사이드바 기본 접힘(사용자가 펼침). 아이젠하워는 접힘 시 저장 너비 해제 */
@@ -1744,7 +1759,7 @@ function renderMonthlyView(
           );
         });
         cell.addEventListener("dragover", (e) => {
-          if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR)) {
+          if (calendarDragTransferTypesAllowDrop(e.dataTransfer)) {
             e.preventDefault();
             e.dataTransfer.dropEffect = "move";
             cell.classList.add("calendar-day-drag-over");
@@ -1755,7 +1770,7 @@ function renderMonthlyView(
         });
         cell.addEventListener("drop", (e) => {
           cell.classList.remove("calendar-day-drag-over");
-          const json = e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR);
+          const json = readCalendarDropPayloadJson(e.dataTransfer);
           if (!json) return;
           e.preventDefault();
           e.stopPropagation();
@@ -1811,7 +1826,7 @@ function renderMonthlyView(
             }
           } else if (
             KPI_SECTION_IDS.includes(payload.sectionId) &&
-            (payload.name || "").trim()
+            ((payload.taskId || "").trim() || (payload.name || "").trim())
           ) {
             if (payload.kpiTodoId && payload.storageKey) {
               ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
@@ -2069,10 +2084,7 @@ function renderMonthlyView(
       });
       weekWrap.addEventListener("dragover", (e) => {
         e.preventDefault();
-        if (
-          e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR) ||
-          e.dataTransfer.types.includes("application/json")
-        ) {
+        if (calendarDragTransferTypesAllowDrop(e.dataTransfer)) {
           e.dataTransfer.dropEffect = "move";
           let cell = document
             .elementFromPoint(e.clientX, e.clientY)
@@ -2112,9 +2124,7 @@ function renderMonthlyView(
           .querySelectorAll(".calendar-day-drag-over")
           .forEach((el) => el.classList.remove("calendar-day-drag-over"));
         e.preventDefault();
-        let json =
-          e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR) ||
-          e.dataTransfer.getData("application/json");
+        let json = readCalendarDropPayloadJson(e.dataTransfer);
         if (!json) return;
         let payload;
         try {
@@ -2188,7 +2198,7 @@ function renderMonthlyView(
           }
         } else if (
           KPI_SECTION_IDS.includes(payload.sectionId) &&
-          (payload.name || "").trim()
+          ((payload.taskId || "").trim() || (payload.name || "").trim())
         ) {
           if (payload.kpiTodoId && payload.storageKey) {
             ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
@@ -2269,20 +2279,14 @@ function renderMonthlyView(
     </div>
     <div class="calendar-todo-sidebar-body">
       <div class="calendar-todo-sidebar-main"></div>
-      <div class="calendar-todo-sidebar-overdue"></div>
     </div>
   `;
   const body = todoSidebar.querySelector(".calendar-todo-sidebar-body");
   const mainWrap = body.querySelector(".calendar-todo-sidebar-main");
-  const overdueWrapEl = body.querySelector(".calendar-todo-sidebar-overdue");
   const todoListEl = renderTodoList(
     lpCalendarDateSidebarTodoListOpts(sidebarMode),
   );
-  todoListEl.classList.add("todo-list-in-sidebar");
-  mainWrap.appendChild(todoListEl);
-  overdueWrapEl.appendChild(
-    renderOverdueSection({ enableDragToCalendar: true }),
-  );
+  mainWrap.appendChild(lpWrapCalendarTodoSidebarListEl(todoListEl));
   lpBindCalendarDateTodoSidebarCollapse(todoSidebar, sidebarMode);
   applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
   wrap.appendChild(todoSidebar);
@@ -2435,7 +2439,7 @@ function render2WeekView(
           );
         });
         cell.addEventListener("dragover", (e) => {
-          if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR)) {
+          if (calendarDragTransferTypesAllowDrop(e.dataTransfer)) {
             e.preventDefault();
             e.dataTransfer.dropEffect = "move";
             cell.classList.add("calendar-day-drag-over");
@@ -2446,7 +2450,7 @@ function render2WeekView(
         });
         cell.addEventListener("drop", (e) => {
           cell.classList.remove("calendar-day-drag-over");
-          const json = e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR);
+          const json = readCalendarDropPayloadJson(e.dataTransfer);
           if (!json) return;
           e.preventDefault();
           e.stopPropagation();
@@ -2502,7 +2506,7 @@ function render2WeekView(
             }
           } else if (
             KPI_SECTION_IDS.includes(payload.sectionId) &&
-            (payload.name || "").trim()
+            ((payload.taskId || "").trim() || (payload.name || "").trim())
           ) {
             if (payload.kpiTodoId && payload.storageKey) {
               ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
@@ -2758,10 +2762,7 @@ function render2WeekView(
       });
       weekWrap.addEventListener("dragover", (e) => {
         e.preventDefault();
-        if (
-          e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR) ||
-          e.dataTransfer.types.includes("application/json")
-        ) {
+        if (calendarDragTransferTypesAllowDrop(e.dataTransfer)) {
           e.dataTransfer.dropEffect = "move";
           let cell = document
             .elementFromPoint(e.clientX, e.clientY)
@@ -2801,9 +2802,7 @@ function render2WeekView(
           .querySelectorAll(".calendar-day-drag-over")
           .forEach((el) => el.classList.remove("calendar-day-drag-over"));
         e.preventDefault();
-        let json =
-          e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR) ||
-          e.dataTransfer.getData("application/json");
+        let json = readCalendarDropPayloadJson(e.dataTransfer);
         if (!json) return;
         let payload;
         try {
@@ -2877,7 +2876,7 @@ function render2WeekView(
           }
         } else if (
           KPI_SECTION_IDS.includes(payload.sectionId) &&
-          (payload.name || "").trim()
+          ((payload.taskId || "").trim() || (payload.name || "").trim())
         ) {
           if (payload.kpiTodoId && payload.storageKey) {
             ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
@@ -2948,20 +2947,14 @@ function render2WeekView(
     </div>
     <div class="calendar-todo-sidebar-body">
       <div class="calendar-todo-sidebar-main"></div>
-      <div class="calendar-todo-sidebar-overdue"></div>
     </div>
   `;
   const body = todoSidebar.querySelector(".calendar-todo-sidebar-body");
   const mainWrap = body.querySelector(".calendar-todo-sidebar-main");
-  const overdueWrapEl = body.querySelector(".calendar-todo-sidebar-overdue");
   const todoListEl = renderTodoList(
     lpCalendarDateSidebarTodoListOpts(sidebarMode),
   );
-  todoListEl.classList.add("todo-list-in-sidebar");
-  mainWrap.appendChild(todoListEl);
-  overdueWrapEl.appendChild(
-    renderOverdueSection({ enableDragToCalendar: true }),
-  );
+  mainWrap.appendChild(lpWrapCalendarTodoSidebarListEl(todoListEl));
   lpBindCalendarDateTodoSidebarCollapse(todoSidebar, sidebarMode);
   applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
   wrap.appendChild(todoSidebar);
@@ -3114,7 +3107,7 @@ function render3WeekView(
           );
         });
         cell.addEventListener("dragover", (e) => {
-          if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR)) {
+          if (calendarDragTransferTypesAllowDrop(e.dataTransfer)) {
             e.preventDefault();
             e.dataTransfer.dropEffect = "move";
             cell.classList.add("calendar-day-drag-over");
@@ -3125,7 +3118,7 @@ function render3WeekView(
         });
         cell.addEventListener("drop", (e) => {
           cell.classList.remove("calendar-day-drag-over");
-          const json = e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR);
+          const json = readCalendarDropPayloadJson(e.dataTransfer);
           if (!json) return;
           e.preventDefault();
           e.stopPropagation();
@@ -3181,7 +3174,7 @@ function render3WeekView(
             }
           } else if (
             KPI_SECTION_IDS.includes(payload.sectionId) &&
-            (payload.name || "").trim()
+            ((payload.taskId || "").trim() || (payload.name || "").trim())
           ) {
             if (payload.kpiTodoId && payload.storageKey) {
               ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
@@ -3348,7 +3341,8 @@ function render3WeekView(
           if (isTodo) {
             bar.innerHTML = `<span class="calendar-monthly-span-bar-checkbox" style="border-color:${b.color}"><span class="calendar-monthly-span-bar-checkbox-inner"></span></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
           } else {
-            bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+            bar.style.setProperty("--schedule-icon-color", b.color);
+            bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" aria-hidden="true"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
           }
           bar.dataset.date = b.dateKey || "";
           bar.dataset.sectionId = b.sectionId || "";
@@ -3390,7 +3384,12 @@ function render3WeekView(
               ? `<span class="calendar-monthly-span-bar-checkbox" style="border-color:${b.color}"><span class="calendar-monthly-span-bar-checkbox-inner"></span></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
               : `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
           } else {
-            bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+            if (b.isFirstSegment) {
+              bar.style.setProperty("--schedule-icon-color", b.color);
+              bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" aria-hidden="true"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+            } else {
+              bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+            }
           }
           if (isTodo && b.done) {
             bar.classList.add("is-completed");
@@ -3468,10 +3467,7 @@ function render3WeekView(
       });
       weekWrap.addEventListener("dragover", (e) => {
         e.preventDefault();
-        if (
-          e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR) ||
-          e.dataTransfer.types.includes("application/json")
-        ) {
+        if (calendarDragTransferTypesAllowDrop(e.dataTransfer)) {
           e.dataTransfer.dropEffect = "move";
           let cell = document
             .elementFromPoint(e.clientX, e.clientY)
@@ -3511,9 +3507,7 @@ function render3WeekView(
           .querySelectorAll(".calendar-day-drag-over")
           .forEach((el) => el.classList.remove("calendar-day-drag-over"));
         e.preventDefault();
-        let json =
-          e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR) ||
-          e.dataTransfer.getData("application/json");
+        let json = readCalendarDropPayloadJson(e.dataTransfer);
         if (!json) return;
         let payload;
         try {
@@ -3588,7 +3582,7 @@ function render3WeekView(
           }
         } else if (
           KPI_SECTION_IDS.includes(payload.sectionId) &&
-          (payload.name || "").trim()
+          ((payload.taskId || "").trim() || (payload.name || "").trim())
         ) {
           if (payload.kpiTodoId && payload.storageKey) {
             ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
@@ -3659,20 +3653,14 @@ function render3WeekView(
     </div>
     <div class="calendar-todo-sidebar-body">
       <div class="calendar-todo-sidebar-main"></div>
-      <div class="calendar-todo-sidebar-overdue"></div>
     </div>
   `;
   const body = todoSidebar.querySelector(".calendar-todo-sidebar-body");
   const mainWrap = body.querySelector(".calendar-todo-sidebar-main");
-  const overdueWrapEl = body.querySelector(".calendar-todo-sidebar-overdue");
   const todoListEl = renderTodoList(
     lpCalendarDateSidebarTodoListOpts(sidebarMode),
   );
-  todoListEl.classList.add("todo-list-in-sidebar");
-  mainWrap.appendChild(todoListEl);
-  overdueWrapEl.appendChild(
-    renderOverdueSection({ enableDragToCalendar: true }),
-  );
+  mainWrap.appendChild(lpWrapCalendarTodoSidebarListEl(todoListEl));
   lpBindCalendarDateTodoSidebarCollapse(todoSidebar, sidebarMode);
   applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
   wrap.appendChild(todoSidebar);
@@ -4365,7 +4353,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         seg.style.width = "100%";
         seg.style.display = "flex";
         seg.style.alignItems = "flex-start";
-        seg.style.padding = "0.25rem 0.375rem 0.25rem 0.5rem";
+        /* 왼쪽 컬러 바(border-left는 부모 blockFill)와 라벨 사이 — 너무 붙어 보이지 않게 */
+        seg.style.padding = "0.25rem 0.375rem 0.25rem 1rem";
         seg.style.backgroundColor = c.bg;
         seg.style.boxSizing = "border-box";
         if (c.border) {
@@ -4420,6 +4409,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
       }
       if (firstBorderColor) {
         blockFill.style.borderLeft = `0.125rem solid ${firstBorderColor}`;
+        /* 세그먼트 배경·텍스트 전체를 바 안쪽으로 살짝 들여 씀(border와 첫 픽셀 사이) */
+        blockFill.style.paddingLeft = "0.4375rem";
       }
       if (isActual && actualBlockMin > 0) {
         const timeRange = `${fmt(blockStartMin)} ~ ${fmt(blockEndMin)}`;
@@ -5341,17 +5332,16 @@ function renderTodoView(tabsElement) {
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout calendar-view-todo";
 
-  /* 1번 레이아웃: 탭 | 플러스 버튼 | 설정 버튼 한 줄에 배치 */
-  const topRow = document.createElement("div");
-  topRow.className =
-    "calendar-view-top-row calendar-view-top-row--todo calendar-view-top-row--with-settings";
   if (tabsElement) {
+    const topRow = document.createElement("div");
+    topRow.className =
+      "calendar-view-top-row calendar-view-top-row--todo calendar-view-top-row--with-settings";
     const tabsWrapper = document.createElement("div");
     tabsWrapper.className = "calendar-monthly-tabs-wrap";
     tabsWrapper.appendChild(tabsElement);
     topRow.appendChild(tabsWrapper);
+    wrap.appendChild(topRow);
   }
-  wrap.appendChild(topRow);
 
   const todoMain = document.createElement("div");
   todoMain.className = "calendar-monthly-main calendar-todo-main";
@@ -5360,7 +5350,7 @@ function renderTodoView(tabsElement) {
   todoContent.className = "calendar-todo-content";
   const todoListEl = renderTodoList({
     hideHeader: true,
-    settingsSlot: topRow,
+    categoryToolbarRightActions: true,
   });
   todoContent.appendChild(todoListEl);
   todoMain.appendChild(todoContent);
@@ -5500,7 +5490,7 @@ function render1WeekView(
           );
         });
         cell.addEventListener("dragover", (e) => {
-          if (e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR)) {
+          if (calendarDragTransferTypesAllowDrop(e.dataTransfer)) {
             e.preventDefault();
             e.dataTransfer.dropEffect = "move";
             cell.classList.add("calendar-day-drag-over");
@@ -5511,7 +5501,7 @@ function render1WeekView(
         });
         cell.addEventListener("drop", (e) => {
           cell.classList.remove("calendar-day-drag-over");
-          const json = e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR);
+          const json = readCalendarDropPayloadJson(e.dataTransfer);
           if (!json) return;
           e.preventDefault();
           e.stopPropagation();
@@ -5567,7 +5557,7 @@ function render1WeekView(
             }
           } else if (
             KPI_SECTION_IDS.includes(payload.sectionId) &&
-            (payload.name || "").trim()
+            ((payload.taskId || "").trim() || (payload.name || "").trim())
           ) {
             if (payload.kpiTodoId && payload.storageKey) {
               ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
@@ -5773,7 +5763,8 @@ function render1WeekView(
           if (isTodo) {
             bar.innerHTML = `<span class="calendar-monthly-span-bar-checkbox" style="border-color:${b.color}"><span class="calendar-monthly-span-bar-checkbox-inner"></span></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
           } else {
-            bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+            bar.style.setProperty("--schedule-icon-color", b.color);
+            bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" aria-hidden="true"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
           }
           bar.dataset.date = b.dateKey || "";
           bar.dataset.sectionId = b.sectionId || "";
@@ -5844,7 +5835,12 @@ function render1WeekView(
               ? `<span class="calendar-monthly-span-bar-checkbox" style="border-color:${b.color}"><span class="calendar-monthly-span-bar-checkbox-inner"></span></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
               : `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
           } else {
-            bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+            if (b.isFirstSegment) {
+              bar.style.setProperty("--schedule-icon-color", b.color);
+              bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" aria-hidden="true"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+            } else {
+              bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+            }
           }
           if (isTodo && b.done) {
             bar.classList.add("is-completed");
@@ -5996,10 +5992,7 @@ function render1WeekView(
       });
       weekWrap.addEventListener("dragover", (e) => {
         e.preventDefault();
-        if (
-          e.dataTransfer.types.includes(DRAG_TYPE_TODO_TO_CALENDAR) ||
-          e.dataTransfer.types.includes("application/json")
-        ) {
+        if (calendarDragTransferTypesAllowDrop(e.dataTransfer)) {
           e.dataTransfer.dropEffect = "move";
           let cell = document
             .elementFromPoint(e.clientX, e.clientY)
@@ -6039,9 +6032,7 @@ function render1WeekView(
           .querySelectorAll(".calendar-day-drag-over")
           .forEach((el) => el.classList.remove("calendar-day-drag-over"));
         e.preventDefault();
-        let json =
-          e.dataTransfer.getData(DRAG_TYPE_TODO_TO_CALENDAR) ||
-          e.dataTransfer.getData("application/json");
+        let json = readCalendarDropPayloadJson(e.dataTransfer);
         if (!json) return;
         let payload;
         try {
@@ -6116,7 +6107,7 @@ function render1WeekView(
           }
         } else if (
           KPI_SECTION_IDS.includes(payload.sectionId) &&
-          (payload.name || "").trim()
+          ((payload.taskId || "").trim() || (payload.name || "").trim())
         ) {
           if (payload.kpiTodoId && payload.storageKey) {
             ok = updateKpiTodo(payload.kpiTodoId, payload.storageKey, {
@@ -6187,20 +6178,14 @@ function render1WeekView(
     </div>
     <div class="calendar-todo-sidebar-body">
       <div class="calendar-todo-sidebar-main"></div>
-      <div class="calendar-todo-sidebar-overdue"></div>
     </div>
   `;
   const body = todoSidebar.querySelector(".calendar-todo-sidebar-body");
   const mainWrap = body.querySelector(".calendar-todo-sidebar-main");
-  const overdueWrapEl = body.querySelector(".calendar-todo-sidebar-overdue");
   const todoListEl = renderTodoList(
     lpCalendarDateSidebarTodoListOpts(sidebarMode),
   );
-  todoListEl.classList.add("todo-list-in-sidebar");
-  mainWrap.appendChild(todoListEl);
-  overdueWrapEl.appendChild(
-    renderOverdueSection({ enableDragToCalendar: true }),
-  );
+  mainWrap.appendChild(lpWrapCalendarTodoSidebarListEl(todoListEl));
   lpBindCalendarDateTodoSidebarCollapse(todoSidebar, sidebarMode);
   applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
   wrap.appendChild(todoSidebar);
@@ -6432,17 +6417,19 @@ const CALENDAR_SUB_VIEWS = [
   { id: "2week", label: "2주" },
   { id: "1week", label: "1주" },
   { id: "annual", label: "연간" },
+  { id: "1day", label: "오늘 해치우기" },
 ];
 
 const MOBILE_SCHEDULE_CAL_SUB_VIEWS = [
   { id: "monthly", label: "월별" },
   { id: "1week", label: "1주" },
   { id: "annual", label: "연간" },
+  { id: "1day", label: "오늘 해치우기" },
 ];
 
 /**
- * 할일/일정 > 날짜 정하기 하위 뷰(월별·2주·1주·연간) 공통 셸
- * @param {HTMLElement|null} tabsElement 상단 할일/일정 1~4번 탭(없으면 null)
+ * 캘린더 탭 하위 뷰(월별·2주·1주·연간·오늘 해치우기) 공통 셸
+ * @param {HTMLElement|null} tabsElement 상단에 붙일 외부 탭 행(없으면 null)
  * @param {{ subViewsList?: {id:string,label:string}[], storageKey?: string, forceInitialMonthlyOnMobile?: boolean, keepSubTabsOnTop?: boolean, todoSidebarMode?: string }} opts
  * todoSidebarMode: 사이드 메뉴 단독 캘린더는 LP_CAL_TODO_SIDEBAR_FULL(우선순위 탭과 동일 전체 할일)
  */
@@ -6519,6 +6506,9 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
    */
   async function renderSubView(subViewId, subOpts = {}) {
     const skipPull = !!subOpts.skipPull;
+    if (activeSubViewId === "1day" && subViewId !== "1day") {
+      flushAllPendingTimeDailyBudgetSync();
+    }
     activeSubViewId = subViewId;
     dismissCalendarDayExpandUI();
     const gen = ++_nestedSubViewGen;
@@ -6528,12 +6518,27 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
     });
     saveTodoListBeforeUnmount(contentArea);
     if (!skipPull) {
+      if (subViewId === "1day") {
+        try {
+          await pullTimeLedgerTasksFromSupabase();
+        } catch (_) {}
+      }
       try {
         await pullCalendarSectionTasksFromSupabase({
           reason: `calendar_nested_${subViewId}`,
           subView: "calendar",
         });
       } catch (_) {}
+      if (subViewId === "1day") {
+        try {
+          const yEnd = timeLedgerLocalTodayYmd();
+          const yStart = timeLedgerLocalYesterdayYmd();
+          await Promise.all([
+            pullTimeLedgerEntriesForDateRange(yStart, yEnd),
+            pullTimeDailyBudgetFromSupabase(),
+          ]);
+        } catch (_) {}
+      }
     }
     if (gen !== _nestedSubViewGen) return;
     if (subTabs.parentNode) subTabs.remove();
@@ -6546,6 +6551,8 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
       contentArea.appendChild(render1WeekView(null, todoSidebarMode));
     } else if (subViewId === "annual") {
       contentArea.appendChild(renderAnnualView(null));
+    } else if (subViewId === "1day") {
+      contentArea.appendChild(render1DayView(null));
     }
     if (keepSubTabsOnTop) {
       wrap.insertBefore(subTabs, contentArea);
@@ -6593,7 +6600,7 @@ function renderCalendarView(tabsElement) {
   });
 }
 
-/** 모바일 하단 '캘린더' 탭: 할일/일정의 월별·1주 뷰만 (상단 서브탭만 표시) */
+/** 모바일 하단 '캘린더' 탭: 월별·1주·연간·오늘 해치우기(상단 서브탭) */
 export function renderMobileScheduleCalendar() {
   const el = document.createElement("div");
   el.className =
@@ -7217,46 +7224,22 @@ export function render() {
   header.appendChild(titleEl);
   el.appendChild(header);
 
-  const tabs = document.createElement("div");
-  tabs.className = "time-view-tabs calendar-tabs";
-  tabs.innerHTML = `
-    <button type="button" class="time-view-tab active" data-view="todo" data-mobile-label="할일">1. 할일 쏟아내기</button>
-    <button type="button" class="time-view-tab" data-view="eisenhower">2. 우선순위 정렬</button>
-    <button type="button" class="time-view-tab" data-view="calendar" data-mobile-label="캘린더">3. 날짜 정하기</button>
-    <button type="button" class="time-view-tab" data-view="1day" data-mobile-label="오늘 해치우기">4. 오늘 해치우기</button>
-  `;
-  el.appendChild(tabs);
-
   const contentWrap = document.createElement("div");
   contentWrap.className = "calendar-content-wrap";
 
-  let currentView = "todo";
   let _renderContentGen = 0;
   /* App.setActiveTab(calendar) 에서 이미 pull 했으면 첫 renderContent 의 중복 await 가
    * 빈 본문 한 번 깜빡이는 원인 — 첫 1회만 서브탭 pull 생략 */
   let _calendarMainSubtabPullPrimedByApp = true;
 
-  async function renderContent(view, opts = {}) {
-    if (currentView === "1day" && view !== "1day") {
-      flushAllPendingTimeDailyBudgetSync();
-    }
-    if (view !== currentView) {
-      dismissCalendarDayExpandUI();
-    }
+  async function renderContent(opts = {}) {
     const skipSubtabPull = !!opts.skipSubtabPull;
-    const onlySaveWhenFullTodoList =
-      currentView === "todo" || currentView === "eisenhower";
-    if (onlySaveWhenFullTodoList) {
-      saveTodoListBeforeUnmount(contentWrap);
-    }
+    const view = "todo";
+
+    saveTodoListBeforeUnmount(contentWrap);
     registerEisenhowerQuadrantsRefresh(null);
     const gen = ++_renderContentGen;
-    /* 4. 오늘 해치우기: 예상 시간 등 과제명 입력을 위해 클릭 시점 서버 과제 목록 pull */
-    if (view === "1day" && !skipSubtabPull) {
-      try {
-        await pullTimeLedgerTasksFromSupabase();
-      } catch (_) {}
-    }
+
     if (_calendarMainSubtabPullPrimedByApp) {
       _calendarMainSubtabPullPrimedByApp = false;
     } else if (!skipSubtabPull) {
@@ -7266,9 +7249,6 @@ export function render() {
           subView: view,
         });
       } catch (_) {}
-      /*
-       * 사이드바「할일/일정」서브탭: 시간 기록 행·예산 pull. 4. 오늘 해치우기(1day)는 위에서 과제 마스터 pull 함.
-       */
       try {
         const yEnd = timeLedgerLocalTodayYmd();
         const yStart = timeLedgerLocalYesterdayYmd();
@@ -7280,19 +7260,14 @@ export function render() {
     }
     if (gen !== _renderContentGen) return;
 
-    /* App pull 직후(skipSubtabPull): contentWrap 통째 비우면 상단 탭·설정 줄이 잠깐 사라져 깜빡임 — 할일 서브뷰는 상단 유지 후 목록만 교체 */
-    if (
-      skipSubtabPull &&
-      view === "todo" &&
-      contentWrap.querySelector(".calendar-view-todo")
-    ) {
+    /* App pull 직후(skipSubtabPull): contentWrap 통째 비우면 상단·설정 줄이 잠깐 사라져 깜빡임 — 할일 뷰는 유지 후 목록만 교체 */
+    if (skipSubtabPull && contentWrap.querySelector(".calendar-view-todo")) {
       const existingTodo = contentWrap.querySelector(".calendar-view-todo");
-      const topRow =
-        existingTodo.querySelector(".calendar-view-top-row--with-settings") ||
-        existingTodo.querySelector(".calendar-view-top-row--todo");
+      const reuseBtn = existingTodo?.querySelector(
+        ".todo-list-toolbar-actions-end .todo-list-settings-btn",
+      );
       const todoMain = existingTodo.querySelector(".calendar-todo-main");
-      const reuseBtn = topRow?.querySelector(".todo-list-settings-btn");
-      if (topRow && todoMain) {
+      if (existingTodo && todoMain) {
         try {
           todoMain
             .querySelector(".todo-list-view")
@@ -7304,55 +7279,21 @@ export function render() {
         todoContent.appendChild(
           renderTodoList({
             hideHeader: true,
-            settingsSlot: topRow,
+            categoryToolbarRightActions: true,
             ...(reuseBtn?.isConnected
               ? { reuseSettingsButtonEl: reuseBtn }
               : {}),
           }),
         );
         todoMain.appendChild(todoContent);
-        currentView = view;
         persistCalendarMainViewIfValid(view);
         return;
       }
     }
 
-    /* 날짜 정하기(중첩 월별·주): App pull 직후 — contentWrap 비우지 않고 중첩 루트만 재렌더(상단 1~4 탭·서브탭 유지) */
-    if (
-      skipSubtabPull &&
-      view === "calendar" &&
-      contentWrap.querySelector(".calendar-view-with-subtabs")
-    ) {
-      const nested = contentWrap.querySelector(".calendar-view-with-subtabs");
-      if (typeof nested._lpCalendarSoftPullRefresh === "function") {
-        nested._lpCalendarSoftPullRefresh();
-        currentView = view;
-        persistCalendarMainViewIfValid(view);
-        return;
-      }
-    }
-
-    currentView = view;
-    if (contentWrap.contains(tabs)) {
-      el.insertBefore(tabs, contentWrap);
-    }
     contentWrap.innerHTML = "";
     try {
-      if (view === "todo") {
-        contentWrap.appendChild(renderTodoView(tabs));
-      } else if (view === "calendar") {
-        contentWrap.appendChild(renderCalendarView(tabs));
-      } else if (view === "1day") {
-        const oneDayRoot = render1DayView(tabs);
-        contentWrap.appendChild(oneDayRoot);
-      } else if (view === "eisenhower") {
-        contentWrap.appendChild(renderEisenhowerView(tabs));
-      } else {
-        const labels = {};
-        contentWrap.appendChild(
-          renderPlaceholderView(tabs, labels[view] || ""),
-        );
-      }
+      contentWrap.appendChild(renderTodoView(null));
       persistCalendarMainViewIfValid(view);
     } catch (err) {
       const errBox = document.createElement("div");
@@ -7364,48 +7305,14 @@ export function render() {
     }
   }
 
-  tabs.querySelectorAll(".time-view-tab").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      tabs
-        .querySelectorAll(".time-view-tab")
-        .forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      const v = btn.dataset.view;
-      void renderContent(v);
-    });
-  });
-
-  /* 모바일: 상단에서 '날짜 정하기' 탭 숨김(하단 캘린더 탭과 중복). 좁혀졌을 때 캘린더 뷰면 할일로 전환 */
-  const hideCalendarSubTabMq = window.matchMedia("(max-width: 48rem)");
-  function exitCalendarViewOnMobile() {
-    if (!hideCalendarSubTabMq.matches) return;
-    const active = tabs.querySelector(".time-view-tab.active");
-    if (active?.dataset?.view !== "calendar") return;
-    const todoBtn = tabs.querySelector('.time-view-tab[data-view="todo"]');
-    if (todoBtn) todoBtn.click();
-  }
-  hideCalendarSubTabMq.addEventListener("change", exitCalendarViewOnMobile);
-
   el.appendChild(contentWrap);
 
-  /* 모바일은 상단 '날짜 정하기'가 숨겨져 있어 저장값이 calendar면 할일로만 조정(초기 mount에서 todoBtn.click() 금지 — 이중 render·레이스 방지) */
-  let initialMainView = getSavedCalendarMainView();
-  if (hideCalendarSubTabMq.matches && initialMainView === "calendar") {
-    initialMainView = "todo";
-  }
-  tabs.querySelectorAll(".time-view-tab").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.view === initialMainView);
-  });
-  /* 초기 탭: 저장값(4. 오늘 해치우기 등) — 클릭과 동일하게 1회 서버 SELECT 후 그림 */
-  void renderContent(initialMainView);
+  void renderContent();
 
-  /** App.setActiveTab 에서 pull 후 두 번째 renderMain 대신 — 같은 el 안에서만 현재 서브뷰 다시 그림 */
+  /** App.setActiveTab 에서 pull 후 두 번째 renderMain 대신 — 같은 el 안에서만 할일 본문만 갱신 */
   window.__lpCalendarSoftRefresh = () => {
     if (!el.isConnected) return;
-    const active =
-      tabs.querySelector(".time-view-tab.active")?.dataset?.view || currentView;
-    /* App.setActiveTab 에서 방금 pull 했으므로 서브탭 pull 중복 생략 */
-    void renderContent(active, { skipSubtabPull: true });
+    void renderContent({ skipSubtabPull: true });
   };
 
   return el;

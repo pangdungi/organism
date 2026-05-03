@@ -3776,19 +3776,11 @@ function getProductivityBarColor(prod) {
   return "rgba(124, 184, 124, 0.5)"; /* 기타(other) - 데스크탑 prod-bar--other */
 }
 
-/** 모바일 카드 동그라미 테두리색 — 데스크톱에서는 CSS로 숨김 */
-function getProductivityRingColor(prod) {
-  if (prod === "productive") return "#d9738f";
-  if (prod === "nonproductive") return "#4a9fd4";
-  return "#5aaa5a";
-}
-
 /** 모바일 시간가계부 카드 생성 */
 function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   const prod =
     rowData.productivity || getProductivityFromCategory(rowData.category) || "";
   const color = getProductivityBarColor(prod);
-  const ringColor = getProductivityRingColor(prod);
   const tracked = getMobileCardTrackedDisplayForRow(rowData);
   const timeRange =
     getMobileCardTimeRangeDisplayForRow(rowData) || "—";
@@ -3822,7 +3814,6 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   card.innerHTML = `
     <div class="time-mobile-card-leading">
       <div class="time-mobile-card-color-bar" style="background:${color}"></div>
-      <span class="time-mobile-card-status-ring" style="border-color:${ringColor}" aria-hidden="true"></span>
     </div>
     <div class="time-mobile-card-body">
       <div class="time-mobile-card-header">
