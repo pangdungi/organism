@@ -564,7 +564,7 @@ body {
 }
 
 /* 모달 X(닫기): 항상 표시 (호버 불필요) */
-.todo-settings-panel .todo-settings-close,
+.todo-settings-panel .todo-settings-mac-dot--close,
 .asset-settings-panel .asset-settings-close,
 .work-schedule-type-settings-panel .work-schedule-type-settings-close,
 .todo-list-modal-panel .todo-list-modal-close,
@@ -17958,7 +17958,7 @@ col.asset-expense-col-amount,
   color: inherit !important;
 }
 
-/* ----- 할일 환경설정 모달 ----- */
+/* ----- 할일 환경설정 모달 (맥OS 스타일 시트) ----- */
 .todo-settings-modal {
   position: fixed;
   inset: 0;
@@ -17972,86 +17972,212 @@ col.asset-expense-col-amount,
 .todo-settings-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
 }
 
-.todo-settings-panel {
+.todo-settings-panel.todo-settings-panel--macos {
   position: relative;
   width: 100%;
-  max-width: 30rem;
+  max-width: 26rem;
   max-height: 85vh;
-  background: var(--content-bg);
-  border: var(--line-l4);
-  border-radius: var(--modal-radius);
-  box-shadow: 0 0.25rem 1.25rem rgba(0, 0, 0, 0.1);
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Text",
+    "Segoe UI",
+    system-ui,
+    sans-serif;
+  background: rgba(246, 246, 246, 0.82);
+  backdrop-filter: saturate(180%) blur(22px);
+  -webkit-backdrop-filter: saturate(180%) blur(22px);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 11px !important;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.05),
+    0 18px 48px rgba(0, 0, 0, 0.16),
+    0 6px 16px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-.todo-settings-header {
+.todo-settings-mac-titlebar {
+  display: grid;
+  grid-template-columns: minmax(5rem, 1fr) minmax(0, auto) minmax(5rem, 1fr);
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.85rem 0.45rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.35) 0%,
+    rgba(255, 255, 255, 0.06) 100%
+  );
+  flex-shrink: 0;
+}
+
+.todo-settings-mac-traffic {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.25rem;
-  border-bottom: var(--line-l4);
-  background: var(--content-bg);
+  gap: 0.45rem;
+  justify-self: start;
 }
 
-.todo-settings-title {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--fs-h2);
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: var(--text-ink);
-}
-
-.todo-settings-close {
+.todo-settings-mac-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
   flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
+  box-sizing: border-box;
+  box-shadow:
+    inset 0 0 0 0.03125rem rgba(0, 0, 0, 0.12),
+    0 0.0625rem 0 rgba(255, 255, 255, 0.35);
+}
+
+button.todo-settings-mac-dot--close {
   padding: 0;
-  font-size: var(--modal-close-fs);
-  line-height: 1;
-  font-family: inherit;
-  font-weight: 500;
-  color: var(--text-body);
-  background: none;
   border: none;
   cursor: pointer;
+  background: #ff5f57;
+  transition: filter 0.12s ease;
 }
 
-.todo-settings-close:hover {
-  color: var(--text-body);
+button.todo-settings-mac-dot--close:hover {
+  filter: brightness(0.95);
 }
 
-.todo-settings-body {
+button.todo-settings-mac-dot--close:active {
+  filter: brightness(0.88);
+}
+
+.todo-settings-mac-dot--mini {
+  background: #febc2e;
+  pointer-events: none;
+}
+
+.todo-settings-mac-dot--zoom {
+  background: #28c840;
+  pointer-events: none;
+}
+
+.todo-settings-mac-title-wrap {
+  justify-self: center;
+  text-align: center;
+  min-width: 0;
+}
+
+.todo-settings-mac-titlebar-spacer {
+  justify-self: end;
+  width: 5rem;
+}
+
+.todo-settings-modal .todo-settings-title {
+  margin: 0;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: rgba(0, 0, 0, 0.82);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.todo-settings-modal .todo-settings-body {
   flex: 1;
   overflow-y: auto;
-  padding: 1.25rem;
-  color: var(--text-ink);
+  padding: 0.85rem 1rem 1rem;
+  color: rgba(0, 0, 0, 0.88);
   font-weight: 400;
+  font-family: inherit;
 }
 
-.todo-settings-block {
-  margin-bottom: 1.5rem;
-}
-
-.todo-settings-block:last-child {
+.todo-settings-modal .todo-settings-block {
   margin-bottom: 0;
 }
 
-.todo-settings-block-title {
-  margin: 0 0 0.75rem;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-ink);
+.todo-settings-modal .todo-settings-toggles--macos > * {
+  padding: 0.55rem 0.75rem;
+  margin: 0;
+  border-bottom: none;
 }
 
+.todo-settings-modal .todo-settings-toggles--macos > * + * {
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.todo-settings-modal .todo-settings-toggle-row {
+  gap: 0.75rem;
+}
+
+.todo-settings-modal .todo-settings-toggle-label {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: rgba(0, 0, 0, 0.88);
+  font-family: inherit;
+}
+
+.todo-settings-modal .todo-settings-toggle {
+  width: 2.75rem;
+  height: 1.55rem;
+  flex-shrink: 0;
+}
+
+.todo-settings-modal .todo-settings-toggle-track {
+  background: #e3e4e6;
+  border-radius: 62.4375rem !important;
+  transition: background 0.18s ease;
+}
+
+.todo-settings-modal .todo-settings-toggle.on .todo-settings-toggle-track {
+  background: #34c759;
+}
+
+.todo-settings-modal .todo-settings-toggle-thumb {
+  top: 0.125rem;
+  left: 0.125rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  background: #fff;
+  border-radius: 50% !important;
+  box-shadow:
+    0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.18),
+    0 0 0 0.03125rem rgba(0, 0, 0, 0.04);
+  transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.todo-settings-modal .todo-settings-toggle.on .todo-settings-toggle-thumb {
+  transform: translateX(1.15rem);
+}
+
+.todo-settings-modal .todo-settings-clear-btn {
+  padding: 0.22rem 0.65rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  font-family: inherit;
+  letter-spacing: -0.01em;
+  color: #d70015;
+  background: linear-gradient(180deg, #ffffff 0%, #f2f2f7 100%);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 5px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+}
+
+.todo-settings-modal .todo-settings-clear-btn:hover {
+  background: linear-gradient(180deg, #ffffff 0%, #e9e9ee 100%);
+  border-color: rgba(0, 0, 0, 0.16);
+}
+
+.todo-settings-modal .todo-settings-clear-btn:active {
+  background: #e9e9ee;
+}
+
+/* 토글 행·스위치 기본 — 아이디어 알림 등 모달 밖 공통 */
 .todo-settings-toggle-row {
   display: flex;
   align-items: center;
@@ -18109,26 +18235,19 @@ col.asset-expense-col-amount,
   transform: translateX(1.15rem);
 }
 
-.todo-settings-clear-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.6rem 0;
+.todo-settings-block-title {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-ink);
 }
 
-.todo-settings-clear-btn {
-  padding: 0.35rem 0.75rem;
-  font-size: 0.85rem;
-  color: #b91c1c;
-  background: #fef2f2;
-  border: 0.09375rem solid #fecaca;
-  border-radius: var(--modal-radius);
-  cursor: pointer;
+.todo-settings-block {
+  margin-bottom: 1.5rem;
 }
 
-.todo-settings-clear-btn:hover {
-  background: #fee2e2;
-  border-color: #fca5a5;
+.todo-settings-block:last-child {
+  margin-bottom: 0;
 }
 
 .todo-settings-color-row {

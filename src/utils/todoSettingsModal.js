@@ -177,21 +177,28 @@ export function createTodoSettingsModal(options = {}) {
   modal.className = "todo-settings-modal";
   modal.innerHTML = `
     <div class="todo-settings-backdrop"></div>
-    <div class="todo-settings-panel">
-      <div class="todo-settings-header">
-        <h3 class="todo-settings-title">할 일 환경 설정</h3>
-        <button type="button" class="todo-settings-close" aria-label="닫기">×</button>
+    <div class="todo-settings-panel todo-settings-panel--macos">
+      <div class="todo-settings-mac-titlebar">
+        <div class="todo-settings-mac-traffic">
+          <button type="button" class="todo-settings-mac-dot todo-settings-mac-dot--close" aria-label="닫기"></button>
+          <span class="todo-settings-mac-dot todo-settings-mac-dot--mini" aria-hidden="true"></span>
+          <span class="todo-settings-mac-dot todo-settings-mac-dot--zoom" aria-hidden="true"></span>
+        </div>
+        <div class="todo-settings-mac-title-wrap">
+          <h3 class="todo-settings-title">할 일 환경 설정</h3>
+        </div>
+        <div class="todo-settings-mac-titlebar-spacer" aria-hidden="true"></div>
       </div>
       <div class="todo-settings-body">
         <div class="todo-settings-block">
-          <div class="todo-settings-toggles"></div>
+          <div class="todo-settings-toggles todo-settings-toggles--macos"></div>
         </div>
       </div>
     </div>
   `;
 
   const togglesEl = modal.querySelector(".todo-settings-toggles");
-  const closeBtn = modal.querySelector(".todo-settings-close");
+  const closeBtn = modal.querySelector(".todo-settings-mac-dot--close");
 
   let hideCompleted = settings.hideCompleted;
   let sectionTaskListFilter = normalizeSectionTaskListFilter(
