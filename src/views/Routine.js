@@ -156,7 +156,6 @@ function createAddRoutineModal(onAdd) {
     </div>
   `;
 
-  const backdrop = modal.querySelector(".routine-add-backdrop");
   const closeBtn = modal.querySelector(".routine-add-close");
   const cancelBtn = modal.querySelector(".routine-add-btn-cancel");
   const confirmBtn = modal.querySelector(".routine-add-btn-confirm");
@@ -224,7 +223,6 @@ function createAddRoutineModal(onAdd) {
     onAdd({ name, start, end, days, color: selectedColor });
   }
 
-  backdrop.addEventListener("click", close);
   closeBtn.addEventListener("click", close);
   cancelBtn.addEventListener("click", close);
   confirmBtn.addEventListener("click", handleConfirm);
@@ -274,7 +272,6 @@ function createEditRoutineModal(onSave, onDelete) {
     </div>
   `;
 
-  const backdrop = modal.querySelector(".routine-add-backdrop");
   const closeBtn = modal.querySelector(".routine-add-close");
   const cancelBtn = modal.querySelector(".routine-add-btn-cancel");
   const confirmBtn = modal.querySelector(".routine-add-btn-confirm");
@@ -354,7 +351,6 @@ function createEditRoutineModal(onSave, onDelete) {
     }
   });
 
-  backdrop.addEventListener("click", close);
   closeBtn.addEventListener("click", close);
   cancelBtn.addEventListener("click", close);
   confirmBtn.addEventListener("click", handleConfirm);

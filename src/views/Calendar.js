@@ -1166,14 +1166,6 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
   bubble
     .querySelector(".calendar-event-bubble-close")
     .addEventListener("click", close);
-  setTimeout(() => {
-    document.addEventListener("click", function outside(e) {
-      if (!bubble.contains(e.target)) {
-        document.removeEventListener("click", outside);
-        close();
-      }
-    });
-  }, 0);
 
   const scheduleCheckbox = bubble.querySelector(
     ".calendar-event-bubble-schedule-checkbox",
@@ -1255,7 +1247,7 @@ function createCalendarDayExpandBubble(
     /** 연간 뷰 등: × 숨김 */
     hideCloseButton = false,
     /** false면 바깥 클릭으로 닫지 않음(호버 전용) */
-    dismissOnOutsideClick = true,
+    dismissOnOutsideClick = false,
     /** 연간 호버 시 모바일 전체 오버레이 생략 */
     useMobileOverlay = true,
   } = options;
@@ -1353,8 +1345,6 @@ function createCalendarDayExpandBubble(
     onClose?.();
   };
 
-  if (overlayEl) overlayEl.addEventListener("click", close);
-
   if (!hideCloseButton) {
     bubble
       .querySelector(".calendar-event-bubble-close")
@@ -1444,14 +1434,6 @@ function createCalendarBarRevertBubble(
   bubble
     .querySelector(".calendar-event-bubble-close")
     .addEventListener("click", close);
-  setTimeout(() => {
-    document.addEventListener("click", function outside(e) {
-      if (!bubble.contains(e.target)) {
-        document.removeEventListener("click", outside);
-        close();
-      }
-    });
-  }, 0);
 
   bubble
     .querySelector(".calendar-bar-revert-btn")
@@ -1518,14 +1500,6 @@ function createCalendarBarDateEditBubble(
   bubble
     .querySelector(".calendar-event-bubble-close")
     .addEventListener("click", close);
-  setTimeout(() => {
-    document.addEventListener("click", function outside(e) {
-      if (!bubble.contains(e.target)) {
-        document.removeEventListener("click", outside);
-        close();
-      }
-    });
-  }, 0);
 
   const startInput = bubble.querySelector('input[data-field="start"]');
   const dueInput = bubble.querySelector('input[data-field="due"]');

@@ -70,7 +70,6 @@ function showColorPickerModal(label, currentColor, onChange) {
   `;
 
   const swatchesEl = modal.querySelector(".todo-settings-color-modal-swatches");
-  const backdrop = modal.querySelector(".todo-settings-color-modal-backdrop");
   const closeBtn = modal.querySelector(".todo-settings-color-modal-close");
 
   let selectedRgba = hexToRgba(currentHex, alpha);
@@ -95,8 +94,6 @@ function showColorPickerModal(label, currentColor, onChange) {
     modal.remove();
     document.body.style.overflow = "";
   }
-
-  backdrop.addEventListener("click", close);
 
   closeBtn.addEventListener("click", () => {
     onChange(selectedRgba);
@@ -195,7 +192,6 @@ export function createTodoSettingsModal(options = {}) {
 
   const togglesEl = modal.querySelector(".todo-settings-toggles");
   const closeBtn = modal.querySelector(".todo-settings-close");
-  const backdrop = modal.querySelector(".todo-settings-backdrop");
 
   let hideCompleted = settings.hideCompleted;
   let sectionTaskListFilter = normalizeSectionTaskListFilter(
@@ -266,7 +262,6 @@ export function createTodoSettingsModal(options = {}) {
   }
 
   closeBtn.addEventListener("click", close);
-  backdrop.addEventListener("click", close);
 
   modal.addEventListener("keydown", (e) => {
     if (e.key === "Escape") close();

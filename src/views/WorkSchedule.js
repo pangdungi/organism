@@ -464,7 +464,6 @@ export function render(opts = {}) {
     });
 
     const close = () => modal.remove();
-    modal.querySelector(".work-schedule-type-settings-backdrop").addEventListener("click", close);
     modal.querySelector(".work-schedule-type-settings-close").addEventListener("click", close);
 
     renderTypeList();
@@ -847,7 +846,6 @@ export function render(opts = {}) {
       renderMonthlyView();
     }
 
-    backdrop.addEventListener("click", closeModal);
     closeBtn.addEventListener("click", closeModal);
     deleteBtn.addEventListener("click", () => {
       if (!resolvedEditId) return;

@@ -333,7 +333,6 @@ export function showGanttModal() {
   `;
 
   const close = () => modal.remove();
-  modal.querySelector(".gantt-backdrop").addEventListener("click", close);
   modal.querySelector(".gantt-close").addEventListener("click", close);
   document.body.appendChild(modal);
 }

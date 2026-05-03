@@ -231,7 +231,6 @@ export function showKpiViewModal() {
   });
 
   const close = () => modal.remove();
-  modal.querySelector(".kpi-view-backdrop").addEventListener("click", close);
   modal.querySelector(".kpi-view-close").addEventListener("click", close);
   document.body.appendChild(modal);
 }

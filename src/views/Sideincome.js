@@ -380,7 +380,6 @@ export function render() {
       </div>
     `;
     const close = () => modal.remove();
-    modal.querySelector(".dream-kpi-backdrop").addEventListener("click", close);
     modal.querySelector(".dream-kpi-modal-close").addEventListener("click", close);
     modal.querySelector(".dream-kpi-form").addEventListener("submit", (e) => {
       e.preventDefault();
@@ -521,7 +520,6 @@ export function render() {
       </div>
     `;
     const close = () => modal.remove();
-    modal.querySelector(".dream-kpi-backdrop").addEventListener("click", close);
     modal.querySelector(".dream-kpi-modal-close").addEventListener("click", close);
     modal.querySelector(".dream-kpi-delete-btn").addEventListener("click", () => {
       syncKpiToTimeTask(kpi, "remove");
@@ -639,7 +637,6 @@ export function render() {
       </div>
     `;
     const close = () => modal.remove();
-    modal.querySelector(".dream-kpi-log-backdrop").addEventListener("click", close);
     modal.querySelector(".dream-kpi-log-close").addEventListener("click", close);
     modal.querySelector(".dream-kpi-log-form").addEventListener("submit", (e) => {
       e.preventDefault();
@@ -745,7 +742,6 @@ export function render() {
       </div>
     `;
     const close = () => modal.remove();
-    modal.querySelector(".dream-kpi-log-backdrop").addEventListener("click", close);
     modal.querySelector(".dream-kpi-log-close").addEventListener("click", close);
     modal.querySelector(".dream-kpi-log-form").addEventListener("submit", (e) => {
       e.preventDefault();
@@ -1546,7 +1542,6 @@ export function render() {
       </div>
     `;
     const close = () => modal.remove();
-    modal.querySelector(".dream-kpi-backdrop").addEventListener("click", close);
     modal.querySelector(".dream-delete-confirm-cancel").addEventListener("click", close);
     modal.querySelector(".dream-delete-confirm-submit").addEventListener("click", () => {
       close();
@@ -1613,7 +1608,6 @@ export function render() {
       </div>
     `;
     const close = () => modal.remove();
-    modal.querySelector(".dream-kpi-backdrop").addEventListener("click", close);
     modal.querySelector(".dream-kpi-modal-close").addEventListener("click", close);
     modal.querySelector("form").addEventListener("submit", (e) => {
       e.preventDefault();
@@ -1723,7 +1717,6 @@ export function render() {
       </div>
     `;
     const close = () => modal.remove();
-    modal.querySelector(".dream-kpi-backdrop").addEventListener("click", close);
     modal.querySelector(".dream-kpi-modal-close").addEventListener("click", close);
     modal.querySelector("form").addEventListener("submit", (e) => {
       e.preventDefault();

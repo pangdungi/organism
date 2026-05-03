@@ -364,7 +364,6 @@ export function render() {
       </div>
     `;
     const close = () => modal.remove();
-    modal.querySelector(".dream-kpi-backdrop").addEventListener("click", close);
     modal
       .querySelector(".dream-kpi-modal-close")
       .addEventListener("click", close);
@@ -460,7 +459,6 @@ export function render() {
       </div>
     `;
     const close = () => modal.remove();
-    modal.querySelector(".dream-kpi-backdrop").addEventListener("click", close);
     modal
       .querySelector(".dream-kpi-modal-close")
       .addEventListener("click", close);
@@ -595,9 +593,6 @@ export function render() {
       </div>
     `;
     const close = () => modal.remove();
-    modal
-      .querySelector(".dream-kpi-log-backdrop")
-      .addEventListener("click", close);
     modal
       .querySelector(".dream-kpi-log-close")
       .addEventListener("click", close);
@@ -1284,7 +1279,6 @@ export function render() {
       </div>
     `;
     const close = () => modal.remove();
-    modal.querySelector(".dream-kpi-backdrop").addEventListener("click", close);
     modal
       .querySelector(".dream-kpi-modal-close")
       .addEventListener("click", close);
@@ -1333,7 +1327,6 @@ export function render() {
       </div>
     `;
     const close = () => modal.remove();
-    modal.querySelector(".dream-kpi-backdrop").addEventListener("click", close);
     modal
       .querySelector(".dream-delete-confirm-cancel")
       .addEventListener("click", close);
@@ -1401,7 +1394,6 @@ export function render() {
       </div>
     `;
     const close = () => modal.remove();
-    modal.querySelector(".dream-kpi-backdrop").addEventListener("click", close);
     modal
       .querySelector(".dream-kpi-modal-close")
       .addEventListener("click", close);

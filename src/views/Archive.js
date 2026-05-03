@@ -379,7 +379,6 @@ export function render() {
       applyResult(updateTimeLedgerEntryFeedbackById(entryId, ""));
     }
 
-    backdrop.addEventListener("click", close);
     closeBtn.addEventListener("click", close);
     saveBtn.addEventListener("click", save);
     delBtn.addEventListener("click", onDelete);

@@ -557,7 +557,6 @@ function openReminderModalFromHome(item, onSaved) {
     </div>
   `;
   const close = () => modal.remove();
-  modal.querySelector(".dream-kpi-backdrop").addEventListener("click", close);
   modal
     .querySelector(".dream-kpi-modal-close")
     .addEventListener("click", close);
@@ -775,28 +774,28 @@ export function render() {
   summaryGrid.className = "home-time-summary-grid";
   summaryGrid.innerHTML = `
     <div class="home-time-summary-cell home-time-summary-cell--tracked">
-      <div class="home-time-summary-cell-main">
-        <span class="home-time-summary-label">총 기록</span>
+      <div class="home-time-summary-cell-top">
         <span class="home-time-summary-value home-time-summary-value--duration">${wrapHoursDisplayForSummary(timeSummary.trackedDisplay)}</span>
       </div>
+      <span class="home-time-summary-label">총 기록</span>
     </div>
     <div class="home-time-summary-cell home-time-summary-cell--productive">
-      <div class="home-time-summary-cell-main">
-        <span class="home-time-summary-label" title="생산적 시간">생산적</span>
+      <div class="home-time-summary-cell-top">
         <span class="home-time-summary-value home-time-summary-value--duration">${wrapHoursDisplayForSummary(timeSummary.productiveDisplay)}</span>
       </div>
+      <span class="home-time-summary-label" title="생산적 시간">생산적</span>
     </div>
     <div class="home-time-summary-cell home-time-summary-cell--money">
-      <div class="home-time-summary-cell-main">
-        <span class="home-time-summary-label" title="투자한 시급">투자</span>
+      <div class="home-time-summary-cell-top">
         <span class="home-time-summary-value home-time-summary-value--invested"><span class="home-time-summary-digits home-time-summary-digits--money">${escapeHtml(timeSummary.priceDisplay)}</span><span class="home-time-summary-unit">원</span></span>
       </div>
+      <span class="home-time-summary-label" title="투자한 시급">투자</span>
     </div>
     <div class="home-time-summary-cell home-time-summary-cell--money">
-      <div class="home-time-summary-cell-main">
-        <span class="home-time-summary-label" title="낭비한 시급">낭비</span>
+      <div class="home-time-summary-cell-top">
         <span class="home-time-summary-value home-time-summary-value--spent"><span class="home-time-summary-digits home-time-summary-digits--money">${escapeHtml(timeSummary.wastedDisplay)}</span><span class="home-time-summary-unit">원</span></span>
       </div>
+      <span class="home-time-summary-label" title="낭비한 시급">낭비</span>
     </div>
   `;
 

@@ -49,7 +49,6 @@ export function showConfirmModal(options = {}) {
       </div>
     `;
 
-    const backdrop = modal.querySelector(".todo-list-modal-backdrop");
     const closeBtn = modal.querySelector(".todo-list-modal-close");
     const cancelBtn = modal.querySelector(".todo-list-modal-cancel");
     const confirmBtn = modal.querySelector(".todo-list-modal-confirm");
@@ -63,7 +62,6 @@ export function showConfirmModal(options = {}) {
     confirmBtn.addEventListener("click", () => finish(true));
     cancelBtn.addEventListener("click", () => finish(false));
     closeBtn.addEventListener("click", () => finish(false));
-    backdrop.addEventListener("click", () => finish(false));
 
     modal.addEventListener("keydown", (e) => {
       if (e.key === "Escape") finish(false);

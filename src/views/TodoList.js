@@ -1227,7 +1227,6 @@ function showConfirmModal(options = {}) {
     </div>
   `;
 
-  const backdrop = modal.querySelector(".todo-list-modal-backdrop");
   const closeBtn = modal.querySelector(".todo-list-modal-close");
   const cancelBtn = modal.querySelector(".todo-list-modal-cancel");
   const confirmBtn = modal.querySelector(".todo-list-modal-confirm");
@@ -1243,10 +1242,6 @@ function showConfirmModal(options = {}) {
   });
   cancelBtn.addEventListener("click", close);
   closeBtn.addEventListener("click", close);
-  backdrop.addEventListener("click", () => {
-    if (isTodoListMobileModalViewport()) return;
-    close();
-  });
 
   modal.addEventListener("keydown", (e) => {
     if (e.key === "Escape") close();
@@ -1283,7 +1278,6 @@ function showMobileDateModal(options) {
       </div>
     </div>
   `;
-  const backdrop = modal.querySelector(".todo-list-modal-backdrop");
   const closeBtn = modal.querySelector(".todo-list-modal-close");
   const cancelBtn = modal.querySelector(".todo-list-modal-cancel");
   const confirmBtn = modal.querySelector(".todo-list-modal-confirm");
@@ -1309,10 +1303,6 @@ function showMobileDateModal(options) {
   });
   closeBtn.addEventListener("touchend", (e) => {
     e.preventDefault();
-    close();
-  });
-  backdrop.addEventListener("click", () => {
-    if (isTodoListMobileModalViewport()) return;
     close();
   });
   modal.addEventListener("keydown", (e) => {
@@ -1466,7 +1456,6 @@ function showTodoTaskModal(options) {
     </div>
   `;
 
-  const backdrop = modal.querySelector(".todo-list-modal-backdrop");
   const closeBtn = modal.querySelector(".todo-list-modal-close");
   const cancelBtn = modal.querySelector(".todo-list-modal-cancel");
   const confirmBtn = modal.querySelector(".todo-list-modal-confirm");
@@ -1563,16 +1552,6 @@ function showTodoTaskModal(options) {
   });
   cancelBtn?.addEventListener("click", close);
   closeBtn?.addEventListener("click", close);
-  /* 열린 직후 같은 탭이 백드롭에 전달되어 바로 닫히는 것 방지 */
-  let allowBackdropClose = false;
-  setTimeout(() => {
-    allowBackdropClose = true;
-  }, 100);
-  backdrop?.addEventListener("click", (e) => {
-    if (e.target !== backdrop || !allowBackdropClose) return;
-    if (isTodoListMobileModalViewport()) return;
-    close();
-  });
   if (mode === "edit" && onDelete && deleteBtn) {
     deleteBtn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -2212,7 +2191,6 @@ function createTaskRow(taskData = {}, options = {}) {
       </div>
     `;
     const close = () => modal.remove();
-    modal.querySelector(".dream-kpi-backdrop").addEventListener("click", close);
     modal
       .querySelector(".dream-kpi-modal-close")
       .addEventListener("click", close);

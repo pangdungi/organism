@@ -5797,7 +5797,6 @@ function createAssetSettingsModal(onSave) {
   });
 
   closeBtn.addEventListener("click", () => { modal.hidden = true; });
-  backdrop.addEventListener("click", () => { modal.hidden = true; });
 
   return {
     modal,

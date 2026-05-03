@@ -127,7 +127,6 @@ export function render() {
       </div>
     `;
     const close = () => wrap.remove();
-    wrap.querySelector(".idea-delete-account-modal-backdrop").addEventListener("click", close);
     wrap.querySelector(".idea-delete-account-modal-close").addEventListener("click", close);
     wrap.querySelector(".idea-delete-account-modal-cancel").addEventListener("click", close);
     const pwInput = wrap.querySelector(".idea-delete-account-modal-pw");

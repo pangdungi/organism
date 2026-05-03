@@ -520,7 +520,6 @@ export function render() {
       modal.remove();
       renderLayout();
     };
-    backdrop.addEventListener("click", closeModalOnly);
     const closeBtn = document.createElement("button");
     closeBtn.type = "button";
     closeBtn.className = "diary-desktop-compose-modal-close";

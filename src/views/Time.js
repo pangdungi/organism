@@ -90,13 +90,17 @@ export { getTaskOptionByName };
 /** false: 시간가계부 상단「개선하기」탭 비표시. 다시 쓰려면 true 로 변경. */
 const TIME_LEDGER_SHOW_IMPROVE_TAB = false;
 
+/** 시간가계부: 1024px 이하는 모바일 카드·요약 레이아웃(main.css 분기와 동일) */
+const MQ_TIME_LEDGER_MAX_MOBILE = "(max-width: 64rem)";
+const MQ_TIME_LEDGER_MIN_DESKTOP = "(min-width: 64.0625rem)";
+
 /** 모바일 과제 기록 FAB — TodoList ADD_TASK_ICON과 동일 */
 const TIME_LEDGER_ADD_FAB_SVG =
   '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>';
 
-/** 상단 툴바: 라벨 없는 단순 + (stroke = currentColor) */
+/** 상단 툴바: 라벨 없는 단순 + (설정·필터 아이콘과 동일 20px 박스) */
 const TIME_LEDGER_ADD_PLUS_ICON_SVG =
-  '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>';
+  '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>';
 
 /** 개선하기·기타: 해당 날짜 할일 목록 (Calendar getTasksForDate와 동일 데이터) */
 const KPI_SECTION_IDS_AUDIT = [
@@ -3772,11 +3776,19 @@ function getProductivityBarColor(prod) {
   return "rgba(124, 184, 124, 0.5)"; /* 기타(other) - 데스크탑 prod-bar--other */
 }
 
+/** 모바일 카드 동그라미 테두리색 — 데스크톱에서는 CSS로 숨김 */
+function getProductivityRingColor(prod) {
+  if (prod === "productive") return "#d9738f";
+  if (prod === "nonproductive") return "#4a9fd4";
+  return "#5aaa5a";
+}
+
 /** 모바일 시간가계부 카드 생성 */
 function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   const prod =
     rowData.productivity || getProductivityFromCategory(rowData.category) || "";
   const color = getProductivityBarColor(prod);
+  const ringColor = getProductivityRingColor(prod);
   const tracked = getMobileCardTrackedDisplayForRow(rowData);
   const timeRange =
     getMobileCardTimeRangeDisplayForRow(rowData) || "—";
@@ -3808,7 +3820,10 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   card._timeLedgerViewEl = viewEl || null;
   card._onRowDelete = onDelete;
   card.innerHTML = `
-    <div class="time-mobile-card-color-bar" style="background:${color}"></div>
+    <div class="time-mobile-card-leading">
+      <div class="time-mobile-card-color-bar" style="background:${color}"></div>
+      <span class="time-mobile-card-status-ring" style="border-color:${ringColor}" aria-hidden="true"></span>
+    </div>
     <div class="time-mobile-card-body">
       <div class="time-mobile-card-header">
         <span class="time-mobile-card-task">${taskName}</span>
@@ -4279,7 +4294,7 @@ export function render() {
     const endLabel = labelRoot?.querySelector(".time-filter-date-label--end");
     const isDesktop =
       typeof window !== "undefined" &&
-      window.matchMedia("(min-width: 48.0625rem)").matches;
+      window.matchMedia(MQ_TIME_LEDGER_MIN_DESKTOP).matches;
     const fmt = isDesktop ? formatTimeFilterDateDotsWithWeekday : formatTimeFilterDateKr;
     if (startLabel) {
       startLabel.textContent = fmt(startDateInput.value || filterStartDate);
@@ -4365,7 +4380,7 @@ export function render() {
     const inp = field.querySelector('input[type="date"]');
     if (!inp) return;
     field.addEventListener("click", () => {
-      if (!window.matchMedia("(max-width: 48rem)").matches) return;
+      if (!window.matchMedia(MQ_TIME_LEDGER_MAX_MOBILE).matches) return;
       openTimeLedgerFilterDateInput(inp);
     });
   });
@@ -4438,7 +4453,7 @@ export function render() {
   function syncMobileTabsSummaryDisplay() {
     const view =
       viewTabs.querySelector(".time-view-tab.active")?.dataset?.view || "all";
-    const isMobile = window.matchMedia("(max-width: 48rem)").matches;
+    const isMobile = window.matchMedia(MQ_TIME_LEDGER_MAX_MOBILE).matches;
     mobileTabsSummary.style.display =
       isMobile && view === "all" ? "" : "none";
   }
@@ -4451,7 +4466,6 @@ export function render() {
   ledgerToolbarIcons.className = "time-ledger-toolbar-icons";
   ledgerToolbarIcons.appendChild(taskSetupBtn);
   ledgerToolbarIcons.appendChild(taskSelectBtn);
-  ledgerToolbarIcons.appendChild(hourlyAddSlot);
 
   const ledgerTopLeft = document.createElement("div");
   ledgerTopLeft.className = "time-ledger-top-strip__left";
@@ -4464,6 +4478,23 @@ export function render() {
   const ledgerTopRight = document.createElement("div");
   ledgerTopRight.className = "time-ledger-top-strip__right";
   ledgerTopRight.appendChild(hourlyRateValues);
+
+  /** 모바일: 설정·필터는 왼쪽, 탭은 가운데, 과제 기록(+)은 오른쪽 끝 — 데스크톱은 +만 좌측 아이콘 줄 */
+  function syncHourlyAddSlotPlacement() {
+    if (!hourlyAddSlot) return;
+    const narrow = window.matchMedia(MQ_TIME_LEDGER_MAX_MOBILE).matches;
+    if (narrow) {
+      ledgerTopRight.appendChild(hourlyAddSlot);
+    } else {
+      ledgerToolbarIcons.appendChild(hourlyAddSlot);
+    }
+  }
+  syncHourlyAddSlotPlacement();
+  window.matchMedia(MQ_TIME_LEDGER_MAX_MOBILE).addEventListener(
+    "change",
+    syncHourlyAddSlotPlacement,
+    { signal },
+  );
 
   const tabHeaderRow = document.createElement("div");
   tabHeaderRow.className = "time-ledger-tab-header-row";
@@ -4601,7 +4632,6 @@ export function render() {
       "click",
       openTaskSelectModal,
     );
-    taskSelectBackdrop?.addEventListener("click", closeTaskSelectModal);
     taskSelectClose?.addEventListener("click", closeTaskSelectModal);
     taskSelectAllBtn?.addEventListener("click", () => {
       taskSelectModal.querySelectorAll(".time-task-select-cb").forEach((cb) => {
@@ -4677,8 +4707,8 @@ export function render() {
     <div class="time-task-setup-panel time-task-log-panel">
       <div class="time-datetime-picker-backdrop" hidden></div>
       <div class="time-task-setup-header time-task-log-header">
-        <button type="button" class="time-task-setup-close" aria-label="닫기">&times;</button>
         <h3 class="time-task-setup-title">과제 기록</h3>
+        <button type="button" class="time-task-setup-close" aria-label="닫기">&times;</button>
       </div>
       <div class="time-task-setup-body time-task-log-body">
         <div class="time-task-log-scroll-area">
@@ -4688,13 +4718,17 @@ export function render() {
             <div class="time-task-log-task-wrap"></div>
           </div>
           <div class="time-task-log-field time-task-log-datetime-onerow">
-            <div class="time-task-log-datetime-input-row">
-              <input type="date" class="time-task-log-date-start" name="time-task-log-date" data-hide-delete-btn="true" data-use-native-mobile="true" />
-              <span class="time-task-log-datetime-sep">−</span>
-              <input type="text" class="time-task-log-time-start" name="time-task-log-time-start" placeholder="hh:mm" maxlength="5" />
-              <span class="time-task-log-datetime-sep">−</span>
-              <input type="text" class="time-task-log-time-end" name="time-task-log-time-end" placeholder="hh:mm" maxlength="5" />
+            <span class="time-task-log-section-label">시간</span>
+            <div class="time-task-log-datetime-card">
+              <div class="time-task-log-datetime-input-row">
+                <input type="date" class="time-task-log-date-start" name="time-task-log-date" data-hide-delete-btn="true" data-use-native-mobile="true" />
+                <span class="time-task-log-datetime-sep">−</span>
+                <input type="text" class="time-task-log-time-start" name="time-task-log-time-start" placeholder="hh:mm" maxlength="5" />
+                <span class="time-task-log-datetime-sep">−</span>
+                <input type="text" class="time-task-log-time-end" name="time-task-log-time-end" placeholder="hh:mm" maxlength="5" />
+              </div>
             </div>
+            <span class="time-task-log-section-label time-task-log-quick-section-label">빠른 선택</span>
             <div class="time-task-log-time-adjust-btns">
               <button type="button" class="time-task-log-time-adjust-btn time-task-log-time-adjust-now" data-now="true">지금</button>
               <button type="button" class="time-task-log-time-adjust-btn time-task-log-time-adjust-last" data-last="true">마지막</button>
@@ -4717,12 +4751,13 @@ export function render() {
           <div class="time-task-log-daily-todos-list"></div>
         </div>
         <div class="time-task-log-memo-section">
-          <h4 class="time-task-log-memo-title">메모</h4>
+          <span class="time-task-log-section-label time-task-log-memo-section-label">메모</span>
           <div class="time-task-log-memo-fields">
             <div class="time-task-log-field">
-              <textarea class="time-task-log-feedback time-task-log-memo-input" rows="3"></textarea>
+              <textarea class="time-task-log-feedback time-task-log-memo-input" rows="3" placeholder="메모를 입력하세요"></textarea>
             </div>
             <div class="time-task-log-field">
+              <span class="time-task-log-section-label">태그</span>
               <div class="time-task-log-tags-wrap">
                 <input type="text" class="time-task-log-tag-input" placeholder="태그 입력 후 Enter" />
                 <div class="time-task-log-tag-list"></div>
@@ -4731,13 +4766,17 @@ export function render() {
           </div>
         </div>
         <div class="time-task-log-todo-row">
-          <span class="time-task-log-todo-label">투두 리스트</span>
-          <button type="button" class="time-task-log-todo-add-btn" aria-label="할일 추가">+</button>
+          <div class="time-task-log-link-row-head">
+            <span class="time-task-log-todo-label time-task-log-link-strip-label">투두 리스트</span>
+            <button type="button" class="time-task-log-todo-add-btn time-task-log-link-strip-add" aria-label="할일 추가">+</button>
+          </div>
           <div class="time-task-log-todo-pills"></div>
         </div>
         <div class="time-task-log-expense-row">
-          <span class="time-task-log-expense-label">소비 기록</span>
-          <button type="button" class="time-task-log-expense-add-btn" aria-label="소비 기록 추가">+</button>
+          <div class="time-task-log-link-row-head">
+            <span class="time-task-log-expense-label time-task-log-link-strip-label">소비 기록</span>
+            <button type="button" class="time-task-log-expense-add-btn time-task-log-link-strip-add" aria-label="소비 기록 추가">+</button>
+          </div>
           <div class="time-task-log-expense-pills"></div>
         </div>
         </div>
@@ -4777,9 +4816,12 @@ export function render() {
     <div class="time-task-log-todo-inner-modal" hidden>
       <div class="time-task-log-todo-inner-backdrop"></div>
       <div class="time-task-log-todo-inner-panel">
-        <div class="time-task-log-todo-inner-header">
-          <span class="time-task-log-todo-inner-header-label">투두리스트</span>
-          <button type="button" class="time-task-log-todo-inner-close" aria-label="닫기">&times;</button>
+        <div class="time-task-log-todo-inner-header time-task-log-sheet-header">
+          <div class="time-task-log-sheet-header-leading" aria-hidden="true"></div>
+          <h3 class="time-task-log-todo-inner-header-label">투두리스트</h3>
+          <div class="time-task-log-sheet-header-trailing">
+            <button type="button" class="time-task-log-todo-inner-close" aria-label="닫기">&times;</button>
+          </div>
         </div>
         <div class="time-task-log-todo-inner-body">
           <div class="time-task-log-field">
@@ -4798,9 +4840,9 @@ export function render() {
     <div class="time-task-log-expense-inner-modal" hidden>
       <div class="time-task-log-expense-inner-backdrop"></div>
       <div class="time-task-log-expense-inner-panel">
-        <div class="time-task-log-expense-inner-header">
-          <span class="time-task-log-expense-inner-header-label">소비 기록</span>
-          <button type="button" class="time-task-log-expense-inner-close" aria-label="닫기">&times;</button>
+        <div class="time-task-log-expense-inner-header time-task-setup-header time-task-log-header">
+          <h3 class="time-task-setup-title">소비 기록</h3>
+          <button type="button" class="time-task-setup-close time-task-log-expense-inner-close" aria-label="닫기">&times;</button>
         </div>
         <div class="time-task-log-expense-inner-body">
           <div class="time-task-log-expense-inner-fields">
@@ -4844,7 +4886,6 @@ export function render() {
     taskLogPickerBackdrop.hidden = true;
   }
 
-  taskLogPickerBackdrop?.addEventListener("click", closeDateTimePicker);
 
   const taskLogTitleEl = taskLogModal.querySelector(".time-task-setup-title");
   const taskLogFooterEl = taskLogModal.querySelector("[data-task-log-footer]");
@@ -4968,7 +5009,6 @@ export function render() {
   }
 
   taskLogMemoAddBtn?.addEventListener("click", openMemoInnerModal);
-  taskLogMemoInnerBackdrop?.addEventListener("click", closeMemoInnerModal);
   taskLogMemoInnerCancel?.addEventListener("click", closeMemoInnerModal);
 
   taskLogMemoInnerAdd?.addEventListener("click", () => {
@@ -5242,6 +5282,15 @@ export function render() {
 
   let taskLogEditExclude = null;
 
+  function setTaskLogQuickAdjustActive(btn) {
+    taskLogModal.querySelectorAll(".time-task-log-time-adjust-btn").forEach((b) => {
+      b.classList.toggle(
+        "time-task-log-time-adjust-active",
+        !!(btn && b === btn),
+      );
+    });
+  }
+
   taskLogModal
     .querySelectorAll(".time-task-log-time-adjust-btn")
     .forEach((btn) => {
@@ -5287,12 +5336,14 @@ export function render() {
             if (taskLogTimeEnd) taskLogTimeEnd.value = latest;
             syncEndToHidden();
           }
+          setTaskLogQuickAdjustActive(btn);
           return;
         }
 
         if (btn.dataset.dayEnd === "true") {
           if (taskLogTimeEnd) taskLogTimeEnd.value = "23:59";
           syncEndToHidden();
+          setTaskLogQuickAdjustActive(btn);
           return;
         }
 
@@ -5305,6 +5356,7 @@ export function render() {
             if (taskLogTimeEnd) taskLogTimeEnd.value = newTime;
             syncEndToHidden();
           }
+          setTaskLogQuickAdjustActive(btn);
         } else {
           const delta = parseInt(btn.dataset.delta || "0", 10);
           const baseTime = targetIsStart
@@ -5332,6 +5384,7 @@ export function render() {
             if (taskLogTimeEnd) taskLogTimeEnd.value = newTime;
             syncEndToHidden();
           }
+          setTaskLogQuickAdjustActive(btn);
         }
       });
     });
@@ -6396,14 +6449,9 @@ export function render() {
   }
 
   taskLogTodoAddBtn?.addEventListener("click", openTodoInnerModal);
-  taskLogTodoInnerBackdrop?.addEventListener("click", closeTodoInnerModal);
   taskLogTodoInnerClose?.addEventListener("click", closeTodoInnerModal);
 
   taskLogExpenseAddBtn?.addEventListener("click", openExpenseInnerModal);
-  taskLogExpenseInnerBackdrop?.addEventListener(
-    "click",
-    closeExpenseInnerModal,
-  );
   taskLogExpenseInnerClose?.addEventListener("click", closeExpenseInnerModal);
 
   taskLogTodoInnerAdd?.addEventListener("click", () => {
@@ -6476,13 +6524,6 @@ export function render() {
   function closeExpenseInnerModal() {
     if (taskLogExpenseInnerModal) taskLogExpenseInnerModal.hidden = true;
   }
-
-  taskLogExpenseAddBtn?.addEventListener("click", openExpenseInnerModal);
-  taskLogExpenseInnerBackdrop?.addEventListener(
-    "click",
-    closeExpenseInnerModal,
-  );
-  taskLogExpenseInnerClose?.addEventListener("click", closeExpenseInnerModal);
 
   taskLogExpenseInnerAdd?.addEventListener("click", () => {
     const name = (taskLogExpenseNameInput?.value || "").trim();
@@ -6697,6 +6738,9 @@ export function render() {
     if (taskLogKpiTodosSection) taskLogKpiTodosSection.hidden = true;
     if (taskLogKpiTodosList) taskLogKpiTodosList.innerHTML = "";
     if (firstTask) onTaskSelectedForLog(firstTask);
+    setTaskLogQuickAdjustActive(
+      taskLogModal.querySelector(".time-task-log-time-adjust-last"),
+    );
   }
 
   function openTaskLogModalForEdit(tr, rowData) {
@@ -6750,6 +6794,7 @@ export function render() {
     taskLogSubmitBtn.textContent = "수정";
     if (taskLogFooterEl) taskLogFooterEl.style.display = "";
     if (taskLogDeleteBtn) taskLogDeleteBtn.hidden = false;
+    setTaskLogQuickAdjustActive(null);
     taskLogModal.hidden = false;
     taskLogModal.style.zIndex = "1002";
     document.body.style.overflow = "hidden";
@@ -8061,7 +8106,7 @@ export function render() {
     clearTimeLedgerMobileElapsedTimer(el);
     rescueTimeFilterControlsToFilterBar();
     contentWrap.innerHTML = "";
-    const isMobile = window.matchMedia("(max-width: 48rem)").matches;
+    const isMobile = window.matchMedia(MQ_TIME_LEDGER_MAX_MOBILE).matches;
 
     const handleCardDelete = (card, rowData) => {
       card.remove();
@@ -8110,7 +8155,7 @@ export function render() {
       : "time-ledger-mobile-cards time-ledger-desktop-cards";
 
     const showDayGroups = timeLedgerShouldShowDayGroups(rows);
-    const appendCard = (d) => {
+    const appendCardTo = (parent, d) => {
       const card = createMobileTimeCard(
         d,
         handleCardEdit,
@@ -8118,13 +8163,27 @@ export function render() {
         el,
       );
       card._onRowDelete = handleCardDelete;
-      cardsWrap.appendChild(card);
+      parent.appendChild(card);
     };
+
+    /** 새 카드는 마지막 일별 스택에 붙임 (모바일·데스크톱 동일) */
+    function appendNewCardToLedgerCardsWrap(card) {
+      let stack = cardsWrap.querySelector(
+        ".time-ledger-day-card-stack:last-of-type",
+      );
+      if (!stack) {
+        stack = document.createElement("div");
+        stack.className = "time-ledger-day-card-stack";
+        cardsWrap.appendChild(stack);
+      }
+      stack.appendChild(card);
+    }
+
     if (showDayGroups) {
       const groups = timeLedgerGroupRowsByDay(rows);
       const desktopHeaderFmt =
         typeof window !== "undefined" &&
-        window.matchMedia("(min-width: 48.0625rem)").matches;
+        window.matchMedia(MQ_TIME_LEDGER_MIN_DESKTOP).matches;
       for (const g of groups) {
         if (g.key !== "_nodate") {
           const header = document.createElement("div");
@@ -8144,10 +8203,28 @@ export function render() {
           header.appendChild(totalEl);
           cardsWrap.appendChild(header);
         }
-        for (const d of g.rows) appendCard(d);
+        const cardParent =
+          g.rows.length > 0
+            ? (() => {
+                const stack = document.createElement("div");
+                stack.className = "time-ledger-day-card-stack";
+                cardsWrap.appendChild(stack);
+                return stack;
+              })()
+            : cardsWrap;
+        for (const d of g.rows) appendCardTo(cardParent, d);
       }
     } else {
-      rows.forEach(appendCard);
+      const cardParent =
+        rows.length > 0
+          ? (() => {
+              const stack = document.createElement("div");
+              stack.className = "time-ledger-day-card-stack";
+              cardsWrap.appendChild(stack);
+              return stack;
+            })()
+          : cardsWrap;
+      rows.forEach((d) => appendCardTo(cardParent, d));
     }
 
     const openAdd = () => {
@@ -8174,7 +8251,7 @@ export function render() {
           el,
         );
         card._onRowDelete = handleCardDelete;
-        cardsWrap.appendChild(card);
+        appendNewCardToLedgerCardsWrap(card);
         updateTotal();
       }
     };
@@ -8227,6 +8304,27 @@ export function render() {
     }
     updateTotal();
   }
+
+  const mqTimeLedgerLayout = window.matchMedia(MQ_TIME_LEDGER_MAX_MOBILE);
+  function refreshTimeLedgerLayoutIfAllView() {
+    if (!el.isConnected) return;
+    syncHourlyAddSlotPlacement();
+    const view =
+      viewTabs.querySelector(".time-view-tab.active")?.dataset?.view || "all";
+    mergeRowsIntoCache();
+    cachedRows = getFullRowsForFilter(true);
+    const filtered = getFilteredRows(cachedRows);
+    if (view === "all") {
+      renderAll(filtered);
+    } else if (view === "audit") {
+      renderAudit(filtered);
+    }
+    syncMobileTabsSummaryDisplay();
+    syncTimeFilterDateLabels();
+  }
+  mqTimeLedgerLayout.addEventListener("change", refreshTimeLedgerLayoutIfAllView, {
+    signal,
+  });
 
   function renderByProductivity(rows = []) {
     clearTimeLedgerMobileElapsedTimer(el);
@@ -8796,8 +8894,6 @@ export function render() {
     clearTimeLedgerMobileElapsedTimer(el);
     rescueTimeFilterControlsToFilterBar();
     contentWrap.innerHTML = "";
-    const isMobile = window.matchMedia("(max-width: 48rem)").matches;
-
     const type = filterType;
     const y = filterYear;
     const m = filterMonth;
@@ -9905,7 +10001,7 @@ export function render() {
     const hourlyAddSlotRoot = el.querySelector(".time-hourly-add-slot");
     if (
       hourlyAddSlotRoot &&
-      !window.matchMedia("(max-width: 48rem)").matches &&
+      !window.matchMedia(MQ_TIME_LEDGER_MAX_MOBILE).matches &&
       view !== "all"
     ) {
       hourlyAddSlotRoot.innerHTML = "";

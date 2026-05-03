@@ -98,7 +98,6 @@ function showConfirmModal(message) {
       resolve(result);
     };
 
-    overlay.querySelector(".kpi-confirm-backdrop").addEventListener("click", () => close(false));
     overlay.querySelector(".kpi-confirm-cancel").addEventListener("click", () => close(false));
     overlay.querySelector(".kpi-confirm-ok").addEventListener("click", () => close(true));
 
