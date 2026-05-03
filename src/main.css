@@ -109,15 +109,20 @@ html {
 }
 
 :root {
-  /* 폰트: 한글·숫자·날짜 UI NEXON Lv1 Gothic(body) · 영문 Display/Heading Space Grotesk · 보조 숫자 레이블 등 DM Mono */
-  --font-display: "Space Grotesk", "NEXON Lv1 Gothic", sans-serif;
-  --font-heading: "Space Grotesk", "NEXON Lv1 Gothic", sans-serif;
-  /* Organism 텍스트 로고·오늘 탭 대형 날짜: Archivo(로컬), 실패 시 Space Grotesk·NEXON */
-  --font-organism-brand: "Archivo", "Space Grotesk", "NEXON Lv1 Gothic", sans-serif;
-  --font-body: "NEXON Lv1 Gothic", "Space Grotesk", sans-serif;
-  --font-mono: "DM Mono", monospace;
+  /* macOS 톤: SF 계열 시스템 스택 · 한글 Apple SD Gothic Neo / Noto Sans KR · 코드 SF Mono 계열 */
+  --font-system-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", "Apple SD Gothic Neo",
+    "Noto Sans KR", "Segoe UI", Roboto, sans-serif;
+  --font-display: var(--font-system-sans);
+  --font-heading: var(--font-system-sans);
+  --font-organism-brand: var(--font-system-sans);
+  --font-body: var(--font-system-sans);
+  --font-mono: ui-monospace, "SF Mono", "Menlo", "DM Mono", monospace;
 
   --app-font-family: var(--font-body);
+
+  /* 사이드바 헤더 ↔ 메인 상단 띠: 하단 구분선 높이 일치 */
+  --app-chrome-titlebar-height: 3rem;
+  --app-chrome-titlebar-border-bottom: 1px solid rgba(0, 0, 0, 0.09);
 
   /* 타이포 크기 명세: Display 32px / H1 20px / H2 15px / H3·Body 13px / Small 11px / Mono 13px / Label 10px / Micro 8px */
   --fs-display: 2rem; /* 32px */
@@ -131,50 +136,65 @@ html {
   --fs-micro: 0.5rem; /* 8px Micro TAB LABEL */
   --fs-secondary: var(--fs-small);
 
-  /* 굵기: Display SG 700 / H1·H2 Bold / H3·Body·Small Regular / Mono·Label·Micro DM 300 */
-  --fw-display: 700;
-  --fw-h1: 700;
-  --fw-h2: 700;
+  /* 굵기: 시스템 UI에 가깝게 Display·제목 Semibold */
+  --fw-display: 600;
+  --fw-h1: 600;
+  --fw-h2: 600;
   --fw-h3: 400;
   --fw-body: 400;
   --fw-small: 400;
-  --fw-mono: 300;
-  --fw-secondary: 300;
+  --fw-mono: 400;
+  --fw-secondary: 400;
 
-  /* 텍스트 색 명세: 강조·섹션 #1A2218 / 본문·리스트·숫자 #3D4A3E / 보조 #6B7A6E / 레이블 #A8A290 / Placeholder #C4BEA8 */
-  --text-ink: #1a2218; /* 강조타이틀·섹션제목 */
-  --text-body: #3d4a3e; /* 본문·리스트 */
-  --text-muted: #6b7a6e; /* 보조 */
-  --text-caption-color: #a8a290; /* 레이블·캡션 DM 300 */
-  --text-placeholder: #c4bea8; /* placeholder */
-  --text-placeholder-hint: #c4bea8; /* placeholder 힌트 */
+  /* 텍스트 색 — Apple HIG 라이트 모드에 가까운 중립 그레이 */
+  --text-ink: #1d1d1f;
+  --text-body: #424245;
+  --text-muted: #6e6e73;
+  --text-caption-color: #86868b;
+  --text-placeholder: #aeaeb2;
+  --text-placeholder-hint: #aeaeb2;
 
-  --accent-viridian: #344945;
-  --app-bg: #f5f1e8;
-  --content-bg: #f5f1e8;
-  /* 쿨그레이 배경 대신 베이지·스톤 (회색끼 정리) */
-  --ui-surface-alt: #d8d2c0;
-  /* 버튼 명세 2종: Primary 배경 #2A3828 / 텍스트 #F2EDE0 | Secondary 배경 없음 / 텍스트·테두리 #2A3828 */
-  --ui-btn-primary-bg: #2a3828;
-  --ui-btn-primary-fg: #f2ede0;
-  --ui-btn-primary-hover: #233022;
-  --ui-btn-secondary-color: #2a3828;
-  --ui-btn-secondary-border: 1px solid #2a3828;
-  --ui-btn-disabled-bg: #e8e4dc;
-  --ui-btn-disabled-fg: #7a8c80;
+  --accent-viridian: #3a3a3c;
+  --app-bg: #f0eff4;
+  --content-bg: #f0eff4;
+  --ui-surface-alt: #e8e8ed;
+  /* 홈·크롬: systemGroupedBackground 계열 레이어링 (#f0eff4 베이스) */
+  --lp-chrome-sidebar: rgba(236, 235, 240, 0.92);
+  --lp-chrome-toolbar: rgba(240, 239, 244, 0.95);
+  --lp-chrome-left-panel: rgba(245, 244, 248, 0.5);
+  --lp-chrome-center-panel: #ffffff;
+  --lp-chrome-timeline: rgba(248, 247, 252, 0.6);
+  --lp-chrome-timeline-header-solid: rgb(248, 247, 252);
+  /* macOS 라이트 창 크롬 — 사이드바·타이틀줄·오늘 탭 상단 띠 통일 */
+  --mac-chrome-bg: #f0eff4;
+  --mac-vibrancy-chrome: var(--lp-chrome-sidebar);
+  --mac-separator: rgba(0, 0, 0, 0.1);
+  --mac-separator-subtle: rgba(0, 0, 0, 0.08);
+  --mac-list-hover: rgba(0, 0, 0, 0.05);
+  --mac-list-active: rgba(0, 0, 0, 0.075);
+  --mac-list-active-strong: rgba(0, 0, 0, 0.09);
+  --mac-label-secondary: rgba(60, 60, 67, 0.72);
+  /* Primary 시스템 블루 · Secondary 서브틀 링크 톤 */
+  --ui-btn-primary-bg: #0071e3;
+  --ui-btn-primary-fg: #ffffff;
+  --ui-btn-primary-hover: #0077ed;
+  --ui-btn-secondary-color: #0071e3;
+  --ui-btn-secondary-border: 1px solid #d2d2d7;
+  --ui-btn-disabled-bg: #f5f5f7;
+  --ui-btn-disabled-fg: #aeaeb2;
   /* 모달 X(닫기): 잘 보이고 터치하기 쉽게 크게 */
   --modal-close-fs: 1.375rem;
   --modal-close-fs-inner: 1.1rem;
   --modal-close-fs-lg: 1.5rem;
   /* 모달·다이얼로그 패널 모서리 통일 (0.75rem = 12px) */
   --modal-radius: 0.75rem;
-  /* DIVIDERS 명세 3종만 사용: 강조 1.5px #344945 / 기본 1px #C8C5BC / 약한 0.5px #E0DCD1 */
-  --line-l1: 1.5px solid #344945;
-  --line-l2: 1px solid #c8c5bc;
-  --line-l3: 0.5px solid #e0dcd1;
-  --line-l1-color: #344945;
-  --line-l2-color: #c8c5bc;
-  --line-l3-color: #e0dcd1;
+  /* 구분선 — 맥 윈도우·리스트 구분선 느낌 */
+  --line-l1: 1px solid #d2d2d7;
+  --line-l2: 1px solid #e5e5ea;
+  --line-l3: 0.5px solid rgba(60, 60, 67, 0.18);
+  --line-l1-color: #d2d2d7;
+  --line-l2-color: #e5e5ea;
+  --line-l3-color: rgba(60, 60, 67, 0.18);
   /* 기존 L4~L10 사용처 호환: 전부 위 3개로 통일 */
   --line-l4: var(--line-l3);
   --line-l5: var(--line-l2);
@@ -182,7 +202,7 @@ html {
   --line-l7: var(--line-l2);
   --line-l8: var(--line-l1);
   --line-l9: var(--line-l1);
-  --line-l10: 1px dashed #c8c5bc;
+  --line-l10: 1px dashed #d2d2d7;
   --line-l4-color: var(--line-l3-color);
   --line-l8-color: var(--line-l1-color);
   --line-l9-color: var(--line-l1-color);
@@ -192,21 +212,19 @@ html {
   --divider-subtle: var(--line-l3);
   --line: var(--line-l2-color);
 
-  /* 입력창 통일 명세: IDLE 밑줄 #C4BEA8 / FOCUS 1.5px #2A3828 / DISABLED #E8E2D2 / textarea focus 배경 */
-  --input-border-idle: 1px solid var(--text-placeholder);
-  --input-border-focus: 1.5px solid var(--ui-btn-primary-bg);
-  --input-border-disabled: 1px solid #e8e2d2;
-  --input-focus-bg: rgba(42, 56, 40, 0.02);
+  /* 입력창: IDLE 밑줄 placeholder색 / FOCUS 시스템 블루 / DISABLED 연회색 / textarea focus 연블루 틴트 */
+  --input-border-disabled: 1px solid #e5e5ea;
+  --input-focus-bg: rgba(0, 113, 227, 0.06);
 
-  /* 프로그레스 바 공통 스펙: 트랙 #D8D2C0 / radius 0 / 기본 4px·얇은 2px·세그먼트 6px / 진행 #2A3828·완료 #7A9E8A·초과 #8B5C3A / transition width 0.3s */
-  --progress-track-bg: #d8d2c0;
+  /* 프로그레스 바 — 시스템 블루·그린·오렌지 */
+  --progress-track-bg: #e8e8ed;
   --progress-radius: 0;
   --progress-height: 4px;
   --progress-height-thin: 2px;
   --progress-height-segmented: 6px;
-  --progress-fill: #2a3828;
-  --progress-fill-done: #7a9e8a;
-  --progress-fill-exceeded: #8b5c3a;
+  --progress-fill: #0071e3;
+  --progress-fill-done: #34c759;
+  --progress-fill-exceeded: #ff9500;
   --progress-transition: width 0.3s;
 
   /* 아이콘 공통: 스트로크 1.5px / 일반 UI 24px / 탭바 20px / 소형 16px */
@@ -215,14 +233,13 @@ html {
   --icon-size-tab: 20px;
   --icon-size-sm: 16px;
 
-  /* 체크박스 공통: 14×14px / 기본 1.5px #2A3828 / 호버 배경 #E8E2D2 / 완료 배경 #2A3828 체크 #F2EDE0 / 비활성 1px #C4BEA8 */
   --cb-size: 14px;
-  --cb-border: 1.5px solid #2a3828;
-  --cb-border-disabled: 1px solid #c4bea8;
+  --cb-border: 1.5px solid #8e8e93;
+  --cb-border-disabled: 1px solid #d2d2d7;
   --cb-bg: transparent;
-  --cb-bg-hover: #e8e2d2;
-  --cb-bg-checked: #2a3828;
-  --cb-check-bg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-6' stroke='%23F2EDE0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E");
+  --cb-bg-hover: rgba(0, 113, 227, 0.08);
+  --cb-bg-checked: #0071e3;
+  --cb-check-bg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-6' stroke='%23FFFFFF' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E");
 
   /* 카드 & 뱃지 (CARDS & BADGES 명세) */
   /* 자산관리(가계부) 웜톤 컬러 팔레트 - 컬러코드 매칭 */
@@ -237,26 +254,26 @@ html {
   --asset-warm-9: #3d4a3e;
   --asset-warm-10: #c4bea8;
 
-  --card-bg-light: #f5f1e8;
-  --card-bg-dark: #344945;
+  --card-bg-light: #ffffff;
+  --card-bg-dark: #3a3a3c;
   --card-border-light: var(--line-l7);
   --card-number-color: var(--text-caption-color);
   --card-title-color: var(--text-ink);
   --card-subtext-color: var(--text-body);
   --card-dark-title-color: #ffffff;
-  --card-dark-subtext-color: #b0bdb4;
-  --card-dark-number-color: #b0bdb4;
-  --badge-viridian-bg: #344945;
+  --card-dark-subtext-color: #d1d1d6;
+  --card-dark-number-color: #d1d1d6;
+  --badge-viridian-bg: #0071e3;
   --badge-viridian-text: #ffffff;
-  --badge-stone-bg: #e8e2d4;
+  --badge-stone-bg: #e8e8ed;
   --badge-stone-text: var(--text-body);
   --badge-outline-border: var(--line-l1);
   --badge-outline-text: var(--text-ink);
   --badge-muted-border: 1.5px solid rgba(255, 255, 255, 0.5);
   --badge-muted-text: #ffffff;
   /* 레거시 변수: 배경용은 웜톤으로 리맵 (쿨 그레이 제거) */
-  --gray-50: #f5f1e8;
-  --gray-100: #d8d2c0;
+  --gray-50: #f5f5f7;
+  --gray-100: #e8e8ed;
   --gray-200: #e5e7eb;
   --gray-300: #d1d5db;
   --gray-400: #9ca3af;
@@ -271,7 +288,7 @@ html {
 input[type="date"],
 input[type="datetime-local"],
 input[type="time"] {
-  accent-color: var(--gray-500, #6b7280);
+  accent-color: var(--ui-btn-primary-bg, #0071e3);
   color-scheme: light;
   font-family: var(--font-body);
   color: var(--gray-700, #374151);
@@ -308,7 +325,7 @@ body {
   font-size: var(--fs-body);
   font-weight: var(--fw-body);
   line-height: 1.5;
-  background: #f5f1e8;
+  background: var(--app-bg);
   color: var(--text-body);
 }
 
@@ -323,8 +340,8 @@ body {
 
 /* ----- 초기 스플래시 (세션 확인·앱 마운트 전) ----- */
 .app-splash {
-  --app-splash-green: #2d3e2d;
-  --app-splash-cream: #f2ede0;
+  --app-splash-green: #f5f5f7;
+  --app-splash-cream: #1d1d1f;
   position: fixed;
   inset: 0;
   z-index: 2147483646;
@@ -354,7 +371,7 @@ body {
   position: absolute;
   width: min(72vw, 20rem);
   height: min(72vw, 20rem);
-  background: rgba(255, 255, 255, 0.055);
+  background: rgba(0, 0, 0, 0.04);
   clip-path: circle(50% at 50% 50%);
   animation: app-splash-orb-drift 9s ease-in-out infinite;
 }
@@ -386,7 +403,7 @@ body {
   align-items: center;
   justify-content: center;
 }
-/* Organism 로고: Archivo */
+/* Organism 로고: 시스템 산세리프 */
 .app-splash-brand {
   margin: 0;
   font-family: var(--font-organism-brand);
@@ -408,7 +425,7 @@ body {
 .app-splash-bar-track {
   width: min(32vw, 8rem);
   height: 2px;
-  background: rgba(242, 237, 224, 0.22);
+  background: rgba(60, 60, 67, 0.18);
   overflow: hidden;
 }
 .app-splash-bar-fill {
@@ -855,7 +872,7 @@ body {
   overflow: visible;
 }
 
-/* Organism 로고: Archivo */
+/* Organism 로고: 시스템 산세리프 */
 .auth-gate-logo {
   font-family: var(--font-organism-brand);
   font-size: 1.1875rem;
@@ -896,7 +913,7 @@ body {
 }
 
 .login-page--gate .login-title {
-  font-family: "Space Grotesk", var(--font-heading);
+  font-family: var(--font-heading);
   font-weight: 700;
   color: #ffffff;
   letter-spacing: -0.02em;
@@ -1024,7 +1041,7 @@ body {
   background: rgba(255, 255, 255, 0.1) !important;
   border: 1px solid rgba(255, 255, 255, 0.28) !important;
   border-radius: 0.5rem !important;
-  font-family: "Space Grotesk", var(--font-heading);
+  font-family: var(--font-heading);
   font-weight: 600;
 }
 
@@ -1053,7 +1070,7 @@ body {
 }
 
 .login-card {
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: 0.09375rem solid rgba(0, 0, 0, 0.08);
   border-radius: 1rem;
   padding: 2.5rem;
@@ -1226,7 +1243,7 @@ body {
 .app-page {
   position: fixed;
   inset: 0;
-  background: #f5f1e8;
+  background: #f5f5f7;
   z-index: 1;
 }
 
@@ -1250,26 +1267,34 @@ body {
   overscroll-behavior-x: none;
 }
 
-/* 사이드바: Viridian #344945 · Fathom 스타일 — 기본 흰색 계열, 선택 시 밝은 패널 대비 */
+/* 사이드바: macOS 창 타이틀바 + 리스트(모노크롬 선택·버킷/기타 구역) */
 .app-sidebar {
   width: 14rem;
   min-width: 14rem;
   max-width: 14rem;
   flex-shrink: 0;
   margin-right: 0;
-  background: #344945;
-  color: rgba(255, 255, 255, 0.9);
+  background: var(--lp-chrome-sidebar);
+  color: var(--text-body);
   display: flex;
   flex-direction: column;
   min-height: 0;
   font-family: var(--font-body);
-  border-right: var(--line-l2);
+  border-right: 1px solid rgba(0, 0, 0, 0.1);
   /* x/y 한쪽만 hidden이면 다른 축이 auto로 바뀌며 다시 잘릴 수 있음 — 스크롤은 .app-sidebar-body만 */
   overflow: visible;
   transition:
     width 0.22s ease,
     min-width 0.22s ease,
     max-width 0.22s ease;
+}
+
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .app-sidebar {
+    background: var(--lp-chrome-sidebar);
+    -webkit-backdrop-filter: saturate(180%) blur(16px);
+    backdrop-filter: saturate(180%) blur(16px);
+  }
 }
 
 .app-sidebar-body {
@@ -1289,60 +1314,55 @@ body {
 .app-sidebar-header {
   position: relative;
   flex-shrink: 0;
-  display: flex;
-  align-items: stretch;
-  justify-content: space-between;
-  gap: 0.5rem;
-  min-height: 3.5rem;
-  padding: 0.85rem 0.65rem 1.25rem;
-  border-bottom: none;
+  display: grid;
+  /* 좌측 빈 칸 = 접기 버튼 너비와 맞춰 Organism 가운데 정렬 */
+  grid-template-columns: 2.25rem 1fr 2.25rem;
+  align-items: center;
+  gap: 0.25rem;
   box-sizing: border-box;
+  height: var(--app-chrome-titlebar-height);
+  min-height: var(--app-chrome-titlebar-height);
+  padding: 0 0.65rem;
   overflow: visible;
+  background: var(--lp-chrome-sidebar);
+  border-bottom: var(--app-chrome-titlebar-border-bottom);
 }
 
-/* 바깥: stretch로 행 높이 통일 → 디센더가 flex 줄 밖으로 덜 새나감 */
+/* 가운데 정렬 타이틀 (Organism | 접기) */
 .app-sidebar-brand-title {
-  flex: 1;
+  grid-column: 2;
+  justify-self: center;
   min-width: 0;
-  min-height: 2.75rem;
   display: flex;
   align-items: center;
+  justify-content: center;
   overflow: visible;
   user-select: none;
   position: relative;
   z-index: 1;
 }
 
-/* 사이드바 Organism: Archivo */
 .app-sidebar-brand-title-text {
   font-family: var(--font-organism-brand);
-  font-weight: 700;
-  font-size: 1.0625rem;
-  letter-spacing: -0.03em;
-  line-height: 2.25rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
   display: inline-block;
-  color: var(--ui-btn-primary-fg);
+  color: rgba(60, 60, 67, 0.88);
   white-space: nowrap;
   overflow: visible;
 }
 
-/* 상단 << 버튼 아래 선: 24px 가로 여백, 1px, rgba(255,255,255,0.1) */
-.app-sidebar-header::after {
-  content: "";
-  position: absolute;
-  left: 24px;
-  right: 24px;
-  bottom: 0;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.1);
-  z-index: 0;
-  pointer-events: none;
-}
-
 .app-sidebar.is-collapsed .app-sidebar-header {
+  display: flex;
+  flex-direction: column;
   justify-content: center;
+  height: auto;
+  min-height: var(--app-chrome-titlebar-height);
   padding-left: 0.25rem;
   padding-right: 0.25rem;
+  gap: 0.35rem;
 }
 
 .app-sidebar.is-collapsed .app-sidebar-brand-title {
@@ -1354,27 +1374,30 @@ body {
   align-items: center;
   justify-content: center;
   align-self: center;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.25rem;
+  height: 2.25rem;
   padding: 0;
   border: none;
-  border-radius: 0.25rem;
+  border-radius: 0.375rem !important;
   background: transparent;
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--text-muted);
   cursor: pointer;
   position: relative;
   z-index: 1;
+  flex-shrink: 0;
+  grid-column: 3;
+  justify-self: end;
   transition: background 0.2s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
 .app-sidebar-toggle:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.06);
 }
 
 .app-sidebar-toggle-icon {
   display: block;
-  filter: brightness(0) invert(1) opacity(0.88);
+  filter: brightness(0) opacity(0.55);
   transition: transform 0.22s ease;
 }
 
@@ -1385,13 +1408,34 @@ body {
 .app-sidebar-nav {
   flex: 1 1 auto;
   min-height: 0;
-  padding: 0.25rem 0;
+  padding: 0.4rem 0.55rem 0.65rem;
   display: flex;
   flex-direction: column;
   gap: 0;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+}
+
+.app-sidebar-section-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(60, 60, 67, 0.48);
+  padding: 0.85rem 0.6rem 0.35rem;
+  font-family: var(--font-body);
+  user-select: none;
+}
+
+.app-sidebar.is-collapsed .app-sidebar-section-label {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  border: 0 !important;
 }
 
 /* 데스크탑: 모바일 전용 사이드바 탭 숨김 */
@@ -1401,26 +1445,26 @@ body {
 
 .app-sidebar-item {
   position: relative;
-  background: #344945;
+  background: transparent;
   border: none;
-  border-radius: 0;
-  color: rgba(255, 255, 255, 0.88);
+  border-radius: 0.5rem !important;
+  color: rgba(60, 60, 67, 0.92);
   text-align: left;
-  padding: 0.5rem 0.65rem;
+  padding: 0.42rem 0.55rem;
   font-size: 0.8125rem;
-  font-weight: 300;
+  font-weight: 400;
   cursor: pointer;
   transition:
-    background 0.2s ease,
-    color 0.2s ease;
+    background 0.18s ease,
+    color 0.18s ease;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: flex-start;
-  gap: 0.625rem;
-  margin-left: 0;
+  gap: 0.55rem;
+  margin: 0.06rem 0;
   flex: 0 0 auto;
-  min-height: 2.625rem;
+  min-height: 2.125rem;
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
 }
@@ -1442,14 +1486,20 @@ body {
   display: block;
 }
 
-/* 비활성: rgba(255,255,255,0.25), 20px */
 .app-sidebar-item .app-sidebar-item-icon img {
-  filter: brightness(0) invert(1) opacity(0.25);
+  filter: brightness(0) opacity(0.42);
 }
 
-/* 활성: #FFFFFF, 20px */
+.app-sidebar-item:hover .app-sidebar-item-icon img {
+  filter: brightness(0) opacity(0.58);
+}
+
+.app-sidebar-item.active:hover .app-sidebar-item-icon img {
+  filter: brightness(0) opacity(0.92);
+}
+
 .app-sidebar-item.active .app-sidebar-item-icon img {
-  filter: brightness(0) invert(1) opacity(1);
+  filter: brightness(0) opacity(0.92);
 }
 
 .app-sidebar-item-label {
@@ -1458,9 +1508,9 @@ body {
   text-orientation: mixed;
   line-height: 1.35;
   font-size: 0.8125rem;
-  font-weight: 300;
+  font-weight: 400;
   letter-spacing: 0.02em;
-  color: rgba(255, 255, 255, 0.25);
+  color: rgba(60, 60, 67, 0.72);
   font-family: inherit;
   flex: 1 1 auto;
   min-width: 0;
@@ -1490,47 +1540,41 @@ body {
 }
 
 .app-sidebar-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+  background: rgba(0, 0, 0, 0.05);
+  color: rgba(60, 60, 67, 0.98);
 }
 
-/* 액티브: 미니멀 — 짧은 왼쪽 바 + 아주 옅은 하이라이트만 (밝은 블록 X) */
+.app-sidebar-item:hover .app-sidebar-item-label {
+  color: rgba(60, 60, 67, 0.88);
+}
+
+/* 선택 행: 시스템 리스트처럼 살짝 어두운 회색 캡슐(무채색) */
 .app-sidebar-item.active {
-  background: rgba(255, 255, 255, 0.06);
-  font-weight: 400;
-  color: #ffffff;
-  box-shadow: none;
+  background: rgba(0, 0, 0, 0.09);
+  font-weight: 500;
+  color: rgba(60, 60, 67, 1);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
 .app-sidebar-item.active .app-sidebar-item-label {
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.app-sidebar-item.active::after {
-  content: "";
-  position: absolute;
-  top: 0.5rem;
-  bottom: 0.5rem;
-  left: 0;
-  width: 2px;
-  border-radius: 0;
-  background: #7a9e8a;
+  color: rgba(60, 60, 67, 0.98);
+  font-weight: 500;
 }
 
 .app-sidebar-item.active:hover {
-  background: rgba(255, 255, 255, 0.09);
+  background: rgba(0, 0, 0, 0.11);
 }
 
 /* 나의 계정만 하단 구분선 제거 (아카이브-나의계정 사이에는 선 유지) */
 .app-sidebar-logout {
   border-bottom: none;
-  color: rgba(255, 255, 255, 0.88);
+  color: rgba(60, 60, 67, 0.92);
   font-size: var(--fs-secondary);
   font-family: inherit;
 }
 
 .app-sidebar-logout:hover {
-  color: #ffffff;
+  color: rgba(60, 60, 67, 1);
 }
 
 .app-main {
@@ -1576,6 +1620,13 @@ body {
   .app-main {
     padding: 1rem;
     width: 100%;
+  }
+
+  .app-main:has(.home-view) {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-bottom: 1rem;
+    padding-top: 0;
   }
 }
 
@@ -1712,6 +1763,11 @@ body {
   flex: 1 1 0;
   min-height: 0;
   height: 100%;
+  padding-top: 0;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  padding-bottom: 1.5rem;
+  background: var(--app-bg);
 }
 
 .app-main:has(.home-view) .app-tab-panel {
@@ -1738,10 +1794,131 @@ body {
   flex: 1 1 0;
   min-height: 0;
   overflow: hidden !important;
-  padding-top: 0.5rem;
+  padding-top: 0;
+  background: var(--app-bg);
 }
 
-/* 오늘 탭: ORGANISM PLANNER → 날짜(한글) → 요일 */
+/* 상단 띠: 사이드바 헤더와 동일 높이·동일 하단선으로 정렬 */
+.home-view-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  box-sizing: border-box;
+  height: var(--app-chrome-titlebar-height);
+  min-height: var(--app-chrome-titlebar-height);
+  padding: 0 1.75rem;
+  margin-left: 0;
+  margin-right: 0;
+  border-bottom: var(--app-chrome-titlebar-border-bottom);
+  background: var(--lp-chrome-toolbar);
+  box-shadow: none;
+}
+
+.home-view-toolbar-start {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.home-view-toolbar-context {
+  font-weight: 700;
+  font-size: 0.9375rem;
+  letter-spacing: -0.02em;
+  color: rgba(60, 60, 67, 1);
+  flex-shrink: 0;
+}
+
+.home-view-toolbar-sep {
+  width: 1px;
+  height: 1rem;
+  flex-shrink: 0;
+  background: rgba(60, 60, 67, 0.22);
+}
+
+.home-view-toolbar-date {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: rgba(60, 60, 67, 0.48);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-view-toolbar-end {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+.home-view-toolbar-clock {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: rgba(60, 60, 67, 0.82);
+  min-width: 2.75rem;
+  text-align: right;
+}
+
+.home-view-toolbar-btn {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.home-view-toolbar-btn--pill {
+  padding: 0.35rem 0.85rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: rgba(60, 60, 67, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 999px !important;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.home-view-toolbar-btn--pill:hover {
+  background: #f7f7f7;
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.home-view-toolbar-btn--icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.375rem !important;
+  color: rgba(60, 60, 67, 0.65);
+}
+
+.home-view-toolbar-btn--icon:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: rgba(60, 60, 67, 0.88);
+}
+
+.home-view-toolbar-btn--icon img {
+  display: block;
+  filter: brightness(0) opacity(0.52);
+}
+
+.home-view-toolbar-btn--icon:hover img {
+  filter: brightness(0) opacity(0.72);
+}
+
+/* 오늘 탭: 예전 대형 날짜 블록은 툴바로 대체 — 레거시 클래스는 다른 화면 참조용으로 유지 */
 .home-view-date-block {
   padding: 0 1.75rem 0.55rem;
   margin: 0 0 0.75rem;
@@ -1797,104 +1974,286 @@ body {
   }
 }
 
-/* 오늘 탭 요약: 2×2 한 덩어리 테두리(L2) + 배경 #E8E2D2 + 시간 행 24h 막대(Viridian / Mint) */
-.home-time-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: repeat(2, auto);
-  gap: 0;
-  margin-bottom: 1rem;
-  padding: 0 1.75rem;
-  border: 1px solid var(--line-l2-color);
-  border-radius: 0.375rem;
-  overflow: hidden;
-  box-sizing: border-box;
-  background: #e8e2d2;
-}
-
-.home-time-summary-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  min-width: 0;
-  padding: 0.75rem 1rem;
-  background: #e8e2d2;
-  border-right: 1px solid var(--line-l3-color);
-  border-bottom: 1px solid var(--line-l3-color);
-  box-sizing: border-box;
-}
-
-.home-time-summary-cell:nth-child(2n) {
-  border-right: none;
-}
-
-.home-time-summary-cell:nth-child(n + 3) {
-  border-bottom: none;
-}
-
-.home-time-summary-label {
-  font-size: 0.75rem;
-  color: var(--text-caption-color);
-  font-weight: 400;
-  letter-spacing: 0.02em;
-}
-
-.home-time-summary-value {
-  font-size: 1.125rem;
-  font-weight: var(--fw-mono);
-  font-family: var(--font-mono);
-  color: var(--text-ink);
-  letter-spacing: 0.02em;
-  line-height: 1.25;
-}
-
-.home-time-summary-value .home-time-summary-unit {
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  margin-left: 0.15em;
-}
-
-.home-time-summary-value.home-time-summary-value--invested,
-.home-time-summary-value.home-time-summary-value--invested .home-time-summary-unit,
-.home-time-summary-value.home-time-summary-value--spent,
-.home-time-summary-value.home-time-summary-value--spent .home-time-summary-unit {
-  color: var(--text-ink);
-}
-
-.home-time-summary-bar {
-  height: var(--progress-height);
-  margin-top: 0.1rem;
-  background: var(--progress-track-bg);
-  border-radius: var(--progress-radius);
-  overflow: hidden;
+/* 오늘 탭 통계·투두 열: 참고 UI — 카드 없음, 얇은 구분선·작은 타입 */
+.home-time-summary-section {
   flex-shrink: 0;
+  margin: 0;
+  padding: 0.75rem 0 1rem;
+  box-sizing: border-box;
+  background: transparent;
+  border-bottom: none;
+  position: relative;
 }
 
-.home-time-summary-bar-fill {
-  height: 100%;
-  min-width: 0;
-  transition: width 0.35s ease;
-}
-
-.home-time-summary-bar-fill--viridian {
-  background: var(--ui-btn-primary-bg);
-}
-
-.home-time-summary-bar-fill--mint {
-  background: var(--progress-fill-done);
-}
-
-.home-time-summary-bar--track-only {
+/* 통계 블록 하단: 패널 좌우 끝까지 구조선 */
+.home-time-summary-section::after {
+  content: "";
+  position: absolute;
+  left: calc(-1 * var(--home-panel-inline-pad));
+  right: calc(-1 * var(--home-panel-inline-pad));
+  bottom: 0;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.1);
   pointer-events: none;
 }
 
-/* 오늘 탭: 시간 요약 그리드 ↔ Today's to do list */
-.home-time-summary-grid + .home-view-section--todo {
-  border-top: var(--divider-default);
+.home-time-summary-heading {
+  margin: 0 0 0.5rem;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-caption-color);
+  line-height: 1.3;
 }
 
-/* Daily(가장 자주 사용) 넓게, Event·Todo 비율 조정 */
+.home-time-summary-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  gap: 0.35rem 0.875rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0 !important;
+  overflow: visible;
+  box-sizing: border-box;
+  background: transparent;
+  align-items: start;
+}
+
+/* 2행 구분선 (참고 UI: 상단 시간 / 하단 금액) */
+.home-time-summary-cell:nth-child(3),
+.home-time-summary-cell:nth-child(4) {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding-top: 0.5rem;
+  margin-top: 0.15rem;
+}
+
+.home-time-summary-cell {
+  display: block;
+  min-width: 0;
+  min-height: 0;
+  padding: 0.05rem 0.1rem 0.25rem;
+  background: transparent;
+  border: none;
+  border-radius: 0 !important;
+  box-shadow: none;
+  box-sizing: border-box;
+}
+
+.home-time-summary-cell-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+/* 레이블: 크기·채도보다 한 단계 — Regular */
+.home-time-summary-label {
+  font-size: 0.5625rem;
+  font-weight: 400;
+  color: var(--text-placeholder);
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+.home-time-summary-value {
+  font-size: inherit;
+  font-weight: 700;
+  font-family: var(--font-body);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-ink);
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+/* 시간 값: 숫자·단위 베이스라인 정렬 */
+.home-time-summary-value--duration {
+  display: inline-block;
+  font-weight: 700;
+  max-width: 100%;
+}
+
+/* 총 기록만 아래 검은 밑줄 (생산적 등 다른 시간 행에는 없음) */
+.home-time-summary-cell--tracked .home-time-summary-value--duration {
+  width: fit-content;
+  padding-bottom: 0.12rem;
+  border-bottom: 2px solid var(--text-ink);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.home-time-summary-digits {
+  font-size: 1.1875rem;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-time-summary-digits--money {
+  font-size: 1.0625rem;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+/* h, m · 원 — 숫자보다 작고 Light 계열 */
+.home-time-summary-unit-suffix {
+  font-size: 0.5625rem;
+  font-weight: 300;
+  color: var(--text-caption-color);
+  margin-left: 0.04em;
+}
+
+.home-time-summary-value .home-time-summary-unit {
+  font-size: 0.5625rem;
+  font-weight: 300;
+  color: var(--text-caption-color);
+  margin-left: 0.08em;
+}
+
+.home-time-summary-value.home-time-summary-value--invested {
+  color: var(--text-ink);
+}
+
+.home-time-summary-value.home-time-summary-value--invested .home-time-summary-unit {
+  color: var(--text-caption-color);
+  font-weight: 300;
+}
+
+.home-time-summary-value.home-time-summary-value--spent,
+.home-time-summary-value.home-time-summary-value--spent .home-time-summary-unit {
+  color: var(--text-muted);
+  font-weight: 300;
+}
+
+.home-time-summary-value.home-time-summary-value--spent .home-time-summary-digits--money {
+  font-weight: 500;
+}
+
+/* 데스크탑(64rem↑): 통계 숫자만 소폭 확대 */
+@media (min-width: 64rem) {
+  .home-time-summary-section {
+    padding-top: 0.85rem;
+    padding-bottom: 1.125rem;
+  }
+
+  .home-time-summary-grid {
+    gap: 0.4rem 1rem;
+  }
+
+  .home-time-summary-digits {
+    font-size: 1.3125rem;
+  }
+
+  .home-time-summary-digits--money {
+    font-size: 1.125rem;
+  }
+}
+
+/* 통계 블록 아래 투두 섹션 — 섹션 하단 보더로 이미 구분됨 */
+.home-time-summary-section + .home-view-section--todo {
+  border-top: none;
+}
+
+/* 오늘 탭 투두: 카드 제거 → 플랫 리스트 (구분선만) */
+.app-main:has(.home-view) .home-todo-list-content .home-todo-cards-wrap {
+  gap: 0;
+  padding: 0;
+}
+
+.app-main:has(.home-view) .home-todo-list-content .todo-card.home-todo-flat-row {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  border-bottom: none !important;
+  position: relative;
+  overflow: visible !important;
+}
+
+/* 투두 행 사이만 좌우 여백 두고 얇은 선 */
+.app-main:has(.home-view)
+  .home-todo-list-content
+  .todo-card.home-todo-flat-row:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: var(--home-todo-row-line-inset);
+  right: var(--home-todo-row-line-inset);
+  height: 1px;
+  background: rgba(0, 0, 0, 0.09);
+  pointer-events: none;
+}
+
+.app-main:has(.home-view) .home-todo-list-content .todo-card.home-todo-flat-row .todo-card-inner {
+  padding: 0.55rem 0 !important;
+}
+
+.app-main:has(.home-view) .home-todo-list-content .todo-card.home-todo-flat-row .todo-card-done {
+  border-radius: 0.1875rem !important;
+  width: 1.125rem !important;
+  height: 1.125rem !important;
+}
+
+.app-main:has(.home-view) .home-todo-list-content .todo-card.home-todo-flat-row .todo-card-name {
+  font-size: 0.8125rem !important;
+  font-weight: 600 !important;
+  line-height: 1.35 !important;
+}
+
+.app-main:has(.home-view) .home-todo-list-content .todo-card.home-todo-flat-row .todo-card-dates,
+.app-main:has(.home-view) .home-todo-list-content .todo-card.home-todo-flat-row .todo-card-reminder,
+.app-main:has(.home-view) .home-todo-list-content .todo-card.home-todo-flat-row .todo-card-reminder-text {
+  font-size: 0.5625rem !important;
+  font-weight: 200 !important;
+  font-synthesis: none;
+  color: var(--text-placeholder) !important;
+  letter-spacing: 0.03em !important;
+}
+
+.app-main:has(.home-view)
+  .home-todo-list-content
+  .todo-card.home-todo-flat-row
+  svg.todo-card-reminder-icon {
+  stroke-width: 1 !important;
+  opacity: 0.65;
+  color: var(--text-placeholder);
+}
+
+.app-main:has(.home-view) .home-view-section--todo .home-view-section-title {
+  font-family: var(--font-body) !important;
+  font-size: 0.5625rem !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase !important;
+  color: var(--text-caption-color) !important;
+  padding: 0.65rem 0 0.4rem !important;
+  margin: 0 !important;
+  border-bottom: none !important;
+  position: relative;
+}
+
+/* TODAY'S TO-DO 제목 아래: 패널 좌우 끝까지 구조선 */
+.app-main:has(.home-view)
+  .home-view-left-col
+  .home-view-section--todo
+  .home-view-section-title::after {
+  content: "";
+  position: absolute;
+  left: calc(-1 * var(--home-panel-inline-pad));
+  right: calc(-1 * var(--home-panel-inline-pad));
+  bottom: 0;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.1);
+  pointer-events: none;
+}
+
+/* Daily(가장 자주 사용) 넓게 — 사이드바와 구별되는 연회색 캔버스 */
 .home-view-three {
   display: grid;
   grid-template-columns: 3fr 5fr 4fr;
@@ -1903,7 +2262,8 @@ body {
   flex: 1 1 0;
   min-height: 0;
   overflow: hidden;
-  margin-top: 0.5rem;
+  margin-top: 0;
+  background: var(--app-bg);
 }
 
 @media (max-width: 56.25rem) {
@@ -1978,7 +2338,12 @@ body {
   }
   /* 태블릿: 투두 제목은 left-col 안에 있어 좌패딩만 0으로 해서 EVENT·REMINDER와 시작선 맞춤 */
   .app-main:has(.home-view) .home-view-section--todo .home-view-section-title {
-    padding: 0.875rem 1.75rem 0.75rem 0 !important;
+    padding: 0.65rem 0 0.4rem 0 !important;
+    font-family: var(--font-body) !important;
+    font-size: 0.5625rem !important;
+    font-weight: 400 !important;
+    letter-spacing: 0.14em !important;
+    border-bottom: none !important;
   }
   .app-main:has(.home-view) .home-event-half .home-view-section-title {
     padding: 0.875rem 1.75rem 0.75rem !important;
@@ -1994,7 +2359,7 @@ body {
 /* 홈: Daily 캘린더 열 없음 → 넓은 화면(64rem 초과)에서만 투두 | ([Event+Reminder]·타임라인) 2열 */
 @media (min-width: 64rem) {
   .home-view-three.home-view-three--no-calendar {
-    grid-template-columns: minmax(0, 3fr) minmax(0, 4fr);
+    grid-template-columns: minmax(0, 2fr) minmax(0, 5fr);
   }
 }
 
@@ -2003,21 +2368,29 @@ body {
   flex-direction: column;
   min-height: 0;
   min-width: 0;
+  /* 패널 좌우 패딩과 동일 — 구조용 구분선(통계↔투두·제목 하단)만 끝까지 이음 */
+  --home-panel-inline-pad: 0px;
+  --home-todo-row-line-inset: 0.65rem;
+}
+
+.app-main:has(.home-view) .home-view-left-col {
+  background: var(--lp-chrome-left-panel);
 }
 
 @media (min-width: 64rem) {
   .home-view-left-col .home-view-date-block,
   .home-view-left-col .home-view-date-title,
-  .home-view-left-col .home-time-summary-grid {
+  .home-view-left-col .home-time-summary-section {
     padding-left: 0;
     padding-right: 0;
   }
   .home-view-left-col {
-    padding: 0 1.75rem;
+    padding: 0 1.25rem;
+    --home-panel-inline-pad: 1.25rem;
   }
   /* 데스크탑: 투두 섹션 height:100% 때문에 요약 그리드(특히 하단 시급 행)가 잘리거나 투두 제목과 겹침 → 날짜·요약은 축소 금지, 투두만 남은 높이 */
   .home-view-left-col .home-view-date-block,
-  .home-view-left-col .home-time-summary-grid {
+  .home-view-left-col .home-time-summary-section {
     flex-shrink: 0;
   }
   .home-view-left-col > .home-view-section {
@@ -2222,7 +2595,7 @@ body {
   }
 }
 
-/* 모바일: 하단 탭 배경 #2A3828 / 활성 아이콘·텍스트 #FFFFFF / 활성 인디케이터 2px #7A9E8A */
+/* 모바일: 하단 탭 — 맥OS형 라이트 바·중립 아이콘·활성 시스템 블루 인디케이터 */
 .app-bottom-nav {
   display: none;
   position: fixed;
@@ -2230,8 +2603,8 @@ body {
   left: 0;
   right: 0;
   z-index: 50;
-  background: #2a3828;
-  border-top: var(--line-l2);
+  background: rgba(248, 248, 248, 0.94);
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
   padding: 0.35rem 0;
   padding-bottom: env(safe-area-inset-bottom, 0.35rem);
   flex-shrink: 0;
@@ -2240,6 +2613,14 @@ body {
   align-items: stretch;
   gap: 0;
   font-family: var(--font-body);
+}
+
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .app-bottom-nav {
+    background: rgba(248, 248, 248, 0.72);
+    -webkit-backdrop-filter: saturate(180%) blur(16px);
+    backdrop-filter: saturate(180%) blur(16px);
+  }
 }
 
 .app-bottom-nav-item {
@@ -2255,9 +2636,9 @@ body {
   background: transparent !important;
   border: none;
   border-radius: 0;
-  color: rgba(255, 255, 255, 0.25);
+  color: rgba(0, 0, 0, 0.42);
   font-size: 8px;
-  font-weight: 300;
+  font-weight: 400;
   cursor: pointer;
   font-family: var(--font-mono);
   transition:
@@ -2274,17 +2655,17 @@ body {
 .app-bottom-nav-item:hover,
 .app-bottom-nav-item:active {
   background: transparent !important;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(0, 0, 0, 0.62);
 }
 
 .app-bottom-nav-item:hover .app-bottom-nav-icon,
 .app-bottom-nav-item:active .app-bottom-nav-icon {
-  filter: brightness(0) invert(1) opacity(0.5);
+  filter: brightness(0) opacity(0.58);
 }
 
 .app-bottom-nav-item.active {
-  color: rgba(255, 255, 255, 0.75);
-  font-weight: 400;
+  color: var(--ui-btn-primary-bg);
+  font-weight: 500;
   background: transparent !important;
   box-shadow: none;
 }
@@ -2295,21 +2676,22 @@ body {
   top: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: 16px;
+  width: 18px;
   height: 2px;
-  background: #7a9e8a;
+  background: var(--ui-btn-primary-bg);
+  border-radius: 1px !important;
 }
 
 .app-bottom-nav-item.active:hover,
 .app-bottom-nav-item.active:active {
   background: transparent !important;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--ui-btn-primary-bg);
   box-shadow: none;
 }
 
 .app-bottom-nav-item.active:hover .app-bottom-nav-icon,
 .app-bottom-nav-item.active:active .app-bottom-nav-icon {
-  filter: brightness(0) invert(1) opacity(1);
+  filter: brightness(0) opacity(0.88);
 }
 
 .app-bottom-nav-icon {
@@ -2317,11 +2699,11 @@ body {
   flex-shrink: 0;
   width: var(--icon-size-tab);
   height: var(--icon-size-tab);
-  filter: brightness(0) invert(1) opacity(0.25);
+  filter: brightness(0) opacity(0.38);
 }
 
 .app-bottom-nav-item.active .app-bottom-nav-icon {
-  filter: brightness(0) invert(1) opacity(1);
+  filter: brightness(0) opacity(0.88);
 }
 
 .app-bottom-nav-label {
@@ -2830,14 +3212,14 @@ body {
 
   .app-bottom-nav {
     display: flex !important;
-    background: #2a3828 !important;
-    border-top: var(--line-l2) !important;
+    background: rgba(248, 248, 248, 0.94) !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.1) !important;
     padding: 0.75rem 0 0 0 !important;
     padding-bottom: calc(env(safe-area-inset-bottom, 0) + 0.75rem) !important;
   }
   .app-bottom-nav-item {
     background: transparent !important;
-    color: rgba(255, 255, 255, 0.25);
+    color: rgba(0, 0, 0, 0.42) !important;
     padding: 0.5rem 0.25rem !important;
     font-size: 8px !important;
     border-radius: 0 !important;
@@ -2845,28 +3227,28 @@ body {
   .app-bottom-nav-item:hover,
   .app-bottom-nav-item:active {
     background: transparent !important;
-    color: rgba(255, 255, 255, 0.5);
+    color: rgba(0, 0, 0, 0.62) !important;
   }
   .app-bottom-nav-item.active {
     background: transparent !important;
-    color: rgba(255, 255, 255, 0.75);
+    color: var(--ui-btn-primary-bg) !important;
     box-shadow: none !important;
   }
   .app-bottom-nav-item.active:hover,
   .app-bottom-nav-item.active:active {
     background: transparent !important;
-    color: rgba(255, 255, 255, 0.75);
+    color: var(--ui-btn-primary-bg) !important;
     box-shadow: none !important;
   }
   .app-bottom-nav-icon {
-    filter: brightness(0) invert(1) opacity(0.25);
+    filter: brightness(0) opacity(0.38) !important;
   }
   .app-bottom-nav-item:hover .app-bottom-nav-icon,
   .app-bottom-nav-item:active .app-bottom-nav-icon {
-    filter: brightness(0) invert(1) opacity(0.5);
+    filter: brightness(0) opacity(0.58) !important;
   }
   .app-bottom-nav-item.active .app-bottom-nav-icon {
-    filter: brightness(0) invert(1) opacity(1);
+    filter: brightness(0) opacity(0.88) !important;
   }
 
   /* 하단 탭(4.5rem) + 키보드 가림(--vv-keyboard, App·visualViewport에서 갱신) */
@@ -3165,22 +3547,52 @@ body {
     min-height: min-content;
     flex: 0 1 auto;
   }
-  .app-main:has(.home-view) .home-time-summary-grid {
-    gap: 0;
-    margin-bottom: 0.75rem;
-    /* 화면 끝과 베이지 박스 사이만 살짝 — 데스크탑(1.75rem)만큼 이중으로 안 줄임 */
-    margin-left: 1rem;
-    margin-right: 1rem;
-    /* 2×2 칸 영역은 넓게: 바깥 margin과 별개로 안쪽 패딩은 최소(셀 padding으로 여백) */
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
+  .app-main:has(.home-view) .home-view-toolbar {
+    flex-wrap: wrap;
+    row-gap: 0.5rem;
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
+    height: auto;
+    min-height: auto;
+    background: var(--lp-chrome-toolbar);
+  }
+  .app-main:has(.home-view) .home-view-toolbar-start {
+    flex: 1 1 100%;
+  }
+  .app-main:has(.home-view) .home-view-toolbar-date {
+    white-space: normal;
+    font-size: 0.75rem;
+    line-height: 1.35;
+  }
+  .app-main:has(.home-view) .home-view-toolbar-end {
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  .app-main:has(.home-view) .home-time-summary-section {
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-top: 0.875rem;
+    padding-bottom: 1rem;
     box-sizing: border-box;
+  }
+  .app-main:has(.home-view) .home-time-summary-grid {
+    gap: 0.35rem 0.75rem;
   }
   .app-main:has(.home-view) .home-time-summary-cell {
-    padding: 0.55rem 0.65rem;
+    min-height: 0;
+    padding: 0.05rem 0;
     box-sizing: border-box;
   }
-  .app-main:has(.home-view) .home-time-summary-value {
+  .app-main:has(.home-view) .home-time-summary-digits {
+    font-size: 1.125rem;
+  }
+  .app-main:has(.home-view) .home-time-summary-digits--money {
     font-size: 1rem;
   }
   .app-main:has(.home-view) .home-view {
@@ -3190,6 +3602,8 @@ body {
   .app-main:has(.home-view) .home-view-left-col {
     min-height: min-content;
     overflow: visible;
+    --home-panel-inline-pad: 0px;
+    --home-todo-row-line-inset: 1rem;
   }
   .app-main:has(.home-view) .home-view-three {
     overflow: visible;
@@ -3404,7 +3818,7 @@ body {
     position: sticky !important;
     top: 0;
     z-index: 24 !important;
-    background: #f5f1e8 !important;
+    background: var(--lp-chrome-timeline-header-solid) !important;
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
   }
   .app-main:has(.home-view)
@@ -3413,11 +3827,14 @@ body {
   .app-main:has(.home-view)
     .home-1day-timeline-section.home-embed-1day
     .calendar-1day-time-header-cell--actual-toggle {
-    background: #f5f1e8 !important;
+    background: var(--lp-chrome-timeline-header-solid) !important;
   }
-  /* 모바일: 투두리스트 헤더 패딩 0.875rem 1.75rem 0.75rem */
+  /* 모바일: 투두 리스트 헤더 — 플랫 리스트 톤 */
   .app-main:has(.home-view) .home-view-section--todo .home-view-section-title {
-    padding: 0.875rem 1.75rem 0.75rem !important;
+    padding: 0.65rem 1rem 0.4rem !important;
+    font-size: 0.5625rem !important;
+    letter-spacing: 0.14em !important;
+    border-bottom: none !important;
   }
 
   /* 투두리스트: 제목 아래 리스트가 보이고, 많으면 영역 안에서 스크롤 */
@@ -3445,11 +3862,24 @@ body {
     padding-left: 0 !important;
     padding-right: 0 !important;
   }
-  /* 모바일: 할일목록과 카드 섹션 구분선만 (헤더 보더와 겹치지 않도록 border-top 제거) */
+  /* 모바일: 투두 섹션 하단 구조선 — 패널 가로 끝까지 */
   .app-main:has(.home-view) .home-view-section--todo {
-    border-bottom: var(--divider-subtle) !important;
+    border-bottom: none !important;
     padding-top: 0.75rem;
     padding-bottom: 0.75rem;
+    position: relative;
+  }
+  .app-main:has(.home-view)
+    .home-view-left-col
+    .home-view-section--todo::after {
+    content: "";
+    position: absolute;
+    left: calc(-1 * var(--home-panel-inline-pad));
+    right: calc(-1 * var(--home-panel-inline-pad));
+    bottom: 0;
+    height: 1px;
+    background: rgba(60, 60, 67, 0.18);
+    pointer-events: none;
   }
 
   /* 모바일: 나의 계정에서 기본설정·시급계산하기만 표시 (폰트·색상 숨김) */
@@ -4586,15 +5016,27 @@ body {
     padding: 0.4rem 0.35rem !important;
   }
 
-  /* 모바일 오늘 탭: 제목 강조 / 메타(날짜·리마인더) 한 단계 아래 */
-  .app-main:has(.home-view) .home-todo-list-content .todo-card-name {
-    font-weight: 500 !important;
+  /* 모바일 오늘 탭 투두(플랫 행): 제목·메타 크기 */
+  .app-main:has(.home-view) .home-todo-list-content .todo-card.home-todo-flat-row .todo-card-name {
+    font-weight: 600 !important;
     color: var(--text-ink) !important;
   }
-  .app-main:has(.home-view) .home-todo-list-content .todo-card-dates,
-  .app-main:has(.home-view) .home-todo-list-content .todo-card-reminder {
-    font-weight: var(--fw-mono) !important;
-    color: var(--text-caption-color) !important;
+  .app-main:has(.home-view) .home-todo-list-content .todo-card.home-todo-flat-row .todo-card-dates,
+  .app-main:has(.home-view) .home-todo-list-content .todo-card.home-todo-flat-row .todo-card-reminder,
+  .app-main:has(.home-view) .home-todo-list-content .todo-card.home-todo-flat-row .todo-card-reminder-text {
+    font-size: 0.5625rem !important;
+    font-weight: 200 !important;
+    font-synthesis: none;
+    color: var(--text-placeholder) !important;
+    letter-spacing: 0.03em !important;
+  }
+  .app-main:has(.home-view)
+    .home-todo-list-content
+    .todo-card.home-todo-flat-row
+    svg.todo-card-reminder-icon {
+    stroke-width: 1 !important;
+    opacity: 0.65;
+    color: var(--text-placeholder);
   }
   /* 데스크톱과 동일: 카드·체크박스 열 정렬 (가로 패딩 추가로 줄만 어긋나지 않게) */
   .app-main:has(.home-view) .home-todo-list-content .home-todo-cards-wrap {
@@ -5551,7 +5993,7 @@ body {
     flex-shrink: 0;
     flex-wrap: nowrap;
     z-index: 10;
-    background: #f5f1e8;
+    background: #f5f5f7;
     border-bottom: var(--divider-subtle);
     margin-bottom: 0;
     padding: 0 1.5rem 0.25rem;
@@ -5617,7 +6059,7 @@ body {
     -webkit-overflow-scrolling: touch;
     max-width: 100%;
     box-sizing: border-box;
-    background: var(--content-bg, #f5f1e8);
+    background: var(--content-bg, #f5f5f7);
   }
   .calendar-view-todo .calendar-todo-content .todo-table {
     display: table;
@@ -5634,7 +6076,7 @@ body {
     position: sticky;
     top: 0;
     z-index: 2;
-    background: #f5f1e8;
+    background: #f5f5f7;
   }
   .calendar-view-todo .calendar-todo-content .todo-table thead th.todo-th-done,
   .calendar-view-todo .calendar-todo-content .todo-table thead th.todo-th-name {
@@ -5931,7 +6373,7 @@ body {
     align-content: flex-start;
     row-gap: 0.1rem;
     column-gap: 0.2rem;
-    background: var(--content-bg, #f5f1e8);
+    background: var(--content-bg, #f5f5f7);
     border: 1px solid var(--line-l2-color);
     border-radius: 0.35rem;
     margin: 0 0 0.28rem 0;
@@ -6241,17 +6683,14 @@ body {
   .app-main:has(.home-view) .home-event-time-card {
     min-width: 7.5rem;
     flex-shrink: 0;
-    background: var(--card-bg-light) !important;
+    background: #ebebeb !important;
   }
   .app-main:has(.home-view) .home-event-time-card.is-today {
-    background: var(--badge-stone-bg) !important;
+    background: rgba(0, 0, 0, 0.06) !important;
   }
 
-  /* 모바일: 시간기록 탭에서만 상단·필터 일부 숨김 — 날짜 묶음은 툴바로, 과제 설정은 탭 행 오른쪽(할일과 동일); 과제 기록은 FAB */
+  /* 모바일: 요약 패널 등 일부만 숨김 — 날짜 줄은 .time-ledger-filter-add-row 에서 표시 */
   .time-ledger-view .time-ledger-header,
-  .time-ledger-view .time-hourly-wrap,
-  .time-ledger-view[data-time-content-view="all"] .time-ledger-filter-add-row,
-  .time-ledger-view[data-time-content-view="audit"] .time-ledger-filter-add-row,
   .time-ledger-view[data-time-content-view="all"]
     .time-ledger-summary-panel:not(.time-ledger-mobile-tabs-summary) {
     display: none !important;
@@ -6271,13 +6710,14 @@ body {
     box-sizing: border-box;
     flex-wrap: wrap;
   }
+  .time-ledger-view .time-hourly-wrap--hint-row {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    box-sizing: border-box;
+  }
   /* 예전: 설정만 위쪽 띠에 둠 — 이제 탭 행으로 옮겨 빈 래퍼는 숨김 */
   .time-ledger-view .time-ledger-tabs-filter-row .time-ledger-tabs-top-margin {
     display: none !important;
-  }
-  .time-ledger-view .time-ledger-tabs-filter-row .time-ledger-tabs-settings-btn {
-    padding: 0 !important;
-    border-right: none !important;
   }
   /* 할일 .calendar-view-top-row--todo 와 동일: 상단 패딩·한 줄 전체 하단선(divider-subtle), 톱니는 선 위 오른쪽 */
   .time-ledger-view .time-ledger-tabs-filter-row .time-ledger-tab-header-row {
@@ -6298,6 +6738,12 @@ body {
     min-width: 0;
     border-bottom: none !important;
     margin-bottom: 0 !important;
+  }
+  .time-ledger-view
+    .time-ledger-tabs-filter-row
+    .time-ledger-tab-header-row
+    .time-view-tabs.time-view-tabs--segmented {
+    flex: 0 1 auto !important;
   }
   /* 할일 설정 버튼과 동일: 행 오른쪽·세로 가운데 */
   .time-ledger-view
@@ -6431,13 +6877,17 @@ body {
     padding-left: 1.5rem;
     padding-right: 1.5rem;
     box-sizing: border-box;
+    justify-content: flex-end;
+    align-items: center;
   }
   .time-ledger-view .time-ledger-filter-add-row .time-filter-bar {
     flex-shrink: 0;
+    flex: 0 1 auto;
+    width: auto;
+    max-width: 100%;
     margin-bottom: 0;
-  }
-  .time-ledger-view .time-filter-bar .time-task-setup-btn {
-    border-right: none;
+    justify-content: flex-end;
+    margin-left: 0;
   }
 
   /* 모바일: 근무표 안내 멘트 숨김 */
@@ -6463,7 +6913,7 @@ body {
     position: sticky;
     top: 0;
     z-index: 5;
-    background: var(--content-bg, #f5f1e8);
+    background: var(--content-bg, #f5f5f7);
   }
   /* 일자 이동·과제 필터: 한 줄에 날짜 구간 + < > + 필터 (과제 기록은 우하단 FAB) */
   .time-ledger-mobile-toolbar-right {
@@ -6739,7 +7189,7 @@ body {
     font-size: 1.25rem;
     font-family: inherit;
     color: var(--text-muted);
-    background: var(--content-bg, #f5f1e8);
+    background: var(--content-bg, #f5f5f7);
     border: var(--line-l4);
     box-shadow: 0 0.0625rem 0.25rem rgba(0, 0, 0, 0.06);
     border-radius: var(--modal-radius) !important;
@@ -6806,7 +7256,7 @@ body {
   }
   .time-ledger-mobile-card {
     display: flex;
-    background: #f5f1e8;
+    background: #f5f5f7;
     border-radius: 0;
     box-shadow: none;
     overflow: hidden;
@@ -6967,8 +7417,16 @@ body {
   overflow: hidden !important;
   display: flex;
   flex-direction: column;
-  background: #f5f1e8;
+  background: var(--app-bg);
   height: 100%;
+}
+
+.app-main:has(.home-view) .home-view-section {
+  background: transparent;
+}
+
+.app-main:has(.home-view) .home-view-section--calendar {
+  background: var(--lp-chrome-center-panel);
 }
 
 /* 선 계층: 섹션 구분선 */
@@ -7178,6 +7636,7 @@ body {
   flex-direction: column;
   min-height: 0;
   min-width: 0;
+  background: var(--lp-chrome-timeline);
 }
 .app-main:has(.home-view) .home-1day-timeline-mount {
   flex: 1 1 auto;
@@ -7230,6 +7689,10 @@ body {
   min-height: 0;
   min-width: 0;
   overflow: hidden;
+}
+
+.app-main:has(.home-view) .home-event-reminder-stack {
+  background: var(--lp-chrome-center-panel);
 }
 
 /* EVENT/REMINDER 구분선: 약한 구분선 토큰과 동일(세로 구분과도 무게 맞춤) */
@@ -7566,10 +8029,11 @@ body {
 
 /* 이벤트 캘린더 셀: 보조(거의 안 보이게) */
 .home-event-time-card {
-  border: var(--card-border-light);
-  border-radius: 0.25rem;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 10px !important;
   padding: 0.5rem 0.5rem;
-  background: var(--card-bg-light);
+  background: #ebebeb;
+  box-shadow: none;
   height: 8rem;
   min-height: 8rem;
   max-height: 8rem;
@@ -7580,17 +8044,13 @@ body {
   overflow: hidden;
 }
 
-.home-event-time-card.is-done .home-event-time-card-title {
-  text-decoration: line-through;
-  color: var(--text-muted);
-}
-
 .home-event-time-card.is-weekend {
-  background: var(--card-bg-light);
+  background: #ebebeb;
 }
 
 .home-event-time-card.is-today {
-  background: var(--badge-stone-bg) !important;
+  background: rgba(0, 0, 0, 0.06) !important;
+  border-color: rgba(0, 0, 0, 0.08);
 }
 
 .home-event-time-card.is-today .home-event-time-card-dd::after {
@@ -7601,10 +8061,15 @@ body {
   min-width: 0.375rem;
   min-height: 0.375rem;
   border-radius: 50% !important;
-  background: var(--accent-viridian);
+  background: rgba(60, 60, 67, 0.85);
   margin-left: 0.375rem;
   vertical-align: middle;
   flex-shrink: 0;
+}
+
+.home-event-time-card.is-done .home-event-time-card-title {
+  text-decoration: line-through;
+  color: var(--text-muted);
 }
 
 .home-event-time-card-dd {
@@ -7662,7 +8127,7 @@ body {
   top: 0;
   width: 0.125rem;
   height: 1em;
-  background: var(--accent-viridian);
+  background: rgba(60, 60, 67, 0.35);
 }
 
 .home-event-time-card-item.is-done {
@@ -7828,7 +8293,7 @@ body {
   flex: 1;
   overflow-y: auto;
   padding: 1.5rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .q7a-content-empty {
@@ -8817,7 +9282,7 @@ body {
 }
 
 .work-schedule-filter-btn.active {
-  background: var(--content-bg, #f5f1e8);
+  background: var(--content-bg, #f5f5f7);
   color: var(--text-ink);
   border-color: var(--line-l3-color);
   box-shadow: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.05);
@@ -8842,7 +9307,7 @@ body {
   font-size: 0.8125rem;
   border: var(--line-l3);
   border-radius: 0.375rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   color: var(--text-body);
 }
 
@@ -8852,7 +9317,7 @@ body {
   font-size: 0.8125rem;
   border: var(--line-l3);
   border-radius: 0.375rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   color: var(--text-body);
 }
 
@@ -9462,7 +9927,7 @@ body {
 }
 
 .asset-expense-filter-btn.active {
-  background: #f5f1e8;
+  background: #f5f5f7;
   color: #1a1a2e;
   border-color: var(--line-l2-color);
   box-shadow: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.05);
@@ -9498,7 +9963,7 @@ body {
   font-size: 0.8125rem;
   border: var(--line-l3);
   border-radius: 0.375rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   color: var(--text-body);
 }
 
@@ -9508,7 +9973,7 @@ body {
   font-size: 0.8125rem;
   border: var(--line-l3);
   border-radius: 0.375rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   color: var(--text-body);
 }
 
@@ -9596,14 +10061,14 @@ col.asset-expense-col-date,
   min-width: 8.75rem;
   max-width: 8.75rem;
   box-sizing: border-box;
-  background: #f5f1e8 !important;
+  background: #f5f5f7 !important;
   box-shadow: 0.125rem 0 0.25rem -0.125rem rgba(0, 0, 0, 0.08);
   overflow: visible;
 }
 
 .asset-expense-table thead .asset-expense-th-date {
   z-index: 3;
-  background: #f5f1e8 !important;
+  background: #f5f5f7 !important;
 }
 
 col.asset-expense-col-amount,
@@ -9616,7 +10081,7 @@ col.asset-expense-col-amount,
   min-width: 7.5rem;
   max-width: 7.5rem;
   box-sizing: border-box;
-  background: #f5f1e8 !important;
+  background: #f5f5f7 !important;
   box-shadow: 0.25rem 0 0.35rem -0.125rem rgba(0, 0, 0, 0.1);
   border-right: var(--divider-subtle);
   overflow: visible;
@@ -9624,14 +10089,14 @@ col.asset-expense-col-amount,
 
 .asset-expense-table thead .asset-expense-th-amount {
   z-index: 3;
-  background: #f5f1e8 !important;
+  background: #f5f5f7 !important;
 }
 
 .asset-expense-summary-row .asset-expense-summary-label,
 .asset-expense-summary-row .asset-expense-summary-total {
   position: sticky !important;
   z-index: 2;
-  background: #f5f1e8 !important;
+  background: #f5f5f7 !important;
   overflow: visible;
 }
 
@@ -9771,7 +10236,7 @@ col.asset-expense-col-amount,
   max-width: 32.5rem;
   height: 70vh;
   max-height: 35rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border-radius: var(--modal-radius);
   box-shadow: 0 0.625rem 2.5rem rgba(0, 0, 0, 0.15);
   display: flex;
@@ -9785,7 +10250,7 @@ col.asset-expense-col-amount,
   justify-content: space-between;
   padding: 1rem 1.25rem;
   border-bottom: var(--line-l3);
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .asset-settings-title {
@@ -9824,7 +10289,7 @@ col.asset-expense-col-amount,
   gap: 0;
   padding: 0 1.25rem;
   border-bottom: var(--line-l3);
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .asset-settings-tab-btn {
@@ -10019,7 +10484,7 @@ col.asset-expense-col-amount,
 .asset-settings-footer {
   padding: 1rem 1.25rem;
   border-top: none;
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .asset-settings-save {
@@ -10058,7 +10523,7 @@ col.asset-expense-col-amount,
 
 /* 현금흐름 세로 흐름 (수입→고정비→변동비→저축→기타) - 좌우 균형 레이아웃 */
 .asset-cashflow-flow-wrap {
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.75rem;
   padding: 1.25rem 1.5rem;
@@ -10116,7 +10581,7 @@ col.asset-expense-col-amount,
   align-items: flex-start;
   gap: 0.4rem 1.25rem;
   padding: 0.75rem 1rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border-radius: 0.5rem;
   border: var(--line-l3);
 }
@@ -10288,7 +10753,7 @@ col.asset-expense-col-amount,
   align-items: center;
   gap: 0.25rem;
   padding: 0.35rem 0.5rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.5rem;
 }
@@ -10366,7 +10831,7 @@ col.asset-expense-col-amount,
 }
 
 .asset-cashflow-panel {
-  background: #f5f1e8 !important;
+  background: #f5f5f7 !important;
   border: var(--line-l3);
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.08);
   max-height: 11.25rem;
@@ -10382,7 +10847,7 @@ col.asset-expense-col-amount,
 }
 
 .asset-cashflow-panel .time-period-option {
-  background: #f5f1e8;
+  background: #f5f5f7;
   color: var(--text-body);
 }
 
@@ -10823,7 +11288,7 @@ col.asset-expense-col-amount,
 .asset-expense-category-panel {
   position: fixed;
   z-index: 99999;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
@@ -11028,7 +11493,7 @@ col.asset-expense-col-amount,
 .asset-expense-classification-panel {
   position: fixed;
   z-index: 99999;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
@@ -11799,7 +12264,7 @@ col.asset-expense-col-amount,
   box-sizing: border-box;
   margin-left: 0;
   margin-right: auto;
-  background: var(--content-bg, #f5f1e8);
+  background: var(--content-bg, #f5f5f7);
   border-radius: 0.35rem;
   box-shadow: 0 0.06rem 0.25rem rgba(0, 0, 0, 0.07);
   overflow: visible;
@@ -12042,7 +12507,7 @@ col.asset-expense-col-amount,
 .asset-debt-progress-wrap {
   padding: 1rem 1.25rem;
   margin-bottom: 1rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.06);
@@ -12115,7 +12580,7 @@ col.asset-expense-col-amount,
 }
 
 .asset-asset-subsection {
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.5rem;
   overflow: hidden;
@@ -12161,7 +12626,7 @@ col.asset-expense-col-amount,
 
 .asset-asset-tab-btn.is-active {
   color: #059669;
-  background: #f5f1e8;
+  background: #f5f5f7;
   box-shadow: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.05);
 }
 
@@ -12176,7 +12641,7 @@ col.asset-expense-col-amount,
 .asset-asset-maturity-context-menu {
   min-width: 10rem;
   padding: 0.25rem 0;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.15);
@@ -12230,7 +12695,7 @@ col.asset-expense-col-amount,
 }
 
 .asset-asset-table-wrap {
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0;
   overflow: auto;
@@ -12249,7 +12714,7 @@ col.asset-expense-col-amount,
   padding: 0.5rem 0.6rem;
   border: var(--line-l3);
   border-top: none;
-  background: #f5f1e8;
+  background: #f5f5f7;
   box-shadow: 0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.06);
 }
 
@@ -12848,7 +13313,7 @@ col.asset-expense-col-amount,
 .asset-asset-type-panel {
   position: fixed;
   z-index: 10000;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
@@ -13013,7 +13478,7 @@ col.asset-expense-col-amount,
 .asset-asset-category-panel {
   position: fixed;
   z-index: 10000;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
@@ -13062,7 +13527,7 @@ col.asset-expense-col-amount,
 .asset-asset-savings-goal-panel {
   position: fixed;
   z-index: 10000;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
@@ -13170,7 +13635,7 @@ col.asset-expense-col-amount,
 .asset-stock-category-panel {
   position: fixed;
   z-index: 10000;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
@@ -13275,7 +13740,7 @@ col.asset-expense-col-amount,
 .asset-insurance-kind-panel {
   position: fixed;
   z-index: 10000;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
@@ -13591,7 +14056,7 @@ col.asset-expense-col-amount,
 }
 
 .asset-debt-table-wrap {
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0;
   overflow: auto;
@@ -13605,7 +14070,7 @@ col.asset-expense-col-amount,
   padding: 0.5rem 0.6rem;
   border: var(--line-l3);
   border-top: none;
-  background: #f5f1e8;
+  background: #f5f5f7;
   box-shadow: 0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.06);
 }
 
@@ -13762,7 +14227,7 @@ col.asset-expense-col-amount,
 .asset-debt-repayment-panel {
   position: fixed;
   z-index: 1000;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
@@ -13821,7 +14286,7 @@ col.asset-expense-col-amount,
 .asset-debt-type-panel {
   position: fixed;
   z-index: 10000;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
@@ -14273,7 +14738,7 @@ col.asset-expense-col-amount,
   z-index: 5;
   overflow: visible;
   /* 가로 스크롤 시 뒤 열이 비치지 않도록 반드시 불투명 배경 */
-  background-color: #f5f1e8 !important;
+  background-color: #f5f5f7 !important;
   border-right: none;
 }
 .work-schedule-table .work-schedule-th-date::after,
@@ -14450,7 +14915,7 @@ col.asset-expense-col-amount,
 .work-schedule-cell-date {
   cursor: pointer;
   text-align: left;
-  background-color: var(--content-bg, #f5f1e8) !important;
+  background-color: var(--content-bg, #f5f5f7) !important;
 }
 .work-schedule-cell-date:focus-within {
   background-color: var(--ui-surface-alt, #d8d2c0) !important;
@@ -14739,7 +15204,7 @@ col.asset-expense-col-amount,
 }
 
 .work-schedule-monthly-calendar {
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: none;
   border-bottom: var(--line-l3);
   border-radius: 0;
@@ -14985,10 +15450,10 @@ col.asset-expense-col-amount,
   padding: 0.5rem;
   width: 100%;
   max-width: 100%;
-  background: #f5f1e8;
+  background: #f5f5f7;
   font-family: var(--font-body);
   box-sizing: border-box;
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .todo-list-view.hide-completed .todo-task-row:has(.todo-done-check:checked) {
@@ -15237,7 +15702,7 @@ col.asset-expense-col-amount,
   z-index: 1100;
   min-width: 6rem;
   padding: 0.25rem 0;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.15);
@@ -15471,7 +15936,7 @@ col.asset-expense-col-amount,
   left: 0.125rem;
   width: 1.1rem;
   height: 1.1rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border-radius: 50% !important;
   box-shadow: 0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.2);
   transition: transform 0.2s;
@@ -15907,7 +16372,7 @@ col.asset-expense-col-amount,
 }
 
 .todo-card {
-  background: var(--content-bg, #f5f1e8);
+  background: var(--content-bg, #f5f5f7);
   border: var(--line-l4);
   box-shadow: 0 0.0625rem 0.25rem rgba(0, 0, 0, 0.06);
   border-radius: 0.75rem !important;
@@ -15932,7 +16397,7 @@ col.asset-expense-col-amount,
   background: linear-gradient(
     155deg,
     rgba(42, 56, 40, 0.09) 0%,
-    var(--content-bg, #f5f1e8) 52%,
+    var(--content-bg, #f5f5f7) 52%,
     rgba(42, 56, 40, 0.04) 100%
   ) !important;
 }
@@ -15978,7 +16443,7 @@ col.asset-expense-col-amount,
 
 /* 메인 메뉴 「캘린더」(날짜 정하기 탭 아님): 마감/시작일 있어도 카드 배경·글자 톤을 일반 목록과 동일하게 */
 .calendar-view--mobile-schedule .calendar-todo-sidebar-main .todo-card--has-due {
-  background: var(--content-bg, #f5f1e8) !important;
+  background: var(--content-bg, #f5f5f7) !important;
   box-shadow: 0 0.0625rem 0.25rem rgba(0, 0, 0, 0.06);
   cursor: default;
 }
@@ -16579,7 +17044,7 @@ svg.todo-card-reminder-icon {
   z-index: 1100;
   min-width: 8rem;
   padding: 0.25rem 0;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.15);
@@ -16700,7 +17165,7 @@ svg.todo-card-reminder-icon {
   height: 0.75rem;
   border: 0.0938rem dashed #4caf50;
   border-radius: 50%;
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .todo-section-label {
@@ -16742,7 +17207,7 @@ svg.todo-card-reminder-icon {
   font-family: var(--font-body);
   letter-spacing: 0.14em;
   color: var(--text-muted);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border-bottom: var(--line-l3);
   vertical-align: middle;
   position: sticky;
@@ -16773,7 +17238,7 @@ svg.todo-card-reminder-icon {
   position: sticky;
   left: 0;
   z-index: 1;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border-right: none;
   box-shadow: 1px 0 0 0 var(--line-l3-color);
 }
@@ -16782,7 +17247,7 @@ svg.todo-card-reminder-icon {
   position: sticky;
   left: 2rem;
   z-index: 1;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border-right: none;
   box-shadow: 1px 0 0 0 var(--line-l3-color);
 }
@@ -17137,7 +17602,7 @@ svg.todo-card-reminder-icon {
   height: 0.75rem;
   border: 0.0938rem dashed #4caf50;
   border-radius: 50%;
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .todo-cell-name {
@@ -17459,7 +17924,7 @@ svg.todo-card-reminder-icon {
   font-variant-numeric: tabular-nums;
   border: none;
   border-radius: 0.25rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   color: var(--gray-700, #374151);
 }
 
@@ -17495,7 +17960,7 @@ svg.todo-card-reminder-icon {
   font-size: 1.25rem;
   font-family: inherit;
   color: var(--text-muted);
-  background: var(--content-bg, #f5f1e8);
+  background: var(--content-bg, #f5f5f7);
   border: var(--line-l4);
   box-shadow: 0 0.0625rem 0.25rem rgba(0, 0, 0, 0.06);
   border-radius: 0.75rem !important;
@@ -17529,7 +17994,7 @@ svg.todo-card-reminder-icon {
   font-size: 1.25rem;
   font-family: inherit;
   color: var(--text-muted);
-  background: var(--content-bg, #f5f1e8);
+  background: var(--content-bg, #f5f5f7);
   border: var(--line-l4);
   box-shadow: 0 0.0625rem 0.25rem rgba(0, 0, 0, 0.06);
   border-radius: 0.75rem !important;
@@ -17621,7 +18086,7 @@ svg.todo-card-reminder-icon {
   min-width: 8.75rem;
   max-height: 13.75rem;
   overflow-y: auto;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
 }
@@ -17945,7 +18410,7 @@ svg.todo-card-reminder-icon {
   font-size: 0.9rem;
   line-height: 1.6;
   color: #555;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.25rem;
   resize: vertical;
@@ -18007,7 +18472,7 @@ svg.todo-card-reminder-icon {
   font-size: 0.9rem;
   font-weight: 500;
   color: var(--text-body);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.375rem;
   cursor: pointer;
@@ -18138,7 +18603,7 @@ svg.todo-card-reminder-icon {
   padding: 0.4rem 0.5rem;
   border-radius: 0.375rem;
   border: var(--line-l3);
-  background: #f5f1e8;
+  background: #f5f5f7;
   font-size: 0.9rem;
   line-height: 1.4;
   width: fit-content;
@@ -18156,7 +18621,7 @@ svg.todo-card-reminder-icon {
 
 .kpi-mindmap-node--goal {
   color: var(--text-body);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border-color: var(--line-l2-color);
   padding: 0.35rem 0.5rem;
 }
@@ -18297,7 +18762,7 @@ svg.todo-card-reminder-icon {
   width: 100%;
   max-width: 22.5rem;
   padding: 1.5rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border-radius: var(--modal-radius);
   border: var(--line-l3);
   box-shadow: 0 0.25rem 1.25rem rgba(0, 0, 0, 0.08);
@@ -18378,7 +18843,7 @@ svg.todo-card-reminder-icon {
   width: 100%;
   max-width: 22.5rem;
   padding: 1.5rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border-radius: var(--modal-radius);
   border: var(--line-l3);
   box-shadow: 0 0.25rem 1.25rem rgba(0, 0, 0, 0.08);
@@ -18682,7 +19147,7 @@ svg.todo-card-reminder-icon {
   min-width: 12.5rem;
   max-width: 17.5rem;
   padding: 1.25rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.06);
@@ -18801,7 +19266,7 @@ svg.todo-card-reminder-icon {
   position: relative;
   width: 100%;
   max-width: 30rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border-radius: var(--modal-radius);
   box-shadow: 0 0.625rem 2.5rem rgba(0, 0, 0, 0.15);
   overflow: hidden;
@@ -19047,7 +19512,7 @@ svg.todo-card-reminder-icon {
 
 .kpi-dream-phase-body {
   padding: 1.25rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.25rem;
   box-shadow: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.04);
@@ -19189,7 +19654,7 @@ svg.todo-card-reminder-icon {
   font-size: 0.8125rem;
   line-height: 1.5;
   color: #4b5563;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.25rem;
 }
@@ -19250,7 +19715,7 @@ svg.todo-card-reminder-icon {
   font-size: 0.9375rem;
   line-height: 1.5;
   color: var(--text-muted);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l10);
   border-radius: 0.25rem;
   cursor: pointer;
@@ -19263,7 +19728,7 @@ svg.todo-card-reminder-icon {
 
 .kpi-section {
   margin-bottom: 1.5rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .kpi-section-header {
@@ -19373,7 +19838,7 @@ svg.todo-card-reminder-icon {
   min-width: 67.5rem;
   border-collapse: collapse;
   font-size: 0.9375rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: none;
 }
 
@@ -19392,7 +19857,7 @@ svg.todo-card-reminder-icon {
 
 .kpi-table thead th,
 .kpi-table th {
-  background: #f5f1e8;
+  background: #f5f5f7;
   font-weight: 400;
   color: #b0b0b0;
   font-size: 0.75rem;
@@ -19419,7 +19884,7 @@ svg.todo-card-reminder-icon {
 .kpi-table select:focus {
   outline: none;
   border-color: var(--line-l3-color);
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .kpi-name-wrap {
@@ -19571,7 +20036,7 @@ svg.todo-card-reminder-icon {
   z-index: 10000;
   min-width: 13.75rem;
   max-width: 17.5rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
@@ -19679,7 +20144,7 @@ svg.todo-card-reminder-icon {
   position: sticky;
   left: 0;
   z-index: 3;
-  background: #f5f1e8;
+  background: #f5f5f7;
   box-shadow: 0.125rem 0 0.25rem -0.125rem rgba(0, 0, 0, 0.06);
 }
 
@@ -19706,7 +20171,7 @@ body.kpi-resizing {
   position: sticky;
   left: 0;
   z-index: 2;
-  background: #f5f1e8;
+  background: #f5f5f7;
   box-shadow: 0.125rem 0 0.25rem -0.125rem rgba(0, 0, 0, 0.06);
 }
 
@@ -19864,16 +20329,18 @@ body.kpi-resizing {
   position: relative;
 }
 
-/* 2행: 과제 기록(왼쪽)+필터바(오른쪽) — 세로는 하단 정렬(필터 입력·밑줄과 맞춤) */
+/* 2행: 날짜·이전·다음만 — 오른쪽 정렬 */
 .time-ledger-filter-add-row {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
+  justify-content: flex-end;
   gap: 0.75rem;
   width: 100%;
   max-width: 100%;
   min-width: 0;
   flex-wrap: nowrap;
   border-bottom: var(--line-l3);
+  padding-top: 0.45rem;
   padding-bottom: 0.35rem;
   margin-bottom: 1rem;
   box-sizing: border-box;
@@ -19883,7 +20350,12 @@ body.kpi-resizing {
 .time-ledger-filter-add-row .time-filter-bar {
   flex: 0 1 auto;
   min-width: 0;
-  margin-left: auto;
+  margin-left: 0;
+  width: auto;
+  max-width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
 }
 
 .time-ledger-filter-add-row .time-hourly-add-slot:not(:empty) {
@@ -19893,10 +20365,6 @@ body.kpi-resizing {
 }
 
 /* 과제 설정(톱니): 오른쪽 세로 보더 제거 — 날짜 구간과 붙어 보이게 */
-.time-ledger-filter-add-row .time-filter-bar > .time-task-setup-btn.time-ledger-tabs-settings-btn {
-  border-right: none;
-}
-
 /* 상단 여백 띠: 설정 버튼만 — 데스크톱 한 줄에서는 100% 폭·flex-basis 100%면 탭 행이 잘림(부모 overflow:hidden) */
 .time-ledger-tabs-top-margin {
   display: flex;
@@ -19922,12 +20390,123 @@ body.kpi-resizing {
   align-items: center;
   box-sizing: border-box;
 }
+
+/* 시간가계부 1행: 과제 기록(좌) · 탭(중앙) · 시급·설정(우, 모바일만 설정) */
+.time-ledger-view .time-ledger-tabs-filter-row .time-ledger-tab-header-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  flex-wrap: nowrap;
+  box-sizing: border-box;
+}
+
+.time-ledger-view .time-ledger-top-strip__left {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+/* 설정 · 필터 · + : 빨간 라인 아이콘 한 줄 */
+.time-ledger-toolbar-icons {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.time-ledger-toolbar-icons .time-ledger-toolbar-icon-btn,
+.time-ledger-toolbar-icons .time-ledger-add-plus-btn.todo-add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem;
+  margin: 0;
+  border: none;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: #dc2626;
+  cursor: pointer;
+  line-height: 0;
+  box-shadow: none;
+}
+
+.time-ledger-toolbar-icons .time-ledger-toolbar-icon-btn:hover,
+.time-ledger-toolbar-icons .time-ledger-add-plus-btn.todo-add-btn:hover {
+  opacity: 0.85;
+  background: rgba(220, 38, 38, 0.06);
+}
+
+.time-ledger-toolbar-icons img.time-btn-icon {
+  display: block;
+  filter: brightness(0) saturate(100%) invert(27%) sepia(93%) saturate(2877%)
+    hue-rotate(342deg) brightness(96%) contrast(97%);
+  opacity: 1;
+}
+
+.time-ledger-toolbar-icons .time-filter-task-select-btn.is-active {
+  background: rgba(220, 38, 38, 0.14) !important;
+  color: #dc2626 !important;
+  border: none !important;
+}
+
+.time-ledger-toolbar-icons .time-filter-task-select-btn.is-active .time-btn-icon {
+  filter: brightness(0) saturate(100%) invert(21%) sepia(93%) saturate(2877%)
+    hue-rotate(342deg) brightness(92%) contrast(97%);
+  opacity: 1;
+}
+
+.time-ledger-toolbar-icons .time-ledger-add-plus-btn svg {
+  display: block;
+}
+
+.time-ledger-view .time-ledger-top-strip__center {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: visible;
+}
+
+.time-ledger-view .time-ledger-top-strip__right {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.time-ledger-view .time-ledger-top-strip__right .time-hourly-rate-values {
+  margin-left: 0;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+}
+
+.time-ledger-view .time-ledger-top-strip__right .time-ledger-tabs-settings-btn {
+  flex-shrink: 0;
+  margin-left: 0 !important;
+}
 /* 자산관리 탭줄과 동일: border-bottom + margin-bottom (가계부·현금흐름 등 아래 긴 선) */
 .time-ledger-tabs-filter-row .time-ledger-tab-header-row .time-view-tabs {
   flex: 1;
   min-width: 0;
   border-bottom: var(--line-l3);
   margin-bottom: 1rem;
+}
+
+.time-ledger-tabs-filter-row
+  .time-ledger-tab-header-row
+  .time-view-tabs.time-view-tabs--segmented {
+  flex: 0 1 auto;
+  border-bottom: none !important;
+  margin-bottom: 0 !important;
 }
 
 .time-view-tabs {
@@ -19988,6 +20567,118 @@ body.kpi-resizing {
   background: transparent;
 }
 
+/* 시간가계부: 시간 기록·보고서 세그먼트 — iOS UISegmentedControl에 가깝게(필 트랙·안쪽 여백·둥근 흰 썸·그림자, thumb 위치는 JS --thumb-col-start) */
+.time-ledger-view .time-ledger-tabs-filter-row .time-ledger-tab-header-row .time-view-tabs.time-view-tabs--segmented,
+.time-ledger-view .time-view-tabs.time-view-tabs--segmented {
+  --time-segment-count: 2;
+  --thumb-col-start: 1;
+  --time-segment-track: #e4e4ea;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--time-segment-count), minmax(0, auto));
+  gap: 0;
+  align-items: stretch;
+  width: fit-content;
+  max-width: min(19rem, calc(100vw - 2rem));
+  min-width: 0;
+  padding: 0.25rem;
+  box-sizing: border-box;
+  background: var(--time-segment-track);
+  /* 필 형태 유지: 일반 탭의 overflow-x:auto·직각 클리핑과 분리 */
+  border-radius: 9999px !important;
+  border-bottom: none !important;
+  overflow: hidden !important;
+  overflow-x: hidden !important;
+  overflow-y: hidden !important;
+  flex-wrap: nowrap !important;
+  isolation: isolate;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  -webkit-overflow-scrolling: auto;
+}
+
+.time-ledger-view .time-view-tabs.time-view-tabs--segmented .time-view-tabs-thumb {
+  grid-row: 1;
+  grid-column: var(--thumb-col-start, 1) / span 1;
+  z-index: 0;
+  margin: 0;
+  min-height: 2rem;
+  align-self: stretch;
+  border-radius: 9999px !important;
+  background: #ffffff;
+  /* 트랙 overflow:hidden 안에서 잘리지 않도록 여백에 맞춘 그림자 */
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.05),
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.06);
+  pointer-events: none;
+}
+
+.time-ledger-view .time-view-tabs.time-view-tabs--segmented > .time-view-tab:nth-child(2) {
+  grid-column: 1;
+  grid-row: 1;
+  z-index: 1;
+}
+
+.time-ledger-view .time-view-tabs.time-view-tabs--segmented > .time-view-tab:nth-child(3) {
+  grid-column: 2;
+  grid-row: 1;
+  z-index: 1;
+}
+
+.time-ledger-view .time-view-tabs.time-view-tabs--segmented > .time-view-tab:nth-child(4) {
+  grid-column: 3;
+  grid-row: 1;
+  z-index: 1;
+}
+
+.time-ledger-view .time-view-tabs.time-view-tabs--segmented .time-view-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 0.3125rem 0.8125rem !important;
+  margin: 0 !important;
+  margin-bottom: 0 !important;
+  border: none !important;
+  border-bottom: none !important;
+  border-radius: 0 !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background: transparent !important;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: #000000;
+  box-shadow: none !important;
+  flex-shrink: 1;
+  transition:
+    color 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.time-ledger-view .time-view-tabs.time-view-tabs--segmented .time-view-tab.active {
+  color: #000000;
+  font-weight: 500;
+  border-bottom: none !important;
+  background: transparent !important;
+}
+
+.time-ledger-view .time-view-tabs.time-view-tabs--segmented .time-view-tab:hover {
+  color: #000000;
+  opacity: 0.82;
+  background: transparent !important;
+}
+
+.time-ledger-view .time-view-tabs.time-view-tabs--segmented .time-view-tab.active:hover {
+  color: #000000;
+  opacity: 1;
+}
+
+.time-ledger-view .time-view-tabs.time-view-tabs--segmented .time-view-tab:focus-visible {
+  outline: 2px solid rgba(0, 0, 0, 0.35);
+  outline-offset: 2px;
+}
+
 /* 시간가계부 필터 바 (월별/일주일/하루/날짜선택) - 좁은 창에서 줄바꿈 방지 */
 .time-filter-bar {
   display: flex;
@@ -20003,7 +20694,7 @@ body.kpi-resizing {
   font-size: 0.8125rem;
   font-weight: 500;
   color: var(--text-body);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: none;
   border-right: var(--line-l3);
   border-radius: 0.375rem;
@@ -20015,7 +20706,7 @@ body.kpi-resizing {
 }
 
 .time-task-setup-btn:hover {
-  background: #f5f1e8;
+  background: #f5f5f7;
   color: var(--text-body);
 }
 
@@ -20921,7 +21612,7 @@ body.kpi-resizing {
   padding: 0.125rem 0.5rem;
   font-size: 0.8rem;
   color: var(--text-body);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.375rem;
 }
@@ -20954,7 +21645,7 @@ body.kpi-resizing {
   padding: 0.125rem 0.375rem;
   font-size: 0.8rem;
   color: #6a6760;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.25rem;
 }
@@ -21047,7 +21738,7 @@ body.kpi-resizing {
   padding: 0.35rem 0.75rem;
   font-size: 0.85rem;
   color: var(--text-body);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: var(--modal-radius);
   cursor: pointer;
@@ -21142,7 +21833,7 @@ body.kpi-resizing {
   padding: 0.125rem 0.5rem;
   font-size: 0.8rem;
   color: var(--text-body);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.25rem;
 }
@@ -21911,7 +22602,7 @@ body.kpi-resizing {
   padding: 0.125rem 0.5rem;
   font-size: 0.8rem;
   color: var(--text-body);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.375rem;
 }
@@ -22072,7 +22763,7 @@ body.kpi-resizing {
   padding: 0.125rem 0.5rem;
   font-size: 0.8rem;
   color: #6a6760;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.375rem;
 }
@@ -22120,7 +22811,7 @@ body.kpi-resizing {
   padding: 0.35rem 0.75rem;
   font-size: 0.85rem;
   color: var(--text-body);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: var(--modal-radius);
   cursor: pointer;
@@ -22430,7 +23121,7 @@ body.kpi-resizing {
   font-size: 0.9rem;
   text-align: left;
   color: var(--text-body);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.375rem;
   cursor: pointer;
@@ -22633,7 +23324,7 @@ body.kpi-resizing {
   margin: 0 0.125rem;
   font-size: 0.8rem;
   color: var(--text-body);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.25rem;
   vertical-align: middle;
@@ -22680,7 +23371,7 @@ body.kpi-resizing {
   padding: 0.1875rem 0.5rem;
   font-size: 0.8rem;
   color: var(--text-body);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.375rem;
   white-space: nowrap;
@@ -22723,7 +23414,7 @@ body.kpi-resizing {
   max-height: 15rem;
   display: flex;
   flex-direction: column;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.375rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
@@ -22819,7 +23510,7 @@ body.kpi-resizing {
   right: 0;
   z-index: 10;
   padding: 1rem 1.25rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border-top: none;
   border-top-left-radius: var(--modal-radius);
   border-top-right-radius: var(--modal-radius);
@@ -22959,7 +23650,7 @@ body.kpi-resizing {
   padding: 0.35rem 0.6rem;
   font-size: 0.8rem;
   color: var(--text-body);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.375rem;
   cursor: pointer;
@@ -23041,7 +23732,7 @@ body.kpi-resizing {
   left: 0.1875rem;
   top: 50%;
   transform: translateY(-50%);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border-radius: 50% !important;
   transition: 0.25s ease;
   box-shadow: 0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.15);
@@ -23208,7 +23899,7 @@ body.kpi-resizing {
   padding: 0.5rem 0.75rem;
   font-size: 0.85rem;
   color: var(--text-muted);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.375rem;
   min-height: 2rem;
@@ -23370,7 +24061,7 @@ body.kpi-resizing {
   border: var(--line-l3);
   border-radius: 0.5rem;
   overflow: hidden;
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .time-task-log-stepper-btn {
@@ -23381,7 +24072,7 @@ body.kpi-resizing {
   font-weight: 400;
   line-height: 1;
   color: var(--text-muted);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: none;
   border-right: var(--line-l3);
   cursor: pointer;
@@ -23408,7 +24099,7 @@ body.kpi-resizing {
   font-weight: 600;
   color: var(--text-body);
   text-align: center;
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .time-task-log-score-btns {
@@ -23424,7 +24115,7 @@ body.kpi-resizing {
   font-size: 0.9rem;
   font-weight: 500;
   color: var(--text-body);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0;
   cursor: pointer;
@@ -23497,7 +24188,7 @@ body.kpi-resizing {
   left: 0.1875rem;
   top: 50%;
   transform: translateY(-50%);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border-radius: 50% !important;
   transition: 0.25s ease;
   box-shadow: 0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.15);
@@ -23547,7 +24238,7 @@ body.kpi-resizing {
   left: 0.1875rem;
   top: 50%;
   transform: translateY(-50%);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border-radius: 50% !important;
   transition: 0.25s ease;
   box-shadow: 0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.15);
@@ -23584,7 +24275,7 @@ body.kpi-resizing {
   color: var(--text-body);
   border: var(--line-l3);
   border-radius: 0;
-  background: #f5f1e8;
+  background: #f5f5f7;
   outline: none;
   box-sizing: border-box;
 }
@@ -23747,7 +24438,7 @@ body.kpi-resizing {
   line-height: 1.5;
   border: var(--line-l3);
   border-radius: 0;
-  background: #f5f1e8;
+  background: #f5f5f7;
   outline: none;
   resize: none;
   overflow-y: auto;
@@ -23814,7 +24505,7 @@ body.kpi-resizing {
   left: 0.1875rem;
   top: 50%;
   transform: translateY(-50%);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border-radius: 50% !important;
   transition: 0.25s ease;
   box-shadow: 0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.15);
@@ -23899,7 +24590,7 @@ body.kpi-resizing {
   font-size: 0.85rem;
   font-weight: 500;
   color: var(--text-body);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: var(--modal-radius);
   cursor: pointer;
@@ -23945,7 +24636,7 @@ body.kpi-resizing {
   font-size: 0.85rem;
   font-weight: 500;
   color: var(--text-muted);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: var(--modal-radius);
   cursor: pointer;
@@ -23996,7 +24687,7 @@ body.kpi-resizing {
   font-size: 0.85rem;
   font-weight: 500;
   color: var(--text-body);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.375rem;
   cursor: pointer;
@@ -24076,7 +24767,7 @@ body.kpi-resizing {
   margin-top: 0.125rem;
   max-height: 10rem;
   overflow-y: auto;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.08);
@@ -24420,19 +25111,23 @@ body.kpi-resizing {
     color: var(--text-muted);
     opacity: 0.88;
   }
+  /* <img> SVG는 brightness(0) 필터 조합 시 일부 브라우저에서 전체 박스가 단색으로 깨짐 → 색은 SVG stroke로 맞춤 */
   .time-ledger-view .time-filter-nav-cluster .time-filter-day-prev .time-btn-icon,
-  .time-ledger-view .time-filter-nav-cluster .time-filter-day-next .time-btn-icon {
+  .time-ledger-view .time-filter-nav-cluster .time-filter-day-next .time-btn-icon,
+  .time-ledger-view
+    .time-filter-nav-cluster
+    .time-filter-task-select-btn:not(.is-active)
+    .time-btn-icon {
     width: 1.25rem;
     height: 1.25rem;
     opacity: 0.95;
-    filter: brightness(0) saturate(100%) invert(26%) sepia(10%) saturate(1200%)
-      hue-rotate(115deg);
+    filter: none;
   }
   .time-ledger-view .time-filter-nav-cluster .time-filter-day-prev:hover .time-btn-icon,
-  .time-ledger-view .time-filter-nav-cluster .time-filter-day-next:hover .time-btn-icon {
+  .time-ledger-view .time-filter-nav-cluster .time-filter-day-next:hover .time-btn-icon,
+  .time-ledger-view .time-filter-nav-cluster .time-filter-task-select-btn:not(.is-active):hover .time-btn-icon {
     opacity: 1;
-    filter: brightness(0) saturate(100%) invert(26%) sepia(10%) saturate(1200%)
-      hue-rotate(115deg);
+    filter: none;
   }
 
   /* 데스크탑 시간가계부: 네이티브 "2026. 04. 04." 대신 라벨로 "2026. 04. 04(토)" */
@@ -24617,7 +25312,7 @@ body.kpi-resizing {
   font-size: 0.8125rem;
   border: var(--line-l3);
   border-radius: 0.375rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   color: var(--text-body);
 }
 
@@ -24627,7 +25322,7 @@ body.kpi-resizing {
   font-size: 0.8125rem;
   border: var(--line-l3);
   border-radius: 0.375rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   color: var(--text-body);
 }
 
@@ -24647,7 +25342,7 @@ body.kpi-resizing {
   font-size: 0.8125rem;
   border: var(--line-l3);
   border-radius: 0.375rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   color: var(--text-body);
 }
 
@@ -24825,14 +25520,14 @@ body.kpi-resizing {
 .time-daily-budget-table-block {
   flex: 1;
   min-width: 17.5rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   overflow: visible;
   padding-bottom: 0;
 }
 
 .time-daily-budget-table-block .time-daily-budget-table {
-  background: #f5f1e8;
+  background: #f5f5f7;
   overflow: visible;
 }
 
@@ -24995,7 +25690,7 @@ body.kpi-resizing {
   padding: 0.35rem 0.5rem;
   font-size: 0.875rem;
   border: none;
-  background: #f5f1e8;
+  background: #f5f5f7;
   color: var(--text-body);
 }
 
@@ -25012,7 +25707,7 @@ body.kpi-resizing {
   padding: 0.35rem 0.5rem;
   font-size: 0.875rem;
   border: none;
-  background: #f5f1e8;
+  background: #f5f5f7;
   color: var(--text-body);
 }
 
@@ -25068,7 +25763,7 @@ body.kpi-resizing {
   padding: 0.5rem 0.75rem;
   font-size: 0.9rem;
   color: var(--text-body);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.5rem;
   cursor: pointer;
@@ -25097,7 +25792,7 @@ body.kpi-resizing {
   right: 0;
   margin-top: 0.25rem;
   min-width: 100%;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.08);
@@ -25144,7 +25839,7 @@ body.kpi-resizing {
 
 .time-dashboard-widget {
   padding: 1.5rem 1.75rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border-radius: 0.75rem;
   box-shadow: 0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.06);
   min-width: 0;
@@ -25384,7 +26079,7 @@ body.kpi-resizing {
   border: var(--line-l3);
   border-radius: 0.5rem;
   padding: 1rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -25958,7 +26653,7 @@ body.kpi-resizing {
 }
 
 .time-audit-block {
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.5rem;
   padding: 1.25rem;
@@ -27474,7 +28169,7 @@ body.kpi-resizing {
 /* 시간기록 표와 동일한 스타일 - border, shadow 통일 */
 .time-section {
   margin-bottom: 1.5rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   box-shadow: 0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.08);
   border: var(--line-l3);
   overflow: visible;
@@ -27631,6 +28326,19 @@ body.kpi-resizing {
   margin-bottom: 1rem;
 }
 
+.time-hourly-wrap--hint-row {
+  gap: 0;
+  margin-bottom: 0.4rem;
+  margin-top: 0;
+}
+
+.time-hourly-wrap--hint-row .time-hourly-rate-block {
+  margin-left: 0;
+  flex: none;
+  width: 100%;
+  justify-content: flex-start;
+}
+
 /* 과제 기록은 왼쪽; 힌트는 왼쪽(시급 미입력 시만 표시), 내 시급 문구·금액은 오른쪽 끝 */
 .time-hourly-rate-block {
   position: relative;
@@ -27697,7 +28405,7 @@ body.kpi-resizing {
   font-size: 0.8125rem;
   font-weight: 500;
   color: var(--text-body);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.375rem;
   cursor: pointer;
@@ -27806,7 +28514,7 @@ body.kpi-resizing {
 
   .time-ledger-container .time-ledger-desktop-cards .time-ledger-mobile-card {
     display: flex;
-    background: #f5f1e8;
+    background: #f5f5f7;
     border-radius: 0;
     box-shadow: none;
     overflow: hidden;
@@ -28060,7 +28768,7 @@ body.kpi-resizing {
 }
 
 .time-ledger-table-wrap {
-  background: #f5f1e8;
+  background: #f5f5f7;
   box-shadow: 0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.08);
   overflow-x: auto;
   overflow-y: visible;
@@ -28074,7 +28782,7 @@ body.kpi-resizing {
 .time-add-button-wrap {
   padding: 0.5rem 0.6rem;
   border: none;
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .time-ledger-table-wrap::-webkit-scrollbar {
@@ -28104,7 +28812,7 @@ body.kpi-resizing {
 }
 
 .time-ledger-table tbody td {
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .time-ledger-table thead th {
@@ -28119,7 +28827,7 @@ body.kpi-resizing {
 }
 
 .time-ledger-table tbody td {
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .time-ledger-table tbody tr:hover td {
@@ -28135,7 +28843,7 @@ body.kpi-resizing {
   position: sticky;
   left: 0;
   z-index: 1;
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .time-ledger-table .time-cell-task {
@@ -28191,7 +28899,7 @@ body.kpi-resizing {
   position: sticky;
   left: 0;
   z-index: 2;
-  background: #f5f1e8;
+  background: #f5f5f7;
   padding: 0.2rem 0.3rem;
   box-shadow: 0.125rem 0 0.25rem -0.125rem rgba(0, 0, 0, 0.06);
 }
@@ -28399,7 +29107,7 @@ body.kpi-resizing {
   margin-top: 0.125rem;
   max-height: 13.75rem;
   overflow-y: auto;
-  background: var(--content-bg, #f5f1e8);
+  background: var(--content-bg, #f5f5f7);
   border: var(--line-l3);
   border-radius: var(--modal-radius);
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
@@ -28508,7 +29216,7 @@ body.kpi-resizing {
   border-radius: 0.25rem;
   font-size: 0.875rem;
   color: #555;
-  background: #f5f1e8;
+  background: #f5f5f7;
   transition: background 0.15s;
 }
 
@@ -28522,7 +29230,7 @@ body.kpi-resizing {
 
 .time-input-task:focus {
   outline: none;
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .time-input-tracked {
@@ -28532,7 +29240,7 @@ body.kpi-resizing {
   border-radius: 0.25rem;
   font-size: 0.875rem;
   color: #555;
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .time-input-tracked::placeholder {
@@ -28547,7 +29255,7 @@ body.kpi-resizing {
   border-radius: 0.25rem;
   font-size: 0.8125rem;
   color: #555;
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .time-input-start::placeholder,
@@ -28558,12 +29266,12 @@ body.kpi-resizing {
 .time-input-start:focus,
 .time-input-end:focus {
   outline: none;
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .time-input-tracked:focus {
   outline: none;
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .time-tag-dropdown-wrap {
@@ -28864,7 +29572,7 @@ body.kpi-resizing {
 .time-btn-add {
   padding: 0.4rem 0.75rem;
   border: none;
-  background: #f5f1e8;
+  background: #f5f5f7;
   font-size: 0.85rem;
   font-weight: 500;
   color: var(--text-muted);
@@ -29106,7 +29814,7 @@ body.kpi-resizing {
   right: 0;
   margin-top: 0.25rem;
   padding: 0.25rem 0;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.08);
@@ -29123,7 +29831,7 @@ body.kpi-resizing {
   font-size: 0.875rem;
   color: var(--text-body);
   cursor: pointer;
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .idea-font-option:hover {
@@ -29147,14 +29855,14 @@ body.kpi-resizing {
   font-size: 0.875rem;
   border: var(--line-l3);
   border-radius: 0.5rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   color: var(--text-body);
   font-family: inherit;
   min-width: 12.5rem;
 }
 
 .idea-form-select option {
-  background: #f5f1e8;
+  background: #f5f5f7;
   color: var(--text-body);
 }
 
@@ -30725,7 +31433,7 @@ body.kpi-resizing {
 .dream-kpi-path-summary {
   margin-bottom: 1.5rem;
   padding: 1rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border-radius: 0.5rem;
   border: var(--line-l3);
 }
@@ -30795,7 +31503,7 @@ body.kpi-resizing {
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.5rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.375rem;
 }
@@ -30828,7 +31536,7 @@ body.kpi-resizing {
   font-size: 0.75rem;
   font-family: inherit;
   border: var(--line-l3);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border-radius: 0.25rem;
   cursor: pointer;
   color: var(--text-muted);
@@ -30980,7 +31688,7 @@ body.kpi-resizing {
   display: flex;
   flex-direction: column;
   padding: 1.5rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   box-shadow: 0 0.25rem 1.25rem rgba(0, 0, 0, 0.08);
 }
@@ -31177,7 +31885,7 @@ body.kpi-resizing {
   max-height: 55vh;
   display: flex;
   flex-direction: column;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   box-shadow: 0 0.25rem 1.25rem rgba(0, 0, 0, 0.08);
   border-radius: 0.5rem;
@@ -31895,7 +32603,7 @@ body.kpi-resizing {
   font-size: 0.9rem;
   font-family: inherit;
   color: #1a1a2e;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   text-align: left;
   cursor: pointer;
@@ -31912,7 +32620,7 @@ body.kpi-resizing {
   left: 0;
   right: 0;
   margin-top: 0.125rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.08);
   z-index: 10;
@@ -31930,7 +32638,7 @@ body.kpi-resizing {
   font-size: 0.9rem;
   font-family: inherit;
   color: #1a1a2e;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: none;
   text-align: left;
   cursor: pointer;
@@ -32138,7 +32846,7 @@ body.kpi-resizing {
   font-family: inherit;
   font-weight: 500;
   color: var(--text-body);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   cursor: pointer;
   text-align: left;
@@ -32407,7 +33115,7 @@ body.kpi-resizing {
   position: relative;
   width: 100%;
   max-width: 22.5rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border-radius: var(--modal-radius);
   box-shadow: 0 0.25rem 1.25rem rgba(0, 0, 0, 0.1);
   border: var(--line-l3);
@@ -32444,7 +33152,7 @@ body.kpi-resizing {
 .diary-add-emotion-input:focus {
   outline: none;
   border-color: var(--line-l2-color);
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .diary-add-emotion-input::placeholder {
@@ -33781,7 +34489,7 @@ body.kpi-resizing {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .calendar-todo-content .todo-table-wrap {
@@ -33789,7 +34497,7 @@ body.kpi-resizing {
 }
 
 .calendar-todo-content .todo-table thead th {
-  background: #f5f1e8;
+  background: #f5f5f7;
   box-shadow: 0 0.0625rem 0 #eee;
 }
 
@@ -33964,7 +34672,7 @@ body.kpi-resizing {
   flex: 1 1 0;
   min-height: 0;
   min-width: min-content;
-  background: #f5f1e8;
+  background: #f5f5f7;
   display: flex;
   flex-direction: column;
 }
@@ -34008,7 +34716,7 @@ body.kpi-resizing {
   transition: background 0.15s ease;
 }
 .calendar-annual-cell:hover {
-  background: color-mix(in srgb, var(--ui-surface-alt) 50%, #f5f1e8 50%);
+  background: color-mix(in srgb, var(--ui-surface-alt) 50%, #f5f5f7 50%);
   outline: var(--line-l3);
   outline-offset: -0.0625rem;
   z-index: 1;
@@ -34092,7 +34800,7 @@ body.kpi-resizing {
   overflow-x: hidden;
   overflow-y: auto;
   padding: 0.75rem 1rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border-right: var(--line-l3);
   -webkit-overflow-scrolling: touch;
 }
@@ -34312,7 +35020,7 @@ body.kpi-resizing {
 }
 
 .calendar-1day-budget-column .calendar-1day-todo-table thead th {
-  background: #f5f1e8;
+  background: #f5f5f7;
   text-align: center;
   position: sticky;
   top: 0;
@@ -34331,13 +35039,13 @@ body.kpi-resizing {
   position: sticky;
   left: 0;
   z-index: 2;
-  background: #f5f1e8;
+  background: #f5f5f7;
   box-shadow: 0.0625rem 0 0 #e5e7eb;
 }
 
 .calendar-1day-budget-column .calendar-1day-todo-table thead th:first-child {
   z-index: 6;
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .calendar-1day-budget-column .calendar-1day-todo-table thead th:nth-child(2) {
@@ -34345,7 +35053,7 @@ body.kpi-resizing {
 }
 
 .calendar-1day-budget-column .calendar-1day-todo-table tbody td {
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .calendar-1day-budget-column .calendar-1day-todo-table tbody td:first-child {
@@ -34387,7 +35095,7 @@ body.kpi-resizing {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: #f5f1e8;
+  background: #f5f5f7;
   flex-shrink: 0;
 }
 
@@ -34552,7 +35260,7 @@ body.kpi-resizing {
   position: sticky;
   left: 0;
   z-index: 2;
-  background: #f5f1e8;
+  background: #f5f5f7;
   box-shadow: 0.0625rem 0 0 #e5e7eb;
   white-space: normal;
   word-break: break-word;
@@ -34561,7 +35269,7 @@ body.kpi-resizing {
 
 .calendar-1day-budget-column .time-daily-budget-table thead th:first-child {
   z-index: 6;
-  background: #f5f1e8;
+  background: #f5f5f7;
   text-align: left;
 }
 
@@ -34578,7 +35286,7 @@ body.kpi-resizing {
   position: sticky;
   top: 0;
   z-index: 5;
-  background: #f5f1e8;
+  background: #f5f5f7;
   vertical-align: top;
   font-size: 0.5938rem;
   font-weight: 500;
@@ -34976,7 +35684,7 @@ body.kpi-resizing {
 
 /* 오늘 사이드바 - 오늘의 진행률 */
 .calendar-sidebar-progress-card {
-  background: #f5f1e8;
+  background: #f5f5f7;
   border-radius: 0.5rem;
   padding: 1rem;
   margin-bottom: 1rem;
@@ -35017,7 +35725,7 @@ body.kpi-resizing {
 }
 
 .time-budget-calendar-remaining {
-  background: #f5f1e8;
+  background: #f5f5f7;
   border-radius: 0.5rem;
   padding: 1rem 1.25rem;
   display: flex;
@@ -35097,7 +35805,7 @@ body.kpi-resizing {
 }
 
 .calendar-1day-budget-achievement-card {
-  background: #f5f1e8;
+  background: #f5f5f7;
   border-radius: 0.5rem;
   padding: 1rem;
   margin-bottom: 1rem;
@@ -35142,7 +35850,7 @@ body.kpi-resizing {
   flex-shrink: 0;
   padding: 0.35rem 0.5rem;
   min-height: 0;
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .calendar-1day-view .calendar-1day-date-cell.calendar-day-drag-over {
@@ -35314,7 +36022,7 @@ body.kpi-resizing {
 }
 
 .calendar-1week-view .calendar-1day-view .calendar-1day-time-slot {
-  background: #f5f1e8;
+  background: #f5f5f7;
   overflow: hidden;
 }
 
@@ -35327,7 +36035,7 @@ body.kpi-resizing {
   grid-template-columns: 4rem 1fr 1fr;
   grid-template-rows: 1fr;
   align-items: stretch;
-  background: #f5f1e8;
+  background: #f5f5f7;
   flex-shrink: 0;
   position: sticky;
   top: 0;
@@ -35348,14 +36056,14 @@ body.kpi-resizing {
   letter-spacing: 0.16em;
   color: var(--text-muted);
   text-align: center;
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 /* 헤더·본문 동일: 오늘 실제 열 왼쪽만 세로선 (.calendar-1day-time-slot--actual border-left 와 같은 이음새) */
 .calendar-1day-view .calendar-1day-time-header-cell--actual-toggle {
   margin: 0;
   padding: 0.35rem 0.5rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: none;
   border-left: var(--line-l2);
   border-radius: 0;
@@ -35454,7 +36162,7 @@ body.kpi-resizing {
   font-size: 0.7rem;
   font-weight: 600;
   color: #9ca3af;
-  background: #f5f1e8;
+  background: #f5f5f7;
   padding: 0 0.25rem;
   white-space: nowrap;
 }
@@ -35551,7 +36259,7 @@ body.kpi-resizing {
   position: sticky;
   left: 0;
   z-index: 1;
-  background: #f5f1e8;
+  background: #f5f5f7;
   text-align: right;
   align-self: flex-start;
 }
@@ -35559,7 +36267,7 @@ body.kpi-resizing {
 .calendar-1day-view .calendar-1day-time-slot {
   flex: 1;
   min-width: 0;
-  background: #f5f1e8;
+  background: #f5f5f7;
   position: relative;
   z-index: 0;
   border-bottom: 0.09375rem solid rgba(0, 0, 0, 0.05);
@@ -35652,13 +36360,14 @@ body.kpi-resizing {
   gap: 0.125rem;
   min-width: 0;
   width: 100%;
+  color: var(--text-body);
 }
 
 .calendar-1day-view .calendar-1day-time-slot-label-name,
 .calendar-1day-view .calendar-1day-time-slot-label-time {
   font-size: 0.56rem;
   line-height: 1.25;
-  color: var(--text-body);
+  color: inherit;
   max-width: 100%;
   word-break: break-word;
   white-space: normal;
@@ -35915,8 +36624,8 @@ body.kpi-resizing {
 .calendar-monthly-span-bar-checkbox-inner {
   width: 0.35rem;
   height: 0.5rem;
-  border-right: 0.125rem solid #f2ede0;
-  border-bottom: 0.125rem solid #f2ede0;
+  border-right: 0.125rem solid #ffffff;
+  border-bottom: 0.125rem solid #ffffff;
   transform: rotate(45deg) translateY(-0.05rem);
   opacity: 0;
 }
@@ -36458,7 +37167,7 @@ body.kpi-resizing {
   font-weight: 500;
   font-family: inherit;
   color: var(--text-body);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: var(--modal-radius);
   cursor: pointer;
@@ -36487,7 +37196,7 @@ body.kpi-resizing {
   align-items: center;
   gap: 0.5rem;
   padding: 0.4rem 0.5rem;
-  background: var(--content-bg, #f5f1e8);
+  background: var(--content-bg, #f5f5f7);
   border-radius: 0.375rem;
   font-size: var(--fs-body);
   cursor: pointer;
@@ -37002,7 +37711,7 @@ body.kpi-resizing {
 .calendar-kpi-card-todos {
   display: none;
   padding: 0.5rem 0.6rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-top: none;
   border-radius: 0 0 0.25rem 0.25rem;
@@ -37957,7 +38666,7 @@ body.kpi-resizing {
   position: relative;
   width: 100%;
   max-width: 25rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   box-shadow: 0 0.25rem 1.25rem rgba(0, 0, 0, 0.15);
   border: var(--line-l3);
 }
@@ -38155,11 +38864,11 @@ body.kpi-resizing {
   position: sticky;
   left: 0;
   z-index: 2;
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .routine-track-th.routine-track-sticky {
-  background: #f5f1e8;
+  background: #f5f5f7;
 }
 
 .routine-track-table th,
@@ -38509,7 +39218,7 @@ body.kpi-resizing {
 
 .archive-card {
   padding: 1rem 1.25rem;
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: none;
   border-bottom: var(--line-l3);
   border-radius: 0;
@@ -38585,7 +39294,7 @@ body.kpi-resizing {
   padding: 0.125rem 0.375rem;
   font-size: 0.8rem;
   color: var(--text-body);
-  background: #f5f1e8;
+  background: #f5f5f7;
   border: var(--line-l3);
   border-radius: 0.25rem;
 }
@@ -38836,7 +39545,7 @@ body.kpi-resizing {
   width: 1.35rem;
   height: 1.35rem;
   border-radius: 0.2rem;
-  background: rgba(242, 237, 224, 0.22);
+  background: rgba(60, 60, 67, 0.12);
   font-weight: 800;
   font-size: 0.85rem;
   line-height: 1;
@@ -39017,7 +39726,7 @@ body.kpi-resizing {
 .admin-subs-btn--year {
   border-color: var(--ui-btn-primary-bg, #2a3828);
   background: var(--ui-btn-primary-bg, #2a3828);
-  color: var(--ui-btn-primary-fg, #f2ede0);
+  color: var(--ui-btn-primary-fg, #ffffff);
 }
 
 .admin-subs-btn--year:hover {

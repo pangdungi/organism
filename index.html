@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="ko" style="background:#2d3e2d">
+<html lang="ko" style="background:#f5f5f7">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
-    <meta name="theme-color" content="#2d3e2d" />
+    <meta name="theme-color" content="#f5f5f7" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="오가니즘플래너" />
     <meta name="application-name" content="오가니즘플래너" />
     <meta
@@ -41,12 +41,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;500&family=Noto+Sans+KR:wght@300;400&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;500&family=Noto+Sans+KR:wght@300;400&display=swap"
       rel="stylesheet"
     />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
-    <!-- iOS 홈 화면에서 탭 직후 WebView가 뜨기 전 시스템이 보여 주는 구간을 녹색으로 맞춤 (기기별) -->
+    <!-- iOS 홈 화면에서 탭 직후 WebView가 뜨기 전 시스템이 보여 주는 구간을 배경색과 맞춤 (기기별) -->
     <link
       rel="apple-touch-startup-image"
       media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)"
@@ -72,17 +72,17 @@
         min-height: 100dvh;
       }
       html {
-        background: #2d3e2d;
+        background: #f5f5f7;
       }
       body {
-        background: #2d3e2d;
+        background: #f5f5f7;
       }
       #app {
         display: none;
       }
       .app-splash {
-        --app-splash-green: #2d3e2d;
-        --app-splash-cream: #f2ede0;
+        --app-splash-green: #f5f5f7;
+        --app-splash-cream: #1d1d1f;
         position: fixed;
         inset: 0;
         z-index: 2147483646;
@@ -112,7 +112,7 @@
         position: absolute;
         width: min(72vw, 20rem);
         height: min(72vw, 20rem);
-        background: rgba(255, 255, 255, 0.055);
+        background: rgba(0, 0, 0, 0.04);
         clip-path: circle(50% at 50% 50%);
         animation: app-splash-orb-drift 9s ease-in-out infinite;
       }
@@ -146,7 +146,7 @@
       }
       .app-splash-brand {
         margin: 0;
-        font-family: "Archivo", "Space Grotesk", "NEXON Lv1 Gothic", sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
         font-weight: 700;
         font-size: clamp(2.75rem, 13vw, 4.75rem);
         line-height: 1.15;
@@ -179,7 +179,7 @@
       .app-splash-bar-track {
         width: min(32vw, 8rem);
         height: 2px;
-        background: rgba(242, 237, 224, 0.22);
+        background: rgba(60, 60, 67, 0.18);
         overflow: hidden;
       }
       .app-splash-bar-fill {
@@ -255,8 +255,8 @@
           margin: 0 auto;
           font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif;
           line-height: 1.65;
-          color: #1a2218;
-          background: #f2ede0;
+          color: #1d1d1f;
+          background: #f5f5f7;
         "
       >
         <h1 style="font-size: 1.35rem; margin: 0 0 0.75rem">오가니즘 플래너 (Organism Planner)</h1>
@@ -266,7 +266,7 @@
         <p style="margin: 0 0 0.75rem">
           이 페이지를 이용하려면 브라우저에서 JavaScript를 켜 주세요. 모바일·데스크톱에서 회원가입·로그인 후 데이터가 동기화됩니다.
         </p>
-        <p style="margin: 0; font-size: 0.875rem; color: #3d4a3e">공식 주소: organismplanner.com</p>
+        <p style="margin: 0; font-size: 0.875rem; color: #6e6e73">공식 주소: organismplanner.com</p>
       </div>
     </noscript>
     <div

@@ -17,11 +17,11 @@ import {
   ensureVapidRuntimeFallback,
 } from "../utils/webPushReminders.js";
 
-/** 한글 NEXON Lv1 고정 — 웹사이트 폰트 설정 제거됨 */
+/** 앱 전역 폰트 스택 (CSS :root 와 동일하게 유지) */
 export function applyAppFont() {
   try {
     const stack =
-      '"Space Grotesk", "NEXON Lv1 Gothic", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+      '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", Roboto, sans-serif';
     document.documentElement.style.setProperty("--app-font-family", stack);
   } catch (_) {}
 }

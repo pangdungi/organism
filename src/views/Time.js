@@ -94,6 +94,10 @@ const TIME_LEDGER_SHOW_IMPROVE_TAB = false;
 const TIME_LEDGER_ADD_FAB_SVG =
   '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>';
 
+/** 상단 툴바: 라벨 없는 단순 + (stroke = currentColor) */
+const TIME_LEDGER_ADD_PLUS_ICON_SVG =
+  '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>';
+
 /** 개선하기·기타: 해당 날짜 할일 목록 (Calendar getTasksForDate와 동일 데이터) */
 const KPI_SECTION_IDS_AUDIT = [
   "braindump",
@@ -4083,20 +4087,8 @@ export function render() {
   attachTimeLedgerTasksSaveListener();
   attachTimeImproveNotesSaveListener();
 
-  const header = document.createElement("div");
-  header.className = "time-ledger-header dream-view-header-wrap";
-  const label = document.createElement("span");
-  label.className = "dream-view-label";
-  label.textContent = "TIME BUDGET";
-  const title = document.createElement("h1");
-  title.className = "dream-view-title time-ledger-title";
-  title.textContent = "시간가계부";
-  header.appendChild(label);
-  header.appendChild(title);
-  el.appendChild(header);
-
   const hourlyWrap = document.createElement("div");
-  hourlyWrap.className = "time-hourly-wrap";
+  hourlyWrap.className = "time-hourly-wrap time-hourly-wrap--hint-row";
   const hourlyAddSlot = document.createElement("div");
   hourlyAddSlot.className = "time-hourly-add-slot";
   const hourlyRateBlock = document.createElement("div");
@@ -4144,9 +4136,7 @@ export function render() {
   hourlyRateValues.appendChild(hourlyDisplay);
   hourlyRateValues.appendChild(hourlyInput);
   hourlyRateBlock.appendChild(hourlyHint);
-  hourlyRateBlock.appendChild(hourlyRateValues);
   hourlyWrap.appendChild(hourlyRateBlock);
-  el.appendChild(hourlyWrap);
 
   function updateHourlyHint() {
     const hasTime = Array.from(
@@ -4158,15 +4148,29 @@ export function render() {
   }
 
   const viewTabs = document.createElement("div");
-  viewTabs.className = "time-view-tabs";
+  viewTabs.className = "time-view-tabs time-view-tabs--segmented";
   const improveTabHtml = TIME_LEDGER_SHOW_IMPROVE_TAB
     ? '<button type="button" class="time-view-tab" data-view="improve">개선하기</button>'
     : "";
   viewTabs.innerHTML = `
+    <span class="time-view-tabs-thumb" aria-hidden="true"></span>
     <button type="button" class="time-view-tab active" data-view="all">시간 기록</button>
     <button type="button" class="time-view-tab" data-view="audit">보고서</button>
     ${improveTabHtml}
   `;
+
+  function syncTimeLedgerSegmentThumb() {
+    if (!viewTabs.classList.contains("time-view-tabs--segmented")) return;
+    const btns = [...viewTabs.querySelectorAll(".time-view-tab")];
+    const n = Math.max(1, btns.length);
+    const idx = Math.max(
+      0,
+      btns.findIndex((b) => b.classList.contains("active")),
+    );
+    viewTabs.style.setProperty("--time-segment-count", String(n));
+    viewTabs.style.setProperty("--thumb-col-start", String(idx + 1));
+  }
+  syncTimeLedgerSegmentThumb();
 
   const now = new Date();
   const filterType = "range";
@@ -4217,7 +4221,6 @@ export function render() {
           <img src="/toolbaricons/caret-right-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
         </button>
       </div>
-      <button type="button" class="time-task-setup-btn time-filter-task-select-btn" id="time-task-select-btn" title="과제 선택" aria-label="과제 선택"><img src="/toolbaricons/filter.svg" alt="" class="time-btn-icon" width="20" height="20" /></button>
     </div>
   `;
 
@@ -4233,7 +4236,20 @@ export function render() {
   taskSetupBtn.setAttribute("aria-label", "과제 설정");
   taskSetupBtn.innerHTML =
     '<img src="/toolbaricons/settings.svg" alt="" class="time-btn-icon" width="20" height="20" />';
-  taskSetupBtn.classList.add("time-ledger-tabs-settings-btn");
+  taskSetupBtn.classList.add(
+    "time-ledger-tabs-settings-btn",
+    "time-ledger-toolbar-icon-btn",
+  );
+
+  const taskSelectBtn = document.createElement("button");
+  taskSelectBtn.type = "button";
+  taskSelectBtn.className =
+    "time-task-setup-btn time-filter-task-select-btn time-ledger-toolbar-icon-btn";
+  taskSelectBtn.id = "time-task-select-btn";
+  taskSelectBtn.title = "과제 선택";
+  taskSelectBtn.setAttribute("aria-label", "과제 선택");
+  taskSelectBtn.innerHTML =
+    '<img src="/toolbaricons/filter.svg" alt="" class="time-btn-icon" width="20" height="20" />';
 
   /** YYYY-MM-DD → "4월1일(수)" (모바일·시간 기록 탭에서만 CSS로 표시) */
   function formatTimeFilterDateKr(dStr) {
@@ -4374,6 +4390,7 @@ export function render() {
       viewTabs.querySelectorAll(".time-view-tab").forEach((btn) => {
         btn.classList.toggle("active", btn.dataset.view === "all");
       });
+      syncTimeLedgerSegmentThumb();
     }
     const type = filterType;
     const rows = getFullRowsForFilter(skipMerge);
@@ -4427,35 +4444,44 @@ export function render() {
   }
   window.addEventListener("resize", syncMobileTabsSummaryDisplay, { signal });
   window.addEventListener("resize", syncTimeFilterDateLabels, { signal });
+  window.addEventListener("resize", syncTimeLedgerSegmentThumb, { signal });
   const tabsTopMargin = document.createElement("div");
   tabsTopMargin.className = "time-ledger-tabs-top-margin";
+  const ledgerToolbarIcons = document.createElement("div");
+  ledgerToolbarIcons.className = "time-ledger-toolbar-icons";
+  ledgerToolbarIcons.appendChild(taskSetupBtn);
+  ledgerToolbarIcons.appendChild(taskSelectBtn);
+  ledgerToolbarIcons.appendChild(hourlyAddSlot);
+
+  const ledgerTopLeft = document.createElement("div");
+  ledgerTopLeft.className = "time-ledger-top-strip__left";
+  ledgerTopLeft.appendChild(ledgerToolbarIcons);
+
+  const ledgerTopCenter = document.createElement("div");
+  ledgerTopCenter.className = "time-ledger-top-strip__center";
+  ledgerTopCenter.appendChild(viewTabs);
+
+  const ledgerTopRight = document.createElement("div");
+  ledgerTopRight.className = "time-ledger-top-strip__right";
+  ledgerTopRight.appendChild(hourlyRateValues);
+
   const tabHeaderRow = document.createElement("div");
   tabHeaderRow.className = "time-ledger-tab-header-row";
-  tabHeaderRow.appendChild(viewTabs);
+  tabHeaderRow.appendChild(ledgerTopLeft);
+  tabHeaderRow.appendChild(ledgerTopCenter);
+  tabHeaderRow.appendChild(ledgerTopRight);
   tabsFilterRow.appendChild(tabsTopMargin);
   tabsFilterRow.appendChild(tabHeaderRow);
   tabsFilterRow.appendChild(mobileTabsSummary);
 
-  /* 자산관리와 같이 1행=탭만, 2행=과제 기록(왼쪽)+필터바(오른쪽) */
+  /* 2행: 날짜·필터만 (과제 기록·탭·시급은 상단 한 줄) */
   const filterAddRow = document.createElement("div");
   filterAddRow.className = "time-ledger-filter-add-row";
-  filterAddRow.appendChild(hourlyAddSlot);
   filterAddRow.appendChild(filterBar);
 
   el.appendChild(tabsFilterRow);
+  el.appendChild(hourlyWrap);
   el.appendChild(filterAddRow);
-
-  /** 데스크톱: 과제 설정을 날짜 구간 바로 왼쪽(.time-filter-bar 선두). 모바일: 할일 상단과 같이「시간 기록|보고서」탭과 같은 줄 오른쪽 */
-  function placeTaskSetupBtn() {
-    const isMobile = window.matchMedia("(max-width: 48rem)").matches;
-    if (isMobile) {
-      tabHeaderRow.appendChild(taskSetupBtn);
-    } else {
-      filterBar.insertBefore(taskSetupBtn, filterBar.firstChild);
-    }
-  }
-  placeTaskSetupBtn();
-  window.addEventListener("resize", placeTaskSetupBtn, { signal });
 
   const taskSetupModal = document.createElement("div");
   taskSetupModal.className = "time-task-setup-modal";
@@ -8037,10 +8063,6 @@ export function render() {
     contentWrap.innerHTML = "";
     const isMobile = window.matchMedia("(max-width: 48rem)").matches;
 
-    if (isMobile) {
-      el.querySelector(".time-hourly-add-slot")?.replaceChildren();
-    }
-
     const handleCardDelete = (card, rowData) => {
       card.remove();
       updateTotal();
@@ -8158,50 +8180,7 @@ export function render() {
     };
 
     if (isMobile) {
-      const toolbar = document.createElement("div");
-      toolbar.className = "time-ledger-mobile-toolbar";
-      const toolbarRight = document.createElement("div");
-      toolbarRight.className = "time-ledger-mobile-toolbar-right";
-      if (filterNavCluster) toolbarRight.appendChild(filterNavCluster);
-      if (toolbarRight.childNodes.length) toolbar.appendChild(toolbarRight);
-
-      const dateDivider = document.createElement("div");
-      dateDivider.className = "date-divider";
-      const ymdToDots = (ymd) => {
-        if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return "";
-        const [y, mo, d] = ymd.split("-");
-        return `${y}.${mo}.${d}`;
-      };
-      const startD = pickYmdFromFilter(startDateInput.value, filterStartDate);
-      const endD = pickYmdFromFilter(endDateInput.value, filterEndDate);
-      if (startD === endD) {
-        dateDivider.textContent =
-          ymdToDots(startD) || ymdToDots(toDateStr(new Date()));
-      } else {
-        const a = ymdToDots(startD);
-        const b = ymdToDots(endD);
-        dateDivider.textContent =
-          a && b ? `${a} – ${b}` : a || b || ymdToDots(toDateStr(new Date()));
-      }
-
-      const fabWrap = document.createElement("div");
-      fabWrap.className = "time-ledger-mobile-fab-wrap";
-      const fabBtn = document.createElement("button");
-      fabBtn.type = "button";
-      fabBtn.className = "todo-cards-add-btn time-ledger-mobile-fab-btn";
-      fabBtn.title = "과제 기록";
-      fabBtn.setAttribute("aria-label", "과제 기록");
-      fabBtn.innerHTML = TIME_LEDGER_ADD_FAB_SVG;
-      fabBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        openAdd();
-      });
-      fabWrap.appendChild(fabBtn);
-
-      contentWrap.appendChild(toolbar);
-      contentWrap.appendChild(dateDivider);
       contentWrap.appendChild(cardsWrap);
-      contentWrap.appendChild(fabWrap);
     } else {
       const summaryPanel = document.createElement("div");
       summaryPanel.className = "time-ledger-summary-panel";
@@ -8212,23 +8191,22 @@ export function render() {
       ledgerContainer.appendChild(summaryPanel);
       ledgerContainer.appendChild(cardsWrap);
       contentWrap.appendChild(ledgerContainer);
+    }
 
+    {
       const hourlyAddSlotEl = el.querySelector(".time-hourly-add-slot");
       if (hourlyAddSlotEl) {
         hourlyAddSlotEl.innerHTML = "";
         const addInner = document.createElement("div");
-        addInner.className = "time-hourly-add-inner";
+        addInner.className =
+          "time-hourly-add-inner time-ledger-add-inner--icon-only";
         const addBtnEl = document.createElement("button");
         addBtnEl.type = "button";
-        addBtnEl.className = "todo-add-btn";
+        addBtnEl.className = "todo-add-btn time-ledger-add-plus-btn";
         addBtnEl.title = "과제 기록";
         addBtnEl.setAttribute("aria-label", "과제 기록");
-        addBtnEl.innerHTML = TIME_LEDGER_ADD_FAB_SVG;
-        const addLabel = document.createElement("span");
-        addLabel.className = "time-ledger-add-label";
-        addLabel.textContent = "과제 기록";
+        addBtnEl.innerHTML = TIME_LEDGER_ADD_PLUS_ICON_SVG;
         addInner.appendChild(addBtnEl);
-        addInner.appendChild(addLabel);
         hourlyAddSlotEl.appendChild(addInner);
         addInner.addEventListener("click", openAdd);
       }
@@ -8820,17 +8798,6 @@ export function render() {
     contentWrap.innerHTML = "";
     const isMobile = window.matchMedia("(max-width: 48rem)").matches;
 
-    function appendMobileAuditToolbar() {
-      if (!isMobile || !filterNavCluster) return;
-      const toolbar = document.createElement("div");
-      toolbar.className = "time-ledger-mobile-toolbar";
-      const toolbarRight = document.createElement("div");
-      toolbarRight.className = "time-ledger-mobile-toolbar-right";
-      toolbarRight.appendChild(filterNavCluster);
-      toolbar.appendChild(toolbarRight);
-      contentWrap.appendChild(toolbar);
-    }
-
     const type = filterType;
     const y = filterYear;
     const m = filterMonth;
@@ -8849,7 +8816,6 @@ export function render() {
           <div class="time-audit-empty-desc">해당 날짜의 시간기록을 입력하면 오딧에 표시됩니다.</div>
         </div>
       `;
-      appendMobileAuditToolbar();
       contentWrap.appendChild(wrap);
       return;
     }
@@ -8951,7 +8917,6 @@ export function render() {
         `;
     wrap.appendChild(block);
 
-    appendMobileAuditToolbar();
     contentWrap.appendChild(wrap);
   }
 
@@ -9960,6 +9925,7 @@ export function render() {
     viewTabs.querySelectorAll(".time-view-tab").forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.view === view);
     });
+    syncTimeLedgerSegmentThumb();
     updateFilterBarVisibility(view);
     if (view === "all") {
       renderAll(rowsToUse);

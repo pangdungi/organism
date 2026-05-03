@@ -379,7 +379,8 @@ function formatHomeCardReminder(reminderDate, reminderTime) {
 /** 할일 목록 탭과 동일 todo-card 마크업 (오늘 탭 전용) */
 function createHomeTodoCard(item) {
   const card = document.createElement("div");
-  card.className = "todo-card" + (item.done ? " is-done" : "");
+  card.className =
+    "todo-card home-todo-flat-row" + (item.done ? " is-done" : "");
 
   const doneCheck = document.createElement("input");
   doneCheck.type = "checkbox";
@@ -620,15 +621,138 @@ function openReminderModalFromHome(item, onSaved) {
   document.body.appendChild(modal);
 }
 
-/** 오늘 탭 대형 날짜: 한글 (예: 4월 2일) */
-function formatTodayTitle(date) {
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  return `${month}월 ${day}일`;
+/** 툴바 시계 HH:mm */
+function formatToolbarClock(d = new Date()) {
+  const h = d.getHours();
+  const m = d.getMinutes();
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-function formatTodayWeekdayKo(date) {
-  return date.toLocaleDateString("ko-KR", { weekday: "long" });
+/** 상단 툴바 영문 전체 날짜 */
+function formatToolbarDateEn(date) {
+  try {
+    return date.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  } catch (_) {
+    return "";
+  }
+}
+
+function lpNavigateTab(tabId) {
+  try {
+    if (
+      typeof window !== "undefined" &&
+      typeof window.__lpSetTab === "function"
+    ) {
+      window.__lpSetTab(tabId);
+    }
+  } catch (_) {}
+}
+
+/** 시계 1초 갱신 — DOM 제거 시 타이머 정리 */
+function attachToolbarClock(elClock, dateHolder) {
+  const tick = () => {
+    if (!elClock.isConnected) {
+      if (elClock._lpToolbarIv != null) {
+        clearInterval(elClock._lpToolbarIv);
+        elClock._lpToolbarIv = null;
+      }
+      return;
+    }
+    const now = new Date();
+    elClock.textContent = formatToolbarClock(now);
+    try {
+      elClock.dateTime = now.toISOString();
+    } catch (_) {}
+    if (dateHolder?.isConnected && typeof dateHolder._lpTodayKey === "string") {
+      const key = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+      if (key !== dateHolder._lpTodayKey) {
+        dateHolder._lpTodayKey = key;
+        dateHolder.textContent = formatToolbarDateEn(now);
+      }
+    }
+  };
+  tick();
+  elClock._lpToolbarIv = setInterval(tick, 1000);
+}
+
+/** HTML 텍스트 이스케이프 (innerHTML 조합용) */
+function escapeHtml(text) {
+  if (text == null) return "";
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** 시간 요약 문자열 "9h 35m" → 숫자만 크게 보이게 span 분리 (표시값만 사용) */
+function wrapHoursDisplayForSummary(display) {
+  return escapeHtml(display).replace(
+    /(\d+)(h|m)/g,
+    '<span class="home-time-summary-digits">$1</span><span class="home-time-summary-unit-suffix">$2</span>',
+  );
+}
+
+function buildHomeToolbar(dateBasis) {
+  const toolbar = document.createElement("header");
+  toolbar.className = "home-view-toolbar";
+
+  const start = document.createElement("div");
+  start.className = "home-view-toolbar-start";
+
+  const ctx = document.createElement("span");
+  ctx.className = "home-view-toolbar-context";
+  ctx.textContent = "오늘";
+
+  const sep = document.createElement("span");
+  sep.className = "home-view-toolbar-sep";
+  sep.setAttribute("aria-hidden", "true");
+
+  const dateEn = document.createElement("span");
+  dateEn.className = "home-view-toolbar-date";
+  dateEn.textContent = formatToolbarDateEn(dateBasis);
+  dateEn._lpTodayKey = `${dateBasis.getFullYear()}-${dateBasis.getMonth()}-${dateBasis.getDate()}`;
+
+  start.appendChild(ctx);
+  start.appendChild(sep);
+  start.appendChild(dateEn);
+
+  const end = document.createElement("div");
+  end.className = "home-view-toolbar-end";
+
+  const clock = document.createElement("time");
+  clock.className = "home-view-toolbar-clock";
+
+  const btnTime = document.createElement("button");
+  btnTime.type = "button";
+  btnTime.className = "home-view-toolbar-btn home-view-toolbar-btn--pill";
+  btnTime.textContent = "시간 기록 +";
+
+  const btnSettings = document.createElement("button");
+  btnSettings.type = "button";
+  btnSettings.className = "home-view-toolbar-btn home-view-toolbar-btn--icon";
+  btnSettings.setAttribute("aria-label", "나의 계정·설정");
+  btnSettings.innerHTML =
+    '<img src="/toolbaricons/settings.svg" alt="" width="18" height="18" />';
+
+  btnTime.addEventListener("click", () => lpNavigateTab("time"));
+  btnSettings.addEventListener("click", () => lpNavigateTab("idea"));
+
+  end.appendChild(clock);
+  end.appendChild(btnTime);
+  end.appendChild(btnSettings);
+
+  toolbar.appendChild(start);
+  toolbar.appendChild(end);
+
+  attachToolbarClock(clock, dateEn);
+
+  return toolbar;
 }
 
 export function render() {
@@ -636,68 +760,55 @@ export function render() {
   el.className = "app-tab-panel-content home-view";
 
   const today = new Date();
-  const dateBlock = document.createElement("div");
-  dateBlock.className = "home-view-date-block";
-
-  const dateKicker = document.createElement("p");
-  dateKicker.className = "home-view-date-kicker";
-  dateKicker.textContent = "ORGANISM PLANNER";
-
-  const dateTitle = document.createElement("h1");
-  dateTitle.className = "home-view-date-title";
-  dateTitle.textContent = formatTodayTitle(today);
-
-  const dateWeekday = document.createElement("p");
-  dateWeekday.className = "home-view-date-weekday";
-  dateWeekday.textContent = formatTodayWeekdayKo(today);
-
-  dateBlock.appendChild(dateKicker);
-  dateBlock.appendChild(dateTitle);
-  dateBlock.appendChild(dateWeekday);
+  el.appendChild(buildHomeToolbar(today));
 
   const timeSummary = getTodayTimeSummary();
-  const trackedPct = Math.min(
-    100,
-    Math.max(0, Number(timeSummary.trackedPct24 ?? 0)),
-  );
-  const productivePct = Math.min(
-    100,
-    Math.max(0, Number(timeSummary.productivePct24 ?? 0)),
-  );
+  const summarySection = document.createElement("section");
+  summarySection.className = "home-time-summary-section";
+  summarySection.setAttribute("aria-label", "오늘 통계");
+
+  const summaryHeading = document.createElement("h3");
+  summaryHeading.className = "home-time-summary-heading";
+  summaryHeading.textContent = "통계";
+
   const summaryGrid = document.createElement("div");
   summaryGrid.className = "home-time-summary-grid";
   summaryGrid.innerHTML = `
     <div class="home-time-summary-cell home-time-summary-cell--tracked">
-      <span class="home-time-summary-label">총 기록</span>
-      <span class="home-time-summary-value">${timeSummary.trackedDisplay}</span>
-      <div class="home-time-summary-bar" aria-hidden="true">
-        <div class="home-time-summary-bar-fill home-time-summary-bar-fill--viridian" style="width:${trackedPct}%"></div>
+      <div class="home-time-summary-cell-main">
+        <span class="home-time-summary-label">총 기록</span>
+        <span class="home-time-summary-value home-time-summary-value--duration">${wrapHoursDisplayForSummary(timeSummary.trackedDisplay)}</span>
       </div>
     </div>
     <div class="home-time-summary-cell home-time-summary-cell--productive">
-      <span class="home-time-summary-label">생산적 시간</span>
-      <span class="home-time-summary-value">${timeSummary.productiveDisplay}</span>
-      <div class="home-time-summary-bar" aria-hidden="true">
-        <div class="home-time-summary-bar-fill home-time-summary-bar-fill--mint" style="width:${productivePct}%"></div>
+      <div class="home-time-summary-cell-main">
+        <span class="home-time-summary-label" title="생산적 시간">생산적</span>
+        <span class="home-time-summary-value home-time-summary-value--duration">${wrapHoursDisplayForSummary(timeSummary.productiveDisplay)}</span>
       </div>
     </div>
     <div class="home-time-summary-cell home-time-summary-cell--money">
-      <span class="home-time-summary-label">투자한 시급</span>
-      <span class="home-time-summary-value home-time-summary-value--invested">${timeSummary.priceDisplay}<span class="home-time-summary-unit">원</span></span>
+      <div class="home-time-summary-cell-main">
+        <span class="home-time-summary-label" title="투자한 시급">투자</span>
+        <span class="home-time-summary-value home-time-summary-value--invested"><span class="home-time-summary-digits home-time-summary-digits--money">${escapeHtml(timeSummary.priceDisplay)}</span><span class="home-time-summary-unit">원</span></span>
+      </div>
     </div>
     <div class="home-time-summary-cell home-time-summary-cell--money">
-      <span class="home-time-summary-label">낭비한 시급</span>
-      <span class="home-time-summary-value home-time-summary-value--spent">${timeSummary.wastedDisplay}<span class="home-time-summary-unit">원</span></span>
+      <div class="home-time-summary-cell-main">
+        <span class="home-time-summary-label" title="낭비한 시급">낭비</span>
+        <span class="home-time-summary-value home-time-summary-value--spent"><span class="home-time-summary-digits home-time-summary-digits--money">${escapeHtml(timeSummary.wastedDisplay)}</span><span class="home-time-summary-unit">원</span></span>
+      </div>
     </div>
   `;
+
+  summarySection.appendChild(summaryHeading);
+  summarySection.appendChild(summaryGrid);
 
   const threeCols = document.createElement("div");
   threeCols.className = "home-view-three home-view-three--no-calendar";
 
   const leftCol = document.createElement("div");
   leftCol.className = "home-view-left-col";
-  leftCol.appendChild(dateBlock);
-  leftCol.appendChild(summaryGrid);
+  leftCol.appendChild(summarySection);
 
   const section2 = document.createElement("div");
   section2.className = "home-view-section home-view-section--event";
@@ -777,7 +888,7 @@ export function render() {
   section3.className = "home-view-section home-view-section--todo";
   const header3 = document.createElement("h3");
   header3.className = "home-view-section-title";
-  header3.textContent = "Today's to do list";
+  header3.textContent = "TODAY'S TO-DO";
   section3.appendChild(header3);
   const todoListContent = document.createElement("div");
   todoListContent.className = "home-todo-list-content";
@@ -790,10 +901,4 @@ export function render() {
   el.appendChild(threeCols);
 
   return el;
-}
-
-function escapeHtml(str) {
-  const div = document.createElement("div");
-  div.textContent = str == null ? "" : str;
-  return div.innerHTML;
 }

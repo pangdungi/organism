@@ -66,51 +66,103 @@ import { initDomPulseDebug } from "./utils/domPulseDebug.js";
 import { initMobileVisualViewportKeyboardInset } from "./utils/mobileViewportKeyboard.js";
 import { logTodoScheduleTabOnNavigate } from "./utils/lpTabDataSourceLog.js";
 
+/** 데스크톱 사이드바 그룹·순서 (모바일 하단 순서와 별개) */
 const TABS = [
-  { id: "home", label: "오늘", icon: "/toolbaricons/dashboard.svg" },
-  { id: "dream", label: "꿈", icon: "/toolbaricons/star.svg" },
-  { id: "sideincome", label: "부수입", icon: "/toolbaricons/money-circle.svg" },
-  { id: "happiness", label: "행복", icon: "/toolbaricons/plug-electric.svg" },
-  { id: "health", label: "건강", icon: "/toolbaricons/heart-rate.svg" },
+  {
+    id: "home",
+    label: "오늘",
+    icon: "/toolbaricons/dashboard.svg",
+    sidebarSection: "main",
+    sidebarOrder: 0,
+  },
+  {
+    id: "dream",
+    label: "꿈",
+    icon: "/toolbaricons/star.svg",
+    sidebarSection: "bucket",
+    sidebarOrder: 0,
+  },
+  {
+    id: "sideincome",
+    label: "부수입",
+    icon: "/toolbaricons/money-circle.svg",
+    sidebarSection: "bucket",
+    sidebarOrder: 2,
+  },
+  {
+    id: "happiness",
+    label: "행복",
+    icon: "/toolbaricons/plug-electric.svg",
+    sidebarSection: "bucket",
+    sidebarOrder: 1,
+  },
+  {
+    id: "health",
+    label: "건강",
+    icon: "/toolbaricons/heart-rate.svg",
+    sidebarSection: "bucket",
+    sidebarOrder: 3,
+  },
   {
     id: "calendar",
     label: "할일/일정",
     mobileLabel: "할일",
     /** 모바일 하단·데스크톱 사이드바 동일 — 할일 목록 아이콘 */
     icon: "/toolbaricons/todolist.svg",
+    sidebarSection: "main",
+    sidebarOrder: 2,
   },
   {
     id: "schedulecalendar",
     label: "캘린더",
     mobileLabel: "캘린더",
     icon: "/toolbaricons/calendar-heart1.svg",
+    sidebarSection: "main",
+    sidebarOrder: 3,
   },
   {
     id: "time",
     label: "시간가계부",
     mobileLabel: "시간",
     icon: "/toolbaricons/timer.svg",
+    sidebarSection: "main",
+    sidebarOrder: 1,
   },
   {
     id: "asset",
     label: "자산관리",
     mobileLabel: "자산",
     icon: "/toolbaricons/wallet.svg",
+    sidebarSection: "other",
+    sidebarOrder: 0,
   },
   {
     id: "workschedule",
     label: "근무-식단표",
     mobileLabel: "근무-식단표",
     icon: "/toolbaricons/calendar-heart1.svg",
+    sidebarSection: "main",
+    sidebarOrder: 5,
   },
   {
     id: "diary",
     label: "감정일기",
     mobileLabel: "감정일기",
     icon: "/toolbaricons/chat-bubbles.svg",
+    sidebarSection: "main",
+    sidebarOrder: 4,
   },
-  { id: "archive", label: "아카이브", icon: "/toolbaricons/harddrive.svg" },
+  {
+    id: "archive",
+    label: "아카이브",
+    icon: "/toolbaricons/harddrive.svg",
+    sidebarSection: "other",
+    sidebarOrder: 1,
+  },
 ];
+
+const SIDEBAR_SECTION_ORDER = ["main", "bucket", "other"];
+const SIDEBAR_SECTION_LABEL = { bucket: "버킷", other: "기타" };
 
 const RENDERERS = {
   home: renderHome,
@@ -330,13 +382,15 @@ export async function mountApp(container) {
 
   const sidebarHeader = document.createElement("div");
   sidebarHeader.className = "app-sidebar-header";
-  const brandTitle = document.createElement("span");
+
+  const brandTitle = document.createElement("div");
   brandTitle.className = "app-sidebar-brand-title";
   const brandTitleText = document.createElement("span");
   brandTitleText.className = "app-sidebar-brand-title-text";
   brandTitleText.textContent = "Organism";
   brandTitle.appendChild(brandTitleText);
   sidebarHeader.appendChild(brandTitle);
+
   const sidebarToggle = document.createElement("button");
   sidebarToggle.type = "button";
   sidebarToggle.className = "app-sidebar-toggle";
@@ -369,7 +423,7 @@ export async function mountApp(container) {
     btn.appendChild(iconWrap);
   }
 
-  TABS.forEach((tab) => {
+  function appendSidebarTabButton(tab) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className =
@@ -391,6 +445,24 @@ export async function mountApp(container) {
     label.textContent = tab.label;
     btn.appendChild(label);
     nav.appendChild(btn);
+  }
+
+  const sidebarGroups = { main: [], bucket: [], other: [] };
+  TABS.forEach((tab) => {
+    const sec = tab.sidebarSection === "bucket" || tab.sidebarSection === "other" ? tab.sidebarSection : "main";
+    sidebarGroups[sec].push(tab);
+  });
+  SIDEBAR_SECTION_ORDER.forEach((sec) => {
+    sidebarGroups[sec].sort(
+      (a, b) => (a.sidebarOrder ?? 0) - (b.sidebarOrder ?? 0),
+    );
+    if (sec !== "main" && SIDEBAR_SECTION_LABEL[sec]) {
+      const sectionEl = document.createElement("div");
+      sectionEl.className = "app-sidebar-section-label";
+      sectionEl.textContent = SIDEBAR_SECTION_LABEL[sec];
+      nav.appendChild(sectionEl);
+    }
+    sidebarGroups[sec].forEach((tab) => appendSidebarTabButton(tab));
   });
 
   const accountBtn = document.createElement("button");
@@ -848,6 +920,7 @@ export async function mountApp(container) {
   }
 
   window.__lpRenderMain = (opts) => renderMain(main, opts || {});
+  window.__lpSetTab = (tabId) => setActiveTab(tabId);
 
   initSupabaseRealtimeSync({
     getCurrentTabId: () => currentTabId,

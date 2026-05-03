@@ -464,6 +464,14 @@ function withMoreTransparency(color, alpha = 0.35) {
   if (m) return `rgba(${m[1]}, ${m[2]}, ${m[3]}, ${alpha})`;
   return color;
 }
+
+/** 타임테이블 블록 라벨 글자색 — 세로 강조선(border)과 동일 RGB 톤의 불투명 색 */
+function timetableAccentTextColor(accentRgba) {
+  if (!accentRgba || typeof accentRgba !== "string") return "";
+  const m = accentRgba.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+  if (!m) return "";
+  return `rgb(${m[1]}, ${m[2]}, ${m[3]})`;
+}
 const DAY_NAMES = ["월", "화", "수", "목", "금", "토", "일"];
 const MONTH_NAMES = [
   "1월",
@@ -4430,6 +4438,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
             labelWrap.appendChild(labelName);
             labelWrap.appendChild(labelTime);
           }
+          const labelFg = timetableAccentTextColor(c.border || c.bg);
+          if (labelFg) labelWrap.style.color = labelFg;
           seg.appendChild(labelWrap);
         }
         blockFill.appendChild(seg);
