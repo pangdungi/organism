@@ -1700,7 +1700,7 @@ function renderMonthlyView(
     </span>
     <div class="calendar-nav-controls">
       <button type="button" class="calendar-nav-prev" title="이전 달">&lt;</button>
-      <button type="button" class="calendar-nav-today" title="오늘">오늘</button>
+      <button type="button" class="calendar-nav-today" title="Today">Today</button>
       <button type="button" class="calendar-nav-next" title="다음 달">&gt;</button>
     </div>
   `;
@@ -1936,8 +1936,8 @@ function renderMonthlyView(
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
       const BAR_HEIGHT = window.matchMedia("(max-width: 48rem)").matches
-        ? 1.35
-        : 2.05;
+        ? 1.02
+        : 1.78;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
@@ -2025,9 +2025,11 @@ function renderMonthlyView(
         : 0;
       const rowsNeeded = maxRow + 1;
       const BARS_TOP = window.matchMedia("(max-width: 48rem)").matches
-        ? 1.35
-        : 1.75;
-      const BOTTOM_PAD = 0.6;
+        ? 1.02
+        : 1.52;
+      const BOTTOM_PAD = window.matchMedia("(max-width: 48rem)").matches
+        ? 0.34
+        : 0.42;
       const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 3 * BAR_HEIGHT + BOTTOM_PAD;
       const requiredHeight = BARS_TOP + rowsNeeded * BAR_HEIGHT + BOTTOM_PAD;
       weekRow.style.minHeight = `${Math.max(DEFAULT_ROW_HEIGHT_REM, requiredHeight)}rem`;
@@ -2048,7 +2050,7 @@ function renderMonthlyView(
             ? " calendar-monthly-span-bar--schedule-strip"
             : "");
         bar.title = b.name;
-        bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.15 + b.row * BAR_HEIGHT}rem`;
+        bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.1 + b.row * BAR_HEIGHT}rem`;
         if (b.isSingleDay) {
           if (isTodo) {
             bar.innerHTML = `${lpCalendarSpanBarTodoMarkerHtml(b.color)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
@@ -2401,7 +2403,7 @@ function render2WeekView(
     </span>
     <div class="calendar-nav-controls">
       <button type="button" class="calendar-nav-prev" title="이전 2주">&lt;</button>
-      <button type="button" class="calendar-nav-today" title="오늘">오늘</button>
+      <button type="button" class="calendar-nav-today" title="Today">Today</button>
       <button type="button" class="calendar-nav-next" title="다음 2주">&gt;</button>
     </div>
   `;
@@ -2619,8 +2621,8 @@ function render2WeekView(
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
       const BAR_HEIGHT = window.matchMedia("(max-width: 48rem)").matches
-        ? 1.35
-        : 2.05;
+        ? 1.02
+        : 1.78;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
@@ -2708,9 +2710,11 @@ function render2WeekView(
         : 0;
       const rowsNeeded = maxRow + 1;
       const BARS_TOP = window.matchMedia("(max-width: 48rem)").matches
-        ? 1.35
-        : 1.75;
-      const BOTTOM_PAD = 0.6;
+        ? 1.02
+        : 1.52;
+      const BOTTOM_PAD = window.matchMedia("(max-width: 48rem)").matches
+        ? 0.34
+        : 0.42;
       const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 3 * BAR_HEIGHT + BOTTOM_PAD;
       const requiredHeight = BARS_TOP + rowsNeeded * BAR_HEIGHT + BOTTOM_PAD;
       weekRow.style.minHeight = `${Math.max(DEFAULT_ROW_HEIGHT_REM, requiredHeight)}rem`;
@@ -2731,7 +2735,7 @@ function render2WeekView(
             ? " calendar-monthly-span-bar--schedule-strip"
             : "");
         bar.title = b.name;
-        bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.15 + b.row * BAR_HEIGHT}rem`;
+        bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.1 + b.row * BAR_HEIGHT}rem`;
         if (b.isSingleDay) {
           if (isTodo) {
             bar.innerHTML = `${lpCalendarSpanBarTodoMarkerHtml(b.color)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
@@ -3072,7 +3076,7 @@ function render3WeekView(
     </span>
     <div class="calendar-nav-controls">
       <button type="button" class="calendar-nav-prev" title="이전 3주">&lt;</button>
-      <button type="button" class="calendar-nav-today" title="오늘">오늘</button>
+      <button type="button" class="calendar-nav-today" title="Today">Today</button>
       <button type="button" class="calendar-nav-next" title="다음 3주">&gt;</button>
     </div>
   `;
@@ -3290,8 +3294,8 @@ function render3WeekView(
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
       const BAR_HEIGHT = window.matchMedia("(max-width: 48rem)").matches
-        ? 1.35
-        : 2.05;
+        ? 1.02
+        : 1.78;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
@@ -3379,9 +3383,11 @@ function render3WeekView(
         : 0;
       const rowsNeeded = maxRow + 1;
       const BARS_TOP = window.matchMedia("(max-width: 48rem)").matches
-        ? 1.35
-        : 1.75;
-      const BOTTOM_PAD = 0.6;
+        ? 1.02
+        : 1.52;
+      const BOTTOM_PAD = window.matchMedia("(max-width: 48rem)").matches
+        ? 0.34
+        : 0.42;
       const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 3 * BAR_HEIGHT + BOTTOM_PAD;
       const requiredHeight = BARS_TOP + rowsNeeded * BAR_HEIGHT + BOTTOM_PAD;
       weekRow.style.minHeight = `${Math.max(DEFAULT_ROW_HEIGHT_REM, requiredHeight)}rem`;
@@ -3402,7 +3408,7 @@ function render3WeekView(
             ? " calendar-monthly-span-bar--schedule-strip"
             : "");
         bar.title = b.name;
-        bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.15 + b.row * BAR_HEIGHT}rem`;
+        bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.1 + b.row * BAR_HEIGHT}rem`;
         if (b.isSingleDay) {
           if (isTodo) {
             bar.innerHTML = `${lpCalendarSpanBarTodoMarkerHtml(b.color)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
@@ -4799,7 +4805,7 @@ function render1DayView(tabsElement) {
       const d = targetDate.getDate();
       const w = NAV_WEEKDAYS_SUN0[targetDate.getDay()] || "";
       todayBtn.textContent = `${y}. ${m}. ${d}(${w})`;
-      todayBtn.title = dayOffset === 0 ? "오늘" : `${y}년 ${m}월 ${d}일`;
+      todayBtn.title = dayOffset === 0 ? "Today" : `${y}년 ${m}월 ${d}일`;
     }
 
     calendarGrid.innerHTML = "";
@@ -5462,7 +5468,7 @@ function render1WeekView(
     </span>
     <div class="calendar-nav-controls">
       <button type="button" class="calendar-nav-prev" title="이전 주">&lt;</button>
-      <button type="button" class="calendar-nav-today" title="이번 주">오늘</button>
+      <button type="button" class="calendar-nav-today" title="이번 주">Today</button>
       <button type="button" class="calendar-nav-next" title="다음 주">&gt;</button>
     </div>
   `;
@@ -5706,8 +5712,11 @@ function render1WeekView(
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
       const BAR_HEIGHT = window.matchMedia("(max-width: 48rem)").matches
-        ? 1.35
-        : 2.05;
+        ? 1.02
+        : 1.78;
+      const isWeekCalMobile = window.matchMedia("(max-width: 48rem)").matches;
+      const STACK_PAD_TOP = isWeekCalMobile ? 0.06 : 0.08;
+      const STACK_PAD_BOT = isWeekCalMobile ? 0.16 : 0.22;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
@@ -5821,7 +5830,7 @@ function render1WeekView(
             ? " calendar-monthly-span-bar--schedule-strip"
             : "");
         bar.title = b.name;
-        bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.15 + b.row * BAR_HEIGHT}rem`;
+        bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.1 + b.row * BAR_HEIGHT}rem`;
         if (b.isSingleDay) {
           if (isTodo) {
             bar.innerHTML = `${lpCalendarSpanBarTodoMarkerHtml(b.color)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
@@ -6002,9 +6011,9 @@ function render1WeekView(
                 (x) => x.isSingleDay && x.dateKey === b.dateKey,
               );
               const localIdx = daySingles.indexOf(b);
-              bar.style.cssText = `left:0;right:0;width:100%;max-width:100%;box-sizing:border-box;--bar-bg:${b.color};top:${0.1 + localIdx * BAR_HEIGHT}rem;`;
+              bar.style.cssText = `left:0;right:0;width:100%;max-width:100%;box-sizing:border-box;--bar-bg:${b.color};top:${STACK_PAD_TOP + localIdx * BAR_HEIGHT}rem;`;
               entries.appendChild(bar);
-              entries.style.minHeight = `${0.1 + daySingles.length * BAR_HEIGHT + 0.35}rem`;
+              entries.style.minHeight = `${STACK_PAD_TOP + daySingles.length * BAR_HEIGHT + STACK_PAD_BOT}rem`;
               return;
             }
           } else if (!b.isSingleDay && b.startDate && b.dueDate) {
@@ -6017,9 +6026,9 @@ function render1WeekView(
               ".calendar-monthly-day-entries",
             );
             if (entries) {
-              bar.style.cssText = `left:0;right:0;width:100%;max-width:100%;box-sizing:border-box;--bar-bg:${b.color};top:${0.1 + b.row * BAR_HEIGHT}rem;`;
+              bar.style.cssText = `left:0;right:0;width:100%;max-width:100%;box-sizing:border-box;--bar-bg:${b.color};top:${STACK_PAD_TOP + b.row * BAR_HEIGHT}rem;`;
               entries.appendChild(bar);
-              const needH = 0.1 + (b.row + 1) * BAR_HEIGHT + 0.35;
+              const needH = STACK_PAD_TOP + (b.row + 1) * BAR_HEIGHT + STACK_PAD_BOT;
               const cur = parseFloat(entries.style.minHeight) || 0;
               if (needH > cur) entries.style.minHeight = `${needH}rem`;
               return;
