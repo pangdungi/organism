@@ -38874,6 +38874,20 @@ button.time-modal-traffic {
   box-sizing: border-box;
 }
 
+/* 가로 분할 유지 구간: 줄어들 때 오른쪽 타임테이블부터 많이 줄임(왼쪽 표 줄바꿈 완화) */
+@media (min-width: 48.0625rem) {
+  .calendar-1day-view
+    .calendar-1day-time-grid.calendar-1day-split-layout
+    > .calendar-1day-budget-column {
+    flex: 9 0.42 0;
+  }
+  .calendar-1day-view
+    .calendar-1day-time-grid.calendar-1day-split-layout
+    > .calendar-1day-time-column {
+    flex: 11 2.5 0;
+  }
+}
+
 /* 1일뷰 예산 컬럼 - 행고정(스크롤 시 상단 고정) */
 .calendar-1day-budget-column .calendar-1day-budget-sticky-header {
   position: sticky;
