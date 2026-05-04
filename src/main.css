@@ -5677,8 +5677,8 @@ body {
   /* 오늘 해치우기: 타임테이블 오른쪽 할일 패널은 모바일에서도 표시 */
   .calendar-view-with-subtabs
     .calendar-1day-view
-    .calendar-1day-time-sidebar-row
-    .calendar-todo-sidebar {
+    .calendar-1day-split-layout
+    > .calendar-todo-sidebar {
     display: flex !important;
     flex-direction: column;
   }
@@ -5767,6 +5767,10 @@ body {
     .calendar-monthly-day.other-month.today
     .calendar-monthly-day-num {
     align-self: flex-start !important;
+  }
+
+  .calendar-1week-view {
+    --cal-1week-hour-height: 2.35rem;
   }
 
   /* 모바일 캘린더 탭: 월별·1주·연간 상단 탭으로 고정, 다른 탭 디자인 통일 */
@@ -6428,17 +6432,7 @@ body {
   .calendar-view
     .calendar-1day-view
     .calendar-1day-split-layout
-    .calendar-1day-time-sidebar-row {
-    flex: 0 0 auto;
-    flex-direction: column;
-    width: 100%;
-    min-width: 0;
-  }
-  .calendar-view
-    .calendar-1day-view
-    .calendar-1day-split-layout
-    .calendar-1day-time-sidebar-row
-    .calendar-1day-time-column {
+    > .calendar-1day-time-column {
     flex: 0 0 auto;
     width: 100%;
     min-width: 0;
@@ -6451,12 +6445,22 @@ body {
   .calendar-view
     .calendar-1day-view
     .calendar-1day-split-layout
-    .calendar-1day-time-sidebar-row
-    .calendar-todo-sidebar {
+    > .calendar-todo-sidebar {
     flex: 0 0 auto !important;
     width: 100% !important;
     max-width: none !important;
     min-width: 0 !important;
+  }
+  /* 접힘: 100% 폭이면 빈 회색 띠만 전체 너비 — 헤더(>>)만큼만 */
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-split-layout
+    > .calendar-todo-sidebar.collapsed {
+    width: auto !important;
+    max-width: fit-content !important;
+    min-width: 0 !important;
+    flex: 0 0 auto !important;
+    align-self: flex-start;
   }
   .calendar-view .calendar-1day-view .calendar-1day-time-table-wrap,
   .calendar-view .calendar-1day-view .calendar-1day-time-table-inner {
@@ -38493,68 +38497,220 @@ button.time-modal-traffic {
   --cal-1day-label-col: 2.625rem;
 }
 
-/* 1주 뷰: 월~일 세로 7행 — 각 줄에 요일(월·화·…) + 일자; 상단 가로 요일 행 숨김 */
-.calendar-1week-view .calendar-monthly-weekdays {
-  display: none !important;
+/* 1주 뷰: 구글 주간형 — 좌측 시간축 + 요일 7열 그리드 */
+.calendar-1week-view {
+  --cal-1week-hour-height: 2.75rem;
 }
-.calendar-view-with-subtabs .calendar-1week-view .calendar-monthly-week,
-.calendar-1week-view .calendar-monthly-week {
-  display: grid !important;
-  grid-template-columns: 1fr !important;
-  grid-auto-rows: minmax(4.25rem, auto) !important;
-  gap: 0 !important;
-  min-width: 0;
-}
-.calendar-1week-view .calendar-monthly-week-wrap {
-  flex: 1;
+.calendar-1week-view .calendar-monthly-main {
   min-height: 0;
+  flex: 1 1 0;
 }
-.calendar-1week-view .calendar-1week-day-head {
-  display: flex !important;
-  flex-direction: row;
-  align-items: baseline;
-  justify-content: flex-start;
-  gap: 0.5rem;
-  margin-bottom: 0.25rem;
+.calendar-1week-view .calendar-monthly-grid--1week-timegrid {
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
-.calendar-1week-view .calendar-1week-day-weekday {
-  display: inline !important;
-  font-size: 0.8125rem;
+.calendar-1week-time-grid-google {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  background: var(--content-bg, #f5f5f7);
+}
+.calendar-1week-google-header-row {
+  display: grid;
+  grid-template-columns: var(--cal-1day-label-col) repeat(7, minmax(0, 1fr));
+  flex-shrink: 0;
+  border-bottom: var(--line-l3);
+  background: var(--content-bg, #f5f5f7);
+  z-index: 2;
+}
+.calendar-1week-google-corner {
+  min-height: 2.75rem;
+}
+.calendar-1week-google-day-head {
+  padding: 0.4rem 0.2rem;
+  text-align: center;
+  border-left: var(--line-l3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.08rem;
+}
+.calendar-1week-google-day-head.is-today .calendar-1week-google-day-dow,
+.calendar-1week-google-day-head.is-today .calendar-1week-google-day-num {
+  color: var(--ui-btn-primary-bg);
+  font-weight: 700;
+}
+.calendar-1week-google-day-dow {
+  font-size: 0.6875rem;
   font-weight: 600;
   color: var(--text-muted);
-  flex-shrink: 0;
-  min-width: 1.35rem;
 }
-.calendar-1week-view .calendar-monthly-day {
-  width: 100%;
-  min-height: 4.25rem;
-  flex-direction: column;
+.calendar-1week-google-day-num {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-body);
+}
+
+/* 00:00 위 — 기존 캘린더 할일·일정 막대(종일 줄) */
+.calendar-1week-google-allday-section {
+  display: grid;
+  grid-template-columns: var(--cal-1day-label-col) repeat(7, minmax(0, 1fr));
   align-items: stretch;
-  text-align: left;
-  border-radius: 0 !important;
-  padding: 0.4rem 0.65rem 0.45rem !important;
+  flex-shrink: 0;
+  border-bottom: var(--line-l3);
+  background: var(--content-bg, #f5f5f7);
+}
+.calendar-1week-google-allday-gutter {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 0.35rem 0.25rem;
+  text-align: right;
+  line-height: 1.25;
+  border-right: var(--line-l3);
+  align-self: stretch;
+}
+.calendar-1week-google-allday-cell {
+  min-width: 0;
   box-sizing: border-box;
-  /* 세로 7행: 한 열이라 :last-child 때문에 세로선만 없어짐 → 행 사이 가로 구분선 */
-  border-right: none !important;
+  padding: 0.15rem 0.12rem 0.28rem;
+  border-left: var(--line-l3);
+}
+.calendar-1week-google-allday-gutter + .calendar-1week-google-allday-cell {
+  border-left: none;
+}
+.calendar-1week-google-allday-inner {
+  position: relative;
+  min-width: 0;
+}
+.calendar-1week-google-allday-bars.calendar-monthly-bars {
+  top: 0 !important;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+.calendar-1week-google-allday-span.calendar-monthly-span-bar {
+  font-size: 0.68rem;
+}
+
+.calendar-1week-google-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.calendar-1week-google-body {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  min-height: calc(24 * var(--cal-1week-hour-height));
+}
+.calendar-1week-google-times {
+  flex: 0 0 var(--cal-1day-label-col);
+  width: var(--cal-1day-label-col);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  border-right: var(--line-l3);
+  background: var(--content-bg, #f5f5f7);
+}
+.calendar-1week-google-hour-label {
+  flex: 0 0 var(--cal-1week-hour-height);
+  height: var(--cal-1week-hour-height);
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  padding: 0 0.25rem 0 0;
+  text-align: right;
+  line-height: 1;
+  box-sizing: border-box;
   border-bottom: var(--line-l3);
 }
-.calendar-1week-view .calendar-monthly-week .calendar-monthly-day:last-child {
-  border-bottom: none !important;
+.calendar-1week-google-cols {
+  flex: 1 1 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  min-width: 0;
 }
-.calendar-1week-view .calendar-monthly-day-num {
-  font-size: 0.9375rem;
+.calendar-1week-google-col {
+  position: relative;
+  border-left: var(--line-l3);
+  min-height: calc(24 * var(--cal-1week-hour-height));
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.calendar-1week-google-col:first-child {
+  border-left: none;
+}
+.calendar-1week-google-col.is-today {
+  background: rgba(42, 56, 40, 0.04);
+}
+.calendar-1week-google-col.calendar-day-drag-over {
+  outline: 2px solid var(--ui-btn-primary-bg);
+  outline-offset: -2px;
+}
+.calendar-1week-google-hour-lines {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+  z-index: 0;
+}
+.calendar-1week-google-hour-line {
+  flex: 0 0 var(--cal-1week-hour-height);
+  height: var(--cal-1week-hour-height);
+  border-bottom: var(--line-l3);
+  box-sizing: border-box;
+}
+.calendar-1week-google-hour-line:nth-child(even) {
+  background: rgba(249, 249, 251, 0.85);
+}
+.calendar-1week-google-track {
+  position: relative;
+  height: calc(24 * var(--cal-1week-hour-height));
+  z-index: 1;
+}
+.calendar-1week-google-block {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 0.25rem;
+  overflow: hidden;
+  min-height: 3px;
+  padding: 0.12rem 0.2rem;
+  pointer-events: none;
+}
+.calendar-1week-google-block-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  line-height: 1.15;
+  overflow: hidden;
+  max-height: 100%;
+}
+.calendar-1week-google-block-time {
+  font-size: 0.6rem;
   font-weight: 600;
+  color: var(--text-ink);
+  opacity: 0.88;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.calendar-1week-view .calendar-monthly-day-entries {
-  flex: 1 1 auto;
-  min-height: 0;
-  width: 100%;
-}
-.calendar-1week-view .calendar-monthly-day-entries .calendar-monthly-span-bar {
-  left: 0 !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
+.calendar-1week-google-block-name {
+  font-size: 0.62rem;
+  font-weight: 500;
+  color: var(--text-body);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
 }
 
 /* 1일 뷰 - 단일 열 */
@@ -38580,9 +38736,11 @@ button.time-modal-traffic {
   min-width: 0;
 }
 
-/* 예산 열 숨김 시 타임+할일 행만 남을 때 행 전체 폭 */
-.calendar-monthly-grid.calendar-1day-time-grid.calendar-1day-split-layout
-  > .calendar-1day-time-sidebar-row:only-child {
+/* 예산 열이 없을 때: 타임 컬럼이 그리드의 단일 주영역처럼 넓어짐 */
+.calendar-monthly-grid.calendar-1day-time-grid.calendar-1day-split-layout:not(
+    :has(> .calendar-1day-budget-column)
+  )
+  > .calendar-1day-time-column {
   flex: 1 1 auto !important;
   width: 100%;
   max-width: 100%;
@@ -38925,27 +39083,18 @@ button.time-modal-traffic {
 
 .calendar-1day-view
   .calendar-1day-time-grid.calendar-1day-split-layout
-  > .calendar-1day-time-sidebar-row {
-  flex: 4 1 0;
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  min-width: 0;
-  min-height: 0;
-}
-
-.calendar-1day-view
-  .calendar-1day-time-grid.calendar-1day-split-layout
-  > .calendar-1day-time-sidebar-row
   > .calendar-1day-time-column {
-  flex: 1 1 0;
+  flex: 4 1 0;
   min-width: 0;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem 1rem;
+  box-sizing: border-box;
 }
 
 .calendar-1day-view
   .calendar-1day-time-grid.calendar-1day-split-layout
-  > .calendar-1day-time-sidebar-row
   > .calendar-todo-sidebar {
   flex: 0 0 18rem;
   width: 18rem;
@@ -38953,6 +39102,16 @@ button.time-modal-traffic {
   max-width: min(22rem, 40vw);
   min-height: 0;
   align-self: stretch;
+}
+
+/* 접힘: 1일 그리드 직계 자식일 때 전용 너비 유지 */
+.calendar-1day-view
+  .calendar-1day-time-grid.calendar-1day-split-layout
+  > .calendar-todo-sidebar.collapsed {
+  flex: 0 0 5rem;
+  width: 5rem;
+  min-width: 5rem;
+  max-width: 5rem;
 }
 
 /* 1일뷰 예산 컬럼 - 행고정(스크롤 시 상단 고정) */
