@@ -5740,10 +5740,14 @@ body {
     .calendar-monthly-day-num {
     align-self: flex-end !important;
     flex: 0 0 auto !important;
-    width: fit-content !important;
-    min-width: 1.15rem !important;
-    height: 1.15rem !important;
-    padding: 0 0.22rem !important;
+    width: 1.55rem !important;
+    min-width: 1.55rem !important;
+    max-width: 1.55rem !important;
+    height: 1.55rem !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+    border-radius: 50% !important;
+    -webkit-border-radius: 50% !important;
   }
 
   .calendar-view-with-subtabs
@@ -40500,17 +40504,20 @@ button.time-modal-traffic {
   color: #ffffff;
   align-self: flex-end;
   flex: 0 0 auto;
-  width: fit-content;
-  max-width: 100%;
+  width: 1.7rem;
+  min-width: 1.7rem;
+  max-width: 1.7rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.35rem;
-  height: 1.35rem;
-  padding: 0 0.28rem;
+  height: 1.7rem;
+  padding: 0;
   box-sizing: border-box;
-  border-radius: 999px;
+  line-height: 1;
+  border-radius: 50% !important;
+  -webkit-border-radius: 50% !important;
   background: #c7c7cc;
+  overflow: hidden;
 }
 
 .calendar-monthly-day.other-month.today:hover .calendar-monthly-day-num {
@@ -40522,17 +40529,20 @@ button.time-modal-traffic {
   color: #ffffff;
   align-self: flex-end;
   flex: 0 0 auto;
-  width: fit-content;
-  max-width: 100%;
+  width: 1.7rem;
+  min-width: 1.7rem;
+  max-width: 1.7rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.35rem;
-  height: 1.35rem;
-  padding: 0 0.28rem;
+  height: 1.7rem;
+  padding: 0;
   box-sizing: border-box;
-  border-radius: 999px;
+  line-height: 1;
+  border-radius: 50% !important;
+  -webkit-border-radius: 50% !important;
   background: #aeaeb2;
+  overflow: hidden;
 }
 
 .calendar-monthly-day.today:hover .calendar-monthly-day-num {
