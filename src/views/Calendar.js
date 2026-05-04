@@ -4484,8 +4484,6 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
       }
       if (firstBorderColor) {
         blockFill.style.borderLeft = `0.125rem solid ${firstBorderColor}`;
-        /* 세그먼트 배경·텍스트 전체를 바 안쪽으로 살짝 들여 씀(border와 첫 픽셀 사이) */
-        blockFill.style.paddingLeft = "0.4375rem";
       }
       if (isActual && actualBlockMin > 0) {
         const timeRange = `${fmt(blockStartMin)} ~ ${fmt(blockEndMin)}`;
