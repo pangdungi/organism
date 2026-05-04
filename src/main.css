@@ -38543,7 +38543,7 @@ button.time-modal-traffic {
   min-height: 0;
 }
 
-/* 1일 뷰: 가로 7:3 유지, 창 줄일 때도 같은 비율로 함께 축소(flex-grow/shrink 동일 비율) */
+/* 1일 뷰: 가로 6:4 유지, 창 줄일 때도 같은 비율로 함께 축소(flex-grow/shrink 동일 비율) */
 .calendar-1day-view .calendar-1day-time-grid.calendar-1day-split-layout {
   display: flex;
   flex-direction: row;
@@ -38886,11 +38886,11 @@ button.time-modal-traffic {
   box-sizing: border-box;
 }
 
-/* 분할 행: 7:3 비율, 축소 시에도 동일 shrink로 함께 줄어듦 */
+/* 분할 행: 6:4 비율, 축소 시에도 동일 shrink로 함께 줄어듦 */
 .calendar-1day-view
   .calendar-1day-time-grid.calendar-1day-split-layout
   > .calendar-1day-budget-column {
-  flex: 7 1 0;
+  flex: 6 1 0;
   min-width: 0;
   max-width: none;
 }
@@ -38898,7 +38898,7 @@ button.time-modal-traffic {
 .calendar-1day-view
   .calendar-1day-time-grid.calendar-1day-split-layout
   > .calendar-1day-time-column {
-  flex: 3 1 0;
+  flex: 4 1 0;
   min-width: 0;
   min-height: 0;
 }
