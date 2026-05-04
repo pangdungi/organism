@@ -38874,17 +38874,19 @@ button.time-modal-traffic {
   box-sizing: border-box;
 }
 
-/* 가로 분할 유지 구간: 줄어들 때 오른쪽 타임테이블부터 많이 줄임(왼쪽 표 줄바꿈 완화) */
+/* 가로 분할 유지 구간: 타임테이블만 먼저 줄임(예산 열 flex-shrink:0 → 표 최소 너비 유지) */
 @media (min-width: 48.0625rem) {
   .calendar-1day-view
     .calendar-1day-time-grid.calendar-1day-split-layout
     > .calendar-1day-budget-column {
-    flex: 9 0.42 0;
+    flex: 9 0 0;
+    min-width: auto;
   }
   .calendar-1day-view
     .calendar-1day-time-grid.calendar-1day-split-layout
     > .calendar-1day-time-column {
-    flex: 11 2.5 0;
+    flex: 11 1 0;
+    min-width: 10.25rem;
   }
 }
 
