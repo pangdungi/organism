@@ -39554,9 +39554,9 @@ button.time-modal-traffic {
 .calendar-1day-budget-column .time-budget-time-input,
 .calendar-1day-budget-column .time-budget-scheduled-input {
   border: none;
-  background: rgba(118, 118, 128, 0.11) !important;
-  border-radius: 6px !important;
-  -webkit-border-radius: 6px !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  -webkit-border-radius: 0 !important;
 }
 
 .calendar-1day-budget-column .time-budget-time-input:focus,
