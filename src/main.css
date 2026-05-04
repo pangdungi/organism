@@ -5732,16 +5732,15 @@ body {
     top: 1.28rem !important;
   }
   .calendar-view-with-subtabs .calendar-monthly-day.today::before {
-    width: 0.1875rem !important;
-    height: 0.1875rem !important;
-    top: 0.35rem !important;
-    right: auto !important;
-    left: 0.25rem !important;
+    content: none !important;
+    display: none !important;
   }
   .calendar-view-with-subtabs
     .calendar-monthly-day.today
     .calendar-monthly-day-num {
-    padding-left: 0.5rem !important;
+    min-width: 1.05rem !important;
+    height: 1.05rem !important;
+    padding: 0 0.12rem !important;
   }
 
   /* 모바일 캘린더 탭: 월별·1주·연간 상단 탭으로 고정, 다른 탭 디자인 통일 */
@@ -37830,16 +37829,18 @@ button.time-modal-traffic {
   color: rgba(60, 60, 67, 0.3);
 }
 
-.calendar-view .calendar-monthly-day.other-month.today .calendar-monthly-day-num {
-  color: rgba(60, 60, 67, 0.44);
-}
-
 .calendar-view .calendar-monthly-day.other-month.today .calendar-monthly-day-num::after {
-  background: rgba(60, 60, 67, 0.44);
+  content: none;
+  display: none;
 }
 
 .calendar-view .calendar-monthly-day.other-month.sun .calendar-monthly-day-num {
   color: rgba(60, 60, 67, 0.3);
+}
+
+/* 타달·일요일 겹침 시에도 오늘 배지는 흰 글자 유지 */
+.calendar-view .calendar-monthly-day.other-month.today.sun .calendar-monthly-day-num {
+  color: #ffffff;
 }
 
 .calendar-monthly-tabs-wrap {
@@ -40457,7 +40458,7 @@ button.time-modal-traffic {
   font-weight: 400;
 }
 
-/* 오늘: 숫자 옆 점만 — 셀 배경은 달력 격자(일반 날)와 동일 */
+/* 오늘: 날짜 숫자에 연한 회색 원 배경 + 흰 글자 — 셀 배경은 일반 날과 동일 */
 .calendar-monthly-day.today {
   background: transparent;
   position: relative;
@@ -40481,35 +40482,52 @@ button.time-modal-traffic {
 }
 
 .calendar-monthly-day.other-month.today .calendar-monthly-day-num {
-  color: rgba(60, 60, 67, 0.48);
   font-weight: 700;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.15rem;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: #c7c7cc;
+}
+
+.calendar-monthly-day.other-month.today:hover .calendar-monthly-day-num {
+  background: #b0b0b5;
 }
 
 .calendar-monthly-day.today .calendar-monthly-day-num {
   font-weight: 700;
-  color: var(--text-ink);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.15rem;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: #aeaeb2;
 }
 
-.calendar-monthly-day.today .calendar-monthly-day-num::after {
-  content: "";
-  display: inline-block;
-  width: 0.25rem;
-  height: 0.25rem;
-  background: var(--text-ink);
-  border-radius: 50% !important;
-  margin-left: 0.375rem;
-  vertical-align: middle;
+.calendar-monthly-day.today:hover .calendar-monthly-day-num {
+  background: #9e9ea3;
 }
 
+.calendar-monthly-day.today .calendar-monthly-day-num::after,
 .calendar-monthly-day.other-month.today .calendar-monthly-day-num::after {
-  background: rgba(60, 60, 67, 0.48);
+  content: none;
+  display: none;
 }
 
 .calendar-monthly-day.today::before {
   content: none;
 }
 
-/* 1주 뷰만: 오늘은 숫자 옆 점(•)으로 구분 — 행 배경색은 쓰지 않음(모바일·데스크탑 공통) */
+/* 1주 뷰: 오늘도 숫자 원형 배지로 통일 — 행 배경 틴트 없음 */
 .calendar-1week-view .calendar-monthly-day.today,
 .calendar-1week-view .calendar-monthly-day.other-month.today {
   background: transparent;
@@ -40553,6 +40571,14 @@ button.time-modal-traffic {
 
 .calendar-monthly-day.sun .calendar-monthly-day-num {
   color: var(--text-muted);
+}
+
+.calendar-monthly-day.today.sun .calendar-monthly-day-num {
+  color: #ffffff;
+}
+
+.calendar-monthly-day.other-month.today.sun .calendar-monthly-day-num {
+  color: #ffffff;
 }
 
 .calendar-monthly-day.other-month.sun .calendar-monthly-day-num {
