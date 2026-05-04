@@ -38564,6 +38564,27 @@ button.time-modal-traffic {
   -webkit-overflow-scrolling: touch;
 }
 
+/* 오늘 해치우기: 상위·그리드까지 남은시간과 동일 #f5f5f7 (흰색은 표 카드 안만) */
+.calendar-view .calendar-monthly-layout.calendar-1day-view .calendar-monthly-main {
+  background: #f5f5f7 !important;
+}
+
+.calendar-view
+  .calendar-monthly-grid.calendar-1day-time-grid.calendar-1day-split-layout {
+  background: #f5f5f7 !important;
+}
+
+.calendar-1day-view .calendar-1day-time-column {
+  background: #f5f5f7;
+}
+
+.calendar-1day-budget-column .time-budget-calendar-remaining,
+.calendar-1day-view .calendar-1day-top-bar .time-budget-calendar-remaining {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
 /* 투자/소비내역 - 4구역이 여기 안에 있으면 스크롤은 위 budget-column에서 담당 */
 .calendar-1day-budget-column .calendar-1day-budget-tables-scroll {
   flex: 0 0 auto;
