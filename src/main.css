@@ -38375,6 +38375,13 @@ button.time-modal-traffic {
   align-items: center;
   justify-content: flex-start;
   border-right: var(--line-l3);
+  /* 가로 스크롤 시 월 약어 열 고정 (스크롤은 .calendar-annual-grid-wrap) */
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #ffffff;
+  box-shadow: 0.1875rem 0 0.5rem rgba(0, 0, 0, 0.06);
+  align-self: stretch;
 }
 .calendar-annual-row-days {
   display: flex;
