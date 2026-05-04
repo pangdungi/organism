@@ -38543,20 +38543,22 @@ button.time-modal-traffic {
   min-height: 0;
 }
 
-/* 1일 뷰: 좌측 표는 최소 너비 유지(auto), 우측 타임테이블만 남는 폭(1fr)에서 먼저 줄어듦 */
+/* 1일 뷰: 기본 가로 5:5(basis 50%), 창을 줄일 때는 타임테이블(shrink 큼)부터 줄어듦 */
 .calendar-1day-view .calendar-1day-time-grid.calendar-1day-split-layout {
-  display: grid;
-  grid-template-columns: auto minmax(10.25rem, 1fr);
-  grid-template-rows: minmax(0, 1fr);
-  gap: 0;
+  display: flex;
+  flex-direction: row;
   align-items: stretch;
+  gap: 0;
   min-width: 0;
 }
 
-/* 예산 열 display:none(홈 임베드 등)일 때 타임테이블만 있으면 한 줄 전체 사용 */
+/* 예산 열 display:none(홈 임베드 등)일 때 타임테이블만 전체 폭 */
 .calendar-monthly-grid.calendar-1day-time-grid.calendar-1day-split-layout
   > .calendar-1day-time-column:only-child {
-  grid-column: 1 / -1;
+  flex: 1 1 auto !important;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0 !important;
 }
 
 /* 예산 열 축소·타임그리드 확대 (목표시간 열 제거에 맞춰 비율 조정) */
@@ -38884,18 +38886,21 @@ button.time-modal-traffic {
   box-sizing: border-box;
 }
 
-/* 분할 그리드 안: 왼쪽은 표 intrinsic 폭 우선, 오른쪽은 위 minmax에서만 폭 변화 */
+/* 분할 행 안: 처음엔 50%/50%, 축소 시 오른쪽만 크게 줄어듦 */
 .calendar-1day-view
   .calendar-1day-time-grid.calendar-1day-split-layout
   > .calendar-1day-budget-column {
-  min-width: min-content;
-  max-width: 100%;
+  flex: 1 0.35 50%;
+  min-width: 0;
+  max-width: none;
 }
 
 .calendar-1day-view
   .calendar-1day-time-grid.calendar-1day-split-layout
   > .calendar-1day-time-column {
-  min-width: 0;
+  flex: 1 2.25 50%;
+  min-width: 10.25rem;
+  min-height: 0;
 }
 
 /* 1일뷰 예산 컬럼 - 행고정(스크롤 시 상단 고정) */
