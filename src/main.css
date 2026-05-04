@@ -38543,7 +38543,7 @@ button.time-modal-traffic {
   min-height: 0;
 }
 
-/* 1일 뷰: 처음 가로 5:5(basis 50%). 줄일 때 왼쪽 shrink 0 → 타임테이블만 먼저 줄어듦 */
+/* 1일 뷰: 기본 가로 7:3(표 쪽 70%). 줄일 때 왼쪽 shrink 0 → 타임테이블만 먼저 줄어듦 */
 .calendar-1day-view .calendar-1day-time-grid.calendar-1day-split-layout {
   display: flex;
   flex-direction: row;
@@ -38886,11 +38886,11 @@ button.time-modal-traffic {
   box-sizing: border-box;
 }
 
-/* 분할 행: 5:5 시작 → 축소 분담은 오른쪽만(flex-shrink 1), 왼쪽은 고정(shrink 0) */
+/* 분할 행: 기본 7:3 → 축소 시 오른쪽만 flex-shrink */
 .calendar-1day-view
   .calendar-1day-time-grid.calendar-1day-split-layout
   > .calendar-1day-budget-column {
-  flex: 1 0 50%;
+  flex: 1 0 70%;
   min-width: 0;
   max-width: none;
 }
@@ -38898,7 +38898,7 @@ button.time-modal-traffic {
 .calendar-1day-view
   .calendar-1day-time-grid.calendar-1day-split-layout
   > .calendar-1day-time-column {
-  flex: 1 1 50%;
+  flex: 1 1 30%;
   min-width: 10.25rem;
   min-height: 0;
 }
