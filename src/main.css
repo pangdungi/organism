@@ -39375,10 +39375,188 @@ button.time-modal-traffic {
   outline-offset: 0.125rem;
 }
 
+/* 오늘 해치우기 1·2·3·4: macOS 설정 창 느낌(그룹 라벨 + 둥근 흰 카드·행 구분선) */
+.calendar-1day-budget-column .time-daily-budget-four-panels {
+  gap: 1.125rem;
+}
+
+.calendar-1day-budget-column
+  .time-daily-budget-four-panels
+  .time-daily-budget-section:not(:first-child) {
+  margin-top: 0;
+}
+
+.calendar-1day-budget-column .time-daily-budget-section-header {
+  padding: 0.25rem 0.625rem 0.5rem;
+  border-bottom: none;
+  background: transparent;
+}
+
+.calendar-1day-budget-column .time-daily-budget-section-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: rgba(60, 60, 67, 0.88);
+}
+
+.calendar-1day-budget-column .time-daily-budget-section-scroll {
+  background: #ffffff;
+  border-radius: 10px !important;
+  -webkit-border-radius: 10px !important;
+  border: 0.03125rem solid rgba(0, 0, 0, 0.09);
+  box-shadow:
+    0 0 0 0.03125rem rgba(255, 255, 255, 0.7) inset,
+    0 0.0625rem 0.25rem rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.calendar-1day-budget-column
+  .time-daily-budget-section-scroll
+  > .time-daily-budget-table-block {
+  min-height: 0;
+  border: none !important;
+}
+
+.calendar-1day-budget-column
+  .time-daily-budget-four-panels
+  .time-daily-budget-table
+  thead
+  th {
+  background: rgba(246, 246, 248, 0.98) !important;
+  border-top: none !important;
+  border-bottom: 0.03125rem solid rgba(60, 60, 67, 0.13) !important;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(60, 60, 67, 0.48);
+}
+
+.calendar-1day-budget-column
+  .time-daily-budget-four-panels
+  .time-daily-budget-table
+  thead
+  th:not(:last-child),
+.calendar-1day-budget-column
+  .time-daily-budget-four-panels
+  .time-daily-budget-table
+  tbody
+  td:not(:last-child) {
+  border-right: 0.03125rem solid rgba(60, 60, 67, 0.07) !important;
+}
+
+.calendar-1day-budget-column
+  .time-daily-budget-four-panels
+  .time-daily-budget-table
+  thead
+  th:last-child,
+.calendar-1day-budget-column
+  .time-daily-budget-four-panels
+  .time-daily-budget-table
+  tbody
+  td:last-child {
+  border-right: none !important;
+}
+
+.calendar-1day-budget-column
+  .time-daily-budget-four-panels
+  .time-daily-budget-table
+  tbody
+  td {
+  background: #ffffff !important;
+  border-bottom: 0.03125rem solid rgba(60, 60, 67, 0.09) !important;
+}
+
+.calendar-1day-budget-column
+  .time-daily-budget-four-panels
+  .time-daily-budget-table
+  tbody
+  tr:last-child
+  td {
+  border-bottom: none !important;
+}
+
+.calendar-1day-budget-column .time-daily-budget-section--todo .calendar-1day-todo-section {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.calendar-1day-budget-column
+  .time-daily-budget-section--todo
+  .calendar-1day-todo-section-header {
+  padding: 0.25rem 0.625rem 0.5rem;
+  border-bottom: none;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: rgba(60, 60, 67, 0.88);
+}
+
+.calendar-1day-budget-column .calendar-1day-todo-section-header {
+  margin-bottom: 0;
+}
+
+.calendar-1day-budget-column .calendar-1day-todo-section-body {
+  background: #ffffff;
+  border-radius: 10px !important;
+  -webkit-border-radius: 10px !important;
+  border: 0.03125rem solid rgba(0, 0, 0, 0.09);
+  box-shadow:
+    0 0 0 0.03125rem rgba(255, 255, 255, 0.7) inset,
+    0 0.0625rem 0.25rem rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.calendar-1day-budget-column .calendar-1day-todo-table {
+  border-bottom: none !important;
+}
+
+.calendar-1day-budget-column .calendar-1day-todo-table thead th {
+  background: rgba(246, 246, 248, 0.98) !important;
+  border-top: none !important;
+  border-bottom: 0.03125rem solid rgba(60, 60, 67, 0.13) !important;
+  color: rgba(60, 60, 67, 0.48);
+}
+
+.calendar-1day-budget-column .calendar-1day-todo-table thead th:not(:last-child),
+.calendar-1day-budget-column .calendar-1day-todo-table tbody td:not(:last-child) {
+  border-right: 0.03125rem solid rgba(60, 60, 67, 0.07) !important;
+}
+
+.calendar-1day-budget-column .calendar-1day-todo-table thead th:last-child,
+.calendar-1day-budget-column .calendar-1day-todo-table tbody td:last-child {
+  border-right: none !important;
+}
+
+.calendar-1day-budget-column .calendar-1day-todo-table tbody td {
+  background: #ffffff !important;
+  border-bottom: 0.03125rem solid rgba(60, 60, 67, 0.09) !important;
+}
+
+.calendar-1day-budget-column
+  .calendar-1day-todo-table
+  tbody
+  tr:last-child
+  td {
+  border-bottom: none !important;
+}
+
+.calendar-1day-budget-column .calendar-1day-todo-table thead th:first-child {
+  background: rgba(246, 246, 248, 0.98) !important;
+  box-shadow: 0.03125rem 0 0 rgba(60, 60, 67, 0.1);
+}
+
+.calendar-1day-budget-column .calendar-1day-todo-table tbody td:first-child {
+  background: #ffffff !important;
+  box-shadow: 0.03125rem 0 0 rgba(60, 60, 67, 0.08);
+}
+
 .calendar-1day-budget-column .time-budget-time-input,
 .calendar-1day-budget-column .time-budget-scheduled-input {
   border: none;
-  background: transparent;
+  background: rgba(118, 118, 128, 0.11) !important;
+  border-radius: 6px !important;
+  -webkit-border-radius: 6px !important;
 }
 
 .calendar-1day-budget-column .time-budget-time-input:focus,
