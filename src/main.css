@@ -5738,9 +5738,23 @@ body {
   .calendar-view-with-subtabs
     .calendar-monthly-day.today
     .calendar-monthly-day-num {
-    min-width: 1.05rem !important;
-    height: 1.05rem !important;
-    padding: 0 0.12rem !important;
+    align-self: flex-end !important;
+    flex: 0 0 auto !important;
+    width: fit-content !important;
+    min-width: 1.15rem !important;
+    height: 1.15rem !important;
+    padding: 0 0.22rem !important;
+  }
+
+  .calendar-view-with-subtabs
+    .calendar-1week-view
+    .calendar-monthly-day.today
+    .calendar-monthly-day-num,
+  .calendar-view-with-subtabs
+    .calendar-1week-view
+    .calendar-monthly-day.other-month.today
+    .calendar-monthly-day-num {
+    align-self: flex-start !important;
   }
 
   /* 모바일 캘린더 탭: 월별·1주·연간 상단 탭으로 고정, 다른 탭 디자인 통일 */
@@ -40484,12 +40498,16 @@ button.time-modal-traffic {
 .calendar-monthly-day.other-month.today .calendar-monthly-day-num {
   font-weight: 700;
   color: #ffffff;
+  align-self: flex-end;
+  flex: 0 0 auto;
+  width: fit-content;
+  max-width: 100%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.25rem;
-  height: 1.25rem;
-  padding: 0 0.15rem;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.28rem;
   box-sizing: border-box;
   border-radius: 999px;
   background: #c7c7cc;
@@ -40502,12 +40520,16 @@ button.time-modal-traffic {
 .calendar-monthly-day.today .calendar-monthly-day-num {
   font-weight: 700;
   color: #ffffff;
+  align-self: flex-end;
+  flex: 0 0 auto;
+  width: fit-content;
+  max-width: 100%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.25rem;
-  height: 1.25rem;
-  padding: 0 0.15rem;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.28rem;
   box-sizing: border-box;
   border-radius: 999px;
   background: #aeaeb2;
@@ -40541,6 +40563,11 @@ button.time-modal-traffic {
 .calendar-1week-view .calendar-monthly-day.other-month:hover,
 .calendar-1week-view .calendar-monthly-day.other-month.today:hover {
   background: #ffffff !important;
+}
+
+.calendar-1week-view .calendar-monthly-day.today .calendar-monthly-day-num,
+.calendar-1week-view .calendar-monthly-day.other-month.today .calendar-monthly-day-num {
+  align-self: flex-start;
 }
 
 /* 막대 위에 올릴 때: 여러 날 막대만 틴트 */
