@@ -39869,6 +39869,38 @@ button.time-modal-traffic {
   min-height: 100%;
 }
 
+/* 시간대별 줄무늬: 라벨·예상·실제가 형제 3개씩 묶임 → 6n+1~3 / 6n+4~6 */
+.calendar-1day-view
+  .calendar-1day-time-table.calendar-1day-time-table--compare
+  > :nth-child(6n + 1),
+.calendar-1day-view
+  .calendar-1day-time-table.calendar-1day-time-table--compare
+  > :nth-child(6n + 2),
+.calendar-1day-view
+  .calendar-1day-time-table.calendar-1day-time-table--compare
+  > :nth-child(6n + 3) {
+  background: #f9f9fb !important;
+}
+
+.calendar-1day-view
+  .calendar-1day-time-table.calendar-1day-time-table--compare
+  > :nth-child(6n + 4),
+.calendar-1day-view
+  .calendar-1day-time-table.calendar-1day-time-table--compare
+  > :nth-child(6n + 5),
+.calendar-1day-view
+  .calendar-1day-time-table.calendar-1day-time-table--compare
+  > :nth-child(6n + 6) {
+  background: #f1f1f5 !important;
+}
+
+/* 줄무늬는 행(.calendar-1day-time-row)에 칠함 → 시간 숫자 칸도 같은 톤이 보이게 라벨 고정 배경 제거 */
+.calendar-1day-view
+  .calendar-1day-time-table.calendar-1day-time-table--compare
+  .calendar-1day-time-label {
+  background: transparent !important;
+}
+
 /* 1주 뷰 - 7일 예상 타임라인 */
 .calendar-1week-view .calendar-1week-time-grid {
   flex: 1;
