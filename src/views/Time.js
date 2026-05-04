@@ -10123,11 +10123,17 @@ export function renderTimeBudgetTablesForCalendar(
   onScheduledUpdate,
   onOverlapCleared,
   topBarLeft,
+  skipBudgetTaskNamesSet,
 ) {
   const targetDateStr = dateStr || toDateStr(new Date());
   /* 오늘 할일과 동명 과제는 왼쪽 투자·소비 표에서만 숨김 — localStorage는 지우지 않음(예상 타임라인용) */
   const skipBudgetTableForTasks = new Set();
-  if (todoSectionEl) {
+  if (skipBudgetTaskNamesSet instanceof Set) {
+    skipBudgetTaskNamesSet.forEach((name) => {
+      const n = String(name || "").trim();
+      if (n) skipBudgetTableForTasks.add(n);
+    });
+  } else if (todoSectionEl) {
     todoSectionEl
       .querySelectorAll(".calendar-1day-todo-table tbody tr")
       .forEach((r) => {

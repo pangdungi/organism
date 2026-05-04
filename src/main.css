@@ -5674,6 +5674,14 @@ body {
   .calendar-view-with-subtabs .calendar-todo-sidebar {
     display: none !important;
   }
+  /* 오늘 해치우기: 타임테이블 오른쪽 할일 패널은 모바일에서도 표시 */
+  .calendar-view-with-subtabs
+    .calendar-1day-view
+    .calendar-1day-time-sidebar-row
+    .calendar-todo-sidebar {
+    display: flex !important;
+    flex-direction: column;
+  }
 
   /* 모바일: 캘린더 데스크톱과 동일하게 표시, 사이즈 축소·체크박스 숨김 (+N은 overflow 시에만) */
   .calendar-view-with-subtabs .calendar-day-more-btn {
@@ -6420,6 +6428,16 @@ body {
   .calendar-view
     .calendar-1day-view
     .calendar-1day-split-layout
+    .calendar-1day-time-sidebar-row {
+    flex: 0 0 auto;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-split-layout
+    .calendar-1day-time-sidebar-row
     .calendar-1day-time-column {
     flex: 0 0 auto;
     width: 100%;
@@ -6429,6 +6447,16 @@ body {
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-split-layout
+    .calendar-1day-time-sidebar-row
+    .calendar-todo-sidebar {
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
   }
   .calendar-view .calendar-1day-view .calendar-1day-time-table-wrap,
   .calendar-view .calendar-1day-view .calendar-1day-time-table-inner {
@@ -38552,9 +38580,9 @@ button.time-modal-traffic {
   min-width: 0;
 }
 
-/* 예산 열 display:none(홈 임베드 등)일 때 타임테이블만 전체 폭 */
+/* 예산 열 숨김 시 타임+할일 행만 남을 때 행 전체 폭 */
 .calendar-monthly-grid.calendar-1day-time-grid.calendar-1day-split-layout
-  > .calendar-1day-time-column:only-child {
+  > .calendar-1day-time-sidebar-row:only-child {
   flex: 1 1 auto !important;
   width: 100%;
   max-width: 100%;
@@ -38897,10 +38925,34 @@ button.time-modal-traffic {
 
 .calendar-1day-view
   .calendar-1day-time-grid.calendar-1day-split-layout
-  > .calendar-1day-time-column {
+  > .calendar-1day-time-sidebar-row {
   flex: 4 1 0;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
   min-width: 0;
   min-height: 0;
+}
+
+.calendar-1day-view
+  .calendar-1day-time-grid.calendar-1day-split-layout
+  > .calendar-1day-time-sidebar-row
+  > .calendar-1day-time-column {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+}
+
+.calendar-1day-view
+  .calendar-1day-time-grid.calendar-1day-split-layout
+  > .calendar-1day-time-sidebar-row
+  > .calendar-todo-sidebar {
+  flex: 0 0 18rem;
+  width: 18rem;
+  min-width: 14rem;
+  max-width: min(22rem, 40vw);
+  min-height: 0;
+  align-self: stretch;
 }
 
 /* 1일뷰 예산 컬럼 - 행고정(스크롤 시 상단 고정) */

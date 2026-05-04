@@ -4518,9 +4518,13 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   };
 }
 
-function render1DayView(tabsElement) {
+function render1DayView(
+  tabsElement,
+  sidebarMode = LP_CAL_TODO_SIDEBAR_QUADRANT,
+) {
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout calendar-1day-view";
+  wrap.dataset.lpCalTodoSidebar = sidebarMode;
 
   let dayOffset = 0;
   /** Date#getDay() 용 (0=일) — 네비 날짜 옆 요일 표기 */
@@ -4558,7 +4562,7 @@ function render1DayView(tabsElement) {
   calendarGrid.className = "calendar-monthly-grid";
 
   function refreshTodoList() {
-    /* 1일 뷰는 KPI 사이드바 사용, 할일 목록 없음 */
+    refreshCalendarDateTodoSidebar(wrap);
   }
 
   function getKpiTodosForKpi(kpiId) {
@@ -4816,65 +4820,11 @@ function render1DayView(tabsElement) {
     budgetColumn.className = "calendar-1day-budget-column";
     const timeColumn = document.createElement("div");
     timeColumn.className = "calendar-1day-time-column";
+    const timeSidebarWrap = document.createElement("div");
+    timeSidebarWrap.className = "calendar-1day-time-sidebar-row";
 
     const tasks = getAllTasksForDateDisplay(targetKey);
     const budgetGoals = getBudgetGoals(targetKey);
-
-    const createHhMmInput = () => {
-      const input = document.createElement("input");
-      input.type = "text";
-      input.className = "time-budget-time-input";
-      input.name = "calendar-time-budget";
-      input.placeholder = "hh:mm";
-      input.maxLength = 5;
-      input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          input.blur();
-          return;
-        }
-        if (e.key.length === 1 && !/\d/.test(e.key)) e.preventDefault();
-      });
-      input.addEventListener("input", () => {
-        input.value = input.value.replace(/\D/g, "");
-      });
-      input.addEventListener("blur", () => {
-        const digits = input.value.replace(/\D/g, "");
-        if (digits.length === 0 || digits.length === 1) {
-          input.value = "";
-          return;
-        }
-        const pad = (s) => String(s || "").padStart(2, "0");
-        const h = Math.min(23, parseInt(digits.slice(0, 2), 10) || 0);
-        const m = Math.min(59, parseInt(digits.slice(2, 4), 10) || 0);
-        input.value = `${pad(h)}:${pad(m)}`;
-      });
-      return input;
-    };
-
-    const EISENHOWER_LABELS_1DAY = {
-      "urgent-important": "긴급+중요",
-      "important-not-urgent": "중요+여유",
-      "urgent-not-important": "긴급+덜중요",
-      "not-urgent-not-important": "여유+안중요",
-      "not-urgent-": "여유+안중요",
-    };
-    const EISENHOWER_KEY_BY_LABEL_1DAY = {
-      "긴급+중요": "urgent-important",
-      "중요+여유": "important-not-urgent",
-      "긴급+덜중요": "urgent-not-important",
-      "여유+안중요": "not-urgent-not-important",
-    };
-    const todoTable = document.createElement("table");
-    todoTable.className = "calendar-1day-todo-table time-daily-budget-table";
-    todoTable.innerHTML = `
-      <colgroup>
-        <col class="calendar-1day-todo-col-task" />
-        <col class="calendar-1day-todo-col-priority" />
-      </colgroup>
-      <thead><tr><th>오늘의 할일</th><th>우선순위</th></tr></thead>
-      <tbody></tbody>
-    `;
-    const todoTbody = todoTable.querySelector("tbody");
 
     const EISENHOWER_ORDER = [
       "urgent-important",
@@ -4889,110 +4839,11 @@ function render1DayView(tabsElement) {
       const bi = bq ? EISENHOWER_ORDER.indexOf(bq) : 999;
       return ai - bi;
     });
-
+    const skipBudgetTaskNames = new Set();
     sortedTasks.forEach((t) => {
-      const isTodo = (t.itemType || "todo").toLowerCase() === "todo";
-      const baseColor = getSectionColor(t.sectionId);
-      const color = withMoreTransparency(baseColor);
-      const bar = document.createElement("div");
-      bar.className =
-        "calendar-monthly-span-bar calendar-monthly-span-bar--todo" +
-        (isTodo ? " calendar-monthly-span-bar--has-checkbox" : "") +
-        (calendarBarTaskIsOverdueTodo(t)
-          ? " calendar-monthly-span-bar--overdue"
-          : "");
-      bar.title = t.name;
-      bar.style.cssText = `--bar-bg:${color}`;
-      if (isTodo) {
-        bar.innerHTML = `${lpCalendarSpanBarTodoMarkerHtml(color)}<span class="calendar-monthly-span-bar-text">${escapeHtml(t.name || "")}</span>`;
-      } else {
-        bar.style.setProperty("--schedule-icon-color", color);
-        bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" style="border-color:${color}"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(t.name || "")}</span>`;
-      }
-      if (isTodo && t.done) {
-        bar.classList.add("is-completed");
-        bar
-          .querySelector(".calendar-monthly-span-bar-checkbox")
-          ?.classList.add("checked");
-      }
-      if (isTodo && !window.matchMedia("(max-width: 48rem)").matches) {
-        bar.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const newDone = !t.done;
-          if (t.kpiTodoId && t.storageKey) {
-            syncKpiTodoCompleted(t.kpiTodoId, t.storageKey, newDone);
-          } else if (KPI_SECTION_IDS.includes(t.sectionId) && t.taskId) {
-            updateSectionTaskDone(t.sectionId, t.taskId, newDone);
-          } else if (t.sectionId?.startsWith("custom-") && t.taskId) {
-            updateCustomSectionTaskDone(t.sectionId, t.taskId, newDone);
-          }
-          t.done = newDone;
-          bar.classList.toggle("is-completed", newDone);
-          bar
-            .querySelector(".calendar-monthly-span-bar-checkbox")
-            ?.classList.toggle("checked", newDone);
-          const SECTION_LABELS_LOCAL = {
-            dream: "꿈",
-            sideincome: "부수입",
-            health: "건강",
-            happy: "행복",
-          };
-          const updatedStats = {};
-          ["dream", "sideincome", "health", "happy"].forEach((sid) => {
-            const sectionTasks = tasks.filter((task) => task.sectionId === sid);
-            updatedStats[sid] = {
-              done: sectionTasks.filter((task) => task.done).length,
-              total: sectionTasks.length,
-              label: SECTION_LABELS_LOCAL[sid] || sid,
-            };
-          });
-          refreshKpiSidebar(updatedStats);
-          refreshTodoList();
-        });
-      }
-      if (t.dueDate) {
-        bar.addEventListener("contextmenu", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          createCalendarBarRevertBubble(
-            e.clientX,
-            e.clientY,
-            t,
-            () => {
-              renderCalendar();
-              refreshTodoList();
-            },
-            () => {},
-          );
-        });
-      }
-
-      const tr = document.createElement("tr");
-      tr.dataset.taskName = (t.name || "").trim();
-      const nameTd = document.createElement("td");
-      nameTd.appendChild(bar);
-      tr.appendChild(nameTd);
-      const priorityTd = document.createElement("td");
-      priorityTd.className = "calendar-1day-todo-priority-cell";
-      priorityTd.textContent = (t.eisenhower || "").trim()
-        ? EISENHOWER_LABELS_1DAY[(t.eisenhower || "").trim()] ||
-          (t.eisenhower || "").trim()
-        : "";
-      tr.appendChild(priorityTd);
-      todoTbody.appendChild(tr);
+      const n = (t.name || "").trim();
+      if (n) skipBudgetTaskNames.add(n);
     });
-
-    const todoSection = document.createElement("div");
-    todoSection.className = "calendar-1day-todo-section";
-    const todoSectionHeader = document.createElement("div");
-    todoSectionHeader.className = "calendar-1day-todo-section-header";
-    todoSectionHeader.textContent = "2. 투두리스트 확인";
-    const todoSectionBody = document.createElement("div");
-    todoSectionBody.className = "calendar-1day-todo-section-body";
-    todoSectionBody.appendChild(todoTable);
-
-    todoSection.appendChild(todoSectionHeader);
-    todoSection.appendChild(todoSectionBody);
 
     const SECTION_LABELS = {
       dream: "꿈",
@@ -5048,14 +4899,16 @@ function render1DayView(tabsElement) {
     renderTimeBudgetTablesForCalendar(
       budgetColumn,
       targetKey,
-      todoSection,
+      null,
       onScheduledUpdate,
       onOverlapCleared,
       topBarLeft,
+      skipBudgetTaskNames,
     );
     calendarGrid.appendChild(budgetColumn);
     refreshKpiSidebar(taskStats);
-    calendarGrid.appendChild(timeColumn);
+    calendarGrid.appendChild(timeSidebarWrap);
+    timeSidebarWrap.appendChild(timeColumn);
 
     /* 구분선 */
     const divider = document.createElement("div");
@@ -5307,6 +5160,36 @@ function render1DayView(tabsElement) {
     timeTableWrap.appendChild(headerRow);
     timeTableWrap.appendChild(timeTableInner);
     timeColumn.appendChild(timeTableWrap);
+
+    const todoSidebar = document.createElement("aside");
+    todoSidebar.className = "calendar-todo-sidebar";
+    todoSidebar.innerHTML = `
+    ${lpCalendarTodoSidebarHeaderMarkup()}
+    <div class="calendar-todo-sidebar-body">
+      <div class="calendar-todo-sidebar-main"></div>
+    </div>
+  `;
+    const sidebarBody = todoSidebar.querySelector(".calendar-todo-sidebar-body");
+    const sidebarMain =
+      sidebarBody.querySelector(".calendar-todo-sidebar-main");
+    const toolbarActionsSlot = todoSidebar.querySelector(
+      ".calendar-todo-sidebar-toolbar-actions",
+    );
+    const todoListEl = renderTodoList(
+      lpCalendarDateSidebarTodoListOpts(sidebarMode, {
+        categoryToolbarActionsSlot: toolbarActionsSlot,
+      }),
+    );
+    sidebarMain.appendChild(lpWrapCalendarTodoSidebarListEl(todoListEl));
+    lpBindCalendarTodoSidebarCollapse(todoSidebar);
+    applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
+    timeSidebarWrap.appendChild(todoSidebar);
+    attachCalendarTodoSidebarSpanRevertDrop(
+      sidebarBody,
+      () => renderCalendar(),
+      () => refreshTodoList(),
+    );
+
     wrap.dataset.dateStr = targetKey;
   }
 
@@ -5401,6 +5284,7 @@ function render1DayView(tabsElement) {
   wrap._lpRefreshCalendarView = () => {
     renderCalendar();
   };
+  wrap._lpRefreshDateTodoSidebar = refreshTodoList;
 
   return wrap;
 }
@@ -6620,7 +6504,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
     } else if (subViewId === "annual") {
       contentArea.appendChild(renderAnnualView(null));
     } else if (subViewId === "1day") {
-      contentArea.appendChild(render1DayView(null));
+      contentArea.appendChild(render1DayView(null, todoSidebarMode));
     }
     if (keepSubTabsOnTop) {
       wrap.insertBefore(subTabs, contentArea);
