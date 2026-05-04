@@ -179,15 +179,10 @@ export function createTodoSettingsModal(options = {}) {
     <div class="todo-settings-backdrop"></div>
     <div class="todo-settings-panel todo-settings-panel--macos">
       <div class="todo-settings-mac-titlebar">
-        <div class="todo-settings-mac-traffic">
-          <button type="button" class="todo-settings-mac-dot todo-settings-mac-dot--close" aria-label="닫기"></button>
-          <span class="todo-settings-mac-dot todo-settings-mac-dot--mini" aria-hidden="true"></span>
-          <span class="todo-settings-mac-dot todo-settings-mac-dot--zoom" aria-hidden="true"></span>
-        </div>
         <div class="todo-settings-mac-title-wrap">
           <h3 class="todo-settings-title">할 일 환경 설정</h3>
         </div>
-        <div class="todo-settings-mac-titlebar-spacer" aria-hidden="true"></div>
+        <button type="button" class="todo-settings-sheet-close" aria-label="닫기"><span aria-hidden="true">×</span></button>
       </div>
       <div class="todo-settings-body">
         <div class="todo-settings-block">
@@ -198,7 +193,7 @@ export function createTodoSettingsModal(options = {}) {
   `;
 
   const togglesEl = modal.querySelector(".todo-settings-toggles");
-  const closeBtn = modal.querySelector(".todo-settings-mac-dot--close");
+  const closeBtn = modal.querySelector(".todo-settings-sheet-close");
 
   let hideCompleted = settings.hideCompleted;
   let sectionTaskListFilter = normalizeSectionTaskListFilter(

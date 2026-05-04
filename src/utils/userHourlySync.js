@@ -8,11 +8,10 @@ import {
 export const USER_HOURLY_RATE_KEY = "user_hourly_rate";
 
 /**
- * DB appearance JSON → 로컬 할일 설정 중 동기화 대상만 반영.
- * 색상은 앱 코드 고정값만 쓰므로 서버에 있든 없든 여기서 다루지 않는다.
+ * DB appearance JSON → 로컬 할일 설정 중 동기화 대상만 반영 (완료 숨김·표시 필터).
  */
 export function applyAppearanceFromServer(a) {
-  if (!a || typeof a !== "object") return;
+  if (!a || typeof a !== "object") return false;
   const cur = getTodoSettings();
   const next = { ...cur };
   let changed = false;
@@ -27,6 +26,7 @@ export function applyAppearanceFromServer(a) {
     changed = true;
   }
   if (changed) saveTodoSettings(next);
+  return changed;
 }
 
 /** 브라우저/OS 타임존 → DB (리마인더 푸시가 사용자 로컬 시각과 맞도록) */
@@ -70,7 +70,11 @@ export async function pullUserPrefsFromSupabase() {
     }
   }
 
-  applyAppearanceFromServer(data.appearance);
+  if (applyAppearanceFromServer(data.appearance)) {
+    try {
+      window.dispatchEvent(new CustomEvent("app-colors-changed"));
+    } catch (_) {}
+  }
   await syncUserIanaTimezoneToSupabase();
 }
 
@@ -79,7 +83,7 @@ export async function pullHourlyRateToLocalStorage() {
   await pullUserPrefsFromSupabase();
 }
 
-/** 할 일 목록 appearance: 완료 숨기기 + 할 일/일정 표시 필터 (색상 필드 없음) */
+/** 할 일 목록 appearance: 완료 숨기기 + 할 일/일정 표시 필터 */
 export async function pushAppearanceToSupabase() {
   if (!supabase) return;
   const {

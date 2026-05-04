@@ -311,7 +311,11 @@ export function render() {
               new CustomEvent("app-hourly-rate-changed", { detail: { rate: hr } }),
             );
           }
-          applyAppearanceFromServer(data.appearance);
+          if (applyAppearanceFromServer(data.appearance)) {
+            try {
+              window.dispatchEvent(new CustomEvent("app-colors-changed"));
+            } catch (_) {}
+          }
         });
     });
   }

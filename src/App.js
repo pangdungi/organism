@@ -105,7 +105,7 @@ const TABS = [
   },
   {
     id: "calendar",
-    label: "할일/일정",
+    label: "할일",
     mobileLabel: "할일",
     /** 모바일 하단·데스크톱 사이드바 동일 — 할일 목록 아이콘 */
     icon: "/toolbaricons/todolist.svg",
@@ -114,8 +114,8 @@ const TABS = [
   },
   {
     id: "schedulecalendar",
-    label: "캘린더",
-    mobileLabel: "캘린더",
+    label: "일정",
+    mobileLabel: "일정",
     icon: "/toolbaricons/calendar-heart1.svg",
     sidebarSection: "main",
     sidebarOrder: 3,
@@ -664,7 +664,7 @@ export async function mountApp(container) {
   const mobileTabsFiltered = TABS.filter(
     (t) => !HIDE_ON_MOBILE_TAB_IDS.includes(t.id) && !t.sidebarDesktopOnly,
   );
-  /** 모바일 하단 탭 순서: 오늘 → 시간 → 할일 → 캘린더 → 근무표 → … */
+  /** 모바일 하단 탭 순서: 오늘 → 시간 → 할일 → 일정 → 근무표 → … */
   const MOBILE_BOTTOM_NAV_ORDER = [
     "home",
     "time",

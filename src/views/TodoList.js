@@ -77,27 +77,41 @@ function isTodoListMobileModalViewport() {
   }
 }
 
-// 나의 계정에서 색상 저장 시 탭 버튼 테두리 즉시 반영
+// 나의 계정·환경설정에서 색 저장 시 탭 버튼·행 배경 즉시 반영
 window.addEventListener("app-colors-changed", () => {
   const container = document.querySelector(".todo-category-tabs");
-  if (!container) return;
-  container
-    .querySelectorAll(".todo-category-tab[data-section]")
-    .forEach((btn) => {
-      const c = getSectionColor(btn.dataset.section);
-      if (c) {
-        btn.style.borderLeft = `0.0625rem solid ${c}`;
-        btn.style.borderTop = `0.0625rem solid ${c}`;
-        btn.style.borderRight = `0.0625rem solid ${c}`;
-        btn.style.borderBottom = `0.0625rem solid ${c}`;
-        btn.style.backgroundColor = "";
-      } else {
-        btn.style.borderLeft = "";
-        btn.style.borderTop = "";
-        btn.style.borderRight = "";
-        btn.style.borderBottom = "";
-      }
-    });
+  if (container) {
+    container
+      .querySelectorAll(".todo-category-tab[data-section]")
+      .forEach((btn) => {
+        const c = getSectionColor(btn.dataset.section);
+        if (c) {
+          btn.style.borderLeft = `0.0625rem solid ${c}`;
+          btn.style.borderTop = `0.0625rem solid ${c}`;
+          btn.style.borderRight = `0.0625rem solid ${c}`;
+          btn.style.borderBottom = `0.0625rem solid ${c}`;
+          btn.style.backgroundColor = "";
+        } else {
+          btn.style.borderLeft = "";
+          btn.style.borderTop = "";
+          btn.style.borderRight = "";
+          btn.style.borderBottom = "";
+        }
+      });
+  }
+
+  document.querySelectorAll(".todo-task-row").forEach((tr) => {
+    const sid = (tr.dataset.sectionId || "").trim();
+    const hasDates = tr.dataset.hasDates === "true";
+    if (!sid) return;
+    if (!hasDates) {
+      tr.style.setProperty("--row-section-color", getSectionColor(sid));
+    }
+    const dot = tr.querySelector(".todo-schedule-dot");
+    if (dot) {
+      dot.style.backgroundColor = getSectionColor(sid);
+    }
+  });
 });
 
 function loadSectionTasks(sectionId) {
@@ -3059,10 +3073,11 @@ function createTaskCard(taskData, options = {}) {
             card,
             hadSectionMove,
           );
+        } else if (sectionsWrap) {
+          /* 디바운스 저장(300ms)보다 그리드 갱신이 먼저 돌면 세션은 옛 날짜 → 즉시 DOM→메모리 동기화 */
+          flushSaveSectionTasksFromDOM(sectionsWrap);
         }
-        if (isKpiTodo && kpiTodoId && storageKey) {
-          scheduleSave();
-        } else {
+        if (!(isKpiTodo && kpiTodoId && storageKey)) {
           const domSid = (card.dataset.sectionId || "").trim();
           const sidForPush =
             domSid === "overdue"
@@ -3074,7 +3089,6 @@ function createTaskCard(taskData, options = {}) {
             taskRecordFromCardForServer(card),
             "수정모달_저장",
           );
-          scheduleSave();
         }
         requestCalendarTodoSidebarRebuildFromCard(card);
       },
@@ -3698,11 +3712,18 @@ export function render(options = {}) {
     reuseSettingsButtonEl = null,
     /** 할일/일정: 꿈·부수입 탭 줄 우측에 + / 설정 */
     categoryToolbarRightActions = false,
+    /** 캘린더 사이드바: +·설정을 헤더(.calendar-todo-sidebar-toolbar-actions)에 붙일 때 */
+    categoryToolbarActionsSlot = null,
   } = options;
   const hasExplicitInitialTab = Object.prototype.hasOwnProperty.call(
     options,
     "initialActiveTabIndex",
   );
+  const useSidebarHeaderToolbarActions =
+    categoryToolbarRightActions &&
+    categoryToolbarActionsSlot &&
+    typeof categoryToolbarActionsSlot.replaceChildren === "function";
+
   /** 사이드바 등 hideToolbar 임베드는 탭 세션과 분리(메인 할일 탭이 꿈인데 캘린더 옆바가 브레인 덤프로 열리는 혼선 방지) */
   const persistFixedListTabToSession = !hideToolbar && !hasExplicitInitialTab;
   const el = document.createElement("div");
@@ -3863,7 +3884,11 @@ export function render(options = {}) {
     });
     actionsEnd.appendChild(quickAddBtn);
     actionsEnd.appendChild(settingsBtn);
-    toolbarRow.appendChild(actionsEnd);
+    if (useSidebarHeaderToolbarActions) {
+      categoryToolbarActionsSlot.replaceChildren(actionsEnd);
+    } else {
+      toolbarRow.appendChild(actionsEnd);
+    }
   } else if (!settingsSlot) {
     toolbarRow.appendChild(toolbar);
   }

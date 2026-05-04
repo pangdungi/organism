@@ -157,15 +157,15 @@ export function pickRandomPresetRgba(alpha = 0.6) {
 }
 
 /**
- * 리스트 기본 색 (프리셋만)
- * 꿈·부수입·건강·행복 = 지정 4색, 브레인 덤프는 그 외 팔레트 톤
+ * KPI 고정 리스트색 (코드 고정)
+ * 브레인 덤프 빨강 · 꿈 보라 · 부수입 초록 · 건강 파랑 · 행복 노랑
  */
 export const DEFAULT_SECTION_COLORS = {
-  braindump: hexToRgba("#8B8757", 0.6),
-  dream: hexToRgba("#8A7A9E", 0.6),
-  sideincome: hexToRgba("#C4BEA8", 0.6),
-  health: hexToRgba("#3D4A3E", 0.6),
-  happy: hexToRgba("#9E8A8A", 0.6),
+  braindump: hexToRgba("#FF6B6B", 0.6),
+  dream: hexToRgba("#A29BFE", 0.6),
+  sideincome: hexToRgba("#52C41A", 0.6),
+  health: hexToRgba("#74B9FF", 0.6),
+  happy: hexToRgba("#FFD166", 0.6),
 };
 
 /**
@@ -184,18 +184,18 @@ export const DEFAULT_TIME_CATEGORY_COLORS = {
 const TIME_CATEGORY_PRESET_VERSION = 1;
 
 /** 고정 리스트(브레인덤프·꿈·부수입·건강·행복) 기본색 재배치 시 버전 증가 */
-const SECTION_LIST_PRESET_VERSION = 1;
+const SECTION_LIST_PRESET_VERSION = 2;
 
 /**
- * 작업(세부) 카테고리 기본색 — 꿈/부수입/행복/건강은 리스트 4색과 동일(폴백용),
+ * 작업(세부) 카테고리 기본색 — 꿈/부수입/행복/건강은 리스트 KPI색과 동일(폴백용),
  * 그외·쾌락충족 등은 위 4색을 쓰지 않는 팔레트로 서로 다르게
  */
 export const DEFAULT_TASK_CATEGORY_COLORS = {
   "": hexToRgba("#C97A6A", 0.5),
-  dream: hexToRgba("#8A7A9E", 0.7),
-  sideincome: hexToRgba("#C4BEA8", 0.7),
-  happiness: hexToRgba("#9E8A8A", 0.7),
-  health: hexToRgba("#3D4A3E", 0.7),
+  dream: hexToRgba("#A29BFE", 0.7),
+  sideincome: hexToRgba("#52C41A", 0.7),
+  happiness: hexToRgba("#FFD166", 0.7),
+  health: hexToRgba("#74B9FF", 0.7),
   pleasure: hexToRgba("#C4906A", 0.7),
   dreamblocking: hexToRgba("#B89A6A", 0.7),
   unhappiness: hexToRgba("#8A9E82", 0.65),
@@ -206,7 +206,7 @@ export const DEFAULT_TASK_CATEGORY_COLORS = {
 };
 
 /** 작업 세부 기본색 일괄 갱신(구버전 로컬 덮어쓰기) */
-const TASK_SUBCATEGORY_PRESET_VERSION = 1;
+const TASK_SUBCATEGORY_PRESET_VERSION = 2;
 
 /** 커스텀 리스트용 기본 색상 풀 (프리셋 전체) */
 const CUSTOM_SECTION_COLOR_POOL = APP_PRESET_RGBA_LIST;
@@ -271,7 +271,7 @@ export function updateCustomSectionLabel(sectionId, newLabel) {
 }
 
 export function getCustomSectionColor(sectionId) {
-  return resolveSectionListColor(sectionId);
+  return getSectionColor(sectionId);
 }
 
 /** @deprecated 팔레트 선택용 - APP_PRESET_RGBA_LIST 사용 */
@@ -370,7 +370,7 @@ export function saveTodoSettings(settings) {
 }
 
 /**
- * 리스트(섹션) 색상 — 고정 5종은 DEFAULT_SECTION_COLORS, 커스텀은 id 해시로만 결정(저장·선택 없음).
+ * 리스트(섹션) 색상 — KPI 고정 5종은 DEFAULT_SECTION_COLORS, 커스텀은 id 해시 풀.
  * 월 캘린더·탭 강조 등은 이 값을 쓴다.
  */
 export function getSectionColor(sectionId) {

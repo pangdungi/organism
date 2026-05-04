@@ -195,6 +195,19 @@ html {
   --modal-close-fs-lg: 1.5rem;
   /* 모달·다이얼로그 패널 모서리 통일 (0.75rem = 12px) */
   --modal-radius: 0.75rem;
+  /* 모달 시트 상단 바 — 근무-식단 유형 설정 헤더와 동일 (13px · #424245 · 일반 굵기 · 16×20 패딩) */
+  --lp-modal-header-padding-y: 1rem;
+  --lp-modal-header-padding-x: 1.25rem;
+  --lp-modal-header-title-font-family: var(--font-system-sans);
+  --lp-modal-header-title-size: 0.8125rem;
+  --lp-modal-header-title-weight: 400;
+  --lp-modal-header-title-color: #424245;
+  --lp-modal-header-title-letter-spacing: normal;
+  --lp-modal-header-title-line-height: 1.25;
+  /* 모달 헤더 우측 닫기(X): 타이틀 행과 같이 보이도록 터치 영역·글자 크기 통일 */
+  --lp-modal-header-close-min: 2.75rem;
+  --lp-modal-header-close-fs: var(--modal-close-fs);
+  --lp-modal-header-close-fw: 500;
   /* 구분선 — 맥 윈도우·리스트 구분선 느낌 */
   --line-l1: 1px solid #d2d2d7;
   --line-l2: 1px solid #e5e5ea;
@@ -564,7 +577,7 @@ body {
 }
 
 /* 모달 X(닫기): 항상 표시 (호버 불필요) */
-.todo-settings-panel .todo-settings-mac-dot--close,
+.todo-settings-panel .todo-settings-sheet-close,
 .asset-settings-panel .asset-settings-close,
 .work-schedule-type-settings-panel .work-schedule-type-settings-close,
 .todo-list-modal-panel .todo-list-modal-close,
@@ -2866,23 +2879,29 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.25rem;
+  padding: var(--lp-modal-header-padding-y) var(--lp-modal-header-padding-x);
   border-bottom: var(--line-l3);
 }
 .diary-add-modal-title {
   margin: 0;
-  font-size: 1.125rem;
-  font-weight: 500;
-  color: var(--text-body);
+  font-family: var(--lp-modal-header-title-font-family);
+  font-size: var(--lp-modal-header-title-size);
+  font-weight: var(--lp-modal-header-title-weight);
+  letter-spacing: var(--lp-modal-header-title-letter-spacing);
+  line-height: var(--lp-modal-header-title-line-height);
+  color: var(--lp-modal-header-title-color);
 }
 .diary-add-modal-close {
   flex-shrink: 0;
-  min-width: 2.5rem;
-  min-height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--lp-modal-header-close-min);
+  min-height: var(--lp-modal-header-close-min);
   padding: 0;
-  font-size: 1.625rem;
+  font-size: var(--lp-modal-header-close-fs);
   line-height: 1;
-  font-weight: 500;
+  font-weight: var(--lp-modal-header-close-fw);
   color: var(--text-body);
   background: none;
   border: none;
@@ -2989,7 +3008,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
+  padding: var(--lp-modal-header-padding-y) var(--lp-modal-header-padding-x);
   border-bottom: var(--line-l3);
 }
 .diary-step-modal-progress {
@@ -2999,12 +3018,15 @@ body {
 }
 .diary-step-modal-close {
   flex-shrink: 0;
-  min-width: 2.5rem;
-  min-height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--lp-modal-header-close-min);
+  min-height: var(--lp-modal-header-close-min);
   padding: 0;
-  font-size: 1.625rem;
+  font-size: var(--lp-modal-header-close-fs);
   line-height: 1;
-  font-weight: 500;
+  font-weight: var(--lp-modal-header-close-fw);
   color: var(--text-body);
   background: none;
   border: none;
@@ -3195,18 +3217,21 @@ body {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 0.35rem 0.5rem 0.35rem 1rem;
+  padding: var(--lp-modal-header-padding-y) var(--lp-modal-header-padding-x);
   border-bottom: var(--line-l3);
   background: var(--content-bg);
 }
 .diary-desktop-compose-modal-close {
   flex-shrink: 0;
-  min-width: 2.5rem;
-  min-height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--lp-modal-header-close-min);
+  min-height: var(--lp-modal-header-close-min);
   padding: 0;
-  font-size: 1.625rem;
+  font-size: var(--lp-modal-header-close-fs);
   line-height: 1;
-  font-weight: 400;
+  font-weight: var(--lp-modal-header-close-fw);
   color: var(--text-body);
   background: none;
   border: none;
@@ -5662,14 +5687,14 @@ body {
     min-height: 0;
   }
   .calendar-view-with-subtabs .calendar-monthly-day-num {
-    font-size: 0.7rem !important;
+    font-size: 0.625rem !important;
   }
   .calendar-view-with-subtabs .calendar-monthly-day-entries {
     margin-top: 0.2rem !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: stretch !important;
-    gap: 0.375rem !important;
+    gap: 0.22rem !important;
     overflow: visible !important;
   }
   .calendar-view-with-subtabs
@@ -5682,17 +5707,18 @@ body {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
-    min-height: 1.65rem !important;
-    padding: 0.3rem 0.45rem !important;
+    min-height: 1.1rem !important;
+    padding: 0.14rem 0.28rem !important;
     flex-shrink: 0;
   }
   .calendar-view-with-subtabs .calendar-monthly-span-bar {
-    min-height: 0.95rem !important;
+    min-height: 0.85rem !important;
   }
   .calendar-view-with-subtabs
     .calendar-monthly-span-bar
     .calendar-monthly-span-bar-text {
-    font-size: 0.6rem !important;
+    font-size: 0.53125rem !important;
+    line-height: 1.2 !important;
   }
   .calendar-view-with-subtabs
     .calendar-monthly-span-bar--has-checkbox
@@ -5704,8 +5730,8 @@ body {
     padding-left: 0.2rem !important;
   }
   .calendar-view-with-subtabs .calendar-monthly-weekday {
-    padding: 0.25rem !important;
-    font-size: 0.55rem !important;
+    padding: 0.2rem !important;
+    font-size: 0.5rem !important;
   }
   .calendar-view-with-subtabs .calendar-monthly-bars {
     top: 1.35rem !important;
@@ -6030,7 +6056,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 0.375rem;
+    gap: 0.22rem;
     overflow: visible;
   }
   .calendar-monthly-day-entries .calendar-monthly-span-bar {
@@ -6041,91 +6067,51 @@ body {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
-    min-height: 1.65rem !important;
-    padding: 0.3rem 0.45rem !important;
+    min-height: 1.1rem !important;
+    padding: 0.14rem 0.28rem !important;
     flex-shrink: 0;
   }
   .calendar-monthly-day-entries .calendar-monthly-span-bar--has-checkbox {
-    gap: 0.35rem !important;
-    padding-left: 0.4rem !important;
+    gap: 0 !important;
+    padding-left: 0.28rem !important;
   }
 
-  /* 모바일: 1주 뷰 — 한 줄에 한 날짜씩 7행으로 표시 (할일 막대·완료 표시는 월별과 동일 클래스 → 전역 .calendar-monthly-span-bar 규칙만 사용) */
-  .calendar-1week-view .calendar-monthly-grid {
-    display: flex;
-    flex-direction: column;
-  }
-  /* 모바일 1주 뷰: entries·바·체크박스 터치 가능 (부모가 none이면 자식도 히트 안 됨 → entries도 auto) */
-  .calendar-1week-view .calendar-monthly-day .calendar-monthly-day-entries,
-  .calendar-1week-view .calendar-monthly-day-entries .calendar-monthly-span-bar,
-  .calendar-1week-view
-    .calendar-monthly-day-entries
-    .calendar-monthly-span-bar
-    .calendar-monthly-span-bar-checkbox,
-  .calendar-1week-view
-    .calendar-monthly-day-entries
-    .calendar-monthly-span-bar
-    .calendar-monthly-span-bar-checkbox-inner {
-    pointer-events: auto !important;
-  }
-  /* 요일은 각 날짜 셀 안으로 옮김 — 상단 7열 헤더 제거 */
-  .calendar-1week-view .calendar-monthly-weekdays {
+  /* 모바일 캘린더 격자: 체크·일정 마커 숨김 + 글자·줄간격 축소(좁은 셀에 더 많이 표시) */
+  .calendar-view .calendar-monthly-span-bar-checkbox,
+  .calendar-view .calendar-monthly-span-bar-icon--schedule {
     display: none !important;
   }
-  .calendar-1week-view .calendar-1week-day-head {
-    display: flex !important;
-    flex-direction: row;
-    align-items: baseline;
-    gap: 0.4rem;
-    margin-bottom: 0.25rem;
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    background: transparent;
+  .calendar-view .calendar-monthly-span-bar--has-checkbox {
+    gap: 0 !important;
+    padding-left: 0.26rem !important;
   }
-  .calendar-1week-view .calendar-1week-day-weekday {
-    display: inline !important;
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: #9ca3af;
-    flex-shrink: 0;
+  .calendar-view
+    .calendar-monthly-span-bar--schedule-strip:not(.calendar-monthly-span-bar--todo) {
+    border-left: none !important;
+    padding-left: 0.26rem !important;
   }
-  .calendar-1week-view .calendar-monthly-week-wrap {
-    flex: 1;
-    min-height: 0;
+  .calendar-view .calendar-monthly-day-entries .calendar-monthly-span-bar-text {
+    font-size: 0.53125rem !important;
+    line-height: 1.2 !important;
+    padding: 0 !important;
+    font-weight: 400 !important;
   }
-  .calendar-1week-view .calendar-monthly-week {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
+  .calendar-view .calendar-monthly-bars .calendar-monthly-span-bar-text {
+    font-size: 0.5625rem !important;
+    line-height: 1.12 !important;
+    font-weight: 400 !important;
   }
-  .calendar-1week-view .calendar-monthly-day {
-    width: 100%;
-    /* 내용 높이에 맞춤 — min-height 4.5rem 시 할일이 적을 때 셀 하단이 비어 흰 여백으로 보이던 것 방지 */
-    min-height: 0;
-    flex: 0 0 auto;
-    box-sizing: border-box;
-    border: var(--divider-default);
-    border-left: none;
-    border-right: none;
-    border-bottom: none;
-    border-radius: 0 !important;
-    padding: 0.4rem 0.5rem 0.3rem !important;
+  .calendar-day-expand-bubble--mobile .calendar-day-expand-checkbox,
+  .calendar-day-expand-bubble--mobile .calendar-day-expand-schedule-dot {
+    display: none !important;
   }
-  .calendar-1week-view .calendar-monthly-day.empty {
-    display: none;
+  .calendar-day-expand-bubble--mobile .calendar-day-expand-item {
+    gap: 0.35rem;
+    padding: 0.26rem 0.42rem;
+    font-size: 0.8125rem;
   }
-  .calendar-1week-view .calendar-monthly-day-num {
-    font-size: 0.875rem;
-    font-weight: 600;
-    margin-bottom: 0;
-    text-align: left;
-  }
-  .calendar-1week-view .calendar-monthly-day-entries {
-    min-height: 0;
-    /* 전역 .calendar-monthly-day-entries { flex:1 } — 1주 세로행에서 맨 아래로 빈 면 늘어나는 것 방지 */
-    flex: 0 0 auto;
-    width: 100%;
+  .calendar-view .calendar-monthly-day-num {
+    font-size: 0.625rem !important;
   }
 
   /* 모바일: 월별 캘린더만 좌우 패딩 제거 (화면 끝까지) */
@@ -10245,24 +10231,32 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.25rem;
+  padding: var(--lp-modal-header-padding-y) var(--lp-modal-header-padding-x);
   border-bottom: var(--line-l3);
   flex-shrink: 0;
 }
 
 .work-schedule-type-settings-title {
   margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--fs-h2);
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: var(--text-ink);
+  font-family: var(--lp-modal-header-title-font-family);
+  font-size: var(--lp-modal-header-title-size);
+  font-weight: var(--lp-modal-header-title-weight);
+  letter-spacing: var(--lp-modal-header-title-letter-spacing);
+  line-height: var(--lp-modal-header-title-line-height);
+  color: var(--lp-modal-header-title-color);
 }
 
 .work-schedule-type-settings-close {
-  padding: 0.25rem;
-  font-size: 1.5rem;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--lp-modal-header-close-min);
+  min-height: var(--lp-modal-header-close-min);
+  padding: 0;
+  font-size: var(--lp-modal-header-close-fs);
   line-height: 1;
+  font-weight: var(--lp-modal-header-close-fw);
   border: none;
   background: none;
   color: var(--text-muted);
@@ -11921,18 +11915,19 @@ col.asset-expense-col-amount,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.25rem;
+  padding: var(--lp-modal-header-padding-y) var(--lp-modal-header-padding-x);
   border-bottom: var(--line-l3);
   background: #f5f5f7;
 }
 
 .asset-settings-title {
   margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--fs-h2);
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: var(--text-ink);
+  font-family: var(--lp-modal-header-title-font-family);
+  font-size: var(--lp-modal-header-title-size);
+  font-weight: var(--lp-modal-header-title-weight);
+  letter-spacing: var(--lp-modal-header-title-letter-spacing);
+  line-height: var(--lp-modal-header-title-line-height);
+  color: var(--lp-modal-header-title-color);
 }
 
 .asset-settings-close {
@@ -11940,13 +11935,13 @@ col.asset-expense-col-amount,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
+  min-width: var(--lp-modal-header-close-min);
+  min-height: var(--lp-modal-header-close-min);
   padding: 0;
-  font-size: var(--modal-close-fs);
+  font-size: var(--lp-modal-header-close-fs);
   line-height: 1;
   font-family: inherit;
-  font-weight: 500;
+  font-weight: var(--lp-modal-header-close-fw);
   color: var(--text-muted);
   background: none;
   border: none;
@@ -17520,7 +17515,8 @@ col.asset-expense-col-amount,
   align-items: center;
 }
 
-.calendar-view-todo .calendar-todo-content .todo-list-toolbar-actions-end {
+.calendar-view-todo .calendar-todo-content .todo-list-toolbar-actions-end,
+.calendar-todo-sidebar-toolbar-actions .todo-list-toolbar-actions-end {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
@@ -17531,13 +17527,15 @@ col.asset-expense-col-amount,
 }
 
 /* 시간가계부 사이드 타이머 아이콘과 동일 실루엣 — 빨간 톤 통일 */
-.calendar-view-todo .calendar-todo-content .todo-list-toolbar-actions-end img {
+.calendar-view-todo .calendar-todo-content .todo-list-toolbar-actions-end img,
+.calendar-todo-sidebar-toolbar-actions .todo-list-toolbar-actions-end img {
   display: block;
   filter: brightness(0) saturate(100%) invert(27%) sepia(93%) saturate(4386%)
     hue-rotate(348deg) brightness(91%) contrast(96%);
 }
 
-.calendar-view-todo .calendar-todo-content .todo-list-toolbar-quick-add {
+.calendar-view-todo .calendar-todo-content .todo-list-toolbar-quick-add,
+.calendar-todo-sidebar-toolbar-actions .todo-list-toolbar-quick-add {
   box-sizing: border-box;
   min-width: 2.25rem;
   min-height: 2.25rem;
@@ -17555,20 +17553,25 @@ col.asset-expense-col-amount,
   background: rgba(229, 57, 53, 0.08);
 }
 
-.calendar-view-todo .calendar-todo-content .todo-list-toolbar-quick-add svg {
+.calendar-view-todo .calendar-todo-content .todo-list-toolbar-quick-add svg,
+.calendar-todo-sidebar-toolbar-actions .todo-list-toolbar-quick-add svg {
   width: 1rem;
   height: 1rem;
   color: rgb(229, 57, 53);
   stroke: currentColor;
 }
 
-.calendar-view-todo .calendar-todo-content .todo-list-toolbar-quick-add img {
+.calendar-view-todo .calendar-todo-content .todo-list-toolbar-quick-add img,
+.calendar-todo-sidebar-toolbar-actions .todo-list-toolbar-quick-add img {
   width: 1.375rem;
   height: 1.375rem;
 }
 
 .calendar-view-todo
   .calendar-todo-content
+  .todo-list-toolbar-actions-end
+  .todo-list-settings-btn,
+.calendar-todo-sidebar-toolbar-actions
   .todo-list-toolbar-actions-end
   .todo-list-settings-btn {
   margin: 0;
@@ -17583,6 +17586,21 @@ col.asset-expense-col-amount,
   .todo-list-settings-btn:hover {
   background: rgba(229, 57, 53, 0.08) !important;
   border-radius: 0.375rem;
+}
+
+.calendar-todo-sidebar-toolbar-actions .todo-list-toolbar-actions-end {
+  margin-left: 0;
+  padding-left: 0;
+}
+
+/* 할일 사이드바 헤더: 설정은 +와 같이 호버·포커스 시 배경 없음 */
+.calendar-todo-sidebar-toolbar-actions
+  .todo-list-toolbar-actions-end
+  .todo-list-settings-btn:hover,
+.calendar-todo-sidebar-toolbar-actions
+  .todo-list-toolbar-actions-end
+  .todo-list-settings-btn:focus-visible {
+  background: transparent !important;
 }
 
 .calendar-view-todo .calendar-todo-content .todo-category-tab {
@@ -17682,26 +17700,34 @@ col.asset-expense-col-amount,
     padding: 0.32rem 0.4rem;
   }
 
-  .calendar-view-todo .calendar-todo-content .todo-list-toolbar-actions-end {
+  .calendar-view-todo .calendar-todo-content .todo-list-toolbar-actions-end,
+  .calendar-todo-sidebar-toolbar-actions .todo-list-toolbar-actions-end {
     gap: 0.22rem;
     padding-left: 0.22rem;
     flex-shrink: 0;
   }
 
-  .calendar-view-todo .calendar-todo-content .todo-list-toolbar-quick-add {
+  .calendar-todo-sidebar-toolbar-actions .todo-list-toolbar-actions-end {
+    padding-left: 0;
+  }
+
+  .calendar-view-todo .calendar-todo-content .todo-list-toolbar-quick-add,
+  .calendar-todo-sidebar-toolbar-actions .todo-list-toolbar-quick-add {
     min-width: 1.65rem;
     min-height: 1.65rem;
     padding: 0.18rem;
   }
 
-  .calendar-view-todo .calendar-todo-content .todo-list-toolbar-quick-add svg {
+  .calendar-view-todo .calendar-todo-content .todo-list-toolbar-quick-add svg,
+  .calendar-todo-sidebar-toolbar-actions .todo-list-toolbar-quick-add svg {
     width: 0.8125rem;
     height: 0.8125rem;
     color: rgb(229, 57, 53);
     stroke: currentColor;
   }
 
-  .calendar-view-todo .calendar-todo-content .todo-list-toolbar-quick-add img {
+  .calendar-view-todo .calendar-todo-content .todo-list-toolbar-quick-add img,
+  .calendar-todo-sidebar-toolbar-actions .todo-list-toolbar-quick-add img {
     width: 1.0625rem;
     height: 1.0625rem;
   }
@@ -17709,7 +17735,8 @@ col.asset-expense-col-amount,
   .calendar-view-todo
     .calendar-todo-content
     .todo-list-toolbar-actions-end
-    img {
+    img,
+  .calendar-todo-sidebar-toolbar-actions .todo-list-toolbar-actions-end img {
     max-width: 1.0625rem;
     max-height: 1.0625rem;
     width: auto !important;
@@ -17719,12 +17746,18 @@ col.asset-expense-col-amount,
   .calendar-view-todo
     .calendar-todo-content
     .todo-list-toolbar-actions-end
+    .todo-list-settings-btn,
+  .calendar-todo-sidebar-toolbar-actions
+    .todo-list-toolbar-actions-end
     .todo-list-settings-btn {
     padding: 0.18rem;
   }
 
   .calendar-view-todo
     .calendar-todo-content
+    .todo-list-toolbar-actions-end
+    .todo-list-settings-icon,
+  .calendar-todo-sidebar-toolbar-actions
     .todo-list-toolbar-actions-end
     .todo-list-settings-icon {
     width: 1rem !important;
@@ -18004,11 +18037,11 @@ col.asset-expense-col-amount,
 }
 
 .todo-settings-mac-titlebar {
-  display: grid;
-  grid-template-columns: minmax(5rem, 1fr) minmax(0, auto) minmax(5rem, 1fr);
+  display: flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.55rem 0.85rem 0.45rem;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: var(--lp-modal-header-padding-y) var(--lp-modal-header-padding-x);
   border-bottom: 1px solid rgba(0, 0, 0, 0.07);
   background: linear-gradient(
     180deg,
@@ -18018,68 +18051,62 @@ col.asset-expense-col-amount,
   flex-shrink: 0;
 }
 
-.todo-settings-mac-traffic {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  justify-self: start;
-}
-
-.todo-settings-mac-dot {
-  width: 0.75rem;
-  height: 0.75rem;
-  border-radius: 50%;
+.todo-settings-modal button.todo-settings-sheet-close {
+  -webkit-appearance: none;
+  appearance: none;
   flex-shrink: 0;
-  box-sizing: border-box;
-  box-shadow:
-    inset 0 0 0 0.03125rem rgba(0, 0, 0, 0.12),
-    0 0.0625rem 0 rgba(255, 255, 255, 0.35);
-}
-
-button.todo-settings-mac-dot--close {
-  padding: 0;
+  align-self: center;
+  width: auto;
+  height: auto;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0.2rem;
+  margin: 0;
   border: none;
+  border-radius: 0;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent !important;
+  color: rgba(100, 100, 105, 0.95);
+  box-shadow: none !important;
+  font-size: 1.35rem;
+  line-height: 1;
+  font-weight: 300;
   cursor: pointer;
-  background: #ff5f57;
-  transition: filter 0.12s ease;
+  transition: color 0.12s ease;
 }
 
-button.todo-settings-mac-dot--close:hover {
-  filter: brightness(0.95);
-}
-
-button.todo-settings-mac-dot--close:active {
-  filter: brightness(0.88);
-}
-
-.todo-settings-mac-dot--mini {
-  background: #febc2e;
+.todo-settings-modal button.todo-settings-sheet-close span {
+  display: block;
+  margin: 0;
+  line-height: 1;
   pointer-events: none;
 }
 
-.todo-settings-mac-dot--zoom {
-  background: #28c840;
-  pointer-events: none;
+.todo-settings-modal button.todo-settings-sheet-close:hover {
+  color: rgba(40, 40, 44, 1);
+}
+
+.todo-settings-modal button.todo-settings-sheet-close:active {
+  color: rgba(20, 20, 22, 1);
 }
 
 .todo-settings-mac-title-wrap {
-  justify-self: center;
-  text-align: center;
+  flex: 1;
   min-width: 0;
-}
-
-.todo-settings-mac-titlebar-spacer {
-  justify-self: end;
-  width: 5rem;
+  text-align: left;
 }
 
 .todo-settings-modal .todo-settings-title {
   margin: 0;
-  font-family: inherit;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: -0.015em;
-  color: rgba(0, 0, 0, 0.82);
+  font-family: var(--lp-modal-header-title-font-family);
+  font-size: var(--lp-modal-header-title-size);
+  font-weight: var(--lp-modal-header-title-weight);
+  letter-spacing: var(--lp-modal-header-title-letter-spacing);
+  line-height: var(--lp-modal-header-title-line-height);
+  color: var(--lp-modal-header-title-color);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -18109,7 +18136,22 @@ button.todo-settings-mac-dot--close:active {
 }
 
 .todo-settings-modal .todo-settings-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 0.75rem;
+}
+
+.todo-settings-modal .todo-settings-clear-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.todo-settings-modal .todo-settings-clear-row .todo-settings-toggle-label {
+  flex: 1;
+  min-width: 0;
 }
 
 .todo-settings-modal .todo-settings-toggle-label {
@@ -18132,7 +18174,7 @@ button.todo-settings-mac-dot--close:active {
 }
 
 .todo-settings-modal .todo-settings-toggle.on .todo-settings-toggle-track {
-  background: #34c759;
+  background: var(--ui-btn-primary-bg);
 }
 
 .todo-settings-modal .todo-settings-toggle-thumb {
@@ -18153,6 +18195,7 @@ button.todo-settings-mac-dot--close:active {
 }
 
 .todo-settings-modal .todo-settings-clear-btn {
+  flex-shrink: 0;
   padding: 0.22rem 0.65rem;
   font-size: 0.6875rem;
   font-weight: 500;
@@ -18376,11 +18419,12 @@ button.todo-settings-mac-dot--close:active {
 
 .todo-settings-color-modal-title {
   margin: 0 0 1rem;
-  font-family: var(--font-heading);
-  font-size: var(--fs-h2);
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: var(--text-ink);
+  font-family: var(--lp-modal-header-title-font-family);
+  font-size: var(--lp-modal-header-title-size);
+  font-weight: var(--lp-modal-header-title-weight);
+  letter-spacing: var(--lp-modal-header-title-letter-spacing);
+  line-height: var(--lp-modal-header-title-line-height);
+  color: var(--lp-modal-header-title-color);
 }
 
 .todo-settings-color-modal-swatches {
@@ -18481,17 +18525,18 @@ button.todo-settings-mac-dot--close:active {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.25rem;
+  padding: var(--lp-modal-header-padding-y) var(--lp-modal-header-padding-x);
   border-bottom: var(--line-l3);
 }
 
 .todo-list-modal-title {
   margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--fs-h2);
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: var(--text-ink);
+  font-family: var(--lp-modal-header-title-font-family);
+  font-size: var(--lp-modal-header-title-size);
+  font-weight: var(--lp-modal-header-title-weight);
+  letter-spacing: var(--lp-modal-header-title-letter-spacing);
+  line-height: var(--lp-modal-header-title-line-height);
+  color: var(--lp-modal-header-title-color);
 }
 
 .todo-list-modal-close {
@@ -18499,13 +18544,13 @@ button.todo-settings-mac-dot--close:active {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
+  min-width: var(--lp-modal-header-close-min);
+  min-height: var(--lp-modal-header-close-min);
   padding: 0;
-  font-size: var(--modal-close-fs);
+  font-size: var(--lp-modal-header-close-fs);
   line-height: 1;
   font-family: inherit;
-  font-weight: 500;
+  font-weight: var(--lp-modal-header-close-fw);
   color: var(--text-body);
   background: none;
   border: none;
@@ -19376,28 +19421,13 @@ svg.todo-card-reminder-icon {
 
 .todo-task-edit-modal .todo-list-modal-header {
   flex-shrink: 0;
-  padding: 0.875rem 1rem;
+  padding: var(--lp-modal-header-padding-y) var(--lp-modal-header-padding-x);
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   background: #f3f3f7;
 }
 
-.todo-task-edit-modal .todo-list-modal-title {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: 1.0625rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: #111827;
-}
-
-.todo-task-edit-modal .todo-list-modal-close {
-  color: #64748b;
-  min-width: 2.25rem;
-  min-height: 2.25rem;
-}
-
 .todo-task-edit-modal .todo-list-modal-close:hover {
-  color: #334155;
+  color: var(--text-ink);
 }
 
 /* 할 일 수정: 닫기(X) — 삭제는 본문·푸터 사이(할 일 삭제) */
@@ -22005,17 +22035,18 @@ svg.todo-card-reminder-icon {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.25rem;
+  padding: var(--lp-modal-header-padding-y) var(--lp-modal-header-padding-x);
   border-bottom: var(--line-l3);
 }
 
 .kpi-goals-modal-title {
   margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--fs-h2);
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: var(--text-ink);
+  font-family: var(--lp-modal-header-title-font-family);
+  font-size: var(--lp-modal-header-title-size);
+  font-weight: var(--lp-modal-header-title-weight);
+  letter-spacing: var(--lp-modal-header-title-letter-spacing);
+  line-height: var(--lp-modal-header-title-line-height);
+  color: var(--lp-modal-header-title-color);
 }
 
 .kpi-goals-modal-close {
@@ -22023,13 +22054,13 @@ svg.todo-card-reminder-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
+  min-width: var(--lp-modal-header-close-min);
+  min-height: var(--lp-modal-header-close-min);
   padding: 0;
-  font-size: var(--modal-close-fs);
+  font-size: var(--lp-modal-header-close-fs);
   line-height: 1;
   font-family: inherit;
-  font-weight: 500;
+  font-weight: var(--lp-modal-header-close-fw);
   color: var(--text-body);
   background: none;
   border: none;
@@ -23560,31 +23591,32 @@ body.kpi-resizing {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.25rem;
+  padding: var(--lp-modal-header-padding-y) var(--lp-modal-header-padding-x);
   border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
   background: rgba(236, 235, 240, 0.97);
 }
 
 .time-task-setup-title {
   margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--fs-h2);
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: var(--text-ink);
+  font-family: var(--lp-modal-header-title-font-family);
+  font-size: var(--lp-modal-header-title-size);
+  font-weight: var(--lp-modal-header-title-weight);
+  letter-spacing: var(--lp-modal-header-title-letter-spacing);
+  line-height: var(--lp-modal-header-title-line-height);
+  color: var(--lp-modal-header-title-color);
 }
 
 .time-task-setup-close {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 3rem;
-  min-height: 3rem;
+  min-width: var(--lp-modal-header-close-min);
+  min-height: var(--lp-modal-header-close-min);
   padding: 0;
-  font-size: 1.625rem;
+  font-size: var(--lp-modal-header-close-fs);
   line-height: 1;
   font-family: inherit;
-  font-weight: 500;
+  font-weight: var(--lp-modal-header-close-fw);
   color: var(--text-body);
   background: none;
   border: none;
@@ -23608,7 +23640,7 @@ body.kpi-resizing {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 1rem 1.25rem;
+  padding: var(--lp-modal-header-padding-y) var(--lp-modal-header-padding-x);
   border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
   background: rgba(236, 235, 240, 0.97);
   font-weight: 300;
@@ -23620,13 +23652,13 @@ body.kpi-resizing {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 3rem;
-  min-height: 3rem;
+  min-width: var(--lp-modal-header-close-min);
+  min-height: var(--lp-modal-header-close-min);
   padding: 0;
-  font-size: 1.625rem;
+  font-size: var(--lp-modal-header-close-fs);
   line-height: 1;
   font-family: inherit;
-  font-weight: 500;
+  font-weight: var(--lp-modal-header-close-fw);
   color: var(--text-body);
   background: none;
   border: none;
@@ -23640,11 +23672,12 @@ body.kpi-resizing {
 .time-task-log-header .time-task-setup-title {
   order: 1;
   text-align: left;
-  font-family: var(--font-heading);
-  font-size: var(--fs-h2);
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: var(--text-ink);
+  font-family: var(--lp-modal-header-title-font-family);
+  font-size: var(--lp-modal-header-title-size);
+  font-weight: var(--lp-modal-header-title-weight);
+  letter-spacing: var(--lp-modal-header-title-letter-spacing);
+  line-height: var(--lp-modal-header-title-line-height);
+  color: var(--lp-modal-header-title-color);
 }
 
 .time-task-setup-body {
@@ -24808,7 +24841,7 @@ body.kpi-resizing {
   grid-template-columns: 4.35rem 1fr 4.35rem;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.65rem 1rem 0.75rem;
+  padding: var(--lp-modal-header-padding-y) var(--lp-modal-header-padding-x);
   border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
   flex-shrink: 0;
   background: rgba(236, 235, 240, 0.97);
@@ -24854,11 +24887,12 @@ button.time-modal-traffic {
   justify-self: center;
   text-align: center;
   white-space: nowrap;
-  font-family: var(--font-modal-chrome);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: var(--text-ink);
+  font-family: var(--lp-modal-header-title-font-family);
+  font-size: var(--lp-modal-header-title-size);
+  font-weight: var(--lp-modal-header-title-weight);
+  letter-spacing: var(--lp-modal-header-title-letter-spacing);
+  line-height: var(--lp-modal-header-title-line-height);
+  color: var(--lp-modal-header-title-color);
 }
 .time-task-log-todo-inner-body {
   flex: 1;
@@ -25235,8 +25269,7 @@ button.time-modal-traffic {
   background: #0056c4 !important;
 }
 
-/* 소비/수입명 모달: 폰트 색 #1C1C1A 통일 */
-.time-task-log-expense-inner-modal .time-task-log-header .time-task-setup-title,
+/* 소비/수입명 모달: 폰트 색 #1C1C1A 통일 (헤더 타이틀은 앱 모달 공통 톤 유지) */
 .time-task-log-expense-inner-modal .time-task-log-field label,
 .time-task-log-expense-inner-modal .time-task-log-expense-amount-unit,
 .time-task-log-expense-inner-modal
@@ -33415,22 +33448,29 @@ button.time-modal-traffic {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.25rem;
+  padding: var(--lp-modal-header-padding-y) var(--lp-modal-header-padding-x);
   border-bottom: var(--line-l3);
 }
 .idea-delete-account-modal-title {
   margin: 0;
-  font-size: 1.125rem;
-  font-weight: 500;
-  color: var(--text-body);
+  font-family: var(--lp-modal-header-title-font-family);
+  font-size: var(--lp-modal-header-title-size);
+  font-weight: var(--lp-modal-header-title-weight);
+  letter-spacing: var(--lp-modal-header-title-letter-spacing);
+  line-height: var(--lp-modal-header-title-line-height);
+  color: var(--lp-modal-header-title-color);
 }
 .idea-delete-account-modal-close {
   flex-shrink: 0;
-  min-width: 2.5rem;
-  min-height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--lp-modal-header-close-min);
+  min-height: var(--lp-modal-header-close-min);
   padding: 0;
-  font-size: 1.5rem;
+  font-size: var(--lp-modal-header-close-fs);
   line-height: 1;
+  font-weight: var(--lp-modal-header-close-fw);
   color: var(--text-muted);
   background: none;
   border: none;
@@ -35374,19 +35414,18 @@ button.time-modal-traffic {
   margin-right: -1.5rem;
   margin-top: -1.5rem;
   margin-bottom: 1rem;
-  padding: 1rem 1.25rem;
+  padding: var(--lp-modal-header-padding-y) var(--lp-modal-header-padding-x);
   border-bottom: var(--line-l3);
 }
 
-/* 과제 설정·목표 모달 등과 동일 — H1 대신 H2 굵기(500) */
 .dream-kpi-modal-title {
   margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--fs-h2);
-  font-weight: 500;
-  line-height: 1.3;
-  letter-spacing: -0.01em;
-  color: var(--text-ink);
+  font-family: var(--lp-modal-header-title-font-family);
+  font-size: var(--lp-modal-header-title-size);
+  font-weight: var(--lp-modal-header-title-weight);
+  letter-spacing: var(--lp-modal-header-title-letter-spacing);
+  line-height: var(--lp-modal-header-title-line-height);
+  color: var(--lp-modal-header-title-color);
 }
 
 .dream-kpi-modal-close {
@@ -35394,13 +35433,13 @@ button.time-modal-traffic {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 3rem;
-  min-height: 3rem;
+  min-width: var(--lp-modal-header-close-min);
+  min-height: var(--lp-modal-header-close-min);
   padding: 0;
-  font-size: var(--modal-close-fs);
+  font-size: var(--lp-modal-header-close-fs);
   line-height: 1;
   font-family: inherit;
-  font-weight: 500;
+  font-weight: var(--lp-modal-header-close-fw);
   color: var(--text-body);
   background: none;
   border: none;
@@ -38264,8 +38303,23 @@ button.time-modal-traffic {
 .calendar-annual-view .calendar-annual-nav .calendar-nav-month {
   display: none;
 }
+/* 연간 상단 연도: 월별 뷰 MAY와 동일 크기·톤 */
+.calendar-annual-view .calendar-annual-nav .calendar-nav-year {
+  font-family: var(--font-heading);
+  font-size: 3.25rem;
+  font-weight: 400;
+  color: #1f2937;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
 .calendar-annual-view .calendar-annual-nav .calendar-annual-label {
-  margin-left: 0.15rem;
+  margin-left: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  align-self: baseline;
 }
 .calendar-annual-grid-wrap {
   flex: 1 1 0;
@@ -38274,12 +38328,13 @@ button.time-modal-traffic {
   padding: 0.25rem 0.25rem 0.25rem 0.5rem;
   display: flex;
   flex-direction: column;
+  background: #ffffff;
 }
 .calendar-annual-table {
   flex: 1 1 0;
   min-height: 0;
   min-width: min-content;
-  background: #f5f5f7;
+  background: #ffffff;
   display: flex;
   flex-direction: column;
 }
@@ -38292,13 +38347,20 @@ button.time-modal-traffic {
 }
 .calendar-annual-row-month {
   flex-shrink: 0;
-  width: 3.25rem;
-  padding: 0.4rem 0.5rem;
-  font-weight: 700;
-  font-size: 0.9rem;
-  color: var(--text-body);
+  box-sizing: border-box;
+  width: 4.75rem;
+  min-width: 4.75rem;
+  padding: 0.35rem 0.45rem 0.35rem 0.5rem;
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: #1f2937;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   border-right: var(--line-l3);
 }
 .calendar-annual-row-days {
@@ -38323,7 +38385,7 @@ button.time-modal-traffic {
   transition: background 0.15s ease;
 }
 .calendar-annual-cell:hover {
-  background: color-mix(in srgb, var(--ui-surface-alt) 50%, #f5f5f7 50%);
+  background: color-mix(in srgb, var(--ui-surface-alt) 50%, #ffffff 50%);
   outline: var(--line-l3);
   outline-offset: -0.0625rem;
   z-index: 1;
@@ -38381,6 +38443,70 @@ button.time-modal-traffic {
 .calendar-1day-view,
 .calendar-1week-view {
   --cal-1day-label-col: 2.625rem;
+}
+
+/* 1주 뷰: 월~일 세로 7행 — 각 줄에 요일(월·화·…) + 일자; 상단 가로 요일 행 숨김 */
+.calendar-1week-view .calendar-monthly-weekdays {
+  display: none !important;
+}
+.calendar-view-with-subtabs .calendar-1week-view .calendar-monthly-week,
+.calendar-1week-view .calendar-monthly-week {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  grid-auto-rows: minmax(4.25rem, auto) !important;
+  gap: 0 !important;
+  min-width: 0;
+}
+.calendar-1week-view .calendar-monthly-week-wrap {
+  flex: 1;
+  min-height: 0;
+}
+.calendar-1week-view .calendar-1week-day-head {
+  display: flex !important;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+.calendar-1week-view .calendar-1week-day-weekday {
+  display: inline !important;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  min-width: 1.35rem;
+}
+.calendar-1week-view .calendar-monthly-day {
+  width: 100%;
+  min-height: 4.25rem;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: left;
+  border-radius: 0 !important;
+  padding: 0.4rem 0.65rem 0.45rem !important;
+  box-sizing: border-box;
+  /* 세로 7행: 한 열이라 :last-child 때문에 세로선만 없어짐 → 행 사이 가로 구분선 */
+  border-right: none !important;
+  border-bottom: var(--line-l3);
+}
+.calendar-1week-view .calendar-monthly-week .calendar-monthly-day:last-child {
+  border-bottom: none !important;
+}
+.calendar-1week-view .calendar-monthly-day-num {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+.calendar-1week-view .calendar-monthly-day-entries {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+}
+.calendar-1week-view .calendar-monthly-day-entries .calendar-monthly-span-bar {
+  left: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 /* 1일 뷰 - 단일 열 */
@@ -39524,74 +39650,6 @@ button.time-modal-traffic {
   min-height: 100%;
 }
 
-/* 1주 뷰: 데스크톱도 모바일처럼 한 줄에 한 날짜씩 7행으로 표시 */
-.calendar-1week-view .calendar-monthly-grid {
-  display: flex;
-  flex-direction: column;
-}
-.calendar-1week-view .calendar-monthly-weekdays {
-  display: none !important;
-}
-.calendar-1week-view .calendar-1week-day-head {
-  display: flex !important;
-  flex-direction: row;
-  align-items: baseline;
-  gap: 0.4rem;
-  margin-bottom: 0.25rem;
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: transparent;
-}
-.calendar-1week-view .calendar-1week-day-weekday {
-  display: inline !important;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-.calendar-1week-view .calendar-monthly-week-wrap {
-  flex: 1;
-  min-height: 0;
-}
-.calendar-1week-view .calendar-monthly-week {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.calendar-1week-view .calendar-monthly-day {
-  width: 100%;
-  min-height: 0;
-  flex: 0 0 auto;
-  box-sizing: border-box;
-  border: var(--divider-default);
-  border-left: none;
-  border-right: none;
-  border-bottom: none;
-  border-radius: 0 !important;
-  padding: 0.5rem !important;
-}
-.calendar-1week-view .calendar-monthly-day.empty {
-  display: none;
-}
-.calendar-1week-view .calendar-monthly-day-num {
-  font-size: 0.875rem;
-  font-weight: 600;
-  margin-bottom: 0;
-  text-align: left;
-}
-.calendar-1week-view .calendar-monthly-day-entries {
-  min-height: 0;
-  flex: 0 0 auto;
-  width: 100%;
-}
-.calendar-1week-view .calendar-monthly-day-entries .calendar-monthly-span-bar {
-  left: 0 !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-}
-
 /* 1주 뷰 - 7일 예상 타임라인 */
 .calendar-1week-view .calendar-1week-time-grid {
   flex: 1;
@@ -40457,25 +40515,15 @@ button.time-modal-traffic {
 .calendar-1week-view .calendar-monthly-day.other-month.today {
   background: transparent;
 }
-/* 1주: 날짜 칸·막대 모두 눈에 띄는 호버(막대는 셀 배경이 보이지 않으므로 막대·칸 둘 다) */
-.calendar-1week-view .calendar-monthly-day:hover:not(.empty) {
-  background: color-mix(
-    in srgb,
-    var(--ui-surface-alt) 50%,
-    var(--content-bg) 50%
-  );
-}
-/* 1주 오늘: 기본은 투명 — 호버 시에만 옅은 틴트 */
+/* 1주: 날짜 행 호버 배경 틴트 없음(월별 등과 달리 행 전체가 밝아지지 않게) */
+.calendar-1week-view .calendar-monthly-day:hover:not(.empty),
 .calendar-1week-view .calendar-monthly-day.today:hover:not(.empty) {
-  background: color-mix(
-    in srgb,
-    var(--ui-surface-alt) 30%,
-    var(--content-bg) 70%
-  );
+  background: transparent !important;
 }
+
 .calendar-1week-view .calendar-monthly-day.other-month:hover,
 .calendar-1week-view .calendar-monthly-day.other-month.today:hover {
-  background: color-mix(in srgb, #eceadf 50%, #d8d2c0 50%);
+  background: #ffffff !important;
 }
 
 /* 막대 위에 올릴 때(할일막대가 셀 배경을 가림 → 막대 쪽 틴트+테두리로 표시) */
@@ -41094,7 +41142,7 @@ button.time-modal-traffic {
   min-width: 5rem;
 }
 
-.calendar-todo-sidebar.collapsed .calendar-todo-sidebar-title,
+.calendar-todo-sidebar.collapsed .calendar-todo-sidebar-toolbar-actions,
 .calendar-todo-sidebar.collapsed .calendar-todo-sidebar-body,
 .calendar-todo-sidebar.collapsed .calendar-kpi-sidebar-body {
   display: none;
@@ -41114,15 +41162,15 @@ button.time-modal-traffic {
   flex-shrink: 0;
 }
 
-.calendar-todo-sidebar-title {
-  font-size: 0.95rem;
-  font-weight: 200;
-  letter-spacing: -0.01em;
-  color: var(--text-ink);
-  font-family: var(--font-heading);
+.calendar-todo-sidebar-toolbar-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 0.35rem;
 }
 
 .calendar-todo-sidebar-collapse {
+  flex-shrink: 0;
   padding: 0.25rem 0.5rem;
   background: none;
   border: none;
