@@ -17699,11 +17699,10 @@ col.asset-expense-col-amount,
 
 .calendar-view-todo .calendar-todo-content .todo-list-tab-header-row,
 .todo-list-view .todo-list-tab-header-row {
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 0;
+  column-gap: 0.5rem;
   width: 100%;
   min-width: 0;
   min-height: 2.5rem;
@@ -17713,18 +17712,28 @@ col.asset-expense-col-amount,
   border-bottom: none;
 }
 
-/* 설정·+·세그먼트 탭을 한 덩어리로 묶어 화면 가운데 정렬 */
-.calendar-view-todo .calendar-todo-content .todo-list-top-strip__cluster,
-.todo-list-view .todo-list-top-strip__cluster {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
+.calendar-view-todo .calendar-todo-content .todo-list-top-strip__left,
+.todo-list-view .todo-list-top-strip__left {
+  justify-self: start;
   min-width: 0;
-  max-width: 100%;
-  flex-wrap: nowrap;
-  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+}
+
+.calendar-view-todo .calendar-todo-content .todo-list-top-strip__center,
+.todo-list-view .todo-list-top-strip__center {
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.calendar-view-todo .calendar-todo-content .todo-list-top-strip__right,
+.todo-list-view .todo-list-top-strip__right {
+  justify-self: end;
+  min-width: 0;
+  display: flex;
+  align-items: center;
 }
 
 /* +·설정: 시간가계부 툴바 아이콘과 동일 터치 영역 */
@@ -17881,10 +17890,10 @@ col.asset-expense-col-amount,
 @media (max-width: 64rem) {
   .calendar-view-todo .calendar-todo-content .todo-list-tab-header-row,
   .todo-list-view .todo-list-tab-header-row {
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
     align-items: center;
+    column-gap: 0.35rem;
     padding: 0.3rem 0;
     min-height: 2.625rem;
     border-bottom: none;
@@ -17892,10 +17901,11 @@ col.asset-expense-col-amount,
     box-sizing: border-box;
   }
 
-  .calendar-view-todo .calendar-todo-content .todo-list-top-strip__cluster,
-  .todo-list-view .todo-list-top-strip__cluster {
-    gap: 0.5rem;
-    max-width: calc(100vw - 2rem);
+  .calendar-view-todo
+    .calendar-todo-content
+    .todo-list-top-strip__center
+    .todo-list-segment-tabs.time-view-tabs--segmented {
+    max-width: min(22rem, calc(100vw - 7rem));
   }
 }
 
