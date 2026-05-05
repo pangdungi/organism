@@ -19898,6 +19898,12 @@ svg.todo-card-reminder-icon {
   background: #f3f3f7;
 }
 
+/* 제목(할 일 수정/추가)과 닫기(X) 글자 크기 통일 */
+.todo-task-edit-modal .todo-list-modal-title,
+.todo-task-edit-modal .todo-list-modal-close {
+  font-size: var(--lp-modal-header-title-size);
+}
+
 .todo-task-edit-modal .todo-list-modal-close:hover {
   color: var(--text-ink);
 }
