@@ -204,8 +204,9 @@ html {
   --lp-modal-header-title-color: #424245;
   --lp-modal-header-title-letter-spacing: normal;
   --lp-modal-header-title-line-height: 1.25;
-  /* 모달 헤더 우측 닫기(X): 타이틀 행과 같이 보이도록 터치 영역·글자 크기 통일 */
-  --lp-modal-header-close-min: 2.75rem;
+  /* 모달 헤더 우측 닫기(X): 글자에 맞춘 박스(구 44px 고정 해제 가능) */
+  --lp-modal-header-close-min: 0;
+  --lp-modal-header-close-nudge-y: -0.065em;
   --lp-modal-header-close-fs: var(--modal-close-fs);
   --lp-modal-header-close-fw: 500;
   /* 구분선 — 맥 윈도우·리스트 구분선 느낌 */
@@ -2588,10 +2589,8 @@ body {
   .todo-mobile-date-modal .todo-list-modal-confirm:hover {
     background: var(--ui-btn-primary-hover);
   }
-  /* 모바일: X 닫기 버튼 터치 영역 확대 */
+  /* 모바일: 할일 날짜 모달 X — 터치 피드백만 (최소 크기는 전역 변수) */
   .todo-mobile-date-modal .todo-list-modal-close {
-    min-width: 2.75rem;
-    min-height: 2.75rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -18525,8 +18524,8 @@ col.asset-expense-col-amount,
   align-self: center;
   width: auto;
   height: auto;
-  min-width: 2rem;
-  min-height: 2rem;
+  min-width: var(--lp-modal-header-close-min);
+  min-height: var(--lp-modal-header-close-min);
   padding: 0.2rem;
   margin: 0;
   border: none;
@@ -19026,6 +19025,31 @@ col.asset-expense-col-amount,
 
 .todo-list-modal-close:hover {
   color: var(--text-body);
+}
+
+/* 모달 헤더 닫기(X): 타이틀 대비 광학 수직 정렬 — 글자 폭·높이에 맞춤 + 공통 nudge */
+.todo-list-modal-close,
+.diary-add-modal-close,
+.diary-step-modal-close,
+.diary-desktop-compose-modal-close,
+.work-schedule-type-settings-close,
+.asset-settings-close,
+.kpi-goals-modal-close,
+.dream-kpi-modal-close,
+.time-task-setup-close,
+.time-task-log-header .time-task-setup-close,
+.idea-delete-account-modal-close,
+.gantt-close,
+.calendar-event-bubble-close,
+.routine-add-close,
+.kpi-view-close,
+.dream-kpi-log-close,
+.todo-settings-modal button.todo-settings-sheet-close,
+.time-task-log-todo-inner-close,
+.time-task-log-expense-inner-close,
+.time-task-log-emotion-inner-close,
+.time-task-log-focus-inner-close {
+  transform: translateY(var(--lp-modal-header-close-nudge-y));
 }
 
 .todo-list-modal-body {
@@ -24337,18 +24361,6 @@ body.kpi-resizing {
   background: transparent !important;
 }
 
-/* 과제 설정(톱니) 모달만: X에 2.75rem 터치 박스가 생기며 양옆 빈칸이 커져 헤더 좌우가 어긋남 → 글자 크기에 맞춤 */
-.time-task-setup-modal:not(.time-task-select-modal):not(.time-add-task-modal):not(.time-task-log-modal)
-  .time-task-setup-header
-  .time-task-setup-close {
-  min-width: 0;
-  min-height: 0;
-  width: auto;
-  height: auto;
-  /* ×(큰 글자·line-height 1) vs 타이틀(작은 글자·line-height 1.25) flex 가운데 정렬 시 광학적으로 X가 아래로 보임 */
-  transform: translateY(-0.065em);
-}
-
 .time-task-log-header {
   display: flex;
   align-items: center;
@@ -26157,8 +26169,8 @@ button.time-modal-traffic {
   color: #b0ada6;
 }
 .time-task-log-emotion-inner-close {
-  min-width: 2.25rem;
-  min-height: 2.25rem;
+  min-width: var(--lp-modal-header-close-min);
+  min-height: var(--lp-modal-header-close-min);
   padding: 0;
   font-size: var(--modal-close-fs-inner);
   line-height: 1;
@@ -26242,8 +26254,8 @@ button.time-modal-traffic {
 .time-task-log-expense-inner-close,
 .time-task-log-emotion-inner-close,
 .time-task-log-focus-inner-close {
-  min-width: 2.25rem;
-  min-height: 2.25rem;
+  min-width: var(--lp-modal-header-close-min);
+  min-height: var(--lp-modal-header-close-min);
   padding: 0;
   display: inline-flex;
   align-items: center;
@@ -26326,8 +26338,8 @@ button.time-modal-traffic {
   color: var(--text-ink);
 }
 .time-task-log-focus-inner-close {
-  min-width: 2.25rem;
-  min-height: 2.25rem;
+  min-width: var(--lp-modal-header-close-min);
+  min-height: var(--lp-modal-header-close-min);
   padding: 0;
   display: inline-flex;
   align-items: center;
@@ -26578,8 +26590,8 @@ button.time-modal-traffic {
 }
 .time-task-log-emotion-inner-close,
 .time-task-log-focus-inner-close {
-  min-width: 2.25rem;
-  min-height: 2.25rem;
+  min-width: var(--lp-modal-header-close-min);
+  min-height: var(--lp-modal-header-close-min);
   padding: 0;
   display: inline-flex;
   align-items: center;
@@ -35798,8 +35810,8 @@ img.time-btn-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
+  min-width: var(--lp-modal-header-close-min);
+  min-height: var(--lp-modal-header-close-min);
   padding: 0;
   font-size: var(--modal-close-fs);
   line-height: 1;
@@ -35997,8 +36009,8 @@ img.time-btn-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
+  min-width: var(--lp-modal-header-close-min);
+  min-height: var(--lp-modal-header-close-min);
   padding: 0;
   font-size: var(--modal-close-fs);
   line-height: 1;
@@ -37048,8 +37060,8 @@ img.time-btn-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
+  min-width: var(--lp-modal-header-close-min);
+  min-height: var(--lp-modal-header-close-min);
   padding: 0;
   font-size: var(--modal-close-fs-lg);
   line-height: 1;
@@ -41943,8 +41955,8 @@ img.time-btn-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
+  min-width: var(--lp-modal-header-close-min);
+  min-height: var(--lp-modal-header-close-min);
   background: none;
   border: none;
   cursor: pointer;
@@ -43728,8 +43740,8 @@ img.time-btn-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
+  min-width: var(--lp-modal-header-close-min);
+  min-height: var(--lp-modal-header-close-min);
   padding: 0.25rem;
   font-size: var(--modal-close-fs);
   line-height: 1;
