@@ -2700,7 +2700,7 @@ body {
     gap: 0.35rem;
     padding: 0.5rem 0.75rem;
   }
-  .todo-task-edit-modal .todo-task-edit-input-shell--clock .todo-task-edit-reminder-date,
+  .todo-task-edit-modal .todo-task-edit-input-shell--clock .todo-task-edit-reminder-date-wrap,
   .todo-task-edit-modal .todo-task-edit-input-shell--clock .todo-task-edit-reminder-time-wrap {
     flex: none !important;
     width: 100% !important;
@@ -19898,12 +19898,6 @@ svg.todo-card-reminder-icon {
   background: #f3f3f7;
 }
 
-/* 제목(할 일 수정/추가)과 닫기(X) 글자 크기 통일 */
-.todo-task-edit-modal .todo-list-modal-title,
-.todo-task-edit-modal .todo-list-modal-close {
-  font-size: var(--lp-modal-header-title-size);
-}
-
 .todo-task-edit-modal .todo-list-modal-close:hover {
   color: var(--text-ink);
 }
@@ -20052,18 +20046,60 @@ svg.todo-card-reminder-icon {
     0 0 0 0.5px rgba(0, 0, 0, 0.04);
 }
 
+/* 리마인더: 달력·시계는 날짜/시간 래퍼에만 표시 (전체 카드 시계 오버레이 제거) */
 .todo-task-edit-modal .todo-task-edit-input-shell--clock::after {
+  display: none !important;
+}
+
+.todo-task-edit-reminder-date-wrap {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 2rem;
+  display: flex;
+  align-items: center;
+  align-self: center;
+  box-sizing: border-box;
+}
+
+.todo-task-edit-reminder-date-placeholder {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 0;
+  margin: 0;
+  color: #c7c7cc;
+  font-size: var(--fs-body);
+  font-weight: 300;
+  font-family: var(--font-body);
+  line-height: 1.35;
+  pointer-events: none;
+  z-index: 0;
+  white-space: nowrap;
+}
+
+.todo-task-edit-reminder-date-wrap:has(.todo-task-edit-reminder-date.has-value)
+  .todo-task-edit-reminder-date-placeholder,
+.todo-task-edit-reminder-date-wrap:focus-within .todo-task-edit-reminder-date-placeholder {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* 달력 아이콘 (날짜 행 오른쪽) */
+.todo-task-edit-reminder-date-wrap::after {
   content: "";
   position: absolute;
-  right: 0.65rem;
+  right: 0.35rem;
   top: 50%;
   transform: translateY(-50%);
   width: 1.125rem;
   height: 1.125rem;
   pointer-events: none;
   opacity: 0.55;
+  z-index: 2;
   background: center / contain no-repeat;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8' stroke-width='1.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z' /%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8' stroke-width='1.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5a2.25 2.25 0 002.25-2.25m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5a2.25 2.25 0 012.25 2.25v7.5' /%3E%3C/svg%3E");
 }
 
 .todo-task-edit-modal .todo-task-edit-input-shell--select::after {
@@ -20177,12 +20213,70 @@ svg.todo-card-reminder-icon {
   min-width: 0;
 }
 
-.todo-task-edit-modal .todo-task-edit-input-shell--clock .todo-task-edit-reminder-date {
+.todo-task-edit-modal .todo-task-edit-input-shell--clock .todo-task-edit-reminder-date-wrap {
   flex: 1 1 0;
   min-width: 0;
   min-height: 2rem;
+}
+
+.todo-task-edit-modal
+  .todo-task-edit-input-shell--clock
+  .todo-task-edit-reminder-date-wrap
+  .todo-task-edit-reminder-date {
+  flex: 1 1 0;
+  width: 100%;
+  min-width: 0;
+  min-height: 2rem;
+  position: relative;
+  z-index: 1;
+  padding: 0 1.85rem 0 0;
   -webkit-appearance: auto !important;
   appearance: auto !important;
+}
+
+/* 빈 값: iOS/Safari에서 네이티브 ‘날짜’ 글자와 겹치지 않게 */
+.todo-task-edit-modal
+  .todo-task-edit-reminder-date-wrap
+  .todo-task-edit-reminder-date:not(.has-value):not(:focus) {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+.todo-task-edit-modal
+  .todo-task-edit-reminder-date-wrap
+  .todo-task-edit-reminder-date:focus:not(.has-value) {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+.todo-task-edit-modal
+  .todo-task-edit-reminder-date-wrap
+  .todo-task-edit-reminder-date:not(.has-value)::-webkit-datetime-edit,
+.todo-task-edit-modal
+  .todo-task-edit-reminder-date-wrap
+  .todo-task-edit-reminder-date:not(.has-value)::-webkit-datetime-edit-fields-wrapper {
+  opacity: 0;
+}
+
+.todo-task-edit-modal
+  .todo-task-edit-reminder-date-wrap
+  .todo-task-edit-reminder-date.has-value::-webkit-datetime-edit-fields-wrapper {
+  opacity: 1;
+}
+
+/* 시계 아이콘 (시간 행 — 데스크톱·공통; 모바일에서도 동일 자산) */
+.todo-task-edit-reminder-time-wrap::after {
+  content: "";
+  position: absolute;
+  right: 0.35rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.125rem;
+  height: 1.125rem;
+  pointer-events: none;
+  opacity: 0.55;
+  background: center / contain no-repeat;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8' stroke-width='1.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z' /%3E%3C/svg%3E");
 }
 
 .todo-task-edit-reminder-time-wrap {
@@ -20228,10 +20322,6 @@ svg.todo-card-reminder-icon {
     box-sizing: border-box;
   }
 
-  .todo-task-edit-modal .todo-task-edit-input-shell--clock::after {
-    display: none !important;
-  }
-
   .todo-task-edit-modal
     .todo-task-edit-reminder-box
     .todo-task-edit-input-shell--clock {
@@ -20250,7 +20340,7 @@ svg.todo-card-reminder-icon {
     box-sizing: border-box;
   }
 
-  .todo-task-edit-modal .todo-task-edit-input-shell--clock .todo-task-edit-reminder-date,
+  .todo-task-edit-modal .todo-task-edit-input-shell--clock .todo-task-edit-reminder-date-wrap,
   .todo-task-edit-modal .todo-task-edit-input-shell--clock .todo-task-edit-reminder-time-wrap {
     flex: none !important;
     width: 100% !important;
@@ -20265,20 +20355,6 @@ svg.todo-card-reminder-icon {
     .todo-task-edit-reminder-time {
     padding-right: 1.85rem !important;
     box-sizing: border-box !important;
-  }
-
-  .todo-task-edit-reminder-time-wrap::after {
-    content: "";
-    position: absolute;
-    right: 0.35rem;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 1.125rem;
-    height: 1.125rem;
-    pointer-events: none;
-    opacity: 0.55;
-    background: center / contain no-repeat;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8' stroke-width='1.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z' /%3E%3C/svg%3E");
   }
 
   .todo-task-edit-reminder-box .todo-task-edit-reminder-delete {
@@ -24761,9 +24837,9 @@ body.kpi-resizing {
 
 .time-task-log-modal .time-task-log-section-label {
   display: block;
-  font-size: 0.5rem;
+  font-size: 11pt;
   font-weight: 400;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.12em;
   color: var(--text-muted);
   margin: 0 0 0.35rem;
 }
@@ -26654,9 +26730,9 @@ button.time-modal-traffic {
 
 /* 과제 기록 모달 상단 3개 라벨: dream-kpi-field 스타일 통일 */
 .time-task-log-datetime-fields-wrap .time-task-log-field label {
-  font-size: 0.5rem;
+  font-size: 11pt;
   font-weight: 400;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.12em;
   color: var(--text-muted);
   margin-bottom: 0.5rem;
 }

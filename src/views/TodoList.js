@@ -1453,7 +1453,10 @@ function showTodoTaskModal(options) {
           <div class="todo-task-edit-reminder-box">
             <div class="todo-task-edit-input-shell todo-task-edit-input-shell--clock">
               <div class="todo-task-edit-reminder-row">
-                <input type="date" class="todo-task-edit-reminder-date" value="${escapeHtml((reminderDate || "").slice(0, 10))}" />
+                <div class="todo-task-edit-reminder-date-wrap">
+                  <span class="todo-task-edit-reminder-date-placeholder" aria-hidden="true">연도. 월. 일.</span>
+                  <input type="date" class="todo-task-edit-reminder-date" value="${escapeHtml((reminderDate || "").slice(0, 10))}" />
+                </div>
                 <div class="todo-task-edit-reminder-time-wrap">
                   <input type="text" class="todo-task-edit-reminder-time" placeholder="시간" value="${escapeHtml(reminderTime)}" maxlength="5" />
                 </div>
