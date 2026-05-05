@@ -3913,22 +3913,15 @@ export function render(options = {}) {
     tabsTopMargin.className = "todo-list-tabs-top-margin";
     const tabHeaderRow = document.createElement("div");
     tabHeaderRow.className = "todo-list-tab-header-row";
-    const leftStrip = document.createElement("div");
-    leftStrip.className = "todo-list-top-strip__left";
+    const cluster = document.createElement("div");
+    cluster.className = "todo-list-top-strip__cluster";
     const iconsWrap = document.createElement("div");
     iconsWrap.className = "time-ledger-toolbar-icons";
     iconsWrap.appendChild(settingsBtn);
     if (quickAddBtn) iconsWrap.appendChild(quickAddBtn);
-    leftStrip.appendChild(iconsWrap);
-    const centerStrip = document.createElement("div");
-    centerStrip.className = "todo-list-top-strip__center";
-    centerStrip.appendChild(categoryTabs);
-    const rightStrip = document.createElement("div");
-    rightStrip.className = "todo-list-top-strip__right";
-    rightStrip.setAttribute("aria-hidden", "true");
-    tabHeaderRow.appendChild(leftStrip);
-    tabHeaderRow.appendChild(centerStrip);
-    tabHeaderRow.appendChild(rightStrip);
+    cluster.appendChild(iconsWrap);
+    cluster.appendChild(categoryTabs);
+    tabHeaderRow.appendChild(cluster);
     toolbarRow.appendChild(tabsTopMargin);
     toolbarRow.appendChild(tabHeaderRow);
     if (useSidebarHeaderToolbarActions && categoryToolbarActionsSlot) {
