@@ -33070,19 +33070,22 @@ button.time-modal-traffic {
   color: var(--text-muted);
 }
 
-/* 설정/툴바 아이콘 통일: 앱 텍스트 색(웜톤) */
+/* 설정/툴바:<img>만 필터 적용 — SVG(.time-ledger-toolbar-icons 등)는 stroke currentColor + 버튼 color */
 .time-btn-icon {
   display: block;
   flex-shrink: 0;
+}
+
+img.time-btn-icon {
   filter: brightness(0) saturate(100%) invert(26%) sepia(10%) saturate(1200%)
     hue-rotate(115deg);
 }
 
-.time-task-setup-btn .time-btn-icon {
+.time-task-setup-btn img.time-btn-icon {
   opacity: 0.95;
 }
 
-.time-task-setup-btn:hover .time-btn-icon {
+.time-task-setup-btn:hover img.time-btn-icon {
   filter: brightness(0) saturate(100%) invert(26%) sepia(10%) saturate(1200%)
     hue-rotate(115deg);
   opacity: 1;
