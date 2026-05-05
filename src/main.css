@@ -6541,7 +6541,7 @@ body {
     flex: 1 1 0;
     min-height: 0;
     overflow: hidden;
-    padding: 0 !important;
+    padding: 1.5rem 0 0 !important;
     background: var(--content-bg, #f5f5f7);
   }
   .calendar-view-todo .calendar-todo-content .todo-list-toolbar-row {
@@ -37999,7 +37999,7 @@ img.time-btn-icon {
 }
 
 .calendar-view-todo .todo-list-view {
-  padding: 0 !important;
+  padding: 1.5rem 0 0 !important;
   background: transparent !important;
 }
 
