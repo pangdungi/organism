@@ -1895,15 +1895,6 @@ body {
   flex-shrink: 0;
 }
 
-.home-view-toolbar-clock {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  color: rgba(60, 60, 67, 0.82);
-  min-width: 2.75rem;
-  text-align: right;
-}
-
 .home-view-toolbar-btn {
   margin: 0;
   padding: 0;
@@ -3746,10 +3737,7 @@ body {
     flex-wrap: nowrap;
     gap: 0.35rem;
   }
-  .app-main:has(.home-view) .home-view-toolbar-clock {
-    flex-shrink: 0;
-  }
-  /* 모바일 오늘 탭: 시간 기록·설정 버튼 숨김 — 오늘·날짜·시계 한 줄 */
+  /* 모바일 오늘 탭: 시간 기록 버튼 숨김 — 오늘·날짜 한 줄 */
   .app-main:has(.home-view) .home-view-toolbar-btn {
     display: none !important;
   }

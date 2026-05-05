@@ -620,13 +620,6 @@ function openReminderModalFromHome(item, onSaved) {
   document.body.appendChild(modal);
 }
 
-/** 툴바 시계 HH:mm */
-function formatToolbarClock(d = new Date()) {
-  const h = d.getHours();
-  const m = d.getMinutes();
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}
-
 /** 상단 툴바 영문 전체 날짜 */
 function formatToolbarDateEn(date) {
   try {
@@ -650,33 +643,6 @@ function lpNavigateTab(tabId) {
       window.__lpSetTab(tabId);
     }
   } catch (_) {}
-}
-
-/** 시계 1초 갱신 — DOM 제거 시 타이머 정리 */
-function attachToolbarClock(elClock, dateHolder) {
-  const tick = () => {
-    if (!elClock.isConnected) {
-      if (elClock._lpToolbarIv != null) {
-        clearInterval(elClock._lpToolbarIv);
-        elClock._lpToolbarIv = null;
-      }
-      return;
-    }
-    const now = new Date();
-    elClock.textContent = formatToolbarClock(now);
-    try {
-      elClock.dateTime = now.toISOString();
-    } catch (_) {}
-    if (dateHolder?.isConnected && typeof dateHolder._lpTodayKey === "string") {
-      const key = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
-      if (key !== dateHolder._lpTodayKey) {
-        dateHolder._lpTodayKey = key;
-        dateHolder.textContent = formatToolbarDateEn(now);
-      }
-    }
-  };
-  tick();
-  elClock._lpToolbarIv = setInterval(tick, 1000);
 }
 
 /** HTML 텍스트 이스케이프 (innerHTML 조합용) */
@@ -715,7 +681,6 @@ function buildHomeToolbar(dateBasis) {
   const dateEn = document.createElement("span");
   dateEn.className = "home-view-toolbar-date";
   dateEn.textContent = formatToolbarDateEn(dateBasis);
-  dateEn._lpTodayKey = `${dateBasis.getFullYear()}-${dateBasis.getMonth()}-${dateBasis.getDate()}`;
 
   start.appendChild(ctx);
   start.appendChild(sep);
@@ -724,9 +689,6 @@ function buildHomeToolbar(dateBasis) {
   const end = document.createElement("div");
   end.className = "home-view-toolbar-end";
 
-  const clock = document.createElement("time");
-  clock.className = "home-view-toolbar-clock";
-
   const btnTime = document.createElement("button");
   btnTime.type = "button";
   btnTime.className = "home-view-toolbar-btn home-view-toolbar-btn--pill";
@@ -734,24 +696,15 @@ function buildHomeToolbar(dateBasis) {
 
   btnTime.addEventListener("click", () => lpNavigateTab("time"));
 
-  end.appendChild(clock);
   end.appendChild(btnTime);
 
   toolbar.appendChild(start);
   toolbar.appendChild(end);
 
-  attachToolbarClock(clock, dateEn);
-
   return toolbar;
 }
 
-export function render() {
-  const el = document.createElement("div");
-  el.className = "app-tab-panel-content home-view";
-
-  const today = new Date();
-  el.appendChild(buildHomeToolbar(today));
-
+function appendHomeMainBelowToolbar(el) {
   const timeSummary = getTodayTimeSummary();
   const summarySection = document.createElement("section");
   summarySection.className = "home-time-summary-section";
@@ -889,6 +842,15 @@ export function render() {
   threeCols.appendChild(leftCol);
   threeCols.appendChild(section2);
   el.appendChild(threeCols);
+}
+
+export function render() {
+  const el = document.createElement("div");
+  el.className = "app-tab-panel-content home-view";
+
+  const today = new Date();
+  el.appendChild(buildHomeToolbar(today));
+  appendHomeMainBelowToolbar(el);
 
   return el;
 }
