@@ -17458,13 +17458,12 @@ col.asset-expense-col-amount,
 
 .todo-list-settings-btn .todo-list-settings-icon {
   display: block;
-  filter: brightness(0) saturate(100%) invert(26%) sepia(10%) saturate(1200%)
-    hue-rotate(115deg);
+  flex-shrink: 0;
+  color: #dc2626;
 }
 
 .todo-list-settings-btn:hover .todo-list-settings-icon {
-  filter: brightness(0) saturate(100%) invert(26%) sepia(10%) saturate(1200%)
-    hue-rotate(115deg);
+  color: #b91c1c;
 }
 
 .todo-list-toolbar-btn {
@@ -17619,14 +17618,7 @@ col.asset-expense-col-amount,
   margin-left: auto;
   padding-left: 0.35rem;
   padding-right: 0;
-}
-
-/* 시간가계부 사이드 타이머 아이콘과 동일 실루엣 — 빨간 톤 통일 */
-.calendar-view-todo .calendar-todo-content .todo-list-toolbar-actions-end img,
-.calendar-todo-sidebar-toolbar-actions .todo-list-toolbar-actions-end img {
-  display: block;
-  filter: brightness(0) saturate(100%) invert(27%) sepia(93%) saturate(4386%)
-    hue-rotate(348deg) brightness(91%) contrast(96%);
+  color: #dc2626;
 }
 
 .calendar-view-todo .calendar-todo-content .todo-list-toolbar-quick-add,
@@ -17645,14 +17637,18 @@ col.asset-expense-col-amount,
 }
 
 .calendar-view-todo .calendar-todo-content .todo-list-toolbar-quick-add:hover {
-  background: rgba(229, 57, 53, 0.08);
+  background: rgba(220, 38, 38, 0.08);
+}
+
+.calendar-todo-sidebar-toolbar-actions .todo-list-toolbar-quick-add:hover {
+  background: rgba(220, 38, 38, 0.08);
 }
 
 .calendar-view-todo .calendar-todo-content .todo-list-toolbar-quick-add svg,
 .calendar-todo-sidebar-toolbar-actions .todo-list-toolbar-quick-add svg {
   width: 1rem;
   height: 1rem;
-  color: rgb(229, 57, 53);
+  color: #dc2626;
   stroke: currentColor;
 }
 
@@ -17679,7 +17675,7 @@ col.asset-expense-col-amount,
   .calendar-todo-content
   .todo-list-toolbar-actions-end
   .todo-list-settings-btn:hover {
-  background: rgba(229, 57, 53, 0.08) !important;
+  background: rgba(220, 38, 38, 0.08) !important;
   border-radius: 0.375rem;
 }
 
@@ -17869,9 +17865,7 @@ col.asset-expense-col-amount,
     max-width: none !important;
     max-height: none !important;
     display: block;
-    filter: brightness(0) saturate(100%) invert(27%) sepia(93%) saturate(2877%)
-      hue-rotate(342deg) brightness(96%) contrast(97%);
-    opacity: 1;
+    color: #dc2626 !important;
   }
 
   .calendar-view-todo .calendar-todo-content .todo-category-tab {

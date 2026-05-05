@@ -940,6 +940,10 @@ const ADD_TASK_ICON =
 const CALENDAR_TOOLBAR_QUICK_ADD_ICON =
   '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>';
 
+/** 툴바 설정(톱니): img 필터 대신 +와 동일 currentColor → CSS로 #dc2626 통일 */
+const TODO_TOOLBAR_SETTINGS_ICON =
+  '<svg class="todo-list-settings-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m19.845 13.561c.1-.505.155-1.027.155-1.561s-.055-1.056-.155-1.561l1.806-1.489c.502-.414.632-1.132.307-1.696l-.869-1.508c-.325-.564-1.011-.811-1.62-.582l-2.198.825c-.779-.684-1.689-1.218-2.691-1.559l-.385-2.316c-.108-.643-.663-1.114-1.314-1.114h-1.738c-.651 0-1.206.471-1.313 1.114l-.386 2.316c-1.002.341-1.912.875-2.691 1.559l-2.198-.825c-.61-.228-1.295.018-1.62.582l-.87 1.508c-.325.564-.195 1.282.307 1.696l1.806 1.489c-.1.505-.155 1.026-.155 1.561s.055 1.056.155 1.561l-1.806 1.489c-.502.414-.632 1.132-.307 1.696l.869 1.508c.325.564 1.011.811 1.62.582l2.198-.825c.779.684 1.689 1.218 2.691 1.559l.385 2.316c.109.643.664 1.114 1.315 1.114h1.738c.651 0 1.206-.471 1.313-1.114l.385-2.316c1.002-.341 1.913-.875 2.691-1.559l2.198.825c.609.229 1.295-.017 1.62-.582l.869-1.508c.325-.564.196-1.282-.307-1.696z"/><circle cx="12.012" cy="12" r="3"/></g></svg>';
+
 const LIST_ICON =
   '<img src="/toolbaricons/list.svg" alt="세부 할 일" class="todo-list-icon" width="20" height="20">';
 
@@ -3755,8 +3759,7 @@ export function render(options = {}) {
         b.type = "button";
         b.className = "todo-list-toolbar-btn todo-list-settings-btn";
         b.title = "할 일 환경 설정";
-        b.innerHTML =
-          '<img src="/toolbaricons/settings.svg" alt="" class="todo-list-settings-icon" width="20" height="20">';
+        b.innerHTML = TODO_TOOLBAR_SETTINGS_ICON;
         return b;
       })();
 
