@@ -5386,16 +5386,18 @@ body {
     input.time-task-log-time-end {
     grid-row: unset !important;
     grid-column: unset !important;
-    flex: 0 0 auto !important;
-    width: 2.75rem !important;
-    min-width: 2.75rem !important;
-    max-width: 2.75rem !important;
-    padding: 0.15rem 0.08rem !important;
+    /* 날짜는 고정 폭 — 시작·종료 시간이 카드 오른쪽 빈 공간까지 균등 분할 */
+    flex: 1 1 0 !important;
+    min-width: 2rem !important;
+    width: auto !important;
+    max-width: none !important;
+    padding: 0.15rem 0.2rem !important;
     font-size: 13px !important;
     font-variant-numeric: tabular-nums !important;
     letter-spacing: -0.02em !important;
     line-height: 1.2 !important;
     box-sizing: border-box !important;
+    text-align: center !important;
   }
   #app .time-task-setup-modal.time-task-log-modal
     .time-task-log-datetime-card
