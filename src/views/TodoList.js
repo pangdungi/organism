@@ -1454,10 +1454,12 @@ function showTodoTaskModal(options) {
             <div class="todo-task-edit-input-shell todo-task-edit-input-shell--clock">
               <div class="todo-task-edit-reminder-row">
                 <input type="date" class="todo-task-edit-reminder-date" value="${escapeHtml((reminderDate || "").slice(0, 10))}" />
-                <input type="text" class="todo-task-edit-reminder-time" placeholder="시간" value="${escapeHtml(reminderTime)}" maxlength="5" />
+                <div class="todo-task-edit-reminder-time-wrap">
+                  <input type="text" class="todo-task-edit-reminder-time" placeholder="시간" value="${escapeHtml(reminderTime)}" maxlength="5" />
+                </div>
               </div>
             </div>
-            <button type="button" class="todo-task-edit-reminder-btn todo-task-edit-reminder-clear-all" aria-label="리마인더 날짜·시간 지우기">삭제</button>
+            <button type="button" class="todo-task-edit-reminder-btn todo-task-edit-reminder-delete" aria-label="리마인더 삭제">리마인더 삭제</button>
           </div>
         </div>
         <div class="todo-task-edit-field">
@@ -1499,8 +1501,8 @@ function showTodoTaskModal(options) {
   const reminderTimeInput = modal.querySelector(
     ".todo-task-edit-reminder-time",
   );
-  const reminderClearAllBtn = modal.querySelector(
-    ".todo-task-edit-reminder-clear-all",
+  const reminderDeleteBtn = modal.querySelector(
+    ".todo-task-edit-reminder-delete",
   );
   const eisenhowerSelect = modal.querySelector(".todo-task-edit-eisenhower");
   const sectionSelect = modal.querySelector(".todo-task-edit-section");
@@ -1613,7 +1615,7 @@ function showTodoTaskModal(options) {
     );
   });
 
-  reminderClearAllBtn?.addEventListener("click", () => {
+  reminderDeleteBtn?.addEventListener("click", () => {
     if (reminderDateInput) {
       reminderDateInput.value = "";
       updateDateInputPlaceholderClass(reminderDateInput);
