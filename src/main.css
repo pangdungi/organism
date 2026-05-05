@@ -3673,12 +3673,6 @@ body {
     );
   }
 
-  /* 할일 탭 헤더 줄: 상단 app-main과 동일 회색 — --content-bg(#f0eff4)만 도드라지는 띠 제거 */
-  .todo-list-view .todo-list-tabs-filter-row,
-  .calendar-view-todo .calendar-todo-content .todo-list-tabs-filter-row {
-    background: #f2f2f7;
-  }
-
   /*
    * 할일·일정 탭(모바일): 시간 기록과 같은 main 여백(36 / 72px + safe-area).
    * 패널 직계 자식 .calendar-view 로 매칭해 할일/캘린더 서브탭 모두 포함(:has(.calendar-view-todo) 누락 방지).
@@ -17689,6 +17683,15 @@ col.asset-expense-col-amount,
   display: flex;
   flex-direction: column;
   align-items: stretch;
+}
+
+/* 모바일: 탭 필터 줄에만 회색(#f2f2f7 등) 덧칠하지 않음 — 위 규칙 덮어쓰기 방지 */
+@media (max-width: 48rem) {
+  .todo-list-view .todo-list-tabs-filter-row,
+  .calendar-view-todo .calendar-todo-content .todo-list-tabs-filter-row {
+    background: transparent !important;
+    background-color: transparent !important;
+  }
 }
 
 /* 상단 패딩은 부모(.todo-list-tabs-filter-row)에서 — 빈 띠는 중복 여백만 만듦 */
