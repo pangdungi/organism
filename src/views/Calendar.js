@@ -169,6 +169,8 @@ function dateDebug(_tag, ..._args) {
 /** 날짜 정하기 사이드바: 한 사분면(중요+여유)만 vs 사이드 메뉴 캘린더=우선순위 탭과 동일 전체 목록 */
 const LP_CAL_TODO_SIDEBAR_QUADRANT = "quadrant";
 const LP_CAL_TODO_SIDEBAR_FULL = "full";
+/** 오늘 탭 타임라인 등: 타임그리드 옆 할일 사이드바 없음 */
+const LP_CAL_TODO_SIDEBAR_NONE = "none";
 
 /** 캘린더 막대 할 일: 체크박스 대신 섹션색 세로 막대(|) */
 function lpCalendarSpanBarTodoMarkerHtml(sectionColor) {
@@ -5379,34 +5381,38 @@ function render1DayView(
     timeTableWrap.appendChild(timeTableInner);
     timeColumn.appendChild(timeTableWrap);
 
-    const todoSidebar = document.createElement("aside");
-    todoSidebar.className = "calendar-todo-sidebar";
-    todoSidebar.innerHTML = `
+    if (sidebarMode !== LP_CAL_TODO_SIDEBAR_NONE) {
+      const todoSidebar = document.createElement("aside");
+      todoSidebar.className = "calendar-todo-sidebar";
+      todoSidebar.innerHTML = `
     ${lpCalendarTodoSidebarHeaderMarkup()}
     <div class="calendar-todo-sidebar-body">
       <div class="calendar-todo-sidebar-main"></div>
     </div>
   `;
-    const sidebarBody = todoSidebar.querySelector(".calendar-todo-sidebar-body");
-    const sidebarMain =
-      sidebarBody.querySelector(".calendar-todo-sidebar-main");
-    const toolbarActionsSlot = todoSidebar.querySelector(
-      ".calendar-todo-sidebar-toolbar-actions",
-    );
-    const todoListEl = renderTodoList(
-      lpCalendarDateSidebarTodoListOpts(sidebarMode, {
-        categoryToolbarActionsSlot: toolbarActionsSlot,
-      }),
-    );
-    sidebarMain.appendChild(lpWrapCalendarTodoSidebarListEl(todoListEl));
-    lpBindCalendarDateTodoSidebarCollapse(todoSidebar);
-    applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
-    calendarGrid.appendChild(todoSidebar);
-    attachCalendarTodoSidebarSpanRevertDrop(
-      sidebarBody,
-      () => renderCalendar(),
-      () => refreshTodoList(),
-    );
+      const sidebarBody = todoSidebar.querySelector(
+        ".calendar-todo-sidebar-body",
+      );
+      const sidebarMain =
+        sidebarBody.querySelector(".calendar-todo-sidebar-main");
+      const toolbarActionsSlot = todoSidebar.querySelector(
+        ".calendar-todo-sidebar-toolbar-actions",
+      );
+      const todoListEl = renderTodoList(
+        lpCalendarDateSidebarTodoListOpts(sidebarMode, {
+          categoryToolbarActionsSlot: toolbarActionsSlot,
+        }),
+      );
+      sidebarMain.appendChild(lpWrapCalendarTodoSidebarListEl(todoListEl));
+      lpBindCalendarDateTodoSidebarCollapse(todoSidebar);
+      applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
+      calendarGrid.appendChild(todoSidebar);
+      attachCalendarTodoSidebarSpanRevertDrop(
+        sidebarBody,
+        () => renderCalendar(),
+        () => refreshTodoList(),
+      );
+    }
 
     wrap.dataset.dateStr = targetKey;
   }
@@ -7412,4 +7418,4 @@ export function render() {
 }
 
 /** 홈 등 다른 화면에서 오늘 해치우기 캘린더만 삽입할 때 사용. tabsElement는 null 가능 */
-export { render1DayView };
+export { render1DayView, LP_CAL_TODO_SIDEBAR_NONE };

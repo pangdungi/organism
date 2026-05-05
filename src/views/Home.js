@@ -13,7 +13,7 @@ import {
   persistCustomSectionTasksAndSchedule,
 } from "../utils/todoSectionTasksSupabase.js";
 import { getTodayTimeSummary } from "./Time.js";
-import { render1DayView } from "./Calendar.js";
+import { render1DayView, LP_CAL_TODO_SIDEBAR_NONE } from "./Calendar.js";
 
 const KPI_SECTION_IDS = ["braindump", "dream", "sideincome", "health", "happy"];
 const SECTION_LABELS = {
@@ -879,7 +879,7 @@ export function render() {
   timelineSection.appendChild(timelineTitle);
   const timelineMount = document.createElement("div");
   timelineMount.className = "home-1day-timeline-mount";
-  timelineMount.appendChild(render1DayView(null));
+  timelineMount.appendChild(render1DayView(null, LP_CAL_TODO_SIDEBAR_NONE));
   timelineSection.appendChild(timelineMount);
   section2.appendChild(timelineSection);
 
