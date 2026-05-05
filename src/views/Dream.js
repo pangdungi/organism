@@ -645,7 +645,7 @@ export function render() {
               <textarea name="memo" placeholder="오늘 이 수치가 나온 이유, 특이사항 등..." rows="3">${escapeHtml(memoVal)}</textarea>
             </div>
           </div>
-          <button type="submit" class="dream-kpi-log-submit">${isEdit ? "수정 저장" : "+ 로그 저장"}</button>
+          <button type="submit" class="dream-kpi-log-submit">${isEdit ? "수정 저장" : "로그 저장"}</button>
         </form>
       </div>
     `;

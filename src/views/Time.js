@@ -4262,16 +4262,7 @@ export function render() {
   taskSelectBtn.setAttribute("aria-label", "과제 선택");
   taskSelectBtn.innerHTML = TIME_LEDGER_TOOLBAR_FILTER_ICON_SVG;
 
-  /** YYYY-MM-DD → "4월1일(수)" (모바일·시간 기록 탭에서만 CSS로 표시) */
-  function formatTimeFilterDateKr(dStr) {
-    if (!dStr || !/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return "";
-    const [y, mo, d] = dStr.split("-").map(Number);
-    const dt = new Date(y, mo - 1, d);
-    const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
-    return `${mo}월${d}일(${weekdays[dt.getDay()]})`;
-  }
-
-  /** YYYY-MM-DD → "2026. 04. 04(토)" — 데스크탑 필터(마침표 없이 일 뒤에 요일) */
+  /** YYYY-MM-DD → "2026. 05. 05(화)" — 필터·목록 일자(모바일·데스크탑 공통) */
   function formatTimeFilterDateDotsWithWeekday(dStr) {
     if (!dStr || !/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return "";
     const [y, mo, d] = dStr.split("-").map(Number);
@@ -4288,10 +4279,7 @@ export function render() {
     const labelRoot = filterNavCluster || filterBar;
     const startLabel = labelRoot?.querySelector(".time-filter-date-label--start");
     const endLabel = labelRoot?.querySelector(".time-filter-date-label--end");
-    const isDesktop =
-      typeof window !== "undefined" &&
-      window.matchMedia(MQ_TIME_LEDGER_MIN_DESKTOP).matches;
-    const fmt = isDesktop ? formatTimeFilterDateDotsWithWeekday : formatTimeFilterDateKr;
+    const fmt = formatTimeFilterDateDotsWithWeekday;
     if (startLabel) {
       startLabel.textContent = fmt(startDateInput.value || filterStartDate);
     }
@@ -4812,12 +4800,9 @@ export function render() {
     <div class="time-task-log-todo-inner-modal" hidden>
       <div class="time-task-log-todo-inner-backdrop"></div>
       <div class="time-task-log-todo-inner-panel">
-        <div class="time-task-log-todo-inner-header time-task-log-sheet-header">
-          <div class="time-task-log-sheet-header-leading" aria-hidden="true"></div>
-          <h3 class="time-task-log-todo-inner-header-label">투두리스트</h3>
-          <div class="time-task-log-sheet-header-trailing">
-            <button type="button" class="time-task-log-todo-inner-close" aria-label="닫기">&times;</button>
-          </div>
+        <div class="time-task-log-todo-inner-header time-task-setup-header time-task-log-header">
+          <h3 class="time-task-setup-title time-task-log-todo-inner-header-label">투두리스트</h3>
+          <button type="button" class="time-task-setup-close time-task-log-todo-inner-close" aria-label="닫기">&times;</button>
         </div>
         <div class="time-task-log-todo-inner-body">
           <div class="time-task-log-field">
@@ -8177,9 +8162,6 @@ export function render() {
 
     if (showDayGroups) {
       const groups = timeLedgerGroupRowsByDay(rows);
-      const desktopHeaderFmt =
-        typeof window !== "undefined" &&
-        window.matchMedia(MQ_TIME_LEDGER_MIN_DESKTOP).matches;
       for (const g of groups) {
         if (g.key !== "_nodate") {
           const header = document.createElement("div");
@@ -8187,9 +8169,7 @@ export function render() {
           header.setAttribute("role", "presentation");
           const label = document.createElement("span");
           label.className = "time-ledger-day-group-date";
-          label.textContent = desktopHeaderFmt
-            ? formatTimeFilterDateDotsWithWeekday(g.key)
-            : formatTimeFilterDateKr(g.key);
+          label.textContent = formatTimeFilterDateDotsWithWeekday(g.key);
           const totalEl = document.createElement("span");
           totalEl.className = "time-ledger-day-group-total";
           totalEl.textContent = formatHoursDisplay(

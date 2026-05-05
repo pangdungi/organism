@@ -1484,14 +1484,12 @@ function showTodoTaskModal(options) {
           : ""
       }
       <div class="todo-list-modal-footer todo-task-edit-footer todo-task-edit-footer--actions">
-        <button type="button" class="todo-list-modal-cancel">취소</button>
-        <button type="button" class="todo-list-modal-confirm">확인</button>
+        <button type="button" class="todo-list-modal-confirm todo-task-edit-footer-confirm">확인</button>
       </div>
     </div>
   `;
 
   const closeBtn = modal.querySelector(".todo-list-modal-close");
-  const cancelBtn = modal.querySelector(".todo-list-modal-cancel");
   const confirmBtn = modal.querySelector(".todo-list-modal-confirm");
   const deleteBtn = modal.querySelector(".todo-task-edit-footer-delete");
   const nameInput = modal.querySelector(".todo-task-edit-name");
@@ -1584,7 +1582,6 @@ function showTodoTaskModal(options) {
     }
     close();
   });
-  cancelBtn?.addEventListener("click", close);
   closeBtn?.addEventListener("click", close);
   if (mode === "edit" && onDelete && deleteBtn) {
     deleteBtn.addEventListener("click", (e) => {

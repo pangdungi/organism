@@ -732,19 +732,10 @@ function buildHomeToolbar(dateBasis) {
   btnTime.className = "home-view-toolbar-btn home-view-toolbar-btn--pill";
   btnTime.textContent = "시간 기록 +";
 
-  const btnSettings = document.createElement("button");
-  btnSettings.type = "button";
-  btnSettings.className = "home-view-toolbar-btn home-view-toolbar-btn--icon";
-  btnSettings.setAttribute("aria-label", "나의 계정·설정");
-  btnSettings.innerHTML =
-    '<img src="/toolbaricons/settings.svg" alt="" width="18" height="18" />';
-
   btnTime.addEventListener("click", () => lpNavigateTab("time"));
-  btnSettings.addEventListener("click", () => lpNavigateTab("idea"));
 
   end.appendChild(clock);
   end.appendChild(btnTime);
-  end.appendChild(btnSettings);
 
   toolbar.appendChild(start);
   toolbar.appendChild(end);
