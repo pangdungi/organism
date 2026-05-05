@@ -24329,6 +24329,16 @@ body.kpi-resizing {
   background: transparent !important;
 }
 
+/* 과제 설정(톱니) 모달만: X에 2.75rem 터치 박스가 생기며 양옆 빈칸이 커져 헤더 좌우가 어긋남 → 글자 크기에 맞춤 */
+.time-task-setup-modal:not(.time-task-select-modal):not(.time-add-task-modal):not(.time-task-log-modal)
+  .time-task-setup-header
+  .time-task-setup-close {
+  min-width: 0;
+  min-height: 0;
+  width: auto;
+  height: auto;
+}
+
 .time-task-log-header {
   display: flex;
   align-items: center;
