@@ -17660,10 +17660,10 @@ col.asset-expense-col-amount,
 
 /* 할일 본문: 시간가계부형 — 상단 여백 + 좌(설정·+) / 가운데(세그먼트 탭) / 우(밸런스) */
 .calendar-view-todo .calendar-todo-content .todo-list-tabs-filter-row {
-  background: #ececef;
-  border-top: 1px solid rgba(42, 56, 40, 0.08);
-  border-bottom: 1px solid rgba(42, 56, 40, 0.1);
-  padding: 0 0.75rem;
+  background: var(--content-bg, #f5f5f7);
+  border-top: none;
+  border-bottom: none;
+  padding: 0.75rem 1rem 0.35rem;
   margin-bottom: 0;
   box-sizing: border-box;
   width: 100%;
@@ -17672,11 +17672,9 @@ col.asset-expense-col-amount,
   align-items: stretch;
 }
 
+/* 상단 패딩은 부모(.todo-list-tabs-filter-row)에서 — 빈 띠는 중복 여백만 만듦 */
 .calendar-view-todo .calendar-todo-content .todo-list-tabs-top-margin {
-  flex: 0 0 auto;
-  min-height: 0;
-  padding: 0.2rem 0 0.05rem;
-  box-sizing: border-box;
+  display: none;
 }
 
 .calendar-view-todo .calendar-todo-content .todo-list-tab-header-row {
@@ -17690,6 +17688,7 @@ col.asset-expense-col-amount,
   flex-wrap: nowrap;
   box-sizing: border-box;
   padding: 0.2rem 0;
+  border-bottom: none;
 }
 
 .calendar-view-todo .calendar-todo-content .todo-list-top-strip__left {
@@ -17838,15 +17837,17 @@ col.asset-expense-col-amount,
   font-weight: 500;
 }
 
-@media (max-width: 48rem) {
+@media (max-width: 64rem) {
   .calendar-view-todo .calendar-todo-content .todo-list-tab-header-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
     column-gap: 0;
-    padding-left: 0;
-    padding-right: 0;
+    padding: 0.3rem 0;
     min-height: 2.625rem;
+    border-bottom: none;
+    margin-bottom: 0;
+    box-sizing: border-box;
   }
 
   .calendar-view-todo .calendar-todo-content .todo-list-top-strip__left {
