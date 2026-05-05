@@ -17431,10 +17431,9 @@ col.asset-expense-col-amount,
   padding: 0 0.5rem 0.5rem;
   width: 100%;
   max-width: 100%;
-  background: #f5f5f7;
+  background: var(--content-bg);
   font-family: var(--font-body);
   box-sizing: border-box;
-  background: #f5f5f7;
 }
 
 .todo-list-view.hide-completed .todo-task-row:has(.todo-done-check:checked) {
@@ -17660,7 +17659,7 @@ col.asset-expense-col-amount,
 
 /* 할일 본문: 시간가계부형 — 캘린더 임베드(.calendar-todo-content)와 메인 할일 탭(.todo-list-view) 공통 */
 .calendar-view-todo .calendar-todo-content .todo-list-tabs-filter-row {
-  background: transparent;
+  background: var(--content-bg);
   border-top: none;
   border-bottom: none;
   padding: 1.5rem 1rem 0.35rem;
@@ -17674,7 +17673,7 @@ col.asset-expense-col-amount,
 
 /* 메인 할일 탭: 탭 줄(.todo-list-tabs-filter-row) 상단 24px — 본문 .todo-list-view 패딩과 별도 */
 .todo-list-view .todo-list-tabs-filter-row {
-  background: transparent;
+  background: var(--content-bg);
   border-top: none;
   border-bottom: none;
   padding: 1.5rem 1rem 0.35rem;
