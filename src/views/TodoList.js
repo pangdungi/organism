@@ -936,9 +936,9 @@ const TASK_DELETE_ICON =
 const ADD_TASK_ICON =
   '<svg viewBox="0 0 24 24" width="24" height="24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>';
 
-/** 할일/일정 카테고리 줄 우측 — 빠른 추가(+) */
+/** 할일/일정 카테고리 줄 우측 — 빠른 추가(+) (시간가계부 TIME_LEDGER_ADD_PLUS_ICON_SVG 와 동일) */
 const CALENDAR_TOOLBAR_QUICK_ADD_ICON =
-  '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+  '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>';
 
 const LIST_ICON =
   '<img src="/toolbaricons/list.svg" alt="세부 할 일" class="todo-list-icon" width="20" height="20">';

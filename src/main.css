@@ -3678,10 +3678,21 @@ body {
     );
   }
 
-  /* 할일/일정(카드 목록): 하단 탭만 확보 — KPI 입력용 큰 여백·중복 safe-area 제거 */
-  .app-main:has(.calendar-view-todo) {
-    padding-bottom: calc(env(safe-area-inset-bottom, 0) + 4.5rem) !important;
-    scroll-padding-bottom: calc(env(safe-area-inset-bottom, 0) + 4.5rem);
+  /*
+   * 할일·일정 탭(모바일): 시간 기록과 같은 main 여백(36 / 72px + safe-area).
+   * 패널 직계 자식 .calendar-view 로 매칭해 할일/캘린더 서브탭 모두 포함(:has(.calendar-view-todo) 누락 방지).
+   */
+  .app-main:has(> .app-tab-panel > .calendar-view) {
+    padding: calc(36px + env(safe-area-inset-top, 0px)) 0
+      calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* 오늘 탭(모바일): 시간 기록과 동일 main 패딩 36px 0 72px (+ safe-area) */
+  .app-main:has(> .app-tab-panel > .home-view) {
+    padding: calc(36px + env(safe-area-inset-top, 0px)) 0
+      calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
   }
 
   /* 오늘 탭: 모바일에서 세로 드래그(스크롤)로 전체 콘텐츠 볼 수 있게 — 배경 iOS 시스템 그레이 */
@@ -5873,13 +5884,13 @@ body {
   .calendar-view--mobile-workschedule .work-schedule-header-inner--mobile-tab {
     justify-content: flex-end;
   }
-  /* 설정 한 줄만: 전역 margin-bottom(1rem)·과한 패딩 제거 → 본문·월별 캘린더 세로 확보 */
+  /* 설정 한 줄만: 서브탭(.calendar-sub-tabs)과 동일 좌우 0.75rem(12px) */
   .calendar-view--mobile-workschedule.work-schedule-view .work-schedule-header {
     margin-bottom: 0 !important;
-    padding: 0.25rem 1.75rem 0.35rem !important;
+    padding: 0.25rem 0.75rem 0.35rem !important;
   }
 
-  /* 모바일 근무표 월별: 상단 네비·탭 아래 간격 살짝 축소, 그리드 마지막 줄이 하단 메뉴에 덜 가리도록 */
+  /* 모바일 근무표 월별: 상단 네비·탭 아래 간격 살짝 축소 */
   .calendar-view--mobile-workschedule .work-schedule-monthly-top-row {
     margin-bottom: 0.5rem;
   }
@@ -17745,8 +17756,8 @@ col.asset-expense-col-amount,
 
   .calendar-view-todo .calendar-todo-content .todo-list-toolbar-actions-end,
   .calendar-todo-sidebar-toolbar-actions .todo-list-toolbar-actions-end {
-    gap: 0.22rem;
-    padding-left: 0.22rem;
+    gap: 0.25rem;
+    padding-left: 0.35rem;
     flex-shrink: 0;
   }
 
@@ -17754,36 +17765,36 @@ col.asset-expense-col-amount,
     padding-left: 0;
   }
 
+  /* 시간가계부 .time-ledger-toolbar-icons 과 동일: 2.125rem 박스 · 1.25rem 글리프 · 빨간 톤 */
   .calendar-view-todo .calendar-todo-content .todo-list-toolbar-quick-add,
   .calendar-todo-sidebar-toolbar-actions .todo-list-toolbar-quick-add {
-    min-width: 1.65rem;
-    min-height: 1.65rem;
-    padding: 0.18rem;
+    width: 2.125rem !important;
+    height: 2.125rem !important;
+    min-width: 2.125rem !important;
+    min-height: 2.125rem !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    color: #dc2626 !important;
+    border-radius: 0.375rem !important;
+    box-sizing: border-box;
   }
 
   .calendar-view-todo .calendar-todo-content .todo-list-toolbar-quick-add svg,
   .calendar-todo-sidebar-toolbar-actions .todo-list-toolbar-quick-add svg {
-    width: 0.8125rem;
-    height: 0.8125rem;
-    color: rgb(229, 57, 53);
+    width: 1.25rem !important;
+    height: 1.25rem !important;
+    display: block;
+    flex-shrink: 0;
+    color: #dc2626 !important;
     stroke: currentColor;
   }
 
   .calendar-view-todo .calendar-todo-content .todo-list-toolbar-quick-add img,
   .calendar-todo-sidebar-toolbar-actions .todo-list-toolbar-quick-add img {
-    width: 1.0625rem;
-    height: 1.0625rem;
-  }
-
-  .calendar-view-todo
-    .calendar-todo-content
-    .todo-list-toolbar-actions-end
-    img,
-  .calendar-todo-sidebar-toolbar-actions .todo-list-toolbar-actions-end img {
-    max-width: 1.0625rem;
-    max-height: 1.0625rem;
-    width: auto !important;
-    height: auto !important;
+    width: 1.25rem !important;
+    height: 1.25rem !important;
+    max-width: none !important;
+    max-height: none !important;
   }
 
   .calendar-view-todo
@@ -17793,7 +17804,16 @@ col.asset-expense-col-amount,
   .calendar-todo-sidebar-toolbar-actions
     .todo-list-toolbar-actions-end
     .todo-list-settings-btn {
-    padding: 0.18rem;
+    width: 2.125rem !important;
+    height: 2.125rem !important;
+    min-width: 2.125rem !important;
+    min-height: 2.125rem !important;
+    padding: 0 !important;
+    box-sizing: border-box;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 0.375rem !important;
   }
 
   .calendar-view-todo
@@ -17803,10 +17823,14 @@ col.asset-expense-col-amount,
   .calendar-todo-sidebar-toolbar-actions
     .todo-list-toolbar-actions-end
     .todo-list-settings-icon {
-    width: 1rem !important;
-    height: 1rem !important;
-    max-width: 1rem;
-    max-height: 1rem;
+    width: 1.25rem !important;
+    height: 1.25rem !important;
+    max-width: none !important;
+    max-height: none !important;
+    display: block;
+    filter: brightness(0) saturate(100%) invert(27%) sepia(93%) saturate(2877%)
+      hue-rotate(342deg) brightness(96%) contrast(97%);
+    opacity: 1;
   }
 
   .calendar-view-todo .calendar-todo-content .todo-category-tab {
@@ -37547,14 +37571,15 @@ button.time-modal-traffic {
 }
 
 /* 할일/일정: 사이드바 옆 빈 띠(메인·패널·리스트 중첩 패딩) 제거 — 하단은 모바일에서 고정 탭 여백 유지 */
+/* 모바일: 여기서 상단을 0으로 두면 기존 .app-main 의 safe-area 패딩까지 없어져 노치에 탭이 김 — 상단 0은 넓은 화면만 */
 .app-main:has(.calendar-view) {
   padding-left: 0 !important;
   padding-right: 0 !important;
-  padding-top: 0 !important;
 }
 
 @media (min-width: 48.0625rem) {
   .app-main:has(.calendar-view) {
+    padding-top: 0 !important;
     padding-bottom: 0 !important;
   }
 }
