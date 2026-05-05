@@ -74,7 +74,7 @@ import {
   pullTimeDailyBudgetFromSupabase,
 } from "../utils/timeDailyBudgetSupabase.js";
 import { logLpRender } from "../utils/lpRenderDebugLog.js";
-const KPI_SECTION_IDS = ["braindump", "dream", "sideincome", "health", "happy"];
+const KPI_SECTION_IDS = ["dream", "sideincome", "health", "happy"];
 
 /** 할일/일정 패널은 할일만 표시 — 저장값으로 빈 화면·탭 초기화 방지 */
 const CALENDAR_MAIN_VIEW_STORAGE_KEY = "lp-calendar-main-subview";
@@ -267,7 +267,6 @@ function getSectionTasksForDate(dateKey) {
           sideincome: "부수입",
           health: "건강",
           happy: "행복",
-          braindump: "브레인 덤프",
         }[sectionId] || sectionId;
       arr
         .filter(
@@ -312,7 +311,6 @@ function getSectionTasksWithDateRange() {
           sideincome: "부수입",
           health: "건강",
           happy: "행복",
-          braindump: "브레인 덤프",
         }[sectionId] || sectionId;
       arr
         .filter(
@@ -642,7 +640,6 @@ function escapeHtml(s) {
 }
 
 const CALENDAR_CATEGORIES = [
-  { id: "braindump", label: "브레인 덤프" },
   { id: "dream", label: "꿈" },
   { id: "sideincome", label: "부수입" },
   { id: "health", label: "건강" },
@@ -4452,7 +4449,6 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   const actualSpans = actualResult.spans;
   const actualMaxLane = actualResult.maxLane;
   const SECTION_IDS_FOR_LIST_COLOR = [
-    "braindump",
     "dream",
     "sideincome",
     "health",
@@ -5071,7 +5067,6 @@ function render1DayView(
       sideincome: "부수입",
       health: "건강",
       happy: "행복",
-      braindump: "브레인 덤프",
     };
     const taskStats = {};
     ["dream", "sideincome", "health", "happy"].forEach((sid) => {
@@ -6919,7 +6914,6 @@ function renderEisenhowerView(tabsElement) {
             sideincome: "부수입",
             health: "건강",
             happy: "행복",
-            braindump: "브레인 덤프",
           }[sectionId] || sectionId;
         arr
           .filter((t) => (t.name || "").trim() !== "")

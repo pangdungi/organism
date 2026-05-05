@@ -111,7 +111,6 @@ const TIME_LEDGER_TOOLBAR_FILTER_ICON_SVG =
 
 /** 개선하기·기타: 해당 날짜 할일 목록 (Calendar getTasksForDate와 동일 데이터) */
 const KPI_SECTION_IDS_AUDIT = [
-  "braindump",
   "dream",
   "sideincome",
   "health",
@@ -6326,7 +6325,6 @@ export function render() {
     const todoName = (name || "").trim();
     if (!todoName) return false;
     const VALID_SECTIONS = [
-      "braindump",
       "dream",
       "sideincome",
       "happy",
@@ -6363,13 +6361,12 @@ export function render() {
   }
 
   const TODO_CATEGORIES = [
-    { id: "braindump", label: "브레인덤프" },
     { id: "dream", label: "꿈" },
     { id: "sideincome", label: "부수입" },
     { id: "happy", label: "행복" },
     { id: "health", label: "건강" },
   ];
-  let taskLogTodoSelectedCategory = "braindump";
+  let taskLogTodoSelectedCategory = "dream";
   /** 과제 기록 시 추가한 할 일: { categoryLabel, todoName } → "리스트 | 할일이름" 태그로 저장 */
   let taskLogTodoAddedItems = [];
 
@@ -6418,7 +6415,7 @@ export function render() {
   }
 
   function openTodoInnerModal() {
-    taskLogTodoSelectedCategory = "braindump";
+    taskLogTodoSelectedCategory = "dream";
     renderTodoCategoryButtons();
     if (taskLogTodoInnerName) taskLogTodoInnerName.value = "";
     if (taskLogTodoInnerModal) taskLogTodoInnerModal.hidden = false;

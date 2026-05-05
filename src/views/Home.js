@@ -15,13 +15,12 @@ import {
 import { getTodayTimeSummary } from "./Time.js";
 import { render1DayView, LP_CAL_TODO_SIDEBAR_NONE } from "./Calendar.js";
 
-const KPI_SECTION_IDS = ["braindump", "dream", "sideincome", "health", "happy"];
+const KPI_SECTION_IDS = ["dream", "sideincome", "health", "happy"];
 const SECTION_LABELS = {
   dream: "꿈",
   sideincome: "부수입",
   health: "건강",
   happy: "행복",
-  braindump: "브레인 덤프",
 };
 
 /** 해당 월(YYYY-MM)에 날짜가 배정된 이벤트/할일만 수집 (해당 월 셀만) */
@@ -132,7 +131,7 @@ function isToday(dateStr) {
   return dateStr.slice(0, 10) === todayKey;
 }
 
-/** 모든 탭(섹션)에서 리마인더가 설정된 할일만 수집. 탭명은 제외. */
+/** 꿈·부수입·건강·행복 네 고정 섹션에서 리마인더가 설정된 할일만 수집 */
 function getRemindersFromAllSections() {
   const out = [];
   try {
@@ -231,7 +230,7 @@ function getTodayDateKey() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/** 마감일이 오늘인 모든 할일 수집 (고정·커스텀 섹션만 — KPI 할일 제외) */
+/** 마감일이 오늘인 할일 수집 (꿈·부수입·건강·행복 고정 섹션 + 커스텀 리스트) */
 function getTasksDueToday() {
   const today = getTodayDateKey();
   const out = [];

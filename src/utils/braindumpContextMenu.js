@@ -1,12 +1,11 @@
 /**
  * 할일목록 태스크 우클릭 컨텍스트 메뉴
- * - 현재 리스트 제외한 전체 리스트(꿈/부수입/건강/행복 + 커스텀)로 이동
+ * - 현재 리스트 제외한 전체 리스트(꿈·부수입·건강·행복 + 커스텀)로 이동
  */
 
 import { getCustomSections } from "./todoSettings.js";
 
 const KPI_OPTIONS = [
-  { id: "braindump", label: "브레인 덤프" },
   { id: "dream", label: "꿈" },
   { id: "sideincome", label: "부수입" },
   { id: "health", label: "건강" },

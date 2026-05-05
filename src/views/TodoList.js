@@ -125,7 +125,6 @@ function loadSectionTasks(sectionId) {
           sideincome: "부수입",
           health: "건강",
           happy: "행복",
-          braindump: "브레인 덤프",
         }[sectionId] || sectionId;
       const out = arr
         .filter((t) => keepTaskInSectionStorage(t))
@@ -465,7 +464,7 @@ function moveTaskOutOfCustomSectionStorageOnly(sectionId, taskId) {
 }
 
 const KPI_SECTION_IDS = ["dream", "sideincome", "health", "happy"];
-const FIXED_SECTION_IDS_FOR_STORAGE = ["braindump", ...KPI_SECTION_IDS];
+const FIXED_SECTION_IDS_FOR_STORAGE = [...KPI_SECTION_IDS];
 
 /** ensureCalendarSectionTaskIds 등으로 저장소 taskId만 UUID로 바뀐 뒤 DOM은 task-* 인 불일치 방지 */
 const TASK_ID_UUID_RE =
@@ -1205,7 +1204,6 @@ const FIXED_SECTIONS = [
   { id: "sideincome", label: "부수입" },
   { id: "health", label: "건강" },
   { id: "happy", label: "행복" },
-  { id: "braindump", label: "브레인 덤프" },
 ];
 
 function escapeConfirmHtml(s) {
@@ -3640,7 +3638,7 @@ function renderSections(container, tasksData = [], options = {}) {
         section.id === "overdue"
           ? null
           : section.id === "tasks"
-            ? "braindump"
+            ? "dream"
             : section.id,
       hideCategoryCol: true,
       tabMode,
@@ -3725,7 +3723,7 @@ export function render(options = {}) {
     categoryToolbarActionsSlot &&
     typeof categoryToolbarActionsSlot.replaceChildren === "function";
 
-  /** 사이드바 등 hideToolbar 임베드는 탭 세션과 분리(메인 할일 탭이 꿈인데 캘린더 옆바가 브레인 덤프로 열리는 혼선 방지) */
+  /** 사이드바 등 hideToolbar 임베드는 탭 세션과 분리(메인 할일 탭과 캘린더 옆바 혼선 방지) */
   const persistFixedListTabToSession = !hideToolbar && !hasExplicitInitialTab;
   const el = document.createElement("div");
   el.className = "app-tab-panel-content todo-list-view";
@@ -3854,7 +3852,7 @@ export function render(options = {}) {
   categoryTabs.className = "todo-category-tabs";
   const tabButtons = [];
 
-  /* 할일/일정: 고정 5개 탭만 표시 (꿈, 부수입, 건강, 행복, 브레인 덤프), 리스트 추가 비노출 */
+  /* 할일/일정: 고정 4개 탭(꿈, 부수입, 건강, 행복), 리스트 추가 비노출 */
   FIXED_SECTIONS.forEach((section) => {
     const btn = document.createElement("button");
     btn.type = "button";
@@ -4116,7 +4114,6 @@ export function render(options = {}) {
       sideincome: "부수입",
       health: "건강",
       happy: "행복",
-      braindump: "브레인 덤프",
     };
     const getTargetLabel = (id) =>
       sectionLabelMap[id] ||
@@ -4163,9 +4160,8 @@ export function render(options = {}) {
       let moved = false;
       const fromIsKpi = KPI_SECTION_IDS.includes(fromSectionId);
       const targetIsKpi = KPI_SECTION_IDS.includes(targetSectionId);
-      const fromUsesSectionStorage = fromIsKpi || fromSectionId === "braindump";
-      const targetUsesSectionStorage =
-        targetIsKpi || targetSectionId === "braindump";
+      const fromUsesSectionStorage = fromIsKpi;
+      const targetUsesSectionStorage = targetIsKpi;
       const fromIsCustom = fromSectionId.startsWith("custom-");
       const targetIsCustom = targetSectionId.startsWith("custom-");
 
