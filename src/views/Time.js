@@ -102,6 +102,13 @@ const TIME_LEDGER_ADD_FAB_SVG =
 const TIME_LEDGER_ADD_PLUS_ICON_SVG =
   '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>';
 
+/** 툴바 설정·필터: img 필터 대신 +와 동일 currentColor (버튼 color #dc2626 상속) */
+const TIME_LEDGER_TOOLBAR_SETTINGS_ICON_SVG =
+  '<svg class="time-btn-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m19.845 13.561c.1-.505.155-1.027.155-1.561s-.055-1.056-.155-1.561l1.806-1.489c.502-.414.632-1.132.307-1.696l-.869-1.508c-.325-.564-1.011-.811-1.62-.582l-2.198.825c-.779-.684-1.689-1.218-2.691-1.559l-.385-2.316c-.108-.643-.663-1.114-1.314-1.114h-1.738c-.651 0-1.206.471-1.313 1.114l-.386 2.316c-1.002.341-1.912.875-2.691 1.559l-2.198-.825c-.61-.228-1.295.018-1.62.582l-.87 1.508c-.325.564-.195 1.282.307 1.696l1.806 1.489c-.1.505-.155 1.026-.155 1.561s.055 1.056.155 1.561l-1.806 1.489c-.502.414-.632 1.132-.307 1.696l.869 1.508c.325.564 1.011.811 1.62.582l2.198-.825c.779.684 1.689 1.218 2.691 1.559l.385 2.316c.109.643.664 1.114 1.315 1.114h1.738c.651 0 1.206-.471 1.313-1.114l.385-2.316c1.002-.341 1.913-.875 2.691-1.559l2.198.825c.609.229 1.295-.017 1.62-.582l.869-1.508c.325-.564.196-1.282-.307-1.696z"/><circle cx="12.012" cy="12" r="3"/></g></svg>';
+
+const TIME_LEDGER_TOOLBAR_FILTER_ICON_SVG =
+  '<svg class="time-btn-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" d="m20.988 2h-17.976c-1.664 0-2.606 1.899-1.595 3.216l7.583 9.784v7l4.853-2.101c.731-.318 1.147-1.037 1.147-1.832v-3.067l7.583-9.784c1.011-1.317.069-3.216-1.595-3.216z"/></svg>';
+
 /** 개선하기·기타: 해당 날짜 할일 목록 (Calendar getTasksForDate와 동일 데이터) */
 const KPI_SECTION_IDS_AUDIT = [
   "braindump",
@@ -4240,8 +4247,7 @@ export function render() {
   taskSetupBtn.dataset.filterFor = "all";
   taskSetupBtn.title = "과제명, 생산성, 카테고리를 한 번에 설정";
   taskSetupBtn.setAttribute("aria-label", "과제 설정");
-  taskSetupBtn.innerHTML =
-    '<img src="/toolbaricons/settings.svg" alt="" class="time-btn-icon" width="20" height="20" />';
+  taskSetupBtn.innerHTML = TIME_LEDGER_TOOLBAR_SETTINGS_ICON_SVG;
   taskSetupBtn.classList.add(
     "time-ledger-tabs-settings-btn",
     "time-ledger-toolbar-icon-btn",
@@ -4254,8 +4260,7 @@ export function render() {
   taskSelectBtn.id = "time-task-select-btn";
   taskSelectBtn.title = "과제 선택";
   taskSelectBtn.setAttribute("aria-label", "과제 선택");
-  taskSelectBtn.innerHTML =
-    '<img src="/toolbaricons/filter.svg" alt="" class="time-btn-icon" width="20" height="20" />';
+  taskSelectBtn.innerHTML = TIME_LEDGER_TOOLBAR_FILTER_ICON_SVG;
 
   /** YYYY-MM-DD → "4월1일(수)" (모바일·시간 기록 탭에서만 CSS로 표시) */
   function formatTimeFilterDateKr(dStr) {
