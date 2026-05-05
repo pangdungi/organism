@@ -7356,9 +7356,9 @@ export function render() {
     /* App pull 직후(skipSubtabPull): contentWrap 통째 비우면 상단·설정 줄이 잠깐 사라져 깜빡임 — 할일 뷰는 유지 후 목록만 교체 */
     if (skipSubtabPull && contentWrap.querySelector(".calendar-view-todo")) {
       const existingTodo = contentWrap.querySelector(".calendar-view-todo");
-      const reuseBtn = existingTodo?.querySelector(
-        ".todo-list-toolbar-actions-end .todo-list-settings-btn",
-      );
+        const reuseBtn = existingTodo?.querySelector(
+          ".time-ledger-toolbar-icons .todo-list-settings-btn, .todo-list-settings-btn",
+        );
       const todoMain = existingTodo.querySelector(".calendar-todo-main");
       if (existingTodo && todoMain) {
         try {

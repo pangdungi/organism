@@ -3842,34 +3842,58 @@ export function render(options = {}) {
     toolbar.appendChild(settingsBtn);
   }
 
-  const toolbarRow = document.createElement("div");
-  toolbarRow.className =
-    "todo-list-toolbar-row" +
-    (categoryToolbarRightActions ? " todo-list-toolbar-row--calendar-actions" : "");
-  el.appendChild(toolbarRow);
+  if (categoryToolbarRightActions) {
+    settingsBtn.classList.add("time-ledger-toolbar-icon-btn");
+  }
 
   const categoryTabs = document.createElement("div");
   categoryTabs.className = "todo-category-tabs";
   const tabButtons = [];
 
+  function syncTodoListSegmentThumb() {
+    if (!categoryTabs.classList.contains("time-view-tabs--segmented")) return;
+    const btns = [...categoryTabs.querySelectorAll(".time-view-tab")];
+    const n = Math.max(1, btns.length);
+    const idx = Math.max(
+      0,
+      btns.findIndex((b) => b.classList.contains("active")),
+    );
+    categoryTabs.style.setProperty("--time-segment-count", String(n));
+    categoryTabs.style.setProperty("--thumb-col-start", String(idx + 1));
+  }
+
+  if (categoryToolbarRightActions) {
+    categoryTabs.classList.add(
+      "time-view-tabs",
+      "time-view-tabs--segmented",
+      "todo-list-segment-tabs",
+    );
+    const thumb = document.createElement("span");
+    thumb.className = "time-view-tabs-thumb";
+    thumb.setAttribute("aria-hidden", "true");
+    categoryTabs.appendChild(thumb);
+  }
+
   /* 할일/일정: 고정 4개 탭(꿈, 부수입, 건강, 행복), 리스트 추가 비노출 */
   FIXED_SECTIONS.forEach((section) => {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "todo-category-tab";
+    btn.className = categoryToolbarRightActions
+      ? "todo-category-tab time-view-tab"
+      : "todo-category-tab";
     btn.dataset.section = section.id;
     btn.innerHTML = `<span class="todo-category-tab-label">${section.label}</span> <span class="todo-category-tab-count">0</span>`;
     tabButtons.push(btn);
     categoryTabs.appendChild(btn);
   });
 
-  toolbarRow.appendChild(categoryTabs);
+  let quickAddBtn = null;
   if (categoryToolbarRightActions) {
-    const actionsEnd = document.createElement("div");
-    actionsEnd.className = "todo-list-toolbar-actions-end";
-    const quickAddBtn = document.createElement("button");
+    syncTodoListSegmentThumb();
+    quickAddBtn = document.createElement("button");
     quickAddBtn.type = "button";
-    quickAddBtn.className = "todo-list-toolbar-quick-add";
+    quickAddBtn.className =
+      "todo-list-toolbar-quick-add todo-add-btn time-ledger-add-plus-btn";
     quickAddBtn.title = "할 일 추가";
     quickAddBtn.innerHTML = CALENDAR_TOOLBAR_QUICK_ADD_ICON;
     quickAddBtn.addEventListener("click", () => {
@@ -3880,16 +3904,46 @@ export function render(options = {}) {
         ?.querySelector(".todo-cards-add-wrap .todo-cards-add-btn")
         ?.click();
     });
-    actionsEnd.appendChild(quickAddBtn);
-    actionsEnd.appendChild(settingsBtn);
-    if (useSidebarHeaderToolbarActions) {
-      categoryToolbarActionsSlot.replaceChildren(actionsEnd);
-    } else {
-      toolbarRow.appendChild(actionsEnd);
-    }
-  } else if (!settingsSlot) {
-    toolbarRow.appendChild(toolbar);
   }
+
+  const toolbarRow = document.createElement("div");
+  if (categoryToolbarRightActions) {
+    toolbarRow.className = "todo-list-tabs-filter-row";
+    const tabsTopMargin = document.createElement("div");
+    tabsTopMargin.className = "todo-list-tabs-top-margin";
+    const tabHeaderRow = document.createElement("div");
+    tabHeaderRow.className = "todo-list-tab-header-row";
+    const leftStrip = document.createElement("div");
+    leftStrip.className = "todo-list-top-strip__left";
+    const iconsWrap = document.createElement("div");
+    iconsWrap.className = "time-ledger-toolbar-icons";
+    iconsWrap.appendChild(settingsBtn);
+    if (quickAddBtn) iconsWrap.appendChild(quickAddBtn);
+    leftStrip.appendChild(iconsWrap);
+    const centerStrip = document.createElement("div");
+    centerStrip.className = "todo-list-top-strip__center";
+    centerStrip.appendChild(categoryTabs);
+    const rightStrip = document.createElement("div");
+    rightStrip.className = "todo-list-top-strip__right";
+    rightStrip.setAttribute("aria-hidden", "true");
+    tabHeaderRow.appendChild(leftStrip);
+    tabHeaderRow.appendChild(centerStrip);
+    tabHeaderRow.appendChild(rightStrip);
+    toolbarRow.appendChild(tabsTopMargin);
+    toolbarRow.appendChild(tabHeaderRow);
+    if (useSidebarHeaderToolbarActions && categoryToolbarActionsSlot) {
+      try {
+        categoryToolbarActionsSlot.replaceChildren();
+      } catch (_) {}
+    }
+  } else {
+    toolbarRow.className = "todo-list-toolbar-row";
+    toolbarRow.appendChild(categoryTabs);
+    if (!settingsSlot) {
+      toolbarRow.appendChild(toolbar);
+    }
+  }
+  el.appendChild(toolbarRow);
 
   const sectionsWrap = document.createElement("div");
   sectionsWrap.className = "todo-sections-wrap todo-tab-panels";
@@ -3968,6 +4022,7 @@ export function render(options = {}) {
           ].filter((r) => taskItemPassesSectionListFilter(r)).length;
       btn.querySelector(".todo-category-tab-count").textContent = String(count);
     });
+    syncTodoListSegmentThumb();
   }
   updateTabLabels();
 
@@ -4010,9 +4065,11 @@ export function render(options = {}) {
       sectionResults.forEach((r, idx) => {
         r.wrap.classList.toggle("is-active", idx === i);
       });
+      syncTodoListSegmentThumb();
     });
   });
   tabButtons.forEach((b, i) => b.classList.toggle("active", i === safeIndex));
+  syncTodoListSegmentThumb();
 
   el.appendChild(sectionsWrap);
 
