@@ -24345,6 +24345,8 @@ body.kpi-resizing {
   min-height: 0;
   width: auto;
   height: auto;
+  /* ×(큰 글자·line-height 1) vs 타이틀(작은 글자·line-height 1.25) flex 가운데 정렬 시 광학적으로 X가 아래로 보임 */
+  transform: translateY(-0.065em);
 }
 
 .time-task-log-header {
