@@ -1,0 +1,11 @@
+---
+description: 푸시 요청 시 프로덕션(main) 반영까지 수행
+alwaysApply: true
+---
+
+# 푸시 = 웹(프로덕션) 반영까지
+
+- 사용자가 **푸시**, **깃 푸시**, **반영**, **올려줘** 등으로 원격에 올리길 원할 때, 이 프로젝트는 **GitHub `main` → Vercel 배포** 전제로 두고 처리한다.
+- **작업 브랜치만 `git push`로 끝내지 않는다.** 커밋 후 **`origin/main`에 포함되게** 한다 (예: `main` 체크아웃 → 해당 브랜치 머지 또는 fast-forward → `git push origin main`).
+- 이미 `main`에서 작업 중이면 `git push origin main`만 하면 된다.
+- 머지 충돌·보호 브랜치 등으로 자동 머지가 불가하면 그때만 사용자에게 알린다.
