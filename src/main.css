@@ -39880,32 +39880,18 @@ img.time-btn-icon {
   min-height: 0;
   overflow: hidden;
 }
+.calendar-annual-view .calendar-annual-nav {
+  justify-content: flex-end;
+  margin-bottom: 0;
+}
 .calendar-annual-view .calendar-annual-nav .calendar-nav-month {
   display: none;
-}
-/* 연간 상단 연도: 월별 뷰 MAY와 동일 크기·톤 */
-.calendar-annual-view .calendar-annual-nav .calendar-nav-year {
-  font-family: var(--font-heading);
-  font-size: 3.25rem;
-  font-weight: 400;
-  color: #1f2937;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-}
-.calendar-annual-view .calendar-annual-nav .calendar-annual-label {
-  margin-left: 0.25rem;
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
-  font-weight: 300;
-  letter-spacing: 0.04em;
-  color: var(--text-muted);
-  align-self: baseline;
 }
 .calendar-annual-grid-wrap {
   flex: 1 1 0;
   min-height: 0;
   overflow: auto;
-  padding: 0.25rem 0.25rem 0.25rem 0;
+  padding: 0 0.25rem 0.25rem 0;
   display: flex;
   flex-direction: column;
   background: #ffffff;
@@ -39930,7 +39916,7 @@ img.time-btn-icon {
   box-sizing: border-box;
   width: 4.75rem;
   min-width: 4.75rem;
-  padding: 0.35rem 0.45rem 0.35rem 0.5rem;
+  padding: 0.35rem 0.5rem;
   font-family: var(--font-heading);
   font-size: 1.25rem;
   font-weight: 400;
@@ -39940,14 +39926,13 @@ img.time-btn-icon {
   color: #1f2937;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   border-right: var(--line-l3);
   /* 가로 스크롤 시 월 약어 열 고정 (스크롤은 .calendar-annual-grid-wrap) */
   position: sticky;
   left: 0;
   z-index: 2;
   background: #ffffff;
-  box-shadow: 0.1875rem 0 0.5rem rgba(0, 0, 0, 0.06);
   align-self: stretch;
 }
 .calendar-annual-row-days {
@@ -40040,6 +40025,11 @@ img.time-btn-icon {
   min-height: 0;
   flex: 1 1 0;
 }
+
+/* 1주: 상단 월/Today 줄과 요일 헤더(4(월) 등) 사이 틈 — .calendar-monthly-nav 기본 margin-bottom 제거 */
+.calendar-1week-view .calendar-monthly-nav {
+  margin-bottom: 0;
+}
 .calendar-1week-view .calendar-monthly-grid--1week-timegrid {
   flex: 1 1 0;
   min-height: 0;
@@ -40060,35 +40050,37 @@ img.time-btn-icon {
   grid-template-columns: var(--cal-1day-label-col) repeat(7, minmax(0, 1fr));
   flex-shrink: 0;
   border-bottom: var(--line-l3);
-  background: var(--content-bg, #f5f5f7);
+  background: #ffffff;
   z-index: 2;
 }
 .calendar-1week-google-corner {
   min-height: 2.75rem;
+  box-sizing: border-box;
+  border-right: var(--line-l3);
 }
 .calendar-1week-google-day-head {
   padding: 0.4rem 0.2rem;
   text-align: center;
-  border-left: var(--line-l3);
+  border-left: none;
+  border-right: var(--line-l3);
+  box-sizing: border-box;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 0.08rem;
+  justify-content: center;
 }
-.calendar-1week-google-day-head.is-today .calendar-1week-google-day-dow,
-.calendar-1week-google-day-head.is-today .calendar-1week-google-day-num {
+.calendar-1week-google-day-head:last-child {
+  border-right: none;
+}
+.calendar-1week-google-day-head.is-today .calendar-1week-google-day-label {
   color: var(--ui-btn-primary-bg);
   font-weight: 700;
 }
-.calendar-1week-google-day-dow {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-.calendar-1week-google-day-num {
-  font-size: 1rem;
+.calendar-1week-google-day-label {
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--text-body);
+  white-space: nowrap;
 }
 
 /* 00:00 위 — 기존 캘린더 할일·일정 막대(종일 줄) */
@@ -40098,7 +40090,7 @@ img.time-btn-icon {
   align-items: stretch;
   flex-shrink: 0;
   border-bottom: var(--line-l3);
-  background: var(--content-bg, #f5f5f7);
+  background: #ffffff;
 }
 .calendar-1week-google-allday-gutter {
   font-size: 0.625rem;
@@ -40110,14 +40102,20 @@ img.time-btn-icon {
   border-right: var(--line-l3);
   align-self: stretch;
 }
+/* 세로 구분: .calendar-monthly-day의 border-right만 사용 — border-left를 같이 쓰면 인접 칸에서 선이 두 겹으로 굵어짐 */
 .calendar-1week-google-allday-cell {
   min-width: 0;
   box-sizing: border-box;
   padding: 0.15rem 0.12rem 0.28rem;
-  border-left: var(--line-l3);
-}
-.calendar-1week-google-allday-gutter + .calendar-1week-google-allday-cell {
   border-left: none;
+  background: #ffffff;
+}
+.calendar-1week-google-allday-section .calendar-monthly-day.empty,
+.calendar-1week-google-allday-section .calendar-monthly-day {
+  background: #ffffff;
+}
+.calendar-1week-google-allday-section .calendar-monthly-day:hover:not(.empty) {
+  background: rgba(0, 0, 0, 0.035);
 }
 .calendar-1week-google-allday-inner {
   position: relative;
@@ -40138,6 +40136,8 @@ img.time-btn-icon {
   min-height: 0;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
+  /* 세로 스크롤바가 생기면 이 영역만 가로가 줄었던 것처럼 보여 위·아래 세로선이 안 맞던 문제 완화 */
+  scrollbar-gutter: stable;
 }
 .calendar-1week-google-body {
   display: flex;
@@ -40174,13 +40174,14 @@ img.time-btn-icon {
 }
 .calendar-1week-google-col {
   position: relative;
-  border-left: var(--line-l3);
+  border-left: none;
+  border-right: var(--line-l3);
   min-height: calc(24 * var(--cal-1week-hour-height));
   cursor: pointer;
   box-sizing: border-box;
 }
-.calendar-1week-google-col:first-child {
-  border-left: none;
+.calendar-1week-google-col:last-child {
+  border-right: none;
 }
 .calendar-1week-google-col.is-today {
   background: rgba(42, 56, 40, 0.04);

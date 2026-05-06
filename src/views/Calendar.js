@@ -5712,14 +5712,11 @@ function render1WeekView(
       th.className = "calendar-1week-google-day-head";
       if (key === todayKey) th.classList.add("is-today");
       th.dataset.date = key;
-      const dow = document.createElement("span");
-      dow.className = "calendar-1week-google-day-dow";
-      dow.textContent = DAY_NAMES[i] || "";
-      const num = document.createElement("span");
-      num.className = "calendar-1week-google-day-num";
-      num.textContent = String(date.getDate());
-      th.appendChild(dow);
-      th.appendChild(num);
+      const label = document.createElement("span");
+      label.className = "calendar-1week-google-day-label";
+      const dowLetter = DAY_NAMES[i] || "";
+      label.textContent = `${date.getDate()}(${dowLetter})`;
+      th.appendChild(label);
       headerRow.appendChild(th);
     });
 
@@ -5851,6 +5848,8 @@ function render1WeekView(
       allBarsAl.push({
         left,
         width,
+        weekSpanStartIdx: startIdx,
+        weekSpanEndIdx: endIdx,
         name: t.name,
         color,
         isSingleDay: false,
@@ -5912,6 +5911,26 @@ function render1WeekView(
     });
     allBarsAl.forEach((b) => {
       b.isOverflow = false;
+    });
+
+    /** 각 날짜 칸 높이: 그 열을 가로로 점유하는 막대(기간·단일)의 최대 row까지 */
+    const maxRowTouchingDateKey = {};
+    weekDateKeys.forEach((key) => {
+      const di = weekDateKeys.indexOf(key);
+      let maxR = -1;
+      allBarsAl.forEach((bar) => {
+        if (bar.isSingleDay && bar.dateKey === key) {
+          maxR = Math.max(maxR, bar.row);
+        } else if (
+          !bar.isSingleDay &&
+          typeof bar.weekSpanStartIdx === "number" &&
+          di >= bar.weekSpanStartIdx &&
+          di <= bar.weekSpanEndIdx
+        ) {
+          maxR = Math.max(maxR, bar.row);
+        }
+      });
+      maxRowTouchingDateKey[key] = maxR;
     });
 
     allBarsAl.forEach((b) => {
@@ -6049,13 +6068,11 @@ function render1WeekView(
           const entries = pack?.entriesEl;
           if (entries) {
             entries.style.position = "relative";
-            const daySingles = allBarsAl.filter(
-              (x) => x.isSingleDay && x.dateKey === b.dateKey,
-            );
-            const localIdx = daySingles.indexOf(b);
-            bar.style.cssText = `left:0;right:0;width:100%;max-width:100%;box-sizing:border-box;--bar-bg:${b.color};top:${STACK_PAD_TOP_AL + localIdx * BAR_HEIGHT_AL}rem`;
+            bar.style.cssText = `left:0;right:0;width:100%;max-width:100%;box-sizing:border-box;--bar-bg:${b.color};top:${STACK_PAD_TOP_AL + b.row * BAR_HEIGHT_AL}rem`;
             entries.appendChild(bar);
-            entries.style.minHeight = `${STACK_PAD_TOP_AL + daySingles.length * BAR_HEIGHT_AL + STACK_PAD_BOT_AL}rem`;
+            const mr = maxRowTouchingDateKey[b.dateKey];
+            const stackRows = mr >= 0 ? mr + 1 : 0;
+            entries.style.minHeight = `${STACK_PAD_TOP_AL + stackRows * BAR_HEIGHT_AL + STACK_PAD_BOT_AL}rem`;
             placed = true;
           }
         } else if (!b.isSingleDay && b.startDate && b.dueDate) {
@@ -6067,12 +6084,9 @@ function render1WeekView(
             entries.style.position = "relative";
             bar.style.cssText = `left:0;right:0;width:100%;max-width:100%;box-sizing:border-box;--bar-bg:${b.color};top:${STACK_PAD_TOP_AL + b.row * BAR_HEIGHT_AL}rem`;
             entries.appendChild(bar);
-            const needH =
-              STACK_PAD_TOP_AL +
-              (b.row + 1) * BAR_HEIGHT_AL +
-              STACK_PAD_BOT_AL;
-            const cur = parseFloat(entries.style.minHeight) || 0;
-            if (needH > cur) entries.style.minHeight = `${needH}rem`;
+            const mr = maxRowTouchingDateKey[anchorKey];
+            const stackRows = mr >= 0 ? mr + 1 : 0;
+            entries.style.minHeight = `${STACK_PAD_TOP_AL + stackRows * BAR_HEIGHT_AL + STACK_PAD_BOT_AL}rem`;
             placed = true;
           }
         }
@@ -6156,42 +6170,6 @@ function render1WeekView(
 
       col.appendChild(gridBg);
       col.appendChild(track);
-
-      col.addEventListener("click", (e) => {
-        if (e.target.closest(".calendar-1week-google-block")) return;
-        const isMobile = window.matchMedia("(max-width: 48rem)").matches;
-        const rect = col.getBoundingClientRect();
-        if (isMobile) {
-          e.stopPropagation();
-          e.preventDefault();
-          const tasks = getAllTasksForDateDisplay(key);
-          createCalendarDayExpandBubble(rect, key, tasks, () => {}, {
-            positionBelow: true,
-            onAdd: () => {
-              createCalendarEventBubble(
-                rect,
-                key,
-                () => {
-                  renderCalendar();
-                  refreshTodoList();
-                },
-                () => {},
-              );
-            },
-          });
-          return;
-        }
-        e.stopPropagation();
-        createCalendarEventBubble(
-          rect,
-          key,
-          () => {
-            renderCalendar();
-            refreshTodoList();
-          },
-          () => {},
-        );
-      });
 
       colsWrap.appendChild(col);
     });
@@ -6380,10 +6358,6 @@ function renderAnnualView(tabsElement) {
   const nav = document.createElement("div");
   nav.className = "calendar-monthly-nav calendar-annual-nav";
   nav.innerHTML = `
-    <span class="calendar-nav-date">
-      <span class="calendar-nav-year">${currentYear}</span>
-      <span class="calendar-annual-label">년</span>
-    </span>
     <div class="calendar-nav-controls">
       <button type="button" class="calendar-nav-prev" title="이전 해">&lt;</button>
       <button type="button" class="calendar-nav-today" title="올해로 이동">${currentYear}</button>
@@ -6403,7 +6377,6 @@ function renderAnnualView(tabsElement) {
       _annualDayExpandClose?.();
     } catch (_) {}
     _annualDayExpandClose = null;
-    lpCalendarNavQ(nav, wrap, ".calendar-nav-year").textContent = String(currentYear);
     const yearJumpBtn = lpCalendarNavQ(nav, wrap, ".calendar-nav-today");
     if (yearJumpBtn) yearJumpBtn.textContent = String(currentYear);
     table.innerHTML = "";
