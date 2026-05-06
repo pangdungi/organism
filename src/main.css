@@ -5658,6 +5658,32 @@ body {
     flex: 0 0 auto !important;
     min-height: min-content;
   }
+  /* 오늘 해치우기: 서브탭 아래 본문 래퍼가 flex:1·min-height:0 이면 부모 높이가 auto일 때 높이 0으로 접힘 */
+  .app-main:has(.calendar-view)
+    .app-tab-panel:has(.calendar-1day-view)
+    .calendar-view-content-area {
+    flex: 0 0 auto !important;
+    min-height: min-content !important;
+    overflow: visible !important;
+  }
+  /* 글로벌 .calendar-view-content-area > .calendar-monthly-layout { flex:1; min-height:0 } 가 1일 뷰를 세로로 압축 */
+  .app-main:has(.calendar-view)
+    .app-tab-panel:has(.calendar-1day-view)
+    .calendar-view-content-area
+    > .calendar-monthly-layout.calendar-1day-view {
+    flex: 0 0 auto !important;
+    min-height: min-content !important;
+    overflow: visible !important;
+  }
+  /* content-area 안에 1일 뷰가 있을 때: wrap 직계 .calendar-monthly-layout 은 서브탭 껍데기 — flex:1 이면 같이 압축 */
+  .app-main:has(.calendar-view)
+    .app-tab-panel:has(.calendar-1day-view)
+    .calendar-content-wrap
+    > .calendar-monthly-layout.calendar-view-with-subtabs {
+    flex: 0 0 auto !important;
+    min-height: min-content !important;
+    overflow: visible !important;
+  }
   .app-main:has(.calendar-view)
     .app-tab-panel:has(.calendar-1day-view)
     .calendar-view-1day-content-row,
@@ -5941,6 +5967,7 @@ body {
     display: flex;
     justify-content: flex-start;
     align-items: center;
+    align-self: stretch;
     min-width: 0;
     max-width: 100%;
     width: 100%;
@@ -5949,6 +5976,7 @@ body {
 
   .calendar-view--mobile-schedule .calendar-sub-tabs-nav-cluster {
     display: flex;
+    flex-direction: row;
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
@@ -6467,17 +6495,18 @@ body {
     flex: 1 1 0;
     min-height: 0;
   }
-  .calendar-view
-    .calendar-content-wrap:has(> .calendar-monthly-layout.calendar-1day-view) {
-    flex: 0 0 auto;
-    min-height: min-content;
+  /* 1일 뷰는 content-wrap 직계가 아니라 with-subtabs 안에 있음 — :has(> …1day) 는 영원히 false 였음 */
+  .calendar-view .calendar-content-wrap:has(.calendar-1day-view) {
+    flex: 0 0 auto !important;
+    min-height: min-content !important;
     overflow: visible !important;
   }
   .calendar-view
-    .calendar-content-wrap:has(> .calendar-monthly-layout.calendar-1day-view)
+    .calendar-content-wrap:has(.calendar-1day-view)
     > .calendar-monthly-layout {
     flex: 0 0 auto !important;
-    min-height: min-content;
+    min-height: min-content !important;
+    overflow: visible !important;
   }
 
   /* 모바일·오늘 해치우기: 남은 시간 + 날짜 이동 한 줄 */
@@ -6553,7 +6582,7 @@ body {
     thead
     th {
     font-size: 0.5rem;
-    padding: 0.22rem 0.12rem;
+    padding: 0.26rem 0.32rem;
     letter-spacing: -0.02em;
     line-height: 1.15;
   }
@@ -6564,7 +6593,7 @@ body {
     .time-daily-budget-table
     tbody
     td {
-    padding: 0.25rem 0.12rem;
+    padding: 0.25rem 0.22rem;
     font-size: 0.65rem;
   }
   .calendar-view
@@ -6576,7 +6605,7 @@ body {
     white-space: nowrap;
     line-height: 1.15;
   }
-  /* 시간 칸: 고정 rem 폭은 좁은 열에서 숫자 잘림 → 열 너비 100% + 탭 숫자 */
+  /* 시간 칸: hh:mm 플레이스홀더·입력 글자를 헤더보다 과하게 크지 않게(명시 + webkit 자동 확대 억제) */
   .calendar-view
     .calendar-1day-view
     .calendar-1day-budget-column
@@ -6585,13 +6614,29 @@ body {
     .calendar-1day-view
     .calendar-1day-budget-column
     .time-budget-time-input {
-    font-size: 0.5625rem !important;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    font-size: 0.65rem !important;
+    line-height: 1.15 !important;
     font-variant-numeric: tabular-nums;
-    padding: 0.1rem 0.12rem !important;
+    padding: 0.12rem 0.18rem !important;
     width: 100% !important;
     max-width: 100%;
     min-width: 0;
     box-sizing: border-box;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-budget-scheduled-input::placeholder,
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-budget-time-input::placeholder {
+    font-size: 0.65rem !important;
+    line-height: 1.15 !important;
+    font-weight: 400;
+    opacity: 0.72;
   }
   .calendar-view
     .calendar-1day-view
@@ -6605,8 +6650,8 @@ body {
     .time-daily-budget-table
     tbody
     td:has(.time-budget-time-input) {
-    padding-left: 0.08rem;
-    padding-right: 0.08rem;
+    padding-left: 0.14rem;
+    padding-right: 0.14rem;
   }
   .calendar-view
     .calendar-1day-view
@@ -6672,7 +6717,7 @@ body {
   }
   .calendar-view .calendar-1day-view .calendar-1day-todo-table thead th {
     font-size: 0.55rem;
-    padding: 0.25rem 0.2rem;
+    padding: 0.28rem 0.32rem;
     letter-spacing: -0.02em;
     line-height: 1.15;
   }
@@ -6710,9 +6755,18 @@ body {
     font-size: inherit;
   }
 
-  /* 모바일: 오늘 해치우기(세로) — 콘텐츠 전체 길이로 펼침(아래로 스크롤은 .app-tab-panel) */
+  /* 모바일: 오늘 해치우기 — .calendar-monthly-main 기본(flex:1·overflow:hidden)이 격자를 ~87px로만 남김 */
+  /* 1일 뷰 최상단도 .calendar-monthly-layout 이라 전역 overflow:hidden 이 한 번 더 걸림 */
+  .calendar-view .calendar-1day-view.calendar-monthly-layout {
+    overflow: visible !important;
+    flex: 0 0 auto !important;
+    min-height: min-content !important;
+  }
   .calendar-view .calendar-1day-view .calendar-monthly-main {
     padding: 0 !important;
+    flex: 0 0 auto !important;
+    min-height: min-content !important;
+    overflow: visible !important;
   }
   .calendar-view
     .calendar-1day-view
@@ -6724,18 +6778,66 @@ body {
     width: 100%;
     gap: 0;
   }
+  /*
+   * 글로벌(40675~): 가로 6:4 용 flex:6·4 가 세로(column) 레이아웃에도 남아 세로로 비율 나눔 →
+   * 예산 표·24h 격자가 한 줄·빈 여백으로 찌그러짐. 직계 열만 콘텐츠 높이로 덮어씀.
+   */
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-time-grid.calendar-1day-split-layout
+    > .calendar-1day-budget-column,
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-time-grid.calendar-1day-split-layout
+    > .calendar-1day-time-column {
+    flex: 0 0 auto !important;
+    min-height: min-content !important;
+    max-height: none !important;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-time-grid.calendar-1day-split-layout
+    > .calendar-1day-budget-column {
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: touch;
+  }
   .calendar-view .calendar-1day-view .calendar-1day-budget-column {
     display: flex !important;
     flex: 0 0 auto;
     max-height: none;
     width: 100% !important;
-    max-width: none;
+    max-width: 100% !important;
+    min-width: 0 !important;
     border-right: none;
     border-bottom: var(
       --divider-subtle,
       0.0313rem solid rgba(42, 56, 40, 0.12)
     );
     box-sizing: border-box;
+  }
+  /* 가로로 표·패널 min-content 가 뷰포트를 밀어 devtools 에 1000000px 처럼 보이는 현상 방지 */
+  .calendar-view .calendar-1day-view .calendar-1day-budget-tables-scroll {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+  .calendar-view .calendar-1day-view .time-daily-budget-four-panels {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+  .calendar-view .calendar-1day-view .time-daily-budget-section-scroll {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+  .calendar-view .calendar-1day-view .time-daily-budget-table {
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+    box-sizing: border-box !important;
   }
   .calendar-view .calendar-1day-view .calendar-1day-divider {
     display: none !important;
@@ -6775,9 +6877,36 @@ body {
   }
   .calendar-view .calendar-1day-view .calendar-1day-time-table-wrap,
   .calendar-view .calendar-1day-view .calendar-1day-time-table-inner {
-    flex: 0 0 auto;
+    flex: 0 0 auto !important;
     overflow: visible;
     min-height: 0;
+  }
+  /*
+   * 모바일 일정·오늘 해치우기: 24행 그리드에 minmax(N, 1fr) + min-height:100% 가 남는 높이를 전부 채워
+   * 빈 회색만 길게 보임 → 행은 콘텐츠 높이만 쓰고(1fr 제거), wrap은 늘어나지 않게 고정.
+   */
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-time-table.calendar-1day-time-table--compare {
+    min-height: min-content !important;
+    grid-template-rows: repeat(24, minmax(2.75rem, auto)) !important;
+  }
+  .calendar-view .calendar-1day-view .calendar-1day-time-table:not(
+      .calendar-1day-time-table--compare
+    ) {
+    grid-template-rows: repeat(24, minmax(2.5rem, auto)) !important;
+  }
+  /* 글로벌(41926~): inner 안 표만 flex:1 이면 부모 높이 불안정 → 늘어난 뒤 오버레이가 전부 덮음 */
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-time-table-inner
+    .calendar-1day-time-table {
+    flex: 0 0 auto !important;
+    min-height: min-content !important;
+  }
+  /* 글로벌(41936~): 오버레이 그리드도 1fr 이 빈 회색만 키움 */
+  .calendar-view .calendar-1day-view .calendar-1day-time-fill-overlay {
+    grid-template-rows: repeat(24, minmax(2.75rem, auto)) !important;
   }
 
   /* 4. 오늘 해치우기(모바일): 예상·실제 색 블록 z-index */
@@ -39273,6 +39402,7 @@ img.time-btn-icon {
   display: flex;
   justify-content: flex-start;
   align-items: center;
+  align-self: stretch;
   min-width: 0;
   max-width: 100%;
   width: 100%;
@@ -39281,6 +39411,7 @@ img.time-btn-icon {
 
 .calendar-view--mobile-schedule .calendar-sub-tabs-nav-cluster {
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
@@ -40131,6 +40262,12 @@ img.time-btn-icon {
   font-size: 0.68rem;
 }
 
+/* 주간 종일 막대는 .calendar-monthly-day { text-align: right } 를 물려받아 글자만 오른쪽으로 붙는 현상 방지 */
+.calendar-1week-google-allday-section .calendar-monthly-span-bar,
+.calendar-1week-google-allday-section .calendar-monthly-span-bar-text {
+  text-align: start;
+}
+
 .calendar-1week-google-scroll {
   flex: 1 1 0;
   min-height: 0;
@@ -40175,13 +40312,22 @@ img.time-btn-icon {
 .calendar-1week-google-col {
   position: relative;
   border-left: none;
-  border-right: var(--line-l3);
+  border-right: none;
   min-height: calc(24 * var(--cal-1week-hour-height));
   cursor: pointer;
   box-sizing: border-box;
 }
-.calendar-1week-google-col:last-child {
-  border-right: none;
+/* 열 구분선: inset shadow/border는 일정 막대(.calendar-1week-google-track z-index)에 가려져 끊겨 보임 → 막대 위에 그리기 */
+.calendar-1week-google-col:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line-l3-color);
+  pointer-events: none;
+  z-index: 3;
 }
 .calendar-1week-google-col.is-today {
   background: rgba(42, 56, 40, 0.04);
@@ -45758,4 +45904,98 @@ img.time-btn-icon {
   background: #f5eee8;
   border: 1px solid #e0d4c8;
   border-radius: 0.12rem;
+}
+
+/* ---- 모바일 하단 「일정」탭 · 오늘 해치우기: 파일 말미에서 flex/overflow 체인 최종 해제(앞선 규칙 덮어씀) ---- */
+@media (max-width: 48rem) {
+  .calendar-view--mobile-schedule:has(.calendar-1day-view) .calendar-content-wrap,
+  .calendar-view--mobile-schedule:has(.calendar-1day-view)
+    .calendar-view-with-subtabs.calendar-monthly-layout,
+  .calendar-view--mobile-schedule:has(.calendar-1day-view) .calendar-view-content-area {
+    flex: 0 0 auto !important;
+    min-height: min-content !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .calendar-view--mobile-schedule:has(.calendar-1day-view)
+    .calendar-view-content-area
+    > .calendar-monthly-layout.calendar-1day-view {
+    flex: 0 0 auto !important;
+    min-height: min-content !important;
+    overflow: visible !important;
+  }
+  .calendar-view--mobile-schedule
+    .calendar-1day-view.calendar-monthly-layout,
+  .calendar-view--mobile-schedule .calendar-1day-view .calendar-monthly-main,
+  .calendar-view--mobile-schedule .calendar-1day-view .calendar-1day-split-layout {
+    flex: 0 0 auto !important;
+    min-height: min-content !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  /* 파일 앞쪽 .calendar-1day-split-layout > 열 flex:6·4 재확인(세로 스택에서 찌그러짐 방지) */
+  .calendar-view--mobile-schedule
+    .calendar-1day-view
+    .calendar-1day-time-grid.calendar-1day-split-layout
+    > .calendar-1day-budget-column,
+  .calendar-view--mobile-schedule
+    .calendar-1day-view
+    .calendar-1day-time-grid.calendar-1day-split-layout
+    > .calendar-1day-time-column {
+    flex: 0 0 auto !important;
+    min-height: min-content !important;
+    max-height: none !important;
+  }
+  .calendar-view--mobile-schedule
+    .calendar-1day-view
+    .calendar-1day-time-grid.calendar-1day-split-layout
+    > .calendar-1day-budget-column {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .calendar-view--mobile-schedule:has(.calendar-1day-view) .time-daily-budget-four-panels,
+  .calendar-view--mobile-schedule:has(.calendar-1day-view) .calendar-1day-budget-tables-scroll {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+  .calendar-view--mobile-schedule:has(.calendar-1day-view) .time-daily-budget-table {
+    table-layout: fixed !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  /* 오늘 해치우기: 데스크톱용 가로 6:4(flex row)가 남아 한 줄로 밀릴 때 세로 스택 + 폭 상한 */
+  .calendar-view--mobile-schedule:has(.calendar-1day-view)
+    .calendar-1day-time-grid.calendar-1day-split-layout {
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    align-items: stretch !important;
+    box-sizing: border-box !important;
+  }
+  .calendar-view--mobile-schedule:has(.calendar-1day-view)
+    .calendar-1day-time-grid.calendar-1day-split-layout
+    > .calendar-1day-budget-column,
+  .calendar-view--mobile-schedule:has(.calendar-1day-view)
+    .calendar-1day-time-grid.calendar-1day-split-layout
+    > .calendar-1day-time-column {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    flex: 0 0 auto !important;
+    box-sizing: border-box !important;
+  }
+  .calendar-view--mobile-schedule:has(.calendar-1day-view)
+    .calendar-1day-time-table-wrap,
+  .calendar-view--mobile-schedule:has(.calendar-1day-view)
+    .calendar-1day-time-table-inner {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
 }

@@ -4032,6 +4032,130 @@ function buildExpectedScheduleSpansForDateKey(dateKey) {
   return { spans: normalized, maxLane: withLanes.maxLane };
 }
 
+/**
+ * dateKey: 시간가계부 행(`loadTimeRows`)만 반영 — 서버 pull 후 로컬과 동기화된 스냅샷.
+ * 1주 뷰에서 「오늘」보다 과거 열의 실제 블록용.
+ */
+function buildActualScheduleSpansForDateKey(dateKey) {
+  const SLOTS_PER_DAY = 24;
+  const MIN_PER_SLOT = 60;
+  const fmt = (m) =>
+    `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  const parseHhMmToMinutes = (s) => {
+    if (!s || !s.trim()) return null;
+    const str = String(s).trim();
+    const m = str.match(/^(\d{1,2}):?(\d{0,2})$/);
+    if (m) return (parseInt(m[1], 10) || 0) * 60 + (parseInt(m[2], 10) || 0);
+    const m4 = str.match(/^(\d{3,4})$/);
+    if (m4) {
+      const digits = m4[1];
+      const h =
+        digits.length === 4
+          ? parseInt(digits.slice(0, 2), 10)
+          : parseInt(digits.slice(0, 1), 10);
+      const min = parseInt(digits.slice(-2), 10) || 0;
+      return (h || 0) * 60 + Math.min(59, min);
+    }
+    return null;
+  };
+  const parseDateTimeToMinutes = (str) => {
+    if (!str || typeof str !== "string") return null;
+    const m = str.match(/[T\s](\d{1,2}):?(\d{2})?/);
+    if (!m) return null;
+    return (parseInt(m[1], 10) || 0) * 60 + (parseInt(m[2], 10) || 0);
+  };
+  const parseDateFromTimeStr = (str) => {
+    if (!str || typeof str !== "string") return "";
+    const m = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    return m
+      ? `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`
+      : "";
+  };
+  const normDate = (s) => (s || "").replace(/\//g, "-").trim().slice(0, 10);
+
+  const allTimeRows = loadTimeRows();
+  const actualRows = allTimeRows.filter(
+    (r) => normDate(r.date || parseDateFromTimeStr(r.startTime)) === dateKey,
+  );
+
+  const overlapMinutesBetween = (a, b) => {
+    const sa = Number(a?.startMin);
+    const ea = Number(a?.endMin);
+    const sb = Number(b?.startMin);
+    const eb = Number(b?.endMin);
+    if (![sa, ea, sb, eb].every((n) => Number.isFinite(n))) return 0;
+    const o = Math.min(ea, eb) - Math.max(sa, sb);
+    return o > 0 ? o : 0;
+  };
+  const assignLanesToSpans = (spans) => {
+    const laneOccupants = [];
+    let maxLane = 0;
+    for (const span of spans) {
+      let lane = 0;
+      while (lane < laneOccupants.length) {
+        const inLane = laneOccupants[lane];
+        const conflicts = inLane.some(
+          (x) => overlapMinutesBetween(span, x) > 0,
+        );
+        if (!conflicts) break;
+        lane++;
+      }
+      if (lane >= laneOccupants.length) laneOccupants.push([]);
+      laneOccupants[lane].push(span);
+      span.lane = lane;
+      maxLane = Math.max(maxLane, lane);
+    }
+    return { spans, maxLane };
+  };
+
+  const spans = [];
+  const toMinutes = (str) =>
+    parseDateTimeToMinutes(str) ?? parseHhMmToMinutes(str);
+  for (const r of actualRows) {
+    const startMin = toMinutes(r.startTime);
+    const endMin = toMinutes(r.endTime);
+    if (startMin == null || endMin == null || endMin <= startMin) continue;
+    const prod =
+      r.productivity ||
+      getTaskOptionByName(r.taskName)?.productivity ||
+      "other";
+    spans.push({
+      startMin: Math.max(0, startMin),
+      endMin: Math.min(24 * 60, endMin),
+      taskName: r.taskName || "",
+      prod,
+      startDisplay: fmt(Math.max(0, startMin)),
+      endDisplay: fmt(Math.min(24 * 60, endMin)),
+    });
+  }
+  const clamped = spans
+    .map((s) => {
+      const sm = Number(s.startMin);
+      const em = Number(s.endMin);
+      if (!Number.isFinite(sm) || !Number.isFinite(em) || em <= sm) return null;
+      const startMin = Math.max(0, sm);
+      const endMin = Math.min(24 * 60, em);
+      if (endMin <= startMin) return null;
+      return { ...s, startMin, endMin };
+    })
+    .filter(Boolean);
+  const sorted = clamped.sort((a, b) => a.startMin - b.startMin);
+  const withLanes = assignLanesToSpans(sorted);
+  return {
+    spans: withLanes.spans.map((s) => ({
+      ...s,
+      startSlot: Math.floor(s.startMin / MIN_PER_SLOT),
+      endSlot: Math.min(
+        SLOTS_PER_DAY - 1,
+        Math.floor((s.endMin - 1) / MIN_PER_SLOT),
+      ),
+      startDisplay: fmt(s.startMin),
+      endDisplay: fmt(s.endMin),
+    })),
+    maxLane: withLanes.maxLane,
+  };
+}
+
 function prodKeyForWeekExpectedSpan(span) {
   const pk = String(span?.prod || "other").toLowerCase();
   if (pk === "productive" || pk === "nonproductive") return pk;
@@ -5423,6 +5547,51 @@ function render1DayView(
     }
 
     wrap.dataset.dateStr = targetKey;
+    /* 날짜 이동 등 renderCalendar만 다시 돌 때도 예산·시간 열에 글로벌 flex:6/4 가 붙음 → 모바일 일정 탭에서 재스탬프 */
+    const scheduleMob = wrap.closest(".calendar-view--mobile-schedule");
+    if (
+      scheduleMob &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(max-width: 48rem)").matches
+    ) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const split = wrap.querySelector(".calendar-1day-split-layout");
+          if (split) {
+            try {
+              split.style.setProperty("flex-direction", "column", "important");
+              split.style.setProperty("width", "100%", "important");
+              split.style.setProperty("max-width", "100%", "important");
+              split.style.setProperty("min-width", "0", "important");
+              split.style.setProperty("align-items", "stretch", "important");
+              split.style.setProperty("box-sizing", "border-box", "important");
+            } catch (_) {}
+          }
+          [".calendar-1day-budget-column", ".calendar-1day-time-column"].forEach(
+            (sel) => {
+              const el = split?.querySelector(sel);
+              if (!el) return;
+              try {
+                el.style.setProperty("flex", "0 0 auto", "important");
+                el.style.setProperty("min-height", "min-content", "important");
+                el.style.setProperty("max-height", "none", "important");
+                el.style.setProperty("width", "100%", "important");
+                el.style.setProperty("max-width", "100%", "important");
+                el.style.setProperty("min-width", "0", "important");
+                el.style.setProperty("box-sizing", "border-box", "important");
+                if (sel === ".calendar-1day-budget-column") {
+                  el.style.setProperty("overflow-x", "auto", "important");
+                  el.style.setProperty("overflow-y", "visible", "important");
+                } else {
+                  el.style.setProperty("overflow", "visible", "important");
+                  el.style.setProperty("overflow-x", "hidden", "important");
+                }
+              } catch (_) {}
+            },
+          );
+        });
+      });
+    }
   }
 
   lpCalendarNavQ(nav, wrap, ".calendar-nav-today").addEventListener("click", () => {
@@ -5562,6 +5731,7 @@ function render1WeekView(
   wrap.dataset.lpCalTodoSidebar = sidebarMode;
 
   let weekOffset = 0;
+  let _1weekRenderGen = 0;
 
   const calendarSection = document.createElement("div");
   calendarSection.className = "calendar-monthly-main";
@@ -5595,8 +5765,27 @@ function render1WeekView(
     refreshCalendarDateTodoSidebar(wrap);
   }
 
-  function renderCalendar() {
+  function renderCalendar(opts = {}) {
+    const skipWeekPull = !!opts.skipWeekPull;
     const week = getCalendarGridFor1Week(weekOffset);
+    const weekKeysForPull = week
+      .map((d) => (d ? formatDateKey(d) : ""))
+      .filter(Boolean);
+    const firstPullKey = weekKeysForPull[0] || "";
+    const lastPullKey =
+      weekKeysForPull[weekKeysForPull.length - 1] || "";
+    if (!skipWeekPull && firstPullKey && lastPullKey) {
+      const pullGen = ++_1weekRenderGen;
+      void (async () => {
+        try {
+          await pullTimeLedgerEntriesForDateRange(firstPullKey, lastPullKey);
+          await pullTimeDailyBudgetFromSupabase();
+        } catch (_) {}
+        if (pullGen !== _1weekRenderGen) return;
+        renderCalendar({ skipWeekPull: true });
+      })();
+    }
+
     const monthIndex = week[0] ? week[0].getMonth() : new Date().getMonth();
     lpCalendarNavQ(nav, wrap, ".calendar-nav-month").textContent =
       MONTH_NAMES_EN[monthIndex];
@@ -5608,8 +5797,9 @@ function render1WeekView(
     calendarGrid.className =
       "calendar-monthly-grid calendar-monthly-grid--1week-timegrid";
 
-    const todayKey = formatDateKey(new Date());
-    const prodColors = getTimeCategoryColorsForTimetableExpected();
+    const todayYmd = timeLedgerLocalTodayYmd();
+    const prodColorsExpected = getTimeCategoryColorsForTimetableExpected();
+    const prodColorsActual = getTimeCategoryColorsForTimetable();
     const MIN_PER_DAY = 24 * 60;
     const HOURS = 24;
 
@@ -5710,7 +5900,7 @@ function render1WeekView(
       const key = formatDateKey(date);
       const th = document.createElement("div");
       th.className = "calendar-1week-google-day-head";
-      if (key === todayKey) th.classList.add("is-today");
+      if (key === todayYmd) th.classList.add("is-today");
       th.dataset.date = key;
       const label = document.createElement("span");
       label.className = "calendar-1week-google-day-label";
@@ -5743,7 +5933,7 @@ function render1WeekView(
       const cell = document.createElement("div");
       cell.className =
         "calendar-monthly-day calendar-1week-google-allday-cell" +
-        (key === todayKey ? " today" : "") +
+        (key === todayYmd ? " today" : "") +
         (date.getDay() === 0 ? " sun" : "") +
         (date.getDay() === 6 ? " sat" : "");
       cell.dataset.date = key;
@@ -5935,14 +6125,14 @@ function render1WeekView(
 
     allBarsAl.forEach((b) => {
       const isTodo = (b.itemType || "todo").toLowerCase() === "todo";
-      const showCheckbox = isTodo && (b.isSingleDay || b.isFirstSegment);
       const bar = document.createElement("div");
       bar.className =
         "calendar-monthly-span-bar calendar-1week-google-allday-span" +
         (b.isSingleDay
           ? " calendar-monthly-span-bar--todo"
           : " calendar-monthly-span-bar--range") +
-        (showCheckbox ? " calendar-monthly-span-bar--has-checkbox" : "") +
+        /* 주간 종일: 기간 할 일도 각 칸에 | 열을 두어 월별 셀과 동일하게 읽힘 */
+        (isTodo ? " calendar-monthly-span-bar--has-checkbox" : "") +
         (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "") +
         (b.isOverdueBar ? " calendar-monthly-span-bar--overdue" : "") +
         ((b.itemType || "todo").toLowerCase() !== "todo"
@@ -5965,16 +6155,10 @@ function render1WeekView(
         bar.dataset.itemType = b.itemType || "todo";
       } else {
         if (isTodo) {
-          bar.innerHTML = showCheckbox
-            ? `${lpCalendarSpanBarTodoMarkerHtml(b.color)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
-            : `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+          bar.innerHTML = `${lpCalendarSpanBarTodoMarkerHtml(b.color)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
         } else {
-          if (b.isFirstSegment) {
-            bar.style.setProperty("--schedule-icon-color", b.color);
-            bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" aria-hidden="true"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
-          } else {
-            bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
-          }
+          bar.style.setProperty("--schedule-icon-color", b.color);
+          bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" aria-hidden="true"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
         }
       }
       if (isTodo && b.done) {
@@ -6121,7 +6305,7 @@ function render1WeekView(
       const col = document.createElement("div");
       col.className = "calendar-1week-google-col";
       col.dataset.date = key;
-      if (key === todayKey) col.classList.add("is-today");
+      if (key === todayYmd) col.classList.add("is-today");
 
       const gridBg = document.createElement("div");
       gridBg.className = "calendar-1week-google-hour-lines";
@@ -6134,7 +6318,13 @@ function render1WeekView(
       const track = document.createElement("div");
       track.className = "calendar-1week-google-track";
 
-      const { spans, maxLane } = buildExpectedScheduleSpansForDateKey(key);
+      const useActualLedger = key < todayYmd;
+      const prodColors = useActualLedger
+        ? prodColorsActual
+        : prodColorsExpected;
+      const { spans, maxLane } = useActualLedger
+        ? buildActualScheduleSpansForDateKey(key)
+        : buildExpectedScheduleSpansForDateKey(key);
       const laneCount = Math.max(1, maxLane + 1);
 
       spans.forEach((span) => {
@@ -6149,8 +6339,13 @@ function render1WeekView(
         bar.style.height =
           dur > 0 ? `calc(${dur} * 100% / ${MIN_PER_DAY})` : "0";
         const lane = span.lane ?? 0;
-        bar.style.left = `calc(${lane} * 100% / ${laneCount})`;
-        bar.style.width = `calc(100% / ${laneCount} - 2px)`;
+        const laneGapPx = laneCount > 1 ? 2 : 0;
+        const denom = laneCount > 1 ? `(100% - ${(laneCount - 1) * laneGapPx}px)` : `100%`;
+        bar.style.width = `calc(${denom} / ${laneCount})`;
+        bar.style.left =
+          laneGapPx > 0
+            ? `calc(${lane} * ${denom} / ${laneCount} + ${lane * laneGapPx}px)`
+            : `0`;
         bar.title = `${String(span.taskName || "").trim()} (${span.startDisplay}–${span.endDisplay})`;
 
         const inner = document.createElement("div");
@@ -6721,6 +6916,21 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
             pullTimeDailyBudgetFromSupabase(),
           ]);
         } catch (_) {}
+      } else if (subViewId === "1week") {
+        try {
+          const wk = getCalendarGridFor1Week(0);
+          const ks = wk
+            .map((d) => (d ? formatDateKey(d) : ""))
+            .filter(Boolean);
+          const rs0 = ks[0];
+          const re0 = ks[ks.length - 1];
+          if (rs0 && re0) {
+            await Promise.all([
+              pullTimeLedgerEntriesForDateRange(rs0, re0),
+              pullTimeDailyBudgetFromSupabase(),
+            ]);
+          }
+        } catch (_) {}
       }
     }
     if (gen !== _nestedSubViewGen) return;
@@ -6746,6 +6956,89 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
       placeSubTabsInNav();
     }
     localStorage.setItem(storageKey, subViewId);
+    syncMobileSchedule1dayOverflowChain();
+  }
+
+  /** 하단 일정 탭 · 모바일(≤48rem): flex/overflow가 CSS 순서에 밀리지 않게 1일 뷰 체인을 인라인으로 확정 */
+  function syncMobileSchedule1dayOverflowChain() {
+    if (!keepSubTabsOnTop) return;
+    const scheduleRoot = wrap.closest(".calendar-view--mobile-schedule");
+    if (!scheduleRoot) return;
+    const mq =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(max-width: 48rem)").matches;
+    const props = [
+      "overflow",
+      "overflow-x",
+      "overflow-y",
+      "flex",
+      "flex-direction",
+      "align-items",
+      "min-height",
+      "max-height",
+      "max-width",
+      "min-width",
+      "width",
+      "box-sizing",
+    ];
+    const clearEl = (el) => {
+      if (!el) return;
+      props.forEach((p) => {
+        try {
+          el.style.removeProperty(p);
+        } catch (_) {}
+      });
+    };
+    const stampEl = (el) => {
+      if (!el) return;
+      try {
+        /* flex:0 0 auto 만 주면 자식 min-content 폭만큼 부모가 늘어나 뷰포트를 밀어냄 → 폭 상한·min-width:0 필수 */
+        el.style.setProperty("box-sizing", "border-box", "important");
+        el.style.setProperty("max-width", "100%", "important");
+        el.style.setProperty("min-width", "0", "important");
+        el.style.setProperty("flex", "0 0 auto", "important");
+        el.style.setProperty("min-height", "min-content", "important");
+        el.style.setProperty("max-height", "none", "important");
+        if (el.classList.contains("calendar-1day-split-layout")) {
+          el.style.setProperty("flex-direction", "column", "important");
+          el.style.setProperty("width", "100%", "important");
+          el.style.setProperty("align-items", "stretch", "important");
+        }
+        if (el.classList.contains("calendar-1day-budget-column")) {
+          el.style.setProperty("overflow-x", "auto", "important");
+          el.style.setProperty("overflow-y", "visible", "important");
+        } else if (el.classList.contains("calendar-1day-time-column")) {
+          el.style.setProperty("width", "100%", "important");
+          el.style.setProperty("overflow-x", "hidden", "important");
+          el.style.setProperty("overflow-y", "visible", "important");
+        } else {
+          el.style.setProperty("overflow", "visible", "important");
+        }
+      } catch (_) {}
+    };
+    const chainEls = () => {
+      const one = contentArea.querySelector(".calendar-1day-view");
+      const split = one?.querySelector(".calendar-1day-split-layout");
+      return [
+        scheduleRoot.querySelector(".calendar-content-wrap"),
+        wrap,
+        contentArea,
+        one,
+        one?.querySelector(".calendar-monthly-main"),
+        split,
+        split?.querySelector(".calendar-1day-budget-column"),
+        split?.querySelector(".calendar-1day-time-column"),
+      ];
+    };
+    if (!mq || activeSubViewId !== "1day") {
+      chainEls().forEach(clearEl);
+      return;
+    }
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        chainEls().forEach(stampEl);
+      });
+    });
   }
 
   subTabsControlRoot.querySelectorAll(".calendar-sub-tab").forEach((btn) => {
@@ -6818,7 +7111,8 @@ export function renderMobileScheduleCalendar() {
         storageKey: "calendar-mobile-schedule-sub-view",
         forceInitialMonthlyOnMobile: false,
         keepSubTabsOnTop: true,
-        todoSidebarMode: LP_CAL_TODO_SIDEBAR_FULL,
+        /* 모바일: 화면 세로 한정 — 할일 사이드바 생략, 예산 표 + 24h 타임테이블만 */
+        todoSidebarMode: LP_CAL_TODO_SIDEBAR_NONE,
       }),
     );
   }
