@@ -20554,6 +20554,39 @@ svg.todo-card-reminder-icon {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8' stroke-width='1.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z' /%3E%3C/svg%3E");
 }
 
+@media (max-width: 48rem) {
+  /* WebKit: 날짜 입력 내부 텍스트가 칸 안에서 위로 붙음 → datetime 편집 트리를 슬롯 높이(2.75rem) 기준 세로 중앙 */
+  .todo-task-edit-modal input.todo-task-edit-native-dt-input::-webkit-datetime-edit-fields-wrapper {
+    display: flex !important;
+    align-items: center !important;
+    min-height: 2.75rem !important;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0 !important;
+  }
+
+  .todo-task-edit-modal input.todo-task-edit-native-dt-input::-webkit-datetime-edit {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    flex: 1 1 auto !important;
+    min-height: 2.75rem !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .todo-task-edit-modal input.todo-task-edit-native-dt-input::-webkit-date-and-time-value {
+    min-height: unset !important;
+    display: flex !important;
+    align-items: center !important;
+    line-height: 1.2 !important;
+  }
+
+  .todo-task-edit-modal input.todo-task-edit-native-dt-input.has-value {
+    line-height: 1 !important;
+  }
+}
+
 .todo-task-edit-reminder-btn:not(.todo-task-edit-reminder-delete) {
   flex-shrink: 0;
   padding: 0.35rem 0.5rem;
