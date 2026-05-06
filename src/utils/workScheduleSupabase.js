@@ -9,7 +9,7 @@
  * 스키마: supabase/migrations/20260419120000_work_schedule_meal_schema.sql (Supabase SQL Editor에 실행)
  *
  * pull(읽기): App 탭 전환(근무-식단표) 시, 그리고 유형 설정 모달을 열 때만.
- * **서버에 쓰기(push)는** `work-schedule-saved` 이벤트로만 — 일정 저장/삭제, 유형 추가/삭제에서만 dispatch.
+ * **서버에 쓰기(push)는** `work-schedule-saved` 이벤트로만 — 일정 저장/삭제, 유형 설정 모달에서 **「저장」** 을 눌렀을 때만 dispatch.
  * 탭에서 로컬을 서버에 임의로 올리거나, 푸시 직후 자동 pull로 덮어쓰지 않음.
  */
 

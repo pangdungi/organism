@@ -522,6 +522,57 @@ function timetableAccentTextColor(accentRgba) {
   if (!m) return "";
   return `rgb(${m[1]}, ${m[2]}, ${m[3]})`;
 }
+
+/** 1주 시간그리드: startMin/endMin 기준 시간 겹침(분) — 일간 뷰 직접겹침 클러스터와 동일 */
+function overlapMinutesBetweenScheduleSpans(a, b) {
+  const sa = Number(a?.startMin);
+  const ea = Number(a?.endMin);
+  const sb = Number(b?.startMin);
+  const eb = Number(b?.endMin);
+  if (![sa, ea, sb, eb].every((n) => Number.isFinite(n))) return 0;
+  const o = Math.min(ea, eb) - Math.max(sa, sb);
+  return o > 0 ? o : 0;
+}
+
+/**
+ * seed 와 시간이 직접 겹치는 스팬만 묶어 레인 폭 계산 → 하루 전체 maxLane 으로 열 폭 분할 금지
+ */
+function lanesForWeekTimeBlock(seedSpan, allSpansSameDay) {
+  const cohort = allSpansSameDay.filter(
+    (o) =>
+      o === seedSpan ||
+      overlapMinutesBetweenScheduleSpans(seedSpan, o) > 0,
+  );
+  if (cohort.length <= 1) return { lane: 0, laneCount: 1 };
+  const sortedCluster = [...cohort].sort(
+    (a, b) =>
+      a.startMin - b.startMin ||
+      String(a.taskName || "").localeCompare(String(b.taskName || ""), "ko"),
+  );
+  const copies = sortedCluster.map((s) => ({ ...s }));
+  const laneOccupants = [];
+  let maxLane = 0;
+  for (const span of copies) {
+    let lane = 0;
+    while (lane < laneOccupants.length) {
+      const inLane = laneOccupants[lane];
+      const conflicts = inLane.some(
+        (x) => overlapMinutesBetweenScheduleSpans(span, x) > 0,
+      );
+      if (!conflicts) break;
+      lane++;
+    }
+    if (lane >= laneOccupants.length) laneOccupants.push([]);
+    laneOccupants[lane].push(span);
+    span.lane = lane;
+    maxLane = Math.max(maxLane, lane);
+  }
+  const laneCount = Math.max(1, maxLane + 1);
+  const seedIdx = sortedCluster.findIndex((s) => s === seedSpan);
+  const lane = seedIdx >= 0 ? (copies[seedIdx]?.lane ?? 0) : 0;
+  return { lane, laneCount };
+}
+
 const DAY_NAMES = ["월", "화", "수", "목", "금", "토", "일"];
 const MONTH_NAMES_EN = [
   "Jan",
@@ -4724,8 +4775,9 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
       }
       blockFill.style.gap = "0";
       blockFill.style.padding = "0";
-      /* 예상: main.css .time-slot-fill{overflow:hidden} + 여기 hidden이 긴 막대·라벨을 세로로 잘라 냄 */
-      blockFill.style.overflow = isActual ? "hidden" : "visible";
+      /* 예상: 직전 visible이 레인에서는 가로 삐져나옴 → 겹침(반열)만 hidden으로 자름 */
+      blockFill.style.overflow =
+        useLaneLayout || isActual ? "hidden" : "visible";
       if (useLaneLayout) {
         blockFill.style.borderRadius =
           laneLocal === 0
@@ -4793,8 +4845,9 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
           seg.style.borderTop = `0.5px solid ${edge}`;
           seg.style.borderBottom = `0.5px solid ${edge}`;
         }
+        /* 예상: 기본은 overflow visible 이지만 반열 겹침은 인라인 visible이 우선되어 밖으로 새어 나감 */
         if (!isActual) {
-          seg.style.overflow = "visible";
+          seg.style.overflow = useLaneLayout ? "hidden" : "visible";
         }
         const segDurationMin = Math.max(
           0,
@@ -4804,11 +4857,23 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
           segDurationMin > TIMETABLE_MAX_MINUTES_TO_HIDE_LABEL;
         if (showTimetableLabel) {
           const labelWrap = document.createElement("div");
+          /* 동시구간 반열: 폭이 1/N로 줄어 시간 문자열이 겹침·삐져나옴 → 과제명만, 시간은 tooltip */
+          const useLaneNameOnly = useLaneLayout;
           /* 짧은 구간(21~30분): 예상·실제 공통 — 과제명 왼쪽, 시간 오른쪽 한 줄(넘침 시 이름만 …) */
           const useCompactOneLineLabel =
+            !useLaneNameOnly &&
             segDurationMin > TIMETABLE_MAX_MINUTES_TO_HIDE_LABEL &&
             segDurationMin <= ACTUAL_MAX_MINUTES_ONE_LINE_LABEL;
-          if (useCompactOneLineLabel) {
+          if (useLaneNameOnly) {
+            labelWrap.className =
+              "calendar-1day-time-slot-label-wrap calendar-1day-time-slot-label-wrap--lane-name-only";
+            const labelName = document.createElement("span");
+            labelName.className =
+              "calendar-1day-time-slot-label-name calendar-1day-time-slot-label-name--lane-small";
+            labelName.textContent = sp.taskName || "";
+            labelWrap.appendChild(labelName);
+            labelWrap.title = `${String(sp.taskName || "").trim()}\n${sp.startDisplay} ~ ${sp.endDisplay}`;
+          } else if (useCompactOneLineLabel) {
             labelWrap.className =
               "calendar-1day-time-slot-label-wrap calendar-1day-time-slot-label-wrap--actual-one-line";
             const labelName = document.createElement("span");
@@ -6322,10 +6387,9 @@ function render1WeekView(
       const prodColors = useActualLedger
         ? prodColorsActual
         : prodColorsExpected;
-      const { spans, maxLane } = useActualLedger
+      const { spans } = useActualLedger
         ? buildActualScheduleSpansForDateKey(key)
         : buildExpectedScheduleSpansForDateKey(key);
-      const laneCount = Math.max(1, maxLane + 1);
 
       spans.forEach((span) => {
         const bar = document.createElement("div");
@@ -6333,31 +6397,85 @@ function render1WeekView(
         const pk = prodKeyForWeekExpectedSpan(span);
         const c = prodColors[pk] || prodColors.other;
         bar.style.background = c.bg;
-        bar.style.borderLeft = `0.1875rem solid ${c.border}`;
         const dur = span.endMin - span.startMin;
         bar.style.top = `calc(${span.startMin} * 100% / ${MIN_PER_DAY})`;
         bar.style.height =
           dur > 0 ? `calc(${dur} * 100% / ${MIN_PER_DAY})` : "0";
-        const lane = span.lane ?? 0;
-        const laneGapPx = laneCount > 1 ? 2 : 0;
-        const denom = laneCount > 1 ? `(100% - ${(laneCount - 1) * laneGapPx}px)` : `100%`;
-        bar.style.width = `calc(${denom} / ${laneCount})`;
+        const { lane: laneIdx, laneCount } = lanesForWeekTimeBlock(
+          span,
+          spans,
+        );
+        const narrowLane = laneCount > 1;
+        if (narrowLane) {
+          bar.classList.add("calendar-1week-google-block--narrow-lane");
+          if (laneIdx === 0)
+            bar.classList.add(
+              "calendar-1week-google-block--narrow-lane-leading",
+            );
+        }
+        /** 열 구분선과 동일 두께 — 별도 굵은 띠로 착시 나지 않게 */
+        const gridColW = "0.0625rem";
+        bar.style.borderLeft = `${gridColW} solid ${c.border}`;
+        if (c.border) {
+          const edge = rgbaToSoftHorizontalEdge(c.border, 0.26);
+          bar.style.borderTop = `0.5px solid ${edge}`;
+          bar.style.borderBottom = `0.5px solid ${edge}`;
+          const rightEdgeLane =
+            laneCount <= 1 || laneIdx === laneCount - 1;
+          if (rightEdgeLane) {
+            bar.style.borderRight = `0.5px solid ${edge}`;
+          }
+        }
+        bar.style.marginLeft =
+          laneIdx === 0 ? `calc(-1 * ${gridColW})` : "0";
+        /* margin으로 왼쪽만 당기면 폭 그대로라 오른쪽 끝이 한 줄 두께 짧아져 다음 반열 앞에 흰 빈틈 발생 → 0번만 폭 보정 */
+        bar.style.width =
+          laneCount > 1 && laneIdx === 0
+            ? `calc(100% / ${laneCount} + ${gridColW})`
+            : laneCount > 1
+              ? `calc(100% / ${laneCount})`
+              : "100%";
         bar.style.left =
-          laneGapPx > 0
-            ? `calc(${lane} * ${denom} / ${laneCount} + ${lane * laneGapPx}px)`
-            : `0`;
-        bar.title = `${String(span.taskName || "").trim()} (${span.startDisplay}–${span.endDisplay})`;
+          laneCount > 1
+            ? `calc(${laneIdx} * 100% / ${laneCount})`
+            : "0";
+        const rangeStr = `${span.startDisplay} ~ ${span.endDisplay}`;
+        bar.title = `${String(span.taskName || "").trim()} (${rangeStr})`;
 
         const inner = document.createElement("div");
         inner.className = "calendar-1week-google-block-inner";
-        const timeEl = document.createElement("span");
-        timeEl.className = "calendar-1week-google-block-time";
-        timeEl.textContent = `${span.startDisplay}–${span.endDisplay}`;
+
         const nameEl = document.createElement("span");
         nameEl.className = "calendar-1week-google-block-name";
         nameEl.textContent = String(span.taskName || "").trim();
-        inner.appendChild(timeEl);
-        inner.appendChild(nameEl);
+
+        const labelFg = timetableAccentTextColor(c.border || c.bg);
+        if (labelFg) {
+          inner.style.color = labelFg;
+          inner.classList.add("calendar-1week-google-block-inner--accent-fg");
+        }
+        if (!narrowLane) {
+          const timeEl = document.createElement("span");
+          timeEl.className = "calendar-1week-google-block-time";
+          timeEl.textContent = rangeStr;
+          /* 오늘해치우기와 동일: 짧은 구간은 과제명·시간 한 줄, 긴 구간은 과제명 위·시간 아래 */
+          const useWeekInlineTimeRow = dur <= 90;
+          if (useWeekInlineTimeRow) {
+            inner.classList.add(
+              "calendar-1week-google-block-inner--inline-time",
+            );
+            inner.appendChild(nameEl);
+            inner.appendChild(timeEl);
+          } else {
+            inner.classList.add(
+              "calendar-1week-google-block-inner--stacked-time",
+            );
+            inner.appendChild(nameEl);
+            inner.appendChild(timeEl);
+          }
+        } else {
+          inner.appendChild(nameEl);
+        }
         bar.appendChild(inner);
 
         track.appendChild(bar);
@@ -6699,14 +6817,14 @@ const CALENDAR_SUB_VIEWS = [
   { id: "2week", label: "2주" },
   { id: "1week", label: "1주" },
   { id: "annual", label: "연간" },
-  { id: "1day", label: "오늘 해치우기" },
+  { id: "1day", label: "타임블록" },
 ];
 
 const MOBILE_SCHEDULE_CAL_SUB_VIEWS = [
   { id: "monthly", label: "월별" },
   { id: "1week", label: "1주" },
   { id: "annual", label: "연간" },
-  { id: "1day", label: "오늘 해치우기" },
+  { id: "1day", label: "타임블록" },
 ];
 
 /**

@@ -10315,6 +10315,60 @@ export function renderTimeBudgetTablesForCalendar(
     return byTask;
   }
 
+  /** tbody 안 행 순서만 예상 시작 시각 순으로 재배치(미완 시작시각은 다른 칸보다 아래). 새로고침 없이 표 정렬 반영용. */
+  function reorderTbodyByScheduledStart(tb, anchorAddRow) {
+    if (
+      !tb ||
+      !anchorAddRow ||
+      anchorAddRow.parentElement !== tb ||
+      !tb.isConnected
+    ) {
+      return;
+    }
+    const hhmmRe = /^\d{1,2}:\d{2}$/;
+    const startKeyFromTr = (tr) => {
+      let s = (tr.dataset.scheduledStart || "").trim();
+      if (!hhmmRe.test(s)) {
+        const inp = tr.querySelectorAll(".time-budget-scheduled-input");
+        s = (inp[0]?.value || "").trim();
+      }
+      if (!hhmmRe.test(s)) return Infinity;
+      const h = parseTimeToHours(s);
+      return Number.isFinite(h) ? h : Infinity;
+    };
+    const endSecondaryKey = (tr) => {
+      let end = (tr.dataset.scheduledEnd || "").trim();
+      if (!hhmmRe.test(end)) {
+        const inp = tr.querySelectorAll(".time-budget-scheduled-input");
+        end = (inp[1]?.value || "").trim();
+      }
+      if (!hhmmRe.test(end)) return Infinity;
+      const h = parseTimeToHours(end);
+      return Number.isFinite(h) ? h : Infinity;
+    };
+    const rows = [...tb.children].filter((tr) => tr !== anchorAddRow);
+    rows.sort((a, b) => {
+      const d = startKeyFromTr(a) - startKeyFromTr(b);
+      if (d !== 0) return d;
+      const de = endSecondaryKey(a) - endSecondaryKey(b);
+      if (de !== 0) return de;
+      return String(a.dataset.taskName || "").localeCompare(
+        String(b.dataset.taskName || ""),
+        "ko",
+      );
+    });
+    for (const tr of rows) tb.appendChild(tr);
+    tb.appendChild(anchorAddRow);
+  }
+
+  /** 기본·생산적·비생산적 패널 모두 정렬(겹침 조정 등으로 여러 tbody가 바뀐 뒤). */
+  function reorderAllBudgetTableTbodies(tbodiesList) {
+    if (!Array.isArray(tbodiesList)) return;
+    tbodiesList.forEach(([tb, ar]) =>
+      reorderTbodyByScheduledStart(tb, ar),
+    );
+  }
+
   /* 예상 타임테이블 색상 규칙과 통일: 기타=prod-green, 생산성=prod-pink, 비생산=prod-blue */
   const basicTaskDropdownOptions = [
     { value: "수면하기", label: "수면하기", color: "prod-green" },
@@ -10416,6 +10470,39 @@ export function renderTimeBudgetTablesForCalendar(
           }
         } catch (_) {}
       }
+
+      const ae = document.activeElement;
+      const inTimeInputFocused =
+        ae &&
+        typeof ae.closest === "function" &&
+        ae.classList.contains("time-budget-scheduled-input") &&
+        (Array.isArray(allTbodies)
+          ? allTbodies.some(([tb]) => tb && tb.contains(ae))
+          : tbody && tbody.contains(ae));
+
+      let pairCompleteOnFocusedRow = false;
+      if (inTimeInputFocused && ae.closest) {
+        const trFocused = ae.closest("tr");
+        if (trFocused && !trFocused.classList.contains("time-row-add")) {
+          const inp = trFocused.querySelectorAll(".time-budget-scheduled-input");
+          const fv0 = (inp[0]?.value || "").trim();
+          const fv1 = (inp[1]?.value || "").trim();
+          pairCompleteOnFocusedRow =
+            /^\d{1,2}:\d{2}$/.test(fv0) &&
+            /^\d{1,2}:\d{2}$/.test(fv1) &&
+            isValidStartEnd(fv0, fv1);
+        }
+      }
+
+      /* 마감까지 맞춘 뒤엔 입력 중이어도 행 이동(같은 tr 안 포커스 유지). 미완성이면 행이 움직이며 칸이 흔들리지 않게 생략 */
+      if (!inTimeInputFocused || pairCompleteOnFocusedRow) {
+        if (Array.isArray(allTbodies)) {
+          reorderAllBudgetTableTbodies(allTbodies);
+        } else {
+          reorderTbodyByScheduledStart(tbody, addRow);
+        }
+      }
+
       /* 예상 시간 저장 시 항상 타임테이블 갱신 (기본/투자/소비 탭 통일) */
       if (typeof onScheduledUpdate === "function") {
         onScheduledUpdate(targetDateStr);
@@ -10721,8 +10808,14 @@ export function renderTimeBudgetTablesForCalendar(
     <thead>
       <tr>
         <th>과제명</th>
-        <th>예상 시작 시간</th>
-        <th>예상 마감 시간</th>
+        <th class="time-budget-th-sched">
+          <span class="time-budget-th-vis-desktop">예상 시작 시간</span>
+          <span class="time-budget-th-vis-mobile">예상 시작</span>
+        </th>
+        <th class="time-budget-th-sched">
+          <span class="time-budget-th-vis-desktop">예상 마감 시간</span>
+          <span class="time-budget-th-vis-mobile">예상 마감</span>
+        </th>
         <th class="time-budget-col-duration">소요 시간</th>
         <th class="time-budget-col-delete"></th>
       </tr>
@@ -10773,8 +10866,14 @@ export function renderTimeBudgetTablesForCalendar(
     <thead>
       <tr>
         <th>과제명</th>
-        <th>예상 시작 시간</th>
-        <th>예상 마감 시간</th>
+        <th class="time-budget-th-sched">
+          <span class="time-budget-th-vis-desktop">예상 시작 시간</span>
+          <span class="time-budget-th-vis-mobile">예상 시작</span>
+        </th>
+        <th class="time-budget-th-sched">
+          <span class="time-budget-th-vis-desktop">예상 마감 시간</span>
+          <span class="time-budget-th-vis-mobile">예상 마감</span>
+        </th>
         <th class="time-budget-col-duration">소요 시간</th>
         <th class="time-budget-col-delete"></th>
       </tr>
@@ -10834,8 +10933,14 @@ export function renderTimeBudgetTablesForCalendar(
     <thead>
       <tr>
         <th>과제명</th>
-        <th>예상 시작 시간</th>
-        <th>예상 마감 시간</th>
+        <th class="time-budget-th-sched">
+          <span class="time-budget-th-vis-desktop">예상 시작 시간</span>
+          <span class="time-budget-th-vis-mobile">예상 시작</span>
+        </th>
+        <th class="time-budget-th-sched">
+          <span class="time-budget-th-vis-desktop">예상 마감 시간</span>
+          <span class="time-budget-th-vis-mobile">예상 마감</span>
+        </th>
         <th class="time-budget-col-duration">소요 시간</th>
         <th class="time-budget-col-delete"></th>
       </tr>

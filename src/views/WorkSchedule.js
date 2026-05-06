@@ -12,6 +12,7 @@ import {
   attachWorkScheduleSaveListener,
   pullWorkScheduleFromSupabase,
 } from "../utils/workScheduleSupabase.js";
+import { showToast } from "../utils/showToast.js";
 import { workScheduleDiagLog } from "../utils/workScheduleDiag.js";
 import { applyWorkScheduleRowTimesFromTypes, normalizeWorkDateKey } from "../utils/workScheduleEntryResolve.js";
 import {
@@ -180,32 +181,35 @@ function sortTypeOptionsList(list) {
   return list.slice().sort(compareTypeEntriesForPersist);
 }
 
-function addWorkTypeOption(name, kind) {
-  const full = getWorkTypeOptionsFull();
-  const trimmed = (name || "").trim();
-  if (!trimmed) return full;
-  if (full.some((o) => o.name === trimmed)) return full;
-  if (DEFAULT_TYPE_NAMES.has(trimmed)) return full;
-  const k = kind === TYPE_KIND_DIET ? TYPE_KIND_DIET : TYPE_KIND_WORK;
-  const newEntry = {
-    name: trimmed,
-    start: "",
-    end: "",
-    kind: k,
-    addedAt: Date.now(),
-  };
-  const next = sortTypeOptionsList([...full, newEntry]);
-  writeWorkScheduleTypeOptionsRawToMem(next);
-  notifyWorkScheduleSaved({ types: true });
-  return next;
+/** 표시 목록 스냅샷과 동일한 객체로 유형 목록만 복제(모달 드래프트용). */
+function cloneWorkTypeOptionsForDraft() {
+  return getWorkTypeOptionsFull().map((o) => ({
+    name: o.name,
+    start: (o.start || "").trim(),
+    end: (o.end || "").trim(),
+    kind: o.kind === TYPE_KIND_DIET ? TYPE_KIND_DIET : TYPE_KIND_WORK,
+    addedAt:
+      typeof o.addedAt === "number" && Number.isFinite(o.addedAt)
+        ? o.addedAt
+        : 0,
+  }));
 }
 
-function removeWorkTypeOption(name) {
-  if (DEFAULT_TYPE_NAMES.has(name)) return getWorkTypeOptionsFull();
-  const full = getWorkTypeOptionsFull().filter((o) => o.name !== name);
-  writeWorkScheduleTypeOptionsRawToMem(full);
+function persistWorkTypeDraftToMemAndSync(rawList) {
+  const next = sortTypeOptionsList(
+    rawList.map((o) => ({
+      name: (o.name || "").trim(),
+      start: (o.start || "").trim(),
+      end: (o.end || "").trim(),
+      kind: o.kind === TYPE_KIND_DIET ? TYPE_KIND_DIET : TYPE_KIND_WORK,
+      addedAt:
+        typeof o.addedAt === "number" && Number.isFinite(o.addedAt)
+          ? o.addedAt
+          : 0,
+    })),
+  );
+  writeWorkScheduleTypeOptionsRawToMem(next);
   notifyWorkScheduleSaved({ types: true });
-  return full;
 }
 
 function loadRows() {
@@ -323,11 +327,6 @@ export function render(opts = {}) {
     try {
       await pullWorkScheduleFromSupabase({ includeTypes: true });
     } catch (_) {}
-    function escapeHtml(s) {
-      const div = document.createElement("div");
-      div.textContent = s == null ? "" : String(s);
-      return div.innerHTML;
-    }
     const modal = document.createElement("div");
     modal.className = "work-schedule-type-settings-modal";
     modal.setAttribute("role", "dialog");
@@ -361,61 +360,228 @@ export function render(opts = {}) {
             </div>
           </div>
         </div>
+        <div class="work-schedule-type-settings-footer work-schedule-type-settings-footer--dual">
+          <button type="button" class="work-schedule-type-settings-save-btn">저장</button>
+        </div>
       </div>
     `;
     const workListEl = modal.querySelector("[data-work-list]");
     const dietListEl = modal.querySelector("[data-diet-list]");
     const addInput = modal.querySelector(".work-schedule-type-settings-input-name");
     const addBtn = modal.querySelector(".work-schedule-type-settings-add-btn");
+    const saveBtn = modal.querySelector(".work-schedule-type-settings-save-btn");
 
-    function renderTypeList() {
-      const full = getWorkTypeOptionsFull();
-      const workRows = full.filter((o) => o.kind !== TYPE_KIND_DIET);
-      const dietRows = full.filter((o) => o.kind === TYPE_KIND_DIET);
+    /** 모달 안에서만 조작하고, 「저장」 시에 한 번 메모 반영 → 서버 동기화 */
+    const draftTypes = cloneWorkTypeOptionsForDraft();
+    draftTypes.sort(compareTypeEntriesForPersist);
 
-      workListEl.innerHTML = "";
+    function normalizeDraftPersistShape(arr = draftTypes) {
+      return sortTypeOptionsList(
+        arr.map((o) => ({
+          name: (o.name || "").trim(),
+          start: (o.start || "").trim(),
+          end: (o.end || "").trim(),
+          kind: o.kind === TYPE_KIND_DIET ? TYPE_KIND_DIET : TYPE_KIND_WORK,
+          addedAt:
+            typeof o.addedAt === "number" && Number.isFinite(o.addedAt)
+              ? o.addedAt
+              : 0,
+        })),
+      );
+    }
+
+    function draftComparableSnapshot() {
+      return JSON.stringify(
+        normalizeDraftPersistShape().map((t) => ({
+          n: t.name,
+          k: t.kind,
+          s: t.start || "",
+          e: t.end || "",
+          a:
+            typeof t.addedAt === "number" && Number.isFinite(t.addedAt)
+              ? t.addedAt
+              : 0,
+        })),
+      );
+    }
+
+    let lastSavedComparable = draftComparableSnapshot();
+
+    function beginInlineRename(origName, row) {
+      if (DEFAULT_TYPE_NAMES.has(origName)) return;
+      const slot = row.querySelector(".work-schedule-type-settings-name");
+      if (!slot || row.querySelector(".work-schedule-type-settings-inline-name-edit"))
+        return;
+
+      const inp = document.createElement("input");
+      inp.type = "text";
+      inp.className =
+        "work-schedule-type-settings-inline-name-edit work-schedule-type-settings-input-name";
+      inp.value = origName;
+      inp.maxLength = 50;
+      inp.autocomplete = "off";
+
+      slot.replaceWith(inp);
+      inp.focus();
+      inp.select();
+
+      let finished = false;
+
+      function restoreListOnly() {
+        renderTypeListsFromDraft();
+      }
+
+      function applyRenameCommit() {
+        if (finished) return;
+        const newName = (inp.value || "").trim();
+        if (!newName) {
+          try {
+            showToast("이름을 비워둘 수 없습니다.", "원래 이름으로 되돌립니다.");
+          } catch (_) {}
+          finished = true;
+          restoreListOnly();
+          return;
+        }
+        if (newName === origName) {
+          finished = true;
+          restoreListOnly();
+          return;
+        }
+        if (DEFAULT_TYPE_NAMES.has(newName)) {
+          try {
+            showToast(
+              "기본 유형 이름과 겹칩니다.",
+              "다른 이름을 사용해 주세요.",
+            );
+          } catch (_) {}
+          return;
+        }
+        if (
+          draftTypes.some(
+            (t) =>
+              String(t.name).trim() !== origName &&
+              String(t.name).trim() === newName,
+          )
+        ) {
+          try {
+            showToast(
+              "이미 있는 이름입니다.",
+              "다른 이름을 사용해 주세요.",
+            );
+          } catch (_) {}
+          return;
+        }
+        const t = draftTypes.find((x) => String(x.name) === origName);
+        if (!t) {
+          finished = true;
+          restoreListOnly();
+          return;
+        }
+        t.name = newName;
+        draftTypes.sort(compareTypeEntriesForPersist);
+        finished = true;
+        renderTypeListsFromDraft();
+      }
+
+      inp.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          if (finished) return;
+          finished = true;
+          restoreListOnly();
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          inp.blur();
+        }
+      });
+
+      inp.addEventListener("blur", () => {
+        if (finished) return;
+        applyRenameCommit();
+      });
+    }
+
+    function renderTypeListsFromDraft() {
+      draftTypes.sort(compareTypeEntriesForPersist);
+
+      const workRows = draftTypes.filter((o) => o.kind !== TYPE_KIND_DIET);
+      const dietRows = draftTypes.filter((o) => o.kind === TYPE_KIND_DIET);
+
+      workListEl.replaceChildren();
       workRows.forEach((entry) => {
         const isProtected = DEFAULT_TYPE_NAMES.has(entry.name);
         const row = document.createElement("div");
         row.className =
           "work-schedule-type-settings-row work-schedule-type-settings-row--simple" +
           (isProtected ? " is-protected" : "");
-        if (isProtected) {
-          row.innerHTML =
-            `<span class="work-schedule-type-settings-name">${escapeHtml(entry.name)}</span>` +
-            `<span class="work-schedule-type-settings-row-action" aria-hidden="true"></span>`;
-        } else {
-          row.innerHTML =
-            `<span class="work-schedule-type-settings-name">${escapeHtml(entry.name)}</span>` +
-            `<span class="work-schedule-type-settings-row-action">` +
-            `<button type="button" class="work-schedule-type-settings-del" title="삭제">${DELETE_ICON}</button>` +
-            `</span>`;
-          row
-            .querySelector(".work-schedule-type-settings-del")
-            ?.addEventListener("click", () => {
-              removeWorkTypeOption(entry.name);
-              renderTypeList();
-            });
+
+        const nameSpan = document.createElement("span");
+        nameSpan.className = "work-schedule-type-settings-name";
+        nameSpan.textContent = entry.name;
+        if (!isProtected) {
+          nameSpan.title = "더블 클릭하여 이름 변경";
+          nameSpan.classList.add("work-schedule-type-settings-name--editable");
+          nameSpan.addEventListener("dblclick", (ev) => {
+            ev.preventDefault();
+            beginInlineRename(entry.name, row);
+          });
         }
+
+        const actions = document.createElement("span");
+        actions.className = "work-schedule-type-settings-row-action";
+        if (isProtected) {
+          actions.setAttribute("aria-hidden", "true");
+        } else {
+          const del = document.createElement("button");
+          del.type = "button";
+          del.className = "work-schedule-type-settings-del";
+          del.title = "목록에서 제거";
+          del.innerHTML = DELETE_ICON;
+          del.addEventListener("click", () => {
+            const idx = draftTypes.findIndex((o) => o.name === entry.name);
+            if (idx === -1) return;
+            draftTypes.splice(idx, 1);
+            renderTypeListsFromDraft();
+          });
+          actions.appendChild(del);
+        }
+        row.appendChild(nameSpan);
+        row.appendChild(actions);
         workListEl.appendChild(row);
       });
 
-      dietListEl.innerHTML = "";
+      dietListEl.replaceChildren();
       dietRows.forEach((entry) => {
         const row = document.createElement("div");
         row.className =
           "work-schedule-type-settings-row work-schedule-type-settings-row--simple is-diet-row";
-        row.innerHTML =
-          `<span class="work-schedule-type-settings-name">${escapeHtml(entry.name)}</span>` +
-          `<span class="work-schedule-type-settings-row-action">` +
-          `<button type="button" class="work-schedule-type-settings-del" title="삭제">${DELETE_ICON}</button>` +
-          `</span>`;
-        row
-          .querySelector(".work-schedule-type-settings-del")
-          ?.addEventListener("click", () => {
-            removeWorkTypeOption(entry.name);
-            renderTypeList();
-          });
+
+        const nameSpan = document.createElement("span");
+        nameSpan.className = "work-schedule-type-settings-name";
+        nameSpan.textContent = entry.name;
+        nameSpan.title = "더블 클릭하여 이름 변경";
+        nameSpan.classList.add("work-schedule-type-settings-name--editable");
+        nameSpan.addEventListener("dblclick", (ev) => {
+          ev.preventDefault();
+          beginInlineRename(entry.name, row);
+        });
+
+        const actions = document.createElement("span");
+        actions.className = "work-schedule-type-settings-row-action";
+        const del = document.createElement("button");
+        del.type = "button";
+        del.className = "work-schedule-type-settings-del";
+        del.title = "목록에서 제거";
+        del.innerHTML = DELETE_ICON;
+        del.addEventListener("click", () => {
+          const idx = draftTypes.findIndex((o) => o.name === entry.name);
+          if (idx === -1) return;
+          draftTypes.splice(idx, 1);
+          renderTypeListsFromDraft();
+        });
+        actions.appendChild(del);
+
+        row.appendChild(nameSpan);
+        row.appendChild(actions);
         dietListEl.appendChild(row);
       });
     }
@@ -425,7 +591,6 @@ export function render(opts = {}) {
       return r && r.value === "diet" ? TYPE_KIND_DIET : TYPE_KIND_WORK;
     }
 
-    /* 한글 IME: Enter가 조합 확정과 겹치면 값이 둘로 나뉘어 저장되는 경우가 있어 조합 중·229는 무시 */
     let addInputImeComposing = false;
     addInput.addEventListener("compositionstart", () => {
       addInputImeComposing = true;
@@ -438,11 +603,36 @@ export function render(opts = {}) {
       if (addInputImeComposing) return;
       const name = (addInput.value || "").trim();
       if (!name) return;
+      if (draftTypes.some((o) => o.name === name)) {
+        try {
+          showToast(
+            "이미 있는 이름입니다.",
+            "다른 이름을 사용해 주세요.",
+          );
+        } catch (_) {}
+        return;
+      }
+      if (DEFAULT_TYPE_NAMES.has(name)) {
+        try {
+          showToast(
+            "기본 유형과 같은 이름은 쓸 수 없습니다.",
+            "다른 이름을 입력해 주세요.",
+          );
+        } catch (_) {}
+        return;
+      }
       const kindAdded = getSelectedAddKind();
-      addWorkTypeOption(name, kindAdded);
+      draftTypes.push({
+        name,
+        start: "",
+        end: "",
+        kind: kindAdded,
+        addedAt: Date.now(),
+      });
+      draftTypes.sort(compareTypeEntriesForPersist);
       addInput.value = "";
       addInput.blur();
-      renderTypeList();
+      renderTypeListsFromDraft();
       const listEl =
         kindAdded === TYPE_KIND_DIET ? dietListEl : workListEl;
       listEl.scrollTop = 0;
@@ -463,10 +653,43 @@ export function render(opts = {}) {
       commitAddFromInput();
     });
 
-    const close = () => modal.remove();
-    modal.querySelector(".work-schedule-type-settings-close").addEventListener("click", close);
+    saveBtn.addEventListener("click", () => {
+      try {
+        persistWorkTypeDraftToMemAndSync(draftTypes);
+        lastSavedComparable = draftComparableSnapshot();
+        try {
+          showToast(
+            "저장했습니다.",
+            "변경 내용을 서버에 반영했습니다.",
+          );
+        } catch (_) {}
+      } catch (err) {
+        try {
+          showToast(
+            "저장에 실패했습니다.",
+            String(err?.message || err || "다시 시도해 주세요."),
+          );
+        } catch (_) {}
+      }
+    });
 
-    renderTypeList();
+    function tryCloseModal() {
+      if (draftComparableSnapshot() !== lastSavedComparable) {
+        if (
+          !window.confirm(
+            "저장하지 않은 변경이 있습니다. 저장 없이 닫으면 버려집니다. 닫을까요?",
+          )
+        )
+          return;
+      }
+      modal.remove();
+    }
+
+    modal
+      .querySelector(".work-schedule-type-settings-close")
+      .addEventListener("click", tryCloseModal);
+
+    renderTypeListsFromDraft();
     document.body.appendChild(modal);
     addInput.focus();
   }
@@ -480,6 +703,7 @@ export function render(opts = {}) {
     if (DEFAULT_TYPE_NAMES.has(n)) return "is-ws-pill-builtin";
     return "is-ws-pill-work";
   }
+
 
   settingsBtn.addEventListener("click", openWorkTypeSettingsModal);
 

@@ -3643,6 +3643,27 @@ body {
     font-size: 16px !important;
   }
 
+  /* 오늘 해치우기 예산 표 hh:mm: 소요 시간 열과 맞춘 작은 글자(위 `#app input` 16px 보다 선택자 구체적으로 우선) */
+  #app .calendar-view .calendar-1day-view .calendar-1day-budget-column input.time-budget-scheduled-input,
+  #app .calendar-view .calendar-1day-view .calendar-1day-budget-column input.time-budget-time-input {
+    appearance: none;
+    -webkit-appearance: none;
+    font-family: inherit;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    font-variant-numeric: tabular-nums;
+    font-weight: 400 !important;
+    font-size: 0.625rem !important;
+    line-height: 1.3 !important;
+  }
+  #app .calendar-view .calendar-1day-view .calendar-1day-budget-column input.time-budget-scheduled-input::placeholder,
+  #app .calendar-view .calendar-1day-view .calendar-1day-budget-column input.time-budget-time-input::placeholder {
+    font-size: 0.625rem !important;
+    font-weight: 400;
+    line-height: 1.3 !important;
+    opacity: 0.72;
+  }
+
   /* 모바일: 상단 safe area + 추가 여백으로 상태바·노치와 겹침 방지 */
   #app:has(#app-screen) {
     padding-top: calc(env(safe-area-inset-top, 0) + 1rem);
@@ -4619,6 +4640,66 @@ body {
     .work-schedule-type-settings-row
     .work-schedule-type-settings-del {
     opacity: 0.72;
+  }
+
+  /* 근무-식단 유형 설정(dual): 배치 저장 footer — 저장 버튼 강조, 추가는 연청 테두리 */
+  .work-schedule-type-settings-modal
+    .work-schedule-type-settings-footer.work-schedule-type-settings-footer--dual {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.25rem 1rem;
+    margin-top: 0;
+    border-top: 1px solid var(--line-l3-color);
+    flex-shrink: 0;
+    background: var(--content-bg);
+  }
+  .work-schedule-type-settings-modal
+    .work-schedule-type-settings-panel--dual
+    .work-schedule-type-settings-save-btn {
+    padding: 0.5rem 1.25rem;
+    min-width: 5.25rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--ui-btn-primary-fg);
+    background: var(--ui-btn-primary-bg);
+    border: 1px solid var(--ui-btn-primary-bg);
+    border-radius: 0;
+    cursor: pointer;
+    transition:
+      background 0.15s,
+      border-color 0.15s;
+  }
+  .work-schedule-type-settings-modal
+    .work-schedule-type-settings-panel--dual
+    .work-schedule-type-settings-save-btn:hover {
+    background: var(--ui-btn-primary-hover);
+    border-color: var(--ui-btn-primary-hover);
+  }
+  .work-schedule-type-settings-modal
+    .work-schedule-type-settings-panel--dual
+    .work-schedule-type-settings-add-btn {
+    color: var(--ui-btn-primary-bg);
+    background: #fff;
+    border: 1px solid color-mix(in srgb, var(--ui-btn-primary-bg) 38%, white);
+    font-weight: 600;
+  }
+  .work-schedule-type-settings-modal
+    .work-schedule-type-settings-panel--dual
+    .work-schedule-type-settings-add-btn:hover {
+    background: color-mix(in srgb, var(--ui-btn-primary-bg) 12%, white);
+    border-color: color-mix(in srgb, var(--ui-btn-primary-bg) 55%, white);
+    color: var(--ui-btn-primary-bg);
+  }
+  .work-schedule-type-settings-modal .work-schedule-type-settings-inline-name-edit {
+    width: min(100%, 12rem);
+    box-sizing: border-box;
+  }
+  .work-schedule-type-settings-modal .work-schedule-type-settings-name--editable {
+    cursor: text;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   /* 모바일 근무표: 헤더(제목·근무유형 설정) 레이아웃 */
@@ -6546,7 +6627,7 @@ body {
     .calendar-1day-view
     .calendar-1day-top-bar
     .time-budget-calendar-remaining {
-    padding: 0.35rem 0.45rem;
+    padding: 0.35rem 1rem;
     flex-direction: row;
     flex-wrap: nowrap;
     align-items: baseline;
@@ -6629,8 +6710,12 @@ body {
     .time-budget-time-input {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    font-size: 0.65rem !important;
-    line-height: 1.15 !important;
+    font-family: inherit;
+    appearance: none;
+    -webkit-appearance: none;
+    font-weight: 400 !important;
+    font-size: 0.6rem !important;
+    line-height: 1.3 !important;
     font-variant-numeric: tabular-nums;
     padding: 0.12rem 0.18rem !important;
     width: 100% !important;
@@ -6646,8 +6731,8 @@ body {
     .calendar-1day-view
     .calendar-1day-budget-column
     .time-budget-time-input::placeholder {
-    font-size: 0.65rem !important;
-    line-height: 1.15 !important;
+    font-size: 0.6rem !important;
+    line-height: 1.3 !important;
     font-weight: 400;
     opacity: 0.72;
   }
@@ -6689,7 +6774,8 @@ body {
     .calendar-1day-budget-column
     .time-daily-budget-table
     .time-budget-duration-value {
-    font-size: 0.6rem;
+    font-size: 0.625rem;
+    font-weight: 400;
     line-height: 1.3;
   }
   .calendar-view
@@ -6701,7 +6787,76 @@ body {
     width: 1rem;
     height: 1rem;
   }
-  /* 과제명 열 조금 넓히고 시간 열은 칸폭에 맞춤 */
+  /* 모바일: 예산 표 — 짧은 헤더, 시작·마감 폭 확보 후 소요 시간은 필요한 만큼만 */
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-daily-budget-table
+    thead
+    .time-budget-th-vis-desktop {
+    display: none !important;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-daily-budget-table
+    thead
+    .time-budget-th-vis-mobile {
+    display: inline !important;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-daily-budget-table
+    thead
+    th:nth-child(2),
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-daily-budget-table
+    thead
+    th:nth-child(3) {
+    padding-left: 0.2rem;
+    padding-right: 0.14rem;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-daily-budget-table
+    thead
+    th.time-budget-col-duration {
+    padding-left: 0.16rem;
+    padding-right: 0.12rem;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-daily-budget-table
+    tbody
+    tr
+    td:nth-child(2),
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-daily-budget-table
+    tbody
+    tr
+    td:nth-child(3) {
+    padding-left: 0.16rem !important;
+    padding-right: 0.12rem !important;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-daily-budget-table
+    tbody
+    tr
+    td.time-budget-cell-duration {
+    padding-left: 0.14rem !important;
+    padding-right: 0.12rem !important;
+  }
+
+  /* 과제명·시작·마감·소요 시간·삭제 — 데스크탑(1열) 비율에 맞춰 소요 시간 공백 축소 */
   .calendar-view
     .calendar-1day-view
     .calendar-1day-budget-column
@@ -6719,14 +6874,21 @@ body {
     .calendar-1day-budget-column
     .time-daily-budget-table
     col.time-budget-col-end {
-    width: 19%;
+    width: 20%;
   }
   .calendar-view
     .calendar-1day-view
     .calendar-1day-budget-column
     .time-daily-budget-table
     col.time-budget-col-duration {
-    width: 14%;
+    width: 16%;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-daily-budget-table
+    col.time-budget-col-delete {
+    width: 8%;
   }
   .calendar-view .calendar-1day-view .calendar-1day-todo-table thead th {
     font-size: 0.55rem;
@@ -6929,6 +7091,60 @@ body {
   }
   .calendar-view .calendar-1day-view .calendar-1day-time-slot--expected {
     pointer-events: none;
+  }
+
+  /* 겹침 반열: 좁은 칸에서 시간 라벨 제거(JS) — 칩 밖으로 삐져나옴 방지·과제명만 작게 */
+  .calendar-view .calendar-1day-view .calendar-1day-time-slot-fill--lane,
+  .app-main:has(.home-view) .home-embed-1day .calendar-1day-time-slot-fill--lane {
+    overflow: hidden !important;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-time-fill-overlay--expected
+    .calendar-1day-time-slot-fill--lane
+    .calendar-1day-time-slot-fill-seg,
+  .app-main:has(.home-view)
+    .home-embed-1day
+    .calendar-1day-time-fill-overlay--expected
+    .calendar-1day-time-slot-fill--lane
+    .calendar-1day-time-slot-fill-seg {
+    overflow: hidden !important;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-time-slot-fill--lane
+    .calendar-1day-time-slot-fill-seg,
+  .app-main:has(.home-view)
+    .home-embed-1day
+    .calendar-1day-time-slot-fill--lane
+    .calendar-1day-time-slot-fill-seg {
+    padding: 0.125rem 0.15rem 0.125rem 0.5rem !important;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-time-slot-label-wrap--lane-name-only,
+  .app-main:has(.home-view)
+    .home-embed-1day
+    .calendar-1day-time-slot-label-wrap--lane-name-only {
+    flex-direction: column;
+    gap: 0;
+    min-width: 0;
+    width: 100%;
+  }
+  .calendar-view .calendar-1day-view .calendar-1day-time-slot-label-name--lane-small,
+  .app-main:has(.home-view)
+    .home-embed-1day
+    .calendar-1day-time-slot-label-name--lane-small {
+    font-size: 0.5rem !important;
+    line-height: 1.15;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+    word-break: normal;
+    -webkit-box-orient: unset;
+    -webkit-line-clamp: unset;
+    max-width: 100%;
   }
 
   .calendar-view-todo .calendar-todo-content {
@@ -39434,6 +39650,27 @@ img.time-btn-icon {
   flex: 1 1 auto;
   box-sizing: border-box;
 }
+/* 연간·오늘 해치우기: 상단에 월 헤더 없이 네비만 올린 경우 flex 자식 하나가 좌측에 붙음 → 우측 정렬 */
+.calendar-view--mobile-schedule:has(.calendar-1day-view)
+  .calendar-sub-tabs-nav-cluster,
+.calendar-view--mobile-schedule:has(.calendar-annual-view)
+  .calendar-sub-tabs-nav-cluster,
+.calendar-view--mobile-schedule
+  .calendar-sub-tabs-nav-cluster:not(:has(.calendar-nav-date)) {
+  justify-content: flex-end;
+}
+
+.calendar-view--mobile-schedule:has(.calendar-1day-view)
+  .calendar-sub-tabs-nav-cluster
+  .calendar-nav-controls,
+.calendar-view--mobile-schedule:has(.calendar-annual-view)
+  .calendar-sub-tabs-nav-cluster
+  .calendar-nav-controls,
+.calendar-view--mobile-schedule
+  .calendar-sub-tabs-nav-cluster:not(:has(.calendar-nav-date))
+  .calendar-nav-controls {
+  margin-left: auto;
+}
 
 .calendar-view--mobile-schedule
   .calendar-sub-tabs-nav-cluster
@@ -39882,7 +40119,7 @@ img.time-btn-icon {
 }
 
 .calendar-1day-top-bar .time-budget-calendar-remaining {
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem 1rem;
   flex-direction: row;
   align-items: center;
   gap: 0.5rem;
@@ -40164,6 +40401,13 @@ img.time-btn-icon {
 /* 1주 뷰: 구글 주간형 — 좌측 시간축 + 요일 7열 그리드 */
 .calendar-1week-view {
   --cal-1week-hour-height: 2.75rem;
+  /* 오늘 해치우기 시간 행(.calendar-1day-time-row / -slot)과 동일 */
+  --cal-1week-slot-line: 0.09375rem solid rgba(0, 0, 0, 0.05);
+  /* 1일 비교 타임격자(6n 띠)와 같은 흰색·연회 번갈 */
+  --cal-1week-stripe-a: #ffffff;
+  --cal-1week-stripe-b: #f9f9fb;
+  /* 시간 그리드 열 규선·일정 블록 왼쪽 진한선 — 헤더보다 더 가늠(0.0625rem); 색은 헤더 border와 같은 rgba */
+  --cal-1week-grid-col-w: 0.0625rem;
 }
 .calendar-1week-view .calendar-monthly-main {
   min-height: 0;
@@ -40187,26 +40431,26 @@ img.time-btn-icon {
   flex: 1 1 0;
   min-height: 0;
   min-width: 0;
-  background: var(--content-bg, #f5f5f7);
+  background: #ffffff;
 }
 .calendar-1week-google-header-row {
   display: grid;
   grid-template-columns: var(--cal-1day-label-col) repeat(7, minmax(0, 1fr));
   flex-shrink: 0;
-  border-bottom: var(--line-l3);
+  border-bottom: var(--cal-1week-slot-line);
   background: #ffffff;
   z-index: 2;
 }
 .calendar-1week-google-corner {
   min-height: 2.75rem;
   box-sizing: border-box;
-  border-right: var(--line-l3);
+  border-right: var(--cal-1week-slot-line);
 }
 .calendar-1week-google-day-head {
   padding: 0.4rem 0.2rem;
   text-align: center;
   border-left: none;
-  border-right: var(--line-l3);
+  border-right: var(--cal-1week-slot-line);
   box-sizing: border-box;
   display: flex;
   flex-direction: row;
@@ -40233,7 +40477,7 @@ img.time-btn-icon {
   grid-template-columns: var(--cal-1day-label-col) repeat(7, minmax(0, 1fr));
   align-items: stretch;
   flex-shrink: 0;
-  border-bottom: var(--line-l3);
+  border-bottom: var(--cal-1week-slot-line);
   background: #ffffff;
 }
 .calendar-1week-google-allday-gutter {
@@ -40243,7 +40487,7 @@ img.time-btn-icon {
   padding: 0.35rem 0.25rem;
   text-align: right;
   line-height: 1.25;
-  border-right: var(--line-l3);
+  border-right: var(--cal-1week-slot-line);
   align-self: stretch;
 }
 /* 세로 구분: .calendar-monthly-day의 border-right만 사용 — border-left를 같이 쓰면 인접 칸에서 선이 두 겹으로 굵어짐 */
@@ -40286,6 +40530,7 @@ img.time-btn-icon {
   min-height: 0;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
+  border-top: var(--cal-1week-slot-line);
   /* 세로 스크롤바가 생기면 이 영역만 가로가 줄었던 것처럼 보여 위·아래 세로선이 안 맞던 문제 완화 */
   scrollbar-gutter: stable;
 }
@@ -40294,6 +40539,8 @@ img.time-btn-icon {
   flex-direction: row;
   align-items: stretch;
   min-height: calc(24 * var(--cal-1week-hour-height));
+  border-bottom: var(--cal-1week-slot-line);
+  background: #ffffff;
 }
 .calendar-1week-google-times {
   flex: 0 0 var(--cal-1day-label-col);
@@ -40301,20 +40548,31 @@ img.time-btn-icon {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  border-right: var(--line-l3);
-  background: var(--content-bg, #f5f5f7);
+  border-right: var(--cal-1week-slot-line);
+  background: transparent;
 }
 .calendar-1week-google-hour-label {
   flex: 0 0 var(--cal-1week-hour-height);
   height: var(--cal-1week-hour-height);
-  font-size: 0.65rem;
-  font-weight: 500;
+  font-size: 0.625rem;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
   color: var(--text-muted);
-  padding: 0 0.25rem 0 0;
+  opacity: 0.72;
+  padding: 0.25rem 0.125rem 0;
+  margin: 0;
   text-align: right;
   line-height: 1;
   box-sizing: border-box;
-  border-bottom: var(--line-l3);
+  border-bottom: var(--cal-1week-slot-line);
+}
+.calendar-1week-google-hour-label:nth-child(odd),
+.calendar-1week-google-hour-line:nth-child(odd) {
+  background: var(--cal-1week-stripe-a);
+}
+.calendar-1week-google-hour-label:nth-child(even),
+.calendar-1week-google-hour-line:nth-child(even) {
+  background: var(--cal-1week-stripe-b);
 }
 .calendar-1week-google-cols {
   flex: 1 1 0;
@@ -40330,20 +40588,20 @@ img.time-btn-icon {
   cursor: pointer;
   box-sizing: border-box;
 }
-/* 열 구분선: inset shadow/border는 일정 막대(.calendar-1week-google-track z-index)에 가려져 끊겨 보임 → 막대 위에 그리기 */
+/* 열 구분선: 요일 헤더와 같은 색(rgba 동일)·두께는 가늘게 유지(header border보다 더 얇게 보이게 함) */
 .calendar-1week-google-col:not(:last-child)::after {
   content: "";
   position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
-  width: 1px;
-  background: var(--line-l3-color);
+  width: var(--cal-1week-grid-col-w);
+  background: rgba(0, 0, 0, 0.05);
   pointer-events: none;
   z-index: 3;
 }
 .calendar-1week-google-col.is-today {
-  background: rgba(42, 56, 40, 0.04);
+  background: transparent;
 }
 .calendar-1week-google-col.calendar-day-drag-over {
   outline: 2px solid var(--ui-btn-primary-bg);
@@ -40360,51 +40618,112 @@ img.time-btn-icon {
 .calendar-1week-google-hour-line {
   flex: 0 0 var(--cal-1week-hour-height);
   height: var(--cal-1week-hour-height);
-  border-bottom: var(--line-l3);
+  border-bottom: var(--cal-1week-slot-line);
   box-sizing: border-box;
-}
-.calendar-1week-google-hour-line:nth-child(even) {
-  background: rgba(249, 249, 251, 0.85);
 }
 .calendar-1week-google-track {
   position: relative;
   height: calc(24 * var(--cal-1week-hour-height));
   z-index: 1;
+  background: transparent;
 }
 .calendar-1week-google-block {
   position: absolute;
   box-sizing: border-box;
-  border-radius: 0.25rem;
+  border-radius: 0.1rem;
   overflow: hidden;
   min-height: 3px;
-  padding: 0.12rem 0.2rem;
+  padding: 0.25rem 0.3rem 0.25rem 0.28rem;
   pointer-events: none;
+  border: none;
+}
+.calendar-1week-google-block--narrow-lane {
+  padding: 0.1rem 0.08rem;
+  border-radius: 0;
+}
+/* 겹침 첫 칸만: 전폭 막대(.calendar-1week-google-block)와 동일한 왼쪽 여백 → 과제명 시작선 맞춤 */
+.calendar-1week-google-block--narrow-lane.calendar-1week-google-block--narrow-lane-leading {
+  padding: 0.1rem 0.08rem 0.1rem 0.28rem;
 }
 .calendar-1week-google-block-inner {
   display: flex;
   flex-direction: column;
   gap: 0.05rem;
-  line-height: 1.15;
+  line-height: 1.25;
   overflow: hidden;
   max-height: 100%;
+  min-width: 0;
+  width: 100%;
 }
+
+.calendar-1week-google-block-inner--inline-time {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.35rem;
+}
+.calendar-1week-google-block-inner--inline-time .calendar-1week-google-block-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: block;
+  -webkit-box-orient: unset;
+  -webkit-line-clamp: unset;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.calendar-1week-google-block-inner--inline-time .calendar-1week-google-block-time {
+  flex: 0 0 auto;
+}
+
+.calendar-1week-google-block-inner--stacked-time {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+}
+
 .calendar-1week-google-block-time {
-  font-size: 0.6rem;
-  font-weight: 600;
+  font-size: 0.56rem;
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
   color: var(--text-ink);
   opacity: 0.88;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
 }
 .calendar-1week-google-block-name {
-  font-size: 0.62rem;
-  font-weight: 500;
+  font-size: 0.56rem;
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
   color: var(--text-body);
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  word-break: break-word;
+}
+
+.calendar-1week-google-block-inner--accent-fg .calendar-1week-google-block-time,
+.calendar-1week-google-block-inner--accent-fg .calendar-1week-google-block-name {
+  color: inherit;
+  opacity: 0.93;
+}
+
+/* 겹침 반열: 오늘해치우기처럼 시간 표기 생략·과제명만 작게 */
+.calendar-1week-google-block--narrow-lane .calendar-1week-google-block-inner {
+  gap: 0;
+  justify-content: flex-start;
+}
+.calendar-1week-google-block--narrow-lane .calendar-1week-google-block-name {
+  font-size: 0.52rem;
+  line-height: 1.2;
+  font-weight: 400;
+  -webkit-line-clamp: 2;
   word-break: break-word;
 }
 
@@ -40940,10 +41259,12 @@ img.time-btn-icon {
   col.time-budget-col-duration {
   width: 14%;
 }
-.calendar-1day-budget-column
-  .time-daily-budget-table
-  col.time-budget-col-delete {
-  width: 6%;
+.calendar-1day-budget-column .time-daily-budget-table thead .time-budget-th-vis-mobile {
+  display: none !important;
+}
+
+.calendar-1day-budget-column .time-daily-budget-table thead th.time-budget-th-sched {
+  white-space: nowrap;
 }
 
 .calendar-1day-budget-column
@@ -42751,6 +43072,14 @@ img.time-btn-icon {
 .calendar-1week-view .calendar-monthly-day.today .calendar-monthly-day-num,
 .calendar-1week-view .calendar-monthly-day.other-month.today .calendar-monthly-day-num {
   align-self: flex-start;
+}
+
+/* 1주 종일 행: 기본 월별 셀은 border-right 가 line-l3 — 요일 헤더(.calendar-1week-google-day-head)와 동일 선으로 통일 */
+.calendar-1week-google-allday-section .calendar-monthly-day {
+  border-right: var(--cal-1week-slot-line);
+}
+.calendar-1week-google-allday-section .calendar-monthly-day:last-child {
+  border-right: none;
 }
 
 /* 막대 위에 올릴 때: 여러 날 막대만 틴트 */
