@@ -1461,7 +1461,7 @@ function showTodoTaskModal(options) {
           <label class="todo-task-edit-label">시작일</label>
           <div class="todo-task-edit-input-shell todo-task-edit-native-shell">
             <div class="todo-task-edit-native-slot todo-task-edit-native-slot--calendar">
-              <input type="date" class="todo-task-edit-start todo-task-edit-native-dt-input" aria-label="시작일" value="${escapeHtml((startDate || "").slice(0, 10))}" />
+              <input type="date" class="todo-task-edit-start todo-task-edit-native-dt-input" aria-label="시작일" value="${escapeHtml((startDate || "").slice(0, 10))}" /><span class="todo-task-edit-native-date-overlay" aria-hidden="true"></span>
             </div>
           </div>
         </div>
@@ -1469,7 +1469,7 @@ function showTodoTaskModal(options) {
           <label class="todo-task-edit-label">마감일</label>
           <div class="todo-task-edit-input-shell todo-task-edit-native-shell">
             <div class="todo-task-edit-native-slot todo-task-edit-native-slot--calendar">
-              <input type="date" class="todo-task-edit-due todo-task-edit-native-dt-input" aria-label="마감일" value="${escapeHtml((dueDate || "").slice(0, 10))}" />
+              <input type="date" class="todo-task-edit-due todo-task-edit-native-dt-input" aria-label="마감일" value="${escapeHtml((dueDate || "").slice(0, 10))}" /><span class="todo-task-edit-native-date-overlay" aria-hidden="true"></span>
             </div>
           </div>
         </div>
@@ -1479,7 +1479,7 @@ function showTodoTaskModal(options) {
             <div class="todo-task-edit-input-shell todo-task-edit-native-shell">
               <div class="todo-task-edit-reminder-native-stack">
                 <div class="todo-task-edit-native-slot todo-task-edit-native-slot--calendar">
-                  <input type="date" class="todo-task-edit-reminder-date todo-task-edit-native-dt-input" aria-label="리마인더 날짜" value="${escapeHtml((reminderDate || "").slice(0, 10))}" />
+                  <input type="date" class="todo-task-edit-reminder-date todo-task-edit-native-dt-input" aria-label="리마인더 날짜" value="${escapeHtml((reminderDate || "").slice(0, 10))}" /><span class="todo-task-edit-native-date-overlay" aria-hidden="true"></span>
                 </div>
                 <div class="todo-task-edit-native-slot todo-task-edit-native-slot--clock">
                   <input type="time" step="300" class="todo-task-edit-reminder-time todo-task-edit-native-time-input" aria-label="리마인더 시간" value="${escapeHtml((reminderTime || "").trim().slice(0, 5))}" />
@@ -1543,10 +1543,31 @@ function showTodoTaskModal(options) {
   const sectionSelect = modal.querySelector(".todo-task-edit-section");
   const asScheduleInput = modal.querySelector(".todo-task-edit-as-schedule");
 
+  function formatTodoModalNativeOverlayYmd(isoTen) {
+    const m = String(isoTen || "")
+      .trim()
+      .match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return "";
+    const y = m[1];
+    const mo = String(parseInt(m[2], 10));
+    const da = String(parseInt(m[3], 10));
+    return `${y}. ${mo}. ${da}`;
+  }
+
   function syncNativeDateFilled(inp) {
     if (!inp) return;
     const v = (inp.value || "").trim().slice(0, 10);
-    inp.classList.toggle("has-value", !!v);
+    const has = !!v;
+    inp.classList.toggle("has-value", has);
+    const slot = inp.closest(".todo-task-edit-native-slot");
+    if (slot?.classList.contains("todo-task-edit-native-slot--calendar")) {
+      slot.classList.toggle(
+        "todo-task-edit-native-slot--has-date-shown",
+        has,
+      );
+    }
+    const ov = slot?.querySelector(".todo-task-edit-native-date-overlay");
+    if (ov) ov.textContent = has ? formatTodoModalNativeOverlayYmd(v) : "";
   }
 
   function syncNativeTimeFilled(inp) {

@@ -20478,7 +20478,6 @@ svg.todo-card-reminder-icon {
   color: var(--text-placeholder, #aeaeb2);
 }
 
-.todo-task-edit-modal input.todo-task-edit-native-dt-input.has-value,
 .todo-task-edit-modal input.todo-task-edit-native-time-input.has-value {
   color: var(--text-body);
 }
@@ -20506,8 +20505,18 @@ svg.todo-card-reminder-icon {
   opacity: 0;
 }
 
+.todo-task-edit-modal .todo-task-edit-native-slot--calendar .todo-task-edit-native-dt-input.has-value {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+.todo-task-edit-modal .todo-task-edit-native-slot--calendar .todo-task-edit-native-dt-input.has-value::-webkit-datetime-edit,
 .todo-task-edit-modal .todo-task-edit-native-slot--calendar .todo-task-edit-native-dt-input.has-value::-webkit-datetime-edit-fields-wrapper {
-  opacity: 1;
+  opacity: 0 !important;
+}
+
+.todo-task-edit-modal .todo-task-edit-native-slot--calendar .todo-task-edit-native-dt-input.has-value::-webkit-date-and-time-value {
+  opacity: 0 !important;
 }
 
 .todo-task-edit-modal .todo-task-edit-native-slot--calendar:has(.todo-task-edit-native-dt-input:not(.has-value)):not(:focus-within)::before {
@@ -20540,6 +20549,35 @@ svg.todo-card-reminder-icon {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8' stroke-width='1.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' /%3E%3C/svg%3E");
 }
 
+/* 값이 있을 때: 브라우저 로캘 문자열 대신 같은 형식으로 덮음(예: Safari 끝 마침표 제거) */
+.todo-task-edit-modal .todo-task-edit-native-date-overlay {
+  position: absolute;
+  left: 0.75rem;
+  right: 1.85rem;
+  top: 0;
+  bottom: 0;
+  display: none;
+  align-items: center;
+  justify-content: flex-start;
+  pointer-events: none;
+  z-index: 2;
+  font-family: var(--font-mono), ui-monospace, monospace !important;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-body);
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+  color: var(--text-body);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.todo-task-edit-modal
+  .todo-task-edit-native-slot.todo-task-edit-native-slot--calendar.todo-task-edit-native-slot--has-date-shown
+  .todo-task-edit-native-date-overlay {
+  display: flex !important;
+}
+
 .todo-task-edit-modal .todo-task-edit-native-slot--clock::after {
   content: "";
   position: absolute;
@@ -20556,7 +20594,7 @@ svg.todo-card-reminder-icon {
 
 @media (max-width: 48rem) {
   /* WebKit: 날짜 입력 내부 텍스트가 칸 안에서 위로 붙음 → datetime 편집 트리를 슬롯 높이(2.75rem) 기준 세로 중앙 */
-  .todo-task-edit-modal input.todo-task-edit-native-dt-input::-webkit-datetime-edit-fields-wrapper {
+  .todo-task-edit-modal input.todo-task-edit-native-dt-input:not(.has-value)::-webkit-datetime-edit-fields-wrapper {
     display: flex !important;
     align-items: center !important;
     min-height: 2.75rem !important;
@@ -20565,7 +20603,7 @@ svg.todo-card-reminder-icon {
     padding: 0 !important;
   }
 
-  .todo-task-edit-modal input.todo-task-edit-native-dt-input::-webkit-datetime-edit {
+  .todo-task-edit-modal input.todo-task-edit-native-dt-input:not(.has-value)::-webkit-datetime-edit {
     display: flex !important;
     align-items: center !important;
     justify-content: flex-start !important;
@@ -20575,15 +20613,11 @@ svg.todo-card-reminder-icon {
     padding: 0 !important;
   }
 
-  .todo-task-edit-modal input.todo-task-edit-native-dt-input::-webkit-date-and-time-value {
+  .todo-task-edit-modal input.todo-task-edit-native-dt-input:not(.has-value)::-webkit-date-and-time-value {
     min-height: unset !important;
     display: flex !important;
     align-items: center !important;
     line-height: 1.2 !important;
-  }
-
-  .todo-task-edit-modal input.todo-task-edit-native-dt-input.has-value {
-    line-height: 1 !important;
   }
 }
 
