@@ -185,6 +185,10 @@ const LP_CAL_TODO_SIDEBAR_FULL = "full";
 /** 오늘 탭 타임라인 등: 타임그리드 옆 할일 사이드바 없음 */
 const LP_CAL_TODO_SIDEBAR_NONE = "none";
 
+/** 타임블록·1주(구글) 시간격자 공통: 15분 슬롯 하루 96칸 — 예상/실제/주간 블록·DOM 행과 동일 */
+const CAL_1DAY_TIMETABLE_SLOTS_PER_DAY = 96;
+const CAL_1DAY_TIMETABLE_MIN_PER_SLOT = 15;
+
 /** 캘린더 막대 할 일: 체크박스 대신 섹션색 세로 막대(|) */
 function lpCalendarSpanBarTodoMarkerHtml(sectionColor) {
   const c =
@@ -3875,8 +3879,8 @@ function getYesterdayKey(dateStr) {
 function buildExpectedScheduleSpansForDateKey(dateKey) {
   const budgetGoals = getBudgetGoals(dateKey);
   const tasks = getAllTasksForDateDisplay(dateKey);
-  const SLOTS_PER_DAY = 24;
-  const MIN_PER_SLOT = 60;
+  const SLOTS_PER_DAY = CAL_1DAY_TIMETABLE_SLOTS_PER_DAY;
+  const MIN_PER_SLOT = CAL_1DAY_TIMETABLE_MIN_PER_SLOT;
   const fmt = (m) =>
     `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
   const parseHhMmToMinutes = (s) => {
@@ -4088,8 +4092,8 @@ function buildExpectedScheduleSpansForDateKey(dateKey) {
  * 1주 뷰에서 「오늘」보다 과거 열의 실제 블록용.
  */
 function buildActualScheduleSpansForDateKey(dateKey) {
-  const SLOTS_PER_DAY = 24;
-  const MIN_PER_SLOT = 60;
+  const SLOTS_PER_DAY = CAL_1DAY_TIMETABLE_SLOTS_PER_DAY;
+  const MIN_PER_SLOT = CAL_1DAY_TIMETABLE_MIN_PER_SLOT;
   const fmt = (m) =>
     `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
   const parseHhMmToMinutes = (s) => {
@@ -4280,8 +4284,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
     }
     return null;
   };
-  const SLOTS_PER_DAY = 24;
-  const MIN_PER_SLOT = 60;
+  const SLOTS_PER_DAY = CAL_1DAY_TIMETABLE_SLOTS_PER_DAY;
+  const MIN_PER_SLOT = CAL_1DAY_TIMETABLE_MIN_PER_SLOT;
   const getScheduledTimesForTask = (data) => {
     if (!data) return [];
     if (Array.isArray(data.scheduledTimes))
@@ -5383,8 +5387,8 @@ function render1DayView(
       }
       return null;
     };
-    const SLOTS_PER_DAY = 24;
-    const MIN_PER_SLOT = 60;
+    const SLOTS_PER_DAY = CAL_1DAY_TIMETABLE_SLOTS_PER_DAY;
+    const MIN_PER_SLOT = CAL_1DAY_TIMETABLE_MIN_PER_SLOT;
     const getScheduledTimesForTaskLocal = (data) => {
       if (!data) return [];
       if (Array.isArray(data.scheduledTimes))
@@ -5544,7 +5548,11 @@ function render1DayView(
       row.style.gridRow = `${i + 1}`;
       const timeLabel = document.createElement("div");
       timeLabel.className = "calendar-1day-time-label";
-      timeLabel.textContent = `${String(i).padStart(2, "0")}:00`;
+      const slotStartMin = i * MIN_PER_SLOT;
+      const th = Math.floor(slotStartMin / 60);
+      const tm = slotStartMin % 60;
+      timeLabel.textContent = `${String(th).padStart(2, "0")}:${String(tm).padStart(2, "0")}`;
+      if (tm !== 0) timeLabel.classList.add("calendar-1day-time-label--subslot");
       row.appendChild(timeLabel);
       timeTable.appendChild(row);
       const slotExpected = document.createElement("div");
@@ -5866,7 +5874,8 @@ function render1WeekView(
     const prodColorsExpected = getTimeCategoryColorsForTimetableExpected();
     const prodColorsActual = getTimeCategoryColorsForTimetable();
     const MIN_PER_DAY = 24 * 60;
-    const HOURS = 24;
+    const WEEK_SLOTS_PER_DAY = CAL_1DAY_TIMETABLE_SLOTS_PER_DAY;
+    const WEEK_MIN_PER_SLOT = CAL_1DAY_TIMETABLE_MIN_PER_SLOT;
 
     function applyWeekDropToDate(targetDate, payload) {
       const oldStart = (payload.startDate || "").slice(0, 10);
@@ -6354,10 +6363,15 @@ function render1WeekView(
 
     const timesCol = document.createElement("div");
     timesCol.className = "calendar-1week-google-times";
-    for (let h = 0; h < HOURS; h++) {
+    for (let si = 0; si < WEEK_SLOTS_PER_DAY; si++) {
       const lab = document.createElement("div");
       lab.className = "calendar-1week-google-hour-label";
-      lab.textContent = `${String(h).padStart(2, "0")}:00`;
+      const slotMin = si * WEEK_MIN_PER_SLOT;
+      const th = Math.floor(slotMin / 60);
+      const tm = slotMin % 60;
+      lab.textContent = `${String(th).padStart(2, "0")}:${String(tm).padStart(2, "0")}`;
+      if (tm !== 0)
+        lab.classList.add("calendar-1week-google-hour-label--subslot");
       timesCol.appendChild(lab);
     }
 
@@ -6374,7 +6388,7 @@ function render1WeekView(
 
       const gridBg = document.createElement("div");
       gridBg.className = "calendar-1week-google-hour-lines";
-      for (let h = 0; h < HOURS; h++) {
+      for (let si = 0; si < WEEK_SLOTS_PER_DAY; si++) {
         const line = document.createElement("div");
         line.className = "calendar-1week-google-hour-line";
         gridBg.appendChild(line);

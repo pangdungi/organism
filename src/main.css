@@ -4030,7 +4030,7 @@ body {
     .home-1day-timeline-mount
     .calendar-1day-time-table--compare {
     min-height: auto !important;
-    grid-template-rows: repeat(24, minmax(2.75rem, auto)) !important;
+    grid-template-rows: repeat(96, minmax(2.1rem, auto)) !important;
   }
   /* 홈 타임라인: 할일/일정과 동일하게 예상 블록이 슬롯 위로 오도록 */
   .app-main:has(.home-view)
@@ -5961,6 +5961,7 @@ body {
 
   .calendar-1week-view {
     --cal-1week-hour-height: 2.35rem;
+    --cal-1week-slot-height: 2.05rem;
   }
 
   /* 모바일 캘린더 탭: 월별·1주·연간 상단 탭으로 고정(근무표 전용은 기존 줄 유지) */
@@ -7057,19 +7058,19 @@ body {
     min-height: 0;
   }
   /*
-   * 모바일 일정·오늘 해치우기: 24행 그리드에 minmax(N, 1fr) + min-height:100% 가 남는 높이를 전부 채워
+   * 모바일 일정·타임블록: 96행(15분) 그리드에 minmax(N, 1fr) + min-height:100% 가 남는 높이를 전부 채워
    * 빈 회색만 길게 보임 → 행은 콘텐츠 높이만 쓰고(1fr 제거), wrap은 늘어나지 않게 고정.
    */
   .calendar-view
     .calendar-1day-view
     .calendar-1day-time-table.calendar-1day-time-table--compare {
     min-height: min-content !important;
-    grid-template-rows: repeat(24, minmax(2.75rem, auto)) !important;
+    grid-template-rows: repeat(96, minmax(2.1rem, auto)) !important;
   }
   .calendar-view .calendar-1day-view .calendar-1day-time-table:not(
       .calendar-1day-time-table--compare
     ) {
-    grid-template-rows: repeat(24, minmax(2.5rem, auto)) !important;
+    grid-template-rows: repeat(96, minmax(2rem, auto)) !important;
   }
   /* 글로벌(41926~): inner 안 표만 flex:1 이면 부모 높이 불안정 → 늘어난 뒤 오버레이가 전부 덮음 */
   .calendar-view
@@ -7081,10 +7082,10 @@ body {
   }
   /* 글로벌(41936~): 오버레이 그리드도 1fr 이 빈 회색만 키움 */
   .calendar-view .calendar-1day-view .calendar-1day-time-fill-overlay {
-    grid-template-rows: repeat(24, minmax(2.75rem, auto)) !important;
+    grid-template-rows: repeat(96, minmax(2.1rem, auto)) !important;
   }
 
-  /* 4. 오늘 해치우기(모바일): 예상·실제 색 블록 z-index */
+  /* 4. 타임블록(모바일): 예상·실제 색 블록 z-index */
   .calendar-view .calendar-1day-view .calendar-1day-time-fill-overlay--expected,
   .calendar-view .calendar-1day-view .calendar-1day-time-fill-overlay--actual {
     z-index: 2;
@@ -40401,6 +40402,8 @@ img.time-btn-icon {
 /* 1주 뷰: 구글 주간형 — 좌측 시간축 + 요일 7열 그리드 */
 .calendar-1week-view {
   --cal-1week-hour-height: 2.75rem;
+  /* 15분 한 칸 높이(타임블록 예상열과 근접). 하루 = 96 × 슬롯 */
+  --cal-1week-slot-height: 2.25rem;
   /* 오늘 해치우기 시간 행(.calendar-1day-time-row / -slot)과 동일 */
   --cal-1week-slot-line: 0.09375rem solid rgba(0, 0, 0, 0.05);
   /* 1일 비교 타임격자(6n 띠)와 같은 흰색·연회 번갈 */
@@ -40538,7 +40541,7 @@ img.time-btn-icon {
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  min-height: calc(24 * var(--cal-1week-hour-height));
+  min-height: calc(96 * var(--cal-1week-slot-height));
   border-bottom: var(--cal-1week-slot-line);
   background: #ffffff;
 }
@@ -40552,8 +40555,8 @@ img.time-btn-icon {
   background: transparent;
 }
 .calendar-1week-google-hour-label {
-  flex: 0 0 var(--cal-1week-hour-height);
-  height: var(--cal-1week-hour-height);
+  flex: 0 0 var(--cal-1week-slot-height);
+  height: var(--cal-1week-slot-height);
   font-size: 0.625rem;
   font-weight: 300;
   font-variant-numeric: tabular-nums;
@@ -40565,6 +40568,12 @@ img.time-btn-icon {
   line-height: 1;
   box-sizing: border-box;
   border-bottom: var(--cal-1week-slot-line);
+}
+.calendar-1week-google-hour-label.calendar-1week-google-hour-label--subslot {
+  font-size: 0.5175rem;
+  padding-top: 0.1rem;
+  line-height: 1.05;
+  opacity: 0.74;
 }
 .calendar-1week-google-hour-label:nth-child(odd),
 .calendar-1week-google-hour-line:nth-child(odd) {
@@ -40584,7 +40593,7 @@ img.time-btn-icon {
   position: relative;
   border-left: none;
   border-right: none;
-  min-height: calc(24 * var(--cal-1week-hour-height));
+  min-height: calc(96 * var(--cal-1week-slot-height));
   cursor: pointer;
   box-sizing: border-box;
 }
@@ -40616,14 +40625,14 @@ img.time-btn-icon {
   z-index: 0;
 }
 .calendar-1week-google-hour-line {
-  flex: 0 0 var(--cal-1week-hour-height);
-  height: var(--cal-1week-hour-height);
+  flex: 0 0 var(--cal-1week-slot-height);
+  height: var(--cal-1week-slot-height);
   border-bottom: var(--cal-1week-slot-line);
   box-sizing: border-box;
 }
 .calendar-1week-google-track {
   position: relative;
-  height: calc(24 * var(--cal-1week-hour-height));
+  height: calc(96 * var(--cal-1week-slot-height));
   z-index: 1;
   background: transparent;
 }
@@ -42114,18 +42123,18 @@ img.time-btn-icon {
 .calendar-1day-view .calendar-1day-time-table {
   display: grid;
   grid-template-columns: var(--cal-1day-label-col) 1fr;
-  grid-template-rows: repeat(24, minmax(2.5rem, 1fr));
+  grid-template-rows: repeat(96, minmax(2rem, 1fr));
   min-height: min-content;
 }
 
-/* 1시간 단위: 24행이 남는 세로 공간을 균등 분할 (예상|실제 헤더는 그리드 밖 wrap 직계 자식으로 sticky) */
+/* 15분 단위: 96행. 세로 높이를 과도하게 줄이지 않아 짧은 기록(15·30분)도 높이로 식별 가능 */
 .calendar-1day-view .calendar-1day-time-table--compare {
   grid-template-columns: var(--cal-1day-label-col) 1fr 1fr;
-  grid-template-rows: repeat(24, minmax(3rem, 1fr));
+  grid-template-rows: repeat(96, minmax(2.25rem, 1fr));
   min-height: 100%;
 }
 
-/* 시간대별 줄무늬: 라벨·예상·실제가 형제 3개씩 묶임 → 6n+1~3 / 6n+4~6 */
+/* 줄무늬: 라벨·예상·실제 3개 단위 묶임 + 30분 단위 교대 유지 시 15분 칸 × 2 = 6노드 → 6n+1~3 / 6n+4~6 */
 .calendar-1day-view
   .calendar-1day-time-table.calendar-1day-time-table--compare
   > :nth-child(6n + 1),
@@ -42174,7 +42183,7 @@ img.time-btn-icon {
 .calendar-1week-view .calendar-1week-time-table {
   display: grid;
   grid-template-columns: var(--cal-1day-label-col) repeat(7, 1fr);
-  grid-template-rows: 2.5rem repeat(48, minmax(2rem, 1fr));
+  grid-template-rows: 2.5rem repeat(96, minmax(2rem, 1fr));
   min-height: min-content;
 }
 
@@ -42183,7 +42192,7 @@ img.time-btn-icon {
   bottom: 0;
   position: absolute;
   display: grid;
-  grid-template-rows: 2.5rem repeat(48, minmax(2rem, 1fr));
+  grid-template-rows: 2.5rem repeat(96, minmax(2rem, 1fr));
   pointer-events: none;
 }
 
@@ -42397,7 +42406,7 @@ img.time-btn-icon {
   left: 0;
   right: 0;
   display: grid;
-  grid-template-rows: repeat(24, minmax(3rem, 1fr));
+  grid-template-rows: repeat(96, minmax(2.25rem, 1fr));
   pointer-events: none;
 }
 
@@ -42429,7 +42438,7 @@ img.time-btn-icon {
 .calendar-1day-view .calendar-1day-time-row {
   display: flex;
   align-items: stretch;
-  min-height: 3rem;
+  min-height: 2.25rem;
   border-bottom: 0.09375rem solid rgba(0, 0, 0, 0.05);
 }
 
@@ -42450,6 +42459,14 @@ img.time-btn-icon {
   background: #f5f5f7;
   text-align: left;
   align-self: flex-start;
+}
+
+.calendar-1day-view .calendar-1day-time-label.calendar-1day-time-label--subslot {
+  padding-top: 0.125rem;
+  font-size: 0.5175rem;
+  font-weight: 300;
+  line-height: 1.05;
+  opacity: 0.78;
 }
 
 .calendar-1day-view .calendar-1day-time-slot {
