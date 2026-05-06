@@ -1358,6 +1358,27 @@ function clearTodoItemModalSelection() {
   } catch (_) {}
 }
 
+/** 달력·시계 영역 탭 시에도 시스템 date/time 픽커가 열리게 (입력창은 동일 외형으로 통일) */
+function wireTodoTaskModalNativeSlot(slotEl, inputEl) {
+  if (!(slotEl instanceof HTMLElement) || !inputEl) return;
+  slotEl.addEventListener("click", (e) => {
+    const t = e.target;
+    if (t === inputEl || (inputEl.contains && t instanceof Node && inputEl.contains(t)))
+      return;
+    try {
+      inputEl.focus({ preventScroll: true });
+    } catch (_) {
+      inputEl.focus();
+    }
+    try {
+      if (typeof inputEl.showPicker === "function") inputEl.showPicker();
+      else inputEl.click();
+    } catch (_) {
+      inputEl.click();
+    }
+  });
+}
+
 /** 할일 추가/수정 통합 모달. 카드 레이아웃에서 사용. onSave(폼값 객체), onDelete(수정 시만) */
 function showTodoTaskModal(options) {
   const {
@@ -1438,27 +1459,30 @@ function showTodoTaskModal(options) {
         }
         <div class="todo-task-edit-field">
           <label class="todo-task-edit-label">시작일</label>
-          <div class="todo-task-edit-input-shell todo-task-edit-input-shell--date">
-            <input type="date" class="todo-task-edit-start" value="${escapeHtml((startDate || "").slice(0, 10))}" />
+          <div class="todo-task-edit-input-shell todo-task-edit-native-shell">
+            <div class="todo-task-edit-native-slot todo-task-edit-native-slot--calendar">
+              <input type="date" class="todo-task-edit-start todo-task-edit-native-dt-input" aria-label="시작일" value="${escapeHtml((startDate || "").slice(0, 10))}" />
+            </div>
           </div>
         </div>
         <div class="todo-task-edit-field">
           <label class="todo-task-edit-label">마감일</label>
-          <div class="todo-task-edit-input-shell todo-task-edit-input-shell--date">
-            <input type="date" class="todo-task-edit-due" value="${escapeHtml((dueDate || "").slice(0, 10))}" />
+          <div class="todo-task-edit-input-shell todo-task-edit-native-shell">
+            <div class="todo-task-edit-native-slot todo-task-edit-native-slot--calendar">
+              <input type="date" class="todo-task-edit-due todo-task-edit-native-dt-input" aria-label="마감일" value="${escapeHtml((dueDate || "").slice(0, 10))}" />
+            </div>
           </div>
         </div>
         <div class="todo-task-edit-field">
           <label class="todo-task-edit-label">리마인더</label>
           <div class="todo-task-edit-reminder-box">
-            <div class="todo-task-edit-input-shell todo-task-edit-input-shell--clock">
-              <div class="todo-task-edit-reminder-row">
-                <div class="todo-task-edit-reminder-date-wrap">
-                  <span class="todo-task-edit-reminder-date-placeholder" aria-hidden="true">연도. 월. 일.</span>
-                  <input type="date" class="todo-task-edit-reminder-date" value="${escapeHtml((reminderDate || "").slice(0, 10))}" />
+            <div class="todo-task-edit-input-shell todo-task-edit-native-shell">
+              <div class="todo-task-edit-reminder-native-stack">
+                <div class="todo-task-edit-native-slot todo-task-edit-native-slot--calendar">
+                  <input type="date" class="todo-task-edit-reminder-date todo-task-edit-native-dt-input" aria-label="리마인더 날짜" value="${escapeHtml((reminderDate || "").slice(0, 10))}" />
                 </div>
-                <div class="todo-task-edit-reminder-time-wrap">
-                  <input type="text" class="todo-task-edit-reminder-time" placeholder="시간" value="${escapeHtml(reminderTime)}" maxlength="5" />
+                <div class="todo-task-edit-native-slot todo-task-edit-native-slot--clock">
+                  <input type="time" step="300" class="todo-task-edit-reminder-time todo-task-edit-native-time-input" aria-label="리마인더 시간" value="${escapeHtml((reminderTime || "").trim().slice(0, 5))}" />
                 </div>
               </div>
             </div>
@@ -1507,9 +1531,36 @@ function showTodoTaskModal(options) {
   const reminderDeleteBtn = modal.querySelector(
     ".todo-task-edit-reminder-delete",
   );
+  const startSlot = startInput?.closest(".todo-task-edit-native-slot");
+  const dueSlot = dueInput?.closest(".todo-task-edit-native-slot");
+  const reminderDateSlot = reminderDateInput?.closest(
+    ".todo-task-edit-native-slot",
+  );
+  const reminderTimeSlot = reminderTimeInput?.closest(
+    ".todo-task-edit-native-slot",
+  );
   const eisenhowerSelect = modal.querySelector(".todo-task-edit-eisenhower");
   const sectionSelect = modal.querySelector(".todo-task-edit-section");
   const asScheduleInput = modal.querySelector(".todo-task-edit-as-schedule");
+
+  function syncNativeDateFilled(inp) {
+    if (!inp) return;
+    const v = (inp.value || "").trim().slice(0, 10);
+    inp.classList.toggle("has-value", !!v);
+  }
+
+  function syncNativeTimeFilled(inp) {
+    if (!inp) return;
+    const v = (inp.value || "").trim();
+    inp.classList.toggle("has-value", !!v);
+  }
+
+  function syncStartDueMinMax() {
+    const s = (startInput?.value || "").trim().slice(0, 10);
+    const d = (dueInput?.value || "").trim().slice(0, 10);
+    if (startInput) startInput.max = d || "";
+    if (dueInput) dueInput.min = s || "";
+  }
 
   function close() {
     try {
@@ -1531,22 +1582,6 @@ function showTodoTaskModal(options) {
   function gatherForm() {
     const startVal = (startInput?.value || "").trim().slice(0, 10);
     const dueVal = (dueInput?.value || "").trim().slice(0, 10);
-    if (startVal && dueVal) {
-      startInput.min = "";
-      startInput.max = dueVal;
-      dueInput.min = startVal;
-      dueInput.max = "";
-    } else {
-      /* 시작만 비운 경우 등: 이전 세션의 min/max가 남으면 Safari 등에서 값·유효성이 꼬일 수 있음 */
-      if (startInput) {
-        startInput.min = "";
-        startInput.max = "";
-      }
-      if (dueInput) {
-        dueInput.min = "";
-        dueInput.max = "";
-      }
-    }
     let reminderTimeVal = (reminderTimeInput?.value || "").trim();
     const digits = reminderTimeVal.replace(/\D/g, "");
     if (digits.length >= 2) reminderTimeVal = formatTimeToHHMM(reminderTimeVal);
@@ -1600,50 +1635,44 @@ function showTodoTaskModal(options) {
   document.body.appendChild(modal);
   document.body.style.overflow = "hidden";
 
-  function updateDateInputPlaceholderClass(input) {
-    if (!input) return;
-    if ((input.value || "").trim()) input.classList.add("has-value");
-    else input.classList.remove("has-value");
+  if (reminderTimeInput) {
+    const d0 = (reminderTimeInput.value || "").replace(/\D/g, "");
+    if (d0.length >= 2)
+      reminderTimeInput.value = formatTimeToHHMM(reminderTimeInput.value);
   }
-  [startInput, dueInput, reminderDateInput].forEach(
-    updateDateInputPlaceholderClass,
-  );
-  [startInput, dueInput, reminderDateInput].forEach((input) => {
-    if (!input) return;
-    input.addEventListener("input", () =>
-      updateDateInputPlaceholderClass(input),
-    );
-    input.addEventListener("change", () =>
-      updateDateInputPlaceholderClass(input),
-    );
+  [startInput, dueInput, reminderDateInput].forEach((inp) => {
+    if (!inp) return;
+    syncNativeDateFilled(inp);
+    const bump = () => {
+      syncNativeDateFilled(inp);
+      if (inp === startInput || inp === dueInput) syncStartDueMinMax();
+    };
+    inp.addEventListener("input", bump);
+    inp.addEventListener("change", bump);
   });
+  syncNativeTimeFilled(reminderTimeInput);
+  if (reminderTimeInput) {
+    const bumpT = () => syncNativeTimeFilled(reminderTimeInput);
+    reminderTimeInput.addEventListener("input", bumpT);
+    reminderTimeInput.addEventListener("change", bumpT);
+  }
+  syncStartDueMinMax();
+
+  wireTodoTaskModalNativeSlot(startSlot, startInput);
+  wireTodoTaskModalNativeSlot(dueSlot, dueInput);
+  wireTodoTaskModalNativeSlot(reminderDateSlot, reminderDateInput);
+  wireTodoTaskModalNativeSlot(reminderTimeSlot, reminderTimeInput);
 
   reminderDeleteBtn?.addEventListener("click", () => {
     if (reminderDateInput) {
       reminderDateInput.value = "";
-      updateDateInputPlaceholderClass(reminderDateInput);
+      syncNativeDateFilled(reminderDateInput);
     }
-    if (reminderTimeInput) reminderTimeInput.value = "";
+    if (reminderTimeInput) {
+      reminderTimeInput.value = "";
+      syncNativeTimeFilled(reminderTimeInput);
+    }
   });
-
-  if (reminderTimeInput) {
-    const digitsInit = (reminderTimeInput.value || "").replace(/\D/g, "");
-    if (digitsInit.length >= 2)
-      reminderTimeInput.value = formatTimeToHHMM(reminderTimeInput.value);
-    reminderTimeInput.addEventListener("input", () => {
-      const raw = reminderTimeInput.value;
-      const digits = raw.replace(/\D/g, "");
-      if (digits.length >= 4) {
-        reminderTimeInput.value = formatTimeToHHMM(raw);
-        reminderTimeInput.setSelectionRange(5, 5);
-      }
-    });
-    reminderTimeInput.addEventListener("blur", () => {
-      const digits = (reminderTimeInput.value || "").replace(/\D/g, "");
-      if (digits.length >= 2)
-        reminderTimeInput.value = formatTimeToHHMM(reminderTimeInput.value);
-    });
-  }
 
   /* X에 포커스 두면 iOS PWA에서 파란 포커스 링이 생김 → 할일 이름 입력으로 */
   requestAnimationFrame(() => nameInput?.focus());

@@ -2687,27 +2687,14 @@ body {
   .todo-task-edit-modal .todo-task-edit-field--name .todo-task-edit-input-shell input {
     min-height: 2.75rem !important;
   }
-  .todo-task-edit-modal .todo-task-edit-input-shell--date input {
+  .todo-task-edit-modal .todo-task-edit-native-slot {
     min-height: 2.75rem !important;
+  }
+  .todo-task-edit-modal .todo-task-edit-native-slot--calendar:has(.todo-task-edit-native-dt-input:not(.has-value)):not(:focus-within)::before {
+    line-height: 2.75rem !important;
   }
   .todo-task-edit-modal .todo-task-edit-input-shell--select select {
     min-height: 2.75rem !important;
-  }
-  .todo-task-edit-modal .todo-task-edit-input-shell--clock .todo-task-edit-reminder-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.35rem;
-    padding: 0.5rem 0.75rem;
-  }
-  .todo-task-edit-modal .todo-task-edit-input-shell--clock .todo-task-edit-reminder-date-wrap,
-  .todo-task-edit-modal .todo-task-edit-input-shell--clock .todo-task-edit-reminder-time-wrap {
-    flex: none !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    min-height: 2.5rem !important;
-  }
-  .todo-task-edit-modal .todo-task-edit-input-shell--clock .todo-task-edit-reminder-time-wrap .todo-task-edit-reminder-time {
-    min-height: 2.5rem !important;
   }
   .todo-task-edit-modal .todo-task-edit-reminder-box {
     flex-direction: column;
@@ -20348,37 +20335,11 @@ svg.todo-card-reminder-icon {
 
   .todo-task-edit-modal
     .todo-task-edit-reminder-box
-    .todo-task-edit-input-shell--clock {
+    .todo-task-edit-native-shell {
     flex: 1 1 auto !important;
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
-  }
-
-  .todo-task-edit-modal .todo-task-edit-input-shell--clock .todo-task-edit-reminder-row {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 0.35rem;
-    padding: 0.45rem 0.6rem !important;
-    min-width: 0;
-    box-sizing: border-box;
-  }
-
-  .todo-task-edit-modal .todo-task-edit-input-shell--clock .todo-task-edit-reminder-date-wrap,
-  .todo-task-edit-modal .todo-task-edit-input-shell--clock .todo-task-edit-reminder-time-wrap {
-    flex: none !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box !important;
-  }
-
-  .todo-task-edit-modal
-    .todo-task-edit-input-shell--clock
-    .todo-task-edit-reminder-time-wrap
-    .todo-task-edit-reminder-time {
-    padding-right: 1.85rem !important;
-    box-sizing: border-box !important;
   }
 
   .todo-task-edit-reminder-box .todo-task-edit-reminder-delete {
@@ -20403,19 +20364,6 @@ svg.todo-card-reminder-icon {
   }
 }
 
-/* date 빈 값 힌트 색 */
-.todo-task-edit-modal .todo-task-edit-start,
-.todo-task-edit-modal .todo-task-edit-due,
-.todo-task-edit-modal .todo-task-edit-reminder-date {
-  color: var(--text-placeholder);
-}
-
-.todo-task-edit-modal .todo-task-edit-start.has-value,
-.todo-task-edit-modal .todo-task-edit-due.has-value,
-.todo-task-edit-modal .todo-task-edit-reminder-date.has-value {
-  color: var(--text-body);
-}
-
 .todo-task-edit-reminder-box .todo-task-edit-reminder-delete {
   padding: 0.42rem 0.58rem;
   font-size: 0.75rem;
@@ -20435,6 +20383,175 @@ svg.todo-card-reminder-icon {
 .todo-task-edit-reminder-box .todo-task-edit-reminder-delete:hover {
   color: #111827;
   background: #e2e5eb;
+}
+
+/* 할 일 모달: 네이티브 date/time — 시스템 픽커만 호출, 칸·패딩·아이콘 통일 */
+/* 리마인더 가로 줄에서만 폭 분배. 시작/마감은 세로 플렉 자식이라 flex-basis 0이면 iOS 등에서 카드 높이가 무너질 수 있음 */
+.todo-task-edit-modal .todo-task-edit-native-shell {
+  width: 100%;
+  align-self: stretch;
+}
+
+.todo-task-edit-reminder-box .todo-task-edit-native-shell {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.todo-task-edit-modal .todo-task-edit-reminder-native-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.todo-task-edit-modal .todo-task-edit-reminder-native-stack .todo-task-edit-native-slot:not(:first-child) {
+  border-top: 0.0625rem solid rgba(0, 0, 0, 0.08);
+}
+
+.todo-task-edit-modal .todo-task-edit-native-slot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 2.625rem;
+  box-sizing: border-box;
+}
+
+.todo-task-edit-modal .todo-task-edit-native-shell .todo-task-edit-native-slot {
+  padding-left: 0.75rem;
+  padding-right: 1.85rem;
+}
+
+.todo-task-edit-modal .todo-task-edit-field > .todo-task-edit-input-shell.todo-task-edit-native-shell {
+  min-height: 2.625rem;
+}
+
+.todo-task-edit-modal input.todo-task-edit-native-dt-input,
+.todo-task-edit-modal input.todo-task-edit-native-time-input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-family: var(--font-mono), ui-monospace, monospace !important;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-body);
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+  text-align: left;
+  accent-color: var(--ui-btn-primary-bg, #2a3828);
+  color: var(--text-body);
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  min-height: 2.625rem;
+  position: relative;
+}
+
+.todo-task-edit-modal input.todo-task-edit-native-time-input::-webkit-calendar-picker-indicator {
+  opacity: 0 !important;
+  display: block;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-left: auto;
+  margin-right: -0.25rem;
+  cursor: pointer;
+}
+
+.todo-task-edit-modal input.todo-task-edit-native-dt-input::-webkit-calendar-picker-indicator {
+  opacity: 0 !important;
+  display: block;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-left: auto;
+  margin-right: -0.25rem;
+  cursor: pointer;
+}
+
+.todo-task-edit-modal input.todo-task-edit-native-dt-input::-webkit-date-and-time-value {
+  min-height: 2.25rem;
+  display: inline-block;
+}
+
+.todo-task-edit-modal input.todo-task-edit-native-time-input:not(.has-value):not(:focus) {
+  color: var(--text-placeholder, #aeaeb2);
+}
+
+.todo-task-edit-modal input.todo-task-edit-native-dt-input.has-value,
+.todo-task-edit-modal input.todo-task-edit-native-time-input.has-value {
+  color: var(--text-body);
+}
+
+.todo-task-edit-modal input.todo-task-edit-native-time-input:focus:not(.has-value) {
+  color: var(--text-placeholder, #aeaeb2);
+}
+
+.todo-task-edit-modal input.todo-task-edit-native-dt-input::-webkit-clear-button {
+  display: none;
+}
+
+.todo-task-edit-modal .todo-task-edit-native-slot--calendar .todo-task-edit-native-dt-input:not(.has-value):not(:focus) {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+.todo-task-edit-modal .todo-task-edit-native-slot--calendar .todo-task-edit-native-dt-input:focus:not(.has-value) {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+.todo-task-edit-modal .todo-task-edit-native-slot--calendar .todo-task-edit-native-dt-input:not(.has-value)::-webkit-datetime-edit,
+.todo-task-edit-modal .todo-task-edit-native-slot--calendar .todo-task-edit-native-dt-input:not(.has-value)::-webkit-datetime-edit-fields-wrapper {
+  opacity: 0;
+}
+
+.todo-task-edit-modal .todo-task-edit-native-slot--calendar .todo-task-edit-native-dt-input.has-value::-webkit-datetime-edit-fields-wrapper {
+  opacity: 1;
+}
+
+.todo-task-edit-modal .todo-task-edit-native-slot--calendar:has(.todo-task-edit-native-dt-input:not(.has-value)):not(:focus-within)::before {
+  content: "연도. 월. 일.";
+  position: absolute;
+  left: 0.75rem;
+  right: 1.85rem;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: var(--fs-body);
+  color: #c7c7cc;
+  line-height: 2.625rem;
+}
+
+.todo-task-edit-modal .todo-task-edit-native-slot--calendar::after {
+  content: "";
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.125rem;
+  height: 1.125rem;
+  pointer-events: none;
+  opacity: 0.55;
+  background: center / contain no-repeat;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8' stroke-width='1.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' /%3E%3C/svg%3E");
+}
+
+.todo-task-edit-modal .todo-task-edit-native-slot--clock::after {
+  content: "";
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.125rem;
+  height: 1.125rem;
+  pointer-events: none;
+  opacity: 0.55;
+  background: center / contain no-repeat;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8' stroke-width='1.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z' /%3E%3C/svg%3E");
 }
 
 .todo-task-edit-reminder-btn:not(.todo-task-edit-reminder-delete) {
