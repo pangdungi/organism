@@ -4704,7 +4704,10 @@ export function render() {
             <span class="time-task-log-section-label">시간</span>
             <div class="time-task-log-datetime-card">
               <div class="time-task-log-datetime-input-row">
-                <input type="date" class="time-task-log-date-start" name="time-task-log-date" data-hide-delete-btn="true" data-use-native-mobile="true" />
+                <div class="time-task-log-date-native-wrap">
+                  <input type="date" class="time-task-log-date-start" name="time-task-log-date" data-hide-delete-btn="true" data-use-native-mobile="true" />
+                  <span class="time-task-log-date-overlay" aria-hidden="true"></span>
+                </div>
                 <span class="time-task-log-datetime-sep">−</span>
                 <input type="text" class="time-task-log-time-start" name="time-task-log-time-start" placeholder="hh:mm" maxlength="5" />
                 <span class="time-task-log-datetime-sep">−</span>
@@ -5028,6 +5031,27 @@ export function render() {
     }
   });
 
+  function formatTaskLogDateOverlayYmd(isoTen) {
+    const m = String(isoTen || "")
+      .trim()
+      .match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return "";
+    return `${m[1]}. ${m[2]}. ${m[3]}`;
+  }
+
+  function syncTaskLogDateOverlay() {
+    if (!taskLogDateStart) return;
+    const v = (taskLogDateStart.value || "").trim().slice(0, 10);
+    const has = /^\d{4}-\d{2}-\d{2}$/.test(v);
+    taskLogDateStart.classList.toggle("time-task-log-date-has-value", has);
+    const wrap = taskLogDateStart.closest(".time-task-log-date-native-wrap");
+    if (wrap?.classList) {
+      wrap.classList.toggle("time-task-log-date-native-wrap--has-value", has);
+    }
+    const ov = wrap?.querySelector?.(".time-task-log-date-overlay");
+    if (ov) ov.textContent = has ? formatTaskLogDateOverlayYmd(v) : "";
+  }
+
   const normalizeHhMm = (val) => {
     if (!val || typeof val !== "string") return "";
     const m = val.trim().match(/^(\d{1,2}):(\d{2})$/);
@@ -5095,6 +5119,7 @@ export function render() {
     } else {
       taskLogStartInput.value = "";
     }
+    syncTaskLogDateOverlay();
   }
 
   function syncEndToHidden() {
@@ -5113,6 +5138,7 @@ export function render() {
       taskLogEndInput.value = "";
     }
     updateEndTimeClearVisibility();
+    syncTaskLogDateOverlay();
   }
 
   function setStartFromDatetime(dtStr) {
@@ -5120,6 +5146,7 @@ export function render() {
       taskLogDateStart.value = "";
       taskLogTimeStart.value = "";
       syncStartToHidden();
+      syncTaskLogDateOverlay();
       return;
     }
     const s = dtStr.trim();
@@ -5235,6 +5262,7 @@ export function render() {
       if (!skipEndSync) syncEndToHidden();
     });
   });
+  taskLogDateStart?.addEventListener("input", syncTaskLogDateOverlay);
   taskLogTimeStart?.addEventListener("keydown", restrictToTimeChars);
   taskLogTimeStart?.addEventListener("paste", filterPastedTime);
 

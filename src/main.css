@@ -5361,16 +5361,26 @@ body {
   #app .time-task-setup-modal.time-task-log-modal
     .time-task-log-datetime-onerow
     .time-task-log-datetime-input-row {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
+    display: grid !important;
+    grid-template-columns:
+      minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr) !important;
     align-items: center !important;
-    justify-content: flex-start !important;
-    gap: 0.12rem !important;
+    gap: 0.25rem !important;
     min-width: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
+  }
+  #app .time-task-setup-modal.time-task-log-modal
+    .time-task-log-datetime-input-row
+    .time-task-log-date-native-wrap {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    justify-content: center !important;
+    position: relative !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    cursor: pointer !important;
   }
   #app .time-task-setup-modal.time-task-log-modal
     .time-task-log-datetime-input-row
@@ -5380,12 +5390,12 @@ body {
     input.time-task-log-date-start {
     grid-row: unset !important;
     grid-column: unset !important;
-    /* flex-grow 금지: 한 줄에서 날짜와 시간 사이 빈 칸이 벌어지지 않게 */
-    flex: 0 1 auto !important;
+    /* 날짜 슬롯 안은 100% 폭, 바깥 줄은 space-between으로 구간 분배 */
+    flex: 1 1 auto !important;
     min-width: 0 !important;
-    width: auto !important;
+    width: 100% !important;
     max-width: none !important;
-    text-align: left !important;
+    text-align: center !important;
     padding: 0.15rem 0.12rem !important;
     font-size: 13px !important;
     font-variant-numeric: tabular-nums !important;
@@ -25247,7 +25257,13 @@ body.kpi-resizing {
   .time-task-log-datetime-card
   .time-task-log-datetime-input-row
   .time-task-log-datetime-sep:first-of-type {
-  display: none !important;
+  display: inline !important;
+  align-self: center !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  font-size: 1rem !important;
+  font-weight: 300 !important;
+  color: #9ca3af !important;
 }
 .time-task-log-modal
   .time-task-log-datetime-card
@@ -25270,7 +25286,136 @@ body.kpi-resizing {
   border-bottom: none !important;
   border-radius: 0 !important;
   box-shadow: none !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  text-align: center !important;
 }
+
+#app
+  .time-task-log-modal
+  .time-task-log-datetime-card
+  input.time-task-log-date-start::-webkit-calendar-picker-indicator {
+  opacity: 0 !important;
+  display: block !important;
+  width: 0 !important;
+  max-width: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  pointer-events: none !important;
+}
+
+/* 과제 기록 한 줄 카드: 날짜 | − | 시작 | − | 끝 — 균등 3덩어리 + 구분선 */
+#app .time-task-log-modal .time-task-log-datetime-card .time-task-log-datetime-input-row {
+  display: grid !important;
+  grid-template-columns:
+    minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 0.35rem !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+#app .time-task-log-modal .time-task-log-date-native-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: stretch;
+  min-width: 0 !important;
+  width: auto;
+  max-width: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app .time-task-log-modal .time-task-log-datetime-card input.time-task-log-time-start,
+#app .time-task-log-modal .time-task-log-datetime-card input.time-task-log-time-end {
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+  box-sizing: border-box !important;
+}
+
+#app
+  .time-task-log-modal
+  .time-task-log-datetime-card
+  .time-task-log-datetime-sep:first-of-type,
+#app
+  .time-task-log-modal
+  .time-task-log-datetime-card
+  .time-task-log-datetime-sep:last-of-type {
+  flex-shrink: 0 !important;
+  justify-self: center;
+}
+
+#app .time-task-log-modal .time-task-log-datetime-card input[type="text"],
+#app
+  .time-task-log-modal
+  .time-task-log-datetime-card
+  input.time-task-log-date-start {
+  color: var(--text-body, #3d4a3e) !important;
+  -webkit-text-fill-color: var(--text-body, #3d4a3e) !important;
+  caret-color: var(--text-ink, #1a2218) !important;
+  accent-color: var(--ui-btn-primary-bg, #2a3828) !important;
+}
+
+#app
+  .time-task-log-modal
+  .time-task-log-datetime-card
+  input[type="text"]::placeholder {
+  color: #9ca3af !important;
+  -webkit-text-fill-color: #9ca3af !important;
+  opacity: 1 !important;
+}
+
+#app .time-task-log-modal .time-task-log-date-overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 1;
+  font-size: inherit;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  color: var(--text-body, #3d4a3e) !important;
+  -webkit-text-fill-color: var(--text-body, #3d4a3e) !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#app
+  .time-task-log-modal
+  .time-task-log-date-native-wrap.time-task-log-date-native-wrap--has-value
+  .time-task-log-date-overlay {
+  display: flex !important;
+}
+
+#app
+  .time-task-log-modal
+  .time-task-log-date-start.time-task-log-date-has-value {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+#app
+  .time-task-log-modal
+  .time-task-log-date-start.time-task-log-date-has-value::-webkit-datetime-edit,
+#app
+  .time-task-log-modal
+  .time-task-log-date-start.time-task-log-date-has-value::-webkit-datetime-edit-fields-wrapper,
+#app
+  .time-task-log-modal
+  .time-task-log-date-start.time-task-log-date-has-value::-webkit-date-and-time-value {
+  opacity: 0 !important;
+}
+
 #app .time-task-log-modal .time-task-log-datetime-card input[type="text"] {
   background: transparent !important;
   border: none !important;
@@ -27004,12 +27149,23 @@ button.time-modal-traffic {
   }
   .time-task-log-datetime-onerow
     .time-task-log-datetime-input-row
+    .time-task-log-date-native-wrap {
+    flex: 1 1 auto;
+    min-width: 9.75rem;
+    max-width: none;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+  .time-task-log-datetime-onerow
+    .time-task-log-datetime-input-row
     input.time-task-log-date-start,
   .time-task-log-datetime-onerow
     .time-task-log-datetime-input-row
     input[type="date"].time-task-log-date-start {
     flex: 1 1 auto;
-    min-width: 9.75rem;
+    min-width: 0;
+    width: 100%;
     max-width: none;
   }
   .time-task-log-datetime-onerow
