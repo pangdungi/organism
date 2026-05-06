@@ -87,6 +87,19 @@ function persistCalendarMainViewIfValid(view) {
   } catch (_) {}
 }
 
+/** 모바일 일정 상단으로 날짜·화살표를 옮긴 뒤에도 갱신 셀렉터가 동작하도록 */
+function lpCalendarNavQ(localNav, calendarInnerWrap, selector) {
+  try {
+    const lifted =
+      calendarInnerWrap && calendarInnerWrap._lpCalendarNavQueryRoot;
+    if (lifted && lifted.isConnected) {
+      const hit = lifted.querySelector(selector);
+      if (hit) return hit;
+    }
+  } catch (_) {}
+  return localNav ? localNav.querySelector(selector) : null;
+}
+
 /** 할일 사이드바에서 날짜·마감 수정 시: 같은 화면 월/주 그리드도 로컬 데이터로 즉시 다시 그림(탭 재클릭·풀 없이) */
 let _lpTodoDatesChangedListenerAttached = false;
 function lpEnsureTodoDatesChangedListener() {
@@ -1713,9 +1726,9 @@ function renderMonthlyView(
 
   function renderCalendar() {
     const grid = getCalendarGrid(currentYear, currentMonth);
-    nav.querySelector(".calendar-nav-month").textContent =
+    lpCalendarNavQ(nav, wrap, ".calendar-nav-month").textContent =
       MONTH_NAMES_EN[currentMonth];
-    nav.querySelector(".calendar-nav-year").textContent = String(currentYear);
+    lpCalendarNavQ(nav, wrap, ".calendar-nav-year").textContent = String(currentYear);
 
     calendarGrid.innerHTML = "";
 
@@ -2301,13 +2314,13 @@ function renderMonthlyView(
     });
   }
 
-  nav.querySelector(".calendar-nav-today").addEventListener("click", () => {
+  lpCalendarNavQ(nav, wrap, ".calendar-nav-today").addEventListener("click", () => {
     const now = new Date();
     currentYear = now.getFullYear();
     currentMonth = now.getMonth();
     renderCalendar();
   });
-  nav.querySelector(".calendar-nav-prev").addEventListener("click", () => {
+  lpCalendarNavQ(nav, wrap, ".calendar-nav-prev").addEventListener("click", () => {
     currentMonth--;
     if (currentMonth < 0) {
       currentMonth = 11;
@@ -2315,7 +2328,7 @@ function renderMonthlyView(
     }
     renderCalendar();
   });
-  nav.querySelector(".calendar-nav-next").addEventListener("click", () => {
+  lpCalendarNavQ(nav, wrap, ".calendar-nav-next").addEventListener("click", () => {
     currentMonth++;
     if (currentMonth > 11) {
       currentMonth = 0;
@@ -2429,9 +2442,9 @@ function render2WeekView(
 
   function renderCalendar() {
     const grid = getCalendarGridFor2Weeks(weekOffset);
-    nav.querySelector(".calendar-nav-month").textContent =
+    lpCalendarNavQ(nav, wrap, ".calendar-nav-month").textContent =
       format2WeekNavRange(grid);
-    nav.querySelector(".calendar-nav-year").textContent = grid[0]?.[0]
+    lpCalendarNavQ(nav, wrap, ".calendar-nav-year").textContent = grid[0]?.[0]
       ? String(grid[0][0].getFullYear())
       : "";
 
@@ -2984,15 +2997,15 @@ function render2WeekView(
     });
   }
 
-  nav.querySelector(".calendar-nav-today").addEventListener("click", () => {
+  lpCalendarNavQ(nav, wrap, ".calendar-nav-today").addEventListener("click", () => {
     weekOffset = 0;
     renderCalendar();
   });
-  nav.querySelector(".calendar-nav-prev").addEventListener("click", () => {
+  lpCalendarNavQ(nav, wrap, ".calendar-nav-prev").addEventListener("click", () => {
     weekOffset--;
     renderCalendar();
   });
-  nav.querySelector(".calendar-nav-next").addEventListener("click", () => {
+  lpCalendarNavQ(nav, wrap, ".calendar-nav-next").addEventListener("click", () => {
     weekOffset++;
     renderCalendar();
   });
@@ -3102,9 +3115,9 @@ function render3WeekView(
 
   function renderCalendar() {
     const grid = getCalendarGridFor3Weeks(weekOffset);
-    nav.querySelector(".calendar-nav-month").textContent =
+    lpCalendarNavQ(nav, wrap, ".calendar-nav-month").textContent =
       format3WeekNavRange(grid);
-    nav.querySelector(".calendar-nav-year").textContent = grid[0]?.[0]
+    lpCalendarNavQ(nav, wrap, ".calendar-nav-year").textContent = grid[0]?.[0]
       ? String(grid[0][0].getFullYear())
       : "";
 
@@ -3695,15 +3708,15 @@ function render3WeekView(
     });
   }
 
-  nav.querySelector(".calendar-nav-today").addEventListener("click", () => {
+  lpCalendarNavQ(nav, wrap, ".calendar-nav-today").addEventListener("click", () => {
     weekOffset = 0;
     renderCalendar();
   });
-  nav.querySelector(".calendar-nav-prev").addEventListener("click", () => {
+  lpCalendarNavQ(nav, wrap, ".calendar-nav-prev").addEventListener("click", () => {
     weekOffset--;
     renderCalendar();
   });
-  nav.querySelector(".calendar-nav-next").addEventListener("click", () => {
+  lpCalendarNavQ(nav, wrap, ".calendar-nav-next").addEventListener("click", () => {
     weekOffset++;
     renderCalendar();
   });
@@ -5019,7 +5032,7 @@ function render1DayView(
     const grid = getCalendarGridFor1Day(dayOffset);
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + dayOffset);
-    const todayBtn = nav.querySelector(".calendar-nav-today");
+    const todayBtn = lpCalendarNavQ(nav, wrap, ".calendar-nav-today");
     if (todayBtn) {
       const y = targetDate.getFullYear();
       const m = targetDate.getMonth() + 1;
@@ -5412,15 +5425,15 @@ function render1DayView(
     wrap.dataset.dateStr = targetKey;
   }
 
-  nav.querySelector(".calendar-nav-today").addEventListener("click", () => {
+  lpCalendarNavQ(nav, wrap, ".calendar-nav-today").addEventListener("click", () => {
     dayOffset = 0;
     renderCalendar();
   });
-  nav.querySelector(".calendar-nav-prev").addEventListener("click", () => {
+  lpCalendarNavQ(nav, wrap, ".calendar-nav-prev").addEventListener("click", () => {
     dayOffset--;
     renderCalendar();
   });
-  nav.querySelector(".calendar-nav-next").addEventListener("click", () => {
+  lpCalendarNavQ(nav, wrap, ".calendar-nav-next").addEventListener("click", () => {
     dayOffset++;
     renderCalendar();
   });
@@ -5585,9 +5598,9 @@ function render1WeekView(
   function renderCalendar() {
     const week = getCalendarGridFor1Week(weekOffset);
     const monthIndex = week[0] ? week[0].getMonth() : new Date().getMonth();
-    nav.querySelector(".calendar-nav-month").textContent =
+    lpCalendarNavQ(nav, wrap, ".calendar-nav-month").textContent =
       MONTH_NAMES_EN[monthIndex];
-    nav.querySelector(".calendar-nav-year").textContent = week[0]
+    lpCalendarNavQ(nav, wrap, ".calendar-nav-year").textContent = week[0]
       ? String(week[0].getFullYear())
       : "";
 
@@ -6240,15 +6253,15 @@ function render1WeekView(
     calendarGrid.appendChild(outer);
   }
 
-  nav.querySelector(".calendar-nav-today").addEventListener("click", () => {
+  lpCalendarNavQ(nav, wrap, ".calendar-nav-today").addEventListener("click", () => {
     weekOffset = 0;
     renderCalendar();
   });
-  nav.querySelector(".calendar-nav-prev").addEventListener("click", () => {
+  lpCalendarNavQ(nav, wrap, ".calendar-nav-prev").addEventListener("click", () => {
     weekOffset--;
     renderCalendar();
   });
-  nav.querySelector(".calendar-nav-next").addEventListener("click", () => {
+  lpCalendarNavQ(nav, wrap, ".calendar-nav-next").addEventListener("click", () => {
     weekOffset++;
     renderCalendar();
   });
@@ -6390,8 +6403,8 @@ function renderAnnualView(tabsElement) {
       _annualDayExpandClose?.();
     } catch (_) {}
     _annualDayExpandClose = null;
-    nav.querySelector(".calendar-nav-year").textContent = String(currentYear);
-    const yearJumpBtn = nav.querySelector(".calendar-nav-today");
+    lpCalendarNavQ(nav, wrap, ".calendar-nav-year").textContent = String(currentYear);
+    const yearJumpBtn = lpCalendarNavQ(nav, wrap, ".calendar-nav-today");
     if (yearJumpBtn) yearJumpBtn.textContent = String(currentYear);
     table.innerHTML = "";
 
@@ -6493,15 +6506,15 @@ function renderAnnualView(tabsElement) {
   calendarSection.appendChild(gridWrap);
   wrap.appendChild(calendarSection);
 
-  nav.querySelector(".calendar-nav-today").addEventListener("click", () => {
+  lpCalendarNavQ(nav, wrap, ".calendar-nav-today").addEventListener("click", () => {
     currentYear = new Date().getFullYear();
     renderYear();
   });
-  nav.querySelector(".calendar-nav-prev").addEventListener("click", () => {
+  lpCalendarNavQ(nav, wrap, ".calendar-nav-prev").addEventListener("click", () => {
     currentYear--;
     renderYear();
   });
-  nav.querySelector(".calendar-nav-next").addEventListener("click", () => {
+  lpCalendarNavQ(nav, wrap, ".calendar-nav-next").addEventListener("click", () => {
     currentYear++;
     renderYear();
   });
@@ -6557,27 +6570,84 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
     topRow.appendChild(tabsWrapper);
   }
 
-  const subTabs = document.createElement("div");
-  subTabs.className = "calendar-sub-tabs";
-  subViewsList.forEach((v, i) => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className =
-      "time-view-tab calendar-sub-tab" + (i === 0 ? " active" : "");
-    btn.dataset.subView = v.id;
-    const labelSpan = document.createElement("span");
-    labelSpan.className = "calendar-sub-tab-label";
-    labelSpan.textContent = v.label;
-    btn.appendChild(labelSpan);
-    subTabs.appendChild(btn);
-  });
+  /** @type {HTMLElement | null} */
+  let navLiftSlot = null;
+  /** @type {HTMLElement} */
+  let subTabsMountOuter;
+  const subTabsControlRoot = document.createElement("div");
+
+  function appendSubTabButtons() {
+    subViewsList.forEach((v, i) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className =
+        "time-view-tab calendar-sub-tab" + (i === 0 ? " active" : "");
+      btn.dataset.subView = v.id;
+      const labelSpan = document.createElement("span");
+      labelSpan.className = "calendar-sub-tab-label";
+      labelSpan.textContent = v.label;
+      btn.appendChild(labelSpan);
+      subTabsControlRoot.appendChild(btn);
+    });
+  }
+
+  function syncCalendarSubTabsSegmentThumb() {
+    if (!subTabsControlRoot.classList.contains("time-view-tabs--segmented"))
+      return;
+    const btns = [...subTabsControlRoot.querySelectorAll(".time-view-tab")];
+    const n = Math.max(1, btns.length);
+    const idx = Math.max(
+      0,
+      btns.findIndex((b) => b.classList.contains("active")),
+    );
+    subTabsControlRoot.style.setProperty("--time-segment-count", String(n));
+    subTabsControlRoot.style.setProperty("--thumb-col-start", String(idx + 1));
+  }
+
+  if (keepSubTabsOnTop) {
+    navLiftSlot = document.createElement("div");
+    navLiftSlot.className =
+      "calendar-sub-tabs-strip calendar-sub-tabs-strip--right calendar-sub-tabs-nav-slot";
+
+    subTabsControlRoot.className =
+      "calendar-sub-tabs calendar-sub-tabs-segment calendar-schedule-segment-tabs time-view-tabs--segmented";
+
+    const thumb = document.createElement("span");
+    thumb.className = "time-view-tabs-thumb";
+    thumb.setAttribute("aria-hidden", "true");
+    subTabsControlRoot.appendChild(thumb);
+    appendSubTabButtons();
+
+    const bar = document.createElement("div");
+    bar.className =
+      "calendar-sub-tabs-bar calendar-sub-tabs-bar--schedule-mobile";
+
+    const headerRow = document.createElement("div");
+    headerRow.className =
+      "calendar-sub-tab-header-row calendar-schedule-mobile-tab-header-row";
+
+    const centerStrip = document.createElement("div");
+    centerStrip.className =
+      "calendar-sub-tabs-strip calendar-sub-tabs-strip--center";
+    centerStrip.appendChild(subTabsControlRoot);
+
+    headerRow.appendChild(centerStrip);
+    headerRow.appendChild(navLiftSlot);
+    bar.appendChild(headerRow);
+    subTabsMountOuter = bar;
+  } else {
+    subTabsControlRoot.className = "calendar-sub-tabs";
+    appendSubTabButtons();
+    subTabsMountOuter = subTabsControlRoot;
+  }
+
   wrap.appendChild(topRow);
 
   const contentArea = document.createElement("div");
   contentArea.className = "calendar-view-content-area";
   wrap.appendChild(contentArea);
   if (keepSubTabsOnTop) {
-    wrap.insertBefore(subTabs, contentArea);
+    wrap.insertBefore(subTabsMountOuter, contentArea);
   }
 
   const savedSubView = localStorage.getItem(storageKey) || "monthly";
@@ -6592,10 +6662,49 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
   function placeSubTabsInNav() {
     const nav = contentArea.querySelector(".calendar-monthly-nav");
     const controls = contentArea.querySelector(".calendar-nav-controls");
-    if (nav && controls && subTabs.parentNode !== nav) {
-      subTabs.remove();
-      nav.insertBefore(subTabs, controls);
+    if (
+      nav &&
+      controls &&
+      subTabsControlRoot.parentNode !== nav
+    ) {
+      subTabsControlRoot.remove();
+      nav.insertBefore(subTabsControlRoot, controls);
     }
+  }
+
+  function liftMobileScheduleNavChrome() {
+    if (!keepSubTabsOnTop || !navLiftSlot) return;
+    navLiftSlot.replaceChildren();
+    const layouts = contentArea.querySelectorAll(
+      ".calendar-monthly-layout, .calendar-1day-view, .calendar-annual-view",
+    );
+    layouts.forEach((el) => {
+      try {
+        delete el._lpCalendarNavQueryRoot;
+      } catch (_) {}
+    });
+    contentArea
+      .querySelectorAll(".calendar-monthly-nav--chrome-lifted")
+      .forEach((n) =>
+        n.classList.remove("calendar-monthly-nav--chrome-lifted"),
+      );
+
+    const nav = contentArea.querySelector(
+      ".calendar-monthly-nav, .calendar-1day-nav",
+    );
+    if (!nav) return;
+    const dateEl = nav.querySelector(".calendar-nav-date");
+    const controls = nav.querySelector(".calendar-nav-controls");
+    if (!dateEl && !controls) return;
+    const cluster = document.createElement("div");
+    cluster.className = "calendar-sub-tabs-nav-cluster";
+    if (dateEl) cluster.appendChild(dateEl);
+    if (controls) cluster.appendChild(controls);
+    navLiftSlot.appendChild(cluster);
+    nav.classList.add("calendar-monthly-nav--chrome-lifted");
+    layouts.forEach((el) => {
+      el._lpCalendarNavQueryRoot = cluster;
+    });
   }
 
   let _nestedSubViewGen = 0;
@@ -6642,7 +6751,8 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
       }
     }
     if (gen !== _nestedSubViewGen) return;
-    if (subTabs.parentNode) subTabs.remove();
+    if (navLiftSlot) navLiftSlot.replaceChildren();
+    if (subTabsMountOuter.parentNode) subTabsMountOuter.remove();
     contentArea.innerHTML = "";
     if (subViewId === "monthly") {
       contentArea.appendChild(renderMonthlyView(null, todoSidebarMode));
@@ -6656,32 +6766,36 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
       contentArea.appendChild(render1DayView(null, todoSidebarMode));
     }
     if (keepSubTabsOnTop) {
-      wrap.insertBefore(subTabs, contentArea);
+      wrap.insertBefore(subTabsMountOuter, contentArea);
+      liftMobileScheduleNavChrome();
+      syncCalendarSubTabsSegmentThumb();
     } else {
       placeSubTabsInNav();
     }
     localStorage.setItem(storageKey, subViewId);
   }
 
-  subTabs.querySelectorAll(".calendar-sub-tab").forEach((btn) => {
+  subTabsControlRoot.querySelectorAll(".calendar-sub-tab").forEach((btn) => {
     btn.addEventListener("click", () => {
-      subTabs
+      subTabsControlRoot
         .querySelectorAll(".calendar-sub-tab")
         .forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
+      syncCalendarSubTabsSegmentThumb();
       void renderSubView(btn.dataset.subView);
     });
   });
 
-  const activeBtn = subTabs.querySelector(
+  const activeBtn = subTabsControlRoot.querySelector(
     `[data-sub-view="${initialSubView}"]`,
   );
   if (activeBtn) {
-    subTabs
+    subTabsControlRoot
       .querySelectorAll(".calendar-sub-tab")
       .forEach((b) => b.classList.remove("active"));
     activeBtn.classList.add("active");
   }
+  syncCalendarSubTabsSegmentThumb();
   void renderSubView(initialSubView);
 
   /** App.setActiveTab 에서 이미 pull 한 뒤 — contentWrap 통째 remount 대신 현재 월별/주 뷰만 다시 그림(상단·서브탭 DOM 유지) */

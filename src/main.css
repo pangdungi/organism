@@ -5749,6 +5749,11 @@ body {
   .calendar-view-with-subtabs .calendar-sub-tabs {
     display: flex !important;
   }
+  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+    .calendar-sub-tabs-bar
+    .calendar-sub-tabs-segment.time-view-tabs--segmented {
+    display: grid !important;
+  }
   .calendar-view-with-subtabs .calendar-todo-sidebar {
     display: none !important;
   }
@@ -5851,8 +5856,7 @@ body {
     --cal-1week-hour-height: 2.35rem;
   }
 
-  /* 모바일 캘린더 탭: 월별·1주·연간 상단 탭으로 고정, 다른 탭 디자인 통일 */
-  .calendar-view--mobile-schedule.calendar-view-with-subtabs .calendar-sub-tabs,
+  /* 모바일 캘린더 탭: 월별·1주·연간 상단 탭으로 고정(근무표 전용은 기존 줄 유지) */
   .calendar-view--mobile-workschedule .calendar-sub-tabs {
     order: 0;
     flex-shrink: 0;
@@ -5884,6 +5888,235 @@ body {
   .calendar-view--mobile-workschedule .calendar-sub-tab.active {
     border-bottom: none !important;
     margin-bottom: 0 !important;
+  }
+
+  /* 모바일 일정(하단 탭): 할 일 목록과 같은 느낌의 2열(가운데 세그먼트 탭 · 오른쪽 날짜/이동) */
+  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+    > .calendar-sub-tabs-bar.calendar-sub-tabs-bar--schedule-mobile {
+    order: 0;
+    flex-shrink: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    background: transparent;
+    border-bottom: var(--line-l3);
+    padding: 0 1rem 0.35rem;
+    margin: 0;
+  }
+
+  .calendar-view--mobile-schedule .calendar-schedule-mobile-tab-header-row {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+  }
+
+  .calendar-view--mobile-schedule .calendar-sub-tabs-strip--right {
+    width: 100%;
+    min-width: 0;
+    display: flex;
+    justify-content: flex-start;
+    align-self: stretch;
+  }
+
+  .calendar-view--mobile-schedule .calendar-sub-tabs-strip--center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .calendar-view--mobile-schedule .calendar-sub-tabs-strip--center
+    .calendar-sub-tabs-segment.time-view-tabs--segmented {
+    max-width: min(22rem, calc(100vw - 7rem));
+  }
+
+  .calendar-view--mobile-schedule .calendar-sub-tabs-nav-slot {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .calendar-view--mobile-schedule .calendar-sub-tabs-nav-cluster {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    flex: 1 1 auto;
+    box-sizing: border-box;
+  }
+
+  .calendar-view--mobile-schedule
+    .calendar-sub-tabs-nav-cluster
+    .calendar-nav-date {
+    min-width: 0;
+    flex-shrink: 1;
+  }
+
+  .calendar-view--mobile-schedule
+    .calendar-sub-tabs-nav-cluster
+    .calendar-nav-controls {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .calendar-view--mobile-schedule .calendar-monthly-nav--chrome-lifted:empty {
+    display: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+    border: none !important;
+  }
+
+  .calendar-view--mobile-schedule
+    .calendar-1day-view
+    .calendar-1day-top-bar:has(.calendar-monthly-nav--chrome-lifted:empty) {
+    display: none !important;
+  }
+
+  /* 일정 서브탭 = 할일 세그먼트(회색 알약·흰 칩): 전역 .calendar-sub-tabs 바·.time-view-tab 밑줄 덮기 */
+  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+    .calendar-sub-tabs-segment.calendar-schedule-segment-tabs.time-view-tabs--segmented {
+    --time-segment-track: #e4e4ea;
+    position: relative;
+    display: grid !important;
+    grid-template-columns: repeat(var(--time-segment-count, 4), minmax(0, auto)) !important;
+    gap: 0 !important;
+    align-items: stretch !important;
+    align-content: stretch !important;
+    width: fit-content !important;
+    max-width: min(26rem, calc(100vw - 5rem)) !important;
+    min-width: 0;
+    padding: 0.25rem !important;
+    box-sizing: border-box !important;
+    background: var(--time-segment-track) !important;
+    border: none !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    border-radius: 0.625rem !important;
+    margin-bottom: 0 !important;
+    overflow: hidden !important;
+    overflow-x: hidden !important;
+    flex-wrap: nowrap !important;
+    isolation: isolate;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.72),
+      0 0 0 0.5px rgba(0, 0, 0, 0.04);
+  }
+
+  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+    .calendar-sub-tabs-segment.calendar-schedule-segment-tabs.time-view-tabs--segmented
+    > .time-view-tabs-thumb {
+    grid-row: 1;
+    grid-column: var(--thumb-col-start, 1) / span 1;
+    z-index: 0;
+    margin: 0;
+    min-height: 2rem;
+    align-self: stretch;
+    border-radius: 0.625rem !important;
+    background: #ffffff;
+    box-shadow:
+      0 0 0 0.5px rgba(0, 0, 0, 0.05),
+      0 1px 3px rgba(0, 0, 0, 0.08),
+      0 2px 8px rgba(0, 0, 0, 0.06);
+    pointer-events: none;
+  }
+
+  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+    .calendar-sub-tabs-segment
+    > .time-view-tab.calendar-sub-tab:nth-child(2) {
+    grid-column: 1;
+    grid-row: 1;
+    z-index: 1;
+  }
+  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+    .calendar-sub-tabs-segment
+    > .time-view-tab.calendar-sub-tab:nth-child(3) {
+    grid-column: 2;
+    grid-row: 1;
+    z-index: 1;
+  }
+  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+    .calendar-sub-tabs-segment
+    > .time-view-tab.calendar-sub-tab:nth-child(4) {
+    grid-column: 3;
+    grid-row: 1;
+    z-index: 1;
+  }
+  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+    .calendar-sub-tabs-segment
+    > .time-view-tab.calendar-sub-tab:nth-child(5) {
+    grid-column: 4;
+    grid-row: 1;
+    z-index: 1;
+  }
+  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+    .calendar-sub-tabs-segment
+    > .time-view-tab.calendar-sub-tab:nth-child(6) {
+    grid-column: 5;
+    grid-row: 1;
+    z-index: 1;
+  }
+
+  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+    .calendar-sub-tabs-segment.time-view-tabs--segmented
+    .calendar-sub-tab.time-view-tab {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    padding: 0.3125rem 0.5rem !important;
+    margin: 0 !important;
+    margin-bottom: 0 !important;
+    border: none !important;
+    border-bottom: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    font-size: 0.75rem !important;
+    font-weight: 500;
+    letter-spacing: -0.01em !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    flex-shrink: 1;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    outline: none !important;
+  }
+
+  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+    .calendar-sub-tabs-segment.time-view-tabs--segmented
+    .calendar-sub-tab.time-view-tab.active {
+    color: #000000 !important;
+    font-weight: 600 !important;
+    background: transparent !important;
+    border-bottom: none !important;
+    margin-bottom: 0 !important;
+  }
+
+  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+    .calendar-sub-tabs-segment
+    .calendar-sub-tab:not(:last-child)::after,
+  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+    .calendar-sub-tabs-segment
+    .calendar-sub-tab.active
+    + .calendar-sub-tab::before {
+    display: none !important;
+    content: none !important;
+    background: none !important;
+    border: none !important;
   }
   /* 모바일 캘린더: 오늘 버튼 줄바꿈 안 되게 */
   .calendar-view--mobile-schedule .calendar-monthly-nav {
@@ -17692,7 +17925,7 @@ col.asset-expense-col-amount,
   background: transparent;
   border-top: none;
   border-bottom: none;
-  padding: 24px 1rem 0.35rem;
+  padding: 0 1rem;
   margin-bottom: 0;
   box-sizing: border-box;
   width: 100%;
@@ -17701,12 +17934,12 @@ col.asset-expense-col-amount,
   align-items: stretch;
 }
 
-/* 메인 할일 탭: 가로·하단만 — 위아래 24px은 .todo-list-tab-header-row */
+/* 메인 할일 탭: 좌우만 — 세로 여백은 필요 시 자식 줄(.todo-list-tab-header-row 등)에서 */
 .todo-list-view .todo-list-tabs-filter-row {
   background: transparent;
   border-top: none;
   border-bottom: none;
-  padding: 24px 1rem 0.35rem;
+  padding: 0 1rem;
   margin-bottom: 0;
   box-sizing: border-box;
   width: 100%;
@@ -17721,7 +17954,6 @@ col.asset-expense-col-amount,
   .calendar-view-todo .calendar-todo-content .todo-list-tabs-filter-row {
     background: transparent !important;
     background-color: transparent !important;
-    padding-top: 0 !important;
   }
 
   .todo-list-view {
@@ -17731,7 +17963,7 @@ col.asset-expense-col-amount,
   }
 }
 
-/* 상단 패딩은 부모(.todo-list-tabs-filter-row)에서 — 빈 띠는 중복 여백만 만듦 */
+/* 예전 전용 상단 마진 띠 — 중복 여백만 만듦 */
 .calendar-view-todo .calendar-todo-content .todo-list-tabs-top-margin,
 .todo-list-view .todo-list-tabs-top-margin {
   display: none;
@@ -38973,12 +39205,249 @@ img.time-btn-icon {
   min-height: 0;
 }
 
-/* 독립 '캘린더' 탭·날짜정하기: 할일 1~4 탭이 없을 때 빈 상단 줄 제거(데스크톱·모바일 공통) */
-.calendar-view--mobile-schedule > .calendar-view-top-row:empty {
+/* 독립 일정 탭: 상단 외부 탭 줄 없을 때 빈 루트 비우기 */
+.calendar-view--mobile-schedule .calendar-view-with-subtabs > .calendar-view-top-row:empty {
   display: none;
   margin: 0;
   padding: 0;
   min-height: 0;
+}
+
+/* 일정(schedulecalendar): 모든 뷰폭 — 서브탭을 할일형 세그먼트 필(회색 트랙·흰 칩)으로.
+ * 예전에는 @media (max-width: 48rem) 안에만 두어 PC·넓은 창에서 전역 .calendar-sub-tab / .time-view-tab 스타일이 이겼음.
+ * padding-top 48px는 넓은 화면용; 모바일(48rem 이하)은 아래 @media에서 덮어씀. */
+.calendar-view--mobile-schedule .calendar-view-with-subtabs
+  > .calendar-sub-tabs-bar.calendar-sub-tabs-bar--schedule-mobile {
+  order: 0;
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  background: transparent;
+  border-bottom: var(--line-l3);
+  padding: 48px 1rem 0.35rem;
+  margin: 0;
+}
+
+@media (max-width: 48rem) {
+  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+    > .calendar-sub-tabs-bar.calendar-sub-tabs-bar--schedule-mobile {
+    padding: 0 1rem 0.35rem;
+  }
+}
+
+.calendar-view--mobile-schedule .calendar-schedule-mobile-tab-header-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.65rem;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+.calendar-view--mobile-schedule .calendar-sub-tabs-strip--right {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  justify-content: flex-start;
+  align-self: stretch;
+}
+
+.calendar-view--mobile-schedule .calendar-sub-tabs-strip--center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 0;
+}
+
+.calendar-view--mobile-schedule .calendar-sub-tabs-strip--center
+  .calendar-sub-tabs-segment.time-view-tabs--segmented {
+  max-width: min(22rem, calc(100vw - 7rem));
+}
+
+.calendar-view--mobile-schedule .calendar-sub-tabs-nav-slot {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.calendar-view--mobile-schedule .calendar-sub-tabs-nav-cluster {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 auto;
+  box-sizing: border-box;
+}
+
+.calendar-view--mobile-schedule
+  .calendar-sub-tabs-nav-cluster
+  .calendar-nav-date {
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+.calendar-view--mobile-schedule
+  .calendar-sub-tabs-nav-cluster
+  .calendar-nav-controls {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.calendar-view--mobile-schedule .calendar-monthly-nav--chrome-lifted:empty {
+  display: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+  border: none !important;
+}
+
+.calendar-view--mobile-schedule
+  .calendar-1day-view
+  .calendar-1day-top-bar:has(.calendar-monthly-nav--chrome-lifted:empty) {
+  display: none !important;
+}
+
+.calendar-view--mobile-schedule .calendar-view-with-subtabs
+  .calendar-sub-tabs-segment.calendar-schedule-segment-tabs.time-view-tabs--segmented {
+  --time-segment-track: #e4e4ea;
+  position: relative;
+  display: grid !important;
+  grid-template-columns: repeat(var(--time-segment-count, 4), minmax(0, auto)) !important;
+  gap: 0 !important;
+  align-items: stretch !important;
+  align-content: stretch !important;
+  width: fit-content !important;
+  max-width: min(26rem, calc(100vw - 5rem)) !important;
+  min-width: 0;
+  padding: 0.25rem !important;
+  box-sizing: border-box !important;
+  background: var(--time-segment-track) !important;
+  border: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  border-radius: 0.625rem !important;
+  margin-bottom: 0 !important;
+  overflow: hidden !important;
+  overflow-x: hidden !important;
+  flex-wrap: nowrap !important;
+  isolation: isolate;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 0 0 0.5px rgba(0, 0, 0, 0.04);
+}
+
+.calendar-view--mobile-schedule .calendar-view-with-subtabs
+  .calendar-sub-tabs-segment.calendar-schedule-segment-tabs.time-view-tabs--segmented
+  > .time-view-tabs-thumb {
+  grid-row: 1;
+  grid-column: var(--thumb-col-start, 1) / span 1;
+  z-index: 0;
+  margin: 0;
+  min-height: 2rem;
+  align-self: stretch;
+  border-radius: 0.625rem !important;
+  background: #ffffff;
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.05),
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.06);
+  pointer-events: none;
+}
+
+.calendar-view--mobile-schedule .calendar-view-with-subtabs
+  .calendar-sub-tabs-segment
+  > .time-view-tab.calendar-sub-tab:nth-child(2) {
+  grid-column: 1;
+  grid-row: 1;
+  z-index: 1;
+}
+.calendar-view--mobile-schedule .calendar-view-with-subtabs
+  .calendar-sub-tabs-segment
+  > .time-view-tab.calendar-sub-tab:nth-child(3) {
+  grid-column: 2;
+  grid-row: 1;
+  z-index: 1;
+}
+.calendar-view--mobile-schedule .calendar-view-with-subtabs
+  .calendar-sub-tabs-segment
+  > .time-view-tab.calendar-sub-tab:nth-child(4) {
+  grid-column: 3;
+  grid-row: 1;
+  z-index: 1;
+}
+.calendar-view--mobile-schedule .calendar-view-with-subtabs
+  .calendar-sub-tabs-segment
+  > .time-view-tab.calendar-sub-tab:nth-child(5) {
+  grid-column: 4;
+  grid-row: 1;
+  z-index: 1;
+}
+.calendar-view--mobile-schedule .calendar-view-with-subtabs
+  .calendar-sub-tabs-segment
+  > .time-view-tab.calendar-sub-tab:nth-child(6) {
+  grid-column: 5;
+  grid-row: 1;
+  z-index: 1;
+}
+
+.calendar-view--mobile-schedule .calendar-view-with-subtabs
+  .calendar-sub-tabs-segment.time-view-tabs--segmented
+  .calendar-sub-tab.time-view-tab {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 0.3125rem 0.5rem !important;
+  margin: 0 !important;
+  margin-bottom: 0 !important;
+  border: none !important;
+  border-bottom: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  font-size: 0.75rem !important;
+  font-weight: 500;
+  letter-spacing: -0.01em !important;
+  color: #000000 !important;
+  box-shadow: none !important;
+  flex-shrink: 1;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  outline: none !important;
+}
+
+.calendar-view--mobile-schedule .calendar-view-with-subtabs
+  .calendar-sub-tabs-segment.time-view-tabs--segmented
+  .calendar-sub-tab.time-view-tab.active {
+  color: #000000 !important;
+  font-weight: 600 !important;
+  background: transparent !important;
+  border-bottom: none !important;
+  margin-bottom: 0 !important;
+}
+
+.calendar-view--mobile-schedule .calendar-view-with-subtabs
+  .calendar-sub-tabs-segment
+  .calendar-sub-tab:not(:last-child)::after,
+.calendar-view--mobile-schedule .calendar-view-with-subtabs
+  .calendar-sub-tabs-segment
+  .calendar-sub-tab.active
+  + .calendar-sub-tab::before {
+  display: none !important;
+  content: none !important;
+  background: none !important;
+  border: none !important;
 }
 
 .calendar-view-top-row {
@@ -40174,10 +40643,10 @@ img.time-btn-icon {
 .calendar-1day-view
   .calendar-1day-time-grid.calendar-1day-split-layout
   > .calendar-todo-sidebar.collapsed {
-  flex: 0 0 5rem;
-  width: 5rem;
-  min-width: 5rem;
-  max-width: 5rem;
+  flex: 0 0 3rem;
+  width: 3rem;
+  min-width: 3rem;
+  max-width: 3rem;
 }
 
 /* 1일뷰 예산 컬럼 - 행고정(스크롤 시 상단 고정) */
@@ -42741,8 +43210,9 @@ img.time-btn-icon {
 }
 
 .calendar-todo-sidebar.collapsed {
-  width: 5rem;
-  min-width: 5rem;
+  width: 3rem;
+  min-width: 3rem;
+  max-width: 3rem;
 }
 
 .calendar-todo-sidebar.collapsed .calendar-todo-sidebar-toolbar-actions,
