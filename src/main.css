@@ -164,6 +164,8 @@ html {
   --ui-surface-alt: #e8e8ed;
   /* 홈·크롬: systemGroupedBackground 계열 레이어링 (#f0eff4 베이스) */
   --lp-chrome-sidebar: rgba(236, 235, 240, 0.92);
+  /* 일기 큰 캔버스(데스크톹): 겉 프레임과 동일 RGB 불투명 — --content-bg(#f0eff4) 보랏끼 회피 */
+  --lp-diary-canvas-bg: rgb(236, 235, 240);
   --lp-chrome-toolbar: rgba(240, 239, 244, 0.95);
   --lp-chrome-left-panel: rgba(245, 244, 248, 0.5);
   --lp-chrome-center-panel: #ffffff;
@@ -1656,7 +1658,7 @@ body {
   }
 }
 
-/* 감정관리: 네모 영역(오른쪽 콘텐츠)만 스크롤, 사이드바·헤더 고정, 여백 연회색 */
+/* 감정관리: 배경색은 할일(.todo-list-view)처럼 .diary-view에만 칠함 — 여기선 레이아웃만 */
 .app-main:has(.diary-view) {
   overflow: hidden;
   display: flex;
@@ -3462,12 +3464,104 @@ body {
     }
   }
 
-  /* 감정관리(모바일): 상단 h1 제거 — 서브탭부터, 여백 최소화 */
+  /* 감정관리(모바일): 상단 세그먼트 — 데스크톱과 동일 맥 UISegmentedControl 톤, 가운데·폭 제한 */
   .diary-view--mobile {
     padding-top: 0;
   }
+
+  .diary-view--mobile .diary-view-inner {
+    align-items: stretch;
+  }
+
   .diary-view--mobile .diary-tabs {
-    padding: 0 0.75rem;
+    --diary-tab-segment-track: #e4e4ea;
+    position: relative;
+    align-self: center;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0 !important;
+    align-items: stretch !important;
+    width: fit-content !important;
+    max-width: min(21.5rem, calc(100% - 1.25rem));
+    min-width: 0;
+    margin: 0.35rem auto 0.65rem !important;
+    padding: 0.25rem !important;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    flex-wrap: nowrap !important;
+    overflow: hidden !important;
+    overflow-x: hidden !important;
+    overflow-y: hidden !important;
+    border: none !important;
+    border-bottom: none !important;
+  isolation: isolate;
+  background: var(--diary-tab-segment-track) !important;
+  /* 일정 탭(월별·1주·연간·타임블록) 세그먼트와 동일한 모서리 */
+  border-radius: 0.625rem !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 0 0 0.03125rem rgba(0, 0, 0, 0.045);
+  }
+
+  .diary-view--mobile .diary-tab-btn {
+    position: relative;
+    z-index: 1;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin: 0 !important;
+    border: none !important;
+    border-bottom: none !important;
+    border-radius: 0 !important;
+    padding: 0.4rem 0.45rem !important;
+    min-height: 1.9375rem;
+    box-sizing: border-box;
+    font-size: 0.8125rem !important;
+    font-weight: 500 !important;
+    letter-spacing: -0.012em !important;
+    white-space: nowrap;
+    font-family:
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif,
+      var(--font-body);
+    color: rgba(28, 28, 30, 0.88) !important;
+    background: transparent !important;
+    transition:
+      background 0.18s ease,
+      color 0.18s ease,
+      box-shadow 0.18s ease,
+      font-weight 0.12s ease;
+  }
+
+  .diary-view--mobile .diary-tab-btn:active:not(.active) {
+    background: rgba(255, 255, 255, 0.28) !important;
+    color: rgba(28, 28, 30, 0.95) !important;
+  }
+
+  .diary-view--mobile .diary-tab-btn.active {
+    background: #ffffff !important;
+    font-weight: 600 !important;
+    color: rgba(28, 28, 30, 0.98) !important;
+    border-radius: 0.625rem !important;
+    box-shadow:
+      0 0 0 0.03125rem rgba(0, 0, 0, 0.05),
+      0 1px 3px rgba(0, 0, 0, 0.08),
+      0 2px 8px rgba(0, 0, 0, 0.06) !important;
+  }
+
+  .diary-view--mobile .diary-tab-btn:focus-visible {
+    outline: 0.125rem solid rgba(0, 125, 255, 0.45);
+    outline-offset: 1px;
+  }
+
+  /* 위 세그먼트가 시간 탭 줄 보더를 물려받지 않도록 */
+  .diary-view--mobile .diary-tabs.time-view-tabs {
+    border-bottom: none !important;
+    margin-bottom: 0;
   }
   .diary-layout--mobile {
     flex-direction: column;
@@ -3695,17 +3789,20 @@ body {
 
   /* 모바일 할일/일정 탭: 보라빛(--app-bg / --content-bg) 제거 → 오늘 탭과 동일 #f2f2f7 */
   body:has(.app-main > .app-tab-panel > .calendar-view),
-  body:has(.app-main > .app-tab-panel > .todo-list-view) {
+  body:has(.app-main > .app-tab-panel > .todo-list-view),
+  body:has(.app-main > .app-tab-panel > .diary-view) {
     background: #f2f2f7;
   }
 
   .app-main:has(> .app-tab-panel > .calendar-view),
-  .app-main:has(> .app-tab-panel > .todo-list-view) {
+  .app-main:has(> .app-tab-panel > .todo-list-view),
+  .app-main:has(> .app-tab-panel > .diary-view) {
     background: #f2f2f7 !important;
   }
 
   .app-main:has(> .app-tab-panel > .calendar-view) .app-tab-panel,
-  .app-main:has(> .app-tab-panel > .todo-list-view) .app-tab-panel {
+  .app-main:has(> .app-tab-panel > .todo-list-view) .app-tab-panel,
+  .app-main:has(> .app-tab-panel > .diary-view) .app-tab-panel {
     background: #f2f2f7 !important;
   }
 
@@ -3720,6 +3817,13 @@ body {
   .app-main:has(> .app-tab-panel > .todo-list-view)
     > .app-tab-panel
     > .todo-list-view {
+    --content-bg: #f2f2f7;
+    --app-bg: #f2f2f7;
+  }
+
+  .app-main:has(> .app-tab-panel > .diary-view)
+    > .app-tab-panel
+    > .diary-view {
     --content-bg: #f2f2f7;
     --app-bg: #f2f2f7;
   }
@@ -4642,41 +4746,6 @@ body {
     opacity: 0.72;
   }
 
-  /* 근무-식단 유형 설정(dual): 배치 저장 footer — 저장 버튼 강조, 추가는 연청 테두리 */
-  .work-schedule-type-settings-modal
-    .work-schedule-type-settings-footer.work-schedule-type-settings-footer--dual {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.65rem 1.25rem 1rem;
-    margin-top: 0;
-    border-top: 1px solid var(--line-l3-color);
-    flex-shrink: 0;
-    background: var(--content-bg);
-  }
-  .work-schedule-type-settings-modal
-    .work-schedule-type-settings-panel--dual
-    .work-schedule-type-settings-save-btn {
-    padding: 0.5rem 1.25rem;
-    min-width: 5.25rem;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--ui-btn-primary-fg);
-    background: var(--ui-btn-primary-bg);
-    border: 1px solid var(--ui-btn-primary-bg);
-    border-radius: 0;
-    cursor: pointer;
-    transition:
-      background 0.15s,
-      border-color 0.15s;
-  }
-  .work-schedule-type-settings-modal
-    .work-schedule-type-settings-panel--dual
-    .work-schedule-type-settings-save-btn:hover {
-    background: var(--ui-btn-primary-hover);
-    border-color: var(--ui-btn-primary-hover);
-  }
   .work-schedule-type-settings-modal
     .work-schedule-type-settings-panel--dual
     .work-schedule-type-settings-add-btn {
@@ -10802,10 +10871,11 @@ body {
   font-family: var(--font-body);
 }
 
-/* 월별보기 → 근무일·근무유형 등록 모달 */
+/* 월별보기 → 근무일·근무유형 등록 모달 — 패널도 유형 설정·Todo 모달과 동일하게 둥근 모서리 */
 .work-schedule-day-entry-modal .work-schedule-day-entry-modal-panel {
   max-height: min(90vh, 28rem);
-  border-radius: 0 !important;
+  border-radius: var(--modal-radius) !important;
+  overflow: hidden;
 }
 
 .work-schedule-day-entry-modal .todo-list-modal-footer {
@@ -11305,6 +11375,59 @@ body {
   min-height: 0;
   flex: 1 1 auto;
   overflow: hidden;
+}
+
+/* 근무-식단 유형 설정(dual): 푸터·저장 — todo-list-modal-confirm / 일 등록 모달과 동일 톤(데스크톱 포함 전 뷰포트) */
+.work-schedule-type-settings-modal .work-schedule-type-settings-footer.work-schedule-type-settings-footer--dual {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem 1rem;
+  margin-top: 0;
+  border-top: 1px solid var(--line-l3-color);
+  flex-shrink: 0;
+  background: var(--content-bg);
+}
+
+.work-schedule-type-settings-modal
+  .work-schedule-type-settings-panel--dual
+  .work-schedule-type-settings-save-btn {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  flex: 0 0 auto;
+  padding: 0.65rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    "Segoe UI",
+    var(--font-body);
+  color: #ffffff;
+  background: #0064dc;
+  border: none;
+  border-radius: 8px !important;
+  -webkit-border-radius: 8px !important;
+  cursor: pointer;
+  transition: background 0.15s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.work-schedule-type-settings-modal
+  .work-schedule-type-settings-panel--dual
+  .work-schedule-type-settings-save-btn:hover {
+  background: #0056c4;
+}
+
+.work-schedule-type-settings-modal
+  .work-schedule-type-settings-panel--dual
+  .work-schedule-type-settings-save-btn:focus-visible {
+  outline: 0.125rem solid rgba(0, 100, 220, 0.45);
+  outline-offset: 2px;
 }
 .work-schedule-type-settings-add-block {
   padding: 0.75rem 1.25rem;
@@ -18317,6 +18440,13 @@ col.asset-expense-col-amount,
 
   .todo-list-view {
     background: #f2f2f7;
+    --content-bg: #f2f2f7;
+    --app-bg: #f2f2f7;
+  }
+
+  /* 일기 루트는 투명 → 뒤쪽 app-main/body 배경만 보임 */
+  .diary-view {
+    background: transparent !important;
     --content-bg: #f2f2f7;
     --app-bg: #f2f2f7;
   }
@@ -38273,6 +38403,7 @@ img.time-btn-icon {
   flex-direction: column;
   overflow: hidden;
   box-sizing: border-box;
+  background: transparent;
 }
 
 /* 탭 + layoutWrap 래퍼: 부모에서 남는 높이를 받아 통제일기 본문 스크롤 체인 유지 */
@@ -38891,6 +39022,388 @@ img.time-btn-icon {
 }
 #app .diary-paper .diary-qa-answer-readonly:focus {
   outline: none;
+}
+
+/* 일기(macOS 설정창 톤) — 데스크톱 사이드바 레이아웃에서 감정·통제·자유 탭 공통 · Diary.js */
+
+/* 테스크톹 일기 분할 열: 투명 — 바깥(app-main 등) 배경 그대로 */
+.diary-view.diary-view--desktop-mac-diary {
+  --diary-mac-chrome-bg: transparent;
+}
+
+/* 본문 카드: 오른쪽 영역 넓게 사용(타임블록 ‘메뉴’만 좁은 것과 구분) */
+.diary-view-inner--desktop-mac-diary {
+  --diary-read-column-max: min(52rem, calc(100% - 1.5rem));
+  /* 사이드바 열과 톤 맞춤: 탭 아래 줄무늬·틈 채우기 */
+  background: var(--diary-mac-chrome-bg);
+}
+
+/* 탭 줄과 목록·본문 사이 여백(스크린샷 빨간 선 높이 느낌) */
+.diary-view-inner--desktop-mac-diary .diary-layout-wrap {
+  padding-top: 1.125rem;
+  box-sizing: border-box;
+  background: var(--diary-mac-chrome-bg);
+}
+
+/* 읽기 열 배경까지 한 덩어리 회색으로 */
+.diary-view-inner--desktop-mac-diary .diary-layout {
+  background: var(--diary-mac-chrome-bg);
+}
+
+.diary-view-inner--desktop-mac-diary .diary-tabs {
+  --diary-tab-segment-track: #e4e4ea;
+  position: relative;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 !important;
+  align-items: stretch !important;
+  align-self: center;
+  width: fit-content !important;
+  /* 상단 메뉴(감정·통제·자유)만 타임블록 세그먼트처럼 좁게 · 본문 패널 폭과 무관 */
+  max-width: min(17.75rem, calc(100% - 1rem));
+  min-width: 0;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 0.625rem !important;
+  padding: 0.25rem !important;
+  box-sizing: border-box;
+  flex-wrap: nowrap !important;
+  overflow: hidden !important;
+  overflow-x: hidden !important;
+  overflow-y: hidden !important;
+  border: none !important;
+  border-bottom: none !important;
+  isolation: isolate;
+  background: var(--diary-tab-segment-track) !important;
+  /* 일정 탭(월별·1주·연간·타임블록) 세그먼트와 동일한 모서리 */
+  border-radius: 0.625rem !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 0 0 0.03125rem rgba(0, 0, 0, 0.045);
+}
+
+.diary-view-inner--desktop-mac-diary .diary-tab-btn {
+  position: relative;
+  z-index: 1;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: 0 !important;
+  border: none !important;
+  border-bottom: none !important;
+  border-radius: 0 !important;
+  padding: 0.4rem 0.65rem !important;
+  min-height: 1.9375rem;
+  box-sizing: border-box;
+  font-size: 0.8125rem !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.012em !important;
+  white-space: nowrap;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif,
+    var(--font-body);
+  color: rgba(28, 28, 30, 0.88) !important;
+  background: transparent !important;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    font-weight 0.12s ease;
+}
+
+.diary-view-inner--desktop-mac-diary .diary-tab-btn:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: rgba(28, 28, 30, 0.95) !important;
+}
+
+.diary-view-inner--desktop-mac-diary .diary-tab-btn:focus-visible {
+  outline: 0.125rem solid rgba(0, 125, 255, 0.45);
+  outline-offset: 1px;
+}
+
+.diary-view-inner--desktop-mac-diary .diary-tab-btn.active {
+  background: #ffffff !important;
+  font-weight: 600 !important;
+  color: rgba(28, 28, 30, 0.98) !important;
+  border-radius: 0.625rem !important;
+  box-shadow:
+    0 0 0 0.03125rem rgba(0, 0, 0, 0.05),
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.06) !important;
+}
+
+.diary-view-inner--desktop-mac-diary .diary-sidebar {
+  background: var(--diary-mac-chrome-bg);
+  border-right: 0.03125rem solid rgba(60, 60, 67, 0.1);
+}
+
+.diary-view-inner--desktop-mac-diary .diary-sidebar-header {
+  border-bottom: 0.03125rem solid rgba(60, 60, 67, 0.08);
+  background: transparent;
+}
+
+.diary-view-inner--desktop-mac-diary .diary-search-row {
+  border-bottom: 0.03125rem solid rgba(60, 60, 67, 0.06);
+}
+
+.diary-view-inner--desktop-mac-diary .diary-add-page-wrap {
+  border-bottom: 0.03125rem solid rgba(60, 60, 67, 0.08);
+}
+
+.diary-view-inner--desktop-mac-diary .diary-page-item:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.diary-view-inner--desktop-mac-diary .diary-page-item.active {
+  background: rgba(0, 122, 255, 0.1);
+  border-right: 0.1875rem solid #007aff;
+  color: rgba(28, 28, 30, 0.95);
+  font-weight: 600;
+}
+
+.diary-view-inner--desktop-mac-diary .diary-add-page:hover {
+  background: rgba(255, 255, 255, 0.45);
+  color: rgba(28, 28, 30, 0.88);
+}
+
+.diary-view-inner--desktop-mac-diary .diary-content-area {
+  background: var(--diary-mac-chrome-bg);
+  padding: 0.85rem 0.75rem 1rem 0;
+  align-items: center;
+}
+
+.diary-view-inner--desktop-mac-diary .diary-content-scroll {
+  flex: 1 1 auto;
+  align-self: center;
+  width: 100%;
+  max-width: var(--diary-read-column-max);
+  padding-right: 0.75rem;
+  padding-left: 0.75rem;
+  box-sizing: border-box;
+  background: var(--diary-mac-chrome-bg);
+}
+
+/* 카드 높이 100%로 본문 열 전체가 흰색으로 깔리지 않도록(전역 #app 포함 특이도) */
+#app .diary-view-inner--desktop-mac-diary .diary-content-scroll > .diary-paper {
+  min-height: unset !important;
+}
+
+/* 통제일기·감정일기: Q&A 블록을 하나의 둥근 그룹 카드로 */
+.diary-view-inner--desktop-mac-diary .diary-paper.diary-paper-qa:not(.diary-feed-card) {
+  max-width: 100%;
+  margin: 0.25rem auto 2rem;
+  padding: 0 0 2rem !important;
+  background: #ffffff;
+  border-radius: 10px !important;
+  -webkit-border-radius: 10px !important;
+  border: 0.03125rem solid rgba(0, 0, 0, 0.09);
+  box-shadow:
+    0 0 0 0.03125rem rgba(255, 255, 255, 0.7) inset,
+    0 0.0625rem 0.25rem rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  min-height: auto;
+  box-sizing: border-box;
+}
+
+.diary-view-inner--desktop-mac-diary .diary-paper.diary-paper-qa.diary-feed-card {
+  max-width: 100%;
+  margin: 0 0 0.875rem;
+}
+
+.diary-view-inner--desktop-mac-diary
+  .diary-paper.diary-paper-qa:not(.diary-feed-card)
+  .diary-paper-qa-header {
+  margin-bottom: 0;
+  padding: 0.75rem 1rem 0.625rem;
+  border-bottom: 0.03125rem solid rgba(60, 60, 67, 0.13);
+}
+
+.diary-view-inner--desktop-mac-diary
+  .diary-paper.diary-paper-qa:not(.diary-feed-card)
+  .diary-qa-block {
+  margin: 0;
+  border: none;
+  border-bottom: 0.03125rem solid rgba(60, 60, 67, 0.09);
+}
+
+.diary-view-inner--desktop-mac-diary
+  .diary-paper.diary-paper-qa:not(.diary-feed-card)
+  .diary-qa-block:last-child {
+  margin-bottom: 0;
+  border-bottom: none;
+}
+
+.diary-view-inner--desktop-mac-diary
+  .diary-paper.diary-paper-qa:not(.diary-feed-card)
+  .diary-qa-question {
+  padding: 0.5rem 1rem 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif,
+    var(--font-body);
+  color: rgba(60, 60, 67, 0.55);
+  border-bottom: none;
+  background: rgba(246, 246, 248, 0.98);
+}
+
+#app
+  .diary-view-inner--desktop-mac-diary
+  .diary-paper.diary-paper-qa.diary-feed-card
+  .diary-qa-block {
+  border-radius: 0;
+}
+
+#app
+  .diary-view-inner--desktop-mac-diary
+  .diary-paper.diary-paper-qa:not(.diary-feed-card)
+  .diary-qa-answer {
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+  background: #ffffff !important;
+}
+
+#app
+  .diary-view-inner--desktop-mac-diary
+  .diary-paper.diary-paper-qa:not(.diary-feed-card)
+  .diary-qa-answer-readonly {
+  background: #ffffff !important;
+}
+
+/* 자유일기 본문 단일 카드 */
+.diary-view-inner--desktop-mac-diary
+  .diary-content-scroll
+  > .diary-paper:not(.diary-paper-qa):not(.diary-feed-card) {
+  max-width: 100%;
+  margin: 0.25rem auto 2rem;
+  padding: 1.5rem 2rem 2rem !important;
+  background: #ffffff;
+  border-radius: 10px !important;
+  -webkit-border-radius: 10px !important;
+  border: 0.03125rem solid rgba(0, 0, 0, 0.09);
+  box-shadow:
+    0 0 0 0.03125rem rgba(255, 255, 255, 0.7) inset,
+    0 0.0625rem 0.25rem rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  min-height: auto;
+  box-sizing: border-box;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .diary-desktop-compose-modal--mac-diary .diary-desktop-compose-modal-close:hover {
+    background: rgba(0, 0, 0, 0.055);
+    border-radius: 0.25rem;
+  }
+}
+
+/* 일기 작성·편집 모달 — 모든 탭 동일 카드 톤 */
+.diary-desktop-compose-modal--mac-diary .diary-desktop-compose-modal-panel {
+  max-width: min(42rem, calc(100vw - 2.5rem));
+  background: rgba(246, 246, 249, 0.98);
+  border: 0.03125rem solid rgba(0, 0, 0, 0.1);
+  border-radius: 11px !important;
+  box-shadow:
+    0 0 0 0.03125rem rgba(255, 255, 255, 0.55) inset,
+    0 1rem 2.75rem rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.diary-desktop-compose-modal--mac-diary .diary-desktop-compose-modal-scroll {
+  padding: 0.75rem 1rem 1rem;
+  background: rgba(246, 246, 249, 0.98);
+}
+
+.diary-desktop-compose-modal--mac-diary
+  .diary-desktop-compose-modal-scroll
+  .diary-paper.diary-paper-qa:not(.diary-feed-card) {
+  margin: 0 auto;
+  max-width: 100%;
+  box-sizing: border-box;
+  background: #ffffff;
+  border-radius: 10px !important;
+  -webkit-border-radius: 10px !important;
+  border: 0.03125rem solid rgba(0, 0, 0, 0.09);
+  box-shadow:
+    0 0 0 0.03125rem rgba(255, 255, 255, 0.7) inset,
+    0 0.0625rem 0.25rem rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  padding: 0 0 1.5rem !important;
+}
+
+.diary-desktop-compose-modal--mac-diary
+  .diary-desktop-compose-modal-scroll
+  .diary-paper:not(.diary-paper-qa):not(.diary-feed-card) {
+  margin: 0 auto;
+  max-width: 100%;
+  box-sizing: border-box;
+  background: #ffffff;
+  border-radius: 10px !important;
+  -webkit-border-radius: 10px !important;
+  border: 0.03125rem solid rgba(0, 0, 0, 0.09);
+  box-shadow:
+    0 0 0 0.03125rem rgba(255, 255, 255, 0.7) inset,
+    0 0.0625rem 0.25rem rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  padding: 1.25rem 1.5rem 1.5rem !important;
+}
+
+.diary-desktop-compose-modal--mac-diary
+  .diary-paper.diary-paper-qa:not(.diary-feed-card)
+  .diary-paper-qa-header {
+  margin-bottom: 0;
+  padding: 0.75rem 1rem 0.625rem;
+  border-bottom: 0.03125rem solid rgba(60, 60, 67, 0.13);
+}
+
+.diary-desktop-compose-modal--mac-diary
+  .diary-paper.diary-paper-qa:not(.diary-feed-card)
+  .diary-qa-block {
+  margin: 0;
+  border: none;
+  border-bottom: 0.03125rem solid rgba(60, 60, 67, 0.09);
+}
+
+.diary-desktop-compose-modal--mac-diary
+  .diary-paper.diary-paper-qa:not(.diary-feed-card)
+  .diary-qa-block:last-child {
+  border-bottom: none;
+}
+
+.diary-desktop-compose-modal--mac-diary
+  .diary-paper.diary-paper-qa:not(.diary-feed-card)
+  .diary-qa-question {
+  padding: 0.5rem 1rem 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  border-bottom: none;
+  background: rgba(246, 246, 248, 0.98);
+  color: rgba(60, 60, 67, 0.55);
+}
+
+.diary-desktop-compose-modal--mac-diary
+  .diary-paper.diary-paper-qa:not(.diary-feed-card)
+  .diary-qa-answer {
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+  background: #ffffff !important;
+}
+
+.diary-desktop-compose-modal--mac-diary .diary-desktop-compose-modal-header,
+.diary-desktop-compose-modal--mac-diary .diary-desktop-compose-modal-footer {
+  border-color: rgba(60, 60, 67, 0.1);
+  background: rgba(246, 246, 249, 0.98);
 }
 
 /* 감정관리 피드 */

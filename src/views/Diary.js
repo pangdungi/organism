@@ -82,21 +82,6 @@ export function render() {
     el.classList.add("diary-view--mobile");
   }
 
-  if (!mobileViewport) {
-    const header = document.createElement("header");
-    header.className = "dream-view-header";
-    const label = document.createElement("span");
-    label.className = "dream-view-label";
-    label.textContent = "DIARY";
-    const h = document.createElement("h1");
-    h.className = "dream-view-title";
-    h.textContent = "감정일기";
-    header.appendChild(label);
-    header.appendChild(h);
-    el.appendChild(header);
-  }
-  /* 모바일: 상단 h1 제거 — 탭·본문 영역만(하단 탭 라벨로 구분) */
-
   const inner = document.createElement("div");
   inner.className = "diary-view-inner";
   el.appendChild(inner);
@@ -508,7 +493,7 @@ export function render() {
     if (!entry) return;
     document.querySelectorAll(".diary-desktop-compose-modal").forEach((m) => m.remove());
     const modal = document.createElement("div");
-    modal.className = "diary-desktop-compose-modal";
+    modal.className = "diary-desktop-compose-modal diary-desktop-compose-modal--mac-diary";
     const backdrop = document.createElement("div");
     backdrop.className = "diary-desktop-compose-modal-backdrop";
     const panel = document.createElement("div");
@@ -568,11 +553,12 @@ export function render() {
     if (!entry) return;
     document.querySelectorAll(".diary-desktop-compose-modal").forEach((m) => m.remove());
     const modal = document.createElement("div");
-    modal.className = "diary-desktop-compose-modal";
+    modal.className = "diary-desktop-compose-modal diary-desktop-compose-modal--mac-diary";
     const backdrop = document.createElement("div");
     backdrop.className = "diary-desktop-compose-modal-backdrop";
     const panel = document.createElement("div");
     panel.className = "diary-desktop-compose-modal-panel";
+    panel.addEventListener("click", (e) => e.stopPropagation());
     const modalHeader = document.createElement("div");
     modalHeader.className = "diary-desktop-compose-modal-header";
     const closeModalOnly = () => {
@@ -631,8 +617,13 @@ export function render() {
   }
 
   function renderLayout() {
+    layoutWrap.dataset.diaryTab = currentTabId;
     layoutWrap.innerHTML = "";
     const mobile = isDiaryMobileViewport();
+    /* 데스크톱(사이드바) 레이아웃 — 감정·통제·자유 일기 공통 맥 설정창 톤 */
+    const desktopMacDiary = !mobile;
+    inner.classList.toggle("diary-view-inner--desktop-mac-diary", desktopMacDiary);
+    el.classList.toggle("diary-view--desktop-mac-diary", desktopMacDiary);
     const layout = document.createElement("div");
     layout.className =
       "diary-layout" +

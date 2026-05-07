@@ -361,7 +361,7 @@ export function render(opts = {}) {
           </div>
         </div>
         <div class="work-schedule-type-settings-footer work-schedule-type-settings-footer--dual">
-          <button type="button" class="work-schedule-type-settings-save-btn">저장</button>
+          <button type="button" class="todo-list-modal-confirm work-schedule-type-settings-save-btn">저장</button>
         </div>
       </div>
     `;
