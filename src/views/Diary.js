@@ -28,6 +28,12 @@ const TAB2_QA_TEMPLATE = [
   "통제할 수 있는 것",
 ];
 
+function diaryTabLabel(tabId) {
+  if (tabId === "3") return "감정일기";
+  if (tabId === "2") return "통제일기";
+  return "자유일기";
+}
+
 function toDateStr(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -500,18 +506,23 @@ export function render() {
     panel.className = "diary-desktop-compose-modal-panel";
     panel.addEventListener("click", (e) => e.stopPropagation());
     const modalHeader = document.createElement("div");
-    modalHeader.className = "diary-desktop-compose-modal-header";
+    modalHeader.className =
+      "diary-desktop-compose-modal-header time-task-setup-header time-task-log-header";
+    const modalTitle = document.createElement("h3");
+    modalTitle.className = "time-task-setup-title";
+    modalTitle.textContent = diaryTabLabel(tabId);
     const closeModalOnly = () => {
       modal.remove();
       renderLayout();
     };
     const closeBtn = document.createElement("button");
     closeBtn.type = "button";
-    closeBtn.className = "diary-desktop-compose-modal-close";
+    closeBtn.className = "time-task-setup-close diary-desktop-compose-modal-close";
     closeBtn.setAttribute("aria-label", "닫기");
     closeBtn.title = "닫기";
     closeBtn.textContent = "×";
     closeBtn.addEventListener("click", closeModalOnly);
+    modalHeader.appendChild(modalTitle);
     modalHeader.appendChild(closeBtn);
     const scroll = document.createElement("div");
     scroll.className = "diary-desktop-compose-modal-scroll";
@@ -560,7 +571,11 @@ export function render() {
     panel.className = "diary-desktop-compose-modal-panel";
     panel.addEventListener("click", (e) => e.stopPropagation());
     const modalHeader = document.createElement("div");
-    modalHeader.className = "diary-desktop-compose-modal-header";
+    modalHeader.className =
+      "diary-desktop-compose-modal-header time-task-setup-header time-task-log-header";
+    const modalTitle = document.createElement("h3");
+    modalTitle.className = "time-task-setup-title";
+    modalTitle.textContent = diaryTabLabel(tabId);
     const closeModalOnly = () => {
       modal.remove();
       renderLayout();
@@ -579,11 +594,12 @@ export function render() {
     };
     const closeBtn = document.createElement("button");
     closeBtn.type = "button";
-    closeBtn.className = "diary-desktop-compose-modal-close";
+    closeBtn.className = "time-task-setup-close diary-desktop-compose-modal-close";
     closeBtn.setAttribute("aria-label", "닫기");
     closeBtn.title = "닫기";
     closeBtn.textContent = "×";
     closeBtn.addEventListener("click", closeModalOnly);
+    modalHeader.appendChild(modalTitle);
     modalHeader.appendChild(closeBtn);
     const scroll = document.createElement("div");
     scroll.className = "diary-desktop-compose-modal-scroll";
@@ -674,12 +690,6 @@ export function render() {
       openDiaryComposeModal(newEntry, currentTabId, { draft: true });
     };
 
-    function getTabLabel(tabId) {
-      if (tabId === "3") return "감정일기";
-      if (tabId === "2") return "통제일기";
-      return "자유일기";
-    }
-
     /** 모바일 서브탭은 항상 3개(감정·통제·자유). 예전에는 항목 있는 탭만 표시해 통제만 쓰면 나머지 탭이 사라짐 */
     const DIARY_MOBILE_TAB_ORDER = ["3", "2", "1"];
 
@@ -694,7 +704,7 @@ export function render() {
       tabs.innerHTML = tabIds
         .map(
           (id) =>
-            `<button type="button" class="time-view-tab diary-tab-btn${id === currentTabId ? " active" : ""}" data-tab="${id}">${getTabLabel(id)}</button>`
+            `<button type="button" class="time-view-tab diary-tab-btn${id === currentTabId ? " active" : ""}" data-tab="${id}">${diaryTabLabel(id)}</button>`
         )
         .join("");
       tabs.querySelectorAll(".diary-tab-btn").forEach((btn) => {

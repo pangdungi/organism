@@ -3197,12 +3197,6 @@ body {
 }
 .diary-desktop-compose-modal-header {
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding: var(--lp-modal-header-padding-y) var(--lp-modal-header-padding-x);
-  border-bottom: var(--line-l3);
-  background: var(--content-bg);
 }
 .diary-desktop-compose-modal-close {
   flex-shrink: 0;
@@ -3222,8 +3216,8 @@ body {
   cursor: pointer;
 }
 .diary-desktop-compose-modal-close:hover {
-  color: var(--text-ink);
-  background: var(--ui-surface-alt);
+  color: var(--text-body);
+  background: none;
 }
 .diary-desktop-compose-modal-scroll {
   flex: 1;
@@ -39382,13 +39376,6 @@ img.time-btn-icon {
   box-sizing: border-box;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .diary-desktop-compose-modal--mac-diary .diary-desktop-compose-modal-close:hover {
-    background: rgba(0, 0, 0, 0.055);
-    border-radius: 0.25rem;
-  }
-}
-
 /* 일기 작성·편집 모달 — 모든 탭 동일 카드 톤 */
 .diary-desktop-compose-modal--mac-diary .diary-desktop-compose-modal-panel {
   max-width: min(42rem, calc(100vw - 2.5rem));
@@ -39482,7 +39469,6 @@ img.time-btn-icon {
   background: #ffffff !important;
 }
 
-.diary-desktop-compose-modal--mac-diary .diary-desktop-compose-modal-header,
 .diary-desktop-compose-modal--mac-diary .diary-desktop-compose-modal-footer {
   border-color: rgba(60, 60, 67, 0.1);
   background: rgba(246, 246, 249, 0.98);
