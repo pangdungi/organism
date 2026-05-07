@@ -3461,10 +3461,12 @@ body {
   /* 감정관리(모바일): 상단 세그먼트 — 데스크톱과 동일 맥 UISegmentedControl 톤, 가운데·폭 제한 */
   .diary-view--mobile {
     padding-top: 0;
+    background: #ffffff !important;
   }
 
   .diary-view--mobile .diary-view-inner {
     align-items: stretch;
+    background: #ffffff !important;
   }
 
   .diary-view--mobile .diary-tabs {
@@ -3662,11 +3664,12 @@ body {
     color: var(--text-muted);
     font-size: 0.95rem;
   }
-  .diary-feed-card .diary-paper-qa-header {
-    margin-bottom: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    background: #d8d2c0;
-    border-bottom: none;
+  /* 모바일 일기 피드: 날짜 행 베이지 제거 → 데스크톹 맥과 동일 흰 헤더 */
+  .diary-view--mobile .diary-feed-card .diary-paper-qa-header {
+    margin-bottom: 0 !important;
+    padding: 0.75rem 1rem 0.625rem;
+    border-bottom: 0.03125rem solid rgba(60, 60, 67, 0.13);
+    background: #ffffff !important;
   }
   .diary-feed-card .diary-feed-card-title {
     flex: 1;
@@ -3700,8 +3703,8 @@ body {
     padding: 0.75rem 1rem;
   }
 
-  /* 모바일 감정일기(tab3): 피드·단일 카드 공통 — 베이지 날짜 띠 제거, 데스크톹 맥 Q&A 카드 포맷 */
-  #app .diary-view--mobile .diary-layout-wrap[data-diary-tab="3"] .diary-paper-tab3.diary-paper-qa {
+  /* 모바일 일기 Q&A(감정·통제): 피드·단일 공통 — 데스크톹 맥과 동일 흰 카드·줄무늬 */
+  #app .diary-view--mobile .diary-paper.diary-paper-qa {
     max-width: none;
     width: calc(100% - 1.5rem);
     margin-left: auto;
@@ -3720,7 +3723,7 @@ body {
     box-sizing: border-box;
   }
 
-  #app .diary-view--mobile .diary-layout-wrap[data-diary-tab="3"] .diary-paper-tab3.diary-paper-qa .diary-paper-qa-header {
+  #app .diary-view--mobile .diary-paper.diary-paper-qa .diary-paper-qa-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -3730,7 +3733,7 @@ body {
     background: #ffffff !important;
   }
 
-  #app .diary-view--mobile .diary-layout-wrap[data-diary-tab="3"] .diary-feed-card .diary-feed-card-title {
+  #app .diary-view--mobile .diary-feed-card.diary-paper-qa .diary-feed-card-title {
     padding: 0 !important;
     font-size: 0.9375rem;
     font-weight: 600;
@@ -3740,19 +3743,19 @@ body {
     box-shadow: none !important;
   }
 
-  #app .diary-view--mobile .diary-layout-wrap[data-diary-tab="3"] .diary-paper-tab3.diary-paper-qa .diary-qa-block {
+  #app .diary-view--mobile .diary-paper.diary-paper-qa .diary-qa-block {
     margin: 0 !important;
     margin-bottom: 0 !important;
     border: none !important;
     border-bottom: 0.03125rem solid rgba(60, 60, 67, 0.09);
   }
 
-  #app .diary-view--mobile .diary-layout-wrap[data-diary-tab="3"] .diary-paper-tab3.diary-paper-qa .diary-qa-block:last-child {
+  #app .diary-view--mobile .diary-paper.diary-paper-qa .diary-qa-block:last-child {
     margin-bottom: 0 !important;
     border-bottom: none !important;
   }
 
-  #app .diary-view--mobile .diary-layout-wrap[data-diary-tab="3"] .diary-paper-tab3.diary-paper-qa .diary-qa-question {
+  #app .diary-view--mobile .diary-paper.diary-paper-qa .diary-qa-question {
     padding: 0.5rem 1rem 0.35rem;
     margin: 0;
     font-size: 0.8125rem;
@@ -3770,11 +3773,38 @@ body {
     background: rgba(246, 246, 248, 0.98) !important;
   }
 
-  #app .diary-view--mobile .diary-layout-wrap[data-diary-tab="3"] .diary-paper-tab3.diary-paper-qa .diary-qa-answer,
-  #app .diary-view--mobile .diary-layout-wrap[data-diary-tab="3"] .diary-paper-tab3.diary-paper-qa .diary-qa-answer-readonly {
+  #app .diary-view--mobile .diary-paper.diary-paper-qa .diary-qa-answer,
+  #app .diary-view--mobile .diary-paper.diary-paper-qa .diary-qa-answer-readonly {
     padding-left: 1rem !important;
     padding-right: 1rem !important;
     background: #ffffff !important;
+  }
+
+  /* 모바일 자유일기: 흰 카드(데스크톹 맥 본문 카드와 동일 톤) */
+  #app .diary-view--mobile .diary-paper.diary-feed-card:not(.diary-paper-qa),
+  #app .diary-view--mobile .diary-content-scroll > .diary-paper:not(.diary-paper-qa):not(.diary-feed-card) {
+    width: calc(100% - 1.5rem);
+    max-width: none;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 1.25rem;
+    padding: 1.25rem 1.25rem 1.5rem !important;
+    min-height: auto !important;
+    background: #ffffff !important;
+    border-radius: 10px !important;
+    -webkit-border-radius: 10px !important;
+    border: 0.03125rem solid rgba(0, 0, 0, 0.09);
+    box-shadow:
+      0 0 0 0.03125rem rgba(255, 255, 255, 0.7) inset,
+      0 0.0625rem 0.25rem rgba(0, 0, 0, 0.06);
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  #app .diary-view--mobile .diary-paper:not(.diary-paper-qa) .diary-paper-title-row {
+    padding-bottom: 0.625rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 0.03125rem solid rgba(60, 60, 67, 0.13);
   }
 
   .diary-desktop-compose-modal {
@@ -3859,22 +3889,32 @@ body {
   }
 
   /* 모바일 할일/일정 탭: 보라빛(--app-bg / --content-bg) 제거 → 오늘 탭과 동일 #f2f2f7 */
+  /* 모바일 일기 메뉴: 페이지·패널 흰 배경 (할일/일정은 기존 #f2f2f7 유지) */
   body:has(.app-main > .app-tab-panel > .calendar-view),
-  body:has(.app-main > .app-tab-panel > .todo-list-view),
-  body:has(.app-main > .app-tab-panel > .diary-view) {
+  body:has(.app-main > .app-tab-panel > .todo-list-view) {
     background: #f2f2f7;
   }
 
+  body:has(.app-main > .app-tab-panel > .diary-view) {
+    background: #ffffff;
+  }
+
   .app-main:has(> .app-tab-panel > .calendar-view),
-  .app-main:has(> .app-tab-panel > .todo-list-view),
-  .app-main:has(> .app-tab-panel > .diary-view) {
+  .app-main:has(> .app-tab-panel > .todo-list-view) {
     background: #f2f2f7 !important;
   }
 
+  .app-main:has(> .app-tab-panel > .diary-view) {
+    background: #ffffff !important;
+  }
+
   .app-main:has(> .app-tab-panel > .calendar-view) .app-tab-panel,
-  .app-main:has(> .app-tab-panel > .todo-list-view) .app-tab-panel,
-  .app-main:has(> .app-tab-panel > .diary-view) .app-tab-panel {
+  .app-main:has(> .app-tab-panel > .todo-list-view) .app-tab-panel {
     background: #f2f2f7 !important;
+  }
+
+  .app-main:has(> .app-tab-panel > .diary-view) .app-tab-panel {
+    background: #ffffff !important;
   }
 
   .app-main:has(> .app-tab-panel > .calendar-view)
@@ -3895,8 +3935,9 @@ body {
   .app-main:has(> .app-tab-panel > .diary-view)
     > .app-tab-panel
     > .diary-view {
-    --content-bg: #f2f2f7;
-    --app-bg: #f2f2f7;
+    --content-bg: #ffffff;
+    --app-bg: #ffffff;
+    background: #ffffff !important;
   }
 
   /* 오늘 탭(모바일): 시간 기록과 동일 main 패딩 36px 0 72px (+ safe-area) */
