@@ -11078,6 +11078,7 @@ body {
   background: var(--content-bg);
   border: var(--line-l3);
   border-radius: var(--modal-radius);
+  overflow: hidden;
   box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.12);
   /* 모달이 #app 밖 body에 붙어 기본 폰트가 적용되는 것 방지 */
   font-family: var(--font-body);
