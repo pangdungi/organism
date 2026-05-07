@@ -3706,6 +3706,83 @@ body {
     padding: 0.75rem 1rem;
   }
 
+  /* 모바일 감정일기(tab3): 피드·단일 카드 공통 — 베이지 날짜 띠 제거, 데스크톹 맥 Q&A 카드 포맷 */
+  #app .diary-view--mobile .diary-layout-wrap[data-diary-tab="3"] .diary-paper-tab3.diary-paper-qa {
+    max-width: none;
+    width: calc(100% - 1.5rem);
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 1.25rem;
+    padding: 0 0 1.25rem !important;
+    min-height: auto !important;
+    background: #ffffff;
+    border-radius: 10px !important;
+    -webkit-border-radius: 10px !important;
+    border: 0.03125rem solid rgba(0, 0, 0, 0.09);
+    box-shadow:
+      0 0 0 0.03125rem rgba(255, 255, 255, 0.7) inset,
+      0 0.0625rem 0.25rem rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  #app .diary-view--mobile .diary-layout-wrap[data-diary-tab="3"] .diary-paper-tab3.diary-paper-qa .diary-paper-qa-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0 !important;
+    padding: 0.75rem 1rem 0.625rem;
+    border-bottom: 0.03125rem solid rgba(60, 60, 67, 0.13);
+    background: #ffffff !important;
+  }
+
+  #app .diary-view--mobile .diary-layout-wrap[data-diary-tab="3"] .diary-feed-card .diary-feed-card-title {
+    padding: 0 !important;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: rgba(28, 28, 30, 0.95);
+    background: transparent !important;
+    border-bottom: none !important;
+    box-shadow: none !important;
+  }
+
+  #app .diary-view--mobile .diary-layout-wrap[data-diary-tab="3"] .diary-paper-tab3.diary-paper-qa .diary-qa-block {
+    margin: 0 !important;
+    margin-bottom: 0 !important;
+    border: none !important;
+    border-bottom: 0.03125rem solid rgba(60, 60, 67, 0.09);
+  }
+
+  #app .diary-view--mobile .diary-layout-wrap[data-diary-tab="3"] .diary-paper-tab3.diary-paper-qa .diary-qa-block:last-child {
+    margin-bottom: 0 !important;
+    border-bottom: none !important;
+  }
+
+  #app .diary-view--mobile .diary-layout-wrap[data-diary-tab="3"] .diary-paper-tab3.diary-paper-qa .diary-qa-question {
+    padding: 0.5rem 1rem 0.35rem;
+    margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: -0.012em;
+    font-family:
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif,
+      var(--font-body);
+    color: rgba(60, 60, 67, 0.55);
+    border-bottom: none !important;
+    background: rgba(246, 246, 248, 0.98) !important;
+  }
+
+  #app .diary-view--mobile .diary-layout-wrap[data-diary-tab="3"] .diary-paper-tab3.diary-paper-qa .diary-qa-answer,
+  #app .diary-view--mobile .diary-layout-wrap[data-diary-tab="3"] .diary-paper-tab3.diary-paper-qa .diary-qa-answer-readonly {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    background: #ffffff !important;
+  }
+
   .diary-desktop-compose-modal {
     padding: 0.5rem;
   }
@@ -39031,7 +39108,7 @@ img.time-btn-icon {
   --diary-mac-chrome-bg: transparent;
 }
 
-/* 감정일기(탭 data-diary-tab=\"3\"): 본 패널 기본 좌패딩만 제거 — 다른 탭 레이아웃 유지 */
+/* 감정일기(탭 data-diary-tab='3'): 본 패널 기본 좌패딩만 제거 — 다른 탭 레이아웃 유지 */
 .diary-view.diary-view--desktop-mac-diary:has(.diary-layout-wrap[data-diary-tab="3"]) {
   padding-left: 0;
 }
