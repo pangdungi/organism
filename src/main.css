@@ -39087,13 +39087,18 @@ img.time-btn-icon {
   flex-shrink: 0;
 }
 
+/* 자유일기 날짜: 통제·감정 Q&A 헤더 날짜(.diary-paper-qa-header-title)와 동일 톤 */
 .diary-paper-date {
-  margin: 0 0 0.25rem;
-  font-size: 1.75rem;
-  font-weight: 200;
-  color: var(--text-ink);
-  letter-spacing: -0.01em;
-  font-family: var(--font-heading);
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0.35rem 0;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-h2);
+  font-family: var(--font-body);
+  color: var(--text-body);
+  letter-spacing: normal;
+  background: transparent;
 }
 
 .diary-paper-meta {
