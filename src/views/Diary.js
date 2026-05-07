@@ -887,7 +887,13 @@ export function render() {
     }
 
     if (!mobileFeedMode) {
-      scrollWrap.appendChild(paper);
+      const showMainPaper =
+        (currentTabId === "3" && currentEntry) ||
+        (currentTabId === "2" && currentEntry) ||
+        (currentTabId === "1" && currentEntry);
+      if (showMainPaper) {
+        scrollWrap.appendChild(paper);
+      }
     }
     contentArea.appendChild(scrollWrap);
     layout.appendChild(contentArea);
