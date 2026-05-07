@@ -817,7 +817,8 @@ export function render() {
       const searchInput = document.createElement("input");
       searchInput.type = "text";
       searchInput.className = "diary-search-input";
-      searchInput.placeholder = "날짜·내용 검색...";
+      searchInput.placeholder =
+        currentTabId === "3" ? "" : "날짜·내용 검색...";
       searchInput.setAttribute("aria-label", "날짜·내용 검색");
       searchInput.value = searchQuery;
       searchInput.addEventListener("compositionstart", () => {
