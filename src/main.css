@@ -1692,6 +1692,17 @@ body {
   padding-right: 0 !important;
 }
 
+/* 근무·식단표: main·탭 콘텐츠 좌우만 제거 (모바일은 하단 레이아웃 블록에서 패널 풀너비 처리) */
+.app-main:has(.work-schedule-view) {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.app-main:has(.work-schedule-view) .app-tab-panel > .work-schedule-view {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
 /* 시간가계부: 데스크톱·태블릿(모바일 하단 탭 구간 제외)에서 main 아래 패딩만 제거 — 목록이 바닥까지 이어져 보이게 */
 @media (min-width: 48.0625rem) {
   .app-main:has(.time-ledger-view) {
@@ -4989,7 +5000,7 @@ body {
     -webkit-user-select: none;
   }
 
-  /* 모바일 근무표: 헤더(제목·근무유형 설정) 레이아웃 */
+  /* 모바일 근무표: 헤더(유형 설정) 레이아웃 */
   .calendar-view--mobile-workschedule
     .work-schedule-header.calendar-view-header {
     display: flex !important;
@@ -6573,26 +6584,15 @@ body {
     .work-schedule-monthly-top-row {
     flex-wrap: nowrap;
   }
-  /* 모바일 근무표 탭: 헤더 한 줄에 제목 + 설정 */
+  /* 모바일 근무표 탭: 헤더 — 유형 설정 버튼만 우측 정렬 */
   .work-schedule-header-inner--mobile-tab {
     display: flex;
     flex-direction: row;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     width: 100%;
     gap: 0.75rem;
     box-sizing: border-box;
-  }
-  .work-schedule-header-inner--mobile-tab .work-schedule-header-title-wrap {
-    min-width: 0;
-    flex: 1 1 auto;
-  }
-  /* 모바일 근무표: WORK/제목 숨김 — 근무유형 설정만 우측(할일·캘린더와 동일하게 제목 생략) */
-  .calendar-view--mobile-workschedule .work-schedule-header-title-wrap {
-    display: none !important;
-  }
-  .calendar-view--mobile-workschedule .work-schedule-header-inner--mobile-tab {
-    justify-content: flex-end;
   }
   /* 설정 한 줄만: 서브탭(.calendar-sub-tabs)과 동일 좌우 0.75rem(12px) */
   .calendar-view--mobile-workschedule.work-schedule-view .work-schedule-header {
@@ -11013,29 +11013,16 @@ body {
   box-sizing: border-box;
 }
 
-/* 근무표 헤더: 자산관리·꿈 뷰와 동일 (dream-view-label + dream-view-title 세로 배치) */
+/* 근무표 헤더: 페이지 제목 없음 · 유형 설정만 우측 */
 .work-schedule-header {
   margin-bottom: 1rem;
 }
 
 .work-schedule-header-inner {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: flex-end;
   gap: 1rem;
-}
-
-.work-schedule-header-title-wrap {
-  flex: 0 0 auto;
-}
-
-.work-schedule-header-title-wrap .dream-view-label,
-.work-schedule-header-title-wrap .dream-view-title {
-  margin: 0;
-}
-
-.work-schedule-header-title-wrap .dream-view-title {
-  margin-top: 0.375rem;
 }
 
 .work-schedule-header-inner .work-schedule-settings-btn {
@@ -11044,17 +11031,16 @@ body {
   border: none;
   background: none;
   cursor: pointer;
-  color: var(--text-muted);
+  color: #dc2626;
 }
 
 .work-schedule-header-inner .work-schedule-settings-btn:hover {
-  color: var(--text-body);
+  color: #b91c1c;
 }
 
 .work-schedule-settings-icon {
   display: block;
-  filter: brightness(0) saturate(100%) invert(26%) sepia(10%) saturate(1200%)
-    hue-rotate(115deg);
+  flex-shrink: 0;
 }
 
 /* 근무유형 설정 모달 */
@@ -18147,7 +18133,7 @@ col.asset-expense-col-amount,
 }
 
 .work-schedule-monthly-calendar {
-  background: #f5f5f7;
+  background: #fff;
   border: none;
   border-bottom: var(--line-l3);
   border-radius: 0;
@@ -18160,7 +18146,7 @@ col.asset-expense-col-amount,
   position: sticky;
   top: 0;
   z-index: 2;
-  background: var(--content-bg);
+  background: #fff;
   border: none;
   border-bottom: var(--line-l3);
 }
@@ -18189,6 +18175,7 @@ col.asset-expense-col-amount,
   border-right: var(--line-l3);
   font-size: 0.8125rem;
   text-align: right;
+  background: #fff;
 }
 
 .work-schedule-monthly-day:last-child {
@@ -18196,7 +18183,7 @@ col.asset-expense-col-amount,
 }
 
 .work-schedule-monthly-day.empty {
-  background: var(--ui-surface-alt);
+  background: #fff;
 }
 
 .work-schedule-monthly-day.other-month {

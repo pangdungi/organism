@@ -72,6 +72,10 @@ const WORK_TYPE_DISPLAY_ORDER = DEFAULT_WORK_TYPE_OPTIONS.map((o) => o.name);
 const DELETE_ICON =
   '<svg class="time-task-delete-icon" viewBox="0 0 16 16" width="16" height="16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
 
+/** 툴바 설정(톱니): TodoList TODO_TOOLBAR_SETTINGS_ICON 과 동일 경로 — currentColor 로 CSS에서 #dc2626 */
+const WORK_SCHEDULE_SETTINGS_ICON_SVG =
+  '<svg class="work-schedule-settings-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m19.845 13.561c.1-.505.155-1.027.155-1.561s-.055-1.056-.155-1.561l1.806-1.489c.502-.414.632-1.132.307-1.696l-.869-1.508c-.325-.564-1.011-.811-1.62-.582l-2.198.825c-.779-.684-1.689-1.218-2.691-1.559l-.385-2.316c-.108-.643-.663-1.114-1.314-1.114h-1.738c-.651 0-1.206.471-1.313 1.114l-.386 2.316c-1.002.341-1.912.875-2.691 1.559l-2.198-.825c-.61-.228-1.295.018-1.62.582l-.87 1.508c-.325.564-.195 1.282.307 1.696l1.806 1.489c-.1.505-.155 1.026-.155 1.561s.055 1.056.155 1.561l-1.806 1.489c-.502.414-.632 1.132-.307 1.696l.869 1.508c.325.564 1.011.811 1.62.582l2.198-.825c.779.684 1.689 1.218 2.691 1.559l.385 2.316c.109.643.664 1.114 1.315 1.114h1.738c.651 0 1.206-.471 1.313-1.114l.385-2.316c1.002-.341 1.913-.875 2.691-1.559l2.198.825c.609.229 1.295-.017 1.62-.582l.869-1.508c.325-.564.196-1.282-.307-1.696z"/><circle cx="12.012" cy="12" r="3"/></g></svg>';
+
 function normalizeTypeEntry(o) {
   if (typeof o === "string")
     return {
@@ -280,8 +284,7 @@ export function render(opts = {}) {
   settingsBtn.className = "work-schedule-settings-btn";
   settingsBtn.setAttribute("aria-label", "근무-식단 유형 설정");
   settingsBtn.title = "근무-식단 유형 설정";
-  settingsBtn.innerHTML =
-    '<img src="/toolbaricons/settings.svg" alt="" class="work-schedule-settings-icon" width="20" height="20">';
+  settingsBtn.innerHTML = WORK_SCHEDULE_SETTINGS_ICON_SVG;
 
   const header = document.createElement("div");
   if (mobile) {
@@ -290,34 +293,12 @@ export function render(opts = {}) {
     const headerInner = document.createElement("div");
     headerInner.className =
       "work-schedule-header-inner work-schedule-header-inner--mobile-tab";
-    const titleWrap = document.createElement("div");
-    titleWrap.className = "work-schedule-header-title-wrap";
-    const label = document.createElement("span");
-    label.className = "dream-view-label";
-    label.textContent = "WORK · MEALS";
-    const h = document.createElement("h1");
-    h.className = "dream-view-title calendar-view-title";
-    h.textContent = "근무-식단표";
-    titleWrap.appendChild(label);
-    titleWrap.appendChild(h);
-    headerInner.appendChild(titleWrap);
     headerInner.appendChild(settingsBtn);
     header.appendChild(headerInner);
   } else {
     header.className = "work-schedule-header dream-view-header-wrap";
     const headerInner = document.createElement("div");
     headerInner.className = "work-schedule-header-inner";
-    const titleWrap = document.createElement("div");
-    titleWrap.className = "work-schedule-header-title-wrap";
-    const label = document.createElement("span");
-    label.className = "dream-view-label";
-    label.textContent = "WORK & MEAL PLAN";
-    const h = document.createElement("h1");
-    h.className = "dream-view-title";
-    h.textContent = "근무-식단표";
-    titleWrap.appendChild(label);
-    titleWrap.appendChild(h);
-    headerInner.appendChild(titleWrap);
     headerInner.appendChild(settingsBtn);
     header.appendChild(headerInner);
   }
