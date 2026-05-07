@@ -39031,6 +39031,11 @@ img.time-btn-icon {
   --diary-mac-chrome-bg: transparent;
 }
 
+/* 감정일기(탭 data-diary-tab=\"3\"): 본 패널 기본 좌패딩만 제거 — 다른 탭 레이아웃 유지 */
+.diary-view.diary-view--desktop-mac-diary:has(.diary-layout-wrap[data-diary-tab="3"]) {
+  padding-left: 0;
+}
+
 /* 본문 카드: 오른쪽 영역 넓게 사용(타임블록 ‘메뉴’만 좁은 것과 구분) */
 .diary-view-inner--desktop-mac-diary {
   --diary-read-column-max: min(52rem, calc(100% - 1.5rem));
