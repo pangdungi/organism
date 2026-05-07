@@ -3281,13 +3281,14 @@ body {
   border: none;
   resize: none;
   overflow-y: auto;
-  background: var(--content-bg);
+  background: #ffffff !important;
   font-family: var(--font-body);
   display: block;
   box-sizing: border-box;
 }
 .diary-desktop-compose-modal .diary-qa-answer:focus {
   outline: none;
+  background: #ffffff !important;
 }
 .diary-desktop-compose-modal .diary-qa-answer::placeholder {
   color: var(--text-placeholder);
@@ -3297,7 +3298,7 @@ body {
   min-height: 12rem;
   padding: 1rem 1.25rem;
   margin: 0;
-  background: var(--content-bg);
+  background: #ffffff !important;
   font-size: var(--fs-body);
   font-weight: var(--fw-body);
   line-height: 1.75;
@@ -3309,6 +3310,7 @@ body {
 }
 .diary-desktop-compose-modal .diary-paper-text:focus {
   outline: none;
+  background: #ffffff !important;
 }
 .diary-desktop-compose-modal .diary-paper-text::placeholder {
   color: var(--text-placeholder);
