@@ -3471,22 +3471,29 @@ body {
     background: #ffffff !important;
   }
 
-  /* 모바일 세그먼트 + 자유일기 오른쪽 끝 빨간 + 한 줄 정렬 */
+  /* 모바일 세그먼트 줄: 탭 가운데, + 버튼은 줄 맨 오른쪽(세이프까지) */
   .diary-mobile-tabs-strip {
+    position: relative;
     display: flex;
     flex-flow: row nowrap;
     align-items: center;
     justify-content: center;
-    gap: 0.35rem;
-    padding: 0.3rem 0.65rem 0;
-    margin: 0;
     box-sizing: border-box;
+    width: 100%;
+    padding: 0.35rem calc(0.85rem + env(safe-area-inset-right, 0px)) 0.45rem
+      calc(0.85rem + env(safe-area-inset-left, 0px));
+    margin: 0;
+    gap: 0.35rem;
     background: transparent;
     border: none !important;
     border-bottom: none !important;
   }
 
   .diary-mobile-header-add-btn {
+    position: absolute;
+    right: calc(0.85rem + env(safe-area-inset-right, 0px));
+    top: 50%;
+    transform: translateY(-50%);
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
@@ -3518,7 +3525,7 @@ body {
     gap: 0 !important;
     align-items: stretch !important;
     width: fit-content !important;
-    max-width: min(21.5rem, calc(100% - 1.25rem));
+    max-width: min(21.5rem, calc(100% - 4.25rem));
     min-width: 0;
     margin: 0 !important;
     padding: 0.25rem !important;
@@ -3633,7 +3640,7 @@ body {
     align-items: stretch;
     justify-content: flex-start;
     gap: 0.55rem;
-    padding: 0.25rem 0.85rem 0.65rem;
+    padding: 0.7rem 0.85rem 0.65rem;
     flex-shrink: 0;
     border: none !important;
     border-bottom: none !important;
