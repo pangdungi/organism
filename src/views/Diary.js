@@ -94,14 +94,29 @@ export function render() {
 
   const tabs = document.createElement("div");
   tabs.className = "time-view-tabs diary-tabs";
+  /** 모바일: 세그먼트 오른쪽 끝 빨간 + (행 정렬 공통 레이아웃) */
+  let diaryMobileHeaderAddBtn = null;
   if (!mobileViewport) {
     tabs.innerHTML = `
       <button type="button" class="time-view-tab diary-tab-btn" data-tab="3">감정일기</button>
       <button type="button" class="time-view-tab diary-tab-btn active" data-tab="2">통제일기</button>
       <button type="button" class="time-view-tab diary-tab-btn" data-tab="1">자유일기</button>
     `;
+    inner.appendChild(tabs);
+  } else {
+    const diaryMobileTabsStrip = document.createElement("div");
+    diaryMobileTabsStrip.className = "diary-mobile-tabs-strip";
+    diaryMobileTabsStrip.appendChild(tabs);
+    diaryMobileHeaderAddBtn = document.createElement("button");
+    diaryMobileHeaderAddBtn.type = "button";
+    diaryMobileHeaderAddBtn.className = "diary-mobile-header-add-btn";
+    diaryMobileHeaderAddBtn.title = "일기 추가";
+    diaryMobileHeaderAddBtn.setAttribute("aria-label", "일기 추가");
+    diaryMobileHeaderAddBtn.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+    diaryMobileTabsStrip.appendChild(diaryMobileHeaderAddBtn);
+    inner.appendChild(diaryMobileTabsStrip);
   }
-  inner.appendChild(tabs);
 
   const layoutWrap = document.createElement("div");
   layoutWrap.className = "diary-layout-wrap";
@@ -690,6 +705,12 @@ export function render() {
       openDiaryComposeModal(newEntry, currentTabId, { draft: true });
     };
 
+    if (mobile && diaryMobileHeaderAddBtn) {
+      diaryMobileHeaderAddBtn.onclick = () => {
+        addPageHandler();
+      };
+    }
+
     /** 모바일 서브탭은 항상 3개(감정·통제·자유). 예전에는 항목 있는 탭만 표시해 통제만 쓰면 나머지 탭이 사라짐 */
     const DIARY_MOBILE_TAB_ORDER = ["3", "2", "1"];
 
@@ -813,18 +834,6 @@ export function render() {
       });
       searchRow.appendChild(searchInput);
       bar.appendChild(searchRow);
-      const actionsRow = document.createElement("div");
-      actionsRow.className = "diary-mobile-entry-bar-actions";
-      const addBtn = document.createElement("button");
-      addBtn.type = "button";
-      addBtn.className = "diary-mobile-add-btn diary-mobile-add-btn-primary";
-      addBtn.title = "일기 추가";
-      addBtn.setAttribute("aria-label", "일기 추가");
-      addBtn.innerHTML =
-        '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>';
-      addBtn.addEventListener("click", addPageHandler);
-      actionsRow.appendChild(addBtn);
-      bar.appendChild(actionsRow);
       layout.appendChild(bar);
     }
 
