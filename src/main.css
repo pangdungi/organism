@@ -3463,12 +3463,12 @@ body {
   /* 감정관리(모바일): 상단 세그먼트 — 데스크톱과 동일 맥 UISegmentedControl 톤, 가운데·폭 제한 */
   .diary-view--mobile {
     padding-top: 0;
-    background: #ffffff !important;
+    background: transparent !important;
   }
 
   .diary-view--mobile .diary-view-inner {
     align-items: stretch;
-    background: #ffffff !important;
+    background: transparent !important;
   }
 
   /* 모바일 세그먼트 줄: 탭 가운데, + 버튼은 줄 맨 오른쪽(세이프까지) */
@@ -3644,7 +3644,7 @@ body {
     flex-shrink: 0;
     border: none !important;
     border-bottom: none !important;
-    background: #ffffff !important;
+    background: transparent !important;
   }
 
   .diary-mobile-search-row {
@@ -4003,7 +4003,7 @@ body {
   }
 
   body:has(.app-main > .app-tab-panel > .diary-view) {
-    background: #ffffff;
+    background: var(--app-bg);
   }
 
   .app-main:has(> .app-tab-panel > .calendar-view),
@@ -4012,7 +4012,7 @@ body {
   }
 
   .app-main:has(> .app-tab-panel > .diary-view) {
-    background: #ffffff !important;
+    background: var(--app-bg) !important;
   }
 
   .app-main:has(> .app-tab-panel > .calendar-view) .app-tab-panel,
@@ -4021,7 +4021,7 @@ body {
   }
 
   .app-main:has(> .app-tab-panel > .diary-view) .app-tab-panel {
-    background: #ffffff !important;
+    background: var(--app-bg) !important;
   }
 
   .app-main:has(> .app-tab-panel > .calendar-view)
@@ -4042,9 +4042,8 @@ body {
   .app-main:has(> .app-tab-panel > .diary-view)
     > .app-tab-panel
     > .diary-view {
-    --content-bg: #ffffff;
-    --app-bg: #ffffff;
-    background: #ffffff !important;
+    --content-bg: var(--app-bg);
+    background: transparent !important;
   }
 
   /* 오늘 탭(모바일): 시간 기록과 동일 main 패딩 36px 0 72px (+ safe-area) */
