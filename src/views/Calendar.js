@@ -185,9 +185,9 @@ const LP_CAL_TODO_SIDEBAR_FULL = "full";
 /** 오늘 탭 타임라인 등: 타임그리드 옆 할일 사이드바 없음 */
 const LP_CAL_TODO_SIDEBAR_NONE = "none";
 
-/** 타임블록·1주(구글) 시간격자 공통: 15분 슬롯 하루 96칸 — 예상/실제/주간 블록·DOM 행과 동일 */
-const CAL_1DAY_TIMETABLE_SLOTS_PER_DAY = 96;
-const CAL_1DAY_TIMETABLE_MIN_PER_SLOT = 15;
+/** 타임블록·1주(구글) 시간격자 공통: 1시간 슬롯 하루 24칸 — 예상/실제/주간 블록·DOM 행과 동일 */
+const CAL_1DAY_TIMETABLE_SLOTS_PER_DAY = 24;
+const CAL_1DAY_TIMETABLE_MIN_PER_SLOT = 60;
 
 /** 캘린더 막대 할 일: 체크박스 대신 섹션색 세로 막대(|) */
 function lpCalendarSpanBarTodoMarkerHtml(sectionColor) {
