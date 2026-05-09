@@ -11119,12 +11119,18 @@ export function renderTimeBudgetTablesForCalendar(
   fourPanels.appendChild(investSection);
   fourPanels.appendChild(consumeSection);
 
-  container.innerHTML = "";
   if (topBarLeft) {
+    const topBarWrap = topBarLeft.closest(".calendar-1day-top-bar");
+    const keep =
+      topBarWrap && container.contains(topBarWrap) ? topBarWrap : null;
+    if (keep) keep.remove();
+    container.innerHTML = "";
+    if (keep) container.appendChild(keep);
     topBarLeft.innerHTML = "";
     topBarLeft.appendChild(remainingHeader);
     container.appendChild(fourPanels);
   } else {
+    container.innerHTML = "";
     const topRow = document.createElement("div");
     topRow.className = "calendar-1day-budget-top-row";
     topRow.appendChild(remainingHeader);

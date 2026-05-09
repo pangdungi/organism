@@ -408,7 +408,44 @@ function rgbaToRgb(rgbaStr) {
   return `rgb(${m[1]}, ${m[2]}, ${m[3]})`;
 }
 
-/** rgba 문자열에서 bg(투명) / border 색으로 변환 (타임테이블 예상·실제 블록용) */
+/**
+ * 타임블록 면 스펙 — 디자인 시트 팔레트를 앱 분류에 맞게 매핑
+ * - 생산적 과제(productive): Blush(빨강 계열)
+ * - 비생산적 과제(nonproductive): Sky(파랑)
+ * - 기타·수면·근무 등(other): Mint(초록)
+ */
+export const TIMETABLE_SURFACE_SPECS = {
+  productive: {
+    bg: "#FDECEA",
+    border: "#F5B8B2",
+    textPrimary: "#922B1F",
+    textSecondary: "#C0392B",
+  },
+  nonproductive: {
+    bg: "#E8F2FA",
+    border: "#A8C8E8",
+    textPrimary: "#1F4D70",
+    textSecondary: "#2C6B9A",
+  },
+  other: {
+    bg: "#E5F5EF",
+    border: "#A8DCC8",
+    textPrimary: "#1E5C44",
+    textSecondary: "#2A7D5F",
+  },
+};
+
+function timetableSurfaceEntry(key) {
+  const s = TIMETABLE_SURFACE_SPECS[key] || TIMETABLE_SURFACE_SPECS.other;
+  return {
+    bg: s.bg,
+    border: s.border,
+    accentText: s.textPrimary,
+    accentMuted: s.textSecondary,
+  };
+}
+
+/** rgba 문자열에서 bg(투명) / border 색으로 변환 (리스트·커스텀 과제색 타임블록용) */
 function rgbaToTimetableColors(rgbaStr, bgAlpha = 0.15, borderAlpha = 0.5) {
   const m = rgbaStr.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
   if (!m) return { bg: rgbaStr, border: rgbaStr };
@@ -419,28 +456,18 @@ function rgbaToTimetableColors(rgbaStr, bgAlpha = 0.15, borderAlpha = 0.5) {
   };
 }
 
-/** 타임테이블(예상/오늘 실제) 블록용 생산·비생산·기타 색상 { productive, nonproductive, other } 각 { bg, border } */
+/** 타임블록 — 생산(Blush)·비생산(Sky)·기타 Mint(수면·근무 등) 면/테두리/글자색 */
 export function getTimeCategoryColorsForTimetable() {
-  const productive = DEFAULT_TIME_CATEGORY_COLORS.productive;
-  const nonproductive = DEFAULT_TIME_CATEGORY_COLORS.nonproductive;
-  const other = DEFAULT_TIME_CATEGORY_COLORS.other;
   return {
-    productive: rgbaToTimetableColors(productive, 0.1, 0.7),
-    nonproductive: rgbaToTimetableColors(nonproductive, 0.1, 0.7),
-    other: rgbaToTimetableColors(other, 0.1, 0.7),
+    productive: timetableSurfaceEntry("productive"),
+    nonproductive: timetableSurfaceEntry("nonproductive"),
+    other: timetableSurfaceEntry("other"),
   };
 }
 
-/** 타임테이블 '예상' 컬럼용 (실제보다 연하되, 0.06대는 그리드와 구분이 안 되어 막대가 '비어 있음'처럼 보임) */
+/** 타임블록 예상 컬럼 — 동일 서피스 스펙(예상·실제 톤 통일) */
 export function getTimeCategoryColorsForTimetableExpected() {
-  const productive = DEFAULT_TIME_CATEGORY_COLORS.productive;
-  const nonproductive = DEFAULT_TIME_CATEGORY_COLORS.nonproductive;
-  const other = DEFAULT_TIME_CATEGORY_COLORS.other;
-  return {
-    productive: rgbaToTimetableColors(productive, 0.14, 0.55),
-    nonproductive: rgbaToTimetableColors(nonproductive, 0.14, 0.55),
-    other: rgbaToTimetableColors(other, 0.14, 0.55),
-  };
+  return getTimeCategoryColorsForTimetable();
 }
 
 /** 시간가계부 생산/비생산/기타 색상을 DOM에 적용(앱 기본만) */

@@ -165,21 +165,12 @@ function lpEnsureAppColorsCalendarListener() {
 }
 lpEnsureAppColorsCalendarListener();
 
-/** 오늘 실제 세그먼트 상·하 구분선 — 생산성 테두리 색(rgb) + 낮은 알파로 연하게 */
-function rgbaToSoftHorizontalEdge(borderRgba, alpha = 0.28) {
-  const m = String(borderRgba || "").match(
-    /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i,
-  );
-  if (!m) return `rgba(61, 74, 62, ${alpha})`;
-  return `rgba(${m[1]}, ${m[2]}, ${m[3]}, ${alpha})`;
-}
-
 const CALENDAR_DATE_DEBUG = false;
 function dateDebug(_tag, ..._args) {
   void CALENDAR_DATE_DEBUG;
 }
 
-/** 날짜 정하기 사이드바: 한 사분면(중요+여유)만 vs 사이드 메뉴 캘린더=우선순위 탭과 동일 전체 목록 */
+/** 날짜 정하기 사이드바: 전체 할일 표시(사분면 필터 없음). 모드 값은 레이아웃·dataset 호환용 */
 const LP_CAL_TODO_SIDEBAR_QUADRANT = "quadrant";
 const LP_CAL_TODO_SIDEBAR_FULL = "full";
 /** 오늘 탭 타임라인 등: 타임그리드 옆 할일 사이드바 없음 */
@@ -188,6 +179,12 @@ const LP_CAL_TODO_SIDEBAR_NONE = "none";
 /** 타임블록·1주(구글) 시간격자 공통: 1시간 슬롯 하루 24칸 — 예상/실제/주간 블록·DOM 행과 동일 */
 const CAL_1DAY_TIMETABLE_SLOTS_PER_DAY = 24;
 const CAL_1DAY_TIMETABLE_MIN_PER_SLOT = 60;
+/** 타임블록: 칼럼 좌우 안쪽 여백·상하·반열(동시 일정) 사이 간격(px) */
+const CAL_1DAY_TIMEBLOCK_INSET_X = 6;
+const CAL_1DAY_TIMEBLOCK_INSET_Y = 4;
+const CAL_1DAY_TIMEBLOCK_LANE_GAP_PX = 6;
+/** 1일·1주 타임블록: 이 분 이하(포함)는 막대 안 글자 숨김 → 호버 시 블록색 툴팁 */
+const CAL_TIMEBLOCK_HIDE_LABEL_MAX_MINUTES = 30;
 
 /** 캘린더 막대 할 일: 체크박스 대신 섹션색 세로 막대(|) */
 function lpCalendarSpanBarTodoMarkerHtml(sectionColor) {
@@ -221,27 +218,53 @@ function lpWrapCalendarTodoSidebarListEl(todoListEl) {
   return root;
 }
 
-function lpCalendarDateSidebarTodoListOpts(sidebarMode, extra = {}) {
+function lpCalendarDateSidebarTodoListOpts(_sidebarMode, extra = {}) {
   const base = {
     hideHeader: true,
     categoryToolbarRightActions: true,
     enableDragToCalendar: true,
     ...extra,
   };
-  if (sidebarMode === LP_CAL_TODO_SIDEBAR_FULL) {
-    return {
-      ...base,
-      enableDragToEisenhower: false,
-      eisenhowerSidebarFirst: true,
-    };
-  }
+  /* 우선순위 탭과 동일: 사분면으로 목록을 좁히지 않음(미분류·다른 구역 포함). */
   return {
     ...base,
-    eisenhowerFilter: "important-not-urgent",
+    enableDragToEisenhower: false,
+    eisenhowerSidebarFirst: true,
   };
 }
 
-function lpBindCalendarDateTodoSidebarCollapse(todoSidebar) {
+/** 1주 뷰: 할일 사이드바 헤더 높이 = 왼쪽 메인 상단 ~ 요일 헤더 행 하단(동일 가로 기준선) */
+function syncCalendar1WeekSidebarHeaderHeight(mainSectionEl, sidebarEl) {
+  if (!mainSectionEl || !sidebarEl) return;
+  try {
+    if (!mainSectionEl.isConnected || !sidebarEl.isConnected) return;
+  } catch (_) {
+    return;
+  }
+  const headerRow = mainSectionEl.querySelector(
+    ".calendar-1week-google-header-row",
+  );
+  const sidebarHeader = sidebarEl.querySelector(
+    ".calendar-todo-sidebar-header",
+  );
+  if (!headerRow || !sidebarHeader) return;
+
+  if (sidebarEl.classList.contains("collapsed")) {
+    sidebarHeader.style.removeProperty("height");
+    sidebarHeader.style.removeProperty("min-height");
+    sidebarHeader.style.removeProperty("max-height");
+    return;
+  }
+
+  const mainTop = mainSectionEl.getBoundingClientRect().top;
+  const rowBottom = headerRow.getBoundingClientRect().bottom;
+  const px = Math.max(0, Math.round(rowBottom - mainTop));
+  sidebarHeader.style.setProperty("height", `${px}px`);
+  sidebarHeader.style.setProperty("min-height", `${px}px`);
+  sidebarHeader.style.setProperty("max-height", `${px}px`);
+}
+
+function lpBindCalendarDateTodoSidebarCollapse(todoSidebar, onCollapsedChange) {
   let sidebarCollapsed = true;
   const collapseBtn = todoSidebar.querySelector(
     ".calendar-todo-sidebar-collapse",
@@ -256,6 +279,15 @@ function lpBindCalendarDateTodoSidebarCollapse(todoSidebar) {
     collapseBtn.title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
     if (collapseTextEl)
       collapseTextEl.textContent = sidebarCollapsed ? ">>" : "<<";
+    const fire = () => {
+      try {
+        onCollapsedChange?.();
+      } catch (_) {}
+    };
+    fire();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(fire);
+    });
   });
 }
 
@@ -527,6 +559,27 @@ function timetableAccentTextColor(accentRgba) {
   return `rgb(${m[1]}, ${m[2]}, ${m[3]})`;
 }
 
+/** 1일·1주 타임블록 면: 격자가 비쳐 어둡게 보이지 않도록 채움 알파 하한(너무 옅은 값만 올림) */
+function timetableFillFaceBg(bgRgba, minAlpha = 0.82) {
+  const m = String(bgRgba || "").match(
+    /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)/i,
+  );
+  if (!m) return bgRgba;
+  const prev = m[4] !== undefined ? parseFloat(m[4]) : 1;
+  const a = Math.min(1, Math.max(prev, minAlpha));
+  return `rgba(${m[1]}, ${m[2]}, ${m[3]}, ${a})`;
+}
+
+/** 타임블록 생산성 면색이 디자인 시트(hex)인지 — 면·테두리·진한 글자 적용 */
+function timetableUsesHexSurface(c) {
+  return !!(
+    c &&
+    c.accentText &&
+    typeof c.bg === "string" &&
+    c.bg.startsWith("#")
+  );
+}
+
 /** 1주 시간그리드: startMin/endMin 기준 시간 겹침(분) — 일간 뷰 직접겹침 클러스터와 동일 */
 function overlapMinutesBetweenScheduleSpans(a, b) {
   const sa = Number(a?.startMin);
@@ -705,6 +758,101 @@ function escapeHtml(s) {
   const div = document.createElement("div");
   div.textContent = s;
   return div.innerHTML;
+}
+
+let _lpTimeBlockHoverTipHideTimer = null;
+let _lpTimeBlockTipScrollBound = false;
+
+function lpEnsureTimeBlockHoverTip() {
+  let tip = document.getElementById("lp-time-block-hover-tip");
+  if (!tip) {
+    tip = document.createElement("div");
+    tip.id = "lp-time-block-hover-tip";
+    tip.className = "lp-time-block-hover-tip";
+    tip.setAttribute("role", "tooltip");
+    document.body.appendChild(tip);
+    if (!_lpTimeBlockTipScrollBound) {
+      _lpTimeBlockTipScrollBound = true;
+      window.addEventListener(
+        "scroll",
+        () => {
+          lpHideTimeBlockHoverTip();
+        },
+        true,
+      );
+    }
+  }
+  return tip;
+}
+
+function lpHideTimeBlockHoverTip() {
+  clearTimeout(_lpTimeBlockHoverTipHideTimer);
+  const tip = document.getElementById("lp-time-block-hover-tip");
+  if (tip) tip.classList.remove("lp-time-block-hover-tip--visible");
+}
+
+function lpShowTimeBlockHoverTipFromRect(
+  rect,
+  taskName,
+  rangeStr,
+  bgCss,
+  fgCss,
+) {
+  const tip = lpEnsureTimeBlockHoverTip();
+  const fg = fgCss || "#ffffff";
+  tip.innerHTML = `<div class="lp-time-block-hover-tip__title">${escapeHtml((taskName || "").trim())}</div><div class="lp-time-block-hover-tip__meta">${escapeHtml(rangeStr || "")}</div>`;
+  tip.style.backgroundColor = bgCss || "#4b5563";
+  tip.style.color = fg;
+  tip.classList.add("lp-time-block-hover-tip--visible");
+  requestAnimationFrame(() => {
+    const pad = 8;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const tw = tip.offsetWidth;
+    const th = tip.offsetHeight;
+    let left = rect.left + rect.width / 2 - tw / 2;
+    let top = rect.bottom + pad;
+    if (top + th > vh - pad) top = Math.max(pad, rect.top - th - pad);
+    if (left < pad) left = pad;
+    if (left + tw > vw - pad) left = Math.max(pad, vw - tw - pad);
+    tip.style.left = `${Math.round(left)}px`;
+    tip.style.top = `${Math.round(top)}px`;
+  });
+}
+
+/** 좁은 타임블록: 본문 대신 호버 시 블록 배경색 맞춤 툴팁(터치는 토스트) */
+function lpAttachColoredTimeBlockTooltip(el, opts) {
+  if (!el || typeof el.addEventListener !== "function") return;
+  const taskName = (opts.taskName || "").trim();
+  const rangeStr = opts.rangeStr || "";
+  const bgCss = opts.bgCss || "";
+  const fgCss = opts.accentCss || opts.fgCss || "";
+  const show = () => {
+    clearTimeout(_lpTimeBlockHoverTipHideTimer);
+    const r = el.getBoundingClientRect();
+    if (r.width < 2 || r.height < 2) return;
+    lpShowTimeBlockHoverTipFromRect(
+      r,
+      taskName,
+      rangeStr,
+      bgCss,
+      fgCss || "#ffffff",
+    );
+  };
+  const hide = () => {
+    _lpTimeBlockHoverTipHideTimer = setTimeout(lpHideTimeBlockHoverTip, 60);
+  };
+  el.addEventListener("mouseenter", show);
+  el.addEventListener("mouseleave", hide);
+  el.addEventListener("mousedown", hide);
+  try {
+    if (window.matchMedia("(hover: none)").matches) {
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        showToast(taskName || "일정", rangeStr);
+      });
+    }
+  } catch (_) {}
 }
 
 const CALENDAR_CATEGORIES = [
@@ -2092,8 +2240,8 @@ function renderMonthlyView(
         : 0;
       const rowsNeeded = maxRow + 1;
       const BARS_TOP = window.matchMedia("(max-width: 48rem)").matches
-        ? 1.02
-        : 1.52;
+        ? 1.62
+        : 2.25;
       const BOTTOM_PAD = window.matchMedia("(max-width: 48rem)").matches
         ? 0.34
         : 0.42;
@@ -2777,8 +2925,8 @@ function render2WeekView(
         : 0;
       const rowsNeeded = maxRow + 1;
       const BARS_TOP = window.matchMedia("(max-width: 48rem)").matches
-        ? 1.02
-        : 1.52;
+        ? 1.62
+        : 2.25;
       const BOTTOM_PAD = window.matchMedia("(max-width: 48rem)").matches
         ? 0.34
         : 0.42;
@@ -3450,8 +3598,8 @@ function render3WeekView(
         : 0;
       const rowsNeeded = maxRow + 1;
       const BARS_TOP = window.matchMedia("(max-width: 48rem)").matches
-        ? 1.02
-        : 1.52;
+        ? 1.62
+        : 2.25;
       const BOTTOM_PAD = window.matchMedia("(max-width: 48rem)").matches
         ? 0.34
         : 0.42;
@@ -4649,10 +4797,11 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   /** 오늘 실제: 너무 짧으면 막대가 사라져 보임 — 시각 최소(분). 모바일 탭 상세는 이보다 길어도 읽기 어려울 때만 */
   const ACTUAL_MIN_VISUAL_MINUTES = 8;
   const ACTUAL_TAP_TOAST_MAX_MINUTES = 18;
-  /** 예상·실제 공통: 이 분 이하(포함)는 과제명·시간 라벨 생략 — 20분까지는 표시하지 않음 */
-  const TIMETABLE_MAX_MINUTES_TO_HIDE_LABEL = 20;
-  /** 오늘실제만: 이 분 이하(포함)는 과제명·시간 한 줄, 초과는 두 줄(기존) */
-  const ACTUAL_MAX_MINUTES_ONE_LINE_LABEL = 30;
+  /** 예상·실제 공통: 이 분 이하(포함)는 과제명·시간 라벨 생략 — 호버 툴팁만 */
+  const TIMETABLE_MAX_MINUTES_TO_HIDE_LABEL =
+    CAL_TIMEBLOCK_HIDE_LABEL_MAX_MINUTES;
+  /** 30분 초과 구간: 한 줄 라벨(과제명+시간) 적용 상한 */
+  const ACTUAL_MAX_MINUTES_ONE_LINE_LABEL = 55;
 
   const createOverlay = (spans, colors, isActual, _maxLane = 0) => {
     const overlay = document.createElement("div");
@@ -4735,20 +4884,25 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         blockFill.style.bottom = "auto";
         blockFill.style.minHeight = "";
       };
+      const insetX = CAL_1DAY_TIMEBLOCK_INSET_X;
+      const insetY = CAL_1DAY_TIMEBLOCK_INSET_Y;
+      const laneGapPx = CAL_1DAY_TIMEBLOCK_LANE_GAP_PX;
       if (useLaneLayout) {
-        /* 겹침 구간: 하루 비율 absolute + 가로 분할 (예상·실제 동일) */
+        /* 겹침 구간: 칼럼 안쪽 여백 + 반열 사이 gap 으로 카드 분리 */
         spanFullOverlayGridForAbs();
         blockFill.style.position = "absolute";
-        blockFill.style.left = `${(laneLocal / laneCountLocal) * 100}%`;
-        blockFill.style.width = `${100 / laneCountLocal}%`;
+        const n = laneCountLocal;
+        const totalPxReduce = 2 * insetX + (n - 1) * laneGapPx;
+        blockFill.style.width = `calc((100% - ${totalPxReduce}px) / ${n})`;
+        blockFill.style.left = `calc(${insetX}px + ${laneLocal} * (((100% - ${totalPxReduce}px) / ${n}) + ${laneGapPx}px))`;
         applyDayVerticalExtents();
         blockFill.style.zIndex = String(100 + Math.min(blockStartMin, 2000));
       } else if (isActual) {
         /* 오늘 실제: 전폭 absolute (그리드 행에 걸면 인접 구간 겹침) */
         spanFullOverlayGridForAbs();
         blockFill.style.position = "absolute";
-        blockFill.style.left = "0";
-        blockFill.style.width = "100%";
+        blockFill.style.left = `${insetX}px`;
+        blockFill.style.width = `calc(100% - ${2 * insetX}px)`;
         applyDayVerticalExtents();
         blockFill.style.zIndex = String(100 + Math.min(blockStartMin, 2000));
       } else {
@@ -4758,8 +4912,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
          */
         spanFullOverlayGridForAbs();
         blockFill.style.position = "absolute";
-        blockFill.style.left = "0";
-        blockFill.style.width = "100%";
+        blockFill.style.left = `${insetX}px`;
+        blockFill.style.width = `calc(100% - ${2 * insetX}px)`;
         applyDayVerticalExtents();
         blockFill.style.zIndex = String(100 + Math.min(blockStartMin, 2000));
       }
@@ -4778,24 +4932,16 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         blockFill.style.flexDirection = "column";
       }
       blockFill.style.gap = "0";
-      blockFill.style.padding = "0";
+      /* 상하는 격자선과 살짝 띄움 — 좌우는 absolute left/width inset 로 처리 */
+      blockFill.style.padding = `${insetY}px 0`;
+      blockFill.style.border = "none";
       /* 예상: 직전 visible이 레인에서는 가로 삐져나옴 → 겹침(반열)만 hidden으로 자름 */
       blockFill.style.overflow =
         useLaneLayout || isActual ? "hidden" : "visible";
-      if (useLaneLayout) {
-        blockFill.style.borderRadius =
-          laneLocal === 0
-            ? "0.375rem 0 0 0.375rem"
-            : laneLocal === laneCountLocal - 1
-              ? "0 0.375rem 0.375rem 0"
-              : "0";
-      } else {
-        blockFill.style.borderRadius = "0.375rem";
-        blockFill.style.border = "none";
-      }
+      /* 반열 각각 독립 카드처럼 모서리 둥글게 */
+      blockFill.style.borderRadius = "0.375rem";
       blockFill.style.boxSizing = "border-box";
-      /* 타임박스: 왼쪽 진한 실선, 살짝 둥근 모서리, 투명 컬러 채움 */
-      let firstBorderColor = null;
+      /* 타임박스: 살짝 둥근 카드형, 면 채움 위주(왼쪽 굵은 실선·세그먼트 상하선 없음) */
       for (const sp of group) {
         let c;
         if (
@@ -4813,7 +4959,6 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
           c = colors[sp.prod] ?? colors.other;
         }
         if (!c) continue;
-        if (!firstBorderColor) firstBorderColor = c.border;
         /* actualBlockMin 기준으로 세그먼트 비율 계산 - 블록 높이 축소 시에도 세그먼트가 블록 전체를 채우도록 */
         const segHeightPct =
           actualBlockMin > 0
@@ -4840,15 +4985,24 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         seg.style.width = "100%";
         seg.style.display = "flex";
         seg.style.alignItems = "flex-start";
-        /* 왼쪽 컬러 바(border-left는 부모 blockFill)와 라벨 사이 — 너무 붙어 보이지 않게 */
-        seg.style.padding = "0.25rem 0.375rem 0.25rem 1rem";
-        seg.style.backgroundColor = c.bg;
-        seg.style.boxSizing = "border-box";
-        if (c.border) {
-          const edge = rgbaToSoftHorizontalEdge(c.border, 0.26);
-          seg.style.borderTop = `0.5px solid ${edge}`;
-          seg.style.borderBottom = `0.5px solid ${edge}`;
+        seg.style.padding = "0.25rem 0.5rem";
+        const surfHex = timetableUsesHexSurface(c);
+        if (surfHex && c.border) {
+          seg.classList.add("calendar-1day-time-slot-fill-seg--surface-spec");
+          seg.style.backgroundColor = c.bg;
+          seg.style.border = `1px solid ${c.border}`;
+          if (c.accentText) {
+            seg.style.setProperty("--calendar-tb-fg", c.accentText);
+            seg.style.setProperty(
+              "--calendar-tb-fg-muted",
+              c.accentMuted || c.accentText,
+            );
+          }
+        } else {
+          seg.style.backgroundColor = timetableFillFaceBg(c.bg);
+          seg.style.border = "none";
         }
+        seg.style.boxSizing = "border-box";
         /* 예상: 기본은 overflow visible 이지만 반열 겹침은 인라인 visible이 우선되어 밖으로 새어 나감 */
         if (!isActual) {
           seg.style.overflow = useLaneLayout ? "hidden" : "visible";
@@ -4901,14 +5055,31 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
             labelWrap.appendChild(labelName);
             labelWrap.appendChild(labelTime);
           }
-          const labelFg = timetableAccentTextColor(c.border || c.bg);
-          if (labelFg) labelWrap.style.color = labelFg;
+          const labelFg =
+            c.accentText || timetableAccentTextColor(c.border || c.bg);
+          if (!surfHex) {
+            if (labelFg) labelWrap.style.color = labelFg;
+            if (c.accentMuted) {
+              const tmEl = labelWrap.querySelector(
+                ".calendar-1day-time-slot-label-time",
+              );
+              if (tmEl) tmEl.style.color = c.accentMuted;
+            }
+          }
           seg.appendChild(labelWrap);
+        } else {
+          seg.classList.add("calendar-1day-time-slot-fill-seg--tooltip-only");
+          lpAttachColoredTimeBlockTooltip(seg, {
+            taskName: sp.taskName,
+            rangeStr: `${sp.startDisplay} ~ ${sp.endDisplay}`,
+            bgCss: surfHex ? c.bg : timetableFillFaceBg(c.bg),
+            accentCss:
+              c.accentText ||
+              timetableAccentTextColor(c.border || c.bg) ||
+              "#ffffff",
+          });
         }
         blockFill.appendChild(seg);
-      }
-      if (firstBorderColor) {
-        blockFill.style.borderLeft = `0.125rem solid ${firstBorderColor}`;
       }
       if (isActual && actualBlockMin > 0) {
         const timeRange = `${fmt(blockStartMin)} ~ ${fmt(blockEndMin)}`;
@@ -5235,6 +5406,8 @@ function render1DayView(
       todayBtn.title = dayOffset === 0 ? "Today" : `${y}년 ${m}월 ${d}일`;
     }
 
+    if (topBar.parentNode) topBar.parentNode.removeChild(topBar);
+
     calendarGrid.innerHTML = "";
     calendarGrid.className =
       "calendar-monthly-grid calendar-1day-time-grid calendar-1day-split-layout";
@@ -5243,6 +5416,7 @@ function render1DayView(
 
     const budgetColumn = document.createElement("div");
     budgetColumn.className = "calendar-1day-budget-column";
+    budgetColumn.appendChild(topBar);
     const timeColumn = document.createElement("div");
     timeColumn.className = "calendar-1day-time-column";
 
@@ -5690,7 +5864,6 @@ function render1DayView(
   topBar.appendChild(topBarLeft);
   topBar.appendChild(topBarRight);
 
-  calendarSection.appendChild(topBar);
   calendarSection.appendChild(calendarGrid);
   contentRow.appendChild(calendarSection);
   wrap.appendChild(contentRow);
@@ -6085,6 +6258,14 @@ function render1WeekView(
       alldaySection.appendChild(cell);
     });
 
+    /** 종일 기간 막대: 월간 주 행과 동일 — left/width %는 7일 영역 기준(한 칸 entries가 아님) */
+    const alldaySpanLayer = document.createElement("div");
+    alldaySpanLayer.className =
+      "calendar-monthly-bars calendar-1week-google-allday-bars";
+    alldaySpanLayer.style.gridColumn = "2 / -1";
+    alldaySpanLayer.style.gridRow = "1";
+    alldaySection.appendChild(alldaySpanLayer);
+
     const BAR_HEIGHT_AL = window.matchMedia("(max-width: 48rem)").matches
       ? 1.02
       : 1.78;
@@ -6334,19 +6515,9 @@ function render1WeekView(
             placed = true;
           }
         } else if (!b.isSingleDay && b.startDate && b.dueDate) {
-          const anchorKey =
-            b.startDate < firstDayKey ? firstDayKey : b.startDate;
-          const pack = alldayCellsByDate[anchorKey];
-          const entries = pack?.entriesEl;
-          if (entries) {
-            entries.style.position = "relative";
-            bar.style.cssText = `left:0;right:0;width:100%;max-width:100%;box-sizing:border-box;--bar-bg:${b.color};top:${STACK_PAD_TOP_AL + b.row * BAR_HEIGHT_AL}rem`;
-            entries.appendChild(bar);
-            const mr = maxRowTouchingDateKey[anchorKey];
-            const stackRows = mr >= 0 ? mr + 1 : 0;
-            entries.style.minHeight = `${STACK_PAD_TOP_AL + stackRows * BAR_HEIGHT_AL + STACK_PAD_BOT_AL}rem`;
-            placed = true;
-          }
+          bar.style.cssText = `left:${b.left}%;width:${b.width}%;box-sizing:border-box;--bar-bg:${b.color};top:${STACK_PAD_TOP_AL + b.row * BAR_HEIGHT_AL}rem`;
+          alldaySpanLayer.appendChild(bar);
+          placed = true;
         }
       }
       if (!placed) {
@@ -6410,7 +6581,6 @@ function render1WeekView(
         bar.className = "calendar-1week-google-block";
         const pk = prodKeyForWeekExpectedSpan(span);
         const c = prodColors[pk] || prodColors.other;
-        bar.style.background = c.bg;
         const dur = span.endMin - span.startMin;
         bar.style.top = `calc(${span.startMin} * 100% / ${MIN_PER_DAY})`;
         bar.style.height =
@@ -6420,75 +6590,88 @@ function render1WeekView(
           spans,
         );
         const narrowLane = laneCount > 1;
+        const insetX = CAL_1DAY_TIMEBLOCK_INSET_X;
+        const laneGapPx = CAL_1DAY_TIMEBLOCK_LANE_GAP_PX;
         if (narrowLane) {
           bar.classList.add("calendar-1week-google-block--narrow-lane");
-          if (laneIdx === 0)
-            bar.classList.add(
-              "calendar-1week-google-block--narrow-lane-leading",
-            );
+          const n = laneCount;
+          const totalPxReduce = 2 * insetX + (n - 1) * laneGapPx;
+          bar.style.left = `calc(${insetX}px + ${laneIdx} * (((100% - ${totalPxReduce}px) / ${n}) + ${laneGapPx}px))`;
+          bar.style.width = `calc((100% - ${totalPxReduce}px) / ${n})`;
+        } else {
+          bar.style.left = `${insetX}px`;
+          bar.style.width = `calc(100% - ${2 * insetX}px)`;
         }
-        /** 열 구분선과 동일 두께 — 별도 굵은 띠로 착시 나지 않게 */
-        const gridColW = "0.0625rem";
-        bar.style.borderLeft = `${gridColW} solid ${c.border}`;
-        if (c.border) {
-          const edge = rgbaToSoftHorizontalEdge(c.border, 0.26);
-          bar.style.borderTop = `0.5px solid ${edge}`;
-          bar.style.borderBottom = `0.5px solid ${edge}`;
-          const rightEdgeLane =
-            laneCount <= 1 || laneIdx === laneCount - 1;
-          if (rightEdgeLane) {
-            bar.style.borderRight = `0.5px solid ${edge}`;
-          }
-        }
-        bar.style.marginLeft =
-          laneIdx === 0 ? `calc(-1 * ${gridColW})` : "0";
-        /* margin으로 왼쪽만 당기면 폭 그대로라 오른쪽 끝이 한 줄 두께 짧아져 다음 반열 앞에 흰 빈틈 발생 → 0번만 폭 보정 */
-        bar.style.width =
-          laneCount > 1 && laneIdx === 0
-            ? `calc(100% / ${laneCount} + ${gridColW})`
-            : laneCount > 1
-              ? `calc(100% / ${laneCount})`
-              : "100%";
-        bar.style.left =
-          laneCount > 1
-            ? `calc(${laneIdx} * 100% / ${laneCount})`
-            : "0";
         const rangeStr = `${span.startDisplay} ~ ${span.endDisplay}`;
-        bar.title = `${String(span.taskName || "").trim()} (${rangeStr})`;
+        const taskLabel = String(span.taskName || "").trim();
+        const hideWeekLabel =
+          dur > 0 && dur <= CAL_TIMEBLOCK_HIDE_LABEL_MAX_MINUTES;
 
         const inner = document.createElement("div");
         inner.className = "calendar-1week-google-block-inner";
+        const surfHex = timetableUsesHexSurface(c);
+        if (surfHex && c.border) {
+          inner.classList.add("calendar-1week-google-block-inner--surface-spec");
+          inner.style.backgroundColor = c.bg;
+          inner.style.border = `1px solid ${c.border}`;
+          if (c.accentText) {
+            inner.style.setProperty("--calendar-tb-fg", c.accentText);
+            inner.style.setProperty(
+              "--calendar-tb-fg-muted",
+              c.accentMuted || c.accentText,
+            );
+          }
+        } else {
+          inner.style.backgroundColor = timetableFillFaceBg(c.bg);
+        }
 
-        const nameEl = document.createElement("span");
-        nameEl.className = "calendar-1week-google-block-name";
-        nameEl.textContent = String(span.taskName || "").trim();
-
-        const labelFg = timetableAccentTextColor(c.border || c.bg);
-        if (labelFg) {
+        const labelFg =
+          c.accentText || timetableAccentTextColor(c.border || c.bg);
+        if (!surfHex && labelFg) {
           inner.style.color = labelFg;
           inner.classList.add("calendar-1week-google-block-inner--accent-fg");
         }
-        if (!narrowLane) {
-          const timeEl = document.createElement("span");
-          timeEl.className = "calendar-1week-google-block-time";
-          timeEl.textContent = rangeStr;
-          /* 오늘해치우기와 동일: 짧은 구간은 과제명·시간 한 줄, 긴 구간은 과제명 위·시간 아래 */
-          const useWeekInlineTimeRow = dur <= 90;
-          if (useWeekInlineTimeRow) {
-            inner.classList.add(
-              "calendar-1week-google-block-inner--inline-time",
-            );
-            inner.appendChild(nameEl);
-            inner.appendChild(timeEl);
-          } else {
-            inner.classList.add(
-              "calendar-1week-google-block-inner--stacked-time",
-            );
-            inner.appendChild(nameEl);
-            inner.appendChild(timeEl);
-          }
+
+        if (hideWeekLabel) {
+          bar.classList.add("calendar-1week-google-block--label-hover-only");
+          bar.removeAttribute("title");
+          bar.setAttribute(
+            "aria-label",
+            `${taskLabel ? `${taskLabel} ` : ""}${rangeStr}`,
+          );
+          lpAttachColoredTimeBlockTooltip(bar, {
+            taskName: taskLabel,
+            rangeStr,
+            bgCss: surfHex ? c.bg : timetableFillFaceBg(c.bg),
+            accentCss: labelFg || "#ffffff",
+          });
         } else {
-          inner.appendChild(nameEl);
+          bar.title = `${taskLabel} (${rangeStr})`;
+          const nameEl = document.createElement("span");
+          nameEl.className = "calendar-1week-google-block-name";
+          nameEl.textContent = taskLabel;
+          if (!narrowLane) {
+            const timeEl = document.createElement("span");
+            timeEl.className = "calendar-1week-google-block-time";
+            timeEl.textContent = rangeStr;
+            /* 오늘해치우기와 동일: 짧은 구간은 과제명·시간 한 줄, 긴 구간은 과제명 위·시간 아래 */
+            const useWeekInlineTimeRow = dur <= 90;
+            if (useWeekInlineTimeRow) {
+              inner.classList.add(
+                "calendar-1week-google-block-inner--inline-time",
+              );
+              inner.appendChild(nameEl);
+              inner.appendChild(timeEl);
+            } else {
+              inner.classList.add(
+                "calendar-1week-google-block-inner--stacked-time",
+              );
+              inner.appendChild(nameEl);
+              inner.appendChild(timeEl);
+            }
+          } else {
+            inner.appendChild(nameEl);
+          }
         }
         bar.appendChild(inner);
 
@@ -6556,6 +6739,11 @@ function render1WeekView(
     outer.appendChild(alldaySection);
     outer.appendChild(scrollArea);
     calendarGrid.appendChild(outer);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        syncCalendar1WeekSidebarHeaderHeight(calendarSection, todoSidebar);
+      });
+    });
   }
 
   lpCalendarNavQ(nav, wrap, ".calendar-nav-today").addEventListener("click", () => {
@@ -6594,9 +6782,25 @@ function render1WeekView(
     }),
   );
   mainWrap.appendChild(lpWrapCalendarTodoSidebarListEl(todoListEl));
-  lpBindCalendarDateTodoSidebarCollapse(todoSidebar);
+  lpBindCalendarDateTodoSidebarCollapse(todoSidebar, () => {
+    syncCalendar1WeekSidebarHeaderHeight(calendarSection, todoSidebar);
+  });
   applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
   wrap.appendChild(todoSidebar);
+  try {
+    wrap._lpWeekSidebarRo?.disconnect();
+    wrap._lpWeekSidebarRo = null;
+  } catch (_) {}
+  if (typeof ResizeObserver !== "undefined") {
+    wrap._lpWeekSidebarRo = new ResizeObserver(() => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          syncCalendar1WeekSidebarHeaderHeight(calendarSection, todoSidebar);
+        });
+      });
+    });
+    wrap._lpWeekSidebarRo.observe(calendarSection);
+  }
   attachCalendarTodoSidebarSpanRevertDrop(
     body,
     () => renderCalendar(),
@@ -6845,7 +7049,7 @@ const MOBILE_SCHEDULE_CAL_SUB_VIEWS = [
  * 캘린더 탭 하위 뷰(월별·2주·1주·연간·오늘 해치우기) 공통 셸
  * @param {HTMLElement|null} tabsElement 상단에 붙일 외부 탭 행(없으면 null)
  * @param {{ subViewsList?: {id:string,label:string}[], storageKey?: string, forceInitialMonthlyOnMobile?: boolean, keepSubTabsOnTop?: boolean, todoSidebarMode?: string }} opts
- * todoSidebarMode: 사이드 메뉴 단독 캘린더는 LP_CAL_TODO_SIDEBAR_FULL(우선순위 탭과 동일 전체 할일)
+ * todoSidebarMode: QUADRANT|FULL 모두 사이드바에 전체 할일 표시. NONE만 사이드바 생략.
  */
 function createCalendarSubViewRoot(tabsElement, opts = {}) {
   const isMobile = window.matchMedia("(max-width: 48rem)").matches;
@@ -7002,6 +7206,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
     if (controls) cluster.appendChild(controls);
     navLiftSlot.appendChild(cluster);
     nav.classList.add("calendar-monthly-nav--chrome-lifted");
+    nav.replaceChildren();
     layouts.forEach((el) => {
       el._lpCalendarNavQueryRoot = cluster;
     });
@@ -7011,10 +7216,10 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
   let activeSubViewId = initialSubView;
 
   /**
-   * 월별·1주 등 서브탭 전환 시마다( skipPull 아닐 때) Supabase `calendar_section_tasks` pull 후 렌더.
-   * 클릭 시점의 서버 스냅샷을 세션에 반영한 뒤 `getAllTasksWithDateRange` 등이 그린다.
+   * 월별·1주 등 서브탭 전환: 먼저 뷰를 그린 뒤(즉시 반응), skipPull 아닐 때만 서버 pull 후 `_lpRefreshCalendarView`로 반영.
+   * 예전에는 pull을 전부 await 한 다음에야 DOM을 바꿔 네트워크 지연만큼 탭이 멈춘 것처럼 보였음.
    */
-  async function renderSubView(subViewId, subOpts = {}) {
+  function renderSubView(subViewId, subOpts = {}) {
     const skipPull = !!subOpts.skipPull;
     if (activeSubViewId === "1day" && subViewId !== "1day") {
       flushAllPendingTimeDailyBudgetSync();
@@ -7027,7 +7232,35 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
       hasSidebar: !!contentArea.querySelector(".calendar-todo-sidebar-body"),
     });
     saveTodoListBeforeUnmount(contentArea);
-    if (!skipPull) {
+
+    if (gen !== _nestedSubViewGen) return;
+    if (navLiftSlot) navLiftSlot.replaceChildren();
+    if (subTabsMountOuter.parentNode) subTabsMountOuter.remove();
+    contentArea.innerHTML = "";
+    if (subViewId === "monthly") {
+      contentArea.appendChild(renderMonthlyView(null, todoSidebarMode));
+    } else if (subViewId === "2week") {
+      contentArea.appendChild(render2WeekView(null, todoSidebarMode));
+    } else if (subViewId === "1week") {
+      contentArea.appendChild(render1WeekView(null, todoSidebarMode));
+    } else if (subViewId === "annual") {
+      contentArea.appendChild(renderAnnualView(null));
+    } else if (subViewId === "1day") {
+      contentArea.appendChild(render1DayView(null, todoSidebarMode));
+    }
+    if (keepSubTabsOnTop) {
+      wrap.insertBefore(subTabsMountOuter, contentArea);
+      liftMobileScheduleNavChrome();
+      syncCalendarSubTabsSegmentThumb();
+    } else {
+      placeSubTabsInNav();
+    }
+    localStorage.setItem(storageKey, subViewId);
+    syncMobileSchedule1dayOverflowChain();
+
+    if (skipPull) return;
+
+    void (async () => {
       if (subViewId === "1day") {
         try {
           await pullTimeLedgerTasksFromSupabase();
@@ -7064,31 +7297,12 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
           }
         } catch (_) {}
       }
-    }
-    if (gen !== _nestedSubViewGen) return;
-    if (navLiftSlot) navLiftSlot.replaceChildren();
-    if (subTabsMountOuter.parentNode) subTabsMountOuter.remove();
-    contentArea.innerHTML = "";
-    if (subViewId === "monthly") {
-      contentArea.appendChild(renderMonthlyView(null, todoSidebarMode));
-    } else if (subViewId === "2week") {
-      contentArea.appendChild(render2WeekView(null, todoSidebarMode));
-    } else if (subViewId === "1week") {
-      contentArea.appendChild(render1WeekView(null, todoSidebarMode));
-    } else if (subViewId === "annual") {
-      contentArea.appendChild(renderAnnualView(null));
-    } else if (subViewId === "1day") {
-      contentArea.appendChild(render1DayView(null, todoSidebarMode));
-    }
-    if (keepSubTabsOnTop) {
-      wrap.insertBefore(subTabsMountOuter, contentArea);
-      liftMobileScheduleNavChrome();
-      syncCalendarSubTabsSegmentThumb();
-    } else {
-      placeSubTabsInNav();
-    }
-    localStorage.setItem(storageKey, subViewId);
-    syncMobileSchedule1dayOverflowChain();
+      if (gen !== _nestedSubViewGen) return;
+      const layout = contentArea.querySelector(".calendar-monthly-layout");
+      try {
+        layout?._lpRefreshCalendarView?.();
+      } catch (_) {}
+    })();
   }
 
   /** 하단 일정 탭 · 모바일(≤48rem): flex/overflow가 CSS 순서에 밀리지 않게 1일 뷰 체인을 인라인으로 확정 */
