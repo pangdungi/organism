@@ -6231,16 +6231,21 @@ body {
     content: none !important;
     display: none !important;
   }
+  /* 오늘 날짜 배지: 모바일 셀이 좁음 — 과한 원이 아래 일정까지 가리지 않게 소형화 */
   .calendar-view-with-subtabs
     .calendar-monthly-day.today
+    .calendar-monthly-day-num,
+  .calendar-view-with-subtabs
+    .calendar-monthly-day.other-month.today
     .calendar-monthly-day-num {
     align-self: flex-end !important;
     flex: 0 0 auto !important;
-    width: 1.55rem !important;
-    min-width: 1.55rem !important;
-    max-width: 1.55rem !important;
-    height: 1.55rem !important;
+    width: 1.12rem !important;
+    min-width: 1.12rem !important;
+    max-width: 1.12rem !important;
+    height: 1.12rem !important;
     padding: 0 !important;
+    font-size: 0.56rem !important;
     line-height: 1 !important;
     border-radius: 50% !important;
     -webkit-border-radius: 50% !important;
@@ -6642,6 +6647,52 @@ body {
   .calendar-view--mobile-workschedule .work-schedule-monthly-day-num {
     align-self: flex-end;
     max-width: 100%;
+  }
+  /* 모바일 근무표: 오늘은 셀 전체 베이지 칠 대신 소형 날짜 원 — 아래 pill 목록을 가리지 않음 */
+  .calendar-view--mobile-workschedule .work-schedule-monthly-day.today {
+    background: #fff !important;
+  }
+  .calendar-view--mobile-workschedule .work-schedule-monthly-day.today:hover {
+    background: #f5f5f7 !important;
+  }
+  .calendar-view--mobile-workschedule
+    .work-schedule-monthly-day.other-month.today {
+    background: #eceadf !important;
+  }
+  .calendar-view--mobile-workschedule
+    .work-schedule-monthly-day.today
+    .work-schedule-monthly-day-num {
+    flex: 0 0 auto !important;
+    width: 1.12rem !important;
+    min-width: 1.12rem !important;
+    max-width: 1.12rem !important;
+    height: 1.12rem !important;
+    margin-bottom: 0.1rem !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.56rem !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    color: #ffffff !important;
+    border-radius: 50% !important;
+    -webkit-border-radius: 50% !important;
+    background: #aeaeb2 !important;
+    box-sizing: border-box !important;
+    overflow: hidden;
+  }
+  .calendar-view--mobile-workschedule
+    .work-schedule-monthly-day.other-month.today
+    .work-schedule-monthly-day-num {
+    background: #c7c7cc !important;
+    color: #fff !important;
+  }
+  .calendar-view--mobile-workschedule
+    .work-schedule-monthly-day.today
+    .work-schedule-monthly-day-num::after {
+    content: none !important;
+    display: none !important;
   }
   .calendar-view--mobile-workschedule .work-schedule-monthly-day-entries {
     width: 100%;
