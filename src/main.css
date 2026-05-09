@@ -6166,6 +6166,26 @@ body {
     padding: 0.2rem !important;
     font-size: 0.5rem !important;
   }
+  /* 주간 요일 헤더 — 모바일 월간(.calendar-monthly-weekday)과 동일 타이포·패딩 */
+  .calendar-view-with-subtabs .calendar-1week-google-corner {
+    min-height: 0 !important;
+    align-self: stretch;
+  }
+  .calendar-view-with-subtabs .calendar-1week-google-day-head {
+    min-height: 0 !important;
+    padding: 0.2rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    box-sizing: border-box !important;
+    line-height: 1 !important;
+  }
+  .calendar-view-with-subtabs .calendar-1week-google-day-label {
+    font-size: 0.5rem !important;
+    font-weight: 500 !important;
+    color: var(--text-muted) !important;
+    line-height: 1 !important;
+  }
   .calendar-view-with-subtabs .calendar-monthly-bars {
     top: 1.62rem !important;
   }
@@ -6272,7 +6292,7 @@ body {
     min-width: 0;
     min-height: 0;
     box-sizing: border-box;
-    padding: 24px 0;
+    padding: 0;
     margin: 0;
   }
 
@@ -6541,6 +6561,14 @@ body {
     display: flex !important;
     align-items: center !important;
     justify-content: flex-end !important;
+  }
+  .calendar-view--mobile-schedule
+    .calendar-view-with-subtabs
+    .calendar-1week-google-day-head {
+    padding-top: 0.18rem !important;
+    padding-bottom: 0.18rem !important;
+    padding-left: 0.42rem !important;
+    padding-right: 0.42rem !important;
   }
   /* 모바일 캘린더 탭 > 근무표: 월별보기 캘린더(근무유형만) */
   .calendar-view--mobile-schedule
@@ -40441,7 +40469,7 @@ img.time-btn-icon {
   min-height: 0;
 }
 
-/* 일정(schedulecalendar): 모든 뷰폭 — 서브탭 바. 상단 여백은 아래 .calendar-schedule-mobile-tab-header-row 가 투두 헤더와 동일(24px 0) 처리 */
+/* 일정(schedulecalendar): 서브탭 바. 세로 여백은 넓은 화면에서만(모바일은 0) */
 .calendar-view--mobile-schedule .calendar-view-with-subtabs
   > .calendar-sub-tabs-bar.calendar-sub-tabs-bar--schedule-mobile {
   order: 0;
@@ -40464,9 +40492,14 @@ img.time-btn-icon {
   min-width: 0;
   min-height: 0;
   box-sizing: border-box;
-  /* 할일 .todo-list-tab-header-row 과 동일 세로 여백 */
-  padding: 24px 0;
+  padding: 0;
   margin: 0;
+}
+
+@media (min-width: 48.0625rem) {
+  .calendar-view--mobile-schedule .calendar-schedule-mobile-tab-header-row {
+    padding: 24px 0;
+  }
 }
 
 .calendar-view--mobile-schedule .calendar-sub-tabs-strip--right {
@@ -41439,10 +41472,16 @@ img.time-btn-icon {
   --cal-1week-block-inset-y: 4px;
   /* 시간 격자 줄무늬 없음 — 1일 비교 뷰와 동일 단색 */
   --cal-1week-grid-bg: var(--app-main-bg);
-  /* 요일 열 최소 너비 — 헤더·종일·본문 그리드 동일 템플릿으로 세로선 정렬 */
-  --cal-1week-day-cols: repeat(7, minmax(5.25rem, 1fr));
+  /* 요일 열 — 모바일은 너비 부족 시 잘림 방지(아래 데스크탑만 min 폭) */
+  --cal-1week-day-cols: repeat(7, minmax(0, 1fr));
   /* 시간 그리드 열 규선·일정 블록 왼쪽 진한선 — 헤더보다 더 가늠(0.0625rem); 색은 헤더 border와 같은 rgba */
   --cal-1week-grid-col-w: 0.0625rem;
+}
+
+@media (min-width: 48.0625rem) {
+  .calendar-1week-view {
+    --cal-1week-day-cols: repeat(7, minmax(5.25rem, 1fr));
+  }
 }
 .calendar-1week-view .calendar-monthly-main {
   min-height: 0;
