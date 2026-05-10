@@ -60,6 +60,8 @@ import {
   pullTimeLedgerEntriesForDateRange,
   pushDirtyTimeLedgerEntriesToSupabase,
   readTimeLedgerSessionFilterRangeYmd,
+  readTimeLedgerAuditSessionFilterRangeYmd,
+  readTimeLedgerCombinedPullRangeYmd,
 } from "../utils/timeLedgerEntriesSupabase.js";
 import { hydrateAssetExpenseTransactionsFromCloud } from "../utils/assetExpenseTransactionsSupabase.js";
 import { pullTimeLedgerTabEnterFromCloud } from "../utils/timeLedgerCloudRefresh.js";
@@ -4188,21 +4190,28 @@ export function render() {
   const filterType = "range";
   let filterYear = now.getFullYear();
   let filterMonth = now.getMonth() + 1;
-  let filterStartDate = toDateStr(now);
-  let filterEndDate = toDateStr(now);
-  try {
-    const ss = sessionStorage.getItem("lp_time_filter_start");
-    const se = sessionStorage.getItem("lp_time_filter_end");
-    if (ss && /^\d{4}-\d{2}-\d{2}$/.test(ss)) {
-      filterStartDate = ss;
-      filterEndDate = se && /^\d{4}-\d{2}-\d{2}$/.test(se) ? se : ss;
-    }
-  } catch (_) {}
+  const {
+    rangeStart: filterStartDateInit,
+    rangeEnd: filterEndDateInit,
+  } = readTimeLedgerSessionFilterRangeYmd();
+  let filterStartDate = filterStartDateInit;
+  let filterEndDate = filterEndDateInit;
 
-  function persistTimeFilterToSession() {
+  function persistActiveViewTimeFilterToSession() {
+    let view =
+      viewTabs.querySelector(".time-view-tab.active")?.dataset?.view || "all";
+    if (!TIME_LEDGER_SHOW_IMPROVE_TAB && view === "improve") view = "all";
+    const start = pickYmdFromFilter(startDateInput.value, filterStartDate);
+    const end = pickYmdFromFilter(endDateInput.value, filterEndDate);
     try {
-      sessionStorage.setItem("lp_time_filter_start", filterStartDate);
-      sessionStorage.setItem("lp_time_filter_end", filterEndDate);
+      if (typeof sessionStorage === "undefined") return;
+      if (view === "audit") {
+        sessionStorage.setItem("lp_time_audit_filter_start", start);
+        sessionStorage.setItem("lp_time_audit_filter_end", end);
+      } else {
+        sessionStorage.setItem("lp_time_filter_start", start);
+        sessionStorage.setItem("lp_time_filter_end", end);
+      }
     } catch (_) {}
   }
   /** 과제 필터: null = 전체, string[] = 선택한 과제만 표시 (히스토리 기준) */
@@ -4313,7 +4322,7 @@ export function render() {
     _timeLedgerFilterPullTimer = setTimeout(async () => {
       _timeLedgerFilterPullTimer = null;
       if (!el.isConnected) return;
-      const { rangeStart, rangeEnd } = readTimeLedgerSessionFilterRangeYmd();
+      const { rangeStart, rangeEnd } = readTimeLedgerCombinedPullRangeYmd();
       const ok = await pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
       if (ok && el.isConnected) refreshTimeLedgerFromRemotePull();
     }, 400);
@@ -4331,7 +4340,7 @@ export function render() {
     filterEndDate = toDateStr(ed);
     startDateInput.value = filterStartDate;
     endDateInput.value = filterEndDate;
-    persistTimeFilterToSession();
+    persistActiveViewTimeFilterToSession();
   }
 
   /* 모바일에서 툴바로 DOM만 옮겨지므로, 클러스터에 위임해 < > 탭이 항상 동일하게 동작 */
@@ -4418,7 +4427,7 @@ export function render() {
       renderImprove(filtered);
     }
     syncTimeFilterDateLabels();
-    persistTimeFilterToSession();
+    persistActiveViewTimeFilterToSession();
     const pickerKeyNow = computePickerRangeKeyForPull();
     if (pickerKeyNow !== _pickerRangeKeyAtLastPullIntent) {
       _pickerRangeKeyAtLastPullIntent = pickerKeyNow;
@@ -8932,20 +8941,11 @@ export function render() {
       normStart && normEnd && String(normStart) < String(normEnd),
     );
 
-    const blockTitleLabel = isPeriodSummary
-      ? periodLabel
-      : normStart && normStart.length >= 10
-        ? `${normStart.slice(0, 4)}.${normStart.slice(5, 7)}.${normStart.slice(8, 10)}`
-        : periodLabel;
-
     const auditDayKey = isPeriodSummary ? null : normStart;
 
     const block = document.createElement("div");
     block.className = "time-audit-block time-audit-block-integrated";
     block.innerHTML = `
-          <div class="time-audit-day-header">
-            <span class="time-audit-day-label">${blockTitleLabel}</span>
-          </div>
           <div class="time-audit-region time-audit-region-available">
             <div class="time-audit-region-title">1. 가용시간</div>
           ${(() => {
@@ -9968,7 +9968,7 @@ export function render() {
         el.style.display = "";
       });
       if (startDateInput) startDateInput.dataset.hideDeleteBtn = "true";
-      persistTimeFilterToSession();
+      persistActiveViewTimeFilterToSession();
     } else if (view === "blank") {
       if (filterNavCluster) filterNavCluster.style.display = "none";
       if (taskSetupBtn) taskSetupBtn.style.display = "none";
@@ -10009,6 +10009,24 @@ export function render() {
     }
     const currentView = viewTabs.querySelector(".time-view-tab.active")?.dataset
       ?.view;
+    if (view === "audit" && currentView !== "audit") {
+      const { rangeStart, rangeEnd } =
+        readTimeLedgerAuditSessionFilterRangeYmd();
+      filterStartDate = rangeStart;
+      filterEndDate = rangeEnd;
+      if (startDateInput) {
+        startDateInput.value = rangeStart;
+        endDateInput.value = rangeEnd;
+      }
+    } else if (currentView === "audit" && view !== "audit") {
+      const { rangeStart, rangeEnd } = readTimeLedgerSessionFilterRangeYmd();
+      filterStartDate = rangeStart;
+      filterEndDate = rangeEnd;
+      if (startDateInput) {
+        startDateInput.value = rangeStart;
+        endDateInput.value = rangeEnd;
+      }
+    }
     if (currentView === "all") {
       mergeRowsIntoCache();
       cachedRows = getFullRowsForFilter(true);
@@ -10071,7 +10089,15 @@ export function render() {
     if (!el.isConnected) return;
     /* App 탭 진입 pull 직후 session 만 오늘 등으로 바뀌고 DOM 날짜는 옛값일 수 있음 → 통째로 renderMain 하지 않고 갱신할 때 맞춤 */
     try {
-      const { rangeStart, rangeEnd } = readTimeLedgerSessionFilterRangeYmd();
+      let activeView =
+        viewTabs.querySelector(".time-view-tab.active")?.dataset?.view || "all";
+      if (!TIME_LEDGER_SHOW_IMPROVE_TAB && activeView === "improve") {
+        activeView = "all";
+      }
+      const { rangeStart, rangeEnd } =
+        activeView === "audit"
+          ? readTimeLedgerAuditSessionFilterRangeYmd()
+          : readTimeLedgerSessionFilterRangeYmd();
       filterStartDate = rangeStart;
       filterEndDate = rangeEnd;
       if (startDateInput) startDateInput.value = rangeStart;

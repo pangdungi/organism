@@ -8,6 +8,8 @@ import {
   getKpiDisplayNameForTodo,
   syncKpiTodoCompleted,
   moveKpiTodoToSection,
+  updateKpiTodo,
+  removeKpiTodo,
 } from "../utils/kpiTodoSync.js";
 import { createTodoSettingsModal } from "../utils/todoSettingsModal.js";
 import {
@@ -466,6 +468,29 @@ function moveTaskOutOfCustomSectionStorageOnly(sectionId, taskId) {
 const KPI_SECTION_IDS = ["dream", "sideincome", "health", "happy"];
 const FIXED_SECTION_IDS_FOR_STORAGE = [...KPI_SECTION_IDS];
 
+/** 할일 고정 탭 「우선순위」— 집계 전용(calendar_section_tasks.section_key 아님) */
+const TODO_PRIORITY_TAB_SECTION_ID = "priority";
+/** 할일 고정 탭 「날짜」— 마감·시작일 기준 묶음 표시 전용 */
+const TODO_DATE_TAB_SECTION_ID = "by-date";
+
+const TODO_AGGREGATION_TAB_IDS = [
+  TODO_PRIORITY_TAB_SECTION_ID,
+  TODO_DATE_TAB_SECTION_ID,
+];
+
+function todoListStorageSectionIdFromEl(el) {
+  const panel = el?.closest(".todo-section");
+  const pid = (panel?.dataset?.section || "").trim();
+  if (
+    pid === TODO_PRIORITY_TAB_SECTION_ID ||
+    pid === TODO_DATE_TAB_SECTION_ID ||
+    pid === "overdue"
+  ) {
+    return (el.dataset.sectionId || "").trim() || pid;
+  }
+  return pid || (el.dataset.sectionId || "").trim();
+}
+
 /** ensureCalendarSectionTaskIds 등으로 저장소 taskId만 UUID로 바뀐 뒤 DOM은 task-* 인 불일치 방지 */
 const TASK_ID_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -501,6 +526,33 @@ function taskRecordFromCardForServer(card) {
   };
 }
 
+function calendarSectionTaskCardSortOrder(card, sectionKey) {
+  const wrap = card.closest(".todo-sections-wrap");
+  const panel = card.closest(".todo-section");
+  const panelId = (panel?.dataset?.section || "").trim();
+  if (
+    !wrap ||
+    (panelId !== TODO_PRIORITY_TAB_SECTION_ID &&
+      panelId !== TODO_DATE_TAB_SECTION_ID &&
+      panelId !== "overdue")
+  ) {
+    const cardsWrap = card.closest(".todo-cards-wrap");
+    return cardsWrap
+      ? Array.from(cardsWrap.querySelectorAll(".todo-card")).indexOf(card)
+      : 0;
+  }
+  const homeSec = wrap.querySelector(
+    `.todo-section[data-section="${sectionKey}"]`,
+  );
+  const homeWrap = homeSec?.querySelector(".todo-cards-wrap");
+  if (!homeWrap) return 0;
+  const tid = (card.dataset.taskId || "").trim();
+  const idx = Array.from(homeWrap.querySelectorAll(".todo-card")).findIndex(
+    (c) => (c.dataset.taskId || "").trim() === tid,
+  );
+  return idx < 0 ? 0 : idx;
+}
+
 /** @param {string} [via] 콘솔 구분용: 할일추가_확인 | 수정모달_저장 */
 function pushCalendarSectionTaskDirectToServer(
   sectionId,
@@ -513,10 +565,7 @@ function pushCalendarSectionTaskDirectToServer(
   if (!sid || sid === "overdue") return;
   const isCustom = sid.startsWith("custom-");
   if (!isCustom && !FIXED_SECTION_IDS_FOR_STORAGE.includes(sid)) return;
-  const cardsWrap = card.closest(".todo-cards-wrap");
-  const sortOrder = cardsWrap
-    ? Array.from(cardsWrap.querySelectorAll(".todo-card")).indexOf(card)
-    : 0;
+  const sortOrder = calendarSectionTaskCardSortOrder(card, sid);
   void upsertCalendarSectionTaskDirectFromModal({
     task: taskRecord,
     sectionKey: sid,
@@ -682,6 +731,20 @@ function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
   todoDebug("collectAndSaveKpiTasksFromDOM", { hasWrap: !!sectionsWrap });
   if (!sectionsWrap) return;
   const excludesKpi = sectionsWrap.dataset.lpExcludesKpi === "1";
+  const aggregationOverlayByTaskId = (() => {
+    const m = new Map();
+    for (const sid of TODO_AGGREGATION_TAB_IDS) {
+      const panel = sectionsWrap.querySelector(
+        `.todo-section[data-section="${sid}"]`,
+      );
+      if (!panel) continue;
+      panel.querySelectorAll(".todo-cards-wrap .todo-card").forEach((c) => {
+        const tid = (c.dataset.taskId || "").trim();
+        if (tid && !m.has(tid)) m.set(tid, c);
+      });
+    }
+    return m;
+  })();
   FIXED_SECTION_IDS_FOR_STORAGE.forEach((sectionId) => {
     const sec = sectionsWrap.querySelector(
       `.todo-section[data-section="${sectionId}"]`,
@@ -695,10 +758,13 @@ function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
     const cardsWrap = sec.querySelector(".todo-cards-wrap");
     if (cardsWrap) {
       cardsWrap.querySelectorAll(".todo-card").forEach((card) => {
-        const name = (card.dataset.name || "").trim();
-        const kpiTodoId = card.dataset.kpiTodoId;
-        const storageKey = card.dataset.kpiStorageKey;
-        const done = card.dataset.done === "true";
+        const sourceCard =
+          aggregationOverlayByTaskId.get((card.dataset.taskId || "").trim()) ||
+          card;
+        const name = (sourceCard.dataset.name || "").trim();
+        const kpiTodoId = sourceCard.dataset.kpiTodoId;
+        const storageKey = sourceCard.dataset.kpiStorageKey;
+        const done = sourceCard.dataset.done === "true";
 
         if (!excludesKpi && kpiTodoId && storageKey) {
           if (name === "") {
@@ -706,33 +772,33 @@ function collectAndSaveKpiTasksFromDOM(sectionsWrap) {
           } else {
             updateKpiTodo(kpiTodoId, storageKey, {
               text: name,
-              startDate: card.dataset.startDate || "",
-              dueDate: card.dataset.dueDate || "",
+              startDate: sourceCard.dataset.startDate || "",
+              dueDate: sourceCard.dataset.dueDate || "",
               startTime: "",
               endTime: "",
-              eisenhower: card.dataset.eisenhower || "",
+              eisenhower: sourceCard.dataset.eisenhower || "",
               completed: done,
-              itemType: card.dataset.itemType || "todo",
+              itemType: sourceCard.dataset.itemType || "todo",
             });
           }
         } else if (name !== "") {
-          const it = card.dataset.itemType || "todo";
-          const done =
+          const it = sourceCard.dataset.itemType || "todo";
+          const rowDone =
             String(it || "todo").toLowerCase() === "schedule"
               ? false
-              : card.dataset.done === "true";
+              : sourceCard.dataset.done === "true";
           sectionTasks.push({
-            taskId: card.dataset.taskId || "",
+            taskId: sourceCard.dataset.taskId || "",
             name,
-            startDate: card.dataset.startDate || "",
-            dueDate: card.dataset.dueDate || "",
+            startDate: sourceCard.dataset.startDate || "",
+            dueDate: sourceCard.dataset.dueDate || "",
             startTime: "",
             endTime: "",
-            eisenhower: card.dataset.eisenhower || "",
-            done,
+            eisenhower: sourceCard.dataset.eisenhower || "",
+            done: rowDone,
             itemType: it,
-            reminderDate: card.dataset.reminderDate || "",
-            reminderTime: card.dataset.reminderTime || "",
+            reminderDate: sourceCard.dataset.reminderDate || "",
+            reminderTime: sourceCard.dataset.reminderTime || "",
           });
         }
       });
@@ -1204,7 +1270,19 @@ const FIXED_SECTIONS = [
   { id: "sideincome", label: "부수입" },
   { id: "health", label: "건강" },
   { id: "happy", label: "행복" },
+  { id: TODO_PRIORITY_TAB_SECTION_ID, label: "우선순위" },
+  { id: TODO_DATE_TAB_SECTION_ID, label: "날짜" },
 ];
+
+/** 고정 할일 탭 모바일 아이콘(public 경로) — 레이블은 aria-label·title 유지 */
+const TODO_LIST_TAB_ICON_BY_SECTION_ID = {
+  dream: "/todo-tab-icons/creature.svg",
+  sideincome: "/todo-tab-icons/income_coin.svg",
+  health: "/todo-tab-icons/running.svg",
+  happy: "/todo-tab-icons/smile.svg",
+  priority: "/todo-tab-icons/priority_flag.svg",
+  "by-date": "/todo-tab-icons/date_calendar.svg",
+};
 
 function escapeConfirmHtml(s) {
   return String(s || "")
@@ -1344,6 +1422,27 @@ const EISENHOWER_OPTIONS = [
   { value: "urgent-not-important", label: "긴급+덜중요" },
   { value: "not-urgent-not-important", label: "여유+안중요" },
 ];
+
+const EISENHOWER_SORT_KEYS = [
+  "urgent-important",
+  "important-not-urgent",
+  "urgent-not-important",
+  "not-urgent-not-important",
+];
+
+const EISENHOWER_KR_LABEL_TO_SORT_KEY = {
+  "긴급+중요": "urgent-important",
+  "중요+여유": "important-not-urgent",
+  "긴급+덜중요": "urgent-not-important",
+  "여유+안중요": "not-urgent-not-important",
+};
+
+function normalizeEisenhowerSortKey(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return "";
+  if (EISENHOWER_SORT_KEYS.includes(s)) return s;
+  return EISENHOWER_KR_LABEL_TO_SORT_KEY[s] || "";
+}
 
 /** 수정 모달이 열려 있을 때 목록에서 해당 할일 카드·행 강조 */
 const TODO_ITEM_MODAL_ACTIVE_CLASS = "todo-item-modal-active";
@@ -2674,6 +2773,103 @@ const EISENHOWER_LABELS = {
   "not-urgent-not-important": "여유+안중요",
 };
 
+/** 우선순위 탭과 동일 할 일이 꿈/행복 등에도 있을 때 표시만 맞춤 */
+function mirrorTodoCardElementFromPrimary(duplicateCard, primaryCard) {
+  const p = primaryCard;
+  const d = duplicateCard;
+  if (!p || !d) return;
+  d.dataset.taskId = p.dataset.taskId || "";
+  d.dataset.sectionId = p.dataset.sectionId || "";
+  d.dataset.name = p.dataset.name || "";
+  d.dataset.startDate = p.dataset.startDate || "";
+  d.dataset.dueDate = p.dataset.dueDate || "";
+  d.dataset.reminderDate = p.dataset.reminderDate || "";
+  d.dataset.reminderTime = p.dataset.reminderTime || "";
+  d.dataset.eisenhower = p.dataset.eisenhower || "";
+  if (p.dataset.itemType !== undefined) d.dataset.itemType = p.dataset.itemType;
+  d.dataset.done = p.dataset.done || "false";
+  d.classList.toggle("is-done", p.dataset.done === "true");
+  const nameEl = d.querySelector(".todo-card-name");
+  if (nameEl) {
+    nameEl.textContent = (p.dataset.name || "").trim() || "(제목 없음)";
+  }
+  const priorityEl = d.querySelector(".todo-card-priority");
+  const eis = (p.dataset.eisenhower || "").trim();
+  if (priorityEl) {
+    const pt = eis ? EISENHOWER_LABELS[eis] || eis : "";
+    priorityEl.textContent = pt;
+    priorityEl.hidden = !pt;
+  }
+  const isKpi = d.dataset.isKpiTodo === "true";
+  const kid = d.dataset.kpiTodoId || "";
+  const sk = d.dataset.kpiStorageKey || "";
+  const kpiEl = d.querySelector(".todo-card-kpi");
+  if (kpiEl) {
+    let kpiLabel = "";
+    if (isKpi && kid && sk) {
+      kpiLabel =
+        (p.dataset.kpiLabel || "").trim() ||
+        getKpiDisplayNameForTodo(kid, sk);
+    }
+    kpiEl.textContent = kpiLabel;
+    kpiEl.hidden = !kpiLabel;
+    if (kpiLabel) d.dataset.kpiLabel = kpiLabel;
+  }
+  const datesEl = d.querySelector(".todo-card-dates");
+  if (datesEl) {
+    const ds = formatCardDates({
+      name: p.dataset.name,
+      startDate: p.dataset.startDate,
+      dueDate: p.dataset.dueDate,
+    });
+    datesEl.textContent = ds;
+    datesEl.hidden = !ds || !String(ds).trim();
+  }
+  const reminderEl = d.querySelector(".todo-card-reminder");
+  if (reminderEl) {
+    const remText = formatCardReminder(
+      p.dataset.reminderDate || "",
+      p.dataset.reminderTime || "",
+    );
+    const bell =
+      '<svg class="todo-card-reminder-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 19.001c0 2.209 1.791 4 4 4s4-1.791 4-4"/><path d="m12 5.999v6"/><path d="m9 8.999h6"/><path d="m22 19.001-3-5.25v-5.752c0-3.866-3.134-7-7-7s-7 3.134-7 7v5.751l-3 5.25h20z"/></svg>';
+    if (remText) {
+      reminderEl.innerHTML = `${bell}<span class="todo-card-reminder-text">${remText}</span>`;
+      reminderEl.hidden = false;
+    } else {
+      reminderEl.innerHTML = "";
+      reminderEl.hidden = true;
+    }
+  }
+  const metaRow = d.querySelector(".todo-card-meta-row");
+  const dEl = d.querySelector(".todo-card-dates");
+  const rEl = d.querySelector(".todo-card-reminder");
+  if (metaRow && dEl && rEl) {
+    metaRow.hidden = !!(dEl.hidden && rEl.hidden);
+  }
+  const cb = d.querySelector(".todo-done-check");
+  if (cb) cb.checked = p.dataset.done === "true";
+}
+
+function syncDuplicateTodoCardsWithSameTaskId(sectionsWrap, primaryCard) {
+  if (!sectionsWrap || !primaryCard) return;
+  const tid = (primaryCard.dataset.taskId || "").trim();
+  if (!tid) return;
+  sectionsWrap.querySelectorAll(".todo-card").forEach((dup) => {
+    if (dup === primaryCard) return;
+    if ((dup.dataset.taskId || "").trim() !== tid) return;
+    mirrorTodoCardElementFromPrimary(dup, primaryCard);
+  });
+}
+
+function removeAllTodoCardsWithTaskIdInWrap(sectionsWrap, taskId) {
+  const tid = String(taskId || "").trim();
+  if (!tid || !sectionsWrap) return;
+  sectionsWrap.querySelectorAll(".todo-card").forEach((c) => {
+    if ((c.dataset.taskId || "").trim() === tid) c.remove();
+  });
+}
+
 /** 캘린더 할일 사이드바: 마감·삭제 등 후 탭/기한초과 목록을 다시 그리도록 알림 */
 function requestCalendarTodoSidebarRebuildFromCard(card) {
   if (
@@ -2785,6 +2981,7 @@ function createTaskCard(taskData, options = {}) {
         );
       }
     }
+    if (sectionsWrap) syncDuplicateTodoCardsWithSameTaskId(sectionsWrap, card);
     scheduleSave();
     const listRoot = card.closest(".todo-list-view");
     const hideCompletedUi = listRoot?.classList.contains("hide-completed");
@@ -2804,7 +3001,12 @@ function createTaskCard(taskData, options = {}) {
       refreshEisenhowerQuadrantsIfActive();
       requestCalendarTodoSidebarRebuildFromCard(card);
       if (hideCompletedUi) {
-        card.remove();
+        if (sectionsWrap)
+          removeAllTodoCardsWithTaskIdInWrap(
+            sectionsWrap,
+            card.dataset.taskId || taskId,
+          );
+        else card.remove();
       }
     }
     updateCount();
@@ -3108,16 +3310,25 @@ function createTaskCard(taskData, options = {}) {
           );
           const targetWrap = sectionEl?.querySelector(".todo-cards-wrap");
           if (targetWrap) {
+            const tidMove = (taskId || "").trim();
+            if (sectionsWrap && tidMove) {
+              sectionsWrap.querySelectorAll(".todo-card").forEach((c) => {
+                if (c !== card && (c.dataset.taskId || "").trim() === tidMove)
+                  c.remove();
+              });
+            }
             card.remove();
+            card.dataset.sectionId = newSectionId;
             if (targetWrap.firstChild) {
               targetWrap.insertBefore(card, targetWrap.firstChild);
             } else {
               targetWrap.appendChild(card);
             }
           }
-          card.dataset.sectionId = newSectionId;
         }
         updateCardFromData(payload);
+        if (sectionsWrap)
+          syncDuplicateTodoCardsWithSameTaskId(sectionsWrap, card);
         updateCount();
         if (sectionId === "overdue") {
           persistOverdueListCardEditToStorage(
@@ -3150,7 +3361,9 @@ function createTaskCard(taskData, options = {}) {
         if (isKpiTodo && kpiTodoId && storageKey) {
           if (removeKpiTodo(kpiTodoId, storageKey)) {
             requestCalendarTodoSidebarRebuildFromCard(card);
-            card.remove();
+            if (sectionsWrap)
+              removeAllTodoCardsWithTaskIdInWrap(sectionsWrap, taskId);
+            else card.remove();
             updateCount();
             scheduleSave();
           }
@@ -3165,7 +3378,9 @@ function createTaskCard(taskData, options = {}) {
           if (!out?.ok) return;
           clearSubtasks(taskId);
           requestCalendarTodoSidebarRebuildFromCard(card);
-          card.remove();
+          if (sectionsWrap)
+            removeAllTodoCardsWithTaskIdInWrap(sectionsWrap, taskId);
+          else card.remove();
           updateCount();
           /* 서버 DELETE + 목록 다시 읽기까지 끝남 — DOM 저장으로 전체 upsert 다시 돌리지 않음 */
           return;
@@ -3179,12 +3394,16 @@ function createTaskCard(taskData, options = {}) {
           if (!out?.ok) return;
           clearSubtasks(taskId);
           requestCalendarTodoSidebarRebuildFromCard(card);
-          card.remove();
+          if (sectionsWrap)
+            removeAllTodoCardsWithTaskIdInWrap(sectionsWrap, taskId);
+          else card.remove();
           updateCount();
           return;
         }
         requestCalendarTodoSidebarRebuildFromCard(card);
-        card.remove();
+        if (sectionsWrap)
+          removeAllTodoCardsWithTaskIdInWrap(sectionsWrap, taskId);
+        else card.remove();
         updateCount();
         scheduleSave();
       },
@@ -3335,7 +3554,12 @@ function createSection(section, options = {}) {
     if (header) wrap.appendChild(header);
     wrap.appendChild(cardsWrap);
     /* + 버튼은 스크롤 박스(todo-cards-wrap) 밖에 둠 — 모바일에서 fixed가 overflow:auto에 잘리는 것 방지 */
-    if (section.id !== "overdue") wrap.appendChild(addWrap);
+    if (
+      section.id !== "overdue" &&
+      section.id !== TODO_PRIORITY_TAB_SECTION_ID &&
+      section.id !== TODO_DATE_TAB_SECTION_ID
+    )
+      wrap.appendChild(addWrap);
     updateCount();
     return { wrap, updateCount };
   }
@@ -3576,6 +3800,11 @@ function collectTasksFromDOM(sectionsEl) {
   const sectionIds = new Set(getSections().map((s) => s.id));
   sectionsEl?.querySelectorAll(".todo-section").forEach((sec) => {
     const secId = sec.dataset.section;
+    if (
+      secId === TODO_PRIORITY_TAB_SECTION_ID ||
+      secId === TODO_DATE_TAB_SECTION_ID
+    )
+      return;
     const isCategoryView = sectionIds.has(secId);
     const cardsWrap = sec.querySelector(".todo-cards-wrap");
     if (cardsWrap) {
@@ -3668,6 +3897,455 @@ function collectTasksFromDOM(sectionsEl) {
   return tasks;
 }
 
+/** 마감일 우선, 없으면 시작일(YYYY-MM-DD만 인정) */
+function parseTaskAnchorYmd(task) {
+  const due = (task?.dueDate || "").trim().slice(0, 10);
+  const start = (task?.startDate || "").trim().slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(due)) return due;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(start)) return start;
+  return "";
+}
+
+function localYmd(d) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  const y = x.getFullYear();
+  const m = String(x.getMonth() + 1).padStart(2, "0");
+  const day = String(x.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * past(오늘 이전 앵커일) · 오늘 · 내일 · 그 이후 날짜별 · 날짜 없음
+ * @param {Array} tasks
+ * @param {Date} [now]
+ */
+function partitionTasksForDateBuckets(tasks, now = new Date()) {
+  const today0 = new Date(now);
+  today0.setHours(0, 0, 0, 0);
+  const tomorrow0 = new Date(today0);
+  tomorrow0.setDate(tomorrow0.getDate() + 1);
+  const todayStr = localYmd(today0);
+  const tomorrowStr = localYmd(tomorrow0);
+  const past = [];
+  const todayList = [];
+  const tomorrowList = [];
+  const futureMap = new Map();
+  const noDate = [];
+  for (const t of tasks || []) {
+    const anchor = parseTaskAnchorYmd(t);
+    if (!anchor) {
+      noDate.push(t);
+      continue;
+    }
+    if (anchor < todayStr) past.push(t);
+    else if (anchor === todayStr) todayList.push(t);
+    else if (anchor === tomorrowStr) tomorrowList.push(t);
+    else {
+      if (!futureMap.has(anchor)) futureMap.set(anchor, []);
+      futureMap.get(anchor).push(t);
+    }
+  }
+  const futureKeys = [...futureMap.keys()].sort();
+  return { past, today: todayList, tomorrow: tomorrowList, futureMap, futureKeys, noDate };
+}
+
+function formatDateBucketTitleYmd(ymd, todayYear) {
+  const parts = String(ymd || "").split("-");
+  if (parts.length !== 3) return ymd;
+  const y = parseInt(parts[0], 10);
+  const mo = parseInt(parts[1], 10) - 1;
+  const d = parseInt(parts[2], 10);
+  const date = new Date(y, mo, d);
+  if (Number.isNaN(date.getTime())) return ymd;
+  const opts = {
+    weekday: "short",
+    month: "long",
+    day: "numeric",
+  };
+  if (y !== todayYear) opts.year = "numeric";
+  try {
+    return new Intl.DateTimeFormat("ko-KR", opts).format(date);
+  } catch (_) {
+    return ymd;
+  }
+}
+
+/** 우선순위 탭: 아이젠하워 4칸 (+ 미지정 있으면 한 줄) */
+const PRIORITY_TAB_QUADRANT_DEFS = [
+  { key: "urgent-important", label: "긴급+중요" },
+  { key: "important-not-urgent", label: "중요+여유" },
+  { key: "urgent-not-important", label: "긴급+덜중요" },
+  { key: "not-urgent-not-important", label: "여유+안중요" },
+];
+
+function sortTasksInPriorityBucket(arr) {
+  const a = (arr || []).slice();
+  a.sort((x, y) => {
+    const da = (x.dueDate || "").trim();
+    const db = (y.dueDate || "").trim();
+    if (da && db && da !== db) return da.localeCompare(db);
+    if (da && !db) return -1;
+    if (!da && db) return 1;
+    return String(x.name || "").localeCompare(String(y.name || ""), "ko");
+  });
+  return a;
+}
+
+function wirePriorityQuadrantAccordion(head, bodyEl, cell) {
+  head.addEventListener("click", () => {
+    const open = head.getAttribute("aria-expanded") === "true";
+    const next = !open;
+    head.setAttribute("aria-expanded", String(next));
+    bodyEl.hidden = !next;
+    cell.classList.toggle("todo-priority-quadrant--open", next);
+  });
+}
+
+function buildPriorityQuadrantBlock(
+  root,
+  {
+    quadrantKey,
+    label,
+    bucketTasks,
+    updateCount,
+    sectionsWrap,
+    scheduleSave,
+    enableDragToEisenhower,
+    enableDragToCalendar,
+    listExcludesKpi,
+  },
+) {
+  const cell = document.createElement("div");
+  cell.className = quadrantKey
+    ? "todo-priority-quadrant"
+    : "todo-priority-quadrant todo-priority-quadrant--unassigned";
+  if (quadrantKey) cell.dataset.eisenhowerKey = quadrantKey;
+
+  const idSuffix =
+    typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID().replace(/-/g, "").slice(0, 10)
+      : String(Date.now());
+  const bodyId = `todo-priority-body-${quadrantKey || "na"}-${idSuffix}`;
+
+  const head = document.createElement("button");
+  head.type = "button";
+  head.className = "todo-priority-quadrant-head";
+  head.setAttribute("aria-expanded", "false");
+  head.setAttribute("aria-controls", bodyId);
+
+  const title = document.createElement("span");
+  title.className = "todo-priority-quadrant-title";
+  title.textContent = label;
+
+  const cnt = document.createElement("span");
+  cnt.className = "todo-priority-quadrant-count";
+  cnt.textContent = String(bucketTasks.length);
+
+  const chev = document.createElement("span");
+  chev.className = "todo-priority-quadrant-chevron";
+  chev.setAttribute("aria-hidden", "true");
+
+  head.appendChild(title);
+  head.appendChild(cnt);
+  head.appendChild(chev);
+
+  const bodyEl = document.createElement("div");
+  bodyEl.className = "todo-priority-quadrant-body";
+  bodyEl.id = bodyId;
+  bodyEl.hidden = true;
+
+  const cardsWrap = document.createElement("div");
+  cardsWrap.className = "todo-cards-wrap todo-priority-quadrant-cards";
+
+  bucketTasks.forEach((t) => {
+    const taskId = t.taskId || getTaskId(t);
+    t.taskId = taskId;
+    const card = createTaskCard(t, {
+      updateCount,
+      sectionsWrap,
+      scheduleSave,
+      enableDragToEisenhower,
+      enableDragToCalendar,
+      enableDragOverdueToCalendar: false,
+      listExcludesKpi,
+    });
+    cardsWrap.appendChild(card);
+  });
+
+  bodyEl.appendChild(cardsWrap);
+  cell.appendChild(head);
+  cell.appendChild(bodyEl);
+  wirePriorityQuadrantAccordion(head, bodyEl, cell);
+  root.appendChild(cell);
+}
+
+/** 날짜 탭: 과거·오늘·내일·이후 일자별(아이젠하워 키는 쓰지 않음) */
+function buildDateBucketBlock(
+  root,
+  {
+    bucketKey,
+    label,
+    bucketTasks,
+    updateCount,
+    sectionsWrap,
+    scheduleSave,
+    enableDragToEisenhower,
+    enableDragToCalendar,
+    listExcludesKpi,
+  },
+) {
+  const cell = document.createElement("div");
+  cell.className = "todo-priority-quadrant";
+  if (bucketKey) cell.dataset.dateBucket = String(bucketKey);
+
+  const idSuffix =
+    typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID().replace(/-/g, "").slice(0, 10)
+      : String(Date.now());
+  const safeIdKey = String(bucketKey || "na").replace(/[^a-zA-Z0-9_-]/g, "");
+  const bodyId = `todo-date-body-${safeIdKey}-${idSuffix}`;
+
+  const head = document.createElement("button");
+  head.type = "button";
+  head.className = "todo-priority-quadrant-head";
+  head.setAttribute("aria-expanded", "false");
+  head.setAttribute("aria-controls", bodyId);
+
+  const title = document.createElement("span");
+  title.className = "todo-priority-quadrant-title";
+  title.textContent = label;
+
+  const cnt = document.createElement("span");
+  cnt.className = "todo-priority-quadrant-count";
+  cnt.textContent = String(bucketTasks.length);
+
+  const chev = document.createElement("span");
+  chev.className = "todo-priority-quadrant-chevron";
+  chev.setAttribute("aria-hidden", "true");
+
+  head.appendChild(title);
+  head.appendChild(cnt);
+  head.appendChild(chev);
+
+  const bodyEl = document.createElement("div");
+  bodyEl.className = "todo-priority-quadrant-body";
+  bodyEl.id = bodyId;
+  bodyEl.hidden = true;
+
+  const cardsWrap = document.createElement("div");
+  cardsWrap.className = "todo-cards-wrap todo-priority-quadrant-cards";
+
+  bucketTasks.forEach((t) => {
+    const taskId = t.taskId || getTaskId(t);
+    t.taskId = taskId;
+    const card = createTaskCard(t, {
+      updateCount,
+      sectionsWrap,
+      scheduleSave,
+      enableDragToEisenhower,
+      enableDragToCalendar,
+      enableDragOverdueToCalendar: false,
+      listExcludesKpi,
+    });
+    cardsWrap.appendChild(card);
+  });
+
+  bodyEl.appendChild(cardsWrap);
+  cell.appendChild(head);
+  cell.appendChild(bodyEl);
+  wirePriorityQuadrantAccordion(head, bodyEl, cell);
+  root.appendChild(cell);
+}
+
+function createPriorityTabSection(section, allTasksForList, options) {
+  const {
+    enableDragToCalendar = false,
+    enableDragToEisenhower = false,
+    listExcludesKpi = false,
+    sectionsWrap: sectionsWrapOpt,
+  } = options;
+
+  const wrap = document.createElement("div");
+  wrap.className =
+    "todo-section todo-section-tab-panel todo-section--priority-board";
+  wrap.dataset.section = section.id;
+
+  const countSpan = document.createElement("span");
+  countSpan.className = "todo-section-count";
+  countSpan.textContent = "0";
+  countSpan.style.display = "none";
+  wrap.appendChild(countSpan);
+
+  const sectionsWrap = sectionsWrapOpt || wrap.closest(".todo-sections-wrap");
+
+  function scheduleSave() {
+    if (!sectionsWrap) return;
+    scheduleSaveSectionTasksFromDOM(sectionsWrap);
+  }
+
+  function updateCount() {
+    wrap.querySelectorAll(".todo-priority-quadrant").forEach((cell) => {
+      const cq = cell.querySelector(".todo-priority-quadrant-cards");
+      const cntEl = cell.querySelector(".todo-priority-quadrant-count");
+      if (cq && cntEl) {
+        cntEl.textContent = String(cq.querySelectorAll(".todo-card").length);
+      }
+    });
+    countSpan.textContent = String(wrap.querySelectorAll(".todo-card").length);
+  }
+
+  const root = document.createElement("div");
+  root.className = "todo-priority-quadrants";
+  wrap.appendChild(root);
+
+  const shared = {
+    updateCount,
+    sectionsWrap,
+    scheduleSave,
+    enableDragToEisenhower,
+    enableDragToCalendar,
+    listExcludesKpi,
+  };
+
+  for (const { key, label } of PRIORITY_TAB_QUADRANT_DEFS) {
+    const bucketTasks = sortTasksInPriorityBucket(
+      (allTasksForList || []).filter(
+        (t) => normalizeEisenhowerSortKey(t.eisenhower) === key,
+      ),
+    );
+    buildPriorityQuadrantBlock(root, {
+      quadrantKey: key,
+      label,
+      bucketTasks,
+      ...shared,
+    });
+  }
+
+  const unassigned = sortTasksInPriorityBucket(
+    (allTasksForList || []).filter(
+      (t) => !normalizeEisenhowerSortKey(t.eisenhower),
+    ),
+  );
+  if (unassigned.length > 0) {
+    buildPriorityQuadrantBlock(root, {
+      quadrantKey: null,
+      label: "미지정",
+      bucketTasks: unassigned,
+      ...shared,
+    });
+  }
+
+  updateCount();
+  return { wrap, updateCount };
+}
+
+function createDateBucketsTabSection(section, allTasksForList, options) {
+  const {
+    enableDragToCalendar = false,
+    enableDragToEisenhower = false,
+    listExcludesKpi = false,
+    sectionsWrap: sectionsWrapOpt,
+  } = options;
+
+  const wrap = document.createElement("div");
+  wrap.className =
+    "todo-section todo-section-tab-panel todo-section--priority-board todo-section--date-board";
+  wrap.dataset.section = section.id;
+
+  const countSpan = document.createElement("span");
+  countSpan.className = "todo-section-count";
+  countSpan.textContent = "0";
+  countSpan.style.display = "none";
+  wrap.appendChild(countSpan);
+
+  const sectionsWrap = sectionsWrapOpt || wrap.closest(".todo-sections-wrap");
+
+  function scheduleSave() {
+    if (!sectionsWrap) return;
+    scheduleSaveSectionTasksFromDOM(sectionsWrap);
+  }
+
+  function updateCount() {
+    wrap.querySelectorAll(".todo-priority-quadrant").forEach((cell) => {
+      const cq = cell.querySelector(".todo-priority-quadrant-cards");
+      const cntEl = cell.querySelector(".todo-priority-quadrant-count");
+      if (cq && cntEl) {
+        cntEl.textContent = String(cq.querySelectorAll(".todo-card").length);
+      }
+    });
+    countSpan.textContent = String(wrap.querySelectorAll(".todo-card").length);
+  }
+
+  const root = document.createElement("div");
+  root.className = "todo-priority-quadrants";
+  wrap.appendChild(root);
+
+  const shared = {
+    updateCount,
+    sectionsWrap,
+    scheduleSave,
+    enableDragToEisenhower,
+    enableDragToCalendar,
+    listExcludesKpi,
+  };
+
+  const now = new Date();
+  const partitioned = partitionTasksForDateBuckets(allTasksForList || [], now);
+  const todayYear = now.getFullYear();
+  const ordered = [];
+  if (partitioned.past.length) {
+    ordered.push({
+      key: "past",
+      label: "과거",
+      tasks: partitioned.past,
+    });
+  }
+  if (partitioned.today.length) {
+    ordered.push({
+      key: "today",
+      label: "오늘",
+      tasks: partitioned.today,
+    });
+  }
+  if (partitioned.tomorrow.length) {
+    ordered.push({
+      key: "tomorrow",
+      label: "내일",
+      tasks: partitioned.tomorrow,
+    });
+  }
+  for (const ymd of partitioned.futureKeys) {
+    const arr = partitioned.futureMap.get(ymd);
+    if (arr?.length) {
+      ordered.push({
+        key: ymd,
+        label: formatDateBucketTitleYmd(ymd, todayYear),
+        tasks: arr,
+      });
+    }
+  }
+  if (partitioned.noDate.length) {
+    ordered.push({
+      key: "none",
+      label: "날짜 없음",
+      tasks: partitioned.noDate,
+    });
+  }
+
+  for (const { key, label, tasks: bucketTasks } of ordered) {
+    buildDateBucketBlock(root, {
+      bucketKey: key,
+      label,
+      bucketTasks: sortTasksInPriorityBucket(bucketTasks),
+      ...shared,
+    });
+  }
+
+  updateCount();
+  return { wrap, updateCount };
+}
+
 function renderSections(container, tasksData = [], options = {}) {
   const {
     tabMode = false,
@@ -3684,13 +4362,19 @@ function renderSections(container, tasksData = [], options = {}) {
   const results = [];
   const sections = sectionsOverride || getSections();
   sections.forEach((section) => {
-    const sectionTasks = tasksData.filter((t) => t.sectionId === section.id);
+    const sectionTasks =
+      section.id === TODO_PRIORITY_TAB_SECTION_ID ||
+      section.id === TODO_DATE_TAB_SECTION_ID
+        ? tasksData
+        : tasksData.filter((t) => t.sectionId === section.id);
     const sectionOpts = {
       lastColHeader: "분류",
       initialTasks: sectionTasks,
       showCategoryCol: false,
       sectionIdForAdd:
-        section.id === "overdue"
+        section.id === "overdue" ||
+        section.id === TODO_PRIORITY_TAB_SECTION_ID ||
+        section.id === TODO_DATE_TAB_SECTION_ID
           ? null
           : section.id === "tasks"
             ? "dream"
@@ -3706,12 +4390,21 @@ function renderSections(container, tasksData = [], options = {}) {
       overdueColumnOrder: section.id === "overdue",
       eisenhowerSidebarFirst:
         eisenhowerSidebarFirst && section.id !== "overdue",
-      cardLayout: cardLayout || section.id === "overdue",
+      cardLayout:
+        cardLayout ||
+        section.id === "overdue" ||
+        section.id === TODO_PRIORITY_TAB_SECTION_ID ||
+        section.id === TODO_DATE_TAB_SECTION_ID,
       sectionsWrap: container,
       categoryUiSignal,
       listExcludesKpi,
     };
-    const { wrap, updateCount } = createSection(section, sectionOpts);
+    const { wrap, updateCount } =
+      section.id === TODO_PRIORITY_TAB_SECTION_ID
+        ? createPriorityTabSection(section, sectionTasks, sectionOpts)
+        : section.id === TODO_DATE_TAB_SECTION_ID
+          ? createDateBucketsTabSection(section, sectionTasks, sectionOpts)
+          : createSection(section, sectionOpts);
     container.appendChild(wrap);
     results.push({ section, wrap, updateCount });
   });
@@ -3929,7 +4622,7 @@ export function render(options = {}) {
     categoryTabs.appendChild(thumb);
   }
 
-  /* 할일/일정: 고정 4개 탭(꿈, 부수입, 건강, 행복), 리스트 추가 비노출 */
+  /* 할일/일정: 고정 5개 탭(꿈, 부수입, 건강, 행복, 우선순위), 리스트 추가 비노출 */
   FIXED_SECTIONS.forEach((section) => {
     const btn = document.createElement("button");
     btn.type = "button";
@@ -3937,7 +4630,13 @@ export function render(options = {}) {
       ? "todo-category-tab time-view-tab"
       : "todo-category-tab";
     btn.dataset.section = section.id;
-    btn.innerHTML = `<span class="todo-category-tab-label">${section.label}</span> <span class="todo-category-tab-count">0</span>`;
+    btn.setAttribute("aria-label", section.label);
+    btn.title = section.label;
+    const iconSrc = TODO_LIST_TAB_ICON_BY_SECTION_ID[section.id] || "";
+    const iconHtml = iconSrc
+      ? `<img class="todo-category-tab-icon" src="${iconSrc}" alt="" aria-hidden="true" decoding="async" loading="lazy" style="display:none" />`
+      : "";
+    btn.innerHTML = `${iconHtml}<span class="todo-category-tab-label">${section.label}</span> <span class="todo-category-tab-count">0</span>`;
     tabButtons.push(btn);
     categoryTabs.appendChild(btn);
   });
@@ -4069,14 +4768,24 @@ export function render(options = {}) {
         btn.querySelector(".todo-category-tab-count").textContent = "0";
         return;
       }
+      const isAggregationBoard = TODO_AGGREGATION_TAB_IDS.includes(
+        sec.dataset.section || "",
+      );
       const cardsWrap = sec.querySelector(".todo-cards-wrap");
-      const count = cardsWrap
-        ? [...cardsWrap.querySelectorAll(".todo-card")].filter((c) =>
-            taskItemPassesSectionListFilter(c),
-          ).length
-        : [
-            ...sec.querySelectorAll(".todo-task-row:not(.todo-subtask-row)"),
-          ].filter((r) => taskItemPassesSectionListFilter(r)).length;
+      let count;
+      if (isAggregationBoard) {
+        count = [...sec.querySelectorAll(".todo-card")].filter((c) =>
+          taskItemPassesSectionListFilter(c),
+        ).length;
+      } else if (cardsWrap) {
+        count = [...cardsWrap.querySelectorAll(".todo-card")].filter((c) =>
+          taskItemPassesSectionListFilter(c),
+        ).length;
+      } else {
+        count = [
+          ...sec.querySelectorAll(".todo-task-row:not(.todo-subtask-row)"),
+        ].filter((r) => taskItemPassesSectionListFilter(r)).length;
+      }
       btn.querySelector(".todo-category-tab-count").textContent = String(count);
     });
     syncTodoListSegmentThumb();
@@ -4123,6 +4832,25 @@ export function render(options = {}) {
         r.wrap.classList.toggle("is-active", idx === i);
       });
       syncTodoListSegmentThumb();
+
+      const subView = (btn.dataset.section || "").trim();
+      void (async () => {
+        try {
+          const saveRoot = el.closest(".app-tab-panel") || el;
+          if (saveRoot) saveTodoListBeforeUnmount(saveRoot);
+        } catch (_) {}
+        try {
+          await pullCalendarSectionTasksFromSupabase({
+            reason: "todo_list_category_tab",
+            subView: subView || "unknown",
+          });
+        } catch (_) {}
+        try {
+          if (typeof window !== "undefined" && window.__lpRenderMain) {
+            window.__lpRenderMain({ skipTodoSaveBeforeUnmount: true });
+          }
+        } catch (_) {}
+      })();
     });
   });
   tabButtons.forEach((b, i) => b.classList.toggle("active", i === safeIndex));
@@ -4134,9 +4862,13 @@ export function render(options = {}) {
     updateTabLabels();
   });
   sectionResults.forEach(({ wrap }) => {
-    const target =
-      wrap.querySelector(".todo-cards-wrap") || wrap.querySelector("tbody");
-    if (target) observer.observe(target, { childList: true });
+    if (TODO_AGGREGATION_TAB_IDS.includes(wrap.dataset.section || "")) {
+      observer.observe(wrap, { childList: true, subtree: true });
+    } else {
+      const target =
+        wrap.querySelector(".todo-cards-wrap") || wrap.querySelector("tbody");
+      if (target) observer.observe(target, { childList: true });
+    }
   });
   listUiSignal.addEventListener("abort", () => {
     try {
@@ -4157,8 +4889,7 @@ export function render(options = {}) {
     const fromEl = row || card;
     if (!fromEl) return;
     const section = fromEl.closest(".todo-section");
-    const fromSectionId =
-      section?.dataset.section || fromEl.dataset.sectionId || "";
+    const fromSectionId = todoListStorageSectionIdFromEl(fromEl);
     if (fromSectionId === targetSectionId) return;
 
     const oldTaskId = fromEl.dataset.taskId || "";
@@ -4391,6 +5122,15 @@ export function render(options = {}) {
           } else {
             targetCardsWrap.appendChild(card);
           }
+          const movedTid = String(
+            taskData.taskId || taskId || oldTaskId || "",
+          ).trim();
+          if (sectionsWrap && movedTid) {
+            sectionsWrap.querySelectorAll(".todo-card").forEach((c) => {
+              if ((c.dataset.taskId || "").trim() !== movedTid) return;
+              if (c !== card) c.remove();
+            });
+          }
           updateCount();
           scheduleSave();
           if (!taskData.isKpiTodo) {
@@ -4478,7 +5218,7 @@ export function render(options = {}) {
       contextMenuTargetRow = row;
       contextMenuTargetCard = null;
       const section = row.closest(".todo-section");
-      const sectionId = section?.dataset.section || "";
+      const sectionId = todoListStorageSectionIdFromEl(row);
       showContextMenu(e.clientX, e.clientY, sectionId || null);
       return;
     }
@@ -4488,8 +5228,7 @@ export function render(options = {}) {
       contextMenuTargetRow = null;
       contextMenuTargetCard = card;
       const section = card.closest(".todo-section");
-      const sectionId =
-        section?.dataset.section || card.dataset.sectionId || "";
+      const sectionId = todoListStorageSectionIdFromEl(card);
       showContextMenu(e.clientX, e.clientY, sectionId || null);
     }
   });
