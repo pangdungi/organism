@@ -38173,7 +38173,7 @@ img.time-btn-icon {
 .dream-kpi-todo-list {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0;
   margin-top: 0.75rem;
   padding-left: 1rem;
   padding-right: 1rem;
@@ -38182,7 +38182,8 @@ img.time-btn-icon {
 
 .dream-kpi-todo-item {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: flex-start;
   gap: 0.5rem;
   padding: 0.35rem 0;
   margin: 0;
@@ -38190,36 +38191,51 @@ img.time-btn-icon {
   box-sizing: border-box;
   transition: background-color 0.15s ease;
 }
+
+.dream-kpi-todo-item:not(:last-child) {
+  border-bottom: var(--line-l3);
+  padding-bottom: 0.5rem;
+}
 /* 근무표 tbody tr:hover td 와 동일 톤 */
 .dream-kpi-todo-item:hover {
   background: rgba(216, 210, 192, 0.22);
 }
 
-.dream-kpi-todo-check-wrap {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
+.dream-kpi-todo-list-preview {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
   cursor: pointer;
-  /* 줄 여러 줄이어도 체크는 첫 줄 옆 — 본문 0.85rem(데스크톱) / 1rem(모바일) 기준 */
-  margin-top: calc((1.45 * 0.85rem - var(--cb-size)) / 2);
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
 }
 
-@media (min-width: 48.0625rem) {
-  .dream-kpi-todo-check-wrap {
-    margin-top: calc(0.22rem + (1.45 * 0.85rem) / 2 - var(--cb-size) / 2 - 1px);
-  }
-  .dream-kpi-todo-item > .dream-kpi-todo-del {
-    margin-top: calc(0.22rem + (1.45 * 0.85rem) / 2 - var(--cb-size) / 2 - 1px);
-  }
+.dream-kpi-todo-item.is-completed .dream-kpi-todo-list-preview {
+  text-decoration: line-through;
+  color: #9ca3af;
 }
 
 @media (max-width: 48rem) {
-  .dream-kpi-todo-check-wrap {
-    margin-top: calc((1.45 * 0.85rem - var(--cb-size)) / 2);
+  .dream-kpi-todo-list-preview {
+    font-size: 0.85rem;
   }
-  .dream-kpi-todo-item > .dream-kpi-todo-del {
-    margin-top: calc((1.45 * 0.85rem - var(--cb-size)) / 2);
-  }
+}
+
+.dream-kpi-todo-check-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  margin: 0;
+  padding: 0;
+  align-self: center;
 }
 
 .dream-kpi-todo-check {
@@ -38337,8 +38353,8 @@ img.time-btn-icon {
 }
 
 .dream-kpi-todo-item > .dream-kpi-todo-del {
-  align-self: flex-start;
-  margin-top: calc((1.45 * var(--fs-body) - var(--cb-size)) / 2);
+  align-self: center;
+  margin-top: 0;
 }
 
 .dream-kpi-todo-item:hover .dream-kpi-todo-del,
@@ -39061,6 +39077,13 @@ img.time-btn-icon {
 .dream-kpi-modal-close:hover {
   color: var(--text-body);
   background: transparent !important;
+}
+
+.dream-kpi-todo-add-modal .dream-kpi-todo-add-modal-kpiname {
+  margin: -0.25rem 0 0;
+  font-size: var(--fs-secondary);
+  color: var(--text-muted);
+  line-height: 1.35;
 }
 
 .dream-kpi-form {
