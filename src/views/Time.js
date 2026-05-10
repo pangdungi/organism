@@ -1070,7 +1070,7 @@ export function commitCalendarBudgetTaskModal(dateStr, payload) {
     if (siRaw == null || siRaw === "") {
       times.push(slotStr);
       memos.push(memoStr);
-    } else {
+      } else {
       const si = Number(siRaw);
       if (!Number.isInteger(si) || si < 0 || si >= times.length) return false;
       times[si] = slotStr;
@@ -1119,7 +1119,7 @@ export function deleteCalendarBudgetScheduleSlot(dateStr, taskName, slotIndex) {
         scheduledTimes: times,
         scheduleMemos: memos,
       };
-      localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
+    localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
       notifyTimeDailyBudgetSaved(dk);
     }
     return true;
@@ -11186,7 +11186,7 @@ export function renderTimeBudgetTablesForCalendar(
     delBtn?.addEventListener("click", () => {
       if (
         !deleteCalendarBudgetScheduleSlot(
-          targetDateStr,
+              targetDateStr,
           initialTask,
           slotIndexRaw,
         )
@@ -11240,7 +11240,7 @@ export function renderTimeBudgetTablesForCalendar(
     taskName,
     _initialGoalTime,
     initialScheduledTime,
-    isInvest,
+              isInvest,
     tbodyAndAddRow,
     _dropdownOptionsOverride,
     slotIndex,

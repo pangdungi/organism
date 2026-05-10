@@ -14,6 +14,7 @@ import {
 import { createTodoSettingsModal } from "../utils/todoSettingsModal.js";
 import {
   getTodoSettings,
+  getCustomSections,
   getSectionColor,
   normalizeSectionTaskListFilter,
   snapRgbaToNearestPreset,
@@ -30,7 +31,6 @@ import {
   removeAllCompletedSubtasksFromStore,
 } from "../utils/todoSubtasks.js";
 import { refreshEisenhowerQuadrantsIfActive } from "../utils/eisenhowerQuadrantsBridge.js";
-import { createBraindumpContextMenu } from "../utils/braindumpContextMenu.js";
 import { createTodoCheckboxTypeMenu } from "../utils/todoCheckboxTypeMenu.js";
 import {
   persistSectionTasksAndSchedule,
@@ -310,72 +310,6 @@ function saveSectionTasks(sectionId, tasks) {
     /* DOM 수집 → 세션 메모리만. 서버 upsert는 모달 확정 경로에서만 */
     writeSectionTasksObject(obj);
   } catch (_) {}
-}
-
-function moveSectionTaskToSection(
-  fromSectionId,
-  taskId,
-  targetSectionId,
-  taskData,
-) {
-  try {
-    const obj = readSectionTasksObject();
-    const fromArr = obj[fromSectionId];
-    if (!Array.isArray(fromArr)) return false;
-    const idx = fromArr.findIndex((x) => (x.taskId || "") === taskId);
-    if (idx < 0) return false;
-    fromArr.splice(idx, 1);
-    if (!obj[targetSectionId]) obj[targetSectionId] = [];
-    obj[targetSectionId].push({
-      taskId: taskData.taskId || taskId,
-      name: (taskData.name || "").trim(),
-      startDate: taskData.startDate || "",
-      dueDate: taskData.dueDate || "",
-      startTime: taskData.startTime || "",
-      endTime: taskData.endTime || "",
-      eisenhower: taskData.eisenhower || "",
-      done: !!taskData.done,
-      itemType: taskData.itemType || "todo",
-      reminderDate: (taskData.reminderDate || "").slice(0, 10) || "",
-      reminderTime: taskData.reminderTime || "",
-    });
-    persistSectionTasksAndSchedule(obj);
-    return true;
-  } catch (_) {}
-  return false;
-}
-
-function moveCustomSectionTaskToSection(
-  fromSectionId,
-  taskId,
-  targetSectionId,
-  taskData,
-) {
-  try {
-    const obj = readCustomSectionTasksObject();
-    const fromArr = obj[fromSectionId];
-    if (!Array.isArray(fromArr)) return false;
-    const idx = fromArr.findIndex((x) => (x.taskId || "") === taskId);
-    if (idx < 0) return false;
-    fromArr.splice(idx, 1);
-    if (!obj[targetSectionId]) obj[targetSectionId] = [];
-    obj[targetSectionId].push({
-      taskId: taskData.taskId || taskId,
-      name: (taskData.name || "").trim(),
-      startDate: taskData.startDate || "",
-      dueDate: taskData.dueDate || "",
-      startTime: taskData.startTime || "",
-      endTime: taskData.endTime || "",
-      eisenhower: taskData.eisenhower || "",
-      done: !!taskData.done,
-      itemType: taskData.itemType || "todo",
-      reminderDate: (taskData.reminderDate || "").slice(0, 10) || "",
-      reminderTime: taskData.reminderTime || "",
-    });
-    persistCustomSectionTasksAndSchedule(obj);
-    return true;
-  } catch (_) {}
-  return false;
 }
 
 /** @param {string} [via] 콘솔 구분용: 수정모달_삭제 | 표_삭제버튼 */
@@ -1796,6 +1730,342 @@ function showTodoTaskModal(options) {
 
   /* X에 포커스 두면 iOS PWA에서 파란 포커스 링이 생김 → 할일 이름 입력으로 */
   requestAnimationFrame(() => nameInput?.focus());
+}
+
+function todoModalSectionLabel(sectionId) {
+  const sid = String(sectionId || "").trim();
+  if (!sid) return "";
+  const hit = FIXED_SECTIONS.find((s) => s.id === sid);
+  if (hit) return hit.label;
+  if (sid.startsWith("custom-")) {
+    try {
+      const list = getCustomSections();
+      const c = list.find((x) => (x.id || "").trim() === sid);
+      if (c?.label) return c.label;
+    } catch (_) {}
+  }
+  return sid;
+}
+
+/**
+ * 캘린더 막대 메타(b)로 할일 목록과 동일한 수정 모달을 연다.
+ * @param {object} barModel
+ * @param {{ selectionEl?: HTMLElement|null, onAfterApply?: () => void }} [options]
+ */
+export function openTodoTaskEditFromCalendarBarModel(barModel, options = {}) {
+  const { selectionEl = null, onAfterApply } = options || {};
+  const b = barModel || {};
+  const kpiTodoId = String(b.kpiTodoId || "").trim();
+  const storageKey = String(b.storageKey || "").trim();
+  const taskId = String(b.taskId || "").trim();
+  const sectionId = String(b.sectionId || "").trim();
+  const runAfter = () => {
+    try {
+      onAfterApply?.();
+    } catch (_) {}
+  };
+
+  if (kpiTodoId && storageKey) {
+    let todo = null;
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) {
+        const data = JSON.parse(raw);
+        const arr = data.kpiTodos || [];
+        todo = arr.find((t) => String(t.id) === String(kpiTodoId));
+      }
+    } catch (_) {}
+    if (!todo) return;
+    const completed = !!todo.completed;
+    const itemTypeInit =
+      (todo.itemType || "todo").toLowerCase() === "schedule"
+        ? "schedule"
+        : "todo";
+    showTodoTaskModal({
+      taskData: {
+        taskId: `kpi-${kpiTodoId}-${storageKey}`,
+        name: (todo.text || "").trim(),
+        startDate: (todo.startDate || "").toString().slice(0, 10),
+        dueDate: (todo.dueDate || "").toString().slice(0, 10),
+        reminderDate: "",
+        reminderTime: "",
+        eisenhower: String(todo.eisenhower || "").trim(),
+        sectionId,
+        sectionLabel: todoModalSectionLabel(sectionId),
+        isKpiTodo: true,
+        classification: getKpiDisplayNameForTodo(kpiTodoId, storageKey),
+        kpiTodoId,
+        storageKey,
+        kpiId: String(todo.kpiId || "").trim(),
+        itemType: itemTypeInit,
+      },
+      sectionId,
+      sectionLabel: todoModalSectionLabel(sectionId),
+      mode: "edit",
+      selectionEl,
+      onSave: (payload) => {
+        const newSectionId = (payload.sectionId || "").trim();
+        updateKpiTodo(kpiTodoId, storageKey, {
+          text: (payload.name || "").trim(),
+          startDate: (payload.startDate || "").trim().slice(0, 10) || "",
+          dueDate: (payload.dueDate || "").trim().slice(0, 10) || "",
+          eisenhower: (payload.eisenhower || "").trim(),
+          itemType: payload.itemType,
+          completed,
+        });
+        if (newSectionId && newSectionId !== sectionId) {
+          if (newSectionId.startsWith("custom-")) {
+            if (removeKpiTodo(kpiTodoId, storageKey)) {
+              try {
+                const it = String(payload.itemType || itemTypeInit)
+                  .trim()
+                  .toLowerCase();
+                const rowItemType = it === "schedule" ? "schedule" : "todo";
+                const newTid =
+                  typeof crypto !== "undefined" &&
+                  typeof crypto.randomUUID === "function"
+                    ? crypto.randomUUID()
+                    : taskId || getTaskId({ ...payload, taskId });
+                const customObj = readCustomSectionTasksObject();
+                if (!customObj[newSectionId]) customObj[newSectionId] = [];
+                customObj[newSectionId] = [
+                  {
+                    taskId: newTid,
+                    name: (payload.name || "").trim(),
+                    startDate:
+                      (payload.startDate || "").trim().slice(0, 10) || "",
+                    dueDate: (payload.dueDate || "").trim().slice(0, 10) || "",
+                    startTime: "",
+                    endTime: "",
+                    eisenhower: (payload.eisenhower || "").trim() || "",
+                    done: rowItemType === "schedule" ? false : completed,
+                    itemType: rowItemType,
+                    reminderDate:
+                      (payload.reminderDate || "").trim().slice(0, 10) || "",
+                    reminderTime:
+                      (payload.reminderTime || "").trim().slice(0, 5) || "",
+                  },
+                  ...(Array.isArray(customObj[newSectionId])
+                    ? customObj[newSectionId]
+                    : []),
+                ];
+                writeCustomSectionTasksObject(customObj);
+                void persistCustomSectionTasksAndSchedule(customObj).catch(
+                  () => {},
+                );
+                void upsertCalendarSectionTaskDirectFromModal({
+                  task: {
+                    taskId: newTid,
+                    name: (payload.name || "").trim(),
+                    startDate:
+                      (payload.startDate || "").trim().slice(0, 10) || "",
+                    dueDate: (payload.dueDate || "").trim().slice(0, 10) || "",
+                    startTime: "",
+                    endTime: "",
+                    eisenhower: (payload.eisenhower || "").trim() || "",
+                    done: rowItemType === "schedule" ? false : !!completed,
+                    itemType: rowItemType,
+                    reminderDate:
+                      (payload.reminderDate || "").trim().slice(0, 10) || "",
+                    reminderTime:
+                      (payload.reminderTime || "").trim().slice(0, 5) || "",
+                  },
+                  sectionKey: newSectionId,
+                  isCustom: true,
+                  sortOrder: 0,
+                }).catch(() => {});
+              } catch (_) {}
+            }
+          } else if (KPI_SECTION_IDS.includes(newSectionId)) {
+            void moveKpiTodoToSection(kpiTodoId, storageKey, newSectionId);
+          }
+        }
+        runAfter();
+      },
+      onDelete: async () => {
+        if (removeKpiTodo(kpiTodoId, storageKey)) runAfter();
+      },
+    });
+    return;
+  }
+
+  if (!taskId || !sectionId) return;
+
+  const isCustom = sectionId.startsWith("custom-");
+  let row = null;
+  try {
+    if (isCustom) {
+      const obj = readCustomSectionTasksObject();
+      const arr = obj[sectionId];
+      if (Array.isArray(arr))
+        row = arr.find((t) => String(t.taskId || "").trim() === taskId);
+    } else {
+      const obj = readSectionTasksObject();
+      const arr = obj[sectionId];
+      if (Array.isArray(arr))
+        row = arr.find((t) => String(t.taskId || "").trim() === taskId);
+    }
+  } catch (_) {}
+  if (!row) return;
+
+  const storageSectionId = sectionId;
+  const sectionLabel = todoModalSectionLabel(storageSectionId);
+  const baseDone = !!row.done;
+
+  showTodoTaskModal({
+    taskData: {
+      taskId,
+      name: row.name || "",
+      startDate: (row.startDate || "").toString().slice(0, 10),
+      dueDate: (row.dueDate || "").toString().slice(0, 10),
+      reminderDate: (row.reminderDate || "").toString().slice(0, 10),
+      reminderTime: String(row.reminderTime || "").trim(),
+      eisenhower: String(row.eisenhower || "").trim(),
+      sectionId: storageSectionId,
+      sectionLabel,
+      isKpiTodo: false,
+      itemType:
+        (row.itemType || "todo").toLowerCase() === "schedule"
+          ? "schedule"
+          : "todo",
+    },
+    sectionId: storageSectionId,
+    sectionLabel,
+    mode: "edit",
+    selectionEl,
+    onSave: (payload) => {
+      const newSectionId = (payload.sectionId || "").trim();
+      const hadSectionMove =
+        !!newSectionId && newSectionId !== storageSectionId;
+      const buildMerged = () => {
+        const it = String(payload.itemType || row.itemType || "todo")
+          .trim()
+          .toLowerCase();
+        const itemTypeResolved = it === "schedule" ? "schedule" : "todo";
+        return {
+          ...row,
+          name: (payload.name || "").trim(),
+          startDate: (payload.startDate || "").trim().slice(0, 10) || "",
+          dueDate: (payload.dueDate || "").trim().slice(0, 10) || "",
+          reminderDate: (payload.reminderDate || "").trim().slice(0, 10) || "",
+          reminderTime: (payload.reminderTime || "").trim() || "",
+          eisenhower: (payload.eisenhower || "").trim() || "",
+          itemType: itemTypeResolved,
+          done: itemTypeResolved === "schedule" ? false : baseDone,
+        };
+      };
+
+      if (hadSectionMove) {
+        if (storageSectionId.startsWith("custom-")) {
+          moveTaskOutOfCustomSectionStorageOnly(storageSectionId, taskId);
+        } else {
+          moveTaskOutOfSectionStorageOnly(storageSectionId, taskId);
+        }
+        clearSubtasks(taskId);
+        const moved = buildMerged();
+        const targetCustom = newSectionId.startsWith("custom-");
+        if (targetCustom) {
+          const obj = readCustomSectionTasksObject();
+          const cur = Array.isArray(obj[newSectionId]) ? obj[newSectionId] : [];
+          obj[newSectionId] = [moved, ...cur];
+          writeCustomSectionTasksObject(obj);
+          void persistCustomSectionTasksAndSchedule(obj).catch(() => {});
+        } else {
+          const obj = readSectionTasksObject();
+          const cur = Array.isArray(obj[newSectionId]) ? obj[newSectionId] : [];
+          obj[newSectionId] = [moved, ...cur];
+          writeSectionTasksObject(obj);
+          void persistSectionTasksAndSchedule(obj).catch(() => {});
+        }
+        const sidForPush = newSectionId;
+        void upsertCalendarSectionTaskDirectFromModal({
+          task: {
+            taskId,
+            name: moved.name,
+            startDate: moved.startDate,
+            dueDate: moved.dueDate,
+            startTime: String(moved.startTime || "").trim(),
+            endTime: String(moved.endTime || "").trim(),
+            eisenhower: moved.eisenhower,
+            done: !!moved.done,
+            itemType: moved.itemType || "todo",
+            reminderDate: moved.reminderDate,
+            reminderTime: moved.reminderTime,
+          },
+          sectionKey: sidForPush,
+          isCustom: sidForPush.startsWith("custom-"),
+          sortOrder: 0,
+        }).catch(() => {});
+      } else {
+        const merged = buildMerged();
+        if (isCustom) {
+          const obj = readCustomSectionTasksObject();
+          const arr = obj[storageSectionId];
+          if (!Array.isArray(arr)) return;
+          const idx = arr.findIndex(
+            (t) => String(t.taskId || "").trim() === taskId,
+          );
+          if (idx < 0) return;
+          arr[idx] = merged;
+          writeCustomSectionTasksObject(obj);
+          void persistCustomSectionTasksAndSchedule(obj).catch(() => {});
+        } else {
+          const obj = readSectionTasksObject();
+          const arr = obj[storageSectionId];
+          if (!Array.isArray(arr)) return;
+          const idx = arr.findIndex(
+            (t) => String(t.taskId || "").trim() === taskId,
+          );
+          if (idx < 0) return;
+          arr[idx] = merged;
+          writeSectionTasksObject(obj);
+          void persistSectionTasksAndSchedule(obj).catch(() => {});
+        }
+        void upsertCalendarSectionTaskDirectFromModal({
+          task: {
+            taskId,
+            name: merged.name,
+            startDate: merged.startDate,
+            dueDate: merged.dueDate,
+            startTime: String(merged.startTime || "").trim(),
+            endTime: String(merged.endTime || "").trim(),
+            eisenhower: merged.eisenhower,
+            done: !!merged.done,
+            itemType: merged.itemType || "todo",
+            reminderDate: merged.reminderDate,
+            reminderTime: merged.reminderTime,
+          },
+          sectionKey: storageSectionId,
+          isCustom,
+          sortOrder: 0,
+        }).catch(() => {});
+      }
+      runAfter();
+    },
+    onDelete: async () => {
+      if (storageSectionId.startsWith("custom-")) {
+        const out = await removeTaskFromCustomSectionStorage(
+          storageSectionId,
+          taskId,
+          "수정모달_삭제",
+        );
+        if (out?.ok) {
+          clearSubtasks(taskId);
+          runAfter();
+        }
+        return;
+      }
+      const out = await removeTaskFromSectionStorage(
+        storageSectionId,
+        taskId,
+        "수정모달_삭제",
+      );
+      if (out?.ok) {
+        clearSubtasks(taskId);
+        runAfter();
+      }
+    },
+  });
 }
 
 function getSections() {
@@ -3272,8 +3542,8 @@ function createTaskCard(taskData, options = {}) {
   }
 
   contentCol.addEventListener("click", (e) => {
-    /* 체크박스(완료 토글)는 카드 편집과 분리 — preventDefault가 버블링되며 체크를 막고 모달만 열림 */
-    if (e.target.closest(".todo-card-done-wrap")) return;
+    /* 할 일: 체크박스만 편집 모달과 분리. 일정은 doneWrap에 점만 있어 전체 막으면 모달이 안 열림 */
+    if (e.target.closest("input.todo-done-check")) return;
     e.preventDefault();
     e.stopPropagation();
     showTodoTaskModal({
@@ -5185,363 +5455,6 @@ export function render(options = {}) {
     try {
       observer.disconnect();
     } catch (_) {}
-  });
-
-  // 우클릭 컨텍스트 메뉴: 태스크를 다른 리스트로 이동 (테이블 행 + 카드 모두)
-  let contextMenuTargetRow = null;
-  let contextMenuTargetCard = null;
-  const {
-    menu,
-    show: showContextMenu,
-    hide: hideContextMenu,
-  } = createBraindumpContextMenu((targetSectionId) => {
-    const row = contextMenuTargetRow;
-    const card = contextMenuTargetCard;
-    const fromEl = row || card;
-    if (!fromEl) return;
-    const section = fromEl.closest(".todo-section");
-    const fromSectionId = todoListStorageSectionIdFromEl(fromEl);
-    if (fromSectionId === targetSectionId) return;
-
-    const oldTaskId = fromEl.dataset.taskId || "";
-    const subtasksToMove = getSubtasks(oldTaskId);
-
-    let name,
-      startDate,
-      dueDate,
-      startTime,
-      endTime,
-      eisenhower,
-      done,
-      itemType,
-      reminderDate,
-      reminderTime,
-      kpiTodoId,
-      storageKey;
-    if (row) {
-      const nameInput = row.querySelector(".todo-task-name-field");
-      const startInput = row.querySelector(".todo-start-input-hidden");
-      const dueInput = row.querySelector(".todo-due-input-hidden");
-      const doneCheck = row.querySelector(".todo-done-check");
-      const eisenhowerSelect = row.querySelector(".todo-eisenhower-select");
-      name = (nameInput?.value || "").trim();
-      startDate = startInput?.value || "";
-      dueDate = dueInput?.value || "";
-      startTime = row.dataset.startTime || "";
-      endTime = row.dataset.endTime || "";
-      eisenhower = eisenhowerSelect?.value || row.dataset.eisenhower || "";
-      done = doneCheck?.checked || false;
-      itemType = row.dataset.itemType || "todo";
-      reminderDate = row.dataset.reminderDate || "";
-      reminderTime = row.dataset.reminderTime || "";
-      kpiTodoId = row.dataset.kpiTodoId;
-      storageKey = row.dataset.kpiStorageKey;
-    } else {
-      name = (card.dataset.name || "").trim();
-      startDate = card.dataset.startDate || "";
-      dueDate = card.dataset.dueDate || "";
-      startTime = "";
-      endTime = "";
-      eisenhower = card.dataset.eisenhower || "";
-      done = card.dataset.done === "true";
-      itemType = card.dataset.itemType || "todo";
-      reminderDate = card.dataset.reminderDate || "";
-      reminderTime = card.dataset.reminderTime || "";
-      kpiTodoId = card.dataset.kpiTodoId;
-      storageKey = card.dataset.kpiStorageKey;
-    }
-
-    let result = { success: false };
-    const taskPayload = {
-      taskId: oldTaskId,
-      name,
-      startDate,
-      dueDate,
-      startTime,
-      endTime,
-      eisenhower,
-      done,
-      itemType,
-      reminderDate,
-      reminderTime,
-    };
-    const sectionLabelMap = {
-      dream: "꿈",
-      sideincome: "부수입",
-      health: "건강",
-      happy: "행복",
-    };
-    const getTargetLabel = (id) =>
-      sectionLabelMap[id] ||
-      FIXED_SECTIONS.find((s) => s.id === id)?.label ||
-      id;
-
-    if (kpiTodoId && storageKey) {
-      if (targetSectionId.startsWith("custom-")) {
-        const moved = removeKpiTodo(kpiTodoId, storageKey);
-        if (moved) {
-          try {
-            const customObj = readCustomSectionTasksObject();
-            if (!customObj[targetSectionId]) customObj[targetSectionId] = [];
-            customObj[targetSectionId].push({
-              ...taskPayload,
-              taskId: oldTaskId,
-            });
-            persistCustomSectionTasksAndSchedule(customObj);
-            result = {
-              success: true,
-              task: {
-                name,
-                startDate,
-                dueDate,
-                startTime,
-                endTime,
-                eisenhower,
-                done,
-                sectionId: targetSectionId,
-                sectionLabel: getTargetLabel(targetSectionId),
-                itemType,
-                isKpiTodo: false,
-                taskId: oldTaskId,
-                reminderDate,
-                reminderTime,
-              },
-            };
-          } catch (_) {}
-        }
-      } else {
-        result = moveKpiTodoToSection(kpiTodoId, storageKey, targetSectionId);
-      }
-    } else if (name) {
-      let moved = false;
-      const fromIsKpi = KPI_SECTION_IDS.includes(fromSectionId);
-      const targetIsKpi = KPI_SECTION_IDS.includes(targetSectionId);
-      const fromUsesSectionStorage = fromIsKpi;
-      const targetUsesSectionStorage = targetIsKpi;
-      const fromIsCustom = fromSectionId.startsWith("custom-");
-      const targetIsCustom = targetSectionId.startsWith("custom-");
-
-      if (fromUsesSectionStorage && targetUsesSectionStorage) {
-        moved = moveSectionTaskToSection(
-          fromSectionId,
-          oldTaskId,
-          targetSectionId,
-          taskPayload,
-        );
-      } else if (fromIsCustom && targetIsCustom) {
-        moved = moveCustomSectionTaskToSection(
-          fromSectionId,
-          oldTaskId,
-          targetSectionId,
-          taskPayload,
-        );
-      } else if (fromUsesSectionStorage && targetIsCustom) {
-        moved = (() => {
-          try {
-            const obj = readSectionTasksObject();
-            const fromArr = obj[fromSectionId];
-            if (!Array.isArray(fromArr)) return false;
-            const idx = fromArr.findIndex(
-              (x) => (x.taskId || "") === oldTaskId,
-            );
-            if (idx < 0) return false;
-            fromArr.splice(idx, 1);
-            persistSectionTasksAndSchedule(obj);
-            const customObj = readCustomSectionTasksObject();
-            if (!customObj[targetSectionId]) customObj[targetSectionId] = [];
-            customObj[targetSectionId].push({
-              ...taskPayload,
-              taskId: oldTaskId,
-            });
-            persistCustomSectionTasksAndSchedule(customObj);
-            return true;
-          } catch (_) {}
-          return false;
-        })();
-      } else if (fromIsCustom && targetUsesSectionStorage) {
-        moved = (() => {
-          try {
-            const obj = readCustomSectionTasksObject();
-            const fromArr = obj[fromSectionId];
-            if (!Array.isArray(fromArr)) return false;
-            const idx = fromArr.findIndex(
-              (x) => (x.taskId || "") === oldTaskId,
-            );
-            if (idx < 0) return false;
-            fromArr.splice(idx, 1);
-            persistCustomSectionTasksAndSchedule(obj);
-            const sectionObj = readSectionTasksObject();
-            if (!sectionObj[targetSectionId]) sectionObj[targetSectionId] = [];
-            sectionObj[targetSectionId].push({
-              ...taskPayload,
-              taskId: oldTaskId,
-            });
-            persistSectionTasksAndSchedule(sectionObj);
-            return true;
-          } catch (_) {}
-          return false;
-        })();
-      }
-
-      if (moved) {
-        result = {
-          success: true,
-          task: {
-            name,
-            startDate,
-            dueDate,
-            startTime,
-            endTime,
-            eisenhower,
-            done,
-            sectionId: targetSectionId,
-            sectionLabel: getTargetLabel(targetSectionId),
-            itemType,
-            isKpiTodo: false,
-            taskId: oldTaskId,
-            reminderDate,
-            reminderTime,
-          },
-        };
-      }
-    }
-
-    if (result.success && result.task) {
-      const targetResult = sectionResults.find(
-        (r) => r.wrap.dataset.section === targetSectionId,
-      );
-      if (targetResult) {
-        const taskData = result.task;
-        const taskId = getTaskId(taskData);
-        taskData.taskId = taskId;
-        const targetCardsWrap =
-          targetResult.wrap.querySelector(".todo-cards-wrap");
-        const targetTbody = targetResult.wrap.querySelector("tbody");
-
-        if (targetCardsWrap) {
-          const scheduleSave = () =>
-            scheduleSaveSectionTasksFromDOM(sectionsWrap);
-          const updateCount = targetResult.updateCount || (() => {});
-          const card = createTaskCard(taskData, {
-            updateCount,
-            sectionsWrap,
-            scheduleSave,
-            listExcludesKpi: omitKpiTodos,
-          });
-          if (targetCardsWrap.firstChild) {
-            targetCardsWrap.insertBefore(card, targetCardsWrap.firstChild);
-          } else {
-            targetCardsWrap.appendChild(card);
-          }
-          const movedTid = String(
-            taskData.taskId || taskId || oldTaskId || "",
-          ).trim();
-          if (sectionsWrap && movedTid) {
-            sectionsWrap.querySelectorAll(".todo-card").forEach((c) => {
-              if ((c.dataset.taskId || "").trim() !== movedTid) return;
-              if (c !== card) c.remove();
-            });
-          }
-          updateCount();
-          scheduleSave();
-          if (!taskData.isKpiTodo) {
-            pushCalendarSectionTaskDirectToServer(
-              targetSectionId,
-              card,
-              taskRecordFromCardForServer(card),
-              "컨텍스트_리스트이동",
-            );
-          }
-        } else if (targetTbody) {
-          const newTr = createTaskRow(taskData, {
-            hideCategoryCol: true,
-            isSubtask: false,
-            taskId,
-            showCheckboxTypeMenu,
-            listExcludesKpi: omitKpiTodos,
-          });
-          newTr.dataset.sectionId = targetSectionId;
-          if (targetTbody.firstChild) {
-            targetTbody.insertBefore(newTr, targetTbody.firstChild);
-          } else {
-            targetTbody.appendChild(newTr);
-          }
-          const container = newTr.querySelector(".todo-subtasks-container");
-          const updateCount = () => {
-            const countEl = targetResult.wrap?.querySelector(
-              ".todo-section-count",
-            );
-            if (countEl)
-              countEl.textContent = String(
-                targetTbody.querySelectorAll(
-                  ".todo-task-row:not(.todo-subtask-row)",
-                ).length || 0,
-              );
-          };
-          subtasksToMove.forEach((st) => {
-            const item = createSubtaskItem(taskId, st, updateCount);
-            if (container) container.appendChild(item);
-          });
-          if (!taskData.isKpiTodo) {
-            const sortOrder = Array.from(
-              targetTbody.querySelectorAll(
-                ".todo-task-row:not(.todo-subtask-row)",
-              ),
-            ).indexOf(newTr);
-            void upsertCalendarSectionTaskDirectFromModal({
-              task: {
-                taskId: taskData.taskId || taskId,
-                name: taskData.name || "",
-                startDate: taskData.startDate || "",
-                dueDate: taskData.dueDate || "",
-                startTime: taskData.startTime || "",
-                endTime: taskData.endTime || "",
-                eisenhower: taskData.eisenhower || "",
-                done: !!taskData.done,
-                itemType: taskData.itemType || "todo",
-                reminderDate: taskData.reminderDate || "",
-                reminderTime: taskData.reminderTime || "",
-              },
-              sectionKey: targetSectionId,
-              isCustom: targetSectionId.startsWith("custom-"),
-              sortOrder: sortOrder < 0 ? 0 : sortOrder,
-            }).catch(() => {});
-          }
-        }
-
-        setSubtasks(taskId, subtasksToMove);
-        clearSubtasks(oldTaskId);
-        if (targetResult.updateCount) targetResult.updateCount();
-      }
-      fromEl.remove();
-      sectionResults.find((r) => r.wrap === section)?.updateCount();
-      updateTabLabels();
-    }
-  });
-  document.body.appendChild(menu);
-
-  sectionsWrap.addEventListener("contextmenu", (e) => {
-    const row = e.target.closest(".todo-task-row:not(.todo-subtask-row)");
-    const card = e.target.closest(".todo-card");
-    if (row && e.target.closest(".todo-cell-name")) {
-      e.preventDefault();
-      e.stopPropagation();
-      contextMenuTargetRow = row;
-      contextMenuTargetCard = null;
-      const section = row.closest(".todo-section");
-      const sectionId = todoListStorageSectionIdFromEl(row);
-      showContextMenu(e.clientX, e.clientY, sectionId || null);
-      return;
-    }
-    if (card && !e.target.closest(".todo-card-done-wrap")) {
-      e.preventDefault();
-      e.stopPropagation();
-      contextMenuTargetRow = null;
-      contextMenuTargetCard = card;
-      const section = card.closest(".todo-section");
-      const sectionId = todoListStorageSectionIdFromEl(card);
-      showContextMenu(e.clientX, e.clientY, sectionId || null);
-    }
   });
 
   return el;

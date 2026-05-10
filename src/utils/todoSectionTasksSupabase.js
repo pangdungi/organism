@@ -295,11 +295,13 @@ export async function deleteCalendarSectionTaskRowById(taskId) {
 /** 세션 메모리만 — 서버 쓰기 없음 */
 export function persistSectionTasksAndSchedule(obj) {
   writeSectionTasksObject(obj);
+  return Promise.resolve();
 }
 
 /** 세션 메모리만 — 서버 쓰기 없음 */
 export function persistCustomSectionTasksAndSchedule(obj) {
   writeCustomSectionTasksObject(obj);
+  return Promise.resolve();
 }
 
 /** 완료 일괄 제거(할일 설정 모달) — 서버에서 done=true 행만 삭제 후 pull 권장 */

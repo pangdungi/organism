@@ -70,14 +70,17 @@ function buildMonthlyTypeModePillItems(sortedWorkRows, dateKey) {
     sortKey: String(e.id),
   }));
 
-  const all = [...nonDietDisplays, ...dietDisplays];
-  all.sort((a, b) => {
+  const sortPillGroup = (a, b) => {
     if (a.sortStart !== b.sortStart)
       return a.sortStart.localeCompare(b.sortStart);
     if (a.workType !== b.workType)
       return a.workType.localeCompare(b.workType, "ko");
     return a.sortKey.localeCompare(b.sortKey);
-  });
+  };
+  nonDietDisplays.sort(sortPillGroup);
+  dietDisplays.sort(sortPillGroup);
+  /* 근무유형(비식단) 먼저 — 식단표 유형은 뒤에서 한 덩어리 */
+  const all = [...nonDietDisplays, ...dietDisplays];
   return { items: all, dietTypeSet };
 }
 
@@ -280,10 +283,10 @@ export function renderMonthlyContent(opts = {}) {
   nextBtn.textContent = ">";
   nextBtn.title = "다음 달";
 
-  nav.appendChild(todayBtn);
   nav.appendChild(prevBtn);
   nav.appendChild(monthLabel);
   nav.appendChild(nextBtn);
+  nav.appendChild(todayBtn);
 
   const topRow = document.createElement("div");
   topRow.className = "work-schedule-monthly-top-row";
@@ -473,9 +476,9 @@ export function renderMonthlyContent(opts = {}) {
                   typePillClassForName && t !== "-"
                     ? (typePillClassForName(t) || "").trim()
                     : "";
+                const resolvedKind = (pillKind || "is-default").trim();
                 pill.className =
-                  "work-schedule-monthly-type-pill " +
-                  (pillKind || "is-default");
+                  "work-schedule-monthly-type-pill " + resolvedKind;
                 if (showMealCheck) {
                   pill.classList.add(
                     "work-schedule-monthly-type-pill--with-meal-check",
@@ -497,7 +500,11 @@ export function renderMonthlyContent(opts = {}) {
                   lab.textContent = t;
                   pill.appendChild(lab);
                 } else {
-                  pill.textContent = t;
+                  const textSpan = document.createElement("span");
+                  textSpan.className =
+                    "work-schedule-monthly-type-pill-text";
+                  textSpan.textContent = t;
+                  pill.appendChild(textSpan);
                 }
                 if (onEntryClick && p.rowId) {
                   pill.style.cursor = "pointer";

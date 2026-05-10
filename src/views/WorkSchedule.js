@@ -801,6 +801,53 @@ export function render(opts = {}) {
     let dayEntryTypeValue = "";
     let dayEntrySelectListOpen = false;
 
+    function onDayEntrySelectDocDown(ev) {
+      if (!selectWrap.contains(ev.target)) closeDayEntrySelectList();
+    }
+
+    function syncDayEntrySelectListPosition() {
+      if (!dayEntrySelectListOpen || listEl.hidden) return;
+      const r = triggerBtn.getBoundingClientRect();
+      if (r.width < 1 && r.height < 1) return;
+      const vh = window.innerHeight;
+      const vw = window.innerWidth;
+      const gap = 4;
+      const remPx = parseFloat(
+        getComputedStyle(document.documentElement).fontSize || "16",
+      );
+      const maxListPx = 14 * (Number.isFinite(remPx) ? remPx : 16);
+      const spaceBelow = vh - r.bottom - gap - 8;
+      const spaceAbove = r.top - gap - 8;
+      const openUp = spaceBelow < 100 && spaceAbove > spaceBelow;
+      const maxH = Math.max(
+        72,
+        Math.min(maxListPx, openUp ? spaceAbove : spaceBelow),
+      );
+      let w = r.width;
+      let left = r.left;
+      if (left + w > vw - 8) left = Math.max(8, vw - w - 8);
+      if (left < 8) left = 8;
+      w = Math.min(w, vw - 16);
+
+      listEl.style.position = "fixed";
+      listEl.style.boxSizing = "border-box";
+      listEl.style.left = `${left}px`;
+      listEl.style.width = `${w}px`;
+      listEl.style.right = "auto";
+      listEl.style.zIndex = "10002";
+      listEl.style.maxHeight = `${maxH}px`;
+      listEl.style.overflowY = "auto";
+      if (openUp) {
+        listEl.style.top = "auto";
+        listEl.style.bottom = `${vh - r.top + gap}px`;
+      } else {
+        listEl.style.bottom = "auto";
+        listEl.style.top = `${r.bottom + gap}px`;
+      }
+    }
+
+    const onDayEntrySelectReposition = () => syncDayEntrySelectListPosition();
+
     function closeDayEntrySelectList() {
       if (!dayEntrySelectListOpen) return;
       dayEntrySelectListOpen = false;
@@ -809,6 +856,24 @@ export function render(opts = {}) {
       try {
         document.removeEventListener("pointerdown", onDayEntrySelectDocDown, true);
       } catch (_) {}
+      window.removeEventListener("resize", onDayEntrySelectReposition, true);
+      window.removeEventListener("scroll", onDayEntrySelectReposition, true);
+      try {
+        panel.removeEventListener("scroll", onDayEntrySelectReposition, true);
+      } catch (_) {}
+      try {
+        body.removeEventListener("scroll", onDayEntrySelectReposition, true);
+      } catch (_) {}
+      listEl.style.position = "";
+      listEl.style.left = "";
+      listEl.style.top = "";
+      listEl.style.bottom = "";
+      listEl.style.width = "";
+      listEl.style.right = "";
+      listEl.style.maxHeight = "";
+      listEl.style.zIndex = "";
+      listEl.style.overflowY = "";
+      listEl.style.boxSizing = "";
     }
 
     function openDayEntrySelectList() {
@@ -817,15 +882,18 @@ export function render(opts = {}) {
       listEl.hidden = false;
       triggerBtn.setAttribute("aria-expanded", "true");
       document.addEventListener("pointerdown", onDayEntrySelectDocDown, true);
+      window.addEventListener("resize", onDayEntrySelectReposition, true);
+      window.addEventListener("scroll", onDayEntrySelectReposition, true);
+      panel.addEventListener("scroll", onDayEntrySelectReposition, true);
+      body.addEventListener("scroll", onDayEntrySelectReposition, true);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(syncDayEntrySelectListPosition);
+      });
     }
 
     function toggleDayEntrySelectList() {
       if (dayEntrySelectListOpen) closeDayEntrySelectList();
       else openDayEntrySelectList();
-    }
-
-    function onDayEntrySelectDocDown(ev) {
-      if (!selectWrap.contains(ev.target)) closeDayEntrySelectList();
     }
 
     function updateDayEntryTriggerLabel() {
@@ -857,6 +925,9 @@ export function render(opts = {}) {
         });
         listEl.appendChild(li);
       });
+      if (dayEntrySelectListOpen) {
+        requestAnimationFrame(syncDayEntrySelectListPosition);
+      }
     }
 
     function getDayEntryTypeSelectValue() {

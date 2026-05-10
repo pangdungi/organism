@@ -10,6 +10,7 @@ import {
   saveTodoListBeforeUnmount,
   DRAG_TYPE_TODO_TO_CALENDAR,
   DRAG_TYPE_TODO_TO_EISENHOWER,
+  openTodoTaskEditFromCalendarBarModel,
 } from "./TodoList.js";
 import {
   getKpiTodosAsTasks,
@@ -92,12 +93,30 @@ function lpCalendarNavQ(localNav, calendarInnerWrap, selector) {
   try {
     const lifted =
       calendarInnerWrap && calendarInnerWrap._lpCalendarNavQueryRoot;
-    if (lifted && lifted.isConnected) {
-      const hit = lifted.querySelector(selector);
+    if (lifted) {
+      if (lifted.isConnected) {
+        const hit = lifted.querySelector(selector);
+        if (hit) return hit;
+      } else {
+        try {
+          delete calendarInnerWrap._lpCalendarNavQueryRoot;
+        } catch (_) {}
+      }
+    }
+  } catch (_) {}
+  if (localNav) {
+    const fromLocal = localNav.querySelector(selector);
+    if (fromLocal) return fromLocal;
+  }
+  try {
+    const calView = calendarInnerWrap?.closest?.(".calendar-view");
+    if (calView) {
+      const cluster = calView.querySelector(".calendar-sub-tabs-nav-cluster");
+      const hit = cluster?.querySelector(selector);
       if (hit) return hit;
     }
   } catch (_) {}
-  return localNav ? localNav.querySelector(selector) : null;
+  return null;
 }
 
 /** 할일 사이드바에서 날짜·마감 수정 시: 같은 화면 월/주 그리드도 로컬 데이터로 즉시 다시 그림(탭 재클릭·풀 없이) */
@@ -193,6 +212,53 @@ function lpCalendarSpanBarTodoMarkerHtml(sectionColor) {
       ? sectionColor.trim()
       : "var(--text-muted)";
   return `<span class="calendar-monthly-span-bar-checkbox" style="color:${c.replace(/"/g, "")}" aria-hidden="true">|</span>`;
+}
+
+/** 월간 막대: 줄바꿈 반영 후 행별 실제 높이로 top·주 행 minHeight 맞춤(행 겹침 방지). */
+function lpCalendarFinalizeBarRowLayout(
+  barsWithRow,
+  weekRow,
+  BAR_HEIGHT,
+  BARS_TOP,
+  BOTTOM_PAD,
+) {
+  if (!barsWithRow.length || !weekRow) return;
+  const maxRow = Math.max(...barsWithRow.map((b) => b.row), 0);
+  const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 3 * BAR_HEIGHT + BOTTOM_PAD;
+  requestAnimationFrame(() => {
+    const rootFont =
+      parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const pxToRem = (px) => px / rootFont;
+    const rowMaxPx = [];
+    for (const b of barsWithRow) {
+      const el = b._barEl;
+      if (!el || !el.isConnected) continue;
+      const h = el.getBoundingClientRect().height;
+      const r = b.row;
+      rowMaxPx[r] = Math.max(rowMaxPx[r] || 0, h);
+    }
+    let topAcc = 0.1;
+    const rowTopRem = [];
+    for (let r = 0; r <= maxRow; r++) {
+      rowTopRem[r] = topAcc;
+      const slotRem = Math.max(
+        BAR_HEIGHT,
+        rowMaxPx[r] != null ? pxToRem(rowMaxPx[r]) : BAR_HEIGHT,
+      );
+      topAcc += slotRem;
+    }
+    for (const b of barsWithRow) {
+      if (b._barEl?.isConnected) {
+        b._barEl.style.top = `${rowTopRem[b.row]}rem`;
+      }
+    }
+    const barsBlockRem = topAcc - 0.1;
+    const requiredHeight = BARS_TOP + barsBlockRem + BOTTOM_PAD;
+    weekRow.style.minHeight = `${Math.max(
+      DEFAULT_ROW_HEIGHT_REM,
+      requiredHeight,
+    )}rem`;
+  });
 }
 
 /** 사이드바 헤더: 왼쪽 접기(<< / >>), 오른쪽 +·설정(.calendar-todo-sidebar-toolbar-actions) */
@@ -306,13 +372,23 @@ function lpSync1WeekMobileFlowBodyToScrollViewport(scrollEl, bodyEl) {
     !window.matchMedia("(max-width: 48rem)").matches
   ) {
     bodyEl.style.removeProperty("min-height");
+    try {
+      delete bodyEl._lpFlowMinHApplied;
+    } catch (_) {}
     return;
   }
   bodyEl.style.removeProperty("min-height");
   const natural = bodyEl.scrollHeight;
   const ch = scrollEl.clientHeight;
-  const h = Math.max(ch, natural);
-  if (h > 0) bodyEl.style.minHeight = `${h}px`;
+  const h = Math.round(Math.max(ch, natural));
+  if (h <= 0) return;
+  const last = bodyEl._lpFlowMinHApplied;
+  if (last != null && Math.abs(last - h) <= 2) {
+    bodyEl.style.minHeight = `${last}px`;
+    return;
+  }
+  bodyEl._lpFlowMinHApplied = h;
+  bodyEl.style.minHeight = `${h}px`;
 }
 
 function lpAttach1WeekMobileFlowBodyMinSync(wrap, scrollEl, bodyEl) {
@@ -327,8 +403,11 @@ function lpAttach1WeekMobileFlowBodyMinSync(wrap, scrollEl, bodyEl) {
     });
     return;
   }
+  let roRaf = null;
   const ro = new ResizeObserver(() => {
-    requestAnimationFrame(() => {
+    if (roRaf != null) return;
+    roRaf = requestAnimationFrame(() => {
+      roRaf = null;
       lpSync1WeekMobileFlowBodyToScrollViewport(scrollEl, bodyEl);
     });
   });
@@ -1110,6 +1189,29 @@ function calendarSpanBarPayloadJson(b) {
   });
 }
 
+/** 할일·일정 막대 클릭 → 할 일 목록과 동일 수정 모달(셀 빈 곳 클릭 추가 모달과 구분: stopPropagation) */
+function lpAttachCalendarBarOpenTodoEdit(bar, b, renderCalendar, refreshTodoList) {
+  const sid = String(b.sectionId || "").trim();
+  const tid = String(b.taskId || "").trim();
+  const kid = String(b.kpiTodoId || "").trim();
+  const sk = String(b.storageKey || "").trim();
+  if (!kid && (!tid || !sid)) return;
+  bar.addEventListener("click", (e) => {
+    e.stopPropagation();
+    openTodoTaskEditFromCalendarBarModel(b, {
+      selectionEl: bar,
+      onAfterApply: () => {
+        try {
+          renderCalendar?.();
+        } catch (_) {}
+        try {
+          refreshTodoList?.();
+        } catch (_) {}
+      },
+    });
+  });
+}
+
 function bindCalendarSpanBarDragHandlers(bar, b) {
   const canDrag =
     (b.isSingleDay && b.dueDate) ||
@@ -1566,6 +1668,8 @@ function createCalendarDayExpandBubble(
   const {
     positionBelow = false,
     onAdd = null,
+    /** 할일·일정 항목에서 수정 모달 저장/삭제 후 그리드 갱신 */
+    onAfterTaskEdit = null,
     /** 연간 뷰 등: × 숨김 */
     hideCloseButton = false,
     /** false면 바깥 클릭으로 닫지 않음(호버 전용) */
@@ -1629,30 +1733,29 @@ function createCalendarDayExpandBubble(
   tasks.forEach((t, i) => {
     const itemEl = bubble.querySelectorAll(".calendar-day-expand-item")[i];
     if (!itemEl) return;
-    if (itemEl.dataset.itemType === "schedule") return;
-    const toggleDone = (e) => {
-      e.stopPropagation();
-      const newDone = !t.done;
-      t.done = newDone;
-      if (t.kpiTodoId && t.storageKey) {
-        syncKpiTodoCompleted(t.kpiTodoId, t.storageKey, newDone);
-      } else if (KPI_SECTION_IDS.includes(t.sectionId) && t.taskId) {
-        updateSectionTaskDone(t.sectionId, t.taskId, newDone);
-      } else if ((t.sectionId || "").startsWith("custom-") && t.taskId) {
-        updateCustomSectionTaskDone(t.sectionId, t.taskId, newDone);
-      }
-      itemEl.dataset.done = newDone;
-      itemEl
-        .querySelector(".calendar-day-expand-checkbox")
-        ?.classList.toggle("checked", newDone);
-    };
+    const kid = String(t.kpiTodoId || "").trim();
+    const sk = String(t.storageKey || "").trim();
+    const tid = String(t.taskId || "").trim();
+    const sid = String(t.sectionId || "").trim();
+    if (!kid && (!tid || !sid)) return;
     itemEl.addEventListener("click", (e) => {
       if (
         e.target.closest(".calendar-event-bubble-close") ||
         e.target.closest(".calendar-day-expand-add-btn")
       )
         return;
-      toggleDone(e);
+      e.stopPropagation();
+      try {
+        close();
+      } catch (_) {}
+      openTodoTaskEditFromCalendarBarModel(t, {
+        selectionEl: itemEl,
+        onAfterApply: () => {
+          try {
+            onAfterTaskEdit?.();
+          } catch (_) {}
+        },
+      });
     });
   });
 
@@ -2023,6 +2126,7 @@ function renderMonthlyView(
         cell.addEventListener(
           "click",
           (e) => {
+            if (e.target.closest?.(".calendar-monthly-span-bar")) return;
             if (
               window.matchMedia("(max-width: 48rem)").matches &&
               cell.contains(e.target)
@@ -2033,6 +2137,10 @@ function renderMonthlyView(
               const tasks = getAllTasksForDateDisplay(key);
               createCalendarDayExpandBubble(rect, key, tasks, () => {}, {
                 positionBelow: true,
+                onAfterTaskEdit: () => {
+                  renderCalendar();
+                  refreshTodoList();
+                },
                 onAdd: () => {
                   createCalendarEventBubble(
                     rect,
@@ -2328,27 +2436,7 @@ function renderMonthlyView(
             .querySelector(".calendar-monthly-span-bar-checkbox")
             ?.classList.add("checked");
         }
-        if (isTodo) {
-          const toggleDone = (e) => {
-            e.stopPropagation();
-            const newDone = !b.done;
-            if (b.kpiTodoId && b.storageKey) {
-              syncKpiTodoCompleted(b.kpiTodoId, b.storageKey, newDone);
-            } else if (KPI_SECTION_IDS.includes(b.sectionId) && b.taskId) {
-              updateSectionTaskDone(b.sectionId, b.taskId, newDone);
-            } else if (b.sectionId?.startsWith("custom-") && b.taskId) {
-              updateCustomSectionTaskDone(b.sectionId, b.taskId, newDone);
-            }
-            b.done = newDone;
-            bar.classList.toggle("is-completed", newDone);
-            bar
-              .querySelector(".calendar-monthly-span-bar-checkbox")
-              ?.classList.toggle("checked", newDone);
-            refreshTodoList();
-          };
-          if (!window.matchMedia("(max-width: 48rem)").matches)
-            bar.addEventListener("click", toggleDone);
-        }
+        lpAttachCalendarBarOpenTodoEdit(bar, b, renderCalendar, refreshTodoList);
         if (!b.isSingleDay && b.startDate && b.dueDate) {
           bar.addEventListener("contextmenu", (e) => {
             e.preventDefault();
@@ -2382,8 +2470,16 @@ function renderMonthlyView(
             );
           });
         }
+        b._barEl = bar;
         barsEl.appendChild(bar);
       });
+      lpCalendarFinalizeBarRowLayout(
+        barsWithRow,
+        weekRow,
+        BAR_HEIGHT,
+        BARS_TOP,
+        BOTTOM_PAD,
+      );
       const moreEl = document.createElement("div");
       moreEl.className = "calendar-day-more-overlay";
       moreEl.style.cssText =
@@ -3013,25 +3109,7 @@ function render2WeekView(
             .querySelector(".calendar-monthly-span-bar-checkbox")
             ?.classList.add("checked");
         }
-        if (isTodo) {
-          const toggleDone = (e) => {
-            e.stopPropagation();
-            const newDone = !b.done;
-            if (b.kpiTodoId && b.storageKey) {
-              syncKpiTodoCompleted(b.kpiTodoId, b.storageKey, newDone);
-            } else if (b.sectionId?.startsWith("custom-") && b.taskId) {
-              updateCustomSectionTaskDone(b.sectionId, b.taskId, newDone);
-            }
-            b.done = newDone;
-            bar.classList.toggle("is-completed", newDone);
-            bar
-              .querySelector(".calendar-monthly-span-bar-checkbox")
-              ?.classList.toggle("checked", newDone);
-            refreshTodoList();
-          };
-          if (!window.matchMedia("(max-width: 48rem)").matches)
-            bar.addEventListener("click", toggleDone);
-        }
+        lpAttachCalendarBarOpenTodoEdit(bar, b, renderCalendar, refreshTodoList);
         if (!b.isSingleDay && b.startDate && b.dueDate) {
           bar.addEventListener("contextmenu", (e) => {
             e.preventDefault();
@@ -3065,8 +3143,16 @@ function render2WeekView(
             );
           });
         }
+        b._barEl = bar;
         barsEl.appendChild(bar);
       });
+      lpCalendarFinalizeBarRowLayout(
+        barsWithRow,
+        weekRow,
+        BAR_HEIGHT,
+        BARS_TOP,
+        BOTTOM_PAD,
+      );
       const moreEl = document.createElement("div");
       moreEl.className = "calendar-day-more-overlay";
       moreEl.style.cssText =
@@ -3679,27 +3765,6 @@ function render3WeekView(
               .querySelector(".calendar-monthly-span-bar-checkbox")
               ?.classList.add("checked");
           }
-          const toggleDone = () => {
-            let newDone = !bar.dataset.done;
-            if (b.kpiTodoId && b.storageKey) {
-              syncKpiTodoCompleted(b.kpiTodoId, b.storageKey, newDone);
-            } else if (b.sectionId && b.taskId) {
-              if ((b.sectionId || "").startsWith("custom-")) {
-                updateCustomSectionTaskDone(b.sectionId, b.taskId, newDone);
-              } else {
-                updateSectionTaskDone(b.sectionId, b.taskId, newDone);
-              }
-            }
-            bar.dataset.done = newDone ? "true" : "false";
-            bar.classList.toggle("is-completed", newDone);
-            bar
-              .querySelector(".calendar-monthly-span-bar-checkbox")
-              ?.classList.toggle("checked", newDone);
-            renderCalendar();
-            refreshTodoList();
-          };
-          if (!window.matchMedia("(max-width: 48rem)").matches)
-            bar.addEventListener("click", toggleDone);
         } else {
           if (isTodo) {
             bar.innerHTML = showCheckbox
@@ -3719,29 +3784,8 @@ function render3WeekView(
               .querySelector(".calendar-monthly-span-bar-checkbox")
               ?.classList.add("checked");
           }
-          if (isTodo && !window.matchMedia("(max-width: 48rem)").matches) {
-            bar.addEventListener("click", (e) => {
-              e.stopPropagation();
-              const newDone = !b.done;
-              if (b.kpiTodoId && b.storageKey) {
-                syncKpiTodoCompleted(b.kpiTodoId, b.storageKey, newDone);
-              } else if (b.sectionId && b.taskId) {
-                if ((b.sectionId || "").startsWith("custom-")) {
-                  updateCustomSectionTaskDone(b.sectionId, b.taskId, newDone);
-                } else {
-                  updateSectionTaskDone(b.sectionId, b.taskId, newDone);
-                }
-              }
-              b.done = newDone;
-              bar.classList.toggle("is-completed", newDone);
-              bar
-                .querySelector(".calendar-monthly-span-bar-checkbox")
-                ?.classList.toggle("checked", newDone);
-              renderCalendar();
-              refreshTodoList();
-            });
-          }
         }
+        lpAttachCalendarBarOpenTodoEdit(bar, b, renderCalendar, refreshTodoList);
         if (!b.isSingleDay && b.startDate && b.dueDate) {
           bar.addEventListener("contextmenu", (e) => {
             e.preventDefault();
@@ -3775,8 +3819,16 @@ function render3WeekView(
             );
           });
         }
+        b._barEl = bar;
         barsEl.appendChild(bar);
       });
+      lpCalendarFinalizeBarRowLayout(
+        barsWithRow,
+        weekRow,
+        BAR_HEIGHT,
+        BARS_TOP,
+        BOTTOM_PAD,
+      );
       const moreEl = document.createElement("div");
       moreEl.className = "calendar-day-more-overlay";
       moreEl.style.cssText =
@@ -6227,16 +6279,19 @@ function render1WeekView(
           await pullTimeDailyBudgetFromSupabase();
         } catch (_) {}
         if (pullGen !== _1weekRenderGen) return;
-        renderCalendar({ skipWeekPull: true });
+        requestAnimationFrame(() => {
+          if (pullGen !== _1weekRenderGen) return;
+          renderCalendar({ skipWeekPull: true });
+        });
       })();
     }
 
     const monthIndex = week[0] ? week[0].getMonth() : new Date().getMonth();
-    lpCalendarNavQ(nav, wrap, ".calendar-nav-month").textContent =
-      MONTH_NAMES_EN[monthIndex];
-    lpCalendarNavQ(nav, wrap, ".calendar-nav-year").textContent = week[0]
-      ? String(week[0].getFullYear())
-      : "";
+    const navMonth = lpCalendarNavQ(nav, wrap, ".calendar-nav-month");
+    const navYear = lpCalendarNavQ(nav, wrap, ".calendar-nav-year");
+    if (navMonth) navMonth.textContent = MONTH_NAMES_EN[monthIndex];
+    if (navYear)
+      navYear.textContent = week[0] ? String(week[0].getFullYear()) : "";
 
     try {
       wrap._lp1WeekFlowBodyMinRo?.disconnect();
@@ -6338,7 +6393,7 @@ function render1WeekView(
       }
       if (ok) {
         syncCalendarSectionTaskToServerAfterCalendarDateDrop(payload, ok);
-        renderCalendar();
+        renderCalendar({ skipWeekPull: true });
         refreshTodoList();
       }
     }
@@ -6401,6 +6456,7 @@ function render1WeekView(
       cell.addEventListener(
         "click",
         (e) => {
+          if (e.target.closest?.(".calendar-monthly-span-bar")) return;
           if (
             window.matchMedia("(max-width: 48rem)").matches &&
             cell.contains(e.target)
@@ -6411,6 +6467,10 @@ function render1WeekView(
             const tasks = getAllTasksForDateDisplay(key);
             createCalendarDayExpandBubble(rect, key, tasks, () => {}, {
               positionBelow: true,
+              onAfterTaskEdit: () => {
+                renderCalendar();
+                refreshTodoList();
+              },
               onAdd: () => {
                 createCalendarEventBubble(
                   rect,
@@ -6613,27 +6673,7 @@ function render1WeekView(
           .querySelector(".calendar-monthly-span-bar-checkbox")
           ?.classList.add("checked");
       }
-      if (isTodo) {
-        const toggleDone = (e) => {
-          e.stopPropagation();
-          const newDone = !b.done;
-          if (b.kpiTodoId && b.storageKey) {
-            syncKpiTodoCompleted(b.kpiTodoId, b.storageKey, newDone);
-          } else if (KPI_SECTION_IDS.includes(b.sectionId) && b.taskId) {
-            updateSectionTaskDone(b.sectionId, b.taskId, newDone);
-          } else if (b.sectionId?.startsWith("custom-") && b.taskId) {
-            updateCustomSectionTaskDone(b.sectionId, b.taskId, newDone);
-          }
-          b.done = newDone;
-          bar.classList.toggle("is-completed", newDone);
-          bar
-            .querySelector(".calendar-monthly-span-bar-checkbox")
-            ?.classList.toggle("checked", newDone);
-          refreshTodoList();
-        };
-        if (!window.matchMedia("(max-width: 48rem)").matches)
-          bar.addEventListener("click", toggleDone);
-      }
+      lpAttachCalendarBarOpenTodoEdit(bar, b, renderCalendar, refreshTodoList);
       if (!b.isSingleDay && b.startDate && b.dueDate) {
         bar.addEventListener("contextmenu", (e) => {
           e.preventDefault();
@@ -6667,8 +6707,16 @@ function render1WeekView(
           );
         });
       }
+      b._barEl = bar;
       barsEl.appendChild(bar);
     });
+    lpCalendarFinalizeBarRowLayout(
+      barsWithRow,
+      weekRow,
+      BAR_HEIGHT,
+      BARS_TOP,
+      BOTTOM_PAD,
+    );
     const moreEl = document.createElement("div");
     moreEl.className = "calendar-day-more-overlay";
     moreEl.style.cssText =
@@ -6967,13 +7015,10 @@ function render1WeekView(
     outer.appendChild(scrollArea);
     calendarGrid.appendChild(outer);
     lpAttach1WeekMobileFlowBodyMinSync(wrap, scrollArea, bodyGrid);
+    /* lpAttach 쪽에서 이미 min-height 동기화 rAF를 돌림 — 여기서 lpSync를 또 부르면 같은 프레임에 패딩·minHeight가 연달아 바뀌어 화면이 여러 번 튐 */
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        lpSync1WeekMobileFlowBodyToScrollViewport(scrollArea, bodyGrid);
         syncCalendar1WeekSidebarHeaderHeight(calendarSection, todoSidebar);
-        requestAnimationFrame(() => {
-          lpSync1WeekMobileFlowBodyToScrollViewport(scrollArea, bodyGrid);
-        });
       });
     });
   }
@@ -7024,8 +7069,11 @@ function render1WeekView(
     wrap._lpWeekSidebarRo = null;
   } catch (_) {}
   if (typeof ResizeObserver !== "undefined") {
+    let weekSidebarRaf = null;
     wrap._lpWeekSidebarRo = new ResizeObserver(() => {
-      requestAnimationFrame(() => {
+      if (weekSidebarRaf != null) return;
+      weekSidebarRaf = requestAnimationFrame(() => {
+        weekSidebarRaf = null;
         requestAnimationFrame(() => {
           syncCalendar1WeekSidebarHeaderHeight(calendarSection, todoSidebar);
         });
@@ -7035,7 +7083,7 @@ function render1WeekView(
   }
   attachCalendarTodoSidebarSpanRevertDrop(
     body,
-    () => renderCalendar(),
+    () => renderCalendar({ skipWeekPull: true }),
     () => refreshTodoList(),
   );
 
@@ -7045,11 +7093,12 @@ function render1WeekView(
       .forEach((el) => el.classList.remove("calendar-day-drag-over"));
   });
 
-  renderCalendar();
+  /* 상위 renderSubView 가 같은 주간에 이미 시간·예산을 pull 한 뒤 호출함 — 여기서 또 pull 하면 전체 격자가 연달아 다시 그려져 줄이 여러 번 튐 */
+  renderCalendar({ skipWeekPull: true });
 
   wrap._lpRefreshDateTodoSidebar = refreshTodoList;
   wrap._lpRefreshCalendarView = () => {
-    renderCalendar();
+    renderCalendar({ skipWeekPull: true });
     refreshTodoList();
   };
 
@@ -7195,6 +7244,10 @@ function renderAnnualView(tabsElement) {
               dismissOnOutsideClick: false,
               useMobileOverlay: false,
               positionBelow: true,
+              onAfterTaskEdit: () => {
+                renderYear();
+                refreshTodoList();
+              },
             },
           );
           _annualDayExpandClose = close;

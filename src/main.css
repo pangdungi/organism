@@ -3820,7 +3820,7 @@ body {
   min-height: 12rem;
   padding: 1rem 1.25rem;
   margin: 0;
-  background: var(--ui-surface-alt) !important;
+  background: transparent !important;
   font-size: var(--fs-body);
   font-weight: var(--fw-body);
   line-height: 1.75;
@@ -3832,7 +3832,7 @@ body {
 }
 .diary-desktop-compose-modal .diary-paper-text:focus {
   outline: none;
-  background: var(--ui-surface-alt) !important;
+  background: rgba(42, 56, 40, 0.02) !important;
 }
 .diary-desktop-compose-modal .diary-paper-text::placeholder {
   color: var(--text-placeholder);
@@ -6696,10 +6696,14 @@ body {
     .calendar-monthly-span-bar-text {
     font-size: 0.53125rem !important;
     line-height: 1.2 !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    word-wrap: break-word !important;
+    overflow-wrap: anywhere !important;
   }
   .calendar-view-with-subtabs .calendar-monthly-span-bar--has-checkbox {
-    gap: 0 !important;
-    padding-left: 0.08rem !important;
+    gap: 0.14rem !important;
+    padding-left: 0.1rem !important;
   }
   .calendar-view-with-subtabs .calendar-monthly-weekday {
     padding: 0.2rem !important;
@@ -7258,6 +7262,8 @@ body {
   .calendar-view--mobile-workschedule .work-schedule-monthly-day-num {
     align-self: flex-end;
     max-width: 100%;
+    font-size: 0.875rem;
+    font-weight: 500;
   }
   /* 모바일 근무표: 오늘은 셀 전체 베이지 칠 대신 소형 날짜 원 — 아래 pill 목록을 가리지 않음 */
   .calendar-view--mobile-workschedule .work-schedule-monthly-day.today {
@@ -7268,23 +7274,23 @@ body {
   }
   .calendar-view--mobile-workschedule
     .work-schedule-monthly-day.other-month.today {
-    background: #eceadf !important;
+    background: #fff !important;
   }
   .calendar-view--mobile-workschedule
     .work-schedule-monthly-day.today
     .work-schedule-monthly-day-num {
     flex: 0 0 auto !important;
-    width: 1.12rem !important;
-    min-width: 1.12rem !important;
-    max-width: 1.12rem !important;
-    height: 1.12rem !important;
+    width: 1.2rem !important;
+    min-width: 1.2rem !important;
+    max-width: 1.2rem !important;
+    height: 1.2rem !important;
     margin-bottom: 0.1rem !important;
     padding: 0 !important;
     display: inline-flex !important;
     align-items: center;
     justify-content: center;
-    font-size: 0.56rem !important;
-    font-weight: 700 !important;
+    font-size: 0.6rem !important;
+    font-weight: 500 !important;
     line-height: 1 !important;
     color: #ffffff !important;
     border-radius: 50% !important;
@@ -7322,11 +7328,11 @@ body {
     width: 100%;
     box-sizing: border-box;
   }
-  /* 시간 칩 가로 나열: 셀 밖으로 밀지 않고 줄바꿈·말줄임 */
+  /* 시간 칩: 왼쪽 정렬 */
   .calendar-view--mobile-workschedule .work-schedule-monthly-entry--segments {
-    align-items: center;
-    flex-wrap: wrap;
-    justify-content: flex-end;
+    align-items: stretch;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
     max-width: 100%;
     min-width: 0;
   }
@@ -7344,24 +7350,16 @@ body {
     align-items: stretch !important;
     align-self: stretch;
   }
-  .calendar-view--mobile-workschedule .work-schedule-monthly-type-pill {
-    display: block;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    box-sizing: border-box;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  /* 월간 근무유형: 모바일은 칩 글자·패딩만 축소(색·테두리는 공통 규칙과 동일) */
+  .calendar-view--mobile-workschedule .work-schedule-monthly-type-pill:not(.is-placeholder) {
     font-size: 0.52rem;
-    padding: 0.1rem 0.22rem;
-    line-height: 1.2;
+    padding: 0.1rem 0.32rem;
   }
   .calendar-view--mobile-workschedule
     .work-schedule-monthly-type-pill.work-schedule-monthly-type-pill--with-meal-check {
     display: flex;
     align-items: center;
-    gap: 0.15rem;
+    justify-content: flex-start;
     overflow: hidden;
     min-width: 0;
   }
@@ -7391,6 +7389,7 @@ body {
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 0.52rem;
+    text-align: left;
   }
 
   /* 모바일 월별: 행·pill 왼쪽 강조선 제거(너비 확보) */
@@ -7401,7 +7400,7 @@ body {
     align-items: stretch;
   }
   .calendar-view--mobile-workschedule
-    .work-schedule-monthly-type-pill.is-default {
+    .work-schedule-monthly-type-pill.is-default:not(.is-placeholder) {
     border-left: none;
   }
 
@@ -7449,13 +7448,15 @@ body {
     max-height: 60vh;
   }
 
-  /* 모바일: 날짜 셀 전체가 클릭 영역 — 글자/할일 텍스트 눌러도 모달 열림 */
+  /* 모바일: 날짜 숫자·entries 컨테이너는 클릭 통과 → 셀에서 빈 곳 탭 시 추가 모달. 막대는 직접 수신해 수정 모달(stopPropagation) */
   .calendar-monthly-day .calendar-monthly-day-num,
-  .calendar-monthly-day .calendar-monthly-day-entries,
+  .calendar-monthly-day .calendar-monthly-day-entries {
+    pointer-events: none;
+  }
   .calendar-monthly-day
     .calendar-monthly-day-entries
     .calendar-monthly-span-bar {
-    pointer-events: none;
+    pointer-events: auto;
   }
 
   /* 모바일 월별·2주·3주·1주: 셀 안 할일 바 세로 쌓기 + 간격 (absolute top 겹침 방지) */
@@ -7479,8 +7480,8 @@ body {
     flex-shrink: 0;
   }
   .calendar-monthly-day-entries .calendar-monthly-span-bar--has-checkbox {
-    gap: 0 !important;
-    padding-left: 0.08rem !important;
+    gap: 0.14rem !important;
+    padding-left: 0.1rem !important;
   }
 
   /* 모바일 캘린더 격자: 일정 동그라미 마커 숨김 + 글자·줄간격 축소(할 일은 | 표시 유지) */
@@ -7488,24 +7489,34 @@ body {
     display: none !important;
   }
   .calendar-view .calendar-monthly-span-bar--has-checkbox {
-    gap: 0 !important;
-    padding-left: 0.08rem !important;
+    gap: 0.14rem !important;
+    padding-left: 0.1rem !important;
   }
   .calendar-view
     .calendar-monthly-span-bar--schedule-strip:not(.calendar-monthly-span-bar--todo) {
     border-left: none !important;
-    padding-left: 0.12rem !important;
+    padding-left: 0.18rem !important;
   }
   .calendar-view .calendar-monthly-day-entries .calendar-monthly-span-bar-text {
     font-size: 0.53125rem !important;
     line-height: 1.2 !important;
     padding: 0 !important;
     font-weight: 400 !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    word-wrap: break-word !important;
+    overflow-wrap: anywhere !important;
   }
   .calendar-view .calendar-monthly-bars .calendar-monthly-span-bar-text {
     font-size: 0.5625rem !important;
-    line-height: 1.12 !important;
+    line-height: 1.15 !important;
     font-weight: 400 !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    word-wrap: break-word !important;
+    overflow-wrap: anywhere !important;
   }
   .calendar-day-expand-bubble--mobile .calendar-day-expand-checkbox,
   .calendar-day-expand-bubble--mobile .calendar-day-expand-schedule-dot {
@@ -8349,6 +8360,35 @@ body {
   .todo-list-view .todo-table tbody tr.todo-task-row td.todo-cell-name {
     overflow: visible;
     vertical-align: top;
+  }
+  /* 일정(schedule): 동그라미 열은 middle·이름 열만 top이면 첫 줄에 붙어 보임 — 같은 기준으로 맞춤 */
+  .calendar-view-todo
+    .calendar-todo-content
+    .todo-table
+    tbody
+    tr.todo-task-row[data-item-type="schedule"]
+    td.todo-cell-name,
+  .todo-list-view
+    .todo-table
+    tbody
+    tr.todo-task-row[data-item-type="schedule"]
+    td.todo-cell-name {
+    vertical-align: middle;
+  }
+  .calendar-view-todo
+    .calendar-todo-content
+    .todo-table
+    tbody
+    tr.todo-task-row[data-item-type="schedule"]
+    td.todo-cell-name
+    .todo-cell-name-wrap,
+  .todo-list-view
+    .todo-table
+    tbody
+    tr.todo-task-row[data-item-type="schedule"]
+    td.todo-cell-name
+    .todo-cell-name-wrap {
+    align-items: center;
   }
   /* 모바일: 할일 카드 영역 — 뷰포트 기준 높이로 스크롤(흰 묶음 리스트 스타일은 위 공통 규칙) */
   .calendar-view-todo .calendar-todo-content .todo-cards-wrap {
@@ -9691,6 +9731,36 @@ body {
 
 /* 시간가계부: ~1024px까지 모바일 레이아웃 (JS의 max-width 64rem 분기와 동일; 768px 이하는 위쪽 48rem 블록과 겹침) */
 @media (max-width: 64rem) {
+  /* 캘린더 옆 할일 사이드바·좁은 화면: 일정 동그라미 열과 제목 열 세로 기준 통일 */
+  .calendar-view-todo
+    .calendar-todo-content
+    .todo-table
+    tbody
+    tr.todo-task-row[data-item-type="schedule"]
+    td.todo-cell-name,
+  .todo-list-in-sidebar
+    .todo-table
+    tbody
+    tr.todo-task-row[data-item-type="schedule"]
+    td.todo-cell-name {
+    vertical-align: middle;
+  }
+  .calendar-view-todo
+    .calendar-todo-content
+    .todo-table
+    tbody
+    tr.todo-task-row[data-item-type="schedule"]
+    td.todo-cell-name
+    .todo-cell-name-wrap,
+  .todo-list-in-sidebar
+    .todo-table
+    tbody
+    tr.todo-task-row[data-item-type="schedule"]
+    td.todo-cell-name
+    .todo-cell-name-wrap {
+    align-items: center;
+  }
+
   .time-ledger-view[data-time-content-view="all"] .time-ledger-mobile-fab-wrap {
     position: fixed;
     bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
@@ -10939,6 +11009,19 @@ body {
   .calendar-1day-timeline-card-meta {
     font-size: 0.5625rem;
     margin-top: 0.18rem;
+  }
+  /* 타임라인 세로선이 동그라미(스팟) 정중앙을 지나가도록: 그리드 열 폭 = 마크 외접 크기 */
+  .calendar-1day-timeline-item {
+    grid-template-columns: 2.85rem minmax(0, 1fr);
+  }
+  .calendar-1day-timeline-spot {
+    width: 100%;
+    max-width: 2.85rem;
+    box-sizing: border-box;
+  }
+  .calendar-1day-timeline-spot-mark {
+    padding-left: 0;
+    padding-right: 0;
   }
 }
 
@@ -19022,7 +19105,8 @@ col.asset-expense-col-amount,
 
 .work-schedule-monthly-content .work-schedule-monthly-nav {
   margin-bottom: 0;
-  flex-shrink: 0;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .work-schedule-monthly-top-row .work-schedule-monthly-filter {
@@ -19065,6 +19149,7 @@ col.asset-expense-col-amount,
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
+  box-sizing: border-box;
 }
 
 .work-schedule-monthly-today-btn {
@@ -19077,6 +19162,7 @@ col.asset-expense-col-amount,
   border-radius: 0;
   cursor: pointer;
   font-family: inherit;
+  margin-left: auto;
 }
 
 .work-schedule-monthly-today-btn:hover {
@@ -19108,8 +19194,8 @@ col.asset-expense-col-amount,
   color: var(--text-ink);
   font-family: var(--font-heading);
   letter-spacing: -0.01em;
-  min-width: 8.75rem;
-  text-align: center;
+  min-width: 0;
+  text-align: left;
 }
 
 .work-schedule-monthly-calendar {
@@ -19122,7 +19208,7 @@ col.asset-expense-col-amount,
 
 .work-schedule-monthly-weekdays {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   position: sticky;
   top: 0;
   z-index: 2;
@@ -19141,7 +19227,9 @@ col.asset-expense-col-amount,
 
 .work-schedule-monthly-week {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-auto-rows: minmax(min-content, auto);
+  align-items: stretch;
   border-bottom: var(--line-l3);
 }
 
@@ -19150,12 +19238,16 @@ col.asset-expense-col-amount,
 }
 
 .work-schedule-monthly-day {
-  min-height: 5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: 3.25rem;
   padding: 0.35rem;
   border-right: var(--line-l3);
   font-size: 0.8125rem;
   text-align: right;
   background: #fff;
+  box-sizing: border-box;
 }
 
 .work-schedule-monthly-day:last-child {
@@ -19167,11 +19259,11 @@ col.asset-expense-col-amount,
 }
 
 .work-schedule-monthly-day.other-month {
-  background: #eceadf;
+  background: #fff;
 }
 
 .work-schedule-monthly-day.other-month:hover {
-  background: #eceadf;
+  background: rgba(0, 0, 0, 0.02);
 }
 
 .work-schedule-monthly-day.other-month .work-schedule-monthly-day-num {
@@ -19179,11 +19271,11 @@ col.asset-expense-col-amount,
 }
 
 .work-schedule-monthly-day.today {
-  background: #e8e2d2;
+  background: #fff;
 }
 
 .work-schedule-monthly-day.today:hover {
-  background: #e8e2d2;
+  background: rgba(0, 0, 0, 0.02);
 }
 
 .work-schedule-monthly-day.today .work-schedule-monthly-day-num::after {
@@ -19205,7 +19297,7 @@ col.asset-expense-col-amount,
 }
 
 .work-schedule-monthly-day-num {
-  font-size: 0.8125rem;
+  font-size: 1rem;
   font-weight: 500;
   font-family: var(--font-mono);
   color: var(--text-body);
@@ -19217,15 +19309,24 @@ col.asset-expense-col-amount,
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
-  align-items: flex-end;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
 }
 
 .work-schedule-monthly-entry {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 0.35rem;
   font-size: 0.6875rem;
   padding-left: 0;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .work-schedule-monthly-type {
@@ -19247,19 +19348,23 @@ col.asset-expense-col-amount,
   border-radius: 0;
 }
 
-/* 근무유형 캘린더: 셀 안에서 pill(태그) 형태로 표시 */
+/* 근무유형 캘린더: 한 줄에 pill 하나(세로로 쌓음) — 그리드 행 높이는 같은 주 중 가장 큰 셀에 맞춤(CSS Grid) */
 .work-schedule-monthly-entry--pills {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.2rem;
-  align-items: center;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 0.28rem;
+  align-items: stretch;
 }
 
-/* 식단 칩 안: 시간가계부 기록 확인 체크 */
+/* 식단·근무유형 칩: 텍스트 칩(배경·테두리), 식사 기록 시 체크박스 */
 .work-schedule-monthly-type-pill.work-schedule-monthly-type-pill--with-meal-check {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.25rem;
+  justify-content: flex-start;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
   max-width: 100%;
   box-sizing: border-box;
 }
@@ -19278,73 +19383,90 @@ col.asset-expense-col-amount,
 .work-schedule-monthly-type-pill--with-meal-check
   .work-schedule-monthly-type-pill-label {
   min-width: 0;
+  flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-align: left;
 }
 
-/* 같은 날 여러 근무: 시간 칩 나열 */
+.work-schedule-monthly-type-pill-text {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+/* 같은 날 여러 근무: 시간 칩도 한 줄에 하나 */
 .work-schedule-monthly-entry--segments {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.2rem 0.35rem;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 0.28rem;
+  align-items: stretch;
+  justify-content: flex-start;
 }
 
-.work-schedule-monthly-type-pill {
-  display: inline-block;
-  padding: 0.2rem 0.45rem;
+.work-schedule-monthly-type-pill:not(.is-placeholder) {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0.12rem 0.38rem;
   font-size: 0.7rem;
   font-weight: 500;
-  border-radius: 0.375rem;
+  border-radius: 0;
   white-space: nowrap;
-  line-height: 1.3;
+  overflow: hidden;
+  line-height: 1.35;
+  text-align: left;
+  gap: 0.35rem;
+  background: #e2ebe4;
+  color: #3d5c48;
+  border: 1px solid rgba(61, 92, 72, 0.22);
+  box-shadow: none;
+}
+
+.work-schedule-monthly-type-pill.is-ws-pill-diet:not(.is-placeholder) {
+  background: #d4efe3;
+  color: #137a56;
+  border-color: rgba(19, 122, 86, 0.28);
+}
+
+.work-schedule-monthly-entry--segments .work-schedule-monthly-hours {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .work-schedule-monthly-type-pill.is-placeholder {
-  background: var(--ui-surface-alt);
+  background: transparent !important;
+  border: none !important;
   color: var(--text-muted);
+  display: block;
+  text-align: left;
 }
 
-.work-schedule-monthly-type-pill.is-default {
-  background: var(--ui-surface-alt);
-  color: var(--text-body);
-  border: 1px solid var(--line-l3-color);
-}
-
-.work-schedule-monthly-type-pill.is-ws-pill-builtin {
-  background: #eef4e8;
-  color: #3d5340;
-  border: 1px solid rgba(61, 83, 64, 0.22);
-}
-
-.work-schedule-monthly-type-pill.is-ws-pill-work {
-  background: #e9ece6;
-  color: #4a5346;
-  border: 1px solid rgba(74, 83, 70, 0.22);
-}
-
-.work-schedule-monthly-type-pill.is-ws-pill-diet {
-  background: #d0dfd7;
-  color: #2e4a3a;
-  border: 1px solid rgba(46, 90, 68, 0.32);
-}
-
-.work-schedule-monthly-type-pill.is-ws-pill-default {
-  background: var(--ui-surface-alt);
-  color: var(--text-body);
-  border: 1px solid var(--line-l3-color);
-}
-
-.work-schedule-monthly-type-pill.is-overtime {
-  background: rgba(178, 186, 218, 0.45);
+.work-schedule-monthly-type-pill.is-overtime:not(.is-placeholder) {
+  background: rgba(178, 186, 218, 0.55);
   color: #4b5568;
+  border-color: rgba(75, 85, 104, 0.28);
 }
 
-.work-schedule-monthly-type-pill.is-early {
-  background: rgba(253, 186, 116, 0.45);
+.work-schedule-monthly-type-pill.is-early:not(.is-placeholder) {
+  background: rgba(253, 186, 116, 0.55);
   color: #c2410c;
+  border-color: rgba(194, 65, 12, 0.3);
 }
 
 .work-schedule-monthly-hours {
@@ -20611,37 +20733,6 @@ col.asset-expense-col-amount,
   box-shadow: none !important;
   background: transparent !important;
   color: transparent !important;
-}
-
-/* 할일 우클릭 컨텍스트 메뉴 - 리스트 이동 */
-.todo-braindump-context-menu {
-  position: fixed;
-  z-index: 1100;
-  min-width: 8rem;
-  padding: 0.25rem 0;
-  background: var(--content-bg);
-  border: var(--line-l4);
-  border-radius: 0.5rem;
-  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.12);
-  font-family: var(--font-body);
-}
-
-.todo-braindump-context-menu-item {
-  display: block;
-  width: 100%;
-  padding: 0.5rem 1rem;
-  font-size: var(--fs-body);
-  font-family: var(--font-body);
-  text-align: left;
-  color: var(--text-body);
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-
-.todo-braindump-context-menu-item:hover {
-  background: var(--ui-surface-alt);
-  color: var(--text-ink);
 }
 
 /* 체크박스 영역 우클릭: 할일/일정 메뉴 */
@@ -40762,8 +40853,10 @@ img.time-btn-icon {
 /* 본문 카드: 오른쪽 영역 넓게 사용(타임블록 ‘메뉴’만 좁은 것과 구분) */
 .diary-view-inner--desktop-mac-diary {
   --diary-read-column-max: min(52rem, calc(100% - 1.5rem));
-  /* 사이드바 열과 톤 맞춤: 탭 아래 줄무늬·틈 채우기 */
+  /* 사이드바·본문은 풀너비 — 좌우 패딩은 상단 탭 줄(.diary-desktop-tabs-strip)만 */
   background: var(--diary-mac-chrome-bg);
+  padding: 0;
+  box-sizing: border-box;
 }
 
 /* 탭 줄과 목록·본문 사이 여백(스크린샷 빨간 선 높이 느낌) */
@@ -40787,6 +40880,8 @@ img.time-btn-icon {
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
+  padding-left: 1rem;
+  padding-right: 1rem;
   margin-bottom: 0.625rem;
   gap: 0.5rem;
 }
@@ -45637,7 +45732,8 @@ tr.time-budget-calendar-row--readonly {
 }
 
 .calendar-monthly-span-bar--has-checkbox,
-.calendar-monthly-span-bar--range {
+.calendar-monthly-span-bar--range,
+.calendar-monthly-span-bar--schedule-strip {
   pointer-events: auto;
 }
 
@@ -45662,14 +45758,15 @@ tr.time-budget-calendar-row--readonly {
   font-size: 0.7rem;
   line-height: 1.35;
   color: var(--text-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
   border-radius: 0.25rem !important;
   box-sizing: border-box;
   opacity: 0.65;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: flex-start;
 }
 
@@ -45687,9 +45784,9 @@ tr.time-budget-calendar-row--readonly {
   ) !important;
   padding: 0.1rem 0.38rem 0.1rem 0.18rem;
   justify-content: flex-start;
-  align-items: center;
+  align-items: stretch;
   gap: 0.25rem;
-  line-height: 1;
+  line-height: 1.35;
   border-radius: 0 !important;
   border-left: none;
 }
@@ -45698,9 +45795,9 @@ tr.time-budget-calendar-row--readonly {
   background: transparent !important;
   padding: 0.1rem 0.38rem 0.1rem 0.08rem;
   justify-content: flex-start;
-  align-items: center;
+  align-items: stretch;
   gap: 0.12rem;
-  line-height: 1;
+  line-height: 1.35;
   border-radius: 0 !important;
   border-left: none;
 }
@@ -45715,6 +45812,16 @@ tr.time-budget-calendar-row--readonly {
 .calendar-monthly-span-bar--schedule-strip.calendar-monthly-span-bar--todo {
   border-left: none !important;
   background: transparent !important;
+}
+
+/* 여러 날 일정: 왼쪽 세로 막대 제거, 기간 막대와 동일 색 박스·첫 날 동그라미만 유지 */
+.calendar-monthly-span-bar--range.calendar-monthly-span-bar--schedule-strip {
+  border-left: none !important;
+  background: color-mix(
+    in srgb,
+    var(--bar-bg) 36%,
+    rgb(125 125 125 / 0.05)
+  ) !important;
 }
 
 .calendar-monthly-span-bar--todo::before,
@@ -45813,12 +45920,13 @@ tr.time-budget-calendar-row--readonly {
 .calendar-monthly-span-bar--todo .calendar-monthly-span-bar-text {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
   font-weight: 500;
   line-height: 1.35;
-  display: flex;
-  align-items: center;
+  display: block;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
   padding: 0.05rem 0.15rem 0.05rem 0;
 }
 
@@ -45834,9 +45942,11 @@ tr.time-budget-calendar-row--readonly {
 .calendar-monthly-span-bar--has-checkbox .calendar-monthly-span-bar-text {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
   line-height: 1.35;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
   padding: 0.05rem 0.15rem 0.05rem 0;
 }
 
@@ -45865,6 +45975,22 @@ tr.time-budget-calendar-row--readonly {
     -0.45px 0 0 currentColor;
 }
 
+/* 할 일·기간 막대: 왼쪽 색띠가 줄바꿈 전체 높이까지(한 과제로 보이게) */
+.calendar-monthly-span-bar--todo .calendar-monthly-span-bar-checkbox,
+.calendar-monthly-span-bar--range .calendar-monthly-span-bar-checkbox {
+  align-self: stretch;
+  width: 0.1875rem;
+  min-width: 0.1875rem;
+  padding: 0 !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  overflow: hidden !important;
+  text-shadow: none !important;
+  background: none !important;
+  background-color: currentColor !important;
+  border-radius: 0.03125rem;
+}
+
 .calendar-monthly-span-bar-checkbox.checked,
 .calendar-monthly-span-bar.is-completed .calendar-monthly-span-bar-checkbox {
   opacity: 0.42;
@@ -45889,6 +46015,7 @@ tr.time-budget-calendar-row--readonly {
 .calendar-monthly-span-bar--todo .calendar-monthly-span-bar-icon--schedule,
 .calendar-monthly-span-bar--range .calendar-monthly-span-bar-icon--schedule {
   align-self: center;
+  margin-top: 0;
 }
 
 .calendar-monthly-span-bar.is-completed .calendar-monthly-span-bar-text {
