@@ -233,7 +233,7 @@ function lpCalendarDateSidebarTodoListOpts(_sidebarMode, extra = {}) {
   };
 }
 
-/** 1주 뷰: 할일 사이드바 헤더 높이 = 왼쪽 메인 상단 ~ 요일 헤더 행 하단(동일 가로 기준선) */
+/** 1주 뷰: 사이드바 첫 줄 = 왼쪽 요일 행과 같은 높이만 쓰고, 그 위(월 네비 등)는 padding-top 으로 맞춤 — 헤더 전체를 줄무늬 블록 높이로 키우지 않음 */
 function syncCalendar1WeekSidebarHeaderHeight(mainSectionEl, sidebarEl) {
   if (!mainSectionEl || !sidebarEl) return;
   try {
@@ -241,27 +241,56 @@ function syncCalendar1WeekSidebarHeaderHeight(mainSectionEl, sidebarEl) {
   } catch (_) {
     return;
   }
-  const stripHeader = mainSectionEl.querySelector(
-    ".calendar-1week-strip-header",
-  );
   const sidebarHeader = sidebarEl.querySelector(
     ".calendar-todo-sidebar-header",
   );
-  if (!stripHeader || !sidebarHeader) return;
+  if (!sidebarHeader) return;
 
   if (sidebarEl.classList.contains("collapsed")) {
     sidebarHeader.style.removeProperty("height");
     sidebarHeader.style.removeProperty("min-height");
     sidebarHeader.style.removeProperty("max-height");
+    sidebarEl.style.removeProperty("padding-top");
     return;
   }
 
-  const mainTop = mainSectionEl.getBoundingClientRect().top;
-  const rowBottom = stripHeader.getBoundingClientRect().bottom;
-  const px = Math.max(0, Math.round(rowBottom - mainTop));
-  sidebarHeader.style.setProperty("height", `${px}px`);
-  sidebarHeader.style.setProperty("min-height", `${px}px`);
-  sidebarHeader.style.setProperty("max-height", `${px}px`);
+  const weekdayRow = mainSectionEl.querySelector(
+    ".calendar-1week-strip-header .calendar-monthly-weekdays",
+  );
+  if (!weekdayRow) {
+    sidebarHeader.style.removeProperty("height");
+    sidebarHeader.style.removeProperty("min-height");
+    sidebarHeader.style.removeProperty("max-height");
+    sidebarEl.style.removeProperty("padding-top");
+    return;
+  }
+
+  const sectionTop = mainSectionEl.getBoundingClientRect().top;
+  const wr = weekdayRow.getBoundingClientRect();
+  const padTop = Math.max(0, Math.round(wr.top - sectionTop));
+  let rowH = Math.round(wr.height);
+  if (rowH < 12) {
+    rowH = 48;
+  }
+  let minH = 48;
+  try {
+    const raw = getComputedStyle(document.documentElement)
+      .getPropertyValue("--app-chrome-titlebar-height")
+      .trim();
+    if (raw.endsWith("rem")) {
+      const n = parseFloat(raw);
+      if (n > 0) minH = Math.round(n * 16);
+    } else if (raw.endsWith("px")) {
+      const n = parseFloat(raw);
+      if (n > 0) minH = Math.round(n);
+    }
+  } catch (_) {}
+  const headerH = Math.max(minH, rowH);
+
+  sidebarEl.style.setProperty("padding-top", `${padTop}px`);
+  sidebarHeader.style.setProperty("height", `${headerH}px`);
+  sidebarHeader.style.setProperty("min-height", `${headerH}px`);
+  sidebarHeader.style.setProperty("max-height", `${headerH}px`);
 }
 
 /** 모바일 1주 플로우: 스크롤 안 세로 격자가 뷰포트까지 오도록 본문 최소 높이를 스크롤창·콘텐츠 중 큰 값으로 맞춤 */
@@ -4034,7 +4063,7 @@ function getYesterdayKey(dateStr) {
  * dateKey 기준: 저장된 일간예산 scheduledTimes + 해당 날 할일 시작·종료 → 예상 블록(겹침 레인 포함).
  * 오늘 해치우기 예산 DOM에만 있는 미저장 입력은 반영하지 않음.
  */
-function buildExpectedScheduleSpansForDateKey(dateKey) {
+export function buildExpectedScheduleSpansForDateKey(dateKey) {
   const budgetGoals = getBudgetGoals(dateKey);
   const tasks = getAllTasksForDateDisplay(dateKey);
   const SLOTS_PER_DAY = CAL_1DAY_TIMETABLE_SLOTS_PER_DAY;
@@ -6827,10 +6856,6 @@ function render1WeekView(
           checkEl.setAttribute("role", "img");
           checkEl.setAttribute("aria-label", "실제 기록에 반영됨");
           checkEl.textContent = "✓";
-          checkEl.style.flexShrink = "0";
-          checkEl.style.color = "var(--ui-btn-primary-bg, #2A3828)";
-          checkEl.style.fontWeight = "700";
-          checkEl.style.lineHeight = "1";
           titleRow.appendChild(checkEl);
         }
 
@@ -6869,6 +6894,8 @@ function render1WeekView(
           prog.className = "calendar-1week-flow-card-progress";
           prog.textContent = "진행 중";
           meta.appendChild(prog);
+        } else if (!ledgerMatched) {
+          card.classList.add("calendar-1week-flow-card--ledger-pending");
         }
 
         card.appendChild(titleRow);

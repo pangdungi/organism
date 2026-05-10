@@ -94,15 +94,37 @@ export function render() {
 
   const tabs = document.createElement("div");
   tabs.className = "time-view-tabs diary-tabs";
-  /** 모바일: 세그먼트 오른쪽 끝 빨간 + (행 정렬 공통 레이아웃) */
+  /** 모바일: 세그먼트 오른쪽 끝 빨간 + / 데스크톱: 탭 행 우측 끝 + (할일·시간가계부 톤) */
   let diaryMobileHeaderAddBtn = null;
+  let diaryDesktopHeaderAddBtn = null;
   if (!mobileViewport) {
+    const diaryDesktopTabsStrip = document.createElement("div");
+    diaryDesktopTabsStrip.className = "diary-desktop-tabs-strip";
+    const diaryDesktopTabsSpacer = document.createElement("div");
+    diaryDesktopTabsSpacer.className = "diary-desktop-tabs-strip__spacer";
+    diaryDesktopTabsSpacer.setAttribute("aria-hidden", "true");
+    const diaryDesktopTabsCenter = document.createElement("div");
+    diaryDesktopTabsCenter.className = "diary-desktop-tabs-strip__center";
     tabs.innerHTML = `
       <button type="button" class="time-view-tab diary-tab-btn" data-tab="3">감정일기</button>
       <button type="button" class="time-view-tab diary-tab-btn active" data-tab="2">통제일기</button>
       <button type="button" class="time-view-tab diary-tab-btn" data-tab="1">자유일기</button>
     `;
-    inner.appendChild(tabs);
+    diaryDesktopTabsCenter.appendChild(tabs);
+    const diaryDesktopTabsRight = document.createElement("div");
+    diaryDesktopTabsRight.className = "diary-desktop-tabs-strip__right";
+    diaryDesktopHeaderAddBtn = document.createElement("button");
+    diaryDesktopHeaderAddBtn.type = "button";
+    diaryDesktopHeaderAddBtn.className = "diary-desktop-header-add-btn todo-add-btn";
+    diaryDesktopHeaderAddBtn.title = "새 일기 작성";
+    diaryDesktopHeaderAddBtn.setAttribute("aria-label", "새 일기 작성");
+    diaryDesktopHeaderAddBtn.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+    diaryDesktopTabsRight.appendChild(diaryDesktopHeaderAddBtn);
+    diaryDesktopTabsStrip.appendChild(diaryDesktopTabsSpacer);
+    diaryDesktopTabsStrip.appendChild(diaryDesktopTabsCenter);
+    diaryDesktopTabsStrip.appendChild(diaryDesktopTabsRight);
+    inner.appendChild(diaryDesktopTabsStrip);
   } else {
     const diaryMobileTabsStrip = document.createElement("div");
     diaryMobileTabsStrip.className = "diary-mobile-tabs-strip";
@@ -710,6 +732,9 @@ export function render() {
         addPageHandler();
       };
     }
+    if (!mobile && diaryDesktopHeaderAddBtn) {
+      diaryDesktopHeaderAddBtn.onclick = () => addPageHandler();
+    }
 
     /** 모바일 서브탭은 항상 3개(감정·통제·자유). 예전에는 항목 있는 탭만 표시해 통제만 쓰면 나머지 탭이 사라짐 */
     const DIARY_MOBILE_TAB_ORDER = ["3", "2", "1"];
@@ -751,16 +776,12 @@ export function render() {
           <button type="button" class="diary-sidebar-collapse diary-sidebar-collapse-btn">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
-          <button type="button" class="diary-sidebar-add-btn" title="새 일기 작성">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-          </button>
         </div>
       `;
       sidebarHeader.querySelector(".diary-sidebar-collapse").addEventListener("click", () => {
         sidebarCollapsed = !sidebarCollapsed;
         renderLayout();
       });
-      sidebarHeader.querySelector(".diary-sidebar-add-btn").addEventListener("click", addPageHandler);
       sidebar.appendChild(sidebarHeader);
 
       const searchRow = document.createElement("div");

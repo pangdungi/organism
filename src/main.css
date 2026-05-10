@@ -1660,6 +1660,11 @@ body {
     padding-bottom: 1rem;
     padding-top: 0;
   }
+
+  .app-main:has(.diary-view) {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
 }
 
 /* 감정관리: 배경색은 할일(.todo-list-view)처럼 .diary-view에만 칠함 — 여기선 레이아웃만 */
@@ -1684,6 +1689,14 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+/* 감정일기(데스크톱): 메인 좌우 패딩 제거 — 본문이 사이드바~끝까지 붙도록 */
+@media (min-width: 64rem) {
+  .app-main:has(.diary-view) {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
 }
 
 /* 시간가계부: 영역 전체 고정, 콘텐츠 영역만 세로 스크롤 */
@@ -2053,6 +2066,103 @@ body {
   line-height: 1.3;
 }
 
+/* 홈 왼쪽 열: 통계 위 — 진행 중 기록(타임트래커) */
+.app-main:has(.home-view) .home-live-tracker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0 0 0.75rem;
+  padding: 0.65rem 0.75rem 0.7rem;
+  box-sizing: border-box;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 1rem !important;
+  -webkit-border-radius: 1rem !important;
+  box-shadow: 0 0.125rem 0.45rem rgba(0, 0, 0, 0.05);
+}
+
+.app-main:has(.home-view) .home-live-tracker[hidden] {
+  display: none !important;
+}
+
+.app-main:has(.home-view) .home-live-tracker-subtitle {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-ink, #1a2218);
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.app-main:has(.home-view) .home-live-tracker-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  min-width: 0;
+  margin-top: 0.05rem;
+  padding: 0.55rem 0.65rem;
+  box-sizing: border-box;
+  background: #f2f2ee;
+  border-radius: 0.75rem !important;
+  -webkit-border-radius: 0.75rem !important;
+  container-type: inline-size;
+  container-name: home-live-tracker-card;
+}
+
+.app-main:has(.home-view) .home-live-tracker-card-main {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.45rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.app-main:has(.home-view) .home-live-tracker-dot {
+  flex-shrink: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-top: 0.32rem;
+  border-radius: 50%;
+  background: #2f8f5b;
+  box-shadow: 0 0 0 2px rgba(47, 143, 91, 0.2);
+}
+
+.app-main:has(.home-view) .home-live-tracker-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.app-main:has(.home-view) .home-live-tracker-task {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-ink, #1a2218);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.app-main:has(.home-view) .home-live-tracker-meta {
+  font-size: 0.6875rem;
+  font-weight: 400;
+  color: var(--text-caption-color);
+  line-height: 1.35;
+}
+
+.app-main:has(.home-view) .home-live-tracker-clock {
+  flex-shrink: 0;
+  font-size: clamp(1.15rem, 5cqw, 1.65rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+  color: #2f8f5b;
+  line-height: 1;
+}
+
 .home-time-summary-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -2089,23 +2199,28 @@ body {
   background-clip: padding-box;
 }
 
-/* 통계 카드: 숫자 한 줄(전체 너비) + 아래 레이블 — 아이콘 없음 */
-.home-time-summary-cell-top {
+/* 통계 카드: 상단 레이블 → 본문(시간·막대·푸터) — 투자/낭비는 막대 없음 */
+.home-time-summary-cell-body {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 0.35rem;
+  gap: 0.42rem;
   min-width: 0;
   width: 100%;
+  flex: 1;
   overflow: visible;
   container-type: inline-size;
-  container-name: home-time-summary-top;
+  container-name: home-time-summary-body;
 }
 
-.home-time-summary-cell-top .home-time-summary-value {
+.home-time-summary-cell-body--money {
+  gap: 0.38rem;
+}
+
+.home-time-summary-cell-body .home-time-summary-value {
   margin: 0;
   padding: 0;
-  text-align: right;
+  text-align: left;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -2114,7 +2229,7 @@ body {
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: baseline;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 0;
   white-space: nowrap;
   overflow-x: visible;
@@ -2122,17 +2237,100 @@ body {
   min-height: 0;
 }
 
-.home-time-summary-cell-top .home-time-summary-value--duration {
+.home-time-summary-cell-body .home-time-summary-value--duration {
   display: flex;
   flex-wrap: nowrap;
   align-items: baseline;
-  justify-content: flex-end;
+  justify-content: flex-start;
   width: 100%;
   min-width: 0;
   max-width: 100%;
 }
 
-/* 레이블: 숫자 아래 */
+/* 총기록·생산적: 진행 막대 */
+.home-time-summary-bar {
+  width: 100%;
+  height: 0.3125rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.home-time-summary-bar-fill {
+  display: block;
+  height: 100%;
+  max-width: 100%;
+  border-radius: 999px;
+  transition: width 0.22s ease;
+}
+
+.home-time-summary-bar-fill--tracked {
+  background: #1d4e52;
+}
+
+.home-time-summary-bar-fill--productive {
+  background: #7e57c2;
+}
+
+.home-time-summary-metric-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.home-time-summary-pill {
+  flex-shrink: 0;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+}
+
+.home-time-summary-pill--tracked {
+  background: rgba(29, 78, 82, 0.14);
+  color: #1d4e52;
+}
+
+.home-time-summary-pill--productive {
+  background: rgba(126, 87, 194, 0.16);
+  color: #5e35b1;
+}
+
+.home-time-summary-metric-caption {
+  margin: 0;
+  padding: 0;
+  font-size: 0.5625rem;
+  font-weight: 400;
+  color: var(--text-caption-color);
+  text-align: left;
+  width: 100%;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+}
+
+.home-time-summary-metric-caption--footer {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
+.home-time-summary-metric-caption--invested {
+  color: rgba(198, 40, 40, 0.88);
+}
+
+.home-time-summary-metric-caption--waste {
+  color: rgba(21, 101, 192, 0.9);
+}
+
+/* 레이블: 카드 상단 */
 .home-time-summary-label {
   font-size: 0.625rem;
   font-weight: 400;
@@ -2140,6 +2338,7 @@ body {
   letter-spacing: 0.04em;
   line-height: 1.25;
   align-self: flex-start;
+  order: -1;
 }
 
 .home-time-summary-value {
@@ -2172,14 +2371,14 @@ body {
 }
 
 /* 통계 카드 오른쪽 칸 너비에 맞춰 글자 크기 자동 조절(cqw = 컨테이너 너비 %) */
-.home-time-summary-cell-top .home-time-summary-digits--money {
+.home-time-summary-cell-body .home-time-summary-digits--money {
   flex-shrink: 1;
   min-width: 0;
   font-size: 0.6875rem;
   font-size: clamp(0.46rem, 9.5cqw + 0.3rem, 1.0625rem);
 }
 
-.home-time-summary-cell-top
+.home-time-summary-cell-body
   .home-time-summary-value--duration
   .home-time-summary-digits {
   flex-shrink: 1;
@@ -2188,11 +2387,11 @@ body {
   font-size: clamp(0.5rem, 8.5cqw + 0.34rem, 1.1875rem);
 }
 
-.home-time-summary-cell-top .home-time-summary-value .home-time-summary-unit {
+.home-time-summary-cell-body .home-time-summary-value .home-time-summary-unit {
   font-size: clamp(0.4rem, 5cqw + 0.18rem, 0.5625rem);
 }
 
-.home-time-summary-cell-top
+.home-time-summary-cell-body
   .home-time-summary-value
   .home-time-summary-unit-suffix {
   font-size: clamp(0.4rem, 4.8cqw + 0.16rem, 0.5625rem);
@@ -2214,26 +2413,28 @@ body {
   flex-shrink: 0;
 }
 
-.home-time-summary-value.home-time-summary-value--invested {
-  color: var(--text-ink);
+.home-time-summary-value.home-time-summary-value--invested
+  .home-time-summary-digits--money {
+  color: #c62828;
+  font-weight: 700;
 }
 
 .home-time-summary-value.home-time-summary-value--invested
   .home-time-summary-unit {
-  color: var(--text-caption-color);
-  font-weight: 300;
-}
-
-.home-time-summary-value.home-time-summary-value--spent,
-.home-time-summary-value.home-time-summary-value--spent
-  .home-time-summary-unit {
-  color: var(--text-muted);
+  color: rgba(198, 40, 40, 0.78);
   font-weight: 300;
 }
 
 .home-time-summary-value.home-time-summary-value--spent
   .home-time-summary-digits--money {
-  font-weight: 500;
+  color: #1565c0;
+  font-weight: 700;
+}
+
+.home-time-summary-value.home-time-summary-value--spent
+  .home-time-summary-unit {
+  color: rgba(21, 101, 192, 0.78);
+  font-weight: 300;
 }
 
 /* 데스크탑(64rem↑): 통계 숫자만 소폭 확대 */
@@ -2254,7 +2455,7 @@ body {
     overflow: hidden;
   }
 
-  .home-time-summary-cell-top {
+  .home-time-summary-cell-body {
     gap: 0.38rem;
     overflow: visible;
   }
@@ -2455,6 +2656,8 @@ body {
   .app-main:has(.home-view) .home-view-left-col {
     flex: 0 1 auto;
     min-height: 0;
+    padding-top: 0.75rem;
+    box-sizing: border-box;
   }
   .app-main:has(.home-view) .home-view-section {
     overflow: visible !important;
@@ -2469,11 +2672,42 @@ body {
     -webkit-overflow-scrolling: touch;
   }
   /* 이벤트 섹션이 할일 뒤로 들어가지 않도록: 100% 높이·overflow 해제, 문서 흐름으로 아래에 배치 */
+  /* DOM은 [시간사용+리마인더 스택|타임라인] 이지만, 스택을 display:contents로 풀어
+   * 세로 순서 = 리마인더 → 타임라인 → 시간사용(타임라인 아래에서 전체 표시) */
   .app-main:has(.home-view) .home-view-section--event {
     height: auto !important;
     min-height: 0;
     overflow: visible !important;
     flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "reminder"
+      "timeline"
+      "timeusage";
+    align-items: stretch;
+    column-gap: 0;
+    row-gap: 0;
+  }
+  .app-main:has(.home-view) .home-view-section--event .home-event-reminder-stack {
+    display: contents;
+  }
+  .app-main:has(.home-view)
+    .home-view-section--event
+    .home-event-reminder-stack
+    > .home-event-half:first-child {
+    grid-area: timeusage;
+  }
+  .app-main:has(.home-view)
+    .home-view-section--event
+    .home-event-reminder-stack
+    > .home-event-half:last-child {
+    grid-area: reminder;
+  }
+  .app-main:has(.home-view)
+    .home-view-section--event
+    > .home-1day-timeline-section {
+    grid-area: timeline;
   }
   .app-main:has(.home-view) .home-event-half {
     max-height: none;
@@ -2495,8 +2729,284 @@ body {
   .app-main:has(.home-view) .home-event-half .home-reminder-content {
     padding: 0.875rem 1.75rem 0.75rem !important;
   }
-  .app-main:has(.home-view) .home-event-half .home-event-list {
+  .app-main:has(.home-view) .home-event-half .home-event-list:not(.home-event-pulse-body) {
     padding: 0.75rem 1.75rem 1rem !important;
+  }
+
+  /* 오늘 탭 Event: 시간사용(통계 톤) */
+  .app-main:has(.home-view) .home-time-usage-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex-shrink: 0;
+    min-width: 0;
+    padding: 0.625rem 1.75rem 0.35rem;
+    box-sizing: border-box;
+  }
+  .app-main:has(.home-view) .home-time-usage-heading {
+    margin: 0 0 0.5rem !important;
+  }
+  .app-main:has(.home-view) .home-time-usage-card {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0 !important;
+    -webkit-border-radius: 0 !important;
+    box-shadow: none;
+    box-sizing: border-box;
+  }
+  .app-main:has(.home-view)
+    .home-time-usage-card
+    .home-event-list.home-event-pulse-body {
+    padding: 0 !important;
+  }
+  .app-main:has(.home-view) .home-event-pulse-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .app-main:has(.home-view) .home-event-pulse-rings {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.35rem 0.25rem;
+    width: 100%;
+  }
+  .app-main:has(.home-view) .home-event-pulse-ring-item {
+    flex: 1 1 22%;
+    min-width: 3.25rem;
+    max-width: 5.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .app-main:has(.home-view) .home-event-pulse-donut {
+    width: 3.65rem;
+    height: 3.65rem;
+  }
+  .app-main:has(.home-view) .home-event-pulse-donut .dream-kpi-time-circle-bg {
+    stroke-width: 4.25;
+  }
+  .app-main:has(.home-view) .home-event-pulse-donut-fill {
+    fill: none;
+    stroke-width: 4.25;
+    stroke-linecap: round;
+    transition: stroke-dasharray 0.35s ease;
+  }
+  .app-main:has(.home-view) .home-event-pulse-donut-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    gap: 0;
+  }
+  .app-main:has(.home-view) .home-event-pulse-donut-pct {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--text-ink);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+  }
+  .app-main:has(.home-view) .home-event-pulse-ring-labels {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.06rem;
+    width: 100%;
+    min-width: 0;
+  }
+  .app-main:has(.home-view) .home-event-pulse-ring-cat {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-body);
+    line-height: 1.2;
+  }
+  .app-main:has(.home-view) .home-event-pulse-ring-sub {
+    font-size: 0.56rem;
+    font-weight: 400;
+    color: var(--text-caption-color);
+    line-height: 1.2;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .app-main:has(.home-view) .home-event-task-list {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    margin-top: 0.15rem;
+  }
+  .app-main:has(.home-view) .home-event-task-row {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.42rem;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    box-sizing: border-box;
+  }
+  .app-main:has(.home-view) .home-event-task-bottom {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.4rem 0.45rem;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+  }
+  .app-main:has(.home-view) .home-event-task-bar-shell {
+    width: 100%;
+    min-width: 0;
+  }
+  .app-main:has(.home-view) .home-event-task-bar-wrap {
+    position: relative;
+    width: 100%;
+    padding: 0.15rem 0 0.2rem;
+    box-sizing: border-box;
+  }
+  .app-main:has(.home-view) .home-event-task-bar-tag {
+    position: absolute;
+    z-index: 2;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    line-height: 1.2;
+    letter-spacing: 0.02em;
+    pointer-events: none;
+  }
+  .app-main:has(.home-view) .home-event-task-bar-tag--pin-end {
+    transform: translateX(-100%);
+  }
+  .app-main:has(.home-view) .home-event-task-bar-tag--pin-start {
+    transform: translateX(0);
+  }
+  .app-main:has(.home-view) .home-event-task-bar-tag--planned {
+    bottom: 100%;
+    margin-bottom: 0.12rem;
+    font-size: 0.625rem;
+    font-weight: 500;
+    color: var(--text-caption-color);
+  }
+  .app-main:has(.home-view) .home-event-task-bar-tag--actual {
+    top: 100%;
+    margin-top: 0.14rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+  }
+  .app-main:has(.home-view) .home-event-task-bar-tag--over {
+    color: #c45c4a;
+  }
+  .app-main:has(.home-view) .home-event-task-bar-tag--equal {
+    color: #3b6fb6;
+  }
+  .app-main:has(.home-view) .home-event-task-bar-tag--under {
+    color: #3d8b6a;
+  }
+  .app-main:has(.home-view) .home-event-task-label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+  .app-main:has(.home-view) .home-event-task-swatch {
+    flex: 0 0 auto;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 3px;
+    background: var(--text-placeholder);
+  }
+  .app-main:has(.home-view) .home-event-task-name {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: -0.018em;
+    color: var(--text-ink);
+    min-width: 0;
+    line-height: 1.3;
+    word-break: break-word;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  .app-main:has(.home-view) .home-event-task-bars {
+    width: 100%;
+    min-width: 0;
+  }
+  .app-main:has(.home-view) .home-event-task-bar-track--combined {
+    position: relative;
+    height: 0.22rem;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.07);
+    overflow: hidden;
+  }
+  .app-main:has(.home-view) .home-event-task-bar-goal {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    border-radius: inherit;
+    opacity: 0.4;
+    pointer-events: none;
+    max-width: 100%;
+    transition: width 0.35s ease;
+  }
+  .app-main:has(.home-view)
+    .home-event-task-bar-fill.home-event-task-bar-fill--actual {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 1;
+    border-radius: inherit;
+    min-width: 0;
+    transition: width 0.35s ease;
+  }
+  .app-main:has(.home-view) .home-event-task-bar-fill--actual.home-event-task-bar-fill--over {
+    background: #c45c4a !important;
+  }
+  .app-main:has(.home-view) .home-event-task-bar-fill--actual.home-event-task-bar-fill--equal {
+    background: #3b6fb6 !important;
+  }
+  .app-main:has(.home-view) .home-event-task-bar-fill--actual.home-event-task-bar-fill--under {
+    background: #3d8b6a !important;
+  }
+  .app-main:has(.home-view) .home-event-task-diff {
+    justify-self: start;
+    align-self: center;
+    margin: 0;
+    padding: 0.2rem 0;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.03em;
+    text-align: left;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .app-main:has(.home-view) .home-event-task-diff--over {
+    color: #c45c4a;
+  }
+  .app-main:has(.home-view) .home-event-task-diff--equal {
+    color: #3b6fb6;
+  }
+  .app-main:has(.home-view) .home-event-task-diff--under {
+    color: #3d8b6a;
+  }
+  .app-main:has(.home-view) .home-event-pulse-empty {
+    margin: 0;
+    padding: 0.35rem 0 0.25rem;
+    font-size: 0.6875rem;
+    line-height: 1.45;
+    color: var(--text-caption-color);
   }
 }
 
@@ -2525,12 +3035,16 @@ body {
     padding-right: 0;
   }
   .home-view-left-col {
-    padding: 0 1.25rem;
+    /* 툴바 하단선 ↔ 첫 콘텐츠(타임트래커) 사이 여백 — 오른쪽 시간사용 블록과 동일한 느낌 */
+    padding: 0.75rem 1.25rem 0;
     --home-panel-inline-pad: 1.25rem;
   }
   /* 데스크탑: 투두 섹션 height:100% 때문에 요약 그리드(특히 하단 시급 행)가 잘리거나 투두 제목과 겹침 → 날짜·요약은 축소 금지, 투두만 남은 높이 */
   .home-view-left-col .home-view-date-block,
   .home-view-left-col .home-time-summary-section {
+    flex-shrink: 0;
+  }
+  .home-view-left-col > .home-live-tracker:not([hidden]) {
     flex-shrink: 0;
   }
   .home-view-left-col > .home-view-section {
@@ -4084,19 +4598,19 @@ body {
     backface-visibility: hidden;
   }
   .app-main:has(.home-view)
-    .home-time-summary-cell-top
+    .home-time-summary-cell-body
     .home-time-summary-value {
     padding: 0;
     overflow-x: visible;
   }
   /* 오늘 탭(모바일): 고정 rem 규칙보다 컨테이너 기반 축소 우선 */
   .app-main:has(.home-view)
-    .home-time-summary-cell-top
+    .home-time-summary-cell-body
     .home-time-summary-digits {
     font-size: clamp(0.48rem, 8.5cqw + 0.32rem, 1.125rem);
   }
   .app-main:has(.home-view)
-    .home-time-summary-cell-top
+    .home-time-summary-cell-body
     .home-time-summary-digits--money {
     font-size: clamp(0.42rem, 11.5cqw + 0.22rem, 0.9375rem);
     letter-spacing: -0.008em;
@@ -4109,8 +4623,16 @@ body {
   .app-main:has(.home-view) .home-view-left-col {
     min-height: min-content;
     overflow: visible;
+    padding-top: 0.75rem;
+    box-sizing: border-box;
     --home-panel-inline-pad: 0px;
     --home-todo-row-line-inset: 1rem;
+  }
+  .app-main:has(.home-view) .home-view-left-col > .home-live-tracker:not([hidden]) {
+    margin-left: 1rem;
+    margin-right: 1rem;
+    max-width: calc(100% - 2rem);
+    box-sizing: border-box;
   }
   .app-main:has(.home-view) .home-view-three {
     overflow: visible;
@@ -4149,6 +4671,23 @@ body {
     min-height: 13.75rem;
     max-height: 48vh;
   }
+  /* 타임라인 아래 시간사용: 높이 상한 없이 목록 전체 표시 */
+  .app-main:has(.home-view)
+    .home-view-section--event
+    .home-event-half:has(.home-time-usage-section) {
+    max-height: none !important;
+    min-height: min-content;
+    overflow: visible !important;
+    border-top: var(--line-l3);
+  }
+  .app-main:has(.home-view)
+    .home-view-section--event
+    .home-event-half:has(.home-time-usage-section)
+    .home-event-list.home-event-pulse-body {
+    overflow-y: visible !important;
+    flex: 0 1 auto;
+    min-height: 0;
+  }
   .app-main:has(.home-view) .home-event-half .home-event-list,
   .app-main:has(.home-view) .home-event-half .home-reminder-content {
     flex: 1 1 0;
@@ -4158,7 +4697,7 @@ body {
   }
   /* 모바일: 이벤트 영역 패딩 (위 0, 좌우 1.75rem, 아래 1rem) */
   /* 모바일: 이벤트 카드 영역 패딩 (헤더와 안 겹치게 위 여백, 좌우 1.75rem, 아래 1rem) */
-  .app-main:has(.home-view) .home-event-half .home-event-list {
+  .app-main:has(.home-view) .home-event-half .home-event-list:not(.home-event-pulse-body) {
     padding: 0.75rem 1.75rem 1rem !important;
   }
   /* 모바일: 이벤트·리마인더 헤더 패딩 0.875rem 1.75rem 0.75rem */
@@ -4173,7 +4712,7 @@ body {
   .app-main:has(.home-view) .home-view-section--event {
     align-items: stretch !important;
   }
-  /* 모바일: 오늘 탭 — 리마인더 아래 타임라인(1일 뷰) */
+  /* 모바일: 오늘 탭 — 리마인더 → 타임라인 → 시간사용(하단, @media max-width 64rem 그리드) */
   .app-main:has(.home-view) .home-1day-timeline-section {
     display: flex;
     flex-direction: column;
@@ -8348,8 +8887,7 @@ body {
 
   /* 모바일: 요약 패널 등 일부만 숨김 — 날짜 줄은 .time-ledger-filter-add-row 에서 표시 */
   .time-ledger-view .time-ledger-header,
-  .time-ledger-view[data-time-content-view="all"]
-    .time-ledger-summary-panel:not(.time-ledger-mobile-tabs-summary) {
+  .time-ledger-view[data-time-content-view="all"] .time-ledger-summary-panel {
     display: none !important;
   }
   .time-ledger-view .time-filter-bar {
@@ -8460,147 +8998,6 @@ body {
     margin-left: auto;
     align-self: center;
   }
-  /* 모바일 시간 기록: 상단 스트립 — 4칸(총기록·생산·낭비한 시급·오늘 하루의 가치), 투자 시급 없음 */
-  .time-ledger-view .time-ledger-mobile-tabs-summary.time-ledger-summary-panel {
-    flex: 1 1 100%;
-    width: 100%;
-    min-width: 0;
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0;
-    margin-top: 0;
-    padding: 0.4rem 0 0.4rem;
-    border-top: var(--line-l3);
-    border-bottom: var(--line-l3);
-    /* 패널 아래선과 날짜 툴바 상단선이 겹쳐 보이지 않게: 선 아래 여백만 (툴바는 border-top 없음) */
-    margin-bottom: 0.35rem;
-    box-sizing: border-box;
-    align-items: stretch;
-  }
-  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell {
-    display: flex;
-    flex-direction: column;
-    gap: 0.12rem;
-    padding: 0 0.2rem;
-    min-width: 0;
-    border-right: var(--line-l3);
-  }
-  /* 금액·가치 칸: 좌우 셀 패딩 제거 */
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:nth-child(3),
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:nth-child(4) {
-    padding-left: 0;
-    padding-right: 0;
-  }
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:last-child {
-    border-right: none;
-  }
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-label {
-    font-size: clamp(0.5rem, 2.2vw, var(--fs-caption));
-    font-weight: var(--fw-mono);
-    line-height: 1.2;
-    color: var(--text-caption-color);
-    letter-spacing: 0.05em;
-    text-align: center;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-  }
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-value {
-    display: flex;
-    align-items: baseline;
-    justify-content: center;
-    flex-wrap: nowrap;
-    gap: 0.08em;
-    line-height: 1.2;
-    min-width: 0;
-  }
-  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-num {
-    font-family: var(--font-heading);
-    font-size: 1.0625rem;
-    font-weight: 600;
-    letter-spacing: -0.03em;
-    color: var(--text-ink);
-    line-height: 1.1;
-  }
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:nth-child(1)
-    .time-ledger-summary-unit,
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:nth-child(2)
-    .time-ledger-summary-unit {
-    font-family: var(--font-body);
-    font-size: 0.5rem;
-    font-weight: var(--fw-small);
-    letter-spacing: 0.04em;
-    color: var(--text-placeholder);
-    line-height: 1.2;
-    text-transform: lowercase;
-  }
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:nth-child(3)
-    .time-ledger-summary-unit,
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:nth-child(4)
-    .time-ledger-summary-unit {
-    font-family: var(--font-body);
-    font-size: 0.5rem;
-    font-weight: var(--fw-small);
-    letter-spacing: 0.02em;
-    color: var(--text-caption-color);
-    line-height: 1.2;
-  }
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:nth-child(3)
-    .time-ledger-summary-value--spent
-    .time-ledger-summary-num,
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:nth-child(3)
-    .time-ledger-summary-value--spent
-    .time-ledger-summary-unit,
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:nth-child(4)
-    .time-ledger-summary-value--day-net
-    .time-ledger-summary-num,
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:nth-child(4)
-    .time-ledger-summary-value--day-net
-    .time-ledger-summary-unit {
-    color: var(--text-ink);
-  }
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:nth-child(3)
-    .time-ledger-summary-value--spent
-    .time-ledger-summary-num,
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:nth-child(4)
-    .time-ledger-summary-value--day-net
-    .time-ledger-summary-num {
-    font-size: clamp(0.72rem, 3.2vw, 0.8125rem);
-    font-weight: 600;
-    line-height: 1.15;
-    letter-spacing: -0.04em;
-  }
   .time-ledger-view .time-ledger-filter-add-row {
     padding-top: 0.4rem;
     padding-bottom: 0.4rem;
@@ -8619,6 +9016,28 @@ body {
     margin-bottom: 0;
     justify-content: flex-start;
     margin-left: 0;
+  }
+  /* 날짜 행 바로 아래: 필터 구간 전체 기록 합계(hh:mm) */
+  .time-ledger-view .time-ledger-mobile-filter-total[hidden] {
+    display: none !important;
+  }
+  .time-ledger-view .time-ledger-mobile-filter-total:not([hidden]) {
+    display: block;
+    padding: 0.4rem 1.5rem 0.35rem;
+    box-sizing: border-box;
+    border-bottom: var(--line-l3);
+  }
+  .time-ledger-view .time-ledger-mobile-filter-total-inner {
+    font-family: var(--font-body);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--text-caption-color);
+    letter-spacing: 0.02em;
+    line-height: 1.35;
+  }
+  .time-ledger-view .time-ledger-mobile-filter-total-value {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-body);
   }
   /* 날짜 구간 왼쪽·넓게 / ‹ › 행 오른쪽 (DOM이 filterBar 직속일 때) */
   .time-ledger-view .time-filter-bar > .time-filter-nav-cluster {
@@ -9332,8 +9751,7 @@ body {
 
   /* 모바일: 요약 패널 등 일부만 숨김 — 날짜 줄은 .time-ledger-filter-add-row 에서 표시 */
   .time-ledger-view .time-ledger-header,
-  .time-ledger-view[data-time-content-view="all"]
-    .time-ledger-summary-panel:not(.time-ledger-mobile-tabs-summary) {
+  .time-ledger-view[data-time-content-view="all"] .time-ledger-summary-panel {
     display: none !important;
   }
   .time-ledger-view .time-filter-bar {
@@ -9444,147 +9862,6 @@ body {
     margin-left: auto;
     align-self: center;
   }
-  /* 모바일 시간 기록: 상단 스트립 — 4칸(총기록·생산·낭비한 시급·오늘 하루의 가치), 투자 시급 없음 */
-  .time-ledger-view .time-ledger-mobile-tabs-summary.time-ledger-summary-panel {
-    flex: 1 1 100%;
-    width: 100%;
-    min-width: 0;
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0;
-    margin-top: 0;
-    padding: 0.4rem 0 0.4rem;
-    border-top: var(--line-l3);
-    border-bottom: var(--line-l3);
-    /* 패널 아래선과 날짜 툴바 상단선이 겹쳐 보이지 않게: 선 아래 여백만 (툴바는 border-top 없음) */
-    margin-bottom: 0.35rem;
-    box-sizing: border-box;
-    align-items: stretch;
-  }
-  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-cell {
-    display: flex;
-    flex-direction: column;
-    gap: 0.12rem;
-    padding: 0 0.2rem;
-    min-width: 0;
-    border-right: var(--line-l3);
-  }
-  /* 금액·가치 칸: 좌우 셀 패딩 제거 */
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:nth-child(3),
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:nth-child(4) {
-    padding-left: 0;
-    padding-right: 0;
-  }
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:last-child {
-    border-right: none;
-  }
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-label {
-    font-size: clamp(0.5rem, 2.2vw, var(--fs-caption));
-    font-weight: var(--fw-mono);
-    line-height: 1.2;
-    color: var(--text-caption-color);
-    letter-spacing: 0.05em;
-    text-align: center;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-  }
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-value {
-    display: flex;
-    align-items: baseline;
-    justify-content: center;
-    flex-wrap: nowrap;
-    gap: 0.08em;
-    line-height: 1.2;
-    min-width: 0;
-  }
-  .time-ledger-view .time-ledger-mobile-tabs-summary .time-ledger-summary-num {
-    font-family: var(--font-heading);
-    font-size: 1.0625rem;
-    font-weight: 600;
-    letter-spacing: -0.03em;
-    color: var(--text-ink);
-    line-height: 1.1;
-  }
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:nth-child(1)
-    .time-ledger-summary-unit,
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:nth-child(2)
-    .time-ledger-summary-unit {
-    font-family: var(--font-body);
-    font-size: 0.5rem;
-    font-weight: var(--fw-small);
-    letter-spacing: 0.04em;
-    color: var(--text-placeholder);
-    line-height: 1.2;
-    text-transform: lowercase;
-  }
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:nth-child(3)
-    .time-ledger-summary-unit,
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:nth-child(4)
-    .time-ledger-summary-unit {
-    font-family: var(--font-body);
-    font-size: 0.5rem;
-    font-weight: var(--fw-small);
-    letter-spacing: 0.02em;
-    color: var(--text-caption-color);
-    line-height: 1.2;
-  }
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:nth-child(3)
-    .time-ledger-summary-value--spent
-    .time-ledger-summary-num,
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:nth-child(3)
-    .time-ledger-summary-value--spent
-    .time-ledger-summary-unit,
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:nth-child(4)
-    .time-ledger-summary-value--day-net
-    .time-ledger-summary-num,
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:nth-child(4)
-    .time-ledger-summary-value--day-net
-    .time-ledger-summary-unit {
-    color: var(--text-ink);
-  }
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:nth-child(3)
-    .time-ledger-summary-value--spent
-    .time-ledger-summary-num,
-  .time-ledger-view
-    .time-ledger-mobile-tabs-summary
-    .time-ledger-summary-cell:nth-child(4)
-    .time-ledger-summary-value--day-net
-    .time-ledger-summary-num {
-    font-size: clamp(0.72rem, 3.2vw, 0.8125rem);
-    font-weight: 600;
-    line-height: 1.15;
-    letter-spacing: -0.04em;
-  }
   .time-ledger-view .time-ledger-filter-add-row {
     padding-top: 0.4rem;
     padding-bottom: 0.4rem;
@@ -9603,6 +9880,28 @@ body {
     margin-bottom: 0;
     justify-content: flex-start;
     margin-left: 0;
+  }
+  /* 날짜 행 바로 아래: 필터 구간 전체 기록 합계(hh:mm) */
+  .time-ledger-view .time-ledger-mobile-filter-total[hidden] {
+    display: none !important;
+  }
+  .time-ledger-view .time-ledger-mobile-filter-total:not([hidden]) {
+    display: block;
+    padding: 0.4rem 1.5rem 0.35rem;
+    box-sizing: border-box;
+    border-bottom: var(--line-l3);
+  }
+  .time-ledger-view .time-ledger-mobile-filter-total-inner {
+    font-family: var(--font-body);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--text-caption-color);
+    letter-spacing: 0.02em;
+    line-height: 1.35;
+  }
+  .time-ledger-view .time-ledger-mobile-filter-total-value {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-body);
   }
   /* 날짜 구간 왼쪽·넓게 / ‹ › 행 오른쪽 (DOM이 filterBar 직속일 때) */
   .time-ledger-view .time-filter-bar > .time-filter-nav-cluster {
@@ -10660,6 +10959,10 @@ body {
   min-width: 0;
   box-sizing: border-box;
 }
+/* 홈 타임라인: .calendar-monthly-grid 기본 하단선이 카드 아래 가로줄로 보임 → 제거 */
+.app-main:has(.home-view) .home-1day-timeline-mount .calendar-monthly-grid {
+  border-bottom: none;
+}
 .app-main:has(.home-view) .home-1day-timeline-mount .calendar-1day-view {
   flex: 0 1 auto;
   min-height: min-content;
@@ -10874,9 +11177,285 @@ body {
     min-height: 18rem;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 0 0.25rem 1rem 0;
+    padding: 0 0.25rem 1rem 0.25rem;
     box-sizing: border-box;
     -webkit-overflow-scrolling: touch;
+  }
+
+  /* 넓은 화면: 시간사용 패널(통계 톤) */
+  .app-main:has(.home-view) .home-time-usage-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    flex-shrink: 0;
+    min-width: 0;
+    padding: 0.625rem 0.75rem 0.25rem;
+    box-sizing: border-box;
+  }
+  .app-main:has(.home-view) .home-time-usage-heading {
+    margin: 0 0 0.45rem !important;
+  }
+  .app-main:has(.home-view) .home-time-usage-card {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0 !important;
+    -webkit-border-radius: 0 !important;
+    box-shadow: none;
+    box-sizing: border-box;
+  }
+  .app-main:has(.home-view)
+    .home-time-usage-card
+    .home-event-list.home-event-pulse-body {
+    padding: 0 !important;
+  }
+  .app-main:has(.home-view) .home-event-pulse-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .app-main:has(.home-view) .home-event-pulse-rings {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    gap: 0.25rem;
+    width: 100%;
+  }
+  .app-main:has(.home-view) .home-event-pulse-ring-item {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .app-main:has(.home-view) .home-event-pulse-donut {
+    width: 3.4rem;
+    height: 3.4rem;
+  }
+  .app-main:has(.home-view) .home-event-pulse-donut .dream-kpi-time-circle-bg {
+    stroke-width: 4;
+  }
+  .app-main:has(.home-view) .home-event-pulse-donut-fill {
+    fill: none;
+    stroke-width: 4;
+    stroke-linecap: round;
+    transition: stroke-dasharray 0.35s ease;
+  }
+  .app-main:has(.home-view) .home-event-pulse-donut-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    gap: 0;
+  }
+  .app-main:has(.home-view) .home-event-pulse-donut-pct {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-ink);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+  }
+  .app-main:has(.home-view) .home-event-pulse-ring-labels {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.06rem;
+    width: 100%;
+    min-width: 0;
+  }
+  .app-main:has(.home-view) .home-event-pulse-ring-cat {
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: var(--text-body);
+    line-height: 1.2;
+  }
+  .app-main:has(.home-view) .home-event-pulse-ring-sub {
+    font-size: 0.52rem;
+    font-weight: 400;
+    color: var(--text-caption-color);
+    line-height: 1.2;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .app-main:has(.home-view) .home-event-task-list {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    margin-top: 0.1rem;
+  }
+  .app-main:has(.home-view) .home-event-task-row {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.36rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    box-sizing: border-box;
+  }
+  .app-main:has(.home-view) .home-event-task-bottom {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.35rem 0.4rem;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+  }
+  .app-main:has(.home-view) .home-event-task-bar-shell {
+    width: 100%;
+    min-width: 0;
+  }
+  .app-main:has(.home-view) .home-event-task-bar-wrap {
+    position: relative;
+    width: 100%;
+    padding: 0.12rem 0 0.18rem;
+    box-sizing: border-box;
+  }
+  .app-main:has(.home-view) .home-event-task-bar-tag {
+    position: absolute;
+    z-index: 2;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    line-height: 1.2;
+    letter-spacing: 0.02em;
+    pointer-events: none;
+  }
+  .app-main:has(.home-view) .home-event-task-bar-tag--pin-end {
+    transform: translateX(-100%);
+  }
+  .app-main:has(.home-view) .home-event-task-bar-tag--pin-start {
+    transform: translateX(0);
+  }
+  .app-main:has(.home-view) .home-event-task-bar-tag--planned {
+    bottom: 100%;
+    margin-bottom: 0.1rem;
+    font-size: 0.6rem;
+    font-weight: 500;
+    color: var(--text-caption-color);
+  }
+  .app-main:has(.home-view) .home-event-task-bar-tag--actual {
+    top: 100%;
+    margin-top: 0.12rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+  }
+  .app-main:has(.home-view) .home-event-task-bar-tag--over {
+    color: #c45c4a;
+  }
+  .app-main:has(.home-view) .home-event-task-bar-tag--equal {
+    color: #3b6fb6;
+  }
+  .app-main:has(.home-view) .home-event-task-bar-tag--under {
+    color: #3d8b6a;
+  }
+  .app-main:has(.home-view) .home-event-task-label {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    min-width: 0;
+  }
+  .app-main:has(.home-view) .home-event-task-swatch {
+    flex: 0 0 auto;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 3px;
+    background: var(--text-placeholder);
+  }
+  .app-main:has(.home-view) .home-event-task-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: -0.016em;
+    color: var(--text-ink);
+    min-width: 0;
+    line-height: 1.3;
+    word-break: break-word;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  .app-main:has(.home-view) .home-event-task-bars {
+    width: 100%;
+    min-width: 0;
+  }
+  .app-main:has(.home-view) .home-event-task-bar-track--combined {
+    position: relative;
+    height: 0.2rem;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.07);
+    overflow: hidden;
+  }
+  .app-main:has(.home-view) .home-event-task-bar-goal {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    border-radius: inherit;
+    opacity: 0.4;
+    pointer-events: none;
+    max-width: 100%;
+    transition: width 0.35s ease;
+  }
+  .app-main:has(.home-view)
+    .home-event-task-bar-fill.home-event-task-bar-fill--actual {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 1;
+    border-radius: inherit;
+    min-width: 0;
+    transition: width 0.35s ease;
+  }
+  .app-main:has(.home-view) .home-event-task-bar-fill--actual.home-event-task-bar-fill--over {
+    background: #c45c4a !important;
+  }
+  .app-main:has(.home-view) .home-event-task-bar-fill--actual.home-event-task-bar-fill--equal {
+    background: #3b6fb6 !important;
+  }
+  .app-main:has(.home-view) .home-event-task-bar-fill--actual.home-event-task-bar-fill--under {
+    background: #3d8b6a !important;
+  }
+  .app-main:has(.home-view) .home-event-task-diff {
+    justify-self: start;
+    align-self: center;
+    margin: 0;
+    padding: 0.18rem 0;
+    font-size: 0.65rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.03em;
+    text-align: left;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .app-main:has(.home-view) .home-event-task-diff--over {
+    color: #c45c4a;
+  }
+  .app-main:has(.home-view) .home-event-task-diff--equal {
+    color: #3b6fb6;
+  }
+  .app-main:has(.home-view) .home-event-task-diff--under {
+    color: #3d8b6a;
+  }
+  .app-main:has(.home-view) .home-event-pulse-empty {
+    margin: 0;
+    padding: 0.3rem 0 0.2rem;
+    font-size: 0.65rem;
+    line-height: 1.45;
+    color: var(--text-caption-color);
   }
 }
 
@@ -19735,6 +20314,73 @@ col.asset-expense-col-amount,
   .todo-list-toolbar-actions-end
   .todo-list-settings-btn:focus-visible {
   background: transparent !important;
+}
+
+/* 캘린더 할일 사이드바(좁은 열): 꿈·부수입·건강… 탭은 모바일과 동일 아이콘 + 개수만(.todo-tab-icons) */
+.calendar-todo-sidebar .todo-category-tab {
+  position: relative;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.08rem;
+  padding-top: 0.28rem !important;
+  padding-bottom: 0.28rem !important;
+  padding-left: 0.22rem !important;
+  padding-right: 0.22rem !important;
+  line-height: 1;
+  white-space: normal;
+  min-width: 0;
+}
+
+.calendar-todo-sidebar .todo-category-tab .todo-category-tab-icon {
+  display: block !important;
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.calendar-todo-sidebar .todo-category-tab .todo-category-tab-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.calendar-todo-sidebar .todo-category-tab .todo-category-tab-count {
+  margin-left: 0 !important;
+  font-size: 0.58rem !important;
+  line-height: 1;
+  font-weight: 600;
+}
+
+.calendar-todo-sidebar .todo-list-segment-tabs.time-view-tabs--segmented {
+  max-width: 100%;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.calendar-todo-sidebar
+  .todo-list-segment-tabs.time-view-tabs--segmented
+  > .time-view-tabs-thumb {
+  min-height: 2.35rem;
+}
+
+.calendar-todo-sidebar
+  .todo-list-segment-tabs.time-view-tabs--segmented
+  .todo-category-tab.time-view-tab {
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.08rem !important;
+  padding: 0.28rem 0.2rem !important;
+  min-width: 0;
 }
 
 .calendar-view-todo .calendar-todo-content .todo-category-tab {
@@ -33164,10 +33810,115 @@ button.time-modal-traffic {
 .time-audit-region-time-thief,
 .time-audit-region-time-investment,
 .time-audit-region-available,
-.time-audit-region-achievement {
+.time-audit-region-achievement,
+.time-audit-region-media-watch,
+.time-audit-region-kpi-status {
   margin-top: 1rem;
   border-top: none;
   padding-top: 1rem;
+}
+
+/* 보고서 §6 — KPI 연동 과제 시간 */
+.time-audit-kpi-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.time-audit-kpi-subtitle {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-caption-color);
+  margin: 0.15rem 0 0.1rem;
+}
+
+.time-audit-kpi-split {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  align-items: flex-start;
+}
+
+.time-audit-kpi-bars-col {
+  flex: 1 1 16rem;
+  min-width: min(100%, 14rem);
+}
+
+.time-audit-kpi-pie-col {
+  flex: 0 1 12.5rem;
+  min-width: 9.5rem;
+  max-width: 100%;
+}
+
+.time-audit-kpi-pie-box .time-audit-pie-title {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.time-audit-kpi-empty {
+  padding: 1.25rem 1rem;
+  text-align: center;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: #9ca3af;
+  background: var(--app-bg);
+  border: var(--line-l3);
+  border-radius: 0.35rem;
+}
+
+.time-audit-kpi-bucket-bars .time-audit-kpi-bucket-row .time-audit-bar-label {
+  flex: 0 0 4.25rem;
+}
+
+.time-audit-kpi-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+
+.time-audit-kpi-table th,
+.time-audit-kpi-table td {
+  font-size: 0.75rem;
+}
+
+.time-audit-kpi-task-cell {
+  font-weight: 500;
+  color: var(--text-body);
+  max-width: 12rem;
+  word-break: break-word;
+}
+
+.time-audit-kpi-time-cell {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.time-audit-kpi-total-note {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}
+
+.time-audit-kpi-total-note strong {
+  font-weight: 600;
+  color: var(--text-body);
+}
+
+@media (max-width: 36rem) {
+  .time-audit-kpi-split {
+    flex-direction: column;
+  }
+  .time-audit-kpi-pie-col {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: 18rem;
+  }
 }
 
 .time-audit-achievement-content {
@@ -39998,14 +40749,14 @@ img.time-btn-icon {
 
 /* 일기(macOS 설정창 톤) — 데스크톱 사이드바 레이아웃에서 감정·통제·자유 탭 공통 · Diary.js */
 
-/* 테스크톹 일기 분할 열: 투명 — 바깥(app-main 등) 배경 그대로 */
+/* 테스크톹 일기 분할 열: 투명 — 바깥(app-main 등) 배경 그대로 · 좌우 패딩 제거(상하 유지) */
 .diary-view.diary-view--desktop-mac-diary {
   --diary-mac-chrome-bg: transparent;
-}
-
-/* 감정일기(탭 data-diary-tab='3'): 본 패널 기본 좌패딩만 제거 — 다른 탭 레이아웃 유지 */
-.diary-view.diary-view--desktop-mac-diary:has(.diary-layout-wrap[data-diary-tab="3"]) {
   padding-left: 0;
+  padding-right: 0;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  box-sizing: border-box;
 }
 
 /* 본문 카드: 오른쪽 영역 넓게 사용(타임블록 ‘메뉴’만 좁은 것과 구분) */
@@ -40027,6 +40778,62 @@ img.time-btn-icon {
   background: var(--diary-mac-chrome-bg);
 }
 
+/* 데스크톱: 탭 세그먼트 + 우측 끝 빨간 +(할일·시간가계부와 동일 톤) */
+.diary-view-inner--desktop-mac-diary .diary-desktop-tabs-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  margin-bottom: 0.625rem;
+  gap: 0.5rem;
+}
+.diary-view-inner--desktop-mac-diary .diary-desktop-tabs-strip__spacer {
+  grid-column: 1;
+  min-width: 0;
+}
+.diary-view-inner--desktop-mac-diary .diary-desktop-tabs-strip__center {
+  grid-column: 2;
+  justify-self: center;
+  min-width: 0;
+}
+.diary-view-inner--desktop-mac-diary .diary-desktop-tabs-strip__right {
+  grid-column: 3;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+}
+.diary-view-inner--desktop-mac-diary .diary-desktop-header-add-btn.todo-add-btn {
+  box-sizing: border-box;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 2.125rem !important;
+  height: 2.125rem !important;
+  min-width: 2.125rem !important;
+  min-height: 2.125rem !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 0.375rem !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #dc2626 !important;
+  cursor: pointer;
+  line-height: 0;
+  transition:
+    background 0.15s ease,
+    opacity 0.15s ease,
+    color 0.15s ease;
+}
+.diary-view-inner--desktop-mac-diary .diary-desktop-header-add-btn.todo-add-btn:hover {
+  opacity: 1 !important;
+  background: rgba(220, 38, 38, 0.08) !important;
+  color: #b91c1c !important;
+}
+
 .diary-view-inner--desktop-mac-diary .diary-tabs {
   --diary-tab-segment-track: #e4e4ea;
   position: relative;
@@ -40039,9 +40846,9 @@ img.time-btn-icon {
   /* 상단 메뉴(감정·통제·자유)만 타임블록 세그먼트처럼 좁게 · 본문 패널 폭과 무관 */
   max-width: min(17.75rem, calc(100% - 1rem));
   min-width: 0;
-  margin-left: auto;
-  margin-right: auto;
-  margin-bottom: 0.625rem !important;
+  margin-left: 0;
+  margin-right: 0;
+  margin-bottom: 0 !important;
   padding: 0.25rem !important;
   box-sizing: border-box;
   flex-wrap: nowrap !important;
@@ -42514,6 +43321,31 @@ img.time-btn-icon {
   word-break: break-word;
 }
 
+/* 1주 플로우: 실제 과제 기록과 맞은 항목(모바일·데스크톱 공통) */
+.calendar-1week-flow-card--ledger-done {
+  background: rgba(42, 56, 40, 0.07);
+  border-color: rgba(42, 56, 40, 0.14);
+}
+.calendar-1week-flow-card-done-check {
+  flex-shrink: 0;
+  font-weight: 700;
+  line-height: 1;
+  font-size: 0.6875rem;
+  color: var(--ui-btn-primary-bg, #0071e3);
+}
+/* 기록 미반영·종료 전 — 본문만 흐리게 + 취소선(진행 중은 제외) */
+.calendar-1week-flow-card--ledger-pending .calendar-1week-flow-card-title,
+.calendar-1week-flow-card--ledger-pending .calendar-1week-flow-card-time,
+.calendar-1week-flow-card--ledger-pending .calendar-1week-flow-card-memo,
+.calendar-1week-flow-card--ledger-pending .calendar-1week-flow-card-badge {
+  text-decoration: line-through;
+  color: var(--text-placeholder);
+}
+.calendar-1week-flow-card--ledger-pending .calendar-1week-flow-card-progress {
+  text-decoration: none;
+  color: var(--text-caption-color);
+}
+
 @media (max-width: 48rem) {
   /*
    * 1주 플로우·모바일: 상위 flex 체인 + 스크롤을 grid 1fr 로 고정해 본문 높이를 데스크탑처럼
@@ -42621,14 +43453,8 @@ img.time-btn-icon {
     font-size: 0.5rem;
   }
   .calendar-1week-time-grid-google--flow
-    .calendar-1week-flow-card--ledger-done {
-    background: rgba(42, 56, 40, 0.07);
-    border-color: rgba(42, 56, 40, 0.14);
-  }
-  .calendar-1week-time-grid-google--flow
     .calendar-1week-flow-card-done-check {
     font-size: 0.625rem;
-    line-height: 1;
   }
 }
 /* 바깥: 하루 비율 top/height — 안쪽 inner 가 타임블록과 같은 카드 면 */
@@ -42814,7 +43640,7 @@ img.time-btn-icon {
   max-height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 0.75rem 0;
+  padding: 0;
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -44318,6 +45144,15 @@ tr.time-budget-calendar-row--readonly {
   background: var(--app-main-bg);
 }
 
+/* 시간 라벨 열과 예상 열 사이 — 오늘실제 열 왼쪽과 동일(--line-l2) */
+.calendar-1day-view
+  .calendar-1day-time-header
+  .calendar-1day-time-header-cell:not(
+    .calendar-1day-time-header-cell--actual-toggle
+  ) {
+  border-left: var(--line-l2);
+}
+
 /* 헤더·본문 동일: 오늘 실제 열 왼쪽만 세로선 (.calendar-1day-time-slot--actual border-left 와 같은 이음새) */
 .calendar-1day-view .calendar-1day-time-header-cell--actual-toggle {
   margin: 0;
@@ -44485,6 +45320,8 @@ tr.time-budget-calendar-row--readonly {
   /* 슬롯(.time-slot position:relative)보다 위에 그려야 채색 막대가 가려지지 않음 */
   z-index: 2;
   overflow: visible;
+  border-left: var(--line-l2);
+  box-sizing: border-box;
 }
 
 .calendar-1day-view
@@ -45766,6 +46603,7 @@ tr.time-budget-calendar-row--readonly {
   flex-direction: column;
   border-left: var(--divider-subtle);
   font-family: var(--font-body);
+  box-sizing: border-box;
   transition:
     width 0.2s,
     min-width 0.2s;

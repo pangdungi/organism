@@ -1585,6 +1585,174 @@ function getAuditMediaWatchHoursHtml(filtered) {
   </div>`;
 }
 
+/** 보고서 §6: 과제 옵션의 kpiId가 있는 기록만 — 버킷(꿈·부수입·건강·행복) 분류 */
+function getAuditKpiBucketKeyFromOpt(opt) {
+  if (!opt) return "other";
+  const cat = String(opt.category || "").trim();
+  if (cat === "dream") return "dream";
+  if (cat === "sideincome" || cat === "productive_consumption")
+    return "sideincome";
+  if (cat === "health") return "health";
+  if (cat === "happiness" || cat === "happy") return "happiness";
+  return "other";
+}
+
+function getAuditKpiStatusHtml(filtered) {
+  const esc = (s) =>
+    String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+
+  const BUCKETS = ["dream", "sideincome", "health", "happiness", "other"];
+  const bucketLabel = {
+    dream: "꿈",
+    sideincome: "부수입",
+    health: "건강",
+    happiness: "행복",
+    other: "기타·KPI",
+  };
+  const bucketColor = {
+    dream: CATEGORY_GRAPH_COLORS.dream,
+    sideincome: CATEGORY_GRAPH_COLORS.sideincome,
+    health: CATEGORY_GRAPH_COLORS.health,
+    happiness: CATEGORY_GRAPH_COLORS.happiness,
+    other: CATEGORY_GRAPH_COLORS[""] || "rgba(148,163,184,0.65)",
+  };
+
+  const byBucket = {
+    dream: 0,
+    sideincome: 0,
+    health: 0,
+    happiness: 0,
+    other: 0,
+  };
+  const byTask = {};
+
+  filtered.forEach((r) => {
+    const hrs = parseTimeToHours(r.timeTracked) || 0;
+    if (hrs <= 0) return;
+    const name = (r.taskName || "").trim();
+    if (!name) return;
+    const opt = getTaskOptionByName(name);
+    if (!opt || !String(opt.kpiId || "").trim()) return;
+    const b = getAuditKpiBucketKeyFromOpt(opt);
+    byBucket[b] = (byBucket[b] || 0) + hrs;
+    if (!byTask[name]) {
+      byTask[name] = {
+        taskName: name,
+        hours: 0,
+        bucket: b,
+        bucketLabel: bucketLabel[b] || bucketLabel.other,
+      };
+    }
+    byTask[name].hours += hrs;
+  });
+
+  const taskRows = Object.values(byTask).sort((a, b) => b.hours - a.hours);
+  const totalKpiHrs = BUCKETS.reduce((s, k) => s + (byBucket[k] || 0), 0);
+
+  if (totalKpiHrs <= 0) {
+    return `<div class="time-audit-kpi-empty">KPI와 연결된 과제에 대한 사용 시간 기록이 없습니다. KPI 화면에서 연결된 과제로 시간을 기록·저장하면 이 보고서에 집계됩니다.</div>`;
+  }
+
+  const maxBar = Math.max(0.01, ...BUCKETS.map((k) => byBucket[k] || 0));
+  const barRowsHtml = BUCKETS.map((k) => {
+    const hrs = byBucket[k] || 0;
+    const pct = (hrs / maxBar) * 100;
+    const lab = bucketLabel[k];
+    const color = bucketColor[k];
+    const timeLabel = hrs > 0 ? formatHoursToHHMM(hrs) : "—";
+    return `<div class="time-audit-bar-row time-audit-kpi-bucket-row">
+      <div class="time-audit-bar-label">${esc(lab)}</div>
+      <div class="time-audit-bar-track">
+        <div class="time-audit-bar-slot" style="flex:1 1 auto;min-width:0">
+          <div class="time-audit-bar-actual-wrap">
+            <div class="time-audit-bar-actual" style="width:${pct}%;--bar-color:${color}" title="합계: ${timeLabel}"></div>
+          </div>
+        </div>
+      </div>
+      <div class="time-audit-bar-values">
+        <span class="time-audit-bar-goal-val"> </span>
+        <span class="time-audit-bar-actual-val">${timeLabel}</span>
+      </div>
+    </div>`;
+  }).join("");
+
+  const pieEntries = BUCKETS.map((k) => ({
+    taskName: bucketLabel[k],
+    hours: byBucket[k] || 0,
+  })).filter((e) => e.hours > 0);
+  const mergedPie = mergeSmallAuditPieSlices(pieEntries);
+  const pieTotal = mergedPie.reduce((s, e) => s + e.hours, 0);
+
+  const KPI_PIE_COLORS = [
+    "#f9a8d4",
+    "#c4b5fd",
+    "#86efac",
+    "#fcd34d",
+    "#94a3b8",
+  ];
+  let pieHtml = "";
+  if (pieTotal > 0) {
+    let acc = 0;
+    const cx = 50;
+    const cy = 50;
+    const pr = 40;
+    const segs = mergedPie
+      .map((e, i) => {
+        const color = KPI_PIE_COLORS[i % KPI_PIE_COLORS.length];
+        const pct = e.hours / pieTotal;
+        if (pct >= 0.9999)
+          return `<circle cx="${cx}" cy="${cy}" r="${pr}" fill="${color}" title="${esc(e.taskName)}: ${Math.round(pct * 100)}%"/>`;
+        const a0 = (acc / pieTotal) * 2 * Math.PI - Math.PI / 2;
+        acc += e.hours;
+        const a1 = (acc / pieTotal) * 2 * Math.PI - Math.PI / 2;
+        const x0 = cx + pr * Math.cos(a0);
+        const y0 = cy + pr * Math.sin(a0);
+        const x1 = cx + pr * Math.cos(a1);
+        const y1 = cy + pr * Math.sin(a1);
+        const large = pct > 0.5 ? 1 : 0;
+        const d = `M ${cx} ${cy} L ${x0} ${y0} A ${pr} ${pr} 0 ${large} 1 ${x1} ${y1} Z`;
+        return `<path d="${d}" fill="${color}" title="${esc(e.taskName)}: ${Math.round((e.hours / pieTotal) * 100)}%"/>`;
+      })
+      .join("");
+    const legend = mergedPie
+      .map((e, i) => {
+        const color = KPI_PIE_COLORS[i % KPI_PIE_COLORS.length];
+        const p = pieTotal > 0 ? Math.round((e.hours / pieTotal) * 100) : 0;
+        return `<span class="time-audit-pie-legend-item" style="--pie-color:${color}">${esc(e.taskName)} ${p}%</span>`;
+      })
+      .join("");
+    pieHtml = `<div class="time-audit-pie-box time-audit-kpi-pie-box"><div class="time-audit-pie-title">영역 비율</div><div class="time-audit-pie-svg-wrap"><svg viewBox="0 0 100 100" class="time-audit-pie-svg">${segs}</svg></div><div class="time-audit-pie-legend">${legend}</div></div>`;
+  }
+
+  const tableRowsHtml = taskRows
+    .map(
+      (row) =>
+        `<tr><td>${esc(row.bucketLabel)}</td><td class="time-audit-kpi-task-cell">${esc(row.taskName)}</td><td class="time-audit-kpi-time-cell">${formatHoursToHHMM(row.hours)}</td></tr>`,
+    )
+    .join("");
+
+  const tableHtml = `<div class="time-audit-kpi-table-wrap"><table class="time-audit-thief-table time-audit-kpi-table"><thead><tr><th>영역</th><th>KPI 과제</th><th>사용 시간</th></tr></thead><tbody>${tableRowsHtml}</tbody></table></div>`;
+
+  return `<div class="time-audit-kpi-inner">
+    <div class="time-audit-kpi-subtitle">버킷(꿈·부수입·건강·행복)별 사용 시간</div>
+    <div class="time-audit-kpi-split">
+      <div class="time-audit-kpi-bars-col">
+        <div class="time-audit-bar-chart time-audit-kpi-bucket-bars">
+          <div class="time-audit-bar-rows">${barRowsHtml}</div>
+        </div>
+      </div>
+      <div class="time-audit-kpi-pie-col">${pieHtml}</div>
+    </div>
+    <div class="time-audit-kpi-subtitle">KPI 과제별 상세</div>
+    ${tableHtml}
+    <div class="time-audit-kpi-total-note">KPI 연동 과제 합계: <strong>${formatHoursToHHMM(totalKpiHrs)}</strong></div>
+  </div>`;
+}
+
 function formatDateDisplay(val) {
   if (!val || val.length < 10) return "";
   const [y, m, d] = val.split("-");
@@ -1846,6 +2014,15 @@ function formatHoursDisplay(hours) {
   return `${h}h ${m}m`;
 }
 
+/** 필터 구간 합계 표시용 "hh:mm" (시·분 두 자리) */
+function formatTotalRecordedHoursAsHhMm(hours) {
+  if (hours < 0 || !isFinite(hours)) return "00:00";
+  const totalMin = Math.max(0, Math.round(hours * 60));
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 /** 모바일 시간기록 카드: 진행 중(마감 없음)일 때 경과 시간 갱신용 타이머 정리 */
 function clearTimeLedgerMobileElapsedTimer(viewEl) {
   if (!viewEl?._timeLedgerMobileElapsedIntervalId) return;
@@ -2017,6 +2194,75 @@ function mobileCardNeedsLiveClock(rowData) {
   if ((rowData.timeTracked || "").trim()) return false;
   if (rowHasEndTimeForMobileCard(rowData)) return false;
   return !!getRowStartInstantForMobileCard(rowData);
+}
+
+/** 마감 없이 시작만 있는 오늘 기록 = 진행 중 (홈 타임트래커·모바일 카드와 동일 기준) */
+function timeLedgerRowIsLiveInProgress(row) {
+  return mobileCardNeedsLiveClock(row);
+}
+
+/**
+ * 오늘 날짜 기준, 현재 진행 중인 시간기록 행 하나(시작 최신 순).
+ * 없으면 null.
+ */
+export function getTodayLiveTimeLedgerRow() {
+  const now = new Date();
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const rows = loadTimeRows().filter(
+    (r) => (r.date || "").toString().slice(0, 10) === todayKey,
+  );
+  const live = rows.filter(timeLedgerRowIsLiveInProgress);
+  if (!live.length) return null;
+  live.sort((a, b) => {
+    const sa = getRowStartInstantForMobileCard(a)?.getTime() ?? 0;
+    const sb = getRowStartInstantForMobileCard(b)?.getTime() ?? 0;
+    return sb - sa;
+  });
+  return live[0];
+}
+
+/** 갱신 타이머용 행 식별 (id 또는 날짜·시작·과제명) */
+export function getTimeLedgerRowLiveStableKey(row) {
+  if (!row) return "";
+  const id = String(row.id || "").trim();
+  if (id) return `id:${id}`;
+  return `k:${(row.date || "").slice(0, 10)}|${(row.startTime || "").trim()}|${(row.taskName || "").trim()}`;
+}
+
+export function getTimeLedgerRowLiveElapsedMs(row) {
+  const start = getRowStartInstantForMobileCard(row);
+  if (!start) return 0;
+  return Date.now() - start.getTime();
+}
+
+/** 홈 타임트래커 큰 숫자: 총 경과 분:초 (예: 3시간 3분 18초 → 183:18) */
+export function formatHomeLiveClockMs(ms) {
+  if (ms < 0 || !isFinite(ms)) return "0:00";
+  const totalSec = Math.floor(ms / 1000);
+  const minPart = Math.floor(totalSec / 60);
+  const secPart = totalSec % 60;
+  return `${minPart}:${String(secPart).padStart(2, "0")}`;
+}
+
+/** 홈 타임트래커 부가 문구: 「N분째」 */
+export function formatHomeLiveElapsedMinutesPhrase(ms) {
+  const m = Math.floor(ms / 60000);
+  if (m <= 0) return "방금 시작";
+  return `${m}분째`;
+}
+
+/** 홈 타임트래커: 시작 시각 (짧은 h:mm) */
+export function formatHomeLiveStartClock(row) {
+  if (!row) return "";
+  const fromStart = toDisplayTimeOnly(row.startTime || "");
+  if (fromStart) {
+    const parts = fromStart.split(":");
+    if (parts.length >= 2)
+      return `${parseInt(parts[0], 10)}:${parts[1].padStart(2, "0")}`;
+  }
+  const inst = getRowStartInstantForMobileCard(row);
+  if (!inst) return "";
+  return `${inst.getHours()}:${String(inst.getMinutes()).padStart(2, "0")}`;
 }
 
 function updateMobileTimeCardLiveFields(card) {
@@ -2669,9 +2915,14 @@ export function getTodayTimeSummary() {
   let productiveHrs = 0;
   let investedPrice = 0;
   let wastedValue = 0;
+  let workHrsToday = 0;
+  let sleepHrsToday = 0;
   rows.forEach((r) => {
     const hrs = parseTimeToHours(r.timeTracked) || 0;
     totalHrs += hrs;
+    const cat = (r.category || "").trim();
+    if (cat === "work") workHrsToday += hrs;
+    else if (cat === "sleep") sleepHrsToday += hrs;
     const pv = (r.productivity || getProductivityFromCategory(r.category) || "").trim();
     if (pv === "productive") {
       productiveHrs += hrs;
@@ -2683,16 +2934,39 @@ export function getTodayTimeSummary() {
   });
   const trackedDisplay = totalHrs <= 0 || !isFinite(totalHrs) ? "0h 0m" : formatHoursDisplay(totalHrs);
   const productiveDisplay = productiveHrs <= 0 || !isFinite(productiveHrs) ? "0h 0m" : formatHoursDisplay(productiveHrs);
-  /** 홈 요약 막대: 하루 24시간 기준 채움 비율(0~100) */
+  /** 홈 오늘 통계: 총 기록 목표(고정) */
+  const totalRecordGoalHours = 23 + 59 / 60;
+  const totalRecordGoalDisplay = formatHoursDisplay(totalRecordGoalHours);
+  /** 24h − 근무 − 수면 = 가용 시간(당일 기록 기준) */
+  const availableHrsToday = Math.max(0, 24 - workHrsToday - sleepHrsToday);
+  /** 홈 통계 푸터: 짧은 한 줄(가용 시·분 + '중'은 줄바꿈 유발) */
+  const productiveContextDisplay = "가용 시간의";
+  /** 홈 요약 막대: 하루 24시간 기준… (호환용) */
   const trackedPct24 = Math.min(100, Math.max(0, (totalHrs / 24) * 100));
   const productivePct24 = Math.min(100, Math.max(0, (productiveHrs / 24) * 100));
+  /** 총기록 막대: 고정 목표(23h59m) 대비 */
+  const trackedPctOfGoal = Math.min(
+    100,
+    Math.max(0, (totalHrs / totalRecordGoalHours) * 100),
+  );
+  /** 생산적 막대: 당일 가용 시간 대비 */
+  const productivePctOfAvailable =
+    availableHrsToday > 0 && isFinite(availableHrsToday)
+      ? Math.min(100, Math.max(0, (productiveHrs / availableHrsToday) * 100))
+      : 0;
   return {
     trackedDisplay,
     productiveDisplay,
     priceDisplay: `+${formatPrice(investedPrice)}`,
     wastedDisplay: `-${formatPrice(wastedValue)}`,
+    totalRecordGoalDisplay,
+    productiveContextDisplay,
     trackedPct24,
     productivePct24,
+    trackedPctOfGoal,
+    productivePctOfAvailable,
+    trackedGoalPercentLabel: `${Math.round(trackedPctOfGoal)}%`,
+    productiveOfAvailablePercentLabel: `${Math.round(productivePctOfAvailable)}%`,
   };
 }
 
@@ -3975,25 +4249,6 @@ const TIME_LEDGER_SUMMARY_FIVE_CELLS_HTML = `
       <div class="time-ledger-summary-value time-ledger-summary-value--day-net"><span class="time-ledger-summary-num time-ledger-summary-day-net">+0</span><span class="time-ledger-summary-unit">원</span></div>
     </div>`;
 
-/** 모바일 탭 아래 스트립: 4칸(총기록·생산·낭비한 시급·오늘 하루의 가치) — 투자한 시급 없음 */
-const TIME_LEDGER_MOBILE_TABS_SUMMARY_HTML = `
-    <div class="time-ledger-summary-cell">
-      <div class="time-ledger-summary-label">총 기록 시간</div>
-      <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-tracked">0</span><span class="time-ledger-summary-unit">h</span><span class="time-ledger-summary-num time-ledger-summary-tracked">0</span><span class="time-ledger-summary-unit">m</span></div>
-    </div>
-    <div class="time-ledger-summary-cell">
-      <div class="time-ledger-summary-label">생산적 시간</div>
-      <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-productive">0</span><span class="time-ledger-summary-unit">h</span><span class="time-ledger-summary-num time-ledger-summary-productive">0</span><span class="time-ledger-summary-unit">m</span></div>
-    </div>
-    <div class="time-ledger-summary-cell">
-      <div class="time-ledger-summary-label">낭비한 시급</div>
-      <div class="time-ledger-summary-value time-ledger-summary-value--spent"><span class="time-ledger-summary-num time-ledger-summary-wasted time-ledger-summary-spent">-0</span><span class="time-ledger-summary-unit">원</span></div>
-    </div>
-    <div class="time-ledger-summary-cell">
-      <div class="time-ledger-summary-label">오늘 하루의 가치</div>
-      <div class="time-ledger-summary-value time-ledger-summary-value--day-net"><span class="time-ledger-summary-num time-ledger-summary-mobile-day-net">+0</span><span class="time-ledger-summary-unit">원</span></div>
-    </div>`;
-
 function createTableHTML() {
   return `
     <colgroup>
@@ -4531,18 +4786,6 @@ export function render() {
   /* filterBar는 월 드롭다운 패널이 세로로 열리므로 .time-view-tabs(overflow-y:hidden) 밖에 둠 */
   const tabsFilterRow = document.createElement("div");
   tabsFilterRow.className = "time-ledger-tabs-filter-row";
-  const mobileTabsSummary = document.createElement("div");
-  mobileTabsSummary.className =
-    "time-ledger-mobile-tabs-summary time-ledger-summary-panel";
-  mobileTabsSummary.innerHTML = TIME_LEDGER_MOBILE_TABS_SUMMARY_HTML;
-  function syncMobileTabsSummaryDisplay() {
-    const view =
-      viewTabs.querySelector(".time-view-tab.active")?.dataset?.view || "all";
-    const isMobile = window.matchMedia(MQ_TIME_LEDGER_MAX_MOBILE).matches;
-    mobileTabsSummary.style.display =
-      isMobile && view === "all" ? "" : "none";
-  }
-  window.addEventListener("resize", syncMobileTabsSummaryDisplay, { signal });
   window.addEventListener("resize", syncTimeFilterDateLabels, { signal });
   window.addEventListener("resize", syncTimeLedgerSegmentThumb, { signal });
   const tabsTopMargin = document.createElement("div");
@@ -4588,16 +4831,22 @@ export function render() {
   tabHeaderRow.appendChild(ledgerTopRight);
   tabsFilterRow.appendChild(tabsTopMargin);
   tabsFilterRow.appendChild(tabHeaderRow);
-  tabsFilterRow.appendChild(mobileTabsSummary);
 
   /* 2행: 날짜·필터만 (과제 기록·탭·시급은 상단 한 줄) */
   const filterAddRow = document.createElement("div");
   filterAddRow.className = "time-ledger-filter-add-row";
   filterAddRow.appendChild(filterBar);
 
+  const mobileFilterTotalRow = document.createElement("div");
+  mobileFilterTotalRow.className = "time-ledger-mobile-filter-total";
+  mobileFilterTotalRow.setAttribute("hidden", "");
+  mobileFilterTotalRow.innerHTML =
+    '<span class="time-ledger-mobile-filter-total-inner"><span class="time-ledger-mobile-filter-total-label">전체</span><span class="time-ledger-mobile-filter-total-sep"> : </span><span class="time-ledger-mobile-filter-total-value" aria-label="필터 구간 전체 기록 시간">00:00</span></span>';
+
   el.appendChild(tabsFilterRow);
   el.appendChild(hourlyWrap);
   el.appendChild(filterAddRow);
+  el.appendChild(mobileFilterTotalRow);
 
   const taskSetupModal = document.createElement("div");
   taskSetupModal.className = "time-task-setup-modal";
@@ -8029,23 +8278,6 @@ export function render() {
         else dayNetNum.textContent = `+${formatPrice(0)}`;
       }
       if (dayNetUnit) dayNetUnit.textContent = "원";
-      const mobileStrip = el.querySelector(".time-ledger-mobile-tabs-summary");
-      if (mobileStrip && summaryPanelEl) {
-        const srcCells = summaryPanelEl.querySelectorAll(
-          ":scope > .time-ledger-summary-cell",
-        );
-        const dstCells = mobileStrip.querySelectorAll(
-          ":scope > .time-ledger-summary-cell",
-        );
-        if (srcCells[0] && dstCells[0])
-          dstCells[0].innerHTML = srcCells[0].innerHTML;
-        if (srcCells[1] && dstCells[1])
-          dstCells[1].innerHTML = srcCells[1].innerHTML;
-        if (srcCells[3] && dstCells[2])
-          dstCells[2].innerHTML = srcCells[3].innerHTML;
-        if (srcCells[4] && dstCells[3])
-          dstCells[3].innerHTML = srcCells[4].innerHTML;
-      }
       const overHrs = totalHrs > 24 ? totalHrs - 24 : 0;
       if (allTable && allTfoot) {
         const overRow = allTfoot.querySelector(".time-ledger-over-row");
@@ -8105,6 +8337,27 @@ export function render() {
             ? " is-positive"
             : "");
     });
+
+    const mobileRow = el.querySelector(".time-ledger-mobile-filter-total");
+    const mobileVal = mobileRow?.querySelector(
+      ".time-ledger-mobile-filter-total-value",
+    );
+    if (mobileRow && mobileVal) {
+      const viewOk = (el.dataset.timeContentView || "all") === "all";
+      const narrow = window.matchMedia(MQ_TIME_LEDGER_MAX_MOBILE).matches;
+      const cardsHost = contentWrap.querySelector(".time-ledger-mobile-cards");
+      const show = narrow && viewOk && !!cardsHost;
+      mobileRow.toggleAttribute("hidden", !show);
+      if (show) {
+        let totalHrsMob = 0;
+        contentWrap.querySelectorAll(".time-ledger-mobile-card").forEach((card) => {
+          const rd = card._rowData;
+          if (!rd || isEmptyTimeRow(rd)) return;
+          totalHrsMob += getMobileCardEffectiveHoursForPrice(rd);
+        });
+        mobileVal.textContent = formatTotalRecordedHoursAsHhMm(totalHrsMob);
+      }
+    }
   }
   el._updateTotal = updateTotal;
 
@@ -8422,7 +8675,6 @@ export function render() {
     } else if (view === "audit") {
       renderAudit(filtered);
     }
-    syncMobileTabsSummaryDisplay();
     syncTimeFilterDateLabels();
   }
   mqTimeLedgerLayout.addEventListener("change", refreshTimeLedgerLayoutIfAllView, {
@@ -9103,6 +9355,10 @@ export function render() {
             <div class="time-audit-media-watch-inner">
               ${getAuditMediaWatchHoursHtml(filtered)}
             </div>
+          </div>
+          <div class="time-audit-region time-audit-region-kpi-status">
+            <div class="time-audit-region-title">6. KPI 별 현황</div>
+            ${getAuditKpiStatusHtml(filtered)}
           </div>
         `;
     wrap.appendChild(block);
@@ -10147,7 +10403,6 @@ export function render() {
       renderImprove(getFilteredRows(cachedRows));
     }
     updateTotal();
-    syncMobileTabsSummaryDisplay();
     syncTimeFilterDateLabels();
     /* 상위 시간가계부 탭은 App에서 기록·예산 pull + 과제 목록 pull. 내부「시간 기록」「보고서」는 기록·예산·노트만(과제 pull 없음). */
     if (userSubTabClick && (view === "all" || view === "audit")) {
@@ -10176,7 +10431,6 @@ export function render() {
   contentWrap.appendChild(ledgerContainer);
 
   onFilterChange(true);
-  syncMobileTabsSummaryDisplay();
 
   function refreshTimeLedgerFromRemotePull() {
     if (!el.isConnected) return;

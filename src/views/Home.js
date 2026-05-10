@@ -12,8 +12,18 @@ import {
   persistSectionTasksAndSchedule,
   persistCustomSectionTasksAndSchedule,
 } from "../utils/todoSectionTasksSupabase.js";
-import { getTodayTimeSummary } from "./Time.js";
+import {
+  getTodayTimeSummary,
+  getTodayLiveTimeLedgerRow,
+  getTimeLedgerRowLiveStableKey,
+  getTimeLedgerRowLiveElapsedMs,
+  formatHomeLiveClockMs,
+  formatHomeLiveElapsedMinutesPhrase,
+  formatHomeLiveStartClock,
+} from "./Time.js";
 import { render1DayView, LP_CAL_TODO_SIDEBAR_NONE } from "./Calendar.js";
+import { buildHomeTodayEventPulseModel } from "../utils/homeTodayEventPulse.js";
+import { getSectionColor } from "../utils/todoSettings.js";
 
 const KPI_SECTION_IDS = ["dream", "sideincome", "health", "happy"];
 const SECTION_LABELS = {
@@ -22,114 +32,6 @@ const SECTION_LABELS = {
   health: "건강",
   happy: "행복",
 };
-
-/** 해당 월(YYYY-MM)에 날짜가 배정된 이벤트/할일만 수집 (해당 월 셀만) */
-function getEventsForCurrentMonth() {
-  const now = new Date();
-  const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const out = [];
-
-  const inMonth = (dateStr) => (dateStr || "").slice(0, 7) === yearMonth;
-
-  try {
-    const obj = readSectionTasksObject();
-    KPI_SECTION_IDS.forEach((sectionId) => {
-      const arr = obj[sectionId];
-      if (!Array.isArray(arr)) return;
-      const sectionLabel = SECTION_LABELS[sectionId] || sectionId;
-      arr
-        .filter(
-          (t) =>
-            (t.name || "").trim() !== "" &&
-            (inMonth(t.dueDate) || inMonth(t.startDate)),
-        )
-        .forEach((t) =>
-          out.push({
-            name: (t.name || "").trim(),
-            dueDate: (t.dueDate || "").slice(0, 10),
-            startDate: (t.startDate || "").slice(0, 10),
-            startTime: (t.startTime || "").trim(),
-            endTime: (t.endTime || "").trim(),
-            sectionLabel,
-            done: !!t.done,
-            itemType: t.itemType || "todo",
-          }),
-        );
-    });
-  } catch (_) {}
-
-  try {
-    const obj = readCustomSectionTasksObject();
-    getCustomSections().forEach((sec) => {
-      const arr = obj[sec.id];
-      if (!Array.isArray(arr)) return;
-      arr
-        .filter(
-          (t) =>
-            (t.name || "").trim() !== "" &&
-            (inMonth(t.dueDate) || inMonth(t.startDate)),
-        )
-        .forEach((t) =>
-          out.push({
-            name: (t.name || "").trim(),
-            dueDate: (t.dueDate || "").slice(0, 10),
-            startDate: (t.startDate || "").slice(0, 10),
-            startTime: (t.startTime || "").trim(),
-            endTime: (t.endTime || "").trim(),
-            sectionLabel: sec.label || sec.id,
-            done: !!t.done,
-            itemType: t.itemType || "todo",
-          }),
-        );
-    });
-  } catch (_) {}
-
-  out.sort((a, b) => {
-    const dateA = a.dueDate || a.startDate || "";
-    const dateB = b.dueDate || b.startDate || "";
-    if (dateA !== dateB) return dateA.localeCompare(dateB);
-    const timeA = a.startTime || "";
-    const timeB = b.startTime || "";
-    if (timeA !== timeB) return timeA.localeCompare(timeB);
-    return (a.name || "").localeCompare(b.name || "", "ko");
-  });
-  return out;
-}
-
-function formatTimeRange(startTime, endTime) {
-  const s = (startTime || "").trim();
-  const e = (endTime || "").trim();
-  if (s && e) return `${s}~${e}`;
-  if (s) return s;
-  if (e) return e;
-  return "";
-}
-
-function formatEventDate(dateStr) {
-  if (!dateStr || dateStr.length < 10) return "";
-  const [y, m, d] = dateStr.split("-");
-  return `${parseInt(m, 10)}/${parseInt(d, 10)}`;
-}
-
-function getDayNumber(dateStr) {
-  if (!dateStr || dateStr.length < 10) return "";
-  const d = dateStr.split("-")[2];
-  return d ? parseInt(d, 10) : "";
-}
-
-function isWeekend(dateStr) {
-  if (!dateStr || dateStr.length < 10) return false;
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const day = new Date(y, m - 1, d).getDay();
-  return day === 0 || day === 6;
-}
-
-function isToday(dateStr) {
-  if (!dateStr || dateStr.length < 10) return false;
-  const now = new Date();
-  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  return dateStr.slice(0, 10) === todayKey;
-}
 
 /** 꿈·부수입·건강·행복 네 고정 섹션에서 리마인더가 설정된 할일만 수집 */
 function getRemindersFromAllSections() {
@@ -662,6 +564,261 @@ function wrapHoursDisplayForSummary(display) {
   );
 }
 
+let homeEventPulseRefreshBound = false;
+
+function buildHomeLiveTracker() {
+  const root = document.createElement("div");
+  root.className = "home-live-tracker";
+  root.setAttribute("hidden", "");
+
+  const sub = document.createElement("div");
+  sub.className = "home-live-tracker-subtitle";
+  sub.textContent = "지금 진행 중";
+
+  const card = document.createElement("div");
+  card.className = "home-live-tracker-card";
+  const cardMain = document.createElement("div");
+  cardMain.className = "home-live-tracker-card-main";
+  const dot = document.createElement("span");
+  dot.className = "home-live-tracker-dot";
+  dot.setAttribute("aria-hidden", "true");
+  const textWrap = document.createElement("div");
+  textWrap.className = "home-live-tracker-text";
+  const taskEl = document.createElement("div");
+  taskEl.className = "home-live-tracker-task";
+  const metaEl = document.createElement("div");
+  metaEl.className = "home-live-tracker-meta";
+  textWrap.appendChild(taskEl);
+  textWrap.appendChild(metaEl);
+  cardMain.appendChild(dot);
+  cardMain.appendChild(textWrap);
+  const clockEl = document.createElement("div");
+  clockEl.className = "home-live-tracker-clock";
+  clockEl.setAttribute("aria-live", "polite");
+  card.appendChild(cardMain);
+  card.appendChild(clockEl);
+
+  root.appendChild(sub);
+  root.appendChild(card);
+  return root;
+}
+
+function clearHomeLiveTrackerTimer(root) {
+  if (!root?._lpHomeTrackerInterval) return;
+  clearInterval(root._lpHomeTrackerInterval);
+  root._lpHomeTrackerInterval = null;
+}
+
+function refreshHomeLiveTrackerEl(root) {
+  if (!root) return;
+  clearHomeLiveTrackerTimer(root);
+  const row = getTodayLiveTimeLedgerRow();
+  if (!row) {
+    root.setAttribute("hidden", "");
+    return;
+  }
+  root.removeAttribute("hidden");
+
+  const task = (row.taskName || "").trim() || "(과제명 없음)";
+  const startClock = formatHomeLiveStartClock(row);
+  const stableKey = getTimeLedgerRowLiveStableKey(row);
+
+  const taskEl = root.querySelector(".home-live-tracker-task");
+  const metaEl = root.querySelector(".home-live-tracker-meta");
+  const clockEl = root.querySelector(".home-live-tracker-clock");
+  if (taskEl) taskEl.textContent = task;
+
+  const tick = () => {
+    if (!root.isConnected) {
+      clearHomeLiveTrackerTimer(root);
+      return;
+    }
+    const r = getTodayLiveTimeLedgerRow();
+    if (!r || getTimeLedgerRowLiveStableKey(r) !== stableKey) {
+      refreshHomeLiveTrackerEl(root);
+      return;
+    }
+    const ms = getTimeLedgerRowLiveElapsedMs(r);
+    if (metaEl) {
+      const phrase = formatHomeLiveElapsedMinutesPhrase(ms);
+      metaEl.textContent = startClock
+        ? `시작 ${startClock} · ${phrase}`
+        : phrase;
+    }
+    if (clockEl) clockEl.textContent = formatHomeLiveClockMs(ms);
+  };
+  tick();
+  root._lpHomeTrackerInterval = setInterval(tick, 1000);
+}
+
+function bindHomeEventPulseRefreshOnce() {
+  if (homeEventPulseRefreshBound) return;
+  homeEventPulseRefreshBound = true;
+  const refreshPulse = () => {
+    document.querySelectorAll(".home-event-pulse-body").forEach((node) => {
+      if (node.isConnected) fillHomeEventPulseContent(node);
+    });
+  };
+  const refreshTracker = () => {
+    document.querySelectorAll(".home-live-tracker").forEach((node) => {
+      if (node.isConnected) refreshHomeLiveTrackerEl(node);
+    });
+  };
+  const refresh = () => {
+    refreshPulse();
+    refreshTracker();
+  };
+  document.addEventListener("calendar-time-rows-updated", refresh);
+  document.addEventListener("calendar-budget-scheduled-updated", refreshPulse);
+}
+
+function prodColorForPulse(prod, kpColors) {
+  const p = String(prod || "").toLowerCase();
+  if (p === "productive") return kpColors.productive;
+  if (p === "nonproductive") return kpColors.nonproductive;
+  return kpColors.other;
+}
+
+function taskSwatchColor(row, kpColors) {
+  const sid = String(row.sectionId || "").trim();
+  if (sid && KPI_SECTION_IDS.includes(sid)) {
+    try {
+      const c = getSectionColor(sid);
+      if (c) return c;
+    } catch (_) {}
+  }
+  return prodColorForPulse(row.prod, kpColors);
+}
+
+function formatTaskDiffLabel(variant, diffMins) {
+  const n = Math.abs(Math.round(Number(diffMins) || 0));
+  if (variant === "over") return `+${n} 분`;
+  if (variant === "under") return `-${n} 분`;
+  return "±0 분";
+}
+
+function applyBarTagGoalAlign(el, pct) {
+  const n = Number(pct) || 0;
+  el.classList.remove(
+    "home-event-task-bar-tag--pin-start",
+    "home-event-task-bar-tag--pin-end",
+  );
+  if (n <= 0) {
+    el.classList.add("home-event-task-bar-tag--pin-start");
+    el.style.left = "0";
+  } else {
+    el.classList.add("home-event-task-bar-tag--pin-end");
+    el.style.left = `${Math.min(100, n)}%`;
+  }
+}
+
+function applyBarTagActualAlign(el, pct) {
+  const n = Number(pct) || 0;
+  el.classList.remove(
+    "home-event-task-bar-tag--pin-start",
+    "home-event-task-bar-tag--pin-end",
+  );
+  if (n <= 0) {
+    el.classList.add("home-event-task-bar-tag--pin-start");
+    el.style.left = "0";
+  } else {
+    el.classList.add("home-event-task-bar-tag--pin-end");
+    el.style.left = `${Math.min(100, n)}%`;
+  }
+}
+
+function fillHomeEventPulseContent(container) {
+  container.replaceChildren();
+  const todayKey = getTodayDateKey();
+  const { taskRows, kpColors } = buildHomeTodayEventPulseModel(todayKey);
+
+  const card = document.createElement("div");
+  card.className = "home-event-pulse-card";
+
+  if (taskRows.length > 0) {
+    const list = document.createElement("div");
+    list.className = "home-event-task-list";
+
+    taskRows.forEach((row) => {
+      const rowEl = document.createElement("div");
+      rowEl.className = `home-event-task-row home-event-task-row--${row.variant}`;
+
+      const labelCell = document.createElement("div");
+      labelCell.className = "home-event-task-label";
+      const sw = document.createElement("span");
+      sw.className = "home-event-task-swatch";
+      sw.style.background = taskSwatchColor(row, kpColors);
+      const name = document.createElement("span");
+      name.className = "home-event-task-name";
+      name.textContent = row.taskName;
+      labelCell.appendChild(sw);
+      labelCell.appendChild(name);
+
+      const bottom = document.createElement("div");
+      bottom.className = "home-event-task-bottom";
+
+      const barShell = document.createElement("div");
+      barShell.className = "home-event-task-bar-shell";
+
+      const wrap = document.createElement("div");
+      wrap.className = "home-event-task-bar-wrap";
+
+      const tagPl = document.createElement("span");
+      tagPl.className =
+        "home-event-task-bar-tag home-event-task-bar-tag--planned";
+      applyBarTagGoalAlign(tagPl, row.plannedPct);
+      tagPl.textContent = `${row.planned}m`;
+
+      const bars = document.createElement("div");
+      bars.className = "home-event-task-bars";
+      const accent = taskSwatchColor(row, kpColors);
+      const track = document.createElement("div");
+      track.className =
+        "home-event-task-bar-track home-event-task-bar-track--combined";
+      const goal = document.createElement("div");
+      goal.className = "home-event-task-bar-goal";
+      goal.style.width = `${row.plannedPct}%`;
+      goal.style.background = accent;
+      const flAc = document.createElement("div");
+      flAc.className = `home-event-task-bar-fill home-event-task-bar-fill--actual home-event-task-bar-fill--${row.variant}`;
+      flAc.style.width = `${row.actualPct}%`;
+      track.appendChild(goal);
+      track.appendChild(flAc);
+      bars.appendChild(track);
+
+      const tagAc = document.createElement("span");
+      tagAc.className = `home-event-task-bar-tag home-event-task-bar-tag--actual home-event-task-bar-tag--${row.variant}`;
+      applyBarTagActualAlign(tagAc, row.actualPct);
+      tagAc.textContent = `${row.actual}m`;
+
+      wrap.appendChild(tagPl);
+      wrap.appendChild(bars);
+      wrap.appendChild(tagAc);
+      barShell.appendChild(wrap);
+
+      const diff = document.createElement("div");
+      diff.className = `home-event-task-diff home-event-task-diff--${row.variant}`;
+      diff.textContent = formatTaskDiffLabel(row.variant, row.diff);
+
+      bottom.appendChild(barShell);
+      bottom.appendChild(diff);
+
+      rowEl.appendChild(labelCell);
+      rowEl.appendChild(bottom);
+      list.appendChild(rowEl);
+    });
+    card.appendChild(list);
+  } else {
+    const empty = document.createElement("p");
+    empty.className = "home-event-pulse-empty";
+    empty.textContent =
+      "오늘 타임라인에 예상 시간이 잡힌 과제가 없습니다.";
+    card.appendChild(empty);
+  }
+
+  container.appendChild(card);
+}
+
 function buildHomeToolbar(dateBasis) {
   const toolbar = document.createElement("header");
   toolbar.className = "home-view-toolbar";
@@ -715,30 +872,50 @@ function appendHomeMainBelowToolbar(el) {
 
   const summaryGrid = document.createElement("div");
   summaryGrid.className = "home-time-summary-grid";
+  const trackedBarPct = Math.round(Number(timeSummary.trackedPctOfGoal) || 0);
+  const productiveBarPct = Math.round(
+    Number(timeSummary.productivePctOfAvailable) || 0,
+  );
   summaryGrid.innerHTML = `
     <div class="home-time-summary-cell home-time-summary-cell--tracked">
-      <div class="home-time-summary-cell-top">
-        <span class="home-time-summary-value home-time-summary-value--duration">${wrapHoursDisplayForSummary(timeSummary.trackedDisplay)}</span>
-      </div>
       <span class="home-time-summary-label">총 기록</span>
+      <div class="home-time-summary-cell-body">
+        <span class="home-time-summary-value home-time-summary-value--duration">${wrapHoursDisplayForSummary(timeSummary.trackedDisplay)}</span>
+        <div class="home-time-summary-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${trackedBarPct}" aria-label="총 기록 목표 대비">
+          <span class="home-time-summary-bar-fill home-time-summary-bar-fill--tracked" style="width:${trackedBarPct}%"></span>
+        </div>
+        <div class="home-time-summary-metric-row">
+          <span class="home-time-summary-metric-caption home-time-summary-metric-caption--footer">목표 ${escapeHtml(timeSummary.totalRecordGoalDisplay)}</span>
+          <span class="home-time-summary-pill home-time-summary-pill--tracked">${escapeHtml(timeSummary.trackedGoalPercentLabel)}</span>
+        </div>
+      </div>
     </div>
     <div class="home-time-summary-cell home-time-summary-cell--productive">
-      <div class="home-time-summary-cell-top">
-        <span class="home-time-summary-value home-time-summary-value--duration">${wrapHoursDisplayForSummary(timeSummary.productiveDisplay)}</span>
-      </div>
       <span class="home-time-summary-label" title="생산적 시간">생산적</span>
+      <div class="home-time-summary-cell-body">
+        <span class="home-time-summary-value home-time-summary-value--duration">${wrapHoursDisplayForSummary(timeSummary.productiveDisplay)}</span>
+        <div class="home-time-summary-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${productiveBarPct}" aria-label="가용 시간 대비 생산적 기록">
+          <span class="home-time-summary-bar-fill home-time-summary-bar-fill--productive" style="width:${productiveBarPct}%"></span>
+        </div>
+        <div class="home-time-summary-metric-row">
+          <span class="home-time-summary-metric-caption home-time-summary-metric-caption--footer" title="가용 시간(24h − 근무 − 수면) 대비 생산적 기록 비율">${escapeHtml(timeSummary.productiveContextDisplay)}</span>
+          <span class="home-time-summary-pill home-time-summary-pill--productive">${escapeHtml(timeSummary.productiveOfAvailablePercentLabel)}</span>
+        </div>
+      </div>
     </div>
-    <div class="home-time-summary-cell home-time-summary-cell--money">
-      <div class="home-time-summary-cell-top">
+    <div class="home-time-summary-cell home-time-summary-cell--money home-time-summary-cell--invested">
+      <span class="home-time-summary-label">투자</span>
+      <div class="home-time-summary-cell-body home-time-summary-cell-body--money">
         <span class="home-time-summary-value home-time-summary-value--invested"><span class="home-time-summary-digits home-time-summary-digits--money">${escapeHtml(timeSummary.priceDisplay)}</span><span class="home-time-summary-unit">원</span></span>
+        <span class="home-time-summary-metric-caption home-time-summary-metric-caption--invested">투자한 시간의 가치</span>
       </div>
-      <span class="home-time-summary-label" title="투자한 시급">투자</span>
     </div>
-    <div class="home-time-summary-cell home-time-summary-cell--money">
-      <div class="home-time-summary-cell-top">
+    <div class="home-time-summary-cell home-time-summary-cell--money home-time-summary-cell--waste">
+      <span class="home-time-summary-label">낭비</span>
+      <div class="home-time-summary-cell-body home-time-summary-cell-body--money">
         <span class="home-time-summary-value home-time-summary-value--spent"><span class="home-time-summary-digits home-time-summary-digits--money">${escapeHtml(timeSummary.wastedDisplay)}</span><span class="home-time-summary-unit">원</span></span>
+        <span class="home-time-summary-metric-caption home-time-summary-metric-caption--waste">낭비한 시간의 가치</span>
       </div>
-      <span class="home-time-summary-label" title="낭비한 시급">낭비</span>
     </div>
   `;
 
@@ -750,6 +927,9 @@ function appendHomeMainBelowToolbar(el) {
 
   const leftCol = document.createElement("div");
   leftCol.className = "home-view-left-col";
+  const liveTracker = buildHomeLiveTracker();
+  leftCol.appendChild(liveTracker);
+  refreshHomeLiveTrackerEl(liveTracker);
   leftCol.appendChild(summarySection);
 
   const section2 = document.createElement("div");
@@ -757,44 +937,23 @@ function appendHomeMainBelowToolbar(el) {
 
   const eventHalf = document.createElement("div");
   eventHalf.className = "home-event-half";
+  const usageSection = document.createElement("div");
+  usageSection.className = "home-time-usage-section";
+
   const header2 = document.createElement("h3");
-  header2.className = "home-view-section-title";
-  header2.textContent = "Event";
-  eventHalf.appendChild(header2);
+  header2.className = "home-time-summary-heading home-time-usage-heading";
+  header2.textContent = "과제별 예상 대비 실제";
+
+  const usageCard = document.createElement("div");
+  usageCard.className = "home-time-usage-card";
   const eventList = document.createElement("div");
-  eventList.className = "home-event-list home-event-list-grid";
-  const events = getEventsForCurrentMonth();
-  if (events.length > 0) {
-    const byDate = {};
-    events.forEach((ev) => {
-      const dateKey = (ev.dueDate || ev.startDate || "").slice(0, 10);
-      if (!dateKey) return;
-      if (!byDate[dateKey]) byDate[dateKey] = [];
-      byDate[dateKey].push(ev);
-    });
-    const sortedDates = Object.keys(byDate).sort();
-    sortedDates.forEach((dateKey) => {
-      const dayEvents = byDate[dateKey];
-      const dd = getDayNumber(dateKey);
-      const card = document.createElement("div");
-      card.className =
-        "home-event-time-card" +
-        (isWeekend(dateKey) ? " is-weekend" : "") +
-        (isToday(dateKey) ? " is-today" : "");
-      const titlesHtml = dayEvents
-        .map((ev) => {
-          const doneClass = ev.done ? " is-done" : "";
-          return `<div class="home-event-time-card-item${doneClass}">${escapeHtml(ev.name)}</div>`;
-        })
-        .join("");
-      card.innerHTML = `
-        <div class="home-event-time-card-dd">${escapeHtml(String(dd || ""))}</div>
-        <div class="home-event-time-card-list">${titlesHtml}</div>
-      `;
-      eventList.appendChild(card);
-    });
-  }
-  eventHalf.appendChild(eventList);
+  eventList.className = "home-event-list home-event-pulse-body";
+  fillHomeEventPulseContent(eventList);
+  usageCard.appendChild(eventList);
+
+  usageSection.appendChild(header2);
+  usageSection.appendChild(usageCard);
+  eventHalf.appendChild(usageSection);
 
   const reminderHalf = document.createElement("div");
   reminderHalf.className = "home-event-half";
@@ -813,7 +972,7 @@ function appendHomeMainBelowToolbar(el) {
   eventReminderStack.appendChild(reminderHalf);
   section2.appendChild(eventReminderStack);
 
-  /* 예상시간/실제 타임테이블(1일 뷰): 모바일 세로 스택, 데스크탑(64rem↑)은 [Event+Reminder 한 섹션] | 타임라인 */
+  /* 예상시간/실제 타임테이블(1일 뷰): 데스크탑(64rem↑) [시간사용+리마인더|타임라인]; 64rem↓ CSS Grid로 리마인더→타임라인→시간사용 */
   const timelineSection = document.createElement("div");
   timelineSection.className = "home-1day-timeline-section home-embed-1day";
   const timelineTitle = document.createElement("h3");
@@ -852,6 +1011,7 @@ export function render() {
   const today = new Date();
   el.appendChild(buildHomeToolbar(today));
   appendHomeMainBelowToolbar(el);
+  bindHomeEventPulseRefreshOnce();
 
   return el;
 }
