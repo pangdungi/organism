@@ -4856,8 +4856,9 @@ export function render(options = {}) {
     });
   }
 
-  if (!reusedSettings) {
-    settingsBtn.addEventListener("click", () => {
+  settingsBtn.addEventListener(
+    "click",
+    () => {
       createTodoSettingsModal({
         onHideCompletedChange: (v) => {
           hideCompleted = v;
@@ -4874,8 +4875,9 @@ export function render(options = {}) {
         },
         onClearCompleted: promptClearCompleted,
       });
-    });
-  }
+    },
+    { signal: listUiSignal },
+  );
 
   if (settingsSlot && !categoryToolbarRightActions) {
     if (!settingsSlot.contains(settingsBtn)) {
@@ -4949,9 +4951,18 @@ export function render(options = {}) {
       const panel = el.querySelector(
         ".todo-section.todo-section-tab-panel.is-active",
       );
-      panel
-        ?.querySelector(".todo-cards-add-wrap .todo-cards-add-btn")
-        ?.click();
+      const innerAdd = panel?.querySelector(
+        ".todo-cards-add-wrap .todo-cards-add-btn",
+      );
+      if (innerAdd) {
+        innerAdd.click();
+        return;
+      }
+      /* 우선순위·날짜 탭에는 카드열 + 버튼 없음 → 꿈 탭과 동일하게 추가 모달(기본 저장 섹션 dream) */
+      const fallbackAdd = el.querySelector(
+        `.todo-section.todo-section-tab-panel[data-section="dream"] .todo-cards-add-btn`,
+      );
+      fallbackAdd?.click();
     });
   }
 
