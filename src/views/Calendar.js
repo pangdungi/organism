@@ -797,10 +797,14 @@ function lpShowTimeBlockHoverTipFromRect(
   rangeStr,
   bgCss,
   fgCss,
+  memoExtra,
 ) {
   const tip = lpEnsureTimeBlockHoverTip();
   const fg = fgCss || "#ffffff";
-  tip.innerHTML = `<div class="lp-time-block-hover-tip__title">${escapeHtml((taskName || "").trim())}</div><div class="lp-time-block-hover-tip__meta">${escapeHtml(rangeStr || "")}</div>`;
+  const memoHtml = (memoExtra || "").trim()
+    ? `<div class="lp-time-block-hover-tip__memo">${escapeHtml(String(memoExtra).trim())}</div>`
+    : "";
+  tip.innerHTML = `<div class="lp-time-block-hover-tip__title">${escapeHtml((taskName || "").trim())}</div><div class="lp-time-block-hover-tip__meta">${escapeHtml(rangeStr || "")}</div>${memoHtml}`;
   tip.style.backgroundColor = bgCss || "#4b5563";
   tip.style.color = fg;
   tip.classList.add("lp-time-block-hover-tip--visible");
@@ -825,6 +829,7 @@ function lpAttachColoredTimeBlockTooltip(el, opts) {
   if (!el || typeof el.addEventListener !== "function") return;
   const taskName = (opts.taskName || "").trim();
   const rangeStr = opts.rangeStr || "";
+  const memoStr = (opts.memo || "").trim();
   const bgCss = opts.bgCss || "";
   const fgCss = opts.accentCss || opts.fgCss || "";
   const show = () => {
@@ -837,6 +842,7 @@ function lpAttachColoredTimeBlockTooltip(el, opts) {
       rangeStr,
       bgCss,
       fgCss || "#ffffff",
+      memoStr,
     );
   };
   const hide = () => {
@@ -849,7 +855,9 @@ function lpAttachColoredTimeBlockTooltip(el, opts) {
     if (window.matchMedia("(hover: none)").matches) {
       el.addEventListener("click", (e) => {
         e.stopPropagation();
-        showToast(taskName || "일정", rangeStr);
+        showToast(
+          [taskName || "일정", rangeStr, memoStr].filter(Boolean).join("\n"),
+        );
       });
     }
   } catch (_) {}
@@ -3993,11 +4001,15 @@ function collectLiveScheduledFromBudgetColumn(budgetColumn) {
     const name = (row.dataset.taskName || "").trim();
     if (!name) return;
     const inputs = row.querySelectorAll(".time-budget-scheduled-input");
-    if (inputs.length < 2) return;
-    const startRaw = inputs[0]?.value ?? row.dataset.scheduledStart ?? "";
-    const endRaw = inputs[1]?.value ?? row.dataset.scheduledEnd ?? "";
-    const start = String(startRaw).trim();
-    const end = String(endRaw).trim();
+    let start = "";
+    let end = "";
+    if (inputs.length >= 2) {
+      start = String(inputs[0]?.value ?? row.dataset.scheduledStart ?? "").trim();
+      end = String(inputs[1]?.value ?? row.dataset.scheduledEnd ?? "").trim();
+    } else {
+      start = String(row.dataset.scheduledStart ?? "").trim();
+      end = String(row.dataset.scheduledEnd ?? "").trim();
+    }
     void idx;
     if (!start || !end) return;
     const st = `${start}-${end}`;
@@ -4524,15 +4536,18 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
     const spans = [];
     for (const [taskName, data] of Object.entries(budgetGoals)) {
       const times = getScheduledTimesForTask(data);
+      const memos = Array.isArray(data?.scheduleMemos)
+        ? data.scheduleMemos
+        : [];
       const taskFromList = tasks.find(
         (t) => (t.name || "").trim() === taskName,
       );
-      for (const st of times) {
-        if (!st.trim()) continue;
+      times.forEach((st, timeIdx) => {
+        if (!st.trim()) return;
         const parts = st.trim().split("-");
         const startMin = parseHhMmToMinutes(parts[0]);
         const endMin = parts[1] ? parseHhMmToMinutes(parts[1]) : null;
-        if (startMin == null || endMin == null) continue;
+        if (startMin == null || endMin == null) return;
         const startSlot = Math.floor(startMin / MIN_PER_SLOT);
         const endSlot = Math.min(
           SLOTS_PER_DAY - 1,
@@ -4540,6 +4555,7 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         );
         const opt = getTaskOptionByName(taskName);
         const prod = opt?.productivity || "other";
+        const scheduleMemo = String(memos[timeIdx] || "").trim();
         const span = {
           startSlot,
           endSlot: Math.max(endSlot, startSlot),
@@ -4549,6 +4565,7 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
           prod,
           startDisplay: fmt(startMin),
           endDisplay: fmt(endMin),
+          scheduleMemo,
         };
         if (taskFromList) {
           span.sectionId = taskFromList.sectionId;
@@ -4557,7 +4574,7 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
             taskFromList.kpiTodoId || taskFromList.taskId || taskFromList.name;
         }
         spans.push(span);
-      }
+      });
     }
     for (const t of tasks) {
       const st = (t.startTime || "").trim();
@@ -5067,11 +5084,21 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
             }
           }
           seg.appendChild(labelWrap);
+          if ((sp.scheduleMemo || "").trim()) {
+            const memoLine = document.createElement("div");
+            memoLine.className = "calendar-1day-time-slot-label-memo";
+            memoLine.textContent = String(sp.scheduleMemo || "").trim();
+            memoLine.style.cssText =
+              "font-size:0.7rem;line-height:1.25;opacity:0.92;max-width:100%;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;";
+            if (labelFg) memoLine.style.color = labelFg;
+            seg.appendChild(memoLine);
+          }
         } else {
           seg.classList.add("calendar-1day-time-slot-fill-seg--tooltip-only");
           lpAttachColoredTimeBlockTooltip(seg, {
             taskName: sp.taskName,
             rangeStr: `${sp.startDisplay} ~ ${sp.endDisplay}`,
+            memo: (sp.scheduleMemo || "").trim(),
             bgCss: surfHex ? c.bg : timetableFillFaceBg(c.bg),
             accentCss:
               c.accentText ||
@@ -5492,6 +5519,10 @@ function render1DayView(
         renderCalendar();
       });
     };
+    const budgetAddBtnMount =
+      wrap.closest(".calendar-view-with-subtabs")?.querySelector(
+        ".calendar-schedule-budget-add-slot",
+      ) ?? null;
     renderTimeBudgetTablesForCalendar(
       budgetColumn,
       targetKey,
@@ -5500,6 +5531,7 @@ function render1DayView(
       onOverlapCleared,
       topBarLeft,
       skipBudgetTaskNames,
+      budgetAddBtnMount,
     );
     calendarGrid.appendChild(budgetColumn);
     refreshKpiSidebar(taskStats);
@@ -5885,6 +5917,10 @@ function render1DayView(
   });
 
   const refreshTimetableOverlays = (e) => {
+    if (e?.detail?.rebuildBudgetTables) {
+      renderCalendar();
+      return;
+    }
     const source = e?.type || "unknown";
     const wrapInDoc = document.contains(wrap);
     const dateStr = e?.detail?.dateStr || wrap.dataset?.dateStr;
@@ -7130,12 +7166,21 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
     headerRow.className =
       "calendar-sub-tab-header-row calendar-schedule-mobile-tab-header-row";
 
+    const topLine = document.createElement("div");
+    topLine.className = "calendar-schedule-tab-top-line";
+
+    const budgetAddSlot = document.createElement("div");
+    budgetAddSlot.className =
+      "calendar-sub-tabs-strip calendar-sub-tabs-strip--left calendar-schedule-budget-add-slot";
+
     const centerStrip = document.createElement("div");
     centerStrip.className =
       "calendar-sub-tabs-strip calendar-sub-tabs-strip--center";
     centerStrip.appendChild(subTabsControlRoot);
 
-    headerRow.appendChild(centerStrip);
+    topLine.appendChild(budgetAddSlot);
+    topLine.appendChild(centerStrip);
+    headerRow.appendChild(topLine);
     headerRow.appendChild(navLiftSlot);
     bar.appendChild(headerRow);
     subTabsMountOuter = bar;
@@ -7235,6 +7280,9 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
 
     if (gen !== _nestedSubViewGen) return;
     if (navLiftSlot) navLiftSlot.replaceChildren();
+    wrap
+      .querySelector(".calendar-schedule-budget-add-slot")
+      ?.replaceChildren();
     if (subTabsMountOuter.parentNode) subTabsMountOuter.remove();
     contentArea.innerHTML = "";
     if (subViewId === "monthly") {

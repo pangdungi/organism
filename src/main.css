@@ -40918,6 +40918,30 @@ img.time-btn-icon {
   margin: 0;
 }
 
+.calendar-view--mobile-schedule .calendar-schedule-tab-top-line {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.calendar-view--mobile-schedule
+  .calendar-schedule-tab-top-line
+  .calendar-sub-tabs-strip--left {
+  flex-shrink: 0;
+}
+
+.calendar-view--mobile-schedule
+  .calendar-schedule-tab-top-line
+  .calendar-sub-tabs-strip--center {
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: center;
+}
+
 @media (min-width: 48.0625rem) {
   .calendar-view--mobile-schedule .calendar-schedule-mobile-tab-header-row {
     padding: 24px 0;
@@ -41455,6 +41479,30 @@ img.time-btn-icon {
 .calendar-1day-top-bar-left {
   flex: 0 0 auto;
   min-width: 0;
+}
+
+/* 캘린더 1일: 시간가계부 툴바와 동일한 + 아이콘 줄(왼쪽) + 남은 시간 */
+.calendar-1day-budget-topbar-cluster {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.calendar-1day-top-bar-left .calendar-1day-budget-topbar-cluster {
+  flex: 1 1 auto;
+  max-width: 100%;
+}
+
+.calendar-1day-budget-topbar-cluster .time-budget-calendar-remaining {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.calendar-1day-budget-topbar-cluster .calendar-1day-budget-toolbar-icons {
+  flex-shrink: 0;
 }
 
 .calendar-1day-top-bar-right {
@@ -43578,6 +43626,42 @@ img.time-btn-icon {
   gap: 0.35rem;
   margin-bottom: 0.35rem;
   width: 100%;
+}
+
+.time-budget-calendar-task-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.calendar-budget-schedule-modal.time-task-setup-modal {
+  z-index: 10050;
+}
+
+#app .calendar-budget-schedule-modal .calendar-budget-schedule-modal-date {
+  pointer-events: none;
+  cursor: default;
+}
+
+.time-budget-calendar-task-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+tr.time-budget-calendar-row--readonly {
+  cursor: pointer;
+}
+
+.lp-time-block-hover-tip__memo {
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  opacity: 0.95;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 18rem;
 }
 
 .time-budget-calendar-remaining-title {
