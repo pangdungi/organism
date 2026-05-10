@@ -5416,6 +5416,10 @@ function render1DayView(
     });
 
     const onScheduledUpdate = (dateStr) => {
+      if (dayOffset === 0) {
+        requestAnimationFrame(() => renderCalendar());
+        return;
+      }
       requestAnimationFrame(() => {
         const inner = wrap.querySelector(".calendar-1day-time-table-inner");
         if (!inner || !dateStr) {
@@ -5476,6 +5480,203 @@ function render1DayView(
     divider.className = "calendar-1day-divider";
     timeColumn.appendChild(divider);
 
+    const isViewingToday = dayOffset === 0;
+
+    if (isViewingToday) {
+      const nowForTimeline = new Date();
+      const nowMinuteClockTL =
+        nowForTimeline.getHours() * 60 + nowForTimeline.getMinutes();
+      const todayYmdForTimeline = timeLedgerLocalTodayYmd();
+      const dayLedgerRowsTL = ledgerRowsForCalendarYmd(
+        loadTimeRows(),
+        targetKey,
+      );
+      const prodColorsTL = getTimeCategoryColorsForTimetableExpected();
+      const TL_SECTION_LABELS = {
+        dream: "꿈",
+        sideincome: "부수입",
+        health: "건강",
+        happy: "행복",
+      };
+      const TL_SECTION_ICON = {
+        dream: "✨",
+        sideincome: "💰",
+        health: "💪",
+        happy: "😊",
+      };
+
+      const timelineWrap = document.createElement("div");
+      timelineWrap.className = "calendar-1day-timeline-wrap";
+
+      const timelineHeading = document.createElement("div");
+      timelineHeading.className = "calendar-1day-timeline-heading";
+      const yH = targetDate.getFullYear();
+      const moH = targetDate.getMonth() + 1;
+      const dH = targetDate.getDate();
+      const wH = NAV_WEEKDAYS_SUN0[targetDate.getDay()] || "";
+      timelineHeading.textContent = `오늘 · ${yH}년 ${moH}월 ${dH}일 ${wH}요일`;
+
+      const timelineList = document.createElement("div");
+      timelineList.className = "calendar-1day-timeline-list";
+
+      const { spans: daySpansTl } =
+        buildExpectedScheduleSpansForDateKey(targetKey);
+      const spansSortedTl = [...daySpansTl].sort(
+        (a, b) =>
+          a.startMin - b.startMin ||
+          (a.lane ?? 0) - (b.lane ?? 0) ||
+          String(a.taskName || "").localeCompare(
+            String(b.taskName || ""),
+            "ko",
+          ),
+      );
+
+      if (spansSortedTl.length === 0) {
+        const emptyTl = document.createElement("p");
+        emptyTl.className = "calendar-1day-timeline-empty";
+        emptyTl.textContent = "예정된 일정이 없습니다.";
+        timelineList.appendChild(emptyTl);
+      } else {
+        spansSortedTl.forEach((span) => {
+          const pk = prodKeyForWeekExpectedSpan(span);
+          const c = prodColorsTL[pk] || prodColorsTL.other;
+          const taskLabel = String(span.taskName || "").trim();
+          const memoTextStored = String(span.scheduleMemo || "").trim();
+          const durMin = Math.max(0, span.endMin - span.startMin);
+          const ledgerMatched = weekFlowExpectedSpanHasLedgerMatch(
+            dayLedgerRowsTL,
+            span,
+          );
+          const inProgress =
+            targetKey === todayYmdForTimeline &&
+            !ledgerMatched &&
+            span.startMin <= nowMinuteClockTL &&
+            nowMinuteClockTL < span.endMin;
+
+          const item = document.createElement("div");
+          item.className = "calendar-1day-timeline-item";
+
+          const spot = document.createElement("div");
+          spot.className = "calendar-1day-timeline-spot";
+          const timeSpot = document.createElement("div");
+          timeSpot.className = "calendar-1day-timeline-spot-time";
+          timeSpot.textContent = span.startDisplay;
+          const iconWrap = document.createElement("div");
+          iconWrap.className = "calendar-1day-timeline-spot-icon";
+          const sidRaw = String(span.sectionId || "").trim();
+          let accent = "";
+          if (sidRaw && !sidRaw.startsWith("custom-")) {
+            try {
+              accent = getSectionColor(sidRaw) || "";
+            } catch (_) {
+              accent = "";
+            }
+          }
+          if (!accent && c.border) accent = c.border;
+          if (accent) {
+            iconWrap.style.backgroundColor = withMoreTransparency(accent, 0.35);
+            iconWrap.style.color =
+              timetableAccentTextColor(accent) || accent;
+          }
+          iconWrap.textContent =
+            TL_SECTION_ICON[sidRaw] ||
+            (sidRaw.startsWith("custom-") ? "📌" : "📋");
+
+          spot.appendChild(timeSpot);
+          spot.appendChild(iconWrap);
+
+          const card = document.createElement("div");
+          card.className = "calendar-1day-timeline-card";
+          const titleBase = memoTextStored
+            ? `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})\n${memoTextStored}`
+            : `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})`;
+          if (ledgerMatched) {
+            card.classList.add("calendar-1day-timeline-card--done");
+            card.title = `${titleBase}\n실제 과제 기록에 반영됨`;
+          } else {
+            card.title = titleBase;
+          }
+          if (inProgress) {
+            card.classList.add("calendar-1day-timeline-card--in-progress");
+          }
+          if (accent) {
+            card.style.borderLeftColor = accent;
+          }
+
+          const titleRow = document.createElement("div");
+          titleRow.className = "calendar-1day-timeline-card-title-row";
+          const titleEl = document.createElement("div");
+          titleEl.className = "calendar-1day-timeline-card-title";
+          titleEl.textContent = taskLabel;
+          titleRow.appendChild(titleEl);
+          if (ledgerMatched) {
+            const checkEl = document.createElement("span");
+            checkEl.className = "calendar-1day-timeline-card-check";
+            checkEl.setAttribute("role", "img");
+            checkEl.setAttribute("aria-label", "기록 완료");
+            checkEl.textContent = "✓";
+            titleRow.appendChild(checkEl);
+          }
+          card.appendChild(titleRow);
+
+          const meta = document.createElement("div");
+          meta.className = "calendar-1day-timeline-card-meta";
+          const timeRange = document.createElement("span");
+          timeRange.className = "calendar-1day-timeline-card-time";
+          timeRange.textContent = `${span.startDisplay} - ${span.endDisplay}`;
+          meta.appendChild(timeRange);
+
+          let badgeText = "";
+          if (sidRaw && TL_SECTION_LABELS[sidRaw]) {
+            badgeText = TL_SECTION_LABELS[sidRaw];
+          } else if (sidRaw.startsWith("custom-")) {
+            badgeText = "커스텀";
+          }
+          if (badgeText) {
+            const badge = document.createElement("span");
+            badge.className = "calendar-1day-timeline-card-badge";
+            badge.textContent = badgeText;
+            if (accent) {
+              badge.style.backgroundColor = withMoreTransparency(accent, 0.22);
+              badge.style.color =
+                timetableAccentTextColor(accent) || accent;
+            }
+            meta.appendChild(badge);
+          }
+          const durEl = document.createElement("span");
+          durEl.className = "calendar-1day-timeline-card-duration";
+          durEl.textContent = `${durMin}분`;
+          meta.appendChild(durEl);
+          if (inProgress) {
+            const prog = document.createElement("span");
+            prog.className = "calendar-1day-timeline-card-progress";
+            prog.textContent = "진행 중";
+            meta.appendChild(prog);
+          }
+          card.appendChild(meta);
+          if (memoTextStored) {
+            const memoEl = document.createElement("div");
+            memoEl.className = "calendar-1day-timeline-card-memo";
+            memoEl.textContent = memoTextStored;
+            card.appendChild(memoEl);
+          }
+
+          item.appendChild(spot);
+          item.appendChild(card);
+          timelineList.appendChild(item);
+        });
+      }
+
+      timelineWrap.appendChild(timelineHeading);
+      timelineWrap.appendChild(timelineList);
+      timeColumn.appendChild(timelineWrap);
+
+      const timeTableInnerStub = document.createElement("div");
+      timeTableInnerStub.className =
+        "calendar-1day-time-table-inner calendar-1day-time-table-inner--timeline-only";
+      timeTableInnerStub.setAttribute("aria-hidden", "true");
+      timeColumn.appendChild(timeTableInnerStub);
+    } else {
     /* 시간 테이블 - 예상 시간 + 실제 시간기록 모두 표시, 생산성별 색상 */
     const timeTable = document.createElement("div");
     timeTable.className = "calendar-1day-time-table";
@@ -5725,6 +5926,7 @@ function render1DayView(
     timeTableWrap.appendChild(headerRow);
     timeTableWrap.appendChild(timeTableInner);
     timeColumn.appendChild(timeTableWrap);
+    }
 
     if (sidebarMode !== LP_CAL_TODO_SIDEBAR_NONE) {
       const todoSidebar = document.createElement("aside");
@@ -5863,6 +6065,14 @@ function render1DayView(
     );
     void source;
     if (!wrapInDoc) return;
+    if (
+      timeTableInner?.classList.contains(
+        "calendar-1day-time-table-inner--timeline-only",
+      )
+    ) {
+      renderCalendar();
+      return;
+    }
     if (timeTableInner && dateStr) {
       const budgetCol = wrap.querySelector(".calendar-1day-budget-column");
       const actualDateKey =
