@@ -4116,6 +4116,10 @@ function buildExpectedScheduleSpansForDateKey(dateKey) {
             SLOTS_PER_DAY - 1,
             Math.floor((endMin - 1) / MIN_PER_SLOT),
           );
+          const memoJoin = [a.scheduleMemo, b.scheduleMemo]
+            .map((x) => String(x || "").trim())
+            .filter(Boolean)
+            .join(" · ");
           const merged = {
             ...a,
             startMin,
@@ -4125,6 +4129,8 @@ function buildExpectedScheduleSpansForDateKey(dateKey) {
             startDisplay: fmt(startMin),
             endDisplay: fmt(endMin),
           };
+          if (memoJoin) merged.scheduleMemo = memoJoin;
+          else delete merged.scheduleMemo;
           arr = arr.filter((_, k) => k !== i && k !== j);
           arr.push(merged);
           changed = true;
@@ -4138,13 +4144,14 @@ function buildExpectedScheduleSpansForDateKey(dateKey) {
   const spans = [];
   for (const [taskName, data] of Object.entries(budgetGoals)) {
     const times = getScheduledTimesForTask(data);
+    const memos = Array.isArray(data?.scheduleMemos) ? data.scheduleMemos : [];
     const taskFromList = tasks.find((t) => (t.name || "").trim() === taskName);
-    for (const st of times) {
-      if (!st.trim()) continue;
+    times.forEach((st, timeIdx) => {
+      if (!st.trim()) return;
       const parts = st.trim().split("-");
       const startMin = parseHhMmToMinutes(parts[0]);
       const endMin = parts[1] ? parseHhMmToMinutes(parts[1]) : null;
-      if (startMin == null || endMin == null) continue;
+      if (startMin == null || endMin == null) return;
       const startSlot = Math.floor(startMin / MIN_PER_SLOT);
       const endSlot = Math.min(
         SLOTS_PER_DAY - 1,
@@ -4152,6 +4159,7 @@ function buildExpectedScheduleSpansForDateKey(dateKey) {
       );
       const opt = getTaskOptionByName(taskName);
       const prod = opt?.productivity || "other";
+      const scheduleMemo = String(memos[timeIdx] || "").trim();
       const span = {
         startSlot,
         endSlot: Math.max(endSlot, startSlot),
@@ -4162,6 +4170,7 @@ function buildExpectedScheduleSpansForDateKey(dateKey) {
         startDisplay: fmt(startMin),
         endDisplay: fmt(endMin),
       };
+      if (scheduleMemo) span.scheduleMemo = scheduleMemo;
       if (taskFromList) {
         span.sectionId = taskFromList.sectionId;
         span._task = taskFromList;
@@ -4169,7 +4178,7 @@ function buildExpectedScheduleSpansForDateKey(dateKey) {
           taskFromList.kpiTodoId || taskFromList.taskId || taskFromList.name;
       }
       spans.push(span);
-    }
+    });
   }
   for (const t of tasks) {
     const st = (t.startTime || "").trim();
@@ -4387,6 +4396,10 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
             SLOTS_PER_DAY - 1,
             Math.floor((endMin - 1) / MIN_PER_SLOT),
           );
+          const memoJoin = [a.scheduleMemo, b.scheduleMemo]
+            .map((x) => String(x || "").trim())
+            .filter(Boolean)
+            .join(" · ");
           const merged = {
             ...a,
             startMin,
@@ -4396,6 +4409,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
             startDisplay: fmt(startMin),
             endDisplay: fmt(endMin),
           };
+          if (memoJoin) merged.scheduleMemo = memoJoin;
+          else delete merged.scheduleMemo;
           arr = arr.filter((_, k) => k !== i && k !== j);
           arr.push(merged);
           changed = true;
@@ -6513,13 +6528,16 @@ function render1WeekView(
         const pk = prodKeyForWeekExpectedSpan(span);
         const c = prodColors[pk] || prodColors.other;
         const taskLabel = String(span.taskName || "").trim();
+        const memoTextStored = String(span.scheduleMemo || "").trim();
         const rangeHuman = weekFlowMobileHoursOnly
           ? `${weekFlowHourToken(span.startDisplay)} - ${weekFlowHourToken(span.endDisplay)}`
           : `${span.startDisplay} - ${span.endDisplay}`;
 
         const card = document.createElement("div");
         card.className = "calendar-1week-flow-card";
-        card.title = `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})`;
+        card.title = memoTextStored
+          ? `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})\n${memoTextStored}`
+          : `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})`;
 
         const sidRaw = String(span.sectionId || "").trim();
         let accent = "";
@@ -6578,6 +6596,12 @@ function render1WeekView(
 
         card.appendChild(titleEl);
         card.appendChild(meta);
+        if (memoTextStored) {
+          const memoEl = document.createElement("div");
+          memoEl.className = "calendar-1week-flow-card-memo";
+          memoEl.textContent = memoTextStored;
+          card.appendChild(memoEl);
+        }
         stack.appendChild(card);
       });
 

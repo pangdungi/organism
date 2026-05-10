@@ -42339,6 +42339,13 @@ img.time-btn-icon {
   color: #c45c26;
   font-weight: 600;
 }
+.calendar-1week-flow-card-memo {
+  margin-top: 0.2rem;
+  font-size: 0.5625rem;
+  line-height: 1.35;
+  color: var(--text-caption-color);
+  word-break: break-word;
+}
 
 @media (max-width: 48rem) {
   /*
@@ -42433,6 +42440,11 @@ img.time-btn-icon {
     font-size: 0.53125rem;
     gap: 0.14rem 0.22rem;
     justify-content: flex-start;
+  }
+  .calendar-1week-time-grid-google--flow .calendar-1week-flow-card-memo {
+    margin-top: 0.1rem;
+    font-size: 0.5rem;
+    line-height: 1.32;
   }
   .calendar-1week-time-grid-google--flow .calendar-1week-flow-card-badge {
     font-size: 0.5rem;
