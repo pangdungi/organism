@@ -5498,12 +5498,6 @@ function render1DayView(
         health: "건강",
         happy: "행복",
       };
-      const TL_SECTION_ICON = {
-        dream: "✨",
-        sideincome: "💰",
-        health: "💪",
-        happy: "😊",
-      };
 
       const timelineWrap = document.createElement("div");
       timelineWrap.className = "calendar-1day-timeline-wrap";
@@ -5555,6 +5549,7 @@ function render1DayView(
           timeSpot.textContent = span.startDisplay;
           const iconWrap = document.createElement("div");
           iconWrap.className = "calendar-1day-timeline-spot-icon";
+          iconWrap.setAttribute("aria-hidden", "true");
           const sidRaw = String(span.sectionId || "").trim();
           let accent = "";
           if (sidRaw && !sidRaw.startsWith("custom-")) {
@@ -5570,9 +5565,8 @@ function render1DayView(
             iconWrap.style.color =
               timetableAccentTextColor(accent) || accent;
           }
-          iconWrap.textContent =
-            TL_SECTION_ICON[sidRaw] ||
-            (sidRaw.startsWith("custom-") ? "📌" : "📋");
+          const hourNum = Math.floor(Number(span.startMin) / 60);
+          iconWrap.textContent = String(hourNum);
 
           spot.appendChild(timeSpot);
           spot.appendChild(iconWrap);
