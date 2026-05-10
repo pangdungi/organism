@@ -4247,130 +4247,6 @@ function buildExpectedScheduleSpansForDateKey(dateKey) {
   return { spans: normalized, maxLane: withLanes.maxLane };
 }
 
-/**
- * dateKey: 시간가계부 행(`loadTimeRows`)만 반영 — 서버 pull 후 로컬과 동기화된 스냅샷.
- * 1주 뷰에서 「오늘」보다 과거 열의 실제 블록용.
- */
-function buildActualScheduleSpansForDateKey(dateKey) {
-  const SLOTS_PER_DAY = CAL_1DAY_TIMETABLE_SLOTS_PER_DAY;
-  const MIN_PER_SLOT = CAL_1DAY_TIMETABLE_MIN_PER_SLOT;
-  const fmt = (m) =>
-    `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-  const parseHhMmToMinutes = (s) => {
-    if (!s || !s.trim()) return null;
-    const str = String(s).trim();
-    const m = str.match(/^(\d{1,2}):?(\d{0,2})$/);
-    if (m) return (parseInt(m[1], 10) || 0) * 60 + (parseInt(m[2], 10) || 0);
-    const m4 = str.match(/^(\d{3,4})$/);
-    if (m4) {
-      const digits = m4[1];
-      const h =
-        digits.length === 4
-          ? parseInt(digits.slice(0, 2), 10)
-          : parseInt(digits.slice(0, 1), 10);
-      const min = parseInt(digits.slice(-2), 10) || 0;
-      return (h || 0) * 60 + Math.min(59, min);
-    }
-    return null;
-  };
-  const parseDateTimeToMinutes = (str) => {
-    if (!str || typeof str !== "string") return null;
-    const m = str.match(/[T\s](\d{1,2}):?(\d{2})?/);
-    if (!m) return null;
-    return (parseInt(m[1], 10) || 0) * 60 + (parseInt(m[2], 10) || 0);
-  };
-  const parseDateFromTimeStr = (str) => {
-    if (!str || typeof str !== "string") return "";
-    const m = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
-    return m
-      ? `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`
-      : "";
-  };
-  const normDate = (s) => (s || "").replace(/\//g, "-").trim().slice(0, 10);
-
-  const allTimeRows = loadTimeRows();
-  const actualRows = allTimeRows.filter(
-    (r) => normDate(r.date || parseDateFromTimeStr(r.startTime)) === dateKey,
-  );
-
-  const overlapMinutesBetween = (a, b) => {
-    const sa = Number(a?.startMin);
-    const ea = Number(a?.endMin);
-    const sb = Number(b?.startMin);
-    const eb = Number(b?.endMin);
-    if (![sa, ea, sb, eb].every((n) => Number.isFinite(n))) return 0;
-    const o = Math.min(ea, eb) - Math.max(sa, sb);
-    return o > 0 ? o : 0;
-  };
-  const assignLanesToSpans = (spans) => {
-    const laneOccupants = [];
-    let maxLane = 0;
-    for (const span of spans) {
-      let lane = 0;
-      while (lane < laneOccupants.length) {
-        const inLane = laneOccupants[lane];
-        const conflicts = inLane.some(
-          (x) => overlapMinutesBetween(span, x) > 0,
-        );
-        if (!conflicts) break;
-        lane++;
-      }
-      if (lane >= laneOccupants.length) laneOccupants.push([]);
-      laneOccupants[lane].push(span);
-      span.lane = lane;
-      maxLane = Math.max(maxLane, lane);
-    }
-    return { spans, maxLane };
-  };
-
-  const spans = [];
-  const toMinutes = (str) =>
-    parseDateTimeToMinutes(str) ?? parseHhMmToMinutes(str);
-  for (const r of actualRows) {
-    const startMin = toMinutes(r.startTime);
-    const endMin = toMinutes(r.endTime);
-    if (startMin == null || endMin == null || endMin <= startMin) continue;
-    const prod =
-      r.productivity ||
-      getTaskOptionByName(r.taskName)?.productivity ||
-      "other";
-    spans.push({
-      startMin: Math.max(0, startMin),
-      endMin: Math.min(24 * 60, endMin),
-      taskName: r.taskName || "",
-      prod,
-      startDisplay: fmt(Math.max(0, startMin)),
-      endDisplay: fmt(Math.min(24 * 60, endMin)),
-    });
-  }
-  const clamped = spans
-    .map((s) => {
-      const sm = Number(s.startMin);
-      const em = Number(s.endMin);
-      if (!Number.isFinite(sm) || !Number.isFinite(em) || em <= sm) return null;
-      const startMin = Math.max(0, sm);
-      const endMin = Math.min(24 * 60, em);
-      if (endMin <= startMin) return null;
-      return { ...s, startMin, endMin };
-    })
-    .filter(Boolean);
-  const sorted = clamped.sort((a, b) => a.startMin - b.startMin);
-  const withLanes = assignLanesToSpans(sorted);
-  return {
-    spans: withLanes.spans.map((s) => ({
-      ...s,
-      startSlot: Math.floor(s.startMin / MIN_PER_SLOT),
-      endSlot: Math.min(
-        SLOTS_PER_DAY - 1,
-        Math.floor((s.endMin - 1) / MIN_PER_SLOT),
-      ),
-      startDisplay: fmt(s.startMin),
-      endDisplay: fmt(s.endMin),
-    })),
-    maxLane: withLanes.maxLane,
-  };
-}
-
 function prodKeyForWeekExpectedSpan(span) {
   const pk = String(span?.prod || "other").toLowerCase();
   if (pk === "productive" || pk === "nonproductive") return pk;
@@ -5001,7 +4877,9 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         }
         seg.style.width = "100%";
         seg.style.display = "flex";
-        seg.style.alignItems = "flex-start";
+        seg.style.flexDirection = "column";
+        seg.style.alignItems = "stretch";
+        seg.style.gap = "0.2rem";
         seg.style.padding = "0.25rem 0.5rem";
         const surfHex = timetableUsesHexSurface(c);
         if (surfHex && c.border) {
@@ -5034,7 +4912,7 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
           const labelWrap = document.createElement("div");
           /* 동시구간 반열: 폭이 1/N로 줄어 시간 문자열이 겹침·삐져나옴 → 과제명만, 시간은 tooltip */
           const useLaneNameOnly = useLaneLayout;
-          /* 짧은 구간(21~30분): 예상·실제 공통 — 과제명 왼쪽, 시간 오른쪽 한 줄(넘침 시 이름만 …) */
+          /* 짧은 구간: 제목+시간을 최대 3줄까지 말줄임(칸 높이 한정) */
           const useCompactOneLineLabel =
             !useLaneNameOnly &&
             segDurationMin > TIMETABLE_MAX_MINUTES_TO_HIDE_LABEL &&
@@ -5048,29 +4926,27 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
             labelName.textContent = sp.taskName || "";
             labelWrap.appendChild(labelName);
             labelWrap.title = `${String(sp.taskName || "").trim()}\n${sp.startDisplay} ~ ${sp.endDisplay}`;
-          } else if (useCompactOneLineLabel) {
-            labelWrap.className =
-              "calendar-1day-time-slot-label-wrap calendar-1day-time-slot-label-wrap--actual-one-line";
-            const labelName = document.createElement("span");
-            labelName.className =
-              "calendar-1day-time-slot-label-name calendar-1day-time-slot-label-name--one-line";
-            labelName.textContent = sp.taskName || "";
-            const labelTime = document.createElement("span");
-            labelTime.className =
-              "calendar-1day-time-slot-label-time calendar-1day-time-slot-label-time--one-line";
-            labelTime.textContent = `${sp.startDisplay} ~ ${sp.endDisplay}`;
-            labelWrap.appendChild(labelName);
-            labelWrap.appendChild(labelTime);
           } else {
-            labelWrap.className = "calendar-1day-time-slot-label-wrap";
+            /* 과제명 - 시간 한 흐름(줄바꿈 시에도 시간이 옆 열로 밀리지 않음), 메모는 아래 */
+            labelWrap.className =
+              "calendar-1day-time-slot-label-wrap" +
+              (useCompactOneLineLabel
+                ? " calendar-1day-time-slot-label-wrap--compact"
+                : "");
+            const titleTimeRow = document.createElement("div");
+            titleTimeRow.className = "calendar-1day-time-slot-label-title-time";
             const labelName = document.createElement("span");
             labelName.className = "calendar-1day-time-slot-label-name";
-            labelName.textContent = sp.taskName || "";
+            labelName.textContent = String(sp.taskName || "").trim();
             const labelTime = document.createElement("span");
             labelTime.className = "calendar-1day-time-slot-label-time";
-            labelTime.textContent = `${sp.startDisplay} ~ ${sp.endDisplay}`;
-            labelWrap.appendChild(labelName);
-            labelWrap.appendChild(labelTime);
+            const taskStr = String(sp.taskName || "").trim();
+            labelTime.textContent = taskStr
+              ? ` - ${sp.startDisplay} ~ ${sp.endDisplay}`
+              : `${sp.startDisplay} ~ ${sp.endDisplay}`;
+            titleTimeRow.appendChild(labelName);
+            titleTimeRow.appendChild(labelTime);
+            labelWrap.appendChild(titleTimeRow);
           }
           const labelFg =
             c.accentText || timetableAccentTextColor(c.border || c.bg);
@@ -5088,8 +4964,6 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
             const memoLine = document.createElement("div");
             memoLine.className = "calendar-1day-time-slot-label-memo";
             memoLine.textContent = String(sp.scheduleMemo || "").trim();
-            memoLine.style.cssText =
-              "font-size:0.7rem;line-height:1.25;opacity:0.92;max-width:100%;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;";
             if (labelFg) memoLine.style.color = labelFg;
             seg.appendChild(memoLine);
           }
@@ -6085,7 +5959,6 @@ function render1WeekView(
 
     const todayYmd = timeLedgerLocalTodayYmd();
     const prodColorsExpected = getTimeCategoryColorsForTimetableExpected();
-    const prodColorsActual = getTimeCategoryColorsForTimetable();
     const MIN_PER_DAY = 24 * 60;
     const WEEK_SLOTS_PER_DAY = CAL_1DAY_TIMETABLE_SLOTS_PER_DAY;
     const WEEK_MIN_PER_SLOT = CAL_1DAY_TIMETABLE_MIN_PER_SLOT;
@@ -6608,13 +6481,9 @@ function render1WeekView(
       const track = document.createElement("div");
       track.className = "calendar-1week-google-track";
 
-      const useActualLedger = key < todayYmd;
-      const prodColors = useActualLedger
-        ? prodColorsActual
-        : prodColorsExpected;
-      const { spans } = useActualLedger
-        ? buildActualScheduleSpansForDateKey(key)
-        : buildExpectedScheduleSpansForDateKey(key);
+      /* 1주 뷰: 예상(일일 예산) 타임테이블만 — 과거/오늘 여부와 관계없이 시간기록 막대 미표시 */
+      const prodColors = prodColorsExpected;
+      const { spans } = buildExpectedScheduleSpansForDateKey(key);
 
       spans.forEach((span) => {
         const bar = document.createElement("div");

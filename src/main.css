@@ -44267,9 +44267,59 @@ tr.time-budget-calendar-row--readonly {
   color: var(--text-body);
 }
 
+/* 과제명 - 시작 ~ 종료 (한 덩어리로 줄바꿈; 메모는 별도 행) */
+.calendar-1day-view .calendar-1day-time-slot-label-title-time {
+  width: 100%;
+  min-width: 0;
+  font-size: 0.56rem;
+  line-height: 1.25;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.calendar-1day-view
+  .calendar-1day-time-slot-label-title-time
+  .calendar-1day-time-slot-label-name {
+  display: inline;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: unset;
+}
+
+.calendar-1day-view
+  .calendar-1day-time-slot-label-title-time
+  .calendar-1day-time-slot-label-time {
+  display: inline;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.calendar-1day-view .calendar-1day-time-slot-label-wrap--compact
+  .calendar-1day-time-slot-label-title-time {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.calendar-1day-view .calendar-1day-time-slot-label-memo {
+  width: 100%;
+  min-width: 0;
+  font-size: 0.65rem;
+  line-height: 1.25;
+  opacity: 0.92;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+
 /* 면 채움 세그먼트 안 라벨: 배경 위 가독 — 흰색(JS 인라인 강조색보다 우선) */
 .calendar-1day-view .calendar-1day-time-slot-fill-seg .calendar-1day-time-slot-label-wrap,
-.calendar-1day-view .calendar-1day-time-slot-fill-seg .calendar-1day-time-slot-label {
+.calendar-1day-view .calendar-1day-time-slot-fill-seg .calendar-1day-time-slot-label,
+.calendar-1day-view .calendar-1day-time-slot-fill-seg .calendar-1day-time-slot-label-memo {
   color: #ffffff !important;
 }
 
@@ -44287,6 +44337,14 @@ tr.time-budget-calendar-row--readonly {
 .calendar-1day-view
   .calendar-1day-time-slot-fill-seg--surface-spec
   .calendar-1day-time-slot-label-time {
+  color: var(
+    --calendar-tb-fg-muted,
+    var(--calendar-tb-fg, var(--text-body))
+  ) !important;
+}
+.calendar-1day-view
+  .calendar-1day-time-slot-fill-seg--surface-spec
+  .calendar-1day-time-slot-label-memo {
   color: var(
     --calendar-tb-fg-muted,
     var(--calendar-tb-fg, var(--text-body))
@@ -44312,31 +44370,6 @@ tr.time-budget-calendar-row--readonly {
 
 .calendar-1day-view .calendar-1day-time-slot-label-time {
   /* 줄바꿈해서 시작~종료 시간 전부 보이게 (ellipsis 제거) */
-  word-break: keep-all;
-}
-
-/* 예상·실제: 21~30분 구간 — 과제명 왼쪽·시간 오른쪽 한 줄 */
-.calendar-1day-view .calendar-1day-time-slot-label-wrap--actual-one-line {
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: baseline;
-  gap: 0.2rem;
-}
-
-.calendar-1day-view .calendar-1day-time-slot-label-name--one-line {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  display: block;
-  -webkit-line-clamp: unset;
-  -webkit-box-orient: unset;
-}
-
-.calendar-1day-view .calendar-1day-time-slot-label-time--one-line {
-  flex: 0 0 auto;
-  white-space: nowrap;
   word-break: keep-all;
 }
 
