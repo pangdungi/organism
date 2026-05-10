@@ -180,9 +180,9 @@ const LP_CAL_TODO_SIDEBAR_NONE = "none";
 const CAL_1DAY_TIMETABLE_SLOTS_PER_DAY = 24;
 const CAL_1DAY_TIMETABLE_MIN_PER_SLOT = 60;
 /** 타임블록: 칼럼 좌우 안쪽 여백·상하·반열(동시 일정) 사이 간격(px) */
-const CAL_1DAY_TIMEBLOCK_INSET_X = 6;
-const CAL_1DAY_TIMEBLOCK_INSET_Y = 4;
-const CAL_1DAY_TIMEBLOCK_LANE_GAP_PX = 6;
+const CAL_1DAY_TIMEBLOCK_INSET_X = 3;
+const CAL_1DAY_TIMEBLOCK_INSET_Y = 2;
+const CAL_1DAY_TIMEBLOCK_LANE_GAP_PX = 3;
 /** 1일·1주 타임블록: 이 분 이하(포함)는 막대 안 글자 숨김 → 호버 시 블록색 툴팁 */
 const CAL_TIMEBLOCK_HIDE_LABEL_MAX_MINUTES = 30;
 

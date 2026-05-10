@@ -6186,6 +6186,67 @@ body {
     color: var(--text-muted) !important;
     line-height: 1 !important;
   }
+  /* 주간 그리드: 좌측 시각·타임블록 글자 축소 — 모바일 열이 좁아 잘리는 현상 완화 */
+  .calendar-view-with-subtabs .calendar-1week-view {
+    --cal-1day-label-col: 2rem;
+  }
+  .calendar-view-with-subtabs .calendar-1week-google-hour-label {
+    font-size: 0.4375rem !important;
+    padding: 0.14rem 0.06rem 0 !important;
+  }
+  .calendar-view-with-subtabs
+    .calendar-1week-google-hour-label.calendar-1week-google-hour-label--subslot {
+    font-size: 0.375rem !important;
+    padding-top: 0.05rem !important;
+  }
+  .calendar-view-with-subtabs .calendar-1week-google-block-inner {
+    padding: 0.12rem 0.22rem !important;
+    gap: 0.03rem !important;
+    line-height: 1.12 !important;
+  }
+  .calendar-view-with-subtabs .calendar-1week-google-block-name {
+    font-size: 0.4rem !important;
+    line-height: 1.12 !important;
+  }
+  .calendar-view-with-subtabs .calendar-1week-google-block-time {
+    font-size: 0.375rem !important;
+    line-height: 1.08 !important;
+  }
+  /* 스택형(긴 일정): 짧은 블록 높이에서 제목 multi-line과 시간 줄 세로 겹침 방지 */
+  .calendar-view-with-subtabs
+    .calendar-1week-google-block-inner--stacked-time {
+    gap: 0.08rem !important;
+    justify-content: flex-start !important;
+  }
+  .calendar-view-with-subtabs
+    .calendar-1week-google-block-inner--stacked-time
+    .calendar-1week-google-block-name {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    -webkit-line-clamp: 2 !important;
+    line-height: 1.12 !important;
+  }
+  .calendar-view-with-subtabs
+    .calendar-1week-google-block-inner--stacked-time
+    .calendar-1week-google-block-time {
+    flex-shrink: 0 !important;
+    align-self: stretch !important;
+    margin-top: auto !important;
+    line-height: 1.1 !important;
+    padding-top: 0.02rem !important;
+  }
+  .calendar-view-with-subtabs
+    .calendar-1week-google-block--narrow-lane
+    .calendar-1week-google-block-inner {
+    padding: 0.08rem 0.18rem !important;
+  }
+  .calendar-view-with-subtabs
+    .calendar-1week-google-block--narrow-lane
+    .calendar-1week-google-block-name {
+    font-size: 0.36rem !important;
+    line-height: 1.08 !important;
+  }
   .calendar-view-with-subtabs .calendar-monthly-bars {
     top: 1.62rem !important;
   }
@@ -6222,12 +6283,6 @@ body {
     .calendar-monthly-day.other-month.today
     .calendar-monthly-day-num {
     align-self: flex-start !important;
-  }
-
-  .calendar-1week-view {
-    --cal-1week-hour-height: 2.35rem;
-    --cal-1week-v-chrome: clamp(12.5rem, 38dvh, 23rem);
-    --cal-1week-time-fill-h: calc(100dvh - var(--cal-1week-v-chrome));
   }
 
   .calendar-1day-view {
@@ -41411,13 +41466,17 @@ img.time-btn-icon {
     padding-bottom: 0;
   }
 
-  /* 1주 + 할일 사이드바 접힘: >> 줄 높이에 맞춤 — 펼침 때만 3rem 고정 */
+  /* 1주 + 할일 사이드바 접힘: 헤더 행 높이 = 접힌 사이드바 헤더·월간 요일 줄과 동일(2.3125rem) */
   .calendar-monthly-layout.calendar-1week-view:has(
       > .calendar-todo-sidebar.collapsed
     )
     .calendar-1week-google-header-row {
-    min-height: 0;
+    min-height: 2.3125rem;
+    height: 2.3125rem;
+    max-height: 2.3125rem;
+    box-sizing: border-box;
     border-bottom: var(--line-l3);
+    align-items: stretch;
   }
 
   .calendar-monthly-layout.calendar-1week-view:has(
@@ -41433,8 +41492,10 @@ img.time-btn-icon {
     )
     .calendar-1week-google-day-head {
     min-height: 0;
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
+    padding-top: 0;
+    padding-bottom: 0;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
     box-sizing: border-box;
   }
 
@@ -41462,14 +41523,14 @@ img.time-btn-icon {
 
 /* 1주 뷰: 구글 주간형 — 좌측 시간축 + 요일 7열 그리드 (타임블록과 동일 메인 배경·카드형 블록) */
 .calendar-1week-view {
-  --cal-1week-hour-height: 2.75rem;
-  /* 남는 세로를 24시간에 균등 분할 (모바일에서 chrome만 키움) */
-  --cal-1week-v-chrome: clamp(10.5rem, 28dvh, 17rem);
+  /* 모바일 우선 — 넓은 화면 변수는 아래 min-width 에서 덮음 */
+  --cal-1week-hour-height: 2rem;
+  --cal-1week-v-chrome: clamp(12.5rem, 38dvh, 23rem);
   --cal-1week-time-fill-h: calc(100dvh - var(--cal-1week-v-chrome));
   /* 오늘 해치우기 시간 행(.calendar-1day-time-row / -slot)과 동일 */
   --cal-1week-slot-line: 0.09375rem solid rgba(0, 0, 0, 0.05);
-  /* 타임블록 상하 여백(px) — 바깥 절대 배치 박스 안쪽 .calendar-1week-google-block-inner 가 카드 면 */
-  --cal-1week-block-inset-y: 4px;
+  /* 타임블록 상하 여백(px) — 좁은 화면은 조금 타이트, 넓은 화면은 아래 min-width 에서 복원 */
+  --cal-1week-block-inset-y: 2px;
   /* 시간 격자 줄무늬 없음 — 1일 비교 뷰와 동일 단색 */
   --cal-1week-grid-bg: var(--app-main-bg);
   /* 요일 열 — 모바일은 너비 부족 시 잘림 방지(아래 데스크탑만 min 폭) */
@@ -41481,6 +41542,9 @@ img.time-btn-icon {
 @media (min-width: 48.0625rem) {
   .calendar-1week-view {
     --cal-1week-day-cols: repeat(7, minmax(5.25rem, 1fr));
+    --cal-1week-hour-height: 2.75rem;
+    --cal-1week-v-chrome: clamp(10.5rem, 28dvh, 17rem);
+    --cal-1week-time-fill-h: calc(100dvh - var(--cal-1week-v-chrome));
   }
 }
 .calendar-1week-view .calendar-monthly-main {
@@ -41796,12 +41860,12 @@ img.time-btn-icon {
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.375rem !important;
-  -webkit-border-radius: 0.375rem !important;
+  padding: 0.16rem 0.34rem;
+  border-radius: 0.1875rem !important;
+  -webkit-border-radius: 0.1875rem !important;
 }
 .calendar-1week-google-block--narrow-lane .calendar-1week-google-block-inner {
-  padding: 0.14rem 0.34rem;
+  padding: 0.09rem 0.22rem;
   border-left: 0.09375rem solid rgba(0, 0, 0, 0.12);
   gap: 0;
   justify-content: flex-start;
@@ -43701,18 +43765,18 @@ img.time-btn-icon {
 .calendar-1day-view
   .calendar-1day-time-slot-fill--block
   .calendar-1day-time-slot-fill-seg:first-child {
-  border-top-left-radius: 0.375rem !important;
-  border-top-right-radius: 0.375rem !important;
-  -webkit-border-top-left-radius: 0.375rem !important;
-  -webkit-border-top-right-radius: 0.375rem !important;
+  border-top-left-radius: 0.1875rem !important;
+  border-top-right-radius: 0.1875rem !important;
+  -webkit-border-top-left-radius: 0.1875rem !important;
+  -webkit-border-top-right-radius: 0.1875rem !important;
 }
 .calendar-1day-view
   .calendar-1day-time-slot-fill--block
   .calendar-1day-time-slot-fill-seg:last-child {
-  border-bottom-left-radius: 0.375rem !important;
-  border-bottom-right-radius: 0.375rem !important;
-  -webkit-border-bottom-left-radius: 0.375rem !important;
-  -webkit-border-bottom-right-radius: 0.375rem !important;
+  border-bottom-left-radius: 0.1875rem !important;
+  border-bottom-right-radius: 0.1875rem !important;
+  -webkit-border-bottom-left-radius: 0.1875rem !important;
+  -webkit-border-bottom-right-radius: 0.1875rem !important;
 }
 
 /* 겹치는 구간(레인): 왼쪽만 실선, 위·오른쪽·아래 보더 없음 */
