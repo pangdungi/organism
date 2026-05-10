@@ -11137,8 +11137,8 @@ export function renderTimeBudgetTablesForCalendar(
 
   const topBarCluster = document.createElement("div");
   topBarCluster.className = "calendar-1day-budget-topbar-cluster";
-  const useExternalAddMount =
-    budgetAddButtonMount != null && budgetAddButtonMount.isConnected;
+  /* 슬롯이 잠깐 DOM에서 떨어져 있어도(ref만 유효) 같은 참조로 이어 붙임 — 탭 전환 직후 깜빡임 방지 */
+  const useExternalAddMount = budgetAddButtonMount != null;
   if (useExternalAddMount) {
     budgetAddButtonMount.replaceChildren();
     const toolbarIcons = document.createElement("div");

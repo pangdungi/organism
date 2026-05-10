@@ -40919,10 +40919,10 @@ img.time-btn-icon {
 }
 
 .calendar-view--mobile-schedule .calendar-schedule-tab-top-line {
-  display: flex;
-  flex-direction: row;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 0.35rem;
+  column-gap: 0.35rem;
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
@@ -40931,15 +40931,20 @@ img.time-btn-icon {
 .calendar-view--mobile-schedule
   .calendar-schedule-tab-top-line
   .calendar-sub-tabs-strip--left {
-  flex-shrink: 0;
+  justify-self: start;
 }
 
 .calendar-view--mobile-schedule
   .calendar-schedule-tab-top-line
   .calendar-sub-tabs-strip--center {
-  flex: 1 1 auto;
+  justify-self: center;
   min-width: 0;
-  justify-content: center;
+}
+
+.calendar-view--mobile-schedule
+  .calendar-schedule-tab-top-line
+  .calendar-schedule-tab-top-line-spacer {
+  min-width: 0;
 }
 
 @media (min-width: 48.0625rem) {

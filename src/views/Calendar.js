@@ -5144,6 +5144,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
 function render1DayView(
   tabsElement,
   sidebarMode = LP_CAL_TODO_SIDEBAR_QUADRANT,
+  /** 모바일 일정 상단 슬롯 — 1일 뷰가 아직 DOM에 안 붙었을 때도 안정적으로 + 위치 고정 */
+  calendarScheduleBudgetAddSlot = null,
 ) {
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout calendar-1day-view";
@@ -5520,9 +5522,11 @@ function render1DayView(
       });
     };
     const budgetAddBtnMount =
+      calendarScheduleBudgetAddSlot ??
       wrap.closest(".calendar-view-with-subtabs")?.querySelector(
         ".calendar-schedule-budget-add-slot",
-      ) ?? null;
+      ) ??
+      null;
     renderTimeBudgetTablesForCalendar(
       budgetColumn,
       targetKey,
@@ -7112,6 +7116,8 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
 
   /** @type {HTMLElement | null} */
   let navLiftSlot = null;
+  /** 모바일 일정 — 예상 일정 + 전용 슬롯(서브탭 줄 왼쪽), `render1DayView`에 직접 전달 */
+  let scheduleMobileBudgetAddSlot = null;
   /** @type {HTMLElement} */
   let subTabsMountOuter;
   const subTabsControlRoot = document.createElement("div");
@@ -7172,14 +7178,20 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
     const budgetAddSlot = document.createElement("div");
     budgetAddSlot.className =
       "calendar-sub-tabs-strip calendar-sub-tabs-strip--left calendar-schedule-budget-add-slot";
+    scheduleMobileBudgetAddSlot = budgetAddSlot;
 
     const centerStrip = document.createElement("div");
     centerStrip.className =
       "calendar-sub-tabs-strip calendar-sub-tabs-strip--center";
     centerStrip.appendChild(subTabsControlRoot);
 
+    const topLineRightSpacer = document.createElement("div");
+    topLineRightSpacer.className = "calendar-schedule-tab-top-line-spacer";
+    topLineRightSpacer.setAttribute("aria-hidden", "true");
+
     topLine.appendChild(budgetAddSlot);
     topLine.appendChild(centerStrip);
+    topLine.appendChild(topLineRightSpacer);
     headerRow.appendChild(topLine);
     headerRow.appendChild(navLiftSlot);
     bar.appendChild(headerRow);
@@ -7294,7 +7306,13 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
     } else if (subViewId === "annual") {
       contentArea.appendChild(renderAnnualView(null));
     } else if (subViewId === "1day") {
-      contentArea.appendChild(render1DayView(null, todoSidebarMode));
+      contentArea.appendChild(
+        render1DayView(
+          null,
+          todoSidebarMode,
+          keepSubTabsOnTop ? scheduleMobileBudgetAddSlot : null,
+        ),
+      );
     }
     if (keepSubTabsOnTop) {
       wrap.insertBefore(subTabsMountOuter, contentArea);
