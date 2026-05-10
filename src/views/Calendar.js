@@ -241,13 +241,13 @@ function syncCalendar1WeekSidebarHeaderHeight(mainSectionEl, sidebarEl) {
   } catch (_) {
     return;
   }
-  const headerRow = mainSectionEl.querySelector(
-    ".calendar-1week-google-header-row",
+  const stripHeader = mainSectionEl.querySelector(
+    ".calendar-1week-strip-header",
   );
   const sidebarHeader = sidebarEl.querySelector(
     ".calendar-todo-sidebar-header",
   );
-  if (!headerRow || !sidebarHeader) return;
+  if (!stripHeader || !sidebarHeader) return;
 
   if (sidebarEl.classList.contains("collapsed")) {
     sidebarHeader.style.removeProperty("height");
@@ -257,7 +257,7 @@ function syncCalendar1WeekSidebarHeaderHeight(mainSectionEl, sidebarEl) {
   }
 
   const mainTop = mainSectionEl.getBoundingClientRect().top;
-  const rowBottom = headerRow.getBoundingClientRect().bottom;
+  const rowBottom = stripHeader.getBoundingClientRect().bottom;
   const px = Math.max(0, Math.round(rowBottom - mainTop));
   sidebarHeader.style.setProperty("height", `${px}px`);
   sidebarHeader.style.setProperty("min-height", `${px}px`);
@@ -6005,71 +6005,67 @@ function render1WeekView(
     outer.className =
       "calendar-1week-time-grid-google calendar-1week-time-grid-google--flow";
 
-    const headerRow = document.createElement("div");
-    headerRow.className = "calendar-1week-google-header-row";
-    const corner = document.createElement("div");
-    corner.className = "calendar-1week-google-corner";
-    corner.setAttribute("aria-hidden", "true");
-    headerRow.appendChild(corner);
-
-    week.forEach((date, i) => {
-      if (!date) return;
-      const key = formatDateKey(date);
-      const th = document.createElement("div");
-      th.className = "calendar-1week-google-day-head";
-      if (key === todayYmd) th.classList.add("is-today");
-      th.dataset.date = key;
-      const label = document.createElement("span");
-      label.className = "calendar-1week-google-day-label";
-      const dowLetter = DAY_NAMES[i] || "";
-      label.textContent = `${date.getDate()}(${dowLetter})`;
-      th.appendChild(label);
-      headerRow.appendChild(th);
-    });
-
     const weekDateKeys = week
       .map((d) => (d ? formatDateKey(d) : ""))
       .filter(Boolean);
     const firstDayKey = weekDateKeys[0] || "";
-    const lastDayKey = weekDateKeys[weekDateKeys.length - 1] || "";
+    const lastDayKey =
+      weekDateKeys[weekDateKeys.length - 1] || "";
     const rangeTasks = getAllTasksWithDateRange();
 
-    const alldaySection = document.createElement("div");
-    alldaySection.className = "calendar-1week-google-allday-section";
+    const stripHeader = document.createElement("div");
+    stripHeader.className = "calendar-1week-strip-header";
 
-    const alldayGutter = document.createElement("div");
-    alldayGutter.className = "calendar-1week-google-allday-gutter";
-    alldayGutter.textContent = "종일";
-
-    /** 월간 주 행과 동일: 요일 칸 + entries 안에 막대 세로 스택 */
-    const alldayCellsByDate = {};
-    alldaySection.appendChild(alldayGutter);
-    week.forEach((date, wi) => {
-      if (!date) return;
-      const key = formatDateKey(date);
+    const dayHeader = document.createElement("div");
+    dayHeader.className = "calendar-monthly-weekdays";
+    DAY_NAMES.forEach((name) => {
       const cell = document.createElement("div");
-      cell.className =
-        "calendar-monthly-day calendar-1week-google-allday-cell" +
-        (key === todayYmd ? " today" : "") +
-        (date.getDay() === 0 ? " sun" : "") +
-        (date.getDay() === 6 ? " sat" : "");
+      cell.className = "calendar-monthly-weekday";
+      cell.textContent = name;
+      dayHeader.appendChild(cell);
+    });
+    stripHeader.appendChild(dayHeader);
+
+    const weekWrap = document.createElement("div");
+    weekWrap.className = "calendar-monthly-week-wrap";
+    const weekRow = document.createElement("div");
+    weekRow.className = "calendar-monthly-week";
+    const currentMonth = week[0]
+      ? week[0].getMonth()
+      : new Date().getMonth();
+
+    week.forEach((date) => {
+      if (!date) return;
+      const cell = document.createElement("div");
+      cell.className = "calendar-monthly-day";
+      const key = formatDateKey(date);
       cell.dataset.date = key;
+      const dayNum = document.createElement("div");
+      dayNum.className = "calendar-monthly-day-num";
+      dayNum.textContent = date.getDate();
+
+      const isCurrentMonth = date.getMonth() === currentMonth;
+      if (!isCurrentMonth) cell.classList.add("other-month");
+      if (key === todayYmd) cell.classList.add("today");
+      if (date.getDay() === 0) cell.classList.add("sun");
+      if (date.getDay() === 6) cell.classList.add("sat");
+
+      cell.appendChild(dayNum);
       const entriesEl = document.createElement("div");
       entriesEl.className = "calendar-monthly-day-entries";
       cell.appendChild(entriesEl);
-      alldayCellsByDate[key] = { cell, entriesEl };
 
       cell.style.cursor = "pointer";
       cell.addEventListener(
         "click",
         (e) => {
-          if (e.target.closest(".calendar-monthly-span-bar")) return;
-          if (e.target.closest(".calendar-event-bubble")) return;
-          const isMobile = window.matchMedia("(max-width: 48rem)").matches;
-          const rect = cell.getBoundingClientRect();
-          if (isMobile) {
+          if (
+            window.matchMedia("(max-width: 48rem)").matches &&
+            cell.contains(e.target)
+          ) {
             e.stopPropagation();
             e.preventDefault();
+            const rect = cell.getBoundingClientRect();
             const tasks = getAllTasksForDateDisplay(key);
             createCalendarDayExpandBubble(rect, key, tasks, () => {}, {
               positionBelow: true,
@@ -6087,19 +6083,27 @@ function render1WeekView(
             });
             return;
           }
-          e.stopPropagation();
-          createCalendarEventBubble(
-            rect,
-            key,
-            () => {
-              renderCalendar();
-              refreshTodoList();
-            },
-            () => {},
-          );
         },
-        false,
+        true,
       );
+      cell.addEventListener("click", (e) => {
+        if (e.target.closest(".calendar-event-bubble")) return;
+        e.stopPropagation();
+        const rect = cell.getBoundingClientRect();
+        const isMobile = window.matchMedia("(max-width: 48rem)").matches;
+        if (isMobile) {
+          return;
+        }
+        createCalendarEventBubble(
+          rect,
+          key,
+          () => {
+            renderCalendar();
+            refreshTodoList();
+          },
+          () => {},
+        );
+      });
       cell.addEventListener("dragover", (e) => {
         if (calendarDragTransferTypesAllowDrop(e.dataTransfer)) {
           e.preventDefault();
@@ -6124,29 +6128,18 @@ function render1WeekView(
         }
         applyWeekDropToDate(key, payload);
       });
-
-      alldaySection.appendChild(cell);
+      weekRow.appendChild(cell);
     });
 
-    /** 종일 기간 막대: 월간 주 행과 동일 — left/width %는 7일 영역 기준(한 칸 entries가 아님) */
-    const alldaySpanLayer = document.createElement("div");
-    alldaySpanLayer.className =
-      "calendar-monthly-bars calendar-1week-google-allday-bars";
-    alldaySpanLayer.style.gridColumn = "2 / -1";
-    alldaySpanLayer.style.gridRow = "1";
-    alldaySection.appendChild(alldaySpanLayer);
-
-    const BAR_HEIGHT_AL = window.matchMedia("(max-width: 48rem)").matches
+    const barsEl = document.createElement("div");
+    barsEl.className = "calendar-monthly-bars";
+    const BAR_HEIGHT = window.matchMedia("(max-width: 48rem)").matches
       ? 1.02
       : 1.78;
-    const isWeekCalMobileAl = window.matchMedia("(max-width: 48rem)").matches;
-    const STACK_PAD_TOP_AL = isWeekCalMobileAl ? 0.06 : 0.08;
-    const STACK_PAD_BOT_AL = isWeekCalMobileAl ? 0.16 : 0.22;
-
-    const overlapsAl = (a, b) =>
+    const overlaps = (a, b) =>
       a.left < b.left + b.width && b.left < a.left + a.width;
-    const allBarsAl = [];
-    const CELL_GAP_AL = 3.5;
+    const allBars = [];
+    const CELL_GAP = 3.5;
     rangeTasks.forEach((t) => {
       const barStart = t.startDate > firstDayKey ? t.startDate : firstDayKey;
       const barEnd = t.dueDate < lastDayKey ? t.dueDate : lastDayKey;
@@ -6154,17 +6147,15 @@ function render1WeekView(
       const startIdx = weekDateKeys.indexOf(barStart);
       const endIdx = weekDateKeys.indexOf(barEnd);
       if (startIdx < 0 || endIdx < 0) return;
-      const left = (startIdx / 7) * 100 + CELL_GAP_AL / 7;
+      const left = (startIdx / 7) * 100 + CELL_GAP / 7;
       const width =
-        ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP_AL * 2) / 7;
+        ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
       const baseColor = getSectionColor(t.sectionId);
       const color = withMoreTransparency(baseColor);
       const isFirstSegment = barStart === t.startDate;
-      allBarsAl.push({
+      allBars.push({
         left,
         width,
-        weekSpanStartIdx: startIdx,
-        weekSpanEndIdx: endIdx,
         name: t.name,
         color,
         isSingleDay: false,
@@ -6184,11 +6175,11 @@ function render1WeekView(
     });
     weekDateKeys.forEach((dateKey, dayIdx) => {
       getTasksForDate(dateKey, true).forEach((t) => {
-        const left = (dayIdx / 7) * 100 + CELL_GAP_AL / 7;
-        const width = (1 / 7) * 100 - (CELL_GAP_AL * 2) / 7;
+        const left = (dayIdx / 7) * 100 + CELL_GAP / 7;
+        const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
         const baseColor = getSectionColor(t.sectionId);
         const color = withMoreTransparency(baseColor);
-        allBarsAl.push({
+        allBars.push({
           left,
           width,
           name: t.name,
@@ -6211,79 +6202,67 @@ function render1WeekView(
         });
       });
     });
-    const rowBarsAl = [];
-    allBarsAl.forEach((b) => {
+    const rowBars = [];
+    allBars.forEach((b) => {
       let row = 0;
-      while (
-        rowBarsAl[row] &&
-        rowBarsAl[row].some((r) => overlapsAl(r, b))
-      ) {
-        row++;
-      }
-      if (!rowBarsAl[row]) rowBarsAl[row] = [];
-      rowBarsAl[row].push(b);
+      while (rowBars[row] && rowBars[row].some((r) => overlaps(r, b))) row++;
+      if (!rowBars[row]) rowBars[row] = [];
+      rowBars[row].push(b);
       b.row = row;
     });
-    allBarsAl.forEach((b) => {
+    allBars.forEach((b) => {
       b.isOverflow = false;
     });
-
-    /** 각 날짜 칸 높이: 그 열을 가로로 점유하는 막대(기간·단일)의 최대 row까지 */
-    const maxRowTouchingDateKey = {};
-    weekDateKeys.forEach((key) => {
-      const di = weekDateKeys.indexOf(key);
-      let maxR = -1;
-      allBarsAl.forEach((bar) => {
-        if (bar.isSingleDay && bar.dateKey === key) {
-          maxR = Math.max(maxR, bar.row);
-        } else if (
-          !bar.isSingleDay &&
-          typeof bar.weekSpanStartIdx === "number" &&
-          di >= bar.weekSpanStartIdx &&
-          di <= bar.weekSpanEndIdx
-        ) {
-          maxR = Math.max(maxR, bar.row);
-        }
-      });
-      maxRowTouchingDateKey[key] = maxR;
-    });
-
-    allBarsAl.forEach((b) => {
+    const maxRow = allBars.length
+      ? Math.max(...allBars.map((b) => b.row), 0)
+      : 0;
+    const rowsNeeded = maxRow + 1;
+    const BARS_TOP = window.matchMedia("(max-width: 48rem)").matches
+      ? 1.62
+      : 2.25;
+    const BOTTOM_PAD = window.matchMedia("(max-width: 48rem)").matches
+      ? 0.34
+      : 0.42;
+    const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 3 * BAR_HEIGHT + BOTTOM_PAD;
+    const requiredHeight = BARS_TOP + rowsNeeded * BAR_HEIGHT + BOTTOM_PAD;
+    weekRow.style.minHeight = `${Math.max(DEFAULT_ROW_HEIGHT_REM, requiredHeight)}rem`;
+    const barsWithRow = allBars;
+    barsWithRow.forEach((b) => {
       const isTodo = (b.itemType || "todo").toLowerCase() === "todo";
+      const showCheckbox = isTodo && (b.isSingleDay || b.isFirstSegment);
       const bar = document.createElement("div");
       bar.className =
-        "calendar-monthly-span-bar calendar-1week-google-allday-span" +
+        "calendar-monthly-span-bar" +
         (b.isSingleDay
           ? " calendar-monthly-span-bar--todo"
           : " calendar-monthly-span-bar--range") +
-        /* 주간 종일: 기간 할 일도 각 칸에 | 열을 두어 월별 셀과 동일하게 읽힘 */
-        (isTodo ? " calendar-monthly-span-bar--has-checkbox" : "") +
+        (showCheckbox ? " calendar-monthly-span-bar--has-checkbox" : "") +
         (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "") +
         (b.isOverdueBar ? " calendar-monthly-span-bar--overdue" : "") +
         ((b.itemType || "todo").toLowerCase() !== "todo"
           ? " calendar-monthly-span-bar--schedule-strip"
           : "");
       bar.title = b.name;
+      bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.1 + b.row * BAR_HEIGHT}rem`;
       if (b.isSingleDay) {
         if (isTodo) {
           bar.innerHTML = `${lpCalendarSpanBarTodoMarkerHtml(b.color)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
         } else {
           bar.style.setProperty("--schedule-icon-color", b.color);
-          bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" aria-hidden="true"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+          bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" style="border-color:${b.color}"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
         }
-        bar.dataset.date = b.dateKey || "";
-        bar.dataset.sectionId = b.sectionId || "";
-        bar.dataset.taskId = b.taskId || "";
-        bar.dataset.kpiTodoId = b.kpiTodoId || "";
-        bar.dataset.storageKey = b.storageKey || "";
-        bar.dataset.done = b.done ? "true" : "false";
-        bar.dataset.itemType = b.itemType || "todo";
       } else {
         if (isTodo) {
-          bar.innerHTML = `${lpCalendarSpanBarTodoMarkerHtml(b.color)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+          bar.innerHTML = showCheckbox
+            ? `${lpCalendarSpanBarTodoMarkerHtml(b.color)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
+            : `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
         } else {
-          bar.style.setProperty("--schedule-icon-color", b.color);
-          bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" aria-hidden="true"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+          if (b.isFirstSegment) {
+            bar.style.setProperty("--schedule-icon-color", b.color);
+            bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" style="border-color:${b.color}"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+          } else {
+            bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+          }
         }
       }
       if (isTodo && b.done) {
@@ -6293,18 +6272,15 @@ function render1WeekView(
           ?.classList.add("checked");
       }
       if (isTodo) {
-        const toggleDoneAl = (e) => {
-          if (e) {
-            e.stopPropagation();
-            e.preventDefault();
-          }
+        const toggleDone = (e) => {
+          e.stopPropagation();
           const newDone = !b.done;
           if (b.kpiTodoId && b.storageKey) {
             syncKpiTodoCompleted(b.kpiTodoId, b.storageKey, newDone);
+          } else if (KPI_SECTION_IDS.includes(b.sectionId) && b.taskId) {
+            updateSectionTaskDone(b.sectionId, b.taskId, newDone);
           } else if (b.sectionId?.startsWith("custom-") && b.taskId) {
             updateCustomSectionTaskDone(b.sectionId, b.taskId, newDone);
-          } else if (b.sectionId && b.taskId) {
-            updateSectionTaskDone(b.sectionId, b.taskId, newDone);
           }
           b.done = newDone;
           bar.classList.toggle("is-completed", newDone);
@@ -6313,28 +6289,8 @@ function render1WeekView(
             ?.classList.toggle("checked", newDone);
           refreshTodoList();
         };
-        const attachToggleAl = (el) => {
-          if (!el) return;
-          el.addEventListener("click", toggleDoneAl);
-          el.addEventListener(
-            "touchend",
-            (ev) => {
-              ev.preventDefault();
-              ev.stopPropagation();
-              toggleDoneAl(ev);
-            },
-            { passive: false },
-          );
-          el.addEventListener(
-            "touchstart",
-            (ev) => {
-              ev.stopPropagation();
-            },
-            { passive: true },
-          );
-        };
-        attachToggleAl(bar);
-        attachToggleAl(bar.querySelector(".calendar-monthly-span-bar-checkbox"));
+        if (!window.matchMedia("(max-width: 48rem)").matches)
+          bar.addEventListener("click", toggleDone);
       }
       if (!b.isSingleDay && b.startDate && b.dueDate) {
         bar.addEventListener("contextmenu", (e) => {
@@ -6369,32 +6325,95 @@ function render1WeekView(
           );
         });
       }
-
-      let placed = false;
-      if (!b.isOverflow) {
-        if (b.isSingleDay && b.dateKey) {
-          const pack = alldayCellsByDate[b.dateKey];
-          const entries = pack?.entriesEl;
-          if (entries) {
-            entries.style.position = "relative";
-            bar.style.cssText = `left:0;right:0;width:100%;max-width:100%;box-sizing:border-box;--bar-bg:${b.color};top:${STACK_PAD_TOP_AL + b.row * BAR_HEIGHT_AL}rem`;
-            entries.appendChild(bar);
-            const mr = maxRowTouchingDateKey[b.dateKey];
-            const stackRows = mr >= 0 ? mr + 1 : 0;
-            entries.style.minHeight = `${STACK_PAD_TOP_AL + stackRows * BAR_HEIGHT_AL + STACK_PAD_BOT_AL}rem`;
-            placed = true;
+      barsEl.appendChild(bar);
+    });
+    const moreEl = document.createElement("div");
+    moreEl.className = "calendar-day-more-overlay";
+    moreEl.style.cssText =
+      "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
+    weekDateKeys.forEach((_dateKey) => {
+      const slot = document.createElement("div");
+      slot.style.cssText =
+        "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
+      moreEl.appendChild(slot);
+    });
+    weekWrap.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      if (calendarDragTransferTypesAllowDrop(e.dataTransfer)) {
+        e.dataTransfer.dropEffect = "move";
+        let cell = document
+          .elementFromPoint(e.clientX, e.clientY)
+          ?.closest(".calendar-monthly-day:not(.empty)");
+        if (!cell) {
+          const cells = weekRow.querySelectorAll(
+            ".calendar-monthly-day:not(.empty)",
+          );
+          for (const c of cells) {
+            const r = c.getBoundingClientRect();
+            if (
+              e.clientX >= r.left &&
+              e.clientX <= r.right &&
+              e.clientY >= r.top &&
+              e.clientY <= r.bottom
+            ) {
+              cell = c;
+              break;
+            }
           }
-        } else if (!b.isSingleDay && b.startDate && b.dueDate) {
-          bar.style.cssText = `left:${b.left}%;width:${b.width}%;box-sizing:border-box;--bar-bg:${b.color};top:${STACK_PAD_TOP_AL + b.row * BAR_HEIGHT_AL}rem`;
-          alldaySpanLayer.appendChild(bar);
-          placed = true;
         }
-      }
-      if (!placed) {
-        const fb = alldayCellsByDate[weekDateKeys[0]]?.entriesEl;
-        if (fb) fb.appendChild(bar);
+        weekWrap
+          .querySelectorAll(".calendar-day-drag-over")
+          .forEach((el) => el.classList.remove("calendar-day-drag-over"));
+        if (cell) cell.classList.add("calendar-day-drag-over");
       }
     });
+    weekWrap.addEventListener("dragleave", (e) => {
+      if (!weekWrap.contains(e.relatedTarget)) {
+        weekWrap
+          .querySelectorAll(".calendar-day-drag-over")
+          .forEach((el) => el.classList.remove("calendar-day-drag-over"));
+      }
+    });
+    weekWrap.addEventListener("drop", (e) => {
+      weekWrap
+        .querySelectorAll(".calendar-day-drag-over")
+        .forEach((el) => el.classList.remove("calendar-day-drag-over"));
+      e.preventDefault();
+      let json = readCalendarDropPayloadJson(e.dataTransfer);
+      if (!json) return;
+      let payload;
+      try {
+        payload = JSON.parse(json);
+      } catch (_) {
+        return;
+      }
+      let cell = document
+        .elementFromPoint(e.clientX, e.clientY)
+        ?.closest(".calendar-monthly-day:not(.empty)");
+      if (!cell) {
+        const cells = weekRow.querySelectorAll(
+          ".calendar-monthly-day:not(.empty)",
+        );
+        for (const c of cells) {
+          const r = c.getBoundingClientRect();
+          if (
+            e.clientX >= r.left &&
+            e.clientX <= r.right &&
+            e.clientY >= r.top &&
+            e.clientY <= r.bottom
+          ) {
+            cell = c;
+            break;
+          }
+        }
+      }
+      if (!cell?.dataset?.date) return;
+      applyWeekDropToDate(cell.dataset.date, payload);
+    });
+    weekWrap.appendChild(weekRow);
+    weekWrap.appendChild(barsEl);
+    weekWrap.appendChild(moreEl);
+    stripHeader.appendChild(weekWrap);
 
     const scrollArea = document.createElement("div");
     scrollArea.className = "calendar-1week-google-scroll";
@@ -6402,13 +6421,16 @@ function render1WeekView(
     const bodyGrid = document.createElement("div");
     bodyGrid.className = "calendar-1week-google-body";
 
-    /* 헤더·종일 행과 열 맞춤용 빈 칸(시간 눈금·타임라인 없음) */
-    const scrollGutter = document.createElement("div");
-    scrollGutter.className = "calendar-1week-google-scroll-gutter";
-    scrollGutter.setAttribute("aria-hidden", "true");
-
     const colsWrap = document.createElement("div");
     colsWrap.className = "calendar-1week-google-cols";
+
+    const weekFlowMobileHoursOnly =
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 48rem)").matches;
+    const weekFlowHourToken = (hhmm) => {
+      const m = String(hhmm || "").trim().match(/^(\d{1,2})/);
+      return m != null ? String(parseInt(m[1], 10)) : String(hhmm || "");
+    };
 
     week.forEach((date) => {
       if (!date) return;
@@ -6437,9 +6459,10 @@ function render1WeekView(
       spansSorted.forEach((span) => {
         const pk = prodKeyForWeekExpectedSpan(span);
         const c = prodColors[pk] || prodColors.other;
-        const durMin = Math.max(0, span.endMin - span.startMin);
         const taskLabel = String(span.taskName || "").trim();
-        const rangeHuman = `${span.startDisplay} - ${span.endDisplay}`;
+        const rangeHuman = weekFlowMobileHoursOnly
+          ? `${weekFlowHourToken(span.startDisplay)} - ${weekFlowHourToken(span.endDisplay)}`
+          : `${span.startDisplay} - ${span.endDisplay}`;
 
         const card = document.createElement("div");
         card.className = "calendar-1week-flow-card";
@@ -6488,11 +6511,6 @@ function render1WeekView(
           meta.appendChild(badge);
         }
 
-        const durEl = document.createElement("span");
-        durEl.className = "calendar-1week-flow-card-dur";
-        durEl.textContent = `${durMin}분`;
-        meta.appendChild(durEl);
-
         const inProgress =
           key === todayYmd &&
           span.startMin <= nowMinuteClock &&
@@ -6514,7 +6532,6 @@ function render1WeekView(
       colsWrap.appendChild(col);
     });
 
-    bodyGrid.appendChild(scrollGutter);
     bodyGrid.appendChild(colsWrap);
     scrollArea.appendChild(bodyGrid);
 
@@ -6565,8 +6582,7 @@ function render1WeekView(
       applyWeekDropToDate(targetDate, payload);
     });
 
-    outer.appendChild(headerRow);
-    outer.appendChild(alldaySection);
+    outer.appendChild(stripHeader);
     outer.appendChild(scrollArea);
     calendarGrid.appendChild(outer);
     requestAnimationFrame(() => {

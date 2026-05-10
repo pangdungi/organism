@@ -6189,6 +6189,12 @@ body {
   /* 주간 그리드: 좌측 시각·타임블록 글자 축소 — 모바일 열이 좁아 잘리는 현상 완화 */
   .calendar-view-with-subtabs .calendar-1week-view {
     --cal-1day-label-col: 2rem;
+    /* 상·하 슬롯 여백 제거: 가늠선까지 블록이 닿게(이중 선+끊긴 느낌 완화) */
+    --cal-1week-block-inset-y: 0;
+  }
+  /* 종일 행 border-bottom 과 시간 영역 border-top 이 겹쳐 이중 가늠선처럼 보이지 않게 */
+  .calendar-view-with-subtabs .calendar-1week-view .calendar-1week-google-scroll {
+    border-top: none;
   }
   .calendar-view-with-subtabs .calendar-1week-google-hour-label {
     font-size: 0.4375rem !important;
@@ -41991,6 +41997,13 @@ img.time-btn-icon {
   min-width: 0;
   background: var(--app-main-bg);
 }
+/* 1주 상단: 월별과 동일 요일 줄 + 한 주 행(막대 스택) — 종일 전용 격자 없음 */
+.calendar-1week-strip-header {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
 .calendar-1week-google-header-row {
   display: grid;
   grid-template-columns: var(--cal-1day-label-col) var(--cal-1week-day-cols);
@@ -42322,12 +42335,39 @@ img.time-btn-icon {
   background: rgba(42, 56, 40, 0.1);
   color: var(--ui-btn-primary-bg);
 }
-.calendar-1week-flow-card-dur {
-  font-variant-numeric: tabular-nums;
-}
 .calendar-1week-flow-card-progress {
   color: #c45c26;
   font-weight: 600;
+}
+
+@media (max-width: 48rem) {
+  .calendar-1week-time-grid-google--flow .calendar-1week-flow-stack {
+    gap: 0.24rem;
+    padding: 0.12rem 0.08rem 0.28rem;
+  }
+  .calendar-1week-time-grid-google--flow .calendar-1week-flow-card {
+    padding: 0.26rem 0.28rem 0.24rem;
+    border-radius: 0.4rem;
+  }
+  .calendar-1week-time-grid-google--flow .calendar-1week-flow-card-title {
+    font-size: 0.625rem;
+    font-weight: 600;
+    line-height: 1.25;
+    text-align: center;
+  }
+  .calendar-1week-time-grid-google--flow .calendar-1week-flow-card-meta {
+    margin-top: 0.14rem;
+    font-size: 0.53125rem;
+    gap: 0.14rem 0.22rem;
+    justify-content: center;
+  }
+  .calendar-1week-time-grid-google--flow .calendar-1week-flow-card-badge {
+    font-size: 0.5rem;
+    padding: 0.04rem 0.22rem;
+  }
+  .calendar-1week-time-grid-google--flow .calendar-1week-flow-card-progress {
+    font-size: 0.5rem;
+  }
 }
 /* 바깥: 하루 비율 top/height — 안쪽 inner 가 타임블록과 같은 카드 면 */
 .calendar-1week-google-block {
