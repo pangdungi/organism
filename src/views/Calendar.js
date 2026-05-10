@@ -5076,10 +5076,15 @@ function render1DayView(
   sidebarMode = LP_CAL_TODO_SIDEBAR_QUADRANT,
   /** 모바일 일정 상단 슬롯 — 1일 뷰가 아직 DOM에 안 붙었을 때도 안정적으로 + 위치 고정 */
   calendarScheduleBudgetAddSlot = null,
+  /** true: 홈 「오늘」타임라인 전용 카드 UI. 일정 탭 타임블록(1일)은 false → 기존 타임테이블 */
+  useHomeTodayTimeline = false,
 ) {
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout calendar-1day-view";
   wrap.dataset.lpCalTodoSidebar = sidebarMode;
+  if (useHomeTodayTimeline) {
+    wrap.dataset.lpHomeTodayTimeline = "1";
+  }
 
   let dayOffset = 0;
   /** Date#getDay() 용 (0=일) — 네비 날짜 옆 요일 표기 */
@@ -5416,7 +5421,7 @@ function render1DayView(
     });
 
     const onScheduledUpdate = (dateStr) => {
-      if (dayOffset === 0) {
+      if (dayOffset === 0 && useHomeTodayTimeline) {
         requestAnimationFrame(() => renderCalendar());
         return;
       }
@@ -5480,7 +5485,7 @@ function render1DayView(
     divider.className = "calendar-1day-divider";
     timeColumn.appendChild(divider);
 
-    const isViewingToday = dayOffset === 0;
+    const isViewingToday = dayOffset === 0 && useHomeTodayTimeline;
 
     if (isViewingToday) {
       const nowForTimeline = new Date();

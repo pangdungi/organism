@@ -822,7 +822,9 @@ function appendHomeMainBelowToolbar(el) {
   timelineSection.appendChild(timelineTitle);
   const timelineMount = document.createElement("div");
   timelineMount.className = "home-1day-timeline-mount";
-  timelineMount.appendChild(render1DayView(null, LP_CAL_TODO_SIDEBAR_NONE));
+  timelineMount.appendChild(
+    render1DayView(null, LP_CAL_TODO_SIDEBAR_NONE, null, true),
+  );
   timelineSection.appendChild(timelineMount);
   section2.appendChild(timelineSection);
 
