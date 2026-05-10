@@ -4260,6 +4260,49 @@ function prodKeyForWeekExpectedSpan(span) {
   return "other";
 }
 
+function normLedgerRowDateYmd(s) {
+  return String(s || "").replace(/\//g, "-").trim().slice(0, 10);
+}
+
+function parseYmdFromLedgerTimeStr(str) {
+  if (!str || typeof str !== "string") return "";
+  const m = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  return m
+    ? `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`
+    : "";
+}
+
+function ledgerRowsForCalendarYmd(allRows, ymd) {
+  if (!ymd || !Array.isArray(allRows)) return [];
+  return allRows.filter((r) => {
+    const d = normLedgerRowDateYmd(
+      r?.date || parseYmdFromLedgerTimeStr(r?.startTime),
+    );
+    return d === ymd;
+  });
+}
+
+function normTaskNameForWeekFlowMatch(s) {
+  return String(s || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+/** 같은 날 실제 과제 기록에 예상 행동과제명(또는 할일 taskId)이 있으면 true */
+function weekFlowExpectedSpanHasLedgerMatch(dayRows, span) {
+  if (!Array.isArray(dayRows) || dayRows.length === 0 || !span) return false;
+  const expName = normTaskNameForWeekFlowMatch(span.taskName);
+  const expTid = String(span._task?.taskId || "").trim();
+  for (const r of dayRows) {
+    const rtid = String(r?.taskId || "").trim();
+    if (expTid && rtid && expTid === rtid) return true;
+    const rn = normTaskNameForWeekFlowMatch(r?.taskName);
+    if (expName && rn && expName === rn) return true;
+  }
+  return false;
+}
+
 /** 1일 뷰 시간표(예상/실제) 오버레이만 생성 - budget 테이블 재구성 없이 시간표만 갱신용 */
 function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   const storedGoals = getBudgetGoals(targetKey);
@@ -5987,6 +6030,8 @@ function render1WeekView(
       happy: "행복",
     };
 
+    const allLedgerRowsForWeek = loadTimeRows();
+
     function applyWeekDropToDate(targetDate, payload) {
       const oldStart = (payload.startDate || "").slice(0, 10);
       const oldDue = (payload.dueDate || "").slice(0, 10);
@@ -6503,6 +6548,7 @@ function render1WeekView(
     week.forEach((date) => {
       if (!date) return;
       const key = formatDateKey(date);
+      const dayLedgerRows = ledgerRowsForCalendarYmd(allLedgerRowsForWeek, key);
       const col = document.createElement("div");
       col.className =
         "calendar-1week-google-col calendar-1week-google-col--flow";
@@ -6533,11 +6579,22 @@ function render1WeekView(
           ? `${weekFlowHourToken(span.startDisplay)} - ${weekFlowHourToken(span.endDisplay)}`
           : `${span.startDisplay} - ${span.endDisplay}`;
 
+        const ledgerMatched = weekFlowExpectedSpanHasLedgerMatch(
+          dayLedgerRows,
+          span,
+        );
+
         const card = document.createElement("div");
         card.className = "calendar-1week-flow-card";
-        card.title = memoTextStored
+        const titleBase = memoTextStored
           ? `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})\n${memoTextStored}`
           : `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})`;
+        card.title = ledgerMatched
+          ? `${titleBase}\n실제 과제 기록에도 있음`
+          : titleBase;
+        if (ledgerMatched) {
+          card.classList.add("calendar-1week-flow-card--ledger-done");
+        }
 
         const sidRaw = String(span.sectionId || "").trim();
         let accent = "";
@@ -6556,6 +6613,26 @@ function render1WeekView(
         const titleEl = document.createElement("div");
         titleEl.className = "calendar-1week-flow-card-title";
         titleEl.textContent = taskLabel;
+        titleEl.style.flex = "1";
+        titleEl.style.minWidth = "0";
+
+        const titleRow = document.createElement("div");
+        titleRow.className = "calendar-1week-flow-card-title-row";
+        titleRow.style.cssText =
+          "display:flex;align-items:flex-start;justify-content:space-between;gap:0.35rem;";
+        titleRow.appendChild(titleEl);
+        if (ledgerMatched) {
+          const checkEl = document.createElement("span");
+          checkEl.className = "calendar-1week-flow-card-done-check";
+          checkEl.setAttribute("role", "img");
+          checkEl.setAttribute("aria-label", "실제 기록에 반영됨");
+          checkEl.textContent = "✓";
+          checkEl.style.flexShrink = "0";
+          checkEl.style.color = "var(--ui-btn-primary-bg, #2A3828)";
+          checkEl.style.fontWeight = "700";
+          checkEl.style.lineHeight = "1";
+          titleRow.appendChild(checkEl);
+        }
 
         const meta = document.createElement("div");
         meta.className = "calendar-1week-flow-card-meta";
@@ -6594,7 +6671,7 @@ function render1WeekView(
           meta.appendChild(prog);
         }
 
-        card.appendChild(titleEl);
+        card.appendChild(titleRow);
         card.appendChild(meta);
         if (memoTextStored) {
           const memoEl = document.createElement("div");

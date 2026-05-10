@@ -42453,6 +42453,16 @@ img.time-btn-icon {
   .calendar-1week-time-grid-google--flow .calendar-1week-flow-card-progress {
     font-size: 0.5rem;
   }
+  .calendar-1week-time-grid-google--flow
+    .calendar-1week-flow-card--ledger-done {
+    background: rgba(42, 56, 40, 0.07);
+    border-color: rgba(42, 56, 40, 0.14);
+  }
+  .calendar-1week-time-grid-google--flow
+    .calendar-1week-flow-card-done-check {
+    font-size: 0.625rem;
+    line-height: 1;
+  }
 }
 /* 바깥: 하루 비율 top/height — 안쪽 inner 가 타임블록과 같은 카드 면 */
 .calendar-1week-google-block {
