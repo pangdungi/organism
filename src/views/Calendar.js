@@ -580,56 +580,6 @@ function timetableUsesHexSurface(c) {
   );
 }
 
-/** 1주 시간그리드: startMin/endMin 기준 시간 겹침(분) — 일간 뷰 직접겹침 클러스터와 동일 */
-function overlapMinutesBetweenScheduleSpans(a, b) {
-  const sa = Number(a?.startMin);
-  const ea = Number(a?.endMin);
-  const sb = Number(b?.startMin);
-  const eb = Number(b?.endMin);
-  if (![sa, ea, sb, eb].every((n) => Number.isFinite(n))) return 0;
-  const o = Math.min(ea, eb) - Math.max(sa, sb);
-  return o > 0 ? o : 0;
-}
-
-/**
- * seed 와 시간이 직접 겹치는 스팬만 묶어 레인 폭 계산 → 하루 전체 maxLane 으로 열 폭 분할 금지
- */
-function lanesForWeekTimeBlock(seedSpan, allSpansSameDay) {
-  const cohort = allSpansSameDay.filter(
-    (o) =>
-      o === seedSpan ||
-      overlapMinutesBetweenScheduleSpans(seedSpan, o) > 0,
-  );
-  if (cohort.length <= 1) return { lane: 0, laneCount: 1 };
-  const sortedCluster = [...cohort].sort(
-    (a, b) =>
-      a.startMin - b.startMin ||
-      String(a.taskName || "").localeCompare(String(b.taskName || ""), "ko"),
-  );
-  const copies = sortedCluster.map((s) => ({ ...s }));
-  const laneOccupants = [];
-  let maxLane = 0;
-  for (const span of copies) {
-    let lane = 0;
-    while (lane < laneOccupants.length) {
-      const inLane = laneOccupants[lane];
-      const conflicts = inLane.some(
-        (x) => overlapMinutesBetweenScheduleSpans(span, x) > 0,
-      );
-      if (!conflicts) break;
-      lane++;
-    }
-    if (lane >= laneOccupants.length) laneOccupants.push([]);
-    laneOccupants[lane].push(span);
-    span.lane = lane;
-    maxLane = Math.max(maxLane, lane);
-  }
-  const laneCount = Math.max(1, maxLane + 1);
-  const seedIdx = sortedCluster.findIndex((s) => s === seedSpan);
-  const lane = seedIdx >= 0 ? (copies[seedIdx]?.lane ?? 0) : 0;
-  return { lane, laneCount };
-}
-
 const DAY_NAMES = ["월", "화", "수", "목", "금", "토", "일"];
 const MONTH_NAMES_EN = [
   "Jan",
@@ -5959,9 +5909,15 @@ function render1WeekView(
 
     const todayYmd = timeLedgerLocalTodayYmd();
     const prodColorsExpected = getTimeCategoryColorsForTimetableExpected();
-    const MIN_PER_DAY = 24 * 60;
-    const WEEK_SLOTS_PER_DAY = CAL_1DAY_TIMETABLE_SLOTS_PER_DAY;
-    const WEEK_MIN_PER_SLOT = CAL_1DAY_TIMETABLE_MIN_PER_SLOT;
+    const nowForWeek = new Date();
+    const nowMinuteClock =
+      nowForWeek.getHours() * 60 + nowForWeek.getMinutes();
+    const WEEK_FLOW_SECTION_LABELS = {
+      dream: "꿈",
+      sideincome: "부수입",
+      health: "건강",
+      happy: "행복",
+    };
 
     function applyWeekDropToDate(targetDate, payload) {
       const oldStart = (payload.startDate || "").slice(0, 10);
@@ -6046,7 +6002,8 @@ function render1WeekView(
     }
 
     const outer = document.createElement("div");
-    outer.className = "calendar-1week-time-grid-google";
+    outer.className =
+      "calendar-1week-time-grid-google calendar-1week-time-grid-google--flow";
 
     const headerRow = document.createElement("div");
     headerRow.className = "calendar-1week-google-header-row";
@@ -6445,19 +6402,10 @@ function render1WeekView(
     const bodyGrid = document.createElement("div");
     bodyGrid.className = "calendar-1week-google-body";
 
-    const timesCol = document.createElement("div");
-    timesCol.className = "calendar-1week-google-times";
-    for (let si = 0; si < WEEK_SLOTS_PER_DAY; si++) {
-      const lab = document.createElement("div");
-      lab.className = "calendar-1week-google-hour-label";
-      const slotMin = si * WEEK_MIN_PER_SLOT;
-      const th = Math.floor(slotMin / 60);
-      const tm = slotMin % 60;
-      lab.textContent = `${String(th).padStart(2, "0")}:${String(tm).padStart(2, "0")}`;
-      if (tm !== 0)
-        lab.classList.add("calendar-1week-google-hour-label--subslot");
-      timesCol.appendChild(lab);
-    }
+    /* 헤더·종일 행과 열 맞춤용 빈 칸(시간 눈금·타임라인 없음) */
+    const scrollGutter = document.createElement("div");
+    scrollGutter.className = "calendar-1week-google-scroll-gutter";
+    scrollGutter.setAttribute("aria-hidden", "true");
 
     const colsWrap = document.createElement("div");
     colsWrap.className = "calendar-1week-google-cols";
@@ -6466,134 +6414,107 @@ function render1WeekView(
       if (!date) return;
       const key = formatDateKey(date);
       const col = document.createElement("div");
-      col.className = "calendar-1week-google-col";
+      col.className =
+        "calendar-1week-google-col calendar-1week-google-col--flow";
       col.dataset.date = key;
       if (key === todayYmd) col.classList.add("is-today");
 
-      const gridBg = document.createElement("div");
-      gridBg.className = "calendar-1week-google-hour-lines";
-      for (let si = 0; si < WEEK_SLOTS_PER_DAY; si++) {
-        const line = document.createElement("div");
-        line.className = "calendar-1week-google-hour-line";
-        gridBg.appendChild(line);
-      }
+      const stack = document.createElement("div");
+      stack.className = "calendar-1week-flow-stack";
 
-      const track = document.createElement("div");
-      track.className = "calendar-1week-google-track";
-
-      /* 1주 뷰: 예상(일일 예산) 타임테이블만 — 과거/오늘 여부와 관계없이 시간기록 막대 미표시 */
       const prodColors = prodColorsExpected;
-      const { spans } = buildExpectedScheduleSpansForDateKey(key);
+      const { spans: daySpans } = buildExpectedScheduleSpansForDateKey(key);
+      const spansSorted = [...daySpans].sort(
+        (a, b) =>
+          a.startMin - b.startMin ||
+          (a.lane ?? 0) - (b.lane ?? 0) ||
+          String(a.taskName || "").localeCompare(
+            String(b.taskName || ""),
+            "ko",
+          ),
+      );
 
-      spans.forEach((span) => {
-        const bar = document.createElement("div");
-        bar.className = "calendar-1week-google-block";
+      spansSorted.forEach((span) => {
         const pk = prodKeyForWeekExpectedSpan(span);
         const c = prodColors[pk] || prodColors.other;
-        const dur = span.endMin - span.startMin;
-        bar.style.top = `calc(${span.startMin} * 100% / ${MIN_PER_DAY})`;
-        bar.style.height =
-          dur > 0 ? `calc(${dur} * 100% / ${MIN_PER_DAY})` : "0";
-        const { lane: laneIdx, laneCount } = lanesForWeekTimeBlock(
-          span,
-          spans,
-        );
-        const narrowLane = laneCount > 1;
-        const insetX = CAL_1DAY_TIMEBLOCK_INSET_X;
-        const laneGapPx = CAL_1DAY_TIMEBLOCK_LANE_GAP_PX;
-        if (narrowLane) {
-          bar.classList.add("calendar-1week-google-block--narrow-lane");
-          const n = laneCount;
-          const totalPxReduce = 2 * insetX + (n - 1) * laneGapPx;
-          bar.style.left = `calc(${insetX}px + ${laneIdx} * (((100% - ${totalPxReduce}px) / ${n}) + ${laneGapPx}px))`;
-          bar.style.width = `calc((100% - ${totalPxReduce}px) / ${n})`;
-        } else {
-          bar.style.left = `${insetX}px`;
-          bar.style.width = `calc(100% - ${2 * insetX}px)`;
-        }
-        const rangeStr = `${span.startDisplay} ~ ${span.endDisplay}`;
+        const durMin = Math.max(0, span.endMin - span.startMin);
         const taskLabel = String(span.taskName || "").trim();
-        const hideWeekLabel =
-          dur > 0 && dur <= CAL_TIMEBLOCK_HIDE_LABEL_MAX_MINUTES;
+        const rangeHuman = `${span.startDisplay} - ${span.endDisplay}`;
 
-        const inner = document.createElement("div");
-        inner.className = "calendar-1week-google-block-inner";
-        const surfHex = timetableUsesHexSurface(c);
-        if (surfHex && c.border) {
-          inner.classList.add("calendar-1week-google-block-inner--surface-spec");
-          inner.style.backgroundColor = c.bg;
-          inner.style.border = `1px solid ${c.border}`;
-          if (c.accentText) {
-            inner.style.setProperty("--calendar-tb-fg", c.accentText);
-            inner.style.setProperty(
-              "--calendar-tb-fg-muted",
-              c.accentMuted || c.accentText,
-            );
-          }
-        } else {
-          inner.style.backgroundColor = timetableFillFaceBg(c.bg);
-        }
+        const card = document.createElement("div");
+        card.className = "calendar-1week-flow-card";
+        card.title = `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})`;
 
-        const labelFg =
-          c.accentText || timetableAccentTextColor(c.border || c.bg);
-        if (!surfHex && labelFg) {
-          inner.style.color = labelFg;
-          inner.classList.add("calendar-1week-google-block-inner--accent-fg");
-        }
-
-        if (hideWeekLabel) {
-          bar.classList.add("calendar-1week-google-block--label-hover-only");
-          bar.removeAttribute("title");
-          bar.setAttribute(
-            "aria-label",
-            `${taskLabel ? `${taskLabel} ` : ""}${rangeStr}`,
-          );
-          lpAttachColoredTimeBlockTooltip(bar, {
-            taskName: taskLabel,
-            rangeStr,
-            bgCss: surfHex ? c.bg : timetableFillFaceBg(c.bg),
-            accentCss: labelFg || "#ffffff",
-          });
-        } else {
-          bar.title = `${taskLabel} (${rangeStr})`;
-          const nameEl = document.createElement("span");
-          nameEl.className = "calendar-1week-google-block-name";
-          nameEl.textContent = taskLabel;
-          if (!narrowLane) {
-            const timeEl = document.createElement("span");
-            timeEl.className = "calendar-1week-google-block-time";
-            timeEl.textContent = rangeStr;
-            /* 오늘해치우기와 동일: 짧은 구간은 과제명·시간 한 줄, 긴 구간은 과제명 위·시간 아래 */
-            const useWeekInlineTimeRow = dur <= 90;
-            if (useWeekInlineTimeRow) {
-              inner.classList.add(
-                "calendar-1week-google-block-inner--inline-time",
-              );
-              inner.appendChild(nameEl);
-              inner.appendChild(timeEl);
-            } else {
-              inner.classList.add(
-                "calendar-1week-google-block-inner--stacked-time",
-              );
-              inner.appendChild(nameEl);
-              inner.appendChild(timeEl);
-            }
-          } else {
-            inner.appendChild(nameEl);
+        const sidRaw = String(span.sectionId || "").trim();
+        let accent = "";
+        if (sidRaw && !sidRaw.startsWith("custom-")) {
+          try {
+            accent = getSectionColor(sidRaw) || "";
+          } catch (_) {
+            accent = "";
           }
         }
-        bar.appendChild(inner);
+        if (!accent && c.border) accent = c.border;
+        if (accent) {
+          card.style.borderLeftColor = accent;
+        }
 
-        track.appendChild(bar);
+        const titleEl = document.createElement("div");
+        titleEl.className = "calendar-1week-flow-card-title";
+        titleEl.textContent = taskLabel;
+
+        const meta = document.createElement("div");
+        meta.className = "calendar-1week-flow-card-meta";
+
+        const timeSpan = document.createElement("span");
+        timeSpan.className = "calendar-1week-flow-card-time";
+        timeSpan.textContent = rangeHuman;
+        meta.appendChild(timeSpan);
+
+        let badgeText = "";
+        if (sidRaw && WEEK_FLOW_SECTION_LABELS[sidRaw]) {
+          badgeText = WEEK_FLOW_SECTION_LABELS[sidRaw];
+        } else if (sidRaw.startsWith("custom-")) {
+          badgeText = "커스텀";
+        }
+        if (badgeText) {
+          const badge = document.createElement("span");
+          badge.className = "calendar-1week-flow-card-badge";
+          badge.textContent = badgeText;
+          if (accent) {
+            badge.style.backgroundColor = withMoreTransparency(accent, 0.22);
+            badge.style.color = timetableAccentTextColor(accent) || accent;
+          }
+          meta.appendChild(badge);
+        }
+
+        const durEl = document.createElement("span");
+        durEl.className = "calendar-1week-flow-card-dur";
+        durEl.textContent = `${durMin}분`;
+        meta.appendChild(durEl);
+
+        const inProgress =
+          key === todayYmd &&
+          span.startMin <= nowMinuteClock &&
+          nowMinuteClock < span.endMin;
+        if (inProgress) {
+          card.classList.add("calendar-1week-flow-card--in-progress");
+          const prog = document.createElement("span");
+          prog.className = "calendar-1week-flow-card-progress";
+          prog.textContent = "진행 중";
+          meta.appendChild(prog);
+        }
+
+        card.appendChild(titleEl);
+        card.appendChild(meta);
+        stack.appendChild(card);
       });
 
-      col.appendChild(gridBg);
-      col.appendChild(track);
-
+      col.appendChild(stack);
       colsWrap.appendChild(col);
     });
 
-    bodyGrid.appendChild(timesCol);
+    bodyGrid.appendChild(scrollGutter);
     bodyGrid.appendChild(colsWrap);
     scrollArea.appendChild(bodyGrid);
 
