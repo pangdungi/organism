@@ -10485,12 +10485,6 @@ body {
   gap: 0.65rem;
   padding: 0.15rem 0 0.5rem;
 }
-.calendar-1day-timeline-heading {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--text-ink);
-  line-height: 1.35;
-}
 .calendar-1day-timeline-list {
   display: flex;
   flex-direction: column;
@@ -10629,9 +10623,6 @@ body {
 }
 
 @media (max-width: 48rem) {
-  .calendar-1day-timeline-heading {
-    font-size: 0.75rem;
-  }
   .calendar-1day-timeline-card-title {
     font-size: 0.72rem;
   }

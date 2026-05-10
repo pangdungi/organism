@@ -5508,14 +5508,6 @@ function render1DayView(
       const timelineWrap = document.createElement("div");
       timelineWrap.className = "calendar-1day-timeline-wrap";
 
-      const timelineHeading = document.createElement("div");
-      timelineHeading.className = "calendar-1day-timeline-heading";
-      const yH = targetDate.getFullYear();
-      const moH = targetDate.getMonth() + 1;
-      const dH = targetDate.getDate();
-      const wH = NAV_WEEKDAYS_SUN0[targetDate.getDay()] || "";
-      timelineHeading.textContent = `오늘 · ${yH}년 ${moH}월 ${dH}일 ${wH}요일`;
-
       const timelineList = document.createElement("div");
       timelineList.className = "calendar-1day-timeline-list";
 
@@ -5667,7 +5659,6 @@ function render1DayView(
         });
       }
 
-      timelineWrap.appendChild(timelineHeading);
       timelineWrap.appendChild(timelineList);
       timeColumn.appendChild(timelineWrap);
 
