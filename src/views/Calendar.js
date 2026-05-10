@@ -5557,12 +5557,14 @@ function render1DayView(
           }
           if (!accent && c.border) accent = c.border;
           if (accent) {
-            spotMark.style.backgroundColor = withMoreTransparency(accent, 0.35);
-            spotMark.style.color =
-              timetableAccentTextColor(accent) || accent;
+            spotMark.style.backgroundColor = withMoreTransparency(accent, 0.14);
+            spotMark.style.border = `2px solid ${accent}`;
+          } else {
+            spotMark.style.backgroundColor = "";
+            spotMark.style.border = "2px solid rgba(0, 0, 0, 0.12)";
           }
-          const hourNum = Math.floor(Number(span.startMin) / 60);
-          spotMark.textContent = String(hourNum);
+          /* 배경 틴트와 같은 밝기의 글자색은 쓰지 않음 — 항상 본문 잉크 */
+          spotMark.textContent = span.startDisplay;
           spotMark.setAttribute(
             "aria-label",
             `${span.startDisplay}에 시작하는 일정`,
