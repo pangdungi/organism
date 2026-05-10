@@ -3010,6 +3010,10 @@ function createTaskCard(taskData, options = {}) {
       }
     }
     updateCount();
+    if (sectionsWrap) {
+      refreshTodoDateTabSectionDom(sectionsWrap);
+      refreshTodoPriorityTabSectionDom(sectionsWrap);
+    }
   });
 
   const scheduleDot = document.createElement("span");
@@ -3295,6 +3299,12 @@ function createTaskCard(taskData, options = {}) {
       mode: "edit",
       selectionEl: card,
       onSave: (payload) => {
+        const prevStart = (card.dataset.startDate || "").trim().slice(0, 10);
+        const prevDue = (card.dataset.dueDate || "").trim().slice(0, 10);
+        const prevSid = (card.dataset.sectionId || "").trim();
+        const prevEisenKey = normalizeEisenhowerSortKey(
+          (card.dataset.eisenhower || "").trim(),
+        );
         const newSectionId = (payload.sectionId || "").trim();
         let hadSectionMove = false;
         if (newSectionId && newSectionId !== storageSectionId) {
@@ -3356,6 +3366,29 @@ function createTaskCard(taskData, options = {}) {
           );
         }
         requestCalendarTodoSidebarRebuildFromCard(card);
+        if (sectionsWrap) {
+          const pStart = (card.dataset.startDate || "").trim().slice(0, 10);
+          const pDue = (card.dataset.dueDate || "").trim().slice(0, 10);
+          const pSid = (card.dataset.sectionId || "").trim();
+          const pEisenKey = normalizeEisenhowerSortKey(
+            (card.dataset.eisenhower || "").trim(),
+          );
+          if (
+            pStart !== prevStart ||
+            pDue !== prevDue ||
+            pSid !== prevSid ||
+            hadSectionMove
+          ) {
+            refreshTodoDateTabSectionDom(sectionsWrap);
+          }
+          if (
+            pEisenKey !== prevEisenKey ||
+            pSid !== prevSid ||
+            hadSectionMove
+          ) {
+            refreshTodoPriorityTabSectionDom(sectionsWrap);
+          }
+        }
       },
       onDelete: async () => {
         if (isKpiTodo && kpiTodoId && storageKey) {
@@ -3897,13 +3930,10 @@ function collectTasksFromDOM(sectionsEl) {
   return tasks;
 }
 
-/** 마감일 우선, 없으면 시작일(YYYY-MM-DD만 인정) */
-function parseTaskAnchorYmd(task) {
-  const due = (task?.dueDate || "").trim().slice(0, 10);
-  const start = (task?.startDate || "").trim().slice(0, 10);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(due)) return due;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(start)) return start;
-  return "";
+/** YYYY-MM-DD만 인정 */
+function parseTaskDateYmd(raw) {
+  const s = String(raw || "").trim().slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : "";
 }
 
 function localYmd(d) {
@@ -3916,9 +3946,10 @@ function localYmd(d) {
 }
 
 /**
- * past(오늘 이전 앵커일) · 오늘 · 내일 · 그 이후 날짜별 · 날짜 없음
- * @param {Array} tasks
- * @param {Date} [now]
+ * 날짜 탭: 과거·오늘·내일·이후·날짜 없음
+ * - 과거: 시작만 있으면 시작일 기준, 마감만 있으면 마감일 기준, 둘 다 있으면 마감일만 보고 과거 여부 판단.
+ * - 오늘/내일: 한쪽만 있으면 그날짜 기준, 둘 다 있으면 시작·마감 중 하나라도 해당일이면 해당 묶음.
+ * - 그 이후(미래): 한쪽만 있으면 그날짜, 둘 다 있으면 마감일로 묶음(과거 규칙과 대칭).
  */
 function partitionTasksForDateBuckets(tasks, now = new Date()) {
   const today0 = new Date(now);
@@ -3933,17 +3964,50 @@ function partitionTasksForDateBuckets(tasks, now = new Date()) {
   const futureMap = new Map();
   const noDate = [];
   for (const t of tasks || []) {
-    const anchor = parseTaskAnchorYmd(t);
-    if (!anchor) {
+    const startY = parseTaskDateYmd(t?.startDate);
+    const dueY = parseTaskDateYmd(t?.dueDate);
+    if (!startY && !dueY) {
       noDate.push(t);
       continue;
     }
-    if (anchor < todayStr) past.push(t);
-    else if (anchor === todayStr) todayList.push(t);
-    else if (anchor === tomorrowStr) tomorrowList.push(t);
-    else {
-      if (!futureMap.has(anchor)) futureMap.set(anchor, []);
-      futureMap.get(anchor).push(t);
+
+    const isPast =
+      dueY && startY
+        ? dueY < todayStr
+        : dueY
+          ? dueY < todayStr
+          : startY < todayStr;
+    if (isPast) {
+      past.push(t);
+      continue;
+    }
+
+    const isToday =
+      dueY && startY
+        ? startY === todayStr || dueY === todayStr
+        : dueY
+          ? dueY === todayStr
+          : startY === todayStr;
+    if (isToday) {
+      todayList.push(t);
+      continue;
+    }
+
+    const isTomorrow =
+      dueY && startY
+        ? startY === tomorrowStr || dueY === tomorrowStr
+        : dueY
+          ? dueY === tomorrowStr
+          : startY === tomorrowStr;
+    if (isTomorrow) {
+      tomorrowList.push(t);
+      continue;
+    }
+
+    const futureAnchor = dueY && startY ? dueY : dueY || startY;
+    if (futureAnchor > tomorrowStr) {
+      if (!futureMap.has(futureAnchor)) futureMap.set(futureAnchor, []);
+      futureMap.get(futureAnchor).push(t);
     }
   }
   const futureKeys = [...futureMap.keys()].sort();
@@ -4158,6 +4222,255 @@ function buildDateBucketBlock(
   root.appendChild(cell);
 }
 
+/** 날짜·우선순위 집계 탭용: 저장소에서 할 일 목록을 메인 뷰 필터와 동일하게 고름 */
+function gatherFilteredTasksForTodoAggregation(sectionsWrap) {
+  const root = sectionsWrap?.closest(".todo-list-view");
+  if (!root || !sectionsWrap) return [];
+  const omitKpi = sectionsWrap.dataset.lpExcludesKpi === "1";
+  const kpiTasks = omitKpi ? [] : getKpiTodosAsTasks();
+  const sectionTasks = FIXED_SECTION_IDS_FOR_STORAGE.flatMap((sid) =>
+    loadSectionTasks(sid),
+  );
+  let allTasks = [...kpiTasks, ...sectionTasks];
+  const q = (sectionsWrap.dataset.lpEisenhowerFilter || "").trim();
+  if (q) {
+    const EISENHOWER_LABELS = {
+      "urgent-important": "긴급+중요",
+      "important-not-urgent": "중요+여유",
+      "urgent-not-important": "긴급+덜중요",
+      "not-urgent-not-important": "여유+안중요",
+    };
+    const labelForQ = EISENHOWER_LABELS[q];
+    allTasks = allTasks.filter((t) => {
+      const v = (t.eisenhower || "").trim();
+      return v === q || (labelForQ && v === labelForQ);
+    });
+  }
+  if (sectionsWrap.dataset.lpHideDoneTasks === "1") {
+    allTasks = allTasks.filter((t) => !t.done);
+  }
+  if (root.classList.contains("hide-completed")) {
+    allTasks = allTasks.filter((t) => !t.done);
+  }
+  if (sectionsWrap.dataset.lpHideOverdueTabs === "1") {
+    allTasks = allTasks.filter((t) => !(isOverdue(t.dueDate) && !t.done));
+  }
+  if (root.classList.contains("section-task-filter-todo-only")) {
+    allTasks = allTasks.filter(
+      (t) => String(t.itemType || "todo").toLowerCase() !== "schedule",
+    );
+  }
+  if (root.classList.contains("section-task-filter-schedule-only")) {
+    allTasks = allTasks.filter(
+      (t) => String(t.itemType || "todo").toLowerCase() === "schedule",
+    );
+  }
+  return allTasks;
+}
+
+/** 마감·시작일 저장 후 날짜 탭 버킷만 서버/메모리 기준으로 다시 구성(카드가 옛 묶음에 남는 문제 방지) */
+function refreshTodoDateTabSectionDom(sectionsWrap) {
+  const panel = sectionsWrap?.querySelector(
+    `.todo-section[data-section="${TODO_DATE_TAB_SECTION_ID}"]`,
+  );
+  if (!panel) return;
+  const root = panel.querySelector(".todo-priority-quadrants");
+  if (!root) return;
+
+  const openBuckets = new Map();
+  panel.querySelectorAll(".todo-priority-quadrant[data-date-bucket]").forEach(
+    (cell) => {
+      const key = cell.dataset.dateBucket;
+      const head = cell.querySelector(".todo-priority-quadrant-head");
+      if (key && head)
+        openBuckets.set(key, head.getAttribute("aria-expanded") === "true");
+    },
+  );
+
+  const listExcludesKpi = sectionsWrap.dataset.lpExcludesKpi === "1";
+  const enableDragToCalendar = sectionsWrap.dataset.lpDragCal === "1";
+  const enableDragToEisenhower = sectionsWrap.dataset.lpDragEisen === "1";
+
+  function scheduleSave() {
+    scheduleSaveSectionTasksFromDOM(sectionsWrap);
+  }
+  function updateCount() {
+    panel.querySelectorAll(".todo-priority-quadrant").forEach((cell) => {
+      const cq = cell.querySelector(".todo-priority-quadrant-cards");
+      const cntEl = cell.querySelector(".todo-priority-quadrant-count");
+      if (cq && cntEl) {
+        cntEl.textContent = String(cq.querySelectorAll(".todo-card").length);
+      }
+    });
+    const countSpan = panel.querySelector(".todo-section-count");
+    if (countSpan) {
+      countSpan.textContent = String(panel.querySelectorAll(".todo-card").length);
+    }
+  }
+
+  const shared = {
+    updateCount,
+    sectionsWrap,
+    scheduleSave,
+    enableDragToEisenhower,
+    enableDragToCalendar,
+    listExcludesKpi,
+  };
+
+  const allTasksForList = gatherFilteredTasksForTodoAggregation(sectionsWrap);
+  const now = new Date();
+  const partitioned = partitionTasksForDateBuckets(allTasksForList || [], now);
+  const todayYear = now.getFullYear();
+
+  root.replaceChildren();
+
+  const ordered = [];
+  ordered.push({ key: "past", label: "과거", tasks: partitioned.past });
+  ordered.push({ key: "today", label: "오늘", tasks: partitioned.today });
+  ordered.push({ key: "tomorrow", label: "내일", tasks: partitioned.tomorrow });
+  for (const ymd of partitioned.futureKeys) {
+    const arr = partitioned.futureMap.get(ymd);
+    if (arr?.length) {
+      ordered.push({
+        key: ymd,
+        label: formatDateBucketTitleYmd(ymd, todayYear),
+        tasks: arr,
+      });
+    }
+  }
+  if (partitioned.noDate.length) {
+    ordered.push({
+      key: "none",
+      label: "날짜 없음",
+      tasks: partitioned.noDate,
+    });
+  }
+
+  for (const { key, label, tasks: bucketTasks } of ordered) {
+    buildDateBucketBlock(root, {
+      bucketKey: key,
+      label,
+      bucketTasks: sortTasksInPriorityBucket(bucketTasks),
+      ...shared,
+    });
+  }
+
+  panel.querySelectorAll(".todo-priority-quadrant[data-date-bucket]").forEach(
+    (cell) => {
+      const key = cell.dataset.dateBucket;
+      const head = cell.querySelector(".todo-priority-quadrant-head");
+      const bodyEl = cell.querySelector(".todo-priority-quadrant-body");
+      if (!key || !head || !bodyEl) return;
+      if (openBuckets.get(key) === true) {
+        head.setAttribute("aria-expanded", "true");
+        bodyEl.hidden = false;
+        cell.classList.add("todo-priority-quadrant--open");
+      }
+    },
+  );
+  updateCount();
+}
+
+/** 우선순위 탭: 아이젠하워 변경 후 카드가 옛 사분면에 남는 문제 방지 */
+function refreshTodoPriorityTabSectionDom(sectionsWrap) {
+  const panel = sectionsWrap?.querySelector(
+    `.todo-section[data-section="${TODO_PRIORITY_TAB_SECTION_ID}"]`,
+  );
+  if (!panel) return;
+  const root = panel.querySelector(".todo-priority-quadrants");
+  if (!root) return;
+
+  const openBuckets = new Map();
+  panel.querySelectorAll(".todo-priority-quadrant").forEach((cell) => {
+    const key =
+      cell.dataset.eisenhowerKey ||
+      (cell.classList.contains("todo-priority-quadrant--unassigned")
+        ? "__unassigned"
+        : "");
+    const head = cell.querySelector(".todo-priority-quadrant-head");
+    if (key && head)
+      openBuckets.set(key, head.getAttribute("aria-expanded") === "true");
+  });
+
+  const listExcludesKpi = sectionsWrap.dataset.lpExcludesKpi === "1";
+  const enableDragToCalendar = sectionsWrap.dataset.lpDragCal === "1";
+  const enableDragToEisenhower = sectionsWrap.dataset.lpDragEisen === "1";
+
+  function scheduleSave() {
+    scheduleSaveSectionTasksFromDOM(sectionsWrap);
+  }
+  function updateCount() {
+    panel.querySelectorAll(".todo-priority-quadrant").forEach((cell) => {
+      const cq = cell.querySelector(".todo-priority-quadrant-cards");
+      const cntEl = cell.querySelector(".todo-priority-quadrant-count");
+      if (cq && cntEl) {
+        cntEl.textContent = String(cq.querySelectorAll(".todo-card").length);
+      }
+    });
+    const countSpan = panel.querySelector(".todo-section-count");
+    if (countSpan) {
+      countSpan.textContent = String(panel.querySelectorAll(".todo-card").length);
+    }
+  }
+
+  const shared = {
+    updateCount,
+    sectionsWrap,
+    scheduleSave,
+    enableDragToEisenhower,
+    enableDragToCalendar,
+    listExcludesKpi,
+  };
+
+  const allTasksForList = gatherFilteredTasksForTodoAggregation(sectionsWrap);
+  root.replaceChildren();
+
+  for (const { key, label } of PRIORITY_TAB_QUADRANT_DEFS) {
+    const bucketTasks = sortTasksInPriorityBucket(
+      (allTasksForList || []).filter(
+        (t) => normalizeEisenhowerSortKey(t.eisenhower) === key,
+      ),
+    );
+    buildPriorityQuadrantBlock(root, {
+      quadrantKey: key,
+      label,
+      bucketTasks,
+      ...shared,
+    });
+  }
+
+  const unassigned = sortTasksInPriorityBucket(
+    (allTasksForList || []).filter(
+      (t) => !normalizeEisenhowerSortKey(t.eisenhower),
+    ),
+  );
+  if (unassigned.length > 0) {
+    buildPriorityQuadrantBlock(root, {
+      quadrantKey: null,
+      label: "미지정",
+      bucketTasks: unassigned,
+      ...shared,
+    });
+  }
+
+  panel.querySelectorAll(".todo-priority-quadrant").forEach((cell) => {
+    const key =
+      cell.dataset.eisenhowerKey ||
+      (cell.classList.contains("todo-priority-quadrant--unassigned")
+        ? "__unassigned"
+        : "");
+    const head = cell.querySelector(".todo-priority-quadrant-head");
+    const bodyEl = cell.querySelector(".todo-priority-quadrant-body");
+    if (!key || !head || !bodyEl) return;
+    if (openBuckets.get(key) === true) {
+      head.setAttribute("aria-expanded", "true");
+      bodyEl.hidden = false;
+      cell.classList.add("todo-priority-quadrant--open");
+    }
+  });
+  updateCount();
+}
+
 function createPriorityTabSection(section, allTasksForList, options) {
   const {
     enableDragToCalendar = false,
@@ -4294,27 +4607,9 @@ function createDateBucketsTabSection(section, allTasksForList, options) {
   const partitioned = partitionTasksForDateBuckets(allTasksForList || [], now);
   const todayYear = now.getFullYear();
   const ordered = [];
-  if (partitioned.past.length) {
-    ordered.push({
-      key: "past",
-      label: "과거",
-      tasks: partitioned.past,
-    });
-  }
-  if (partitioned.today.length) {
-    ordered.push({
-      key: "today",
-      label: "오늘",
-      tasks: partitioned.today,
-    });
-  }
-  if (partitioned.tomorrow.length) {
-    ordered.push({
-      key: "tomorrow",
-      label: "내일",
-      tasks: partitioned.tomorrow,
-    });
-  }
+  ordered.push({ key: "past", label: "과거", tasks: partitioned.past });
+  ordered.push({ key: "today", label: "오늘", tasks: partitioned.today });
+  ordered.push({ key: "tomorrow", label: "내일", tasks: partitioned.tomorrow });
   for (const ymd of partitioned.futureKeys) {
     const arr = partitioned.futureMap.get(ymd);
     if (arr?.length) {
@@ -4704,6 +4999,11 @@ export function render(options = {}) {
   const sectionsWrap = document.createElement("div");
   sectionsWrap.className = "todo-sections-wrap todo-tab-panels";
   if (omitKpiTodos) sectionsWrap.dataset.lpExcludesKpi = "1";
+  sectionsWrap.dataset.lpDragCal = enableDragToCalendar ? "1" : "0";
+  sectionsWrap.dataset.lpDragEisen = enableDragToEisenhower ? "1" : "0";
+  sectionsWrap.dataset.lpHideOverdueTabs = hideOverdueFromCategoryTabs ? "1" : "0";
+  sectionsWrap.dataset.lpHideDoneTasks = hideDoneTasks ? "1" : "0";
+  sectionsWrap.dataset.lpEisenhowerFilter = (eisenhowerFilter || "").trim();
 
   const { menu: checkboxTypeMenu, show: showCheckboxTypeMenu } =
     createTodoCheckboxTypeMenu();
