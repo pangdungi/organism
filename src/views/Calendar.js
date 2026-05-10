@@ -5540,7 +5540,6 @@ function render1DayView(
           );
           const inProgress =
             targetKey === todayYmdForTimeline &&
-            !ledgerMatched &&
             span.startMin <= nowMinuteClockTL &&
             nowMinuteClockTL < span.endMin;
 
