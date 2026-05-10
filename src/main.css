@@ -42341,25 +42341,98 @@ img.time-btn-icon {
 }
 
 @media (max-width: 48rem) {
+  /*
+   * 1주 플로우·모바일: 상위 flex 체인 + 스크롤을 grid 1fr 로 고정해 본문 높이를 데스크탑처럼
+   * 잡고, 열 .calendar-1week-google-col::after 구분선이 아래까지 이어지게 함
+   */
+  .calendar-1week-view .calendar-monthly-main {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .calendar-1week-view .calendar-monthly-grid--1week-timegrid {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .calendar-1week-view .calendar-1week-time-grid-google--flow {
+    flex: 1 1 0;
+    min-height: 0;
+  }
+  .calendar-1week-time-grid-google--flow .calendar-1week-google-scroll {
+    /* grid 1fr + max-height 조합이 플렉스 할당 높이를 캡/붕괴시켜 열·::after 가 콘텐츠 높이에서 끊김 */
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
+    max-height: none;
+    height: auto;
+    align-self: stretch;
+  }
+  .calendar-1week-time-grid-google--flow .calendar-1week-google-body {
+    /* 1 0 auto: 짧은 주간도 스크롤 뷰포트 높이까지 본문이 늘어나 열·::after 세로선이 내려옴. 콘텐츠가 더 길면 그 크기 이상으로만 커짐 */
+    flex: 1 0 auto;
+    align-self: stretch;
+    width: 100%;
+    min-height: auto;
+    height: auto;
+    max-height: none;
+    border-bottom: none;
+    box-sizing: border-box;
+  }
+  .calendar-1week-time-grid-google--flow .calendar-1week-google-cols {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 100%;
+    height: auto;
+    align-self: stretch;
+    align-items: stretch;
+    align-content: stretch;
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .calendar-1week-time-grid-google--flow
+    .calendar-1week-google-col.calendar-1week-google-col--flow {
+    height: 100%;
+    min-height: 100%;
+    max-height: none;
+    align-self: stretch;
+  }
   .calendar-1week-time-grid-google--flow .calendar-1week-flow-stack {
-    gap: 0.24rem;
+    flex: 1 1 0;
+    min-height: 0;
+    /* gap 있으면 카드마다만 있는 왼쪽 악센트(보더)가 흰 틈에서 끊겨 보임 */
+    gap: 0;
     padding: 0.12rem 0.08rem 0.28rem;
   }
   .calendar-1week-time-grid-google--flow .calendar-1week-flow-card {
     padding: 0.26rem 0.28rem 0.24rem;
     border-radius: 0.4rem;
   }
+  .calendar-1week-time-grid-google--flow .calendar-1week-flow-card + .calendar-1week-flow-card {
+    border-top: none;
+  }
+  .calendar-1week-time-grid-google--flow .calendar-1week-flow-card:not(:last-child) {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  }
+  .calendar-1week-time-grid-google--flow .calendar-1week-flow-card:not(:first-child) {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
   .calendar-1week-time-grid-google--flow .calendar-1week-flow-card-title {
     font-size: 0.625rem;
     font-weight: 600;
     line-height: 1.25;
-    text-align: center;
+    text-align: start;
   }
   .calendar-1week-time-grid-google--flow .calendar-1week-flow-card-meta {
     margin-top: 0.14rem;
     font-size: 0.53125rem;
     gap: 0.14rem 0.22rem;
-    justify-content: center;
+    justify-content: flex-start;
   }
   .calendar-1week-time-grid-google--flow .calendar-1week-flow-card-badge {
     font-size: 0.5rem;

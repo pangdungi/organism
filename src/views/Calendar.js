@@ -264,6 +264,54 @@ function syncCalendar1WeekSidebarHeaderHeight(mainSectionEl, sidebarEl) {
   sidebarHeader.style.setProperty("max-height", `${px}px`);
 }
 
+/** 모바일 1주 플로우: 스크롤 안 세로 격자가 뷰포트까지 오도록 본문 최소 높이를 스크롤창·콘텐츠 중 큰 값으로 맞춤 */
+function lpSync1WeekMobileFlowBodyToScrollViewport(scrollEl, bodyEl) {
+  if (!scrollEl || !bodyEl) return;
+  try {
+    if (!scrollEl.isConnected || !bodyEl.isConnected) return;
+  } catch (_) {
+    return;
+  }
+  if (
+    typeof window === "undefined" ||
+    !window.matchMedia("(max-width: 48rem)").matches
+  ) {
+    bodyEl.style.removeProperty("min-height");
+    return;
+  }
+  bodyEl.style.removeProperty("min-height");
+  const natural = bodyEl.scrollHeight;
+  const ch = scrollEl.clientHeight;
+  const h = Math.max(ch, natural);
+  if (h > 0) bodyEl.style.minHeight = `${h}px`;
+}
+
+function lpAttach1WeekMobileFlowBodyMinSync(wrap, scrollEl, bodyEl) {
+  if (!wrap || !scrollEl || !bodyEl) return;
+  try {
+    wrap._lp1WeekFlowBodyMinRo?.disconnect();
+  } catch (_) {}
+  wrap._lp1WeekFlowBodyMinRo = null;
+  if (typeof ResizeObserver === "undefined") {
+    requestAnimationFrame(() => {
+      lpSync1WeekMobileFlowBodyToScrollViewport(scrollEl, bodyEl);
+    });
+    return;
+  }
+  const ro = new ResizeObserver(() => {
+    requestAnimationFrame(() => {
+      lpSync1WeekMobileFlowBodyToScrollViewport(scrollEl, bodyEl);
+    });
+  });
+  ro.observe(scrollEl);
+  wrap._lp1WeekFlowBodyMinRo = ro;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      lpSync1WeekMobileFlowBodyToScrollViewport(scrollEl, bodyEl);
+    });
+  });
+}
+
 function lpBindCalendarDateTodoSidebarCollapse(todoSidebar, onCollapsedChange) {
   let sidebarCollapsed = true;
   const collapseBtn = todoSidebar.querySelector(
@@ -5903,6 +5951,11 @@ function render1WeekView(
       ? String(week[0].getFullYear())
       : "";
 
+    try {
+      wrap._lp1WeekFlowBodyMinRo?.disconnect();
+    } catch (_) {}
+    wrap._lp1WeekFlowBodyMinRo = null;
+
     calendarGrid.innerHTML = "";
     calendarGrid.className =
       "calendar-monthly-grid calendar-monthly-grid--1week-timegrid";
@@ -6585,9 +6638,14 @@ function render1WeekView(
     outer.appendChild(stripHeader);
     outer.appendChild(scrollArea);
     calendarGrid.appendChild(outer);
+    lpAttach1WeekMobileFlowBodyMinSync(wrap, scrollArea, bodyGrid);
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
+        lpSync1WeekMobileFlowBodyToScrollViewport(scrollArea, bodyGrid);
         syncCalendar1WeekSidebarHeaderHeight(calendarSection, todoSidebar);
+        requestAnimationFrame(() => {
+          lpSync1WeekMobileFlowBodyToScrollViewport(scrollArea, bodyGrid);
+        });
       });
     });
   }
