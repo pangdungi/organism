@@ -5544,12 +5544,8 @@ function render1DayView(
 
           const spot = document.createElement("div");
           spot.className = "calendar-1day-timeline-spot";
-          const timeSpot = document.createElement("div");
-          timeSpot.className = "calendar-1day-timeline-spot-time";
-          timeSpot.textContent = span.startDisplay;
-          const iconWrap = document.createElement("div");
-          iconWrap.className = "calendar-1day-timeline-spot-icon";
-          iconWrap.setAttribute("aria-hidden", "true");
+          const spotMark = document.createElement("div");
+          spotMark.className = "calendar-1day-timeline-spot-mark";
           const sidRaw = String(span.sectionId || "").trim();
           let accent = "";
           if (sidRaw && !sidRaw.startsWith("custom-")) {
@@ -5561,15 +5557,18 @@ function render1DayView(
           }
           if (!accent && c.border) accent = c.border;
           if (accent) {
-            iconWrap.style.backgroundColor = withMoreTransparency(accent, 0.35);
-            iconWrap.style.color =
+            spotMark.style.backgroundColor = withMoreTransparency(accent, 0.35);
+            spotMark.style.color =
               timetableAccentTextColor(accent) || accent;
           }
           const hourNum = Math.floor(Number(span.startMin) / 60);
-          iconWrap.textContent = String(hourNum);
+          spotMark.textContent = String(hourNum);
+          spotMark.setAttribute(
+            "aria-label",
+            `${span.startDisplay}에 시작하는 일정`,
+          );
 
-          spot.appendChild(timeSpot);
-          spot.appendChild(iconWrap);
+          spot.appendChild(spotMark);
 
           const card = document.createElement("div");
           card.className = "calendar-1day-timeline-card";
