@@ -10553,7 +10553,7 @@ body {
   border: 1px solid rgba(0, 0, 0, 0.1);
   border-left: 3px solid var(--ui-btn-primary-bg);
   border-radius: 0.5rem !important;
-  background: var(--app-main-bg);
+  background: #ffffff;
   padding: 0.55rem 0.6rem 0.5rem;
   box-sizing: border-box;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
@@ -10617,12 +10617,15 @@ body {
   word-break: break-word;
 }
 .calendar-1day-timeline-card--in-progress {
-  background: rgba(124, 92, 180, 0.09);
+  background: #ffffff;
   border-color: rgba(124, 92, 180, 0.45);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.06),
+    inset 0 0 0 1px rgba(124, 92, 180, 0.12);
 }
 .calendar-1day-timeline-card--done {
-  opacity: 0.88;
-  background: rgba(42, 56, 40, 0.04);
+  opacity: 1;
+  background: #ffffff;
 }
 .calendar-1day-timeline-empty {
   margin: 0;
