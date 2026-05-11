@@ -32746,7 +32746,7 @@ button.time-modal-traffic {
   width: 6.75rem;
   min-width: 6rem;
   max-width: 10rem;
-  padding: 0.4rem 0.45rem;
+  padding: 0.32rem 0.45rem;
   vertical-align: middle;
   text-align: center;
   font-size: var(--fs-caption, 0.75rem);
@@ -32762,15 +32762,31 @@ button.time-modal-traffic {
   width: 6.75rem;
   min-width: 6rem;
   max-width: 10rem;
-  padding: 0.45rem 0.45rem;
+  padding: 0.3rem 0.45rem;
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
   font-size: var(--fs-small, 0.8125rem);
   font-weight: 500;
   color: var(--text-caption-color);
   background: var(--app-bg);
   border-right: var(--divider-subtle);
   font-family: var(--font-body);
+}
+
+.time-retrospect-kpi-row-label-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  color: inherit;
+}
+
+.time-retrospect-kpi-daily-icon {
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+  display: block;
+  overflow: visible;
 }
 
 .time-retrospect-table tr.time-retrospect-tr-kpi-domain th.time-retrospect-th-kpi-domain {
@@ -32786,6 +32802,25 @@ button.time-modal-traffic {
   font-family: var(--font-body);
 }
 
+.time-retrospect-kpi-domain-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  vertical-align: middle;
+}
+
+.time-retrospect-kpi-domain-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  flex-shrink: 0;
+  display: block;
+  object-fit: contain;
+}
+
+.time-retrospect-kpi-domain-title {
+  line-height: 1.25;
+}
+
 .time-retrospect-table th.time-retrospect-th-day {
   width: auto;
   max-width: none;
@@ -32795,8 +32830,8 @@ button.time-modal-traffic {
   font-size: var(--fs-caption, 0.75rem);
   font-family: var(--font-mono);
   font-weight: 400;
-  line-height: 1.35;
-  padding: 0.4rem 0.35rem;
+  line-height: 1.3;
+  padding: 0.32rem 0.35rem;
   color: var(--text-caption-color);
   background: var(--app-bg);
 }
@@ -32812,12 +32847,19 @@ button.time-modal-traffic {
 
 .time-retrospect-table .time-retrospect-th-day-line--wd {
   font-family: var(--font-body);
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 1.125rem;
+  line-height: 1.25;
+  color: var(--text-body, #3d4a3e);
 }
 
 .time-retrospect-table .time-retrospect-th-day-line--date {
   font-family: var(--font-mono);
   font-weight: 400;
+  font-size: 0.625rem;
+  line-height: 1.25;
+  color: var(--text-placeholder, #c4bea8);
+  opacity: 0.92;
 }
 
 .time-retrospect-table th.time-retrospect-th-day.time-retrospect-th--out {
@@ -32828,10 +32870,11 @@ button.time-modal-traffic {
 
 .time-retrospect-table td.time-retrospect-td-day-cell {
   min-width: 0;
-  min-height: 4.5rem;
-  vertical-align: top;
-  padding: 0.45rem 0.4rem;
+  min-height: 0;
+  vertical-align: middle;
+  padding: 0.28rem 0.32rem;
   background: var(--content-bg);
+  text-align: center;
 }
 
 .time-retrospect-table td.time-retrospect-td-day-cell.time-retrospect-td--out {
@@ -32846,7 +32889,7 @@ button.time-modal-traffic {
     .time-retrospect-td--kpi-habit
   ) {
   white-space: pre-line;
-  line-height: 1.45;
+  line-height: 1.32;
   font-size: 0.8125rem;
 }
 
@@ -32857,56 +32900,115 @@ button.time-modal-traffic {
   vertical-align: middle;
 }
 
-.time-retrospect-habit-cell {
+.time-retrospect-habit-cellwrap {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 2.25rem;
+  min-height: 0;
+  gap: 0.1rem;
 }
 
-.time-retrospect-habit-mark {
-  display: inline-flex;
+.time-retrospect-habit-done-detail {
+  font-size: 0.625rem;
+  line-height: 1.28;
+  font-weight: 400;
+  color: var(--text-caption-color, #a8a290);
+  max-width: 100%;
+  text-align: center;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.time-retrospect-habit-done-line {
+  display: block;
+}
+
+.time-retrospect-habit-ox {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+
+.time-retrospect-habit-ox--o {
+  color: #c62828;
+}
+
+.time-retrospect-habit-ox--x {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.time-retrospect-habit-ox--dash {
+  color: var(--text-placeholder);
+  font-weight: 400;
+  font-size: 0.8125rem;
+}
+
+.time-retrospect-diet-lines {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.06rem;
+  line-height: 1.32;
+  font-size: inherit;
+}
+
+.time-retrospect-diet-line {
+  display: block;
+}
+
+.time-retrospect-diet--healthy {
+  color: #c62828;
+  font-weight: 500;
+}
+
+.time-retrospect-diet--unhealthy {
+  color: #1565c0;
+  font-weight: 500;
+}
+
+/* 회고 — 미디어 시청: 가용시간 대비 비율 막대(파란) + 시청 시간 */
+.time-retrospect-table td.time-retrospect-td-day-cell.time-retrospect-td--media {
+  padding: 0.22rem 0.28rem;
+}
+
+.time-retrospect-media-cell {
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.85rem;
-  height: 1.85rem;
-  border-radius: 50%;
-  font-size: 0.72rem;
-  font-weight: 700;
-  line-height: 1;
+  gap: 0.35rem;
+  width: 100%;
+  min-width: 0;
   box-sizing: border-box;
-  flex-shrink: 0;
 }
 
-.time-retrospect-habit-mark--done {
-  background: var(--ui-btn-primary-bg, #2a3828);
-  color: #fff;
-  box-shadow: 0 1px 2px rgba(42, 56, 40, 0.22);
+.time-retrospect-media-bar-track {
+  flex: 1 1 0;
+  min-width: 1.25rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: rgba(21, 101, 192, 0.14);
+  overflow: hidden;
 }
 
-.time-retrospect-habit-mark--miss {
-  background: rgba(255, 255, 255, 0.65);
-  border: 2px solid rgba(42, 56, 40, 0.22);
-  color: rgba(139, 92, 58, 0.92);
-  font-size: 1rem;
-  font-weight: 600;
+.time-retrospect-media-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #1565c0;
+  min-width: 0;
 }
 
-.time-retrospect-habit-mark--miss::after {
-  content: "×";
-  line-height: 1;
-}
-
-.time-retrospect-habit-mark--neutral {
-  background: transparent;
-  border: 1px dashed var(--line-l3, #e8e2d2);
-  color: var(--text-placeholder);
+.time-retrospect-media-time {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
   font-size: 0.8125rem;
   font-weight: 500;
-  border-radius: 0.35rem;
-  width: 1.65rem;
-  height: 1.65rem;
+  color: #1565c0;
+  line-height: 1.2;
 }
 
 .time-retrospect-empty {
@@ -32953,21 +33055,121 @@ button.time-modal-traffic {
 
   .time-retrospect-inner {
     max-width: 100%;
+    min-width: 0;
   }
 
+  /* 회고 주간 표: 뷰포트 너비에 맞춰 월~일 7열 한 화면 (가로 스크롤 최소화) */
   .time-retrospect-table.time-retrospect-table--week-cols {
-    min-width: 36rem;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    table-layout: fixed;
+    font-size: 0.6875rem;
   }
 
   .time-retrospect-table th.time-retrospect-th-corner,
   .time-retrospect-table th.time-retrospect-th-row-label {
-    width: 5.5rem;
-    min-width: 5rem;
-    max-width: 7.5rem;
+    width: 4.35rem;
+    min-width: 3.75rem;
+    max-width: 5.25rem;
+    padding: 0.18rem 0.28rem;
+    font-size: 0.65rem;
+    line-height: 1.25;
+  }
+
+  .time-retrospect-table th.time-retrospect-th-day {
+    padding: 0.2rem 0.12rem;
+    line-height: 1.2;
+  }
+
+  .time-retrospect-table .time-retrospect-th-day-stack {
+    gap: 0.04rem;
+  }
+
+  .time-retrospect-table .time-retrospect-th-day-line--wd {
+    font-size: 0.8125rem;
+    line-height: 1.15;
+  }
+
+  .time-retrospect-table .time-retrospect-th-day-line--date {
+    font-size: 0.5625rem;
+    line-height: 1.2;
+  }
+
+  .time-retrospect-table td.time-retrospect-td-day-cell {
+    padding: 0.15rem 0.1rem;
+    font-size: 0.6875rem;
+  }
+
+  .time-retrospect-table tr.time-retrospect-tr-kpi-domain th.time-retrospect-th-kpi-domain {
+    padding: 0.32rem 0.35rem;
+    font-size: 0.65rem;
+  }
+
+  .time-retrospect-kpi-domain-icon {
+    width: 0.95rem;
+    height: 0.95rem;
+  }
+
+  .time-retrospect-kpi-row-label-inner {
+    gap: 0.22rem;
+  }
+
+  .time-retrospect-habit-ox {
+    font-size: 0.75rem;
+  }
+
+  .time-retrospect-habit-done-detail {
+    font-size: 0.5rem;
+    line-height: 1.2;
+  }
+
+  .time-retrospect-table
+    td.time-retrospect-td-day-cell.time-retrospect-td--diet,
+  .time-retrospect-table
+    td.time-retrospect-td-day-cell.time-retrospect-td--expense,
+  .time-retrospect-table
+    td.time-retrospect-td-day-cell.time-retrospect-td--kpi:not(
+      .time-retrospect-td--kpi-habit
+    ) {
+    font-size: 0.65rem;
+    line-height: 1.22;
+  }
+
+  .time-retrospect-media-time {
+    font-size: 0.65rem;
+  }
+
+  .time-retrospect-media-bar-track {
+    height: 0.32rem;
   }
 
   .time-retrospect-table-wrap {
     border-top: none;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 회고 미디어: 시간을 막대 위(세로) — 좁은 열에서 숫자 잘림 방지 */
+  .time-retrospect-media-cell {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.18rem;
+  }
+
+  .time-retrospect-media-time {
+    order: -1;
+    align-self: center;
+    flex: none;
+  }
+
+  .time-retrospect-media-bar-track {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
   }
 
   .time-retrospect-table thead th.time-retrospect-th-corner,
@@ -32980,22 +33182,6 @@ button.time-modal-traffic {
   .time-retrospect-table thead th.time-retrospect-th-corner {
     left: 0;
     z-index: 3;
-  }
-
-  .time-retrospect-habit-mark {
-    width: 1.62rem;
-    height: 1.62rem;
-    font-size: 0.68rem;
-  }
-
-  .time-retrospect-habit-mark--miss {
-    font-size: 0.88rem;
-  }
-
-  .time-retrospect-habit-mark--neutral {
-    width: 1.48rem;
-    height: 1.48rem;
-    font-size: 0.78rem;
   }
 
   .time-audit-block {
@@ -49378,6 +49564,47 @@ tr.time-budget-calendar-row--readonly {
     text-align: right !important;
     align-self: auto !important;
     white-space: nowrap;
+  }
+
+  /* 6. KPI 별 현황 — 모바일에서 절·파이·문구가 왼쪽으로만 붙지 않도록 가운데 맞춤 */
+  .time-audit-region-kpi-status .time-audit-region-title {
+    text-align: center;
+  }
+
+  .time-audit-region-kpi-status .time-audit-kpi-inner {
+    align-items: center;
+  }
+
+  .time-audit-region-kpi-status .time-audit-kpi-subtitle {
+    text-align: center;
+    width: 100%;
+  }
+
+  .time-audit-region-kpi-status .time-audit-kpi-split {
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+  }
+
+  .time-audit-region-kpi-status .time-audit-kpi-bars-col {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .time-audit-region-kpi-status .time-audit-kpi-pie-col {
+    align-self: center;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .time-audit-region-kpi-status .time-audit-kpi-total-note {
+    text-align: center;
+    width: 100%;
+  }
+
+  .time-audit-region-kpi-status .time-audit-kpi-empty {
+    margin-left: auto;
+    margin-right: auto;
   }
 }
 

@@ -430,7 +430,7 @@ export function upsertHabitTrackerLogWithDailyState(
 }
 
 /**
- * 매일 반복(needHabitTracker) KPI: 시간가계부 과제 기록이 있으면 해당 날짜 KPI 로그에 자동 연동
+ * 시간가계부 과제 기록이 있으면 해당 날짜 KPI 로그에 자동 연동(매일 반복·일반 KPI 공통)
  * saveTimeRows 호출 후 실행
  *
  * 우선순위: time_ledger_tasks ↔ 행의 taskId로 kpiId 조회(이름 변경에 안전).
@@ -489,7 +489,6 @@ export function syncHabitTrackerLogs() {
         const kpis = data.kpis || [];
         kpis.forEach((kpi) => {
           if ((kpi.name || "").trim() !== taskName) return;
-          if (!kpi.needHabitTracker) return;
           addLedgerLink(key, kpi.id, nd, entryId);
         });
       } catch (_) {}
@@ -539,7 +538,7 @@ export function syncHabitTrackerLogs() {
         const kpiId = comboKey.slice(0, pipe);
         const nd = comboKey.slice(pipe + 1);
         const kpi = kpiById.get(kpiId);
-        if (!kpi || !kpi.needHabitTracker) continue;
+        if (!kpi) continue;
 
         const idx = logs.findIndex(
           (l) =>
@@ -562,14 +561,15 @@ export function syncHabitTrackerLogs() {
           if (before !== after) changed = true;
         } else {
           const dateDisplay = toDisplayDate(nd);
+          const habit = !!kpi.needHabitTracker;
           const row = {
             id: nextLogId(),
             kpiId: kpi.id,
             [idKey]: kpi[kpiKey],
             date: dateDisplay,
             dateRaw: nd,
-            value: "1",
-            status: "순항",
+            value: habit ? "1" : "",
+            status: habit ? "순항" : "",
             memo: "",
             dailyCompleted: [],
             dailyIncomplete: [],

@@ -1,6 +1,7 @@
 /**
  * 꿈·부수입·행복·건강 KPI 맵
  * - 고정 pull(읽기): `pullKpiTabFromCloud` — 꿈/건강/행복/부수입 **상위 앱 탭** 클릭 시 `force: true`.
+ *   이 때 **시간가계부 기록**도 같은 진입 시점에 서버에서 당겨 KPI–시간 연동·일지 표시에 쓰임(시간 탭 선방문 불필요).
  * - 서브 pull: `pullKpiMapSubViewFromCloud` — 탭 **내부**에서 꿈/경로/건강 **루트(상단 목표) 전환** 시만.
  *   `force: false`로 sync 진행 중이면 생략(삭제·수정 직후 낡은 서버로 덮임 방지). KPI 카드 클릭에서는 pull 안 함.
  * - push: `saveDreamMap` 등 저장 후 즉시 sync 리스너. 가시성만으로는 푸시 안 함.
@@ -31,6 +32,11 @@ import { lpPullDebug } from "./lpPullDebug.js";
 import { syncWatchLog } from "./syncWatchLog.js";
 import { kpiTodoCountInStorage, kpiTodoLifecycleOn, kpiTodoLifecycleLog } from "./kpiTodoLifecycleDebug.js";
 import { kpiTodoFineTrace } from "./kpiTodoFineTrace.js";
+import {
+  pullTimeLedgerEntriesForDateRange,
+  readTimeLedgerPullRangeForKpiTabsYmd,
+} from "./timeLedgerEntriesSupabase.js";
+import { syncHabitTrackerLogs } from "./timeKpiSync.js";
 const KPI_LOCAL_STORAGE_KEYS = {
   dream: DREAM_KPI_MAP_STORAGE_KEY,
   health: HEALTH_KPI_MAP_STORAGE_KEY,
@@ -47,6 +53,11 @@ export async function pullKpiTabFromCloud(tabId) {
   lpPullDebug("pullKpiTabFromCloud", { tabId });
   const key = KPI_LOCAL_STORAGE_KEYS[tabId];
   const before = key ? localStorage.getItem(key) : null;
+
+  try {
+    const { rangeStart, rangeEnd } = readTimeLedgerPullRangeForKpiTabsYmd();
+    await pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
+  } catch (_) {}
 
   let pullOk = false;
   switch (tabId) {
@@ -65,6 +76,10 @@ export async function pullKpiTabFromCloud(tabId) {
     default:
       return { pullOk: false, localChanged: false };
   }
+
+  try {
+    syncHabitTrackerLogs();
+  } catch (_) {}
 
   const after = key ? localStorage.getItem(key) : null;
   const localChanged = pullOk && before !== after;
@@ -96,6 +111,12 @@ export async function pullKpiTabFromCloud(tabId) {
 export async function pullKpiMapSubViewFromCloud(tabId) {
   kpiTodoFineTrace("cloud.pullKpiSubView:시작", { tabId });
   lpPullDebug("pullKpiMapSubViewFromCloud", { tabId });
+
+  try {
+    const { rangeStart, rangeEnd } = readTimeLedgerPullRangeForKpiTabsYmd();
+    await pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
+  } catch (_) {}
+
   let pullOk = false;
   switch (tabId) {
     case "dream":
@@ -113,6 +134,9 @@ export async function pullKpiMapSubViewFromCloud(tabId) {
     default:
       return false;
   }
+  try {
+    syncHabitTrackerLogs();
+  } catch (_) {}
   kpiTodoFineTrace("cloud.pullKpiSubView:끝", { tabId, pullOk });
   syncWatchLog("pullKpiMapSubView_완료", { tabId, pullOk });
   return pullOk;

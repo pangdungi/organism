@@ -17,6 +17,7 @@ import { applyDreamKpiTimestampsOnSave } from "./dreamKpiMapSupabase.js";
 import { applySideincomeKpiTimestampsOnSave } from "./sideincomeKpiMapSupabase.js";
 import { applyHappinessKpiTimestampsOnSave } from "./happinessKpiMapSupabase.js";
 import { applyHealthKpiTimestampsOnSave } from "./healthKpiMapSupabase.js";
+import { formatKpiHistoryValueText } from "./kpiLogFields.js";
 
 const DREAM_MAP_KEY = "kpi-dream-map";
 const SIDEINCOME_KEY = "kpi-sideincome-paths";
@@ -452,23 +453,8 @@ function retrospectDailyKpiWasExecuted(log) {
   return false;
 }
 
-function formatRetrospectNonDailyKpiLog(log) {
-  if (!log) return "—";
-  const parts = [];
-  const v = String(log.value || "").trim();
-  const u = String(log.unit || "").trim();
-  if (v && u) parts.push(`${v} ${u}`);
-  else if (v) parts.push(v);
-  else if (u) parts.push(u);
-  const st = String(log.status || "").trim();
-  if (st) parts.push(st);
-  const memo = String(log.memo || "").trim();
-  if (memo) parts.push(memo);
-  return parts.length ? parts.join(" · ") : "—";
-}
-
 /**
- * 회고 표용: 건강→행복→부수입→꿈 순으로 등록된 KPI 목록
+ * 회고 표 KPI 칸 (매일 반복: 해당 일 로그 있고 실행 흔적 있으면 O, 아니면 X / 그 외: 그날 로그 — KPI 일지·시간 합산 분과 동일 규칙)
  * @returns {Array<{ storageKey: string, kpiId: string, name: string, needHabitTracker: boolean }>}
  */
 export function getKpisOrderedForRetrospect() {
@@ -499,10 +485,10 @@ export function getRetrospectKpiSectionedRows() {
     [DREAM_MAP_KEY]: "꿈",
   };
   const iconByKey = {
-    [HEALTH_KEY]: "💪",
-    [HAPPINESS_KEY]: "😊",
-    [SIDEINCOME_KEY]: "💰",
-    [DREAM_MAP_KEY]: "✨",
+    [HEALTH_KEY]: "/retrospect-kpi/dumbbell.svg",
+    [HAPPINESS_KEY]: "/retrospect-kpi/smile.svg",
+    [SIDEINCOME_KEY]: "/retrospect-kpi/banknote-dollar.svg",
+    [DREAM_MAP_KEY]: "/retrospect-kpi/creature.svg",
   };
   /** @type {Array<{ kind: 'kpiSection', title: string, icon: string } | { kind: 'kpi', label: string, key: string, kpiDef: object }>} */
   const out = [];
@@ -554,6 +540,15 @@ function retrospectKpiDayLookup(kpiDef, ymd) {
   return { invalid: false, log: log || null };
 }
 
+/** 회고 셀용: 맵에서 해당 KPI 카드(단위 등 표시에 사용) */
+function getKpiMetaForRetrospectDayCell(kpiDef) {
+  const sk = String(kpiDef?.storageKey || "").trim();
+  const kid = String(kpiDef?.kpiId || "").trim();
+  if (!sk || !kid) return {};
+  const data = loadJson(sk, { kpis: [] });
+  return (data.kpis || []).find((k) => String(k?.id || "").trim() === kid) || {};
+}
+
 /**
  * 매일 반복(해빗) KPI 칸용: 완료/미완료/표시 불가 — null이면 일반 KPI(텍스트 칸)
  * @returns {null | 'done' | 'miss' | 'neutral'}
@@ -576,7 +571,18 @@ export function formatRetrospectKpiDayCell(kpiDef, ymd) {
   if (kpiDef.needHabitTracker) {
     return retrospectDailyKpiWasExecuted(log) ? "O" : "X";
   }
-  return formatRetrospectNonDailyKpiLog(log);
+  const kpi = getKpiMetaForRetrospectDayCell(kpiDef);
+  const primary = formatKpiHistoryValueText(log, kpi, {
+    durationShortHm: true,
+  });
+  if (primary !== "—") return primary;
+  if (!log || typeof log !== "object") return "—";
+  const memo = String(log.memo || "").trim();
+  const st = String(log.status || "").trim();
+  const bits = [];
+  if (st) bits.push(st);
+  if (memo) bits.push(memo);
+  return bits.length ? bits.join(" · ") : "—";
 }
 
 function nextKpiLogId() {

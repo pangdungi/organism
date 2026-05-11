@@ -1544,8 +1544,52 @@ function computeRetrospectDayMetrics(dayRows) {
   return { sleep, work, available, media };
 }
 
-/** 회고 「식단」칸: 건강한 식사류는 memo_tags(lp-meal:), 비건강 식사는 meal_detail */
-function formatRetrospectDietDayCell(dayRows) {
+/** 회고 「미디어 시청」칸: 가용시간 대비 비율(0~100, 막대 길이용) */
+function retrospectMediaPctOfAvailable(availableHours, mediaHours) {
+  const a = Number(availableHours) || 0;
+  const m = Number(mediaHours) || 0;
+  if (a <= 0) return 0;
+  return Math.min(100, Math.round((m / a) * 100));
+}
+
+/** 회고 표 미디어 셀 — 가용 대비 비율 막대(비생산 톤 파랑) + 시청 시간(h/m) */
+function fillRetrospectMediaDayCell(td, m) {
+  const avail = m.available;
+  const media = m.media;
+  const pct = retrospectMediaPctOfAvailable(avail, media);
+  const wrap = document.createElement("div");
+  wrap.className = "time-retrospect-media-cell";
+  wrap.setAttribute(
+    "title",
+    `가용 ${formatHoursToShortHm(avail)} · 미디어 ${formatHoursToShortHm(media)} · ${pct}%`,
+  );
+  wrap.setAttribute(
+    "aria-label",
+    `미디어 시청 ${formatHoursToShortHm(media)}, 가용시간 대비 ${pct}%`,
+  );
+  const track = document.createElement("div");
+  track.className = "time-retrospect-media-bar-track";
+  track.setAttribute("aria-hidden", "true");
+  const fill = document.createElement("div");
+  fill.className = "time-retrospect-media-bar-fill";
+  fill.style.width = `${pct}%`;
+  track.appendChild(fill);
+  const timeEl = document.createElement("span");
+  timeEl.className = "time-retrospect-media-time";
+  timeEl.textContent = formatHoursToShortHm(media);
+  wrap.appendChild(track);
+  wrap.appendChild(timeEl);
+  td.appendChild(wrap);
+}
+
+/** 회고 「식단」칸: 건강 메모(lp-meal:), 비건강 meal_detail — 라벨 없이 색만 (건강 빨강 / 비건강 파랑) */
+function formatRetrospectDietDayCellHtml(dayRows) {
+  const esc = (s) =>
+    String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
   const healthy = new Set();
   const unhealthy = [];
   for (const r of Array.isArray(dayRows) ? dayRows : []) {
@@ -1563,15 +1607,23 @@ function formatRetrospectDietDayCell(dayRows) {
       }
     }
   }
-  if (healthy.size === 0 && unhealthy.length === 0) return "—";
+  if (healthy.size === 0 && unhealthy.length === 0) return "";
   const lines = [];
   if (healthy.size > 0) {
-    lines.push(`건강한 식사: ${[...healthy].sort((a, b) => a.localeCompare(b, "ko")).join(", ")}`);
+    const text = [...healthy]
+      .sort((a, b) => a.localeCompare(b, "ko"))
+      .join(", ");
+    lines.push(
+      `<span class="time-retrospect-diet-line time-retrospect-diet--healthy">${esc(text)}</span>`,
+    );
   }
   if (unhealthy.length > 0) {
-    lines.push(`건강하지 않은 식사: ${unhealthy.join(", ")}`);
+    const text = unhealthy.join(", ");
+    lines.push(
+      `<span class="time-retrospect-diet-line time-retrospect-diet--unhealthy">${esc(text)}</span>`,
+    );
   }
-  return lines.join("\n");
+  return `<div class="time-retrospect-diet-lines">${lines.join("<br>")}</div>`;
 }
 
 /** 회고 「지출」칸: 가계부 해당 일자 지출(flowType 지출) 목록 */
@@ -2403,6 +2455,17 @@ function formatHoursToReadable(hours) {
   if (h === 0) return `${m}분`;
   if (m === 0) return `${h}시간`;
   return `${h}시간 ${m}분`;
+}
+
+/** 회고 표 시간 칸용: "Xh Ym" / "0m" (분만일 때는 분만) */
+function formatHoursToShortHm(hours) {
+  if (hours < 0 || !isFinite(hours)) return "0m";
+  const totalMin = Math.max(0, Math.round(hours * 60));
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
 }
 
 /** 성취능력 값(-50~+50)을 표시용 퍼센트 문자열로 변환 */
@@ -4761,15 +4824,40 @@ export function render() {
     return `${yy}. ${mm}. ${dd}(${weekdays[dt.getDay()]})`;
   }
 
-  /** 회고 표 열 제목: 1행 요일 한 글자, 2행 "MM. DD" */
+  /** 회고: 매일 반복 KPI 행 라벨 앞 아이콘 — 글자색·크기(1em)와 동일 */
+  function createRetrospectKpiDailyRepeatIconSvg() {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("class", "time-retrospect-kpi-daily-icon");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.setAttribute("fill", "none");
+    g.setAttribute("stroke", "currentColor");
+    g.setAttribute("stroke-width", "2");
+    g.setAttribute("stroke-linecap", "round");
+    g.setAttribute("stroke-linejoin", "round");
+    g.setAttribute("stroke-miterlimit", "10");
+    const p1 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p1.setAttribute("d", "m17 5v-4h4");
+    const p2 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p2.setAttribute(
+      "d",
+      "m17.5 2c3.562 1.821 5.5 5.725 5.5 10 0 6.075-4.925 11-11 11s-11-4.925-11-11c0-5.738 4.393-10.45 10-10.955",
+    );
+    g.appendChild(p1);
+    g.appendChild(p2);
+    svg.appendChild(g);
+    return svg;
+  }
+
+  /** 회고 표 열 제목: 1행 요일 한 글자, 2행 m/dd */
   function fillRetrospectTableHeaderTh(thEl, dStr) {
     thEl.textContent = "";
     if (!dStr || !/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return;
     const [y, mo, d] = dStr.split("-").map(Number);
     const dt = new Date(y, mo - 1, d);
     const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
-    const mm = String(mo).padStart(2, "0");
-    const dd = String(d).padStart(2, "0");
     const stack = document.createElement("span");
     stack.className = "time-retrospect-th-day-stack";
     const lineWd = document.createElement("span");
@@ -4779,7 +4867,7 @@ export function render() {
     const lineDate = document.createElement("span");
     lineDate.className =
       "time-retrospect-th-day-line time-retrospect-th-day-line--date";
-    lineDate.textContent = `${mm}. ${dd}`;
+    lineDate.textContent = `${mo}/${d}`;
     stack.appendChild(lineWd);
     stack.appendChild(lineDate);
     thEl.appendChild(stack);
@@ -9525,10 +9613,29 @@ export function render() {
           domainTh.className = "time-retrospect-th-kpi-domain";
           domainTh.scope = "colgroup";
           domainTh.colSpan = 8;
-          const icon = String(rowDef.icon || "").trim();
-          domainTh.textContent = icon
-            ? `${icon} ${rowDef.title}`
-            : rowDef.title;
+          const iconSrc = String(rowDef.icon || "").trim();
+          const wrap = document.createElement("span");
+          wrap.className = "time-retrospect-kpi-domain-label";
+          if (iconSrc.endsWith(".svg")) {
+            const img = document.createElement("img");
+            img.className = "time-retrospect-kpi-domain-icon";
+            img.src = iconSrc;
+            img.alt = "";
+            img.decoding = "async";
+            img.setAttribute("aria-hidden", "true");
+            wrap.appendChild(img);
+          } else if (iconSrc) {
+            wrap.appendChild(document.createTextNode(`${iconSrc} `));
+          }
+          const titleEl = document.createElement("span");
+          titleEl.className = "time-retrospect-kpi-domain-title";
+          titleEl.textContent = rowDef.title;
+          wrap.appendChild(titleEl);
+          domainTh.appendChild(wrap);
+          domainTh.setAttribute(
+            "aria-label",
+            `KPI 구역 ${rowDef.title}`,
+          );
           secTr.appendChild(domainTh);
           tbody.appendChild(secTr);
           continue;
@@ -9538,7 +9645,21 @@ export function render() {
         const rowLabelTh = document.createElement("th");
         rowLabelTh.className = "time-retrospect-th-row-label";
         rowLabelTh.scope = "row";
-        rowLabelTh.textContent = rowDef.label;
+        if (
+          rowDef.kind === "kpi" &&
+          rowDef.kpiDef &&
+          rowDef.kpiDef.needHabitTracker
+        ) {
+          const wrap = document.createElement("span");
+          wrap.className = "time-retrospect-kpi-row-label-inner";
+          wrap.appendChild(createRetrospectKpiDailyRepeatIconSvg());
+          const name = document.createElement("span");
+          name.textContent = rowDef.label;
+          wrap.appendChild(name);
+          rowLabelTh.appendChild(wrap);
+        } else {
+          rowLabelTh.textContent = rowDef.label;
+        }
         bodyTr.appendChild(rowLabelTh);
 
         for (let i = 0; i < 7; i++) {
@@ -9553,10 +9674,15 @@ export function render() {
             const m = computeRetrospectDayMetrics(dayRows);
             if (rowDef.key === "diet") {
               td.classList.add("time-retrospect-td--diet");
-              td.textContent = formatRetrospectDietDayCell(dayRows);
+              const dietHtml = formatRetrospectDietDayCellHtml(dayRows);
+              if (dietHtml) td.innerHTML = dietHtml;
+              else td.textContent = "—";
             } else if (rowDef.key === "expense") {
               td.classList.add("time-retrospect-td--expense");
               td.textContent = formatRetrospectExpenseDayCell(ymd);
+            } else if (rowDef.key === "media") {
+              td.classList.add("time-retrospect-td--media");
+              fillRetrospectMediaDayCell(td, m);
             } else if (rowDef.kind === "kpi" && rowDef.kpiDef) {
               td.classList.add("time-retrospect-td--kpi");
               const habitState = getRetrospectKpiHabitMarkState(
@@ -9565,25 +9691,46 @@ export function render() {
               );
               if (habitState !== null) {
                 td.classList.add("time-retrospect-td--kpi-habit");
-                const habitWrap = document.createElement("span");
-                habitWrap.className = "time-retrospect-habit-cell";
+                const habitWrap = document.createElement("div");
+                habitWrap.className = "time-retrospect-habit-cellwrap";
                 const mark = document.createElement("span");
                 if (habitState === "done") {
                   mark.className =
-                    "time-retrospect-habit-mark time-retrospect-habit-mark--done";
-                  mark.textContent = "✓";
+                    "time-retrospect-habit-ox time-retrospect-habit-ox--o";
+                  mark.textContent = "O";
                   mark.setAttribute("aria-label", "완료");
                 } else if (habitState === "miss") {
                   mark.className =
-                    "time-retrospect-habit-mark time-retrospect-habit-mark--miss";
+                    "time-retrospect-habit-ox time-retrospect-habit-ox--x";
+                  mark.textContent = "X";
                   mark.setAttribute("aria-label", "미완료");
                 } else {
                   mark.className =
-                    "time-retrospect-habit-mark time-retrospect-habit-mark--neutral";
+                    "time-retrospect-habit-ox time-retrospect-habit-ox--dash";
                   mark.textContent = "—";
                   mark.setAttribute("aria-label", "해당 없음");
                 }
                 habitWrap.appendChild(mark);
+                if (habitState === "done") {
+                  const completed = getHabitTrackerDailyCompletedForDate(
+                    rowDef.kpiDef.storageKey,
+                    rowDef.kpiDef.kpiId,
+                    ymd,
+                  );
+                  if (completed.length > 0) {
+                    const detail = document.createElement("div");
+                    detail.className = "time-retrospect-habit-done-detail";
+                    detail.setAttribute("aria-hidden", "true");
+                    for (const item of completed) {
+                      const line = document.createElement("div");
+                      line.className = "time-retrospect-habit-done-line";
+                      const t = String(item.text || "").trim();
+                      line.textContent = t || "·";
+                      detail.appendChild(line);
+                    }
+                    habitWrap.appendChild(detail);
+                  }
+                }
                 td.appendChild(habitWrap);
               } else {
                 td.textContent = formatRetrospectKpiDayCell(
@@ -9592,7 +9739,7 @@ export function render() {
                 );
               }
             } else {
-              td.textContent = formatHoursToReadable(m[rowDef.key]);
+              td.textContent = formatHoursToShortHm(m[rowDef.key]);
             }
           }
           bodyTr.appendChild(td);

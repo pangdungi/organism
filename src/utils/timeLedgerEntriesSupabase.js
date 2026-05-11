@@ -207,6 +207,27 @@ export function readTimeLedgerCombinedPullRangeYmd() {
   return { rangeStart: rs, rangeEnd: re };
 }
 
+/** KPI 탭용 시간기록 pull: 오늘 기준 뒤로 약 6개월 + 기록/보고서/회고 세션 구간 합침 */
+const KPI_TAB_LEDGER_PULL_BACK_DAYS = 179;
+
+/**
+ * 꿈·건강·행복·부수입 탭(및 그 안 루트 전환) 진입 시 `time_ledger_entries` 당김 범위.
+ * 시간 탭을 거치지 않아도 KPI 일지·시간 연동·「N분」표시에 필요한 행이 로컬에 있게 함.
+ */
+export function readTimeLedgerPullRangeForKpiTabsYmd() {
+  const re = timeLedgerLocalTodayYmd();
+  const d = new Date();
+  d.setDate(d.getDate() - KPI_TAB_LEDGER_PULL_BACK_DAYS);
+  const pad = (n) => String(n).padStart(2, "0");
+  const wideStart = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const C = readTimeLedgerCombinedPullRangeYmd();
+  let rs = wideStart;
+  if (C.rangeStart < rs) rs = C.rangeStart;
+  let re2 = re;
+  if (C.rangeEnd > re2) re2 = C.rangeEnd;
+  return { rangeStart: rs, rangeEnd: re2 };
+}
+
 /** Realtime payload: 이 변경이 현재 피커/보고서 구간 entry_date에 닿는지 (알 수 없으면 true). */
 export function timeLedgerEntryPayloadTouchesSessionPicker(payload) {
   if (!payload || payload.table !== "time_ledger_entries") return true;

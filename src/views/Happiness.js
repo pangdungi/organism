@@ -15,7 +15,7 @@ import {
 } from "../utils/timeTaskOptionsModel.js";
 import { toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay, formatDeadlineRangeCompact } from "../utils/ganttModal.js";
 import { getAccumulatedMinutesForKpiId, minutesToHhMm, hhMmToMinutes, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
-import { defaultManualKpiLogMeta, kpiLogSourceBadgeHtml } from "../utils/kpiLogFields.js";
+import { defaultManualKpiLogMeta, kpiLogSourceBadgeHtml, formatKpiHistoryValueText } from "../utils/kpiLogFields.js";
 import { createKpiHabitGridElement } from "../utils/kpiHabitTrackerGrid.js";
 import { wireKpiHistoryHabitTabs } from "../utils/kpiHistoryHabitTabs.js";
 import {
@@ -1041,7 +1041,6 @@ export function render() {
         logs.forEach((log) => {
           const item = document.createElement("div");
           item.className = "dream-kpi-history-item";
-          const unitSuffix = kpi.unit ? " " + kpi.unit : "";
           const completed = log.dailyCompleted || [];
           const completedNames = completed
             .map((t) => (t.text || "").trim())
@@ -1053,7 +1052,7 @@ export function render() {
             <div class="dream-kpi-history-item-main">
               <span class="dream-kpi-history-date">${escapeHtml(log.date)}</span>
               ${kpiLogSourceBadgeHtml(log)}
-              <span class="dream-kpi-history-value">${escapeHtml(log.value || "—")}${unitSuffix}</span>
+              <span class="dream-kpi-history-value">${escapeHtml(formatKpiHistoryValueText(log, kpi))}</span>
             </div>
             ${log.memo ? `<div class="dream-kpi-history-memo">${escapeHtml(log.memo)}</div>` : ""}
             ${dailyLine ? `<div class="dream-kpi-history-daily dream-kpi-history-daily--checked-only">${escapeHtml(dailyLine)}</div>` : ""}
