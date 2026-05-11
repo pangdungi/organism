@@ -384,6 +384,13 @@ export function applyTimeLedgerServerRangeSnapshot(
   );
   const merged = [...outside, ...insideFromServer];
   writeTimeLedgerEntriesRaw(merged);
+  try {
+    if (typeof document !== "undefined") {
+      document.dispatchEvent(
+        new CustomEvent("calendar-time-rows-updated", { detail: {} }),
+      );
+    }
+  } catch (_) {}
 }
 
 export function readTimeLedgerEntriesRaw() {

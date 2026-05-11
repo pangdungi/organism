@@ -860,23 +860,12 @@ function buildHomeToolbar(dateBasis) {
   return toolbar;
 }
 
-function appendHomeMainBelowToolbar(el) {
-  const timeSummary = getTodayTimeSummary();
-  const summarySection = document.createElement("section");
-  summarySection.className = "home-time-summary-section";
-  summarySection.setAttribute("aria-label", "오늘 통계");
-
-  const summaryHeading = document.createElement("h3");
-  summaryHeading.className = "home-time-summary-heading";
-  summaryHeading.textContent = "통계";
-
-  const summaryGrid = document.createElement("div");
-  summaryGrid.className = "home-time-summary-grid";
+function buildHomeTimeSummaryGridInnerHtml(timeSummary) {
   const trackedBarPct = Math.round(Number(timeSummary.trackedPctOfGoal) || 0);
   const productiveBarPct = Math.round(
     Number(timeSummary.productivePctOfAvailable) || 0,
   );
-  summaryGrid.innerHTML = `
+  return `
     <div class="home-time-summary-cell home-time-summary-cell--tracked">
       <span class="home-time-summary-label">총 기록</span>
       <div class="home-time-summary-cell-body">
@@ -918,6 +907,53 @@ function appendHomeMainBelowToolbar(el) {
       </div>
     </div>
   `;
+}
+
+/** 서버 pull 직후: 오늘 탭 통째 renderMain 없이 통계·할일·타임라인만 맞춤 */
+function refreshHomeAfterPullFromServer() {
+  const root =
+    document.querySelector(".app-tab-panel-content.home-view") ||
+    document.querySelector(".home-view");
+  if (!root?.isConnected) return;
+  const grid = root.querySelector(".home-time-summary-grid");
+  if (grid) {
+    grid.innerHTML = buildHomeTimeSummaryGridInnerHtml(getTodayTimeSummary());
+  }
+  root.querySelectorAll(".home-todo-list-content").forEach((n) => {
+    fillTodoListContent(n);
+  });
+  root.querySelectorAll(".home-reminder-content").forEach((n) => {
+    fillReminderContent(n);
+  });
+  root.querySelectorAll(".home-event-pulse-body").forEach((n) => {
+    fillHomeEventPulseContent(n);
+  });
+  document.querySelectorAll(".home-live-tracker").forEach((n) => {
+    refreshHomeLiveTrackerEl(n);
+  });
+  const cal = root.querySelector(
+    ".home-1day-timeline-mount .calendar-1day-view",
+  );
+  try {
+    if (cal && typeof cal._lpRefreshCalendarView === "function") {
+      cal._lpRefreshCalendarView();
+    }
+  } catch (_) {}
+}
+
+function appendHomeMainBelowToolbar(el) {
+  const timeSummary = getTodayTimeSummary();
+  const summarySection = document.createElement("section");
+  summarySection.className = "home-time-summary-section";
+  summarySection.setAttribute("aria-label", "오늘 통계");
+
+  const summaryHeading = document.createElement("h3");
+  summaryHeading.className = "home-time-summary-heading";
+  summaryHeading.textContent = "통계";
+
+  const summaryGrid = document.createElement("div");
+  summaryGrid.className = "home-time-summary-grid";
+  summaryGrid.innerHTML = buildHomeTimeSummaryGridInnerHtml(timeSummary);
 
   summarySection.appendChild(summaryHeading);
   summarySection.appendChild(summaryGrid);
@@ -1012,6 +1048,8 @@ export function render() {
   el.appendChild(buildHomeToolbar(today));
   appendHomeMainBelowToolbar(el);
   bindHomeEventPulseRefreshOnce();
+
+  window.__lpHomeAfterPullRefresh = refreshHomeAfterPullFromServer;
 
   return el;
 }

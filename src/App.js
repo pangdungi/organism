@@ -631,6 +631,11 @@ export async function mountApp(container) {
         try {
           window.__lpIdeaSoftRefresh?.();
         } catch (_) {}
+      } else if (targetTabId === "home") {
+        /* 오늘: 첫 render는 즉시 표시, pull 후 통째 renderMain 하면 1~2초 뒤에야 갱신되는 것처럼 보임 — 본문 유지 후 부분 갱신 */
+        try {
+          window.__lpHomeAfterPullRefresh?.();
+        } catch (_) {}
       } else {
         renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
       }

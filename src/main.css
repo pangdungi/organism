@@ -15736,7 +15736,7 @@ col.asset-expense-col-amount,
   font-weight: 500;
   padding: 0.5rem 0.4rem 0.5rem 0.5rem;
   border-right: 1px solid var(--line-l2-color);
-  background: rgba(42, 56, 40, 0.05);
+  background: #ffffff;
   align-self: stretch;
   display: flex;
   align-items: center;
@@ -15752,7 +15752,7 @@ col.asset-expense-col-amount,
   justify-content: center;
   align-items: flex-start;
   box-sizing: border-box;
-  background: rgba(42, 56, 40, 0.025);
+  background: #ffffff;
 }
 /* 새거래/수정 패널: 2열(값) 세로 구분선에서 글·칩이 붙지 않게 */
 .asset-expense-row--inner-panel .asset-expense-form-control {
@@ -15761,7 +15761,7 @@ col.asset-expense-col-amount,
 }
 /* 칩(큰분류 등)은 셀 전체가 아닌 뱃지 크로만, 입력 행은 가로 끝까지 */
 .asset-expense-form-control--field {
-  background: rgba(42, 56, 40, 0.03);
+  background: #ffffff;
   align-items: stretch;
   padding-top: 0.1rem;
   padding-bottom: 0.1rem;
@@ -48589,7 +48589,7 @@ tr.time-budget-calendar-row--readonly {
   /* 크기/굵기/색은 .dream-view-title과 통일 (2rem, 700, #1f2937) */
 }
 
-/* 검색 + 날짜 구간(시작~끝) — 입력 가능 영역만 흰 카드, 목록 카드는 회색(.archive-card) */
+/* 검색 + 날짜 구간(시작~끝) — 입력 가능 영역만 흰 카드, 목록 행(.archive-card)은 배경 없음·구분선만 */
 .archive-search-row {
   margin-top: 0.75rem;
   display: flex;
@@ -48735,7 +48735,7 @@ tr.time-budget-calendar-row--readonly {
 
 .archive-card {
   padding: 1rem 1.25rem;
-  background: var(--gray-50, #f5f5f7);
+  background: transparent;
   border: none;
   border-bottom: var(--line-l3);
   border-radius: 0;
