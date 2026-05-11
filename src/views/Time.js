@@ -3974,7 +3974,17 @@ function getMemoTagDisplayTextsForLedgerRow(rowData) {
       : parseTagsFromFeedback(rowData?.feedback || "");
   const { userTags } = splitLedgerMemoTags(Array.isArray(raw) ? raw : []);
   const expenseIds = getLedgerLinkedExpenseIds(rowData);
-  const texts = userTags.filter((t) => !isWorkScheduleDietLedgerMemoTag(t));
+  const texts = [];
+  for (const t of userTags) {
+    const s = String(t ?? "").trim();
+    if (!s) continue;
+    const meal = dietNameFromLedgerMemoTag(s);
+    if (meal) {
+      texts.push(meal);
+      continue;
+    }
+    if (!isWorkScheduleDietLedgerMemoTag(s)) texts.push(s);
+  }
   const allExp = loadExpenseRows();
   for (const eid of expenseIds) {
     const row = allExp.find((r) => String(r?.id || "").trim() === eid);

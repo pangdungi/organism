@@ -13,6 +13,10 @@ import {
   hydrateTimeLedgerEntriesForArchiveRange,
   pushDirtyTimeLedgerEntriesToSupabase,
 } from "../utils/timeLedgerEntriesSupabase.js";
+import {
+  dietNameFromLedgerMemoTag,
+  isWorkScheduleDietLedgerMemoTag,
+} from "../utils/workScheduleDietLedgerTags.js";
 
 function formatArchiveDate(dateStr) {
   if (!dateStr || typeof dateStr !== "string") return "—";
@@ -211,7 +215,15 @@ export function render() {
       .map((r) => {
         const memo = (r.feedback || "").trim();
         const fromFeedbackTags = parseTagsFromFeedback(r.feedback || "");
-        const visibleFromMemoTags = filterArchiveVisibleTags(r.memoTags);
+        const visibleFromMemoTags = filterArchiveVisibleTags(r.memoTags)
+          .map((t) => {
+            const s = String(t ?? "").trim();
+            const meal = dietNameFromLedgerMemoTag(s);
+            if (meal) return meal;
+            if (isWorkScheduleDietLedgerMemoTag(s)) return "";
+            return s;
+          })
+          .filter(Boolean);
         const tags =
           visibleFromMemoTags.length > 0
             ? visibleFromMemoTags
