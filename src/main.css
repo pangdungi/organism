@@ -32982,6 +32982,22 @@ button.time-modal-traffic {
     z-index: 3;
   }
 
+  .time-retrospect-habit-mark {
+    width: 1.62rem;
+    height: 1.62rem;
+    font-size: 0.68rem;
+  }
+
+  .time-retrospect-habit-mark--miss {
+    font-size: 0.88rem;
+  }
+
+  .time-retrospect-habit-mark--neutral {
+    width: 1.48rem;
+    height: 1.48rem;
+    font-size: 0.78rem;
+  }
+
   .time-audit-block {
     padding: 0.85rem;
     gap: 0.65rem;

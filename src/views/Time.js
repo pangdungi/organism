@@ -9487,143 +9487,125 @@ export function render() {
     weeksRoot.className = "time-retrospect-weeks";
 
     if (normStart && normEnd && normStart <= normEnd) {
-      let weekStart = startOfWeekMondayYmd(normStart);
-      const seenWeek = new Set();
-      while (weekStart <= normEnd) {
-        if (seenWeek.has(weekStart)) break;
-        seenWeek.add(weekStart);
+      /** 회고는 표를 하나만 쓰고, 시작일이 속한 주(월~일) 7열만 표시(필터 밖 날은 흐리게). */
+      const weekStart = startOfWeekMondayYmd(normStart);
+      const weekBlock = document.createElement("section");
+      weekBlock.className = "time-retrospect-week";
+      const tableWrap = document.createElement("div");
+      tableWrap.className = "time-retrospect-table-wrap";
+      const table = document.createElement("table");
+      table.className =
+        "time-retrospect-table time-retrospect-table--week-cols";
+      const thead = document.createElement("thead");
+      const headTr = document.createElement("tr");
+      const tbody = document.createElement("tbody");
 
-        let weekTouchesRange = false;
+      const cornerTh = document.createElement("th");
+      cornerTh.className = "time-retrospect-th-corner";
+      cornerTh.scope = "col";
+      headTr.appendChild(cornerTh);
+
+      for (let i = 0; i < 7; i++) {
+        const ymd = addDaysToYmd(weekStart, i);
+        const inRange = ymd >= normStart && ymd <= normEnd;
+
+        const th = document.createElement("th");
+        th.className = "time-retrospect-th-day";
+        th.scope = "col";
+        fillRetrospectTableHeaderTh(th, ymd);
+        if (!inRange) th.classList.add("time-retrospect-th--out");
+        headTr.appendChild(th);
+      }
+
+      for (const rowDef of retroRows) {
+        if (rowDef.kind === "kpiSection") {
+          const secTr = document.createElement("tr");
+          secTr.className = "time-retrospect-tr-kpi-domain";
+          const domainTh = document.createElement("th");
+          domainTh.className = "time-retrospect-th-kpi-domain";
+          domainTh.scope = "colgroup";
+          domainTh.colSpan = 8;
+          const icon = String(rowDef.icon || "").trim();
+          domainTh.textContent = icon
+            ? `${icon} ${rowDef.title}`
+            : rowDef.title;
+          secTr.appendChild(domainTh);
+          tbody.appendChild(secTr);
+          continue;
+        }
+
+        const bodyTr = document.createElement("tr");
+        const rowLabelTh = document.createElement("th");
+        rowLabelTh.className = "time-retrospect-th-row-label";
+        rowLabelTh.scope = "row";
+        rowLabelTh.textContent = rowDef.label;
+        bodyTr.appendChild(rowLabelTh);
+
         for (let i = 0; i < 7; i++) {
           const ymd = addDaysToYmd(weekStart, i);
-          if (ymd >= normStart && ymd <= normEnd) {
-            weekTouchesRange = true;
-            break;
-          }
-        }
+          const inRange = ymd >= normStart && ymd <= normEnd;
 
-        if (weekTouchesRange) {
-          const weekBlock = document.createElement("section");
-          weekBlock.className = "time-retrospect-week";
-          const tableWrap = document.createElement("div");
-          tableWrap.className = "time-retrospect-table-wrap";
-          const table = document.createElement("table");
-          table.className =
-            "time-retrospect-table time-retrospect-table--week-cols";
-          const thead = document.createElement("thead");
-          const headTr = document.createElement("tr");
-          const tbody = document.createElement("tbody");
-
-          const cornerTh = document.createElement("th");
-          cornerTh.className = "time-retrospect-th-corner";
-          cornerTh.scope = "col";
-          headTr.appendChild(cornerTh);
-
-          for (let i = 0; i < 7; i++) {
-            const ymd = addDaysToYmd(weekStart, i);
-            const inRange = ymd >= normStart && ymd <= normEnd;
-
-            const th = document.createElement("th");
-            th.className = "time-retrospect-th-day";
-            th.scope = "col";
-            fillRetrospectTableHeaderTh(th, ymd);
-            if (!inRange) th.classList.add("time-retrospect-th--out");
-            headTr.appendChild(th);
-          }
-
-          for (const rowDef of retroRows) {
-            if (rowDef.kind === "kpiSection") {
-              const secTr = document.createElement("tr");
-              secTr.className = "time-retrospect-tr-kpi-domain";
-              const domainTh = document.createElement("th");
-              domainTh.className = "time-retrospect-th-kpi-domain";
-              domainTh.scope = "colgroup";
-              domainTh.colSpan = 8;
-              const icon = String(rowDef.icon || "").trim();
-              domainTh.textContent = icon
-                ? `${icon} ${rowDef.title}`
-                : rowDef.title;
-              secTr.appendChild(domainTh);
-              tbody.appendChild(secTr);
-              continue;
-            }
-
-            const bodyTr = document.createElement("tr");
-            const rowLabelTh = document.createElement("th");
-            rowLabelTh.className = "time-retrospect-th-row-label";
-            rowLabelTh.scope = "row";
-            rowLabelTh.textContent = rowDef.label;
-            bodyTr.appendChild(rowLabelTh);
-
-            for (let i = 0; i < 7; i++) {
-              const ymd = addDaysToYmd(weekStart, i);
-              const inRange = ymd >= normStart && ymd <= normEnd;
-
-              const td = document.createElement("td");
-              td.className = "time-retrospect-td-day-cell";
-              if (!inRange) td.classList.add("time-retrospect-td--out");
-              else {
-                const dayRows = byYmd.get(ymd) || [];
-                const m = computeRetrospectDayMetrics(dayRows);
-                if (rowDef.key === "diet") {
-                  td.classList.add("time-retrospect-td--diet");
-                  td.textContent = formatRetrospectDietDayCell(dayRows);
-                } else if (rowDef.key === "expense") {
-                  td.classList.add("time-retrospect-td--expense");
-                  td.textContent = formatRetrospectExpenseDayCell(ymd);
-                } else if (rowDef.kind === "kpi" && rowDef.kpiDef) {
-                  td.classList.add("time-retrospect-td--kpi");
-                  const habitState = getRetrospectKpiHabitMarkState(
-                    rowDef.kpiDef,
-                    ymd,
-                  );
-                  if (habitState !== null) {
-                    td.classList.add("time-retrospect-td--kpi-habit");
-                    const habitWrap = document.createElement("span");
-                    habitWrap.className = "time-retrospect-habit-cell";
-                    const mark = document.createElement("span");
-                    if (habitState === "done") {
-                      mark.className =
-                        "time-retrospect-habit-mark time-retrospect-habit-mark--done";
-                      mark.textContent = "✓";
-                      mark.setAttribute("aria-label", "완료");
-                    } else if (habitState === "miss") {
-                      mark.className =
-                        "time-retrospect-habit-mark time-retrospect-habit-mark--miss";
-                      mark.setAttribute("aria-label", "미완료");
-                    } else {
-                      mark.className =
-                        "time-retrospect-habit-mark time-retrospect-habit-mark--neutral";
-                      mark.textContent = "—";
-                      mark.setAttribute("aria-label", "해당 없음");
-                    }
-                    habitWrap.appendChild(mark);
-                    td.appendChild(habitWrap);
-                  } else {
-                    td.textContent = formatRetrospectKpiDayCell(
-                      rowDef.kpiDef,
-                      ymd,
-                    );
-                  }
+          const td = document.createElement("td");
+          td.className = "time-retrospect-td-day-cell";
+          if (!inRange) td.classList.add("time-retrospect-td--out");
+          else {
+            const dayRows = byYmd.get(ymd) || [];
+            const m = computeRetrospectDayMetrics(dayRows);
+            if (rowDef.key === "diet") {
+              td.classList.add("time-retrospect-td--diet");
+              td.textContent = formatRetrospectDietDayCell(dayRows);
+            } else if (rowDef.key === "expense") {
+              td.classList.add("time-retrospect-td--expense");
+              td.textContent = formatRetrospectExpenseDayCell(ymd);
+            } else if (rowDef.kind === "kpi" && rowDef.kpiDef) {
+              td.classList.add("time-retrospect-td--kpi");
+              const habitState = getRetrospectKpiHabitMarkState(
+                rowDef.kpiDef,
+                ymd,
+              );
+              if (habitState !== null) {
+                td.classList.add("time-retrospect-td--kpi-habit");
+                const habitWrap = document.createElement("span");
+                habitWrap.className = "time-retrospect-habit-cell";
+                const mark = document.createElement("span");
+                if (habitState === "done") {
+                  mark.className =
+                    "time-retrospect-habit-mark time-retrospect-habit-mark--done";
+                  mark.textContent = "✓";
+                  mark.setAttribute("aria-label", "완료");
+                } else if (habitState === "miss") {
+                  mark.className =
+                    "time-retrospect-habit-mark time-retrospect-habit-mark--miss";
+                  mark.setAttribute("aria-label", "미완료");
                 } else {
-                  td.textContent = formatHoursToReadable(m[rowDef.key]);
+                  mark.className =
+                    "time-retrospect-habit-mark time-retrospect-habit-mark--neutral";
+                  mark.textContent = "—";
+                  mark.setAttribute("aria-label", "해당 없음");
                 }
+                habitWrap.appendChild(mark);
+                td.appendChild(habitWrap);
+              } else {
+                td.textContent = formatRetrospectKpiDayCell(
+                  rowDef.kpiDef,
+                  ymd,
+                );
               }
-              bodyTr.appendChild(td);
+            } else {
+              td.textContent = formatHoursToReadable(m[rowDef.key]);
             }
-            tbody.appendChild(bodyTr);
           }
-
-          thead.appendChild(headTr);
-          table.appendChild(thead);
-          table.appendChild(tbody);
-          tableWrap.appendChild(table);
-          weekBlock.appendChild(tableWrap);
-          weeksRoot.appendChild(weekBlock);
+          bodyTr.appendChild(td);
         }
-
-        weekStart = addDaysToYmd(weekStart, 7);
+        tbody.appendChild(bodyTr);
       }
+
+      thead.appendChild(headTr);
+      table.appendChild(thead);
+      table.appendChild(tbody);
+      tableWrap.appendChild(table);
+      weekBlock.appendChild(tableWrap);
+      weeksRoot.appendChild(weekBlock);
     } else {
       const empty = document.createElement("p");
       empty.className = "time-retrospect-empty";
