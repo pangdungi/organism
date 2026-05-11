@@ -1,6 +1,7 @@
 /**
  * KPI ↔ 시간가계부 연동
- * - 과제명(KPI 이름)으로 시간 기록 누적합 조회
+ * - 과제는 time_ledger_tasks의 kpiId·taskId로 집계(이름 변경에 안전).
+ * - 레거시: 과제명만 있는 행은 해당 KPI 과제명·연결된 task_id 행의 과제명으로 매칭.
  */
 
 import { readTimeLedgerEntriesRaw } from "./timeLedgerEntriesModel.js";
@@ -33,9 +34,64 @@ function loadTimeRows() {
 }
 
 /**
- * 과제명(태스크명)으로 누적 시간(분) 조회
- * @param {string} taskName - KPI 이름 또는 과제명
- * @returns {number} 누적 분
+ * KPI id 기준 누적 시간(분). 과제 옵션의 kpiId·taskId·표시명(레거시)으로 매칭.
+ * @param {string} kpiId - map_kpis / KPI 카드의 id
+ */
+export function getAccumulatedMinutesForKpiId(kpiId) {
+  const kid = String(kpiId || "").trim();
+  if (!kid) return 0;
+
+  const opts = getFullTaskOptions().filter(
+    (o) => String(o.kpiId || "").trim() === kid,
+  );
+  const idsForKpi = new Set();
+  const nameAliases = new Set();
+  for (const o of opts) {
+    const id = String(o.id || "").trim();
+    const n = String(o.name || "").trim();
+    if (isUuid(id)) idsForKpi.add(id);
+    if (n) nameAliases.add(n);
+  }
+
+  const taskIdToKpiId = new Map();
+  for (const o of getFullTaskOptions()) {
+    const tid = String(o.id || "").trim();
+    const k = String(o.kpiId || "").trim();
+    if (isUuid(tid) && k) taskIdToKpiId.set(tid, k);
+  }
+
+  const rows = loadTimeRows();
+  for (const r of rows) {
+    const tid = String(r.taskId || "").trim();
+    if (isUuid(tid) && idsForKpi.has(tid)) {
+      const tn = String(r.taskName || "").trim();
+      if (tn) nameAliases.add(tn);
+    }
+  }
+
+  let totalHours = 0;
+  for (const r of rows) {
+    if (!(r.timeTracked || "").trim()) continue;
+    const tid = String(r.taskId || "").trim();
+    const tn = String(r.taskName || "").trim();
+    if (isUuid(tid)) {
+      if (idsForKpi.has(tid)) {
+        totalHours += parseTimeToHours(r.timeTracked);
+        continue;
+      }
+      const mapped = taskIdToKpiId.get(tid);
+      if (mapped && mapped !== kid) continue;
+    }
+    if (tn && nameAliases.has(tn)) {
+      totalHours += parseTimeToHours(r.timeTracked);
+    }
+  }
+  return Math.round(totalHours * 60);
+}
+
+/**
+ * 과제명(태스크명)으로 누적 시간(분) — KPI가 아닌 일반 과제·레거시 호환용
+ * @param {string} taskName
  */
 export function getAccumulatedMinutes(taskName) {
   const name = (taskName || "").trim();

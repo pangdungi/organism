@@ -143,12 +143,12 @@ export const FIXED_NONPRODUCTIVE_TASKS = [
   { name: "단순 이동", category: "pleasure", productivity: "nonproductive" },
   {
     name: "쇼츠/릴스 피드 보기",
-    category: "pleasure",
+    category: "media_watch",
     productivity: "nonproductive",
   },
   {
     name: "무의식적 SNS",
-    category: "pleasure",
+    category: "media_watch",
     productivity: "nonproductive",
   },
   {
@@ -158,7 +158,7 @@ export const FIXED_NONPRODUCTIVE_TASKS = [
   },
   {
     name: "단순 쾌락형 영상 시청",
-    category: "pleasure",
+    category: "media_watch",
     productivity: "nonproductive",
   },
 ];

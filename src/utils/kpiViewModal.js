@@ -3,7 +3,7 @@
  */
 
 import { formatDeadlineRangeCompact } from "./ganttModal.js";
-import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes } from "./timeKpiSync.js";
+import { getAccumulatedMinutesForKpiId, minutesToHhMm, hhMmToMinutes } from "./timeKpiSync.js";
 
 const DREAM_MAP_KEY = "kpi-dream-map";
 const SIDEINCOME_KEY = "kpi-sideincome-paths";
@@ -48,6 +48,22 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+/** KPI 카드 상단 큰 숫자: 달성(누적) 또는 낮을수록 좋음이면 최근 값 */
+export function formatKpiCardHeroHtml(directionLower, formattedCurrentStr, unit) {
+  const unitHtml =
+    unit && formattedCurrentStr !== "—"
+      ? `<span class="dream-kpi-card-unit"> ${escapeHtml(unit)}</span>`
+      : "";
+  const numHtml =
+    formattedCurrentStr === "—"
+      ? "—"
+      : `${escapeHtml(String(formattedCurrentStr))}${unitHtml}`;
+  if (directionLower) {
+    return `<span class="dream-kpi-card-target-prefix">최근 </span>${numHtml}`;
+  }
+  return numHtml;
+}
+
 /**
  * 카테고리별 KPI 카드 데이터 수집 (진행률, 목표값 등 포함)
  */
@@ -75,6 +91,7 @@ export function getKpisByCategory() {
       : "—";
     let progress = 0;
     let progressText;
+    let heroValueHtml;
     if (directionLower) {
       const latest = getLatestLogNumeric(kpi.id, logs);
       if (latest != null) {
@@ -85,11 +102,13 @@ export function getKpisByCategory() {
         }
       }
       progressText = `최근 ${formatNum(latest)} / 상한 ${targetStr}${unitSuffix}`;
+      heroValueHtml = formatKpiCardHeroHtml(true, formatNum(latest), kpi.unit);
     } else {
       const currentVal = getAccumulatedLogValue(kpi.id, logs);
       progress =
         targetVal > 0 ? Math.min(100, (currentVal / targetVal) * 100) : 0;
       progressText = `${formatNum(currentVal)} / ${targetStr}${unitSuffix}`;
+      heroValueHtml = formatKpiCardHeroHtml(false, formatNum(currentVal), kpi.unit);
     }
     result[category].push({
       kpiId: kpi.id,
@@ -103,6 +122,7 @@ export function getKpisByCategory() {
       targetTimeRequired: kpi.targetTimeRequired,
       progress,
       progressText,
+      heroValueHtml,
       directionLower,
     });
   }
@@ -147,7 +167,7 @@ export function showKpiViewModal() {
       cardsHtml = list
         .map(
           (k) => {
-            const investedMins = getAccumulatedMinutes(k.name);
+            const investedMins = getAccumulatedMinutesForKpiId(k.kpiId);
             const targetMins = k.targetTimeRequired ? hhMmToMinutes(k.targetTimeRequired) : 0;
             const accumulatedMins = targetMins > 0 ? investedMins : 0;
             const timeProgress = targetMins > 0 ? Math.min(100, (accumulatedMins / targetMins) * 100) : 0;
@@ -175,7 +195,7 @@ export function showKpiViewModal() {
           <div class="kpi-view-card dream-kpi-card${k.directionLower ? " dream-kpi-card--lower-better" : ""}">
             <div class="dream-kpi-card-inner">
               <div class="dream-kpi-card-name">${escapeHtml(k.name)}${k.directionLower ? '<span class="dream-kpi-card-direction-badge" title="낮을수록 좋음 KPI">↓낮음</span>' : ""}</div>
-              <div class="dream-kpi-card-target-num">${k.directionLower ? '<span class="dream-kpi-card-target-prefix">상한 </span>' : ""}${k.targetValue ? escapeHtml(String(k.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) + (k.unit ? '<span class="dream-kpi-card-unit"> ' + escapeHtml(k.unit) + "</span>" : "") : "—"}</div>
+              <div class="dream-kpi-card-target-num">${k.heroValueHtml}</div>
               ${(k.targetStartDate || k.targetDeadline) ? `<div class="dream-kpi-card-deadline">${escapeHtml(formatDeadlineRangeCompact(k.targetStartDate, k.targetDeadline))}</div>` : ""}
               <div class="dream-kpi-card-progress">
                 <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${k.progress}%"></div></div>

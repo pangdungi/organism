@@ -20,7 +20,7 @@ import {
   formatDeadlineRangeCompact,
 } from "../utils/ganttModal.js";
 import {
-  getAccumulatedMinutes,
+  getAccumulatedMinutesForKpiId,
   minutesToHhMm,
   hhMmToMinutes,
   syncHabitTrackerLogs,
@@ -49,6 +49,7 @@ import {
   kpiTodosCompletionBrief,
 } from "../utils/kpiTodoLifecycleDebug.js";
 import { showKpiTodoAddModal } from "../utils/kpiTodoAddModal.js";
+import { formatKpiCardHeroHtml } from "../utils/kpiViewModal.js";
 import { showKpiTodoEditModal } from "../utils/kpiTodoEditModal.js";
 import { KPI_TAB_EDIT_PENCIL_HTML } from "../utils/kpiTabNameEditIcon.js";
 import { sortKpiLogsNewestFirst } from "../utils/kpiLogsSort.js";
@@ -678,7 +679,7 @@ export function render() {
       ? hhMmToMinutes(kpi.targetTimeRequired)
       : 0;
     const accumulatedMins =
-      targetMins > 0 ? getAccumulatedMinutes(kpi.name) : 0;
+      targetMins > 0 ? getAccumulatedMinutesForKpiId(kpi.id) : 0;
     const timeProgress =
       targetMins > 0 ? Math.min(100, (accumulatedMins / targetMins) * 100) : 0;
     const isCompleted =
@@ -780,7 +781,7 @@ export function render() {
         targetMins,
         accumulatedMins,
       } = getKpiProgress(kpi);
-      const investedMins = getAccumulatedMinutes(kpi.name);
+      const investedMins = getAccumulatedMinutesForKpiId(kpi.id);
       const unitSuffix = kpi.unit ? " " + kpi.unit : "";
       const formatNum = (n) =>
         n == null || Number.isNaN(n)
@@ -808,7 +809,7 @@ export function render() {
         <div class="dream-kpi-card-inner">
           <button type="button" class="dream-kpi-card-edit" title="KPI 수정">수정</button>
           <div class="dream-kpi-card-name">${escapeHtml(kpi.name)}</div>
-          <div class="dream-kpi-card-target-num">${kpi.targetValue ? escapeHtml(String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) + (kpi.unit ? '<span class="dream-kpi-card-unit"> ' + escapeHtml(kpi.unit) + "</span>" : "") : "—"}</div>
+          <div class="dream-kpi-card-target-num">${formatKpiCardHeroHtml(false, currentStr, kpi.unit)}</div>
           ${kpi.targetStartDate || kpi.targetDeadline ? `<div class="dream-kpi-card-deadline">${escapeHtml(formatDeadlineRangeCompact(kpi.targetStartDate, kpi.targetDeadline))}</div>` : ""}
           <div class="dream-kpi-card-progress">
             <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${progress}%"></div></div>
@@ -912,7 +913,7 @@ export function render() {
       completedKpis.forEach((kpi) => {
         const { currentVal, targetVal, targetMins, accumulatedMins } =
           getKpiProgress(kpi);
-        const investedMins = getAccumulatedMinutes(kpi.name);
+        const investedMins = getAccumulatedMinutesForKpiId(kpi.id);
         const unitSuffix = kpi.unit ? " " + kpi.unit : "";
         const formatNum = (n) =>
           n == null || Number.isNaN(n)
@@ -940,7 +941,7 @@ export function render() {
           <div class="dream-kpi-card-inner">
             <button type="button" class="dream-kpi-card-edit" title="KPI 수정">수정</button>
             <div class="dream-kpi-card-name">${escapeHtml(kpi.name)}</div>
-            <div class="dream-kpi-card-target-num">${kpi.targetValue ? escapeHtml(String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) + (kpi.unit ? '<span class="dream-kpi-card-unit"> ' + escapeHtml(kpi.unit) + "</span>" : "") : "—"}</div>
+            <div class="dream-kpi-card-target-num">${formatKpiCardHeroHtml(false, currentStr, kpi.unit)}</div>
             ${kpi.targetStartDate || kpi.targetDeadline ? `<div class="dream-kpi-card-deadline">${escapeHtml(formatDeadlineRangeCompact(kpi.targetStartDate, kpi.targetDeadline))}</div>` : ""}
             <div class="dream-kpi-card-progress">
               <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:100%"></div></div>

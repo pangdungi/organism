@@ -48,6 +48,59 @@ export function timeLedgerLocalYesterdayYmd() {
 
 const SS_AUDIT_START = "lp_time_audit_filter_start";
 const SS_AUDIT_END = "lp_time_audit_filter_end";
+const SS_RETROSPECT_START = "lp_time_retrospect_filter_start";
+const SS_RETROSPECT_END = "lp_time_retrospect_filter_end";
+
+/** 오늘이 속한 주의 일요일~토요일(로컬, 포함 7일) YYYY-MM-DD */
+function weekSundayToSaturdayContainingYmd(ymd) {
+  let dStr = ymd;
+  if (!dStr || !YMD_RE.test(dStr)) {
+    dStr = timeLedgerLocalTodayYmd();
+  }
+  const [y, mo, d] = dStr.split("-").map(Number);
+  const dt = new Date(y, mo - 1, d, 12, 0, 0, 0);
+  if (Number.isNaN(dt.getTime())) {
+    const t = timeLedgerLocalTodayYmd();
+    const [y2, mo2, d2] = t.split("-").map(Number);
+    dt.setFullYear(y2, mo2 - 1, d2);
+  }
+  dt.setDate(dt.getDate() - dt.getDay());
+  const pad = (n) => String(n).padStart(2, "0");
+  const rs = `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+  const end = new Date(dt);
+  end.setDate(end.getDate() + 6);
+  const re = `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}`;
+  return { rangeStart: rs, rangeEnd: re };
+}
+
+function readTimeLedgerRetrospectSessionStoredYmdOrNull() {
+  try {
+    if (typeof sessionStorage !== "undefined") {
+      const ss = sessionStorage.getItem(SS_RETROSPECT_START);
+      const se = sessionStorage.getItem(SS_RETROSPECT_END);
+      if (ss && YMD_RE.test(ss)) {
+        let rs = ss;
+        let re = se && YMD_RE.test(se) ? se : ss;
+        if (rs > re) {
+          const t = rs;
+          rs = re;
+          re = t;
+        }
+        return { rangeStart: rs, rangeEnd: re };
+      }
+    }
+  } catch (_) {}
+  return null;
+}
+
+/**
+ * 「회고」탭 날짜 구간. 저장값 없으면 오늘 기준 해당 주 일~토(7일).
+ */
+export function readTimeLedgerRetrospectSessionFilterRangeYmd() {
+  const stored = readTimeLedgerRetrospectSessionStoredYmdOrNull();
+  if (stored) return stored;
+  return weekSundayToSaturdayContainingYmd(timeLedgerLocalTodayYmd());
+}
 
 /** 로컬 달력 기준 이번 달 1일 YYYY-MM-DD (보고서 기본 시작일) */
 export function timeLedgerLocalMonthFirstYmd() {
@@ -139,10 +192,18 @@ export function readTimeLedgerAuditSessionFilterRangeYmd() {
  */
 export function readTimeLedgerCombinedPullRangeYmd() {
   const L = readTimeLedgerSessionFilterRangeYmd();
+  let rs = L.rangeStart;
+  let re = L.rangeEnd;
   const A = readTimeLedgerAuditSessionStoredYmdOrNull();
-  if (!A) return L;
-  const rs = L.rangeStart < A.rangeStart ? L.rangeStart : A.rangeStart;
-  const re = L.rangeEnd > A.rangeEnd ? L.rangeEnd : A.rangeEnd;
+  if (A) {
+    if (A.rangeStart < rs) rs = A.rangeStart;
+    if (A.rangeEnd > re) re = A.rangeEnd;
+  }
+  const R = readTimeLedgerRetrospectSessionStoredYmdOrNull();
+  if (R) {
+    if (R.rangeStart < rs) rs = R.rangeStart;
+    if (R.rangeEnd > re) re = R.rangeEnd;
+  }
   return { rangeStart: rs, rangeEnd: re };
 }
 

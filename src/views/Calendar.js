@@ -36,7 +36,7 @@ import {
   formatDeadlineRangeCompact,
 } from "../utils/ganttModal.js";
 import {
-  getAccumulatedMinutes,
+  getAccumulatedMinutesForKpiId,
   minutesToHhMm,
   hhMmToMinutes,
 } from "../utils/timeKpiSync.js";
@@ -189,6 +189,9 @@ function dateDebug(_tag, ..._args) {
   void CALENDAR_DATE_DEBUG;
 }
 
+/** 캘린더 할일 사이드바 펼침 여부(탭 동기화로 레이아웃이 다시 붙을 때 유지). << 접기면 0, 펼침이면 1 */
+const LP_CAL_TODO_SIDEBAR_EXPANDED_KEY = "lp-cal-todo-sidebar-expanded";
+
 /** 날짜 정하기 사이드바: 전체 할일 표시(사분면 필터 없음). 모드 값은 레이아웃·dataset 호환용 */
 const LP_CAL_TODO_SIDEBAR_QUADRANT = "quadrant";
 const LP_CAL_TODO_SIDEBAR_FULL = "full";
@@ -289,6 +292,7 @@ function lpCalendarDateSidebarTodoListOpts(_sidebarMode, extra = {}) {
     hideHeader: true,
     categoryToolbarRightActions: true,
     enableDragToCalendar: true,
+    calendarSidebarEmbed: true,
     ...extra,
   };
   /* 우선순위 탭과 동일: 사분면으로 목록을 좁히지 않음(미분류·다른 구역 포함). */
@@ -421,7 +425,7 @@ function lpAttach1WeekMobileFlowBodyMinSync(wrap, scrollEl, bodyEl) {
 }
 
 function lpBindCalendarDateTodoSidebarCollapse(todoSidebar, onCollapsedChange) {
-  let sidebarCollapsed = true;
+  let sidebarCollapsed = todoSidebar.classList.contains("collapsed");
   const collapseBtn = todoSidebar.querySelector(
     ".calendar-todo-sidebar-collapse",
   );
@@ -435,6 +439,12 @@ function lpBindCalendarDateTodoSidebarCollapse(todoSidebar, onCollapsedChange) {
     collapseBtn.title = sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
     if (collapseTextEl)
       collapseTextEl.textContent = sidebarCollapsed ? ">>" : "<<";
+    try {
+      sessionStorage.setItem(
+        LP_CAL_TODO_SIDEBAR_EXPANDED_KEY,
+        sidebarCollapsed ? "0" : "1",
+      );
+    } catch (_) {}
     const fire = () => {
       try {
         onCollapsedChange?.();
@@ -1323,16 +1333,26 @@ function refreshCalendarDateTodoSidebar(layoutWrap) {
 /** 캘린더·우선순위 뷰: 할일 사이드바 기본 접힘(사용자가 펼침). 아이젠하워는 접힘 시 저장 너비 해제 */
 function applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar, opts = {}) {
   const { clearInlineWidth = false } = opts;
-  todoSidebar.classList.add("collapsed");
-  if (clearInlineWidth) todoSidebar.style.width = "";
+  let collapsed = true;
+  try {
+    collapsed = sessionStorage.getItem(LP_CAL_TODO_SIDEBAR_EXPANDED_KEY) !== "1";
+  } catch (_) {}
   const collapseBtn = todoSidebar.querySelector(
     ".calendar-todo-sidebar-collapse",
   );
   const collapseTextEl = todoSidebar.querySelector(
     ".calendar-todo-sidebar-collapse-text",
   );
-  if (collapseBtn) collapseBtn.title = "사이드바 펼치기";
-  if (collapseTextEl) collapseTextEl.textContent = ">>";
+  if (collapsed) {
+    todoSidebar.classList.add("collapsed");
+    if (clearInlineWidth) todoSidebar.style.width = "";
+    if (collapseBtn) collapseBtn.title = "사이드바 펼치기";
+    if (collapseTextEl) collapseTextEl.textContent = ">>";
+  } else {
+    todoSidebar.classList.remove("collapsed");
+    if (collapseBtn) collapseBtn.title = "사이드바 접기";
+    if (collapseTextEl) collapseTextEl.textContent = "<<";
+  }
 }
 
 function getCustomSectionTasksForDate(dateKey) {
@@ -2694,8 +2714,8 @@ function renderMonthlyView(
     }),
   );
   mainWrap.appendChild(lpWrapCalendarTodoSidebarListEl(todoListEl));
-  lpBindCalendarDateTodoSidebarCollapse(todoSidebar);
   applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
+  lpBindCalendarDateTodoSidebarCollapse(todoSidebar);
   wrap.appendChild(todoSidebar);
   attachCalendarTodoSidebarSpanRevertDrop(
     body,
@@ -3357,8 +3377,8 @@ function render2WeekView(
     }),
   );
   mainWrap.appendChild(lpWrapCalendarTodoSidebarListEl(todoListEl));
-  lpBindCalendarDateTodoSidebarCollapse(todoSidebar);
   applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
+  lpBindCalendarDateTodoSidebarCollapse(todoSidebar);
   wrap.appendChild(todoSidebar);
   attachCalendarTodoSidebarSpanRevertDrop(
     body,
@@ -4034,8 +4054,8 @@ function render3WeekView(
     }),
   );
   mainWrap.appendChild(lpWrapCalendarTodoSidebarListEl(todoListEl));
-  lpBindCalendarDateTodoSidebarCollapse(todoSidebar);
   applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
+  lpBindCalendarDateTodoSidebarCollapse(todoSidebar);
   wrap.appendChild(todoSidebar);
   attachCalendarTodoSidebarSpanRevertDrop(
     body,
@@ -5239,7 +5259,7 @@ function render1DayView(
         const kpiId = k.kpiId || "";
         const storageKey = k.storageKey || "";
         const todoCount = getKpiTodosForKpi(kpiId).length;
-        const investedMins = getAccumulatedMinutes(k.name);
+        const investedMins = getAccumulatedMinutesForKpiId(k.kpiId || k.id);
         const targetMins = k.targetTimeRequired
           ? hhMmToMinutes(k.targetTimeRequired)
           : 0;
@@ -5264,7 +5284,7 @@ function render1DayView(
         <div class="kpi-view-card dream-kpi-card calendar-kpi-card ${!hasTimeTarget ? "calendar-kpi-card-no-time" : ""}${lower ? " dream-kpi-card--lower-better" : ""}" data-kpi-id="${escapeHtml(kpiId)}" data-storage-key="${escapeHtml(storageKey)}">
           <div class="dream-kpi-card-inner calendar-kpi-card-inner">
             <div class="dream-kpi-card-name">${escapeHtml(k.name)}${lower ? '<span class="dream-kpi-card-direction-badge" title="낮을수록 좋음 KPI">↓낮음</span>' : ""}</div>
-            <div class="dream-kpi-card-target-num">${lower ? '<span class="dream-kpi-card-target-prefix">상한 </span>' : ""}${k.targetValue ? escapeHtml(String(k.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) + (k.unit ? '<span class="dream-kpi-card-unit"> ' + escapeHtml(k.unit) + "</span>" : "") : "—"}</div>
+            <div class="dream-kpi-card-target-num">${k.heroValueHtml}</div>
             ${k.targetStartDate || k.targetDeadline ? `<div class="dream-kpi-card-deadline">${escapeHtml(formatDeadlineRangeCompact(k.targetStartDate, k.targetDeadline))}</div>` : ""}
             <div class="dream-kpi-card-progress">
               <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${k.progress}%"></div></div>
@@ -6022,8 +6042,8 @@ function render1DayView(
         }),
       );
       sidebarMain.appendChild(lpWrapCalendarTodoSidebarListEl(todoListEl));
-      lpBindCalendarDateTodoSidebarCollapse(todoSidebar);
       applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
+      lpBindCalendarDateTodoSidebarCollapse(todoSidebar);
       calendarGrid.appendChild(todoSidebar);
       attachCalendarTodoSidebarSpanRevertDrop(
         sidebarBody,
@@ -7059,10 +7079,10 @@ function render1WeekView(
     }),
   );
   mainWrap.appendChild(lpWrapCalendarTodoSidebarListEl(todoListEl));
+  applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
   lpBindCalendarDateTodoSidebarCollapse(todoSidebar, () => {
     syncCalendar1WeekSidebarHeaderHeight(calendarSection, todoSidebar);
   });
-  applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar);
   wrap.appendChild(todoSidebar);
   try {
     wrap._lpWeekSidebarRo?.disconnect();
@@ -7860,7 +7880,6 @@ function renderEisenhowerView(tabsElement) {
 
   const todoSidebar = document.createElement("aside");
   todoSidebar.className = "calendar-todo-sidebar";
-  let sidebarCollapsed = true;
   const savedWidth = parseInt(
     localStorage.getItem(EISENHOWER_SIDEBAR_WIDTH_KEY),
     10,
@@ -7879,6 +7898,10 @@ function renderEisenhowerView(tabsElement) {
   todoSidebar
     .querySelector(".calendar-todo-sidebar-body")
     .appendChild(todoListEl);
+  applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar, {
+    clearInlineWidth: true,
+  });
+  let sidebarCollapsed = todoSidebar.classList.contains("collapsed");
   const collapseTextEl = todoSidebar.querySelector(
     ".calendar-todo-sidebar-collapse-text",
   );
@@ -7902,10 +7925,13 @@ function renderEisenhowerView(tabsElement) {
       }
       todoSidebar.querySelector(".calendar-todo-sidebar-collapse").title =
         sidebarCollapsed ? "사이드바 펼치기" : "사이드바 접기";
+      try {
+        sessionStorage.setItem(
+          LP_CAL_TODO_SIDEBAR_EXPANDED_KEY,
+          sidebarCollapsed ? "0" : "1",
+        );
+      } catch (_) {}
     });
-  applyCalendarTodoSidebarInitiallyCollapsed(todoSidebar, {
-    clearInlineWidth: true,
-  });
   contentRow.appendChild(todoSidebar);
   wrap.appendChild(contentRow);
 

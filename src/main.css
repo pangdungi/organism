@@ -2672,8 +2672,8 @@ body {
     -webkit-overflow-scrolling: touch;
   }
   /* 이벤트 섹션이 할일 뒤로 들어가지 않도록: 100% 높이·overflow 해제, 문서 흐름으로 아래에 배치 */
-  /* DOM은 [시간사용+리마인더 스택|타임라인] 이지만, 스택을 display:contents로 풀어
-   * 세로 순서 = 리마인더 → 타임라인 → 시간사용(타임라인 아래에서 전체 표시) */
+  /* DOM은 [시간사용 스택|타임라인] 이지만, 스택을 display:contents로 풀어
+   * 세로 순서 = 타임라인 → 시간사용(타임라인 아래에서 전체 표시) */
   .app-main:has(.home-view) .home-view-section--event {
     height: auto !important;
     min-height: 0;
@@ -2682,7 +2682,6 @@ body {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      "reminder"
       "timeline"
       "timeusage";
     align-items: stretch;
@@ -2695,14 +2694,8 @@ body {
   .app-main:has(.home-view)
     .home-view-section--event
     .home-event-reminder-stack
-    > .home-event-half:first-child {
+    > .home-event-half {
     grid-area: timeusage;
-  }
-  .app-main:has(.home-view)
-    .home-view-section--event
-    .home-event-reminder-stack
-    > .home-event-half:last-child {
-    grid-area: reminder;
   }
   .app-main:has(.home-view)
     .home-view-section--event
@@ -4712,7 +4705,7 @@ body {
   .app-main:has(.home-view) .home-view-section--event {
     align-items: stretch !important;
   }
-  /* 모바일: 오늘 탭 — 리마인더 → 타임라인 → 시간사용(하단, @media max-width 64rem 그리드) */
+  /* 모바일: 오늘 탭 — 타임라인 → 시간사용(하단, @media max-width 64rem 그리드) */
   .app-main:has(.home-view) .home-1day-timeline-section {
     display: flex;
     flex-direction: column;
@@ -11159,7 +11152,7 @@ body {
   height: 100%;
 }
 
-/* Event + Reminder 한 묶음(세로 50/50), 옆에 타임라인(데스크탑) */
+/* Event 패널(세로 전체), 옆에 타임라인(데스크탑) */
 .home-event-reminder-stack {
   display: flex;
   flex-direction: column;
@@ -11182,6 +11175,13 @@ body {
   display: flex;
   flex-direction: column;
   border-bottom: var(--line-l3);
+}
+
+/* 한 칼럼일 때(시간사용만): 세로 100% */
+.home-event-half:only-child {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
 }
 
 .home-event-half .home-view-section-title,
@@ -11208,7 +11208,7 @@ body {
   border-bottom: none;
 }
 
-/* 데스크탑(64rem↑): 오른쪽 열 [Event+Reminder 한 섹션] | 타임라인 가로 2분할 */
+/* 데스크탑(64rem↑): 오른쪽 열 [과제별 예상 패널] | 타임라인 가로 2분할 */
 @media (min-width: 64rem) {
   .app-main:has(.home-view) .home-view-section--event {
     flex-direction: row;
@@ -11250,7 +11250,7 @@ body {
     .home-1day-timeline-section
     .home-view-section-title {
     flex-shrink: 0;
-    /* EVENT·리마인더 헤더와 동일 — .home-view-section-title 기본(0.5rem 0.75rem 0) */
+    /* EVENT(과제별 예상) 헤더와 동일 — .home-view-section-title 기본(0.5rem 0.75rem 0) */
     padding: 0.5rem 0.75rem 0 !important;
   }
   .app-main:has(.home-view)
@@ -11265,12 +11265,13 @@ body {
     -webkit-overflow-scrolling: touch;
   }
 
-  /* 넓은 화면: 시간사용 패널(통계 톤) */
+  /* 넓은 화면: 시간사용 패널(통계 톤) — 리마인더 제거 후 세로 여유 채움 */
   .app-main:has(.home-view) .home-time-usage-section {
     display: flex;
     flex-direction: column;
     gap: 0.45rem;
-    flex-shrink: 0;
+    flex: 1 1 0;
+    min-height: 0;
     min-width: 0;
     padding: 0.625rem 0.75rem 0.25rem;
     box-sizing: border-box;
@@ -11287,11 +11288,18 @@ body {
     -webkit-border-radius: 0 !important;
     box-shadow: none;
     box-sizing: border-box;
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
   }
   .app-main:has(.home-view)
     .home-time-usage-card
     .home-event-list.home-event-pulse-body {
     padding: 0 !important;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
   }
   .app-main:has(.home-view) .home-event-pulse-card {
     display: flex;
@@ -32609,6 +32617,150 @@ button.time-modal-traffic {
   background: var(--app-main-bg);
 }
 
+/* 시간가계부 「회고」탭 본문 */
+.time-retrospect-view {
+  padding: 1.5rem 0;
+  background: var(--app-main-bg);
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+.time-retrospect-inner {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.time-retrospect-weeks {
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.time-retrospect-week {
+  margin: 0;
+}
+
+.time-retrospect-week + .time-retrospect-week {
+  margin-top: 1.25rem;
+}
+
+.time-retrospect-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
+  border: none;
+  border-top: var(--line-l3);
+  border-bottom: var(--line-l3);
+  background: var(--content-bg);
+}
+
+.time-retrospect-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  font-size: 0.875rem;
+}
+
+.time-retrospect-table.time-retrospect-table--week-cols th,
+.time-retrospect-table.time-retrospect-table--week-cols td {
+  border-bottom: var(--divider-subtle);
+  border-right: var(--divider-subtle);
+  box-sizing: border-box;
+}
+
+.time-retrospect-table.time-retrospect-table--week-cols thead th:last-child,
+.time-retrospect-table.time-retrospect-table--week-cols tbody td:last-child {
+  border-right: none;
+}
+
+.time-retrospect-table.time-retrospect-table--week-cols tbody tr:last-child > th,
+.time-retrospect-table.time-retrospect-table--week-cols tbody tr:last-child > td {
+  border-bottom: none;
+}
+
+.time-retrospect-table.time-retrospect-table--week-cols {
+  width: 100%;
+  min-width: 44rem;
+  table-layout: fixed;
+}
+
+/* 왼쪽: 행 제목(수면·운동 등) — 오른쪽 7열은 요일 */
+.time-retrospect-table th.time-retrospect-th-corner {
+  width: 6.75rem;
+  min-width: 6rem;
+  max-width: 10rem;
+  padding: 0.4rem 0.45rem;
+  vertical-align: middle;
+  text-align: center;
+  font-size: var(--fs-caption, 0.75rem);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--text-caption-color);
+  background: var(--app-bg);
+  border-right: var(--divider-subtle);
+  font-family: var(--font-body);
+}
+
+.time-retrospect-table th.time-retrospect-th-row-label {
+  width: 6.75rem;
+  min-width: 6rem;
+  max-width: 10rem;
+  padding: 0.45rem 0.45rem;
+  text-align: left;
+  vertical-align: top;
+  font-size: var(--fs-small, 0.8125rem);
+  font-weight: 500;
+  color: var(--text-caption-color);
+  background: var(--app-bg);
+  border-right: var(--divider-subtle);
+  font-family: var(--font-body);
+}
+
+.time-retrospect-table th.time-retrospect-th-day {
+  width: auto;
+  max-width: none;
+  white-space: normal;
+  word-break: break-word;
+  text-align: center;
+  font-size: var(--fs-caption, 0.75rem);
+  font-family: var(--font-mono);
+  font-weight: 400;
+  line-height: 1.35;
+  padding: 0.4rem 0.35rem;
+  color: var(--text-caption-color);
+  background: var(--app-bg);
+}
+
+.time-retrospect-table th.time-retrospect-th-day.time-retrospect-th--out {
+  color: var(--text-placeholder);
+  opacity: 0.55;
+  font-weight: 300;
+}
+
+.time-retrospect-table td.time-retrospect-td-day-cell {
+  min-width: 0;
+  min-height: 4.5rem;
+  vertical-align: top;
+  padding: 0.45rem 0.4rem;
+  background: var(--content-bg);
+}
+
+.time-retrospect-table td.time-retrospect-td-day-cell.time-retrospect-td--out {
+  background: rgba(42, 56, 40, 0.03);
+  opacity: 0.65;
+}
+
+.time-retrospect-empty {
+  margin: 0.75rem 0 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
 .time-audit-empty {
   text-align: center;
   padding: 3rem 2rem;
@@ -32639,6 +32791,25 @@ button.time-modal-traffic {
     max-width: 100%;
     min-width: 0;
     box-sizing: border-box;
+  }
+
+  .time-retrospect-view {
+    padding: 0.75rem 0 1.25rem;
+  }
+
+  .time-retrospect-inner {
+    max-width: 100%;
+  }
+
+  .time-retrospect-table.time-retrospect-table--week-cols {
+    min-width: 36rem;
+  }
+
+  .time-retrospect-table th.time-retrospect-th-corner,
+  .time-retrospect-table th.time-retrospect-th-row-label {
+    width: 5.5rem;
+    min-width: 5rem;
+    max-width: 7.5rem;
   }
 
   .time-audit-block {

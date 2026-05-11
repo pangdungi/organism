@@ -62,6 +62,7 @@ import {
   readTimeLedgerSessionFilterRangeYmd,
   readTimeLedgerAuditSessionFilterRangeYmd,
   readTimeLedgerCombinedPullRangeYmd,
+  readTimeLedgerRetrospectSessionFilterRangeYmd,
 } from "../utils/timeLedgerEntriesSupabase.js";
 import { hydrateAssetExpenseTransactionsFromCloud } from "../utils/assetExpenseTransactionsSupabase.js";
 import { pullTimeLedgerTabEnterFromCloud } from "../utils/timeLedgerCloudRefresh.js";
@@ -696,6 +697,11 @@ const PRODUCTIVE_CATEGORIES = [
 const NONPRODUCTIVE_CATEGORIES = [
   { value: "pleasure", label: "쾌락충족", color: "cat-pleasure" },
   {
+    value: "media_watch",
+    label: "미디어 시청",
+    color: "cat-media-watch",
+  },
+  {
     value: "dreamblocking",
     label: "꿈을 방해하는 일",
     color: "cat-dreamblocking",
@@ -1231,6 +1237,11 @@ const CATEGORY_OPTIONS = [
   { value: "health", label: "건강", color: "cat-health" },
   { value: "pleasure", label: "쾌락충족", color: "cat-pleasure" },
   {
+    value: "media_watch",
+    label: "미디어 시청",
+    color: "cat-media-watch",
+  },
+  {
     value: "dreamblocking",
     label: "꿈을 방해하는 일",
     color: "cat-dreamblocking",
@@ -1252,6 +1263,7 @@ const CATEGORY_GRAPH_COLORS = {
     "rgba(191,179,255,0.5)" /* 구 카테고리: 부수입과 동일 색 */,
   pleasure: "rgba(173,216,230,0.5)",
   dreamblocking: "rgba(255,200,124,0.5)",
+  media_watch: "rgba(166,124,138,0.5)",
   unhappiness: "rgba(221,160,221,0.5)",
   unhealthy: "rgba(176,196,222,0.5)",
   moneylosing: "rgba(255,160,122,0.5)",
@@ -1275,6 +1287,7 @@ function getProductivityFromCategory(categoryValue) {
     "moneylosing",
     "dreamblocking",
     "pleasure",
+    "media_watch",
   ];
   const other = ["work", "sleep"];
   if (productive.includes(categoryValue)) return "productive";
@@ -1490,38 +1503,54 @@ function getAuditHealthDietTimelineHtml(filtered, normStart, normEnd) {
   </div>`;
 }
 
-/** 오딧 5. 미디어: 쾌락 4종·꿈방해 2종 항상 표시 + 해당 카테고리 사용자 추가 과제 (시간 합산 막대) */
-const AUDIT_MEDIA_ALWAYS_SHOW = [
+/** 오딧·회고: 비생산 「미디어 시청」카테고리(media_watch). 구 기록(pleasure) 호환. */
+const AUDIT_MEDIA_WATCH_BUILTIN_ORDER = [
   "쇼츠/릴스 피드 보기",
   "무의식적 SNS",
   "단순 쾌락형 영상 시청",
-  "쾌락성 모임 참석",
-  "무의식적 폰 사용",
-  "무의식적 검색",
 ];
-const AUDIT_MEDIA_ALWAYS_SHOW_SET = new Set(AUDIT_MEDIA_ALWAYS_SHOW);
+const MEDIA_WATCH_BUILTIN_NAME_SET = new Set(AUDIT_MEDIA_WATCH_BUILTIN_ORDER);
 
 function rowMatchesAuditMediaSection(r) {
-  const name = (r.taskName || "").trim();
-  if (!name) return false;
   const { category, productivity } = resolveRowCategoryProductivityForAudit(r);
   if (String(productivity || "").trim() !== "nonproductive") return false;
-  const cat = String(category || "").trim();
-  if (cat !== "pleasure" && cat !== "dreamblocking") return false;
-  if (AUDIT_MEDIA_ALWAYS_SHOW_SET.has(name)) return true;
-  if (AUDIT_HEALTH_SECTION_BUILTIN_NAMES.has(name)) return false;
-  return true;
+  if (category === "media_watch") return true;
+  const name = (r.taskName || "").trim();
+  /* pull 직후 등 옛 카테고리 pleasure로 저장된 내장 3종 */
+  if (MEDIA_WATCH_BUILTIN_NAME_SET.has(name) && category === "pleasure")
+    return true;
+  return false;
 }
 
-function getAuditMediaBarCategoryKey(taskName) {
-  const n = (taskName || "").trim();
-  if (n === "무의식적 폰 사용" || n === "무의식적 검색")
-    return "dreamblocking";
-  if (AUDIT_MEDIA_ALWAYS_SHOW_SET.has(n)) return "pleasure";
-  const opt = getTaskOptionByName(n);
-  return String(opt?.category || "").trim() === "dreamblocking"
-    ? "dreamblocking"
-    : "pleasure";
+/** 회고: 하루 칸 — 미디어 시청 행 = media_watch(+) 구 pleasure 호환 */
+function computeRetrospectDayMetrics(dayRows) {
+  let sleep = 0;
+  let work = 0;
+  let media = 0;
+  for (const r of dayRows) {
+    const hrs = parseTimeToHours(r.timeTracked) || 0;
+    if (hrs <= 0) continue;
+    const { category } = resolveRowCategoryProductivityForAudit(r);
+    if (category === "sleep") sleep += hrs;
+    else if (category === "work") work += hrs;
+    if (rowMatchesAuditMediaSection(r)) media += hrs;
+  }
+  const available = Math.max(0, 24 - sleep - work);
+  return { sleep, work, available, media };
+}
+
+function retrospectRowDateKey(r) {
+  return (
+    normalizeDateForCompare(r.date || "") ||
+    String(r.date || "")
+      .trim()
+      .replace(/\//g, "-")
+      .slice(0, 10)
+  );
+}
+
+function getAuditMediaBarCategoryKey(_taskName) {
+  return "media_watch";
 }
 
 function getAuditMediaWatchHoursHtml(filtered) {
@@ -1540,8 +1569,13 @@ function getAuditMediaWatchHoursHtml(filtered) {
     hoursByTask[name] = (hoursByTask[name] || 0) + hrs;
   });
 
-  const allNames = new Set([...AUDIT_MEDIA_ALWAYS_SHOW, ...Object.keys(hoursByTask)]);
-  const orderIdx = new Map(AUDIT_MEDIA_ALWAYS_SHOW.map((n, i) => [n, i]));
+  const allNames = new Set([
+    ...AUDIT_MEDIA_WATCH_BUILTIN_ORDER,
+    ...Object.keys(hoursByTask),
+  ]);
+  const orderIdx = new Map(
+    AUDIT_MEDIA_WATCH_BUILTIN_ORDER.map((n, i) => [n, i]),
+  );
   const barRows = [...allNames].map((task) => ({
     task,
     hours: hoursByTask[task] || 0,
@@ -2340,6 +2374,24 @@ function eachDateStrInInclusiveRange(normStart, normEnd, fn) {
     fn(toDateStr(cur));
     cur.setDate(cur.getDate() + 1);
   }
+}
+
+/** YYYY-MM-DD → 해당 주의 일요일(로컬, 일=0 기준 — 앱 전역 요일 표기와 동일) */
+function startOfWeekSundayYmd(ymd) {
+  if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ymd || "";
+  const d = new Date(ymd + "T12:00:00");
+  if (Number.isNaN(d.getTime())) return ymd;
+  d.setDate(d.getDate() - d.getDay());
+  return toDateStr(d);
+}
+
+/** YYYY-MM-DD에 일수 더하기 */
+function addDaysToYmd(ymd, deltaDays) {
+  if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ymd || "";
+  const d = new Date(ymd + "T12:00:00");
+  if (Number.isNaN(d.getTime())) return ymd;
+  d.setDate(d.getDate() + deltaDays);
+  return toDateStr(d);
 }
 
 /** 기간에 따른 날짜 범위 반환 (YYYY-MM-DD, 로컬 기준) - 레거시 period 문자열용 */
@@ -4509,6 +4561,10 @@ export function render() {
     hourlyHint.classList.toggle("is-visible", hasTime && !hasHourly);
   }
 
+  function isTimeLedgerAuditLikeView(v) {
+    return v === "audit" || v === "retrospect";
+  }
+
   const viewTabs = document.createElement("div");
   viewTabs.className = "time-view-tabs time-view-tabs--segmented";
   const improveTabHtml = TIME_LEDGER_SHOW_IMPROVE_TAB
@@ -4518,6 +4574,7 @@ export function render() {
     <span class="time-view-tabs-thumb" aria-hidden="true"></span>
     <button type="button" class="time-view-tab active" data-view="all">시간 기록</button>
     <button type="button" class="time-view-tab" data-view="audit">보고서</button>
+    <button type="button" class="time-view-tab" data-view="retrospect">회고</button>
     ${improveTabHtml}
   `;
 
@@ -4556,6 +4613,9 @@ export function render() {
       if (view === "audit") {
         sessionStorage.setItem("lp_time_audit_filter_start", start);
         sessionStorage.setItem("lp_time_audit_filter_end", end);
+      } else if (view === "retrospect") {
+        sessionStorage.setItem("lp_time_retrospect_filter_start", start);
+        sessionStorage.setItem("lp_time_retrospect_filter_end", end);
       } else {
         sessionStorage.setItem("lp_time_filter_start", start);
         sessionStorage.setItem("lp_time_filter_end", end);
@@ -4771,6 +4831,8 @@ export function render() {
       contentWrap.innerHTML = "";
     } else if (view === "audit") {
       renderAudit(filtered);
+    } else if (view === "retrospect") {
+      renderRetrospect(filtered);
     } else if (view === "improve" && TIME_LEDGER_SHOW_IMPROVE_TAB) {
       renderImprove(filtered);
     }
@@ -8674,6 +8736,8 @@ export function render() {
       renderAll(filtered);
     } else if (view === "audit") {
       renderAudit(filtered);
+    } else if (view === "retrospect") {
+      renderRetrospect(filtered);
     }
     syncTimeFilterDateLabels();
   }
@@ -9242,6 +9306,143 @@ export function render() {
         setStoredImproveNote(dateKey, "investReduce", investReduceEl.value),
       );
     }
+    contentWrap.appendChild(wrap);
+  }
+
+  function renderRetrospect(_rows = []) {
+    clearTimeLedgerMobileElapsedTimer(el);
+    rescueTimeFilterControlsToFilterBar();
+    contentWrap.innerHTML = "";
+
+    const wrap = document.createElement("div");
+    wrap.className = "time-retrospect-view";
+    const inner = document.createElement("div");
+    inner.className = "time-retrospect-inner";
+
+    let normStart =
+      normalizeDateForCompare(
+        pickYmdFromFilter(startDateInput.value, filterStartDate),
+      ) || pickYmdFromFilter(startDateInput.value, filterStartDate);
+    let normEnd =
+      normalizeDateForCompare(
+        pickYmdFromFilter(endDateInput.value, filterEndDate),
+      ) || pickYmdFromFilter(endDateInput.value, filterEndDate);
+    if (normStart && normEnd && normStart > normEnd) {
+      const t = normStart;
+      normStart = normEnd;
+      normEnd = t;
+    }
+
+    const rowSource = Array.isArray(_rows) ? _rows : [];
+    const byYmd = new Map();
+    for (const r of rowSource) {
+      const d = retrospectRowDateKey(r);
+      if (!d) continue;
+      if (!byYmd.has(d)) byYmd.set(d, []);
+      byYmd.get(d).push(r);
+    }
+
+    const retroRows = [
+      { label: "수면", key: "sleep" },
+      { label: "업무", key: "work" },
+      { label: "가용시간", key: "available" },
+      { label: "미디어 시청", key: "media" },
+    ];
+
+    const weeksRoot = document.createElement("div");
+    weeksRoot.className = "time-retrospect-weeks";
+
+    if (normStart && normEnd && normStart <= normEnd) {
+      const fmt = formatTimeFilterDateDotsWithWeekday;
+      let weekStart = startOfWeekSundayYmd(normStart);
+      const seenWeek = new Set();
+      while (weekStart <= normEnd) {
+        if (seenWeek.has(weekStart)) break;
+        seenWeek.add(weekStart);
+
+        let weekTouchesRange = false;
+        for (let i = 0; i < 7; i++) {
+          const ymd = addDaysToYmd(weekStart, i);
+          if (ymd >= normStart && ymd <= normEnd) {
+            weekTouchesRange = true;
+            break;
+          }
+        }
+
+        if (weekTouchesRange) {
+          const weekBlock = document.createElement("section");
+          weekBlock.className = "time-retrospect-week";
+          const tableWrap = document.createElement("div");
+          tableWrap.className = "time-retrospect-table-wrap";
+          const table = document.createElement("table");
+          table.className =
+            "time-retrospect-table time-retrospect-table--week-cols";
+          const thead = document.createElement("thead");
+          const headTr = document.createElement("tr");
+          const tbody = document.createElement("tbody");
+
+          const cornerTh = document.createElement("th");
+          cornerTh.className = "time-retrospect-th-corner";
+          cornerTh.scope = "col";
+          cornerTh.textContent = "항목";
+          headTr.appendChild(cornerTh);
+
+          for (let i = 0; i < 7; i++) {
+            const ymd = addDaysToYmd(weekStart, i);
+            const inRange = ymd >= normStart && ymd <= normEnd;
+
+            const th = document.createElement("th");
+            th.className = "time-retrospect-th-day";
+            th.scope = "col";
+            th.textContent = fmt(ymd);
+            if (!inRange) th.classList.add("time-retrospect-th--out");
+            headTr.appendChild(th);
+          }
+
+          for (const rowDef of retroRows) {
+            const bodyTr = document.createElement("tr");
+            const rowLabelTh = document.createElement("th");
+            rowLabelTh.className = "time-retrospect-th-row-label";
+            rowLabelTh.scope = "row";
+            rowLabelTh.textContent = rowDef.label;
+            bodyTr.appendChild(rowLabelTh);
+
+            for (let i = 0; i < 7; i++) {
+              const ymd = addDaysToYmd(weekStart, i);
+              const inRange = ymd >= normStart && ymd <= normEnd;
+
+              const td = document.createElement("td");
+              td.className = "time-retrospect-td-day-cell";
+              if (!inRange) td.classList.add("time-retrospect-td--out");
+              else {
+                const dayRows = byYmd.get(ymd) || [];
+                const m = computeRetrospectDayMetrics(dayRows);
+                td.textContent = formatHoursToReadable(m[rowDef.key]);
+              }
+              bodyTr.appendChild(td);
+            }
+            tbody.appendChild(bodyTr);
+          }
+
+          thead.appendChild(headTr);
+          table.appendChild(thead);
+          table.appendChild(tbody);
+          tableWrap.appendChild(table);
+          weekBlock.appendChild(tableWrap);
+          weeksRoot.appendChild(weekBlock);
+        }
+
+        weekStart = addDaysToYmd(weekStart, 7);
+      }
+    } else {
+      const empty = document.createElement("p");
+      empty.className = "time-retrospect-empty";
+      empty.textContent = "날짜를 선택해 주세요.";
+      weeksRoot.appendChild(empty);
+    }
+
+    inner.appendChild(weeksRoot);
+    wrap.appendChild(inner);
     contentWrap.appendChild(wrap);
   }
 
@@ -10305,7 +10506,7 @@ export function render() {
   function updateFilterBarVisibility(view) {
     /* 모바일에서 navCluster가 contentWrap 툴바로 붙으면 버튼이 filterBar 밖에 있음 */
     const taskSelectBtn = el.querySelector("#time-task-select-btn");
-    if (view === "audit") {
+    if (isTimeLedgerAuditLikeView(view)) {
       if (filterNavCluster) filterNavCluster.style.display = "";
       if (taskSetupBtn) taskSetupBtn.style.display = "none";
       if (taskSelectBtn) {
@@ -10367,7 +10568,19 @@ export function render() {
         startDateInput.value = rangeStart;
         endDateInput.value = rangeEnd;
       }
-    } else if (currentView === "audit" && view !== "audit") {
+    } else if (view === "retrospect" && currentView !== "retrospect") {
+      const { rangeStart, rangeEnd } =
+        readTimeLedgerRetrospectSessionFilterRangeYmd();
+      filterStartDate = rangeStart;
+      filterEndDate = rangeEnd;
+      if (startDateInput) {
+        startDateInput.value = rangeStart;
+        endDateInput.value = rangeEnd;
+      }
+    } else if (
+      isTimeLedgerAuditLikeView(currentView) &&
+      !isTimeLedgerAuditLikeView(view)
+    ) {
       const { rangeStart, rangeEnd } = readTimeLedgerSessionFilterRangeYmd();
       filterStartDate = rangeStart;
       filterEndDate = rangeEnd;
@@ -10382,7 +10595,7 @@ export function render() {
     }
     const rowsToUse =
       view === "blank" ||
-      view === "audit" ||
+      isTimeLedgerAuditLikeView(view) ||
       (view === "improve" && TIME_LEDGER_SHOW_IMPROVE_TAB)
         ? cachedRows
         : getFilteredRows(cachedRows);
@@ -10399,13 +10612,18 @@ export function render() {
       contentWrap.innerHTML = "";
     } else if (view === "audit") {
       renderAudit(getFilteredRows(cachedRows));
+    } else if (view === "retrospect") {
+      renderRetrospect(getFilteredRows(cachedRows));
     } else if (view === "improve" && TIME_LEDGER_SHOW_IMPROVE_TAB) {
       renderImprove(getFilteredRows(cachedRows));
     }
     updateTotal();
     syncTimeFilterDateLabels();
     /* 상위 시간가계부 탭은 App에서 기록·예산 pull + 과제 목록 pull. 내부「시간 기록」「보고서」는 기록·예산·노트만(과제 pull 없음). */
-    if (userSubTabClick && (view === "all" || view === "audit")) {
+    if (
+      userSubTabClick &&
+      (view === "all" || view === "audit" || view === "retrospect")
+    ) {
       const gen = (el._lpTimeSubTabPullGen =
         (el._lpTimeSubTabPullGen || 0) + 1);
       void (async () => {
@@ -10444,7 +10662,9 @@ export function render() {
       const { rangeStart, rangeEnd } =
         activeView === "audit"
           ? readTimeLedgerAuditSessionFilterRangeYmd()
-          : readTimeLedgerSessionFilterRangeYmd();
+          : activeView === "retrospect"
+            ? readTimeLedgerRetrospectSessionFilterRangeYmd()
+            : readTimeLedgerSessionFilterRangeYmd();
       filterStartDate = rangeStart;
       filterEndDate = rangeEnd;
       if (startDateInput) startDateInput.value = rangeStart;
@@ -11362,19 +11582,22 @@ export function renderTimeBudgetTablesForCalendar(
   BASIC_TASKS.forEach((task) => {
     if (seenBasic.has(task)) return;
     const data = storedGoals[task];
-    const entries = expandByScheduledTimes(task, data, true);
-    if (entries.length > 0) {
-      entries.forEach((e) => basicTasks.push(e));
-    } else {
+    const times = getScheduledTimesArray(data);
+    if (!times.length) {
+      seenBasic.add(task);
+      return;
+    }
+    const memos = getScheduleMemosArray(data);
+    times.forEach((scheduledTime, idx) => {
       basicTasks.push({
         task,
         hrs: 0,
         isNonproductive: false,
-        scheduledTime: "",
-        slotIndex: 0,
-        rowMemo: "",
+        scheduledTime,
+        slotIndex: idx,
+        rowMemo: String(memos[idx] || "").trim(),
       });
-    }
+    });
     seenBasic.add(task);
   });
 
@@ -11641,12 +11864,12 @@ export function renderTimeBudgetTablesForCalendar(
   );
   const investSection = wrapBlockAsSection(
     investBlock,
-    "3. 생산적 과제 배치",
+    "2. 생산적 과제 배치",
     null,
   );
   const consumeSection = wrapBlockAsSection(
     consumeBlock,
-    "4. 비생산적 과제 배치",
+    "3. 비생산적 과제 배치",
     null,
   );
 

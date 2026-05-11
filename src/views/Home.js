@@ -1,5 +1,5 @@
 /**
- * Home 페이지 - 투두리스트 + 이벤트·리마인더 레이아웃
+ * Home 페이지 - 오늘 탭 레이아웃(통계·과제별 예상·타임라인·할 일)
  */
 
 import { syncKpiTodoCompleted } from "../utils/kpiTodoSync.js";
@@ -32,99 +32,6 @@ const SECTION_LABELS = {
   health: "건강",
   happy: "행복",
 };
-
-/** 꿈·부수입·건강·행복 네 고정 섹션에서 리마인더가 설정된 할일만 수집 */
-function getRemindersFromAllSections() {
-  const out = [];
-  try {
-    const obj = readSectionTasksObject();
-    KPI_SECTION_IDS.forEach((sectionId) => {
-      const arr = obj[sectionId];
-      if (!Array.isArray(arr)) return;
-      arr.forEach((t) => {
-        const rDate = (t.reminderDate || "").trim();
-        if (!rDate) return;
-        out.push({
-          sectionId,
-          taskId: t.taskId || "",
-          name: (t.name || "").trim() || "(과제명 없음)",
-          reminderDate: rDate.slice(0, 10),
-          reminderTime: (t.reminderTime || "").trim(),
-          isCustom: false,
-        });
-      });
-    });
-  } catch (_) {}
-  try {
-    const obj = readCustomSectionTasksObject();
-    getCustomSections().forEach((sec) => {
-      const arr = obj[sec.id];
-      if (!Array.isArray(arr)) return;
-      arr.forEach((t) => {
-        const rDate = (t.reminderDate || "").trim();
-        if (!rDate) return;
-        out.push({
-          sectionId: sec.id,
-          taskId: t.taskId || "",
-          name: (t.name || "").trim() || "(과제명 없음)",
-          reminderDate: rDate.slice(0, 10),
-          reminderTime: (t.reminderTime || "").trim(),
-          isCustom: true,
-        });
-      });
-    });
-  } catch (_) {}
-  out.sort((a, b) => {
-    if (a.reminderDate !== b.reminderDate)
-      return a.reminderDate.localeCompare(b.reminderDate);
-    if (a.reminderTime !== b.reminderTime)
-      return (a.reminderTime || "").localeCompare(b.reminderTime || "");
-    return (a.name || "").localeCompare(b.name || "", "ko");
-  });
-  return out;
-}
-
-function formatReminderDisplay(rDate, rTime) {
-  if (!(rDate || "").trim()) return "";
-  const parts = String(rDate).trim().split(/[-/]/);
-  const dateStr = parts.length >= 3 ? `${parts[1]}/${parts[2]}` : rDate;
-  return (rTime || "").trim() ? `${dateStr} ${(rTime || "").trim()}` : dateStr;
-}
-
-/** 리마인더 날짜/시간이 과거인지 판별 (날짜 지난 리마인더 희미 표시용) */
-function isReminderPast(reminderDate, reminderTime) {
-  const dateStr = (reminderDate || "").trim().slice(0, 10);
-  if (!dateStr) return false;
-  const [y, m, d] = dateStr.split("-").map(Number);
-  if (!y || !m || !d) return false;
-  let reminderMs = new Date(y, m - 1, d).getTime();
-  const timeStr = (reminderTime || "").trim();
-  if (timeStr) {
-    const [hh, mm] = timeStr.split(":").map((n) => parseInt(n, 10) || 0);
-    reminderMs = new Date(y, m - 1, d, hh, mm, 0).getTime();
-  }
-  return reminderMs < Date.now();
-}
-
-function updateReminderInStorage(
-  sectionId,
-  taskId,
-  reminderDate,
-  reminderTime,
-  isCustom,
-) {
-  try {
-    const obj = isCustom ? readCustomSectionTasksObject() : readSectionTasksObject();
-    const arr = obj[sectionId];
-    if (!Array.isArray(arr)) return;
-    const t = arr.find((x) => (x.taskId || "") === taskId);
-    if (!t) return;
-    t.reminderDate = (reminderDate || "").slice(0, 10) || "";
-    t.reminderTime = (reminderTime || "").trim() || "";
-    if (isCustom) persistCustomSectionTasksAndSchedule(obj);
-    else persistSectionTasksAndSchedule(obj);
-  } catch (_) {}
-}
 
 /** 오늘 날짜(YYYY-MM-DD) 반환 */
 function getTodayDateKey() {
@@ -378,147 +285,6 @@ function fillTodoListContent(todoListContent) {
     wrap.appendChild(createHomeTodoCard(item));
   });
   todoListContent.appendChild(wrap);
-}
-
-/** 리마인더 영역 채우기: 목록 + 시간 + 수정 버튼. 수정 시 모달에서 저장하면 storage 반영 후 이 함수로 갱신. */
-function fillReminderContent(reminderContent) {
-  reminderContent.innerHTML = "";
-  const list = getRemindersFromAllSections();
-  if (list.length === 0) {
-    return;
-  }
-  const escapeHtml = (s) => {
-    const d = document.createElement("div");
-    d.textContent = s == null ? "" : s;
-    return d.innerHTML;
-  };
-  list.forEach((item) => {
-    const row = document.createElement("div");
-    const isPast = isReminderPast(item.reminderDate, item.reminderTime);
-    row.className =
-      "home-reminder-row" + (isPast ? " home-reminder-row--past" : "");
-    const displayTime = formatReminderDisplay(
-      item.reminderDate,
-      item.reminderTime,
-    );
-    row.innerHTML = `
-      <span class="home-reminder-row-name">${escapeHtml(item.name)}</span>
-      <button type="button" class="home-reminder-row-edit" title="Edit reminder">수정</button>
-      <span class="home-reminder-row-time">${escapeHtml(displayTime)}</span>
-    `;
-    row
-      .querySelector(".home-reminder-row-edit")
-      .addEventListener("click", () => {
-        openReminderModalFromHome(item, () =>
-          fillReminderContent(reminderContent),
-        );
-      });
-    reminderContent.appendChild(row);
-  });
-}
-
-/** 홈에서 리마인더 수정 모달 열기. 저장 시 onSaved() 콜백으로 목록 갱신. */
-function openReminderModalFromHome(item, onSaved) {
-  const modal = document.createElement("div");
-  modal.className = "dream-kpi-modal todo-reminder-modal";
-  const escapeHtml = (s) => {
-    const d = document.createElement("div");
-    d.textContent = s == null ? "" : s;
-    return d.innerHTML;
-  };
-  const defaultDate = (item.reminderDate || "").slice(0, 10) || "";
-  const defaultTime = (item.reminderTime || "").trim() || "";
-  modal.innerHTML = `
-    <div class="dream-kpi-backdrop"></div>
-    <div class="dream-kpi-panel">
-      <div class="dream-kpi-modal-header">
-        <h3 class="dream-kpi-modal-title">Reminder</h3>
-        <button type="button" class="dream-kpi-modal-close" title="닫기">×</button>
-      </div>
-      <div class="todo-reminder-form">
-        <div class="todo-reminder-field">
-          <label class="todo-reminder-label">과제명</label>
-          <p class="todo-reminder-task-name">${escapeHtml(item.name)}</p>
-        </div>
-        <div class="todo-reminder-field">
-          <label class="todo-reminder-label">날짜</label>
-          <div class="todo-reminder-date-row">
-            <input type="date" class="todo-reminder-date" name="todo-reminder-date" value="${escapeHtml(defaultDate)}" />
-            <button type="button" class="todo-reminder-date-btn" data-offset="0">오늘</button>
-            <button type="button" class="todo-reminder-date-btn" data-offset="1">내일</button>
-          </div>
-        </div>
-        <div class="todo-reminder-field">
-          <label class="todo-reminder-label">시간</label>
-          <input type="text" class="todo-reminder-time" placeholder="예: 14:30" autocomplete="off" value="${escapeHtml(defaultTime)}" />
-          <span class="todo-reminder-time-error" aria-live="polite"></span>
-        </div>
-        <button type="button" class="dream-kpi-submit todo-reminder-save">설정</button>
-      </div>
-    </div>
-  `;
-  const close = () => modal.remove();
-  modal
-    .querySelector(".dream-kpi-modal-close")
-    .addEventListener("click", close);
-  const dateInput = modal.querySelector(".todo-reminder-date");
-  function toYYYYMMDD(d) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-  }
-  modal.querySelectorAll(".todo-reminder-date-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const offset = parseInt(btn.dataset.offset, 10) || 0;
-      const d = new Date();
-      d.setDate(d.getDate() + offset);
-      dateInput.value = toYYYYMMDD(d);
-    });
-  });
-  const timeInput = modal.querySelector(".todo-reminder-time");
-  const timeErrorEl = modal.querySelector(".todo-reminder-time-error");
-  function formatTimeInput(val) {
-    const digits = String(val || "").replace(/\D/g, "");
-    if (digits.length >= 4) {
-      const h = digits.slice(0, 2);
-      const m = digits.slice(2, 4);
-      return `${h}:${m}`;
-    }
-    return digits;
-  }
-  timeInput.addEventListener("input", () => {
-    timeErrorEl.textContent = "";
-    const raw = timeInput.value;
-    const digits = raw.replace(/\D/g, "");
-    if (digits.length >= 4) timeInput.value = formatTimeInput(raw);
-  });
-  timeInput.addEventListener("blur", () => {
-    const digits = (timeInput.value || "").replace(/\D/g, "");
-    if (digits.length >= 2) timeInput.value = formatTimeInput(timeInput.value);
-  });
-  modal.querySelector(".todo-reminder-save").addEventListener("click", () => {
-    const dateVal = (
-      modal.querySelector(".todo-reminder-date").value || ""
-    ).trim();
-    let timeVal = (timeInput.value || "").trim();
-    const digits = timeVal.replace(/\D/g, "");
-    if (digits.length >= 2) timeVal = formatTimeInput(timeVal);
-    if (!timeVal || digits.length < 2) {
-      timeErrorEl.textContent = "시간을 입력하세요.";
-      return;
-    }
-    updateReminderInStorage(
-      item.sectionId,
-      item.taskId,
-      dateVal,
-      timeVal,
-      item.isCustom,
-    );
-    close();
-    if (typeof onSaved === "function") onSaved();
-  });
-  document.body.appendChild(modal);
 }
 
 /** 상단 툴바 영문 전체 날짜 */
@@ -922,9 +688,6 @@ function refreshHomeAfterPullFromServer() {
   root.querySelectorAll(".home-todo-list-content").forEach((n) => {
     fillTodoListContent(n);
   });
-  root.querySelectorAll(".home-reminder-content").forEach((n) => {
-    fillReminderContent(n);
-  });
   root.querySelectorAll(".home-event-pulse-body").forEach((n) => {
     fillHomeEventPulseContent(n);
   });
@@ -991,24 +754,12 @@ function appendHomeMainBelowToolbar(el) {
   usageSection.appendChild(usageCard);
   eventHalf.appendChild(usageSection);
 
-  const reminderHalf = document.createElement("div");
-  reminderHalf.className = "home-event-half";
-  const headerReminder = document.createElement("h3");
-  headerReminder.className = "home-view-section-title";
-  headerReminder.textContent = "Reminder";
-  reminderHalf.appendChild(headerReminder);
-  const reminderContent = document.createElement("div");
-  reminderContent.className = "home-reminder-content";
-  fillReminderContent(reminderContent);
-  reminderHalf.appendChild(reminderContent);
-
   const eventReminderStack = document.createElement("div");
   eventReminderStack.className = "home-event-reminder-stack";
   eventReminderStack.appendChild(eventHalf);
-  eventReminderStack.appendChild(reminderHalf);
   section2.appendChild(eventReminderStack);
 
-  /* 예상시간/실제 타임테이블(1일 뷰): 데스크탑(64rem↑) [시간사용+리마인더|타임라인]; 64rem↓ CSS Grid로 리마인더→타임라인→시간사용 */
+  /* 예상시간/실제 타임테이블(1일 뷰): 데스크탑(64rem↑) [시간사용|타임라인]; 64rem↓ CSS Grid로 타임라인→시간사용 */
   const timelineSection = document.createElement("div");
   timelineSection.className = "home-1day-timeline-section home-embed-1day";
   const timelineTitle = document.createElement("h3");

@@ -5026,6 +5026,8 @@ export function render(options = {}) {
     categoryToolbarRightActions = false,
     /** 캘린더 사이드바: +·설정을 헤더(.calendar-todo-sidebar-toolbar-actions)에 붙일 때 */
     categoryToolbarActionsSlot = null,
+    /** 캘린더 **할일 사이드바**에만 true — 메인 할일 탭과 탭 인덱스 sessionStorage 공유 시 날짜 탭으로 강제 전환·스크롤되는 문제 방지 */
+    calendarSidebarEmbed = false,
   } = options;
   const hasExplicitInitialTab = Object.prototype.hasOwnProperty.call(
     options,
@@ -5036,8 +5038,9 @@ export function render(options = {}) {
     categoryToolbarActionsSlot &&
     typeof categoryToolbarActionsSlot.replaceChildren === "function";
 
-  /** 사이드바 등 hideToolbar 임베드는 탭 세션과 분리(메인 할일 탭과 캘린더 옆바 혼선 방지) */
-  const persistFixedListTabToSession = !hideToolbar && !hasExplicitInitialTab;
+  /** 메인 할일 탭만 마지막 본 탭 유지. 캘린더 사이드바는 메인과 키를 공유하지 않음 */
+  const persistFixedListTabToSession =
+    !hideToolbar && !hasExplicitInitialTab && !calendarSidebarEmbed;
   const el = document.createElement("div");
   el.className = "app-tab-panel-content todo-list-view";
   const listTabAbort = new AbortController();
@@ -5426,11 +5429,22 @@ export function render(options = {}) {
             subView: subView || "unknown",
           });
         } catch (_) {}
-        try {
-          if (typeof window !== "undefined" && window.__lpRenderMain) {
-            window.__lpRenderMain({ skipTodoSaveBeforeUnmount: true });
-          }
-        } catch (_) {}
+        const inCalendarTodoSidebar = !!el.closest(".todo-list-in-sidebar");
+        if (inCalendarTodoSidebar) {
+          const layout = el.closest(".calendar-monthly-layout");
+          try {
+            layout?._lpRefreshCalendarView?.();
+          } catch (_) {}
+          try {
+            layout?._lpRefreshDateTodoSidebar?.();
+          } catch (_) {}
+        } else {
+          try {
+            if (typeof window !== "undefined" && window.__lpRenderMain) {
+              window.__lpRenderMain({ skipTodoSaveBeforeUnmount: true });
+            }
+          } catch (_) {}
+        }
       })();
     });
   });

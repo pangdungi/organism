@@ -18,7 +18,7 @@ import { setupDeadlineQuickButtons } from "../utils/deadlineQuickButtons.js";
 import {
   afterKpiTodoListMutationScroll,
 } from "../utils/kpiTodoInputScroll.js";
-import { getAccumulatedMinutes, minutesToHhMm, hhMmToMinutes, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
+import { getAccumulatedMinutesForKpiId, minutesToHhMm, hhMmToMinutes, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
 import { defaultManualKpiLogMeta, kpiLogSourceBadgeHtml } from "../utils/kpiLogFields.js";
 import { createKpiHabitGridElement } from "../utils/kpiHabitTrackerGrid.js";
 import { wireKpiHistoryHabitTabs } from "../utils/kpiHistoryHabitTabs.js";
@@ -33,6 +33,7 @@ import {
   restoreKpiTabFromSession,
 } from "../utils/kpiViewUiSession.js";
 import { showKpiTodoAddModal } from "../utils/kpiTodoAddModal.js";
+import { formatKpiCardHeroHtml } from "../utils/kpiViewModal.js";
 import { showKpiTodoEditModal } from "../utils/kpiTodoEditModal.js";
 import { KPI_TAB_EDIT_PENCIL_HTML } from "../utils/kpiTabNameEditIcon.js";
 import { sortKpiLogsNewestFirst } from "../utils/kpiLogsSort.js";
@@ -730,7 +731,7 @@ export function render() {
         targetVal > 0 ? Math.min(100, (currentVal / targetVal) * 100) : 0;
     }
     const targetMins = kpi.targetTimeRequired ? hhMmToMinutes(kpi.targetTimeRequired) : 0;
-    const accumulatedMins = targetMins > 0 ? getAccumulatedMinutes(kpi.name) : 0;
+    const accumulatedMins = targetMins > 0 ? getAccumulatedMinutesForKpiId(kpi.id) : 0;
     const timeProgress = targetMins > 0 ? Math.min(100, (accumulatedMins / targetMins) * 100) : 0;
     const valueComplete = lower
       ? latestLog != null &&
@@ -823,7 +824,7 @@ export function render() {
         accumulatedMins,
         lowerBetter,
       } = getKpiProgress(kpi);
-      const investedMins = getAccumulatedMinutes(kpi.name);
+      const investedMins = getAccumulatedMinutesForKpiId(kpi.id);
       const unitSuffix = kpi.unit ? " " + kpi.unit : "";
       const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
       const currentStr = formatNum(currentVal);
@@ -848,7 +849,7 @@ export function render() {
         <div class="dream-kpi-card-inner">
           <button type="button" class="dream-kpi-card-edit" title="KPI 수정">수정</button>
           <div class="dream-kpi-card-name">${escapeHtml(kpi.name)}${lowerBetter ? '<span class="dream-kpi-card-direction-badge" title="낮을수록 좋음 KPI">↓낮음</span>' : ""}</div>
-          <div class="dream-kpi-card-target-num">${lowerBetter ? '<span class="dream-kpi-card-target-prefix">상한 </span>' : ""}${kpi.targetValue ? escapeHtml(String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) + (kpi.unit ? '<span class="dream-kpi-card-unit"> ' + escapeHtml(kpi.unit) + "</span>" : "") : "—"}</div>
+          <div class="dream-kpi-card-target-num">${formatKpiCardHeroHtml(lowerBetter, currentStr, kpi.unit)}</div>
           ${(kpi.targetStartDate || kpi.targetDeadline) ? `<div class="dream-kpi-card-deadline">${escapeHtml(formatDeadlineRangeCompact(kpi.targetStartDate, kpi.targetDeadline))}</div>` : ""}
           <div class="dream-kpi-card-progress">
             <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${progress}%"></div></div>
@@ -942,7 +943,7 @@ export function render() {
           accumulatedMins,
           lowerBetter,
         } = getKpiProgress(kpi);
-        const investedMins = getAccumulatedMinutes(kpi.name);
+        const investedMins = getAccumulatedMinutesForKpiId(kpi.id);
         const unitSuffix = kpi.unit ? " " + kpi.unit : "";
         const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
         const currentStr = formatNum(currentVal);
@@ -966,7 +967,7 @@ export function render() {
           <div class="dream-kpi-card-inner">
             <button type="button" class="dream-kpi-card-edit" title="KPI 수정">수정</button>
             <div class="dream-kpi-card-name">${escapeHtml(kpi.name)}${lowerBetter ? '<span class="dream-kpi-card-direction-badge" title="낮을수록 좋음 KPI">↓낮음</span>' : ""}</div>
-            <div class="dream-kpi-card-target-num">${lowerBetter ? '<span class="dream-kpi-card-target-prefix">상한 </span>' : ""}${kpi.targetValue ? escapeHtml(String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) + (kpi.unit ? '<span class="dream-kpi-card-unit"> ' + escapeHtml(kpi.unit) + "</span>" : "") : "—"}</div>
+            <div class="dream-kpi-card-target-num">${formatKpiCardHeroHtml(lowerBetter, currentStr, kpi.unit)}</div>
             ${(kpi.targetStartDate || kpi.targetDeadline) ? `<div class="dream-kpi-card-deadline">${escapeHtml(formatDeadlineRangeCompact(kpi.targetStartDate, kpi.targetDeadline))}</div>` : ""}
             <div class="dream-kpi-card-progress">
               <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:100%"></div></div>

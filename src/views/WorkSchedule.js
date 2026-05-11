@@ -216,6 +216,57 @@ function persistWorkTypeDraftToMemAndSync(rawList) {
   notifyWorkScheduleSaved({ types: true });
 }
 
+/** 유형 표시명 변경 시 일정 행의 workType 문자열이 옛 이름을 가리키면 캘린더가 안 바뀜 → 저장 시 같이 갱신 */
+function cascadeWorkScheduleEntriesWorkTypeRenames(renamePairs) {
+  if (!Array.isArray(renamePairs) || renamePairs.length === 0) return false;
+  let next = readWorkScheduleRowsFromMem();
+  let changed = false;
+  for (const pair of renamePairs) {
+    const from = String(pair?.from || "").trim();
+    const to = String(pair?.to || "").trim();
+    if (!from || !to || from === to) continue;
+    next = next.map((r) => {
+      const wt = String(r?.workType || "").trim();
+      if (wt !== from) return r;
+      changed = true;
+      return { ...r, workType: to };
+    });
+  }
+  if (changed) {
+    saveRows(next);
+  }
+  return changed;
+}
+
+/**
+ * 예: 일정은 "생리"인데 유형만 "🩸 생리"로 바뀐 뒤 저장된 경우 — 유일한 후보면 행 문자열을 맞춤
+ * (두 유형이 같은 짧은 문자열을 포함하면 스킵)
+ */
+function repairWorkScheduleRowsWorkTypeByUniqueSuperstring(typeNameList) {
+  const names = Array.from(
+    new Set(
+      (Array.isArray(typeNameList) ? typeNameList : [])
+        .map((n) => String(n || "").trim())
+        .filter(Boolean),
+    ),
+  );
+  if (!names.length) return false;
+  const rows = readWorkScheduleRowsFromMem();
+  let changed = false;
+  const next = rows.map((r) => {
+    const wt = String(r?.workType || "").trim();
+    if (!wt || names.includes(wt)) return r;
+    const candidates = names.filter((n) => n.includes(wt));
+    if (candidates.length !== 1) return r;
+    changed = true;
+    return { ...r, workType: candidates[0] };
+  });
+  if (changed) {
+    saveRows(next);
+  }
+  return changed;
+}
+
 function loadRows() {
   return readWorkScheduleRowsFromMem();
 }
@@ -355,6 +406,7 @@ export function render(opts = {}) {
     /** 모달 안에서만 조작하고, 「저장」 시에 한 번 메모 반영 → 서버 동기화 */
     const draftTypes = cloneWorkTypeOptionsForDraft();
     draftTypes.sort(compareTypeEntriesForPersist);
+    const pendingWorkTypeRenames = [];
 
     function normalizeDraftPersistShape(arr = draftTypes) {
       return sortTypeOptionsList(
@@ -459,6 +511,7 @@ export function render(opts = {}) {
           return;
         }
         t.name = newName;
+        pendingWorkTypeRenames.push({ from: origName, to: newName });
         draftTypes.sort(compareTypeEntriesForPersist);
         finished = true;
         renderTypeListsFromDraft();
@@ -635,15 +688,16 @@ export function render(opts = {}) {
     });
 
     saveBtn.addEventListener("click", () => {
+      const renamesSnapshot = pendingWorkTypeRenames.slice();
       try {
         persistWorkTypeDraftToMemAndSync(draftTypes);
+        pendingWorkTypeRenames.length = 0;
+        cascadeWorkScheduleEntriesWorkTypeRenames(renamesSnapshot);
+        repairWorkScheduleRowsWorkTypeByUniqueSuperstring(
+          draftTypes.map((t) => String(t?.name || "").trim()).filter(Boolean),
+        );
         lastSavedComparable = draftComparableSnapshot();
-        try {
-          showToast(
-            "저장했습니다.",
-            "변경 내용을 서버에 반영했습니다.",
-          );
-        } catch (_) {}
+        modal.remove();
       } catch (err) {
         try {
           showToast(
