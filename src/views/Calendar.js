@@ -49,6 +49,7 @@ import {
   clearOverlapFromBudgetGoalsOnly,
   formatGoalDiff,
   parseTimeToHours,
+  isTimeLedgerRowLiveRecording,
 } from "./Time.js";
 import { showToast } from "../utils/showToast.js";
 import { supabase } from "../supabase.js";
@@ -4404,6 +4405,21 @@ function weekFlowExpectedSpanHasLedgerMatch(dayRows, span) {
   return false;
 }
 
+/** 예상 과제와 같은 이름·taskId로, 지금 마감 없이 짜고 있는 실제 기록이 있는지 */
+function weekFlowSpanHasMatchingLiveRecording(dayRows, span) {
+  if (!Array.isArray(dayRows) || dayRows.length === 0 || !span) return false;
+  const expName = normTaskNameForWeekFlowMatch(span.taskName);
+  const expTid = String(span._task?.taskId || "").trim();
+  for (const r of dayRows) {
+    if (!isTimeLedgerRowLiveRecording(r)) continue;
+    const rtid = String(r?.taskId || "").trim();
+    if (expTid && rtid && expTid === rtid) return true;
+    const rn = normTaskNameForWeekFlowMatch(r?.taskName);
+    if (expName && rn && expName === rn) return true;
+  }
+  return false;
+}
+
 /** 1일 뷰 시간표(예상/실제) 오버레이만 생성 - budget 테이블 재구성 없이 시간표만 갱신용 */
 function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   const storedGoals = getBudgetGoals(targetKey);
@@ -5639,10 +5655,13 @@ function render1DayView(
             dayLedgerRowsTL,
             span,
           );
-          const inProgress =
+          const inExpectedWindow =
             targetKey === todayYmdForTimeline &&
             span.startMin <= nowMinuteClockTL &&
             nowMinuteClockTL < span.endMin;
+          const liveRecordingThisSpan =
+            inExpectedWindow &&
+            weekFlowSpanHasMatchingLiveRecording(dayLedgerRowsTL, span);
 
           const item = document.createElement("div");
           item.className = "calendar-1day-timeline-item";
@@ -5688,8 +5707,15 @@ function render1DayView(
           } else {
             card.title = titleBase;
           }
-          if (inProgress) {
+          if (liveRecordingThisSpan) {
             card.classList.add("calendar-1day-timeline-card--in-progress");
+          }
+          if (
+            inExpectedWindow &&
+            !liveRecordingThisSpan &&
+            !ledgerMatched
+          ) {
+            card.classList.add("calendar-1day-timeline-card--expected-now");
           }
           if (accent) {
             card.style.borderLeftColor = accent;
@@ -5739,7 +5765,7 @@ function render1DayView(
           durEl.className = "calendar-1day-timeline-card-duration";
           durEl.textContent = `${durMin}분`;
           meta.appendChild(durEl);
-          if (inProgress) {
+          if (liveRecordingThisSpan) {
             const prog = document.createElement("span");
             prog.className = "calendar-1day-timeline-card-progress";
             prog.textContent = "진행 중";
@@ -6952,16 +6978,26 @@ function render1WeekView(
           meta.appendChild(badge);
         }
 
-        const inProgress =
+        const inExpectedWindow =
           key === todayYmd &&
           span.startMin <= nowMinuteClock &&
           nowMinuteClock < span.endMin;
-        if (inProgress) {
+        const liveRecordingThisSpan =
+          inExpectedWindow &&
+          weekFlowSpanHasMatchingLiveRecording(dayLedgerRows, span);
+
+        if (liveRecordingThisSpan) {
           card.classList.add("calendar-1week-flow-card--in-progress");
           const prog = document.createElement("span");
           prog.className = "calendar-1week-flow-card-progress";
           prog.textContent = "진행 중";
           meta.appendChild(prog);
+        } else if (
+          inExpectedWindow &&
+          !liveRecordingThisSpan &&
+          !ledgerMatched
+        ) {
+          card.classList.add("calendar-1week-flow-card--expected-now");
         } else if (!ledgerMatched) {
           card.classList.add("calendar-1week-flow-card--ledger-pending");
         }
@@ -7711,11 +7747,8 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
       chainEls().forEach(clearEl);
       return;
     }
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        chainEls().forEach(stampEl);
-      });
-    });
+    /* 이중 rAF 는 첫 1~2프레임 동안 인라인이 비어 데스크톱형 flex(가로 6:4)가 잠깐 보이는 원인 — CSS로 체인 보강 후 동기 스탬프 */
+    chainEls().forEach(stampEl);
   }
 
   subTabsControlRoot.querySelectorAll(".calendar-sub-tab").forEach((btn) => {

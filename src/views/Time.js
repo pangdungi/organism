@@ -2347,6 +2347,11 @@ function timeLedgerRowIsLiveInProgress(row) {
   return mobileCardNeedsLiveClock(row);
 }
 
+/** Calendar 타임라인 등: 실제로 마감 없이 기록 중인 행인지 */
+export function isTimeLedgerRowLiveRecording(row) {
+  return timeLedgerRowIsLiveInProgress(row);
+}
+
 /**
  * 오늘 날짜 기준, 현재 진행 중인 시간기록 행 하나(시작 최신 순).
  * 없으면 null.
@@ -5314,9 +5319,9 @@ export function render() {
                   <input type="date" class="time-task-log-date-start" name="time-task-log-date" data-hide-delete-btn="true" data-use-native-mobile="true" />
                   <span class="time-task-log-date-overlay" aria-hidden="true"></span>
                 </div>
-                <span class="time-task-log-datetime-sep">−</span>
+                <span class="time-task-log-datetime-sep">-</span>
                 <input type="text" class="time-task-log-time-start" name="time-task-log-time-start" placeholder="hh:mm" maxlength="5" />
-                <span class="time-task-log-datetime-sep">−</span>
+                <span class="time-task-log-datetime-sep">-</span>
                 <input type="text" class="time-task-log-time-end" name="time-task-log-time-end" placeholder="hh:mm" maxlength="5" />
               </div>
             </div>
@@ -5659,7 +5664,7 @@ export function render() {
       .trim()
       .match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (!m) return "";
-    return `${m[1]}. ${m[2]}. ${m[3]}`;
+    return `${m[1]}.${m[2]}.${m[3]}`;
   }
 
   function syncTaskLogDateOverlay() {
@@ -11407,7 +11412,7 @@ export function renderTimeBudgetTablesForCalendar(
     const formatYmdOverlay = (isoTen) => {
       const m = String(isoTen || "").trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
       if (!m) return "";
-      return `${m[1]}. ${m[2]}. ${m[3]}`;
+      return `${m[1]}.${m[2]}.${m[3]}`;
     };
 
     const normHhMm = (val) => {
@@ -11502,9 +11507,9 @@ export function renderTimeBudgetTablesForCalendar(
                       <input type="date" class="time-task-log-date-start calendar-budget-schedule-modal-date" data-hide-delete-btn="true" data-use-native-mobile="true" />
                       <span class="time-task-log-date-overlay" aria-hidden="true"></span>
                     </div>
-                    <span class="time-task-log-datetime-sep">−</span>
+                    <span class="time-task-log-datetime-sep">-</span>
                     <input type="text" class="time-task-log-time-start" name="calendar-budget-time-start" placeholder="hh:mm" maxlength="5" />
-                    <span class="time-task-log-datetime-sep">−</span>
+                    <span class="time-task-log-datetime-sep">-</span>
                     <input type="text" class="time-task-log-time-end" name="calendar-budget-time-end" placeholder="hh:mm" maxlength="5" />
                   </div>
                 </div>
