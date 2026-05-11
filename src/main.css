@@ -223,6 +223,8 @@ html {
   --line-l2: 1px solid #e5e5ea;
   --line-l3: 0.5px solid rgba(60, 60, 67, 0.18);
   --line-l1-color: #d2d2d7;
+  /* 상단·탭류 활성 밑줄 통일 */
+  --tab-active-border-bottom-color: #7fb2bf;
   --line-l2-color: #e5e5ea;
   --line-l3-color: rgba(60, 60, 67, 0.18);
   /* 기존 L4~L10 사용처 호환: 전부 위 3개로 통일 */
@@ -873,7 +875,7 @@ body {
   color: var(--badge-muted-text);
 }
 
-/* ----- 인증 게이트: Viridian 다크 · 로그인 전용 ----- */
+/* ----- 인증 게이트: 밝은 톤 · 로그인 전용 ----- */
 .login-page.login-page--gate {
   position: fixed;
   inset: 0;
@@ -885,15 +887,15 @@ body {
   align-items: stretch;
   justify-content: flex-start;
   padding: 0;
-  background: #1a1a1a;
-  color-scheme: dark;
+  background: #e8f1f4;
+  color-scheme: light;
 }
 
 .auth-gate-header {
   flex-shrink: 0;
-  background: rgba(26, 26, 26, 0.92);
-  backdrop-filter: blur(0.5rem);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #ffffff;
+  backdrop-filter: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   overflow: visible;
 }
 
@@ -904,6 +906,19 @@ body {
   overflow: visible;
 }
 
+.auth-gate-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.auth-gate-logo-mark {
+  display: block;
+  flex-shrink: 0;
+  border-radius: 0.5rem;
+  box-shadow: 0 0.0625rem 0.25rem rgba(31, 70, 84, 0.12);
+}
+
 /* Organism 로고: 시스템 산세리프 */
 .auth-gate-logo {
   font-family: var(--font-organism-brand);
@@ -911,7 +926,7 @@ body {
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.35;
-  color: var(--ui-btn-primary-fg);
+  color: #1f4654;
 }
 
 .auth-gate-body {
@@ -923,6 +938,14 @@ body {
   min-height: 0;
 }
 
+/* 카드: 로그인 패널 박스 입력과 대비 — 페이지는 살짝 틴트, 카드는 흰 바탕 */
+.login-page--gate .login-card--brand {
+  background: #ffffff !important;
+  border: 1px solid rgba(31, 70, 84, 0.12) !important;
+  border-radius: 0.625rem !important;
+  box-shadow: 0 0.5rem 2rem rgba(31, 70, 84, 0.1) !important;
+}
+
 .auth-gate-footer {
   flex-shrink: 0;
   padding: 1rem 1.5rem 1.5rem;
@@ -931,36 +954,38 @@ body {
   font-size: 0.8125rem;
   font-weight: 300;
   line-height: 1.55;
-  color: rgba(255, 255, 255, 0.45);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(26, 26, 26, 0.85);
+  color: rgba(31, 70, 84, 0.55);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  background: #ffffff;
 }
 
-/* 카드: 브랜드 Viridian #344945 */
-.login-page--gate .login-card--brand {
-  background: #344945 !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  border-radius: 0.625rem !important;
-  box-shadow: 0 0.5rem 2.5rem rgba(0, 0, 0, 0.45) !important;
+/* 인증 카드 하단 저작권(로그인/회원가입 카드 안) */
+.login-page--gate .auth-gate-footer--in-card {
+  margin-top: 1.25rem;
+  padding: 1rem 0.75rem 0;
+  border-top: 1px solid rgba(31, 70, 84, 0.1);
+  background: transparent;
+  color: rgba(31, 70, 84, 0.48);
+  font-size: 0.75rem;
 }
 
 .login-page--gate .login-title {
   font-family: var(--font-heading);
   font-weight: 700;
-  color: #ffffff;
+  color: #1f4654;
   letter-spacing: -0.02em;
 }
 
 .login-page--gate .login-desc {
   font-family: "Noto Sans KR", var(--font-body);
   font-weight: 300;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(31, 70, 84, 0.72);
   line-height: 1.55;
 }
 
 .login-page--gate .login-desc strong {
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.75);
+  color: #1f4654;
 }
 
 .login-page--gate .login-label {
@@ -969,92 +994,389 @@ body {
   font-size: 0.6875rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(31, 70, 84, 0.55);
 }
 
 .login-page--gate .login-input {
-  color: #ffffff !important;
-  -webkit-text-fill-color: #ffffff;
-  background-color: rgba(255, 255, 255, 0.06) !important;
-  caret-color: #ffffff;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  color: #1f4654 !important;
+  -webkit-text-fill-color: #1f4654;
+  background-color: transparent !important;
+  caret-color: #1f4654;
+  border-bottom: var(--input-border-idle);
 }
 
 .login-page--gate .login-input::placeholder {
-  color: rgba(255, 255, 255, 0.35);
-  -webkit-text-fill-color: rgba(255, 255, 255, 0.35);
+  color: var(--text-placeholder);
+  -webkit-text-fill-color: var(--text-placeholder);
   font-family: "Noto Sans KR", var(--font-body);
   font-weight: 300;
 }
 
 .login-page--gate .login-input:focus {
-  border-bottom-color: rgba(255, 255, 255, 0.42);
-  color: #ffffff !important;
-  -webkit-text-fill-color: #ffffff;
-  background-color: rgba(255, 255, 255, 0.08) !important;
+  outline: none;
+  box-shadow: none;
+  border-bottom: 1.5px solid #1f4654;
+  color: #1f4654 !important;
+  -webkit-text-fill-color: #1f4654;
+  background-color: rgba(242, 247, 249, 0.65) !important;
 }
 
-/* Chrome/Safari 자동완성: 노란·하얀 배경 + 검정 글자 덮어쓰기 */
+/* Chrome/Safari 자동완성: 카드 톤에 맞춤 */
 .login-page--gate .login-input:-webkit-autofill,
 .login-page--gate .login-input:-webkit-autofill:hover,
 .login-page--gate .login-input:-webkit-autofill:focus,
 .login-page--gate .login-input:-webkit-autofill:active {
-  -webkit-text-fill-color: #ffffff !important;
-  caret-color: #ffffff;
-  box-shadow: 0 0 0 100rem #344945 inset !important;
-  -webkit-box-shadow: 0 0 0 100rem #344945 inset !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+  -webkit-text-fill-color: #1f4654 !important;
+  caret-color: #1f4654;
+  box-shadow: 0 0 0 100rem #f2f7f9 inset !important;
+  -webkit-box-shadow: 0 0 0 100rem #f2f7f9 inset !important;
+  border-bottom: 1px solid #c4bea8;
   transition: background-color 99999s ease-out 0s;
+}
+
+/* 로그인 패널: 박스형 입력(터치 영역·테두리 명확)
+ * #app input[type="email"] 등 전역 폼 규칙보다 구체적으로 잡아 이메일 좌우 패딩 유지
+ * 비밀번호 행 내부(.login-input--in-password-row)는 기존 행 테두리·패딩 유지 */
+#app .login-page--gate input.login-input--auth-boxed:not(.login-input--in-password-row) {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 3rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid rgba(31, 70, 84, 0.22) !important;
+  border-radius: 0.375rem !important;
+  background: #ffffff !important;
+}
+
+#app .login-page--gate input.login-input--auth-boxed:not(.login-input--in-password-row):focus {
+  outline: none;
+  border: 1.5px solid #1f4654 !important;
+  box-shadow: 0 0 0 1px rgba(31, 70, 84, 0.12);
+  background: #ffffff !important;
+}
+
+#app .login-page--gate input.login-input--auth-boxed:not(.login-input--in-password-row):-webkit-autofill,
+#app .login-page--gate input.login-input--auth-boxed:not(.login-input--in-password-row):-webkit-autofill:hover,
+#app .login-page--gate input.login-input--auth-boxed:not(.login-input--in-password-row):-webkit-autofill:focus,
+#app .login-page--gate input.login-input--auth-boxed:not(.login-input--in-password-row):-webkit-autofill:active {
+  box-shadow: 0 0 0 100rem #ffffff inset !important;
+  -webkit-box-shadow: 0 0 0 100rem #ffffff inset !important;
+  border: 1px solid rgba(31, 70, 84, 0.22) !important;
+}
+
+#app .login-page--gate input.login-input--auth-boxed::placeholder {
+  font-size: 0.875rem;
+  line-height: 1.35;
+}
+
+/* 이메일 박스(.375rem)와 동일한 둥근 테두리 — #app 전역 password 스타일보다 우선 */
+#app .login-page--gate .login-password-row {
+  display: flex;
+  align-items: stretch;
+  min-height: 3rem;
+  border: 1px solid rgba(31, 70, 84, 0.22);
+  border-radius: 0.375rem !important;
+  -webkit-border-radius: 0.375rem !important;
+  overflow: hidden;
+  background: #ffffff;
+  box-sizing: border-box;
+  /* Safari: 자식 레이어가 모서리 밖으로 깨지는 경우 완화 */
+  isolation: isolate;
+}
+
+#app .login-page--gate .login-password-row:focus-within {
+  border-width: 1.5px;
+  border-color: #1f4654;
+  box-shadow: 0 0 0 1px rgba(31, 70, 84, 0.1);
+  border-radius: 0.375rem !important;
+  -webkit-border-radius: 0.375rem !important;
+}
+
+#app .login-page--gate .login-input--in-password-row {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 3rem !important;
+  padding: 0.8rem 0.5rem 0.8rem 1rem !important;
+  border: none !important;
+  border-bottom: none !important;
+  /* 왼쪽만 이메일 입력과 같은 R — 오른쪽은 토글과 맞닿음 */
+  border-radius: 0.375rem 0 0 0.375rem !important;
+  -webkit-border-radius: 0.375rem 0 0 0.375rem !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+#app .login-page--gate .login-input--in-password-row:focus {
+  border: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  outline: none !important;
+  border-radius: 0.375rem 0 0 0.375rem !important;
+}
+
+/* 박스형 비번 행: 포커스·전역 #app password:focus·autofill 배경 제거(흰 박스와 동일) */
+#app .login-page--gate .login-input--in-password-row:-webkit-autofill,
+#app .login-page--gate .login-input--in-password-row:-webkit-autofill:hover,
+#app .login-page--gate .login-input--in-password-row:-webkit-autofill:focus,
+#app .login-page--gate .login-input--in-password-row:-webkit-autofill:active {
+  -webkit-text-fill-color: #1f4654 !important;
+  caret-color: #1f4654;
+  box-shadow: 0 0 0 100rem #ffffff inset !important;
+  -webkit-box-shadow: 0 0 0 100rem #ffffff inset !important;
+  border: none !important;
+  border-radius: 0.375rem 0 0 0.375rem !important;
+  -webkit-border-radius: 0.375rem 0 0 0.375rem !important;
+  transition: background-color 99999s ease-out 0s;
+}
+
+.login-page--gate .login-pw-toggle {
+  flex-shrink: 0;
+  width: 3rem;
+  min-height: 3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #1f4654;
+  cursor: pointer;
+  border-radius: 0 0.375rem 0.375rem 0;
+  font-family: inherit;
+}
+
+.login-page--gate .login-pw-toggle:hover {
+  background: #cce0e6;
+}
+
+.login-page--gate .login-pw-toggle:active {
+  background: #b8d4dc;
+}
+
+.login-page--gate .login-pw-toggle:focus-visible {
+  outline: 2px solid #1f4654;
+  outline-offset: -2px;
+}
+
+.login-page--gate .login-pw-toggle__icon[hidden] {
+  display: none !important;
+}
+
+.login-page--gate .login-form--login-boxed {
+  gap: 1.1rem;
+}
+
+.login-page--gate .login-field--auth-boxed {
+  gap: 0.45rem;
+}
+
+.login-page--gate .login-change-pw--grouped {
+  margin-top: 1rem;
+  padding: 1rem 0.75rem;
+  background: rgba(31, 70, 84, 0.05);
+  border-radius: 0.5rem;
+  border: 1px solid rgba(31, 70, 84, 0.08);
+}
+
+.login-page--gate .login-change-pw-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem 0.35rem;
+}
+
+.login-page--gate .login-change-pw {
+  border-top: none;
+}
+
+.login-page--gate .login-change-form input.login-input--auth-boxed {
+  margin-top: 0.35rem;
+}
+
+.auth-pw-modal[hidden] {
+  display: none !important;
+}
+
+.auth-pw-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+.auth-pw-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(31, 70, 84, 0.4);
+}
+
+.auth-pw-modal__panel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 22.5rem;
+  max-height: min(calc(100vh - 2rem), 32rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0;
+  padding: 1.15rem 1.25rem 1.35rem;
+  background: #ffffff;
+  /* 전역 * { border-radius: 0 !important } 대응 */
+  border-radius: 1rem !important;
+  -webkit-border-radius: 1rem !important;
+  -webkit-background-clip: padding-box;
+  background-clip: padding-box;
+  box-shadow: 0 0.5rem 2rem rgba(31, 70, 84, 0.22);
+  box-sizing: border-box;
+  isolation: isolate;
+  transform: translateZ(0);
+}
+
+.auth-pw-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.auth-pw-modal__title {
+  margin: 0;
+  font-family: "Noto Sans KR", var(--font-body);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1f4654;
+  letter-spacing: -0.02em;
+}
+
+.auth-pw-modal__close {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0.375rem !important;
+  -webkit-border-radius: 0.375rem !important;
+  background: transparent;
+  color: #1f4654;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.auth-pw-modal__close:hover {
+  background: rgba(31, 70, 84, 0.08);
+}
+
+.auth-pw-modal__tabs {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.auth-pw-modal__tab {
+  flex: 1;
+  margin: 0;
+  padding: 0.5rem 0.35rem;
+  border: 1px solid rgba(31, 70, 84, 0.18);
+  border-radius: 0.5rem !important;
+  -webkit-border-radius: 0.5rem !important;
+  background: rgba(255, 255, 255, 0.9);
+  color: rgba(31, 70, 84, 0.75);
+  font-family: "Noto Sans KR", var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.auth-pw-modal__tab.is-active {
+  background: rgba(31, 70, 84, 0.1);
+  border-color: rgba(31, 70, 84, 0.28);
+  color: #1f4654;
+  font-weight: 600;
+}
+
+.auth-pw-modal__body .login-change-form {
+  margin-top: 0;
+}
+
+body.auth-pw-modal-open {
+  overflow: hidden;
 }
 
 .login-page--gate .login-show-pw {
   font-family: "Noto Sans KR", var(--font-body);
   font-weight: 300;
   font-size: 0.8125rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(31, 70, 84, 0.75);
 }
 
 .login-page--gate .login-show-pw-checkbox {
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  background: transparent;
+  border: var(--cb-border);
+  background: var(--cb-bg);
 }
 
 .login-page--gate .login-show-pw-checkbox:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: #cce0e6;
 }
 
 .login-page--gate .login-show-pw-checkbox:checked {
-  background-color: rgba(255, 255, 255, 0.95);
-  border-color: rgba(255, 255, 255, 0.95);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-6' stroke='%23344945' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E");
+  background-color: #1f4654;
+  border-color: #1f4654;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-6' stroke='%23ffffff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E");
   background-size: 70%;
   background-position: center;
   background-repeat: no-repeat;
 }
 
-.login-page--gate .login-change-pw {
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
 .login-page--gate .login-forgot-desc {
   font-family: "Noto Sans KR", var(--font-body);
   font-weight: 300;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(31, 70, 84, 0.72);
 }
 
 .login-page--gate .login-link {
   font-family: "Noto Sans KR", var(--font-body);
-  font-weight: 300;
-  color: rgba(255, 255, 255, 0.75);
+  font-weight: 400;
+  font-size: 0.9rem;
+  color: #1f4654;
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.35rem;
 }
 
 .login-page--gate .login-link:hover {
-  color: #ffffff;
-  text-decoration: underline;
+  background: #cce0e6;
+  color: #1f4654;
+  text-decoration: none;
+}
+
+.login-page--gate .login-link:active {
+  background: #cce0e6;
+  color: #163a46;
+}
+
+.login-page--gate .login-link:focus-visible {
+  outline: 2px solid #1f4654;
+  outline-offset: 2px;
 }
 
 .login-page--gate .login-link-sep {
-  color: rgba(255, 255, 255, 0.22);
+  color: rgba(31, 70, 84, 0.35);
 }
 
 .login-page--gate .login-auth-switch {
@@ -1062,25 +1384,78 @@ body {
   text-align: center;
 }
 
+/* 로그인 CTA 아래: 회원가입 */
 .login-page--gate .login-auth-switch--tight {
-  margin: 0 0 0.75rem;
+  margin: 0.75rem 0 0;
   text-align: center;
 }
 
-/* CTA: 카드 톤 유지, 얇은 유리감(순백 버튼 지양) */
+.login-page--gate .login-auth-switch--pw-links {
+  margin: 1rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem 0.35rem;
+  text-align: center;
+}
+
+/* 회원가입 전환 — 로그인과 동등한 부가 액션으로 가시성 확보 */
+.login-page--gate .login-link--sub {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #1f4654;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid rgba(31, 70, 84, 0.25);
+  border-radius: 0.375rem;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.login-page--gate .login-link--sub:hover {
+  background: #cce0e6;
+  border-color: rgba(31, 70, 84, 0.35);
+  color: #163a46;
+}
+
+.login-page--gate .login-link--sub:active {
+  background: #b8d4dc;
+  color: #163a46;
+}
+
+/* CTA: 브랜드 딥 틸 — 호버/클릭은 연한 블루 그레이 */
 .login-page--gate .login-btn-cta {
-  color: rgba(255, 255, 255, 0.94) !important;
-  background: rgba(255, 255, 255, 0.1) !important;
-  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  color: #ffffff !important;
+  background: #1f4654 !important;
+  border: none !important;
   border-radius: 0.5rem !important;
   font-family: var(--font-heading);
   font-weight: 600;
 }
 
 .login-page--gate .login-btn-cta:hover {
-  background: rgba(255, 255, 255, 0.16) !important;
-  border-color: rgba(255, 255, 255, 0.4) !important;
+  background: #2a5664 !important;
   color: #ffffff !important;
+}
+
+.login-page--gate .login-btn-cta:active {
+  background: #cce0e6 !important;
+  color: #163a46 !important;
+}
+
+.login-page--gate .login-btn-cta:focus-visible {
+  outline: 2px solid #1f4654;
+  outline-offset: 2px;
+}
+
+@media (min-width: 48rem) {
+  .login-page--gate .auth-gate-body {
+    padding-block: clamp(2rem, 5vh, 3.75rem);
+  }
+
+  .login-page--gate .login-wrap {
+    width: 100%;
+    max-width: 23.5rem;
+  }
 }
 
 /* ----- 로그인 카드 (레거시 전체화면 로그인용 백업) ----- */
@@ -13029,7 +13404,7 @@ body {
 
 .work-schedule-view-tab.active {
   color: var(--text-ink);
-  border-bottom: var(--line-l1);
+  border-bottom: 1px solid var(--tab-active-border-bottom-color);
 }
 
 /* 근무표 상단: 하루 근무시간(왼쪽) + 합계(오른쪽) + 필터 — 좌우 패딩 동일 */
@@ -13331,7 +13706,7 @@ body {
 
 .asset-view-tab.active {
   color: var(--text-ink);
-  border-bottom-color: var(--line-l1-color);
+  border-bottom-color: var(--tab-active-border-bottom-color);
 }
 
 .asset-content-wrap {
@@ -16750,8 +17125,8 @@ col.asset-expense-col-amount,
   display: inline-flex;
   align-items: center;
   padding: 0.35rem 0.75rem;
-  background: rgba(122, 158, 138, 0.2);
-  color: var(--line-l1-color);
+  background: transparent;
+  color: #1f4654;
   border-radius: 62.4375rem;
   font-size: 0.9rem;
   font-weight: 500;
@@ -18087,8 +18462,8 @@ col.asset-expense-col-amount,
   display: inline-flex;
   align-items: center;
   padding: 0.35rem 0.75rem;
-  background: rgba(122, 158, 138, 0.2);
-  color: var(--line-l1-color);
+  background: transparent;
+  color: #1f4654;
   border-radius: 62.4375rem;
   font-size: 0.9rem;
   font-weight: 500;
@@ -19273,7 +19648,7 @@ col.asset-expense-col-amount,
 .work-schedule-monthly-filter-btn.active {
   color: var(--text-ink);
   background: transparent;
-  border-bottom-color: var(--text-ink);
+  border-bottom-color: var(--tab-active-border-bottom-color);
 }
 
 .work-schedule-monthly-nav {
@@ -19798,7 +20173,7 @@ col.asset-expense-col-amount,
 .todo-category-tab.active {
   color: var(--text-ink);
   font-weight: 600;
-  border-bottom-color: var(--line-l1-color);
+  border-bottom-color: var(--tab-active-border-bottom-color);
   margin-bottom: 0;
 }
 
@@ -24702,7 +25077,7 @@ svg.todo-card-reminder-icon {
 
 .kpi-view-tab.active {
   color: #333;
-  border-bottom-color: var(--line-l3-color);
+  border-bottom-color: var(--tab-active-border-bottom-color);
 }
 
 /* 꿈 마인드맵 - 트리 브랜치 스타일 */
@@ -26891,7 +27266,7 @@ body.kpi-resizing {
 
 .time-view-tab.active {
   color: #1f4654;
-  border-bottom-color: var(--line-l1-color);
+  border-bottom-color: var(--tab-active-border-bottom-color);
   margin-bottom: 0;
 }
 .time-view-tab.active:hover {
@@ -31390,7 +31765,7 @@ button.time-modal-traffic {
 }
 .time-task-log-expense-tab.active {
   color: var(--text-body);
-  border-bottom-color: var(--text-body);
+  border-bottom-color: var(--tab-active-border-bottom-color);
 }
 
 .time-task-log-expense-amount-wrap {
@@ -32854,9 +33229,7 @@ button.time-modal-traffic {
   -webkit-overflow-scrolling: touch;
   box-sizing: border-box;
   border: none;
-  border-top: var(--line-l3);
-  border-bottom: var(--line-l3);
-  background: var(--content-bg);
+  background: transparent;
 }
 
 .time-retrospect-table {
@@ -33021,12 +33394,16 @@ button.time-modal-traffic {
   min-height: 0;
   vertical-align: middle;
   padding: 0.28rem 0.32rem;
-  background: var(--content-bg);
+  background: transparent;
   text-align: center;
+  font-size: 0.8125rem;
+  line-height: 1.32;
+  font-weight: 400;
+  color: var(--text-caption-color, #a8a290);
 }
 
 .time-retrospect-table td.time-retrospect-td-day-cell.time-retrospect-td--out {
-  background: rgba(42, 56, 40, 0.03);
+  background: transparent;
   opacity: 0.65;
 }
 
@@ -33038,7 +33415,7 @@ button.time-modal-traffic {
   ) {
   white-space: pre-line;
   line-height: 1.32;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
 }
 
 .time-retrospect-table
@@ -33075,25 +33452,27 @@ button.time-modal-traffic {
 
 .time-retrospect-habit-ox {
   font-family: var(--font-mono);
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-size: 0.8125rem;
+  font-weight: 500;
   line-height: 1;
   letter-spacing: 0.04em;
+  color: var(--text-caption-color, #a8a290);
 }
 
 .time-retrospect-habit-ox--o {
-  color: #c62828;
-}
-
-.time-retrospect-habit-ox--x {
-  color: var(--text-muted);
+  color: #a85c5c;
   font-weight: 500;
 }
 
-.time-retrospect-habit-ox--dash {
-  color: var(--text-placeholder);
+.time-retrospect-habit-ox--x {
+  color: var(--text-caption-color, #a8a290);
   font-weight: 400;
-  font-size: 0.8125rem;
+}
+
+.time-retrospect-habit-ox--dash {
+  color: var(--text-caption-color, #a8a290);
+  font-weight: 400;
+  font-size: 0.75rem;
 }
 
 .time-retrospect-diet-lines {
@@ -33110,12 +33489,12 @@ button.time-modal-traffic {
 }
 
 .time-retrospect-diet--healthy {
-  color: #c62828;
+  color: #9a4a4a;
   font-weight: 500;
 }
 
 .time-retrospect-diet--unhealthy {
-  color: #1565c0;
+  color: #4a6fa8;
   font-weight: 500;
 }
 
@@ -33153,10 +33532,20 @@ button.time-modal-traffic {
 .time-retrospect-media-time {
   flex: 0 0 auto;
   font-family: var(--font-mono);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: #1565c0;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-caption-color, #a8a290);
   line-height: 1.2;
+}
+
+/* 회고: 날짜 구간 필터만 입력 영역 배경 (#F2F7F9) */
+.time-ledger-view[data-time-content-view="retrospect"]
+  .time-filter-nav-cluster
+  .time-filter-date-field {
+  background: #f2f7f9 !important;
+  border-radius: 0.375rem;
+  padding: 0.2rem 0.5rem;
+  box-sizing: border-box;
 }
 
 .time-retrospect-empty {
@@ -33246,7 +33635,10 @@ button.time-modal-traffic {
 
   .time-retrospect-table td.time-retrospect-td-day-cell {
     padding: 0.15rem 0.1rem;
-    font-size: 0.6875rem;
+    font-size: 0.625rem;
+    color: var(--text-caption-color, #a8a290);
+    font-weight: 400;
+    background: transparent;
   }
 
   .time-retrospect-table tr.time-retrospect-tr-kpi-domain th.time-retrospect-th-kpi-domain {
@@ -33264,7 +33656,7 @@ button.time-modal-traffic {
   }
 
   .time-retrospect-habit-ox {
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
   }
 
   .time-retrospect-habit-done-detail {
@@ -33280,12 +33672,12 @@ button.time-modal-traffic {
     td.time-retrospect-td-day-cell.time-retrospect-td--kpi:not(
       .time-retrospect-td--kpi-habit
     ) {
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     line-height: 1.22;
   }
 
   .time-retrospect-media-time {
-    font-size: 0.65rem;
+    font-size: 0.6rem;
   }
 
   .time-retrospect-media-bar-track {
@@ -37888,7 +38280,7 @@ img.time-btn-icon {
 .idea-hourly-tab.active {
   background: transparent;
   color: var(--text-ink);
-  border-bottom-color: var(--text-ink);
+  border-bottom-color: var(--tab-active-border-bottom-color);
 }
 
 .idea-freelance-divider {
@@ -39255,14 +39647,14 @@ img.time-btn-icon {
 .dream-kpi-filter-btn.active {
   font-weight: 500;
   color: var(--text-ink);
-  border-bottom: 2px solid var(--line-l1-color);
+  border-bottom: 2px solid var(--tab-active-border-bottom-color);
   margin-bottom: -0.125rem; /* 밑줄이 하단 구분선에 딱 맞게 */
 }
 
 .dream-kpi-filter-btn.active:hover {
   font-weight: 500;
   color: var(--text-ink);
-  border-bottom-color: var(--line-l1-color);
+  border-bottom-color: var(--tab-active-border-bottom-color);
 }
 
 /* 달성 완료 접기 섹션 */
@@ -41755,7 +42147,7 @@ img.time-btn-icon {
 }
 
 .diary-view-inner--desktop-mac-diary .diary-page-list-scroll-wrap {
-  background: #f2f7f9;
+  background: #fff;
 }
 
 .diary-view-inner--desktop-mac-diary .diary-page-item:hover {
@@ -44887,7 +45279,7 @@ img.time-btn-icon {
 
 .calendar-1day-budget-column .time-daily-budget-tab.active {
   color: var(--gray-800, #1f2937);
-  border-bottom-color: var(--gray-800, #1f2937);
+  border-bottom-color: var(--tab-active-border-bottom-color);
 }
 
 .calendar-1day-budget-column .time-daily-budget-tab-panels {
@@ -47806,7 +48198,7 @@ tr.time-budget-calendar-row--readonly {
 .calendar-kpi-tab.active {
   color: #111827;
   font-weight: 600;
-  border-bottom-color: var(--text-body);
+  border-bottom-color: var(--tab-active-border-bottom-color);
 }
 
 .calendar-kpi-tab-icon {
@@ -48678,7 +49070,7 @@ tr.time-budget-calendar-row--readonly {
 
 .routine-view-tab.active {
   color: #333;
-  border-bottom-color: var(--line-l3-color);
+  border-bottom-color: var(--tab-active-border-bottom-color);
 }
 
 .routine-view-content {
@@ -49509,7 +49901,7 @@ tr.time-budget-calendar-row--readonly {
   padding: 0.125rem 0.375rem;
   font-size: 0.8rem;
   color: var(--text-body);
-  background: #f5f5f7;
+  background: #f2f7f9;
   border: var(--line-l3);
   border-radius: 0.25rem;
 }
