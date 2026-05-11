@@ -23,6 +23,7 @@ import {
   getKpiTodosAsTasks,
   getKpiDailyRepeatInfoByKpiName,
   getRetrospectKpiSectionedRows,
+  getRetrospectKpiHabitMarkState,
   formatRetrospectKpiDayCell,
 } from "../utils/kpiTodoSync.js";
 import { kpiTodoFineTrace } from "../utils/kpiTodoFineTrace.js";
@@ -9572,10 +9573,38 @@ export function render() {
                   td.textContent = formatRetrospectExpenseDayCell(ymd);
                 } else if (rowDef.kind === "kpi" && rowDef.kpiDef) {
                   td.classList.add("time-retrospect-td--kpi");
-                  td.textContent = formatRetrospectKpiDayCell(
+                  const habitState = getRetrospectKpiHabitMarkState(
                     rowDef.kpiDef,
                     ymd,
                   );
+                  if (habitState !== null) {
+                    td.classList.add("time-retrospect-td--kpi-habit");
+                    const habitWrap = document.createElement("span");
+                    habitWrap.className = "time-retrospect-habit-cell";
+                    const mark = document.createElement("span");
+                    if (habitState === "done") {
+                      mark.className =
+                        "time-retrospect-habit-mark time-retrospect-habit-mark--done";
+                      mark.textContent = "✓";
+                      mark.setAttribute("aria-label", "완료");
+                    } else if (habitState === "miss") {
+                      mark.className =
+                        "time-retrospect-habit-mark time-retrospect-habit-mark--miss";
+                      mark.setAttribute("aria-label", "미완료");
+                    } else {
+                      mark.className =
+                        "time-retrospect-habit-mark time-retrospect-habit-mark--neutral";
+                      mark.textContent = "—";
+                      mark.setAttribute("aria-label", "해당 없음");
+                    }
+                    habitWrap.appendChild(mark);
+                    td.appendChild(habitWrap);
+                  } else {
+                    td.textContent = formatRetrospectKpiDayCell(
+                      rowDef.kpiDef,
+                      ymd,
+                    );
+                  }
                 } else {
                   td.textContent = formatHoursToReadable(m[rowDef.key]);
                 }

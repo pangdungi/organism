@@ -536,26 +536,43 @@ export function getRetrospectKpiSectionedRows() {
   return out;
 }
 
-/**
- * 회고 표 KPI 칸 (매일 반복: 해당 일 로그 있고 실행 흔적 있으면 O, 아니면 X / 그 외: 그날 로그 요약)
- * @param {{ storageKey: string, kpiId: string, needHabitTracker: boolean }} kpiDef
- * @param {string} ymd YYYY-MM-DD
- */
-export function formatRetrospectKpiDayCell(kpiDef, ymd) {
+function retrospectKpiDayLookup(kpiDef, ymd) {
   const kid = String(kpiDef?.kpiId || "").trim();
   const sk = String(kpiDef?.storageKey || "").trim();
-  if (!kid || !sk) return "—";
+  if (!kid || !sk) return { invalid: true, log: null };
   const dayKey = String(ymd || "")
     .trim()
     .replace(/\//g, "-")
     .slice(0, 10);
-  if (dayKey.length < 10) return "—";
+  if (dayKey.length < 10) return { invalid: true, log: null };
   const data = loadJson(sk, { kpiLogs: [] });
   const log = (data.kpiLogs || []).find(
     (l) =>
       String(l?.kpiId || "").trim() === kid &&
       normalizeKpiLogDateYmd(l?.dateRaw || l?.date || "") === dayKey,
   );
+  return { invalid: false, log: log || null };
+}
+
+/**
+ * 매일 반복(해빗) KPI 칸용: 완료/미완료/표시 불가 — null이면 일반 KPI(텍스트 칸)
+ * @returns {null | 'done' | 'miss' | 'neutral'}
+ */
+export function getRetrospectKpiHabitMarkState(kpiDef, ymd) {
+  if (!kpiDef?.needHabitTracker) return null;
+  const { invalid, log } = retrospectKpiDayLookup(kpiDef, ymd);
+  if (invalid) return "neutral";
+  return retrospectDailyKpiWasExecuted(log) ? "done" : "miss";
+}
+
+/**
+ * 회고 표 KPI 칸 (매일 반복: 해당 일 로그 있고 실행 흔적 있으면 O, 아니면 X / 그 외: 그날 로그 요약)
+ * @param {{ storageKey: string, kpiId: string, needHabitTracker: boolean }} kpiDef
+ * @param {string} ymd YYYY-MM-DD
+ */
+export function formatRetrospectKpiDayCell(kpiDef, ymd) {
+  const { invalid, log } = retrospectKpiDayLookup(kpiDef, ymd);
+  if (invalid) return "—";
   if (kpiDef.needHabitTracker) {
     return retrospectDailyKpiWasExecuted(log) ? "O" : "X";
   }
