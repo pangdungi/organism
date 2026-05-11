@@ -229,30 +229,6 @@ function isMealChecklistTaskName(n) {
   return MEAL_CHECKLIST_TASK_NAMES.has((n || "").trim());
 }
 
-/** 과제 기록·표·회고: 식단/메뉴 텍스트(건강·비건강 식사·준비) */
-const MEAL_DETAIL_TASK_NAMES = new Set([
-  "건강한 식사",
-  "건강한 식사 준비",
-  "건강한 식사준비",
-  "건강하지 않은 식사",
-  "건강하지 않은 식사 준비",
-]);
-function isMealDetailTaskName(n) {
-  return MEAL_DETAIL_TASK_NAMES.has(String(n || "").trim());
-}
-function isHealthyMealDetailTaskName(n) {
-  const t = String(n || "").trim();
-  return (
-    t === "건강한 식사" ||
-    t === "건강한 식사 준비" ||
-    t === "건강한 식사준비"
-  );
-}
-function isUnhealthyMealDetailTaskName(n) {
-  const t = String(n || "").trim();
-  return t === "건강하지 않은 식사" || t === "건강하지 않은 식사 준비";
-}
-
 /** 식사 2행: 원래 오딧과 동일 톤 */
 const AUDIT_MEAL_TIMELINE_FILL_HEALTHY = "rgba(245, 170, 178, 0.78)";
 const AUDIT_MEAL_TIMELINE_FILL_UNHEALTHY = "rgba(175, 195, 230, 0.78)";
@@ -1561,25 +1537,6 @@ function computeRetrospectDayMetrics(dayRows) {
   }
   const available = Math.max(0, 24 - sleep - work);
   return { sleep, work, available, media };
-}
-
-/** 회고 표: 하루 칸 식단·메뉴(건강/비건강 식사·준비 기록) */
-function computeRetrospectMealSummary(dayRows) {
-  const healthy = [];
-  const unhealthy = [];
-  for (const r of dayRows) {
-    const tn = String(r.taskName || "").trim();
-    const md = String(r.mealDetail || "").trim();
-    if (!md) continue;
-    if (isHealthyMealDetailTaskName(tn)) healthy.push(md);
-    else if (isUnhealthyMealDetailTaskName(tn)) unhealthy.push(md);
-  }
-  const parts = [];
-  if (healthy.length)
-    parts.push(`건강: ${[...new Set(healthy)].join(" · ")}`);
-  if (unhealthy.length)
-    parts.push(`비건강: ${[...new Set(unhealthy)].join(" · ")}`);
-  return parts.length ? parts.join(" / ") : "—";
 }
 
 function retrospectRowDateKey(r) {
@@ -3577,17 +3534,6 @@ function createTaskNameInput(initialValue, onTaskSelect, tabSignal) {
   return { wrap, input, getValue: () => input.value };
 }
 
-function setLedgerRowMealCells(tr, rowData) {
-  if (!tr || tr.classList?.contains("time-ledger-mobile-card")) return;
-  const h = tr.querySelector(".time-display-meal-healthy");
-  const u = tr.querySelector(".time-display-meal-unhealthy");
-  if (!h || !u) return;
-  const tn = String(rowData?.taskName || "").trim();
-  const md = String(rowData?.mealDetail || "").trim();
-  h.textContent = isHealthyMealDetailTaskName(tn) ? md : "";
-  u.textContent = isUnhealthyMealDetailTaskName(tn) ? md : "";
-}
-
 function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   const tr = document.createElement("tr");
   tr.className = "time-row";
@@ -3625,7 +3571,6 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
       ? initialData.linkedExpenseIds.map((id) => String(id || "").trim()).filter(Boolean)
       : [],
     focus: String(initialData?.focus || "").trim(),
-    mealDetail: String(initialData?.mealDetail || "").trim(),
   };
   tr._rowData = rowData;
 
@@ -3747,20 +3692,6 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   priceTd.appendChild(priceDisplay);
   tr.appendChild(priceTd);
 
-  const mealHealthyTd = document.createElement("td");
-  mealHealthyTd.className = "time-cell time-cell-meal-healthy";
-  const mealHealthySpan = document.createElement("span");
-  mealHealthySpan.className = "time-display-meal-healthy";
-  mealHealthyTd.appendChild(mealHealthySpan);
-  tr.appendChild(mealHealthyTd);
-
-  const mealUnhealthyTd = document.createElement("td");
-  mealUnhealthyTd.className = "time-cell time-cell-meal-unhealthy";
-  const mealUnhealthySpan = document.createElement("span");
-  mealUnhealthySpan.className = "time-display-meal-unhealthy";
-  mealUnhealthyTd.appendChild(mealUnhealthySpan);
-  tr.appendChild(mealUnhealthyTd);
-
   const feedbackTd = document.createElement("td");
   feedbackTd.className = "time-cell time-cell-feedback";
   const feedbackSpan = document.createElement("span");
@@ -3786,7 +3717,6 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   tr._onRowDelete = onRowDelete;
   tr._updatePrice = updatePrice;
   updatePrice();
-  setLedgerRowMealCells(tr, rowData);
 
   if (onRowEdit) {
     tr.classList.add("time-row-clickable");
@@ -4294,21 +4224,6 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   const taskName = (rowData.taskName || "")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
-  const mealDetailRaw = String(rowData.mealDetail || "").trim();
-  const tnPlain = String(rowData.taskName || "").trim();
-  let mealLineHtml = "";
-  if (
-    mealDetailRaw &&
-    isMealDetailTaskName(tnPlain)
-  ) {
-    const label = isHealthyMealDetailTaskName(tnPlain)
-      ? "건강 식단"
-      : "비건강 식단";
-    const escMeal = mealDetailRaw
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-    mealLineHtml = `${label}: ${escMeal}`;
-  }
   const memo = (rowData.feedback || "")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
@@ -4336,7 +4251,6 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
         <span class="time-mobile-card-time">${timeRange}</span>
         <span class="time-mobile-card-price${priceClass}">${formatPrice(priceVal)}</span>
       </div>
-      ${mealLineHtml ? `<div class="time-mobile-card-meal">${mealLineHtml}</div>` : ""}
       ${memo ? `<div class="time-mobile-card-memo">${memo}</div>` : ""}
       ${expenseBlock}
     </div>
@@ -4398,8 +4312,6 @@ function createTableHTML() {
       <col class="time-col-productivity">
       <col class="time-col-date">
       <col class="time-col-price">
-      <col class="time-col-meal-healthy">
-      <col class="time-col-meal-unhealthy">
       <col class="time-col-feedback">
       <col class="time-col-memo-tag">
     </colgroup>
@@ -4413,8 +4325,6 @@ function createTableHTML() {
         <th class="time-th-productivity">생산성</th>
         <th class="time-th-date">기록 날짜</th>
         <th class="time-th-price">행동의 가치</th>
-        <th class="time-th-meal-healthy">건강한 식사 내역</th>
-        <th class="time-th-meal-unhealthy">건강하지 않은 식사 내역</th>
         <th class="time-th-feedback">과제 메모</th>
         <th class="time-th-memo-tag">메모 태그</th>
       </tr>
@@ -4455,15 +4365,13 @@ function createProductivitySection(
   table.innerHTML = createTableHTML();
   const tbody = table.querySelector("tbody");
   const tfoot = document.createElement("tfoot");
-    tfoot.innerHTML = `
+  tfoot.innerHTML = `
     <tr class="time-section-summary-row">
       <td class="time-cell time-cell-task" colspan="3">합계</td>
       <td class="time-cell time-cell-tracked time-section-summary-tracked"></td>
       <td class="time-cell time-cell-category" colspan="3"></td>
       <td class="time-cell time-cell-price"><span class="time-section-summary-price"></span></td>
-      <td class="time-cell time-cell-meal-healthy"></td>
-      <td class="time-cell time-cell-meal-unhealthy"></td>
-      <td class="time-cell time-cell-feedback" colspan="2"></td>
+      <td class="time-cell time-cell-feedback" colspan="3"></td>
     </tr>
   `;
   table.appendChild(tfoot);
@@ -5395,19 +5303,6 @@ export function render() {
   const taskLogFeedbackInput = taskLogModal.querySelector(
     ".time-task-log-feedback",
   );
-  const taskLogMealDetailInput = taskLogModal.querySelector(
-    ".time-task-log-meal-detail",
-  );
-  const taskLogMealDetailWrap = taskLogModal.querySelector(
-    ".time-task-log-meal-detail-wrap",
-  );
-
-  function updateTaskLogMealDetailVisibility(selectedTaskName) {
-    const show = isMealDetailTaskName(selectedTaskName);
-    if (taskLogMealDetailWrap) taskLogMealDetailWrap.hidden = !show;
-    if (!show && taskLogMealDetailInput) taskLogMealDetailInput.value = "";
-  }
-
   const taskLogTagInput = taskLogModal.querySelector(
     ".time-task-log-tag-input",
   );
@@ -6713,7 +6608,6 @@ export function render() {
 
   function onTaskSelectedForLog(taskName) {
     refreshKpiTodosInLogModal(taskName);
-    updateTaskLogMealDetailVisibility(taskName);
   }
 
   function refreshKpiTodosInLogModal(taskName) {
@@ -7227,7 +7121,6 @@ export function render() {
     });
     updateEndTimeClearVisibility();
     if (taskLogFeedbackInput) taskLogFeedbackInput.value = "";
-    if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
     taskLogMemoTags = [];
     renderTaskLogTagPills();
     taskLogExpenseNameInput.value = "";
@@ -7339,8 +7232,6 @@ export function render() {
     const feedbackRaw = data.feedback || "";
     const memoOnly = feedbackRaw.replace(/#[^\s#]+/g, "").trim();
     if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
-    if (taskLogMealDetailInput)
-      taskLogMealDetailInput.value = String(data.mealDetail || "").trim();
     const rawMemoTagsForEdit = Array.isArray(data.memoTags)
       ? [...data.memoTags]
       : parseTagsFromFeedback(feedbackRaw);
@@ -7387,12 +7278,6 @@ export function render() {
       taskLogTaskDropdown._setValue?.(lockedName);
       refreshKpiTodosInLogModal(lockedName);
     }
-    const finalName = (
-      taskLogTaskDropdown?._getValue?.() ||
-      lockedName ||
-      ""
-    ).trim();
-    updateTaskLogMealDetailVisibility(finalName);
   }
 
   function closeTaskLogModal() {
@@ -7480,9 +7365,6 @@ export function render() {
       return;
     }
     const feedback = (taskLogFeedbackInput?.value || "").trim();
-    const mealDetail = isMealDetailTaskName(taskName)
-      ? (taskLogMealDetailInput?.value || "").trim()
-      : "";
     const todoTags = taskLogTodoAddedItems
       .map((t) => [t.categoryLabel, t.todoName].filter(Boolean).join(" | "))
       .filter(Boolean);
@@ -7597,7 +7479,6 @@ export function render() {
         memoTags,
         linkedExpenseIds: [...linkedFromModal],
         focus: focusValue,
-        mealDetail,
       };
       editTr._rowData = newRowData;
       submittedLedgerRowForExpenseLink = newRowData;
@@ -7657,7 +7538,6 @@ export function render() {
           ? formatDateDisplay(dateStr)
           : "";
         editTr._updatePrice?.();
-        setLedgerRowMealCells(editTr, newRowData);
       }
     } else if (addCtx) {
       const ctx = addCtx;
@@ -7680,7 +7560,6 @@ export function render() {
         memoTags,
         linkedExpenseIds: [...linkedFromModal],
         focus: focusValue,
-        mealDetail,
       };
       const tr = createRow(
         newRowData,
@@ -9468,7 +9347,6 @@ export function render() {
       { label: "업무", key: "work" },
       { label: "가용시간", key: "available" },
       { label: "미디어 시청", key: "media" },
-      { label: "식단", key: "meal" },
     ];
 
     const weeksRoot = document.createElement("div");
@@ -9539,12 +9417,7 @@ export function render() {
               else {
                 const dayRows = byYmd.get(ymd) || [];
                 const m = computeRetrospectDayMetrics(dayRows);
-                if (rowDef.key === "meal") {
-                  td.classList.add("time-retrospect-td-meal");
-                  td.textContent = computeRetrospectMealSummary(dayRows);
-                } else {
-                  td.textContent = formatHoursToReadable(m[rowDef.key]);
-                }
+                td.textContent = formatHoursToReadable(m[rowDef.key]);
               }
               bodyTr.appendChild(td);
             }
@@ -11315,16 +11188,10 @@ export function renderTimeBudgetTablesForCalendar(
                   <button type="button" class="time-task-log-time-adjust-btn" data-delta="15">+15</button>
                   <button type="button" class="time-task-log-time-adjust-btn" data-delta="30">+30</button>
                   <button type="button" class="time-task-log-time-adjust-btn" data-day-end="true">하루끝</button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-        <div class="time-task-log-meal-detail-wrap" hidden>
-          <div class="time-task-log-field">
-            <label for="time-task-log-meal-detail">먹은 메뉴·식단</label>
-            <input type="text" id="time-task-log-meal-detail" class="time-task-log-meal-detail" name="time-task-log-meal-detail" placeholder="예: 샐러드, 치킨 세트" autocomplete="off" />
-          </div>
-        </div>
-        <div class="time-task-log-memo-section">
+            <div class="time-task-log-memo-section">
               <span class="time-task-log-section-label time-task-log-memo-section-label">메모</span>
               <div class="time-task-log-memo-fields">
                 <div class="time-task-log-field">

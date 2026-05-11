@@ -29,7 +29,7 @@ const TABLE = "time_ledger_entries";
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const LEDGER_ENTRY_SELECT =
-  "id, entry_date, task_id, task_name, start_time, end_time, productivity, category, time_tracked, focus_events, memo, memo_tags, linked_expense_ids, meal_detail, updated_at";
+  "id, entry_date, task_id, task_name, start_time, end_time, productivity, category, time_tracked, focus_events, memo, memo_tags, linked_expense_ids, updated_at";
 
 /** 로컬 달력 기준 오늘 YYYY-MM-DD */
 export function timeLedgerLocalTodayYmd() {

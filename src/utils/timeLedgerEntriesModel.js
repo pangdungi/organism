@@ -264,7 +264,6 @@ export function localTimeLedgerRowToDbPayload(userId, row) {
     memo: String(row.feedback || "").trim(),
     memo_tags: memoTagsClean,
     linked_expense_ids,
-    meal_detail: String(row.mealDetail || "").trim(),
   };
 }
 
@@ -296,7 +295,6 @@ export function dbRowToLocalTimeLedgerRow(db) {
     timeTracked: String(db.time_tracked || "").trim(),
     focus,
     feedback: String(db.memo || "").trim(),
-    mealDetail: String(db.meal_detail ?? "").trim(),
     memoTags: memoTagsClean,
     linkedExpenseIds,
     /** Supabase updated_at — 병합 시 last-write-wins */
