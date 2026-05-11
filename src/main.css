@@ -9657,6 +9657,13 @@ body {
     white-space: pre-wrap;
     word-break: break-word;
   }
+  .time-mobile-card-meal {
+    font-size: 0.72rem;
+    color: var(--text-body, #3d4a3e);
+    line-height: 1.4;
+    margin-top: 0.15rem;
+    word-break: break-word;
+  }
   .time-mobile-card-focus {
     display: flex;
     flex-direction: column;
@@ -10549,6 +10556,13 @@ body {
     line-height: 1.4;
     margin-top: 0.2rem;
     white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .time-mobile-card-meal {
+    font-size: 0.72rem;
+    color: var(--text-body, #3d4a3e);
+    line-height: 1.4;
+    margin-top: 0.15rem;
     word-break: break-word;
   }
   .time-mobile-card-focus {
@@ -27798,6 +27812,42 @@ body.kpi-resizing {
   opacity: 1 !important;
 }
 
+#app .time-task-log-modal .time-task-log-meal-detail-wrap {
+  margin-top: 0.5rem;
+}
+
+#app
+  .time-task-log-modal
+  .time-task-log-meal-detail-wrap
+  .time-task-log-field
+  label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.8125rem;
+  color: var(--text-caption-color, #a8a290);
+}
+
+#app .time-task-log-modal input.time-task-log-meal-detail {
+  width: 100%;
+  box-sizing: border-box;
+  border: none;
+  border-bottom: 1px solid var(--text-placeholder, #c4bea8);
+  background: transparent;
+  font-size: 0.875rem;
+  color: var(--text-body, #3d4a3e);
+  padding: 0.2rem 0;
+  outline: none;
+}
+
+#app .time-task-log-modal input.time-task-log-meal-detail:focus {
+  border-bottom-width: 1.5px;
+  border-bottom-color: var(--ui-btn-primary-bg, #2a3828);
+}
+
+#app .time-task-log-modal input.time-task-log-meal-detail::placeholder {
+  color: var(--text-placeholder, #c4bea8);
+}
+
 #app .time-task-log-modal .time-task-log-date-overlay {
   position: absolute;
   inset: 0;
@@ -32750,6 +32800,13 @@ button.time-modal-traffic {
   background: var(--content-bg);
 }
 
+.time-retrospect-table td.time-retrospect-td-meal {
+  font-size: 0.7rem;
+  line-height: 1.35;
+  word-break: break-word;
+  white-space: normal;
+}
+
 .time-retrospect-table td.time-retrospect-td-day-cell.time-retrospect-td--out {
   background: rgba(42, 56, 40, 0.03);
   opacity: 0.65;
@@ -36134,6 +36191,23 @@ button.time-modal-traffic {
 .time-ledger-table .time-cell-price {
   width: 5.625rem;
   min-width: 5.625rem;
+}
+
+.time-ledger-table .time-col-meal-healthy,
+.time-ledger-table .time-cell-meal-healthy,
+.time-ledger-table .time-th-meal-healthy,
+.time-ledger-table .time-col-meal-unhealthy,
+.time-ledger-table .time-cell-meal-unhealthy,
+.time-ledger-table .time-th-meal-unhealthy {
+  width: 6.5rem;
+  min-width: 5rem;
+}
+
+.time-ledger-table .time-display-meal-healthy,
+.time-ledger-table .time-display-meal-unhealthy {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.8125rem;
 }
 
 .time-ledger-table .time-col-focus,
