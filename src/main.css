@@ -6323,6 +6323,25 @@ body {
     padding-bottom: 0.65rem !important;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35) !important;
   }
+  .time-task-log-modal
+    .time-task-log-memo-fields
+    input.time-task-log-meal-detail-input {
+    min-height: 2.5rem !important;
+    padding: 0.5rem 0.65rem !important;
+    font-size: 0.875rem !important;
+    background: var(--app-main-bg) !important;
+    border: none !important;
+    border-bottom: none !important;
+    border-radius: 0.75rem !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06) !important;
+    line-height: 1.5 !important;
+  }
+  .time-task-log-modal
+    .time-task-log-memo-fields
+    input.time-task-log-meal-detail-input:focus {
+    border-bottom: none !important;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35) !important;
+  }
   #app
     .time-task-setup-modal.time-task-log-modal
     .time-task-log-scroll-area
@@ -27664,6 +27683,39 @@ body.kpi-resizing {
   background: var(--app-main-bg) !important;
   color: var(--text-ink) !important;
 }
+#app
+  .time-task-log-modal
+  .time-task-log-memo-fields
+  input.time-task-log-meal-detail-input {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  min-height: 2.75rem !important;
+  padding: 0.55rem 0.75rem !important;
+  font-size: 0.9rem !important;
+  background: var(--app-main-bg) !important;
+  border: none !important;
+  border-bottom: none !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06) !important;
+  line-height: 1.45 !important;
+  color: var(--text-body) !important;
+}
+#app
+  .time-task-log-modal
+  .time-task-log-memo-fields
+  input.time-task-log-meal-detail-input:focus {
+  outline: none !important;
+  border-bottom: none !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35) !important;
+  background: var(--app-main-bg) !important;
+  color: var(--text-ink) !important;
+}
+#app
+  .time-task-log-modal
+  .time-task-log-memo-fields
+  .time-task-log-meal-detail-label {
+  margin-bottom: 0.3rem !important;
+}
 
 /* 과제 기록 모달: 시간 입력 흰 카드 + 빠른 선택 칩(카테고리·다른 모달 제외) */
 .time-task-log-modal .time-task-log-datetime-card {
@@ -32619,7 +32671,7 @@ button.time-modal-traffic {
 
 /* 시간가계부 「회고」탭 본문 */
 .time-retrospect-view {
-  padding: 1.5rem 0;
+  padding: 0 0 1.5rem;
   background: var(--app-main-bg);
   box-sizing: border-box;
   width: 100%;
@@ -32721,6 +32773,19 @@ button.time-modal-traffic {
   font-family: var(--font-body);
 }
 
+.time-retrospect-table tr.time-retrospect-tr-kpi-domain th.time-retrospect-th-kpi-domain {
+  padding: 0.5rem 0.55rem;
+  text-align: left;
+  vertical-align: middle;
+  font-size: var(--fs-small, 0.8125rem);
+  font-weight: 600;
+  color: var(--text-body);
+  background: #f5f2e9;
+  border-bottom: var(--divider-subtle);
+  border-right: none;
+  font-family: var(--font-body);
+}
+
 .time-retrospect-table th.time-retrospect-th-day {
   width: auto;
   max-width: none;
@@ -32734,6 +32799,25 @@ button.time-modal-traffic {
   padding: 0.4rem 0.35rem;
   color: var(--text-caption-color);
   background: var(--app-bg);
+}
+
+.time-retrospect-table .time-retrospect-th-day-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  line-height: 1.25;
+}
+
+.time-retrospect-table .time-retrospect-th-day-line--wd {
+  font-family: var(--font-body);
+  font-weight: 500;
+}
+
+.time-retrospect-table .time-retrospect-th-day-line--date {
+  font-family: var(--font-mono);
+  font-weight: 400;
 }
 
 .time-retrospect-table th.time-retrospect-th-day.time-retrospect-th--out {
@@ -32753,6 +32837,14 @@ button.time-modal-traffic {
 .time-retrospect-table td.time-retrospect-td-day-cell.time-retrospect-td--out {
   background: rgba(42, 56, 40, 0.03);
   opacity: 0.65;
+}
+
+.time-retrospect-table td.time-retrospect-td-day-cell.time-retrospect-td--diet,
+.time-retrospect-table td.time-retrospect-td-day-cell.time-retrospect-td--expense,
+.time-retrospect-table td.time-retrospect-td-day-cell.time-retrospect-td--kpi {
+  white-space: pre-line;
+  line-height: 1.45;
+  font-size: 0.8125rem;
 }
 
 .time-retrospect-empty {
@@ -32794,7 +32886,7 @@ button.time-modal-traffic {
   }
 
   .time-retrospect-view {
-    padding: 0.75rem 0 1.25rem;
+    padding: 0 0 1.25rem;
   }
 
   .time-retrospect-inner {
@@ -32810,6 +32902,22 @@ button.time-modal-traffic {
     width: 5.5rem;
     min-width: 5rem;
     max-width: 7.5rem;
+  }
+
+  .time-retrospect-table-wrap {
+    border-top: none;
+  }
+
+  .time-retrospect-table thead th.time-retrospect-th-corner,
+  .time-retrospect-table thead th.time-retrospect-th-day {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+
+  .time-retrospect-table thead th.time-retrospect-th-corner {
+    left: 0;
+    z-index: 3;
   }
 
   .time-audit-block {

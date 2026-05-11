@@ -165,8 +165,9 @@ export function timeLedgerRowIsSyncable(r) {
   const taskName = (r.taskName || "").trim();
   const timeTracked = (r.timeTracked || "").trim();
   const feedback = (r.feedback || "").trim();
+  const mealDetail = (r.mealDetail || "").trim();
   const start = (r.startTime || "").trim();
-  return !!(taskName || timeTracked || feedback || start);
+  return !!(taskName || timeTracked || feedback || mealDetail || start);
 }
 
 /**
@@ -225,6 +226,22 @@ function partitionMemoTagsAndLegacyExpenseIds(memoTags) {
   return { clean, legacyIds };
 }
 
+/** 구버전 memo에만 있던 `[식단] …` 한 줄 → 로컬 mealDetail·feedback 분리 (컬럼 meal_detail 비었을 때) */
+const UNHEALTHY_MEAL_MEMO_PREFIX = "[식단] ";
+
+/** pull·편집 폴백용: 예전에 memo 한 칸에 넣었던 값 분리 */
+export function splitUnhealthyMealMemoFromDb(memo) {
+  const m = String(memo || "").trim();
+  if (!m.startsWith(UNHEALTHY_MEAL_MEMO_PREFIX)) {
+    return { mealDetail: "", feedback: m };
+  }
+  const nl = m.indexOf("\n");
+  const firstLine = nl === -1 ? m : m.slice(0, nl);
+  const rest = nl === -1 ? "" : m.slice(nl + 1);
+  const mealDetail = firstLine.slice(UNHEALTHY_MEAL_MEMO_PREFIX.length).trim();
+  return { mealDetail, feedback: rest.trim() };
+}
+
 export function localTimeLedgerRowToDbPayload(userId, row) {
   const entry_date = normalizeEntryDate(row.date);
   if (!entry_date) return null;
@@ -262,6 +279,7 @@ export function localTimeLedgerRowToDbPayload(userId, row) {
     time_tracked: String(row.timeTracked || "").trim(),
     focus_events,
     memo: String(row.feedback || "").trim(),
+    meal_detail: String(row.mealDetail || "").trim(),
     memo_tags: memoTagsClean,
     linked_expense_ids,
   };
@@ -281,12 +299,20 @@ export function dbRowToLocalTimeLedgerRow(db) {
   const { clean: memoTagsClean, legacyIds: legacyFromMemo } =
     partitionMemoTagsAndLegacyExpenseIds(raw_memo_tags);
   const linkedExpenseIds = [...new Set([...dbLinkedIds, ...legacyFromMemo])];
+  const tn = String(db.task_name || "").trim();
+  let feedback = String(db.memo || "").trim();
+  let mealDetail = String(db.meal_detail ?? "").trim();
+  if (!mealDetail && feedback.startsWith(UNHEALTHY_MEAL_MEMO_PREFIX)) {
+    const sp = splitUnhealthyMealMemoFromDb(feedback);
+    mealDetail = sp.mealDetail;
+    feedback = sp.feedback;
+  }
   return {
     id: String(db.id || "").trim(),
     date:
       normalizeEntryDate(db.entry_date) ||
       String(db.entry_date || "").slice(0, 10),
-    taskName: String(db.task_name || "").trim(),
+    taskName: tn,
     taskId: db.task_id ? String(db.task_id).trim() : "",
     startTime: String(db.start_time || "").trim(),
     endTime: String(db.end_time || "").trim(),
@@ -294,7 +320,8 @@ export function dbRowToLocalTimeLedgerRow(db) {
     category: String(db.category || "").trim(),
     timeTracked: String(db.time_tracked || "").trim(),
     focus,
-    feedback: String(db.memo || "").trim(),
+    feedback,
+    mealDetail,
     memoTags: memoTagsClean,
     linkedExpenseIds,
     /** Supabase updated_at — 병합 시 last-write-wins */
@@ -418,9 +445,22 @@ export function updateTimeLedgerEntryFeedbackById(entryId, feedbackText) {
     if (!r || String(r.id || "").trim() !== id) return r;
     found = true;
     const prevFb = String(r.feedback ?? "").trim();
-    if (newFb === prevFb) return r;
+    const prevMeal = String(r.mealDetail ?? "").trim();
+    let mealNext = prevMeal;
+    if (
+      String(r.taskName || "").trim() === "건강하지 않은 식사" &&
+      !newFb
+    ) {
+      mealNext = "";
+    }
+    if (newFb === prevFb && mealNext === prevMeal) return r;
     changed = true;
-    return { ...r, feedback: newFb, localModifiedAt: Date.now() };
+    return {
+      ...r,
+      feedback: newFb,
+      mealDetail: mealNext,
+      localModifiedAt: Date.now(),
+    };
   });
   if (!found) return { ok: false, msg: "해당 기록을 찾을 수 없어요." };
   if (!changed) return { ok: true };

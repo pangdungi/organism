@@ -421,6 +421,147 @@ export function syncKpiTodoCompleted(kpiTodoId, storageKey, completed) {
 
 const STORAGE_KEYS = [DREAM_MAP_KEY, SIDEINCOME_KEY, HAPPINESS_KEY, HEALTH_KEY];
 
+/** 시간가계부 「회고」표: KPI 행 도메인 순서 — 건강 → 행복 → 부수입 → 꿈 */
+export const KPI_STORAGE_KEYS_RETROSPECT_ORDER = [
+  HEALTH_KEY,
+  HAPPINESS_KEY,
+  SIDEINCOME_KEY,
+  DREAM_MAP_KEY,
+];
+
+function normalizeKpiLogDateYmd(val) {
+  if (!val || typeof val !== "string") return "";
+  const s = val.trim().replace(/\//g, "-");
+  const m = s.match(/(\d{4})[.\-\s]*(\d{1,2})[.\-\s]*(\d{1,2})/);
+  if (m)
+    return `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`;
+  return s.slice(0, 10);
+}
+
+function retrospectDailyKpiWasExecuted(log) {
+  if (!log || typeof log !== "object") return false;
+  const ids = log.timeLedgerEntryIds;
+  if (Array.isArray(ids) && ids.some((x) => String(x || "").trim())) return true;
+  const dc = log.dailyCompleted;
+  if (Array.isArray(dc) && dc.length > 0) return true;
+  const v = String(log.value || "").trim();
+  if (v && v !== "0") return true;
+  if (String(log.memo || "").trim()) return true;
+  const st = String(log.status || "").trim();
+  if (st) return true;
+  return false;
+}
+
+function formatRetrospectNonDailyKpiLog(log) {
+  if (!log) return "—";
+  const parts = [];
+  const v = String(log.value || "").trim();
+  const u = String(log.unit || "").trim();
+  if (v && u) parts.push(`${v} ${u}`);
+  else if (v) parts.push(v);
+  else if (u) parts.push(u);
+  const st = String(log.status || "").trim();
+  if (st) parts.push(st);
+  const memo = String(log.memo || "").trim();
+  if (memo) parts.push(memo);
+  return parts.length ? parts.join(" · ") : "—";
+}
+
+/**
+ * 회고 표용: 건강→행복→부수입→꿈 순으로 등록된 KPI 목록
+ * @returns {Array<{ storageKey: string, kpiId: string, name: string, needHabitTracker: boolean }>}
+ */
+export function getKpisOrderedForRetrospect() {
+  const out = [];
+  for (const storageKey of KPI_STORAGE_KEYS_RETROSPECT_ORDER) {
+    const data = loadJson(storageKey, { kpis: [] });
+    for (const kpi of data.kpis || []) {
+      const name = String(kpi?.name || "").trim();
+      const kpiId = String(kpi?.id || "").trim();
+      if (!name || !kpiId) continue;
+      out.push({
+        storageKey,
+        kpiId,
+        name,
+        needHabitTracker: !!kpi.needHabitTracker,
+      });
+    }
+  }
+  return out;
+}
+
+/** 회고 표: 건강→행복→부수입→꿈 구역 헤더 행 + KPI 데이터 행 (KPI 없는 도메인은 생략) */
+export function getRetrospectKpiSectionedRows() {
+  const titleByKey = {
+    [HEALTH_KEY]: "건강",
+    [HAPPINESS_KEY]: "행복",
+    [SIDEINCOME_KEY]: "부수입",
+    [DREAM_MAP_KEY]: "꿈",
+  };
+  const iconByKey = {
+    [HEALTH_KEY]: "💪",
+    [HAPPINESS_KEY]: "😊",
+    [SIDEINCOME_KEY]: "💰",
+    [DREAM_MAP_KEY]: "✨",
+  };
+  /** @type {Array<{ kind: 'kpiSection', title: string, icon: string } | { kind: 'kpi', label: string, key: string, kpiDef: object }>} */
+  const out = [];
+  for (const storageKey of KPI_STORAGE_KEYS_RETROSPECT_ORDER) {
+    const data = loadJson(storageKey, { kpis: [] });
+    const kpis = [];
+    for (const kpi of data.kpis || []) {
+      const name = String(kpi?.name || "").trim();
+      const kpiId = String(kpi?.id || "").trim();
+      if (!name || !kpiId) continue;
+      kpis.push({
+        storageKey,
+        kpiId,
+        name,
+        needHabitTracker: !!kpi.needHabitTracker,
+      });
+    }
+    if (kpis.length === 0) continue;
+    const title = titleByKey[storageKey] || storageKey;
+    const icon = iconByKey[storageKey] || "";
+    out.push({ kind: "kpiSection", title, icon });
+    for (const k of kpis) {
+      out.push({
+        kind: "kpi",
+        label: k.name,
+        key: `kpi:${k.storageKey}:${k.kpiId}`,
+        kpiDef: k,
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * 회고 표 KPI 칸 (매일 반복: 해당 일 로그 있고 실행 흔적 있으면 O, 아니면 X / 그 외: 그날 로그 요약)
+ * @param {{ storageKey: string, kpiId: string, needHabitTracker: boolean }} kpiDef
+ * @param {string} ymd YYYY-MM-DD
+ */
+export function formatRetrospectKpiDayCell(kpiDef, ymd) {
+  const kid = String(kpiDef?.kpiId || "").trim();
+  const sk = String(kpiDef?.storageKey || "").trim();
+  if (!kid || !sk) return "—";
+  const dayKey = String(ymd || "")
+    .trim()
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  if (dayKey.length < 10) return "—";
+  const data = loadJson(sk, { kpiLogs: [] });
+  const log = (data.kpiLogs || []).find(
+    (l) =>
+      String(l?.kpiId || "").trim() === kid &&
+      normalizeKpiLogDateYmd(l?.dateRaw || l?.date || "") === dayKey,
+  );
+  if (kpiDef.needHabitTracker) {
+    return retrospectDailyKpiWasExecuted(log) ? "O" : "X";
+  }
+  return formatRetrospectNonDailyKpiLog(log);
+}
+
 function nextKpiLogId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }

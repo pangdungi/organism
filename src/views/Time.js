@@ -22,6 +22,8 @@ import {
 import {
   getKpiTodosAsTasks,
   getKpiDailyRepeatInfoByKpiName,
+  getRetrospectKpiSectionedRows,
+  formatRetrospectKpiDayCell,
 } from "../utils/kpiTodoSync.js";
 import { kpiTodoFineTrace } from "../utils/kpiTodoFineTrace.js";
 import { getCustomSections, getCategoryColorForReport } from "../utils/todoSettings.js";
@@ -52,6 +54,7 @@ import { scheduleTimeDailyBudgetSyncPush } from "../utils/timeDailyBudgetSupabas
 import {
   ensureTimeLedgerEntryIds,
   readTimeLedgerEntriesRaw,
+  splitUnhealthyMealMemoFromDb,
   stripTimeLedgerSyncMetaForCompare,
   writeTimeLedgerEntriesRaw,
 } from "../utils/timeLedgerEntriesModel.js";
@@ -85,6 +88,7 @@ import {
 import {
   dietNameFromLedgerMemoTag,
   isWorkScheduleDietLedgerMemoTag,
+  ledgerRowLogsDietForWorkSchedule,
   makeWorkScheduleDietLedgerMemoTag,
 } from "../utils/workScheduleDietLedgerTags.js";
 
@@ -1539,6 +1543,61 @@ function computeRetrospectDayMetrics(dayRows) {
   return { sleep, work, available, media };
 }
 
+/** 회고 「식단」칸: 건강한 식사류는 memo_tags(lp-meal:), 비건강 식사는 meal_detail */
+function formatRetrospectDietDayCell(dayRows) {
+  const healthy = new Set();
+  const unhealthy = [];
+  for (const r of Array.isArray(dayRows) ? dayRows : []) {
+    const tn = (r.taskName || "").trim();
+    if (AUDIT_UNHEALTHY_MEAL_TASK_NAMES.has(tn)) {
+      let md = String(r.mealDetail || "").trim();
+      if (!md) {
+        md = splitUnhealthyMealMemoFromDb(String(r.feedback || "")).mealDetail;
+      }
+      if (md) unhealthy.push(md);
+    } else if (ledgerRowLogsDietForWorkSchedule(r)) {
+      for (const t of Array.isArray(r.memoTags) ? r.memoTags : []) {
+        const name = dietNameFromLedgerMemoTag(t);
+        if (name) healthy.add(name);
+      }
+    }
+  }
+  if (healthy.size === 0 && unhealthy.length === 0) return "—";
+  const lines = [];
+  if (healthy.size > 0) {
+    lines.push(`건강한 식사: ${[...healthy].sort((a, b) => a.localeCompare(b, "ko")).join(", ")}`);
+  }
+  if (unhealthy.length > 0) {
+    lines.push(`건강하지 않은 식사: ${unhealthy.join(", ")}`);
+  }
+  return lines.join("\n");
+}
+
+/** 회고 「지출」칸: 가계부 해당 일자 지출(flowType 지출) 목록 */
+function normalizeExpenseRowDateYmd(row) {
+  return String(row?.date ?? "")
+    .trim()
+    .replace(/\//g, "-")
+    .slice(0, 10);
+}
+
+function formatRetrospectExpenseDayCell(ymd) {
+  const key = String(ymd || "")
+    .trim()
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  if (key.length < 10) return "—";
+  const rows = loadExpenseRows().filter((r) => {
+    if (String(r?.flowType || "").trim() !== "지출") return false;
+    return normalizeExpenseRowDateYmd(r) === key;
+  });
+  if (rows.length === 0) return "—";
+  const lines = rows
+    .map((r) => formatExpenseLineForMobileCard(r))
+    .filter(Boolean);
+  return lines.length ? lines.join("\n") : "—";
+}
+
 function retrospectRowDateKey(r) {
   return (
     normalizeDateForCompare(r.date || "") ||
@@ -2382,6 +2441,16 @@ function startOfWeekSundayYmd(ymd) {
   const d = new Date(ymd + "T12:00:00");
   if (Number.isNaN(d.getTime())) return ymd;
   d.setDate(d.getDate() - d.getDay());
+  return toDateStr(d);
+}
+
+/** YYYY-MM-DD → 해당 주의 월요일(로컬) — 회고 주간 표 등 */
+function startOfWeekMondayYmd(ymd) {
+  if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ymd || "";
+  const d = new Date(ymd + "T12:00:00");
+  if (Number.isNaN(d.getTime())) return ymd;
+  const daysSinceMon = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - daysSinceMon);
   return toDateStr(d);
 }
 
@@ -3566,6 +3635,7 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
       initialData?.category ?? (taskName ? opt?.category : ""),
     date: initialData?.date || "",
     feedback: initialData?.feedback || "",
+    mealDetail: String(initialData?.mealDetail || "").trim(),
     memoTags: Array.isArray(initialData?.memoTags) ? initialData.memoTags : [],
     linkedExpenseIds: Array.isArray(initialData?.linkedExpenseIds)
       ? initialData.linkedExpenseIds.map((id) => String(id || "").trim()).filter(Boolean)
@@ -4690,6 +4760,30 @@ export function render() {
     return `${yy}. ${mm}. ${dd}(${weekdays[dt.getDay()]})`;
   }
 
+  /** 회고 표 열 제목: 1행 요일 한 글자, 2행 "MM. DD" */
+  function fillRetrospectTableHeaderTh(thEl, dStr) {
+    thEl.textContent = "";
+    if (!dStr || !/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return;
+    const [y, mo, d] = dStr.split("-").map(Number);
+    const dt = new Date(y, mo - 1, d);
+    const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+    const mm = String(mo).padStart(2, "0");
+    const dd = String(d).padStart(2, "0");
+    const stack = document.createElement("span");
+    stack.className = "time-retrospect-th-day-stack";
+    const lineWd = document.createElement("span");
+    lineWd.className =
+      "time-retrospect-th-day-line time-retrospect-th-day-line--wd";
+    lineWd.textContent = weekdays[dt.getDay()];
+    const lineDate = document.createElement("span");
+    lineDate.className =
+      "time-retrospect-th-day-line time-retrospect-th-day-line--date";
+    lineDate.textContent = `${mm}. ${dd}`;
+    stack.appendChild(lineWd);
+    stack.appendChild(lineDate);
+    thEl.appendChild(stack);
+  }
+
   function syncTimeFilterDateLabels() {
     /* 모바일: navCluster가 contentWrap 툴바로 옮겨져도 같은 노드 — filterBar로 찾으면 라벨이 끊김 */
     const labelRoot = filterNavCluster || filterBar;
@@ -5152,6 +5246,10 @@ export function render() {
         <div class="time-task-log-memo-section">
           <span class="time-task-log-section-label time-task-log-memo-section-label">메모</span>
           <div class="time-task-log-memo-fields">
+            <div class="time-task-log-field time-task-log-meal-detail-section" hidden>
+              <label class="time-task-log-section-label time-task-log-meal-detail-label" for="time-task-log-meal-detail">식단명</label>
+              <input type="text" id="time-task-log-meal-detail" class="time-task-log-meal-detail-input time-task-log-memo-input" placeholder="무엇을 드셨는지 한 줄로 적어 주세요" autocomplete="off" />
+            </div>
             <div class="time-task-log-field">
               <textarea class="time-task-log-feedback time-task-log-memo-input" rows="3" placeholder="메모를 입력하세요"></textarea>
             </div>
@@ -5303,6 +5401,19 @@ export function render() {
   const taskLogFeedbackInput = taskLogModal.querySelector(
     ".time-task-log-feedback",
   );
+  const taskLogMealDetailSection = taskLogModal.querySelector(
+    ".time-task-log-meal-detail-section",
+  );
+  const taskLogMealDetailInput = taskLogModal.querySelector(
+    ".time-task-log-meal-detail-input",
+  );
+  function updateTaskLogMealDetailVisibility(taskName) {
+    const show = AUDIT_UNHEALTHY_MEAL_TASK_NAMES.has((taskName || "").trim());
+    if (taskLogMealDetailSection) {
+      taskLogMealDetailSection.hidden = !show;
+      if (!show && taskLogMealDetailInput) taskLogMealDetailInput.value = "";
+    }
+  }
   const taskLogTagInput = taskLogModal.querySelector(
     ".time-task-log-tag-input",
   );
@@ -6608,6 +6719,7 @@ export function render() {
 
   function onTaskSelectedForLog(taskName) {
     refreshKpiTodosInLogModal(taskName);
+    updateTaskLogMealDetailVisibility(taskName);
   }
 
   function refreshKpiTodosInLogModal(taskName) {
@@ -7121,6 +7233,7 @@ export function render() {
     });
     updateEndTimeClearVisibility();
     if (taskLogFeedbackInput) taskLogFeedbackInput.value = "";
+    if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
     taskLogMemoTags = [];
     renderTaskLogTagPills();
     taskLogExpenseNameInput.value = "";
@@ -7229,8 +7342,18 @@ export function render() {
     setStartFromDatetime(startTime || "");
     setEndFromDatetime(endTime || "");
     updateEndTimeClearVisibility();
-    const feedbackRaw = data.feedback || "";
+    let mealDetailVal = String(data.mealDetail || "").trim();
+    let feedbackRaw = String(data.feedback || "").trim();
+    const tnForMemo = (data.taskName || "").trim();
+    if (AUDIT_UNHEALTHY_MEAL_TASK_NAMES.has(tnForMemo)) {
+      if (!mealDetailVal && feedbackRaw.startsWith("[식단] ")) {
+        const sp = splitUnhealthyMealMemoFromDb(feedbackRaw);
+        mealDetailVal = sp.mealDetail;
+        feedbackRaw = sp.feedback;
+      }
+    }
     const memoOnly = feedbackRaw.replace(/#[^\s#]+/g, "").trim();
+    if (taskLogMealDetailInput) taskLogMealDetailInput.value = mealDetailVal;
     if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
     const rawMemoTagsForEdit = Array.isArray(data.memoTags)
       ? [...data.memoTags]
@@ -7278,6 +7401,7 @@ export function render() {
       taskLogTaskDropdown._setValue?.(lockedName);
       refreshKpiTodosInLogModal(lockedName);
     }
+    updateTaskLogMealDetailVisibility((data.taskName || "").trim());
   }
 
   function closeTaskLogModal() {
@@ -7364,7 +7488,11 @@ export function render() {
       );
       return;
     }
-    const feedback = (taskLogFeedbackInput?.value || "").trim();
+    const feedbackBody = (taskLogFeedbackInput?.value || "").trim();
+    const mealDetailForRow = AUDIT_UNHEALTHY_MEAL_TASK_NAMES.has(taskName)
+      ? (taskLogMealDetailInput?.value || "").trim()
+      : "";
+    const feedback = feedbackBody;
     const todoTags = taskLogTodoAddedItems
       .map((t) => [t.categoryLabel, t.todoName].filter(Boolean).join(" | "))
       .filter(Boolean);
@@ -7476,6 +7604,7 @@ export function render() {
         category,
         date: dateStr,
         feedback,
+        mealDetail: mealDetailForRow,
         memoTags,
         linkedExpenseIds: [...linkedFromModal],
         focus: focusValue,
@@ -7557,6 +7686,7 @@ export function render() {
         category,
         date: dateStr,
         feedback,
+        mealDetail: mealDetailForRow,
         memoTags,
         linkedExpenseIds: [...linkedFromModal],
         focus: focusValue,
@@ -9343,18 +9473,20 @@ export function render() {
     }
 
     const retroRows = [
-      { label: "수면", key: "sleep" },
-      { label: "업무", key: "work" },
-      { label: "가용시간", key: "available" },
-      { label: "미디어 시청", key: "media" },
+      { kind: "metric", label: "수면", key: "sleep" },
+      { kind: "metric", label: "업무", key: "work" },
+      { kind: "metric", label: "가용시간", key: "available" },
+      { kind: "metric", label: "미디어 시청", key: "media" },
+      { kind: "metric", label: "식단", key: "diet" },
+      { kind: "metric", label: "지출", key: "expense" },
+      ...getRetrospectKpiSectionedRows(),
     ];
 
     const weeksRoot = document.createElement("div");
     weeksRoot.className = "time-retrospect-weeks";
 
     if (normStart && normEnd && normStart <= normEnd) {
-      const fmt = formatTimeFilterDateDotsWithWeekday;
-      let weekStart = startOfWeekSundayYmd(normStart);
+      let weekStart = startOfWeekMondayYmd(normStart);
       const seenWeek = new Set();
       while (weekStart <= normEnd) {
         if (seenWeek.has(weekStart)) break;
@@ -9384,7 +9516,6 @@ export function render() {
           const cornerTh = document.createElement("th");
           cornerTh.className = "time-retrospect-th-corner";
           cornerTh.scope = "col";
-          cornerTh.textContent = "항목";
           headTr.appendChild(cornerTh);
 
           for (let i = 0; i < 7; i++) {
@@ -9394,12 +9525,28 @@ export function render() {
             const th = document.createElement("th");
             th.className = "time-retrospect-th-day";
             th.scope = "col";
-            th.textContent = fmt(ymd);
+            fillRetrospectTableHeaderTh(th, ymd);
             if (!inRange) th.classList.add("time-retrospect-th--out");
             headTr.appendChild(th);
           }
 
           for (const rowDef of retroRows) {
+            if (rowDef.kind === "kpiSection") {
+              const secTr = document.createElement("tr");
+              secTr.className = "time-retrospect-tr-kpi-domain";
+              const domainTh = document.createElement("th");
+              domainTh.className = "time-retrospect-th-kpi-domain";
+              domainTh.scope = "colgroup";
+              domainTh.colSpan = 8;
+              const icon = String(rowDef.icon || "").trim();
+              domainTh.textContent = icon
+                ? `${icon} ${rowDef.title}`
+                : rowDef.title;
+              secTr.appendChild(domainTh);
+              tbody.appendChild(secTr);
+              continue;
+            }
+
             const bodyTr = document.createElement("tr");
             const rowLabelTh = document.createElement("th");
             rowLabelTh.className = "time-retrospect-th-row-label";
@@ -9417,7 +9564,21 @@ export function render() {
               else {
                 const dayRows = byYmd.get(ymd) || [];
                 const m = computeRetrospectDayMetrics(dayRows);
-                td.textContent = formatHoursToReadable(m[rowDef.key]);
+                if (rowDef.key === "diet") {
+                  td.classList.add("time-retrospect-td--diet");
+                  td.textContent = formatRetrospectDietDayCell(dayRows);
+                } else if (rowDef.key === "expense") {
+                  td.classList.add("time-retrospect-td--expense");
+                  td.textContent = formatRetrospectExpenseDayCell(ymd);
+                } else if (rowDef.kind === "kpi" && rowDef.kpiDef) {
+                  td.classList.add("time-retrospect-td--kpi");
+                  td.textContent = formatRetrospectKpiDayCell(
+                    rowDef.kpiDef,
+                    ymd,
+                  );
+                } else {
+                  td.textContent = formatHoursToReadable(m[rowDef.key]);
+                }
               }
               bodyTr.appendChild(td);
             }
