@@ -7729,11 +7729,11 @@ body.auth-pw-modal-open {
   }
   .calendar-view--mobile-workschedule
     .work-schedule-monthly-day.other-month.today {
-    background: #f2f7f9 !important;
+    background: #fff !important;
   }
   .calendar-view--mobile-workschedule
     .work-schedule-monthly-day.other-month.today:hover {
-    background: #e8f0f3 !important;
+    background: #f5f5f7 !important;
   }
   .calendar-view--mobile-workschedule
     .work-schedule-monthly-day.today
@@ -19819,11 +19819,11 @@ col.asset-expense-col-amount,
 }
 
 .work-schedule-monthly-day.other-month {
-  background: #f2f7f9;
+  background: #fff;
 }
 
 .work-schedule-monthly-day.other-month:hover {
-  background: #e8f0f3;
+  background: #fff;
 }
 
 .work-schedule-monthly-day.today {
@@ -19831,7 +19831,7 @@ col.asset-expense-col-amount,
 }
 
 .work-schedule-monthly-day.other-month.today {
-  background: #f2f7f9;
+  background: #fff;
 }
 
 .work-schedule-monthly-day.today:hover {
@@ -19839,7 +19839,7 @@ col.asset-expense-col-amount,
 }
 
 .work-schedule-monthly-day.other-month.today:hover {
-  background: #e8f0f3;
+  background: rgba(0, 0, 0, 0.02);
 }
 
 .work-schedule-monthly-day.today .work-schedule-monthly-day-num::after {
