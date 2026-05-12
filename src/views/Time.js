@@ -688,6 +688,36 @@ function isTimeTaskKpiLinked(task) {
   return Boolean(task && String(task.kpiId || "").trim());
 }
 
+/** 앱 기본 제공 과제(삭제 불가 템플릿) — FIXED_* 목록 이름 일치 */
+const BUILTIN_TEMPLATE_NAMES = new Set([
+  ...TTC.FIXED_OTHER_TASKS.map((t) => t.name),
+  ...TTC.FIXED_PRODUCTIVE_TASKS.map((t) => t.name),
+  ...TTC.FIXED_NONPRODUCTIVE_TASKS.map((t) => t.name),
+]);
+
+function isTimeTaskBuiltinTemplate(task) {
+  const n = String(task?.name ?? "").trim();
+  return Boolean(n && BUILTIN_TEMPLATE_NAMES.has(n));
+}
+
+function appendTaskDropdownBadges(textWrap, task) {
+  if (isTimeTaskBuiltinTemplate(task)) {
+    const bb = document.createElement("span");
+    bb.className = "time-task-builtin-badge";
+    bb.textContent = "기본";
+    bb.title =
+      "앱에서 제공하는 기본 과제입니다. 과제 설정에서 삭제할 수 없습니다.";
+    textWrap.appendChild(bb);
+  }
+  if (isTimeTaskKpiLinked(task)) {
+    const kb = document.createElement("span");
+    kb.className = "time-task-kpi-badge";
+    kb.textContent = "KPI";
+    kb.title = "KPI(맵)에서 연결된 과제입니다";
+    textWrap.appendChild(kb);
+  }
+}
+
 /** KPI에서 만든 과제 — 시간가계부 과제 설정에서 삭제 불가 안내 */
 const MSG_TIME_TASK_KPI_LINKED =
   "KPI와 연결된 과제입니다. 과제 설정에서는 삭제할 수 없습니다. 꿈·건강·행복·부수입 등 KPI 화면에서 해당 KPI를 삭제하면 서버와 과제 목록에서 함께 제거됩니다.";
@@ -5209,7 +5239,10 @@ export function render() {
             opt && isTimeTaskKpiLinked(opt)
               ? '<span class="time-task-kpi-badge" title="KPI(맵)에서 연결된 과제입니다">KPI</span>'
               : "";
-          return `<label class="time-task-select-item"><input type="checkbox" class="time-task-select-cb" data-task-name="${attrEsc}" ${selectedSet === null || selectedSet.has(name) ? "checked" : ""} /><span class="time-task-select-item-text"><span class="time-task-select-item-name-part">${nameHtml}</span>${kpiMark}</span></label>`;
+          const builtinMark = isTimeTaskBuiltinTemplate({ name })
+            ? '<span class="time-task-builtin-badge" title="앱에서 제공하는 기본 과제입니다. 과제 설정에서 삭제할 수 없습니다.">기본</span>'
+            : "";
+          return `<label class="time-task-select-item"><input type="checkbox" class="time-task-select-cb" data-task-name="${attrEsc}" ${selectedSet === null || selectedSet.has(name) ? "checked" : ""} /><span class="time-task-select-item-text"><span class="time-task-select-item-name-part">${nameHtml}</span>${builtinMark}${kpiMark}</span></label>`;
         })
         .join("");
       if (names.length === 0)
@@ -6212,13 +6245,7 @@ export function render() {
         label.className = "time-task-log-task-dropdown-option-label";
         label.textContent = t.name || "";
         textWrap.appendChild(label);
-        if (isTimeTaskKpiLinked(t)) {
-          const kb = document.createElement("span");
-          kb.className = "time-task-kpi-badge";
-          kb.textContent = "KPI";
-          kb.title = "KPI(맵)에서 연결된 과제입니다";
-          textWrap.appendChild(kb);
-        }
+        appendTaskDropdownBadges(textWrap, t);
         row.appendChild(bar);
         row.appendChild(textWrap);
         const closePanelAndSelect = () => {
@@ -8108,13 +8135,16 @@ export function render() {
             : " time-task-setup-item--editable") +
           (isRowSelected ? " time-task-setup-item--selected" : "");
         const nameEsc = (t.name || "").replace(/</g, "&lt;");
+        const builtinBadge = isTimeTaskBuiltinTemplate(t)
+          ? `<span class="time-task-builtin-badge" title="앱에서 제공하는 기본 과제입니다. 과제 설정에서 삭제할 수 없습니다.">기본</span>`
+          : "";
         const kpiBadge = fromKpi
           ? `<span class="time-task-kpi-badge" title="KPI(맵)에서 연결된 과제입니다">KPI</span>`
           : "";
         row.innerHTML = `
           <span class="time-task-setup-item-title">
             <span class="time-task-setup-item-name">${nameEsc}</span>
-            ${kpiBadge}
+            ${builtinBadge}${kpiBadge}
           </span>
           <span class="time-task-setup-item-cat">${catLabel}</span>
         `;
@@ -11279,13 +11309,7 @@ export function renderTimeBudgetTablesForCalendar(
         label.className = "time-task-log-task-dropdown-option-label";
         label.textContent = t.name;
         textWrap.appendChild(label);
-        if (isTimeTaskKpiLinked(t.full)) {
-          const kb = document.createElement("span");
-          kb.className = "time-task-kpi-badge";
-          kb.textContent = "KPI";
-          kb.title = "KPI(맵)에서 연결된 과제입니다";
-          textWrap.appendChild(kb);
-        }
+        appendTaskDropdownBadges(textWrap, t.full);
         row.appendChild(bar);
         row.appendChild(textWrap);
         const closePanelAndSelect = () => {
