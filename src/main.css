@@ -30608,7 +30608,8 @@ button.time-modal-traffic {
   font-family: var(--font-modal-chrome);
 }
 
-.time-task-log-task-dropdown-panel--productive-buckets {
+.time-task-log-task-dropdown-panel--productive-buckets,
+.time-task-log-task-dropdown-panel--ledger-buckets {
   max-height: min(22rem, 58vh);
 }
 

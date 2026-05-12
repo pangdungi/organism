@@ -700,7 +700,8 @@ function isTimeTaskBuiltinTemplate(task) {
   return Boolean(n && BUILTIN_TEMPLATE_NAMES.has(n));
 }
 
-function appendTaskDropdownBadges(textWrap, task) {
+function appendTaskDropdownBadges(textWrap, task, opts = {}) {
+  if (opts.omitBadges) return;
   if (isTimeTaskBuiltinTemplate(task)) {
     const bb = document.createElement("span");
     bb.className = "time-task-builtin-badge";
@@ -6201,6 +6202,33 @@ export function render() {
   let pendingEditStartTime = "";
 
   function buildTaskDropdown() {
+    const LEDGER_BUCKET_CHIPS = [
+      { id: "dream", label: "꿈" },
+      { id: "happiness", label: "행복" },
+      { id: "sideincome", label: "부수입" },
+      { id: "health", label: "건강" },
+      { id: "nonproductive", label: "비생산" },
+      { id: "other", label: "그외" },
+    ];
+
+    function timeLedgerTaskLogPickerBucket(t) {
+      let prod = String(t?.productivity ?? "").trim().toLowerCase();
+      if (!prod) {
+        prod = String(
+          getProductivityFromCategory(String(t?.category ?? "").trim()) ||
+            "",
+        ).toLowerCase();
+      }
+      if (prod === "nonproductive") return "nonproductive";
+      if (prod === "other") return "other";
+      const cat = String(t?.category ?? "").trim().toLowerCase();
+      if (cat === "dream") return "dream";
+      if (cat === "happiness") return "happiness";
+      if (cat === "sideincome") return "sideincome";
+      if (cat === "health") return "health";
+      return "other";
+    }
+
     const wrap = document.createElement("div");
     wrap.className = "time-task-log-task-dropdown";
     const trigger = document.createElement("button");
@@ -6208,17 +6236,24 @@ export function render() {
     trigger.className = "time-task-log-task-dropdown-trigger";
     trigger.textContent = "과제를 선택하세요";
     const panel = document.createElement("div");
-    panel.className = "time-task-log-task-dropdown-panel";
+    panel.className =
+      "time-task-log-task-dropdown-panel time-task-log-task-dropdown-panel--ledger-buckets";
     panel.hidden = true;
     let value = "";
     let searchQuery = "";
+    let pickerBucket = "dream";
 
     function renderOptions(container, filter) {
       container.innerHTML = "";
+      const q = (filter || "").trim().toLowerCase();
       const allTasks = getFullTaskOptions();
       let tasks = allTasks.filter((t) => !(t.name || "").includes(" > "));
-      if (filter) {
-        const q = filter.toLowerCase();
+      if (!q) {
+        tasks = tasks.filter(
+          (t) => timeLedgerTaskLogPickerBucket(t) === pickerBucket,
+        );
+      }
+      if (q) {
         tasks = tasks.filter((t) => (t.name || "").toLowerCase().includes(q));
       }
       tasks.sort((a, b) => (a.name || "").localeCompare(b.name || "", "ko"));
@@ -6270,6 +6305,8 @@ export function render() {
 
     function renderPanel() {
       panel.innerHTML = "";
+      let optionsContainer = null;
+
       const searchWrap = document.createElement("div");
       searchWrap.className = "time-task-log-task-dropdown-search-wrap";
       const searchInput = document.createElement("input");
@@ -6280,7 +6317,38 @@ export function render() {
       searchInput.setAttribute("autocomplete", "off");
       searchWrap.appendChild(searchInput);
       panel.appendChild(searchWrap);
-      const optionsContainer = document.createElement("div");
+
+      const chipsWrap = document.createElement("div");
+      chipsWrap.className = "time-task-log-task-dropdown-buckets";
+      chipsWrap.setAttribute("role", "tablist");
+      chipsWrap.setAttribute("aria-label", "과제 구역");
+      LEDGER_BUCKET_CHIPS.forEach(({ id, label: chipLabel }) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "time-task-log-task-dropdown-bucket";
+        b.dataset.bucket = id;
+        b.textContent = chipLabel;
+        b.setAttribute("role", "tab");
+        b.setAttribute("aria-selected", id === pickerBucket ? "true" : "false");
+        if (id === pickerBucket) b.classList.add("is-active");
+        b.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          pickerBucket = id;
+          chipsWrap.querySelectorAll(".time-task-log-task-dropdown-bucket").forEach((x) => {
+            const on = x.dataset.bucket === id;
+            x.classList.toggle("is-active", on);
+            x.setAttribute("aria-selected", on ? "true" : "false");
+          });
+          if (optionsContainer) {
+            renderOptions(optionsContainer, searchQuery);
+          }
+        });
+        chipsWrap.appendChild(b);
+      });
+      panel.appendChild(chipsWrap);
+
+      optionsContainer = document.createElement("div");
       optionsContainer.className = "time-task-log-task-dropdown-options";
       panel.appendChild(optionsContainer);
       searchInput.addEventListener("input", () => {
@@ -6294,6 +6362,7 @@ export function render() {
 
     trigger.addEventListener("click", () => {
       searchQuery = "";
+      pickerBucket = "dream";
       renderPanel();
       panel.hidden = !panel.hidden;
       if (!panel.hidden)
@@ -11206,28 +11275,23 @@ export function renderTimeBudgetTablesForCalendar(
   const calendarBudgetModalOptionsProductive = investTaskDropdownOptions;
   const calendarBudgetModalOptionsNonproductive = consumeTaskDropdownOptions;
 
-  const BUILTIN_PRODUCTIVE_NAMES = new Set(
-    TTC.FIXED_PRODUCTIVE_TASKS.map((t) => t.name),
-  );
-  const PRODUCTIVE_PICKER_MAP_BUCKETS = new Set([
-    "dream",
-    "happiness",
-    "sideincome",
-    "health",
-  ]);
-
-  /** 타임블록 생산적 과제 드롭다운: 기본 / 맵 4영역 / 직접 추가 — 상호 배타 */
   function productiveBudgetPickerBucket(taskLike) {
     const t =
       taskLike && typeof taskLike === "object" ? taskLike : { name: taskLike };
     const n = String(t.name ?? "").trim();
-    if (!n) return "custom";
-    if (BUILTIN_PRODUCTIVE_NAMES.has(n)) return "basic";
+    if (!n) return null;
     const cat = String(t.category ?? "")
       .trim()
       .toLowerCase();
-    if (PRODUCTIVE_PICKER_MAP_BUCKETS.has(cat)) return cat;
-    return "custom";
+    if (
+      cat === "dream" ||
+      cat === "happiness" ||
+      cat === "sideincome" ||
+      cat === "health"
+    ) {
+      return cat;
+    }
+    return null;
   }
 
   function dispatchBudgetRebuild() {
@@ -11239,7 +11303,7 @@ export function renderTimeBudgetTablesForCalendar(
   }
 
   /** 과제 기록 모달 `buildTaskDropdown`과 동일한 마크업·클래스 — 옵션 목록만 예산 추가용으로 한정.
-   * @param {{ productivePicker?: boolean }} [dropdownOpts] — 생산적 과제만: 맵·기본·내 과제 6칩 필터 */
+   * @param {{ productivePicker?: boolean }} [dropdownOpts] — 생산적 과제만: 꿈·행복·부수입·건강 4칩(검색 시 전체) */
   function buildCalendarBudgetTaskLogDropdown(
     addOptionsSource,
     abortSignal,
@@ -11262,15 +11326,13 @@ export function renderTimeBudgetTablesForCalendar(
     panel.hidden = true;
     let value = "";
     let searchQuery = "";
-    let pickerBucket = "basic";
+    let pickerBucket = "dream";
 
     const PRODUCTIVE_BUCKET_CHIPS = [
-      { id: "basic", label: "기본" },
       { id: "dream", label: "꿈" },
       { id: "happiness", label: "행복" },
       { id: "sideincome", label: "부수입" },
       { id: "health", label: "건강" },
-      { id: "custom", label: "내 과제" },
     ];
 
     function resolveRows() {
@@ -11293,43 +11355,6 @@ export function renderTimeBudgetTablesForCalendar(
     function renderOptions(container, filter) {
       container.innerHTML = "";
       const q = (filter || "").trim().toLowerCase();
-      const emptyLabel = "선택 안 함";
-      const showEmpty =
-        !q ||
-        emptyLabel.toLowerCase().includes(q) ||
-        q === "—";
-
-      if (showEmpty) {
-        const row = document.createElement("div");
-        row.className = "time-task-log-task-dropdown-option";
-        const bar = document.createElement("span");
-        bar.className = "time-task-prod-bar time-task-prod-bar--other";
-        bar.setAttribute("aria-hidden", "true");
-        const textWrap = document.createElement("span");
-        textWrap.className = "time-task-log-task-dropdown-option-text";
-        const label = document.createElement("span");
-        label.className = "time-task-log-task-dropdown-option-label";
-        label.textContent = emptyLabel;
-        textWrap.appendChild(label);
-        row.appendChild(bar);
-        row.appendChild(textWrap);
-        const pickEmpty = () => {
-          value = "";
-          trigger.textContent = "과제를 선택하세요";
-          panel.hidden = true;
-        };
-        row.addEventListener("mousedown", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          pickEmpty();
-        });
-        row.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          pickEmpty();
-        });
-        container.appendChild(row);
-      }
 
       let tasks = resolveRows();
       if (productivePicker && !q) {
@@ -11367,7 +11392,9 @@ export function renderTimeBudgetTablesForCalendar(
         label.className = "time-task-log-task-dropdown-option-label";
         label.textContent = t.name;
         textWrap.appendChild(label);
-        appendTaskDropdownBadges(textWrap, t.full);
+        appendTaskDropdownBadges(textWrap, t.full, {
+          omitBadges: productivePicker,
+        });
         row.appendChild(bar);
         row.appendChild(textWrap);
         const closePanelAndSelect = () => {
@@ -11450,7 +11477,7 @@ export function renderTimeBudgetTablesForCalendar(
 
     trigger.addEventListener("click", () => {
       searchQuery = "";
-      if (productivePicker) pickerBucket = "basic";
+      if (productivePicker) pickerBucket = "dream";
       renderPanel();
       panel.hidden = !panel.hidden;
       if (!panel.hidden) {
