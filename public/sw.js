@@ -93,8 +93,8 @@ self.addEventListener("push", (event) => {
   /* iOS WebKit은 알림 아이콘에 SVG 를 쓰면 showNotification 이 조용히 실패하는 경우가 있음 → PNG 권장 */
   const options = {
     body: data.body || "설정한 시간이 되었어요.",
-    icon: "/icon-192.png",
-    badge: "/icon-192.png",
+    icon: "/icon-192.png?v=organism-icon-2",
+    badge: "/icon-192.png?v=organism-icon-2",
     tag: data.tag || "organism-reminder",
     renotify: true,
     silent: false,
