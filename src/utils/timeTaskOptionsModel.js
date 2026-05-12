@@ -250,12 +250,6 @@ function notifySaved(detail = {}) {
     } catch (_) {}
     return;
   }
-  if (typeof console !== "undefined" && console.log) {
-    console.log(
-      "[lp-time-ledger-tasks] notify:행 단위 upsert → public.time_ledger_tasks",
-      { from: "timeTaskOptionsModel.js", ids: filtered.length },
-    );
-  }
   void import("./timeLedgerTasksSupabase.js").then((m) =>
     m.upsertTimeLedgerTaskRowsFromLocalByIds(filtered).catch((err) => {
       try {
@@ -286,25 +280,8 @@ function writeTaskOptionListLocal(list) {
  */
 async function notifyAfterServerDeleteIfNeeded(removedId) {
   const id = String(removedId || "").trim();
-  try {
-    if (typeof console !== "undefined" && console.log) {
-      console.log("[lp-time-ledger-tasks] trace:삭제·서버동기 시작", {
-        removedId: id || null,
-        uuidOk: !!(id && isUuid(id)),
-        note: "이어서 bumpPullSkip 후 필요 시 Supabase delete",
-      });
-    }
-  } catch (_) {}
   notifySaved({ bumpPullSkip: true, scheduleSyncPush: false });
   if (!id || !isUuid(id)) {
-    try {
-      if (typeof console !== "undefined" && console.log) {
-        console.log("[lp-time-ledger-tasks] trace:삭제·서버동기 (delete 미호출)", {
-          reason: !id ? "빈 id" : "uuid 아님",
-          removedId: id || null,
-        });
-      }
-    } catch (_) {}
     return;
   }
   try {
@@ -312,23 +289,14 @@ async function notifyAfterServerDeleteIfNeeded(removedId) {
     await m.deleteTimeLedgerTaskRowForCurrentUser(id);
   } catch (e) {
     try {
-      if (typeof console !== "undefined" && console.log) {
-        console.log("[lp-time-ledger-tasks] trace:삭제·서버 delete 예외", {
-          removedId: id,
-          err: e && (e.message || e),
-        });
-      }
+      console.warn(
+        "[lp-time-ledger-tasks] 서버 delete 예외",
+        e && (e.message || e),
+      );
     } catch (_) {}
     /* 네트워크 실패 시에도 스킵으로 잘못된 pull 완화 */
   }
   notifySaved({ bumpPullSkip: true, scheduleSyncPush: false });
-  try {
-    if (typeof console !== "undefined" && console.log) {
-      console.log("[lp-time-ledger-tasks] trace:삭제·서버동기 끝 (pull 스킵 한 번 더)", {
-        removedId: id,
-      });
-    }
-  } catch (_) {}
 }
 
 function assignIdsToMergedList(merged) {
@@ -477,27 +445,11 @@ export function addTaskOption(name) {
 
 export function addTaskOptionFull(task) {
   const name = (task?.name || "").trim();
-  if (typeof console !== "undefined" && console.log) {
-    console.log("[lp-time-ledger-tasks] addTaskOptionFull:시작", {
-      name,
-      category: task?.category,
-      source: "task_options_memory",
-    });
-  }
   const opts = getFullTaskOptions();
   if (!name) {
-    if (typeof console !== "undefined" && console.log) {
-      console.log("[lp-time-ledger-tasks] addTaskOptionFull:스킵(이름 없음)");
-    }
     return opts;
   }
   if (opts.some((o) => o.name === name)) {
-    if (typeof console !== "undefined" && console.log) {
-      console.log(
-        "[lp-time-ledger-tasks] addTaskOptionFull:스킵(이미 같은 이름의 과제 있음) — upsert 생략",
-        { name },
-      );
-    }
     return opts;
   }
   const row = {
@@ -513,14 +465,6 @@ export function addTaskOptionFull(task) {
           ? crypto.randomUUID()
           : `t-${Date.now()}`,
   };
-  if (typeof console !== "undefined" && console.log) {
-    console.log("[lp-time-ledger-tasks] addTaskOptionFull:행 생성", {
-      id: row.id,
-      isUuid: isUuid(String(row.id).trim()),
-      name: row.name,
-      다음: "saveMergedList → notifySaved → Supabase time_ledger_tasks",
-    });
-  }
   const next = [row, ...opts];
   const rid = String(row.id || "").trim();
   saveMergedList(next, {
@@ -616,16 +560,6 @@ export function kpiTimeTaskRemove(kpi, syncNameFromMap) {
       ? String(target.id).trim()
       : "";
   const next = opts.filter((o) => o !== target);
-  try {
-    if (typeof console !== "undefined" && console.log) {
-      console.log("[lp-time-ledger-tasks] trace:kpiTimeTaskRemove", {
-        name: (target.name || "").trim() || null,
-        removedId: removedId || null,
-        prevLen: opts.length,
-        nextLen: next.length,
-      });
-    }
-  } catch (_) {}
   writeTaskOptionListLocal(next);
   void notifyAfterServerDeleteIfNeeded(removedId);
 }
@@ -707,14 +641,6 @@ export async function removeTaskOption(name) {
   const n = (name || "").trim();
   if (!n) return false;
   if (getLockedTaskNamesStatic().has(n)) {
-    try {
-      if (typeof console !== "undefined" && console.log) {
-        console.log("[lp-time-ledger-tasks] trace:removeTaskOption 거부", {
-          name: n,
-          reason: "locked",
-        });
-      }
-    } catch (_) {}
     return false;
   }
   const opts = getFullTaskOptions();
@@ -724,26 +650,8 @@ export async function removeTaskOption(name) {
       ? String(target.id).trim()
       : "";
   const next = opts.filter((o) => o.name !== n);
-  try {
-    if (typeof console !== "undefined" && console.log) {
-      console.log("[lp-time-ledger-tasks] trace:removeTaskOption 메모리 반영 직전", {
-        name: n,
-        removedId: removedId || null,
-        prevLen: opts.length,
-        nextLen: next.length,
-      });
-    }
-  } catch (_) {}
   writeTaskOptionListLocal(next);
   await notifyAfterServerDeleteIfNeeded(removedId);
-  try {
-    if (typeof console !== "undefined" && console.log) {
-      console.log("[lp-time-ledger-tasks] trace:removeTaskOption 완료", {
-        name: n,
-        removedId: removedId || null,
-      });
-    }
-  } catch (_) {}
   return true;
 }
 
@@ -804,17 +712,6 @@ export function applyTimeLedgerTasksFromServer(
   const localById = new Map(
     localRows.map((r) => [String(r.id || "").trim(), r]).filter(([k]) => k),
   );
-  try {
-    if (typeof console !== "undefined" && console.log) {
-      console.log("[lp-time-ledger-tasks] trace:apply 시작", {
-        serverRowCount: serverRowsSafe.length,
-        memRowCountBefore: localRows.length,
-        serverIdSample: serverRowsSafe.slice(0, 12).map((r) =>
-          String(r.id || "").slice(0, 8) + "…",
-        ),
-      });
-    }
-  } catch (_) {}
   const builtinTemplates = C.getBuiltinTaskTemplates();
   const builtInIdSet = new Set(
     builtinTemplates.map((t) =>
@@ -956,21 +853,6 @@ export function applyTimeLedgerTasksFromServer(
     scheduleSyncPush: upsertSyncIds.length > 0,
     upsertTaskIds: upsertSyncIds.length ? upsertSyncIds : null,
   });
-  try {
-    if (typeof console !== "undefined" && console.log) {
-      const customOut = dedupedSansOrphanNameDup.filter(
-        (o) => !builtInIdSet.has(String(o.id || "").trim()),
-      );
-      console.log("[lp-time-ledger-tasks] trace:apply 끝·메모리 저장 후", {
-        mergedLen: dedupedSansOrphanNameDup.length,
-        nonBuiltinLen: customOut.length,
-        dupKpiRowsQueuedDelete: dupIdsToDelete.length,
-        nonBuiltinNameSample: customOut.slice(0, 12).map((o) =>
-          (o.name || "").slice(0, 24),
-        ),
-      });
-    }
-  } catch (_) {}
   return true;
 }
 

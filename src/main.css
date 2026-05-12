@@ -376,7 +376,7 @@ body {
 /* ----- 초기 스플래시 (세션 확인·앱 마운트 전) ----- */
 .app-splash {
   --app-splash-green: #f5f5f7;
-  --app-splash-cream: #1d1d1f;
+  --app-splash-cream: #1f4654;
   position: fixed;
   inset: 0;
   z-index: 2147483646;
@@ -7753,18 +7753,18 @@ body.auth-pw-modal-open {
     font-size: 0.6rem !important;
     font-weight: 500 !important;
     line-height: 1 !important;
-    color: #ffffff !important;
+    color: #1f4654 !important;
     border-radius: 50% !important;
     -webkit-border-radius: 50% !important;
-    background: #aeaeb2 !important;
+    background: #f2f7f9 !important;
     box-sizing: border-box !important;
     overflow: hidden;
   }
   .calendar-view--mobile-workschedule
     .work-schedule-monthly-day.other-month.today
     .work-schedule-monthly-day-num {
-    background: #c7c7cc !important;
-    color: #fff !important;
+    background: #f2f7f9 !important;
+    color: #1f4654 !important;
   }
   .calendar-view--mobile-workschedule
     .work-schedule-monthly-day.today
@@ -27647,15 +27647,15 @@ body.kpi-resizing {
 }
 
 .time-task-setup-tab:hover:not(.active) {
-  background: var(--cb-bg-hover);
-  border-color: var(--text-caption-color);
-  color: var(--ui-btn-primary-bg);
+  background: #f2f7f9;
+  border-color: #7fb2bf;
+  color: #1f4654;
 }
 
 .time-task-setup-tab.active {
-  background: var(--cb-bg-hover);
-  border: 1px solid var(--ui-btn-primary-bg);
-  color: var(--ui-btn-primary-bg);
+  background: #f2f7f9 !important;
+  border: 1px solid #7fb2bf !important;
+  color: #1f4654 !important;
   font-weight: var(--fw-body);
 }
 
@@ -27688,24 +27688,24 @@ body.kpi-resizing {
 }
 
 .time-task-setup-subcat-btn:hover:not(.active) {
-  background: var(--cb-bg-hover);
-  border-color: var(--text-caption-color);
-  color: var(--ui-btn-primary-bg);
+  background: #f2f7f9;
+  border-color: #7fb2bf;
+  color: #1f4654;
 }
 
 .time-task-setup-subcat-btn.active {
-  background: var(--cb-bg-hover);
-  border: 1px solid var(--ui-btn-primary-bg);
-  color: var(--ui-btn-primary-bg);
+  background: #f2f7f9 !important;
+  border: 1px solid #7fb2bf !important;
+  color: #1f4654 !important;
   font-weight: var(--fw-body);
 }
 
-/* 과제 설정 리스트: Shell / Sand 호버 / Linen+좌측 띠 선택 (폰트 크기는 기존 유지) */
+/* 과제 설정 리스트: 구분선은 중립 톤(전역 --cb-bg-hover는 파란 기운) */
 .time-task-setup-list {
   display: flex;
   flex-direction: column;
   gap: 0;
-  border: 1px solid var(--cb-bg-hover);
+  border: 1px solid rgba(31, 70, 84, 0.12);
   border-radius: 0;
   overflow: hidden;
 }
@@ -27718,7 +27718,7 @@ body.kpi-resizing {
   background: var(--ui-btn-primary-fg);
   border: none;
   border-radius: 0;
-  border-bottom: 1px solid var(--cb-bg-hover);
+  border-bottom: 1px solid rgba(31, 70, 84, 0.08);
   font-size: 0.9rem;
   transition: background 0.15s ease;
 }
@@ -27728,23 +27728,23 @@ body.kpi-resizing {
 }
 
 .time-task-setup-item--editable:hover:not(.time-task-setup-item--selected) {
-  background: var(--ui-surface-alt);
+  background: #f2f7f9;
 }
 
 .time-task-setup-item--selected {
-  background: var(--cb-bg-hover);
-  border-left: 2px solid var(--ui-btn-primary-bg);
+  background: #f2f7f9;
+  border-left: 2px solid #7fb2bf;
   padding-left: 14px;
 }
 
 .time-task-setup-item--selected.time-task-setup-item--editable:hover {
-  background: var(--cb-bg-hover);
+  background: #e8f1f4;
 }
 
 .time-task-setup-item-sub {
   padding: 13px 16px 13px 2rem;
   background: var(--ui-btn-primary-fg);
-  border-bottom: 1px solid var(--cb-bg-hover);
+  border-bottom: 1px solid rgba(31, 70, 84, 0.08);
 }
 
 .time-task-setup-item-name {
@@ -27797,7 +27797,7 @@ body.kpi-resizing {
 }
 
 .time-task-setup-item--editable:focus-visible {
-  outline: 2px solid var(--ui-btn-primary-bg);
+  outline: 2px solid #7fb2bf;
   outline-offset: -2px;
 }
 
@@ -27813,15 +27813,20 @@ body.kpi-resizing {
   background: var(--ui-btn-primary-fg);
 }
 
-/* 과제 추가 서브모달 */
+/* 과제 추가 서브모달 — 본문만큼만 높이(설정 모달과 동일 패널 클래스라 70vh 빈칸 방지) */
 .time-add-task-modal .time-add-task-panel {
   max-width: 25rem;
+  height: auto;
+  max-height: min(90vh, 35rem);
   background: var(--content-bg);
   border-radius: var(--modal-radius);
 }
 
 .time-add-task-modal .time-task-setup-body {
   border-top: 1px solid var(--text-placeholder);
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow: visible;
 }
 
 .time-add-task-field {
@@ -27880,6 +27885,10 @@ body.kpi-resizing {
   cursor: pointer;
 }
 
+.time-add-task-productivity input[type="radio"] {
+  accent-color: #7fb2bf;
+}
+
 .time-add-task-categories {
   display: flex;
   flex-wrap: wrap;
@@ -27902,22 +27911,22 @@ body.kpi-resizing {
 }
 
 .time-add-task-cat-btn:hover:not(.active) {
-  background: var(--cb-bg-hover);
-  border-color: var(--text-caption-color);
-  color: var(--ui-btn-primary-bg);
+  background: #f2f7f9;
+  border-color: #7fb2bf;
+  color: #1f4654;
 }
 
 .time-add-task-cat-btn.active {
-  background: var(--cb-bg-hover);
-  border: 1px solid var(--ui-btn-primary-bg);
-  color: var(--ui-btn-primary-bg);
+  background: #f2f7f9 !important;
+  border: 1px solid #7fb2bf !important;
+  color: #1f4654 !important;
   font-weight: var(--fw-body);
 }
 
 .time-add-task-cat-btn.active:hover {
-  background: var(--cb-bg-hover);
-  border-color: var(--ui-btn-primary-bg);
-  color: var(--ui-btn-primary-bg);
+  background: #f2f7f9 !important;
+  border-color: #7fb2bf !important;
+  color: #1f4654 !important;
 }
 
 .time-add-task-submit {
@@ -28462,8 +28471,8 @@ body.kpi-resizing {
 #app
   .time-task-log-modal
   .time-task-log-time-adjust-btn.time-task-log-time-adjust-active {
-  background: #111827 !important;
-  color: #ffffff !important;
+  background: #7fb2bf !important;
+  color: #1f4654 !important;
 }
 
 /* 스크롤 영역 안 datetime 필드 스타일 */
@@ -30567,11 +30576,10 @@ button.time-modal-traffic {
   max-height: 15rem;
   display: flex;
   flex-direction: column;
-  background: rgba(246, 245, 250, 0.98);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  background: #ffffff;
   border: 0.5px solid rgba(0, 0, 0, 0.15);
-  border-radius: 10px;
+  border-radius: 10px !important;
+  -webkit-border-radius: 10px !important;
   box-shadow:
     0 0 0 0.5px rgba(0, 0, 0, 0.06),
     0 12px 40px rgba(0, 0, 0, 0.14);
@@ -30584,7 +30592,7 @@ button.time-modal-traffic {
   flex-shrink: 0;
   padding: 0.5rem 0.65rem;
   border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
-  background: rgba(240, 239, 245, 0.72);
+  background: #ffffff;
 }
 
 /* 전역 #app 텍스트 인풋 밑줄 규칙보다 우선: 검색창은 박스형 */
@@ -32119,6 +32127,7 @@ button.time-modal-traffic {
 .time-task-select-modal .time-task-setup-panel {
   max-width: 26.25rem;
   max-height: 75vh;
+  height: auto;
 }
 
 .time-task-select-actions {
@@ -32141,11 +32150,11 @@ button.time-modal-traffic {
 }
 
 .time-task-select-actions button:hover {
-  background: rgba(0, 0, 0, 0.02) !important;
+  background: #f2f7f9 !important;
 }
 
 .time-task-select-list {
-  flex: 1;
+  flex: 0 1 auto;
   min-height: 12.5rem;
   max-height: 40vh;
   overflow-y: auto;
@@ -32236,12 +32245,12 @@ button.time-modal-traffic {
 }
 
 .time-task-select-modal .time-task-select-cb:checked {
-  background-color: #1f4654 !important;
-  background-image: var(--cb-check-bg);
+  background-color: #a6c9d2 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-6' stroke='%231f4654' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: center;
   background-size: 70%;
-  border: 1.5px solid #1f4654 !important;
+  border: 1.5px solid #7fb2bf !important;
 }
 
 .time-task-select-empty {
@@ -32258,13 +32267,17 @@ button.time-modal-traffic {
   margin-top: 1rem;
   margin-left: -1.25rem;
   margin-right: -1.25rem;
-  padding: 0.75rem 1.25rem 1rem;
+  margin-bottom: 0;
+  padding: 0.75rem 1.25rem 0.75rem;
   background: rgba(236, 235, 240, 0.6);
   border-top: 0.5px solid rgba(0, 0, 0, 0.08);
   border-radius: 0;
 }
 
 .time-task-select-modal .time-task-setup-body {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow: visible;
   padding-bottom: 0;
 }
 
@@ -33317,7 +33330,7 @@ button.time-modal-traffic {
   font-size: var(--fs-small, 0.8125rem);
   font-weight: 600;
   color: var(--text-body);
-  background: #cce0e6;
+  background: #f2f7f9;
   border-bottom: var(--divider-subtle);
   border-right: none;
   font-family: var(--font-body);
@@ -43054,9 +43067,9 @@ img.time-btn-icon {
   color: rgba(60, 60, 67, 0.3);
 }
 
-/* 타달·일요일 겹침 시에도 오늘 배지는 흰 글자 유지 */
+/* 타달·일요일 겹침: 오늘 배지는 밝은 배경 + 진한 숫자 */
 .calendar-view .calendar-monthly-day.other-month.today.sun .calendar-monthly-day-num {
-  color: #ffffff;
+  color: #1f4654;
 }
 
 .calendar-monthly-tabs-wrap {
@@ -47235,7 +47248,7 @@ tr.time-budget-calendar-row--readonly {
 
 .calendar-monthly-day.other-month.today .calendar-monthly-day-num {
   font-weight: 700;
-  color: #ffffff;
+  color: #1f4654;
   align-self: flex-end;
   flex: 0 0 auto;
   width: 1.55rem;
@@ -47250,18 +47263,18 @@ tr.time-budget-calendar-row--readonly {
   line-height: 1;
   border-radius: 50% !important;
   -webkit-border-radius: 50% !important;
-  background: #c7c7cc;
+  background: #f2f7f9;
   overflow: hidden;
   margin-bottom: 0;
 }
 
 .calendar-monthly-day.other-month.today:hover .calendar-monthly-day-num {
-  background: #b0b0b5;
+  background: #e8f0f3;
 }
 
 .calendar-monthly-day.today .calendar-monthly-day-num {
   font-weight: 700;
-  color: #ffffff;
+  color: #1f4654;
   align-self: flex-end;
   flex: 0 0 auto;
   width: 1.55rem;
@@ -47276,13 +47289,13 @@ tr.time-budget-calendar-row--readonly {
   line-height: 1;
   border-radius: 50% !important;
   -webkit-border-radius: 50% !important;
-  background: #aeaeb2;
+  background: #f2f7f9;
   overflow: hidden;
   margin-bottom: 0;
 }
 
 .calendar-monthly-day.today:hover .calendar-monthly-day-num {
-  background: #9e9ea3;
+  background: #e8f0f3;
 }
 
 .calendar-monthly-day.today .calendar-monthly-day-num::after,
@@ -47355,11 +47368,11 @@ tr.time-budget-calendar-row--readonly {
 }
 
 .calendar-monthly-day.today.sun .calendar-monthly-day-num {
-  color: #ffffff;
+  color: #1f4654;
 }
 
 .calendar-monthly-day.other-month.today.sun .calendar-monthly-day-num {
-  color: #ffffff;
+  color: #1f4654;
 }
 
 .calendar-monthly-day.other-month.sun .calendar-monthly-day-num {

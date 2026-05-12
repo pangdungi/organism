@@ -7803,11 +7803,11 @@ export function render() {
         ctx.handleRowEdit,
       );
       addLedgerTr = tr;
+      submittedLedgerRowForExpenseLink = tr._rowData;
       if (ctx.addRow) ctx.tbody.insertBefore(tr, ctx.addRow);
       else ctx.tbody.appendChild(tr);
-      /* 새 기록을 allRowsCache에 추가 (저장 누락 방지) */
-      allRowsCache.push(newRowData);
-      submittedLedgerRowForExpenseLink = newRowData;
+      /* DOM과 동일 객체를 캐시에 둠(createRow가 정규화한 행 = 저장·서버 push 기준) */
+      allRowsCache.push(tr._rowData);
       ctx.onRowUpdate?.();
     }
 
@@ -8251,10 +8251,6 @@ export function render() {
   addTaskSubmitBtn.addEventListener("click", () => {
     const name = (addTaskNameInput.value || "").trim();
     if (!name || !selectedCategory) {
-      console.log("[lp-time-task-modal] 추가/저장 스킵: 이름 또는 카테고리 없음", {
-        name: name || "(빈값)",
-        selectedCategory: selectedCategory || "(없음)",
-      });
       return;
     }
     const prod =
@@ -8262,12 +8258,6 @@ export function render() {
       "productive";
     const editName = addTaskNameInput.dataset.editName || "";
     if (editName) {
-      console.log("[lp-time-task-modal] 저장 클릭(수정)", {
-        oldName: editName,
-        newName: name,
-        category: selectedCategory,
-        productivity: prod,
-      });
       updateTaskOption(editName, {
         name,
         category: selectedCategory,
@@ -8275,25 +8265,11 @@ export function render() {
         memo: "",
       });
     } else {
-      console.log("[lp-time-task-modal] 추가 클릭(신규)", {
-        name,
-        category: selectedCategory,
-        productivity: prod,
-        흐름: [
-          "1) addTaskOptionFull (localStorage: time_task_options)",
-          "2) saveMergedList + 행 단위 upsertTimeLedgerTaskRowsFromLocalByIds",
-          "3) public.time_ledger_tasks (해당 id 만)",
-        ],
-      });
-      const result = addTaskOptionFull({
+      addTaskOptionFull({
         name,
         category: selectedCategory,
         productivity: prod,
         memo: "",
-      });
-      console.log("[lp-time-task-modal] addTaskOptionFull 완료", {
-        listLength: result?.length,
-        hint: "[lp-time-ledger-tasks] sync: 로그로 Supabase 결과 확인",
       });
     }
     closeAddTaskModal();
@@ -8302,23 +8278,16 @@ export function render() {
   addTaskDeleteBtn?.addEventListener("click", async () => {
     const editName = (addTaskNameInput.dataset.editName || "").trim();
     if (!editName) {
-      console.log("[lp-time-task-modal] 삭제 스킵: editName 없음");
       return;
     }
     if (getLockedTaskNames().has(editName)) {
-      console.log("[lp-time-task-modal] 삭제 막힘: KPI·잠금", { editName });
       alert(MSG_TIME_TASK_KPI_LINKED);
       return;
     }
-    console.log("[lp-time-task-modal] 삭제 클릭", { editName });
     if (!(await removeTaskOption(editName))) {
-      console.log("[lp-time-task-modal] removeTaskOption 실패(잠금 등)", {
-        editName,
-      });
       alert(MSG_TIME_TASK_KPI_LINKED);
       return;
     }
-    console.log("[lp-time-task-modal] removeTaskOption 성공", { editName });
     closeAddTaskModal();
   });
 

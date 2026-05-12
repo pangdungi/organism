@@ -23,6 +23,8 @@ import {
   writeTimeLedgerEntriesRaw,
 } from "./timeLedgerEntriesModel.js";
 import { timeLedgerSyncLog } from "./timeLedgerSyncDebug.js";
+import { upsertTimeLedgerTaskRowsFromLocalByIds } from "./timeLedgerTasksSupabase.js";
+import { isUuid } from "./idUtils.js";
 
 const TABLE = "time_ledger_entries";
 
@@ -412,10 +414,41 @@ export async function pushDirtyTimeLedgerEntriesToSupabase(opts = {}) {
       return;
     }
 
-    const { data, error } = await supabase
+    /* time_ledger_entries.task_id → time_ledger_tasks(id) FK: 로컬에만 있는 과제 id면 먼저 과제 행 upsert */
+    const taskIdsToEnsure = [
+      ...new Set(
+        toUpload
+          .map((r) => String(r.taskId || "").trim())
+          .filter((id) => isUuid(id)),
+      ),
+    ];
+    if (taskIdsToEnsure.length > 0) {
+      await upsertTimeLedgerTaskRowsFromLocalByIds(taskIdsToEnsure);
+    }
+
+    let { data, error } = await supabase
       .from(TABLE)
       .upsert(payloads, { onConflict: "id" })
       .select(LEDGER_ENTRY_SELECT);
+
+    const fkTask =
+      error &&
+      String(error.code || "") === "23503" &&
+      /task_id_fkey/i.test(String(error.message || ""));
+    if (fkTask) {
+      timeLedgerSyncLog("server_upsert_retry", {
+        reason: "task_id_fkey",
+        taskIdStripAll: true,
+      });
+      const payloadsNoTid = payloads.map((p) => ({
+        ...p,
+        task_id: null,
+      }));
+      ({ data, error } = await supabase
+        .from(TABLE)
+        .upsert(payloadsNoTid, { onConflict: "id" })
+        .select(LEDGER_ENTRY_SELECT));
+    }
 
     if (error) {
       timeLedgerSyncLog("server_upsert_done", {

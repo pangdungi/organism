@@ -17,7 +17,6 @@ import {
 } from "./timeLedgerSyncDebug.js";
 
 const TABLE = "time_ledger_tasks";
-const LP_TL = "[lp-time-ledger-tasks]";
 
 const SELECT_TASKS_WITH_KPI =
   "id, name, productivity, category, memo, sort_order, is_system, kpi_id";
@@ -80,17 +79,6 @@ export async function fetchKpiTaskLinkMetaByIdFromSupabase(userId) {
 }
 
 /**
- * 과제 Supabase upsert·pull 디버그 (콘솔). 추가 버튼 경로는 Time.js·addTaskOptionFull·여기가 한 줄.
- */
-function logTl(phase, detail) {
-  try {
-    if (typeof console !== "undefined" && console.log) {
-      console.log(`${LP_TL} ${phase}`, detail);
-    }
-  } catch (_) {}
-}
-
-/**
  * 로컬 과제 저장 후 잠깐: tasks pull이 서버 옛 목록(예: 71행)으로 덮어 새 과제를 지우는 레이스 방지.
  * upsert 성공 시 즉시 해제해 다른 기기 변경 반영 가능.
  */
@@ -99,10 +87,6 @@ const TASKS_PULL_SKIP_AFTER_LOCAL_MS = 2800;
 
 function bumpTasksPullSkipAfterLocalChange() {
   _tasksPullSkipUntil = Date.now() + TASKS_PULL_SKIP_AFTER_LOCAL_MS;
-  logTl("trace:bumpPullSkip 윈도 연장", {
-    until: _tasksPullSkipUntil,
-    ms: TASKS_PULL_SKIP_AFTER_LOCAL_MS,
-  });
 }
 
 async function getSessionUserId() {
@@ -119,32 +103,27 @@ async function getSessionUserId() {
 export async function deleteTimeLedgerTaskRowForCurrentUser(taskId) {
   const id = String(taskId || "").trim();
   if (!supabase || !isUuid(id)) {
-    logTl("trace:delete 스킵", {
-      id: id || null,
-      reason: !supabase ? "no_supabase" : "invalid_uuid",
-    });
     return;
   }
   const userId = await getSessionUserId();
   if (!userId) {
-    logTl("trace:delete 스킵", { id, reason: "no_session_user" });
     return;
   }
-  logTl("trace:delete 요청", { id, userId: userId.slice(0, 8) + "…" });
   const { error } = await supabase
     .from(TABLE)
     .delete()
     .eq("user_id", userId)
     .eq("id", id);
   if (error) {
-    logTl("trace:delete 실패", {
-      id,
-      message: error.message,
-      code: error.code,
-    });
+    try {
+      console.warn("[lp-time-ledger-tasks] time_ledger_tasks delete 실패", {
+        id,
+        message: error.message,
+        code: error.code,
+      });
+    } catch (_) {}
     return;
   }
-  logTl("trace:delete 응답 OK (행 제거 시도 완료)", { id });
 }
 
 /**
@@ -168,17 +147,18 @@ export async function upsertTimeLedgerTaskRowsFromLocalByIds(taskIds) {
     onConflict: "id",
   });
   if (error && isMissingKpiIdColumnError(error)) {
-    logTl("upsert:ids kpi_id 없음 → 컬럼 제외 재시도", { message: error.message });
     ({ error } = await supabase.from(TABLE).upsert(payloadsWithoutKpiId(payloads), {
       onConflict: "id",
     }));
   }
   if (error) {
-    logTl("upsert:ids 실패", {
-      table: `public.${TABLE}`,
-      code: error.code,
-      message: error.message,
-    });
+    try {
+      console.warn("[lp-time-ledger-tasks] upsert(ids) 실패", {
+        table: `public.${TABLE}`,
+        code: error.code,
+        message: error.message,
+      });
+    } catch (_) {}
     if (timeLedgerSyncDebugEnabled()) {
       timeLedgerSyncLog("upsertTimeLedgerTaskRowsFromLocalByIds:error", {
         message: error.message,
@@ -188,17 +168,12 @@ export async function upsertTimeLedgerTaskRowsFromLocalByIds(taskIds) {
     return;
   }
   _tasksPullSkipUntil = 0;
-  logTl("upsert:ids 성공", { table: `public.${TABLE}`, rows: payloads.length });
 }
 
 /** @deprecated 전체 목록 upsert — 서버가 비어 있을 때 시드(pushTimeLedgerTasksIfServerEmpty)에서만 사용. */
 export async function syncTimeLedgerTasksToSupabase() {
   const userId = await getSessionUserId();
   if (!supabase) {
-    logTl("sync:skip (Supabase 클라이언트 없음)", {
-      table: `public.${TABLE}`,
-      path: "src/supabase.js — VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY",
-    });
     if (timeLedgerSyncDebugEnabled()) {
       timeLedgerSyncLog("syncTimeLedgerTasksToSupabase:skip", {
         reason: "no_supabase_client",
@@ -207,10 +182,6 @@ export async function syncTimeLedgerTasksToSupabase() {
     return;
   }
   if (!userId) {
-    logTl("sync:skip (로그인 세션 없음)", {
-      table: `public.${TABLE}`,
-      op: "from(table).upsert(…, { onConflict: 'id' })",
-    });
     if (timeLedgerSyncDebugEnabled()) {
       timeLedgerSyncLog("syncTimeLedgerTasksToSupabase:skip", {
         reason: "not_logged_in",
@@ -219,22 +190,7 @@ export async function syncTimeLedgerTasksToSupabase() {
     return;
   }
 
-  const list = getFullTaskOptions();
-  const droppedNonUuid = list
-    .map((t) => ({ name: (t.name || "").trim(), id: (t.id || "").trim() }))
-    .filter((r) => !r.id || !isUuid(r.id));
   const payloads = buildTimeLedgerTasksUpsertPayloads(userId);
-  logTl("sync:준비", {
-    table: `public.${TABLE}`,
-    op: "upsert",
-    onConflict: "id",
-    userIdPrefix: `${String(userId).slice(0, 8)}…`,
-    로컬_과제_행수: list.length,
-    upsert_대상_행수: payloads.length,
-    uuid_아닌_id_로_빠진_행: droppedNonUuid.length
-      ? droppedNonUuid.slice(0, 6)
-      : "없음",
-  });
   if (timeLedgerSyncDebugEnabled()) {
     timeLedgerSyncLog("syncTimeLedgerTasksToSupabase:upsert", {
       rowCount: payloads.length,
@@ -246,34 +202,26 @@ export async function syncTimeLedgerTasksToSupabase() {
       onConflict: "id",
     });
     if (error && isMissingKpiIdColumnError(error)) {
-      logTl("sync:upsert kpi_id 없음 → 컬럼 제외 재시도", {
-        message: error.message,
-      });
       ({ error } = await supabase.from(TABLE).upsert(
         payloadsWithoutKpiId(payloads),
         { onConflict: "id" },
       ));
     }
     if (error) {
-      logTl("sync:upsert 실패", {
-        table: `public.${TABLE}`,
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-      });
+      try {
+        console.warn("[lp-time-ledger-tasks] sync upsert 실패", {
+          table: `public.${TABLE}`,
+          code: error.code,
+          message: error.message,
+        });
+      } catch (_) {}
       timeLedgerSyncLog("syncTimeLedgerTasksToSupabase:upsert_error", {
         message: error.message,
         code: error.code,
       });
     } else {
       _tasksPullSkipUntil = 0;
-      logTl("sync:upsert 성공", { table: `public.${TABLE}`, rows: payloads.length });
     }
-  } else {
-    logTl("sync:upsert 생략 (upsert payload 0 — uuid 유효한 행이 없음)", {
-      table: `public.${TABLE}`,
-    });
   }
 
   /*
@@ -290,33 +238,14 @@ export async function syncTimeLedgerTasksToSupabase() {
 export async function pullTimeLedgerTasksFromSupabase(opts = {}) {
   const now = Date.now();
   const userId = await getSessionUserId();
-  logTl("trace:pull 진입", {
-    ignoreSkip: !!opts.ignoreSkip,
-    skipUntil: _tasksPullSkipUntil,
-    now,
-    skipActive: !opts.ignoreSkip && now < _tasksPullSkipUntil,
-    skipLeftMs:
-      !opts.ignoreSkip && now < _tasksPullSkipUntil
-        ? _tasksPullSkipUntil - now
-        : 0,
-    hasUser: !!userId,
-  });
   if (!userId || !supabase) {
-    logTl("trace:pull 중단", {
-      reason: !supabase ? "no_supabase" : "no_user",
-    });
     return false;
   }
 
   if (!opts.ignoreSkip && now < _tasksPullSkipUntil) {
-    logTl("trace:pull 스킵됨 (로컬 변경 직후 윈도)", {
-      skipUntil: _tasksPullSkipUntil,
-      leftMs: _tasksPullSkipUntil - now,
-    });
     return false;
   }
 
-  logTl("trace:pull SELECT 직전", { userId: userId.slice(0, 8) + "…" });
   const kpiLinkPromise = fetchKpiTaskLinkMetaByIdFromSupabase(userId);
   let tasksRes = await supabase
     .from(TABLE)
@@ -325,10 +254,6 @@ export async function pullTimeLedgerTasksFromSupabase(opts = {}) {
     .order("sort_order", { ascending: true });
   let { data, error } = tasksRes;
   if (error && isMissingKpiIdColumnError(error)) {
-    logTl("trace:pull SELECT kpi_id 없음 → 기본 컬럼만 재시도", {
-      message: error.message,
-      code: error.code,
-    });
     tasksRes = await supabase
       .from(TABLE)
       .select(SELECT_TASKS_BASE)
@@ -339,29 +264,17 @@ export async function pullTimeLedgerTasksFromSupabase(opts = {}) {
   }
 
   if (error) {
-    logTl("trace:pull SELECT 실패", {
-      message: error.message,
-      code: error.code,
-    });
+    try {
+      console.warn("[lp-time-ledger-tasks] pull SELECT 실패", {
+        message: error.message,
+        code: error.code,
+      });
+    } catch (_) {}
     return false;
   }
   const kpiLinkMetaById = await kpiLinkPromise;
   const rows = Array.isArray(data) ? data : [];
-  const idSample = rows.slice(0, 15).map((r) => ({
-    id: String(r.id || "").slice(0, 8) + "…",
-    name: (r.name || "").slice(0, 24),
-  }));
-  logTl("trace:pull SELECT 결과", {
-    rowCount: rows.length,
-    kpiLinkKeys: kpiLinkMetaById.size,
-    idSample,
-  });
   const applied = applyTimeLedgerTasksFromServer(rows, kpiLinkMetaById);
-  let optionLen = -1;
-  try {
-    optionLen = getFullTaskOptions().length;
-  } catch (_) {}
-  logTl("trace:pull apply 완료", { applied, getFullTaskOptionsLen: optionLen });
   if (applied) migrateTimeLogRowsTaskIds();
   return applied;
 }
@@ -395,7 +308,6 @@ export function attachTimeLedgerTasksSaveListener() {
   window.addEventListener("time-ledger-tasks-saved", (e) => {
     const d = e.detail || {};
     if (d.bumpPullSkip) {
-      logTl("trace:time-ledger-tasks-saved 이벤트 (bumpPullSkip)", {});
       bumpTasksPullSkipAfterLocalChange();
     }
   });
