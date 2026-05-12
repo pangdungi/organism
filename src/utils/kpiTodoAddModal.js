@@ -35,7 +35,14 @@ export function showKpiTodoAddModal(opts = {}) {
           <button type="button" class="dream-kpi-modal-close" title="닫기">×</button>
         </div>
         <form class="dream-kpi-form">
-          ${kpiName ? `<p class="dream-kpi-todo-add-modal-kpiname">${escapeHtml(kpiName)}</p>` : ""}
+          ${
+            kpiName
+              ? `<div class="dream-kpi-field dream-kpi-todo-kpi-block">
+            <label for="dream-kpi-todo-add-kpi-readonly">연결된 KPI</label>
+            <p id="dream-kpi-todo-add-kpi-readonly" class="dream-kpi-todo-linked-kpi-name">${escapeHtml(kpiName)}</p>
+          </div>`
+              : ""
+          }
           <div class="dream-kpi-field">
             <label>${escapeHtml(inputLabel)}</label>
             <input type="text" name="text" placeholder="${escapeHtml(placeholder)}" autocomplete="off" />

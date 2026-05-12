@@ -509,8 +509,8 @@ export function render() {
           <div class="dream-kpi-form-actions">
             <button type="submit" class="dream-kpi-submit">수정</button>
             <div class="dream-kpi-delete-wrap">
-              <p class="dream-kpi-delete-note">삭제 시 복구 불가</p>
               <button type="button" class="dream-kpi-delete-btn">KPI 삭제하기</button>
+              <p class="dream-kpi-delete-note">삭제 시 복구 불가</p>
             </div>
           </div>
         </form>

@@ -36,14 +36,23 @@ export function showKpiTodoEditModal(opts = {}) {
           <button type="button" class="dream-kpi-modal-close" title="닫기">×</button>
         </div>
         <form class="dream-kpi-form">
-          ${kpiName ? `<p class="dream-kpi-todo-add-modal-kpiname">${escapeHtml(kpiName)}</p>` : ""}
+          ${
+            kpiName
+              ? `<div class="dream-kpi-field dream-kpi-todo-kpi-block">
+            <label for="dream-kpi-todo-edit-kpi-readonly">연결된 KPI</label>
+            <p id="dream-kpi-todo-edit-kpi-readonly" class="dream-kpi-todo-linked-kpi-name">${escapeHtml(kpiName)}</p>
+          </div>`
+              : ""
+          }
           <div class="dream-kpi-field">
             <label>${escapeHtml(inputLabel)}</label>
             <textarea name="text" rows="5" placeholder="${escapeHtml(placeholder)}" autocomplete="off"></textarea>
           </div>
-          <button type="submit" class="dream-kpi-submit">저장</button>
-          <div class="dream-kpi-delete-wrap dream-kpi-todo-edit-modal-delete-wrap">
-            <button type="button" class="dream-kpi-delete-btn dream-kpi-todo-edit-modal-delete">삭제</button>
+          <div class="dream-kpi-todo-edit-actions">
+            <button type="submit" class="dream-kpi-submit">저장</button>
+            <div class="dream-kpi-delete-wrap dream-kpi-todo-edit-modal-delete-wrap">
+              <button type="button" class="dream-kpi-delete-btn dream-kpi-todo-edit-modal-delete">삭제</button>
+            </div>
           </div>
         </form>
       </div>

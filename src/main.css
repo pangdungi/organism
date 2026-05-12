@@ -40209,11 +40209,57 @@ img.time-btn-icon {
   background: transparent !important;
 }
 
-.dream-kpi-todo-add-modal .dream-kpi-todo-add-modal-kpiname {
-  margin: -0.25rem 0 0;
-  font-size: var(--fs-secondary);
-  color: var(--text-muted);
-  line-height: 1.35;
+/* 매일 할 일 추가·수정: 레이블 작게 · KPI 이름·입력 본문 크게 */
+.dream-kpi-todo-add-modal .dream-kpi-todo-kpi-block > label,
+.dream-kpi-todo-edit-modal .dream-kpi-todo-kpi-block > label,
+.dream-kpi-todo-add-modal .dream-kpi-field:not(.dream-kpi-todo-kpi-block) > label,
+.dream-kpi-todo-edit-modal .dream-kpi-field:not(.dream-kpi-todo-kpi-block) > label {
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--text-caption-color, #a8a290);
+}
+
+.dream-kpi-todo-add-modal .dream-kpi-todo-kpi-block .dream-kpi-todo-linked-kpi-name,
+.dream-kpi-todo-edit-modal .dream-kpi-todo-kpi-block .dream-kpi-todo-linked-kpi-name {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--text-ink, #1a2218);
+  line-height: 1.45;
+}
+
+.dream-kpi-todo-edit-modal textarea[name="text"] {
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.dream-kpi-todo-add-modal .dream-kpi-field input[name="text"] {
+  font-size: 1rem;
+}
+
+.dream-kpi-todo-edit-modal .dream-kpi-todo-edit-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.42rem;
+  margin-top: 0.15rem;
+}
+
+.dream-kpi-todo-edit-modal .dream-kpi-todo-edit-actions .dream-kpi-submit {
+  margin: 0;
+}
+
+.dream-kpi-todo-edit-modal .dream-kpi-todo-edit-modal-delete-wrap {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+  justify-content: center;
+  width: 100%;
+}
+
+.dream-kpi-todo-edit-modal .dream-kpi-todo-edit-modal-delete-wrap .dream-kpi-delete-btn {
+  margin: 0 auto;
 }
 
 .dream-kpi-form {
@@ -40878,10 +40924,18 @@ img.time-btn-icon {
   margin-top: 1.5rem;
   padding-top: 1rem;
   border-top: none;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .dream-kpi-delete-note {
-  margin: 0 0 0.5rem;
+  margin: 0;
+  margin-left: auto;
   font-size: 0.75rem;
   font-weight: 400;
   color: var(--text-muted);

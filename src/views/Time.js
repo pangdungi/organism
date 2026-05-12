@@ -11198,6 +11198,14 @@ export function renderTimeBudgetTablesForCalendar(
     ...consumeTaskDropdownOptions.filter((o) => String(o.value || "").trim()),
   ]);
 
+  /** 과제 입장(추가) 모달: 섹션별로 이 목록만 드롭다운에 표시 */
+  const calendarBudgetModalOptionsBasic = sortDailyBudgetTaskDropdownOptions([
+    emptyOpt,
+    ...basicTaskDropdownOptions,
+  ]);
+  const calendarBudgetModalOptionsProductive = investTaskDropdownOptions;
+  const calendarBudgetModalOptionsNonproductive = consumeTaskDropdownOptions;
+
   function dispatchBudgetRebuild() {
     document.dispatchEvent(
       new CustomEvent("calendar-budget-scheduled-updated", {
@@ -11574,8 +11582,13 @@ export function renderTimeBudgetTablesForCalendar(
 
     let calendarBudgetTaskDropdownWrap = null;
     if (mode === "add" && taskWrap) {
+      const sourceOpts =
+        Array.isArray(modalOpts?.addTaskOptions) &&
+        modalOpts.addTaskOptions.length > 0
+          ? modalOpts.addTaskOptions
+          : allCalendarBudgetAddOptions;
       calendarBudgetTaskDropdownWrap = buildCalendarBudgetTaskLogDropdown(
-        allCalendarBudgetAddOptions,
+        sourceOpts,
         modalTaskUiSignal,
       );
       taskWrap.appendChild(calendarBudgetTaskDropdownWrap);
@@ -12154,7 +12167,7 @@ export function renderTimeBudgetTablesForCalendar(
   consumeTableWrap.appendChild(consumeTable);
   consumeBlock.appendChild(consumeTableWrap);
 
-  function createSectionHeader(title, onAdd) {
+  function createSectionHeader(title, onAdd, addBtnTitle) {
     const header = document.createElement("div");
     header.className = "time-daily-budget-section-header";
     const titleEl = document.createElement("span");
@@ -12165,7 +12178,7 @@ export function renderTimeBudgetTablesForCalendar(
       const addBtn = document.createElement("button");
       addBtn.type = "button";
       addBtn.className = "time-daily-budget-add-btn time-btn-add";
-      addBtn.title = "계획하기";
+      addBtn.title = addBtnTitle || "계획하기";
       addBtn.innerHTML =
         '<img src="/toolbaricons/add-square.svg" alt="" class="time-daily-budget-add-icon" width="20" height="20">';
       addBtn.addEventListener("click", onAdd);
@@ -12173,10 +12186,10 @@ export function renderTimeBudgetTablesForCalendar(
     }
     return header;
   }
-  function wrapBlockAsSection(block, title, onAdd) {
+  function wrapBlockAsSection(block, title, onAdd, addBtnTitle) {
     const section = document.createElement("div");
     section.className = "time-daily-budget-section";
-    section.appendChild(createSectionHeader(title, onAdd));
+    section.appendChild(createSectionHeader(title, onAdd, addBtnTitle));
     const scrollWrap = document.createElement("div");
     scrollWrap.className = "time-daily-budget-section-scroll";
     scrollWrap.appendChild(block);
@@ -12187,17 +12200,32 @@ export function renderTimeBudgetTablesForCalendar(
   const basicSection = wrapBlockAsSection(
     basicBlock,
     "1. 수면, 근무시간 배치",
-    null,
+    () =>
+      showCalendarBudgetTaskModal({
+        mode: "add",
+        addTaskOptions: calendarBudgetModalOptionsBasic,
+      }),
+    "수면·근무 예정만 추가",
   );
   const investSection = wrapBlockAsSection(
     investBlock,
     "2. 생산적 과제 배치",
-    null,
+    () =>
+      showCalendarBudgetTaskModal({
+        mode: "add",
+        addTaskOptions: calendarBudgetModalOptionsProductive,
+      }),
+    "생산적 과제만 추가",
   );
   const consumeSection = wrapBlockAsSection(
     consumeBlock,
     "3. 비생산적 과제 배치",
-    null,
+    () =>
+      showCalendarBudgetTaskModal({
+        mode: "add",
+        addTaskOptions: calendarBudgetModalOptionsNonproductive,
+      }),
+    "비생산적 과제만 추가",
   );
 
   function scheduledRowHours(tr) {
