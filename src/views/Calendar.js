@@ -76,6 +76,7 @@ import {
   pullTimeDailyBudgetFromSupabase,
 } from "../utils/timeDailyBudgetSupabase.js";
 import { logLpRender } from "../utils/lpRenderDebugLog.js";
+import { FIXED_OTHER_TASKS } from "../utils/timeTaskOptionsConstants.js";
 const KPI_SECTION_IDS = ["dream", "sideincome", "health", "happy"];
 
 /** 할일/일정 패널은 할일만 표시 — 저장값으로 빈 화면·탭 초기화 방지 */
@@ -4362,6 +4363,17 @@ function prodKeyForWeekExpectedSpan(span) {
   return "other";
 }
 
+/** 수면 등 — 1주 플로우·홈 「오늘」타임라인 카드만 숨김(일정 타임테이블·예산 표는 유지) */
+const FLOW_TIMELINE_EXCLUDED_TASK_NAMES = new Set(
+  FIXED_OTHER_TASKS.filter((t) => t.category === "sleep").map((t) => t.name),
+);
+
+function expectedSpanHiddenFromFlowTimeline(span) {
+  return FLOW_TIMELINE_EXCLUDED_TASK_NAMES.has(
+    String(span?.taskName || "").trim(),
+  );
+}
+
 function normLedgerRowDateYmd(s) {
   return String(s || "").replace(/\//g, "-").trim().slice(0, 10);
 }
@@ -4418,6 +4430,25 @@ function weekFlowSpanHasMatchingLiveRecording(dayRows, span) {
     if (expName && rn && expName === rn) return true;
   }
   return false;
+}
+
+/** 예상 블록 종료 시각이 지났거나(당일) 날짜가 지났는데 실제 기록이 없을 때만 미이행 표시 */
+function weekFlowExpectedSpanLedgerMissed(
+  dayKeyYmd,
+  todayYmd,
+  nowMinuteClock,
+  span,
+) {
+  if (!span || !dayKeyYmd || !todayYmd) return false;
+  if (dayKeyYmdCompare(dayKeyYmd, todayYmd) < 0) return true;
+  if (dayKeyYmdCompare(dayKeyYmd, todayYmd) > 0) return false;
+  const end = Number(span.endMin);
+  if (!Number.isFinite(end)) return false;
+  return nowMinuteClock > end;
+}
+
+function dayKeyYmdCompare(a, b) {
+  return String(a || "").localeCompare(String(b || ""));
 }
 
 /** 1일 뷰 시간표(예상/실제) 오버레이만 생성 - budget 테이블 재구성 없이 시간표만 갱신용 */
@@ -5629,15 +5660,17 @@ function render1DayView(
 
       const { spans: daySpansTl } =
         buildExpectedScheduleSpansForDateKey(targetKey);
-      const spansSortedTl = [...daySpansTl].sort(
-        (a, b) =>
-          a.startMin - b.startMin ||
-          (a.lane ?? 0) - (b.lane ?? 0) ||
-          String(a.taskName || "").localeCompare(
-            String(b.taskName || ""),
-            "ko",
-          ),
-      );
+      const spansSortedTl = [...daySpansTl]
+        .filter((s) => !expectedSpanHiddenFromFlowTimeline(s))
+        .sort(
+          (a, b) =>
+            a.startMin - b.startMin ||
+            (a.lane ?? 0) - (b.lane ?? 0) ||
+            String(a.taskName || "").localeCompare(
+              String(b.taskName || ""),
+              "ko",
+            ),
+        );
 
       if (spansSortedTl.length === 0) {
         const emptyTl = document.createElement("p");
@@ -5655,13 +5688,23 @@ function render1DayView(
             dayLedgerRowsTL,
             span,
           );
+          const hasLiveRecordingForSpanTL =
+            weekFlowSpanHasMatchingLiveRecording(dayLedgerRowsTL, span);
           const inExpectedWindow =
             targetKey === todayYmdForTimeline &&
             span.startMin <= nowMinuteClockTL &&
             nowMinuteClockTL < span.endMin;
           const liveRecordingThisSpan =
-            inExpectedWindow &&
-            weekFlowSpanHasMatchingLiveRecording(dayLedgerRowsTL, span);
+            inExpectedWindow && hasLiveRecordingForSpanTL;
+          const ledgerMissed =
+            !ledgerMatched &&
+            !hasLiveRecordingForSpanTL &&
+            weekFlowExpectedSpanLedgerMissed(
+              targetKey,
+              todayYmdForTimeline,
+              nowMinuteClockTL,
+              span,
+            );
 
           const item = document.createElement("div");
           item.className = "calendar-1day-timeline-item";
@@ -5704,6 +5747,9 @@ function render1DayView(
           if (ledgerMatched) {
             card.classList.add("calendar-1day-timeline-card--done");
             card.title = `${titleBase}\n실제 과제 기록에 반영됨`;
+          } else if (ledgerMissed) {
+            card.classList.add("calendar-1day-timeline-card--ledger-missed");
+            card.title = `${titleBase}\n예정 종료 시간이 지났는데 아직 기록이 없습니다`;
           } else {
             card.title = titleBase;
           }
@@ -5734,6 +5780,16 @@ function render1DayView(
             checkEl.setAttribute("aria-label", "기록 완료");
             checkEl.textContent = "✓";
             titleRow.appendChild(checkEl);
+          } else if (ledgerMissed) {
+            const missEl = document.createElement("span");
+            missEl.className = "calendar-1day-timeline-card-missed-mark";
+            missEl.setAttribute("role", "img");
+            missEl.setAttribute(
+              "aria-label",
+              "예정 시간이 지났는데 아직 기록이 없음",
+            );
+            missEl.textContent = "✕";
+            titleRow.appendChild(missEl);
           }
           card.appendChild(titleRow);
 
@@ -6883,15 +6939,17 @@ function render1WeekView(
 
       const prodColors = prodColorsExpected;
       const { spans: daySpans } = buildExpectedScheduleSpansForDateKey(key);
-      const spansSorted = [...daySpans].sort(
-        (a, b) =>
-          a.startMin - b.startMin ||
-          (a.lane ?? 0) - (b.lane ?? 0) ||
-          String(a.taskName || "").localeCompare(
-            String(b.taskName || ""),
-            "ko",
-          ),
-      );
+      const spansSorted = [...daySpans]
+        .filter((s) => !expectedSpanHiddenFromFlowTimeline(s))
+        .sort(
+          (a, b) =>
+            a.startMin - b.startMin ||
+            (a.lane ?? 0) - (b.lane ?? 0) ||
+            String(a.taskName || "").localeCompare(
+              String(b.taskName || ""),
+              "ko",
+            ),
+        );
 
       spansSorted.forEach((span) => {
         const pk = prodKeyForWeekExpectedSpan(span);
@@ -6906,6 +6964,19 @@ function render1WeekView(
           dayLedgerRows,
           span,
         );
+        const hasLiveRecordingForSpan = weekFlowSpanHasMatchingLiveRecording(
+          dayLedgerRows,
+          span,
+        );
+        const ledgerMissed =
+          !ledgerMatched &&
+          !hasLiveRecordingForSpan &&
+          weekFlowExpectedSpanLedgerMissed(
+            key,
+            todayYmd,
+            nowMinuteClock,
+            span,
+          );
 
         const card = document.createElement("div");
         card.className = "calendar-1week-flow-card";
@@ -6914,9 +6985,13 @@ function render1WeekView(
           : `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})`;
         card.title = ledgerMatched
           ? `${titleBase}\n실제 과제 기록에도 있음`
-          : titleBase;
+          : ledgerMissed
+            ? `${titleBase}\n예정 종료 시간이 지났는데 아직 기록이 없습니다`
+            : titleBase;
         if (ledgerMatched) {
           card.classList.add("calendar-1week-flow-card--ledger-done");
+        } else if (ledgerMissed) {
+          card.classList.add("calendar-1week-flow-card--ledger-missed");
         }
 
         const sidRaw = String(span.sectionId || "").trim();
@@ -6951,6 +7026,16 @@ function render1WeekView(
           checkEl.setAttribute("aria-label", "실제 기록에 반영됨");
           checkEl.textContent = "✓";
           titleRow.appendChild(checkEl);
+        } else if (ledgerMissed) {
+          const missEl = document.createElement("span");
+          missEl.className = "calendar-1week-flow-card-missed-mark";
+          missEl.setAttribute("role", "img");
+          missEl.setAttribute(
+            "aria-label",
+            "예정 시간이 지났는데 아직 기록이 없음",
+          );
+          missEl.textContent = "✕";
+          titleRow.appendChild(missEl);
         }
 
         const meta = document.createElement("div");
@@ -6983,8 +7068,7 @@ function render1WeekView(
           span.startMin <= nowMinuteClock &&
           nowMinuteClock < span.endMin;
         const liveRecordingThisSpan =
-          inExpectedWindow &&
-          weekFlowSpanHasMatchingLiveRecording(dayLedgerRows, span);
+          inExpectedWindow && hasLiveRecordingForSpan;
 
         if (liveRecordingThisSpan) {
           card.classList.add("calendar-1week-flow-card--in-progress");
@@ -6998,8 +7082,6 @@ function render1WeekView(
           !ledgerMatched
         ) {
           card.classList.add("calendar-1week-flow-card--expected-now");
-        } else if (!ledgerMatched) {
-          card.classList.add("calendar-1week-flow-card--ledger-pending");
         }
 
         card.appendChild(titleRow);

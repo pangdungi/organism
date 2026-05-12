@@ -68,6 +68,11 @@ export const FIXED_PRODUCTIVE_TASKS = [
     category: "happiness",
     productivity: "productive",
   },
+  {
+    name: "의식적 검색",
+    category: "happiness",
+    productivity: "productive",
+  },
   { name: "음악 듣기", category: "happiness", productivity: "productive" },
   {
     name: "잡동사니 일 해결하기",

@@ -60,7 +60,9 @@ function dispatchKpiMapSavedAfterLocalWrite(storageKey, reason = "local_write") 
   kpiTodoFineTrace("dispatch:이벤트준비", { storageKey, reason, eventName: name || "(없음)" });
   if (name) {
     kpiTodoLifecycleLog("KPI맵_동기화이벤트", { event: name, storageKey, reason });
-    window.dispatchEvent(new CustomEvent(name));
+    window.dispatchEvent(
+      new CustomEvent(name, { detail: { fromLocalWrite: true } }),
+    );
     kpiTodoFineTrace("dispatch:CustomEvent발송완료", { event: name, reason });
   }
 }

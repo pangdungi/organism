@@ -1518,9 +1518,10 @@ export function render() {
   }
 
   const onMergedSync = (e) => {
-    if (!e.detail?.fromServerMerge || !el.isConnected) return;
+    if (!el.isConnected) return;
     /* push 시에는 화면 갱신 불필요 (로컬 변경을 서버에 올린 것이므로) */
     if (e.detail?.fromPush) return;
+    if (!e.detail?.fromServerMerge && !e.detail?.fromLocalWrite) return;
     const data = loadHealthMap();
     if (!data.healths.some((h) => h.id === activeHealthId)) {
       activeHealthId = data.healths[0]?.id || null;

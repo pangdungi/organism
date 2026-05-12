@@ -1357,6 +1357,18 @@ function resolveRowCategoryProductivityForAudit(r) {
   return { category, productivity };
 }
 
+/** 홈·간단 UI용: 행의 표시 생산성 키 (productive | nonproductive | other) */
+export function getTimeLedgerRowDisplayProductivity(row) {
+  if (!row) return "other";
+  try {
+    const { productivity } = resolveRowCategoryProductivityForAudit(row);
+    const p = String(productivity || "").trim().toLowerCase();
+    if (p === "productive") return "productive";
+    if (p === "nonproductive") return "nonproductive";
+  } catch (_) {}
+  return "other";
+}
+
 /** 생산적·건강 / 비생산적·비건강 사분면 중, 내장은 식사 2과제만·나머지는 사용자 추가 과제만 */
 function rowMatchesAuditHealthCategoryReport(r) {
   const taskName = (r.taskName || "").trim();
@@ -6026,6 +6038,16 @@ export function render() {
             if (taskLogTimeEnd) taskLogTimeEnd.value = newTime;
             syncEndToHidden();
           }
+          console.log("[lp-task-log]", "modal_quick_now", {
+            targetIsStart,
+            lastFocusedTimeField,
+            endHasTime: Boolean(endHasTime),
+            newTime,
+            startVis: (taskLogTimeStart?.value || "").trim(),
+            endVis: (taskLogTimeEnd?.value || "").trim(),
+            startHidden: (taskLogStartInput?.value || "").trim().slice(0, 30),
+            endHidden: (taskLogEndInput?.value || "").trim().slice(0, 30),
+          });
           setTaskLogQuickAdjustActive(btn);
         } else {
           const delta = parseInt(btn.dataset.delta || "0", 10);
@@ -6693,6 +6715,12 @@ export function render() {
           } else {
             currentD = new Date();
           }
+          console.log("[lp-task-log]", "bottom_picker_now", {
+            fieldType,
+            lockedDateYmd: lockedDate
+              ? `${lockedDate.getFullYear()}-${String(lockedDate.getMonth() + 1).padStart(2, "0")}-${String(lockedDate.getDate()).padStart(2, "0")}`
+              : null,
+          });
           renderWheels();
           updateDisplay();
         } else if (action === "eod") {
@@ -7645,6 +7673,9 @@ export function render() {
 
   taskLogSubmitBtn.addEventListener("click", () => {
     flushTaskLogTimeInputsBeforeSubmit();
+    console.log("[lp-task-log]", "submit_click", {
+      mode: taskLogEditTr ? "edit" : taskLogAddContext ? "add" : "none",
+    });
 
     const editTr = taskLogEditTr;
     const addCtx = taskLogAddContext;
@@ -7669,6 +7700,11 @@ export function render() {
       endRaw = (taskLogEndInput.value || "").trim();
     }
     if (!taskName || !startRaw) {
+      console.warn("[lp-task-log]", "submit_abort", {
+        reason: "missing_task_or_start",
+        hasTaskName: Boolean(taskName),
+        hasStartRaw: Boolean(startRaw),
+      });
       alert("과제 선택과 시작 시간을 입력해 주세요.");
       return;
     }
@@ -7682,6 +7718,12 @@ export function render() {
       /^\d{1,2}:\d{2}$/.test(endVisibleGuard) &&
       !String(endTime || "").trim()
     ) {
+      console.warn("[lp-task-log]", "submit_abort", {
+        reason: "end_visible_not_in_hidden",
+        endVisibleGuard,
+        endRaw,
+        endTime,
+      });
       showToast(
         "마감 시간이 반영되지 않았습니다. 「지금」을 한 번 더 누른 뒤 저장해 주세요.",
         "warn",
@@ -7770,6 +7812,10 @@ export function render() {
       if (!expenseAmount || !parseFloat(expenseAmount)) missing.push("금액");
       if (!expensePayment) missing.push("결제수단");
       if (missing.length > 0) {
+        console.warn("[lp-task-log]", "submit_abort", {
+          reason: "expense_form_incomplete",
+          missing,
+        });
         if (taskLogExpenseErrorEl) {
           taskLogExpenseErrorEl.textContent =
             "입력 필요: " + missing.join(", ");
@@ -8049,7 +8095,16 @@ export function render() {
       }
       onFilterChange();
       saveTimeRows(getFullRowsForFilter(true));
+    } else {
+      console.warn("[lp-task-log]", "submit_no_row_context", {
+        taskName: (taskName || "").slice(0, 80),
+        note: "editTr·addCtx 없음 — 시간 행 저장·갱신 블록 스킵",
+      });
     }
+    console.log("[lp-task-log]", "submit_finished", {
+      savedLedgerRow: Boolean(editTr || addCtx),
+      taskName: (taskName || "").slice(0, 80),
+    });
     closeTaskLogModal();
     el._updateTotal?.();
   });

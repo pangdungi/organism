@@ -20,10 +20,11 @@ import {
   formatHomeLiveClockMs,
   formatHomeLiveElapsedMinutesPhrase,
   formatHomeLiveStartClock,
+  getTimeLedgerRowDisplayProductivity,
 } from "./Time.js";
 import { render1DayView, LP_CAL_TODO_SIDEBAR_NONE } from "./Calendar.js";
 import { buildHomeTodayEventPulseModel } from "../utils/homeTodayEventPulse.js";
-import { getSectionColor } from "../utils/todoSettings.js";
+import { getSectionColor, getTimeCategoryColorsForTimetableExpected } from "../utils/todoSettings.js";
 
 const KPI_SECTION_IDS = ["dream", "sideincome", "health", "happy"];
 const SECTION_LABELS = {
@@ -392,7 +393,19 @@ function refreshHomeLiveTrackerEl(root) {
   const taskEl = root.querySelector(".home-live-tracker-task");
   const metaEl = root.querySelector(".home-live-tracker-meta");
   const clockEl = root.querySelector(".home-live-tracker-clock");
+  const dotEl = root.querySelector(".home-live-tracker-dot");
   if (taskEl) taskEl.textContent = task;
+
+  const prodKey = getTimeLedgerRowDisplayProductivity(row);
+  const kpColors = getTimeCategoryColorsForTimetableExpected();
+  const accent = prodColorForPulse(prodKey, kpColors);
+  if (dotEl) {
+    dotEl.style.background = accent;
+    const ring =
+      accent.startsWith("#") && accent.length === 7 ? `${accent}33` : accent;
+    dotEl.style.boxShadow = `0 0 0 2px ${ring}`;
+  }
+  if (clockEl) clockEl.style.color = accent;
 
   const tick = () => {
     if (!root.isConnected) {
@@ -438,11 +451,28 @@ function bindHomeEventPulseRefreshOnce() {
   document.addEventListener("calendar-budget-scheduled-updated", refreshPulse);
 }
 
+/** 타임블록 팔레트: 객체(bg/border/accent…) 또는 문자열 모두 처리 */
+function resolveTimetableAccentColor(entry) {
+  if (entry == null) return "rgba(0, 0, 0, 0.28)";
+  if (typeof entry === "string") return entry;
+  if (typeof entry === "object") {
+    return (
+      entry.border ||
+      entry.accentText ||
+      entry.bg ||
+      "rgba(0, 0, 0, 0.28)"
+    );
+  }
+  return "rgba(0, 0, 0, 0.28)";
+}
+
 function prodColorForPulse(prod, kpColors) {
   const p = String(prod || "").toLowerCase();
-  if (p === "productive") return kpColors.productive;
-  if (p === "nonproductive") return kpColors.nonproductive;
-  return kpColors.other;
+  if (p === "productive")
+    return resolveTimetableAccentColor(kpColors.productive);
+  if (p === "nonproductive")
+    return resolveTimetableAccentColor(kpColors.nonproductive);
+  return resolveTimetableAccentColor(kpColors.other);
 }
 
 function taskSwatchColor(row, kpColors) {
@@ -509,11 +539,14 @@ function fillHomeEventPulseContent(container) {
       const rowEl = document.createElement("div");
       rowEl.className = `home-event-task-row home-event-task-row--${row.variant}`;
 
+      const swatchColor = taskSwatchColor(row, kpColors);
+      const prodAccent = prodColorForPulse(row.prod, kpColors);
+
       const labelCell = document.createElement("div");
       labelCell.className = "home-event-task-label";
       const sw = document.createElement("span");
       sw.className = "home-event-task-swatch";
-      sw.style.background = taskSwatchColor(row, kpColors);
+      sw.style.background = swatchColor;
       const name = document.createElement("span");
       name.className = "home-event-task-name";
       name.textContent = row.taskName;
@@ -522,9 +555,17 @@ function fillHomeEventPulseContent(container) {
 
       const bottom = document.createElement("div");
       bottom.className = "home-event-task-bottom";
+      /* 막대는 행마다 같은 남은 폭을 쓰고, 차이 텍스트만 좁은 고정폭 → 막대-숫자 사이 빈칸 최소화 */
+      bottom.style.display = "flex";
+      bottom.style.flexDirection = "row";
+      bottom.style.alignItems = "center";
+      bottom.style.setProperty("column-gap", "0.06rem", "important");
+      bottom.style.width = "100%";
 
       const barShell = document.createElement("div");
       barShell.className = "home-event-task-bar-shell";
+      barShell.style.flex = "1 1 0";
+      barShell.style.minWidth = "0";
 
       const wrap = document.createElement("div");
       wrap.className = "home-event-task-bar-wrap";
@@ -537,25 +578,25 @@ function fillHomeEventPulseContent(container) {
 
       const bars = document.createElement("div");
       bars.className = "home-event-task-bars";
-      const accent = taskSwatchColor(row, kpColors);
       const track = document.createElement("div");
       track.className =
         "home-event-task-bar-track home-event-task-bar-track--combined";
       const goal = document.createElement("div");
       goal.className = "home-event-task-bar-goal";
       goal.style.width = `${row.plannedPct}%`;
-      goal.style.background = accent;
       const flAc = document.createElement("div");
-      flAc.className = `home-event-task-bar-fill home-event-task-bar-fill--actual home-event-task-bar-fill--${row.variant}`;
+      flAc.className = "home-event-task-bar-fill home-event-task-bar-fill--actual";
       flAc.style.width = `${row.actualPct}%`;
+      flAc.style.setProperty("background", prodAccent, "important");
       track.appendChild(goal);
       track.appendChild(flAc);
       bars.appendChild(track);
 
       const tagAc = document.createElement("span");
-      tagAc.className = `home-event-task-bar-tag home-event-task-bar-tag--actual home-event-task-bar-tag--${row.variant}`;
+      tagAc.className = "home-event-task-bar-tag home-event-task-bar-tag--actual";
       applyBarTagActualAlign(tagAc, row.actualPct);
       tagAc.textContent = `${row.actual}m`;
+      tagAc.style.color = prodAccent;
 
       wrap.appendChild(tagPl);
       wrap.appendChild(bars);
@@ -563,7 +604,10 @@ function fillHomeEventPulseContent(container) {
       barShell.appendChild(wrap);
 
       const diff = document.createElement("div");
-      diff.className = `home-event-task-diff home-event-task-diff--${row.variant}`;
+      diff.className = "home-event-task-diff";
+      diff.style.color = prodAccent;
+      diff.style.flex = "0 0 5.25rem";
+      diff.style.textAlign = "right";
       diff.textContent = formatTaskDiffLabel(row.variant, row.diff);
 
       bottom.appendChild(barShell);

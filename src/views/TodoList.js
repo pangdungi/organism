@@ -312,34 +312,104 @@ function saveSectionTasks(sectionId, tasks) {
   } catch (_) {}
 }
 
-/** @param {string} [via] 콘솔 구분용: 수정모달_삭제 | 표_삭제버튼 */
-async function removeTaskFromSectionStorage(sectionId, taskId, via = "") {
+/** 로컬·세션에서만 제거(동기). 수정 모달은 UI를 즉시 갱신한 뒤 서버 DELETE는 백그라운드로 분리할 때 사용 */
+function beginRemoveTaskFromSectionStorageLocal(sectionId, taskId) {
   try {
     cancelScheduleSaveSectionTasksFromDOM();
     cancelTodoSectionTasksSyncPushSchedule();
     const obj = readSectionTasksObject();
     const arr = obj[sectionId];
-    if (!Array.isArray(arr)) return { ok: false, serverDelete: null };
+    if (!Array.isArray(arr)) return { ok: false, snapshot: null };
     const tid = String(taskId || "").trim();
     const snapshot = arr.find((t) => String(t.taskId || "").trim() === tid);
     obj[sectionId] = arr.filter((t) => (t.taskId || "") !== taskId);
-    /*
-     * 로컬을 먼저 지운 뒤 서버 DELETE(await) — 직렬 큐에서 대기하던 sync(메모리→upsert)가
-     * 삭제 전 스냅샷으로 행을 서버에 다시 올려 부활시키는 레이스를 막음.
-     */
     writeSectionTasksObject(obj);
-    const del = await deleteCalendarSectionTaskRowById(taskId);
-    if (!del.ok) {
-      if (snapshot) {
-        const o2 = readSectionTasksObject();
-        const cur = Array.isArray(o2[sectionId]) ? o2[sectionId] : [];
-        const has = cur.some((t) => String(t.taskId || "").trim() === tid);
-        if (!has) o2[sectionId] = [...cur, { ...snapshot }];
-        writeSectionTasksObject(o2);
-      }
-      return { ok: false, serverDelete: del };
-    }
-    return { ok: true, serverDelete: del };
+    return { ok: true, snapshot: snapshot || null };
+  } catch (_) {}
+  return { ok: false, snapshot: null };
+}
+
+function rollbackRemoveTaskFromSectionStorage(sectionId, taskId, snapshot) {
+  if (!snapshot) return;
+  try {
+    const tid = String(taskId || "").trim();
+    const o2 = readSectionTasksObject();
+    const cur = Array.isArray(o2[sectionId]) ? o2[sectionId] : [];
+    const has = cur.some((t) => String(t.taskId || "").trim() === tid);
+    if (!has) o2[sectionId] = [...cur, { ...snapshot }];
+    writeSectionTasksObject(o2);
+  } catch (_) {}
+}
+
+async function completeRemoveTaskFromSectionStorageServer(
+  sectionId,
+  taskId,
+  snapshot,
+) {
+  const tid = String(taskId || "").trim();
+  const del = await deleteCalendarSectionTaskRowById(taskId);
+  if (!del.ok) {
+    rollbackRemoveTaskFromSectionStorage(sectionId, tid, snapshot);
+  }
+  return del;
+}
+
+/** 로컬·세션에서만 제거(동기) — 커스텀 섹션 */
+function beginRemoveTaskFromCustomSectionStorageLocal(sectionId, taskId) {
+  try {
+    cancelScheduleSaveSectionTasksFromDOM();
+    cancelTodoSectionTasksSyncPushSchedule();
+    const obj = readCustomSectionTasksObject();
+    const arr = obj[sectionId];
+    if (!Array.isArray(arr)) return { ok: false, snapshot: null };
+    const tid = String(taskId || "").trim();
+    const snapshot = arr.find((t) => String(t.taskId || "").trim() === tid);
+    obj[sectionId] = arr.filter((t) => (t.taskId || "") !== taskId);
+    writeCustomSectionTasksObject(obj);
+    return { ok: true, snapshot: snapshot || null };
+  } catch (_) {}
+  return { ok: false, snapshot: null };
+}
+
+function rollbackRemoveTaskFromCustomSectionStorage(sectionId, taskId, snapshot) {
+  if (!snapshot) return;
+  try {
+    const tid = String(taskId || "").trim();
+    const o2 = readCustomSectionTasksObject();
+    const cur = Array.isArray(o2[sectionId]) ? o2[sectionId] : [];
+    const has = cur.some((t) => String(t.taskId || "").trim() === tid);
+    if (!has) o2[sectionId] = [...cur, { ...snapshot }];
+    writeCustomSectionTasksObject(o2);
+  } catch (_) {}
+}
+
+async function completeRemoveTaskFromCustomSectionStorageServer(
+  sectionId,
+  taskId,
+  snapshot,
+) {
+  const tid = String(taskId || "").trim();
+  const del = await deleteCalendarSectionTaskRowById(taskId);
+  if (!del.ok) {
+    rollbackRemoveTaskFromCustomSectionStorage(sectionId, tid, snapshot);
+  }
+  return del;
+}
+
+/** @param {string} [via] 콘솔 구분용: 수정모달_삭제 | 표_삭제버튼 */
+async function removeTaskFromSectionStorage(sectionId, taskId, via = "") {
+  try {
+    const begun = beginRemoveTaskFromSectionStorageLocal(sectionId, taskId);
+    if (!begun.ok) return { ok: false, serverDelete: null };
+    const del = await completeRemoveTaskFromSectionStorageServer(
+      sectionId,
+      taskId,
+      begun.snapshot,
+    );
+    return {
+      ok: !!del.ok,
+      serverDelete: del,
+    };
   } catch (_) {}
   return { ok: false, serverDelete: null };
 }
@@ -347,27 +417,17 @@ async function removeTaskFromSectionStorage(sectionId, taskId, via = "") {
 /** @param {string} [via] 콘솔 구분용: 수정모달_삭제 | 표_삭제버튼 */
 async function removeTaskFromCustomSectionStorage(sectionId, taskId, via = "") {
   try {
-    cancelScheduleSaveSectionTasksFromDOM();
-    cancelTodoSectionTasksSyncPushSchedule();
-    const obj = readCustomSectionTasksObject();
-    const arr = obj[sectionId];
-    if (!Array.isArray(arr)) return { ok: false, serverDelete: null };
-    const tid = String(taskId || "").trim();
-    const snapshot = arr.find((t) => String(t.taskId || "").trim() === tid);
-    obj[sectionId] = arr.filter((t) => (t.taskId || "") !== taskId);
-    writeCustomSectionTasksObject(obj);
-    const del = await deleteCalendarSectionTaskRowById(taskId);
-    if (!del.ok) {
-      if (snapshot) {
-        const o2 = readCustomSectionTasksObject();
-        const cur = Array.isArray(o2[sectionId]) ? o2[sectionId] : [];
-        const has = cur.some((t) => String(t.taskId || "").trim() === tid);
-        if (!has) o2[sectionId] = [...cur, { ...snapshot }];
-        writeCustomSectionTasksObject(o2);
-      }
-      return { ok: false, serverDelete: del };
-    }
-    return { ok: true, serverDelete: del };
+    const begun = beginRemoveTaskFromCustomSectionStorageLocal(sectionId, taskId);
+    if (!begun.ok) return { ok: false, serverDelete: null };
+    const del = await completeRemoveTaskFromCustomSectionStorageServer(
+      sectionId,
+      taskId,
+      begun.snapshot,
+    );
+    return {
+      ok: !!del.ok,
+      serverDelete: del,
+    };
   } catch (_) {}
   return { ok: false, serverDelete: null };
 }
@@ -2042,28 +2102,34 @@ export function openTodoTaskEditFromCalendarBarModel(barModel, options = {}) {
       }
       runAfter();
     },
-    onDelete: async () => {
+    onDelete: () => {
       if (storageSectionId.startsWith("custom-")) {
-        const out = await removeTaskFromCustomSectionStorage(
+        const begun = beginRemoveTaskFromCustomSectionStorageLocal(
           storageSectionId,
           taskId,
-          "수정모달_삭제",
         );
-        if (out?.ok) {
-          clearSubtasks(taskId);
-          runAfter();
-        }
-        return;
-      }
-      const out = await removeTaskFromSectionStorage(
-        storageSectionId,
-        taskId,
-        "수정모달_삭제",
-      );
-      if (out?.ok) {
+        if (!begun.ok) return;
         clearSubtasks(taskId);
         runAfter();
+        void completeRemoveTaskFromCustomSectionStorageServer(
+          storageSectionId,
+          taskId,
+          begun.snapshot,
+        ).catch(() => {});
+        return;
       }
+      const begun = beginRemoveTaskFromSectionStorageLocal(
+        storageSectionId,
+        taskId,
+      );
+      if (!begun.ok) return;
+      clearSubtasks(taskId);
+      runAfter();
+      void completeRemoveTaskFromSectionStorageServer(
+        storageSectionId,
+        taskId,
+        begun.snapshot,
+      ).catch(() => {});
     },
   });
 }
@@ -3660,55 +3726,73 @@ function createTaskCard(taskData, options = {}) {
           }
         }
       },
-      onDelete: async () => {
+      onDelete: () => {
+        cancelScheduleSaveSectionTasksFromDOM();
         if (isKpiTodo && kpiTodoId && storageKey) {
           if (removeKpiTodo(kpiTodoId, storageKey)) {
             requestCalendarTodoSidebarRebuildFromCard(card);
-            if (sectionsWrap)
+            if (sectionsWrap) {
               removeAllTodoCardsWithTaskIdInWrap(sectionsWrap, taskId);
-            else card.remove();
+              flushSaveSectionTasksFromDOM(sectionsWrap);
+              refreshTodoDateTabSectionDom(sectionsWrap);
+              refreshTodoPriorityTabSectionDom(sectionsWrap);
+            } else card.remove();
             updateCount();
-            scheduleSave();
           }
           return;
         }
         if (storageSectionId && storageSectionId.startsWith("custom-")) {
-          const out = await removeTaskFromCustomSectionStorage(
+          const begun = beginRemoveTaskFromCustomSectionStorageLocal(
             storageSectionId,
             taskId,
-            "수정모달_삭제",
           );
-          if (!out?.ok) return;
+          if (!begun.ok) return;
           clearSubtasks(taskId);
           requestCalendarTodoSidebarRebuildFromCard(card);
-          if (sectionsWrap)
+          if (sectionsWrap) {
             removeAllTodoCardsWithTaskIdInWrap(sectionsWrap, taskId);
-          else card.remove();
+            flushSaveSectionTasksFromDOM(sectionsWrap);
+            refreshTodoDateTabSectionDom(sectionsWrap);
+            refreshTodoPriorityTabSectionDom(sectionsWrap);
+          } else card.remove();
           updateCount();
-          /* 서버 DELETE + 목록 다시 읽기까지 끝남 — DOM 저장으로 전체 upsert 다시 돌리지 않음 */
+          void completeRemoveTaskFromCustomSectionStorageServer(
+            storageSectionId,
+            taskId,
+            begun.snapshot,
+          ).catch(() => {});
           return;
         }
         if (storageSectionId) {
-          const out = await removeTaskFromSectionStorage(
+          const begun = beginRemoveTaskFromSectionStorageLocal(
             storageSectionId,
             taskId,
-            "수정모달_삭제",
           );
-          if (!out?.ok) return;
+          if (!begun.ok) return;
           clearSubtasks(taskId);
           requestCalendarTodoSidebarRebuildFromCard(card);
-          if (sectionsWrap)
+          if (sectionsWrap) {
             removeAllTodoCardsWithTaskIdInWrap(sectionsWrap, taskId);
-          else card.remove();
+            flushSaveSectionTasksFromDOM(sectionsWrap);
+            refreshTodoDateTabSectionDom(sectionsWrap);
+            refreshTodoPriorityTabSectionDom(sectionsWrap);
+          } else card.remove();
           updateCount();
+          void completeRemoveTaskFromSectionStorageServer(
+            storageSectionId,
+            taskId,
+            begun.snapshot,
+          ).catch(() => {});
           return;
         }
         requestCalendarTodoSidebarRebuildFromCard(card);
-        if (sectionsWrap)
+        if (sectionsWrap) {
           removeAllTodoCardsWithTaskIdInWrap(sectionsWrap, taskId);
-        else card.remove();
+          flushSaveSectionTasksFromDOM(sectionsWrap);
+          refreshTodoDateTabSectionDom(sectionsWrap);
+          refreshTodoPriorityTabSectionDom(sectionsWrap);
+        } else card.remove();
         updateCount();
-        scheduleSave();
       },
     });
   });

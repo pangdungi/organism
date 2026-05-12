@@ -2483,7 +2483,7 @@ body.auth-pw-modal-open {
   margin-top: 0.05rem;
   padding: 0.55rem 0.65rem;
   box-sizing: border-box;
-  background: #f2f2ee;
+  background: #f2f7f9;
   border-radius: 0.75rem !important;
   -webkit-border-radius: 0.75rem !important;
   container-type: inline-size;
@@ -2542,11 +2542,6 @@ body.auth-pw-modal-open {
   line-height: 1;
 }
 
-@media (max-width: 768px) {
-  .app-main:has(.home-view) .home-live-tracker-card {
-    background: #f2f7f9;
-  }
-}
 
 .home-time-summary-grid {
   display: grid;
@@ -3237,7 +3232,8 @@ body.auth-pw-modal-open {
   .app-main:has(.home-view) .home-event-task-bottom {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 0.4rem 0.45rem;
+    column-gap: 0.06rem;
+    row-gap: 0;
     align-items: center;
     width: 100%;
     min-width: 0;
@@ -3323,7 +3319,8 @@ body.auth-pw-modal-open {
     position: relative;
     height: 0.22rem;
     border-radius: 999px;
-    background: rgba(0, 0, 0, 0.07);
+    /* 총기록·생산적 막대(.home-time-summary-bar)와 동일 톤의 트랙 */
+    background: rgba(0, 0, 0, 0.08);
     overflow: hidden;
   }
   .app-main:has(.home-view) .home-event-task-bar-goal {
@@ -3332,7 +3329,9 @@ body.auth-pw-modal-open {
     top: 0;
     bottom: 0;
     border-radius: inherit;
-    opacity: 0.4;
+    /* 예상(목표) 구간만 약간 진한 회색 — 채도 있는 연색 배경 제거 */
+    background: rgba(0, 0, 0, 0.12);
+    opacity: 1;
     pointer-events: none;
     max-width: 100%;
     transition: width 0.35s ease;
@@ -3361,6 +3360,9 @@ body.auth-pw-modal-open {
     justify-self: start;
     align-self: center;
     margin: 0;
+    margin-left: -0.85rem;
+    position: relative;
+    z-index: 1;
     padding: 0.2rem 0;
     font-size: 0.6875rem;
     font-weight: 700;
@@ -4933,6 +4935,7 @@ body.auth-pw-modal-open {
   .app-main:has(.home-view) .home-view-toolbar-start {
     flex: 1 1 auto;
     min-width: 0;
+    justify-content: flex-end;
   }
   .app-main:has(.home-view) .home-view-toolbar-date {
     white-space: nowrap;
@@ -7284,17 +7287,6 @@ body.auth-pw-modal-open {
     line-height: 1 !important;
     border-radius: 50% !important;
     -webkit-border-radius: 50% !important;
-  }
-
-  .calendar-view-with-subtabs
-    .calendar-1week-view
-    .calendar-monthly-day.today
-    .calendar-monthly-day-num,
-  .calendar-view-with-subtabs
-    .calendar-1week-view
-    .calendar-monthly-day.other-month.today
-    .calendar-monthly-day-num {
-    align-self: flex-start !important;
   }
 
   .calendar-1day-view {
@@ -10052,6 +10044,7 @@ body.auth-pw-modal-open {
   .time-ledger-mobile-card.time-ledger-mobile-card--in-progress {
     background: var(--time-ledger-list-highlight);
   }
+
   .time-mobile-card-color-bar {
     width: 0.1875rem;
     min-width: 0.1875rem;
@@ -10946,6 +10939,7 @@ body.auth-pw-modal-open {
   .time-ledger-mobile-card.time-ledger-mobile-card--in-progress {
     background: var(--time-ledger-list-highlight);
   }
+
   .time-mobile-card-color-bar {
     width: 0.1875rem;
     min-width: 0.1875rem;
@@ -11416,6 +11410,13 @@ body.auth-pw-modal-open {
   font-size: 0.85rem;
   line-height: 1;
 }
+.calendar-1day-timeline-card-missed-mark {
+  flex-shrink: 0;
+  color: #9ca3af;
+  font-weight: 700;
+  font-size: 0.85rem;
+  line-height: 1;
+}
 .calendar-1day-timeline-card-meta {
   display: flex;
   flex-wrap: wrap;
@@ -11462,6 +11463,18 @@ body.auth-pw-modal-open {
 /* 예정 시간대 안이지만 아직 실제 기록(마감 없는 진행)이 없을 때 */
 .calendar-1day-timeline-card--expected-now {
   background: #f2f7f9;
+}
+.calendar-1day-timeline-card--ledger-missed {
+  background: #ebebeb;
+  border-color: rgba(0, 0, 0, 0.1);
+}
+.calendar-1day-timeline-card--ledger-missed .calendar-1day-timeline-card-title,
+.calendar-1day-timeline-card--ledger-missed .calendar-1day-timeline-card-time,
+.calendar-1day-timeline-card--ledger-missed .calendar-1day-timeline-card-badge,
+.calendar-1day-timeline-card--ledger-missed .calendar-1day-timeline-card-duration,
+.calendar-1day-timeline-card--ledger-missed .calendar-1day-timeline-card-memo {
+  color: #9ca3af;
+  text-decoration: none;
 }
 .calendar-1day-timeline-card--done {
   opacity: 1;
@@ -11877,7 +11890,8 @@ body.auth-pw-modal-open {
   .app-main:has(.home-view) .home-event-task-bottom {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 0.35rem 0.4rem;
+    column-gap: 0.06rem;
+    row-gap: 0;
     align-items: center;
     width: 100%;
     min-width: 0;
@@ -11963,7 +11977,7 @@ body.auth-pw-modal-open {
     position: relative;
     height: 0.2rem;
     border-radius: 999px;
-    background: rgba(0, 0, 0, 0.07);
+    background: rgba(0, 0, 0, 0.08);
     overflow: hidden;
   }
   .app-main:has(.home-view) .home-event-task-bar-goal {
@@ -11972,7 +11986,8 @@ body.auth-pw-modal-open {
     top: 0;
     bottom: 0;
     border-radius: inherit;
-    opacity: 0.4;
+    background: rgba(0, 0, 0, 0.12);
+    opacity: 1;
     pointer-events: none;
     max-width: 100%;
     transition: width 0.35s ease;
@@ -12001,6 +12016,9 @@ body.auth-pw-modal-open {
     justify-self: start;
     align-self: center;
     margin: 0;
+    margin-left: -0.85rem;
+    position: relative;
+    z-index: 1;
     padding: 0.18rem 0;
     font-size: 0.65rem;
     font-weight: 700;
@@ -22049,7 +22067,9 @@ col.asset-expense-col-amount,
   color: var(--ui-btn-secondary-color);
   background: transparent;
   border: var(--ui-btn-secondary-border);
-  border-radius: 0;
+  /* 전역 * { border-radius: 0 !important } 대비 — 옆 삭제(.todo-list-modal-confirm)와 동일 8px */
+  border-radius: 8px !important;
+  -webkit-border-radius: 8px !important;
   cursor: pointer;
 }
 
@@ -22103,7 +22123,8 @@ col.asset-expense-col-amount,
   color: #b91c1c;
   background: #fef2f2;
   border: 0.09375rem solid #fecaca;
-  border-radius: var(--modal-radius);
+  border-radius: 8px !important;
+  -webkit-border-radius: 8px !important;
   cursor: pointer;
 }
 
@@ -26937,7 +26958,7 @@ body.kpi-resizing {
   overflow: hidden;
   overscroll-behavior-x: none;
   /* 목록: 진행 중 하이라이트·행 호버 — 맥 설정/리스트 톤(기존 금액 색은 유지) */
-  --time-ledger-list-highlight: #f0f4fa;
+  --time-ledger-list-highlight: #cce0e6;
   --time-ledger-list-hover: #f2f7f9;
 }
 
@@ -42278,11 +42299,12 @@ img.time-btn-icon {
 
 .diary-view-inner--desktop-mac-diary .diary-sidebar-header {
   border-bottom: 0.03125rem solid rgba(60, 60, 67, 0.08);
-  background: transparent;
+  background: #ffffff;
 }
 
 .diary-view-inner--desktop-mac-diary .diary-search-row {
   border-bottom: 0.03125rem solid rgba(60, 60, 67, 0.06);
+  background: #ffffff;
 }
 
 .diary-view-inner--desktop-mac-diary .diary-add-page-wrap {
@@ -43197,9 +43219,9 @@ img.time-btn-icon {
   color: rgba(60, 60, 67, 0.3);
 }
 
-/* 타달·일요일 겹침: 오늘 배지는 밝은 배경 + 진한 숫자 */
+/* 타달·일요일 겹침: 오늘 배지도 동일 톤(연한 글자) */
 .calendar-view .calendar-monthly-day.other-month.today.sun .calendar-monthly-day-num {
-  color: #1f4654;
+  color: #f2f7f9;
 }
 
 .calendar-monthly-tabs-wrap {
@@ -44078,7 +44100,7 @@ img.time-btn-icon {
   letter-spacing: 0.01em;
 }
 .calendar-annual-cell.weekend {
-  background: rgba(0, 0, 0, 0.04);
+  background: #f2f7f9;
 }
 .calendar-annual-cell.today {
   background: var(--ui-surface-alt);
@@ -44679,27 +44701,34 @@ img.time-btn-icon {
 
 /* 1주 플로우: 실제 과제 기록과 맞은 항목(모바일·데스크톱 공통) */
 .calendar-1week-flow-card--ledger-done {
-  background: rgba(42, 56, 40, 0.07);
-  border-color: rgba(42, 56, 40, 0.14);
+  background: #cce0e6;
+  border-color: rgba(31, 70, 84, 0.22);
 }
 .calendar-1week-flow-card-done-check {
   flex-shrink: 0;
   font-weight: 700;
   line-height: 1;
   font-size: 0.6875rem;
-  color: var(--ui-btn-primary-bg, #0071e3);
+  color: #1f4654;
 }
-/* 기록 미반영·종료 전 — 본문만 흐리게 + 취소선(진행 중은 제외) */
-.calendar-1week-flow-card--ledger-pending .calendar-1week-flow-card-title,
-.calendar-1week-flow-card--ledger-pending .calendar-1week-flow-card-time,
-.calendar-1week-flow-card--ledger-pending .calendar-1week-flow-card-memo,
-.calendar-1week-flow-card--ledger-pending .calendar-1week-flow-card-badge {
-  text-decoration: line-through;
-  color: var(--text-placeholder);
+/* 기록 없음 + 예정 종료·날짜 경과 — 회색 톤, 취소선 없음, ✕ 표시 */
+.calendar-1week-flow-card--ledger-missed {
+  background: #ebebeb;
+  border-color: rgba(0, 0, 0, 0.1);
 }
-.calendar-1week-flow-card--ledger-pending .calendar-1week-flow-card-progress {
+.calendar-1week-flow-card--ledger-missed .calendar-1week-flow-card-title,
+.calendar-1week-flow-card--ledger-missed .calendar-1week-flow-card-time,
+.calendar-1week-flow-card--ledger-missed .calendar-1week-flow-card-memo,
+.calendar-1week-flow-card--ledger-missed .calendar-1week-flow-card-badge {
+  color: #9ca3af;
   text-decoration: none;
-  color: var(--text-caption-color);
+}
+.calendar-1week-flow-card-missed-mark {
+  flex-shrink: 0;
+  font-weight: 700;
+  line-height: 1;
+  font-size: 0.6875rem;
+  color: #9ca3af;
 }
 
 @media (max-width: 48rem) {
@@ -44809,7 +44838,9 @@ img.time-btn-icon {
     font-size: 0.5rem;
   }
   .calendar-1week-time-grid-google--flow
-    .calendar-1week-flow-card-done-check {
+    .calendar-1week-flow-card-done-check,
+  .calendar-1week-time-grid-google--flow
+    .calendar-1week-flow-card-missed-mark {
     font-size: 0.625rem;
   }
 }
@@ -45501,6 +45532,7 @@ img.time-btn-icon {
 
 .calendar-1day-budget-column .time-daily-budget-table thead th.time-budget-th-sched {
   white-space: nowrap;
+  background-color: #f2f7f9 !important;
 }
 
 .calendar-1day-budget-column
@@ -45551,7 +45583,7 @@ img.time-btn-icon {
 
 .calendar-1day-budget-column .time-daily-budget-table thead th:first-child {
   z-index: 6;
-  background: #f2f7f9;
+  background: #f2f7f9 !important;
   text-align: left;
 }
 
@@ -45568,7 +45600,7 @@ img.time-btn-icon {
   position: sticky;
   top: 0;
   z-index: 5;
-  background: #f2f7f9;
+  background: #f2f7f9 !important;
   vertical-align: top;
   font-size: 0.5938rem;
   font-weight: 500;
@@ -45935,7 +45967,7 @@ img.time-btn-icon {
   .time-daily-budget-table
   thead
   th {
-  background: rgba(246, 246, 248, 0.98) !important;
+  background: #f2f7f9 !important;
   border-top: none !important;
   border-bottom: 0.03125rem solid rgba(60, 60, 67, 0.13) !important;
   font-size: 0.6875rem;
@@ -46025,7 +46057,7 @@ img.time-btn-icon {
 }
 
 .calendar-1day-budget-column .calendar-1day-todo-table thead th {
-  background: rgba(246, 246, 248, 0.98) !important;
+  background: #f2f7f9 !important;
   border-top: none !important;
   border-bottom: 0.03125rem solid rgba(60, 60, 67, 0.13) !important;
   color: rgba(60, 60, 67, 0.48);
@@ -46055,7 +46087,7 @@ img.time-btn-icon {
 }
 
 .calendar-1day-budget-column .calendar-1day-todo-table thead th:first-child {
-  background: rgba(246, 246, 248, 0.98) !important;
+  background: #f2f7f9 !important;
   box-shadow: 0.03125rem 0 0 rgba(60, 60, 67, 0.1);
 }
 
@@ -47351,7 +47383,7 @@ tr.time-budget-calendar-row--readonly {
   font-weight: 400;
 }
 
-/* 오늘: 날짜 숫자에 연한 회색 원 배경 + 흰 글자 — 셀 배경은 일반 날과 동일 */
+/* 오늘: 날짜 숫자에 진한 민트 원 + 연한 글자 — 셀 배경은 일반 날과 동일 */
 .calendar-monthly-day.today {
   background: transparent;
   position: relative;
@@ -47378,7 +47410,7 @@ tr.time-budget-calendar-row--readonly {
 
 .calendar-monthly-day.other-month.today .calendar-monthly-day-num {
   font-weight: 700;
-  color: #1f4654;
+  color: #f2f7f9;
   align-self: flex-end;
   flex: 0 0 auto;
   width: 1.55rem;
@@ -47393,18 +47425,19 @@ tr.time-budget-calendar-row--readonly {
   line-height: 1;
   border-radius: 50% !important;
   -webkit-border-radius: 50% !important;
-  background: #f2f7f9;
+  background: #1f4654;
   overflow: hidden;
   margin-bottom: 0;
 }
 
 .calendar-monthly-day.other-month.today:hover .calendar-monthly-day-num {
   background: #e8f0f3;
+  color: #1f4654;
 }
 
 .calendar-monthly-day.today .calendar-monthly-day-num {
   font-weight: 700;
-  color: #1f4654;
+  color: #f2f7f9;
   align-self: flex-end;
   flex: 0 0 auto;
   width: 1.55rem;
@@ -47419,13 +47452,14 @@ tr.time-budget-calendar-row--readonly {
   line-height: 1;
   border-radius: 50% !important;
   -webkit-border-radius: 50% !important;
-  background: #f2f7f9;
+  background: #1f4654;
   overflow: hidden;
   margin-bottom: 0;
 }
 
 .calendar-monthly-day.today:hover .calendar-monthly-day-num {
   background: #e8f0f3;
+  color: #1f4654;
 }
 
 .calendar-monthly-day.today .calendar-monthly-day-num::after,
@@ -47452,11 +47486,6 @@ tr.time-budget-calendar-row--readonly {
 .calendar-1week-view .calendar-monthly-day.other-month:hover,
 .calendar-1week-view .calendar-monthly-day.other-month.today:hover {
   background: var(--app-main-bg) !important;
-}
-
-.calendar-1week-view .calendar-monthly-day.today .calendar-monthly-day-num,
-.calendar-1week-view .calendar-monthly-day.other-month.today .calendar-monthly-day-num {
-  align-self: flex-start;
 }
 
 /* 1주 종일 행: 기본 월별 셀은 border-right 가 line-l3 — 요일 헤더(.calendar-1week-google-day-head)와 동일 선으로 통일 */
@@ -47498,11 +47527,11 @@ tr.time-budget-calendar-row--readonly {
 }
 
 .calendar-monthly-day.today.sun .calendar-monthly-day-num {
-  color: #1f4654;
+  color: #f2f7f9;
 }
 
 .calendar-monthly-day.other-month.today.sun .calendar-monthly-day-num {
-  color: #1f4654;
+  color: #f2f7f9;
 }
 
 .calendar-monthly-day.other-month.sun .calendar-monthly-day-num {
