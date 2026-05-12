@@ -1023,10 +1023,7 @@ export function render(opts = {}) {
       spanType.textContent = labelText;
       triggerBtn.setAttribute("aria-label", labelText);
       const names = typeNamesForDayEntryKind(kind);
-      dayEntryTypeOptions = [
-        { value: "", label: "선택" },
-        ...names.map((n) => ({ value: n, label: n })),
-      ];
+      dayEntryTypeOptions = names.map((n) => ({ value: n, label: n }));
       const pv = (preserveValue || "").trim();
       dayEntryTypeValue = pv && names.includes(pv) ? pv : "";
       renderDayEntryTypeListOptions();
