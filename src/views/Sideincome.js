@@ -889,9 +889,9 @@ export function render() {
         return ia - ib;
       });
     }
-    /* KPI 완료 시 과제 목록에서 제거하지 않음 — KPI 삭제 시에만 remove */
-    const activeKpis = pathKpis.filter((k) => getKpiProgress(k).isInProgress);
+    /* 진행중 = 미완료 KPI만(시작일 없는 새 KPI 포함) — 꿈 탭과 동일 */
     const completedKpis = pathKpis.filter((k) => getKpiProgress(k).isCompleted);
+    const activeKpis = pathKpis.filter((k) => !getKpiProgress(k).isCompleted);
 
     const path = data.paths.find((p) => p.id === activePathId);
     const pathLogs = (data.pathLogs || []).filter((l) => l.pathId === activePathId);
