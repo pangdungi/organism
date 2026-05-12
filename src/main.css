@@ -1447,6 +1447,15 @@ body.auth-pw-modal-open {
   outline-offset: 2px;
 }
 
+/* 모바일: 노치·상태표시줄 아래로 로고·헤더 내리기 (viewport-fit=cover 대응) */
+@media (max-width: 48rem) {
+  .login-page.login-page--gate .auth-gate-header-inner {
+    padding-top: calc(1rem + env(safe-area-inset-top, 0px));
+    padding-left: max(1.5rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1.5rem, env(safe-area-inset-right, 0px));
+  }
+}
+
 @media (min-width: 48rem) {
   .login-page--gate .auth-gate-body {
     padding-block: clamp(2rem, 5vh, 3.75rem);
