@@ -213,7 +213,7 @@ function init() {
           if (el) el.innerHTML = "";
         } catch (_) {}
         showOnly("login");
-        setAuthGatePanel("signup");
+        setAuthGatePanel("login");
         try {
           await purgeTimeLedgerLocalOnSignOut();
         } catch (_) {}
