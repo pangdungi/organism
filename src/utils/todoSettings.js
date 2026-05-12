@@ -158,14 +158,14 @@ export function pickRandomPresetRgba(alpha = 0.6) {
 
 /**
  * KPI 고정 리스트색 (코드 고정)
- * 브레인 덤프 빨강 · 꿈 보라 · 부수입 초록 · 건강 파랑 · 행복 노랑
+ * 브레인 덤프 빨강 · 꿈·부수입·행복·건강 = 차가운 파스텔(Mist·Seafoam·Periwinkle·Sage Mist)
  */
 export const DEFAULT_SECTION_COLORS = {
   braindump: hexToRgba("#FF6B6B", 0.6),
-  dream: hexToRgba("#A29BFE", 0.6),
-  sideincome: hexToRgba("#52C41A", 0.6),
-  health: hexToRgba("#74B9FF", 0.6),
-  happy: hexToRgba("#FFD166", 0.6),
+  dream: hexToRgba("#D8EEF2", 0.6),
+  sideincome: hexToRgba("#D6EBE8", 0.6),
+  health: hexToRgba("#E4EEE8", 0.6),
+  happy: hexToRgba("#D8E4F0", 0.6),
 };
 
 /**
@@ -184,7 +184,7 @@ export const DEFAULT_TIME_CATEGORY_COLORS = {
 const TIME_CATEGORY_PRESET_VERSION = 1;
 
 /** 고정 리스트(브레인덤프·꿈·부수입·건강·행복) 기본색 재배치 시 버전 증가 */
-const SECTION_LIST_PRESET_VERSION = 2;
+const SECTION_LIST_PRESET_VERSION = 3;
 
 /**
  * 작업(세부) 카테고리 기본색 — 꿈/부수입/행복/건강은 리스트 KPI색과 동일(폴백용),
@@ -192,10 +192,10 @@ const SECTION_LIST_PRESET_VERSION = 2;
  */
 export const DEFAULT_TASK_CATEGORY_COLORS = {
   "": hexToRgba("#C97A6A", 0.5),
-  dream: hexToRgba("#A29BFE", 0.7),
-  sideincome: hexToRgba("#52C41A", 0.7),
-  happiness: hexToRgba("#FFD166", 0.7),
-  health: hexToRgba("#74B9FF", 0.7),
+  dream: hexToRgba("#D8EEF2", 0.7),
+  sideincome: hexToRgba("#D6EBE8", 0.7),
+  happiness: hexToRgba("#D8E4F0", 0.7),
+  health: hexToRgba("#E4EEE8", 0.7),
   pleasure: hexToRgba("#C4906A", 0.7),
   dreamblocking: hexToRgba("#B89A6A", 0.7),
   media_watch: hexToRgba("#A67C8A", 0.72),
@@ -376,6 +376,37 @@ export function saveTodoSettings(settings) {
  */
 export function getSectionColor(sectionId) {
   return resolveSectionListColor(sectionId);
+}
+
+/**
+ * 할일목록 일정 마커(동그라미) 등 — 배경 파스텔(getSectionColor)과 달리 눈에 띄는 불투명색
+ */
+export function getSectionMarkerColor(sectionId) {
+  const ink = { r: 42, g: 56, b: 40 };
+  const blend = 0.42;
+  const mix = (r, g, b) =>
+    `rgb(${Math.round(r * (1 - blend) + ink.r * blend)}, ${Math.round(g * (1 - blend) + ink.g * blend)}, ${Math.round(b * (1 - blend) + ink.b * blend)})`;
+
+  const base = getSectionColor(sectionId);
+  const rgbStr = rgbaToRgb(base);
+  const m = rgbStr.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/);
+  if (m) return mix(Number(m[1]), Number(m[2]), Number(m[3]));
+  const t = String(base || "").trim();
+  if (t.startsWith("#")) {
+    const full =
+      t.length === 4
+        ? `#${t[1]}${t[1]}${t[2]}${t[2]}${t[3]}${t[3]}`
+        : t.length === 7
+          ? t
+          : "";
+    if (full) {
+      const r = parseInt(full.slice(1, 3), 16);
+      const g = parseInt(full.slice(3, 5), 16);
+      const b = parseInt(full.slice(5, 7), 16);
+      return mix(r, g, b);
+    }
+  }
+  return "var(--text-ink)";
 }
 
 export function getTimeCategoryColor(key) {

@@ -712,8 +712,8 @@ function addSectionTaskToCalendar(sectionId, taskData) {
   return false;
 }
 
-/** rgba 색상의 투명도를 높임 (alpha 낮춤) */
-function withMoreTransparency(color, alpha = 0.35) {
+/** rgba 색상의 투명도를 높임 (alpha 낮춤) — 막대 배경용(월간 기간 막대 --bar-bg) */
+function withMoreTransparency(color, alpha = 0.82) {
   const m = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
   if (m) return `rgba(${m[1]}, ${m[2]}, ${m[3]}, ${alpha})`;
   return color;
@@ -725,6 +725,64 @@ function timetableAccentTextColor(accentRgba) {
   const m = accentRgba.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
   if (!m) return "";
   return `rgb(${m[1]}, ${m[2]}, ${m[3]})`;
+}
+
+/** 월간 막대: |·일정 동그라미 — 배경 파스텔과 분리해 잉크 쪽으로 섞은 불투명 색(완료·모바일에서도 식별) */
+function lpCalendarBarMarkerColorFromBase(baseColor) {
+  const ink = { r: 42, g: 56, b: 40 };
+  const blend = 0.42;
+  const mix = (r, g, b) =>
+    `rgb(${Math.round(r * (1 - blend) + ink.r * blend)}, ${Math.round(g * (1 - blend) + ink.g * blend)}, ${Math.round(b * (1 - blend) + ink.b * blend)})`;
+
+  const fromRgba = timetableAccentTextColor(baseColor);
+  if (fromRgba) {
+    const m = fromRgba.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/);
+    if (m)
+      return mix(Number(m[1]), Number(m[2]), Number(m[3]));
+  }
+  const t = String(baseColor || "").trim();
+  if (t.startsWith("#")) {
+    const full =
+      t.length === 4
+        ? `#${t[1]}${t[1]}${t[2]}${t[2]}${t[3]}${t[3]}`
+        : t.length === 7
+          ? t
+          : "";
+    if (full) {
+      const r = parseInt(full.slice(1, 3), 16);
+      const g = parseInt(full.slice(3, 5), 16);
+      const b = parseInt(full.slice(5, 7), 16);
+      return mix(r, g, b);
+    }
+  }
+  return "var(--text-ink)";
+}
+
+/** 시트의 .checked / .is-completed 에서 마커 opacity 가림 방지 */
+function lpCalendarSpanBarForceSolidMarkers(bar) {
+  if (!bar) return;
+  try {
+    bar
+      .querySelector(".calendar-monthly-span-bar-checkbox")
+      ?.style.setProperty("opacity", "1", "important");
+    bar
+      .querySelectorAll(".calendar-monthly-span-bar-icon--schedule")
+      .forEach((el) =>
+        el.style.setProperty("opacity", "1", "important"),
+      );
+  } catch (_) {}
+}
+
+/** 여러 날 spanning 막대: 시트의 color-mix 비율보다 진한 파스텔(데스크·모바일 공통) */
+function lpApplyCalendarMultiDaySpanBarBackground(bar, b) {
+  if (!bar || !b || b.isSingleDay) return;
+  try {
+    bar.style.setProperty(
+      "background",
+      "color-mix(in srgb, var(--bar-bg) 82%, rgb(125 125 125 / 0.08))",
+      "important",
+    );
+  } catch (_) {}
 }
 
 /** 1일·1주 타임블록 면: 격자가 비쳐 어둡게 보이지 않도록 채움 알파 하한(너무 옅은 값만 올림) */
@@ -1677,6 +1735,18 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
 /** 기본 행 높이는 이 개수(3개) 분량, 그 이상이면 행을 늘려 전부 표시 */
 const MAX_VISIBLE_BARS_PER_DAY = 3;
 
+/** 날짜 확대 목록: 앞 마커(일정·할일) — 격자 막대와 동일하게 진한 섹션색 */
+function lpCalendarDayExpandMarkerRgb(sectionId) {
+  return lpCalendarBarMarkerColorFromBase(
+    getSectionColor(String(sectionId || "").trim()),
+  ).replace(/["<>;]/g, "");
+}
+
+function lpCalendarDayExpandScheduleMarkHtml(sectionId) {
+  const c = lpCalendarDayExpandMarkerRgb(sectionId);
+  return `<span class="calendar-day-expand-schedule-mark" aria-hidden="true" style="display:inline-flex;align-items:center;justify-content:center;width:0.875rem;height:0.875rem;flex-shrink:0"><span style="display:block;width:0.5625rem;height:0.5625rem;border-radius:999px;background-color:${c};box-shadow:0 0 0 0.0625rem rgba(42,56,40,0.35)"></span></span>`;
+}
+
 /** 이전 날짜 확대 버블의 document 클릭 리스너 제거(연간 연속 호버 등으로 close 미경유 DOM 제거 시 누수 방지) */
 let _calendarDayExpandOutsideHandler = null;
 
@@ -1723,9 +1793,10 @@ function createCalendarDayExpandBubble(
     .map((t) => {
       const isSchedule =
         String(t.itemType || "todo").toLowerCase() === "schedule";
+      const mRgb = lpCalendarDayExpandMarkerRgb(t.sectionId);
       const marker = isSchedule
-        ? '<span class="calendar-day-expand-schedule-dot" aria-hidden="true"></span>'
-        : `<span class="calendar-day-expand-checkbox ${t.done ? "checked" : ""}"></span>`;
+        ? lpCalendarDayExpandScheduleMarkHtml(t.sectionId)
+        : `<span class="calendar-day-expand-checkbox ${t.done ? "checked" : ""}" style="border:2px solid ${mRgb}"></span>`;
       return `
     <div class="calendar-day-expand-item${isSchedule ? " calendar-day-expand-item--schedule" : ""}" data-done="${!!t.done}" data-item-type="${isSchedule ? "schedule" : "todo"}">
       ${marker}
@@ -2333,12 +2404,14 @@ function renderMonthlyView(
         const width = ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
         const baseColor = getSectionColor(t.sectionId);
         const color = withMoreTransparency(baseColor);
+        const markerColor = lpCalendarBarMarkerColorFromBase(baseColor);
         const isFirstSegment = barStart === t.startDate;
         allBars.push({
           left,
           width,
           name: t.name,
           color,
+          markerColor,
           isSingleDay: false,
           isFirstSegment,
           itemType: t.itemType || "todo",
@@ -2360,11 +2433,13 @@ function renderMonthlyView(
           const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
           const baseColor = getSectionColor(t.sectionId);
           const color = withMoreTransparency(baseColor);
+          const markerColor = lpCalendarBarMarkerColorFromBase(baseColor);
           allBars.push({
             left,
             width,
             name: t.name,
             color,
+            markerColor,
             isSingleDay: true,
             dayIdx,
             dateKey,
@@ -2431,24 +2506,26 @@ function renderMonthlyView(
             : "");
         bar.title = b.name;
         bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.1 + b.row * BAR_HEIGHT}rem`;
+        lpApplyCalendarMultiDaySpanBarBackground(bar, b);
         if (b.isSingleDay) {
           if (isTodo) {
-            bar.innerHTML = `${lpCalendarSpanBarTodoMarkerHtml(b.color)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+            bar.innerHTML = `${lpCalendarSpanBarTodoMarkerHtml(b.markerColor)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
           } else {
-            bar.style.setProperty("--schedule-icon-color", b.color);
-            bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" style="border-color:${b.color}"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+            bar.style.setProperty("--schedule-icon-color", b.markerColor);
+            bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
           }
         } else {
           if (isTodo) {
             bar.innerHTML = showCheckbox
-              ? `${lpCalendarSpanBarTodoMarkerHtml(b.color)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
+              ? `${lpCalendarSpanBarTodoMarkerHtml(b.markerColor)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
               : `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
           } else {
             if (b.isFirstSegment) {
-              bar.style.setProperty("--schedule-icon-color", b.color);
-              bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" style="border-color:${b.color}"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+              bar.style.setProperty("--schedule-icon-color", b.markerColor);
+              bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
             } else {
-              bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+              bar.style.setProperty("--schedule-icon-color", b.markerColor);
+              bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" aria-hidden="true"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
             }
           }
         }
@@ -2492,6 +2569,7 @@ function renderMonthlyView(
             );
           });
         }
+        lpCalendarSpanBarForceSolidMarkers(bar);
         b._barEl = bar;
         barsEl.appendChild(bar);
       });
@@ -3006,12 +3084,14 @@ function render2WeekView(
         const width = ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
         const baseColor = getSectionColor(t.sectionId);
         const color = withMoreTransparency(baseColor);
+        const markerColor = lpCalendarBarMarkerColorFromBase(baseColor);
         const isFirstSegment = barStart === t.startDate;
         allBars.push({
           left,
           width,
           name: t.name,
           color,
+          markerColor,
           isSingleDay: false,
           isFirstSegment,
           itemType: t.itemType || "todo",
@@ -3033,11 +3113,13 @@ function render2WeekView(
           const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
           const baseColor = getSectionColor(t.sectionId);
           const color = withMoreTransparency(baseColor);
+          const markerColor = lpCalendarBarMarkerColorFromBase(baseColor);
           allBars.push({
             left,
             width,
             name: t.name,
             color,
+            markerColor,
             isSingleDay: true,
             dayIdx,
             dateKey,
@@ -3104,24 +3186,26 @@ function render2WeekView(
             : "");
         bar.title = b.name;
         bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.1 + b.row * BAR_HEIGHT}rem`;
+        lpApplyCalendarMultiDaySpanBarBackground(bar, b);
         if (b.isSingleDay) {
           if (isTodo) {
-            bar.innerHTML = `${lpCalendarSpanBarTodoMarkerHtml(b.color)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+            bar.innerHTML = `${lpCalendarSpanBarTodoMarkerHtml(b.markerColor)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
           } else {
-            bar.style.setProperty("--schedule-icon-color", b.color);
-            bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" style="border-color:${b.color}"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+            bar.style.setProperty("--schedule-icon-color", b.markerColor);
+            bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
           }
         } else {
           if (isTodo) {
             bar.innerHTML = showCheckbox
-              ? `${lpCalendarSpanBarTodoMarkerHtml(b.color)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
+              ? `${lpCalendarSpanBarTodoMarkerHtml(b.markerColor)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
               : `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
           } else {
             if (b.isFirstSegment) {
-              bar.style.setProperty("--schedule-icon-color", b.color);
-              bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" style="border-color:${b.color}"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+              bar.style.setProperty("--schedule-icon-color", b.markerColor);
+              bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
             } else {
-              bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+              bar.style.setProperty("--schedule-icon-color", b.markerColor);
+              bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" aria-hidden="true"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
             }
           }
         }
@@ -3165,6 +3249,7 @@ function render2WeekView(
             );
           });
         }
+        lpCalendarSpanBarForceSolidMarkers(bar);
         b._barEl = bar;
         barsEl.appendChild(bar);
       });
@@ -3669,12 +3754,14 @@ function render3WeekView(
         const width = ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
         const baseColor = getSectionColor(t.sectionId);
         const color = withMoreTransparency(baseColor);
+        const markerColor = lpCalendarBarMarkerColorFromBase(baseColor);
         const isFirstSegment = barStart === t.startDate;
         allBars.push({
           left,
           width,
           name: t.name,
           color,
+          markerColor,
           isSingleDay: false,
           isFirstSegment,
           itemType: t.itemType || "todo",
@@ -3696,11 +3783,13 @@ function render3WeekView(
           const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
           const baseColor = getSectionColor(t.sectionId);
           const color = withMoreTransparency(baseColor);
+          const markerColor = lpCalendarBarMarkerColorFromBase(baseColor);
           allBars.push({
             left,
             width,
             name: t.name,
             color,
+            markerColor,
             isSingleDay: true,
             dayIdx,
             dateKey,
@@ -3767,11 +3856,12 @@ function render3WeekView(
             : "");
         bar.title = b.name;
         bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.1 + b.row * BAR_HEIGHT}rem`;
+        lpApplyCalendarMultiDaySpanBarBackground(bar, b);
         if (b.isSingleDay) {
           if (isTodo) {
-            bar.innerHTML = `${lpCalendarSpanBarTodoMarkerHtml(b.color)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+            bar.innerHTML = `${lpCalendarSpanBarTodoMarkerHtml(b.markerColor)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
           } else {
-            bar.style.setProperty("--schedule-icon-color", b.color);
+            bar.style.setProperty("--schedule-icon-color", b.markerColor);
             bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" aria-hidden="true"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
           }
           bar.dataset.date = b.dateKey || "";
@@ -3790,14 +3880,15 @@ function render3WeekView(
         } else {
           if (isTodo) {
             bar.innerHTML = showCheckbox
-              ? `${lpCalendarSpanBarTodoMarkerHtml(b.color)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
+              ? `${lpCalendarSpanBarTodoMarkerHtml(b.markerColor)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
               : `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
           } else {
             if (b.isFirstSegment) {
-              bar.style.setProperty("--schedule-icon-color", b.color);
+              bar.style.setProperty("--schedule-icon-color", b.markerColor);
               bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" aria-hidden="true"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
             } else {
-              bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+              bar.style.setProperty("--schedule-icon-color", b.markerColor);
+              bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" aria-hidden="true"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
             }
           }
           if (isTodo && b.done) {
@@ -3841,6 +3932,7 @@ function render3WeekView(
             );
           });
         }
+        lpCalendarSpanBarForceSolidMarkers(bar);
         b._barEl = bar;
         barsEl.appendChild(bar);
       });
@@ -6656,12 +6748,14 @@ function render1WeekView(
         ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
       const baseColor = getSectionColor(t.sectionId);
       const color = withMoreTransparency(baseColor);
+      const markerColor = lpCalendarBarMarkerColorFromBase(baseColor);
       const isFirstSegment = barStart === t.startDate;
       allBars.push({
         left,
         width,
         name: t.name,
         color,
+        markerColor,
         isSingleDay: false,
         isFirstSegment,
         itemType: t.itemType || "todo",
@@ -6683,11 +6777,13 @@ function render1WeekView(
         const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
         const baseColor = getSectionColor(t.sectionId);
         const color = withMoreTransparency(baseColor);
+        const markerColor = lpCalendarBarMarkerColorFromBase(baseColor);
         allBars.push({
           left,
           width,
           name: t.name,
           color,
+          markerColor,
           isSingleDay: true,
           dayIdx,
           dateKey,
@@ -6748,24 +6844,26 @@ function render1WeekView(
           : "");
       bar.title = b.name;
       bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.1 + b.row * BAR_HEIGHT}rem`;
+      lpApplyCalendarMultiDaySpanBarBackground(bar, b);
       if (b.isSingleDay) {
         if (isTodo) {
-          bar.innerHTML = `${lpCalendarSpanBarTodoMarkerHtml(b.color)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+          bar.innerHTML = `${lpCalendarSpanBarTodoMarkerHtml(b.markerColor)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
         } else {
-          bar.style.setProperty("--schedule-icon-color", b.color);
-          bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" style="border-color:${b.color}"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+          bar.style.setProperty("--schedule-icon-color", b.markerColor);
+          bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
         }
       } else {
         if (isTodo) {
           bar.innerHTML = showCheckbox
-            ? `${lpCalendarSpanBarTodoMarkerHtml(b.color)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
+            ? `${lpCalendarSpanBarTodoMarkerHtml(b.markerColor)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
             : `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
         } else {
           if (b.isFirstSegment) {
-            bar.style.setProperty("--schedule-icon-color", b.color);
-            bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" style="border-color:${b.color}"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+            bar.style.setProperty("--schedule-icon-color", b.markerColor);
+            bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
           } else {
-            bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
+            bar.style.setProperty("--schedule-icon-color", b.markerColor);
+            bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" aria-hidden="true"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
           }
         }
       }
@@ -6809,6 +6907,7 @@ function render1WeekView(
           );
         });
       }
+      lpCalendarSpanBarForceSolidMarkers(bar);
       b._barEl = bar;
       barsEl.appendChild(bar);
     });

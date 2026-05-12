@@ -1291,12 +1291,12 @@ const CATEGORY_OPTIONS = [
 
 /** 오딧 그래프용 카테고리 색상 (time-tag-pill과 동일) */
 const CATEGORY_GRAPH_COLORS = {
-  dream: "rgba(255,182,193,0.5)",
-  sideincome: "rgba(191,179,255,0.5)",
-  happiness: "rgba(255,218,185,0.5)",
-  health: "rgba(144,238,144,0.5)",
+  dream: "rgba(216,238,242,0.5)",
+  sideincome: "rgba(214,235,232,0.5)",
+  happiness: "rgba(216,228,240,0.5)",
+  health: "rgba(228,238,232,0.5)",
   productive_consumption:
-    "rgba(191,179,255,0.5)" /* 구 카테고리: 부수입과 동일 색 */,
+    "rgba(214,235,232,0.5)" /* 구 카테고리: 부수입과 동일 색 */,
   pleasure: "rgba(173,216,230,0.5)",
   dreamblocking: "rgba(255,200,124,0.5)",
   media_watch: "rgba(166,124,138,0.5)",

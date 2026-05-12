@@ -16,6 +16,7 @@ import {
   getTodoSettings,
   getCustomSections,
   getSectionColor,
+  getSectionMarkerColor,
   normalizeSectionTaskListFilter,
   snapRgbaToNearestPreset,
   pickRandomPresetRgba,
@@ -111,7 +112,7 @@ window.addEventListener("app-colors-changed", () => {
     }
     const dot = tr.querySelector(".todo-schedule-dot");
     if (dot) {
-      dot.style.backgroundColor = getSectionColor(sid);
+      dot.style.backgroundColor = getSectionMarkerColor(sid);
     }
   });
 });
@@ -2324,7 +2325,7 @@ function createTaskRow(taskData = {}, options = {}) {
       tr.closest(".todo-section")?.dataset?.section ||
       ""
     ).trim();
-    scheduleDot.style.backgroundColor = getSectionColor(sid);
+    scheduleDot.style.backgroundColor = getSectionMarkerColor(sid);
   }
 
   const doneWrap = document.createElement("div");
@@ -3363,7 +3364,7 @@ function createTaskCard(taskData, options = {}) {
     const sid = (card.dataset.sectionId || storageSectionId || "").trim();
     if (isSched) {
       doneWrap.classList.add("todo-card-done-wrap--schedule");
-      scheduleDot.style.backgroundColor = getSectionColor(
+      scheduleDot.style.backgroundColor = getSectionMarkerColor(
         sid === "overdue" ? (sourceSectionId || "").trim() : sid,
       );
       doneCheck.hidden = true;
