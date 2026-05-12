@@ -7809,7 +7809,7 @@ body.auth-pw-modal-open {
     align-items: stretch !important;
     align-self: stretch;
   }
-  /* 월간 근무유형: 모바일은 칩 글자·패딩만 축소(색·테두리는 공통 규칙과 동일) */
+  /* 월간 근무유형: 모바일은 칩 글자·패딩만 축소 */
   .calendar-view--mobile-workschedule .work-schedule-monthly-type-pill:not(.is-placeholder) {
     font-size: 0.52rem;
     padding: 0.1rem 0.32rem;
@@ -12616,6 +12616,9 @@ body.auth-pw-modal-open {
   align-items: center;
   justify-content: flex-end;
   gap: 1rem;
+  padding-left: 16px;
+  padding-right: 16px;
+  box-sizing: border-box;
 }
 
 .work-schedule-header-inner .work-schedule-settings-btn {
@@ -19903,13 +19906,13 @@ col.asset-expense-col-amount,
 }
 
 .work-schedule-monthly-type.is-overtime {
-  background: rgba(178, 186, 218, 0.45);
+  background: #f2f7f9;
   color: #4b5568;
   border-radius: 0;
 }
 
 .work-schedule-monthly-type.is-early {
-  background: rgba(253, 186, 116, 0.45);
+  background: #f2f7f9;
   color: #c2410c;
   border-radius: 0;
 }
@@ -19992,16 +19995,15 @@ col.asset-expense-col-amount,
   line-height: 1.35;
   text-align: left;
   gap: 0.35rem;
-  background: #e2ebe4;
+  background: #f2f7f9;
   color: #3d5c48;
-  border: 1px solid rgba(61, 92, 72, 0.22);
+  border: none;
   box-shadow: none;
 }
 
 .work-schedule-monthly-type-pill.is-ws-pill-diet:not(.is-placeholder) {
-  background: #d4efe3;
-  color: #137a56;
-  border-color: rgba(19, 122, 86, 0.28);
+  background: #f2f7f9;
+  color: #3d5c48;
 }
 
 .work-schedule-monthly-entry--segments .work-schedule-monthly-hours {
@@ -20024,15 +20026,13 @@ col.asset-expense-col-amount,
 }
 
 .work-schedule-monthly-type-pill.is-overtime:not(.is-placeholder) {
-  background: rgba(178, 186, 218, 0.55);
+  background: #f2f7f9;
   color: #4b5568;
-  border-color: rgba(75, 85, 104, 0.28);
 }
 
 .work-schedule-monthly-type-pill.is-early:not(.is-placeholder) {
-  background: rgba(253, 186, 116, 0.55);
+  background: #f2f7f9;
   color: #c2410c;
-  border-color: rgba(194, 65, 12, 0.3);
 }
 
 .work-schedule-monthly-hours {
