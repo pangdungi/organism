@@ -11206,6 +11206,30 @@ export function renderTimeBudgetTablesForCalendar(
   const calendarBudgetModalOptionsProductive = investTaskDropdownOptions;
   const calendarBudgetModalOptionsNonproductive = consumeTaskDropdownOptions;
 
+  const BUILTIN_PRODUCTIVE_NAMES = new Set(
+    TTC.FIXED_PRODUCTIVE_TASKS.map((t) => t.name),
+  );
+  const PRODUCTIVE_PICKER_MAP_BUCKETS = new Set([
+    "dream",
+    "happiness",
+    "sideincome",
+    "health",
+  ]);
+
+  /** 타임블록 생산적 과제 드롭다운: 기본 / 맵 4영역 / 직접 추가 — 상호 배타 */
+  function productiveBudgetPickerBucket(taskLike) {
+    const t =
+      taskLike && typeof taskLike === "object" ? taskLike : { name: taskLike };
+    const n = String(t.name ?? "").trim();
+    if (!n) return "custom";
+    if (BUILTIN_PRODUCTIVE_NAMES.has(n)) return "basic";
+    const cat = String(t.category ?? "")
+      .trim()
+      .toLowerCase();
+    if (PRODUCTIVE_PICKER_MAP_BUCKETS.has(cat)) return cat;
+    return "custom";
+  }
+
   function dispatchBudgetRebuild() {
     document.dispatchEvent(
       new CustomEvent("calendar-budget-scheduled-updated", {
@@ -11214,8 +11238,14 @@ export function renderTimeBudgetTablesForCalendar(
     );
   }
 
-  /** 과제 기록 모달 `buildTaskDropdown`과 동일한 마크업·클래스 — 옵션 목록만 예산 추가용으로 한정 */
-  function buildCalendarBudgetTaskLogDropdown(addOptionsSource, abortSignal) {
+  /** 과제 기록 모달 `buildTaskDropdown`과 동일한 마크업·클래스 — 옵션 목록만 예산 추가용으로 한정.
+   * @param {{ productivePicker?: boolean }} [dropdownOpts] — 생산적 과제만: 맵·기본·내 과제 6칩 필터 */
+  function buildCalendarBudgetTaskLogDropdown(
+    addOptionsSource,
+    abortSignal,
+    dropdownOpts = {},
+  ) {
+    const productivePicker = !!dropdownOpts.productivePicker;
     const wrap = document.createElement("div");
     wrap.className = "time-task-log-task-dropdown";
     const trigger = document.createElement("button");
@@ -11224,9 +11254,24 @@ export function renderTimeBudgetTablesForCalendar(
     trigger.textContent = "과제를 선택하세요";
     const panel = document.createElement("div");
     panel.className = "time-task-log-task-dropdown-panel";
+    if (productivePicker) {
+      panel.classList.add(
+        "time-task-log-task-dropdown-panel--productive-buckets",
+      );
+    }
     panel.hidden = true;
     let value = "";
     let searchQuery = "";
+    let pickerBucket = "basic";
+
+    const PRODUCTIVE_BUCKET_CHIPS = [
+      { id: "basic", label: "기본" },
+      { id: "dream", label: "꿈" },
+      { id: "happiness", label: "행복" },
+      { id: "sideincome", label: "부수입" },
+      { id: "health", label: "건강" },
+      { id: "custom", label: "내 과제" },
+    ];
 
     function resolveRows() {
       const seen = new Set();
@@ -11287,6 +11332,11 @@ export function renderTimeBudgetTablesForCalendar(
       }
 
       let tasks = resolveRows();
+      if (productivePicker && !q) {
+        tasks = tasks.filter(
+          (t) => productiveBudgetPickerBucket(t.full) === pickerBucket,
+        );
+      }
       if (q) {
         tasks = tasks.filter((t) => t.name.toLowerCase().includes(q));
       }
@@ -11341,6 +11391,8 @@ export function renderTimeBudgetTablesForCalendar(
 
     function renderPanel() {
       panel.innerHTML = "";
+      let optionsContainer = null;
+
       const searchWrap = document.createElement("div");
       searchWrap.className = "time-task-log-task-dropdown-search-wrap";
       const searchInput = document.createElement("input");
@@ -11351,7 +11403,40 @@ export function renderTimeBudgetTablesForCalendar(
       searchInput.setAttribute("autocomplete", "off");
       searchWrap.appendChild(searchInput);
       panel.appendChild(searchWrap);
-      const optionsContainer = document.createElement("div");
+
+      if (productivePicker) {
+        const chipsWrap = document.createElement("div");
+        chipsWrap.className = "time-task-log-task-dropdown-buckets";
+        chipsWrap.setAttribute("role", "tablist");
+        chipsWrap.setAttribute("aria-label", "생산적 과제 구역");
+        PRODUCTIVE_BUCKET_CHIPS.forEach(({ id, label }) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "time-task-log-task-dropdown-bucket";
+          b.dataset.bucket = id;
+          b.textContent = label;
+          b.setAttribute("role", "tab");
+          b.setAttribute("aria-selected", id === pickerBucket ? "true" : "false");
+          if (id === pickerBucket) b.classList.add("is-active");
+          b.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            pickerBucket = id;
+            chipsWrap.querySelectorAll(".time-task-log-task-dropdown-bucket").forEach((x) => {
+              const on = x.dataset.bucket === id;
+              x.classList.toggle("is-active", on);
+              x.setAttribute("aria-selected", on ? "true" : "false");
+            });
+            if (optionsContainer) {
+              renderOptions(optionsContainer, searchQuery);
+            }
+          });
+          chipsWrap.appendChild(b);
+        });
+        panel.appendChild(chipsWrap);
+      }
+
+      optionsContainer = document.createElement("div");
       optionsContainer.className = "time-task-log-task-dropdown-options";
       panel.appendChild(optionsContainer);
       searchInput.addEventListener("input", () => {
@@ -11365,6 +11450,7 @@ export function renderTimeBudgetTablesForCalendar(
 
     trigger.addEventListener("click", () => {
       searchQuery = "";
+      if (productivePicker) pickerBucket = "basic";
       renderPanel();
       panel.hidden = !panel.hidden;
       if (!panel.hidden) {
@@ -11590,6 +11676,7 @@ export function renderTimeBudgetTablesForCalendar(
       calendarBudgetTaskDropdownWrap = buildCalendarBudgetTaskLogDropdown(
         sourceOpts,
         modalTaskUiSignal,
+        { productivePicker: !!modalOpts?.calendarBudgetProductivePicker },
       );
       taskWrap.appendChild(calendarBudgetTaskDropdownWrap);
     } else if (taskWrap) {
@@ -12214,6 +12301,7 @@ export function renderTimeBudgetTablesForCalendar(
       showCalendarBudgetTaskModal({
         mode: "add",
         addTaskOptions: calendarBudgetModalOptionsProductive,
+        calendarBudgetProductivePicker: true,
       }),
     "생산적 과제만 추가",
   );
