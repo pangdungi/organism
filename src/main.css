@@ -6305,6 +6305,16 @@ body.auth-pw-modal-open {
     line-height: 1.35;
   }
 
+  /* 모바일: KPI 매일 반복 토글 ON 트랙 색 */
+  .dream-kpi-checkbox-label:has(input:checked)::after {
+    background: #a6c9d2;
+    background-image: radial-gradient(
+      circle at 2rem 50%,
+      #fff 0.625rem,
+      transparent 0.6875rem
+    );
+  }
+
   /* 모바일: 꿈·행복·부수입·건강 등 공통 KPI 카드 — 가로 카드·큰 숫자·추가 카드 전반 축소 */
   .dream-view .dream-kpi-grid {
     gap: 0.65rem;
