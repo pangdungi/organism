@@ -1,6 +1,6 @@
 /* PWA 서비스 워커 — 앱 설치·오프라인 + Web Push(할일 리마인더) */
 /** 번들·아이콘 등 캐시 버전 (전략 바꿀 때만 올리면 이전 캐시 정리됨) */
-const ASSET_CACHE = "organism-assets-v2";
+const ASSET_CACHE = "organism-assets-v3";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
@@ -93,8 +93,8 @@ self.addEventListener("push", (event) => {
   /* iOS WebKit은 알림 아이콘에 SVG 를 쓰면 showNotification 이 조용히 실패하는 경우가 있음 → PNG 권장 */
   const options = {
     body: data.body || "설정한 시간이 되었어요.",
-    icon: "/icon-192.png?v=organism-icon-2",
-    badge: "/icon-192.png?v=organism-icon-2",
+    icon: "/icon-192.png?v=organism-icon-3",
+    badge: "/icon-192.png?v=organism-icon-3",
     tag: data.tag || "organism-reminder",
     renotify: true,
     silent: false,

@@ -8377,6 +8377,23 @@ body.auth-pw-modal-open {
     .calendar-1day-budget-column
     .time-daily-budget-table
     thead
+    th.time-budget-th-sched {
+    text-align: center !important;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-daily-budget-table
+    tbody
+    td.time-budget-calendar-time-display {
+    text-align: center !important;
+    font-variant-numeric: tabular-nums;
+  }
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    .time-daily-budget-table
+    thead
     th:nth-child(2),
   .calendar-view
     .calendar-1day-view
@@ -8386,6 +8403,7 @@ body.auth-pw-modal-open {
     th:nth-child(3) {
     padding-left: 0.2rem;
     padding-right: 0.14rem;
+    text-align: center !important;
   }
   .calendar-view
     .calendar-1day-view
@@ -8395,6 +8413,7 @@ body.auth-pw-modal-open {
     th.time-budget-col-duration {
     padding-left: 0.16rem;
     padding-right: 0.12rem;
+    text-align: center !important;
   }
   .calendar-view
     .calendar-1day-view
@@ -8412,6 +8431,7 @@ body.auth-pw-modal-open {
     td:nth-child(3) {
     padding-left: 0.16rem !important;
     padding-right: 0.12rem !important;
+    text-align: center !important;
   }
   .calendar-view
     .calendar-1day-view
@@ -8422,6 +8442,7 @@ body.auth-pw-modal-open {
     td.time-budget-cell-duration {
     padding-left: 0.14rem !important;
     padding-right: 0.12rem !important;
+    text-align: center !important;
   }
 
   /* 과제명·시작·마감·소요 시간·삭제 — 데스크탑(1열) 비율에 맞춰 소요 시간 공백 축소 */
@@ -8430,7 +8451,7 @@ body.auth-pw-modal-open {
     .calendar-1day-budget-column
     .time-daily-budget-table
     col.time-budget-col-task {
-    width: 33%;
+    width: 43%;
   }
   .calendar-view
     .calendar-1day-view
@@ -8442,7 +8463,7 @@ body.auth-pw-modal-open {
     .calendar-1day-budget-column
     .time-daily-budget-table
     col.time-budget-col-end {
-    width: 20%;
+    width: 15%;
   }
   .calendar-view
     .calendar-1day-view
@@ -41387,6 +41408,19 @@ img.time-btn-icon {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
+  align-items: stretch;
+}
+
+/*
+ * 모바일 등: date 입력과 한 줄 텍스트 입력의 내장 높이가 달라 밑줄이 단차 나는 현상 방지.
+ * 같은 행 두 칼럼 높이를 맞춘 뒤 입력만 아래쪽에 붙여 border-bottom 정렬.
+ */
+.dream-kpi-log-row > .dream-kpi-log-field {
+  min-height: 0;
+}
+
+.dream-kpi-log-row > .dream-kpi-log-field > input {
+  margin-top: auto;
 }
 
 .dream-kpi-log-field {
@@ -45165,7 +45199,7 @@ img.time-btn-icon {
 .calendar-1day-view
   .calendar-1day-time-grid.calendar-1day-split-layout
   > .calendar-1day-budget-column {
-  flex: 6 1 0;
+  flex: 1 1 0;
   min-width: 0;
   max-width: none;
   min-height: 0;
@@ -45177,7 +45211,7 @@ img.time-btn-icon {
 .calendar-1day-view
   .calendar-1day-time-grid.calendar-1day-split-layout
   > .calendar-1day-time-column {
-  flex: 4 1 0;
+  flex: 1 1 0;
   min-width: 0;
   min-height: 0;
   max-height: 100%;
@@ -45197,7 +45231,7 @@ img.time-btn-icon {
   min-width: 0 !important;
 }
 
-/* 예산 열 축소·타임그리드 확대 (목표시간 열 제거에 맞춰 비율 조정) */
+/* 타임블록 가로 분할: 예산표 열 기본 비율 — split 레이아웃에서는 위쪽 규칙으로 예산·타임 50:50 */
 .calendar-1day-view .calendar-1day-budget-column {
   flex: 9 1 0;
   min-width: 0;
@@ -45662,15 +45696,15 @@ img.time-btn-icon {
 
 /* 5열 — 삭제열은 rem 고정(좁은 타임블록 좌측에서 × 버튼이 찌그러지지 않게) */
 .calendar-1day-budget-column .time-daily-budget-table col.time-budget-col-task {
-  width: 32%;
+  width: 42%;
 }
 .calendar-1day-budget-column
   .time-daily-budget-table
   col.time-budget-col-start {
-  width: 21%;
+  width: 15%;
 }
 .calendar-1day-budget-column .time-daily-budget-table col.time-budget-col-end {
-  width: 21%;
+  width: 15%;
 }
 .calendar-1day-budget-column
   .time-daily-budget-table
@@ -45689,12 +45723,21 @@ img.time-btn-icon {
 .calendar-1day-budget-column .time-daily-budget-table thead th.time-budget-th-sched {
   white-space: nowrap;
   background-color: #f2f7f9 !important;
+  text-align: center;
+}
+
+.calendar-1day-budget-column
+  .time-daily-budget-table
+  tbody
+  td.time-budget-calendar-time-display {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .calendar-1day-budget-column
   .time-daily-budget-table
   th.time-budget-col-duration {
-  text-align: left;
+  text-align: center;
   font-variant-numeric: tabular-nums;
   white-space: normal;
   line-height: 1.2;
@@ -45703,7 +45746,7 @@ img.time-btn-icon {
 .calendar-1day-budget-column
   .time-daily-budget-table
   td.time-budget-cell-duration {
-  text-align: left;
+  text-align: center;
   font-variant-numeric: tabular-nums;
   white-space: normal;
   line-height: 1.25;

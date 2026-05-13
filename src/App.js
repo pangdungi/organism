@@ -306,6 +306,8 @@ async function pullDataForActiveTab(tabId, opts = {}) {
 
 const ROUTINE_REMOVED_KEY = "app-routine-removed-v1";
 const SIDEBAR_COLLAPSED_KEY = "app-sidebar-collapsed-v1";
+/** 타블릿·좁은 창: 본문(타임블록 등) 너비 확보 — 48rem 이하에서는 하단 탭이라 사이드바가 숨겨짐 */
+const SIDEBAR_AUTO_COLLAPSE_MQ = "(max-width: 1024px)";
 
 function migrateRemoveRoutineTasks() {
   if (localStorage.getItem(ROUTINE_REMOVED_KEY) === "1") return;
@@ -508,27 +510,77 @@ export async function mountApp(container) {
   sidebarBody.appendChild(nav);
   sidebar.appendChild(sidebarBody);
 
-  function applySidebarCollapsed(collapsed) {
+  let sidebarCollapsedUserPreference = false;
+  try {
+    sidebarCollapsedUserPreference =
+      localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
+  } catch (_) {}
+
+  function applySidebarCollapsedVisual(collapsed) {
     sidebar.classList.toggle("is-collapsed", collapsed);
     sidebarToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
     sidebarToggle.setAttribute(
       "aria-label",
       collapsed ? "사이드바 펼치기" : "사이드바 접기",
     );
+  }
+
+  function persistSidebarCollapsedPreference(collapsed) {
+    sidebarCollapsedUserPreference = collapsed;
     try {
       localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "1" : "0");
     } catch (_) {}
   }
-  let startCollapsed = false;
-  try {
-    startCollapsed = localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
-  } catch (_) {}
-  applySidebarCollapsed(startCollapsed);
+
+  function applySidebarCollapsed(collapsed, { persist = true } = {}) {
+    applySidebarCollapsedVisual(collapsed);
+    if (persist) persistSidebarCollapsedPreference(collapsed);
+  }
+
+  const sidebarAutoCollapseMql = (() => {
+    try {
+      return window.matchMedia(SIDEBAR_AUTO_COLLAPSE_MQ);
+    } catch (_) {
+      return null;
+    }
+  })();
+
+  function syncSidebarCollapsedForNarrowViewport() {
+    if (!sidebarAutoCollapseMql) {
+      applySidebarCollapsedVisual(sidebarCollapsedUserPreference);
+      return;
+    }
+    if (sidebarAutoCollapseMql.matches) {
+      applySidebarCollapsedVisual(true);
+    } else {
+      applySidebarCollapsedVisual(sidebarCollapsedUserPreference);
+    }
+  }
+
+  syncSidebarCollapsedForNarrowViewport();
+  if (sidebarAutoCollapseMql?.addEventListener) {
+    sidebarAutoCollapseMql.addEventListener(
+      "change",
+      syncSidebarCollapsedForNarrowViewport,
+    );
+  } else if (sidebarAutoCollapseMql?.addListener) {
+    sidebarAutoCollapseMql.addListener(syncSidebarCollapsedForNarrowViewport);
+  }
 
   sidebarToggle.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
-    applySidebarCollapsed(!sidebar.classList.contains("is-collapsed"));
+    let narrow = false;
+    try {
+      narrow = window.matchMedia(SIDEBAR_AUTO_COLLAPSE_MQ).matches;
+    } catch (_) {}
+    const collapsedNow = sidebar.classList.contains("is-collapsed");
+    const next = !collapsedNow;
+    if (narrow) {
+      applySidebarCollapsedVisual(next);
+      return;
+    }
+    applySidebarCollapsed(next);
   });
 
   appScreen.appendChild(sidebar);
