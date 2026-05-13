@@ -44269,10 +44269,12 @@ img.time-btn-icon {
   grid-template-columns: repeat(7, 1fr);
   position: sticky;
   top: 0;
-  z-index: 2;
-  background: var(--content-bg);
+  /* 기간 막대(.calendar-monthly-bars z-index:1)와 동일하면 DOM 뒤쪽 주 행이 위로 덮임 → 헤더만 위로 */
+  z-index: 10;
+  background: #ffffff;
   border: none;
   border-bottom: var(--line-l3);
+  box-shadow: 0 0.0625rem 0 rgba(0, 0, 0, 0.06);
 }
 
 .calendar-monthly-weekday {
@@ -44282,6 +44284,7 @@ img.time-btn-icon {
   color: var(--text-muted);
   text-align: right;
   box-sizing: border-box;
+  background: #ffffff;
 }
 
 /* 날짜 셀과 동일: 요일 행도 열 사이 border-right만 — 마지막 열(일)은 바깥선 생략 */
@@ -44460,6 +44463,19 @@ img.time-btn-icon {
     --cal-1week-hour-height: 2.75rem;
     --cal-1week-v-chrome: clamp(10.5rem, 28dvh, 17rem);
     --cal-1week-time-fill-h: calc(100dvh - var(--cal-1week-v-chrome));
+  }
+  /*
+   * 1주 플로우(넓은 화면): 스크롤 컬럼 flex가 본문을 뷰포트 높이만큼만 잡아 min-height:0 과 함께
+   * 줄어들면 열·구분선(::after)은 그 높이에서 끝나고 카드만 아래로 삐져 나와 격자가 끊겨 보임.
+   * 모바일(max-width:48rem)은 별도 블록에서 이미 비슷하게 처리됨.
+   */
+  .calendar-1week-time-grid-google--flow .calendar-1week-google-body {
+    flex: 1 0 auto;
+    min-height: min-content;
+  }
+  .calendar-1week-time-grid-google--flow .calendar-1week-google-cols {
+    flex-shrink: 0;
+    min-height: min-content;
   }
 }
 .calendar-1week-view .calendar-monthly-main {
@@ -47161,7 +47177,7 @@ tr.time-budget-calendar-row--readonly {
   right: 0;
   bottom: 0;
   pointer-events: none;
-  z-index: 2;
+  z-index: 1;
 }
 
 .calendar-monthly-span-bar--has-checkbox,
@@ -47180,6 +47196,8 @@ tr.time-budget-calendar-row--readonly {
 
 .calendar-monthly-span-bar--dragging {
   opacity: 0.6;
+  /* 다른 막대 위로만 — sticky 요일 행(z-index:10) 아래 유지 */
+  z-index: 6;
 }
 
 .calendar-monthly-span-bar {
