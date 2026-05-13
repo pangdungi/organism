@@ -207,8 +207,6 @@ const CAL_1DAY_TIMETABLE_MIN_PER_SLOT = 60;
 const CAL_1DAY_TIMEBLOCK_INSET_X = 3;
 const CAL_1DAY_TIMEBLOCK_INSET_Y = 2;
 const CAL_1DAY_TIMEBLOCK_LANE_GAP_PX = 3;
-/** 1일·1주 타임블록: 이 분 이하(포함)는 막대 안 글자 숨김 → 호버 시 블록색 툴팁 */
-const CAL_TIMEBLOCK_HIDE_LABEL_MAX_MINUTES = 30;
 /** 1일 타임표: 해당 시 행 높이만 조정 대상으로 보는 과제 길이(분) 상한 — 막대는 시간만 반영, 행(px) 역산 공식만 적용 */
 const CAL_EXPECTED_ROW_BOOST_SHORT_MAX_MINUTES = 30;
 const CAL_EXPECTED_ROW_BASE_PX = 44;
@@ -4662,6 +4660,70 @@ function lpCalendarHourGeometryFromExpectedSpans(
   };
 }
 
+/** 예상·오늘실제 각각의 가변 행 높이를 합침 — 같은 슬롯은 px 를 max 로 맞춰 두 열이 동일 눈금을 쓰면서 실제 짧은 과제도 행을 키움 */
+function lpCalendarHourGeometryMerge(
+  geomA,
+  geomB,
+  slotsPerDay,
+  minPerSlot,
+) {
+  const SLOTS = slotsPerDay ?? CAL_1DAY_TIMETABLE_SLOTS_PER_DAY;
+  const MIN_SLOT = minPerSlot ?? CAL_1DAY_TIMETABLE_MIN_PER_SLOT;
+  const IDLE = CAL_EXPECTED_ROW_IDLE_COMPACT_PX;
+  const rowsA = geomA?.rowsPx24;
+  const rowsB = geomB?.rowsPx24;
+  if (
+    !rowsA?.length ||
+    rowsA.length !== SLOTS ||
+    !rowsB?.length ||
+    rowsB.length !== SLOTS
+  ) {
+    if (geomA?.rowsPx24?.length === SLOTS) return geomA;
+    if (geomB?.rowsPx24?.length === SLOTS) return geomB;
+    return lpCalendarHourGeometryFromExpectedSpans([], SLOTS, MIN_SLOT);
+  }
+  const rowsPx24 = [];
+  for (let i = 0; i < SLOTS; i++) {
+    rowsPx24.push(Math.max(rowsA[i], rowsB[i]));
+  }
+  let anyBoosted = false;
+  for (let i = 0; i < SLOTS; i++) {
+    if (rowsPx24[i] > IDLE + 0.25) {
+      anyBoosted = true;
+      break;
+    }
+  }
+  if (!anyBoosted) {
+    return {
+      useVariableRows: false,
+      rowsPx24,
+      slotStartsPx: [],
+      totalPx: 0,
+      minuteToPx: null,
+    };
+  }
+  const slotStartsPx = [];
+  let cum = 0;
+  for (let i = 0; i < SLOTS; i++) {
+    slotStartsPx.push(cum);
+    cum += rowsPx24[i];
+  }
+  const totalPx = cum;
+  const minuteToPx = (min) => {
+    const clamped = Math.max(0, Math.min(min, SLOTS * MIN_SLOT));
+    const slotIdx = Math.min(SLOTS - 1, Math.floor(clamped / MIN_SLOT));
+    const frac = (clamped % MIN_SLOT) / MIN_SLOT;
+    return slotStartsPx[slotIdx] + frac * rowsPx24[slotIdx];
+  };
+  return {
+    useVariableRows: true,
+    rowsPx24,
+    slotStartsPx,
+    totalPx,
+    minuteToPx,
+  };
+}
+
 function lpStampCalendar1DayVariableHourRows(innerEl, hourGeom, overlayEls) {
   if (!innerEl) return;
   const tbl = innerEl.querySelector(".calendar-1day-time-table--compare");
@@ -5121,8 +5183,19 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   const actualResult = buildActualSpansFromRows();
   const actualSpans = actualResult.spans;
   const actualMaxLane = actualResult.maxLane;
-  const hourGeom = lpCalendarHourGeometryFromExpectedSpans(
+  const hourGeomExpected = lpCalendarHourGeometryFromExpectedSpans(
     expectedSpans,
+    SLOTS_PER_DAY,
+    MIN_PER_SLOT,
+  );
+  const hourGeomActual = lpCalendarHourGeometryFromExpectedSpans(
+    actualSpans,
+    SLOTS_PER_DAY,
+    MIN_PER_SLOT,
+  );
+  const hourGeom = lpCalendarHourGeometryMerge(
+    hourGeomExpected,
+    hourGeomActual,
     SLOTS_PER_DAY,
     MIN_PER_SLOT,
   );
@@ -5135,10 +5208,8 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   /** 오늘 실제: 너무 짧으면 막대가 사라져 보임 — 시각 최소(분). 모바일 탭 상세는 이보다 길어도 읽기 어려울 때만 */
   const ACTUAL_MIN_VISUAL_MINUTES = 8;
   const ACTUAL_TAP_TOAST_MAX_MINUTES = 18;
-  /** 예상·실제 공통: 이 분 이하(포함)는 과제명·시간 라벨 생략 — 호버 툴팁만 */
-  const TIMETABLE_MAX_MINUTES_TO_HIDE_LABEL =
-    CAL_TIMEBLOCK_HIDE_LABEL_MAX_MINUTES;
-  /** 30분 초과 구간: 한 줄 라벨(과제명+시간) 적용 상한 */
+  /* 짧은 구간도 예상·오늘실제 모두 과제명·시간 표시(예상과 동일). 반열은 이름만·title에 전체 시간 */
+  /** 한 줄 라벨(과제명+시간) 적용 상한(분) */
   const ACTUAL_MAX_MINUTES_ONE_LINE_LABEL = 55;
 
   const createOverlay = (
@@ -5292,11 +5363,13 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
       /* 상하는 격자선과 살짝 띄움 — 좌우는 absolute left/width inset 로 처리 */
       let fillVertPad = insetY;
       if (
-        !isActual &&
         hourGeomInner?.useVariableRows &&
         typeof hourGeomInner.minuteToPx === "function"
       ) {
-        const blkDurMin = Math.max(0, blockEndMin - blockStartMin);
+        const blkDurMin = Math.max(
+          0,
+          isActual ? actualBlockMin : blockEndMin - blockStartMin,
+        );
         const hPxBlk = Math.max(
           0,
           hourGeomInner.minuteToPx(blockStartMin + blkDurMin) -
@@ -5382,13 +5455,12 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
           0,
           (sp.endMin ?? 0) - (sp.startMin ?? 0),
         );
-        const microExpectedStrip =
-          !isActual &&
+        const microShortStrip =
           !useLaneLayout &&
           hourGeomInner?.useVariableRows &&
           segDurationMin > 0 &&
           segDurationMin <= CAL_EXPECTED_ROW_BOOST_SHORT_MAX_MINUTES;
-        if (microExpectedStrip) {
+        if (microShortStrip) {
           seg.style.gap = "0";
           seg.style.padding = "0 0.45rem";
         }
@@ -5396,18 +5468,14 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
           /* 가변행+초짧은 예상: hidden이면 패딩·라벨 때문에 면이 통째로 안 보임 → 반열만 hidden */
           seg.style.overflow = useLaneLayout ? "hidden" : "visible";
         }
-        const showTimetableLabel = isActual
-          ? segDurationMin > TIMETABLE_MAX_MINUTES_TO_HIDE_LABEL
-          : segDurationMin > 0;
+        const showTimetableLabel = segDurationMin > 0;
         if (showTimetableLabel) {
           const labelWrap = document.createElement("div");
           const useLaneNameOnly = useLaneLayout;
           const useCompactOneLineLabel =
             !useLaneNameOnly &&
             segDurationMin <= ACTUAL_MAX_MINUTES_ONE_LINE_LABEL &&
-            (isActual
-              ? segDurationMin > TIMETABLE_MAX_MINUTES_TO_HIDE_LABEL
-              : segDurationMin > 0);
+            segDurationMin > 0;
           if (useLaneNameOnly) {
             labelWrap.className =
               "calendar-1day-time-slot-label-wrap calendar-1day-time-slot-label-wrap--lane-name-only";
