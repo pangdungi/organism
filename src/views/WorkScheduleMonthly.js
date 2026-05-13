@@ -303,7 +303,7 @@ export function renderMonthlyContent(opts = {}) {
     btnType.type = "button";
     btnType.className = "work-schedule-monthly-filter-btn";
     btnType.dataset.mode = "type";
-    btnType.textContent = "근무유형";
+    btnType.textContent = "그 외";
     filterRow.appendChild(btnHours);
     filterRow.appendChild(btnType);
   }
@@ -516,7 +516,7 @@ export function renderMonthlyContent(opts = {}) {
                   });
                 } else if (!p.rowId) {
                   pill.title =
-                    "근무-식단표에만 없는 항목입니다. 시간가계부에서 기록되었습니다.";
+                    "스탬프 캘린더에만 없는 항목입니다. 시간가계부에서 기록되었습니다.";
                 }
                 item.appendChild(pill);
               });

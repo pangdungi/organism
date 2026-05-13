@@ -7978,17 +7978,7 @@ export function renderMobileScheduleCalendar() {
   el.className =
     "app-tab-panel-content calendar-view calendar-view--mobile-schedule";
 
-  const header = document.createElement("div");
-  header.className = "calendar-view-header dream-view-header-wrap";
-  const label = document.createElement("span");
-  label.className = "dream-view-label";
-  label.textContent = "SCHEDULE";
-  const titleEl = document.createElement("h1");
-  titleEl.className = "dream-view-title calendar-view-title";
-  titleEl.textContent = "일정";
-  header.appendChild(label);
-  header.appendChild(titleEl);
-  el.appendChild(header);
+  /* 하단 「일정」탭: 사이드/상단 라벨로 구분 가능 — SCHEDULE·대제목 줄 없음 (태블릿 너비만 보이던 헤더 갭 방지) */
 
   const contentWrap = document.createElement("div");
   contentWrap.className = "calendar-content-wrap";
@@ -8583,17 +8573,7 @@ export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content calendar-view";
 
-  const header = document.createElement("div");
-  header.className = "calendar-view-header dream-view-header-wrap";
-  const label = document.createElement("span");
-  label.className = "dream-view-label";
-  label.textContent = "SCHEDULE";
-  const titleEl = document.createElement("h1");
-  titleEl.className = "dream-view-title calendar-view-title";
-  titleEl.textContent = "할일";
-  header.appendChild(label);
-  header.appendChild(titleEl);
-  el.appendChild(header);
+  /* 할일 탭: 사이드/하단 메뉴로 구분 — SCHEDULE·대제목 줄 없음 */
 
   const contentWrap = document.createElement("div");
   contentWrap.className = "calendar-content-wrap";

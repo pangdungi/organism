@@ -138,9 +138,9 @@ const TABS = [
   },
   {
     id: "workschedule",
-    label: "근무-식단표",
-    mobileLabel: "근무-식단표",
-    icon: "/toolbaricons/calendar-user.svg",
+    label: "스탬프 캘린더",
+    mobileLabel: "스탬프 캘린더",
+    icon: "/toolbaricons/rubber-stamp.svg",
     sidebarSection: "main",
     sidebarOrder: 5,
   },

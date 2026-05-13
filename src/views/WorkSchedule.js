@@ -333,8 +333,8 @@ export function render(opts = {}) {
   const settingsBtn = document.createElement("button");
   settingsBtn.type = "button";
   settingsBtn.className = "work-schedule-settings-btn";
-  settingsBtn.setAttribute("aria-label", "근무-식단 유형 설정");
-  settingsBtn.title = "근무-식단 유형 설정";
+  settingsBtn.setAttribute("aria-label", "스탬프 설정");
+  settingsBtn.title = "스탬프 설정";
   settingsBtn.innerHTML = WORK_SCHEDULE_SETTINGS_ICON_SVG;
 
   const header = document.createElement("div");
@@ -367,14 +367,14 @@ export function render(opts = {}) {
       <div class="work-schedule-type-settings-backdrop"></div>
       <div class="work-schedule-type-settings-panel work-schedule-type-settings-panel--dual">
         <div class="work-schedule-type-settings-header">
-          <h3 class="work-schedule-type-settings-title" id="work-schedule-type-settings-title">근무-식단 유형 설정</h3>
+          <h3 class="work-schedule-type-settings-title" id="work-schedule-type-settings-title">스탬프 설정</h3>
           <button type="button" class="work-schedule-type-settings-close" aria-label="닫기">&times;</button>
         </div>
         <div class="work-schedule-type-settings-body-dual">
           <div class="work-schedule-type-settings-add-block">
             <div class="work-schedule-type-settings-kind-row">
-              <label class="work-schedule-type-settings-radio"><input type="radio" name="ws-add-kind" value="work" checked /> 근무유형</label>
               <label class="work-schedule-type-settings-radio"><input type="radio" name="ws-add-kind" value="diet" /> 식단</label>
+              <label class="work-schedule-type-settings-radio"><input type="radio" name="ws-add-kind" value="work" checked /> 그 외</label>
             </div>
             <div class="work-schedule-type-settings-add-one">
               <input type="text" class="work-schedule-type-settings-input-name" placeholder="이름" maxlength="50" autocomplete="off" />
@@ -382,13 +382,13 @@ export function render(opts = {}) {
             </div>
           </div>
           <div class="work-schedule-type-settings-dual-cols">
-            <div class="work-schedule-type-settings-col work-schedule-type-settings-col--work">
-              <div class="work-schedule-type-settings-col-head">근무유형</div>
-              <div class="work-schedule-type-settings-list" data-work-list></div>
-            </div>
             <div class="work-schedule-type-settings-col work-schedule-type-settings-col--diet">
               <div class="work-schedule-type-settings-col-head">식단</div>
               <div class="work-schedule-type-settings-list" data-diet-list></div>
+            </div>
+            <div class="work-schedule-type-settings-col work-schedule-type-settings-col--work">
+              <div class="work-schedule-type-settings-col-head">그 외</div>
+              <div class="work-schedule-type-settings-list" data-work-list></div>
             </div>
           </div>
         </div>
@@ -780,7 +780,7 @@ export function render(opts = {}) {
     const title = document.createElement("h3");
     title.id = "work-schedule-day-entry-title";
     title.className = "work-schedule-type-settings-title";
-    title.textContent = resolvedEditId ? "근무·식단 수정" : "근무·식단 등록";
+    title.textContent = resolvedEditId ? "스탬프 수정" : "스탬프 등록";
     const closeBtn = document.createElement("button");
     closeBtn.type = "button";
     closeBtn.className = "work-schedule-type-settings-close";
@@ -814,7 +814,7 @@ export function render(opts = {}) {
     radioWork.name = "ws-day-entry-kind";
     radioWork.value = "work";
     const spanRw = document.createElement("span");
-    spanRw.textContent = "근무유형";
+    spanRw.textContent = "그 외";
     labelRadioWork.appendChild(radioWork);
     labelRadioWork.appendChild(spanRw);
     const labelRadioDiet = document.createElement("label");
@@ -827,8 +827,8 @@ export function render(opts = {}) {
     spanRd.textContent = "식단";
     labelRadioDiet.appendChild(radioDiet);
     labelRadioDiet.appendChild(spanRd);
-    kindRow.appendChild(labelRadioWork);
     kindRow.appendChild(labelRadioDiet);
+    kindRow.appendChild(labelRadioWork);
 
     const labelType = document.createElement("label");
     labelType.className = "work-schedule-day-entry-label";
@@ -1019,7 +1019,7 @@ export function render(opts = {}) {
 
     function fillDayEntrySelect(kind, preserveValue) {
       closeDayEntrySelectList();
-      const labelText = kind === TYPE_KIND_DIET ? "식단" : "근무유형";
+      const labelText = kind === TYPE_KIND_DIET ? "식단" : "그 외";
       spanType.textContent = labelText;
       triggerBtn.setAttribute("aria-label", labelText);
       const names = typeNamesForDayEntryKind(kind);
@@ -1030,11 +1030,16 @@ export function render(opts = {}) {
       updateDayEntryTriggerLabel();
     }
 
-    let initialKind = TYPE_KIND_WORK;
+    let initialKind;
     if (resolvedEditId && existingRow) {
       const wt0 = (existingRow.workType || "").trim();
       const ent0 = getWorkTypeOptionsFull().find((o) => o.name === wt0);
-      if (ent0 && ent0.kind === TYPE_KIND_DIET) initialKind = TYPE_KIND_DIET;
+      initialKind =
+        ent0 && ent0.kind === TYPE_KIND_DIET
+          ? TYPE_KIND_DIET
+          : TYPE_KIND_WORK;
+    } else {
+      initialKind = TYPE_KIND_DIET;
     }
     if (initialKind === TYPE_KIND_DIET) {
       radioDiet.checked = true;
@@ -1080,7 +1085,7 @@ export function render(opts = {}) {
     deleteBtn.type = "button";
     deleteBtn.className = "work-schedule-day-entry-delete-link";
     deleteBtn.textContent = "삭제";
-    deleteBtn.setAttribute("aria-label", "이 근무·식단 일정 삭제");
+    deleteBtn.setAttribute("aria-label", "이 스탬프 일정 삭제");
     deleteWrap.appendChild(deleteBtn);
     footer.appendChild(footerPrimary);
     footer.appendChild(deleteWrap);
@@ -1121,7 +1126,7 @@ export function render(opts = {}) {
         window.alert(
           getDayEntrySelectedKind() === TYPE_KIND_DIET
             ? "식단 유형을 선택해 주세요."
-            : "근무유형을 선택해 주세요.",
+            : "그 외 유형을 선택해 주세요.",
         );
         return;
       }

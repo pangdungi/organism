@@ -5834,7 +5834,7 @@ body.auth-pw-modal-open {
     padding-left: 1rem;
     padding-right: 1rem;
   }
-  .work-schedule-type-settings-col--diet {
+  .work-schedule-type-settings-col--work {
     margin-left: 0.5rem;
     padding-left: 0.75rem;
   }
@@ -13325,7 +13325,7 @@ body.auth-pw-modal-open {
   padding: 0.5rem 1.25rem 1rem;
   align-items: stretch;
 }
-.work-schedule-type-settings-col--diet {
+.work-schedule-type-settings-col--work {
   border-left: 1px solid var(--line-l3-color);
   padding-left: 1rem;
   margin-left: 0.65rem;
