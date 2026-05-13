@@ -704,8 +704,7 @@ function isTimeTaskBuiltinTemplate(task) {
 
 function appendTaskDropdownBadges(textWrap, task, opts = {}) {
   if (opts.omitBadges) return;
-  const hideBuiltin = !!opts.omitBuiltinBadge;
-  if (!hideBuiltin && isTimeTaskBuiltinTemplate(task)) {
+  if (isTimeTaskBuiltinTemplate(task)) {
     const bb = document.createElement("span");
     bb.className = "time-task-builtin-badge";
     bb.textContent = "기본";
@@ -11384,7 +11383,7 @@ export function renderTimeBudgetTablesForCalendar(
   }
 
   /** 과제 기록 모달 `buildTaskDropdown`과 동일한 마크업·클래스 — 옵션 목록만 예산 추가용으로 한정.
-   * 생산적 과제 4칩 UI에서는 「기본」배지만 생략하고 KPI 연결 배지는 과제 기록과 동일하게 표시합니다.
+   * 기본/KPI 배지 표시 정책도 과제 기록 드롭다운과 동일합니다.
    * @param {{ productivePicker?: boolean }} [dropdownOpts] — 생산적 과제만: 꿈·행복·부수입·건강 4칩(검색 시 전체) */
   function buildCalendarBudgetTaskLogDropdown(
     addOptionsSource,
@@ -11474,9 +11473,7 @@ export function renderTimeBudgetTablesForCalendar(
         label.className = "time-task-log-task-dropdown-option-label";
         label.textContent = t.name;
         textWrap.appendChild(label);
-        appendTaskDropdownBadges(textWrap, t.full, {
-          omitBuiltinBadge: productivePicker,
-        });
+        appendTaskDropdownBadges(textWrap, t.full);
         row.appendChild(bar);
         row.appendChild(textWrap);
         const closePanelAndSelect = () => {
