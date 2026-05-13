@@ -10062,13 +10062,6 @@ body.auth-pw-modal-open {
     box-shadow: none;
   }
 
-  .time-ledger-view
-    .time-ledger-mobile-cards:not(.time-ledger-desktop-cards)
-    .time-ledger-day-card-stack
-    .time-ledger-mobile-card.time-ledger-mobile-card--in-progress {
-    background: var(--time-ledger-list-highlight);
-  }
-
   .time-ledger-mobile-card {
     display: flex;
     align-items: stretch;
@@ -10084,10 +10077,6 @@ body.auth-pw-modal-open {
   }
   .time-ledger-mobile-card:active {
     box-shadow: 0 0.125rem 0.375rem rgba(0, 0, 0, 0.12);
-  }
-
-  .time-ledger-mobile-card.time-ledger-mobile-card--in-progress {
-    background: var(--time-ledger-list-highlight);
   }
 
   .time-mobile-card-color-bar {
@@ -10160,6 +10149,21 @@ body.auth-pw-modal-open {
     color: var(--text-muted);
     flex: 1;
     min-width: 0;
+  }
+  /* 진행 중: 행 전체 배경 대신 「진행중」만 강조 태그 */
+  .time-mobile-card-in-progress-tag {
+    display: inline-block;
+    margin-left: 0.0625rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 0.3125rem;
+    background: var(--time-ledger-list-highlight);
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 0.625rem;
+    letter-spacing: 0.03em;
+    color: var(--text-body);
+    vertical-align: middle;
+    line-height: 1.25;
   }
   .time-mobile-card-memo {
     font-size: 0.75rem;
@@ -10957,13 +10961,6 @@ body.auth-pw-modal-open {
     box-shadow: none;
   }
 
-  .time-ledger-view
-    .time-ledger-mobile-cards:not(.time-ledger-desktop-cards)
-    .time-ledger-day-card-stack
-    .time-ledger-mobile-card.time-ledger-mobile-card--in-progress {
-    background: var(--time-ledger-list-highlight);
-  }
-
   .time-ledger-mobile-card {
     display: flex;
     align-items: stretch;
@@ -10979,10 +10976,6 @@ body.auth-pw-modal-open {
   }
   .time-ledger-mobile-card:active {
     box-shadow: 0 0.125rem 0.375rem rgba(0, 0, 0, 0.12);
-  }
-
-  .time-ledger-mobile-card.time-ledger-mobile-card--in-progress {
-    background: var(--time-ledger-list-highlight);
   }
 
   .time-mobile-card-color-bar {
@@ -11055,6 +11048,21 @@ body.auth-pw-modal-open {
     color: var(--text-muted);
     flex: 1;
     min-width: 0;
+  }
+  /* 진행 중: 행 전체 배경 대신 「진행중」만 강조 태그 */
+  .time-mobile-card-in-progress-tag {
+    display: inline-block;
+    margin-left: 0.0625rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 0.3125rem;
+    background: var(--time-ledger-list-highlight);
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 0.625rem;
+    letter-spacing: 0.03em;
+    color: var(--text-body);
+    vertical-align: middle;
+    line-height: 1.25;
   }
   .time-mobile-card-memo {
     font-size: 0.75rem;
@@ -36634,7 +36642,7 @@ button.time-modal-traffic {
   .time-ledger-container
     .time-ledger-desktop-cards
     .time-ledger-mobile-card.time-ledger-mobile-card--in-progress {
-    background: var(--time-ledger-list-highlight);
+    background: #ffffff;
     border-bottom-color: rgba(0, 0, 0, 0.08) !important;
     box-shadow: none !important;
   }
@@ -36688,7 +36696,7 @@ button.time-modal-traffic {
     .time-ledger-desktop-cards
     .time-ledger-day-card-stack
     .time-ledger-mobile-card.time-ledger-mobile-card--in-progress {
-    background: var(--time-ledger-list-highlight);
+    background: #ffffff;
     border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
   }
 
@@ -36784,6 +36792,24 @@ button.time-modal-traffic {
     color: var(--text-muted);
     flex: 1;
     min-width: 0;
+  }
+
+  /* 데스크톱 좁은 카드: 진행 중은 행 배경 대신 「진행중」태그만 강조 */
+  .time-ledger-container
+    .time-ledger-desktop-cards
+    .time-mobile-card-in-progress-tag {
+    display: inline-block;
+    margin-left: 0.0625rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: 0.3125rem;
+    background: var(--time-ledger-list-highlight);
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 0.6875rem;
+    letter-spacing: 0.03em;
+    color: var(--text-body);
+    vertical-align: middle;
+    line-height: 1.25;
   }
 
   .time-ledger-container .time-ledger-desktop-cards .time-mobile-card-memo {

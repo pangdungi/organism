@@ -2302,14 +2302,17 @@ function formatTimeLedgerEndCellDisplay(startTime, endTime) {
   return start ? TIME_LEDGER_IN_PROGRESS_LABEL : "";
 }
 
-/** 모바일 카드 시간대 줄: 완료 시 시작–마감, 진행 중이면 시작–「진행중」(현재 시각 미표시) */
-function getMobileCardTimeRangeDisplayForRow(rowData) {
+/** 모바일 카드 시간 줄 HTML: 완료 시 시작–마감, 진행 중이면 시작–「진행중」태그(현재 시각 미표시) */
+function getMobileCardTimeRangeHtmlForRow(rowData) {
   const startStr = toDisplayTimeOnly(rowData?.startTime) || "";
   const endStr = toDisplayTimeOnly(rowData?.endTime) || "";
-  if (startStr && endStr) return `${startStr} - ${endStr}`;
-  if (startStr && !rowHasEndTimeForMobileCard(rowData))
-    return `${startStr} - ${TIME_LEDGER_IN_PROGRESS_LABEL}`;
-  return startStr || endStr || "";
+  if (startStr && endStr)
+    return escapeHtml(`${startStr} - ${endStr}`);
+  if (startStr && !rowHasEndTimeForMobileCard(rowData)) {
+    return `${escapeHtml(startStr)} - <span class="time-mobile-card-in-progress-tag">${escapeHtml(TIME_LEDGER_IN_PROGRESS_LABEL)}</span>`;
+  }
+  const single = startStr || endStr || "";
+  return single ? escapeHtml(single) : "";
 }
 
 function getMobileCardProductivityValue(rowData) {
@@ -2478,8 +2481,7 @@ function updateMobileTimeCardLiveFields(card) {
     trackedEl.textContent =
       ms < 0 ? "0h" : formatElapsedDurationForMobileCard(ms);
   if (timeEl) {
-    const range = getMobileCardTimeRangeDisplayForRow(rd);
-    timeEl.textContent = range || "—";
+    timeEl.innerHTML = getMobileCardTimeRangeHtmlForRow(rd) || "—";
   }
   if (priceEl && viewEl) {
     const hourlyInput = viewEl.querySelector(".time-hourly-input");
@@ -4403,8 +4405,7 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
     rowData.productivity || getProductivityFromCategory(rowData.category) || "";
   const color = getProductivityBarColor(prod);
   const tracked = getMobileCardTrackedDisplayForRow(rowData);
-  const timeRange =
-    getMobileCardTimeRangeDisplayForRow(rowData) || "—";
+  const timeRangeHtml = getMobileCardTimeRangeHtmlForRow(rowData) || "—";
   const hourlyRate =
     parseFloat(
       String(viewEl?.querySelector(".time-hourly-input")?.value || "0").replace(
@@ -4442,7 +4443,7 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
         <span class="time-mobile-card-tracked">${tracked}</span>
       </div>
       <div class="time-mobile-card-meta">
-        <span class="time-mobile-card-time">${timeRange}</span>
+        <span class="time-mobile-card-time">${timeRangeHtml}</span>
         <span class="time-mobile-card-price${priceClass}">${formatPrice(priceVal)}</span>
       </div>
       ${memo ? `<div class="time-mobile-card-memo">${memo}</div>` : ""}
