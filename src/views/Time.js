@@ -46,6 +46,8 @@ import {
   attachTimeLedgerTasksSaveListener,
   pullTimeLedgerTasksFromSupabase,
 } from "../utils/timeLedgerTasksSupabase.js";
+import { pullKpiMapsForTaskLogModalOpen } from "../utils/kpiTabCloudRefresh.js";
+import { pullWorkScheduleFromSupabase } from "../utils/workScheduleSupabase.js";
 import {
   getStoredImproveNotes,
   setStoredImproveNote,
@@ -7402,6 +7404,22 @@ export function render() {
     } catch (_) {}
   }
 
+  /**
+   * 과제 기록/수정 모달: KPI 탭 미방문 상태에서도 매일 할일·식단 유형이 비지 않게 서버와 맞춤.
+   * (로컬만 보던 `getKpiDailyRepeatInfoByKpiName` / `listWorkScheduleDietTypeNamesFromMem` 선행 조건)
+   */
+  async function ensureTaskLogModalCloudData() {
+    await Promise.all([
+      pullTimeLedgerTasksFromSupabase().catch(() => {}),
+      pullKpiMapsForTaskLogModalOpen().catch(() => {}),
+      pullWorkScheduleFromSupabase({ includeTypes: true }).catch(() => {}),
+    ]);
+    try {
+      getFullTaskOptions();
+      migrateTimeLogRowsTaskIds();
+    } catch (_) {}
+  }
+
   /** 기록 모달이 이미 열린 뒤 서버 과제 목록이 도착했을 때 드롭다운·KPI 연동만 맞춤(즉시 열기용). */
   function afterTaskListSyncForTaskLogAddModal() {
     if (!el.isConnected || taskLogModal?.hidden) return;
@@ -7419,7 +7437,10 @@ export function render() {
     }
   }
 
-  function openTaskLogModal(addContext) {
+  async function openTaskLogModal(addContext) {
+    try {
+      await ensureTaskLogModalCloudData();
+    } catch (_) {}
     openTaskLogModalAfterPull(addContext);
     afterTaskListSyncForTaskLogAddModal();
   }
@@ -7503,7 +7524,10 @@ export function render() {
     );
   }
 
-  function openTaskLogModalForEdit(tr, rowData) {
+  async function openTaskLogModalForEdit(tr, rowData) {
+    try {
+      await ensureTaskLogModalCloudData();
+    } catch (_) {}
     const data =
       tr?._rowData && typeof tr._rowData === "object" ? tr._rowData : rowData;
     let startTime = data.startTime || "";

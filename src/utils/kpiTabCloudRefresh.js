@@ -222,3 +222,41 @@ export async function pullAllKpiMapsFromCloud(getCurrentTabId) {
   });
   return { anyOk, anyChanged };
 }
+
+/**
+ * 과제 기록 모달을 열 때: KPI 탭을 거치지 않아도 매일 할일·KPI 할일이 비지 않도록
+ * 꿈/건강/행복/부수입 맵을 **force** pull + 습관 연동용 시간기록 구간 pull.
+ * (상위 탭의 `pullKpiTabFromCloud`와 동일하게 `force: true`)
+ * @returns {Promise<{ pullOk: boolean }>}
+ */
+export async function pullKpiMapsForTaskLogModalOpen() {
+  kpiTodoFineTrace("cloud.pullKpiMapsForTaskLogModalOpen:시작", {});
+  lpPullDebug("pullKpiMapsForTaskLogModalOpen", {});
+
+  try {
+    const { rangeStart, rangeEnd } = readTimeLedgerPullRangeForKpiTabsYmd();
+    await pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
+  } catch (_) {}
+
+  let pullOk = false;
+  try {
+    const [d, h, ha, si] = await Promise.all([
+      pullDreamKpiMapFromSupabase({ force: true }),
+      pullHealthKpiMapFromSupabase({ force: true }),
+      pullHappinessKpiMapFromSupabase({ force: true }),
+      pullSideincomeKpiMapFromSupabase({ force: true }),
+    ]);
+    pullOk = !!(d || h || ha || si);
+  } catch (_) {}
+
+  try {
+    syncHabitTrackerLogs();
+  } catch (_) {}
+
+  kpiTodoFineTrace("cloud.pullKpiMapsForTaskLogModalOpen:끝", { pullOk });
+  syncWatchLog("pullKpiMapsForTaskLogModalOpen_완료", {
+    pullOk,
+    note: "과제 기록 모달용 KPI 4도메인 force pull + entry 구간",
+  });
+  return { pullOk };
+}
