@@ -4197,6 +4197,7 @@ body.auth-pw-modal-open {
 .diary-desktop-compose-modal .diary-qa-answer {
   width: 100%;
   min-height: 3.75rem;
+  max-height: none;
   padding: 1rem 1.25rem;
   font-size: var(--fs-body);
   font-weight: var(--fw-body);
@@ -4204,7 +4205,8 @@ body.auth-pw-modal-open {
   color: var(--text-body);
   border: none;
   resize: none;
-  overflow-y: auto;
+  overflow-x: hidden;
+  overflow-y: hidden;
   background: var(--ui-surface-alt) !important;
   font-family: var(--font-body);
   display: block;
@@ -4238,6 +4240,11 @@ body.auth-pw-modal-open {
 }
 .diary-desktop-compose-modal .diary-paper-text::placeholder {
   color: var(--text-placeholder);
+}
+
+/* 할일 일정 메인(.calendar-view-todo): 검색 막대 DOM은 있으나 넓은 화면에서는 숨김 — 모바일은 아래 미디어 쿼리에서 표시 */
+.calendar-view-todo:not(.calendar-todo-sidebar-parity) .todo-list-mobile-entry-bar {
+  display: none;
 }
 
 /* 48rem 이하: 하단 가로 탭(모바일). 아이패드 미니 세로(744·768 CSS px) 포함 */
@@ -4427,17 +4434,24 @@ body.auth-pw-modal-open {
     height: 2.125rem;
     padding: 0;
     margin: 0;
-    color: #e53935;
+    /* 데스크톱 일기 헤더 +(.diary-desktop-header-add-btn) 와 동일 틸 */
+    color: #1f4654;
     background: transparent;
     border: none;
     border-radius: 0.375rem;
     cursor: pointer;
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
+    transition:
+      background 0.15s ease,
+      opacity 0.15s ease,
+      color 0.15s ease;
   }
 
   .diary-mobile-header-add-btn:active {
-    opacity: 0.76;
+    opacity: 1;
+    background: rgba(31, 70, 84, 0.1);
+    color: #163a46;
   }
 
   .diary-view--mobile .diary-tabs {
@@ -4589,7 +4603,7 @@ body.auth-pw-modal-open {
     border-bottom: none !important;
     border-radius: 0.625rem !important;
     -webkit-border-radius: 0.625rem !important;
-    background-color: rgba(120, 120, 128, 0.12) !important;
+    background-color: #f2f7f9 !important;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236e6e73' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='10.35' cy='10.35' r='6.75'/%3E%3Cline x1='15.62' y1='15.62' x2='20.5' y2='20.5'/%3E%3C/svg%3E");
     background-repeat: no-repeat !important;
     background-position: 0.76rem 50% !important;
@@ -4611,7 +4625,7 @@ body.auth-pw-modal-open {
     border: none !important;
     border-bottom: none !important;
     box-shadow: 0 0 0 2px rgba(0, 125, 255, 0.28);
-    background-color: rgba(120, 120, 128, 0.16) !important;
+    background-color: #f2f7f9 !important;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236e6e73' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='10.35' cy='10.35' r='6.75'/%3E%3Cline x1='15.62' y1='15.62' x2='20.5' y2='20.5'/%3E%3C/svg%3E");
     background-repeat: no-repeat !important;
     background-position: 0.76rem 50% !important;
@@ -4628,6 +4642,79 @@ body.auth-pw-modal-open {
     align-items: center;
     width: 100%;
   }
+
+  /* 할일 메인 탭(.calendar-view-todo): 일기 모바일 검색과 동일 톤 — 데스크톱에서는 숨김(JS로 DOM만 삽입) */
+  .calendar-view-todo:not(.calendar-todo-sidebar-parity) .todo-list-mobile-entry-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0.55rem;
+    padding: 0.55rem 0.85rem 0.5rem;
+    flex-shrink: 0;
+    border: none !important;
+    border-bottom: none !important;
+    background: transparent !important;
+    box-sizing: border-box;
+  }
+
+  .calendar-view-todo:not(.calendar-todo-sidebar-parity) .todo-list-mobile-search-row {
+    padding: 0 !important;
+    margin: 0;
+    border: none !important;
+    border-bottom: none !important;
+    position: relative;
+  }
+
+  .calendar-view-todo:not(.calendar-todo-sidebar-parity) .todo-list-mobile-search-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.55rem 0.85rem !important;
+    padding-left: 2.45rem !important;
+    margin: 0 !important;
+    border: none !important;
+    border-bottom: none !important;
+    border-radius: 0.625rem !important;
+    -webkit-border-radius: 0.625rem !important;
+    background-color: #f2f7f9 !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236e6e73' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='10.35' cy='10.35' r='6.75'/%3E%3Cline x1='15.62' y1='15.62' x2='20.5' y2='20.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat !important;
+    background-position: 0.76rem 50% !important;
+    background-size: 1.05rem 1.05rem !important;
+    font-family:
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif,
+      var(--font-body);
+    font-size: 16px !important;
+    color: rgba(28, 28, 30, 0.95);
+    -webkit-appearance: none;
+    appearance: none;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  .calendar-view-todo:not(.calendar-todo-sidebar-parity)
+    .todo-list-mobile-search-input:focus {
+    outline: none;
+    border: none !important;
+    border-bottom: none !important;
+    box-shadow: 0 0 0 2px rgba(0, 125, 255, 0.28);
+    background-color: #f2f7f9 !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236e6e73' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='10.35' cy='10.35' r='6.75'/%3E%3Cline x1='15.62' y1='15.62' x2='20.5' y2='20.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat !important;
+    background-position: 0.76rem 50% !important;
+    background-size: 1.05rem 1.05rem !important;
+  }
+
+  .calendar-view-todo:not(.calendar-todo-sidebar-parity)
+    .todo-list-mobile-search-input::placeholder {
+    color: rgba(60, 60, 67, 0.52);
+    opacity: 1;
+  }
+
   .diary-mobile-entry-select {
     flex: 1;
     min-width: 0;
@@ -9733,10 +9820,11 @@ body.auth-pw-modal-open {
   .time-ledger-mobile-toolbar-right .time-filter-day-next:hover .time-btn-icon {
     opacity: 0.72;
   }
-  /* 모바일·시간 기록·보고서: "4월1일(수)" + 캘린더 아이콘 — 보고서는 툴바로 DOM 이동해 동일 레이아웃 */
+  /* 모바일·시간 기록·보고서·회고: "YYYY. MM. DD(요일)" + 캘린더 아이콘 오버레이(네이티브 date는 투명 터치층) */
   .time-ledger-view:is(
       [data-time-content-view="all"],
-      [data-time-content-view="audit"]
+      [data-time-content-view="audit"],
+      [data-time-content-view="retrospect"]
     )
     .time-filter-date-field {
     position: relative;
@@ -9749,7 +9837,8 @@ body.auth-pw-modal-open {
   }
   .time-ledger-view:is(
       [data-time-content-view="all"],
-      [data-time-content-view="audit"]
+      [data-time-content-view="audit"],
+      [data-time-content-view="retrospect"]
     )
     .time-filter-date-label {
     display: block;
@@ -9768,7 +9857,8 @@ body.auth-pw-modal-open {
   }
   .time-ledger-view:is(
       [data-time-content-view="all"],
-      [data-time-content-view="audit"]
+      [data-time-content-view="audit"],
+      [data-time-content-view="retrospect"]
     )
     .time-filter-date-cal-icon {
     display: block;
@@ -9780,13 +9870,15 @@ body.auth-pw-modal-open {
   }
   .time-ledger-view:is(
       [data-time-content-view="all"],
-      [data-time-content-view="audit"]
+      [data-time-content-view="audit"],
+      [data-time-content-view="retrospect"]
     )
     .time-filter-date-field
     input.time-filter-start-date,
   .time-ledger-view:is(
       [data-time-content-view="all"],
-      [data-time-content-view="audit"]
+      [data-time-content-view="audit"],
+      [data-time-content-view="retrospect"]
     )
     .time-filter-date-field
     input.time-filter-end-date {
@@ -9813,13 +9905,15 @@ body.auth-pw-modal-open {
   }
   .time-ledger-view:is(
       [data-time-content-view="all"],
-      [data-time-content-view="audit"]
+      [data-time-content-view="audit"],
+      [data-time-content-view="retrospect"]
     )
     .time-filter-date-field
     input.time-filter-start-date::-webkit-calendar-picker-indicator,
   .time-ledger-view:is(
       [data-time-content-view="all"],
-      [data-time-content-view="audit"]
+      [data-time-content-view="audit"],
+      [data-time-content-view="retrospect"]
     )
     .time-filter-date-field
     input.time-filter-end-date::-webkit-calendar-picker-indicator {
@@ -9843,41 +9937,29 @@ body.auth-pw-modal-open {
     display: none !important;
   }
 
-  /* 모바일·보고서/개선: 네이티브 표시 + 연도 숨김(WebKit) — 보고서(audit)는 위에서 시간 기록과 동일 오버레이 */
-  .time-ledger-view:not([data-time-content-view="all"]):not(
-      [data-time-content-view="audit"]
-    )
+  /* 모바일: 시간 기록·보고서·회고가 아닌 탭만 네이티브 날짜 표시 + 연도 숨김(WebKit) */
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
     .time-filter-nav-cluster
     input.time-filter-start-date::-webkit-datetime-edit-year-field,
-  .time-ledger-view:not([data-time-content-view="all"]):not(
-      [data-time-content-view="audit"]
-    )
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
     .time-filter-nav-cluster
     input.time-filter-end-date::-webkit-datetime-edit-year-field {
     -webkit-appearance: none;
     display: none;
   }
-  .time-ledger-view:not([data-time-content-view="all"]):not(
-      [data-time-content-view="audit"]
-    )
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
     .time-filter-nav-cluster
     input.time-filter-start-date::-webkit-datetime-edit-text,
-  .time-ledger-view:not([data-time-content-view="all"]):not(
-      [data-time-content-view="audit"]
-    )
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
     .time-filter-nav-cluster
     input.time-filter-end-date::-webkit-datetime-edit-text {
     -webkit-padding-start: 0;
   }
-  .time-ledger-view:not([data-time-content-view="all"]):not(
-      [data-time-content-view="audit"]
-    )
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
     .time-ledger-mobile-toolbar-right
     .time-filter-nav-cluster
     input.time-filter-start-date::-webkit-datetime-edit-fields-wrapper,
-  .time-ledger-view:not([data-time-content-view="all"]):not(
-      [data-time-content-view="audit"]
-    )
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
     .time-ledger-mobile-toolbar-right
     .time-filter-nav-cluster
     input.time-filter-end-date::-webkit-datetime-edit-fields-wrapper {
@@ -9887,29 +9969,21 @@ body.auth-pw-modal-open {
     gap: 0.1em;
     min-width: 0;
   }
-  .time-ledger-view:not([data-time-content-view="all"]):not(
-      [data-time-content-view="audit"]
-    )
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
     .time-ledger-mobile-toolbar-right
     .time-filter-nav-cluster
     input.time-filter-start-date::-webkit-datetime-edit-text,
-  .time-ledger-view:not([data-time-content-view="all"]):not(
-      [data-time-content-view="audit"]
-    )
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
     .time-ledger-mobile-toolbar-right
     .time-filter-nav-cluster
     input.time-filter-end-date::-webkit-datetime-edit-text {
     display: none;
   }
-  .time-ledger-view:not([data-time-content-view="all"]):not(
-      [data-time-content-view="audit"]
-    )
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
     .time-ledger-mobile-toolbar-right
     .time-filter-range-wrap
     .time-filter-start-date,
-  .time-ledger-view:not([data-time-content-view="all"]):not(
-      [data-time-content-view="audit"]
-    )
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
     .time-ledger-mobile-toolbar-right
     .time-filter-range-wrap
     .time-filter-end-date {
@@ -10632,10 +10706,11 @@ body.auth-pw-modal-open {
   .time-ledger-mobile-toolbar-right .time-filter-day-next:hover .time-btn-icon {
     opacity: 0.72;
   }
-  /* 모바일·시간 기록·보고서: "4월1일(수)" + 캘린더 아이콘 — 보고서는 툴바로 DOM 이동해 동일 레이아웃 */
+  /* 모바일·시간 기록·보고서·회고: "YYYY. MM. DD(요일)" + 캘린더 아이콘 오버레이(네이티브 date는 투명 터치층) */
   .time-ledger-view:is(
       [data-time-content-view="all"],
-      [data-time-content-view="audit"]
+      [data-time-content-view="audit"],
+      [data-time-content-view="retrospect"]
     )
     .time-filter-date-field {
     position: relative;
@@ -10648,7 +10723,8 @@ body.auth-pw-modal-open {
   }
   .time-ledger-view:is(
       [data-time-content-view="all"],
-      [data-time-content-view="audit"]
+      [data-time-content-view="audit"],
+      [data-time-content-view="retrospect"]
     )
     .time-filter-date-label {
     display: block;
@@ -10667,7 +10743,8 @@ body.auth-pw-modal-open {
   }
   .time-ledger-view:is(
       [data-time-content-view="all"],
-      [data-time-content-view="audit"]
+      [data-time-content-view="audit"],
+      [data-time-content-view="retrospect"]
     )
     .time-filter-date-cal-icon {
     display: block;
@@ -10679,13 +10756,15 @@ body.auth-pw-modal-open {
   }
   .time-ledger-view:is(
       [data-time-content-view="all"],
-      [data-time-content-view="audit"]
+      [data-time-content-view="audit"],
+      [data-time-content-view="retrospect"]
     )
     .time-filter-date-field
     input.time-filter-start-date,
   .time-ledger-view:is(
       [data-time-content-view="all"],
-      [data-time-content-view="audit"]
+      [data-time-content-view="audit"],
+      [data-time-content-view="retrospect"]
     )
     .time-filter-date-field
     input.time-filter-end-date {
@@ -10712,13 +10791,15 @@ body.auth-pw-modal-open {
   }
   .time-ledger-view:is(
       [data-time-content-view="all"],
-      [data-time-content-view="audit"]
+      [data-time-content-view="audit"],
+      [data-time-content-view="retrospect"]
     )
     .time-filter-date-field
     input.time-filter-start-date::-webkit-calendar-picker-indicator,
   .time-ledger-view:is(
       [data-time-content-view="all"],
-      [data-time-content-view="audit"]
+      [data-time-content-view="audit"],
+      [data-time-content-view="retrospect"]
     )
     .time-filter-date-field
     input.time-filter-end-date::-webkit-calendar-picker-indicator {
@@ -10742,41 +10823,29 @@ body.auth-pw-modal-open {
     display: none !important;
   }
 
-  /* 모바일·보고서/개선: 네이티브 표시 + 연도 숨김(WebKit) — 보고서(audit)는 위에서 시간 기록과 동일 오버레이 */
-  .time-ledger-view:not([data-time-content-view="all"]):not(
-      [data-time-content-view="audit"]
-    )
+  /* 모바일: 시간 기록·보고서·회고가 아닌 탭만 네이티브 날짜 표시 + 연도 숨김(WebKit) */
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
     .time-filter-nav-cluster
     input.time-filter-start-date::-webkit-datetime-edit-year-field,
-  .time-ledger-view:not([data-time-content-view="all"]):not(
-      [data-time-content-view="audit"]
-    )
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
     .time-filter-nav-cluster
     input.time-filter-end-date::-webkit-datetime-edit-year-field {
     -webkit-appearance: none;
     display: none;
   }
-  .time-ledger-view:not([data-time-content-view="all"]):not(
-      [data-time-content-view="audit"]
-    )
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
     .time-filter-nav-cluster
     input.time-filter-start-date::-webkit-datetime-edit-text,
-  .time-ledger-view:not([data-time-content-view="all"]):not(
-      [data-time-content-view="audit"]
-    )
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
     .time-filter-nav-cluster
     input.time-filter-end-date::-webkit-datetime-edit-text {
     -webkit-padding-start: 0;
   }
-  .time-ledger-view:not([data-time-content-view="all"]):not(
-      [data-time-content-view="audit"]
-    )
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
     .time-ledger-mobile-toolbar-right
     .time-filter-nav-cluster
     input.time-filter-start-date::-webkit-datetime-edit-fields-wrapper,
-  .time-ledger-view:not([data-time-content-view="all"]):not(
-      [data-time-content-view="audit"]
-    )
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
     .time-ledger-mobile-toolbar-right
     .time-filter-nav-cluster
     input.time-filter-end-date::-webkit-datetime-edit-fields-wrapper {
@@ -10786,29 +10855,21 @@ body.auth-pw-modal-open {
     gap: 0.1em;
     min-width: 0;
   }
-  .time-ledger-view:not([data-time-content-view="all"]):not(
-      [data-time-content-view="audit"]
-    )
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
     .time-ledger-mobile-toolbar-right
     .time-filter-nav-cluster
     input.time-filter-start-date::-webkit-datetime-edit-text,
-  .time-ledger-view:not([data-time-content-view="all"]):not(
-      [data-time-content-view="audit"]
-    )
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
     .time-ledger-mobile-toolbar-right
     .time-filter-nav-cluster
     input.time-filter-end-date::-webkit-datetime-edit-text {
     display: none;
   }
-  .time-ledger-view:not([data-time-content-view="all"]):not(
-      [data-time-content-view="audit"]
-    )
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
     .time-ledger-mobile-toolbar-right
     .time-filter-range-wrap
     .time-filter-start-date,
-  .time-ledger-view:not([data-time-content-view="all"]):not(
-      [data-time-content-view="audit"]
-    )
+  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
     .time-ledger-mobile-toolbar-right
     .time-filter-range-wrap
     .time-filter-end-date {
@@ -33717,16 +33778,6 @@ button.time-modal-traffic {
   line-height: 1.2;
 }
 
-/* 회고: 날짜 구간 필터만 입력 영역 배경 (#F2F7F9) */
-.time-ledger-view[data-time-content-view="retrospect"]
-  .time-filter-nav-cluster
-  .time-filter-date-field {
-  background: #f2f7f9 !important;
-  border-radius: 0.375rem;
-  padding: 0.2rem 0.5rem;
-  box-sizing: border-box;
-}
-
 .time-retrospect-empty {
   margin: 0.75rem 0 0;
   font-size: 0.875rem;
@@ -42168,6 +42219,7 @@ img.time-btn-icon {
 #app .diary-qa-answer {
   width: 100%;
   min-height: 3.75rem;
+  max-height: none;
   padding: 1rem 1.25rem;
   font-size: var(--fs-body);
   font-weight: var(--fw-body);
@@ -42175,7 +42227,8 @@ img.time-btn-icon {
   color: var(--text-body);
   border: none;
   resize: none;
-  overflow-y: auto;
+  overflow-x: hidden;
+  overflow-y: hidden;
   background: var(--content-bg);
   font-family: var(--font-body);
   display: block;
@@ -42233,7 +42286,7 @@ img.time-btn-icon {
   background: var(--diary-mac-chrome-bg);
 }
 
-/* 데스크톱: 탭 세그먼트 + 우측 끝 빨간 +(할일·시간가계부와 동일 톤) */
+/* 데스크톱: 탭 세그먼트 + 우측 끝 +(틸 #1f4654 — 모바일 헤더 + 와 동일) */
 .diary-view-inner--desktop-mac-diary .diary-desktop-tabs-strip {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);

@@ -53,8 +53,11 @@ const SS_AUDIT_END = "lp_time_audit_filter_end";
 const SS_RETROSPECT_START = "lp_time_retrospect_filter_start";
 const SS_RETROSPECT_END = "lp_time_retrospect_filter_end";
 
-/** 오늘이 속한 주의 일요일~토요일(로컬, 포함 7일) YYYY-MM-DD */
-function weekSundayToSaturdayContainingYmd(ymd) {
+/**
+ * 오늘(또는 ymd)이 속한 주의 월요일~일요일(로컬 7일) YYYY-MM-DD
+ * — 회고 표 열(Time.js startOfWeekMondayYmd)과 동일 기준.
+ */
+function weekMondayToSundayContainingYmd(ymd) {
   let dStr = ymd;
   if (!dStr || !YMD_RE.test(dStr)) {
     dStr = timeLedgerLocalTodayYmd();
@@ -66,13 +69,35 @@ function weekSundayToSaturdayContainingYmd(ymd) {
     const [y2, mo2, d2] = t.split("-").map(Number);
     dt.setFullYear(y2, mo2 - 1, d2);
   }
-  dt.setDate(dt.getDate() - dt.getDay());
+  const daysSinceMon = (dt.getDay() + 6) % 7;
+  dt.setDate(dt.getDate() - daysSinceMon);
   const pad = (n) => String(n).padStart(2, "0");
   const rs = `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
   const end = new Date(dt);
   end.setDate(end.getDate() + 6);
   const re = `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}`;
   return { rangeStart: rs, rangeEnd: re };
+}
+
+/** 예전 기본값(일~토 7일)으로 세션에 남은 구간 → 같은 달력 주의 월~일로 치환 */
+function migrateLegacyRetrospectSunSatWeekToMonSun(stored) {
+  const rs = stored.rangeStart;
+  const re = stored.rangeEnd;
+  const d0 = new Date(`${rs}T12:00:00`);
+  const d1 = new Date(`${re}T12:00:00`);
+  if (Number.isNaN(d0.getTime()) || Number.isNaN(d1.getTime())) return null;
+  const diffDays = Math.round((d1.getTime() - d0.getTime()) / 86400000);
+  if (diffDays !== 6) return null;
+  if (d0.getDay() !== 0 || d1.getDay() !== 6) return null;
+  const monday = new Date(d0);
+  monday.setDate(monday.getDate() + 1);
+  const sunday = new Date(monday);
+  sunday.setDate(sunday.getDate() + 6);
+  const pad = (n) => String(n).padStart(2, "0");
+  return {
+    rangeStart: `${monday.getFullYear()}-${pad(monday.getMonth() + 1)}-${pad(monday.getDate())}`,
+    rangeEnd: `${sunday.getFullYear()}-${pad(sunday.getMonth() + 1)}-${pad(sunday.getDate())}`,
+  };
 }
 
 function readTimeLedgerRetrospectSessionStoredYmdOrNull() {
@@ -96,12 +121,29 @@ function readTimeLedgerRetrospectSessionStoredYmdOrNull() {
 }
 
 /**
- * 「회고」탭 날짜 구간. 저장값 없으면 오늘 기준 해당 주 일~토(7일).
+ * 「회고」탭 날짜 구간. 저장값 없으면 오늘이 속한 주 월~일(7일).
+ * 예전 일~토 기본값만 세션에 남았으면 같은 주의 월~일로 한 번 교체합니다.
  */
 export function readTimeLedgerRetrospectSessionFilterRangeYmd() {
   const stored = readTimeLedgerRetrospectSessionStoredYmdOrNull();
-  if (stored) return stored;
-  return weekSundayToSaturdayContainingYmd(timeLedgerLocalTodayYmd());
+  if (stored) {
+    const migrated = migrateLegacyRetrospectSunSatWeekToMonSun(stored);
+    if (
+      migrated &&
+      (migrated.rangeStart !== stored.rangeStart ||
+        migrated.rangeEnd !== stored.rangeEnd)
+    ) {
+      try {
+        if (typeof sessionStorage !== "undefined") {
+          sessionStorage.setItem(SS_RETROSPECT_START, migrated.rangeStart);
+          sessionStorage.setItem(SS_RETROSPECT_END, migrated.rangeEnd);
+        }
+      } catch (_) {}
+      return migrated;
+    }
+    return stored;
+  }
+  return weekMondayToSundayContainingYmd(timeLedgerLocalTodayYmd());
 }
 
 /** 로컬 달력 기준 이번 달 1일 YYYY-MM-DD (보고서 기본 시작일) */

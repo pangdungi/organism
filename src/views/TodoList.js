@@ -80,6 +80,44 @@ function isTodoListMobileModalViewport() {
   }
 }
 
+function normalizeTodoListMobileSearchQuery(raw) {
+  return String(raw || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFC");
+}
+
+/** 메인 할일(모바일 검색): 모든 카테고리 탭 카드에 동일 필터 */
+function applyTodoListMobileSearchFilter(listRoot, queryRaw) {
+  const q = normalizeTodoListMobileSearchQuery(queryRaw);
+  const qSlash = q.replace(/-/g, "/");
+  listRoot.querySelectorAll(".todo-card").forEach((card) => {
+    if (!q) {
+      card.hidden = false;
+      return;
+    }
+    const raw = [
+      card.dataset.name,
+      card.dataset.dueDate,
+      card.dataset.startDate,
+      card.dataset.reminderDate,
+      card.dataset.reminderTime,
+      card.dataset.kpiLabel,
+      card.dataset.eisenhower,
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const n = normalizeTodoListMobileSearchQuery(raw);
+    const nSlash = normalizeTodoListMobileSearchQuery(raw.replace(/-/g, "/"));
+    const match =
+      n.includes(q) ||
+      nSlash.includes(q) ||
+      n.includes(qSlash) ||
+      nSlash.includes(qSlash);
+    card.hidden = !match;
+  });
+}
+
 // 나의 계정·환경설정에서 색 저장 시 탭 버튼·행 배경 즉시 반영
 window.addEventListener("app-colors-changed", () => {
   const container = document.querySelector(".todo-category-tabs");
@@ -5365,6 +5403,43 @@ export function render(options = {}) {
   }
   el.appendChild(toolbarRow);
 
+  let todoMobileSearchQuery = "";
+  let todoMobileSearchInput = null;
+  let todoMobileSearchSync = () => {};
+  const showTodoMobileSearchBar =
+    categoryToolbarRightActions && !calendarSidebarEmbed;
+  if (showTodoMobileSearchBar) {
+    const mobileSearchBar = document.createElement("div");
+    mobileSearchBar.className = "todo-list-mobile-entry-bar";
+    const searchRow = document.createElement("div");
+    searchRow.className = "todo-list-mobile-search-row";
+    todoMobileSearchInput = document.createElement("input");
+    todoMobileSearchInput.type = "text";
+    todoMobileSearchInput.className = "todo-list-mobile-search-input";
+    todoMobileSearchInput.placeholder = "날짜·내용 검색...";
+    todoMobileSearchInput.setAttribute("aria-label", "할 일 검색");
+    todoMobileSearchInput.autocomplete = "off";
+    let searchComposing = false;
+    todoMobileSearchSync = () => {
+      todoMobileSearchQuery = todoMobileSearchInput?.value ?? "";
+      applyTodoListMobileSearchFilter(el, todoMobileSearchQuery);
+    };
+    todoMobileSearchInput.addEventListener("compositionstart", () => {
+      searchComposing = true;
+    });
+    todoMobileSearchInput.addEventListener("compositionend", (e) => {
+      searchComposing = false;
+      todoMobileSearchQuery = e.target.value;
+      applyTodoListMobileSearchFilter(el, todoMobileSearchQuery);
+    });
+    todoMobileSearchInput.addEventListener("input", () => {
+      if (!searchComposing) todoMobileSearchSync();
+    });
+    searchRow.appendChild(todoMobileSearchInput);
+    mobileSearchBar.appendChild(searchRow);
+    el.appendChild(mobileSearchBar);
+  }
+
   const sectionsWrap = document.createElement("div");
   sectionsWrap.className = "todo-sections-wrap todo-tab-panels";
   if (omitKpiTodos) sectionsWrap.dataset.lpExcludesKpi = "1";
@@ -5502,6 +5577,8 @@ export function render(options = {}) {
       });
       syncTodoListSegmentThumb();
 
+      if (showTodoMobileSearchBar) todoMobileSearchSync();
+
       const subView = (btn.dataset.section || "").trim();
       void (async () => {
         try {
@@ -5550,11 +5627,43 @@ export function render(options = {}) {
       if (target) observer.observe(target, { childList: true });
     }
   });
+
+  let searchFilterObserver = null;
+  if (showTodoMobileSearchBar) {
+    searchFilterObserver = new MutationObserver(() => {
+      if (todoMobileSearchQuery)
+        applyTodoListMobileSearchFilter(el, todoMobileSearchQuery);
+    });
+    searchFilterObserver.observe(sectionsWrap, { childList: true, subtree: true });
+  }
+
   listUiSignal.addEventListener("abort", () => {
     try {
       observer.disconnect();
     } catch (_) {}
+    try {
+      searchFilterObserver?.disconnect();
+    } catch (_) {}
   });
+
+  if (showTodoMobileSearchBar) todoMobileSearchSync();
+
+  if (showTodoMobileSearchBar && typeof window.matchMedia === "function") {
+    const mq = window.matchMedia("(max-width: 48rem)");
+    const clearTodoSearchWhenLeavingMobile = () => {
+      if (!mq.matches) applyTodoListMobileSearchFilter(el, "");
+    };
+    mq.addEventListener("change", clearTodoSearchWhenLeavingMobile);
+    listUiSignal.addEventListener(
+      "abort",
+      () => {
+        try {
+          mq.removeEventListener("change", clearTodoSearchWhenLeavingMobile);
+        } catch (_) {}
+      },
+      { once: true },
+    );
+  }
 
   return el;
 }

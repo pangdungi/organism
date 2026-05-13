@@ -59,6 +59,21 @@ function compareDiaryEntriesNewestFirst(a, b) {
   return (b.id || "").localeCompare(a.id || "");
 }
 
+/** Q&A 답 영역: 폭 변경 시 autosize 재실행(내부 스크롤 없을 때 잘림 방지) */
+function attachDiaryQaAnswerResizeSync(ansEl, adjustHeight) {
+  if (!ansEl || typeof ResizeObserver === "undefined") return;
+  const block = ansEl.closest(".diary-qa-block");
+  if (!block) return;
+  const ro = new ResizeObserver(() => {
+    if (!ansEl.isConnected) {
+      ro.disconnect();
+      return;
+    }
+    adjustHeight();
+  });
+  ro.observe(block);
+}
+
 /** 기존 날짜 기반 데이터를 entry 배열로 마이그레이션 */
 function migrateToEntries(tabData) {
   if (Array.isArray(tabData)) return tabData;
@@ -363,8 +378,10 @@ export function render() {
             ansEl.style.height = "auto";
             ansEl.style.height = Math.max(60, ansEl.scrollHeight) + "px";
           };
-          adjustRo();
           block.appendChild(ansEl);
+          paper.appendChild(block);
+          adjustRo();
+          attachDiaryQaAnswerResizeSync(ansEl, adjustRo);
         } else {
           const ansArea = document.createElement("textarea");
           ansArea.className = "diary-qa-answer";
@@ -379,11 +396,12 @@ export function render() {
             saveDiaryEntries(entries, { skipCloud: true });
             adjustHeight();
           });
-          adjustHeight();
           block.appendChild(ansArea);
+          paper.appendChild(block);
+          adjustHeight();
+          attachDiaryQaAnswerResizeSync(ansArea, adjustHeight);
           attachMobileTapToEdit(ansArea);
         }
-        paper.appendChild(block);
       });
       return;
     }
@@ -440,8 +458,10 @@ export function render() {
             ansEl.style.height = "auto";
             ansEl.style.height = Math.max(60, ansEl.scrollHeight) + "px";
           };
-          adjustRo();
           block.appendChild(ansEl);
+          paper.appendChild(block);
+          adjustRo();
+          attachDiaryQaAnswerResizeSync(ansEl, adjustRo);
         } else {
           const ansArea = document.createElement("textarea");
           ansArea.className = "diary-qa-answer";
@@ -457,11 +477,12 @@ export function render() {
             saveDiaryEntries(entries, { skipCloud: true });
             adjustHeight();
           });
-          adjustHeight();
           block.appendChild(ansArea);
+          paper.appendChild(block);
+          adjustHeight();
+          attachDiaryQaAnswerResizeSync(ansArea, adjustHeight);
           attachMobileTapToEdit(ansArea);
         }
-        paper.appendChild(block);
       });
       return;
     }
