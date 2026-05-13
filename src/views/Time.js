@@ -7438,12 +7438,16 @@ export function render() {
     }
   }
 
-  async function openTaskLogModal(addContext) {
-    try {
-      await ensureTaskLogModalCloudData();
-    } catch (_) {}
+  function openTaskLogModal(addContext) {
+    /** pull 완료를 기다려 모달을 늦추면(느린망 ~1초) 체감 지연 → 먼저 열고 동기화는 비동기 */
     openTaskLogModalAfterPull(addContext);
     afterTaskListSyncForTaskLogAddModal();
+    void ensureTaskLogModalCloudData()
+      .catch(() => {})
+      .then(() => {
+        if (!el.isConnected || taskLogModal.hidden) return;
+        afterTaskListSyncForTaskLogAddModal();
+      });
   }
 
   function openTaskLogModalAfterPull(addContext) {
@@ -7525,10 +7529,7 @@ export function render() {
     );
   }
 
-  async function openTaskLogModalForEdit(tr, rowData) {
-    try {
-      await ensureTaskLogModalCloudData();
-    } catch (_) {}
+  function openTaskLogModalForEdit(tr, rowData) {
     const data =
       tr?._rowData && typeof tr._rowData === "object" ? tr._rowData : rowData;
     let startTime = data.startTime || "";
@@ -7655,6 +7656,29 @@ export function render() {
       refreshKpiTodosInLogModal(lockedName);
     }
     updateTaskLogMealDetailVisibility((data.taskName || "").trim());
+    void ensureTaskLogModalCloudData()
+      .catch(() => {})
+      .then(() => {
+        if (!el.isConnected || taskLogModal.hidden) return;
+        try {
+          getFullTaskOptions();
+          migrateTimeLogRowsTaskIds();
+        } catch (_) {}
+        const tnPost = (data.taskName || "").trim();
+        if (isMealChecklistTaskName(tnPost) && ymdEdit.length >= 10) {
+          const dietList = listWorkScheduleDietTypeNamesFromMem();
+          const picked = new Set(mealNamesFromRow);
+          for (const d of dietList) {
+            setMealChecklistItem(ymdEdit, tnPost, d, picked.has(d));
+          }
+        }
+        refreshKpiTodosInLogModal(tnPost);
+        if (taskLogTaskDropdown && tnPost) {
+          taskLogTaskDropdown._setValue?.(tnPost);
+          refreshKpiTodosInLogModal(tnPost);
+        }
+        updateTaskLogMealDetailVisibility(tnPost);
+      });
   }
 
   function closeTaskLogModal() {
