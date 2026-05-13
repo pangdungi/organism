@@ -209,8 +209,15 @@ const CAL_1DAY_TIMEBLOCK_INSET_Y = 2;
 const CAL_1DAY_TIMEBLOCK_LANE_GAP_PX = 3;
 /** 1일·1주 타임블록: 이 분 이하(포함)는 막대 안 글자 숨김 → 호버 시 블록색 툴팁 */
 const CAL_TIMEBLOCK_HIDE_LABEL_MAX_MINUTES = 30;
-
-/** 캘린더 막대 할 일: 체크박스 대신 섹션색 세로 막대(|) */
+/** 1일 타임표: 해당 시 행 높이만 조정 대상으로 보는 과제 길이(분) 상한 — 막대는 시간만 반영, 행(px) 역산 공식만 적용 */
+const CAL_EXPECTED_ROW_BOOST_SHORT_MAX_MINUTES = 30;
+const CAL_EXPECTED_ROW_BASE_PX = 44;
+/** 짧은 과제 때문에 가변(px) 줄 때 부스트 안 된 시행 줄 높이(긴 과제 연속 시간대 등) — BASE 미만 값 */
+const CAL_EXPECTED_ROW_IDLE_COMPACT_PX = 22;
+/** 해당 시 행 안에서 짧은 덩어리 한 줄에 맞추려는 목표(px) — 값이 크면 같은 시 행 전체가 비대해짐 */
+const CAL_EXPECTED_ROW_ONE_LINE_SLICE_PX = 22;
+/** 한 시간 행 px 상한 — 22×60÷5=264 */
+const CAL_EXPECTED_ROW_SHORT_SLOT_CEIL_PX = 264;
 function lpCalendarSpanBarTodoMarkerHtml(sectionColor) {
   const c =
     typeof sectionColor === "string" && sectionColor.trim()
@@ -4543,6 +4550,143 @@ function dayKeyYmdCompare(a, b) {
   return String(a || "").localeCompare(String(b || ""));
 }
 
+/**
+ * 예상 30분 이하 과제가 겹치는 시행만 키운다 — 단, 해당 시 안이 **실질 하나의 큰 블록**이면 **부스트는 생략**하고 IDLE_COMPACT(px) 줄 높이만 씀.
+ * 같은 시에 짧은 과제 등으로 역산이 들어간 시행만 높게. 가변(px)일 때 반부스트 행은 타임블록 전체 세로 길이를 줄임.
+ * 막대 top/height는 minute→px 만. 30분 이하 행 부스트 실제 적용 한 번이라도 있을 때만 useVariableRows.
+ */
+function lpCalendarHourGeometryFromExpectedSpans(
+  expectedSpans,
+  slotsPerDay,
+  minPerSlot,
+) {
+  const SLOTS = slotsPerDay ?? CAL_1DAY_TIMETABLE_SLOTS_PER_DAY;
+  const MIN_SLOT = minPerSlot ?? CAL_1DAY_TIMETABLE_MIN_PER_SLOT;
+  const CAP = CAL_EXPECTED_ROW_BOOST_SHORT_MAX_MINUTES;
+  const LINE_PX = CAL_EXPECTED_ROW_ONE_LINE_SLICE_PX;
+  const CEIL = CAL_EXPECTED_ROW_SHORT_SLOT_CEIL_PX;
+  const BASE_PX = CAL_EXPECTED_ROW_BASE_PX;
+  const IDLE_ROW_PX = CAL_EXPECTED_ROW_IDLE_COMPACT_PX;
+  const HALFSLOT = MIN_SLOT / 2;
+  /** 한 시 행 높이를 짧게 둠: 위 주석 규칙 */
+  const slotSkipShortBoost = Array.from({ length: SLOTS }, () => false);
+  for (let s = 0; s < SLOTS; s++) {
+    const slotStartMin = s * MIN_SLOT;
+    const slotEndMin = (s + 1) * MIN_SLOT;
+    const pieces = [];
+    for (const sp of expectedSpans || []) {
+      const sm = Number(sp?.startMin);
+      const em = Number(sp?.endMin);
+      const dur = Math.max(0, em - sm);
+      if (![sm, em].every((n) => Number.isFinite(n)) || dur <= 0) continue;
+      const overlapMin = Math.max(
+        0,
+        Math.min(em, slotEndMin) - Math.max(sm, slotStartMin),
+      );
+      if (overlapMin <= 0) continue;
+      pieces.push({
+        overlapMin,
+        dur,
+        name: String(sp?.taskName || "").trim(),
+      });
+    }
+    const n = pieces.length;
+    if (n <= 1) {
+      const one = pieces[0];
+      if (one && one.overlapMin >= HALFSLOT) slotSkipShortBoost[s] = true;
+    } else if (n >= 2) {
+      const names = new Set(pieces.map((p) => p.name || "\0anon"));
+      const allDurHalfUp = pieces.every((p) => p.dur >= HALFSLOT);
+      if (names.size === 1 && allDurHalfUp) slotSkipShortBoost[s] = true;
+    }
+  }
+
+  const rowsPx24 = Array.from({ length: SLOTS }, () => IDLE_ROW_PX);
+  let hasShortBoostOverlap = false;
+
+  for (const sp of expectedSpans || []) {
+    const sm = Number(sp?.startMin);
+    const em = Number(sp?.endMin);
+    const dur = Math.max(0, em - sm);
+    if (![sm, em].every((n) => Number.isFinite(n)) || dur <= 0 || dur > CAP) {
+      continue;
+    }
+    const startSlot = Math.floor(sm / MIN_SLOT);
+    const endSlot = Math.min(SLOTS - 1, Math.floor((em - 1) / MIN_SLOT));
+    for (let s = startSlot; s <= endSlot; s++) {
+      const slotStartMin = s * MIN_SLOT;
+      const slotEndMin = (s + 1) * MIN_SLOT;
+      const overlapMin = Math.max(
+        0,
+        Math.min(em, slotEndMin) - Math.max(sm, slotStartMin),
+      );
+      if (overlapMin <= 0) continue;
+      if (slotSkipShortBoost[s]) continue;
+      hasShortBoostOverlap = true;
+      const needRow = Math.ceil((LINE_PX * MIN_SLOT) / overlapMin);
+      const bumped = Math.min(CEIL, Math.max(BASE_PX, needRow));
+      rowsPx24[s] = Math.max(rowsPx24[s], bumped);
+    }
+  }
+
+  if (!hasShortBoostOverlap) {
+    return {
+      useVariableRows: false,
+      rowsPx24,
+      slotStartsPx: [],
+      totalPx: 0,
+      minuteToPx: null,
+    };
+  }
+
+  const slotStartsPx = [];
+  let cum = 0;
+  for (let i = 0; i < SLOTS; i++) {
+    slotStartsPx.push(cum);
+    cum += rowsPx24[i];
+  }
+  const totalPx = cum;
+  const minuteToPx = (min) => {
+    const clamped = Math.max(0, Math.min(min, SLOTS * MIN_SLOT));
+    const slotIdx = Math.min(SLOTS - 1, Math.floor(clamped / MIN_SLOT));
+    const frac = (clamped % MIN_SLOT) / MIN_SLOT;
+    return slotStartsPx[slotIdx] + frac * rowsPx24[slotIdx];
+  };
+
+  return {
+    useVariableRows: true,
+    rowsPx24,
+    slotStartsPx,
+    totalPx,
+    minuteToPx,
+  };
+}
+
+function lpStampCalendar1DayVariableHourRows(innerEl, hourGeom, overlayEls) {
+  if (!innerEl) return;
+  const tbl = innerEl.querySelector(".calendar-1day-time-table--compare");
+  const arr = Array.isArray(overlayEls)
+    ? overlayEls
+    : overlayEls
+      ? [overlayEls]
+      : [];
+  if (!hourGeom?.useVariableRows || !hourGeom.rowsPx24?.length) {
+    if (tbl) tbl.style.removeProperty("grid-template-rows");
+    for (const ov of arr) {
+      if (ov?.style) ov.style.removeProperty("grid-template-rows");
+    }
+    return;
+  }
+  const rowsSpec = hourGeom.rowsPx24
+    .map((px) => `${Math.round(px)}px`)
+    .join(" ");
+  /* 모바일 main.css 의 grid-template-rows !important 가 인라인 일반 선언을 덮어씀 → important로 맞춤 */
+  if (tbl) tbl.style.setProperty("grid-template-rows", rowsSpec, "important");
+  for (const ov of arr) {
+    if (ov?.style) ov.style.setProperty("grid-template-rows", rowsSpec, "important");
+  }
+}
+
 /** 1일 뷰 시간표(예상/실제) 오버레이만 생성 - budget 테이블 재구성 없이 시간표만 갱신용 */
 function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   const storedGoals = getBudgetGoals(targetKey);
@@ -4977,6 +5121,11 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   const actualResult = buildActualSpansFromRows();
   const actualSpans = actualResult.spans;
   const actualMaxLane = actualResult.maxLane;
+  const hourGeom = lpCalendarHourGeometryFromExpectedSpans(
+    expectedSpans,
+    SLOTS_PER_DAY,
+    MIN_PER_SLOT,
+  );
   const SECTION_IDS_FOR_LIST_COLOR = [
     "dream",
     "sideincome",
@@ -4992,7 +5141,13 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
   /** 30분 초과 구간: 한 줄 라벨(과제명+시간) 적용 상한 */
   const ACTUAL_MAX_MINUTES_ONE_LINE_LABEL = 55;
 
-  const createOverlay = (spans, colors, isActual, _maxLane = 0) => {
+  const createOverlay = (
+    spans,
+    colors,
+    isActual,
+    _maxLane = 0,
+    hourGeomInner = null,
+  ) => {
     const overlay = document.createElement("div");
     overlay.className = `calendar-1day-time-fill-overlay calendar-1day-time-fill-overlay--${isActual ? "actual" : "expected"}`;
     const spansOverlapForSimultaneousLanes = (a, b) =>
@@ -5061,15 +5216,28 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         blockFill.style.gridColumn = "1 / -1";
         blockFill.style.gridRow = "1 / -1";
       };
-      /** 하루 1440분 대비 top + height % (bottom 동시 지정은 일부 환경에서 높이가 어긋날 수 있음) */
+      /** 시간→세로: 가변 시행(px)과 동일 눈금만 사용. 막대에 임의 최소 높이 없음(시각적 종료 시각 유지) */
       const applyDayVerticalExtents = () => {
         const durationMin = Math.min(
           MIN_PER_DAY - blockStartMin,
           isActual ? visualBlockMin : blockEndMin - blockStartMin,
         );
-        const h = Math.max(0, durationMin);
+        const hMin = Math.max(0, durationMin);
+        if (
+          hourGeomInner?.useVariableRows &&
+          typeof hourGeomInner.minuteToPx === "function"
+        ) {
+          const topPx = hourGeomInner.minuteToPx(blockStartMin);
+          const endPx = hourGeomInner.minuteToPx(blockStartMin + hMin);
+          const heightPx = Math.max(0, endPx - topPx);
+          blockFill.style.top = `${topPx}px`;
+          blockFill.style.height = `${heightPx}px`;
+          blockFill.style.bottom = "auto";
+          blockFill.style.minHeight = "";
+          return;
+        }
         blockFill.style.top = `calc(${blockStartMin} * 100% / ${MIN_PER_DAY})`;
-        blockFill.style.height = `calc(${h} * 100% / ${MIN_PER_DAY})`;
+        blockFill.style.height = `calc(${hMin} * 100% / ${MIN_PER_DAY})`;
         blockFill.style.bottom = "auto";
         blockFill.style.minHeight = "";
       };
@@ -5122,7 +5290,21 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
       }
       blockFill.style.gap = "0";
       /* 상하는 격자선과 살짝 띄움 — 좌우는 absolute left/width inset 로 처리 */
-      blockFill.style.padding = `${insetY}px 0`;
+      let fillVertPad = insetY;
+      if (
+        !isActual &&
+        hourGeomInner?.useVariableRows &&
+        typeof hourGeomInner.minuteToPx === "function"
+      ) {
+        const blkDurMin = Math.max(0, blockEndMin - blockStartMin);
+        const hPxBlk = Math.max(
+          0,
+          hourGeomInner.minuteToPx(blockStartMin + blkDurMin) -
+            hourGeomInner.minuteToPx(blockStartMin),
+        );
+        if (hPxBlk < 20) fillVertPad = 0;
+      }
+      blockFill.style.padding = `${fillVertPad}px 0`;
       blockFill.style.border = "none";
       /* 예상: 직전 visible이 레인에서는 가로 삐져나옴 → 겹침(반열)만 hidden으로 자름 */
       blockFill.style.overflow =
@@ -5162,14 +5344,16 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         if (group.length === 1) {
           seg.style.flex = "none";
           seg.style.height = "100%";
-          /* 예상 막대: 짧은 구간에 min-height 주면 1시간 칸만큼 칠해지는 것처럼 보임 */
           seg.style.minHeight =
-            isActual && actualBlockMin > 0 && actualBlockMin < 40
-              ? "2.5rem"
-              : "0";
+            hourGeomInner?.useVariableRows
+              ? "0"
+              : isActual && actualBlockMin > 0 && actualBlockMin < 40
+                ? "2.5rem"
+                : "0";
         } else {
           seg.style.flex = `0 0 ${segHeightPct}%`;
-          seg.style.minHeight = isActual ? "2.5rem" : "0";
+          seg.style.minHeight =
+            hourGeomInner?.useVariableRows ? "0" : isActual ? "2.5rem" : "0";
         }
         seg.style.width = "100%";
         seg.style.display = "flex";
@@ -5194,25 +5378,36 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
           seg.style.border = "none";
         }
         seg.style.boxSizing = "border-box";
-        /* 예상: 기본은 overflow visible 이지만 반열 겹침은 인라인 visible이 우선되어 밖으로 새어 나감 */
-        if (!isActual) {
-          seg.style.overflow = useLaneLayout ? "hidden" : "visible";
-        }
         const segDurationMin = Math.max(
           0,
           (sp.endMin ?? 0) - (sp.startMin ?? 0),
         );
-        const showTimetableLabel =
-          segDurationMin > TIMETABLE_MAX_MINUTES_TO_HIDE_LABEL;
+        const microExpectedStrip =
+          !isActual &&
+          !useLaneLayout &&
+          hourGeomInner?.useVariableRows &&
+          segDurationMin > 0 &&
+          segDurationMin <= CAL_EXPECTED_ROW_BOOST_SHORT_MAX_MINUTES;
+        if (microExpectedStrip) {
+          seg.style.gap = "0";
+          seg.style.padding = "0 0.45rem";
+        }
+        if (!isActual) {
+          /* 가변행+초짧은 예상: hidden이면 패딩·라벨 때문에 면이 통째로 안 보임 → 반열만 hidden */
+          seg.style.overflow = useLaneLayout ? "hidden" : "visible";
+        }
+        const showTimetableLabel = isActual
+          ? segDurationMin > TIMETABLE_MAX_MINUTES_TO_HIDE_LABEL
+          : segDurationMin > 0;
         if (showTimetableLabel) {
           const labelWrap = document.createElement("div");
-          /* 동시구간 반열: 폭이 1/N로 줄어 시간 문자열이 겹침·삐져나옴 → 과제명만, 시간은 tooltip */
           const useLaneNameOnly = useLaneLayout;
-          /* 짧은 구간: 제목+시간을 최대 3줄까지 말줄임(칸 높이 한정) */
           const useCompactOneLineLabel =
             !useLaneNameOnly &&
-            segDurationMin > TIMETABLE_MAX_MINUTES_TO_HIDE_LABEL &&
-            segDurationMin <= ACTUAL_MAX_MINUTES_ONE_LINE_LABEL;
+            segDurationMin <= ACTUAL_MAX_MINUTES_ONE_LINE_LABEL &&
+            (isActual
+              ? segDurationMin > TIMETABLE_MAX_MINUTES_TO_HIDE_LABEL
+              : segDurationMin > 0);
           if (useLaneNameOnly) {
             labelWrap.className =
               "calendar-1day-time-slot-label-wrap calendar-1day-time-slot-label-wrap--lane-name-only";
@@ -5300,14 +5495,28 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
     }
     return overlay;
   };
+  const overlayExpected = createOverlay(
+    expectedSpans,
+    prodColorsExpected,
+    false,
+    expectedMaxLane,
+    hourGeom,
+  );
+  const overlayActual = createOverlay(
+    actualSpans,
+    prodColorsActual,
+    true,
+    actualMaxLane,
+    hourGeom,
+  );
   return {
-    expected: createOverlay(
-      expectedSpans,
-      prodColorsExpected,
-      false,
-      expectedMaxLane,
-    ),
-    actual: createOverlay(actualSpans, prodColorsActual, true, actualMaxLane),
+    expected: overlayExpected,
+    actual: overlayActual,
+    stampHourRows: (innerEl) =>
+      lpStampCalendar1DayVariableHourRows(innerEl, hourGeom, [
+        overlayExpected,
+        overlayActual,
+      ]),
   };
 }
 
@@ -5676,7 +5885,7 @@ function render1DayView(
           wrap.dataset.actualShowsYesterday === "true"
             ? getYesterdayKey(dateStr)
             : undefined;
-        const { expected, actual } = build1DayTimetableOverlays(
+        const { expected, actual, stampHourRows } = build1DayTimetableOverlays(
           dateStr,
           budgetColOrNull,
           actualDateKey,
@@ -5691,6 +5900,7 @@ function render1DayView(
         else inner.appendChild(expected);
         if (oldAct) oldAct.replaceWith(actual);
         else inner.appendChild(actual);
+        stampHourRows?.(inner);
       });
     };
     const onOverlapCleared = () => {
@@ -6179,8 +6389,15 @@ function render1DayView(
       wrap.dataset.actualShowsYesterday === "true"
         ? getYesterdayKey(targetKey)
         : undefined;
-    const { expected: fillOverlayExpected, actual: fillOverlayActual } =
-      build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKeyForInit);
+    const {
+      expected: fillOverlayExpected,
+      actual: fillOverlayActual,
+      stampHourRows: stampHourRowsInit,
+    } = build1DayTimetableOverlays(
+      targetKey,
+      budgetColumn,
+      actualDateKeyForInit,
+    );
     const timeTableWrap = document.createElement("div");
     timeTableWrap.className = "calendar-1day-time-table-wrap";
     const timeTableInner = document.createElement("div");
@@ -6191,6 +6408,7 @@ function render1DayView(
     timeTableWrap.appendChild(headerRow);
     timeTableWrap.appendChild(timeTableInner);
     timeColumn.appendChild(timeTableWrap);
+    requestAnimationFrame(() => stampHourRowsInit?.(timeTableInner));
     }
 
     if (sidebarMode !== LP_CAL_TODO_SIDEBAR_NONE) {
@@ -6344,7 +6562,7 @@ function render1DayView(
         wrap.dataset.actualShowsYesterday === "true"
           ? getYesterdayKey(dateStr)
           : undefined;
-      const { expected, actual } = build1DayTimetableOverlays(
+      const { expected, actual, stampHourRows } = build1DayTimetableOverlays(
         dateStr,
         budgetCol,
         actualDateKey,
@@ -6359,6 +6577,7 @@ function render1DayView(
       else timeTableInner.appendChild(expected);
       if (oldActual) oldActual.replaceWith(actual);
       else timeTableInner.appendChild(actual);
+      stampHourRows?.(timeTableInner);
     } else if (!timeTableInner || !dateStr) {
       renderCalendar();
     }
