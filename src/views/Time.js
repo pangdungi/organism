@@ -11384,13 +11384,26 @@ export function renderTimeBudgetTablesForCalendar(
 
   /** 과제 기록 모달 `buildTaskDropdown`과 동일한 마크업·클래스 — 옵션 목록만 예산 추가용으로 한정.
    * 기본/KPI 배지 표시 정책도 과제 기록 드롭다운과 동일합니다.
-   * @param {{ productivePicker?: boolean }} [dropdownOpts] — 생산적 과제만: 꿈·행복·부수입·건강 4칩(검색 시 전체) */
+   * @param {{ productivePicker?: boolean; productiveCategoryBuckets?: string[] }} [dropdownOpts] —
+   *   `productiveCategoryBuckets`: 예) `['happiness']` 또는 `['dream','sideincome']` 로 구역만 필터 · 다중이면 해당 칩만 표시 */
+
   function buildCalendarBudgetTaskLogDropdown(
     addOptionsSource,
     abortSignal,
     dropdownOpts = {},
   ) {
-    const productivePicker = !!dropdownOpts.productivePicker;
+    const categoryBucketFilter =
+      Array.isArray(dropdownOpts.productiveCategoryBuckets) &&
+      dropdownOpts.productiveCategoryBuckets.length > 0
+        ? dropdownOpts.productiveCategoryBuckets
+            .map((id) => String(id || "").trim().toLowerCase())
+            .filter(Boolean)
+        : null;
+    const productivePickerLegacy =
+      !!dropdownOpts.productivePicker && !categoryBucketFilter;
+    const useBucketChrome =
+      productivePickerLegacy ||
+      !!(categoryBucketFilter && categoryBucketFilter.length > 1);
     const wrap = document.createElement("div");
     wrap.className = "time-task-log-task-dropdown";
     const trigger = document.createElement("button");
@@ -11399,7 +11412,7 @@ export function renderTimeBudgetTablesForCalendar(
     trigger.textContent = "과제를 선택하세요";
     const panel = document.createElement("div");
     panel.className = "time-task-log-task-dropdown-panel";
-    if (productivePicker) {
+    if (useBucketChrome) {
       panel.classList.add(
         "time-task-log-task-dropdown-panel--productive-buckets",
       );
@@ -11407,7 +11420,9 @@ export function renderTimeBudgetTablesForCalendar(
     panel.hidden = true;
     let value = "";
     let searchQuery = "";
-    let pickerBucket = "dream";
+    let pickerBucket = productivePickerLegacy
+      ? "dream"
+      : categoryBucketFilter?.[0] || "dream";
 
     const PRODUCTIVE_BUCKET_CHIPS = [
       { id: "dream", label: "꿈" },
@@ -11438,7 +11453,12 @@ export function renderTimeBudgetTablesForCalendar(
       const q = (filter || "").trim().toLowerCase();
 
       let tasks = resolveRows();
-      if (productivePicker && !q) {
+      if (categoryBucketFilter && !q) {
+        tasks = tasks.filter((t) => {
+          const b = productiveBudgetPickerBucket(t.full);
+          return b && categoryBucketFilter.includes(b);
+        });
+      } else if (productivePickerLegacy && !q) {
         tasks = tasks.filter(
           (t) => productiveBudgetPickerBucket(t.full) === pickerBucket,
         );
@@ -11510,12 +11530,53 @@ export function renderTimeBudgetTablesForCalendar(
       searchWrap.appendChild(searchInput);
       panel.appendChild(searchWrap);
 
-      if (productivePicker) {
+      if (productivePickerLegacy) {
         const chipsWrap = document.createElement("div");
         chipsWrap.className = "time-task-log-task-dropdown-buckets";
         chipsWrap.setAttribute("role", "tablist");
         chipsWrap.setAttribute("aria-label", "생산적 과제 구역");
         PRODUCTIVE_BUCKET_CHIPS.forEach(({ id, label }) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "time-task-log-task-dropdown-bucket";
+          b.dataset.bucket = id;
+          b.textContent = label;
+          b.setAttribute("role", "tab");
+          b.setAttribute("aria-selected", id === pickerBucket ? "true" : "false");
+          if (id === pickerBucket) b.classList.add("is-active");
+          b.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            pickerBucket = id;
+            chipsWrap.querySelectorAll(".time-task-log-task-dropdown-bucket").forEach((x) => {
+              const on = x.dataset.bucket === id;
+              x.classList.toggle("is-active", on);
+              x.setAttribute("aria-selected", on ? "true" : "false");
+            });
+            if (optionsContainer) {
+              renderOptions(optionsContainer, searchQuery);
+            }
+          });
+          chipsWrap.appendChild(b);
+        });
+        panel.appendChild(chipsWrap);
+      } else if (categoryBucketFilter && categoryBucketFilter.length > 1) {
+        const chipsWrap = document.createElement("div");
+        chipsWrap.className = "time-task-log-task-dropdown-buckets";
+        chipsWrap.setAttribute("role", "tablist");
+        const ariaBucket =
+          categoryBucketFilter.includes("dream") &&
+          categoryBucketFilter.includes("sideincome")
+            ? "꿈·부수입 과제 구역"
+            : categoryBucketFilter.includes("happiness") &&
+                categoryBucketFilter.includes("health")
+              ? "행복·건강 과제 구역"
+              : "과제 구역";
+        chipsWrap.setAttribute("aria-label", ariaBucket);
+        const subsetChips = PRODUCTIVE_BUCKET_CHIPS.filter((c) =>
+          categoryBucketFilter.includes(c.id),
+        );
+        subsetChips.forEach(({ id, label }) => {
           const b = document.createElement("button");
           b.type = "button";
           b.className = "time-task-log-task-dropdown-bucket";
@@ -11556,7 +11617,12 @@ export function renderTimeBudgetTablesForCalendar(
 
     trigger.addEventListener("click", () => {
       searchQuery = "";
-      if (productivePicker) pickerBucket = "dream";
+      if (productivePickerLegacy) pickerBucket = "dream";
+      else if (categoryBucketFilter?.length) {
+        pickerBucket = categoryBucketFilter.includes(pickerBucket)
+          ? pickerBucket
+          : categoryBucketFilter[0];
+      }
       renderPanel();
       panel.hidden = !panel.hidden;
       if (!panel.hidden) {
@@ -11779,10 +11845,18 @@ export function renderTimeBudgetTablesForCalendar(
         modalOpts.addTaskOptions.length > 0
           ? modalOpts.addTaskOptions
           : allCalendarBudgetAddOptions;
+      const prodBuckets = modalOpts?.calendarBudgetProductiveBuckets;
+      const hasProdBuckets =
+        Array.isArray(prodBuckets) && prodBuckets.length > 0;
       calendarBudgetTaskDropdownWrap = buildCalendarBudgetTaskLogDropdown(
         sourceOpts,
         modalTaskUiSignal,
-        { productivePicker: !!modalOpts?.calendarBudgetProductivePicker },
+        hasProdBuckets
+          ? { productiveCategoryBuckets: prodBuckets }
+          : {
+              productivePicker:
+                !!modalOpts?.calendarBudgetProductivePicker,
+            },
       );
       taskWrap.appendChild(calendarBudgetTaskDropdownWrap);
     } else if (taskWrap) {
@@ -12087,8 +12161,20 @@ export function renderTimeBudgetTablesForCalendar(
   const BASIC_TASKS = ["수면하기", "근무하기"];
   const isBasicTask = (task) => BASIC_TASKS.includes((task || "").trim());
 
+  function calendarBudgetInvestDisplaySection(taskName) {
+    const n = String(taskName || "").trim();
+    const opt = getTaskOptionByName(n);
+    const cat = String(opt?.category ?? "").trim().toLowerCase();
+    if (cat === "happiness" || cat === "health") return "happiness_health";
+    if (cat === "dream" || cat === "sideincome") return "dream_side";
+    if (String(opt?.productivity ?? "").trim().toLowerCase() === "productive")
+      return "dream_side";
+    return "dream_side";
+  }
+
   const excluded = getBudgetExcluded(targetDateStr);
-  const investTasks = [];
+  const investHappinessHealthTasks = [];
+  const investDreamSideTasks = [];
   const consumeTasks = [];
   const seenInvest = new Set();
   const seenConsume = new Set();
@@ -12099,8 +12185,13 @@ export function renderTimeBudgetTablesForCalendar(
     if (isBudgetPlaceholder(task)) return;
     if (isBasicTask(task)) return; /* 수면/근무는 기본에만 */
     if (data.isInvest && !seenInvest.has(task)) {
+      const secKey = calendarBudgetInvestDisplaySection(task);
+      const investList =
+        secKey === "happiness_health"
+          ? investHappinessHealthTasks
+          : investDreamSideTasks;
       expandByScheduledTimes(task, data, true).forEach((e) =>
-        investTasks.push(e),
+        investList.push(e),
       );
       seenInvest.add(task);
     } else if (!data.isInvest && !seenConsume.has(task)) {
@@ -12142,7 +12233,11 @@ export function renderTimeBudgetTablesForCalendar(
   globalAddBtn.setAttribute("aria-label", "예상 일정 과제 추가");
   globalAddBtn.innerHTML = TIME_LEDGER_ADD_PLUS_ICON_SVG;
   globalAddBtn.addEventListener("click", () => {
-    showCalendarBudgetTaskModal({ mode: "add" });
+    showCalendarBudgetTaskModal({
+      mode: "add",
+      addTaskOptions: allCalendarBudgetAddOptions,
+      calendarBudgetProductivePicker: true,
+    });
   });
 
   const topBarCluster = document.createElement("div");
@@ -12245,14 +12340,15 @@ export function renderTimeBudgetTablesForCalendar(
   basicTableWrap.appendChild(basicTable);
   basicBlock.appendChild(basicTableWrap);
 
-  const investBlock = document.createElement("div");
-  investBlock.className =
-    "time-daily-budget-table-block time-daily-budget-table-block--invest";
-  const investTableWrap = document.createElement("div");
-  investTableWrap.className = "time-daily-budget-table-scroll-wrap";
-  const investTable = document.createElement("table");
-  investTable.className = "time-daily-budget-table";
-  investTable.innerHTML = `
+  function renderInvestBudgetTableBlock(taskEntries) {
+    const block = document.createElement("div");
+    block.className =
+      "time-daily-budget-table-block time-daily-budget-table-block--invest";
+    const investTableWrap = document.createElement("div");
+    investTableWrap.className = "time-daily-budget-table-scroll-wrap";
+    const investTable = document.createElement("table");
+    investTable.className = "time-daily-budget-table";
+    investTable.innerHTML = `
     <colgroup>
       <col class="time-budget-col-task">
       <col class="time-budget-col-start">
@@ -12276,32 +12372,40 @@ export function renderTimeBudgetTablesForCalendar(
     <tbody></tbody>
   `;
 
-  const investTbody = investTable.querySelector("tbody");
-  const investCtx = {
-    tbody: investTbody,
-    addRow: null,
-    onOverlapCleared,
-    onScheduledUpdate,
-  };
-  sortByStartTime(investTasks).forEach((t) => {
-    const goal = storedGoals[t.task];
-    const goalTime = goal?.goalTime || "";
-    const scheduledTime = t.scheduledTime ?? goal?.scheduledTime ?? "";
-    investTbody.appendChild(
-      createBudgetTableRow(
-        t.task,
-        goalTime,
-        scheduledTime,
-        true,
-        investCtx,
-        null,
-        t.slotIndex,
-        t.rowMemo,
-      ),
-    );
-  });
-  investTableWrap.appendChild(investTable);
-  investBlock.appendChild(investTableWrap);
+    const investTbody = investTable.querySelector("tbody");
+    const investCtx = {
+      tbody: investTbody,
+      addRow: null,
+      onOverlapCleared,
+      onScheduledUpdate,
+    };
+    sortByStartTime(taskEntries).forEach((t) => {
+      const goal = storedGoals[t.task];
+      const goalTime = goal?.goalTime || "";
+      const scheduledTime = t.scheduledTime ?? goal?.scheduledTime ?? "";
+      investTbody.appendChild(
+        createBudgetTableRow(
+          t.task,
+          goalTime,
+          scheduledTime,
+          true,
+          investCtx,
+          null,
+          t.slotIndex,
+          t.rowMemo,
+        ),
+      );
+    });
+    investTableWrap.appendChild(investTable);
+    block.appendChild(investTableWrap);
+    return block;
+  }
+
+  const happinessHealthInvestBlock = renderInvestBudgetTableBlock(
+    investHappinessHealthTasks,
+  );
+  const dreamSideInvestBlock =
+    renderInvestBudgetTableBlock(investDreamSideTasks);
 
   const consumeBlock = document.createElement("div");
   consumeBlock.className =
@@ -12392,7 +12496,7 @@ export function renderTimeBudgetTablesForCalendar(
 
   const basicSection = wrapBlockAsSection(
     basicBlock,
-    "1. 수면, 근무시간 배치",
+    "1. 수면·근무 시간 배치",
     () =>
       showCalendarBudgetTaskModal({
         mode: "add",
@@ -12400,20 +12504,37 @@ export function renderTimeBudgetTablesForCalendar(
       }),
     "수면·근무 예정만 추가",
   );
-  const investSection = wrapBlockAsSection(
-    investBlock,
-    "2. 생산적 과제 배치",
-    () =>
-      showCalendarBudgetTaskModal({
-        mode: "add",
-        addTaskOptions: calendarBudgetModalOptionsProductive,
-        calendarBudgetProductivePicker: true,
-      }),
-    "생산적 과제만 추가",
+  const productiveSectionLayouts = [
+    {
+      block: happinessHealthInvestBlock,
+      title: "2. 행복/건강 과제 배치",
+      buckets: ["happiness", "health"],
+      addTitle: "행복·건강 과제만 추가",
+    },
+    {
+      block: dreamSideInvestBlock,
+      title: "3. 꿈, 부수입 과제 배치",
+      buckets: ["dream", "sideincome"],
+      addTitle: "꿈·부수입 과제만 추가",
+    },
+  ];
+  const productiveSections = productiveSectionLayouts.map((layout) =>
+    wrapBlockAsSection(
+      layout.block,
+      layout.title,
+      () =>
+        showCalendarBudgetTaskModal({
+          mode: "add",
+          addTaskOptions: calendarBudgetModalOptionsProductive,
+          calendarBudgetProductiveBuckets: layout.buckets,
+        }),
+      layout.addTitle,
+    ),
   );
+
   const consumeSection = wrapBlockAsSection(
     consumeBlock,
-    "3. 비생산적 과제 배치",
+    "4. 비생산적 과제 배치",
     () =>
       showCalendarBudgetTaskModal({
         mode: "add",
@@ -12438,7 +12559,12 @@ export function renderTimeBudgetTablesForCalendar(
 
   function updateRemaining() {
     let plannedSum = 0;
-    [basicBlock, investBlock, consumeBlock].forEach((block) => {
+    [
+      basicBlock,
+      happinessHealthInvestBlock,
+      dreamSideInvestBlock,
+      consumeBlock,
+    ].forEach((block) => {
       block.querySelectorAll("tbody tr").forEach((tr) => {
         plannedSum += scheduledRowHours(tr);
       });
@@ -12460,7 +12586,7 @@ export function renderTimeBudgetTablesForCalendar(
     todoWrap.appendChild(todoSectionEl);
     fourPanels.appendChild(todoWrap);
   }
-  fourPanels.appendChild(investSection);
+  productiveSections.forEach((sec) => fourPanels.appendChild(sec));
   fourPanels.appendChild(consumeSection);
 
   if (topBarLeft) {
