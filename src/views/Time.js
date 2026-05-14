@@ -12,6 +12,7 @@ import {
   getPaymentOptions,
 } from "./Asset.js";
 import { EXPENSE_MODAL_CLASSIFICATIONS } from "../expenseModalClassifications.js";
+import { BAG_DOLLAR_PATHS_INNER } from "../utils/expenseLedgerIcons.js";
 import {
   getKpiSyncedTaskNames,
   syncHabitTrackerLogs,
@@ -6851,9 +6852,11 @@ export function render() {
         if (selected) btn.classList.add("selected");
         if (opt.color) btn.classList.add(opt.color);
         btn.dataset.label = opt.label;
-        if (opt.svg) {
+        const svgInnerPaths =
+          opt.svg || (flowType === "입금" ? BAG_DOLLAR_PATHS_INNER : "");
+        if (svgInnerPaths) {
           btn.classList.add("time-task-log-expense-cls-btn-with-icon");
-          btn.innerHTML = `<span class="time-task-log-expense-cls-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${opt.svg}</svg></span><span class="time-task-log-expense-cls-label">${escapeHtml(opt.label)}</span>`;
+          btn.innerHTML = `<span class="time-task-log-expense-cls-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${svgInnerPaths}</svg></span><span class="time-task-log-expense-cls-label">${escapeHtml(opt.label)}</span>`;
         } else {
           btn.textContent = opt.label;
         }

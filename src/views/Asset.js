@@ -50,11 +50,9 @@ import {
   writeInsuranceKindOptionsMemRaw,
 } from "../utils/assetUiSessionMem.js";
 import { confirmDeleteRow } from "../utils/confirmModal.js";
+import { EXPENSE_MODAL_CLASSIFICATIONS } from "../expenseModalClassifications.js";
+import { getExpenseLedgerIconSvg } from "../utils/expenseLedgerIcons.js";
 import { showToast } from "../utils/showToast.js";
-
-/** 모바일 지출입력장 거래 추가 FAB — 근무표·시간가계부와 동일 아이콘 */
-const ASSET_EXPENSE_MOBILE_FAB_SVG =
-  '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>';
 
 const DEBT_ROWS_KEY = "asset_debt_rows";
 const ASSET_ROWS_KEY = "asset_asset_rows";
@@ -66,6 +64,10 @@ const ANNUITY_ROWS_KEY = "asset_annuity_rows";
 /** renderMain으로 패널이 다시 그려져도 가계부/현금흐름 등 하위 탭 유지 (근무표 `lp_work_schedule_subview` 와 동일 패턴) */
 const SESSION_ASSET_SUBVIEW_KEY = "lp_asset_subview";
 const ASSET_SUBVIEWS = new Set(["expense", "cashflow", "networth", "plan"]);
+
+/** 가계부 거래 추가 + : 할일 줄 `CALENDAR_TOOLBAR_QUICK_ADD_ICON`(시간가계부 +) 과 동일 */
+const ASSET_EXPENSE_LEDGER_PLUS_SVG =
+  '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>';
 
 function readSavedAssetSubView() {
   try {
@@ -763,6 +765,11 @@ function collectAssetRowsFromDOM(tableEl) {
   return rows;
 }
 
+/** 소비 기록 모달과 동일 라벨 → 아이콘 path (가계부 거래 분류 패널 지출 그리드용) */
+const EXPENSE_MODAL_CLASSIFICATION_BY_LABEL = new Map(
+  EXPENSE_MODAL_CLASSIFICATIONS.map((o) => [o.label, o]),
+);
+
 /** 다른 드롭다운 패널 모두 닫기 (겹침 방지) */
 function closeAllDebtDropdownPanels(exceptPanel = null) {
   const selectors =
@@ -1380,7 +1387,7 @@ function createSavingsGoalDropdown(initialValue, onUpdate) {
 }
 
 /** 지출입력장 카테고리 드롭다운 - 고정비, 변동비, 저축, 투자, 기타 */
-/** 큰분류 드롭다운 - 선택 → 지출(파랑) / 입금(빨강) */
+/** 큰분류 드롭다운 - 선택 → 지출(적색) / 입금(청색) */
 function createExpenseFlowTypeDropdown(initialValue, onUpdate) {
   const FLOW_OPTIONS = [
     { label: "지출", value: "지출", color: "asset-flow-expense" },
@@ -1548,6 +1555,9 @@ function createExpenseClassificationDropdownByFlowType(initialFlowType, initialC
   let flowType = initialFlowType || "";
   const clsToCat = getClassificationToCategoryMap();
 
+  const svgStrokeOpen =
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">';
+
   function getColorClass(val) {
     const category = clsToCat[val] || "";
     return getExpenseCategoryOptions().find((o) => o.label === category)?.color || "";
@@ -1555,103 +1565,223 @@ function createExpenseClassificationDropdownByFlowType(initialFlowType, initialC
 
   function updateDisplay() {
     const val = classificationInput.value || "";
-    const opts = getClassificationsByFlowType(flowType);
     display.textContent = val || "선택";
     const canSelect = flowType === "입금" || flowType === "지출";
     display.className = "asset-expense-classification-display " + (canSelect ? "" : "is-disabled ") + getColorClass(val);
   }
 
   const panel = document.createElement("div");
-  panel.className = "asset-expense-classification-panel asset-expense-classification-panel--pills";
+  panel.className = "asset-expense-classification-panel";
   panel.hidden = true;
 
   let closeHandler = null;
+
+  function detachCloseHandler() {
+    if (closeHandler) {
+      document.removeEventListener("mousedown", closeHandler, true);
+      closeHandler = null;
+    }
+  }
+
+  function hideClassificationPanel() {
+    panel.hidden = true;
+    panel.style.maxHeight = "";
+    panel.style.overflow = "";
+    panel.style.overflowY = "";
+    panel.classList.remove("asset-expense-classification-panel--modal-popover");
+    detachCloseHandler();
+  }
 
   function getCategoryColorClass(category) {
     const opt = getExpenseCategoryOptions().find((o) => o.label === category);
     return opt ? opt.color : "expense-cat-teal";
   }
 
+  /** 새 거래 모달·인라인 패널 안에서 고정 배치 및 높이(모달에서는 스크롤 없이 안에 맞춤) */
+  function syncPanelFixedPosition() {
+    const trxShell = wrap.closest(".asset-expense-transaction-modal-panel-shell");
+    const shell = trxShell || wrap.closest(".asset-expense-inline-panel") || null;
+    const rect = display.getBoundingClientRect();
+    const pad = 10;
+    let left = rect.left;
+    let width = Math.max(rect.width, 200);
+
+    if (shell) {
+      const sr = shell.getBoundingClientRect();
+      const minLeft = sr.left + pad;
+      const maxRight = sr.right - pad;
+      let candidateLeft = left;
+      let candidateW = width;
+      if (candidateLeft + candidateW > maxRight) {
+        candidateW = Math.max(160, maxRight - Math.max(candidateLeft, minLeft));
+      }
+      if (candidateLeft < minLeft) candidateLeft = minLeft;
+      if (candidateLeft + candidateW > maxRight) {
+        candidateLeft = Math.max(minLeft, maxRight - candidateW);
+      }
+      width = candidateW;
+      left = candidateLeft;
+      const isExpensePopover =
+        trxShell &&
+        panel.classList.contains("asset-expense-classification-panel--expense-icons");
+      if (isExpensePopover) {
+        panel.style.maxHeight = "";
+        panel.style.overflow = "visible";
+        panel.style.overflowY = "visible";
+        panel.classList.add("asset-expense-classification-panel--modal-popover");
+        left = minLeft;
+        width = Math.max(candidateW, maxRight - minLeft);
+      } else {
+        panel.classList.remove("asset-expense-classification-panel--modal-popover");
+        const bottomSpace = sr.bottom - rect.bottom - 10;
+        panel.style.maxHeight = `${Math.max(120, Math.floor(Math.min(bottomSpace, window.innerHeight * 0.52)))}px`;
+        panel.style.overflow = "";
+        panel.style.overflowY = "";
+      }
+    } else {
+      panel.classList.remove("asset-expense-classification-panel--modal-popover");
+      panel.style.maxHeight = "";
+      panel.style.overflow = "";
+      panel.style.overflowY = "";
+      const vwPad = 12;
+      width = Math.min(width, window.innerWidth - vwPad * 2);
+      left = Math.min(Math.max(vwPad, left), window.innerWidth - vwPad - width);
+    }
+
+    panel.style.position = "fixed";
+    panel.style.left = `${Math.round(left)}px`;
+    const tentativeTop = rect.bottom + 2;
+    panel.style.top = `${Math.round(tentativeTop)}px`;
+    panel.style.width = `${Math.round(width)}px`;
+    panel.style.right = "auto";
+    panel.style.minWidth = "";
+    panel.style.maxWidth = "";
+    panel.style.boxSizing = "border-box";
+
+    const isExpenseModalPop =
+      trxShell &&
+      panel.classList.contains("asset-expense-classification-panel--expense-icons") &&
+      panel.classList.contains("asset-expense-classification-panel--modal-popover");
+    if (isExpenseModalPop && shell) {
+      const vwPad = 8;
+      const finish = () => {
+        const sr = shell.getBoundingClientRect();
+        const availBot = Math.min(sr.bottom, window.innerHeight - vwPad);
+        const availTop = Math.max(sr.top, vwPad) + vwPad;
+        const bh = panel.getBoundingClientRect().height;
+        let topPx = rect.bottom + 2;
+        const fitsBelow = topPx + bh <= availBot + 1;
+        if (!fitsBelow) {
+          const aboveCandidate = rect.top - 2 - bh;
+          if (aboveCandidate >= availTop) {
+            topPx = aboveCandidate;
+          } else {
+            topPx = Math.min(topPx, Math.max(availTop, availBot - bh));
+          }
+        }
+        if (topPx < availTop) topPx = availTop;
+        panel.style.top = `${Math.round(topPx)}px`;
+      };
+      requestAnimationFrame(() => requestAnimationFrame(finish));
+    }
+  }
+
+  function bindOptionClose(btn, optLabel, category) {
+    btn.addEventListener("mousedown", (e) => e.stopPropagation());
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      classificationInput.value = optLabel;
+      categoryInput.value = category;
+      updateDisplay();
+      hideClassificationPanel();
+      onSelect?.(optLabel, category);
+    });
+  }
+
   function buildPanel() {
     panel.innerHTML = "";
+    panel.className = "asset-expense-classification-panel";
+
     const opts = getClassificationsByFlowType(flowType);
-    opts.forEach((opt) => {
-      const category = clsToCat[opt.label] || "";
-      const pill = document.createElement("button");
-      pill.type = "button";
-      pill.className = "asset-expense-classification-pill " + getCategoryColorClass(category);
-      pill.textContent = opt.label;
-      pill.addEventListener("mousedown", (e) => e.stopPropagation());
-      pill.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        classificationInput.value = opt.label;
-        categoryInput.value = category;
-        updateDisplay();
-        panel.hidden = true;
-        if (closeHandler) document.removeEventListener("mousedown", closeHandler, true);
-        onSelect?.(opt.label, category);
+
+    if (flowType === "입금") {
+      panel.classList.add("asset-expense-classification-panel--income-list");
+      opts.forEach((opt) => {
+        const category = clsToCat[opt.label] || "";
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = "asset-expense-classification-dropdown-text-row";
+        row.textContent = opt.label;
+        bindOptionClose(row, opt.label, category);
+        panel.appendChild(row);
       });
-      panel.appendChild(pill);
-    });
+      return;
+    }
+
+    if (flowType === "지출") {
+      panel.classList.add("asset-expense-classification-panel--expense-icons");
+      opts.forEach((opt) => {
+        const category = clsToCat[opt.label] || "";
+        const modalOpt = EXPENSE_MODAL_CLASSIFICATION_BY_LABEL.get(opt.label);
+        const btn = document.createElement("button");
+        btn.type = "button";
+        const colorCls = opt.color || getCategoryColorClass(category);
+        btn.className = "asset-expense-classification-expense-icon-btn " + colorCls;
+        if (modalOpt?.svg) {
+          btn.classList.add("asset-expense-classification-expense-icon-btn--has-icon");
+          btn.innerHTML =
+            `<span class="asset-expense-classification-expense-icon" aria-hidden="true">${svgStrokeOpen}${modalOpt.svg}</svg></span>` +
+            `<span class="asset-expense-classification-expense-label">${escapeHtml(opt.label)}</span>`;
+        } else {
+          btn.classList.add("asset-expense-classification-expense-icon-btn--text-only");
+          btn.textContent = opt.label;
+        }
+        bindOptionClose(btn, opt.label, category);
+        panel.appendChild(btn);
+      });
+    }
   }
 
   display.addEventListener("click", (e) => {
     e.stopPropagation();
     if (panel.hidden) {
+      closeAllDebtDropdownPanels(panel);
+      document.body.appendChild(panel);
+
       if (flowType !== "입금" && flowType !== "지출") {
-        closeAllDebtDropdownPanels(panel);
-        const rect = display.getBoundingClientRect();
-        panel.style.top = `${rect.bottom + 2}px`;
-        panel.style.left = `${rect.left}px`;
-        panel.style.minWidth = `${Math.max(rect.width, 200)}px`;
-        panel.style.maxWidth = `min(26.25rem, calc(100vw - ${Math.round(rect.left) + 24}px))`;
-        document.body.appendChild(panel);
-        panel.innerHTML = '<p class="asset-expense-classification-hint">큰 분류(지출/입금)를 먼저 선택해 주세요.</p>';
+        panel.className = "asset-expense-classification-panel asset-expense-classification-panel--hint-only";
+        panel.innerHTML =
+          '<p class="asset-expense-classification-hint">큰 분류(지출/입금)를 먼저 선택해 주세요.</p>';
+        syncPanelFixedPosition();
         panel.hidden = false;
         closeHandler = (ev) => {
-          if (panel.hidden) {
-            document.removeEventListener("mousedown", closeHandler, true);
-            return;
-          }
+          if (panel.hidden) return;
           const inWrap = wrap.contains(ev.target);
           const inPanel = panel.contains(ev.target);
-          if (!inWrap && !inPanel) {
-            panel.hidden = true;
-            document.removeEventListener("mousedown", closeHandler, true);
-          }
+          if (!inWrap && !inPanel) hideClassificationPanel();
         };
         setTimeout(() => document.addEventListener("mousedown", closeHandler, true), 0);
         return;
       }
-      closeAllDebtDropdownPanels(panel);
-      const rect = display.getBoundingClientRect();
-      panel.style.top = `${rect.bottom + 2}px`;
-      panel.style.left = `${rect.left}px`;
-      panel.style.minWidth = `${Math.max(rect.width, 200)}px`;
-      panel.style.maxWidth = `min(26.25rem, calc(100vw - ${Math.round(rect.left) + 24}px))`;
-      document.body.appendChild(panel);
+
       buildPanel();
+      syncPanelFixedPosition();
       panel.hidden = false;
       closeHandler = (ev) => {
-        if (panel.hidden) {
-          document.removeEventListener("mousedown", closeHandler, true);
-          return;
-        }
+        if (panel.hidden) return;
         const inWrap = wrap.contains(ev.target);
         const inPanel = panel.contains(ev.target);
-        if (!inWrap && !inPanel) {
-          panel.hidden = true;
-          document.removeEventListener("mousedown", closeHandler, true);
-        }
+        if (!inWrap && !inPanel) hideClassificationPanel();
       };
       setTimeout(() => document.addEventListener("mousedown", closeHandler, true), 0);
     } else {
-      panel.hidden = true;
+      hideClassificationPanel();
     }
   });
 
   function refresh(newFlowType) {
+    hideClassificationPanel();
     flowType = newFlowType || "";
     const opts = getClassificationsByFlowType(flowType);
     const currentVal = classificationInput.value;
@@ -1766,8 +1896,11 @@ function createExpenseClassificationDropdown(category, initialValue, onUpdate) {
   return { wrap, input, refresh };
 }
 
-/** 지출입력장 결제수단 드롭다운 - 가계부 설정에서 등록한 결제수단만 선택 (타이핑/추가/삭제 없음) */
-function createExpensePaymentInput(initialValue, onUpdate) {
+/** 지출입력장 결제수단. `opts.inlineButtons`는 모달/인라인 패널(새 거래·수정)만 true → 옵션을 버튼으로 노출.
+ * 목록 카드(view)는 false — 저장된 하나만 다른 태그와 같이 칩으로 표시(선택 UI 없음).
+ * 입금 시 비활성화(setPaymentIncomeMode), 지출 저장 시 결제수단 검증 유지.
+ */
+function createExpensePaymentInput(initialValue, onUpdate, opts = {}) {
   const wrap = document.createElement("div");
   wrap.className = "asset-expense-payment-wrap";
 
@@ -1776,74 +1909,120 @@ function createExpensePaymentInput(initialValue, onUpdate) {
   input.className = "asset-expense-input-payment";
   input.value = initialValue || "";
 
-  const display = document.createElement("span");
-  display.className = "asset-expense-payment-display";
+  let incomeDepositOff = false;
 
-  function updateDisplay() {
-    const val = (input.value || "").trim();
-    display.textContent = val || "선택";
-    display.className = "asset-expense-payment-display" + (val ? " has-value" : "");
+  if (!opts.inlineButtons) {
+    const display = document.createElement("span");
+    display.className = "asset-expense-payment-display";
+
+    function repaintDisplay() {
+      if (incomeDepositOff) {
+        display.textContent = "—";
+        display.className =
+          "asset-expense-payment-display asset-expense-payment-display--income-placeholder";
+        return;
+      }
+      const val = (input.value || "").trim();
+      display.textContent = val || "-";
+      display.className = "asset-expense-payment-display" + (val ? " has-value" : "");
+    }
+
+    function setPaymentIncomeMode(on) {
+      incomeDepositOff = !!on;
+      wrap.classList.toggle("asset-expense-payment-wrap--income-muted", incomeDepositOff);
+      if (incomeDepositOff) {
+        input.value = "";
+      }
+      repaintDisplay();
+      onUpdate?.();
+    }
+
+    repaintDisplay();
+    wrap.appendChild(input);
+    wrap.appendChild(display);
+
+    return { wrap, input, setPaymentIncomeMode };
   }
 
-  const panel = document.createElement("div");
-  panel.className = "asset-expense-payment-panel";
-  panel.hidden = true;
+  wrap.classList.add("asset-expense-payment-wrap--modal-btns");
 
-  function updatePanelPosition() {
-    const rect = display.getBoundingClientRect();
-    panel.style.top = `${rect.bottom + 2}px`;
-    panel.style.left = `${rect.left}px`;
-    panel.style.minWidth = `${Math.max(rect.width, 160)}px`;
-  }
+  const group = document.createElement("div");
+  group.className = "asset-expense-payment-btn-group";
+  group.setAttribute("role", "group");
+  group.setAttribute("aria-label", "결제수단");
 
-  function openPanel() {
-    panel.innerHTML = "";
-    const all = getPaymentOptions();
-    all.forEach((opt) => {
-      const row = document.createElement("div");
-      row.className = "asset-expense-payment-option";
-      row.innerHTML = `<span class="asset-expense-payment-tag">${opt}</span>`;
-      row.dataset.value = opt;
-      row.addEventListener("click", () => {
+  const incomeHint = document.createElement("span");
+  incomeHint.className = "asset-expense-payment-income-hint";
+  incomeHint.textContent = "—";
+  incomeHint.hidden = true;
+
+  const btnByValue = new Map();
+
+  function buildButtons() {
+    group.replaceChildren();
+    btnByValue.clear();
+    getPaymentOptions().forEach((opt) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "asset-expense-payment-btn";
+      btn.dataset.value = opt;
+      btn.textContent = opt;
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (incomeDepositOff) return;
         input.value = opt;
-        updateDisplay();
-        panel.hidden = true;
+        syncButtonSelection();
         onUpdate?.();
       });
-      panel.appendChild(row);
+      group.appendChild(btn);
+      btnByValue.set(opt, btn);
     });
-    closeAllDebtDropdownPanels(panel);
-    updatePanelPosition();
-    document.body.appendChild(panel);
-    panel.hidden = false;
   }
 
-  display.addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (panel.hidden) {
-      openPanel();
-      const handler = (ev) => {
-        document.removeEventListener("click", handler);
-        if (!wrap.contains(ev.target) && !panel.contains(ev.target)) {
-          panel.hidden = true;
-        }
-      };
-      setTimeout(() => document.addEventListener("click", handler), 0);
+  function syncButtonSelection() {
+    const val = (input.value || "").trim();
+    btnByValue.forEach((btn, opt) => {
+      const sel = val === opt;
+      btn.classList.toggle("is-selected", sel);
+      btn.setAttribute("aria-pressed", sel ? "true" : "false");
+    });
+  }
+
+  function setPaymentIncomeMode(on) {
+    incomeDepositOff = !!on;
+    wrap.classList.toggle("asset-expense-payment-wrap--income-muted", incomeDepositOff);
+    if (incomeDepositOff) {
+      input.value = "";
+      syncButtonSelection();
+      group.hidden = true;
+      incomeHint.hidden = false;
     } else {
-      panel.hidden = true;
+      incomeHint.hidden = true;
+      group.hidden = false;
+      buildButtons();
+      syncButtonSelection();
     }
-  });
+    btnByValue.forEach((btn) => {
+      btn.disabled = incomeDepositOff;
+    });
+    onUpdate?.();
+  }
 
-  updateDisplay();
+  buildButtons();
+  syncButtonSelection();
   wrap.appendChild(input);
-  wrap.appendChild(display);
-  wrap.appendChild(panel);
+  wrap.appendChild(group);
+  wrap.appendChild(incomeHint);
 
-  return { wrap, input };
+  return { wrap, input, setPaymentIncomeMode };
 }
 
 function parseNum(val) {
-  const n = parseFloat(String(val || "").replace(/,/g, ""));
+  const s = String(val || "")
+    .replace(/,/g, "")
+    .replace(/원/g, "")
+    .trim();
+  const n = parseFloat(s);
   return Number.isNaN(n) ? null : n;
 }
 
@@ -1860,6 +2039,21 @@ function formatNum(val) {
   return n === null ? "" : n.toLocaleString("ko-KR");
 }
 
+/** 가계부 금액 입력 표시(blur)·초기값: 천 단위 + 원 */
+function formatExpenseLedgerAmount(val) {
+  if (val === null || val === undefined || val === "") return "";
+  const n = typeof val === "number" && !Number.isNaN(val) ? val : parseNum(val);
+  if (n === null) return "";
+  return `${formatNum(n)}원`;
+}
+
+function expenseAmountInitialInputValue(raw) {
+  const s = String(raw ?? "").trim();
+  if (!s) return "";
+  const n = parseNum(s);
+  return n === null ? s : formatExpenseLedgerAmount(n);
+}
+
 /** 가계부 행(모달/버튼 확정) — 필수값 충족 시에만 메모리·서버에 반영 */
 function canCommitAssetExpenseRow(d) {
   if (!d || typeof d !== "object") return { ok: false, msg: "입력이 비어 있습니다." };
@@ -1868,7 +2062,7 @@ function canCommitAssetExpenseRow(d) {
   if (ft !== "입금" && ft !== "지출") return { ok: false, msg: "큰분류(지출/입금)를 선택해 주세요." };
   if (parseNum(d.amount) === null) return { ok: false, msg: "금액을 입력해 주세요." };
   if (!String(d.classification || "").trim()) return { ok: false, msg: "소비/수입 분류를 선택해 주세요." };
-  if (!String(d.payment || "").trim()) return { ok: false, msg: "결제수단을 선택해 주세요." };
+  if (ft === "지출" && !String(d.payment || "").trim()) return { ok: false, msg: "결제수단을 선택해 주세요." };
   return { ok: true, msg: "" };
 }
 
@@ -1887,6 +2081,16 @@ function readExpenseDataFromTr(tr) {
   const amountInput = tr.querySelector(".asset-expense-input-amount");
   const paymentInput = tr.querySelector(".asset-expense-input-payment");
   const memoInput = tr.querySelector(".asset-expense-input-memo");
+  let memo = "";
+  if (memoInput) {
+    memo = memoInput.value || "";
+  } else {
+    const rowId = (tr.dataset.assetExpenseRowId || "").trim();
+    if (rowId) {
+      const mem = loadExpenseRows().find((r) => String(r.id) === rowId);
+      if (mem != null && mem.memo != null) memo = String(mem.memo);
+    }
+  }
   return {
     id,
     name: nameInput?.value || "",
@@ -1894,9 +2098,15 @@ function readExpenseDataFromTr(tr) {
     flowType: flowTypeInput?.value || "",
     category: categoryInput?.value || "",
     classification: classificationInput?.value || "",
-    amount: amountInput?.value || "",
+    amount: amountInput
+      ? (() => {
+          const raw = (amountInput.value || "").trim();
+          const n = parseNum(raw);
+          return n === null ? raw : formatNum(n);
+        })()
+      : "",
     payment: paymentInput?.value || "",
-    memo: memoInput?.value || "",
+    memo,
   };
 }
 
@@ -2185,12 +2395,18 @@ function renderNetworthView() {
   netWorthDashboard.innerHTML = `
     <div class="asset-networth-dashboard-formula">
       <div class="asset-networth-dashboard-formula-item">
-        <span class="asset-networth-dashboard-formula-label">총 자산</span>
+        <span class="asset-networth-dashboard-formula-label asset-networth-dashboard-formula-label--with-icon">
+          <img src="/asset-icons/networth-assets-coins.png" alt="" width="22" height="22" class="asset-networth-dashboard-formula-icon" aria-hidden="true" />
+          총 자산
+        </span>
         <span class="asset-networth-dashboard-formula-value asset-networth-dashboard-assets-value">-</span>
       </div>
       <span class="asset-networth-dashboard-formula-op">−</span>
       <div class="asset-networth-dashboard-formula-item">
-        <span class="asset-networth-dashboard-formula-label">총 대출</span>
+        <span class="asset-networth-dashboard-formula-label asset-networth-dashboard-formula-label--with-icon">
+          <img src="/asset-icons/networth-debt-hand-coin.png" alt="" width="22" height="22" class="asset-networth-dashboard-formula-icon" aria-hidden="true" />
+          총 부채
+        </span>
         <span class="asset-networth-dashboard-formula-value asset-networth-dashboard-debt-value">-</span>
       </div>
       <span class="asset-networth-dashboard-formula-eq">=</span>
@@ -4648,28 +4864,41 @@ function renderExpenseView(options = {}) {
     `;
   } else {
     filterBar.innerHTML = `
-    <div class="time-filter-tabs">
-      <button type="button" class="time-filter-btn active" data-filter="month">월별</button>
-      <button type="button" class="time-filter-btn" data-filter="day">하루</button>
-      <button type="button" class="time-filter-btn" data-filter="range">날짜 선택</button>
+    <div class="time-filter-tabs todo-category-tabs time-view-tabs time-view-tabs--segmented todo-list-segment-tabs">
+      <span class="time-view-tabs-thumb" aria-hidden="true"></span>
+      <button type="button" class="time-filter-btn time-view-tab active" data-filter="month">월별</button>
+      <button type="button" class="time-filter-btn time-view-tab" data-filter="day">하루</button>
+      <button type="button" class="time-filter-btn time-view-tab" data-filter="range">날짜 선택</button>
     </div>
     <div class="time-filter-day-wrap" data-filter-wrap="day" style="display:none">
       <div class="time-filter-day-nav">
-        <button type="button" class="time-filter-day-prev" aria-label="이전 날짜">&lt;</button>
+        <button type="button" class="time-filter-day-prev" aria-label="이전 날짜">
+          <img src="/toolbaricons/caret-left-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
+        </button>
         <span class="time-filter-day-display">${formatDateForDayFilter(filterStartDate)}</span>
-        <button type="button" class="time-filter-day-next" aria-label="다음 날짜">&gt;</button>
+        <button type="button" class="time-filter-day-next" aria-label="다음 날짜">
+          <img src="/toolbaricons/caret-right-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
+        </button>
       </div>
     </div>
     <div class="time-filter-month-wrap" data-filter-wrap="month">
       <div class="asset-cashflow-month-nav" aria-label="월 선택">
-        <button type="button" class="asset-cashflow-year-btn asset-expense-month-prev" aria-label="이전 달">&lt;</button>
+        <button type="button" class="asset-cashflow-year-btn asset-expense-month-prev" aria-label="이전 달">
+          <img src="/toolbaricons/caret-left-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
+        </button>
         <span class="asset-cashflow-month-display" id="asset-expense-month-display">${filterMonth}월</span>
-        <button type="button" class="asset-cashflow-year-btn asset-expense-month-next" aria-label="다음 달">&gt;</button>
+        <button type="button" class="asset-cashflow-year-btn asset-expense-month-next" aria-label="다음 달">
+          <img src="/toolbaricons/caret-right-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
+        </button>
       </div>
       <div class="asset-cashflow-year-nav" aria-label="연도 선택">
-        <button type="button" class="asset-cashflow-year-btn" aria-label="이전 연도">&lt;</button>
+        <button type="button" class="asset-cashflow-year-btn" aria-label="이전 연도">
+          <img src="/toolbaricons/caret-left-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
+        </button>
         <span class="asset-cashflow-year-display">${filterYear}</span>
-        <button type="button" class="asset-cashflow-year-btn" aria-label="다음 연도">&gt;</button>
+        <button type="button" class="asset-cashflow-year-btn" aria-label="다음 연도">
+          <img src="/toolbaricons/caret-right-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
+        </button>
       </div>
     </div>
     <div class="time-filter-range-wrap" data-filter-wrap="range" style="display:none">
@@ -4709,6 +4938,7 @@ function renderExpenseView(options = {}) {
       }
       syncExpenseMonthYearLabels();
       applyExpenseFilter();
+      syncExpenseFooterSummaryLabel();
       scheduleExpenseMemPullFromServer();
     });
     monthNextBtn?.addEventListener("click", () => {
@@ -4719,18 +4949,21 @@ function renderExpenseView(options = {}) {
       }
       syncExpenseMonthYearLabels();
       applyExpenseFilter();
+      syncExpenseFooterSummaryLabel();
       scheduleExpenseMemPullFromServer();
     });
     yearPrevBtn?.addEventListener("click", () => {
       filterYear -= 1;
       syncExpenseMonthYearLabels();
       applyExpenseFilter();
+      syncExpenseFooterSummaryLabel();
       scheduleExpenseMemPullFromServer();
     });
     yearNextBtn?.addEventListener("click", () => {
       filterYear += 1;
       syncExpenseMonthYearLabels();
       applyExpenseFilter();
+      syncExpenseFooterSummaryLabel();
       scheduleExpenseMemPullFromServer();
     });
   }
@@ -4747,6 +4980,7 @@ function renderExpenseView(options = {}) {
     endDateInput.value = filterEndDate;
     updateDayDisplay();
     applyExpenseFilter();
+    syncExpenseFooterSummaryLabel();
     scheduleExpenseMemPullFromServer();
   });
   dayNextBtn?.addEventListener("click", () => {
@@ -4757,6 +4991,7 @@ function renderExpenseView(options = {}) {
     endDateInput.value = filterEndDate;
     updateDayDisplay();
     applyExpenseFilter();
+    syncExpenseFooterSummaryLabel();
     scheduleExpenseMemPullFromServer();
   });
 
@@ -4802,45 +5037,171 @@ function renderExpenseView(options = {}) {
 
   const tableWrap = document.createElement("div");
   tableWrap.className = "asset-expense-table-wrap";
-  const table = document.createElement("table");
-  table.className = "asset-expense-table";
-  table.innerHTML = `
-    <colgroup>
-      <col class="asset-expense-col-date">
-      <col class="asset-expense-col-amount">
-      <col class="asset-expense-col-flow-type">
-      <col class="asset-expense-col-classification">
-      <col class="asset-expense-col-name">
-      <col class="asset-expense-col-payment">
-      <col class="asset-expense-col-category">
-      <col class="asset-expense-col-memo">
-      <col class="asset-expense-col-delete">
-    </colgroup>
-    <thead>
-      <tr>
-        <th class="asset-expense-th-date">거래일</th>
-        <th class="asset-expense-th-amount">금액</th>
-        <th class="asset-expense-th-flow-type">큰분류</th>
-        <th class="asset-expense-th-classification">소비/수입 분류</th>
-        <th class="asset-expense-th-name">소비/수입 명</th>
-        <th class="asset-expense-th-payment">결제수단</th>
-        <th class="asset-expense-th-category">카테고리</th>
-        <th class="asset-expense-th-memo">메모</th>
-        <th class="asset-expense-th-delete"></th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-    <tfoot class="asset-expense-tfoot">
-      <tr class="asset-expense-summary-row">
-        <td class="asset-expense-summary-label">합계</td>
-        <td class="asset-expense-summary-total">-</td>
-        <td colspan="7"></td>
-      </tr>
-    </tfoot>
+  const cardsListEl = document.createElement("div");
+  cardsListEl.className = "asset-expense-cards-list asset-expense-ledger-board";
+  const ledgerBoardShell = document.createElement("div");
+  ledgerBoardShell.className = "asset-expense-ledger-board-shell";
+  const ledgerColumnHead = document.createElement("div");
+  ledgerColumnHead.className = "asset-expense-ledger-column-head";
+  ledgerColumnHead.setAttribute("role", "presentation");
+  ledgerColumnHead.innerHTML = `
+    <span class="asset-expense-ledger-col asset-expense-ledger-col--detail">내역</span>
+    <span class="asset-expense-ledger-col asset-expense-ledger-col--amount">금액</span>
+    <span class="asset-expense-ledger-col asset-expense-ledger-col--date">날짜</span>
+    <span class="asset-expense-ledger-col asset-expense-ledger-col--tags">태그</span>
   `;
+  const ledgerBoardBody = document.createElement("div");
+  ledgerBoardBody.className = "asset-expense-ledger-board-body";
+  ledgerBoardShell.appendChild(ledgerColumnHead);
+  ledgerBoardShell.appendChild(ledgerBoardBody);
+  cardsListEl.appendChild(ledgerBoardShell);
+  const summaryCardsEl = document.createElement("div");
+  summaryCardsEl.className = "asset-expense-summary-cards";
+  summaryCardsEl.innerHTML = `
+    <div class="asset-expense-summary-card asset-expense-summary-card--income" aria-label="수입 합계">
+      <span class="asset-expense-summary-card-label">수입</span>
+      <span class="asset-expense-summary-card-value asset-expense-summary-card-value--income">-</span>
+      <span class="asset-expense-summary-card-hint">표시 중 합계</span>
+    </div>
+    <div class="asset-expense-summary-card asset-expense-summary-card--expense" aria-label="지출 합계">
+      <span class="asset-expense-summary-card-label">지출</span>
+      <span class="asset-expense-summary-card-value asset-expense-summary-card-value--expense">-</span>
+      <span class="asset-expense-summary-card-hint">표시 중 합계</span>
+    </div>
+    <div class="asset-expense-summary-card asset-expense-summary-card--net" aria-label="수입–지출 순액">
+      <span class="asset-expense-summary-card-label">총합계</span>
+      <span class="asset-expense-summary-card-value asset-expense-summary-card-value--net">-</span>
+      <span class="asset-expense-summary-card-hint">표시 중 기준</span>
+    </div>
+  `;
+  const summaryIncomeEl = summaryCardsEl.querySelector(".asset-expense-summary-card-value--income");
+  const summaryExpenseEl = summaryCardsEl.querySelector(".asset-expense-summary-card-value--expense");
+  const summaryNetEl = summaryCardsEl.querySelector(".asset-expense-summary-card-value--net");
 
-  const tbody = table.querySelector("tbody");
-  const totalEl = table.querySelector(".asset-expense-summary-total");
+  const summaryBar = document.createElement("div");
+  summaryBar.className = "asset-expense-summary-bar";
+  summaryBar.innerHTML = `
+    <span class="asset-expense-summary-label">합계</span>
+    <span class="asset-expense-summary-total">-</span>
+  `;
+  const totalEl = summaryBar.querySelector(".asset-expense-summary-total");
+
+  function formatExpenseLedgerDayTitle(dateStr) {
+    const slice = String(dateStr || "").slice(0, 10);
+    if (!slice || !/^\d{4}-\d{2}-\d{2}$/.test(slice)) return "";
+    const d = new Date(slice + "T12:00:00");
+    if (isNaN(d.getTime())) return slice;
+    const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+    const mo = d.getMonth() + 1;
+    const day = d.getDate();
+    return `${String(mo).padStart(2, "0")}월 ${String(day).padStart(2, "0")}일 ${weekdays[d.getDay()]}요일`;
+  }
+
+  /** 행 하나의 입금(+)·지출(-) 부호 금액 (미선택·파싱 불가 시 null) */
+  function expenseRowSignedAmount(rowEl) {
+    const amtRaw = parseNum(rowEl.querySelector(".asset-expense-input-amount")?.value);
+    const flowType = rowEl.querySelector(".asset-expense-input-flow-type")?.value || "";
+    if (amtRaw === null || (flowType !== "입금" && flowType !== "지출")) return null;
+    return flowType === "입금" ? Math.abs(amtRaw) : -Math.abs(amtRaw);
+  }
+
+  function syncExpenseFooterSummaryLabel() {
+    const labelSpan = summaryBar.querySelector(".asset-expense-summary-label");
+    if (!labelSpan) return;
+    if (filterType === "month") {
+      labelSpan.textContent = `${filterMonth}월 합계`;
+    } else if (filterType === "day") {
+      const t = formatExpenseLedgerDayTitle(filterStartDate);
+      labelSpan.textContent = t ? `${t} 합계` : "합계";
+    } else {
+      labelSpan.textContent = "기간 합계";
+    }
+  }
+
+  /** 날짜별 구역으로 카드 재배치 (표시 순서·그룹 헤더 동기화). 초기 진입 시에도 노드 트리에 붙기 전에 호출되므로 isConnected 로 막지 않음 */
+  function layoutExpenseLedgerGroups() {
+    if (!ledgerBoardBody) return;
+    const rows = [...cardsListEl.querySelectorAll(".asset-expense-row")];
+    rows.forEach((r) => r.remove());
+
+    rows.sort((a, b) => {
+      const da = (a.querySelector(".asset-expense-input-date")?.value || "").slice(0, 10);
+      const db = (b.querySelector(".asset-expense-input-date")?.value || "").slice(0, 10);
+      if (da !== db) return db.localeCompare(da);
+      const ida = String(a.dataset.assetExpenseRowId || "");
+      const idb = String(b.dataset.assetExpenseRowId || "");
+      return idb.localeCompare(ida);
+    });
+
+    const byDate = new Map();
+    for (const row of rows) {
+      const ds = (row.querySelector(".asset-expense-input-date")?.value || "").slice(0, 10);
+      const key = ds || "_nodate";
+      if (!byDate.has(key)) byDate.set(key, []);
+      byDate.get(key).push(row);
+    }
+
+    const dates = [...byDate.keys()].sort((a, b) => {
+      if (a === "_nodate") return 1;
+      if (b === "_nodate") return -1;
+      return b.localeCompare(a);
+    });
+
+    ledgerBoardBody.replaceChildren();
+
+    for (const dateKey of dates) {
+      const groupRows = byDate.get(dateKey);
+      const group = document.createElement("section");
+      group.className = "asset-expense-ledger-day-group";
+      group.dataset.expenseLedgerDate = dateKey === "_nodate" ? "" : dateKey;
+
+      const head = document.createElement("div");
+      head.className = "asset-expense-ledger-day-head";
+      const titleEl = document.createElement("span");
+      titleEl.className = "asset-expense-ledger-day-title";
+      titleEl.textContent =
+        dateKey === "_nodate" ? "날짜 미입력" : formatExpenseLedgerDayTitle(dateKey);
+      const ruleEl = document.createElement("span");
+      ruleEl.className = "asset-expense-ledger-day-head-rule";
+      ruleEl.setAttribute("aria-hidden", "true");
+      const dayTotalEl = document.createElement("span");
+      dayTotalEl.className = "asset-expense-ledger-day-total";
+      head.appendChild(titleEl);
+      head.appendChild(ruleEl);
+      head.appendChild(dayTotalEl);
+
+      const rowsWrap = document.createElement("div");
+      rowsWrap.className = "asset-expense-ledger-day-rows";
+      groupRows.forEach((r) => rowsWrap.appendChild(r));
+
+      group.appendChild(head);
+      group.appendChild(rowsWrap);
+      ledgerBoardBody.appendChild(group);
+    }
+
+    refreshExpenseLedgerDayGroupsFromFilter();
+  }
+
+  /** 필터 반영 후 일자 블록 표시 여부·당일 순액 갱신 */
+  function refreshExpenseLedgerDayGroupsFromFilter() {
+    ledgerBoardBody?.querySelectorAll(".asset-expense-ledger-day-group").forEach((group) => {
+      let net = 0;
+      let anyVisible = false;
+      group.querySelectorAll(".asset-expense-row").forEach((row) => {
+        if (row.style.display === "none" || row.hidden) return;
+        anyVisible = true;
+        const v = expenseRowSignedAmount(row);
+        if (v !== null) net += v;
+      });
+      group.style.display = anyVisible ? "" : "none";
+      const dayTotalSpan = group.querySelector(".asset-expense-ledger-day-total");
+      if (!dayTotalSpan || !anyVisible) return;
+      dayTotalSpan.textContent =
+        net === 0 ? "0원" : `${net > 0 ? "+" : ""}${formatNum(net)}원`;
+      dayTotalSpan.classList.toggle("asset-expense-ledger-day-total--positive", net > 0);
+      dayTotalSpan.classList.toggle("asset-expense-ledger-day-total--negative", net < 0);
+    });
+  }
 
   function isDateInRange(dateStr, type, y, m, start, end) {
     if (!dateStr) return false;
@@ -4896,40 +5257,48 @@ function renderExpenseView(options = {}) {
     const m = filterMonth;
     const start = startDateInput.value || filterStartDate;
     const end = endDateInput.value || filterEndDate;
-    tbody.querySelectorAll(".asset-expense-row").forEach((tr) => {
-      const dateInput = tr.querySelector(".asset-expense-input-date");
+    cardsListEl.querySelectorAll(".asset-expense-row").forEach((rowEl) => {
+      const dateInput = rowEl.querySelector(".asset-expense-input-date");
       const dateStr = dateInput?.value || "";
       const show = isDateInRange(dateStr, type, y, m, start, end);
-      tr.style.display = show ? "" : "none";
+      rowEl.style.display = show ? "" : "none";
     });
+    refreshExpenseLedgerDayGroupsFromFilter();
     updateExpenseTotals();
   }
 
   function updateExpenseTotals() {
-    let total = 0;
-    table.querySelectorAll(".asset-expense-row").forEach((tr) => {
-      if (tr.style.display === "none") return;
+    let incomeSum = 0;
+    let expenseSum = 0;
+    cardsListEl.querySelectorAll(".asset-expense-row").forEach((tr) => {
+      if (tr.style.display === "none" || tr.hidden) return;
       const amtRaw = parseNum(tr.querySelector(".asset-expense-input-amount")?.value);
       const flowType = tr.querySelector(".asset-expense-input-flow-type")?.value || "";
       if (amtRaw !== null && (flowType === "입금" || flowType === "지출")) {
-        const amt = flowType === "입금" ? Math.abs(amtRaw) : -Math.abs(amtRaw);
-        total += amt;
+        const amt = Math.abs(amtRaw);
+        if (flowType === "입금") incomeSum += amt;
+        else expenseSum += amt;
       }
     });
-    totalEl.textContent = total !== 0 ? formatNum(total) : "-";
+    const net = incomeSum - expenseSum;
+    totalEl.textContent = net !== 0 ? `${net > 0 ? "+" : ""}${formatNum(net)}원` : "-";
+    totalEl.classList.toggle("asset-expense-summary-total--positive", net > 0);
+    totalEl.classList.toggle("asset-expense-summary-total--negative", net < 0);
+    if (summaryIncomeEl)
+      summaryIncomeEl.textContent = incomeSum !== 0 ? `+${formatNum(incomeSum)}원` : "-";
+    if (summaryExpenseEl)
+      summaryExpenseEl.textContent = expenseSum !== 0 ? `-${formatNum(expenseSum)}원` : "-";
+    if (summaryNetEl)
+      summaryNetEl.textContent =
+        net !== 0 ? `${net > 0 ? "+" : ""}${formatNum(net)}원` : "-";
   }
 
   const addBtn = document.createElement("button");
   addBtn.type = "button";
-  addBtn.className = "asset-expense-add-task";
-  if (expenseMobile) {
-    addBtn.classList.add("todo-cards-add-btn", "asset-expense-mobile-fab-btn");
-    addBtn.innerHTML = ASSET_EXPENSE_MOBILE_FAB_SVG;
-    addBtn.title = "거래 추가";
-    addBtn.setAttribute("aria-label", "거래 추가");
-  } else {
-    addBtn.innerHTML = '<span class="asset-expense-add-icon">+</span>';
-  }
+  addBtn.className = "todo-list-toolbar-quick-add todo-add-btn time-ledger-add-plus-btn";
+  addBtn.innerHTML = ASSET_EXPENSE_LEDGER_PLUS_SVG;
+  addBtn.title = "거래 추가";
+  addBtn.setAttribute("aria-label", "거래 추가");
 
   function getTodayDateValue() {
     const d = new Date();
@@ -4947,7 +5316,7 @@ function renderExpenseView(options = {}) {
   }
 
   function saveExpense() {
-    const domRows = collectExpenseRowsFromDOM(table);
+    const domRows = collectExpenseRowsFromDOM(cardsListEl);
     const domIds = new Set(domRows.map((r) => String(r.id || "").trim()).filter(Boolean));
     const prev = loadExpenseRows();
     const { from: pf, to: pt } = getExpensePickerSqlBounds();
@@ -4974,9 +5343,84 @@ function renderExpenseView(options = {}) {
     window.dispatchEvent(new CustomEvent("asset-expense-transactions-saved"));
   }
 
+  function openExpenseTransactionModal({
+    mode,
+    data = {},
+    memSnapshot = null,
+    replaceCardEl = null,
+  }) {
+    if (document.querySelector(".asset-expense-transaction-modal")) {
+      showToast("입력 창을 닫은 뒤 다시 시도해 주세요.", "");
+      return;
+    }
+    const overlay = document.createElement("div");
+    overlay.className = "asset-expense-transaction-modal";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    if (mode !== "draft") {
+      const nm = String(data?.name || "").trim();
+      overlay.setAttribute("aria-label", nm ? `거래 수정: ${nm}` : "거래 수정");
+    } else {
+      overlay.setAttribute("aria-label", "새 거래");
+    }
+
+    const backdrop = document.createElement("div");
+    backdrop.className = "asset-expense-transaction-modal-backdrop";
+
+    const panelShell = document.createElement("div");
+    panelShell.className = "asset-expense-transaction-modal-panel-shell";
+
+    if (replaceCardEl) replaceCardEl.classList.add("asset-expense-row--ledger-modal-target");
+
+    const expenseModalCtx = {
+      cancel() {
+        if (replaceCardEl) replaceCardEl.classList.remove("asset-expense-row--ledger-modal-target");
+        overlay.remove();
+      },
+      commit(d) {
+        if (replaceCardEl) replaceCardEl.classList.remove("asset-expense-row--ledger-modal-target");
+        overlay.remove();
+        const viewRow = createExpenseRow(d, updateExpenseTotals, applyExpenseFilter, { mode: "view" });
+        if (replaceCardEl) {
+          replaceCardEl.replaceWith(viewRow);
+        } else {
+          cardsListEl.appendChild(viewRow);
+        }
+        saveExpense();
+        layoutExpenseLedgerGroups();
+        applyExpenseFilter();
+      },
+      deleteCard() {
+        if (replaceCardEl) replaceCardEl.classList.remove("asset-expense-row--ledger-modal-target");
+        overlay.remove();
+        if (replaceCardEl) replaceCardEl.remove();
+        saveExpense();
+        layoutExpenseLedgerGroups();
+        applyExpenseFilter();
+      },
+    };
+
+    backdrop.addEventListener("click", () => expenseModalCtx.cancel());
+
+    const formRoot =
+      mode === "draft"
+        ? createExpenseRow({}, updateExpenseTotals, applyExpenseFilter, {
+            mode: "draft",
+            expenseModalCtx,
+          })
+        : createExpenseRow({ ...data }, updateExpenseTotals, applyExpenseFilter, {
+            mode: "edit",
+            memSnapshot: memSnapshot || data,
+            expenseModalCtx,
+          });
+
+    panelShell.appendChild(formRoot);
+    overlay.appendChild(backdrop);
+    overlay.appendChild(panelShell);
+    document.body.appendChild(overlay);
+  }
+
   function createExpenseRow(data = {}, onTotalsUpdate, onFilterApply, options = {}) {
-    const tr = document.createElement("tr");
-    tr.className = "asset-expense-row";
     const uuidRe =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     const mode =
@@ -4986,11 +5430,17 @@ function renderExpenseView(options = {}) {
     const isView = mode === "view";
     const isDraft = mode === "draft";
     const isEdit = mode === "edit";
+    const expenseModalCtx = options.expenseModalCtx || null;
     const memSnapshot = isEdit
       ? options.memSnapshot
         ? { ...options.memSnapshot }
         : { ...data }
       : null;
+
+    const usePanel = isDraft || isEdit;
+    const rowEl = document.createElement(usePanel ? "div" : "article");
+    rowEl.className = "asset-expense-row";
+    if (isView) rowEl.classList.add("asset-expense-card");
 
     let rowId = "";
     if (data && data.id && uuidRe.test(String(data.id).trim())) {
@@ -4998,27 +5448,42 @@ function renderExpenseView(options = {}) {
     } else if (!isDraft) {
       rowId = newExpenseRowId() || "";
     }
-    if (rowId) tr.dataset.assetExpenseRowId = rowId;
-    if (isDraft) tr.classList.add("asset-expense-row--draft");
-    if (isEdit) tr.classList.add("asset-expense-row--editing");
+    if (rowId) rowEl.dataset.assetExpenseRowId = rowId;
+    if (isDraft) rowEl.classList.add("asset-expense-row--draft");
+    if (isEdit) rowEl.classList.add("asset-expense-row--editing");
 
     const todayValue = getTodayDateValue();
     const dateValue = data.date || todayValue;
     const dateDisplayVal = formatDateYYMMDD(dateValue);
     const flowTypeValue = data.flowType ?? (data.category === "수입" ? "입금" : data.category ? "지출" : "");
-    const usePanel = isDraft || isEdit;
     const fieldsRowHtml = `
-      <td class="asset-expense-cell-date">
-        <span class="asset-expense-date-display">${dateDisplayVal}</span>
-        <input type="date" class="asset-expense-input-date" name="asset-expense-date" value="${dateValue}" tabindex="-1" />
-      </td>
-      <td class="asset-expense-cell-amount"><input type="text" class="asset-expense-input-amount" name="asset-expense-amount" placeholder="0" value="${(data.amount || "").replace(/"/g, "&quot;")}" /></td>
-      <td class="asset-expense-cell-flow-type"></td>
-      <td class="asset-expense-cell-classification"></td>
-      <td class="asset-expense-cell-name"><input type="text" class="asset-expense-input-name" name="asset-expense-name" placeholder="" value="${(data.name || "").replace(/"/g, "&quot;")}" /></td>
-      <td class="asset-expense-cell-payment"></td>
-      <td class="asset-expense-cell-category"></td>
-      <td class="asset-expense-cell-memo"><input type="text" class="asset-expense-input-memo" name="asset-expense-memo" placeholder="" value="${(data.memo || "").replace(/"/g, "&quot;")}" /></td>
+      <div class="asset-expense-card-inner asset-expense-card-inner--ledger">
+        <div class="asset-expense-ledger-col asset-expense-ledger-col--detail">
+          <div class="asset-expense-ledger-detail-inner">
+            <div class="asset-expense-ledger-icon-slot" aria-hidden="true"><span class="asset-expense-ledger-icon-inner"></span></div>
+            <div class="asset-expense-ledger-text-stack">
+              <div class="asset-expense-cell-name"><input type="text" class="asset-expense-input-name" name="asset-expense-name" placeholder="" value="${(data.name || "").replace(/"/g, "&quot;")}" /></div>
+            </div>
+          </div>
+        </div>
+        <div class="asset-expense-ledger-col asset-expense-ledger-col--amount">
+          <div class="asset-expense-cell-amount"><input type="text" class="asset-expense-input-amount" name="asset-expense-amount" placeholder="0" value="${expenseAmountInitialInputValue(data.amount || "").replace(/"/g, "&quot;")}" /></div>
+        </div>
+        <div class="asset-expense-ledger-col asset-expense-ledger-col--date">
+          <div class="asset-expense-cell-date">
+            <span class="asset-expense-date-display">${dateDisplayVal}</span>
+            <input type="date" class="asset-expense-input-date" name="asset-expense-date" value="${dateValue}" tabindex="-1" />
+          </div>
+        </div>
+        <div class="asset-expense-ledger-col asset-expense-ledger-col--tags">
+          <div class="asset-expense-ledger-line asset-expense-ledger-line--chips">
+            <div class="asset-expense-cell-flow-type"></div>
+            <div class="asset-expense-cell-classification"></div>
+            <div class="asset-expense-cell-category"></div>
+            <div class="asset-expense-cell-payment"></div>
+          </div>
+        </div>
+      </div>
     `;
     const formStackHtml = `
       <div class="asset-expense-form-stack" role="group" aria-label="거래 입력">
@@ -5044,7 +5509,7 @@ function renderExpenseView(options = {}) {
               name="asset-expense-amount"
               inputmode="decimal"
               placeholder="금액"
-              value="${(data.amount || "").replace(/"/g, "&quot;")}"
+              value="${expenseAmountInitialInputValue(data.amount || "").replace(/"/g, "&quot;")}"
             />
           </div>
         </div>
@@ -5076,28 +5541,24 @@ function renderExpenseView(options = {}) {
           <span class="asset-expense-form-label">카테고리</span>
           <div class="asset-expense-form-control asset-expense-cell-category"></div>
         </div>
-        <div class="asset-expense-form-row">
-          <span class="asset-expense-form-label">메모</span>
-          <div class="asset-expense-form-control asset-expense-form-control--field asset-expense-cell-memo">
-            <input
-              type="text"
-              class="asset-expense-input-memo"
-              name="asset-expense-memo"
-              placeholder="(선택) 메모"
-              value="${(data.memo || "").replace(/"/g, "&quot;")}"
-            />
-          </div>
-        </div>
       </div>
     `;
     if (usePanel) {
-      const panelTitle = isDraft ? "새 거래" : "거래 수정";
-      tr.classList.add("asset-expense-row--inner-panel");
-      tr.innerHTML = `
-        <td colspan="9" class="asset-expense-cell-panel">
+      const editNameHeadHtml = () => {
+        const nm = (data.name || "").trim();
+        return nm ? escapeHtml(nm) : "이름 미입력";
+      };
+      const panelHeadInner = isDraft
+        ? `<span class="asset-expense-inline-panel-title">새 거래</span>`
+        : `<span class="asset-expense-inline-panel-title" aria-live="polite">${editNameHeadHtml()}</span>`;
+      rowEl.classList.add("asset-expense-row--inner-panel");
+      rowEl.innerHTML = `
+        <div class="asset-expense-cell-panel">
           <div class="asset-expense-inline-panel">
             <div class="asset-expense-inline-panel-top">
-              <span class="asset-expense-inline-panel-title">${panelTitle}</span>
+              <div class="asset-expense-inline-panel-head-text">
+                ${panelHeadInner}
+              </div>
               <button type="button" class="asset-expense-inline-panel-x" aria-label="닫기">×</button>
             </div>
             <div class="asset-expense-inline-panel-body">
@@ -5105,22 +5566,19 @@ function renderExpenseView(options = {}) {
             </div>
             <div class="asset-expense-inline-panel-bottom" aria-label="확인 작업"></div>
           </div>
-        </td>
+        </div>
       `;
     } else {
-      tr.innerHTML = `
-        ${fieldsRowHtml}
-        <td class="asset-expense-cell-delete asset-expense-cell-actions"><div class="asset-expense-actions-wrap"></div></td>
-      `;
+      rowEl.innerHTML = fieldsRowHtml;
     }
-    const flowTypeTd = tr.querySelector(".asset-expense-cell-flow-type");
-    const categoryTd = tr.querySelector(".asset-expense-cell-category");
-    const classificationTd = tr.querySelector(".asset-expense-cell-classification");
-    const nameInput = tr.querySelector(".asset-expense-input-name");
-    const memoInput = tr.querySelector(".asset-expense-input-memo");
-    const actionsWrap = tr.querySelector(".asset-expense-actions-wrap");
-    const panelFooter = tr.querySelector(".asset-expense-inline-panel-bottom");
-    const xBtn = tr.querySelector(".asset-expense-inline-panel-x");
+    const flowTypeTd = rowEl.querySelector(".asset-expense-cell-flow-type");
+    const categoryTd = rowEl.querySelector(".asset-expense-cell-category");
+    const classificationTd = rowEl.querySelector(".asset-expense-cell-classification");
+    const nameInput = rowEl.querySelector(".asset-expense-input-name");
+    const memoInput = rowEl.querySelector(".asset-expense-input-memo");
+    const actionsWrap = rowEl.querySelector(".asset-expense-actions-wrap");
+    const panelFooter = rowEl.querySelector(".asset-expense-inline-panel-bottom");
+    const xBtn = rowEl.querySelector(".asset-expense-inline-panel-x");
 
     const initialCategory = data.category || "";
     const initialClassification = data.classification || "";
@@ -5132,6 +5590,7 @@ function renderExpenseView(options = {}) {
       () => {
         updateCategoryDisplay();
         applyAmountSign();
+        syncExpenseLedgerCardDecor();
         onTotalsUpdate?.();
       }
     );
@@ -5147,22 +5606,38 @@ function renderExpenseView(options = {}) {
     }
     categoryTd.appendChild(categoryDisplay);
 
+    const paymentTd = rowEl.querySelector(".asset-expense-cell-payment");
+    const paymentControl = createExpensePaymentInput(data.payment || "", () => {
+      syncExpenseLedgerCardDecor();
+      onTotalsUpdate?.();
+    }, { inlineButtons: usePanel });
+
+    function syncPaymentIncomeModeForRow() {
+      const flowTypeInput = flowTypeTd.querySelector(".asset-expense-input-flow-type");
+      const isDeposit = (flowTypeInput?.value || "") === "입금";
+      paymentControl.setPaymentIncomeMode(isDeposit);
+      if (paymentTd) {
+        paymentTd.hidden = isDeposit;
+        const paymentFormRow = paymentTd.closest(".asset-expense-form-row");
+        if (paymentFormRow) paymentFormRow.hidden = isDeposit;
+      }
+    }
+
     const flowTypeDropdown = createExpenseFlowTypeDropdown(flowTypeValue, () => {
       const flowTypeInput = flowTypeTd.querySelector(".asset-expense-input-flow-type");
       classificationDropdown.refresh(flowTypeInput?.value || "");
       updateCategoryDisplay();
       applyAmountSign();
+      syncExpenseLedgerCardDecor();
+      syncPaymentIncomeModeForRow();
       onTotalsUpdate?.();
     });
     flowTypeTd.appendChild(flowTypeDropdown);
 
-    const paymentTd = tr.querySelector(".asset-expense-cell-payment");
-    const paymentInput = createExpensePaymentInput(data.payment || "", () => {
-      onTotalsUpdate?.();
-    });
-    paymentTd.appendChild(paymentInput.wrap);
+    paymentTd.appendChild(paymentControl.wrap);
+    syncPaymentIncomeModeForRow();
 
-    const amountInput = tr.querySelector(".asset-expense-input-amount");
+    const amountInput = rowEl.querySelector(".asset-expense-input-amount");
 
     function applyAmountSign() {
       const flowTypeInput = flowTypeTd.querySelector(".asset-expense-input-flow-type");
@@ -5171,7 +5646,7 @@ function renderExpenseView(options = {}) {
       if (raw === null) return;
       if (flowType !== "입금" && flowType !== "지출") return;
       const signed = flowType === "입금" ? Math.abs(raw) : -Math.abs(raw);
-      amountInput.value = formatNum(signed);
+      amountInput.value = formatExpenseLedgerAmount(signed);
       onTotalsUpdate?.();
     }
 
@@ -5179,14 +5654,41 @@ function renderExpenseView(options = {}) {
     classificationDropdown.refresh = (flowType) => {
       origRefresh(flowType);
       updateCategoryDisplay();
+      syncExpenseLedgerCardDecor();
     };
     updateCategoryDisplay();
 
+    function syncExpenseLedgerCardDecor() {
+      if (!isView) return;
+      const ledgerInner = rowEl.querySelector(".asset-expense-card-inner--ledger");
+      if (!ledgerInner) return;
+      const iconInner = ledgerInner.querySelector(".asset-expense-ledger-icon-inner");
+      const clsInp = rowEl.querySelector(".asset-expense-input-classification");
+      const flowInp = rowEl.querySelector(".asset-expense-input-flow-type");
+      const clsLabel = (clsInp?.value || "").trim();
+      const flow = flowInp?.value || "";
+      rowEl.classList.toggle("asset-expense-card--flow-income", flow === "입금");
+      rowEl.classList.toggle("asset-expense-card--flow-expense", flow === "지출");
+      if (iconInner) iconInner.innerHTML = getExpenseLedgerIconSvg(clsLabel, flow);
+    }
+
+    amountInput.addEventListener("focus", () => {
+      const n = parseNum(amountInput.value);
+      if (n !== null) amountInput.value = formatNum(n);
+    });
     amountInput.addEventListener("blur", () => {
       applyAmountSign();
+      syncExpenseLedgerCardDecor();
       onTotalsUpdate?.();
     });
-    amountInput.addEventListener("input", () => {
+    amountInput.addEventListener("input", (e) => {
+      filterNumericInput(amountInput, false, e);
+      syncExpenseLedgerCardDecor();
+      onTotalsUpdate?.();
+    });
+    amountInput.addEventListener("compositionend", () => {
+      filterNumericInput(amountInput, false, null);
+      syncExpenseLedgerCardDecor();
       onTotalsUpdate?.();
     });
     amountInput.addEventListener("keydown", (e) => {
@@ -5205,25 +5707,41 @@ function renderExpenseView(options = {}) {
     nameInput.addEventListener("blur", () => {
       onTotalsUpdate?.();
     });
-    memoInput.addEventListener("blur", () => {
-      onTotalsUpdate?.();
-    });
-
-    memoInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        memoInput.blur();
+    if (usePanel && isEdit) {
+      const panelHeadTitleEl = rowEl.querySelector(
+        ".asset-expense-inline-panel-head-text .asset-expense-inline-panel-title"
+      );
+      if (panelHeadTitleEl) {
+        const syncEditPanelHeadTitle = () => {
+          const t = (nameInput.value || "").trim();
+          panelHeadTitleEl.textContent = t || "이름 미입력";
+        };
+        nameInput.addEventListener("input", syncEditPanelHeadTitle);
+        nameInput.addEventListener("blur", syncEditPanelHeadTitle);
       }
-    });
+    }
+    if (memoInput) {
+      memoInput.addEventListener("blur", () => {
+        onTotalsUpdate?.();
+      });
 
-    const dateCell = tr.querySelector(".asset-expense-cell-date");
-    const dateDisplay = tr.querySelector(".asset-expense-date-display");
-    const dateInput = tr.querySelector(".asset-expense-input-date");
+      memoInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          memoInput.blur();
+        }
+      });
+    }
+
+    const dateCell = rowEl.querySelector(".asset-expense-cell-date");
+    const dateDisplay = rowEl.querySelector(".asset-expense-date-display");
+    const dateInput = rowEl.querySelector(".asset-expense-input-date");
     dateInput.addEventListener("change", () => {
       if (dateDisplay) {
         dateDisplay.textContent = formatDateYYMMDD(dateInput.value);
       }
       onFilterApply?.();
+      layoutExpenseLedgerGroups();
     });
     if (dateCell) {
       dateCell.addEventListener("click", (e) => {
@@ -5238,16 +5756,25 @@ function renderExpenseView(options = {}) {
     }
 
     function setViewLock(locked) {
-      tr.classList.toggle("asset-expense-row--view", locked);
+      rowEl.classList.toggle("asset-expense-row--view", locked);
       if (isDraft || isEdit) {
-        tr.querySelectorAll("td").forEach((td) => td.classList.remove("asset-expense-cell--locked"));
+        rowEl.querySelectorAll(".asset-expense-cell-panel").forEach((cell) =>
+          cell.classList.remove("asset-expense-cell--locked")
+        );
         return;
       }
-      tr.querySelectorAll("td").forEach((td) => {
-        if (td.classList.contains("asset-expense-cell-actions")) {
-          td.classList.remove("asset-expense-cell--locked");
+      const inner = rowEl.querySelector(".asset-expense-card-inner");
+      if (!inner) return;
+      const ledgerSel =
+        ".asset-expense-cell-date, .asset-expense-cell-name, .asset-expense-cell-amount, .asset-expense-cell-flow-type, .asset-expense-cell-classification, .asset-expense-cell-payment, .asset-expense-cell-category";
+      const targets = inner.classList.contains("asset-expense-card-inner--ledger")
+        ? inner.querySelectorAll(ledgerSel)
+        : inner.querySelectorAll(":scope > div");
+      targets.forEach((cell) => {
+        if (cell.classList.contains("asset-expense-cell-actions")) {
+          cell.classList.remove("asset-expense-cell--locked");
         } else {
-          td.classList.toggle("asset-expense-cell--locked", locked);
+          cell.classList.toggle("asset-expense-cell--locked", locked);
         }
       });
     }
@@ -5255,22 +5782,27 @@ function renderExpenseView(options = {}) {
 
     function mountRowActions() {
       if (isView) {
-        if (!actionsWrap) return;
-        actionsWrap.textContent = "";
-        const editBtn = document.createElement("button");
-        editBtn.type = "button";
-        editBtn.className = "asset-expense-btn-row";
-        editBtn.textContent = "수정";
-        editBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const d = readExpenseDataFromTr(tr);
+        rowEl.addEventListener("click", (e) => {
+          if (document.querySelector(".asset-expense-transaction-modal")) return;
+          if (
+            e.target.closest(".asset-expense-flow-type-wrap") ||
+            e.target.closest(".asset-expense-classification-wrap") ||
+            e.target.closest(".asset-expense-payment-wrap") ||
+            e.target.closest(".asset-expense-category-wrap")
+          ) {
+            return;
+          }
+          const d = readExpenseDataFromTr(rowEl);
           const fromMem = loadExpenseRows().find((r) => String(r.id) === String(d.id));
           const snap = fromMem || d;
-          tr.replaceWith(
-            createExpenseRow(snap, onTotalsUpdate, onFilterApply, { mode: "edit", memSnapshot: snap })
-          );
+          openExpenseTransactionModal({
+            mode: "edit",
+            data: snap,
+            memSnapshot: snap,
+            replaceCardEl: rowEl,
+          });
         });
-        actionsWrap.appendChild(editBtn);
+        rowEl.style.cursor = "pointer";
         return;
       }
       if (isDraft) {
@@ -5282,28 +5814,37 @@ function renderExpenseView(options = {}) {
         saveBtn.textContent = "저장";
         const doCancel = (e) => {
           e?.stopPropagation?.();
-          tr.remove();
+          if (expenseModalCtx) {
+            expenseModalCtx.cancel();
+            return;
+          }
+          rowEl.remove();
           onTotalsUpdate?.();
         };
         xBtn.addEventListener("click", doCancel);
         saveBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          if (!tr.dataset.assetExpenseRowId) {
+          if (!rowEl.dataset.assetExpenseRowId) {
             const nid = newExpenseRowId() || "";
             if (!nid) {
               showToast("거래를 저장할 수 없습니다. 잠시 후 다시 시도해 주세요.", "");
               return;
             }
-            tr.dataset.assetExpenseRowId = nid;
+            rowEl.dataset.assetExpenseRowId = nid;
           }
-          const d = readExpenseDataFromTr(tr);
+          const d = readExpenseDataFromTr(rowEl);
           const check = canCommitAssetExpenseRow(d);
           if (!check.ok) {
             showToast(check.msg, "");
             return;
           }
-          tr.replaceWith(createExpenseRow(d, onTotalsUpdate, onFilterApply, { mode: "view" }));
+          if (expenseModalCtx) {
+            expenseModalCtx.commit(d);
+            return;
+          }
+          rowEl.replaceWith(createExpenseRow(d, onTotalsUpdate, onFilterApply, { mode: "view" }));
           saveExpense();
+          layoutExpenseLedgerGroups();
           applyExpenseFilter();
         });
         panelFooter.appendChild(saveBtn);
@@ -5323,35 +5864,50 @@ function renderExpenseView(options = {}) {
         const snap = memSnapshot;
         const doCancel = (e) => {
           e?.stopPropagation?.();
+          if (expenseModalCtx) {
+            expenseModalCtx.cancel();
+            return;
+          }
           if (!snap) {
-            tr.remove();
+            rowEl.remove();
+            layoutExpenseLedgerGroups();
+            applyExpenseFilter();
             onTotalsUpdate?.();
             return;
           }
-          tr.replaceWith(
-            createExpenseRow(snap, onTotalsUpdate, onFilterApply, { mode: "view" })
-          );
+          rowEl.replaceWith(createExpenseRow(snap, onTotalsUpdate, onFilterApply, { mode: "view" }));
           onTotalsUpdate?.();
           applyExpenseFilter();
         };
         xBtn.addEventListener("click", doCancel);
         applyBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          const d = readExpenseDataFromTr(tr);
+          const d = readExpenseDataFromTr(rowEl);
           const check = canCommitAssetExpenseRow(d);
           if (!check.ok) {
             showToast(check.msg, "");
             return;
           }
-          tr.replaceWith(createExpenseRow(d, onTotalsUpdate, onFilterApply, { mode: "view" }));
+          if (expenseModalCtx) {
+            expenseModalCtx.commit(d);
+            return;
+          }
+          rowEl.replaceWith(createExpenseRow(d, onTotalsUpdate, onFilterApply, { mode: "view" }));
           saveExpense();
+          layoutExpenseLedgerGroups();
           applyExpenseFilter();
         });
         delBtn2.addEventListener("click", (e) => {
           e.stopPropagation();
           confirmDeleteRow(() => {
-            tr.remove();
+            if (expenseModalCtx) {
+              expenseModalCtx.deleteCard();
+              return;
+            }
+            rowEl.remove();
             saveExpense();
+            layoutExpenseLedgerGroups();
+            applyExpenseFilter();
           });
         });
         const footInner = document.createElement("div");
@@ -5363,7 +5919,9 @@ function renderExpenseView(options = {}) {
     }
     mountRowActions();
 
-    return tr;
+    syncExpenseLedgerCardDecor();
+
+    return rowEl;
   }
 
   scheduleExpenseMemPullFromServer = () => {
@@ -5377,31 +5935,43 @@ function renderExpenseView(options = {}) {
         persistAssetExpensePullBounds(from, to);
         const ok = await pullAssetExpenseTransactionsForDateRange(from, to);
         if (!wrap.isConnected) return;
-        tbody.replaceChildren();
+        ledgerBoardBody.replaceChildren();
         const start = startDateInput.value || filterStartDate;
         const end = endDateInput.value || filterEndDate;
         const rows = loadExpenseRows().filter((data) =>
           isDateInRange(data.date, filterType, filterYear, filterMonth, start, end),
         );
         rows.forEach((data) => {
-          tbody.appendChild(
+          ledgerBoardBody.appendChild(
             createExpenseRow(data, updateExpenseTotals, applyExpenseFilter, { mode: "view" })
           );
         });
+        layoutExpenseLedgerGroups();
         applyExpenseFilter();
       })();
     }, 400);
   };
 
   addBtn.addEventListener("click", () => {
-    if (tbody.querySelector(".asset-expense-row--draft")) {
-      showToast("입력한 거래를 저장하거나 취소한 뒤에 새 거래를 추가해 주세요.", "");
+    if (document.querySelector(".asset-expense-transaction-modal")) {
+      showToast("입력 창을 닫은 뒤 새 거래를 추가해 주세요.", "");
       return;
     }
-    const tr = createExpenseRow({}, updateExpenseTotals, applyExpenseFilter, { mode: "draft" });
-    tbody.appendChild(tr);
-    applyExpenseFilter();
+    openExpenseTransactionModal({ mode: "draft" });
   });
+
+  const expenseTabsRoot = !expenseMobile ? filterBar.querySelector(".time-filter-tabs.time-view-tabs--segmented") : null;
+  function syncAssetExpenseSegmentThumb() {
+    if (!expenseTabsRoot?.classList.contains("time-view-tabs--segmented")) return;
+    const btns = [...expenseTabsRoot.querySelectorAll(".time-view-tab")];
+    const n = Math.max(1, btns.length);
+    const idx = Math.max(
+      0,
+      btns.findIndex((b) => b.classList.contains("active")),
+    );
+    expenseTabsRoot.style.setProperty("--time-segment-count", String(n));
+    expenseTabsRoot.style.setProperty("--thumb-col-start", String(idx + 1));
+  }
 
   filterBar.querySelectorAll(".time-filter-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -5413,15 +5983,20 @@ function renderExpenseView(options = {}) {
       rangeWrap.style.display = filterType === "range" ? "" : "none";
       if (filterType === "day") updateDayDisplay();
       applyExpenseFilter();
+      syncExpenseFooterSummaryLabel();
       scheduleExpenseMemPullFromServer();
+      syncAssetExpenseSegmentThumb();
     });
   });
+  syncAssetExpenseSegmentThumb();
   startDateInput.addEventListener("change", () => {
     applyExpenseFilter();
+    syncExpenseFooterSummaryLabel();
     scheduleExpenseMemPullFromServer();
   });
   endDateInput.addEventListener("change", () => {
     applyExpenseFilter();
+    syncExpenseFooterSummaryLabel();
     scheduleExpenseMemPullFromServer();
   });
 
@@ -5432,33 +6007,25 @@ function renderExpenseView(options = {}) {
   );
   if (initialRows.length > 0) {
     initialRows.forEach((data) => {
-      const tr = createExpenseRow(data, updateExpenseTotals, applyExpenseFilter, { mode: "view" });
-      tbody.appendChild(tr);
+      const row = createExpenseRow(data, updateExpenseTotals, applyExpenseFilter, { mode: "view" });
+      ledgerBoardBody.appendChild(row);
     });
   }
+  layoutExpenseLedgerGroups();
   applyExpenseFilter();
+  syncExpenseFooterSummaryLabel();
   {
     const b = getExpensePickerSqlBounds();
     if (b.from && b.to) persistAssetExpensePullBounds(b.from, b.to);
   }
 
-  tableWrap.appendChild(table);
+  tableWrap.appendChild(summaryCardsEl);
+  tableWrap.appendChild(cardsListEl);
+  tableWrap.appendChild(summaryBar);
 
   const expenseTableContainer = document.createElement("div");
   expenseTableContainer.className = "asset-expense-table-container";
   expenseTableContainer.appendChild(tableWrap);
-  /** 모바일: + 는 테이블 아래 행이 아니라 우하단 FAB (근무표와 동일) */
-  let expenseMobileFabWrap = null;
-  if (!expenseMobile) {
-    const expenseAddButtonWrap = document.createElement("div");
-    expenseAddButtonWrap.className = "asset-expense-add-button-wrap";
-    expenseAddButtonWrap.appendChild(addBtn);
-    expenseTableContainer.appendChild(expenseAddButtonWrap);
-  } else {
-    expenseMobileFabWrap = document.createElement("div");
-    expenseMobileFabWrap.className = "asset-expense-mobile-fab-wrap";
-    expenseMobileFabWrap.appendChild(addBtn);
-  }
 
   const settingsBtn = document.createElement("button");
   settingsBtn.type = "button";
@@ -5468,13 +6035,14 @@ function renderExpenseView(options = {}) {
   if (options?.onOpenSettings) {
     settingsBtn.addEventListener("click", options.onOpenSettings);
   }
-  filterBar.appendChild(settingsBtn);
+  const filterActions = document.createElement("div");
+  filterActions.className = "asset-expense-filter-actions";
+  filterActions.appendChild(addBtn);
+  filterActions.appendChild(settingsBtn);
+  filterBar.appendChild(filterActions);
 
   wrap.appendChild(filterBar);
   wrap.appendChild(expenseTableContainer);
-  if (expenseMobile && expenseMobileFabWrap) {
-    wrap.appendChild(expenseMobileFabWrap);
-  }
   return wrap;
 }
 
@@ -6565,9 +7133,13 @@ function renderCashflowView() {
   monthWrap.className = "asset-cashflow-month-nav";
   monthWrap.setAttribute("aria-label", "월 선택");
   monthWrap.innerHTML = `
-    <button type="button" class="asset-cashflow-year-btn asset-cashflow-month-prev" aria-label="이전 달">&lt;</button>
+    <button type="button" class="asset-cashflow-year-btn asset-cashflow-month-prev" aria-label="이전 달">
+      <img src="/toolbaricons/caret-left-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
+    </button>
     <span class="asset-cashflow-month-display">${selectedMonth}월</span>
-    <button type="button" class="asset-cashflow-year-btn asset-cashflow-month-next" aria-label="다음 달">&gt;</button>
+    <button type="button" class="asset-cashflow-year-btn asset-cashflow-month-next" aria-label="다음 달">
+      <img src="/toolbaricons/caret-right-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
+    </button>
   `;
   const monthDisplayCashflow = monthWrap.querySelector(".asset-cashflow-month-display");
   const monthPrevCashflow = monthWrap.querySelector(".asset-cashflow-month-prev");
@@ -6577,9 +7149,13 @@ function renderCashflowView() {
   yearWrap.className = "asset-cashflow-year-nav";
   yearWrap.setAttribute("aria-label", "연도 선택");
   yearWrap.innerHTML = `
-    <button type="button" class="asset-cashflow-year-btn" aria-label="이전 연도">&lt;</button>
+    <button type="button" class="asset-cashflow-year-btn" aria-label="이전 연도">
+      <img src="/toolbaricons/caret-left-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
+    </button>
     <span class="asset-cashflow-year-display">${selectedYear}</span>
-    <button type="button" class="asset-cashflow-year-btn" aria-label="다음 연도">&gt;</button>
+    <button type="button" class="asset-cashflow-year-btn" aria-label="다음 연도">
+      <img src="/toolbaricons/caret-right-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
+    </button>
   `;
   const yearPrevBtn = yearWrap.querySelector(".asset-cashflow-year-btn:first-child");
   const yearNextBtn = yearWrap.querySelector(".asset-cashflow-year-btn:last-child");
@@ -7147,10 +7723,10 @@ export function render() {
 
   function renderView(view) {
     if (view !== "expense") {
-      const table = contentWrap.querySelector(".asset-expense-table");
-      if (table) {
+      const expenseList = contentWrap.querySelector(".asset-expense-cards-list");
+      if (expenseList) {
         const prevRows = loadExpenseRows();
-        const rows = collectExpenseRowsFromDOM(table);
+        const rows = collectExpenseRowsFromDOM(expenseList);
         const nextIds = new Set(rows.map((r) => String(r?.id || "").trim()).filter(Boolean));
         const removedServerIds = prevRows
           .map((r) => String(r?.id || "").trim())

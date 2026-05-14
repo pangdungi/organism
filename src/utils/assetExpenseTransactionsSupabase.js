@@ -20,7 +20,11 @@ let _expenseRowsMem = [];
 let _expenseMemHasFullSnapshot = false;
 
 function parseNum(val) {
-  const n = parseFloat(String(val || "").replace(/,/g, ""));
+  const s = String(val || "")
+    .replace(/,/g, "")
+    .replace(/원/g, "")
+    .trim();
+  const n = parseFloat(s);
   return Number.isNaN(n) ? null : n;
 }
 
