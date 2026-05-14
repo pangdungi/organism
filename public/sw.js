@@ -1,6 +1,8 @@
 /* PWA 서비스 워커 — 앱 설치·오프라인 + Web Push(할일 리마인더) */
 /** 번들·아이콘 등 캐시 버전 (전략 바꿀 때만 올리면 이전 캐시 정리됨) */
 const ASSET_CACHE = "organism-assets-v3";
+/** HTML 셸 캐시 — 홈 화면에서 열 때 즉시 표시용 */
+const HTML_CACHE = "organism-html-v1";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
@@ -12,7 +14,11 @@ self.addEventListener("activate", (event) => {
       const keys = await caches.keys();
       await Promise.all(
         keys
-          .filter((k) => k.startsWith("organism-assets-") && k !== ASSET_CACHE)
+          .filter(
+            (k) =>
+              (k.startsWith("organism-assets-") && k !== ASSET_CACHE) ||
+              (k.startsWith("organism-html-") && k !== HTML_CACHE),
+          )
           .map((k) => caches.delete(k)),
       );
       await self.clients.claim();
@@ -53,6 +59,30 @@ async function staleWhileRevalidate(event, request) {
   return new Response("", { status: 504, statusText: "Offline" });
 }
 
+/** HTML 셸(/) — 캐시 먼저 즉시 반환 후 백그라운드에서 최신 갱신 */
+async function staleWhileRevalidateHtml(event, request) {
+  const cache = await caches.open(HTML_CACHE);
+  const cached = await cache.match(request);
+  const networkPromise = fetch(request)
+    .then((response) => {
+      if (response && response.ok) {
+        try {
+          cache.put(request, response.clone());
+        } catch (_e) {}
+      }
+      return response;
+    })
+    .catch(() => undefined);
+
+  if (cached) {
+    event.waitUntil(networkPromise);
+    return cached;
+  }
+  const live = await networkPromise;
+  if (live) return live;
+  return new Response("", { status: 504, statusText: "Offline" });
+}
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") {
@@ -66,7 +96,16 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(fetch(req));
     return;
   }
-  if (url.origin !== self.location.origin || !shouldUseAssetCache(url)) {
+  if (url.origin !== self.location.origin) {
+    event.respondWith(fetch(req));
+    return;
+  }
+  /* 내비게이션 요청(HTML 페이지) — 홈 화면에서 열 때 캐시로 즉시 표시 */
+  if (req.mode === "navigate") {
+    event.respondWith(staleWhileRevalidateHtml(event, req));
+    return;
+  }
+  if (!shouldUseAssetCache(url)) {
     event.respondWith(fetch(req));
     return;
   }
