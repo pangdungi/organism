@@ -4808,7 +4808,7 @@ function renderExpenseView(options = {}) {
     "asset-expense-view" + (expenseMobile ? " asset-expense-view--mobile" : "");
 
   const now = new Date();
-  let filterType = expenseMobile ? "range" : "month";
+  let filterType = "month";
   let filterYear = now.getFullYear();
   let filterMonth = now.getMonth() + 1;
   let filterStartDate = getTodayDateStr();
@@ -4833,37 +4833,21 @@ function renderExpenseView(options = {}) {
     return `${month}월 ${day}일 (${weekday})`;
   }
 
-  /** 모바일 구간 필터 라벨 — 근무표·아카이브와 동일 톤 */
-  function formatExpenseFilterDateKr(dStr) {
+  /** YYYY-MM-DD → "2026. 05. 14.(목)" — 시간가계부 필터와 동일 표기 */
+  function formatExpenseFilterDateDotsWithWeekday(dStr) {
     if (!dStr || !/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return "";
     const [y, mo, d] = dStr.split("-").map(Number);
     const dt = new Date(y, mo - 1, d);
     const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
-    return `${y}년 ${mo}월 ${d}일(${weekdays[dt.getDay()]})`;
+    const yy = String(y);
+    const mm = String(mo).padStart(2, "0");
+    const dd = String(d).padStart(2, "0");
+    return `${yy}. ${mm}. ${dd}(${weekdays[dt.getDay()]})`;
   }
 
   const filterBar = document.createElement("div");
   filterBar.className = "asset-expense-filter-bar";
-  if (expenseMobile) {
-    filterBar.innerHTML = `
-      <div class="time-filter-nav-cluster asset-expense-date-nav-cluster">
-        <div class="time-filter-range-wrap asset-expense-date-range-wrap" data-filter-wrap="range">
-          <div class="time-filter-date-field">
-            <input type="date" class="time-filter-start-date" name="asset-filter-start" aria-label="시작일" />
-            <span class="time-filter-date-label time-filter-date-label--start" aria-hidden="true"></span>
-            <img src="/toolbaricons/calendar-alt.svg" alt="" class="time-filter-date-cal-icon" width="14" height="14" aria-hidden="true" />
-          </div>
-          <span class="time-filter-range-sep">~</span>
-          <div class="time-filter-date-field">
-            <input type="date" class="time-filter-end-date" name="asset-filter-end" aria-label="종료일" />
-            <span class="time-filter-date-label time-filter-date-label--end" aria-hidden="true"></span>
-            <img src="/toolbaricons/calendar-alt.svg" alt="" class="time-filter-date-cal-icon" width="14" height="14" aria-hidden="true" />
-          </div>
-        </div>
-      </div>
-    `;
-  } else {
-    filterBar.innerHTML = `
+  filterBar.innerHTML = `
     <div class="time-filter-tabs todo-category-tabs time-view-tabs time-view-tabs--segmented todo-list-segment-tabs">
       <span class="time-view-tabs-thumb" aria-hidden="true"></span>
       <button type="button" class="time-filter-btn time-view-tab active" data-filter="month">월별</button>
@@ -4901,13 +4885,22 @@ function renderExpenseView(options = {}) {
         </button>
       </div>
     </div>
-    <div class="time-filter-range-wrap" data-filter-wrap="range" style="display:none">
-      <input type="date" class="time-filter-start-date" name="asset-filter-start" />
-      <span>~</span>
-      <input type="date" class="time-filter-end-date" name="asset-filter-end" />
+    <div class="time-filter-nav-cluster asset-expense-date-nav-cluster">
+      <div class="time-filter-range-wrap asset-expense-date-range-wrap" data-filter-wrap="range">
+        <div class="time-filter-date-field">
+          <input type="date" class="time-filter-start-date" name="asset-filter-start" aria-label="시작일" />
+          <span class="time-filter-date-label time-filter-date-label--start" aria-hidden="true"></span>
+          <img src="/toolbaricons/calendar-alt.svg" alt="" class="time-filter-date-cal-icon" width="14" height="14" aria-hidden="true" />
+        </div>
+        <span class="time-filter-range-sep">~</span>
+        <div class="time-filter-date-field">
+          <input type="date" class="time-filter-end-date" name="asset-filter-end" aria-label="종료일" />
+          <span class="time-filter-date-label time-filter-date-label--end" aria-hidden="true"></span>
+          <img src="/toolbaricons/calendar-alt.svg" alt="" class="time-filter-date-cal-icon" width="14" height="14" aria-hidden="true" />
+        </div>
+      </div>
     </div>
   `;
-  }
 
   const dayWrap = filterBar.querySelector("[data-filter-wrap='day']");
   const monthWrap = filterBar.querySelector("[data-filter-wrap='month']");
@@ -4923,13 +4916,52 @@ function renderExpenseView(options = {}) {
   const yearDisplay = filterBar.querySelector(".time-filter-month-wrap .asset-cashflow-year-display");
   const yearPrevBtn = filterBar.querySelector(".time-filter-month-wrap .asset-cashflow-year-nav .asset-cashflow-year-btn:first-child");
   const yearNextBtn = filterBar.querySelector(".time-filter-month-wrap .asset-cashflow-year-nav .asset-cashflow-year-btn:last-child");
+  const expenseRangeNavCluster = filterBar.querySelector(".asset-expense-date-nav-cluster");
+
+  function syncExpenseFilterModeVisibility() {
+    if (dayWrap) dayWrap.style.display = filterType === "day" ? "" : "none";
+    if (monthWrap) monthWrap.style.display = filterType === "month" ? "" : "none";
+    if (expenseRangeNavCluster) expenseRangeNavCluster.style.display = filterType === "range" ? "" : "none";
+  }
+
+  function syncExpenseRangeDateLabels() {
+    const fmt = formatExpenseFilterDateDotsWithWeekday;
+    const startLabel = filterBar.querySelector(".time-filter-date-label--start");
+    const endLabel = filterBar.querySelector(".time-filter-date-label--end");
+    const sv = String(startDateInput?.value || filterStartDate || "").slice(0, 10);
+    const ev = String(endDateInput?.value || filterEndDate || "").slice(0, 10);
+    if (startLabel) startLabel.textContent = sv && /^\d{4}-\d{2}-\d{2}$/.test(sv) ? fmt(sv) : "";
+    if (endLabel) endLabel.textContent = ev && /^\d{4}-\d{2}-\d{2}$/.test(ev) ? fmt(ev) : "";
+  }
+
+  function openAssetExpenseRangeDateInput(inp) {
+    if (!inp) return;
+    try {
+      inp.focus({ preventScroll: true });
+    } catch (_) {
+      inp.focus();
+    }
+    if (typeof inp.showPicker === "function") {
+      try {
+        inp.showPicker();
+        return;
+      } catch (_) {}
+    }
+    inp.click();
+  }
+
+  filterBar.querySelectorAll(".asset-expense-date-nav-cluster .time-filter-date-field").forEach((field) => {
+    const inp = field.querySelector('input[type="date"]');
+    if (!inp) return;
+    field.addEventListener("click", () => openAssetExpenseRangeDateInput(inp));
+  });
 
   function syncExpenseMonthYearLabels() {
     if (monthDisplayEl) monthDisplayEl.textContent = `${filterMonth}월`;
     if (yearDisplay) yearDisplay.textContent = String(filterYear);
   }
 
-  if (!expenseMobile && monthWrap) {
+  if (monthWrap) {
     monthPrevBtn?.addEventListener("click", () => {
       filterMonth -= 1;
       if (filterMonth < 1) {
@@ -4979,6 +5011,7 @@ function renderExpenseView(options = {}) {
     startDateInput.value = filterStartDate;
     endDateInput.value = filterEndDate;
     updateDayDisplay();
+    syncExpenseRangeDateLabels();
     applyExpenseFilter();
     syncExpenseFooterSummaryLabel();
     scheduleExpenseMemPullFromServer();
@@ -4990,6 +5023,7 @@ function renderExpenseView(options = {}) {
     startDateInput.value = filterStartDate;
     endDateInput.value = filterEndDate;
     updateDayDisplay();
+    syncExpenseRangeDateLabels();
     applyExpenseFilter();
     syncExpenseFooterSummaryLabel();
     scheduleExpenseMemPullFromServer();
@@ -4997,43 +5031,8 @@ function renderExpenseView(options = {}) {
 
   startDateInput.value = filterStartDate;
   endDateInput.value = filterEndDate;
-
-  function syncExpenseDateLabels() {
-    const startLabel = filterBar.querySelector(".time-filter-date-label--start");
-    const endLabel = filterBar.querySelector(".time-filter-date-label--end");
-    if (startLabel) startLabel.textContent = formatExpenseFilterDateKr(startDateInput.value || "");
-    if (endLabel) endLabel.textContent = formatExpenseFilterDateKr(endDateInput.value || "");
-  }
-
-  if (expenseMobile) {
-    syncExpenseDateLabels();
-    startDateInput.addEventListener("input", syncExpenseDateLabels);
-    endDateInput.addEventListener("input", syncExpenseDateLabels);
-    const openExpenseRangeDate = (inp) => {
-      if (!inp) return;
-      try {
-        inp.focus({ preventScroll: true });
-      } catch (_) {
-        inp.focus();
-      }
-      if (typeof inp.showPicker === "function") {
-        try {
-          inp.showPicker();
-          return;
-        } catch (_) {
-          /* Safari 등 */
-        }
-      }
-      inp.click();
-    };
-    filterBar.querySelectorAll(".time-filter-date-field").forEach((field) => {
-      const inp = field.querySelector('input[type="date"]');
-      if (!inp) return;
-      field.addEventListener("click", () => {
-        openExpenseRangeDate(inp);
-      });
-    });
-  }
+  syncExpenseFilterModeVisibility();
+  syncExpenseRangeDateLabels();
 
   const tableWrap = document.createElement("div");
   tableWrap.className = "asset-expense-table-wrap";
@@ -5960,7 +5959,7 @@ function renderExpenseView(options = {}) {
     openExpenseTransactionModal({ mode: "draft" });
   });
 
-  const expenseTabsRoot = !expenseMobile ? filterBar.querySelector(".time-filter-tabs.time-view-tabs--segmented") : null;
+  const expenseTabsRoot = filterBar.querySelector(".time-filter-tabs.time-view-tabs--segmented");
   function syncAssetExpenseSegmentThumb() {
     if (!expenseTabsRoot?.classList.contains("time-view-tabs--segmented")) return;
     const btns = [...expenseTabsRoot.querySelectorAll(".time-view-tab")];
@@ -5978,10 +5977,9 @@ function renderExpenseView(options = {}) {
       filterType = btn.dataset.filter;
       filterBar.querySelectorAll(".time-filter-btn").forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
-      dayWrap.style.display = filterType === "day" ? "" : "none";
-      monthWrap.style.display = filterType === "month" ? "" : "none";
-      rangeWrap.style.display = filterType === "range" ? "" : "none";
+      syncExpenseFilterModeVisibility();
       if (filterType === "day") updateDayDisplay();
+      syncExpenseRangeDateLabels();
       applyExpenseFilter();
       syncExpenseFooterSummaryLabel();
       scheduleExpenseMemPullFromServer();
@@ -5990,15 +5988,19 @@ function renderExpenseView(options = {}) {
   });
   syncAssetExpenseSegmentThumb();
   startDateInput.addEventListener("change", () => {
+    syncExpenseRangeDateLabels();
     applyExpenseFilter();
     syncExpenseFooterSummaryLabel();
     scheduleExpenseMemPullFromServer();
   });
   endDateInput.addEventListener("change", () => {
+    syncExpenseRangeDateLabels();
     applyExpenseFilter();
     syncExpenseFooterSummaryLabel();
     scheduleExpenseMemPullFromServer();
   });
+  startDateInput.addEventListener("input", syncExpenseRangeDateLabels);
+  endDateInput.addEventListener("input", syncExpenseRangeDateLabels);
 
   const startForInit = startDateInput.value || filterStartDate;
   const endForInit = endDateInput.value || filterEndDate;
@@ -7680,20 +7682,8 @@ export function render() {
     el.classList.add("asset-view--mobile");
   }
 
-  if (!mobileViewport) {
-    const header = document.createElement("header");
-    header.className = "dream-view-header asset-header";
-    const label = document.createElement("span");
-    label.className = "dream-view-label";
-    label.textContent = "ASSET";
-    const h = document.createElement("h1");
-    h.className = "dream-view-title asset-title";
-    h.textContent = "자산관리";
-    header.appendChild(label);
-    header.appendChild(h);
-    el.appendChild(header);
-  }
-  /* 모바일: 상단 ASSET·자산관리 제거 — 가계부 등 탭부터 */
+
+  /* 상단 ASSET·자산관리 헤더 없음 — 가계부 등 서브 탭부터 표시 */
 
   const viewTabs = document.createElement("div");
   viewTabs.className = "asset-view-tabs";
