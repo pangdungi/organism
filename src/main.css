@@ -3559,6 +3559,16 @@ body.auth-pw-modal-open {
     max-width: 100%;
   }
 
+  /* 순자산 자산·대출 편집 모달: 위 16px 규칙이 라벨(::before 0.8125rem)과 어긋남 → 본문은 가계부 표준으로 통일 */
+  .asset-networth-asset-modal input,
+  .asset-networth-asset-modal textarea,
+  .asset-networth-asset-modal select,
+  .asset-networth-debt-modal input,
+  .asset-networth-debt-modal textarea,
+  .asset-networth-debt-modal select {
+    font-size: 0.8125rem !important;
+  }
+
   /* 모바일: 할일 추가/수정 모달 — 패널·시작일·마감일·리마인더 넘침 방지, 시간 입력 높이 통일 */
   .todo-task-edit-modal .todo-list-modal {
     padding: 0.75rem;
@@ -9215,9 +9225,7 @@ body.auth-pw-modal-open {
     margin-top: 0;
     align-self: center;
   }
-  .asset-expense-transaction-modal-panel-shell .asset-expense-inline-panel-top {
-    padding: 0.45rem 0.75rem;
-  }
+  /* 모달 패널 헤더는 위 규칙(동일 세로 패딩) 유지 — 이중 덮어쓰기 제거 */
   /* 모바일: 거래일 행 오른쪽(날짜+아이콘) 세로 중앙 */
   .asset-expense-row--inner-panel
     .asset-expense-form-control--field.asset-expense-cell-date {
@@ -9819,7 +9827,14 @@ body.auth-pw-modal-open {
     gap: 0.3rem 0.5rem;
     background: #cce0e6;
     border: 1px solid var(--line-l2-color);
-    border-radius: 0.35rem;
+    border-top-left-radius: 0 !important;
+    border-top-right-radius: 0 !important;
+    border-bottom-left-radius: 0.35rem !important;
+    border-bottom-right-radius: 0.35rem !important;
+    -webkit-border-top-left-radius: 0 !important;
+    -webkit-border-top-right-radius: 0 !important;
+    -webkit-border-bottom-left-radius: 0.35rem !important;
+    -webkit-border-bottom-right-radius: 0.35rem !important;
     padding: 0.32rem 0.55rem;
     margin: 0.1rem 0 0.35rem;
     font-size: 0.75rem;
@@ -14291,6 +14306,87 @@ body.auth-pw-modal-open {
   margin: 0 0 0.75rem;
 }
 
+.asset-plan-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin: 0 0 0.75rem;
+}
+
+.asset-plan-section-head .asset-plan-section-title {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.asset-plan-section-add-inline {
+  flex-shrink: 0;
+}
+
+.asset-plan-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  min-width: 0;
+}
+
+.asset-plan-card.asset-plan-row--view {
+  margin: 0;
+  padding: 0;
+}
+
+.asset-plan-card-face {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.75rem 0.65rem;
+  background: var(--content-bg);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  border: var(--line-l3);
+}
+
+.asset-plan-card-face:focus-visible {
+  outline: 2px solid var(--ui-btn-primary-bg, #2a3828);
+  outline-offset: 2px;
+}
+
+.asset-plan-card-headline {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-ink);
+  margin: 0 0 0.5rem;
+}
+
+.asset-plan-card-details {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+}
+
+.asset-plan-card-detail-row {
+  display: grid;
+  grid-template-columns: minmax(0, 42%) minmax(0, 58%);
+  gap: 0.35rem 0.65rem;
+  align-items: baseline;
+}
+
+.asset-plan-card-detail-label {
+  color: var(--text-caption-color);
+  word-break: keep-all;
+}
+
+.asset-plan-card-detail-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-body);
+  word-break: break-word;
+}
+
 .asset-plan-table-container {
   display: flex;
   flex-direction: column;
@@ -14600,7 +14696,8 @@ body.auth-pw-modal-open {
 
 .asset-plan-category-panel {
   position: fixed;
-  z-index: 1000;
+  /* 거래 입력·목표 모달(.asset-expense-transaction-modal z-index:1200) 위로 */
+  z-index: 10000;
   background: var(--content-bg);
   border: var(--line-l3);
   border-radius: 0.5rem;
@@ -15223,10 +15320,15 @@ body.auth-pw-modal-open {
   font-weight: 600;
 }
 
-/* 카드 패딩(0.65rem)과 같은 안쪽 시작선 — 레저 표 박스와 너비 맞춤 */
+/* 카드 패딩(0.65rem)과 같은 안쪽 시작선 — 레저 표 박스와 너비 맞춤.
+   전역 * { border-radius: 0 !important } 때문에 longhand + !important 필수 */
 .asset-expense-table-wrap > .asset-expense-summary-bar {
   margin-inline: 0.65rem;
   box-sizing: border-box;
+  border-bottom-left-radius: 0.75rem !important;
+  border-bottom-right-radius: 0.75rem !important;
+  -webkit-border-bottom-left-radius: 0.75rem !important;
+  -webkit-border-bottom-right-radius: 0.75rem !important;
 }
 
 .asset-expense-summary-bar .asset-expense-summary-total {
@@ -15293,9 +15395,28 @@ body.auth-pw-modal-open {
 }
 
 .asset-expense-transaction-modal-panel-shell .asset-expense-inline-panel-top {
-  padding: 0.45rem 0.75rem 0.38rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
   border-top-left-radius: 1rem;
   border-top-right-radius: 1rem;
+}
+
+.asset-expense-transaction-modal-panel-shell .asset-expense-inline-panel-head-text {
+  justify-content: center;
+  margin: 0;
+  align-self: center;
+}
+
+.asset-expense-transaction-modal-panel-shell .asset-expense-inline-panel-title {
+  line-height: 1.35;
+  margin: 0;
 }
 
 .asset-expense-transaction-modal-panel-shell .asset-expense-inline-panel-subtitle {
@@ -15311,9 +15432,71 @@ body.auth-pw-modal-open {
   border-bottom-left-radius: 1rem;
   border-bottom-right-radius: 1rem;
 }
-
 .asset-expense-transaction-modal-panel-shell .asset-expense-form-stack {
   border: none !important;
+}
+
+/* 순자산 자산 모달 속 부동산 폼 테두리(위 규칙 덮어씀), 임베드 시 본문만 */
+.asset-expense-transaction-modal-panel-shell .asset-real-estate-form-stack {
+  border: var(--line-l2) !important;
+  border-radius: 0.35rem;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: var(--content-bg);
+}
+.asset-real-estate-panel--embedded .asset-expense-inline-panel-body {
+  padding: 0.35rem 0 0;
+}
+.asset-asset-row--inner-panel.asset-asset-row-real-estate
+  .asset-expense-form-control--field:not(.asset-debt-panel-value--computed),
+.asset-real-estate-form-stack .asset-expense-form-control--field:not(.asset-debt-panel-value--computed) {
+  background: rgba(42, 56, 40, 0.05);
+}
+.asset-asset-row--inner-panel.asset-asset-row-real-estate .asset-debt-panel-value--computed,
+.asset-real-estate-form-stack .asset-debt-panel-value--computed {
+  background: rgba(72, 70, 64, 0.11);
+  color: var(--text-muted);
+}
+
+.asset-debt-panel-value--computed.asset-real-estate-asset-value--negative {
+  color: #c62828 !important;
+  font-weight: 600;
+}
+
+.asset-real-estate-form-stack.asset-expense-form-stack .asset-expense-form-row:last-child {
+  border-bottom: none;
+}
+
+/* 새 대출/대출 수정 모달: 본문만 스크롤·저장 줄 고정·패널 약간 넓게 */
+.asset-expense-transaction-modal-panel-shell .asset-expense-inline-panel.asset-debt-inline-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: min(90vh, 44rem);
+  overflow: hidden;
+}
+
+.asset-expense-transaction-modal-panel-shell
+  .asset-expense-inline-panel.asset-debt-inline-panel
+  .asset-expense-inline-panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.asset-expense-transaction-modal-panel-shell
+  .asset-expense-inline-panel.asset-debt-inline-panel
+  .asset-expense-inline-panel-bottom {
+  flex-shrink: 0;
+  border-top: 1px solid var(--line-l2-color, rgba(0, 0, 0, 0.08));
+  background: var(--content-bg);
+}
+
+.asset-networth-debt-modal .asset-expense-transaction-modal-panel-shell {
+  width: min(21.25rem, calc(100vw - 2rem));
+  max-width: calc(100vw - 2rem);
+  box-sizing: border-box;
 }
 
 .asset-expense-transaction-modal-panel-shell .asset-expense-inline-panel-btn,
@@ -15335,6 +15518,47 @@ body.auth-pw-modal-open {
 
 .asset-expense-transaction-modal-panel-shell .asset-expense-form-control {
   font-size: 0.75rem;
+}
+
+/* 순자산 대출 추가·수정 모달: 1열 제목·2열 입력·드롭다운·자동표시 글자 크기 통일 */
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-expense-form-label {
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-expense-form-control,
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-expense-form-control--field {
+  font-size: 0.8125rem;
+}
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-input-name,
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-input-principal,
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-input-extra-paid,
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-input-period,
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-input-rate {
+  font-size: 0.8125rem;
+}
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-date-display {
+  font-size: 0.8125rem;
+}
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-type-display,
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-repayment-display {
+  font-size: 0.8125rem;
+}
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-interest-display,
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-monthly-principal-display,
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-monthly-interest-display,
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-paid-display,
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-balance-display {
+  font-size: 0.8125rem;
+}
+
+/* 순자산 자산 추가·수정 모달: 패널 안 가계부형 행(부동산 등) 라벨·값 열 — 입력 0.8125rem 과 통일 */
+.asset-networth-asset-modal .asset-expense-transaction-modal-panel-shell .asset-expense-form-label {
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+.asset-networth-asset-modal .asset-expense-transaction-modal-panel-shell .asset-expense-form-control,
+.asset-networth-asset-modal .asset-expense-transaction-modal-panel-shell .asset-expense-form-control--field {
+  font-size: 0.8125rem;
 }
 
 .asset-expense-transaction-modal-panel-shell
@@ -15373,7 +15597,10 @@ body.auth-pw-modal-open {
 .asset-expense-transaction-modal-panel-shell .asset-expense-classification-display,
 .asset-expense-transaction-modal-panel-shell
   .asset-expense-payment-wrap--modal-btns
-  .asset-expense-payment-btn {
+  .asset-expense-payment-btn,
+.asset-expense-transaction-modal-panel-shell
+  .asset-expense-flow-type-wrap--modal-btns
+  .asset-expense-flow-type-btn {
   font-size: 0.75rem !important;
 }
 
@@ -16589,6 +16816,12 @@ col.asset-expense-col-amount,
 .asset-expense-table td.asset-expense-cell-date {
   cursor: pointer;
   position: relative;
+  box-sizing: border-box;
+  border-bottom: var(--input-border-idle);
+}
+
+.asset-expense-table td.asset-expense-cell-date:focus-within {
+  border-bottom: var(--input-border-focus);
 }
 
 .asset-expense-date-display {
@@ -17073,37 +17306,54 @@ col.asset-expense-col-amount,
   background: var(--ui-surface-alt);
 }
 
-/* 지출 분류: 아이콘 그리드 — 타일 모서리 둥글게 */
+/* 지출 분류: 라벨만 (아이콘 없음) — 작은 타일 그리드 */
 .asset-expense-classification-panel--expense-icons {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(3.65rem, 1fr));
-  gap: 0.35rem;
-  padding: 0.45rem;
+  grid-template-columns: repeat(auto-fill, minmax(4.6rem, 1fr));
+  gap: 0.28rem;
+  padding: 0.38rem;
   max-height: inherit;
   overflow-x: hidden;
   overflow-y: auto;
   box-sizing: border-box;
 }
 
-/* 새 거래 모달(포털 패널): 지출 분류 한 화면—모달폭 활용 · 내부 스크롤 없음(JS가 세로 클램프) */
+/* 새 거래 모달: 패널을 좁히고 높이 제한 + 스크롤 → 뒤 표가 더 보임 */
 .asset-expense-classification-panel.asset-expense-classification-panel--modal-popover.asset-expense-classification-panel--expense-icons {
-  grid-template-columns: repeat(auto-fill, minmax(3.95rem, 1fr));
-  gap: 0.26rem;
-  padding: 0.35rem;
-  max-height: none !important;
-  overflow: visible !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.22rem;
+  padding: 0.3rem 0.35rem;
+  max-height: min(40vh, 268px) !important;
   overflow-x: hidden !important;
-  overflow-y: visible !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
 }
 
-.asset-expense-classification-panel--modal-popover .asset-expense-classification-expense-icon-btn {
-  padding: 0.3rem 0.12rem;
-  font-size: 0.6rem;
+.asset-expense-classification-chip-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  margin: 0;
+  padding: 0.3rem 0.26rem;
+  border: var(--line-l3);
+  border-radius: 0.35rem;
+  background: var(--content-bg);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--text-muted);
+  text-align: center;
+  word-break: keep-all;
+  box-sizing: border-box;
 }
 
-.asset-expense-classification-panel--modal-popover .asset-expense-classification-expense-icon-btn--has-icon .asset-expense-classification-expense-icon {
-  width: 1.42rem;
-  height: 1.42rem;
+.asset-expense-classification-chip-btn:hover {
+  border-color: var(--line-l2-color);
+  background: var(--ui-surface-alt);
+  color: var(--text-ink);
 }
 
 .asset-expense-classification-expense-icon-btn {
@@ -17365,6 +17615,67 @@ col.asset-expense-col-amount,
   opacity: 0.55;
 }
 
+/* 모달·인라인 패널만: 큰분류(지출/입금) 필 버튼 */
+.asset-expense-flow-type-wrap--modal-btns {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.asset-expense-flow-type-btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.asset-expense-flow-type-wrap--modal-btns .asset-expense-flow-type-btn {
+  margin: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.25;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px !important;
+  -webkit-border-radius: 999px !important;
+  border: 0.09375rem solid var(--line-l3-color);
+  background: rgba(209, 213, 219, 0.22);
+  color: #6b7280;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.asset-expense-flow-type-wrap--modal-btns .asset-expense-flow-type-btn:hover:not(:disabled):not(.is-selected) {
+  background: rgba(209, 213, 219, 0.38);
+}
+
+.asset-expense-flow-type-wrap--modal-btns .asset-expense-flow-type-btn.is-selected.asset-flow-expense {
+  background: rgba(242, 196, 196, 0.5);
+  color: #9f1239;
+  border-color: transparent;
+  font-weight: 600;
+}
+
+.asset-expense-flow-type-wrap--modal-btns .asset-expense-flow-type-btn.is-selected.asset-flow-expense:hover:not(:disabled) {
+  background: rgba(242, 196, 196, 0.58);
+}
+
+.asset-expense-flow-type-wrap--modal-btns .asset-expense-flow-type-btn.is-selected.asset-flow-deposit {
+  background: rgba(196, 216, 242, 0.4);
+  color: #1e4a8a;
+  border-color: transparent;
+  font-weight: 600;
+}
+
+.asset-expense-flow-type-wrap--modal-btns .asset-expense-flow-type-btn.is-selected.asset-flow-deposit:hover:not(:disabled) {
+  background: rgba(196, 216, 242, 0.5);
+}
+
 .asset-expense-payment-income-hint {
   font-size: 0.8125rem;
   font-weight: 500;
@@ -17555,10 +17866,11 @@ col.asset-expense-col-amount,
 
 .asset-expense-inline-panel-top {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.5rem 1rem 0.4rem 1rem;
+  padding: 0.48rem 1rem;
+  box-sizing: border-box;
   border-bottom: var(--line-l2);
   background: var(--content-bg);
 }
@@ -17596,7 +17908,7 @@ col.asset-expense-col-amount,
   width: 1.9rem;
   height: 1.9rem;
   padding: 0;
-  margin-top: 0.06rem;
+  margin: 0;
   font-size: 1.2rem;
   line-height: 1;
   color: var(--text-muted);
@@ -17639,6 +17951,26 @@ col.asset-expense-col-amount,
 }
 .asset-expense-form-row:last-child {
   border-bottom: none;
+}
+/* 한 줄 두 칸: 오른쪽 열이 :last-child라 border 가 사라져 가로 구분선이 끊기던 현상 보정 */
+.asset-debt-form-split-row {
+  border-bottom: var(--line-l2);
+  box-sizing: border-box;
+}
+.asset-debt-form-split-row > .asset-expense-form-row.asset-debt-form-split-col {
+  border-bottom: none;
+}
+/* display:grid 가 [hidden] 기본 display:none 보다 우선하는 경우 대비 (가계부 입금 시 결제 줄) */
+.asset-expense-form-row--payment-method[hidden] {
+  display: none !important;
+}
+/* 부동산: 거주 방식에 따라 숨긴 보증금·월세 줄 */
+.asset-real-estate-form-stack .asset-expense-form-row[hidden] {
+  display: none !important;
+}
+/* 표 뷰: 시세 등과 같이 쓰이는 td 도 [hidden] 확실히 반영 */
+.asset-asset-row-real-estate td[hidden] {
+  display: none !important;
 }
 .asset-expense-form-label {
   font-size: 0.75rem;
@@ -17919,17 +18251,25 @@ col.asset-expense-col-amount,
   ):hover {
   background: var(--ui-surface-alt);
 }
-/* 패널(모달) 안 결제 버튼: 큰분류와 비슷한 미선택 배경 */
+/* 패널(모달) 안 결제·큰분류 버튼: 미선택 배경 정렬 */
 .asset-expense-row--inner-panel
   .asset-expense-inline-panel
   .asset-expense-payment-wrap--modal-btns
-  .asset-expense-payment-btn:not(.is-selected) {
+  .asset-expense-payment-btn:not(.is-selected),
+.asset-expense-row--inner-panel
+  .asset-expense-inline-panel
+  .asset-expense-flow-type-wrap--modal-btns
+  .asset-expense-flow-type-btn:not(.is-selected) {
   background: rgba(42, 56, 40, 0.05);
 }
 .asset-expense-row--inner-panel
   .asset-expense-inline-panel
   .asset-expense-payment-wrap--modal-btns
-  .asset-expense-payment-btn:hover:not(:disabled):not(.is-selected) {
+  .asset-expense-payment-btn:hover:not(:disabled):not(.is-selected),
+.asset-expense-row--inner-panel
+  .asset-expense-inline-panel
+  .asset-expense-flow-type-wrap--modal-btns
+  .asset-expense-flow-type-btn:hover:not(:disabled):not(.is-selected) {
   background: var(--ui-surface-alt);
 }
 .asset-expense-form-control .asset-expense-date-display {
@@ -17958,6 +18298,19 @@ col.asset-expense-col-amount,
   width: 100%;
   justify-content: flex-end;
 }
+/* 순자산 대출 모달: 삭제 왼쪽, 저장·수정 오른쪽 (실수 방지) */
+.asset-networth-debt-modal .asset-expense-inline-panel-bottom-inner {
+  justify-content: flex-start;
+}
+.asset-networth-debt-modal .asset-expense-inline-panel-bottom .asset-expense-inline-panel-btn--danger {
+  margin-right: auto;
+}
+.asset-networth-debt-modal
+  .asset-expense-inline-panel-bottom-inner
+  > .asset-expense-inline-panel-btn--primary:only-child {
+  margin-left: auto;
+}
+
 .asset-expense-inline-panel-btn {
   padding: 0.4rem 0.9rem;
   font-size: 0.8rem;
@@ -18012,6 +18365,33 @@ col.asset-expense-col-amount,
     width: 100%;
     box-sizing: border-box;
   }
+  /* 순자산 대출 모달: 삭제(위험) 왼쪽·수정·저장 오른쪽 — 세로 쌓임 방지 */
+  .asset-networth-debt-modal .asset-expense-inline-panel-bottom {
+    display: flex;
+    justify-content: flex-start;
+  }
+  .asset-networth-debt-modal .asset-expense-inline-panel-bottom-inner {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .asset-networth-debt-modal .asset-expense-inline-panel-bottom .asset-expense-inline-panel-btn--danger {
+    margin-right: auto;
+    flex: 0 0 auto;
+  }
+  .asset-networth-debt-modal .asset-expense-inline-panel-bottom .asset-expense-inline-panel-btn--primary {
+    display: inline-flex;
+    width: auto;
+    justify-content: center;
+  }
+  .asset-networth-debt-modal
+    .asset-expense-inline-panel-bottom-inner
+    > .asset-expense-inline-panel-btn--primary:only-child {
+    margin-left: auto;
+  }
 }
 
 .asset-expense-btn-delete {
@@ -18048,6 +18428,313 @@ col.asset-expense-col-amount,
   pointer-events: auto;
 }
 
+.asset-debt-row--view.asset-debt-card .asset-debt-card-face {
+  pointer-events: auto;
+}
+
+.asset-debt-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.75rem 0.85rem 0.5rem;
+  box-sizing: border-box;
+}
+
+.asset-debt-row--view.asset-debt-card {
+  pointer-events: none;
+}
+
+.asset-debt-card {
+  position: relative;
+  background: var(--content-bg, #fff);
+  border: var(--line-l2, 1px solid #e8e8ec);
+  border-radius: 0.75rem !important;
+  -webkit-border-radius: 0.75rem !important;
+  padding: 0.75rem 1rem 0.85rem;
+  box-sizing: border-box;
+  -webkit-background-clip: padding-box;
+  background-clip: padding-box;
+}
+
+.asset-debt-card-headline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.asset-debt-card-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.asset-debt-card-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-body);
+  letter-spacing: -0.02em;
+}
+
+.asset-debt-card-meta {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.4rem 0.55rem;
+  margin-top: 0.25rem;
+  min-width: 0;
+}
+
+.asset-debt-card-sub {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.asset-debt-card-tags {
+  display: flex;
+  flex-flow: row nowrap;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.asset-debt-card-chip {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 0.12rem 0.45rem;
+  border-radius: 0.35rem;
+  background: rgba(179, 51, 51, 0.09);
+  color: #8b2e2e;
+}
+
+.asset-debt-card-chip--period {
+  background: rgba(40, 110, 170, 0.12);
+  color: #286eaa;
+}
+
+.asset-debt-card-chip--gain {
+  background: rgba(198, 40, 40, 0.1);
+  color: #8b1f1f;
+}
+
+.asset-debt-card-chip--loss {
+  background: rgba(21, 101, 192, 0.1);
+  color: #0d47a1;
+}
+
+.asset-debt-card-chip--flat {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-muted);
+}
+
+.asset-debt-card-main {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.asset-debt-card-figures {
+  text-align: right;
+  flex-shrink: 0;
+  min-width: 5.5rem;
+}
+
+.asset-debt-card-balance {
+  display: block;
+  font-size: 1.2rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #b33;
+  letter-spacing: -0.03em;
+}
+
+.asset-debt-card-balance.asset-debt-card-balance--negative-net {
+  color: #c62828;
+  font-weight: 700;
+}
+
+.asset-debt-card-maturity {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* 카드 노출 요약: 두 블록 모두 4열 1행(항목 각 4개) */
+.asset-debt-card-stats {
+  margin-top: 0.62rem;
+  padding-top: 0.62rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.asset-debt-card-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: 0.42rem;
+  row-gap: 0.25rem;
+}
+
+.asset-debt-card-stats-grid--secondary {
+  padding-top: 0.45rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.asset-debt-card-stat {
+  min-width: 0;
+}
+
+.asset-debt-card-stat-label {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: -0.02em;
+}
+
+.asset-debt-card-stat-value {
+  display: block;
+  margin-top: 0.12rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-body);
+}
+
+.asset-debt-card-stat-value.asset-debt-card-stat-val--gain,
+.asset-asset-debtface-stat-val.asset-debt-card-stat-val--gain {
+  color: #c62828;
+}
+
+.asset-debt-card-stat-value.asset-debt-card-stat-val--loss,
+.asset-asset-debtface-stat-val.asset-debt-card-stat-val--loss {
+  color: #1565c0;
+}
+
+.asset-debt-card-stat-value.asset-debt-card-stat-val--flat,
+.asset-asset-debtface-stat-val.asset-debt-card-stat-val--flat {
+  color: var(--text-muted);
+}
+
+.asset-debt-card-stat-value.asset-debt-card-stat-val--net-negative,
+.asset-asset-debtface-stat-val.asset-debt-card-stat-val--net-negative {
+  color: #c62828;
+  font-weight: 700;
+}
+
+.asset-debt-card-progress {
+  margin-top: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.asset-debt-card-progress-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.asset-debt-card-progress-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.asset-debt-card-progress-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: #c44;
+  transition: width 0.25s ease;
+}
+
+.asset-debt-card-progress-pct {
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  min-width: 2.25rem;
+  text-align: right;
+}
+
+.asset-debt-card-fields {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  left: 0;
+  top: 0;
+}
+
+@media (max-width: 768px) {
+  .asset-debt-cards-list {
+    padding: 0.55rem 0.65rem 0.35rem;
+    gap: 0.55rem;
+  }
+  .asset-debt-card {
+    padding: 0.65rem 0.85rem 0.75rem;
+  }
+  .asset-debt-card-main {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+  }
+  .asset-debt-card-figures {
+    text-align: left;
+  }
+  .asset-asset-cards-list {
+    padding: 0.55rem 0.65rem 0.35rem;
+    gap: 0.55rem;
+  }
+  .asset-asset-card {
+    padding: 0.65rem 0.85rem 0.75rem;
+  }
+  .asset-asset-card-main:not(.asset-asset-card-main--stock):not(.asset-asset-card-main--simple-face) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+  }
+  .asset-asset-card-main--simple-face {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.65rem;
+  }
+  .asset-asset-card-main--simple-face .asset-asset-card-figures {
+    margin-left: auto;
+    text-align: right;
+    max-width: none;
+    width: auto;
+    min-width: min(52%, 10.5rem);
+  }
+  .asset-asset-card-hint {
+    text-align: left;
+    max-width: none;
+  }
+
+}
+
+
 .asset-debt-cell-panel,
 .asset-asset-cell-panel {
   padding: 0.45rem 0.7rem 0.55rem;
@@ -18079,23 +18766,27 @@ col.asset-expense-col-amount,
 }
 /* 편집 폼: app-tab-panel overflow-x hidden 대비, 100vw가 아닌 «이 박스» 너비(cqi)로 맞춤 */
 .asset-networth-view
-  .asset-debt-table-container:has(tr.asset-debt-row--inner-panel) {
+  .asset-debt-table-container:has(tr.asset-debt-row--inner-panel),
+.asset-networth-view
+  .asset-debt-table-container:has(div.asset-debt-row--inner-panel) {
   container-type: inline-size;
   container-name: networth-debt-form;
 }
 /* 총부채: 가로 스크롤(넓은 열)은 래퍼에 두고, 편집 패널은 container(cqi) 너비로 잘림 방지 */
 .asset-networth-view
-  .asset-debt-table-wrap:has(tr.asset-debt-row--inner-panel) {
+  .asset-debt-table-wrap:has(tr.asset-debt-row--inner-panel),
+.asset-networth-view
+  .asset-debt-table-wrap:has(div.asset-debt-row--inner-panel) {
   overflow-x: auto;
   max-width: 100%;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
 }
-.asset-debt-table tr.asset-debt-row--inner-panel {
+.asset-debt-row--inner-panel {
   position: relative;
   vertical-align: top;
 }
-.asset-debt-table tr.asset-debt-row--inner-panel > .asset-debt-cell-panel {
+.asset-debt-row--inner-panel > .asset-debt-cell-panel {
   min-width: 0 !important;
   max-width: 100% !important;
   position: relative;
@@ -18130,23 +18821,51 @@ col.asset-expense-col-amount,
   min-width: 0;
   max-width: 100%;
 }
-.asset-debt-row--inner-panel .asset-expense-form-row {
+.asset-debt-row--inner-panel .asset-debt-form-split-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 0.5rem;
+  align-items: stretch;
+  min-width: 0;
+}
+.asset-debt-row--inner-panel .asset-debt-form-split-row > .asset-debt-form-split-col {
+  min-width: 0;
+}
+.asset-debt-row--inner-panel
+  .asset-debt-form-split-row
+  > .asset-debt-form-split-col.asset-expense-form-row {
+  grid-template-columns: minmax(5.25rem, 8.75rem) minmax(0, 1fr) !important;
+}
+.asset-debt-row--inner-panel .asset-expense-form-row:not(.asset-debt-form-split-col) {
   min-width: 0;
   /* 라벨 열은 0으로 줄지 않게(모바일에서 라벨 텍스트가 통째로 사라지는 문제 방지) */
   grid-template-columns: minmax(8.25rem, 12rem) minmax(0, 1fr) !important;
 }
 @media (min-width: 769px) {
-  /* 1열: 모든 행 동일 너비(최장 레이블 '중도상환(수수료 제외)' 한 줄) */
-  .asset-debt-row--inner-panel .asset-expense-form-row {
+  /* 전체폭 행만 넓은 라벨열 — 한 줄 두 칸 행(.asset-debt-form-split-col)은 아래 줄간격 유지 */
+  .asset-debt-row--inner-panel .asset-expense-form-row:not(.asset-debt-form-split-col) {
     grid-template-columns: 14.5rem minmax(0, 1fr) !important;
   }
   .asset-debt-row--inner-panel .asset-expense-form-label {
     white-space: nowrap;
     min-width: 0;
   }
+  .asset-debt-row--inner-panel
+    .asset-debt-form-split-row
+    > .asset-debt-form-split-col.asset-expense-form-row {
+    grid-template-columns: 7rem minmax(0, 1fr) !important;
+  }
 }
-/* 매우 좁은 폭: 2열을 포기하고 라벨→값 세로 쌓기(라벨이 항상 보이게) */
+/* 매우 좁은 폭: 라벨→값 세로 쌓기 + 분할 줄은 세로로 쌓음 */
 @media (max-width: 28rem) {
+  .asset-debt-row--inner-panel .asset-debt-form-split-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  /* 두 칸이 세로로 쌓일 때 칸 사이 구분선 */
+  .asset-debt-form-split-row > .asset-expense-form-row.asset-debt-form-split-col:first-of-type {
+    border-bottom: var(--line-l2);
+  }
   .asset-debt-row--inner-panel .asset-expense-form-row {
     grid-template-columns: minmax(0, 1fr) !important;
   }
@@ -18170,10 +18889,74 @@ col.asset-expense-col-amount,
   min-width: 0 !important;
   max-width: 100%;
 }
-/* 대출 편집: 직접 입력·선택 = 라벨 열과 동일 톤 / 자동계산 = 회색 톤으로 구분 */
+/* 대출 편집: 직접 입력·선택 = 라벨 열과 동일 톤 / 자동계산 = 회색 톤으로 구분
+ * — 순자산 인라인: .asset-debt-row--inner-panel / 뜬 모달: 패널만 분리되어 .asset-networth-debt-modal .asset-debt-inline-panel */
 .asset-debt-row--inner-panel
+  .asset-expense-form-control--field:not(.asset-debt-panel-value--computed),
+.asset-networth-debt-modal
+  .asset-debt-inline-panel
   .asset-expense-form-control--field:not(.asset-debt-panel-value--computed) {
   background: rgba(42, 56, 40, 0.05);
+}
+
+/* 새 대출·수정: 가입일/만기일과 같이 텍스트·숫자 입력 칸에 밑줄(모달은 inner-panel 조상 없음 → debt-modal 로 병행) */
+.asset-debt-row--inner-panel
+  .asset-expense-form-control--field:not(.asset-debt-panel-value--computed):is(
+    .asset-debt-cell-name,
+    .asset-debt-cell-period,
+    .asset-debt-cell-rate,
+    .asset-debt-cell-principal,
+    .asset-debt-cell-extra-paid
+  ),
+.asset-networth-debt-modal
+  .asset-debt-inline-panel
+  .asset-expense-form-control--field:not(.asset-debt-panel-value--computed):is(
+    .asset-debt-cell-name,
+    .asset-debt-cell-period,
+    .asset-debt-cell-rate,
+    .asset-debt-cell-principal,
+    .asset-debt-cell-extra-paid
+  ) {
+  border-bottom: var(--input-border-idle);
+  min-height: 1.75rem;
+  box-sizing: border-box;
+  border-radius: 0;
+}
+
+.asset-debt-row--inner-panel
+  .asset-expense-form-control--field:not(.asset-debt-panel-value--computed):is(
+    .asset-debt-cell-name,
+    .asset-debt-cell-period,
+    .asset-debt-cell-rate,
+    .asset-debt-cell-principal,
+    .asset-debt-cell-extra-paid
+  ):focus-within,
+.asset-networth-debt-modal
+  .asset-debt-inline-panel
+  .asset-expense-form-control--field:not(.asset-debt-panel-value--computed):is(
+    .asset-debt-cell-name,
+    .asset-debt-cell-period,
+    .asset-debt-cell-rate,
+    .asset-debt-cell-principal,
+    .asset-debt-cell-extra-paid
+  ):focus-within {
+  border-bottom: var(--input-border-focus);
+}
+
+.asset-debt-row--inner-panel .asset-debt-cell-name .asset-debt-input-name::placeholder,
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-cell-name .asset-debt-input-name::placeholder,
+.asset-debt-row--inner-panel .asset-debt-input-period::placeholder,
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-input-period::placeholder,
+.asset-debt-row--inner-panel .asset-debt-input-rate::placeholder,
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-input-rate::placeholder,
+.asset-debt-row--inner-panel .asset-debt-input-principal::placeholder,
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-input-principal::placeholder,
+.asset-debt-row--inner-panel .asset-debt-input-extra-paid::placeholder,
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-input-extra-paid::placeholder {
+  /* 레이블·입력글자보다 한 톤 연한 힌트(예: 4.2, - 등) */
+  color: rgba(60, 60, 67, 0.32);
+  -webkit-text-fill-color: rgba(60, 60, 67, 0.32);
+  opacity: 1;
 }
 .asset-debt-row--inner-panel .asset-debt-panel-value--computed {
   background: rgba(72, 70, 64, 0.11);
@@ -18218,21 +19001,11 @@ col.asset-expense-col-amount,
 .asset-debt-row--inner-panel .asset-debt-date-cell .asset-debt-date-display {
   padding: 0.2rem 0.4rem 0.2rem 0.55rem !important;
 }
-@media (max-width: 48rem) {
-  .asset-networth-view
-    .asset-debt-table:has(tr.asset-debt-row--inner-panel)
-    th {
-    font-size: 0.7rem;
-    line-height: 1.2;
-  }
-}
 .asset-networth-view {
   padding: 0;
 }
 
-/* 순자산 화면: 총부채·총자산 회색 패널 톤 */
-.asset-networth-view .asset-debt-progress-wrap,
-.asset-networth-view .asset-debt-table-wrap,
+/* 순자산 화면: 총부채·총자산 회색 패널 톤 (카드 목록 래퍼·상환 진행 래퍼 제외) */
 .asset-networth-view .asset-debt-add-button-wrap,
 .asset-networth-view .asset-debt-row--inner-panel .asset-expense-inline-panel,
 .asset-networth-view .asset-asset-subsection,
@@ -18240,6 +19013,13 @@ col.asset-expense-col-amount,
 .asset-networth-view .asset-asset-add-button-wrap,
 .asset-networth-view tr.asset-asset-row--inner-panel .asset-expense-inline-panel {
   background: #f2f7f9;
+}
+
+/* 순자산·총부채: 카드 리스트 바깥 테두리·배경 제거 — 개별 .asset-debt-card 만 유지 */
+.asset-networth-view .asset-debt-table-wrap {
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .asset-networth-view .asset-asset-tab-btn.is-active {
@@ -18271,24 +19051,6 @@ col.asset-expense-col-amount,
   flex-direction: column;
   align-items: center;
   text-align: center;
-}
-
-.asset-networth-dashboard-formula-label.asset-networth-dashboard-formula-label--with-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.32rem;
-  flex-wrap: wrap;
-}
-
-/* 흰 선·검정 배경 PNG → 라벨색에 맞는 실루엣 (#1f4654 톤) */
-.asset-networth-dashboard-formula-icon {
-  flex-shrink: 0;
-  width: 1.375rem;
-  height: 1.375rem;
-  object-fit: contain;
-  display: block;
-  filter: invert(26%) sepia(11%) saturate(1045%) hue-rotate(146deg) brightness(95%) contrast(92%);
 }
 
 .asset-networth-dashboard-formula-label {
@@ -18332,6 +19094,10 @@ col.asset-expense-col-amount,
   font-size: 1.85rem;
   font-weight: 700;
   color: var(--text-ink);
+}
+
+.asset-networth-dashboard-formula-value.asset-networth-dashboard-formula-value--negative {
+  color: #c62828 !important;
 }
 
 .asset-networth-dashboard-target {
@@ -18390,7 +19156,7 @@ col.asset-expense-col-amount,
 
 .asset-networth-dashboard-progress-fill {
   height: 100%;
-  background: var(--progress-fill);
+  background: #7fb2bf;
   border-radius: var(--progress-radius);
   transition: var(--progress-transition);
 }
@@ -18406,18 +19172,45 @@ col.asset-expense-col-amount,
   color: #059669;
 }
 
+.asset-asset-deposit-nw-opts {
+  margin: -0.35rem 0 0.85rem;
+  padding: 0 0.35rem 0 0.65rem;
+  text-align: left;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.asset-networth-dashboard-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.asset-networth-dashboard-deposit-opts-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
 .asset-debt-section {
   margin-bottom: 2rem;
 }
 
-/* 총 부채 상환 진행률 프로그레스 바 */
+/* 총 부채 상환 진행률 프로그레스 바 (전역 border-radius:0 !important 와 동일 우선순위로 둥글게) */
 .asset-debt-progress-wrap {
   padding: 1rem 1.25rem;
   margin-bottom: 1rem;
-  background: #f5f5f7;
-  border: var(--line-l3);
-  border-radius: 0.5rem;
-  box-shadow: 0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.06);
+  background: #f2f7f9;
+  border: none !important;
+  border-radius: 1rem !important;
+  -webkit-border-radius: 1rem !important;
+  box-shadow: none;
+  -webkit-background-clip: padding-box;
+  background-clip: padding-box;
+  overflow: hidden;
 }
 
 .asset-debt-progress-header {
@@ -18439,7 +19232,7 @@ col.asset-expense-col-amount,
 }
 
 .asset-debt-progress-remaining-value {
-  color: var(--progress-fill);
+  color: #1f4654;
   font-variant-numeric: tabular-nums;
 }
 
@@ -18452,7 +19245,7 @@ col.asset-expense-col-amount,
 
 .asset-debt-progress-fill {
   height: 100%;
-  background: var(--progress-fill);
+  background: #1f4654;
   border-radius: var(--progress-radius);
   transition: var(--progress-transition);
 }
@@ -18468,8 +19261,72 @@ col.asset-expense-col-amount,
 
 .asset-debt-progress-percent {
   font-weight: 600;
-  color: var(--progress-fill);
+  color: #1f4654;
   font-variant-numeric: tabular-nums;
+}
+
+/* 상환 진행률 카드 하단: 원금·이자·상환·중도상환·잔여 */
+.asset-debt-progress-totals {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.5rem 0.65rem;
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+
+.asset-debt-progress-total-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.28rem;
+  min-width: 0;
+}
+
+.asset-debt-progress-total-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+
+.asset-debt-progress-totals .asset-debt-cell-totals-principal,
+.asset-debt-progress-totals .asset-debt-cell-totals-interest,
+.asset-debt-progress-totals .asset-debt-cell-totals-paid,
+.asset-debt-progress-totals .asset-debt-cell-totals-extra-paid,
+.asset-debt-progress-totals .asset-debt-cell-totals-balance {
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-body);
+  line-height: 1.25;
+  word-break: break-all;
+}
+
+.asset-debt-progress-total-cell--balance .asset-debt-cell-totals-balance {
+  color: #1f4654;
+}
+
+@media (max-width: 48rem) {
+  .asset-debt-progress-totals {
+    grid-template-columns: repeat(5, minmax(3rem, 1fr));
+    gap: 0.4rem 0.35rem;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+  }
+
+  .asset-debt-progress-total-label {
+    font-size: 0.625rem;
+  }
+
+  .asset-debt-progress-totals .asset-debt-cell-totals-principal,
+  .asset-debt-progress-totals .asset-debt-cell-totals-interest,
+  .asset-debt-progress-totals .asset-debt-cell-totals-paid,
+  .asset-debt-progress-totals .asset-debt-cell-totals-extra-paid,
+  .asset-debt-progress-totals .asset-debt-cell-totals-balance {
+    font-size: 0.72rem;
+  }
 }
 
 /* 총 자산 섹션 */
@@ -18577,28 +19434,20 @@ col.asset-expense-col-amount,
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 1rem;
+  padding-right: 0.75rem;
+  box-sizing: border-box;
 }
 
 .asset-asset-title {
   display: inline-flex;
   align-items: center;
+  gap: 0.375rem;
   padding: 0.35rem 0.75rem;
   background: transparent;
   color: #1f4654;
   border-radius: 62.4375rem;
   font-size: 0.9rem;
   font-weight: 500;
-}
-
-.asset-asset-count {
-  font-size: 0.9rem;
-  color: var(--text-muted);
-}
-
-.asset-asset-more {
-  font-size: 1.2rem;
-  color: var(--text-muted);
-  cursor: pointer;
 }
 
 .asset-asset-table-wrap {
@@ -18842,11 +19691,22 @@ col.asset-expense-col-amount,
   position: relative;
   display: block;
   min-height: 1.5em;
+  box-sizing: border-box;
+  border-bottom: var(--input-border-idle);
+  background: transparent;
+}
+
+.asset-asset-date-wrap:focus-within {
+  border-bottom: var(--input-border-focus);
+}
+
+.asset-asset-maturity-date-wrap--computed:focus-within {
+  border-bottom: var(--input-border-idle);
 }
 
 .asset-asset-date-display {
   display: block;
-  padding: 0.2rem 0.4rem;
+  padding: 0.2rem 0 0.15rem;
   font-size: 0.8125rem;
   font-variant-numeric: tabular-nums;
   color: var(--text-body);
@@ -18912,6 +19772,80 @@ col.asset-expense-col-amount,
   color: var(--text-ink);
 }
 
+/* 부동산 폼: 신규 필드 — 계약 대상·시세와 동일 밑줄만 (통 박스 테두리 제거) */
+.asset-real-estate-input-purchase-price,
+.asset-real-estate-input-area-sqm,
+.asset-real-estate-input-lease-deposit,
+.asset-real-estate-input-monthly-rent,
+.asset-real-estate-input-acquisition-date {
+  width: 100%;
+  padding: 0.2rem 0;
+  font-size: 0.8125rem;
+  border: none !important;
+  border-radius: 0;
+  border-bottom: var(--input-border-idle) !important;
+  background: transparent !important;
+  font-family: inherit;
+  box-sizing: border-box;
+  color: var(--text-body);
+  outline: none;
+  box-shadow: none !important;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.asset-real-estate-input-acquisition-date {
+  min-height: 1.75rem;
+  color-scheme: light;
+}
+
+.asset-real-estate-input-purchase-price:focus,
+.asset-real-estate-input-area-sqm:focus,
+.asset-real-estate-input-lease-deposit:focus,
+.asset-real-estate-input-monthly-rent:focus,
+.asset-real-estate-input-acquisition-date:focus,
+.asset-real-estate-input-acquisition-date:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-bottom: var(--input-border-focus) !important;
+  color: var(--text-ink);
+}
+
+/* 부동산 드롭다운: 흰 배경·밑줄만·화살표 */
+.asset-real-estate-input-property-type,
+.asset-real-estate-input-occupancy {
+  width: 100%;
+  padding: 0.2rem 1.5rem 0.2rem 0;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  border: none !important;
+  border-radius: 0;
+  border-bottom: var(--input-border-idle) !important;
+  background-color: var(--content-bg, #fff) !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237a7969' d='M2.5 4.25L6 7.75l3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.05rem center;
+  color: var(--text-body);
+  font-family: inherit;
+  box-sizing: border-box;
+  cursor: pointer;
+  outline: none;
+  box-shadow: none !important;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.asset-real-estate-input-property-type:focus,
+.asset-real-estate-input-occupancy:focus {
+  border-bottom: var(--input-border-focus) !important;
+  color: var(--text-ink);
+}
+
+/* 부동산 폼 셀: 회색 박스 대신 플랫(모달·패널 공통) */
+.asset-real-estate-form-stack .asset-expense-form-control--field:not(.asset-debt-panel-value--computed) {
+  background: transparent !important;
+}
+
 /* 주식 입력창: 입력창 통일 명세 */
 .asset-stock-input-name,
 .asset-stock-input-current-price,
@@ -18951,6 +19885,7 @@ col.asset-expense-col-amount,
 .asset-insurance-input-monthly,
 .asset-insurance-input-surrender,
 .asset-insurance-input-coverage,
+.asset-annuity-input-surrender,
 .asset-annuity-input-name,
 .asset-annuity-input-kind,
 .asset-annuity-input-monthly,
@@ -18974,6 +19909,7 @@ col.asset-expense-col-amount,
 .asset-insurance-input-monthly:focus,
 .asset-insurance-input-surrender:focus,
 .asset-insurance-input-coverage:focus,
+.asset-annuity-input-surrender:focus,
 .asset-annuity-input-name:focus,
 .asset-annuity-input-kind:focus,
 .asset-annuity-input-monthly:focus,
@@ -18985,6 +19921,7 @@ col.asset-expense-col-amount,
 .asset-insurance-input-monthly:focus-visible,
 .asset-insurance-input-surrender:focus-visible,
 .asset-insurance-input-coverage:focus-visible,
+.asset-annuity-input-surrender:focus-visible,
 .asset-annuity-input-name:focus-visible,
 .asset-annuity-input-kind:focus-visible,
 .asset-annuity-input-monthly:focus-visible,
@@ -18999,10 +19936,6 @@ col.asset-expense-col-amount,
 .asset-asset-table-stock .asset-stock-col-name {
   width: auto;
   min-width: 6.25rem;
-}
-.asset-asset-table-stock .asset-stock-col-category {
-  width: 10%;
-  min-width: 5.3125rem;
 }
 .asset-asset-table-stock .asset-stock-col-avg-price,
 .asset-asset-table-stock .asset-stock-col-current-price {
@@ -19088,6 +20021,10 @@ col.asset-expense-col-amount,
 .asset-asset-table-annuity .asset-annuity-col-kind {
   width: 8%;
   min-width: 4.375rem;
+}
+.asset-asset-table-annuity .asset-annuity-col-surrender {
+  width: 8%;
+  min-width: 4.6875rem;
 }
 .asset-asset-table-annuity .asset-annuity-col-payment-start,
 .asset-asset-table-annuity .asset-annuity-col-payment-end,
@@ -19434,7 +20371,7 @@ col.asset-expense-col-amount,
 .asset-asset-savings-goal-panel {
   position: fixed;
   z-index: 10000;
-  background: #f5f5f7;
+  background: var(--content-bg);
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
@@ -19914,11 +20851,15 @@ col.asset-expense-col-amount,
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 1rem;
+  /* 총 부채 타이틀(.asset-debt-title) 좌우 패딩 0.75rem 과 맞춤 — +추가 가 화면 오른쪽에 붙지 않게 */
+  padding-right: 0.75rem;
+  box-sizing: border-box;
 }
 
 .asset-debt-title {
   display: inline-flex;
   align-items: center;
+  gap: 0.375rem;
   padding: 0.35rem 0.75rem;
   background: transparent;
   color: #1f4654;
@@ -19927,15 +20868,18 @@ col.asset-expense-col-amount,
   font-weight: 500;
 }
 
+.asset-networth-section-title-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+  object-fit: contain;
+  display: block;
+  opacity: 0.92;
+}
+
 .asset-debt-count {
   font-size: 0.9rem;
   color: var(--text-muted);
-}
-
-.asset-debt-more {
-  font-size: 1.2rem;
-  color: var(--text-muted);
-  cursor: pointer;
 }
 
 .asset-debt-add-inline-btn {
@@ -19956,6 +20900,1391 @@ col.asset-expense-col-amount,
 .asset-debt-add-inline-btn:hover {
   border-color: var(--text-muted);
   background: var(--ui-surface-alt, rgba(0, 0, 0, 0.03));
+}
+
+.asset-asset-add-inline-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--text-body);
+  background: var(--content-bg, #fff);
+  border: 1px solid var(--line-l2-color);
+  border-radius: 62.4375rem;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.asset-asset-add-inline-btn:hover {
+  border-color: var(--text-muted);
+  background: var(--ui-surface-alt, rgba(0, 0, 0, 0.03));
+}
+
+.asset-asset-count {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.asset-asset-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.75rem 0.85rem 0.5rem;
+  box-sizing: border-box;
+}
+
+.asset-asset-row--view.asset-asset-card {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.asset-asset-card {
+  position: relative;
+  background: var(--content-bg, #fff);
+  border: var(--line-l2, 1px solid #e8e8ec);
+  border-radius: 0.75rem !important;
+  -webkit-border-radius: 0.75rem !important;
+  padding: 0.75rem 1rem 0.85rem;
+  box-sizing: border-box;
+  -webkit-background-clip: padding-box;
+  background-clip: padding-box;
+}
+
+.asset-asset-card-main {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+/* 예·적금·부동산·보험·연금 카드 헤더: 아이콘 | 제목·태그 | 금액·날짜 */
+.asset-asset-card-main--simple-face {
+  align-items: center;
+}
+
+.asset-asset-card-main--simple-face .asset-asset-card-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.asset-asset-card-main--simple-face .asset-asset-card-meta {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.35rem 0.45rem;
+  margin-top: 0.28rem;
+  min-width: 0;
+}
+
+.asset-asset-card-main--simple-face .asset-asset-card-tags {
+  display: flex;
+  flex-flow: row wrap;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.asset-asset-card-icon-wrap {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.625rem;
+  height: 2.625rem;
+  /* 전역 * { border-radius: 0 !important } 대비 — 원형(50%)이 아닌 모서리만 둥근 사각형 */
+  border-radius: 0.5rem !important;
+  -webkit-border-radius: 0.5rem !important;
+  overflow: hidden;
+  -webkit-background-clip: padding-box;
+  background-clip: padding-box;
+  background: rgba(107, 140, 120, 0.2);
+}
+
+.asset-asset-card-icon-wrap .asset-asset-card-icon-img,
+.asset-asset-stock-icon-wrap img {
+  display: block;
+}
+
+.asset-asset-card--insurance .asset-asset-card-icon-wrap {
+  background: rgba(179, 51, 51, 0.12);
+}
+
+.asset-asset-card--annuity .asset-asset-card-icon-wrap {
+  background: rgba(99, 102, 241, 0.16);
+}
+
+.asset-asset-card--real-estate .asset-asset-card-icon-wrap {
+  background: rgba(210, 130, 60, 0.16);
+}
+
+.asset-asset-face-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.06rem 0.42rem;
+  border-radius: 999px;
+  font-size: 0.67rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.asset-asset-face-chip--teal {
+  color: #4d6158;
+  background: rgba(168, 196, 182, 0.42);
+}
+
+.asset-asset-face-chip--indigo {
+  color: #3730a3;
+  background: rgba(165, 180, 252, 0.32);
+}
+
+.asset-asset-face-chip--amber {
+  color: #9a3412;
+  background: rgba(253, 186, 116, 0.38);
+}
+
+.asset-asset-face-chip--rose {
+  color: #9d174d;
+  background: rgba(251, 207, 232, 0.45);
+}
+
+.asset-asset-face-chip--slate {
+  color: var(--text-body);
+  background: rgba(42, 56, 40, 0.08);
+}
+
+.asset-asset-face-chip--gray {
+  color: #4b5563;
+  background: rgba(209, 213, 219, 0.52);
+}
+
+.asset-asset-face-chip--violet {
+  color: #5c4a72;
+  background: rgba(198, 188, 218, 0.45);
+}
+
+.asset-asset-card-figures {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.18rem;
+  text-align: right;
+  max-width: 11rem;
+  min-width: 0;
+}
+
+.asset-asset-card-balance {
+  font-size: 1.06rem;
+  font-weight: 700;
+  line-height: 1.28;
+  color: var(--text-ink, #1a2218);
+  font-variant-numeric: tabular-nums;
+}
+
+.asset-asset-card-balance.asset-asset-card-balance--negative {
+  color: #c62828;
+}
+
+.asset-asset-card-subline {
+  font-size: 0.71rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.asset-asset-card-int-hint {
+  font-size: 0.65rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--text-caption-color, #a8a290);
+  font-variant-numeric: tabular-nums;
+  max-width: 11rem;
+}
+
+.asset-asset-card--withdrawn {
+  opacity: 0.55;
+}
+
+.asset-asset-card-copy {
+  min-width: 0;
+}
+
+.asset-asset-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-body);
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.asset-asset-card-subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+.asset-asset-card--real-estate .asset-asset-card-subtitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem 0.2rem;
+}
+
+.asset-asset-card-chip {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.06rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+}
+
+/* 부동산 카드 부제: 분류 칩 톤(주황 계열) */
+.asset-asset-card-chip--realestate {
+  color: #8b4518;
+  background: rgba(210, 130, 60, 0.18);
+  border: 1px solid rgba(210, 120, 50, 0.28);
+}
+
+.asset-asset-card--real-estate .asset-asset-card-subtitle-suffix {
+  color: var(--text-muted);
+}
+
+.asset-asset-card-hint {
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+  max-width: 11rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.asset-asset-card-main--stock .asset-asset-card-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.asset-asset-stock-icon-wrap {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.625rem;
+  height: 2.625rem;
+  /* 전역 * { border-radius: 0 !important } 대비 — 원형(50%)이 아닌 모서리만 둥근 사각형 */
+  border-radius: 0.5rem !important;
+  -webkit-border-radius: 0.5rem !important;
+  overflow: hidden;
+  -webkit-background-clip: padding-box;
+  background-clip: padding-box;
+  background: rgba(99, 102, 241, 0.16);
+}
+
+.asset-asset-stock-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+}
+
+.asset-asset-stock-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.08rem 0.48rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.asset-asset-stock-tag--kind {
+  color: var(--text-body);
+  background: rgba(42, 56, 40, 0.08);
+}
+
+.asset-asset-stock-tag--segment {
+  color: #4338ca;
+  background: rgba(99, 102, 241, 0.14);
+}
+
+.asset-asset-stock-tag--qty {
+  color: var(--text-body);
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.asset-asset-card-hint-stack {
+  flex-shrink: 0;
+  text-align: right;
+  max-width: 11rem;
+}
+
+.asset-asset-card--stock .asset-asset-card-hint {
+  font-size: 1.06rem;
+  font-weight: 700;
+  line-height: 1.28;
+  color: var(--text-ink, #1a2218);
+  max-width: none;
+}
+
+.asset-asset-card-hint-caption {
+  margin-top: 0.22rem;
+  font-size: 0.71rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.asset-asset-stock-plstrip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.72rem;
+  padding: 0.55rem 0.72rem;
+  border-radius: 0.42rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.asset-asset-stock-plstrip--loss {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b42318;
+}
+
+.asset-asset-stock-plstrip--gain {
+  background: rgba(34, 197, 94, 0.12);
+  color: #065f46;
+}
+
+.asset-asset-stock-plstrip--flat {
+  background: rgba(0, 0, 0, 0.045);
+  color: var(--text-muted);
+}
+
+.asset-asset-stock-plstrip-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  min-width: 0;
+}
+
+.asset-asset-stock-plstrip-ico {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  line-height: 1;
+  opacity: 0.92;
+}
+
+.asset-asset-stock-plstrip-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.asset-asset-stock-pl-amt {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.asset-asset-stock-pl-amt--loss {
+  color: #ba1c12;
+}
+
+.asset-asset-stock-pl-amt--gain {
+  color: #067647;
+}
+
+.asset-asset-stock-pl-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.06rem 0.38rem;
+  border-radius: 999px;
+  font-size: 0.73rem;
+  font-weight: 700;
+  line-height: 1.35;
+  background: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.asset-asset-stock-pl-pill--loss {
+  border: 1px solid rgba(220, 38, 38, 0.45);
+  color: #b42318;
+}
+
+.asset-asset-stock-pl-pill--gain {
+  border: 1px solid rgba(5, 150, 105, 0.45);
+  color: #047857;
+}
+
+.asset-asset-stock-gauge {
+  margin-top: 0.6rem;
+  margin-bottom: 0;
+}
+
+.asset-asset-stock-gauge-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.asset-asset-stock-gauge-val {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.asset-asset-stock-gauge-val--loss {
+  color: #ba1c12;
+}
+
+.asset-asset-stock-gauge-val--gain {
+  color: #067647;
+}
+
+.asset-asset-stock-gauge-barwrap {
+  margin-top: 0.38rem;
+}
+
+.asset-asset-stock-gauge-track {
+  position: relative;
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.07);
+  overflow: hidden;
+}
+
+.asset-asset-stock-gauge-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.asset-asset-stock-gauge-fill--neg {
+  left: auto;
+  right: auto;
+  background: linear-gradient(90deg, #ef4444, #fca5a5);
+  border-radius: 999px 0 0 999px;
+}
+
+.asset-asset-stock-gauge-fill--pos {
+  left: auto;
+  right: auto;
+  background: linear-gradient(90deg, #bbf7d0, #059669);
+  border-radius: 0 999px 999px 0;
+}
+
+.asset-asset-stock-gauge-mid {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  border-radius: 1px;
+  background: rgba(60, 60, 60, 0.35);
+  z-index: 2;
+}
+
+.asset-asset-stock-gauge-ticks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.22rem;
+  font-size: 0.61rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 주식 카드 칸 배경만 살짝 다르게 */
+.asset-asset-card--stock .asset-asset-card-detail-row {
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.asset-asset-card-detail-value--loss {
+  color: #ba1c12;
+}
+
+.asset-asset-card-detail-value--gain {
+  color: #047857;
+}
+
+/* 순자산 자산 카드 상세: 3열 그리드·셀별 라벨 위·값 아래 (데스크톱·모바일 공통) */
+.asset-asset-card-details {
+  margin-top: 0.65rem;
+  padding: 0;
+  padding-top: 0;
+  border-top: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--line-l2-color, #dce3e8);
+  border: 1px solid var(--line-l2-color, #d5dde3);
+  border-radius: 0.42rem;
+  overflow: hidden;
+}
+
+.asset-asset-card-detail-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.22rem;
+  margin: 0;
+  padding: 0.45rem 0.4rem;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.92);
+  border: none;
+  font-size: 0.73rem;
+  line-height: 1.34;
+}
+
+.asset-asset-card-detail-row--full {
+  grid-column: 1 / -1;
+}
+
+.asset-asset-card-detail-label {
+  font-size: 0.66rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.asset-asset-card-detail-value {
+  color: var(--text-body);
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  word-break: break-word;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.asset-asset-card-fields {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  left: 0;
+  top: 0;
+}
+
+.asset-networth-asset-modal .asset-expense-transaction-modal-panel-shell.asset-networth-asset-modal-panel {
+  max-height: min(90vh, 44rem);
+  display: flex;
+  flex-direction: column;
+  /* 숫자·날짜 위주 폼은 좁게(대출 패널 톤에 맞춤) */
+  width: min(21.25rem, calc(100vw - 2rem));
+  max-width: calc(100vw - 2rem);
+  padding: 0.45rem 0.75rem 0.75rem;
+  box-sizing: border-box;
+}
+
+/* 순자산 자산 추가/수정: 부동산 임베드 «표» 톤(회색 블록·외곽·세로 라벨 테두리) 제거 — 바깥 삭제·저장 줄만 버튼 */
+.asset-networth-asset-modal .asset-real-estate-panel--embedded .asset-real-estate-form-stack.asset-expense-form-stack {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+}
+
+.asset-networth-asset-modal .asset-real-estate-form-stack.asset-expense-form-stack .asset-expense-form-row {
+  border-bottom: none !important;
+  min-height: 0 !important;
+  padding: 0.15rem 0 !important;
+}
+
+.asset-networth-asset-modal .asset-real-estate-form-stack .asset-expense-form-label {
+  border-right: none !important;
+  background: transparent !important;
+}
+
+.asset-networth-asset-modal .asset-real-estate-form-stack .asset-expense-form-control:not(.asset-debt-panel-value--computed),
+.asset-networth-asset-modal .asset-real-estate-form-stack .asset-expense-form-control--field:not(.asset-debt-panel-value--computed) {
+  background: transparent !important;
+}
+
+.asset-networth-asset-modal .asset-real-estate-form-stack.asset-expense-form-stack .asset-expense-form-row:last-child {
+  border-bottom: none !important;
+}
+
+.asset-networth-asset-modal .asset-asset-modal-form-mount > .asset-asset-modal-embed-table tbody tr.asset-asset-row {
+  background: transparent !important;
+}
+
+/* 순자산 대출 수정/추가 모달: 가계부 형 «표» 테두리·라벨 세로줄 회색 패널 완화 */
+.asset-networth-debt-modal .asset-expense-inline-panel.asset-debt-inline-panel .asset-expense-form-stack {
+  border: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+}
+
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-expense-form-row {
+  border-bottom: none !important;
+}
+
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-expense-form-label {
+  border-right: none !important;
+  background: transparent !important;
+}
+
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-expense-form-control--field:not(.asset-debt-panel-value--computed),
+.asset-networth-debt-modal .asset-debt-inline-panel .asset-expense-form-control:not(.asset-debt-panel-value--computed) {
+  background: transparent !important;
+}
+
+.asset-networth-asset-modal .asset-networth-asset-modal-head.asset-expense-inline-panel-top {
+  padding-top: 0;
+  padding-bottom: 0.35rem;
+  flex-shrink: 0;
+}
+
+/* 순자산 자산 추가·수정 모달: 한 줄 테이블을 세로 필드로 (가로 스크롤 제거) */
+.asset-networth-asset-modal .asset-asset-modal-form-mount {
+  overflow-x: hidden;
+}
+
+.asset-networth-asset-modal .asset-asset-modal-embed-table {
+  display: block;
+  width: 100%;
+  border-collapse: separate;
+}
+
+.asset-networth-asset-modal .asset-asset-modal-embed-table tbody {
+  display: block;
+  width: 100%;
+}
+
+.asset-networth-asset-modal .asset-asset-modal-embed-table tbody tr.asset-asset-row {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.asset-networth-asset-modal .asset-asset-modal-embed-table tbody tr.asset-asset-row > td {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0.35rem 0;
+  border: none;
+  text-align: left;
+  vertical-align: top;
+}
+
+/* [hidden] 이 display:block 보다 약해 자동 계산 칸이 모달에 남던 문제 */
+.asset-networth-asset-modal .asset-asset-modal-embed-table tbody tr.asset-asset-row > td[hidden] {
+  display: none !important;
+}
+
+/* 예금(통장) 한 줄 레이아웃: 분류·유형 | 원금·금리 그리드, 개설일·만기 각 전체 줄 */
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
+    .asset-asset-row-annuity
+  ):not(.asset-asset-row-real-estate):not([data-savings="true"]) {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 0.62rem;
+  row-gap: 0.06rem;
+  align-items: start;
+}
+
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
+    .asset-asset-row-annuity
+  ):not(.asset-asset-row-real-estate):not([data-savings="true"])
+  > td.asset-asset-cell-name,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
+    .asset-asset-row-annuity
+  ):not(.asset-asset-row-real-estate):not([data-savings="true"])
+  > td.asset-asset-cell-open-date,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
+    .asset-asset-row-annuity
+  ):not(.asset-asset-row-real-estate):not([data-savings="true"])
+  > td.asset-asset-cell-maturity-date {
+  grid-column: 1 / -1;
+  width: 100%;
+  max-width: 100%;
+}
+
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
+    .asset-asset-row-annuity
+  ):not(.asset-asset-row-real-estate):not([data-savings="true"]):not(.asset-asset-row--deposit)
+  > td.asset-asset-cell-category {
+  grid-column: 1;
+}
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
+    .asset-asset-row-annuity
+  ):not(.asset-asset-row-real-estate):not([data-savings="true"]):not(.asset-asset-row--deposit)
+  > td.asset-asset-cell-type {
+  grid-column: 2;
+}
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
+    .asset-asset-row-annuity
+  ):not(.asset-asset-row-real-estate):not([data-savings="true"])
+  > td.asset-asset-cell-principal {
+  grid-column: 1;
+}
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
+    .asset-asset-row-annuity
+  ):not(.asset-asset-row-real-estate):not([data-savings="true"])
+  > td.asset-asset-cell-rate {
+  grid-column: 2;
+}
+
+/* 예금 모달: 만기율·이자·만기예상 칸은 한 줄 전체 */
+.asset-networth-asset-modal .asset-asset-modal-embed-table tbody tr.asset-asset-row--deposit > td.asset-asset-cell-maturity-rate,
+.asset-networth-asset-modal .asset-asset-modal-embed-table tbody tr.asset-asset-row--deposit > td.asset-asset-cell-interest,
+.asset-networth-asset-modal .asset-asset-modal-embed-table tbody tr.asset-asset-row--deposit > td.asset-asset-cell-maturity-amt {
+  grid-column: 1 / -1;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* 적금: 월 불입·약정 개월 한 줄, 금리는 그 아래 전체 */
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row[data-savings="true"]:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
+    .asset-asset-row-annuity
+  ):not(.asset-asset-row-real-estate) {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 0.62rem;
+  row-gap: 0.06rem;
+  align-items: start;
+}
+
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row[data-savings="true"]:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
+    .asset-asset-row-annuity
+  ):not(.asset-asset-row-real-estate)
+  > td.asset-asset-cell-name,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row[data-savings="true"]:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
+    .asset-asset-row-annuity
+  ):not(.asset-asset-row-real-estate)
+  > td.asset-asset-cell-open-date,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row[data-savings="true"]:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
+    .asset-asset-row-annuity
+  ):not(.asset-asset-row-real-estate)
+  > td.asset-asset-cell-maturity-date {
+  grid-column: 1 / -1;
+  width: 100%;
+  max-width: 100%;
+}
+
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row[data-savings="true"]:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
+    .asset-asset-row-annuity
+  ):not(.asset-asset-row-real-estate)
+  > td.asset-asset-cell-monthly {
+  grid-column: 1;
+}
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row[data-savings="true"]:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
+    .asset-asset-row-annuity
+  ):not(.asset-asset-row-real-estate)
+  > td.asset-asset-cell-months {
+  grid-column: 2;
+}
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row[data-savings="true"]:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
+    .asset-asset-row-annuity
+  ):not(.asset-asset-row-real-estate)
+  > td.asset-asset-cell-rate {
+  grid-column: 1 / -1;
+}
+
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row
+  > td.asset-asset-cell-name::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row
+  > td.asset-asset-cell-category::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row
+  > td.asset-asset-cell-type::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row
+  > td.asset-asset-cell-principal::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row
+  > td.asset-asset-cell-monthly::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row
+  > td.asset-asset-cell-rate::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row
+  > td.asset-asset-cell-months::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row
+  > td.asset-asset-cell-open-date::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row
+  > td.asset-asset-cell-maturity-date::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row
+  > td.asset-asset-cell-maturity-rate::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row
+  > td.asset-asset-cell-interest::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row
+  > td.asset-asset-cell-maturity-amt::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row
+  > td.asset-stock-cell-name::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row
+  > td.asset-stock-cell-avg-price::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row
+  > td.asset-stock-cell-quantity::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row
+  > td.asset-stock-cell-purchase-amt::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row
+  > td.asset-stock-cell-current-price::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row
+  > td.asset-stock-cell-appraisal-amt::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row
+  > td.asset-stock-cell-profit-loss::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row
+  > td.asset-stock-cell-return-rate::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row-insurance
+  > td:has(.asset-insurance-input-name)::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row-insurance
+  > td:has(.asset-insurance-input-kind)::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row-insurance
+  > td:has(.asset-insurance-input-contract-date)::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row-insurance
+  > td:has(.asset-insurance-input-maturity-date)::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row-insurance
+  > td:has(.asset-insurance-input-monthly)::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row-insurance
+  > td.asset-insurance-cell-total-paid::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row-insurance
+  > td:has(.asset-insurance-input-surrender)::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row-insurance
+  > td:has(.asset-insurance-input-coverage)::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row-annuity
+  > td:has(.asset-annuity-input-name)::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row-annuity
+  > td:has(.asset-annuity-input-kind)::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row-annuity
+  > td:has(.asset-annuity-input-payment-start)::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row-annuity
+  > td:has(.asset-annuity-input-payment-end)::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row-annuity
+  > td.asset-annuity-cell-payment-years::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row-annuity
+  > td:has(.asset-annuity-input-monthly)::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row-annuity
+  > td.asset-annuity-cell-total-paid::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row-annuity
+  > td:has(.asset-annuity-input-receipt-start)::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row-annuity
+  > td:has(.asset-annuity-input-monthly-receipt)::before,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row-annuity
+  > td:has(.asset-annuity-input-surrender)::before {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-caption-color, #6b7280);
+  margin-bottom: 0.2rem;
+  line-height: 1.35;
+}
+
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-name::before {
+  content: "이름";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-category::before {
+  content: "분류";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-type::before {
+  content: "유형";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-principal::before {
+  content: "원금";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-monthly::before {
+  content: "월 납입";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-rate::before {
+  content: "금리(%)";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-months::before {
+  content: "납입 개월수";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-open-date::before {
+  content: "개설일";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-maturity-date::before {
+  content: "만기일";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-maturity-rate::before {
+  content: "만기율";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-interest::before {
+  content: "이자(계산)";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-maturity-amt::before {
+  content: "만기 금액(계산)";
+}
+
+/* 예금 모달: 유형(용도) 셀 없음 — .asset-asset-input-type 은 이름 칸에 hidden */
+.asset-networth-asset-modal .asset-asset-modal-embed-table tr.asset-asset-row--deposit > td.asset-asset-cell-name::before {
+  content: "상품명";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table tr.asset-asset-row--deposit > td.asset-asset-cell-principal::before {
+  content: "예치금";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table tr.asset-asset-row--deposit > td.asset-asset-cell-rate::before {
+  content: "금리";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table tr.asset-asset-row--deposit > td.asset-asset-cell-open-date::before {
+  content: "가입일";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table tr.asset-asset-row--deposit > td.asset-asset-cell-maturity-rate::before {
+  content: "만기율";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table tr.asset-asset-row--deposit > td.asset-asset-cell-interest::before {
+  content: "이자";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table tr.asset-asset-row--deposit > td.asset-asset-cell-maturity-amt::before {
+  content: "만기예상액";
+}
+
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-stock-cell-name::before {
+  content: "종목·이름";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-stock-cell-avg-price::before {
+  content: "평균 단가";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-stock-cell-quantity::before {
+  content: "수량";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-stock-cell-purchase-amt::before {
+  content: "매입금액";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-stock-cell-current-price::before {
+  content: "현재가";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-stock-cell-appraisal-amt::before {
+  content: "평가금액";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-stock-cell-profit-loss::before {
+  content: "손익";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-stock-cell-return-rate::before {
+  content: "수익률";
+}
+
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row-insurance
+  > td:has(.asset-insurance-input-name)::before {
+  content: "상품명";
+}
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row-insurance
+  > td:has(.asset-insurance-input-kind)::before {
+  content: "종류";
+}
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row-insurance
+  > td:has(.asset-insurance-input-contract-date)::before {
+  content: "계약일";
+}
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row-insurance
+  > td:has(.asset-insurance-input-maturity-date)::before {
+  content: "만기일";
+}
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row-insurance
+  > td:has(.asset-insurance-input-monthly)::before {
+  content: "월 보험료";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-insurance-cell-total-paid::before {
+  content: "납입 합계";
+}
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row-insurance
+  > td:has(.asset-insurance-input-surrender)::before {
+  content: "해지환급금";
+}
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row-insurance
+  > td:has(.asset-insurance-input-coverage)::before {
+  content: "보장";
+}
+
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row-annuity
+  > td:has(.asset-annuity-input-name)::before {
+  content: "이름";
+}
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row-annuity
+  > td:has(.asset-annuity-input-kind)::before {
+  content: "종류";
+}
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row-annuity
+  > td:has(.asset-annuity-input-surrender)::before {
+  content: "해지환급금";
+}
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row-annuity
+  > td.asset-annuity-cell-name::before {
+  content: "이름";
+}
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row-annuity
+  > td.asset-annuity-cell-kind::before {
+  content: "종류";
+}
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row-annuity
+  > td.asset-annuity-cell-surrender::before {
+  content: "해지환급금";
+}
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row-annuity
+  > td:has(.asset-annuity-input-payment-start)::before {
+  content: "불입 시작일";
+}
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row-annuity
+  > td:has(.asset-annuity-input-payment-end)::before {
+  content: "불입 종료일";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-annuity-cell-payment-years::before {
+  content: "불입 기간";
+}
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row-annuity
+  > td:has(.asset-annuity-input-monthly)::before {
+  content: "월 불입액";
+}
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-annuity-cell-total-paid::before {
+  content: "불입 합계";
+}
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row-annuity
+  > td:has(.asset-annuity-input-receipt-start)::before {
+  content: "수령 시작일";
+}
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row-annuity
+  > td:has(.asset-annuity-input-monthly-receipt)::before {
+  content: "월 수령액";
+}
+
+.asset-networth-asset-modal .asset-asset-modal-embed-table input[type="text"],
+.asset-networth-asset-modal .asset-asset-modal-embed-table input.asset-asset-input-date-hidden {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* 순자산 자산 모달 본문: 입력·날짜 표시·자동계산 숫자까지 한 톤 (다른 페이지 상속/보정과 무관하게 고정) */
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-input-name,
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-input-principal,
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-input-monthly,
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-input-rate,
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-input-months,
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-date-display,
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-maturity-rate-display,
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-interest-display,
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-maturity-amt-display,
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-stock-input-name,
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-stock-input-current-price,
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-stock-input-avg-price,
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-stock-input-quantity,
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-insurance-input-name,
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-insurance-input-kind,
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-annuity-input-name,
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-annuity-input-kind,
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-annuity-input-surrender,
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-insurance-total-paid-display,
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-annuity-payment-years-display,
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-annuity-total-paid-display {
+  font-size: 0.8125rem !important;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-date-wrap {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-category .asset-asset-category-wrap,
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-type .asset-asset-type-wrap,
+.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-category .asset-asset-savings-goal-wrap {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.asset-asset-modal-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0 0 0.75rem;
+  border-bottom: var(--line-l3, 1px solid #e8e8ec);
+  margin-bottom: 0.75rem;
+}
+
+/* 순자산 자산 추가 모달: 탭 위·아래 여백 (padding:0 단축은 상단까지 지워서 longhand로 고정) */
+.asset-networth-asset-modal .asset-asset-modal-tabs {
+  padding-top: 0.5rem;
+  padding-left: 0;
+  padding-right: 0;
+  padding-bottom: 0.45rem;
+  margin-top: 0;
+  margin-bottom: 0.45rem;
+}
+
+.asset-asset-modal-tab {
+  padding: 0.3rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, 0.04);
+  border: none;
+  border-radius: 62.4375rem;
+  cursor: pointer;
+}
+
+.asset-asset-modal-tab:hover {
+  color: var(--text-body);
+}
+
+.asset-asset-modal-tab.is-active {
+  color: var(--text-ink);
+  background: rgba(5, 150, 105, 0.12);
+}
+
+.asset-asset-modal-form-mount {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 0.15rem;
+}
+
+.asset-asset-modal-embed-table {
+  width: 100%;
+}
+
+.asset-asset-modal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.85rem;
+  margin-top: 0.85rem;
+  border-top: var(--line-l3, 1px solid #e8e8ec);
+}
+
+/* 순자산 자산 추가·수정 모달: 삭제는 왼쪽, 저장·수정은 오른쪽(실수 방지) */
+.asset-networth-asset-modal .asset-asset-modal-footer {
+  justify-content: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+.asset-networth-asset-modal .asset-asset-modal-footer .asset-expense-inline-panel-btn--danger {
+  margin-right: auto;
+}
+.asset-networth-asset-modal .asset-asset-modal-footer > .asset-expense-inline-panel-btn--primary:only-child {
+  margin-left: auto;
 }
 
 .asset-debt-add-btn {
@@ -20070,11 +22399,44 @@ col.asset-expense-col-amount,
   color: var(--text-ink);
 }
 
-/* 날짜 셀: 행 클릭 시 날짜 픽커, 아이콘/플레이스홀더 숨김 */
+.asset-debt-input-suffix-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.asset-debt-input-suffix-wrap > .asset-debt-input-rate,
+.asset-debt-input-suffix-wrap > .asset-debt-input-principal,
+.asset-debt-input-suffix-wrap > .asset-asset-input-rate,
+.asset-debt-input-suffix-wrap > .asset-asset-input-monthly,
+.asset-debt-input-suffix-wrap > .asset-asset-input-months {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  max-width: 100%;
+}
+
+.asset-debt-input-suffix-unit {
+  flex: 0 0 auto;
+  font-size: 0.8125rem;
+  font-family: var(--font-body);
+  color: var(--text-muted);
+  line-height: 1.25;
+}
+
+/* 날짜 셀: 행 클릭 시 날짜 픽커, 아이콘/플레이스홀더 숨김 — 텍스트 인풋과 동일 밑줄 */
 .asset-debt-date-cell {
   position: relative;
   cursor: pointer;
   min-height: 1.75rem;
+  box-sizing: border-box;
+  border-bottom: var(--input-border-idle);
+}
+
+.asset-debt-date-cell:focus-within {
+  border-bottom: var(--input-border-focus);
 }
 
 .asset-debt-date-display {
@@ -20153,8 +22515,9 @@ col.asset-expense-col-amount,
 
 .asset-debt-repayment-panel {
   position: fixed;
-  z-index: 1000;
-  background: #f5f5f7;
+  /* 대출/자산 모달(.asset-expense-transaction-modal z-index 1200) 위에 올라오도록 부채유형 패널과 동일 */
+  z-index: 10000;
+  background: var(--content-bg);
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
@@ -20169,7 +22532,7 @@ col.asset-expense-col-amount,
 }
 
 .asset-debt-repayment-option:hover {
-  background: var(--ui-surface-alt);
+  background: transparent;
 }
 
 .asset-debt-interest-display,
@@ -20213,7 +22576,7 @@ col.asset-expense-col-amount,
 .asset-debt-type-panel {
   position: fixed;
   z-index: 10000;
-  background: #f5f5f7;
+  background: var(--content-bg);
   border: var(--line-l3);
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
@@ -20229,7 +22592,7 @@ col.asset-expense-col-amount,
 }
 
 .asset-debt-type-option:hover {
-  background: var(--ui-surface-alt);
+  background: transparent;
 }
 
 .asset-debt-paid-display,
@@ -33545,6 +35908,25 @@ button.time-modal-traffic {
   background: #111827;
   color: #ffffff;
   border-color: #111827;
+}
+
+.time-task-log-expense-cls-btn--text-only {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  padding: 0.4rem 0.35rem;
+  box-sizing: border-box;
+}
+
+.time-task-log-expense-cls-btn--text-only .time-task-log-expense-cls-label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: center;
+  word-break: keep-all;
+  white-space: normal;
+  color: inherit;
 }
 
 .time-task-log-expense-cls-btn-with-icon {
@@ -51701,6 +54083,49 @@ tr.time-budget-calendar-row--readonly {
 .archive-search-input::placeholder {
   color: var(--text-placeholder);
   font-weight: 400;
+}
+
+/* 데스크톱 아카이브: 검색은 연청 배경·둥근 모서리, 행 배경은 없음 */
+.archive-view:not(.archive-view--mobile) .archive-search-row {
+  margin-top: 0.875rem;
+  padding: 0;
+  align-items: center;
+  gap: 0.65rem;
+  background: transparent;
+  border-radius: 0;
+}
+
+.archive-view:not(.archive-view--mobile) .archive-search-wrap {
+  background: #f2f7f9;
+  border-radius: 0.5rem;
+  padding: 0.55rem 0.85rem;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.archive-view:not(.archive-view--mobile) .archive-search-wrap:focus-within {
+  box-shadow: 0 0 0 2px rgba(0, 125, 255, 0.28);
+}
+
+.archive-view:not(.archive-view--mobile) .archive-search-icon {
+  color: #6e6e73;
+}
+
+.archive-view:not(.archive-view--mobile) #app .archive-search-input,
+.archive-view:not(.archive-view--mobile) .archive-search-input {
+  padding: 0.12rem 0;
+}
+
+.archive-view:not(.archive-view--mobile) .archive-search-input::placeholder {
+  color: rgba(60, 60, 67, 0.52);
+}
+
+.archive-view:not(.archive-view--mobile) .archive-date-range-filter {
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: none;
+  border: none;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.5rem;
 }
 
 .archive-list-section {

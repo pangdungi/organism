@@ -26,11 +26,7 @@ import {
   getNetWorthTargetDisplayStrMem,
   setNetWorthTargetDisplayStrMem,
 } from "../utils/assetNetWorthTargetSupabase.js";
-import {
-  attachAssetStockCategoryOptionsSaveListener,
-  readStockCategoryCustomLabelsMem,
-  writeStockCategoryCustomLabelsMem,
-} from "../utils/assetStockCategorySupabase.js";
+import { attachAssetStockCategoryOptionsSaveListener } from "../utils/assetStockCategorySupabase.js";
 import {
   attachAssetPlanMonthlyGoalsSaveListener,
   getPlanMonthlyGoalsRowsMem,
@@ -50,7 +46,7 @@ import {
   writeInsuranceKindOptionsMemRaw,
 } from "../utils/assetUiSessionMem.js";
 import { confirmDeleteRow } from "../utils/confirmModal.js";
-import { EXPENSE_MODAL_CLASSIFICATIONS } from "../expenseModalClassifications.js";
+
 import { getExpenseLedgerIconSvg } from "../utils/expenseLedgerIcons.js";
 import { showToast } from "../utils/showToast.js";
 
@@ -60,6 +56,24 @@ const REAL_ESTATE_ROWS_KEY = "asset_real_estate_rows";
 const STOCK_ROWS_KEY = "asset_stock_rows";
 const INSURANCE_ROWS_KEY = "asset_insurance_rows";
 const ANNUITY_ROWS_KEY = "asset_annuity_rows";
+/** 순자산 합계에서 예·적금에 만기예상액(이자 포함)을 쓸지 — 로컬만 저장 */
+const NW_INCLUDE_DEPOSIT_INTEREST_KEY = "asset_nw_include_deposit_interest";
+
+function loadNwIncludeDepositInterest() {
+  try {
+    if (typeof localStorage === "undefined") return false;
+    return localStorage.getItem(NW_INCLUDE_DEPOSIT_INTEREST_KEY) === "1";
+  } catch (_) {
+    return false;
+  }
+}
+
+function saveNwIncludeDepositInterest(on) {
+  try {
+    if (typeof localStorage === "undefined") return;
+    localStorage.setItem(NW_INCLUDE_DEPOSIT_INTEREST_KEY, on ? "1" : "0");
+  } catch (_) {}
+}
 
 /** renderMain으로 패널이 다시 그려져도 가계부/현금흐름 등 하위 탭 유지 (근무표 `lp_work_schedule_subview` 와 동일 패턴) */
 const SESSION_ASSET_SUBVIEW_KEY = "lp_asset_subview";
@@ -83,43 +97,6 @@ function saveAssetSubView(v) {
   try {
     if (typeof sessionStorage !== "undefined") sessionStorage.setItem(SESSION_ASSET_SUBVIEW_KEY, v);
   } catch (_) {}
-}
-
-const DEFAULT_STOCK_CATEGORY_OPTIONS = ["미국주식", "국내주식", "ETF", "코인", "현물", "선물"];
-
-function getStockCategoryOptions() {
-  const defaults = [...DEFAULT_STOCK_CATEGORY_OPTIONS];
-  const custom = readStockCategoryCustomLabelsMem();
-  if (custom.length > 0) {
-    return [...defaults, ...custom.filter((s) => typeof s === "string" && s.trim() && !defaults.includes(s.trim()))];
-  }
-  return defaults;
-}
-
-function addStockCategoryOption(name) {
-  const defaults = DEFAULT_STOCK_CATEGORY_OPTIONS;
-  const trimmed = (name || "").trim();
-  if (!trimmed || defaults.includes(trimmed)) return getStockCategoryOptions();
-  const opts = getStockCategoryOptions();
-  if (opts.includes(trimmed)) return opts;
-  let custom = readStockCategoryCustomLabelsMem().slice();
-  if (!custom.includes(trimmed)) custom.push(trimmed);
-  writeStockCategoryCustomLabelsMem(custom);
-  window.dispatchEvent(new CustomEvent("asset-stock-category-options-saved"));
-  return getStockCategoryOptions();
-}
-
-function removeStockCategoryOption(name) {
-  if (!name || DEFAULT_STOCK_CATEGORY_OPTIONS.includes(name)) return getStockCategoryOptions();
-  const defaults = DEFAULT_STOCK_CATEGORY_OPTIONS;
-  const custom = getStockCategoryOptions().filter((o) => !defaults.includes(o) && o !== name);
-  writeStockCategoryCustomLabelsMem(custom.filter((o) => !defaults.includes(o)));
-  window.dispatchEvent(new CustomEvent("asset-stock-category-options-saved"));
-  return getStockCategoryOptions();
-}
-
-function isDefaultStockCategory(name) {
-  return DEFAULT_STOCK_CATEGORY_OPTIONS.includes(name);
 }
 
 const DEFAULT_INSURANCE_KIND_OPTIONS = [
@@ -208,6 +185,7 @@ const ASSET_TYPE_OPTIONS = [
 
 const ASSET_CATEGORY_OPTIONS = [
   { label: "현금 및 예금", color: "asset-asset-category-teal" },
+  { label: "청약·출금제한", color: "asset-asset-category-indigo" },
   { label: "투자", color: "asset-asset-category-blue" },
   { label: "부동산", color: "asset-asset-category-purple" },
   { label: "소비성자산", color: "asset-asset-category-orange" },
@@ -256,7 +234,7 @@ const DEFAULT_EXPENSE_CLASSIFICATION_BY_CATEGORY = {
     { label: "쇼핑", color: "expense-cls-orange" },
     { label: "미용", color: "expense-cls-pink" },
     { label: "의료/건강", color: "expense-cls-indigo" },
-    { label: "교육", color: "expense-cls-teal" },
+    { label: "교육(고정비)", color: "expense-cls-teal" },
     { label: "카드대금", color: "expense-cls-blue" },
     { label: "세금", color: "expense-cls-green" },
     { label: "경조사", color: "expense-cls-purple" },
@@ -333,6 +311,17 @@ function getExpenseClassificationByCategory() {
       if (!has운동 && !out.고정비.some((o) => o.label === "운동")) {
         out.고정비.push({ label: "운동", color: "expense-cls-green" });
       }
+    }
+    if (out.변동비 && Array.isArray(out.변동비)) {
+      const migrated = out.변동비.map((o) =>
+        o.label === "교육" ? { ...o, label: "교육(고정비)" } : o,
+      );
+      const seen = new Set();
+      out.변동비 = migrated.filter((o) => {
+        if (!o.label || seen.has(o.label)) return false;
+        seen.add(o.label);
+        return true;
+      });
     }
   } catch (_) {
     Object.keys(DEFAULT_EXPENSE_CLASSIFICATION_BY_CATEGORY).forEach((k) => {
@@ -414,6 +403,7 @@ function getClassificationToCategoryMap() {
       map[o.label] = cat;
     });
   });
+  if (!map["교육"]) map["교육"] = "변동비";
   return map;
 }
 
@@ -515,13 +505,16 @@ function readDebtDataFromTr(tr) {
   return readDebtDataFromRoot(tr);
 }
 
-function collectDebtRowsFromDOM(tableEl) {
+function collectDebtRowsFromDOM(debtWrap) {
   const rows = [];
-  const tbl = tableEl?.querySelector?.("table") || tableEl;
-  if (!tbl) return rows;
-  tbl.querySelectorAll("tbody > tr.asset-debt-row").forEach((tr) => {
-    if (tr.classList.contains("asset-debt-row--draft")) return;
-    rows.push(readDebtDataFromRoot(tr));
+  const host =
+    debtWrap?.querySelector?.(".asset-debt-cards-list") ||
+    debtWrap?.querySelector?.("tbody") ||
+    debtWrap;
+  if (!host) return rows;
+  host.querySelectorAll(":scope > .asset-debt-row.asset-debt-row--view").forEach((row) => {
+    if (row.classList.contains("asset-debt-row--draft")) return;
+    rows.push(readDebtDataFromRoot(row));
   });
   return rows;
 }
@@ -542,6 +535,7 @@ function loadAssetRows() {
         openDate: r.openDate ?? "",
         maturityDate: r.maturityDate ?? "",
         matured: r.matured === true,
+        withdrawn: r.withdrawn === true,
       }));
     }
   } catch (_) {}
@@ -556,6 +550,7 @@ function loadAssetRows() {
     openDate: "",
     maturityDate: "",
     matured: false,
+    withdrawn: false,
   }));
 }
 
@@ -611,14 +606,12 @@ function collectStockRowsFromDOM(tableEl) {
   const rows = [];
   tableEl?.querySelectorAll(".asset-asset-row-stock").forEach((tr) => {
     const nameInput = tr.querySelector(".asset-stock-input-name");
-    const categoryInput = tr.querySelector(".asset-stock-input-category");
     const currentPriceInput = tr.querySelector(".asset-stock-input-current-price");
     const avgPriceInput = tr.querySelector(".asset-stock-input-avg-price");
     const quantityInput = tr.querySelector(".asset-stock-input-quantity");
     const holdingInput = tr.querySelector(".asset-stock-input-holding");
     rows.push({
       name: nameInput?.value || "",
-      category: categoryInput?.value || "",
       currentPrice: currentPriceInput?.value || "",
       avgPrice: avgPriceInput?.value || "",
       quantity: quantityInput?.value || "",
@@ -655,6 +648,7 @@ function collectAnnuityRowsFromDOM(tableEl) {
       monthly: tr.querySelector(".asset-annuity-input-monthly")?.value || "",
       receiptStartDate: tr.querySelector(".asset-annuity-input-receipt-start")?.value || "",
       monthlyReceipt: tr.querySelector(".asset-annuity-input-monthly-receipt")?.value || "",
+      surrenderValue: tr.querySelector(".asset-annuity-input-surrender")?.value || "",
     });
   });
   return rows;
@@ -726,14 +720,72 @@ function collectExpenseRowsFromDOM(tableEl) {
   return rows;
 }
 
+/**
+ * 부동산 순자산(총자산 합산).
+ * owner: 시세 − 대출
+ * landlord: 시세 − 대출 − 임대 보증금
+ * tenant: 낸 전·월세 보증금만(거주자 입장)
+ */
+function computeRealEstateNetFromInputs(saleStr, loanStr, leaseDepositStr, occupancyMode) {
+  const mode = occupancyMode || "owner";
+  const leaseStrForCalc = mode === "owner" ? "" : leaseDepositStr;
+  const depN = parseNum(leaseStrForCalc);
+  const dep = depN !== null ? depN : 0;
+  const sale = parseNum(saleStr);
+  const loanN = parseNum(loanStr);
+  const loan = loanN !== null ? loanN : 0;
+  if (mode === "tenant") return dep;
+  if (sale === null) return null;
+  if (mode === "landlord") return sale - loan - dep;
+  return sale - loan;
+}
+
+function formatRealEstateHoldingPeriod(acquisitionDateStr) {
+  const d0 = parseDate(acquisitionDateStr);
+  if (!d0) return "";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(d0.getTime());
+  d.setHours(0, 0, 0, 0);
+  if (today < d) return "";
+  let months =
+    (today.getFullYear() - d.getFullYear()) * 12 + (today.getMonth() - d.getMonth());
+  if (today.getDate() < d.getDate()) months -= 1;
+  if (months < 0) months = 0;
+  const years = Math.floor(months / 12);
+  const mo = months % 12;
+  const parts = [];
+  if (years > 0) parts.push(`${years}년`);
+  if (mo > 0) parts.push(`${mo}개월`);
+  if (parts.length === 0) parts.push("1개월 미만");
+  return parts.join(" ");
+}
+
 function readRealEstateDataFromTr(tr) {
   const contractInput = tr.querySelector(".asset-asset-input-contract");
   const salePriceInput = tr.querySelector(".asset-asset-input-sale-price");
   const loanInput = tr.querySelector(".asset-asset-input-loan");
+  const propertyTypeInput = tr.querySelector(".asset-real-estate-input-property-type");
+  const acquisitionDateInput = tr.querySelector(".asset-real-estate-input-acquisition-date");
+  const purchasePriceInput = tr.querySelector(".asset-real-estate-input-purchase-price");
+  const areaSqmInput = tr.querySelector(".asset-real-estate-input-area-sqm");
+  const occupancyInput = tr.querySelector(".asset-real-estate-input-occupancy");
+  const leaseDepositInput = tr.querySelector(".asset-real-estate-input-lease-deposit");
+  const monthlyRentInput = tr.querySelector(".asset-real-estate-input-monthly-rent");
+  const occ = occupancyInput?.value || "owner";
+  const leaseDepositRaw = leaseDepositInput?.value ?? "";
+  const monthlyRentRaw = monthlyRentInput?.value ?? "";
   return {
     contract: contractInput?.value || "",
     salePrice: salePriceInput?.value || "",
     loan: loanInput?.value || "",
+    propertyType: propertyTypeInput?.value || "",
+    acquisitionDate: acquisitionDateInput?.value || "",
+    purchasePrice: purchasePriceInput?.value || "",
+    areaSqm: areaSqmInput?.value || "",
+    occupancy: occ,
+    leaseDeposit: occ === "owner" ? "" : leaseDepositRaw,
+    monthlyRent: occ !== "landlord" ? "" : monthlyRentRaw,
   };
 }
 
@@ -761,11 +813,15 @@ function collectAssetRowsFromDOM(tableEl) {
     const openDateInput = tr.querySelector(".asset-asset-input-open-date");
     const maturityDateInput = tr.querySelector(".asset-asset-input-maturity-date");
     const isSavings = tr.dataset.savings === "true";
+    const isDeposit = tr.classList.contains("asset-asset-row--deposit");
     let assetType = "";
     let assetCategory = "";
     if (isSavings) {
       assetType = tr.querySelector(".asset-asset-input-type")?.value || "예적금잔고";
-      assetCategory = tr.querySelector(".asset-asset-input-savings-goal")?.value || "";
+      assetCategory = "";
+    } else if (isDeposit) {
+      assetType = tr.querySelector(".asset-asset-input-type")?.value || "";
+      assetCategory = "현금 및 예금";
     } else {
       assetType = tr.querySelector(".asset-asset-input-type")?.value || "";
       assetCategory = tr.querySelector(".asset-asset-input-category")?.value || "";
@@ -781,23 +837,47 @@ function collectAssetRowsFromDOM(tableEl) {
       openDate: openDateInput?.value || "",
       maturityDate: maturityDateInput?.value || "",
       matured: tr.dataset.matured === "true",
+      withdrawn: tr.dataset.withdrawn === "true",
     });
   });
   return rows;
 }
 
-/** 소비 기록 모달과 동일 라벨 → 아이콘 path (가계부 거래 분류 패널 지출 그리드용) */
-const EXPENSE_MODAL_CLASSIFICATION_BY_LABEL = new Map(
-  EXPENSE_MODAL_CLASSIFICATIONS.map((o) => [o.label, o]),
-);
+
 
 /** 다른 드롭다운 패널 모두 닫기 (겹침 방지) */
 function closeAllDebtDropdownPanels(exceptPanel = null) {
   const selectors =
     ".asset-debt-type-panel, .asset-debt-repayment-panel, .asset-stock-category-panel, .asset-insurance-kind-panel, .asset-asset-type-panel, .asset-asset-category-panel, .asset-asset-savings-goal-panel, .asset-expense-flow-type-panel, .asset-expense-category-panel, .asset-expense-classification-panel, .asset-expense-payment-panel, .asset-plan-category-panel";
   document.querySelectorAll(selectors).forEach((p) => {
-    if (p !== exceptPanel) p.hidden = true;
+    if (p !== exceptPanel) {
+      p.hidden = true;
+      restoreFixedDropdownPanelHome(p);
+    }
   });
+}
+
+/** 모달 등 transform 조상 때문에 fixed 패널이 어긋날 때 body에 붙였다가 복귀 */
+const _dropdownPanelHomeWrapByPanel = new WeakMap();
+
+function attachFixedDropdownPanelToBody(panel, wrap) {
+  _dropdownPanelHomeWrapByPanel.set(panel, wrap);
+  if (panel.parentNode !== document.body) document.body.appendChild(panel);
+}
+
+function restoreFixedDropdownPanelHome(panel) {
+  const wrap = _dropdownPanelHomeWrapByPanel.get(panel);
+  if (panel.parentNode !== document.body) return;
+  if (wrap && wrap.isConnected) {
+    wrap.appendChild(panel);
+  } else {
+    panel.remove();
+  }
+}
+
+function hideFixedDropdown(panel, wrap) {
+  panel.hidden = true;
+  restoreFixedDropdownPanelHome(panel);
 }
 
 let _scrollCloseHandlerAttached = false;
@@ -817,7 +897,7 @@ function setupScrollClosePanels() {
   );
 }
 
-/** 부채유형 드롭다운 - 상환방식과 동일한 회색계열 스타일 */
+/** 부채유형 드롭다운 - 상환방식과 동일 패턴 */
 function createDebtTypeDropdown(initialValue, onUpdate) {
   const wrap = document.createElement("div");
   wrap.className = "asset-debt-type-wrap";
@@ -835,22 +915,6 @@ function createDebtTypeDropdown(initialValue, onUpdate) {
     display.textContent = val || "선택";
   }
 
-  display.addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (panel.hidden) {
-      closeAllDebtDropdownPanels(panel);
-      updatePanelPosition();
-      panel.hidden = false;
-      const handler = (ev) => {
-        document.removeEventListener("click", handler);
-        if (!wrap.contains(ev.target)) panel.hidden = true;
-      };
-      setTimeout(() => document.addEventListener("click", handler), 0);
-    } else {
-      panel.hidden = true;
-    }
-  });
-
   const panel = document.createElement("div");
   panel.className = "asset-debt-type-panel";
   panel.hidden = true;
@@ -862,6 +926,23 @@ function createDebtTypeDropdown(initialValue, onUpdate) {
     panel.style.minWidth = `${Math.max(rect.width, 180)}px`;
   }
 
+  display.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (panel.hidden) {
+      closeAllDebtDropdownPanels(panel);
+      updatePanelPosition();
+      attachFixedDropdownPanelToBody(panel, wrap);
+      panel.hidden = false;
+      const handler = (ev) => {
+        document.removeEventListener("click", handler);
+        if (!wrap.contains(ev.target) && !panel.contains(ev.target)) hideFixedDropdown(panel, wrap);
+      };
+      setTimeout(() => document.addEventListener("click", handler), 0);
+    } else {
+      hideFixedDropdown(panel, wrap);
+    }
+  });
+
   DEBT_TYPE_OPTIONS.forEach((opt) => {
     const row = document.createElement("div");
     row.className = "asset-debt-type-option";
@@ -869,7 +950,7 @@ function createDebtTypeDropdown(initialValue, onUpdate) {
     row.addEventListener("click", () => {
       input.value = opt.label;
       updateDisplay();
-      panel.hidden = true;
+      hideFixedDropdown(panel, wrap);
       onUpdate?.();
     });
     panel.appendChild(row);
@@ -900,22 +981,6 @@ function createDebtRepaymentDropdown(initialValue, onUpdate) {
     display.textContent = val || "선택";
   }
 
-  display.addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (panel.hidden) {
-      closeAllDebtDropdownPanels(panel);
-      updatePanelPosition();
-      panel.hidden = false;
-      const handler = (ev) => {
-        document.removeEventListener("click", handler);
-        if (!wrap.contains(ev.target)) panel.hidden = true;
-      };
-      setTimeout(() => document.addEventListener("click", handler), 0);
-    } else {
-      panel.hidden = true;
-    }
-  });
-
   const panel = document.createElement("div");
   panel.className = "asset-debt-repayment-panel";
   panel.hidden = true;
@@ -927,6 +992,23 @@ function createDebtRepaymentDropdown(initialValue, onUpdate) {
     panel.style.minWidth = `${Math.max(rect.width, 140)}px`;
   }
 
+  display.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (panel.hidden) {
+      closeAllDebtDropdownPanels(panel);
+      updatePanelPosition();
+      attachFixedDropdownPanelToBody(panel, wrap);
+      panel.hidden = false;
+      const handler = (ev) => {
+        document.removeEventListener("click", handler);
+        if (!wrap.contains(ev.target) && !panel.contains(ev.target)) hideFixedDropdown(panel, wrap);
+      };
+      setTimeout(() => document.addEventListener("click", handler), 0);
+    } else {
+      hideFixedDropdown(panel, wrap);
+    }
+  });
+
   REPAYMENT_OPTIONS.forEach((opt) => {
     const row = document.createElement("div");
     row.className = "asset-debt-repayment-option";
@@ -934,7 +1016,7 @@ function createDebtRepaymentDropdown(initialValue, onUpdate) {
     row.addEventListener("click", () => {
       input.value = opt;
       updateDisplay();
-      panel.hidden = true;
+      hideFixedDropdown(panel, wrap);
       onUpdate?.();
     });
     panel.appendChild(row);
@@ -1090,114 +1172,6 @@ function createAssetCategoryDropdown(initialValue, onUpdate) {
       onUpdate?.();
     });
     panel.appendChild(row);
-  });
-
-  updateDisplay();
-  wrap.appendChild(input);
-  wrap.appendChild(display);
-  wrap.appendChild(panel);
-  return wrap;
-}
-
-/** 주식분류 드롭다운 - 기본 6종 + 하단에서 Enter로 사용자 추가(예금·적금 용도와 다름). 사용자 추가분은 삭제 가능 */
-function createStockCategoryDropdown(initialValue, onUpdate) {
-  const wrap = document.createElement("div");
-  wrap.className = "asset-stock-category-wrap";
-  const input = document.createElement("input");
-  input.type = "hidden";
-  input.className = "asset-stock-input-category";
-  input.value = initialValue;
-  const display = document.createElement("span");
-  display.className = "asset-stock-category-display";
-
-  function updateDisplay() {
-    const val = input.value || "";
-    display.textContent = val || "선택";
-    display.className = "asset-stock-category-display";
-  }
-
-  const panel = document.createElement("div");
-  panel.className = "asset-stock-category-panel";
-  panel.hidden = true;
-
-  function buildPanel() {
-    panel.innerHTML = "";
-    getStockCategoryOptions().forEach((label) => {
-      const row = document.createElement("div");
-      row.className = "asset-stock-category-option";
-      const lbl = document.createElement("span");
-      lbl.className = "asset-stock-category-option-label";
-      lbl.textContent = label;
-      lbl.addEventListener("click", (e) => {
-        e.stopPropagation();
-        input.value = label;
-        updateDisplay();
-        panel.hidden = true;
-        onUpdate?.();
-      });
-      row.appendChild(lbl);
-      if (!isDefaultStockCategory(label)) {
-        const delBtn = document.createElement("button");
-        delBtn.type = "button";
-        delBtn.className = "asset-stock-category-option-delete";
-        delBtn.title = "삭제";
-        delBtn.setAttribute("aria-label", "삭제");
-        delBtn.innerHTML =
-          '<svg viewBox="0 0 16 16" width="16" height="16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
-        delBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          removeStockCategoryOption(label);
-          buildPanel();
-          onUpdate?.();
-        });
-        row.appendChild(delBtn);
-      }
-      panel.appendChild(row);
-    });
-    const addRow = document.createElement("div");
-    addRow.className = "asset-stock-category-add";
-    const addInput = document.createElement("input");
-    addInput.type = "text";
-    addInput.placeholder = "추가 입력 후 Enter";
-    addInput.className = "asset-stock-category-add-input";
-    addInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        const val = (addInput.value || "").trim();
-        if (val) {
-          addStockCategoryOption(val);
-          input.value = val;
-          updateDisplay();
-          addInput.value = "";
-          buildPanel();
-          onUpdate?.();
-        }
-      }
-    });
-    addRow.appendChild(addInput);
-    panel.appendChild(addRow);
-  }
-
-  display.addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (panel.hidden) {
-      closeAllDebtDropdownPanels(panel);
-      buildPanel();
-      const rect = display.getBoundingClientRect();
-      panel.style.top = `${rect.bottom + 2}px`;
-      panel.style.left = `${rect.left}px`;
-      panel.style.minWidth = `${Math.max(rect.width, 140)}px`;
-      document.body.appendChild(panel);
-      panel.hidden = false;
-      const handler = (ev) => {
-        if (!wrap.contains(ev.target) && !panel.contains(ev.target)) {
-          document.removeEventListener("click", handler);
-          panel.hidden = true;
-        }
-      };
-      setTimeout(() => document.addEventListener("click", handler), 0);
-    } else {
-      panel.hidden = true;
-    }
   });
 
   updateDisplay();
@@ -1408,8 +1382,8 @@ function createSavingsGoalDropdown(initialValue, onUpdate) {
 }
 
 /** 지출입력장 카테고리 드롭다운 - 고정비, 변동비, 저축, 투자, 기타 */
-/** 큰분류 드롭다운 - 선택 → 지출(적색) / 입금(청색) */
-function createExpenseFlowTypeDropdown(initialValue, onUpdate) {
+/** 큰분류 — 목록 카드는 드롭다운, 패널/모달(새 거래)만 결제수단과 같은 필 버튼 */
+function createExpenseFlowTypeDropdown(initialValue, onUpdate, opts = {}) {
   const FLOW_OPTIONS = [
     { label: "지출", value: "지출", color: "asset-flow-expense" },
     { label: "입금", value: "입금", color: "asset-flow-deposit" },
@@ -1421,6 +1395,48 @@ function createExpenseFlowTypeDropdown(initialValue, onUpdate) {
   input.type = "hidden";
   input.className = "asset-expense-input-flow-type";
   input.value = initialValue || "";
+
+  if (opts.inlineButtons) {
+    wrap.classList.add("asset-expense-flow-type-wrap--modal-btns");
+    const group = document.createElement("div");
+    group.className = "asset-expense-flow-type-btn-group";
+    group.setAttribute("role", "group");
+    group.setAttribute("aria-label", "큰분류");
+
+    const btnByValue = new Map();
+
+    function syncButtonSelection() {
+      const val = input.value || "";
+      FLOW_OPTIONS.forEach(({ value }) => {
+        const btn = btnByValue.get(value);
+        if (!btn) return;
+        const sel = val === value;
+        btn.classList.toggle("is-selected", sel);
+        btn.setAttribute("aria-pressed", sel ? "true" : "false");
+      });
+    }
+
+    FLOW_OPTIONS.forEach((opt) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `asset-expense-flow-type-btn ${opt.color}`;
+      btn.dataset.value = opt.value;
+      btn.textContent = opt.label;
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        input.value = opt.value;
+        syncButtonSelection();
+        onUpdate?.();
+      });
+      group.appendChild(btn);
+      btnByValue.set(opt.value, btn);
+    });
+
+    syncButtonSelection();
+    wrap.appendChild(input);
+    wrap.appendChild(group);
+    return wrap;
+  }
 
   const display = document.createElement("span");
   display.className = "asset-expense-flow-type-display";
@@ -1576,9 +1592,6 @@ function createExpenseClassificationDropdownByFlowType(initialFlowType, initialC
   let flowType = initialFlowType || "";
   const clsToCat = getClassificationToCategoryMap();
 
-  const svgStrokeOpen =
-    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">';
-
   function getColorClass(val) {
     const category = clsToCat[val] || "";
     return getExpenseCategoryOptions().find((o) => o.label === category)?.color || "";
@@ -1618,7 +1631,7 @@ function createExpenseClassificationDropdownByFlowType(initialFlowType, initialC
     return opt ? opt.color : "expense-cat-teal";
   }
 
-  /** 새 거래 모달·인라인 패널 안에서 고정 배치 및 높이(모달에서는 스크롤 없이 안에 맞춤) */
+  /** 새 거래 모달·인라인 패널: 좌표·너비(모달에서는 작은 카드 크기·세로 스크롤 허용) */
   function syncPanelFixedPosition() {
     const trxShell = wrap.closest(".asset-expense-transaction-modal-panel-shell");
     const shell = trxShell || wrap.closest(".asset-expense-inline-panel") || null;
@@ -1646,12 +1659,15 @@ function createExpenseClassificationDropdownByFlowType(initialFlowType, initialC
         trxShell &&
         panel.classList.contains("asset-expense-classification-panel--expense-icons");
       if (isExpensePopover) {
-        panel.style.maxHeight = "";
-        panel.style.overflow = "visible";
-        panel.style.overflowY = "visible";
+        const shellInnerW = maxRight - minLeft;
+        width = Math.min(Math.max(248, shellInnerW - 16), 392);
+        left = minLeft + (shellInnerW - width) / 2;
+        const capH = Math.max(140, Math.min(Math.floor(sr.height * 0.4), 268));
+        panel.style.maxHeight = `${capH}px`;
+        panel.style.overflow = "hidden";
+        panel.style.overflowY = "auto";
+        panel.style.webkitOverflowScrolling = "touch";
         panel.classList.add("asset-expense-classification-panel--modal-popover");
-        left = minLeft;
-        width = Math.max(candidateW, maxRight - minLeft);
       } else {
         panel.classList.remove("asset-expense-classification-panel--modal-popover");
         const bottomSpace = sr.bottom - rect.bottom - 10;
@@ -1744,20 +1760,11 @@ function createExpenseClassificationDropdownByFlowType(initialFlowType, initialC
       panel.classList.add("asset-expense-classification-panel--expense-icons");
       opts.forEach((opt) => {
         const category = clsToCat[opt.label] || "";
-        const modalOpt = EXPENSE_MODAL_CLASSIFICATION_BY_LABEL.get(opt.label);
         const btn = document.createElement("button");
         btn.type = "button";
         const colorCls = opt.color || getCategoryColorClass(category);
-        btn.className = "asset-expense-classification-expense-icon-btn " + colorCls;
-        if (modalOpt?.svg) {
-          btn.classList.add("asset-expense-classification-expense-icon-btn--has-icon");
-          btn.innerHTML =
-            `<span class="asset-expense-classification-expense-icon" aria-hidden="true">${svgStrokeOpen}${modalOpt.svg}</svg></span>` +
-            `<span class="asset-expense-classification-expense-label">${escapeHtml(opt.label)}</span>`;
-        } else {
-          btn.classList.add("asset-expense-classification-expense-icon-btn--text-only");
-          btn.textContent = opt.label;
-        }
+        btn.className = "asset-expense-classification-chip-btn " + colorCls;
+        btn.textContent = opt.label;
         bindOptionClose(btn, opt.label, category);
         panel.appendChild(btn);
       });
@@ -2060,6 +2067,78 @@ function formatNum(val) {
   return n === null ? "" : n.toLocaleString("ko-KR");
 }
 
+const KO_DIGIT = ["영", "일", "이", "삼", "사", "오", "육", "칠", "팔", "구"];
+
+/** 1~9999만 한글 읽기 (만·억 조각용) */
+function readKoreanUnder10000(n) {
+  const x = Math.floor(Number(n));
+  if (x <= 0 || x >= 10000) return "";
+  let s = "";
+  let r = x;
+  const q1000 = Math.floor(r / 1000);
+  if (q1000 > 0) {
+    s += q1000 === 1 ? "천" : KO_DIGIT[q1000] + "천";
+    r %= 1000;
+  }
+  const q100 = Math.floor(r / 100);
+  if (q100 > 0) {
+    s += q100 === 1 ? "백" : KO_DIGIT[q100] + "백";
+    r %= 100;
+  }
+  const q10 = Math.floor(r / 10);
+  if (q10 > 0) {
+    s += q10 === 1 ? "십" : KO_DIGIT[q10] + "십";
+    r %= 10;
+  }
+  if (r > 0) s += KO_DIGIT[r];
+  return s;
+}
+
+/** 원 단위 숫자 → (이백오십만원) */
+function formatKoreanWonParenthetical(n) {
+  if (n === null || n === undefined || Number.isNaN(n)) return "";
+  const x = Math.floor(Math.abs(Number(n)));
+  if (x === 0) return "(영원)";
+  let rem = x;
+  let out = "";
+  const eok = Math.floor(rem / 100000000);
+  if (eok > 0) {
+    out += readKoreanUnder10000(eok) + "억";
+    rem %= 100000000;
+  }
+  const man = Math.floor(rem / 10000);
+  if (man > 0) {
+    out += readKoreanUnder10000(man) + "만";
+    rem %= 10000;
+  }
+  if (rem > 0) out += readKoreanUnder10000(rem);
+  return "(" + out + "원)";
+}
+
+function setAssetDebtCardHeroWon(faceRoot, displayText, numericWonOrNull) {
+  const bal = faceRoot.querySelector(".asset-debt-card-balance");
+  const ko = faceRoot.querySelector(".asset-debt-card-balance-ko");
+  if (bal) {
+    bal.textContent = displayText;
+    const neg =
+      numericWonOrNull !== null &&
+      numericWonOrNull !== undefined &&
+      !Number.isNaN(Number(numericWonOrNull)) &&
+      Number(numericWonOrNull) < 0;
+    bal.classList.toggle("asset-debt-card-balance--negative-net", neg);
+  }
+  if (!ko) return;
+  if (displayText === "—" || numericWonOrNull === null || numericWonOrNull === undefined || Number.isNaN(numericWonOrNull)) {
+    ko.textContent = "";
+    ko.hidden = true;
+    ko.setAttribute("aria-hidden", "true");
+  } else {
+    ko.textContent = formatKoreanWonParenthetical(numericWonOrNull);
+    ko.hidden = false;
+    ko.setAttribute("aria-hidden", "true");
+  }
+}
+
 /** 가계부 금액 입력 표시(blur)·초기값: 천 단위 + 원 */
 function formatExpenseLedgerAmount(val) {
   if (val === null || val === undefined || val === "") return "";
@@ -2131,9 +2210,12 @@ function readExpenseDataFromTr(tr) {
   };
 }
 
-/** 숫자 전용 입력: 비숫자 문자 제거 (allowDecimal: 소수점 허용 여부) */
-function filterNumericInput(el, allowDecimal, inputEvent) {
-  if (inputEvent && inputEvent.isComposing) return;
+/** 숫자 전용 입력: 비숫자 문자 제거 (allowDecimal: 소수점 허용 여부).
+ *  opts.ignoreIMEComposition: true면 IME 조합 중에도 즉시 걸러냄(가계부 금액 등). */
+function filterNumericInput(el, allowDecimal, inputEvent, opts) {
+  opts = opts || {};
+  const ignoreComposition = opts.ignoreIMEComposition === true;
+  if (inputEvent && inputEvent.isComposing && !ignoreComposition) return;
   const re = allowDecimal ? /[^\d,.]/g : /[^\d,]/g;
   const v = el.value;
   const filtered = v.replace(re, "");
@@ -2166,6 +2248,68 @@ function parseDate(val) {
   if (!s) return null;
   const d = new Date(s);
   return isNaN(d.getTime()) ? null : d;
+}
+
+/** 달력 기준으로 만 개월 더한 날짜(YYYY-MM-DD). 말일(1/31 등)은 해당 월 말일로 클램프 → setMonth 누각 방지 */
+function formatDateInputFromLocalDate(d) {
+  if (!d || isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function addCalendarMonthsClamped(startDateStrOrDate, wholeMonths) {
+  const start = typeof startDateStrOrDate === "string" ? parseDate(startDateStrOrDate) : startDateStrOrDate;
+  const delta = Math.floor(Number(wholeMonths));
+  if (!start || isNaN(delta) || delta <= 0) return "";
+  const y = start.getFullYear();
+  const mo = start.getMonth();
+  const day = start.getDate();
+  const targetMonths = y * 12 + mo + delta;
+  const ny = Math.floor(targetMonths / 12);
+  const nm = targetMonths - ny * 12;
+  const lastDayOfMonth = new Date(ny, nm + 1, 0).getDate();
+  const nd = Math.min(day, lastDayOfMonth);
+  return formatDateInputFromLocalDate(new Date(ny, nm, nd));
+}
+
+/** 개설(기준)일~종료일 사이 완료 월 수. 종료일의 일이 시작일보다 작으면 1개월 차감(적금·대출 회차와 동일). */
+function calendarMonthsCompleted(start, end) {
+  if (!start || !end) return null;
+  if (end < start) return null;
+  let months =
+    (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+  if (end.getDate() < start.getDate()) months -= 1;
+  return months;
+}
+
+/** 연체·만기 처리와 동일한 기준으로, 가입일~기준일 사이 확정 회차 월 상환 회수(0 이상 · cap n). */
+function countLoanPaymentsMade(startDateStr, loanEndDateStr, periodStr) {
+  const start = parseDate(startDateStr);
+  const loanEnd = parseDate(loanEndDateStr);
+  const n = parseLoanPeriodToMonths(periodStr);
+  if (!start || n <= 0) return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const s = new Date(start.getTime());
+  s.setHours(0, 0, 0, 0);
+  let le = loanEnd ? new Date(loanEnd.getTime()) : null;
+  if (le) le.setHours(0, 0, 0, 0);
+
+  const end = !le ? today : le < today ? le : today;
+  if (end < s) return 0;
+
+  const monthsElapsed = calendarMonthsCompleted(s, end);
+  if (monthsElapsed === null) return 0;
+  return Math.min(Math.max(0, monthsElapsed), n);
+}
+
+/** 원리금균등 분모 (1+r)^n − 1·/r 근처 수치 불안 시 선형 근사. */
+function isMonthlyRateNegligibleForAmort(rateAnnualPercent, monthlyR) {
+  if (monthlyR == null || monthlyR < 0) return true;
+  return Math.abs(monthlyR) < 1e-14 || (rateAnnualPercent != null && rateAnnualPercent <= 1e-12);
 }
 
 /** 대출기간(개월) 문자열을 개월 수로 변환. 숫자만 입력 (예: 24) */
@@ -2202,26 +2346,81 @@ function calcCumulativePaidFromMonthlyDeposit(monthly, openDate, maturityDate) {
   const maturity = parseDate(maturityDate);
   if (monthlyAmt === null || monthlyAmt <= 0 || !open || !maturity || maturity <= open) return null;
   const now = new Date();
-  const endDate = now < maturity ? now : maturity;
-  if (endDate <= open) return 0;
-  const elapsedMonths =
-    (endDate.getFullYear() - open.getFullYear()) * 12 + (endDate.getMonth() - open.getMonth());
-  if (elapsedMonths <= 0) return 0;
+  now.setHours(0, 0, 0, 0);
+  const openZ = new Date(open.getTime());
+  openZ.setHours(0, 0, 0, 0);
+  const matZ = new Date(maturity.getTime());
+  matZ.setHours(0, 0, 0, 0);
+  const endDate = now < matZ ? now : matZ;
+  if (endDate <= openZ) return 0;
+  const elapsedMonths = calendarMonthsCompleted(openZ, endDate);
+  if (elapsedMonths === null || elapsedMonths <= 0) return 0;
   return Math.round(monthlyAmt * elapsedMonths);
 }
 
-/** 예금 만기예상액, 이자 계산 (원금, 개설일, 만기일, 이자율) - 단리 */
+/** 예금 만기예상액, 이자 계산 (원금, 개설일, 만기일, 이자율) — 연 단리, 개설~만기 일수/365 (참고용) */
 function calcDepositMaturityAmount(principal, openDate, maturityDate, rateStr) {
   const principalAmt = parseNum(principal);
   const open = parseDate(openDate);
   const maturity = parseDate(maturityDate);
   if (principalAmt === null || principalAmt <= 0 || !open || !maturity || maturity <= open) return null;
   const rate = parseRate(rateStr);
-  const months = (maturity.getFullYear() - open.getFullYear()) * 12 + (maturity.getMonth() - open.getMonth());
-  if (months <= 0) return { maturityAmount: Math.round(principalAmt), interest: 0 };
+  const dayMs = 86400000;
+  const days = Math.max(0, Math.round((maturity.getTime() - open.getTime()) / dayMs));
+  if (days <= 0) return { maturityAmount: Math.round(principalAmt), interest: 0 };
   if (rate === null || rate === 0) return { maturityAmount: Math.round(principalAmt), interest: 0 };
-  const interest = principalAmt * (rate / 100) * (months / 12);
+  const interest = principalAmt * (rate / 100) * (days / 365);
   return { maturityAmount: Math.round(principalAmt + interest), interest: Math.round(interest) };
+}
+
+/** 적금 행에서 약정 개월 수 (표시된 만기예상 계산과 동일 기준) */
+function getTotalMonthsForSavingsAssetRow(tr) {
+  if (!tr) return null;
+  const m = parseNum(tr.querySelector(".asset-asset-input-months")?.value);
+  if (m !== null && m > 0) return m;
+  const open = parseDate(tr.querySelector(".asset-asset-input-open-date")?.value);
+  const maturity = parseDate(tr.querySelector(".asset-asset-input-maturity-date")?.value);
+  if (!open || !maturity || maturity <= open) return null;
+  const openZ = new Date(open.getTime());
+  openZ.setHours(0, 0, 0, 0);
+  const matZ = new Date(maturity.getTime());
+  matZ.setHours(0, 0, 0, 0);
+  const months = calendarMonthsCompleted(openZ, matZ);
+  if (months === null || months <= 0) return null;
+  return months;
+}
+
+/**
+ * 예·적금 행 기준 총자산 합산액 (원금 또는 만기예상)
+ */
+function getDepositLikeAmountForNetWorth(tr, includeInterest) {
+  if (tr.dataset.withdrawn === "true") return 0;
+  const principal = parseNum(tr.querySelector(".asset-asset-input-principal")?.value);
+  if (principal === null) return 0;
+  const isDep = tr.classList.contains("asset-asset-row--deposit");
+  const isSav = tr.dataset.savings === "true";
+  if (!includeInterest || (!isDep && !isSav)) return principal;
+  const matParsed = parseNum(tr.querySelector(".asset-asset-maturity-amt-display")?.textContent);
+  if (matParsed !== null && matParsed > 0) return matParsed;
+  if (isDep) {
+    const calc = calcDepositMaturityAmount(
+      tr.querySelector(".asset-asset-input-principal")?.value,
+      tr.querySelector(".asset-asset-input-open-date")?.value,
+      tr.querySelector(".asset-asset-input-maturity-date")?.value,
+      tr.querySelector(".asset-asset-input-rate")?.value,
+    );
+    if (calc !== null && calc.maturityAmount > 0) return calc.maturityAmount;
+  }
+  if (isSav) {
+    const totalM = getTotalMonthsForSavingsAssetRow(tr);
+    const calc = calcMaturityAmountAndInterest(
+      tr.querySelector(".asset-asset-input-monthly")?.value,
+      totalM,
+      tr.querySelector(".asset-asset-input-rate")?.value,
+    );
+    if (calc !== null && calc.maturityAmount > 0) return calc.maturityAmount;
+  }
+  return principal;
 }
 
 /** 만기 시 만기예상액, 이자 계산 (월납입액, 개월수, 이자율) - 적금 단리 공식 */
@@ -2250,26 +2449,19 @@ function calcTotalLoanInterest(principal, rateStr, periodStr, repaymentMethod) {
 
   const method = String(repaymentMethod || "").trim();
   if (method === "원리금균등상환") {
-    if (r === 0) return 0;
-    const m = (P * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
-    const totalPayment = m * n;
-    return Math.round(totalPayment - P);
+    const denom = Math.pow(1 + r, n) - 1;
+    if (isMonthlyRateNegligibleForAmort(rate, r) || denom <= 1e-18) return 0;
+    const m = (P * r * Math.pow(1 + r, n)) / denom;
+    return Math.round(m * n - P);
   }
   if (method === "원금균등상환") {
-    let balance = P;
-    const monthlyPrincipal = P / n;
-    let totalInterest = 0;
-    for (let i = 0; i < n; i++) {
-      const interest = balance * r;
-      totalInterest += interest;
-      balance -= monthlyPrincipal;
-    }
-    return Math.round(totalInterest);
+    /* 닫힌 식 Σ(P−k·P/n)·r , k=0..n−1 = P·r·(n+1)/2 */
+    return Math.round(P * r * ((n + 1) / 2));
   }
   if (method === "만기일시상환") {
     return Math.round(P * (rate / 100) * (n / 12));
   }
-  /* 분할상환, 기타: 단리 적용 */
+  /* 분할상환·기타: 실제 회차·수수료·선·후 불일치 가능 — 단순 근사(표시용) */
   return Math.round(P * (rate / 100) * (n / 12));
 }
 
@@ -2284,8 +2476,10 @@ function calcMonthlyPrincipalAndInterest(principal, rateStr, periodStr, repaymen
 
   const method = String(repaymentMethod || "").trim();
   if (method === "원리금균등상환") {
-    if (r === 0) return { monthlyPrincipal: Math.round(P / n), monthlyInterest: 0 };
-    const m = (P * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+    if (isMonthlyRateNegligibleForAmort(rate, r)) return { monthlyPrincipal: Math.round(P / n), monthlyInterest: 0 };
+    const denom = Math.pow(1 + r, n) - 1;
+    if (denom <= 1e-18) return { monthlyPrincipal: Math.round(P / n), monthlyInterest: 0 };
+    const m = (P * r * Math.pow(1 + r, n)) / denom;
     const firstMonthInterest = P * r;
     return { monthlyPrincipal: Math.round(m - firstMonthInterest), monthlyInterest: Math.round(firstMonthInterest) };
   }
@@ -2297,11 +2491,44 @@ function calcMonthlyPrincipalAndInterest(principal, rateStr, periodStr, repaymen
   if (method === "만기일시상환") {
     return { monthlyPrincipal: 0, monthlyInterest: Math.round(P * r) };
   }
-  /* 분할상환, 기타: 원리금균등과 동일 추정 */
-  if (r === 0) return { monthlyPrincipal: Math.round(P / n), monthlyInterest: 0 };
-  const m = (P * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
-  const firstMonthInterest = P * r;
-  return { monthlyPrincipal: Math.round(m - firstMonthInterest), monthlyInterest: Math.round(firstMonthInterest) };
+  /* 분할상환·기타: 원리금균등과 동일 추정(실제 약정과 다를 수 있음) */
+  if (isMonthlyRateNegligibleForAmort(rate, r)) return { monthlyPrincipal: Math.round(P / n), monthlyInterest: 0 };
+  const denom2 = Math.pow(1 + r, n) - 1;
+  if (denom2 <= 1e-18) return { monthlyPrincipal: Math.round(P / n), monthlyInterest: 0 };
+  const m2 = (P * r * Math.pow(1 + r, n)) / denom2;
+  const firstMonthInterest2 = P * r;
+  return { monthlyPrincipal: Math.round(m2 - firstMonthInterest2), monthlyInterest: Math.round(firstMonthInterest2) };
+}
+
+/** 중도상환 반영 시: 잔존 원금·남은 약정 회차 기준으로 월 원금·이자(첫 달 표시와 동일 관례) */
+function calcMonthlyPrincipalAndInterestForRemaining(principalEff, rateStr, remainingMonths, repaymentMethod) {
+  const P = parseNum(principalEff);
+  const rate = parseRate(rateStr);
+  const nRem = Math.floor(Number(remainingMonths));
+  if (P === null || P <= 0 || !Number.isFinite(nRem) || nRem <= 0) return null;
+  const r = rate !== null && rate >= 0 ? rate / 100 / 12 : 0;
+  const method = String(repaymentMethod || "").trim();
+  if (method === "원리금균등상환") {
+    if (isMonthlyRateNegligibleForAmort(rate, r)) return { monthlyPrincipal: Math.round(P / nRem), monthlyInterest: 0 };
+    const denom = Math.pow(1 + r, nRem) - 1;
+    if (denom <= 1e-18) return { monthlyPrincipal: Math.round(P / nRem), monthlyInterest: 0 };
+    const m = (P * r * Math.pow(1 + r, nRem)) / denom;
+    const firstMonthInterest = P * r;
+    return { monthlyPrincipal: Math.round(m - firstMonthInterest), monthlyInterest: Math.round(firstMonthInterest) };
+  }
+  if (method === "원금균등상환") {
+    const mp = P / nRem;
+    return { monthlyPrincipal: Math.round(mp), monthlyInterest: Math.round(P * r) };
+  }
+  if (method === "만기일시상환") {
+    return { monthlyPrincipal: 0, monthlyInterest: Math.round(P * r) };
+  }
+  if (isMonthlyRateNegligibleForAmort(rate, r)) return { monthlyPrincipal: Math.round(P / nRem), monthlyInterest: 0 };
+  const denom3 = Math.pow(1 + r, nRem) - 1;
+  if (denom3 <= 1e-18) return { monthlyPrincipal: Math.round(P / nRem), monthlyInterest: 0 };
+  const m3 = (P * r * Math.pow(1 + r, nRem)) / denom3;
+  const fi3 = P * r;
+  return { monthlyPrincipal: Math.round(m3 - fi3), monthlyInterest: Math.round(fi3) };
 }
 
 /** 시작일~기준일 기준 상환금액 자동 계산 (지금까지 갚은 금액)
@@ -2310,48 +2537,33 @@ function calcRepaidAmountFromDates(principal, rateStr, periodStr, repaymentMetho
   const P = parseNum(principal);
   const rate = parseRate(rateStr);
   const n = parseLoanPeriodToMonths(periodStr);
-  const start = parseDate(startDate);
-  const loanEnd = parseDate(endDate);
-  if (P === null || P <= 0 || !start) return null;
+  if (P === null || P <= 0 || !parseDate(startDate)) return null;
   if (n <= 0) return null;
   const r = rate !== null && rate >= 0 ? rate / 100 / 12 : 0;
 
-  /* 상환금액 = 지금까지 갚은 금액 → 오늘과 만기일(대출만기) 중 더 이른 날짜까지 */
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  if (start) start.setHours(0, 0, 0, 0);
-  if (loanEnd) loanEnd.setHours(0, 0, 0, 0);
-  const end = !loanEnd ? today : (loanEnd < today ? loanEnd : today);
-  if (end < start) return 0;
-
-  /* 납입 개월 수: 같은 달의 같은 일 이상이어야 해당 월 납입 완료로 인정 */
-  let monthsElapsed = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
-  if (end.getDate() < start.getDate()) monthsElapsed = Math.max(0, monthsElapsed - 1);
-  if (monthsElapsed <= 0) return 0;
-  const paymentsMade = Math.min(monthsElapsed, n);
+  const paymentsMade = countLoanPaymentsMade(startDate, endDate, periodStr);
+  if (paymentsMade === null) return null;
+  if (paymentsMade <= 0) return 0;
 
   const method = String(repaymentMethod || "").trim();
   if (method === "원리금균등상환") {
-    if (r === 0) return Math.round((P / n) * paymentsMade);
-    const m = (P * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+    if (isMonthlyRateNegligibleForAmort(rate, r)) return Math.round((P / n) * paymentsMade);
+    const denom = Math.pow(1 + r, n) - 1;
+    if (denom <= 1e-18) return Math.round((P / n) * paymentsMade);
+    const m = (P * r * Math.pow(1 + r, n)) / denom;
     return Math.round(m * paymentsMade);
   }
   if (method === "원금균등상환") {
-    let total = 0;
-    let balance = P;
-    const monthlyPrincipal = P / n;
-    for (let i = 0; i < paymentsMade; i++) {
-      const interest = balance * r;
-      total += monthlyPrincipal + interest;
-      balance -= monthlyPrincipal;
-    }
+    const k = paymentsMade;
+    const mp = P / n;
+    const total = k * mp + r * P * k - r * mp * ((k * (k - 1)) / 2);
     return Math.round(total);
   }
   if (method === "만기일시상환") {
     const monthlyInterest = P * r;
     return Math.round(monthlyInterest * paymentsMade);
   }
-  /* 분할상환, 기타: 단리로 추정 */
+  /* 분할상환·기타: 단리 근사(표시용) */
   const monthlyEst = P * (rate !== null ? rate / 100 / 12 : 0) + P / n;
   return Math.round(monthlyEst * paymentsMade);
 }
@@ -2363,28 +2575,32 @@ function calcRemainingBalance(principal, rateStr, periodStr, repaymentMethod, st
   const rate = parseRate(rateStr);
   const n = parseLoanPeriodToMonths(periodStr);
   const start = parseDate(startDate);
-  const loanEnd = parseDate(endDate);
   if (P === null || P <= 0 || !start) return null;
   if (n <= 0) return null;
   const r = rate !== null && rate >= 0 ? rate / 100 / 12 : 0;
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  if (start) start.setHours(0, 0, 0, 0);
-  if (loanEnd) loanEnd.setHours(0, 0, 0, 0);
-  const end = !loanEnd ? today : (loanEnd < today ? loanEnd : today);
-  if (end < start) return P;
+  const loanEnd = parseDate(endDate);
 
-  /* 납입 개월 수: 같은 달의 같은 일 이상이어야 해당 월 납입 완료로 인정 */
-  let monthsElapsed = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
-  if (end.getDate() < start.getDate()) monthsElapsed = Math.max(0, monthsElapsed - 1);
-  const paymentsMade = Math.min(Math.max(0, monthsElapsed), n);
+  let le = loanEnd ? new Date(loanEnd.getTime()) : null;
+  if (le) le.setHours(0, 0, 0, 0);
+  const s = new Date(start.getTime());
+  s.setHours(0, 0, 0, 0);
+  const end = !le ? today : le < today ? le : today;
+  if (end < s) return Math.round(P);
+
+  const paymentsMade = countLoanPaymentsMade(startDate, endDate, periodStr);
+  if (paymentsMade === null) return null;
 
   const method = String(repaymentMethod || "").trim();
   if (method === "원리금균등상환") {
-    if (r === 0) return Math.round(P - (P / n) * paymentsMade);
-    const m = (P * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
-    const remaining = P * Math.pow(1 + r, paymentsMade) - m * (Math.pow(1 + r, paymentsMade) - 1) / r;
+    if (isMonthlyRateNegligibleForAmort(rate, r)) return Math.round(Math.max(0, P - (P / n) * paymentsMade));
+    const denom = Math.pow(1 + r, n) - 1;
+    if (denom <= 1e-18) return Math.round(Math.max(0, P - (P / n) * paymentsMade));
+    const m = (P * r * Math.pow(1 + r, n)) / denom;
+    const pk = Math.pow(1 + r, paymentsMade);
+    const remaining = P * pk - (m * (pk - 1)) / r;
     return Math.round(Math.max(0, remaining));
   }
   if (method === "원금균등상환") {
@@ -2394,11 +2610,14 @@ function calcRemainingBalance(principal, rateStr, periodStr, repaymentMethod, st
   if (method === "만기일시상환") {
     return paymentsMade >= n ? 0 : Math.round(P);
   }
-  /* 분할상환, 기타: 원리금균등과 동일하게 추정 */
-  if (r === 0) return Math.round(P - (P / n) * paymentsMade);
-  const m = (P * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
-  const remaining = P * Math.pow(1 + r, paymentsMade) - m * (Math.pow(1 + r, paymentsMade) - 1) / r;
-  return Math.round(Math.max(0, remaining));
+  /* 분할상환·기타: 원리금균등 근사(표시용) */
+  if (isMonthlyRateNegligibleForAmort(rate, r)) return Math.round(Math.max(0, P - (P / n) * paymentsMade));
+  const denom2 = Math.pow(1 + r, n) - 1;
+  if (denom2 <= 1e-18) return Math.round(Math.max(0, P - (P / n) * paymentsMade));
+  const m2 = (P * r * Math.pow(1 + r, n)) / denom2;
+  const pk2 = Math.pow(1 + r, paymentsMade);
+  const remaining2 = P * pk2 - (m2 * (pk2 - 1)) / r;
+  return Math.round(Math.max(0, remaining2));
 }
 
 function escapeHtml(s) {
@@ -2416,18 +2635,12 @@ function renderNetworthView() {
   netWorthDashboard.innerHTML = `
     <div class="asset-networth-dashboard-formula">
       <div class="asset-networth-dashboard-formula-item">
-        <span class="asset-networth-dashboard-formula-label asset-networth-dashboard-formula-label--with-icon">
-          <img src="/asset-icons/networth-assets-coins.png" alt="" width="22" height="22" class="asset-networth-dashboard-formula-icon" aria-hidden="true" />
-          총 자산
-        </span>
+        <span class="asset-networth-dashboard-formula-label">총 자산</span>
         <span class="asset-networth-dashboard-formula-value asset-networth-dashboard-assets-value">-</span>
       </div>
       <span class="asset-networth-dashboard-formula-op">−</span>
       <div class="asset-networth-dashboard-formula-item">
-        <span class="asset-networth-dashboard-formula-label asset-networth-dashboard-formula-label--with-icon">
-          <img src="/asset-icons/networth-debt-hand-coin.png" alt="" width="22" height="22" class="asset-networth-dashboard-formula-icon" aria-hidden="true" />
-          총 부채
-        </span>
+        <span class="asset-networth-dashboard-formula-label">총 부채</span>
         <span class="asset-networth-dashboard-formula-value asset-networth-dashboard-debt-value">-</span>
       </div>
       <span class="asset-networth-dashboard-formula-eq">=</span>
@@ -2456,12 +2669,16 @@ function renderNetworthView() {
   const remainingTextEl = netWorthDashboard.querySelector(".asset-networth-dashboard-remaining-text");
   const targetProgressFill = netWorthDashboard.querySelector(".asset-networth-dashboard-progress-fill");
   targetInput.value = loadNetWorthTarget();
-  targetInput.addEventListener("input", () => saveNetWorthTarget(targetInput.value));
+  targetInput.addEventListener("input", () => {
+    saveNetWorthTarget(targetInput.value);
+    updateNetWorthDashboard();
+  });
   targetInput.addEventListener("keydown", (e) => e.key === "Enter" && targetInput.blur());
   targetInput.addEventListener("blur", () => {
     const n = parseNum(targetInput.value);
     if (n !== null) targetInput.value = formatNum(n);
     saveNetWorthTarget(targetInput.value);
+    updateNetWorthDashboard();
   });
   let updateNetWorthDashboard = () => {};
 
@@ -2471,10 +2688,9 @@ function renderNetworthView() {
   const debtHeader = document.createElement("div");
   debtHeader.className = "asset-debt-header";
   debtHeader.innerHTML = `
-    <span class="asset-debt-title">총 부채</span>
+    <span class="asset-debt-title"><img src="/toolbaricons/wallet.svg" alt="" class="asset-networth-section-title-icon" width="18" height="18" aria-hidden="true">총 부채</span>
     <span class="asset-debt-count">0</span>
     <button type="button" class="asset-debt-add-inline-btn">+ 추가</button>
-    <span class="asset-debt-more">⋯</span>
   `;
 
   const debtProgressWrap = document.createElement("div");
@@ -2496,83 +2712,55 @@ function renderNetworthView() {
   const progressRemainingValue = debtProgressWrap.querySelector(".asset-debt-progress-remaining-value");
   const progressPercent = debtProgressWrap.querySelector(".asset-debt-progress-percent");
 
+  /** 합계(원금·이자·상환·중도상환·잔여) — 카드 목록 바깥이 아니라 상환 진행률 카드 안에 표시 */
+  const debtTotalsStrip = document.createElement("div");
+  debtTotalsStrip.className = "asset-debt-progress-totals";
+  debtTotalsStrip.setAttribute("role", "group");
+  debtTotalsStrip.setAttribute("aria-label", "부채 합계");
+  debtTotalsStrip.innerHTML = `
+    <div class="asset-debt-progress-total-cell">
+      <span class="asset-debt-progress-total-label">원금</span>
+      <strong class="asset-debt-cell-totals-principal">-</strong>
+    </div>
+    <div class="asset-debt-progress-total-cell">
+      <span class="asset-debt-progress-total-label">이자</span>
+      <strong class="asset-debt-cell-totals-interest">-</strong>
+    </div>
+    <div class="asset-debt-progress-total-cell">
+      <span class="asset-debt-progress-total-label">상환</span>
+      <strong class="asset-debt-cell-totals-paid">-</strong>
+    </div>
+    <div class="asset-debt-progress-total-cell">
+      <span class="asset-debt-progress-total-label">중도상환</span>
+      <strong class="asset-debt-cell-totals-extra-paid">-</strong>
+    </div>
+    <div class="asset-debt-progress-total-cell asset-debt-progress-total-cell--balance">
+      <span class="asset-debt-progress-total-label">잔여</span>
+      <strong class="asset-debt-cell-totals-balance">-</strong>
+    </div>
+  `;
+  debtProgressWrap.appendChild(debtTotalsStrip);
+
   const tableWrap = document.createElement("div");
   tableWrap.className = "asset-debt-table-wrap";
-  const table = document.createElement("table");
-  table.className = "asset-debt-table";
-  table.innerHTML = `
-    <colgroup>
-      <col class="asset-debt-col-name">
-      <col class="asset-debt-col-type">
-      <col class="asset-debt-col-repayment">
-      <col class="asset-debt-col-period">
-      <col class="asset-debt-col-rate">
-      <col class="asset-debt-col-principal">
-      <col class="asset-debt-col-interest">
-      <col class="asset-debt-col-monthly-principal">
-      <col class="asset-debt-col-monthly-interest">
-      <col class="asset-debt-col-start-date">
-      <col class="asset-debt-col-end-date">
-      <col class="asset-debt-col-paid">
-      <col class="asset-debt-col-extra-paid">
-      <col class="asset-debt-col-balance">
-      <col class="asset-debt-col-actions">
-    </colgroup>
-    <thead>
-      <tr>
-        <th class="asset-debt-th-name">대출 이름</th>
-        <th class="asset-debt-th-type">부채유형</th>
-        <th class="asset-debt-th-repayment">상환방식</th>
-        <th class="asset-debt-th-period">약정 개월</th>
-        <th class="asset-debt-th-rate">금리(%)</th>
-        <th class="asset-debt-th-principal">대출 원금</th>
-        <th class="asset-debt-th-interest">총 대출 이자</th>
-        <th class="asset-debt-th-monthly-principal">월 원금</th>
-        <th class="asset-debt-th-monthly-interest">월 이자</th>
-        <th class="asset-debt-th-start-date">가입일</th>
-        <th class="asset-debt-th-end-date">만기일</th>
-        <th class="asset-debt-th-paid">상환금액</th>
-        <th class="asset-debt-th-extra-paid">중도상환(수수료 제외)</th>
-        <th class="asset-debt-th-balance">잔여 원금</th>
-        <th class="asset-debt-th-actions"></th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  `;
 
-  const tbody = table.querySelector("tbody");
-  const totalsRow = document.createElement("tr");
-  totalsRow.className = "asset-debt-row-totals";
-  totalsRow.innerHTML = `
-    <td class="asset-debt-cell-totals-label asset-debt-cell-name">합계</td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td class="asset-debt-cell-totals-principal">-</td>
-    <td class="asset-debt-cell-totals-interest">-</td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td class="asset-debt-cell-totals-paid">-</td>
-    <td class="asset-debt-cell-totals-extra-paid">-</td>
-    <td class="asset-debt-cell-totals-balance">-</td>
-    <td class="asset-debt-cell-actions"></td>
-  `;
-  tbody.appendChild(totalsRow);
+  const cardsList = document.createElement("div");
+  cardsList.className = "asset-debt-cards-list";
+  cardsList.setAttribute("role", "list");
 
-  /** 넓은 표에서 '수정'이 오른쪽 끝에 있을 때: 편집 패널이 가로 스크롤 래퍼 안 앞쪽(왼쪽)에 오도록 */
+  tableWrap.appendChild(cardsList);
+
+  /** 인라인 편집 패널을 래퍼 안에서 보이게 스크롤 */
   function bringDebtRowPanelIntoView(tr) {
     if (!tr) return;
     const run = () => {
       const panel = tr.querySelector(".asset-expense-inline-panel");
       const wrap = tr.closest(".asset-debt-table-wrap");
-      if (!wrap) return;
       const el = panel || tr;
       if (el.scrollIntoView) {
-        el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+        el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
       }
+      if (!wrap) return;
       requestAnimationFrame(() => {
         const pr = el.getBoundingClientRect();
         const wr = wrap.getBoundingClientRect();
@@ -2583,12 +2771,28 @@ function renderNetworthView() {
     requestAnimationFrame(() => requestAnimationFrame(run));
   }
 
+  /** 금리·원금 입력칸 우측에 % / 원 표시 */
+  function wrapDebtInputWithSuffix(inputEl, unitText) {
+    const wrap = document.createElement("div");
+    wrap.className = "asset-debt-input-suffix-wrap";
+    const unit = document.createElement("span");
+    unit.className = "asset-debt-input-suffix-unit";
+    unit.textContent = unitText;
+    unit.setAttribute("aria-hidden", "true");
+    wrap.appendChild(inputEl);
+    wrap.appendChild(unit);
+    return wrap;
+  }
+
   function createDebtRow(data = {}, onUpdate, options = {}) {
     const mode = options.mode != null ? options.mode : "view";
     const isView = mode === "view";
     const isDraft = mode === "draft";
     const isEdit = mode === "edit";
     const debtModalHandlers = options.debtModalHandlers || null;
+    const debtPhantomTableRow = options.debtPhantomTableRow === true;
+    /** 떠 있는 모달 안에서만: 자동 계산 표시 줄은 빼고 입력란만 보이게(값은 저장용으로 숨김 블록에 유지) */
+    const hideDebtFloatingModalComputedUi = !!debtModalHandlers;
     const memSnapshot = isEdit
       ? options.memSnapshot
         ? { ...options.memSnapshot }
@@ -2596,51 +2800,191 @@ function renderNetworthView() {
       : null;
     const inPanel = isDraft || isEdit;
     const inRowUpdate = isView ? () => {} : onUpdate;
+    const debtCardView = isView;
+    const useDebtFormRows = inPanel || debtCardView;
 
-    const tr = document.createElement("tr");
-    tr.className = "asset-debt-row";
-    if (isView) {
-      tr.classList.add("asset-debt-row--view");
-    }
-    if (inPanel) {
-      tr.classList.add("asset-debt-row--inner-panel");
-      if (isDraft) tr.classList.add("asset-debt-row--draft");
-      if (isEdit) tr.classList.add("asset-debt-row--editing");
-    }
-
+    let tr;
     let dataRowTarget;
     let panelFooter = null;
     let xBtn = null;
-    if (inPanel) {
-      const panelTitle = isDraft ? "새 대출" : "대출 수정";
-      tr.innerHTML =
-        '<td colspan="15" class="asset-debt-cell-panel">' +
-        '<div class="asset-expense-inline-panel asset-debt-inline-panel">' +
-        '<div class="asset-expense-inline-panel-top">' +
-        '<span class="asset-expense-inline-panel-title">' +
-        panelTitle +
-        "</span>" +
-        '<button type="button" class="asset-expense-inline-panel-x" aria-label="닫기">×</button>' +
-        "</div>" +
-        '<div class="asset-expense-inline-panel-body"></div>' +
-        '<div class="asset-expense-inline-panel-bottom" aria-label="확인 작업"></div>' +
-        "</div></td>";
-      const panelBody = tr.querySelector(".asset-expense-inline-panel-body");
-      panelFooter = tr.querySelector(".asset-expense-inline-panel-bottom");
-      xBtn = tr.querySelector(".asset-expense-inline-panel-x");
+    /** 카드 상단 요약 갱신용 (필드 생성 후 paint 연결) */
+    let debtCardUi = null;
+    let paintDebtCardFaceRef = null;
+    /** 새 대출/수정 떠 있는 모달: 계산 결과 스팬 저장용 숨김 컨테이너(readDebt/query 대비) */
+    let debtFloatingModalComputedSink = null;
+
+    if (debtCardView) {
+      tr = document.createElement("article");
+      tr.className = "asset-debt-row asset-debt-row--view asset-debt-card";
+      tr.setAttribute("role", "listitem");
+
+      const face = document.createElement("div");
+      face.className = "asset-debt-card-face";
+      const main = document.createElement("div");
+      main.className = "asset-debt-card-main";
+      const copy = document.createElement("div");
+      copy.className = "asset-debt-card-copy";
+      const head = document.createElement("div");
+      head.className = "asset-debt-card-headline";
+      const nameFace = document.createElement("span");
+      nameFace.className = "asset-debt-card-name";
+      head.appendChild(nameFace);
+      const subEl = document.createElement("p");
+      subEl.className = "asset-debt-card-sub";
+      const tagsEl = document.createElement("div");
+      tagsEl.className = "asset-debt-card-tags";
+      const metaRow = document.createElement("div");
+      metaRow.className = "asset-debt-card-meta";
+      metaRow.appendChild(subEl);
+      metaRow.appendChild(tagsEl);
+      copy.appendChild(head);
+      copy.appendChild(metaRow);
+      const figures = document.createElement("div");
+      figures.className = "asset-debt-card-figures";
+      const balanceFigure = document.createElement("span");
+      balanceFigure.className = "asset-debt-card-balance";
+      const maturityFigure = document.createElement("span");
+      maturityFigure.className = "asset-debt-card-maturity";
+      maturityFigure.hidden = true;
+      maturityFigure.setAttribute("aria-hidden", "true");
+      figures.appendChild(balanceFigure);
+      figures.appendChild(maturityFigure);
+      main.appendChild(copy);
+      main.appendChild(figures);
+      face.appendChild(main);
+
+      const cardStatsWrap = document.createElement("div");
+      cardStatsWrap.className = "asset-debt-card-stats";
+      function appendDebtCardStat(parentEl, labelText) {
+        const wrap = document.createElement("div");
+        wrap.className = "asset-debt-card-stat";
+        const lab = document.createElement("span");
+        lab.className = "asset-debt-card-stat-label";
+        lab.textContent = labelText;
+        const val = document.createElement("span");
+        val.className = "asset-debt-card-stat-value";
+        val.textContent = "—";
+        wrap.appendChild(lab);
+        wrap.appendChild(val);
+        parentEl.appendChild(wrap);
+        return val;
+      }
+      const statsGridTop = document.createElement("div");
+      statsGridTop.className = "asset-debt-card-stats-grid";
+      const cardStatMonthlyPrincipal = appendDebtCardStat(statsGridTop, "월 원금");
+      const cardStatMonthlyInterest = appendDebtCardStat(statsGridTop, "월 이자");
+      const cardStatLoanPrincipalTop = appendDebtCardStat(statsGridTop, "대출 원금");
+      const cardStatPaidAmt = appendDebtCardStat(statsGridTop, "누적 상환금액");
+      const statsGridBottom = document.createElement("div");
+      statsGridBottom.className =
+        "asset-debt-card-stats-grid asset-debt-card-stats-grid--secondary";
+      const cardStatMaturityDate = appendDebtCardStat(statsGridBottom, "만기일");
+      const cardStatStartDate = appendDebtCardStat(statsGridBottom, "가입일");
+      const cardStatTotalInterest = appendDebtCardStat(statsGridBottom, "총 대출 이자");
+      const cardStatLoanPrincipalBottom = appendDebtCardStat(statsGridBottom, "대출 원금");
+      cardStatsWrap.appendChild(statsGridTop);
+      cardStatsWrap.appendChild(statsGridBottom);
+      face.appendChild(cardStatsWrap);
+
+      const progress = document.createElement("div");
+      progress.className = "asset-debt-card-progress";
+      const plab = document.createElement("span");
+      plab.className = "asset-debt-card-progress-label";
+      plab.textContent = "상환 진행";
+      const pbar = document.createElement("div");
+      pbar.className = "asset-debt-card-progress-bar";
+      const pfill = document.createElement("div");
+      pfill.className = "asset-debt-card-progress-fill";
+      pbar.appendChild(pfill);
+      const ppct = document.createElement("span");
+      ppct.className = "asset-debt-card-progress-pct";
+      ppct.textContent = "0%";
+      progress.appendChild(plab);
+      progress.appendChild(pbar);
+      progress.appendChild(ppct);
+      face.appendChild(progress);
+
+      const fieldRoot = document.createElement("div");
+      fieldRoot.className = "asset-debt-card-fields";
+      fieldRoot.setAttribute("aria-hidden", "true");
       const formStack = document.createElement("div");
       formStack.className = "asset-expense-form-stack";
       formStack.setAttribute("role", "group");
       formStack.setAttribute("aria-label", "대출 입력");
-      panelBody.appendChild(formStack);
+      fieldRoot.appendChild(formStack);
+      tr.appendChild(face);
+      tr.appendChild(fieldRoot);
       dataRowTarget = formStack;
+
+      debtCardUi = {
+        nameFace,
+        subEl,
+        tagsEl,
+        balanceFigure,
+        maturityFigure,
+        cardStatMonthlyPrincipal,
+        cardStatMonthlyInterest,
+        cardStatLoanPrincipalTop,
+        cardStatPaidAmt,
+        cardStatMaturityDate,
+        cardStatStartDate,
+        cardStatTotalInterest,
+        cardStatLoanPrincipalBottom,
+        progressFillMini: pfill,
+        progressPctMini: ppct,
+      };
+
+      face.addEventListener("click", () => openDebtEditModal(tr));
+    } else if (inPanel) {
+      tr = document.createElement(debtPhantomTableRow ? "tr" : "div");
+      tr.className = "asset-debt-row asset-debt-row--inner-panel";
+      if (isDraft) tr.classList.add("asset-debt-row--draft");
+      if (isEdit) tr.classList.add("asset-debt-row--editing");
+
+      const panelTitle = isDraft ? "새 대출" : "대출 수정";
+      const inlinePanelShell =
+        '<div class="asset-expense-inline-panel asset-debt-inline-panel">' +
+        '<div class="asset-expense-inline-panel-top">' +
+        '<div class="asset-expense-inline-panel-head-text">' +
+        '<span class="asset-expense-inline-panel-title">' +
+        panelTitle +
+        "</span>" +
+        "</div>" +
+        '<button type="button" class="asset-expense-inline-panel-x" aria-label="닫기">×</button>' +
+        "</div>" +
+        '<div class="asset-expense-inline-panel-body"></div>' +
+        '<div class="asset-expense-inline-panel-bottom" aria-label="확인 작업"></div>' +
+        "</div>";
+
+      tr.innerHTML = debtPhantomTableRow
+        ? '<td colspan="15" class="asset-debt-cell-panel">' + inlinePanelShell + "</td>"
+        : '<div class="asset-debt-cell-panel">' + inlinePanelShell + "</div>";
+
+      const panelBody = tr.querySelector(".asset-expense-inline-panel-body");
+      panelFooter = tr.querySelector(".asset-expense-inline-panel-bottom");
+      xBtn = tr.querySelector(".asset-expense-inline-panel-x");
+      const formStackPanel = document.createElement("div");
+      formStackPanel.className = "asset-expense-form-stack";
+      formStackPanel.setAttribute("role", "group");
+      formStackPanel.setAttribute("aria-label", "대출 입력");
+      panelBody.appendChild(formStackPanel);
+      dataRowTarget = formStackPanel;
+      if (hideDebtFloatingModalComputedUi) {
+        debtFloatingModalComputedSink = document.createElement("div");
+        debtFloatingModalComputedSink.className = "asset-debt-modal-computed-sink";
+        debtFloatingModalComputedSink.hidden = true;
+        debtFloatingModalComputedSink.setAttribute("aria-hidden", "true");
+        tr.querySelector(".asset-expense-inline-panel")?.appendChild(debtFloatingModalComputedSink);
+      }
     } else {
+      tr = document.createElement("div");
+      tr.className = "asset-debt-row";
       dataRowTarget = tr;
     }
 
-    function appendToRow(label, tdClass, node, options = {}) {
-      const isComputedPanel = inPanel && options.computed === true;
-      if (inPanel) {
+    function appendToRow(label, tdClass, node, opts = {}) {
+      const isComputedPanel = useDebtFormRows && opts.computed === true;
+      if (useDebtFormRows) {
         const row = document.createElement("div");
         row.className = "asset-expense-form-row";
         const lab = document.createElement("span");
@@ -2667,7 +3011,7 @@ function renderNetworthView() {
       return td;
     }
     function appendManyToRow(label, tdClass, ...nodes) {
-      if (inPanel) {
+      if (useDebtFormRows) {
         const row = document.createElement("div");
         row.className = "asset-expense-form-row";
         const lab = document.createElement("span");
@@ -2691,6 +3035,43 @@ function renderNetworthView() {
       dataRowTarget.appendChild(td);
       return td;
     }
+
+    /** 부채 패널·카드용: 한 줄에 필드 2개(라벨+입력 쌍) */
+    function appendDebtFormSplitPair(leftSpec, rightSpec) {
+      if (!useDebtFormRows) {
+        const l = appendToRow(leftSpec.label, leftSpec.tdClass, leftSpec.node, leftSpec.opts || {});
+        const r = appendToRow(rightSpec.label, rightSpec.tdClass, rightSpec.node, rightSpec.opts || {});
+        return { leftControl: l, rightControl: r };
+      }
+      const wrap = document.createElement("div");
+      wrap.className = "asset-debt-form-split-row";
+
+      function buildCell(spec) {
+        const isComputedPanel = !!(spec.opts && spec.opts.computed);
+        const row = document.createElement("div");
+        row.className = "asset-expense-form-row asset-debt-form-split-col";
+        const lab = document.createElement("span");
+        lab.className = "asset-expense-form-label";
+        lab.textContent = spec.label;
+        const control = document.createElement("div");
+        control.className =
+          "asset-expense-form-control asset-expense-form-control--field" +
+          (isComputedPanel ? " asset-debt-panel-value--computed" : "") +
+          (spec.tdClass ? " " + spec.tdClass : "");
+        if (isComputedPanel) control.setAttribute("data-debt-value-kind", "computed");
+        if (spec.node) control.appendChild(spec.node);
+        row.appendChild(lab);
+        row.appendChild(control);
+        wrap.appendChild(row);
+        return control;
+      }
+
+      const leftControl = buildCell(leftSpec);
+      const rightControl = buildCell(rightSpec);
+      dataRowTarget.appendChild(wrap);
+      return { leftControl, rightControl };
+    }
+
     const nameInput = document.createElement("input");
     nameInput.type = "text";
     nameInput.className = "asset-debt-input-name";
@@ -2700,42 +3081,65 @@ function renderNetworthView() {
     nameInput.addEventListener("keydown", (e) => e.key === "Enter" && !e.isComposing && nameInput.blur());
     appendToRow("대출 이름", "asset-debt-cell-name", nameInput);
 
-    appendToRow("부채유형", "asset-debt-cell-type", createDebtTypeDropdown(data.debtType || "", inRowUpdate));
+    const debtTypeDd = createDebtTypeDropdown(data.debtType || "", () => {
+      inRowUpdate();
+      paintDebtCardFaceRef?.();
+    });
 
     let repaymentHost;
-    repaymentHost = appendToRow("상환방식", "asset-debt-cell-repayment", null);
+    {
+      const pair = appendDebtFormSplitPair(
+        { label: "부채유형", tdClass: "asset-debt-cell-type", node: debtTypeDd },
+        { label: "상환방식", tdClass: "asset-debt-cell-repayment", node: null },
+      );
+      repaymentHost = pair.rightControl;
+    }
 
     const periodInput = document.createElement("input");
     periodInput.type = "text";
+    periodInput.inputMode = "numeric";
+    periodInput.pattern = "[0-9,]*";
+    periodInput.autocomplete = "off";
     periodInput.className = "asset-debt-input-period";
     periodInput.value = data.periodYears ?? "";
     periodInput.placeholder = "-";
-    periodInput.addEventListener("input", (e) => filterNumericInput(periodInput, false, e));
+    periodInput.addEventListener("input", (e) =>
+      filterNumericInput(periodInput, false, e, { ignoreIMEComposition: true }),
+    );
     periodInput.addEventListener("keydown", (e) => e.key === "Enter" && periodInput.blur());
-    appendToRow("약정 개월", "asset-debt-cell-period", periodInput);
 
     const rateInput = document.createElement("input");
     rateInput.type = "text";
+    rateInput.inputMode = "decimal";
+    rateInput.autocomplete = "off";
     rateInput.className = "asset-debt-input-rate";
     rateInput.value = data.interestRate ?? "";
     rateInput.placeholder = "예: 4.2";
     rateInput.title = "연 금리, 퍼센트 숫자만 (4.2 = 4.2%, % 생략 가능)";
-    rateInput.addEventListener("input", (e) => filterNumericInput(rateInput, true, e));
+    rateInput.addEventListener("input", (e) =>
+      filterNumericInput(rateInput, true, e, { ignoreIMEComposition: true }),
+    );
     rateInput.addEventListener("keydown", (e) => e.key === "Enter" && rateInput.blur());
-    appendToRow("금리(%)", "asset-debt-cell-rate", rateInput);
 
     const principalInput = document.createElement("input");
     principalInput.type = "text";
+    principalInput.inputMode = "numeric";
+    principalInput.pattern = "[0-9,]*";
+    principalInput.autocomplete = "off";
     principalInput.className = "asset-debt-input-principal";
     principalInput.value = data.principal ? (formatNum(data.principal) || data.principal) : "";
     principalInput.placeholder = "-";
-    principalInput.addEventListener("input", (e) => filterNumericInput(principalInput, false, e));
+    principalInput.addEventListener("input", (e) =>
+      filterNumericInput(principalInput, false, e, { ignoreIMEComposition: true }),
+    );
     principalInput.addEventListener("blur", () => {
       const formatted = formatNum(principalInput.value);
       if (formatted !== "") principalInput.value = formatted;
     });
     principalInput.addEventListener("keydown", (e) => e.key === "Enter" && principalInput.blur());
-    appendToRow("대출 원금", "asset-debt-cell-principal", principalInput);
+
+    const rateInputWrap = wrapDebtInputWithSuffix(rateInput, "%");
+    const principalInputWrap = wrapDebtInputWithSuffix(principalInput, "원");
 
     const interestSpan = document.createElement("span");
     interestSpan.className = "asset-debt-interest-display";
@@ -2749,6 +3153,7 @@ function renderNetworthView() {
         repaymentInput?.value
       );
       interestSpan.textContent = interest !== null ? formatNum(interest) : "";
+      paintDebtCardFaceRef?.();
     }
 
     let updatePaidFromDatesRef;
@@ -2756,15 +3161,37 @@ function renderNetworthView() {
     let updateMonthlyBreakdownRef;
     const repaymentOnUpdate = () => {
       updateInterest();
-      updateMonthlyBreakdownRef?.();
       updatePaidFromDatesRef?.();
       updateBalanceRef?.();
       inRowUpdate();
+      paintDebtCardFaceRef?.();
     };
     repaymentHost.replaceChildren();
     repaymentHost.appendChild(createDebtRepaymentDropdown(data.repayment || "", repaymentOnUpdate));
     updateInterest();
-    appendToRow("총 대출 이자", "asset-debt-cell-interest", interestSpan, { computed: true });
+
+    if (hideDebtFloatingModalComputedUi) {
+      appendToRow("약정 개월", "asset-debt-cell-period", periodInput);
+      appendDebtFormSplitPair(
+        { label: "금리(%)", tdClass: "asset-debt-cell-rate", node: rateInputWrap },
+        { label: "대출 원금", tdClass: "asset-debt-cell-principal", node: principalInputWrap },
+      );
+      debtFloatingModalComputedSink?.appendChild(interestSpan);
+    } else {
+      appendDebtFormSplitPair(
+        { label: "약정 개월", tdClass: "asset-debt-cell-period", node: periodInput },
+        { label: "금리(%)", tdClass: "asset-debt-cell-rate", node: rateInputWrap },
+      );
+      appendDebtFormSplitPair(
+        { label: "대출 원금", tdClass: "asset-debt-cell-principal", node: principalInputWrap },
+        {
+          label: "총 대출 이자",
+          tdClass: "asset-debt-cell-interest",
+          node: interestSpan,
+          opts: { computed: true },
+        },
+      );
+    }
 
     const monthlyPrincipalSpan = document.createElement("span");
     monthlyPrincipalSpan.className = "asset-debt-monthly-principal-display";
@@ -2774,12 +3201,45 @@ function renderNetworthView() {
 
     function updateMonthlyBreakdown() {
       const repaymentInput = tr.querySelector(".asset-debt-input-repayment");
-      const result = calcMonthlyPrincipalAndInterest(
+      const method = repaymentInput?.value?.trim() || "";
+      const extraEl = tr.querySelector(".asset-debt-input-extra-paid");
+      const extraPaid = parseNum(extraEl?.value) ?? 0;
+      const n = parseLoanPeriodToMonths(periodInput.value);
+
+      let result = calcMonthlyPrincipalAndInterest(
         principalInput.value,
         rateInput.value,
         periodInput.value,
         repaymentInput?.value
       );
+
+      const startEl = tr.querySelector(".asset-debt-input-start-date");
+      const endEl = tr.querySelector(".asset-debt-input-end-date");
+      const startStr = startEl?.value?.trim();
+      const endStr = endEl?.value?.trim();
+      if (extraPaid > 0 && n > 0 && startStr && endStr) {
+        const scheduleBal = calcRemainingBalance(
+          principalInput.value,
+          rateInput.value,
+          periodInput.value,
+          method,
+          startStr,
+          endStr
+        );
+        if (scheduleBal !== null) {
+          const Peff = Math.max(0, scheduleBal - extraPaid);
+          const k = countLoanPaymentsMade(startStr, endStr, periodInput.value);
+          if (k !== null) {
+            const nRem = Math.max(1, n - k);
+            if (Peff <= 0) result = { monthlyPrincipal: 0, monthlyInterest: 0 };
+            else {
+              const adj = calcMonthlyPrincipalAndInterestForRemaining(Peff, rateInput.value, nRem, method);
+              if (adj !== null) result = adj;
+            }
+          }
+        }
+      }
+
       if (result !== null) {
         monthlyPrincipalSpan.textContent = formatNum(result.monthlyPrincipal) || "";
         monthlyInterestSpan.textContent = formatNum(result.monthlyInterest) || "";
@@ -2787,12 +3247,29 @@ function renderNetworthView() {
         monthlyPrincipalSpan.textContent = "";
         monthlyInterestSpan.textContent = "";
       }
+      paintDebtCardFaceRef?.();
     }
 
-    appendToRow("월 원금", "asset-debt-cell-monthly-principal", monthlyPrincipalSpan, { computed: true });
-    appendToRow("월 이자", "asset-debt-cell-monthly-interest", monthlyInterestSpan, { computed: true });
+    if (hideDebtFloatingModalComputedUi) {
+      debtFloatingModalComputedSink?.appendChild(monthlyPrincipalSpan);
+      debtFloatingModalComputedSink?.appendChild(monthlyInterestSpan);
+    } else {
+      appendDebtFormSplitPair(
+        {
+          label: "월 원금",
+          tdClass: "asset-debt-cell-monthly-principal",
+          node: monthlyPrincipalSpan,
+          opts: { computed: true },
+        },
+        {
+          label: "월 이자",
+          tdClass: "asset-debt-cell-monthly-interest",
+          node: monthlyInterestSpan,
+          opts: { computed: true },
+        },
+      );
+    }
     updateMonthlyBreakdownRef = updateMonthlyBreakdown;
-    updateMonthlyBreakdown();
 
     const startDateDisplay = document.createElement("span");
     startDateDisplay.className = "asset-debt-date-display";
@@ -2817,24 +3294,24 @@ function renderNetworthView() {
     }
 
     function updateEndDateFromStartDate() {
-      const start = parseDate(startDateInput.value);
       const months = parseLoanPeriodToMonths(periodInput.value);
-      if (start && months > 0) {
-        const end = new Date(start);
-        end.setMonth(end.getMonth() + months);
-        const y = end.getFullYear();
-        const m = String(end.getMonth() + 1).padStart(2, "0");
-        const d = String(end.getDate()).padStart(2, "0");
-        endDateInput.value = `${y}-${m}-${d}`;
-        updateEndDateDisplay();
+      const startStr = startDateInput.value?.trim();
+      if (startStr && months > 0) {
+        const out = addCalendarMonthsClamped(startStr, months);
+        if (out) {
+          endDateInput.value = out;
+          updateEndDateDisplay();
+        }
       }
     }
 
     startDateInput.addEventListener("change", () => {
       updateStartDateDisplay();
       updateEndDateFromStartDate();
+      updateMonthlyBreakdownRef?.();
       updatePaidFromDates();
       inRowUpdate();
+      paintDebtCardFaceRef?.();
     });
     const startHost = appendManyToRow("가입일", "asset-debt-cell-start-date asset-debt-date-cell", startDateDisplay, startDateInput);
     startHost.addEventListener("click", (e) => {
@@ -2845,6 +3322,7 @@ function renderNetworthView() {
 
     endDateInput.addEventListener("change", () => {
       updateEndDateDisplay();
+      updateMonthlyBreakdownRef?.();
       updatePaidFromDates();
       inRowUpdate();
     });
@@ -2875,45 +3353,60 @@ function renderNetworthView() {
       paidSpan.textContent = calc !== null ? formatNum(calc) : "-";
       updateBalanceRef?.();
       inRowUpdate();
+      paintDebtCardFaceRef?.();
     }
     updatePaidFromDatesRef = updatePaidFromDates;
 
     rateInput.addEventListener("input", () => {
       updateInterest();
-      updateMonthlyBreakdown();
       updatePaidFromDates();
       inRowUpdate();
     });
     periodInput.addEventListener("input", () => {
       updateInterest();
       updateEndDateFromStartDate();
-      updateMonthlyBreakdown();
       updatePaidFromDates();
       inRowUpdate();
     });
     principalInput.addEventListener("input", () => {
       updateInterest();
-      updateMonthlyBreakdown();
       updatePaidFromDates();
       inRowUpdate();
     });
-    appendToRow("상환금액", "asset-debt-cell-paid", paidSpan, { computed: true });
-
     const extraPaidInput = document.createElement("input");
     extraPaidInput.type = "text";
+    extraPaidInput.inputMode = "numeric";
+    extraPaidInput.pattern = "[0-9,]*";
+    extraPaidInput.autocomplete = "off";
     extraPaidInput.className = "asset-debt-input-extra-paid";
     extraPaidInput.value = data.extraPaid ? (formatNum(data.extraPaid) || data.extraPaid) : "";
     extraPaidInput.placeholder = "-";
     extraPaidInput.title = "중도상환 금액 (수수료 제외)";
-    extraPaidInput.addEventListener("input", (e) => filterNumericInput(extraPaidInput, false, e));
-    extraPaidInput.addEventListener("input", inRowUpdate);
+    extraPaidInput.addEventListener("input", (e) => {
+      filterNumericInput(extraPaidInput, false, e, { ignoreIMEComposition: true });
+      inRowUpdate();
+    });
     extraPaidInput.addEventListener("blur", () => {
       const formatted = formatNum(extraPaidInput.value);
       if (formatted !== "") extraPaidInput.value = formatted;
       updateBalance();
     });
     extraPaidInput.addEventListener("keydown", (e) => e.key === "Enter" && extraPaidInput.blur());
-    appendToRow("중도상환(수수료 제외)", "asset-debt-cell-extra-paid", extraPaidInput);
+
+    if (hideDebtFloatingModalComputedUi) {
+      appendToRow("중도상환(수수료 제외)", "asset-debt-cell-extra-paid", extraPaidInput);
+      debtFloatingModalComputedSink?.appendChild(paidSpan);
+    } else {
+      appendDebtFormSplitPair(
+        {
+          label: "상환금액",
+          tdClass: "asset-debt-cell-paid",
+          node: paidSpan,
+          opts: { computed: true },
+        },
+        { label: "중도상환(수수료 제외)", tdClass: "asset-debt-cell-extra-paid", node: extraPaidInput },
+      );
+    }
 
     const balanceSpan = document.createElement("span");
     balanceSpan.className = "asset-debt-balance-display";
@@ -2944,6 +3437,8 @@ function renderNetworthView() {
           balanceSpan.textContent = formatNum(balance) || "-";
         }
       }
+      paintDebtCardFaceRef?.();
+      updateMonthlyBreakdownRef?.();
     }
 
     principalInput.addEventListener("input", updateBalance);
@@ -2955,7 +3450,11 @@ function renderNetworthView() {
     endDateInput.addEventListener("change", updateBalance);
     updateBalance();
 
-    appendToRow("잔여 원금", "asset-debt-cell-balance", balanceSpan, { computed: true });
+    if (hideDebtFloatingModalComputedUi) {
+      debtFloatingModalComputedSink?.appendChild(balanceSpan);
+    } else {
+      appendToRow("잔여 원금", "asset-debt-cell-balance", balanceSpan, { computed: true });
+    }
 
     if (startDateInput.value && !endDateInput.value) {
       updateEndDateFromStartDate();
@@ -2963,6 +3462,7 @@ function renderNetworthView() {
     if (startDateInput.value && endDateInput.value) {
       updatePaidFromDates();
     }
+    updateMonthlyBreakdownRef?.();
 
 
     if (inPanel) {
@@ -2996,7 +3496,10 @@ function renderNetworthView() {
           saveBtn.textContent = "저장";
           saveBtn.addEventListener("click", (e) => {
             e.stopPropagation();
-            const pane = tr.querySelector(".asset-expense-inline-panel") || tr;
+            const pane =
+              e.currentTarget.closest(".asset-expense-inline-panel") ||
+              tr.querySelector(".asset-expense-inline-panel") ||
+              tr;
             if (debtModalHandlers?.onDraftSave) {
               debtModalHandlers.onDraftSave(readDebtDataFromRoot(pane));
               return;
@@ -3021,13 +3524,20 @@ function renderNetworthView() {
           delBtn2.addEventListener("click", (e) => {
             e.stopPropagation();
             confirmDeleteRow(() => {
+              if (debtModalHandlers?.onEditDelete) {
+                debtModalHandlers.onEditDelete();
+                return;
+              }
               tr.remove();
               onUpdate();
             });
           });
           applyBtn.addEventListener("click", (e) => {
             e.stopPropagation();
-            const pane = tr.querySelector(".asset-expense-inline-panel") || tr;
+            const pane =
+              e.currentTarget.closest(".asset-expense-inline-panel") ||
+              tr.querySelector(".asset-expense-inline-panel") ||
+              tr;
             if (debtModalHandlers?.onEditApply) {
               debtModalHandlers.onEditApply(readDebtDataFromRoot(pane));
               return;
@@ -3043,23 +3553,94 @@ function renderNetworthView() {
           panelFooter.appendChild(footInner);
         }
       }
-    } else {
-      const actionsTd = document.createElement("td");
-      actionsTd.className = "asset-debt-cell-actions";
-      const editBtn = document.createElement("button");
-      editBtn.type = "button";
-      editBtn.className = "asset-expense-btn-row";
-      editBtn.textContent = "수정";
-      editBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const d = readDebtDataFromRoot(tr);
-        const newTr = createDebtRow(d, onUpdate, { mode: "edit", memSnapshot: d });
-        tr.replaceWith(newTr);
-        onUpdate();
-        bringDebtRowPanelIntoView(newTr);
-      });
-      actionsTd.appendChild(editBtn);
-      dataRowTarget.appendChild(actionsTd);
+    }
+
+    if (debtCardUi) {
+      function paintDebtCardFace() {
+        const u = debtCardUi;
+        if (!u) return;
+
+        const repay = tr.querySelector(".asset-debt-input-repayment")?.value?.trim() || "";
+        const dtype = tr.querySelector(".asset-debt-input-type")?.value?.trim() || "";
+        const nm = nameInput.value?.trim();
+        u.nameFace.textContent = nm || dtype || "대출 이름";
+        if (nm) {
+          const line = [repay, dtype].filter(Boolean);
+          u.subEl.textContent = line.join(" · ") || "—";
+        } else {
+          u.subEl.textContent = repay || "—";
+        }
+
+        u.tagsEl.replaceChildren();
+        const rateTxt = rateInput.value?.trim();
+        if (rateTxt) {
+          const ch = document.createElement("span");
+          ch.className = "asset-debt-card-chip";
+          ch.textContent = `금리 ${rateTxt}%`;
+          u.tagsEl.appendChild(ch);
+        }
+        const perMonths = parseNum(periodInput.value);
+        if (perMonths !== null && perMonths > 0) {
+          const ch2 = document.createElement("span");
+          ch2.className = "asset-debt-card-chip asset-debt-card-chip--period";
+          ch2.textContent = `${formatNum(perMonths)}개월`;
+          u.tagsEl.appendChild(ch2);
+        }
+
+        const fmtWonChip = (raw) => {
+          const s = typeof raw === "string" ? raw.trim() : raw == null ? "" : String(raw).trim();
+          if (!s || s === "-" || s === "—") return "—";
+          const n = parseNum(s.replace(/,/g, ""));
+          if (n !== null && n !== 0) return `${formatNum(n)}원`;
+          if (n === 0) return "0원";
+          return /원\b/u.test(s) ? s : `${s}원`;
+        };
+
+        const principalWon = () => {
+          const raw = principalInput.value?.trim() ?? "";
+          if (!raw) return "—";
+          const pv = parseNum(raw);
+          return pv !== null ? `${formatNum(pv)}원` : `${raw}원`;
+        };
+
+        u.cardStatMonthlyPrincipal.textContent = fmtWonChip(monthlyPrincipalSpan.textContent);
+        u.cardStatMonthlyInterest.textContent = fmtWonChip(monthlyInterestSpan.textContent);
+        const pW = principalWon();
+        u.cardStatLoanPrincipalTop.textContent = pW;
+        u.cardStatLoanPrincipalBottom.textContent = pW;
+        u.cardStatPaidAmt.textContent = fmtWonChip(paidSpan.textContent);
+        u.cardStatMaturityDate.textContent = endDateInput.value ? formatDateYYMMDD(endDateInput.value) : "—";
+        u.cardStatStartDate.textContent = startDateInput.value ? formatDateYYMMDD(startDateInput.value) : "—";
+        u.cardStatTotalInterest.textContent = fmtWonChip(interestSpan.textContent);
+
+        let balShown = null;
+        const balStr = balanceSpan.textContent?.trim();
+        if (balStr && balStr !== "-") {
+          const bn = parseNum(balStr);
+          balShown =
+            bn !== null
+              ? `${formatNum(bn) || balStr}원`
+              : `${balStr.replace(/,/g, "").replace(/\s+/g, "").replace(/원$/, "")}원`;
+        }
+        if (!balShown && principalInput.value?.trim()) {
+          const pv = parseNum(principalInput.value);
+          balShown = pv !== null ? `${formatNum(pv)}원` : `${principalInput.value.trim()}원`;
+        }
+        u.balanceFigure.textContent = balShown || "—";
+
+        const pv = parseNum(principalInput.value) ?? 0;
+        const balNum =
+          balStr && balStr !== "-" && balStr !== "—"
+            ? parseNum(balStr.replace(/,/g, ""))
+            : null;
+        const balForProgress = balNum !== null && !Number.isNaN(balNum) ? Math.max(0, balNum) : pv;
+        const pct = pv > 0 ? Math.min(100, Math.max(0, ((pv - Math.min(pv, balForProgress)) / pv) * 100)) : 0;
+        u.progressFillMini.style.width = `${pct}%`;
+        u.progressPctMini.textContent = `${Math.round(pct)}%`;
+      }
+      paintDebtCardFaceRef = paintDebtCardFace;
+      nameInput.addEventListener("input", paintDebtCardFace);
+      paintDebtCardFace();
     }
 
     return tr;
@@ -3073,7 +3654,7 @@ function renderNetworthView() {
   }
 
   function updateCount() {
-    const count = table.querySelectorAll(".asset-debt-row").length;
+    const count = cardsList.querySelectorAll(".asset-debt-row.asset-debt-row--view").length;
     debtHeader.querySelector(".asset-debt-count").textContent = count ? `${count}건` : "0건";
   }
 
@@ -3083,7 +3664,7 @@ function renderNetworthView() {
     let sumExtraPaid = 0;
     let sumBalance = 0;
     let sumInterest = 0;
-    table.querySelectorAll(".asset-debt-row").forEach((tr) => {
+    cardsList.querySelectorAll(".asset-debt-row.asset-debt-row--view").forEach((tr) => {
       const p = parseNum(tr.querySelector(".asset-debt-input-principal")?.value);
       const paid = parseNum(tr.querySelector(".asset-debt-paid-display")?.textContent);
       const extraPaid = parseNum(tr.querySelector(".asset-debt-input-extra-paid")?.value);
@@ -3097,24 +3678,23 @@ function renderNetworthView() {
       if (balance !== null) sumBalance += balance;
       if (interest !== null) sumInterest += interest;
     });
-    const principalCell = totalsRow.querySelector(".asset-debt-cell-totals-principal");
-    const interestCell = totalsRow.querySelector(".asset-debt-cell-totals-interest");
-    const paidCell = totalsRow.querySelector(".asset-debt-cell-totals-paid");
-    const extraPaidCell = totalsRow.querySelector(".asset-debt-cell-totals-extra-paid");
-    const balanceCell = totalsRow.querySelector(".asset-debt-cell-totals-balance");
-    principalCell.textContent = sumPrincipal > 0 ? formatNum(sumPrincipal) : "-";
-    interestCell.textContent = sumInterest > 0 ? formatNum(sumInterest) : "-";
-    paidCell.textContent = sumPaid > 0 ? formatNum(sumPaid) : "-";
-    if (extraPaidCell) extraPaidCell.textContent = sumExtraPaid > 0 ? formatNum(sumExtraPaid) : "-";
-    balanceCell.textContent = sumBalance !== 0 ? formatNum(sumBalance) : "-";
+    const principalCell = debtTotalsStrip.querySelector(".asset-debt-cell-totals-principal");
+    const interestCell = debtTotalsStrip.querySelector(".asset-debt-cell-totals-interest");
+    const paidCell = debtTotalsStrip.querySelector(".asset-debt-cell-totals-paid");
+    const extraPaidCell = debtTotalsStrip.querySelector(".asset-debt-cell-totals-extra-paid");
+    const balanceCell = debtTotalsStrip.querySelector(".asset-debt-cell-totals-balance");
+    principalCell.textContent = sumPrincipal > 0 ? `${formatNum(sumPrincipal)}원` : "-";
+    interestCell.textContent = sumInterest > 0 ? `${formatNum(sumInterest)}원` : "-";
+    paidCell.textContent = sumPaid > 0 ? `${formatNum(sumPaid)}원` : "-";
+    if (extraPaidCell) extraPaidCell.textContent = sumExtraPaid > 0 ? `${formatNum(sumExtraPaid)}원` : "-";
+    balanceCell.textContent = sumBalance !== 0 ? `${formatNum(sumBalance)}원` : "-";
 
-    /* 프로그레스 바 업데이트: (상환금액 + 중도상환) / (대출 원금 + 총 대출 이자) × 100 */
-    const totalToRepay = sumPrincipal + (sumInterest || 0);
-    const totalPaid = sumPaid + sumExtraPaid;
-    const percent = totalToRepay > 0 ? Math.min(100, (totalPaid / totalToRepay) * 100) : 0;
-    progressFill.style.width = `${percent}%`;
-    progressPercent.textContent = `${Math.round(percent)}%`;
-    progressRemainingValue.textContent = sumBalance !== 0 ? formatNum(sumBalance) : "-";
+    /* 프로그레스 바: 잔존 원금(표시) 비율 기준 — 원금 대비 상환된 비율 근사 */
+    const principalProgress =
+      sumPrincipal > 0 ? Math.min(100, Math.max(0, ((sumPrincipal - Math.max(0, sumBalance)) / sumPrincipal) * 100)) : 0;
+    progressFill.style.width = `${principalProgress}%`;
+    progressPercent.textContent = `${Math.round(principalProgress)}%`;
+    progressRemainingValue.textContent = sumBalance !== 0 ? `${formatNum(sumBalance)}원` : "-";
   }
 
   const onUpdate = () => {
@@ -3123,6 +3703,60 @@ function renderNetworthView() {
     updateTotals();
     updateNetWorthDashboard();
   };
+
+  /** 가계부와 동일: 전역 모달 레이어 — 기존 대출 카드 수정 */
+  function openDebtEditModal(viewArticle) {
+    if (document.querySelector(".asset-networth-debt-modal")) {
+      showToast("입력 창을 닫은 뒤 다시 시도해 주세요.", "");
+      return;
+    }
+    if (!viewArticle?.classList.contains("asset-debt-row--view")) return;
+    const initial = readDebtDataFromRoot(viewArticle);
+    const overlay = document.createElement("div");
+    overlay.className = "asset-expense-transaction-modal asset-networth-debt-modal";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-label", "대출 수정");
+    const backdrop = document.createElement("div");
+    backdrop.className = "asset-expense-transaction-modal-backdrop";
+    const panelShell = document.createElement("div");
+    panelShell.className = "asset-expense-transaction-modal-panel-shell";
+
+    function closeDebtModalOverlay() {
+      closeAllDebtDropdownPanels();
+      overlay.remove();
+    }
+
+    const phantom = createDebtRow(initial, onUpdate, {
+      mode: "edit",
+      memSnapshot: { ...initial },
+      debtPhantomTableRow: false,
+      debtModalHandlers: {
+        onCancel: () => closeDebtModalOverlay(),
+        onEditApply: (d) => {
+          closeDebtModalOverlay();
+          viewArticle.replaceWith(createDebtRow(d, onUpdate, { mode: "view" }));
+          onUpdate();
+        },
+        onEditDelete: () => {
+          closeDebtModalOverlay();
+          viewArticle.remove();
+          onUpdate();
+        },
+      },
+    });
+    const panel = phantom.querySelector(".asset-expense-inline-panel");
+    phantom.remove();
+    if (!panel) {
+      showToast("대출 입력창을 열 수 없습니다. 잠시 후 다시 시도해 주세요.", "");
+      overlay.remove();
+      return;
+    }
+    panelShell.appendChild(panel);
+    overlay.appendChild(backdrop);
+    overlay.appendChild(panelShell);
+    document.body.appendChild(overlay);
+  }
 
   /** 가계부와 동일: 전역 모달 레이어에 대출 초안 패널 */
   function openDebtDraftModal() {
@@ -3141,21 +3775,23 @@ function renderNetworthView() {
     panelShell.className = "asset-expense-transaction-modal-panel-shell";
 
     function closeDebtModalOverlay() {
+      closeAllDebtDropdownPanels();
       overlay.remove();
     }
-    backdrop.addEventListener("click", closeDebtModalOverlay);
 
     const phantom = createDebtRow(
       {},
       onUpdate,
       {
         mode: "draft",
+        /* table 밖 <tr> + innerHTML 은 브라우저가 TD 내용을 버릴 수 있어 패널이 비어 보임 → div 사용 */
+        debtPhantomTableRow: false,
         debtModalHandlers: {
           onCancel: () => closeDebtModalOverlay(),
           onDraftSave: (d) => {
             closeDebtModalOverlay();
             const vt = createDebtRow(d, onUpdate, { mode: "view" });
-            tbody.insertBefore(vt, totalsRow);
+            cardsList.appendChild(vt);
             onUpdate();
           },
         },
@@ -3164,6 +3800,7 @@ function renderNetworthView() {
     const panel = phantom.querySelector(".asset-expense-inline-panel");
     phantom.remove();
     if (!panel) {
+      showToast("대출 입력창을 열 수 없습니다. 잠시 후 다시 시도해 주세요.", "");
       overlay.remove();
       return;
     }
@@ -3178,12 +3815,11 @@ function renderNetworthView() {
   const initialRows = loadDebtRows();
   initialRows.forEach((row) => {
     const tr = createDebtRow(row, onUpdate, { mode: "view" });
-    tbody.insertBefore(tr, totalsRow);
+    cardsList.appendChild(tr);
   });
 
   updateCount();
   updateTotals();
-  tableWrap.appendChild(table);
   const debtTableContainer = document.createElement("div");
   debtTableContainer.className = "asset-debt-table-container";
   debtTableContainer.appendChild(tableWrap);
@@ -3200,9 +3836,9 @@ function renderNetworthView() {
   const assetHeader = document.createElement("div");
   assetHeader.className = "asset-asset-header";
   assetHeader.innerHTML = `
-    <span class="asset-asset-title">총 자산</span>
+    <span class="asset-asset-title"><img src="/toolbaricons/money-circle.svg" alt="" class="asset-networth-section-title-icon" width="18" height="18" aria-hidden="true">총 자산</span>
     <span class="asset-asset-count">0</span>
-    <span class="asset-asset-more">⋯</span>
+    <button type="button" class="asset-asset-add-inline-btn">+ 추가</button>
   `;
 
   const assetTableWrap = document.createElement("div");
@@ -3217,13 +3853,1456 @@ function renderNetworthView() {
     { key: "연금", label: "연금", defaultType: null },
   ];
 
-  const subsectionElements = {};
+  /** 총 자산 카드 좌측 아이콘: ①예·적·연 / ②부동산 / ③주식·투자보험 */
+  const ASSET_GROUP_CARD_ICON_SRC = {
+    예금: "/asset-icons/networth-group-bank.png",
+    적금: "/asset-icons/networth-group-bank.png",
+    연금: "/asset-icons/networth-group-bank.png",
+    부동산: "/asset-icons/networth-group-realestate.png",
+    주식: "/asset-icons/networth-group-invest.png",
+    보험: "/asset-icons/networth-group-invest.png",
+  };
+  function assetGroupCardIconSrc(groupKey) {
+    const k = typeof groupKey === "string" ? groupKey.trim() : "";
+    return ASSET_GROUP_CARD_ICON_SRC[k] || "/toolbaricons/money-circle.svg";
+  }
+
+  const assetCardsList = document.createElement("div");
+  assetCardsList.className = "asset-asset-cards-list";
+  assetCardsList.setAttribute("role", "list");
+  assetTableWrap.appendChild(assetCardsList);
+
+  /** 예·적금 총자산 반영 옵션: 순자산 요약이 아니라 총 자산(카드) 구역에 둠 */
+  const assetDepositNwOpts = document.createElement("div");
+  assetDepositNwOpts.className = "asset-asset-deposit-nw-opts";
+  assetDepositNwOpts.innerHTML = `
+    <label class="asset-networth-dashboard-checkbox-label">
+      <input type="checkbox" class="asset-networth-dashboard-include-deposit-interest" />
+      예·적금 만기예상(이자 포함)을 총 자산에 반영
+    </label>
+    <p class="asset-networth-dashboard-deposit-opts-hint">이자·만기예상은 참고용입니다. 은행 약정·일수 계산과 다를 수 있습니다.</p>
+  `;
+  const nwIncludeDepositInterestInput = assetDepositNwOpts.querySelector(
+    ".asset-networth-dashboard-include-deposit-interest",
+  );
+  if (nwIncludeDepositInterestInput) {
+    nwIncludeDepositInterestInput.checked = loadNwIncludeDepositInterest();
+    nwIncludeDepositInterestInput.addEventListener("change", () => {
+      saveNwIncludeDepositInterest(nwIncludeDepositInterestInput.checked);
+      updateNetWorthDashboard();
+    });
+  }
+
+  /** 아래 대입 전까지 카드 헬퍼에서 참조 가능하도록 플레이스홀더 */
+  let onAssetUpdate = () => {};
+
+  function assetModalCollectHost(el) {
+    return {
+      querySelectorAll(sel) {
+        try {
+          return el.matches(sel) ? [el] : [];
+        } catch (_) {
+          return [];
+        }
+      },
+    };
+  }
+
+  function readAssetStockFromRoot(root) {
+    return {
+      name: root.querySelector(".asset-stock-input-name")?.value || "",
+      currentPrice: root.querySelector(".asset-stock-input-current-price")?.value || "",
+      avgPrice: root.querySelector(".asset-stock-input-avg-price")?.value || "",
+      quantity: root.querySelector(".asset-stock-input-quantity")?.value || "",
+      holdingStatus: root.querySelector(".asset-stock-input-holding")?.value || "보유중",
+    };
+  }
+
+  function readAssetCardPayload(articleEl) {
+    if (articleEl.classList.contains("asset-asset-row-stock")) {
+      return { groupKey: "주식", stock: readAssetStockFromRoot(articleEl) };
+    }
+    if (articleEl.classList.contains("asset-asset-row-insurance")) {
+      return {
+        groupKey: "보험",
+        insurance: {
+          name: articleEl.querySelector(".asset-insurance-input-name")?.value || "",
+          kind: articleEl.querySelector(".asset-insurance-input-kind")?.value || "",
+          contractDate: articleEl.querySelector(".asset-insurance-input-contract-date")?.value || "",
+          maturityDate: articleEl.querySelector(".asset-insurance-input-maturity-date")?.value || "",
+          monthly: articleEl.querySelector(".asset-insurance-input-monthly")?.value || "",
+          surrenderValue: articleEl.querySelector(".asset-insurance-input-surrender")?.value || "",
+          coverage: articleEl.querySelector(".asset-insurance-input-coverage")?.value || "",
+        },
+      };
+    }
+    if (articleEl.classList.contains("asset-asset-row-annuity")) {
+      return {
+        groupKey: "연금",
+        annuity: {
+          name: articleEl.querySelector(".asset-annuity-input-name")?.value || "",
+          kind: articleEl.querySelector(".asset-annuity-input-kind")?.value || "",
+          paymentStartDate: articleEl.querySelector(".asset-annuity-input-payment-start")?.value || "",
+          paymentEndDate: articleEl.querySelector(".asset-annuity-input-payment-end")?.value || "",
+          monthly: articleEl.querySelector(".asset-annuity-input-monthly")?.value || "",
+          receiptStartDate: articleEl.querySelector(".asset-annuity-input-receipt-start")?.value || "",
+          monthlyReceipt: articleEl.querySelector(".asset-annuity-input-monthly-receipt")?.value || "",
+          surrenderValue: articleEl.querySelector(".asset-annuity-input-surrender")?.value || "",
+        },
+      };
+    }
+    if (articleEl.classList.contains("asset-asset-row-real-estate")) {
+      return {
+        groupKey: "부동산",
+        realEstate: readRealEstateDataFromTr(articleEl),
+      };
+    }
+    const nameInput = articleEl.querySelector(".asset-asset-input-name");
+    const principalInput = articleEl.querySelector(".asset-asset-input-principal");
+    const monthlyInput = articleEl.querySelector(".asset-asset-input-monthly");
+    const rateInput = articleEl.querySelector(".asset-asset-input-rate");
+    const monthsInput = articleEl.querySelector(".asset-asset-input-months");
+    const openDateInput = articleEl.querySelector(".asset-asset-input-open-date");
+    const maturityDateInput = articleEl.querySelector(".asset-asset-input-maturity-date");
+    const isSavings = articleEl.dataset.savings === "true";
+    const isDeposit = articleEl.classList.contains("asset-asset-row--deposit");
+    let assetType = "";
+    let assetCategory = "";
+    if (isSavings) {
+      assetType = articleEl.querySelector(".asset-asset-input-type")?.value || "예적금잔고";
+      assetCategory = "";
+    } else if (isDeposit) {
+      assetType = articleEl.querySelector(".asset-asset-input-type")?.value || "";
+      assetCategory = "현금 및 예금";
+    } else {
+      assetType = articleEl.querySelector(".asset-asset-input-type")?.value || "";
+      assetCategory = articleEl.querySelector(".asset-asset-input-category")?.value || "";
+    }
+    return {
+      groupKey: articleEl.dataset.assetCardGroup || "예금",
+      depositLike: {
+        name: nameInput?.value || "",
+        assetType,
+        assetCategory,
+        principal: principalInput?.value || "",
+        monthly: monthlyInput?.value || "",
+        rate: rateInput?.value || "",
+        months: monthsInput?.value || "",
+        openDate: openDateInput?.value || "",
+        maturityDate: maturityDateInput?.value || "",
+        matured: articleEl.dataset.matured === "true",
+        withdrawn: articleEl.dataset.withdrawn === "true",
+      },
+    };
+  }
+
+  function buildAssetDebtStyleFaceInnerHtml(style) {
+    const st = ["savings", "deposit", "stock", "realestate", "insurance", "annuity"].includes(style)
+      ? style
+      : "deposit";
+    function statPair(label) {
+      const lab = label.trim() || "—";
+      return (
+        '<div class="asset-debt-card-stat">' +
+        `<span class="asset-debt-card-stat-label">${lab}</span>` +
+        '<span class="asset-debt-card-stat-value asset-asset-debtface-stat-val">—</span>' +
+        "</div>"
+      );
+    }
+    function emptyFillerStatPair() {
+      return (
+        '<div class="asset-debt-card-stat asset-debt-card-stat--blank" aria-hidden="true">' +
+        '<span class="asset-debt-card-stat-label"></span>' +
+        '<span class="asset-debt-card-stat-value asset-asset-debtface-stat-val"></span>' +
+        "</div>"
+      );
+    }
+    const layout = {
+      savings: {
+        top: ["월 납입", "금리", "약정 개월", "납입 누적"],
+        bot: ["가입일", "만기일", "이자(추정)", "만기 예상액"],
+        progress: "만기율",
+        botTailFillers: 0,
+      },
+      deposit: {
+        top: ["예치금", "금리", "이자(추정)", "만기 예상액"],
+        bot: ["가입일", "만기일"],
+        progress: "만기율",
+        botTailFillers: 2,
+      },
+      stock: {
+        top: ["매수평균가", "현재가", "보유수량", "매입금액"],
+        bot: ["평가금액", "평가손익", "수익률", "참고"],
+        botTailFillers: 0,
+      },
+      realestate: {
+        top: ["시세", "대출", "순자산", "유형"],
+        bot: ["취득일", "매입가", "면적(㎡)", "거주·보증"],
+        botTailFillers: 0,
+      },
+      insurance: {
+        top: ["종류", "월납입", "계약일", "만기일"],
+        bot: ["해지환급금", "보장(요약)"],
+        progress: "참고",
+        botTailFillers: 2,
+      },
+      annuity: {
+        top: ["종류", "해지환급금", "월 납입", "납입 시작"],
+        bot: ["납입 종료", "누적 납입", "수령 시작", "월 수령"],
+        progress: "참고",
+        botTailFillers: 0,
+      },
+    };
+    const L = layout[st];
+    const topGrid = L.top.map(statPair).join("");
+    let botGrid = L.bot.map(statPair).join("");
+    for (let i = 0; i < (L.botTailFillers || 0); i++) botGrid += emptyFillerStatPair();
+    const progressLabel = "progress" in L ? L.progress : "";
+    const showProgressBar = st !== "realestate" && progressLabel !== "";
+    const progressBlock = showProgressBar
+      ? '<div class="asset-debt-card-progress">' +
+        `<span class="asset-debt-card-progress-label">${progressLabel}</span>` +
+        '<div class="asset-debt-card-progress-bar">' +
+        '<div class="asset-debt-card-progress-fill"></div>' +
+        "</div>" +
+        '<span class="asset-debt-card-progress-pct">0%</span>' +
+        "</div>"
+      : "";
+    return (
+      '<div class="asset-debt-card-main">' +
+      '<div class="asset-debt-card-copy">' +
+      '<div class="asset-debt-card-headline">' +
+      '<span class="asset-debt-card-name"></span>' +
+      "</div>" +
+      '<div class="asset-debt-card-meta">' +
+      '<p class="asset-debt-card-sub"></p>' +
+      '<div class="asset-debt-card-tags"></div>' +
+      "</div>" +
+      "</div>" +
+      '<div class="asset-debt-card-figures">' +
+      '<span class="asset-debt-card-balance"></span>' +
+      '<span class="asset-debt-card-balance-ko" hidden aria-hidden="true"></span>' +
+      '<span class="asset-debt-card-maturity" hidden aria-hidden="true"></span>' +
+      "</div>" +
+      "</div>" +
+      '<div class="asset-debt-card-stats">' +
+      '<div class="asset-debt-card-stats-grid">' +
+      topGrid +
+      "</div>" +
+      '<div class="asset-debt-card-stats-grid asset-debt-card-stats-grid--secondary">' +
+      botGrid +
+      "</div>" +
+      "</div>" +
+      progressBlock
+    );
+  }
+
+  /** @deprecated 호환용 — buildAssetDebtStyleFaceInnerHtml 사용 */
+  function buildAssetDepositDebtFaceInnerHtml(isSavings) {
+    return buildAssetDebtStyleFaceInnerHtml(isSavings ? "savings" : "deposit");
+  }
+
+  function paintDepositLikeDebtFace(articleEl, face) {
+    const isSavings = articleEl.dataset.savings === "true";
+    const vals = face.querySelectorAll(".asset-asset-debtface-stat-val");
+    if (vals.length < 8) return;
+
+    const gLab = ASSET_GROUPS.find((g) => g.key === articleEl.dataset.assetCardGroup)?.label || "";
+
+    const fmtWonChip = (raw) => {
+      const s = typeof raw === "string" ? raw.trim() : raw == null ? "" : String(raw).trim();
+      if (!s || s === "-" || s === "—") return "—";
+      const n = parseNum(s.replace(/,/g, ""));
+      if (n !== null && n !== 0) return `${formatNum(n)}원`;
+      if (n === 0) return "0원";
+      return /원\b/u.test(s) ? s : `${s}원`;
+    };
+
+    const nm = articleEl.querySelector(".asset-asset-input-name")?.value?.trim() || "";
+    const nameFace = face.querySelector(".asset-debt-card-name");
+    if (nameFace) nameFace.textContent = nm || (isSavings ? "적금" : "예금");
+
+    const subEl = face.querySelector(".asset-debt-card-sub");
+    if (subEl) subEl.textContent = gLab || (isSavings ? "적금" : "예금");
+
+    const openIn = articleEl.querySelector(".asset-asset-input-open-date")?.value?.trim();
+    const matIn = articleEl.querySelector(".asset-asset-input-maturity-date")?.value?.trim();
+    const rateRaw = articleEl.querySelector(".asset-asset-input-rate")?.value?.trim() ?? "";
+    const monthlyRaw = articleEl.querySelector(".asset-asset-input-monthly")?.value?.trim() ?? "";
+    const monthsRaw = articleEl.querySelector(".asset-asset-input-months")?.value?.trim() ?? "";
+    const prInputStr = articleEl.querySelector(".asset-asset-input-principal")?.value ?? "";
+
+    const rateDisp = rateRaw ? (rateRaw.includes("%") ? rateRaw : `${rateRaw}%`) : "—";
+
+    let intDisp = (articleEl.querySelector(".asset-asset-interest-display")?.textContent || "").trim();
+    let matAmtDisp = (articleEl.querySelector(".asset-asset-maturity-amt-display")?.textContent || "").trim();
+
+    if (isSavings) {
+      if (!intDisp || !matAmtDisp) {
+        const totalM = getTotalMonthsForSavingsAssetRow(articleEl);
+        const calcSav = calcMaturityAmountAndInterest(monthlyRaw, totalM, rateRaw);
+        if (calcSav) {
+          if (!intDisp && calcSav.interest > 0) intDisp = formatNum(calcSav.interest);
+          if (!matAmtDisp && calcSav.maturityAmount > 0) matAmtDisp = formatNum(calcSav.maturityAmount);
+        }
+      }
+    } else {
+      if (!intDisp || !matAmtDisp) {
+        const calcDep = calcDepositMaturityAmount(prInputStr, openIn, matIn, rateRaw);
+        if (calcDep) {
+          if (!intDisp && calcDep.interest > 0) intDisp = formatNum(calcDep.interest);
+          if (!matAmtDisp && calcDep.maturityAmount > 0) matAmtDisp = formatNum(calcDep.maturityAmount);
+        }
+      }
+    }
+
+    let intWon = "—";
+    if (intDisp) {
+      const intNum = parseNum(intDisp.replace(/원\s*$/u, "").replace(/,/g, ""));
+      intWon =
+        intNum !== null
+          ? `${formatNum(intNum)}원`
+          : intDisp.includes("원")
+            ? intDisp
+            : `${intDisp}원`;
+    }
+    let matWon = "—";
+    if (matAmtDisp) {
+      const matNum = parseNum(matAmtDisp.replace(/원\s*$/u, "").replace(/,/g, ""));
+      matWon =
+        matNum !== null
+          ? `${formatNum(matNum)}원`
+          : matAmtDisp.includes("원")
+            ? matAmtDisp
+            : `${matAmtDisp}원`;
+    }
+
+    const openDisp = openIn ? formatDateYYMMDD(openIn) : "—";
+    const matDateDisp = matIn ? formatDateYYMMDD(matIn) : "—";
+    const prNum = parseNum(prInputStr);
+
+    if (isSavings) {
+      vals[0].textContent = monthlyRaw.trim() ? fmtWonChip(monthlyRaw) : "—";
+      vals[1].textContent = rateDisp;
+      const tm = getTotalMonthsForSavingsAssetRow(articleEl);
+      vals[2].textContent =
+        tm !== null && tm > 0 ? `${formatNum(tm)}개월` : monthsRaw.trim() ? `${monthsRaw}개월` : "—";
+      vals[3].textContent = prNum !== null ? fmtWonChip(prInputStr) : "—";
+      vals[4].textContent = openDisp;
+      vals[5].textContent = matDateDisp;
+      vals[6].textContent = intWon;
+      vals[7].textContent = matWon;
+    } else {
+      vals[0].textContent = prInputStr.trim() ? fmtWonChip(prInputStr) : "—";
+      vals[1].textContent = rateDisp;
+      vals[2].textContent = intWon;
+      vals[3].textContent = matWon;
+      vals[4].textContent = openIn ? formatDateYYMMDD(openIn) : "";
+      vals[5].textContent = matIn ? formatDateYYMMDD(matIn) : "";
+      vals[6].textContent = "";
+      vals[7].textContent = "";
+    }
+
+    const balanceFigure = face.querySelector(".asset-debt-card-balance");
+    if (balanceFigure) {
+      const heroText = isSavings
+        ? monthlyRaw.trim()
+          ? fmtWonChip(monthlyRaw)
+          : "—"
+        : prInputStr.trim()
+          ? fmtWonChip(prInputStr)
+          : "—";
+      const heroNum = isSavings ? parseNum(monthlyRaw) : prNum;
+      setAssetDebtCardHeroWon(face, heroText, heroText === "—" ? null : heroNum);
+    }
+
+    const tagsEl = face.querySelector(".asset-debt-card-tags");
+    if (tagsEl) {
+      tagsEl.replaceChildren();
+      if (rateRaw.trim()) {
+        const ch = document.createElement("span");
+        ch.className = "asset-debt-card-chip";
+        ch.textContent = rateRaw.endsWith("%") ? `금리 ${rateRaw}` : `금리 ${rateRaw}%`;
+        tagsEl.appendChild(ch);
+      }
+      const monthsForBadge = getTotalMonthsForSavingsAssetRow(articleEl);
+      if (monthsForBadge !== null && monthsForBadge > 0) {
+        const ch2 = document.createElement("span");
+        ch2.className = "asset-debt-card-chip asset-debt-card-chip--period";
+        ch2.textContent = `${formatNum(monthsForBadge)}개월`;
+        tagsEl.appendChild(ch2);
+      }
+      if (articleEl.dataset.withdrawn === "true") {
+        const st = document.createElement("span");
+        st.className = "asset-debt-card-chip";
+        st.textContent = "출금 완료";
+        tagsEl.appendChild(st);
+      } else if (articleEl.dataset.matured === "true") {
+        const st = document.createElement("span");
+        st.className = "asset-debt-card-chip asset-debt-card-chip--period";
+        st.textContent = "만기(보유)";
+        tagsEl.appendChild(st);
+      }
+    }
+
+    const pfill = face.querySelector(".asset-debt-card-progress-fill");
+    const ppct = face.querySelector(".asset-debt-card-progress-pct");
+    let pctVal = null;
+    if (articleEl.dataset.withdrawn === "true") {
+      pctVal = 100;
+    } else {
+      pctVal = calcMaturityRate(openIn, matIn);
+    }
+    if (pfill && ppct) {
+      if (pctVal === null) {
+        pfill.style.width = "0%";
+        ppct.textContent = "—";
+      } else {
+        const w = Math.min(100, Math.max(0, pctVal));
+        pfill.style.width = `${w}%`;
+        ppct.textContent = `${Math.round(w)}%`;
+      }
+    }
+
+    articleEl.classList.toggle("asset-asset-card--withdrawn", articleEl.dataset.withdrawn === "true");
+  }
+
+  function paintAssetCard(articleEl) {
+    const face = articleEl.querySelector(".asset-asset-card-face");
+    if (!face) return;
+
+    function cardMoneyFromRaw(raw, suffixWon = true) {
+      const t = typeof raw === "string" ? raw.trim() : raw == null ? "" : String(raw).trim();
+      if (!t) return "";
+      const n = parseNum(t);
+      if (n !== null) return suffixWon ? `${formatNum(n)}원` : formatNum(n);
+      return suffixWon ? (t.endsWith("원") ? t : `${t}원`) : t;
+    }
+
+    function resolveAssetDebtStyleCard(el) {
+      if (el.dataset.assetCardDebtStyle) return el.dataset.assetCardDebtStyle;
+      if (el.dataset.assetCardDepositDebt === "1") {
+        return el.dataset.savings === "true" ? "savings" : "deposit";
+      }
+      return "";
+    }
+
+    function paintDebtStyleAssetFace(faceRoot) {
+      const style = resolveAssetDebtStyleCard(articleEl);
+      if (!style || !faceRoot.querySelector(".asset-asset-debtface-stat-val")) return;
+      if (style === "savings" || style === "deposit") {
+        paintDepositLikeDebtFace(articleEl, faceRoot);
+        return;
+      }
+
+      const vals = faceRoot.querySelectorAll(".asset-asset-debtface-stat-val");
+      if (vals.length < 8) return;
+
+      const fmtWonChip = (raw) => {
+        const s = typeof raw === "string" ? raw.trim() : raw == null ? "" : String(raw).trim();
+        if (!s || s === "-" || s === "—") return "—";
+        const n = parseNum(s.replace(/,/g, ""));
+        if (n !== null && n !== 0) return `${formatNum(n)}원`;
+        if (n === 0) return "0원";
+        return /원\b/u.test(s) ? s : `${s}원`;
+      };
+
+      const nameFace = faceRoot.querySelector(".asset-debt-card-name");
+      const subEl = faceRoot.querySelector(".asset-debt-card-sub");
+      const tagsEl = faceRoot.querySelector(".asset-debt-card-tags");
+      const pfill = faceRoot.querySelector(".asset-debt-card-progress-fill");
+      const ppct = faceRoot.querySelector(".asset-debt-card-progress-pct");
+
+      const setProgress = (widthPct, pctText) => {
+        if (pfill)
+          pfill.style.width =
+            typeof widthPct === "number" ? `${Math.min(100, Math.max(0, widthPct))}%` : "0%";
+        if (ppct) ppct.textContent = pctText ?? "—";
+      };
+
+      if (style === "stock") {
+        const nm = articleEl.querySelector(".asset-stock-input-name")?.value?.trim() || "";
+        if (nameFace) nameFace.textContent = nm || "종목명";
+        if (subEl) subEl.textContent = "주식";
+
+        const avg = articleEl.querySelector(".asset-stock-input-avg-price")?.value;
+        const curRaw = articleEl.querySelector(".asset-stock-input-current-price")?.value ?? "";
+        const cur = curRaw.trim() === "" ? null : parseNum(curRaw);
+        const qtyRaw = articleEl.querySelector(".asset-stock-input-quantity")?.value?.trim() ?? "";
+        const qtyN = parseNum(qtyRaw);
+        const qtyDisp = qtyRaw === "" ? "—" : qtyN !== null ? `${formatNum(qtyN)}주` : `${qtyRaw}주`;
+
+        const purchaseTxt =
+          articleEl.querySelector(".asset-stock-purchase-amt-display")?.textContent?.trim() || "";
+        const appraisalTxt =
+          articleEl.querySelector(".asset-stock-appraisal-amt-display")?.textContent?.trim() || "";
+        const purchaseDisp = purchaseTxt ? cardMoneyFromRaw(purchaseTxt.replace(/,/g, ""), true) : "—";
+        const appraisalDisp = appraisalTxt ? cardMoneyFromRaw(appraisalTxt.replace(/,/g, ""), true) : "—";
+
+        const plTxtRaw =
+          articleEl.querySelector(".asset-stock-profit-loss-display")?.textContent?.trim()?.replace(/^—$/, "") ||
+          "";
+        const plNumOnly = parseNum(plTxtRaw);
+        let plDisp = plTxtRaw;
+        if (plTxtRaw && plNumOnly !== null && !/원/.test(plTxtRaw)) {
+          plDisp = `${formatNum(plNumOnly)}원`;
+        }
+        if (!plDisp) plDisp = "—";
+
+        const rateStrRaw =
+          articleEl.querySelector(".asset-stock-return-rate-display")?.textContent?.trim() || "";
+        const rateParsed = parseNum(rateStrRaw.replace(/%/gu, ""));
+        const rateN = rateParsed === null ? null : rateParsed;
+
+        vals[0].textContent = avg?.trim() ? fmtWonChip(avg) : "—";
+        vals[1].textContent = curRaw.trim() !== "" && cur !== null ? fmtWonChip(curRaw) : "—";
+        vals[2].textContent = qtyDisp;
+        vals[3].textContent = purchaseDisp;
+        vals[4].textContent = appraisalDisp;
+        vals[5].textContent = plDisp;
+        vals[6].textContent =
+          rateStrRaw === "" ? "—" : /%/.test(rateStrRaw) ? rateStrRaw : `${rateStrRaw}%`;
+
+        const clearStockStatTone = (el) => {
+          el.classList.remove(
+            "asset-debt-card-stat-val--gain",
+            "asset-debt-card-stat-val--loss",
+            "asset-debt-card-stat-val--flat",
+          );
+        };
+        const applyStockStatTone = (el, n) => {
+          clearStockStatTone(el);
+          if (n === null || n === undefined || Number.isNaN(n)) return;
+          if (n > 0) el.classList.add("asset-debt-card-stat-val--gain");
+          else if (n < 0) el.classList.add("asset-debt-card-stat-val--loss");
+          else el.classList.add("asset-debt-card-stat-val--flat");
+        };
+        applyStockStatTone(vals[5], plNumOnly);
+        applyStockStatTone(vals[6], rateN);
+
+        const nwBasis = articleEl.dataset.assetStockNetWorthBasis || "";
+        vals[7].textContent =
+          nwBasis === "purchase"
+            ? "현재가 미입력·총자산은 매입 기준"
+            : nwBasis === "appraisal"
+              ? "평가(현재가×수량) 기준"
+              : "—";
+
+        const app = parseNum(articleEl.querySelector(".asset-stock-appraisal-amt-display")?.textContent);
+        const pur = parseNum(articleEl.querySelector(".asset-stock-purchase-amt-display")?.textContent);
+        let heroDisp = "—";
+        let heroNum = null;
+        if (nwBasis === "appraisal" && app !== null) {
+          heroDisp = `${formatNum(app)}원`;
+          heroNum = app;
+        } else if (nwBasis === "purchase" && pur !== null) {
+          heroDisp = `${formatNum(pur)}원`;
+          heroNum = pur;
+        } else if (app !== null) {
+          heroDisp = `${formatNum(app)}원`;
+          heroNum = app;
+        } else if (pur !== null) {
+          heroDisp = `${formatNum(pur)}원`;
+          heroNum = pur;
+        }
+        setAssetDebtCardHeroWon(faceRoot, heroDisp, heroNum);
+
+        if (tagsEl) {
+          tagsEl.replaceChildren();
+          const c0 = document.createElement("span");
+          c0.className = "asset-debt-card-chip";
+          c0.textContent = "주식";
+          tagsEl.appendChild(c0);
+          if (nwBasis === "purchase") {
+            const cw = document.createElement("span");
+            cw.className = "asset-debt-card-chip asset-debt-card-chip--period";
+            cw.textContent = "현재가 미입력·매입 기준";
+            tagsEl.appendChild(cw);
+          }
+          if (rateStrRaw) {
+            const c2 = document.createElement("span");
+            let chipCls = "asset-debt-card-chip";
+            if (rateN !== null) {
+              chipCls +=
+                rateN > 0
+                  ? " asset-debt-card-chip--gain"
+                  : rateN < 0
+                    ? " asset-debt-card-chip--loss"
+                    : " asset-debt-card-chip--flat";
+            }
+            c2.className = chipCls;
+            c2.textContent = /%/.test(rateStrRaw) ? `수익률 ${rateStrRaw}` : `수익률 ${rateStrRaw}%`;
+            tagsEl.appendChild(c2);
+          }
+        }
+
+        return;
+      }
+
+      if (style === "realestate") {
+        const gLab = ASSET_GROUPS.find((g) => g.key === articleEl.dataset.assetCardGroup)?.label || "";
+        const ct = articleEl.querySelector(".asset-asset-input-contract")?.value?.trim() || "";
+        if (nameFace) nameFace.textContent = ct || "부동산";
+        if (subEl) subEl.textContent = gLab || "부동산";
+
+        const occ = articleEl.querySelector(".asset-real-estate-input-occupancy")?.value || "owner";
+        const saleStr = articleEl.querySelector(".asset-asset-input-sale-price")?.value;
+        const loanStr = articleEl.querySelector(".asset-asset-input-loan")?.value;
+        const leaseStr = articleEl.querySelector(".asset-real-estate-input-lease-deposit")?.value ?? "";
+        const val = computeRealEstateNetFromInputs(saleStr, loanStr, leaseStr, occ);
+
+        const pType = articleEl.querySelector(".asset-real-estate-input-property-type")?.value || "";
+        const propTypeLabels = {
+          apartment: "아파트",
+          villa: "빌라·연립",
+          officetel: "오피스텔",
+          retail: "상가",
+          land: "토지",
+          other: "기타",
+        };
+
+        vals[0].textContent = saleStr?.trim() ? fmtWonChip(saleStr) : "—";
+        vals[1].textContent = loanStr?.trim() ? fmtWonChip(loanStr) : "—";
+        vals[2].textContent = val !== null && !Number.isNaN(val) ? `${formatNum(val)}원` : "—";
+        vals[2].classList.remove("asset-debt-card-stat-val--net-negative");
+        if (val !== null && !Number.isNaN(val) && val < 0) vals[2].classList.add("asset-debt-card-stat-val--net-negative");
+
+        vals[3].textContent = pType && propTypeLabels[pType] ? propTypeLabels[pType] : "—";
+
+        const acq = articleEl.querySelector(".asset-real-estate-input-acquisition-date")?.value?.trim();
+        const purStr = articleEl.querySelector(".asset-real-estate-input-purchase-price")?.value ?? "";
+        const areaStr = articleEl.querySelector(".asset-real-estate-input-area-sqm")?.value ?? "";
+        vals[4].textContent = acq ? formatDateYYMMDD(acq) : "";
+        vals[5].textContent = purStr.trim() ? fmtWonChip(purStr) : "—";
+        const areaN = parseNum(areaStr);
+        vals[6].textContent =
+          areaStr.trim() !== "" ? (areaN !== null ? `${formatNum(areaN)}㎡` : `${areaStr}㎡`) : "—";
+
+        let occDisp = occ === "owner" ? "직접 거주" : occ === "landlord" ? "임대" : "전·월세 거주";
+        if ((occ === "landlord" || occ === "tenant") && leaseStr.trim()) {
+          occDisp += ` · ${fmtWonChip(leaseStr)}`;
+        }
+        vals[7].textContent = occDisp;
+
+        setAssetDebtCardHeroWon(
+          faceRoot,
+          val !== null && !Number.isNaN(val) ? `${formatNum(val)}원` : "—",
+          val !== null && !Number.isNaN(val) ? val : null,
+        );
+
+        if (tagsEl) {
+          tagsEl.replaceChildren();
+          if (pType && propTypeLabels[pType]) {
+            const t1 = document.createElement("span");
+            t1.className = "asset-debt-card-chip asset-debt-card-chip--period";
+            t1.textContent = propTypeLabels[pType];
+            tagsEl.appendChild(t1);
+          }
+        }
+
+        return;
+      }
+
+      if (style === "insurance") {
+        const nm = articleEl.querySelector(".asset-insurance-input-name")?.value?.trim() || "";
+        const kind =
+          articleEl.querySelector(".asset-insurance-kind-display")?.textContent?.trim() ||
+          articleEl.querySelector(".asset-insurance-input-kind")?.value?.trim() ||
+          "";
+        if (nameFace) nameFace.textContent = nm || "보험";
+        if (subEl) subEl.textContent = "투자성 보험";
+
+        const monthlyRaw = articleEl.querySelector(".asset-insurance-input-monthly")?.value?.trim() || "";
+        const cStr = articleEl.querySelector(".asset-insurance-input-contract-date")?.value?.trim();
+        const mStr = articleEl.querySelector(".asset-insurance-input-maturity-date")?.value?.trim();
+        const surRaw = articleEl.querySelector(".asset-insurance-input-surrender")?.value ?? "";
+        const cov = (articleEl.querySelector(".asset-insurance-input-coverage")?.value || "").trim();
+
+        vals[0].textContent = kind || "—";
+        vals[1].textContent = monthlyRaw ? fmtWonChip(monthlyRaw) : "—";
+        vals[2].textContent = cStr ? formatDateYYMMDD(cStr) : "—";
+        vals[3].textContent = mStr ? formatDateYYMMDD(mStr) : "—";
+        vals[4].textContent = surRaw.trim() ? fmtWonChip(surRaw) : "—";
+        vals[5].textContent = cov ? (cov.length > 22 ? `${cov.slice(0, 22)}…` : cov) : "—";
+        vals[6].textContent = "";
+        vals[7].textContent = "";
+
+        const sur = parseNum(surRaw);
+        setAssetDebtCardHeroWon(faceRoot, sur !== null ? `${formatNum(sur)}원` : "—", sur);
+
+        if (tagsEl) {
+          tagsEl.replaceChildren();
+          if (kind) {
+            const x = document.createElement("span");
+            x.className = "asset-debt-card-chip";
+            x.textContent = kind;
+            tagsEl.appendChild(x);
+          }
+          const x2 = document.createElement("span");
+          x2.className = "asset-debt-card-chip asset-debt-card-chip--period";
+          x2.textContent = "투자성 보험";
+          tagsEl.appendChild(x2);
+        }
+        setProgress(0, "—");
+        return;
+      }
+
+      if (style === "annuity") {
+        const nm = articleEl.querySelector(".asset-annuity-input-name")?.value?.trim() || "";
+        const kind = articleEl.querySelector(".asset-annuity-input-kind")?.value?.trim() || "";
+        if (nameFace) nameFace.textContent = nm || "연금";
+        if (subEl) subEl.textContent = "연금";
+
+        const surRaw = articleEl.querySelector(".asset-annuity-input-surrender")?.value ?? "";
+        const monthlyRaw = articleEl.querySelector(".asset-annuity-input-monthly")?.value?.trim() || "";
+        const ps = articleEl.querySelector(".asset-annuity-input-payment-start")?.value?.trim();
+        const pe = articleEl.querySelector(".asset-annuity-input-payment-end")?.value?.trim();
+        const rs = articleEl.querySelector(".asset-annuity-input-receipt-start")?.value?.trim();
+        const mr = articleEl.querySelector(".asset-annuity-input-monthly-receipt")?.value?.trim() || "";
+        const paidTxt = articleEl.querySelector(".asset-annuity-total-paid-display")?.textContent?.trim() || "";
+
+        vals[0].textContent = kind || "—";
+        vals[1].textContent = surRaw.trim() ? fmtWonChip(surRaw) : "—";
+        vals[2].textContent = monthlyRaw ? fmtWonChip(monthlyRaw) : "—";
+        vals[3].textContent = ps ? formatDateYYMMDD(ps) : "—";
+        vals[4].textContent = pe ? formatDateYYMMDD(pe) : "—";
+        vals[5].textContent = paidTxt ? `${paidTxt}원` : "—";
+        vals[6].textContent = rs ? formatDateYYMMDD(rs) : "—";
+        vals[7].textContent = mr ? fmtWonChip(mr) : "—";
+
+        const surN = parseNum(surRaw);
+        const paid = parseNum(articleEl.querySelector(".asset-annuity-total-paid-display")?.textContent);
+        const heroNum = surN !== null ? surN : paid;
+        const heroDisp = heroNum !== null ? `${formatNum(heroNum)}원` : "—";
+        setAssetDebtCardHeroWon(faceRoot, heroDisp, heroNum !== null && !Number.isNaN(heroNum) ? heroNum : null);
+
+        if (tagsEl) {
+          tagsEl.replaceChildren();
+          if (kind) {
+            const x = document.createElement("span");
+            x.className = "asset-debt-card-chip asset-debt-card-chip--period";
+            x.textContent = kind;
+            tagsEl.appendChild(x);
+          }
+          const x2 = document.createElement("span");
+          x2.className = "asset-debt-card-chip";
+          x2.textContent = "연금";
+          tagsEl.appendChild(x2);
+          if (surN !== null) {
+            const x3 = document.createElement("span");
+            x3.className = "asset-debt-card-chip asset-debt-card-chip--period";
+            x3.textContent = "총자산=해지환급금";
+            tagsEl.appendChild(x3);
+          }
+        }
+        setProgress(0, "—");
+      }
+    }
+
+    /** 예·적금 카드: 가입~만기 기준 만기율 (%·프로그레스) */
+    function paintDepositLikeMaturityProgressBar(faceMain, openStr, matStr) {
+      if (!faceMain) return;
+      const pct = calcMaturityRate(openStr, matStr);
+      let wrap = faceMain.querySelector(".asset-asset-card-maturity-progress");
+      if (!wrap) {
+        wrap = document.createElement("div");
+        wrap.className = "asset-asset-card-maturity-progress";
+        wrap.setAttribute("aria-label", "만기까지 납입 진행률");
+        const track = document.createElement("div");
+        track.className = "asset-asset-card-maturity-progress-track";
+        const fill = document.createElement("div");
+        fill.className = "asset-asset-card-maturity-progress-fill";
+        track.appendChild(fill);
+        const cap = document.createElement("span");
+        cap.className = "asset-asset-card-maturity-progress-caption";
+        wrap.appendChild(track);
+        wrap.appendChild(cap);
+        const fig = faceMain.querySelector(".asset-asset-card-figures");
+        if (fig) fig.before(wrap);
+        else faceMain.appendChild(wrap);
+      }
+      const fill = wrap.querySelector(".asset-asset-card-maturity-progress-fill");
+      const cap = wrap.querySelector(".asset-asset-card-maturity-progress-caption");
+      if (pct === null) {
+        if (fill) fill.style.width = "0%";
+        if (cap) cap.textContent = "";
+        wrap.hidden = true;
+        return;
+      }
+      wrap.hidden = false;
+      if (fill) fill.style.width = `${Math.min(100, Math.max(0, pct))}%`;
+      if (cap) cap.textContent = `만기율 ${pct}%`;
+    }
+
+    face.querySelector(".asset-asset-card-details")?.remove();
+    if (resolveAssetDebtStyleCard(articleEl)) {
+      paintDebtStyleAssetFace(face);
+      return;
+    }
+
+    const titleEl = face.querySelector(".asset-asset-card-title");
+    const gLabel = ASSET_GROUPS.find((g) => g.key === articleEl.dataset.assetCardGroup)?.label || "";
+
+    /** @type {{ text: string, mod?: string }[]} */
+    let faceTags = [];
+    let dateSubline = "";
+    let iconSrc = assetGroupCardIconSrc(articleEl.dataset.assetCardGroup || "");
+    let title = "";
+    let hint = "";
+    let realEstateHintNegative = false;
+
+    if (articleEl.classList.contains("asset-asset-row-insurance")) {
+      const nm = articleEl.querySelector(".asset-insurance-input-name")?.value?.trim();
+      const kind = articleEl.querySelector(".asset-insurance-input-kind")?.value?.trim();
+      title = nm || "투자성 보험";
+      const sur = parseNum(articleEl.querySelector(".asset-insurance-input-surrender")?.value);
+      hint = sur !== null ? `${formatNum(sur)}원` : "잔액 미입력";
+      const cStr = articleEl.querySelector(".asset-insurance-input-contract-date")?.value?.trim();
+      const mStr = articleEl.querySelector(".asset-insurance-input-maturity-date")?.value?.trim();
+      const monthlyRaw = articleEl.querySelector(".asset-insurance-input-monthly")?.value?.trim() || "";
+      iconSrc = assetGroupCardIconSrc("보험");
+      faceTags = [];
+      if (kind) faceTags.push({ text: kind, mod: "rose" });
+      faceTags.push({ text: "투자성 보험", mod: "slate" });
+      if (monthlyRaw.trim()) {
+        const mn = parseNum(monthlyRaw);
+        faceTags.push({
+          text: mn !== null ? `월 ${formatNum(mn)}원` : `월 ${monthlyRaw}`,
+          mod: "amber",
+        });
+      }
+      dateSubline =
+        (mStr && `만기 ${formatDateYYMMDD(mStr)}`) ||
+        (cStr && `계약 ${formatDateYYMMDD(cStr)}`) ||
+        "날짜 미입력";
+    } else if (articleEl.classList.contains("asset-asset-row-annuity")) {
+      const nm = articleEl.querySelector(".asset-annuity-input-name")?.value?.trim();
+      const kind = articleEl.querySelector(".asset-annuity-input-kind")?.value?.trim();
+      title = nm || "연금";
+      const surN = parseNum(articleEl.querySelector(".asset-annuity-input-surrender")?.value);
+      const paid = parseNum(articleEl.querySelector(".asset-annuity-total-paid-display")?.textContent);
+      const heroAmt = surN !== null ? surN : paid;
+      hint = heroAmt !== null ? `${formatNum(heroAmt)}원` : "입력 후 반영";
+      const ps = articleEl.querySelector(".asset-annuity-input-payment-start")?.value?.trim();
+      const pe = articleEl.querySelector(".asset-annuity-input-payment-end")?.value?.trim();
+      const rs = articleEl.querySelector(".asset-annuity-input-receipt-start")?.value?.trim();
+      const monthlyRaw = articleEl.querySelector(".asset-annuity-input-monthly")?.value?.trim() || "";
+      iconSrc = assetGroupCardIconSrc("연금");
+      faceTags = [];
+      if (kind) faceTags.push({ text: kind, mod: "violet" });
+      faceTags.push({ text: "연금", mod: "slate" });
+      if (monthlyRaw.trim()) {
+        const mn = parseNum(monthlyRaw);
+        faceTags.push({
+          text: mn !== null ? `월 납입 ${formatNum(mn)}원` : `월 납입 ${monthlyRaw}`,
+          mod: "amber",
+        });
+      }
+      dateSubline =
+        (rs && `수령 ${formatDateYYMMDD(rs)}`) ||
+        (pe && `납입 종료 ${formatDateYYMMDD(pe)}`) ||
+        (ps && `납입 시작 ${formatDateYYMMDD(ps)}`) ||
+        "날짜 미입력";
+    } else if (articleEl.classList.contains("asset-asset-row-real-estate")) {
+      const ct = articleEl.querySelector(".asset-asset-input-contract")?.value?.trim();
+      title = ct || "부동산";
+      const occ = articleEl.querySelector(".asset-real-estate-input-occupancy")?.value || "owner";
+      const saleStr = articleEl.querySelector(".asset-asset-input-sale-price")?.value;
+      const loanStr = articleEl.querySelector(".asset-asset-input-loan")?.value;
+      const leaseStr = articleEl.querySelector(".asset-real-estate-input-lease-deposit")?.value ?? "";
+      const val = computeRealEstateNetFromInputs(saleStr, loanStr, leaseStr, occ);
+      hint = val !== null && !Number.isNaN(val) ? `${formatNum(val)}원` : "입력 후 반영";
+      realEstateHintNegative = val !== null && !Number.isNaN(val) && val < 0;
+
+      const pType = articleEl.querySelector(".asset-real-estate-input-property-type")?.value || "";
+      const propTypeLabels = {
+        apartment: "아파트",
+        villa: "빌라",
+        officetel: "오피스텔",
+        retail: "상가",
+        land: "토지",
+        other: "기타",
+      };
+      iconSrc = assetGroupCardIconSrc("부동산");
+      faceTags = [];
+      if (pType && propTypeLabels[pType]) {
+        faceTags.push({ text: propTypeLabels[pType], mod: "slate" });
+      }
+      const sale = parseNum(saleStr);
+      const loan = parseNum(loanStr);
+      if (sale !== null && occ !== "tenant") {
+        faceTags.push({ text: `시세 ${formatNum(sale)}원`, mod: "teal" });
+      }
+      if (loan !== null && loan > 0 && occ !== "tenant") {
+        faceTags.push({ text: `대출 ${formatNum(loan)}원`, mod: "indigo" });
+      }
+      if (occ === "landlord") {
+        faceTags.push({ text: "임대", mod: "amber" });
+      } else if (occ === "tenant") {
+        faceTags.push({ text: "전·월세 거주", mod: "amber" });
+      }
+      const acq = articleEl.querySelector(".asset-real-estate-input-acquisition-date")?.value;
+      const hold = formatRealEstateHoldingPeriod(acq);
+      dateSubline = hold ? `취득 후 ${hold}` : "취득일 입력 시 보유 기간·세금 참고";
+    } else {
+      title = gLabel || "자산";
+      hint = "—";
+      iconSrc = assetGroupCardIconSrc(articleEl.dataset.assetCardGroup || "예금");
+      faceTags = [];
+      dateSubline = "—";
+    }
+
+    const tagsEl = face.querySelector(".asset-asset-card-tags");
+    const balanceEl = face.querySelector(".asset-asset-card-balance");
+    const sublineEl = face.querySelector(".asset-asset-card-subline");
+    const iconImg = face.querySelector(".asset-asset-card-icon-img");
+
+    if (titleEl) titleEl.textContent = title || "—";
+    if (balanceEl) {
+      balanceEl.textContent = hint || "—";
+      balanceEl.classList.toggle("asset-asset-card-balance--negative", realEstateHintNegative);
+    }
+    if (sublineEl) sublineEl.textContent = dateSubline || "—";
+    if (iconImg) iconImg.src = iconSrc;
+
+    if (tagsEl) {
+      tagsEl.replaceChildren();
+      faceTags.forEach(({ text, mod }) => {
+        if (!text) return;
+        const s = document.createElement("span");
+        if (mod === "realestate-chip") {
+          s.className = "asset-asset-card-chip asset-asset-card-chip--realestate";
+        } else {
+          s.className = "asset-asset-face-chip" + (mod ? ` asset-asset-face-chip--${mod}` : "");
+        }
+        s.textContent = text;
+        tagsEl.appendChild(s);
+      });
+    }
+
+    const intHintEl = face.querySelector(".asset-asset-card-int-hint");
+    if (intHintEl) {
+      if (articleEl.classList.contains("asset-asset-row-real-estate")) {
+        const purchase = parseNum(articleEl.querySelector(".asset-real-estate-input-purchase-price")?.value);
+        const saleN = parseNum(articleEl.querySelector(".asset-asset-input-sale-price")?.value);
+        if (purchase !== null && saleN !== null) {
+          const g = saleN - purchase;
+          intHintEl.textContent =
+            g === 0 ? "매입가 대비 변동 없음" : `매입가 대비 ${g > 0 ? "+" : ""}${formatNum(g)}원`;
+        } else {
+          intHintEl.textContent = "";
+        }
+      } else {
+        const isSav = articleEl.dataset.savings === "true";
+        const isDep = articleEl.classList.contains("asset-asset-row--deposit");
+        if (isSav || isDep) {
+          const matN = parseNum(articleEl.querySelector(".asset-asset-maturity-amt-display")?.textContent);
+          const prN = parseNum(articleEl.querySelector(".asset-asset-input-principal")?.value);
+          if (matN !== null && prN !== null && matN > prN) {
+            intHintEl.textContent = `이자 포함 만기 시 약 ${formatNum(matN)}원`;
+          } else {
+            intHintEl.textContent = "";
+          }
+        } else {
+          intHintEl.textContent = "";
+        }
+      }
+    }
+
+    if (articleEl.classList.contains("asset-asset-row--deposit") || articleEl.dataset.savings === "true") {
+      articleEl.classList.toggle("asset-asset-card--withdrawn", articleEl.dataset.withdrawn === "true");
+    }
+  }
+
+  function wrapAssetDomRowAsCard(domRow, groupKey) {
+    const articleEl = document.createElement("article");
+    articleEl.className =
+      domRow.className +
+      " asset-asset-card asset-asset-row--card" +
+      (domRow.classList.contains("asset-asset-row-real-estate") ? " asset-asset-card--real-estate" : "") +
+      (domRow.classList.contains("asset-asset-row-insurance") ? " asset-asset-card--insurance" : "") +
+      (domRow.classList.contains("asset-asset-row-annuity") ? " asset-asset-card--annuity" : "") +
+      (domRow.classList.contains("asset-asset-row-stock") ? " asset-asset-card--stock" : "");
+    articleEl.setAttribute("role", "listitem");
+    articleEl.dataset.assetCardGroup = groupKey;
+    Object.keys(domRow.dataset).forEach((k) => {
+      articleEl.dataset[k] = domRow.dataset[k];
+    });
+
+    const face = document.createElement("div");
+    const isStock = domRow.classList.contains("asset-asset-row-stock");
+    const isRealEstate = domRow.classList.contains("asset-asset-row-real-estate");
+    const isInsurance = domRow.classList.contains("asset-asset-row-insurance");
+    const isAnnuity = domRow.classList.contains("asset-asset-row-annuity");
+    const isDepositDebt =
+      groupKey === "예금" ||
+      groupKey === "적금" ||
+      domRow.dataset.savings === "true" ||
+      domRow.classList.contains("asset-asset-row--deposit");
+
+    if (isDepositDebt) {
+      articleEl.dataset.assetCardDepositDebt = "1";
+      const isSavings = domRow.dataset.savings === "true";
+      face.className = "asset-asset-card-face asset-debt-card-face";
+      face.innerHTML = buildAssetDepositDebtFaceInnerHtml(isSavings);
+    } else if (isStock) {
+      articleEl.dataset.assetCardDebtStyle = "stock";
+      face.className = "asset-asset-card-face asset-debt-card-face";
+      face.innerHTML = buildAssetDebtStyleFaceInnerHtml("stock");
+    } else if (isRealEstate) {
+      articleEl.dataset.assetCardDebtStyle = "realestate";
+      face.className = "asset-asset-card-face asset-debt-card-face";
+      face.innerHTML = buildAssetDebtStyleFaceInnerHtml("realestate");
+    } else if (isInsurance) {
+      articleEl.dataset.assetCardDebtStyle = "insurance";
+      face.className = "asset-asset-card-face asset-debt-card-face";
+      face.innerHTML = buildAssetDebtStyleFaceInnerHtml("insurance");
+    } else if (isAnnuity) {
+      articleEl.dataset.assetCardDebtStyle = "annuity";
+      face.className = "asset-asset-card-face asset-debt-card-face";
+      face.innerHTML = buildAssetDebtStyleFaceInnerHtml("annuity");
+    } else {
+      face.className = "asset-asset-card-face";
+      face.innerHTML =
+        `<div class="asset-asset-card-main asset-asset-card-main--simple-face">` +
+        `<div class="asset-asset-card-icon-wrap" aria-hidden="true">` +
+        `<img class="asset-asset-card-icon-img" src="${assetGroupCardIconSrc(groupKey)}" alt="" width="22" height="22" />` +
+        `</div>` +
+        `<div class="asset-asset-card-copy">` +
+        `<div class="asset-asset-card-title"></div>` +
+        `<div class="asset-asset-card-meta"><div class="asset-asset-card-tags" role="presentation"></div></div>` +
+        `</div>` +
+        `<div class="asset-asset-card-figures">` +
+        `<span class="asset-asset-card-balance"></span>` +
+        `<span class="asset-asset-card-subline"></span>` +
+        `<span class="asset-asset-card-int-hint" aria-hidden="true"></span>` +
+        `</div>` +
+        `</div>`;
+    }
+
+    const fieldRoot = document.createElement("div");
+    fieldRoot.className = "asset-asset-card-fields";
+    fieldRoot.setAttribute("aria-hidden", "true");
+    while (domRow.firstChild) fieldRoot.appendChild(domRow.firstChild);
+    articleEl.appendChild(face);
+    articleEl.appendChild(fieldRoot);
+
+    const scheduleCardPaint = () => {
+      paintAssetCard(articleEl);
+      requestAnimationFrame(() => paintAssetCard(articleEl));
+    };
+    fieldRoot.addEventListener("input", scheduleCardPaint, true);
+    fieldRoot.addEventListener("change", scheduleCardPaint, true);
+    paintAssetCard(articleEl);
+
+    articleEl.addEventListener("click", (ev) => {
+      if (ev.target.closest("button")) return;
+      if (ev.target.closest(".asset-asset-card-fields")) return;
+      openAssetNetworthModal({ replaceCard: articleEl });
+    });
+
+    articleEl.addEventListener("contextmenu", (e) => {
+      const depositLike =
+        articleEl.dataset.savings === "true" ||
+        articleEl.classList.contains("asset-asset-row--deposit");
+      if (!depositLike) return;
+      e.preventDefault();
+      const menu = document.createElement("div");
+      menu.className = "asset-asset-maturity-context-menu";
+      menu.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;z-index:100000;`;
+      const hide = () => {
+        if (menu.parentNode) document.body.removeChild(menu);
+        document.removeEventListener("click", hide);
+        document.removeEventListener("contextmenu", hide);
+      };
+      const withdrawn = articleEl.dataset.withdrawn === "true";
+      const matured = articleEl.dataset.matured === "true";
+
+      function addItem(label, fn) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "asset-asset-maturity-context-menu-item";
+        btn.textContent = label;
+        btn.addEventListener("click", () => {
+          fn();
+          hide();
+          onAssetUpdate();
+        });
+        menu.appendChild(btn);
+      }
+
+      if (withdrawn) {
+        addItem("다시 자산에 포함 (진행 중)", () => {
+          articleEl.dataset.withdrawn = "false";
+          articleEl.dataset.matured = "false";
+        });
+      } else if (!matured) {
+        addItem("만기(보유 중)으로 표시", () => {
+          articleEl.dataset.matured = "true";
+          articleEl.dataset.withdrawn = "false";
+        });
+      } else {
+        addItem("출금 완료 (총자산에서 제외)", () => {
+          articleEl.dataset.withdrawn = "true";
+          articleEl.dataset.matured = "true";
+        });
+        addItem("진행 중으로 되돌리기", () => {
+          articleEl.dataset.matured = "false";
+          articleEl.dataset.withdrawn = "false";
+        });
+      }
+
+      document.body.appendChild(menu);
+      requestAnimationFrame(() => {
+        document.addEventListener("click", hide);
+        document.addEventListener("contextmenu", hide);
+      });
+    });
+
+    return articleEl;
+  }
+
+  function appendAssetCardForGroup(groupKey, payload) {
+    const noop = () => {};
+    let row;
+    if (groupKey === "예금") {
+      row = createAssetRow({ ...payload }, onAssetUpdate, false, "CMA", true, { suppressInlineDelete: true });
+    } else if (groupKey === "적금") {
+      row = createAssetRow({ ...payload }, onAssetUpdate, true, "예적금잔고", false, { suppressInlineDelete: true });
+    } else if (groupKey === "부동산") {
+      row = createRealEstateRow({ ...payload }, onAssetUpdate, {
+        mode: "view",
+        suppressInlineActions: true,
+      });
+    } else if (groupKey === "주식") {
+      row = createStockRow({ ...payload }, onAssetUpdate, { suppressInlineDelete: true });
+    } else if (groupKey === "보험") {
+      row = createInsuranceRow({ ...payload }, onAssetUpdate, { suppressInlineDelete: true });
+    } else if (groupKey === "연금") {
+      row = createAnnuityRow({ ...payload }, onAssetUpdate, { suppressInlineDelete: true });
+    } else {
+      return;
+    }
+    const card = wrapAssetDomRowAsCard(row, groupKey);
+    assetCardsList.appendChild(card);
+  }
+
+  function openAssetNetworthModal(opts = {}) {
+    const replaceCard = opts.replaceCard || null;
+    const initialGroup = opts.initialGroup || (replaceCard ? replaceCard.dataset.assetCardGroup || "예금" : "예금");
+    if (document.querySelector(".asset-networth-asset-modal")) {
+      showToast("입력 창을 닫은 뒤 다시 시도해 주세요.", "");
+      return;
+    }
+
+    let editPayload = null;
+    if (replaceCard) {
+      editPayload = readAssetCardPayload(replaceCard);
+    }
+
+    const overlay = document.createElement("div");
+    overlay.className = "asset-expense-transaction-modal asset-networth-asset-modal";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-label", replaceCard ? "자산 수정" : "자산 추가");
+
+    const backdrop = document.createElement("div");
+    backdrop.className = "asset-expense-transaction-modal-backdrop";
+
+    const panelShell = document.createElement("div");
+    panelShell.className = "asset-expense-transaction-modal-panel-shell asset-networth-asset-modal-panel";
+
+    const modalTitle = replaceCard ? "자산 수정" : "자산 추가";
+    const headRow = document.createElement("div");
+    headRow.className = "asset-expense-inline-panel-top asset-networth-asset-modal-head";
+    const headTextWrap = document.createElement("div");
+    headTextWrap.className = "asset-expense-inline-panel-head-text";
+    const titleEl = document.createElement("span");
+    titleEl.className = "asset-expense-inline-panel-title";
+    titleEl.textContent = modalTitle;
+    headTextWrap.appendChild(titleEl);
+    const modalCloseBtn = document.createElement("button");
+    modalCloseBtn.type = "button";
+    modalCloseBtn.className = "asset-expense-inline-panel-x";
+    modalCloseBtn.setAttribute("aria-label", "닫기");
+    modalCloseBtn.textContent = "×";
+    modalCloseBtn.addEventListener("click", () => closeOverlay());
+    headRow.appendChild(headTextWrap);
+    headRow.appendChild(modalCloseBtn);
+
+    const tabStrip = document.createElement("div");
+    tabStrip.className = "asset-asset-modal-tabs";
+    const formMount = document.createElement("div");
+    formMount.className = "asset-asset-modal-form-mount";
+
+    let activeGroup = initialGroup;
+    let realEstateModalPanel = null;
+
+    function closeOverlay() {
+      overlay.remove();
+    }
+
+    function getEditDataForGroup(g) {
+      if (!editPayload) return {};
+      if (g === "주식" && editPayload.groupKey === "주식") return { ...editPayload.stock };
+      if (g === "보험" && editPayload.groupKey === "보험") return { ...editPayload.insurance };
+      if (g === "연금" && editPayload.groupKey === "연금") return { ...editPayload.annuity };
+      if (g === "부동산" && editPayload.groupKey === "부동산") return { ...editPayload.realEstate };
+      if ((g === "예금" || g === "적금") && (editPayload.groupKey === "예금" || editPayload.groupKey === "적금")) {
+        return { ...editPayload.depositLike };
+      }
+      return {};
+    }
+
+    function mountForm(g) {
+      formMount.textContent = "";
+      realEstateModalPanel = null;
+      const modalNoop = () => {};
+      const nwFloatEmbed = { suppressInlineDelete: true, assetNetworthFloatingModal: true };
+      const isEdit = Boolean(replaceCard && editPayload && editPayload.groupKey === g);
+      const data = isEdit ? getEditDataForGroup(g) : {};
+
+      if (g === "부동산") {
+        const phantom = createRealEstateRow(data, modalNoop, {
+          mode: isEdit ? "edit" : "draft",
+          memSnapshot: isEdit ? data : null,
+          assetPhantomTableRow: true,
+          assetModalHandlers: {
+            onCancel: () => closeOverlay(),
+            onSave: (d) => {
+              if (replaceCard) {
+                const row = createRealEstateRow(d, onAssetUpdate, { mode: "view", suppressInlineActions: true });
+                const next = wrapAssetDomRowAsCard(row, "부동산");
+                replaceCard.replaceWith(next);
+              } else {
+                appendAssetCardForGroup("부동산", d);
+              }
+              closeOverlay();
+              onAssetUpdate();
+            },
+            onDelete:
+              replaceCard && editPayload?.groupKey === "부동산"
+                ? () => {
+                    confirmDeleteRow(() => {
+                      replaceCard.remove();
+                      closeOverlay();
+                      onAssetUpdate();
+                    });
+                  }
+                : null,
+          },
+        });
+        const panel = phantom.querySelector(".asset-expense-inline-panel");
+        phantom.remove();
+        if (panel) {
+          realEstateModalPanel = panel;
+          formMount.appendChild(panel);
+        }
+        return;
+      }
+
+      const tbl = document.createElement("table");
+      tbl.className = "asset-asset-modal-embed-table";
+      const tb = document.createElement("tbody");
+      let tr;
+      if (g === "예금") tr = createAssetRow(data, modalNoop, false, "CMA", true, nwFloatEmbed);
+      else if (g === "적금") tr = createAssetRow(data, modalNoop, true, "예적금잔고", false, nwFloatEmbed);
+      else if (g === "주식") tr = createStockRow(data, modalNoop, nwFloatEmbed);
+      else if (g === "보험") tr = createInsuranceRow(data, modalNoop, nwFloatEmbed);
+      else if (g === "연금") tr = createAnnuityRow(data, modalNoop, nwFloatEmbed);
+      if (tr) {
+        tb.appendChild(tr);
+        tbl.appendChild(tb);
+        formMount.appendChild(tbl);
+      }
+    }
+
+    function applyNonRealEstateSave() {
+      const g = activeGroup;
+      const src = formMount.querySelector(".asset-asset-modal-embed-table tbody tr");
+      if (!src) {
+        showToast("입력 폼을 찾지 못했습니다. 모달을 닫았다가 다시 열어 주세요.", "");
+        return;
+      }
+      if (g === "예금") {
+        const rows = collectAssetRowsFromDOM(assetModalCollectHost(src));
+        if (!rows.length) {
+          showToast("예금 입력을 읽지 못했습니다. 다시 시도해 주세요.", "");
+          return;
+        }
+        const d = rows[0];
+        if (replaceCard) {
+          const row = createAssetRow(d, onAssetUpdate, false, "CMA", true, { suppressInlineDelete: true });
+          replaceCard.replaceWith(wrapAssetDomRowAsCard(row, "예금"));
+        } else appendAssetCardForGroup("예금", d);
+      } else if (g === "적금") {
+        const rows = collectAssetRowsFromDOM(assetModalCollectHost(src));
+        if (!rows.length) {
+          showToast("적금 입력을 읽지 못했습니다. 다시 시도해 주세요.", "");
+          return;
+        }
+        const d = rows[0];
+        if (replaceCard) {
+          const row = createAssetRow(d, onAssetUpdate, true, "예적금잔고", false, { suppressInlineDelete: true });
+          replaceCard.replaceWith(wrapAssetDomRowAsCard(row, "적금"));
+        } else appendAssetCardForGroup("적금", d);
+      } else if (g === "주식") {
+        const d = readAssetStockFromRoot(src);
+        if (replaceCard) {
+          const row = createStockRow(d, onAssetUpdate, { suppressInlineDelete: true });
+          replaceCard.replaceWith(wrapAssetDomRowAsCard(row, "주식"));
+        } else appendAssetCardForGroup("주식", d);
+      } else if (g === "보험") {
+        const d = {
+          name: src.querySelector(".asset-insurance-input-name")?.value || "",
+          kind: src.querySelector(".asset-insurance-input-kind")?.value || "",
+          contractDate: src.querySelector(".asset-insurance-input-contract-date")?.value || "",
+          maturityDate: src.querySelector(".asset-insurance-input-maturity-date")?.value || "",
+          monthly: src.querySelector(".asset-insurance-input-monthly")?.value || "",
+          surrenderValue: src.querySelector(".asset-insurance-input-surrender")?.value || "",
+          coverage: src.querySelector(".asset-insurance-input-coverage")?.value || "",
+        };
+        if (replaceCard) {
+          const row = createInsuranceRow(d, onAssetUpdate, { suppressInlineDelete: true });
+          replaceCard.replaceWith(wrapAssetDomRowAsCard(row, "보험"));
+        } else appendAssetCardForGroup("보험", d);
+      } else if (g === "연금") {
+        const d = {
+          name: src.querySelector(".asset-annuity-input-name")?.value || "",
+          kind: src.querySelector(".asset-annuity-input-kind")?.value || "",
+          paymentStartDate: src.querySelector(".asset-annuity-input-payment-start")?.value || "",
+          paymentEndDate: src.querySelector(".asset-annuity-input-payment-end")?.value || "",
+          monthly: src.querySelector(".asset-annuity-input-monthly")?.value || "",
+          receiptStartDate: src.querySelector(".asset-annuity-input-receipt-start")?.value || "",
+          monthlyReceipt: src.querySelector(".asset-annuity-input-monthly-receipt")?.value || "",
+          surrenderValue: src.querySelector(".asset-annuity-input-surrender")?.value || "",
+        };
+        if (replaceCard) {
+          const row = createAnnuityRow(d, onAssetUpdate, { suppressInlineDelete: true });
+          replaceCard.replaceWith(wrapAssetDomRowAsCard(row, "연금"));
+        } else appendAssetCardForGroup("연금", d);
+      }
+      closeOverlay();
+      onAssetUpdate();
+    }
+
+    const footerBar = document.createElement("div");
+    footerBar.className = "asset-asset-modal-footer";
+
+    const saveOuter = document.createElement("button");
+    saveOuter.type = "button";
+    saveOuter.className = "asset-expense-inline-panel-btn asset-expense-inline-panel-btn--primary";
+    saveOuter.textContent = replaceCard ? "수정" : "저장";
+    saveOuter.addEventListener("click", () => {
+      if (activeGroup === "부동산") {
+        applyRealEstateModalSave();
+        return;
+      }
+      const modalRow = formMount.querySelector(".asset-asset-modal-embed-table tbody tr.asset-asset-row");
+      if (modalRow && typeof modalRow._flushAssetCalculationsBeforeSave === "function") {
+        modalRow._flushAssetCalculationsBeforeSave();
+      }
+      applyNonRealEstateSave();
+    });
+
+    if (replaceCard) {
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "asset-expense-inline-panel-btn asset-expense-inline-panel-btn--danger";
+      delBtn.textContent = "삭제";
+      delBtn.addEventListener("click", () => {
+        confirmDeleteRow(() => {
+          replaceCard.remove();
+          closeOverlay();
+          onAssetUpdate();
+        });
+      });
+      footerBar.appendChild(delBtn);
+    }
+    footerBar.appendChild(saveOuter);
+
+    function applyRealEstateModalSave() {
+      const panel = realEstateModalPanel;
+      if (!panel) {
+        showToast("부동산 입력을 찾지 못했습니다. 탭을 다시 눌러 주세요.", "");
+        return;
+      }
+      const d = readRealEstateDataFromTr(panel);
+      if (replaceCard) {
+        const row = createRealEstateRow(d, onAssetUpdate, {
+          mode: "view",
+          suppressInlineActions: true,
+        });
+        replaceCard.replaceWith(wrapAssetDomRowAsCard(row, "부동산"));
+      } else {
+        appendAssetCardForGroup("부동산", d);
+      }
+      closeOverlay();
+      onAssetUpdate();
+    }
+
+    /** 부동산: 저장·수정은 모달 바닥 줄만. 패널 안쪽 버튼은 embedded 시 생략 */
+    function refreshAssetModalFooterForRealEstateTabs() {
+      if (activeGroup !== "부동산") {
+        footerBar.style.display = "";
+        saveOuter.hidden = false;
+        saveOuter.style.display = "";
+        saveOuter.textContent = replaceCard ? "수정" : "저장";
+        return;
+      }
+      footerBar.style.display = "";
+      saveOuter.hidden = false;
+      saveOuter.style.display = "";
+      saveOuter.textContent = replaceCard ? "수정" : "저장";
+    }
+
+    ASSET_GROUPS.forEach((g) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "asset-asset-modal-tab";
+      b.textContent = g.label;
+      b.dataset.group = g.key;
+      b.classList.toggle("is-active", g.key === activeGroup);
+      b.addEventListener("click", () => {
+        activeGroup = g.key;
+        tabStrip.querySelectorAll(".asset-asset-modal-tab").forEach((x) => {
+          x.classList.toggle("is-active", x.dataset.group === activeGroup);
+        });
+        mountForm(activeGroup);
+        refreshAssetModalFooterForRealEstateTabs();
+      });
+      tabStrip.appendChild(b);
+    });
+
+    if (replaceCard && editPayload) {
+      tabStrip.querySelectorAll(".asset-asset-modal-tab").forEach((b) => {
+        if (b.dataset.group !== editPayload.groupKey) b.hidden = true;
+      });
+    }
+
+    panelShell.appendChild(headRow);
+    panelShell.appendChild(tabStrip);
+    panelShell.appendChild(formMount);
+    panelShell.appendChild(footerBar);
+
+    overlay.appendChild(backdrop);
+    overlay.appendChild(panelShell);
+    document.body.appendChild(overlay);
+
+    mountForm(activeGroup);
+    refreshAssetModalFooterForRealEstateTabs();
+  }
 
   function createRealEstateRow(data = {}, onAssetUpdate, options = {}) {
     const mode = options.mode != null ? options.mode : "view";
     const isView = mode === "view";
     const isDraft = mode === "draft";
     const isEdit = mode === "edit";
+    const assetPhantomTableRow = options.assetPhantomTableRow === true;
+    const assetModalHandlers = options.assetModalHandlers || null;
+    /** 순자산「자산 추가/수정」모달 안에 들어갈 때: 바깥에서 제목·닫기 제공 → 안쪽 패널 상단 줄·두 번째 × 생략 */
+    const embeddedInAssetWizardModal = Boolean(assetModalHandlers);
+    const suppressInlineActions = options.suppressInlineActions === true;
     const memSnapshot = isEdit
       ? options.memSnapshot
         ? { ...options.memSnapshot }
@@ -3233,7 +5312,12 @@ function renderNetworthView() {
     const inRowUpdate = isView ? () => {} : onAssetUpdate;
     const RE_COL = 5;
 
-    const tr = document.createElement("tr");
+    let tr;
+    if (inPanel) {
+      tr = document.createElement(assetPhantomTableRow ? "tr" : "div");
+    } else {
+      tr = document.createElement("tr");
+    }
     tr.className = "asset-asset-row asset-asset-row-real-estate";
     tr.dataset.realEstate = "true";
     if (isView) {
@@ -3250,53 +5334,129 @@ function renderNetworthView() {
     let xBtn = null;
     if (inPanel) {
       const panelTitle = isDraft ? "새 부동산" : "부동산 수정";
-      tr.innerHTML =
-        '<td colspan="' +
-        RE_COL +
-        '" class="asset-asset-cell-panel">' +
-        '<div class="asset-expense-inline-panel asset-networth-inline-panel">' +
-        '<div class="asset-expense-inline-panel-top">' +
-        '<span class="asset-expense-inline-panel-title">' +
-        panelTitle +
-        "</span>" +
-        '<button type="button" class="asset-expense-inline-panel-x" aria-label="닫기">×</button>' +
-        "</div>" +
+      const shellShellClass = embeddedInAssetWizardModal
+        ? "asset-expense-inline-panel asset-networth-inline-panel asset-real-estate-panel--embedded"
+        : "asset-expense-inline-panel asset-networth-inline-panel";
+      const shellHeaderBlock = embeddedInAssetWizardModal
+        ? ""
+        : '<div class="asset-expense-inline-panel-top">' +
+          '<div class="asset-expense-inline-panel-head-text">' +
+          '<span class="asset-expense-inline-panel-title">' +
+          panelTitle +
+          "</span>" +
+          "</div>" +
+          '<button type="button" class="asset-expense-inline-panel-x" aria-label="닫기">×</button>' +
+          "</div>";
+
+      const shellPanelInner =
+        '<div class="' +
+        shellShellClass +
+        '">' +
+        shellHeaderBlock +
         '<div class="asset-expense-inline-panel-body"></div>' +
         '<div class="asset-expense-inline-panel-bottom" aria-label="확인 작업"></div>' +
-        "</div></td>";
+        "</div>";
+
+      tr.innerHTML = assetPhantomTableRow
+        ? '<td colspan="' +
+          RE_COL +
+          '" class="asset-asset-cell-panel">' +
+          shellPanelInner +
+          "</td>"
+        : '<div class="asset-asset-cell-panel">' + shellPanelInner + "</div>";
+
       const panelBody = tr.querySelector(".asset-expense-inline-panel-body");
       panelFooter = tr.querySelector(".asset-expense-inline-panel-bottom");
-      xBtn = tr.querySelector(".asset-expense-inline-panel-x");
-      const subTable = document.createElement("table");
-      subTable.className = "asset-debt-inline-data-table";
-      const innerTr = document.createElement("tr");
-      subTable.appendChild(innerTr);
-      panelBody.appendChild(subTable);
-      dataRowTarget = innerTr;
+      xBtn = embeddedInAssetWizardModal ? null : tr.querySelector(".asset-expense-inline-panel-x");
+
+      const formStackPanel = document.createElement("div");
+      formStackPanel.className = "asset-expense-form-stack asset-real-estate-form-stack";
+      formStackPanel.setAttribute("role", "group");
+      formStackPanel.setAttribute("aria-label", "부동산 입력");
+      panelBody.appendChild(formStackPanel);
+      dataRowTarget = formStackPanel;
     } else {
       dataRowTarget = tr;
     }
 
-    const contractTd = document.createElement("td");
-    contractTd.className = "asset-asset-cell-contract";
+    function appendRealEstateFieldSlot(labelText, tdClass, nodeEl, slotOpts = {}) {
+      const isComputedSlot = !!slotOpts.computed;
+      if (inPanel) {
+        const rowSlot = document.createElement("div");
+        rowSlot.className = "asset-expense-form-row";
+        const labSlot = document.createElement("span");
+        labSlot.className = "asset-expense-form-label";
+        labSlot.textContent = labelText;
+        const ctlSlot = document.createElement("div");
+        ctlSlot.className =
+          "asset-expense-form-control asset-expense-form-control--field" +
+          (isComputedSlot ? " asset-debt-panel-value--computed" : "") +
+          (tdClass ? " " + tdClass : "");
+        if (isComputedSlot) ctlSlot.setAttribute("data-debt-value-kind", "computed");
+        if (nodeEl) ctlSlot.appendChild(nodeEl);
+        rowSlot.appendChild(labSlot);
+        rowSlot.appendChild(ctlSlot);
+        dataRowTarget.appendChild(rowSlot);
+        return ctlSlot;
+      }
+      const td = document.createElement("td");
+      if (tdClass) td.className = tdClass;
+      if (nodeEl) td.appendChild(nodeEl);
+      dataRowTarget.appendChild(td);
+      return td;
+    }
+
     const contractInput = document.createElement("input");
     contractInput.type = "text";
     contractInput.className = "asset-asset-input-contract";
     contractInput.value = data.contract || "";
-    contractInput.placeholder = "";
+    contractInput.placeholder = "예: ○○동 101호";
     bindNetWorthTextInput(contractInput, inRowUpdate);
     contractInput.addEventListener("keydown", (e) => e.key === "Enter" && !e.isComposing && contractInput.blur());
-    contractTd.appendChild(contractInput);
-    dataRowTarget.appendChild(contractTd);
+    appendRealEstateFieldSlot("계약 대상", "asset-asset-cell-contract", contractInput);
 
-    const salePriceTd = document.createElement("td");
-    salePriceTd.className = "asset-asset-cell-sale-price";
+    const propertyTypeSelect = document.createElement("select");
+    propertyTypeSelect.className = "asset-real-estate-input-property-type";
+    propertyTypeSelect.setAttribute("aria-label", "부동산 유형");
+    const propOpts = [
+      ["", "유형 선택 (세금 계산 방식 참고)"],
+      ["apartment", "아파트"],
+      ["villa", "빌라·연립·다세대"],
+      ["officetel", "오피스텔"],
+      ["retail", "상가·사무실"],
+      ["land", "토지"],
+      ["other", "기타"],
+    ];
+    propOpts.forEach(([val, lab]) => {
+      const o = document.createElement("option");
+      o.value = val;
+      o.textContent = lab;
+      propertyTypeSelect.appendChild(o);
+    });
+    propertyTypeSelect.value = data.propertyType && propOpts.some(([v]) => v === data.propertyType) ? data.propertyType : "";
+    propertyTypeSelect.addEventListener("change", () => {
+      inRowUpdate();
+    });
+    appendRealEstateFieldSlot("부동산 유형", "asset-asset-cell-re-property-type", propertyTypeSelect);
+
+    const acquisitionDateInput = document.createElement("input");
+    acquisitionDateInput.type = "date";
+    acquisitionDateInput.className = "asset-real-estate-input-acquisition-date";
+    acquisitionDateInput.value = data.acquisitionDate || "";
+    acquisitionDateInput.addEventListener("change", () => {
+      updateAssetValueDisplay();
+      inRowUpdate();
+    });
+    appendRealEstateFieldSlot("취득일", "asset-asset-cell-re-acquisition", acquisitionDateInput);
+
     const salePriceInput = document.createElement("input");
     salePriceInput.type = "text";
     salePriceInput.className = "asset-asset-input-sale-price";
     salePriceInput.value = data.salePrice ? (formatNum(data.salePrice) || data.salePrice) : "";
-    salePriceInput.placeholder = "-";
-    salePriceInput.addEventListener("input", (e) => filterNumericInput(salePriceInput, false, e));
+    salePriceInput.placeholder = "현재 시세(원)";
+    salePriceInput.addEventListener("input", (e) =>
+      filterNumericInput(salePriceInput, false, e, { ignoreIMEComposition: true })
+    );
     salePriceInput.addEventListener("input", () => {
       updateAssetValueDisplay();
       inRowUpdate();
@@ -3308,17 +5468,54 @@ function renderNetworthView() {
       inRowUpdate();
     });
     salePriceInput.addEventListener("keydown", (e) => e.key === "Enter" && salePriceInput.blur());
-    salePriceTd.appendChild(salePriceInput);
-    dataRowTarget.appendChild(salePriceTd);
+    appendRealEstateFieldSlot("매매가(시세)", "asset-asset-cell-sale-price", salePriceInput);
 
-    const loanTd = document.createElement("td");
-    loanTd.className = "asset-asset-cell-loan";
+    const purchasePriceInput = document.createElement("input");
+    purchasePriceInput.type = "text";
+    purchasePriceInput.className = "asset-real-estate-input-purchase-price";
+    purchasePriceInput.value = data.purchasePrice ? (formatNum(data.purchasePrice) || data.purchasePrice) : "";
+    purchasePriceInput.placeholder = "선택 · 평가 손익용";
+    purchasePriceInput.addEventListener("input", (e) =>
+      filterNumericInput(purchasePriceInput, false, e, { ignoreIMEComposition: true })
+    );
+    purchasePriceInput.addEventListener("input", () => {
+      updateAssetValueDisplay();
+      inRowUpdate();
+    });
+    purchasePriceInput.addEventListener("blur", () => {
+      const formatted = formatNum(purchasePriceInput.value);
+      if (formatted !== "") purchasePriceInput.value = formatted;
+      updateAssetValueDisplay();
+      inRowUpdate();
+    });
+    purchasePriceInput.addEventListener("keydown", (e) => e.key === "Enter" && purchasePriceInput.blur());
+    appendRealEstateFieldSlot("매입가(취득가액)", "asset-asset-cell-re-purchase", purchasePriceInput);
+
+    const areaSqmInput = document.createElement("input");
+    areaSqmInput.type = "text";
+    areaSqmInput.className = "asset-real-estate-input-area-sqm";
+    areaSqmInput.value = data.areaSqm ? (formatNum(data.areaSqm) || data.areaSqm) : "";
+    areaSqmInput.placeholder = "선택 · ㎡";
+    areaSqmInput.addEventListener("input", (e) =>
+      filterNumericInput(areaSqmInput, false, e, { ignoreIMEComposition: true })
+    );
+    areaSqmInput.addEventListener("input", () => inRowUpdate());
+    areaSqmInput.addEventListener("blur", () => {
+      const formatted = formatNum(areaSqmInput.value);
+      if (formatted !== "") areaSqmInput.value = formatted;
+      inRowUpdate();
+    });
+    areaSqmInput.addEventListener("keydown", (e) => e.key === "Enter" && areaSqmInput.blur());
+    appendRealEstateFieldSlot("면적(㎡)", "asset-asset-cell-re-area", areaSqmInput);
+
     const loanInput = document.createElement("input");
     loanInput.type = "text";
     loanInput.className = "asset-asset-input-loan";
     loanInput.value = data.loan ? (formatNum(data.loan) || data.loan) : "";
-    loanInput.placeholder = "-";
-    loanInput.addEventListener("input", (e) => filterNumericInput(loanInput, false, e));
+    loanInput.placeholder = "담보 대출 잔액";
+    loanInput.addEventListener("input", (e) =>
+      filterNumericInput(loanInput, false, e, { ignoreIMEComposition: true })
+    );
     loanInput.addEventListener("input", () => {
       updateAssetValueDisplay();
       inRowUpdate();
@@ -3330,27 +5527,166 @@ function renderNetworthView() {
       inRowUpdate();
     });
     loanInput.addEventListener("keydown", (e) => e.key === "Enter" && loanInput.blur());
-    loanTd.appendChild(loanInput);
-    dataRowTarget.appendChild(loanTd);
+    appendRealEstateFieldSlot("대출금(잔액)", "asset-asset-cell-loan", loanInput);
 
-    const assetValueTd = document.createElement("td");
-    assetValueTd.className = "asset-asset-cell-asset-value";
+    const occupancySelect = document.createElement("select");
+    occupancySelect.className = "asset-real-estate-input-occupancy";
+    occupancySelect.setAttribute("aria-label", "거주·임대");
+    [
+      ["owner", "직접 거주"],
+      ["landlord", "임대 중(세입자·보증금 차감)"],
+      ["tenant", "전·월세 거주(보증금만 자산)"],
+    ].forEach(([val, lab]) => {
+      const o = document.createElement("option");
+      o.value = val;
+      o.textContent = lab;
+      occupancySelect.appendChild(o);
+    });
+    const occInit = data.occupancy;
+    occupancySelect.value =
+      occInit === "landlord" || occInit === "tenant" || occInit === "owner" ? occInit : "owner";
+    occupancySelect.addEventListener("change", () => {
+      syncLeaseDepositVisibility();
+      updateAssetValueDisplay();
+      inRowUpdate();
+    });
+    appendRealEstateFieldSlot("거주·임대", "asset-asset-cell-re-occupancy", occupancySelect);
+
+    const leaseDepositInput = document.createElement("input");
+    leaseDepositInput.type = "text";
+    leaseDepositInput.className = "asset-real-estate-input-lease-deposit";
+    leaseDepositInput.value = data.leaseDeposit ? (formatNum(data.leaseDeposit) || data.leaseDeposit) : "";
+    leaseDepositInput.placeholder = "숫자만";
+    leaseDepositInput.addEventListener("input", (e) =>
+      filterNumericInput(leaseDepositInput, false, e, { ignoreIMEComposition: true })
+    );
+    leaseDepositInput.addEventListener("input", () => {
+      updateAssetValueDisplay();
+      inRowUpdate();
+    });
+    leaseDepositInput.addEventListener("blur", () => {
+      const formatted = formatNum(leaseDepositInput.value);
+      if (formatted !== "") leaseDepositInput.value = formatted;
+      updateAssetValueDisplay();
+      inRowUpdate();
+    });
+    leaseDepositInput.addEventListener("keydown", (e) => e.key === "Enter" && leaseDepositInput.blur());
+    appendRealEstateFieldSlot("보증금", "asset-asset-cell-re-lease-deposit", leaseDepositInput);
+
+    const monthlyRentInput = document.createElement("input");
+    monthlyRentInput.type = "text";
+    monthlyRentInput.className = "asset-real-estate-input-monthly-rent";
+    monthlyRentInput.value = data.monthlyRent ? (formatNum(data.monthlyRent) || data.monthlyRent) : "";
+    monthlyRentInput.placeholder = "선택 · 월세액";
+    monthlyRentInput.addEventListener("input", (e) =>
+      filterNumericInput(monthlyRentInput, false, e, { ignoreIMEComposition: true })
+    );
+    monthlyRentInput.addEventListener("input", () => inRowUpdate());
+    monthlyRentInput.addEventListener("blur", () => {
+      const formatted = formatNum(monthlyRentInput.value);
+      if (formatted !== "") monthlyRentInput.value = formatted;
+      inRowUpdate();
+    });
+    monthlyRentInput.addEventListener("keydown", (e) => e.key === "Enter" && monthlyRentInput.blur());
+    appendRealEstateFieldSlot("월세(참고)", "asset-asset-cell-re-monthly-rent", monthlyRentInput);
+
+    const holdingPeriodDisplay = document.createElement("span");
+    holdingPeriodDisplay.className = "asset-real-estate-holding-period-display";
+    appendRealEstateFieldSlot("보유 기간", "asset-asset-cell-re-holding", holdingPeriodDisplay, { computed: true });
+
+    const gainLossDisplay = document.createElement("span");
+    gainLossDisplay.className = "asset-real-estate-gain-loss-display";
+    appendRealEstateFieldSlot("평가 손익(시세−매입)", "asset-asset-cell-re-gain", gainLossDisplay, { computed: true });
+
     const assetValueDisplay = document.createElement("span");
     assetValueDisplay.className = "asset-asset-asset-value-display";
-    assetValueTd.appendChild(assetValueDisplay);
+
+    function syncLeaseDepositVisibility() {
+      const m = occupancySelect.value;
+      const leaseLab =
+        m === "landlord"
+          ? "임대 보증금(회수 예정)"
+          : m === "tenant"
+            ? "낸 보증금(전·월세)"
+            : "보증금";
+      const leaseRow =
+        leaseDepositInput.closest(".asset-expense-form-row") || leaseDepositInput.closest("td");
+      const monthlyRow =
+        monthlyRentInput.closest(".asset-expense-form-row") || monthlyRentInput.closest("td");
+      const labEl = leaseRow?.querySelector?.(".asset-expense-form-label");
+      if (labEl) labEl.textContent = leaseLab;
+      const showLease = m === "landlord" || m === "tenant";
+      if (leaseRow) {
+        leaseRow.hidden = !showLease;
+        leaseRow.setAttribute("aria-hidden", showLease ? "false" : "true");
+      }
+      if (monthlyRow) {
+        const showMonthly = m === "landlord";
+        monthlyRow.hidden = !showMonthly;
+        monthlyRow.setAttribute("aria-hidden", showMonthly ? "false" : "true");
+      }
+      leaseDepositInput.disabled = m === "owner";
+      monthlyRentInput.disabled = m !== "landlord";
+    }
 
     function updateAssetValueDisplay() {
+      const occ = occupancySelect.value;
+      const val = computeRealEstateNetFromInputs(
+        salePriceInput.value,
+        loanInput.value,
+        leaseDepositInput.value,
+        occ,
+      );
+      assetValueDisplay.textContent = val !== null && !Number.isNaN(val) ? `${formatNum(val)}원` : "";
+      assetValueDisplay.classList.toggle(
+        "asset-real-estate-asset-value--negative",
+        val !== null && !Number.isNaN(val) && val < 0,
+      );
+
+      const hp = formatRealEstateHoldingPeriod(acquisitionDateInput.value);
+      const monthsHeld = holdMonthCount(acquisitionDateInput.value);
+      holdingPeriodDisplay.textContent = hp
+        ? `${hp}${monthsHeld >= 24 ? " · 2년 이상 보유(양도세 참고)" : ""}`
+        : acquisitionDateInput.value
+          ? ""
+          : "취득일 입력 시 계산";
+
       const sale = parseNum(salePriceInput.value);
-      const loan = parseNum(loanInput.value);
-      const val = sale !== null && loan !== null ? sale - loan : null;
-      assetValueDisplay.textContent = val !== null ? formatNum(val) : "";
+      const pur = parseNum(purchasePriceInput.value);
+      if (pur !== null && sale !== null) {
+        const g = sale - pur;
+        gainLossDisplay.textContent =
+          g === 0 ? "0원" : `${g > 0 ? "+" : ""}${formatNum(g)}원`;
+      } else {
+        gainLossDisplay.textContent = "매입가·시세 입력 시";
+      }
     }
+
+    function holdMonthCount(dateStr) {
+      const d0 = parseDate(dateStr);
+      if (!d0) return 0;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const d = new Date(d0.getTime());
+      d.setHours(0, 0, 0, 0);
+      if (today < d) return 0;
+      let months =
+        (today.getFullYear() - d.getFullYear()) * 12 + (today.getMonth() - d.getMonth());
+      if (today.getDate() < d.getDate()) months -= 1;
+      return Math.max(0, months);
+    }
+
+    syncLeaseDepositVisibility();
     updateAssetValueDisplay();
-    dataRowTarget.appendChild(assetValueTd);
+    appendRealEstateFieldSlot("순자산가치(자동)", "asset-asset-cell-asset-value", assetValueDisplay, { computed: true });
 
     if (inPanel) {
       const doCancel = (e) => {
         e?.stopPropagation?.();
+        if (assetModalHandlers?.onCancel) {
+          assetModalHandlers.onCancel();
+          return;
+        }
         if (isDraft) {
           tr.remove();
           onAssetUpdate();
@@ -3367,15 +5703,25 @@ function renderNetworthView() {
       };
       if (xBtn) xBtn.addEventListener("click", doCancel);
       if (panelFooter) {
-        panelFooter.textContent = "";
-        if (isDraft) {
+        if (embeddedInAssetWizardModal) {
+          panelFooter.replaceChildren();
+          panelFooter.style.display = "none";
+        } else if (isDraft) {
           const saveBtn = document.createElement("button");
           saveBtn.type = "button";
           saveBtn.className = "asset-expense-inline-panel-btn asset-expense-inline-panel-btn--primary";
           saveBtn.textContent = "저장";
           saveBtn.addEventListener("click", (e) => {
             e.stopPropagation();
-            const d = readRealEstateDataFromTr(tr);
+            const pane =
+              e.currentTarget.closest(".asset-expense-inline-panel") ||
+              tr.querySelector(".asset-expense-inline-panel") ||
+              tr;
+            const d = readRealEstateDataFromTr(pane);
+            if (assetModalHandlers?.onSave) {
+              assetModalHandlers.onSave(d);
+              return;
+            }
             tr.replaceWith(createRealEstateRow(d, onAssetUpdate, { mode: "view" }));
             onAssetUpdate();
           });
@@ -3383,6 +5729,7 @@ function renderNetworthView() {
           footInner.className = "asset-expense-inline-panel-bottom-inner";
           footInner.appendChild(saveBtn);
           panelFooter.appendChild(footInner);
+          panelFooter.style.display = "";
         } else if (isEdit) {
           const delBtn2 = document.createElement("button");
           delBtn2.type = "button";
@@ -3394,6 +5741,10 @@ function renderNetworthView() {
           applyBtn.textContent = "수정";
           delBtn2.addEventListener("click", (e) => {
             e.stopPropagation();
+            if (assetModalHandlers?.onDelete) {
+              assetModalHandlers.onDelete();
+              return;
+            }
             confirmDeleteRow(() => {
               tr.remove();
               onAssetUpdate();
@@ -3401,7 +5752,15 @@ function renderNetworthView() {
           });
           applyBtn.addEventListener("click", (e) => {
             e.stopPropagation();
-            const d = readRealEstateDataFromTr(tr);
+            const pane =
+              e.currentTarget.closest(".asset-expense-inline-panel") ||
+              tr.querySelector(".asset-expense-inline-panel") ||
+              tr;
+            const d = readRealEstateDataFromTr(pane);
+            if (assetModalHandlers?.onSave) {
+              assetModalHandlers.onSave(d);
+              return;
+            }
             tr.replaceWith(createRealEstateRow(d, onAssetUpdate, { mode: "view" }));
             onAssetUpdate();
           });
@@ -3410,9 +5769,10 @@ function renderNetworthView() {
           footInner.appendChild(delBtn2);
           footInner.appendChild(applyBtn);
           panelFooter.appendChild(footInner);
+          panelFooter.style.display = "";
         }
       }
-    } else {
+    } else if (!suppressInlineActions) {
       const actionsTd = document.createElement("td");
       actionsTd.className = "asset-asset-cell-actions";
       const editBtn = document.createElement("button");
@@ -3432,7 +5792,9 @@ function renderNetworthView() {
     return tr;
   }
 
-  function createStockRow(data = {}, onAssetUpdate) {
+  function createStockRow(data = {}, onAssetUpdate, options = {}) {
+    const suppressInlineDelete = options.suppressInlineDelete === true;
+    const hideNwFloat = options.assetNetworthFloatingModal === true;
     const tr = document.createElement("tr");
     tr.className = "asset-asset-row asset-asset-row-stock";
     tr.dataset.stock = "true";
@@ -3449,11 +5811,6 @@ function renderNetworthView() {
     nameTd.appendChild(nameInput);
     tr.appendChild(nameTd);
 
-    const categoryTd = document.createElement("td");
-    categoryTd.className = "asset-stock-cell-category";
-    categoryTd.appendChild(createStockCategoryDropdown(data.category || "", onAssetUpdate));
-    tr.appendChild(categoryTd);
-
     const avgPriceTd = document.createElement("td");
     avgPriceTd.className = "asset-stock-cell-avg-price";
     const avgPriceInput = document.createElement("input");
@@ -3461,7 +5818,9 @@ function renderNetworthView() {
     avgPriceInput.className = "asset-stock-input-avg-price";
     avgPriceInput.value = data.avgPrice ? (formatNum(data.avgPrice) || data.avgPrice) : "";
     avgPriceInput.placeholder = "-";
-    avgPriceInput.addEventListener("input", (e) => filterNumericInput(avgPriceInput, true, e));
+    avgPriceInput.addEventListener("input", (e) =>
+      filterNumericInput(avgPriceInput, true, e, { ignoreIMEComposition: true })
+    );
     avgPriceInput.addEventListener("input", () => {
       updateStockCalculations();
       onAssetUpdate();
@@ -3483,7 +5842,9 @@ function renderNetworthView() {
     quantityInput.className = "asset-stock-input-quantity";
     quantityInput.value = data.quantity ?? "";
     quantityInput.placeholder = "-";
-    quantityInput.addEventListener("input", (e) => filterNumericInput(quantityInput, false, e));
+    quantityInput.addEventListener("input", (e) =>
+      filterNumericInput(quantityInput, false, e, { ignoreIMEComposition: true })
+    );
     quantityInput.addEventListener("input", () => {
       updateStockCalculations();
       onAssetUpdate();
@@ -3511,8 +5872,10 @@ function renderNetworthView() {
     currentPriceInput.type = "text";
     currentPriceInput.className = "asset-stock-input-current-price";
     currentPriceInput.value = data.currentPrice ? (formatNum(data.currentPrice) || data.currentPrice) : "";
-    currentPriceInput.placeholder = "-";
-    currentPriceInput.addEventListener("input", (e) => filterNumericInput(currentPriceInput, true, e));
+    currentPriceInput.placeholder = "직접 입력";
+    currentPriceInput.addEventListener("input", (e) =>
+      filterNumericInput(currentPriceInput, true, e, { ignoreIMEComposition: true })
+    );
     currentPriceInput.addEventListener("input", () => {
       updateStockCalculations();
       onAssetUpdate();
@@ -3548,15 +5911,30 @@ function renderNetworthView() {
     profitLossTd.appendChild(profitLossSpan);
     tr.appendChild(profitLossTd);
 
+    if (hideNwFloat) {
+      purchaseAmtTd.hidden = true;
+      appraisalAmtTd.hidden = true;
+      returnRateTd.hidden = true;
+      profitLossTd.hidden = true;
+    }
+
     function updateStockCalculations() {
       const avg = parseNum(avgPriceInput.value);
       const qty = parseNum(quantityInput.value);
-      const current = parseNum(currentPriceInput.value);
+      const curRaw = (currentPriceInput.value ?? "").trim();
+      const hasCurrentPrice = curRaw !== "";
+      const current = hasCurrentPrice ? parseNum(currentPriceInput.value) : null;
       const purchaseAmt = avg !== null && qty !== null && qty > 0 ? avg * qty : null;
-      const appraisalAmt = current !== null && qty !== null && qty > 0 ? current * qty : null;
+      const appraisalAmt =
+        current !== null && qty !== null && qty > 0 ? current * qty : null;
       const profitLoss = purchaseAmt !== null && appraisalAmt !== null ? appraisalAmt - purchaseAmt : null;
       const returnRate = purchaseAmt !== null && purchaseAmt > 0 && profitLoss !== null
         ? (profitLoss / purchaseAmt) * 100 : null;
+      let basis = "none";
+      if (appraisalAmt !== null) basis = "appraisal";
+      else if (purchaseAmt !== null && purchaseAmt > 0) basis = "purchase";
+      tr.dataset.assetStockNetWorthBasis = basis;
+      tr.classList.toggle("asset-asset-row-stock--no-current-price", basis === "purchase");
       purchaseAmtSpan.textContent = purchaseAmt !== null ? formatNum(Math.round(purchaseAmt)) : "";
       appraisalAmtSpan.textContent = appraisalAmt !== null ? formatNum(Math.round(appraisalAmt)) : "";
       if (profitLoss === null) {
@@ -3588,25 +5966,34 @@ function renderNetworthView() {
     }
     updateStockCalculations();
 
-    const actionsTd = document.createElement("td");
-    actionsTd.className = "asset-stock-cell-actions";
-    const delBtn = document.createElement("button");
-    delBtn.type = "button";
-    delBtn.className = "asset-asset-btn-delete";
-    delBtn.textContent = "삭제";
-    delBtn.addEventListener("click", () => {
-      confirmDeleteRow(() => {
-        tr.remove();
-        onAssetUpdate();
+    /** 순자산 모달 «수정»: 저장 클릭 직전 재계산 — 블러 없이 눌렀을 때도 반영 */
+    tr._flushAssetCalculationsBeforeSave = () => {
+      updateStockCalculations();
+    };
+
+    if (!suppressInlineDelete) {
+      const actionsTd = document.createElement("td");
+      actionsTd.className = "asset-stock-cell-actions";
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "asset-asset-btn-delete";
+      delBtn.textContent = "삭제";
+      delBtn.addEventListener("click", () => {
+        confirmDeleteRow(() => {
+          tr.remove();
+          onAssetUpdate();
+        });
       });
-    });
-    actionsTd.appendChild(delBtn);
-    tr.appendChild(actionsTd);
+      actionsTd.appendChild(delBtn);
+      tr.appendChild(actionsTd);
+    }
 
     return tr;
   }
 
-  function createInsuranceRow(data = {}, onAssetUpdate) {
+  function createInsuranceRow(data = {}, onAssetUpdate, options = {}) {
+    const suppressInlineDelete = options.suppressInlineDelete === true;
+    const hideNwFloat = options.assetNetworthFloatingModal === true;
     const tr = document.createElement("tr");
     tr.className = "asset-asset-row asset-asset-row-insurance";
     tr.dataset.insurance = "true";
@@ -3618,7 +6005,10 @@ function renderNetworthView() {
       input.className = cls;
       input.value = val ? (formatNum(val) || val) : "";
       input.placeholder = placeholder;
-      input.addEventListener("input", onAssetUpdate);
+      input.addEventListener("input", (e) => {
+        filterNumericInput(input, false, e, { ignoreIMEComposition: true });
+        onAssetUpdate();
+      });
       input.addEventListener("blur", () => {
         const f = formatNum(input.value);
         if (f !== "") input.value = f;
@@ -3687,6 +6077,7 @@ function renderNetworthView() {
     totalPaidSpan.className = "asset-insurance-total-paid-display";
     totalPaidTd.appendChild(totalPaidSpan);
     tr.appendChild(totalPaidTd);
+    if (hideNwFloat) totalPaidTd.hidden = true;
 
     function updateTotalPaid() {
       const monthly = parseNum(monthlyInput.value);
@@ -3712,39 +6103,50 @@ function renderNetworthView() {
     monthlyInput.addEventListener("blur", updateTotalPaid);
     updateTotalPaid();
 
+    tr._flushAssetCalculationsBeforeSave = () => {
+      updateTotalPaid();
+    };
+
     addNumInputTd("asset-insurance-input-surrender", data.surrenderValue);
     addTextInputTd("asset-insurance-input-coverage", data.coverage);
 
-    const actionsTd = document.createElement("td");
-    actionsTd.className = "asset-asset-cell-actions";
-    const delBtn = document.createElement("button");
-    delBtn.type = "button";
-    delBtn.className = "asset-asset-btn-delete";
-    delBtn.textContent = "삭제";
-    delBtn.addEventListener("click", () => {
-      confirmDeleteRow(() => {
-        tr.remove();
-        onAssetUpdate();
+    if (!suppressInlineDelete) {
+      const actionsTd = document.createElement("td");
+      actionsTd.className = "asset-asset-cell-actions";
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "asset-asset-btn-delete";
+      delBtn.textContent = "삭제";
+      delBtn.addEventListener("click", () => {
+        confirmDeleteRow(() => {
+          tr.remove();
+          onAssetUpdate();
+        });
       });
-    });
-    actionsTd.appendChild(delBtn);
-    tr.appendChild(actionsTd);
+      actionsTd.appendChild(delBtn);
+      tr.appendChild(actionsTd);
+    }
     return tr;
   }
 
-  function createAnnuityRow(data = {}, onAssetUpdate) {
+  function createAnnuityRow(data = {}, onAssetUpdate, options = {}) {
+    const suppressInlineDelete = options.suppressInlineDelete === true;
+    const hideNwFloat = options.assetNetworthFloatingModal === true;
     const tr = document.createElement("tr");
     tr.className = "asset-asset-row asset-asset-row-annuity";
     tr.dataset.annuity = "true";
 
-    const addNumInputTd = (cls, val, placeholder = "-") => {
+    const addNumInputTd = (cls, val, placeholder = "-", allowDecimal = false, tdClass = "") => {
       const td = document.createElement("td");
+      if (tdClass) td.className = tdClass;
       const input = document.createElement("input");
       input.type = "text";
       input.className = cls;
       input.value = val ? (formatNum(val) || val) : "";
       input.placeholder = placeholder;
-      input.addEventListener("input", (e) => filterNumericInput(input, false, e));
+      input.addEventListener("input", (e) =>
+        filterNumericInput(input, allowDecimal, e, { ignoreIMEComposition: true })
+      );
       input.addEventListener("input", () => { updateAnnuityCalc(); onAssetUpdate(); });
       input.addEventListener("blur", () => {
         const f = formatNum(input.value);
@@ -3757,8 +6159,9 @@ function renderNetworthView() {
       tr.appendChild(td);
       return input;
     };
-    const addTextInputTd = (cls, val, placeholder = "-") => {
+    const addTextInputTd = (cls, val, placeholder = "-", tdClass = "") => {
       const td = document.createElement("td");
+      if (tdClass) td.className = tdClass;
       const input = document.createElement("input");
       input.type = "text";
       input.className = cls;
@@ -3806,8 +6209,9 @@ function renderNetworthView() {
       return input;
     };
 
-    addTextInputTd("asset-annuity-input-name", data.name, "");
-    addTextInputTd("asset-annuity-input-kind", data.kind || "", "-");
+    addTextInputTd("asset-annuity-input-name", data.name, "", "asset-annuity-cell-name");
+    addTextInputTd("asset-annuity-input-kind", data.kind || "", "-", "asset-annuity-cell-kind");
+    addNumInputTd("asset-annuity-input-surrender", data.surrenderValue, "-", false, "asset-annuity-cell-surrender");
     const paymentStartInput = addDateInputTd("asset-annuity-input-payment-start", data.paymentStartDate, updateAnnuityCalc);
     const paymentEndInput = addDateInputTd("asset-annuity-input-payment-end", data.paymentEndDate, updateAnnuityCalc);
 
@@ -3826,9 +6230,18 @@ function renderNetworthView() {
     totalPaidSpan.className = "asset-annuity-total-paid-display";
     totalPaidTd.appendChild(totalPaidSpan);
     tr.appendChild(totalPaidTd);
+    if (hideNwFloat) {
+      paymentYearsTd.hidden = true;
+      totalPaidTd.hidden = true;
+    }
 
     const receiptStartInput = addDateInputTd("asset-annuity-input-receipt-start", data.receiptStartDate);
-    const monthlyReceiptInput = addNumInputTd("asset-annuity-input-monthly-receipt", data.monthlyReceipt);
+    const monthlyReceiptInput = addNumInputTd(
+      "asset-annuity-input-monthly-receipt",
+      data.monthlyReceipt,
+      "-",
+      true
+    );
 
     function updateAnnuityCalc() {
       const startStr = paymentStartInput.value;
@@ -3859,28 +6272,39 @@ function renderNetworthView() {
     monthlyInput.addEventListener("blur", updateAnnuityCalc);
     updateAnnuityCalc();
 
-    const actionsTd = document.createElement("td");
-    actionsTd.className = "asset-asset-cell-actions";
-    const delBtn = document.createElement("button");
-    delBtn.type = "button";
-    delBtn.className = "asset-asset-btn-delete";
-    delBtn.textContent = "삭제";
-    delBtn.addEventListener("click", () => {
-      confirmDeleteRow(() => {
-        tr.remove();
-        onAssetUpdate();
+    tr._flushAssetCalculationsBeforeSave = () => {
+      updateAnnuityCalc();
+    };
+
+    if (!suppressInlineDelete) {
+      const actionsTd = document.createElement("td");
+      actionsTd.className = "asset-asset-cell-actions";
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "asset-asset-btn-delete";
+      delBtn.textContent = "삭제";
+      delBtn.addEventListener("click", () => {
+        confirmDeleteRow(() => {
+          tr.remove();
+          onAssetUpdate();
+        });
       });
-    });
-    actionsTd.appendChild(delBtn);
-    tr.appendChild(actionsTd);
+      actionsTd.appendChild(delBtn);
+      tr.appendChild(actionsTd);
+    }
     return tr;
   }
 
-  function createAssetRow(data = {}, onAssetUpdate, isSavings = false, savingsDefaultType = "예적금잔고", isDeposit = false) {
+  function createAssetRow(data = {}, onAssetUpdate, isSavings = false, savingsDefaultType = "예적금잔고", isDeposit = false, options = {}) {
+    const suppressInlineDelete = options.suppressInlineDelete === true;
+    const hideNwFloatMeasures = options.assetNetworthFloatingModal === true;
     const tr = document.createElement("tr");
     tr.className = "asset-asset-row";
     if (isSavings) tr.dataset.savings = "true";
-    if (isSavings) tr.dataset.matured = data.matured ? "true" : "false";
+    if (isSavings || isDeposit) {
+      tr.dataset.matured = data.matured ? "true" : "false";
+      tr.dataset.withdrawn = data.withdrawn ? "true" : "false";
+    }
 
     const nameTd = document.createElement("td");
     nameTd.className = "asset-asset-cell-name";
@@ -3894,26 +6318,33 @@ function renderNetworthView() {
     nameTd.appendChild(nameInput);
     tr.appendChild(nameTd);
 
-    const categoryTd = document.createElement("td");
-    categoryTd.className = "asset-asset-cell-category";
-    if (isSavings) {
-      categoryTd.appendChild(createSavingsGoalDropdown(data.assetCategory || "", onAssetUpdate));
+    if (isDeposit) {
+      tr.classList.add("asset-asset-row--deposit");
+      if (hideNwFloatMeasures) {
+        const typeHiddenDeposit = document.createElement("input");
+        typeHiddenDeposit.type = "hidden";
+        typeHiddenDeposit.className = "asset-asset-input-type";
+        typeHiddenDeposit.value =
+          (data.assetType && String(data.assetType).trim()) || "CMA";
+        typeHiddenDeposit.name = "assetType";
+        nameTd.appendChild(typeHiddenDeposit);
+      }
+    } else if (isSavings) {
       const typeHidden = document.createElement("input");
       typeHidden.type = "hidden";
       typeHidden.className = "asset-asset-input-type";
       typeHidden.value = data.assetType || savingsDefaultType;
       typeHidden.name = "assetType";
-      categoryTd.appendChild(typeHidden);
-    } else {
-      categoryTd.appendChild(createAssetCategoryDropdown(data.assetCategory || "", onAssetUpdate));
+      nameTd.appendChild(typeHidden);
     }
-    tr.appendChild(categoryTd);
 
     if (!isSavings) {
       const assetTypeTd = document.createElement("td");
       assetTypeTd.className = "asset-asset-cell-type";
       assetTypeTd.appendChild(createAssetTypeDropdown(data.assetType || "", onAssetUpdate));
-      tr.appendChild(assetTypeTd);
+      if (!(hideNwFloatMeasures && isDeposit)) {
+        tr.appendChild(assetTypeTd);
+      }
     }
 
     const principalTd = document.createElement("td");
@@ -3923,7 +6354,9 @@ function renderNetworthView() {
     principalInput.className = "asset-asset-input-principal";
     principalInput.value = data.principal ? (formatNum(data.principal) || data.principal) : "";
     principalInput.placeholder = "-";
-    principalInput.addEventListener("input", (e) => filterNumericInput(principalInput, false, e));
+    principalInput.addEventListener("input", (e) =>
+      filterNumericInput(principalInput, false, e, { ignoreIMEComposition: true })
+    );
     principalInput.addEventListener("input", () => {
       if (isDeposit) updateDepositMaturityAmt();
       onAssetUpdate();
@@ -3941,6 +6374,11 @@ function renderNetworthView() {
 
     function updateDepositMaturityAmt() {
       if (!isDeposit) return;
+      const rateEl = tr.querySelector(".asset-asset-maturity-rate-display");
+      if (rateEl) {
+        const pr = calcMaturityRate(openDateInput?.value, maturityDateInput?.value);
+        rateEl.textContent = pr !== null ? `${pr}%` : "";
+      }
       const result = calcDepositMaturityAmount(
         principalInput.value,
         openDateInput?.value,
@@ -3957,16 +6395,21 @@ function renderNetworthView() {
       }
     }
 
+    const nwModalSavPair = hideNwFloatMeasures === true && isSavings === true && isDeposit !== true;
+    /** 순자산 떠 있는 모달: 월 불입과 약정 개월을 한 줄 그리드에 두기 위해 DOM 순서를 붙입니다. */
+    let monthlyTd;
     let monthlyInput;
     if (!isDeposit) {
-      const monthlyTd = document.createElement("td");
+      monthlyTd = document.createElement("td");
       monthlyTd.className = "asset-asset-cell-monthly";
       monthlyInput = document.createElement("input");
       monthlyInput.type = "text";
       monthlyInput.className = "asset-asset-input-monthly";
       monthlyInput.value = data.monthly ? (formatNum(data.monthly) || data.monthly) : "";
       monthlyInput.placeholder = "-";
-      monthlyInput.addEventListener("input", (e) => filterNumericInput(monthlyInput, false, e));
+      monthlyInput.addEventListener("input", (e) =>
+        filterNumericInput(monthlyInput, false, e, { ignoreIMEComposition: true })
+      );
       monthlyInput.addEventListener("input", () => {
         updatePrincipalFromCalc();
         updateInterestAndMaturityAmt();
@@ -3977,8 +6420,16 @@ function renderNetworthView() {
         if (formatted !== "") monthlyInput.value = formatted;
       });
       monthlyInput.addEventListener("keydown", (e) => e.key === "Enter" && monthlyInput.blur());
-      monthlyTd.appendChild(monthlyInput);
-      tr.appendChild(monthlyTd);
+      const monthlySuffixWrap = document.createElement("div");
+      monthlySuffixWrap.className = "asset-debt-input-suffix-wrap";
+      monthlySuffixWrap.appendChild(monthlyInput);
+      const monthlyUnit = document.createElement("span");
+      monthlyUnit.className = "asset-debt-input-suffix-unit";
+      monthlyUnit.setAttribute("aria-hidden", "true");
+      monthlyUnit.textContent = "원";
+      monthlySuffixWrap.appendChild(monthlyUnit);
+      monthlyTd.appendChild(monthlySuffixWrap);
+      if (!nwModalSavPair) tr.appendChild(monthlyTd);
     }
 
     function getTotalMonths() {
@@ -3988,10 +6439,13 @@ function renderNetworthView() {
       const open = parseDate(openDateInput?.value);
       const maturity = parseDate(maturityDateInput?.value);
       if (!open || !maturity || maturity <= open) return null;
-      return (
-        (maturity.getFullYear() - open.getFullYear()) * 12 +
-        (maturity.getMonth() - open.getMonth())
-      );
+      const openZ = new Date(open.getTime());
+      openZ.setHours(0, 0, 0, 0);
+      const matZ = new Date(maturity.getTime());
+      matZ.setHours(0, 0, 0, 0);
+      const months = calendarMonthsCompleted(openZ, matZ);
+      if (months === null || months <= 0) return null;
+      return months;
     }
 
     function updatePrincipalFromCalc() {
@@ -4034,8 +6488,14 @@ function renderNetworthView() {
     rateInput.className = "asset-asset-input-rate";
     rateInput.value = data.rate ?? "";
     rateInput.placeholder = isSavings ? "예: 4.2" : "-";
-    rateInput.title = isSavings ? "연 금리, 퍼센트 숫자만 (4.2 = 4.2%, % 생략 가능)" : "";
-    rateInput.addEventListener("input", (e) => filterNumericInput(rateInput, true, e));
+    rateInput.title = isSavings
+      ? "연 금리, 퍼센트 숫자만 (4.2 = 4.2%). 월할 단리 참고이며 은행 약정과 다를 수 있습니다."
+      : isDeposit
+        ? "연 단리 참고. 개설~만기 일수 기준 표시, 실제 약정과 다를 수 있습니다."
+        : "";
+    rateInput.addEventListener("input", (e) =>
+      filterNumericInput(rateInput, true, e, { ignoreIMEComposition: true })
+    );
     rateInput.addEventListener("input", () => {
       if (isDeposit) updateDepositMaturityAmt();
       else {
@@ -4045,19 +6505,34 @@ function renderNetworthView() {
       onAssetUpdate();
     });
     rateInput.addEventListener("keydown", (e) => e.key === "Enter" && rateInput.blur());
-    rateTd.appendChild(rateInput);
-    tr.appendChild(rateTd);
+    if (isDeposit) {
+      const rateWrap = document.createElement("div");
+      rateWrap.className = "asset-debt-input-suffix-wrap";
+      rateWrap.appendChild(rateInput);
+      const rateUnit = document.createElement("span");
+      rateUnit.className = "asset-debt-input-suffix-unit";
+      rateUnit.setAttribute("aria-hidden", "true");
+      rateUnit.textContent = "%";
+      rateWrap.appendChild(rateUnit);
+      rateTd.appendChild(rateWrap);
+    } else {
+      rateTd.appendChild(rateInput);
+    }
+    if (!nwModalSavPair) tr.appendChild(rateTd);
 
+    let monthsTd;
     let monthsInput;
     if (!isDeposit) {
-      const monthsTd = document.createElement("td");
+      monthsTd = document.createElement("td");
       monthsTd.className = "asset-asset-cell-months";
       monthsInput = document.createElement("input");
       monthsInput.type = "text";
       monthsInput.className = "asset-asset-input-months";
       monthsInput.value = data.months ?? "";
       monthsInput.placeholder = "-";
-      monthsInput.addEventListener("input", (e) => filterNumericInput(monthsInput, false, e));
+      monthsInput.addEventListener("input", (e) =>
+        filterNumericInput(monthsInput, false, e, { ignoreIMEComposition: true })
+      );
       monthsInput.addEventListener("input", () => {
         syncSavingsMaturityFromOpenAndMonths();
         updatePrincipalFromCalc();
@@ -4065,8 +6540,22 @@ function renderNetworthView() {
         onAssetUpdate();
       });
       monthsInput.addEventListener("keydown", (e) => e.key === "Enter" && monthsInput.blur());
-      monthsTd.appendChild(monthsInput);
+      const monthsSuffixWrap = document.createElement("div");
+      monthsSuffixWrap.className = "asset-debt-input-suffix-wrap";
+      monthsSuffixWrap.appendChild(monthsInput);
+      const monthsUnit = document.createElement("span");
+      monthsUnit.className = "asset-debt-input-suffix-unit";
+      monthsUnit.setAttribute("aria-hidden", "true");
+      monthsUnit.textContent = "개월";
+      monthsSuffixWrap.appendChild(monthsUnit);
+      monthsTd.appendChild(monthsSuffixWrap);
+      if (!nwModalSavPair) tr.appendChild(monthsTd);
+    }
+
+    if (nwModalSavPair && monthlyTd && monthsTd && rateTd) {
+      tr.appendChild(monthlyTd);
       tr.appendChild(monthsTd);
+      tr.appendChild(rateTd);
     }
 
     /* 적금: 개설일+개월 → 만기일 자동(대출 만기와 동일). 본문은 maturityDateInput 생성 후 할당 */
@@ -4105,6 +6594,9 @@ function renderNetworthView() {
     openDateWrap.appendChild(openDateDisplay);
     openDateWrap.appendChild(openDateInput);
     openDateTd.appendChild(openDateWrap);
+    if (isDeposit || isSavings) {
+      openDateTd.title = "개설일이 없으면 납입 진행률·이자 참고값이 비어 있을 수 있습니다.";
+    }
     tr.appendChild(openDateTd);
 
     const maturityDateTd = document.createElement("td");
@@ -4123,16 +6615,14 @@ function renderNetworthView() {
     }
     syncSavingsMaturityFromOpenAndMonths = function () {
       if (isDeposit || !monthsInput) return;
-      const open = parseDate(openDateInput.value);
+      const openStr = openDateInput.value?.trim();
       const m = parseNum(monthsInput.value);
-      if (!open || m === null || m <= 0) return;
-      const end = new Date(open);
-      end.setMonth(end.getMonth() + Math.floor(m));
-      const y = end.getFullYear();
-      const mo = String(end.getMonth() + 1).padStart(2, "0");
-      const d = String(end.getDate()).padStart(2, "0");
-      maturityDateInput.value = `${y}-${mo}-${d}`;
-      refreshMaturityDate();
+      if (!openStr || m === null || m <= 0) return;
+      const out = addCalendarMonthsClamped(openStr, Math.floor(m));
+      if (out) {
+        maturityDateInput.value = out;
+        refreshMaturityDate();
+      }
     };
     maturityDateInput.addEventListener("change", () => {
       refreshMaturityDate();
@@ -4169,6 +6659,7 @@ function renderNetworthView() {
     maturityRateSpan.className = "asset-asset-maturity-rate-display";
     maturityRateTd.appendChild(maturityRateSpan);
     tr.appendChild(maturityRateTd);
+    if (hideNwFloatMeasures && !isDeposit) maturityRateTd.hidden = true;
 
     const interestTd = document.createElement("td");
     interestTd.className = "asset-asset-cell-interest";
@@ -4177,9 +6668,11 @@ function renderNetworthView() {
     interestDisplay.textContent = "";
     interestTd.appendChild(interestDisplay);
     tr.appendChild(interestTd);
+    if (hideNwFloatMeasures && !isDeposit) interestTd.hidden = true;
 
     if (deferPrincipalToBeforeMaturityAmt) {
       tr.appendChild(principalTd);
+      if (hideNwFloatMeasures) principalTd.hidden = true;
     }
 
     const maturityAmtTd = document.createElement("td");
@@ -4187,8 +6680,13 @@ function renderNetworthView() {
     const maturityAmtDisplay = document.createElement("span");
     maturityAmtDisplay.className = "asset-asset-maturity-amt-display";
     maturityAmtDisplay.textContent = "";
+    if (isDeposit || isSavings) {
+      interestDisplay.title = "참고용 추정 이자입니다. 은행 약정과 다를 수 있습니다.";
+      maturityAmtDisplay.title = "참고용 만기예상입니다. 은행 약정과 다를 수 있습니다.";
+    }
     maturityAmtTd.appendChild(maturityAmtDisplay);
     tr.appendChild(maturityAmtTd);
+    if (hideNwFloatMeasures && !isDeposit) maturityAmtTd.hidden = true;
 
     if (isDeposit) updateDepositMaturityAmt();
     else {
@@ -4199,20 +6697,36 @@ function renderNetworthView() {
       updateInterestAndMaturityAmt();
     }
 
-    const actionsTd = document.createElement("td");
-    actionsTd.className = "asset-asset-cell-actions";
-    const delBtn = document.createElement("button");
-    delBtn.type = "button";
-    delBtn.className = "asset-asset-btn-delete";
-    delBtn.textContent = "삭제";
-    delBtn.addEventListener("click", () => {
-      confirmDeleteRow(() => {
-        tr.remove();
-        onAssetUpdate();
+    tr._flushAssetCalculationsBeforeSave = () => {
+      if (isDeposit) {
+        updateDepositMaturityAmt();
+        return;
+      }
+      if (isSavings && monthsInput && openDateInput.value && monthsInput.value) {
+        syncSavingsMaturityFromOpenAndMonths();
+      }
+      if (principalTd.hidden) {
+        updatePrincipalFromCalc();
+      }
+      updateInterestAndMaturityAmt();
+    };
+
+    if (!suppressInlineDelete) {
+      const actionsTd = document.createElement("td");
+      actionsTd.className = "asset-asset-cell-actions";
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "asset-asset-btn-delete";
+      delBtn.textContent = "삭제";
+      delBtn.addEventListener("click", () => {
+        confirmDeleteRow(() => {
+          tr.remove();
+          onAssetUpdate();
+        });
       });
-    });
-    actionsTd.appendChild(delBtn);
-    tr.appendChild(actionsTd);
+      actionsTd.appendChild(delBtn);
+      tr.appendChild(actionsTd);
+    }
 
     return tr;
   }
@@ -4237,109 +6751,71 @@ function renderNetworthView() {
   }
 
   function updateAssetTotals() {
-    ASSET_GROUPS.forEach((g) => {
-      const el = subsectionElements[g.key];
-      if (!el) return;
-      let sum = 0;
-      if (el.isStock) {
-        let sumPurchase = 0;
-        el.tbody.querySelectorAll(".asset-asset-row-stock").forEach((tr) => {
-          const purchaseSpan = tr.querySelector(".asset-stock-purchase-amt-display");
-          const purchase = parseNum(purchaseSpan?.textContent);
-          if (purchase !== null) sumPurchase += purchase;
-          const appraisalSpan = tr.querySelector(".asset-stock-appraisal-amt-display");
-          const appraisal = parseNum(appraisalSpan?.textContent);
-          if (appraisal !== null) sum += appraisal;
-        });
-        const purchaseCell = el.totalsRow.querySelector(".asset-stock-cell-totals-purchase-amt");
-        if (purchaseCell) purchaseCell.textContent = sumPurchase > 0 ? formatNum(sumPurchase) : "";
-      } else if (el.isRealEstate) {
-        let saleTotal = 0;
-        let loanTotal = 0;
-        el.tbody.querySelectorAll(".asset-asset-row-real-estate").forEach((tr) => {
-          const sale = parseNum(tr.querySelector(".asset-asset-input-sale-price")?.value);
-          const loan = parseNum(tr.querySelector(".asset-asset-input-loan")?.value);
-          if (sale !== null && loan !== null) sum += sale - loan;
-          if (sale !== null) saleTotal += sale;
-          if (loan !== null) loanTotal += loan;
-        });
-        const saleCell = el.totalsRow.querySelector(".asset-asset-cell-totals-sale-price");
-        const loanCell = el.totalsRow.querySelector(".asset-asset-cell-totals-loan");
-        if (saleCell) saleCell.textContent = saleTotal > 0 ? formatNum(saleTotal) : "";
-        if (loanCell) loanCell.textContent = loanTotal > 0 ? formatNum(loanTotal) : "";
-      } else if (el.isInsurance) {
-        el.tbody.querySelectorAll(".asset-asset-row-insurance").forEach((tr) => {
-          const surrender = parseNum(tr.querySelector(".asset-insurance-input-surrender")?.value);
-          if (surrender !== null) sum += surrender;
-        });
-        const surrenderCell = el.totalsRow.querySelector(".asset-insurance-cell-totals-surrender");
-        if (surrenderCell) surrenderCell.textContent = sum > 0 ? formatNum(sum) : "-";
-      } else if (el.isAnnuity) {
-        let monthlyReceiptTotal = 0;
-        el.tbody.querySelectorAll(".asset-asset-row-annuity").forEach((tr) => {
-          const totalPaid = parseNum(tr.querySelector(".asset-annuity-total-paid-display")?.textContent);
-          const monthlyReceipt = parseNum(tr.querySelector(".asset-annuity-input-monthly-receipt")?.value);
-          if (totalPaid !== null) sum += totalPaid;
-          if (monthlyReceipt !== null) monthlyReceiptTotal += monthlyReceipt;
-        });
-        const totalPaidCell = el.totalsRow.querySelector(".asset-annuity-cell-totals-total-paid");
-        const monthlyReceiptCell = el.totalsRow.querySelector(".asset-annuity-cell-totals-monthly-receipt");
-        if (totalPaidCell) totalPaidCell.textContent = sum > 0 ? formatNum(sum) : "";
-        if (monthlyReceiptCell) monthlyReceiptCell.textContent = monthlyReceiptTotal > 0 ? formatNum(monthlyReceiptTotal) : "";
-      } else {
-        let sumMaturityAmt = 0;
-        el.tbody.querySelectorAll(".asset-asset-row:not(.asset-asset-row-real-estate):not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(.asset-asset-row-annuity)").forEach((tr) => {
-          if (tr.dataset.matured === "true") return;
-          const p = parseNum(tr.querySelector(".asset-asset-input-principal")?.value);
-          if (p !== null) sum += p;
-          if (g.key === "예금" || g.key === "적금") {
-            const m = parseNum(tr.querySelector(".asset-asset-maturity-amt-display")?.textContent);
-            if (m !== null) sumMaturityAmt += m;
-          }
-        });
-        const maturityAmtCell = el.totalsRow.querySelector(".asset-asset-cell-totals-maturity-amt");
-        if (maturityAmtCell) maturityAmtCell.textContent = sumMaturityAmt > 0 ? formatNum(sumMaturityAmt) : "-";
-      }
-      const emptyVal = el.isRealEstate || el.isStock ? "" : "-";
-      el.totalsCell.textContent = sum > 0 ? formatNum(sum) : emptyVal;
-    });
+    /* 그룹별 표 합계 제거: 순자산 합계는 updateNetWorthDashboard에서 산출 */
   }
 
   updateNetWorthDashboard = () => {
     let sumAssets = 0;
+    const includeInterest =
+      assetSection.querySelector(".asset-networth-dashboard-include-deposit-interest")?.checked === true;
     assetTableWrap.querySelectorAll(".asset-asset-row:not(.asset-asset-row-real-estate):not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(.asset-asset-row-annuity)").forEach((tr) => {
-      if (tr.dataset.matured === "true") return;
+      const isDep = tr.classList.contains("asset-asset-row--deposit");
+      const isSav = tr.dataset.savings === "true";
+      if (isDep || isSav) {
+        sumAssets += getDepositLikeAmountForNetWorth(tr, includeInterest);
+        return;
+      }
       const p = parseNum(tr.querySelector(".asset-asset-input-principal")?.value);
       if (p !== null) sumAssets += p;
     });
     assetTableWrap.querySelectorAll(".asset-asset-row-real-estate").forEach((tr) => {
-      const sale = parseNum(tr.querySelector(".asset-asset-input-sale-price")?.value);
-      const loan = parseNum(tr.querySelector(".asset-asset-input-loan")?.value);
-      if (sale !== null && loan !== null) sumAssets += sale - loan;
+      const occ = tr.querySelector(".asset-real-estate-input-occupancy")?.value || "owner";
+      const net = computeRealEstateNetFromInputs(
+        tr.querySelector(".asset-asset-input-sale-price")?.value,
+        tr.querySelector(".asset-asset-input-loan")?.value,
+        tr.querySelector(".asset-real-estate-input-lease-deposit")?.value ?? "",
+        occ,
+      );
+      if (net !== null && !Number.isNaN(net)) sumAssets += net;
     });
     assetTableWrap.querySelectorAll(".asset-asset-row-stock").forEach((tr) => {
-      const appraisalSpan = tr.querySelector(".asset-stock-appraisal-amt-display");
-      const appraisal = parseNum(appraisalSpan?.textContent);
-      if (appraisal !== null) sumAssets += appraisal;
+      const basis = tr.dataset.assetStockNetWorthBasis || "";
+      const appraisal = parseNum(tr.querySelector(".asset-stock-appraisal-amt-display")?.textContent);
+      const purchase = parseNum(tr.querySelector(".asset-stock-purchase-amt-display")?.textContent);
+      if (basis === "appraisal" && appraisal !== null) {
+        sumAssets += appraisal;
+      } else if (basis === "purchase" && purchase !== null) {
+        sumAssets += purchase;
+      } else if (appraisal !== null) {
+        sumAssets += appraisal;
+      } else if (purchase !== null) {
+        sumAssets += purchase;
+      }
     });
     assetTableWrap.querySelectorAll(".asset-asset-row-insurance").forEach((tr) => {
       const surrender = parseNum(tr.querySelector(".asset-insurance-input-surrender")?.value);
       if (surrender !== null) sumAssets += surrender;
     });
     assetTableWrap.querySelectorAll(".asset-asset-row-annuity").forEach((tr) => {
+      const sur = parseNum(tr.querySelector(".asset-annuity-input-surrender")?.value);
       const totalPaid = parseNum(tr.querySelector(".asset-annuity-total-paid-display")?.textContent);
-      if (totalPaid !== null) sumAssets += totalPaid;
+      const forNet = sur !== null ? sur : totalPaid;
+      if (forNet !== null) sumAssets += forNet;
     });
     let sumDebt = 0;
-    table.querySelectorAll(".asset-debt-row").forEach((tr) => {
+    cardsList.querySelectorAll(".asset-debt-row.asset-debt-row--view").forEach((tr) => {
       const balanceEl = tr.querySelector(".asset-debt-balance-display");
       const balance = parseNum(balanceEl?.textContent);
       if (balance !== null) sumDebt += balance;
     });
     const netWorth = sumAssets - sumDebt;
-    if (assetsValueEl) assetsValueEl.textContent = sumAssets !== 0 ? formatNum(sumAssets) : "-";
+    if (assetsValueEl) {
+      assetsValueEl.textContent = sumAssets !== 0 ? formatNum(sumAssets) : "-";
+      assetsValueEl.classList.toggle("asset-networth-dashboard-formula-value--negative", sumAssets < 0);
+    }
     if (debtValueEl) debtValueEl.textContent = sumDebt !== 0 ? formatNum(sumDebt) : "-";
     netWorthValueEl.textContent = netWorth !== 0 ? formatNum(netWorth) : "-";
+    netWorthValueEl.classList.toggle("asset-networth-dashboard-formula-value--negative", netWorth < 0);
 
     const targetVal = parseNum(targetInput.value);
     if (targetVal !== null && targetVal > 0) {
@@ -4384,7 +6860,13 @@ function renderNetworthView() {
     if (!tbody) return;
     tbody.querySelectorAll(".asset-asset-row").forEach((tr) => {
       const matured = tr.dataset.matured === "true";
-      const show = tab === "in-progress" ? !matured : matured;
+      const withdrawn = tr.dataset.withdrawn === "true";
+      let show;
+      if (tab === "in-progress") {
+        show = !matured && !withdrawn;
+      } else {
+        show = matured || withdrawn;
+      }
       tr.style.display = show ? "" : "none";
     });
     tabsEl.querySelectorAll(".asset-asset-tab-btn").forEach((btn) => {
@@ -4392,477 +6874,43 @@ function renderNetworthView() {
     });
   }
 
-  /** 예·적금·부동산·주식·보험·연금 셀 변경·행 삭제·추가 시마다 호출 → saveAssets + 화면 합계 갱신 */
-  const onAssetUpdate = () => {
+  /** 예·적금·부동산·주식·보험·연금 셀 변경·카드 수정 시 호출 → saveAssets + 화면 갱신 */
+  onAssetUpdate = () => {
     updateAllMaturityRates();
     saveAssets();
     updateAssetCount();
     updateAssetTotals();
+    assetTableWrap.querySelectorAll(".asset-asset-card").forEach((c) => paintAssetCard(c));
     updateNetWorthDashboard();
   };
 
-  ASSET_GROUPS.forEach((g) => {
-    const isDeposit = g.key === "예금";
-    const isSavings = g.key === "예금" || g.key === "적금";
-    const subSection = document.createElement("div");
-    subSection.className = "asset-asset-subsection";
-    subSection.dataset.group = g.key;
-
-    const subHeader = document.createElement("div");
-    subHeader.className = "asset-asset-subheader";
-    subHeader.innerHTML = `<span class="asset-asset-subtitle">${g.label}</span>`;
-
-    let tabsEl = null;
-    if (isDeposit || (isSavings && g.key === "적금")) {
-      tabsEl = document.createElement("div");
-      tabsEl.className = "asset-asset-deposit-savings-tabs";
-      tabsEl.dataset.depositSavingsTabs = "";
-      tabsEl.dataset.activeTab = "in-progress";
-      tabsEl.innerHTML = `
-        <button type="button" class="asset-asset-tab-btn is-active" data-tab="in-progress">보유중</button>
-        <button type="button" class="asset-asset-tab-btn" data-tab="matured">만기</button>
-      `;
-      tabsEl.querySelectorAll(".asset-asset-tab-btn").forEach((btn) => {
-        btn.addEventListener("click", () => applyDepositSavingsTabFilter(tabsEl, btn.dataset.tab));
-      });
-    }
-
-    const subTableWrap = document.createElement("div");
-    subTableWrap.className = "asset-asset-table-wrap";
-    const subTable = document.createElement("table");
-    subTable.className =
-      "asset-asset-table" +
-      (isDeposit ? " asset-asset-table-deposit" : isSavings ? " asset-asset-table-savings" : "");
-    if (isDeposit) {
-      subTable.innerHTML = `
-        <colgroup>
-          <col class="asset-asset-col-name">
-          <col class="asset-asset-col-category">
-          <col class="asset-asset-col-principal">
-          <col class="asset-asset-col-rate">
-          <col class="asset-asset-col-open-date">
-          <col class="asset-asset-col-maturity-date">
-          <col class="asset-asset-col-maturity-rate">
-          <col class="asset-asset-col-interest">
-          <col class="asset-asset-col-maturity-amt">
-          <col class="asset-asset-col-actions">
-        </colgroup>
-        <thead>
-          <tr>
-            <th class="asset-asset-th-name">상품명</th>
-            <th class="asset-asset-th-category">용도</th>
-            <th class="asset-asset-th-principal">예치금</th>
-            <th class="asset-asset-th-rate">금리(%)</th>
-            <th class="asset-asset-th-open-date">가입일</th>
-            <th class="asset-asset-th-maturity-date">만기일</th>
-            <th class="asset-asset-th-maturity-rate">만기율</th>
-            <th class="asset-asset-th-interest">이자</th>
-            <th class="asset-asset-th-maturity-amt">만기예상액</th>
-            <th class="asset-asset-th-actions"></th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      `;
-    } else if (isSavings) {
-      subTable.innerHTML = `
-        <colgroup>
-          <col class="asset-asset-col-name">
-          <col class="asset-asset-col-category">
-          <col class="asset-asset-col-monthly">
-          <col class="asset-asset-col-rate">
-          <col class="asset-asset-col-months">
-          <col class="asset-asset-col-open-date">
-          <col class="asset-asset-col-maturity-date">
-          <col class="asset-asset-col-maturity-rate">
-          <col class="asset-asset-col-interest">
-          <col class="asset-asset-col-principal">
-          <col class="asset-asset-col-maturity-amt">
-          <col class="asset-asset-col-actions">
-        </colgroup>
-        <thead>
-          <tr>
-            <th class="asset-asset-th-name">상품명</th>
-            <th class="asset-asset-th-category">용도</th>
-            <th class="asset-asset-th-monthly">월납입액</th>
-            <th class="asset-asset-th-rate">금리(%)</th>
-            <th class="asset-asset-th-months">개월수</th>
-            <th class="asset-asset-th-open-date">가입일</th>
-            <th class="asset-asset-th-maturity-date">만기일</th>
-            <th class="asset-asset-th-maturity-rate">만기율</th>
-            <th class="asset-asset-th-interest">이자</th>
-            <th class="asset-asset-th-principal">납입액</th>
-            <th class="asset-asset-th-maturity-amt">만기예상액</th>
-            <th class="asset-asset-th-actions"></th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      `;
-    } else if (g.key === "부동산") {
-      subTable.innerHTML = `
-        <colgroup>
-          <col class="asset-asset-col-contract">
-          <col class="asset-asset-col-sale-price">
-          <col class="asset-asset-col-loan">
-          <col class="asset-asset-col-asset-value">
-          <col class="asset-asset-col-actions">
-        </colgroup>
-        <thead>
-          <tr>
-            <th class="asset-asset-th-contract">계약대상</th>
-            <th class="asset-asset-th-sale-price">매매가</th>
-            <th class="asset-asset-th-loan">대출금</th>
-            <th class="asset-asset-th-asset-value">자산가치</th>
-            <th class="asset-asset-th-actions"></th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      `;
-    } else if (g.key === "보험") {
-      subTable.className = subTable.className + " asset-asset-table-insurance";
-      subTable.innerHTML = `
-        <colgroup>
-          <col class="asset-insurance-col-name">
-          <col class="asset-insurance-col-kind">
-          <col class="asset-insurance-col-contract-date">
-          <col class="asset-insurance-col-maturity-date">
-          <col class="asset-insurance-col-monthly">
-          <col class="asset-insurance-col-total-paid">
-          <col class="asset-insurance-col-surrender">
-          <col class="asset-insurance-col-coverage">
-          <col class="asset-asset-col-actions">
-        </colgroup>
-        <thead>
-          <tr>
-            <th class="asset-insurance-th-name">보험명</th>
-            <th class="asset-insurance-th-kind">보험종류</th>
-            <th class="asset-insurance-th-contract-date">계약일</th>
-            <th class="asset-insurance-th-maturity-date">만기일</th>
-            <th class="asset-insurance-th-monthly">월납입액</th>
-            <th class="asset-insurance-th-total-paid">총납입액</th>
-            <th class="asset-insurance-th-surrender">해지환급금</th>
-            <th class="asset-insurance-th-coverage">보장내용</th>
-            <th class="asset-asset-th-actions"></th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      `;
-    } else if (g.key === "연금") {
-      subTable.className = subTable.className + " asset-asset-table-annuity";
-      subTable.innerHTML = `
-        <colgroup>
-          <col class="asset-annuity-col-name">
-          <col class="asset-annuity-col-kind">
-          <col class="asset-annuity-col-payment-start">
-          <col class="asset-annuity-col-payment-end">
-          <col class="asset-annuity-col-payment-years">
-          <col class="asset-annuity-col-monthly">
-          <col class="asset-annuity-col-total-paid">
-          <col class="asset-annuity-col-receipt-start">
-          <col class="asset-annuity-col-monthly-receipt">
-          <col class="asset-asset-col-actions">
-        </colgroup>
-        <thead>
-          <tr>
-            <th class="asset-annuity-th-name">상품명</th>
-            <th class="asset-annuity-th-kind">종류</th>
-            <th class="asset-annuity-th-payment-start">납입 시작일</th>
-            <th class="asset-annuity-th-payment-end">납입종료일</th>
-            <th class="asset-annuity-th-payment-years">납입연수</th>
-            <th class="asset-annuity-th-monthly">월납입액</th>
-            <th class="asset-annuity-th-total-paid">총납입액</th>
-            <th class="asset-annuity-th-receipt-start">수령시작일</th>
-            <th class="asset-annuity-th-monthly-receipt">월예상수령액</th>
-            <th class="asset-asset-th-actions"></th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      `;
-    } else if (g.key === "주식") {
-      subTable.className = subTable.className + " asset-asset-table-stock";
-      subTable.innerHTML = `
-        <colgroup>
-          <col class="asset-stock-col-name">
-          <col class="asset-stock-col-category">
-          <col class="asset-stock-col-avg-price">
-          <col class="asset-stock-col-quantity">
-          <col class="asset-stock-col-purchase-amt">
-          <col class="asset-stock-col-current-price">
-          <col class="asset-stock-col-appraisal-amt">
-          <col class="asset-stock-col-return-rate">
-          <col class="asset-stock-col-profit-loss">
-          <col class="asset-stock-col-actions">
-        </colgroup>
-        <thead>
-          <tr>
-            <th class="asset-stock-th-name">종목명</th>
-            <th class="asset-stock-th-category">주식분류</th>
-            <th class="asset-stock-th-avg-price">매입단가</th>
-            <th class="asset-stock-th-quantity">보유수량</th>
-            <th class="asset-stock-th-purchase-amt">매입금액</th>
-            <th class="asset-stock-th-current-price">현재가</th>
-            <th class="asset-stock-th-appraisal-amt">평가금액</th>
-            <th class="asset-stock-th-return-rate">수익률</th>
-            <th class="asset-stock-th-profit-loss">평가손익</th>
-            <th class="asset-stock-th-actions"></th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      `;
-    } else {
-      subTable.innerHTML = `
-        <colgroup>
-          <col class="asset-asset-col-name">
-          <col class="asset-asset-col-category">
-          <col class="asset-asset-col-type">
-          <col class="asset-asset-col-principal">
-          <col class="asset-asset-col-monthly">
-          <col class="asset-asset-col-rate">
-          <col class="asset-asset-col-months">
-          <col class="asset-asset-col-open-date">
-          <col class="asset-asset-col-maturity-date">
-          <col class="asset-asset-col-maturity-rate">
-          <col class="asset-asset-col-interest">
-          <col class="asset-asset-col-maturity-amt">
-          <col class="asset-asset-col-actions">
-        </colgroup>
-        <thead>
-          <tr>
-            <th class="asset-asset-th-name">자산이름</th>
-            <th class="asset-asset-th-category">자산 구분</th>
-            <th class="asset-asset-th-type">자산유형</th>
-            <th class="asset-asset-th-principal">자산액</th>
-            <th class="asset-asset-th-monthly">월납입액</th>
-            <th class="asset-asset-th-rate">금리(%)</th>
-            <th class="asset-asset-th-months">개월수</th>
-            <th class="asset-asset-th-open-date">가입일</th>
-            <th class="asset-asset-th-maturity-date">만기일</th>
-            <th class="asset-asset-th-maturity-rate">만기율</th>
-            <th class="asset-asset-th-interest">이자</th>
-            <th class="asset-asset-th-maturity-amt">만기예상액</th>
-            <th class="asset-asset-th-actions"></th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      `;
-    }
-
-    const subTbody = subTable.querySelector("tbody");
-    const isRealEstate = g.key === "부동산";
-    const isStock = g.key === "주식";
-    const isInsurance = g.key === "보험";
-    const isAnnuity = g.key === "연금";
-    const subTotalsRow = document.createElement("tr");
-    subTotalsRow.className = "asset-asset-row-totals";
-    let subTotalsCell;
-    if (isStock) {
-      subTotalsRow.innerHTML = `
-        <td class="asset-asset-cell-totals-label" colspan="5">합계</td>
-        <td class="asset-stock-cell-totals-purchase-amt"></td>
-        <td class="asset-stock-cell-totals-appraisal-amt"></td>
-        <td></td>
-        <td></td>
-        <td class="asset-stock-cell-actions"></td>
-      `;
-      subTotalsCell = subTotalsRow.querySelector(".asset-stock-cell-totals-appraisal-amt");
-    } else if (isRealEstate) {
-      subTotalsRow.innerHTML = `
-        <td class="asset-asset-cell-totals-label" colspan="1">합계</td>
-        <td class="asset-asset-cell-totals-sale-price"></td>
-        <td class="asset-asset-cell-totals-loan"></td>
-        <td class="asset-asset-cell-totals-asset-value"></td>
-        <td class="asset-asset-cell-actions"></td>
-      `;
-      subTotalsCell = subTotalsRow.querySelector(".asset-asset-cell-totals-asset-value");
-    } else if (isInsurance) {
-      subTotalsRow.innerHTML = `
-        <td class="asset-asset-cell-totals-label" colspan="6">합계</td>
-        <td class="asset-insurance-cell-totals-surrender">-</td>
-        <td></td>
-        <td class="asset-asset-cell-actions"></td>
-      `;
-      subTotalsCell = subTotalsRow.querySelector(".asset-insurance-cell-totals-surrender");
-    } else if (isAnnuity) {
-      subTotalsRow.innerHTML = `
-        <td class="asset-asset-cell-totals-label" colspan="6">합계</td>
-        <td class="asset-annuity-cell-totals-total-paid"></td>
-        <td></td>
-        <td class="asset-annuity-cell-totals-monthly-receipt"></td>
-        <td class="asset-asset-cell-actions"></td>
-      `;
-      subTotalsCell = subTotalsRow.querySelector(".asset-annuity-cell-totals-total-paid");
-    } else if (isDeposit) {
-      subTotalsRow.innerHTML = `
-        <td class="asset-asset-cell-totals-label" colspan="2">합계</td>
-        <td class="asset-asset-cell-totals-principal">-</td>
-        ${Array(5).fill("<td></td>").join("")}
-        <td class="asset-asset-cell-totals-maturity-amt">-</td>
-        <td class="asset-asset-cell-actions"></td>
-      `;
-      subTotalsCell = subTotalsRow.querySelector(".asset-asset-cell-totals-principal");
-    } else if (isSavings) {
-      subTotalsRow.innerHTML = `
-        <td class="asset-asset-cell-totals-label" colspan="2">합계</td>
-        ${Array(7).fill("<td></td>").join("")}
-        <td class="asset-asset-cell-totals-principal">-</td>
-        <td class="asset-asset-cell-totals-maturity-amt">-</td>
-        <td class="asset-asset-cell-actions"></td>
-      `;
-      subTotalsCell = subTotalsRow.querySelector(".asset-asset-cell-totals-principal");
-    } else {
-      const totalsColspan = 3;
-      const totalsEmptyCells = 8;
-      subTotalsRow.innerHTML = `
-        <td class="asset-asset-cell-totals-label" colspan="${totalsColspan}">합계</td>
-        <td class="asset-asset-cell-totals-principal">-</td>
-        ${Array(totalsEmptyCells).fill("<td></td>").join("")}
-        <td class="asset-asset-cell-totals-maturity-amt">-</td>
-        <td class="asset-asset-cell-actions"></td>
-      `;
-      subTotalsCell = subTotalsRow.querySelector(".asset-asset-cell-totals-principal");
-    }
-    const subAddBtn = document.createElement("button");
-    subAddBtn.type = "button";
-    subAddBtn.className = "asset-asset-add-task";
-    subAddBtn.innerHTML = '<span class="asset-asset-add-icon">+</span>';
-    subTbody.appendChild(subTotalsRow);
-
-    subAddBtn.addEventListener("click", () => {
-      if (isStock) {
-        const tr = createStockRow({}, onAssetUpdate);
-        subTbody.insertBefore(tr, subTotalsRow);
-      } else if (isRealEstate) {
-        if (subTbody.querySelector(".asset-asset-row-real-estate.asset-asset-row--draft")) {
-          showToast("입력을 저장하거나 취소한 뒤에 새 항목을 추가해 주세요.", "");
-          return;
-        }
-        const tr = createRealEstateRow({}, onAssetUpdate, { mode: "draft" });
-        subTbody.insertBefore(tr, subTotalsRow);
-      } else if (isInsurance) {
-        const tr = createInsuranceRow({}, onAssetUpdate);
-        subTbody.insertBefore(tr, subTotalsRow);
-      } else if (isAnnuity) {
-        const tr = createAnnuityRow({}, onAssetUpdate);
-        subTbody.insertBefore(tr, subTotalsRow);
-      } else {
-        const tr = createAssetRow(
-          isSavings ? { assetCategory: "", assetType: g.defaultType } : { assetType: g.defaultType },
-          onAssetUpdate,
-          isSavings,
-          isSavings ? g.defaultType : undefined,
-          isDeposit
-        );
-        subTbody.insertBefore(tr, subTotalsRow);
-      }
-      onAssetUpdate();
-    });
-
-    subsectionElements[g.key] = { tbody: subTbody, totalsRow: subTotalsRow, totalsCell: subTotalsCell, isRealEstate, isStock, isInsurance, isAnnuity };
-
-    if (tabsEl) {
-      subTbody.addEventListener("contextmenu", (e) => {
-        const tr = e.target.closest(".asset-asset-row");
-        if (!tr || tr.dataset.savings !== "true") return;
-        e.preventDefault();
-        const menu = document.createElement("div");
-        menu.className = "asset-asset-maturity-context-menu";
-        menu.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;z-index:100000;`;
-        const isMatured = tr.dataset.matured === "true";
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "asset-asset-maturity-context-menu-item";
-        btn.textContent = isMatured ? "보유중으로 이동" : "만기로 이동";
-        btn.addEventListener("click", () => {
-          tr.dataset.matured = isMatured ? "false" : "true";
-          document.body.removeChild(menu);
-          document.removeEventListener("click", hide);
-          document.removeEventListener("contextmenu", hide);
-          onAssetUpdate();
-        });
-        menu.appendChild(btn);
-        const hide = () => {
-          if (menu.parentNode) document.body.removeChild(menu);
-          document.removeEventListener("click", hide);
-          document.removeEventListener("contextmenu", hide);
-        };
-        document.body.appendChild(menu);
-        requestAnimationFrame(() => {
-          document.addEventListener("click", hide);
-          document.addEventListener("contextmenu", hide);
-        });
-      });
-    }
-
-    subTableWrap.appendChild(subTable);
-    const assetTableContainer = document.createElement("div");
-    assetTableContainer.className = "asset-asset-table-container";
-    assetTableContainer.appendChild(subTableWrap);
-    const assetAddButtonWrap = document.createElement("div");
-    assetAddButtonWrap.className = "asset-asset-add-button-wrap";
-    assetAddButtonWrap.appendChild(subAddBtn);
-    assetTableContainer.appendChild(assetAddButtonWrap);
-    subSection.appendChild(subHeader);
-    if (tabsEl) subSection.appendChild(tabsEl);
-    subSection.appendChild(assetTableContainer);
-    assetTableWrap.appendChild(subSection);
-  });
-
-  const initialAssetRows = loadAssetRows();
-  initialAssetRows.forEach((row) => {
+  loadAssetRows().forEach((row) => {
     const assetType = row.assetType || "";
     if (assetType === "부동산" || assetType === "부동산 전월세 보증금") return;
-    const group = getAssetGroup(assetType);
-    const el = subsectionElements[group];
-    const isSavings = group === "예금" || group === "적금";
-    const savingsDefaultType = group === "예금" ? "CMA" : group === "적금" ? "예적금잔고" : "예적금잔고";
-    const isDeposit = group === "예금";
-    if (el && !el.isRealEstate) {
-      const tr = createAssetRow(row, onAssetUpdate, isSavings, savingsDefaultType, isDeposit);
-      el.tbody.insertBefore(tr, el.totalsRow);
-    } else if (!el) {
-      const el2 = subsectionElements["예금"];
-      if (el2) {
-        const tr = createAssetRow(row, onAssetUpdate, true, "CMA", true);
-        el2.tbody.insertBefore(tr, el2.totalsRow);
-      }
-    }
+    appendAssetCardForGroup(getAssetGroup(assetType), row);
   });
-
-  const realEstateEl = subsectionElements["부동산"];
-  if (realEstateEl) {
-    const initialRealEstateRows = loadRealEstateRows();
-    initialRealEstateRows.forEach((row) => {
-      const tr = createRealEstateRow(row, onAssetUpdate, { mode: "view" });
-      realEstateEl.tbody.insertBefore(tr, realEstateEl.totalsRow);
-    });
-  }
-
-  const insuranceEl = subsectionElements["보험"];
-  if (insuranceEl) {
-    loadInsuranceRows().forEach((row) => {
-      const tr = createInsuranceRow(row, onAssetUpdate);
-      insuranceEl.tbody.insertBefore(tr, insuranceEl.totalsRow);
-    });
-  }
-
-  const annuityEl = subsectionElements["연금"];
-  if (annuityEl) {
-    loadAnnuityRows().forEach((row) => {
-      const tr = createAnnuityRow(row, onAssetUpdate);
-      annuityEl.tbody.insertBefore(tr, annuityEl.totalsRow);
-    });
-  }
+  loadRealEstateRows().forEach((row) => appendAssetCardForGroup("부동산", row));
+  loadStockRows().forEach((row) => appendAssetCardForGroup("주식", row));
+  loadInsuranceRows().forEach((row) => appendAssetCardForGroup("보험", row));
+  loadAnnuityRows().forEach((row) => appendAssetCardForGroup("연금", row));
 
   function updateAssetCount() {
-    const count = assetTableWrap.querySelectorAll(".asset-asset-row").length;
-    assetHeader.querySelector(".asset-asset-count").textContent = count;
+    const n = assetTableWrap.querySelectorAll(".asset-asset-card").length;
+    assetHeader.querySelector(".asset-asset-count").textContent = n ? `${n}건` : "0건";
   }
+
+  assetHeader.querySelector(".asset-asset-add-inline-btn")?.addEventListener("click", () =>
+    openAssetNetworthModal({}),
+  );
+
+  assetSection.appendChild(assetHeader);
+  assetSection.appendChild(assetDepositNwOpts);
+  assetSection.appendChild(assetTableWrap);
 
   updateAssetCount();
   updateAllMaturityRates();
   updateAssetTotals();
   updateNetWorthDashboard();
-  assetSection.appendChild(assetHeader);
-  assetSection.appendChild(assetTableWrap);
   wrap.appendChild(assetSection);
 
   return wrap;
@@ -5535,7 +7583,7 @@ function renderExpenseView(options = {}) {
           </div>
         </div>
         <div class="asset-expense-ledger-col asset-expense-ledger-col--amount">
-          <div class="asset-expense-cell-amount"><input type="text" class="asset-expense-input-amount" name="asset-expense-amount" placeholder="0" value="${expenseAmountInitialInputValue(data.amount || "").replace(/"/g, "&quot;")}" /></div>
+          <div class="asset-expense-cell-amount"><input type="text" class="asset-expense-input-amount" name="asset-expense-amount" inputmode="numeric" autocomplete="off" placeholder="0" value="${expenseAmountInitialInputValue(data.amount || "").replace(/"/g, "&quot;")}" /></div>
         </div>
         <div class="asset-expense-ledger-col asset-expense-ledger-col--date">
           <div class="asset-expense-cell-date">
@@ -5575,7 +7623,8 @@ function renderExpenseView(options = {}) {
               type="text"
               class="asset-expense-input-amount"
               name="asset-expense-amount"
-              inputmode="decimal"
+              inputmode="numeric"
+              autocomplete="off"
               placeholder="금액"
               value="${expenseAmountInitialInputValue(data.amount || "").replace(/"/g, "&quot;")}"
             />
@@ -5601,13 +7650,9 @@ function renderExpenseView(options = {}) {
             />
           </div>
         </div>
-        <div class="asset-expense-form-row">
+        <div class="asset-expense-form-row asset-expense-form-row--payment-method">
           <span class="asset-expense-form-label">결제수단</span>
           <div class="asset-expense-form-control asset-expense-cell-payment"></div>
-        </div>
-        <div class="asset-expense-form-row">
-          <span class="asset-expense-form-label">카테고리</span>
-          <div class="asset-expense-form-control asset-expense-cell-category"></div>
         </div>
       </div>
     `;
@@ -5640,8 +7685,8 @@ function renderExpenseView(options = {}) {
       rowEl.innerHTML = fieldsRowHtml;
     }
     const flowTypeTd = rowEl.querySelector(".asset-expense-cell-flow-type");
-    const categoryTd = rowEl.querySelector(".asset-expense-cell-category");
     const classificationTd = rowEl.querySelector(".asset-expense-cell-classification");
+    const categoryTd = rowEl.querySelector(".asset-expense-cell-category");
     const nameInput = rowEl.querySelector(".asset-expense-input-name");
     const memoInput = rowEl.querySelector(".asset-expense-input-memo");
     const actionsWrap = rowEl.querySelector(".asset-expense-actions-wrap");
@@ -5672,34 +7717,42 @@ function renderExpenseView(options = {}) {
       const opt = getExpenseCategoryOptions().find((o) => o.label === cat);
       categoryDisplay.className = "asset-expense-category-display-readonly " + (opt ? opt.color : "");
     }
-    categoryTd.appendChild(categoryDisplay);
+    if (categoryTd) categoryTd.appendChild(categoryDisplay);
 
     const paymentTd = rowEl.querySelector(".asset-expense-cell-payment");
+    const paymentMethodFormRow = rowEl.querySelector(".asset-expense-form-row--payment-method");
     const paymentControl = createExpensePaymentInput(data.payment || "", () => {
       syncExpenseLedgerCardDecor();
       onTotalsUpdate?.();
     }, { inlineButtons: usePanel });
 
     function syncPaymentIncomeModeForRow() {
-      const flowTypeInput = flowTypeTd.querySelector(".asset-expense-input-flow-type");
-      const isDeposit = (flowTypeInput?.value || "") === "입금";
+      const flowTypeInput =
+        rowEl.querySelector(".asset-expense-cell-flow-type .asset-expense-input-flow-type") ||
+        flowTypeTd.querySelector(".asset-expense-input-flow-type");
+      const isDeposit = (flowTypeInput?.value || "").trim() === "입금";
       paymentControl.setPaymentIncomeMode(isDeposit);
-      if (paymentTd) {
+      /* 패널/모달: 결제 라벨+칸 통째 숨김. 목록 카드: 칸만 숨김 */
+      if (paymentMethodFormRow) {
+        paymentMethodFormRow.hidden = isDeposit;
+      } else if (paymentTd) {
         paymentTd.hidden = isDeposit;
-        const paymentFormRow = paymentTd.closest(".asset-expense-form-row");
-        if (paymentFormRow) paymentFormRow.hidden = isDeposit;
       }
     }
 
-    const flowTypeDropdown = createExpenseFlowTypeDropdown(flowTypeValue, () => {
-      const flowTypeInput = flowTypeTd.querySelector(".asset-expense-input-flow-type");
-      classificationDropdown.refresh(flowTypeInput?.value || "");
-      updateCategoryDisplay();
-      applyAmountSign();
-      syncExpenseLedgerCardDecor();
-      syncPaymentIncomeModeForRow();
-      onTotalsUpdate?.();
-    });
+    const flowTypeDropdown = createExpenseFlowTypeDropdown(
+      flowTypeValue,
+      () => {
+        const flowTypeInput = flowTypeTd.querySelector(".asset-expense-input-flow-type");
+        classificationDropdown.refresh(flowTypeInput?.value || "");
+        updateCategoryDisplay();
+        applyAmountSign();
+        syncExpenseLedgerCardDecor();
+        syncPaymentIncomeModeForRow();
+        onTotalsUpdate?.();
+      },
+      { inlineButtons: usePanel }
+    );
     flowTypeTd.appendChild(flowTypeDropdown);
 
     paymentTd.appendChild(paymentControl.wrap);
@@ -5750,14 +7803,21 @@ function renderExpenseView(options = {}) {
       onTotalsUpdate?.();
     });
     amountInput.addEventListener("input", (e) => {
-      filterNumericInput(amountInput, false, e);
+      filterNumericInput(amountInput, false, e, { ignoreIMEComposition: true });
       syncExpenseLedgerCardDecor();
       onTotalsUpdate?.();
     });
     amountInput.addEventListener("compositionend", () => {
-      filterNumericInput(amountInput, false, null);
+      filterNumericInput(amountInput, false, null, { ignoreIMEComposition: true });
       syncExpenseLedgerCardDecor();
       onTotalsUpdate?.();
+    });
+    amountInput.addEventListener("paste", () => {
+      queueMicrotask(() => {
+        filterNumericInput(amountInput, false, null, { ignoreIMEComposition: true });
+        syncExpenseLedgerCardDecor();
+        onTotalsUpdate?.();
+      });
     });
     amountInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
@@ -6710,6 +8770,131 @@ function planTableTypeToStorageSection(tableType) {
   return tableType;
 }
 
+/** @type {Record<string, { col4Label: string; col4Calculated: boolean; goalType: "min" | "max" }>} */
+const ASSET_PLAN_FACE_META = {
+  income: {
+    col4Label: "더 벌어야 하는 금액",
+    col4Calculated: true,
+    goalType: "min",
+  },
+  investSavings: {
+    col4Label: "더 투자/저축해야 할 금액",
+    col4Calculated: true,
+    goalType: "min",
+  },
+  expense: {
+    col4Label: "소비할 수 있는 금액",
+    col4Calculated: true,
+    goalType: "max",
+  },
+};
+
+function getMonthTotalForPlanRow(tableType, cat, cls) {
+  if (tableType === "income" && cls) return getExpenseSumByIncomeClassification(cls);
+  if (tableType === "investSavings" && cat && cls)
+    return getExpenseSumByInvestSavingsClassification(cat, cls);
+  if (tableType === "expense" && cat && cls) return getExpenseSumByExpenseClassification(cat, cls);
+  return 0;
+}
+
+function col1SummaryTextForPlan(tableType, cat, cls) {
+  if (tableType === "income" && cls) return cls;
+  if ((tableType === "investSavings" || tableType === "expense") && cat && cls) return `${cat} · ${cls}`;
+  return "—";
+}
+
+function fillAssetPlanArticleFace(article, tableType) {
+  const meta = ASSET_PLAN_FACE_META[tableType];
+  if (!meta) return;
+
+  let face = article.querySelector(".asset-plan-card-face");
+  if (!face) {
+    face = document.createElement("div");
+    face.className = "asset-plan-card-face";
+    article.appendChild(face);
+  }
+  const cat = (article.dataset.planCategory || "").trim();
+  const cls = (article.dataset.planClassification || "").trim();
+  const mStr = (article.dataset.monthlyGoalStr || "").trim();
+  const gDisp = mStr ? (parseNum(mStr) !== null ? formatNum(mStr) : mStr) : "—";
+  const monTot = getMonthTotalForPlanRow(tableType, cat, cls);
+  const totDisp = monTot > 0 ? formatNum(monTot) : "-";
+  let c4 = "-";
+  const col4Calculated = meta.col4Calculated;
+  const goalType = meta.goalType;
+  if (col4Calculated) {
+    const gNum = parseNum(mStr);
+    if (gNum !== null) {
+      const tN = monTot;
+      let diff = gNum - tN;
+      if (goalType === "min" || goalType === "max") diff = Math.max(0, diff);
+      c4 = formatNum(diff);
+    }
+  }
+  const gNum = parseNum(mStr);
+  let achText = "—";
+  let achCls = "";
+  const tNumParsed = parseNum(totDisp.replace(/,/g, ""));
+  const tNum = totDisp !== "-" && tNumParsed !== null ? tNumParsed : monTot > 0 ? monTot : null;
+  if (col4Calculated && gNum !== null && tNum !== null) {
+    const achieved = goalType === "min" ? tNum >= gNum : tNum <= gNum;
+    achText = achieved ? "🎉 달성" : "실패";
+    achCls = achieved ? " is-achieved" : " is-failed";
+  }
+
+  face.replaceChildren();
+  const titleEl = document.createElement("div");
+  titleEl.className = "asset-plan-card-headline";
+  titleEl.textContent = col1SummaryTextForPlan(tableType, cat, cls);
+  face.appendChild(titleEl);
+  const details = document.createElement("div");
+  details.className = "asset-plan-card-details";
+
+  /** @param {string} lab @param {string} val */
+  const kvPlain = (lab, val) => {
+    const rowEl = document.createElement("div");
+    rowEl.className = "asset-plan-card-detail-row";
+    const lb = document.createElement("span");
+    lb.className = "asset-plan-card-detail-label";
+    lb.textContent = lab;
+    const vl = document.createElement("span");
+    vl.className = "asset-plan-card-detail-value";
+    vl.textContent = val === "" || val == null ? "—" : String(val);
+    rowEl.appendChild(lb);
+    rowEl.appendChild(vl);
+    details.appendChild(rowEl);
+  };
+
+  kvPlain("월목표 금액", gDisp);
+  kvPlain("이번달 합계", totDisp);
+  kvPlain(meta.col4Label, c4);
+  const achRow = document.createElement("div");
+  achRow.className = "asset-plan-card-detail-row";
+  const achLab = document.createElement("span");
+  achLab.className = "asset-plan-card-detail-label";
+  achLab.textContent = "목표달성";
+  const achVal = document.createElement("span");
+  achVal.className =
+    "asset-plan-card-detail-value asset-plan-goal-display" +
+    (achCls === " is-achieved" ? " is-achieved" : achCls === " is-failed" ? " is-failed" : "");
+  achVal.textContent = achText;
+  achRow.appendChild(achLab);
+  achRow.appendChild(achVal);
+  details.appendChild(achRow);
+  face.appendChild(details);
+}
+
+function refreshPlanViewCardFaces(planRoot) {
+  if (!planRoot?.classList?.contains("asset-plan-view")) return;
+  planRoot.querySelectorAll(".asset-plan-section[data-plan-table-type]").forEach((sec) => {
+    const tt = sec.dataset.planTableType;
+    if (!tt || !ASSET_PLAN_FACE_META[tt]) return;
+    sec.querySelectorAll(".asset-plan-card.asset-plan-row--view").forEach((article) => {
+      fillAssetPlanArticleFace(article, tt);
+    });
+  });
+}
+
 function savePlanMonthlyGoalsFromPlanView(planRoot) {
   if (!planRoot?.classList?.contains("asset-plan-view")) return;
   const out = [];
@@ -6717,9 +8902,9 @@ function savePlanMonthlyGoalsFromPlanView(planRoot) {
     const tt = section.dataset.planTableType;
     if (!tt) return;
     const sectionKey = planTableTypeToStorageSection(tt);
-    const tbody = section.querySelector("tbody");
-    if (!tbody) return;
-    tbody.querySelectorAll("tr.asset-plan-row--view").forEach((tr, idx) => {
+    const cardsRoot = section.querySelector(".asset-plan-cards-list");
+    if (!cardsRoot) return;
+    cardsRoot.querySelectorAll(".asset-plan-row--view").forEach((tr, idx) => {
       const cat = (tr.dataset.planCategory || "").trim();
       const cls = (tr.dataset.planClassification || "").trim();
       const monthlyGoalStr = (tr.dataset.monthlyGoalStr || "").trim();
@@ -6758,46 +8943,35 @@ function renderPlanView() {
     section.dataset.planTableType = tableType;
     section.setAttribute("role", "group");
     section.setAttribute("aria-label", title);
+    const sectionHead = document.createElement("div");
+    sectionHead.className = "asset-plan-section-head";
     const h3 = document.createElement("h3");
     h3.className = "asset-plan-section-title";
     h3.textContent = title;
-    section.appendChild(h3);
-    const tableWrap = document.createElement("div");
-    tableWrap.className = "asset-plan-table-wrap";
-    const table = document.createElement("table");
-    table.className = "asset-plan-table";
-    const colgroup = document.createElement("colgroup");
-    colgroup.innerHTML =
-      '<col class="asset-plan-col-category" /><col class="asset-plan-col-amount" /><col class="asset-plan-col-amount" />' +
-      '<col class="asset-plan-col-amount" /><col class="asset-plan-col-goal" />' +
-      '<col class="asset-plan-col-action" style="width:2rem;min-width:2rem;max-width:2rem" />';
-    table.appendChild(colgroup);
-    const thead = document.createElement("thead");
-    thead.innerHTML = `<tr><th>${col1Label}</th><th>월목표 금액</th><th>이번달 합계</th><th>${col4Label}</th><th>목표달성</th><th scope="col" class="asset-plan-th-action" aria-label="행 작업"></th></tr>`;
-    const tbody = document.createElement("tbody");
+    sectionHead.appendChild(h3);
 
     const addBtn = document.createElement("button");
     addBtn.type = "button";
-    addBtn.className = "asset-plan-btn-add";
+    addBtn.className = "asset-plan-btn-add asset-plan-section-add-inline";
+    addBtn.setAttribute("aria-label", `${title} 항목 추가`);
     addBtn.innerHTML = '<span class="asset-plan-add-icon">+</span>';
+    sectionHead.appendChild(addBtn);
+    section.appendChild(sectionHead);
+
+    const cardsList = document.createElement("div");
+    cardsList.className = "asset-plan-cards-list";
+    cardsList.setAttribute("role", "list");
+    section.appendChild(cardsList);
 
     function persistPlanGoals() {
       savePlanMonthlyGoalsFromPlanView(wrap);
     }
 
-    function getMonthTotalForRow(cat, cls) {
-      if (tableType === "income" && cls) return getExpenseSumByIncomeClassification(cls);
-      if (tableType === "investSavings" && cat && cls)
-        return getExpenseSumByInvestSavingsClassification(cat, cls);
-      if (tableType === "expense" && cat && cls) return getExpenseSumByExpenseClassification(cat, cls);
-      return 0;
-    }
-
-    function updateDerivedInPanel(etr) {
-      const gIn = etr.querySelector(".asset-plan-goal-in");
-      const tot = etr.querySelector(".asset-plan-total-display");
-      const d4 = etr.querySelector(".asset-plan-col4-display");
-      const dAch = etr.querySelector(".asset-plan-goal-display");
+    function updateDerivedInPanel(panelEl) {
+      const gIn = panelEl.querySelector(".asset-plan-goal-in");
+      const tot = panelEl.querySelector(".asset-plan-total-display");
+      const d4 = panelEl.querySelector(".asset-plan-col4-display");
+      const dAch = panelEl.querySelector(".asset-plan-goal-display");
       if (!gIn || !tot || !d4 || !dAch) return;
       const goal = parseNum(gIn.value);
       const tNum = parseNum(tot.textContent);
@@ -6815,59 +8989,43 @@ function renderPlanView() {
       dAch.className = "asset-plan-goal-display" + (achieved ? " is-achieved" : hasV ? " is-failed" : "");
     }
 
-    function viewRowHtml(col1CellHtml, goalDisplay, totDisplay, c4, achElClass) {
-      return `<tr class="asset-plan-row asset-plan-row--view">` +
-        `<td class="asset-plan-col-view1">${col1CellHtml}</td>` +
-        `<td>${goalDisplay || "-"}</td>` +
-        `<td class="asset-plan-cell-total"><span class="asset-plan-total-display">${totDisplay || "-"}</span></td>` +
-        `<td class="asset-plan-cell-col4-calc"><span class="asset-plan-col4-display">${c4}</span></td>` +
-        `<td class="asset-plan-cell-goal"><span class="asset-plan-goal-display ${achElClass}">-</span></td>` +
-        `<td class="asset-plan-cell-action"><div class="asset-plan-action-wrap"><button type="button" class="asset-plan-btn-edit" aria-label="이 목표 수정">수정</button></div></td>` +
-        `</tr>`;
-    }
+    function openPlanGoalModal(mode, mem, replaceArticle) {
+      if (document.querySelector(".asset-plan-entry-modal")) {
+        showToast("입력 창을 닫은 뒤 다시 시도해 주세요.", "");
+        return;
+      }
+      const overlay = document.createElement("div");
+      overlay.className = "asset-expense-transaction-modal asset-plan-entry-modal";
+      overlay.setAttribute("role", "dialog");
+      overlay.setAttribute("aria-modal", "true");
+      overlay.setAttribute("aria-label", mode === "draft" ? "새 목표" : "목표 수정");
+      const backdrop = document.createElement("div");
+      backdrop.className = "asset-expense-transaction-modal-backdrop";
+      const panelShell = document.createElement("div");
+      panelShell.className = "asset-expense-transaction-modal-panel-shell";
 
-    function afterViewRowPaint(tr) {
-      const gStr = (tr.dataset.monthlyGoalStr || "").trim();
-      const tot = tr.querySelector(".asset-plan-total-display");
-      const gNum = parseNum(gStr);
-      const tNum = tot ? parseNum(tot.textContent) : null;
-      const d4 = tr.querySelector(".asset-plan-col4-display");
-      const dAch = tr.querySelector(".asset-plan-goal-display");
-      if (d4 && col4Calculated && gNum !== null && tNum !== null) {
-        let diff = gNum - tNum;
-        if (goalType === "min" || goalType === "max") diff = Math.max(0, diff);
-        d4.textContent = formatNum(diff);
-      } else if (d4) d4.textContent = "-";
-      if (dAch) {
-        const hasV = gNum !== null && tNum !== null;
-        const achieved = hasV && (goalType === "min" ? tNum >= gNum : tNum <= gNum);
-        dAch.textContent = hasV ? (achieved ? "🎉 달성" : "실패") : "-";
-        dAch.className = "asset-plan-goal-display" + (achieved ? " is-achieved" : hasV ? " is-failed" : "");
+      function closeOverlay() {
+        overlay.remove();
       }
-    }
+      backdrop.addEventListener("click", closeOverlay);
 
-    function col1ViewHtmlForRow(cat, cls) {
-      if (tableType === "income" && cls) {
-        return `<span class="asset-plan-category-tag expense-cls-gray">${cls}</span>`;
-      }
-      if (tableType === "investSavings" && cat && cls) {
-        return (
-          `<span class="asset-plan-category-view-name">${cat}</span> ` +
-          `<span class="asset-plan-category-tag expense-cls-gray">${cls}</span>`
-        );
-      }
-      if (tableType === "expense" && cat && cls) {
-        return (
-          `<span class="asset-plan-category-view-name">${cat}</span> ` +
-          `<span class="asset-plan-category-tag expense-cls-gray">${cls}</span>`
-        );
-      }
-      return "-";
+      const editorRoot = buildPlanEntryEditor(mode, mem, {
+        dismiss: closeOverlay,
+        submitSuccess(viewEl) {
+          if (replaceArticle) replaceArticle.replaceWith(viewEl);
+          else cardsList.appendChild(viewEl);
+          persistPlanGoals();
+          closeOverlay();
+        },
+      });
+      panelShell.appendChild(editorRoot);
+      overlay.appendChild(backdrop);
+      overlay.appendChild(panelShell);
+      document.body.appendChild(overlay);
     }
 
     function appendToForm(fstack, label, classExtra, el) {
       const row = document.createElement("div");
-      row.className = "asset-expense-form-row";
       const lab = document.createElement("span");
       lab.className = "asset-expense-form-label";
       lab.textContent = label;
@@ -6889,28 +9047,31 @@ function renderPlanView() {
       };
     }
 
-    function buildPlanEntryEditor(mode, mem) {
+    function buildPlanEntryEditor(mode, mem, hooks) {
+      const { dismiss, submitSuccess } = hooks;
       const isDraft = mode === "draft";
-      const tr = document.createElement("tr");
-      tr.className = "asset-plan-row asset-plan-row--editing asset-expense-row--inner-panel";
-      tr.innerHTML =
-        '<td colspan="6" class="asset-plan-cell-panel">' +
+      const modalRoot = document.createElement("div");
+      modalRoot.className = "asset-plan-modal-editor-root";
+      modalRoot.innerHTML =
         '<div class="asset-expense-inline-panel asset-plan-inline-panel">' +
         '<div class="asset-expense-inline-panel-top">' +
+        '<div class="asset-expense-inline-panel-head-text">' +
         '<span class="asset-expense-inline-panel-title">' +
         (isDraft ? "새 목표" : "목표 수정") +
         "</span>" +
+        "</div>" +
         '<button type="button" class="asset-expense-inline-panel-x" aria-label="닫기">×</button>' +
         "</div>" +
         '<div class="asset-expense-inline-panel-body"></div>' +
         '<div class="asset-expense-inline-panel-bottom" aria-label="확인 작업"></div>' +
-        "</div></td>";
+        "</div>";
+      const panel = modalRoot.querySelector(".asset-expense-inline-panel");
       const memSnap = !isDraft && mem
         ? { ...mem, category: (mem.category || "").trim(), classification: (mem.classification || "").trim(), monthlyGoalStr: (mem.monthlyGoalStr || "").trim() }
         : null;
-      const body = tr.querySelector(".asset-expense-inline-panel-body");
-      const foot = tr.querySelector(".asset-expense-inline-panel-bottom");
-      const xBtn = tr.querySelector(".asset-expense-inline-panel-x");
+      const body = panel.querySelector(".asset-expense-inline-panel-body");
+      const foot = panel.querySelector(".asset-expense-inline-panel-bottom");
+      const xBtn = panel.querySelector(".asset-expense-inline-panel-x");
       const formStack = document.createElement("div");
       formStack.className = "asset-expense-form-stack";
       formStack.setAttribute("role", "group");
@@ -6930,31 +9091,24 @@ function renderPlanView() {
 
       const setTotalsFromData = (cat, cls) => {
         if (!cls) {
-          tr.dataset.planCategory = cat || "";
-          tr.dataset.planClassification = "";
+          panel.dataset.planCategory = cat || "";
+          panel.dataset.planClassification = "";
           totalSp.textContent = "-";
           return;
         }
-        tr.dataset.planCategory = tableType === "income" ? "수입" : cat || "";
-        tr.dataset.planClassification = cls;
-        const s =
-          tableType === "income"
-            ? getExpenseSumByIncomeClassification(cls)
-            : tableType === "investSavings" && cat
-              ? getExpenseSumByInvestSavingsClassification(cat, cls)
-              : tableType === "expense" && cat
-                ? getExpenseSumByExpenseClassification(cat, cls)
-                : 0;
+        panel.dataset.planCategory = tableType === "income" ? "수입" : cat || "";
+        panel.dataset.planClassification = cls;
+        const s = getMonthTotalForPlanRow(tableType, cat || "", cls);
         totalSp.textContent = s > 0 ? formatNum(s) : "-";
-        updateDerivedInPanel(tr);
+        updateDerivedInPanel(panel);
       };
 
       if (tableType === "income") {
-        tr.dataset.planCategory = "수입";
+        panel.dataset.planCategory = "수입";
         const dd = createPlanIncomeCategoryDropdown(isDraft ? "" : (memSnap?.classification || ""), (classification) => {
           if (!classification) return;
-          tr.dataset.planCategory = "수입";
-          tr.dataset.planClassification = classification;
+          panel.dataset.planCategory = "수입";
+          panel.dataset.planClassification = classification;
           setTotalsFromData("수입", classification);
         });
         const host = appendToForm(formStack, col1Label, "asset-plan-cell-cat", dd.wrap);
@@ -6963,31 +9117,31 @@ function renderPlanView() {
         const dd = createPlanInvestSavingsCategoryDropdown(
           isDraft ? "" : (memSnap?.classification || memSnap?.category || ""),
           (category, classification) => {
-            tr.dataset.planCategory = category;
-            tr.dataset.planClassification = classification;
+            panel.dataset.planCategory = category;
+            panel.dataset.planClassification = classification;
             setTotalsFromData(category, classification);
           }
         );
         const host = appendToForm(formStack, col1Label, "asset-plan-cell-cat", dd.wrap);
         void host;
         if (memSnap && !isDraft && memSnap.category && memSnap.classification) {
-          tr.dataset.planCategory = memSnap.category;
-          tr.dataset.planClassification = memSnap.classification;
+          panel.dataset.planCategory = memSnap.category;
+          panel.dataset.planClassification = memSnap.classification;
         }
       } else {
         const dd = createPlanExpenseCategoryDropdown(
           isDraft ? "" : (memSnap?.classification || memSnap?.category || ""),
           (category, classification) => {
-            tr.dataset.planCategory = category;
-            tr.dataset.planClassification = classification;
+            panel.dataset.planCategory = category;
+            panel.dataset.planClassification = classification;
             setTotalsFromData(category, classification);
           }
         );
         const host = appendToForm(formStack, col1Label, "asset-plan-cell-cat", dd.wrap);
         void host;
         if (memSnap && !isDraft && memSnap.category && memSnap.classification) {
-          tr.dataset.planCategory = memSnap.category;
-          tr.dataset.planClassification = memSnap.classification;
+          panel.dataset.planCategory = memSnap.category;
+          panel.dataset.planClassification = memSnap.classification;
         }
       }
 
@@ -7001,12 +9155,12 @@ function renderPlanView() {
       const goalCtrl = appendToForm(formStack, "월목표 금액", "asset-plan-cell-goalp", goalIn);
       void goalCtrl;
       const applyGoalNumericFilter = () => {
-        filterNumericInput(goalIn, false, null);
-        updateDerivedInPanel(tr);
+        filterNumericInput(goalIn, false, null, { ignoreIMEComposition: true });
+        updateDerivedInPanel(panel);
       };
       goalIn.addEventListener("input", (e) => {
-        filterNumericInput(goalIn, false, e);
-        updateDerivedInPanel(tr);
+        filterNumericInput(goalIn, false, e, { ignoreIMEComposition: true });
+        updateDerivedInPanel(panel);
       });
       goalIn.addEventListener("paste", () => {
         requestAnimationFrame(applyGoalNumericFilter);
@@ -7014,7 +9168,7 @@ function renderPlanView() {
       goalIn.addEventListener("blur", () => {
         const f = formatNum(goalIn.value);
         if (f !== "") goalIn.value = f;
-        updateDerivedInPanel(tr);
+        updateDerivedInPanel(panel);
       });
       goalIn.addEventListener("keydown", (e) => e.key === "Enter" && goalIn.blur());
 
@@ -7029,20 +9183,10 @@ function renderPlanView() {
         if (tableType === "expense" && memSnap.category && memSnap.classification)
           setTotalsFromData(memSnap.category, memSnap.classification);
       }
-      updateDerivedInPanel(tr);
+      updateDerivedInPanel(panel);
 
       const runCancel = () => {
-        if (isDraft) {
-          tr.remove();
-          return;
-        }
-        if (memSnap) {
-          const n = buildPlanViewRowElement(memSnap);
-          if (n) tr.replaceWith(n);
-          else tr.remove();
-        } else {
-          tr.remove();
-        }
+        dismiss();
       };
       if (xBtn) {
         xBtn.addEventListener("click", (e) => {
@@ -7070,15 +9214,27 @@ function renderPlanView() {
         foot.appendChild(fin);
         saveBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          const p = readPanel(tr);
-          if (!p.classification) return;
+          const p = readPanel(panel);
+          if (!p.classification) {
+            showToast(
+              tableType === "income" ? "수입 카테고리를 선택해 주세요." : "항목을 선택해 주세요.",
+              "",
+            );
+            return;
+          }
+          const goalRaw = String(p.monthlyGoalStr || "")
+            .replace(/,/g, "")
+            .trim();
+          if (!goalRaw || parseNum(p.monthlyGoalStr) === null) {
+            showToast("월목표 금액을 입력해 주세요.", "");
+            return;
+          }
           p.category = p.category || (tableType === "income" ? "수입" : p.category);
           if (tableType === "income") p.category = "수입";
           const next = { category: p.category, classification: p.classification, monthlyGoalStr: p.monthlyGoalStr };
           const n = buildPlanViewRowElement(next);
-          if (n) tr.replaceWith(n);
-          else tr.remove();
-          persistPlanGoals();
+          if (!n) return;
+          submitSuccess(n);
         });
       } else {
         saveBtn = document.createElement("button");
@@ -7100,82 +9256,65 @@ function renderPlanView() {
         foot.appendChild(fin);
         saveBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          const p = readPanel(tr);
-          if (!p.classification) return;
+          const p = readPanel(panel);
+          if (!p.classification) {
+            showToast(
+              tableType === "income" ? "수입 카테고리를 선택해 주세요." : "항목을 선택해 주세요.",
+              "",
+            );
+            return;
+          }
+          const goalRaw = String(p.monthlyGoalStr || "")
+            .replace(/,/g, "")
+            .trim();
+          if (!goalRaw || parseNum(p.monthlyGoalStr) === null) {
+            showToast("월목표 금액을 입력해 주세요.", "");
+            return;
+          }
           if (tableType === "income") p.category = "수입";
           const n = buildPlanViewRowElement({
             category: p.category,
             classification: p.classification,
             monthlyGoalStr: p.monthlyGoalStr,
           });
-          if (n) tr.replaceWith(n);
-          else tr.remove();
-          persistPlanGoals();
+          if (!n) return;
+          submitSuccess(n);
         });
       }
 
-      return tr;
+      return modalRoot;
     }
 
     function buildPlanViewRowElement(d) {
       if (!(d && (d.classification || "").trim())) return null;
-      const t = document.createElement("tr");
+      const art = document.createElement("article");
+      art.setAttribute("role", "listitem");
+      art.className = "asset-plan-row asset-plan-row--view asset-plan-card";
       const cat = (d.category || "").trim();
       const cls = (d.classification || "").trim();
       const mStr = (d.monthlyGoalStr || "").trim();
-      t.className = "asset-plan-row asset-plan-row--view";
-      if (cat) t.dataset.planCategory = cat;
-      if (cls) t.dataset.planClassification = cls;
-      if (mStr) t.dataset.monthlyGoalStr = mStr;
-      const gDisp = mStr
-        ? parseNum(mStr) !== null
-          ? formatNum(mStr)
-          : mStr
-        : "-";
-      const monTot = getMonthTotalForRow(cat, cls);
-      const totDisp = monTot > 0 ? formatNum(monTot) : "-";
-      const c4 = col4Calculated
-        ? (() => {
-            const gN = parseNum(mStr);
-            if (gN === null) return "-";
-            const tN = monTot;
-            let diff = gN - tN;
-            if (goalType === "min" || goalType === "max") diff = Math.max(0, diff);
-            return formatNum(diff);
-          })()
-        : "-";
-      t.innerHTML = viewRowHtml(col1ViewHtmlForRow(cat, cls), gDisp, totDisp, c4, "");
-      afterViewRowPaint(t);
-      const ed = t.querySelector(".asset-plan-btn-edit");
+      if (cat) art.dataset.planCategory = cat;
+      if (cls) art.dataset.planClassification = cls;
+      if (mStr) art.dataset.monthlyGoalStr = mStr;
+      fillAssetPlanArticleFace(art, tableType);
       const mem2 = { category: cat, classification: cls, monthlyGoalStr: mStr };
-      ed.addEventListener("click", (e) => {
-        e.stopPropagation();
-        t.replaceWith(buildPlanEntryEditor("edit", mem2));
+      art.querySelector(".asset-plan-card-face")?.addEventListener("click", (e) => {
+        if (e.target.closest("button")) return;
+        openPlanGoalModal("edit", mem2, art);
       });
-      return t;
+      return art;
     }
 
     loadSavedPlanRowsForTableType(tableType).forEach((r) => {
       if ((r.classification || "").trim()) {
         const t = buildPlanViewRowElement(r);
-        if (t) tbody.appendChild(t);
+        if (t) cardsList.appendChild(t);
       }
     });
     addBtn.addEventListener("click", () => {
-      tbody.appendChild(buildPlanEntryEditor("draft", null));
+      openPlanGoalModal("draft", null, null);
     });
 
-    table.appendChild(thead);
-    table.appendChild(tbody);
-    tableWrap.appendChild(table);
-    const planTableContainer = document.createElement("div");
-    planTableContainer.className = "asset-plan-table-container";
-    planTableContainer.appendChild(tableWrap);
-    const planAddButtonWrap = document.createElement("div");
-    planAddButtonWrap.className = "asset-plan-add-button-wrap";
-    planAddButtonWrap.appendChild(addBtn);
-    planTableContainer.appendChild(planAddButtonWrap);
-    section.appendChild(planTableContainer);
     return section;
   };
 
@@ -7841,6 +9980,21 @@ export function render() {
   attachAssetStockCategoryOptionsSaveListener();
   attachAssetPlanMonthlyGoalsSaveListener();
   attachAssetNetWorthBundleSaveListener();
+
+  const lpAssetTabAbortController = typeof AbortController !== "undefined" ? new AbortController() : null;
+  if (typeof window !== "undefined" && lpAssetTabAbortController) {
+    el._lpTabAbortController = lpAssetTabAbortController;
+    window.addEventListener(
+      "asset-expense-transactions-saved",
+      () => {
+        try {
+          const pv = el.querySelector(".asset-plan-view");
+          if (pv?.isConnected) refreshPlanViewCardFaces(pv);
+        } catch (_) {}
+      },
+      { signal: lpAssetTabAbortController.signal },
+    );
+  }
 
   /* 행이 0건이어도 «불러오는 중»을 띄우지 않음 — 빈 가계부는 미리 로드된 상태와 구분 불가했고, 상위 탭 전환 시 App에서 이미 pull 후 렌더되는 경우가 많음 */
   renderView(initialView);

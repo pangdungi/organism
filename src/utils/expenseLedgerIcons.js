@@ -23,14 +23,13 @@ function svgInner(label) {
 
 const COIN_SVG = svgInner("예/적금");
 const 교육비_SVG = svgInner("교육비");
-const 주거비_SVG = svgInner("주거비");
-const 보험료_SVG = svgInner("보험료");
 
 /** 모달 그리드에 없는 지출 전용 분류 라벨 → 모달 아이콘 경로 재사용 */
 const EXTRA_LABEL_TO_MODAL_PATHS = {
   교육: 교육비_SVG,
+  "교육(고정비)": 교육비_SVG,
+  "교육비(고정)": 교육비_SVG,
   대출상환: COIN_SVG,
-  카드대금: 보험료_SVG,
 };
 
 const MAP = new Map();

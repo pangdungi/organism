@@ -34,7 +34,7 @@ const DEFAULT_CLASSIFICATION_LABELS_BY_CAT = {
     "쇼핑",
     "미용",
     "의료/건강",
-    "교육",
+    "교육(고정비)",
     "카드대금",
     "세금",
     "경조사",

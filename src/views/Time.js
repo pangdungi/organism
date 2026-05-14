@@ -6808,7 +6808,7 @@ export function render() {
     };
   }
 
-  /** 소비 기록 모달 전용: 소비 분류(아이콘+라벨) + 결제수단(현금/체크카드/신용카드) 선택 */
+  /** 소비 기록 모달 전용: 소비 분류(지출은 글만) + 결제수단 선택 */
   function buildExpenseClassificationByFlowTypeButtons(
     getFlowType,
     initialValue,
@@ -6853,12 +6853,13 @@ export function render() {
         if (opt.color) btn.classList.add(opt.color);
         btn.dataset.label = opt.label;
         const svgInnerPaths =
-          opt.svg || (flowType === "입금" ? BAG_DOLLAR_PATHS_INNER : "");
+          isExpense ? "" : (opt.svg || (flowType === "입금" ? BAG_DOLLAR_PATHS_INNER : ""));
         if (svgInnerPaths) {
           btn.classList.add("time-task-log-expense-cls-btn-with-icon");
           btn.innerHTML = `<span class="time-task-log-expense-cls-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${svgInnerPaths}</svg></span><span class="time-task-log-expense-cls-label">${escapeHtml(opt.label)}</span>`;
         } else {
-          btn.textContent = opt.label;
+          btn.classList.add("time-task-log-expense-cls-btn--text-only");
+          btn.innerHTML = `<span class="time-task-log-expense-cls-label">${escapeHtml(opt.label)}</span>`;
         }
         btn.addEventListener("click", onClick);
         return btn;
