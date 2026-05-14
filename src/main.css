@@ -25527,37 +25527,48 @@ col.asset-expense-col-amount,
 
 .todo-schedule-glyph-svg {
   display: block;
-  width: 0.68rem;
+  width: 0.82rem;
   height: auto;
   flex-shrink: 0;
 }
 
-/* 카드 일정: 체크 칸 안에 목록 형태 글리프 */
+/* 카드 일정: 가로 3rem 유지, 세로는 아이콘만큼만(한 줄일 때 할일과 동일하게 붙지 않게 늘어나지 않음) */
 .todo-card-done-wrap.todo-card-done-wrap--schedule {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.25rem;
-  height: 1.25rem;
-  min-width: 1.25rem;
-  min-height: 1.25rem;
+  width: 3rem;
+  min-width: 3rem;
+  max-width: 3rem;
+  min-height: 0;
+  height: auto;
   box-sizing: border-box;
+  flex: 0 0 3rem;
   flex-shrink: 0;
-  border-radius: 0.3125rem !important;
-  -webkit-border-radius: 0.3125rem !important;
-  overflow: hidden;
-  background: var(--todo-schedule-fill, transparent);
-  border: 1px solid var(--todo-schedule-stroke, rgba(61, 74, 62, 0.35));
+  margin: 0;
+  padding: 0;
+  border: none !important;
+  box-shadow: none;
+  border-radius: 0 !important;
+  -webkit-border-radius: 0 !important;
+  overflow: visible;
+  background: transparent !important;
 }
 
 .todo-card-done-wrap.todo-card-done-wrap--schedule .todo-schedule-glyph {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
+  margin: 0;
   color: var(--todo-schedule-stroke, var(--text-ink, #1a2218));
   line-height: 0;
   flex-shrink: 0;
   pointer-events: none;
+}
+
+.todo-card-done-wrap.todo-card-done-wrap--schedule .todo-schedule-glyph-svg {
+  width: 1.35rem;
 }
 
 .todo-task-edit-inline-schedule {
@@ -26863,21 +26874,34 @@ col.asset-expense-col-amount,
   position: relative;
 }
 
-/* 그리드: 1행 = 체크박스+제목만 같은 높이로 맞춤, 2행 = KPI·날짜는 제목 시작선(오른쪽 열)만 */
+/* 왼쪽: 체크/일정 단일 블록. 오른쪽(.todo-card-title-main): 제목 줄 + KPI·날짜 줄만 flex 세로 분리(CSS Grid 미사용) */
 .todo-card-title-row {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-rows: auto auto;
-  column-gap: 0.75rem;
-  row-gap: 0.35rem;
-  align-items: start;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
   min-width: 0;
   width: 100%;
+  box-sizing: border-box;
+}
+
+.todo-card-title-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: stretch;
+}
+
+/* KPI·날짜 둘 다 숨김이면 아래 블록 높이 0 — row-gap만 남아 글씨가 위로 붙어 보이는 현상 방지 */
+.todo-card-title-main:has(> .todo-card-detail-stack > .todo-card-kpi[hidden]):has(
+    > .todo-card-detail-stack > .todo-card-meta-row[hidden]
+  ) {
+  gap: 0;
 }
 
 .todo-card-detail-stack {
-  grid-column: 2;
-  grid-row: 2;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -26886,22 +26910,23 @@ col.asset-expense-col-amount,
 }
 
 .todo-card-title-row .todo-card-name-wrap {
-  grid-column: 2;
-  grid-row: 1;
   min-width: 0;
   width: 100%;
+  align-items: center;
 }
 
 .todo-card-done-wrap {
-  grid-column: 1;
-  grid-row: 1;
-  align-self: center;
+  flex: 0 0 3rem;
+  width: 3rem;
+  min-width: 3rem;
+  max-width: 3rem;
   flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 0;
-  padding: 0;
 }
 
 .todo-card-done {
@@ -26939,12 +26964,12 @@ col.asset-expense-col-amount,
   outline-offset: 2px;
 }
 
-/* 모바일도 할일 카드 체크박스·제목 줄은 데스크톱과 동일 크기(큰 터치 영역은 줄 높이만 키워 정렬 깨짐) */
+/* 모바일: 간격만 조정 — 왼쪽 열은 전역 3rem과 동일 */
 @media (max-width: 48rem) {
-  .todo-card-done-wrap {
-    min-width: 0;
-    min-height: 0;
+  .todo-card-title-row {
+    gap: 0.6rem;
   }
+
   .todo-card-done {
     width: 1.75rem;
     height: 1.75rem;

@@ -226,11 +226,15 @@ function createHomeTodoCard(item) {
   detailStack.appendChild(kpiEl);
   detailStack.appendChild(metaRow);
 
+  const titleMain = document.createElement("div");
+  titleMain.className = "todo-card-title-main";
+  titleMain.appendChild(nameWrap);
+  titleMain.appendChild(detailStack);
+
   const titleRow = document.createElement("div");
   titleRow.className = "todo-card-title-row";
   titleRow.appendChild(doneWrap);
-  titleRow.appendChild(nameWrap);
-  titleRow.appendChild(detailStack);
+  titleRow.appendChild(titleMain);
 
   const contentCol = document.createElement("div");
   contentCol.className = "todo-card-content";
