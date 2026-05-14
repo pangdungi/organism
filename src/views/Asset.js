@@ -4,6 +4,7 @@
 
 import {
   attachAssetExpensePrefsSaveListener,
+  grantAssetExpensePrefsServerWrite,
   pullAssetExpensePrefsFromSupabase,
   readExpenseClassificationSavedMem,
   syncAssetExpensePrefsToSupabase,
@@ -15,16 +16,20 @@ import {
   attachAssetExpenseTransactionsSaveListener,
   deleteAssetExpenseTransactionsFromSupabase,
   getExpenseRowsMem,
+  grantAssetExpenseTransactionServerWrite,
   persistAssetExpensePullBounds,
-  pullAssetExpenseTransactionsFromSupabase,
   pullAssetExpenseTransactionsForDateRange,
   setExpenseRowsMem,
+  syncAssetExpenseTransactionsToSupabase,
 } from "../utils/assetExpenseTransactionsSupabase.js";
 import { pullAllAssetFromCloud } from "../utils/assetCloudRefresh.js";
 import {
   attachAssetNetWorthGoalSaveListener,
   getNetWorthTargetDisplayStrMem,
+  grantAssetNetWorthTargetServerWrite,
+  pullAssetNetWorthTargetFromSupabase,
   setNetWorthTargetDisplayStrMem,
+  syncAssetNetWorthTargetToSupabase,
 } from "../utils/assetNetWorthTargetSupabase.js";
 import { attachAssetStockCategoryOptionsSaveListener } from "../utils/assetStockCategorySupabase.js";
 import {
@@ -34,7 +39,10 @@ import {
 } from "../utils/assetPlanMonthlyGoalsSupabase.js";
 import {
   attachAssetNetWorthBundleSaveListener,
+  grantAssetNetWorthBundleServerWrite,
+  pullAssetNetWorthBundleFromSupabase,
   readNetWorthBundleKey,
+  syncAssetNetWorthBundleToSupabase,
   writeNetWorthBundleKey,
 } from "../utils/assetNetWorthBundleSupabase.js";
 import {
@@ -58,6 +66,16 @@ const INSURANCE_ROWS_KEY = "asset_insurance_rows";
 const ANNUITY_ROWS_KEY = "asset_annuity_rows";
 /** 순자산 합계에서 예·적금에 만기예상액(이자 포함)을 쓸지 — 로컬만 저장 */
 const NW_INCLUDE_DEPOSIT_INTEREST_KEY = "asset_nw_include_deposit_interest";
+
+function pushNetWorthBundleToServer() {
+  grantAssetNetWorthBundleServerWrite(1);
+  return syncAssetNetWorthBundleToSupabase();
+}
+
+function pushNetWorthTargetToServer() {
+  grantAssetNetWorthTargetServerWrite(1);
+  return syncAssetNetWorthTargetToSupabase();
+}
 
 function loadNwIncludeDepositInterest() {
   try {
@@ -664,7 +682,6 @@ function loadNetWorthTarget() {
 
 function saveNetWorthTarget(value) {
   setNetWorthTargetDisplayStrMem(value);
-  window.dispatchEvent(new CustomEvent("asset-networth-target-saved"));
 }
 
 function newExpenseRowId() {
@@ -2714,6 +2731,7 @@ function renderNetworthView() {
     if (n !== null) targetInput.value = formatNum(n);
     saveNetWorthTarget(targetInput.value);
     updateNetWorthDashboard();
+    void pushNetWorthTargetToServer().catch(() => {});
   });
   let updateNetWorthDashboard = () => {};
 
@@ -3673,11 +3691,10 @@ function renderNetworthView() {
     return tr;
   }
 
-  /** 대출 행 로컬 반영: onUpdate() → 여기. localStorage asset_debt_rows + "asset-networth-bundle-saved" */
+  /** 대출 행 로컬 반영: onUpdate() → 번들 메모리·화면만 갱신(서버 쓰기는 부채 모달 저장·수정·삭제에서만) */
   function save() {
     const rows = collectDebtRowsFromDOM(tableWrap);
     saveDebtRows(rows);
-    window.dispatchEvent(new CustomEvent("asset-networth-bundle-saved"));
   }
 
   function updateCount() {
@@ -3744,11 +3761,13 @@ function renderNetworthView() {
           closeDebtModalOverlay();
           viewArticle.replaceWith(createDebtRow(d, onUpdate, { mode: "view" }));
           onUpdate();
+          void pushNetWorthBundleToServer().catch(() => {});
         },
         onEditDelete: () => {
           closeDebtModalOverlay();
           viewArticle.remove();
           onUpdate();
+          void pushNetWorthBundleToServer().catch(() => {});
         },
       },
     });
@@ -3800,6 +3819,7 @@ function renderNetworthView() {
             const vt = createDebtRow(d, onUpdate, { mode: "view" });
             cardsList.appendChild(vt);
             onUpdate();
+            void pushNetWorthBundleToServer().catch(() => {});
           },
         },
       },
@@ -5064,6 +5084,7 @@ function renderNetworthView() {
               }
               closeOverlay();
               onAssetUpdate();
+              void pushNetWorthBundleToServer().catch(() => {});
             },
             onDelete:
               replaceCard && editPayload?.groupKey === "부동산"
@@ -5072,6 +5093,7 @@ function renderNetworthView() {
                       replaceCard.remove();
                       closeOverlay();
                       onAssetUpdate();
+                      void pushNetWorthBundleToServer().catch(() => {});
                     });
                   }
                 : null,
@@ -5169,6 +5191,7 @@ function renderNetworthView() {
       }
       closeOverlay();
       onAssetUpdate();
+      void pushNetWorthBundleToServer().catch(() => {});
     }
 
     const footerBar = document.createElement("div");
@@ -5200,6 +5223,7 @@ function renderNetworthView() {
           replaceCard.remove();
           closeOverlay();
           onAssetUpdate();
+          void pushNetWorthBundleToServer().catch(() => {});
         });
       });
       footerBar.appendChild(delBtn);
@@ -5224,6 +5248,7 @@ function renderNetworthView() {
       }
       closeOverlay();
       onAssetUpdate();
+      void pushNetWorthBundleToServer().catch(() => {});
     }
 
     /** 부동산: 저장·수정은 모달 바닥 줄만. 패널 안쪽 버튼은 embedded 시 생략 */
@@ -6718,8 +6743,7 @@ function renderNetworthView() {
 
   /**
    * 순자산(총 자산 테이블) 로컬 반영 시점: onAssetUpdate() → 여기.
-   * - localStorage: asset_asset_rows, asset_real_estate_rows, asset_stock_rows, asset_insurance_rows, asset_annuity_rows
-   * - 이후 window "asset-networth-bundle-saved" → assetNetWorthBundleSupabase 에서 디바운스 upsert
+   * 서버 upsert 는 자산 추가/수정 모달에서 저장·삭제할 때만 grant 후 동기화.
    */
   function saveAssets() {
     const rows = collectAssetRowsFromDOM(assetTableWrap);
@@ -6732,7 +6756,6 @@ function renderNetworthView() {
     saveInsuranceRows(insuranceRows);
     const annuityRows = collectAnnuityRowsFromDOM(assetTableWrap);
     saveAnnuityRows(annuityRows);
-    window.dispatchEvent(new CustomEvent("asset-networth-bundle-saved"));
   }
 
   function updateAssetTotals() {
@@ -6937,10 +6960,6 @@ function renderExpenseView(options = {}) {
   const _fm = now.getMonth() + 1;
   let filterStartDate = `${_fy}-${pad2Ym(_fm)}-01`;
   let filterEndDate = `${_fy}-${pad2Ym(_fm)}-${pad2Ym(new Date(_fy, _fm, 0).getDate())}`;
-
-  let expenseFilterPullTimer = null;
-  /** 날짜·월 필터에 맞는 구간만 서버에서 받아 표 갱신 */
-  let scheduleExpenseMemPullFromServer = () => {};
 
   /** YYYY-MM-DD → "2026. 05. 14.(목)" — 시간가계부 필터와 동일 표기 */
   function formatExpenseFilterDateDotsWithWeekday(dStr) {
@@ -7309,9 +7328,14 @@ function renderExpenseView(options = {}) {
       .map((r) => String(r?.id || "").trim())
       .filter((id) => EXPENSE_ROW_UUID_RE.test(id) && !nextIds.has(id));
     saveExpenseRows(merged);
-    if (removedServerIds.length) {
-      void deleteAssetExpenseTransactionsFromSupabase(removedServerIds).catch(() => {});
-    }
+    const needDelete = removedServerIds.length > 0;
+    grantAssetExpenseTransactionServerWrite(needDelete ? 2 : 1);
+    void (async () => {
+      try {
+        if (needDelete) await deleteAssetExpenseTransactionsFromSupabase(removedServerIds);
+        await syncAssetExpenseTransactionsToSupabase();
+      } catch (_) {}
+    })();
     window.dispatchEvent(new CustomEvent("asset-expense-transactions-saved"));
   }
 
@@ -7908,33 +7932,28 @@ function renderExpenseView(options = {}) {
     return rowEl;
   }
 
-  scheduleExpenseMemPullFromServer = () => {
-    if (expenseFilterPullTimer) clearTimeout(expenseFilterPullTimer);
-    expenseFilterPullTimer = setTimeout(() => {
-      expenseFilterPullTimer = null;
-      void (async () => {
-        if (!wrap.isConnected) return;
-        const { from, to } = getExpensePickerSqlBounds();
-        if (!from || !to) return;
-        persistAssetExpensePullBounds(from, to);
-        const ok = await pullAssetExpenseTransactionsForDateRange(from, to);
-        if (!wrap.isConnected) return;
-        ledgerBoardBody.replaceChildren();
-        const start = startDateInput.value || filterStartDate;
-        const end = endDateInput.value || filterEndDate;
-        const rows = loadExpenseRows().filter((data) =>
-          isDateInRange(data.date, "range", 0, 0, start, end),
-        );
-        rows.forEach((data) => {
-          ledgerBoardBody.appendChild(
-            createExpenseRow(data, updateExpenseTotals, applyExpenseFilter, { mode: "view" })
-          );
-        });
-        layoutExpenseLedgerGroups();
-        applyExpenseFilter();
-      })();
-    }, 400);
-  };
+  /** 현재 날짜 픽커 구간에 맞춰 서버에서 거래 병합 후 카드 목록 재구성 */
+  async function syncExpenseRangeFromServer() {
+    if (!wrap.isConnected) return;
+    const { from, to } = getExpensePickerSqlBounds();
+    if (!from || !to) return;
+    persistAssetExpensePullBounds(from, to);
+    await pullAssetExpenseTransactionsForDateRange(from, to);
+    if (!wrap.isConnected) return;
+    ledgerBoardBody.replaceChildren();
+    const start = startDateInput.value || filterStartDate;
+    const end = endDateInput.value || filterEndDate;
+    const rows = loadExpenseRows().filter((data) =>
+      isDateInRange(data.date, "range", 0, 0, start, end),
+    );
+    rows.forEach((data) => {
+      ledgerBoardBody.appendChild(
+        createExpenseRow(data, updateExpenseTotals, applyExpenseFilter, { mode: "view" }),
+      );
+    });
+    layoutExpenseLedgerGroups();
+    applyExpenseFilter();
+  }
 
   filterBar.addEventListener("click", (e) => {
     const prev = e.target.closest(".asset-expense-date-nav-cluster .time-filter-day-prev");
@@ -7951,7 +7970,7 @@ function renderExpenseView(options = {}) {
     syncExpenseRangeDateLabels();
     applyExpenseFilter();
     syncExpenseFooterSummaryLabel();
-    scheduleExpenseMemPullFromServer();
+    void syncExpenseRangeFromServer();
   });
 
   addBtn.addEventListener("click", () => {
@@ -7967,14 +7986,14 @@ function renderExpenseView(options = {}) {
     syncExpenseRangeDateLabels();
     applyExpenseFilter();
     syncExpenseFooterSummaryLabel();
-    scheduleExpenseMemPullFromServer();
+    void syncExpenseRangeFromServer();
   });
   endDateInput.addEventListener("change", () => {
     filterEndDate = (endDateInput.value || "").slice(0, 10) || filterEndDate;
     syncExpenseRangeDateLabels();
     applyExpenseFilter();
     syncExpenseFooterSummaryLabel();
-    scheduleExpenseMemPullFromServer();
+    void syncExpenseRangeFromServer();
   });
   startDateInput.addEventListener("input", syncExpenseRangeDateLabels);
   endDateInput.addEventListener("input", syncExpenseRangeDateLabels);
@@ -8024,6 +8043,7 @@ function renderExpenseView(options = {}) {
 
   wrap.appendChild(filterBar);
   wrap.appendChild(expenseTableContainer);
+  void syncExpenseRangeFromServer();
   return wrap;
 }
 
@@ -8336,6 +8356,7 @@ function createAssetSettingsModal(onSave) {
       });
       savePaymentOptions(payments.length > 0 ? payments : DEFAULT_PAYMENT_OPTIONS);
     }
+    grantAssetExpensePrefsServerWrite(1);
     void syncAssetExpensePrefsToSupabase().catch(() => {});
   }
 
@@ -8465,12 +8486,12 @@ function renderCashflowView() {
   cfStartInput.addEventListener("change", () => {
     cfStartDate = (cfStartInput.value || "").slice(0, 10) || cfStartDate;
     syncCashflowRangeDateLabels();
-    renderChart();
+    void syncCashflowRangeFromServer();
   });
   cfEndInput.addEventListener("change", () => {
     cfEndDate = (cfEndInput.value || "").slice(0, 10) || cfEndDate;
     syncCashflowRangeDateLabels();
-    renderChart();
+    void syncCashflowRangeFromServer();
   });
   cfStartInput.addEventListener("input", syncCashflowRangeDateLabels);
   cfEndInput.addEventListener("input", syncCashflowRangeDateLabels);
@@ -8488,7 +8509,7 @@ function renderCashflowView() {
     cfStartInput.value = cfStartDate;
     cfEndInput.value = cfEndDate;
     syncCashflowRangeDateLabels();
-    renderChart();
+    void syncCashflowRangeFromServer();
   });
 
   wrap.appendChild(periodToolbar);
@@ -8927,14 +8948,18 @@ function renderCashflowView() {
     dashboard.appendChild(subscriptionRow);
   }
 
+  async function syncCashflowRangeFromServer() {
+    if (!wrap.isConnected) return;
+    const { from, to } = getCashflowPickerBounds();
+    if (!from || !to) return;
+    persistAssetExpensePullBounds(from, to);
+    await pullAssetExpenseTransactionsForDateRange(from, to);
+    if (!wrap.isConnected) return;
+    renderChart();
+  }
+
   renderChart();
-  /* 현금흐름은 연·월별 집계에 전체 거래가 필요함 — 가계부는 구간 pull만 해 두었을 수 있어 보조로 전체 스냅샷 1회 */
-  void pullAssetExpenseTransactionsFromSupabase()
-    .then(() => {
-      if (!wrap.isConnected) return;
-      renderChart();
-    })
-    .catch(() => {});
+  void syncCashflowRangeFromServer();
 
   return wrap;
 }
@@ -8993,16 +9018,8 @@ export function render() {
     if (view !== "expense") {
       const expenseList = contentWrap.querySelector(".asset-expense-cards-list");
       if (expenseList) {
-        const prevRows = loadExpenseRows();
         const rows = collectExpenseRowsFromDOM(expenseList);
-        const nextIds = new Set(rows.map((r) => String(r?.id || "").trim()).filter(Boolean));
-        const removedServerIds = prevRows
-          .map((r) => String(r?.id || "").trim())
-          .filter((id) => EXPENSE_ROW_UUID_RE.test(id) && !nextIds.has(id));
         saveExpenseRows(rows);
-        if (removedServerIds.length) {
-          void deleteAssetExpenseTransactionsFromSupabase(removedServerIds).catch(() => {});
-        }
       }
     }
     contentWrap.innerHTML = "";
@@ -9020,24 +9037,32 @@ export function render() {
     }
   }
 
-  function switchView(view) {
+  async function switchView(view) {
     viewTabs.querySelectorAll(".asset-view-tab").forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.view === view);
     });
     saveAssetSubView(view);
+    /* 순자산 전용 pull 생략: 아래 pullAllAssetFromCloud 에서 동일하게 병합됨 — 이중 렌더·중복 네트워크만 늘었음 */
     renderView(view);
     void (async () => {
+      let anyChanged = true;
       try {
-        await pullAllAssetFromCloud(() => "asset", { forceExpensePull: true });
-      } catch (_) {}
+        const r = await pullAllAssetFromCloud(() => "asset", { forceExpensePull: true });
+        if (r && typeof r.anyChanged === "boolean") anyChanged = r.anyChanged;
+      } catch (_) {
+        anyChanged = true;
+      }
       if (!contentWrap.isConnected) return;
       const still = viewTabs.querySelector(".asset-view-tab.active")?.dataset?.view;
-      if (still === view) renderView(view);
+      if (still !== view || !anyChanged) return;
+      renderView(view);
     })();
   }
 
   viewTabs.querySelectorAll(".asset-view-tab").forEach((btn) => {
-    btn.addEventListener("click", () => switchView(btn.dataset.view));
+    btn.addEventListener("click", () => {
+      void switchView(btn.dataset.view);
+    });
   });
 
   attachAssetExpenseTransactionsSaveListener();
@@ -9048,18 +9073,30 @@ export function render() {
   attachAssetNetWorthBundleSaveListener();
 
   /* 행이 0건이어도 «불러오는 중»을 띄우지 않음 — 빈 가계부는 미리 로드된 상태와 구분 불가했고, 상위 탭 전환 시 App에서 이미 pull 후 렌더되는 경우가 많음 */
-  renderView(initialView);
+  void (async () => {
+    if (initialView === "networth") {
+      try {
+        await Promise.all([pullAssetNetWorthBundleFromSupabase(), pullAssetNetWorthTargetFromSupabase()]);
+      } catch (_) {}
+    }
+    renderView(initialView);
+  })();
 
   if (typeof window !== "undefined" && window.__lpAssetNeedDeferredInitialPull) {
     try {
       window.__lpAssetNeedDeferredInitialPull = false;
     } catch (_) {}
     void (async () => {
+      let anyChanged = true;
       try {
-        await pullAllAssetFromCloud(() => "asset", { forceExpensePull: true });
-      } catch (_) {}
+        const r = await pullAllAssetFromCloud(() => "asset", { forceExpensePull: true });
+        if (r && typeof r.anyChanged === "boolean") anyChanged = r.anyChanged;
+      } catch (_) {
+        anyChanged = true;
+      }
       if (!contentWrap.isConnected) return;
       const v = viewTabs.querySelector(".asset-view-tab.active")?.dataset?.view || initialView;
+      if (!anyChanged) return;
       renderView(v);
     })();
   }

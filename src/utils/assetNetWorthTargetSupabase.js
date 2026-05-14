@@ -14,6 +14,20 @@ const LEGACY_LOCAL_KEY = "asset_networth_target";
 let _warnedNoSupabaseClient = false;
 let _warnedNoAuthSession = false;
 
+let _goalServerWriteGrants = 0;
+
+export function grantAssetNetWorthTargetServerWrite(count = 1) {
+  const n = Math.max(0, Math.floor(Number(count)));
+  if (!n) return;
+  _goalServerWriteGrants += n;
+}
+
+function takeAssetNetWorthTargetServerWriteSlot() {
+  if (_goalServerWriteGrants <= 0) return false;
+  _goalServerWriteGrants -= 1;
+  return true;
+}
+
 /** @type {string | undefined} */
 let _targetMem = undefined;
 let _targetMigrated = false;
@@ -110,6 +124,8 @@ export async function syncAssetNetWorthTargetToSupabaseImpl() {
 
   if (!_goalNeedsCloudSync) return;
 
+  if (!takeAssetNetWorthTargetServerWriteSlot()) return;
+
   const amt = parseTargetAmountToNumber(getNetWorthTargetDisplayStrMem());
 
   const { error } = await supabase.from(TABLE).upsert(
@@ -137,18 +153,9 @@ export function syncAssetNetWorthTargetToSupabase() {
   return runAssetSerialized(() => syncAssetNetWorthTargetToSupabaseImpl());
 }
 
+/** 서버가 비어 있어도 자동 업로드하지 않음 — 순자산 화면 목표 입력 blur 에서만 grant 후 sync */
 export async function pushLocalNetWorthTargetIfServerHasNoRow() {
-  const userId = await getSessionUserId();
-  if (!userId || !supabase) return;
-
-  const { data, error } = await supabase.from(TABLE).select("user_id").eq("user_id", userId).maybeSingle();
-  if (error || data != null) return;
-
-  const localText = getNetWorthTargetDisplayStrMem();
-  if (!String(localText || "").trim()) return;
-
-  _goalNeedsCloudSync = true;
-  await syncAssetNetWorthTargetToSupabase();
+  return;
 }
 
 let _pushTimer = null;
@@ -174,27 +181,23 @@ export function scheduleAssetNetWorthTargetSyncPush() {
 
 let _listenerAttached = false;
 
+/** 자동 서버 동기화 없음 — 목표 입력 blur 에서만 grant 후 sync */
 export function attachAssetNetWorthTargetSaveListener() {
   if (_listenerAttached) return;
   _listenerAttached = true;
-  window.addEventListener("asset-networth-target-saved", (e) => {
-    if (e.detail?.fromServerMerge) return;
-    scheduleAssetNetWorthTargetSyncPush();
-  });
 }
 
 export async function hydrateAssetNetWorthTargetFromCloud() {
   attachAssetNetWorthTargetSaveListener();
   if (!supabase) return false;
-  const applied = await pullAssetNetWorthTargetFromSupabase();
-  await pushLocalNetWorthTargetIfServerHasNoRow();
-  return applied;
+  return pullAssetNetWorthTargetFromSupabase();
 }
 
 export function clearNetWorthTargetMemAndLegacy() {
   _targetMem = undefined;
   _targetMigrated = false;
   _goalNeedsCloudSync = false;
+  _goalServerWriteGrants = 0;
   try {
     if (typeof localStorage === "undefined") return;
     localStorage.removeItem(LOCAL_KEY);

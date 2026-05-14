@@ -321,9 +321,6 @@ function buildHomeLiveTracker() {
   card.className = "home-live-tracker-card";
   const cardMain = document.createElement("div");
   cardMain.className = "home-live-tracker-card-main";
-  const dot = document.createElement("span");
-  dot.className = "home-live-tracker-dot";
-  dot.setAttribute("aria-hidden", "true");
   const textWrap = document.createElement("div");
   textWrap.className = "home-live-tracker-text";
   const taskEl = document.createElement("div");
@@ -332,7 +329,6 @@ function buildHomeLiveTracker() {
   metaEl.className = "home-live-tracker-meta";
   textWrap.appendChild(taskEl);
   textWrap.appendChild(metaEl);
-  cardMain.appendChild(dot);
   cardMain.appendChild(textWrap);
   const clockEl = document.createElement("div");
   clockEl.className = "home-live-tracker-clock";
@@ -368,14 +364,9 @@ function refreshHomeLiveTrackerEl(root) {
   const taskEl = root.querySelector(".home-live-tracker-task");
   const metaEl = root.querySelector(".home-live-tracker-meta");
   const clockEl = root.querySelector(".home-live-tracker-clock");
-  const dotEl = root.querySelector(".home-live-tracker-dot");
   if (taskEl) {
     taskEl.textContent = task;
     taskEl.style.removeProperty("color");
-  }
-  if (dotEl) {
-    dotEl.style.removeProperty("background");
-    dotEl.style.removeProperty("box-shadow");
   }
   if (clockEl) clockEl.style.removeProperty("color");
 

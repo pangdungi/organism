@@ -71,7 +71,12 @@ import {
   readTimeLedgerCombinedPullRangeYmd,
   readTimeLedgerRetrospectSessionFilterRangeYmd,
 } from "../utils/timeLedgerEntriesSupabase.js";
-import { hydrateAssetExpenseTransactionsFromCloud } from "../utils/assetExpenseTransactionsSupabase.js";
+import {
+  deleteAssetExpenseTransactionsFromSupabase,
+  grantAssetExpenseTransactionServerWrite,
+  pullAssetExpenseTransactionsFromSupabase,
+  syncAssetExpenseTransactionsToSupabase,
+} from "../utils/assetExpenseTransactionsSupabase.js";
 import { pullTimeLedgerTabEnterFromCloud } from "../utils/timeLedgerCloudRefresh.js";
 import { timeLedgerSyncLog } from "../utils/timeLedgerSyncDebug.js";
 import { lpSaveDebug } from "../utils/lpSaveDebug.js";
@@ -7106,6 +7111,8 @@ export function render() {
           if (item.id) {
             const rows = loadExpenseRows().filter((r) => r.id !== item.id);
             saveExpenseRows(rows);
+            grantAssetExpenseTransactionServerWrite(1);
+            void deleteAssetExpenseTransactionsFromSupabase([item.id]).catch(() => {});
             window.dispatchEvent(new CustomEvent("asset-expense-transactions-saved"));
           }
           taskLogExpenseAddedItems.splice(idx, 1);
@@ -7194,6 +7201,8 @@ export function render() {
       amount: row.amount,
       memTotal: existingRows.length,
     });
+    grantAssetExpenseTransactionServerWrite(1);
+    void syncAssetExpenseTransactionsToSupabase().catch(() => {});
     window.dispatchEvent(new CustomEvent("asset-expense-transactions-saved"));
     updateExpenseInnerList();
     taskLogExpenseNameInput.value = "";
@@ -7921,6 +7930,8 @@ export function render() {
     }
 
     if (didAddMainFormExpense) {
+      grantAssetExpenseTransactionServerWrite(1);
+      void syncAssetExpenseTransactionsToSupabase().catch(() => {});
       window.dispatchEvent(new CustomEvent("asset-expense-transactions-saved"));
     }
 
@@ -8434,7 +8445,7 @@ export function render() {
   let cachedRows = [];
 
   logTabSync("time_tab_hydrate", {});
-  void Promise.all([hydrateAssetExpenseTransactionsFromCloud()]).then(() => {
+  void Promise.resolve(pullAssetExpenseTransactionsFromSupabase()).then(() => {
     if (!el.isConnected) return;
     try {
       _pickerRangeKeyAtLastPullIntent = computePickerRangeKeyForPull();
@@ -10897,6 +10908,9 @@ export function render() {
     const userSubTabClick = !!opts.userSubTabClick;
     if (!TIME_LEDGER_SHOW_IMPROVE_TAB && view === "improve") view = "all";
     el.dataset.timeContentView = view;
+    if (userSubTabClick && (view === "all" || view === "retrospect")) {
+      void pullAssetExpenseTransactionsFromSupabase();
+    }
     const hourlyAddSlotRoot = el.querySelector(".time-hourly-add-slot");
     if (
       hourlyAddSlotRoot &&

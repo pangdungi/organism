@@ -5379,7 +5379,7 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
       /* 반열 각각 독립 카드처럼 모서리 둥글게 */
       blockFill.style.borderRadius = "0.375rem";
       blockFill.style.boxSizing = "border-box";
-      /* 타임박스: 살짝 둥근 카드형, 면 채움 위주(왼쪽 굵은 실선·세그먼트 상하선 없음) */
+      /* 타임박스: 카드형 둥근 모서리, 면 채움만(세그먼트 외곽 실선 테두리 없음) */
       for (const sp of group) {
         let c;
         if (
@@ -5432,7 +5432,7 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
         if (surfHex && c.border) {
           seg.classList.add("calendar-1day-time-slot-fill-seg--surface-spec");
           seg.style.backgroundColor = c.bg;
-          seg.style.border = `1px solid ${c.border}`;
+          seg.style.border = "none";
           if (c.accentText) {
             seg.style.setProperty("--calendar-tb-fg", c.accentText);
             seg.style.setProperty(
@@ -6127,9 +6127,8 @@ function render1DayView(
           ) {
             card.classList.add("calendar-1day-timeline-card--expected-now");
           }
-          if (!ledgerMissed && !ledgerMatched) {
-            card.style.backgroundColor = c.bg;
-            card.style.borderLeftColor = c.leftStripe;
+          if (!ledgerMissed) {
+            card.style.setProperty("--calendar-timeline-stripe", c.leftStripe);
           }
 
           const titleRow = document.createElement("div");
@@ -6147,6 +6146,9 @@ function render1DayView(
             checkEl.setAttribute("role", "img");
             checkEl.setAttribute("aria-label", "기록 완료");
             checkEl.textContent = "✓";
+            if (typeof c.leftStripe === "string" && c.leftStripe.trim()) {
+              checkEl.style.color = c.leftStripe.trim();
+            }
             titleRow.appendChild(checkEl);
           } else if (ledgerMissed) {
             const missEl = document.createElement("span");
@@ -7397,17 +7399,18 @@ function render1WeekView(
         }
 
         const sidRaw = String(span.sectionId || "").trim();
-        let accent = "";
+        let badgeAccent = "";
         if (sidRaw && !sidRaw.startsWith("custom-")) {
           try {
-            accent = getSectionColor(sidRaw) || "";
+            badgeAccent = getSectionColor(sidRaw) || "";
           } catch (_) {
-            accent = "";
+            badgeAccent = "";
           }
         }
-        if (!accent && c.border) accent = c.border;
-        if (accent) {
-          card.style.borderLeftColor = accent;
+        if (!badgeAccent && c.border) badgeAccent = c.border;
+
+        if (!ledgerMissed) {
+          card.style.setProperty("--calendar-timeline-stripe", c.leftStripe);
         }
 
         const titleEl = document.createElement("div");
@@ -7458,9 +7461,9 @@ function render1WeekView(
           const badge = document.createElement("span");
           badge.className = "calendar-1week-flow-card-badge";
           badge.textContent = badgeText;
-          if (accent) {
-            badge.style.backgroundColor = withMoreTransparency(accent, 0.22);
-            badge.style.color = timetableAccentTextColor(accent) || accent;
+          if (badgeAccent) {
+            badge.style.backgroundColor = withMoreTransparency(badgeAccent, 0.22);
+            badge.style.color = timetableAccentTextColor(badgeAccent) || badgeAccent;
           }
           meta.appendChild(badge);
         }

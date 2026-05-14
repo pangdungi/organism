@@ -1,10 +1,11 @@
 /**
  * 자산관리 — 서버(Supabase)에서 세션 메모리로 병합 (한 줄 직렬 runAssetSerialized).
+ * 가계부 **분류·결제수단** 설정은 이 함수에 포함하지 않음 → 설정 모달을 열 때만 pull.
  */
 
 import { runAssetSerialized } from "./assetServerSyncSerial.js";
 import { getExpenseRowsMem, pullAssetExpenseTransactionsFromSupabaseImpl } from "./assetExpenseTransactionsSupabase.js";
-import { pullAssetExpensePrefsFromSupabaseImpl, readExpenseClassificationSavedMem, readExpensePaymentOptionsListMem } from "./assetExpensePrefsSupabase.js";
+import { readExpenseClassificationSavedMem, readExpensePaymentOptionsListMem } from "./assetExpensePrefsSupabase.js";
 import {
   pullAssetNetWorthBundleFromSupabaseImpl,
   NET_WORTH_BUNDLE_LOCAL_KEYS,
@@ -46,7 +47,7 @@ function snapshotAssetSessionState() {
 }
 
 /**
- * 가계부 거래·설정·순자산·목표·월계획·주식분류를 서버에서 받아 메모리에 반영.
+ * 가계부 거래·(가계부 분류/결제는 제외)·순자산·목표·월계획·주식분류를 서버에서 받아 메모리에 반영.
  * @param {() => string} [getCurrentTabId]
  * @param {{ realtimeTouchedTables?: Set<string>; forceExpensePull?: boolean }} [opts]
  *   — Realtime 배치에 자산 테이블 변화가 없으면 **호출 전체를 생략**(가계부 탭에서도 시간/KPI 이벤트만 올 때 Supabase 요청·로그 폭주 방지).
@@ -79,7 +80,6 @@ export async function pullAllAssetFromCloud(getCurrentTabId, opts = {}) {
     /* 풀은 읽기 전용. 로컬→서버 쓰기는 저장/확인/삭제 이벤트에서만(덮어쓰기·탭 이탈 flush 없음) */
     await Promise.all([
       skipExpense ? Promise.resolve() : pullAssetExpenseTransactionsFromSupabaseImpl({ mode: "range" }),
-      pullAssetExpensePrefsFromSupabaseImpl(),
       pullAssetNetWorthBundleFromSupabaseImpl(),
       pullAssetNetWorthTargetFromSupabaseImpl(),
       pullAssetPlanMonthlyGoalsFromSupabaseImpl(),

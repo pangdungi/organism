@@ -2521,16 +2521,6 @@ body.auth-pw-modal-open {
   flex: 1 1 auto;
 }
 
-.app-main:has(.home-view) .home-live-tracker-dot {
-  flex-shrink: 0;
-  width: 0.5rem;
-  height: 0.5rem;
-  margin-top: 0.32rem;
-  border-radius: 50%;
-  background: rgba(26, 34, 24, 0.45);
-  box-shadow: 0 0 0 2px rgba(26, 34, 24, 0.12);
-}
-
 .app-main:has(.home-view) .home-live-tracker-text {
   display: flex;
   flex-direction: column;
@@ -2874,6 +2864,11 @@ body.auth-pw-modal-open {
 /* 통계 블록 아래 투두 섹션 — 섹션 하단 보더로 이미 구분됨 */
 .home-time-summary-section + .home-view-section--todo {
   border-top: none;
+}
+
+.app-main:has(.home-view) .home-view-section--todo .home-todo-list-content {
+  padding-left: 0;
+  padding-right: 0;
 }
 
 /* 오늘 탭 투두: 카드 제거 → 플랫 리스트 (구분선만) */
@@ -5088,7 +5083,7 @@ body.auth-pw-modal-open {
   .app-main:has(.home-view) .home-view-toolbar-start {
     flex: 1 1 auto;
     min-width: 0;
-    justify-content: flex-end;
+    justify-content: flex-start;
   }
   .app-main:has(.home-view) .home-view-toolbar-date {
     white-space: nowrap;
@@ -5425,6 +5420,8 @@ body.auth-pw-modal-open {
     max-height: 15rem;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
+    padding-left: 0;
+    padding-right: 0;
   }
 
   /* 모바일: 오늘 탭 세로 구분선 제거 (웹 3단 레이아웃용 border-right) */
@@ -5530,8 +5527,6 @@ body.auth-pw-modal-open {
     color: var(--text-ink);
     opacity: 0.92;
   }
-
-  /* 모바일: 근무표(목록) — 표는 내용·열 최소값 기준(넘치면 가로 스크롤) */
   .work-schedule-content-wrap .work-schedule-table-wrap {
     overflow-x: auto;
     overflow-y: visible;
@@ -12149,9 +12144,9 @@ body.auth-pw-modal-open {
 }
 .calendar-1day-timeline-card {
   border: 1px solid rgba(0, 0, 0, 0.1);
-  border-left: 3px solid var(--ui-btn-primary-bg);
+  border-left: 3px solid var(--calendar-timeline-stripe, var(--ui-btn-primary-bg));
   border-radius: 0.5rem !important;
-  background: #ffffff;
+  background: var(--calendar-timeline-card-bg, #ffffff);
   padding: 0.55rem 0.6rem 0.5rem;
   box-sizing: border-box;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
@@ -12223,14 +12218,16 @@ body.auth-pw-modal-open {
 }
 .calendar-1day-timeline-card--in-progress {
   background: #ffffff;
-  border-color: rgba(124, 92, 180, 0.45);
+  border-top-color: rgba(124, 92, 180, 0.45);
+  border-right-color: rgba(124, 92, 180, 0.45);
+  border-bottom-color: rgba(124, 92, 180, 0.45);
   box-shadow:
     0 1px 3px rgba(0, 0, 0, 0.06),
     inset 0 0 0 1px rgba(124, 92, 180, 0.12);
 }
-/* 예정 시간대 안이지만 아직 실제 기록(마감 없는 진행)이 없을 때 */
+/* 예정 시간 안 + 아직 기록 시작 없음 완료 아님: 면만 기본색(파스텔 하이라이트 없음). 완료·진행·기타에는 영향 없음 */
 .calendar-1day-timeline-card--expected-now {
-  background: #f2f7f9;
+  background: var(--app-main-bg, #ffffff);
 }
 .calendar-1day-timeline-card--ledger-missed {
   background: #ebebeb;
@@ -42308,7 +42305,6 @@ img.time-btn-icon {
   }
 }
 
-/* 나의 계정 위젯: 그림자·회색 패널 제거 — 앱 메인 배경과 동일 */
 .idea-view .time-dashboard-widget {
   box-shadow: none;
   background: var(--app-main-bg);
@@ -49123,19 +49119,21 @@ img.time-btn-icon {
 }
 .calendar-1week-flow-card {
   border: 1px solid rgba(0, 0, 0, 0.1);
-  border-left: 3px solid var(--ui-btn-primary-bg);
+  border-left: 3px solid var(--calendar-timeline-stripe, var(--ui-btn-primary-bg));
   border-radius: 0.5rem;
-  background: var(--app-main-bg);
+  background: var(--calendar-week-flow-card-bg, var(--app-main-bg));
   padding: 0.45rem 0.5rem 0.4rem;
   box-sizing: border-box;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
+.calendar-1week-flow-card--expected-now {
+  background: var(--app-main-bg);
+}
 .calendar-1week-flow-card--in-progress {
   background: rgba(124, 92, 180, 0.09);
-  border-color: rgba(124, 92, 180, 0.45);
-}
-.calendar-1week-flow-card--expected-now {
-  background: #f2f7f9;
+  border-top-color: rgba(124, 92, 180, 0.45);
+  border-right-color: rgba(124, 92, 180, 0.45);
+  border-bottom-color: rgba(124, 92, 180, 0.45);
 }
 .calendar-1week-flow-card-title {
   font-size: 0.75rem;

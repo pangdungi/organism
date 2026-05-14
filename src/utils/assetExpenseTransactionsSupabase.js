@@ -13,6 +13,22 @@ export const EXPENSE_ROWS_STORAGE_KEY = "asset_expense_rows";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+/** 가계부 서버 upsert/delete 는 사용자가 명시한 조작에서만 허용(티켓 소비). */
+let _expenseServerWriteGrants = 0;
+
+/** @param {number} [count] 기본 1 — 이후 sync/delete 각 1티켓 소비 */
+export function grantAssetExpenseTransactionServerWrite(count = 1) {
+  const n = Math.max(0, Math.floor(Number(count)));
+  if (!n) return;
+  _expenseServerWriteGrants += n;
+}
+
+function takeAssetExpenseTransactionServerWriteSlot() {
+  if (_expenseServerWriteGrants <= 0) return false;
+  _expenseServerWriteGrants -= 1;
+  return true;
+}
+
 /** @type {unknown[]} */
 let _expenseRowsMem = [];
 
@@ -46,6 +62,7 @@ export function setExpenseRowsMem(rows) {
 export function clearAssetExpenseTransactionsMemAndLegacy() {
   _expenseRowsMem = [];
   _expenseMemHasFullSnapshot = false;
+  _expenseServerWriteGrants = 0;
   try {
     if (typeof localStorage !== "undefined") {
       localStorage.removeItem(EXPENSE_ROWS_STORAGE_KEY);
@@ -344,6 +361,10 @@ export async function syncAssetExpenseTransactionsToSupabaseImpl() {
     lpSaveDebug("sync 스킵", { reason: !supabase ? "no_supabase" : "no_userId" });
     return;
   }
+  if (!takeAssetExpenseTransactionServerWriteSlot()) {
+    lpSaveDebug("가계부 sync 차단(사용자 명시 조작에서 grant 없음)");
+    return;
+  }
 
   const rows = loadExpenseRowsRaw();
   const substantive = rows.filter((r) => r?.id && UUID_RE.test(String(r.id)) && expenseRowIsSubstantive(r));
@@ -429,6 +450,11 @@ async function deleteAssetExpenseTransactionsFromSupabaseImpl(ids) {
   const uniq = [
     ...new Set(ids.map((id) => String(id || "").trim()).filter((id) => UUID_RE.test(id))),
   ];
+  if (uniq.length === 0) return;
+  if (!takeAssetExpenseTransactionServerWriteSlot()) {
+    lpSaveDebug("가계부 delete 차단(사용자 명시 조작에서 grant 없음)");
+    return;
+  }
   for (const id of uniq) {
     const { error } = await supabase.from(TABLE).delete().eq("id", id).eq("user_id", userId);
   }
@@ -439,63 +465,26 @@ export function deleteAssetExpenseTransactionsFromSupabase(ids) {
   return runAssetSerialized(() => deleteAssetExpenseTransactionsFromSupabaseImpl(ids));
 }
 
+/**
+ * 예전: 서버에 한 건도 없을 때 로컬 전량 업로드.
+ * 가계부는 사용자가 명시한 저장·삭제에서만 서버에 쓰이므로 자동 푸시하지 않음.
+ */
 export async function pushAllLocalAssetExpenseTransactionsIfServerEmpty() {
-  const userId = await getSessionUserId();
-  if (!userId || !supabase) return;
-
-  const { count, error } = await supabase
-    .from(TABLE)
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", userId);
-
-  if (error) return;
-  if (count != null && count > 0) return;
-
-  const rows = loadExpenseRowsRaw();
-  if (!rows.some((r) => r?.id && UUID_RE.test(String(r.id)) && expenseRowIsSubstantive(r))) return;
-
-  await syncAssetExpenseTransactionsToSupabase();
-}
-
-let _pushTimer = null;
-const PUSH_DEBOUNCE_MS = 900;
-
-export function scheduleAssetExpenseTransactionsSyncPush() {
-  if (!supabase) {
-    lpSaveDebug("scheduleAssetExpensePush 스킵: supabase 없음");
-    return;
-  }
-  if (_pushTimer) clearTimeout(_pushTimer);
-  lpSaveDebug("가계부 동기화 예약", { debounceMs: PUSH_DEBOUNCE_MS });
-  _pushTimer = setTimeout(() => {
-    _pushTimer = null;
-    syncAssetExpenseTransactionsToSupabase().catch((e) => {
-      lpSaveDebug("sync 예외", { err: String(e?.message || e) });
-    });
-  }, PUSH_DEBOUNCE_MS);
+  return;
 }
 
 let _listenerAttached = false;
 
+/** 자동 서버 동기화는 하지 않음(호환: App 등에서 호출해도 무해). */
 export function attachAssetExpenseTransactionsSaveListener() {
   if (_listenerAttached) return;
   _listenerAttached = true;
-  window.addEventListener("asset-expense-transactions-saved", (e) => {
-    if (e.detail?.fromServerMerge) {
-      lpSaveDebug("이벤트 무시(fromServerMerge)");
-      return;
-    }
-    lpSaveDebug("이벤트: asset-expense-transactions-saved → 동기화 예약");
-    scheduleAssetExpenseTransactionsSyncPush();
-  });
 }
 
-/** @returns {Promise<boolean>} 서버에서 거래 목록을 받아 메모리를 갱신했으면 true */
+/** @returns {Promise<boolean>} 서버에서 거래 목록을 받아 메모리를 갱신했으면 true (쓰기 없음) */
 export async function hydrateAssetExpenseTransactionsFromCloud() {
   lpPullDebug("hydrateAssetExpenseTransactionsFromCloud", {});
   attachAssetExpenseTransactionsSaveListener();
   if (!supabase) return false;
-  const applied = await pullAssetExpenseTransactionsFromSupabase();
-  await pushAllLocalAssetExpenseTransactionsIfServerEmpty();
-  return applied;
+  return pullAssetExpenseTransactionsFromSupabase();
 }

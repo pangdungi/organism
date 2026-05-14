@@ -1,6 +1,8 @@
 /**
  * 가계부 설정: 사용자 추가 소비/수입 분류 · 결제수단 ↔ Supabase
  * — 세션 메모리(서버 pull·sync 후 재조회) + 자산 전역 직렬 큐.
+ * 서버 쓰기: 가계부 설정 모달에서 «저장»만 티켓(grant) 후 sync.
+ * 서버 풀: 그 설정 모달을 열 때만(자산 전역 pull에서 제외).
  */
 
 import { supabase } from "../supabase.js";
@@ -55,6 +57,21 @@ let _clsSavedMem = undefined;
 /** @type {unknown[]|undefined} */
 let _payListMem = undefined;
 let _prefsMigrated = false;
+
+let _prefsServerWriteGrants = 0;
+
+/** @param {number} [count] 기본 1 — 이후 sync 1회당 1티켓 소비 */
+export function grantAssetExpensePrefsServerWrite(count = 1) {
+  const n = Math.max(0, Math.floor(Number(count)));
+  if (!n) return;
+  _prefsServerWriteGrants += n;
+}
+
+function takeAssetExpensePrefsServerWriteSlot() {
+  if (_prefsServerWriteGrants <= 0) return false;
+  _prefsServerWriteGrants -= 1;
+  return true;
+}
 
 function migratePrefsFromLocalStorageOnce() {
   if (_prefsMigrated) return;
@@ -230,12 +247,8 @@ export async function pullAssetExpensePrefsFromSupabaseImpl() {
   ]);
 
 
-  if (!clsRes.error && clsRes.data?.length > 0) {
-    applyClassificationUserOnlyToMem(clsRes.data);
-  }
-  if (!payRes.error && payRes.data?.length > 0) {
-    applyPaymentExtrasToMem(payRes.data);
-  }
+  if (!clsRes.error) applyClassificationUserOnlyToMem(clsRes.data || []);
+  if (!payRes.error) applyPaymentExtrasToMem(payRes.data || []);
 
   return { classifications: clsRes.data || [], payments: payRes.data || [] };
 }
@@ -247,6 +260,7 @@ export function pullAssetExpensePrefsFromSupabase() {
 export async function syncAssetExpensePrefsToSupabaseImpl() {
   const userId = await getSessionUserId();
   if (!userId || !supabase) return;
+  if (!takeAssetExpensePrefsServerWriteSlot()) return;
 
   const clsPayloads = buildClassificationPayloadsFromLocal(userId);
   const payPayloads = buildPaymentPayloadsFromLocal(userId);
@@ -295,38 +309,24 @@ export function syncAssetExpensePrefsToSupabase() {
   return runAssetSerialized(() => syncAssetExpensePrefsToSupabaseImpl());
 }
 
+/** 서버가 비어 있을 때 로컬로 채우기 — 설정은 모달 저장에서만 서버 반영하므로 사용하지 않음 */
 export async function pushAllLocalAssetExpensePrefsIfServerEmpty() {
-  const userId = await getSessionUserId();
-  if (!userId || !supabase) return;
-  const { count: cCls, error: e1 } = await supabase
-    .from(CLS_TABLE)
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", userId);
-  const { count: cPay, error: e2 } = await supabase
-    .from(PAY_TABLE)
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", userId);
-  if (e1 || e2) return;
-  if ((cCls != null && cCls > 0) || (cPay != null && cPay > 0)) return;
-  await syncAssetExpensePrefsToSupabase();
+  return;
 }
 
-/** 가계부 설정 서버 쓰기: 가계부 설정 모달에서 «저장» 클릭 시에만 `syncAssetExpensePrefsToSupabase` 를 호출한다(이벤트로 자동 푸시 없음). */
-
-export function attachAssetExpensePrefsSaveListener() {
-  /* noop — 예전: asset-expense-prefs-saved 시 자동 푸시. 모달 «저장»에서만 서버 반영. */
-}
+/** noop — 자동 푸시 없음 */
+export function attachAssetExpensePrefsSaveListener() {}
 
 export async function hydrateAssetExpensePrefsFromCloud() {
   if (!supabase) return;
   await pullAssetExpensePrefsFromSupabase();
-  await pushAllLocalAssetExpensePrefsIfServerEmpty();
 }
 
 export function clearAssetExpensePrefsMemAndLegacy() {
   _clsSavedMem = undefined;
   _payListMem = undefined;
   _prefsMigrated = false;
+  _prefsServerWriteGrants = 0;
   try {
     if (typeof localStorage === "undefined") return;
     localStorage.removeItem(EXPENSE_CLASSIFICATION_KEY);

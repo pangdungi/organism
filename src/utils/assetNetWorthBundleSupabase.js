@@ -11,6 +11,20 @@ const TABLE = "asset_user_net_worth_bundle";
 let _warnedNoSupabaseClient = false;
 let _warnedNoAuthSession = false;
 
+let _bundleServerWriteGrants = 0;
+
+export function grantAssetNetWorthBundleServerWrite(count = 1) {
+  const n = Math.max(0, Math.floor(Number(count)));
+  if (!n) return;
+  _bundleServerWriteGrants += n;
+}
+
+function takeAssetNetWorthBundleServerWriteSlot() {
+  if (_bundleServerWriteGrants <= 0) return false;
+  _bundleServerWriteGrants -= 1;
+  return true;
+}
+
 export const NET_WORTH_BUNDLE_LOCAL_KEYS = {
   debt: "asset_debt_rows",
   depositSavings: "asset_asset_rows",
@@ -195,6 +209,8 @@ export async function syncAssetNetWorthBundleToSupabaseImpl() {
 
   if (!_bundleNeedsCloudSync) return;
 
+  if (!takeAssetNetWorthBundleServerWriteSlot()) return;
+
   const payload = await buildBundleUpsertPayload(userId);
   const { error } = await supabase.from(TABLE).upsert(payload, { onConflict: "user_id" });
   if (error) {
@@ -212,16 +228,9 @@ export function syncAssetNetWorthBundleToSupabase() {
   return runAssetSerialized(() => syncAssetNetWorthBundleToSupabaseImpl());
 }
 
+/** 서버가 비어 있을 때 자동 업로드하지 않음 — 순자산 모달에서만 grant 후 sync */
 export async function pushLocalNetWorthBundleIfServerHasNoRow() {
-  const userId = await getSessionUserId();
-  if (!userId || !supabase) return;
-
-  const { data, error } = await supabase.from(TABLE).select("user_id").eq("user_id", userId).maybeSingle();
-  if (error || data != null) return;
-  if (!hasAnyLocalBundleDataFromMem()) return;
-
-  _bundleNeedsCloudSync = true;
-  await syncAssetNetWorthBundleToSupabase();
+  return;
 }
 
 let _pushTimer = null;
@@ -247,21 +256,16 @@ export function scheduleAssetNetWorthBundleSyncPush() {
 
 let _listenerAttached = false;
 
+/** 자동 서버 동기화 없음 — 모달 저장·수정·삭제에서만 grant 후 sync */
 export function attachAssetNetWorthBundleSaveListener() {
   if (_listenerAttached) return;
   _listenerAttached = true;
-  window.addEventListener("asset-networth-bundle-saved", (e) => {
-    if (e.detail?.fromServerMerge) return;
-    scheduleAssetNetWorthBundleSyncPush();
-  });
 }
 
 export async function hydrateAssetNetWorthBundleFromCloud() {
   attachAssetNetWorthBundleSaveListener();
   if (!supabase) return false;
-  const applied = await pullAssetNetWorthBundleFromSupabase();
-  await pushLocalNetWorthBundleIfServerHasNoRow();
-  return applied;
+  return pullAssetNetWorthBundleFromSupabase();
 }
 
 export function clearNetWorthBundleMemAndLegacy() {
@@ -270,6 +274,7 @@ export function clearNetWorthBundleMemAndLegacy() {
   }
   _bundleMigrated = false;
   _bundleNeedsCloudSync = false;
+  _bundleServerWriteGrants = 0;
   try {
     if (typeof localStorage === "undefined") return;
     for (const key of Object.values(NET_WORTH_BUNDLE_LOCAL_KEYS)) {
