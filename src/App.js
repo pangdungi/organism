@@ -632,6 +632,8 @@ export async function mountApp(container) {
     applySetActiveTab(tabId);
   }
 
+  let _tabSwitchTimer = null;
+
   function applySetActiveTab(tabId) {
     const fromTab = currentTabId;
     if (fromTab !== tabId) flushAllPendingTimeDailyBudgetSync();
@@ -639,6 +641,7 @@ export async function mountApp(container) {
     persistActiveTabId(tabId);
     logTodoScheduleTabOnNavigate(tabId, fromTab);
     logTabSync("tab_switch", { from: fromTab, to: tabId });
+    /* 하이라이트(싸게 처리) — 즉시 반영 */
     nav.querySelectorAll(".app-sidebar-item").forEach((b) => {
       b.classList.toggle("active", b.dataset.tabId === tabId);
     });
@@ -648,60 +651,65 @@ export async function mountApp(container) {
         b.classList.toggle("active", b.dataset.tabId === tabId);
       });
     }
-    void (async () => {
-      const targetTabId = tabId;
-      /* 아카이브: 입력 없이 보기 전용 — 서버 구간 pull 후에만 본문 렌더(로컬만 먼저 보이지 않음) */
-      if (targetTabId === "archive") {
+    /* 렌더·pull은 빠른 연속 탭 전환 시 마지막 탭만 처리하도록 디바운스(80ms) */
+    if (_tabSwitchTimer != null) clearTimeout(_tabSwitchTimer);
+    _tabSwitchTimer = setTimeout(() => {
+      _tabSwitchTimer = null;
+      void (async () => {
+        const targetTabId = currentTabId;
+        /* 아카이브: 입력 없이 보기 전용 — 서버 구간 pull 후에만 본문 렌더(로컬만 먼저 보이지 않음) */
+        if (targetTabId === "archive") {
+          try {
+            await pullDataForActiveTab(targetTabId, { fromBoot: false });
+          } catch (_) {}
+          if (currentTabId !== targetTabId) return;
+          renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
+          return;
+        }
+        /* 그 외 탭: pull 대기 중에도 본문을 바로 갈아끼움 — 무거운 pull이 1~2초 걸릴 때 하단 탭만 바뀌고 화면이 남는 현상 방지 */
+        renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
         try {
           await pullDataForActiveTab(targetTabId, { fromBoot: false });
         } catch (_) {}
         if (currentTabId !== targetTabId) return;
-        renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
-        return;
-      }
-      /* 그 외 탭: pull 대기 중에도 본문을 바로 갈아끼움 — 무거운 pull이 1~2초 걸릴 때 하단 탭만 바뀌고 화면이 남는 현상 방지 */
-      renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
-      try {
-        await pullDataForActiveTab(targetTabId, { fromBoot: false });
-      } catch (_) {}
-      if (currentTabId !== targetTabId) return;
-      /* 시간가계부: pull 뒤 통째 renderMain 하면 화면이 한 번 비워졌다 다시 그려져 깜빡임 — 같은 인스턴스에서만 소프트 갱신 */
-      if (targetTabId === "time") {
-        try {
-          window.__lpTimeLedgerSoftRefresh?.();
-        } catch (_) {}
-      } else if (
-        targetTabId === "calendar" ||
-        targetTabId === "schedulecalendar"
-      ) {
-        /* 할일/일정·사이드 캘린더: 두 번째 renderMain 시 상단 탭·설정 아이콘이 통째로 다시 붙으며 깜빡임 — 패널 유지 후 본문만 갱신 */
-        try {
-          window.__lpCalendarSoftRefresh?.();
-        } catch (_) {}
-      } else if (targetTabId === "idea") {
-        /* 나의 계정: pull(시급·appearance) 후 통째 renderMain 하면 화면이 두 번 새로고침되는 것처럼 보임 */
-        try {
-          window.__lpIdeaSoftRefresh?.();
-        } catch (_) {}
-      } else if (targetTabId === "home") {
-        /* 오늘: 첫 render는 즉시 표시, pull 후 통째 renderMain 하면 1~2초 뒤에야 갱신되는 것처럼 보임 — 본문 유지 후 부분 갱신 */
-        try {
-          window.__lpHomeAfterPullRefresh?.();
-        } catch (_) {}
-      } else if (targetTabId === "asset") {
-        /* 자산관리: pull 뒤 두 번째 renderMain 으로 패널을 통째로 갈아끼우면 순자산 등이 깜빡임 — 현재 하위 탭만 다시 그림 */
-        try {
-          window.__lpAssetSoftRefresh?.();
-        } catch (_) {}
-      } else {
-        renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
-      }
-      if (targetTabId === "idea" || targetTabId === "admin") {
-        requestAnimationFrame(() => {
-          main.scrollTop = 0;
-        });
-      }
-    })();
+        /* 시간가계부: pull 뒤 통째 renderMain 하면 화면이 한 번 비워졌다 다시 그려져 깜빡임 — 같은 인스턴스에서만 소프트 갱신 */
+        if (targetTabId === "time") {
+          try {
+            window.__lpTimeLedgerSoftRefresh?.();
+          } catch (_) {}
+        } else if (
+          targetTabId === "calendar" ||
+          targetTabId === "schedulecalendar"
+        ) {
+          /* 할일/일정·사이드 캘린더: 두 번째 renderMain 시 상단 탭·설정 아이콘이 통째로 다시 붙으며 깜빡임 — 패널 유지 후 본문만 갱신 */
+          try {
+            window.__lpCalendarSoftRefresh?.();
+          } catch (_) {}
+        } else if (targetTabId === "idea") {
+          /* 나의 계정: pull(시급·appearance) 후 통째 renderMain 하면 화면이 두 번 새로고침되는 것처럼 보임 */
+          try {
+            window.__lpIdeaSoftRefresh?.();
+          } catch (_) {}
+        } else if (targetTabId === "home") {
+          /* 오늘: 첫 render는 즉시 표시, pull 후 통째 renderMain 하면 1~2초 뒤에야 갱신되는 것처럼 보임 — 본문 유지 후 부분 갱신 */
+          try {
+            window.__lpHomeAfterPullRefresh?.();
+          } catch (_) {}
+        } else if (targetTabId === "asset") {
+          /* 자산관리: pull 뒤 두 번째 renderMain 으로 패널을 통째로 갈아끼우면 순자산 등이 깜빡임 — 현재 하위 탭만 다시 그림 */
+          try {
+            window.__lpAssetSoftRefresh?.();
+          } catch (_) {}
+        } else {
+          renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
+        }
+        if (targetTabId === "idea" || targetTabId === "admin") {
+          requestAnimationFrame(() => {
+            main.scrollTop = 0;
+          });
+        }
+      })();
+    }, 80);
   }
 
   nav.querySelectorAll(".app-sidebar-item").forEach((b) => {
