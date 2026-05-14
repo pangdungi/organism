@@ -19938,6 +19938,26 @@ col.asset-expense-col-amount,
   cursor: pointer;
 }
 
+.asset-debt-add-inline-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--text-body);
+  background: transparent;
+  border: 1px solid var(--line-l2-color);
+  border-radius: 62.4375rem;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.asset-debt-add-inline-btn:hover {
+  border-color: var(--text-muted);
+  background: var(--ui-surface-alt, rgba(0, 0, 0, 0.03));
+}
+
 .asset-debt-add-btn {
   margin-left: auto;
   width: 2rem;

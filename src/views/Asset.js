@@ -469,17 +469,31 @@ function saveDebtRows(rows) {
   writeNetWorthBundleKey(DEBT_ROWS_KEY, rows);
 }
 
-function readDebtDataFromTr(tr) {
-  const nameInput = tr.querySelector(".asset-debt-input-name");
-  const debtTypeInput = tr.querySelector(".asset-debt-input-type");
-  const repaymentInput = tr.querySelector(".asset-debt-input-repayment");
-  const periodInput = tr.querySelector(".asset-debt-input-period");
-  const rateInput = tr.querySelector(".asset-debt-input-rate");
-  const principalInput = tr.querySelector(".asset-debt-input-principal");
-  const startDateInput = tr.querySelector(".asset-debt-input-start-date");
-  const endDateInput = tr.querySelector(".asset-debt-input-end-date");
-  const paidDisplay = tr.querySelector(".asset-debt-paid-display");
-  const extraPaidInput = tr.querySelector(".asset-debt-input-extra-paid");
+function readDebtDataFromRoot(root) {
+  if (!root) {
+    return {
+      name: "",
+      debtType: "",
+      repayment: "",
+      periodYears: "",
+      interestRate: "",
+      principal: "",
+      startDate: "",
+      endDate: "",
+      paid: "",
+      extraPaid: "",
+    };
+  }
+  const nameInput = root.querySelector(".asset-debt-input-name");
+  const debtTypeInput = root.querySelector(".asset-debt-input-type");
+  const repaymentInput = root.querySelector(".asset-debt-input-repayment");
+  const periodInput = root.querySelector(".asset-debt-input-period");
+  const rateInput = root.querySelector(".asset-debt-input-rate");
+  const principalInput = root.querySelector(".asset-debt-input-principal");
+  const startDateInput = root.querySelector(".asset-debt-input-start-date");
+  const endDateInput = root.querySelector(".asset-debt-input-end-date");
+  const paidDisplay = root.querySelector(".asset-debt-paid-display");
+  const extraPaidInput = root.querySelector(".asset-debt-input-extra-paid");
   return {
     name: nameInput?.value || "",
     debtType: debtTypeInput?.value || "",
@@ -489,9 +503,16 @@ function readDebtDataFromTr(tr) {
     principal: principalInput?.value || "",
     startDate: startDateInput?.value || "",
     endDate: endDateInput?.value || "",
-    paid: paidDisplay?.textContent?.trim() && paidDisplay.textContent !== "-" ? paidDisplay.textContent.trim() : "",
+    paid:
+      paidDisplay?.textContent?.trim() && paidDisplay.textContent !== "-"
+        ? paidDisplay.textContent.trim()
+        : "",
     extraPaid: extraPaidInput?.value || "",
   };
+}
+
+function readDebtDataFromTr(tr) {
+  return readDebtDataFromRoot(tr);
 }
 
 function collectDebtRowsFromDOM(tableEl) {
@@ -500,7 +521,7 @@ function collectDebtRowsFromDOM(tableEl) {
   if (!tbl) return rows;
   tbl.querySelectorAll("tbody > tr.asset-debt-row").forEach((tr) => {
     if (tr.classList.contains("asset-debt-row--draft")) return;
-    rows.push(readDebtDataFromTr(tr));
+    rows.push(readDebtDataFromRoot(tr));
   });
   return rows;
 }
@@ -2452,6 +2473,7 @@ function renderNetworthView() {
   debtHeader.innerHTML = `
     <span class="asset-debt-title">총 부채</span>
     <span class="asset-debt-count">0</span>
+    <button type="button" class="asset-debt-add-inline-btn">+ 추가</button>
     <span class="asset-debt-more">⋯</span>
   `;
 
@@ -2538,10 +2560,6 @@ function renderNetworthView() {
     <td class="asset-debt-cell-totals-balance">-</td>
     <td class="asset-debt-cell-actions"></td>
   `;
-  const addTaskBtn = document.createElement("button");
-  addTaskBtn.type = "button";
-  addTaskBtn.className = "asset-debt-add-task";
-  addTaskBtn.innerHTML = '<span class="asset-debt-add-icon">+</span>';
   tbody.appendChild(totalsRow);
 
   /** 넓은 표에서 '수정'이 오른쪽 끝에 있을 때: 편집 패널이 가로 스크롤 래퍼 안 앞쪽(왼쪽)에 오도록 */
@@ -2570,6 +2588,7 @@ function renderNetworthView() {
     const isView = mode === "view";
     const isDraft = mode === "draft";
     const isEdit = mode === "edit";
+    const debtModalHandlers = options.debtModalHandlers || null;
     const memSnapshot = isEdit
       ? options.memSnapshot
         ? { ...options.memSnapshot }
@@ -2949,6 +2968,10 @@ function renderNetworthView() {
     if (inPanel) {
       const doCancel = (e) => {
         e?.stopPropagation?.();
+        if (debtModalHandlers?.onCancel) {
+          debtModalHandlers.onCancel();
+          return;
+        }
         if (isDraft) {
           tr.remove();
           onUpdate();
@@ -2973,7 +2996,12 @@ function renderNetworthView() {
           saveBtn.textContent = "저장";
           saveBtn.addEventListener("click", (e) => {
             e.stopPropagation();
-            const d = readDebtDataFromTr(tr);
+            const pane = tr.querySelector(".asset-expense-inline-panel") || tr;
+            if (debtModalHandlers?.onDraftSave) {
+              debtModalHandlers.onDraftSave(readDebtDataFromRoot(pane));
+              return;
+            }
+            const d = readDebtDataFromRoot(pane);
             tr.replaceWith(createDebtRow(d, onUpdate, { mode: "view" }));
             onUpdate();
           });
@@ -2999,7 +3027,12 @@ function renderNetworthView() {
           });
           applyBtn.addEventListener("click", (e) => {
             e.stopPropagation();
-            const d = readDebtDataFromTr(tr);
+            const pane = tr.querySelector(".asset-expense-inline-panel") || tr;
+            if (debtModalHandlers?.onEditApply) {
+              debtModalHandlers.onEditApply(readDebtDataFromRoot(pane));
+              return;
+            }
+            const d = readDebtDataFromRoot(pane);
             tr.replaceWith(createDebtRow(d, onUpdate, { mode: "view" }));
             onUpdate();
           });
@@ -3019,7 +3052,7 @@ function renderNetworthView() {
       editBtn.textContent = "수정";
       editBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        const d = readDebtDataFromTr(tr);
+        const d = readDebtDataFromRoot(tr);
         const newTr = createDebtRow(d, onUpdate, { mode: "edit", memSnapshot: d });
         tr.replaceWith(newTr);
         onUpdate();
@@ -3041,7 +3074,7 @@ function renderNetworthView() {
 
   function updateCount() {
     const count = table.querySelectorAll(".asset-debt-row").length;
-    debtHeader.querySelector(".asset-debt-count").textContent = count;
+    debtHeader.querySelector(".asset-debt-count").textContent = count ? `${count}건` : "0건";
   }
 
   function updateTotals() {
@@ -3091,21 +3124,61 @@ function renderNetworthView() {
     updateNetWorthDashboard();
   };
 
+  /** 가계부와 동일: 전역 모달 레이어에 대출 초안 패널 */
+  function openDebtDraftModal() {
+    if (document.querySelector(".asset-networth-debt-modal")) {
+      showToast("입력 창을 닫은 뒤 다시 시도해 주세요.", "");
+      return;
+    }
+    const overlay = document.createElement("div");
+    overlay.className = "asset-expense-transaction-modal asset-networth-debt-modal";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-label", "새 대출");
+    const backdrop = document.createElement("div");
+    backdrop.className = "asset-expense-transaction-modal-backdrop";
+    const panelShell = document.createElement("div");
+    panelShell.className = "asset-expense-transaction-modal-panel-shell";
+
+    function closeDebtModalOverlay() {
+      overlay.remove();
+    }
+    backdrop.addEventListener("click", closeDebtModalOverlay);
+
+    const phantom = createDebtRow(
+      {},
+      onUpdate,
+      {
+        mode: "draft",
+        debtModalHandlers: {
+          onCancel: () => closeDebtModalOverlay(),
+          onDraftSave: (d) => {
+            closeDebtModalOverlay();
+            const vt = createDebtRow(d, onUpdate, { mode: "view" });
+            tbody.insertBefore(vt, totalsRow);
+            onUpdate();
+          },
+        },
+      },
+    );
+    const panel = phantom.querySelector(".asset-expense-inline-panel");
+    phantom.remove();
+    if (!panel) {
+      overlay.remove();
+      return;
+    }
+    panelShell.appendChild(panel);
+    overlay.appendChild(backdrop);
+    overlay.appendChild(panelShell);
+    document.body.appendChild(overlay);
+  }
+
+  debtHeader.querySelector(".asset-debt-add-inline-btn")?.addEventListener("click", () => openDebtDraftModal());
+
   const initialRows = loadDebtRows();
   initialRows.forEach((row) => {
     const tr = createDebtRow(row, onUpdate, { mode: "view" });
     tbody.insertBefore(tr, totalsRow);
-  });
-
-  addTaskBtn.addEventListener("click", () => {
-    if (tbody.querySelector(".asset-debt-row--draft")) {
-      showToast("입력을 저장하거나 취소한 뒤에 새 항목을 추가해 주세요.", "");
-      return;
-    }
-    const tr = createDebtRow({}, onUpdate, { mode: "draft" });
-    tbody.insertBefore(tr, totalsRow);
-    onUpdate();
-    bringDebtRowPanelIntoView(tr);
   });
 
   updateCount();
@@ -3114,10 +3187,6 @@ function renderNetworthView() {
   const debtTableContainer = document.createElement("div");
   debtTableContainer.className = "asset-debt-table-container";
   debtTableContainer.appendChild(tableWrap);
-  const debtAddButtonWrap = document.createElement("div");
-  debtAddButtonWrap.className = "asset-debt-add-button-wrap";
-  debtAddButtonWrap.appendChild(addTaskBtn);
-  debtTableContainer.appendChild(debtAddButtonWrap);
   debtSection.appendChild(debtHeader);
   debtSection.appendChild(debtProgressWrap);
   debtSection.appendChild(debtTableContainer);
