@@ -4578,12 +4578,6 @@ function renderNetworthView() {
 
         if (tagsEl) {
           tagsEl.replaceChildren();
-          if (kind) {
-            const x = document.createElement("span");
-            x.className = "asset-debt-card-chip asset-debt-card-chip--period";
-            x.textContent = kind;
-            tagsEl.appendChild(x);
-          }
           const x2 = document.createElement("span");
           x2.className = "asset-debt-card-chip";
           x2.textContent = "연금";
@@ -4677,7 +4671,6 @@ function renderNetworthView() {
         "날짜 미입력";
     } else if (articleEl.classList.contains("asset-asset-row-annuity")) {
       const nm = articleEl.querySelector(".asset-annuity-input-name")?.value?.trim();
-      const kind = articleEl.querySelector(".asset-annuity-input-kind")?.value?.trim();
       title = nm || "연금";
       const surN = parseNum(articleEl.querySelector(".asset-annuity-input-surrender")?.value);
       const paid = parseNum(articleEl.querySelector(".asset-annuity-total-paid-display")?.textContent);
@@ -4689,7 +4682,6 @@ function renderNetworthView() {
       const monthlyRaw = articleEl.querySelector(".asset-annuity-input-monthly")?.value?.trim() || "";
       iconSrc = assetGroupCardIconSrc("연금");
       faceTags = [];
-      if (kind) faceTags.push({ text: kind, mod: "violet" });
       faceTags.push({ text: "연금", mod: "slate" });
       if (monthlyRaw.trim()) {
         const mn = parseNum(monthlyRaw);
