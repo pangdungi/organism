@@ -1,5 +1,5 @@
 /**
- * 자산관리 - 순자산(총 부채), 지출입력장, 현금흐름, 자산관리계획
+ * 자산관리 - 순자산(총 부채), 지출입력장, 현금흐름
  */
 
 import {
@@ -77,7 +77,7 @@ function saveNwIncludeDepositInterest(on) {
 
 /** renderMain으로 패널이 다시 그려져도 가계부/현금흐름 등 하위 탭 유지 (근무표 `lp_work_schedule_subview` 와 동일 패턴) */
 const SESSION_ASSET_SUBVIEW_KEY = "lp_asset_subview";
-const ASSET_SUBVIEWS = new Set(["expense", "cashflow", "networth", "plan"]);
+const ASSET_SUBVIEWS = new Set(["expense", "cashflow", "networth"]);
 
 /** 가계부 거래 추가 + : 할일 줄 `CALENDAR_TOOLBAR_QUICK_ADD_ICON`(시간가계부 +) 과 동일 */
 const ASSET_EXPENSE_LEDGER_PLUS_SVG =
@@ -848,7 +848,7 @@ function collectAssetRowsFromDOM(tableEl) {
 /** 다른 드롭다운 패널 모두 닫기 (겹침 방지) */
 function closeAllDebtDropdownPanels(exceptPanel = null) {
   const selectors =
-    ".asset-debt-type-panel, .asset-debt-repayment-panel, .asset-stock-category-panel, .asset-insurance-kind-panel, .asset-asset-type-panel, .asset-asset-category-panel, .asset-asset-savings-goal-panel, .asset-expense-flow-type-panel, .asset-expense-category-panel, .asset-expense-classification-panel, .asset-expense-payment-panel, .asset-plan-category-panel";
+    ".asset-debt-type-panel, .asset-debt-repayment-panel, .asset-stock-category-panel, .asset-insurance-kind-panel, .asset-asset-type-panel, .asset-asset-category-panel, .asset-asset-savings-goal-panel, .asset-expense-flow-type-panel, .asset-expense-category-panel, .asset-expense-classification-panel, .asset-expense-payment-panel";
   document.querySelectorAll(selectors).forEach((p) => {
     if (p !== exceptPanel) {
       p.hidden = true;
@@ -882,7 +882,7 @@ function hideFixedDropdown(panel, wrap) {
 
 let _scrollCloseHandlerAttached = false;
 const DROPDOWN_PANEL_SELECTOR =
-  ".asset-debt-type-panel, .asset-debt-repayment-panel, .asset-stock-category-panel, .asset-insurance-kind-panel, .asset-asset-type-panel, .asset-asset-category-panel, .asset-asset-savings-goal-panel, .asset-expense-flow-type-panel, .asset-expense-category-panel, .asset-expense-classification-panel, .asset-expense-payment-panel, .asset-plan-category-panel";
+  ".asset-debt-type-panel, .asset-debt-repayment-panel, .asset-stock-category-panel, .asset-insurance-kind-panel, .asset-asset-type-panel, .asset-asset-category-panel, .asset-asset-savings-goal-panel, .asset-expense-flow-type-panel, .asset-expense-category-panel, .asset-expense-classification-panel, .asset-expense-payment-panel";
 /** 스크롤 시 열린 옵션창 자동 닫기 (스크롤 따라 올라가는 현상 방지) - 단, 옵션창 내부 스크롤 시에는 닫지 않음 */
 function setupScrollClosePanels() {
   if (_scrollCloseHandlerAttached) return;
@@ -2115,6 +2115,25 @@ function formatKoreanWonParenthetical(n) {
   return "(" + out + "원)";
 }
 
+/** 순자산 상단 카드 등: 숫자 아래 보조 줄. 0은 빈 문자열. 음수는 (마이너스 …원) 형태 */
+function formatKoreanWonHintLine(n) {
+  if (n === null || n === undefined || Number.isNaN(Number(n))) return "";
+  const num = Number(n);
+  if (num === 0) return "";
+  const ko = formatKoreanWonParenthetical(Math.abs(Math.floor(num)));
+  if (!ko) return "";
+  if (num < 0) return ko.replace(/^\(/u, "(마이너스 ");
+  return ko;
+}
+
+function setNetworthDashboardKoLine(el, n) {
+  if (!el) return;
+  const line = formatKoreanWonHintLine(n);
+  el.textContent = line;
+  el.hidden = line === "";
+  el.setAttribute("aria-hidden", "true");
+}
+
 function setAssetDebtCardHeroWon(faceRoot, displayText, numericWonOrNull) {
   const bal = faceRoot.querySelector(".asset-debt-card-balance");
   const ko = faceRoot.querySelector(".asset-debt-card-balance-ko");
@@ -2636,22 +2655,34 @@ function renderNetworthView() {
     <div class="asset-networth-dashboard-formula">
       <div class="asset-networth-dashboard-formula-item">
         <span class="asset-networth-dashboard-formula-label">총 자산</span>
-        <span class="asset-networth-dashboard-formula-value asset-networth-dashboard-assets-value">-</span>
+        <div class="asset-networth-dashboard-formula-value-stack">
+          <span class="asset-networth-dashboard-formula-value asset-networth-dashboard-assets-value">-</span>
+          <span class="asset-networth-dashboard-formula-value-ko asset-networth-dashboard-assets-ko" hidden aria-hidden="true"></span>
+        </div>
       </div>
       <span class="asset-networth-dashboard-formula-op">−</span>
       <div class="asset-networth-dashboard-formula-item">
         <span class="asset-networth-dashboard-formula-label">총 부채</span>
-        <span class="asset-networth-dashboard-formula-value asset-networth-dashboard-debt-value">-</span>
+        <div class="asset-networth-dashboard-formula-value-stack">
+          <span class="asset-networth-dashboard-formula-value asset-networth-dashboard-debt-value">-</span>
+          <span class="asset-networth-dashboard-formula-value-ko asset-networth-dashboard-debt-ko" hidden aria-hidden="true"></span>
+        </div>
       </div>
       <span class="asset-networth-dashboard-formula-eq">=</span>
       <div class="asset-networth-dashboard-formula-item asset-networth-dashboard-result">
         <span class="asset-networth-dashboard-formula-label">총 순자산</span>
-        <span class="asset-networth-dashboard-formula-value asset-networth-dashboard-value">-</span>
+        <div class="asset-networth-dashboard-formula-value-stack">
+          <span class="asset-networth-dashboard-formula-value asset-networth-dashboard-value">-</span>
+          <span class="asset-networth-dashboard-formula-value-ko asset-networth-dashboard-net-ko" hidden aria-hidden="true"></span>
+        </div>
       </div>
     </div>
     <div class="asset-networth-dashboard-target">
-      <label class="asset-networth-dashboard-target-label">목표 순자산</label>
-      <input type="text" class="asset-networth-dashboard-target-input" placeholder="예: 100,000,000" />
+      <label class="asset-networth-dashboard-target-label" for="asset-networth-dashboard-target-input">목표 순자산</label>
+      <div class="asset-networth-dashboard-target-stack">
+        <input type="text" id="asset-networth-dashboard-target-input" class="asset-networth-dashboard-target-input" placeholder="예: 100,000,000" />
+        <span class="asset-networth-dashboard-target-ko" hidden aria-hidden="true"></span>
+      </div>
     </div>
     <div class="asset-networth-dashboard-progress-wrap">
       <div class="asset-networth-dashboard-progress-bar">
@@ -2665,7 +2696,11 @@ function renderNetworthView() {
   const netWorthValueEl = netWorthDashboard.querySelector(".asset-networth-dashboard-value");
   const assetsValueEl = netWorthDashboard.querySelector(".asset-networth-dashboard-assets-value");
   const debtValueEl = netWorthDashboard.querySelector(".asset-networth-dashboard-debt-value");
+  const assetsKoEl = netWorthDashboard.querySelector(".asset-networth-dashboard-assets-ko");
+  const debtKoEl = netWorthDashboard.querySelector(".asset-networth-dashboard-debt-ko");
+  const netKoEl = netWorthDashboard.querySelector(".asset-networth-dashboard-net-ko");
   const targetInput = netWorthDashboard.querySelector(".asset-networth-dashboard-target-input");
+  const targetKoEl = netWorthDashboard.querySelector(".asset-networth-dashboard-target-ko");
   const remainingTextEl = netWorthDashboard.querySelector(".asset-networth-dashboard-remaining-text");
   const targetProgressFill = netWorthDashboard.querySelector(".asset-networth-dashboard-progress-fill");
   targetInput.value = loadNetWorthTarget();
@@ -2711,35 +2746,6 @@ function renderNetworthView() {
   const progressFill = debtProgressWrap.querySelector(".asset-debt-progress-fill");
   const progressRemainingValue = debtProgressWrap.querySelector(".asset-debt-progress-remaining-value");
   const progressPercent = debtProgressWrap.querySelector(".asset-debt-progress-percent");
-
-  /** 합계(원금·이자·상환·중도상환·잔여) — 카드 목록 바깥이 아니라 상환 진행률 카드 안에 표시 */
-  const debtTotalsStrip = document.createElement("div");
-  debtTotalsStrip.className = "asset-debt-progress-totals";
-  debtTotalsStrip.setAttribute("role", "group");
-  debtTotalsStrip.setAttribute("aria-label", "부채 합계");
-  debtTotalsStrip.innerHTML = `
-    <div class="asset-debt-progress-total-cell">
-      <span class="asset-debt-progress-total-label">원금</span>
-      <strong class="asset-debt-cell-totals-principal">-</strong>
-    </div>
-    <div class="asset-debt-progress-total-cell">
-      <span class="asset-debt-progress-total-label">이자</span>
-      <strong class="asset-debt-cell-totals-interest">-</strong>
-    </div>
-    <div class="asset-debt-progress-total-cell">
-      <span class="asset-debt-progress-total-label">상환</span>
-      <strong class="asset-debt-cell-totals-paid">-</strong>
-    </div>
-    <div class="asset-debt-progress-total-cell">
-      <span class="asset-debt-progress-total-label">중도상환</span>
-      <strong class="asset-debt-cell-totals-extra-paid">-</strong>
-    </div>
-    <div class="asset-debt-progress-total-cell asset-debt-progress-total-cell--balance">
-      <span class="asset-debt-progress-total-label">잔여</span>
-      <strong class="asset-debt-cell-totals-balance">-</strong>
-    </div>
-  `;
-  debtProgressWrap.appendChild(debtTotalsStrip);
 
   const tableWrap = document.createElement("div");
   tableWrap.className = "asset-debt-table-wrap";
@@ -2843,11 +2849,16 @@ function renderNetworthView() {
       figures.className = "asset-debt-card-figures";
       const balanceFigure = document.createElement("span");
       balanceFigure.className = "asset-debt-card-balance";
+      const balanceKoFigure = document.createElement("span");
+      balanceKoFigure.className = "asset-debt-card-balance-ko";
+      balanceKoFigure.hidden = true;
+      balanceKoFigure.setAttribute("aria-hidden", "true");
       const maturityFigure = document.createElement("span");
       maturityFigure.className = "asset-debt-card-maturity";
       maturityFigure.hidden = true;
       maturityFigure.setAttribute("aria-hidden", "true");
       figures.appendChild(balanceFigure);
+      figures.appendChild(balanceKoFigure);
       figures.appendChild(maturityFigure);
       main.appendChild(copy);
       main.appendChild(figures);
@@ -2917,6 +2928,7 @@ function renderNetworthView() {
       dataRowTarget = formStack;
 
       debtCardUi = {
+        cardFaceRoot: face,
         nameFace,
         subEl,
         tagsEl,
@@ -3626,7 +3638,22 @@ function renderNetworthView() {
           const pv = parseNum(principalInput.value);
           balShown = pv !== null ? `${formatNum(pv)}원` : `${principalInput.value.trim()}원`;
         }
-        u.balanceFigure.textContent = balShown || "—";
+
+        let heroKoNum = null;
+        if (balStr && balStr !== "-" && balStr !== "—") {
+          const bnKo = parseNum(balStr.replace(/,/g, ""));
+          if (bnKo !== null && !Number.isNaN(bnKo)) heroKoNum = bnKo;
+        }
+        if (heroKoNum === null && principalInput.value?.trim()) {
+          const pvKo = parseNum(principalInput.value);
+          if (pvKo !== null && !Number.isNaN(pvKo)) heroKoNum = pvKo;
+        }
+        const heroDisp = balShown || "—";
+        setAssetDebtCardHeroWon(
+          u.cardFaceRoot,
+          heroDisp,
+          heroDisp === "—" ? null : heroKoNum,
+        );
 
         const pv = parseNum(principalInput.value) ?? 0;
         const balNum =
@@ -3660,34 +3687,14 @@ function renderNetworthView() {
 
   function updateTotals() {
     let sumPrincipal = 0;
-    let sumPaid = 0;
-    let sumExtraPaid = 0;
     let sumBalance = 0;
-    let sumInterest = 0;
     cardsList.querySelectorAll(".asset-debt-row.asset-debt-row--view").forEach((tr) => {
       const p = parseNum(tr.querySelector(".asset-debt-input-principal")?.value);
-      const paid = parseNum(tr.querySelector(".asset-debt-paid-display")?.textContent);
-      const extraPaid = parseNum(tr.querySelector(".asset-debt-input-extra-paid")?.value);
       const balanceEl = tr.querySelector(".asset-debt-balance-display");
       const balance = parseNum(balanceEl?.textContent);
-      const interestEl = tr.querySelector(".asset-debt-interest-display");
-      const interest = parseNum(interestEl?.textContent);
       if (p !== null) sumPrincipal += p;
-      if (paid !== null) sumPaid += paid;
-      if (extraPaid !== null) sumExtraPaid += extraPaid;
       if (balance !== null) sumBalance += balance;
-      if (interest !== null) sumInterest += interest;
     });
-    const principalCell = debtTotalsStrip.querySelector(".asset-debt-cell-totals-principal");
-    const interestCell = debtTotalsStrip.querySelector(".asset-debt-cell-totals-interest");
-    const paidCell = debtTotalsStrip.querySelector(".asset-debt-cell-totals-paid");
-    const extraPaidCell = debtTotalsStrip.querySelector(".asset-debt-cell-totals-extra-paid");
-    const balanceCell = debtTotalsStrip.querySelector(".asset-debt-cell-totals-balance");
-    principalCell.textContent = sumPrincipal > 0 ? `${formatNum(sumPrincipal)}원` : "-";
-    interestCell.textContent = sumInterest > 0 ? `${formatNum(sumInterest)}원` : "-";
-    paidCell.textContent = sumPaid > 0 ? `${formatNum(sumPaid)}원` : "-";
-    if (extraPaidCell) extraPaidCell.textContent = sumExtraPaid > 0 ? `${formatNum(sumExtraPaid)}원` : "-";
-    balanceCell.textContent = sumBalance !== 0 ? `${formatNum(sumBalance)}원` : "-";
 
     /* 프로그레스 바: 잔존 원금(표시) 비율 기준 — 원금 대비 상환된 비율 근사 */
     const principalProgress =
@@ -4049,7 +4056,6 @@ function renderNetworthView() {
       annuity: {
         top: ["종류", "해지환급금", "월 납입", "납입 시작"],
         bot: ["납입 종료", "누적 납입", "수령 시작", "월 수령"],
-        progress: "참고",
         botTailFillers: 0,
       },
     };
@@ -4219,19 +4225,6 @@ function renderNetworthView() {
     const tagsEl = face.querySelector(".asset-debt-card-tags");
     if (tagsEl) {
       tagsEl.replaceChildren();
-      if (rateRaw.trim()) {
-        const ch = document.createElement("span");
-        ch.className = "asset-debt-card-chip";
-        ch.textContent = rateRaw.endsWith("%") ? `금리 ${rateRaw}` : `금리 ${rateRaw}%`;
-        tagsEl.appendChild(ch);
-      }
-      const monthsForBadge = getTotalMonthsForSavingsAssetRow(articleEl);
-      if (monthsForBadge !== null && monthsForBadge > 0) {
-        const ch2 = document.createElement("span");
-        ch2.className = "asset-debt-card-chip asset-debt-card-chip--period";
-        ch2.textContent = `${formatNum(monthsForBadge)}개월`;
-        tagsEl.appendChild(ch2);
-      }
       if (articleEl.dataset.withdrawn === "true") {
         const st = document.createElement("span");
         st.className = "asset-debt-card-chip";
@@ -4548,6 +4541,7 @@ function renderNetworthView() {
       }
 
       if (style === "annuity") {
+        faceRoot.querySelector(".asset-debt-card-progress")?.remove();
         const nm = articleEl.querySelector(".asset-annuity-input-name")?.value?.trim() || "";
         const kind = articleEl.querySelector(".asset-annuity-input-kind")?.value?.trim() || "";
         if (nameFace) nameFace.textContent = nm || "연금";
@@ -4589,7 +4583,6 @@ function renderNetworthView() {
             tagsEl.appendChild(x3);
           }
         }
-        setProgress(0, "—");
       }
     }
 
@@ -6804,12 +6797,18 @@ function renderNetworthView() {
     if (assetsValueEl) {
       assetsValueEl.textContent = sumAssets !== 0 ? formatNum(sumAssets) : "-";
       assetsValueEl.classList.toggle("asset-networth-dashboard-formula-value--negative", sumAssets < 0);
+      setNetworthDashboardKoLine(assetsKoEl, sumAssets);
     }
-    if (debtValueEl) debtValueEl.textContent = sumDebt !== 0 ? formatNum(sumDebt) : "-";
+    if (debtValueEl) {
+      debtValueEl.textContent = sumDebt !== 0 ? formatNum(sumDebt) : "-";
+      setNetworthDashboardKoLine(debtKoEl, sumDebt);
+    }
     netWorthValueEl.textContent = netWorth !== 0 ? formatNum(netWorth) : "-";
     netWorthValueEl.classList.toggle("asset-networth-dashboard-formula-value--negative", netWorth < 0);
+    setNetworthDashboardKoLine(netKoEl, netWorth);
 
     const targetVal = parseNum(targetInput.value);
+    setNetworthDashboardKoLine(targetKoEl, targetVal !== null && targetVal > 0 ? targetVal : null);
     if (targetVal !== null && targetVal > 0) {
       const remaining = targetVal - netWorth;
       const progressPercent = Math.min(100, Math.max(0, (netWorth / targetVal) * 100));
@@ -6908,6 +6907,22 @@ function renderNetworthView() {
   return wrap;
 }
 
+/** 시작일(yyyy-mm-dd)이 속한 달에서 ±delta달 이동한 달의 1일~말일 (가계부·현금흐름 월 네비 공통) */
+function shiftExpenseCalendarMonthBounds(anchorYmd, deltaMonths) {
+  const s = String(anchorYmd ?? "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  const [yStr, moStr] = s.split("-");
+  const y0 = Number(yStr);
+  const m0 = Number(moStr);
+  if (!Number.isFinite(y0) || !Number.isFinite(m0)) return null;
+  const anchor = new Date(y0, m0 - 1 + deltaMonths, 1);
+  const y = anchor.getFullYear();
+  const mo = anchor.getMonth() + 1;
+  const pad = (n) => String(n).padStart(2, "0");
+  const lastDay = new Date(y, mo, 0).getDate();
+  return { start: `${y}-${pad(mo)}-01`, end: `${y}-${pad(mo)}-${pad(lastDay)}` };
+}
+
 function renderExpenseView(options = {}) {
   const expenseMobile =
     typeof window !== "undefined" && window.matchMedia("(max-width: 48rem)").matches;
@@ -6917,30 +6932,15 @@ function renderExpenseView(options = {}) {
     "asset-expense-view" + (expenseMobile ? " asset-expense-view--mobile" : "");
 
   const now = new Date();
-  let filterType = "month";
-  let filterYear = now.getFullYear();
-  let filterMonth = now.getMonth() + 1;
-  let filterStartDate = getTodayDateStr();
-  let filterEndDate = getTodayDateStr();
+  const pad2Ym = (n) => String(n).padStart(2, "0");
+  const _fy = now.getFullYear();
+  const _fm = now.getMonth() + 1;
+  let filterStartDate = `${_fy}-${pad2Ym(_fm)}-01`;
+  let filterEndDate = `${_fy}-${pad2Ym(_fm)}-${pad2Ym(new Date(_fy, _fm, 0).getDate())}`;
 
   let expenseFilterPullTimer = null;
   /** 날짜·월 필터에 맞는 구간만 서버에서 받아 표 갱신 */
   let scheduleExpenseMemPullFromServer = () => {};
-
-  function getTodayDateStr() {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  }
-
-  function formatDateForDayFilter(dateStr) {
-    if (!dateStr || dateStr.length < 10) return "";
-    const d = new Date(dateStr + "T12:00:00");
-    if (isNaN(d.getTime())) return "";
-    const month = d.getMonth() + 1;
-    const day = d.getDate();
-    const weekday = d.toLocaleDateString("ko-KR", { weekday: "short" });
-    return `${month}월 ${day}일 (${weekday})`;
-  }
 
   /** YYYY-MM-DD → "2026. 05. 14.(목)" — 시간가계부 필터와 동일 표기 */
   function formatExpenseFilterDateDotsWithWeekday(dStr) {
@@ -6957,82 +6957,37 @@ function renderExpenseView(options = {}) {
   const filterBar = document.createElement("div");
   filterBar.className = "asset-expense-filter-bar";
   filterBar.innerHTML = `
-    <div class="time-filter-tabs todo-category-tabs time-view-tabs time-view-tabs--segmented todo-list-segment-tabs">
-      <span class="time-view-tabs-thumb" aria-hidden="true"></span>
-      <button type="button" class="time-filter-btn time-view-tab active" data-filter="month">월별</button>
-      <button type="button" class="time-filter-btn time-view-tab" data-filter="day">하루</button>
-      <button type="button" class="time-filter-btn time-view-tab" data-filter="range">날짜 선택</button>
-    </div>
-    <div class="time-filter-day-wrap" data-filter-wrap="day" style="display:none">
-      <div class="time-filter-day-nav">
-        <button type="button" class="time-filter-day-prev" aria-label="이전 날짜">
-          <img src="/toolbaricons/caret-left-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
-        </button>
-        <span class="time-filter-day-display">${formatDateForDayFilter(filterStartDate)}</span>
-        <button type="button" class="time-filter-day-next" aria-label="다음 날짜">
-          <img src="/toolbaricons/caret-right-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
-        </button>
-      </div>
-    </div>
-    <div class="time-filter-month-wrap" data-filter-wrap="month">
-      <div class="asset-cashflow-month-nav" aria-label="월 선택">
-        <button type="button" class="asset-cashflow-year-btn asset-expense-month-prev" aria-label="이전 달">
-          <img src="/toolbaricons/caret-left-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
-        </button>
-        <span class="asset-cashflow-month-display" id="asset-expense-month-display">${filterMonth}월</span>
-        <button type="button" class="asset-cashflow-year-btn asset-expense-month-next" aria-label="다음 달">
-          <img src="/toolbaricons/caret-right-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
-        </button>
-      </div>
-      <div class="asset-cashflow-year-nav" aria-label="연도 선택">
-        <button type="button" class="asset-cashflow-year-btn" aria-label="이전 연도">
-          <img src="/toolbaricons/caret-left-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
-        </button>
-        <span class="asset-cashflow-year-display">${filterYear}</span>
-        <button type="button" class="asset-cashflow-year-btn" aria-label="다음 연도">
-          <img src="/toolbaricons/caret-right-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
-        </button>
-      </div>
-    </div>
-    <div class="time-filter-nav-cluster asset-expense-date-nav-cluster">
-      <div class="time-filter-range-wrap asset-expense-date-range-wrap" data-filter-wrap="range">
-        <div class="time-filter-date-field">
-          <input type="date" class="time-filter-start-date" name="asset-filter-start" aria-label="시작일" />
-          <span class="time-filter-date-label time-filter-date-label--start" aria-hidden="true"></span>
-          <img src="/toolbaricons/calendar-alt.svg" alt="" class="time-filter-date-cal-icon" width="14" height="14" aria-hidden="true" />
-        </div>
-        <span class="time-filter-range-sep">~</span>
-        <div class="time-filter-date-field">
-          <input type="date" class="time-filter-end-date" name="asset-filter-end" aria-label="종료일" />
-          <span class="time-filter-date-label time-filter-date-label--end" aria-hidden="true"></span>
-          <img src="/toolbaricons/calendar-alt.svg" alt="" class="time-filter-date-cal-icon" width="14" height="14" aria-hidden="true" />
+    <div class="asset-expense-filter-add-row time-ledger-filter-add-row">
+      <div class="time-filter-bar">
+        <div class="time-filter-nav-cluster asset-expense-date-nav-cluster">
+          <div class="time-filter-range-wrap asset-expense-date-range-wrap" data-filter-wrap="range">
+            <div class="time-filter-date-field">
+              <input type="date" class="time-filter-start-date" name="asset-filter-start" aria-label="시작일" />
+              <span class="time-filter-date-label time-filter-date-label--start" aria-hidden="true"></span>
+              <img src="/toolbaricons/calendar-alt.svg" alt="" class="time-filter-date-cal-icon" width="14" height="14" aria-hidden="true" />
+            </div>
+            <span class="time-filter-range-sep">~</span>
+            <div class="time-filter-date-field">
+              <input type="date" class="time-filter-end-date" name="asset-filter-end" aria-label="종료일" />
+              <span class="time-filter-date-label time-filter-date-label--end" aria-hidden="true"></span>
+              <img src="/toolbaricons/calendar-alt.svg" alt="" class="time-filter-date-cal-icon" width="14" height="14" aria-hidden="true" />
+            </div>
+          </div>
+          <div class="time-filter-day-nav asset-expense-month-shift-nav">
+            <button type="button" class="time-filter-day-prev" aria-label="이전 월">
+              <img src="/toolbaricons/caret-left-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
+            </button>
+            <button type="button" class="time-filter-day-next" aria-label="다음 월">
+              <img src="/toolbaricons/caret-right-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
   `;
 
-  const dayWrap = filterBar.querySelector("[data-filter-wrap='day']");
-  const monthWrap = filterBar.querySelector("[data-filter-wrap='month']");
-  const rangeWrap = filterBar.querySelector("[data-filter-wrap='range']");
-  const dayDisplay = filterBar.querySelector(".time-filter-day-display");
-  const dayPrevBtn = filterBar.querySelector(".time-filter-day-prev");
-  const dayNextBtn = filterBar.querySelector(".time-filter-day-next");
   const startDateInput = filterBar.querySelector(".time-filter-start-date");
   const endDateInput = filterBar.querySelector(".time-filter-end-date");
-  const monthDisplayEl = filterBar.querySelector("#asset-expense-month-display");
-  const monthPrevBtn = filterBar.querySelector(".asset-expense-month-prev");
-  const monthNextBtn = filterBar.querySelector(".asset-expense-month-next");
-  const yearDisplay = filterBar.querySelector(".time-filter-month-wrap .asset-cashflow-year-display");
-  const yearPrevBtn = filterBar.querySelector(".time-filter-month-wrap .asset-cashflow-year-nav .asset-cashflow-year-btn:first-child");
-  const yearNextBtn = filterBar.querySelector(".time-filter-month-wrap .asset-cashflow-year-nav .asset-cashflow-year-btn:last-child");
-  const expenseRangeNavCluster = filterBar.querySelector(".asset-expense-date-nav-cluster");
-
-  function syncExpenseFilterModeVisibility() {
-    if (dayWrap) dayWrap.style.display = filterType === "day" ? "" : "none";
-    if (monthWrap) monthWrap.style.display = filterType === "month" ? "" : "none";
-    if (expenseRangeNavCluster) expenseRangeNavCluster.style.display = filterType === "range" ? "" : "none";
-  }
-
   function syncExpenseRangeDateLabels() {
     const fmt = formatExpenseFilterDateDotsWithWeekday;
     const startLabel = filterBar.querySelector(".time-filter-date-label--start");
@@ -7065,82 +7020,8 @@ function renderExpenseView(options = {}) {
     field.addEventListener("click", () => openAssetExpenseRangeDateInput(inp));
   });
 
-  function syncExpenseMonthYearLabels() {
-    if (monthDisplayEl) monthDisplayEl.textContent = `${filterMonth}월`;
-    if (yearDisplay) yearDisplay.textContent = String(filterYear);
-  }
-
-  if (monthWrap) {
-    monthPrevBtn?.addEventListener("click", () => {
-      filterMonth -= 1;
-      if (filterMonth < 1) {
-        filterMonth = 12;
-        filterYear -= 1;
-      }
-      syncExpenseMonthYearLabels();
-      applyExpenseFilter();
-      syncExpenseFooterSummaryLabel();
-      scheduleExpenseMemPullFromServer();
-    });
-    monthNextBtn?.addEventListener("click", () => {
-      filterMonth += 1;
-      if (filterMonth > 12) {
-        filterMonth = 1;
-        filterYear += 1;
-      }
-      syncExpenseMonthYearLabels();
-      applyExpenseFilter();
-      syncExpenseFooterSummaryLabel();
-      scheduleExpenseMemPullFromServer();
-    });
-    yearPrevBtn?.addEventListener("click", () => {
-      filterYear -= 1;
-      syncExpenseMonthYearLabels();
-      applyExpenseFilter();
-      syncExpenseFooterSummaryLabel();
-      scheduleExpenseMemPullFromServer();
-    });
-    yearNextBtn?.addEventListener("click", () => {
-      filterYear += 1;
-      syncExpenseMonthYearLabels();
-      applyExpenseFilter();
-      syncExpenseFooterSummaryLabel();
-      scheduleExpenseMemPullFromServer();
-    });
-  }
-
-  function updateDayDisplay() {
-    if (dayDisplay) dayDisplay.textContent = formatDateForDayFilter(filterStartDate);
-  }
-
-  dayPrevBtn?.addEventListener("click", () => {
-    const d = new Date(filterStartDate + "T12:00:00");
-    d.setDate(d.getDate() - 1);
-    filterStartDate = filterEndDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    startDateInput.value = filterStartDate;
-    endDateInput.value = filterEndDate;
-    updateDayDisplay();
-    syncExpenseRangeDateLabels();
-    applyExpenseFilter();
-    syncExpenseFooterSummaryLabel();
-    scheduleExpenseMemPullFromServer();
-  });
-  dayNextBtn?.addEventListener("click", () => {
-    const d = new Date(filterStartDate + "T12:00:00");
-    d.setDate(d.getDate() + 1);
-    filterStartDate = filterEndDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    startDateInput.value = filterStartDate;
-    endDateInput.value = filterEndDate;
-    updateDayDisplay();
-    syncExpenseRangeDateLabels();
-    applyExpenseFilter();
-    syncExpenseFooterSummaryLabel();
-    scheduleExpenseMemPullFromServer();
-  });
-
   startDateInput.value = filterStartDate;
   endDateInput.value = filterEndDate;
-  syncExpenseFilterModeVisibility();
   syncExpenseRangeDateLabels();
 
   const tableWrap = document.createElement("div");
@@ -7156,7 +7037,7 @@ function renderExpenseView(options = {}) {
     <span class="asset-expense-ledger-col asset-expense-ledger-col--detail">내역</span>
     <span class="asset-expense-ledger-col asset-expense-ledger-col--amount">금액</span>
     <span class="asset-expense-ledger-col asset-expense-ledger-col--date">날짜</span>
-    <span class="asset-expense-ledger-col asset-expense-ledger-col--tags">태그</span>
+    <span class="asset-expense-ledger-col asset-expense-ledger-col--tags" aria-hidden="true">태그</span>
   `;
   const ledgerBoardBody = document.createElement("div");
   ledgerBoardBody.className = "asset-expense-ledger-board-body";
@@ -7216,14 +7097,10 @@ function renderExpenseView(options = {}) {
   function syncExpenseFooterSummaryLabel() {
     const labelSpan = summaryBar.querySelector(".asset-expense-summary-label");
     if (!labelSpan) return;
-    if (filterType === "month") {
-      labelSpan.textContent = `${filterMonth}월 합계`;
-    } else if (filterType === "day") {
-      const t = formatExpenseLedgerDayTitle(filterStartDate);
-      labelSpan.textContent = t ? `${t} 합계` : "합계";
-    } else {
-      labelSpan.textContent = "기간 합계";
-    }
+    const fmt = formatExpenseFilterDateDotsWithWeekday;
+    const s = fmt((startDateInput?.value || filterStartDate || "").slice(0, 10));
+    const e = fmt((endDateInput?.value || filterEndDate || "").slice(0, 10));
+    labelSpan.textContent = s && e ? `${s} ~ ${e} 합계` : "기간 합계";
   }
 
   /** 날짜별 구역으로 카드 재배치 (표시 순서·그룹 헤더 동기화). 초기 진입 시에도 노드 트리에 붙기 전에 호출되므로 isConnected 로 막지 않음 */
@@ -7341,18 +7218,8 @@ function renderExpenseView(options = {}) {
     return true;
   }
 
-  /** Supabase transaction_date 범위 질의용 YYYY-MM-DD (월/일/구간 탭 공통) */
+  /** Supabase transaction_date 범위 질의용 YYYY-MM-DD */
   function getExpensePickerSqlBounds() {
-    if (filterType === "day") {
-      const d = (filterStartDate || "").slice(0, 10);
-      return { from: d, to: d };
-    }
-    if (filterType === "month") {
-      const last = new Date(filterYear, filterMonth, 0).getDate();
-      const from = `${filterYear}-${String(filterMonth).padStart(2, "0")}-01`;
-      const to = `${filterYear}-${String(filterMonth).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
-      return { from, to };
-    }
     let s = (startDateInput?.value || filterStartDate || "").slice(0, 10);
     let e = (endDateInput?.value || filterEndDate || "").slice(0, 10);
     if (s && e && s > e) [s, e] = [e, s];
@@ -7360,15 +7227,12 @@ function renderExpenseView(options = {}) {
   }
 
   function applyExpenseFilter() {
-    const type = filterType;
-    const y = filterYear;
-    const m = filterMonth;
     const start = startDateInput.value || filterStartDate;
     const end = endDateInput.value || filterEndDate;
     cardsListEl.querySelectorAll(".asset-expense-row").forEach((rowEl) => {
       const dateInput = rowEl.querySelector(".asset-expense-input-date");
       const dateStr = dateInput?.value || "";
-      const show = isDateInRange(dateStr, type, y, m, start, end);
+      const show = isDateInRange(dateStr, "range", 0, 0, start, end);
       rowEl.style.display = show ? "" : "none";
     });
     refreshExpenseLedgerDayGroupsFromFilter();
@@ -8059,7 +7923,7 @@ function renderExpenseView(options = {}) {
         const start = startDateInput.value || filterStartDate;
         const end = endDateInput.value || filterEndDate;
         const rows = loadExpenseRows().filter((data) =>
-          isDateInRange(data.date, filterType, filterYear, filterMonth, start, end),
+          isDateInRange(data.date, "range", 0, 0, start, end),
         );
         rows.forEach((data) => {
           ledgerBoardBody.appendChild(
@@ -8072,6 +7936,24 @@ function renderExpenseView(options = {}) {
     }, 400);
   };
 
+  filterBar.addEventListener("click", (e) => {
+    const prev = e.target.closest(".asset-expense-date-nav-cluster .time-filter-day-prev");
+    const next = e.target.closest(".asset-expense-date-nav-cluster .time-filter-day-next");
+    if (!prev && !next) return;
+    e.preventDefault();
+    const anchor = (startDateInput.value || filterStartDate || "").slice(0, 10);
+    const b = shiftExpenseCalendarMonthBounds(anchor, prev ? -1 : 1);
+    if (!b) return;
+    filterStartDate = b.start;
+    filterEndDate = b.end;
+    startDateInput.value = filterStartDate;
+    endDateInput.value = filterEndDate;
+    syncExpenseRangeDateLabels();
+    applyExpenseFilter();
+    syncExpenseFooterSummaryLabel();
+    scheduleExpenseMemPullFromServer();
+  });
+
   addBtn.addEventListener("click", () => {
     if (document.querySelector(".asset-expense-transaction-modal")) {
       showToast("입력 창을 닫은 뒤 새 거래를 추가해 주세요.", "");
@@ -8080,41 +7962,15 @@ function renderExpenseView(options = {}) {
     openExpenseTransactionModal({ mode: "draft" });
   });
 
-  const expenseTabsRoot = filterBar.querySelector(".time-filter-tabs.time-view-tabs--segmented");
-  function syncAssetExpenseSegmentThumb() {
-    if (!expenseTabsRoot?.classList.contains("time-view-tabs--segmented")) return;
-    const btns = [...expenseTabsRoot.querySelectorAll(".time-view-tab")];
-    const n = Math.max(1, btns.length);
-    const idx = Math.max(
-      0,
-      btns.findIndex((b) => b.classList.contains("active")),
-    );
-    expenseTabsRoot.style.setProperty("--time-segment-count", String(n));
-    expenseTabsRoot.style.setProperty("--thumb-col-start", String(idx + 1));
-  }
-
-  filterBar.querySelectorAll(".time-filter-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      filterType = btn.dataset.filter;
-      filterBar.querySelectorAll(".time-filter-btn").forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      syncExpenseFilterModeVisibility();
-      if (filterType === "day") updateDayDisplay();
-      syncExpenseRangeDateLabels();
-      applyExpenseFilter();
-      syncExpenseFooterSummaryLabel();
-      scheduleExpenseMemPullFromServer();
-      syncAssetExpenseSegmentThumb();
-    });
-  });
-  syncAssetExpenseSegmentThumb();
   startDateInput.addEventListener("change", () => {
+    filterStartDate = (startDateInput.value || "").slice(0, 10) || filterStartDate;
     syncExpenseRangeDateLabels();
     applyExpenseFilter();
     syncExpenseFooterSummaryLabel();
     scheduleExpenseMemPullFromServer();
   });
   endDateInput.addEventListener("change", () => {
+    filterEndDate = (endDateInput.value || "").slice(0, 10) || filterEndDate;
     syncExpenseRangeDateLabels();
     applyExpenseFilter();
     syncExpenseFooterSummaryLabel();
@@ -8126,7 +7982,7 @@ function renderExpenseView(options = {}) {
   const startForInit = startDateInput.value || filterStartDate;
   const endForInit = endDateInput.value || filterEndDate;
   const initialRows = loadExpenseRows().filter((data) =>
-    isDateInRange(data.date, filterType, filterYear, filterMonth, startForInit, endForInit),
+    isDateInRange(data.date, "range", 0, 0, startForInit, endForInit),
   );
   if (initialRows.length > 0) {
     initialRows.forEach((data) => {
@@ -8160,9 +8016,11 @@ function renderExpenseView(options = {}) {
   }
   const filterActions = document.createElement("div");
   filterActions.className = "asset-expense-filter-actions";
+  const filterAddRowEl = filterBar.querySelector(".asset-expense-filter-add-row");
   filterActions.appendChild(addBtn);
   filterActions.appendChild(settingsBtn);
-  filterBar.appendChild(filterActions);
+  if (filterAddRowEl) filterAddRowEl.appendChild(filterActions);
+  else filterBar.appendChild(filterActions);
 
   wrap.appendChild(filterBar);
   wrap.appendChild(expenseTableContainer);
@@ -8503,923 +8361,158 @@ function createAssetSettingsModal(onSave) {
   };
 }
 
-/** 가계부에서 수입 카테고리+분류별 이번달 합계 */
-function getExpenseSumByIncomeClassification(classification) {
-  const rows = loadExpenseRows();
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
-  let sum = 0;
-  rows.forEach((r) => {
-    const dateParts = (r.date || "").split("-");
-    if (dateParts.length < 2) return;
-    const rowYear = parseInt(dateParts[0], 10);
-    const rowMonth = parseInt(dateParts[1], 10);
-    if (rowYear !== year || rowMonth !== month) return;
-    if ((r.category || "") !== "수입" || (r.classification || "") !== classification) return;
-    const amt = parseNum(r.amount);
-    if (amt !== null) sum += Math.abs(amt);
-  });
-  return sum;
-}
-
-/** 가계부에서 투자/저축 카테고리+분류별 이번달 합계 */
-function getExpenseSumByInvestSavingsClassification(category, classification) {
-  const rows = loadExpenseRows();
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
-  let sum = 0;
-  rows.forEach((r) => {
-    const dateParts = (r.date || "").split("-");
-    if (dateParts.length < 2) return;
-    const rowYear = parseInt(dateParts[0], 10);
-    const rowMonth = parseInt(dateParts[1], 10);
-    if (rowYear !== year || rowMonth !== month) return;
-    if ((r.category || "") !== category || (r.classification || "") !== classification) return;
-    const amt = parseNum(r.amount);
-    if (amt !== null) sum += Math.abs(amt);
-  });
-  return sum;
-}
-
-/** 가계부에서 고정비/변동비/기타 카테고리+분류별 이번달 합계 */
-function getExpenseSumByExpenseClassification(category, classification) {
-  const rows = loadExpenseRows();
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
-  let sum = 0;
-  rows.forEach((r) => {
-    const dateParts = (r.date || "").split("-");
-    if (dateParts.length < 2) return;
-    const rowYear = parseInt(dateParts[0], 10);
-    const rowMonth = parseInt(dateParts[1], 10);
-    if (rowYear !== year || rowMonth !== month) return;
-    if ((r.category || "") !== category || (r.classification || "") !== classification) return;
-    const amt = parseNum(r.amount);
-    if (amt !== null) sum += Math.abs(amt);
-  });
-  return sum;
-}
-
-/** 가계부 데이터에서 사용된 수입 분류 수집 (기본 옵션 + 실제 사용된 분류) */
-function getPlanIncomeClassificationOptions() {
-  const byCat = getExpenseClassificationByCategory();
-  const base = byCat.수입 || [];
-  const used = new Set(base.map((o) => o.label));
-  const rows = loadExpenseRows();
-  rows.forEach((r) => {
-    if ((r.category || "") === "수입" && r.classification && !used.has(r.classification)) {
-      used.add(r.classification);
-    }
-  });
-  const extra = [...used].filter((l) => !base.some((o) => o.label === l)).map((label) => ({ label, color: "expense-cls-gray" }));
-  return [...base, ...extra];
-}
-
-/** 수입 목표용 카테고리 드롭다운 (월급, 부업, 용돈 등) */
-function createPlanIncomeCategoryDropdown(initialValue, onSelect) {
-  const opts = getPlanIncomeClassificationOptions();
-  const wrap = document.createElement("div");
-  wrap.className = "asset-plan-category-wrap";
-
-  const display = document.createElement("span");
-  display.className = "asset-plan-category-display";
-  display.textContent = initialValue || "선택";
-
-  const panel = document.createElement("div");
-  panel.className = "asset-plan-category-panel";
-  panel.hidden = true;
-
-  opts.forEach((opt) => {
-    const row = document.createElement("div");
-    row.className = "asset-plan-category-option";
-    row.innerHTML = `<span class="asset-plan-category-tag ${opt.color || "expense-cls-gray"}">${opt.label}</span>`;
-    row.addEventListener("click", () => {
-      display.textContent = opt.label;
-      panel.hidden = true;
-      onSelect?.(opt.label);
-    });
-    panel.appendChild(row);
-  });
-
-  display.addEventListener("click", (e) => {
-    e.stopPropagation();
-    closeAllDebtDropdownPanels(panel);
-    const rect = display.getBoundingClientRect();
-    panel.style.position = "fixed";
-    panel.style.top = `${rect.bottom + 2}px`;
-    panel.style.left = `${rect.left}px`;
-    panel.style.minWidth = `${Math.max(rect.width, 120)}px`;
-    document.body.appendChild(panel);
-    panel.hidden = !panel.hidden;
-    if (!panel.hidden) {
-      const handler = (ev) => {
-        document.removeEventListener("click", handler);
-        if (!wrap.contains(ev.target) && !panel.contains(ev.target)) panel.hidden = true;
-      };
-      setTimeout(() => document.addEventListener("click", handler), 0);
-    }
-  });
-
-  wrap.appendChild(display);
-  wrap.appendChild(panel);
-  return { wrap, getValue: () => display.textContent === "선택" ? "" : display.textContent };
-}
-
-/** 가계부 데이터에서 사용된 투자/저축 분류 수집 (기본 옵션 + 실제 사용된 분류) */
-function getPlanInvestSavingsClassificationOptions() {
-  const base = [];
-  const byCat = getExpenseClassificationByCategory();
-  (byCat.저축 || []).forEach((o) => base.push({ ...o, category: "저축" }));
-  (byCat.투자 || []).forEach((o) => base.push({ ...o, category: "투자" }));
-  const used = new Map();
-  base.forEach((o) => used.set(`${o.category}:${o.label}`, o));
-  const rows = loadExpenseRows();
-  rows.forEach((r) => {
-    const cat = r.category || "";
-    if ((cat === "저축" || cat === "투자") && r.classification) {
-      const key = `${cat}:${r.classification}`;
-      if (!used.has(key)) used.set(key, { label: r.classification, category: cat, color: "expense-cls-gray" });
-    }
-  });
-  return [...used.values()];
-}
-
-/** 투자/저축 목표용 카테고리 드롭다운 (저축·투자 분류 통합) */
-function createPlanInvestSavingsCategoryDropdown(initialValue, onSelect) {
-  const opts = getPlanInvestSavingsClassificationOptions();
-  const wrap = document.createElement("div");
-  wrap.className = "asset-plan-category-wrap";
-  const display = document.createElement("span");
-  display.className = "asset-plan-category-display";
-  display.textContent = initialValue || "선택";
-  const panel = document.createElement("div");
-  panel.className = "asset-plan-category-panel";
-  panel.hidden = true;
-  opts.forEach((opt) => {
-    const row = document.createElement("div");
-    row.className = "asset-plan-category-option";
-    row.innerHTML = `<span class="asset-plan-category-tag ${opt.color || "expense-cls-gray"}">${opt.label}</span>`;
-    row.addEventListener("click", () => {
-      display.textContent = opt.label;
-      panel.hidden = true;
-      onSelect?.(opt.category, opt.label);
-    });
-    panel.appendChild(row);
-  });
-  display.addEventListener("click", (e) => {
-    e.stopPropagation();
-    closeAllDebtDropdownPanels(panel);
-    const rect = display.getBoundingClientRect();
-    panel.style.position = "fixed";
-    panel.style.top = `${rect.bottom + 2}px`;
-    panel.style.left = `${rect.left}px`;
-    panel.style.minWidth = `${Math.max(rect.width, 120)}px`;
-    document.body.appendChild(panel);
-    panel.hidden = !panel.hidden;
-    if (!panel.hidden) {
-      const handler = (ev) => {
-        document.removeEventListener("click", handler);
-        if (!wrap.contains(ev.target) && !panel.contains(ev.target)) panel.hidden = true;
-      };
-      setTimeout(() => document.addEventListener("click", handler), 0);
-    }
-  });
-  wrap.appendChild(display);
-  wrap.appendChild(panel);
-  return { wrap, getValue: () => display.textContent === "선택" ? "" : display.textContent };
-}
-
-/** 가계부 데이터에서 사용된 고정비/변동비/기타 분류 수집 (3개 카테고리 통합, 순서: 변동비→고정비→기타) */
-function getPlanExpenseClassificationOptions() {
-  const base = [];
-  ["변동비", "고정비", "기타"].forEach((cat) => {
-    const byCat = getExpenseClassificationByCategory();
-    (byCat[cat] || []).forEach((o) => base.push({ ...o, category: cat }));
-  });
-  const used = new Map();
-  base.forEach((o) => used.set(`${o.category}:${o.label}`, o));
-  const rows = loadExpenseRows();
-  rows.forEach((r) => {
-    const cat = r.category || "";
-    if ((cat === "고정비" || cat === "변동비" || cat === "기타") && r.classification) {
-      const key = `${cat}:${r.classification}`;
-      if (!used.has(key)) used.set(key, { label: r.classification, category: cat, color: "expense-cls-gray" });
-    }
-  });
-  return [...used.values()];
-}
-
-/** 고정비/변동비/기타 목표용 카테고리 드롭다운 (3개 카테고리 통합) */
-function createPlanExpenseCategoryDropdown(initialValue, onSelect) {
-  const opts = getPlanExpenseClassificationOptions();
-  const wrap = document.createElement("div");
-  wrap.className = "asset-plan-category-wrap";
-  const display = document.createElement("span");
-  display.className = "asset-plan-category-display";
-  display.textContent = initialValue || "선택";
-  const panel = document.createElement("div");
-  panel.className = "asset-plan-category-panel";
-  panel.hidden = true;
-  opts.forEach((opt) => {
-    const row = document.createElement("div");
-    row.className = "asset-plan-category-option";
-    row.innerHTML = `<span class="asset-plan-category-tag ${opt.color || "expense-cls-gray"}">${opt.label}</span>`;
-    row.addEventListener("click", () => {
-      display.textContent = opt.label;
-      panel.hidden = true;
-      onSelect?.(opt.category, opt.label);
-    });
-    panel.appendChild(row);
-  });
-  display.addEventListener("click", (e) => {
-    e.stopPropagation();
-    closeAllDebtDropdownPanels(panel);
-    const rect = display.getBoundingClientRect();
-    panel.style.position = "fixed";
-    panel.style.top = `${rect.bottom + 2}px`;
-    panel.style.left = `${rect.left}px`;
-    panel.style.minWidth = `${Math.max(rect.width, 120)}px`;
-    document.body.appendChild(panel);
-    panel.hidden = !panel.hidden;
-    if (!panel.hidden) {
-      const handler = (ev) => {
-        document.removeEventListener("click", handler);
-        if (!wrap.contains(ev.target) && !panel.contains(ev.target)) panel.hidden = true;
-      };
-      setTimeout(() => document.addEventListener("click", handler), 0);
-    }
-  });
-  wrap.appendChild(display);
-  wrap.appendChild(panel);
-  return { wrap, getValue: () => display.textContent === "선택" ? "" : display.textContent };
-}
-
-function planTableTypeToStorageSection(tableType) {
-  if (tableType === "investSavings") return "invest_savings";
-  return tableType;
-}
-
-/** @type {Record<string, { col4Label: string; col4Calculated: boolean; goalType: "min" | "max" }>} */
-const ASSET_PLAN_FACE_META = {
-  income: {
-    col4Label: "더 벌어야 하는 금액",
-    col4Calculated: true,
-    goalType: "min",
-  },
-  investSavings: {
-    col4Label: "더 투자/저축해야 할 금액",
-    col4Calculated: true,
-    goalType: "min",
-  },
-  expense: {
-    col4Label: "소비할 수 있는 금액",
-    col4Calculated: true,
-    goalType: "max",
-  },
-};
-
-function getMonthTotalForPlanRow(tableType, cat, cls) {
-  if (tableType === "income" && cls) return getExpenseSumByIncomeClassification(cls);
-  if (tableType === "investSavings" && cat && cls)
-    return getExpenseSumByInvestSavingsClassification(cat, cls);
-  if (tableType === "expense" && cat && cls) return getExpenseSumByExpenseClassification(cat, cls);
-  return 0;
-}
-
-function col1SummaryTextForPlan(tableType, cat, cls) {
-  if (tableType === "income" && cls) return cls;
-  if ((tableType === "investSavings" || tableType === "expense") && cat && cls) return `${cat} · ${cls}`;
-  return "—";
-}
-
-function fillAssetPlanArticleFace(article, tableType) {
-  const meta = ASSET_PLAN_FACE_META[tableType];
-  if (!meta) return;
-
-  let face = article.querySelector(".asset-plan-card-face");
-  if (!face) {
-    face = document.createElement("div");
-    face.className = "asset-plan-card-face";
-    article.appendChild(face);
-  }
-  const cat = (article.dataset.planCategory || "").trim();
-  const cls = (article.dataset.planClassification || "").trim();
-  const mStr = (article.dataset.monthlyGoalStr || "").trim();
-  const gDisp = mStr ? (parseNum(mStr) !== null ? formatNum(mStr) : mStr) : "—";
-  const monTot = getMonthTotalForPlanRow(tableType, cat, cls);
-  const totDisp = monTot > 0 ? formatNum(monTot) : "-";
-  let c4 = "-";
-  const col4Calculated = meta.col4Calculated;
-  const goalType = meta.goalType;
-  if (col4Calculated) {
-    const gNum = parseNum(mStr);
-    if (gNum !== null) {
-      const tN = monTot;
-      let diff = gNum - tN;
-      if (goalType === "min" || goalType === "max") diff = Math.max(0, diff);
-      c4 = formatNum(diff);
-    }
-  }
-  const gNum = parseNum(mStr);
-  let achText = "—";
-  let achCls = "";
-  const tNumParsed = parseNum(totDisp.replace(/,/g, ""));
-  const tNum = totDisp !== "-" && tNumParsed !== null ? tNumParsed : monTot > 0 ? monTot : null;
-  if (col4Calculated && gNum !== null && tNum !== null) {
-    const achieved = goalType === "min" ? tNum >= gNum : tNum <= gNum;
-    achText = achieved ? "🎉 달성" : "실패";
-    achCls = achieved ? " is-achieved" : " is-failed";
-  }
-
-  face.replaceChildren();
-  const titleEl = document.createElement("div");
-  titleEl.className = "asset-plan-card-headline";
-  titleEl.textContent = col1SummaryTextForPlan(tableType, cat, cls);
-  face.appendChild(titleEl);
-  const details = document.createElement("div");
-  details.className = "asset-plan-card-details";
-
-  /** @param {string} lab @param {string} val */
-  const kvPlain = (lab, val) => {
-    const rowEl = document.createElement("div");
-    rowEl.className = "asset-plan-card-detail-row";
-    const lb = document.createElement("span");
-    lb.className = "asset-plan-card-detail-label";
-    lb.textContent = lab;
-    const vl = document.createElement("span");
-    vl.className = "asset-plan-card-detail-value";
-    vl.textContent = val === "" || val == null ? "—" : String(val);
-    rowEl.appendChild(lb);
-    rowEl.appendChild(vl);
-    details.appendChild(rowEl);
-  };
-
-  kvPlain("월목표 금액", gDisp);
-  kvPlain("이번달 합계", totDisp);
-  kvPlain(meta.col4Label, c4);
-  const achRow = document.createElement("div");
-  achRow.className = "asset-plan-card-detail-row";
-  const achLab = document.createElement("span");
-  achLab.className = "asset-plan-card-detail-label";
-  achLab.textContent = "목표달성";
-  const achVal = document.createElement("span");
-  achVal.className =
-    "asset-plan-card-detail-value asset-plan-goal-display" +
-    (achCls === " is-achieved" ? " is-achieved" : achCls === " is-failed" ? " is-failed" : "");
-  achVal.textContent = achText;
-  achRow.appendChild(achLab);
-  achRow.appendChild(achVal);
-  details.appendChild(achRow);
-  face.appendChild(details);
-}
-
-function refreshPlanViewCardFaces(planRoot) {
-  if (!planRoot?.classList?.contains("asset-plan-view")) return;
-  planRoot.querySelectorAll(".asset-plan-section[data-plan-table-type]").forEach((sec) => {
-    const tt = sec.dataset.planTableType;
-    if (!tt || !ASSET_PLAN_FACE_META[tt]) return;
-    sec.querySelectorAll(".asset-plan-card.asset-plan-row--view").forEach((article) => {
-      fillAssetPlanArticleFace(article, tt);
-    });
-  });
-}
-
-function savePlanMonthlyGoalsFromPlanView(planRoot) {
-  if (!planRoot?.classList?.contains("asset-plan-view")) return;
-  const out = [];
-  planRoot.querySelectorAll(".asset-plan-section").forEach((section) => {
-    const tt = section.dataset.planTableType;
-    if (!tt) return;
-    const sectionKey = planTableTypeToStorageSection(tt);
-    const cardsRoot = section.querySelector(".asset-plan-cards-list");
-    if (!cardsRoot) return;
-    cardsRoot.querySelectorAll(".asset-plan-row--view").forEach((tr, idx) => {
-      const cat = (tr.dataset.planCategory || "").trim();
-      const cls = (tr.dataset.planClassification || "").trim();
-      const monthlyGoalStr = (tr.dataset.monthlyGoalStr || "").trim();
-      if (!cls) return;
-      out.push({
-        section: sectionKey,
-        category: cat,
-        classification: cls,
-        monthlyGoalStr,
-        sortOrder: idx,
-      });
-    });
-  });
-  setPlanMonthlyGoalsRowsMem(out);
-  window.dispatchEvent(new CustomEvent("asset-plan-monthly-goals-saved"));
-}
-
-function loadSavedPlanRowsForTableType(tableType) {
-  const key = planTableTypeToStorageSection(tableType);
-  try {
-    const arr = getPlanMonthlyGoalsRowsMem();
-    if (!Array.isArray(arr)) return [];
-    return arr.filter((r) => r.section === key).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-  } catch (_) {
-    return [];
-  }
-}
-
-function renderPlanView() {
-  const wrap = document.createElement("div");
-  wrap.className = "asset-plan-view";
-
-  const createTable = (title, col1Label, col4Label, col4Calculated, goalType, tableType) => {
-    const section = document.createElement("div");
-    section.className = "asset-plan-section";
-    section.dataset.planTableType = tableType;
-    section.setAttribute("role", "group");
-    section.setAttribute("aria-label", title);
-    const sectionHead = document.createElement("div");
-    sectionHead.className = "asset-plan-section-head";
-    const h3 = document.createElement("h3");
-    h3.className = "asset-plan-section-title";
-    h3.textContent = title;
-    sectionHead.appendChild(h3);
-
-    const addBtn = document.createElement("button");
-    addBtn.type = "button";
-    addBtn.className = "asset-plan-btn-add asset-plan-section-add-inline";
-    addBtn.setAttribute("aria-label", `${title} 항목 추가`);
-    addBtn.innerHTML = '<span class="asset-plan-add-icon">+</span>';
-    sectionHead.appendChild(addBtn);
-    section.appendChild(sectionHead);
-
-    const cardsList = document.createElement("div");
-    cardsList.className = "asset-plan-cards-list";
-    cardsList.setAttribute("role", "list");
-    section.appendChild(cardsList);
-
-    function persistPlanGoals() {
-      savePlanMonthlyGoalsFromPlanView(wrap);
-    }
-
-    function updateDerivedInPanel(panelEl) {
-      const gIn = panelEl.querySelector(".asset-plan-goal-in");
-      const tot = panelEl.querySelector(".asset-plan-total-display");
-      const d4 = panelEl.querySelector(".asset-plan-col4-display");
-      const dAch = panelEl.querySelector(".asset-plan-goal-display");
-      if (!gIn || !tot || !d4 || !dAch) return;
-      const goal = parseNum(gIn.value);
-      const tNum = parseNum(tot.textContent);
-      if (col4Calculated) {
-        let diff = null;
-        if (goal !== null && tNum !== null) {
-          diff = goal - tNum;
-          if (goalType === "min" || goalType === "max") diff = Math.max(0, diff);
-        }
-        d4.textContent = diff !== null ? formatNum(diff) : "-";
-      } else d4.textContent = "-";
-      const hasV = goal !== null && tNum !== null;
-      const achieved = hasV && (goalType === "min" ? tNum >= goal : tNum <= goal);
-      dAch.textContent = hasV ? (achieved ? "🎉 달성" : "실패") : "-";
-      dAch.className = "asset-plan-goal-display" + (achieved ? " is-achieved" : hasV ? " is-failed" : "");
-    }
-
-    function openPlanGoalModal(mode, mem, replaceArticle) {
-      if (document.querySelector(".asset-plan-entry-modal")) {
-        showToast("입력 창을 닫은 뒤 다시 시도해 주세요.", "");
-        return;
-      }
-      const overlay = document.createElement("div");
-      overlay.className = "asset-expense-transaction-modal asset-plan-entry-modal";
-      overlay.setAttribute("role", "dialog");
-      overlay.setAttribute("aria-modal", "true");
-      overlay.setAttribute("aria-label", mode === "draft" ? "새 목표" : "목표 수정");
-      const backdrop = document.createElement("div");
-      backdrop.className = "asset-expense-transaction-modal-backdrop";
-      const panelShell = document.createElement("div");
-      panelShell.className = "asset-expense-transaction-modal-panel-shell";
-
-      function closeOverlay() {
-        overlay.remove();
-      }
-      backdrop.addEventListener("click", closeOverlay);
-
-      const editorRoot = buildPlanEntryEditor(mode, mem, {
-        dismiss: closeOverlay,
-        submitSuccess(viewEl) {
-          if (replaceArticle) replaceArticle.replaceWith(viewEl);
-          else cardsList.appendChild(viewEl);
-          persistPlanGoals();
-          closeOverlay();
-        },
-      });
-      panelShell.appendChild(editorRoot);
-      overlay.appendChild(backdrop);
-      overlay.appendChild(panelShell);
-      document.body.appendChild(overlay);
-    }
-
-    function appendToForm(fstack, label, classExtra, el) {
-      const row = document.createElement("div");
-      const lab = document.createElement("span");
-      lab.className = "asset-expense-form-label";
-      lab.textContent = label;
-      const control = document.createElement("div");
-      control.className = "asset-expense-form-control asset-expense-form-control--field" + (classExtra ? " " + classExtra : "");
-      if (el) control.appendChild(el);
-      row.appendChild(lab);
-      row.appendChild(control);
-      fstack.appendChild(row);
-      return control;
-    }
-
-    function readPanel(etr) {
-      const gIn = etr.querySelector(".asset-plan-goal-in");
-      return {
-        category: (etr.dataset.planCategory || "").trim(),
-        classification: (etr.dataset.planClassification || "").trim(),
-        monthlyGoalStr: (gIn?.value || "").trim(),
-      };
-    }
-
-    function buildPlanEntryEditor(mode, mem, hooks) {
-      const { dismiss, submitSuccess } = hooks;
-      const isDraft = mode === "draft";
-      const modalRoot = document.createElement("div");
-      modalRoot.className = "asset-plan-modal-editor-root";
-      modalRoot.innerHTML =
-        '<div class="asset-expense-inline-panel asset-plan-inline-panel">' +
-        '<div class="asset-expense-inline-panel-top">' +
-        '<div class="asset-expense-inline-panel-head-text">' +
-        '<span class="asset-expense-inline-panel-title">' +
-        (isDraft ? "새 목표" : "목표 수정") +
-        "</span>" +
-        "</div>" +
-        '<button type="button" class="asset-expense-inline-panel-x" aria-label="닫기">×</button>' +
-        "</div>" +
-        '<div class="asset-expense-inline-panel-body"></div>' +
-        '<div class="asset-expense-inline-panel-bottom" aria-label="확인 작업"></div>' +
-        "</div>";
-      const panel = modalRoot.querySelector(".asset-expense-inline-panel");
-      const memSnap = !isDraft && mem
-        ? { ...mem, category: (mem.category || "").trim(), classification: (mem.classification || "").trim(), monthlyGoalStr: (mem.monthlyGoalStr || "").trim() }
-        : null;
-      const body = panel.querySelector(".asset-expense-inline-panel-body");
-      const foot = panel.querySelector(".asset-expense-inline-panel-bottom");
-      const xBtn = panel.querySelector(".asset-expense-inline-panel-x");
-      const formStack = document.createElement("div");
-      formStack.className = "asset-expense-form-stack";
-      formStack.setAttribute("role", "group");
-      formStack.setAttribute("aria-label", isDraft ? "새 목표 입력" : "목표 편집");
-      body.appendChild(formStack);
-
-      let saveBtn;
-      const totalSp = document.createElement("span");
-      totalSp.className = "asset-plan-total-display";
-      totalSp.textContent = "-";
-      const d4 = document.createElement("span");
-      d4.className = "asset-plan-col4-display";
-      d4.textContent = "-";
-      const dAch = document.createElement("span");
-      dAch.className = "asset-plan-goal-display";
-      dAch.textContent = "-";
-
-      const setTotalsFromData = (cat, cls) => {
-        if (!cls) {
-          panel.dataset.planCategory = cat || "";
-          panel.dataset.planClassification = "";
-          totalSp.textContent = "-";
-          return;
-        }
-        panel.dataset.planCategory = tableType === "income" ? "수입" : cat || "";
-        panel.dataset.planClassification = cls;
-        const s = getMonthTotalForPlanRow(tableType, cat || "", cls);
-        totalSp.textContent = s > 0 ? formatNum(s) : "-";
-        updateDerivedInPanel(panel);
-      };
-
-      if (tableType === "income") {
-        panel.dataset.planCategory = "수입";
-        const dd = createPlanIncomeCategoryDropdown(isDraft ? "" : (memSnap?.classification || ""), (classification) => {
-          if (!classification) return;
-          panel.dataset.planCategory = "수입";
-          panel.dataset.planClassification = classification;
-          setTotalsFromData("수입", classification);
-        });
-        const host = appendToForm(formStack, col1Label, "asset-plan-cell-cat", dd.wrap);
-        void host;
-      } else if (tableType === "investSavings") {
-        const dd = createPlanInvestSavingsCategoryDropdown(
-          isDraft ? "" : (memSnap?.classification || memSnap?.category || ""),
-          (category, classification) => {
-            panel.dataset.planCategory = category;
-            panel.dataset.planClassification = classification;
-            setTotalsFromData(category, classification);
-          }
-        );
-        const host = appendToForm(formStack, col1Label, "asset-plan-cell-cat", dd.wrap);
-        void host;
-        if (memSnap && !isDraft && memSnap.category && memSnap.classification) {
-          panel.dataset.planCategory = memSnap.category;
-          panel.dataset.planClassification = memSnap.classification;
-        }
-      } else {
-        const dd = createPlanExpenseCategoryDropdown(
-          isDraft ? "" : (memSnap?.classification || memSnap?.category || ""),
-          (category, classification) => {
-            panel.dataset.planCategory = category;
-            panel.dataset.planClassification = classification;
-            setTotalsFromData(category, classification);
-          }
-        );
-        const host = appendToForm(formStack, col1Label, "asset-plan-cell-cat", dd.wrap);
-        void host;
-        if (memSnap && !isDraft && memSnap.category && memSnap.classification) {
-          panel.dataset.planCategory = memSnap.category;
-          panel.dataset.planClassification = memSnap.classification;
-        }
-      }
-
-      const goalIn = document.createElement("input");
-      goalIn.type = "text";
-      goalIn.className = "asset-plan-input asset-plan-goal-in";
-      goalIn.inputMode = "numeric";
-      goalIn.setAttribute("inputmode", "numeric");
-      goalIn.autocomplete = "off";
-      goalIn.value = memSnap ? memSnap.monthlyGoalStr : "";
-      const goalCtrl = appendToForm(formStack, "월목표 금액", "asset-plan-cell-goalp", goalIn);
-      void goalCtrl;
-      const applyGoalNumericFilter = () => {
-        filterNumericInput(goalIn, false, null, { ignoreIMEComposition: true });
-        updateDerivedInPanel(panel);
-      };
-      goalIn.addEventListener("input", (e) => {
-        filterNumericInput(goalIn, false, e, { ignoreIMEComposition: true });
-        updateDerivedInPanel(panel);
-      });
-      goalIn.addEventListener("paste", () => {
-        requestAnimationFrame(applyGoalNumericFilter);
-      });
-      goalIn.addEventListener("blur", () => {
-        const f = formatNum(goalIn.value);
-        if (f !== "") goalIn.value = f;
-        updateDerivedInPanel(panel);
-      });
-      goalIn.addEventListener("keydown", (e) => e.key === "Enter" && goalIn.blur());
-
-      appendToForm(formStack, "이번달 합계", "asset-plan-total", totalSp);
-      appendToForm(formStack, col4Label, "asset-plan-d4", d4);
-      appendToForm(formStack, "목표달성", "asset-plan-ach", dAch);
-
-      if (!isDraft && memSnap) {
-        if (tableType === "income" && memSnap.classification) setTotalsFromData("수입", memSnap.classification);
-        if (tableType === "investSavings" && memSnap.category && memSnap.classification)
-          setTotalsFromData(memSnap.category, memSnap.classification);
-        if (tableType === "expense" && memSnap.category && memSnap.classification)
-          setTotalsFromData(memSnap.category, memSnap.classification);
-      }
-      updateDerivedInPanel(panel);
-
-      const runCancel = () => {
-        dismiss();
-      };
-      if (xBtn) {
-        xBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          runCancel();
-        });
-      }
-      if (isDraft) {
-        saveBtn = document.createElement("button");
-        saveBtn.type = "button";
-        saveBtn.className = "asset-expense-inline-panel-btn asset-expense-inline-panel-btn--primary";
-        saveBtn.textContent = "저장";
-        const cxl = document.createElement("button");
-        cxl.type = "button";
-        cxl.className = "asset-expense-inline-panel-btn";
-        cxl.textContent = "취소";
-        cxl.addEventListener("click", (e) => {
-          e.stopPropagation();
-          runCancel();
-        });
-        const fin = document.createElement("div");
-        fin.className = "asset-expense-inline-panel-bottom-inner";
-        fin.appendChild(cxl);
-        fin.appendChild(saveBtn);
-        foot.appendChild(fin);
-        saveBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const p = readPanel(panel);
-          if (!p.classification) {
-            showToast(
-              tableType === "income" ? "수입 카테고리를 선택해 주세요." : "항목을 선택해 주세요.",
-              "",
-            );
-            return;
-          }
-          const goalRaw = String(p.monthlyGoalStr || "")
-            .replace(/,/g, "")
-            .trim();
-          if (!goalRaw || parseNum(p.monthlyGoalStr) === null) {
-            showToast("월목표 금액을 입력해 주세요.", "");
-            return;
-          }
-          p.category = p.category || (tableType === "income" ? "수입" : p.category);
-          if (tableType === "income") p.category = "수입";
-          const next = { category: p.category, classification: p.classification, monthlyGoalStr: p.monthlyGoalStr };
-          const n = buildPlanViewRowElement(next);
-          if (!n) return;
-          submitSuccess(n);
-        });
-      } else {
-        saveBtn = document.createElement("button");
-        saveBtn.type = "button";
-        saveBtn.className = "asset-expense-inline-panel-btn asset-expense-inline-panel-btn--primary";
-        saveBtn.textContent = "수정";
-        const cxl = document.createElement("button");
-        cxl.type = "button";
-        cxl.className = "asset-expense-inline-panel-btn";
-        cxl.textContent = "취소";
-        cxl.addEventListener("click", (e) => {
-          e.stopPropagation();
-          runCancel();
-        });
-        const fin = document.createElement("div");
-        fin.className = "asset-expense-inline-panel-bottom-inner";
-        fin.appendChild(cxl);
-        fin.appendChild(saveBtn);
-        foot.appendChild(fin);
-        saveBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const p = readPanel(panel);
-          if (!p.classification) {
-            showToast(
-              tableType === "income" ? "수입 카테고리를 선택해 주세요." : "항목을 선택해 주세요.",
-              "",
-            );
-            return;
-          }
-          const goalRaw = String(p.monthlyGoalStr || "")
-            .replace(/,/g, "")
-            .trim();
-          if (!goalRaw || parseNum(p.monthlyGoalStr) === null) {
-            showToast("월목표 금액을 입력해 주세요.", "");
-            return;
-          }
-          if (tableType === "income") p.category = "수입";
-          const n = buildPlanViewRowElement({
-            category: p.category,
-            classification: p.classification,
-            monthlyGoalStr: p.monthlyGoalStr,
-          });
-          if (!n) return;
-          submitSuccess(n);
-        });
-      }
-
-      return modalRoot;
-    }
-
-    function buildPlanViewRowElement(d) {
-      if (!(d && (d.classification || "").trim())) return null;
-      const art = document.createElement("article");
-      art.setAttribute("role", "listitem");
-      art.className = "asset-plan-row asset-plan-row--view asset-plan-card";
-      const cat = (d.category || "").trim();
-      const cls = (d.classification || "").trim();
-      const mStr = (d.monthlyGoalStr || "").trim();
-      if (cat) art.dataset.planCategory = cat;
-      if (cls) art.dataset.planClassification = cls;
-      if (mStr) art.dataset.monthlyGoalStr = mStr;
-      fillAssetPlanArticleFace(art, tableType);
-      const mem2 = { category: cat, classification: cls, monthlyGoalStr: mStr };
-      art.querySelector(".asset-plan-card-face")?.addEventListener("click", (e) => {
-        if (e.target.closest("button")) return;
-        openPlanGoalModal("edit", mem2, art);
-      });
-      return art;
-    }
-
-    loadSavedPlanRowsForTableType(tableType).forEach((r) => {
-      if ((r.classification || "").trim()) {
-        const t = buildPlanViewRowElement(r);
-        if (t) cardsList.appendChild(t);
-      }
-    });
-    addBtn.addEventListener("click", () => {
-      openPlanGoalModal("draft", null, null);
-    });
-
-    return section;
-  };
-
-  wrap.appendChild(createTable("1. 수입 목표", "수입 카테고리", "더 벌어야 하는 금액", true, "min", "income"));
-  wrap.appendChild(createTable("2. 투자/저축 목표", "투자/저축 카테고리", "더 투자/저축해야 할 금액", true, "min", "investSavings"));
-  wrap.appendChild(createTable("3. 고정비/변동비/기타 목표", "소비 카테고리", "소비할 수 있는 금액", true, "max", "expense"));
-
-  return wrap;
-}
-
 function renderCashflowView() {
   const wrap = document.createElement("div");
   wrap.className = "asset-cashflow-view";
 
   const now = new Date();
-  let selectedYear = now.getFullYear();
-  let selectedMonth = now.getMonth() + 1;
+  const padCf = (n) => String(n).padStart(2, "0");
+  const cry = now.getFullYear();
+  const crm = now.getMonth() + 1;
+  let cfStartDate = `${cry}-${padCf(crm)}-01`;
+  let cfEndDate = `${cry}-${padCf(crm)}-${padCf(new Date(cry, crm, 0).getDate())}`;
 
   const periodToolbar = document.createElement("div");
-  periodToolbar.className = "asset-cashflow-period-toolbar";
-
-  const periodWrap = document.createElement("div");
-  periodWrap.className = "asset-cashflow-period-wrap";
-
-  const monthWrap = document.createElement("div");
-  monthWrap.className = "asset-cashflow-month-nav";
-  monthWrap.setAttribute("aria-label", "월 선택");
-  monthWrap.innerHTML = `
-    <button type="button" class="asset-cashflow-year-btn asset-cashflow-month-prev" aria-label="이전 달">
-      <img src="/toolbaricons/caret-left-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
-    </button>
-    <span class="asset-cashflow-month-display">${selectedMonth}월</span>
-    <button type="button" class="asset-cashflow-year-btn asset-cashflow-month-next" aria-label="다음 달">
-      <img src="/toolbaricons/caret-right-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
-    </button>
+  periodToolbar.className = "asset-expense-filter-bar asset-cashflow-period-toolbar";
+  periodToolbar.innerHTML = `
+    <div class="asset-expense-filter-add-row time-ledger-filter-add-row">
+      <div class="time-filter-bar">
+        <div class="time-filter-nav-cluster asset-expense-date-nav-cluster asset-cashflow-date-nav-cluster">
+          <div class="time-filter-range-wrap asset-expense-date-range-wrap" data-cashflow-range="1">
+            <div class="time-filter-date-field">
+              <input type="date" class="time-filter-start-date asset-cashflow-range-start" name="cashflow-filter-start" aria-label="현금흐름 시작일" />
+              <span class="time-filter-date-label time-filter-date-label--start" aria-hidden="true"></span>
+              <img src="/toolbaricons/calendar-alt.svg" alt="" class="time-filter-date-cal-icon" width="14" height="14" aria-hidden="true" />
+            </div>
+            <span class="time-filter-range-sep">~</span>
+            <div class="time-filter-date-field">
+              <input type="date" class="time-filter-end-date asset-cashflow-range-end" name="cashflow-filter-end" aria-label="현금흐름 종료일" />
+              <span class="time-filter-date-label time-filter-date-label--end" aria-hidden="true"></span>
+              <img src="/toolbaricons/calendar-alt.svg" alt="" class="time-filter-date-cal-icon" width="14" height="14" aria-hidden="true" />
+            </div>
+          </div>
+          <div class="time-filter-day-nav asset-expense-month-shift-nav">
+            <button type="button" class="time-filter-day-prev" aria-label="이전 월">
+              <img src="/toolbaricons/caret-left-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
+            </button>
+            <button type="button" class="time-filter-day-next" aria-label="다음 월">
+              <img src="/toolbaricons/caret-right-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   `;
-  const monthDisplayCashflow = monthWrap.querySelector(".asset-cashflow-month-display");
-  const monthPrevCashflow = monthWrap.querySelector(".asset-cashflow-month-prev");
-  const monthNextCashflow = monthWrap.querySelector(".asset-cashflow-month-next");
+  const cfStartInput = periodToolbar.querySelector(".asset-cashflow-range-start");
+  const cfEndInput = periodToolbar.querySelector(".asset-cashflow-range-end");
 
-  const yearWrap = document.createElement("div");
-  yearWrap.className = "asset-cashflow-year-nav";
-  yearWrap.setAttribute("aria-label", "연도 선택");
-  yearWrap.innerHTML = `
-    <button type="button" class="asset-cashflow-year-btn" aria-label="이전 연도">
-      <img src="/toolbaricons/caret-left-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
-    </button>
-    <span class="asset-cashflow-year-display">${selectedYear}</span>
-    <button type="button" class="asset-cashflow-year-btn" aria-label="다음 연도">
-      <img src="/toolbaricons/caret-right-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
-    </button>
-  `;
-  const yearPrevBtn = yearWrap.querySelector(".asset-cashflow-year-btn:first-child");
-  const yearNextBtn = yearWrap.querySelector(".asset-cashflow-year-btn:last-child");
-  const yearDisplay = yearWrap.querySelector(".asset-cashflow-year-display");
+  function formatCashflowFilterDateDotsWithWeekday(dStr) {
+    if (!dStr || !/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return "";
+    const [y, mo, d] = dStr.split("-").map(Number);
+    const dt = new Date(y, mo - 1, d);
+    const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+    const yy = String(y);
+    const mm = String(mo).padStart(2, "0");
+    const dd = String(d).padStart(2, "0");
+    return `${yy}. ${mm}. ${dd}(${weekdays[dt.getDay()]})`;
+  }
 
-  periodWrap.appendChild(monthWrap);
-  periodWrap.appendChild(yearWrap);
-  periodToolbar.appendChild(periodWrap);
+  function getCashflowPickerBounds() {
+    let s = (cfStartInput?.value || cfStartDate || "").slice(0, 10);
+    let e = (cfEndInput?.value || cfEndDate || "").slice(0, 10);
+    if (s && e && s > e) [s, e] = [e, s];
+    return { from: s, to: e };
+  }
+
+  function syncCashflowRangeDateLabels() {
+    const fmt = formatCashflowFilterDateDotsWithWeekday;
+    const startLabel = periodToolbar.querySelector(".time-filter-date-label--start");
+    const endLabel = periodToolbar.querySelector(".time-filter-date-label--end");
+    const sv = String(cfStartInput?.value || cfStartDate || "").slice(0, 10);
+    const ev = String(cfEndInput?.value || cfEndDate || "").slice(0, 10);
+    if (startLabel) startLabel.textContent = sv && /^\d{4}-\d{2}-\d{2}$/.test(sv) ? fmt(sv) : "";
+    if (endLabel) endLabel.textContent = ev && /^\d{4}-\d{2}-\d{2}$/.test(ev) ? fmt(ev) : "";
+  }
+
+  function openAssetCashflowRangeDateInput(inp) {
+    if (!inp) return;
+    try {
+      inp.focus({ preventScroll: true });
+    } catch (_) {
+      inp.focus();
+    }
+    if (typeof inp.showPicker === "function") {
+      try {
+        inp.showPicker();
+        return;
+      } catch (_) {}
+    }
+    inp.click();
+  }
+
+  periodToolbar
+    .querySelectorAll(".asset-cashflow-date-nav-cluster .time-filter-date-field")
+    .forEach((field) => {
+      const inp = field.querySelector('input[type="date"]');
+      if (!inp) return;
+      field.addEventListener("click", () => openAssetCashflowRangeDateInput(inp));
+    });
+
+  cfStartInput.value = cfStartDate;
+  cfEndInput.value = cfEndDate;
+  syncCashflowRangeDateLabels();
+
+  cfStartInput.addEventListener("change", () => {
+    cfStartDate = (cfStartInput.value || "").slice(0, 10) || cfStartDate;
+    syncCashflowRangeDateLabels();
+    renderChart();
+  });
+  cfEndInput.addEventListener("change", () => {
+    cfEndDate = (cfEndInput.value || "").slice(0, 10) || cfEndDate;
+    syncCashflowRangeDateLabels();
+    renderChart();
+  });
+  cfStartInput.addEventListener("input", syncCashflowRangeDateLabels);
+  cfEndInput.addEventListener("input", syncCashflowRangeDateLabels);
+
+  periodToolbar.addEventListener("click", (e) => {
+    const prev = e.target.closest(".asset-cashflow-date-nav-cluster .time-filter-day-prev");
+    const next = e.target.closest(".asset-cashflow-date-nav-cluster .time-filter-day-next");
+    if (!prev && !next) return;
+    e.preventDefault();
+    const anchor = (cfStartInput.value || cfStartDate || "").slice(0, 10);
+    const b = shiftExpenseCalendarMonthBounds(anchor, prev ? -1 : 1);
+    if (!b) return;
+    cfStartDate = b.start;
+    cfEndDate = b.end;
+    cfStartInput.value = cfStartDate;
+    cfEndInput.value = cfEndDate;
+    syncCashflowRangeDateLabels();
+    renderChart();
+  });
+
   wrap.appendChild(periodToolbar);
 
   const dashboard = document.createElement("div");
   dashboard.className = "time-dashboard-view";
-
-  function syncCashflowPeriodLabels() {
-    if (monthDisplayCashflow) monthDisplayCashflow.textContent = `${selectedMonth}월`;
-    if (yearDisplay) yearDisplay.textContent = String(selectedYear);
-  }
-
-  monthPrevCashflow.addEventListener("click", () => {
-    selectedMonth -= 1;
-    if (selectedMonth < 1) {
-      selectedMonth = 12;
-      selectedYear -= 1;
-    }
-    syncCashflowPeriodLabels();
-    renderChart();
-  });
-  monthNextCashflow.addEventListener("click", () => {
-    selectedMonth += 1;
-    if (selectedMonth > 12) {
-      selectedMonth = 1;
-      selectedYear += 1;
-    }
-    syncCashflowPeriodLabels();
-    renderChart();
-  });
-
-  yearPrevBtn.addEventListener("click", () => {
-    selectedYear -= 1;
-    syncCashflowPeriodLabels();
-    renderChart();
-  });
-  yearNextBtn.addEventListener("click", () => {
-    selectedYear += 1;
-    syncCashflowPeriodLabels();
-    renderChart();
-  });
-
   wrap.appendChild(dashboard);
 
-  function aggregateByCategory(rows, year, month) {
+  function cashflowRowInYmdRange(r, fromYmd, toYmd) {
+    const d = String(r.date || "").slice(0, 10);
+    if (!fromYmd || !toYmd || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
+    const f = fromYmd.slice(0, 10);
+    const t = toYmd.slice(0, 10);
+    return d >= f && d <= t;
+  }
+
+  function aggregateByCategory(rows, fromYmd, toYmd) {
     const 소비 = { label: "소비", value: 0, color: "#C4D8F2" };
     const 저축 = { label: "저축", value: 0, color: "#F2D9C4" };
     const 투자 = { label: "투자", value: 0, color: "#C8D0D8" };
     const 수입 = { label: "수입", value: 0, color: "#E0C4E8" };
 
     rows.forEach((r) => {
-      const dateParts = (r.date || "").split("-");
-      if (dateParts.length < 2) return;
-      const rowYear = parseInt(dateParts[0], 10);
-      const rowMonth = parseInt(dateParts[1], 10);
-      if (rowYear !== year || rowMonth !== month) return;
+      if (!cashflowRowInYmdRange(r, fromYmd, toYmd)) return;
 
       const amtRaw = parseNum(r.amount);
       if (amtRaw === null) return;
@@ -9441,7 +8534,7 @@ function renderCashflowView() {
   }
 
   /** 현금흐름 세로 흐름용: 수입, 고정비, 변동비, 저축, 기타 */
-  function aggregateByCategoryDetailed(rows, year, month) {
+  function aggregateByCategoryDetailed(rows, fromYmd, toYmd) {
     const 수입 = { label: "수입", value: 0, color: "#E0C4E8", desc: "월급, 부업, 용돈, 보너스, 임대소득, 투자소득" };
     const 고정비 = { label: "고정비", value: 0, color: "#C4DCC8", desc: "월세, 보험, 통신비, 관리비" };
     const 변동비 = { label: "변동비", value: 0, color: "#C4E0DC", desc: "식비, 교통비, 쇼핑" };
@@ -9449,11 +8542,7 @@ function renderCashflowView() {
     const 기타 = { label: "기타", value: 0, color: "#F2E8C4", desc: "경조사비, 선물비, Me 비용" };
 
     rows.forEach((r) => {
-      const dateParts = (r.date || "").split("-");
-      if (dateParts.length < 2) return;
-      const rowYear = parseInt(dateParts[0], 10);
-      const rowMonth = parseInt(dateParts[1], 10);
-      if (rowYear !== year || rowMonth !== month) return;
+      if (!cashflowRowInYmdRange(r, fromYmd, toYmd)) return;
 
       const amtRaw = parseNum(r.amount);
       if (amtRaw === null) return;
@@ -9477,7 +8566,7 @@ function renderCashflowView() {
   }
 
   /** 카테고리별 지출분류(세부분류) 집계 - 옆 공간 breakdown용 */
-  function aggregateByClassification(categoryKeys, rows, year, month) {
+  function aggregateByClassification(categoryKeys, rows, fromYmd, toYmd) {
     const keys = Array.isArray(categoryKeys) ? categoryKeys : [categoryKeys];
     const byCat = getExpenseClassificationByCategory();
     const classifications = keys.flatMap((k) => byCat[k] || []);
@@ -9491,11 +8580,7 @@ function renderCashflowView() {
     let 기타합계 = 0;
 
     rows.forEach((r) => {
-      const dateParts = (r.date || "").split("-");
-      if (dateParts.length < 2) return;
-      const rowYear = parseInt(dateParts[0], 10);
-      const rowMonth = parseInt(dateParts[1], 10);
-      if (rowYear !== year || rowMonth !== month) return;
+      if (!cashflowRowInYmdRange(r, fromYmd, toYmd)) return;
       const cat = (r.category || "").trim();
       if (!keys.includes(cat)) return;
 
@@ -9521,18 +8606,14 @@ function renderCashflowView() {
     return result;
   }
 
-  function aggregateFixedExpenseByClassification(rows, year, month) {
+  function aggregateFixedExpenseByClassification(rows, fromYmd, toYmd) {
     const byCat = getExpenseClassificationByCategory();
     const classifications = byCat.고정비 || [];
     const map = Object.fromEntries(classifications.map((c) => [c.label, { ...c, value: 0 }]));
     let 기타합계 = 0;
 
     rows.forEach((r) => {
-      const dateParts = (r.date || "").split("-");
-      if (dateParts.length < 2) return;
-      const rowYear = parseInt(dateParts[0], 10);
-      const rowMonth = parseInt(dateParts[1], 10);
-      if (rowYear !== year || rowMonth !== month) return;
+      if (!cashflowRowInYmdRange(r, fromYmd, toYmd)) return;
       if ((r.category || "").trim() !== "고정비") return;
 
       const amtRaw = parseNum(r.amount);
@@ -9554,13 +8635,9 @@ function renderCashflowView() {
     return result;
   }
 
-  function getSubscriptionExpenseRows(rows, year, month) {
+  function getSubscriptionExpenseRows(rows, fromYmd, toYmd) {
     return rows.filter((r) => {
-      const dateParts = (r.date || "").split("-");
-      if (dateParts.length < 2) return false;
-      const rowYear = parseInt(dateParts[0], 10);
-      const rowMonth = parseInt(dateParts[1], 10);
-      if (rowYear !== year || rowMonth !== month) return false;
+      if (!cashflowRowInYmdRange(r, fromYmd, toYmd)) return false;
       if ((r.category || "").trim() !== "고정비") return false;
       if ((r.classification || "").trim() !== "구독료") return false;
       return true;
@@ -9577,14 +8654,10 @@ function renderCashflowView() {
     "rgba(107, 114, 128, 0.5)",
   ];
 
-  function getVariableExpenseRows(rows, year, month) {
+  function getVariableExpenseRows(rows, fromYmd, toYmd) {
     if (!Array.isArray(rows)) return [];
     return rows.filter((r) => {
-      const dateParts = (r.date || "").split("-");
-      if (dateParts.length < 2) return false;
-      const rowYear = parseInt(dateParts[0], 10);
-      const rowMonth = parseInt(dateParts[1], 10);
-      if (rowYear !== year || rowMonth !== month) return false;
+      if (!cashflowRowInYmdRange(r, fromYmd, toYmd)) return false;
       if ((r.category || "").trim() !== "변동비") return false;
       const cls = (r.classification || "").trim();
       return VARIABLE_EXPENSE_CLASSIFICATIONS.includes(cls) || cls === "";
@@ -9593,10 +8666,15 @@ function renderCashflowView() {
 
   function renderChart() {
     const rows = loadExpenseRows();
-    const data = aggregateByCategory(rows, selectedYear, selectedMonth);
+    const { from: cfFrom, to: cfTo } = getCashflowPickerBounds();
+    const periodLabel =
+      cfFrom && cfTo
+        ? `${formatCashflowFilterDateDotsWithWeekday(cfFrom)} ~ ${formatCashflowFilterDateDotsWithWeekday(cfTo)}`
+        : "기간 미선택";
+    const data =
+      cfFrom && cfTo ? aggregateByCategory(rows, cfFrom, cfTo) : aggregateByCategory([], "", "");
     const [소비, 저축, 투자, 수입] = data;
-    const flowData = aggregateByCategoryDetailed(rows, selectedYear, selectedMonth);
-    const periodLabel = `${selectedYear}년 ${selectedMonth}월`;
+    const flowData = aggregateByCategoryDetailed(rows, cfFrom || "", cfTo || "");
     const chartData = [소비, 저축, 투자];
     const maxVal = Math.max(...chartData.map((d) => d.value), 1);
 
@@ -9620,7 +8698,7 @@ function renderCashflowView() {
         (d, i) => {
           const hasArrow = i < flowData.length - 1;
           const keys = categoryKeyMap[d.label] || [];
-          const breakdown = aggregateByClassification(keys, rows, selectedYear, selectedMonth);
+          const breakdown = aggregateByClassification(keys, rows, cfFrom || "", cfTo || "");
           const tagStyle = catTagStyle[d.label] || catTagStyle.기타;
           const breakdownHtml =
             breakdown.length > 0
@@ -9735,7 +8813,8 @@ function renderCashflowView() {
     const chartWidget = document.createElement("div");
     chartWidget.className = "time-dashboard-widget time-dashboard-widget-cashflow-chart";
     chartWidget.innerHTML = `
-      <div class="time-dashboard-widget-title">월급 흐름 시각화 (${periodLabel}) · 월급 대비 퍼센트, 금액</div>
+      <div class="time-dashboard-widget-title">수입 대비 지출 비율·금액</div>
+      <div class="time-dashboard-widget-desc" style="color:#6b7280;margin-bottom:0.5rem;">${periodLabel}</div>
       <div class="asset-cashflow-chart-wrap">
         <svg class="asset-cashflow-chart" viewBox="0 0 ${chartW} ${chartH}" preserveAspectRatio="xMinYMid meet">
           ${gridLines}
@@ -9747,7 +8826,7 @@ function renderCashflowView() {
       </div>
     `;
 
-    const fixedExpenseData = aggregateFixedExpenseByClassification(rows, selectedYear, selectedMonth);
+    const fixedExpenseData = aggregateFixedExpenseByClassification(rows, cfFrom || "", cfTo || "");
     const 고정비TagStyle = { bg: "rgba(196,220,200,0.4)", color: "#2d5a3d" };
     const fixedExpenseTableRows = fixedExpenseData
       .map(
@@ -9760,7 +8839,7 @@ function renderCashflowView() {
     const fixedExpenseWidget = document.createElement("div");
     fixedExpenseWidget.className = "time-dashboard-widget time-dashboard-widget-placeholder";
     fixedExpenseWidget.innerHTML = `
-      <div class="time-dashboard-widget-title">이번달 고정비</div>
+      <div class="time-dashboard-widget-title">고정비</div>
       <div class="time-dashboard-widget-desc" style="color:#6b7280;margin-top:0.25rem;margin-bottom:0.75rem;">${periodLabel} · 세부지출분류별</div>
       <table class="asset-fixed-expense-table">
         <thead><tr><th>세부지출분류</th><th>금액</th></tr></thead>
@@ -9771,7 +8850,7 @@ function renderCashflowView() {
       </table>
     `;
 
-    const subscriptionRows = getSubscriptionExpenseRows(rows, selectedYear, selectedMonth);
+    const subscriptionRows = getSubscriptionExpenseRows(rows, cfFrom || "", cfTo || "");
     let subscriptionTotal = 0;
     const subscriptionTableRows = subscriptionRows
       .map((r) => {
@@ -9787,7 +8866,7 @@ function renderCashflowView() {
     const subscriptionWidget = document.createElement("div");
     subscriptionWidget.className = "time-dashboard-widget time-dashboard-widget-subscription";
     subscriptionWidget.innerHTML = `
-      <div class="time-dashboard-widget-title">이번달 구독료 목록</div>
+      <div class="time-dashboard-widget-title">구독료 목록</div>
       <div class="time-dashboard-widget-desc" style="color:#6b7280;margin-top:0.25rem;margin-bottom:0.75rem;">${periodLabel} · 구독료 지출분류</div>
       <table class="asset-subscription-table">
         <thead><tr><th>지출명</th><th>금액</th></tr></thead>
@@ -9800,7 +8879,7 @@ function renderCashflowView() {
 
     let variableExpenseWidget;
     try {
-      const varRows = getVariableExpenseRows(rows, selectedYear, selectedMonth);
+      const varRows = getVariableExpenseRows(rows, cfFrom || "", cfTo || "");
       const grouped = {};
       (varRows || []).forEach((r) => {
         const cls = (r.classification || "").trim() || "기타";
@@ -9825,7 +8904,7 @@ function renderCashflowView() {
 
       variableExpenseWidget = document.createElement("div");
       variableExpenseWidget.className = "time-dashboard-widget asset-variable-expense-widget";
-      variableExpenseWidget.innerHTML = `<div class="time-dashboard-widget-title">이번달 변동비</div><div class="time-dashboard-widget-desc" style="color:#6b7280;margin-top:0.25rem;margin-bottom:0.5rem;">${periodLabel} · 세부카테고리별</div><div class="asset-variable-bar-total">총 ${formatNum(totalVariable)}원</div><div class="asset-variable-bar-list">${barEntries.length ? barHtml : '<div class="asset-variable-bar-empty">데이터 없음</div>'}</div>`;
+      variableExpenseWidget.innerHTML = `<div class="time-dashboard-widget-title">변동비</div><div class="time-dashboard-widget-desc" style="color:#6b7280;margin-top:0.25rem;margin-bottom:0.5rem;">${periodLabel} · 세부카테고리별</div><div class="asset-variable-bar-total">총 ${formatNum(totalVariable)}원</div><div class="asset-variable-bar-list">${barEntries.length ? barHtml : '<div class="asset-variable-bar-empty">데이터 없음</div>'}</div>`;
     } catch (err) {
       variableExpenseWidget = document.createElement("div");
       variableExpenseWidget.className = "time-dashboard-widget time-dashboard-widget-placeholder";
@@ -9891,7 +8970,6 @@ export function render() {
     <button type="button" class="asset-view-tab" data-view="expense">가계부</button>
     <button type="button" class="asset-view-tab" data-view="cashflow">현금흐름</button>
     <button type="button" class="asset-view-tab" data-view="networth">순자산</button>
-    <button type="button" class="asset-view-tab" data-view="plan">자산관리계획</button>
   `;
   const initialView = readSavedAssetSubView() || "expense";
   viewTabs.querySelectorAll(".asset-view-tab").forEach((btn) => {
@@ -9927,8 +9005,6 @@ export function render() {
         }
       }
     }
-    const prevPlan = contentWrap.querySelector(".asset-plan-view");
-    if (prevPlan) savePlanMonthlyGoalsFromPlanView(prevPlan);
     contentWrap.innerHTML = "";
     if (view === "networth") {
       contentWrap.appendChild(renderNetworthView());
@@ -9936,8 +9012,6 @@ export function render() {
       contentWrap.appendChild(renderExpenseView({ onOpenSettings: () => assetSettings.open() }));
     } else if (view === "cashflow") {
       contentWrap.appendChild(renderCashflowView());
-    } else if (view === "plan") {
-      contentWrap.appendChild(renderPlanView());
     } else {
       const p = document.createElement("p");
       p.className = "asset-placeholder";
@@ -9972,21 +9046,6 @@ export function render() {
   attachAssetStockCategoryOptionsSaveListener();
   attachAssetPlanMonthlyGoalsSaveListener();
   attachAssetNetWorthBundleSaveListener();
-
-  const lpAssetTabAbortController = typeof AbortController !== "undefined" ? new AbortController() : null;
-  if (typeof window !== "undefined" && lpAssetTabAbortController) {
-    el._lpTabAbortController = lpAssetTabAbortController;
-    window.addEventListener(
-      "asset-expense-transactions-saved",
-      () => {
-        try {
-          const pv = el.querySelector(".asset-plan-view");
-          if (pv?.isConnected) refreshPlanViewCardFaces(pv);
-        } catch (_) {}
-      },
-      { signal: lpAssetTabAbortController.signal },
-    );
-  }
 
   /* 행이 0건이어도 «불러오는 중»을 띄우지 않음 — 빈 가계부는 미리 로드된 상태와 구분 불가했고, 상위 탭 전환 시 App에서 이미 pull 후 렌더되는 경우가 많음 */
   renderView(initialView);

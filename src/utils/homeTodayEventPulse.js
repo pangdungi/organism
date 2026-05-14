@@ -4,7 +4,6 @@
  */
 import { buildExpectedScheduleSpansForDateKey } from "../views/Calendar.js";
 import { loadTimeRows, parseTimeToHours } from "../views/Time.js";
-import { getTimeCategoryColorsForTimetableExpected } from "../utils/todoSettings.js";
 
 function normDateKey(s) {
   return (s || "").replace(/\//g, "-").trim().slice(0, 10);
@@ -86,7 +85,5 @@ export function buildHomeTodayEventPulseModel(todayKey) {
         a.taskName.localeCompare(b.taskName, "ko"),
     );
 
-  const kpColors = getTimeCategoryColorsForTimetableExpected();
-
-  return { taskRows, kpColors };
+  return { taskRows };
 }

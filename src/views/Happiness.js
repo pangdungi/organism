@@ -269,7 +269,6 @@ export function render() {
   let kpiFilter = "all";
   let kpiGridScrollPrevFilter = null;
   let kpiGridScrollPrevScopeId = null;
-  let completedSectionCollapsed = true;
   let happinessAddModalJustClosed = false;
 
   const _happinessUiSession = readKpiUiSession(KPI_UI_SESSION_KEYS.happiness);
@@ -911,78 +910,6 @@ export function render() {
     grid.appendChild(addCard);
     contentWrap.appendChild(grid);
 
-    if (completedKpis.length > 0 && kpiFilter !== "completed") {
-      const completedSection = document.createElement("div");
-      completedSection.className = "dream-kpi-completed-section" + (completedSectionCollapsed ? " is-collapsed" : "");
-      completedSection.innerHTML = `
-        <button type="button" class="dream-kpi-completed-toggle">
-          <span class="dream-kpi-completed-arrow">${completedSectionCollapsed ? "▶" : "▼"}</span>
-          <span class="dream-kpi-completed-label">달성 완료 (${completedKpis.length})</span>
-        </button>
-        <div class="dream-kpi-completed-grid"></div>
-      `;
-      const toggleBtn = completedSection.querySelector(".dream-kpi-completed-toggle");
-      const completedGrid = completedSection.querySelector(".dream-kpi-completed-grid");
-      toggleBtn.addEventListener("click", () => {
-        completedSectionCollapsed = !completedSectionCollapsed;
-        completedSection.classList.toggle("is-collapsed", completedSectionCollapsed);
-        toggleBtn.querySelector(".dream-kpi-completed-arrow").textContent = completedSectionCollapsed ? "▶" : "▼";
-      });
-      completedKpis.forEach((kpi) => {
-        const {
-          currentVal,
-          targetVal,
-          targetMins,
-          accumulatedMins,
-          lowerBetter,
-        } = getKpiProgress(kpi);
-        const investedMins = getAccumulatedMinutesForKpiId(kpi.id);
-        const unitSuffix = kpi.unit ? " " + kpi.unit : "";
-        const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
-        const currentStr = formatNum(currentVal);
-        const targetStr = kpi.targetValue ? escapeHtml(String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) : "—";
-        const progressText = lowerBetter
-          ? `최근 ${currentStr} / 상한 ${targetStr}${unitSuffix}`
-          : `${currentStr} / ${targetStr}${unitSuffix}`;
-        const targetTimeDisplayCompleted = kpi.targetTimeRequired
-          ? minutesToHhMm(String(kpi.targetTimeRequired).includes(":") ? hhMmToMinutes(kpi.targetTimeRequired) : (parseInt(kpi.targetTimeRequired, 10) || 0))
-          : "";
-        const investedTimeHtmlCompleted = targetTimeDisplayCompleted
-          ? `지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span> / <span class="dream-kpi-card-invested-value">${targetTimeDisplayCompleted}</span>`
-          : `지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span>`;
-        const card = document.createElement("div");
-        card.className =
-          "dream-kpi-card dream-kpi-card-completed" +
-          (lowerBetter ? " dream-kpi-card--lower-better" : "") +
-          (selectedKpiId === kpi.id ? " is-selected" : "");
-        card.dataset.kpiId = kpi.id;
-        card.innerHTML = `
-          <div class="dream-kpi-card-inner">
-            <button type="button" class="dream-kpi-card-edit" title="KPI 수정">수정</button>
-            <div class="dream-kpi-card-name">${escapeHtml(kpi.name)}${lowerBetter ? '<span class="dream-kpi-card-direction-badge" title="낮을수록 좋음 KPI">↓낮음</span>' : ""}</div>
-            <div class="dream-kpi-card-target-num">${formatKpiCardHeroHtml(lowerBetter, currentStr, kpi.unit)}</div>
-            ${(kpi.targetStartDate || kpi.targetDeadline) ? `<div class="dream-kpi-card-deadline">${escapeHtml(formatDeadlineRangeCompact(kpi.targetStartDate, kpi.targetDeadline))}</div>` : ""}
-            <div class="dream-kpi-card-progress">
-              <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:100%"></div></div>
-              <div class="dream-kpi-card-progress-text">${escapeHtml(progressText)} ✓</div>
-            </div>
-            <div class="dream-kpi-card-invested">${investedTimeHtmlCompleted}</div>
-          </div>
-        `;
-        card.querySelector(".dream-kpi-card-edit").addEventListener("click", (e) => {
-          e.stopPropagation();
-          showKpiEditModal(kpi);
-        });
-        card.addEventListener("click", (e) => {
-          if (e.target.closest(".dream-kpi-card-edit")) return;
-          selectedKpiId = selectedKpiId === kpi.id ? null : kpi.id;
-          renderKpiList();
-          renderKpiHistory();
-        });
-        completedGrid.appendChild(card);
-      });
-      contentWrap.appendChild(completedSection);
-    }
     applyKpiGridScrollRestore(contentWrap, savedGridScroll);
     kpiGridScrollPrevFilter = kpiFilter;
     kpiGridScrollPrevScopeId = scopeId;

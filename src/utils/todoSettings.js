@@ -169,19 +169,19 @@ export const DEFAULT_SECTION_COLORS = {
 };
 
 /**
- * 시간가계부 생산성 3분류 기본 색 (10색 팔레트와 동일 hex, 알파 0.9)
- * - 생산: 테라코타 레드 #C97A6A
- * - 비생산: 슬레이트 블루 #7A8E9A
- * - 기타: 그린(세이지) #8A9E82
+ * 시간가계부 생산성 3분류 기본 색 — 홈「지금 진행 중」·막대·태그와 통일
+ * - 생산: #C13030
+ * - 비생산: #2172BE
+ * - 기타: #4E8A1E
  */
 export const DEFAULT_TIME_CATEGORY_COLORS = {
-  productive: hexToRgba("#C97A6A", 0.9),
-  nonproductive: hexToRgba("#7A8E9A", 0.9),
-  other: hexToRgba("#8A9E82", 0.9),
+  productive: hexToRgba("#C13030", 0.94),
+  nonproductive: hexToRgba("#2172BE", 0.94),
+  other: hexToRgba("#4E8A1E", 0.94),
 };
 
 /** 생산성 색 프리셋 개편 시 버전 올리면, 저장값 없거나 구버전이면 아래 기본으로 일괄 적용 */
-const TIME_CATEGORY_PRESET_VERSION = 1;
+const TIME_CATEGORY_PRESET_VERSION = 3;
 
 /** 고정 리스트(브레인덤프·꿈·부수입·건강·행복) 기본색 재배치 시 버전 증가 */
 const SECTION_LIST_PRESET_VERSION = 3;
@@ -410,7 +410,18 @@ export function getSectionMarkerColor(sectionId) {
 }
 
 export function getTimeCategoryColor(key) {
-  return DEFAULT_TIME_CATEGORY_COLORS[key] || hexToRgba(APP_PRESET_COLORS[0].hex, 0.9);
+  const k =
+    key === "productive"
+      ? "productive"
+      : key === "nonproductive"
+        ? "nonproductive"
+        : "other";
+  const s = getTodoSettings();
+  return (
+    (s.timeCategoryColors && s.timeCategoryColors[k]) ||
+    DEFAULT_TIME_CATEGORY_COLORS[k] ||
+    hexToRgba(APP_PRESET_COLORS[0].hex, 0.9)
+  );
 }
 
 /** 작업(세부) 카테고리 색상 조회 - 쾌락충족·꿈방해·불행·비건강·돈잃는일·근무·수면 등만 작업 카테고리 설정 사용 */
@@ -440,30 +451,71 @@ function rgbaToRgb(rgbaStr) {
   return `rgb(${m[1]}, ${m[2]}, ${m[3]})`;
 }
 
+function rgbStringToHex6(rgbStr) {
+  const m = String(rgbStr || "").match(
+    /rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/,
+  );
+  if (!m) return null;
+  const h = (x) =>
+    Math.min(255, Math.max(0, parseInt(x, 10)))
+      .toString(16)
+      .padStart(2, "0");
+  return `#${h(m[1])}${h(m[2])}${h(m[3])}`;
+}
+
 /**
- * 타임블록 면 스펙 — 디자인 시트 팔레트를 앱 분류에 맞게 매핑
- * - 생산적 과제(productive): Blush(빨강 계열)
- * - 비생산적 과제(nonproductive): Sky(파랑)
- * - 기타·수면·근무 등(other): Mint(초록)
+ * 생산/비생산/기타 — 홈 과제 막대·제목 등에 쓰는 불투명 6자리 hex
+ * (설정의 rgba를 rgb로 올린 뒤 변환; 기본 #C13030 / #2172BE / #4E8A1E)
+ */
+export function getTimeCategorySolidHex(prodKey) {
+  const k =
+    prodKey === "productive"
+      ? "productive"
+      : prodKey === "nonproductive"
+        ? "nonproductive"
+        : "other";
+  const s = getTodoSettings();
+  const rgba =
+    (s.timeCategoryColors && s.timeCategoryColors[k]) ||
+    DEFAULT_TIME_CATEGORY_COLORS[k] ||
+    DEFAULT_TIME_CATEGORY_COLORS.other;
+  const hex = rgbStringToHex6(rgbaToRgb(rgba));
+  if (hex) return hex;
+  return k === "productive"
+    ? "#C13030"
+    : k === "nonproductive"
+      ? "#2172BE"
+      : "#4E8A1E";
+}
+
+/**
+ * 타임블록 면 스펙 — 홈 타임라인 카드·시간 마커 배경·글자
+ * - 생산: 배경 #FCEAEA / 글자 #791F1F / 카드 왼쪽 강조 #F5A0A0
+ * - 비생산: 배경 #E3EEF9 / 글자 #0C447C / 왼쪽 강조 #9EC8F0
+ * - 기타: 배경 #EBF5E1 / 글자 #27500A / 왼쪽 강조 #C5E09A
  */
 export const TIMETABLE_SURFACE_SPECS = {
   productive: {
-    bg: "#FDECEA",
-    border: "#F5B8B2",
-    textPrimary: "#922B1F",
-    textSecondary: "#C0392B",
+    bg: "#FCEAEA",
+    border: "#791F1F",
+    /** 타임라인 카드 왼쪽 세로 강조 막대 */
+    leftStripe: "#F5A0A0",
+    textPrimary: "#791F1F",
+    textSecondary: "#5C1818",
   },
   nonproductive: {
-    bg: "#E8F2FA",
-    border: "#A8C8E8",
-    textPrimary: "#1F4D70",
-    textSecondary: "#2C6B9A",
+    bg: "#E3EEF9",
+    border: "#0C447C",
+    leftStripe: "#9EC8F0",
+    textPrimary: "#0C447C",
+    textSecondary: "#083560",
   },
   other: {
-    bg: "#E5F5EF",
-    border: "#A8DCC8",
-    textPrimary: "#1E5C44",
-    textSecondary: "#2A7D5F",
+    bg: "#EBF5E1",
+    border: "#27500A",
+    leftStripe: "#C5E09A",
+    textPrimary: "#27500A",
+    textSecondary: "#1E3F08",
   },
 };
 
@@ -472,6 +524,7 @@ function timetableSurfaceEntry(key) {
   return {
     bg: s.bg,
     border: s.border,
+    leftStripe: s.leftStripe || s.border,
     accentText: s.textPrimary,
     accentMuted: s.textSecondary,
   };
@@ -488,7 +541,7 @@ function rgbaToTimetableColors(rgbaStr, bgAlpha = 0.15, borderAlpha = 0.5) {
   };
 }
 
-/** 타임블록 — 생산(Blush)·비생산(Sky)·기타 Mint(수면·근무 등) 면/테두리/글자색 */
+/** 타임블록 — 생산/비생산/기타 면·테두리·글자색(TIMETABLE_SURFACE_SPECS) */
 export function getTimeCategoryColorsForTimetable() {
   return {
     productive: timetableSurfaceEntry("productive"),

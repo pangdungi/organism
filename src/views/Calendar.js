@@ -50,6 +50,7 @@ import {
   formatGoalDiff,
   parseTimeToHours,
   isTimeLedgerRowLiveRecording,
+  formatIntegerMinutesDurationKo,
 } from "./Time.js";
 import { showToast } from "../utils/showToast.js";
 import { supabase } from "../supabase.js";
@@ -1740,16 +1741,8 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
 /** 기본 행 높이는 이 개수(3개) 분량, 그 이상이면 행을 늘려 전부 표시 */
 const MAX_VISIBLE_BARS_PER_DAY = 3;
 
-/** 날짜 확대 목록: 앞 마커(일정·할일) — 격자 막대와 동일하게 진한 섹션색 */
-function lpCalendarDayExpandMarkerRgb(sectionId) {
-  return lpCalendarBarMarkerColorFromBase(
-    getSectionColor(String(sectionId || "").trim()),
-  ).replace(/["<>;]/g, "");
-}
-
-function lpCalendarDayExpandScheduleMarkHtml(sectionId) {
-  const c = lpCalendarDayExpandMarkerRgb(sectionId);
-  return `<span class="calendar-day-expand-schedule-mark" aria-hidden="true" style="display:inline-flex;align-items:center;justify-content:center;width:0.875rem;height:0.875rem;flex-shrink:0"><span style="display:block;width:0.5625rem;height:0.5625rem;border-radius:999px;background-color:${c};box-shadow:0 0 0 0.0625rem rgba(42,56,40,0.35)"></span></span>`;
+function lpCalendarDayExpandScheduleMarkHtml() {
+  return `<span class="calendar-day-expand-schedule-mark" aria-hidden="true"><span class="calendar-day-expand-schedule-mark-inner"></span></span>`;
 }
 
 /** 이전 날짜 확대 버블의 document 클릭 리스너 제거(연간 연속 호버 등으로 close 미경유 DOM 제거 시 누수 방지) */
@@ -1798,15 +1791,16 @@ function createCalendarDayExpandBubble(
     .map((t) => {
       const isSchedule =
         String(t.itemType || "todo").toLowerCase() === "schedule";
-      const mRgb = lpCalendarDayExpandMarkerRgb(t.sectionId);
       const marker = isSchedule
-        ? lpCalendarDayExpandScheduleMarkHtml(t.sectionId)
-        : `<span class="calendar-day-expand-checkbox ${t.done ? "checked" : ""}" style="border:2px solid ${mRgb}"></span>`;
+        ? lpCalendarDayExpandScheduleMarkHtml()
+        : `<span class="calendar-day-expand-checkbox ${t.done ? "checked" : ""}"></span>`;
       return `
     <div class="calendar-day-expand-item${isSchedule ? " calendar-day-expand-item--schedule" : ""}" data-done="${!!t.done}" data-item-type="${isSchedule ? "schedule" : "todo"}">
-      ${marker}
-      <span class="calendar-day-expand-text">${escapeHtml(t.name || "")}</span>
-      ${t.startTime || t.endTime ? `<span class="calendar-day-expand-time">${[t.startTime, t.endTime].filter(Boolean).join(" ~ ")}</span>` : ""}
+      <div class="calendar-day-expand-marker-slot">${marker}</div>
+      <div class="calendar-day-expand-main">
+        <span class="calendar-day-expand-text">${escapeHtml(t.name || "")}</span>
+        ${t.startTime || t.endTime ? `<span class="calendar-day-expand-time">${[t.startTime, t.endTime].filter(Boolean).join(" ~ ")}</span>` : ""}
+      </div>
     </div>
   `;
     })
@@ -6076,6 +6070,16 @@ function render1DayView(
               span,
             );
 
+          const sidRaw = String(span.sectionId || "").trim();
+          let sectionAccent = "";
+          if (sidRaw && !sidRaw.startsWith("custom-")) {
+            try {
+              sectionAccent = getSectionColor(sidRaw) || "";
+            } catch (_) {
+              sectionAccent = "";
+            }
+          }
+
           const item = document.createElement("div");
           item.className = "calendar-1day-timeline-item";
 
@@ -6083,24 +6087,14 @@ function render1DayView(
           spot.className = "calendar-1day-timeline-spot";
           const spotMark = document.createElement("div");
           spotMark.className = "calendar-1day-timeline-spot-mark";
-          const sidRaw = String(span.sectionId || "").trim();
-          let accent = "";
-          if (sidRaw && !sidRaw.startsWith("custom-")) {
-            try {
-              accent = getSectionColor(sidRaw) || "";
-            } catch (_) {
-              accent = "";
-            }
-          }
-          if (!accent && c.border) accent = c.border;
-          if (accent) {
-            spotMark.style.backgroundColor = withMoreTransparency(accent, 0.14);
-            spotMark.style.border = `2px solid ${accent}`;
+          /* 생산/비생산/기타 면색: 배경·글자색만 — 테두리 없음(CSS) */
+          if (!ledgerMissed) {
+            spotMark.style.backgroundColor = c.bg;
+            spotMark.style.color = c.accentText;
           } else {
-            spotMark.style.backgroundColor = "";
-            spotMark.style.border = "2px solid rgba(0, 0, 0, 0.12)";
+            spotMark.style.backgroundColor = "rgba(0, 0, 0, 0.06)";
+            spotMark.style.color = "#9ca3af";
           }
-          /* 배경 틴트와 같은 밝기의 글자색은 쓰지 않음 — 항상 본문 잉크 */
           spotMark.textContent = span.startDisplay;
           spotMark.setAttribute(
             "aria-label",
@@ -6133,8 +6127,9 @@ function render1DayView(
           ) {
             card.classList.add("calendar-1day-timeline-card--expected-now");
           }
-          if (accent) {
-            card.style.borderLeftColor = accent;
+          if (!ledgerMissed && !ledgerMatched) {
+            card.style.backgroundColor = c.bg;
+            card.style.borderLeftColor = c.leftStripe;
           }
 
           const titleRow = document.createElement("div");
@@ -6142,6 +6137,9 @@ function render1DayView(
           const titleEl = document.createElement("div");
           titleEl.className = "calendar-1day-timeline-card-title";
           titleEl.textContent = taskLabel;
+          if (!ledgerMissed && !ledgerMatched) {
+            titleEl.style.color = c.accentText;
+          }
           titleRow.appendChild(titleEl);
           if (ledgerMatched) {
             const checkEl = document.createElement("span");
@@ -6168,6 +6166,9 @@ function render1DayView(
           const timeRange = document.createElement("span");
           timeRange.className = "calendar-1day-timeline-card-time";
           timeRange.textContent = `${span.startDisplay} - ${span.endDisplay}`;
+          if (!ledgerMissed && !ledgerMatched) {
+            timeRange.style.color = c.accentMuted;
+          }
           meta.appendChild(timeRange);
 
           let badgeText = "";
@@ -6180,21 +6181,33 @@ function render1DayView(
             const badge = document.createElement("span");
             badge.className = "calendar-1day-timeline-card-badge";
             badge.textContent = badgeText;
-            if (accent) {
-              badge.style.backgroundColor = withMoreTransparency(accent, 0.22);
+            if (sectionAccent) {
+              badge.style.backgroundColor = withMoreTransparency(
+                sectionAccent,
+                0.22,
+              );
               badge.style.color =
-                timetableAccentTextColor(accent) || accent;
+                timetableAccentTextColor(sectionAccent) || sectionAccent;
+            } else {
+              badge.style.backgroundColor = withMoreTransparency(c.border, 0.18);
+              badge.style.color = c.accentText;
             }
             meta.appendChild(badge);
           }
           const durEl = document.createElement("span");
           durEl.className = "calendar-1day-timeline-card-duration";
-          durEl.textContent = `${durMin}분`;
+          durEl.textContent = formatIntegerMinutesDurationKo(durMin);
+          if (!ledgerMissed && !ledgerMatched) {
+            durEl.style.color = c.accentMuted;
+          }
           meta.appendChild(durEl);
           if (liveRecordingThisSpan) {
             const prog = document.createElement("span");
             prog.className = "calendar-1day-timeline-card-progress";
             prog.textContent = "진행 중";
+            if (!ledgerMissed && !ledgerMatched) {
+              prog.style.color = c.accentText;
+            }
             meta.appendChild(prog);
           }
           card.appendChild(meta);
@@ -6202,6 +6215,9 @@ function render1DayView(
             const memoEl = document.createElement("div");
             memoEl.className = "calendar-1day-timeline-card-memo";
             memoEl.textContent = memoTextStored;
+            if (!ledgerMissed && !ledgerMatched) {
+              memoEl.style.color = c.accentMuted;
+            }
             card.appendChild(memoEl);
           }
 
@@ -8901,15 +8917,20 @@ export function render() {
     /* App pull 직후(skipSubtabPull): contentWrap 통째 비우면 상단·설정 줄이 잠깐 사라져 깜빡임 — 할일 뷰는 유지 후 목록만 교체 */
     if (skipSubtabPull && contentWrap.querySelector(".calendar-view-todo")) {
       const existingTodo = contentWrap.querySelector(".calendar-view-todo");
-        const reuseBtn = existingTodo?.querySelector(
-          ".time-ledger-toolbar-icons .todo-list-settings-btn, .todo-list-settings-btn",
-        );
+      const reuseBtn = existingTodo?.querySelector(
+        ".time-ledger-toolbar-icons .todo-list-settings-btn, .todo-list-settings-btn",
+      );
       const todoMain = existingTodo.querySelector(".calendar-todo-main");
+      const todoListView = todoMain?.querySelector(".todo-list-view");
+      const remount = todoListView?._lpRemountTodoSectionsAfterCalendarPull;
+      if (typeof remount === "function") {
+        remount();
+        persistCalendarMainViewIfValid(view);
+        return;
+      }
       if (existingTodo && todoMain) {
         try {
-          todoMain
-            .querySelector(".todo-list-view")
-            ?._lpTabAbortController?.abort?.();
+          todoListView?._lpTabAbortController?.abort?.();
         } catch (_) {}
         todoMain.querySelector(".calendar-todo-content")?.remove();
         const todoContent = document.createElement("div");

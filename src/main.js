@@ -16,18 +16,12 @@ import { applyAppFont } from "./views/Idea.js";
 import { pullUserPrefsFromSupabase } from "./utils/userHourlySync.js";
 import { applyTimeCategoryColors, applyTaskCategoryColors } from "./utils/todoSettings.js";
 import { showToast } from "./utils/showToast.js";
-import {
-  scheduleSilentReminderPushSync,
-  ensureVapidRuntimeFallback,
-} from "./utils/webPushReminders.js";
 import { ensureTimeLedgerStorageReady } from "./utils/timeLedgerEntriesModel.js";
 import { flushAllPendingTimeDailyBudgetSync } from "./utils/timeDailyBudgetSupabase.js";
 import {
   enforceSubscriptionAccessOrSignOut,
   SUBSCRIPTION_EXPIRED_MESSAGE,
 } from "./utils/subscriptionAccess.js";
-
-void ensureVapidRuntimeFallback();
 
 /**
  * IndexedDB 시간기록은 user_id가 없어 계정과 묶이지 않음.
@@ -324,7 +318,6 @@ function init() {
       void pullUserPrefsFromSupabase().catch(() => {});
       await prepareTimeLedgerStorageForCurrentSession();
       await mountApp(document.getElementById("app-screen"));
-      scheduleSilentReminderPushSync();
       return;
     }
     showOnly("login");
@@ -382,7 +375,6 @@ async function doLogin() {
     void pullUserPrefsFromSupabase().catch(() => {});
     await prepareTimeLedgerStorageForCurrentSession();
     await mountApp(document.getElementById("app-screen"));
-    scheduleSilentReminderPushSync();
   } else {
     showToast(result.msg);
   }
@@ -419,7 +411,6 @@ async function doSignUp() {
     void pullUserPrefsFromSupabase().catch(() => {});
     await prepareTimeLedgerStorageForCurrentSession();
     await mountApp(document.getElementById("app-screen"));
-    scheduleSilentReminderPushSync();
     return;
   }
   showToast(

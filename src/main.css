@@ -2527,8 +2527,8 @@ body.auth-pw-modal-open {
   height: 0.5rem;
   margin-top: 0.32rem;
   border-radius: 50%;
-  background: #2f8f5b;
-  box-shadow: 0 0 0 2px rgba(47, 143, 91, 0.2);
+  background: rgba(26, 34, 24, 0.45);
+  box-shadow: 0 0 0 2px rgba(26, 34, 24, 0.12);
 }
 
 .app-main:has(.home-view) .home-live-tracker-text {
@@ -2560,7 +2560,7 @@ body.auth-pw-modal-open {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.04em;
-  color: #2f8f5b;
+  color: var(--text-ink, #1a2218);
   line-height: 1;
 }
 
@@ -2919,7 +2919,7 @@ body.auth-pw-modal-open {
   .home-todo-list-content
   .todo-card.home-todo-flat-row
   .todo-card-done {
-  border-radius: 50% !important;
+  border-radius: 0.3125rem !important;
   width: 1.125rem !important;
   height: 1.125rem !important;
 }
@@ -3299,13 +3299,13 @@ body.auth-pw-modal-open {
     font-weight: 600;
   }
   .app-main:has(.home-view) .home-event-task-bar-tag--over {
-    color: #c45c4a;
+    color: #94352c;
   }
   .app-main:has(.home-view) .home-event-task-bar-tag--equal {
-    color: #3b6fb6;
+    color: #294f86;
   }
   .app-main:has(.home-view) .home-event-task-bar-tag--under {
-    color: #3d8b6a;
+    color: #2f6b46;
   }
   .app-main:has(.home-view) .home-event-task-label {
     display: flex;
@@ -3370,13 +3370,13 @@ body.auth-pw-modal-open {
     transition: width 0.35s ease;
   }
   .app-main:has(.home-view) .home-event-task-bar-fill--actual.home-event-task-bar-fill--over {
-    background: #c45c4a !important;
+    background: #94352c !important;
   }
   .app-main:has(.home-view) .home-event-task-bar-fill--actual.home-event-task-bar-fill--equal {
-    background: #3b6fb6 !important;
+    background: #294f86 !important;
   }
   .app-main:has(.home-view) .home-event-task-bar-fill--actual.home-event-task-bar-fill--under {
-    background: #3d8b6a !important;
+    background: #2f6b46 !important;
   }
   .app-main:has(.home-view) .home-event-task-diff {
     justify-self: start;
@@ -3395,13 +3395,13 @@ body.auth-pw-modal-open {
     min-width: 0;
   }
   .app-main:has(.home-view) .home-event-task-diff--over {
-    color: #c45c4a;
+    color: #94352c;
   }
   .app-main:has(.home-view) .home-event-task-diff--equal {
-    color: #3b6fb6;
+    color: #294f86;
   }
   .app-main:has(.home-view) .home-event-task-diff--under {
-    color: #3d8b6a;
+    color: #2f6b46;
   }
   .app-main:has(.home-view) .home-event-pulse-empty {
     margin: 0;
@@ -4966,6 +4966,40 @@ body.auth-pw-modal-open {
     font-size: 16px !important;
   }
 
+  /*
+   * 가계부 레저 목록(내역·금액): 위 전역 `#app input[type=text] … 16px`가 ID 때문에 항상 이김 →
+   * 동일 블록 안에서 더 높은 특정도(#app + 목록 클래스 체인)로 캡션 크기에 맞춤.
+   * (포커스 시 iOS가 확대할 수 있음 — 캘린더 예산 인풋과 같은 패턴)
+   */
+  #app
+    .asset-expense-cards-list.asset-expense-ledger-board
+    .asset-expense-card-inner--ledger
+    .asset-expense-cell-name
+    input.asset-expense-input-name,
+  #app
+    .asset-expense-cards-list.asset-expense-ledger-board
+    .asset-expense-card-inner--ledger
+    .asset-expense-cell-amount
+    input.asset-expense-input-amount {
+    appearance: none;
+    -webkit-appearance: none;
+    font-family: inherit;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    font-size: var(--fs-caption) !important;
+    line-height: 1.35 !important;
+    font-weight: 500 !important;
+  }
+
+  #app
+    .asset-expense-cards-list.asset-expense-ledger-board
+    .asset-expense-card-inner--ledger
+    .asset-expense-cell-amount
+    input.asset-expense-input-amount {
+    font-weight: 600 !important;
+    font-variant-numeric: tabular-nums;
+  }
+
   /* 오늘 해치우기 예산 표 hh:mm: 소요 시간 열과 맞춘 작은 글자(위 `#app input` 16px 보다 선택자 구체적으로 우선) */
   #app .calendar-view .calendar-1day-view .calendar-1day-budget-column input.time-budget-scheduled-input,
   #app .calendar-view .calendar-1day-view .calendar-1day-budget-column input.time-budget-time-input {
@@ -6000,9 +6034,6 @@ body.auth-pw-modal-open {
     padding: 0.35rem 1.35rem 0.75rem !important;
     margin-bottom: 0.75rem;
   }
-  .archive-view.archive-view--mobile .archive-search-row {
-    margin-top: 0;
-  }
   /* 아카이브: 밑줄은 검색창 한 줄에만 — 날짜 구간은 다음 줄 오른쪽 */
   .archive-view .archive-search-row {
     flex-wrap: wrap;
@@ -6016,9 +6047,41 @@ body.auth-pw-modal-open {
     min-width: 0;
     border-bottom: none;
     box-sizing: border-box;
+    border-radius: 0.5rem !important;
+    -webkit-border-radius: 0.5rem !important;
   }
   .archive-view .archive-search-wrap:focus-within {
     box-shadow: 0 0 0 1px var(--ui-btn-primary-bg, #2a3828);
+  }
+
+  /*
+   * 모바일 아카이브 검색 — 데스크톱(.archive-view:not(.archive-view--mobile)) 검색창 표면과 동일
+   * (연청 트랙 #f2f7f9, 그림자 없음, 회색 플레이스홀더·아이콘 — 위 공통 블록 덮음)
+   */
+  .archive-view.archive-view--mobile .archive-search-row {
+    margin-top: 0.875rem;
+    gap: 0.65rem;
+    align-items: center !important;
+  }
+  .archive-view.archive-view--mobile .archive-search-wrap {
+    background: #f2f7f9 !important;
+    padding: 0.55rem 0.85rem !important;
+    box-shadow: none !important;
+    overflow: hidden;
+  }
+  .archive-view.archive-view--mobile .archive-search-wrap:focus-within {
+    box-shadow: none !important;
+    outline: none;
+  }
+  .archive-view.archive-view--mobile .archive-search-icon {
+    color: #6e6e73;
+  }
+  .archive-view.archive-view--mobile #app .archive-search-input,
+  .archive-view.archive-view--mobile .archive-search-input {
+    padding: 0.12rem 0 !important;
+  }
+  .archive-view.archive-view--mobile .archive-search-input::placeholder {
+    color: rgba(60, 60, 67, 0.52);
   }
   .archive-view .archive-date-range-filter {
     margin-left: auto;
@@ -6067,15 +6130,16 @@ body.auth-pw-modal-open {
     padding-bottom: 0.55rem;
     margin-top: 0.15rem;
     box-sizing: border-box;
+    justify-content: center;
   }
   .archive-view.archive-view--mobile .archive-date-range-filter {
     width: 100%;
     max-width: 100%;
     margin-left: 0;
     margin-right: 0;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 0.35rem;
     padding: 0.06rem 0 0;
     padding-left: 0;
@@ -6103,7 +6167,7 @@ body.auth-pw-modal-open {
     align-items: center;
     gap: 0.2rem;
     min-height: 1.45rem;
-    flex: 1 1 0;
+    flex: 0 1 auto;
     min-width: 0;
     max-width: none;
     overflow: visible;
@@ -6242,32 +6306,41 @@ body.auth-pw-modal-open {
     min-width: 0;
   }
 
-  /* 모바일: 가계부 — 월별·하루·날짜 선택 세그먼트 탭 + 월/일/구간 조작(데스크톱과 동일 로직) */
-  .asset-view--mobile .asset-expense-filter-bar {
+  /* 모바일: 가계부 — 1행: 월별/하루/날짜선택(가로 풀폭·세그먼트만 가운데). 2행: 날짜·월/연 ← 왼쪽, +·설정 → 오른쪽 */
+  .asset-view--mobile .asset-expense-filter-bar,
+  .asset-expense-view--mobile .asset-expense-filter-bar,
+  .asset-view--mobile .asset-cashflow-view .asset-expense-filter-bar {
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.35rem 0.45rem;
+    justify-content: space-between;
+    gap: 0.28rem 0.42rem;
     padding-left: 0.5rem;
     padding-right: 0.5rem;
     margin-bottom: 0.65rem;
+    margin-left: auto;
+    margin-right: auto;
     box-sizing: border-box;
-  }
-  .asset-view--mobile .asset-expense-filter-bar .time-filter-tabs.time-view-tabs--segmented.todo-list-segment-tabs {
-    flex: 1 1 100%;
+    width: 100%;
     max-width: 100%;
-    width: fit-content;
-    box-sizing: border-box;
+  }
+  /* 가계부 모바일: filter-actions 가 add-row 안에 있어 단일 행 유지 */
+  .asset-expense-view--mobile .asset-expense-filter-bar {
+    flex-wrap: nowrap;
   }
   .asset-view--mobile
     .asset-expense-filter-bar
+    .asset-expense-date-nav-cluster.time-filter-nav-cluster,
+  .asset-expense-view--mobile
+    .asset-expense-filter-bar
     .asset-expense-date-nav-cluster.time-filter-nav-cluster {
     width: auto;
-    max-width: none;
-    flex: 1 1 0;
+    max-width: 100%;
+    flex: 0 1 auto;
     flex-shrink: 1;
     min-width: 0;
   }
-  .asset-view--mobile .asset-expense-filter-bar .asset-expense-date-range-wrap {
+  .asset-view--mobile .asset-expense-filter-bar .asset-expense-date-range-wrap,
+  .asset-expense-view--mobile .asset-expense-filter-bar .asset-expense-date-range-wrap {
     width: auto;
     max-width: 100%;
     margin-left: 0;
@@ -6279,8 +6352,70 @@ body.auth-pw-modal-open {
     padding: 0.06rem 0 0;
     box-sizing: border-box;
     min-width: 0;
+    flex: 0 1 auto;
+  }
+
+  /* 모바일 가계부·현금흐름: 날짜 구간(왼쪽) + 월 네비 < >(오른쪽) — 시간가계부 필터 줄과 같은 래퍼 */
+  .asset-view--mobile .asset-expense-filter-bar .asset-expense-filter-add-row.time-ledger-filter-add-row,
+  .asset-expense-view--mobile .asset-expense-filter-bar .asset-expense-filter-add-row.time-ledger-filter-add-row,
+  .asset-view--mobile .asset-cashflow-view .asset-expense-filter-bar .asset-expense-filter-add-row.time-ledger-filter-add-row {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .asset-view--mobile .asset-expense-filter-bar .asset-expense-filter-add-row .time-filter-bar,
+  .asset-expense-view--mobile .asset-expense-filter-bar .asset-expense-filter-add-row .time-filter-bar,
+  .asset-view--mobile .asset-cashflow-view .asset-expense-filter-bar .asset-expense-filter-add-row .time-filter-bar {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    justify-content: flex-start;
+    margin-right: auto;
+    margin-left: 0;
+  }
+  .asset-view--mobile .asset-expense-filter-bar .time-filter-nav-cluster.asset-expense-date-nav-cluster,
+  .asset-expense-view--mobile .asset-expense-filter-bar .time-filter-nav-cluster.asset-expense-date-nav-cluster,
+  .asset-view--mobile .asset-cashflow-view .time-filter-nav-cluster.asset-expense-date-nav-cluster {
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 0.3rem;
+  }
+  .asset-view--mobile .asset-expense-filter-bar .asset-expense-month-shift-nav,
+  .asset-expense-view--mobile .asset-expense-filter-bar .asset-expense-month-shift-nav,
+  .asset-view--mobile .asset-cashflow-view .asset-expense-month-shift-nav {
+    flex-shrink: 0;
+  }
+
+  /* 모바일 가계부만: +·설정을 날짜·<·> 과 같은 줄에 (DOM: filter-actions 가 add-row 안) */
+  .asset-expense-view--mobile
+    .asset-expense-filter-bar
+    .asset-expense-filter-add-row.time-ledger-filter-add-row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    justify-content: flex-start;
+    gap: 0.24rem 0.32rem;
     flex: 1 1 auto;
   }
+  .asset-expense-view--mobile
+    .asset-expense-filter-bar
+    .asset-expense-filter-add-row.time-ledger-filter-add-row
+    > .time-filter-bar {
+    flex: 1 1 0%;
+    min-width: 0;
+    max-width: none;
+    margin-right: 0;
+    margin-left: 0;
+  }
+
   .asset-view--mobile
     .asset-expense-filter-bar
     .asset-expense-date-range-wrap
@@ -6383,10 +6518,11 @@ body.auth-pw-modal-open {
     cursor: pointer;
     opacity: 0.01;
   }
-  .asset-view--mobile .asset-expense-filter-bar .asset-expense-filter-actions {
-    gap: 0.18rem;
+  .asset-view--mobile .asset-expense-filter-bar .asset-expense-filter-actions,
+  .asset-expense-view--mobile .asset-expense-filter-bar .asset-expense-filter-actions {
+    gap: 0.14rem;
     flex-shrink: 0;
-    margin-left: auto;
+    margin-left: 0;
   }
   .asset-view--mobile .asset-expense-filter-bar .asset-expense-settings-btn {
     margin-left: 0;
@@ -6411,6 +6547,33 @@ body.auth-pw-modal-open {
     height: 1rem !important;
   }
 
+  /* 모바일 가계부 필터: 월·연 사이 간격·박스 패딩 축소(왼쪽으로 붙임) — narrow 뷰에서만 */
+  .asset-expense-view .asset-expense-filter-bar .time-filter-month-wrap,
+  .asset-cashflow-view .asset-expense-filter-bar .time-filter-month-wrap {
+    gap: 0.18rem;
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+  .asset-expense-view .asset-expense-filter-bar .time-filter-day-wrap,
+  .asset-cashflow-view .asset-expense-filter-bar .time-filter-day-wrap {
+    gap: 0.28rem;
+  }
+  .asset-expense-view .asset-expense-filter-bar .asset-cashflow-month-nav,
+  .asset-expense-view .asset-expense-filter-bar .asset-cashflow-year-nav,
+  .asset-cashflow-view .asset-expense-filter-bar .asset-cashflow-month-nav,
+  .asset-cashflow-view .asset-expense-filter-bar .asset-cashflow-year-nav {
+    padding: 0.18rem 0.26rem;
+    gap: 0.1rem;
+  }
+  .asset-expense-view .asset-expense-filter-bar .asset-cashflow-month-display,
+  .asset-cashflow-view .asset-expense-filter-bar .asset-cashflow-month-display {
+    min-width: 2.2rem;
+  }
+  .asset-expense-view .asset-expense-filter-bar .asset-cashflow-year-display,
+  .asset-cashflow-view .asset-expense-filter-bar .asset-cashflow-year-display {
+    min-width: 2rem;
+  }
+
   /* 모바일: dream-view 헤더 좌우 패딩 — 꿈·건강·자산관리 등 동일 (1.75rem) */
   .dream-view-header {
     padding-left: 1.75rem;
@@ -6425,13 +6588,6 @@ body.auth-pw-modal-open {
 
   /* 모바일: 자산관리 뷰 탭 — 근무표 상단(.work-schedule-top-row)과 동일 좌우 패딩(0.75rem) */
   .asset-view-tabs {
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
-    box-sizing: border-box;
-  }
-
-  /* 모바일: 현금흐름 월·연 선택줄 — 위 탭과 동일 좌우 패딩 */
-  .asset-cashflow-period-toolbar {
     padding-left: 0.75rem;
     padding-right: 0.75rem;
     box-sizing: border-box;
@@ -6555,13 +6711,6 @@ body.auth-pw-modal-open {
     max-width: 10.5rem;
     min-height: 9rem;
     padding: 0.85rem;
-    font-size: 0.8125rem;
-  }
-  .dream-view .dream-kpi-completed-grid {
-    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
-    gap: 0.65rem;
-  }
-  .dream-view .dream-kpi-completed-toggle {
     font-size: 0.8125rem;
   }
 
@@ -8170,6 +8319,48 @@ body.auth-pw-modal-open {
     gap: 0.35rem;
     padding: 0.26rem 0.42rem;
     font-size: 0.8125rem;
+    align-items: stretch;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .calendar-day-expand-bubble--mobile .calendar-day-expand-marker-slot {
+    align-self: stretch;
+    min-width: 1.75rem;
+  }
+  .calendar-day-expand-bubble--mobile .calendar-day-expand-main {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0.06rem;
+  }
+  .calendar-day-expand-bubble--mobile .calendar-day-expand-text {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    font-weight: 600;
+    color: var(--text-ink);
+    line-height: 1.35;
+  }
+  .calendar-day-expand-bubble--mobile .calendar-day-expand-time {
+    color: var(--text-body);
+    font-size: 0.8125rem;
+    line-height: 1.3;
+    font-weight: 400;
+    flex-shrink: 0;
+    align-self: flex-start;
+  }
+  .calendar-day-expand-bubble--mobile .calendar-day-expand-checkbox {
+    border: none !important;
+    box-shadow: none;
+    background: rgba(26, 34, 24, 0.07);
+  }
+  .calendar-day-expand-bubble--mobile .calendar-day-expand-checkbox.checked {
+    border: none !important;
+    background: rgba(26, 34, 24, 0.88) var(--cb-check-bg) center/65%
+      no-repeat;
+  }
+
+  .calendar-day-expand-bubble--mobile .calendar-day-expand-item:active {
+    background: rgba(242, 247, 249, 0.95);
   }
   .calendar-view .calendar-monthly-day-num {
     font-size: 0.625rem !important;
@@ -9341,7 +9532,7 @@ body.auth-pw-modal-open {
     .asset-expense-cell-amount
     .asset-expense-input-amount {
     text-align: right;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     font-weight: 600;
   }
   .asset-view--mobile
@@ -9350,7 +9541,7 @@ body.auth-pw-modal-open {
     tr.asset-expense-row:not(.asset-expense-row--inner-panel)
     .asset-expense-cell-name
     .asset-expense-input-name {
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     font-weight: 600;
     display: block;
     width: 100%;
@@ -9388,7 +9579,7 @@ body.auth-pw-modal-open {
     order: 4;
     flex: 0 0 4.4rem;
     max-width: 4.4rem;
-    font-size: 0.64rem;
+    font-size: 0.56rem;
     line-height: 1.2;
     color: var(--text-caption-color);
   }
@@ -9398,7 +9589,7 @@ body.auth-pw-modal-open {
     tr.asset-expense-row:not(.asset-expense-row--inner-panel)
     .asset-expense-cell-date
     .asset-expense-date-display {
-    font-size: 0.64rem;
+    font-size: 0.56rem;
     font-weight: 500;
   }
   .asset-view--mobile
@@ -9443,8 +9634,8 @@ body.auth-pw-modal-open {
     tr.asset-expense-row:not(.asset-expense-row--inner-panel)
     .asset-expense-cell-category
     .asset-expense-category-display-readonly {
-    font-size: 0.62rem;
-    padding: 0.08rem 0.3rem;
+    font-size: 0.54rem;
+    padding: 0.06rem 0.24rem;
   }
   .asset-view--mobile
     .asset-expense-table
@@ -9452,8 +9643,8 @@ body.auth-pw-modal-open {
     tr.asset-expense-row:not(.asset-expense-row--inner-panel)
     .asset-expense-cell-payment
     .asset-expense-payment-display {
-    font-size: 0.62rem;
-    padding: 0.08rem 0.3rem;
+    font-size: 0.54rem;
+    padding: 0.06rem 0.24rem;
   }
   .asset-view--mobile
     .asset-expense-table
@@ -9466,7 +9657,7 @@ body.auth-pw-modal-open {
     max-height: 1.35em;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-size: 0.64rem;
+    font-size: 0.56rem;
     line-height: 1.2;
   }
   .asset-view--mobile
@@ -9478,7 +9669,7 @@ body.auth-pw-modal-open {
     display: block;
     width: 100%;
     min-width: 0;
-    font-size: 0.64rem;
+    font-size: 0.56rem;
     line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
@@ -9527,7 +9718,7 @@ body.auth-pw-modal-open {
     .asset-expense-tfoot
     tr.asset-expense-summary-row
     .asset-expense-summary-label {
-    font-size: 0.75rem;
+    font-size: 0.665rem;
     font-weight: 600;
     color: var(--text-ink);
   }
@@ -9535,7 +9726,7 @@ body.auth-pw-modal-open {
     .asset-expense-tfoot
     tr.asset-expense-summary-row
     .asset-expense-summary-total {
-    font-size: 0.85rem;
+    font-size: 0.755rem;
     font-weight: 600;
     text-align: right;
     font-variant-numeric: tabular-nums;
@@ -9548,7 +9739,8 @@ body.auth-pw-modal-open {
   }
 
   /* 모바일 가계부: 카드 목록(표 대체)·필터 줄 +·설정 */
-  .asset-view--mobile .asset-expense-filter-actions {
+  .asset-view--mobile .asset-expense-filter-actions,
+  .asset-expense-view--mobile .asset-expense-filter-actions {
     flex-shrink: 0;
     margin-left: 0;
     gap: 0.25rem;
@@ -9612,14 +9804,14 @@ body.auth-pw-modal-open {
     .asset-expense-cell-amount
     .asset-expense-input-amount {
     text-align: right;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     font-weight: 600;
   }
   .asset-view--mobile
     .asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
     .asset-expense-cell-name
     .asset-expense-input-name {
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     font-weight: 600;
     display: block;
     width: 100%;
@@ -9639,7 +9831,7 @@ body.auth-pw-modal-open {
     order: 4;
     flex: 0 0 4.4rem;
     max-width: 4.4rem;
-    font-size: 0.64rem;
+    font-size: 0.56rem;
     line-height: 1.2;
     color: var(--text-caption-color);
   }
@@ -9647,7 +9839,7 @@ body.auth-pw-modal-open {
     .asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
     .asset-expense-cell-date
     .asset-expense-date-display {
-    font-size: 0.64rem;
+    font-size: 0.56rem;
     font-weight: 500;
   }
   .asset-view--mobile .asset-expense-card-inner:not(.asset-expense-card-inner--ledger) .asset-expense-cell-flow-type,
@@ -9670,15 +9862,15 @@ body.auth-pw-modal-open {
     .asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
     .asset-expense-cell-category
     .asset-expense-category-display-readonly {
-    font-size: 0.62rem;
-    padding: 0.08rem 0.3rem;
+    font-size: 0.54rem;
+    padding: 0.06rem 0.24rem;
   }
   .asset-view--mobile
     .asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
     .asset-expense-cell-payment
     .asset-expense-payment-display {
-    font-size: 0.62rem;
-    padding: 0.08rem 0.3rem;
+    font-size: 0.54rem;
+    padding: 0.06rem 0.24rem;
   }
   .asset-view--mobile .asset-expense-card-inner:not(.asset-expense-card-inner--ledger) .asset-expense-cell-memo {
     order: 6;
@@ -9687,7 +9879,7 @@ body.auth-pw-modal-open {
     max-height: 1.35em;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-size: 0.64rem;
+    font-size: 0.56rem;
     line-height: 1.2;
   }
   .asset-view--mobile
@@ -9697,7 +9889,7 @@ body.auth-pw-modal-open {
     display: block;
     width: 100%;
     min-width: 0;
-    font-size: 0.64rem;
+    font-size: 0.56rem;
     line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
@@ -9714,13 +9906,13 @@ body.auth-pw-modal-open {
     -webkit-border-radius: 0.65rem !important;
   }
   .asset-view--mobile .asset-expense-summary-card-label {
-    font-size: 0.68rem;
+    font-size: 0.6rem;
   }
   .asset-view--mobile .asset-expense-summary-card-value {
-    font-size: 0.9rem !important;
+    font-size: 0.8rem !important;
   }
   .asset-view--mobile .asset-expense-summary-card-hint {
-    font-size: 0.62rem;
+    font-size: 0.54rem;
   }
   .asset-view--mobile .asset-expense-ledger-board-shell {
     overflow-x: hidden;
@@ -9747,7 +9939,7 @@ body.auth-pw-modal-open {
   .asset-view--mobile .asset-expense-ledger-column-head {
     padding: 0.28rem 0.34rem;
     column-gap: 0.24rem;
-    font-size: 0.6rem;
+    font-size: var(--fs-caption);
     grid-template-columns: minmax(0, 1fr) minmax(3.85rem, 4.65rem) minmax(3.55rem, 4.05rem) minmax(5.25rem, 1fr);
     border-top-left-radius: 0.55rem !important;
     border-top-right-radius: 0.55rem !important;
@@ -9772,7 +9964,7 @@ body.auth-pw-modal-open {
   }
   .asset-view--mobile .asset-expense-ledger-day-title,
   .asset-view--mobile .asset-expense-ledger-day-total {
-    font-size: 0.78rem;
+    font-size: 0.688rem;
   }
   .asset-view--mobile .asset-expense-ledger-icon-slot {
     width: 1.85rem;
@@ -9789,19 +9981,50 @@ body.auth-pw-modal-open {
     height: 72%;
     max-height: 1.05rem;
   }
+  /* 레저 행: 내역·금액 — 11px 상속 차단(게시판 0.6875rem 제거), 열·입력 모두 9px 통일 */
+  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-ledger-col--detail,
+  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-ledger-col--amount,
+  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-ledger-detail-inner,
+  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-ledger-text-stack,
   .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-input-name,
+  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-name,
+  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-name .asset-expense-input-name,
   .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-input-amount,
+  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-amount,
+  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-amount .asset-expense-input-amount,
+  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-ledger-col--detail,
+  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-ledger-col--amount,
+  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-ledger-detail-inner,
+  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-ledger-text-stack,
+  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-input-name,
+  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-name,
+  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-name .asset-expense-input-name,
+  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-input-amount,
+  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-amount,
+  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-amount .asset-expense-input-amount {
+    font-size: 0.5625rem !important;
+    line-height: 1.3 !important;
+    font-weight: 500 !important;
+    -webkit-text-size-adjust: 100%;
+  }
+  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-amount .asset-expense-input-amount,
+  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-amount .asset-expense-input-amount {
+    font-weight: 600 !important;
+    font-variant-numeric: tabular-nums;
+  }
   .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-date,
-  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-date .asset-expense-date-display {
-    font-size: 0.63rem !important;
+  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-date .asset-expense-date-display,
+  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-date,
+  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-date .asset-expense-date-display {
+    font-size: var(--fs-caption) !important;
     line-height: 1.25;
   }
   .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-flow-type-display,
   .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-classification-display,
   .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-category-display-readonly,
   .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-payment-display {
-    font-size: 0.52rem !important;
-    padding: 0.04rem 0.2rem !important;
+    font-size: 0.5rem !important;
+    padding: 0.04rem 0.18rem !important;
     border-radius: 999px !important;
     -webkit-border-radius: 999px !important;
     line-height: 1.25;
@@ -9835,17 +10058,36 @@ body.auth-pw-modal-open {
     -webkit-border-top-right-radius: 0 !important;
     -webkit-border-bottom-left-radius: 0.35rem !important;
     -webkit-border-bottom-right-radius: 0.35rem !important;
-    padding: 0.32rem 0.55rem;
-    margin: 0.1rem 0 0.35rem;
-    font-size: 0.75rem;
+    font-size: 0.665rem;
   }
+  /* 열 헤더와 동일 좌우 패딩(0.34rem) + 카드 목록 좌우 패딩(0.65rem)에 맞춘 margin-inline */
   .asset-view--mobile .asset-expense-table-wrap > .asset-expense-summary-bar {
-    margin-inline: 0;
+    margin-inline: 0.65rem;
+    margin-block: 0.1rem 0.35rem;
+    padding: 0.32rem 0.34rem;
+    box-sizing: border-box;
   }
   .asset-view--mobile .asset-expense-summary-bar .asset-expense-summary-total {
-    font-size: 0.85rem;
+    font-size: 0.755rem;
     font-weight: 600;
     text-align: right;
+  }
+
+  /* 모바일 자산관리·가계부: 타이포 전반 축소(탭·필터·본문 목록 통일감) */
+  .asset-view--mobile .asset-view-tab {
+    padding: 0.38rem 0.55rem 0.34rem;
+    font-size: 0.76rem !important;
+  }
+  .asset-view--mobile .asset-expense-filter-bar .time-filter-month-wrap .asset-cashflow-month-display,
+  .asset-view--mobile .asset-expense-filter-bar .time-filter-month-wrap .asset-cashflow-year-display {
+    font-size: 0.72rem !important;
+    font-weight: 600;
+  }
+  .asset-view--mobile .asset-expense-filter-bar .time-filter-day-display {
+    font-size: 0.72rem !important;
+  }
+  .asset-view--mobile .asset-expense-cards-list.asset-expense-ledger-board {
+    font-size: var(--fs-caption);
   }
 
   /* 모바일: 할일 카드 — 내용만큼 늘어나고 잘리지 않음 */
@@ -11885,7 +12127,7 @@ body.auth-pw-modal-open {
   max-height: 2.85rem;
   padding: 0 0.1rem;
   margin: 0;
-  /* border는 JS에서 섹션 악센트(또는 기본 회색)로 지정 */
+  /* 시간 동그라미: 옅은 회색만(JS에서 색 테두리 두껍게 지정하지 않음) */
   border: 2px solid rgba(0, 0, 0, 0.12);
   /* 전역 * { border-radius: 0 !important } 대비 */
   border-radius: 50% !important;
@@ -12030,6 +12272,7 @@ body.auth-pw-modal-open {
     box-sizing: border-box;
   }
   .calendar-1day-timeline-spot-mark {
+    border: none !important;
     padding-left: 0;
     padding-right: 0;
   }
@@ -12461,13 +12704,13 @@ body.auth-pw-modal-open {
     font-weight: 600;
   }
   .app-main:has(.home-view) .home-event-task-bar-tag--over {
-    color: #c45c4a;
+    color: #94352c;
   }
   .app-main:has(.home-view) .home-event-task-bar-tag--equal {
-    color: #3b6fb6;
+    color: #294f86;
   }
   .app-main:has(.home-view) .home-event-task-bar-tag--under {
-    color: #3d8b6a;
+    color: #2f6b46;
   }
   .app-main:has(.home-view) .home-event-task-label {
     display: flex;
@@ -12530,13 +12773,13 @@ body.auth-pw-modal-open {
     transition: width 0.35s ease;
   }
   .app-main:has(.home-view) .home-event-task-bar-fill--actual.home-event-task-bar-fill--over {
-    background: #c45c4a !important;
+    background: #94352c !important;
   }
   .app-main:has(.home-view) .home-event-task-bar-fill--actual.home-event-task-bar-fill--equal {
-    background: #3b6fb6 !important;
+    background: #294f86 !important;
   }
   .app-main:has(.home-view) .home-event-task-bar-fill--actual.home-event-task-bar-fill--under {
-    background: #3d8b6a !important;
+    background: #2f6b46 !important;
   }
   .app-main:has(.home-view) .home-event-task-diff {
     justify-self: start;
@@ -12555,13 +12798,13 @@ body.auth-pw-modal-open {
     min-width: 0;
   }
   .app-main:has(.home-view) .home-event-task-diff--over {
-    color: #c45c4a;
+    color: #94352c;
   }
   .app-main:has(.home-view) .home-event-task-diff--equal {
-    color: #3b6fb6;
+    color: #294f86;
   }
   .app-main:has(.home-view) .home-event-task-diff--under {
-    color: #3d8b6a;
+    color: #2f6b46;
   }
   .app-main:has(.home-view) .home-event-pulse-empty {
     margin: 0;
@@ -12781,8 +13024,8 @@ body.auth-pw-modal-open {
   appearance: none;
   -webkit-appearance: none;
   border: var(--cb-border);
-  border-radius: 50% !important;
-  -webkit-border-radius: 50% !important;
+  border-radius: 0.3125rem !important;
+  -webkit-border-radius: 0.3125rem !important;
   background: var(--cb-bg);
   box-sizing: border-box;
 }
@@ -14852,6 +15095,14 @@ body.auth-pw-modal-open {
   flex-wrap: wrap;
 }
 
+/* 가계부(expense)·현금흐름 공통: 상단 필터 줄 너비 */
+.asset-expense-view .asset-expense-filter-bar,
+.asset-cashflow-view .asset-expense-filter-bar {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 .asset-expense-filter-actions {
   display: inline-flex;
   align-items: center;
@@ -15031,6 +15282,7 @@ body.auth-pw-modal-open {
 
 .asset-expense-ledger-column-head .asset-expense-ledger-col--tags {
   text-align: right;
+  visibility: hidden; /* 칸·그리드 열 너비 유지, 라벨만 비표시 */
 }
 
 .asset-expense-ledger-column-head .asset-expense-ledger-col--date,
@@ -15320,11 +15572,12 @@ body.auth-pw-modal-open {
   font-weight: 600;
 }
 
-/* 카드 패딩(0.65rem)과 같은 안쪽 시작선 — 레저 표 박스와 너비 맞춤.
+/* 레저 표 카드 목록(.asset-expense-ledger-board 좌우 0.65rem)과 합계 막대 너비·안쪽 여백 통일(열 헤더 0.65rem과 동일).
    전역 * { border-radius: 0 !important } 때문에 longhand + !important 필수 */
 .asset-expense-table-wrap > .asset-expense-summary-bar {
   margin-inline: 0.65rem;
   box-sizing: border-box;
+  padding: 0.5rem 0.65rem;
   border-bottom-left-radius: 0.75rem !important;
   border-bottom-right-radius: 0.75rem !important;
   -webkit-border-bottom-left-radius: 0.75rem !important;
@@ -15665,7 +15918,9 @@ body.auth-pw-modal-open {
 }
 
 .asset-expense-view .asset-expense-filter-bar input.time-filter-start-date,
-.asset-expense-view .asset-expense-filter-bar input.time-filter-end-date {
+.asset-expense-view .asset-expense-filter-bar input.time-filter-end-date,
+.asset-cashflow-view .asset-expense-filter-bar input.time-filter-start-date,
+.asset-cashflow-view .asset-expense-filter-bar input.time-filter-end-date {
   background: transparent !important;
   box-shadow: none !important;
   border-radius: 0 !important;
@@ -16456,22 +16711,24 @@ col.asset-expense-col-amount,
 }
 
 /* 현금흐름: 월 패널이 잘리지 않도록 time-view-tabs(overflow-y:hidden) 미사용 */
+/* 현금흐름 상단 줄: 가계부와 동일 클래스(.asset-expense-filter-bar · .time-filter-month-wrap) 사용 — 가운데 정렬 */
 .asset-cashflow-period-toolbar {
   position: relative;
   z-index: 500; /* 대시보드·표 형 블록보다 위에 월 패널 */
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   width: 100%;
   max-width: 100%;
   min-width: 0;
   gap: 0.5rem;
 }
 
-.asset-cashflow-period-wrap {
+.asset-cashflow-period-toolbar .time-filter-month-wrap {
   display: flex;
+  align-items: center;
   gap: 0.5rem;
-  margin-left: auto;
+  margin-left: 0;
 }
 
 .asset-cashflow-dropdown-wrap {
@@ -18562,6 +18819,16 @@ col.asset-expense-col-amount,
   font-weight: 700;
 }
 
+.asset-debt-card-balance-ko {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.71rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .asset-debt-card-maturity {
   display: block;
   margin-top: 0.35rem;
@@ -19071,6 +19338,23 @@ col.asset-expense-col-amount,
   letter-spacing: -0.02em;
 }
 
+.asset-networth-dashboard-formula-value-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.12rem;
+}
+
+.asset-networth-dashboard-formula-value-ko {
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  max-width: 100%;
+}
+
 .asset-networth-dashboard-formula-item:not(.asset-networth-dashboard-result)
   .asset-networth-dashboard-formula-label {
   color: #1f4654;
@@ -19111,6 +19395,32 @@ col.asset-expense-col-amount,
   font-weight: 500;
   color: var(--text-muted);
   margin-bottom: 0.4rem;
+}
+
+.asset-networth-dashboard-target-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.22rem;
+  width: 100%;
+  max-width: 11.25rem;
+  margin: 0 auto;
+}
+
+.asset-networth-dashboard-target-stack .asset-networth-dashboard-target-input {
+  width: 100%;
+  margin: 0 auto;
+}
+
+.asset-networth-dashboard-target-ko {
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  max-width: 100%;
 }
 
 .asset-networth-dashboard-target-input {
@@ -19195,6 +19505,78 @@ col.asset-expense-col-amount,
   color: var(--text-muted);
 }
 
+@media (max-width: 48rem) {
+  /* 순자산 상단 요약 카드 — 모바일 숫자·안쪽 여백 축소 */
+  .asset-networth-dashboard {
+    padding: 1rem 0.65rem;
+    margin-bottom: 1rem;
+  }
+
+  .asset-networth-dashboard-formula {
+    gap: 0.42rem 0.48rem;
+    margin-bottom: 1rem;
+  }
+
+  .asset-networth-dashboard-formula-label {
+    font-size: 0.66rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .asset-networth-dashboard-formula-value {
+    font-size: 1rem;
+    letter-spacing: -0.03em;
+  }
+
+  .asset-networth-dashboard-formula-op,
+  .asset-networth-dashboard-formula-eq {
+    font-size: 0.82rem;
+    padding-bottom: 0.22rem;
+  }
+
+  .asset-networth-dashboard-formula-item.asset-networth-dashboard-result
+    .asset-networth-dashboard-formula-value {
+    font-size: 1.18rem;
+  }
+
+  .asset-networth-dashboard-formula-value-ko,
+  .asset-networth-dashboard-target-ko {
+    font-size: 0.58rem;
+  }
+
+  .asset-networth-dashboard-target-stack {
+    max-width: 10rem;
+  }
+
+  .asset-networth-dashboard-target-label {
+    font-size: 0.66rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .asset-networth-dashboard-target-input {
+    font-size: 0.82rem;
+    max-width: 10rem;
+    padding: 0.38rem 0;
+  }
+
+  .asset-networth-dashboard-progress-wrap {
+    max-width: 100%;
+    margin-bottom: 0.55rem;
+  }
+
+  .asset-networth-dashboard-remaining {
+    font-size: 0.75rem;
+  }
+
+  .asset-asset-deposit-nw-opts {
+    margin: -0.2rem 0 0.65rem;
+    font-size: 0.72rem;
+  }
+
+  .asset-networth-dashboard-deposit-opts-hint {
+    font-size: 0.66rem;
+  }
+}
+
 .asset-debt-section {
   margin-bottom: 2rem;
 }
@@ -19263,70 +19645,6 @@ col.asset-expense-col-amount,
   font-weight: 600;
   color: #1f4654;
   font-variant-numeric: tabular-nums;
-}
-
-/* 상환 진행률 카드 하단: 원금·이자·상환·중도상환·잔여 */
-.asset-debt-progress-totals {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.5rem 0.65rem;
-  margin-top: 0.9rem;
-  padding-top: 0.9rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
-  text-align: center;
-}
-
-.asset-debt-progress-total-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.28rem;
-  min-width: 0;
-}
-
-.asset-debt-progress-total-label {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  line-height: 1.2;
-}
-
-.asset-debt-progress-totals .asset-debt-cell-totals-principal,
-.asset-debt-progress-totals .asset-debt-cell-totals-interest,
-.asset-debt-progress-totals .asset-debt-cell-totals-paid,
-.asset-debt-progress-totals .asset-debt-cell-totals-extra-paid,
-.asset-debt-progress-totals .asset-debt-cell-totals-balance {
-  font-size: 0.8rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-body);
-  line-height: 1.25;
-  word-break: break-all;
-}
-
-.asset-debt-progress-total-cell--balance .asset-debt-cell-totals-balance {
-  color: #1f4654;
-}
-
-@media (max-width: 48rem) {
-  .asset-debt-progress-totals {
-    grid-template-columns: repeat(5, minmax(3rem, 1fr));
-    gap: 0.4rem 0.35rem;
-    margin-top: 0.75rem;
-    padding-top: 0.75rem;
-  }
-
-  .asset-debt-progress-total-label {
-    font-size: 0.625rem;
-  }
-
-  .asset-debt-progress-totals .asset-debt-cell-totals-principal,
-  .asset-debt-progress-totals .asset-debt-cell-totals-interest,
-  .asset-debt-progress-totals .asset-debt-cell-totals-paid,
-  .asset-debt-progress-totals .asset-debt-cell-totals-extra-paid,
-  .asset-debt-progress-totals .asset-debt-cell-totals-balance {
-    font-size: 0.72rem;
-  }
 }
 
 /* 총 자산 섹션 */
@@ -24156,7 +24474,13 @@ col.asset-expense-col-amount,
   .calendar-todo-content
   .todo-list-segment-tabs.time-view-tabs--segmented,
 .todo-list-view
-  .todo-list-segment-tabs.time-view-tabs--segmented {
+  .todo-list-segment-tabs.time-view-tabs--segmented,
+.asset-expense-view
+  .asset-expense-filter-bar
+  .todo-category-tabs.todo-list-segment-tabs.time-view-tabs--segmented,
+.asset-cashflow-view
+  .asset-expense-filter-bar
+  .todo-category-tabs.todo-list-segment-tabs.time-view-tabs--segmented {
   --time-segment-track: #f2f7f9;
   position: relative;
   display: grid;
@@ -24184,6 +24508,14 @@ col.asset-expense-col-amount,
   > .time-view-tabs-thumb,
 .todo-list-view
   .todo-list-segment-tabs.time-view-tabs--segmented
+  > .time-view-tabs-thumb,
+.asset-expense-view
+  .asset-expense-filter-bar
+  .todo-category-tabs.todo-list-segment-tabs.time-view-tabs--segmented
+  > .time-view-tabs-thumb,
+.asset-cashflow-view
+  .asset-expense-filter-bar
+  .todo-category-tabs.todo-list-segment-tabs.time-view-tabs--segmented
   > .time-view-tabs-thumb {
   grid-row: 1;
   grid-column: var(--thumb-col-start, 1) / span 1;
@@ -24206,6 +24538,14 @@ col.asset-expense-col-amount,
   > .time-view-tab:nth-child(2),
 .todo-list-view
   .todo-list-segment-tabs.time-view-tabs--segmented
+  > .time-view-tab:nth-child(2),
+.asset-expense-view
+  .asset-expense-filter-bar
+  .todo-category-tabs.todo-list-segment-tabs.time-view-tabs--segmented
+  > .time-view-tab:nth-child(2),
+.asset-cashflow-view
+  .asset-expense-filter-bar
+  .todo-category-tabs.todo-list-segment-tabs.time-view-tabs--segmented
   > .time-view-tab:nth-child(2) {
   grid-column: 1;
   grid-row: 1;
@@ -24218,6 +24558,14 @@ col.asset-expense-col-amount,
   > .time-view-tab:nth-child(3),
 .todo-list-view
   .todo-list-segment-tabs.time-view-tabs--segmented
+  > .time-view-tab:nth-child(3),
+.asset-expense-view
+  .asset-expense-filter-bar
+  .todo-category-tabs.todo-list-segment-tabs.time-view-tabs--segmented
+  > .time-view-tab:nth-child(3),
+.asset-cashflow-view
+  .asset-expense-filter-bar
+  .todo-category-tabs.todo-list-segment-tabs.time-view-tabs--segmented
   > .time-view-tab:nth-child(3) {
   grid-column: 2;
   grid-row: 1;
@@ -24230,6 +24578,14 @@ col.asset-expense-col-amount,
   > .time-view-tab:nth-child(4),
 .todo-list-view
   .todo-list-segment-tabs.time-view-tabs--segmented
+  > .time-view-tab:nth-child(4),
+.asset-expense-view
+  .asset-expense-filter-bar
+  .todo-category-tabs.todo-list-segment-tabs.time-view-tabs--segmented
+  > .time-view-tab:nth-child(4),
+.asset-cashflow-view
+  .asset-expense-filter-bar
+  .todo-category-tabs.todo-list-segment-tabs.time-view-tabs--segmented
   > .time-view-tab:nth-child(4) {
   grid-column: 3;
   grid-row: 1;
@@ -24242,6 +24598,14 @@ col.asset-expense-col-amount,
   > .time-view-tab:nth-child(5),
 .todo-list-view
   .todo-list-segment-tabs.time-view-tabs--segmented
+  > .time-view-tab:nth-child(5),
+.asset-expense-view
+  .asset-expense-filter-bar
+  .todo-category-tabs.todo-list-segment-tabs.time-view-tabs--segmented
+  > .time-view-tab:nth-child(5),
+.asset-cashflow-view
+  .asset-expense-filter-bar
+  .todo-category-tabs.todo-list-segment-tabs.time-view-tabs--segmented
   > .time-view-tab:nth-child(5) {
   grid-column: 4;
   grid-row: 1;
@@ -24255,6 +24619,14 @@ col.asset-expense-col-amount,
   > .time-view-tab:nth-child(6),
 .todo-list-view
   .todo-list-segment-tabs.time-view-tabs--segmented
+  > .time-view-tab:nth-child(6),
+.asset-expense-view
+  .asset-expense-filter-bar
+  .todo-category-tabs.todo-list-segment-tabs.time-view-tabs--segmented
+  > .time-view-tab:nth-child(6),
+.asset-cashflow-view
+  .asset-expense-filter-bar
+  .todo-category-tabs.todo-list-segment-tabs.time-view-tabs--segmented
   > .time-view-tab:nth-child(6) {
   grid-column: 5;
   grid-row: 1;
@@ -24267,6 +24639,14 @@ col.asset-expense-col-amount,
   > .time-view-tab:nth-child(7),
 .todo-list-view
   .todo-list-segment-tabs.time-view-tabs--segmented
+  > .time-view-tab:nth-child(7),
+.asset-expense-view
+  .asset-expense-filter-bar
+  .todo-category-tabs.todo-list-segment-tabs.time-view-tabs--segmented
+  > .time-view-tab:nth-child(7),
+.asset-cashflow-view
+  .asset-expense-filter-bar
+  .todo-category-tabs.todo-list-segment-tabs.time-view-tabs--segmented
   > .time-view-tab:nth-child(7) {
   grid-column: 6;
   grid-row: 1;
@@ -24351,20 +24731,16 @@ col.asset-expense-col-amount,
     padding-bottom: 24px;
   }
 
-  /* 할 일 고정 탭: 모바일은 아이콘 위주(레이블은 스크린리더·툴팁용으로 유지) */
+  /* 할 일 고정 탭(모바일): 꿈·부수입 등 — 텍스트 라벨 + 개수 한 줄(아이콘 비사용) */
   .todo-list-view .todo-category-tab,
   .calendar-view-todo .calendar-todo-content .todo-category-tab {
-    position: relative;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 0.1rem;
-    padding-top: 0.35rem !important;
-    padding-bottom: 0.35rem !important;
-    padding-left: 0.3rem !important;
-    padding-right: 0.3rem !important;
-    line-height: 1;
-    white-space: normal;
+    gap: 0.15rem;
+    padding: 0.3rem 0.48rem !important;
+    line-height: 1.25;
+    white-space: nowrap;
   }
 
   .todo-list-view .todo-category-tab .todo-category-tab-icon,
@@ -24372,11 +24748,7 @@ col.asset-expense-col-amount,
     .calendar-todo-content
     .todo-category-tab
     .todo-category-tab-icon {
-    display: block !important;
-    width: 1.375rem;
-    height: 1.375rem;
-    flex-shrink: 0;
-    object-fit: contain;
+    display: none !important;
   }
 
   .todo-list-view .todo-category-tab .todo-category-tab-label,
@@ -24384,15 +24756,16 @@ col.asset-expense-col-amount,
     .calendar-todo-content
     .todo-category-tab
     .todo-category-tab-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    clip: auto !important;
+    clip-path: none !important;
+    white-space: nowrap !important;
+    border: 0 !important;
   }
 
   .todo-list-view .todo-category-tab .todo-category-tab-count,
@@ -24400,7 +24773,7 @@ col.asset-expense-col-amount,
     .calendar-todo-content
     .todo-category-tab
     .todo-category-tab-count {
-    margin-left: 0;
+    margin-left: 0.18rem;
     font-size: 0.65rem;
     line-height: 1;
     font-weight: 600;
@@ -24794,45 +25167,39 @@ col.asset-expense-col-amount,
   background: transparent !important;
 }
 
-/* 캘린더 할일 사이드바(좁은 열): 꿈·부수입·건강… 탭은 모바일과 동일 아이콘 + 개수만(.todo-tab-icons) */
+/* 캘린더 할일 사이드바: 꿈·부수입·건강·행복 텍스트 라벨 + 개수(한 줄) */
 .calendar-todo-sidebar .todo-category-tab {
   position: relative;
-  flex-direction: column !important;
+  flex-direction: row !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: 0.08rem;
-  padding-top: 0.28rem !important;
-  padding-bottom: 0.28rem !important;
-  padding-left: 0.22rem !important;
-  padding-right: 0.22rem !important;
-  line-height: 1;
-  white-space: normal;
+  gap: 0.12rem;
+  padding: 0.28rem 0.35rem !important;
+  line-height: 1.25;
+  white-space: nowrap;
   min-width: 0;
 }
 
 .calendar-todo-sidebar .todo-category-tab .todo-category-tab-icon {
-  display: block !important;
-  width: 1.25rem;
-  height: 1.25rem;
-  flex-shrink: 0;
-  object-fit: contain;
+  display: none !important;
 }
 
 .calendar-todo-sidebar .todo-category-tab .todo-category-tab-label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: visible !important;
+  clip: auto !important;
+  clip-path: none !important;
+  white-space: nowrap !important;
+  border: 0 !important;
 }
 
 .calendar-todo-sidebar .todo-category-tab .todo-category-tab-count {
-  margin-left: 0 !important;
-  font-size: 0.58rem !important;
+  margin-left: 0.12rem !important;
+  font-size: 0.6rem !important;
   line-height: 1;
   font-weight: 600;
 }
@@ -24847,17 +25214,17 @@ col.asset-expense-col-amount,
 .calendar-todo-sidebar
   .todo-list-segment-tabs.time-view-tabs--segmented
   > .time-view-tabs-thumb {
-  min-height: 2.35rem;
+  min-height: 2rem;
 }
 
 .calendar-todo-sidebar
   .todo-list-segment-tabs.time-view-tabs--segmented
   .todo-category-tab.time-view-tab {
-  flex-direction: column !important;
+  flex-direction: row !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: 0.08rem !important;
-  padding: 0.28rem 0.2rem !important;
+  gap: 0.1rem !important;
+  padding: 0.26rem 0.3rem !important;
   min-width: 0;
 }
 
@@ -25140,37 +25507,32 @@ col.asset-expense-col-amount,
   min-height: 1.25rem;
   box-sizing: border-box;
   flex-shrink: 0;
-  /* 전역 * { border-radius: 0 !important } 대비 — 일정 마커는 원형 */
-  border-radius: 50% !important;
-  -webkit-border-radius: 50% !important;
+  /* 전역 * { border-radius: 0 !important } 대비 */
+  border-radius: 0.3125rem !important;
+  -webkit-border-radius: 0.3125rem !important;
   overflow: hidden;
+  background: var(--todo-schedule-fill, transparent);
+  border: 1px solid var(--todo-schedule-stroke, rgba(61, 74, 62, 0.35));
 }
 
-.todo-done-wrap--schedule .todo-schedule-dot {
-  width: 0.75rem;
-  height: 0.75rem;
-  border-radius: 50% !important;
-  -webkit-border-radius: 50% !important;
+.todo-done-wrap--schedule .todo-schedule-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--todo-schedule-stroke, var(--text-ink, #1a2218));
+  line-height: 0;
   flex-shrink: 0;
-  display: block;
   pointer-events: none;
-  aspect-ratio: 1 / 1;
 }
 
-.todo-schedule-dot,
-.todo-card-schedule-dot {
-  width: 0.65rem;
-  height: 0.65rem;
-  border-radius: 50% !important;
-  -webkit-border-radius: 50% !important;
+.todo-schedule-glyph-svg {
+  display: block;
+  width: 0.68rem;
+  height: auto;
   flex-shrink: 0;
-  display: block;
-  box-sizing: border-box;
-  pointer-events: none;
-  aspect-ratio: 1 / 1;
 }
 
-/* 카드 일정: 체크 영역과 동일 칸 안에 동그라미만 (클릭 영역도 원형) */
+/* 카드 일정: 체크 칸 안에 목록 형태 글리프 */
 .todo-card-done-wrap.todo-card-done-wrap--schedule {
   display: inline-flex;
   align-items: center;
@@ -25181,20 +25543,21 @@ col.asset-expense-col-amount,
   min-height: 1.25rem;
   box-sizing: border-box;
   flex-shrink: 0;
-  border-radius: 50% !important;
-  -webkit-border-radius: 50% !important;
+  border-radius: 0.3125rem !important;
+  -webkit-border-radius: 0.3125rem !important;
   overflow: hidden;
+  background: var(--todo-schedule-fill, transparent);
+  border: 1px solid var(--todo-schedule-stroke, rgba(61, 74, 62, 0.35));
 }
 
-.todo-card-done-wrap.todo-card-done-wrap--schedule .todo-card-schedule-dot {
-  flex: 0 0 auto;
-  width: 0.75rem;
-  height: 0.75rem;
-  min-width: 0.75rem;
-  min-height: 0.75rem;
-  border-radius: 50% !important;
-  -webkit-border-radius: 50% !important;
-  aspect-ratio: 1 / 1;
+.todo-card-done-wrap.todo-card-done-wrap--schedule .todo-schedule-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--todo-schedule-stroke, var(--text-ink, #1a2218));
+  line-height: 0;
+  flex-shrink: 0;
+  pointer-events: none;
 }
 
 .todo-task-edit-inline-schedule {
@@ -26296,8 +26659,8 @@ col.asset-expense-col-amount,
   width: 1.25rem;
   height: 1.25rem;
   margin: 0;
-  border-radius: 50% !important;
-  -webkit-border-radius: 50% !important;
+  border-radius: 0.3125rem !important;
+  -webkit-border-radius: 0.3125rem !important;
   border: 1.5px solid #c8c8cd;
   background-color: #ffffff;
   background-image: none;
@@ -26546,8 +26909,34 @@ col.asset-expense-col-amount,
   margin: 0;
   width: 1.75rem;
   height: 1.75rem;
-  accent-color: var(--accent-viridian);
   cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1.5px solid #c8c8cd;
+  border-radius: 0.3125rem !important;
+  -webkit-border-radius: 0.3125rem !important;
+  background-color: #ffffff;
+  background-image: none;
+  box-sizing: border-box;
+}
+
+.todo-card-done:hover {
+  border-color: #b0b0b8;
+}
+
+.todo-card-done:checked {
+  background-color: var(--cb-bg-checked);
+  border-color: var(--cb-bg-checked);
+  box-shadow: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2.5 6.2 5 9l4.8-6.6' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 58% 58%;
+}
+
+.todo-card-done:focus-visible {
+  outline: 2px solid rgba(127, 178, 191, 0.5);
+  outline-offset: 2px;
 }
 
 /* 모바일도 할일 카드 체크박스·제목 줄은 데스크톱과 동일 크기(큰 터치 영역은 줄 높이만 키워 정렬 깨짐) */
@@ -27747,8 +28136,8 @@ svg.todo-card-reminder-icon {
   -webkit-appearance: none;
   border: var(--cb-border);
   /* 전역 * { border-radius: 0 !important } 보다 우선 */
-  border-radius: 50% !important;
-  -webkit-border-radius: 50% !important;
+  border-radius: 0.3125rem !important;
+  -webkit-border-radius: 0.3125rem !important;
   background: var(--cb-bg);
   box-sizing: border-box;
 }
@@ -28198,8 +28587,8 @@ svg.todo-card-reminder-icon {
   appearance: none;
   -webkit-appearance: none;
   border: var(--cb-border);
-  border-radius: 50% !important;
-  -webkit-border-radius: 50% !important;
+  border-radius: 0.3125rem !important;
+  -webkit-border-radius: 0.3125rem !important;
   background: var(--cb-bg);
   box-sizing: border-box;
 }
@@ -31244,146 +31633,6 @@ body.kpi-resizing {
 .time-ledger-view
   .time-view-tabs.time-view-tabs--segmented
   .time-view-tab:focus-visible {
-  outline: 2px solid rgba(0, 0, 0, 0.35);
-  outline-offset: 2px;
-}
-
-/* 가계부: 월별·하루·날짜선택 세그먼트(데스크톱·모바일 동일 마크업) */
-.asset-expense-view
-  .asset-expense-filter-bar
-  .time-filter-tabs.time-view-tabs--segmented.todo-list-segment-tabs {
-  --time-segment-count: 3;
-  --thumb-col-start: 1;
-  --time-segment-track: #f2f7f9;
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(var(--time-segment-count), minmax(0, auto));
-  gap: 0;
-  align-items: stretch;
-  width: fit-content;
-  max-width: min(19rem, calc(100vw - 2rem));
-  min-width: 0;
-  padding: 0.25rem;
-  box-sizing: border-box;
-  background: var(--time-segment-track);
-  border-radius: 0.625rem !important;
-  border-bottom: none !important;
-  margin-bottom: 0 !important;
-  overflow: hidden !important;
-  overflow-x: hidden !important;
-  overflow-y: hidden !important;
-  flex-wrap: nowrap !important;
-  isolation: isolate;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
-  -webkit-overflow-scrolling: auto;
-  flex-shrink: 0;
-}
-
-.asset-expense-view
-  .asset-expense-filter-bar
-  .time-filter-tabs.time-view-tabs--segmented.todo-list-segment-tabs
-  .time-view-tabs-thumb {
-  grid-row: 1;
-  grid-column: var(--thumb-col-start, 1) / span 1;
-  z-index: 0;
-  margin: 0;
-  min-height: 2rem;
-  align-self: stretch;
-  border-radius: 0.625rem !important;
-  background: #ffffff;
-  box-shadow:
-    0 0 0 0.5px rgba(0, 0, 0, 0.05),
-    0 1px 3px rgba(0, 0, 0, 0.08),
-    0 2px 8px rgba(0, 0, 0, 0.06);
-  pointer-events: none;
-}
-
-.asset-expense-view
-  .asset-expense-filter-bar
-  .time-filter-tabs.time-view-tabs--segmented.todo-list-segment-tabs
-  > .time-view-tab:nth-child(2) {
-  grid-column: 1;
-  grid-row: 1;
-  z-index: 1;
-}
-
-.asset-expense-view
-  .asset-expense-filter-bar
-  .time-filter-tabs.time-view-tabs--segmented.todo-list-segment-tabs
-  > .time-view-tab:nth-child(3) {
-  grid-column: 2;
-  grid-row: 1;
-  z-index: 1;
-}
-
-.asset-expense-view
-  .asset-expense-filter-bar
-  .time-filter-tabs.time-view-tabs--segmented.todo-list-segment-tabs
-  > .time-view-tab:nth-child(4) {
-  grid-column: 3;
-  grid-row: 1;
-  z-index: 1;
-}
-
-.asset-expense-view
-  .asset-expense-filter-bar
-  .time-filter-tabs.time-view-tabs--segmented.todo-list-segment-tabs
-  .time-view-tab.time-filter-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  padding: 0.3125rem 0.8125rem !important;
-  margin: 0 !important;
-  margin-bottom: 0 !important;
-  border: none !important;
-  border-bottom: none !important;
-  border-radius: 0 !important;
-  -webkit-appearance: none !important;
-  appearance: none !important;
-  background: transparent !important;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: #1f4654;
-  box-shadow: none !important;
-  flex-shrink: 1;
-  transition:
-    color 0.15s ease,
-    opacity 0.15s ease;
-}
-
-.asset-expense-view
-  .asset-expense-filter-bar
-  .time-filter-tabs.time-view-tabs--segmented.todo-list-segment-tabs
-  .time-view-tab.time-filter-btn.active {
-  color: #163a46;
-  font-weight: 500;
-  border-bottom: none !important;
-  background: transparent !important;
-}
-
-.asset-expense-view
-  .asset-expense-filter-bar
-  .time-filter-tabs.time-view-tabs--segmented.todo-list-segment-tabs
-  .time-view-tab.time-filter-btn:hover {
-  color: #1f4654;
-  opacity: 0.82;
-  background: transparent !important;
-}
-
-.asset-expense-view
-  .asset-expense-filter-bar
-  .time-filter-tabs.time-view-tabs--segmented.todo-list-segment-tabs
-  .time-view-tab.time-filter-btn.active:hover {
-  color: #163a46;
-  opacity: 1;
-}
-
-.asset-expense-view
-  .asset-expense-filter-bar
-  .time-filter-tabs.time-view-tabs--segmented.todo-list-segment-tabs
-  .time-view-tab.time-filter-btn:focus-visible {
   outline: 2px solid rgba(0, 0, 0, 0.35);
   outline-offset: 2px;
 }
@@ -36442,7 +36691,11 @@ button.time-modal-traffic {
 /* 시간가계부 데스크톱: < > 는 설정·필터(라인 아이콘)와 톤 맞춤 — 원형 배경 제거·크기 정렬 */
 @media (min-width: 48.0625rem) {
   .time-ledger-view .time-filter-nav-cluster .time-filter-day-prev,
-  .time-ledger-view .time-filter-nav-cluster .time-filter-day-next {
+  .time-ledger-view .time-filter-nav-cluster .time-filter-day-next,
+  .asset-expense-view .asset-expense-filter-bar .time-filter-nav-cluster .time-filter-day-prev,
+  .asset-expense-view .asset-expense-filter-bar .time-filter-nav-cluster .time-filter-day-next,
+  .asset-cashflow-view .asset-expense-filter-bar .time-filter-nav-cluster .time-filter-day-prev,
+  .asset-cashflow-view .asset-expense-filter-bar .time-filter-nav-cluster .time-filter-day-next {
     width: auto;
     height: auto;
     min-width: 0;
@@ -36455,7 +36708,11 @@ button.time-modal-traffic {
     box-sizing: border-box;
   }
   .time-ledger-view .time-filter-nav-cluster .time-filter-day-prev:hover,
-  .time-ledger-view .time-filter-nav-cluster .time-filter-day-next:hover {
+  .time-ledger-view .time-filter-nav-cluster .time-filter-day-next:hover,
+  .asset-expense-view .asset-expense-filter-bar .time-filter-nav-cluster .time-filter-day-prev:hover,
+  .asset-expense-view .asset-expense-filter-bar .time-filter-nav-cluster .time-filter-day-next:hover,
+  .asset-cashflow-view .asset-expense-filter-bar .time-filter-nav-cluster .time-filter-day-prev:hover,
+  .asset-cashflow-view .asset-expense-filter-bar .time-filter-nav-cluster .time-filter-day-next:hover {
     background: transparent;
     color: var(--text-muted);
     opacity: 0.88;
@@ -36466,6 +36723,26 @@ button.time-modal-traffic {
     .time-filter-day-prev
     .time-btn-icon,
   .time-ledger-view
+    .time-filter-nav-cluster
+    .time-filter-day-next
+    .time-btn-icon,
+  .asset-expense-view
+    .asset-expense-filter-bar
+    .time-filter-nav-cluster
+    .time-filter-day-prev
+    .time-btn-icon,
+  .asset-expense-view
+    .asset-expense-filter-bar
+    .time-filter-nav-cluster
+    .time-filter-day-next
+    .time-btn-icon,
+  .asset-cashflow-view
+    .asset-expense-filter-bar
+    .time-filter-nav-cluster
+    .time-filter-day-prev
+    .time-btn-icon,
+  .asset-cashflow-view
+    .asset-expense-filter-bar
     .time-filter-nav-cluster
     .time-filter-day-next
     .time-btn-icon,
@@ -36483,6 +36760,26 @@ button.time-modal-traffic {
     .time-filter-day-prev:hover
     .time-btn-icon,
   .time-ledger-view
+    .time-filter-nav-cluster
+    .time-filter-day-next:hover
+    .time-btn-icon,
+  .asset-expense-view
+    .asset-expense-filter-bar
+    .time-filter-nav-cluster
+    .time-filter-day-prev:hover
+    .time-btn-icon,
+  .asset-expense-view
+    .asset-expense-filter-bar
+    .time-filter-nav-cluster
+    .time-filter-day-next:hover
+    .time-btn-icon,
+  .asset-cashflow-view
+    .asset-expense-filter-bar
+    .time-filter-nav-cluster
+    .time-filter-day-prev:hover
+    .time-btn-icon,
+  .asset-cashflow-view
+    .asset-expense-filter-bar
     .time-filter-nav-cluster
     .time-filter-day-next:hover
     .time-btn-icon,
@@ -36661,8 +36958,12 @@ button.time-modal-traffic {
     padding: 0 !important;
   }
 
-  /* 데스크탑 가계부 날짜 선택: 시간가계부 필터와 동일 — 라벨로 표시 · 네이티브 숨김 영역 오버레이 */
+  /* 데스크탑 가계부·현금흐름 날짜 선택: 시간가계부 필터와 동일 — 라벨(요일 포함)·캘린더 아이콘 · 네이티브 오버레이 */
   .asset-expense-view
+    .asset-expense-filter-bar
+    .asset-expense-date-nav-cluster
+    .time-filter-date-field,
+  .asset-cashflow-view
     .asset-expense-filter-bar
     .asset-expense-date-nav-cluster
     .time-filter-date-field {
@@ -36674,6 +36975,10 @@ button.time-modal-traffic {
     box-sizing: border-box;
   }
   .asset-expense-view
+    .asset-expense-filter-bar
+    .asset-expense-date-nav-cluster
+    .time-filter-date-label,
+  .asset-cashflow-view
     .asset-expense-filter-bar
     .asset-expense-date-nav-cluster
     .time-filter-date-label {
@@ -36691,6 +36996,10 @@ button.time-modal-traffic {
   .asset-expense-view
     .asset-expense-filter-bar
     .asset-expense-date-nav-cluster
+    .time-filter-date-cal-icon,
+  .asset-cashflow-view
+    .asset-expense-filter-bar
+    .asset-expense-date-nav-cluster
     .time-filter-date-cal-icon {
     display: block !important;
     width: 0.875rem;
@@ -36706,6 +37015,16 @@ button.time-modal-traffic {
     .time-filter-date-field
     input.time-filter-start-date,
   .asset-expense-view
+    .asset-expense-filter-bar
+    .asset-expense-date-nav-cluster
+    .time-filter-date-field
+    input.time-filter-end-date,
+  .asset-cashflow-view
+    .asset-expense-filter-bar
+    .asset-expense-date-nav-cluster
+    .time-filter-date-field
+    input.time-filter-start-date,
+  .asset-cashflow-view
     .asset-expense-filter-bar
     .asset-expense-date-nav-cluster
     .time-filter-date-field
@@ -36734,6 +37053,16 @@ button.time-modal-traffic {
     .time-filter-date-field
     input.time-filter-start-date::-webkit-calendar-picker-indicator,
   .asset-expense-view
+    .asset-expense-filter-bar
+    .asset-expense-date-nav-cluster
+    .time-filter-date-field
+    input.time-filter-end-date::-webkit-calendar-picker-indicator,
+  .asset-cashflow-view
+    .asset-expense-filter-bar
+    .asset-expense-date-nav-cluster
+    .time-filter-date-field
+    input.time-filter-start-date::-webkit-calendar-picker-indicator,
+  .asset-cashflow-view
     .asset-expense-filter-bar
     .asset-expense-date-nav-cluster
     .time-filter-date-field
@@ -37091,13 +37420,13 @@ button.time-modal-traffic {
   color: var(--text-ink) !important;
 }
 .time-daily-budget-table .time-tag-trigger .time-tag-pill.prod-pink {
-  border-left-color: #e8a4b8;
+  border-left-color: #8e362f;
 }
 .time-daily-budget-table .time-tag-trigger .time-tag-pill.prod-blue {
-  border-left-color: #6b9bd1;
+  border-left-color: #254459;
 }
 .time-daily-budget-table .time-tag-trigger .time-tag-pill.prod-green {
-  border-left-color: #7cb87c;
+  border-left-color: #2f5837;
 }
 .time-daily-budget-table .time-tag-trigger .time-tag-pill.cat-empty {
   border-left-color: var(--line-l3-color);
@@ -37799,7 +38128,8 @@ button.time-modal-traffic {
 
   .time-retrospect-table td.time-retrospect-td-day-cell {
     padding: 0.15rem 0.1rem;
-    font-size: 0.625rem;
+    /* 1열 행 제목(.time-retrospect-th-row-label)과 동일 */
+    font-size: 0.65rem;
     color: var(--text-caption-color, #a8a290);
     font-weight: 400;
     background: transparent;
@@ -37820,12 +38150,16 @@ button.time-modal-traffic {
   }
 
   .time-retrospect-habit-ox {
-    font-size: 0.6875rem;
+    font-size: 0.65rem;
+  }
+
+  .time-retrospect-habit-ox--dash {
+    font-size: 0.65rem;
   }
 
   .time-retrospect-habit-done-detail {
-    font-size: 0.5rem;
-    line-height: 1.2;
+    font-size: 0.65rem;
+    line-height: 1.25;
   }
 
   .time-retrospect-table
@@ -37836,12 +38170,12 @@ button.time-modal-traffic {
     td.time-retrospect-td-day-cell.time-retrospect-td--kpi:not(
       .time-retrospect-td--kpi-habit
     ) {
-    font-size: 0.6rem;
-    line-height: 1.22;
+    font-size: 0.65rem;
+    line-height: 1.25;
   }
 
   .time-retrospect-media-time {
-    font-size: 0.6rem;
+    font-size: 0.65rem;
   }
 
   .time-retrospect-media-bar-track {
@@ -39401,6 +39735,10 @@ button.time-modal-traffic {
     border-bottom: var(--line-l3);
   }
 
+  .time-audit-available-item:last-child {
+    border-bottom: var(--line-l3);
+  }
+
   .time-audit-available-num {
     font-size: 1rem;
     white-space: normal;
@@ -39607,6 +39945,49 @@ button.time-modal-traffic {
 /* 오딧 5. 시간 투자 내역 – 오늘 번 돈 강조(빨간 계열) */
 .time-audit-investment-earned .time-audit-thief-summary-num {
   color: #dc2626;
+}
+
+/* 3. 시간 투자 내역 — 표「시간의 가치」열 제목·값 + 빨간색 */
+.time-audit-investment-content .time-audit-thief-table thead th:nth-child(3),
+.time-audit-investment-content .time-audit-thief-table tbody td.time-audit-thief-value {
+  color: #dc2626;
+}
+
+/* 데스크탑: 3. 시간 투자 — 생산적 시간 비율 파이가 우측 전체 폭, 그 아래 요약 2열 (모바일은 기존 유지) */
+@media (min-width: 48.0625rem) {
+  .time-audit-investment-content .time-audit-thief-right-half {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    align-items: stretch;
+  }
+
+  .time-audit-investment-content .time-audit-thief-center {
+    grid-column: 1;
+    grid-row: 1;
+    min-height: 0;
+  }
+
+  .time-audit-investment-content .time-audit-thief-summaries {
+    grid-column: 1;
+    grid-row: 2;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto;
+    height: auto;
+    min-height: 0;
+    align-self: stretch;
+    overflow: visible;
+  }
+
+  .time-audit-investment-content
+    .time-audit-thief-center
+    .time-audit-pie-svg-wrap {
+    min-height: clamp(9rem, 22vw, 14rem);
+  }
+
+  .time-audit-investment-content .time-audit-thief-center .time-audit-pie-svg {
+    width: clamp(9rem, 22vw, 14rem);
+    height: clamp(9rem, 22vw, 14rem);
+  }
 }
 
 .time-audit-schedule-table-wrap {
@@ -39915,10 +40296,13 @@ button.time-modal-traffic {
   background: #d1d5db;
 }
 .time-dash-bar-fill.prod-pink {
-  background: #e8a4b8;
+  background: #8e362f;
 }
 .time-dash-bar-fill.prod-blue {
-  background: #7eb8da;
+  background: #254459;
+}
+.time-dash-bar-fill.prod-green {
+  background: #2f5837;
 }
 
 /* 도넛 차트 */
@@ -39949,13 +40333,13 @@ button.time-modal-traffic {
 }
 
 .time-dash-donut-seg.prod-pink {
-  stroke: #e8a4b8;
+  stroke: #8e362f;
 }
 .time-dash-donut-seg.prod-blue {
-  stroke: #7eb8da;
+  stroke: #254459;
 }
 .time-dash-donut-seg.prod-green {
-  stroke: #7cb87c;
+  stroke: #2f5837;
 }
 
 .time-dash-donut-center {
@@ -39998,13 +40382,13 @@ button.time-modal-traffic {
 }
 
 .time-dash-legend-item i.prod-pink {
-  background: #e8a4b8;
+  background: #8e362f;
 }
 .time-dash-legend-item i.prod-blue {
-  background: #7eb8da;
+  background: #254459;
 }
 .time-dash-legend-item i.prod-green {
-  background: #7cb87c;
+  background: #2f5837;
 }
 
 /* 생산성별 탭 미니 대시보드 */
@@ -40369,21 +40753,21 @@ button.time-modal-traffic {
 
 /* 생산성별 섹션 - 표제목에 형광펜처럼 배경 컬러 적용 */
 .time-section[data-productivity="productive"] .time-section-title {
-  background: #e8a4b8;
+  background: #8e362f;
   color: #fff;
   padding: 0.15rem 0.4rem;
   border-radius: 0.25rem;
 }
 
 .time-section[data-productivity="nonproductive"] .time-section-title {
-  background: #6b9bd1;
+  background: #254459;
   color: #fff;
   padding: 0.15rem 0.4rem;
   border-radius: 0.25rem;
 }
 
 .time-section[data-productivity="other"] .time-section-title {
-  background: #7cb87c;
+  background: #2f5837;
   color: #fff;
   padding: 0.15rem 0.4rem;
   border-radius: 0.25rem;
@@ -41103,15 +41487,15 @@ button.time-modal-traffic {
 }
 
 .time-task-prod-bar--productive {
-  background: rgba(232, 164, 184, 0.5);
+  background: rgba(142, 54, 47, 0.58);
 }
 
 .time-task-prod-bar--nonproductive {
-  background: rgba(126, 184, 218, 0.5);
+  background: rgba(37, 68, 89, 0.58);
 }
 
 .time-task-prod-bar--other {
-  background: rgba(124, 184, 124, 0.5);
+  background: rgba(47, 88, 55, 0.58);
 }
 
 .time-ledger-table thead .time-th-task {
@@ -41529,17 +41913,17 @@ button.time-modal-traffic {
 }
 
 .time-tag-pill.prod-pink {
-  background: #e8a4b8;
+  background: #8e362f;
   color: #fff;
 }
 
 .time-tag-pill.prod-blue {
-  background: #6b9bd1;
+  background: #254459;
   color: #fff;
 }
 
 .time-tag-pill.prod-green {
-  background: #7cb87c;
+  background: #2f5837;
   color: #fff;
 }
 
@@ -41664,13 +42048,13 @@ button.time-modal-traffic {
   border-left: 0.1875rem solid var(--line-l3-color);
 }
 .time-tag-panel .time-tag-option .time-tag-pill.prod-pink {
-  border-left-color: #e8a4b8;
+  border-left-color: #8e362f;
 }
 .time-tag-panel .time-tag-option .time-tag-pill.prod-blue {
-  border-left-color: #6b9bd1;
+  border-left-color: #254459;
 }
 .time-tag-panel .time-tag-option .time-tag-pill.prod-green {
-  border-left-color: #7cb87c;
+  border-left-color: #2f5837;
 }
 .time-tag-panel .time-tag-option .time-tag-pill.cat-empty {
   border-left-color: var(--line-l3-color);
@@ -43839,44 +44223,6 @@ img.time-btn-icon {
   border-bottom-color: var(--tab-active-border-bottom-color);
 }
 
-/* 달성 완료 접기 섹션 */
-.dream-kpi-completed-section {
-  margin-top: 1.5rem;
-  border-top: none;
-  padding-top: 1rem;
-}
-.dream-kpi-completed-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.5rem 0;
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-}
-.dream-kpi-completed-toggle:hover {
-  color: var(--text-body);
-}
-.dream-kpi-completed-arrow {
-  font-size: 0.75rem;
-}
-.dream-kpi-completed-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(16.25rem, 1fr));
-  gap: 1rem;
-  margin-top: 1rem;
-}
-.dream-kpi-completed-section.is-collapsed .dream-kpi-completed-grid {
-  display: none;
-}
-.dream-kpi-card-completed .dream-kpi-card-progress-fill {
-  background: var(--progress-fill-done);
-}
-
 .dream-kpi-add-card {
   display: flex;
   align-items: center;
@@ -45799,6 +46145,11 @@ img.time-btn-icon {
   padding-bottom: 2rem;
 }
 
+/* 자유일기(탭1·피드): 카드가 스크롤 열 전체 높이로 늘어나지 않게(본문 길이만큼만) */
+.diary-content-scroll > .diary-paper:not(.diary-paper-qa) {
+  min-height: 0;
+}
+
 .diary-collapse-zone {
   position: absolute;
   left: 0;
@@ -46061,7 +46412,7 @@ img.time-btn-icon {
 
 .diary-paper-text {
   width: 100%;
-  min-height: calc(100vh - 20rem);
+  min-height: 11rem;
   padding: 1rem 1.25rem;
   margin: 0;
   background: transparent;
@@ -46085,7 +46436,7 @@ img.time-btn-icon {
 
 .diary-paper-text-readonly {
   width: 100%;
-  min-height: calc(100vh - 22rem);
+  min-height: 3rem;
   padding: 1rem 1.25rem;
   margin: 0;
   font-size: var(--fs-body);
@@ -49857,7 +50208,7 @@ img.time-btn-icon {
   .time-daily-budget-table
   .time-tag-trigger
   .time-tag-pill.prod-pink {
-  border-left-color: #e8a4b8;
+  border-left-color: #8e362f;
 }
 .calendar-1day-budget-column
   .time-daily-budget-table
@@ -49867,7 +50218,7 @@ img.time-btn-icon {
   .time-daily-budget-table
   .time-tag-trigger
   .time-tag-pill.prod-blue {
-  border-left-color: #6b9bd1;
+  border-left-color: #254459;
 }
 .calendar-1day-budget-column
   .time-daily-budget-table
@@ -49877,7 +50228,7 @@ img.time-btn-icon {
   .time-daily-budget-table
   .time-tag-trigger
   .time-tag-pill.prod-green {
-  border-left-color: #7cb87c;
+  border-left-color: #2f5837;
 }
 .calendar-1day-budget-column
   .time-daily-budget-table
@@ -52018,6 +52369,23 @@ tr.time-budget-calendar-row--readonly {
   margin-top: 0.5rem;
 }
 
+.calendar-day-expand-marker-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.calendar-day-expand-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
 .calendar-day-expand-item {
   display: flex;
   align-items: center;
@@ -52032,6 +52400,11 @@ tr.time-budget-calendar-row--readonly {
 .calendar-day-expand-item[data-done="true"] .calendar-day-expand-text {
   text-decoration: line-through;
   opacity: 0.6;
+}
+
+.calendar-day-expand-item .calendar-day-expand-text {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .calendar-day-expand-checkbox {
@@ -52058,8 +52431,27 @@ tr.time-budget-calendar-row--readonly {
 
 /* 일정(schedule): 할일 체크박스 대신 동그라미 */
 .calendar-day-expand-item--schedule {
-  cursor: default;
+  cursor: pointer;
 }
+
+.calendar-day-expand-schedule-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.calendar-day-expand-schedule-mark-inner {
+  display: block;
+  width: 0.5625rem;
+  height: 0.5625rem;
+  border-radius: 50%;
+  background: var(--text-ink);
+  opacity: 0.45;
+  border: none;
+  box-shadow: none;
+}
+
 .calendar-day-expand-schedule-dot {
   flex-shrink: 0;
   width: var(--cb-size);
@@ -53986,7 +54378,8 @@ tr.time-budget-calendar-row--readonly {
   gap: 0.5rem;
   border-bottom: none;
   background: #ffffff;
-  border-radius: 0.375rem;
+  border-radius: 0.375rem !important;
+  -webkit-border-radius: 0.375rem !important;
   padding: 0.35rem 0.65rem;
   box-sizing: border-box;
   box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.06);
@@ -54097,14 +54490,15 @@ tr.time-budget-calendar-row--readonly {
 
 .archive-view:not(.archive-view--mobile) .archive-search-wrap {
   background: #f2f7f9;
-  border-radius: 0.5rem;
+  border-radius: 0.5rem !important;
+  -webkit-border-radius: 0.5rem !important;
   padding: 0.55rem 0.85rem;
   box-shadow: none;
   overflow: hidden;
 }
 
 .archive-view:not(.archive-view--mobile) .archive-search-wrap:focus-within {
-  box-shadow: 0 0 0 2px rgba(0, 125, 255, 0.28);
+  box-shadow: none;
 }
 
 .archive-view:not(.archive-view--mobile) .archive-search-icon {
@@ -54875,6 +55269,138 @@ tr.time-budget-calendar-row--readonly {
   background: #f5eee8;
   border: 1px solid #e0d4c8;
   border-radius: 0.12rem;
+}
+
+@media (max-width: 48rem) {
+  .app-tab-panel:has(> .app-tab-panel-content.admin-view) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .admin-view.admin-view {
+    padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+    padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .admin-subs-page.admin-subs-page {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .admin-view-title.dream-view-title {
+    font-size: 1.05rem;
+  }
+
+  .admin-view-hint {
+    font-size: 0.7rem;
+    line-height: 1.45;
+  }
+
+  .admin-subs-toolbar-label {
+    font-size: 0.76rem;
+    flex: 1 1 8rem;
+    min-width: 0;
+  }
+
+  .admin-subs-refresh,
+  .admin-subs-btn {
+    font-size: 0.67rem;
+    min-height: 2.05rem;
+    padding: 0.28rem 0.5rem;
+  }
+
+  .admin-subs-statusline {
+    font-size: 0.66rem;
+  }
+
+  /* 좁은 뷰에서 fixed+100% 폭으로 칼럼이 찌그러져 글자가 겹침 → 스크롤 + 내용 폭 우선 */
+  .admin-subs-table-wrap.admin-subs-table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
+  }
+
+  .admin-subs-table.admin-subs-table {
+    table-layout: auto;
+    width: max-content;
+    min-width: 100%;
+    max-width: none;
+    font-size: 0.68rem;
+  }
+
+  .admin-subs-table thead th {
+    padding: 0.4rem 0.3rem;
+    font-size: 0.64rem;
+    line-height: 1.25;
+  }
+
+  .admin-subs-table td {
+    padding: 0.32rem 0.28rem;
+  }
+
+  .admin-subs-td--email {
+    max-width: 12.5rem;
+    font-size: 0.66rem;
+    line-height: 1.35;
+    word-break: break-all;
+    hyphens: auto;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-subs-td--uid {
+    white-space: nowrap;
+    font-size: 0.62rem;
+  }
+
+  .admin-subs-td--dt {
+    white-space: normal;
+    font-size: 0.64rem;
+    line-height: 1.35;
+    max-width: 8.75rem;
+  }
+
+  .admin-subs-td--form {
+    vertical-align: top;
+    white-space: nowrap;
+  }
+
+  .admin-subs-status,
+  .admin-subs-until {
+    font-size: 0.65rem;
+    min-height: 1.85rem;
+    padding: 0.25rem 0.22rem;
+  }
+
+  .admin-subs-td--actions {
+    vertical-align: top;
+    min-width: 10.25rem;
+  }
+
+  .admin-subs-action-btns.admin-subs-action-btns {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+  }
+
+  .admin-subs-action-btns .admin-subs-btn {
+    flex: none;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .admin-subs-err {
+    font-size: 0.72rem;
+  }
+
+  .admin-subs-err code {
+    font-size: 0.62rem;
+    word-break: break-all;
+  }
 }
 
 /* ---- 모바일 하단 「일정」탭 · 오늘 해치우기: 파일 말미에서 flex/overflow 체인 최종 해제(앞선 규칙 덮어씀) ---- */

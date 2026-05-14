@@ -237,69 +237,6 @@ function isMealChecklistTaskName(n) {
   return MEAL_CHECKLIST_TASK_NAMES.has((n || "").trim());
 }
 
-/** 식사 2행: 원래 오딧과 동일 톤 */
-const AUDIT_MEAL_TIMELINE_FILL_HEALTHY = "rgba(245, 170, 178, 0.78)";
-const AUDIT_MEAL_TIMELINE_FILL_UNHEALTHY = "rgba(175, 195, 230, 0.78)";
-
-/** 날짜 플래그 배열에서 연속 true 구간 [시작인덱스, 끝인덱스] */
-function findAuditBooleanRuns(flags) {
-  const runs = [];
-  let start = null;
-  for (let i = 0; i <= flags.length; i++) {
-    const on = i < flags.length && flags[i];
-    if (on) {
-      if (start === null) start = i;
-    } else if (start !== null) {
-      runs.push([start, i - 1]);
-      start = null;
-    }
-  }
-  return runs;
-}
-
-function getAuditHealthTimelineRowDateKey(r) {
-  return (
-    normalizeDateForCompare(r.date || "") ||
-    String(r.date || "")
-      .trim()
-      .replace(/\//g, "-")
-      .slice(0, 10)
-  );
-}
-
-function isHealthyQuadrantTaskName(taskName) {
-  const name = (taskName || "").trim();
-  if (!name) return false;
-  if (AUDIT_HEALTHY_MEAL_TASK_NAMES.has(name)) return true;
-  if (AUDIT_UNHEALTHY_MEAL_TASK_NAMES.has(name)) return false;
-  const opt = getTaskOptionByName(name);
-  let cat = String(opt?.category || "").trim();
-  let prod = String(opt?.productivity || "").trim();
-  if (!prod && cat) prod = getProductivityFromCategory(cat) || "";
-  return cat === "health" && prod === "productive";
-}
-
-function isUnhealthyQuadrantTaskName(taskName) {
-  const name = (taskName || "").trim();
-  if (!name) return false;
-  if (AUDIT_UNHEALTHY_MEAL_TASK_NAMES.has(name)) return true;
-  if (AUDIT_HEALTHY_MEAL_TASK_NAMES.has(name)) return false;
-  const opt = getTaskOptionByName(name);
-  let cat = String(opt?.category || "").trim();
-  let prod = String(opt?.productivity || "").trim();
-  if (!prod && cat) prod = getProductivityFromCategory(cat) || "";
-  return cat === "unhealthy" && prod === "nonproductive";
-}
-
-function getAuditHealthTimelineFillForTask(taskName) {
-  if (AUDIT_HEALTHY_MEAL_TASK_NAMES.has(taskName)) return AUDIT_MEAL_TIMELINE_FILL_HEALTHY;
-  if (AUDIT_UNHEALTHY_MEAL_TASK_NAMES.has(taskName))
-    return AUDIT_MEAL_TIMELINE_FILL_UNHEALTHY;
-  if (isHealthyQuadrantTaskName(taskName))
-    return getCategoryColorForReport("health");
-  return getCategoryColorForReport("unhealthy");
-}
-
 function getAuditTimeThiefHtml(dateStr, filtered, hourlyRate, periodMode) {
   const dateRows =
     dateStr == null
@@ -445,7 +382,7 @@ function getAuditTimeInvestmentHtml(dateStr, filtered, hourlyRate, periodMode) {
           const rowsHtml = tableRows
             .map(
               (r) =>
-                `<tr><td class="time-audit-thief-task">${esc(r.taskName)}</td><td class="time-audit-thief-time">${formatHoursToHHMM(r.hours)}</td><td class="time-audit-thief-value">${formatPrice(r.price)}</td></tr>`,
+                `<tr><td class="time-audit-thief-task">${esc(r.taskName)}</td><td class="time-audit-thief-time">${formatHoursToHHMM(r.hours)}</td><td class="time-audit-thief-value">+${formatPrice(r.price)}</td></tr>`,
             )
             .join("");
           return `<div class="time-audit-thief-table-wrap"><table class="time-audit-thief-table"><thead><tr><th>과제명</th><th>실제 보낸 시간</th><th>시간의 가치</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
@@ -501,7 +438,7 @@ function getAuditTimeInvestmentHtml(dateStr, filtered, hourlyRate, periodMode) {
   const valueBoxHtml = `
     <div class="time-audit-thief-summary time-audit-thief-summary-value time-audit-investment-earned">
       <div class="time-audit-thief-summary-label">투자한 시간의 가치</div>
-      <div class="time-audit-thief-summary-num">${formatPrice(totalEarned)}원</div>
+      <div class="time-audit-thief-summary-num">+${formatPrice(totalEarned)}원</div>
     </div>`;
   const rightHalf = `<div class="time-audit-thief-right-half"><div class="time-audit-thief-center">${pieHtml}</div><div class="time-audit-thief-summaries"><div class="time-audit-thief-right time-audit-thief-time-wrap">${timeBoxHtml}</div><div class="time-audit-thief-right time-audit-thief-value-wrap">${valueBoxHtml}</div></div></div>`;
   return `<div class="time-audit-thief-content time-audit-investment-content"><div class="time-audit-thief-left">${tableHtml}</div>${rightHalf}</div>`;
@@ -1389,7 +1326,7 @@ function rowMatchesAuditHealthCategoryReport(r) {
   return true;
 }
 
-/** 오딧 4. 건강 카테고리: 날짜축 일별 유무 막대(원래 식사 2행) + 추가 건강·비건강 과제 행, 하단 표는 시간 합산 */
+/** 오딧 4. 건강 카테고리: 과제별 시간 합산 표 (타임라인 그래프는 표시하지 않음) */
 function getAuditHealthDietTimelineHtml(filtered, normStart, normEnd) {
   const esc = (s) =>
     String(s ?? "")
@@ -1409,28 +1346,6 @@ function getAuditHealthDietTimelineHtml(filtered, normStart, normEnd) {
   }
 
   const relevant = filtered.filter(rowMatchesAuditHealthCategoryReport);
-  const inPeriodNames = new Set();
-  relevant.forEach((r) => {
-    const name = (r.taskName || "").trim();
-    if (!name) return;
-    if ((parseTimeToHours(r.timeTracked) || 0) <= 0) return;
-    const dk = getAuditHealthTimelineRowDateKey(r);
-    if (!dates.includes(dk)) return;
-    inPeriodNames.add(name);
-  });
-
-  const timelineTasks = [];
-  if (inPeriodNames.has("건강한 식사")) timelineTasks.push("건강한 식사");
-  const healthyOther = [...inPeriodNames]
-    .filter((n) => isHealthyQuadrantTaskName(n) && n !== "건강한 식사")
-    .sort((a, b) => a.localeCompare(b, "ko"));
-  timelineTasks.push(...healthyOther);
-  if (inPeriodNames.has("건강하지 않은 식사"))
-    timelineTasks.push("건강하지 않은 식사");
-  const unhealthyOther = [...inPeriodNames]
-    .filter((n) => isUnhealthyQuadrantTaskName(n) && n !== "건강하지 않은 식사")
-    .sort((a, b) => a.localeCompare(b, "ko"));
-  timelineTasks.push(...unhealthyOther);
 
   const byTask = {};
   relevant.forEach((r) => {
@@ -1459,85 +1374,9 @@ function getAuditHealthDietTimelineHtml(filtered, normStart, normEnd) {
       a.taskName.localeCompare(b.taskName),
   );
 
-  if (timelineTasks.length === 0) {
+  if (tableRows.length === 0) {
     return `<div class="time-audit-achievement-empty">선택한 기간에 해당하는 건강·비건강 과제 기록이 없습니다.</div>`;
   }
-
-  const n = dates.length;
-  const padL = 2;
-  const padR = 8;
-  const padT = 14;
-  const padB = 26;
-  const rowPitch = 28;
-  const barH = 13;
-  const nRows = timelineTasks.length;
-  const axisY = padT + rowPitch * nRows + 6;
-  const chartH = axisY + padB;
-  const plotW = Math.min(920, Math.max(340, n * 26));
-  const chartW = padL + plotW + padR;
-  const slotW = plotW / n;
-  const inset = 0.35;
-
-  let rects = "";
-  timelineTasks.forEach((taskName, rowIdx) => {
-    const y = padT + rowPitch * (rowIdx + 0.5);
-    const fill = getAuditHealthTimelineFillForTask(taskName);
-    const flags = dates.map((d) =>
-      relevant.some(
-        (r) =>
-          getAuditHealthTimelineRowDateKey(r) === d &&
-          (r.taskName || "").trim() === taskName &&
-          (parseTimeToHours(r.timeTracked) || 0) > 0,
-      ),
-    );
-    for (const [i0, i1] of findAuditBooleanRuns(flags)) {
-      const x = padL + i0 * slotW + inset;
-      const w = (i1 - i0 + 1) * slotW - inset * 2;
-      rects += `<rect x="${x}" y="${y - barH / 2}" width="${Math.max(w, 1)}" height="${barH}" rx="2" fill="${fill}" stroke="rgba(255,255,255,0.35)" stroke-width="0.4"/>`;
-    }
-  });
-
-  let gridV = "";
-  for (let i = 0; i <= n; i++) {
-    const gx = padL + i * slotW;
-    gridV += `<line x1="${gx}" y1="${padT - 2}" x2="${gx}" y2="${axisY - 2}" stroke="#e8e4dc" stroke-width="0.4" stroke-dasharray="2,3"/>`;
-  }
-
-  const labelStep = n <= 24 ? 1 : Math.max(1, Math.ceil(n / 14));
-  let xlabels = "";
-  for (let i = 0; i < n; i += labelStep) {
-    const cx = padL + i * slotW + slotW / 2;
-    const d = dates[i];
-    const label =
-      d && d.length >= 10 ? `${d.slice(5, 7)}/${d.slice(8, 10)}` : d || "";
-    xlabels += `<text x="${cx}" y="${chartH - 5}" text-anchor="middle" font-size="6.5" fill="#9ca3af">${label}</text>`;
-  }
-  if (n > 1 && (n - 1) % labelStep !== 0) {
-    const i = n - 1;
-    const cx = padL + i * slotW + slotW / 2;
-    const d = dates[i];
-    const label =
-      d && d.length >= 10 ? `${d.slice(5, 7)}/${d.slice(8, 10)}` : d || "";
-    xlabels += `<text x="${cx}" y="${chartH - 5}" text-anchor="middle" font-size="6.5" fill="#9ca3af">${label}</text>`;
-  }
-
-  const legendItems = timelineTasks
-    .map((t) => {
-      const c = getAuditHealthTimelineFillForTask(t);
-      return `<span class="time-audit-legend-item" style="--legend-color:${c}">${esc(t)}</span>`;
-    })
-    .join("");
-  const legend = `<div class="time-audit-health-diet-legend time-audit-health-diet-legend--compact">${legendItems}</div>`;
-
-  const svgBlock = `<div class="time-audit-chart-wrap time-audit-health-diet-scroll">
-        <svg class="time-audit-svg time-audit-health-diet-svg" viewBox="0 0 ${chartW} ${chartH}" preserveAspectRatio="xMinYMid meet" xmlns="http://www.w3.org/2000/svg">
-          ${gridV}
-          <line x1="${padL}" y1="${axisY}" x2="${padL + plotW}" y2="${axisY}" stroke="#d1d5db" stroke-width="1"/>
-          <line x1="${padL}" y1="${padT - 2}" x2="${padL}" y2="${axisY}" stroke="#d1d5db" stroke-width="1"/>
-          ${rects}
-          ${xlabels}
-        </svg>
-      </div>`;
 
   const rowsHtml = tableRows
     .map(
@@ -1547,11 +1386,7 @@ function getAuditHealthDietTimelineHtml(filtered, normStart, normEnd) {
     .join("");
   const tableBlock = `<div class="time-audit-thief-table-wrap time-audit-health-table-wrap"><table class="time-audit-thief-table"><thead><tr><th>구분</th><th>과제명</th><th>시간</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
 
-  return `<div class="time-audit-health-diet-wrap">
-    ${legend}
-    ${svgBlock}
-    ${tableBlock}
-  </div>`;
+  return `<div class="time-audit-health-diet-wrap">${tableBlock}</div>`;
 }
 
 /** 오딧·회고: 비생산 「미디어 시청」카테고리(media_watch). 구 기록(pleasure) 호환. */
@@ -2435,20 +2270,23 @@ export function getTimeLedgerRowLiveElapsedMs(row) {
   return Date.now() - start.getTime();
 }
 
-/** 홈 타임트래커 큰 숫자: 총 경과 분:초 (예: 3시간 3분 18초 → 183:18) */
-export function formatHomeLiveClockMs(ms) {
-  if (ms < 0 || !isFinite(ms)) return "0:00";
-  const totalSec = Math.floor(ms / 1000);
-  const minPart = Math.floor(totalSec / 60);
-  const secPart = totalSec % 60;
-  return `${minPart}:${String(secPart).padStart(2, "0")}`;
-}
-
-/** 홈 타임트래커 부가 문구: 「N분째」 */
+/** 홈 타임트래커 부가 문구: 「N분째」(60분 미만) 또는 「h시간 m분째」 */
 export function formatHomeLiveElapsedMinutesPhrase(ms) {
   const m = Math.floor(ms / 60000);
   if (m <= 0) return "방금 시작";
-  return `${m}분째`;
+  if (m < 60) return `${m}분째`;
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  return `${h}시간 ${r}분째`;
+}
+
+/** 정수 분 소요 시간: 60분 미만 「N분」, 이상 「h시간 m분」(예: 480 → 8시간 0분) */
+export function formatIntegerMinutesDurationKo(totalMinutes) {
+  const n = Math.max(0, Math.round(Number(totalMinutes) || 0));
+  if (n < 60) return `${n}분`;
+  const h = Math.floor(n / 60);
+  const m = n % 60;
+  return `${h}시간 ${m}분`;
 }
 
 /** 홈 타임트래커: 시작 시각 (짧은 h:mm) */

@@ -9,13 +9,6 @@ import { USER_HOURLY_RATE_KEY, applyAppearanceFromServer } from "../utils/userHo
 
 export { USER_HOURLY_RATE_KEY };
 import { showToast } from "../utils/showToast.js";
-import {
-  registerReminderPushFromUserGesture,
-  unregisterReminderPushFromUserGesture,
-  reminderPushStatusLabel,
-  hasWebPushSupport,
-  ensureVapidRuntimeFallback,
-} from "../utils/webPushReminders.js";
 
 /** 앱 전역 폰트 스택 (CSS :root 와 동일하게 유지) */
 export function applyAppFont() {
@@ -191,76 +184,6 @@ export function render() {
     </div>
   `;
   grid.appendChild(subscriptionWidget);
-
-  // ----- 할일 리마인더 Web Push (탭 종료 후에도 cron + 푸시) -----
-  const reminderPushWidget = document.createElement("div");
-  reminderPushWidget.className =
-    "time-dashboard-widget idea-widget idea-widget-reminder-push";
-  reminderPushWidget.innerHTML = `
-    <div class="time-dashboard-widget-title">할일 리마인더 알림</div>
-    <div class="idea-basic-rows">
-      <div class="idea-basic-row">
-        <span class="idea-form-label">상태</span>
-        <span class="idea-user-id-value idea-reminder-push-status" id="idea-reminder-push-status"></span>
-      </div>
-      <div class="todo-settings-toggle-row idea-reminder-push-toggle-wrap">
-        <span class="todo-settings-toggle-label">브라우저 알림</span>
-        <button type="button" class="todo-settings-toggle idea-reminder-push-toggle" id="idea-reminder-push-toggle" role="switch" aria-checked="false" aria-label="브라우저 알림">
-          <span class="todo-settings-toggle-track"></span>
-          <span class="todo-settings-toggle-thumb"></span>
-        </button>
-      </div>
-    </div>
-  `;
-  grid.appendChild(reminderPushWidget);
-
-  const reminderStatusEl = reminderPushWidget.querySelector("#idea-reminder-push-status");
-  const reminderToggle = reminderPushWidget.querySelector("#idea-reminder-push-toggle");
-  let reminderPushUiBusy = false;
-  async function syncReminderPushAccountUi() {
-    if (reminderStatusEl) reminderStatusEl.textContent = reminderPushStatusLabel();
-    let sub = null;
-    if (hasWebPushSupport()) {
-      try {
-        const reg = await navigator.serviceWorker.ready;
-        sub = await reg.pushManager.getSubscription();
-      } catch (_) {
-        /* ignore */
-      }
-    }
-    const isOn = hasWebPushSupport() && Notification.permission === "granted" && !!sub;
-    if (reminderToggle) {
-      reminderToggle.classList.toggle("on", isOn);
-      reminderToggle.setAttribute("aria-checked", isOn ? "true" : "false");
-      const canTry = hasWebPushSupport();
-      reminderToggle.disabled = !canTry || reminderPushUiBusy;
-      reminderToggle.style.opacity = !canTry ? "0.55" : "";
-      reminderToggle.style.cursor = !canTry ? "not-allowed" : "";
-    }
-  }
-  void ensureVapidRuntimeFallback().then(() => syncReminderPushAccountUi());
-  void syncReminderPushAccountUi();
-  try {
-    window.addEventListener("lp-vapid-ready", () => void syncReminderPushAccountUi());
-  } catch (_) {
-    /* ignore */
-  }
-  reminderToggle?.addEventListener("click", async () => {
-    if (!hasWebPushSupport() || reminderPushUiBusy) return;
-    const turningOn = !reminderToggle.classList.contains("on");
-    reminderPushUiBusy = true;
-    reminderToggle.disabled = true;
-    try {
-      const r = turningOn
-        ? await registerReminderPushFromUserGesture()
-        : await unregisterReminderPushFromUserGesture();
-      showToast(r.msg);
-      await syncReminderPushAccountUi();
-    } finally {
-      reminderPushUiBusy = false;
-      await syncReminderPushAccountUi();
-    }
-  });
 
   if (typeof supabase !== "undefined" && supabase?.auth) {
     supabase.auth.getSession().then(({ data: { session } }) => {

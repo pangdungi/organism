@@ -3,7 +3,10 @@
  */
 
 import { syncKpiTodoCompleted } from "../utils/kpiTodoSync.js";
-import { getCustomSections } from "../utils/todoSettings.js";
+import {
+  getCustomSections,
+  getTimeCategorySolidHex,
+} from "../utils/todoSettings.js";
 import {
   readSectionTasksObject,
   readCustomSectionTasksObject,
@@ -17,14 +20,11 @@ import {
   getTodayLiveTimeLedgerRow,
   getTimeLedgerRowLiveStableKey,
   getTimeLedgerRowLiveElapsedMs,
-  formatHomeLiveClockMs,
-  formatHomeLiveElapsedMinutesPhrase,
+  formatIntegerMinutesDurationKo,
   formatHomeLiveStartClock,
-  getTimeLedgerRowDisplayProductivity,
 } from "./Time.js";
 import { render1DayView, LP_CAL_TODO_SIDEBAR_NONE } from "./Calendar.js";
 import { buildHomeTodayEventPulseModel } from "../utils/homeTodayEventPulse.js";
-import { getSectionColor, getTimeCategoryColorsForTimetableExpected } from "../utils/todoSettings.js";
 
 const KPI_SECTION_IDS = ["dream", "sideincome", "health", "happy"];
 const SECTION_LABELS = {
@@ -62,8 +62,6 @@ function getTasksDueToday() {
           isKpiTodo: false,
           dueDate: due,
           startDate: (t.startDate || "").slice(0, 10),
-          reminderDate: (t.reminderDate || "").slice(0, 10),
-          reminderTime: (t.reminderTime || "").trim(),
           sectionLabel: SECTION_LABELS[sectionId] || sectionId,
         });
       });
@@ -87,8 +85,6 @@ function getTasksDueToday() {
           isKpiTodo: false,
           dueDate: due,
           startDate: (t.startDate || "").slice(0, 10),
-          reminderDate: (t.reminderDate || "").slice(0, 10),
-          reminderTime: (t.reminderTime || "").trim(),
           sectionLabel: sec.label || sec.id,
         });
       });
@@ -123,9 +119,6 @@ const HOME_CARD_EISENHOWER_LABELS = {
   "not-urgent-not-important": "여유+안중요",
   "not-urgent-": "여유+안중요",
 };
-
-const HOME_TODO_REMINDER_BELL_SVG =
-  '<svg class="todo-card-reminder-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 19.001c0 2.209 1.791 4 4 4s4-1.791 4-4"/><path d="m12 5.999v6"/><path d="m9 8.999h6"/><path d="m22 19.001-3-5.25v-5.752c0-3.866-3.134-7-7-7s-7 3.134-7 7v5.751l-3 5.25h20z"/></svg>';
 
 function isHomeDueOverdue(dueStr) {
   if (!dueStr || dueStr.length < 10) return false;
@@ -176,15 +169,6 @@ function formatHomeTodoCardDates(item) {
   return "";
 }
 
-function formatHomeCardReminder(reminderDate, reminderTime) {
-  if (!(reminderDate || "").trim()) return "";
-  const parts = String(reminderDate).trim().split(/[-/]/);
-  const dateStr = parts.length >= 3 ? `${parts[1]}/${parts[2]}` : reminderDate;
-  return (reminderTime || "").trim()
-    ? `${dateStr} ${(reminderTime || "").trim()}`
-    : dateStr;
-}
-
 /** 할일 목록 탭과 동일 todo-card 마크업 (오늘 탭 전용) */
 function createHomeTodoCard(item) {
   const card = document.createElement("div");
@@ -228,23 +212,10 @@ function createHomeTodoCard(item) {
   datesEl.textContent = homeDateStr;
   datesEl.hidden = !homeDateStr || !String(homeDateStr).trim();
 
-  const reminderEl = document.createElement("div");
-  reminderEl.className = "todo-card-reminder";
-  const remText = formatHomeCardReminder(item.reminderDate, item.reminderTime);
-  if (remText) {
-    reminderEl.innerHTML = `${HOME_TODO_REMINDER_BELL_SVG}<span class="todo-card-reminder-text"></span>`;
-    const remSpan = reminderEl.querySelector(".todo-card-reminder-text");
-    if (remSpan) remSpan.textContent = remText;
-    reminderEl.hidden = false;
-  } else {
-    reminderEl.hidden = true;
-  }
-
   const metaRow = document.createElement("div");
   metaRow.className = "todo-card-meta-row";
   metaRow.appendChild(datesEl);
-  metaRow.appendChild(reminderEl);
-  metaRow.hidden = !!(datesEl.hidden && reminderEl.hidden);
+  metaRow.hidden = !!datesEl.hidden;
 
   const doneWrap = document.createElement("div");
   doneWrap.className = "todo-card-done-wrap";
@@ -394,18 +365,15 @@ function refreshHomeLiveTrackerEl(root) {
   const metaEl = root.querySelector(".home-live-tracker-meta");
   const clockEl = root.querySelector(".home-live-tracker-clock");
   const dotEl = root.querySelector(".home-live-tracker-dot");
-  if (taskEl) taskEl.textContent = task;
-
-  const prodKey = getTimeLedgerRowDisplayProductivity(row);
-  const kpColors = getTimeCategoryColorsForTimetableExpected();
-  const accent = prodColorForPulse(prodKey, kpColors);
-  if (dotEl) {
-    dotEl.style.background = accent;
-    const ring =
-      accent.startsWith("#") && accent.length === 7 ? `${accent}33` : accent;
-    dotEl.style.boxShadow = `0 0 0 2px ${ring}`;
+  if (taskEl) {
+    taskEl.textContent = task;
+    taskEl.style.removeProperty("color");
   }
-  if (clockEl) clockEl.style.color = accent;
+  if (dotEl) {
+    dotEl.style.removeProperty("background");
+    dotEl.style.removeProperty("box-shadow");
+  }
+  if (clockEl) clockEl.style.removeProperty("color");
 
   const tick = () => {
     if (!root.isConnected) {
@@ -418,13 +386,9 @@ function refreshHomeLiveTrackerEl(root) {
       return;
     }
     const ms = getTimeLedgerRowLiveElapsedMs(r);
-    if (metaEl) {
-      const phrase = formatHomeLiveElapsedMinutesPhrase(ms);
-      metaEl.textContent = startClock
-        ? `시작 ${startClock} · ${phrase}`
-        : phrase;
-    }
-    if (clockEl) clockEl.textContent = formatHomeLiveClockMs(ms);
+    if (metaEl) metaEl.textContent = startClock ? `시작 ${startClock}` : "";
+    if (clockEl)
+      clockEl.textContent = formatIntegerMinutesDurationKo(Math.floor(ms / 60000));
   };
   tick();
   root._lpHomeTrackerInterval = setInterval(tick, 1000);
@@ -451,45 +415,28 @@ function bindHomeEventPulseRefreshOnce() {
   document.addEventListener("calendar-budget-scheduled-updated", refreshPulse);
 }
 
-/** 타임블록 팔레트: 객체(bg/border/accent…) 또는 문자열 모두 처리 */
-function resolveTimetableAccentColor(entry) {
-  if (entry == null) return "rgba(0, 0, 0, 0.28)";
-  if (typeof entry === "string") return entry;
-  if (typeof entry === "object") {
-    return (
-      entry.border ||
-      entry.accentText ||
-      entry.bg ||
-      "rgba(0, 0, 0, 0.28)"
-    );
-  }
-  return "rgba(0, 0, 0, 0.28)";
+/** 막대 좌·우 계획/실제 분: 60분 미만 「Nm」(기존), 이상 「h시간 m분」 */
+function formatHomeEventBarMinutes(minutes) {
+  const n = Math.max(0, Math.round(Number(minutes) || 0));
+  if (n < 60) return `${n}m`;
+  const h = Math.floor(n / 60);
+  const m = n % 60;
+  return `${h}시간 ${m}분`;
 }
 
-function prodColorForPulse(prod, kpColors) {
-  const p = String(prod || "").toLowerCase();
-  if (p === "productive")
-    return resolveTimetableAccentColor(kpColors.productive);
-  if (p === "nonproductive")
-    return resolveTimetableAccentColor(kpColors.nonproductive);
-  return resolveTimetableAccentColor(kpColors.other);
-}
-
-function taskSwatchColor(row, kpColors) {
-  const sid = String(row.sectionId || "").trim();
-  if (sid && KPI_SECTION_IDS.includes(sid)) {
-    try {
-      const c = getSectionColor(sid);
-      if (c) return c;
-    } catch (_) {}
-  }
-  return prodColorForPulse(row.prod, kpColors);
+/** 우측 차이(절댓값): 60분 미만 「N 분」, 이상 「h시간 m분」 */
+function formatHomeEventDiffAbsMinutes(minutes) {
+  const n = Math.max(0, Math.round(Number(minutes) || 0));
+  if (n < 60) return `${n} 분`;
+  const h = Math.floor(n / 60);
+  const m = n % 60;
+  return `${h}시간 ${m}분`;
 }
 
 function formatTaskDiffLabel(variant, diffMins) {
   const n = Math.abs(Math.round(Number(diffMins) || 0));
-  if (variant === "over") return `+${n} 분`;
-  if (variant === "under") return `-${n} 분`;
+  if (variant === "over") return `+${formatHomeEventDiffAbsMinutes(n)}`;
+  if (variant === "under") return `-${formatHomeEventDiffAbsMinutes(n)}`;
   return "±0 분";
 }
 
@@ -526,7 +473,7 @@ function applyBarTagActualAlign(el, pct) {
 function fillHomeEventPulseContent(container) {
   container.replaceChildren();
   const todayKey = getTodayDateKey();
-  const { taskRows, kpColors } = buildHomeTodayEventPulseModel(todayKey);
+  const { taskRows } = buildHomeTodayEventPulseModel(todayKey);
 
   const card = document.createElement("div");
   card.className = "home-event-pulse-card";
@@ -539,14 +486,13 @@ function fillHomeEventPulseContent(container) {
       const rowEl = document.createElement("div");
       rowEl.className = `home-event-task-row home-event-task-row--${row.variant}`;
 
-      const swatchColor = taskSwatchColor(row, kpColors);
-      const prodAccent = prodColorForPulse(row.prod, kpColors);
+      const prodAccent = getTimeCategorySolidHex(row.prod);
 
       const labelCell = document.createElement("div");
       labelCell.className = "home-event-task-label";
       const sw = document.createElement("span");
       sw.className = "home-event-task-swatch";
-      sw.style.background = swatchColor;
+      sw.style.background = prodAccent;
       const name = document.createElement("span");
       name.className = "home-event-task-name";
       name.textContent = row.taskName;
@@ -574,7 +520,7 @@ function fillHomeEventPulseContent(container) {
       tagPl.className =
         "home-event-task-bar-tag home-event-task-bar-tag--planned";
       applyBarTagGoalAlign(tagPl, row.plannedPct);
-      tagPl.textContent = `${row.planned}m`;
+      tagPl.textContent = formatHomeEventBarMinutes(row.planned);
 
       const bars = document.createElement("div");
       bars.className = "home-event-task-bars";
@@ -595,7 +541,7 @@ function fillHomeEventPulseContent(container) {
       const tagAc = document.createElement("span");
       tagAc.className = "home-event-task-bar-tag home-event-task-bar-tag--actual";
       applyBarTagActualAlign(tagAc, row.actualPct);
-      tagAc.textContent = `${row.actual}m`;
+      tagAc.textContent = formatHomeEventBarMinutes(row.actual);
       tagAc.style.color = prodAccent;
 
       wrap.appendChild(tagPl);
@@ -606,7 +552,7 @@ function fillHomeEventPulseContent(container) {
       const diff = document.createElement("div");
       diff.className = "home-event-task-diff";
       diff.style.color = prodAccent;
-      diff.style.flex = "0 0 5.25rem";
+      diff.style.flex = "0 0 7.75rem";
       diff.style.textAlign = "right";
       diff.textContent = formatTaskDiffLabel(row.variant, row.diff);
 
