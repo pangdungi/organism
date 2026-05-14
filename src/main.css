@@ -3554,6 +3554,37 @@ body.auth-pw-modal-open {
     max-width: 100%;
   }
 
+  /* 할 일 추가/수정: 공통 모달 16px 입력 예외 — 타이포 명세(13px)에 맞춤 */
+  .todo-list-modal.todo-task-edit-modal input,
+  .todo-list-modal.todo-task-edit-modal textarea,
+  .todo-list-modal.todo-task-edit-modal select {
+    font-size: 0.8125rem !important;
+    line-height: 1.35 !important;
+  }
+  /* 데스크톱과 동일: 모바일만 제목을 키우던 규칙이 헤더를 과하게 키움 → 공통 모달 헤더 타이포 변수 사용 */
+  .todo-task-edit-modal .todo-list-modal-title {
+    font-size: var(--lp-modal-header-title-size) !important;
+    line-height: var(--lp-modal-header-title-line-height) !important;
+    font-weight: var(--lp-modal-header-title-weight) !important;
+  }
+  .todo-task-edit-modal .todo-list-modal-close {
+    font-size: var(--lp-modal-header-close-fs) !important;
+  }
+  .todo-task-edit-modal .todo-task-edit-label {
+    font-size: 0.6875rem !important;
+  }
+  .todo-task-edit-modal .todo-task-edit-inline-schedule-label {
+    font-size: 0.8125rem !important;
+  }
+  .todo-task-edit-modal .todo-task-edit-footer-delete {
+    font-size: 0.8125rem !important;
+    padding: 0.42rem 0.75rem !important;
+  }
+  .todo-task-edit-modal .todo-task-edit-footer--actions .todo-task-edit-footer-confirm {
+    font-size: 0.8125rem !important;
+    padding: 0.52rem 0.875rem !important;
+  }
+
   /* 순자산 자산·대출 편집 모달: 위 16px 규칙이 라벨(::before 0.8125rem)과 어긋남 → 본문은 가계부 표준으로 통일 */
   .asset-networth-asset-modal input,
   .asset-networth-asset-modal textarea,
@@ -3584,30 +3615,6 @@ body.auth-pw-modal-open {
   .todo-task-edit-modal .todo-task-edit-field {
     max-width: 100%;
   }
-  .todo-task-edit-modal .todo-task-edit-row-name-priority {
-    display: flex;
-    flex-direction: row;
-    align-items: flex-end;
-    gap: 0.5rem;
-    min-width: 0;
-    max-width: 100%;
-  }
-  .todo-task-edit-modal
-    .todo-task-edit-row-name-priority
-    .todo-task-edit-field--name {
-    flex: 1 1 0 !important;
-    min-width: 0 !important;
-    width: auto !important;
-    max-width: 100% !important;
-  }
-  .todo-task-edit-modal
-    .todo-task-edit-row-name-priority
-    .todo-task-edit-field--eisenhower {
-    flex: 0 0 auto !important;
-    width: auto !important;
-    max-width: 7.75rem !important;
-    min-width: 5.25rem !important;
-  }
   .todo-task-edit-modal .todo-task-edit-input-shell input,
   .todo-task-edit-modal .todo-task-edit-input-shell select {
     max-width: 100% !important;
@@ -3616,16 +3623,20 @@ body.auth-pw-modal-open {
     box-sizing: border-box !important;
   }
   .todo-task-edit-modal .todo-task-edit-field--name .todo-task-edit-input-shell input {
-    min-height: 2.75rem !important;
+    min-height: 2.35rem !important;
+    padding-top: 0.45rem !important;
+    padding-bottom: 0.45rem !important;
   }
   .todo-task-edit-modal .todo-task-edit-native-slot {
-    min-height: 2.75rem !important;
+    min-height: 2.35rem !important;
   }
   .todo-task-edit-modal .todo-task-edit-native-slot--calendar:has(.todo-task-edit-native-dt-input:not(.has-value)):not(:focus-within)::before {
-    line-height: 2.75rem !important;
+    line-height: 2.35rem !important;
   }
   .todo-task-edit-modal .todo-task-edit-input-shell--select select {
-    min-height: 2.75rem !important;
+    min-height: 2.35rem !important;
+    padding-top: 0.4rem !important;
+    padding-bottom: 0.4rem !important;
   }
   .todo-task-edit-modal .todo-task-edit-reminder-box {
     flex-direction: column;
@@ -4247,9 +4258,98 @@ body.auth-pw-modal-open {
   color: var(--text-placeholder);
 }
 
-/* 할일 일정 메인(.calendar-view-todo): 검색 막대 DOM은 있으나 넓은 화면에서는 숨김 — 모바일은 아래 미디어 쿼리에서 표시 */
-.calendar-view-todo:not(.calendar-todo-sidebar-parity) .todo-list-mobile-entry-bar {
-  display: none;
+/* 할일 메인: 넓은 화면에서는 검색 막대 숨김 — 돋보기로 연 경우(.todo-list-view--search-open)만 표시, 스타일은 모바일과 동일 */
+@media (min-width: 48.0625rem) {
+  .calendar-view-todo:not(.calendar-todo-sidebar-parity)
+    .todo-list-view:not(.todo-list-view--search-open)
+    .todo-list-mobile-entry-bar {
+    display: none !important;
+  }
+
+  .calendar-view-todo:not(.calendar-todo-sidebar-parity)
+    .todo-list-view.todo-list-view--search-open
+    .todo-list-mobile-entry-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0.55rem;
+    padding: 0.55rem 0.85rem 0.5rem;
+    flex-shrink: 0;
+    border: none !important;
+    border-bottom: none !important;
+    background: transparent !important;
+    box-sizing: border-box;
+  }
+
+  .calendar-view-todo:not(.calendar-todo-sidebar-parity)
+    .todo-list-view.todo-list-view--search-open
+    .todo-list-mobile-search-row {
+    padding: 0 !important;
+    margin: 0;
+    border: none !important;
+    border-bottom: none !important;
+    position: relative;
+  }
+
+  .calendar-view-todo:not(.calendar-todo-sidebar-parity)
+    .todo-list-view.todo-list-view--search-open
+    .todo-list-mobile-search-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.55rem 0.85rem !important;
+    padding-left: 2.45rem !important;
+    margin: 0 !important;
+    border: none !important;
+    border-bottom: none !important;
+    border-radius: 0.625rem !important;
+    -webkit-border-radius: 0.625rem !important;
+    background-color: #f2f7f9 !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236e6e73' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='10.35' cy='10.35' r='6.75'/%3E%3Cline x1='15.62' y1='15.62' x2='20.5' y2='20.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat !important;
+    background-position: 0.76rem 50% !important;
+    background-size: 1.05rem 1.05rem !important;
+    font-family:
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif,
+      var(--font-body);
+    font-size: 16px !important;
+    color: rgba(28, 28, 30, 0.95);
+    -webkit-appearance: none;
+    appearance: none;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  .calendar-view-todo:not(.calendar-todo-sidebar-parity)
+    .todo-list-view.todo-list-view--search-open
+    .todo-list-mobile-search-input:focus {
+    outline: none;
+    border: none !important;
+    border-bottom: none !important;
+    box-shadow: 0 0 0 2px rgba(0, 125, 255, 0.28);
+    background-color: #f2f7f9 !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236e6e73' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='10.35' cy='10.35' r='6.75'/%3E%3Cline x1='15.62' y1='15.62' x2='20.5' y2='20.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat !important;
+    background-position: 0.76rem 50% !important;
+    background-size: 1.05rem 1.05rem !important;
+  }
+
+  .calendar-view-todo:not(.calendar-todo-sidebar-parity)
+    .todo-list-view.todo-list-view--search-open
+    .todo-list-mobile-search-input::placeholder {
+    color: rgba(60, 60, 67, 0.52);
+    opacity: 1;
+  }
+
+  .calendar-view-todo:not(.calendar-todo-sidebar-parity)
+    .todo-list-search-toggle.is-active {
+    background: rgba(31, 70, 84, 0.14) !important;
+    color: #1f4654 !important;
+  }
 }
 
 /* 48rem 이하: 하단 가로 탭(모바일). 아이패드 미니 세로(744·768 CSS px) 포함 */
@@ -4648,7 +4748,7 @@ body.auth-pw-modal-open {
     width: 100%;
   }
 
-  /* 할일 메인 탭(.calendar-view-todo): 일기 모바일 검색과 동일 톤 — 데스크톱에서는 숨김(JS로 DOM만 삽입) */
+  /* 할일 메인 탭(.calendar-view-todo): 일기 모바일 검색과 동일 톤 — 좁은 화면 상시 표시 */
   .calendar-view-todo:not(.calendar-todo-sidebar-parity) .todo-list-mobile-entry-bar {
     display: flex;
     flex-direction: column;
@@ -4718,6 +4818,11 @@ body.auth-pw-modal-open {
     .todo-list-mobile-search-input::placeholder {
     color: rgba(60, 60, 67, 0.52);
     opacity: 1;
+  }
+
+  /* 모바일: 돋보기 툴바 버튼은 미사용(검색줄 상시) */
+  .calendar-view-todo:not(.calendar-todo-sidebar-parity) .todo-list-search-toggle {
+    display: none !important;
   }
 
   .diary-mobile-entry-select {
@@ -9424,10 +9529,12 @@ body.auth-pw-modal-open {
     padding: 0.4rem 0.2rem 0.4rem 0 !important;
   }
 
-  /* 모바일: 할 일 수정 헤더·닫기 — 제목 줄 세로 균형 */
+  /* 모바일: 할 일 추가/수정 헤더 — 데스크톱과 비슷한 높이(세로 패딩 살짝 축소) */
   .todo-task-edit-modal .todo-list-modal-header {
     align-items: center;
     box-sizing: border-box;
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
   }
   .todo-task-edit-modal .todo-list-modal-close {
     transform: none;
@@ -10085,19 +10192,27 @@ body.auth-pw-modal-open {
     font-size: var(--fs-caption);
   }
 
-  /* 모바일: 할일 카드 — 내용만큼 늘어나고 잘리지 않음 */
+  /* 모바일: 할일 카드 — 내용만큼 늘어나고 잘리지 않음(전체 탭 우측 태그 열과 겹침 방지 제외) */
   .calendar-view-todo .todo-card {
     overflow: visible;
     flex-shrink: 0;
   }
-  .calendar-view-todo .todo-card-name {
+  .calendar-view-todo
+    .todo-card-name-wrap:not(:has(.todo-card-name-meta-end))
+    .todo-card-name {
     overflow: visible;
     text-overflow: unset;
   }
-  .calendar-view-todo .todo-card-name-wrap {
+  .calendar-view-todo .todo-card-name-wrap:not(:has(.todo-card-name-meta-end)) {
     flex-wrap: wrap;
     align-items: flex-start;
     row-gap: 0.2rem;
+  }
+  .calendar-view-todo .todo-card-name-wrap:has(.todo-card-name-meta-end) {
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    column-gap: 0.5rem;
+    row-gap: 0;
   }
   .calendar-view-todo .todo-card-content {
     gap: 0.35rem;
@@ -26971,6 +27086,57 @@ col.asset-expense-col-amount,
     width: 1.75rem;
     height: 1.75rem;
   }
+
+  /* 할 일 카드 글자: 모바일에서 제목·태그·부가 정보 한 단계 축소 */
+  .calendar-view-todo .calendar-todo-content .todo-cards-wrap .todo-card-name {
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+  .calendar-view-todo
+    .calendar-todo-content
+    .todo-cards-wrap
+    .todo-card-priority:not([hidden]) {
+    font-size: 0.625rem;
+    padding: 0.09rem 0.46rem;
+    line-height: 1.28;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-cards-wrap .todo-card-dates {
+    font-size: 0.75rem;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-cards-wrap .todo-card-kpi {
+    font-size: 0.75rem;
+  }
+  .calendar-view-todo .calendar-todo-content .todo-cards-wrap .todo-card-section-tag {
+    font-size: 0.5625rem;
+    padding: 0.07rem 0.34rem;
+  }
+
+  .todo-list-view .todo-cards-wrap .todo-card-name,
+  .todo-list-in-sidebar .todo-cards-wrap .todo-card-name,
+  .todo-list-eisenhower-sidebar .todo-cards-wrap .todo-card-name {
+    font-size: 0.8125rem;
+  }
+  .todo-list-view .todo-cards-wrap .todo-card-priority:not([hidden]),
+  .todo-list-in-sidebar .todo-cards-wrap .todo-card-priority:not([hidden]),
+  .todo-list-eisenhower-sidebar .todo-cards-wrap .todo-card-priority:not([hidden]) {
+    font-size: 0.625rem;
+  }
+  .todo-list-view .todo-cards-wrap .todo-card-dates,
+  .todo-list-in-sidebar .todo-cards-wrap .todo-card-dates,
+  .todo-list-eisenhower-sidebar .todo-cards-wrap .todo-card-dates {
+    font-size: 0.75rem;
+  }
+  .todo-list-view .todo-cards-wrap .todo-card-kpi,
+  .todo-list-in-sidebar .todo-cards-wrap .todo-card-kpi,
+  .todo-list-eisenhower-sidebar .todo-cards-wrap .todo-card-kpi {
+    font-size: 0.75rem;
+  }
+  .todo-list-view .todo-cards-wrap .todo-card-section-tag,
+  .todo-list-in-sidebar .todo-cards-wrap .todo-card-section-tag,
+  .todo-list-eisenhower-sidebar .todo-cards-wrap .todo-card-section-tag {
+    font-size: 0.5625rem;
+    padding: 0.07rem 0.34rem;
+  }
 }
 
 .todo-card-content {
@@ -27004,6 +27170,66 @@ col.asset-expense-col-amount,
   gap: 0.5rem;
   flex-wrap: nowrap;
   min-width: 0;
+}
+
+.todo-card-section-tag {
+  flex: 0 0 auto;
+  align-self: center;
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  padding: 0.15rem 0.42rem;
+  border-radius: 0.35rem;
+  background: rgba(31, 70, 84, 0.12);
+  color: #1f4654;
+  white-space: nowrap;
+}
+
+/* 전체 탭: 카테고리 태그를 우선순위(여유+안중요 등) 바로 왼쪽에 묶음 */
+.todo-card-name-meta-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: 0.45rem;
+  border-left: 1px solid rgba(31, 70, 84, 0.14);
+  box-sizing: border-box;
+}
+
+.todo-card-name-wrap:has(.todo-card-name-meta-end) {
+  justify-content: flex-start;
+  align-items: flex-start;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  row-gap: 0.25rem;
+}
+
+.todo-card-name-wrap:has(.todo-card-name-meta-end) .todo-card-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* 전체 뷰 우측(카테고리+중요도): % max-width가 shrink-to-fit 안에서 과소해져 줄바꿈 되던 현상 방지 */
+.todo-card-name-meta-end .todo-card-priority {
+  max-width: none;
+  white-space: nowrap;
+}
+
+.calendar-view-todo
+  .calendar-todo-content
+  .todo-cards-wrap
+  .todo-card-name-meta-end
+  .todo-card-priority:not([hidden]) {
+  max-width: none;
+  white-space: nowrap;
 }
 
 /* 카드 시각 위계: 할일 이름 H2 티(가독·메타와 구분) */
@@ -27221,28 +27447,6 @@ svg.todo-card-reminder-icon {
   gap: 0.375rem;
   min-width: 0;
   max-width: 100%;
-}
-
-/* 할일 이름 + 우선순위 한 줄 */
-.todo-task-edit-row-name-priority {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-end;
-  gap: 0.625rem;
-  min-width: 0;
-  max-width: 100%;
-}
-
-.todo-task-edit-row-name-priority .todo-task-edit-field--name {
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-.todo-task-edit-row-name-priority .todo-task-edit-field--eisenhower {
-  flex: 0 0 auto;
-  width: auto;
-  max-width: 9rem;
-  min-width: 6rem;
 }
 
 .todo-task-edit-row-schedule {

@@ -9042,7 +9042,12 @@ export function render() {
       btn.classList.toggle("active", btn.dataset.view === view);
     });
     saveAssetSubView(view);
-    /* 순자산 전용 pull 생략: 아래 pullAllAssetFromCloud 에서 동일하게 병합됨 — 이중 렌더·중복 네트워크만 늘었음 */
+    /* 순자산: 가계부 JSON 스냅샷 때문에 pullAll 후 anyChanged 가 거의 항상 true → 두 번째 renderView 깜빡임 방지 위해 먼저 번들·목표만 받은 뒤 그림 */
+    if (view === "networth") {
+      try {
+        await Promise.all([pullAssetNetWorthBundleFromSupabase(), pullAssetNetWorthTargetFromSupabase()]);
+      } catch (_) {}
+    }
     renderView(view);
     void (async () => {
       let anyChanged = true;
@@ -9054,7 +9059,10 @@ export function render() {
       }
       if (!contentWrap.isConnected) return;
       const still = viewTabs.querySelector(".asset-view-tab.active")?.dataset?.view;
-      if (still !== view || !anyChanged) return;
+      if (still !== view) return;
+      /* 순자산 화면: 위에서 번들 반영했고, pullAll 은 가계부 등 때문에 anyChanged 가 자주 참 — 전체 DOM 다시 안 붙임 */
+      if (view === "networth") return;
+      if (!anyChanged) return;
       renderView(view);
     })();
   }
@@ -9097,8 +9105,20 @@ export function render() {
       if (!contentWrap.isConnected) return;
       const v = viewTabs.querySelector(".asset-view-tab.active")?.dataset?.view || initialView;
       if (!anyChanged) return;
+      if (v === "networth") return;
       renderView(v);
     })();
+  }
+
+  if (typeof window !== "undefined") {
+    window.__lpAssetSoftRefresh = () => {
+      try {
+        if (!contentWrap.isConnected || !viewTabs.isConnected) return;
+        const v = viewTabs.querySelector(".asset-view-tab.active")?.dataset?.view;
+        if (v !== "expense" && v !== "cashflow" && v !== "networth") return;
+        renderView(v);
+      } catch (_) {}
+    };
   }
 
   setupScrollClosePanels();

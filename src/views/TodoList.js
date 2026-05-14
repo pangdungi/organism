@@ -87,7 +87,7 @@ function normalizeTodoListMobileSearchQuery(raw) {
     .normalize("NFC");
 }
 
-/** 메인 할일(모바일 검색): 모든 카테고리 탭 카드에 동일 필터 */
+/** 할 일 목록 검색: 이름·날짜·KPI·태그·중요도 문자열 기준(모든 탭 카드 동시 필터, 빈 문자열이면 전부 표시) */
 function applyTodoListMobileSearchFilter(listRoot, queryRaw) {
   const q = normalizeTodoListMobileSearchQuery(queryRaw);
   const qSlash = q.replace(/-/g, "/");
@@ -96,12 +96,15 @@ function applyTodoListMobileSearchFilter(listRoot, queryRaw) {
       card.hidden = false;
       return;
     }
+    const tagEl = card.querySelector(".todo-card-section-tag");
+    const tagText = (tagEl?.textContent || "").trim();
     const raw = [
       card.dataset.name,
       card.dataset.dueDate,
       card.dataset.startDate,
       card.dataset.kpiLabel,
       card.dataset.eisenhower,
+      tagText,
     ]
       .filter(Boolean)
       .join(" ");
@@ -541,6 +544,9 @@ function moveTaskOutOfCustomSectionStorageOnly(sectionId, taskId) {
 const KPI_SECTION_IDS = ["dream", "sideincome", "health", "happy"];
 const FIXED_SECTION_IDS_FOR_STORAGE = [...KPI_SECTION_IDS];
 
+/** 「전체」탭 패널 — 저장소·서버 section_key 가 아님(꿈·부수입·건강·행복만 저장) */
+const TODO_ALL_TAB_SECTION_ID = "all";
+
 /** 할일 고정 탭 「우선순위」— 집계 전용(calendar_section_tasks.section_key 아님) */
 const TODO_PRIORITY_TAB_SECTION_ID = "priority";
 /** 할일 고정 탭 「날짜」— 마감·시작일 기준 묶음 표시 전용 */
@@ -552,6 +558,9 @@ const TODO_AGGREGATION_TAB_IDS = [];
 function todoListStorageSectionIdFromEl(el) {
   const panel = el?.closest(".todo-section");
   const pid = (panel?.dataset?.section || "").trim();
+  if (pid === TODO_ALL_TAB_SECTION_ID) {
+    return (el.dataset.sectionId || "").trim();
+  }
   if (
     pid === TODO_PRIORITY_TAB_SECTION_ID ||
     pid === TODO_DATE_TAB_SECTION_ID ||
@@ -987,8 +996,9 @@ export function saveTodoListBeforeUnmount(container) {
   }
 }
 
-/** 할일/일정 메인 화면(탭 바 있는 전체 뷰)에서 마지막으로 본 고정 리스트 탭 — Supabase 동기 후 __lpRenderMain()으로 전체가 다시 그려질 때 첫 탭(꿈)으로만 초기화되는 문제 방지 */
-const SESSION_TODO_FIXED_TAB_INDEX = "lp-todo-main-fixed-tab-index";
+/** 할일/일정 메인 화면에서 마지막으로 본 카테고리 탭 인덱스(「전체」포함) — 전역 리렌더 후 탭 유지 */
+const SESSION_TODO_FIXED_TAB_INDEX = "lp-todo-main-fixed-tab-index-v2";
+const SESSION_TODO_FIXED_TAB_INDEX_LEGACY = "lp-todo-main-fixed-tab-index";
 
 const TODO_CATEGORY_OPTIONS_KEY = "todo_category_options";
 const DEFAULT_CATEGORIES = ["학업", "잡무", "사이드프로젝트", "회사"];
@@ -1074,6 +1084,10 @@ const CALENDAR_TOOLBAR_QUICK_ADD_ICON =
 /** 툴바 설정(톱니): img 필터 대신 +와 동일 currentColor → CSS로 #dc2626 통일 */
 const TODO_TOOLBAR_SETTINGS_ICON =
   '<svg class="todo-list-settings-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m19.845 13.561c.1-.505.155-1.027.155-1.561s-.055-1.056-.155-1.561l1.806-1.489c.502-.414.632-1.132.307-1.696l-.869-1.508c-.325-.564-1.011-.811-1.62-.582l-2.198.825c-.779-.684-1.689-1.218-2.691-1.559l-.385-2.316c-.108-.643-.663-1.114-1.314-1.114h-1.738c-.651 0-1.206.471-1.313 1.114l-.386 2.316c-1.002.341-1.912.875-2.691 1.559l-2.198-.825c-.61-.228-1.295.018-1.62.582l-.87 1.508c-.325.564-.195 1.282.307 1.696l1.806 1.489c-.1.505-.155 1.026-.155 1.561s.055 1.056.155 1.561l-1.806 1.489c-.502.414-.632 1.132-.307 1.696l.869 1.508c.325.564 1.011.811 1.62.582l2.198-.825c.779.684 1.689 1.218 2.691 1.559l.385 2.316c.109.643.664 1.114 1.315 1.114h1.738c.651 0 1.206-.471 1.313-1.114l.385-2.316c1.002-.341 1.913-.875 2.691-1.559l2.198.825c.609.229 1.295-.017 1.62-.582l.869-1.508c.325-.564.196-1.282-.307-1.696z"/><circle cx="12.012" cy="12" r="3"/></g></svg>';
+
+/** 툴바 검색(돋보기): 설정과 동일 stroke 톤 */
+const TODO_TOOLBAR_SEARCH_ICON =
+  '<svg class="todo-list-search-toolbar-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><circle cx="10.5" cy="10.5" r="6.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M15.2 15.2 20 20"/></svg>';
 
 const LIST_ICON =
   '<img src="/toolbaricons/list.svg" alt="세부 할 일" class="todo-list-icon" width="20" height="20">';
@@ -1338,6 +1352,10 @@ const FIXED_SECTIONS = [
   { id: "happy", label: "행복" },
 ];
 
+function getFixedSectionsWithAllTab() {
+  return [{ id: TODO_ALL_TAB_SECTION_ID, label: "전체" }, ...FIXED_SECTIONS];
+}
+
 function escapeConfirmHtml(s) {
   return String(s || "")
     .replace(/&/g, "&amp;")
@@ -1580,20 +1598,10 @@ function showTodoTaskModal(options) {
         </div>
       </div>
       <div class="todo-list-modal-body todo-task-edit-body">
-        <div class="todo-task-edit-row-name-priority">
-          <div class="todo-task-edit-field todo-task-edit-field--name">
-            <label class="todo-task-edit-label">할 일 이름</label>
-            <div class="todo-task-edit-input-shell">
-              <input type="text" class="todo-task-edit-name" placeholder="할 일 입력" value="${escapeHtml(name)}" maxlength="500" />
-            </div>
-          </div>
-          <div class="todo-task-edit-field todo-task-edit-field--eisenhower">
-            <label class="todo-task-edit-label">우선순위</label>
-            <div class="todo-task-edit-input-shell todo-task-edit-input-shell--select">
-              <select class="todo-task-edit-eisenhower">
-              ${EISENHOWER_OPTIONS.map((o) => `<option value="${escapeHtml(o.value)}" ${o.value === eisenhower ? "selected" : ""}>${escapeHtml(o.label)}</option>`).join("")}
-              </select>
-            </div>
+        <div class="todo-task-edit-field todo-task-edit-field--name">
+          <label class="todo-task-edit-label">할 일 이름</label>
+          <div class="todo-task-edit-input-shell">
+            <input type="text" class="todo-task-edit-name" placeholder="할 일 입력" value="${escapeHtml(name)}" maxlength="500" />
           </div>
         </div>
         ${
@@ -1624,7 +1632,15 @@ function showTodoTaskModal(options) {
             </div>
           </div>
         </div>
-        <div class="todo-task-edit-field">
+        <div class="todo-task-edit-field todo-task-edit-field--eisenhower">
+          <label class="todo-task-edit-label">우선순위</label>
+          <div class="todo-task-edit-input-shell todo-task-edit-input-shell--select">
+            <select class="todo-task-edit-eisenhower">
+            ${EISENHOWER_OPTIONS.map((o) => `<option value="${escapeHtml(o.value)}" ${o.value === eisenhower ? "selected" : ""}>${escapeHtml(o.label)}</option>`).join("")}
+            </select>
+          </div>
+        </div>
+        <div class="todo-task-edit-field todo-task-edit-field--section">
           <label class="todo-task-edit-label">리스트</label>
           <div class="todo-task-edit-input-shell todo-task-edit-input-shell--select">
             <select class="todo-task-edit-section" aria-label="다른 리스트로 이동">
@@ -3048,6 +3064,13 @@ function mirrorTodoCardElementFromPrimary(duplicateCard, primaryCard) {
   if (metaRow && dEl) {
     metaRow.hidden = !!dEl.hidden;
   }
+  const pSid = (p.dataset.sectionId || "").trim();
+  const dTag = d.querySelector(".todo-card-section-tag");
+  if (dTag) {
+    const lab = FIXED_SECTIONS.find((s) => s.id === pSid)?.label || "";
+    dTag.textContent = lab;
+    dTag.hidden = !lab;
+  }
   mirrorTodoCardScheduleGlyphFromPrimary(d, p);
   const cb = d.querySelector(".todo-done-check.todo-card-done");
   const pcb = p.querySelector(".todo-done-check.todo-card-done");
@@ -3129,6 +3152,7 @@ function createTaskCard(taskData, options = {}) {
     enableDragToCalendar = false,
     enableDragOverdueToCalendar = false,
     listExcludesKpi = false,
+    showSectionCategoryTag = false,
   } = options;
   const isKpiTodo = listExcludesKpi ? false : !!isKpiTodoFromData;
   const taskId = getTaskId(taskData);
@@ -3276,7 +3300,21 @@ function createTaskCard(taskData, options = {}) {
   if (!eisenhower) priorityEl.hidden = true;
 
   nameWrap.appendChild(nameEl);
-  nameWrap.appendChild(priorityEl);
+  if (showSectionCategoryTag) {
+    const sectionTagEl = document.createElement("span");
+    sectionTagEl.className = "todo-card-section-tag";
+    const sidForTag = (storageSectionId || sectionId || "").trim();
+    const lab = FIXED_SECTIONS.find((s) => s.id === sidForTag)?.label || "";
+    sectionTagEl.textContent = lab;
+    sectionTagEl.hidden = !lab;
+    const nameMetaEnd = document.createElement("span");
+    nameMetaEnd.className = "todo-card-name-meta-end";
+    nameMetaEnd.appendChild(sectionTagEl);
+    nameMetaEnd.appendChild(priorityEl);
+    nameWrap.appendChild(nameMetaEnd);
+  } else {
+    nameWrap.appendChild(priorityEl);
+  }
 
   const kpiEl = document.createElement("div");
   kpiEl.className = "todo-card-kpi";
@@ -3418,6 +3456,9 @@ function createTaskCard(taskData, options = {}) {
       card.dataset.itemType = data.itemType;
       syncScheduleCardUi();
     }
+    if (data.sectionId !== undefined) {
+      card.dataset.sectionId = String(data.sectionId || "").trim();
+    }
     nameEl.textContent = n;
     const kid = card.dataset.kpiTodoId || "";
     const sk = card.dataset.kpiStorageKey || "";
@@ -3463,6 +3504,13 @@ function createTaskCard(taskData, options = {}) {
       } else {
         card.draggable = !hasDueDate;
       }
+    }
+    const sectionTagEl = card.querySelector(".todo-card-section-tag");
+    if (sectionTagEl) {
+      const sid = (card.dataset.sectionId || "").trim();
+      const lab = FIXED_SECTIONS.find((s) => s.id === sid)?.label || "";
+      sectionTagEl.textContent = lab;
+      sectionTagEl.hidden = !lab;
     }
     metaRow.hidden = !!datesEl.hidden;
   }
@@ -3585,6 +3633,13 @@ function createTaskCard(taskData, options = {}) {
           ) {
             refreshTodoPriorityTabSectionDom(sectionsWrap);
           }
+          if (
+            sectionsWrap.querySelector(
+              `.todo-section[data-section="${TODO_ALL_TAB_SECTION_ID}"]`,
+            )
+          ) {
+            refreshTodoAllTabSectionDom(sectionsWrap);
+          }
         }
       },
       onDelete: () => {
@@ -3597,6 +3652,13 @@ function createTaskCard(taskData, options = {}) {
               flushSaveSectionTasksFromDOM(sectionsWrap);
               refreshTodoDateTabSectionDom(sectionsWrap);
               refreshTodoPriorityTabSectionDom(sectionsWrap);
+              if (
+                sectionsWrap.querySelector(
+                  `.todo-section[data-section="${TODO_ALL_TAB_SECTION_ID}"]`,
+                )
+              ) {
+                refreshTodoAllTabSectionDom(sectionsWrap);
+              }
             } else card.remove();
             updateCount();
           }
@@ -3615,6 +3677,13 @@ function createTaskCard(taskData, options = {}) {
             flushSaveSectionTasksFromDOM(sectionsWrap);
             refreshTodoDateTabSectionDom(sectionsWrap);
             refreshTodoPriorityTabSectionDom(sectionsWrap);
+            if (
+              sectionsWrap.querySelector(
+                `.todo-section[data-section="${TODO_ALL_TAB_SECTION_ID}"]`,
+              )
+            ) {
+              refreshTodoAllTabSectionDom(sectionsWrap);
+            }
           } else card.remove();
           updateCount();
           void completeRemoveTaskFromCustomSectionStorageServer(
@@ -3637,6 +3706,13 @@ function createTaskCard(taskData, options = {}) {
             flushSaveSectionTasksFromDOM(sectionsWrap);
             refreshTodoDateTabSectionDom(sectionsWrap);
             refreshTodoPriorityTabSectionDom(sectionsWrap);
+            if (
+              sectionsWrap.querySelector(
+                `.todo-section[data-section="${TODO_ALL_TAB_SECTION_ID}"]`,
+              )
+            ) {
+              refreshTodoAllTabSectionDom(sectionsWrap);
+            }
           } else card.remove();
           updateCount();
           void completeRemoveTaskFromSectionStorageServer(
@@ -3652,6 +3728,13 @@ function createTaskCard(taskData, options = {}) {
           flushSaveSectionTasksFromDOM(sectionsWrap);
           refreshTodoDateTabSectionDom(sectionsWrap);
           refreshTodoPriorityTabSectionDom(sectionsWrap);
+          if (
+            sectionsWrap.querySelector(
+              `.todo-section[data-section="${TODO_ALL_TAB_SECTION_ID}"]`,
+            )
+          ) {
+            refreshTodoAllTabSectionDom(sectionsWrap);
+          }
         } else card.remove();
         updateCount();
       },
@@ -3679,6 +3762,7 @@ function createSection(section, options = {}) {
     cardLayout = false,
     categoryUiSignal,
     listExcludesKpi = false,
+    showSectionCategoryTag = false,
   } = options;
   const sectionId = sectionIdForAdd ?? section.id;
 
@@ -3743,6 +3827,7 @@ function createSection(section, options = {}) {
         enableDragToCalendar,
         enableDragOverdueToCalendar,
         listExcludesKpi,
+        showSectionCategoryTag,
       });
       cardsWrap.appendChild(card);
     });
@@ -3776,6 +3861,7 @@ function createSection(section, options = {}) {
             enableDragToCalendar,
             enableDragOverdueToCalendar,
             listExcludesKpi,
+            showSectionCategoryTag,
           });
           cardsWrap.appendChild(card);
           updateCount();
@@ -3795,6 +3881,14 @@ function createSection(section, options = {}) {
           );
           scheduleSave();
           requestCalendarTodoSidebarRebuildFromCard(card);
+          if (
+            sectionsWrap?.querySelector(
+              `.todo-section[data-section="${TODO_ALL_TAB_SECTION_ID}"]`,
+            )
+          ) {
+            flushSaveSectionTasksFromDOM(sectionsWrap);
+            refreshTodoAllTabSectionDom(sectionsWrap);
+          }
         },
       });
     });
@@ -3805,7 +3899,8 @@ function createSection(section, options = {}) {
     if (
       section.id !== "overdue" &&
       section.id !== TODO_PRIORITY_TAB_SECTION_ID &&
-      section.id !== TODO_DATE_TAB_SECTION_ID
+      section.id !== TODO_DATE_TAB_SECTION_ID &&
+      section.id !== TODO_ALL_TAB_SECTION_ID
     )
       wrap.appendChild(addWrap);
     updateCount();
@@ -4054,7 +4149,8 @@ function collectTasksFromDOM(sectionsEl) {
         const isKpiCard = card.dataset.isKpiTodo === "true";
         const kpiTid = card.dataset.kpiTodoId || "";
         const kpiSk = card.dataset.kpiStorageKey || "";
-        let classificationVal = secId;
+        let classificationVal =
+          secId === TODO_ALL_TAB_SECTION_ID ? rowSectionId : secId;
         if (isKpiCard && kpiTid && kpiSk) {
           classificationVal =
             (card.dataset.kpiLabel || "").trim() ||
@@ -4847,6 +4943,50 @@ function createDateBucketsTabSection(section, allTasksForList, options) {
   return { wrap, updateCount };
 }
 
+/** 「전체」탭: 카테고리 패널 DOM·메모리와 동일 목록이 되도록 다시 채움(섹션 이동·추가 후 동기화) */
+function refreshTodoAllTabSectionDom(sectionsWrap) {
+  const panel = sectionsWrap?.querySelector(
+    `.todo-section[data-section="${TODO_ALL_TAB_SECTION_ID}"]`,
+  );
+  const cardsWrap = panel?.querySelector(".todo-cards-wrap");
+  if (!cardsWrap || !sectionsWrap) return;
+  flushSaveSectionTasksFromDOM(sectionsWrap);
+  const enableDragToCalendar = sectionsWrap.dataset.lpDragCal === "1";
+  const enableDragToEisenhower = sectionsWrap.dataset.lpDragEisen === "1";
+  const listExcludesKpi = sectionsWrap.dataset.lpExcludesKpi === "1";
+
+  function scheduleSave() {
+    scheduleSaveSectionTasksFromDOM(sectionsWrap);
+  }
+  function updateCount() {
+    const el = panel.querySelector(".todo-section-count");
+    if (el)
+      el.textContent = String(cardsWrap.querySelectorAll(".todo-card").length);
+  }
+
+  cardsWrap.replaceChildren();
+  for (const sid of FIXED_SECTION_IDS_FOR_STORAGE) {
+    const arr = loadSectionTasks(sid);
+    for (const raw of arr) {
+      const t = { ...raw, sectionId: sid };
+      const taskId = t.taskId || getTaskId(t);
+      t.taskId = taskId;
+      const card = createTaskCard(t, {
+        updateCount,
+        sectionsWrap,
+        scheduleSave,
+        enableDragToEisenhower,
+        enableDragToCalendar,
+        enableDragOverdueToCalendar: false,
+        listExcludesKpi,
+        showSectionCategoryTag: true,
+      });
+      cardsWrap.appendChild(card);
+    }
+  }
+  updateCount();
+}
+
 function renderSections(container, tasksData = [], options = {}) {
   const {
     tabMode = false,
@@ -4867,7 +5007,11 @@ function renderSections(container, tasksData = [], options = {}) {
       section.id === TODO_PRIORITY_TAB_SECTION_ID ||
       section.id === TODO_DATE_TAB_SECTION_ID
         ? tasksData
-        : tasksData.filter((t) => t.sectionId === section.id);
+        : section.id === TODO_ALL_TAB_SECTION_ID
+          ? FIXED_SECTION_IDS_FOR_STORAGE.flatMap((sid) =>
+              tasksData.filter((t) => t.sectionId === sid),
+            )
+          : tasksData.filter((t) => t.sectionId === section.id);
     const sectionOpts = {
       lastColHeader: "분류",
       initialTasks: sectionTasks,
@@ -4875,7 +5019,8 @@ function renderSections(container, tasksData = [], options = {}) {
       sectionIdForAdd:
         section.id === "overdue" ||
         section.id === TODO_PRIORITY_TAB_SECTION_ID ||
-        section.id === TODO_DATE_TAB_SECTION_ID
+        section.id === TODO_DATE_TAB_SECTION_ID ||
+        section.id === TODO_ALL_TAB_SECTION_ID
           ? null
           : section.id === "tasks"
             ? "dream"
@@ -4895,10 +5040,12 @@ function renderSections(container, tasksData = [], options = {}) {
         cardLayout ||
         section.id === "overdue" ||
         section.id === TODO_PRIORITY_TAB_SECTION_ID ||
-        section.id === TODO_DATE_TAB_SECTION_ID,
+        section.id === TODO_DATE_TAB_SECTION_ID ||
+        section.id === TODO_ALL_TAB_SECTION_ID,
       sectionsWrap: container,
       categoryUiSignal,
       listExcludesKpi,
+      showSectionCategoryTag: section.id === TODO_ALL_TAB_SECTION_ID,
     };
     const { wrap, updateCount } =
       section.id === TODO_PRIORITY_TAB_SECTION_ID
@@ -4982,6 +5129,9 @@ export function render(options = {}) {
   const listTabAbort = new AbortController();
   el._lpTabAbortController = listTabAbort;
   const listUiSignal = listTabAbort.signal;
+  /** 메인 할일 상단 검색 UI(모바일 상시 · 데스크톱 돋보기 토글) */
+  const showTodoListSearchUi =
+    categoryToolbarRightActions && !calendarSidebarEmbed;
 
   const header = document.createElement("div");
   header.className = "todo-list-header";
@@ -5128,8 +5278,8 @@ export function render(options = {}) {
     categoryTabs.appendChild(thumb);
   }
 
-  /* 할일/일정: 고정 4탭(꿈·부수입·건강·행복), 리스트 추가 비노출 */
-  FIXED_SECTIONS.forEach((section) => {
+  /* 할일/일정: 「전체」+ 고정 4탭, 리스트 추가 비노출 */
+  getFixedSectionsWithAllTab().forEach((section) => {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = categoryToolbarRightActions
@@ -5144,6 +5294,7 @@ export function render(options = {}) {
   });
 
   let quickAddBtn = null;
+  let searchToggleBtn = null;
   if (categoryToolbarRightActions) {
     syncTodoListSegmentThumb();
     quickAddBtn = document.createElement("button");
@@ -5183,6 +5334,17 @@ export function render(options = {}) {
     const leftIcons = document.createElement("div");
     leftIcons.className = "time-ledger-toolbar-icons";
     leftIcons.appendChild(settingsBtn);
+    if (showTodoListSearchUi) {
+      searchToggleBtn = document.createElement("button");
+      searchToggleBtn.type = "button";
+      searchToggleBtn.className =
+        "todo-list-search-toggle time-ledger-toolbar-icon-btn";
+      searchToggleBtn.title = "검색";
+      searchToggleBtn.setAttribute("aria-label", "할 일 검색");
+      searchToggleBtn.setAttribute("aria-expanded", "false");
+      searchToggleBtn.innerHTML = TODO_TOOLBAR_SEARCH_ICON;
+      leftIcons.appendChild(searchToggleBtn);
+    }
     leftStrip.appendChild(leftIcons);
     const centerStrip = document.createElement("div");
     centerStrip.className = "todo-list-top-strip__center";
@@ -5215,9 +5377,8 @@ export function render(options = {}) {
   let todoMobileSearchQuery = "";
   let todoMobileSearchInput = null;
   let todoMobileSearchSync = () => {};
-  const showTodoMobileSearchBar =
-    categoryToolbarRightActions && !calendarSidebarEmbed;
-  if (showTodoMobileSearchBar) {
+  const searchUiHelpers = { activateAllTabWhenSearching: () => {} };
+  if (showTodoListSearchUi) {
     const mobileSearchBar = document.createElement("div");
     mobileSearchBar.className = "todo-list-mobile-entry-bar";
     const searchRow = document.createElement("div");
@@ -5231,6 +5392,8 @@ export function render(options = {}) {
     let searchComposing = false;
     todoMobileSearchSync = () => {
       todoMobileSearchQuery = todoMobileSearchInput?.value ?? "";
+      const q = normalizeTodoListMobileSearchQuery(todoMobileSearchQuery);
+      if (q) searchUiHelpers.activateAllTabWhenSearching();
       applyTodoListMobileSearchFilter(el, todoMobileSearchQuery);
     };
     todoMobileSearchInput.addEventListener("compositionstart", () => {
@@ -5239,6 +5402,8 @@ export function render(options = {}) {
     todoMobileSearchInput.addEventListener("compositionend", (e) => {
       searchComposing = false;
       todoMobileSearchQuery = e.target.value;
+      const q = normalizeTodoListMobileSearchQuery(todoMobileSearchQuery);
+      if (q) searchUiHelpers.activateAllTabWhenSearching();
       applyTodoListMobileSearchFilter(el, todoMobileSearchQuery);
     });
     todoMobileSearchInput.addEventListener("input", () => {
@@ -5247,6 +5412,25 @@ export function render(options = {}) {
     searchRow.appendChild(todoMobileSearchInput);
     mobileSearchBar.appendChild(searchRow);
     el.appendChild(mobileSearchBar);
+    if (searchToggleBtn) {
+      searchToggleBtn.addEventListener(
+        "click",
+        () => {
+          const open = !el.classList.contains("todo-list-view--search-open");
+          el.classList.toggle("todo-list-view--search-open", open);
+          searchToggleBtn.classList.toggle("is-active", open);
+          searchToggleBtn.setAttribute("aria-expanded", open ? "true" : "false");
+          if (!open) {
+            if (todoMobileSearchInput) todoMobileSearchInput.value = "";
+            todoMobileSearchQuery = "";
+            applyTodoListMobileSearchFilter(el, "");
+          } else {
+            requestAnimationFrame(() => todoMobileSearchInput?.focus());
+          }
+        },
+        { signal: listUiSignal },
+      );
+    }
   }
 
   const sectionsWrap = document.createElement("div");
@@ -5323,7 +5507,7 @@ export function render(options = {}) {
     enableDragToCalendar,
     enableDragToEisenhower,
     eisenhowerSidebarFirst,
-    sectionsOverride: FIXED_SECTIONS,
+    sectionsOverride: getFixedSectionsWithAllTab(),
     cardLayout: true,
     categoryUiSignal: listUiSignal,
     listExcludesKpi: omitKpiTodos,
@@ -5384,8 +5568,20 @@ export function render(options = {}) {
     );
   } else if (persistFixedListTabToSession) {
     try {
-      const raw = sessionStorage.getItem(SESSION_TODO_FIXED_TAB_INDEX);
-      if (raw != null) {
+      let raw = sessionStorage.getItem(SESSION_TODO_FIXED_TAB_INDEX);
+      if (raw == null) {
+        raw = sessionStorage.getItem(SESSION_TODO_FIXED_TAB_INDEX_LEGACY);
+        if (raw != null) {
+          const legacy = parseInt(raw, 10);
+          if (
+            !Number.isNaN(legacy) &&
+            legacy >= 0 &&
+            legacy <= FIXED_SECTIONS.length - 1
+          ) {
+            initialActiveTabIndex = legacy + 1;
+          }
+        }
+      } else {
         const n = parseInt(raw, 10);
         if (!Number.isNaN(n) && n >= 0 && n < tabButtons.length)
           initialActiveTabIndex = n;
@@ -5402,6 +5598,33 @@ export function render(options = {}) {
     r.wrap.classList.toggle("is-active", i === safeIndex);
   });
 
+  searchUiHelpers.activateAllTabWhenSearching = () => {
+    const idxAll = tabButtons.findIndex(
+      (b) => (b.dataset.section || "").trim() === TODO_ALL_TAB_SECTION_ID,
+    );
+    if (idxAll < 0 || activeSectionIndex === idxAll) return;
+    activeSectionIndex = idxAll;
+    if (persistFixedListTabToSession) {
+      try {
+        sessionStorage.setItem(SESSION_TODO_FIXED_TAB_INDEX, String(idxAll));
+      } catch (_) {}
+    }
+    tabButtons.forEach((b, idx) => {
+      b.classList.toggle("active", idx === idxAll);
+    });
+    sectionResults.forEach((r, idx) => {
+      r.wrap.classList.toggle("is-active", idx === idxAll);
+    });
+    syncTodoListSegmentThumb();
+    if (
+      sectionsWrap &&
+      (tabButtons[idxAll]?.dataset.section || "").trim() ===
+        TODO_ALL_TAB_SECTION_ID
+    ) {
+      refreshTodoAllTabSectionDom(sectionsWrap);
+    }
+  };
+
   tabButtons.forEach((btn, i) => {
     btn.addEventListener("click", () => {
       activeSectionIndex = i;
@@ -5417,7 +5640,14 @@ export function render(options = {}) {
       });
       syncTodoListSegmentThumb();
 
-      if (showTodoMobileSearchBar) todoMobileSearchSync();
+      if (showTodoListSearchUi) todoMobileSearchSync();
+
+      if (
+        sectionsWrap &&
+        (btn.dataset.section || "").trim() === TODO_ALL_TAB_SECTION_ID
+      ) {
+        refreshTodoAllTabSectionDom(sectionsWrap);
+      }
 
       const subView = (btn.dataset.section || "").trim();
       void (async () => {
@@ -5475,7 +5705,7 @@ export function render(options = {}) {
   reconnectTodoSectionsMutationObserver();
 
   let searchFilterObserver = null;
-  if (showTodoMobileSearchBar) {
+  if (showTodoListSearchUi) {
     searchFilterObserver = new MutationObserver(() => {
       if (todoMobileSearchQuery)
         applyTodoListMobileSearchFilter(el, todoMobileSearchQuery);
@@ -5500,7 +5730,7 @@ export function render(options = {}) {
     syncTodoListSegmentThumb();
     reconnectTodoSectionsMutationObserver();
     updateTabLabels();
-    if (showTodoMobileSearchBar) todoMobileSearchSync();
+    if (showTodoListSearchUi) todoMobileSearchSync();
   }
   el._lpRemountTodoSectionsAfterCalendarPull =
     remountTodoSectionsAfterCalendarPull;
@@ -5515,19 +5745,25 @@ export function render(options = {}) {
     } catch (_) {}
   });
 
-  if (showTodoMobileSearchBar) todoMobileSearchSync();
+  if (showTodoListSearchUi) todoMobileSearchSync();
 
-  if (showTodoMobileSearchBar && typeof window.matchMedia === "function") {
+  if (showTodoListSearchUi && typeof window.matchMedia === "function") {
     const mq = window.matchMedia("(max-width: 48rem)");
-    const clearTodoSearchWhenLeavingMobile = () => {
-      if (!mq.matches) applyTodoListMobileSearchFilter(el, "");
+    const onTodoSearchViewport = () => {
+      if (mq.matches) {
+        el.classList.remove("todo-list-view--search-open");
+        if (searchToggleBtn) {
+          searchToggleBtn.classList.remove("is-active");
+          searchToggleBtn.setAttribute("aria-expanded", "false");
+        }
+      }
     };
-    mq.addEventListener("change", clearTodoSearchWhenLeavingMobile);
+    mq.addEventListener("change", onTodoSearchViewport);
     listUiSignal.addEventListener(
       "abort",
       () => {
         try {
-          mq.removeEventListener("change", clearTodoSearchWhenLeavingMobile);
+          mq.removeEventListener("change", onTodoSearchViewport);
         } catch (_) {}
       },
       { once: true },

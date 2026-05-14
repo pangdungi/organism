@@ -688,6 +688,11 @@ export async function mountApp(container) {
         try {
           window.__lpHomeAfterPullRefresh?.();
         } catch (_) {}
+      } else if (targetTabId === "asset") {
+        /* 자산관리: pull 뒤 두 번째 renderMain 으로 패널을 통째로 갈아끼우면 순자산 등이 깜빡임 — 현재 하위 탭만 다시 그림 */
+        try {
+          window.__lpAssetSoftRefresh?.();
+        } catch (_) {}
       } else {
         renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
       }
