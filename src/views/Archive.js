@@ -52,7 +52,9 @@ function recordInDateRange(r, startYmd, endYmd) {
 const LP_LEDGER_EXPENSE_TAG_PREFIX = "lp-expense:";
 
 function isLedgerExpenseRefMemoTag(tag) {
-  return String(tag || "").trim().startsWith(LP_LEDGER_EXPENSE_TAG_PREFIX);
+  return String(tag || "")
+    .trim()
+    .startsWith(LP_LEDGER_EXPENSE_TAG_PREFIX);
 }
 
 /** memo_tags에서 사용자에게 보일 태그만 */
@@ -67,7 +69,8 @@ export function render() {
   el._lpTabAbortController = archiveTabAbort;
   el.className = "app-tab-panel-content archive-view";
   const mobileViewport =
-    typeof window !== "undefined" && window.matchMedia("(max-width: 48rem)").matches;
+    typeof window !== "undefined" &&
+    window.matchMedia("(max-width: 48rem)").matches;
   if (mobileViewport) {
     el.classList.add("archive-view--mobile");
   }
@@ -152,7 +155,9 @@ export function render() {
     return `${yy}. ${mm}. ${dd}(${weekdays[dt.getDay()]})`;
   }
   function syncArchiveDateLabels() {
-    const startLabel = rangeWrap.querySelector(".time-filter-date-label--start");
+    const startLabel = rangeWrap.querySelector(
+      ".time-filter-date-label--start",
+    );
     const endLabel = rangeWrap.querySelector(".time-filter-date-label--end");
     const isDesktop =
       typeof window !== "undefined" &&
@@ -263,7 +268,10 @@ export function render() {
     /* render() 직후에는 아직 app-tab-panel에 안 붙었을 수 있음 → 호출부는 queueMicrotask 권장 */
     if (!el.isConnected) return;
     const { startYmd, endYmd } = getFilterRangeYmd();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(startYmd) || !/^\d{4}-\d{2}-\d{2}$/.test(endYmd)) {
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(startYmd) ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(endYmd)
+    ) {
       showToast("날짜를 확인해 주세요.");
       return;
     }
@@ -436,7 +444,9 @@ export function render() {
     }
     const { startYmd, endYmd } = getFilterRangeYmd();
     return {
-      records: fullRecords.filter((r) => recordInDateRange(r, startYmd, endYmd)),
+      records: fullRecords.filter((r) =>
+        recordInDateRange(r, startYmd, endYmd),
+      ),
       mode: "range",
     };
   }
@@ -448,7 +458,9 @@ export function render() {
       const empty = document.createElement("p");
       empty.className = "archive-empty";
       empty.textContent =
-        mode === "search" ? "검색 결과가 없습니다." : "이 기간에 표시할 메모가 없습니다.";
+        mode === "search"
+          ? "검색 결과가 없습니다."
+          : "이 기간에 표시할 메모가 없습니다.";
       listEl.appendChild(empty);
       return;
     }

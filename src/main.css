@@ -1042,7 +1042,9 @@ body {
 /* 로그인 패널: 박스형 입력(터치 영역·테두리 명확)
  * #app input[type="email"] 등 전역 폼 규칙보다 구체적으로 잡아 이메일 좌우 패딩 유지
  * 비밀번호 행 내부(.login-input--in-password-row)는 기존 행 테두리·패딩 유지 */
-#app .login-page--gate input.login-input--auth-boxed:not(.login-input--in-password-row) {
+#app
+  .login-page--gate
+  input.login-input--auth-boxed:not(.login-input--in-password-row) {
   width: 100%;
   box-sizing: border-box;
   min-height: 3rem;
@@ -1052,17 +1054,35 @@ body {
   background: #ffffff !important;
 }
 
-#app .login-page--gate input.login-input--auth-boxed:not(.login-input--in-password-row):focus {
+#app
+  .login-page--gate
+  input.login-input--auth-boxed:not(.login-input--in-password-row):focus {
   outline: none;
   border: 1.5px solid #1f4654 !important;
   box-shadow: 0 0 0 1px rgba(31, 70, 84, 0.12);
   background: #ffffff !important;
 }
 
-#app .login-page--gate input.login-input--auth-boxed:not(.login-input--in-password-row):-webkit-autofill,
-#app .login-page--gate input.login-input--auth-boxed:not(.login-input--in-password-row):-webkit-autofill:hover,
-#app .login-page--gate input.login-input--auth-boxed:not(.login-input--in-password-row):-webkit-autofill:focus,
-#app .login-page--gate input.login-input--auth-boxed:not(.login-input--in-password-row):-webkit-autofill:active {
+#app
+  .login-page--gate
+  input.login-input--auth-boxed:not(
+    .login-input--in-password-row
+  ):-webkit-autofill,
+#app
+  .login-page--gate
+  input.login-input--auth-boxed:not(
+    .login-input--in-password-row
+  ):-webkit-autofill:hover,
+#app
+  .login-page--gate
+  input.login-input--auth-boxed:not(
+    .login-input--in-password-row
+  ):-webkit-autofill:focus,
+#app
+  .login-page--gate
+  input.login-input--auth-boxed:not(
+    .login-input--in-password-row
+  ):-webkit-autofill:active {
   box-shadow: 0 0 0 100rem #ffffff inset !important;
   -webkit-box-shadow: 0 0 0 100rem #ffffff inset !important;
   border: 1px solid rgba(31, 70, 84, 0.22) !important;
@@ -1214,7 +1234,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+  padding: max(1rem, env(safe-area-inset-top)) 1rem
+    max(1rem, env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 
@@ -2554,7 +2575,6 @@ body.auth-pw-modal-open {
   line-height: 1;
 }
 
-
 .home-time-summary-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -3085,7 +3105,9 @@ body.auth-pw-modal-open {
     column-gap: 0;
     row-gap: 0;
   }
-  .app-main:has(.home-view) .home-view-section--event .home-event-reminder-stack {
+  .app-main:has(.home-view)
+    .home-view-section--event
+    .home-event-reminder-stack {
     display: contents;
   }
   .app-main:has(.home-view)
@@ -3119,7 +3141,9 @@ body.auth-pw-modal-open {
   .app-main:has(.home-view) .home-event-half .home-reminder-content {
     padding: 0.875rem 1.75rem 0.75rem !important;
   }
-  .app-main:has(.home-view) .home-event-half .home-event-list:not(.home-event-pulse-body) {
+  .app-main:has(.home-view)
+    .home-event-half
+    .home-event-list:not(.home-event-pulse-body) {
     padding: 0.75rem 1.75rem 1rem !important;
   }
 
@@ -3364,13 +3388,16 @@ body.auth-pw-modal-open {
     min-width: 0;
     transition: width 0.35s ease;
   }
-  .app-main:has(.home-view) .home-event-task-bar-fill--actual.home-event-task-bar-fill--over {
+  .app-main:has(.home-view)
+    .home-event-task-bar-fill--actual.home-event-task-bar-fill--over {
     background: #94352c !important;
   }
-  .app-main:has(.home-view) .home-event-task-bar-fill--actual.home-event-task-bar-fill--equal {
+  .app-main:has(.home-view)
+    .home-event-task-bar-fill--actual.home-event-task-bar-fill--equal {
     background: #294f86 !important;
   }
-  .app-main:has(.home-view) .home-event-task-bar-fill--actual.home-event-task-bar-fill--under {
+  .app-main:has(.home-view)
+    .home-event-task-bar-fill--actual.home-event-task-bar-fill--under {
     background: #2f6b46 !important;
   }
   .app-main:has(.home-view) .home-event-task-diff {
@@ -3580,7 +3607,9 @@ body.auth-pw-modal-open {
     font-size: 0.8125rem !important;
     padding: 0.42rem 0.75rem !important;
   }
-  .todo-task-edit-modal .todo-task-edit-footer--actions .todo-task-edit-footer-confirm {
+  .todo-task-edit-modal
+    .todo-task-edit-footer--actions
+    .todo-task-edit-footer-confirm {
     font-size: 0.8125rem !important;
     padding: 0.52rem 0.875rem !important;
   }
@@ -3622,7 +3651,10 @@ body.auth-pw-modal-open {
     width: 100% !important;
     box-sizing: border-box !important;
   }
-  .todo-task-edit-modal .todo-task-edit-field--name .todo-task-edit-input-shell input {
+  .todo-task-edit-modal
+    .todo-task-edit-field--name
+    .todo-task-edit-input-shell
+    input {
     min-height: 2.35rem !important;
     padding-top: 0.45rem !important;
     padding-bottom: 0.45rem !important;
@@ -3630,7 +3662,10 @@ body.auth-pw-modal-open {
   .todo-task-edit-modal .todo-task-edit-native-slot {
     min-height: 2.35rem !important;
   }
-  .todo-task-edit-modal .todo-task-edit-native-slot--calendar:has(.todo-task-edit-native-dt-input:not(.has-value)):not(:focus-within)::before {
+  .todo-task-edit-modal
+    .todo-task-edit-native-slot--calendar:has(
+      .todo-task-edit-native-dt-input:not(.has-value)
+    ):not(:focus-within)::before {
     line-height: 2.35rem !important;
   }
   .todo-task-edit-modal .todo-task-edit-input-shell--select select {
@@ -3643,7 +3678,9 @@ body.auth-pw-modal-open {
     align-items: stretch;
     gap: 0.5rem;
   }
-  .todo-task-edit-modal .todo-task-edit-reminder-box .todo-task-edit-reminder-delete {
+  .todo-task-edit-modal
+    .todo-task-edit-reminder-box
+    .todo-task-edit-reminder-delete {
     align-self: flex-end;
   }
 }
@@ -4580,13 +4617,13 @@ body.auth-pw-modal-open {
     overflow-y: hidden !important;
     border: none !important;
     border-bottom: none !important;
-  isolation: isolate;
-  background: var(--diary-tab-segment-track) !important;
-  /* 일정 탭(월별·1주·연간·타임블록) 세그먼트와 동일한 모서리 */
-  border-radius: 0.625rem !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    0 0 0 0.03125rem rgba(0, 0, 0, 0.045);
+    isolation: isolate;
+    background: var(--diary-tab-segment-track) !important;
+    /* 일정 탭(월별·1주·연간·타임블록) 세그먼트와 동일한 모서리 */
+    border-radius: 0.625rem !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.72),
+      0 0 0 0.03125rem rgba(0, 0, 0, 0.045);
   }
 
   .diary-view--mobile .diary-tab-btn {
@@ -4698,7 +4735,10 @@ body.auth-pw-modal-open {
     position: relative;
   }
 
-  .diary-view--mobile .diary-mobile-entry-bar .diary-mobile-search-row .diary-search-input {
+  .diary-view--mobile
+    .diary-mobile-entry-bar
+    .diary-mobile-search-row
+    .diary-search-input {
     width: 100%;
     box-sizing: border-box;
     padding: 0.55rem 0.85rem !important;
@@ -4725,7 +4765,10 @@ body.auth-pw-modal-open {
     appearance: none;
   }
 
-  .diary-view--mobile .diary-mobile-entry-bar .diary-mobile-search-row .diary-search-input:focus {
+  .diary-view--mobile
+    .diary-mobile-entry-bar
+    .diary-mobile-search-row
+    .diary-search-input:focus {
     outline: none;
     border: none !important;
     border-bottom: none !important;
@@ -4737,7 +4780,10 @@ body.auth-pw-modal-open {
     background-size: 1.05rem 1.05rem !important;
   }
 
-  .diary-view--mobile .diary-mobile-entry-bar .diary-mobile-search-row .diary-search-input::placeholder {
+  .diary-view--mobile
+    .diary-mobile-entry-bar
+    .diary-mobile-search-row
+    .diary-search-input::placeholder {
     color: rgba(60, 60, 67, 0.52);
     opacity: 1;
   }
@@ -4749,7 +4795,8 @@ body.auth-pw-modal-open {
   }
 
   /* 할일 메인 탭(.calendar-view-todo): 일기 모바일 검색과 동일 톤 — 좁은 화면 상시 표시 */
-  .calendar-view-todo:not(.calendar-todo-sidebar-parity) .todo-list-mobile-entry-bar {
+  .calendar-view-todo:not(.calendar-todo-sidebar-parity)
+    .todo-list-mobile-entry-bar {
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -4763,7 +4810,8 @@ body.auth-pw-modal-open {
     box-sizing: border-box;
   }
 
-  .calendar-view-todo:not(.calendar-todo-sidebar-parity) .todo-list-mobile-search-row {
+  .calendar-view-todo:not(.calendar-todo-sidebar-parity)
+    .todo-list-mobile-search-row {
     padding: 0 !important;
     margin: 0;
     border: none !important;
@@ -4771,7 +4819,8 @@ body.auth-pw-modal-open {
     position: relative;
   }
 
-  .calendar-view-todo:not(.calendar-todo-sidebar-parity) .todo-list-mobile-search-input {
+  .calendar-view-todo:not(.calendar-todo-sidebar-parity)
+    .todo-list-mobile-search-input {
     width: 100%;
     box-sizing: border-box;
     padding: 0.55rem 0.85rem !important;
@@ -4821,7 +4870,8 @@ body.auth-pw-modal-open {
   }
 
   /* 모바일: 돋보기 툴바 버튼은 미사용(검색줄 상시) */
-  .calendar-view-todo:not(.calendar-todo-sidebar-parity) .todo-list-search-toggle {
+  .calendar-view-todo:not(.calendar-todo-sidebar-parity)
+    .todo-list-search-toggle {
     display: none !important;
   }
 
@@ -4947,7 +4997,10 @@ body.auth-pw-modal-open {
     background: var(--app-main-bg) !important;
   }
 
-  #app .diary-view--mobile .diary-feed-card.diary-paper-qa .diary-feed-card-title {
+  #app
+    .diary-view--mobile
+    .diary-feed-card.diary-paper-qa
+    .diary-feed-card-title {
     padding: 0 !important;
     font-size: 0.9375rem;
     font-weight: 600;
@@ -4964,7 +5017,10 @@ body.auth-pw-modal-open {
     border-bottom: 0.03125rem solid rgba(60, 60, 67, 0.09);
   }
 
-  #app .diary-view--mobile .diary-paper.diary-paper-qa .diary-qa-block:last-child {
+  #app
+    .diary-view--mobile
+    .diary-paper.diary-paper-qa
+    .diary-qa-block:last-child {
     margin-bottom: 0 !important;
     border-bottom: none !important;
   }
@@ -4988,7 +5044,10 @@ body.auth-pw-modal-open {
   }
 
   #app .diary-view--mobile .diary-paper.diary-paper-qa .diary-qa-answer,
-  #app .diary-view--mobile .diary-paper.diary-paper-qa .diary-qa-answer-readonly {
+  #app
+    .diary-view--mobile
+    .diary-paper.diary-paper-qa
+    .diary-qa-answer-readonly {
     padding: 0.45rem 1rem 0.65rem !important;
     margin: 0 !important;
     background: var(--app-main-bg) !important;
@@ -5010,7 +5069,10 @@ body.auth-pw-modal-open {
 
   /* 모바일 자유일기: 흰 카드(데스크톹 맥 본문 카드와 동일 톤) */
   #app .diary-view--mobile .diary-paper.diary-feed-card:not(.diary-paper-qa),
-  #app .diary-view--mobile .diary-content-scroll > .diary-paper:not(.diary-paper-qa):not(.diary-feed-card) {
+  #app
+    .diary-view--mobile
+    .diary-content-scroll
+    > .diary-paper:not(.diary-paper-qa):not(.diary-feed-card) {
     width: calc(100% - 1.5rem);
     max-width: none;
     margin-left: auto;
@@ -5029,7 +5091,10 @@ body.auth-pw-modal-open {
     overflow: hidden;
   }
 
-  #app .diary-view--mobile .diary-paper:not(.diary-paper-qa) .diary-paper-title-row {
+  #app
+    .diary-view--mobile
+    .diary-paper:not(.diary-paper-qa)
+    .diary-paper-title-row {
     padding-bottom: 0.625rem;
     margin-bottom: 0.75rem;
     border-bottom: 0.03125rem solid rgba(60, 60, 67, 0.13);
@@ -5101,8 +5166,16 @@ body.auth-pw-modal-open {
   }
 
   /* 오늘 해치우기 예산 표 hh:mm: 소요 시간 열과 맞춘 작은 글자(위 `#app input` 16px 보다 선택자 구체적으로 우선) */
-  #app .calendar-view .calendar-1day-view .calendar-1day-budget-column input.time-budget-scheduled-input,
-  #app .calendar-view .calendar-1day-view .calendar-1day-budget-column input.time-budget-time-input {
+  #app
+    .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    input.time-budget-scheduled-input,
+  #app
+    .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    input.time-budget-time-input {
     appearance: none;
     -webkit-appearance: none;
     font-family: inherit;
@@ -5113,8 +5186,16 @@ body.auth-pw-modal-open {
     font-size: 0.625rem !important;
     line-height: 1.3 !important;
   }
-  #app .calendar-view .calendar-1day-view .calendar-1day-budget-column input.time-budget-scheduled-input::placeholder,
-  #app .calendar-view .calendar-1day-view .calendar-1day-budget-column input.time-budget-time-input::placeholder {
+  #app
+    .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    input.time-budget-scheduled-input::placeholder,
+  #app
+    .calendar-view
+    .calendar-1day-view
+    .calendar-1day-budget-column
+    input.time-budget-time-input::placeholder {
     font-size: 0.625rem !important;
     font-weight: 400;
     line-height: 1.3 !important;
@@ -5262,7 +5343,9 @@ body.auth-pw-modal-open {
     --home-panel-inline-pad: 0px;
     --home-todo-row-line-inset: 1rem;
   }
-  .app-main:has(.home-view) .home-view-left-col > .home-live-tracker:not([hidden]) {
+  .app-main:has(.home-view)
+    .home-view-left-col
+    > .home-live-tracker:not([hidden]) {
     margin-left: 1rem;
     margin-right: 1rem;
     max-width: calc(100% - 2rem);
@@ -5331,7 +5414,9 @@ body.auth-pw-modal-open {
   }
   /* 모바일: 이벤트 영역 패딩 (위 0, 좌우 1.75rem, 아래 1rem) */
   /* 모바일: 이벤트 카드 영역 패딩 (헤더와 안 겹치게 위 여백, 좌우 1.75rem, 아래 1rem) */
-  .app-main:has(.home-view) .home-event-half .home-event-list:not(.home-event-pulse-body) {
+  .app-main:has(.home-view)
+    .home-event-half
+    .home-event-list:not(.home-event-pulse-body) {
     padding: 0.75rem 1.75rem 1rem !important;
   }
   /* 모바일: 이벤트·리마인더 헤더 패딩 0.875rem 1.75rem 0.75rem */
@@ -6103,11 +6188,13 @@ body.auth-pw-modal-open {
     border-color: color-mix(in srgb, var(--ui-btn-primary-bg) 55%, white);
     color: var(--ui-btn-primary-bg);
   }
-  .work-schedule-type-settings-modal .work-schedule-type-settings-inline-name-edit {
+  .work-schedule-type-settings-modal
+    .work-schedule-type-settings-inline-name-edit {
     width: min(100%, 12rem);
     box-sizing: border-box;
   }
-  .work-schedule-type-settings-modal .work-schedule-type-settings-name--editable {
+  .work-schedule-type-settings-modal
+    .work-schedule-type-settings-name--editable {
     cursor: text;
     user-select: none;
     -webkit-user-select: none;
@@ -6440,7 +6527,9 @@ body.auth-pw-modal-open {
     min-width: 0;
   }
   .asset-view--mobile .asset-expense-filter-bar .asset-expense-date-range-wrap,
-  .asset-expense-view--mobile .asset-expense-filter-bar .asset-expense-date-range-wrap {
+  .asset-expense-view--mobile
+    .asset-expense-filter-bar
+    .asset-expense-date-range-wrap {
     width: auto;
     max-width: 100%;
     margin-left: 0;
@@ -6456,18 +6545,35 @@ body.auth-pw-modal-open {
   }
 
   /* 모바일 가계부·현금흐름: 날짜 구간(왼쪽) + 월 네비 < >(오른쪽) — 시간가계부 필터 줄과 같은 래퍼 */
-  .asset-view--mobile .asset-expense-filter-bar .asset-expense-filter-add-row.time-ledger-filter-add-row,
-  .asset-expense-view--mobile .asset-expense-filter-bar .asset-expense-filter-add-row.time-ledger-filter-add-row,
-  .asset-view--mobile .asset-cashflow-view .asset-expense-filter-bar .asset-expense-filter-add-row.time-ledger-filter-add-row {
+  .asset-view--mobile
+    .asset-expense-filter-bar
+    .asset-expense-filter-add-row.time-ledger-filter-add-row,
+  .asset-expense-view--mobile
+    .asset-expense-filter-bar
+    .asset-expense-filter-add-row.time-ledger-filter-add-row,
+  .asset-view--mobile
+    .asset-cashflow-view
+    .asset-expense-filter-bar
+    .asset-expense-filter-add-row.time-ledger-filter-add-row {
     flex: 1 1 auto;
     min-width: 0;
     max-width: 100%;
     justify-content: space-between;
     align-items: center;
   }
-  .asset-view--mobile .asset-expense-filter-bar .asset-expense-filter-add-row .time-filter-bar,
-  .asset-expense-view--mobile .asset-expense-filter-bar .asset-expense-filter-add-row .time-filter-bar,
-  .asset-view--mobile .asset-cashflow-view .asset-expense-filter-bar .asset-expense-filter-add-row .time-filter-bar {
+  .asset-view--mobile
+    .asset-expense-filter-bar
+    .asset-expense-filter-add-row
+    .time-filter-bar,
+  .asset-expense-view--mobile
+    .asset-expense-filter-bar
+    .asset-expense-filter-add-row
+    .time-filter-bar,
+  .asset-view--mobile
+    .asset-cashflow-view
+    .asset-expense-filter-bar
+    .asset-expense-filter-add-row
+    .time-filter-bar {
     flex: 1 1 auto;
     min-width: 0;
     max-width: 100%;
@@ -6475,9 +6581,15 @@ body.auth-pw-modal-open {
     margin-right: auto;
     margin-left: 0;
   }
-  .asset-view--mobile .asset-expense-filter-bar .time-filter-nav-cluster.asset-expense-date-nav-cluster,
-  .asset-expense-view--mobile .asset-expense-filter-bar .time-filter-nav-cluster.asset-expense-date-nav-cluster,
-  .asset-view--mobile .asset-cashflow-view .time-filter-nav-cluster.asset-expense-date-nav-cluster {
+  .asset-view--mobile
+    .asset-expense-filter-bar
+    .time-filter-nav-cluster.asset-expense-date-nav-cluster,
+  .asset-expense-view--mobile
+    .asset-expense-filter-bar
+    .time-filter-nav-cluster.asset-expense-date-nav-cluster,
+  .asset-view--mobile
+    .asset-cashflow-view
+    .time-filter-nav-cluster.asset-expense-date-nav-cluster {
     width: 100%;
     justify-content: space-between;
     align-items: center;
@@ -6485,7 +6597,9 @@ body.auth-pw-modal-open {
     gap: 0.3rem;
   }
   .asset-view--mobile .asset-expense-filter-bar .asset-expense-month-shift-nav,
-  .asset-expense-view--mobile .asset-expense-filter-bar .asset-expense-month-shift-nav,
+  .asset-expense-view--mobile
+    .asset-expense-filter-bar
+    .asset-expense-month-shift-nav,
   .asset-view--mobile .asset-cashflow-view .asset-expense-month-shift-nav {
     flex-shrink: 0;
   }
@@ -6619,7 +6733,9 @@ body.auth-pw-modal-open {
     opacity: 0.01;
   }
   .asset-view--mobile .asset-expense-filter-bar .asset-expense-filter-actions,
-  .asset-expense-view--mobile .asset-expense-filter-bar .asset-expense-filter-actions {
+  .asset-expense-view--mobile
+    .asset-expense-filter-bar
+    .asset-expense-filter-actions {
     gap: 0.14rem;
     flex-shrink: 0;
     margin-left: 0;
@@ -6631,18 +6747,26 @@ body.auth-pw-modal-open {
     box-sizing: border-box;
     line-height: 0;
   }
-  .asset-view--mobile .asset-expense-filter-bar .asset-expense-settings-btn .asset-expense-settings-icon {
+  .asset-view--mobile
+    .asset-expense-filter-bar
+    .asset-expense-settings-btn
+    .asset-expense-settings-icon {
     display: block;
     width: 1rem;
     height: 1rem;
   }
-  .asset-view--mobile .asset-expense-filter-actions .todo-list-toolbar-quick-add.time-ledger-add-plus-btn.todo-add-btn {
+  .asset-view--mobile
+    .asset-expense-filter-actions
+    .todo-list-toolbar-quick-add.time-ledger-add-plus-btn.todo-add-btn {
     width: 1.75rem !important;
     height: 1.75rem !important;
     min-width: 1.75rem !important;
     min-height: 1.75rem !important;
   }
-  .asset-view--mobile .asset-expense-filter-actions .todo-list-toolbar-quick-add.time-ledger-add-plus-btn.todo-add-btn svg {
+  .asset-view--mobile
+    .asset-expense-filter-actions
+    .todo-list-toolbar-quick-add.time-ledger-add-plus-btn.todo-add-btn
+    svg {
     width: 1rem !important;
     height: 1rem !important;
   }
@@ -6679,7 +6803,6 @@ body.auth-pw-modal-open {
     padding-left: 1.75rem;
     padding-right: 1.75rem;
   }
-
 
   /* 모바일: 자산관리 상단 제목 영역 없음 — 본문이 너무 붙지 않게 */
   .asset-view--mobile {
@@ -7042,8 +7165,7 @@ body.auth-pw-modal-open {
   /*
    * 과제 기록 모달(모바일): YYYY.MM.DD - 시작 - 마감 한 줄 · 동일 글자 크기
    */
-  #app .time-task-setup-modal.time-task-log-modal
-    .time-task-log-datetime-card {
+  #app .time-task-setup-modal.time-task-log-modal .time-task-log-datetime-card {
     overflow: hidden !important;
     padding: 0.4rem 0.45rem !important;
     box-sizing: border-box !important;
@@ -7051,12 +7173,15 @@ body.auth-pw-modal-open {
     width: 100% !important;
     max-width: 100% !important;
   }
-  #app .time-task-setup-modal.time-task-log-modal
+  #app
+    .time-task-setup-modal.time-task-log-modal
     .time-task-log-datetime-card
     .time-task-log-datetime-input-row {
     display: grid !important;
-    grid-template-columns:
-      minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr) !important;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(
+        0,
+        1fr
+      ) !important;
     align-items: center !important;
     justify-items: center !important;
     column-gap: 0.35rem !important;
@@ -7066,14 +7191,16 @@ body.auth-pw-modal-open {
     max-width: 100% !important;
     box-sizing: border-box !important;
   }
-  #app .time-task-setup-modal.time-task-log-modal
+  #app
+    .time-task-setup-modal.time-task-log-modal
     .time-task-log-datetime-card
     .time-task-log-datetime-input-row
     > * {
     grid-row: auto !important;
     grid-column: auto !important;
   }
-  #app .time-task-setup-modal.time-task-log-modal
+  #app
+    .time-task-setup-modal.time-task-log-modal
     .time-task-log-datetime-card
     .time-task-log-datetime-input-row
     .time-task-log-date-native-wrap {
@@ -7089,16 +7216,16 @@ body.auth-pw-modal-open {
     box-sizing: border-box !important;
     font-size: 0.8125rem !important;
   }
-  #app
-    .time-task-setup-modal.time-task-log-modal
-    .time-task-log-date-overlay {
+  #app .time-task-setup-modal.time-task-log-modal .time-task-log-date-overlay {
     font-size: 0.8125rem !important;
   }
-  #app .time-task-setup-modal.time-task-log-modal
+  #app
+    .time-task-setup-modal.time-task-log-modal
     .time-task-log-datetime-card
     .time-task-log-datetime-input-row
     input[type="date"],
-  #app .time-task-setup-modal.time-task-log-modal
+  #app
+    .time-task-setup-modal.time-task-log-modal
     .time-task-log-datetime-card
     .time-task-log-datetime-input-row
     input.time-task-log-date-start {
@@ -7113,11 +7240,13 @@ body.auth-pw-modal-open {
     line-height: 1.2 !important;
     box-sizing: border-box !important;
   }
-  #app .time-task-setup-modal.time-task-log-modal
+  #app
+    .time-task-setup-modal.time-task-log-modal
     .time-task-log-datetime-card
     .time-task-log-datetime-input-row
     .time-task-log-datetime-sep:first-of-type,
-  #app .time-task-setup-modal.time-task-log-modal
+  #app
+    .time-task-setup-modal.time-task-log-modal
     .time-task-log-datetime-card
     .time-task-log-datetime-input-row
     .time-task-log-datetime-sep:last-of-type {
@@ -7132,11 +7261,13 @@ body.auth-pw-modal-open {
     line-height: 1.2 !important;
     white-space: nowrap !important;
   }
-  #app .time-task-setup-modal.time-task-log-modal
+  #app
+    .time-task-setup-modal.time-task-log-modal
     .time-task-log-datetime-card
     .time-task-log-datetime-input-row
     input.time-task-log-time-start,
-  #app .time-task-setup-modal.time-task-log-modal
+  #app
+    .time-task-setup-modal.time-task-log-modal
     .time-task-log-datetime-card
     .time-task-log-datetime-input-row
     input.time-task-log-time-end {
@@ -7509,7 +7640,8 @@ body.auth-pw-modal-open {
   .calendar-view-with-subtabs .calendar-sub-tabs {
     display: flex !important;
   }
-  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+  .calendar-view--mobile-schedule
+    .calendar-view-with-subtabs
     .calendar-sub-tabs-bar
     .calendar-sub-tabs-segment.time-view-tabs--segmented {
     display: grid !important;
@@ -7610,7 +7742,9 @@ body.auth-pw-modal-open {
     --cal-1week-block-inset-y: 0;
   }
   /* 종일 행 border-bottom 과 시간 영역 border-top 이 겹쳐 이중 가늠선처럼 보이지 않게 */
-  .calendar-view-with-subtabs .calendar-1week-view .calendar-1week-google-scroll {
+  .calendar-view-with-subtabs
+    .calendar-1week-view
+    .calendar-1week-google-scroll {
     border-top: none;
   }
   .calendar-view-with-subtabs .calendar-1week-google-hour-label {
@@ -7636,8 +7770,7 @@ body.auth-pw-modal-open {
     line-height: 1.08 !important;
   }
   /* 스택형(긴 일정): 짧은 블록 높이에서 제목 multi-line과 시간 줄 세로 겹침 방지 */
-  .calendar-view-with-subtabs
-    .calendar-1week-google-block-inner--stacked-time {
+  .calendar-view-with-subtabs .calendar-1week-google-block-inner--stacked-time {
     gap: 0.08rem !important;
     justify-content: flex-start !important;
   }
@@ -7737,7 +7870,8 @@ body.auth-pw-modal-open {
   }
 
   /* 모바일 일정(하단 탭): 할 일 목록과 같은 느낌의 2열(가운데 세그먼트 탭 · 오른쪽 날짜/이동) */
-  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+  .calendar-view--mobile-schedule
+    .calendar-view-with-subtabs
     > .calendar-sub-tabs-bar.calendar-sub-tabs-bar--schedule-mobile {
     order: 0;
     flex-shrink: 0;
@@ -7778,7 +7912,8 @@ body.auth-pw-modal-open {
     min-width: 0;
   }
 
-  .calendar-view--mobile-schedule .calendar-sub-tabs-strip--center
+  .calendar-view--mobile-schedule
+    .calendar-sub-tabs-strip--center
     .calendar-sub-tabs-segment.time-view-tabs--segmented {
     max-width: min(22rem, calc(100vw - 7rem));
   }
@@ -7843,12 +7978,16 @@ body.auth-pw-modal-open {
   }
 
   /* 일정 서브탭 = 할일 세그먼트(회색 알약·흰 칩): 전역 .calendar-sub-tabs 바·.time-view-tab 밑줄 덮기 */
-  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+  .calendar-view--mobile-schedule
+    .calendar-view-with-subtabs
     .calendar-sub-tabs-segment.calendar-schedule-segment-tabs.time-view-tabs--segmented {
     --time-segment-track: #f2f7f9;
     position: relative;
     display: grid !important;
-    grid-template-columns: repeat(var(--time-segment-count, 4), minmax(0, auto)) !important;
+    grid-template-columns: repeat(
+      var(--time-segment-count, 4),
+      minmax(0, auto)
+    ) !important;
     gap: 0 !important;
     align-items: stretch !important;
     align-content: stretch !important;
@@ -7872,7 +8011,8 @@ body.auth-pw-modal-open {
       0 0 0 0.5px rgba(0, 0, 0, 0.04);
   }
 
-  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+  .calendar-view--mobile-schedule
+    .calendar-view-with-subtabs
     .calendar-sub-tabs-segment.calendar-schedule-segment-tabs.time-view-tabs--segmented
     > .time-view-tabs-thumb {
     grid-row: 1;
@@ -7890,35 +8030,40 @@ body.auth-pw-modal-open {
     pointer-events: none;
   }
 
-  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+  .calendar-view--mobile-schedule
+    .calendar-view-with-subtabs
     .calendar-sub-tabs-segment
     > .time-view-tab.calendar-sub-tab:nth-child(2) {
     grid-column: 1;
     grid-row: 1;
     z-index: 1;
   }
-  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+  .calendar-view--mobile-schedule
+    .calendar-view-with-subtabs
     .calendar-sub-tabs-segment
     > .time-view-tab.calendar-sub-tab:nth-child(3) {
     grid-column: 2;
     grid-row: 1;
     z-index: 1;
   }
-  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+  .calendar-view--mobile-schedule
+    .calendar-view-with-subtabs
     .calendar-sub-tabs-segment
     > .time-view-tab.calendar-sub-tab:nth-child(4) {
     grid-column: 3;
     grid-row: 1;
     z-index: 1;
   }
-  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+  .calendar-view--mobile-schedule
+    .calendar-view-with-subtabs
     .calendar-sub-tabs-segment
     > .time-view-tab.calendar-sub-tab:nth-child(5) {
     grid-column: 4;
     grid-row: 1;
     z-index: 1;
   }
-  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+  .calendar-view--mobile-schedule
+    .calendar-view-with-subtabs
     .calendar-sub-tabs-segment
     > .time-view-tab.calendar-sub-tab:nth-child(6) {
     grid-column: 5;
@@ -7926,7 +8071,8 @@ body.auth-pw-modal-open {
     z-index: 1;
   }
 
-  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+  .calendar-view--mobile-schedule
+    .calendar-view-with-subtabs
     .calendar-sub-tabs-segment.time-view-tabs--segmented
     .calendar-sub-tab.time-view-tab {
     display: flex !important;
@@ -7951,7 +8097,8 @@ body.auth-pw-modal-open {
     outline: none !important;
   }
 
-  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+  .calendar-view--mobile-schedule
+    .calendar-view-with-subtabs
     .calendar-sub-tabs-segment.time-view-tabs--segmented
     .calendar-sub-tab.time-view-tab.active {
     color: #163a46 !important;
@@ -7961,10 +8108,12 @@ body.auth-pw-modal-open {
     margin-bottom: 0 !important;
   }
 
-  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+  .calendar-view--mobile-schedule
+    .calendar-view-with-subtabs
     .calendar-sub-tabs-segment
     .calendar-sub-tab:not(:last-child)::after,
-  .calendar-view--mobile-schedule .calendar-view-with-subtabs
+  .calendar-view--mobile-schedule
+    .calendar-view-with-subtabs
     .calendar-sub-tabs-segment
     .calendar-sub-tab.active
     + .calendar-sub-tab::before {
@@ -8218,7 +8367,8 @@ body.auth-pw-modal-open {
     align-self: stretch;
   }
   /* 월간 근무유형: 모바일은 칩 글자·패딩만 축소 */
-  .calendar-view--mobile-workschedule .work-schedule-monthly-type-pill:not(.is-placeholder) {
+  .calendar-view--mobile-workschedule
+    .work-schedule-monthly-type-pill:not(.is-placeholder) {
     font-size: 0.52rem;
     padding: 0.1rem 0.32rem;
   }
@@ -8362,8 +8512,12 @@ body.auth-pw-modal-open {
     opacity: 1 !important;
     box-shadow: 0 0 0 0.0625rem rgba(42, 56, 40, 0.35) !important;
   }
-  .calendar-view .calendar-monthly-span-bar--todo .calendar-monthly-span-bar-checkbox,
-  .calendar-view .calendar-monthly-span-bar--range .calendar-monthly-span-bar-checkbox {
+  .calendar-view
+    .calendar-monthly-span-bar--todo
+    .calendar-monthly-span-bar-checkbox,
+  .calendar-view
+    .calendar-monthly-span-bar--range
+    .calendar-monthly-span-bar-checkbox {
     width: 0.3rem !important;
     min-width: 0.3rem !important;
     opacity: 1 !important;
@@ -8390,7 +8544,9 @@ body.auth-pw-modal-open {
     padding-left: 0.1rem !important;
   }
   .calendar-view
-    .calendar-monthly-span-bar--schedule-strip:not(.calendar-monthly-span-bar--todo) {
+    .calendar-monthly-span-bar--schedule-strip:not(
+      .calendar-monthly-span-bar--todo
+    ) {
     border-left: none !important;
     padding-left: 0.18rem !important;
   }
@@ -8455,8 +8611,7 @@ body.auth-pw-modal-open {
   }
   .calendar-day-expand-bubble--mobile .calendar-day-expand-checkbox.checked {
     border: none !important;
-    background: rgba(26, 34, 24, 0.88) var(--cb-check-bg) center/65%
-      no-repeat;
+    background: rgba(26, 34, 24, 0.88) var(--cb-check-bg) center/65% no-repeat;
   }
 
   .calendar-day-expand-bubble--mobile .calendar-day-expand-item:active {
@@ -9014,9 +9169,9 @@ body.auth-pw-modal-open {
     height: auto !important;
     grid-template-rows: repeat(24, minmax(2.25rem, auto)) !important;
   }
-  .calendar-view .calendar-1day-view .calendar-1day-time-table:not(
-      .calendar-1day-time-table--compare
-    ) {
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-time-table:not(.calendar-1day-time-table--compare) {
     min-height: auto !important;
     height: auto !important;
     grid-template-rows: repeat(24, minmax(2.25rem, auto)) !important;
@@ -9046,7 +9201,9 @@ body.auth-pw-modal-open {
 
   /* 겹침 반열: 좁은 칸에서 시간 라벨 제거(JS) — 칩 밖으로 삐져나옴 방지·과제명만 작게 */
   .calendar-view .calendar-1day-view .calendar-1day-time-slot-fill--lane,
-  .app-main:has(.home-view) .home-embed-1day .calendar-1day-time-slot-fill--lane {
+  .app-main:has(.home-view)
+    .home-embed-1day
+    .calendar-1day-time-slot-fill--lane {
     overflow: hidden !important;
   }
   .calendar-view
@@ -9082,7 +9239,9 @@ body.auth-pw-modal-open {
     min-width: 0;
     width: 100%;
   }
-  .calendar-view .calendar-1day-view .calendar-1day-time-slot-label-name--lane-small,
+  .calendar-view
+    .calendar-1day-view
+    .calendar-1day-time-slot-label-name--lane-small,
   .app-main:has(.home-view)
     .home-embed-1day
     .calendar-1day-time-slot-label-name--lane-small {
@@ -9859,7 +10018,8 @@ body.auth-pw-modal-open {
     padding: 0.15rem 0 0.35rem;
     gap: 0.28rem;
   }
-  .asset-view--mobile .asset-expense-card-inner:not(.asset-expense-card-inner--ledger) {
+  .asset-view--mobile
+    .asset-expense-card-inner:not(.asset-expense-card-inner--ledger) {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
@@ -9869,14 +10029,18 @@ body.auth-pw-modal-open {
     column-gap: 0.2rem;
     padding: 0.2rem 0.4rem 0.2rem 0.45rem;
   }
-  .asset-view--mobile .asset-expense-cards-list .asset-expense-card.asset-expense-row {
+  .asset-view--mobile
+    .asset-expense-cards-list
+    .asset-expense-card.asset-expense-row {
     border: 1px solid var(--line-l2-color);
     border-radius: 0.35rem;
     margin: 0 0 0.28rem 0;
     box-shadow: 0 0.03rem 0.1rem rgba(0, 0, 0, 0.04);
     background: var(--content-bg, #f5f5f7);
   }
-  .asset-view--mobile .asset-expense-card-inner:not(.asset-expense-card-inner--ledger) > div {
+  .asset-view--mobile
+    .asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
+    > div {
     display: inline-flex !important;
     align-items: center;
     position: static !important;
@@ -9891,13 +10055,17 @@ body.auth-pw-modal-open {
     padding: 0 !important;
     text-align: left;
   }
-  .asset-view--mobile .asset-expense-card-inner:not(.asset-expense-card-inner--ledger) .asset-expense-cell-name {
+  .asset-view--mobile
+    .asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
+    .asset-expense-cell-name {
     order: 1;
     flex: 1 1 3rem;
     min-width: 0;
     max-width: 100%;
   }
-  .asset-view--mobile .asset-expense-card-inner:not(.asset-expense-card-inner--ledger) .asset-expense-cell-amount {
+  .asset-view--mobile
+    .asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
+    .asset-expense-cell-amount {
     order: 2;
     flex: 0 0 auto;
   }
@@ -9922,14 +10090,18 @@ body.auth-pw-modal-open {
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .asset-view--mobile .asset-expense-card-inner:not(.asset-expense-card-inner--ledger) .asset-expense-cell-actions {
+  .asset-view--mobile
+    .asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
+    .asset-expense-cell-actions {
     order: 3;
     flex: 0 0 auto;
     margin-left: auto;
     text-align: right;
     justify-content: flex-end;
   }
-  .asset-view--mobile .asset-expense-card-inner:not(.asset-expense-card-inner--ledger) .asset-expense-cell-date {
+  .asset-view--mobile
+    .asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
+    .asset-expense-cell-date {
     order: 4;
     flex: 0 0 4.4rem;
     max-width: 4.4rem;
@@ -9944,10 +10116,18 @@ body.auth-pw-modal-open {
     font-size: 0.56rem;
     font-weight: 500;
   }
-  .asset-view--mobile .asset-expense-card-inner:not(.asset-expense-card-inner--ledger) .asset-expense-cell-flow-type,
-  .asset-view--mobile .asset-expense-card-inner:not(.asset-expense-card-inner--ledger) .asset-expense-cell-classification,
-  .asset-view--mobile .asset-expense-card-inner:not(.asset-expense-card-inner--ledger) .asset-expense-cell-payment,
-  .asset-view--mobile .asset-expense-card-inner:not(.asset-expense-card-inner--ledger) .asset-expense-cell-category {
+  .asset-view--mobile
+    .asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
+    .asset-expense-cell-flow-type,
+  .asset-view--mobile
+    .asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
+    .asset-expense-cell-classification,
+  .asset-view--mobile
+    .asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
+    .asset-expense-cell-payment,
+  .asset-view--mobile
+    .asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
+    .asset-expense-cell-category {
     order: 5;
     flex: 0 1 auto;
     min-width: 0;
@@ -9974,7 +10154,9 @@ body.auth-pw-modal-open {
     font-size: 0.54rem;
     padding: 0.06rem 0.24rem;
   }
-  .asset-view--mobile .asset-expense-card-inner:not(.asset-expense-card-inner--ledger) .asset-expense-cell-memo {
+  .asset-view--mobile
+    .asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
+    .asset-expense-cell-memo {
     order: 6;
     flex: 1 0 100%;
     min-width: 0;
@@ -10035,14 +10217,20 @@ body.auth-pw-modal-open {
   .asset-view--mobile .asset-expense-card-inner--ledger {
     padding: 0.26rem 0.34rem;
     column-gap: 0.24rem;
-    grid-template-columns: minmax(0, 1fr) minmax(3.85rem, 4.65rem) minmax(3.55rem, 4.05rem) minmax(5.25rem, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(3.85rem, 4.65rem) minmax(
+        3.55rem,
+        4.05rem
+      ) minmax(5.25rem, 1fr);
     align-items: center;
   }
   .asset-view--mobile .asset-expense-ledger-column-head {
     padding: 0.28rem 0.34rem;
     column-gap: 0.24rem;
     font-size: var(--fs-caption);
-    grid-template-columns: minmax(0, 1fr) minmax(3.85rem, 4.65rem) minmax(3.55rem, 4.05rem) minmax(5.25rem, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(3.85rem, 4.65rem) minmax(
+        3.55rem,
+        4.05rem
+      ) minmax(5.25rem, 1fr);
     border-top-left-radius: 0.55rem !important;
     border-top-right-radius: 0.55rem !important;
     border-bottom-left-radius: 0 !important;
@@ -10051,12 +10239,20 @@ body.auth-pw-modal-open {
     -webkit-border-top-right-radius: 0.55rem !important;
     overflow: hidden;
   }
-  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-ledger-col--detail,
-  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-ledger-col--tags {
+  .asset-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-ledger-col--detail,
+  .asset-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-ledger-col--tags {
     min-width: 0;
   }
-  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-ledger-col--date,
-  .asset-view--mobile .asset-expense-ledger-column-head .asset-expense-ledger-col--date {
+  .asset-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-ledger-col--date,
+  .asset-view--mobile
+    .asset-expense-ledger-column-head
+    .asset-expense-ledger-col--date {
     padding-left: 0.22rem;
     box-sizing: border-box;
     min-width: 0;
@@ -10084,54 +10280,124 @@ body.auth-pw-modal-open {
     max-height: 1.05rem;
   }
   /* 레저 행: 내역·금액 — 11px 상속 차단(게시판 0.6875rem 제거), 열·입력 모두 9px 통일 */
-  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-ledger-col--detail,
-  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-ledger-col--amount,
-  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-ledger-detail-inner,
-  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-ledger-text-stack,
-  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-input-name,
-  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-name,
-  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-name .asset-expense-input-name,
-  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-input-amount,
-  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-amount,
-  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-amount .asset-expense-input-amount,
-  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-ledger-col--detail,
-  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-ledger-col--amount,
-  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-ledger-detail-inner,
-  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-ledger-text-stack,
-  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-input-name,
-  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-name,
-  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-name .asset-expense-input-name,
-  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-input-amount,
-  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-amount,
-  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-amount .asset-expense-input-amount {
+  .asset-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-ledger-col--detail,
+  .asset-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-ledger-col--amount,
+  .asset-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-ledger-detail-inner,
+  .asset-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-ledger-text-stack,
+  .asset-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-input-name,
+  .asset-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-cell-name,
+  .asset-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-cell-name
+    .asset-expense-input-name,
+  .asset-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-input-amount,
+  .asset-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-cell-amount,
+  .asset-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-cell-amount
+    .asset-expense-input-amount,
+  .asset-expense-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-ledger-col--detail,
+  .asset-expense-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-ledger-col--amount,
+  .asset-expense-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-ledger-detail-inner,
+  .asset-expense-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-ledger-text-stack,
+  .asset-expense-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-input-name,
+  .asset-expense-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-cell-name,
+  .asset-expense-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-cell-name
+    .asset-expense-input-name,
+  .asset-expense-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-input-amount,
+  .asset-expense-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-cell-amount,
+  .asset-expense-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-cell-amount
+    .asset-expense-input-amount {
     font-size: 0.5625rem !important;
     line-height: 1.3 !important;
     font-weight: 500 !important;
     -webkit-text-size-adjust: 100%;
   }
-  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-amount .asset-expense-input-amount,
-  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-amount .asset-expense-input-amount {
+  .asset-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-cell-amount
+    .asset-expense-input-amount,
+  .asset-expense-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-cell-amount
+    .asset-expense-input-amount {
     font-weight: 600 !important;
     font-variant-numeric: tabular-nums;
   }
-  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-date,
-  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-date .asset-expense-date-display,
-  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-date,
-  .asset-expense-view--mobile .asset-expense-card-inner--ledger .asset-expense-cell-date .asset-expense-date-display {
+  .asset-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-cell-date,
+  .asset-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-cell-date
+    .asset-expense-date-display,
+  .asset-expense-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-cell-date,
+  .asset-expense-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-cell-date
+    .asset-expense-date-display {
     font-size: var(--fs-caption) !important;
     line-height: 1.25;
   }
-  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-flow-type-display,
-  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-classification-display,
-  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-category-display-readonly,
-  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-payment-display {
+  .asset-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-flow-type-display,
+  .asset-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-classification-display,
+  .asset-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-category-display-readonly,
+  .asset-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-payment-display {
     font-size: 0.5rem !important;
     padding: 0.04rem 0.18rem !important;
     border-radius: 999px !important;
     -webkit-border-radius: 999px !important;
     line-height: 1.25;
   }
-  .asset-view--mobile .asset-expense-card-inner--ledger .asset-expense-ledger-line--chips {
+  .asset-view--mobile
+    .asset-expense-card-inner--ledger
+    .asset-expense-ledger-line--chips {
     flex-wrap: wrap;
     gap: 0.1rem;
     align-items: center;
@@ -10142,7 +10408,10 @@ body.auth-pw-modal-open {
     min-width: 0;
     box-sizing: border-box;
   }
-  .asset-view--mobile .asset-expense-cards-list .asset-expense-ledger-day-rows .asset-expense-card.asset-expense-row {
+  .asset-view--mobile
+    .asset-expense-cards-list
+    .asset-expense-ledger-day-rows
+    .asset-expense-card.asset-expense-row {
     border-radius: 0;
   }
   .asset-view--mobile .asset-expense-summary-bar {
@@ -10180,8 +10449,14 @@ body.auth-pw-modal-open {
     padding: 0.38rem 0.55rem 0.34rem;
     font-size: 0.76rem !important;
   }
-  .asset-view--mobile .asset-expense-filter-bar .time-filter-month-wrap .asset-cashflow-month-display,
-  .asset-view--mobile .asset-expense-filter-bar .time-filter-month-wrap .asset-cashflow-year-display {
+  .asset-view--mobile
+    .asset-expense-filter-bar
+    .time-filter-month-wrap
+    .asset-cashflow-month-display,
+  .asset-view--mobile
+    .asset-expense-filter-bar
+    .time-filter-month-wrap
+    .asset-cashflow-year-display {
     font-size: 0.72rem !important;
     font-weight: 600;
   }
@@ -10689,28 +10964,40 @@ body.auth-pw-modal-open {
   }
 
   /* 모바일: 시간 기록·보고서·회고가 아닌 탭만 네이티브 날짜 표시 + 연도 숨김(WebKit) */
-  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
+  .time-ledger-view:not([data-time-content-view="all"]):not(
+      [data-time-content-view="audit"]
+    ):not([data-time-content-view="retrospect"])
     .time-filter-nav-cluster
     input.time-filter-start-date::-webkit-datetime-edit-year-field,
-  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
+  .time-ledger-view:not([data-time-content-view="all"]):not(
+      [data-time-content-view="audit"]
+    ):not([data-time-content-view="retrospect"])
     .time-filter-nav-cluster
     input.time-filter-end-date::-webkit-datetime-edit-year-field {
     -webkit-appearance: none;
     display: none;
   }
-  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
+  .time-ledger-view:not([data-time-content-view="all"]):not(
+      [data-time-content-view="audit"]
+    ):not([data-time-content-view="retrospect"])
     .time-filter-nav-cluster
     input.time-filter-start-date::-webkit-datetime-edit-text,
-  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
+  .time-ledger-view:not([data-time-content-view="all"]):not(
+      [data-time-content-view="audit"]
+    ):not([data-time-content-view="retrospect"])
     .time-filter-nav-cluster
     input.time-filter-end-date::-webkit-datetime-edit-text {
     -webkit-padding-start: 0;
   }
-  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
+  .time-ledger-view:not([data-time-content-view="all"]):not(
+      [data-time-content-view="audit"]
+    ):not([data-time-content-view="retrospect"])
     .time-ledger-mobile-toolbar-right
     .time-filter-nav-cluster
     input.time-filter-start-date::-webkit-datetime-edit-fields-wrapper,
-  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
+  .time-ledger-view:not([data-time-content-view="all"]):not(
+      [data-time-content-view="audit"]
+    ):not([data-time-content-view="retrospect"])
     .time-ledger-mobile-toolbar-right
     .time-filter-nav-cluster
     input.time-filter-end-date::-webkit-datetime-edit-fields-wrapper {
@@ -10720,21 +11007,29 @@ body.auth-pw-modal-open {
     gap: 0.1em;
     min-width: 0;
   }
-  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
+  .time-ledger-view:not([data-time-content-view="all"]):not(
+      [data-time-content-view="audit"]
+    ):not([data-time-content-view="retrospect"])
     .time-ledger-mobile-toolbar-right
     .time-filter-nav-cluster
     input.time-filter-start-date::-webkit-datetime-edit-text,
-  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
+  .time-ledger-view:not([data-time-content-view="all"]):not(
+      [data-time-content-view="audit"]
+    ):not([data-time-content-view="retrospect"])
     .time-ledger-mobile-toolbar-right
     .time-filter-nav-cluster
     input.time-filter-end-date::-webkit-datetime-edit-text {
     display: none;
   }
-  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
+  .time-ledger-view:not([data-time-content-view="all"]):not(
+      [data-time-content-view="audit"]
+    ):not([data-time-content-view="retrospect"])
     .time-ledger-mobile-toolbar-right
     .time-filter-range-wrap
     .time-filter-start-date,
-  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
+  .time-ledger-view:not([data-time-content-view="all"]):not(
+      [data-time-content-view="audit"]
+    ):not([data-time-content-view="retrospect"])
     .time-ledger-mobile-toolbar-right
     .time-filter-range-wrap
     .time-filter-end-date {
@@ -11575,28 +11870,40 @@ body.auth-pw-modal-open {
   }
 
   /* 모바일: 시간 기록·보고서·회고가 아닌 탭만 네이티브 날짜 표시 + 연도 숨김(WebKit) */
-  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
+  .time-ledger-view:not([data-time-content-view="all"]):not(
+      [data-time-content-view="audit"]
+    ):not([data-time-content-view="retrospect"])
     .time-filter-nav-cluster
     input.time-filter-start-date::-webkit-datetime-edit-year-field,
-  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
+  .time-ledger-view:not([data-time-content-view="all"]):not(
+      [data-time-content-view="audit"]
+    ):not([data-time-content-view="retrospect"])
     .time-filter-nav-cluster
     input.time-filter-end-date::-webkit-datetime-edit-year-field {
     -webkit-appearance: none;
     display: none;
   }
-  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
+  .time-ledger-view:not([data-time-content-view="all"]):not(
+      [data-time-content-view="audit"]
+    ):not([data-time-content-view="retrospect"])
     .time-filter-nav-cluster
     input.time-filter-start-date::-webkit-datetime-edit-text,
-  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
+  .time-ledger-view:not([data-time-content-view="all"]):not(
+      [data-time-content-view="audit"]
+    ):not([data-time-content-view="retrospect"])
     .time-filter-nav-cluster
     input.time-filter-end-date::-webkit-datetime-edit-text {
     -webkit-padding-start: 0;
   }
-  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
+  .time-ledger-view:not([data-time-content-view="all"]):not(
+      [data-time-content-view="audit"]
+    ):not([data-time-content-view="retrospect"])
     .time-ledger-mobile-toolbar-right
     .time-filter-nav-cluster
     input.time-filter-start-date::-webkit-datetime-edit-fields-wrapper,
-  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
+  .time-ledger-view:not([data-time-content-view="all"]):not(
+      [data-time-content-view="audit"]
+    ):not([data-time-content-view="retrospect"])
     .time-ledger-mobile-toolbar-right
     .time-filter-nav-cluster
     input.time-filter-end-date::-webkit-datetime-edit-fields-wrapper {
@@ -11606,21 +11913,29 @@ body.auth-pw-modal-open {
     gap: 0.1em;
     min-width: 0;
   }
-  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
+  .time-ledger-view:not([data-time-content-view="all"]):not(
+      [data-time-content-view="audit"]
+    ):not([data-time-content-view="retrospect"])
     .time-ledger-mobile-toolbar-right
     .time-filter-nav-cluster
     input.time-filter-start-date::-webkit-datetime-edit-text,
-  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
+  .time-ledger-view:not([data-time-content-view="all"]):not(
+      [data-time-content-view="audit"]
+    ):not([data-time-content-view="retrospect"])
     .time-ledger-mobile-toolbar-right
     .time-filter-nav-cluster
     input.time-filter-end-date::-webkit-datetime-edit-text {
     display: none;
   }
-  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
+  .time-ledger-view:not([data-time-content-view="all"]):not(
+      [data-time-content-view="audit"]
+    ):not([data-time-content-view="retrospect"])
     .time-ledger-mobile-toolbar-right
     .time-filter-range-wrap
     .time-filter-start-date,
-  .time-ledger-view:not([data-time-content-view="all"]):not([data-time-content-view="audit"]):not([data-time-content-view="retrospect"])
+  .time-ledger-view:not([data-time-content-view="all"]):not(
+      [data-time-content-view="audit"]
+    ):not([data-time-content-view="retrospect"])
     .time-ledger-mobile-toolbar-right
     .time-filter-range-wrap
     .time-filter-end-date {
@@ -12180,7 +12495,9 @@ body.auth-pw-modal-open {
 }
 
 /* 홈 임베드 1일 타임라인: 왼쪽 바와 텍스트 여백(:has 미지원·선택자 단순화 대비) */
-.home-embed-1day .calendar-1day-time-slot-fill--block .calendar-1day-time-slot-fill-seg {
+.home-embed-1day
+  .calendar-1day-time-slot-fill--block
+  .calendar-1day-time-slot-fill-seg {
   padding-left: 1rem !important;
 }
 
@@ -12259,7 +12576,8 @@ body.auth-pw-modal-open {
 }
 .calendar-1day-timeline-card {
   border: 1px solid rgba(0, 0, 0, 0.1);
-  border-left: 3px solid var(--calendar-timeline-stripe, var(--ui-btn-primary-bg));
+  border-left: 3px solid
+    var(--calendar-timeline-stripe, var(--ui-btn-primary-bg));
   border-radius: 0.5rem !important;
   background: var(--calendar-timeline-card-bg, #ffffff);
   padding: 0.55rem 0.6rem 0.5rem;
@@ -12351,7 +12669,8 @@ body.auth-pw-modal-open {
 .calendar-1day-timeline-card--ledger-missed .calendar-1day-timeline-card-title,
 .calendar-1day-timeline-card--ledger-missed .calendar-1day-timeline-card-time,
 .calendar-1day-timeline-card--ledger-missed .calendar-1day-timeline-card-badge,
-.calendar-1day-timeline-card--ledger-missed .calendar-1day-timeline-card-duration,
+.calendar-1day-timeline-card--ledger-missed
+  .calendar-1day-timeline-card-duration,
 .calendar-1day-timeline-card--ledger-missed .calendar-1day-timeline-card-memo {
   color: #9ca3af;
   text-decoration: none;
@@ -12464,9 +12783,7 @@ body.auth-pw-modal-open {
 .app-main:has(.home-view) .home-1day-timeline-mount .calendar-1day-divider {
   display: none !important;
 }
-.app-main:has(.home-view)
-  .home-1day-timeline-mount
-  .calendar-1day-time-column {
+.app-main:has(.home-view) .home-1day-timeline-mount .calendar-1day-time-column {
   flex: 1 1 auto !important;
   width: 100% !important;
   max-width: 100% !important;
@@ -12884,13 +13201,16 @@ body.auth-pw-modal-open {
     min-width: 0;
     transition: width 0.35s ease;
   }
-  .app-main:has(.home-view) .home-event-task-bar-fill--actual.home-event-task-bar-fill--over {
+  .app-main:has(.home-view)
+    .home-event-task-bar-fill--actual.home-event-task-bar-fill--over {
     background: #94352c !important;
   }
-  .app-main:has(.home-view) .home-event-task-bar-fill--actual.home-event-task-bar-fill--equal {
+  .app-main:has(.home-view)
+    .home-event-task-bar-fill--actual.home-event-task-bar-fill--equal {
     background: #294f86 !important;
   }
-  .app-main:has(.home-view) .home-event-task-bar-fill--actual.home-event-task-bar-fill--under {
+  .app-main:has(.home-view)
+    .home-event-task-bar-fill--actual.home-event-task-bar-fill--under {
     background: #2f6b46 !important;
   }
   .app-main:has(.home-view) .home-event-task-diff {
@@ -14034,7 +14354,8 @@ body.auth-pw-modal-open {
 }
 
 /* 근무-식단 유형 설정(dual): 푸터·저장 — todo-list-modal-confirm / 일 등록 모달과 동일 톤(데스크톱 포함 전 뷰포트) */
-.work-schedule-type-settings-modal .work-schedule-type-settings-footer.work-schedule-type-settings-footer--dual {
+.work-schedule-type-settings-modal
+  .work-schedule-type-settings-footer.work-schedule-type-settings-footer--dual {
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -14057,11 +14378,7 @@ body.auth-pw-modal-open {
   font-size: 0.875rem;
   font-weight: 600;
   font-family:
-    -apple-system,
-    BlinkMacSystemFont,
-    system-ui,
-    "Segoe UI",
-    var(--font-body);
+    -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", var(--font-body);
   color: #ffffff;
   background: #1f4654;
   border: none;
@@ -15224,7 +15541,8 @@ body.auth-pw-modal-open {
 }
 
 /* 가계부 +: 할 일 / 시간가계부 `time-ledger-add-plus-btn` 와 같은 틸 원형 간격 안 + (40px 카드 금지) */
-.asset-expense-filter-actions .todo-list-toolbar-quick-add.time-ledger-add-plus-btn.todo-add-btn {
+.asset-expense-filter-actions
+  .todo-list-toolbar-quick-add.time-ledger-add-plus-btn.todo-add-btn {
   box-sizing: border-box;
   display: inline-flex !important;
   align-items: center !important;
@@ -15251,13 +15569,16 @@ body.auth-pw-modal-open {
     opacity 0.15s ease;
 }
 
-.asset-expense-filter-actions .todo-list-toolbar-quick-add.time-ledger-add-plus-btn.todo-add-btn:hover {
+.asset-expense-filter-actions
+  .todo-list-toolbar-quick-add.time-ledger-add-plus-btn.todo-add-btn:hover {
   opacity: 1 !important;
   background: rgba(31, 70, 84, 0.1) !important;
   color: #163a46 !important;
 }
 
-.asset-expense-filter-actions .todo-list-toolbar-quick-add.time-ledger-add-plus-btn.todo-add-btn svg {
+.asset-expense-filter-actions
+  .todo-list-toolbar-quick-add.time-ledger-add-plus-btn.todo-add-btn
+  svg {
   display: block;
   width: 1.25rem !important;
   height: 1.25rem !important;
@@ -15300,39 +15621,48 @@ body.auth-pw-modal-open {
   box-sizing: border-box;
 }
 
-.asset-expense-card-inner:not(.asset-expense-card-inner--ledger) .asset-expense-cell-name {
+.asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
+  .asset-expense-cell-name {
   order: 1;
   flex: 1 1 10rem;
 }
 
-.asset-expense-card-inner:not(.asset-expense-card-inner--ledger) .asset-expense-cell-amount {
+.asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
+  .asset-expense-cell-amount {
   order: 2;
   flex: 0 0 auto;
 }
 
-.asset-expense-card-inner:not(.asset-expense-card-inner--ledger) .asset-expense-cell-actions {
+.asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
+  .asset-expense-cell-actions {
   order: 3;
   flex: 0 0 auto;
   margin-left: auto;
   justify-content: flex-end;
 }
 
-.asset-expense-card-inner:not(.asset-expense-card-inner--ledger) .asset-expense-cell-date {
+.asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
+  .asset-expense-cell-date {
   order: 4;
   flex: 0 0 auto;
   font-size: 0.8125rem;
   color: var(--text-caption-color);
 }
 
-.asset-expense-card-inner:not(.asset-expense-card-inner--ledger) .asset-expense-cell-flow-type,
-.asset-expense-card-inner:not(.asset-expense-card-inner--ledger) .asset-expense-cell-classification,
-.asset-expense-card-inner:not(.asset-expense-card-inner--ledger) .asset-expense-cell-payment,
-.asset-expense-card-inner:not(.asset-expense-card-inner--ledger) .asset-expense-cell-category {
+.asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
+  .asset-expense-cell-flow-type,
+.asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
+  .asset-expense-cell-classification,
+.asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
+  .asset-expense-cell-payment,
+.asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
+  .asset-expense-cell-category {
   order: 5;
   flex: 0 1 auto;
 }
 
-.asset-expense-card-inner:not(.asset-expense-card-inner--ledger) .asset-expense-cell-memo {
+.asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
+  .asset-expense-cell-memo {
   order: 6;
   flex: 1 0 100%;
   min-width: 0;
@@ -15340,13 +15670,17 @@ body.auth-pw-modal-open {
   color: var(--text-muted);
 }
 
-.asset-expense-card-inner:not(.asset-expense-card-inner--ledger) .asset-expense-cell-amount .asset-expense-input-amount {
+.asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
+  .asset-expense-cell-amount
+  .asset-expense-input-amount {
   text-align: right;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-.asset-expense-card-inner:not(.asset-expense-card-inner--ledger) .asset-expense-cell-name .asset-expense-input-name {
+.asset-expense-card-inner:not(.asset-expense-card-inner--ledger)
+  .asset-expense-cell-name
+  .asset-expense-input-name {
   font-weight: 600;
 }
 
@@ -15412,7 +15746,8 @@ body.auth-pw-modal-open {
   margin: 0;
 }
 
-.asset-expense-ledger-board-body > .asset-expense-ledger-day-group:not(:first-child) {
+.asset-expense-ledger-board-body
+  > .asset-expense-ledger-day-group:not(:first-child) {
   border-top: 1px solid rgba(0, 0, 0, 0.068);
 }
 
@@ -15484,7 +15819,9 @@ body.auth-pw-modal-open {
   background: #f2f7f9;
 }
 
-.asset-expense-ledger-day-rows .asset-expense-card.asset-expense-row:last-child .asset-expense-card-inner--ledger {
+.asset-expense-ledger-day-rows
+  .asset-expense-card.asset-expense-row:last-child
+  .asset-expense-card-inner--ledger {
   border-bottom: none;
 }
 
@@ -15580,28 +15917,38 @@ body.auth-pw-modal-open {
   text-align: right;
 }
 
-.asset-expense-card-inner--ledger .asset-expense-cell-date .asset-expense-date-display {
+.asset-expense-card-inner--ledger
+  .asset-expense-cell-date
+  .asset-expense-date-display {
   display: block;
   text-align: right;
 }
 
-.asset-expense-card-inner--ledger .asset-expense-cell-name .asset-expense-input-name {
+.asset-expense-card-inner--ledger
+  .asset-expense-cell-name
+  .asset-expense-input-name {
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.asset-expense-card-inner--ledger .asset-expense-cell-amount .asset-expense-input-amount {
+.asset-expense-card-inner--ledger
+  .asset-expense-cell-amount
+  .asset-expense-input-amount {
   text-align: right;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-.asset-expense-card--flow-income .asset-expense-card-inner--ledger .asset-expense-input-amount {
+.asset-expense-card--flow-income
+  .asset-expense-card-inner--ledger
+  .asset-expense-input-amount {
   color: #1d4ed8;
 }
 
-.asset-expense-card--flow-expense .asset-expense-card-inner--ledger .asset-expense-input-amount {
+.asset-expense-card--flow-expense
+  .asset-expense-card-inner--ledger
+  .asset-expense-input-amount {
   color: #b91c1c;
 }
 
@@ -15773,7 +16120,8 @@ body.auth-pw-modal-open {
   border-top-right-radius: 1rem;
 }
 
-.asset-expense-transaction-modal-panel-shell .asset-expense-inline-panel-head-text {
+.asset-expense-transaction-modal-panel-shell
+  .asset-expense-inline-panel-head-text {
   justify-content: center;
   margin: 0;
   align-self: center;
@@ -15784,7 +16132,8 @@ body.auth-pw-modal-open {
   margin: 0;
 }
 
-.asset-expense-transaction-modal-panel-shell .asset-expense-inline-panel-subtitle {
+.asset-expense-transaction-modal-panel-shell
+  .asset-expense-inline-panel-subtitle {
   font-weight: 600;
 }
 
@@ -15792,7 +16141,8 @@ body.auth-pw-modal-open {
   padding: 0.35rem 0.75rem 0.5rem;
 }
 
-.asset-expense-transaction-modal-panel-shell .asset-expense-inline-panel-bottom {
+.asset-expense-transaction-modal-panel-shell
+  .asset-expense-inline-panel-bottom {
   padding: 0.45rem 0.75rem 0.55rem;
   border-bottom-left-radius: 1rem;
   border-bottom-right-radius: 1rem;
@@ -15814,10 +16164,12 @@ body.auth-pw-modal-open {
 }
 .asset-asset-row--inner-panel.asset-asset-row-real-estate
   .asset-expense-form-control--field:not(.asset-debt-panel-value--computed),
-.asset-real-estate-form-stack .asset-expense-form-control--field:not(.asset-debt-panel-value--computed) {
+.asset-real-estate-form-stack
+  .asset-expense-form-control--field:not(.asset-debt-panel-value--computed) {
   background: rgba(42, 56, 40, 0.05);
 }
-.asset-asset-row--inner-panel.asset-asset-row-real-estate .asset-debt-panel-value--computed,
+.asset-asset-row--inner-panel.asset-asset-row-real-estate
+  .asset-debt-panel-value--computed,
 .asset-real-estate-form-stack .asset-debt-panel-value--computed {
   background: rgba(72, 70, 64, 0.11);
   color: var(--text-muted);
@@ -15828,12 +16180,14 @@ body.auth-pw-modal-open {
   font-weight: 600;
 }
 
-.asset-real-estate-form-stack.asset-expense-form-stack .asset-expense-form-row:last-child {
+.asset-real-estate-form-stack.asset-expense-form-stack
+  .asset-expense-form-row:last-child {
   border-bottom: none;
 }
 
 /* 새 대출/대출 수정 모달: 본문만 스크롤·저장 줄 고정·패널 약간 넓게 */
-.asset-expense-transaction-modal-panel-shell .asset-expense-inline-panel.asset-debt-inline-panel {
+.asset-expense-transaction-modal-panel-shell
+  .asset-expense-inline-panel.asset-debt-inline-panel {
   display: flex;
   flex-direction: column;
   max-height: min(90vh, 44rem);
@@ -15865,8 +16219,10 @@ body.auth-pw-modal-open {
 }
 
 .asset-expense-transaction-modal-panel-shell .asset-expense-inline-panel-btn,
-.asset-expense-transaction-modal-panel-shell .asset-expense-inline-panel-btn--primary,
-.asset-expense-transaction-modal-panel-shell .asset-expense-inline-panel-btn--danger {
+.asset-expense-transaction-modal-panel-shell
+  .asset-expense-inline-panel-btn--primary,
+.asset-expense-transaction-modal-panel-shell
+  .asset-expense-inline-panel-btn--danger {
   border-radius: 0.5rem;
 }
 
@@ -15891,12 +16247,16 @@ body.auth-pw-modal-open {
   line-height: 1.35;
 }
 .asset-networth-debt-modal .asset-debt-inline-panel .asset-expense-form-control,
-.asset-networth-debt-modal .asset-debt-inline-panel .asset-expense-form-control--field {
+.asset-networth-debt-modal
+  .asset-debt-inline-panel
+  .asset-expense-form-control--field {
   font-size: 0.8125rem;
 }
 .asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-input-name,
 .asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-input-principal,
-.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-input-extra-paid,
+.asset-networth-debt-modal
+  .asset-debt-inline-panel
+  .asset-debt-input-extra-paid,
 .asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-input-period,
 .asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-input-rate {
   font-size: 0.8125rem;
@@ -15905,24 +16265,40 @@ body.auth-pw-modal-open {
   font-size: 0.8125rem;
 }
 .asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-type-display,
-.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-repayment-display {
+.asset-networth-debt-modal
+  .asset-debt-inline-panel
+  .asset-debt-repayment-display {
   font-size: 0.8125rem;
 }
-.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-interest-display,
-.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-monthly-principal-display,
-.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-monthly-interest-display,
+.asset-networth-debt-modal
+  .asset-debt-inline-panel
+  .asset-debt-interest-display,
+.asset-networth-debt-modal
+  .asset-debt-inline-panel
+  .asset-debt-monthly-principal-display,
+.asset-networth-debt-modal
+  .asset-debt-inline-panel
+  .asset-debt-monthly-interest-display,
 .asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-paid-display,
-.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-balance-display {
+.asset-networth-debt-modal
+  .asset-debt-inline-panel
+  .asset-debt-balance-display {
   font-size: 0.8125rem;
 }
 
 /* 순자산 자산 추가·수정 모달: 패널 안 가계부형 행(부동산 등) 라벨·값 열 — 입력 0.8125rem 과 통일 */
-.asset-networth-asset-modal .asset-expense-transaction-modal-panel-shell .asset-expense-form-label {
+.asset-networth-asset-modal
+  .asset-expense-transaction-modal-panel-shell
+  .asset-expense-form-label {
   font-size: 0.8125rem;
   line-height: 1.35;
 }
-.asset-networth-asset-modal .asset-expense-transaction-modal-panel-shell .asset-expense-form-control,
-.asset-networth-asset-modal .asset-expense-transaction-modal-panel-shell .asset-expense-form-control--field {
+.asset-networth-asset-modal
+  .asset-expense-transaction-modal-panel-shell
+  .asset-expense-form-control,
+.asset-networth-asset-modal
+  .asset-expense-transaction-modal-panel-shell
+  .asset-expense-form-control--field {
   font-size: 0.8125rem;
 }
 
@@ -15959,7 +16335,8 @@ body.auth-pw-modal-open {
 }
 
 .asset-expense-transaction-modal-panel-shell .asset-expense-flow-type-display,
-.asset-expense-transaction-modal-panel-shell .asset-expense-classification-display,
+.asset-expense-transaction-modal-panel-shell
+  .asset-expense-classification-display,
 .asset-expense-transaction-modal-panel-shell
   .asset-expense-payment-wrap--modal-btns
   .asset-expense-payment-btn,
@@ -15969,14 +16346,15 @@ body.auth-pw-modal-open {
   font-size: 0.75rem !important;
 }
 
-.asset-expense-transaction-modal-panel-shell .asset-expense-category-display-readonly {
+.asset-expense-transaction-modal-panel-shell
+  .asset-expense-category-display-readonly {
   font-size: 0.75rem !important;
 }
 
-.asset-expense-transaction-modal-panel-shell .asset-expense-inline-panel-subtitle {
+.asset-expense-transaction-modal-panel-shell
+  .asset-expense-inline-panel-subtitle {
   font-size: 0.75rem !important;
 }
-
 
 .asset-expense-filter-tabs {
   display: flex;
@@ -17751,7 +18129,8 @@ col.asset-expense-col-amount,
   color: var(--text-ink);
 }
 
-.asset-expense-classification-expense-icon-btn--has-icon .asset-expense-classification-expense-icon {
+.asset-expense-classification-expense-icon-btn--has-icon
+  .asset-expense-classification-expense-icon {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -17760,7 +18139,9 @@ col.asset-expense-col-amount,
   color: inherit;
 }
 
-.asset-expense-classification-expense-icon-btn--has-icon .asset-expense-classification-expense-icon svg {
+.asset-expense-classification-expense-icon-btn--has-icon
+  .asset-expense-classification-expense-icon
+  svg {
   width: 100%;
   height: 100%;
 }
@@ -17962,7 +18343,8 @@ col.asset-expense-col-amount,
     color 0.15s;
 }
 
-.asset-expense-payment-wrap--modal-btns .asset-expense-payment-btn:hover:not(:disabled):not(.is-selected) {
+.asset-expense-payment-wrap--modal-btns
+  .asset-expense-payment-btn:hover:not(:disabled):not(.is-selected) {
   background: rgba(209, 213, 219, 0.38);
 }
 
@@ -17973,7 +18355,8 @@ col.asset-expense-col-amount,
   font-weight: 600;
 }
 
-.asset-expense-payment-wrap--modal-btns .asset-expense-payment-btn.is-selected:hover:not(:disabled) {
+.asset-expense-payment-wrap--modal-btns
+  .asset-expense-payment-btn.is-selected:hover:not(:disabled) {
   background: #a6c9d2;
   color: #1f4654;
   border-color: rgba(31, 70, 84, 0.45);
@@ -18019,29 +18402,38 @@ col.asset-expense-col-amount,
     color 0.15s;
 }
 
-.asset-expense-flow-type-wrap--modal-btns .asset-expense-flow-type-btn:hover:not(:disabled):not(.is-selected) {
+.asset-expense-flow-type-wrap--modal-btns
+  .asset-expense-flow-type-btn:hover:not(:disabled):not(.is-selected) {
   background: rgba(209, 213, 219, 0.38);
 }
 
-.asset-expense-flow-type-wrap--modal-btns .asset-expense-flow-type-btn.is-selected.asset-flow-expense {
+.asset-expense-flow-type-wrap--modal-btns
+  .asset-expense-flow-type-btn.is-selected.asset-flow-expense {
   background: rgba(242, 196, 196, 0.5);
   color: #9f1239;
   border-color: transparent;
   font-weight: 600;
 }
 
-.asset-expense-flow-type-wrap--modal-btns .asset-expense-flow-type-btn.is-selected.asset-flow-expense:hover:not(:disabled) {
+.asset-expense-flow-type-wrap--modal-btns
+  .asset-expense-flow-type-btn.is-selected.asset-flow-expense:hover:not(
+    :disabled
+  ) {
   background: rgba(242, 196, 196, 0.58);
 }
 
-.asset-expense-flow-type-wrap--modal-btns .asset-expense-flow-type-btn.is-selected.asset-flow-deposit {
+.asset-expense-flow-type-wrap--modal-btns
+  .asset-expense-flow-type-btn.is-selected.asset-flow-deposit {
   background: rgba(196, 216, 242, 0.4);
   color: #1e4a8a;
   border-color: transparent;
   font-weight: 600;
 }
 
-.asset-expense-flow-type-wrap--modal-btns .asset-expense-flow-type-btn.is-selected.asset-flow-deposit:hover:not(:disabled) {
+.asset-expense-flow-type-wrap--modal-btns
+  .asset-expense-flow-type-btn.is-selected.asset-flow-deposit:hover:not(
+    :disabled
+  ) {
   background: rgba(196, 216, 242, 0.5);
 }
 
@@ -18053,7 +18445,8 @@ col.asset-expense-col-amount,
 }
 
 /* 지출입력장 결제수단 - 목록 카드: 칩만 표시 (선택 클릭 없음 → 포인터·호버 티 최소화) */
-.asset-expense-card-inner--ledger .asset-expense-payment-wrap:not(.asset-expense-payment-wrap--modal-btns)
+.asset-expense-card-inner--ledger
+  .asset-expense-payment-wrap:not(.asset-expense-payment-wrap--modal-btns)
   .asset-expense-payment-display {
   cursor: default;
 }
@@ -18075,7 +18468,8 @@ col.asset-expense-col-amount,
   background: rgba(209, 213, 219, 0.45);
   color: #4b5563;
 }
-.asset-expense-card-inner--ledger .asset-expense-payment-wrap:not(.asset-expense-payment-wrap--modal-btns)
+.asset-expense-card-inner--ledger
+  .asset-expense-payment-wrap:not(.asset-expense-payment-wrap--modal-btns)
   .asset-expense-payment-display:hover {
   background: rgba(209, 213, 219, 0.45);
 }
@@ -18671,7 +19065,9 @@ col.asset-expense-col-amount,
 .asset-networth-debt-modal .asset-expense-inline-panel-bottom-inner {
   justify-content: flex-start;
 }
-.asset-networth-debt-modal .asset-expense-inline-panel-bottom .asset-expense-inline-panel-btn--danger {
+.asset-networth-debt-modal
+  .asset-expense-inline-panel-bottom
+  .asset-expense-inline-panel-btn--danger {
   margin-right: auto;
 }
 .asset-networth-debt-modal
@@ -18747,11 +19143,15 @@ col.asset-expense-col-amount,
     width: 100%;
     box-sizing: border-box;
   }
-  .asset-networth-debt-modal .asset-expense-inline-panel-bottom .asset-expense-inline-panel-btn--danger {
+  .asset-networth-debt-modal
+    .asset-expense-inline-panel-bottom
+    .asset-expense-inline-panel-btn--danger {
     margin-right: auto;
     flex: 0 0 auto;
   }
-  .asset-networth-debt-modal .asset-expense-inline-panel-bottom .asset-expense-inline-panel-btn--primary {
+  .asset-networth-debt-modal
+    .asset-expense-inline-panel-bottom
+    .asset-expense-inline-panel-btn--primary {
     display: inline-flex;
     width: auto;
     justify-content: center;
@@ -19088,7 +19488,9 @@ col.asset-expense-col-amount,
   .asset-asset-card {
     padding: 0.65rem 0.85rem 0.75rem;
   }
-  .asset-asset-card-main:not(.asset-asset-card-main--stock):not(.asset-asset-card-main--simple-face) {
+  .asset-asset-card-main:not(.asset-asset-card-main--stock):not(
+      .asset-asset-card-main--simple-face
+    ) {
     flex-direction: column;
     align-items: stretch;
     gap: 0.65rem;
@@ -19110,9 +19512,7 @@ col.asset-expense-col-amount,
     text-align: left;
     max-width: none;
   }
-
 }
-
 
 .asset-debt-cell-panel,
 .asset-asset-cell-panel {
@@ -19152,8 +19552,7 @@ col.asset-expense-col-amount,
   container-name: networth-debt-form;
 }
 /* 총부채: 가로 스크롤(넓은 열)은 래퍼에 두고, 편집 패널은 container(cqi) 너비로 잘림 방지 */
-.asset-networth-view
-  .asset-debt-table-wrap:has(tr.asset-debt-row--inner-panel),
+.asset-networth-view .asset-debt-table-wrap:has(tr.asset-debt-row--inner-panel),
 .asset-networth-view
   .asset-debt-table-wrap:has(div.asset-debt-row--inner-panel) {
   overflow-x: auto;
@@ -19207,7 +19606,9 @@ col.asset-expense-col-amount,
   align-items: stretch;
   min-width: 0;
 }
-.asset-debt-row--inner-panel .asset-debt-form-split-row > .asset-debt-form-split-col {
+.asset-debt-row--inner-panel
+  .asset-debt-form-split-row
+  > .asset-debt-form-split-col {
   min-width: 0;
 }
 .asset-debt-row--inner-panel
@@ -19215,14 +19616,16 @@ col.asset-expense-col-amount,
   > .asset-debt-form-split-col.asset-expense-form-row {
   grid-template-columns: minmax(5.25rem, 8.75rem) minmax(0, 1fr) !important;
 }
-.asset-debt-row--inner-panel .asset-expense-form-row:not(.asset-debt-form-split-col) {
+.asset-debt-row--inner-panel
+  .asset-expense-form-row:not(.asset-debt-form-split-col) {
   min-width: 0;
   /* 라벨 열은 0으로 줄지 않게(모바일에서 라벨 텍스트가 통째로 사라지는 문제 방지) */
   grid-template-columns: minmax(8.25rem, 12rem) minmax(0, 1fr) !important;
 }
 @media (min-width: 769px) {
   /* 전체폭 행만 넓은 라벨열 — 한 줄 두 칸 행(.asset-debt-form-split-col)은 아래 줄간격 유지 */
-  .asset-debt-row--inner-panel .asset-expense-form-row:not(.asset-debt-form-split-col) {
+  .asset-debt-row--inner-panel
+    .asset-expense-form-row:not(.asset-debt-form-split-col) {
     grid-template-columns: 14.5rem minmax(0, 1fr) !important;
   }
   .asset-debt-row--inner-panel .asset-expense-form-label {
@@ -19242,7 +19645,8 @@ col.asset-expense-col-amount,
     gap: 0;
   }
   /* 두 칸이 세로로 쌓일 때 칸 사이 구분선 */
-  .asset-debt-form-split-row > .asset-expense-form-row.asset-debt-form-split-col:first-of-type {
+  .asset-debt-form-split-row
+    > .asset-expense-form-row.asset-debt-form-split-col:first-of-type {
     border-bottom: var(--line-l2);
   }
   .asset-debt-row--inner-panel .asset-expense-form-row {
@@ -19322,16 +19726,29 @@ col.asset-expense-col-amount,
   border-bottom: var(--input-border-focus);
 }
 
-.asset-debt-row--inner-panel .asset-debt-cell-name .asset-debt-input-name::placeholder,
-.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-cell-name .asset-debt-input-name::placeholder,
+.asset-debt-row--inner-panel
+  .asset-debt-cell-name
+  .asset-debt-input-name::placeholder,
+.asset-networth-debt-modal
+  .asset-debt-inline-panel
+  .asset-debt-cell-name
+  .asset-debt-input-name::placeholder,
 .asset-debt-row--inner-panel .asset-debt-input-period::placeholder,
-.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-input-period::placeholder,
+.asset-networth-debt-modal
+  .asset-debt-inline-panel
+  .asset-debt-input-period::placeholder,
 .asset-debt-row--inner-panel .asset-debt-input-rate::placeholder,
-.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-input-rate::placeholder,
+.asset-networth-debt-modal
+  .asset-debt-inline-panel
+  .asset-debt-input-rate::placeholder,
 .asset-debt-row--inner-panel .asset-debt-input-principal::placeholder,
-.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-input-principal::placeholder,
+.asset-networth-debt-modal
+  .asset-debt-inline-panel
+  .asset-debt-input-principal::placeholder,
 .asset-debt-row--inner-panel .asset-debt-input-extra-paid::placeholder,
-.asset-networth-debt-modal .asset-debt-inline-panel .asset-debt-input-extra-paid::placeholder {
+.asset-networth-debt-modal
+  .asset-debt-inline-panel
+  .asset-debt-input-extra-paid::placeholder {
   /* 레이블·입력글자보다 한 톤 연한 힌트(예: 4.2, - 등) */
   color: rgba(60, 60, 67, 0.32);
   -webkit-text-fill-color: rgba(60, 60, 67, 0.32);
@@ -19390,7 +19807,9 @@ col.asset-expense-col-amount,
 .asset-networth-view .asset-asset-subsection,
 .asset-networth-view .asset-asset-table-wrap,
 .asset-networth-view .asset-asset-add-button-wrap,
-.asset-networth-view tr.asset-asset-row--inner-panel .asset-expense-inline-panel {
+.asset-networth-view
+  tr.asset-asset-row--inner-panel
+  .asset-expense-inline-panel {
   background: #f2f7f9;
 }
 
@@ -20272,7 +20691,8 @@ col.asset-expense-col-amount,
 }
 
 /* 부동산 폼 셀: 회색 박스 대신 플랫(모달·패널 공통) */
-.asset-real-estate-form-stack .asset-expense-form-control--field:not(.asset-debt-panel-value--computed) {
+.asset-real-estate-form-stack
+  .asset-expense-form-control--field:not(.asset-debt-panel-value--computed) {
   background: transparent !important;
 }
 
@@ -21928,7 +22348,8 @@ col.asset-expense-col-amount,
   top: 0;
 }
 
-.asset-networth-asset-modal .asset-expense-transaction-modal-panel-shell.asset-networth-asset-modal-panel {
+.asset-networth-asset-modal
+  .asset-expense-transaction-modal-panel-shell.asset-networth-asset-modal-panel {
   max-height: min(90vh, 44rem);
   display: flex;
   flex-direction: column;
@@ -21940,7 +22361,9 @@ col.asset-expense-col-amount,
 }
 
 /* 순자산 자산 추가/수정: 부동산 임베드 «표» 톤(회색 블록·외곽·세로 라벨 테두리) 제거 — 바깥 삭제·저장 줄만 버튼 */
-.asset-networth-asset-modal .asset-real-estate-panel--embedded .asset-real-estate-form-stack.asset-expense-form-stack {
+.asset-networth-asset-modal
+  .asset-real-estate-panel--embedded
+  .asset-real-estate-form-stack.asset-expense-form-stack {
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
@@ -21948,32 +22371,48 @@ col.asset-expense-col-amount,
   overflow: visible !important;
 }
 
-.asset-networth-asset-modal .asset-real-estate-form-stack.asset-expense-form-stack .asset-expense-form-row {
+.asset-networth-asset-modal
+  .asset-real-estate-form-stack.asset-expense-form-stack
+  .asset-expense-form-row {
   border-bottom: none !important;
   min-height: 0 !important;
   padding: 0.15rem 0 !important;
 }
 
-.asset-networth-asset-modal .asset-real-estate-form-stack .asset-expense-form-label {
+.asset-networth-asset-modal
+  .asset-real-estate-form-stack
+  .asset-expense-form-label {
   border-right: none !important;
   background: transparent !important;
 }
 
-.asset-networth-asset-modal .asset-real-estate-form-stack .asset-expense-form-control:not(.asset-debt-panel-value--computed),
-.asset-networth-asset-modal .asset-real-estate-form-stack .asset-expense-form-control--field:not(.asset-debt-panel-value--computed) {
+.asset-networth-asset-modal
+  .asset-real-estate-form-stack
+  .asset-expense-form-control:not(.asset-debt-panel-value--computed),
+.asset-networth-asset-modal
+  .asset-real-estate-form-stack
+  .asset-expense-form-control--field:not(.asset-debt-panel-value--computed) {
   background: transparent !important;
 }
 
-.asset-networth-asset-modal .asset-real-estate-form-stack.asset-expense-form-stack .asset-expense-form-row:last-child {
+.asset-networth-asset-modal
+  .asset-real-estate-form-stack.asset-expense-form-stack
+  .asset-expense-form-row:last-child {
   border-bottom: none !important;
 }
 
-.asset-networth-asset-modal .asset-asset-modal-form-mount > .asset-asset-modal-embed-table tbody tr.asset-asset-row {
+.asset-networth-asset-modal
+  .asset-asset-modal-form-mount
+  > .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row {
   background: transparent !important;
 }
 
 /* 순자산 대출 수정/추가 모달: 가계부 형 «표» 테두리·라벨 세로줄 회색 패널 완화 */
-.asset-networth-debt-modal .asset-expense-inline-panel.asset-debt-inline-panel .asset-expense-form-stack {
+.asset-networth-debt-modal
+  .asset-expense-inline-panel.asset-debt-inline-panel
+  .asset-expense-form-stack {
   border: none !important;
   background: transparent !important;
   border-radius: 0 !important;
@@ -21989,12 +22428,17 @@ col.asset-expense-col-amount,
   background: transparent !important;
 }
 
-.asset-networth-debt-modal .asset-debt-inline-panel .asset-expense-form-control--field:not(.asset-debt-panel-value--computed),
-.asset-networth-debt-modal .asset-debt-inline-panel .asset-expense-form-control:not(.asset-debt-panel-value--computed) {
+.asset-networth-debt-modal
+  .asset-debt-inline-panel
+  .asset-expense-form-control--field:not(.asset-debt-panel-value--computed),
+.asset-networth-debt-modal
+  .asset-debt-inline-panel
+  .asset-expense-form-control:not(.asset-debt-panel-value--computed) {
   background: transparent !important;
 }
 
-.asset-networth-asset-modal .asset-networth-asset-modal-head.asset-expense-inline-panel-top {
+.asset-networth-asset-modal
+  .asset-networth-asset-modal-head.asset-expense-inline-panel-top {
   padding-top: 0;
   padding-bottom: 0.35rem;
   flex-shrink: 0;
@@ -22016,13 +22460,20 @@ col.asset-expense-col-amount,
   width: 100%;
 }
 
-.asset-networth-asset-modal .asset-asset-modal-embed-table tbody tr.asset-asset-row {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row {
   display: block;
   width: 100%;
   box-sizing: border-box;
 }
 
-.asset-networth-asset-modal .asset-asset-modal-embed-table tbody tr.asset-asset-row > td {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row
+  > td {
   display: block;
   width: 100%;
   max-width: 100%;
@@ -22034,7 +22485,11 @@ col.asset-expense-col-amount,
 }
 
 /* [hidden] 이 display:block 보다 약해 자동 계산 칸이 모달에 남던 문제 */
-.asset-networth-asset-modal .asset-asset-modal-embed-table tbody tr.asset-asset-row > td[hidden] {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row
+  > td[hidden] {
   display: none !important;
 }
 
@@ -22042,9 +22497,11 @@ col.asset-expense-col-amount,
 .asset-networth-asset-modal
   .asset-asset-modal-embed-table
   tbody
-  tr.asset-asset-row:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
-    .asset-asset-row-annuity
-  ):not(.asset-asset-row-real-estate):not([data-savings="true"]) {
+  tr.asset-asset-row:not(.asset-asset-row-stock):not(
+    .asset-asset-row-insurance
+  ):not(.asset-asset-row-annuity):not(.asset-asset-row-real-estate):not(
+    [data-savings="true"]
+  ) {
   display: grid;
   grid-template-columns: 1fr 1fr;
   column-gap: 0.62rem;
@@ -22055,23 +22512,29 @@ col.asset-expense-col-amount,
 .asset-networth-asset-modal
   .asset-asset-modal-embed-table
   tbody
-  tr.asset-asset-row:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
-    .asset-asset-row-annuity
-  ):not(.asset-asset-row-real-estate):not([data-savings="true"])
+  tr.asset-asset-row:not(.asset-asset-row-stock):not(
+    .asset-asset-row-insurance
+  ):not(.asset-asset-row-annuity):not(.asset-asset-row-real-estate):not(
+    [data-savings="true"]
+  )
   > td.asset-asset-cell-name,
 .asset-networth-asset-modal
   .asset-asset-modal-embed-table
   tbody
-  tr.asset-asset-row:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
-    .asset-asset-row-annuity
-  ):not(.asset-asset-row-real-estate):not([data-savings="true"])
+  tr.asset-asset-row:not(.asset-asset-row-stock):not(
+    .asset-asset-row-insurance
+  ):not(.asset-asset-row-annuity):not(.asset-asset-row-real-estate):not(
+    [data-savings="true"]
+  )
   > td.asset-asset-cell-open-date,
 .asset-networth-asset-modal
   .asset-asset-modal-embed-table
   tbody
-  tr.asset-asset-row:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
-    .asset-asset-row-annuity
-  ):not(.asset-asset-row-real-estate):not([data-savings="true"])
+  tr.asset-asset-row:not(.asset-asset-row-stock):not(
+    .asset-asset-row-insurance
+  ):not(.asset-asset-row-annuity):not(.asset-asset-row-real-estate):not(
+    [data-savings="true"]
+  )
   > td.asset-asset-cell-maturity-date {
   grid-column: 1 / -1;
   width: 100%;
@@ -22081,44 +22544,64 @@ col.asset-expense-col-amount,
 .asset-networth-asset-modal
   .asset-asset-modal-embed-table
   tbody
-  tr.asset-asset-row:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
-    .asset-asset-row-annuity
-  ):not(.asset-asset-row-real-estate):not([data-savings="true"]):not(.asset-asset-row--deposit)
+  tr.asset-asset-row:not(.asset-asset-row-stock):not(
+    .asset-asset-row-insurance
+  ):not(.asset-asset-row-annuity):not(.asset-asset-row-real-estate):not(
+    [data-savings="true"]
+  ):not(.asset-asset-row--deposit)
   > td.asset-asset-cell-category {
   grid-column: 1;
 }
 .asset-networth-asset-modal
   .asset-asset-modal-embed-table
   tbody
-  tr.asset-asset-row:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
-    .asset-asset-row-annuity
-  ):not(.asset-asset-row-real-estate):not([data-savings="true"]):not(.asset-asset-row--deposit)
+  tr.asset-asset-row:not(.asset-asset-row-stock):not(
+    .asset-asset-row-insurance
+  ):not(.asset-asset-row-annuity):not(.asset-asset-row-real-estate):not(
+    [data-savings="true"]
+  ):not(.asset-asset-row--deposit)
   > td.asset-asset-cell-type {
   grid-column: 2;
 }
 .asset-networth-asset-modal
   .asset-asset-modal-embed-table
   tbody
-  tr.asset-asset-row:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
-    .asset-asset-row-annuity
-  ):not(.asset-asset-row-real-estate):not([data-savings="true"])
+  tr.asset-asset-row:not(.asset-asset-row-stock):not(
+    .asset-asset-row-insurance
+  ):not(.asset-asset-row-annuity):not(.asset-asset-row-real-estate):not(
+    [data-savings="true"]
+  )
   > td.asset-asset-cell-principal {
   grid-column: 1;
 }
 .asset-networth-asset-modal
   .asset-asset-modal-embed-table
   tbody
-  tr.asset-asset-row:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
-    .asset-asset-row-annuity
-  ):not(.asset-asset-row-real-estate):not([data-savings="true"])
+  tr.asset-asset-row:not(.asset-asset-row-stock):not(
+    .asset-asset-row-insurance
+  ):not(.asset-asset-row-annuity):not(.asset-asset-row-real-estate):not(
+    [data-savings="true"]
+  )
   > td.asset-asset-cell-rate {
   grid-column: 2;
 }
 
 /* 예금 모달: 만기율·이자·만기예상 칸은 한 줄 전체 */
-.asset-networth-asset-modal .asset-asset-modal-embed-table tbody tr.asset-asset-row--deposit > td.asset-asset-cell-maturity-rate,
-.asset-networth-asset-modal .asset-asset-modal-embed-table tbody tr.asset-asset-row--deposit > td.asset-asset-cell-interest,
-.asset-networth-asset-modal .asset-asset-modal-embed-table tbody tr.asset-asset-row--deposit > td.asset-asset-cell-maturity-amt {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row--deposit
+  > td.asset-asset-cell-maturity-rate,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row--deposit
+  > td.asset-asset-cell-interest,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tbody
+  tr.asset-asset-row--deposit
+  > td.asset-asset-cell-maturity-amt {
   grid-column: 1 / -1;
   width: 100%;
   max-width: 100%;
@@ -22128,9 +22611,9 @@ col.asset-expense-col-amount,
 .asset-networth-asset-modal
   .asset-asset-modal-embed-table
   tbody
-  tr.asset-asset-row[data-savings="true"]:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
-    .asset-asset-row-annuity
-  ):not(.asset-asset-row-real-estate) {
+  tr.asset-asset-row[data-savings="true"]:not(.asset-asset-row-stock):not(
+    .asset-asset-row-insurance
+  ):not(.asset-asset-row-annuity):not(.asset-asset-row-real-estate) {
   display: grid;
   grid-template-columns: 1fr 1fr;
   column-gap: 0.62rem;
@@ -22141,23 +22624,23 @@ col.asset-expense-col-amount,
 .asset-networth-asset-modal
   .asset-asset-modal-embed-table
   tbody
-  tr.asset-asset-row[data-savings="true"]:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
-    .asset-asset-row-annuity
-  ):not(.asset-asset-row-real-estate)
+  tr.asset-asset-row[data-savings="true"]:not(.asset-asset-row-stock):not(
+    .asset-asset-row-insurance
+  ):not(.asset-asset-row-annuity):not(.asset-asset-row-real-estate)
   > td.asset-asset-cell-name,
 .asset-networth-asset-modal
   .asset-asset-modal-embed-table
   tbody
-  tr.asset-asset-row[data-savings="true"]:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
-    .asset-asset-row-annuity
-  ):not(.asset-asset-row-real-estate)
+  tr.asset-asset-row[data-savings="true"]:not(.asset-asset-row-stock):not(
+    .asset-asset-row-insurance
+  ):not(.asset-asset-row-annuity):not(.asset-asset-row-real-estate)
   > td.asset-asset-cell-open-date,
 .asset-networth-asset-modal
   .asset-asset-modal-embed-table
   tbody
-  tr.asset-asset-row[data-savings="true"]:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
-    .asset-asset-row-annuity
-  ):not(.asset-asset-row-real-estate)
+  tr.asset-asset-row[data-savings="true"]:not(.asset-asset-row-stock):not(
+    .asset-asset-row-insurance
+  ):not(.asset-asset-row-annuity):not(.asset-asset-row-real-estate)
   > td.asset-asset-cell-maturity-date {
   grid-column: 1 / -1;
   width: 100%;
@@ -22167,27 +22650,27 @@ col.asset-expense-col-amount,
 .asset-networth-asset-modal
   .asset-asset-modal-embed-table
   tbody
-  tr.asset-asset-row[data-savings="true"]:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
-    .asset-asset-row-annuity
-  ):not(.asset-asset-row-real-estate)
+  tr.asset-asset-row[data-savings="true"]:not(.asset-asset-row-stock):not(
+    .asset-asset-row-insurance
+  ):not(.asset-asset-row-annuity):not(.asset-asset-row-real-estate)
   > td.asset-asset-cell-monthly {
   grid-column: 1;
 }
 .asset-networth-asset-modal
   .asset-asset-modal-embed-table
   tbody
-  tr.asset-asset-row[data-savings="true"]:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
-    .asset-asset-row-annuity
-  ):not(.asset-asset-row-real-estate)
+  tr.asset-asset-row[data-savings="true"]:not(.asset-asset-row-stock):not(
+    .asset-asset-row-insurance
+  ):not(.asset-asset-row-annuity):not(.asset-asset-row-real-estate)
   > td.asset-asset-cell-months {
   grid-column: 2;
 }
 .asset-networth-asset-modal
   .asset-asset-modal-embed-table
   tbody
-  tr.asset-asset-row[data-savings="true"]:not(.asset-asset-row-stock):not(.asset-asset-row-insurance):not(
-    .asset-asset-row-annuity
-  ):not(.asset-asset-row-real-estate)
+  tr.asset-asset-row[data-savings="true"]:not(.asset-asset-row-stock):not(
+    .asset-asset-row-insurance
+  ):not(.asset-asset-row-annuity):not(.asset-asset-row-real-estate)
   > td.asset-asset-cell-rate {
   grid-column: 1 / -1;
 }
@@ -22390,88 +22873,149 @@ col.asset-expense-col-amount,
   line-height: 1.35;
 }
 
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-name::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-cell-name::before {
   content: "이름";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-category::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-cell-category::before {
   content: "분류";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-type::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-cell-type::before {
   content: "유형";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-principal::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-cell-principal::before {
   content: "원금";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-monthly::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-cell-monthly::before {
   content: "월 납입";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-rate::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-cell-rate::before {
   content: "금리(%)";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-months::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-cell-months::before {
   content: "납입 개월수";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-open-date::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-cell-open-date::before {
   content: "개설일";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-maturity-date::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-cell-maturity-date::before {
   content: "만기일";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-maturity-rate::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-cell-maturity-rate::before {
   content: "만기율";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-interest::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-cell-interest::before {
   content: "이자(계산)";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-maturity-amt::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-cell-maturity-amt::before {
   content: "만기 금액(계산)";
 }
 
 /* 예금 모달: 유형(용도) 셀 없음 — .asset-asset-input-type 은 이름 칸에 hidden */
-.asset-networth-asset-modal .asset-asset-modal-embed-table tr.asset-asset-row--deposit > td.asset-asset-cell-name::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row--deposit
+  > td.asset-asset-cell-name::before {
   content: "상품명";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table tr.asset-asset-row--deposit > td.asset-asset-cell-principal::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row--deposit
+  > td.asset-asset-cell-principal::before {
   content: "예치금";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table tr.asset-asset-row--deposit > td.asset-asset-cell-rate::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row--deposit
+  > td.asset-asset-cell-rate::before {
   content: "금리";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table tr.asset-asset-row--deposit > td.asset-asset-cell-open-date::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row--deposit
+  > td.asset-asset-cell-open-date::before {
   content: "가입일";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table tr.asset-asset-row--deposit > td.asset-asset-cell-maturity-rate::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row--deposit
+  > td.asset-asset-cell-maturity-rate::before {
   content: "만기율";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table tr.asset-asset-row--deposit > td.asset-asset-cell-interest::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row--deposit
+  > td.asset-asset-cell-interest::before {
   content: "이자";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table tr.asset-asset-row--deposit > td.asset-asset-cell-maturity-amt::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  tr.asset-asset-row--deposit
+  > td.asset-asset-cell-maturity-amt::before {
   content: "만기예상액";
 }
 
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-stock-cell-name::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-stock-cell-name::before {
   content: "종목·이름";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-stock-cell-avg-price::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-stock-cell-avg-price::before {
   content: "평균 단가";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-stock-cell-quantity::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-stock-cell-quantity::before {
   content: "수량";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-stock-cell-purchase-amt::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-stock-cell-purchase-amt::before {
   content: "매입금액";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-stock-cell-current-price::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-stock-cell-current-price::before {
   content: "현재가";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-stock-cell-appraisal-amt::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-stock-cell-appraisal-amt::before {
   content: "평가금액";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-stock-cell-profit-loss::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-stock-cell-profit-loss::before {
   content: "손익";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-stock-cell-return-rate::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-stock-cell-return-rate::before {
   content: "수익률";
 }
 
@@ -22505,7 +23049,9 @@ col.asset-expense-col-amount,
   > td:has(.asset-insurance-input-monthly)::before {
   content: "월 보험료";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-insurance-cell-total-paid::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-insurance-cell-total-paid::before {
   content: "납입 합계";
 }
 .asset-networth-asset-modal
@@ -22569,7 +23115,9 @@ col.asset-expense-col-amount,
   > td:has(.asset-annuity-input-payment-end)::before {
   content: "불입 종료일";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-annuity-cell-payment-years::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-annuity-cell-payment-years::before {
   content: "불입 기간";
 }
 .asset-networth-asset-modal
@@ -22578,7 +23126,9 @@ col.asset-expense-col-amount,
   > td:has(.asset-annuity-input-monthly)::before {
   content: "월 불입액";
 }
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-annuity-cell-total-paid::before {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-annuity-cell-total-paid::before {
   content: "불입 합계";
 }
 .asset-networth-asset-modal
@@ -22595,48 +23145,103 @@ col.asset-expense-col-amount,
 }
 
 .asset-networth-asset-modal .asset-asset-modal-embed-table input[type="text"],
-.asset-networth-asset-modal .asset-asset-modal-embed-table input.asset-asset-input-date-hidden {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  input.asset-asset-input-date-hidden {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
 }
 
 /* 순자산 자산 모달 본문: 입력·날짜 표시·자동계산 숫자까지 한 톤 (다른 페이지 상속/보정과 무관하게 고정) */
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-input-name,
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-input-principal,
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-input-monthly,
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-input-rate,
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-input-months,
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-date-display,
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-maturity-rate-display,
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-interest-display,
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-maturity-amt-display,
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-stock-input-name,
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-stock-input-current-price,
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-stock-input-avg-price,
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-stock-input-quantity,
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-insurance-input-name,
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-insurance-input-kind,
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-annuity-input-name,
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-annuity-input-kind,
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-annuity-input-surrender,
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-insurance-total-paid-display,
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-annuity-payment-years-display,
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-annuity-total-paid-display {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-input-name,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-input-principal,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-input-monthly,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-input-rate,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-input-months,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-date-display,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-maturity-rate-display,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-interest-display,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-maturity-amt-display,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-stock-input-name,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-stock-input-current-price,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-stock-input-avg-price,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-stock-input-quantity,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-insurance-input-name,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-insurance-input-kind,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-annuity-input-name,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-annuity-input-kind,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-annuity-input-surrender,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-insurance-total-paid-display,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-annuity-payment-years-display,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-annuity-total-paid-display {
   font-size: 0.8125rem !important;
   font-weight: 500;
   line-height: 1.35;
 }
 
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-date-wrap {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-date-wrap {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
 }
 
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-category .asset-asset-category-wrap,
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-type .asset-asset-type-wrap,
-.asset-networth-asset-modal .asset-asset-modal-embed-table .asset-asset-cell-category .asset-asset-savings-goal-wrap {
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-cell-category
+  .asset-asset-category-wrap,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-cell-type
+  .asset-asset-type-wrap,
+.asset-networth-asset-modal
+  .asset-asset-modal-embed-table
+  .asset-asset-cell-category
+  .asset-asset-savings-goal-wrap {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
@@ -22710,10 +23315,14 @@ col.asset-expense-col-amount,
   width: 100%;
   box-sizing: border-box;
 }
-.asset-networth-asset-modal .asset-asset-modal-footer .asset-expense-inline-panel-btn--danger {
+.asset-networth-asset-modal
+  .asset-asset-modal-footer
+  .asset-expense-inline-panel-btn--danger {
   margin-right: auto;
 }
-.asset-networth-asset-modal .asset-asset-modal-footer > .asset-expense-inline-panel-btn--primary:only-child {
+.asset-networth-asset-modal
+  .asset-asset-modal-footer
+  > .asset-expense-inline-panel-btn--primary:only-child {
   margin-left: auto;
 }
 
@@ -24577,7 +25186,10 @@ col.asset-expense-col-amount,
 }
 
 /* +·설정: 시간가계부 툴바 아이콘과 동일 터치 영역 */
-.calendar-view-todo .calendar-todo-content .time-ledger-toolbar-icons .todo-list-toolbar-quick-add,
+.calendar-view-todo
+  .calendar-todo-content
+  .time-ledger-toolbar-icons
+  .todo-list-toolbar-quick-add,
 .todo-list-view .time-ledger-toolbar-icons .todo-list-toolbar-quick-add {
   color: #1f4654 !important;
 }
@@ -24585,8 +25197,7 @@ col.asset-expense-col-amount,
 .calendar-view-todo
   .calendar-todo-content
   .todo-list-segment-tabs.time-view-tabs--segmented,
-.todo-list-view
-  .todo-list-segment-tabs.time-view-tabs--segmented,
+.todo-list-view .todo-list-segment-tabs.time-view-tabs--segmented,
 .asset-expense-view
   .asset-expense-filter-bar
   .todo-category-tabs.todo-list-segment-tabs.time-view-tabs--segmented,
@@ -24795,9 +25406,7 @@ col.asset-expense-col-amount,
   .calendar-todo-content
   .todo-list-segment-tabs
   .todo-category-tab.active,
-.todo-list-view
-  .todo-list-segment-tabs
-  .todo-category-tab.active {
+.todo-list-view .todo-list-segment-tabs .todo-category-tab.active {
   color: #1f4654 !important;
   font-weight: 500 !important;
   border-bottom: none !important;
@@ -24808,9 +25417,7 @@ col.asset-expense-col-amount,
   .calendar-todo-content
   .todo-list-segment-tabs
   .todo-category-tab-label,
-.todo-list-view
-  .todo-list-segment-tabs
-  .todo-category-tab-label {
+.todo-list-view .todo-list-segment-tabs .todo-category-tab-label {
   font-weight: 500;
 }
 
@@ -24893,7 +25500,10 @@ col.asset-expense-col-amount,
 }
 
 /* 우선순위 탭: 아코디언 — 배경 회색 톤 없음 */
-.calendar-view-todo .calendar-todo-content .todo-section--priority-board .todo-priority-quadrants,
+.calendar-view-todo
+  .calendar-todo-content
+  .todo-section--priority-board
+  .todo-priority-quadrants,
 .todo-list-view .todo-section--priority-board .todo-priority-quadrants {
   display: flex;
   flex-direction: column;
@@ -24922,9 +25532,7 @@ col.asset-expense-col-amount,
   .calendar-todo-content
   .todo-section--priority-board
   .todo-priority-quadrant-head,
-.todo-list-view
-  .todo-section--priority-board
-  .todo-priority-quadrant-head {
+.todo-list-view .todo-section--priority-board .todo-priority-quadrant-head {
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -24969,9 +25577,7 @@ col.asset-expense-col-amount,
   .calendar-todo-content
   .todo-section--priority-board
   .todo-priority-quadrant-title,
-.todo-list-view
-  .todo-section--priority-board
-  .todo-priority-quadrant-title {
+.todo-list-view .todo-section--priority-board .todo-priority-quadrant-title {
   flex: 1 1 auto;
   min-width: 0;
   font-size: 0.9375rem;
@@ -24985,9 +25591,7 @@ col.asset-expense-col-amount,
   .calendar-todo-content
   .todo-section--priority-board
   .todo-priority-quadrant-count,
-.todo-list-view
-  .todo-section--priority-board
-  .todo-priority-quadrant-count {
+.todo-list-view .todo-section--priority-board .todo-priority-quadrant-count {
   font-size: 0.75rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -25002,9 +25606,7 @@ col.asset-expense-col-amount,
   .calendar-todo-content
   .todo-section--priority-board
   .todo-priority-quadrant-chevron,
-.todo-list-view
-  .todo-section--priority-board
-  .todo-priority-quadrant-chevron {
+.todo-list-view .todo-section--priority-board .todo-priority-quadrant-chevron {
   flex-shrink: 0;
   width: 0.45rem;
   height: 0.45rem;
@@ -25032,9 +25634,7 @@ col.asset-expense-col-amount,
   .calendar-todo-content
   .todo-section--priority-board
   .todo-priority-quadrant-body,
-.todo-list-view
-  .todo-section--priority-board
-  .todo-priority-quadrant-body {
+.todo-list-view .todo-section--priority-board .todo-priority-quadrant-body {
   border-top: none;
   padding: 0.35rem 0.45rem 0.55rem;
   box-sizing: border-box;
@@ -25094,9 +25694,7 @@ col.asset-expense-col-amount,
   .todo-section--priority-board
   .todo-card-reminder-text,
 .todo-list-view .todo-section--priority-board .todo-card-dates,
-.todo-list-view
-  .todo-section--priority-board
-  .todo-card-reminder-text {
+.todo-list-view .todo-section--priority-board .todo-card-reminder-text {
   font-size: 0.7rem;
 }
 
@@ -25745,11 +26343,7 @@ col.asset-expense-col-amount,
   max-width: 26rem;
   max-height: 85vh;
   font-family:
-    -apple-system,
-    BlinkMacSystemFont,
-    "SF Pro Text",
-    "Segoe UI",
-    system-ui,
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui,
     sans-serif;
   background: rgba(246, 246, 246, 0.82);
   backdrop-filter: saturate(180%) blur(22px);
@@ -26829,7 +27423,9 @@ col.asset-expense-col-amount,
   .app-main:has(.home-view)
     .home-todo-list-content
     .home-todo-cards-wrap
-    .todo-card.home-todo-flat-row:not(.todo-card-dragging):not(.todo-item-modal-active):hover {
+    .todo-card.home-todo-flat-row:not(.todo-card-dragging):not(
+      .todo-item-modal-active
+    ):hover {
     background-color: #f2f7f9 !important;
   }
 
@@ -26839,21 +27435,9 @@ col.asset-expense-col-amount,
     tbody
     tr.todo-task-row:hover
     td,
-  .todo-list-view
-    .todo-table
-    tbody
-    tr.todo-task-row:hover
-    td,
-  .todo-list-in-sidebar
-    .todo-table
-    tbody
-    tr.todo-task-row:hover
-    td,
-  .todo-list-eisenhower-sidebar
-    .todo-table
-    tbody
-    tr.todo-task-row:hover
-    td {
+  .todo-list-view .todo-table tbody tr.todo-task-row:hover td,
+  .todo-list-in-sidebar .todo-table tbody tr.todo-task-row:hover td,
+  .todo-list-eisenhower-sidebar .todo-table tbody tr.todo-task-row:hover td {
     background-color: #f2f7f9;
   }
 }
@@ -27007,9 +27591,9 @@ col.asset-expense-col-amount,
 }
 
 /* KPI·날짜 둘 다 숨김이면 아래 블록 높이 0 — row-gap만 남아 글씨가 위로 붙어 보이는 현상 방지 */
-.todo-card-title-main:has(> .todo-card-detail-stack > .todo-card-kpi[hidden]):has(
-    > .todo-card-detail-stack > .todo-card-meta-row[hidden]
-  ) {
+.todo-card-title-main:has(
+    > .todo-card-detail-stack > .todo-card-kpi[hidden]
+  ):has(> .todo-card-detail-stack > .todo-card-meta-row[hidden]) {
   gap: 0;
 }
 
@@ -27106,7 +27690,10 @@ col.asset-expense-col-amount,
   .calendar-view-todo .calendar-todo-content .todo-cards-wrap .todo-card-kpi {
     font-size: 0.75rem;
   }
-  .calendar-view-todo .calendar-todo-content .todo-cards-wrap .todo-card-section-tag {
+  .calendar-view-todo
+    .calendar-todo-content
+    .todo-cards-wrap
+    .todo-card-section-tag {
     font-size: 0.5625rem;
     padding: 0.07rem 0.34rem;
   }
@@ -27118,7 +27705,9 @@ col.asset-expense-col-amount,
   }
   .todo-list-view .todo-cards-wrap .todo-card-priority:not([hidden]),
   .todo-list-in-sidebar .todo-cards-wrap .todo-card-priority:not([hidden]),
-  .todo-list-eisenhower-sidebar .todo-cards-wrap .todo-card-priority:not([hidden]) {
+  .todo-list-eisenhower-sidebar
+    .todo-cards-wrap
+    .todo-card-priority:not([hidden]) {
     font-size: 0.625rem;
   }
   .todo-list-view .todo-cards-wrap .todo-card-dates,
@@ -27136,6 +27725,104 @@ col.asset-expense-col-amount,
   .todo-list-eisenhower-sidebar .todo-cards-wrap .todo-card-section-tag {
     font-size: 0.5625rem;
     padding: 0.07rem 0.34rem;
+  }
+
+  /* 전체 보기(카테고리+우선순위): 세로 구분선 제거 — 데스크톱 .todo-card-name-meta-end border-left 유지 */
+  .todo-list-view .todo-cards-wrap .todo-card-name-meta-end,
+  .todo-list-in-sidebar .todo-cards-wrap .todo-card-name-meta-end,
+  .todo-list-eisenhower-sidebar .todo-cards-wrap .todo-card-name-meta-end,
+  .calendar-view-todo
+    .calendar-todo-content
+    .todo-cards-wrap
+    .todo-card-name-meta-end {
+    border-left: none;
+    padding-left: 0;
+  }
+
+  /* 같은 줄 칩: 리스트 태그·우선순위 태그 높이·글자·패딩 통일 */
+  .todo-list-view
+    .todo-cards-wrap
+    .todo-card-name-meta-end
+    .todo-card-section-tag,
+  .todo-list-in-sidebar
+    .todo-cards-wrap
+    .todo-card-name-meta-end
+    .todo-card-section-tag,
+  .todo-list-eisenhower-sidebar
+    .todo-cards-wrap
+    .todo-card-name-meta-end
+    .todo-card-section-tag,
+  .calendar-view-todo
+    .calendar-todo-content
+    .todo-cards-wrap
+    .todo-card-name-meta-end
+    .todo-card-section-tag,
+  .todo-list-view
+    .todo-cards-wrap
+    .todo-card-name-meta-end
+    .todo-card-priority:not([hidden]),
+  .todo-list-in-sidebar
+    .todo-cards-wrap
+    .todo-card-name-meta-end
+    .todo-card-priority:not([hidden]),
+  .todo-list-eisenhower-sidebar
+    .todo-cards-wrap
+    .todo-card-name-meta-end
+    .todo-card-priority:not([hidden]),
+  .calendar-view-todo
+    .calendar-todo-content
+    .todo-cards-wrap
+    .todo-card-name-meta-end
+    .todo-card-priority:not([hidden]) {
+    font-size: 0.625rem;
+    font-weight: 500;
+    line-height: 1.28;
+    padding: 0.09rem 0.46rem;
+    align-self: center;
+    box-sizing: border-box;
+  }
+
+  /* 카테고리 칩도 우선순위와 동일 알약 형태(크기만 통일, 배경색은 기존 유지) */
+  .todo-list-view
+    .todo-cards-wrap
+    .todo-card-name-meta-end
+    .todo-card-section-tag,
+  .todo-list-in-sidebar
+    .todo-cards-wrap
+    .todo-card-name-meta-end
+    .todo-card-section-tag,
+  .todo-list-eisenhower-sidebar
+    .todo-cards-wrap
+    .todo-card-name-meta-end
+    .todo-card-section-tag,
+  .calendar-view-todo
+    .calendar-todo-content
+    .todo-cards-wrap
+    .todo-card-name-meta-end
+    .todo-card-section-tag {
+    border-radius: 999px;
+  }
+
+  /* 할일 단독 뷰: 우선순위 칩을 캘린더 할일 목록과 같은 형태로 */
+  .todo-list-view
+    .todo-cards-wrap
+    .todo-card-name-meta-end
+    .todo-card-priority:not([hidden]),
+  .todo-list-in-sidebar
+    .todo-cards-wrap
+    .todo-card-name-meta-end
+    .todo-card-priority:not([hidden]),
+  .todo-list-eisenhower-sidebar
+    .todo-cards-wrap
+    .todo-card-name-meta-end
+    .todo-card-priority:not([hidden]) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: #f2f2f2;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    max-width: none;
   }
 }
 
@@ -27528,7 +28215,8 @@ svg.todo-card-reminder-icon {
 
 .todo-task-edit-reminder-date-wrap:has(.todo-task-edit-reminder-date.has-value)
   .todo-task-edit-reminder-date-placeholder,
-.todo-task-edit-reminder-date-wrap:focus-within .todo-task-edit-reminder-date-placeholder {
+.todo-task-edit-reminder-date-wrap:focus-within
+  .todo-task-edit-reminder-date-placeholder {
   opacity: 0;
   visibility: hidden;
 }
@@ -27604,7 +28292,10 @@ svg.todo-card-reminder-icon {
   cursor: pointer;
 }
 
-.todo-task-edit-modal .todo-task-edit-input-shell:not(.todo-task-edit-input-shell--select):not(.todo-task-edit-input-shell--clock):not(.todo-task-edit-input-shell--date)
+.todo-task-edit-modal
+  .todo-task-edit-input-shell:not(.todo-task-edit-input-shell--select):not(
+    .todo-task-edit-input-shell--clock
+  ):not(.todo-task-edit-input-shell--date)
   input {
   padding: 0.65rem 2rem 0.65rem 0.75rem;
   min-height: 2.625rem;
@@ -27651,7 +28342,9 @@ svg.todo-card-reminder-icon {
   min-width: 0;
 }
 
-.todo-task-edit-modal .todo-task-edit-input-shell--clock .todo-task-edit-reminder-row {
+.todo-task-edit-modal
+  .todo-task-edit-input-shell--clock
+  .todo-task-edit-reminder-row {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -27660,7 +28353,9 @@ svg.todo-card-reminder-icon {
   min-width: 0;
 }
 
-.todo-task-edit-modal .todo-task-edit-input-shell--clock .todo-task-edit-reminder-date-wrap {
+.todo-task-edit-modal
+  .todo-task-edit-input-shell--clock
+  .todo-task-edit-reminder-date-wrap {
   flex: 1 1 0;
   min-width: 0;
   min-height: 2rem;
@@ -27701,7 +28396,9 @@ svg.todo-card-reminder-icon {
   .todo-task-edit-reminder-date:not(.has-value)::-webkit-datetime-edit,
 .todo-task-edit-modal
   .todo-task-edit-reminder-date-wrap
-  .todo-task-edit-reminder-date:not(.has-value)::-webkit-datetime-edit-fields-wrapper {
+  .todo-task-edit-reminder-date:not(
+    .has-value
+  )::-webkit-datetime-edit-fields-wrapper {
   opacity: 0;
 }
 
@@ -27840,7 +28537,9 @@ svg.todo-card-reminder-icon {
   min-width: 0;
 }
 
-.todo-task-edit-modal .todo-task-edit-reminder-native-stack .todo-task-edit-native-slot:not(:first-child) {
+.todo-task-edit-modal
+  .todo-task-edit-reminder-native-stack
+  .todo-task-edit-native-slot:not(:first-child) {
   border-top: 0.0625rem solid rgba(0, 0, 0, 0.08);
 }
 
@@ -27857,7 +28556,9 @@ svg.todo-card-reminder-icon {
   padding-right: 1.85rem;
 }
 
-.todo-task-edit-modal .todo-task-edit-field > .todo-task-edit-input-shell.todo-task-edit-native-shell {
+.todo-task-edit-modal
+  .todo-task-edit-field
+  > .todo-task-edit-input-shell.todo-task-edit-native-shell {
   min-height: 2.625rem;
 }
 
@@ -27885,7 +28586,8 @@ svg.todo-card-reminder-icon {
   position: relative;
 }
 
-.todo-task-edit-modal input.todo-task-edit-native-time-input::-webkit-calendar-picker-indicator {
+.todo-task-edit-modal
+  input.todo-task-edit-native-time-input::-webkit-calendar-picker-indicator {
   opacity: 0 !important;
   display: block;
   width: 2.75rem;
@@ -27895,7 +28597,8 @@ svg.todo-card-reminder-icon {
   cursor: pointer;
 }
 
-.todo-task-edit-modal input.todo-task-edit-native-dt-input::-webkit-calendar-picker-indicator {
+.todo-task-edit-modal
+  input.todo-task-edit-native-dt-input::-webkit-calendar-picker-indicator {
   opacity: 0 !important;
   display: block;
   width: 2.75rem;
@@ -27905,12 +28608,14 @@ svg.todo-card-reminder-icon {
   cursor: pointer;
 }
 
-.todo-task-edit-modal input.todo-task-edit-native-dt-input::-webkit-date-and-time-value {
+.todo-task-edit-modal
+  input.todo-task-edit-native-dt-input::-webkit-date-and-time-value {
   min-height: 2.25rem;
   display: inline-block;
 }
 
-.todo-task-edit-modal input.todo-task-edit-native-time-input:not(.has-value):not(:focus) {
+.todo-task-edit-modal
+  input.todo-task-edit-native-time-input:not(.has-value):not(:focus) {
   color: var(--text-placeholder, #aeaeb2);
 }
 
@@ -27918,44 +28623,67 @@ svg.todo-card-reminder-icon {
   color: var(--text-body);
 }
 
-.todo-task-edit-modal input.todo-task-edit-native-time-input:focus:not(.has-value) {
+.todo-task-edit-modal
+  input.todo-task-edit-native-time-input:focus:not(.has-value) {
   color: var(--text-placeholder, #aeaeb2);
 }
 
-.todo-task-edit-modal input.todo-task-edit-native-dt-input::-webkit-clear-button {
+.todo-task-edit-modal
+  input.todo-task-edit-native-dt-input::-webkit-clear-button {
   display: none;
 }
 
-.todo-task-edit-modal .todo-task-edit-native-slot--calendar .todo-task-edit-native-dt-input:not(.has-value):not(:focus) {
+.todo-task-edit-modal
+  .todo-task-edit-native-slot--calendar
+  .todo-task-edit-native-dt-input:not(.has-value):not(:focus) {
   color: transparent !important;
   -webkit-text-fill-color: transparent !important;
 }
 
-.todo-task-edit-modal .todo-task-edit-native-slot--calendar .todo-task-edit-native-dt-input:focus:not(.has-value) {
+.todo-task-edit-modal
+  .todo-task-edit-native-slot--calendar
+  .todo-task-edit-native-dt-input:focus:not(.has-value) {
   color: transparent !important;
   -webkit-text-fill-color: transparent !important;
 }
 
-.todo-task-edit-modal .todo-task-edit-native-slot--calendar .todo-task-edit-native-dt-input:not(.has-value)::-webkit-datetime-edit,
-.todo-task-edit-modal .todo-task-edit-native-slot--calendar .todo-task-edit-native-dt-input:not(.has-value)::-webkit-datetime-edit-fields-wrapper {
+.todo-task-edit-modal
+  .todo-task-edit-native-slot--calendar
+  .todo-task-edit-native-dt-input:not(.has-value)::-webkit-datetime-edit,
+.todo-task-edit-modal
+  .todo-task-edit-native-slot--calendar
+  .todo-task-edit-native-dt-input:not(
+    .has-value
+  )::-webkit-datetime-edit-fields-wrapper {
   opacity: 0;
 }
 
-.todo-task-edit-modal .todo-task-edit-native-slot--calendar .todo-task-edit-native-dt-input.has-value {
+.todo-task-edit-modal
+  .todo-task-edit-native-slot--calendar
+  .todo-task-edit-native-dt-input.has-value {
   color: transparent !important;
   -webkit-text-fill-color: transparent !important;
 }
 
-.todo-task-edit-modal .todo-task-edit-native-slot--calendar .todo-task-edit-native-dt-input.has-value::-webkit-datetime-edit,
-.todo-task-edit-modal .todo-task-edit-native-slot--calendar .todo-task-edit-native-dt-input.has-value::-webkit-datetime-edit-fields-wrapper {
+.todo-task-edit-modal
+  .todo-task-edit-native-slot--calendar
+  .todo-task-edit-native-dt-input.has-value::-webkit-datetime-edit,
+.todo-task-edit-modal
+  .todo-task-edit-native-slot--calendar
+  .todo-task-edit-native-dt-input.has-value::-webkit-datetime-edit-fields-wrapper {
   opacity: 0 !important;
 }
 
-.todo-task-edit-modal .todo-task-edit-native-slot--calendar .todo-task-edit-native-dt-input.has-value::-webkit-date-and-time-value {
+.todo-task-edit-modal
+  .todo-task-edit-native-slot--calendar
+  .todo-task-edit-native-dt-input.has-value::-webkit-date-and-time-value {
   opacity: 0 !important;
 }
 
-.todo-task-edit-modal .todo-task-edit-native-slot--calendar:has(.todo-task-edit-native-dt-input:not(.has-value)):not(:focus-within)::before {
+.todo-task-edit-modal
+  .todo-task-edit-native-slot--calendar:has(
+    .todo-task-edit-native-dt-input:not(.has-value)
+  ):not(:focus-within)::before {
   content: "연도. 월. 일.";
   position: absolute;
   left: 0.75rem;
@@ -28030,7 +28758,10 @@ svg.todo-card-reminder-icon {
 
 @media (max-width: 48rem) {
   /* WebKit: 날짜 입력 내부 텍스트가 칸 안에서 위로 붙음 → datetime 편집 트리를 슬롯 높이(2.75rem) 기준 세로 중앙 */
-  .todo-task-edit-modal input.todo-task-edit-native-dt-input:not(.has-value)::-webkit-datetime-edit-fields-wrapper {
+  .todo-task-edit-modal
+    input.todo-task-edit-native-dt-input:not(
+      .has-value
+    )::-webkit-datetime-edit-fields-wrapper {
     display: flex !important;
     align-items: center !important;
     min-height: 2.75rem !important;
@@ -28039,7 +28770,10 @@ svg.todo-card-reminder-icon {
     padding: 0 !important;
   }
 
-  .todo-task-edit-modal input.todo-task-edit-native-dt-input:not(.has-value)::-webkit-datetime-edit {
+  .todo-task-edit-modal
+    input.todo-task-edit-native-dt-input:not(
+      .has-value
+    )::-webkit-datetime-edit {
     display: flex !important;
     align-items: center !important;
     justify-content: flex-start !important;
@@ -28049,7 +28783,10 @@ svg.todo-card-reminder-icon {
     padding: 0 !important;
   }
 
-  .todo-task-edit-modal input.todo-task-edit-native-dt-input:not(.has-value)::-webkit-date-and-time-value {
+  .todo-task-edit-modal
+    input.todo-task-edit-native-dt-input:not(
+      .has-value
+    )::-webkit-date-and-time-value {
     min-height: unset !important;
     display: flex !important;
     align-items: center !important;
@@ -28094,7 +28831,9 @@ svg.todo-card-reminder-icon {
   background: #f3f3f7;
 }
 
-.todo-task-edit-modal .todo-task-edit-footer--actions .todo-task-edit-footer-confirm {
+.todo-task-edit-modal
+  .todo-task-edit-footer--actions
+  .todo-task-edit-footer-confirm {
   box-sizing: border-box;
   width: 100%;
   flex: 1 1 auto;
@@ -28111,7 +28850,9 @@ svg.todo-card-reminder-icon {
   cursor: pointer;
 }
 
-.todo-task-edit-modal .todo-task-edit-footer--actions .todo-task-edit-footer-confirm:hover {
+.todo-task-edit-modal
+  .todo-task-edit-footer--actions
+  .todo-task-edit-footer-confirm:hover {
   background: #163a46;
 }
 
@@ -31604,7 +32345,9 @@ body.kpi-resizing {
 }
 
 /* 과제 설정(.time-task-setup-btn) 전역 호버가 아이콘 필터를 바꾸지 않도록 */
-.time-ledger-toolbar-icons .time-ledger-toolbar-icon-btn:hover img.time-btn-icon,
+.time-ledger-toolbar-icons
+  .time-ledger-toolbar-icon-btn:hover
+  img.time-btn-icon,
 .time-ledger-toolbar-icons
   .time-ledger-toolbar-icon-btn:focus-visible
   img.time-btn-icon {
@@ -31613,7 +32356,9 @@ body.kpi-resizing {
   opacity: 1;
 }
 
-.time-ledger-toolbar-icons .time-ledger-toolbar-icon-btn:hover svg.time-btn-icon,
+.time-ledger-toolbar-icons
+  .time-ledger-toolbar-icon-btn:hover
+  svg.time-btn-icon,
 .time-ledger-toolbar-icons
   .time-ledger-toolbar-icon-btn:focus-visible
   svg.time-btn-icon {
@@ -32790,10 +33535,15 @@ body.kpi-resizing {
 
 /* 과제 기록 한 줄 카드: 날짜 | − | 시작 | − | 끝 — 균등 3덩어리 + 구분선 (데스크톱 너비) */
 @media (min-width: 48.0625rem) {
-  #app .time-task-log-modal .time-task-log-datetime-card .time-task-log-datetime-input-row {
+  #app
+    .time-task-log-modal
+    .time-task-log-datetime-card
+    .time-task-log-datetime-input-row {
     display: grid !important;
-    grid-template-columns:
-      minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr) !important;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(
+        0,
+        1fr
+      ) !important;
     align-items: center !important;
     gap: 0.35rem !important;
     width: 100% !important;
@@ -32815,8 +33565,14 @@ body.kpi-resizing {
   -webkit-tap-highlight-color: transparent;
 }
 
-#app .time-task-log-modal .time-task-log-datetime-card input.time-task-log-time-start,
-#app .time-task-log-modal .time-task-log-datetime-card input.time-task-log-time-end {
+#app
+  .time-task-log-modal
+  .time-task-log-datetime-card
+  input.time-task-log-time-start,
+#app
+  .time-task-log-modal
+  .time-task-log-datetime-card
+  input.time-task-log-time-end {
   min-width: 0 !important;
   width: 100% !important;
   max-width: none !important;
@@ -33786,7 +34542,9 @@ button.time-modal-traffic {
 }
 
 /* 소비 기록 모달「추가」— 적용/기록 CTA와 동일 (#app으로 다른 버튼 규칙보다 우선) */
-#app .time-task-log-expense-inner-modal button.time-task-log-expense-inner-add-btn {
+#app
+  .time-task-log-expense-inner-modal
+  button.time-task-log-expense-inner-add-btn {
   display: block;
   width: 100%;
   max-width: 100%;
@@ -33809,7 +34567,9 @@ button.time-modal-traffic {
   -webkit-appearance: none;
   appearance: none;
 }
-#app .time-task-log-expense-inner-modal button.time-task-log-expense-inner-add-btn:hover {
+#app
+  .time-task-log-expense-inner-modal
+  button.time-task-log-expense-inner-add-btn:hover {
   background: #163a46 !important;
 }
 
@@ -36918,10 +37678,22 @@ button.time-modal-traffic {
 @media (min-width: 48.0625rem) {
   .time-ledger-view .time-filter-nav-cluster .time-filter-day-prev,
   .time-ledger-view .time-filter-nav-cluster .time-filter-day-next,
-  .asset-expense-view .asset-expense-filter-bar .time-filter-nav-cluster .time-filter-day-prev,
-  .asset-expense-view .asset-expense-filter-bar .time-filter-nav-cluster .time-filter-day-next,
-  .asset-cashflow-view .asset-expense-filter-bar .time-filter-nav-cluster .time-filter-day-prev,
-  .asset-cashflow-view .asset-expense-filter-bar .time-filter-nav-cluster .time-filter-day-next {
+  .asset-expense-view
+    .asset-expense-filter-bar
+    .time-filter-nav-cluster
+    .time-filter-day-prev,
+  .asset-expense-view
+    .asset-expense-filter-bar
+    .time-filter-nav-cluster
+    .time-filter-day-next,
+  .asset-cashflow-view
+    .asset-expense-filter-bar
+    .time-filter-nav-cluster
+    .time-filter-day-prev,
+  .asset-cashflow-view
+    .asset-expense-filter-bar
+    .time-filter-nav-cluster
+    .time-filter-day-next {
     width: auto;
     height: auto;
     min-width: 0;
@@ -36935,10 +37707,22 @@ button.time-modal-traffic {
   }
   .time-ledger-view .time-filter-nav-cluster .time-filter-day-prev:hover,
   .time-ledger-view .time-filter-nav-cluster .time-filter-day-next:hover,
-  .asset-expense-view .asset-expense-filter-bar .time-filter-nav-cluster .time-filter-day-prev:hover,
-  .asset-expense-view .asset-expense-filter-bar .time-filter-nav-cluster .time-filter-day-next:hover,
-  .asset-cashflow-view .asset-expense-filter-bar .time-filter-nav-cluster .time-filter-day-prev:hover,
-  .asset-cashflow-view .asset-expense-filter-bar .time-filter-nav-cluster .time-filter-day-next:hover {
+  .asset-expense-view
+    .asset-expense-filter-bar
+    .time-filter-nav-cluster
+    .time-filter-day-prev:hover,
+  .asset-expense-view
+    .asset-expense-filter-bar
+    .time-filter-nav-cluster
+    .time-filter-day-next:hover,
+  .asset-cashflow-view
+    .asset-expense-filter-bar
+    .time-filter-nav-cluster
+    .time-filter-day-prev:hover,
+  .asset-cashflow-view
+    .asset-expense-filter-bar
+    .time-filter-nav-cluster
+    .time-filter-day-next:hover {
     background: transparent;
     color: var(--text-muted);
     opacity: 0.88;
@@ -37980,8 +38764,14 @@ button.time-modal-traffic {
   border-right: none;
 }
 
-.time-retrospect-table.time-retrospect-table--week-cols tbody tr:last-child > th,
-.time-retrospect-table.time-retrospect-table--week-cols tbody tr:last-child > td {
+.time-retrospect-table.time-retrospect-table--week-cols
+  tbody
+  tr:last-child
+  > th,
+.time-retrospect-table.time-retrospect-table--week-cols
+  tbody
+  tr:last-child
+  > td {
   border-bottom: none;
 }
 
@@ -38039,7 +38829,9 @@ button.time-modal-traffic {
   overflow: visible;
 }
 
-.time-retrospect-table tr.time-retrospect-tr-kpi-domain th.time-retrospect-th-kpi-domain {
+.time-retrospect-table
+  tr.time-retrospect-tr-kpi-domain
+  th.time-retrospect-th-kpi-domain {
   padding: 0.5rem 0.55rem;
   text-align: left;
   vertical-align: middle;
@@ -38137,7 +38929,8 @@ button.time-modal-traffic {
 }
 
 .time-retrospect-table td.time-retrospect-td-day-cell.time-retrospect-td--diet,
-.time-retrospect-table td.time-retrospect-td-day-cell.time-retrospect-td--expense,
+.time-retrospect-table
+  td.time-retrospect-td-day-cell.time-retrospect-td--expense,
 .time-retrospect-table
   td.time-retrospect-td-day-cell.time-retrospect-td--kpi:not(
     .time-retrospect-td--kpi-habit
@@ -38228,7 +39021,8 @@ button.time-modal-traffic {
 }
 
 /* 회고 — 미디어 시청: 가용시간 대비 비율 막대(파란) + 시청 시간 */
-.time-retrospect-table td.time-retrospect-td-day-cell.time-retrospect-td--media {
+.time-retrospect-table
+  td.time-retrospect-td-day-cell.time-retrospect-td--media {
   padding: 0.22rem 0.28rem;
 }
 
@@ -38361,7 +39155,9 @@ button.time-modal-traffic {
     background: transparent;
   }
 
-  .time-retrospect-table tr.time-retrospect-tr-kpi-domain th.time-retrospect-th-kpi-domain {
+  .time-retrospect-table
+    tr.time-retrospect-tr-kpi-domain
+    th.time-retrospect-th-kpi-domain {
     padding: 0.32rem 0.35rem;
     font-size: 0.65rem;
   }
@@ -40175,7 +40971,10 @@ button.time-modal-traffic {
 
 /* 3. 시간 투자 내역 — 표「시간의 가치」열 제목·값 + 빨간색 */
 .time-audit-investment-content .time-audit-thief-table thead th:nth-child(3),
-.time-audit-investment-content .time-audit-thief-table tbody td.time-audit-thief-value {
+.time-audit-investment-content
+  .time-audit-thief-table
+  tbody
+  td.time-audit-thief-value {
   color: #dc2626;
 }
 
@@ -44918,16 +45717,24 @@ img.time-btn-icon {
 /* 매일 할 일 추가·수정: 레이블 작게 · KPI 이름·입력 본문 크게 */
 .dream-kpi-todo-add-modal .dream-kpi-todo-kpi-block > label,
 .dream-kpi-todo-edit-modal .dream-kpi-todo-kpi-block > label,
-.dream-kpi-todo-add-modal .dream-kpi-field:not(.dream-kpi-todo-kpi-block) > label,
-.dream-kpi-todo-edit-modal .dream-kpi-field:not(.dream-kpi-todo-kpi-block) > label {
+.dream-kpi-todo-add-modal
+  .dream-kpi-field:not(.dream-kpi-todo-kpi-block)
+  > label,
+.dream-kpi-todo-edit-modal
+  .dream-kpi-field:not(.dream-kpi-todo-kpi-block)
+  > label {
   font-size: 0.72rem;
   font-weight: 500;
   letter-spacing: 0.02em;
   color: var(--text-caption-color, #a8a290);
 }
 
-.dream-kpi-todo-add-modal .dream-kpi-todo-kpi-block .dream-kpi-todo-linked-kpi-name,
-.dream-kpi-todo-edit-modal .dream-kpi-todo-kpi-block .dream-kpi-todo-linked-kpi-name {
+.dream-kpi-todo-add-modal
+  .dream-kpi-todo-kpi-block
+  .dream-kpi-todo-linked-kpi-name,
+.dream-kpi-todo-edit-modal
+  .dream-kpi-todo-kpi-block
+  .dream-kpi-todo-linked-kpi-name {
   margin: 0;
   font-size: 1.0625rem;
   font-weight: 600;
@@ -44964,7 +45771,9 @@ img.time-btn-icon {
   width: 100%;
 }
 
-.dream-kpi-todo-edit-modal .dream-kpi-todo-edit-modal-delete-wrap .dream-kpi-delete-btn {
+.dream-kpi-todo-edit-modal
+  .dream-kpi-todo-edit-modal-delete-wrap
+  .dream-kpi-delete-btn {
   margin: 0 auto;
 }
 
@@ -46838,7 +47647,8 @@ img.time-btn-icon {
   display: flex;
   align-items: center;
 }
-.diary-view-inner--desktop-mac-diary .diary-desktop-header-add-btn.todo-add-btn {
+.diary-view-inner--desktop-mac-diary
+  .diary-desktop-header-add-btn.todo-add-btn {
   box-sizing: border-box;
   display: inline-flex !important;
   align-items: center !important;
@@ -46861,7 +47671,8 @@ img.time-btn-icon {
     opacity 0.15s ease,
     color 0.15s ease;
 }
-.diary-view-inner--desktop-mac-diary .diary-desktop-header-add-btn.todo-add-btn:hover {
+.diary-view-inner--desktop-mac-diary
+  .diary-desktop-header-add-btn.todo-add-btn:hover {
   opacity: 1 !important;
   background: rgba(31, 70, 84, 0.1) !important;
   color: #163a46 !important;
@@ -47017,7 +47828,8 @@ img.time-btn-icon {
 }
 
 /* 통제일기·감정일기: Q&A 블록을 하나의 둥근 그룹 카드로 */
-.diary-view-inner--desktop-mac-diary .diary-paper.diary-paper-qa:not(.diary-feed-card) {
+.diary-view-inner--desktop-mac-diary
+  .diary-paper.diary-paper-qa:not(.diary-feed-card) {
   max-width: 100%;
   margin: 0.25rem auto 2rem;
   padding: 0 0 2rem !important;
@@ -47033,7 +47845,8 @@ img.time-btn-icon {
   box-sizing: border-box;
 }
 
-.diary-view-inner--desktop-mac-diary .diary-paper.diary-paper-qa.diary-feed-card {
+.diary-view-inner--desktop-mac-diary
+  .diary-paper.diary-paper-qa.diary-feed-card {
   max-width: 100%;
   margin: 0 0 0.875rem;
 }
@@ -47811,12 +48624,14 @@ img.time-btn-icon {
 }
 
 /* 할일 사이드바 병렬 시: 세로선은 메인 오른쪽 한 줄만 — 사이드바 border-left 와 이중선·상단 코너 비틀림 완화 */
-.calendar-monthly-layout:has(> .calendar-todo-sidebar) > .calendar-monthly-main {
+.calendar-monthly-layout:has(> .calendar-todo-sidebar)
+  > .calendar-monthly-main {
   border-right: var(--divider-subtle);
   box-sizing: border-box;
 }
 
-.calendar-monthly-layout:has(> .calendar-todo-sidebar) > .calendar-todo-sidebar {
+.calendar-monthly-layout:has(> .calendar-todo-sidebar)
+  > .calendar-todo-sidebar {
   border-left: none;
 }
 
@@ -47873,7 +48688,9 @@ img.time-btn-icon {
   color: rgba(60, 60, 67, 0.3);
 }
 
-.calendar-view .calendar-monthly-day.other-month.today .calendar-monthly-day-num::after {
+.calendar-view
+  .calendar-monthly-day.other-month.today
+  .calendar-monthly-day-num::after {
   content: none;
   display: none;
 }
@@ -47883,7 +48700,9 @@ img.time-btn-icon {
 }
 
 /* 타달·일요일 겹침: 오늘 배지도 동일 톤(연한 글자) */
-.calendar-view .calendar-monthly-day.other-month.today.sun .calendar-monthly-day-num {
+.calendar-view
+  .calendar-monthly-day.other-month.today.sun
+  .calendar-monthly-day-num {
   color: #f2f7f9;
 }
 
@@ -47902,7 +48721,9 @@ img.time-btn-icon {
 }
 
 /* 독립 일정 탭: 상단 외부 탭 줄 없을 때 빈 루트 비우기 */
-.calendar-view--mobile-schedule .calendar-view-with-subtabs > .calendar-view-top-row:empty {
+.calendar-view--mobile-schedule
+  .calendar-view-with-subtabs
+  > .calendar-view-top-row:empty {
   display: none;
   margin: 0;
   padding: 0;
@@ -47910,7 +48731,8 @@ img.time-btn-icon {
 }
 
 /* 일정(schedulecalendar): 서브탭 바. 세로 여백은 넓은 화면에서만(모바일은 0) */
-.calendar-view--mobile-schedule .calendar-view-with-subtabs
+.calendar-view--mobile-schedule
+  .calendar-view-with-subtabs
   > .calendar-sub-tabs-bar.calendar-sub-tabs-bar--schedule-mobile {
   order: 0;
   flex-shrink: 0;
@@ -47986,7 +48808,8 @@ img.time-btn-icon {
   min-width: 0;
 }
 
-.calendar-view--mobile-schedule .calendar-sub-tabs-strip--center
+.calendar-view--mobile-schedule
+  .calendar-sub-tabs-strip--center
   .calendar-sub-tabs-segment.time-view-tabs--segmented {
   max-width: min(22rem, calc(100vw - 7rem));
 }
@@ -48087,12 +48910,16 @@ img.time-btn-icon {
   display: none !important;
 }
 
-.calendar-view--mobile-schedule .calendar-view-with-subtabs
+.calendar-view--mobile-schedule
+  .calendar-view-with-subtabs
   .calendar-sub-tabs-segment.calendar-schedule-segment-tabs.time-view-tabs--segmented {
   --time-segment-track: #f2f7f9;
   position: relative;
   display: grid !important;
-  grid-template-columns: repeat(var(--time-segment-count, 4), minmax(0, auto)) !important;
+  grid-template-columns: repeat(
+    var(--time-segment-count, 4),
+    minmax(0, auto)
+  ) !important;
   gap: 0 !important;
   align-items: stretch !important;
   align-content: stretch !important;
@@ -48116,7 +48943,8 @@ img.time-btn-icon {
     0 0 0 0.5px rgba(0, 0, 0, 0.04);
 }
 
-.calendar-view--mobile-schedule .calendar-view-with-subtabs
+.calendar-view--mobile-schedule
+  .calendar-view-with-subtabs
   .calendar-sub-tabs-segment.calendar-schedule-segment-tabs.time-view-tabs--segmented
   > .time-view-tabs-thumb {
   grid-row: 1;
@@ -48134,35 +48962,40 @@ img.time-btn-icon {
   pointer-events: none;
 }
 
-.calendar-view--mobile-schedule .calendar-view-with-subtabs
+.calendar-view--mobile-schedule
+  .calendar-view-with-subtabs
   .calendar-sub-tabs-segment
   > .time-view-tab.calendar-sub-tab:nth-child(2) {
   grid-column: 1;
   grid-row: 1;
   z-index: 1;
 }
-.calendar-view--mobile-schedule .calendar-view-with-subtabs
+.calendar-view--mobile-schedule
+  .calendar-view-with-subtabs
   .calendar-sub-tabs-segment
   > .time-view-tab.calendar-sub-tab:nth-child(3) {
   grid-column: 2;
   grid-row: 1;
   z-index: 1;
 }
-.calendar-view--mobile-schedule .calendar-view-with-subtabs
+.calendar-view--mobile-schedule
+  .calendar-view-with-subtabs
   .calendar-sub-tabs-segment
   > .time-view-tab.calendar-sub-tab:nth-child(4) {
   grid-column: 3;
   grid-row: 1;
   z-index: 1;
 }
-.calendar-view--mobile-schedule .calendar-view-with-subtabs
+.calendar-view--mobile-schedule
+  .calendar-view-with-subtabs
   .calendar-sub-tabs-segment
   > .time-view-tab.calendar-sub-tab:nth-child(5) {
   grid-column: 4;
   grid-row: 1;
   z-index: 1;
 }
-.calendar-view--mobile-schedule .calendar-view-with-subtabs
+.calendar-view--mobile-schedule
+  .calendar-view-with-subtabs
   .calendar-sub-tabs-segment
   > .time-view-tab.calendar-sub-tab:nth-child(6) {
   grid-column: 5;
@@ -48170,7 +49003,8 @@ img.time-btn-icon {
   z-index: 1;
 }
 
-.calendar-view--mobile-schedule .calendar-view-with-subtabs
+.calendar-view--mobile-schedule
+  .calendar-view-with-subtabs
   .calendar-sub-tabs-segment.time-view-tabs--segmented
   .calendar-sub-tab.time-view-tab {
   display: flex !important;
@@ -48195,7 +49029,8 @@ img.time-btn-icon {
   outline: none !important;
 }
 
-.calendar-view--mobile-schedule .calendar-view-with-subtabs
+.calendar-view--mobile-schedule
+  .calendar-view-with-subtabs
   .calendar-sub-tabs-segment.time-view-tabs--segmented
   .calendar-sub-tab.time-view-tab.active {
   color: #163a46 !important;
@@ -48205,10 +49040,12 @@ img.time-btn-icon {
   margin-bottom: 0 !important;
 }
 
-.calendar-view--mobile-schedule .calendar-view-with-subtabs
+.calendar-view--mobile-schedule
+  .calendar-view-with-subtabs
   .calendar-sub-tabs-segment
   .calendar-sub-tab:not(:last-child)::after,
-.calendar-view--mobile-schedule .calendar-view-with-subtabs
+.calendar-view--mobile-schedule
+  .calendar-view-with-subtabs
   .calendar-sub-tabs-segment
   .calendar-sub-tab.active
   + .calendar-sub-tab::before {
@@ -49323,7 +50160,8 @@ img.time-btn-icon {
 }
 .calendar-1week-flow-card {
   border: 1px solid rgba(0, 0, 0, 0.1);
-  border-left: 3px solid var(--calendar-timeline-stripe, var(--ui-btn-primary-bg));
+  border-left: 3px solid
+    var(--calendar-timeline-stripe, var(--ui-btn-primary-bg));
   border-radius: 0.5rem;
   background: var(--calendar-week-flow-card-bg, var(--app-main-bg));
   padding: 0.45rem 0.5rem 0.4rem;
@@ -49482,15 +50320,19 @@ img.time-btn-icon {
     padding: 0.26rem 0.28rem 0.24rem;
     border-radius: 0.4rem;
   }
-  .calendar-1week-time-grid-google--flow .calendar-1week-flow-card + .calendar-1week-flow-card {
+  .calendar-1week-time-grid-google--flow
+    .calendar-1week-flow-card
+    + .calendar-1week-flow-card {
     border-top: none;
   }
-  .calendar-1week-time-grid-google--flow .calendar-1week-flow-card:not(:last-child) {
+  .calendar-1week-time-grid-google--flow
+    .calendar-1week-flow-card:not(:last-child) {
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
     border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   }
-  .calendar-1week-time-grid-google--flow .calendar-1week-flow-card:not(:first-child) {
+  .calendar-1week-time-grid-google--flow
+    .calendar-1week-flow-card:not(:first-child) {
     border-top-left-radius: 0;
     border-top-right-radius: 0;
   }
@@ -49518,10 +50360,8 @@ img.time-btn-icon {
   .calendar-1week-time-grid-google--flow .calendar-1week-flow-card-progress {
     font-size: 0.5rem;
   }
-  .calendar-1week-time-grid-google--flow
-    .calendar-1week-flow-card-done-check,
-  .calendar-1week-time-grid-google--flow
-    .calendar-1week-flow-card-missed-mark {
+  .calendar-1week-time-grid-google--flow .calendar-1week-flow-card-done-check,
+  .calendar-1week-time-grid-google--flow .calendar-1week-flow-card-missed-mark {
     font-size: 0.625rem;
   }
 }
@@ -49540,7 +50380,8 @@ img.time-btn-icon {
   pointer-events: auto;
   cursor: default;
 }
-.calendar-1week-google-block--label-hover-only .calendar-1week-google-block-inner {
+.calendar-1week-google-block--label-hover-only
+  .calendar-1week-google-block-inner {
   padding: 0;
   gap: 0;
 }
@@ -49580,10 +50421,12 @@ img.time-btn-icon {
 .calendar-1week-google-block-inner.calendar-1week-google-block-inner--surface-spec {
   color: var(--calendar-tb-fg, var(--text-body)) !important;
 }
-.calendar-1week-google-block-inner--surface-spec .calendar-1week-google-block-name {
+.calendar-1week-google-block-inner--surface-spec
+  .calendar-1week-google-block-name {
   color: inherit !important;
 }
-.calendar-1week-google-block-inner--surface-spec .calendar-1week-google-block-time {
+.calendar-1week-google-block-inner--surface-spec
+  .calendar-1week-google-block-time {
   color: var(
     --calendar-tb-fg-muted,
     var(--calendar-tb-fg, var(--text-body))
@@ -49598,7 +50441,8 @@ img.time-btn-icon {
   justify-content: space-between;
   gap: 0.35rem;
 }
-.calendar-1week-google-block-inner--inline-time .calendar-1week-google-block-name {
+.calendar-1week-google-block-inner--inline-time
+  .calendar-1week-google-block-name {
   flex: 1 1 auto;
   min-width: 0;
   display: block;
@@ -49608,7 +50452,8 @@ img.time-btn-icon {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.calendar-1week-google-block-inner--inline-time .calendar-1week-google-block-time {
+.calendar-1week-google-block-inner--inline-time
+  .calendar-1week-google-block-time {
   flex: 0 0 auto;
 }
 
@@ -49644,7 +50489,8 @@ img.time-btn-icon {
 }
 
 .calendar-1week-google-block-inner--accent-fg .calendar-1week-google-block-time,
-.calendar-1week-google-block-inner--accent-fg .calendar-1week-google-block-name {
+.calendar-1week-google-block-inner--accent-fg
+  .calendar-1week-google-block-name {
   color: inherit;
   opacity: 0.93;
 }
@@ -49738,7 +50584,9 @@ img.time-btn-icon {
 }
 
 /* 1일 뷰 메인·분할 그리드 캔버스 — 앱 메인 배경과 동일 */
-.calendar-view .calendar-monthly-layout.calendar-1day-view .calendar-monthly-main {
+.calendar-view
+  .calendar-monthly-layout.calendar-1day-view
+  .calendar-monthly-main {
   background: var(--app-main-bg) !important;
 }
 
@@ -50202,16 +51050,24 @@ img.time-btn-icon {
   col.time-budget-col-duration {
   width: 13%;
 }
-.calendar-1day-budget-column .time-daily-budget-table col.time-budget-col-delete {
+.calendar-1day-budget-column
+  .time-daily-budget-table
+  col.time-budget-col-delete {
   width: 1.4rem;
   min-width: 1.4rem;
   max-width: 1.5rem;
 }
-.calendar-1day-budget-column .time-daily-budget-table thead .time-budget-th-vis-mobile {
+.calendar-1day-budget-column
+  .time-daily-budget-table
+  thead
+  .time-budget-th-vis-mobile {
   display: none !important;
 }
 
-.calendar-1day-budget-column .time-daily-budget-table thead th.time-budget-th-sched {
+.calendar-1day-budget-column
+  .time-daily-budget-table
+  thead
+  th.time-budget-th-sched {
   white-space: nowrap;
   background-color: #f2f7f9 !important;
   text-align: center;
@@ -50710,7 +51566,9 @@ img.time-btn-icon {
   border-bottom: none !important;
 }
 
-.calendar-1day-budget-column .time-daily-budget-section--todo .calendar-1day-todo-section {
+.calendar-1day-budget-column
+  .time-daily-budget-section--todo
+  .calendar-1day-todo-section {
   margin-top: 0;
   padding-top: 0;
   border-top: none;
@@ -50753,8 +51611,14 @@ img.time-btn-icon {
   color: rgba(60, 60, 67, 0.48);
 }
 
-.calendar-1day-budget-column .calendar-1day-todo-table thead th:not(:last-child),
-.calendar-1day-budget-column .calendar-1day-todo-table tbody td:not(:last-child) {
+.calendar-1day-budget-column
+  .calendar-1day-todo-table
+  thead
+  th:not(:last-child),
+.calendar-1day-budget-column
+  .calendar-1day-todo-table
+  tbody
+  td:not(:last-child) {
   border-right: 0.03125rem solid rgba(60, 60, 67, 0.07) !important;
 }
 
@@ -50768,11 +51632,7 @@ img.time-btn-icon {
   border-bottom: 0.03125rem solid rgba(60, 60, 67, 0.09) !important;
 }
 
-.calendar-1day-budget-column
-  .calendar-1day-todo-table
-  tbody
-  tr:last-child
-  td {
+.calendar-1day-budget-column .calendar-1day-todo-table tbody tr:last-child td {
   border-bottom: none !important;
 }
 
@@ -51425,9 +52285,7 @@ tr.time-budget-calendar-row--readonly {
   border-bottom: 0.09375rem solid rgba(0, 0, 0, 0.05);
 }
 
-.calendar-1day-view
-  .calendar-1day-time-table--compare
-  .calendar-1day-time-row {
+.calendar-1day-view .calendar-1day-time-table--compare .calendar-1day-time-row {
   min-height: 0;
 }
 
@@ -51450,7 +52308,8 @@ tr.time-budget-calendar-row--readonly {
   align-self: flex-start;
 }
 
-.calendar-1day-view .calendar-1day-time-label.calendar-1day-time-label--subslot {
+.calendar-1day-view
+  .calendar-1day-time-label.calendar-1day-time-label--subslot {
   padding-top: 0.125rem;
   font-size: 0.5175rem;
   font-weight: 300;
@@ -51593,7 +52452,8 @@ tr.time-budget-calendar-row--readonly {
   word-break: break-word;
 }
 
-.calendar-1day-view .calendar-1day-time-slot-label-wrap--compact
+.calendar-1day-view
+  .calendar-1day-time-slot-label-wrap--compact
   .calendar-1day-time-slot-label-title-time {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -51616,9 +52476,15 @@ tr.time-budget-calendar-row--readonly {
 }
 
 /* 면 채움 세그먼트 안 라벨: 배경 위 가독 — 흰색(JS 인라인 강조색보다 우선) */
-.calendar-1day-view .calendar-1day-time-slot-fill-seg .calendar-1day-time-slot-label-wrap,
-.calendar-1day-view .calendar-1day-time-slot-fill-seg .calendar-1day-time-slot-label,
-.calendar-1day-view .calendar-1day-time-slot-fill-seg .calendar-1day-time-slot-label-memo {
+.calendar-1day-view
+  .calendar-1day-time-slot-fill-seg
+  .calendar-1day-time-slot-label-wrap,
+.calendar-1day-view
+  .calendar-1day-time-slot-fill-seg
+  .calendar-1day-time-slot-label,
+.calendar-1day-view
+  .calendar-1day-time-slot-fill-seg
+  .calendar-1day-time-slot-label-memo {
   color: #ffffff !important;
 }
 
@@ -53326,20 +54192,23 @@ tr.time-budget-calendar-row--readonly {
   background: #e5e7eb;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-list-view {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-list-view {
   padding: 0;
   min-height: 0;
   width: 100%;
 }
 
 /* 환경설정 버튼: 할일 쏟아내기 탭에서만 표시. 날짜정하기/우선순위/오늘 해치우기 사이드바에서는 숨김 */
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-list-toolbar,
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-list-toolbar,
 .todo-list-in-sidebar .todo-list-toolbar,
 .todo-list-eisenhower-sidebar .todo-list-toolbar {
   display: none !important;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-list-toolbar-btn {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-list-toolbar-btn {
   padding: 0.25rem 0.45rem;
   font-size: 0.8rem;
 }
@@ -53446,26 +54315,30 @@ tr.time-budget-calendar-row--readonly {
   width: 6rem !important;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-sections-wrap {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-sections-wrap {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   width: 100%;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-section {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-section {
   margin-bottom: 0;
   width: 100%;
   min-width: 0;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-section-header {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-section-header {
   padding: 0.65rem 0.75rem;
   font-size: 0.9rem;
   line-height: 1.4;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-section-header--no-collapse {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-section-header--no-collapse {
   margin-left: -0.6rem;
   margin-right: -0.6rem;
   padding-left: 1.35rem;
@@ -53473,7 +54346,8 @@ tr.time-budget-calendar-row--readonly {
   padding-bottom: 0.5rem;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-section-label {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-section-label {
   font-size: 0.95rem;
   font-weight: 200;
   letter-spacing: -0.01em;
@@ -53481,7 +54355,8 @@ tr.time-budget-calendar-row--readonly {
   font-family: var(--font-heading);
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table-wrap {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table-wrap {
   width: 100%;
   min-width: 0;
   overflow-x: auto;
@@ -53490,58 +54365,92 @@ tr.time-budget-calendar-row--readonly {
   -ms-overflow-style: none;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table-wrap::-webkit-scrollbar {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table-wrap::-webkit-scrollbar {
   display: none;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table {
   font-size: 0.85rem;
   min-width: 100%;
   width: max-content;
   table-layout: fixed;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table col.todo-col-done {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  col.todo-col-done {
   width: 2rem !important;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table col.todo-col-name {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  col.todo-col-name {
   width: 12rem !important;
   min-width: 12rem !important;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table col.todo-col-start,
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table col.todo-col-due,
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table col.todo-col-reminder,
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table col.todo-col-start-time,
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table col.todo-col-end-time {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  col.todo-col-start,
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  col.todo-col-due,
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  col.todo-col-reminder,
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  col.todo-col-start-time,
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  col.todo-col-end-time {
   width: 0 !important;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table col.todo-col-kpi {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  col.todo-col-kpi {
   min-width: 6rem !important;
   width: 6rem !important;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table thead th,
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table tbody td {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  thead
+  th,
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  tbody
+  td {
   vertical-align: middle;
   padding: 0.5rem 0.6rem;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table .todo-th-done,
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table .todo-cell-done {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  .todo-th-done,
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  .todo-cell-done {
   position: sticky;
   left: 0;
   z-index: 2;
   box-shadow: 0.0625rem 0 0 #e5e7eb;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table .todo-th-done {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  .todo-th-done {
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table .todo-th-name,
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table .todo-cell-name {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  .todo-th-name,
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  .todo-cell-name {
   position: sticky;
   left: 2rem;
   z-index: 2;
@@ -53552,36 +54461,49 @@ tr.time-budget-calendar-row--readonly {
   box-sizing: border-box;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table .todo-th-name {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  .todo-th-name {
   background: #fafafa;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table .todo-cell-done {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  .todo-cell-done {
   width: 2rem;
   min-width: 2rem;
   text-align: center;
   padding-right: 0.25rem;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table .todo-done-check {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  .todo-done-check {
   margin: 0;
   width: 1rem;
   height: 1rem;
   vertical-align: middle;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table .todo-cell-name {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  .todo-cell-name {
   overflow: hidden;
   padding-right: 0.6rem;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table .todo-cell-kpi {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  .todo-cell-kpi {
   min-width: 6rem;
   white-space: normal;
   word-break: break-word;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table .todo-cell-name input,
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  .todo-cell-name
+  input,
 .calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
   .todo-table
   .todo-cell-name
@@ -53612,7 +54534,10 @@ tr.time-budget-calendar-row--readonly {
   padding-left: calc(0.35rem - 0.1875rem);
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table .todo-cell-name input::placeholder,
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  .todo-cell-name
+  input::placeholder,
 .calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
   .todo-table
   .todo-cell-name
@@ -53631,40 +54556,66 @@ tr.time-budget-calendar-row--readonly {
   color: #9ca3af;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-due-date-text {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-due-date-text {
   font-size: 0.75rem;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table .todo-th-done {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  .todo-th-done {
   width: 2rem;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table .todo-th-start,
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table .todo-th-due,
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table .todo-th-reminder,
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table .todo-th-start-time,
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table .todo-th-end-time {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  .todo-th-start,
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  .todo-th-due,
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  .todo-th-reminder,
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  .todo-th-start-time,
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  .todo-th-end-time {
   width: 0;
   display: none;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table .todo-cell-start,
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table .todo-cell-due,
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table .todo-cell-reminder,
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table .todo-cell-start-time,
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table .todo-cell-end-time {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  .todo-cell-start,
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  .todo-cell-due,
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  .todo-cell-reminder,
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  .todo-cell-start-time,
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  .todo-cell-end-time {
   width: 0;
   display: none;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-table .todo-add-cell {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-table
+  .todo-add-cell {
   padding: 0.35rem 0.4rem;
 }
 
-.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity)) .todo-filter-bar {
+.calendar-todo-sidebar-body:not(:has(.calendar-todo-sidebar-parity))
+  .todo-filter-bar {
   padding: 0.5rem 0;
   margin-bottom: 0.5rem;
 }
@@ -55633,10 +56584,12 @@ tr.time-budget-calendar-row--readonly {
 /* ---- 모바일 하단 「일정」탭 · 오늘 해치우기: 파일 말미에서 flex/overflow 체인 최종 해제(앞선 규칙 덮어씀) ---- */
 @media (max-width: 48rem) {
   /* flex item min-width:auto 가 내용(가로 6:4 표) 최소 너비로만 축소되어 첫 페인트가 데스크톱형으로 보이는 것 방지 */
-  .calendar-view--mobile-schedule:has(.calendar-1day-view) .calendar-content-wrap,
+  .calendar-view--mobile-schedule:has(.calendar-1day-view)
+    .calendar-content-wrap,
   .calendar-view--mobile-schedule:has(.calendar-1day-view)
     .calendar-view-with-subtabs.calendar-monthly-layout,
-  .calendar-view--mobile-schedule:has(.calendar-1day-view) .calendar-view-content-area {
+  .calendar-view--mobile-schedule:has(.calendar-1day-view)
+    .calendar-view-content-area {
     flex: 0 0 auto !important;
     min-width: 0 !important;
     max-width: 100% !important;
@@ -55655,10 +56608,11 @@ tr.time-budget-calendar-row--readonly {
     min-height: min-content !important;
     overflow: visible !important;
   }
-  .calendar-view--mobile-schedule
-    .calendar-1day-view.calendar-monthly-layout,
+  .calendar-view--mobile-schedule .calendar-1day-view.calendar-monthly-layout,
   .calendar-view--mobile-schedule .calendar-1day-view .calendar-monthly-main,
-  .calendar-view--mobile-schedule .calendar-1day-view .calendar-1day-split-layout {
+  .calendar-view--mobile-schedule
+    .calendar-1day-view
+    .calendar-1day-split-layout {
     flex: 0 0 auto !important;
     min-width: 0 !important;
     max-width: 100% !important;
@@ -55690,14 +56644,17 @@ tr.time-budget-calendar-row--readonly {
     overflow-y: visible !important;
     -webkit-overflow-scrolling: touch;
   }
-  .calendar-view--mobile-schedule:has(.calendar-1day-view) .time-daily-budget-four-panels,
-  .calendar-view--mobile-schedule:has(.calendar-1day-view) .calendar-1day-budget-tables-scroll {
+  .calendar-view--mobile-schedule:has(.calendar-1day-view)
+    .time-daily-budget-four-panels,
+  .calendar-view--mobile-schedule:has(.calendar-1day-view)
+    .calendar-1day-budget-tables-scroll {
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
     box-sizing: border-box !important;
   }
-  .calendar-view--mobile-schedule:has(.calendar-1day-view) .time-daily-budget-table {
+  .calendar-view--mobile-schedule:has(.calendar-1day-view)
+    .time-daily-budget-table {
     table-layout: fixed !important;
     width: 100% !important;
     max-width: 100% !important;
