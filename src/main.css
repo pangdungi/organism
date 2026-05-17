@@ -39,22 +39,45 @@ body {
   width: 100%;
 }
 
+/* 로그인 후 메인 셸: 뷰포트 높이 고정 → 본문(.app-main)만 스크롤, 앱 푸터는 항상 하단 */
+#signin-page {
+  flex-direction: column;
+  box-sizing: border-box;
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#signin-page #app-screen {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 /* --- App.js: .app-page > #app-screen-inner --- */
 .app-page {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;
+  flex: 1 1 0;
+  min-height: 0;
   width: 100%;
   max-width: 100%;
+  overflow: hidden;
 }
 
 #app-screen-inner {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
   width: 100%;
+  overflow: hidden;
 }
 
 .app-main {
