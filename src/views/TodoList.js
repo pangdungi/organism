@@ -32,6 +32,7 @@ import {
 } from "../utils/todoSubtasks.js";
 import { refreshEisenhowerQuadrantsIfActive } from "../utils/eisenhowerQuadrantsBridge.js";
 import { createTodoCheckboxTypeMenu } from "../utils/todoCheckboxTypeMenu.js";
+import { buildModalSimpleSelect } from "../utils/todoModalSimpleSelect.js";
 import {
   persistSectionTasksAndSchedule,
   persistCustomSectionTasksAndSchedule,
@@ -1618,15 +1619,11 @@ function showTodoTaskModal(options) {
         </div>
         <div class="time-task-log-field">
           <label>우선순위</label>
-          <select class="todo-task-edit-eisenhower">
-            ${EISENHOWER_OPTIONS.map((o) => `<option value="${escapeHtml(o.value)}" ${o.value === eisenhower ? "selected" : ""}>${escapeHtml(o.label)}</option>`).join("")}
-          </select>
+          <div data-legacy="todo-task-edit-eisenhower-wrap"></div>
         </div>
         <div class="time-task-log-field">
           <label>리스트</label>
-          <select class="todo-task-edit-section" aria-label="다른 리스트로 이동">
-            ${sections.map((s) => `<option value="${escapeHtml(s.id)}" ${s.id === currentSectionId ? "selected" : ""}>${escapeHtml(s.label)}</option>`).join("")}
-          </select>
+          <div data-legacy="todo-task-edit-section-wrap"></div>
         </div>
       </div>
       <div class="time-task-log-footer todo-task-edit-footer todo-task-edit-footer--actions">
@@ -1653,9 +1650,31 @@ function showTodoTaskModal(options) {
   const dueInput = modal.querySelector(".todo-task-edit-due");
   const startSlot = startInput?.closest(".time-task-log-date-native-wrap");
   const dueSlot = dueInput?.closest(".time-task-log-date-native-wrap");
-  const eisenhowerSelect = modal.querySelector(".todo-task-edit-eisenhower");
-  const sectionSelect = modal.querySelector(".todo-task-edit-section");
+  const eisenhowerMount = modal.querySelector(
+    '[data-legacy~="todo-task-edit-eisenhower-wrap"]',
+  );
+  const sectionMount = modal.querySelector(
+    '[data-legacy~="todo-task-edit-section-wrap"]',
+  );
   const asScheduleInput = modal.querySelector(".todo-task-edit-as-schedule");
+
+  const modalAbort = new AbortController();
+  const eisenhowerDd = buildModalSimpleSelect({
+    items: EISENHOWER_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
+    value: eisenhower,
+    placeholder: "선택 안 함",
+    ariaLabel: "우선순위",
+    abortSignal: modalAbort.signal,
+  });
+  const sectionDd = buildModalSimpleSelect({
+    items: sections.map((s) => ({ value: s.id, label: s.label })),
+    value: currentSectionId,
+    placeholder: "리스트",
+    ariaLabel: "리스트",
+    abortSignal: modalAbort.signal,
+  });
+  eisenhowerMount?.appendChild(eisenhowerDd);
+  sectionMount?.appendChild(sectionDd);
 
   function formatTodoModalNativeOverlayYmd(isoTen) {
     const m = String(isoTen || "")
@@ -1688,6 +1707,9 @@ function showTodoTaskModal(options) {
 
   function close() {
     try {
+      modalAbort.abort();
+    } catch (_) {}
+    try {
       if (selectionEl?.classList && selectionEl.isConnected) {
         selectionEl.classList.remove(TODO_ITEM_MODAL_ACTIVE_CLASS);
       }
@@ -1699,7 +1721,8 @@ function showTodoTaskModal(options) {
   function gatherForm() {
     const startVal = (startInput?.value || "").trim().slice(0, 10);
     const dueVal = (dueInput?.value || "").trim().slice(0, 10);
-    const chosenSectionId = (sectionSelect?.value || "").trim() || sectionId;
+    const chosenSectionId =
+      (sectionDd._getValue?.() || "").trim() || sectionId;
     const chosenSection = sections.find((s) => s.id === chosenSectionId);
     const asSched = hideScheduleToggle ? false : !!asScheduleInput?.checked;
     const itemTypeResolved = hideScheduleToggle
@@ -1713,7 +1736,7 @@ function showTodoTaskModal(options) {
       dueDate: dueVal,
       reminderDate: "",
       reminderTime: "",
-      eisenhower: eisenhowerSelect?.value || "",
+      eisenhower: eisenhowerDd._getValue?.() ?? "",
       sectionId: chosenSectionId,
       sectionLabel: chosenSection?.label ?? sectionLabel,
       itemType: itemTypeResolved,

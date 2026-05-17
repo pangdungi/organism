@@ -128,26 +128,16 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   inset: 0;
   z-index: 10050;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
-  padding: 0;
+  padding: 1rem;
+  box-sizing: border-box;
   font-family: var(--lp-modal-font);
   -webkit-font-smoothing: antialiased;
 }
 .time-task-setup-modal.time-add-task-modal,
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-add-task-modal"] {
   z-index: 10060;
-}
-@media (min-width: 40rem) {
-  .time-task-setup-modal,
-  .todo-list-modal,
-  .diary-desktop-compose-modal,
-  [data-legacy~="time-task-setup-modal"],
-  [data-legacy~="todo-list-modal"],
-  [data-legacy~="diary-desktop-compose-modal"] {
-    align-items: center;
-    padding: 1rem;
-  }
 }
 .time-task-setup-modal[hidden],
 .todo-list-modal[hidden],
@@ -207,24 +197,11 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   flex-direction: column;
   background: var(--lp-modal-surface);
   color: var(--lp-modal-navy);
-  border-radius: var(--lp-modal-radius) var(--lp-modal-radius) 0 0;
-  box-shadow: 0 -8px 40px rgba(21, 43, 69, 0.18);
+  border-radius: var(--lp-modal-radius);
+  box-shadow: 0 20px 50px rgba(21, 43, 69, 0.2);
   border: 1px solid var(--lp-modal-border);
-  border-bottom: none;
   box-sizing: border-box;
   overflow: hidden;
-}
-@media (min-width: 40rem) {
-  .time-task-setup-panel,
-  .todo-list-modal-panel,
-  .diary-desktop-compose-modal-panel,
-  [data-legacy~="time-task-setup-panel"],
-  [data-legacy~="todo-list-modal-panel"],
-  [data-legacy~="diary-desktop-compose-modal-panel"] {
-    border-radius: var(--lp-modal-radius);
-    border-bottom: 1px solid var(--lp-modal-border);
-    box-shadow: 0 20px 50px rgba(21, 43, 69, 0.2);
-  }
 }
 .time-task-log-panel,
 [data-legacy~="time-task-log-panel"] {
@@ -449,11 +426,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   line-height: 1.45;
   -webkit-overflow-scrolling: touch;
 }
-.todo-task-edit-eisenhower,
-.todo-task-edit-section,
 .time-task-log-expense-classification-wrap select,
-[data-legacy~="todo-task-edit-eisenhower"],
-[data-legacy~="todo-task-edit-section"],
 [data-legacy~="time-task-log-expense-classification-wrap"] select {
   width: 100%;
   box-sizing: border-box;

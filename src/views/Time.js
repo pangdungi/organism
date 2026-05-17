@@ -396,15 +396,23 @@ export function appendBudgetScheduleBlock(
         ? [...existing.scheduleMemos]
         : [];
     }
+    let scheduledSavedAts = Array.isArray(existing.scheduledSavedAts)
+      ? [...existing.scheduledSavedAts]
+      : [];
     while (scheduleMemos.length < scheduledTimes.length) {
       scheduleMemos.push("");
     }
+    while (scheduledSavedAts.length < scheduledTimes.length) {
+      scheduledSavedAts.push(0);
+    }
     scheduledTimes.push(`${st}-${et}`);
     scheduleMemos.push(String(memo || "").trim());
+    scheduledSavedAts.push(Date.now());
     const next = {
       ...existing,
       scheduledTimes,
       scheduleMemos,
+      scheduledSavedAts,
     };
     delete next.scheduledTime;
     all[dk][name] = next;
@@ -496,19 +504,27 @@ export function removeBudgetScheduleBlockAtIndex(dateStr, taskName, timeIdx) {
         ? [...existing.scheduleMemos]
         : [];
     }
+    let scheduledSavedAts = Array.isArray(existing.scheduledSavedAts)
+      ? [...existing.scheduledSavedAts]
+      : [];
     while (scheduleMemos.length < scheduledTimes.length) {
       scheduleMemos.push("");
+    }
+    while (scheduledSavedAts.length < scheduledTimes.length) {
+      scheduledSavedAts.push(0);
     }
     if (idx >= scheduledTimes.length) {
       return { ok: false, error: "항목을 찾지 못했습니다." };
     }
     scheduledTimes.splice(idx, 1);
     scheduleMemos.splice(idx, 1);
-    const next = { ...existing, scheduledTimes, scheduleMemos };
+    scheduledSavedAts.splice(idx, 1);
+    const next = { ...existing, scheduledTimes, scheduleMemos, scheduledSavedAts };
     delete next.scheduledTime;
     if (scheduledTimes.length === 0) {
       delete next.scheduledTimes;
       delete next.scheduleMemos;
+      delete next.scheduledSavedAts;
     }
     if (Object.keys(next).length === 0) {
       delete all[dk][name];
@@ -594,10 +610,16 @@ export function updateBudgetScheduleBlockAtIndex(
           ? [...existing.scheduleMemos]
           : [];
       }
+      let scheduledSavedAts = Array.isArray(existing.scheduledSavedAts)
+        ? [...existing.scheduledSavedAts]
+        : [];
       while (scheduleMemos.length < scheduledTimes.length) {
         scheduleMemos.push("");
       }
-      return { existing, scheduledTimes, scheduleMemos };
+      while (scheduledSavedAts.length < scheduledTimes.length) {
+        scheduledSavedAts.push(0);
+      }
+      return { existing, scheduledTimes, scheduleMemos, scheduledSavedAts };
     };
     const p = readSlotArrays(prevKey);
     if (ix >= p.scheduledTimes.length) {
@@ -606,25 +628,30 @@ export function updateBudgetScheduleBlockAtIndex(
     if (prevKey === nextKey) {
       p.scheduledTimes[ix] = newSlot;
       p.scheduleMemos[ix] = newMemo;
+      p.scheduledSavedAts[ix] = Date.now();
       const nextObj = {
         ...p.existing,
         scheduledTimes: p.scheduledTimes,
         scheduleMemos: p.scheduleMemos,
+        scheduledSavedAts: p.scheduledSavedAts,
       };
       delete nextObj.scheduledTime;
       all[dk][prevKey] = nextObj;
     } else {
       p.scheduledTimes.splice(ix, 1);
       p.scheduleMemos.splice(ix, 1);
+      p.scheduledSavedAts.splice(ix, 1);
       const prevNext = {
         ...p.existing,
         scheduledTimes: p.scheduledTimes,
         scheduleMemos: p.scheduleMemos,
+        scheduledSavedAts: p.scheduledSavedAts,
       };
       delete prevNext.scheduledTime;
       if (p.scheduledTimes.length === 0) {
         delete prevNext.scheduledTimes;
         delete prevNext.scheduleMemos;
+        delete prevNext.scheduledSavedAts;
       }
       if (Object.keys(prevNext).length === 0) {
         delete all[dk][prevKey];
@@ -634,10 +661,12 @@ export function updateBudgetScheduleBlockAtIndex(
       const n = readSlotArrays(nextKey);
       n.scheduledTimes.push(newSlot);
       n.scheduleMemos.push(newMemo);
+      n.scheduledSavedAts.push(Date.now());
       const nextObj = {
         ...n.existing,
         scheduledTimes: n.scheduledTimes,
         scheduleMemos: n.scheduleMemos,
+        scheduledSavedAts: n.scheduledSavedAts,
       };
       delete nextObj.scheduledTime;
       all[dk][nextKey] = nextObj;

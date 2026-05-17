@@ -1,5 +1,5 @@
 /**
- * 캘린더 - 월별/2주/1주/1일 뷰
+ * 캘린더 - 월별/1주/1일 뷰
  * (할 일 본문은 일정 탭의「할 일」서브뷰·TodoList.)
  */
 
@@ -211,7 +211,7 @@ const CAL_EXPECTED_ROW_IDLE_COMPACT_PX = 22;
 const CAL_EXPECTED_ROW_ONE_LINE_SLICE_PX = 22;
 /** 한 시간 행 px 상한 — 22×60÷5=264 */
 const CAL_EXPECTED_ROW_SHORT_SLOT_CEIL_PX = 264;
-/** 월간·2주·1주 막대 스택: 레이아웃의 CSS 변수와 동기 (모바일/데스크톱 동일 수치) */
+/** 월간·1주 막대 스택: 레이아웃의 CSS 변수와 동기 (모바일/데스크톱 동일 수치) */
 function lpCalendarWeekBarLayoutMetrics(weekRow) {
   const fallback = {
     BARS_TOP: 2.35,
@@ -695,27 +695,6 @@ function getCalendarGrid(year, month) {
   }
   return grid;
 }
-
-/** 오늘을 포함한 2주 (월요일 시작, 2행 x 7열) */
-function getCalendarGridFor2Weeks(weekOffset = 0) {
-  const today = new Date();
-  const mondayDow = getMondayBasedDow(today);
-  const firstMonday = new Date(today);
-  firstMonday.setDate(today.getDate() - mondayDow + weekOffset * 14);
-
-  const grid = [];
-  for (let w = 0; w < 2; w++) {
-    const week = [];
-    for (let d = 0; d < 7; d++) {
-      const date = new Date(firstMonday);
-      date.setDate(firstMonday.getDate() + w * 7 + d);
-      week.push(date);
-    }
-    grid.push(week);
-  }
-  return grid;
-}
-
 
 /** 선택일 1일만 (1행 x 1열) - dayOffset: 0=오늘, 1=내일, -1=어제 */
 function getCalendarGridFor1Day(dayOffset = 0) {
@@ -2440,593 +2419,6 @@ function renderMonthlyView(tabsElement) {
   return wrap;
 }
 
-function render2WeekView(tabsElement) {
-  const wrap = document.createElement("div");
-  wrap.className = "calendar-monthly-layout";
-
-  let weekOffset = 0;
-
-  const calendarSection = document.createElement("div");
-  calendarSection.className = "calendar-monthly-main";
-
-  if (tabsElement) {
-    const tabsWrapper = document.createElement("div");
-    tabsWrapper.className = "calendar-monthly-tabs-wrap";
-    tabsWrapper.appendChild(tabsElement);
-    calendarSection.appendChild(tabsWrapper);
-  }
-
-  const nav = document.createElement("div");
-  nav.className = "calendar-nav";
-  nav.innerHTML = `
-    <span class="calendar-nav-date">
-      <span class="calendar-nav-month"></span>
-      <span class="calendar-nav-year"></span>
-    </span>
-    <div class="calendar-nav-controls">
-      <button type="button" class="calendar-nav-prev" title="이전 2주">&lt;</button>
-      <button type="button" class="calendar-nav-today" title="Today">Today</button>
-      <button type="button" class="calendar-nav-next" title="다음 2주">&gt;</button>
-    </div>
-  `;
-  nav.classList.add("calendar-monthly-nav");
-
-  const calendarGrid = document.createElement("div");
-  calendarGrid.className = "calendar-monthly-grid";
-
-  function refreshTodoList() {}
-
-  function format2WeekNavRange(grid) {
-    if (!grid[0]?.[0] || !grid[1]?.[6]) return "";
-    const d1 = grid[0][0];
-    const d2 = grid[1][6];
-    const sameYear = d1.getFullYear() === d2.getFullYear();
-    const s1 = `${d1.getMonth() + 1}.${d1.getDate()}`;
-    const s2 = sameYear
-      ? `${d2.getMonth() + 1}.${d2.getDate()}`
-      : `${d2.getFullYear()}.${d2.getMonth() + 1}.${d2.getDate()}`;
-    return `${s1} ~ ${s2}`;
-  }
-
-  function renderCalendar() {
-    const grid = getCalendarGridFor2Weeks(weekOffset);
-    lpCalendarNavQ(nav, wrap, ".calendar-nav-month").textContent =
-      format2WeekNavRange(grid);
-    lpCalendarNavQ(nav, wrap, ".calendar-nav-year").textContent = grid[0]?.[0]
-      ? String(grid[0][0].getFullYear())
-      : "";
-
-    calendarGrid.innerHTML = "";
-
-    const dayHeader = document.createElement("div");
-    dayHeader.className = "calendar-monthly-weekdays";
-    DAY_NAMES.forEach((name) => {
-      const cell = document.createElement("div");
-      cell.className = "calendar-monthly-weekday";
-      cell.textContent = name;
-      dayHeader.appendChild(cell);
-    });
-    calendarGrid.appendChild(dayHeader);
-
-    const todayKey = formatDateKey(new Date());
-    const primaryMonth = grid[0]?.[0]?.getMonth() ?? new Date().getMonth();
-    const rangeTasks = getAllTasksWithDateRange();
-
-    grid.forEach((week) => {
-      const weekWrap = document.createElement("div");
-      weekWrap.className = "calendar-monthly-week-wrap";
-      const weekRow = document.createElement("div");
-      weekRow.className = "calendar-monthly-week";
-      const weekDateKeys = week
-        .map((d) => (d ? formatDateKey(d) : ""))
-        .filter(Boolean);
-      const firstDayKey = weekDateKeys[0] || "";
-      const lastDayKey = weekDateKeys[weekDateKeys.length - 1] || "";
-
-      week.forEach((date) => {
-        const cell = document.createElement("div");
-        cell.className = "calendar-monthly-day";
-        if (!date) {
-          cell.classList.add("empty");
-          weekRow.appendChild(cell);
-          return;
-        }
-        const key = formatDateKey(date);
-        cell.dataset.date = key;
-        const dayNum = document.createElement("div");
-        dayNum.className = "calendar-monthly-day-num";
-        dayNum.textContent = date.getDate();
-
-        const isCurrentMonth = date.getMonth() === primaryMonth;
-        if (!isCurrentMonth) cell.classList.add("other-month");
-        if (key === todayKey) cell.classList.add("today");
-        if (date.getDay() === 0) cell.classList.add("sun");
-        if (date.getDay() === 6) cell.classList.add("sat");
-
-        cell.appendChild(dayNum);
-        const entriesEl = document.createElement("div");
-        entriesEl.className = "calendar-monthly-day-entries";
-        cell.appendChild(entriesEl);
-
-        cell.style.cursor = "pointer";
-        cell.addEventListener("click", (e) => {
-          if (e.target.closest(".calendar-event-bubble")) return;
-          e.stopPropagation();
-          const rect = cell.getBoundingClientRect();
-          createCalendarEventBubble(
-            rect,
-            key,
-            () => {
-              void renderCalendar();
-              refreshTodoList();
-            },
-            () => {},
-          );
-        });
-        cell.addEventListener("dragover", (e) => {
-          if (calendarDragTransferTypesAllowDrop(e.dataTransfer)) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = "move";
-            cell.classList.add("calendar-day-drag-over");
-          }
-        });
-        cell.addEventListener("dragleave", () => {
-          cell.classList.remove("calendar-day-drag-over");
-        });
-        cell.addEventListener("drop", (e) => {
-          cell.classList.remove("calendar-day-drag-over");
-          const json = readCalendarDropPayloadJson(e.dataTransfer);
-          if (!json) return;
-          e.preventDefault();
-          e.stopPropagation();
-          let payload;
-          try {
-            payload = JSON.parse(json);
-          } catch (_) {
-            return;
-          }
-          const targetDate = key;
-          const oldStart = (payload.startDate || "").slice(0, 10);
-          const oldDue = (payload.dueDate || "").slice(0, 10);
-          let newStart = "";
-          let newDue = targetDate;
-          if (oldStart && oldDue && oldStart !== oldDue) {
-            const startD = new Date(oldStart + "T12:00:00");
-            const dueD = new Date(oldDue + "T12:00:00");
-            const daysDiff = Math.round((dueD - startD) / 86400000);
-            newStart = targetDate;
-            newDue = addDaysToDateKey(targetDate, daysDiff);
-          } else if (oldStart && oldDue) {
-            newStart = targetDate;
-          }
-          let ok = false;
-          if (
-            payload.sectionId &&
-            payload.sectionId.startsWith("custom-")
-          ) {
-            ok = updateCustomSectionTaskDates(
-              payload.sectionId,
-              payload.taskId,
-              newStart,
-              newDue,
-              { recordCalendarSidebarRevert: true },
-            );
-            if (!ok && (payload.name || "").trim()) {
-              ok = addCalendarTodoToCustomSection(payload.sectionId, {
-                taskId: payload.taskId,
-                name: payload.name,
-                startDate: newStart,
-                dueDate: newDue,
-                done: !!payload.done,
-                itemType: payload.itemType || "todo",
-                _calPrevStart: oldStart,
-                _calPrevDue: oldDue,
-              });
-            }
-          } else if (
-            KPI_SECTION_IDS.includes(payload.sectionId) &&
-            ((payload.taskId || "").trim() || (payload.name || "").trim())
-          ) {
-            ok =
-              updateSectionTaskDates(
-                payload.sectionId,
-                payload.taskId,
-                newStart,
-                newDue,
-                { recordCalendarSidebarRevert: true },
-              ) ||
-              addSectionTaskToCalendar(payload.sectionId, {
-                taskId: payload.taskId,
-                name: payload.name,
-                startDate: newStart,
-                dueDate: newDue,
-                done: !!payload.done,
-                itemType: payload.itemType || "todo",
-                _calPrevStart: oldStart,
-                _calPrevDue: oldDue,
-              });
-          }
-          dateDebug("drop on day", {
-            targetDate: key,
-            name: payload?.name,
-            sectionId: payload?.sectionId,
-            taskId: payload?.taskId,
-            newStart,
-            newDue,
-            ok,
-          });
-          if (ok) {
-            syncCalendarSectionTaskToServerAfterCalendarDateDrop(payload, ok);
-            renderCalendar();
-            refreshTodoList();
-          }
-        });
-        weekRow.appendChild(cell);
-      });
-
-      const barsEl = document.createElement("div");
-      barsEl.className = "calendar-monthly-bars";
-      const { BARS_TOP, BAR_HEIGHT, BOTTOM_PAD, ROW_GAP, WEEK_ROW_MIN } =
-        lpCalendarWeekBarLayoutMetrics(weekRow);
-      const baseBarTop = BARS_TOP + 0.1;
-      const overlaps = (a, b) =>
-        a.left < b.left + b.width && b.left < a.left + a.width;
-      const allBars = [];
-      const CELL_GAP = 3.5;
-      rangeTasks.forEach((t) => {
-        const barStart = t.startDate > firstDayKey ? t.startDate : firstDayKey;
-        const barEnd = t.dueDate < lastDayKey ? t.dueDate : lastDayKey;
-        if (barStart > barEnd) return;
-        const startIdx = weekDateKeys.indexOf(barStart);
-        const endIdx = weekDateKeys.indexOf(barEnd);
-        if (startIdx < 0 || endIdx < 0) return;
-        const left = (startIdx / 7) * 100 + CELL_GAP / 7;
-        const width = ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
-        const baseColor = getSectionColor(t.sectionId);
-        const color = withMoreTransparency(baseColor);
-        const isFirstSegment = barStart === t.startDate;
-        allBars.push({
-          left,
-          width,
-          name: t.name,
-          color,
-          isSingleDay: false,
-          isFirstSegment,
-          itemType: t.itemType || "todo",
-          done: !!t.done,
-          taskId: t.taskId,
-          sectionId: t.sectionId,
-          startDate: t.startDate,
-          dueDate: t.dueDate,
-          isOverdueBar: calendarBarTaskIsOverdueTodo(t),
-          _calPrevStart: (t._calPrevStart || "").toString().slice(0, 10) || "",
-          _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
-        });
-      });
-      weekDateKeys.forEach((dateKey, dayIdx) => {
-        getTasksForDate(dateKey, true).forEach((t) => {
-          const left = (dayIdx / 7) * 100 + CELL_GAP / 7;
-          const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
-          const baseColor = getSectionColor(t.sectionId);
-          const color = withMoreTransparency(baseColor);
-          allBars.push({
-            left,
-            width,
-            name: t.name,
-            color,
-            isSingleDay: true,
-            dayIdx,
-            dateKey,
-            itemType: t.itemType || "todo",
-            done: !!t.done,
-            taskId: t.taskId,
-            sectionId: t.sectionId,
-            startDate: t.startDate || "",
-            dueDate: t.dueDate || dateKey,
-            isOverdueBar: calendarBarTaskIsOverdueTodo(t),
-            _calPrevStart:
-              (t._calPrevStart || "").toString().slice(0, 10) || "",
-            _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
-          });
-        });
-      });
-      const rowBars = [];
-      allBars.forEach((b) => {
-        let row = 0;
-        while (rowBars[row] && rowBars[row].some((r) => overlaps(r, b))) row++;
-        if (!rowBars[row]) rowBars[row] = [];
-        rowBars[row].push(b);
-        b.row = row;
-      });
-      const barsPerDay = weekDateKeys.map((_, dayIdx) =>
-        allBars
-          .filter((b) => b.isSingleDay && b.dayIdx === dayIdx)
-          .sort((a, b) => a.row - b.row),
-      );
-      /* 막대 줄 수에 맞춰 해당 주 행만 높이 확장(빈 주는 최소 높이만) */
-      allBars.forEach((b) => {
-        b.isOverflow = false;
-      });
-      const maxRow = allBars.length
-        ? Math.max(...allBars.map((b) => b.row), 0)
-        : -1;
-      const rowsNeeded = allBars.length ? maxRow + 1 : 0;
-      weekRow.style.minHeight = `${lpCalendarMonthlyWeekRowTargetMinHeightRem(
-        baseBarTop,
-        rowsNeeded,
-        BAR_HEIGHT,
-        ROW_GAP,
-        BOTTOM_PAD,
-        WEEK_ROW_MIN,
-      )}rem`;
-      const barsWithRow = allBars;
-      barsWithRow.forEach((b) => {
-        const isTodo = (b.itemType || "todo").toLowerCase() === "todo";
-        const bar = document.createElement("div");
-        bar.className =
-          "calendar-monthly-span-bar" +
-          (b.isSingleDay
-            ? " calendar-monthly-span-bar--todo"
-            : " calendar-monthly-span-bar--range") +
-          (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "") +
-          (b.isOverdueBar ? " calendar-monthly-span-bar--overdue" : "") +
-          ((b.itemType || "todo").toLowerCase() !== "todo"
-            ? " calendar-monthly-span-bar--schedule-strip"
-            : "");
-        bar.title = b.name;
-        bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${baseBarTop + b.row * (BAR_HEIGHT + ROW_GAP)}rem`;
-        lpApplyCalendarMultiDaySpanBarBackground(bar, b);
-        bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
-        if (isTodo && b.done) {
-          bar.classList.add("is-completed");
-        }
-        lpAttachCalendarBarOpenTodoEdit(
-          bar,
-          b,
-          renderCalendar,
-          refreshTodoList,
-        );
-        if (!b.isSingleDay && b.startDate && b.dueDate) {
-          bar.addEventListener("contextmenu", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            createCalendarBarDateEditBubble(
-              e.clientX,
-              e.clientY,
-              b,
-              () => {
-                renderCalendar();
-                refreshTodoList();
-              },
-              () => {},
-            );
-          });
-        }
-        bindCalendarSpanBarDragHandlers(bar, b);
-        if (b.isSingleDay && b.dueDate) {
-          bar.addEventListener("contextmenu", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            createCalendarBarRevertBubble(
-              e.clientX,
-              e.clientY,
-              b,
-              () => {
-                renderCalendar();
-                refreshTodoList();
-              },
-              () => {},
-            );
-          });
-        }
-        b._barEl = bar;
-        barsEl.appendChild(bar);
-      });
-      lpCalendarFinalizeBarRowLayout(
-        barsWithRow,
-        weekRow,
-        BAR_HEIGHT,
-        BARS_TOP,
-        BOTTOM_PAD,
-        ROW_GAP,
-      );
-      const moreEl = document.createElement("div");
-      moreEl.className = "calendar-day-more-overlay";
-      moreEl.style.cssText =
-        "display:grid;grid-template-columns:repeat(7,1fr);position:absolute;inset:0;pointer-events:none;align-content:flex-end;padding:0.2rem 0;";
-      weekDateKeys.forEach((dateKey) => {
-        const slot = document.createElement("div");
-        slot.style.cssText =
-          "display:flex;justify-content:center;align-items:flex-end;padding:0 0.15rem;";
-        moreEl.appendChild(slot);
-      });
-      weekWrap.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        if (calendarDragTransferTypesAllowDrop(e.dataTransfer)) {
-          e.dataTransfer.dropEffect = "move";
-          let cell = document
-            .elementFromPoint(e.clientX, e.clientY)
-            ?.closest(".calendar-monthly-day:not(.empty)");
-          if (!cell) {
-            const cells = weekRow.querySelectorAll(
-              ".calendar-monthly-day:not(.empty)",
-            );
-            for (const c of cells) {
-              const r = c.getBoundingClientRect();
-              if (
-                e.clientX >= r.left &&
-                e.clientX <= r.right &&
-                e.clientY >= r.top &&
-                e.clientY <= r.bottom
-              ) {
-                cell = c;
-                break;
-              }
-            }
-          }
-          weekWrap
-            .querySelectorAll(".calendar-day-drag-over")
-            .forEach((el) => el.classList.remove("calendar-day-drag-over"));
-          if (cell) cell.classList.add("calendar-day-drag-over");
-        }
-      });
-      weekWrap.addEventListener("dragleave", (e) => {
-        if (!weekWrap.contains(e.relatedTarget)) {
-          weekWrap
-            .querySelectorAll(".calendar-day-drag-over")
-            .forEach((el) => el.classList.remove("calendar-day-drag-over"));
-        }
-      });
-      weekWrap.addEventListener("drop", (e) => {
-        weekWrap
-          .querySelectorAll(".calendar-day-drag-over")
-          .forEach((el) => el.classList.remove("calendar-day-drag-over"));
-        e.preventDefault();
-        let json = readCalendarDropPayloadJson(e.dataTransfer);
-        if (!json) return;
-        let payload;
-        try {
-          payload = JSON.parse(json);
-        } catch (_) {
-          return;
-        }
-        let cell = document
-          .elementFromPoint(e.clientX, e.clientY)
-          ?.closest(".calendar-monthly-day:not(.empty)");
-        if (!cell) {
-          const cells = weekRow.querySelectorAll(
-            ".calendar-monthly-day:not(.empty)",
-          );
-          for (const c of cells) {
-            const r = c.getBoundingClientRect();
-            if (
-              e.clientX >= r.left &&
-              e.clientX <= r.right &&
-              e.clientY >= r.top &&
-              e.clientY <= r.bottom
-            ) {
-              cell = c;
-              break;
-            }
-          }
-        }
-        if (!cell?.dataset?.date) return;
-        const targetDate = cell.dataset.date;
-        const oldStart = (payload.startDate || "").slice(0, 10);
-        const oldDue = (payload.dueDate || "").slice(0, 10);
-        let newStart = "";
-        let newDue = targetDate;
-        if (oldStart && oldDue && oldStart !== oldDue) {
-          const startD = new Date(oldStart + "T12:00:00");
-          const dueD = new Date(oldDue + "T12:00:00");
-          const daysDiff = Math.round((dueD - startD) / 86400000);
-          newStart = targetDate;
-          newDue = addDaysToDateKey(targetDate, daysDiff);
-        } else if (oldStart && oldDue) {
-          newStart = targetDate;
-        }
-        let ok = false;
-        if (
-          payload.sectionId &&
-          payload.sectionId.startsWith("custom-")
-        ) {
-          ok = updateCustomSectionTaskDates(
-            payload.sectionId,
-            payload.taskId,
-            newStart,
-            newDue,
-            { recordCalendarSidebarRevert: true },
-          );
-          if (!ok && (payload.name || "").trim()) {
-            ok = addCalendarTodoToCustomSection(payload.sectionId, {
-              taskId: payload.taskId,
-              name: payload.name,
-              startDate: newStart,
-              dueDate: newDue,
-              done: !!payload.done,
-              itemType: payload.itemType || "todo",
-              _calPrevStart: oldStart,
-              _calPrevDue: oldDue,
-            });
-          }
-        } else if (
-          KPI_SECTION_IDS.includes(payload.sectionId) &&
-          ((payload.taskId || "").trim() || (payload.name || "").trim())
-        ) {
-          ok =
-            updateSectionTaskDates(
-              payload.sectionId,
-              payload.taskId,
-              newStart,
-              newDue,
-              { recordCalendarSidebarRevert: true },
-            ) ||
-            addSectionTaskToCalendar(payload.sectionId, {
-              taskId: payload.taskId,
-              name: payload.name,
-              startDate: newStart,
-              dueDate: newDue,
-              done: !!payload.done,
-              itemType: payload.itemType || "todo",
-              _calPrevStart: oldStart,
-              _calPrevDue: oldDue,
-            });
-        }
-        if (ok) {
-          syncCalendarSectionTaskToServerAfterCalendarDateDrop(payload, ok);
-          renderCalendar();
-          refreshTodoList();
-        }
-      });
-      weekWrap.appendChild(weekRow);
-      weekWrap.appendChild(barsEl);
-      weekWrap.appendChild(moreEl);
-      calendarGrid.appendChild(weekWrap);
-    });
-  }
-
-  lpCalendarNavQ(nav, wrap, ".calendar-nav-today").addEventListener(
-    "click",
-    () => {
-      weekOffset = 0;
-      renderCalendar();
-    },
-  );
-  lpCalendarNavQ(nav, wrap, ".calendar-nav-prev").addEventListener(
-    "click",
-    () => {
-      weekOffset--;
-      renderCalendar();
-    },
-  );
-  lpCalendarNavQ(nav, wrap, ".calendar-nav-next").addEventListener(
-    "click",
-    () => {
-      weekOffset++;
-      renderCalendar();
-    },
-  );
-
-  calendarSection.appendChild(nav);
-  calendarSection.appendChild(calendarGrid);
-  wrap.appendChild(calendarSection);
-
-
-  wrap.addEventListener("dragend", () => {
-    wrap
-      .querySelectorAll(".calendar-day-drag-over")
-      .forEach((el) => el.classList.remove("calendar-day-drag-over"));
-  });
-
-  renderCalendar();
-
-  wrap._lpRefreshCalendarView = () => {
-    renderCalendar();
-  };
-
-  return wrap;
-}
-
 
 /** dateStr(YYYY-MM-DD) 기준 전날 키 반환 */
 function getYesterdayKey(dateStr) {
@@ -3039,6 +2431,97 @@ function getYesterdayKey(dateStr) {
   const dt = new Date(parts[0], parts[1] - 1, parts[2]);
   dt.setDate(dt.getDate() - 1);
   return formatDateKey(dt);
+}
+
+/** [s,e) 각 조각에서 [rs,re) 겹침을 뺀 뒤 남는 구간들 */
+function subtractOpenIntervalsFromPieces(pieces, rs, re) {
+  const out = [];
+  for (const [s, e] of pieces) {
+    if (e <= s) continue;
+    if (e <= rs || s >= re) {
+      out.push([s, e]);
+      continue;
+    }
+    if (s < rs) {
+      const hi = Math.min(e, rs);
+      if (hi > s) out.push([s, hi]);
+    }
+    if (re < e) {
+      const lo = Math.max(s, re);
+      if (e > lo) out.push([lo, e]);
+    }
+  }
+  return out;
+}
+
+function clipPiecesByReservedRects(pieces, reserved) {
+  let cur = pieces.slice();
+  for (const [rs, re] of reserved) {
+    const next = [];
+    for (const p of cur) {
+      next.push(...subtractOpenIntervalsFromPieces([p], rs, re));
+    }
+    cur = next;
+  }
+  return cur;
+}
+
+/**
+ * 캘린더 일간 예상(일간예산 scheduledTimes)끼리 겹치면 savedAt 최신이 우선.
+ * 낮은 우선순위는 잘리거나 둘로 나뉘어 표시된다.
+ */
+function clipBudgetExpectedSpansBySavedAt(
+  rawSpans,
+  fmt,
+  MIN_PER_SLOT,
+  SLOTS_PER_DAY,
+) {
+  const sorted = [...rawSpans].sort((a, b) => {
+    const sa = Number(a._budgetSavedAt) || 0;
+    const sb = Number(b._budgetSavedAt) || 0;
+    if (sb !== sa) return sb - sa;
+    const ea = Number(a._budgetEnumSeq) || 0;
+    const eb = Number(b._budgetEnumSeq) || 0;
+    if (eb !== ea) return eb - ea;
+    const ta = String(a.taskName || "");
+    const tb = String(b.taskName || "");
+    const c = tb.localeCompare(ta);
+    if (c !== 0) return c;
+    return (Number(b._timeIdx) || 0) - (Number(a._timeIdx) || 0);
+  });
+  const reserved = [];
+  const out = [];
+  for (const s of sorted) {
+    const sm = Number(s.startMin);
+    const em = Number(s.endMin);
+    if (!Number.isFinite(sm) || !Number.isFinite(em) || em <= sm) continue;
+    const pieces = clipPiecesByReservedRects([[sm, em]], reserved);
+    reserved.push([ sm, em ]);
+    for (const [p0, p1] of pieces) {
+      if (p1 <= p0) continue;
+      const startMin = p0;
+      const endMin = p1;
+      const startSlot = Math.floor(startMin / MIN_PER_SLOT);
+      const endSlot = Math.min(
+        SLOTS_PER_DAY - 1,
+        Math.floor((endMin - 1) / MIN_PER_SLOT),
+      );
+      const clipped = { ...s };
+      delete clipped._budgetSavedAt;
+      delete clipped._budgetEnumSeq;
+      delete clipped._timeIdx;
+      out.push({
+        ...clipped,
+        startMin,
+        endMin,
+        startSlot,
+        endSlot: Math.max(endSlot, startSlot),
+        startDisplay: fmt(startMin),
+        endDisplay: fmt(endMin),
+      });
+    }
+  }
+  return out;
 }
 
 /**
@@ -3152,10 +2635,17 @@ export function buildExpectedScheduleSpansForDateKey(dateKey) {
     return arr;
   };
 
-  const spans = [];
+  const budgetPlaceholderPrefix = "(과제 선택)·";
+  const budgetRawSpans = [];
+  let budgetEnumSeq = 0;
+
   for (const [taskName, data] of Object.entries(budgetGoals)) {
+    if (taskName.startsWith(budgetPlaceholderPrefix)) continue;
     const times = getScheduledTimesForTask(data);
     const memos = Array.isArray(data?.scheduleMemos) ? data.scheduleMemos : [];
+    const savedAts = Array.isArray(data?.scheduledSavedAts)
+      ? data.scheduledSavedAts
+      : [];
     const taskFromList = tasks.find((t) => (t.name || "").trim() === taskName);
     times.forEach((st, timeIdx) => {
       if (!st.trim()) return;
@@ -3180,6 +2670,9 @@ export function buildExpectedScheduleSpansForDateKey(dateKey) {
         prod,
         startDisplay: fmt(startMin),
         endDisplay: fmt(endMin),
+        _budgetSavedAt: Number(savedAts[timeIdx]) || 0,
+        _budgetEnumSeq: budgetEnumSeq++,
+        _timeIdx: timeIdx,
       };
       if (scheduleMemo) span.scheduleMemo = scheduleMemo;
       if (taskFromList) {
@@ -3188,9 +2681,18 @@ export function buildExpectedScheduleSpansForDateKey(dateKey) {
         span._taskKey =
           taskFromList.taskId || taskFromList.name;
       }
-      spans.push(span);
+      budgetRawSpans.push(span);
     });
   }
+
+  const budgetSpansClipped = clipBudgetExpectedSpansBySavedAt(
+    budgetRawSpans,
+    fmt,
+    MIN_PER_SLOT,
+    SLOTS_PER_DAY,
+  );
+
+  const spans = [...budgetSpansClipped];
   for (const t of tasks) {
     const st = (t.startTime || "").trim();
     const et = (t.endTime || "").trim();
@@ -3264,19 +2766,58 @@ export function buildExpectedScheduleSpansForDateKey(dateKey) {
   return { spans: normalized, maxLane: withLanes.maxLane };
 }
 
+/** 0~24h 안에서 예상 일정 구간 겹침을 합쳐 실제로 덮인 분(합집합 길이) */
+function minutesCoveredByExpectedSpansUnion(spans) {
+  if (!Array.isArray(spans) || spans.length === 0) return 0;
+  const dayCap = 24 * 60;
+  const iv = spans
+    .map((s) => {
+      const a = Math.max(0, Number(s.startMin));
+      const b = Math.min(dayCap, Number(s.endMin));
+      return [a, b];
+    })
+    .filter(([a, b]) => Number.isFinite(a) && Number.isFinite(b) && b > a)
+    .sort((x, y) => x[0] - y[0]);
+  if (iv.length === 0) return 0;
+  let sum = 0;
+  let curS = iv[0][0];
+  let curE = iv[0][1];
+  for (let i = 1; i < iv.length; i++) {
+    const [s, e] = iv[i];
+    if (s <= curE) curE = Math.max(curE, e);
+    else {
+      sum += curE - curS;
+      curS = s;
+      curE = e;
+    }
+  }
+  sum += curE - curS;
+  return sum;
+}
+
+/** 일간 남은 시간 표기 (예: 17h 15m, 45m, 2h) */
+function formatMinutesAsCompactHm(totalMin) {
+  const m = Math.max(0, Math.floor(Number(totalMin) || 0));
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  if (h === 0) return `${r}m`;
+  if (r === 0) return `${h}h`;
+  return `${h}h ${r}m`;
+}
+
 function prodKeyForWeekExpectedSpan(span) {
   const pk = String(span?.prod || "other").toLowerCase();
   if (pk === "productive" || pk === "nonproductive") return pk;
   return "other";
 }
 
-/** 수면 등 — 1주 플로우·홈 「오늘」타임라인 카드만 숨김(일정 타임테이블·예산 표는 유지) */
-const FLOW_TIMELINE_EXCLUDED_TASK_NAMES = new Set(
+/** 주간 플로우만: 수면하기(sleep) 카드 숨김 — 일간 타임라인은 그대로 표시 */
+const WEEK_FLOW_EXCLUDED_TASK_NAMES = new Set(
   FIXED_OTHER_TASKS.filter((t) => t.category === "sleep").map((t) => t.name),
 );
 
-function expectedSpanHiddenFromFlowTimeline(span) {
-  return FLOW_TIMELINE_EXCLUDED_TASK_NAMES.has(
+function expectedSpanHiddenFromWeekFlowOnly(span) {
+  return WEEK_FLOW_EXCLUDED_TASK_NAMES.has(
     String(span?.taskName || "").trim(),
   );
 }
@@ -3478,6 +3019,26 @@ function render1DayView(tabsElement = null) {
     divider.className = "calendar-1day-divider";
     timeColumn.appendChild(divider);
 
+      const { spans: daySpansTl } =
+        buildExpectedScheduleSpansForDateKey(targetKey);
+      const plannedMinutes = minutesCoveredByExpectedSpansUnion(daySpansTl);
+      const remainingMinutes = Math.max(0, 24 * 60 - plannedMinutes);
+
+      const remainingBar = document.createElement("div");
+      remainingBar.className = "calendar-1day-timeline-remaining";
+      const remainingLabel = document.createElement("span");
+      remainingLabel.className = "calendar-1day-timeline-remaining-label";
+      remainingLabel.textContent = "남은 시간:";
+      const remainingValue = document.createElement("span");
+      remainingValue.className = "calendar-1day-timeline-remaining-value";
+      remainingValue.textContent = formatMinutesAsCompactHm(remainingMinutes);
+      remainingValue.title = `이 날 24시간 중 예상 일정으로 덮인 시간: ${formatMinutesAsCompactHm(plannedMinutes)}`;
+      remainingLabel.title =
+        "같은 날짜 예상 시간(합쳐서 겹침은 한 번만 계산)을 모두 쓰고도 남은 분입니다.";
+      remainingBar.appendChild(remainingLabel);
+      remainingBar.appendChild(remainingValue);
+      timeColumn.appendChild(remainingBar);
+
       const nowForTimeline = new Date();
       const nowMinuteClockTL =
         nowForTimeline.getHours() * 60 + nowForTimeline.getMinutes();
@@ -3500,11 +3061,7 @@ function render1DayView(tabsElement = null) {
       const timelineList = document.createElement("div");
       timelineList.className = "calendar-1day-timeline-list";
 
-      const { spans: daySpansTl } =
-        buildExpectedScheduleSpansForDateKey(targetKey);
-      const spansSortedTl = [...daySpansTl]
-        .filter((s) => !expectedSpanHiddenFromFlowTimeline(s))
-        .sort(
+      const spansSortedTl = [...daySpansTl].sort(
           (a, b) =>
             a.startMin - b.startMin ||
             (a.lane ?? 0) - (b.lane ?? 0) ||
@@ -3566,14 +3123,13 @@ function render1DayView(tabsElement = null) {
           const titleBase = memoTextStored
             ? `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})\n${memoTextStored}`
             : `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})`;
-          if (ledgerMatched) {
-            card.classList.add("calendar-1day-timeline-card--done");
-            card.title = `${titleBase}\n실제 과제 기록에 반영됨`;
-          } else if (ledgerMissed) {
+          if (ledgerMissed) {
             card.classList.add("calendar-1day-timeline-card--ledger-missed");
             card.title = `${titleBase}\n예정 종료 시간이 지났는데 아직 기록이 없습니다`;
           } else {
-            card.title = titleBase;
+            card.title = ledgerMatched
+              ? `${titleBase}\n실제 과제 기록에 반영됨`
+              : titleBase;
           }
           if (liveRecordingThisSpan) {
             card.classList.add("calendar-1day-timeline-card--in-progress");
@@ -3620,21 +3176,7 @@ function render1DayView(tabsElement = null) {
           const titleEl = document.createElement("div");
           titleEl.className = "calendar-1day-timeline-card-title";
           titleEl.textContent = taskLabel;
-          if (!ledgerMissed && !ledgerMatched) {
-            titleEl.style.color = c.accentText;
-          }
           titleRow.appendChild(titleEl);
-          if (ledgerMatched) {
-            const checkEl = document.createElement("span");
-            checkEl.className = "calendar-1day-timeline-card-check";
-            checkEl.setAttribute("role", "img");
-            checkEl.setAttribute("aria-label", "기록 완료");
-            checkEl.textContent = "✓";
-            if (typeof c.leftStripe === "string" && c.leftStripe.trim()) {
-              checkEl.style.color = c.leftStripe.trim();
-            }
-            titleRow.appendChild(checkEl);
-          }
           titleRow.appendChild(durRow);
           body.appendChild(titleRow);
 
@@ -3684,9 +3226,6 @@ function render1DayView(tabsElement = null) {
             const memoEl = document.createElement("div");
             memoEl.className = "calendar-1day-timeline-card-memo";
             memoEl.textContent = memoTextStored;
-            if (!ledgerMissed && !ledgerMatched) {
-              memoEl.style.color = c.accentMuted;
-            }
             body.appendChild(memoEl);
           }
 
@@ -4516,7 +4055,7 @@ function render1WeekView(tabsElement) {
       const prodColors = prodColorsExpected;
       const { spans: daySpans } = buildExpectedScheduleSpansForDateKey(key);
       const spansSorted = [...daySpans]
-        .filter((s) => !expectedSpanHiddenFromFlowTimeline(s))
+        .filter((s) => !expectedSpanHiddenFromWeekFlowOnly(s))
         .sort(
           (a, b) =>
             a.startMin - b.startMin ||
@@ -5048,7 +4587,6 @@ function renderAnnualView(tabsElement) {
 
 const CALENDAR_SUB_VIEWS = [
   { id: "monthly", label: "월별" },
-  { id: "2week", label: "2주" },
   { id: "1week", label: "1주" },
   { id: "annual", label: "연간" },
   { id: "1day", label: "타임블록" },
@@ -5062,17 +4600,14 @@ const MOBILE_SCHEDULE_CAL_SUB_VIEWS = [
 ];
 
 /**
- * 캘린더 탭 하위 뷰(월별·2주·1주·연간·오늘 해치우기) 공통 셸
+ * 캘린더 탭 하위 뷰(월별·1주·연간·타임블록) 공통 셸
  * @param {HTMLElement|null} tabsElement 상단에 붙일 외부 탭 행(없으면 null)
  * @param {{ subViewsList?: {id:string,label:string}[], storageKey?: string, forceInitialMonthlyOnMobile?: boolean, scheduleSubViewsInFooter?: boolean }} opts
  * scheduleSubViewsInFooter: true면 서브뷰 전환을 네비가 아닌 앱 푸터(`app-footer-icon-btn`)에 둡니다.
  */
 function createCalendarSubViewRoot(tabsElement, opts = {}) {
   const isMobile = window.matchMedia("(max-width: 48rem)").matches;
-  const baseList = opts.subViewsList || CALENDAR_SUB_VIEWS;
-  const subViewsList = isMobile
-    ? baseList
-    : baseList.filter((v) => v.id !== "2week");
+  const subViewsList = opts.subViewsList || CALENDAR_SUB_VIEWS;
   const storageKey = opts.storageKey || "calendar-sub-view";
   const forceInitialMonthlyOnMobile = !!opts.forceInitialMonthlyOnMobile;
   const scheduleSubViewsInFooter = !!opts.scheduleSubViewsInFooter;
@@ -5215,8 +4750,6 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
 
     if (subViewId === "monthly") {
       contentArea.appendChild(renderMonthlyView(null));
-    } else if (subViewId === "2week") {
-      contentArea.appendChild(render2WeekView(null));
     } else if (subViewId === "1week") {
       contentArea.appendChild(render1WeekView(null));
     } else if (subViewId === "annual") {

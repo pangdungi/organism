@@ -1,5 +1,5 @@
 /**
- * 캘린더 뷰 — 월별 / 2주 / 1주 / 연간 도킹 스트립 공통 그리드
+ * 캘린더 뷰 — 월별 / 1주 / 연간 도킹 스트립 공통 그리드
  * 모바일·데스크톱 동일 레이아웃 (막대 밀도는 .calendar-monthly-layout CSS 변수 + JS 공통).
  */
 
@@ -278,6 +278,37 @@
   color: var(--cal-text-muted);
 }
 
+/* 일간: 헤더와 예상 카드 사이 — 24h 기준 예상 일정 합집합을 제외한 남은 시간 */
+.calendar-1day-timeline-remaining {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.55rem 0.65rem 0.5rem;
+  margin: 0;
+  border-bottom: 1px solid #f0f4fa;
+  text-align: center;
+}
+
+.calendar-1day-timeline-remaining-label {
+  font-size: 0.8125rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--cal-text-muted);
+}
+
+.calendar-1day-timeline-remaining-value {
+  font-size: 0.875rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--cal-text);
+}
+
 /* 일간 타임라인: 예상 타임카드 */
 .calendar-1day-timeline-wrap {
   width: 100%;
@@ -396,10 +427,10 @@
   flex: 1 1 auto;
   min-width: 0;
   font-size: 0.9375rem;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.35;
   letter-spacing: -0.02em;
-  color: var(--cal-text);
+  color: #1a1a1a;
 }
 
 .calendar-1day-timeline-card-end {
@@ -430,17 +461,11 @@
   white-space: nowrap;
 }
 
-.calendar-1day-timeline-card-check {
-  flex-shrink: 0;
-  font-size: 0.95rem;
-  line-height: 1.3;
-}
-
 .calendar-1day-timeline-card-memo {
   margin-top: 0;
   font-size: 0.8125rem;
   line-height: 1.5;
-  color: var(--cal-text-muted);
+  color: #1a1a1a;
   white-space: pre-wrap;
   word-break: break-word;
   min-width: 0;
@@ -470,20 +495,9 @@
   font-weight: 650;
 }
 
-.calendar-1day-timeline-card--done .calendar-1day-timeline-card-title {
-  color: var(--cal-text-muted);
-}
-
-.calendar-1day-timeline-card--done .calendar-1day-timeline-card-start,
-.calendar-1day-timeline-card--done .calendar-1day-timeline-card-end,
-.calendar-1day-timeline-card--done .calendar-1day-timeline-card-duration {
-  color: var(--cal-text-muted);
-}
-
 .calendar-1day-timeline-card--ledger-missed .calendar-1day-timeline-card-start,
 .calendar-1day-timeline-card--ledger-missed .calendar-1day-timeline-card-end,
-.calendar-1day-timeline-card--ledger-missed .calendar-1day-timeline-card-duration,
-.calendar-1day-timeline-card--ledger-missed .calendar-1day-timeline-card-title {
+.calendar-1day-timeline-card--ledger-missed .calendar-1day-timeline-card-duration {
   color: var(--cal-text-muted);
 }
 
@@ -548,12 +562,12 @@
   background: var(--cal-surface);
 }
 
-/* 월별 뷰만: 그리드 카드 전체의 아래 외곽 보더 제거(2주·연간 등은 유지) */
+/* 월별 뷰만: 그리드 카드 전체의 아래 외곽 보더 제거(연간 등은 유지) */
 .calendar-monthly-layout.calendar-subview-monthly > .calendar-monthly-main > .calendar-monthly-grid {
   border-bottom: none;
 }
 
-/* 월별·2주: 요일 행 고정, 주 행은 남는 높이 균등 분배(셀 min·JS 높이는 유지) */
+/* 월별: 요일 행 고정, 주 행은 남는 높이 균등 분배(셀 min·JS 높이는 유지) */
 .calendar-monthly-grid:not(.calendar-monthly-grid--1week-timegrid) > .calendar-monthly-weekdays {
   flex-shrink: 0;
   position: sticky;
