@@ -8,11 +8,21 @@
 /* [auto] data-legacy 병기 선택자 — scripts/time-js-main-only-classes.mjs */
 .time-ledger-view .time-ledger-top-title, [data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-top-title"]{width: 100%;
   text-align: center;
-  font-size: 0.9375rem;
+  font-size: 3.45rem;
   font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
   color: #3d4a3e;
+}.time-ledger-tabs-filter-row, [data-legacy~="time-ledger-tabs-filter-row"]{
+  /* app-main 이 이미 safe-top 반영 — 여기서는 추가 간격만 (중복 inset 방지) */
+  padding-top: 0.55rem;
+  box-sizing: border-box;
 }.time-ledger-filter-add-row, [data-legacy~="time-ledger-filter-add-row"]{width: 100%;
   box-sizing: border-box;
+  border-top: 1px solid #e8e2d2;
+  border-bottom: 1px solid #e8e2d2;
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
 }.lp-date-range-host, [data-legacy~="lp-date-range-host"]{width: 100%;
   display: flex;
   justify-content: flex-end;

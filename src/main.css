@@ -63,7 +63,8 @@ body {
   overflow: auto;
   -webkit-overflow-scrolling: touch;
   width: 100%;
-  padding-top: var(--lp-safe-top);
+  /* 상태 표시줄·노치 아래 최소 여백 — safe-area가 0인 브라우저에서도 살짝 띄움 */
+  padding-top: max(0.75rem, var(--lp-safe-top));
   padding-bottom: var(--lp-safe-bottom);
   padding-left: var(--lp-safe-left);
   padding-right: var(--lp-safe-right);
