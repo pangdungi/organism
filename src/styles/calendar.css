@@ -1,5 +1,5 @@
 /**
- * 캘린더 뷰 — 월별 / 2주 / 1주 도킹 스트립 공통 그리드
+ * 캘린더 뷰 — 월별 / 2주 / 1주 / 연간 도킹 스트립 공통 그리드
  * 모바일·데스크톱 동일 레이아웃 (막대 밀도는 .calendar-monthly-layout CSS 변수 + JS 공통).
  */
 
@@ -15,10 +15,17 @@
   --cal-text: #2a3229;
   --cal-text-muted: rgba(42, 50, 41, 0.55);
   --cal-today-accent: #3d4a3e;
+  /** 오늘 날짜 숫자 원형 — 진한 블루 배경 + 흰 글자 */
+  --cal-today-circle-bg: #3a6ea8;
+  --cal-today-circle-fg: #fff;
+  /** 기간 막대(시작≠마감): 리스트(섹션) 색과 무관하게 동일 */
+  --cal-range-span-bar-bg: #d6e8f4;
   --cal-radius: 0;
   --cal-cell-pad: 0.35rem;
   --cal-weekday-pad-y: 0.45rem;
   --cal-nav-gap: 0.5rem;
+  /** 상단 네비(월별 등): 상·하·좌·우 동일 — 모바일에서 --cal-nav-pad만 덮어씀 */
+  --cal-nav-pad: 0.75rem;
   /**
    * 막대 스택 — JS `lpCalendarWeekBarLayoutMetrics` 가 숫자만 파싱 (예: 2.35rem → 2.35)
    * 날짜 숫자·패딩 아래부터 막대 시작, 행 사이 여백 통일 (모바일/데스크톱 동일)
@@ -118,9 +125,11 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  /* space-between은 자식 1개(연간·일간)일 때 왼쪽에 붙음 → 컨트롤은 margin-left: auto로 우측 정렬 */
+  justify-content: flex-start;
   gap: var(--cal-nav-gap);
-  padding: 0.25rem 0.75rem 0.5rem;
+  padding: var(--cal-nav-pad);
+  box-sizing: border-box;
 }
 
 .calendar-nav-date {
@@ -134,8 +143,8 @@
 
 .calendar-nav-month {
   text-transform: capitalize;
-  font-size: 3.25rem;
-  line-height: 1.05;
+  font-size: 2.5rem;
+  line-height: 1.08;
 }
 
 .calendar-nav-year {
@@ -147,8 +156,9 @@
 .calendar-nav-controls {
   display: inline-flex;
   align-items: center;
-  align-self: flex-end;
+  align-self: center;
   gap: 0.25rem;
+  margin-left: auto;
 }
 
 .calendar-nav-controls button {
@@ -174,6 +184,69 @@
 .calendar-nav-controls .calendar-nav-today {
   padding-inline: 0.75rem;
   font-weight: 600;
+}
+
+/* 일간(타임블록) 네비: 시간가계부와 동일 `.time-filter-date-field` + 아이콘 — 주간/월간 `.calendar-nav-today` 와 시각 정렬 */
+.calendar-nav-controls .time-filter-date-field.calendar-1day-nav-date-field {
+  margin: 0;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--cal-line);
+  border-radius: 8px;
+  background: var(--cal-surface);
+  box-sizing: border-box;
+}
+.calendar-nav-controls .time-filter-date-field.calendar-1day-nav-date-field:hover {
+  border-color: var(--cal-line-strong);
+  background: var(--cal-surface-muted);
+}
+
+/* 일간 타임라인 상단: 월 네비(MMM/연도)와 동일 타이포 체계, 사방 패딩·하단 보더 */
+.calendar-monthly-top-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: var(--cal-nav-pad);
+  border-bottom: 1px solid var(--cal-line);
+}
+
+.calendar-monthly-top-bar-left {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.calendar-monthly-top-bar-date {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.28rem;
+  /* .calendar-nav-date 와 동일 기준 — 요일은 .calendar-nav-year 처럼 0.9em */
+  font-size: 1.05rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--cal-text);
+  line-height: 1.2;
+  min-width: 0;
+}
+
+.calendar-monthly-top-bar-date-num {
+  font-size: 2.5rem;
+  line-height: 1.08;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--cal-text);
+}
+
+.calendar-monthly-top-bar-date-dow {
+  font-size: 0.9em;
+  font-weight: 600;
+  color: var(--cal-text-muted);
+  line-height: 1.2;
+}
+
+.calendar-monthly-top-bar-right {
+  flex-shrink: 0;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -359,7 +432,7 @@
 }
 
 .calendar-monthly-day.today {
-  background: rgba(61, 74, 62, 0.06);
+  background: var(--cal-surface);
 }
 
 .calendar-monthly-day.today .calendar-monthly-day-num {
@@ -370,17 +443,9 @@
   min-height: 1.65rem;
   padding: 0 0.2rem;
   border-radius: 999px;
-  background: var(--cal-today-accent);
-  color: #fff;
+  background: var(--cal-today-circle-bg);
+  color: var(--cal-today-circle-fg);
   font-weight: 700;
-}
-
-.calendar-monthly-day.sun:not(.today) .calendar-monthly-day-num {
-  color: #b54747;
-}
-
-.calendar-monthly-day.sat:not(.today) .calendar-monthly-day-num {
-  color: #3d5a8a;
 }
 
 .calendar-monthly-day-num {
@@ -436,16 +501,29 @@
   font-weight: 600;
   line-height: 1.25;
   padding: 0.12rem 0.3rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.calendar-monthly-span-bar-text {
+  display: block;
 }
 
 .calendar-monthly-span-bar--todo,
 .calendar-monthly-span-bar--range {
   color: var(--cal-text);
+}
+
+/* 기간 막대는 단일일 막대보다 아래 레이어 — 같은 열에서 겹칠 때 할 일 텍스트가 가리지 않게 */
+.calendar-monthly-span-bar--range {
+  z-index: 1;
+}
+
+.calendar-monthly-span-bar--todo {
+  z-index: 2;
 }
 
 .calendar-monthly-span-bar.is-completed {
@@ -595,7 +673,7 @@
 }
 
 .calendar-1week-google-col.is-today {
-  background: var(--cal-surface-muted);
+  background: var(--cal-surface);
 }
 
 .calendar-1week-flow-stack {
@@ -726,6 +804,155 @@
 }
 
 /* -------------------------------------------------------------------------- */
+/* 연간 뷰: 1~31일 열 고정(월마다 열 정렬), 세로 12등분, 가로 스크롤은 래퍼 하나만 */
+/* -------------------------------------------------------------------------- */
+
+.calendar-annual-view {
+  --annual-month-col-w: 2.85rem;
+  --annual-day-col-w: 2.55rem;
+}
+
+.calendar-annual-view > .calendar-monthly-main {
+  min-height: 0;
+}
+
+.calendar-annual-view .calendar-monthly-tabs-wrap {
+  flex-shrink: 0;
+}
+
+.calendar-annual-view .calendar-monthly-nav {
+  flex-shrink: 0;
+}
+
+.calendar-annual-grid-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  border-block: 1px solid var(--cal-line);
+  border-inline: none;
+  border-radius: var(--cal-radius);
+  background: var(--cal-surface);
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-annual-table {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: max-content;
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-annual-row {
+  flex: 1 1 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: var(--annual-month-col-w) repeat(
+    31,
+    var(--annual-day-col-w)
+  );
+  align-items: stretch;
+  width: max-content;
+  border-bottom: 1px solid var(--cal-line);
+}
+
+.calendar-annual-row:last-child {
+  border-bottom: none;
+}
+
+.calendar-annual-row-month {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0.2rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--cal-text-muted);
+  border-right: 1px solid var(--cal-line);
+  background: #fff;
+  box-shadow: 1px 0 0 var(--cal-line);
+}
+
+.calendar-annual-row-days {
+  display: contents;
+}
+
+.calendar-annual-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding: 0.18rem 0.22rem 0.2rem;
+  background: var(--cal-surface);
+  border-right: 1px solid var(--cal-line);
+  min-width: 0;
+  min-height: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.calendar-annual-cell--pad {
+  pointer-events: none;
+  cursor: default;
+  background: rgba(61, 74, 62, 0.045);
+}
+
+.calendar-annual-cell.weekend {
+  background: rgba(61, 74, 62, 0.035);
+}
+
+.calendar-annual-cell.today {
+  background: var(--cal-surface);
+}
+
+.calendar-annual-cell.weekend:not(.today) .calendar-annual-cell-num {
+  color: rgba(42, 50, 41, 0.45);
+}
+
+.calendar-annual-cell-num {
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--cal-text);
+}
+
+.calendar-annual-cell.today .calendar-annual-cell-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.42rem;
+  min-height: 1.42rem;
+  padding: 0 0.14rem;
+  border-radius: 999px;
+  background: var(--cal-today-circle-bg);
+  color: var(--cal-today-circle-fg);
+  font-weight: 700;
+}
+
+.calendar-annual-cell-dot {
+  align-self: center;
+  flex-shrink: 0;
+  width: 0.32rem;
+  height: 0.32rem;
+  margin-top: auto;
+  border-radius: 50%;
+  background: var(--cal-today-accent);
+  opacity: 0.72;
+}
+
+/* -------------------------------------------------------------------------- */
 /* 일정 탭: 좌우 패딩 없음(.app-main 이 safe-area 처리) */
 /* -------------------------------------------------------------------------- */
 
@@ -752,6 +979,7 @@
     --cal-week-row-min: 3.85rem;
     --cal-cell-pad: 0.3rem;
     --cal-weekday-pad-y: 0.38rem;
+    --cal-nav-pad: 0.6rem;
   }
 
   .calendar-sub-tab {
@@ -759,13 +987,22 @@
     padding: 0.3rem 0.55rem;
   }
 
+  .calendar-monthly-top-bar-date {
+    font-size: 0.9375rem;
+  }
+
+  .calendar-monthly-top-bar-date-num {
+    font-size: 1.875rem;
+    line-height: 1.08;
+  }
+
   .calendar-nav-date {
     font-size: 0.9375rem;
   }
 
   .calendar-nav-month {
-    font-size: 2.125rem;
-    line-height: 1.06;
+    font-size: 1.875rem;
+    line-height: 1.08;
   }
 
   .calendar-nav-controls button {
@@ -775,6 +1012,10 @@
 
   .calendar-nav-controls .calendar-nav-today {
     padding-inline: 0.6rem;
+  }
+
+  .calendar-nav-controls .time-filter-date-field.calendar-1day-nav-date-field {
+    padding: 0.3rem 0.45rem;
   }
 
   .calendar-monthly-weekday {
@@ -808,28 +1049,440 @@
   }
 
   .calendar-1week-flow-card {
-    font-size: 0.6875rem;
+    font-size: 0.625rem;
     padding: 0.34rem 0.4rem 0.36rem;
     border-radius: 7px;
   }
 
   .calendar-1week-flow-card-title {
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
+  }
+
+  .calendar-1week-flow-card-done-check,
+  .calendar-1week-flow-card-missed-mark {
+    font-size: 0.62rem;
   }
 
   .calendar-1week-flow-card-meta {
-    font-size: 0.625rem;
+    font-size: 0.5625rem;
     margin-top: 0.22rem;
   }
 
   .calendar-1week-flow-card-badge,
   .calendar-1week-flow-card-progress {
-    font-size: 0.6rem;
+    font-size: 0.55rem;
   }
 
   .calendar-1week-flow-card-memo {
-    font-size: 0.6rem;
+    font-size: 0.55rem;
     margin-top: 0.26rem;
     padding-top: 0.26rem;
   }
+
+  .calendar-annual-view {
+    --annual-month-col-w: 2.45rem;
+    --annual-day-col-w: 2.35rem;
+  }
+
+  .calendar-annual-row-month {
+    font-size: 0.6rem;
+    padding: 0.12rem 0.1rem;
+  }
+
+  .calendar-annual-cell {
+    padding: 0.12rem 0.16rem 0.14rem;
+  }
+
+  .calendar-annual-cell-num {
+    font-size: 0.7rem;
+  }
+
+  .calendar-annual-cell.today .calendar-annual-cell-num {
+    min-width: 1.32rem;
+    min-height: 1.32rem;
+  }
+
+  .calendar-annual-cell-dot {
+    width: 0.28rem;
+    height: 0.28rem;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* 일정·할일 버블 (fixed → body) — 시간가계부/lp-modals와 동일 토큰 */
+/* -------------------------------------------------------------------------- */
+
+.calendar-day-expand-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  background: var(--lp-modal-backdrop);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.calendar-event-bubble {
+  box-sizing: border-box;
+  min-width: min(16rem, calc(100vw - 1.5rem));
+  max-width: min(22rem, calc(100vw - 1.5rem));
+  font-family: var(--lp-modal-font);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.35;
+  background: var(--lp-modal-surface);
+  color: var(--lp-modal-navy);
+  border: 1px solid var(--lp-modal-border);
+  border-radius: var(--lp-modal-radius);
+  box-shadow: 0 20px 50px rgba(21, 43, 69, 0.2);
+  overflow: hidden;
+}
+
+.calendar-event-bubble-tail {
+  display: none;
+}
+
+.calendar-event-bubble-body {
+  padding: 0 0 0.95rem;
+}
+
+.calendar-event-bubble-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 0 0.85rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--lp-modal-border);
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+}
+
+.calendar-event-bubble-date {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  color: var(--lp-modal-navy);
+}
+
+.calendar-event-bubble-close {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--lp-modal-navy-muted);
+  font: inherit;
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.calendar-event-bubble-close:hover {
+  background: rgba(30, 77, 123, 0.08);
+  color: var(--lp-modal-navy);
+}
+
+.calendar-event-bubble-category,
+.calendar-event-bubble-name {
+  margin: 0 1rem 0.85rem;
+}
+
+.calendar-event-bubble-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--lp-modal-navy-muted);
+}
+
+.calendar-event-bubble-select,
+.calendar-event-bubble-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--lp-modal-navy);
+  font-family: inherit;
+  font-size: 0.9375rem;
+  outline: none;
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.calendar-event-bubble-select:focus,
+.calendar-event-bubble-input:focus {
+  border-color: rgba(30, 77, 123, 0.45);
+  box-shadow: 0 0 0 3px rgba(30, 77, 123, 0.12);
+}
+
+.calendar-event-bubble-schedule-check {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--lp-modal-navy-muted);
+  cursor: pointer;
+}
+
+.calendar-event-bubble-save {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(100% - 2rem);
+  margin: 0.35rem 1rem 0;
+  min-height: 2.5rem;
+  padding: 0 1.1rem;
+  box-sizing: border-box;
+  border: 1px solid var(--lp-modal-accent);
+  border-radius: 10px;
+  background: var(--lp-modal-accent);
+  color: #fff !important;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.calendar-event-bubble-save:hover {
+  background: var(--lp-modal-accent-hover);
+  border-color: var(--lp-modal-accent-hover);
+}
+
+.calendar-day-expand-bubble .calendar-event-bubble-body {
+  padding-bottom: 0.75rem;
+}
+
+.calendar-day-expand-bubble .calendar-event-bubble-header {
+  margin-bottom: 0.65rem;
+}
+
+.calendar-day-expand-bubble .calendar-day-expand-list,
+.calendar-day-expand-bubble .calendar-day-expand-empty,
+.calendar-day-expand-bubble .calendar-day-expand-add-btn {
+  margin-left: 1rem;
+  margin-right: 1rem;
+  width: auto;
+}
+
+.calendar-day-expand-bubble .calendar-day-expand-add-btn {
+  display: block;
+  box-sizing: border-box;
+}
+
+.calendar-day-expand-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: min(16rem, 42vh);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.calendar-day-expand-empty {
+  padding: 0.7rem 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--lp-modal-muted);
+  text-align: center;
+}
+
+.calendar-day-expand-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  padding: 0.5rem 0.55rem;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 8px;
+  background: #f8fafc;
+  cursor: pointer;
+  transition:
+    background 0.1s ease,
+    border-color 0.1s ease;
+}
+
+.calendar-day-expand-item--done {
+  opacity: 0.72;
+}
+
+.calendar-day-expand-item:hover {
+  background: rgba(30, 77, 123, 0.06);
+  border-color: rgba(30, 77, 123, 0.2);
+}
+
+.calendar-day-expand-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.calendar-day-expand-text {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--lp-modal-navy);
+  word-break: break-word;
+}
+
+.calendar-day-expand-time {
+  font-size: 0.6875rem;
+  color: var(--lp-modal-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.calendar-day-expand-add-btn {
+  margin-top: 0.55rem;
+  padding: 0.52rem 0.65rem;
+  border: 1px dashed var(--lp-modal-border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--lp-modal-accent);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease,
+    color 0.12s ease;
+}
+
+.calendar-day-expand-add-btn:hover {
+  border-color: rgba(30, 77, 123, 0.35);
+  background: rgba(30, 77, 123, 0.04);
+  color: var(--lp-modal-accent-hover);
+}
+
+.calendar-event-bubble .calendar-event-bubble-revert,
+.calendar-event-bubble .calendar-bar-revert-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0.5rem 1rem 0;
+  width: calc(100% - 2rem);
+  box-sizing: border-box;
+  min-height: 2.4rem;
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--lp-modal-navy-muted);
+  background: #fff;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 10px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    border-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.calendar-event-bubble .calendar-event-bubble-revert:hover,
+.calendar-event-bubble .calendar-bar-revert-btn:hover {
+  border-color: rgba(30, 77, 123, 0.3);
+  color: var(--lp-modal-navy);
+}
+
+.calendar-bar-revert-desc {
+  margin: 0 1rem 0.65rem;
+  font-size: 0.8125rem;
+  color: var(--lp-modal-muted);
+  line-height: 1.45;
+}
+
+.calendar-bar-date-edit-row {
+  margin: 0 1rem 0.55rem;
+}
+
+.calendar-bar-date-edit-row .calendar-event-bubble-label {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.calendar-bar-date-edit-row .calendar-event-bubble-input {
+  margin-top: 0.22rem;
+}
+
+.calendar-event-bubble .calendar-event-bubble-save + .calendar-bar-revert-btn {
+  margin-top: 0.4rem;
+}
+
+@media (max-width: 48rem) {
+  .calendar-event-bubble {
+    min-width: 0;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* 캘린더 1일 타임블록 호버 툴팁 (#lp-time-block-hover-tip, body) */
+/* -------------------------------------------------------------------------- */
+
+.lp-time-block-hover-tip {
+  position: fixed;
+  z-index: 10040;
+  left: 0;
+  top: 0;
+  max-width: min(18rem, calc(100vw - 1rem));
+  padding: 0.65rem 0.85rem;
+  margin: 0;
+  box-sizing: border-box;
+  font-family: var(--lp-modal-font);
+  -webkit-font-smoothing: antialiased;
+  border-radius: var(--lp-modal-radius);
+  box-shadow: 0 12px 40px rgba(21, 43, 69, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.12s ease,
+    visibility 0.12s ease;
+}
+
+.lp-time-block-hover-tip--visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.lp-time-block-hover-tip__title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.lp-time-block-hover-tip__meta {
+  margin-top: 0.28rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.3;
+  opacity: 0.92;
+}
+
+.lp-time-block-hover-tip__memo {
+  margin-top: 0.45rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.35);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  opacity: 0.9;
 }

@@ -174,7 +174,7 @@ body {
 /* 푸터 아이콘: 토글·현재 선택(서브뷰 등) — aria-pressed 로만 스타일 (접근성과 동일 조건) */
 .app-footer-menu-back.app-footer-icon-btn[aria-pressed="true"],
 .app-footer-actions .app-footer-icon-btn[aria-pressed="true"] {
-  background: rgba(61, 74, 62, 0.12);
+  background: #e8f0f8;
 }
 
 /* 홈(오늘) 탭 메뉴 — 데스크톱·모바일 공통: 가운데 정렬, 한 줄에 한 개 */

@@ -108,6 +108,48 @@ function lpCalendarNavQ(localNav, calendarInnerWrap, selector) {
   return null;
 }
 
+function lpOpenNativeDateInput(inp) {
+  if (!inp) return;
+  try {
+    inp.focus({ preventScroll: true });
+  } catch (_) {
+    inp.focus();
+  }
+  if (typeof inp.showPicker === "function") {
+    try {
+      inp.showPicker();
+      return;
+    } catch (_) {}
+  }
+  inp.click();
+}
+
+/** `yyyy-mm-dd` 와 오늘(로컬 자정 기준) 사이의 일 수 차이 — `dayOffset` 과 동일 의미 */
+function lpCalendarDayOffsetFromYmd(ymd) {
+  if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return null;
+  const [y, mo, d] = ymd.split("-").map(Number);
+  const pick = new Date(y, mo - 1, d);
+  if (
+    pick.getFullYear() !== y ||
+    pick.getMonth() !== mo - 1 ||
+    pick.getDate() !== d
+  ) {
+    return null;
+  }
+  const now = new Date();
+  const pickNorm = new Date(
+    pick.getFullYear(),
+    pick.getMonth(),
+    pick.getDate(),
+  );
+  const todayNorm = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  );
+  return Math.round((pickNorm - todayNorm) / 86400000);
+}
+
 /** 할일 사이드바에서 날짜·마감 수정 시: 같은 화면 월/주 그리드도 로컬 데이터로 즉시 다시 그림(탭 재클릭·풀 없이) */
 let _lpTodoDatesChangedListenerAttached = false;
 function lpEnsureTodoDatesChangedListener() {
@@ -167,14 +209,6 @@ const CAL_EXPECTED_ROW_IDLE_COMPACT_PX = 22;
 const CAL_EXPECTED_ROW_ONE_LINE_SLICE_PX = 22;
 /** 한 시간 행 px 상한 — 22×60÷5=264 */
 const CAL_EXPECTED_ROW_SHORT_SLOT_CEIL_PX = 264;
-function lpCalendarSpanBarTodoMarkerHtml(sectionColor) {
-  const c =
-    typeof sectionColor === "string" && sectionColor.trim()
-      ? sectionColor.trim()
-      : "var(--text-muted)";
-  return `<span class="calendar-monthly-span-bar-checkbox" style="color:${c.replace(/"/g, "")}" aria-hidden="true">|</span>`;
-}
-
 /** 월간·2주·1주 막대 스택: 레이아웃의 CSS 변수와 동기 (모바일/데스크톱 동일 수치) */
 function lpCalendarWeekBarLayoutMetrics(weekRow) {
   const fallback = {
@@ -236,7 +270,9 @@ function lpCalendarFinalizeBarRowLayout(
   const { WEEK_ROW_MIN } = lpCalendarWeekBarLayoutMetrics(weekRow);
   const maxRow = Math.max(...barsWithRow.map((b) => b.row), 0);
   const baseTop = BARS_TOP + 0.1;
-  requestAnimationFrame(() => {
+
+  const run = () => {
+    if (!weekRow.isConnected) return;
     const rootFont =
       parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
     const pxToRem = (px) => px / rootFont;
@@ -264,12 +300,24 @@ function lpCalendarFinalizeBarRowLayout(
         b._barEl.style.top = `${rowTopRem[b.row]}rem`;
       }
     }
-    const requiredHeight = topAcc + BOTTOM_PAD;
+    const subPxSlackRem = 0.12;
+    const requiredHeight = topAcc + BOTTOM_PAD + subPxSlackRem;
     weekRow.style.minHeight = `${Math.max(
       WEEK_ROW_MIN,
       requiredHeight,
     )}rem`;
-  });
+  };
+
+  let pass = 0;
+  const maxPasses = 5;
+  const step = () => {
+    run();
+    pass += 1;
+    if (pass < maxPasses && barsWithRow.some((b) => b._barEl?.isConnected)) {
+      requestAnimationFrame(step);
+    }
+  };
+  requestAnimationFrame(step);
 }
 
 
@@ -564,56 +612,13 @@ function timetableAccentTextColor(accentRgba) {
   return `rgb(${m[1]}, ${m[2]}, ${m[3]})`;
 }
 
-/** 월간 막대: |·일정 동그라미 — 배경 파스텔과 분리해 잉크 쪽으로 섞은 불투명 색(완료·모바일에서도 식별) */
-function lpCalendarBarMarkerColorFromBase(baseColor) {
-  const ink = { r: 42, g: 56, b: 40 };
-  const blend = 0.42;
-  const mix = (r, g, b) =>
-    `rgb(${Math.round(r * (1 - blend) + ink.r * blend)}, ${Math.round(g * (1 - blend) + ink.g * blend)}, ${Math.round(b * (1 - blend) + ink.b * blend)})`;
-
-  const fromRgba = timetableAccentTextColor(baseColor);
-  if (fromRgba) {
-    const m = fromRgba.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/);
-    if (m) return mix(Number(m[1]), Number(m[2]), Number(m[3]));
-  }
-  const t = String(baseColor || "").trim();
-  if (t.startsWith("#")) {
-    const full =
-      t.length === 4
-        ? `#${t[1]}${t[1]}${t[2]}${t[2]}${t[3]}${t[3]}`
-        : t.length === 7
-          ? t
-          : "";
-    if (full) {
-      const r = parseInt(full.slice(1, 3), 16);
-      const g = parseInt(full.slice(3, 5), 16);
-      const b = parseInt(full.slice(5, 7), 16);
-      return mix(r, g, b);
-    }
-  }
-  return "var(--text-ink)";
-}
-
-/** 시트의 .checked / .is-completed 에서 마커 opacity 가림 방지 */
-function lpCalendarSpanBarForceSolidMarkers(bar) {
-  if (!bar) return;
-  try {
-    bar
-      .querySelector(".calendar-monthly-span-bar-checkbox")
-      ?.style.setProperty("opacity", "1", "important");
-    bar
-      .querySelectorAll(".calendar-monthly-span-bar-icon--schedule")
-      .forEach((el) => el.style.setProperty("opacity", "1", "important"));
-  } catch (_) {}
-}
-
-/** 여러 날 spanning 막대: 시트의 color-mix 비율보다 진한 파스텔(데스크·모바일 공통) */
+/** 여러 날 spanning 막대: 섹션색과 무관하게 한 색( --cal-range-span-bar-bg ) */
 function lpApplyCalendarMultiDaySpanBarBackground(bar, b) {
   if (!bar || !b || b.isSingleDay) return;
   try {
     bar.style.setProperty(
       "background",
-      "color-mix(in srgb, var(--bar-bg) 82%, rgb(125 125 125 / 0.08))",
+      "var(--cal-range-span-bar-bg, #d6e8f4)",
       "important",
     );
   } catch (_) {}
@@ -1388,9 +1393,20 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
   const BUBBLE_PADDING = 16;
   Object.assign(bubble.style, {
     position: "fixed",
-    left: isMobile ? "" : `${cellRect.left}px`,
-    top: isMobile ? "" : `${cellRect.bottom + 4}px`,
-    zIndex: isMobile ? 1002 : 1000,
+    zIndex: isMobile ? "1002" : "1000",
+    ...(isMobile
+      ? {
+          left: "50%",
+          top: "50%",
+          transform: "translate(-50%, -50%)",
+          width: "min(22rem, calc(100vw - 1.25rem))",
+          maxHeight: "min(85vh, 520px)",
+          overflowY: "auto",
+        }
+      : {
+          left: `${cellRect.left}px`,
+          top: `${cellRect.bottom + 4}px`,
+        }),
   });
 
   document.body.appendChild(bubble);
@@ -1423,10 +1439,6 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
 
 /** 기본 행 높이는 이 개수(3개) 분량, 그 이상이면 행을 늘려 전부 표시 */
 const MAX_VISIBLE_BARS_PER_DAY = 3;
-
-function lpCalendarDayExpandScheduleMarkHtml() {
-  return `<span class="calendar-day-expand-schedule-mark" aria-hidden="true"><span class="calendar-day-expand-schedule-mark-inner"></span></span>`;
-}
 
 /** 이전 날짜 확대 버블의 document 클릭 리스너 제거(연간 연속 호버 등으로 close 미경유 DOM 제거 시 누수 방지) */
 let _calendarDayExpandOutsideHandler = null;
@@ -1474,12 +1486,8 @@ function createCalendarDayExpandBubble(
     .map((t) => {
       const isSchedule =
         String(t.itemType || "todo").toLowerCase() === "schedule";
-      const marker = isSchedule
-        ? lpCalendarDayExpandScheduleMarkHtml()
-        : `<span class="calendar-day-expand-checkbox ${t.done ? "checked" : ""}"></span>`;
       return `
-    <div class="calendar-day-expand-item${isSchedule ? " calendar-day-expand-item--schedule" : ""}" data-done="${!!t.done}" data-item-type="${isSchedule ? "schedule" : "todo"}">
-      <div class="calendar-day-expand-marker-slot">${marker}</div>
+    <div class="calendar-day-expand-item${isSchedule ? " calendar-day-expand-item--schedule" : ""}${t.done ? " calendar-day-expand-item--done" : ""}" data-done="${!!t.done}" data-item-type="${isSchedule ? "schedule" : "todo"}">
       <div class="calendar-day-expand-main">
         <span class="calendar-day-expand-text">${escapeHtml(t.name || "")}</span>
         ${t.startTime || t.endTime ? `<span class="calendar-day-expand-time">${[t.startTime, t.endTime].filter(Boolean).join(" ~ ")}</span>` : ""}
@@ -1574,21 +1582,39 @@ function createCalendarDayExpandBubble(
       document.addEventListener("click", outsideClickHandler);
     }, 0);
   }
+  if (overlayEl && dismissOnOutsideClick) {
+    overlayEl.addEventListener("click", () => {
+      close();
+    });
+  }
 
   const BUBBLE_PADDING = 16;
   let top = positionBelow
     ? cellRect.bottom + 4
     : Math.min(cellRect.top, window.innerHeight - 320);
-  Object.assign(bubble.style, {
-    position: "fixed",
-    left: `${Math.min(cellRect.left, window.innerWidth - 280)}px`,
-    top: `${top}px`,
-    zIndex: 1002,
-  });
+  if (isMobile) {
+    Object.assign(bubble.style, {
+      position: "fixed",
+      left: "50%",
+      top: "50%",
+      transform: "translate(-50%, -50%)",
+      width: "min(22rem, calc(100vw - 1.25rem))",
+      maxHeight: "min(85vh, 520px)",
+      overflowY: "auto",
+      zIndex: "1002",
+    });
+  } else {
+    Object.assign(bubble.style, {
+      position: "fixed",
+      left: `${Math.min(cellRect.left, window.innerWidth - 280)}px`,
+      top: `${top}px`,
+      zIndex: "1002",
+    });
+  }
 
   document.body.appendChild(bubble);
 
-  if (positionBelow) {
+  if (!isMobile && positionBelow) {
     const bubbleHeight = bubble.getBoundingClientRect().height;
     if (
       cellRect.bottom + 4 + bubbleHeight >
@@ -2059,14 +2085,12 @@ function renderMonthlyView(tabsElement) {
         const width = ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
         const baseColor = getSectionColor(t.sectionId);
         const color = withMoreTransparency(baseColor);
-        const markerColor = lpCalendarBarMarkerColorFromBase(baseColor);
         const isFirstSegment = barStart === t.startDate;
         allBars.push({
           left,
           width,
           name: t.name,
           color,
-          markerColor,
           isSingleDay: false,
           isFirstSegment,
           itemType: t.itemType || "todo",
@@ -2086,13 +2110,11 @@ function renderMonthlyView(tabsElement) {
           const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
           const baseColor = getSectionColor(t.sectionId);
           const color = withMoreTransparency(baseColor);
-          const markerColor = lpCalendarBarMarkerColorFromBase(baseColor);
           allBars.push({
             left,
             width,
             name: t.name,
             color,
-            markerColor,
             isSingleDay: true,
             dayIdx,
             dateKey,
@@ -2141,14 +2163,12 @@ function renderMonthlyView(tabsElement) {
       const barsWithRow = allBars;
       barsWithRow.forEach((b) => {
         const isTodo = (b.itemType || "todo").toLowerCase() === "todo";
-        const showCheckbox = isTodo && (b.isSingleDay || b.isFirstSegment);
         const bar = document.createElement("div");
         bar.className =
           "calendar-monthly-span-bar" +
           (b.isSingleDay
             ? " calendar-monthly-span-bar--todo"
             : " calendar-monthly-span-bar--range") +
-          (showCheckbox ? " calendar-monthly-span-bar--has-checkbox" : "") +
           (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "") +
           (b.isOverdueBar ? " calendar-monthly-span-bar--overdue" : "") +
           ((b.itemType || "todo").toLowerCase() !== "todo"
@@ -2157,33 +2177,9 @@ function renderMonthlyView(tabsElement) {
         bar.title = b.name;
         bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${baseBarTop + b.row * (BAR_HEIGHT + ROW_GAP)}rem`;
         lpApplyCalendarMultiDaySpanBarBackground(bar, b);
-        if (b.isSingleDay) {
-          if (isTodo) {
-            bar.innerHTML = `${lpCalendarSpanBarTodoMarkerHtml(b.markerColor)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
-          } else {
-            bar.style.setProperty("--schedule-icon-color", b.markerColor);
-            bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
-          }
-        } else {
-          if (isTodo) {
-            bar.innerHTML = showCheckbox
-              ? `${lpCalendarSpanBarTodoMarkerHtml(b.markerColor)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
-              : `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
-          } else {
-            if (b.isFirstSegment) {
-              bar.style.setProperty("--schedule-icon-color", b.markerColor);
-              bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
-            } else {
-              bar.style.setProperty("--schedule-icon-color", b.markerColor);
-              bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" aria-hidden="true"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
-            }
-          }
-        }
+        bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
         if (isTodo && b.done) {
           bar.classList.add("is-completed");
-          bar
-            .querySelector(".calendar-monthly-span-bar-checkbox")
-            ?.classList.add("checked");
         }
         lpAttachCalendarBarOpenTodoEdit(
           bar,
@@ -2224,7 +2220,6 @@ function renderMonthlyView(tabsElement) {
             );
           });
         }
-        lpCalendarSpanBarForceSolidMarkers(bar);
         b._barEl = bar;
         barsEl.appendChild(bar);
       });
@@ -2687,14 +2682,12 @@ function render2WeekView(tabsElement) {
         const width = ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
         const baseColor = getSectionColor(t.sectionId);
         const color = withMoreTransparency(baseColor);
-        const markerColor = lpCalendarBarMarkerColorFromBase(baseColor);
         const isFirstSegment = barStart === t.startDate;
         allBars.push({
           left,
           width,
           name: t.name,
           color,
-          markerColor,
           isSingleDay: false,
           isFirstSegment,
           itemType: t.itemType || "todo",
@@ -2714,13 +2707,11 @@ function render2WeekView(tabsElement) {
           const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
           const baseColor = getSectionColor(t.sectionId);
           const color = withMoreTransparency(baseColor);
-          const markerColor = lpCalendarBarMarkerColorFromBase(baseColor);
           allBars.push({
             left,
             width,
             name: t.name,
             color,
-            markerColor,
             isSingleDay: true,
             dayIdx,
             dateKey,
@@ -2769,14 +2760,12 @@ function render2WeekView(tabsElement) {
       const barsWithRow = allBars;
       barsWithRow.forEach((b) => {
         const isTodo = (b.itemType || "todo").toLowerCase() === "todo";
-        const showCheckbox = isTodo && (b.isSingleDay || b.isFirstSegment);
         const bar = document.createElement("div");
         bar.className =
           "calendar-monthly-span-bar" +
           (b.isSingleDay
             ? " calendar-monthly-span-bar--todo"
             : " calendar-monthly-span-bar--range") +
-          (showCheckbox ? " calendar-monthly-span-bar--has-checkbox" : "") +
           (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "") +
           (b.isOverdueBar ? " calendar-monthly-span-bar--overdue" : "") +
           ((b.itemType || "todo").toLowerCase() !== "todo"
@@ -2785,33 +2774,9 @@ function render2WeekView(tabsElement) {
         bar.title = b.name;
         bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${baseBarTop + b.row * (BAR_HEIGHT + ROW_GAP)}rem`;
         lpApplyCalendarMultiDaySpanBarBackground(bar, b);
-        if (b.isSingleDay) {
-          if (isTodo) {
-            bar.innerHTML = `${lpCalendarSpanBarTodoMarkerHtml(b.markerColor)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
-          } else {
-            bar.style.setProperty("--schedule-icon-color", b.markerColor);
-            bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
-          }
-        } else {
-          if (isTodo) {
-            bar.innerHTML = showCheckbox
-              ? `${lpCalendarSpanBarTodoMarkerHtml(b.markerColor)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
-              : `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
-          } else {
-            if (b.isFirstSegment) {
-              bar.style.setProperty("--schedule-icon-color", b.markerColor);
-              bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
-            } else {
-              bar.style.setProperty("--schedule-icon-color", b.markerColor);
-              bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" aria-hidden="true"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
-            }
-          }
-        }
+        bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
         if (isTodo && b.done) {
           bar.classList.add("is-completed");
-          bar
-            .querySelector(".calendar-monthly-span-bar-checkbox")
-            ?.classList.add("checked");
         }
         lpAttachCalendarBarOpenTodoEdit(
           bar,
@@ -2852,7 +2817,6 @@ function render2WeekView(tabsElement) {
             );
           });
         }
-        lpCalendarSpanBarForceSolidMarkers(bar);
         b._barEl = bar;
         barsEl.appendChild(bar);
       });
@@ -3426,7 +3390,10 @@ function render1DayView(tabsElement = null) {
   nav.innerHTML = `
     <div class="calendar-nav-controls">
       <button type="button" class="calendar-nav-prev" title="이전 날">&lt;</button>
-      <button type="button" class="calendar-nav-today" title="해당 날짜">날짜</button>
+      <div class="time-filter-date-field calendar-1day-nav-date-field" role="button" tabindex="0" aria-label="날짜 선택">
+        <input type="date" class="calendar-1day-nav-date-input" aria-label="날짜 선택" />
+        <img src="/toolbaricons/calendar-alt.svg" alt="" class="time-filter-date-cal-icon" width="18" height="18" aria-hidden="true" />
+      </div>
       <button type="button" class="calendar-nav-next" title="다음 날">&gt;</button>
     </div>
   `;
@@ -3438,14 +3405,6 @@ function render1DayView(tabsElement = null) {
   function refreshTodoList() {}
 
 
-  function format1DayNavDate(dayOffset) {
-    const d = new Date();
-    d.setDate(d.getDate() + dayOffset);
-    const M = d.getMonth() + 1;
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${M}.${dd}`;
-  }
-
   function renderCalendar() {
     document
       .querySelectorAll(".calendar-1day-drag-drop-line")
@@ -3456,15 +3415,49 @@ function render1DayView(tabsElement = null) {
     const grid = getCalendarGridFor1Day(dayOffset);
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + dayOffset);
-    const todayBtn = lpCalendarNavQ(nav, wrap, ".calendar-nav-today");
-    if (todayBtn) {
-      const y = targetDate.getFullYear();
-      const m = targetDate.getMonth() + 1;
-      const d = targetDate.getDate();
-      const w = NAV_WEEKDAYS_SUN0[targetDate.getDay()] || "";
-      todayBtn.textContent = `${y}. ${m}. ${d}(${w})`;
-      todayBtn.title = dayOffset === 0 ? "Today" : `${y}년 ${m}월 ${d}일`;
+    const y = targetDate.getFullYear();
+    const m = targetDate.getMonth() + 1;
+    const d = targetDate.getDate();
+    const w = NAV_WEEKDAYS_SUN0[targetDate.getDay()] || "";
+    const mdPart = `${m}/${d}`;
+    const dowPart = `(${w})`;
+
+    const dateFieldEl = lpCalendarNavQ(
+      nav,
+      wrap,
+      ".calendar-1day-nav-date-field",
+    );
+    const dateInp = lpCalendarNavQ(nav, wrap, ".calendar-1day-nav-date-input");
+    if (dateInp) {
+      const nextKey = formatDateKey(targetDate);
+      if (dateInp.value !== nextKey) dateInp.value = nextKey;
+      const label =
+        dayOffset === 0
+          ? `오늘 · ${y}년 ${m}월 ${d}일. 날짜 선택`
+          : `${y}년 ${m}월 ${d}일. 날짜 선택`;
+      dateInp.setAttribute("aria-label", label);
+      if (dateFieldEl) {
+        dateFieldEl.title = label;
+        dateFieldEl.setAttribute("aria-label", label);
+      }
     }
+
+    topBarLeft.replaceChildren();
+    const dateHeading = document.createElement("div");
+    dateHeading.className = "calendar-monthly-top-bar-date";
+    const hn = document.createElement("span");
+    hn.className = "calendar-monthly-top-bar-date-num";
+    hn.textContent = mdPart;
+    const hw = document.createElement("span");
+    hw.className = "calendar-monthly-top-bar-date-dow";
+    hw.textContent = dowPart;
+    dateHeading.appendChild(hn);
+    dateHeading.appendChild(hw);
+    dateHeading.setAttribute(
+      "aria-label",
+      `${y}년 ${m}월 ${d}일 ${w}요일`,
+    );
+    topBarLeft.appendChild(dateHeading);
 
     if (topBar.parentNode) topBar.parentNode.removeChild(topBar);
 
@@ -3761,13 +3754,37 @@ function render1DayView(tabsElement = null) {
     }
   }
 
-  lpCalendarNavQ(nav, wrap, ".calendar-nav-today").addEventListener(
-    "click",
-    () => {
-      dayOffset = 0;
-      renderCalendar();
-    },
-  );
+  {
+    const dateFieldOpen = lpCalendarNavQ(
+      nav,
+      wrap,
+      ".calendar-1day-nav-date-field",
+    );
+    const dateInpOpen = lpCalendarNavQ(
+      nav,
+      wrap,
+      ".calendar-1day-nav-date-input",
+    );
+    if (dateFieldOpen && dateInpOpen) {
+      dateFieldOpen.addEventListener("click", () =>
+        lpOpenNativeDateInput(dateInpOpen),
+      );
+      dateFieldOpen.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          lpOpenNativeDateInput(dateInpOpen);
+        }
+      });
+      dateInpOpen.addEventListener("change", () => {
+        const v = dateInpOpen.value;
+        if (!v) return;
+        const off = lpCalendarDayOffsetFromYmd(v);
+        if (off === null) return;
+        dayOffset = off;
+        renderCalendar();
+      });
+    }
+  }
   lpCalendarNavQ(nav, wrap, ".calendar-nav-prev").addEventListener(
     "click",
     () => {
@@ -3784,11 +3801,11 @@ function render1DayView(tabsElement = null) {
   );
 
   const topBar = document.createElement("div");
-  topBar.className = "calendar-1day-top-bar";
+  topBar.className = "calendar-monthly-top-bar";
   const topBarLeft = document.createElement("div");
-  topBarLeft.className = "calendar-1day-top-bar-left";
+  topBarLeft.className = "calendar-monthly-top-bar-left";
   const topBarRight = document.createElement("div");
-  topBarRight.className = "calendar-1day-top-bar-right";
+  topBarRight.className = "calendar-monthly-top-bar-right";
   topBarRight.appendChild(nav);
   topBar.appendChild(topBarLeft);
   topBar.appendChild(topBarRight);
@@ -4207,14 +4224,12 @@ function render1WeekView(tabsElement) {
       const width = ((endIdx - startIdx + 1) / 7) * 100 - (CELL_GAP * 2) / 7;
       const baseColor = getSectionColor(t.sectionId);
       const color = withMoreTransparency(baseColor);
-      const markerColor = lpCalendarBarMarkerColorFromBase(baseColor);
       const isFirstSegment = barStart === t.startDate;
       allBars.push({
         left,
         width,
         name: t.name,
         color,
-        markerColor,
         isSingleDay: false,
         isFirstSegment,
         itemType: t.itemType || "todo",
@@ -4234,13 +4249,11 @@ function render1WeekView(tabsElement) {
         const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
         const baseColor = getSectionColor(t.sectionId);
         const color = withMoreTransparency(baseColor);
-        const markerColor = lpCalendarBarMarkerColorFromBase(baseColor);
         allBars.push({
           left,
           width,
           name: t.name,
           color,
-          markerColor,
           isSingleDay: true,
           dayIdx,
           dateKey,
@@ -4282,14 +4295,12 @@ function render1WeekView(tabsElement) {
     const barsWithRow = allBars;
     barsWithRow.forEach((b) => {
       const isTodo = (b.itemType || "todo").toLowerCase() === "todo";
-      const showCheckbox = isTodo && (b.isSingleDay || b.isFirstSegment);
       const bar = document.createElement("div");
       bar.className =
         "calendar-monthly-span-bar" +
         (b.isSingleDay
           ? " calendar-monthly-span-bar--todo"
           : " calendar-monthly-span-bar--range") +
-        (showCheckbox ? " calendar-monthly-span-bar--has-checkbox" : "") +
         (b.isOverflow ? " calendar-monthly-span-bar--overflow" : "") +
         (b.isOverdueBar ? " calendar-monthly-span-bar--overdue" : "") +
         ((b.itemType || "todo").toLowerCase() !== "todo"
@@ -4298,33 +4309,9 @@ function render1WeekView(tabsElement) {
       bar.title = b.name;
       bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${baseBarTop + b.row * (BAR_HEIGHT + ROW_GAP)}rem`;
       lpApplyCalendarMultiDaySpanBarBackground(bar, b);
-      if (b.isSingleDay) {
-        if (isTodo) {
-          bar.innerHTML = `${lpCalendarSpanBarTodoMarkerHtml(b.markerColor)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
-        } else {
-          bar.style.setProperty("--schedule-icon-color", b.markerColor);
-          bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
-        }
-      } else {
-        if (isTodo) {
-          bar.innerHTML = showCheckbox
-            ? `${lpCalendarSpanBarTodoMarkerHtml(b.markerColor)}<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`
-            : `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
-        } else {
-          if (b.isFirstSegment) {
-            bar.style.setProperty("--schedule-icon-color", b.markerColor);
-            bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
-          } else {
-            bar.style.setProperty("--schedule-icon-color", b.markerColor);
-            bar.innerHTML = `<span class="calendar-monthly-span-bar-icon calendar-monthly-span-bar-icon--schedule" aria-hidden="true"></span><span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
-          }
-        }
-      }
+      bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
       if (isTodo && b.done) {
         bar.classList.add("is-completed");
-        bar
-          .querySelector(".calendar-monthly-span-bar-checkbox")
-          ?.classList.add("checked");
       }
       lpAttachCalendarBarOpenTodoEdit(bar, b, renderCalendar, refreshTodoList);
       if (!b.isSingleDay && b.startDate && b.dueDate) {
@@ -4360,7 +4347,6 @@ function render1WeekView(tabsElement) {
           );
         });
       }
-      lpCalendarSpanBarForceSolidMarkers(bar);
       b._barEl = bar;
       barsEl.appendChild(bar);
     });
@@ -4797,7 +4783,9 @@ export function dismissCalendarDayExpandUI() {
     .forEach((el) => el.remove());
 }
 
-/** 연간 뷰: 왼쪽 월 라벨, 오른쪽 해당 월 날짜 셀 한 행 (Year Planner 구조), 요일 미표시, 호버 시 할일 목록 버블 */
+/** 연간 뷰: 왼쪽 월 라벨, 오른쪽 해당 월 날짜 셀 한 행 (Year Planner 구조), 요일 미표시.
+ *  (hover: hover) 기기: 호버로 목록 버블, 클릭으로 빠른 추가.
+ *  터치 기기: 탭으로 목록 패널(오버레이+닫기+할일 추가), 빠른 추가는 패널 안 버튼. */
 function renderAnnualView(tabsElement) {
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout calendar-annual-view";
@@ -4854,7 +4842,22 @@ function renderAnnualView(tabsElement) {
 
       const daysRow = document.createElement("div");
       daysRow.className = "calendar-annual-row-days";
-      for (let d = 1; d <= lastDay; d++) {
+
+      const MAX_DAYS = 31;
+      const prefersHover =
+        typeof window.matchMedia !== "undefined" &&
+        window.matchMedia("(hover: hover)").matches;
+
+      for (let d = 1; d <= MAX_DAYS; d++) {
+        if (d > lastDay) {
+          const padCell = document.createElement("div");
+          padCell.className =
+            "calendar-annual-cell calendar-annual-cell--pad";
+          padCell.setAttribute("aria-hidden", "true");
+          daysRow.appendChild(padCell);
+          continue;
+        }
+
         const date = new Date(currentYear, month, d);
         const key = formatDateKey(date);
         const dow = date.getDay();
@@ -4873,9 +4876,6 @@ function renderAnnualView(tabsElement) {
           dot.className = "calendar-annual-cell-dot";
           cell.appendChild(dot);
         }
-        const prefersHover =
-          typeof window.matchMedia !== "undefined" &&
-          window.matchMedia("(hover: hover)").matches;
 
         const openAnnualDayBubble = () => {
           cancelAnnualDayExpandHideTimer();
@@ -4930,7 +4930,49 @@ function renderAnnualView(tabsElement) {
           cell.addEventListener("mouseleave", scheduleAnnualDayExpandHide);
           cell.addEventListener("click", openAnnualQuickAddModal);
         } else {
-          cell.addEventListener("click", openAnnualQuickAddModal);
+          const openAnnualDayTouchPanel = (e) => {
+            if (e.target.closest(".calendar-event-bubble")) return;
+            e.stopPropagation();
+            cancelAnnualDayExpandHideTimer();
+            try {
+              _annualDayExpandClose?.();
+            } catch (_) {}
+            _annualDayExpandClose = null;
+            const rect = cell.getBoundingClientRect();
+            const tasksTouch = getAllTasksForDateDisplay(key);
+            const { close: closeTouch } = createCalendarDayExpandBubble(
+              rect,
+              key,
+              tasksTouch,
+              () => {
+                _annualDayExpandClose = null;
+              },
+              {
+                hideCloseButton: false,
+                dismissOnOutsideClick: true,
+                useMobileOverlay: true,
+                positionBelow: true,
+                onAdd: () => {
+                  const r = cell.getBoundingClientRect();
+                  createCalendarEventBubble(
+                    r,
+                    key,
+                    () => {
+                      renderYear();
+                      refreshTodoList();
+                    },
+                    () => {},
+                  );
+                },
+                onAfterTaskEdit: () => {
+                  renderYear();
+                  refreshTodoList();
+                },
+              },
+            );
+            _annualDayExpandClose = closeTouch;
+          };
+          cell.addEventListener("click", openAnnualDayTouchPanel);
         }
         daysRow.appendChild(cell);
       }
