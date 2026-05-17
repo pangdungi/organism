@@ -229,3 +229,16 @@ table {
     min-height: 0;
   }
 }
+
+/* 스크롤바 숨김(스크롤·터치는 유지) — 앱 전역 */
+#app,
+#app * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+#app::-webkit-scrollbar,
+#app *::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}

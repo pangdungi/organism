@@ -94,6 +94,7 @@ import {
   isWorkScheduleDietLedgerMemoTag,
   ledgerRowLogsDietForWorkSchedule,
   makeWorkScheduleDietLedgerMemoTag,
+  WS_DIET_LEDGER_TASK_NAMES,
 } from "../utils/workScheduleDietLedgerTags.js";
 
 export { getTaskOptionByName };
@@ -213,7 +214,7 @@ function appendTaskDropdownBadges(textWrap, task, opts = {}) {
   if (opts.omitBadges) return;
   if (isTimeTaskBuiltinTemplate(task)) {
     const bb = document.createElement("span");
-    bb.className = "time-task-builtin-badge";
+    bb.className = "lp-task-badge lp-task-badge--builtin";
     bb.textContent = "기본";
     bb.title =
       "앱에서 제공하는 기본 과제입니다. 과제 설정에서 삭제할 수 없습니다.";
@@ -221,7 +222,7 @@ function appendTaskDropdownBadges(textWrap, task, opts = {}) {
   }
   if (isTimeTaskKpiLinked(task)) {
     const kb = document.createElement("span");
-    kb.className = "time-task-kpi-badge";
+    kb.className = "lp-task-badge lp-task-badge--kpi";
     kb.textContent = "KPI";
     kb.title = "KPI(맵)에서 연결된 과제입니다";
     textWrap.appendChild(kb);
@@ -3252,10 +3253,10 @@ export function render() {
           const opt = getTaskOptionByName(name);
           const kpiMark =
             opt && isTimeTaskKpiLinked(opt)
-              ? '<span class="time-task-kpi-badge" title="KPI(맵)에서 연결된 과제입니다">KPI</span>'
+              ? '<span class="lp-task-badge lp-task-badge--kpi" title="KPI(맵)에서 연결된 과제입니다">KPI</span>'
               : "";
           const builtinMark = isTimeTaskBuiltinTemplate({ name })
-            ? '<span class="time-task-builtin-badge" title="앱에서 제공하는 기본 과제입니다. 과제 설정에서 삭제할 수 없습니다.">기본</span>'
+            ? '<span class="lp-task-badge lp-task-badge--builtin" title="앱에서 제공하는 기본 과제입니다. 과제 설정에서 삭제할 수 없습니다.">기본</span>'
             : "";
           return `<label class="time-task-select-item"><input type="checkbox" class="time-task-select-cb" data-task-name="${attrEsc}" ${selectedSet === null || selectedSet.has(name) ? "checked" : ""} /><span class="time-task-select-item-text"><span class="time-task-select-item-name-part">${nameHtml}</span>${builtinMark}${kpiMark}</span></label>`;
         })
@@ -3331,8 +3332,8 @@ export function render() {
         </div>
         <div class="time-add-task-field time-add-task-category-wrap">
           <label>카테고리</label>
-          <div class="time-add-task-categories" data-for="productive"></div>
-          <div class="time-add-task-categories" data-for="nonproductive" style="display:none"></div>
+          <div class="time-add-task-categories lp-choice-chip-row" data-for="productive"></div>
+          <div class="time-add-task-categories lp-choice-chip-row" data-for="nonproductive" style="display:none"></div>
         </div>
         <button type="button" class="time-add-task-submit">추가</button>
         <button type="button" class="time-add-task-delete" hidden>과제 삭제</button>
@@ -3367,11 +3368,12 @@ export function render() {
                   <span class="time-task-log-date-overlay" aria-hidden="true"></span>
                 </div>
                 <span class="time-task-log-datetime-sep" aria-hidden="true">–</span>
-                <input type="text" class="time-task-log-time-start" name="time-task-log-time-start" placeholder="--:--" maxlength="5" autocomplete="off" aria-label="시작 시각" />
+                <input type="text" class="time-task-log-time-start" name="time-task-log-time-start" lang="en" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="--:--" maxlength="5" autocomplete="off" inputmode="numeric" pattern="[0-9]*" aria-label="시작 시각" />
                 <span class="time-task-log-datetime-sep" aria-hidden="true">–</span>
-                <input type="text" class="time-task-log-time-end" name="time-task-log-time-end" placeholder="--:--" maxlength="5" autocomplete="off" aria-label="마감 시각" />
+                <input type="text" class="time-task-log-time-end" name="time-task-log-time-end" lang="en" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="--:--" maxlength="5" autocomplete="off" inputmode="numeric" pattern="[0-9]*" aria-label="마감 시각" />
               </div>
             </div>
+            <p class="time-task-log-time-order-warning" hidden role="alert">마감시간은 시작시간보다 빠를 수 없습니다.</p>
             <div class="time-task-log-quick-block">
             <span class="time-task-log-section-label time-task-log-quick-section-label">빠른 선택</span>
             <div class="time-task-log-time-adjust-btns">
@@ -3493,15 +3495,15 @@ export function render() {
         </div>
         <div class="time-task-log-expense-inner-body">
           <div class="time-task-log-expense-inner-fields">
-            <div class="time-task-log-field time-task-log-expense-amount-name-row">
-              <div class="time-task-log-expense-amount-cell">
+            <div class="time-task-log-expense-amount-name-row">
+              <div class="time-task-log-field">
                 <label>금액</label>
                 <div class="time-task-log-expense-amount-wrap">
                   <input type="text" class="time-task-log-expense-amount" name="time-task-log-expense-amount" placeholder="0" inputmode="numeric" />
                   <span class="time-task-log-expense-amount-unit">원</span>
                 </div>
               </div>
-              <div class="time-task-log-expense-name-cell">
+              <div class="time-task-log-field">
                 <label>소비명</label>
                 <input type="text" class="time-task-log-expense-name" name="time-task-log-expense-name" placeholder="스타벅스" />
               </div>
@@ -3548,6 +3550,9 @@ export function render() {
     ".time-task-log-time-start",
   );
   const taskLogTimeEnd = taskLogModal.querySelector(".time-task-log-time-end");
+  const taskLogTimeOrderWarning = taskLogModal.querySelector(
+    ".time-task-log-time-order-warning",
+  );
   let taskLogEditTr = null;
   const taskLogEndWrap = taskLogModal.querySelector(
     ".time-task-log-datetime-wrap-end",
@@ -3795,6 +3800,29 @@ export function render() {
     return taskLogDefaultRecordYmd();
   }
 
+  /** 같은 날 기준: 마감 시각이 시작보다 이르면 경고 표시(과제 기록은 일당 하루). */
+  function updateTaskLogTimeOrderWarning() {
+    const el = taskLogTimeOrderWarning;
+    if (!el) return;
+    const startRaw = normalizeHhMm((taskLogTimeStart?.value || "").trim());
+    const endRaw = normalizeHhMm((taskLogTimeEnd?.value || "").trim());
+    if (!endRaw || !/^\d{1,2}:\d{2}$/.test(endRaw)) {
+      el.hidden = true;
+      return;
+    }
+    if (!startRaw || !/^\d{1,2}:\d{2}$/.test(startRaw)) {
+      el.hidden = true;
+      return;
+    }
+    const sm = parseLedgerTimeStringToMinutes(startRaw);
+    const em = parseLedgerTimeStringToMinutes(endRaw);
+    if (sm == null || em == null) {
+      el.hidden = true;
+      return;
+    }
+    el.hidden = em >= sm;
+  }
+
   /**
    * 과제 기록: 날짜 인풋이 비었을 때 폴백 — hidden 파싱 → 오늘(피커와 무관).
    */
@@ -3817,6 +3845,7 @@ export function render() {
       taskLogStartInput.value = "";
     }
     syncTaskLogDateOverlay();
+    updateTaskLogTimeOrderWarning();
   }
 
   function syncEndToHidden() {
@@ -3836,6 +3865,7 @@ export function render() {
     }
     updateEndTimeClearVisibility();
     syncTaskLogDateOverlay();
+    updateTaskLogTimeOrderWarning();
   }
 
   function setStartFromDatetime(dtStr) {
@@ -3893,6 +3923,32 @@ export function render() {
     taskLogEndWrap?.classList.toggle("has-value", hasValue);
   }
 
+  const beforeInputTimeDigitsOnly = (e) => {
+    const it = e.inputType || "";
+    if (
+      it === "deleteContentBackward" ||
+      it === "deleteContentForward" ||
+      it === "deleteByCut" ||
+      it === "historyUndo" ||
+      it === "historyRedo"
+    ) {
+      return;
+    }
+    const d = e.data;
+    if (d == null || d === "") return;
+    /* 숫자·콜론만 (한글·이모지·전각숫자 등은 input/compositionend에서도 제거) */
+    if (/[^\d:]/.test(d)) {
+      e.preventDefault();
+    }
+  };
+
+  const sanitizeTaskLogTimeField = (el) => {
+    if (!el) return;
+    const raw = String(el.value || "");
+    const cleaned = raw.replace(/[^\d:]/g, "");
+    if (cleaned !== raw) el.value = cleaned;
+  };
+
   const restrictToTimeChars = (e) => {
     if (
       [
@@ -3919,19 +3975,12 @@ export function render() {
       input.blur();
       return;
     }
-    if (e.key === ":" && e.target.value.includes(":")) {
-      e.preventDefault();
-      return;
-    }
-    if (!/^[\d:]$/.test(e.key)) e.preventDefault();
+    if (!/^\d$/.test(e.key)) e.preventDefault();
   };
 
   const filterPastedTime = (e) => {
     e.preventDefault();
-    const pasted = (e.clipboardData?.getData("text") || "").replace(
-      /[^\d:]/g,
-      "",
-    );
+    const pasted = (e.clipboardData?.getData("text") || "").replace(/\D/g, "");
     const input = e.target;
     const start = input.selectionStart;
     const end = input.selectionEnd;
@@ -3939,6 +3988,7 @@ export function render() {
     const newVal = current.slice(0, start) + pasted + current.slice(end);
     input.value = newVal;
     input.setSelectionRange(start + pasted.length, start + pasted.length);
+    updateTaskLogTimeOrderWarning();
   };
 
   const taskLogFocusOutTargetIsTimeAdjustBtn = (ev) =>
@@ -3964,6 +4014,15 @@ export function render() {
     });
   });
   taskLogDateStart?.addEventListener("input", syncTaskLogDateOverlay);
+  taskLogTimeStart?.addEventListener("beforeinput", beforeInputTimeDigitsOnly);
+  taskLogTimeStart?.addEventListener("input", () => {
+    sanitizeTaskLogTimeField(taskLogTimeStart);
+    updateTaskLogTimeOrderWarning();
+  });
+  taskLogTimeStart?.addEventListener("compositionend", (ev) => {
+    sanitizeTaskLogTimeField(ev.target);
+    updateTaskLogTimeOrderWarning();
+  });
   taskLogTimeStart?.addEventListener("keydown", restrictToTimeChars);
   taskLogTimeStart?.addEventListener("paste", filterPastedTime);
 
@@ -3974,6 +4033,15 @@ export function render() {
       autoFormatDigitsToHhMm(taskLogTimeEnd.value) || taskLogTimeEnd.value;
     taskLogTimeEnd.value = normalizeHhMm(preformatted) || preformatted;
     syncEndToHidden();
+  });
+  taskLogTimeEnd?.addEventListener("beforeinput", beforeInputTimeDigitsOnly);
+  taskLogTimeEnd?.addEventListener("input", () => {
+    sanitizeTaskLogTimeField(taskLogTimeEnd);
+    updateTaskLogTimeOrderWarning();
+  });
+  taskLogTimeEnd?.addEventListener("compositionend", (ev) => {
+    sanitizeTaskLogTimeField(ev.target);
+    updateTaskLogTimeOrderWarning();
   });
   taskLogTimeEnd?.addEventListener("keydown", restrictToTimeChars);
   taskLogTimeEnd?.addEventListener("paste", filterPastedTime);
@@ -4417,9 +4485,8 @@ export function render() {
         panel.querySelector(".time-task-log-task-dropdown-search")?.focus();
     });
     const closePanelOnOutside = (e) => {
-      if (!wrap.contains(e.target)) {
-        panel.hidden = true;
-      }
+      if (panel.hidden) return;
+      if (!wrap.contains(e.target)) panel.hidden = true;
     };
     document.addEventListener("mousedown", closePanelOnOutside, {
       capture: true,
@@ -4842,7 +4909,7 @@ export function render() {
     hint.className = "time-task-log-expense-classification-hint";
     hint.textContent = "큰분류(입금/지출)를 먼저 선택해 주세요.";
     const btnsWrap = document.createElement("div");
-    btnsWrap.className = "time-task-log-expense-cls-btns-wrap";
+    btnsWrap.className = "lp-choice-chip-row time-task-log-expense-cls-btns-wrap";
     let value = (initialValue || "").trim();
     let payment = "";
     /** 지출 전용: "all" | "payment" | "done" */
@@ -4870,18 +4937,16 @@ export function render() {
       function makeClsBtn(opt, selected, onClick) {
         const btn = document.createElement("button");
         btn.type = "button";
-        btn.className = "time-task-log-expense-cls-btn";
-        if (selected) btn.classList.add("selected");
-        if (opt.color) btn.classList.add(opt.color);
+        btn.className = "lp-choice-chip";
+        if (selected) btn.classList.add("lp-choice-chip--on");
         btn.dataset.label = opt.label;
         const svgInnerPaths =
           isExpense ? "" : (opt.svg || (flowType === "입금" ? BAG_DOLLAR_PATHS_INNER : ""));
         if (svgInnerPaths) {
-          btn.classList.add("time-task-log-expense-cls-btn-with-icon");
-          btn.innerHTML = `<span class="time-task-log-expense-cls-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${svgInnerPaths}</svg></span><span class="time-task-log-expense-cls-label">${escapeHtml(opt.label)}</span>`;
+          btn.classList.add("lp-choice-chip--has-icon");
+          btn.innerHTML = `<span class="lp-choice-chip__icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${svgInnerPaths}</svg></span><span class="lp-choice-chip__label">${escapeHtml(opt.label)}</span>`;
         } else {
-          btn.classList.add("time-task-log-expense-cls-btn--text-only");
-          btn.innerHTML = `<span class="time-task-log-expense-cls-label">${escapeHtml(opt.label)}</span>`;
+          btn.innerHTML = `<span class="lp-choice-chip__label">${escapeHtml(opt.label)}</span>`;
         }
         btn.addEventListener("click", onClick);
         return btn;
@@ -4903,10 +4968,10 @@ export function render() {
         (paymentOptions || ["현금", "체크카드", "신용카드"]).forEach((opt) => {
           const btn = document.createElement("button");
           btn.type = "button";
-          btn.className = "time-task-log-expense-payment-btn";
+          btn.className = "lp-choice-chip";
           btn.dataset.payment = opt;
-          btn.textContent = opt;
-          if (payment === opt) btn.classList.add("selected");
+          btn.innerHTML = `<span class="lp-choice-chip__label">${escapeHtml(opt)}</span>`;
+          if (payment === opt) btn.classList.add("lp-choice-chip--on");
           btn.addEventListener("click", () => {
             payment = opt;
             expenseStep = "done";
@@ -4935,9 +5000,9 @@ export function render() {
           } else {
             value = value === opt.label ? "" : opt.label;
             btnsWrap
-              .querySelectorAll(".time-task-log-expense-cls-btn")
+              .querySelectorAll(".lp-choice-chip[data-label]")
               .forEach((b) =>
-                b.classList.toggle("selected", b.dataset.label === value),
+                b.classList.toggle("lp-choice-chip--on", b.dataset.label === value),
               );
             onUpdate?.(value);
           }
@@ -5054,7 +5119,7 @@ export function render() {
     }
 
     if (
-      isMealChecklistTaskName(name) &&
+      WS_DIET_LEDGER_TASK_NAMES.has(name) &&
       dateYmd.length >= 10 &&
       dietNames.length > 0
     ) {
@@ -5703,7 +5768,7 @@ export function render() {
       .replace(/\//g, "-")
       .slice(0, 10);
     const tnSync = (data.taskName || "").trim();
-    if (isMealChecklistTaskName(tnSync) && ymdEdit.length >= 10) {
+    if (WS_DIET_LEDGER_TASK_NAMES.has((tnSync || "").trim()) && ymdEdit.length >= 10) {
       const dietList = listWorkScheduleDietTypeNamesFromMem();
       const picked = new Set(mealNamesFromRow);
       for (const d of dietList) {
@@ -5727,7 +5792,7 @@ export function render() {
           migrateTimeLogRowsTaskIds();
         } catch (_) {}
         const tnPost = (data.taskName || "").trim();
-        if (isMealChecklistTaskName(tnPost) && ymdEdit.length >= 10) {
+        if (WS_DIET_LEDGER_TASK_NAMES.has((tnPost || "").trim()) && ymdEdit.length >= 10) {
           const dietList = listWorkScheduleDietTypeNamesFromMem();
           const picked = new Set(mealNamesFromRow);
           for (const d of dietList) {
@@ -5856,7 +5921,7 @@ export function render() {
       .map((t) => String(t ?? "").trim())
       .filter((t) => t && !isWorkScheduleDietLedgerMemoTag(t));
     const mealMemoTags = [];
-    if (isMealChecklistTaskName(taskName) && taskLogDailyTodosList) {
+    if (WS_DIET_LEDGER_TASK_NAMES.has((taskName || "").trim()) && taskLogDailyTodosList) {
       taskLogDailyTodosList
         .querySelectorAll("label[data-meal-checklist='1']")
         .forEach((lab) => {
@@ -6271,7 +6336,7 @@ export function render() {
     categories.forEach((c) => {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = `time-add-task-cat-btn ${c.color || ""}`;
+      btn.className = "lp-choice-chip";
       btn.textContent = c.label;
       btn.dataset.value = c.value;
       container.appendChild(btn);
@@ -6373,10 +6438,10 @@ export function render() {
           (isRowSelected ? " time-task-setup-item--selected" : "");
         const nameEsc = (t.name || "").replace(/</g, "&lt;");
         const builtinBadge = isTimeTaskBuiltinTemplate(t)
-          ? `<span class="time-task-builtin-badge" title="앱에서 제공하는 기본 과제입니다. 과제 설정에서 삭제할 수 없습니다.">기본</span>`
+          ? `<span class="lp-task-badge lp-task-badge--builtin" title="앱에서 제공하는 기본 과제입니다. 과제 설정에서 삭제할 수 없습니다.">기본</span>`
           : "";
         const kpiBadge = fromKpi
-          ? `<span class="time-task-kpi-badge" title="KPI(맵)에서 연결된 과제입니다">KPI</span>`
+          ? `<span class="lp-task-badge lp-task-badge--kpi" title="KPI(맵)에서 연결된 과제입니다">KPI</span>`
           : "";
         row.innerHTML = `
           <span class="time-task-setup-item-title">
@@ -6425,7 +6490,6 @@ export function render() {
   function openAddTaskModal(editTask) {
     if (!el.isConnected) return;
     addTaskModal.hidden = false;
-    addTaskModal.style.zIndex = "1001";
     setupListSelectedTaskName = editTask ? editTask.name : "";
     const isEdit = Boolean(editTask);
     if (addTaskModalTitle) {
@@ -6451,18 +6515,24 @@ export function render() {
       `input[name="addProd"][value="${prod}"]`,
     ).checked = true;
     selectedCategory = editTask ? editTask.category : "";
-    addTaskCatProd.style.display = prod === "productive" ? "flex" : "none";
+    addTaskCatProd.style.display = prod === "productive" ? "" : "none";
     addTaskCatNonProd.style.display =
-      prod === "nonproductive" ? "flex" : "none";
+      prod === "nonproductive" ? "" : "none";
     addTaskCatProd
-      .querySelectorAll(".time-add-task-cat-btn")
+      .querySelectorAll(".lp-choice-chip")
       .forEach((b) =>
-        b.classList.toggle("active", b.dataset.value === selectedCategory),
+        b.classList.toggle(
+          "lp-choice-chip--on",
+          b.dataset.value === selectedCategory,
+        ),
       );
     addTaskCatNonProd
-      .querySelectorAll(".time-add-task-cat-btn")
+      .querySelectorAll(".lp-choice-chip")
       .forEach((b) =>
-        b.classList.toggle("active", b.dataset.value === selectedCategory),
+        b.classList.toggle(
+          "lp-choice-chip--on",
+          b.dataset.value === selectedCategory,
+        ),
       );
     syncAddTaskSubmitState();
     renderTaskSetupList();
@@ -6471,7 +6541,6 @@ export function render() {
 
   function closeAddTaskModal() {
     addTaskModal.hidden = true;
-    addTaskModal.style.zIndex = "";
     setupListSelectedTaskName = "";
     renderTaskSetupList();
   }
@@ -6481,35 +6550,35 @@ export function render() {
   addTaskProdRadios.forEach((r) => {
     r.addEventListener("change", () => {
       const prod = r.value;
-      addTaskCatProd.style.display = prod === "productive" ? "flex" : "none";
+      addTaskCatProd.style.display = prod === "productive" ? "" : "none";
       addTaskCatNonProd.style.display =
-        prod === "nonproductive" ? "flex" : "none";
+        prod === "nonproductive" ? "" : "none";
       selectedCategory = "";
       addTaskCatProd
-        .querySelectorAll(".time-add-task-cat-btn")
-        .forEach((b) => b.classList.remove("active"));
+        .querySelectorAll(".lp-choice-chip")
+        .forEach((b) => b.classList.remove("lp-choice-chip--on"));
       addTaskCatNonProd
-        .querySelectorAll(".time-add-task-cat-btn")
-        .forEach((b) => b.classList.remove("active"));
+        .querySelectorAll(".lp-choice-chip")
+        .forEach((b) => b.classList.remove("lp-choice-chip--on"));
       syncAddTaskSubmitState();
     });
   });
-  addTaskCatProd.querySelectorAll(".time-add-task-cat-btn").forEach((b) => {
+  addTaskCatProd.querySelectorAll(".lp-choice-chip").forEach((b) => {
     b.addEventListener("click", () => {
       addTaskCatProd
-        .querySelectorAll(".time-add-task-cat-btn")
-        .forEach((x) => x.classList.remove("active"));
-      b.classList.add("active");
+        .querySelectorAll(".lp-choice-chip")
+        .forEach((x) => x.classList.remove("lp-choice-chip--on"));
+      b.classList.add("lp-choice-chip--on");
       selectedCategory = b.dataset.value;
       syncAddTaskSubmitState();
     });
   });
-  addTaskCatNonProd.querySelectorAll(".time-add-task-cat-btn").forEach((b) => {
+  addTaskCatNonProd.querySelectorAll(".lp-choice-chip").forEach((b) => {
     b.addEventListener("click", () => {
       addTaskCatNonProd
-        .querySelectorAll(".time-add-task-cat-btn")
-        .forEach((x) => x.classList.remove("active"));
-      b.classList.add("active");
+        .querySelectorAll(".lp-choice-chip")
+        .forEach((x) => x.classList.remove("lp-choice-chip--on"));
+      b.classList.add("lp-choice-chip--on");
       selectedCategory = b.dataset.value;
       syncAddTaskSubmitState();
     });

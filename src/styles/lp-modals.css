@@ -19,6 +19,106 @@
     sans-serif;
 }
 
+/* --- 과제 출처 배지: 시간가계부 드롭다운·과제설정·필터 공통 (미니멀, 모달 톤) --- */
+.lp-task-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.12rem 0.45rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  font-family: var(--lp-modal-font);
+  color: var(--lp-modal-navy-muted);
+  background: #f1f5f9;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 999px;
+  vertical-align: middle;
+  flex-shrink: 0;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.lp-task-badge--builtin {
+  color: var(--lp-modal-navy-muted);
+  background: #f8fafc;
+}
+
+.lp-task-badge--kpi {
+  color: var(--lp-modal-accent);
+  background: rgba(30, 77, 123, 0.07);
+  border-color: rgba(30, 77, 123, 0.25);
+}
+
+/* --- 단일/토글 선택 칩 (과제 카테고리 · 소비 분류 · 결제수단 공통) --- */
+.lp-choice-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+button.lp-choice-chip {
+  margin: 0;
+  padding: 0.38rem 0.65rem;
+  font-family: var(--lp-modal-font);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--lp-modal-navy-muted);
+  background: #fff;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 8px;
+  cursor: pointer;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease,
+    color 0.12s ease;
+}
+
+button.lp-choice-chip:hover {
+  border-color: rgba(30, 77, 123, 0.35);
+  color: var(--lp-modal-navy);
+}
+
+button.lp-choice-chip.lp-choice-chip--on {
+  color: #fff;
+  background: var(--lp-modal-accent);
+  border-color: var(--lp-modal-accent);
+}
+
+button.lp-choice-chip.lp-choice-chip--on:hover {
+  background: var(--lp-modal-accent-hover);
+  border-color: var(--lp-modal-accent-hover);
+}
+
+button.lp-choice-chip--has-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.lp-choice-chip__icon {
+  display: inline-flex;
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.lp-choice-chip__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.lp-choice-chip__label {
+  display: inline;
+}
+
 /* --- Shell: 전체 화면 오버레이 --- */
 .time-task-setup-modal,
 .todo-list-modal,
@@ -32,6 +132,11 @@
   padding: 0;
   font-family: var(--lp-modal-font);
   -webkit-font-smoothing: antialiased;
+}
+
+/* 과제 설정(10050) 위에 표시: 과제 추가·수정 중첩 모달 */
+.time-task-setup-modal.time-add-task-modal {
+  z-index: 10060;
 }
 
 @media (min-width: 40rem) {
@@ -197,6 +302,20 @@
   margin-bottom: 0;
 }
 
+/* 소비 모달: 금액·소비명 한 줄(필드는 각각 .time-task-log-field로 라벨 스타일 공통 적용) */
+.time-task-log-expense-amount-name-row {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  margin-bottom: 0.85rem;
+}
+
+.time-task-log-expense-amount-name-row > .time-task-log-field {
+  flex: 1 1 0;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
 .time-task-log-field > label,
 .time-add-task-field > label,
 .todo-task-edit-label {
@@ -241,11 +360,20 @@
   box-shadow: 0 0 0 3px rgba(30, 77, 123, 0.12);
 }
 
-.time-task-log-feedback,
 .archive-memo-modal-textarea {
   resize: vertical;
   min-height: 4.5rem;
   line-height: 1.45;
+}
+
+/* 과제 기록 메모: 높이 고정, 내부 스크롤 */
+.time-task-log-feedback {
+  resize: none;
+  min-height: 4.5rem;
+  max-height: 7.5rem;
+  overflow-y: auto;
+  line-height: 1.45;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* 셀렉트 */
@@ -278,15 +406,41 @@
   margin-bottom: 0.65rem;
 }
 
+.time-task-log-datetime-onerow .lp-modal-datetime-card {
+  margin-bottom: 0.35rem;
+}
+
+.time-task-log-time-order-warning {
+  margin: 0 0 0.5rem;
+  padding: 0 0.15rem;
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  font-weight: 500;
+  color: var(--lp-modal-danger);
+  text-align: center;
+}
+
+.time-task-log-time-order-warning[hidden] {
+  display: none !important;
+}
+
 .time-task-log-datetime-main-row {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
+  justify-content: center;
   gap: 0.35rem 0.4rem;
   width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.time-task-log-datetime-main-row::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .time-task-log-datetime-main-row .time-task-log-time-start,
@@ -392,13 +546,18 @@
 
 .time-task-log-time-adjust-btns {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: clamp(0.12rem, 1.2vw, 0.35rem);
+  width: 100%;
 }
 
 .time-task-log-time-adjust-btn {
-  padding: 0.35rem 0.55rem;
-  font-size: 0.75rem;
+  flex: 1 1 0;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.3rem clamp(0.22rem, 1.8vw, 0.55rem);
+  font-size: clamp(0.62rem, 2.9vw, 0.75rem);
   font-weight: 500;
   font-family: inherit;
   color: var(--lp-modal-navy-muted);
@@ -406,6 +565,7 @@
   border: 1px solid var(--lp-modal-border);
   border-radius: 999px;
   cursor: pointer;
+  white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -1032,6 +1192,10 @@
   box-sizing: border-box;
 }
 
+.time-task-log-task-dropdown-panel[hidden] {
+  display: none;
+}
+
 .time-task-log-task-dropdown-search-wrap {
   flex-shrink: 0;
   padding: 0.45rem 0.5rem;
@@ -1087,7 +1251,7 @@
 
 .time-task-log-task-dropdown-option {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.45rem;
   padding: 0.45rem 0.65rem;
   font-size: 0.875rem;
@@ -1100,6 +1264,82 @@
 
 .time-task-log-task-dropdown-option-label {
   color: var(--lp-modal-navy);
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.time-task-log-task-dropdown-option-text {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.28rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+/* 배지 묶음: 과제명과 분리해 행 오른쪽 끝 정렬 */
+.time-task-log-task-dropdown-option-text .lp-task-badge:first-of-type {
+  margin-left: auto;
+}
+
+.time-task-select-item-text {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.time-task-setup-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--lp-modal-border);
+  font-size: 0.875rem;
+}
+
+.time-task-setup-list .time-task-setup-item:last-child {
+  border-bottom: none;
+}
+
+.time-task-setup-item-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.28rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.time-task-setup-item-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--lp-modal-navy);
+}
+
+/* 배지: 제목 행 오른쪽 끝 (과제 기록 드롭다운과 동일 패턴) */
+.time-task-setup-item-title .lp-task-badge:first-of-type {
+  margin-left: auto;
+}
+
+.time-task-setup-item-cat {
+  flex-shrink: 0;
+  max-width: 42%;
+  font-size: 0.8125rem;
+  color: var(--lp-modal-muted);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* --- 태그 칩 (과제 기록) --- */
@@ -1145,4 +1385,40 @@
   color: #fff;
   background: var(--lp-modal-accent);
   border-color: var(--lp-modal-accent);
+}
+
+/* --- LP 모달: 세로 스크롤바 숨김(스크롤·터치는 유지) --- */
+.time-task-setup-body,
+.todo-list-modal-body,
+.diary-desktop-compose-modal-scroll,
+.time-task-log-scroll-area,
+.time-task-setup-list-scroll,
+.time-task-select-list,
+.time-task-log-todo-inner-body,
+.time-task-log-expense-inner-body,
+.time-datetime-picker-wrap.time-datetime-picker-bottom,
+.time-datetime-picker-column,
+.time-task-log-task-dropdown-options,
+.time-task-log-feedback,
+.archive-memo-modal-textarea {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.time-task-setup-body::-webkit-scrollbar,
+.todo-list-modal-body::-webkit-scrollbar,
+.diary-desktop-compose-modal-scroll::-webkit-scrollbar,
+.time-task-log-scroll-area::-webkit-scrollbar,
+.time-task-setup-list-scroll::-webkit-scrollbar,
+.time-task-select-list::-webkit-scrollbar,
+.time-task-log-todo-inner-body::-webkit-scrollbar,
+.time-task-log-expense-inner-body::-webkit-scrollbar,
+.time-datetime-picker-wrap.time-datetime-picker-bottom::-webkit-scrollbar,
+.time-datetime-picker-column::-webkit-scrollbar,
+.time-task-log-task-dropdown-options::-webkit-scrollbar,
+.time-task-log-feedback::-webkit-scrollbar,
+.archive-memo-modal-textarea::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
