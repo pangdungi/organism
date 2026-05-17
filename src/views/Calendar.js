@@ -4115,17 +4115,8 @@ function render1WeekView(tabsElement) {
         }
         if (!badgeAccent && c.border) badgeAccent = c.border;
 
-        const titleEl = document.createElement("div");
-        titleEl.className = "calendar-1week-flow-card-title";
-        titleEl.textContent = taskLabel;
-        titleEl.style.flex = "1";
-        titleEl.style.minWidth = "0";
-
         const titleRow = document.createElement("div");
         titleRow.className = "calendar-1week-flow-card-title-row";
-        titleRow.style.cssText =
-          "display:flex;align-items:flex-start;justify-content:space-between;gap:0.35rem;";
-        titleRow.appendChild(titleEl);
         if (ledgerMatched) {
           const checkEl = document.createElement("span");
           checkEl.className = "calendar-1week-flow-card-done-check";
@@ -4144,6 +4135,10 @@ function render1WeekView(tabsElement) {
           missEl.textContent = "✕";
           titleRow.appendChild(missEl);
         }
+        const titleEl = document.createElement("span");
+        titleEl.className = "calendar-1week-flow-card-title";
+        titleEl.textContent = taskLabel;
+        titleRow.appendChild(titleEl);
 
         const meta = document.createElement("div");
         meta.className = "calendar-1week-flow-card-meta";

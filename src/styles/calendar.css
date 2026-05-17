@@ -981,27 +981,28 @@
 }
 
 .calendar-1week-flow-card-title-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.35rem;
+  display: block;
+  line-height: 1.3;
 }
 
 .calendar-1week-flow-card-title {
-  flex: 1;
-  min-width: 0;
+  display: inline;
   font-weight: 600;
   font-size: 0.8125rem;
   letter-spacing: -0.02em;
-  line-height: 1.3;
+  line-height: inherit;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .calendar-1week-flow-card-done-check,
 .calendar-1week-flow-card-missed-mark {
-  flex-shrink: 0;
-  font-size: 0.7rem;
+  display: inline;
+  margin-right: 0.18em;
+  font-size: 0.85em;
   font-weight: 700;
-  line-height: 1;
+  line-height: inherit;
+  vertical-align: 0.04em;
 }
 
 .calendar-1week-flow-card-done-check {
