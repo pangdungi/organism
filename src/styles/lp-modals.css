@@ -491,11 +491,38 @@
 .todo-list-modal-cancel:hover, [data-legacy~="time-task-select-clear-btn"]:hover, [data-legacy~="todo-list-modal-cancel"]:hover{border-color: rgba(30, 77, 123, 0.3);
   color: var(--lp-modal-navy);
 }.time-task-log-delete-btn,
-.todo-task-edit-footer-delete, [data-legacy~="time-task-log-delete-btn"], [data-legacy~="todo-task-edit-footer-delete"]{background: var(--lp-modal-danger-soft) !important;
-  border: 1px solid rgba(185, 28, 28, 0.35) !important;
+.time-add-task-delete,
+.todo-task-edit-footer-delete,
+[data-legacy~="time-task-log-delete-btn"],
+[data-legacy~="time-add-task-delete"],
+[data-legacy~="todo-task-edit-footer-delete"]{display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: auto;
+  max-width: 100%;
+  min-height: 2.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: inherit;
+  line-height: 1.2;
   color: var(--lp-modal-danger) !important;
+  background: var(--lp-modal-danger-soft) !important;
+  border: 1px solid rgba(185, 28, 28, 0.35) !important;
+  border-radius: 10px;
+  cursor: pointer;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }.time-task-log-delete-btn:hover,
-.todo-task-edit-footer-delete:hover, [data-legacy~="time-task-log-delete-btn"]:hover, [data-legacy~="todo-task-edit-footer-delete"]:hover{background: #fee2e2 !important;
+.time-add-task-delete:hover,
+.todo-task-edit-footer-delete:hover,
+[data-legacy~="time-task-log-delete-btn"]:hover,
+[data-legacy~="time-add-task-delete"]:hover,
+[data-legacy~="todo-task-edit-footer-delete"]:hover{background: #fee2e2 !important;
+  border-color: rgba(185, 28, 28, 0.45) !important;
+}.todo-task-edit-delete-below .todo-task-edit-footer-delete,
+.todo-task-edit-delete-below [data-legacy~="todo-task-edit-footer-delete"]{width: 100%;
 }.time-task-add-btn, [data-legacy~="time-task-add-btn"]{width: 100%;
   margin-bottom: 0.75rem;
   padding: 0.55rem 0.75rem;
@@ -583,16 +610,6 @@
 }.time-add-task-productivity, [data-legacy~="time-add-task-productivity"]{display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
-}.time-add-task-delete, [data-legacy~="time-add-task-delete"]{margin-top: 0.75rem;
-  width: 100%;
-  padding: 0.5rem;
-  font-size: 0.875rem;
-  font-family: inherit;
-  color: var(--lp-modal-danger);
-  background: var(--lp-modal-danger-soft);
-  border: 1px solid rgba(185, 28, 28, 0.35);
-  border-radius: 10px;
-  cursor: pointer;
 }.time-task-log-todo-inner-modal,
 .time-task-log-expense-inner-modal, [data-legacy~="time-task-log-todo-inner-modal"], [data-legacy~="time-task-log-expense-inner-modal"]{position: fixed;
   inset: 0;
@@ -629,8 +646,6 @@
   border-top: 1px solid var(--lp-modal-border);
   display: flex;
   justify-content: flex-start;
-}.time-add-task-footer .time-add-task-delete, [data-legacy~="time-add-task-footer"] [data-legacy~="time-add-task-delete"]{width: auto;
-  margin-top: 0;
 }.time-task-log-expense-amount-wrap, [data-legacy~="time-task-log-expense-amount-wrap"]{display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -710,16 +725,6 @@
 }.todo-task-edit-inline-schedule-label, [data-legacy~="todo-task-edit-inline-schedule-label"]{font-size: 0.875rem;
   color: var(--lp-modal-navy);
 }.todo-task-edit-delete-below, [data-legacy~="todo-task-edit-delete-below"]{padding: 0 1rem 0.5rem;
-}.todo-task-edit-footer-delete, [data-legacy~="todo-task-edit-footer-delete"]{width: 100%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  padding: 0.55rem;
-  font-size: 0.875rem;
-  font-family: inherit;
-  border-radius: 10px;
-  cursor: pointer;
 }.todo-list-confirm-body, [data-legacy~="todo-list-confirm-body"]{font-size: 0.9375rem;
   line-height: 1.5;
   color: var(--lp-modal-navy-muted);

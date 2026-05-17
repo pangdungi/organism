@@ -39,7 +39,6 @@ import {
   attachTimeLedgerEntriesSaveListener,
   hydrateTimeLedgerEntriesForArchiveMonth,
   pullTimeLedgerEntriesForDateRange,
-  resetTimeLedgerSessionFilterToToday,
   timeLedgerLocalTodayYmd,
   timeLedgerLocalYesterdayYmd,
 } from "./utils/timeLedgerEntriesSupabase.js";
@@ -259,7 +258,7 @@ async function pullDataForActiveTab(tabId, opts = {}) {
       break;
     }
     case "time":
-      if (!fromBoot) resetTimeLedgerSessionFilterToToday();
+      /* 세션에 저장된 날짜 범위 유지(피커로 바꾼 뒤 다른 탭 갔다 와도 오늘로 덮어쓰지 않음). 최초 방문은 Time 뷰/헬퍼가 빈 세션에 오늘 적용. */
       await pullTimeLedgerTabEnterFromCloud();
       try {
         await pullTimeLedgerTasksFromSupabase();

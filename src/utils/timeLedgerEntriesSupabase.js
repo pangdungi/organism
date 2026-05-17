@@ -55,7 +55,7 @@ export function timeLedgerLocalMonthFirstYmd() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
 }
 
-/** 상위 '시간' 탭 클릭 시 — 시간「기록」피커를 오늘 하루로 맞춤(이후 사용자가 날짜 변경 가능). */
+/** 세션 피커를 오늘 하루로 강제 맞출 때만 사용. 탭 진입마다 호출하면 사용자가 고른 날짜가 덮어써짐. */
 export function resetTimeLedgerSessionFilterToToday() {
   try {
     if (typeof sessionStorage === "undefined") return;

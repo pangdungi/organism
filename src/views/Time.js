@@ -937,11 +937,33 @@ function computeMobileCardPriceValue(rowData, hourlyRate) {
   return price;
 }
 
-function applyMobileCardPriceEl(priceEl, value) {
+/** 리스트 카드 가격 칸: productive / nonproductive / other(금액 없음) */
+function getMobileCardPriceProductivitySlot(rowData) {
+  const pv = getMobileCardProductivityValue(rowData);
+  if (pv === "productive") return "productive";
+  if (pv === "nonproductive") return "nonproductive";
+  return "other";
+}
+
+function applyMobileCardPriceEl(priceEl, rowData, hourlyRate) {
   if (!priceEl) return;
+  const slot = getMobileCardPriceProductivitySlot(rowData);
+  const value = computeMobileCardPriceValue(rowData, hourlyRate);
+  for (const t of [
+    "time-mobile-card-price--productive",
+    "time-mobile-card-price--nonproductive",
+    "time-mobile-card-price--other",
+    "is-positive",
+    "is-negative",
+  ]) {
+    lpTokenRemove(priceEl, t);
+  }
+  lpTokenAdd(priceEl, `time-mobile-card-price--${slot}`);
+  if (slot === "other") {
+    priceEl.textContent = "";
+    return;
+  }
   priceEl.textContent = formatPrice(value);
-  lpTokenToggle(priceEl, "is-negative", value < 0);
-  lpTokenToggle(priceEl, "is-positive", value > 0);
 }
 
 function mobileCardNeedsLiveClock(rowData) {
@@ -1055,10 +1077,7 @@ function updateMobileTimeCardLiveFields(card) {
     );
     const hourlyRate =
       parseFloat(String(hourlyInput?.value || "0").replace(/,/g, "")) || 0;
-    applyMobileCardPriceEl(
-      priceEl,
-      computeMobileCardPriceValue(rd, hourlyRate),
-    );
+    applyMobileCardPriceEl(priceEl, rd, hourlyRate);
   }
 }
 
@@ -2813,8 +2832,10 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
       ).replace(/,/g, ""),
     ) || 0;
   const priceVal = computeMobileCardPriceValue(rowData, hourlyRate);
-  const priceClass =
-    priceVal < 0 ? " is-negative" : priceVal > 0 ? " is-positive" : "";
+  const priceSlot = getMobileCardPriceProductivitySlot(rowData);
+  const priceText =
+    priceSlot === "other" ? "" : formatPrice(priceVal);
+  const priceLegacy = `time-mobile-card-price time-mobile-card-price--${priceSlot}`;
   const taskName = (rowData.taskName || "")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
@@ -2856,7 +2877,7 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
         </div>
         <div data-legacy="time-mobile-card-right-col">
           <span data-legacy="time-mobile-card-tracked">${tracked}</span>
-          <span data-legacy="time-mobile-card-price${priceClass}">${formatPrice(priceVal)}</span>
+          <span data-legacy="${priceLegacy}">${priceText}</span>
         </div>
       </div>
       ${memo ? `<div data-legacy="time-mobile-card-memo">${memo}</div>` : ""}
@@ -3340,10 +3361,7 @@ export function render() {
       taskSelectModal.hidden = true;
     }
 
-    el.querySelector("#time-task-select-btn")?.addEventListener(
-      "click",
-      openTaskSelectModal,
-    );
+    taskSelectBtn?.addEventListener("click", openTaskSelectModal);
     taskSelectClose?.addEventListener("click", closeTaskSelectModal);
     taskSelectAllBtn?.addEventListener("click", () => {
       taskSelectModal
@@ -3368,10 +3386,9 @@ export function render() {
       selectedTaskNamesForFilter = checked.length === 0 ? null : checked;
       closeTaskSelectModal();
       onFilterChange();
-      const btn = el.querySelector("#time-task-select-btn");
-      if (btn)
+      if (taskSelectBtn)
         lpTokenToggle(
-          btn,
+          taskSelectBtn,
           "is-active",
           selectedTaskNamesForFilter != null &&
             selectedTaskNamesForFilter.length > 0,
@@ -3381,7 +3398,7 @@ export function render() {
       selectedTaskNamesForFilter = null;
       closeTaskSelectModal();
       onFilterChange();
-      lpTokenRemove(el.querySelector("#time-task-select-btn"), "is-active");
+      lpTokenRemove(taskSelectBtn, "is-active");
     });
   })();
 
@@ -7396,7 +7413,6 @@ export function render() {
 
   function updateFilterBarVisibility() {
     /* 모바일에서 navCluster가 contentWrap 툴바로 붙으면 버튼이 filterBar 밖에 있음 */
-    const taskSelectBtn = el.querySelector("#time-task-select-btn");
     if (filterNavCluster) filterNavCluster.style.display = "";
     if (taskSetupBtn) taskSetupBtn.style.display = "";
     if (taskSelectBtn) taskSelectBtn.style.display = "";
