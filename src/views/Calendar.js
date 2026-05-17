@@ -467,6 +467,13 @@ function getSectionTasksForDate(dateKey) {
   return out;
 }
 
+/** 시작·마감 날짜가 모두 있고 서로 다른 날일 때만 월간 기간 막대(컬러 바)로 그린다. 같은 날이면 하루짜리로 취급 */
+function calendarTaskIsMultiDayDateSpan(t) {
+  const s = (t?.startDate || "").trim().slice(0, 10);
+  const d = (t?.dueDate || "").trim().slice(0, 10);
+  return !!(s && d && s !== d);
+}
+
 function getSectionTasksWithDateRange() {
   const out = [];
   try {
@@ -486,7 +493,8 @@ function getSectionTasksWithDateRange() {
           (t) =>
             (t.name || "").trim() !== "" &&
             (t.startDate || "").slice(0, 10) &&
-            (t.dueDate || "").slice(0, 10),
+            (t.dueDate || "").slice(0, 10) &&
+            calendarTaskIsMultiDayDateSpan(t),
         )
         .forEach((t) =>
           out.push({
@@ -1172,10 +1180,7 @@ function getTasksForDate(dateKey, excludeSpanningTasks = false) {
   const customTasks = getCustomSectionTasksForDate(dateKey);
   let tasks = [...sectionTasks, ...customTasks];
   if (excludeSpanningTasks) {
-    tasks = tasks.filter(
-      (t) =>
-        !((t.startDate || "").slice(0, 10) && (t.dueDate || "").slice(0, 10)),
-    );
+    tasks = tasks.filter((t) => !calendarTaskIsMultiDayDateSpan(t));
   }
   return tasks;
 }
@@ -1210,7 +1215,8 @@ function getAllTasksWithDateRange() {
           (t) =>
             (t.name || "").trim() !== "" &&
             (t.startDate || "").slice(0, 10) &&
-            (t.dueDate || "").slice(0, 10),
+            (t.dueDate || "").slice(0, 10) &&
+            calendarTaskIsMultiDayDateSpan(t),
         )
         .forEach((t) =>
           customRange.push({

@@ -526,6 +526,21 @@
   flex-direction: column;
 }
 
+/* 할 일 서브뷰: 본문(.todo-list-view)만 세로 스크롤 — 상단 카테고리 탭 위로 카드가 비치는 현상 방지 */
+.calendar-view-todo > .calendar-todo-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+
+.calendar-view-todo > .calendar-todo-main > .calendar-todo-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .calendar-monthly-layout.calendar-view-with-subtabs > .calendar-view-top-row {
   flex-shrink: 0;
 }

@@ -1,0 +1,400 @@
+/**
+ * 할 일/일정(TodoList.js) 전용 스타일
+ * - 앱 공통·푸터·모달 베이스는 ../main.css, ../styles/lp-modals.css
+ * - 캘린더에 붙는 할 일 사이드바/UI가 겹치면 ../styles/calendar.css와 역할 분담
+ * - 규칙 추가 시 가능하면 `.todo-list-view` 또는 `.todo-sections-wrap` 아래로 스코프
+ *
+ * (현재 대부분의 투두 규칙은 main.css 등에 있음 — 이 파일은 단계적으로 옮기거나 신규 전용만 둔다.)
+ */
+
+/* -------------------------------------------------------------------------- */
+/* 캘린더 할 일 상단 카테고리 탭 — 전체·꿈·부수입·건강·행복 (미니멀)            */
+/* `.todo-list-segment-tabs` 로만 스코프 → 일기 등 다른 time-view-tab 에 비침 없음 */
+/* -------------------------------------------------------------------------- */
+
+/* 세로 스크롤은 .todo-tab-panels 안에서만 — 탭 줄은 위에 고정, 카드가 탭 위로 비침 방지 */
+.todo-list-view.app-tab-panel-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+
+.todo-list-view > .lp-search-bar:not([hidden]) {
+  flex-shrink: 0;
+}
+
+.todo-list-view .todo-list-tabs-filter-row {
+  margin: 0;
+}
+
+.todo-list-view .todo-list-tabs-top-margin {
+  min-height: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.todo-list-view .todo-list-tab-header-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.35rem 0.5rem 0;
+  border-bottom: 1px solid rgba(42, 56, 40, 0.08);
+}
+
+/* 전체·꿈·부수입… 카테고리 줄: 본문 세로 스크롤과 같이 움직이지 않고 상단 고정 — 카드가 위로 겹쳐 보이지 않게 z-index·배경 */
+.todo-list-view .todo-list-toolbar-row,
+.todo-list-view .todo-list-tabs-filter-row {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  isolation: isolate;
+  background: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 1px 0 rgba(42, 56, 40, 0.07);
+}
+
+.todo-list-view .todo-list-tab-header-row,
+.todo-list-view .todo-list-segment-tabs.todo-category-tabs {
+  position: relative;
+  z-index: 0;
+  background: #fff;
+}
+
+.todo-list-view .todo-list-top-strip__center {
+  width: 100%;
+  max-width: 36rem;
+  margin: 0 auto;
+}
+
+.todo-list-view .todo-list-segment-tabs.todo-category-tabs {
+  position: relative;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 0.125rem;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  -webkit-overflow-scrolling: touch;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.todo-list-view .todo-list-segment-tabs.todo-category-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+/* 세그먼트 칩(썸) 숨김 — 활성 탭은 밑줄만 */
+.todo-list-view .todo-list-segment-tabs .time-view-tabs-thumb {
+  display: none !important;
+}
+
+.todo-list-view .todo-list-segment-tabs .todo-category-tab.time-view-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  padding: 0.45rem 0.2rem 0.5rem;
+  border: none !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: rgba(61, 74, 62, 0.45);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color 0.15s ease,
+    font-weight 0.15s ease;
+}
+
+.todo-list-view .todo-list-segment-tabs .todo-category-tab.time-view-tab:hover {
+  color: rgba(61, 74, 62, 0.72);
+}
+
+.todo-list-view .todo-list-segment-tabs .todo-category-tab.time-view-tab.active {
+  font-weight: 600;
+  color: #2a3828;
+  box-shadow: inset 0 -2px 0 0 #2a3828;
+}
+
+.todo-list-view .todo-list-segment-tabs .todo-category-tab-label {
+  display: inline;
+  vertical-align: baseline;
+}
+
+.todo-list-view .todo-list-segment-tabs .todo-category-tab-count {
+  display: inline;
+  margin-left: 0.15em;
+  font-size: 0.75em;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.5;
+  vertical-align: baseline;
+}
+
+.todo-list-view .todo-list-segment-tabs .todo-category-tab.active .todo-category-tab-count {
+  opacity: 0.65;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 탭 모드: 활성 섹션만 보이기 — 비활성 패너+인라인 + 가 리스트처럼 겹쳐 보이던 문제 방지 */
+/* -------------------------------------------------------------------------- */
+
+.todo-sections-wrap.todo-tab-panels > .todo-section.todo-section-tab-panel:not(.is-active) {
+  display: none !important;
+}
+
+.todo-list-view > .todo-sections-wrap.todo-tab-panels {
+  position: relative;
+  z-index: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 캘린더 등 푸터 할 일 추가만 쓸 때: 인라인 + 는 시각상만 제거(노드는 남겨 푸터에서 .click() 유지) */
+.todo-list-view--footer-add-only .todo-section.todo-section-tab-panel {
+  position: relative;
+}
+
+.todo-list-view--footer-add-only .todo-cards-add-wrap {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  border: 0;
+  white-space: nowrap;
+  z-index: 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 할 일 카드 — 3열(아이콘 / 날짜 / 과제명+우선순위) */
+/* -------------------------------------------------------------------------- */
+
+.todo-card {
+  border: 1px solid rgba(42, 56, 40, 0.12);
+  border-radius: 0;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.todo-card + .todo-card {
+  margin-top: 0.5rem;
+}
+
+/* 목록 래퍼: 3열 너비를 모든 행이 공유(subgrid), 날짜 열은 가장 긴 셀 기준으로 통일 */
+.todo-cards-wrap {
+  display: grid;
+  grid-template-columns:
+    minmax(2.25rem, auto)
+    max-content
+    minmax(0, 1fr);
+  column-gap: 0.85rem;
+}
+
+.todo-cards-wrap > .todo-card {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+  align-items: center;
+  min-height: 3.1rem;
+  margin-top: 0;
+  border-left: none;
+  border-right: none;
+  padding: 0.55rem 0.7rem;
+  box-sizing: border-box;
+}
+
+.todo-cards-wrap > .todo-card > .todo-card-inner {
+  padding: 0;
+  display: contents;
+}
+
+.todo-cards-wrap > .todo-card > .todo-card-inner > .todo-card-content,
+.todo-cards-wrap > .todo-card .todo-card-title-row--3col {
+  display: contents;
+}
+
+.todo-cards-wrap > .todo-card + .todo-card {
+  margin-top: 0;
+  border-top: none;
+}
+
+.todo-card-inner {
+  padding: 0.55rem 0.7rem;
+}
+
+/* 목록 안에서는 inner 가 contents 라서 패딩은 .todo-card 에만 적용됨 */
+
+.todo-card-title-row--3col {
+  min-height: 0;
+}
+
+.todo-card-col--icons,
+.todo-card-col--date {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.todo-card-col--icons {
+  padding-right: 0.55rem;
+  box-sizing: border-box;
+}
+
+.todo-card-col--date {
+  justify-content: flex-start;
+  padding-left: 0.45rem;
+  padding-right: 0.45rem;
+  box-sizing: border-box;
+}
+
+.todo-card-icon-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.todo-card-checkbox-label {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  margin: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.todo-card-checkbox-label .todo-done-check.todo-card-done {
+  position: absolute;
+  opacity: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin: 0;
+  cursor: pointer;
+}
+
+.todo-card-checkbox-face {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  display: block;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  background: url("/todo-card-icons/checkbox.png") center / contain no-repeat;
+}
+
+.todo-card-checkbox-label:has(.todo-done-check:checked) .todo-card-checkbox-face {
+  background-image: url("/todo-card-icons/check-done.png");
+}
+
+/* 일정: 미완료는 캘린더만(할 일 네모 숨김), 완료는 체크만 */
+.todo-card--schedule:not(.is-done) .todo-card-checkbox-face {
+  display: none;
+}
+
+.todo-card--schedule.is-done .todo-card-type-icon {
+  display: none !important;
+}
+
+.todo-card-type-icon-img {
+  width: 1.45rem;
+  height: 1.45rem;
+  object-fit: contain;
+  display: block;
+}
+
+.todo-card-col--text {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+  padding-left: 0.5rem;
+  box-sizing: border-box;
+}
+
+.todo-card-text-stack {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.12rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.todo-card-name {
+  font-size: 0.9375rem;
+  font-weight: 400;
+  color: #1a2218;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.todo-card-priority {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgba(61, 74, 62, 0.72);
+  line-height: 1.3;
+}
+
+.todo-card-kpi {
+  font-size: 0.7rem;
+  color: rgba(61, 74, 62, 0.55);
+  line-height: 1.3;
+}
+
+.todo-card-dates {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgba(61, 74, 62, 0.78);
+  line-height: 1.25;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.todo-card-dates.todo-card-dates--stack {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 0.04rem;
+  white-space: normal;
+}
+
+.todo-card-dates__row {
+  display: block;
+  line-height: 1.22;
+}
+
+.todo-card.is-done .todo-card-name,
+.todo-card.is-done .todo-card-priority,
+.todo-card.is-done .todo-card-dates,
+.todo-card.is-done .todo-card-kpi {
+  opacity: 0.55;
+}
+
+.todo-card.is-done .todo-card-name {
+  text-decoration: line-through;
+}

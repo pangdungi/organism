@@ -63,6 +63,7 @@ function getTasksDueToday() {
           dueDate: due,
           startDate: (t.startDate || "").slice(0, 10),
           sectionLabel: SECTION_LABELS[sectionId] || sectionId,
+          itemType: String(t.itemType || "todo").trim() || "todo",
         });
       });
     });
@@ -86,6 +87,7 @@ function getTasksDueToday() {
           dueDate: due,
           startDate: (t.startDate || "").slice(0, 10),
           sectionLabel: sec.label || sec.id,
+          itemType: String(t.itemType || "todo").trim() || "todo",
         });
       });
     });
@@ -119,6 +121,8 @@ const HOME_CARD_EISENHOWER_LABELS = {
   "not-urgent-not-important": "여유+안중요",
   "not-urgent-": "여유+안중요",
 };
+
+const HOME_TODO_CARD_ICON_URL_CALENDAR = "/todo-card-icons/calendar-schedule.png";
 
 function isHomeDueOverdue(dueStr) {
   if (!dueStr || dueStr.length < 10) return false;
@@ -169,24 +173,123 @@ function formatHomeTodoCardDates(item) {
   return "";
 }
 
+function renderHomeTodoCardDatesEl(datesEl, item) {
+  if (!datesEl) return;
+  const startDate = item.startDate || "";
+  const dueDate = item.dueDate || "";
+  let info;
+  if (dueDate && isHomeDueOverdue(dueDate)) {
+    const parts = String(dueDate).trim().split(/[-/]/);
+    if (parts.length >= 3) {
+      const due = new Date(
+        parseInt(parts[0], 10),
+        parseInt(parts[1], 10) - 1,
+        parseInt(parts[2], 10),
+      );
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      due.setHours(0, 0, 0, 0);
+      const diffDays = Math.round(
+        (due.getTime() - today.getTime()) / (24 * 60 * 60 * 1000),
+      );
+      if (diffDays < 0) {
+        info = { kind: "single", text: `${Math.abs(diffDays)}일 초과` };
+      }
+    }
+  }
+  if (!info) {
+    const toMD = (str) => {
+      if (!str || !String(str).includes("-")) return "";
+      const [, m, d] = str.trim().split("-");
+      return m && d ? `${m}/${d}` : "";
+    };
+    const start = toMD(startDate);
+    const due = toMD(dueDate);
+    if (start && due) info = { kind: "two", line1: `${start} ~`, line2: due };
+    else if (due) info = { kind: "single", text: due };
+    else if (start) info = { kind: "single", text: start };
+    else info = { kind: "single", text: "" };
+  }
+  const two = info.kind === "two";
+  datesEl.classList.toggle("todo-card-dates--stack", two);
+  datesEl.replaceChildren();
+  if (two) {
+    const l1 = document.createElement("span");
+    l1.className = "todo-card-dates__row";
+    l1.textContent = info.line1;
+    const l2 = document.createElement("span");
+    l2.className = "todo-card-dates__row";
+    l2.textContent = info.line2;
+    datesEl.appendChild(l1);
+    datesEl.appendChild(l2);
+    datesEl.hidden = false;
+  } else {
+    datesEl.textContent = info.text || "";
+    datesEl.hidden = !info.text || !String(info.text).trim();
+  }
+}
+
 /** 할일 목록 탭과 동일 todo-card 마크업 (오늘 탭 전용) */
 function createHomeTodoCard(item) {
   const card = document.createElement("div");
   card.className =
     "todo-card home-todo-flat-row" + (item.done ? " is-done" : "");
+  card.dataset.done = item.done ? "true" : "false";
+  card.dataset.itemType = String(item.itemType || "todo").trim() || "todo";
+
+  const iconCol = document.createElement("div");
+  iconCol.className = "todo-card-col todo-card-col--icons";
+  const iconStack = document.createElement("div");
+  iconStack.className = "todo-card-icon-stack";
+
+  const chkLabel = document.createElement("label");
+  chkLabel.className = "todo-card-checkbox-label";
 
   const doneCheck = document.createElement("input");
   doneCheck.type = "checkbox";
   doneCheck.className = "todo-done-check todo-card-done";
   doneCheck.checked = item.done;
+  const chkFace = document.createElement("span");
+  chkFace.className = "todo-card-checkbox-face";
+  chkFace.setAttribute("aria-hidden", "true");
+  chkLabel.appendChild(doneCheck);
+  chkLabel.appendChild(chkFace);
+
+  const typeIconWrap = document.createElement("span");
+  typeIconWrap.className = "todo-card-type-icon";
+  typeIconWrap.setAttribute("aria-hidden", "true");
+  const typeIconImg = document.createElement("img");
+  typeIconImg.alt = "";
+  typeIconImg.className = "todo-card-type-icon-img";
+  typeIconImg.decoding = "async";
+  typeIconWrap.appendChild(typeIconImg);
+
+  chkLabel.appendChild(typeIconWrap);
+
+  function syncTypeIcon() {
+    const isSched =
+      String(card.dataset.itemType || "todo").toLowerCase() === "schedule";
+    card.classList.toggle("todo-card--schedule", isSched);
+    if (isSched) {
+      typeIconImg.src = HOME_TODO_CARD_ICON_URL_CALENDAR;
+      typeIconWrap.hidden = card.dataset.done === "true";
+    } else {
+      typeIconWrap.hidden = true;
+    }
+  }
+
   doneCheck.addEventListener("change", (e) => {
     e.stopPropagation();
-    updateHomeTaskDone(item, doneCheck.checked);
-    card.classList.toggle("is-done", doneCheck.checked);
+    const checked = doneCheck.checked;
+    card.dataset.done = checked ? "true" : "false";
+    updateHomeTaskDone(item, checked);
+    card.classList.toggle("is-done", checked);
+    syncTypeIcon();
   });
 
-  const nameWrap = document.createElement("div");
-  nameWrap.className = "todo-card-name-wrap";
+  iconStack.appendChild(chkLabel);
+  iconCol.appendChild(iconStack);
+
   const nameEl = document.createElement("span");
   nameEl.className = "todo-card-name";
   nameEl.textContent = item.name;
@@ -197,44 +300,35 @@ function createHomeTodoCard(item) {
     : "";
   priorityEl.hidden = !item.eisenhower;
 
-  nameWrap.appendChild(nameEl);
-  nameWrap.appendChild(priorityEl);
-
   const kpiEl = document.createElement("div");
   kpiEl.className = "todo-card-kpi";
   const kpiText = (item.classification || "").trim();
   kpiEl.textContent = kpiText;
   kpiEl.hidden = !item.isKpiTodo || !kpiText;
 
+  const textStack = document.createElement("div");
+  textStack.className = "todo-card-text-stack";
+  textStack.appendChild(nameEl);
+  textStack.appendChild(priorityEl);
+  textStack.appendChild(kpiEl);
+
+  const textCol = document.createElement("div");
+  textCol.className = "todo-card-col todo-card-col--text";
+  textCol.appendChild(textStack);
+
   const datesEl = document.createElement("div");
   datesEl.className = "todo-card-dates";
-  const homeDateStr = formatHomeTodoCardDates(item);
-  datesEl.textContent = homeDateStr;
-  datesEl.hidden = !homeDateStr || !String(homeDateStr).trim();
+  renderHomeTodoCardDatesEl(datesEl, item);
 
-  const metaRow = document.createElement("div");
-  metaRow.className = "todo-card-meta-row";
-  metaRow.appendChild(datesEl);
-  metaRow.hidden = !!datesEl.hidden;
-
-  const doneWrap = document.createElement("div");
-  doneWrap.className = "todo-card-done-wrap";
-  doneWrap.appendChild(doneCheck);
-
-  const detailStack = document.createElement("div");
-  detailStack.className = "todo-card-detail-stack";
-  detailStack.appendChild(kpiEl);
-  detailStack.appendChild(metaRow);
-
-  const titleMain = document.createElement("div");
-  titleMain.className = "todo-card-title-main";
-  titleMain.appendChild(nameWrap);
-  titleMain.appendChild(detailStack);
+  const dateCol = document.createElement("div");
+  dateCol.className = "todo-card-col todo-card-col--date";
+  dateCol.appendChild(datesEl);
 
   const titleRow = document.createElement("div");
-  titleRow.className = "todo-card-title-row";
-  titleRow.appendChild(doneWrap);
-  titleRow.appendChild(titleMain);
+  titleRow.className = "todo-card-title-row todo-card-title-row--3col";
+  titleRow.appendChild(iconCol);
+  titleRow.appendChild(dateCol);
+  titleRow.appendChild(textCol);
 
   const contentCol = document.createElement("div");
   contentCol.className = "todo-card-content";
@@ -244,6 +338,8 @@ function createHomeTodoCard(item) {
   inner.className = "todo-card-inner";
   inner.appendChild(contentCol);
   card.appendChild(inner);
+
+  syncTypeIcon();
 
   return card;
 }
