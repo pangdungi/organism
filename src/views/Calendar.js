@@ -5024,10 +5024,10 @@ const CALENDAR_SUB_VIEWS = [
 ];
 
 const MOBILE_SCHEDULE_CAL_SUB_VIEWS = [
-  { id: "monthly", label: "월별" },
-  { id: "1week", label: "1주" },
-  { id: "annual", label: "연간" },
-  { id: "1day", label: "타임블록" },
+  { id: "monthly", label: "월별", footerShortLabel: "M" },
+  { id: "1week", label: "1주", footerShortLabel: "W" },
+  { id: "annual", label: "연간", footerShortLabel: "Y" },
+  { id: "1day", label: "타임블록", footerShortLabel: "D" },
 ];
 
 /**
@@ -5106,10 +5106,18 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
       btn.setAttribute("aria-label", v.label);
       btn.setAttribute("aria-pressed", "false");
       btn.setAttribute(LP_SCHEDULE_CAL_SUBVIEW_FOOTER_ATTR, v.id);
-      const iconSrc =
-        LP_SCHEDULE_SUBVIEW_FOOTER_ICONS[v.id] ||
-        "/toolbaricons/calendar-alt.svg";
-      btn.innerHTML = `<img src="${iconSrc}" alt="" width="22" height="22" aria-hidden="true" />`;
+      const short =
+        typeof v.footerShortLabel === "string"
+          ? v.footerShortLabel.trim()
+          : "";
+      if (short) {
+        btn.textContent = short;
+      } else {
+        const iconSrc =
+          LP_SCHEDULE_SUBVIEW_FOOTER_ICONS[v.id] ||
+          "/toolbaricons/calendar-alt.svg";
+        btn.innerHTML = `<img src="${iconSrc}" alt="" width="22" height="22" aria-hidden="true" />`;
+      }
       btn.addEventListener("click", () => void renderSubView(v.id));
       slot.appendChild(btn);
       footerSubViewSwitchers.push({ id: v.id, btn });

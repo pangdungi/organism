@@ -116,6 +116,14 @@
   gap: 0.35rem;
 }
 
+/* 모바일 일정 탭: 푸터 서브뷰 전환 — 짧은 라벨(M·W·Y·D), 툴팁·aria-label 은 전체 한글명 */
+.app-footer-actions .app-footer-icon-btn[data-lp-schedule-cal-subview] {
+  line-height: 1;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 /* -------------------------------------------------------------------------- */
 /* 네비게이션 (월별 · n주 공통) */
 /* -------------------------------------------------------------------------- */
@@ -247,6 +255,18 @@
 
 .calendar-monthly-top-bar-right {
   flex-shrink: 0;
+}
+
+/* 타임블록(일간) 타임라인: 예정 일정 없음 안내 */
+.calendar-1day-timeline-empty {
+  margin: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 1rem 0.75rem;
+  text-align: center;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--cal-text-muted);
 }
 
 /* -------------------------------------------------------------------------- */
