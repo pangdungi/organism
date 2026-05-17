@@ -1,0 +1,1148 @@
+/**
+ * 앱 공통 모달 — 화이트 패널 + 딥 네이비 텍스트, 강조 #1E4D7B
+ * .time-task-setup-modal / .todo-list-modal / 일기 작성 등 동일 계열
+ */
+
+:root {
+  --lp-modal-accent: #1e4d7b;
+  --lp-modal-accent-hover: #173c5f;
+  --lp-modal-navy: #152b45;
+  --lp-modal-navy-muted: #3d5670;
+  --lp-modal-border: #e2e8f0;
+  --lp-modal-muted: #64748b;
+  --lp-modal-surface: #ffffff;
+  --lp-modal-backdrop: rgba(21, 43, 69, 0.45);
+  --lp-modal-danger: #b91c1c;
+  --lp-modal-danger-soft: #fef2f2;
+  --lp-modal-radius: 12px;
+  --lp-modal-font: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR",
+    sans-serif;
+}
+
+/* --- Shell: 전체 화면 오버레이 --- */
+.time-task-setup-modal,
+.todo-list-modal,
+.diary-desktop-compose-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  font-family: var(--lp-modal-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (min-width: 40rem) {
+  .time-task-setup-modal,
+  .todo-list-modal,
+  .diary-desktop-compose-modal {
+    align-items: center;
+    padding: 1rem;
+  }
+}
+
+.time-task-setup-modal[hidden],
+.todo-list-modal[hidden],
+.diary-desktop-compose-modal[hidden] {
+  display: none !important;
+}
+
+.time-task-setup-backdrop,
+.todo-list-modal-backdrop,
+.diary-desktop-compose-modal-backdrop,
+.time-task-log-todo-inner-backdrop,
+.time-task-log-expense-inner-backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--lp-modal-backdrop);
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.time-task-setup-panel,
+.todo-list-modal-panel,
+.diary-desktop-compose-modal-panel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 26rem;
+  max-height: min(92vh, 44rem);
+  display: flex;
+  flex-direction: column;
+  background: var(--lp-modal-surface);
+  color: var(--lp-modal-navy);
+  border-radius: var(--lp-modal-radius) var(--lp-modal-radius) 0 0;
+  box-shadow: 0 -8px 40px rgba(21, 43, 69, 0.18);
+  border: 1px solid var(--lp-modal-border);
+  border-bottom: none;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+@media (min-width: 40rem) {
+  .time-task-setup-panel,
+  .todo-list-modal-panel,
+  .diary-desktop-compose-modal-panel {
+    border-radius: var(--lp-modal-radius);
+    border-bottom: 1px solid var(--lp-modal-border);
+    box-shadow: 0 20px 50px rgba(21, 43, 69, 0.2);
+  }
+}
+
+.time-task-log-panel {
+  max-width: 26rem;
+}
+
+.time-task-select-panel,
+.time-add-task-panel {
+  max-width: 26rem;
+}
+
+/* --- Header --- */
+.time-task-setup-header,
+.todo-list-modal-header,
+.diary-desktop-compose-modal-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--lp-modal-border);
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+}
+
+.time-task-setup-title,
+.todo-list-modal-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--lp-modal-navy);
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.time-task-setup-close,
+.todo-list-modal-close,
+.diary-desktop-compose-modal-close {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--lp-modal-navy-muted);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.time-task-setup-close:hover,
+.todo-list-modal-close:hover,
+.diary-desktop-compose-modal-close:hover {
+  background: rgba(30, 77, 123, 0.08);
+  color: var(--lp-modal-navy);
+}
+
+/* --- Body --- */
+.time-task-setup-body,
+.todo-list-modal-body,
+.diary-desktop-compose-modal-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.85rem 1rem 1rem;
+  font-size: 0.9375rem;
+}
+
+.todo-list-modal-body {
+  padding-bottom: 0.5rem;
+}
+
+/* 과제 기록: 본문만 스크롤 */
+.time-task-log-modal .time-task-setup-body.time-task-log-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+}
+
+.time-task-log-scroll-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.85rem 1rem 0.5rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* --- 필드 공통 --- */
+.time-task-log-field,
+.time-add-task-field,
+.todo-task-edit-field {
+  margin-bottom: 0.85rem;
+}
+
+.time-task-log-field:last-child,
+.time-add-task-field:last-child,
+.todo-task-edit-field:last-child {
+  margin-bottom: 0;
+}
+
+.time-task-log-field > label,
+.time-add-task-field > label,
+.todo-task-edit-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--lp-modal-navy-muted);
+}
+
+/* 텍스트 입력 */
+.time-add-task-name,
+.time-task-log-todo-inner-name,
+.time-task-log-expense-name,
+.time-task-log-meal-detail-input,
+.time-task-log-feedback,
+.time-task-log-tag-input,
+.todo-task-edit-name,
+.archive-memo-modal-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  color: var(--lp-modal-navy);
+  background: #fff;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.time-add-task-name:focus,
+.time-task-log-todo-inner-name:focus,
+.time-task-log-expense-name:focus,
+.time-task-log-meal-detail-input:focus,
+.time-task-log-feedback:focus,
+.time-task-log-tag-input:focus,
+.todo-task-edit-name:focus,
+.archive-memo-modal-textarea:focus {
+  border-color: rgba(30, 77, 123, 0.45);
+  box-shadow: 0 0 0 3px rgba(30, 77, 123, 0.12);
+}
+
+.time-task-log-feedback,
+.archive-memo-modal-textarea {
+  resize: vertical;
+  min-height: 4.5rem;
+  line-height: 1.45;
+}
+
+/* 셀렉트 */
+.todo-task-edit-eisenhower,
+.todo-task-edit-section,
+.time-task-log-expense-classification-wrap select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  color: var(--lp-modal-navy);
+  background: #fff;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 8px;
+  cursor: pointer;
+  outline: none;
+}
+
+.todo-task-edit-input-shell--select {
+  position: relative;
+}
+
+/* --- 과제 기록: 시간 한 줄 (시간 · 날짜 · 시작 · 마감시간) --- */
+.lp-modal-datetime-card {
+  padding: 0.45rem 0.55rem;
+  background: #f8fafc;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 10px;
+  margin-bottom: 0.65rem;
+}
+
+.time-task-log-datetime-main-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.35rem 0.4rem;
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.time-task-log-datetime-main-row .time-task-log-time-start,
+.time-task-log-datetime-main-row .time-task-log-time-end {
+  flex-shrink: 0;
+}
+
+.time-task-log-datetime-main-row .time-task-log-datetime-sep {
+  color: #cbd5e1;
+  font-weight: 300;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.time-task-log-time-start,
+.time-task-log-time-end {
+  width: 4.1rem;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.35rem 0.4rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  color: var(--lp-modal-navy);
+  background: #fff;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 6px;
+  text-align: center;
+  outline: none;
+}
+
+.time-task-log-time-start:focus,
+.time-task-log-time-end:focus {
+  border-color: rgba(30, 77, 123, 0.45);
+  box-shadow: 0 0 0 2px rgba(30, 77, 123, 0.1);
+}
+
+.time-task-log-date-native-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  flex: 0 0 auto;
+  min-width: 5.75rem;
+  min-height: 2rem;
+}
+
+.time-task-log-date-native-wrap input[type="date"] {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0.001;
+  cursor: pointer;
+  box-sizing: border-box;
+  font-size: 1rem;
+}
+
+.time-task-log-date-native-wrap input[type="date"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.time-task-log-date-overlay {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 4.5rem;
+  padding: 0.35rem 0.45rem;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--lp-modal-navy);
+  background: #fff;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.time-task-log-quick-block {
+  margin-top: 0.15rem;
+}
+
+.time-task-log-section-label,
+.time-task-log-quick-section-label,
+.time-task-log-memo-section-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--lp-modal-navy-muted);
+}
+
+.time-task-log-time-adjust-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.time-task-log-time-adjust-btn {
+  padding: 0.35rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--lp-modal-navy-muted);
+  background: #fff;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 999px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.time-task-log-time-adjust-btn:hover {
+  border-color: rgba(30, 77, 123, 0.35);
+  color: var(--lp-modal-accent);
+}
+
+.time-task-log-time-adjust-btn:active {
+  background: #f1f5f9;
+}
+
+/* --- 메모 / 태그 / 링크 스트립 --- */
+.time-task-log-memo-section {
+  margin-top: 0.35rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--lp-modal-border);
+}
+
+.time-task-log-tags-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.time-task-log-tag-list:empty {
+  display: none;
+}
+
+.time-task-log-link-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.35rem;
+}
+
+.time-task-log-link-strip-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--lp-modal-navy-muted);
+}
+
+.time-task-log-link-strip-add {
+  width: 1.85rem;
+  height: 1.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--lp-modal-accent);
+  font-size: 1.15rem;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.time-task-log-link-strip-add:hover {
+  background: rgba(30, 77, 123, 0.06);
+  border-color: rgba(30, 77, 123, 0.25);
+}
+
+.time-task-log-todo-row,
+.time-task-log-expense-row {
+  margin-top: 0.85rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--lp-modal-border);
+}
+
+.time-task-log-kpi-todos-title,
+.time-task-log-daily-todos-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--lp-modal-navy-muted);
+}
+
+/* --- Footer & 버튼 --- */
+.time-task-log-footer,
+.todo-list-modal-footer,
+.diary-desktop-compose-modal-footer {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem 1rem;
+  border-top: 1px solid var(--lp-modal-border);
+  background: #fff;
+}
+
+.todo-list-modal-footer.todo-task-edit-footer--actions {
+  padding-top: 0.65rem;
+}
+
+.time-task-log-submit,
+.time-datetime-picker-confirm,
+.time-task-select-apply-btn,
+.time-add-task-submit,
+.time-task-log-todo-inner-add,
+.time-task-log-expense-inner-add-btn,
+.todo-list-modal-confirm,
+.diary-desktop-compose-modal-confirm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  padding: 0 1.1rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: #fff !important;
+  background: var(--lp-modal-accent) !important;
+  border: 1px solid var(--lp-modal-accent) !important;
+  border-radius: 10px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+.time-task-log-submit:hover,
+.time-datetime-picker-confirm:hover,
+.time-task-select-apply-btn:hover,
+.time-add-task-submit:hover,
+.time-task-log-todo-inner-add:hover,
+.time-task-log-expense-inner-add-btn:hover,
+.todo-list-modal-confirm:hover,
+.diary-desktop-compose-modal-confirm:hover {
+  background: var(--lp-modal-accent-hover) !important;
+  border-color: var(--lp-modal-accent-hover) !important;
+}
+
+.time-task-select-clear-btn,
+.todo-list-modal-cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--lp-modal-navy-muted);
+  background: #fff;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.time-task-select-clear-btn:hover,
+.todo-list-modal-cancel:hover {
+  border-color: rgba(30, 77, 123, 0.3);
+  color: var(--lp-modal-navy);
+}
+
+.time-task-log-delete-btn,
+.todo-task-edit-footer-delete {
+  background: var(--lp-modal-danger-soft) !important;
+  border: 1px solid rgba(185, 28, 28, 0.35) !important;
+  color: var(--lp-modal-danger) !important;
+}
+
+.time-task-log-delete-btn:hover,
+.todo-task-edit-footer-delete:hover {
+  background: #fee2e2 !important;
+}
+
+/* --- 과제 설정 탭 --- */
+.time-task-add-btn {
+  width: 100%;
+  margin-bottom: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--lp-modal-accent);
+  background: rgba(30, 77, 123, 0.06);
+  border: 1px dashed rgba(30, 77, 123, 0.35);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.time-task-setup-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.65rem;
+}
+
+.time-task-setup-tab {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--lp-modal-navy-muted);
+  background: #f1f5f9;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.time-task-setup-tab.active {
+  color: #fff;
+  background: var(--lp-modal-accent);
+}
+
+.time-task-setup-subcats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.time-task-setup-subcat-btn {
+  padding: 0.3rem 0.55rem;
+  font-size: 0.75rem;
+  font-family: inherit;
+  color: var(--lp-modal-navy-muted);
+  background: #fff;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.time-task-setup-subcat-btn.active {
+  border-color: var(--lp-modal-accent);
+  color: var(--lp-modal-accent);
+  background: rgba(30, 77, 123, 0.06);
+}
+
+.time-task-setup-list-scroll {
+  max-height: min(50vh, 22rem);
+  overflow: auto;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 10px;
+  padding: 0.35rem;
+  background: #fafbfc;
+}
+
+.time-task-select-list {
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+  max-height: min(45vh, 20rem);
+  overflow-y: auto;
+}
+
+.time-task-select-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.55rem 0.65rem;
+  border-bottom: 1px solid var(--lp-modal-border);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.time-task-select-item:last-child {
+  border-bottom: none;
+}
+
+.time-task-select-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem 1rem;
+  border-top: 1px solid var(--lp-modal-border);
+}
+
+.time-task-select-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.65rem;
+}
+
+.time-task-select-all-btn,
+.time-task-select-none-btn {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8125rem;
+  font-family: inherit;
+  font-weight: 500;
+  color: var(--lp-modal-navy-muted);
+  background: #fff;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* 라디오 (과제 추가) */
+.time-add-task-radio {
+  font-size: 0.875rem;
+  color: var(--lp-modal-navy);
+  margin-right: 0.85rem;
+}
+
+.time-add-task-productivity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.time-add-task-delete {
+  margin-top: 0.75rem;
+  width: 100%;
+  padding: 0.5rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--lp-modal-danger);
+  background: var(--lp-modal-danger-soft);
+  border: 1px solid rgba(185, 28, 28, 0.35);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+/* --- 중첩 모달 (투두 / 소비) --- */
+.time-task-log-todo-inner-modal,
+.time-task-log-expense-inner-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 11000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+  font-family: var(--lp-modal-font);
+}
+
+.time-task-log-todo-inner-modal[hidden],
+.time-task-log-expense-inner-modal[hidden] {
+  display: none !important;
+}
+
+.time-task-log-todo-inner-panel,
+.time-task-log-expense-inner-panel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 22rem;
+  max-height: min(88vh,36rem);
+  display: flex;
+  flex-direction: column;
+  background: var(--lp-modal-surface);
+  color: var(--lp-modal-navy);
+  border-radius: var(--lp-modal-radius);
+  border: 1px solid var(--lp-modal-border);
+  box-shadow: 0 24px 60px rgba(21, 43, 69, 0.28);
+  overflow: hidden;
+}
+
+.time-task-log-todo-inner-body,
+.time-task-log-expense-inner-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.85rem 1rem;
+}
+
+.time-task-log-todo-inner-footer {
+  flex-shrink: 0;
+  padding: 0.75rem 1rem 1rem;
+  border-top: 1px solid var(--lp-modal-border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.time-task-log-expense-inner-fields .time-task-log-expense-inner-add-btn {
+  width: 100%;
+  margin-top: 0.65rem;
+}
+
+.time-task-log-expense-amount-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.time-task-log-expense-amount {
+  flex: 1 1 auto;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  text-align: right;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 8px;
+}
+
+.time-task-log-expense-amount-unit {
+  font-size: 0.8125rem;
+  color: var(--lp-modal-muted);
+  flex-shrink: 0;
+}
+
+.time-task-log-expense-error:not([hidden]) {
+  display: block;
+  margin-top: 0.5rem;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.8125rem;
+  color: var(--lp-modal-danger);
+  background: var(--lp-modal-danger-soft);
+  border-radius: 8px;
+}
+
+/* --- Datetime picker (바텀 시트) --- */
+.time-task-log-panel {
+  position: relative;
+}
+
+.time-datetime-picker-backdrop:not([hidden]) {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  background: rgba(21, 43, 69, 0.25);
+  border: none;
+  border-radius: inherit;
+}
+
+.time-datetime-picker-wrap.time-datetime-picker-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  max-height: 52vh;
+  overflow: auto;
+  background: var(--lp-modal-surface);
+  border-top: 1px solid var(--lp-modal-border);
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 -12px 32px rgba(21, 43, 69, 0.12);
+  box-sizing: border-box;
+}
+
+.time-datetime-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid var(--lp-modal-border);
+}
+
+.time-datetime-picker-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--lp-modal-navy);
+}
+
+.time-datetime-picker-buttons-wrap {
+  padding-bottom: 0.35rem;
+}
+
+.time-datetime-picker-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.45rem 0.75rem;
+}
+
+.time-datetime-picker-btn {
+  padding: 0.4rem 0.55rem;
+  font-size: 0.8125rem;
+  font-family: inherit;
+  font-weight: 500;
+  color: var(--lp-modal-navy-muted);
+  background: #f1f5f9;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.time-datetime-picker-wheels {
+  display: flex;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.65rem 0.85rem;
+  border-top: 1px solid var(--lp-modal-border);
+  min-height: 8rem;
+}
+
+.time-datetime-picker-column {
+  flex: 1 1 0;
+  min-width: 0;
+  max-height: 12rem;
+  overflow-y: auto;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 8px;
+  background: #fafbfc;
+}
+
+/* --- 할일 모달: 체크박스·기타 --- */
+.todo-task-edit-inline-schedule-label {
+  font-size: 0.875rem;
+  color: var(--lp-modal-navy);
+}
+
+.todo-task-edit-delete-below {
+  padding: 0 1rem 0.5rem;
+}
+
+.todo-task-edit-footer-delete {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.55rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.todo-list-confirm-body {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--lp-modal-navy-muted);
+}
+
+.todo-list-modal-confirm.todo-list-confirm-btn--danger {
+  background: var(--lp-modal-danger) !important;
+  border-color: var(--lp-modal-danger) !important;
+}
+
+/* --- 아카이브 메모 모달 --- */
+.archive-memo-modal .todo-list-modal-label {
+  margin: 0 0 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--lp-modal-muted);
+  line-height: 1.45;
+}
+
+/* --- 할일 모달: 네이티브 날짜 (과제 기록과 동일 톤) --- */
+#app .todo-task-edit-native-slot {
+  position: relative;
+}
+
+#app .todo-task-edit-native-dt-input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+#app .todo-task-edit-native-date-overlay {
+  display: block;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--lp-modal-navy);
+  background: #fff;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 8px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* --- 과제 기록: 과제 드롭다운 --- */
+.time-task-log-task-dropdown {
+  position: relative;
+  width: 100%;
+}
+
+.time-task-log-task-dropdown-trigger {
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  font-weight: 500;
+  text-align: left;
+  color: var(--lp-modal-navy);
+  background: #fff;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.time-task-log-task-dropdown-trigger::after {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  border-right: 2px solid var(--lp-modal-muted);
+  border-bottom: 2px solid var(--lp-modal-muted);
+  transform: rotate(45deg);
+  flex-shrink: 0;
+  margin-top: -0.2rem;
+  opacity: 0.7;
+}
+
+.time-task-log-task-dropdown-trigger:hover {
+  border-color: rgba(30, 77, 123, 0.35);
+}
+
+.time-task-log-task-dropdown-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 30;
+  max-height: min(55vh, 19rem);
+  display: flex;
+  flex-direction: column;
+  background: var(--lp-modal-surface);
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 10px;
+  box-shadow: 0 16px 40px rgba(21, 43, 69, 0.18);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.time-task-log-task-dropdown-search-wrap {
+  flex-shrink: 0;
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--lp-modal-border);
+  background: #f8fafc;
+}
+
+.time-task-log-task-dropdown-search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.time-task-log-task-dropdown-buckets {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--lp-modal-border);
+  background: #fff;
+}
+
+.time-task-log-task-dropdown-bucket {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--lp-modal-navy-muted);
+  background: #f1f5f9;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.time-task-log-task-dropdown-bucket.is-active {
+  color: #fff;
+  background: var(--lp-modal-accent);
+  border-color: var(--lp-modal-accent);
+}
+
+.time-task-log-task-dropdown-options {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.25rem 0;
+}
+
+.time-task-log-task-dropdown-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.time-task-log-task-dropdown-option:hover {
+  background: rgba(30, 77, 123, 0.06);
+}
+
+.time-task-log-task-dropdown-option-label {
+  color: var(--lp-modal-navy);
+}
+
+/* --- 태그 칩 (과제 기록) --- */
+#app .time-memo-tag-chip,
+#app .time-task-log-tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--lp-modal-navy-muted);
+  background: #f1f5f9;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 999px;
+}
+
+#app .time-memo-tag-chip-remove {
+  padding: 0 0.1rem;
+  border: none;
+  background: none;
+  color: var(--lp-modal-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* --- 투두 내 모달: 카테고리 버튼 --- */
+.time-task-log-todo-category-btn {
+  padding: 0.3rem 0.55rem;
+  margin: 0 0.35rem 0.35rem 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--lp-modal-navy-muted);
+  background: #fff;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.time-task-log-todo-category-btn.selected {
+  color: #fff;
+  background: var(--lp-modal-accent);
+  border-color: var(--lp-modal-accent);
+}

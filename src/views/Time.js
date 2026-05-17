@@ -1294,11 +1294,10 @@ function removeTimeLedgerRowFromRows(rows, rowData) {
 }
 
 /**
- * 과제 기록 모달용: 선택한 날짜에 저장된 기록 중 가장 늦은 시각(HH:mm).
- * exclude: 수정 중인 행(id 또는 composite 키)은 제외.
- * rowsOverride: 넘기면 loadTimeRows 대신 사용(디스크+캐시 병합본 등).
+ * 신규 과제 기록 시작 시각 제안: 해당일 기록 중 마감이 있으면 **가장 늦은 마감** 시각,
+ * 전부 마감 없으면 **가장 늦은 시작** 시각. `r.date`가 비면 `startTime`에서 날짜 추출.
  */
-function getLatestLedgerHhMmForTaskLogDate(dateInputValue, exclude, rowsOverride) {
+function getNextTaskLogStartHhMmFromLedger(dateInputValue, exclude, rowsOverride) {
   const normDate =
     normalizeDateForCompare(dateInputValue || "") ||
     String(dateInputValue || "")
@@ -1310,14 +1309,12 @@ function getLatestLedgerHhMmForTaskLogDate(dateInputValue, exclude, rowsOverride
     rowsOverride !== undefined && rowsOverride !== null
       ? rowsOverride
       : loadTimeRows();
-  let maxM = -1;
+  const dayRows = [];
   for (const r of rows) {
+    if (!r) continue;
     const rd =
       normalizeDateForCompare(r.date || "") ||
-      String(r.date || "")
-        .trim()
-        .replace(/\//g, "-")
-        .slice(0, 10);
+      parseDateFromDateTime(String(r.startTime || ""));
     if (rd !== normDate) continue;
     if (exclude) {
       const rid = String(r.id || "").trim();
@@ -1325,9 +1322,24 @@ function getLatestLedgerHhMmForTaskLogDate(dateInputValue, exclude, rowsOverride
       const ck = `${rd}|${(r.taskName || "").trim()}|${(r.startTime || "").trim()}`;
       if (exclude.composite && ck === exclude.composite) continue;
     }
-    const mm = rowEffectiveLastMinutesLedger(r);
-    if (mm != null && mm > maxM) maxM = mm;
+    dayRows.push(r);
   }
+  if (dayRows.length === 0) return null;
+
+  const withEnd = dayRows.filter((r) => String(r.endTime || "").trim());
+  let maxM = -1;
+
+  const bump = (fieldVal) => {
+    const mm = parseLedgerTimeStringToMinutes(String(fieldVal || ""));
+    if (mm != null && mm > maxM) maxM = mm;
+  };
+
+  if (withEnd.length) {
+    for (const r of withEnd) bump(r.endTime);
+  } else {
+    for (const r of dayRows) bump(r.startTime);
+  }
+
   if (maxM < 0) return null;
   const h = Math.floor(maxM / 60) % 24;
   const mi = maxM % 60;
@@ -3348,19 +3360,19 @@ export function render() {
             <div class="time-task-log-task-wrap"></div>
           </div>
           <div class="time-task-log-field time-task-log-datetime-onerow">
-            <span class="time-task-log-section-label">시간</span>
-            <div class="time-task-log-datetime-card">
-              <div class="time-task-log-datetime-input-row">
+            <div class="time-task-log-datetime-card lp-modal-datetime-card">
+              <div class="time-task-log-datetime-input-row time-task-log-datetime-main-row">
                 <div class="time-task-log-date-native-wrap">
-                  <input type="date" class="time-task-log-date-start" name="time-task-log-date" data-hide-delete-btn="true" data-use-native-mobile="true" />
+                  <input type="date" class="time-task-log-date-start" name="time-task-log-date" data-hide-delete-btn="true" data-use-native-mobile="true" aria-label="기록 날짜" />
                   <span class="time-task-log-date-overlay" aria-hidden="true"></span>
                 </div>
-                <span class="time-task-log-datetime-sep">-</span>
-                <input type="text" class="time-task-log-time-start" name="time-task-log-time-start" placeholder="hh:mm" maxlength="5" />
-                <span class="time-task-log-datetime-sep">-</span>
-                <input type="text" class="time-task-log-time-end" name="time-task-log-time-end" placeholder="hh:mm" maxlength="5" />
+                <span class="time-task-log-datetime-sep" aria-hidden="true">–</span>
+                <input type="text" class="time-task-log-time-start" name="time-task-log-time-start" placeholder="--:--" maxlength="5" autocomplete="off" aria-label="시작 시각" />
+                <span class="time-task-log-datetime-sep" aria-hidden="true">–</span>
+                <input type="text" class="time-task-log-time-end" name="time-task-log-time-end" placeholder="--:--" maxlength="5" autocomplete="off" aria-label="마감 시각" />
               </div>
             </div>
+            <div class="time-task-log-quick-block">
             <span class="time-task-log-section-label time-task-log-quick-section-label">빠른 선택</span>
             <div class="time-task-log-time-adjust-btns">
               <button type="button" class="time-task-log-time-adjust-btn time-task-log-time-adjust-now" data-now="true">지금</button>
@@ -3370,6 +3382,7 @@ export function render() {
               <button type="button" class="time-task-log-time-adjust-btn" data-delta="15">+15</button>
               <button type="button" class="time-task-log-time-adjust-btn" data-delta="30">+30</button>
               <button type="button" class="time-task-log-time-adjust-btn" data-day-end="true">하루끝</button>
+            </div>
             </div>
             <input type="hidden" class="time-task-log-start" />
             <input type="hidden" class="time-task-log-end" />
@@ -3535,6 +3548,7 @@ export function render() {
     ".time-task-log-time-start",
   );
   const taskLogTimeEnd = taskLogModal.querySelector(".time-task-log-time-end");
+  let taskLogEditTr = null;
   const taskLogEndWrap = taskLogModal.querySelector(
     ".time-task-log-datetime-wrap-end",
   );
@@ -3705,7 +3719,21 @@ export function render() {
 
   function syncTaskLogDateOverlay() {
     if (!taskLogDateStart) return;
-    const v = (taskLogDateStart.value || "").trim().slice(0, 10);
+    let v = (taskLogDateStart.value || "").trim().slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+      const fromHidden = parseDateFromDateTime(
+        String(taskLogStartInput?.value || "").trim(),
+      );
+      if (fromHidden) v = fromHidden;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v) && !taskLogEditTr) {
+      v = taskLogDefaultRecordYmd();
+    }
+    /* WebKit 등: programmatic value가 비어 보일 때 오버레이·hidden 기준으로 복구 */
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+      const cur = (taskLogDateStart.value || "").trim().slice(0, 10);
+      if (cur !== v) taskLogDateStart.value = v;
+    }
     const has = /^\d{4}-\d{2}-\d{2}$/.test(v);
     taskLogDateStart.classList.toggle("time-task-log-date-has-value", has);
     const wrap = taskLogDateStart.closest(".time-task-log-date-native-wrap");
@@ -3747,6 +3775,11 @@ export function render() {
     return val.trim();
   };
 
+  /** 과제 기록 모달: 기본 기록일은 오늘(로컬). 상단 피커 구간과 무관 — 과거·다른 날은 모달에서 날짜를 바꿈. */
+  function taskLogDefaultRecordYmd() {
+    return toDateStr(new Date());
+  }
+
   /**
    * 기록일 YYYY-MM-DD — 모바일·PWA(WebKit)에서 type=date 값이 비는 경우가 있어
    * 숨은 시작값에서 날짜를 복구해 마감 hidden 이 비지 않게 함.
@@ -3758,20 +3791,20 @@ export function render() {
       String(taskLogStartInput?.value || "").trim(),
     );
     if (fromStartHidden) return fromStartHidden;
-    /* 모바일 WebKit: date 인풋 value가 비어도 마감 시각만 맞추려면 필터 구간 기준일이라도 필요 */
-    return pickYmdFromFilter(startDateInput.value, filterStartDate);
+    /* date 인풋·hidden 모두 비면 기록 기본일(오늘) */
+    return taskLogDefaultRecordYmd();
   }
 
+  /**
+   * 과제 기록: 날짜 인풋이 비었을 때 폴백 — hidden 파싱 → 오늘(피커와 무관).
+   */
   function syncStartToHidden() {
     let date = (taskLogDateStart?.value || "").trim();
     const time = normalizeHhMm(taskLogTimeStart?.value || "");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       const prevHidden = String(taskLogStartInput?.value || "").trim();
       date =
-        parseDateFromDateTime(prevHidden) ||
-        (time
-          ? pickYmdFromFilter(startDateInput.value, filterStartDate)
-          : "");
+        parseDateFromDateTime(prevHidden) || taskLogDefaultRecordYmd();
       if (/^\d{4}-\d{2}-\d{2}$/.test(date) && taskLogDateStart) {
         taskLogDateStart.value = date;
       }
@@ -3832,7 +3865,11 @@ export function render() {
     } else {
       taskLogTimeStart.value = "";
     }
-    taskLogDateStart.value = dateStr;
+    const ymd =
+      dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)
+        ? dateStr
+        : taskLogDefaultRecordYmd();
+    taskLogDateStart.value = ymd;
     syncStartToHidden();
   }
 
@@ -3992,7 +4029,7 @@ export function render() {
             loadTimeRows(),
             Array.isArray(allRowsCache) ? allRowsCache : [],
           );
-          const latest = getLatestLedgerHhMmForTaskLogDate(
+          const latest = getNextTaskLogStartHhMmFromLedger(
             dateVal,
             taskLogEditExclude,
             mergedRows,
@@ -4210,7 +4247,6 @@ export function render() {
 
   let taskLogTaskDropdown = null;
   let taskLogAddContext = null;
-  let taskLogEditTr = null;
   let pendingEditStartTime = "";
 
   function buildTaskDropdown() {
@@ -5369,23 +5405,51 @@ export function render() {
   });
 
   /**
-   * 신규 과제 기록 모달: 시작 시각 = 해당 날짜 저장본 중 가장 늦은 시각(종료 있으면 종료, 없으면 시작).
-   * '마지막' 버튼과 동일 로직(getLatestLedgerHhMmForTaskLogDate + 디스크·캐시 병합).
-   * 해당 날짜 기록이 없으면 그 날짜 기준 00:00.
+   * 신규 과제 기록 모달: 오늘 날짜·오버레이 확정, 시작=해당일 마지막 마감(없으면 늦은 시작), 마감 입력 비움.
+   * (type=date/WebKit 이슈 대비 인풋 값·value 속성·오버레이 문구를 모두 맞춤.)
    */
-  function getDefaultStartTime() {
-    const dateStr = pickYmdFromFilter(startDateInput.value, filterStartDate);
+  function applyTaskLogModalDefaultsForNewEntry() {
+    const ymd = taskLogDefaultRecordYmd();
     const mergedRows = mergeLedgerRowsForDedupe(
       loadTimeRows(),
       Array.isArray(allRowsCache) ? allRowsCache : [],
     );
-    const latestHhMm = getLatestLedgerHhMmForTaskLogDate(
-      dateStr,
-      null,
-      mergedRows,
-    );
-    if (!latestHhMm) return `${dateStr}T00:00`;
-    return `${dateStr}T${latestHhMm}`;
+    const startHhMm =
+      getNextTaskLogStartHhMmFromLedger(ymd, null, mergedRows) || "00:00";
+    if (taskLogDateStart) {
+      taskLogDateStart.value = ymd;
+      try {
+        taskLogDateStart.defaultValue = ymd;
+      } catch (_) {}
+      try {
+        taskLogDateStart.setAttribute("value", ymd);
+      } catch (_) {}
+    }
+    if (taskLogTimeStart) {
+      taskLogTimeStart.value = startHhMm;
+      try {
+        taskLogTimeStart.defaultValue = startHhMm;
+      } catch (_) {}
+    }
+    if (taskLogTimeEnd) {
+      taskLogTimeEnd.value = "";
+      try {
+        taskLogTimeEnd.defaultValue = "";
+      } catch (_) {}
+    }
+    if (taskLogEndInput) taskLogEndInput.value = "";
+    const wrap = taskLogDateStart?.closest?.(".time-task-log-date-native-wrap");
+    const ov = wrap?.querySelector?.(".time-task-log-date-overlay");
+    if (ov && /^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
+      ov.textContent = formatTaskLogDateOverlayYmd(ymd);
+    }
+    syncStartToHidden();
+    syncEndToHidden();
+    syncTaskLogDateOverlay();
+    updateEndTimeClearVisibility();
+    try {
+      taskLogDateStart?.dispatchEvent(new Event("input", { bubbles: true }));
+    } catch (_) {}
   }
 
   /** 과제설정 모달: 서버 과제 목록만 pull (업서트 없음). 시간 탭 진입 시에도 tabEnter 에서 pull. */
@@ -5472,14 +5536,6 @@ export function render() {
       (t) => !(t.name || "").includes(" > "),
     );
     const firstTask = mainTasks[0]?.name || "";
-    taskLogTaskDropdown._setValue?.(firstTask);
-    const defaultStart = getDefaultStartTime();
-    setEndFromDatetime("");
-    setStartFromDatetime(defaultStart || "");
-    requestAnimationFrame(() => {
-      setStartFromDatetime(defaultStart || "");
-    });
-    updateEndTimeClearVisibility();
     if (taskLogFeedbackInput) taskLogFeedbackInput.value = "";
     if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
     taskLogMemoTags = [];
@@ -5517,7 +5573,18 @@ export function render() {
     if (taskLogExpenseInnerModal) taskLogExpenseInnerModal.hidden = true;
     if (taskLogKpiTodosSection) taskLogKpiTodosSection.hidden = true;
     if (taskLogKpiTodosList) taskLogKpiTodosList.innerHTML = "";
-    if (firstTask) onTaskSelectedForLog(firstTask);
+    applyTaskLogModalDefaultsForNewEntry();
+    taskLogTaskDropdown._setValue?.(firstTask);
+    requestAnimationFrame(() => {
+      applyTaskLogModalDefaultsForNewEntry();
+      requestAnimationFrame(() => {
+        applyTaskLogModalDefaultsForNewEntry();
+      });
+    });
+    setTimeout(() => {
+      if (!el.isConnected || taskLogModal.hidden) return;
+      applyTaskLogModalDefaultsForNewEntry();
+    }, 0);
     setTaskLogQuickAdjustActive(
       taskLogModal.querySelector(".time-task-log-time-adjust-last"),
     );
@@ -5650,6 +5717,7 @@ export function render() {
       refreshKpiTodosInLogModal(lockedName);
     }
     updateTaskLogMealDetailVisibility((data.taskName || "").trim());
+    syncTaskLogDateOverlay();
     void ensureTaskLogModalCloudData()
       .catch(() => {})
       .then(() => {
