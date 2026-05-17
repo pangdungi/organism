@@ -54,7 +54,10 @@ import {
 } from "../utils/timeLedgerTasksSupabase.js";
 import { pullKpiMapsForTaskLogModalOpen } from "../utils/kpiTabCloudRefresh.js";
 import { pullWorkScheduleFromSupabase } from "../utils/workScheduleSupabase.js";
-import { scheduleTimeDailyBudgetSyncPush } from "../utils/timeDailyBudgetSupabase.js";
+import {
+  scheduleTimeDailyBudgetSyncPush,
+} from "../utils/timeDailyBudgetSupabase.js";
+import { buildTimeTaskLogPickerDropdown } from "../utils/timeTaskLogPickerDropdown.js";
 import {
   ensureTimeLedgerEntryIds,
   readTimeLedgerEntriesRaw,
@@ -309,10 +312,387 @@ export function saveBudgetGoal(dateStr, taskName, goalTime, isInvest) {
   } catch (_) {}
 }
 
+/** 일간 예산 블록 저장 시 시:분 정규화 (예: 9:5 → 09:05) */
+function parseBudgetTimeToNormalizedHhMm(s) {
+  if (s == null || !String(s).trim()) return "";
+  const str = String(s).trim();
+  let h;
+  let min;
+  const m = str.match(/^(\d{1,2}):(\d{1,2})$/);
+  if (m) {
+    h = parseInt(m[1], 10);
+    min = parseInt(m[2], 10) || 0;
+  } else {
+    const m4 = str.match(/^(\d{3,4})$/);
+    if (!m4) return "";
+    const digits = m4[1];
+    if (digits.length === 4) {
+      h = parseInt(digits.slice(0, 2), 10);
+      min = parseInt(digits.slice(2), 10);
+    } else {
+      h = parseInt(digits.slice(0, 1), 10);
+      min = parseInt(digits.slice(1), 10);
+    }
+  }
+  if (!Number.isFinite(h) || !Number.isFinite(min)) return "";
+  h = Math.max(0, Math.min(23, h));
+  min = Math.max(0, Math.min(59, min));
+  return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+}
+
+/**
+ * 일간 타임블록(캘린더)용: 과제명·예상 시작~마감·메모를 goals.scheduledTimes / scheduleMemos 에 추가.
+ * 서버 반영은 time_daily_budget_days — notify 후 호출부에서 sync 권장.
+ */
+export function appendBudgetScheduleBlock(
+  dateStr,
+  taskName,
+  startHHmm,
+  endHHmm,
+  memo = "",
+) {
+  const dk = String(dateStr || "")
+    .replace(/\//g, "-")
+    .trim()
+    .slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dk)) {
+    return { ok: false, error: "날짜가 올바르지 않습니다." };
+  }
+  const name = String(taskName || "").trim();
+  if (!name) {
+    return { ok: false, error: "과제명을 입력해 주세요." };
+  }
+  const st = parseBudgetTimeToNormalizedHhMm(startHHmm);
+  const et = parseBudgetTimeToNormalizedHhMm(endHHmm);
+  if (!st || !et) {
+    return {
+      ok: false,
+      error: "시작·마감 시간을 시:분 형식으로 입력해 주세요. (예: 09:00)",
+    };
+  }
+  const [h1, m1] = st.split(":").map((x) => parseInt(x, 10));
+  const [h2, m2] = et.split(":").map((x) => parseInt(x, 10));
+  const startMin = h1 * 60 + m1;
+  const endMin = h2 * 60 + m2;
+  if (endMin <= startMin) {
+    return { ok: false, error: "마감 시간은 시작 시간보다 늦어야 합니다." };
+  }
+  try {
+    removeFromBudgetExcluded(dk, name);
+    const raw = localStorage.getItem(BUDGET_GOALS_KEY);
+    const all = raw ? JSON.parse(raw) : {};
+    if (!all[dk]) all[dk] = {};
+    const existing = all[dk][name] || {};
+    let scheduledTimes = [];
+    let scheduleMemos = [];
+    if (Array.isArray(existing.scheduledTimes)) {
+      scheduledTimes = [...existing.scheduledTimes];
+      scheduleMemos = Array.isArray(existing.scheduleMemos)
+        ? [...existing.scheduleMemos]
+        : [];
+    } else if (existing.scheduledTime && String(existing.scheduledTime).trim()) {
+      scheduledTimes = [String(existing.scheduledTime).trim()];
+      scheduleMemos = Array.isArray(existing.scheduleMemos)
+        ? [...existing.scheduleMemos]
+        : [];
+    }
+    while (scheduleMemos.length < scheduledTimes.length) {
+      scheduleMemos.push("");
+    }
+    scheduledTimes.push(`${st}-${et}`);
+    scheduleMemos.push(String(memo || "").trim());
+    const next = {
+      ...existing,
+      scheduledTimes,
+      scheduleMemos,
+    };
+    delete next.scheduledTime;
+    all[dk][name] = next;
+    localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
+    notifyTimeDailyBudgetSaved(dk);
+    return { ok: true };
+  } catch (_) {
+    return { ok: false, error: "저장 중 오류가 났습니다." };
+  }
+}
+
+function normalizeBudgetScheduledEntryString(entry) {
+  const parts = String(entry || "").trim().split("-");
+  if (parts.length < 2) return "";
+  const a = parseBudgetTimeToNormalizedHhMm(parts[0]);
+  const b = parseBudgetTimeToNormalizedHhMm(parts[1]);
+  if (!a || !b) return "";
+  return `${a}-${b}`;
+}
+
+/**
+ * 일간 예산 scheduledTimes에서 startMin~endMin 과 일치하는 슬롯 인덱스 (타임라인 수정 모달용).
+ */
+export function findBudgetScheduleSlotIndex(dateStr, taskName, startMin, endMin) {
+  const dk = String(dateStr || "")
+    .replace(/\//g, "-")
+    .trim()
+    .slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dk)) return -1;
+  const name = String(taskName || "").trim();
+  if (!name) return -1;
+  const sm = Number(startMin);
+  const em = Number(endMin);
+  if (!Number.isFinite(sm) || !Number.isFinite(em)) return -1;
+  const fmt = (m) =>
+    `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  const needle = `${fmt(sm)}-${fmt(em)}`;
+  const goals = getBudgetGoals(dk);
+  const existing = goals[name];
+  if (!existing) return -1;
+  let scheduledTimes = [];
+  if (Array.isArray(existing.scheduledTimes)) {
+    scheduledTimes = existing.scheduledTimes;
+  } else if (existing.scheduledTime && String(existing.scheduledTime).trim()) {
+    scheduledTimes = [String(existing.scheduledTime).trim()];
+  }
+  for (let i = 0; i < scheduledTimes.length; i++) {
+    if (normalizeBudgetScheduledEntryString(scheduledTimes[i]) === needle) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+/** @param {number} timeIdx — goals[taskName].scheduledTimes 인덱스 */
+export function removeBudgetScheduleBlockAtIndex(dateStr, taskName, timeIdx) {
+  const dk = String(dateStr || "")
+    .replace(/\//g, "-")
+    .trim()
+    .slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dk)) {
+    return { ok: false, error: "날짜가 올바르지 않습니다." };
+  }
+  const name = String(taskName || "").trim();
+  if (!name) {
+    return { ok: false, error: "과제명이 없습니다." };
+  }
+  const idx = Number(timeIdx);
+  if (!Number.isFinite(idx) || idx < 0) {
+    return { ok: false, error: "항목을 찾지 못했습니다." };
+  }
+  try {
+    const raw = localStorage.getItem(BUDGET_GOALS_KEY);
+    const all = raw ? JSON.parse(raw) : {};
+    if (!all[dk] || !all[dk][name]) {
+      return { ok: false, error: "항목을 찾지 못했습니다." };
+    }
+    const existing = all[dk][name] || {};
+    let scheduledTimes = [];
+    let scheduleMemos = [];
+    if (Array.isArray(existing.scheduledTimes)) {
+      scheduledTimes = [...existing.scheduledTimes];
+      scheduleMemos = Array.isArray(existing.scheduleMemos)
+        ? [...existing.scheduleMemos]
+        : [];
+    } else if (existing.scheduledTime && String(existing.scheduledTime).trim()) {
+      scheduledTimes = [String(existing.scheduledTime).trim()];
+      scheduleMemos = Array.isArray(existing.scheduleMemos)
+        ? [...existing.scheduleMemos]
+        : [];
+    }
+    while (scheduleMemos.length < scheduledTimes.length) {
+      scheduleMemos.push("");
+    }
+    if (idx >= scheduledTimes.length) {
+      return { ok: false, error: "항목을 찾지 못했습니다." };
+    }
+    scheduledTimes.splice(idx, 1);
+    scheduleMemos.splice(idx, 1);
+    const next = { ...existing, scheduledTimes, scheduleMemos };
+    delete next.scheduledTime;
+    if (scheduledTimes.length === 0) {
+      delete next.scheduledTimes;
+      delete next.scheduleMemos;
+    }
+    if (Object.keys(next).length === 0) {
+      delete all[dk][name];
+    } else {
+      all[dk][name] = next;
+    }
+    if (all[dk] && Object.keys(all[dk]).length === 0) {
+      delete all[dk];
+    }
+    localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
+    notifyTimeDailyBudgetSaved(dk);
+    return { ok: true };
+  } catch (_) {
+    return { ok: false, error: "삭제 중 오류가 났습니다." };
+  }
+}
+
+/**
+ * 일간 예산 예정 슬롯 수정 (과제명 변경 시 이전 과제에서 제거 후 새 과제에 추가).
+ */
+export function updateBudgetScheduleBlockAtIndex(
+  dateStr,
+  prevTaskName,
+  timeIdx,
+  nextTaskName,
+  startHHmm,
+  endHHmm,
+  memo,
+) {
+  const dk = String(dateStr || "")
+    .replace(/\//g, "-")
+    .trim()
+    .slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dk)) {
+    return { ok: false, error: "날짜가 올바르지 않습니다." };
+  }
+  const prevKey = String(prevTaskName || "").trim();
+  const nextKey = String(nextTaskName || "").trim();
+  if (!prevKey || !nextKey) {
+    return { ok: false, error: "과제를 선택해 주세요." };
+  }
+  const ix = Number(timeIdx);
+  if (!Number.isFinite(ix) || ix < 0) {
+    return { ok: false, error: "항목을 찾지 못했습니다." };
+  }
+  const st = parseBudgetTimeToNormalizedHhMm(startHHmm);
+  const et = parseBudgetTimeToNormalizedHhMm(endHHmm);
+  if (!st || !et) {
+    return {
+      ok: false,
+      error: "시작·마감 시간을 시:분 형식으로 입력해 주세요. (예: 09:00)",
+    };
+  }
+  const [h1, m1] = st.split(":").map((x) => parseInt(x, 10));
+  const [h2, m2] = et.split(":").map((x) => parseInt(x, 10));
+  const startMin = h1 * 60 + m1;
+  const endMin = h2 * 60 + m2;
+  if (endMin <= startMin) {
+    return { ok: false, error: "마감 시간은 시작 시간보다 늦어야 합니다." };
+  }
+  const newSlot = `${st}-${et}`;
+  const newMemo = String(memo || "").trim();
+  try {
+    removeFromBudgetExcluded(dk, nextKey);
+    const raw = localStorage.getItem(BUDGET_GOALS_KEY);
+    const all = raw ? JSON.parse(raw) : {};
+    if (!all[dk]) all[dk] = {};
+    if (!all[dk][prevKey]) {
+      return { ok: false, error: "항목을 찾지 못했습니다." };
+    }
+    const readSlotArrays = (key) => {
+      const existing = all[dk][key] || {};
+      let scheduledTimes = [];
+      let scheduleMemos = [];
+      if (Array.isArray(existing.scheduledTimes)) {
+        scheduledTimes = [...existing.scheduledTimes];
+        scheduleMemos = Array.isArray(existing.scheduleMemos)
+          ? [...existing.scheduleMemos]
+          : [];
+      } else if (existing.scheduledTime && String(existing.scheduledTime).trim()) {
+        scheduledTimes = [String(existing.scheduledTime).trim()];
+        scheduleMemos = Array.isArray(existing.scheduleMemos)
+          ? [...existing.scheduleMemos]
+          : [];
+      }
+      while (scheduleMemos.length < scheduledTimes.length) {
+        scheduleMemos.push("");
+      }
+      return { existing, scheduledTimes, scheduleMemos };
+    };
+    const p = readSlotArrays(prevKey);
+    if (ix >= p.scheduledTimes.length) {
+      return { ok: false, error: "항목을 찾지 못했습니다." };
+    }
+    if (prevKey === nextKey) {
+      p.scheduledTimes[ix] = newSlot;
+      p.scheduleMemos[ix] = newMemo;
+      const nextObj = {
+        ...p.existing,
+        scheduledTimes: p.scheduledTimes,
+        scheduleMemos: p.scheduleMemos,
+      };
+      delete nextObj.scheduledTime;
+      all[dk][prevKey] = nextObj;
+    } else {
+      p.scheduledTimes.splice(ix, 1);
+      p.scheduleMemos.splice(ix, 1);
+      const prevNext = {
+        ...p.existing,
+        scheduledTimes: p.scheduledTimes,
+        scheduleMemos: p.scheduleMemos,
+      };
+      delete prevNext.scheduledTime;
+      if (p.scheduledTimes.length === 0) {
+        delete prevNext.scheduledTimes;
+        delete prevNext.scheduleMemos;
+      }
+      if (Object.keys(prevNext).length === 0) {
+        delete all[dk][prevKey];
+      } else {
+        all[dk][prevKey] = prevNext;
+      }
+      const n = readSlotArrays(nextKey);
+      n.scheduledTimes.push(newSlot);
+      n.scheduleMemos.push(newMemo);
+      const nextObj = {
+        ...n.existing,
+        scheduledTimes: n.scheduledTimes,
+        scheduleMemos: n.scheduleMemos,
+      };
+      delete nextObj.scheduledTime;
+      all[dk][nextKey] = nextObj;
+    }
+    localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
+    notifyTimeDailyBudgetSaved(dk);
+    return { ok: true };
+  } catch (_) {
+    return { ok: false, error: "저장 중 오류가 났습니다." };
+  }
+}
+
 /** 새 행 플레이스홀더 (재렌더 시 행 유지용) */
 const BUDGET_PLACEHOLDER_PREFIX = "(과제 선택)·";
 function isBudgetPlaceholder(key) {
   return (key || "").startsWith(BUDGET_PLACEHOLDER_PREFIX);
+}
+
+/**
+ * 해당 날짜 일간 예산(goals) 예상 블록 중 가장 늦은 마감 시각(HH:mm).
+ * 새 예상 일정 시작 기본값 — 과제 기록의 getNextTaskLogStartHhMmFromLedger 와 같이 이어 붙이기.
+ */
+export function getLatestBudgetScheduleEndHhMm(dateStr) {
+  const dk = String(dateStr || "")
+    .replace(/\//g, "-")
+    .trim()
+    .slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dk)) return null;
+  const goals = getBudgetGoals(dk);
+  let maxMin = -1;
+  for (const [taskKey, data] of Object.entries(goals)) {
+    if (isBudgetPlaceholder(taskKey)) continue;
+    if (!data || typeof data !== "object" || Array.isArray(data)) continue;
+    const slots = [];
+    if (Array.isArray(data.scheduledTimes)) {
+      for (const x of data.scheduledTimes) {
+        if (x && String(x).trim()) slots.push(String(x).trim());
+      }
+    } else if (data.scheduledTime && String(data.scheduledTime).trim()) {
+      slots.push(String(data.scheduledTime).trim());
+    }
+    for (const slot of slots) {
+      const parts = String(slot).trim().split("-");
+      if (parts.length < 2) continue;
+      const endNorm = parseBudgetTimeToNormalizedHhMm(parts[1].trim());
+      if (!endNorm) continue;
+      const [h, m] = endNorm.split(":").map((x) => parseInt(x, 10));
+      const total = h * 60 + m;
+      if (total > maxMin) maxMin = total;
+    }
+  }
+  if (maxMin < 0) return null;
+  const h = Math.floor(maxMin / 60) % 24;
+  const mi = maxMin % 60;
+  return `${String(h).padStart(2, "0")}:${String(mi).padStart(2, "0")}`;
 }
 
 function getBudgetExcluded(dateStr) {
@@ -1330,7 +1710,7 @@ function removeTimeLedgerRowFromRows(rows, rowData) {
  * 신규 과제 기록 시작 시각 제안: 해당일 기록 중 마감이 있으면 **가장 늦은 마감** 시각,
  * 전부 마감 없으면 **가장 늦은 시작** 시각. `r.date`가 비면 `startTime`에서 날짜 추출.
  */
-function getNextTaskLogStartHhMmFromLedger(
+export function getNextTaskLogStartHhMmFromLedger(
   dateInputValue,
   exclude,
   rowsOverride,
@@ -4445,204 +4825,10 @@ export function render() {
   let pendingEditStartTime = "";
 
   function buildTaskDropdown() {
-    const LEDGER_BUCKET_CHIPS = [
-      { id: "dream", label: "꿈" },
-      { id: "happiness", label: "행복" },
-      { id: "sideincome", label: "부수입" },
-      { id: "health", label: "건강" },
-      { id: "nonproductive", label: "비생산" },
-      { id: "other", label: "그외" },
-    ];
-
-    function timeLedgerTaskLogPickerBucket(t) {
-      let prod = String(t?.productivity ?? "")
-        .trim()
-        .toLowerCase();
-      if (!prod) {
-        prod = String(
-          getProductivityFromCategory(String(t?.category ?? "").trim()) || "",
-        ).toLowerCase();
-      }
-      if (prod === "nonproductive") return "nonproductive";
-      if (prod === "other") return "other";
-      const cat = String(t?.category ?? "")
-        .trim()
-        .toLowerCase();
-      if (cat === "dream") return "dream";
-      if (cat === "happiness") return "happiness";
-      if (cat === "sideincome") return "sideincome";
-      if (cat === "health") return "health";
-      return "other";
-    }
-
-    const wrap = document.createElement("div");
-    lpSetClasses(wrap, "time-task-log-task-dropdown");
-    const trigger = document.createElement("button");
-    trigger.type = "button";
-    lpSetClasses(trigger, "time-task-log-task-dropdown-trigger");
-    trigger.textContent = "과제를 선택하세요";
-    const panel = document.createElement("div");
-    lpSetClasses(
-      panel,
-      "time-task-log-task-dropdown-panel time-task-log-task-dropdown-panel--ledger-buckets",
-    );
-    panel.hidden = true;
-    let value = "";
-    let searchQuery = "";
-    let pickerBucket = "dream";
-
-    function renderOptions(container, filter) {
-      container.innerHTML = "";
-      const q = (filter || "").trim().toLowerCase();
-      const allTasks = getFullTaskOptions();
-      let tasks = allTasks.filter((t) => !(t.name || "").includes(" > "));
-      if (!q) {
-        tasks = tasks.filter(
-          (t) => timeLedgerTaskLogPickerBucket(t) === pickerBucket,
-        );
-      }
-      if (q) {
-        tasks = tasks.filter((t) => (t.name || "").toLowerCase().includes(q));
-      }
-      tasks.sort((a, b) => (a.name || "").localeCompare(b.name || "", "ko"));
-      tasks.forEach((t) => {
-        const row = document.createElement("div");
-        lpSetClasses(row, "time-task-log-task-dropdown-option");
-        const prod = (
-          t.productivity ||
-          getProductivityFromCategory(t.category) ||
-          "productive"
-        ).trim();
-        const barClass =
-          prod === "productive"
-            ? "time-task-prod-bar time-task-prod-bar--productive"
-            : prod === "nonproductive"
-              ? "time-task-prod-bar time-task-prod-bar--nonproductive"
-              : "time-task-prod-bar time-task-prod-bar--other";
-        const bar = document.createElement("span");
-        lpSetClasses(bar, barClass);
-        bar.setAttribute("aria-hidden", "true");
-        const textWrap = document.createElement("span");
-        lpSetClasses(textWrap, "time-task-log-task-dropdown-option-text");
-        const label = document.createElement("span");
-        lpSetClasses(label, "time-task-log-task-dropdown-option-label");
-        label.textContent = t.name || "";
-        textWrap.appendChild(label);
-        appendTaskDropdownBadges(textWrap, t);
-        row.appendChild(bar);
-        row.appendChild(textWrap);
-        const closePanelAndSelect = () => {
-          value = t.name || "";
-          trigger.textContent = value || "과제를 선택하세요";
-          panel.hidden = true;
-          onTaskSelectedForLog(value);
-        };
-        row.addEventListener("mousedown", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          closePanelAndSelect();
-        });
-        row.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          closePanelAndSelect();
-        });
-        container.appendChild(row);
-      });
-    }
-
-    function renderPanel() {
-      panel.innerHTML = "";
-      let optionsContainer = null;
-
-      const searchWrap = document.createElement("div");
-      lpSetClasses(searchWrap, "time-task-log-task-dropdown-search-wrap");
-      const searchInput = document.createElement("input");
-      searchInput.type = "text";
-      searchInput.placeholder = "과제 검색...";
-      lpSetClasses(searchInput, "time-task-log-task-dropdown-search");
-      searchInput.value = searchQuery;
-      searchInput.setAttribute("autocomplete", "off");
-      searchWrap.appendChild(searchInput);
-      panel.appendChild(searchWrap);
-
-      const chipsWrap = document.createElement("div");
-      lpSetClasses(chipsWrap, "time-task-log-task-dropdown-buckets");
-      chipsWrap.setAttribute("role", "tablist");
-      chipsWrap.setAttribute("aria-label", "과제 구역");
-      LEDGER_BUCKET_CHIPS.forEach(({ id, label: chipLabel }) => {
-        const b = document.createElement("button");
-        b.type = "button";
-        lpSetClasses(b, "time-task-log-task-dropdown-bucket");
-        b.dataset.bucket = id;
-        b.textContent = chipLabel;
-        b.setAttribute("role", "tab");
-        b.setAttribute("aria-selected", id === pickerBucket ? "true" : "false");
-        if (id === pickerBucket) lpTokenAdd(b, "is-active");
-        b.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          pickerBucket = id;
-          chipsWrap
-            .querySelectorAll(
-              '[data-legacy~="time-task-log-task-dropdown-bucket"]',
-            )
-            .forEach((x) => {
-              const on = x.dataset.bucket === id;
-              lpTokenToggle(x, "is-active", on);
-              x.setAttribute("aria-selected", on ? "true" : "false");
-            });
-          if (optionsContainer) {
-            renderOptions(optionsContainer, searchQuery);
-          }
-        });
-        chipsWrap.appendChild(b);
-      });
-      panel.appendChild(chipsWrap);
-
-      optionsContainer = document.createElement("div");
-      lpSetClasses(optionsContainer, "time-task-log-task-dropdown-options");
-      panel.appendChild(optionsContainer);
-      searchInput.addEventListener("input", () => {
-        searchQuery = searchInput.value.trim();
-        renderOptions(optionsContainer, searchQuery);
-      });
-      searchInput.addEventListener("click", (e) => e.stopPropagation());
-      searchInput.addEventListener("keydown", (e) => e.stopPropagation());
-      renderOptions(optionsContainer, searchQuery);
-    }
-
-    trigger.addEventListener("click", () => {
-      searchQuery = "";
-      pickerBucket = "dream";
-      renderPanel();
-      panel.hidden = !panel.hidden;
-      if (!panel.hidden)
-        panel
-          .querySelector('[data-legacy~="time-task-log-task-dropdown-search"]')
-          ?.focus();
+    return buildTimeTaskLogPickerDropdown({
+      abortSignal: signal,
+      onTaskSelected: onTaskSelectedForLog,
     });
-    const closePanelOnOutside = (e) => {
-      if (panel.hidden) return;
-      if (!wrap.contains(e.target)) panel.hidden = true;
-    };
-    document.addEventListener("mousedown", closePanelOnOutside, {
-      capture: true,
-      signal,
-    });
-    document.addEventListener("touchstart", closePanelOnOutside, {
-      capture: true,
-      signal,
-    });
-    wrap.appendChild(trigger);
-    wrap.appendChild(panel);
-    wrap._getValue = () => value;
-    wrap._setValue = (v) => {
-      value = v || "";
-      trigger.textContent = value || "과제를 선택하세요";
-      onTaskSelectedForLog(value);
-    };
-    return wrap;
   }
 
   const taskLogPickerTitle = taskLogPickerWrap?.querySelector(

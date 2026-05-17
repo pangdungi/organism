@@ -22,6 +22,7 @@ import {
   parseTimeToHours,
   isTimeLedgerRowLiveRecording,
   formatIntegerMinutesDurationKo,
+  findBudgetScheduleSlotIndex,
 } from "./Time.js";
 import { showToast } from "../utils/showToast.js";
 import { supabase } from "../supabase.js";
@@ -47,6 +48,7 @@ import {
   flushAllPendingTimeDailyBudgetSync,
   pullTimeDailyBudgetFromSupabase,
 } from "../utils/timeDailyBudgetSupabase.js";
+import { openCalendarExpectedScheduleModal } from "../utils/calendarExpectedScheduleModal.js";
 import { logLpRender } from "../utils/lpRenderDebugLog.js";
 import { FIXED_OTHER_TASKS } from "../utils/timeTaskOptionsConstants.js";
 import {
@@ -3389,12 +3391,11 @@ function render1DayView(tabsElement = null) {
   nav.className = "calendar-1day-nav";
   nav.innerHTML = `
     <div class="calendar-nav-controls">
-      <button type="button" class="calendar-nav-prev" title="이전 날">&lt;</button>
       <div class="time-filter-date-field calendar-1day-nav-date-field" role="button" tabindex="0" aria-label="날짜 선택">
         <input type="date" class="calendar-1day-nav-date-input" aria-label="날짜 선택" />
         <img src="/toolbaricons/calendar-alt.svg" alt="" class="time-filter-date-cal-icon" width="18" height="18" aria-hidden="true" />
       </div>
-      <button type="button" class="calendar-nav-next" title="다음 날">&gt;</button>
+      <button type="button" class="calendar-1day-nav-add" title="예상 일정 추가">+</button>
     </div>
   `;
   nav.classList.add("calendar-monthly-nav");
@@ -3560,26 +3561,6 @@ function render1DayView(tabsElement = null) {
           const item = document.createElement("div");
           item.className = "calendar-1day-timeline-item";
 
-          const spot = document.createElement("div");
-          spot.className = "calendar-1day-timeline-spot";
-          const spotMark = document.createElement("div");
-          spotMark.className = "calendar-1day-timeline-spot-mark";
-          /* 생산/비생산/기타 면색: 배경·글자색만 — 테두리 없음(CSS) */
-          if (!ledgerMissed) {
-            spotMark.style.backgroundColor = c.bg;
-            spotMark.style.color = c.accentText;
-          } else {
-            spotMark.style.backgroundColor = "rgba(0, 0, 0, 0.06)";
-            spotMark.style.color = "#9ca3af";
-          }
-          spotMark.textContent = span.startDisplay;
-          spotMark.setAttribute(
-            "aria-label",
-            `${span.startDisplay}에 시작하는 일정`,
-          );
-
-          spot.appendChild(spotMark);
-
           const card = document.createElement("div");
           card.className = "calendar-1day-timeline-card";
           const titleBase = memoTextStored
@@ -3604,6 +3585,36 @@ function render1DayView(tabsElement = null) {
             card.style.setProperty("--calendar-timeline-stripe", c.leftStripe);
           }
 
+          const startEl = document.createElement("span");
+          startEl.className = "calendar-1day-timeline-card-start";
+          startEl.textContent = span.startDisplay;
+
+          const headBarCell = document.createElement("div");
+          headBarCell.className = "calendar-1day-timeline-card-head-bar";
+          const barEl = document.createElement("div");
+          barEl.className = "calendar-1day-timeline-card-bar";
+          barEl.setAttribute("aria-hidden", "true");
+          headBarCell.appendChild(barEl);
+
+          const timeConnector = document.createElement("span");
+          timeConnector.className = "calendar-1day-timeline-card-time-connector";
+          timeConnector.setAttribute("aria-hidden", "true");
+
+          const endEl = document.createElement("span");
+          endEl.className = "calendar-1day-timeline-card-end";
+          endEl.textContent = span.endDisplay;
+
+          card.appendChild(startEl);
+          card.appendChild(headBarCell);
+          card.appendChild(timeConnector);
+
+          const body = document.createElement("div");
+          body.className = "calendar-1day-timeline-card-body";
+
+          const durRow = document.createElement("span");
+          durRow.className = "calendar-1day-timeline-card-duration";
+          durRow.textContent = formatIntegerMinutesDurationKo(durMin);
+
           const titleRow = document.createElement("div");
           titleRow.className = "calendar-1day-timeline-card-title-row";
           const titleEl = document.createElement("div");
@@ -3623,28 +3634,9 @@ function render1DayView(tabsElement = null) {
               checkEl.style.color = c.leftStripe.trim();
             }
             titleRow.appendChild(checkEl);
-          } else if (ledgerMissed) {
-            const missEl = document.createElement("span");
-            missEl.className = "calendar-1day-timeline-card-missed-mark";
-            missEl.setAttribute("role", "img");
-            missEl.setAttribute(
-              "aria-label",
-              "예정 시간이 지났는데 아직 기록이 없음",
-            );
-            missEl.textContent = "✕";
-            titleRow.appendChild(missEl);
           }
-          card.appendChild(titleRow);
-
-          const meta = document.createElement("div");
-          meta.className = "calendar-1day-timeline-card-meta";
-          const timeRange = document.createElement("span");
-          timeRange.className = "calendar-1day-timeline-card-time";
-          timeRange.textContent = `${span.startDisplay} - ${span.endDisplay}`;
-          if (!ledgerMissed && !ledgerMatched) {
-            timeRange.style.color = c.accentMuted;
-          }
-          meta.appendChild(timeRange);
+          titleRow.appendChild(durRow);
+          body.appendChild(titleRow);
 
           let badgeText = "";
           if (sidRaw && TL_SECTION_LABELS[sidRaw]) {
@@ -3652,6 +3644,9 @@ function render1DayView(tabsElement = null) {
           } else if (sidRaw.startsWith("custom-")) {
             badgeText = "커스텀";
           }
+
+          const meta = document.createElement("div");
+          meta.className = "calendar-1day-timeline-card-meta";
           if (badgeText) {
             const badge = document.createElement("span");
             badge.className = "calendar-1day-timeline-card-badge";
@@ -3672,13 +3667,6 @@ function render1DayView(tabsElement = null) {
             }
             meta.appendChild(badge);
           }
-          const durEl = document.createElement("span");
-          durEl.className = "calendar-1day-timeline-card-duration";
-          durEl.textContent = formatIntegerMinutesDurationKo(durMin);
-          if (!ledgerMissed && !ledgerMatched) {
-            durEl.style.color = c.accentMuted;
-          }
-          meta.appendChild(durEl);
           if (liveRecordingThisSpan) {
             const prog = document.createElement("span");
             prog.className = "calendar-1day-timeline-card-progress";
@@ -3688,7 +3676,10 @@ function render1DayView(tabsElement = null) {
             }
             meta.appendChild(prog);
           }
-          card.appendChild(meta);
+          if (meta.childNodes.length) {
+            body.appendChild(meta);
+          }
+
           if (memoTextStored) {
             const memoEl = document.createElement("div");
             memoEl.className = "calendar-1day-timeline-card-memo";
@@ -3696,10 +3687,49 @@ function render1DayView(tabsElement = null) {
             if (!ledgerMissed && !ledgerMatched) {
               memoEl.style.color = c.accentMuted;
             }
-            card.appendChild(memoEl);
+            body.appendChild(memoEl);
           }
 
-          item.appendChild(spot);
+          card.appendChild(body);
+
+          card.appendChild(endEl);
+
+          if (!ledgerMissed && !ledgerMatched) {
+            startEl.style.color = c.accentMuted;
+            endEl.style.color = c.accentMuted;
+            durRow.style.color = c.accentMuted;
+          }
+
+          card.setAttribute("role", "button");
+          card.tabIndex = 0;
+          card.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              card.click();
+            }
+          });
+          card.addEventListener("click", () => {
+            const slotIdx = findBudgetScheduleSlotIndex(
+              targetKey,
+              span.taskName,
+              span.startMin,
+              span.endMin,
+            );
+            if (slotIdx < 0) {
+              showToast(
+                "일간 예산에서 추가한 예상 일정만 여기서 수정할 수 있습니다.",
+              );
+              return;
+            }
+            openCalendarExpectedScheduleModal({
+              dateKey: targetKey,
+              edit: { taskName: span.taskName, timeIdx: slotIdx },
+              title: "예상 일정 수정",
+              submitLabel: "저장",
+              onSaved: () => renderCalendar(),
+            });
+          });
+
           item.appendChild(card);
           timelineList.appendChild(item);
         });
@@ -3785,20 +3815,21 @@ function render1DayView(tabsElement = null) {
       });
     }
   }
-  lpCalendarNavQ(nav, wrap, ".calendar-nav-prev").addEventListener(
-    "click",
-    () => {
-      dayOffset--;
-      renderCalendar();
-    },
-  );
-  lpCalendarNavQ(nav, wrap, ".calendar-nav-next").addEventListener(
-    "click",
-    () => {
-      dayOffset++;
-      renderCalendar();
-    },
-  );
+  {
+    const addBtn = lpCalendarNavQ(nav, wrap, ".calendar-1day-nav-add");
+    if (addBtn) {
+      addBtn.setAttribute("aria-label", "이 날 예상 일정 추가");
+      addBtn.addEventListener("click", () => {
+        const targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() + dayOffset);
+        const key = formatDateKey(targetDate);
+        openCalendarExpectedScheduleModal({
+          dateKey: key,
+          onSaved: () => renderCalendar(),
+        });
+      });
+    }
+  }
 
   const topBar = document.createElement("div");
   topBar.className = "calendar-monthly-top-bar";

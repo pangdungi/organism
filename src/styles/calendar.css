@@ -208,6 +208,15 @@
   background: var(--cal-surface-muted);
 }
 
+/* 일간 네비: 시간 기록 바로가기 (+) — Prev/Next 대체 */
+.calendar-nav-controls .calendar-1day-nav-add {
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1;
+  padding-inline: 0.5rem;
+  min-width: 2.25rem;
+}
+
 /* 일간 타임라인 상단: 월 네비(MMM/연도)와 동일 타이포 체계, 사방 패딩·하단 보더 */
 .calendar-monthly-top-bar {
   display: flex;
@@ -266,6 +275,215 @@
   text-align: center;
   font-size: 0.875rem;
   line-height: 1.45;
+  color: var(--cal-text-muted);
+}
+
+/* 일간 타임라인: 예상 타임카드 */
+.calendar-1day-timeline-wrap {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.calendar-1day-timeline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 0 0.75rem;
+}
+
+.calendar-1day-divider {
+  display: none;
+}
+
+.calendar-1day-timeline-item {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.calendar-1day-timeline-card {
+  --calendar-timeline-stripe: rgba(42, 56, 40, 0.35);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.45rem;
+  row-gap: 0.4rem;
+  align-items: start;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding-inline: 0.65rem;
+  padding-block: 0.55rem 0.6rem;
+  border-radius: 10px;
+  border: none;
+  background: var(--cal-surface);
+  cursor: pointer;
+  text-align: left;
+}
+
+.calendar-1day-timeline-card:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--cal-line-strong) 70%, var(--cal-text));
+  outline-offset: 2px;
+}
+
+.calendar-1day-timeline-card-start {
+  grid-column: 1;
+  grid-row: 1;
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--cal-text-muted);
+  line-height: 1.2;
+}
+
+.calendar-1day-timeline-card-head-bar {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-self: stretch;
+}
+
+.calendar-1day-timeline-card-time-connector {
+  grid-column: 1;
+  grid-row: 2 / 4;
+  justify-self: center;
+  align-self: stretch;
+  width: 3px;
+  min-height: 0.25rem;
+  border: none;
+  border-radius: 2px;
+  background: #f0f4fa;
+}
+
+.calendar-1day-timeline-card-body {
+  grid-column: 2;
+  grid-row: 2 / 4;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  align-self: stretch;
+}
+
+.calendar-1day-timeline-card-bar {
+  width: 100%;
+  height: 6px;
+  min-height: 6px;
+  flex: 0 0 auto;
+  border: none;
+  border-radius: 2px;
+  background: #f0f4fa;
+  align-self: stretch;
+  opacity: 1;
+}
+
+.calendar-1day-timeline-card-title-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.calendar-1day-timeline-card-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.9375rem;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+  color: var(--cal-text);
+}
+
+.calendar-1day-timeline-card-end {
+  grid-column: 1;
+  grid-row: 4;
+  justify-self: start;
+  align-self: start;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--cal-text-muted);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.calendar-1day-timeline-card-duration {
+  flex-shrink: 0;
+  margin-left: auto;
+  align-self: flex-start;
+  text-align: right;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--cal-text-muted);
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.calendar-1day-timeline-card-check {
+  flex-shrink: 0;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.calendar-1day-timeline-card-memo {
+  margin-top: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--cal-text-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-width: 0;
+}
+
+.calendar-1day-timeline-card-meta {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0;
+}
+
+.calendar-1day-timeline-card-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.38rem;
+  border-radius: 6px;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.calendar-1day-timeline-card-progress {
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.calendar-1day-timeline-card--done .calendar-1day-timeline-card-title {
+  color: var(--cal-text-muted);
+}
+
+.calendar-1day-timeline-card--done .calendar-1day-timeline-card-start,
+.calendar-1day-timeline-card--done .calendar-1day-timeline-card-end,
+.calendar-1day-timeline-card--done .calendar-1day-timeline-card-duration {
+  color: var(--cal-text-muted);
+}
+
+.calendar-1day-timeline-card--ledger-missed .calendar-1day-timeline-card-start,
+.calendar-1day-timeline-card--ledger-missed .calendar-1day-timeline-card-end,
+.calendar-1day-timeline-card--ledger-missed .calendar-1day-timeline-card-duration,
+.calendar-1day-timeline-card--ledger-missed .calendar-1day-timeline-card-title {
   color: var(--cal-text-muted);
 }
 
@@ -1449,6 +1667,48 @@
   .calendar-event-bubble {
     min-width: 0;
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/* 일간 캘린더「예상 일정 추가」— 스크롤 영역 패딩 0(짧은 폼에서 녹색 여백처럼 보이던 부분 제거) */
+/* -------------------------------------------------------------------------- */
+
+@media (min-width: 40rem) {
+  .lp-calendar-budget-add-modal.time-task-setup-modal {
+    padding: 0.65rem;
+  }
+}
+
+.lp-calendar-budget-add-modal [data-legacy~="time-task-setup-header"] {
+  padding: 0.65rem 0.85rem;
+}
+
+.lp-calendar-budget-add-modal [data-legacy~="time-task-log-scroll-area"] {
+  padding: 0;
+}
+
+.lp-calendar-budget-add-modal [data-legacy~="time-task-log-field"] {
+  margin-bottom: 0.55rem;
+}
+
+.lp-calendar-budget-add-modal [data-legacy~="time-task-log-memo-section"] {
+  margin-top: 0.12rem;
+  padding-top: 0.42rem;
+}
+
+.lp-calendar-budget-add-modal .lp-calendar-expected-delete-btn {
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.45rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--cal-line-strong, #c4bea8);
+  background: var(--cal-surface, #fff);
+  color: #8b5c3a;
+  cursor: pointer;
+}
+
+.lp-calendar-budget-add-modal .lp-calendar-expected-delete-btn:hover {
+  background: var(--cal-surface-muted, #f7f4ec);
 }
 
 /* -------------------------------------------------------------------------- */
