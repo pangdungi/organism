@@ -23,7 +23,7 @@ import {
   formatIntegerMinutesDurationKo,
   formatHomeLiveStartClock,
 } from "./Time.js";
-import { render1DayView, LP_CAL_TODO_SIDEBAR_NONE } from "./Calendar.js";
+import { render1DayView } from "./Calendar.js";
 import { buildHomeTodayEventPulseModel } from "../utils/homeTodayEventPulse.js";
 
 const KPI_SECTION_IDS = ["dream", "sideincome", "health", "happy"];
@@ -753,7 +753,7 @@ function appendHomeMainBelowToolbar(el) {
   const timelineMount = document.createElement("div");
   timelineMount.className = "home-1day-timeline-mount";
   timelineMount.appendChild(
-    render1DayView(null, LP_CAL_TODO_SIDEBAR_NONE, true),
+    render1DayView(null),
   );
   timelineSection.appendChild(timelineMount);
   section2.appendChild(timelineSection);

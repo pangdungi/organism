@@ -620,7 +620,9 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   display: flex;
   align-items: stretch;
 }
-.time-add-task-panel .time-task-log-date-native-wrap .time-task-log-date-overlay,
+.time-add-task-panel
+  .time-task-log-date-native-wrap
+  .time-task-log-date-overlay,
 [data-legacy~="time-add-task-panel"]
   [data-legacy~="time-task-log-date-native-wrap"]
   [data-legacy~="time-task-log-date-overlay"] {

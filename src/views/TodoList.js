@@ -5346,6 +5346,7 @@ export function render(options = {}) {
       searchToggleBtn.title = "검색";
       searchToggleBtn.setAttribute("aria-label", "할 일 검색");
       searchToggleBtn.setAttribute("aria-expanded", "false");
+      searchToggleBtn.setAttribute("aria-pressed", "false");
       searchToggleBtn.innerHTML = TODO_TOOLBAR_SEARCH_ICON;
     }
     toolbarRow.appendChild(tabsTopMargin);
@@ -5430,6 +5431,7 @@ export function render(options = {}) {
             "aria-expanded",
             open ? "true" : "false",
           );
+          searchToggleBtn.setAttribute("aria-pressed", open ? "true" : "false");
           if (!open) {
             if (todoMobileSearchInput) todoMobileSearchInput.value = "";
             todoMobileSearchQuery = "";
